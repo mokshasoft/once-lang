@@ -24,7 +24,8 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (isGround)
+open import Once.Type using (isGround; extractGround)
+open import Once.Functor.Decide using (isConcrete?)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; DImport; DTypeAlias; mkModule)
 open import Once.Parser
@@ -44,8 +45,10 @@ extract-commute-inj₁ : ∀ (b : List String) (al : _) (ds : List Decl) (pendin
   → extractFunctions-go al (map (canonDecl b [] []) ds) pending ≡ inj₁ err
 extract-commute-inj₁ b al [] pending ()
 extract-commute-inj₁ b al (DTypeSig name ty ∷ rest) pending eq with isGround ty
-... | inj₁ g = extract-commute-inj₁ b al rest _ eq
 ... | inj₂ _ = extract-commute-inj₁ b al rest _ eq
+... | inj₁ g with isConcrete? (extractGround ty g)
+...   | just _  = extract-commute-inj₁ b al rest _ eq
+...   | nothing = extract-commute-inj₁ b al rest _ eq
 extract-commute-inj₁ b al (DFunDef name alloc body ∷ rest) (just (sigName , inj₁ gty)) eq with sigName ≟s name
 ... | yes _ with extractFunctions-go al rest nothing in eq2
 ...   | inj₁ e with eq

@@ -91,6 +91,11 @@ postulate
   check-agreeV-RVar-poly-todo : ∀ (ctx : NamedCtx) (x : String) (T : Type) {fe snd Ψ se d f w}
     → E.checkElabV-RVar-bbc-other-aux ctx x T (failure fe , snd) ≡ (success Ψ se d f , w)
     → ∀ dγ k → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize w ⟧ˢ dγ k
+  -- Plan 0.58 / D071: the INFER-mode twin — the ground telescope reference's
+  -- `poly` emission rides the `bbc-other-poly-infer-witness` gap the same way.
+  infer-agreeV-RVar-poly-todo : ∀ (ctx : NamedCtx) (x : String) {A Ψ se d f w}
+    → E.inferElabV-RVar-poly-aux ctx x (E.classifyBareBuiltin x) refl ≡ (success A Ψ se d f , w)
+    → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ dγ k ≡ SD.⟦ realize-infer w ⟧ˢ dγ k
   -- (Plan 0.55 D#2: `check-RApp-todo` ELIMINATED — all RApp check views discharged
   -- by explicit `agree-check-RApp` clauses; the residual is the narrow
   -- `agree-cata-denotes` denotational leaf. See below.)
@@ -601,7 +606,11 @@ agree-RVar : ∀ (ctx : NamedCtx) (x : String) (¬u : ¬ (x ≡ "unit"))
 agree-RVar ctx x ¬u (just (A , Ψ , se)) eq-loc impLhs eq-imp refl dγ k = refl
 agree-RVar ctx x ¬u nothing eq-loc (just ty) eq-imp eqS dγ k =
   agree-RVar-importᴴ ctx x ¬u eq-loc ty eq-imp (isConcrete? ty) refl eqS dγ k
-agree-RVar ctx x ¬u nothing eq-loc nothing eq-imp eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+-- Plan 0.58 / D071: both lookups failed → the POLY FALLBACK (a ground
+-- telescope name infers at its declared type). Its success rides the
+-- premise-erased witness, so agreement is the narrow infer-poly residual.
+agree-RVar ctx x ¬u nothing eq-loc nothing eq-imp eq dγ k =
+  infer-agreeV-RVar-poly-todo ctx x eq dγ k
 
 -- RQualified agreement, dispatched on the import-lookup of the dotted path,
 -- exactly as `inferElabV-RQualified-aux` does. A `Many`-arrow resolves to the
@@ -1121,8 +1130,8 @@ faithful-aux (Surface.lam _ _ _) teq () dγ
 faithful-aux (Surface.app _ _) teq () dγ
 faithful-aux (Surface.effApp _ _) teq () dγ
 faithful-aux (Surface.sigOp _ _) teq () dγ
-faithful-aux (Surface.closure _ _) teq () dγ
-faithful-aux (Surface.poly _ _ _) teq () dγ
+faithful-aux (Surface.closure _) teq () dγ
+faithful-aux (Surface.poly _ _) teq () dγ
 faithful-aux (Surface.morph-app _ _) teq () dγ
 faithful-aux (Surface.ana _ _) teq () dγ
 faithful-aux (Surface.absurd _) teq () dγ

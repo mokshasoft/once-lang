@@ -47,7 +47,8 @@ open import Once.TypeCheck.Judgment
          t-app; t-effApp;
          t-embed; t-lam; t-value-lift; t-morph-lift; t-pair-lit-check; t-In-app-check;
          t-apply-check; t-inl-app-check; t-inr-app-check; t-initial-app-check;
-         t-subsume; t-arg-driven-app-check; t-var-poly-instantiate)
+         t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
+         t-var-poly-instantiate-infer)
 open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
   lam; app; effApp; pair; neg; let'; case'; int; str; unit;
   add; sub; mul; div; mod'; lt; le; gt; ge; eq; ne; arr'; sigOp; poly;
@@ -158,7 +159,7 @@ realize (t-arg-driven-app-check _ darg df) = app (realize df) (realize-infer dar
 -- closed body's IR, wrapped as a closed morphism applied to `unit` — so its
 -- denotation is env-independent BY DEFINITION (`⟦ morph-app ir unit ⟧ˢ dγ =
 -- evalᴰ ir tt`), reusing existing combinators. No `poly` surface node (E1).
-realize {ctx = ctx} {A = A} (t-var-poly-instantiate _ _ _ _ _ bodyD _) =
+realize {ctx = ctx} {A = A} (t-var-poly-instantiate _ _ _ _ _ _ bodyD) =
   subst (λ u → Expr (NamedCtx.debruijn ctx) u A) poly-usage-eq
         (morph-app {Ψ = zeroUsage} (elaborate IR.Heap (realize bodyD)) unit)
 
@@ -176,6 +177,11 @@ realize-infer (t-var-qualified {name = name} {alias = alias} _ conc) = sigOp (ba
 -- the elaborator's `SigOpInfo.name` by construction.
 realize-infer (t-var-resolved {cn = cn} _ conc) = sigOp cn conc
 realize-infer (t-var-import {x = x} _ _ _ conc) = sigOp (bare x) conc
+-- Plan 0.58 / D071: infer-mode ground telescope reference — same closed-body
+-- inline as the check-mode `t-var-poly-instantiate` clause above.
+realize-infer {ctx = ctx} {A = A} (t-var-poly-instantiate-infer _ _ _ _ _ _ _ bodyD) =
+  subst (λ u → Expr (NamedCtx.debruijn ctx) u A) poly-usage-eq
+        (morph-app {Ψ = zeroUsage} (elaborate IR.Heap (realize bodyD)) unit)
 realize-infer (t-annot d)       = realize d
 realize-infer (t-pair da db)    = pair (realize-infer da) (realize-infer db)
 realize-infer (t-neg d)         = neg (realize-infer d)

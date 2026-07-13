@@ -23,7 +23,8 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 
-open import Once.Type using (Type; PolyType; isGround)
+open import Once.Type using (Type; PolyType; isGround; extractGround)
+open import Once.Functor.Decide using (isConcrete?)
 open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; DImport; DTypeAlias; Module; mkModule)
 open import Once.Parser
   using ( FunInfo; PolyFunInfo; PendingSig; projectSig; EFResult
@@ -103,8 +104,10 @@ poly⊆ : ∀ (al : _) (ds : List Decl) (pending : Maybe PendingSig) {funs polys
 poly⊆ al [] pending refl x ()
 -- DTypeSig: overwrites pending; recurse, then re-attach `name` if non-ground.
 poly⊆ al (DTypeSig name ty ∷ rest) pending eq x h with isGround ty
-... | inj₁ g = ∨-introˡ (drop-∨false (poly⊆ al rest _ eq x h))
 ... | inj₂ _ = ∨-introˡ (prepend-name x name (polyDefNames rest) (poly⊆ al rest _ eq x h))
+... | inj₁ g with isConcrete? (extractGround ty g)
+...   | just _  = ∨-introˡ (drop-∨false (poly⊆ al rest _ eq x h))
+...   | nothing = ∨-introˡ (prepend-name x name (polyDefNames rest) (poly⊆ al rest _ eq x h))
 -- DFunDef, GROUND pending: consFun (match) or direct recurse (mismatch).
 poly⊆ al (DFunDef name alloc body ∷ rest) (just (sigName , inj₁ gty)) eq x h with sigName ≟s name
 ... | yes _ with extractFunctions-go al rest nothing in eq2

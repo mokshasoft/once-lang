@@ -39,7 +39,8 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
 
 open import Once.Parser.Module.Core
-open import Once.Type using (isGround)
+open import Once.Type using (isGround; extractGround)
+open import Once.Functor.Decide using (isConcrete?)
 open import Once.CanonicalName using (CanonicalName; canonical)
 open import Once.TypeCheck.Raw
   using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair;
@@ -182,9 +183,16 @@ elemStr x (y ∷ ys) with x ≟ y
 -- local binders. See tests/poly-bare-ref.once.
 polyDefNames : List Decl → List String
 polyDefNames []                          = []
+-- Plan 0.58 / D071: keep a def BARE (→ the poly telescope, δ-reduced to its
+-- body) unless it is ground AND concrete. A ground-but-non-concrete def (a cata
+-- at `μNat → Int`, …) is a context projection, not an FFI symbol, so it must
+-- NOT be canonicalized to `RResolved` (which would hit the concreteness gate).
+-- Uses the SAME nested `isGround`/`isConcrete?` split as `extractFunctions-go`.
 polyDefNames (DTypeSig name ty ∷ rest)   with isGround ty
-... | inj₁ _ = polyDefNames rest                       -- ground → mono (resolved as usual)
-... | inj₂ _ = name ∷ polyDefNames rest                -- non-ground → poly (keep bare)
+... | inj₂ _ = name ∷ polyDefNames rest                -- non-ground → keep bare
+... | inj₁ g with isConcrete? (extractGround ty g)
+...   | just _  = polyDefNames rest                     -- ground + concrete → mono (resolved as usual)
+...   | nothing = name ∷ polyDefNames rest              -- ground + non-concrete → keep bare
 polyDefNames (_ ∷ rest)                  = polyDefNames rest
 
 -- | Plan 0.50 (D064): a bare `RVar x` that is NOT a local binder and NOT a

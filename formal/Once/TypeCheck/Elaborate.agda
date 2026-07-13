@@ -28,6 +28,7 @@ open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; cong₂; sym; trans)
 
@@ -43,7 +44,7 @@ open import Once.IR as IR
 -- the pure/value `pureV` positions — an effectful op carries a CONTRACT,
 -- not a value, so `Emits`/`Halts` drop it entirely.
 open import Once.Arith.SigOp.Builders using (generic-semM)
-open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV)
+open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV; ffi-concrete)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
 open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits to se-emits)
 open import Once.TypeCheck.Raw using (RawExpr)
@@ -907,8 +908,61 @@ postulate
   -- Witness for the `bbc-other` poly-instantiate case (Phase 2 gap).
   bbc-other-poly-witness :
     ∀ (ctx : NamedCtx) (x : String) (T : Type)
-    → IsConcrete T
     → ctx ⊢ᶜ Raw.RVar x ∶ T ⨾ Surface.zeroUsage
+  -- Plan 0.58 / D071: infer-mode twin (Phase 2 gap, premise-erased instance of
+  -- `t-var-poly-instantiate-infer` — the premises hold at the emission site;
+  -- the body derivation is the Phase-2 invariant, same as the check witness).
+  bbc-other-poly-infer-witness :
+    ∀ (ctx : NamedCtx) (x : String) (T : Type)
+    → ctx ⊢ᵢ Raw.RVar x ∶ T ⨾ Surface.zeroUsage
+
+------------------------------------------------------------------------
+-- Plan 0.58 / D071: infer-mode ground telescope reference (the poly fallback
+-- of `inferElabV` for a bare `RVar`).
+--
+-- After the local and import lookups fail, a bare `bbc-other` name may still
+-- be an own-module telescope def (`lookupPoly`). A GROUND schema has exactly
+-- one type, so the reference INFERS at its declaration (`extractGround`) —
+-- emitting the same `Surface.poly` placeholder Phase 2 (`resolveExpr`)
+-- splices. A NON-ground schema stays check-mode-only
+-- (`t-var-poly-instantiate`), so infer still fails with `UnboundVariable`.
+--
+-- De-withed (classify / lookup / isGround as explicit args + equations), so
+-- external proofs reduce each stage J-style ([[de-with pattern]]).
+------------------------------------------------------------------------
+
+inferElabV-RVar-poly-ground-aux :
+  ∀ (ctx : NamedCtx) (x : String) (schema : PolyType)
+  → (ig : (Ground schema) ⊎ ⊤) → isGround schema ≡ ig
+  → VerifiedInferResult ctx (Raw.RVar x)
+inferElabV-RVar-poly-ground-aux ctx x schema (inj₂ tt) _ =
+  failure (UnboundVariable x) , tt
+inferElabV-RVar-poly-ground-aux ctx x schema (inj₁ g) _ =
+  success (extractGround schema g) Surface.zeroUsage
+          (Surface.poly x (extractGround schema g)) 0 (NamedCtx.freshCounter ctx)
+  , bbc-other-poly-infer-witness ctx x (extractGround schema g)
+
+inferElabV-RVar-poly-lookup-aux :
+  ∀ (ctx : NamedCtx) (x : String)
+  → (lp : Maybe (PolyType × RawExpr)) → lookupPoly (NamedCtx.polys ctx) x ≡ lp
+  → VerifiedInferResult ctx (Raw.RVar x)
+inferElabV-RVar-poly-lookup-aux ctx x nothing _ = failure (UnboundVariable x) , tt
+inferElabV-RVar-poly-lookup-aux ctx x (just (schema , body)) _ =
+  inferElabV-RVar-poly-ground-aux ctx x schema (isGround schema) refl
+
+inferElabV-RVar-poly-aux :
+  ∀ (ctx : NamedCtx) (x : String)
+  → (cls : BareBuiltinClass x) → classifyBareBuiltin x ≡ cls
+  → VerifiedInferResult ctx (Raw.RVar x)
+inferElabV-RVar-poly-aux ctx x bbc-other    _ =
+  inferElabV-RVar-poly-lookup-aux ctx x (lookupPoly (NamedCtx.polys ctx) x) refl
+inferElabV-RVar-poly-aux ctx x bbc-id       _ = failure (UnboundVariable x) , tt
+inferElabV-RVar-poly-aux ctx x bbc-fst      _ = failure (UnboundVariable x) , tt
+inferElabV-RVar-poly-aux ctx x bbc-snd      _ = failure (UnboundVariable x) , tt
+inferElabV-RVar-poly-aux ctx x bbc-terminal _ = failure (UnboundVariable x) , tt
+inferElabV-RVar-poly-aux ctx x bbc-initial  _ = failure (UnboundVariable x) , tt
+inferElabV-RVar-poly-aux ctx x bbc-inl      _ = failure (UnboundVariable x) , tt
+inferElabV-RVar-poly-aux ctx x bbc-inr      _ = failure (UnboundVariable x) , tt
 
 
 mutual
@@ -1260,16 +1314,17 @@ mutual
   ...   | success T' Ψ eE d f with T ≟T T'
   ...     | yes refl = success _ eE d f
   ...     | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx x T | bbc-other | failure err with lookupPoly (NamedCtx.polys ctx) x | isConcrete? T
-  ... | nothing | _        = failure err
+  checkElab-RVar ctx x T | bbc-other | failure err with lookupPoly (NamedCtx.polys ctx) x
+  ... | nothing = failure err
   -- Plan 0.6.2 Phase 4: emit a proper `poly` placeholder constructor.
   -- Phase 2's `resolveExpr` pattern-matches on this constructor directly
   -- — no string encoding, no prefix check. Keeps Phase 1 structural (no
   -- TERMINATING pragma) and gives downstream consumers type-level
   -- visibility: an Expr with `poly` nodes hasn't been through Phase 2.
-  ... | just _ | just conc = success Surface.zeroUsage (Surface.poly x T conc)
-                         0 (NamedCtx.freshCounter ctx)
-  ... | just _ | nothing   = failure (NonConcreteSigOpType x T)
+  -- Plan 0.58 / D071: NO concreteness gate — a same-module def reference is a
+  -- context projection, not an FFI value, so it is emitted at ANY type `T`.
+  ... | just _ = success Surface.zeroUsage (Surface.poly x T)
+                     0 (NamedCtx.freshCounter ctx)
   -- id : T → T
   checkElab-RVar ctx _ T | bbc-id with inferElab ctx (Raw.RVar "id")
   ... | success T' Ψ eE d f with T ≟T T'
@@ -1817,13 +1872,13 @@ mutual
   -- function-linking opacity, a separate axis from the syscall contract).
   ext-arrow-info : ∀ {A B} → NamedCtx → (alias name : String) → Purity
                  → IsBaseType A → IsConcrete B → SigOpInfo A B
-  ext-arrow-info ctx alias name pure bA cB = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bA cB
+  ext-arrow-info ctx alias name pure bA cB = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bA (ffi-concrete cB)
   ext-arrow-info {A} {B} ctx alias name eff bA cB with B ≟T Unit
-  ... | no _ = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bA cB
+  ... | no _ = mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bA (ffi-concrete cB)
   ... | yes refl with lookupSigEffect (NamedCtx.sigEffects ctx) (alias ++ "." ++ name)
-  ...   | just se-halts = mk-info' (bare (alias ++ "." ++ name)) (haltsV refl) bA cB
-  ...   | just se-emits = mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bA cB
-  ...   | nothing       = mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bA cB
+  ...   | just se-halts = mk-info' (bare (alias ++ "." ++ name)) (haltsV refl) bA (ffi-concrete cB)
+  ...   | just se-emits = mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bA (ffi-concrete cB)
+  ...   | nothing       = mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bA (ffi-concrete cB)
 
   -- Aux helper bodies (placed after all main mutual members so that the
   -- `... | pat` continuations of inferElabV/checkElabV clauses don't
@@ -1872,11 +1927,11 @@ mutual
   ext-resolved-info-aux : ∀ {A B} → CanonicalName → Purity
                         → Dec (B ≡ Unit) → Maybe SigEffect
                         → IsBaseType A → IsConcrete B → SigOpInfo A B
-  ext-resolved-info-aux cn pure _ _ bA cB = mk-info' cn (pureV (generic-semM (showCanonical cn))) bA cB
-  ext-resolved-info-aux cn eff (no _) _ bA cB = mk-info' cn (pureV (generic-semM (showCanonical cn))) bA cB
-  ext-resolved-info-aux cn eff (yes refl) (just se-halts) bA cB = mk-info' cn (haltsV refl) bA cB
-  ext-resolved-info-aux cn eff (yes refl) (just se-emits) bA cB = mk-info' cn (emitsV refl) bA cB
-  ext-resolved-info-aux cn eff (yes refl) nothing         bA cB = mk-info' cn (emitsV refl) bA cB
+  ext-resolved-info-aux cn pure _ _ bA cB = mk-info' cn (pureV (generic-semM (showCanonical cn))) bA (ffi-concrete cB)
+  ext-resolved-info-aux cn eff (no _) _ bA cB = mk-info' cn (pureV (generic-semM (showCanonical cn))) bA (ffi-concrete cB)
+  ext-resolved-info-aux cn eff (yes refl) (just se-halts) bA cB = mk-info' cn (haltsV refl) bA (ffi-concrete cB)
+  ext-resolved-info-aux cn eff (yes refl) (just se-emits) bA cB = mk-info' cn (emitsV refl) bA (ffi-concrete cB)
+  ext-resolved-info-aux cn eff (yes refl) nothing         bA cB = mk-info' cn (emitsV refl) bA (ffi-concrete cB)
 
   ext-resolved-info : ∀ {A B} → NamedCtx → CanonicalName → Purity
                     → IsBaseType A → IsConcrete B → SigOpInfo A B
@@ -2008,8 +2063,10 @@ mutual
     success A Ψ (Surface.svar→expr eV) 0 (NamedCtx.freshCounter ctx) , t-var-local ¬unit eq-loc
   inferElabV-RVar-lookup-aux ctx x ¬unit nothing eq-loc (just ty) eq-imp =
     inferElabV-RVar-import-value-aux ctx x ¬unit eq-loc ty eq-imp (isConcrete? ty) refl
+  -- Plan 0.58 / D071: both lookups failed — try the telescope (poly) fallback:
+  -- a GROUND own-module def infers at its declared type; otherwise fail.
   inferElabV-RVar-lookup-aux ctx x ¬unit nothing eq-loc nothing eq-imp =
-    failure (UnboundVariable x) , tt
+    inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
 
   inferElabV-RVar-import-value-aux ctx x ¬unit eq-loc ty eq-imp (just conc) _ =
     success ty _ (Surface.sigOp (bare x) conc) 0 (NamedCtx.freshCounter ctx) , t-var-import ¬unit eq-loc eq-imp conc
@@ -2498,10 +2555,9 @@ mutual
   -- bbc-other: success-via-infer mirrors the others; failure goes
   -- through lookupPoly fallback (still postulate-witnessed).
   checkElabV-RVar-bbc-other-aux ctx x T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar x) T r
-  checkElabV-RVar-bbc-other-aux ctx x T (failure err , _) with lookupPoly (NamedCtx.polys ctx) x | isConcrete? T
-  ... | nothing | _        = failure err , tt
-  ... | just _  | just conc = success Surface.zeroUsage (Surface.poly x T conc) 0 (NamedCtx.freshCounter ctx) , bbc-other-poly-witness ctx x T conc
-  ... | just _  | nothing   = failure (NonConcreteSigOpType x T) , tt
+  checkElabV-RVar-bbc-other-aux ctx x T (failure err , _) with lookupPoly (NamedCtx.polys ctx) x
+  ... | nothing = failure err , tt
+  ... | just _  = success Surface.zeroUsage (Surface.poly x T) 0 (NamedCtx.freshCounter ctx) , bbc-other-poly-witness ctx x T
 
 ------------------------------------------------------------------------
 -- Plan 0.4 T0 Option B — projection wrappers.
@@ -2696,15 +2752,19 @@ inferElabV-RVar-lookup-aux-fail :
     (eq-loc : lookupLocal ctx x ≡ nothing)
     (eq-imp : lookupImport (NamedCtx.imports ctx) x ≡ nothing)
   → inferElabV-RVar-lookup-aux ctx x ¬unit nothing eq-loc nothing eq-imp
-      ≡ (failure (UnboundVariable x) , tt)
+      ≡ inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
 inferElabV-RVar-lookup-aux-fail _ _ _ _ _ = refl
 
-inferElabV-RVar-fail-bridge :
+-- Plan 0.58 / D071: reduce `inferElabV (RVar x)` (both lookups failed) to the
+-- POLY FALLBACK call. Callers compose with a per-outcome lemma (failure for
+-- builtins / lookupPoly-nothing / non-ground; success for ground).
+inferElabV-RVar-poly-bridge :
   ∀ (ctx : NamedCtx) (x : String) (¬unit : ¬ (x ≡ "unit"))
   → (eqLoc : lookupLocal ctx x ≡ nothing)
   → (eqImp : lookupImport (NamedCtx.imports ctx) x ≡ nothing)
-  → inferElabV ctx (Raw.RVar x) ≡ (failure (UnboundVariable x) , tt)
-inferElabV-RVar-fail-bridge ctx x ¬unit eqLoc eqImp
+  → inferElabV ctx (Raw.RVar x)
+      ≡ inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
+inferElabV-RVar-poly-bridge ctx x ¬unit eqLoc eqImp
   with StrProp._≟_ x "unit"
 ... | yes eq-unit = ⊥-elim (¬unit eq-unit)
 ... | no _ = trans bridge-eq (inferElabV-RVar-lookup-aux-fail ctx x ¬unit eqLoc eqImp)
@@ -2726,6 +2786,81 @@ inferElabV-RVar-fail-bridge ctx x ¬unit eqLoc eqImp
       ≡ inferElabV-RVar-lookup-aux ctx x ¬unit nothing eqLoc nothing eqImp
     bridge-eq = helper nothing eqLoc nothing eqImp
 
+-- J-style specialisation lemmas for the three de-withed poly-fallback stages.
+inferElabV-RVar-poly-aux-eq :
+  ∀ (ctx : NamedCtx) (x : String) (cls : BareBuiltinClass x)
+    (eqCls : classifyBareBuiltin x ≡ cls)
+  → inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
+      ≡ inferElabV-RVar-poly-aux ctx x cls eqCls
+inferElabV-RVar-poly-aux-eq ctx x .(classifyBareBuiltin x) refl = refl
+
+inferElabV-RVar-poly-lookup-eq :
+  ∀ (ctx : NamedCtx) (x : String) (lp : Maybe (PolyType × RawExpr))
+    (eqLp : lookupPoly (NamedCtx.polys ctx) x ≡ lp)
+  → inferElabV-RVar-poly-lookup-aux ctx x (lookupPoly (NamedCtx.polys ctx) x) refl
+      ≡ inferElabV-RVar-poly-lookup-aux ctx x lp eqLp
+inferElabV-RVar-poly-lookup-eq ctx x .(lookupPoly (NamedCtx.polys ctx) x) refl = refl
+
+inferElabV-RVar-poly-ground-eq :
+  ∀ (ctx : NamedCtx) (x : String) (schema : PolyType) (ig : (Ground schema) ⊎ ⊤)
+    (eqG : isGround schema ≡ ig)
+  → inferElabV-RVar-poly-ground-aux ctx x schema (isGround schema) refl
+      ≡ inferElabV-RVar-poly-ground-aux ctx x schema ig eqG
+inferElabV-RVar-poly-ground-eq ctx x schema .(isGround schema) refl = refl
+
+-- The poly fallback FAILS when the name isn't in the telescope.
+inferElabV-RVar-poly-aux-fail-nothing :
+  ∀ (ctx : NamedCtx) (x : String)
+  → classifyBareBuiltin x ≡ Once.TypeCheck.Classify.bbc-other
+  → lookupPoly (NamedCtx.polys ctx) x ≡ nothing
+  → inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
+      ≡ (failure (UnboundVariable x) , tt)
+inferElabV-RVar-poly-aux-fail-nothing ctx x eqCls eqLp =
+  trans (inferElabV-RVar-poly-aux-eq ctx x _ eqCls)
+        (inferElabV-RVar-poly-lookup-eq ctx x nothing eqLp)
+
+-- The poly fallback FAILS for a NON-ground schema (check-mode-only).
+inferElabV-RVar-poly-aux-fail-nonground :
+  ∀ (ctx : NamedCtx) (x : String) {schema : PolyType} {body : RawExpr}
+  → classifyBareBuiltin x ≡ Once.TypeCheck.Classify.bbc-other
+  → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
+  → isGround schema ≡ inj₂ tt
+  → inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
+      ≡ (failure (UnboundVariable x) , tt)
+inferElabV-RVar-poly-aux-fail-nonground ctx x {schema} eqCls eqLp eqG =
+  trans (inferElabV-RVar-poly-aux-eq ctx x _ eqCls)
+    (trans (inferElabV-RVar-poly-lookup-eq ctx x _ eqLp)
+           (inferElabV-RVar-poly-ground-eq ctx x schema (inj₂ tt) eqG))
+
+-- The poly fallback SUCCEEDS at the declared ground type.
+inferElabV-RVar-poly-aux-success :
+  ∀ (ctx : NamedCtx) (x : String) {schema : PolyType} {body : RawExpr}
+    {g : Ground schema}
+  → classifyBareBuiltin x ≡ Once.TypeCheck.Classify.bbc-other
+  → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
+  → isGround schema ≡ inj₁ g
+  → inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
+      ≡ (success (extractGround schema g) Surface.zeroUsage
+                 (Surface.poly x (extractGround schema g)) 0 (NamedCtx.freshCounter ctx)
+         , bbc-other-poly-infer-witness ctx x (extractGround schema g))
+inferElabV-RVar-poly-aux-success ctx x {schema} {g = g} eqCls eqLp eqG =
+  trans (inferElabV-RVar-poly-aux-eq ctx x _ eqCls)
+    (trans (inferElabV-RVar-poly-lookup-eq ctx x _ eqLp)
+           (inferElabV-RVar-poly-ground-eq ctx x schema (inj₁ g) eqG))
+
+-- Backward-compatible failure bridge: same statement as before PLUS the
+-- poly-fallback-failure premise (`refl` for literal builtin names — the
+-- classifier and fallback reduce; a lemma above for abstract names).
+inferElabV-RVar-fail-bridge :
+  ∀ (ctx : NamedCtx) (x : String) (¬unit : ¬ (x ≡ "unit"))
+  → (eqLoc : lookupLocal ctx x ≡ nothing)
+  → (eqImp : lookupImport (NamedCtx.imports ctx) x ≡ nothing)
+  → inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
+      ≡ (failure (UnboundVariable x) , tt)
+  → inferElabV ctx (Raw.RVar x) ≡ (failure (UnboundVariable x) , tt)
+inferElabV-RVar-fail-bridge ctx x ¬unit eqLoc eqImp polyFail =
+  trans (inferElabV-RVar-poly-bridge ctx x ¬unit eqLoc eqImp) polyFail
+
 -- Plan 0.4 T2 Phase 5: bbc-X RVar fallbacks. The aux extraction
 -- (Phase 3) plus the lookup-view refactor (Phase 4) plus the
 -- inferElabV-RVar-fail-bridge (Phase 5) together let us discharge the
@@ -2739,7 +2874,7 @@ checkElab-fallback-RVar-id :
       checkElab ctx (Raw.RVar "id") (T Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-id {ctx} T eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "id") | inferElabV-RVar-fail-bridge ctx "id" (λ ()) eqLoc eqImp
+  with inferElabV ctx (Raw.RVar "id") | inferElabV-RVar-fail-bridge ctx "id" (λ ()) eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "id" | inspectLookupImport ctx "id"
 ... | llv-not-found _ | liv-not-found _
@@ -2768,7 +2903,7 @@ checkElab-fallback-RVar-fst :
       checkElab ctx (Raw.RVar "fst") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-fst {ctx} A B eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "fst") | inferElabV-RVar-fail-bridge ctx "fst" (λ ()) eqLoc eqImp
+  with inferElabV ctx (Raw.RVar "fst") | inferElabV-RVar-fail-bridge ctx "fst" (λ ()) eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "fst" | inspectLookupImport ctx "fst"
 ... | llv-not-found _ | liv-not-found _
@@ -2788,7 +2923,7 @@ checkElab-fallback-RVar-snd :
       checkElab ctx (Raw.RVar "snd") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-snd {ctx} A B eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "snd") | inferElabV-RVar-fail-bridge ctx "snd" (λ ()) eqLoc eqImp
+  with inferElabV ctx (Raw.RVar "snd") | inferElabV-RVar-fail-bridge ctx "snd" (λ ()) eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "snd" | inspectLookupImport ctx "snd"
 ... | llv-not-found _ | liv-not-found _
@@ -2808,7 +2943,7 @@ checkElab-fallback-RVar-terminal :
       checkElab ctx (Raw.RVar "terminal") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-terminal {ctx} A eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "terminal") | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqLoc eqImp
+  with inferElabV ctx (Raw.RVar "terminal") | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
 ... | llv-not-found _ | liv-not-found _ = _ , _ , _ , refl
@@ -2829,7 +2964,7 @@ checkElab-fallback-RVar-terminalV :
         checkElabV ctx (Raw.RVar "terminal") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit)
           ≡ (success Surface.zeroUsage eE d f , w)))))
 checkElab-fallback-RVar-terminalV {ctx} A eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "terminal") | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqLoc eqImp
+  with inferElabV ctx (Raw.RVar "terminal") | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
 ... | llv-not-found _ | liv-not-found _ = _ , _ , _ , _ , refl
@@ -2846,7 +2981,7 @@ checkElab-fallback-RVar-initial :
       checkElab ctx (Raw.RVar "initial") (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-initial {ctx} A eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "initial") | inferElabV-RVar-fail-bridge ctx "initial" (λ ()) eqLoc eqImp
+  with inferElabV ctx (Raw.RVar "initial") | inferElabV-RVar-fail-bridge ctx "initial" (λ ()) eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "initial" | inspectLookupImport ctx "initial"
 ... | llv-not-found _ | liv-not-found _ = _ , _ , _ , refl
@@ -2863,7 +2998,7 @@ checkElab-fallback-RVar-inl :
       checkElab ctx (Raw.RVar "inl") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B))
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-inl {ctx} A B eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "inl") | inferElabV-RVar-fail-bridge ctx "inl" (λ ()) eqLoc eqImp
+  with inferElabV ctx (Raw.RVar "inl") | inferElabV-RVar-fail-bridge ctx "inl" (λ ()) eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "inl" | inspectLookupImport ctx "inl"
 ... | llv-not-found _ | liv-not-found _
@@ -2883,7 +3018,7 @@ checkElab-fallback-RVar-inr :
       checkElab ctx (Raw.RVar "inr") (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B))
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-inr {ctx} A B eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "inr") | inferElabV-RVar-fail-bridge ctx "inr" (λ ()) eqLoc eqImp
+  with inferElabV ctx (Raw.RVar "inr") | inferElabV-RVar-fail-bridge ctx "inr" (λ ()) eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "inr" | inspectLookupImport ctx "inr"
 ... | llv-not-found _ | liv-not-found _
@@ -2971,14 +3106,12 @@ resolveExprWF : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
 resolvePolyCase : ∀ {n} {Γ : Surface.Ctx n}
                 → (polys : PolyCtx) → Acc _<_ (length polys)
                 → Imports → Imports → ℕ → (x : String) (A : Type)
-                → IsConcrete A
                 → (look : Maybe (PolyType × RawExpr))
                 → lookupPoly polys x ≡ look
                 → Surface.Expr Γ Surface.zeroUsage A
 applySplice : ∀ {n} {Γ : Surface.Ctx n}
             → (polys : PolyCtx) → Acc _<_ (length polys)
             → Imports → Imports → ℕ → (x : String) (A : Type)
-            → IsConcrete A
             → {schema : PolyType} {body : RawExpr}
             → lookupPoly polys x ≡ just (schema , body)
             → CheckElabResult S∅ A
@@ -3041,10 +3174,10 @@ resolveExprWF polys pAcc imps userFns fresh (Surface.arr' e) = Surface.arr' (res
 -- by construction (both go through `generic-semI`); the rewrite is a
 -- no-op in the denotation.
 resolveExprWF polys _ imps userFns _ (Surface.sigOp s conc) with lookupImport userFns (showCanonical s)
-... | just _  = Surface.closure (showCanonical s) conc
+... | just _  = Surface.closure (showCanonical s)
 ... | nothing = Surface.sigOp s conc
 -- Plan 0.19: closure already classified. Pass through unchanged.
-resolveExprWF polys _ imps userFns _ (Surface.closure s conc) = Surface.closure s conc
+resolveExprWF polys _ imps userFns _ (Surface.closure s) = Surface.closure s
 -- Plan 0.2.4.5 D2: morphism-realm forms carry CCC IR directly (no
 -- polymorphic-def references to splice in). Pass through unchanged.
 resolveExprWF polys _ imps userFns _ (Surface.lift-morphism m) = Surface.lift-morphism m
@@ -3061,16 +3194,16 @@ resolveExprWF polys pAcc imps userFns fresh (Surface.ana wfF coalg) =
 -- Poly = unresolved placeholder from Phase 1. Delegate to helper that
 -- takes the lookup result + equation explicitly, so external proofs
 -- about the sigOp case can `rewrite` the premise cleanly.
-resolveExprWF {A = A} polys pAcc imps userFns fresh (Surface.poly x _ conc) =
-  resolvePolyCase polys pAcc imps userFns fresh x A conc (lookupPoly polys x) refl
+resolveExprWF {A = A} polys pAcc imps userFns fresh (Surface.poly x _) =
+  resolvePolyCase polys pAcc imps userFns fresh x A (lookupPoly polys x) refl
 
-resolvePolyCase polys _ imps userFns _ x A conc nothing _ = Surface.poly x A conc
-resolvePolyCase polys pAcc imps userFns fresh x A conc (just (_ , body)) polyEq =
-  applySplice polys pAcc imps userFns fresh x A conc polyEq
+resolvePolyCase polys _ imps userFns _ x A nothing _ = Surface.poly x A
+resolvePolyCase polys pAcc imps userFns fresh x A (just (_ , body)) polyEq =
+  applySplice polys pAcc imps userFns fresh x A polyEq
               (checkElab (ctxWithImportsAndPolys imps (removePoly x polys)) body A)
 
-applySplice polys _ imps userFns _ x A conc _ (failure _) = Surface.poly x A conc
-applySplice polys (acc rec) imps userFns fresh x A conc polyEq (success Surface.[] eE _ _) =
+applySplice polys _ imps userFns _ x A _ (failure _) = Surface.poly x A
+applySplice polys (acc rec) imps userFns fresh x A polyEq (success Surface.[] eE _ _) =
   resolveExprWF (removePoly x polys)
                 (rec (removePoly-decreases x polys polyEq))
                 imps userFns fresh (weakenFromEmpty eE)
@@ -3384,14 +3517,13 @@ applySplice-eq-irrel :
   ∀ {n} {Γ : Surface.Ctx n}
     (polys : PolyCtx) (pAcc : Acc _<_ (length polys))
     (imps userFns : Imports) (fresh : ℕ) (x : String) (A : Type)
-    (conc : IsConcrete A)
     {schema : PolyType} {body : RawExpr}
   → (eq1 eq2 : lookupPoly polys x ≡ just (schema , body))
   → (chkRes : CheckElabResult S∅ A)
-  → applySplice {Γ = Γ} polys pAcc imps userFns fresh x A conc eq1 chkRes
-      ≡ applySplice polys pAcc imps userFns fresh x A conc eq2 chkRes
-applySplice-eq-irrel polys _ imps userFns _ x A conc _ _ (failure _) = refl
-applySplice-eq-irrel polys (acc rec) imps userFns fresh x A conc eq1 eq2 (success Surface.[] eE _ _) =
+  → applySplice {Γ = Γ} polys pAcc imps userFns fresh x A eq1 chkRes
+      ≡ applySplice polys pAcc imps userFns fresh x A eq2 chkRes
+applySplice-eq-irrel polys _ imps userFns _ x A _ _ (failure _) = refl
+applySplice-eq-irrel polys (acc rec) imps userFns fresh x A eq1 eq2 (success Surface.[] eE _ _) =
   cong (λ pr → resolveExprWF (removePoly x polys) (rec pr) imps userFns fresh (weakenFromEmpty eE))
        (<-irrelevant (removePoly-decreases x polys eq1) (removePoly-decreases x polys eq2))
   where open import Data.Nat.Properties using (<-irrelevant)
@@ -3402,17 +3534,16 @@ resolveExpr-poly-match :
     (polys : PolyCtx) (pAcc : Acc _<_ (length polys))
     (imps userFns : Imports) (fresh : ℕ)
     (x : String) (T : Type)
-    (conc : IsConcrete T)
     {schema : PolyType} {body : RawExpr}
     {eE : SExpr S∅ Surface.zeroUsage T} {d f : ℕ}
   → (polyEq : lookupPoly polys x ≡ just (schema , body))
   → checkElab (ctxWithImportsAndPolys imps (removePoly x polys)) body T
       ≡ success Surface.[] eE d f
-  → applySplice {Γ = Γ} polys pAcc imps userFns fresh x T conc polyEq
+  → applySplice {Γ = Γ} polys pAcc imps userFns fresh x T polyEq
                 (checkElab (ctxWithImportsAndPolys imps (removePoly x polys)) body T)
-      ≡ applySplice polys pAcc imps userFns fresh x T conc polyEq
+      ≡ applySplice polys pAcc imps userFns fresh x T polyEq
                     (success Surface.[] eE d f)
-resolveExpr-poly-match polys pAcc imps userFns fresh x T conc polyEq bodyEq
+resolveExpr-poly-match polys pAcc imps userFns fresh x T polyEq bodyEq
     rewrite bodyEq = refl
 
 -- Plan 0.6.2 Phase 4: polymorphic schema-instantiation.
@@ -3421,7 +3552,6 @@ resolveExpr-poly-match polys pAcc imps userFns fresh x T conc polyEq bodyEq
 -- body. Existential witnesses are satisfied by the `poly x T` placeholder.
 checkElab-fallback-RVar-poly :
   ∀ {ctx : NamedCtx} (x : String) (T : Type)
-    (conc : IsConcrete T)
     {schema : PolyType} {body : RawExpr} {prefix : PolyCtx}
     {eE_body : SExpr S∅ Surface.zeroUsage T}
     {d_body f_body : ℕ}
@@ -3433,19 +3563,46 @@ checkElab-fallback-RVar-poly :
   -- is unchanged — E1-full deferred); the body-elaboration premise (at the
   -- telescope PREFIX) is threaded for the caller but not read here.
   → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
+  -- Plan 0.58 / D071: NON-ground only — a ground schema INFERS at its declared
+  -- type (`t-var-poly-instantiate-infer`), so the check-mode fallback (poly
+  -- node at arbitrary `T`) fires only when infer failed, i.e. non-ground.
+  → isGround schema ≡ inj₂ tt
   → checkElab (ctxWithImportsAndPolys (NamedCtx.imports ctx) prefix)
               body T
       ≡ success Surface.zeroUsage eE_body d_body f_body
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
       checkElab ctx (Raw.RVar x) T
         ≡ success Surface.zeroUsage eE d fr)))
-checkElab-fallback-RVar-poly {ctx} x T conc eqCls ¬unit eqLoc eqImp eqPoly _
-  with inferElabV ctx (Raw.RVar x) | inferElabV-RVar-fail-bridge ctx x ¬unit eqLoc eqImp
+checkElab-fallback-RVar-poly {ctx} x T eqCls ¬unit eqLoc eqImp eqPoly eqG _
+  with inferElabV ctx (Raw.RVar x)
+     | inferElabV-RVar-fail-bridge ctx x ¬unit eqLoc eqImp
+         (inferElabV-RVar-poly-aux-fail-nonground ctx x eqCls eqPoly eqG)
 ... | (failure _ , _) | refl
   with classifyBareBuiltin x | eqCls
 ... | bbc-other | refl
-  with lookupPoly (NamedCtx.polys ctx) x | eqPoly | isConcrete? T | isConcrete?-complete conc
-... | just _ | refl | just _ | (_ , refl) = _ , _ , _ , refl
+  with lookupPoly (NamedCtx.polys ctx) x | eqPoly
+... | just _ | refl = _ , _ , _ , refl
+
+-- Plan 0.58 / D071: the INFER-mode twin — a GROUND telescope name infers at
+-- its declared type, emitting the `poly` placeholder (Phase 2 splices).
+checkElab-fallback-RVar-poly-infer :
+  ∀ {ctx : NamedCtx} (x : String)
+    {schema : PolyType} {body : RawExpr} {g : Ground schema}
+  → classifyBareBuiltin x ≡ bbc-other
+  → ¬ (x ≡ "unit")
+  → lookupLocal ctx x ≡ nothing
+  → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
+  → isGround schema ≡ inj₁ g
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+      inferElab ctx (Raw.RVar x)
+        ≡ success (extractGround schema g) Surface.zeroUsage eE d fr)))
+checkElab-fallback-RVar-poly-infer {ctx} x eqCls ¬unit eqLoc eqImp eqPoly eqG =
+  _ , _ , _ ,
+  cong proj₁
+    (trans (inferElabV-RVar-poly-bridge ctx x ¬unit eqLoc eqImp)
+           (inferElabV-RVar-poly-aux-success ctx x eqCls eqPoly eqG))
+  where open import Data.Product using (proj₁)
 checkElab-fallback-RApp-id :
   ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}

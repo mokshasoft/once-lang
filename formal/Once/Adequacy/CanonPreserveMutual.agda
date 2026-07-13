@@ -97,6 +97,12 @@ mutual
     with elemStr x bound ∨ isBuiltinName x in eb
   ... | true  rewrite canon-RVar-keep    bound x eb = t-var-import ¬u lkn imp conc
   ... | false rewrite canon-RVar-resolve bound x eb = t-var-resolved imp conc
+  -- Plan 0.58 / D071: infer-mode ground telescope reference — same keep-bare
+  -- rewrite as the check-mode `t-var-poly-instantiate` case (a telescope name
+  -- is in `bound`, so canonExpr keeps the bare RVar; premises are ctx-side).
+  canon-pres-ᵢ {ctx = ctx} bound sub pib (t-var-poly-instantiate-infer {x = x} cb ¬u lln lin lp ig Teq d)
+    rewrite canon-RVar-keep bound x (or-l (app pib (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x lp))) =
+      t-var-poly-instantiate-infer cb ¬u lln lin lp ig Teq d
   canon-pres-ᵢ bound sub pib (t-annot d) = t-annot (canon-pres-ᶜ bound sub pib d)
   canon-pres-ᵢ bound sub pib (t-pair d₁ d₂) =
     t-pair (canon-pres-ᵢ bound sub pib d₁) (canon-pres-ᵢ bound sub pib d₂)
@@ -192,6 +198,6 @@ mutual
   canon-pres-ᶜ bound sub pib (t-arg-driven-app-check {f = f} cls darg df) =
     t-arg-driven-app-check (classify-canon bound f cls)
                            (canon-pres-ᵢ bound sub pib darg) (canon-pres-ᶜ bound sub pib df)
-  canon-pres-ᶜ {ctx = ctx} bound sub pib (t-var-poly-instantiate {x = x} cb ¬u lln lin lp d conc)
+  canon-pres-ᶜ {ctx = ctx} bound sub pib (t-var-poly-instantiate {x = x} cb ¬u lln lin lp ig d)
     rewrite canon-RVar-keep bound x (or-l (app pib (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x lp))) =
-      t-var-poly-instantiate cb ¬u lln lin lp d conc
+      t-var-poly-instantiate cb ¬u lln lin lp ig d

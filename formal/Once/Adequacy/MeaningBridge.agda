@@ -53,7 +53,8 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _
   t-terminal-app; t-apply-app-infer; t-app; t-effApp;
   t-morph-lift; t-value-lift; t-embed; t-lam; t-pair-lit-check;
   t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
-  t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate)
+  t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
+  t-var-poly-instantiate-infer)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵍ; ⟦_⟧ᵐ;
   lookupᴰ; Env; cata-sem; sigOpValᴰ; sigOpRefᴰ; svarᴰ; in-value)
 import Once.IR as IR
@@ -195,12 +196,10 @@ sigop-ref-bridge {A = A} cn (con-base ib) dγ =
 sigop-ref-bridge {A = Dom ⇒[ k ] Cod} cn (con-fun bDom cCod) dγ =
   RelT-refl (con-fun {k = k} bDom cCod) (sigOpRefᴰ cn (con-fun {k = k} bDom cCod))
 
--- Poly placeholder reference. SD's `poly` clause is UN-dispatched (always the
--- closed `value-info` form) ⇒ LHS ≡ RHS definitionally for ANY `T`; the relation
--- is reflexivity at the (concrete) `T`.
-poly-ref-bridge : ∀ {n} {Γ : Ctx n} (name : String) (T : Type) (conc : IsConcrete T) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
-                → RelT T (sigOpValᴰ (value-info {Unit} {T} (bare name) base-Unit conc)) (SD.⟦ poly {Γ = Γ} name T conc ⟧ˢ dγ)
-poly-ref-bridge name T conc dγ = RelT-refl conc _
+-- Plan 0.58 / D071: `poly-ref-bridge` DELETED. The surface `poly` node is no
+-- longer a concrete `value-info` leaf (it is an internal `internal-info`
+-- reference at ANY type), and it was already dead here — the `t-var-poly-
+-- instantiate` case of `bridge-c` recurses on `bodyD` directly (see below).
 
 -- `in-app-bridge` DISCHARGED (t-In-app-check): both sides are the pure `In`
 -- constructor (`sem-In ∘ coerce-functor ∘ forget`, `inject{μ}=id`, empty trace);
@@ -320,6 +319,16 @@ bridge-i (t-var-local {eV = svar i} _ _) re k = refl , rel-lookup _ i re
 bridge-i {ctx = ctx} (t-var-qualified {T = A} _ conc)   {dγ₂ = dγ₂} re = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
 bridge-i {ctx = ctx} (t-var-resolved {T = A} _ conc)    {dγ₂ = dγ₂} re = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
 bridge-i {ctx = ctx} (t-var-import {T = A} _ _ _ conc)  {dγ₂ = dγ₂} re = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
+
+-- Plan 0.58 / D071: infer-mode ground telescope reference — same shape as the
+-- check-mode `t-var-poly-instantiate` case of `bridge-c` (below): both sides
+-- δ-reduce to the closed body (⟦_⟧ᵢ = ⟦ bodyD ⟧ᶜ tt; realize-infer inlines
+-- `morph-app (elaborate (realize bodyD)) unit`), so RECURSE on the body with
+-- the empty related env; `faithful` closes the evalᴰ↔SD gap.
+bridge-i {ctx = ctx} (t-var-poly-instantiate-infer _ _ _ _ _ _ _ bodyD) {dγ₂ = dγ₂} re k
+  rewrite SD-subst-usage {Γ = NamedCtx.debruijn ctx} {eq = poly-usage-eq}
+                         {e = morph-app (elaborate IR.Heap (realize bodyD)) unit} {dγ = dγ₂}
+  rewrite faithful (realize bodyD) tt k = bridge-c bodyD {dγ₁ = tt} {dγ₂ = tt} tt k
 
 -- Annotation switches to check mode.
 bridge-i (t-annot d) re = bridge-c d re
@@ -459,7 +468,7 @@ bridge-c (t-arg-driven-app-check _ darg df) re k =
 -- SD.⟦ realize d ⟧ˢ dγ₂ = evalᴰ (elaborate Heap (realize bodyD)) tt (morph-app+unit,
 -- env-independent by def). So the bridge RECURSES on the body (bodyD is closed ⇒
 -- empty RelEnv `tt`); `faithful (realize bodyD)` closes the evalᴰ↔SD gap.
-bridge-c {ctx = ctx} (t-var-poly-instantiate _ _ _ _ _ bodyD _) {dγ₂ = dγ₂} re k
+bridge-c {ctx = ctx} (t-var-poly-instantiate _ _ _ _ _ _ bodyD) {dγ₂ = dγ₂} re k
   rewrite SD-subst-usage {Γ = NamedCtx.debruijn ctx} {eq = poly-usage-eq}
                          {e = morph-app (elaborate IR.Heap (realize bodyD)) unit} {dγ = dγ₂}
   rewrite faithful (realize bodyD) tt k = bridge-c bodyD {dγ₁ = tt} {dγ₂ = tt} tt k

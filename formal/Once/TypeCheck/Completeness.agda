@@ -763,7 +763,7 @@ open Once.TypeCheck.Elaborate
          checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl;
          checkElab-fallback-RVar-inr;
          checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply;
-         checkElab-fallback-RVar-poly;
+         checkElab-fallback-RVar-poly; checkElab-fallback-RVar-poly-infer;
          checkElab-fallback-RQualified; checkElab-fallback-RResolved; checkElab-fallback-RAnnot;
          checkElab-fallback-RLet;
          checkElab-fallback-RDestruct; checkElab-fallback-RUnaryOp;
@@ -1152,7 +1152,7 @@ mutual
              → ctx ⊢ᵐ e ∶ A ⇨[ π ] B → StrongElab ctx e A B π
   -- ---- bare point-free builtins (grade-poly) ----
   morph-elab {ctx = ctx} (m-id {T = TT} eqLoc eqImp)
-    with inferElabV ctx (Raw.RVar "id") | inferElabV-RVar-fail-bridge ctx "id" (λ ()) eqLoc eqImp
+    with inferElabV ctx (Raw.RVar "id") | inferElabV-RVar-fail-bridge ctx "id" (λ ()) eqLoc eqImp refl
   ... | (failure _ , _) | refl
     with inspectLookupLocal ctx "id" | inspectLookupImport ctx "id"
   ... | llv-not-found eqL | liv-not-found eqI with TT ≟T TT
@@ -1162,7 +1162,7 @@ mutual
   morph-elab (m-id eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
 
   morph-elab {ctx = ctx} (m-fst {A = A} {B = B} eqLoc eqImp)
-    with inferElabV ctx (Raw.RVar "fst") | inferElabV-RVar-fail-bridge ctx "fst" (λ ()) eqLoc eqImp
+    with inferElabV ctx (Raw.RVar "fst") | inferElabV-RVar-fail-bridge ctx "fst" (λ ()) eqLoc eqImp refl
   ... | (failure _ , _) | refl
     with inspectLookupLocal ctx "fst" | inspectLookupImport ctx "fst"
   ... | llv-not-found eqL | liv-not-found eqI with A ≟T A
@@ -1172,7 +1172,7 @@ mutual
   morph-elab (m-fst eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
 
   morph-elab {ctx = ctx} (m-snd {A = A} {B = B} eqLoc eqImp)
-    with inferElabV ctx (Raw.RVar "snd") | inferElabV-RVar-fail-bridge ctx "snd" (λ ()) eqLoc eqImp
+    with inferElabV ctx (Raw.RVar "snd") | inferElabV-RVar-fail-bridge ctx "snd" (λ ()) eqLoc eqImp refl
   ... | (failure _ , _) | refl
     with inspectLookupLocal ctx "snd" | inspectLookupImport ctx "snd"
   ... | llv-not-found eqL | liv-not-found eqI with B ≟T B
@@ -1182,7 +1182,7 @@ mutual
   morph-elab (m-snd eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
 
   morph-elab {ctx = ctx} (m-terminal eqLoc eqImp)
-    with inferElabV ctx (Raw.RVar "terminal") | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqLoc eqImp
+    with inferElabV ctx (Raw.RVar "terminal") | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqLoc eqImp refl
   ... | (failure _ , _) | refl
     with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
   ... | llv-not-found eqL | liv-not-found eqI = IR.terminal , m-terminal eqL eqI , _ , _ , _ , t-morph-lift (m-terminal eqL eqI) , refl , refl , refl , refl
@@ -1190,7 +1190,7 @@ mutual
   morph-elab (m-terminal eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
 
   morph-elab {ctx = ctx} (m-initial eqLoc eqImp)
-    with inferElabV ctx (Raw.RVar "initial") | inferElabV-RVar-fail-bridge ctx "initial" (λ ()) eqLoc eqImp
+    with inferElabV ctx (Raw.RVar "initial") | inferElabV-RVar-fail-bridge ctx "initial" (λ ()) eqLoc eqImp refl
   ... | (failure _ , _) | refl
     with inspectLookupLocal ctx "initial" | inspectLookupImport ctx "initial"
   ... | llv-not-found eqL | liv-not-found eqI = IR.initial , m-initial eqL eqI , _ , _ , _ , t-morph-lift (m-initial eqL eqI) , refl , refl , refl , refl
@@ -1198,7 +1198,7 @@ mutual
   morph-elab (m-initial eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
 
   morph-elab {ctx = ctx} (m-inl {A = A} {B = B} eqLoc eqImp)
-    with inferElabV ctx (Raw.RVar "inl") | inferElabV-RVar-fail-bridge ctx "inl" (λ ()) eqLoc eqImp
+    with inferElabV ctx (Raw.RVar "inl") | inferElabV-RVar-fail-bridge ctx "inl" (λ ()) eqLoc eqImp refl
   ... | (failure _ , _) | refl
     with inspectLookupLocal ctx "inl" | inspectLookupImport ctx "inl"
   ... | llv-not-found eqL | liv-not-found eqI with A ≟T A
@@ -1208,7 +1208,7 @@ mutual
   morph-elab (m-inl eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
 
   morph-elab {ctx = ctx} (m-inr {A = A} {B = B} eqLoc eqImp)
-    with inferElabV ctx (Raw.RVar "inr") | inferElabV-RVar-fail-bridge ctx "inr" (λ ()) eqLoc eqImp
+    with inferElabV ctx (Raw.RVar "inr") | inferElabV-RVar-fail-bridge ctx "inr" (λ ()) eqLoc eqImp refl
   ... | (failure _ , _) | refl
     with inspectLookupLocal ctx "inr" | inspectLookupImport ctx "inr"
   ... | llv-not-found eqL | liv-not-found eqI with B ≟T B
@@ -1492,6 +1492,11 @@ mutual
   iFromInfer (t-var-import {x = x} {T = T} x≢unit eqLoc eqImp conc) =
     let (_ , _ , _ , eqI) = infer-complete (t-var-import x≢unit eqLoc eqImp conc)
     in checkElab-fallback-RVar x T eqI
+  -- Plan 0.58 / D071: infer-mode ground telescope reference — same shape as
+  -- t-var-import (infer at the declared type, embed at the same type).
+  iFromInfer dd@(t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _ _ _ _) =
+    let (_ , _ , _ , eqI) = infer-complete dd
+    in checkElab-fallback-RVar x T eqI
   iFromInfer (t-annot {e = e} {T = T} d) =
     let (_ , _ , _ , eqI) = infer-complete (t-annot d)
     in checkElab-fallback-RAnnot e T eqI
@@ -1585,6 +1590,11 @@ mutual
   iFromInferEff {ctx} {_} {A} {B} dd@(t-var-import {x = x} _ _ _ _) =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RVar-eff x A B eqI
+  -- Plan 0.58 / D071: infer-mode ground telescope reference at a pure arrow —
+  -- same eff fallback as t-var-import (infer, then arr'/t-subsume lift).
+  iFromInferEff {ctx} {_} {A} {B} dd@(t-var-poly-instantiate-infer {x = x} _ _ _ _ _ _ _ _) =
+    let (_ , _ , _ , eqI) = infer-complete dd
+    in checkElab-fallback-RVar-eff x A B eqI
   iFromInferEff {ctx} {_} {A} {B} dd@(t-apply-app-infer {p = p} d) =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RApp-apply-eff p A B eqI
@@ -1608,6 +1618,13 @@ mutual
     infer-complete-RResolved {ctx} {cn} eqImp conc
   infer-complete (t-var-import {x = x} x≢unit eqLoc eqImp conc) =
     infer-complete-RVar-import x x≢unit eqLoc eqImp conc
+  -- Plan 0.58 / D071: infer-mode ground telescope reference — matching the
+  -- type-pin equation as `refl` aligns the conclusion `T` with the declared
+  -- `extractGround schema g`, so the elaborator's poly-fallback success
+  -- equation IS the obligation.
+  infer-complete {ctx} (t-var-poly-instantiate-infer {x = x} eqCls x≢unit eqLoc eqImp polyE eqG refl _) =
+    checkElab-fallback-RVar-poly-infer {ctx} x eqCls x≢unit eqLoc eqImp
+      (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE) eqG
   infer-complete (t-annot {e = e} {T = T} d) =
     let (_ , _ , _ , eqC) = check-complete d
     in infer-complete-RAnnot e T eqC
@@ -1769,7 +1786,7 @@ mutual
   -- g-terminal elaborates as the terminal MORPHISM (t-morph-lift (m-terminal …)),
   -- not a value-lift — mirror the RVar-terminal elaborator path directly.
   const-morph-strong {ctx = ctx} {A = X} (g-terminal eqL eqI)
-    with inferElabV ctx (Raw.RVar "terminal") | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqL eqI
+    with inferElabV ctx (Raw.RVar "terminal") | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqL eqI refl
   ... | (failure _ , _) | refl
       with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
   ...   | llv-not-found eqLoc' | liv-not-found eqImp' =
@@ -1861,10 +1878,10 @@ mutual
   -- the body's check-mode derivation through `check-complete`,
   -- then composes with the lookup premises via the helper.
   check-complete {ctx}
-    (t-var-poly-instantiate {x = x} {T = T} bbcOther x≢unit localN importN polyE bodyD conc) =
+    (t-var-poly-instantiate {x = x} {T = T} bbcOther x≢unit localN importN polyE eqG bodyD) =
     let (_ , _ , _ , eqBody) = check-complete bodyD
-    in checkElab-fallback-RVar-poly {ctx} x T conc bbcOther x≢unit localN importN
-         (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE) eqBody
+    in checkElab-fallback-RVar-poly {ctx} x T bbcOther x≢unit localN importN
+         (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE) eqG eqBody
 
   -- pure-arrow derivation ⇒ the eff-arrow checkElab also succeeds (same usage).
   -- BY INDUCTION ON THE DERIVATION (OCP-0008): morphisms regrade to eff and go
@@ -1932,11 +1949,11 @@ mutual
   -- t-var-poly-instantiate: the poly path is T-agnostic (instantiates at T via
   -- lookupPoly); recurse subsume-complete on the body for the eff target type.
   subsume-complete {ctx} {_} {A} {B}
-    (t-var-poly-instantiate {x = x} bbcOther x≢unit localN importN polyE bodyD (con-fun bA cB)) =
+    (t-var-poly-instantiate {x = x} bbcOther x≢unit localN importN polyE eqG bodyD) =
     let (_ , _ , _ , eqBodyEff) = subsume-complete bodyD
     in checkElab-fallback-RVar-poly {ctx} x (A T.⇒[ T.mk-kind T.Many T.eff ] B)
-         (con-fun bA cB) bbcOther x≢unit localN importN
-         (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE) eqBodyEff
+         bbcOther x≢unit localN importN
+         (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE) eqG eqBodyEff
 
 -- STRONG check-complete: a trivial VIEW of the weak `check-complete`, not a
 -- per-case rewrite. Abstract `checkElabV`, take the weak proj₁ equation, and

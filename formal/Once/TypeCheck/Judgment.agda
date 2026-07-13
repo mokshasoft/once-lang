@@ -34,6 +34,8 @@ open import Data.String using (String)
 open import Data.Integer using (ℤ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (∃; ∃-syntax; _×_; _,_; proj₁; proj₂)
+open import Data.Sum using (inj₁; inj₂)
+open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 import Once.Type
@@ -129,6 +131,35 @@ mutual
                  → lookupImport (NamedCtx.imports ctx) x ≡ just T
                  → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
                  → ctx ⊢ᵢ RVar x ∶ T ⨾ zeroUsage
+
+    -- Plan 0.58 / D071: infer-mode reference to a GROUND own-module telescope
+    -- def (incl. ground-NON-concrete, e.g. a cata at `μNat → Int`). A ground
+    -- schema has exactly ONE type, so the reference INFERS at the declared type
+    -- `extractGround schema g` (pinned by the `isGround` premise — this is what
+    -- makes application heads like `toInt three` typable). The body derivation
+    -- premise (typed in the telescope PREFIX, like `t-var-poly-instantiate`) is
+    -- the context projection Γ(x): the reference MEANS its body. Check-mode
+    -- uses at the declared type embed via `t-embed`; pure⊑eff uses via
+    -- `t-subsume` — never via the check-mode instantiate rule (non-ground only).
+    -- The conclusion type is a GENERIC `T` pinned by an equation premise
+    -- (`T ≡ extractGround schema g`) rather than the application index itself —
+    -- the generic-codomain trick: an `extractGround …` conclusion index is an
+    -- irreducible function application, which makes every downstream dependent
+    -- split on `⊢ᵢ` at a concrete type shape stuck (SplitError).
+    t-var-poly-instantiate-infer :
+      ∀ {ctx : NamedCtx} {x : String} {T : Type} {schema : Once.Type.PolyType}
+        {body : RawExpr} {prefix : Once.TypeCheck.Classify.PolyCtx}
+        {g : Once.Type.Ground schema}
+      → Once.TypeCheck.Classify.classifyBareBuiltin x ≡ Once.TypeCheck.Classify.bbc-other
+      → ¬ (x ≡ "unit")
+      → lookupLocal ctx x ≡ nothing
+      → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+      → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
+      → Once.Type.isGround schema ≡ inj₁ g
+      → T ≡ Once.Type.extractGround schema g
+      → (ctxWithImportsAndPolys (NamedCtx.imports ctx) prefix)
+          ⊢ᶜ body ∶ T ⨾ Surface.zeroUsage
+      → ctx ⊢ᵢ RVar x ∶ T ⨾ zeroUsage
 
     ----------------------------------------------------------------
     -- Annotation — bridges into check mode for the sub-expression.
@@ -613,12 +644,21 @@ mutual
       -- structural sub-list); the body is typed there. No `removePoly` — a
       -- reference reaches only EARLIER defs, so acyclicity is manifest.
       → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
+      -- Plan 0.58 / D071: check-mode instantiation-at-arbitrary-`T` is the
+      -- POLYMORPHIC schema rule, so it requires a NON-ground schema. A GROUND
+      -- schema (incl. ground-non-concrete, e.g. `μNat → Int`) has exactly one
+      -- type — its reference INFERS at the declared type via
+      -- `t-var-poly-instantiate-infer` below (then embeds/subsumes into check
+      -- mode). The split keeps both rules syntax-directed and completeness
+      -- honest (a ground body may happen to re-check at other types, but the
+      -- reference's type is its declaration).
+      → Once.Type.isGround schema ≡ inj₂ tt
       → (ctxWithImportsAndPolys (NamedCtx.imports ctx) prefix)
           ⊢ᶜ body ∶ T ⨾ Surface.zeroUsage
-      -- Plan 0.58: `IsConcrete T` is KEPT for now (deferred bug fix — E1-full
-      -- removes it; a same-module def ref is not truly an FFI boundary). This
-      -- lets the telescope spec win land decoupled from the concreteness change.
-      → IsConcrete T
+      -- Plan 0.58 / D071: NO `IsConcrete T`. A same-module def reference is a
+      -- projection from the definition context Γ (its body's meaning), NOT an
+      -- FFI boundary — so the FFI concreteness gate does not apply, and refs at
+      -- non-concrete types (`μNat → Int`, …) are well-typed.
       → ctx ⊢ᶜ RVar x ∶ T ⨾ Surface.zeroUsage
 
 ------------------------------------------------------------------------

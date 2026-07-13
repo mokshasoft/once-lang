@@ -22,7 +22,8 @@ open import Data.Sum using (inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (isGround)
+open import Once.Type using (isGround; extractGround)
+open import Once.Functor.Decide using (isConcrete?)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.Parser.Module.Core using (Decl; DTypeSig; DFunDef; DSignature; DImport; DTypeAlias)
 open import Once.Parser
@@ -61,10 +62,13 @@ extract-commute : ∀ (b : List String) (al : _) (ds : List Decl) (pending : _) 
   → extractFunctions-go al (map (canonDecl b [] []) ds) pending
       ≡ inj₂ (canonFuns b funs , canonPolys b polys)
 extract-commute b al [] pending refl = refl
--- DTypeSig: unchanged by canonDecl; same isGround classification.
+-- DTypeSig: unchanged by canonDecl; same isGround / isConcrete? classification
+-- (Plan 0.58 / D071: ground-non-concrete sigs route to poly like non-ground).
 extract-commute b al (DTypeSig name ty ∷ rest) pending eq with isGround ty
-... | inj₁ g = extract-commute b al rest _ eq
 ... | inj₂ _ = extract-commute b al rest _ eq
+... | inj₁ g with isConcrete? (extractGround ty g)
+...   | just _  = extract-commute b al rest _ eq
+...   | nothing = extract-commute b al rest _ eq
 -- DFunDef, GROUND pending (consFun) — body canonExpr'd.
 extract-commute b al (DFunDef name alloc body ∷ rest) (just (sigName , inj₁ gty)) eq with sigName ≟s name
 ... | yes _ with extractFunctions-go al rest nothing in eq2

@@ -58,6 +58,7 @@ open import Once.TypeCheck.Judgment
          t-morph-lift; t-value-lift; t-embed; t-lam; t-pair-lit-check;
          t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
          t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
+         t-var-poly-instantiate-infer;
          t-int; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
          t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-let; t-case;
          t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
@@ -190,7 +191,7 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 -- (the body derivation is the rule's premise). Env-independent — the body is
 -- typed in the empty local context (the prefix env), so discard `dγ` and feed
 -- `tt`. Structural recursion (bodyD is a premise ⇒ a subterm).
-⟦ t-var-poly-instantiate _ _ _ _ _ bodyD _ ⟧ᶜ dγ = ⟦ bodyD ⟧ᶜ tt
+⟦ t-var-poly-instantiate _ _ _ _ _ _ bodyD ⟧ᶜ dγ = ⟦ bodyD ⟧ᶜ tt
 
 ⟦ t-int n ⟧ᵢ                dγ = returnT (absℤ n)
 ⟦ t-str s ⟧ᵢ                dγ = returnT (semM (str-lit-info s) tt)
@@ -200,6 +201,11 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} _ conc) dγ = sigOpRefᴰ {A = A} (bare (alias ++ "." ++ name)) conc
 ⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ conc) dγ = sigOpRefᴰ {A = A} cn conc
 ⟦_⟧ᵢ {A = A} (t-var-import {x = x} _ _ _ conc) dγ = sigOpRefᴰ {A = A} (bare x) conc
+-- Plan 0.58 / D071: an infer-mode ground telescope reference MEANS its body —
+-- the context projection Γ(x). The body is closed (typed in the telescope
+-- prefix over the empty local env), so its meaning runs on `tt`. Structural
+-- recursion (bodyD is a premise ⇒ a subterm) — same as the check-mode rule.
+⟦ t-var-poly-instantiate-infer _ _ _ _ _ _ _ bodyD ⟧ᵢ dγ = ⟦ bodyD ⟧ᶜ tt
 ⟦ t-annot d ⟧ᵢ              dγ = ⟦ d ⟧ᶜ dγ
 ⟦ t-pair da db ⟧ᵢ           dγ = ⟦ da ⟧ᵢ dγ >>=T λ a → ⟦ db ⟧ᵢ dγ >>=T λ b → returnT (a , b)
 ⟦ t-neg d ⟧ᵢ                dγ = ⟦ d ⟧ᵢ dγ >>=T λ v → returnT (semM neg-info v)

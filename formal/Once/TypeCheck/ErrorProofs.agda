@@ -39,7 +39,15 @@ open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport;
-         inferElabV; checkElabV; _≟T_; isRIntVliftTarget?)
+         inferElabV; checkElabV; _≟T_; isRIntVliftTarget?;
+         -- Plan 0.58 / D071: the infer-mode poly-fallback stages (for the
+         -- unbound-error normalization proof below).
+         lookupPoly; classifyBareBuiltin; BareBuiltinClass;
+         bbc-id; bbc-fst; bbc-snd; bbc-terminal; bbc-initial; bbc-inl; bbc-inr; bbc-other;
+         inferElabV-RVar-poly-aux; inferElabV-RVar-poly-lookup-aux;
+         inferElabV-RVar-poly-ground-aux)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Unit using (⊤; tt)
 open import Once.TypeCheck.Error
   using (TypeError;
          LambdaInInferMode; LambdaRequiresFunctionType;
@@ -245,7 +253,8 @@ var-unbound-is-UnboundVariable :
 var-unbound-is-UnboundVariable ctx x ¬unit eqLoc eqImp eqOuter
   with StrProp._≟_ x "unit"
 ... | yes refl = ⊥-elim (¬unit refl)
-... | no _     = go (trans (sym (cong proj₁ (trans (helperLoc _ eqLoc) (helperImp _ eqImp)))) eqOuter)
+... | no _     = goPolyCls (classifyBareBuiltin x) refl
+                   (trans (sym (cong proj₁ (trans (helperLoc _ eqLoc) (helperImp _ eqImp)))) eqOuter)
   where
     open Once.TypeCheck.Elaborate using (inferElabV-RVar-lookup-aux)
     helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Surface.SVar (NamedCtx.debruijn ctx) Ψ' A')))
@@ -261,6 +270,33 @@ var-unbound-is-UnboundVariable ctx x ¬unit eqLoc eqImp eqOuter
     go : ∀ {err} → failure (UnboundVariable x) ≡ failure err
        → err ≡ UnboundVariable x
     go refl = refl
+    -- Plan 0.58 / D071: the nothing/nothing branch is now the POLY FALLBACK.
+    -- Every FAILURE leaf of the fallback is `UnboundVariable x` (the ground
+    -- success leaf contradicts the failure equation), so the normalization
+    -- still holds — proved by casing the three de-withed fallback stages.
+    goPolyIg : ∀ (schema : T.PolyType) (ig : (T.Ground schema) ⊎ ⊤)
+                 (eqG : T.isGround schema ≡ ig) {err'}
+             → proj₁ (inferElabV-RVar-poly-ground-aux ctx x schema ig eqG) ≡ failure err'
+             → err' ≡ UnboundVariable x
+    goPolyIg schema (inj₂ tt) _ eqF = go eqF
+    goPolyIg schema (inj₁ g) _ ()
+    goPolyLp : ∀ (lp : Maybe (T.PolyType × Raw.RawExpr))
+                 (eqLp : lookupPoly (NamedCtx.polys ctx) x ≡ lp) {err'}
+             → proj₁ (inferElabV-RVar-poly-lookup-aux ctx x lp eqLp) ≡ failure err'
+             → err' ≡ UnboundVariable x
+    goPolyLp nothing _ eqF = go eqF
+    goPolyLp (just (schema , body)) _ eqF = goPolyIg schema (T.isGround schema) refl eqF
+    goPolyCls : ∀ (cls : BareBuiltinClass x) (eqCls : classifyBareBuiltin x ≡ cls) {err'}
+              → proj₁ (inferElabV-RVar-poly-aux ctx x cls eqCls) ≡ failure err'
+              → err' ≡ UnboundVariable x
+    goPolyCls bbc-other    _ eqF = goPolyLp (lookupPoly (NamedCtx.polys ctx) x) refl eqF
+    goPolyCls bbc-id       _ eqF = go eqF
+    goPolyCls bbc-fst      _ eqF = go eqF
+    goPolyCls bbc-snd      _ eqF = go eqF
+    goPolyCls bbc-terminal _ eqF = go eqF
+    goPolyCls bbc-initial  _ eqF = go eqF
+    goPolyCls bbc-inl      _ eqF = go eqF
+    goPolyCls bbc-inr      _ eqF = go eqF
 check-RInt-type-mismatch :
   ∀ (ctx : NamedCtx) (n : _) (T : Type) {err : TypeError}
   → ¬ (T ≡ Int)

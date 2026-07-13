@@ -88,6 +88,29 @@ mutual
   polys-reflect-ᵢ b p pib ac (t-var-qualified imp conc) = t-var-qualified imp conc
   polys-reflect-ᵢ b p pib ac (t-var-resolved imp conc) = t-var-resolved imp conc
   polys-reflect-ᵢ b p pib ac (t-var-import ¬u lkn imp conc) = t-var-import ¬u lkn imp conc
+  -- Plan 0.58 / D071: infer-mode ground telescope reference — same reflect
+  -- descent as the check-mode `t-var-poly-instantiate` case below (schema is
+  -- canon-invariant, so the `isGround`/type-pin premises carry over).
+  polys-reflect-ᵢ b {i = i} p pib (acc rec) (t-var-poly-instantiate-infer {x = x} {T = T} {schema = schema} {body = bodyC} {prefix = prefixC} cb ¬u lln lin lpC ig Teq dC)
+    with lookupPolyPrefix p x in eqLP | lookupPolyPrefix-canon b p x
+  ... | nothing | lc = ⊥-elim (n≢j (trans (sym lc) lpC))
+  ... | just (schema′ , bodyP , prefixP) | lc =
+        t-var-poly-instantiate-infer cb ¬u lln lin lp-rec ig Teq d-rec
+    where
+      eqJ : (schema′ , canonExpr b [] [] bodyP , canonPolysCtx b prefixP) ≡ (schema , bodyC , prefixC)
+      eqJ = just-inj (trans (sym lc) lpC)
+      lp-rec : lookupPolyPrefix p x ≡ just (schema , bodyP , prefixP)
+      lp-rec = subst (λ sc → lookupPolyPrefix p x ≡ just (sc , bodyP , prefixP)) (cong proj₁ eqJ) eqLP
+      dC1 : ctxWithImportsAndPolys i (canonPolysCtx b prefixP) ⊢ᶜ bodyC ∶ T ⨾ zeroUsage
+      dC1 = subst (λ q → ctxWithImportsAndPolys i q ⊢ᶜ bodyC ∶ T ⨾ zeroUsage)
+                  (sym (cong (λ r → proj₂ (proj₂ r)) eqJ)) dC
+      dC2 : ctxWithImportsAndPolys i (canonPolysCtx b prefixP) ⊢ᶜ canonExpr b [] [] bodyP ∶ T ⨾ zeroUsage
+      dC2 = subst (λ e → ctxWithImportsAndPolys i (canonPolysCtx b prefixP) ⊢ᶜ e ∶ T ⨾ zeroUsage)
+                  (sym (cong (λ r → proj₁ (proj₂ r)) eqJ)) dC1
+      d-rec : ctxWithImportsAndPolys i prefixP ⊢ᶜ bodyP ∶ T ⨾ zeroUsage
+      d-rec = canon-reflects-ᶜ b bodyP (⊆ᵇ-nil {b})
+                (polys-reflect-ᶜ b prefixP (lookupPolyPrefix-PInB {p} {b} x lp-rec pib)
+                  (rec (lookupPolyPrefix-decreases x p lp-rec)) dC2)
   polys-reflect-ᵢ b p pib ac (t-annot d) = t-annot (polys-reflect-ᶜ b p pib ac d)
   polys-reflect-ᵢ b p pib ac (t-pair d₁ d₂) = t-pair (polys-reflect-ᵢ b p pib ac d₁) (polys-reflect-ᵢ b p pib ac d₂)
   polys-reflect-ᵢ b p pib ac (t-neg d) = t-neg (polys-reflect-ᵢ b p pib ac d)
@@ -142,11 +165,11 @@ mutual
   polys-reflect-ᶜ b p pib ac (t-initial-app-check d) = t-initial-app-check (polys-reflect-ᶜ b p pib ac d)
   polys-reflect-ᶜ b p pib ac (t-arg-driven-app-check cls darg df) =
     t-arg-driven-app-check cls (polys-reflect-ᵢ b p pib ac darg) (polys-reflect-ᶜ b p pib ac df)
-  polys-reflect-ᶜ b {i = i} p pib (acc rec) (t-var-poly-instantiate {x = x} {T = T} {schema = schema} {body = bodyC} {prefix = prefixC} cb ¬u lln lin lpC dC conc)
+  polys-reflect-ᶜ b {i = i} p pib (acc rec) (t-var-poly-instantiate {x = x} {T = T} {schema = schema} {body = bodyC} {prefix = prefixC} cb ¬u lln lin lpC ig dC)
     with lookupPolyPrefix p x in eqLP | lookupPolyPrefix-canon b p x
   ... | nothing | lc = ⊥-elim (n≢j (trans (sym lc) lpC))
   ... | just (schema′ , bodyP , prefixP) | lc =
-        t-var-poly-instantiate cb ¬u lln lin lp-rec d-rec conc
+        t-var-poly-instantiate cb ¬u lln lin lp-rec ig d-rec
     where
       -- mapMaybe (canon-prefix-entry b) (just (schema′,bodyP,prefixP))
       --   ≡ just (schema , bodyC , prefixC)

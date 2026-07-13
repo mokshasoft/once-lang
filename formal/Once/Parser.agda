@@ -21,6 +21,7 @@ open import Data.Nat using (ℕ)
 open import Relation.Nullary using (yes; no; does)
 
 open import Once.Type using (Type; PolyType; isGround; extractGround; showPolyType)
+open import Once.Functor.Decide using (isConcrete?)
 open import Once.TypeCheck.Raw using (RawExpr; RVar)
 open import Once.Parser.Token
 open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContinue)
@@ -278,9 +279,17 @@ extractFunctions-go : TypeAliasEnv → List Decl → Maybe PendingSig → EFResu
 extractFunctions-go aliases [] _ = inj₂ ([] , [])
 -- Signatures are classified now: ground types get expanded eagerly;
 -- polymorphic types are carried as-is for the matching DFunDef.
+-- Plan 0.58 / D071: a ground signature routes to a monomorphic `FunInfo`
+-- (direct-call symbol) ONLY when it is also CONCRETE; a ground-but-non-concrete
+-- sig (e.g. `μNat → Int`, a cata) — like a polymorphic one — is a context
+-- projection carried as a `PolyFunInfo` and δ-reduced at use sites, NOT gated by
+-- FFI concreteness. The resolver's keep-bare set (`polyDefNames`) uses the SAME
+-- `isGround`-then-`isConcrete?` criterion, so the two classifications agree.
 extractFunctions-go aliases (DTypeSig name ty ∷ rest) _ with isGround ty
-... | inj₁ g  = extractFunctions-go aliases rest (just (name , inj₁ (expandAliases aliases (extractGround ty g))))
 ... | inj₂ _  = extractFunctions-go aliases rest (just (name , inj₂ ty))
+... | inj₁ g  with isConcrete? (extractGround ty g)
+...   | just _  = extractFunctions-go aliases rest (just (name , inj₁ (expandAliases aliases (extractGround ty g))))
+...   | nothing = extractFunctions-go aliases rest (just (name , inj₂ ty))
 -- DFunDef with matching ground sig → FunInfo (user-defined; not primitive)
 extractFunctions-go aliases (DFunDef name alloc body ∷ rest) (just (sigName , inj₁ gty)) with sigName ≟ name
 ... | yes _ = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name (just gty) alloc body false)
