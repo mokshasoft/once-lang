@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 52 `poc/OCP0009/*.agda` modules build green
+All 53 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -298,6 +298,11 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   (refuted, with the J-route to `sym` blocked at step-inversion),
   transport-costs-covariance + the Yoneda action, `J-U` (universe-valued
   motives). `--safe`.
+- `NbEPMonC` — **the linear `Conv`: sound decidable conversion for the free
+  SMC.** `_≈m_` (the full SMC theory as data), `wire` (leaf-path wiring
+  normal form), `≈m-sound` (pentagon/triangle/hexagon by `refl` splits),
+  `conv?` (decidable), `conv-refutes`, σ≠id-at-`ι₁⊗ι₁`. Completeness
+  (coherence proper) = the scheduled climb. `--safe`.
 - `NbEPMon` — **directed rung 2a: the monoidal core, linearity as
   semantics.** `no-diagonal` + `no-discard` (duplication/discard
   INEXPRESSIBLE — resource-count invariance) and `no-undo` (in-core
@@ -839,10 +844,20 @@ no system anywhere has directed type theory with a decidable kernel.
    `no-discard`, and `no-undo` (IN-CORE directedness: `gen : ι₁ → ι₂` has
    no reverse morphism at all, by a monotone weight invariant — rung 0
    proved "no rewrite back"; this is "empty hom-set back"). Set-model
-   validates the structural laws by `refl`. **Remaining 2b:** `⊸` (monoidal
-   closure) and decidable structural conversion (free-SMC coherence via
-   leaf-permutation normalization) — the monoidal analogue of the cartesian
-   NbE ladder.
+   validates the structural laws by `refl`. **2b part 1 — SOUND DECIDABLE
+   CONVERSION: DONE (2026-07-13, `NbEPMonC`)**: the full SMC equational
+   theory `_≈m_` as data (the SPEC of the linear core's equality —
+   category, ⊗-functoriality, naturality, iso pairs, pentagon/triangle/
+   hexagon, σ-involution); the WIRING semantic normal form with leaf
+   positions as PATHS into the type tree (zero index arithmetic — every
+   coherence axiom's soundness is a finite case split ending in `refl`);
+   `≈m-sound`; `conv?` decidable; `conv-refutes` (a `no` is a
+   machine-checked refutation of provable equality — usable today);
+   σ ≠ id at `ι₁ ⊗ ι₁` (positions, not labels). **Remaining 2b:**
+   COMPLETENESS (equal wiring ⇒ `≈m`, SMC coherence proper — the
+   `NbEPComplete`-sized climb; anchors: Beylin–Dybjer for monoidal via NbE
+   on the type monoid, Piceghello for symmetric groupoids) and `⊸`
+   (monoidal closure — Kelly–Mac Lane / proof-net territory).
 3. **Rung 3 — the open metatheory**: variance judgments, directed
    transport, directed univalence, decidable directed conversion. Literature
    anchors: Riehl–Shulman (synthetic ∞-categories / simplicial TT), Licata

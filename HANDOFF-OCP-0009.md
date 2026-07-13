@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **52 modules, all green** (43 of them `--safe`). The full expressibility tower is built and
+- **53 modules, all green** (44 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
@@ -147,11 +147,15 @@ the "Other open items" section below.**
    (**the eliminator settled: Hom is a directed identity type — J in three
    forms, sym refuted, transport = J + step-covariance, universe-valued
    motives**), `NbEPMon` (monoidal core — no-diagonal/no-discard/no-undo
-   proven: linearity as semantics, in-core directedness). Remaining:
-   rung 2b (decidable free-SMC conversion via leaf-permutation coherence —
-   the NEXT THEOREM, staged in §10; then `⊸`) and rung 3 (the open
-   metatheory) — 2b/3 gated on the linear/monoidal core decision (§7
-   route (a)).
+   proven: linearity as semantics, in-core directedness), `NbEPMonC`
+   (**rung 2b part 1: the linear `Conv` — the full SMC theory `_≈m_` as
+   data, the leaf-path WIRING normal form, per-axiom soundness with
+   pentagon/triangle/hexagon by `refl`, decidable `conv?`, and
+   `conv-refutes`**). Remaining: 2b completeness (equal wiring ⇒ `≈m`,
+   SMC coherence proper — the `NbEPComplete`-sized climb; Beylin–Dybjer /
+   Piceghello are the mechanization anchors), `⊸` (Kelly–Mac Lane /
+   proof-net territory), and rung 3 (the open metatheory) — gated on the
+   linear/monoidal core decision (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT
    kernel out as a SPEC layer — `Spec/IR` (unoriented equations + one boring
    model) + `Spec/Kernel` (typing/equality judgments as pure data) + proven
