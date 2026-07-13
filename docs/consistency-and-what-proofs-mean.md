@@ -243,7 +243,7 @@ Agda's `--safe` flag *rejects* every unsafe escape hatch — `TERMINATING`,
 is a **machine-checked certificate** that a module (and its whole import closure)
 introduces none of them.
 
-**38 of the 47 modules now compile under `--safe`** (verified 2026-07-13): the
+**39 of the 48 modules now compile under `--safe`** (verified 2026-07-13): the
 standalone expressibility tower (10 modules, 2026-07-12), the QTT stack (step 1,
 2026-07-12), the presheaf/Kripke NbE foundation (step 2, 2026-07-13), and —
 after the `TERMINATING` pragmas proved unnecessary (step 3, 2026-07-13) — the
@@ -258,7 +258,7 @@ track on top of it**:
 | OTT (equality, quotients, μ) | `NbEPOTT`, `NbEPOTTQ`, `NbEPOTTMu` |
 | IR universe + hierarchy + ℕ-tower | `NbEPUniv`, `NbEPUnivDec`, `NbEPUnivH`, `NbEPUnivT` — **confirms induction-recursion is `--safe`-compatible** (a sound core feature, not an unsafe flag) |
 | induction-induction | `NbEPII` (intrinsic `Ctx`/`Ty` + standard model) |
-| OTT internalized | `NbEPOTTU` (observational universe; `n+0=n` by induction, internally) |
+| OTT internalized | `NbEPOTTU` (observational universe; `n+0=n` by induction, internally), `NbEPOTTH` (heterogeneous `EQ`/`EQU`/`coe`/`coh` + dependent `Σ` transport) |
 | indexed inductive families | `NbEPIndexed` |
 | coinduction (guarded) | `NbEPCoind`, `NbEPOTTCoind` (`--safe --guardedness`) |
 | verified compiler in-theory | `NbEPSummit` |

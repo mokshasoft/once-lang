@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **47 modules, all green** (38 of them `--safe`). The full expressibility tower is built and
+- **48 modules, all green** (39 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
@@ -35,9 +35,13 @@
   Spec/Kernel shape), `NbEPOTTU` (OTT INTERNALIZED: `` `eq `` as a universe
   code with computed decoding; internal funext + proof-irrelevance
   definitional; **the `Open.agda` residual `n+0=n` proven by induction as an
-  object-language `Id` inhabitant**). All three `--safe`. **Remaining depth
-  items: heterogeneous `coe`/`coh` for `NbEPOTTU` (dependent `Σ` codes),
-  conversion for the extended universes inside Once's own NbE.**
+  object-language `Id` inhabitant**). All three `--safe`. Then **`NbEPOTTH`
+  (2026-07-13): the HETEROGENEOUS layer — `EQ` across types, `EQU` as
+  evidence, `coe`/`coh` + full refl/sym/trans suite, dependent `Σ` codes
+  (respect-bundled families), dependent-tuple transport along `n+0` by
+  `refl`.** Remaining depth: the full setoid universe (Π in the
+  heterogeneous layer), conversion for the extended universes inside Once's
+  own NbE.
 - **The consistency ladder is BUILT (2026-07-13, plan §8):** `NbEPCon0`
   (`¬ Term Unit Void` + non-degeneracy, via the `--safe` Set-model),
   `NbEPCon1` (graded QTT calculus proves nothing about an abstract base:
@@ -126,9 +130,14 @@ the "Other open items" section below.**
 4. **Optional refinements — ALL DONE (2026-07-13):** `⌜_⌝`-faithfulness note
    closed earlier; `sum-η`/`μ-η` sugar → `NbEPEta`; ℕ-indexed tower →
    `NbEPUnivT`. **Plan §4's checklist is now fully done or user-excluded**
-   (excluded: compiler wiring, spec split — POC boundary). Remaining depth:
-   heterogeneous `coe`/`coh` for `NbEPOTTU`; conversion for the extended
-   universes inside Once's own NbE.
+   (excluded: compiler wiring, spec split — POC boundary). **Heterogeneous
+   `coe`/`coh` + dependent `Σ` codes: DONE (`NbEPOTTH`, 2026-07-13)** — full
+   suite (refl/sym/trans/coe/coh over `EQU`-as-data, respect-bundled Σ
+   families), dependent-tuple transport along `n+0` computing by `refl`.
+   Remaining depth: the full SETOID UNIVERSE (Π codes in the heterogeneous
+   layer — function values bundled with respect proofs; the failure analysis
+   for raw functions is in `NbEPOTTH`'s header) and conversion for the
+   extended universes inside Once's own NbE.
 5. **At POC→real transition (intentions recorded in plan §9):** break the DT
    kernel out as a SPEC layer — `Spec/IR` (unoriented equations + one boring
    model) + `Spec/Kernel` (typing/equality judgments as pure data) + proven
