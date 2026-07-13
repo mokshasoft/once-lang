@@ -243,7 +243,7 @@ Agda's `--safe` flag *rejects* every unsafe escape hatch — `TERMINATING`,
 is a **machine-checked certificate** that a module (and its whole import closure)
 introduces none of them.
 
-**37 of the 46 modules now compile under `--safe`** (verified 2026-07-13): the
+**38 of the 47 modules now compile under `--safe`** (verified 2026-07-13): the
 standalone expressibility tower (10 modules, 2026-07-12), the QTT stack (step 1,
 2026-07-12), the presheaf/Kripke NbE foundation (step 2, 2026-07-13), and —
 after the `TERMINATING` pragmas proved unnecessary (step 3, 2026-07-13) — the
@@ -262,6 +262,7 @@ track on top of it**:
 | indexed inductive families | `NbEPIndexed` |
 | coinduction (guarded) | `NbEPCoind`, `NbEPOTTCoind` (`--safe --guardedness`) |
 | verified compiler in-theory | `NbEPSummit` |
+| positive-η surface sugar | `NbEPEta` (sum-η/μ-η as explicit model proofs) |
 | decidability scaffolding | `Conv` |
 
 The 9 modules that **cannot** go `--safe` are exactly the *superseded older

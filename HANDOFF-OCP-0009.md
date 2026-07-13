@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **46 modules, all green** (37 of them `--safe`). The full expressibility tower is built and
+- **47 modules, all green** (38 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
@@ -123,8 +123,12 @@ the "Other open items" section below.**
 3. **Decide whether Once's core adopts IR** — the IR universe (`NbEPUniv`) is the
    one genuine consistency-strength increase (flagged everywhere); adopting it into
    the shipping core is a deliberate, TCB-raising commitment. Currently POC-only.
-4. **Optional refinements:** `⌜_⌝`-faithfulness note already closed; `sum-η`/`μ-η`
-   as surface sugar (plan §3.A); universe hierarchy → ℕ-indexed ∞ tower.
+4. **Optional refinements — ALL DONE (2026-07-13):** `⌜_⌝`-faithfulness note
+   closed earlier; `sum-η`/`μ-η` sugar → `NbEPEta`; ℕ-indexed tower →
+   `NbEPUnivT`. **Plan §4's checklist is now fully done or user-excluded**
+   (excluded: compiler wiring, spec split — POC boundary). Remaining depth:
+   heterogeneous `coe`/`coh` for `NbEPOTTU`; conversion for the extended
+   universes inside Once's own NbE.
 5. **At POC→real transition (intentions recorded in plan §9):** break the DT
    kernel out as a SPEC layer — `Spec/IR` (unoriented equations + one boring
    model) + `Spec/Kernel` (typing/equality judgments as pure data) + proven
