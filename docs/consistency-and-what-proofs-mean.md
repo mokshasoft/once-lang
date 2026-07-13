@@ -199,6 +199,9 @@ caveats frame the whole ledger:
 | **Indexed inductive families (Rung 4)** | `NbEPIndexed` | Ordinary indexed containers — standard, modeled; no strength beyond MLTT + inductives. | None (strictly positive, no pragma). |
 | **Coinduction** | `NbEPCoind`, `NbEPOTTCoind` | Guarded (copattern) coinduction — standard (M-types), consistent. **Deliberately avoids sized types** (the feature behind Agda's unsoundness history). | Low (`--guardedness`, a *safe* flag). |
 | **Universe hierarchy `U₀ ⊂ U₁`** | `NbEPUnivH` | *Predicative* stratification — the standard way to **avoid Girard**. Modest per-level strength bump. | Low — a guardrail *against* paradox, not a risk. |
+| **Induction-induction (II)** | `NbEPII` | Like IR, beyond plain MLTT+inductives — but modest: finitary II is constructible from indexed inductives in theory, and Agda implements it as a sound core feature. The example (intrinsic `Ctx`/`Ty`) is the future Spec/Kernel shape. | Low (`--safe`; no escape hatches). |
+| **OTT internalized (observational universe)** | `NbEPOTTU` | `` `eq `` as a universe code with computed decoding — no strength beyond the IR universe it lives in; proof irrelevance definitional. | Low (`--safe`). |
+| **Universe tower (ℕ-indexed)** | `NbEPUnivT` | Per-level strength bumps, uniformly (universe-operator construction) — the predicative ladder, now at every level. | Low (`--safe`; a guardrail, as with `NbEPUnivH`). |
 | **Induction-recursion (IR universe)** | `NbEPUniv`, `NbEPUnivDec` | **The one genuine strength increase.** IR is strictly stronger than MLTT (general IR reaches Mahlo-cardinal strength); it raises the consistency-strength bar. **This is where the small-core discipline ends by design.** | Elevated *strength*, but **not** a soundness risk: our instance (a Tarski universe with Π/Σ) is the *motivating, thoroughly-modeled* example of IR, and Agda implements IR as a sound **core** feature (not an unsafe flag). |
 | **Summit (verified compiler in-theory)** | `NbEPSummit` | A *use* of the stack, not a new axiom. | None. |
 
@@ -240,7 +243,7 @@ Agda's `--safe` flag *rejects* every unsafe escape hatch — `TERMINATING`,
 is a **machine-checked certificate** that a module (and its whole import closure)
 introduces none of them.
 
-**34 of the 43 modules now compile under `--safe`** (verified 2026-07-13): the
+**37 of the 46 modules now compile under `--safe`** (verified 2026-07-13): the
 standalone expressibility tower (10 modules, 2026-07-12), the QTT stack (step 1,
 2026-07-12), the presheaf/Kripke NbE foundation (step 2, 2026-07-13), and —
 after the `TERMINATING` pragmas proved unnecessary (step 3, 2026-07-13) — the
@@ -253,7 +256,9 @@ track on top of it**:
 | CwF / dependent layer + `Id`+`J` | `NbEPCwF`, `NbEPEl`, `NbEPId`, `NbEPElOTT` |
 | QTT (syntax, semiring, judgment, erasure) | `NbEPQTT`, `NbEPQTTJ`, `NbEPQTTErase`, `NbEPQTTEraseTm` (erasing term elaboration) |
 | OTT (equality, quotients, μ) | `NbEPOTT`, `NbEPOTTQ`, `NbEPOTTMu` |
-| IR universe + hierarchy | `NbEPUniv`, `NbEPUnivDec`, `NbEPUnivH` — **confirms induction-recursion is `--safe`-compatible** (a sound core feature, not an unsafe flag) |
+| IR universe + hierarchy + ℕ-tower | `NbEPUniv`, `NbEPUnivDec`, `NbEPUnivH`, `NbEPUnivT` — **confirms induction-recursion is `--safe`-compatible** (a sound core feature, not an unsafe flag) |
+| induction-induction | `NbEPII` (intrinsic `Ctx`/`Ty` + standard model) |
+| OTT internalized | `NbEPOTTU` (observational universe; `n+0=n` by induction, internally) |
 | indexed inductive families | `NbEPIndexed` |
 | coinduction (guarded) | `NbEPCoind`, `NbEPOTTCoind` (`--safe --guardedness`) |
 | verified compiler in-theory | `NbEPSummit` |
@@ -287,6 +292,10 @@ ladder explicitly, all `--safe` (so each is a theorem of Agda):
   *`U₁`-code* — expressible only one level up (there is deliberately no
   `` `U₀ : U₀ ``) — and is proven at level 1 (`con₀ f = f `⊥₀`). Each level can
   state and prove the non-degeneracy of the level below; none can for itself.
+- **`NbEPUnivT`** — the ladder made UNIFORM: with the full ℕ-indexed tower,
+  `` `Con n `` is stated and proven at level `n+1` for every `n` as ONE
+  ℕ-indexed theorem (`con : ∀ n → El (suc n) (`Con n)`) — a theorem in the
+  level, not a per-level schema.
 - **The top** — `Con(full tower)` is a theorem of Agda `--safe` (every model in
   this POC *is* such a proof) and — per Gödel — of nothing weaker. See §"Path
   from very likely to machine-checked" and plan §8 for the Once-in-Once moral:

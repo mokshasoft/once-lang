@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 43 `poc/OCP0009/*.agda` modules build green
+All 46 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -243,6 +243,27 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   closure domain is now defined by recursion on the type instead of as an
   inductive datatype, which also removed its `TERMINATING` — `NbEKF` is `--safe`).
 
+**Expressibility completions (2026-07-13, closing the former §5 gaps):**
+- `NbEPUnivT` — the **ℕ-indexed universe tower** via the UNIVERSE OPERATOR
+  (Palmgren): one parameterized IR universe `UO V ElV` over a "previous world"
+  (strictly positive because the previous world is a parameter — a single
+  ℕ-indexed IR family with `El `U = U n` is NOT strictly positive), tower =
+  recursion on the level. Cumulativity + polymorphism at every level, and the
+  **uniform Gödel ladder**: `` `Con n `` statable and provable at level `n+1`,
+  as ONE ℕ-indexed theorem (`con : ∀ n → El (suc n) (`Con n)`).
+- `NbEPII` — **induction-induction**: intrinsically-typed `Ctx`/`Ty` defined
+  simultaneously (the motivating II example = the syntax of a dependent type
+  theory, well-formed by construction — exactly the future Spec/Kernel shape,
+  §9) + the standard model by the simultaneous eliminator.
+- `NbEPOTTU` — **OTT internalized** (`Observational Equality, Now!`-style):
+  `` `eq : (a : U) → El a → El a → U `` as a universe CODE whose decoding
+  computes by recursion on the type — internal funext DEFINITIONAL, proof
+  irrelevance DEFINITIONAL (`eq (`eq …) = ⊤`), `cong suc` = the identity.
+  **The `Open.agda` residual discharged inside the object language**: `0+n`
+  definitional, `n+0` propositional-by-induction as an inhabitant of the
+  object-language identity type; transport via first-order reflection at
+  `` `nat `` (heterogeneous `coe` between codes = the remaining depth item).
+
 **Consistency ladder (Gödel II made concrete — see §8):**
 - `NbEPCon0` — rung 0: `¬ Term Unit Void` and `¬ Tm Unit Void` via the `--safe`
   Set-model (`normalizer.Testing.Evaluator`), + model-separation of `inl`/`inr`
@@ -331,9 +352,10 @@ exactly on this line.
   step 3):** the inductive-recursive Tarski universe with genuinely dependent
   code-level Π/Σ and large elimination — the one row only Agda had. Unlike §A,
   sugar cannot supply this — it is real power, and building it **ends the
-  small-core discipline by design** (IR enlarges the TCB). Open: decidable
-  conversion for the IR universe *within Once's own NbE* (the POC rests on Agda's
-  kernel); a universe hierarchy; II (induction-induction).
+  small-core discipline by design** (IR enlarges the TCB). The universe
+  hierarchy (ℕ-tower, `NbEPUnivT`) and II (`NbEPII`) are now ALSO prototyped
+  (2026-07-13). Open: decidable conversion for the IR/II/tower universes
+  *within Once's own NbE* (the POCs rest on Agda's kernel).
 
 ---
 
@@ -350,14 +372,16 @@ CwF term/comprehension layer. See §3.B.
 `J`-computing propositional equality. Base CwF's `reifyVal`-injectivity gap is
 CLOSED (`faithful`/`El-weld-nf`). Remaining next steps:
 
-1. **Proof-relevant intensional `Id`** — the current `Id` = decidable conversion;
-   proving `n+0=n`-by-induction (the `Open.agda` residual) needs `Id` as a
-   primitive NbE type-former with an inductive eliminator, or an axiom (funext).
+1. **[DONE at POC scale 2026-07-13] Proof-relevant intensional `Id`** —
+   `NbEPOTTU` internalizes OTT `` `eq `` as a universe code with computed
+   decoding; `n+0=n`-by-induction (the `Open.agda` residual) is now an
+   object-language `Id` inhabitant. Remaining depth: heterogeneous `coe`/`coh`
+   (dependent `Σ` codes) and conversion inside Once's own NbE.
 2. **Native indexed inductive families** (Rung 4) — the typing relation `⊢` etc.
    as datatypes; unlocks "phrase compiler correctness as a type." (Current
    Vec-via-open-codes is genuine but ad hoc.)
-3. **Universe hierarchy** — one first-order universe today; a tower unlocks
-   polymorphism + large elimination.
+3. **[DONE 2026-07-13] Universe hierarchy** — the ℕ-indexed tower `NbEPUnivT`
+   (universe operator; polymorphism + cumulativity every level; uniform ladder).
 4. **Wire to the real IR / OCP-0004 transparency** — run the decision on the actual
    `Code` normalizer, connect to `EvalFullCorrectness`.
 5. **IR/II** (§D) — the deliberate expressivity extension, `Code`↔`El` *mutual*.
@@ -383,23 +407,27 @@ proof-theoretic strength. "Built" = machine-checked in `poc/OCP0009/`.
 | **Dependent Π/Σ** | ✅ Rung 2, decidable via NbE | ✅ | ✅ | ✅ | ✅ |
 | **Inductive types** | ✅ strictly-positive containers (μ = W-types) | ✅ | ✅ | ✅ | ✅ |
 | **Indexed inductive families** | ✅ **native** (`NbEPIndexed`, indexed containers: Vec + relations-as-datatypes) | ✅ | ✅ | ✅ | ✅ |
-| **Universe structure** | ✅ IR universe + **hierarchy `U₀⊂U₁`** (`NbEPUnivH`, predicative, polymorphism, cumulative) | ✅ ∞ + poly | ✅ ∞ + impred. Prop | ✅ ∞ + poly | ✅ cumulative |
-| **Identity type** | ✅ `Id`+`J` (`NbEPId`) **and OTT**: funext-by-definition + proof-irrelevance + quotients (`NbEPOTT`/`Mu`/`Q`) | ✅ intensional (+cubical) | ✅ intensional | ✅ + quotients→funext | ✅ intensional |
+| **Universe structure** | ✅ IR universe + **ℕ-indexed tower `Uₙ⊂Uₙ₊₁`** (`NbEPUnivT`, universe-operator construction, predicative, polymorphism + cumulativity at every level) | ✅ ∞ + poly | ✅ ∞ + impred. Prop | ✅ ∞ + poly | ✅ cumulative |
+| **Identity type** | ✅ `Id`+`J` (`NbEPId`), **OTT** (funext-by-def + proof-irrelevance + quotients, `NbEPOTT`/`Mu`/`Q`), and **OTT INTERNALIZED** (`NbEPOTTU`: `` `eq `` as a universe CODE with computation — internal funext & proof-irrelevance definitional; `n+0=n` proven BY INDUCTION as an object-language `Id` inhabitant) | ✅ intensional (+cubical) | ✅ intensional | ✅ + quotients→funext | ✅ intensional |
 | **Conversion** | ✅ βη **+ product-η + terminal-η + function-η, funext-free**, ONE engine for the full `{Unit,×,+,μ,⇒}` fragment (`NbEPF`) | βη, partial η | βη, partial η | βη + defeq proof irrel. | βη |
-| **IR / II** | ✅ **IR prototyped** (`NbEPUniv` U/El mutual; `NbEPUnivDec` defunctionalized + native decidable eq) | ✅ | ❌ | ❌ | ❌ |
+| **IR / II** | ✅ **both prototyped** — IR (`NbEPUniv` U/El mutual; `NbEPUnivDec` defunctionalized) **and II** (`NbEPII`: intrinsically-typed `Ctx`/`Ty` defined simultaneously + standard model — the Spec/Kernel shape) | ✅ | ❌ | ❌ | ❌ |
 | **Coinduction** | ✅ **guarded/copatterns, no sized types** (`NbEPCoind`); bisim propositional | ✅ | ✅ | ✅ | ✅ |
 | **Totality** | ✅ total-only (SN core) | ✅ | ✅ | ✅ | ⚠️ total *or* partial |
 | **Erasure / quantities** | ✅ **QTT, end-to-end** (`NbEPQTT` semiring+erasure; `NbEPQTTJ` graded judgment+elaboration; `NbEPQTTEraseTm` **erasing term elaboration** — `𝟘`-arguments dropped from the runtime term, irrelevance decided by `nf` on open terms) | ✅ irrelevance | ⚠️ extraction | ✅ Prop-erasure | ✅ QTT native |
 | **Self-hosting / reflected IR** | ✅ **distinctive** (prove-Once-in-Once) | ❌ | ❌ | ❌ | ❌ |
 | **Kernel / TCB size** | ✅ **minimal by thesis** | large | large (CIC) | smallish CIC | medium |
 
-**Honest gaps, biggest first:** (1) **II** (induction-induction) — the one
-remaining expressivity row, and only vs Agda (Coq/Lean/Idris lack it too); IR
-itself is prototyped. (2) **Universe hierarchy** — two levels (`U₀⊂U₁`), not
-an ℕ-indexed tower. (3) **Proof-relevant intensional `Id`** — the built `Id` =
-decidable conversion; the big assistants' `Id` proves strictly more (`n+0=n`
-by induction). This is the OTT-internalization item (§4.1) — the last
-research-flavored gap.
+**Honest gaps (2026-07-13: the former big three — II, the ℕ-tower, and
+proof-relevant `Id` — are now all prototyped: `NbEPII`, `NbEPUnivT`,
+`NbEPOTTU`). What remains is depth, not rows:** (1) **heterogeneous `coe`/`coh`
+for the internalized OTT** — `NbEPOTTU`'s transport is first-order-reflection
+at `` `nat ``; dependent `Σ` codes and transport at arbitrary codes need the
+full heterogeneous machinery (`NbEPOTT` has the model-level `Eq`/`coe` to
+internalize the same way). (2) **Conversion for the extended universes inside
+Once's own NbE** — the IR/II/tower/`` `eq `` prototypes lean on Agda's kernel
+for conversion (flagged in §3.D from the start). (3) The big assistants still
+win on **ecosystem depth** (tactics, libraries, ∞ levels *implemented*) — a
+different axis than expressibility-of-the-core.
 
 **Where Once is genuinely different / ahead:** conversion is *more extensional*
 than Coq/Agda's (product-η + terminal-η, funext-free); **self-hosting with a
@@ -607,6 +635,7 @@ has `Void`-as-proposition + `Id` + `Nat` with *dependent elimination* (induction
 | 1 · graded QTT calculus | `NbEPCon1` | `∀ ρ → ¬ (∅ ⊢[ρ] ι)` (free calculus proves nothing about a base) | proven (sub-Gödel) |
 | 2a · first-order `Code` universe | `NbEPCon2` (A) | every code inhabited — falsity inexpressible | proven (the expressibility/Gödel trade-off made visible) |
 | 2b · stratified `U₀ ⊂ U₁` | `NbEPCon2` (B) | `` `Con₀ : U₁ `` — "no uniform inhabitant of all small types", statable only at level 1, proven at level 1 | proven — **the internal Gödel ladder in miniature** |
+| 2c · the FULL tower `Uₙ ⊂ Uₙ₊₁` | `NbEPUnivT` | `` `Con n : U (suc n) `` for EVERY `n`, as ONE ℕ-indexed theorem (`con : ∀ n → …`) | proven — the ladder made **uniform in the level** (theorem, not schema) |
 | top · full tower (IR universe etc.) | — | `Con(tower)` | a theorem of Agda `--safe` (every model we build IS the proof), never of the tower itself |
 
 **The moral for Once-in-Once.** Needing "Once+" to prove `Con(Once)` is not a
