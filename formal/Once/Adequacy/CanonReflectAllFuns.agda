@@ -12,10 +12,9 @@
 -- island: the typechecker enforces that its signature plugs into the reverse
 -- `body-transport` slot.
 --
--- SCAFFOLD (feedback_scaffold_then_discharge): `polys-reflect-ᶜ` (reverse of
--- `CanonPolyTransport.polys-transport-ᶜ`) and `inferType-reflect` (reverse of
--- `CanonAllFuns.inferType-transport`) are NAMED temporary postulates — the
--- poly-context-transport reversals, to be discharged by mirroring those forwards.
+-- (Historical note: `polys-reflect-ᶜ` and `inferType-reflect` began as
+-- scaffold postulates; both are REAL PROOFS now — the latter including
+-- the D072 oracle branch. No postulates remain in this module.)
 ------------------------------------------------------------------------
 
 module Once.Adequacy.CanonReflectAllFuns where
