@@ -863,12 +863,29 @@ no system anywhere has directed type theory with a decidable kernel.
      mutually inverse in `≈m` (`nt-tn`/`tn-nt`, with the reusable `cancel`
      collapse lemma); top-level `ntop`/`topn` isos; wiring round-trip
      checked via `≈m-sound`.
-   - stage 2 — canonical realizations: insertion-based permutations
-     between list types (`Ins`/`Perm`), realized by `σ`-built morphisms
-     (`insM`/`permM`), with `wire`-agreement.
-   - stage 3 — the key lemma `f ≈m topn ∘ permM (perm-of f) ∘ ntop` by
-     induction on `f` (+ representation uniqueness); completeness by
-     transitivity. Then `⊸` (Kelly–Mac Lane / proof nets).
+   - **[stage 2 DONE 2026-07-13, `NbEPMonP`] canonical realizations**:
+     insertion-based permutations between list types (`Ins`/`Perm`, with
+     `IsL` list-shape evidence and `isL-list : IsL (list A)`), realized by
+     `σ`-built morphisms (`insM`/`permM` via the conjugated head
+     transposition `swapHead = αr ∘ (σ⊗id) ∘ αl`), intended actions as
+     leaf pullbacks (`applyI`/`applyP`), and THE AGREEMENT THEOREM
+     `wire (permM p) ≡ applyP p` pointwise — the realization means what
+     the permutation says.
+   - stage 3 — the key lemma `f ≈m topn ∘ permM (permOf f) ∘ ntop` by
+     induction on `f`, then completeness by transitivity + representation
+     uniqueness (`applyP p ≗ applyP q → p ≡ q`). DESIGN NOTES (worked out,
+     recorded so they survive): the Perm-algebra needs (a) composition
+     `_⊙P_ : Perm xs ys → Perm ys zs → Perm xs zs` via the FACTORIZATION
+     lemma `push : Ins x ys zs → Perm zs ws → Σ ws' (Perm ys ws' × Ins x
+     ws' ws)` — whose `here` case is literally pattern-matching `pcons`
+     apart, and whose `there` case needs the INSERTION DIAMOND
+     `ins-swap : Ins y w₁ w → Ins x w₂ w₁ → Σ w₃ (Ins y w₂ w₃ × Ins x w₃
+     w)` (double induction, ~6 cases); (b) every such structural lemma
+     also proven `≈m`-compatible at the morphism level (`permM (p ⊙P q)
+     ≈m permM q ∘m permM p`, with `ins-swap`'s realization a hexagon/
+     naturality argument); (c) Perm tensor/append for the `_⊗m_` case of
+     the induction. A full-session climb on its own. Then `⊸`
+     (Kelly–Mac Lane / proof nets).
 3. **Rung 3 — the open metatheory**: variance judgments, directed
    transport, directed univalence, decidable directed conversion. Literature
    anchors: Riehl–Shulman (synthetic ∞-categories / simplicial TT), Licata
