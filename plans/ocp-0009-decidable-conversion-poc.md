@@ -763,3 +763,60 @@ Cheap-and-clarifying earlier step: a DRAFT `Spec/Kernel`-shaped module as a
 POC artifact, since writing the rules down forces the core-vs-sugar-vs-
 strength-increasing decisions that are the open items anyway, and the Con
 theorems can be restated against it immediately.
+
+---
+
+## 10. The directed research POC — dHoTT internalization (recorded 2026-07-13)
+
+**Status.** Directed rung 0 is DONE (`NbEPDir`, `--safe`): Once's rewrite
+system as a proven Hom-category with proven irreversibility — the reasoning
+shape, demonstrated at the META level (in Agda, about the reflected IR).
+The RESEARCH-GRADE rung is the internalization, and it is NOT done — this
+section records what it is, so the distinction survives.
+
+**The pattern (internal vs external), for orientation — the tower has walked
+this line three times:**
+
+| axis | meta-level demo (cheap, done) | internalized (the real rung) |
+|---|---|---|
+| equality | `Conv`/NbE decide conversion in Agda | `Id`/OTT as object-language formers (`NbEPId`, `NbEPOTTU`) — DONE, standard math |
+| consistency | `NbEPCon0` via the Set-model | syntactic `¬(∅ ⊢ t : Void)` — needs `Spec/Kernel` (§9) |
+| direction | `NbEPDir` (rung 0) | `Hom` as an object-language former — needs dHoTT: **open research** |
+
+For equality the internalization step was standard mathematics, so the POC
+climbed it. For direction, the internalization step IS the open problem:
+no system anywhere has directed type theory with a decidable kernel.
+
+**What the research POC would be** (success criteria): a small kernel where
+- `Hom A B` is a TYPE FORMER of the object language (not data defined in it),
+  with `id`/`∘` and non-invertibility as judgmental structure;
+- contexts/judgments carry VARIANCE (co-/contravariant positions);
+- directed TRANSPORT: coercion along a `Hom` (one direction only), with a
+  coherence story (the directed analogue of `coe`/`coh`);
+- CONVERSION IS DECIDABLE — the make-or-break, exactly as it was for
+  OCP-0009's equality story;
+- one end-to-end example checked by the kernel: a session-type protocol, or
+  an optimization-correctness statement (`NbEPDir`'s pipeline, internal).
+
+**Staging (the OCP-0009 ladder discipline, reapplied):**
+1. **Rung 1 — Hom as an indexed family in the tower** (NOT research: doable
+   with current tech): internalize `Hom` over REFLECTED programs as a code
+   in an indexed universe (the `NbEPOTTU` move, applied to `_⟶*_` instead
+   of `eq`) — directed reasoning about programs inside the object language,
+   still without directed types for arbitrary objects.
+2. **Rung 2 — the monoidal fragment `{I, ⊗, ⊸}` with proven NbE** — the
+   linear-core prerequisite (§7 route (a)); mirrors what `NbEK` did for the
+   cartesian core. Directed homs are the equality story OF that core.
+3. **Rung 3 — the open metatheory**: variance judgments, directed
+   transport, directed univalence, decidable directed conversion. Literature
+   anchors: Riehl–Shulman (synthetic ∞-categories / simplicial TT), Licata
+   et al. (directed univalence), North (directed TT), Nuyts–Devriese
+   (variance annotations). None has a decidable-kernel implementation.
+
+**Triggers and non-triggers.** This POC is gated on the LINEAR/MONOIDAL CORE
+decision (§7 route (a)) — directed homs are what equality becomes if the
+core goes monoidal, so evaluating them separately from that decision buys
+nothing. It is NOT a prerequisite for anything currently planned (Spec
+breakout §9, OCP-0006 wiring, IR adoption). Until the linear-core question
+is opened, rung 1 is the only piece worth doing opportunistically (it is
+cheap and strengthens the self-hosting row).

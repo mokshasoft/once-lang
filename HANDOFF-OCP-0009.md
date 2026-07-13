@@ -138,7 +138,16 @@ the "Other open items" section below.**
    layer — function values bundled with respect proofs; the failure analysis
    for raw functions is in `NbEPOTTH`'s header) and conversion for the
    extended universes inside Once's own NbE.
-5. **At POC→real transition (intentions recorded in plan §9):** break the DT
+5. **The directed research POC (intentions recorded in plan §10):** dHoTT
+   internalization — `Hom` as an OBJECT-language type former with variance,
+   directed transport, and decidable directed conversion (exists in no
+   system; the make-or-break is decidability, as it was for equality).
+   Rung 0 is done (`NbEPDir`, meta-level); rung 1 (Hom-codes over reflected
+   programs, the `NbEPOTTU` move applied to `_⟶*_`) is cheap and can be done
+   opportunistically; rungs 2–3 (monoidal fragment NbE, directed metatheory)
+   are GATED on the linear/monoidal core decision (§7 route (a)) — do not
+   evaluate separately from it.
+6. **At POC→real transition (intentions recorded in plan §9):** break the DT
    kernel out as a SPEC layer — `Spec/IR` (unoriented equations + one boring
    model) + `Spec/Kernel` (typing/equality judgments as pure data) + proven
    elaboration bridge; restate the Con theorems syntactically over the spec'd
