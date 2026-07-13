@@ -58,10 +58,13 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
 
 **Principled NbE (the real result):**
 - `NbEK` — presheaf foundation: thinnings `_≼_`/`_⊚_` + category laws, `Ne`/`Val`,
-  `wkNe`/`wkVal` + **functor laws proven**, reflect/reify. **Postulate- & pragma-free.**
+  `wkNe`/`wkVal` + **functor laws proven**, reflect/reify. **Postulate- &
+  pragma-free, `--safe`.**
 - `NbEP` — fragment syntax `Tm` (`{Unit,×,+,μ}`, no `⇒`), `emb : Tm→Term`, η-long
   `eval`, principled `nf`.
-- `NbEKF` — Kripke `⇒` for `{Unit,×,⇒}`.
+- `NbEKF` — Kripke `⇒` for `{Unit,×,⇒}`; the domain is defined by **recursion on
+  the type** (Tarski-style), so the Kripke closure raises no positivity question
+  and `eval` is structural. **Pragma-free, `--safe`.**
 - `NbEPNat` — `eval-nat` (eval natural w.r.t. weakening) + `reflect-nat`.
 - `NbEPRel` — inductive logical relation `≈V` + reify/reflect-`≈V` + equivalence. **Postulate-free.**
 - `NbEPFund` — `eval-cong` (fundamental theorem core) + all eliminator congruences.
@@ -220,10 +223,12 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
 ### Escape inventory (honest)
 - **funext** — `Complete`, `Higher`, `Dependent`, `Universe`. Standard axiom. NOT
   used by the principled NbE relation (`NbEPRel` is inductive/funext-free).
-- **TERMINATING** — `NbE`, `NbEP`, `NbEKF`, `NbEPNat`, `NbEPFund`, `NbEPNormal`,
+- **TERMINATING** — `NbE`, `NbEP`, `NbEPNat`, `NbEPFund`, `NbEPNormal`,
   `NbEPComplete`; each mirrors `eval`'s recursion. Discharging = standard SN /
   logical-relation argument (tedious, not deep).
-- **NO_POSITIVITY_CHECK** — `NbEKF` only (Kripke closure domain).
+- **NO_POSITIVITY_CHECK** — none left (discharged 2026-07-13: `NbEKF`'s Kripke
+  closure domain is now defined by recursion on the type instead of as an
+  inductive datatype, which also removed its `TERMINATING` — `NbEKF` is `--safe`).
 
 ### The one key trick (don't re-derive it)
 The extensional-relation route to η **died** on `mapCata`-vs-projection commuting

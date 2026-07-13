@@ -207,16 +207,20 @@ caveats frame the whole ledger:
 Being explicit about every place the mechanization *trusts* rather than *proves*:
 
 1. **`TERMINATING` pragmas** on the `eval` / `nf` / `mapCata` recursion
-   (`NbEP`, `NbEPComplete`, `NbEPFund`, `NbEPNormal`, `NbEPNat`, `NbEKF`, `NbE`).
+   (`NbEP`, `NbEPComplete`, `NbEPFund`, `NbEPNormal`, `NbEPNat`, `NbE`).
    These disable Agda's termination checker for those functions. *If* one did not
    actually terminate, that would be an inconsistency (a non-terminating "total"
    function lets you build a loop and prove `False`). They mirror the structural
    NbE recursion and are discharged *in principle* by the standard SN /
    logical-relation argument — **low risk, but a trusted assertion, not a proof.**
    This is the single most important thing to eventually discharge.
-2. **One `NO_POSITIVITY_CHECK`** (the Kripke `⇒` domain in `NbEKF`). Positivity
-   violations *can* cause inconsistency; the specific use is a known-safe closure
-   pattern, but it is an assumption.
+2. **[DISCHARGED 2026-07-13] `NO_POSITIVITY_CHECK`** — the Kripke `⇒` domain in
+   `NbEKF` used to be an inductive datatype whose closure field puts `Val`
+   negatively. It is now defined by **recursion on the type** (a Tarski-style
+   presheaf semantics: `Val A (X ⇒ Y) = ∀ {A'} → A' ≼ A → Val A' X → Val A' Y`
+   as a `Set`-valued function), so there is no positivity question at all — and
+   `eval` became structurally recursive as a bonus, so `NbEKF` compiles under
+   `--safe`. **No positivity escape remains anywhere in the POC.**
 3. **`funext` axiom** — used in the *older* conversion track (`Complete`, `Higher`,
    `Dependent`, `Universe`) as `--safe`-compatible postulate. The *principled* NbE
    and the OTT layer do **not** rely on it (OTT proves funext *definitionally*;
@@ -231,8 +235,10 @@ Agda's `--safe` flag *rejects* every unsafe escape hatch — `TERMINATING`,
 is a **machine-checked certificate** that a module (and its whole import closure)
 introduces none of them.
 
-**The entire standalone expressibility tower now compiles under `--safe`** (10
-modules, verified 2026-07-12):
+**16 modules now compile under `--safe`** (verified 2026-07-13): the entire
+standalone expressibility tower (10 modules, 2026-07-12), plus the QTT stack
+minus its one `nf`-tied theorem (step 1, 2026-07-12), plus the presheaf/Kripke
+NbE foundation (step 2, 2026-07-13):
 
 | `--safe` | modules |
 |---|---|
@@ -241,13 +247,18 @@ modules, verified 2026-07-12):
 | OTT (equality, quotients, μ) | `NbEPOTT`, `NbEPOTTQ`, `NbEPOTTMu` |
 | coinduction (guarded) | `NbEPCoind`, `NbEPOTTCoind` (`--safe --guardedness`) |
 | verified compiler in-theory | `NbEPSummit` |
+| QTT (syntax, semiring, graded judgment) | `NbEPTm` (pure `Tm` syntax split out of `NbEP`), `NbEPQTT`, `NbEPQTTJ` — only the `nf`-tied erasure theorem (`NbEPQTTErase`) stays non-safe |
+| presheaf + Kripke `⇒` NbE | `NbEK` (was already pragma-free), `NbEKF` (positivity escape discharged by a type-recursive domain, see above) |
+| decidability scaffolding | `Conv` |
 
-What **cannot** yet go `--safe` is *exactly* the set of modules importing the NbE
-core (`NbEP`, `NbEPComplete`, …, and hence `NbEPCwF`/`NbEPEl`/`NbEPId`/`NbEPQTT*`),
-because that core carries the `TERMINATING` pragmas. So `--safe` now draws the
+What **cannot** yet go `--safe` is *exactly* the set of modules carrying (or
+importing) the NbE core's `TERMINATING` pragmas — `NbEP`, `NbEPNat`, `NbEPFund`,
+`NbEPNormal`, `NbEPComplete`, `NbE` (+ older `Complete`), and hence
+`NbEPCwF`/`NbEPEl`/`NbEPId`/`NbEPElOTT`/`NbEPQTTErase`. So `--safe` now draws the
 consistency line **mechanically**: the dependent-types *features* are certified
 unsafe-feature-free; the residual risk is confined to the NbE core's termination
-assertions, precisely as this ledger claims.
+assertions — now the *only* kind of escape hatch left — precisely as this ledger
+claims.
 
 ### Verdict
 
@@ -274,12 +285,14 @@ To upgrade the mechanization's own consistency guarantee:
 1. **Discharge the `TERMINATING` pragmas** in the NbE core — prove `eval`/`nf`
    terminate via the SN / logical-relation argument (tedious, not deep; the
    argument is standard and already sketched in the NbE adequacy modules). This is
-   what would let the *conversion / CwF* track go `--safe` too. (A cheaper partial
-   step: split `NbEP`'s pure `Tm` datatype into its own `--safe` module so the
-   graded-judgment / elaboration modules that never touch `eval` can go `--safe`
+   what would let the *conversion / CwF* track go `--safe` too. (The cheaper
+   partial step is **[DONE 2026-07-12]**: `NbEP`'s pure `Tm` datatype now lives in
+   its own `--safe` module `NbEPTm`, which took `NbEPQTT`/`NbEPQTTJ` `--safe`
    without waiting for the full termination proof.)
-2. **Discharge or defunctionalize the `NO_POSITIVITY_CHECK`** — replace the Kripke
-   `⇒` closure with a strictly-positive presentation.
+2. **[DONE 2026-07-13] Discharge the `NO_POSITIVITY_CHECK`** — the Kripke `⇒`
+   domain in `NbEKF` is now defined by recursion on the type instead of as an
+   inductive datatype; both of `NbEKF`'s pragmas fell away and it compiles under
+   `--safe` (see the escape-hatch list above).
 3. **Keep funext out of the load-bearing path** — already true for the principled
    NbE + OTT; the older `funext`-using modules are superseded.
 4. **Decide whether Once's *core* adopts IR** — this is a deliberate,

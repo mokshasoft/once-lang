@@ -14,9 +14,11 @@
 -- Scope: the `{Unit, ×, +, μ}` semantic domain (products, sums, inductive
 -- types). `⇒` is deferred to the next step precisely because a Kripke
 -- function space needs this weakening infrastructure. Everything here is
--- postulate-free and structurally terminating (no pragma).
+-- postulate-free and structurally terminating (no pragma), so the whole
+-- module compiles under `--safe`.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEK where
 
 open import normalizer.Syntax.Types

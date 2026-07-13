@@ -8,16 +8,19 @@
 -- why the presheaf/weakening infrastructure was the prerequisite: the closure
 -- captured at `A` is weakened to `A * X` via `wkVal`.
 --
--- Honest escapes (both standard for NbE with a function space):
---   · NO_POSITIVITY_CHECK on `Val` — the Kripke function space
---     `∀ {A'} → A' ≼ A → Val A' X → Val A' Y` puts `Val` negatively. This is
---     the known cost of an inductive domain carrying functions; the principled
---     alternatives (defunctionalised closures, or STC) remove it at real cost.
---   · TERMINATING on `eval` — standard NbE termination (a theorem via
---     adequacy, step 3).
--- `reflect`/`reify` need no pragma (structural on the type).
+-- NO escapes: the semantic domain `Val` is defined by RECURSION ON THE TYPE
+-- (a Tarski-style presheaf semantics) rather than as an inductive datatype.
+-- The Kripke function space `∀ {A'} → A' ≼ A → Val A' X → Val A' Y` then
+-- lives in a Set-valued function, so there is no positivity question at all
+-- (an inductive `Val` with that field needs NO_POSITIVITY_CHECK — the known
+-- cost of an inductive domain carrying functions). Neutrals `Ne` stay a
+-- first-order, strictly positive datatype (`nApp` stores an already-reified
+-- `C.Term`). With the domain type-recursive, `eval` is structurally
+-- recursive on `Tm` and `reflect`/`reify` on the type — no TERMINATING
+-- pragma either, so the whole module compiles under `--safe`.
 ------------------------------------------------------------------------
 
+{-# OPTIONS --safe #-}
 module poc.OCP0009.NbEKF where
 
 open import normalizer.Syntax.Types
@@ -55,95 +58,92 @@ emb appT       = C.apply
 
 ------------------------------------------------------------------------
 -- The semantic domain, with a Kripke function space.
+--
+-- Neutrals: first-order and strictly positive (function arguments are
+-- stored already reified, as `C.Term`s).
 ------------------------------------------------------------------------
 
-data Ne (A : Ty) : Ty → Set
-{-# NO_POSITIVITY_CHECK #-}
-data Val (A : Ty) : Ty → Set
-
-data Ne A where
+data Ne (A : Ty) : Ty → Set where
   nThin : ∀ {B}   → A ≼ B → Ne A B
   nFst  : ∀ {X Y} → Ne A (X * Y) → Ne A X
   nSnd  : ∀ {X Y} → Ne A (X * Y) → Ne A Y
   nApp  : ∀ {X Y} → Ne A (X ⇒ Y) → C.Term A X → Ne A Y
 
-data Val A where
-  vUnit : Val A Unit
-  vPair : ∀ {X Y} → Val A X → Val A Y → Val A (X * Y)
-  vLam  : ∀ {X Y} → (∀ {A₁} → A₁ ≼ A → Val A₁ X → Val A₁ Y) → Val A (X ⇒ Y)
-  vNe   : ∀ {B}   → Ne A B → Val A B
+-- Values, by recursion on the type: η-expanded at `Unit`/`*`/`⇒`, neutral
+-- at the fragment-external types (`Void`/`+`/`μ` only enter via the initial
+-- environment).
+Val : Ty → Ty → Set
+Val A Unit    = ⊤
+Val A (X * Y) = Val A X × Val A Y
+Val A (X ⇒ Y) = ∀ {A₁} → A₁ ≼ A → Val A₁ X → Val A₁ Y
+Val A Void    = Ne A Void
+Val A (X + Y) = Ne A (X + Y)
+Val A (μ F)   = Ne A (μ F)
 
 ------------------------------------------------------------------------
 -- Weakening (the presheaf action; the Kripke closure pre-composes `_⊚_`).
 ------------------------------------------------------------------------
 
-wkNe  : ∀ {A₁ A B : Ty} → A₁ ≼ A → Ne A B → Ne A₁ B
-wkVal : ∀ {A₁ A B : Ty} → A₁ ≼ A → Val A B → Val A₁ B
+wkNe : ∀ {A₁ A B : Ty} → A₁ ≼ A → Ne A B → Ne A₁ B
 wkNe w (nThin wₕ)  = nThin (w ⊚ wₕ)
 wkNe w (nFst ne)   = nFst (wkNe w ne)
 wkNe w (nSnd ne)   = nSnd (wkNe w ne)
 wkNe w (nApp ne t) = nApp (wkNe w ne) (t C.∘ toMor w)
-wkVal w vUnit       = vUnit
-wkVal w (vPair a b) = vPair (wkVal w a) (wkVal w b)
-wkVal w (vLam f)    = vLam (λ w₁ x → f (w₁ ⊚ w) x)
-wkVal w (vNe ne)    = vNe (wkNe w ne)
+
+-- `Val` is not injective in its type index, so the type is passed explicitly.
+wkVal : ∀ {A₁ A : Ty} B → A₁ ≼ A → Val A B → Val A₁ B
+wkVal Unit    w v       = tt
+wkVal (X * Y) w (a , b) = wkVal X w a , wkVal Y w b
+wkVal (X ⇒ Y) w f       = λ w₁ x → f (w₁ ⊚ w) x
+wkVal Void    w ne      = wkNe w ne
+wkVal (X + Y) w ne      = wkNe w ne
+wkVal (μ F)   w ne      = wkNe w ne
 
 ------------------------------------------------------------------------
 -- reflect / reify (mutual, structural on the type).
 ------------------------------------------------------------------------
 
 reflect  : ∀ {A} B → Ne A B → Val A B
-reifyVal : ∀ {A B} → Val A B → C.Term A B
+reifyVal : ∀ {A} B → Val A B → C.Term A B
 reifyNe  : ∀ {A B} → Ne A B → C.Term A B
 
-reflect Unit    ne = vUnit
-reflect (X * Y) ne = vPair (reflect X (nFst ne)) (reflect Y (nSnd ne))
-reflect (X ⇒ Y) ne = vLam (λ w x → reflect Y (nApp (wkNe w ne) (reifyVal x)))
-reflect Void    ne = vNe ne
-reflect (X + Y) ne = vNe ne
-reflect (μ F)   ne = vNe ne
+reflect Unit    ne = tt
+reflect (X * Y) ne = reflect X (nFst ne) , reflect Y (nSnd ne)
+reflect (X ⇒ Y) ne = λ w x → reflect Y (nApp (wkNe w ne) (reifyVal X x))
+reflect Void    ne = ne
+reflect (X + Y) ne = ne
+reflect (μ F)   ne = ne
 
-reifyVal vUnit       = C.terminal
-reifyVal (vPair a b) = C.⟨ reifyVal a , reifyVal b ⟩
+reifyVal Unit    v       = C.terminal
+reifyVal (X * Y) (a , b) = C.⟨ reifyVal X a , reifyVal Y b ⟩
 -- reify a function: bind a fresh variable = `snd` of the extended source A*X
-reifyVal (vLam {X = X} f) =
-  C.curry (reifyVal (f (≼-ext ≼-refl) (reflect X (nSnd (nThin ≼-refl)))))
-reifyVal (vNe ne)    = reifyNe ne
-reifyNe (nThin w)  = toMor w
-reifyNe (nFst ne)  = C.fst C.∘ reifyNe ne
-reifyNe (nSnd ne)  = C.snd C.∘ reifyNe ne
+reifyVal (X ⇒ Y) f =
+  C.curry (reifyVal Y (f (≼-ext ≼-refl) (reflect X (nSnd (nThin ≼-refl)))))
+reifyVal Void    ne = reifyNe ne
+reifyVal (X + Y) ne = reifyNe ne
+reifyVal (μ F)   ne = reifyNe ne
+
+reifyNe (nThin w)   = toMor w
+reifyNe (nFst ne)   = C.fst C.∘ reifyNe ne
+reifyNe (nSnd ne)   = C.snd C.∘ reifyNe ne
 reifyNe (nApp ne t) = C.apply C.∘ C.⟨ reifyNe ne , t ⟩
 
 ------------------------------------------------------------------------
--- Evaluation (β for products and functions).
+-- Evaluation (β for products and functions) — structural on the term.
 ------------------------------------------------------------------------
 
-vfst : ∀ {A X Y} → Val A (X * Y) → Val A X
-vfst (vPair a _) = a
-vfst (vNe ne)    = vNe (nFst ne)
-
-vsnd : ∀ {A X Y} → Val A (X * Y) → Val A Y
-vsnd (vPair _ b) = b
-vsnd (vNe ne)    = vNe (nSnd ne)
-
--- semantic application (function β; stuck on a neutral)
-vapp : ∀ {A X Y} → Val A (X ⇒ Y) → Val A X → Val A Y
-vapp (vLam f) x = f ≼-refl x
-vapp (vNe ne) x = vNe (nApp ne (reifyVal x))
-
-{-# TERMINATING #-}
 eval : ∀ {A B D} → Tm B D → Val A B → Val A D
-eval idT        v = v
-eval (f ⊙ g)    v = eval f (eval g v)
-eval fstT       v = vfst v
-eval sndT       v = vsnd v
-eval (pair f g) v = vPair (eval f v) (eval g v)
-eval termT      v = vUnit
-eval (curryT f) v = vLam (λ w x → eval f (vPair (wkVal w v) x))
-eval appT       v = vapp (vfst v) (vsnd v)
+eval idT                v       = v
+eval (f ⊙ g)            v       = eval f (eval g v)
+eval fstT               (a , _) = a
+eval sndT               (_ , b) = b
+eval (pair f g)         v       = eval f v , eval g v
+eval termT              v       = tt
+eval (curryT {A = S} f) v       = λ w x → eval f (wkVal S w v , x)
+eval appT               (f , a) = f ≼-refl a
 
 nf : ∀ {A B} → Tm A B → C.Term A B
-nf {A} t = reifyVal (eval t (reflect A (nThin ≼-refl)))
+nf {A} {B} t = reifyVal B (eval t (reflect A (nThin ≼-refl)))
 
 ------------------------------------------------------------------------
 -- Examples — FUNCTIONS now normalize (β and η).
