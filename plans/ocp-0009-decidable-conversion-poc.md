@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 47 `poc/OCP0009/*.agda` modules build green
+All 48 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -255,6 +255,19 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
   simultaneously (the motivating II example = the syntax of a dependent type
   theory, well-formed by construction — exactly the future Spec/Kernel shape,
   §9) + the standard model by the simultaneous eliminator.
+- `NbEPOTTH` — **OTT internalized, step 2: the HETEROGENEOUS layer with
+  dependent `Σ` codes.** Value equality across types (`EQ a x b y`), type
+  equality as evidence (`EQU`, data — so the whole suite recurses on it),
+  `coe`/`coh`, and the full lemma suite (`refl`/`sym`/`trans` at both value
+  and type level) — no big mutual block needed. Σ families are
+  respect-bundled (the setoid discipline at exactly the one place Σ needs
+  it). HEADLINE: transport of a dependent tuple along a type equality whose
+  indices differ by `n+0` — `coe` computes to the identity on closed values
+  (`refl`), `coh` certifies it observationally. Honest ceiling documented in
+  the header: `Π` needs the full setoid universe (function values bundled
+  with respect proofs — raw Agda functions provably respecting `EQ` is
+  funext-strength; heterogeneous trans at `Π` must conjure middles by `coe`)
+  — Σ needs neither, since pair values carry their own middles.
 - `NbEPOTTU` — **OTT internalized** (`Observational Equality, Now!`-style):
   `` `eq : (a : U) → El a → El a → U `` as a universe CODE whose decoding
   computes by recursion on the type — internal funext DEFINITIONAL, proof
@@ -425,11 +438,12 @@ proof-theoretic strength. "Built" = machine-checked in `poc/OCP0009/`.
 
 **Honest gaps (2026-07-13: the former big three — II, the ℕ-tower, and
 proof-relevant `Id` — are now all prototyped: `NbEPII`, `NbEPUnivT`,
-`NbEPOTTU`). What remains is depth, not rows:** (1) **heterogeneous `coe`/`coh`
-for the internalized OTT** — `NbEPOTTU`'s transport is first-order-reflection
-at `` `nat ``; dependent `Σ` codes and transport at arbitrary codes need the
-full heterogeneous machinery (`NbEPOTT` has the model-level `Eq`/`coe` to
-internalize the same way). (2) **Conversion for the extended universes inside
+`NbEPOTTU`). What remains is depth, not rows:** (1) **the full setoid
+universe for `Π`** — heterogeneous `coe`/`coh` with dependent `Σ` codes is
+now BUILT (`NbEPOTTH`, incl. the trans/sym suite and the `n+0` dependent-pair
+transport); what remains is `Π` codes in the heterogeneous layer, which needs
+function values bundled with respect proofs (the analysis is in `NbEPOTTH`'s
+header). (2) **Conversion for the extended universes inside
 Once's own NbE** — the IR/II/tower/`` `eq `` prototypes lean on Agda's kernel
 for conversion (flagged in §3.D from the start). (3) The big assistants still
 win on **ecosystem depth** (tactics, libraries, ∞ levels *implemented*) — a
