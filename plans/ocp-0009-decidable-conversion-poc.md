@@ -871,21 +871,43 @@ no system anywhere has directed type theory with a decidable kernel.
      leaf pullbacks (`applyI`/`applyP`), and THE AGREEMENT THEOREM
      `wire (permM p) ≡ applyP p` pointwise — the realization means what
      the permutation says.
-   - stage 3 — the key lemma `f ≈m topn ∘ permM (permOf f) ∘ ntop` by
-     induction on `f`, then completeness by transitivity + representation
-     uniqueness (`applyP p ≗ applyP q → p ≡ q`). DESIGN NOTES (worked out,
-     recorded so they survive): the Perm-algebra needs (a) composition
-     `_⊙P_ : Perm xs ys → Perm ys zs → Perm xs zs` via the FACTORIZATION
-     lemma `push : Ins x ys zs → Perm zs ws → Σ ws' (Perm ys ws' × Ins x
-     ws' ws)` — whose `here` case is literally pattern-matching `pcons`
-     apart, and whose `there` case needs the INSERTION DIAMOND
-     `ins-swap : Ins y w₁ w → Ins x w₂ w₁ → Σ w₃ (Ins y w₂ w₃ × Ins x w₃
-     w)` (double induction, ~6 cases); (b) every such structural lemma
-     also proven `≈m`-compatible at the morphism level (`permM (p ⊙P q)
-     ≈m permM q ∘m permM p`, with `ins-swap`'s realization a hexagon/
-     naturality argument); (c) Perm tensor/append for the `_⊗m_` case of
-     the induction. A full-session climb on its own. Then `⊸`
-     (Kelly–Mac Lane / proof nets).
+   - stage 3 — the key lemma `f ≈m topn ∘ permM (pOf f) ∘ ntop`, then
+     completeness by transitivity + representation uniqueness. STATUS:
+     - **[3A DONE, `NbEPMonA`]** the Perm-algebra, data level: `ins-swap`
+       (insertion diamond), `push` (factorization), `_⊙P_` (composition,
+       terminating on the first argument), `padP`/`insAcc` (accumulator
+       lifts), `bswap` (block transposition = σ on normal forms).
+     - **[3B DONE, `NbEPMonU`]** representation uniqueness: `applyP-inj :
+       IsL xs → (∀ l → applyP p l ≡ applyP q l) → p ≡ q` — probes
+       (`insPos`/`skipIns`), `goL`-preimage uniqueness, `insPos-inj` with
+       heterogeneous middles collapsed by index unification. (Technical
+       note that saved hours: with-abstraction over ANOTHER function's
+       with-scrutinee reduces it, but abstracted equations live at the
+       INNER leaf type — transport with `goL-inj`/`goR-inj` + `cong`.)
+     - **[3C.1 DONE, `NbEPMonR`]** the swapHead toolkit: `inv-nat`
+       (generic inverse-naturality combinator), `α-natˡ` (derived),
+       `swapHead-nat` (naturality = the COMMUTATION relation),
+       `swapHead-invol`.
+     - **3C.2 NEXT — YANG–BAXTER for `swapHead`** (the braid relation),
+       from hexagon + pentagon + the toolkit. The reduction is worked
+       out: `ins-swap-real`'s `there`/`there` case reduces, after
+       `swapHead-nat` rewrites and `⊗-∘` splits, EXACTLY to
+       `(id ⊗ ŝ) ∘ ŝ ∘ (id ⊗ ŝ) ≈ ŝ ∘ (id ⊗ ŝ) ∘ ŝ` (heads x,y,z over
+       tail w) — the one place hexagon (and, for the α-routes between
+       4-leaf trees, pentagon) is genuinely spent. Expect the single
+       longest chain of the project.
+     - 3C.3: `ins-swap-real` (4 cases: here/here and there/here use
+       `swapHead-invol`; here/there is a short shuffle; there/there = YB
+       + `swapHead-nat` + IH), then `push-real` (induction), `⊙P-real`,
+       and `nt-perm-nat : nt B S ∘ (id_B ⊗ permM q) ≈ permM (padP B q) ∘
+       nt B S'` (induction on B; ι trivial, I is `ƛ-nat`, ⊗ via α-nat).
+     - 3D: generator squares — `nt-α` (pentagon spent), `nt-ƛ`/`nt-ρ`
+       (triangle), `nt-σ` (the bswap square; hexagon/YB spent again).
+     - 3E: `pOf` by recursion on `f` (composition via `⊙P-real`, tensor
+       via `padP` + `nt-perm-nat` — NO list-append transport, the
+       accumulator formulation throughout), the key-lemma induction,
+       `wire (ntop)`-injectivity from stage 1's isos, final assembly.
+     Then `⊸` (Kelly–Mac Lane / proof nets).
 3. **Rung 3 — the open metatheory**: variance judgments, directed
    transport, directed univalence, decidable directed conversion. Literature
    anchors: Riehl–Shulman (synthetic ∞-categories / simplicial TT), Licata
