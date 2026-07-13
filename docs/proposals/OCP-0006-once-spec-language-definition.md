@@ -1,7 +1,15 @@
 # OCP-0006: `Once.Spec` — One Home for the Language Definition
 
 **Author:** Jonas Claeson
-**Status:** Accepted — re-export cut implemented (plan 0.58)
+**Status:** DELIVERED (plan 0.58 closed 2026-07-13). `Once.Spec` is the
+canonical, load-bearing spec door: `Once.Certified` consumes `CorrectCompiler`
+through it; `Spec.Meaning` re-exports the derivation denotation `⟦_⟧ᵈ`
+(ValueDomain + Behavior + Meaning + MainMeaning — no `realize`, no `evalᴰ`, no
+`Surface.Expr`); `Spec.Syntax` is `RawExpr` only. `Once.IR` remains shared
+vocabulary (option a). Follow-on work: plan 0.59 (oracle principality +
+coverage); the Phase-2 witness postulate quartet (needs the elaborator
+witness restructure). Plan file 0.58 deleted at close per its own P5
+instruction — full history in git (branch `ocp-0006-once-spec`).
 **Created:** 2026-06-24
 
 ---
