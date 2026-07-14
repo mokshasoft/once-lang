@@ -14,9 +14,8 @@
 --   - Products: ⟨_,_⟩, fst, snd
 --   - Coproducts: inl, inr, case
 --   - Terminal/Initial: terminal, initial
---   - Exponentials: curry, apply
---   - Recursive types: fold, unfold
---   - Effects: arr
+--   - Exponentials: curry, apply (ungraded `_⇛_` objects, Plan 0.52 M2)
+--   - Recursive types: In/out-μ/Cata/Para, Out/in-ν/Ana, Hylo/Fuse
 --   - Primitives: SigOp (opaque external operations)
 --   - Memory: free-heap (explicit deallocation)
 ------------------------------------------------------------------------
@@ -25,11 +24,16 @@ module Once.IR where
 
 open import Data.String using (String)
 
--- Import and re-export Type
-open import Once.Type public
+-- Plan 0.52 M2: IR OBJECTS are the UNGRADED `Once.IRTy` (pure/eff arrows are
+-- the SAME object, so `arr` is retired). Re-exported so consumers get
+-- `Unit`/`_*_`/`_+_`/`_⇛_`/`μ-type`/`⟦_⟧TI`/`WellFormedFI`/`FitsInRegI`/… as IRTy.
+open import Once.IRTy public
 
--- Import WellFormedF for recursion scheme constructors
-open import Once.Functor.Translate using (WellFormedF; ⟦_⟧-base)
+-- Surface `Type` + `⌊_⌋`, for the `SigOp` FFI boundary ONLY: its objects stay
+-- IRTy (`IR ⌊ A ⌋ ⌊ B ⌋`) while the contract `SigOpInfo A B` is surface-typed
+-- (the value semantics lives on `Type`). Aliased `T` to avoid the shared
+-- constructor names (`Unit`, `_*_`, `μ-type`, …).
+open import Once.Type as T using (Type)
 
 -- HeapRef: the `free-heap` constructor's payload (a heap reference). From the
 -- lightweight shared HeapAddress module (stdlib-only), NOT the machine.
@@ -111,8 +115,8 @@ data Allocator : Set where
 -- is by construction (a divergent / value-synthesizing transform is
 -- unrepresentable). The meaning translates `NatTr` to `Once.Semantics.Functor.NatSF`
 -- and folds it with the pragma-free `fuseNT`/`fuseNTW`; no `fuseW`.
-data IR   : Type → Type → Set
-data NatTr : Functor → Functor → Set
+data IR   : IRTy → IRTy → Set
+data NatTr : IRFunctor → IRFunctor → Set
 
 data IR where
   -- Category structure
@@ -135,19 +139,17 @@ data IR where
   -- Initial object (Void)
   initial : ∀ {A} → IR Void A
 
-  -- Exponential (A ⇒[ k ] B). Plan 0.5.1: unified apply for any kind.
-  -- Callers typically use `pureK q` (pure) or `effK` (effectful).
-  curry : ∀ {A B C k} → IR (A * B) C → AllocMode → IR A (B ⇒[ k ] C)
-  apply : ∀ {A B k} → IR ((A ⇒[ k ] B) * A) B
+  -- Exponential (A ⇛ B) — the UNGRADED arrow object (Plan 0.52 M2).
+  -- The grade lived only on the surface `Type`; here it is erased, so
+  -- there is one exponential object per (A, B) and no pure/eff distinction.
+  curry : ∀ {A B C} → IR (A * B) C → AllocMode → IR A (B ⇛ C)
+  apply : ∀ {A B} → IR ((A ⇛ B) * A) B
 
-  -- Effect lifting: coerce a pure arrow to an effectful one.
-  -- Both sides are `_⇒[_]_` types distinguished only by kind; `arr`
-  -- takes a pure arrow and tags it as effectful. Runtime: identity.
-  arr : ∀ {A B q} → IR (A ⇒[ mk-kind q pure ] B) (A ⇒[ mk-kind Many eff ] B)
-
-  -- applyEff removed in plan 0.5.1: `apply {k = effK}` handles
-  -- effectful application. Runtime is identical (same code); the
-  -- distinction was only type-level tagging.
+  -- `arr` RETIRED (Plan 0.52 M2): it coerced `A ⇒[pure] B` to
+  -- `A ⇒[eff] B`, but with the grade erased both are the SAME object
+  -- `A ⇛ B`, so `arr` is the identity morphism `id` — removed. The
+  -- surface pure→eff lift is now the typing rule `t-subsume`, whose
+  -- realization is the identity (no `arr'` wrapper needed post-M2).
 
   -- fold/unfold removed by OCP-0003: use In/Cata/Out/Ana instead
   -- (Total and productive by construction)
@@ -158,48 +160,48 @@ data IR where
   -- These replace general fold/unfold with structured recursion that
   -- guarantees termination (cata) or productivity (ana).
   --
-  -- All constructors require WellFormedF proofs to ensure functors only
+  -- All constructors require WellFormedFI proofs to ensure functors only
   -- use K with base types, enabling postulate-free semantic evaluation.
   --------------------------------------------------------------------------
 
   -- Initial algebra operations (inductive types, total recursion)
   -- In: F(μF) → μF (constructor)
-  In : ∀ {F} → WellFormedF F → AllocMode → IR (⟦ F ⟧T (μ-type F)) (μ-type F)
+  In : ∀ {F} → WellFormedFI F → AllocMode → IR (⟦ F ⟧TI (μ-type F)) (μ-type F)
 
   -- out-μ: μF → F(μF) (destructor, inverse of In)
   -- By Lambek's Lemma, In is an isomorphism, so its inverse exists.
   -- This enables pattern-matching on μ-types inside Hylo coalgebras,
   -- which is essential for proper fusion in observation primitives.
   -- See OCP-0003 "Lambek Isomorphisms" section.
-  out-μ : ∀ {F} → WellFormedF F → IR (μ-type F) (⟦ F ⟧T (μ-type F))
+  out-μ : ∀ {F} → WellFormedFI F → IR (μ-type F) (⟦ F ⟧TI (μ-type F))
 
   -- Cata: given IR morphism (F(A) → A), produce μF → A
   -- This is the universal property of initial algebras.
   -- Total by Lambek's Lemma: μF is well-founded.
-  Cata : ∀ {F} → WellFormedF F → ∀ {A} → IR (⟦ F ⟧T A) A → IR (μ-type F) A
+  Cata : ∀ {F} → WellFormedFI F → ∀ {A} → IR (⟦ F ⟧TI A) A → IR (μ-type F) A
 
   -- Para: paramorphism (fold with access to original substructure)
   -- Total by derivation from Cata (structural recursion on well-founded μF).
   -- The algebra receives F(μF × A), giving access to both the original
   -- substructure and the recursive result.
-  Para : ∀ {F} → WellFormedF F → ∀ {A}
-       → IR (⟦ F ⟧T (μ-type F * A)) A
+  Para : ∀ {F} → WellFormedFI F → ∀ {A}
+       → IR (⟦ F ⟧TI (μ-type F * A)) A
        → IR (μ-type F) A
 
   -- Final coalgebra operations (coinductive types, productive corecursion)
   -- Out: νF → F(νF) (observation/destructor)
-  Out : ∀ {F} → WellFormedF F → IR (ν-type F) (⟦ F ⟧T (ν-type F))
+  Out : ∀ {F} → WellFormedFI F → IR (ν-type F) (⟦ F ⟧TI (ν-type F))
 
   -- in-ν: F(νF) → νF (constructor, inverse of Out)
   -- By Lambek's Lemma (dual), Out is an isomorphism, so its inverse exists.
   -- Provides symmetry with μ-type operations.
-  in-ν : ∀ {F} → WellFormedF F → AllocMode → IR (⟦ F ⟧T (ν-type F)) (ν-type F)
+  in-ν : ∀ {F} → WellFormedFI F → AllocMode → IR (⟦ F ⟧TI (ν-type F)) (ν-type F)
 
   -- Ana: given IR morphism (A → F(A)), produce A → νF
   -- Productivity follows from IR totality: coalgebras are IR morphisms,
   -- IR morphisms are total, therefore each coalgebra step terminates and
   -- produces one F-layer. See IR/Totality.agda and IR/Productivity.agda.
-  Ana : ∀ {F} → WellFormedF F → ∀ {A} → IR A (⟦ F ⟧T A) → IR A (ν-type F)
+  Ana : ∀ {F} → WellFormedFI F → ∀ {A} → IR A (⟦ F ⟧TI A) → IR A (ν-type F)
 
   -- Guard/Unguard removed: GuardedT was unnecessary.
   -- Productivity follows from IR totality, not type-level guardedness.
@@ -219,8 +221,8 @@ data IR where
   --
   -- NO TERMINATING PRAGMA NEEDED - termination follows from Fuse!
   --
-  Hylo : ∀ {F G} → WellFormedF F → WellFormedF G → ∀ {B}
-       → IR (⟦ F ⟧T B) B                          -- algebra: F(B) → B
+  Hylo : ∀ {F G} → WellFormedFI F → WellFormedFI G → ∀ {B}
+       → IR (⟦ F ⟧TI B) B                          -- algebra: F(B) → B
        → NatTr G F                                  -- structural coalgebra: μG --out-μ--> G ⇒ F
        → IR (μ-type G) B
 
@@ -240,8 +242,8 @@ data IR where
   --
   -- NO TERMINATING PRAGMA NEEDED - termination is structural!
   --
-  Fuse : ∀ {F G} → WellFormedF F → WellFormedF G → ∀ {B}
-       → IR (⟦ F ⟧T B) B                              -- algebra: F(B) → B
+  Fuse : ∀ {F G} → WellFormedFI F → WellFormedFI G → ∀ {B}
+       → IR (⟦ F ⟧TI B) B                              -- algebra: F(B) → B
        → NatTr G F                                      -- natural transform: G ⇒ F
        → IR (μ-type G) B
 
@@ -269,12 +271,15 @@ data IR where
   -- is a pure syntax tier. (D054: an `Int` literal denotes a `Word`; the
   -- carrier is width-agnostic and the target word size is threaded from the
   -- arch into `norm`/`fromℤ` at codegen/arith. Non-negative; neg is `OpNeg`.)
-  const : ∀ {A} → FitsInReg A → ⟦ Carrier ⟧-base A → IR Unit A
+  const : ∀ {A} → FitsInRegI A → ⟦ Carrier ⟧-baseI A → IR Unit A
 
   -- Signature operations (opaque escape hatch).
   -- Carries a `SigOpInfo` (name + sem at both levels) so the IR
   -- is self-describing; no external `SigOpSem` parameter needed.
-  SigOp : ∀ {A B} → SigOpInfo A B → IR A B
+  -- FFI boundary (Plan 0.52 M2): the contract `SigOpInfo A B` is surface-typed
+  -- (its value semantics `M.⟦A⟧→M.⟦B⟧` lives on `Type`); the IR OBJECTS it
+  -- connects are the erased `⌊ A ⌋`, `⌊ B ⌋`.
+  SigOp : ∀ {A B : Type} → SigOpInfo A B → IR ⌊ A ⌋ ⌊ B ⌋
 
 ------------------------------------------------------------------------
 -- NatTr — IR-level natural transformations between polynomial functors
