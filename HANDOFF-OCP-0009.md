@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **64 modules, all green** (55 of them `--safe`). The full expressibility tower is built and
+- **67 modules, all green** (58 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
@@ -151,10 +151,20 @@ the "Other open items" section below.**
    (**rung 2b part 1: the linear `Conv` — the full SMC theory `_≈m_` as
    data, the leaf-path WIRING normal form, per-axiom soundness with
    pentagon/triangle/hexagon by `refl`, decidable `conv?`, and
-   `conv-refutes`**). Remaining: 2b completeness (equal wiring ⇒ `≈m`,
-   SMC coherence proper — the `NbEPComplete`-sized climb; Beylin–Dybjer /
-   Piceghello are the mechanization anchors), `⊸` (Kelly–Mac Lane /
-   proof-net territory), and rung 3 (the open metatheory) — gated on the
+   `conv-refutes`**). **RUNG 2b PART 1 COMPLETED 2026-07-14: SMC
+   COHERENCE COMPLETENESS IS PROVEN** — `dec≈ : ∀ f g → Dec (f ≈m g)`
+   in `NbEPMonE`, all `--safe`. The staged climb (plan §10):
+   `NbEPMonN` (type normalization, Beylin–Dybjer accumulator) →
+   `NbEPMonP` (Ins/Perm realizations + agreement `wire∘permM ≡ applyP`)
+   → `NbEPMonA` (Perm algebra: ⊙P/padP/bswap) → `NbEPMonU`
+   (representation uniqueness `applyP-inj`) → `NbEPMonR`/`NbEPMonY`
+   (swapHead toolkit + **Yang–Baxter**) → `NbEPMonI`/`NbEPMonQ`
+   (algebra realized: push-real/⊙P-real/nt-perm-nat) →
+   `NbEPMonG`/`NbEPMonK`/`NbEPMonS`/`NbEPMonH`/`NbEPMonZ` (generator
+   squares: nt-α/ρ/ƛ, Kelly K2–K5′, mirror hexagon + σ-block, **nt-σ
+   the bswap square**) → `NbEPMonE` (pOf, keySq, canon, completeness,
+   `dec≈`). Remaining on the rung: `⊸` (Kelly–Mac Lane / proof-net
+   territory), and rung 3 (the open metatheory) — gated on the
    linear/monoidal core decision (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT
    kernel out as a SPEC layer — `Spec/IR` (unoriented equations + one boring

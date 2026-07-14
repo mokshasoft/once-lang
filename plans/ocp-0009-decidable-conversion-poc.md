@@ -301,8 +301,16 @@ OCP-0009 contribution and it shares the OCP-0004 normalizer discipline.
 - `NbEPMonC` — **the linear `Conv`: sound decidable conversion for the free
   SMC.** `_≈m_` (the full SMC theory as data), `wire` (leaf-path wiring
   normal form), `≈m-sound` (pentagon/triangle/hexagon by `refl` splits),
-  `conv?` (decidable), `conv-refutes`, σ≠id-at-`ι₁⊗ι₁`. Completeness
-  (coherence proper) = the scheduled climb. `--safe`.
+  `conv?` (decidable), `conv-refutes`, σ≠id-at-`ι₁⊗ι₁`. `--safe`.
+- `NbEPMonN/P/A/U/R/Y/I/Q/G/K/S/H/Z/E` — **the COMPLETENESS climb
+  (SMC coherence proper), COMPLETE 2026-07-14, all `--safe`**: type
+  normalization (Beylin–Dybjer accumulator) → permutation realizations
+  + agreement → Perm algebra → representation uniqueness → swapHead
+  toolkit + **Yang–Baxter** → algebra realized → generator squares
+  (pentagon/triangle spent, Kelly unit lemmas K2–K5′, mirror hexagon +
+  σ-block, `nt-σ` the bswap square) → `NbEPMonE`: `pOf`, the key lemma,
+  `canon`, **completeness, and `dec≈ : ∀ f g → Dec (f ≈m g)`** — the
+  linear core's equality is a decision procedure. See §10 stage log.
 - `NbEPMon` — **directed rung 2a: the monoidal core, linearity as
   semantics.** `no-diagonal` + `no-discard` (duplication/discard
   INEXPRESSIBLE — resource-count invariance) and `no-undo` (in-core
@@ -467,7 +475,7 @@ proof-theoretic strength. "Built" = machine-checked in `poc/OCP0009/`.
 | **Totality** | ✅ total-only (SN core) | ✅ | ✅ | ✅ | ⚠️ total *or* partial |
 | **Erasure / quantities** | ✅ **QTT, end-to-end** (`NbEPQTT` semiring+erasure; `NbEPQTTJ` graded judgment+elaboration; `NbEPQTTEraseTm` **erasing term elaboration** — `𝟘`-arguments dropped from the runtime term, irrelevance decided by `nf` on open terms) | ✅ irrelevance | ⚠️ extraction | ✅ Prop-erasure | ✅ QTT native |
 | **Self-hosting / reflected IR** | ✅ **distinctive** (prove-Once-in-Once) | ❌ | ❌ | ❌ | ❌ |
-| **Directed homs (transformations as propositions)** | ⚠️ **rungs 0–2a + the eliminator** (`NbEPDir`: rewrite system as a proven Hom-category; `NbEPDirU`: `Hom` as a universe code; `NbEPDirJ`: **`Hom` is a directed identity type — J in three forms, `sym` refuted, transport = J + covariance**; `NbEPMon`: monoidal core — duplication/discard/undo provably inexpressible; full directed kernel = flagged research, §10) | ❌ | ❌ | ❌ | ❌ |
+| **Directed homs (transformations as propositions)** | ⚠️ **rungs 0–2a + the eliminator** (`NbEPDir`: rewrite system as a proven Hom-category; `NbEPDirU`: `Hom` as a universe code; `NbEPDirJ`: **`Hom` is a directed identity type — J in three forms, `sym` refuted, transport = J + covariance**; `NbEPMon`: monoidal core — duplication/discard/undo provably inexpressible; `NbEPMonC`→`NbEPMonE`: **decidable conversion for the free SMC with PROVEN completeness — `dec≈ : ∀ f g → Dec (f ≈m g)`, coherence as a `--safe` theorem**; full directed kernel = flagged research, §10) | ❌ | ❌ | ❌ | ❌ |
 | **Kernel / TCB size** | ✅ **minimal by thesis** | large | large (CIC) | smallish CIC | medium |
 
 **Honest gaps (2026-07-13: the former big three — II, the ℕ-tower, and
@@ -908,28 +916,33 @@ no system anywhere has directed type theory with a decidable kernel.
        K5′ (swapHead multiplicativity — the YB recipe, shorter:
        F2+G+σ-nat+ONE pentagon); ŝ-αr; insAcc-real (end-insertion
        realized, 18-step ⊗-case consuming K5′).
-     - **3D remainder (fully derived, next session):** H2 (mirror
-       hexagon) via a generic inverse-of-equation combinator (inv-cong :
-       x∘xi ≈ id → yi∘y ≈ id → x ≈ y → xi ≈ yi, ~6 steps + two iso
-       chains), yielding the σ-TENSOR-MOVER decomposition
-       σ_{A₁⊗A₂,B} ≈ αr ∘ (σ_{A₁,B}⊗1) ∘ αl ∘ (1⊗σ_{A₂,B}) ∘ αr; then
-       `nt-σ` (I-case: triangle + K3 + the K2-dance, both sides meeting
-       at ntB ∘ (ƛ_B⊗1_R); ι-case: insAcc-real at `here` + ŝ-αr +
-       pid-real; ⊗-case: the decomposition + IHs + ⊙P-real + nt-perm-nat
-       + nt-α-style α-bookkeeping — the last big chain); inverse
-       generator squares (αl/ƛl/ρl: 4-step conjugations from the
-       r-squares via fuse⊗ʳ + isos).
-     - **3E (fully derived):** `pOf f {R} (r : IsL R) : Perm (norm A R)
-       (norm B R)` by recursion on `f` (idm↦pid; ∘↦⊙P; ⊗ ↦ pOf f ⊙P
-       padP (pOf g); α/ƛ/ρ-isos↦pid; σ↦bswap); the key square
-       `nt B R ∘ (f⊗1_R) ≈ permM (pOf f r) ∘ nt A R` by induction on
-       `f` (each case = its 3D square + plumbing); top-level via
-       ρl-naturality (inv-nat); `f ≈ topn ∘ (permM (pOf f) ∘ ntop)` by
-       topn-ntop conjugation; COMPLETENESS: wire f ≗ wire g ⟹ (via
-       ≈m-sound on the key equations + wire-permM + injectivity of
-       wire (ntop) from ntop-topn) applyP (pOf f) ≗ applyP (pOf g) ⟹
-       (applyP-inj, stage 3B) pOf f ≡ pOf g ⟹ f ≈m g. ∎
-     Then `⊸` (Kelly–Mac Lane / proof nets).
+     - **[3D COMPLETE, `NbEPMonH`/`NbEPMonZ`/`NbEPMonE`]** H2 (mirror
+       hexagon) via the generic inverse-of-equation combinator
+       `inv-cong`, yielding the σ-TENSOR-MOVER decomposition `σ-block`:
+       σ_{A₁⊗A₂,B} ≈ αr ∘ (σ_{A₁,B}⊗1) ∘ αl ∘ (1⊗σ_{A₂,B}) ∘ αr;
+       `nt-αl` (5-step conjugation); **`nt-σ` — THE BSWAP SQUARE**
+       (I-case: triangle + K3 + the K2-dance; ι-cases: insAcc-real at
+       `here` + ŝ-αr + pid-real; ⊗-case: σ-block + both IHs + ⊙P-real +
+       nt-perm-nat + nt-α/nt-αl bookkeeping — lands on `bswap`'s
+       definition on the nose); inverse unit squares `nt-ƛl`/`nt-ρl`
+       (4-step conjugations via fuse⊗ʳ + isos).
+     - **[3E DONE 2026-07-14, `NbEPMonE` — THE SUMMIT]** `pOf f r :
+       Perm (norm A R) (norm B R)` by recursion on `f` (idm↦pid; ∘↦⊙P;
+       ⊗ ↦ pOf f ⊙P padP (pOf g); α/ƛ/ρ-isos↦pid, the accumulator
+       absorbing bracketing/units definitionally; σ↦bswap); THE KEY
+       LEMMA `keySq : nt B R ∘ (f⊗1_R) ≈ permM (pOf f r) ∘ nt A R` by
+       induction on `f` (each case = its 3D square + plumbing);
+       `keyTop` via ρl-naturality (inv-nat ρ-iso₂ ρ-iso₁ ρ-nat);
+       `canon : f ≈ topn ∘ (permM (pOf f) ∘ ntop)`; **COMPLETENESS**:
+       wire f ≗ wire g ⟹ (≈m-sound on keyTop + injectivity of
+       wire (ntop) from the ntop-topn round-trip + wire-permM)
+       applyP (pOf f) ≗ applyP (pOf g) ⟹ (applyP-inj) pOf f ≡ pOf g
+       ⟹ f ≈m g. ∎  **Hence `dec≈ : ∀ f g → Dec (f ≈m g)` — decidable
+       conversion for the free SMC, all `--safe`.** Demo payoff: K3′
+       and σ-involution instances re-proven as one-liners by decision.
+   **RUNG 2b PART 1 IS PROVEN.** Equality of the linear/monoidal core
+   is a decision procedure: normalize the wiring, compare. Next on this
+   rung: `⊸` (Kelly–Mac Lane / proof nets — genuinely open territory).
 3. **Rung 3 — the open metatheory**: variance judgments, directed
    transport, directed univalence, decidable directed conversion. Literature
    anchors: Riehl–Shulman (synthetic ∞-categories / simplicial TT), Licata
