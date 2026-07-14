@@ -1055,9 +1055,25 @@ no system anywhere has directed type theory with a decidable kernel.
          normalization. Remaining for the fragment's completeness
          theorem: soundness/completeness of `NF` w.r.t. `_≈c_`
          (the NbEPFund/NbEPComplete-shaped adequacy pass).
-       L3.2 — ⊗-returning neutrals: Val(⊗) gains a residualizing
-         let-monad; deciding normal forms modulo let-commuting = the
-         proof-net layer.
+       [L3.2 DONE 2026-07-14, `NbEPMonB`] — RESIDUALIZING SPLITS:
+         pair-returning neutrals. `Sp P Γ` (the split monad: each node
+         = repartition + neutral pair-scrutinee + continuation in the
+         extended world; a let is just composition in combinator
+         syntax); nodes carry pending permutations (the L3.1b trick
+         systematized — `vmapSp`/`withSpˡ`/`withSpʳ` compose world
+         actions where `pid ⊙P ρ` computes); `absorb` (type-recursive:
+         atoms splice syntactically but are TRANSPARENT on `ret` — the
+         second junk source found and killed; I/⊗ are Sp-carriers;
+         functions push splits into results); `Val` v2 with `GoodR`
+         gaining `gr⊗`; `reflectNe` at `gr⊗` = the let-split of a
+         neutral (one `spl` node over reflected fresh components).
+         Demos by `refl`: all four L3.1 equalities re-decided, plus
+         the frontier crossing — `Λ((σ∘σ)∘ev) ≡ id` at
+         `ι₁ ⊸ (ι₁⊗ι₂)`: β + η + let-split + structural, one refl.
+         Engineering note: pattern lambdas do NOT dependently refine
+         earlier args — hoist refl-consuming continuations to
+         top-level/where helpers. Canonicity across INDEPENDENT splits
+         (emission order) = L3.2b, the proof-net question, still open.
        L3.3 — the unit problem ([∗] full generality): I-neutrals and
          the Kelly–Mac Lane triple-unit subtleties — the open frontier.
      · Soundness/completeness against `_≈c_` in each stage mirror the

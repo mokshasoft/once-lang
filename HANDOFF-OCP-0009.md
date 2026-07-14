@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **74 modules, all green** (65 of them `--safe`). The full expressibility tower is built and
+- **75 modules, all green** (66 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
@@ -194,10 +194,15 @@ the "Other open items" section below.**
    model, evalV as repartition arithmetic, reify/reflect on
    right-purity witnesses, pending-permutation neutrals so equal
    values reify IDENTICALLY; β⊸/η⊸/structural/higher-order demos all
-   by `refl`). NEXT: the adequacy pass for the fragment (soundness
-   `f ≈c g → NF f ≡ NF g` and completeness `f ≈c NF f`, the
-   NbEPFund/NbEPComplete shape), then L3.2 (let-monad for ⊗-returning
-   neutrals) and L3.3 (units). Rung 3 proper (variance judgments,
+   by `refl`). Stage L3.2 DONE (`NbEPMonB`: the
+   residualizing split monad — pair-returning neutrals; let = 
+   composition; all L3.1 demos re-decided + the frontier demo
+   `Λ((σ∘σ)∘ev) ≡ id` at `ι₁ ⊸ (ι₁⊗ι₂)`, by `refl`). NEXT: the
+   adequacy pass over the L3.2 model (soundness `f ≈c g → NF f ≡ NF g`
+   and completeness `f ≈c NF f`, the NbEPFund/NbEPComplete shape —
+   proven ONCE over the widest running fragment), L3.2b (canonicity
+   across independent splits — the proof-net question), and L3.3
+   (units on the right of ⊸ — the unit problem). Rung 3 proper (variance judgments,
    directed univalence) — gated on the linear/monoidal core decision
    (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT
