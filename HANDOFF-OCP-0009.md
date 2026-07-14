@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **72 modules, all green** (63 of them `--safe`). The full expressibility tower is built and
+- **74 modules, all green** (65 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
@@ -188,13 +188,16 @@ the "Other open items" section below.**
    **L3 (linear NbE — THE frontier climb)**: the FULL DERIVATION is
    recorded in plan §10 (Day-convolution model over the decided base;
    generic reflection by type decomposition; the frontier located at
-   ⊗/I-to-the-right-of-⊸-in-negative-position). Stage L3.0 DONE
-   (`NbEPMonT`: the world category — list worlds with definitional
-   associativity/unit, the permutation algebra ported element-generic,
-   Day-tensor functoriality + symmetry). NEXT: L3.1 — `Val` by type
-   recursion over `Ctx` worlds, `vmap` along `Perm`, eval/reflect/
-   reify for the right-pure fragment, per the plan §10 derivation
-   (transcribe, don't improvise). Rung 3 proper (variance judgments,
+   ⊗/I-to-the-right-of-⊸-in-negative-position). Stages L3.0–L3.1 DONE
+   (`NbEPMonT`: the world category; `NbEPMonW`: worlds realized back
+   into syntax; `NbEPMonM`: **LINEAR NbE RUNS** — the Day-convolution
+   model, evalV as repartition arithmetic, reify/reflect on
+   right-purity witnesses, pending-permutation neutrals so equal
+   values reify IDENTICALLY; β⊸/η⊸/structural/higher-order demos all
+   by `refl`). NEXT: the adequacy pass for the fragment (soundness
+   `f ≈c g → NF f ≡ NF g` and completeness `f ≈c NF f`, the
+   NbEPFund/NbEPComplete shape), then L3.2 (let-monad for ⊗-returning
+   neutrals) and L3.3 (units). Rung 3 proper (variance judgments,
    directed univalence) — gated on the linear/monoidal core decision
    (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT

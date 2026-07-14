@@ -1035,11 +1035,26 @@ no system anywhere has directed type theory with a decidable kernel.
          `_⊙P_` verbatim recipes), Day-tensor functoriality
          (`insˡ`/`padˡ`/`padʳ`/`pad²`) and symmetry (`insEnd`/`swap++`/
          `bswapW`); round-trip and unit demos compute by `refl`.
-       L3.1 — the RIGHT-PURE fragment (⊗/I never under the right of
-         ⊸ in negative positions): the model above is complete as-is;
-         decidable βη-conversion, green-able with today's toolbox.
-         `Val` by type recursion over `Ctx` worlds, `vmap` along
-         `Perm`, eval/reflect/reify per the recorded derivation.
+       [L3.1 DONE 2026-07-14, `NbEPMonW` + `NbEPMonM`] — **LINEAR NbE
+         RUNS.** L3.1a (`NbEPMonW`): worlds realized back into syntax
+         (`⟪_⟫`, `insC`/`permC` ports, `mult`/`multInv` Day mediators,
+         `ctxOf`/`splitTm`/`joinTm` generic decomposition). L3.1b
+         (`NbEPMonM`): the Day-convolution model over the L3.0 world
+         category — `Val` with the Day exponential (`∀ Δ → Val A Δ →
+         Val B (Γ ++ Δ)`: worlds combine, weakening unwritable),
+         `vmap`, `evalV` (α/ƛ/ρ/σ = repartition arithmetic via
+         ⊙P/pad/bswapW, never syntax), mutual reify/reflect structured
+         on right-purity witnesses `Good`/`GoodR` (structural
+         termination), and the normalizer `NF`. KEY ENGINEERING FIND:
+         atom-neutrals carry a PENDING world permutation (`NeAt`), so
+         world actions compose in the world category — where `pid ⊙P
+         ρ` COMPUTES to `ρ` — instead of accreting syntactic junk;
+         equal values then reify to IDENTICAL terms. Demos by `refl`:
+         β⊸, η⊸, σ∘σ=id, and the HIGHER-ORDER flip(flip id) = id — βη
+         + structural equality of function-typed programs, decided by
+         normalization. Remaining for the fragment's completeness
+         theorem: soundness/completeness of `NF` w.r.t. `_≈c_`
+         (the NbEPFund/NbEPComplete-shaped adequacy pass).
        L3.2 — ⊗-returning neutrals: Val(⊗) gains a residualizing
          let-monad; deciding normal forms modulo let-commuting = the
          proof-net layer.
