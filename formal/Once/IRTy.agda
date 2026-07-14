@@ -22,7 +22,7 @@
 
 module Once.IRTy where
 
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_)
@@ -30,7 +30,7 @@ open import Data.Sum using (_⊎_)
 open import Data.String using (String)
 open import Data.Float using () renaming (Float to AgdaFloat)
 
-open import Once.Type using (Type; Functor; ArrowKind)
+open import Once.Type as T using (Type; Functor; ArrowKind)
 
 ------------------------------------------------------------------------
 -- The ungraded object language (mirror of Type/Functor, minus the grade)
@@ -155,3 +155,53 @@ erase-⇒-kind-irrelevant
   : ∀ {A B : Type} (k₁ k₂ : ArrowKind)
   → ⌊ A Type.⇒[ k₁ ] B ⌋ ≡ ⌊ A Type.⇒[ k₂ ] B ⌋
 erase-⇒-kind-irrelevant _ _ = refl
+
+------------------------------------------------------------------------
+-- Canonical section `⌈_⌉ : IRTy → Type` — picks a canonical graded
+-- representative (every arrow re-graded to `effK`). Lets the IR-object
+-- denotation REUSE the surface value domain: `⟦_⟧ᴵ A := ⟦ ⌈ A ⌉ ⟧`
+-- (in `Once.Semantics.Value`), no fixpoint machinery re-built. Since the
+-- value domain is grade-blind, the choice of grade is denotationally
+-- irrelevant, and `⌊ ⌈ A ⌉ ⌋ ≡ A` (round-trip, `retract-⌈⌉` below).
+
+mutual
+  ⌈_⌉ : IRTy → Type
+  ⌈ Unit     ⌉ = T.Unit
+  ⌈ Void     ⌉ = T.Void
+  ⌈ A * B    ⌉ = ⌈ A ⌉ T.* ⌈ B ⌉
+  ⌈ A + B    ⌉ = ⌈ A ⌉ T.+ ⌈ B ⌉
+  ⌈ A ⇛ B    ⌉ = ⌈ A ⌉ T.⇒[ T.effK ] ⌈ B ⌉   -- canonical grade
+  ⌈ μ-type F ⌉ = T.μ-type ⌈ F ⌉F
+  ⌈ ν-type F ⌉ = T.ν-type ⌈ F ⌉F
+  ⌈ Int      ⌉ = T.Int
+  ⌈ Float    ⌉ = T.Float
+  ⌈ Str      ⌉ = T.Str
+  ⌈ Buffer   ⌉ = T.Buffer
+
+  ⌈_⌉F : IRFunctor → Functor
+  ⌈ K A   ⌉F = T.K ⌈ A ⌉
+  ⌈ Id    ⌉F = T.Id
+  ⌈ F ⊕ G ⌉F = ⌈ F ⌉F T.⊕ ⌈ G ⌉F
+  ⌈ F ⊗ G ⌉F = ⌈ F ⌉F T.⊗ ⌈ G ⌉F
+
+-- `⌈_⌉` is a section of `⌊_⌋`: erasing the canonical representative gives
+-- back the ungraded object (the grade `⌈_⌉` invented is dropped again).
+mutual
+  retract-⌈⌉ : ∀ (A : IRTy) → ⌊ ⌈ A ⌉ ⌋ ≡ A
+  retract-⌈⌉ Unit       = refl
+  retract-⌈⌉ Void       = refl
+  retract-⌈⌉ (A * B)    = cong₂ _*_ (retract-⌈⌉ A) (retract-⌈⌉ B)
+  retract-⌈⌉ (A + B)    = cong₂ _+_ (retract-⌈⌉ A) (retract-⌈⌉ B)
+  retract-⌈⌉ (A ⇛ B)    = cong₂ _⇛_ (retract-⌈⌉ A) (retract-⌈⌉ B)
+  retract-⌈⌉ (μ-type F) = cong μ-type (retract-⌈⌉F F)
+  retract-⌈⌉ (ν-type F) = cong ν-type (retract-⌈⌉F F)
+  retract-⌈⌉ Int        = refl
+  retract-⌈⌉ Float      = refl
+  retract-⌈⌉ Str        = refl
+  retract-⌈⌉ Buffer     = refl
+
+  retract-⌈⌉F : ∀ (F : IRFunctor) → eraseF ⌈ F ⌉F ≡ F
+  retract-⌈⌉F (K A)   = cong K (retract-⌈⌉ A)
+  retract-⌈⌉F Id      = refl
+  retract-⌈⌉F (F ⊕ G) = cong₂ _⊕_ (retract-⌈⌉F F) (retract-⌈⌉F G)
+  retract-⌈⌉F (F ⊗ G) = cong₂ _⊗_ (retract-⌈⌉F F) (retract-⌈⌉F G)
