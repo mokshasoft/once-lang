@@ -1027,9 +1027,19 @@ no system anywhere has directed type theory with a decidable kernel.
        (⊗ or I to the RIGHT of ⊸ in a negative position). That is the
        one place let-splits + commuting conversions + the unit problem
        enter. Hence the fragment ladder:
+       [L3.0 DONE 2026-07-14, `NbEPMonT`] — THE WORLD CATEGORY:
+         worlds = LISTS of `CTy` resources (`Ctx`/`_++_`, associativity
+         and unit definitional — no world-coherence needed, the summit
+         lesson applied at the ground floor); world maps = `Ins`/`Perm`
+         with the 3A algebra ported element-generic (`ins-swap`/`push`/
+         `_⊙P_` verbatim recipes), Day-tensor functoriality
+         (`insˡ`/`padˡ`/`padʳ`/`pad²`) and symmetry (`insEnd`/`swap++`/
+         `bswapW`); round-trip and unit demos compute by `refl`.
        L3.1 — the RIGHT-PURE fragment (⊗/I never under the right of
          ⊸ in negative positions): the model above is complete as-is;
          decidable βη-conversion, green-able with today's toolbox.
+         `Val` by type recursion over `Ctx` worlds, `vmap` along
+         `Perm`, eval/reflect/reify per the recorded derivation.
        L3.2 — ⊗-returning neutrals: Val(⊗) gains a residualizing
          let-monad; deciding normal forms modulo let-commuting = the
          proof-net layer.
