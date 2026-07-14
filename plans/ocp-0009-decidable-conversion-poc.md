@@ -995,11 +995,49 @@ no system anywhere has directed type theory with a decidable kernel.
      over the model's function space. L2b (optional): the Kelly–Mac
      Lane pairing as a first-order invariant (KM completeness holds
      only for `I`-proper shapes — the triple-unit obstruction).
-     **L3** — linear NbE: decide βη-conversion by evaluation into a
-     Kripke model whose worlds are nf-canonical contexts (the summit's
-     leaf lists as the structural quotient — the towers merging inside
-     the model). The unit problem is the frontier; GoI / proof nets
-     the fallback semantics.
+     **L3** — linear NbE, THE DERIVATION (recorded 2026-07-14 before
+     any code; transcribe, don't improvise):
+     · THE MODEL is a Day-convolution presheaf model OVER THE DECIDED
+       BASE: worlds are CTy contexts, world maps are structural
+       morphisms — the category whose equality `dec≈`/`nf` just
+       decided. `Val` by recursion on the type (Tarski, as in NbEKF):
+         Val ι Γ       = neutral CTm Γ ι
+         Val I Γ       = structural witness (Γ's leaves empty) [∗]
+         Val (A ⊗ B) Γ = Σ Γ₁ Γ₂ (structural repartition
+                          m : Γ ⇒ Γ₁⊗Γ₂) × Val A Γ₁ × Val B Γ₂
+         Val (A ⊸ B) Γ = ∀ Δ → Val A Δ → Val B (Γ ⊗ Δ)
+       — the Day exponential: worlds COMBINE (separation), they do not
+       extend; linearity is the absence of weakening in this index
+       discipline, enforced by construction.
+     · `vmap : Struct Γ' Γ → Val A Γ → Val A Γ'` — the presheaf
+       action along STRUCTURAL maps only (ι: precompose; ⊗: compose
+       the repartition; ⊸: λ Δ v → vmap (m ⊗ 1Δ) (f Δ v)).
+     · `eval : CTm A B → Val A Γ → Val B Γ` by recursion on the
+       combinator syntax (Λc bends the world: eval (Λc f) v = λ Δ w →
+       eval f (pair-split v w); evc consumes a ⊗-value's repartition
+       via `vmap`).
+     · GENERIC REFLECTION BY TYPE DECOMPOSITION (discovery #1): the
+       free category has no ⊗-typed constants, so `reflect` at `A ⊗ B`
+       of the GENERIC variable is a PAIR of reflections at the
+       identity split — recursion on the type, no let-binding needed.
+       Reflection is only ever applied to generic probes:
+       reflect_{A⊸B} n = λ Δ v → reflect (ev ∘ (n ⊗ reify v)).
+     · THE FRONTIER, located exactly (discovery #2): a NEUTRAL of ⊗
+       type arises only from a function variable RETURNING a pair
+       (⊗ or I to the RIGHT of ⊸ in a negative position). That is the
+       one place let-splits + commuting conversions + the unit problem
+       enter. Hence the fragment ladder:
+       L3.1 — the RIGHT-PURE fragment (⊗/I never under the right of
+         ⊸ in negative positions): the model above is complete as-is;
+         decidable βη-conversion, green-able with today's toolbox.
+       L3.2 — ⊗-returning neutrals: Val(⊗) gains a residualizing
+         let-monad; deciding normal forms modulo let-commuting = the
+         proof-net layer.
+       L3.3 — the unit problem ([∗] full generality): I-neutrals and
+         the Kelly–Mac Lane triple-unit subtleties — the open frontier.
+     · Soundness/completeness against `_≈c_` in each stage mirror the
+       NbEP adequacy scaffolding (logical relations, stage L2a's `Ext`
+       as the semantic side).
 3. **Rung 3 — the open metatheory**: variance judgments, directed
    transport, directed univalence, decidable directed conversion. Literature
    anchors: Riehl–Shulman (synthetic ∞-categories / simplicial TT), Licata
