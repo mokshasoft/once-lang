@@ -983,11 +983,18 @@ no system anywhere has directed type theory with a decidable kernel.
      **`no-weakenC` — the K combinator `ι₁ ⊸ (ι₂ ⊸ ι₁)` is
      UNINHABITED**: weakening refuted in-core, the linear-logic
      classic, machine-checked. Linearity survives closure.
-     **L2** — the Kelly–Mac Lane pairing (polarized wiring, an
-     involution between opposite-polarity atom occurrences) →
-     `≈c-sound` → the refutation oracle. KM completeness holds only
-     for `I`-proper shapes (the triple-unit obstruction) — the pairing
-     is soundness, not the final decision procedure.
+     **[L2a DONE 2026-07-14, `NbEPMonX`]** — EXTENSIONAL SOUNDNESS,
+     the refutation oracle: `Ext` (type-indexed PER on the Set-model:
+     `≡` at atoms, componentwise at `⊗`, related-to-related at `⊸`;
+     proven sym/trans by type recursion), `evalC-Ext` (the fundamental
+     lemma), `soundE : f ≈c g → Ext (evalC f x) (evalC g x')` — every
+     axiom case INCLUDING β⊸/η⊸ a one-liner `evalC-Ext` (record-η at
+     `⊗` + function-η at `⊸` make both sides definitionally equal),
+     and `no-σc-id` (σ ≠ id at `ι₁⊗ι₁` in the closed theory).
+     Explicitly NOT claimed: decidability — `Ext` at `⊸` quantifies
+     over the model's function space. L2b (optional): the Kelly–Mac
+     Lane pairing as a first-order invariant (KM completeness holds
+     only for `I`-proper shapes — the triple-unit obstruction).
      **L3** — linear NbE: decide βη-conversion by evaluation into a
      Kripke model whose worlds are nf-canonical contexts (the summit's
      leaf lists as the structural quotient — the towers merging inside

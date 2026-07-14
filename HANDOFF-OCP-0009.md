@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **70 modules, all green** (61 of them `--safe`). The full expressibility tower is built and
+- **71 modules, all green** (62 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
@@ -179,10 +179,15 @@ the "Other open items" section below.**
    with β/η by `refl`). Stage L1 DONE (`NbEPMonV`: the signed-balance
    invariant `bal` — linearity survives closure; `no-dupC`/
    `no-discardC`/`no-dup⊸`/**`no-weakenC` (the K combinator refuted
-   in-core)**). Remaining: L2 (the Kelly–Mac Lane pairing → refutation
-   oracle; NOT complete at units — the triple-unit obstruction), L3
-   (linear NbE over nf-canonical worlds — the frontier); staged in
-   `NbEPMonL`'s header and plan §10. Rung 3 proper (variance judgments,
+   in-core)**). Stage L2a DONE (`NbEPMonX`: extensional soundness —
+   the `Ext` PER, the fundamental lemma, `soundE` with every axiom
+   case a one-liner by η, and `no-σc-id`: the refutation oracle for
+   the closed theory; decidability explicitly NOT claimed). Remaining:
+   L2b optional (the Kelly–Mac Lane pairing as a first-order
+   invariant; NOT complete at units — the triple-unit obstruction),
+   **L3 (linear NbE over nf-canonical worlds — THE frontier climb;
+   needs its own session-scale staging, like the completeness climb
+   had)**; staged in `NbEPMonL`'s header and plan §10. Rung 3 proper (variance judgments,
    directed univalence) — gated on the linear/monoidal core decision
    (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT
