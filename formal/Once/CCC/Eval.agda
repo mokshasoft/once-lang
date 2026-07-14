@@ -36,6 +36,10 @@ open import Once.Semantics.Machine
 -- Re-export ⟦_⟧ for convenience
 open import Once.Semantics.Machine public using (⟦_⟧)
 
+-- Plan 0.52 M2: transport the ungraded WellFormedFI proofs the recursion
+-- schemes carry to the surface WellFormedF ⌈F⌉F the sem-* helpers want.
+open import Once.IRTy.WF using (wf-⌈⌉)
+
 ------------------------------------------------------------------------
 -- Semantic Evaluation (machine-level)
 --
@@ -77,20 +81,30 @@ eval (const fits-float v) _ = v
 -- `semM si : ⟦ A ⟧ → ⟦ B ⟧`; the IR object is `IR ⌊A⌋ ⌊B⌋` so the value is
 -- `⟦ ⌊A⌋ ⟧ᴵ`. `coh` transports across the (grade-blind) erasure both ways.
 eval (SigOp {A} {B} si) x = subst (λ z → z) (sym (coh B)) (semM si (subst (λ z → z) (coh A) x))
--- Recursion schemes (OCP-0003)
-eval (In {F} _ _) x = sem-In F (coerce-functor F (μ-type F) x)
-eval (out-μ {F} wf) x = coerce-functor⁻¹ F (μ-type F) (sem-Out wf x)
-eval (Cata {F} wf alg) x = sem-cata wf (λ fa → eval alg (coerce-functor⁻¹ F _ fa)) x
-eval (Para {F} wf alg) x = sem-para wf (λ fx → eval alg (coerce-functor⁻¹ F _ fx)) x
-eval (Out {F} wf) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut wf x)
-eval (in-ν {F} _ _) x = sem-CoIn F (coerce-functor F (ν-type F) x)
-eval (Ana {F} wf coalg) x = sem-ana F (λ a → coerce-functor F _ (eval coalg a)) x
+-- Recursion schemes (OCP-0003). Plan 0.52 M2: F is now an `IRFunctor`, so the
+-- surface `sem-*`/`coerce-functor` helpers run at `⌈F⌉F`; `wf-⌈⌉` transports the
+-- WellFormedFI proof and `subst (λ T → ⟦T⟧) (⌈⟧TI-commute …)` transports the
+-- `⟦F⟧TI`-shaped operands (results are `⟦μ⟧⌈F⌉F` definitionally — no transport).
+eval (In {F} _ _) x =
+  sem-In ⌈ F ⌉F (coerce-functor ⌈ F ⌉F ⌈ μ-type F ⌉ (subst (λ T → ⟦ T ⟧) (⌈⟧TI-commute F (μ-type F)) x))
+eval (out-μ {F} wf) x =
+  subst (λ T → ⟦ T ⟧) (sym (⌈⟧TI-commute F (μ-type F))) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ μ-type F ⌉ (sem-Out (wf-⌈⌉ wf) x))
+eval (Cata {F} wf {A} alg) x =
+  sem-cata (wf-⌈⌉ wf) (λ fa → eval alg (subst (λ T → ⟦ T ⟧) (sym (⌈⟧TI-commute F A)) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ A ⌉ fa))) x
+eval (Para {F} wf {A} alg) x =
+  sem-para (wf-⌈⌉ wf) (λ fx → eval alg (subst (λ T → ⟦ T ⟧) (sym (⌈⟧TI-commute F (μ-type F * A))) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ μ-type F * A ⌉ fx))) x
+eval (Out {F} wf) x =
+  subst (λ T → ⟦ T ⟧) (sym (⌈⟧TI-commute F (ν-type F))) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ ν-type F ⌉ (sem-CoOut (wf-⌈⌉ wf) x))
+eval (in-ν {F} _ _) x =
+  sem-CoIn ⌈ F ⌉F (coerce-functor ⌈ F ⌉F ⌈ ν-type F ⌉ (subst (λ T → ⟦ T ⟧) (⌈⟧TI-commute F (ν-type F)) x))
+eval (Ana {F} wf {A} coalg) x =
+  sem-ana ⌈ F ⌉F (λ a → coerce-functor ⌈ F ⌉F ⌈ A ⌉ (subst (λ T → ⟦ T ⟧) (⌈⟧TI-commute F A) (eval coalg a))) x
 -- D062: Hylo/Fuse both carry a natural transform (NatTr); both denote the
 -- total structural fold `sem-fuseNat (appNatTr-F t) alg` (fuse ≡ hylo).
-eval (Hylo {F} {G} wfF wfG alg t) x =
-  sem-fuseNat F G wfF wfG (appNatTr-F t) (λ fb → eval alg (coerce-functor⁻¹ F _ fb)) x
-eval (Fuse {F} {G} wfF wfG alg t) x =
-  sem-fuseNat F G wfF wfG (appNatTr-F t) (λ fb → eval alg (coerce-functor⁻¹ F _ fb)) x
+eval (Hylo {F} {G} wfF wfG {B} alg t) x =
+  sem-fuseNat ⌈ F ⌉F ⌈ G ⌉F (wf-⌈⌉ wfF) (wf-⌈⌉ wfG) (appNatTr-F t) (λ fb → eval alg (subst (λ T → ⟦ T ⟧) (sym (⌈⟧TI-commute F B)) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ B ⌉ fb))) x
+eval (Fuse {F} {G} wfF wfG {B} alg t) x =
+  sem-fuseNat ⌈ F ⌉F ⌈ G ⌉F (wf-⌈⌉ wfF) (wf-⌈⌉ wfG) (appNatTr-F t) (λ fb → eval alg (subst (λ T → ⟦ T ⟧) (sym (⌈⟧TI-commute F B)) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ B ⌉ fb))) x
 
 appNatTr-F ntId         x        = x
 appNatTr-F (ntK ir)     a        = eval ir a
