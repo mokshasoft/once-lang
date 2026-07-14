@@ -84,6 +84,36 @@ mutual
   eraseF (F Functor.⊗ G) = eraseF F ⊗ eraseF G
 
 ------------------------------------------------------------------------
+-- Functor machinery over IRTy (mirror of ⟦_⟧T / IsBaseType / WellFormedF,
+-- needed to re-index IR's recursion schemes — In/Cata/Para/Out/Ana/Hylo —
+-- over the ungraded objects). Self-contained (no Type-side imports).
+
+-- | Interpret an ungraded functor code at an IRTy carrier (mirror ⟦_⟧T).
+⟦_⟧TI : IRFunctor → IRTy → IRTy
+⟦ K A   ⟧TI X = A
+⟦ Id    ⟧TI X = X
+⟦ F ⊕ G ⟧TI X = ⟦ F ⟧TI X + ⟦ G ⟧TI X
+⟦ F ⊗ G ⟧TI X = ⟦ F ⟧TI X * ⟦ G ⟧TI X
+
+-- | Base (non-arrow, non-fixpoint) IRTy objects (mirror IsBaseType).
+data IsBaseTypeI : IRTy → Set where
+  base-Unit   : IsBaseTypeI Unit
+  base-Void   : IsBaseTypeI Void
+  base-Int    : IsBaseTypeI Int
+  base-Float  : IsBaseTypeI Float
+  base-Str    : IsBaseTypeI Str
+  base-Buffer : IsBaseTypeI Buffer
+  base-Prod   : ∀ {A B} → IsBaseTypeI A → IsBaseTypeI B → IsBaseTypeI (A * B)
+  base-Sum    : ∀ {A B} → IsBaseTypeI A → IsBaseTypeI B → IsBaseTypeI (A + B)
+
+-- | Well-formed ungraded functor (mirror WellFormedF): `K` only at base.
+data WellFormedFI : IRFunctor → Set where
+  wf-K    : ∀ {A} → IsBaseTypeI A → WellFormedFI (K A)
+  wf-Id   : WellFormedFI Id
+  wf-Sum  : ∀ {F G} → WellFormedFI F → WellFormedFI G → WellFormedFI (F ⊕ G)
+  wf-Prod : ∀ {F G} → WellFormedFI F → WellFormedFI G → WellFormedFI (F ⊗ G)
+
+------------------------------------------------------------------------
 -- The load-bearing definitional fact for Plan 0.52 M2: erasure sends
 -- EVERY graded arrow to the single ungraded arrow object, so a pure and
 -- an effectful arrow over the same A, B are the SAME IR object. `IR.arr`
