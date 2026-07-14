@@ -943,6 +943,27 @@ no system anywhere has directed type theory with a decidable kernel.
    **RUNG 2b PART 1 IS PROVEN.** Equality of the linear/monoidal core
    is a decision procedure: normalize the wiring, compare. Next on this
    rung: `⊸` (Kelly–Mac Lane / proof nets — genuinely open territory).
+   - **[HYBRID SKELETON DONE 2026-07-14, `NbEPMonD` — the two towers
+     meet]** The rung-3 silhouette at ⊗-fragment cost, agreed ordering:
+     hybrid first → `⊸` → re-instantiate over the extended core.
+     Contents: `nf = pOf · lnil` with `nf-sound`/`nf-complete`
+     repackaging the summit as CONVERSION BY NORMALIZATION
+     (`f ≈m g ⟺ nf f ≡ nf g` — equality of programs = identity of
+     first-order normal forms); `invS`/`inv-l`/`inv-r` (the structural
+     fragment is a GROUPOID — `≈m` is the kernel's symmetric equality
+     axis; directedness proper is the transition axis, `NbEPMon`'s
+     `gen`); the kernel universe `U`/`El` with `` `shom A B `` (linear
+     programs as a type) and `` `conv f g `` decoded to `nf f ≡ nf g`
+     (conversion AS A TYPE, inhabitation decided by `dec≈`,
+     intro/elim = `nf-sound`/`nf-complete`); `Fam`/`transp` (families
+     through `nf` are automatically respectful — THE CONVERSION RULE,
+     computing away on closed indices). Demos: σ-involution, unit
+     round-trip, and a HEXAGON instance all check by literal `refl`;
+     internal `` `π ``-quantified conversion statements; transport
+     across the two hexagon sides definitionally invisible. Honest
+     ceiling recorded in the header: the universe's own conversion is
+     Agda's kernel; the object-language hom-equality inside it is
+     Once-owned and Once-proven.
 3. **Rung 3 — the open metatheory**: variance judgments, directed
    transport, directed univalence, decidable directed conversion. Literature
    anchors: Riehl–Shulman (synthetic ∞-categories / simplicial TT), Licata
