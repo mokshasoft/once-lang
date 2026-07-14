@@ -23,3 +23,6 @@ module Once.Semantics.Machine where
 -- Instantiate the value semantics at the target `Word` carrier (D054).
 open import Once.Word using (Carrier)
 open import Once.Semantics.Value Carrier public
+-- Plan 0.52 M2: the IR-object value domain `⟦_⟧ᴵ` (over ungraded `IRTy`) and
+-- its coherence `coh : ⟦ ⌊ T ⌋ ⟧ᴵ ≡ ⟦ T ⟧` with the surface domain above.
+open import Once.Semantics.ValueIR Carrier public

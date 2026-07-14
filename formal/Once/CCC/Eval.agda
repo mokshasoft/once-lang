@@ -19,13 +19,14 @@ module Once.CCC.Eval where
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
+open import Relation.Binary.PropositionalEquality using (subst; sym)
 
 open import Once.Type
 open import Once.IR
 
 -- Import semantic interpretation of types from Once.Sem
 open import Once.Semantics.Machine
-  using (⟦_⟧; ⟦_⟧F; sem-pair; sem-fst; sem-snd; sem-inl; sem-inr; sem-case;
+  using (⟦_⟧; ⟦_⟧ᴵ; ⟦_⟧Fᴵ; coh; ⟦_⟧F; sem-pair; sem-fst; sem-snd; sem-inl; sem-inr; sem-case;
          -- OCP-0003: fold/unfold removed. Use recursion scheme semantics:
          sem-In; sem-Out; sem-cata; sem-para; sem-CoOut; sem-CoIn; sem-ana;
          -- D062: structural fusion via the natural transform (NatTr) — total
@@ -43,12 +44,12 @@ open import Once.Semantics.Machine public using (⟦_⟧)
 -- ignored in semantics (it's a compilation concern).
 ------------------------------------------------------------------------
 
-eval : ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧
+eval : ∀ {A B} → IR A B → ⟦ A ⟧ᴵ → ⟦ B ⟧ᴵ
 -- D062: the natural transformation a `Fuse`/`Hylo` carries, interpreted at the
 -- functor level. Manifestly parametric in the recursive position `X` (it is
 -- never inspected) — routes/copies positions and evaluates the constant-leaf
 -- IR (`ntK`). Mutual with `eval` only through `ntK`.
-appNatTr-F : ∀ {G F} → NatTr G F → ∀ {X} → ⟦ G ⟧F X → ⟦ F ⟧F X
+appNatTr-F : ∀ {G F} → NatTr G F → ∀ {X} → ⟦ G ⟧Fᴵ X → ⟦ F ⟧Fᴵ X
 
 eval id x = x
 eval (g ∘ f) x = eval g (eval f x)
@@ -62,7 +63,6 @@ eval terminal x = tt
 eval initial ()
 eval (curry f _) x = λ y → eval f (sem-pair x y)
 eval apply (closure , arg) = closure arg
-eval arr f = f
 eval (free-heap _) x = x
 -- Constants (global elements 1 → A for primitive A): ignore the
 -- Unit input and return the machine-level value (this evaluator is
@@ -73,7 +73,10 @@ eval (const fits-int   v) _ = v
 eval (const fits-float v) _ = v
 -- Signature operations: the `SigOpInfo` carries the machine-level
 -- semantic function (`semM`).
-eval (SigOp si) x = semM si x
+-- Plan 0.52 M2: the FFI boundary. `si : SigOpInfo A B` is surface-typed and
+-- `semM si : ⟦ A ⟧ → ⟦ B ⟧`; the IR object is `IR ⌊A⌋ ⌊B⌋` so the value is
+-- `⟦ ⌊A⌋ ⟧ᴵ`. `coh` transports across the (grade-blind) erasure both ways.
+eval (SigOp {A} {B} si) x = subst (λ z → z) (sym (coh B)) (semM si (subst (λ z → z) (coh A) x))
 -- Recursion schemes (OCP-0003)
 eval (In {F} _ _) x = sem-In F (coerce-functor F (μ-type F) x)
 eval (out-μ {F} wf) x = coerce-functor⁻¹ F (μ-type F) (sem-Out wf x)

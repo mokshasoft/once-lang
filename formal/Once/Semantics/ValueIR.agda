@@ -25,16 +25,20 @@ open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 
 open import Once.Type
-open import Once.IRTy using (IRTy; ⌈_⌉; ⌈_⌉F; ⌊_⌋; eraseF)
+open import Once.IRTy using (IRTy; IRFunctor; ⌈_⌉; ⌈_⌉F; ⌊_⌋; eraseF)
 open import Once.Functor.Translate using (⟦_⟧-base; translateF)
 open import Once.Semantics.Functor using (SK; _S⊕_; _S⊗_; μS; νS)
-open import Once.Semantics.Value IntRep using (⟦_⟧; ⟦μ⟧; ⟦ν⟧)
+open import Once.Semantics.Value IntRep using (⟦_⟧; ⟦_⟧F; ⟦μ⟧; ⟦ν⟧)
 
 ------------------------------------------------------------------------
 -- The IR-object value domain: the surface domain at the canonical rep.
 
 ⟦_⟧ᴵ : IRTy → Set
 ⟦ A ⟧ᴵ = ⟦ ⌈ A ⌉ ⟧
+
+-- The IR functor's Set-interpretation, likewise via the section.
+⟦_⟧Fᴵ : IRFunctor → Set → Set
+⟦ F ⟧Fᴵ X = ⟦ ⌈ F ⌉F ⟧F X
 
 ------------------------------------------------------------------------
 -- Coherence: erasing a surface type and re-denoting is the identity.
