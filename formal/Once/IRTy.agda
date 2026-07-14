@@ -205,3 +205,13 @@ mutual
   retract-⌈⌉F Id      = refl
   retract-⌈⌉F (F ⊕ G) = cong₂ _⊕_ (retract-⌈⌉F F) (retract-⌈⌉F G)
   retract-⌈⌉F (F ⊗ G) = cong₂ _⊗_ (retract-⌈⌉F F) (retract-⌈⌉F G)
+
+-- `⌈_⌉` commutes with functor application. Needed to re-thread the IR
+-- recursion schemes' evaluator (Plan 0.52 M2 S2): their operand lives at
+-- `⟦ F ⟧TI X` (IRTy), while the surface `coerce-functor`/`sem-*` helpers
+-- expect `⟦ ⌈F⌉F ⟧T ⌈X⌉` (Type). Refl/cong by induction on the functor.
+⌈⟧TI-commute : ∀ (F : IRFunctor) (X : IRTy) → ⌈ ⟦ F ⟧TI X ⌉ ≡ T.⟦ ⌈ F ⌉F ⟧T ⌈ X ⌉
+⌈⟧TI-commute (K A)   X = refl
+⌈⟧TI-commute Id      X = refl
+⌈⟧TI-commute (F ⊕ G) X = cong₂ T._+_ (⌈⟧TI-commute F X) (⌈⟧TI-commute G X)
+⌈⟧TI-commute (F ⊗ G) X = cong₂ T._*_ (⌈⟧TI-commute F X) (⌈⟧TI-commute G X)
