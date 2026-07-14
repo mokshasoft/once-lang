@@ -23,6 +23,12 @@
 module Once.IRTy where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Unit using (⊤)
+open import Data.Empty using (⊥)
+open import Data.Product using (_×_)
+open import Data.Sum using (_⊎_)
+open import Data.String using (String)
+open import Data.Float using () renaming (Float to AgdaFloat)
 
 open import Once.Type using (Type; Functor; ArrowKind)
 
@@ -112,6 +118,27 @@ data WellFormedFI : IRFunctor → Set where
   wf-Id   : WellFormedFI Id
   wf-Sum  : ∀ {F G} → WellFormedFI F → WellFormedFI G → WellFormedFI (F ⊕ G)
   wf-Prod : ∀ {F G} → WellFormedFI F → WellFormedFI G → WellFormedFI (F ⊗ G)
+
+-- | Register-resident base IRTy objects (mirror `Once.Type.FitsInReg`),
+-- for the `const` literal constructor.
+data FitsInRegI : IRTy → Set where
+  fits-int   : FitsInRegI Int
+  fits-float : FitsInRegI Float
+
+-- | The machine-carrier of a base IRTy object (mirror `⟦_⟧-base`), for the
+-- `const` literal's payload. `⊤` for non-base objects (never used at `K`).
+⟦_⟧-baseI : Set → IRTy → Set
+⟦ IntRep ⟧-baseI Unit      = ⊤
+⟦ IntRep ⟧-baseI Void      = ⊥
+⟦ IntRep ⟧-baseI (A * B)   = ⟦ IntRep ⟧-baseI A × ⟦ IntRep ⟧-baseI B
+⟦ IntRep ⟧-baseI (A + B)   = ⟦ IntRep ⟧-baseI A ⊎ ⟦ IntRep ⟧-baseI B
+⟦ IntRep ⟧-baseI (_ ⇛ _)   = ⊤
+⟦ IntRep ⟧-baseI (μ-type _) = ⊤
+⟦ IntRep ⟧-baseI (ν-type _) = ⊤
+⟦ IntRep ⟧-baseI Int       = IntRep
+⟦ IntRep ⟧-baseI Float     = AgdaFloat
+⟦ IntRep ⟧-baseI Str       = String
+⟦ IntRep ⟧-baseI Buffer    = String
 
 ------------------------------------------------------------------------
 -- The load-bearing definitional fact for Plan 0.52 M2: erasure sends
