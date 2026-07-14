@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **67 modules, all green** (58 of them `--safe`). The full expressibility tower is built and
+- **68 modules, all green** (59 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
@@ -163,9 +163,18 @@ the "Other open items" section below.**
    `NbEPMonG`/`NbEPMonK`/`NbEPMonS`/`NbEPMonH`/`NbEPMonZ` (generator
    squares: nt-α/ρ/ƛ, Kelly K2–K5′, mirror hexagon + σ-block, **nt-σ
    the bswap square**) → `NbEPMonE` (pOf, keySq, canon, completeness,
-   `dec≈`). Remaining on the rung: `⊸` (Kelly–Mac Lane / proof-net
-   territory), and rung 3 (the open metatheory) — gated on the
-   linear/monoidal core decision (§7 route (a)).
+   `dec≈`). **Then `NbEPMonD` (2026-07-14): THE TWO TOWERS MEET — the
+   rung-3 hybrid skeleton**: conversion by normalization
+   (`f ≈m g ⟺ nf f ≡ nf g`), the structural fragment proven a groupoid
+   (`invS`, so `≈m` = the symmetric equality axis; directedness =
+   `NbEPMon`'s transition axis), and the kernel universe with
+   `` `shom ``/`` `conv `` codes — conversion AS A TYPE decoded to
+   normal-form identity: hexagon instances check by literal `refl`,
+   transport across convertible programs computes away. **Agreed
+   ordering (2026-07-14): hybrid skeleton ✓ → `⊸`/proof nets (the next
+   research climb) → re-instantiate the skeleton over the extended
+   core.** Rung 3 proper (variance judgments, directed univalence) —
+   gated on the linear/monoidal core decision (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT
    kernel out as a SPEC layer — `Spec/IR` (unoriented equations + one boring
    model) + `Spec/Kernel` (typing/equality judgments as pure data) + proven
