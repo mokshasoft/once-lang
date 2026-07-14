@@ -19,7 +19,7 @@ separate IR→IR consumer over `normalizer.Syntax.CCC`.
 The **conversion problem** — decidable equality, the heart of OCP-0009 — is
 **solved and machine-checked for the fragment**. The principled NbE decides the
 β-theory + every congruence + **product-η**, open terms included, **funext-free**.
-All 58 `poc/OCP0009/*.agda` modules build green
+All 64 `poc/OCP0009/*.agda` modules build green
 (`bootstrap/check.sh poc/OCP0009/<M>.agda` → EXIT 0), including `NbEPCwF` (CwF /
 dependent layer, Rung 2), `NbEPEl` (Tarski decoder + base CwF), `NbEPId`
 (identity type `Id` + `J`, Rung 3), `NbEPQTT` (QTT: multiplicity semiring +
@@ -888,25 +888,47 @@ no system anywhere has directed type theory with a decidable kernel.
        (generic inverse-naturality combinator), `α-natˡ` (derived),
        `swapHead-nat` (naturality = the COMMUTATION relation),
        `swapHead-invol`.
-     - **3C.2 NEXT — YANG–BAXTER for `swapHead`** (the braid relation),
-       from hexagon + pentagon + the toolkit. The reduction is worked
-       out: `ins-swap-real`'s `there`/`there` case reduces, after
-       `swapHead-nat` rewrites and `⊗-∘` splits, EXACTLY to
-       `(id ⊗ ŝ) ∘ ŝ ∘ (id ⊗ ŝ) ≈ ŝ ∘ (id ⊗ ŝ) ∘ ŝ` (heads x,y,z over
-       tail w) — the one place hexagon (and, for the α-routes between
-       4-leaf trees, pentagon) is genuinely spent. Expect the single
-       longest chain of the project.
-     - 3C.3: `ins-swap-real` (4 cases: here/here and there/here use
-       `swapHead-invol`; here/there is a short shuffle; there/there = YB
-       + `swapHead-nat` + IH), then `push-real` (induction), `⊙P-real`,
-       and `nt-perm-nat : nt B S ∘ (id_B ⊗ permM q) ≈ permM (padP B q) ∘
-       nt B S'` (induction on B; ι trivial, I is `ƛ-nat`, ⊗ via α-nat).
-     - 3D: generator squares — `nt-α` (pentagon spent), `nt-ƛ`/`nt-ρ`
-       (triangle), `nt-σ` (the bswap square; hexagon/YB spent again).
-     - 3E: `pOf` by recursion on `f` (composition via `⊙P-real`, tensor
-       via `padP` + `nt-perm-nat` — NO list-append transport, the
-       accumulator formulation throughout), the key-lemma induction,
-       `wire (ntop)`-injectivity from stage 1's isos, final assembly.
+     - **[3C.2 DONE, `NbEPMonY`] YANG–BAXTER for `swapHead`** — the
+       braid relation, PROVEN. Hexagon spent once, packaged as F2 (block
+       form) + G (rotation form); both sides reduce via σ-naturality to a
+       common block-σ tail; the residue GOAL2 is hexagon-free (both sides
+       normalize to the mid-form M via PENTL/PENT2 pentagon corollaries +
+       one interchange). With `swapHead-nat` (commutation) and
+       `swapHead-invol`: the complete symmetric-group presentation,
+       machine-checked.
+     - **[3C.3 DONE, `NbEPMonI` + `NbEPMonQ`]** `ins-swap-real` (graph
+       form; there/there = YB + swapHead-nat + IH, landing exactly as
+       the reduction predicted), `push-real` (16-step naturality square),
+       `⊙P-real`, `nt-perm-nat`. STAGE 3C COMPLETE.
+     - **[3D parts 1–3 DONE, `NbEPMonG`/`NbEPMonK`/`NbEPMonS`]**
+       `pid-real`; `nt-α` (pentagon via PENTL); `nt-ρ` (triangle,
+       verbatim); K2 (Kelly's unit lemma ƛ⊗1 ≈ ƛ∘α via cancel-1I) and
+       `nt-ƛ`; the unit-σ cluster (cancel-σˡ, cancel-I1, λσ⊗ hexagon
+       squeeze, K3′ : ƛ∘σ ≈ ρ, K3 : ρ∘σ ≈ ƛ, K4 : ƛ∘ŝ_{x,I} ≈ 1⊗ƛ);
+       K5′ (swapHead multiplicativity — the YB recipe, shorter:
+       F2+G+σ-nat+ONE pentagon); ŝ-αr; insAcc-real (end-insertion
+       realized, 18-step ⊗-case consuming K5′).
+     - **3D remainder (fully derived, next session):** H2 (mirror
+       hexagon) via a generic inverse-of-equation combinator (inv-cong :
+       x∘xi ≈ id → yi∘y ≈ id → x ≈ y → xi ≈ yi, ~6 steps + two iso
+       chains), yielding the σ-TENSOR-MOVER decomposition
+       σ_{A₁⊗A₂,B} ≈ αr ∘ (σ_{A₁,B}⊗1) ∘ αl ∘ (1⊗σ_{A₂,B}) ∘ αr; then
+       `nt-σ` (I-case: triangle + K3 + the K2-dance, both sides meeting
+       at ntB ∘ (ƛ_B⊗1_R); ι-case: insAcc-real at `here` + ŝ-αr +
+       pid-real; ⊗-case: the decomposition + IHs + ⊙P-real + nt-perm-nat
+       + nt-α-style α-bookkeeping — the last big chain); inverse
+       generator squares (αl/ƛl/ρl: 4-step conjugations from the
+       r-squares via fuse⊗ʳ + isos).
+     - **3E (fully derived):** `pOf f {R} (r : IsL R) : Perm (norm A R)
+       (norm B R)` by recursion on `f` (idm↦pid; ∘↦⊙P; ⊗ ↦ pOf f ⊙P
+       padP (pOf g); α/ƛ/ρ-isos↦pid; σ↦bswap); the key square
+       `nt B R ∘ (f⊗1_R) ≈ permM (pOf f r) ∘ nt A R` by induction on
+       `f` (each case = its 3D square + plumbing); top-level via
+       ρl-naturality (inv-nat); `f ≈ topn ∘ (permM (pOf f) ∘ ntop)` by
+       topn-ntop conjugation; COMPLETENESS: wire f ≗ wire g ⟹ (via
+       ≈m-sound on the key equations + wire-permM + injectivity of
+       wire (ntop) from ntop-topn) applyP (pOf f) ≗ applyP (pOf g) ⟹
+       (applyP-inj, stage 3B) pOf f ≡ pOf g ⟹ f ≈m g. ∎
      Then `⊸` (Kelly–Mac Lane / proof nets).
 3. **Rung 3 — the open metatheory**: variance judgments, directed
    transport, directed univalence, decidable directed conversion. Literature
