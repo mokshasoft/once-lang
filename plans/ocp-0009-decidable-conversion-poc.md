@@ -973,8 +973,16 @@ no system anywhere has directed type theory with a decidable kernel.
      Set-model (`⟦A⊸B⟧ = ⟦A⟧→⟦B⟧`; β⊸ by `refl`, η⊸ by definitional
      function-η, hexagon instances pointwise `refl`, `flipC` demo).
      Remaining stages (recorded in the module header):
-     **L1** — polarized leaves + signed resource counting → linearity
-     survives closure (no-diagonal/no-discard for `CTm`).
+     **[L1 DONE 2026-07-14, `NbEPMonV`]** — polarized counting: `⊸`
+     flips sign, and every `CTm` preserves the signed atom BALANCE
+     (`bal`, cross-stated in ℕ; `Λc` is the same equation reassociated
+     — currying moves an atom across the turnstile flipping polarity,
+     invariant by design; `evc` a 4-term shuffle; `∘c` adds equations
+     and cancels the middle). Corollaries: `no-dupC`, `no-discardC`,
+     `no-dup⊸` (closure does not smuggle the diagonal back), and
+     **`no-weakenC` — the K combinator `ι₁ ⊸ (ι₂ ⊸ ι₁)` is
+     UNINHABITED**: weakening refuted in-core, the linear-logic
+     classic, machine-checked. Linearity survives closure.
      **L2** — the Kelly–Mac Lane pairing (polarized wiring, an
      involution between opposite-polarity atom occurrences) →
      `≈c-sound` → the refutation oracle. KM completeness holds only

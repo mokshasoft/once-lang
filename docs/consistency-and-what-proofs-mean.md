@@ -243,7 +243,7 @@ Agda's `--safe` flag *rejects* every unsafe escape hatch — `TERMINATING`,
 is a **machine-checked certificate** that a module (and its whole import closure)
 introduces none of them.
 
-**60 of the 69 modules now compile under `--safe`** (verified 2026-07-14): the
+**61 of the 70 modules now compile under `--safe`** (verified 2026-07-14): the
 standalone expressibility tower (10 modules, 2026-07-12), the QTT stack (step 1,
 2026-07-12), the presheaf/Kripke NbE foundation (step 2, 2026-07-13), and —
 after the `TERMINATING` pragmas proved unnecessary (step 3, 2026-07-13) — the
@@ -264,7 +264,7 @@ track on top of it**:
 | verified compiler in-theory | `NbEPSummit` |
 | positive-η surface sugar | `NbEPEta` (sum-η/μ-η as explicit model proofs) |
 | directed rungs 0–2b.1 | `NbEPDir` (rewrite system as a proven Hom-category), `NbEPDirU` (`Hom` as a universe code), `NbEPDirJ` (directed J, `sym` refuted), `NbEPMon` (monoidal core: no-diagonal/no-discard/no-undo proven), `NbEPMonC` (sound decidable conversion for the free SMC) |
-| SMC coherence completeness (2026-07-14) | `NbEPMonN` (type normalization), `NbEPMonP` (permutation realizations + agreement), `NbEPMonA` (Perm algebra), `NbEPMonU` (representation uniqueness), `NbEPMonR`/`NbEPMonY` (swapHead toolkit, **Yang–Baxter**), `NbEPMonI`/`NbEPMonQ` (algebra realized), `NbEPMonG`/`NbEPMonK`/`NbEPMonS`/`NbEPMonH`/`NbEPMonZ` (generator squares: Kelly unit lemmas, mirror hexagon, `nt-σ`), `NbEPMonE` (**completeness: `dec≈ : ∀ f g → Dec (f ≈m g)` — the linear core's equality is a decision procedure, a theorem of `--safe` Agda**), `NbEPMonD` (the hybrid kernel skeleton: conversion by normalization as an object-language type, closed instances checked by `refl`; the structural fragment proven a groupoid), `NbEPMonL` (the `⊸` expedition's stage L0: SMCC syntax + theory, the derivation-level bridge from the decided fragment, Set-model with β⊸/η⊸ by `refl`) |
+| SMC coherence completeness (2026-07-14) | `NbEPMonN` (type normalization), `NbEPMonP` (permutation realizations + agreement), `NbEPMonA` (Perm algebra), `NbEPMonU` (representation uniqueness), `NbEPMonR`/`NbEPMonY` (swapHead toolkit, **Yang–Baxter**), `NbEPMonI`/`NbEPMonQ` (algebra realized), `NbEPMonG`/`NbEPMonK`/`NbEPMonS`/`NbEPMonH`/`NbEPMonZ` (generator squares: Kelly unit lemmas, mirror hexagon, `nt-σ`), `NbEPMonE` (**completeness: `dec≈ : ∀ f g → Dec (f ≈m g)` — the linear core's equality is a decision procedure, a theorem of `--safe` Agda**), `NbEPMonD` (the hybrid kernel skeleton: conversion by normalization as an object-language type, closed instances checked by `refl`; the structural fragment proven a groupoid), `NbEPMonL` (the `⊸` expedition's stage L0: SMCC syntax + theory, the derivation-level bridge from the decided fragment, Set-model with β⊸/η⊸ by `refl`), `NbEPMonV` (stage L1: the signed-balance invariant — linearity survives closure; duplication, discard, and the K combinator all refuted in the closed core) |
 | decidability scaffolding | `Conv` |
 
 The 9 modules that **cannot** go `--safe` are exactly the *superseded older
