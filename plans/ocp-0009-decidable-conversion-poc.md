@@ -964,6 +964,27 @@ no system anywhere has directed type theory with a decidable kernel.
      ceiling recorded in the header: the universe's own conversion is
      Agda's kernel; the object-language hom-equality inside it is
      Once-owned and Once-proven.
+   - **THE `⊸` EXPEDITION (rung 2b part 2), staged. [L0 DONE
+     2026-07-14, `NbEPMonL`]** — the closed linear core's base camp:
+     `CTy`/`CTm` (SMC generators + `Λc`/`evc`), the SMCC theory `_≈c_`
+     (every SMC axiom + the adjunction β⊸/η⊸), **the bridge** `emb`/
+     `embT`/`embE` (every `≈m`-derivation maps to a `≈c`-derivation;
+     conservativity = what eventual completeness will yield), and the
+     Set-model (`⟦A⊸B⟧ = ⟦A⟧→⟦B⟧`; β⊸ by `refl`, η⊸ by definitional
+     function-η, hexagon instances pointwise `refl`, `flipC` demo).
+     Remaining stages (recorded in the module header):
+     **L1** — polarized leaves + signed resource counting → linearity
+     survives closure (no-diagonal/no-discard for `CTm`).
+     **L2** — the Kelly–Mac Lane pairing (polarized wiring, an
+     involution between opposite-polarity atom occurrences) →
+     `≈c-sound` → the refutation oracle. KM completeness holds only
+     for `I`-proper shapes (the triple-unit obstruction) — the pairing
+     is soundness, not the final decision procedure.
+     **L3** — linear NbE: decide βη-conversion by evaluation into a
+     Kripke model whose worlds are nf-canonical contexts (the summit's
+     leaf lists as the structural quotient — the towers merging inside
+     the model). The unit problem is the frontier; GoI / proof nets
+     the fallback semantics.
 3. **Rung 3 — the open metatheory**: variance judgments, directed
    transport, directed univalence, decidable directed conversion. Literature
    anchors: Riehl–Shulman (synthetic ∞-categories / simplicial TT), Licata

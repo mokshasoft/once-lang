@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **68 modules, all green** (59 of them `--safe`). The full expressibility tower is built and
+- **69 modules, all green** (60 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
@@ -173,8 +173,16 @@ the "Other open items" section below.**
    transport across convertible programs computes away. **Agreed
    ordering (2026-07-14): hybrid skeleton ✓ → `⊸`/proof nets (the next
    research climb) → re-instantiate the skeleton over the extended
-   core.** Rung 3 proper (variance judgments, directed univalence) —
-   gated on the linear/monoidal core decision (§7 route (a)).
+   core.** The `⊸` expedition's stage L0 is DONE (2026-07-14,
+   `NbEPMonL`: CTy/CTm with `Λc`/`evc`, the SMCC theory `_≈c_` with
+   β⊸/η⊸, the bridge `embE : f ≈m g → embT f ≈c embT g`, Set-model
+   with β/η by `refl`); stages L1 (signed counting → linearity
+   survives closure), L2 (the Kelly–Mac Lane pairing → refutation
+   oracle; NOT complete at units — the triple-unit obstruction), L3
+   (linear NbE over nf-canonical worlds — the frontier) are staged in
+   the module header and plan §10. Rung 3 proper (variance judgments,
+   directed univalence) — gated on the linear/monoidal core decision
+   (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT
    kernel out as a SPEC layer — `Spec/IR` (unoriented equations + one boring
    model) + `Spec/Kernel` (typing/equality judgments as pure data) + proven
