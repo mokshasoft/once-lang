@@ -23,19 +23,28 @@ open import poc.OCP0009.NbEPMonL
   using ( CTy; ι₁; ι₂; I; _⊗_; _⊸_
         ; CTm; idc; _∘c_; _⊗c_; αrc; ƛrc
         ; _≈c_; ≈crefl; ≈csym; ≈ctrans; ∘c-cong; ⊗c-cong
-        ; cid-l; cid-r; c∘-assoc; c⊗-id; c⊗-∘; cα-nat )
+        ; cid-l; cid-r; c∘-assoc; c⊗-id; c⊗-∘; cα-nat; cƛ-nat )
 open import poc.OCP0009.NbEPMonT
-  using ( Ctx; ε; _∷_; _++_; Perm; pid; _⊙P_; padˡ; padʳ; passoc; passocInv )
+  using ( Ctx; ε; _∷_; _++_; Perm; pid; _⊙P_; padˡ; padʳ; passoc
+        ; passocInv; exch; carry² )
 open import poc.OCP0009.NbEPMonW
   using ( ⟪_⟫; permC; mult; multInv )
 open import poc.OCP0009.NbEPMonF
   using ( Sp; ret; spl; usI; withSpˡ; withSpʳ )
+open import poc.OCP0009.NbEPMonW
+  using ( swapHeadC )
 open import poc.OCP0009.NbEPMonAdq1
-  using ( ∘c-congˡ; ∘c-congʳ; fuse⊗ʳC )
+  using ( ∘c-congˡ; ∘c-congʳ; fuse⊗ˡC; fuse⊗ʳC; mult-inv-r )
 open import poc.OCP0009.NbEPMonAdq2
-  using ( interchangeC; pid-realC )
+  using ( ⊙P-realC; interchangeC; pid-realC; swapHeadC-nat; swapHeadC-invol )
+open import poc.OCP0009.NbEPMonAdq3
+  using ( padˡ-real )
+open import poc.OCP0009.NbEPMonAdq4
+  using ( K4C; K5′C )
 open import poc.OCP0009.NbEPMonAdq9
   using ( node-perm-real; mult-head²; mult-headI; n-α )
+open import poc.OCP0009.NbEPMonAdq11
+  using ( exch-real; carry²-real )
 
 ------------------------------------------------------------------------
 -- The generic tree relation.
@@ -152,3 +161,185 @@ withSpˡ-Tree {Γ₂ = Γ₂} LP LQ C f Hf ρ
              (≈csym (≈ctrans c∘-assoc (∘c-congʳ (≈ctrans c∘-assoc
                (∘c-congʳ (≈ctrans c∘-assoc
                  (∘c-congʳ (≈ctrans (∘c-congˡ (pid-realC _)) cid-l))))))))))))
+
+------------------------------------------------------------------------
+-- withSpʳ-Tree — the R-level withSpʳ-splice (the deeper node).
+------------------------------------------------------------------------
+
+private
+  hα : ∀ {X Y W W'} {h : CTm W W'} →
+       ((idc {X} ⊗c (idc {Y} ⊗c h)) ∘c αrc {X} {Y} {W}) ≈c
+       (αrc {X} {Y} {W'} ∘c (idc {X ⊗ Y} ⊗c h))
+  hα = ≈ctrans (≈csym cα-nat) (∘c-congʳ (⊗c-cong c⊗-id ≈crefl))
+
+  n-ŝ : ∀ {T Z G S} {n : CTm T Z} →
+        ((n ⊗c idc {G ⊗ S}) ∘c swapHeadC {G} {T} {S}) ≈c
+        (swapHeadC {G} {Z} {S} ∘c (idc {G} ⊗c (n ⊗c idc {S})))
+  n-ŝ = ≈csym (≈ctrans swapHeadC-nat
+              (∘c-congˡ (⊗c-cong ≈crefl c⊗-id)))
+
+  dance : ∀ {X Y Γ₁ Θ₂ V}
+            (Z : CTm V (⟪ Γ₁ ⟫ ⊗ ((X ⊗ Y) ⊗ ⟪ Θ₂ ⟫))) →
+          ((swapHeadC {X} {⟪ Γ₁ ⟫} {Y ⊗ ⟪ Θ₂ ⟫} ∘c
+            ((idc {X} ⊗c swapHeadC {Y} {⟪ Γ₁ ⟫} {⟪ Θ₂ ⟫}) ∘c
+             (idc {X} ⊗c (idc {Y} ⊗c mult Γ₁ Θ₂)))) ∘c
+           (αrc {X} {Y} {⟪ Γ₁ ++ Θ₂ ⟫} ∘c
+            ((idc {X ⊗ Y} ⊗c multInv Γ₁ Θ₂) ∘c
+             (swapHeadC {⟪ Γ₁ ⟫} {X ⊗ Y} {⟪ Θ₂ ⟫} ∘c Z)))) ≈c
+          ((idc {⟪ Γ₁ ⟫} ⊗c αrc {X} {Y} {⟪ Θ₂ ⟫}) ∘c Z)
+  dance {X} {Y} {Γ₁} {Θ₂} Z =
+    ≈ctrans c∘-assoc
+    (≈ctrans (∘c-congʳ c∘-assoc)
+    (≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congˡ hα)))
+    (≈ctrans (∘c-congʳ (∘c-congʳ c∘-assoc))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ
+              (≈ctrans fuse⊗ˡC
+              (≈ctrans (⊗c-cong ≈crefl (mult-inv-r Γ₁ Θ₂)) c⊗-id))))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ cid-l)))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congˡ K5′C)))
+    (≈ctrans (∘c-congʳ (≈csym c∘-assoc))
+    (≈ctrans (∘c-congʳ (∘c-congˡ (≈csym c∘-assoc)))
+    (≈ctrans (∘c-congʳ (∘c-congˡ (∘c-congˡ
+              (≈ctrans fuse⊗ˡC
+              (≈ctrans (⊗c-cong ≈crefl swapHeadC-invol) c⊗-id)))))
+    (≈ctrans (∘c-congʳ (∘c-congˡ cid-l))
+    (≈ctrans (∘c-congʳ c∘-assoc)
+    (≈ctrans (≈csym c∘-assoc)
+    (≈ctrans (∘c-congˡ swapHeadC-invol)
+             cid-l))))))))))))))))
+
+withSpʳ-Tree : ∀ {P Q : Ctx → Set} {S T : CTy} {Γ₁}
+  (LP : ∀ {Δ} → P Δ → CTm ⟪ Δ ⟫ S → Set)
+  (LQ : ∀ {Δ} → Q Δ → CTm ⟪ Δ ⟫ T → Set)
+  (C : CTm (⟪ Γ₁ ⟫ ⊗ S) T)
+  (f : ∀ {Δ₂ Δ} → Perm Δ (Γ₁ ++ Δ₂) → P Δ₂ → Sp Q Δ)
+  (Hf : ∀ {Δ₂ Δ} (ρ' : Perm Δ (Γ₁ ++ Δ₂)) (p : P Δ₂) {sp' : CTm ⟪ Δ₂ ⟫ S} →
+        LP p sp' →
+        Tree LQ (f ρ' p) (C ∘c ((idc ⊗c sp') ∘c (mult Γ₁ Δ₂ ∘c permC ρ')))) →
+  ∀ {Γ Γ₂} (ρ : Perm Γ (Γ₁ ++ Γ₂)) (sp : Sp P Γ₂) {t} →
+  Tree LP sp t →
+  Tree LQ (withSpʳ ρ sp f)
+    (C ∘c ((idc ⊗c t) ∘c (mult Γ₁ Γ₂ ∘c permC ρ)))
+withSpʳ-Tree LP LQ C f Hf ρ (ret p) rp = Hf ρ p rp
+withSpʳ-Tree {Γ₁ = Γ₁} LP LQ C f Hf ρ
+             (spl {X = X} {Y} {Θ₁} {Θ₂} ρ₂ n k) {t} (t' , (rk , e)) =
+  _ , (withSpʳ-Tree LP LQ C f Hf (carry² Γ₁ Θ₂) k rk ,
+    ≈ctrans (∘c-congʳ (∘c-congˡ (⊗c-cong ≈crefl e)))
+            (≈csym splBody))
+  where
+  finish =
+    ≈ctrans c∘-assoc
+    (∘c-congʳ
+      (≈ctrans c∘-assoc
+      (≈ctrans (∘c-congʳ (dance _))
+      (≈ctrans (∘c-congʳ (≈csym c∘-assoc))
+      (≈ctrans (∘c-congʳ (∘c-congˡ fuse⊗ˡC))
+      (≈ctrans (≈csym c∘-assoc)
+               (∘c-congˡ fuse⊗ˡC)))))))
+  splBody =
+    ≈ctrans (∘c-congˡ (∘c-congʳ (∘c-congʳ (carry²-real Γ₁ Θ₂))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ
+              (⊙P-realC ρ (padˡ Γ₁ ρ₂ ⊙P exch Γ₁ Θ₁ Θ₂))))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ
+              (⊙P-realC (padˡ Γ₁ ρ₂) (exch Γ₁ Θ₁ Θ₂)))))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ
+              (exch-real Γ₁ Θ₁ Θ₂)))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc)))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ
+              c∘-assoc)))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ
+              (∘c-congʳ (≈csym c∘-assoc)))))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ
+              (∘c-congʳ (∘c-congˡ (padˡ-real Γ₁ ρ₂))))))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ
+              (∘c-congʳ c∘-assoc))))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ
+              (≈csym c∘-assoc))))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ
+              (∘c-congˡ fuse⊗ˡC))))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congˡ interchangeC)))
+    (≈ctrans (∘c-congʳ (∘c-congʳ c∘-assoc))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ n-ŝ))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc)))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ
+              (≈csym c∘-assoc)))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ
+              fuse⊗ˡC)))))
+    finish)))))))))))))))))))))
+withSpʳ-Tree {Γ₁ = Γ₁} LP LQ C f Hf ρ
+             (usI {Γ₁ = Θ₁} {Θ₂} ρ₂ n k) {t} (t' , (rk , e)) =
+  _ , (withSpʳ-Tree LP LQ C f Hf (pid (Γ₁ ++ Θ₂)) k rk ,
+    ≈ctrans (∘c-congʳ (∘c-congˡ (⊗c-cong ≈crefl e)))
+            (≈csym usIBody))
+  where
+  dressEq :
+    (ƛrc ∘c ((idc {I} ⊗c multInv Γ₁ Θ₂) ∘c
+             (swapHeadC {⟪ Γ₁ ⟫} {I} {⟪ Θ₂ ⟫} ∘c
+              ((idc {⟪ Γ₁ ⟫} ⊗c ((n ⊗c idc) ∘c (mult Θ₁ Θ₂ ∘c permC ρ₂))) ∘c
+               (mult Γ₁ _ ∘c permC ρ))))) ≈c
+    (multInv Γ₁ Θ₂ ∘c
+     ((idc {⟪ Γ₁ ⟫} ⊗c ƛrc {⟪ Θ₂ ⟫}) ∘c
+      ((idc ⊗c ((n ⊗c idc) ∘c (mult Θ₁ Θ₂ ∘c permC ρ₂))) ∘c
+       (mult Γ₁ _ ∘c permC ρ))))
+  dressEq =
+    ≈ctrans (≈csym c∘-assoc)
+    (≈ctrans (∘c-congˡ cƛ-nat)
+    (≈ctrans c∘-assoc
+             (∘c-congʳ (≈ctrans (≈csym c∘-assoc) (∘c-congˡ K4C)))))
+  finishI =
+    ≈ctrans c∘-assoc
+    (∘c-congʳ
+      (≈ctrans (∘c-congʳ dressEq)
+      (≈ctrans c∘-assoc
+      (≈ctrans (∘c-congʳ (≈csym c∘-assoc))
+      (≈ctrans (∘c-congʳ (∘c-congˡ (mult-inv-r Γ₁ Θ₂)))
+      (≈ctrans (∘c-congʳ cid-l)
+      (≈ctrans (≈csym c∘-assoc)
+      (≈ctrans (∘c-congˡ fuse⊗ˡC)
+      (≈ctrans (≈csym c∘-assoc)
+      (≈ctrans (∘c-congˡ fuse⊗ˡC)
+               (∘c-congˡ (⊗c-cong ≈crefl c∘-assoc))))))))))))
+  usIBody =
+    (≈ctrans (∘c-congˡ (∘c-congʳ (∘c-congʳ
+              (≈ctrans (∘c-congʳ (pid-realC (Γ₁ ++ Θ₂))) cid-r))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ
+              (⊙P-realC ρ (padˡ Γ₁ ρ₂ ⊙P exch Γ₁ Θ₁ Θ₂))))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ
+              (⊙P-realC (padˡ Γ₁ ρ₂) (exch Γ₁ Θ₁ Θ₂)))))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ
+              (exch-real Γ₁ Θ₁ Θ₂)))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc)))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ
+              c∘-assoc)))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ
+              (∘c-congʳ (≈csym c∘-assoc)))))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ
+              (∘c-congʳ (∘c-congˡ (padˡ-real Γ₁ ρ₂))))))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ
+              (∘c-congʳ c∘-assoc))))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ
+              (≈csym c∘-assoc))))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ
+              (∘c-congˡ fuse⊗ˡC))))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congˡ interchangeC)))
+    (≈ctrans (∘c-congʳ (∘c-congʳ c∘-assoc))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ n-ŝ))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc)))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ
+              (≈csym c∘-assoc)))))
+    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ
+              fuse⊗ˡC)))))
+    finishI))))))))))))))))))))))
