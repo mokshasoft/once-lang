@@ -97,7 +97,7 @@ escape-once initial = initial
 
 -- Curry: recurse into body, preserve mode
 -- (Mode may be optimized when this closure is consumed in a composition)
-escape-once (curry {k = k} f m) = curry {k = k} (escape-once f) m
+escape-once (curry f m) = curry (escape-once f) m
 
 -- Apply: no allocation in apply itself
 escape-once apply = apply
@@ -105,7 +105,6 @@ escape-once apply = apply
 -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
 
 -- Effects: no allocation
-escape-once arr = arr
 
 -- Primitives: opaque, pass through
 escape-once (SigOp name) = SigOp name
