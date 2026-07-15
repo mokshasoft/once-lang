@@ -137,8 +137,11 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   eq    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
   ne    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
 
-  -- (Plan 0.52 M2: `arr'` RETIRED — the pure→eff lift is the typing rule
-  -- `t-subsume`, whose realization is now the identity, so no surface node.)
+  -- Surface grade coercion (pure→eff subsumption; `t-subsume`'s witness).
+  -- Plan 0.52 M2: STAYS (the grade lives at the surface, OCP-0007), but now
+  -- ELABORATES TO THE IDENTITY (`IR.arr` retired — pure/eff IR objects coincide)
+  -- with identity denotation. Internal-only; the programmer never writes it.
+  arr'  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → Expr Γ Ψ (A ⇒ B) → Expr Γ Ψ (A ⇒[ mk-kind Many eff ] B)
 
   -- External primitive reference (syscalls, intrinsics) — uses no variables.
   -- Asm-level `once_<name>` directly implements the declared type `A`: at

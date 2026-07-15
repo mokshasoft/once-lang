@@ -162,6 +162,7 @@ ana-eventsˢ {F} {A} coalgComp a (suc m) =
 -- `cohᴰ` transports it to the surface `⟦A⟧ᴰ → T ⟦B⟧ᴰ` (grade-blind erasure).
 ⟦ lift-morphism {A = A} {B = B} ir ⟧ˢ dγ =
   returnT (λ v → subst T (cohᴰ B) (evalᴰ ir (subst (λ z → z) (sym (cohᴰ A)) v)))
+⟦ arr' f ⟧ˢ       dγ = ⟦ f ⟧ˢ dγ
 ⟦ morph-app {A = A} {B = B} ir e ⟧ˢ dγ =
   ⟦ e ⟧ˢ dγ >>=T λ v → subst T (cohᴰ B) (evalᴰ ir (subst (λ z → z) (sym (cohᴰ A)) v))
 -- Cata: the structural fold. The algebra is CLOSED (∅), so `⟦alg⟧ˢ tt` is the

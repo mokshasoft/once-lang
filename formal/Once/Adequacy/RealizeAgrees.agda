@@ -1125,6 +1125,7 @@ faithful-aux {Γ = Γ} (Surface.cata wfF' algE') refl eq dγ
 ... | just (m' , refl) | refl =
       extensionality (λ k → cata-fold-eq {Γ = Γ} wfF' algE' m' (faithful-aux algE' refl innerEq tt) dγ k)
 faithful-aux (Surface.var i) teq () dγ
+faithful-aux (Surface.arr' e) refl eq dγ = faithful-aux e refl eq dγ
 faithful-aux (Surface.lam _ _ _) teq () dγ
 faithful-aux (Surface.app _ _) teq () dγ
 faithful-aux (Surface.effApp _ _) teq () dγ

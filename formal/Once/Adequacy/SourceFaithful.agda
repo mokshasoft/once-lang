@@ -104,6 +104,7 @@ faithful :
   → evalᴰ (elaborate C.Heap e) dγ k ≡ SD.⟦ e ⟧ˢ dγ k
 -- `unit` ↦ `terminal`; both sides reduce to `returnT tt` ⇒ refl.
 faithful (var {Γ = Γ} i) dγ k = proj-lookup {Γ = Γ} i dγ k
+faithful (arr' f) dγ k = faithful f dγ k
 -- lam ↦ curry: both sides are `returnT <closure>`; the closures are equal by
 -- extensionality over the argument (and over the depth, via the body IH).
 faithful (lam q _ e) dγ k =

@@ -193,6 +193,7 @@ rename {Δ = Δ} θ (Surface.pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))
         (Surface.pair (rename θ a) (rename θ b))
 rename θ (Surface.fst' p) = Surface.fst' (rename θ p)
+rename θ (Surface.arr' f) = Surface.arr' (rename θ f)
 rename θ (Surface.snd' p) = Surface.snd' (rename θ p)
 rename θ (Surface.inl' a) = Surface.inl' (rename θ a)
 rename θ (Surface.inr' b) = Surface.inr' (rename θ b)

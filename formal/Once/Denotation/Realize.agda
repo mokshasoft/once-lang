@@ -32,8 +32,10 @@
 module Once.Denotation.Realize where
 
 open import Data.String using (_++_)
-open import Once.Type using (Type; _*_; _+_; μ-type; ⟦_⟧T)
+open import Once.Type using (Type; Many; _*_; _+_; μ-type; ⟦_⟧T)
 open import Once.IR as IR using (IR; _∘_; ⟨_,_⟩)
+open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
+open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.TypeCheck.Raw using (RawExpr;
   OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Classify using (NamedCtx)
@@ -52,13 +54,13 @@ open import Once.TypeCheck.Judgment
 open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
   lam; app; effApp; pair; neg; let'; case'; int; str; unit;
   add; sub; mul; div; mod'; lt; le; gt; ge; eq; ne; sigOp; poly;
-  lift-morphism; morph-app)
+  lift-morphism; morph-app; arr')
 open import Once.Surface.Elaborate using (intLit; elaborate)
 open import Once.Arith.SigOp.Builders using (value-info)
 open import Once.CanonicalName using (bare)
 open import Once.Surface.Syntax using (_+ᵘ_; _*ᵘ_)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-zeroʳ)
-open import Relation.Binary.PropositionalEquality using (_≡_; subst; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; trans; cong; sym)
 
 -- The reference elaboration (D063): a mutual block
 --   realize       (⊢ᶜ → SExpr)   -- check-mode
@@ -69,8 +71,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst; trans; co
 -- `zeroUsage +ᵘ Many *ᵘ zeroUsage`; a reference uses no local variables, so
 -- this coerces it back to `zeroUsage`. TOP-LEVEL (not a `where`) so the bridge
 -- can name it to see through `realize`'s poly `subst`.
-poly-usage-eq : ∀ {n} → (zeroUsage {n}) +ᵘ (IR.Many *ᵘ zeroUsage) ≡ zeroUsage
-poly-usage-eq = trans (cong (zeroUsage +ᵘ_) (*ᵘ-zeroʳ IR.Many)) (+ᵘ-identityˡ zeroUsage)
+poly-usage-eq : ∀ {n} → (zeroUsage {n}) +ᵘ (Many *ᵘ zeroUsage) ≡ zeroUsage
+poly-usage-eq = trans (cong (zeroUsage +ᵘ_) (*ᵘ-zeroʳ Many)) (+ᵘ-identityˡ zeroUsage)
 
 -- Forward signatures first (mutual recursion, no `mutual` keyword needed).
 realize : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
@@ -92,13 +94,14 @@ realize-infer : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
 -- `m-const` leaf (a value used where a morphism is expected = const morphism).
 ------------------------------------------------------------------------
 realize-global : ∀ {ctx : NamedCtx} {e : RawExpr} {A X : Type}
-               → ctx ⊢ᵍ e ∶ A → IR X A
+               → ctx ⊢ᵍ e ∶ A → IR ⌊ X ⌋ ⌊ A ⌋
 realize-global (g-int n)        = intLit n
 realize-global (g-terminal _ _) = IR.terminal
 realize-global (g-pair ga gb)   = ⟨ realize-global ga , realize-global gb ⟩ IR.Heap
 realize-global (g-inl ga)       = IR.inl IR.Heap ∘ realize-global ga
 realize-global (g-inr gb)       = IR.inr IR.Heap ∘ realize-global gb
-realize-global (g-In {wfF = wfF} _ garg) = IR.In wfF IR.Heap ∘ realize-global garg
+realize-global (g-In {F = F} {wfF = wfF} _ garg) =
+  IR.In (wf-⌊⌋ wfF) IR.Heap ∘ subst (λ o → IR ⌊ _ ⌋ o) (⌊⟧T-commute F (μ-type F)) (realize-global garg)
 
 ------------------------------------------------------------------------
 -- realize-morph — the MORPHISM realm (⊢ᵐ) → its categorical IR (D063).
@@ -118,7 +121,7 @@ realize-global (g-In {wfF = wfF} _ garg) = IR.In wfF IR.Heap ∘ realize-global 
 --     boundary holds.)
 ------------------------------------------------------------------------
 realize-morph : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : Once.Type.Purity}
-              → ctx ⊢ᵐ e ∶ A ⇨[ π ] B → IR A B
+              → ctx ⊢ᵐ e ∶ A ⇨[ π ] B → IR ⌊ A ⌋ ⌊ B ⌋
 realize-morph (m-id _ _)        = IR.id
 realize-morph (m-fst _ _)       = IR.fst
 realize-morph (m-snd _ _)       = IR.snd
@@ -132,7 +135,8 @@ realize-morph (m-pair df dg)    = ⟨ realize-morph df , realize-morph dg ⟩ IR
 realize-morph (m-curry df)      = IR.curry (realize-morph df) IR.Heap
 -- Plan 0.54: DIRECT — the algebra is a morphism (`⊢ᵐ`), read straight to its
 -- categorical IR; no `elaborate` round-trip, uniform with the other combinators.
-realize-morph (m-cata {wfF = wfF} _ dalg) = IR.Cata wfF (realize-morph dalg)
+realize-morph (m-cata {F = F} {wfF = wfF} _ dalg) =
+  IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR o ⌊ _ ⌋) (⌊⟧T-commute F _) (realize-morph dalg))
 realize-morph (m-const gd)      = realize-global gd
 realize-morph (m-named {x = x} _ _ _ bA cB) = IR.SigOp (value-info (bare x) bA cB)
 realize-morph (m-named-resolved {cn = cn} _ bA cB) = IR.SigOp (value-info cn bA cB)
@@ -148,12 +152,13 @@ realize (t-value-lift g)        = lift-morphism (realize-global g)
 realize (t-embed d)             = realize-infer d
 realize (t-lam {q = q} ≤p d)    = lam q ≤p (realize d)
 realize (t-pair-lit-check da db) = pair (realize da) (realize db)
-realize (t-In-app-check {wfF = wfF} _ d) = morph-app (IR.In wfF IR.Heap) (realize d)
+realize (t-In-app-check {F = F} {wfF = wfF} _ d) =
+  morph-app (subst (λ o → IR o ⌊ μ-type F ⌋) (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF) IR.Heap)) (realize d)
 realize (t-apply-check dp)      = morph-app IR.apply (realize-infer dp)
 realize (t-inl-app-check d)     = morph-app (IR.inl IR.Heap) (realize d)
 realize (t-inr-app-check d)     = morph-app (IR.inr IR.Heap) (realize d)
 realize (t-initial-app-check d) = morph-app IR.initial (realize d)
-realize (t-subsume d)           = realize d
+realize (t-subsume d)           = arr' (realize d)
 realize (t-arg-driven-app-check _ darg df) = app (realize df) (realize-infer darg)
 -- Plan 0.58 (telescope / E1): a same-module def reference realizes to its
 -- closed body's IR, wrapped as a closed morphism applied to `unit` — so its

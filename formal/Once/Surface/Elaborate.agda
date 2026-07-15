@@ -187,6 +187,7 @@ elaborate m (effApp f x) =
 
 -- Pair: (a, b) becomes ⟨a, b⟩
 elaborate m (pair a b) = ⟨ elaborate m a , elaborate m b ⟩ m
+elaborate m (arr' f)    = elaborate m f   -- Plan 0.52 M2: arr' is identity (IR.arr retired)
 
 -- Projections: compose with projection
 elaborate m (fst' p) = fst ∘ elaborate m p
