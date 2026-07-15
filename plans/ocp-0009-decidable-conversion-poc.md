@@ -1191,42 +1191,42 @@ no system anywhere has directed type theory with a decidable kernel.
             USER NOTE (also in memory): at consolidation, sweep the
             rest of the POC for the same transport→structural-data
             replacement.
-         A3b.2 (= Adq9, the A3 closer) — the splice lemmas proper:
-            `withSpˡ-splice` — statement: given payload-level
-            H : ∀ ρ' p → reifySp g (f ρ' p) ≈c
-                (C ∘c ((h p ⊗c 1) ∘c (mult Δ₁ Γ₂ ∘c permC ρ'))),
-            conclude reifySp g (withSpˡ ρ sp f) ≈c
-                (C ∘c ((reifySp h sp ⊗c 1) ∘c (mult Γ₁ Γ₂ ∘c
-                 permC ρ))).
-            ret = H; spl/usI-case reduces (after IH at pid +
-            pid-realC collapse) to the structural equation
-            (★L): mult (X∷Y∷Θ₂) Γ₂ ∘c NODE* ≈c (NODE₁ ⊗c 1) ∘c
-                 (mult Γ₁ Γ₂ ∘c permC ρ)
-            where NODE* carries (ρ ⊙P padʳ Γ₂ ρ₁) ⊙P passoc — now
-            TRANSPORT-FREE: expand by ⊙P-realC, then padʳ-real and
-            passoc-real discharge the two factors; the α-plumbing
-            residue is fuse/assoc + α-natˡC (no new mathematics).
-            `withSpʳ-splice` — mirror; its node carries
-            ρ ⊙P (padˡ Γ₁ ρ₂ ⊙P exch): ⊙P-realC + padˡ-real +
-            exch's realization (COMPOSITE: ⊙P-realC + passocInv-real
-            + padʳ-real + bswapW-real + passoc-real chained) +
-            carry²'s realization (pcons/pcons/insˡ: insC-level, via
-            mult-insˡ at `here`).
-            `go-splice` (absorb's ⊸-pusher: padʳ Δ ρ ⊙P passoc —
-            same ingredients).
-         A4 — R by type recursion (atoms/I/⊗ via RSp-style splice
-            equality with component relations; ⊸ Kripke), R-vmap,
-            R-reflect/R-reify mutual on the type, THE FUNDAMENTAL
-            LEMMA (12 evalV cases, each = its model arithmetic
-            mirrored by A2's realization lemmas through A3's splice
-            lemmas), completeness `f ≈c NF f` via
-            `R (reflectTy A) (joinTm A)` + join-split, and the payoff
-            `NF f ≡ NF g → f ≈c g`.
-         A4 — the relation R by type recursion (positive = RSp with
-            component relations; ⊸ = Kripke), R-vmap, R-reflect/R-reify
-            (mutual), THE FUNDAMENTAL LEMMA (12 evalV cases), and
-            COMPLETENESS `f ≈c NF f` via `R (reflectTy A) (joinTm A)`
-            and join-split.
+         A3b.2 [DONE 2026-07-16, `NbEPMonAdq9`] — the node algebra:
+            PENTAR (pentagon solved for αr⊗1), `mult-head²` (the
+            spl-case head dressing collapses to αr⊗1 — lands on PENTAR),
+            `mult-headI` (usI-case → ƛr⊗1 — lands on K2C), `n-α`, and
+            `node-perm-real` (the (ρ⊙P padʳ q)⊙P passoc node realized
+            via ⊙P-realC twice + passoc-real + padʳ-real).
+         A3b.3 [DONE 2026-07-16, `NbEPMonAdq10`] — `withSpˡ-splice`
+            and `appSp-splice` (absorb's ⊸-pusher, hoisted to
+            top-level `appSp` in NbEPMonF): both splice as their
+            payload, uniformly across every node. spl-cases:
+            node-perm-real → interchange → n-α → collapse²(→PENTAR)
+            → fuse4; usI-cases → collapseI(→K2C).
+         A3b.4 [DONE 2026-07-16, `NbEPMonAdq11` — A3 CLOSED, the
+            deepest lemma] — `withSpʳ-splice`. `carry²-real` (the
+            continuation realizes as two head-swaps), **`exch-real`:
+            THE EXCHANGE REALIZES AS THE HEAD TRANSPOSITION OF BLOCKS**
+            (⊙P-realC + passoc-real + padʳ-real + bswapW-real +
+            passocInv-real turn the α∘(σ⊗1)∘α residue into `swapHeadC`
+            verbatim), and the `dance` lemma (K5′C splits the block
+            swap into per-head swaps that annihilate carry²'s two swaps
+            by swapHeadC-invol). spl-case lands on `dance`, usI-case
+            on K4C. METHOD for the two deepest chains: extract the
+            post-realization goal via a temporary
+            `--allow-unsolved-metas` hole + `≈crefl` forcing an
+            UnequalTerms print, then a clean ~10-step structural proof
+            (dressEq/finishI, dance/finish). A3 CLOSED: every
+            split-monad combinator has its splice law.
+         A4 — THE SUMMIT PUSH (only stage left): the relation R by
+            type recursion (positive = RSp splice-equality + component
+            relations; ⊸ = Kripke over ++), R-vmap, R-reflect/R-reify
+            (mutual on the type), THE FUNDAMENTAL LEMMA (12 evalV
+            cases, each = its model arithmetic mirrored by an A2
+            realization through an A3 splice), and COMPLETENESS
+            `f ≈c NF f` via `R (reflectTy A) (joinTm A)` + join-split,
+            giving `NF f ≡ NF g → f ≈c g` — the proven decision
+            procedure.
      · Soundness/completeness against `_≈c_` in each stage mirror the
        NbEP adequacy scaffolding (logical relations, stage L2a's `Ext`
        as the semantic side).
