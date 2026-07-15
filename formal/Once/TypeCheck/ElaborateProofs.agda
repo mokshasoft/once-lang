@@ -8,12 +8,10 @@
 -- (checkElab-fallback-*, bridges) extracted out of Once.TypeCheck.Elaborate
 -- so the core elaborator checks fast. These proofs only PROVE things about
 -- the elaborator (checkElab … ≡ success …); the algorithm never uses them.
--- Consumed by Completeness / RealizeAgrees / Soundness / etc.
 ------------------------------------------------------------------------
 
 module Once.TypeCheck.ElaborateProofs where
 
--- the core elaborator (re-exported so downstream can get both from here)
 open import Once.TypeCheck.Elaborate public
 
 open import Data.String using (String; _++_)
@@ -33,7 +31,8 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; cong₂; sym; trans)
 open import Once.Type
-open import Once.IR as IR
+open Once.Type using (showQuantity; showType) public
+open import Once.IR as IR hiding (Unit; Void; _*_; _+_; μ-type; ν-type; Int; Float; Str; Buffer; K; Id; _⊕_; _⊗_)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Arith.SigOp.Builders using (generic-semM)
 open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV; ffi-concrete)
@@ -65,18 +64,6 @@ open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?;
   isConcrete?-complete; isBaseType?-complete)
 open import Once.TypeCheck.Morph using (MorphRaw; morphRaw?; morphToIR)
 open import Once.TypeCheck.Judgment
-         → Dec (F₁ ≡ F₂) → Dec (G₁ ≡ G₂)
-         → Dec ((F₁ ⊕ G₁) ≡ (F₂ ⊕ G₂))
-         → Dec (F₁ ≡ F₂) → Dec (G₁ ≡ G₂)
-         → Dec ((F₁ ⊗ G₁) ≡ (F₂ ⊗ G₂))
-         → Dec (A₁ ≡ A₂) → Dec (B₁ ≡ B₂)
-         → Dec ((A₁ Once.Type.* B₁) ≡ (A₂ Once.Type.* B₂))
-         → Dec (A₁ ≡ A₂) → Dec (B₁ ≡ B₂)
-         → Dec ((A₁ Once.Type.+ B₁) ≡ (A₂ Once.Type.+ B₂))
-         → Dec (A₁ ≡ A₂) → Dec (k₁ ≡ k₂) → Dec (B₁ ≡ B₂)
-         → Dec ((A₁ ⇒[ k₁ ] B₁) ≡ (A₂ ⇒[ k₂ ] B₂))
-  Maybe (∃-syntax (λ X → ∃-syntax (λ π → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Int))))
-  just (X , π , refl)
 
 ------------------------------------------------------------------------
 -- Plan 0.4 T0 Option B — projection wrappers.
@@ -1462,13 +1449,13 @@ checkElab-fallback-RBinOp {ctx} op e₁ e₂ T eqInf
 -- | Compile with type signature. Plan 0.14 follow-up: uses Heap as
 -- the default AllocMode for backwards compatibility with callers that
 -- don't supply one via CLI.
-compileExprTyped : RawExpr → (A : Type) → Maybe (IR Unit A)
+compileExprTyped : RawExpr → (A : Type) → Maybe (IR ⌊ Unit ⌋ ⌊ A ⌋)
 compileExprTyped e A with checkElab emptyCtx e A
 ... | failure _                 = nothing
 ... | success Ψ se _ _          = just (Elab.elaborate-default se)
 
 -- | Compile without signature
-compileExpr : RawExpr → Maybe (∃[ A ] IR Unit A)
+compileExpr : RawExpr → Maybe (∃[ A ] IR ⌊ Unit ⌋ ⌊ A ⌋)
 compileExpr e with inferElab emptyCtx e
 ... | failure _                 = nothing
 ... | success A Ψ se _ _        = just (A , Elab.elaborate-default se)
