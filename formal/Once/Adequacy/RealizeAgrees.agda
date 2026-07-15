@@ -40,6 +40,8 @@ open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; lookupSigEf
 open import Once.TypeCheck.Elaborate using (success; failure; VerifiedInferResult; VerifiedCheckResult)
 import Once.TypeCheck.Elaborate as E
 open import Once.IR as IR using (IR)
+open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
+open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits to se-emits)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Unit using (tt)
@@ -57,6 +59,9 @@ open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair;
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ)
 open import Once.Adequacy.CataFold using (cata-fold-eq)
+open import Once.Adequacy.CataErased using (liftFn-SigOp)
+open import Once.SigOp.Info using (mk-info'; haltsV; emitsV; pureV; ffi-concrete)
+open import Once.Arith.SigOp.Builders using (generic-semM)
 import Once.Denotation.SourceDenote as SD
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; con-base; con-fun; base-Unit)
@@ -480,9 +485,9 @@ masq-unit : ∀ {ctx : NamedCtx} {Dom : Type} (cn : CanonicalName) (mse : Maybe 
             (dγ : Env ctx) (k : ℕ)
           → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {π = eff} (IR.SigOp (E.ext-resolved-info-aux {Dom} {Unit} cn eff (yes refl) mse bDom cCod)) ⟧ˢ dγ k
            ≡ SD.⟦ sigOp {Γ = NamedCtx.debruijn ctx} {A = Dom ⇒[ mk-kind Many eff ] Unit} cn (con-fun bDom cCod) ⟧ˢ dγ k
-masq-unit cn (just se-halts) bDom cCod dγ k = refl
-masq-unit cn (just se-emits) bDom cCod dγ k = refl
-masq-unit cn nothing         bDom cCod dγ k = refl
+masq-unit cn (just se-halts) bDom cCod dγ k = cong (λ f → returnT f k) (liftFn-SigOp (E.ext-resolved-info-aux cn eff (yes refl) (just se-halts) bDom cCod) bDom)
+masq-unit cn (just se-emits) bDom cCod dγ k = cong (λ f → returnT f k) (liftFn-SigOp (E.ext-resolved-info-aux cn eff (yes refl) (just se-emits) bDom cCod) bDom)
+masq-unit cn nothing         bDom cCod dγ k = cong (λ f → returnT f k) (liftFn-SigOp (E.ext-resolved-info-aux cn eff (yes refl) nothing bDom cCod) bDom)
 
 -- The outer dispatch on `isUnit? Cod` is a `with` (NOT a Dec-arg helper): the
 -- scrutinee appears in the GOAL via `⟦ sigOp … ⟧ˢ` (which computes `isUnit? Cod`
@@ -491,9 +496,9 @@ masq-unit cn nothing         bDom cCod dγ k = refl
 -- `isUnit? Cod` stuck. `masq` is a leaf equality lemma — opaque downstream — so
 -- the `with` blocks no later proof's reduction. The inner mse split lives in the
 -- with-free `masq-unit`, keeping this a single, flat `with`.
-masq {ctx} {Dom} {Cod} cn pure bDom cCod dγ k = refl
+masq {ctx} {Dom} {Cod} cn pure bDom cCod dγ k = cong (λ f → returnT f k) (liftFn-SigOp (E.ext-resolved-info ctx cn pure bDom cCod) bDom)
 masq {ctx} {Dom} {Cod} cn eff bDom cCod dγ k with isUnit? Cod
-... | no _ = refl
+... | no ¬p = cong (λ f → returnT f k) (liftFn-SigOp (E.ext-resolved-info-aux cn eff (no ¬p) (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn)) bDom cCod) bDom)
 ... | yes refl = masq-unit {ctx} {Dom} cn (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn)) bDom cCod dγ k
 
 -- The RQualified analogue of `masq`. `ext-arrow-info` decides its Unit-codomain
@@ -509,14 +514,14 @@ masq-arrow : ∀ {ctx : NamedCtx} {Dom Cod : Type} (alias name : String) (π : P
        (dγ : Env ctx) (k : ℕ)
      → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {π = π} (IR.SigOp (E.ext-arrow-info {Dom} {Cod} ctx alias name π bDom cCod)) ⟧ˢ dγ k
       ≡ SD.⟦ sigOp {Γ = NamedCtx.debruijn ctx} {A = Dom ⇒[ mk-kind Many π ] Cod} (bare (alias ++ "." ++ name)) (con-fun bDom cCod) ⟧ˢ dγ k
-masq-arrow {ctx} {Dom} {Cod} alias name pure bDom cCod dγ k = refl
+masq-arrow {ctx} {Dom} {Cod} alias name pure bDom cCod dγ k = cong (λ f → returnT f k) (liftFn-SigOp (E.ext-arrow-info ctx alias name pure bDom cCod) bDom)
 masq-arrow {ctx} {Dom} {Cod} alias name eff bDom cCod dγ k with Cod E.≟T Unit
 ... | yes refl with lookupSigEffect (NamedCtx.sigEffects ctx) (alias ++ "." ++ name)
-...   | just se-halts = refl
-...   | just se-emits = refl
-...   | nothing       = refl
+...   | just se-halts = cong (λ f → returnT f k) (liftFn-SigOp (mk-info' (bare (alias ++ "." ++ name)) (haltsV refl) bDom (ffi-concrete cCod)) bDom)
+...   | just se-emits = cong (λ f → returnT f k) (liftFn-SigOp (mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bDom (ffi-concrete cCod)) bDom)
+...   | nothing       = cong (λ f → returnT f k) (liftFn-SigOp (mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bDom (ffi-concrete cCod)) bDom)
 masq-arrow {ctx} {Dom} {Cod} alias name eff bDom cCod dγ k | no ¬p with isUnit? Cod
-... | no _     = refl
+... | no _     = cong (λ f → returnT f k) (liftFn-SigOp (mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bDom (ffi-concrete cCod)) bDom)
 ... | yes refl = ⊥-elim (¬p refl)
 
 -- RResolved agreement, dispatched on the import-lookup result exactly as the
@@ -871,7 +876,7 @@ agree-RAnnot (failure _ , _) () IH
 morph-realize : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : Purity}
     {E : Expr (NamedCtx.debruijn ctx) Surface.zeroUsage (A ⇒[ mk-kind Many π ] B)} {d fr : ℕ}
     {W : ctx ⊢ᶜ e ∶ (A ⇒[ mk-kind Many π ] B) ⨾ Surface.zeroUsage}
-    {m : IR A B} {mᵐ : ctx ⊢ᵐ e ∶ A ⇨[ π ] B}
+    {m : IR ⌊ A ⌋ ⌊ B ⌋} {mᵐ : ctx ⊢ᵐ e ∶ A ⇨[ π ] B}
   → E.checkElabV ctx e (A ⇒[ mk-kind Many π ] B) ≡ (success Surface.zeroUsage E d fr , W)
   → E.extract-morph-eff E ≡ just (m , refl)
   → extractMorphWitness W ≡ just mᵐ
@@ -1114,12 +1119,12 @@ agree-embedOrSubsume {ctx = ctx} {e = e} T eq inferIH dγ k
 -- the hypothesis is absurd. `just` is only produced by `lift-morphism`/`arr'`/
 -- `cata`, where `teq` is forced to `refl` (so the `subst` is the identity).
 faithful-aux : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Usage n} {RT A B} {π : Purity}
-    (E : Expr Γ Ψ RT) (teq : RT ≡ (A ⇒[ mk-kind Many π ] B)) {m : IR A B} {ψ0 : Ψ ≡ Surface.zeroUsage}
+    (E : Expr Γ Ψ RT) (teq : RT ≡ (A ⇒[ mk-kind Many π ] B)) {m : IR ⌊ A ⌋ ⌊ B ⌋} {ψ0 : Ψ ≡ Surface.zeroUsage}
   → E.extract-morph-eff-aux E teq ≡ just (m , ψ0)
   → ∀ (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ)
-  → SD.⟦ E ⟧ˢ dγ ≡ subst (λ Ty → T ⟦ Ty ⟧ᴰ) (sym teq) (returnT (evalᴰ m))
+  → SD.⟦ E ⟧ˢ dγ ≡ subst (λ Ty → T ⟦ Ty ⟧ᴰ) (sym teq) (SD.liftD m)
 faithful-aux (Surface.lift-morphism m') refl eq dγ =
-  cong (λ mm → returnT (evalᴰ mm)) (cong proj₁ (just-injective eq))
+  cong (λ mm → SD.liftD mm) (cong proj₁ (just-injective eq))
 faithful-aux {Γ = Γ} (Surface.cata wfF' algE') refl eq dγ
   with E.extract-morph-eff algE' in innerEq | eq
 ... | just (m' , refl) | refl =
@@ -1140,19 +1145,19 @@ faithful-aux (Surface.snd' _) teq () dγ
 faithful-aux (Surface.case' _ _ _) teq () dγ
 
 extract-morph-eff-denotes : ∀ {A B} {π : Purity}
-    (algE : Expr Surface.∅ Surface.zeroUsage (A ⇒[ mk-kind Many π ] B)) {m : IR A B}
+    (algE : Expr Surface.∅ Surface.zeroUsage (A ⇒[ mk-kind Many π ] B)) {m : IR ⌊ A ⌋ ⌊ B ⌋}
   → E.extract-morph-eff algE ≡ just (m , refl)
-  → SD.⟦ algE ⟧ˢ tt ≡ returnT (evalᴰ m)
+  → SD.⟦ algE ⟧ˢ tt ≡ SD.liftD m
 extract-morph-eff-denotes algE eq = faithful-aux algE refl eq tt
 
 agree-cata-denotes : ∀ {n} {Γ : Surface.Ctx n} {F : Functor} {A : Type} {π : Purity}
     {wfF : WellFormedF F}
     {algE : Expr Surface.∅ Surface.zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A)}
-    {m-alg : IR (⟦ F ⟧T A) A}
+    {m-alg : IR ⌊ ⟦ F ⟧T A ⌋ ⌊ A ⌋}
   → E.extract-morph-eff algE ≡ just (m-alg , refl)
   → ∀ (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
   → SD.⟦ Surface.cata {Γ = Γ} wfF algE ⟧ˢ dγ k
-      ≡ SD.⟦ Surface.lift-morphism {Γ = Γ} {π = π} (IR.Cata wfF m-alg) ⟧ˢ dγ k
+      ≡ SD.⟦ Surface.lift-morphism {Γ = Γ} {π = π} (IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR o ⌊ A ⌋) (⌊⟧T-commute F A) m-alg)) ⟧ˢ dγ k
 agree-cata-denotes {Γ = Γ} {wfF = wfF} {algE = algE} {m-alg = m-alg} eq dγ k =
   cata-fold-eq {Γ = Γ} wfF algE m-alg (extract-morph-eff-denotes algE eq) dγ k
 
@@ -1166,7 +1171,7 @@ algebra-morph-recover : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : Pu
     {mᵐ : ctx ⊢ᵐ e ∶ A ⇨[ π ] B}
   → E.checkElabV ctx e (A ⇒[ mk-kind Many π ] B) ≡ (success Surface.zeroUsage E d fr , W)
   → extractMorphWitness W ≡ just mᵐ
-  → ∃-syntax (λ (m : IR A B) → (E.extract-morph-eff E ≡ just (m , refl)) × (m ≡ realize-morph mᵐ))
+  → ∃-syntax (λ (m : IR ⌊ A ⌋ ⌊ B ⌋) → (E.extract-morph-eff E ≡ just (m , refl)) × (m ≡ realize-morph mᵐ))
 algebra-morph-recover {ctx = ctx} {e = e} {A = A} {B = B} {π = π} {mᵐ = mᵐ} ce exw
   with morph-elab mᵐ
 ... | (m' , mᵐ' , E' , d' , fr' , W' , ce' , ex' , exw' , cons')
@@ -1224,7 +1229,7 @@ agree-checkCataGo ctx alg F A π (just wfF) eqW disp dγ k
         with algebra-morph-recover eqAlg exw
 ...     | (m-alg , exEff , eqRealize) =
           trans (agree-cata-denotes {Γ = NamedCtx.debruijn ctx} {wfF = wfF} {algE = algE} exEff dγ k)
-                (cong (λ z → SD.⟦ Surface.lift-morphism {Γ = NamedCtx.debruijn ctx} {π = π} (IR.Cata wfF z) ⟧ˢ dγ k) eqRealize)
+                (cong (λ z → SD.⟦ Surface.lift-morphism {Γ = NamedCtx.debruijn ctx} {π = π} (IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR o ⌊ A ⌋) (⌊⟧T-commute F A) z)) ⟧ˢ dγ k) eqRealize)
 
 agree-check-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type) {Ψ se d fr w}
   (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
