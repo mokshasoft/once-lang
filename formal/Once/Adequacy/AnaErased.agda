@@ -21,16 +21,19 @@
 
 module Once.Adequacy.AnaErased where
 
+open import Function using (id)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; _++_)
+open import Data.Nat using (zero)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; cong; cong₂; sym; trans; subst)
+  using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym; subst-sym-subst)
 
 open import Once.Word using (Carrier)
-open import Once.Type as TT using (Functor)
+open import Once.Type as TT
+  using (Functor; Unit; Void; Int; Str; Float; Buffer; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 open import Once.Functor.Translate using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F)
 open import Once.Semantics.Functor
@@ -42,6 +45,9 @@ open import Once.Semantics.Machine
 open import Once.IRTy using (⌊_⌋; ⌈_⌉)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceDenote using (events-F)
+open import Once.Denotation.TraceMonad using (T; valueT; returnT)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; forget; inject; cohᴰ)
+open import Once.Postulates using (extensionality)
 
 ------------------------------------------------------------------------
 -- `sem-ana` factors through the νS-level `anaS`: unfolding the raw functor
@@ -157,3 +163,125 @@ coerce-SFRel (G₁ TT.⊕ G₂) (inj₁ xe) (inj₁ xs) r        = coerce-SFRel 
 coerce-SFRel (G₁ TT.⊕ G₂) (inj₂ ye) (inj₂ ys) r        = coerce-SFRel G₂ ye ys r
 coerce-SFRel (G₁ TT.⊗ G₂) (xe , ye) (xs , ys) (r₁ , r₂) =
   coerce-SFRel G₁ xe xs r₁ , coerce-SFRel G₂ ye ys r₂
+
+------------------------------------------------------------------------
+-- `forget`/`inject` commute with the `coh`/`cohᴰ` transports (general
+-- version of `CataErased.forget-coh`, all types not just base). Mutual,
+-- structural on the type, mirroring `forget`/`inject`. The `⊕`/`⊗` cases
+-- push `subst` through the constructors; the arrow case is `extensionality`
+-- + the closure-run, cross-recursing (`forget-coh-gen` at the codomain,
+-- `inject-coh-nat` at the domain). Small refl-push helpers below.
+------------------------------------------------------------------------
+
+push× : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A) (b : B)
+  → subst id (cong₂ _×_ p q) (a , b) ≡ (subst id p a , subst id q b)
+push× refl refl a b = refl
+
+push×⁻ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A') (b : B')
+  → subst id (sym (cong₂ _×_ p q)) (a , b) ≡ (subst id (sym p) a , subst id (sym q) b)
+push×⁻ refl refl a b = refl
+
+push⊎₁ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A)
+  → subst id (cong₂ _⊎_ p q) (inj₁ a) ≡ inj₁ (subst id p a)
+push⊎₁ refl refl a = refl
+
+push⊎₁⁻ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A')
+  → subst id (sym (cong₂ _⊎_ p q)) (inj₁ a) ≡ inj₁ (subst id (sym p) a)
+push⊎₁⁻ refl refl a = refl
+
+push⊎₂ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (b : B)
+  → subst id (cong₂ _⊎_ p q) (inj₂ b) ≡ inj₂ (subst id q b)
+push⊎₂ refl refl b = refl
+
+push⊎₂⁻ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (b : B')
+  → subst id (sym (cong₂ _⊎_ p q)) (inj₂ b) ≡ inj₂ (subst id (sym q) b)
+push⊎₂⁻ refl refl b = refl
+
+-- pure arrow (for `coh`): apply-then-transport
+push→ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (g : A → B) (v : A')
+  → subst id (cong₂ (λ x y → x → y) p q) g v ≡ subst id q (g (subst id (sym p) v))
+push→ refl refl g v = refl
+
+-- pure arrow (for `coh`, `sym` direction)
+push→⁻ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (g : A' → B') (v : A)
+  → subst id (sym (cong₂ (λ x y → x → y) p q)) g v ≡ subst id (sym q) (g (subst id p v))
+push→⁻ refl refl g v = refl
+
+-- monadic arrow (for `cohᴰ`, `sym` direction): apply the transported closure
+push→Tᵈ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (f : A' → T B') (w : A)
+  → subst id (sym (cong₂ (λ x y → x → T y) p q)) f w ≡ subst T (sym q) (f (subst id p w))
+push→Tᵈ refl refl f w = refl
+
+subst-T-value : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X)
+  → valueT (subst T eq h) zero ≡ subst id eq (valueT h zero)
+subst-T-value refl h = refl
+
+subst-T-returnT : ∀ {X Y : Set} (eq : X ≡ Y) (x : X)
+  → subst T eq (returnT x) ≡ returnT (subst id eq x)
+subst-T-returnT refl x = refl
+
+mutual
+  forget-coh-gen : ∀ (A : TT.Type) (arg : ⟦ A ⟧ᴰ)
+    → subst id (coh A) (forget (subst id (sym (cohᴰ A)) arg)) ≡ forget arg
+  forget-coh-gen Unit       arg = refl
+  forget-coh-gen Int        arg = refl
+  forget-coh-gen Float      arg = refl
+  forget-coh-gen Str        arg = refl
+  forget-coh-gen Buffer     arg = refl
+  forget-coh-gen Void       ()
+  forget-coh-gen (μ-type F) arg = subst-subst-sym (coh (μ-type F))
+  forget-coh-gen (ν-type F) arg = subst-subst-sym (coh (ν-type F))
+  forget-coh-gen (A * B) (a , b) =
+    trans (cong (λ p → subst id (coh (A * B)) (forget p)) (push×⁻ (cohᴰ A) (cohᴰ B) a b))
+      (trans (push× (coh A) (coh B) (forget (subst id (sym (cohᴰ A)) a))
+                                     (forget (subst id (sym (cohᴰ B)) b)))
+             (cong₂ _,_ (forget-coh-gen A a) (forget-coh-gen B b)))
+  forget-coh-gen (A + B) (inj₁ a) =
+    trans (cong (λ p → subst id (coh (A + B)) (forget p)) (push⊎₁⁻ (cohᴰ A) (cohᴰ B) a))
+      (trans (push⊎₁ (coh A) (coh B) (forget (subst id (sym (cohᴰ A)) a)))
+             (cong inj₁ (forget-coh-gen A a)))
+  forget-coh-gen (A + B) (inj₂ b) =
+    trans (cong (λ p → subst id (coh (A + B)) (forget p)) (push⊎₂⁻ (cohᴰ A) (cohᴰ B) b))
+      (trans (push⊎₂ (coh A) (coh B) (forget (subst id (sym (cohᴰ B)) b)))
+             (cong inj₂ (forget-coh-gen B b)))
+  forget-coh-gen (A ⇒[ k ] B) arg = extensionality (λ va →
+    trans (push→ (coh A) (coh B) (forget {⌈ ⌊ A ⇒[ k ] B ⌋ ⌉} (subst id (sym (cohᴰ (A ⇒[ k ] B))) arg)) va)
+      (trans (cong (λ z → subst id (coh B) (forget (valueT z zero)))
+                   (push→Tᵈ (cohᴰ A) (cohᴰ B) arg (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va))))
+        (trans (cong (λ z → subst id (coh B) (forget z))
+                     (subst-T-value (sym (cohᴰ B)) (arg (subst id (cohᴰ A) (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va))))))
+          (trans (forget-coh-gen B (valueT (arg (subst id (cohᴰ A) (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va)))) zero))
+                 (cong (λ z → forget (valueT (arg z) zero))
+                       (trans (cong (subst id (cohᴰ A)) (inject-coh-nat A va))
+                              (subst-subst-sym (cohᴰ A))))))))
+
+  inject-coh-nat : ∀ (A : TT.Type) (v : ⟦ A ⟧)
+    → inject (subst id (sym (coh A)) v) ≡ subst id (sym (cohᴰ A)) (inject v)
+  inject-coh-nat Unit       v = refl
+  inject-coh-nat Int        v = refl
+  inject-coh-nat Float      v = refl
+  inject-coh-nat Str        v = refl
+  inject-coh-nat Buffer     v = refl
+  inject-coh-nat Void       ()
+  inject-coh-nat (μ-type F) v = refl
+  inject-coh-nat (ν-type F) v = refl
+  inject-coh-nat (A * B) (a , b) =
+    trans (cong (λ p → inject p) (push×⁻ (coh A) (coh B) a b))
+      (trans (cong₂ _,_ (inject-coh-nat A a) (inject-coh-nat B b))
+             (sym (push×⁻ (cohᴰ A) (cohᴰ B) (inject a) (inject b))))
+  inject-coh-nat (A + B) (inj₁ a) =
+    trans (cong inject (push⊎₁⁻ (coh A) (coh B) a))
+      (trans (cong inj₁ (inject-coh-nat A a))
+             (sym (push⊎₁⁻ (cohᴰ A) (cohᴰ B) (inject a))))
+  inject-coh-nat (A + B) (inj₂ b) =
+    trans (cong inject (push⊎₂⁻ (coh A) (coh B) b))
+      (trans (cong inj₂ (inject-coh-nat B b))
+             (sym (push⊎₂⁻ (cohᴰ A) (cohᴰ B) (inject b))))
+  inject-coh-nat (A ⇒[ k ] B) v = extensionality (λ da →
+    trans (cong (λ z → returnT (inject z)) (push→⁻ (coh A) (coh B) v (forget da)))
+      (trans (cong returnT (inject-coh-nat B (v (subst id (coh A) (forget da)))))
+        (trans (cong (λ z → returnT (subst id (sym (cohᴰ B)) (inject (v z))))
+                     (trans (cong (λ w → subst id (coh A) (forget w)) (sym (subst-sym-subst (cohᴰ A))))
+                            (forget-coh-gen A (subst id (cohᴰ A) da))))
+               (sym (trans (push→Tᵈ (cohᴰ A) (cohᴰ B) (inject {A ⇒[ k ] B} v) da)
+                           (subst-T-returnT (sym (cohᴰ B)) (inject {B} (v (forget {A} (subst id (cohᴰ A) da))))))))))
