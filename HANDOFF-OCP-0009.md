@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **86 modules, all green** (77 of them `--safe`). **START AT
+- **90 modules, all green** (81 of them `--safe`). **START AT
   `NbEPMonIndex.agda`** for the monoidal/linear tower — one `--safe`
   entry point re-exporting the headline theorems (`dec≈`, `complete`,
   `nf`, the axiom re-derivations, the closed-core theory + `bal` +
@@ -229,13 +229,25 @@ the "Other open items" section below.**
    pidR-real, **bswapW-real — the nt-σ analogue in NINE steps**;
    `NbEPMonT`'s bswapW refactored wart-free via pidR). Every
    world-category operation the model uses is realized against ≈c.
-   **A3 UNDERWAY**: A3a DONE (`NbEPMonAdq7`, first-try green:
-   bind-reify/map-reify fold laws at literal ≡, vmapSp-splice with NO
-   induction — top-node perms + ⊙P-realC, payload-compat instances).
-   NEXT: **A3b** — withSpˡ/withSpʳ/go splice lemmas (statement shapes
-   + the psubst-generalization technique recorded in plan §10; hoist
-   `exch`/`carry²` from NbEPMonF to NbEPMonT first). Then A4 (R,
-   fundamental lemma, completeness `f ≈c NF f`). Rung 3 proper (variance judgments,
+   **A3 IS CLOSED** (2026-07-16): A3a (`NbEPMonAdq7`: fold laws +
+   vmapSp-splice), A3b.1 (`NbEPMonAdq8`: **the model went
+   TRANSPORT-FREE** — psubst → structural passoc/passocInv perms;
+   passoc-real, passocInv-real free by right-cancellation), A3b.2
+   (`NbEPMonAdq9`: node algebra — PENTAR, mult-head²/mult-headI,
+   node-perm-real), A3b.3 (`NbEPMonAdq10`: withSpˡ + appSp spliced),
+   A3b.4 (`NbEPMonAdq11`: **withSpʳ spliced — the deepest lemma**:
+   exch-real = the exchange realizes as the block head-transposition;
+   the `dance` closes it via K5′C + swapHeadC-invol). Method for the
+   two deepest chains: extract the post-realization goal via a
+   temporary `--allow-unsolved-metas` hole + `≈crefl`, then a clean
+   ~10-step structural proof. NEXT: **A4 — THE SUMMIT PUSH** — the
+   Kripke gluing relation R by type recursion (atoms/I/⊗ via RSp
+   splice equality + component relations; ⊸ Kripke over ++), R-vmap,
+   R-reflect/R-reify (mutual), THE FUNDAMENTAL LEMMA (evalV's 12
+   cases, each = model arithmetic mirrored by an A2 realization through
+   an A3 splice), and completeness `f ≈c NF f` via
+   `R (reflectTy A) (joinTm A)` + join-split ⇒ `NF f ≡ NF g → f ≈c g`.
+   Derive on paper first (plan §10 has the skeleton). Rung 3 proper (variance judgments,
    directed univalence) — gated on the linear/monoidal core decision
    (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT
