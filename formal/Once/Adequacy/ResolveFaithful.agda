@@ -39,7 +39,7 @@ open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; inject; forget)
 open import Once.Denotation.TraceMonad using (T; _>>=T_; valueT)
 open import Once.Semantics.Machine using (sem-cata; sem-ana; coerce-functor)
 import Once.Denotation.SourceDenote as SD
-open import Once.TypeCheck.Elaborate using (resolveExpr; PolyCtx; Imports;
+open import Once.TypeCheck.ElaborateProofs using (resolveExpr; PolyCtx; Imports;
   resolvePolyCase; applySplice; checkElab; CheckElabResult)
 open import Once.TypeCheck.Classify using (lookupPoly; removePoly; lookupImport; ctxWithImportsAndPolys)
 open import Once.CanonicalName using (CanonicalName; showCanonical)
