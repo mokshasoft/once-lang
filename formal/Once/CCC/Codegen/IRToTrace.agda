@@ -70,7 +70,9 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
 -- Plan 0.36 Phase 2b: functor structure drives the cata codegen strategy.
-open import Once.Type using (Functor; K; Id; _⊕_; _⊗_; fits-int; fits-float)
+open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
+import Once.Type as Ty
 
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace;
@@ -639,8 +641,8 @@ ir-to-trace' n l (SigOp si) = n , l , (instr-sigop si ∷ []) , []
 
 -- Plan 0.11: const literal — emit a single load-const abstract instr.
 -- 0.47: matching the FitsInReg evidence reduces `⟦ ℕ ⟧-base A` to `⟦ A ⟧`.
-ir-to-trace' n l (const fits-int   v) = n , l , (instr-load-const fits-int   v ∷ []) , []
-ir-to-trace' n l (const fits-float v) = n , l , (instr-load-const fits-float v ∷ []) , []
+ir-to-trace' n l (const fits-int   v) = n , l , (instr-load-const Ty.fits-int   v ∷ []) , []
+ir-to-trace' n l (const fits-float v) = n , l , (instr-load-const Ty.fits-float v ∷ []) , []
 
 -- ────────────────────────────────────────────────────────────────────
 -- Stubbed — emit `[]`. Not needed for Layer 0; future work.
@@ -749,7 +751,7 @@ ir-to-trace' n l (out-μ _)      = n , l , (mov-to-output ∷ []) , []
 -- Today every strategy routes to `cata-trace-nat`; Tier 1/2 refine it.
 ir-to-trace' n l (Cata {F} _ alg) =
   let (n1 , l1 , at , ab) = ir-to-trace' n l alg
-      (next , l2 , trace) = cata-dispatch (cata-strategy F) n1 l1 at
+      (next , l2 , trace) = cata-dispatch (cata-strategy ⌈ F ⌉F) n1 l1 at
   in next , l2 , trace , ab
 ir-to-trace' n l (Para _ _)     = n , l , [] , []
 ir-to-trace' n l (Out _)        = n , l , (mov-to-output ∷ []) , []
