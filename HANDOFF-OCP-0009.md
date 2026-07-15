@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **90 modules, all green** (81 of them `--safe`). **START AT
+- **92 modules, all green** (83 of them `--safe`). **START AT
   `NbEPMonIndex.agda`** for the monoidal/linear tower — one `--safe`
   entry point re-exporting the headline theorems (`dec≈`, `complete`,
   `nf`, the axiom re-derivations, the closed-core theory + `bal` +
@@ -240,14 +240,24 @@ the "Other open items" section below.**
    the `dance` closes it via K5′C + swapHeadC-invol). Method for the
    two deepest chains: extract the post-realization goal via a
    temporary `--allow-unsolved-metas` hole + `≈crefl`, then a clean
-   ~10-step structural proof. NEXT: **A4 — THE SUMMIT PUSH** — the
-   Kripke gluing relation R by type recursion (atoms/I/⊗ via RSp
-   splice equality + component relations; ⊸ Kripke over ++), R-vmap,
-   R-reflect/R-reify (mutual), THE FUNDAMENTAL LEMMA (evalV's 12
-   cases, each = model arithmetic mirrored by an A2 realization through
-   an A3 splice), and completeness `f ≈c NF f` via
-   `R (reflectTy A) (joinTm A)` + join-split ⇒ `NF f ≡ NF g → f ≈c g`.
-   Derive on paper first (plan §10 has the skeleton). Rung 3 proper (variance judgments,
+   ~10-step structural proof. **A4 — THE SUMMIT — UNDERWAY** (staged A4.1–A4.5 in plan §10):
+   A4.1 DONE (`NbEPMonAdq12`: the gluing relation R + R-resp —
+   positive types relate a split tree to a term with ⊗ leaves carrying
+   component relations, ⊸ Kripke; (type,tree) termination accepted).
+   A4.2 DONE (`NbEPMonAdq13`: Kripke monotonicity R-vmap — shallow
+   except ⊸ via padʳ-real). A4.3 WIP (draft
+   `scratchpad/NbEPMonAdq14-WIP.agda`: R-reify/R-reflectNe/R-reflectTy
+   mutual — atoms/unit/function boundary PROVEN incl. R-reflectNe I;
+   4 holes remain, of which **`R⊗-reify` needs the A3 hoist-splice
+   lemmas** — reify = reifySp emit ∘ hoist, and the ⊗ leaf hoists via
+   withSpˡ/withSpʳ, so it consumes withSpˡ-splice/withSpʳ-splice/
+   bind-reify; session-scale). REMAINING: finish A4.3 (esp. R⊗-reify),
+   then **A4.4 the FUNDAMENTAL LEMMA** (R A v t → R B (evalV f v)
+   (f ∘c t), 12 evalV cases), then **A4.5 assembly**: `f ≈c NF f`
+   from R-reflectTy + fund lemma + R-reify + join-split ⇒
+   `NF f ≡ NF g → f ≈c g`, the proven decision procedure. The
+   definitional core (A4.1/A4.2) is committed green; the reify/reflect
+   completion + fundamental lemma are the remaining summit pieces. Rung 3 proper (variance judgments,
    directed univalence) — gated on the linear/monoidal core decision
    (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT

@@ -1218,15 +1218,44 @@ no system anywhere has directed type theory with a decidable kernel.
             UnequalTerms print, then a clean ~10-step structural proof
             (dressEq/finishI, dance/finish). A3 CLOSED: every
             split-monad combinator has its splice law.
-         A4 — THE SUMMIT PUSH (only stage left): the relation R by
-            type recursion (positive = RSp splice-equality + component
-            relations; ⊸ = Kripke over ++), R-vmap, R-reflect/R-reify
-            (mutual on the type), THE FUNDAMENTAL LEMMA (12 evalV
-            cases, each = its model arithmetic mirrored by an A2
-            realization through an A3 splice), and COMPLETENESS
-            `f ≈c NF f` via `R (reflectTy A) (joinTm A)` + join-split,
-            giving `NF f ≡ NF g → f ≈c g` — the proven decision
-            procedure.
+         A4 — THE SUMMIT (staged A4.1–A4.5; the NbEPComplete-scale
+            fundamental-lemma pass):
+            A4.1 [DONE 2026-07-16, `NbEPMonAdq12`] — the gluing
+              relation R by type recursion: positive types (ι/I/⊗)
+              relate a SPLIT TREE to a term by mirroring reifySp's node
+              dressing, ⊗ leaves carrying COMPONENT relations; ⊸ is
+              Kripke (related args → related results over ++). Plus
+              `R-resp` (R respects ≈c on the term). Termination on
+              (type, tree) lexicographic — accepted.
+            A4.2 [DONE 2026-07-16, `NbEPMonAdq13`] — Kripke
+              monotonicity `R-vmap : R A v t → R A (vmap A ρ v)
+              (t ∘c permC ρ)`. Shallow (vmap touches only the top
+              node): spl/usI reuse the continuation proof + re-associate
+              (⊙P-realC); only ⊸ recurses, transported by padʳ-real.
+            A4.3 [WIP, draft in scratch `NbEPMonAdq14-WIP.agda`] —
+              R-reify / R-reflectNe / R-reflectTy (mutual). PROVEN in
+              the draft: RAt-reify/RI-reify (tree induction, hoist=id),
+              R-reify ι/I, R-reify ⊸ structure, R-reflectNe atoms/⊸,
+              **R-reflectNe I** (via pidR-real + Kelly ƛ_I=ρ_I),
+              R-reflectTy atoms/I/⊗. REMAINING HOLES (4): `r⊸` (reify-⊸
+              unit coherence), `R-reflectTy ⊸` (same family),
+              `R-reflectNe (X⊗Y)` (spl-node coherence via R-reflectNe
+              X/Y at ρrc), and **`R⊗-reify`** — the one needing the A3
+              hoist-splice lemmas (reify=reifySp emit∘hoist; the ⊗ leaf
+              hoists via withSpˡ/withSpʳ, so R⊗-reify consumes
+              withSpˡ-splice/withSpʳ-splice/bind-reify — session-scale).
+            A4.4 — THE FUNDAMENTAL LEMMA `R A v t → R B (evalV f v)
+              (f ∘c t)` by induction on f (12 evalV cases; each = its
+              model arithmetic mirrored by an A2 realization through an
+              A3 splice; evc/⊗c/σc consume the ⊗ component relations,
+              Λc/evc the Kripke ⊸).
+            A4.5 — assembly: `f ≈c NF f` from R-reflectTy A +
+              fundamental lemma + R-reify + join-split, giving
+              `NF f ≡ NF g → f ≈c g` — the proven decision procedure.
+            STATUS: the definitional core (A4.1/A4.2) is committed and
+            green; A4.3 is drafted with the atom/unit/function boundary
+            proven; R⊗-reify + A4.4 are the remaining session-scale
+            summit pieces.
      · Soundness/completeness against `_≈c_` in each stage mirror the
        NbEP adequacy scaffolding (logical relations, stage L2a's `Ext`
        as the semantic side).
