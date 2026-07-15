@@ -141,19 +141,15 @@ insEnd : ∀ Θ {x xs} → Ins x (Θ ++ xs) (Θ ++ (x ∷ xs))
 insEnd ε       = here
 insEnd (A ∷ Θ) = there (insEnd Θ)
 
--- Γ ++ Δ ⇒ Δ ++ Γ, one head-carry at a time.
-swap++ : ∀ Γ Δ → Perm (Γ ++ Δ) (Δ ++ (Γ ++ ε))
-swap++ ε       Δ with Δ ++ ε | ++-idʳ Δ
-... | _ | refl = pid Δ
-swap++ (A ∷ Γ) Δ = pcons (swap++ Γ Δ) (insEnd Δ)
+-- The identity, into the ε-padded type (the wart, isolated here).
+pidR : ∀ Δ → Perm Δ (Δ ++ ε)
+pidR ε       = pnil
+pidR (A ∷ Δ) = pcons (pidR Δ) here
 
--- The clean-type corollary (the ε-tail transported away).
-private
-  psubst : ∀ {Γ Δ Δ'} → Δ ≡ Δ' → Perm Γ Δ → Perm Γ Δ'
-  psubst refl p = p
-
+-- Γ ++ Δ ⇒ Δ ++ Γ, one head-carry at a time. No transports.
 bswapW : ∀ Γ Δ → Perm (Γ ++ Δ) (Δ ++ Γ)
-bswapW Γ Δ = psubst (cong (Δ ++_) (++-idʳ Γ)) (swap++ Γ Δ)
+bswapW ε       Δ = pidR Δ
+bswapW (A ∷ Γ) Δ = pcons (bswapW Γ Δ) (insEnd Δ)
 
 ------------------------------------------------------------------------
 -- Demos: composition and symmetry compute.

@@ -1153,9 +1153,23 @@ no system anywhere has directed type theory with a decidable kernel.
             (insertion past a suffix; the there-case = 17-step chain
             landing on ŝ-tail), `padʳ-real`, `padˡ-real`.
             (`insʳ` hoisted to top level in `NbEPMonT`.)
-         A2b part 2 — `insEnd-real`, `bswapW-real` (permC (bswapW) in
-            mult-form against σ), and the `exch`/`carry²`
-            realizations. These feed A3's withSpʳ splice lemma.
+         A2b part 2 [DONE 2026-07-15, `NbEPMonAdq4/5/6` — A2 CLOSED]:
+            Adq4 = the Kelly cluster ported (K2C, K3′C/K3C, K4C, K5′C,
+            ŝ-αrC — first-try green). Adq5 = Kelly part II (lem-ƛ⊗ in
+            ONE LINE by ƛ-cancel; ƛρ-IC : ƛ_I ≈ ρ_I; σƛl; **tri-ρC the
+            right-unit triangle in 11 steps via the σ-block** + tri-ρlC)
+            and the σ-block ports (pLC/qRC/H2C/σ-blockC/σblk-αl).
+            Adq6 = the swap realizations: ŝ-Iƛ, K5′ₗC (αl-form of
+            multiplicativity), mult-insEnd (carrying past a block IS
+            the block head-swap), mult-insˡ (17-step chain), pidR-real
+            (the ε-wart realizes as ρl), and **bswapW-real : mult Δ Γ
+            ∘ permC (bswapW Γ Δ) ≈c σ ∘ mult Γ Δ — the nt-σ analogue
+            in NINE steps** (vs. the original multi-module campaign:
+            the entire dividend of list-normalized worlds in one
+            comparison). Prerequisite refactor: `NbEPMonT`'s bswapW
+            redefined wart-free via `pidR` (no transports; same
+            values, all model demos unaffected). Every world-category
+            operation the model uses is now realized against `_≈c_`.
          A3 — `RSp` (the Sp-tree gluing relation: ret/spl/usI nodes
             vs. `≈c`-spliced syntax) + preservation lemmas for every
             Sp combinator (bind/map/vmapSp/withSpˡ/withSpʳ/absorb-go).
