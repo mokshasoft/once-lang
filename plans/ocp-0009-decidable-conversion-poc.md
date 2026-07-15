@@ -1177,17 +1177,43 @@ no system anywhere has directed type theory with a decidable kernel.
             `permC ρ`; NO INDUCTION — pending perms live only in the
             top node, so ⊙P-realC + 4 reassociations close each case),
             payload-compat instances `pvAt-compat`/`pvI-compat`.
-         A3b — the remaining splice lemmas (derive on paper first):
-            `withSpˡ-splice` (statement shape: given payload-level
-            H : reifySp g (f ρ' p) ≈c (h p ⊗ 1) ∘ (mult ∘ permC ρ'),
+         A3b.1 [DONE 2026-07-15, `NbEPMonAdq8` + refactor] — THE MODEL
+            GOES TRANSPORT-FREE: every psubst in `NbEPMonF` replaced
+            by structural permutation data (`NbEPMonT` gains pidRInv/
+            passoc/passocInv + hoisted exch/carry²; exch itself now
+            transport-free). Realizations: cancel-rightC, K2ₗC,
+            α-pent2 (5-α by compose-and-cancel onto the mirror
+            pentagon), ⊙P-pidˡ + passoc-inv/passocInv-inv (passoc and
+            passocInv are ⊙P-inverse ON THE NOSE — two-line
+            ≡-inductions), passoc-real (15-step cons chain on
+            α-pent2), **passocInv-real FREE by right-cancellation**
+            (no mirror-pentagon derivation needed), pidRInv-real.
+            USER NOTE (also in memory): at consolidation, sweep the
+            rest of the POC for the same transport→structural-data
+            replacement.
+         A3b.2 (= Adq9, the A3 closer) — the splice lemmas proper:
+            `withSpˡ-splice` — statement: given payload-level
+            H : ∀ ρ' p → reifySp g (f ρ' p) ≈c
+                (C ∘c ((h p ⊗c 1) ∘c (mult Δ₁ Γ₂ ∘c permC ρ'))),
             conclude reifySp g (withSpˡ ρ sp f) ≈c
-            ((reifySp h sp ⊗ 1) ∘ (mult Γ₁ Γ₂ ∘ permC ρ)); the
-            spl-case needs `psubst`-generalization — match the
-            ++-assoc equality refl via a helper — plus padʳ-real);
-            `withSpʳ-splice` (mirror, via padˡ-real + exch-real, where
-            exch's realization is COMPOSITE: ⊙P-realC + pad-reals +
-            bswapW-real; note exch/carry² are private in NbEPMonF —
-            hoist to NbEPMonT first); `go-splice` (absorb's ⊸-pusher).
+                (C ∘c ((reifySp h sp ⊗c 1) ∘c (mult Γ₁ Γ₂ ∘c
+                 permC ρ))).
+            ret = H; spl/usI-case reduces (after IH at pid +
+            pid-realC collapse) to the structural equation
+            (★L): mult (X∷Y∷Θ₂) Γ₂ ∘c NODE* ≈c (NODE₁ ⊗c 1) ∘c
+                 (mult Γ₁ Γ₂ ∘c permC ρ)
+            where NODE* carries (ρ ⊙P padʳ Γ₂ ρ₁) ⊙P passoc — now
+            TRANSPORT-FREE: expand by ⊙P-realC, then padʳ-real and
+            passoc-real discharge the two factors; the α-plumbing
+            residue is fuse/assoc + α-natˡC (no new mathematics).
+            `withSpʳ-splice` — mirror; its node carries
+            ρ ⊙P (padˡ Γ₁ ρ₂ ⊙P exch): ⊙P-realC + padˡ-real +
+            exch's realization (COMPOSITE: ⊙P-realC + passocInv-real
+            + padʳ-real + bswapW-real + passoc-real chained) +
+            carry²'s realization (pcons/pcons/insˡ: insC-level, via
+            mult-insˡ at `here`).
+            `go-splice` (absorb's ⊸-pusher: padʳ Δ ρ ⊙P passoc —
+            same ingredients).
          A4 — R by type recursion (atoms/I/⊗ via RSp-style splice
             equality with component relations; ⊸ Kripke), R-vmap,
             R-reflect/R-reify mutual on the type, THE FUNDAMENTAL
