@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **75 modules, all green** (66 of them `--safe`). The full expressibility tower is built and
+- **76 modules, all green** (67 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
@@ -197,12 +197,19 @@ the "Other open items" section below.**
    by `refl`). Stage L3.2 DONE (`NbEPMonB`: the
    residualizing split monad — pair-returning neutrals; let = 
    composition; all L3.1 demos re-decided + the frontier demo
-   `Λ((σ∘σ)∘ev) ≡ id` at `ι₁ ⊸ (ι₁⊗ι₂)`, by `refl`). NEXT: the
-   adequacy pass over the L3.2 model (soundness `f ≈c g → NF f ≡ NF g`
-   and completeness `f ≈c NF f`, the NbEPFund/NbEPComplete shape —
-   proven ONCE over the widest running fragment), L3.2b (canonicity
-   across independent splits — the proof-net question), and L3.3
-   (units on the right of ⊸ — the unit problem). Rung 3 proper (variance judgments,
+   `Λ((σ∘σ)∘ev) ≡ id` at `ι₁ ⊸ (ι₁⊗ι₂)`, by `refl`). Stage L3.3 DONE
+   (`NbEPMonJ`, 2026-07-15: the `usI` node — units crossed, the
+   `Good`/`GoodR` witnesses dissolve, **`NF : CTm A B → CTm A B` is
+   TOTAL on the free SMCC**; seven demos by `refl` incl. both unit
+   crossings). REMAINING ON L3 (the two open theorems, over the total
+   model): **L3.4a canonicity** — independent `spl`/`usI` nodes
+   commute, so βη-equal programs can reify to normal forms differing
+   by emission order; deciding Sp-tree equality modulo those
+   commutations is the proof-net layer (this is what is LEFT of the
+   classical unit problem). **L3.4b adequacy** — soundness
+   `f ≈c g → NF f ≈-canonical NF g` and completeness `f ≈c NF f`
+   (the NbEPFund/NbEPComplete shape). Both are session-scale climbs;
+   derive on paper first. Rung 3 proper (variance judgments,
    directed univalence) — gated on the linear/monoidal core decision
    (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT
