@@ -1074,8 +1074,23 @@ no system anywhere has directed type theory with a decidable kernel.
          earlier args — hoist refl-consuming continuations to
          top-level/where helpers. Canonicity across INDEPENDENT splits
          (emission order) = L3.2b, the proof-net question, still open.
-       L3.3 — the unit problem ([∗] full generality): I-neutrals and
-         the Kelly–Mac Lane triple-unit subtleties — the open frontier.
+       [L3.3 DONE 2026-07-15, `NbEPMonJ`] — UNITS CROSSED, **NF TOTAL
+         ON THE FREE SMCC**: an I-returning neutral is a SECOND NODE
+         in the split monad (`usI`: a neutral consumed for nothing,
+         spliced as `ƛr ∘ (n ⊗ 1)`); with it `reflect` is total by
+         type recursion, the `Good`/`GoodR` witnesses DISSOLVE, and
+         `NF : CTm A B → CTm A B` normalizes the WHOLE closed linear
+         core. Demos by `refl`: the full L3.1/L3.2 suite witness-free,
+         plus η at a unit-RETURNING function type and units-as-
+         arguments through the higher-order path. What the unit
+         problem REMAINS, precisely: CANONICITY OF EMISSION ORDER —
+         independent `usI`/`spl` nodes commute (a unit-use binds
+         nothing), so βη-equal programs can reify to normal forms
+         differing by node order (unit-use inside a pair component vs.
+         hoisted outside). Deciding `Sp`-tree equality modulo those
+         commutations = the proof-net layer (L3.4a); adequacy of `NF`
+         w.r.t. `_≈c_` = the other open theorem (L3.4b), to be proven
+         once over this total model.
      · Soundness/completeness against `_≈c_` in each stage mirror the
        NbEP adequacy scaffolding (logical relations, stage L2a's `Ext`
        as the semantic side).
