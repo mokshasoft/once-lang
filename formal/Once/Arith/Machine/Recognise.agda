@@ -82,41 +82,44 @@ recognise-path _         = nothing
 -- carries enough information without forcing index unification.
 {-# TERMINATING #-}
 recognise-body : (sh : InputShape) → ∀ {A B} → IR A B → Maybe (MArithIR sh)
+-- `recognise-binop` recognises the two operands of a binary op. Its codomain
+-- `Y` is a FREE variable, so matching `⟨_,_⟩` instantiates `Y := B * C` freely —
+-- unlike matching the pair directly under `SigOp _ ∘ _`, where the middle object
+-- is the SigOp's ERASED domain `⌊Dom⌋` and `⌊Dom⌋ ≟ B * C` is unification-stuck
+-- (`⌊_⌋` non-invertible). Plan 0.52 M2.
+recognise-binop : (sh : InputShape) → ∀ {X Y} → IR X Y → Maybe (MArithIR sh × MArithIR sh)
+recognise-binop sh (⟨ a , b ⟩ _) with recognise-body sh a | recognise-body sh b
+... | just ra | just rb = just (ra , rb)
+... | _       | _       = nothing
+recognise-binop sh _ = nothing
 
--- Binary-op SigOp ∘ ⟨_,_⟩ — pattern-matches three constructors deep.
-recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) with name si ≟ᶜ bare "arith.add.int"
-... | yes _  with recognise-body sh a | recognise-body sh b
-...   | just ra | just rb = just (aadd ra rb)
-...   | just _  | nothing = nothing
-...   | nothing | _       = nothing
-recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) | no _ with name si ≟ᶜ bare "arith.sub.int"
-...   | yes _ with recognise-body sh a | recognise-body sh b
-...     | just ra | just rb = just (asub ra rb)
-...     | just _  | nothing = nothing
-...     | nothing | _       = nothing
-recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) | no _ | no _ with name si ≟ᶜ bare "arith.mul.int"
-...     | yes _ with recognise-body sh a | recognise-body sh b
-...       | just ra | just rb = just (amul ra rb)
-...       | just _  | nothing = nothing
-...       | nothing | _       = nothing
-recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) | no _ | no _ | no _ with name si ≟ᶜ bare "arith.div.int"
-...       | yes _ with recognise-body sh a | recognise-body sh b
-...         | just ra | just rb = just (adiv ra rb)
-...         | just _  | nothing = nothing
-...         | nothing | _       = nothing
-recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) | no _ | no _ | no _ | no _ with name si ≟ᶜ bare "arith.mod.int"
-...         | yes _ with recognise-body sh a | recognise-body sh b
-...           | just ra | just rb = just (amod ra rb)
-...           | just _  | nothing = nothing
-...           | nothing | _       = nothing
-recognise-body sh (SigOp si ∘ ⟨ a , b ⟩ _) | no _ | no _ | no _ | no _ | no _ = nothing
-
--- Unary-op SigOp ∘ e — `arith.neg.int`.
-recognise-body sh (SigOp si ∘ e) with name si ≟ᶜ bare "arith.neg.int"
-... | yes _ with recognise-body sh e
-...   | just r  = just (aneg r)
-...   | nothing = nothing
-recognise-body sh (SigOp si ∘ e) | no _ = nothing
+-- Binary/unary-op `SigOp si ∘ e` — dispatch on `name si`; `e` stays GENERIC so
+-- the pair operand is recognised by `recognise-binop` (no stuck product index).
+recognise-body sh (SigOp si ∘ e) with name si ≟ᶜ bare "arith.add.int"
+... | yes _ with recognise-binop sh e
+...   | just (ra , rb) = just (aadd ra rb)
+...   | nothing        = nothing
+recognise-body sh (SigOp si ∘ e) | no _ with name si ≟ᶜ bare "arith.sub.int"
+...   | yes _ with recognise-binop sh e
+...     | just (ra , rb) = just (asub ra rb)
+...     | nothing        = nothing
+recognise-body sh (SigOp si ∘ e) | no _ | no _ with name si ≟ᶜ bare "arith.mul.int"
+...     | yes _ with recognise-binop sh e
+...       | just (ra , rb) = just (amul ra rb)
+...       | nothing        = nothing
+recognise-body sh (SigOp si ∘ e) | no _ | no _ | no _ with name si ≟ᶜ bare "arith.div.int"
+...       | yes _ with recognise-binop sh e
+...         | just (ra , rb) = just (adiv ra rb)
+...         | nothing        = nothing
+recognise-body sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ with name si ≟ᶜ bare "arith.mod.int"
+...         | yes _ with recognise-binop sh e
+...           | just (ra , rb) = just (amod ra rb)
+...           | nothing        = nothing
+recognise-body sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ | no _ with name si ≟ᶜ bare "arith.neg.int"
+...           | yes _ with recognise-body sh e
+...             | just r  = just (aneg r)
+...             | nothing = nothing
+recognise-body sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ | no _ | no _ = nothing
 
 -- Literal: `const fits-int z _ ∘ rhs` where `rhs` is `terminal`
 -- is the surface elaborator's intLit shape. We test rhs via a
