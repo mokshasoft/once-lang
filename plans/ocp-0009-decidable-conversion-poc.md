@@ -1170,9 +1170,32 @@ no system anywhere has directed type theory with a decidable kernel.
             redefined wart-free via `pidR` (no transports; same
             values, all model demos unaffected). Every world-category
             operation the model uses is now realized against `_≈c_`.
-         A3 — `RSp` (the Sp-tree gluing relation: ret/spl/usI nodes
-            vs. `≈c`-spliced syntax) + preservation lemmas for every
-            Sp combinator (bind/map/vmapSp/withSpˡ/withSpʳ/absorb-go).
+         A3a [DONE 2026-07-15, `NbEPMonAdq7` — first-try green] —
+            splice lemmas: `bind-reify`/`map-reify` (the fold laws at
+            LITERAL ≡ — bind/map never touch nodes), `vmapSp-splice`
+            (the world action splices as post-composition with
+            `permC ρ`; NO INDUCTION — pending perms live only in the
+            top node, so ⊙P-realC + 4 reassociations close each case),
+            payload-compat instances `pvAt-compat`/`pvI-compat`.
+         A3b — the remaining splice lemmas (derive on paper first):
+            `withSpˡ-splice` (statement shape: given payload-level
+            H : reifySp g (f ρ' p) ≈c (h p ⊗ 1) ∘ (mult ∘ permC ρ'),
+            conclude reifySp g (withSpˡ ρ sp f) ≈c
+            ((reifySp h sp ⊗ 1) ∘ (mult Γ₁ Γ₂ ∘ permC ρ)); the
+            spl-case needs `psubst`-generalization — match the
+            ++-assoc equality refl via a helper — plus padʳ-real);
+            `withSpʳ-splice` (mirror, via padˡ-real + exch-real, where
+            exch's realization is COMPOSITE: ⊙P-realC + pad-reals +
+            bswapW-real; note exch/carry² are private in NbEPMonF —
+            hoist to NbEPMonT first); `go-splice` (absorb's ⊸-pusher).
+         A4 — R by type recursion (atoms/I/⊗ via RSp-style splice
+            equality with component relations; ⊸ Kripke), R-vmap,
+            R-reflect/R-reify mutual on the type, THE FUNDAMENTAL
+            LEMMA (12 evalV cases, each = its model arithmetic
+            mirrored by A2's realization lemmas through A3's splice
+            lemmas), completeness `f ≈c NF f` via
+            `R (reflectTy A) (joinTm A)` + join-split, and the payoff
+            `NF f ≡ NF g → f ≈c g`.
          A4 — the relation R by type recursion (positive = RSp with
             component relations; ⊸ = Kripke), R-vmap, R-reflect/R-reify
             (mutual), THE FUNDAMENTAL LEMMA (12 evalV cases), and

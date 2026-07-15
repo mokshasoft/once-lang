@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **82 modules, all green** (73 of them `--safe`). **START AT
+- **86 modules, all green** (77 of them `--safe`). **START AT
   `NbEPMonIndex.agda`** for the monoidal/linear tower — one `--safe`
   entry point re-exporting the headline theorems (`dec≈`, `complete`,
   `nf`, the axiom re-derivations, the closed-core theory + `bal` +
@@ -220,14 +220,22 @@ the "Other open items" section below.**
    green: the full homomorphism layer — swapHeadC-nat/invol, F2C/GC,
    pentagon corollaries, M-reductions, **YBC**, ins-swap-realC,
    pid-realC, push-realC, **⊙P-realC** — verbatim ports of R/Y/I/Q;
-   element-genericity held perfectly). A2b part 1 DONE
-   (`NbEPMonAdq3`: inv-congC, the MIRROR PENTAGON `pentagonₗC`, the
-   5-α `α-shuffle`, the K5′-analogue `ŝ-tail`, `mult-insʳ`,
-   `padʳ-real`, `padˡ-real` — all mult-form; `insʳ` hoisted in
-   `NbEPMonT`). NEXT: **A2b part 2** — `insEnd-real`, `bswapW-real`,
-   `exch`/`carry²` realizations (same toolkit: ŝ-tail + pentagonₗC
-   should carry them). Then A3 (RSp + Sp-combinator splice lemmas)
-   and A4 (R, fundamental lemma, completeness `f ≈c NF f`). Rung 3 proper (variance judgments,
+   element-genericity held perfectly). **A2 IS
+   CLOSED** (2026-07-15): Adq3 (pad realizations: mirror pentagon,
+   α-shuffle, ŝ-tail, mult-insʳ, padʳ/padˡ-real), Adq4 (Kelly cluster
+   ported: K2C→K4C, K5′C), Adq5 (Kelly II: ƛ_I=ρ_I, σƛl, the
+   right-unit triangle tri-ρC/tri-ρlC via the σ-block ports), Adq6
+   (swap realizations: ŝ-Iƛ, K5′ₗC, mult-insEnd, mult-insˡ,
+   pidR-real, **bswapW-real — the nt-σ analogue in NINE steps**;
+   `NbEPMonT`'s bswapW refactored wart-free via pidR). Every
+   world-category operation the model uses is realized against ≈c.
+   **A3 UNDERWAY**: A3a DONE (`NbEPMonAdq7`, first-try green:
+   bind-reify/map-reify fold laws at literal ≡, vmapSp-splice with NO
+   induction — top-node perms + ⊙P-realC, payload-compat instances).
+   NEXT: **A3b** — withSpˡ/withSpʳ/go splice lemmas (statement shapes
+   + the psubst-generalization technique recorded in plan §10; hoist
+   `exch`/`carry²` from NbEPMonF to NbEPMonT first). Then A4 (R,
+   fundamental lemma, completeness `f ≈c NF f`). Rung 3 proper (variance judgments,
    directed univalence) — gated on the linear/monoidal core decision
    (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT
