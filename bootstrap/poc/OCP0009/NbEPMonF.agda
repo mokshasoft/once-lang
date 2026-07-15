@@ -143,20 +143,23 @@ vmap (A ⊗ B) ρ v =
          ρ v
 vmap (A ⊸ B) ρ f = λ Δ v → vmap B (padʳ Δ ρ) (f Δ v)
 
+-- Application under pending splits (absorb's ⊸-pusher, top level so
+-- the adequacy layer can splice it).
+appSp : ∀ {A B} (Δ : Ctx) → Val A Δ →
+        ∀ {Γ} → Sp (Val (A ⊸ B)) Γ → Sp (Val B) (Γ ++ Δ)
+appSp Δ v (ret f) = ret (f Δ v)
+appSp Δ v (spl {Γ₁ = Θ₁} {Θ₂} ρ n k) =
+  spl (padʳ Δ ρ ⊙P passoc Θ₁ Θ₂ Δ) n (appSp Δ v k)
+appSp Δ v (usI {Γ₁ = Θ₁} {Θ₂} ρ n k) =
+  usI (padʳ Δ ρ ⊙P passoc Θ₁ Θ₂ Δ) n (appSp Δ v k)
+
 -- Absorption is a uniform join at every positive type.
 absorb : ∀ A {Γ} → Sp (Val A) Γ → Val A Γ
 absorb ι₁      sp = bindSp sp (λ v → v)
 absorb ι₂      sp = bindSp sp (λ v → v)
 absorb I       sp = bindSp sp (λ v → v)
 absorb (A ⊗ B) sp = bindSp sp (λ v → v)
-absorb (A ⊸ B) sp = λ Δ v → absorb B (go Δ v sp)
-  where
-  go : ∀ Δ → Val A Δ → ∀ {Γ} → Sp (Val (A ⊸ B)) Γ → Sp (Val B) (Γ ++ Δ)
-  go Δ v (ret f) = ret (f Δ v)
-  go Δ v (spl {Γ₁ = Θ₁} {Θ₂} ρ n k) =
-    spl (padʳ Δ ρ ⊙P passoc Θ₁ Θ₂ Δ) n (go Δ v k)
-  go Δ v (usI {Γ₁ = Θ₁} {Θ₂} ρ n k) =
-    usI (padʳ Δ ρ ⊙P passoc Θ₁ Θ₂ Δ) n (go Δ v k)
+absorb (A ⊸ B) sp = λ Δ v → absorb B (appSp Δ v sp)
 
 ------------------------------------------------------------------------
 -- Evaluation — textually L3.3.
