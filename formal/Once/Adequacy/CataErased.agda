@@ -36,13 +36,14 @@ open import Once.Denotation.DenotTrace
   using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; evalᴰ; cata-ev-algᴰ; coerce-functor⁻¹-D)
 open import Once.Denotation.Meaning using (cata-ev-algᴰ-D; cata-sem)
 open import Once.Semantics.Machine
-  using (⟦_⟧F; sem-cata; sem-fmap; coerce-μ-out; tF-coh; base-coh)
+  using (⟦_⟧F; sem-cata; sem-fmap; coerce-μ-out; tF-coh; base-coh; coh)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Word using (Carrier)
 open import Once.Type using (Type; Functor; ⟦_⟧T; μ-type)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF;
   IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
-open import Once.Denotation.DenotTrace using (forget; liftFn; cohᴰ; inject)
+open import Once.Denotation.DenotTrace using (forget; liftFn; cohᴰ; inject; emit-D)
+open import Once.SigOp.Info using (SigOpInfo; semM)
 open import Once.Semantics.Machine using (coerce-base-to-full)
 open import Once.Functor.Translate using (⟦_⟧-base)
 open import Once.IRTy.WF using (base-⌈⌉; base-⌊⌋)
@@ -342,3 +343,59 @@ module _ {A' : Type} where
 
           rc : RelC (cataS {translateF Carrier F} algL' (forget w)) (cataS {translateF Carrier F} algM (forget w))
           rc = cataS-rel RelC algR-full (forget w)
+
+------------------------------------------------------------------------
+-- `forget-coh`: the base-type coherence between `forget` and the `coh`/`cohᴰ`
+-- transports — `subst (coh A) (forget (subst (sym cohᴰ A) arg)) ≡ forget arg`.
+-- Discharges the SigOp-masquerade `refl`s that `liftFn`'s transports break
+-- (RealizeAgrees `masq*`, MeaningBridge `bridge-m` SigOp leaves). Plan 0.52 M2.
+------------------------------------------------------------------------
+
+push-⊎₁' : ∀ {A B A' B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A)
+  → subst (λ z → z) (cong₂ _⊎_ p q) (inj₁ a) ≡ inj₁ (subst (λ z → z) p a)
+push-⊎₁' refl refl a = refl
+
+push-⊎₂' : ∀ {A B A' B' : Set} (p : A ≡ A') (q : B ≡ B') (b : B)
+  → subst (λ z → z) (cong₂ _⊎_ p q) (inj₂ b) ≡ inj₂ (subst (λ z → z) q b)
+push-⊎₂' refl refl b = refl
+
+push-×' : ∀ {A B A' B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A) (b : B)
+  → subst (λ z → z) (cong₂ _×_ p q) (a , b) ≡ (subst (λ z → z) p a , subst (λ z → z) q b)
+push-×' refl refl a b = refl
+
+forget-coh : ∀ {A} (ib : IsBaseType A) (arg : ⟦ A ⟧ᴰ)
+  → subst (λ z → z) (coh A) (forget (subst (λ z → z) (sym (cohᴰ A)) arg)) ≡ forget arg
+forget-coh base-Unit   arg = refl
+forget-coh base-Void   ()
+forget-coh base-Int    arg = refl
+forget-coh base-Float  arg = refl
+forget-coh base-Str    arg = refl
+forget-coh base-Buffer arg = refl
+forget-coh (base-Prod {A} {B} ibA ibB) (a , b)
+  rewrite push-× (cohᴰ A) (cohᴰ B) a b
+        | push-×' (coh A) (coh B) (forget (subst (λ z → z) (sym (cohᴰ A)) a)) (forget (subst (λ z → z) (sym (cohᴰ B)) b))
+  = cong₂ _,_ (forget-coh ibA a) (forget-coh ibB b)
+forget-coh (base-Sum {A} {B} ibA ibB) (inj₁ a)
+  rewrite push-⊎₁ (cohᴰ A) (cohᴰ B) a
+        | push-⊎₁' (coh A) (coh B) (forget (subst (λ z → z) (sym (cohᴰ A)) a))
+  = cong inj₁ (forget-coh ibA a)
+forget-coh (base-Sum {A} {B} ibA ibB) (inj₂ b)
+  rewrite push-⊎₂ (cohᴰ A) (cohᴰ B) b
+        | push-⊎₂' (coh A) (coh B) (forget (subst (λ z → z) (sym (cohᴰ B)) b))
+  = cong inj₂ (forget-coh ibB b)
+
+------------------------------------------------------------------------
+-- `liftFn-SigOp`: the `liftFn` of a base-domain `SigOp` IS the direct
+-- emit-D/semM Kleisli arrow (the `cohᴰ B` result-transport cancels via
+-- `subst-subst-sym`; the arg-transport collapses via `forget-coh`). Discharges
+-- every SigOp-masquerade `refl` (RealizeAgrees `masq*`). Plan 0.52 M2.
+------------------------------------------------------------------------
+
+liftFn-SigOp : ∀ {A B : Type} (info : SigOpInfo A B) (bA : IsBaseType A)
+  → liftFn (IR.SigOp info)
+    ≡ (λ arg → λ n → (emit-D info (forget arg) , inject (semM info (forget arg))))
+liftFn-SigOp {A} {B} info bA = extensionality λ arg → extensionality λ n →
+  trans (subst-T-apply (cohᴰ B) (evalᴰ (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) n)
+        (cong₂ _,_ (cong (emit-D info) (forget-coh bA arg))
+                   (trans (subst-subst-sym {P = λ z → z} (cohᴰ B))
+                          (cong (λ w → inject (semM info w)) (forget-coh bA arg))))
