@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **80 modules, all green** (71 of them `--safe`). **START AT
+- **81 modules, all green** (72 of them `--safe`). **START AT
   `NbEPMonIndex.agda`** for the monoidal/linear tower — one `--safe`
   entry point re-exporting the headline theorems (`dec≈`, `complete`,
   `nf`, the axiom re-derivations, the closed-core theory + `bal` +
@@ -215,16 +215,18 @@ the "Other open items" section below.**
    **L3.4a part 2** — same-boundary node ORDER (adjacent-swap sort by
    consumed positions) and λ-boundary commutation; **L3.4b adequacy — THE CLIMB IS UNDERWAY** (staged A1–A4 in plan
    §10; user decision 2026-07-15: adequacy before consolidation).
-   A1 DONE (`NbEPMonAdq1`: the iso backbone — ≈c chain kit,
-   `mult-inv-l/r`, and `join-split`/`split-join`: generic
-   decomposition is an iso up to `_≈c_`; completeness' final step
-   consumes `join-split`). NEXT: **A2 — the world-realization
-   homomorphism layer** (`permC (ρ ⊙P ρ₀) ≈c permC ρ₀ ∘c permC ρ`
-   etc.): port NbEPMonR/Y/I/Q (swapHead-nat/invol, YB, ins-swap-real,
-   push-real, ⊙P-real) to CTy lists/`_≈c_` — the recipes are proven
-   and element-generic; port, don't reinvent. Then A3 (RSp + Sp
-   combinator lemmas) and A4 (R, fundamental lemma, completeness
-   `f ≈c NF f`). Rung 3 proper (variance judgments,
+   A1 DONE (`NbEPMonAdq1`: iso backbone — chain kit, `mult-inv-l/r`,
+   `join-split`/`split-join`). A2 DONE (`NbEPMonAdq2`, first-try
+   green: the full homomorphism layer — swapHeadC-nat/invol, F2C/GC,
+   pentagon corollaries, M-reductions, **YBC**, ins-swap-realC,
+   pid-realC, push-realC, **⊙P-realC** — verbatim ports of R/Y/I/Q;
+   element-genericity held perfectly). NEXT: **A2b — the pad/swap
+   realizations** (NEW derivations, the G/K/S/Z analogues over list
+   worlds; statements recorded in plan §10: padˡ/padʳ-real,
+   insˡ/insEnd-real, bswapW-real — derive on paper first, expect
+   lighter than their nt-* counterparts). Then A3 (RSp + Sp-combinator
+   splice lemmas, consuming A2/A2b) and A4 (R, fundamental lemma,
+   completeness `f ≈c NF f`). Rung 3 proper (variance judgments,
    directed univalence) — gated on the linear/monoidal core decision
    (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT

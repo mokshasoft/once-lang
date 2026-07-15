@@ -1135,9 +1135,20 @@ no system anywhere has directed type theory with a decidable kernel.
             ≈c kit (congs, cancel, fuses), `mult`/`multInv` mutual
             isos, `joinTm`/`splitTm` round-trips (`join-split ≈c idc`,
             the lemma completeness' final step consumes).
-         A2 — the homomorphism layer: swapHeadC-nat/invol, YB-C,
-            ins-swap-real/push-real/⊙P-real over CTy lists, plus
-            permC-naturality against mult (nt-perm-nat's analogue).
+         A2 [DONE 2026-07-15, `NbEPMonAdq2` — FIRST-TRY GREEN, ~380
+            lines of verbatim ports] — the homomorphism layer:
+            inv-natC/α-natˡC, swapHeadC-nat/invol, F2C/GC (hexagon
+            spent), pentagon corollaries, LtoMC/RtoMC/GOAL2C, **YBC
+            (Yang–Baxter)**, ins-swap-realC, pid-realC, push-realC,
+            **⊙P-realC : permC (p ⊙P q) ≈c permC q ∘c permC p**.
+         A2b — the PAD/SWAP realizations (the G/K/S/Z analogues over
+            list worlds, NEW derivations): `padˡ-real`/`padʳ-real`
+            (permC (pad Θ p) ≈c mult-conjugated (permC p ⊗ 1)),
+            `insˡ-real`/`insEnd-real` (the insAcc-real analogue),
+            `bswapW-real` (permC (bswapW Γ Δ) ≈c multInv ∘ σ ∘ mult —
+            the nt-σ analogue; expect it much lighter than nt-σ since
+            list worlds have no accumulator subtleties). These feed
+            A3's withSpˡ/withSpʳ splice lemmas.
          A3 — `RSp` (the Sp-tree gluing relation: ret/spl/usI nodes
             vs. `≈c`-spliced syntax) + preservation lemmas for every
             Sp combinator (bind/map/vmapSp/withSpˡ/withSpʳ/absorb-go).
