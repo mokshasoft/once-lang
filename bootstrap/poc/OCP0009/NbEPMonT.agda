@@ -117,14 +117,15 @@ padˡ : ∀ Θ {xs ys} → Perm xs ys → Perm (Θ ++ xs) (Θ ++ ys)
 padˡ ε       q = q
 padˡ (A ∷ Θ) q = pcons (padˡ Θ q) here
 
+-- Insertion, shifted past a suffix.
+insʳ : ∀ Θ {x xs ys} → Ins x xs ys → Ins x (xs ++ Θ) (ys ++ Θ)
+insʳ Θ here      = here
+insʳ Θ (there j) = there (insʳ Θ j)
+
 -- Permuting the left factor.
 padʳ : ∀ {xs ys} Θ → Perm xs ys → Perm (xs ++ Θ) (ys ++ Θ)
 padʳ Θ pnil        = pid Θ
-padʳ Θ (pcons p i) = pcons (padʳ Θ p) (insʳ i)
-  where
-  insʳ : ∀ {x xs ys} → Ins x xs ys → Ins x (xs ++ Θ) (ys ++ Θ)
-  insʳ here      = here
-  insʳ (there j) = there (insʳ j)
+padʳ Θ (pcons p i) = pcons (padʳ Θ p) (insʳ Θ i)
 
 -- Both at once.
 pad² : ∀ {xs ys zs ws} → Perm xs ys → Perm zs ws →

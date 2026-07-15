@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **81 modules, all green** (72 of them `--safe`). **START AT
+- **82 modules, all green** (73 of them `--safe`). **START AT
   `NbEPMonIndex.agda`** for the monoidal/linear tower — one `--safe`
   entry point re-exporting the headline theorems (`dec≈`, `complete`,
   `nf`, the axiom re-derivations, the closed-core theory + `bal` +
@@ -220,13 +220,14 @@ the "Other open items" section below.**
    green: the full homomorphism layer — swapHeadC-nat/invol, F2C/GC,
    pentagon corollaries, M-reductions, **YBC**, ins-swap-realC,
    pid-realC, push-realC, **⊙P-realC** — verbatim ports of R/Y/I/Q;
-   element-genericity held perfectly). NEXT: **A2b — the pad/swap
-   realizations** (NEW derivations, the G/K/S/Z analogues over list
-   worlds; statements recorded in plan §10: padˡ/padʳ-real,
-   insˡ/insEnd-real, bswapW-real — derive on paper first, expect
-   lighter than their nt-* counterparts). Then A3 (RSp + Sp-combinator
-   splice lemmas, consuming A2/A2b) and A4 (R, fundamental lemma,
-   completeness `f ≈c NF f`). Rung 3 proper (variance judgments,
+   element-genericity held perfectly). A2b part 1 DONE
+   (`NbEPMonAdq3`: inv-congC, the MIRROR PENTAGON `pentagonₗC`, the
+   5-α `α-shuffle`, the K5′-analogue `ŝ-tail`, `mult-insʳ`,
+   `padʳ-real`, `padˡ-real` — all mult-form; `insʳ` hoisted in
+   `NbEPMonT`). NEXT: **A2b part 2** — `insEnd-real`, `bswapW-real`,
+   `exch`/`carry²` realizations (same toolkit: ŝ-tail + pentagonₗC
+   should carry them). Then A3 (RSp + Sp-combinator splice lemmas)
+   and A4 (R, fundamental lemma, completeness `f ≈c NF f`). Rung 3 proper (variance judgments,
    directed univalence) — gated on the linear/monoidal core decision
    (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT

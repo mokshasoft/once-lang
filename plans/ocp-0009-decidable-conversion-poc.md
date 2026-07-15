@@ -1141,14 +1141,21 @@ no system anywhere has directed type theory with a decidable kernel.
             spent), pentagon corollaries, LtoMC/RtoMC/GOAL2C, **YBC
             (Yang–Baxter)**, ins-swap-realC, pid-realC, push-realC,
             **⊙P-realC : permC (p ⊙P q) ≈c permC q ∘c permC p**.
-         A2b — the PAD/SWAP realizations (the G/K/S/Z analogues over
-            list worlds, NEW derivations): `padˡ-real`/`padʳ-real`
-            (permC (pad Θ p) ≈c mult-conjugated (permC p ⊗ 1)),
-            `insˡ-real`/`insEnd-real` (the insAcc-real analogue),
-            `bswapW-real` (permC (bswapW Γ Δ) ≈c multInv ∘ σ ∘ mult —
-            the nt-σ analogue; expect it much lighter than nt-σ since
-            list worlds have no accumulator subtleties). These feed
-            A3's withSpˡ/withSpʳ splice lemmas.
+         A2b part 1 [DONE 2026-07-15, `NbEPMonAdq3`] — the PAD
+            realizations, all in MULT-FORM (post-compose with `mult`,
+            no inverses): `inv-congC` (H's port), **`pentagonₗC`**
+            (the mirror pentagon via inv-congC with both side-inverses
+            cancelled), **`α-shuffle`** (the 5-α identity, proven by
+            composing with αl and cancelling — both sides collapse
+            onto the mirror pentagon), **`ŝ-tail`** (the head
+            transposition against a TENSORED tail — the K5′ analogue,
+            two-line σ-move thanks to list worlds), `mult-insʳ`
+            (insertion past a suffix; the there-case = 17-step chain
+            landing on ŝ-tail), `padʳ-real`, `padˡ-real`.
+            (`insʳ` hoisted to top level in `NbEPMonT`.)
+         A2b part 2 — `insEnd-real`, `bswapW-real` (permC (bswapW) in
+            mult-form against σ), and the `exch`/`carry²`
+            realizations. These feed A3's withSpʳ splice lemma.
          A3 — `RSp` (the Sp-tree gluing relation: ret/spl/usI nodes
             vs. `≈c`-spliced syntax) + preservation lemmas for every
             Sp combinator (bind/map/vmapSp/withSpˡ/withSpʳ/absorb-go).
