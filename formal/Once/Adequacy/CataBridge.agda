@@ -42,13 +42,17 @@ open import Once.Semantics.Machine using (sem-cata; sem-fmap; coerce-μ-out; ⟦
 open import Once.Semantics.Functor using (μS; cataS; ⟦_⟧SF)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.TraceMonad using (T; projTrace; valueT)
-open import Once.Denotation.DenotTrace using (evalᴰ; forget; inject; coerce-functor⁻¹-D; cata-ev-algᴰ)
+open import Once.Denotation.DenotTrace using (evalᴰ; forget; inject; coerce-functor⁻¹-D; cata-ev-algᴰ; liftFn)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.Meaning using (cata-sem; cata-ev-algᴰ-D)
+open import Once.IRTy using (⌊_⌋; eraseF; ⌊⟧T-commute)
+open import Once.IRTy.WF using (wf-⌊⌋)
+open import Relation.Binary.PropositionalEquality using (subst)
 import Once.IR as IR
 open import Once.Adequacy.MeaningRelation using (RelV; RelT)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
+open import Once.Adequacy.CataErased using (evalᴰ-Cata-erased)
 
 ------------------------------------------------------------------------
 -- Reflexivity of `RelV` at base types (funext-free; a private copy so
@@ -73,11 +77,13 @@ base-refl (base-Sum ibA ibB) (inj₂ b) = base-refl ibB b
 ------------------------------------------------------------------------
 
 cata-bridge : ∀ {F} {A'} {wfF : WellFormedF F}
-              (dalg : ⟦ ⟦ F ⟧T A' ⟧ᴰ → T ⟦ A' ⟧ᴰ) (mir : IR.IR (⟦ F ⟧T A') A')
-              (algR : ∀ {x y} → RelV (⟦ F ⟧T A') x y → RelT A' (dalg x) (evalᴰ mir y))
+              (dalg : ⟦ ⟦ F ⟧T A' ⟧ᴰ → T ⟦ A' ⟧ᴰ) (mir : IR.IR ⌊ ⟦ F ⟧T A' ⌋ ⌊ A' ⌋)
+              (algR : ∀ {x y} → RelV (⟦ F ⟧T A') x y → RelT A' (dalg x) (liftFn mir y))
               {a b : ⟦ μ-type F ⟧ᴰ} → RelV (μ-type F) a b
-            → RelT A' (cata-sem wfF dalg a) (evalᴰ (IR.Cata wfF mir) b)
-cata-bridge {F} {A'} {wfF} dalg mir algR {a} {.a} refl n =
+            → RelT A' (cata-sem wfF dalg a)
+                      (liftFn (IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR.IR o ⌊ A' ⌋) (⌊⟧T-commute F A') mir)) b)
+cata-bridge {F} {A'} {wfF} dalg mir algR {a} {.a} refl n
+  rewrite evalᴰ-Cata-erased {A'} wfF mir a =
   cataS-rel RelC algR-full (forget a)
   where
     -- The product relation the fold threads: equal traces + related values.
@@ -109,7 +115,7 @@ cata-bridge {F} {A'} {wfF} dalg mir algR {a} {.a} refl n =
     -- by `algR` (= `bridge-m alg`) on the `RelV`-related folded argument.
     algR-full : ∀ {y₁ y₂} → RelSF (translateF Carrier F) RelC y₁ y₂
               → RelC (cata-ev-algᴰ-D {F} {A'} n dalg (coerce-μ-out wfF _ y₁))
-                     (cata-ev-algᴰ {F} {A'} n mir (coerce-μ-out wfF _ y₂))
+                     (cata-ev-algᴰ-D {F} {A'} n (liftFn mir) (coerce-μ-out wfF _ y₂))
     algR-full rsf =
       let (ev-eq , z-rel) = layer-lemma wfF rsf
           (tr-eq , v-rel) = algR z-rel n
