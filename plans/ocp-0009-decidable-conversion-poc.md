@@ -1091,6 +1091,41 @@ no system anywhere has directed type theory with a decidable kernel.
          commutations = the proof-net layer (L3.4a); adequacy of `NF`
          w.r.t. `_≈c_` = the other open theorem (L3.4b), to be proven
          once over this total model.
+       [L3.4a PART 1 DONE 2026-07-15, `NbEPMonF`] — PLACEMENT
+         CANONICITY, the hoisting normalizer: atoms become Sp-carriers
+         too (`absorb` = uniform join at every positive type — nodes
+         never baked into syntax mid-evaluation), and `reify` HOISTS
+         every component node to the enclosing boundary before
+         emission (`hoist`/`Core`: surface-node-free values; functions
+         stay opaque, their nodes surface inside their λ on probe).
+         The u3-class equality L3.3 could not decide — unit-carrying
+         pair rebuilt through ƛ-eliminators vs. untouched — now checks
+         by `refl`, plus STABILITY demos (`NF (NF f) ≡ NF f`).
+         Remaining for FULL canonicity, precisely: (a) ORDER of
+         independent same-boundary nodes (adjacent-swap sort keyed by
+         consumed world positions — linear ⇒ disjoint ⇒ total order;
+         confluence = trace-monoid normal form) and (b) λ-BOUNDARY
+         commutation (a node independent of the argument may sit
+         inside or outside a `Λc`; needs per-node argument-dependence
+         analysis on its repartition). Both localized to Sp-tree
+         post-processing over this model.
+       L3.4b — ADEQUACY, derivation recorded (2026-07-15, before any
+         code): the Kripke gluing relation `R A Γ : Val A Γ →
+         CTm ⟪Γ⟫ A → Set` by type recursion (atoms/I/⊗: the Sp-tree's
+         SPLICE is `≈c`-equal to the term, componentwise inside; ⊸:
+         related arguments to related results, Kripke over world
+         extension). Lemma stack: `R-vmap` (R stable under vmap ↔
+         `∘c permC ρ`), `R-Sp` (each Sp combinator versus its splice:
+         bindSp/withSpˡ/withSpʳ/absorb — the let-commuting equations
+         of `_≈c_` discharge these), `R-reflect : R (reflectNe B n) n`
+         and `R-reify : R v t → reify v ≈c t` (mutual, by type),
+         THE FUNDAMENTAL LEMMA `R v t → R (evalV f v) (f ∘c t)` (by
+         induction on `f`; each case = its model arithmetic mirrored
+         by a structural `≈c`-chain), and COMPLETENESS
+         `f ≈c NF f` from `R (reflectTy A) (splitTm A)`. Consequence:
+         `NF f ≡ NF g → f ≈c g` (the useful decision direction).
+         Sizing: the NbEPFund/NbEPComplete-scale climb (multi-module,
+         its own session) — every Sp splice lemma is an `≈c`-chain.
      · Soundness/completeness against `_≈c_` in each stage mirror the
        NbEP adequacy scaffolding (logical relations, stage L2a's `Ext`
        as the semantic side).

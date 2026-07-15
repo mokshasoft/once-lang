@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **76 modules, all green** (67 of them `--safe`). The full expressibility tower is built and
+- **77 modules, all green** (68 of them `--safe`). The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
@@ -201,15 +201,17 @@ the "Other open items" section below.**
    (`NbEPMonJ`, 2026-07-15: the `usI` node — units crossed, the
    `Good`/`GoodR` witnesses dissolve, **`NF : CTm A B → CTm A B` is
    TOTAL on the free SMCC**; seven demos by `refl` incl. both unit
-   crossings). REMAINING ON L3 (the two open theorems, over the total
-   model): **L3.4a canonicity** — independent `spl`/`usI` nodes
-   commute, so βη-equal programs can reify to normal forms differing
-   by emission order; deciding Sp-tree equality modulo those
-   commutations is the proof-net layer (this is what is LEFT of the
-   classical unit problem). **L3.4b adequacy** — soundness
-   `f ≈c g → NF f ≈-canonical NF g` and completeness `f ≈c NF f`
-   (the NbEPFund/NbEPComplete shape). Both are session-scale climbs;
-   derive on paper first. Rung 3 proper (variance judgments,
+   crossings). Stage L3.4a part 1 DONE
+   (`NbEPMonF`, 2026-07-15: PLACEMENT CANONICITY — atoms Sp'd, absorb
+   a uniform join, hoisting reify; the u3-class equality now by
+   `refl`; stability demos `NF (NF f) ≡ NF f`). REMAINING ON L3:
+   **L3.4a part 2** — same-boundary node ORDER (adjacent-swap sort by
+   consumed positions) and λ-boundary commutation; **L3.4b adequacy**
+   — the FULL DERIVATION is recorded in plan §10 (gluing relation R,
+   the lemma stack R-vmap/R-Sp/R-reflect/R-reify, the fundamental
+   lemma, completeness `f ≈c NF f` ⇒ `NF f ≡ NF g → f ≈c g`); it is
+   the NbEPFund/NbEPComplete-scale multi-module climb — transcribe
+   from the recorded derivation in its own session. Rung 3 proper (variance judgments,
    directed univalence) — gated on the linear/monoidal core decision
    (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT
