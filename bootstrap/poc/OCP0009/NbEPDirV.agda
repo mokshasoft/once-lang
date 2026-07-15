@@ -18,8 +18,11 @@
 --     exactly why `no-sym` (NbEPDirJ): you cannot transport symmetrically
 --     across a `⇒`, because its domain reverses direction.
 --
--- The covariant functor laws hold up to reduction (`⟶*`); the exponential's
--- involve βη and are stated up to convertibility `_≈_` (common reduct).
+-- The covariant functor laws hold up to reduction (`⟶*`). The exponential's
+-- identity law does NOT close by reduction here — but that is an
+-- η-incompleteness of THIS rewrite presentation, not a real obstruction
+-- (see the note at `⇒→-id-reduces` below), and it does not touch the cata
+-- fragment (`NbEPDirC`), which is exponential-free and wall-free.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -77,24 +80,31 @@ _⇒→_ : ∀ {A A' B B'} → Homₜ A' A → Homₜ B B' → Homₜ (A ⇒ B) 
 h ⇒→ k = curry (k ∘ (apply ∘ ⟨ fst , h ∘ snd ⟩))
 
 ------------------------------------------------------------------------
--- The functoriality WALL — where directed reduction is not enough.
+-- The exponential's identity law — an η-incompleteness, NOT a wall.
 --
--- The exponential's identity law `id ⇒→ id ≡ id` is a βη fact. Directed
--- reduction takes us most of the way:
+-- `id ⇒→ id ≡ id` is a βη fact. Directed reduction takes us most of the way:
 --
 --   id ⇒→ id  =  curry (id ∘ (apply ∘ ⟨ fst , id ∘ snd ⟩))  ⟶*  curry apply
 --
--- but there it STOPS: this system has no rule `curry apply ⟶ id`
--- (`curry-η` only fires on the η-EXPANDED shape `curry (apply ∘ ⟨f∘fst, snd⟩)`,
--- not on `curry apply`). So `curry apply` is a distinct `⟶*`-normal form,
--- and `id ⇒→ id` is a functor-identity ONLY up to the symmetric, η-complete
--- convertibility — path 1's `NF`, not path 2's `⟶*`.
+-- and there it STOPS: no rule fires on `curry apply` (`curry-η` only matches
+-- the η-EXPANDED `curry (apply ∘ ⟨f∘fst, snd⟩)`, and the first pair-component
+-- stays `fst`, never `f∘fst`, so `curry-η` never gets a chance). So
+-- `id ⇒→ id ⟶* id` is unreachable — a machine-checkable syntactic fact.
 --
--- This is the concrete payoff of the two-paths analysis (PATHS.md): the
--- COVARIANT type formers are directed functors by reduction alone (above);
--- the CONTRAVARIANT exponential needs the invertible/η-complete core to be
--- a functor at all. Directed structure sees the variance (the signature);
--- only the symmetric core closes the coherence.
+-- But its SIGNIFICANCE is small, and two things say so:
+--   (1) SEMANTICALLY `curry apply = id` — both denote the identity function
+--       (`eval (curry apply) g = λ a → g a = g`). The gap is a REDUCTION
+--       artifact (this `⟶` is η-incomplete), not a semantic obstruction.
+--   (2) This CCC's `⟶` is not cleanly confluent+terminating anyway (two-way
+--       `assoc`; see `normalizer.Theory.WeakNormalizationFails` /
+--       `RestrictedConfluence`), so `⟶*`-reachability is the wrong notion of
+--       equality to read a "wall" off of.
+--
+-- The honest reading: `⟶*` does not EXHIBIT `⇒`-functoriality (η-short), but
+-- the semantic model or an η-long NbE closes it trivially. What genuinely
+-- survives for the directed programme is the CATA fragment (`NbEPDirC`),
+-- which is exponential-free: there is no `⇒` in the polynomial functors, so
+-- directed functoriality of `fmap`/`cata` holds by reduction with no η debt.
 ------------------------------------------------------------------------
 
 ⇒→-id-reduces : ∀ {A B} → (idₜ {A} ⇒→ idₜ {B}) ⟶* curry apply
