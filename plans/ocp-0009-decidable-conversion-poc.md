@@ -1232,30 +1232,41 @@ no system anywhere has directed type theory with a decidable kernel.
               (t ∘c permC ρ)`. Shallow (vmap touches only the top
               node): spl/usI reuse the continuation proof + re-associate
               (⊙P-realC); only ⊸ recurses, transported by padʳ-real.
-            A4.3 [WIP, draft in scratch `NbEPMonAdq14-WIP.agda`] —
-              R-reify / R-reflectNe / R-reflectTy (mutual). PROVEN in
-              the draft: RAt-reify/RI-reify (tree induction, hoist=id),
-              R-reify ι/I, R-reify ⊸ structure, R-reflectNe atoms/⊸,
-              **R-reflectNe I** (via pidR-real + Kelly ƛ_I=ρ_I),
-              R-reflectTy atoms/I/⊗. REMAINING HOLES (4): `r⊸` (reify-⊸
-              unit coherence), `R-reflectTy ⊸` (same family),
-              `R-reflectNe (X⊗Y)` (spl-node coherence via R-reflectNe
-              X/Y at ρrc), and **`R⊗-reify`** — the one needing the A3
-              hoist-splice lemmas (reify=reifySp emit∘hoist; the ⊗ leaf
-              hoists via withSpˡ/withSpʳ, so R⊗-reify consumes
-              withSpˡ-splice/withSpʳ-splice/bind-reify — session-scale).
-            A4.4 — THE FUNDAMENTAL LEMMA `R A v t → R B (evalV f v)
-              (f ∘c t)` by induction on f (12 evalV cases; each = its
-              model arithmetic mirrored by an A2 realization through an
-              A3 splice; evc/⊗c/σc consume the ⊗ component relations,
-              Λc/evc the Kripke ⊸).
+            A4.3 [DONE 2026-07-16, `NbEPMonAdq14` — --safe, COMPLETE] —
+              R-reify / R-reflectNe / R-reflectTy (mutual). The
+              transport-free payoff: **R⊗-reify** — because the model
+              is transport-free, hoist threads through spl/usI nodes
+              DEFINITIONALLY, so those cases are clean recursion; only
+              the ret LEAF needs the A3 hoist-splice lemmas
+              (withSpˡ-splice with C=idc⊗reify B vb, whose payload is
+              withSpʳ-splice with C'=emit A ca⊗idc, tied by
+              interchangeC). R-reify ⊸ = η⊸ + join-split; R-reflectNe
+              I/⊗ via pidR-real + Kelly ƛ_I=ρ_I + the ρ-triangle;
+              R-reflectTy atoms/I/⊗/⊸.
+            A4.4 [7 of 12 cases DONE, WIP in scratch
+              `NbEPMonAdq15-WIP.agda`] — THE FUNDAMENTAL LEMMA
+              `R A v t → R B (evalV f v) (f ∘c t)` by induction on f.
+              PROVEN: idc/∘c (R-resp plumbing), **⊗c/σc** (mapSp tree
+              recursion — nodes recurse via push-∘, the ret leaf
+              applies the IHs / cσ-nat+bswapW-real), **ƛlc/ρlc**
+              (ret-intro via ƛl-nat/ρl-nat = inv-natC), **Λc** (Kripke,
+              via β⊸ + pid-realC). REMAINING (5, the absorb/withSp
+              cases): αrc/αlc (bindSp+withSpˡ/withSpʳ), ƛrc/ρrc
+              (absorb+withSp), evc (absorb+bindSp — the application).
+              They share a needed helper **`R-absorb`** (the split-
+              monad join preserves R): `R-absorb-ret : R B x u →
+              R B (absorb B (ret x)) u` (induction on B, ⊸ via function
+              η — NO funext, it's about R not ≡), lifted to trees.
+              evc's ret leaf then = R-absorb-ret + R-vmap + R-resp; the
+              α cases add the withSp splice structure. Each is
+              session-scale.
             A4.5 — assembly: `f ≈c NF f` from R-reflectTy A +
               fundamental lemma + R-reify + join-split, giving
               `NF f ≡ NF g → f ≈c g` — the proven decision procedure.
-            STATUS: the definitional core (A4.1/A4.2) is committed and
-            green; A4.3 is drafted with the atom/unit/function boundary
-            proven; R⊗-reify + A4.4 are the remaining session-scale
-            summit pieces.
+            STATUS: A4.1/A4.2/A4.3 committed --safe green (the relation,
+              monotonicity, and reify/reflect boundary — the whole
+              definitional + boundary layer); A4.4 is 7/12, remaining
+              are the 5 absorb/withSp cases sharing R-absorb.
      · Soundness/completeness against `_≈c_` in each stage mirror the
        NbEP adequacy scaffolding (logical relations, stage L2a's `Ext`
        as the semantic side).
