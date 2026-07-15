@@ -37,7 +37,7 @@ open import Data.String using (String)
 --   3. optimize cases in Once.Optimize (pass through unchanged)
 --   4. proof cases in Once.Optimize.Correct (all trivial refl)
 --
-sigOp-desugar : ∀ {A B} → IsBaseType A → IsConcrete B → String → C.IR A B
+sigOp-desugar : ∀ {A B} → IsBaseType A → IsConcrete B → String → C.IR C.⌊ A ⌋ C.⌊ B ⌋
 sigOp-desugar bA cB name = C.SigOp (generic-info (bare name) bA cB)
 
 ------------------------------------------------------------------------
@@ -57,7 +57,7 @@ sigOp-desugar bA cB name = C.SigOp (generic-info (bare name) bA cB)
 -- 2. Expands Let to composition + pairing
 -- 3. Converts SigOp to Core's sigOp
 --
-desugar : ∀ {A B} → C.AllocMode → SurfaceIR A B → C.IR A B
+desugar : ∀ {A B} → C.AllocMode → SurfaceIR A B → C.IR C.⌊ A ⌋ C.⌊ B ⌋
 
 -- Category structure
 desugar m S.id = C.id
@@ -84,7 +84,7 @@ desugar m S.apply = C.apply
 -- OCP-0003: fold/unfold removed
 
 -- Effects
-desugar m S.arr = C.arr
+desugar m S.arr = C.id
 
 -- | Let binding desugaring
 --
@@ -105,5 +105,5 @@ desugar m (SigOp name bA cB) = sigOp-desugar bA cB name
 
 -- | Historical default: Heap allocation. Preserves pre-Plan-0.14
 -- behavior for callers that don't thread an AllocMode.
-desugar-default : ∀ {A B} → SurfaceIR A B → C.IR A B
+desugar-default : ∀ {A B} → SurfaceIR A B → C.IR C.⌊ A ⌋ C.⌊ B ⌋
 desugar-default = desugar C.Heap
