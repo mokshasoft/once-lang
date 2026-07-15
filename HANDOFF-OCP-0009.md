@@ -6,7 +6,14 @@
 
 ## TL;DR of state
 
-- **77 modules, all green** (68 of them `--safe`). The full expressibility tower is built and
+- **79 modules, all green** (70 of them `--safe`). **START AT
+  `NbEPMonIndex.agda`** for the monoidal/linear tower — one `--safe`
+  entry point re-exporting the headline theorems (`dec≈`, `complete`,
+  `nf`, the axiom re-derivations, the closed-core theory + `bal` +
+  `soundE`, and the total placement-canonical normalizer `NF`), with
+  the reading guide in its header. `NbEPMonO` shows the Mac Lane
+  axioms + Yang–Baxter re-derived from `complete` in one line each.
+  The full expressibility tower is built and
   machine-checked: decidable conversion (NbE) → CwF/dependent layer → `Id`+`J` →
   **QTT** (semiring + graded judgment + IR elaboration) → **OTT** (funext-by-def,
   proof-irrelevance, `Eq`/`coe`, μ, quotients, bisim-at-ν) → **IR universe**
