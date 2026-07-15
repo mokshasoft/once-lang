@@ -209,3 +209,14 @@ ana-events {F} {A} coalg a (suc m) =
   where
     step  = evalᴰ coalg (inject a)
     layer = coerce-functor ⌈ F ⌉F ⌈ A ⌉ (subst (λ T → Val.⟦ T ⟧) (⌈⟧TI-commute F A) (forget (valueT step m)))
+
+------------------------------------------------------------------------
+-- `liftFn` — the erasure-transported IR morphism denotation as a surface
+-- Kleisli arrow. `evalᴰ ir : ⟦⌊A⌋⟧ᴰᴵ → T ⟦⌊B⌋⟧ᴰᴵ`; `cohᴰ` transports it to
+-- `⟦A⟧ᴰ → T ⟦B⟧ᴰ` (grade-blind erasure). The shared building block for the
+-- adequacy bridges: `SD.liftD = returnT ∘ liftFn`, and `RelV (A⇒B)`/`cata-bridge`
+-- compare against `liftFn (realize… )` (Plan 0.52 M2).
+------------------------------------------------------------------------
+
+liftFn : ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
+liftFn {A} {B} ir v = subst T (cohᴰ B) (evalᴰ ir (subst (λ z → z) (sym (cohᴰ A)) v))

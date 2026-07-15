@@ -37,10 +37,10 @@ open import Once.Type
   using (Type; Unit; Void; Int; Str; _*_; _+_; _⇒[_]_; Functor; ⟦_⟧T; μ-type)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D; coerce-functor⁻¹-D; cohᴰ)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D; coerce-functor⁻¹-D; cohᴰ; liftFn)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.IR using (IR)
+open import Once.IR using (IR; ⌊_⌋)
 open import Once.CCC.Eval as Val using ()
 open import Once.Functor.Translate using (WellFormedF; con-fun; base-Unit)
 open import Once.Semantics.Machine
@@ -109,6 +109,17 @@ ana-eventsˢ {F} {A} coalgComp a (suc m) =
         layer = coerce-functor F A (forget (valueT step m))
 
 ------------------------------------------------------------------------
+-- `liftD` — the surface denotation of a PRE-BUILT CCC morphism `ir : IR ⌊A⌋ ⌊B⌋`
+-- (the meaning of `lift-morphism`/`morph-app`). `evalᴰ ir : ⟦⌊A⌋⟧ᴰᴵ → T ⟦⌊B⌋⟧ᴰᴵ`;
+-- `cohᴰ` transports it to the surface Kleisli arrow `⟦A⟧ᴰ → T ⟦B⟧ᴰ` (grade-blind
+-- erasure). Named so adequacy proofs (`RealizeAgrees`/`CataFold`) can refer to the
+-- transported form without re-importing the `⟦_⟧ˢ`-mixfix (Plan 0.52 M2).
+------------------------------------------------------------------------
+
+liftD : ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → T (⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ)
+liftD {A} {B} ir = returnT (liftFn ir)
+
+------------------------------------------------------------------------
 -- THE SOURCE SEMANTICS. Structural on `Expr`; arrows are Kleisli arrows
 -- into `T`; `apply`/`let`/`case` thread the trace via `_>>=T_`.
 ------------------------------------------------------------------------
@@ -160,8 +171,7 @@ ana-eventsˢ {F} {A} coalgComp a (suc m) =
 -- are leaves embedding a fixed morphism, not the elaboration of a user subterm.
 -- Plan 0.52 M2: `ir : IR ⌊A⌋ ⌊B⌋`, so `evalᴰ ir : ⟦⌊A⌋⟧ᴰᴵ → T ⟦⌊B⌋⟧ᴰᴵ`;
 -- `cohᴰ` transports it to the surface `⟦A⟧ᴰ → T ⟦B⟧ᴰ` (grade-blind erasure).
-⟦ lift-morphism {A = A} {B = B} ir ⟧ˢ dγ =
-  returnT (λ v → subst T (cohᴰ B) (evalᴰ ir (subst (λ z → z) (sym (cohᴰ A)) v)))
+⟦ lift-morphism {A = A} {B = B} ir ⟧ˢ dγ = liftD {A} {B} ir
 ⟦ arr' f ⟧ˢ       dγ = ⟦ f ⟧ˢ dγ
 ⟦ morph-app {A = A} {B = B} ir e ⟧ˢ dγ =
   ⟦ e ⟧ˢ dγ >>=T λ v → subst T (cohᴰ B) (evalᴰ ir (subst (λ z → z) (sym (cohᴰ A)) v))
