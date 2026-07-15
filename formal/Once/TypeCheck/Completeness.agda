@@ -72,6 +72,7 @@ import Data.String.Properties
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
 open import Data.Empty using (⊥)
 open import Once.IR using (IR; Heap)
+open import Once.IRTy using (⌊_⌋)
 open import Once.Denotation.Realize using (realize-morph; realize-global)
 open import Once.Surface.Syntax as Srf using (Expr; lift-morphism)
 open import Once.Type using (Functor; μ-type; ⟦_⟧T)
@@ -137,7 +138,7 @@ infer-complete-RQualified :
 -- deciders to `just` via completeness (`rewrite`), so the success branch fires.
 infer-complete-RQualified {ctx} {name} {alias} {T} eq conc = go T conc eq
   where
-    open Once.TypeCheck.Elaborate using (inferElabV-RQualified-aux;
+    open Once.TypeCheck.ElaborateProofs using (inferElabV-RQualified-aux;
       inferElabV-RQualified-arrow-aux; inferElabV-RQualified-value-aux)
     helper : ∀ (lhs : Maybe Type)
            → (eq' : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ lhs)
@@ -198,7 +199,7 @@ infer-complete-RResolved :
       inferElab ctx (RResolved cn) ≡ success T zeroUsage eE d f
 infer-complete-RResolved {ctx} {cn} {T} eq conc = go T conc eq
   where
-    open Once.TypeCheck.Elaborate using (inferElabV-RResolved-aux;
+    open Once.TypeCheck.ElaborateProofs using (inferElabV-RResolved-aux;
       inferElabV-RResolved-arrow-aux; inferElabV-RResolved-value-aux)
     helper : ∀ (lhs : Maybe Type)
            → (eq' : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ lhs)
@@ -323,18 +324,18 @@ infer-complete-RLet :
     {A B : Type} {q : Quantity}
     {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
     {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ A}
-    {e₂E : SExpr (NamedCtx.debruijn (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A))
+    {e₂E : SExpr (NamedCtx.debruijn (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A))
                  (q Surface.Usage.∷ Ψ₂) B}
     {d₁ d₂ f₁ f₂ : ℕ}
   → inferElab ctx e₁ ≡ success A Ψ₁ e₁E d₁ f₁
-  → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) e₂
+  → inferElab (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A) e₂
       ≡ success B (q Surface.Usage.∷ Ψ₂) e₂E d₂ f₂
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RLet x e₁ e₂) ≡ success B (Ψ₂ +ᵘ (q *ᵘ Ψ₁)) eE d f
 infer-complete-RLet {ctx} x e₁ e₂ {A = A} eq₁ eq₂
   with inferElabV ctx e₁ | eq₁
 ... | success _ _ _ _ _ , _ | refl
-    with inferElabV (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) e₂ | eq₂
+    with inferElabV (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A) e₂ | eq₂
 ...   | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | refl = _ , _ , _ , refl
 
 infer-complete-RApp-id :
@@ -424,7 +425,7 @@ infer-complete-RVar-local {ctx} x {A} {Ψ} {eE'} ¬unit eqLoc
 ... | yes refl = ⊥-elim (¬unit refl)
 ... | no _     = _ , _ , _ , cong proj₁ (helper _ eqLoc)
   where
-    open Once.TypeCheck.Elaborate using (inferElabV-RVar-lookup-aux)
+    open Once.TypeCheck.ElaborateProofs using (inferElabV-RVar-lookup-aux)
     helper : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Srf.SVar (NamedCtx.debruijn ctx) Ψ' A')))
            → (eq' : lookupLocal ctx x ≡ lhs)
            → inferElabV-RVar-lookup-aux ctx x ¬unit (lookupLocal ctx x) refl _ refl
@@ -447,7 +448,7 @@ infer-complete-RVar-import {ctx} x {T} ¬unit eqLoc eqImp conc
                  (trans (trans (helperLoc _ eqLoc) (helperImp _ eqImp))
                         (helperImpVal _ (proj₂ (isConcrete?-complete conc))))
   where
-    open Once.TypeCheck.Elaborate using (inferElabV-RVar-lookup-aux;
+    open Once.TypeCheck.ElaborateProofs using (inferElabV-RVar-lookup-aux;
       inferElabV-RVar-import-value-aux)
     helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Srf.SVar (NamedCtx.debruijn ctx) Ψ' A')))
               → (eq' : lookupLocal ctx x ≡ lhs)
@@ -559,7 +560,7 @@ infer-complete-RBinOp-cmp {ctx} Raw.OpNe refl e₁ e₂ eq₁ eq₂
 private
   decideLeq-just : ∀ q' q → (q' ≤q q) ≡ true
                  → ∃ λ (eq : (q' ≤q q) ≡ true)
-                 → Once.TypeCheck.Elaborate.decideLeq q' q ≡ just eq
+                 → Once.TypeCheck.ElaborateProofs.decideLeq q' q ≡ just eq
   decideLeq-just Zero Zero refl = refl , refl
   decideLeq-just Zero One  refl = refl , refl
   decideLeq-just Zero Many refl = refl , refl
@@ -571,18 +572,18 @@ check-complete-RLam :
   ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
     (A : Type) (q q' : Quantity) (B : Type)
     {Ψ' : Surface.Usage (NamedCtx.size ctx)}
-    {eE' : SExpr (NamedCtx.debruijn (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A))
+    {eE' : SExpr (NamedCtx.debruijn (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A))
                  (q' Surface.Usage.∷ Ψ') B}
     {d' f' : ℕ}
   → (q' T.≤q q) ≡ true
-  → checkElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) body B
+  → checkElab (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A) body B
       ≡ success (q' Surface.Usage.∷ Ψ') eE' d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       checkElab ctx (Raw.RLam x body) (A T.⇒[ T.mk-kind q T.pure ] B) ≡ success Ψ' eE d f
 check-complete-RLam ctx x body A q q' B leqEq eqC
-  with checkElabV (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) body B | eqC
+  with checkElabV (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A) body B | eqC
 ... | success (_ Surface.Usage.∷ _) _ _ _ , _ | refl
-    with Once.TypeCheck.Elaborate.decideLeq q' q | decideLeq-just q' q leqEq
+    with Once.TypeCheck.ElaborateProofs.decideLeq q' q | decideLeq-just q' q leqEq
 ...   | just _ | _ , refl = _ , _ , _ , refl
 
 -- Plan 0.52: the eff-arrow RLam (the subsumed lambda). Same body check +
@@ -592,18 +593,18 @@ check-complete-RLam-eff :
   ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
     (A : Type) (q' : Quantity) (B : Type)
     {Ψ' : Surface.Usage (NamedCtx.size ctx)}
-    {eE' : SExpr (NamedCtx.debruijn (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A))
+    {eE' : SExpr (NamedCtx.debruijn (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A))
                  (q' Surface.Usage.∷ Ψ') B}
     {d' f' : ℕ}
   → (q' T.≤q T.Many) ≡ true
-  → checkElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) body B
+  → checkElab (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A) body B
       ≡ success (q' Surface.Usage.∷ Ψ') eE' d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       checkElab ctx (Raw.RLam x body) (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≡ success Ψ' eE d f
 check-complete-RLam-eff ctx x body A q' B leqEq eqC
-  with checkElabV (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) body B | eqC
+  with checkElabV (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx x A) body B | eqC
 ... | success (_ Surface.Usage.∷ _) _ _ _ , _ | refl
-    with Once.TypeCheck.Elaborate.decideLeq q' T.Many | decideLeq-just q' T.Many leqEq
+    with Once.TypeCheck.ElaborateProofs.decideLeq q' T.Many | decideLeq-just q' T.Many leqEq
 ...   | just _ | _ , refl = _ , _ , _ , refl
 
 ------------------------------------------------------------------------
@@ -619,18 +620,18 @@ infer-complete-RDestruct :
     (C : Type) {qℓ qr : Quantity}
     {Ψₗ : Surface.Usage (NamedCtx.size ctx)}
     {eLE : SExpr (NamedCtx.debruijn
-                    (Once.TypeCheck.Elaborate.extendNamedCtx ctx xL A))
+                    (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx xL A))
                  (qℓ Surface.Usage.∷ Ψₗ) C}
     {dL fL : ℕ}
     {Ψᵣ : Surface.Usage (NamedCtx.size ctx)}
     {eRE : SExpr (NamedCtx.debruijn
-                    (Once.TypeCheck.Elaborate.extendNamedCtx ctx xR B))
+                    (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx xR B))
                  (qr Surface.Usage.∷ Ψᵣ) C}
     {dR fR : ℕ}
   → inferElab ctx scrut ≡ success (A + B) Ψs scrutE ds fs
-  → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx xL A) eL
+  → inferElab (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx xL A) eL
       ≡ success C (qℓ Surface.Usage.∷ Ψₗ) eLE dL fL
-  → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx xR B) eR
+  → inferElab (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx xR B) eR
       ≡ success C (qr Surface.Usage.∷ Ψᵣ) eRE dR fR
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RDestruct scrut xL eL xR eR)
@@ -638,9 +639,9 @@ infer-complete-RDestruct :
 infer-complete-RDestruct {ctx} scrut xL eL xR eR {A = A} {B = B} C eqS eqL eqR
   with inferElabV ctx scrut | eqS
 ... | success (_ + _) _ _ _ _ , _ | refl
-    with inferElabV (Once.TypeCheck.Elaborate.extendNamedCtx ctx xL A) eL | eqL
+    with inferElabV (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx xL A) eL | eqL
 ...   | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | refl
-      with inferElabV (Once.TypeCheck.Elaborate.extendNamedCtx ctx xR B) eR | eqR
+      with inferElabV (Once.TypeCheck.ElaborateProofs.extendNamedCtx ctx xR B) eR | eqR
 ...     | success _ (_ Surface.Usage.∷ _) _ _ _ , _ | refl
         with C ≟T C
 ...       | yes refl = _ , _ , _ , refl
@@ -664,20 +665,20 @@ infer-complete-RApp-generic :
     {Ψx : Surface.Usage (NamedCtx.size ctx)}
     {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
     {dx fx : ℕ}
-  → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+  → Once.TypeCheck.ElaborateProofs.classifyAppHead f ≡ nothing
   → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψf fE df ff
   → checkElab ctx x A ≡ success Ψx xE dx fx
   → ∃[ eE ] ∃[ d ] ∃[ f' ]
       inferElab ctx (Raw.RApp f x)
         ≡ success B (Ψf +ᵘ (q *ᵘ Ψx)) eE d f'
 private
-  open Once.TypeCheck.Elaborate
+  open Once.TypeCheck.ElaborateProofs
     using (inferElabV-RApp-dispatch; inferElabV-RApp-other-aux)
   viewBridge : ∀ {ctx f x} (vw : AppHeadView f) (eq : classifyAppHeadView f ≡ vw)
              → inferElabV-RApp-dispatch ctx f x (classifyAppHeadView f) refl
                ≡ inferElabV-RApp-dispatch ctx f x vw eq
   viewBridge _ refl = refl
-  otherBridge : ∀ {ctx f x} (lhs : Maybe Once.TypeCheck.Elaborate.PolyBuiltinApp)
+  otherBridge : ∀ {ctx f x} (lhs : Maybe Once.TypeCheck.ElaborateProofs.PolyBuiltinApp)
                 (eq : classifyAppHead f ≡ lhs)
               → inferElabV-RApp-other-aux ctx f x (classifyAppHead f) refl
                 ≡ inferElabV-RApp-other-aux ctx f x lhs eq
@@ -699,7 +700,7 @@ infer-complete-RApp-eff :
     {Ψx : Surface.Usage (NamedCtx.size ctx)}
     {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
     {dx fx : ℕ}
-  → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+  → Once.TypeCheck.ElaborateProofs.classifyAppHead f ≡ nothing
   → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψf fE df ff
   → checkElab ctx x A ≡ success Ψx xE dx fx
   → ∃[ eE ] ∃[ d ] ∃[ f' ]
@@ -755,7 +756,7 @@ infer-complete-RApp-eff {ctx} f x A {B} eqAH eqF eqX
 -- walk now closes.
 ------------------------------------------------------------------------
 
-open Once.TypeCheck.Elaborate
+open Once.TypeCheck.ElaborateProofs
   using (checkElab-fallback-RInt; checkElab-fallback-RStringLit;
          checkElab-fallback-RUnit; checkElab-fallback-RVar-unit;
          checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst;
@@ -931,7 +932,7 @@ postulate
   completeness-gap-arg-driven-app-check :
     ∀ {ctx : NamedCtx} {f arg : RawExpr} {X T : Type}
       {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+    → Once.TypeCheck.ElaborateProofs.classifyAppHead f ≡ nothing
     → ctx ⊢ᵢ arg ∶ X ⨾ Ψ₂
     → ctx ⊢ᶜ f ∶ (X T.⇒[ T.mk-kind T.Many T.pure ] T) ⨾ Ψ₁
     → ∃[ eE ] ∃[ d ] ∃[ fr ]
@@ -945,7 +946,7 @@ postulate
   completeness-gap-arg-driven-app-check-eff :
     ∀ {ctx : NamedCtx} {f arg : RawExpr} {X A B : Type}
       {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+    → Once.TypeCheck.ElaborateProofs.classifyAppHead f ≡ nothing
     → ctx ⊢ᵢ arg ∶ X ⨾ Ψ₂
     → ctx ⊢ᶜ f ∶ (X T.⇒[ T.mk-kind T.Many T.pure ] (A T.⇒[ T.mk-kind T.Many T.pure ] B)) ⨾ Ψ₁
     → ∃[ eE ] ∃[ d ] ∃[ fr ]
@@ -996,7 +997,7 @@ private
 -- `checkElabV` on a morphism succeeds with an extractable result + witness.
 StrongElab : (ctx : NamedCtx) (e : RawExpr) (A B : Type) (π : T.Purity) → Set
 StrongElab ctx e A B π =
-  Σ-syntax (IR A B) λ m →
+  Σ-syntax (IR ⌊ A ⌋ ⌊ B ⌋) λ m →
   Σ-syntax (ctx ⊢ᵐ e ∶ A ⇨[ π ] B) λ mᵐ →
   Σ-syntax (Srf.Expr (NamedCtx.debruijn ctx) zeroUsage (A T.⇒[ T.mk-kind T.Many π ] B)) λ E →
   Σ-syntax ℕ λ d → Σ-syntax ℕ λ fr →
@@ -1018,7 +1019,7 @@ private
   -- The (just B) branch of checkComposeGo reduces to the compose success once
   -- the two arm checks + their morphism/witness extractions are known.
   composeGo-success : ∀ {ctx f g A C} {π : T.Purity} {B}
-    {mf : IR B C} {mg : IR A B} {Ef : _} {Eg : _} {Wf : _} {Wg : _} {mFᵐ : _} {mGᵐ : _}
+    {mf : IR ⌊ B ⌋ ⌊ C ⌋} {mg : IR ⌊ A ⌋ ⌊ B ⌋} {Ef : _} {Eg : _} {Wf : _} {Wg : _} {mFᵐ : _} {mGᵐ : _}
     {df ff dg fg : ℕ}
     (eqB : composeMid ctx f g A ≡ just B)
     → checkElabV ctx f (B T.⇒[ T.mk-kind T.Many π ] C)
@@ -1029,7 +1030,7 @@ private
     → extract-morph-eff Eg ≡ just (mg , refl)
     → extractMorphWitness Wf ≡ just mFᵐ
     → extractMorphWitness Wg ≡ just mGᵐ
-    → Σ-syntax (IR A C) λ m → Σ-syntax ℕ λ d → Σ-syntax ℕ λ fr →
+    → Σ-syntax (IR ⌊ A ⌋ ⌊ C ⌋) λ m → Σ-syntax ℕ λ d → Σ-syntax ℕ λ fr →
         (checkComposeGo ctx f g A C π (just B) eqB
           ≡ (success zeroUsage (lift-morphism m) d fr , t-morph-lift (m-compose eqB mFᵐ mGᵐ)))
         × (m ≡ mf IR.∘ mg)
@@ -1116,7 +1117,7 @@ postulate
 
 -- `checkG` builds EXACTLY realize-global's IR (moved from RealizeAgrees so the
 -- value-lift discharge of const-morph-strong can use it; self-contained).
-checkG-realize : ∀ {ctx : NamedCtx} {X : Type} {e : RawExpr} {A : Type} {m : IR X A}
+checkG-realize : ∀ {ctx : NamedCtx} {X : Type} {e : RawExpr} {A : Type} {m : IR ⌊ X ⌋ ⌊ A ⌋}
   (gd : ctx ⊢ᵍ e ∶ A)
   → checkG ctx X e A ≡ just (m , gd) → m ≡ realize-global gd
 checkG-realize (g-int n) refl = refl
