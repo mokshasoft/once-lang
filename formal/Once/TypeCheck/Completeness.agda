@@ -33,7 +33,7 @@ open import Data.Integer using (ℤ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (∃; ∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Nullary using (yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
 open import Data.String.Properties as StrProp using (_≟_)
 
 open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
@@ -72,7 +72,8 @@ import Data.String.Properties
 -- Supplementary imports for the MERGED morph-elab/StrongElab/eff-complete block.
 open import Data.Empty using (⊥)
 open import Once.IR using (IR; Heap)
-open import Once.IRTy using (⌊_⌋)
+open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
+open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Denotation.Realize using (realize-morph; realize-global)
 open import Once.Surface.Syntax as Srf using (Expr; lift-morphism)
 open import Once.Type using (Functor; μ-type; ⟦_⟧T)
@@ -1145,7 +1146,7 @@ checkG-realize {ctx} {X} (g-In {arg = arg} {F = F} {wfF = wfF} eqWF garg) eq
 ... | wfv-no _  | ()
 ... | wfv-yes _ | eq'
       with checkG ctx X arg (⟦ F ⟧T (μ-type F)) in eqarg | eq'
-...     | just (marg , _) | refl = cong (λ z → IR.In wfF Heap IR.∘ z) (checkG-realize garg eqarg)
+...     | just (marg , _) | refl = cong (λ z → IR.In (wf-⌊⌋ wfF) Heap IR.∘ subst (λ o → IR ⌊ X ⌋ o) (⌊⟧T-commute F (μ-type F)) z) (checkG-realize garg eqarg)
 ...     | nothing         | ()
 
 mutual
@@ -1271,7 +1272,7 @@ mutual
   morph-elab {ctx = ctx} (m-cata {alg = alg} {F = F} {A = A} {π = T.pure} {wfF = wfF} eqWF dalg)
     with morph-elab dalg
   ... | (m-alg , mᵐ-alg , algE , d , fr , wArg , eqV , exEff , exW , cons) =
-        IR.Cata wfF m-alg
+        IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR o ⌊ A ⌋) (⌊⟧T-commute F A) m-alg)
       , m-cata eqWF mᵐ-alg
       , Surface.cata wfF algE
       , suc d , NamedCtx.freshCounter ctx
@@ -1280,14 +1281,14 @@ mutual
               (checkCataGo-just-success ctx alg F A T.pure wfF eqWF eqV exW)
       , extract-morph-eff-cata {Γ = NamedCtx.debruijn ctx} {wfF = wfF} {algE = algE} exEff
       , refl
-      , cong (IR.Cata wfF) cons
+      , cong (λ z → IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR o ⌊ A ⌋) (⌊⟧T-commute F A) z)) cons
   -- π = eff: a GENUINELY-eff algebra. `checkCata`'s eff clause tries the eff-Go
   -- first; the algebra elaborates at eff with a morphism witness, so eff-Go IS the
   -- `m-cata` success and the clause passes it through (checkCata-eff-strong-hlp).
   morph-elab {ctx = ctx} (m-cata {alg = alg} {F = F} {A = A} {π = T.eff} {wfF = wfF} eqWF dalg)
     with morph-elab dalg
   ... | (m-alg , mᵐ-alg , algE , d , fr , wArg , eqV , exEff , exW , cons) =
-        IR.Cata wfF m-alg
+        IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR o ⌊ A ⌋) (⌊⟧T-commute F A) m-alg)
       , m-cata eqWF mᵐ-alg
       , Surface.cata wfF algE
       , suc d , NamedCtx.freshCounter ctx
@@ -1299,7 +1300,7 @@ mutual
                  (checkCataGo-just-success ctx alg F A T.eff wfF eqWF eqV exW))
       , extract-morph-eff-cata {Γ = NamedCtx.debruijn ctx} {wfF = wfF} {algE = algE} exEff
       , refl
-      , cong (IR.Cata wfF) cons
+      , cong (λ z → IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR o ⌊ A ⌋) (⌊⟧T-commute F A) z)) cons
 
   -- The weak (checkElab) morphism-completeness, derived from the strong form.
   -- (`checkElab = proj₁ ∘ checkElabV`, Elaborate:1071.)
