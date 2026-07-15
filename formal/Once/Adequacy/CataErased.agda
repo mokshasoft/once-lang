@@ -27,7 +27,7 @@ open import Data.List using (List; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-sym-subst)
+  using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym; subst-sym-subst)
 
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; μS; cataS; ⟦_⟧SF)
 open import Once.Denotation.TraceMonad using (T; projTrace; valueT)
@@ -64,6 +64,18 @@ import Once.IR as IR
 subst-T-apply : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (n : ℕ)
   → subst T eq h n ≡ (proj₁ (h n) , subst (λ Z → Z) eq (proj₂ (h n)))
 subst-T-apply refl h n = refl
+
+subst-T-projTrace : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (n : ℕ)
+  → projTrace (subst T eq h) n ≡ projTrace h n
+subst-T-projTrace refl h n = refl
+
+subst-T-valueT : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (n : ℕ)
+  → valueT (subst T eq h) n ≡ subst (λ z → z) eq (valueT h n)
+subst-T-valueT refl h n = refl
+
+subst-cong-μS : ∀ {G₁ G₂ : SFunctor} (eq : G₁ ≡ G₂) (x : μS G₁)
+  → subst (λ z → z) (cong μS eq) x ≡ subst μS eq x
+subst-cong-μS refl x = refl
 
 -- A `cataS` fold over `G₂` equals the fold over an equal functor `G₁`, with the
 -- algebra pre-composed by the (inverse) functor transport and the seed transported.
@@ -272,3 +284,61 @@ module _ {A' : Type} where
                      (coerce-functor⁻¹-D Fa A' (sem-fmap Fa proj₂ (coerce-μ-out wfF _ x₂)))
                      (coerce-functor⁻¹-D Gb A' (sem-fmap Gb proj₂ (coerce-μ-out wfG _ z₂)))
     = cong₂ _,_ (layer-z wfF {x₁} {x₂} rf) (layer-z wfG {z₁} {z₂} rg)
+
+  ------------------------------------------------------------------------
+  -- The functor-transport EQUALITY: the erased `Cata`'s `liftFn`-transported
+  -- denotation equals the meaning fold `cata-sem` of the `liftFn`-transported
+  -- algebra. Assembled from `cataS-rel` (over the `tF-coh`-unified functor `F`)
+  -- with `algR-full` = `layer-events` (traces) + `layer-z` (values, via
+  -- `evalᴰ-subst-dom` + `subst-T-apply`).
+  ------------------------------------------------------------------------
+
+  evalᴰ-Cata-erased : ∀ {F : Functor} (wfF : WellFormedF F)
+      (mir : IR.IR ⌊ ⟦ F ⟧T A' ⌋ ⌊ A' ⌋) (w : ⟦ μ-type F ⟧ᴰ)
+    → liftFn (IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR.IR o ⌊ A' ⌋) (⌊⟧T-commute F A') mir)) w
+      ≡ cata-sem wfF (liftFn mir) w
+  evalᴰ-Cata-erased {F} wfF mir w = extensionality goal
+    where
+      mir' : IR.IR (⟦ eraseF F ⟧TI ⌊ A' ⌋) ⌊ A' ⌋
+      mir' = subst (λ o → IR.IR o ⌊ A' ⌋) (⌊⟧T-commute F A') mir
+
+      w' : ⟦ ⌊ μ-type F ⌋ ⟧ᴰᴵ
+      w' = subst (λ z → z) (sym (cohᴰ (μ-type F))) w
+
+      seed-eq : subst μS (tF-coh F) (forget w') ≡ forget w
+      seed-eq = trans (sym (subst-cong-μS (tF-coh F) w'))
+                      (subst-subst-sym {P = λ z → z} (cong μS (tF-coh F)))
+
+      goal : ∀ n → liftFn (IR.Cata (wf-⌊⌋ wfF) mir') w n ≡ cata-sem wfF (liftFn mir) w n
+      goal n = trans (subst-T-apply (cohᴰ A') (evalᴰ (IR.Cata (wf-⌊⌋ wfF) mir') w') n)
+                     (trans (cong (λ L → (proj₁ L , subst (λ z → z) (cohᴰ A') (proj₂ L))) Lr≡)
+                            (cong₂ _,_ (proj₁ rc) (proj₂ rc)))
+        where
+          dalg_L : ⟦ ⟦ ⌈ eraseF F ⌉F ⟧T ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ → T ⟦ ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ
+          dalg_L z = evalᴰ mir' (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋)) z)
+
+          algL : ⟦ translateF Carrier (⌈ eraseF F ⌉F) ⟧SF (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)
+          algL y = cata-ev-algᴰ-D {⌈ eraseF F ⌉F} {⌈ ⌊ A' ⌋ ⌉} n dalg_L (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ y)
+
+          algL' : ⟦ translateF Carrier F ⟧SF (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)
+          algL' y = algL (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y)
+
+          algM : ⟦ translateF Carrier F ⟧SF (List SigOpEvent × ⟦ A' ⟧ᴰ) → (List SigOpEvent × ⟦ A' ⟧ᴰ)
+          algM y = cata-ev-algᴰ-D {F} {A'} n (liftFn mir) (coerce-μ-out wfF _ y)
+
+          Lr≡ : evalᴰ (IR.Cata (wf-⌊⌋ wfF) mir') w' n ≡ cataS {translateF Carrier F} algL' (forget w)
+          Lr≡ = trans (cataS-subst-functor (tF-coh F) algL (forget w'))
+                      (cong (cataS {translateF Carrier F} algL') seed-eq)
+
+          algR-full : ∀ {y₁ y₂} → RelSF (translateF Carrier F) RelC y₁ y₂ → RelC (algL' y₁) (algM y₂)
+          algR-full {y₁} {y₂} rsf = cong₂ _++_ (layer-events wfF rsf) trace-step , value-step
+            where
+              z_L = coerce-functor⁻¹-D ⌈ eraseF F ⌉F ⌈ ⌊ A' ⌋ ⌉ (sem-fmap ⌈ eraseF F ⌉F proj₂ (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y₁)))
+              step-eq : subst T (cohᴰ A') (dalg_L z_L) ≡ liftFn mir (coerce-functor⁻¹-D F A' (sem-fmap F proj₂ (coerce-μ-out wfF _ y₂)))
+              step-eq = trans (cong (subst T (cohᴰ A')) (evalᴰ-subst-dom (⌊⟧T-commute F A') mir (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋)) z_L)))
+                              (cong (λ Z → subst T (cohᴰ A') (evalᴰ mir Z)) (layer-z wfF rsf))
+              trace-step = trans (sym (subst-T-projTrace (cohᴰ A') (dalg_L z_L) n)) (cong (λ t → projTrace t n) step-eq)
+              value-step = trans (sym (subst-T-valueT (cohᴰ A') (dalg_L z_L) n)) (cong (λ t → valueT t n) step-eq)
+
+          rc : RelC (cataS {translateF Carrier F} algL' (forget w)) (cataS {translateF Carrier F} algM (forget w))
+          rc = cataS-rel RelC algR-full (forget w)
