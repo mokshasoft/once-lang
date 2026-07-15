@@ -163,7 +163,53 @@ absorb (A ⊸ B) sp = λ Δ v → absorb B (appSp Δ v sp)
 
 ------------------------------------------------------------------------
 -- Evaluation — textually L3.3.
+--
+-- The α/ƛ/ρ continuations are lifted to top level (rather than local
+-- `where`s / inline λ) so the adequacy proof (Adq15) can name the exact
+-- same function when matching `evalV αrc`/`αlc`/`ƛrc`/`ρrc`.
 ------------------------------------------------------------------------
+
+-- The tensor split-leaf functor (Val (A ⊗ B) Γ = Sp (⊗Leaf A B) Γ).
+⊗Leaf : CTy → CTy → Ctx → Set
+⊗Leaf A B Δ =
+  Σ Ctx (λ Δ₁ → Σ Ctx (λ Δ₂ →
+    Σ (Perm Δ (Δ₁ ++ Δ₂)) (λ _ → Σ (Val A Δ₁) (λ _ → Val B Δ₂))))
+
+evkαi : ∀ {A B D Δ₂} → Val D Δ₂ →
+        ∀ {Θ Δ} → Perm Δ (Θ ++ Δ₂) → ⊗Leaf A B Θ →
+        Sp (⊗Leaf A (B ⊗ D)) Δ
+evkαi {Δ₂ = Δ₂} vd ρ' (Θ₁ , (Θ₂ , (ρᵢ , (va , vb)))) =
+  ret (Θ₁ , ((Θ₂ ++ Δ₂) ,
+    ( ((ρ' ⊙P padʳ Δ₂ ρᵢ) ⊙P passoc Θ₁ Θ₂ Δ₂)
+    , (va , ret (Θ₂ , (Δ₂ , (pid (Θ₂ ++ Δ₂) , (vb , vd))))))))
+
+evkα : ∀ {A B D Δ} → ⊗Leaf (A ⊗ B) D Δ → Val (A ⊗ (B ⊗ D)) Δ
+evkα (Δ₁ , (Δ₂ , (ρ , (vab , vd)))) = withSpˡ ρ vab (evkαi vd)
+
+evkαli : ∀ {A B D Δ₁} → Val A Δ₁ →
+         ∀ {Θ Δ} → Perm Δ (Δ₁ ++ Θ) → ⊗Leaf B D Θ →
+         Sp (⊗Leaf (A ⊗ B) D) Δ
+evkαli {Δ₁ = Δ₁} va ρ' (Θ₁ , (Θ₂ , (ρᵢ , (vb , vd)))) =
+  ret ((Δ₁ ++ Θ₁) , (Θ₂ ,
+    ( ((ρ' ⊙P padˡ Δ₁ ρᵢ) ⊙P passocInv Δ₁ Θ₁ Θ₂)
+    , (ret (Δ₁ , (Θ₁ , (pid (Δ₁ ++ Θ₁) , (va , vb)))) , vd))))
+
+evkαl : ∀ {A B D Δ} → ⊗Leaf A (B ⊗ D) Δ → Val ((A ⊗ B) ⊗ D) Δ
+evkαl (Δ₁ , (Δ₂ , (ρ , (va , vbd)))) = withSpʳ ρ vbd (evkαli va)
+
+evkƛ : ∀ A {Δ₂} → Val A Δ₂ →
+       ∀ {Δ₁' Δ} → Perm Δ (Δ₁' ++ Δ₂) → Δ₁' ≡ ε → Sp (Val A) Δ
+evkƛ A va ρ' refl = ret (vmap A ρ' va)
+
+evkƛo : ∀ {A Δ} → ⊗Leaf I A Δ → Sp (Val A) Δ
+evkƛo {A} (Δ₁ , (Δ₂ , (ρ , (vI , va)))) = withSpˡ ρ vI (evkƛ A va)
+
+evkρ : ∀ A {Δ₁} → Val A Δ₁ →
+       ∀ {Δ₂' Δ} → Perm Δ (Δ₁ ++ Δ₂') → Δ₂' ≡ ε → Sp (Val A) Δ
+evkρ A {Δ₁} va ρ' refl = ret (vmap A (ρ' ⊙P pidRInv Δ₁) va)
+
+evkρo : ∀ {A Δ} → ⊗Leaf A I Δ → Sp (Val A) Δ
+evkρo {A} (Δ₁ , (Δ₂ , (ρ , (va , vI)))) = withSpʳ ρ vI (evkρ A va)
 
 evalV : ∀ {A B} → CTm A B → ∀ {Γ} → Val A Γ → Val B Γ
 evalV idc      v = v
@@ -171,33 +217,11 @@ evalV (f ∘c g) v = evalV f (evalV g v)
 evalV (f ⊗c g) v =
   mapSp (λ (Δ₁ , (Δ₂ , (ρ , (va , vb)))) →
           Δ₁ , (Δ₂ , (ρ , (evalV f va , evalV g vb)))) v
-evalV αrc v =
-  bindSp v (λ (Δ₁ , (Δ₂ , (ρ , (vab , vd)))) →
-    withSpˡ ρ vab (λ ρ' (Θ₁ , (Θ₂ , (ρᵢ , (va , vb)))) →
-      ret (Θ₁ , ((Θ₂ ++ Δ₂) ,
-        ( ((ρ' ⊙P padʳ Δ₂ ρᵢ) ⊙P passoc Θ₁ Θ₂ Δ₂)
-        , (va , ret (Θ₂ , (Δ₂ , (pid (Θ₂ ++ Δ₂) , (vb , vd))))))))))
-evalV αlc v =
-  bindSp v (λ (Δ₁ , (Δ₂ , (ρ , (va , vbd)))) →
-    withSpʳ ρ vbd (λ ρ' (Θ₁ , (Θ₂ , (ρᵢ , (vb , vd)))) →
-      ret ((Δ₁ ++ Θ₁) , (Θ₂ ,
-        ( ((ρ' ⊙P padˡ Δ₁ ρᵢ) ⊙P passocInv Δ₁ Θ₁ Θ₂)
-        , (ret (Δ₁ , (Θ₁ , (pid (Δ₁ ++ Θ₁) , (va , vb)))) , vd))))))
-evalV {B = A} ƛrc v =
-  absorb A (bindSp v (λ (Δ₁ , (Δ₂ , (ρ , (vI , va)))) →
-    withSpˡ ρ vI (kƛ A va)))
-  where
-  kƛ : ∀ A {Δ₂} → Val A Δ₂ →
-       ∀ {Δ₁' Δ} → Perm Δ (Δ₁' ++ Δ₂) → Δ₁' ≡ ε → Sp (Val A) Δ
-  kƛ A va ρ' refl = ret (vmap A ρ' va)
+evalV αrc v = bindSp v evkα
+evalV αlc v = bindSp v evkαl
+evalV {B = A} ƛrc v = absorb A (bindSp v evkƛo)
 evalV ƛlc {Γ} v = ret (ε , (Γ , (pid Γ , (ret refl , v))))
-evalV {B = A} ρrc v =
-  absorb A (bindSp v (λ (Δ₁ , (Δ₂ , (ρ , (va , vI)))) →
-    withSpʳ ρ vI (kρ A va)))
-  where
-  kρ : ∀ A {Δ₁} → Val A Δ₁ →
-       ∀ {Δ₂' Δ} → Perm Δ (Δ₁ ++ Δ₂') → Δ₂' ≡ ε → Sp (Val A) Δ
-  kρ A {Δ₁} va ρ' refl = ret (vmap A (ρ' ⊙P pidRInv Δ₁) va)
+evalV {B = A} ρrc v = absorb A (bindSp v evkρo)
 evalV ρlc {Γ} v =
   ret (Γ , (ε , (pidR Γ , (v , ret refl))))
 evalV σc v =
