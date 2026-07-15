@@ -42,7 +42,7 @@ open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RResolved; RInt; RStringLit; RUnit; RAnnot; RPair)
 open import Once.CanonicalName using (CanonicalName; showCanonical)
-open import Once.TypeCheck.Elaborate
+open import Once.TypeCheck.ElaborateProofs
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport;
          inferElabV; checkElabV; _≟T_; embedOrSubsume; VerifiedInferResult; isRIntVliftTarget?;
@@ -77,7 +77,7 @@ open import Once.Surface.Syntax as Srf using (Expr; lift-morphism)
 open import Once.Type using (Functor; μ-type; ⟦_⟧T)
 open import Once.TypeCheck.Classify using (lookupLocal; lookupImport; lookupPolyPrefix⇒lookupPoly;
   inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found)
-open import Once.TypeCheck.Elaborate using (extract-morph-eff; extractMorphWitness;
+open import Once.TypeCheck.ElaborateProofs using (extract-morph-eff; extractMorphWitness;
   checkComposeGo; checkCaseGo; VerifiedCheckResult; inferElabV-RVar-fail-bridge;
   checkG; inspectWellFormedF; wfv-no; wfv-yes;
   checkCataGo; cata-go-canonical; checkCataGoV-pure-J; checkCataGo-just-success;
