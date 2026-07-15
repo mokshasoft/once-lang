@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **94 modules, all green** (85 of them `--safe`). **START AT
+- **95 modules, all green** (86 of them `--safe`). **START AT
   `NbEPMonIndex.agda`** for the monoidal/linear tower — one `--safe`
   entry point re-exporting the headline theorems (`dec≈`, `complete`,
   `nf`, the axiom re-derivations, the closed-core theory + `bal` +
@@ -257,9 +257,13 @@ the "Other open items" section below.**
    nodes cleanly), **R-join is now COMPLETE and --safe committed** (`NbEPMonAdq16`):
    (†) dagger/daggerI closed via node-perm-real + ⊙P-pidˡ +
    interchange + n-α + mult-head²/mult-headI + fuse. **evc DONE** (WIP
-   Adq15). REMAINING (4 fund cases αrc/αlc/ƛrc/ρrc): each needs a
-   withSpˡ-RVal / withSpʳ-RVal helper (R-level withSp-splice, same
-   dagger node pattern), then A4.5 assembly. Then **A4.5 assembly**: `f ≈c NF f` from R-reflectTy + fund
+   Adq15). **withSpˡ-Tree DONE**
+   (`NbEPMonAdq17`, --safe: the R-level withSpˡ-splice with nodeL/
+   nodeLI). REMAINING: convert R⊗/RI/RVal ↔ Tree (trivial tree
+   inductions) + Tree-resp; wire ƛrc/αrc via withSpˡ-Tree; build
+   **withSpʳ-Tree** (nodeR — the deeper withSpʳ node via exch-real/
+   carry²) for αlc/ρrc; then A4.5 assembly (f ≈c NF f ⇒
+   NF f ≡ NF g → f ≈c g). Then **A4.5 assembly**: `f ≈c NF f` from R-reflectTy + fund
    lemma + R-reify + join-split ⇒ `NF f ≡ NF g → f ≈c g`. The whole
    definitional + boundary layer (A4.1/A4.2/A4.3) is committed --safe
    green; only the 5 absorb cases + assembly remain. Rung 3 proper (variance judgments,
