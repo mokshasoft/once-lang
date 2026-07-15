@@ -25,8 +25,8 @@ module Once.Optimize where
 
 open import Once.Type
 open import Once.IR
+import Once.IRTy as II
 open import Once.CCC.Machine.SMCore using (_≟H_)
-open import Once.Functor.Translate using (WellFormedF-irrelevant)
 
 open import Data.Bool using (Bool; true; false; _∨_; _∧_)
 open import Data.Nat using (ℕ; zero; suc)
@@ -38,6 +38,8 @@ open import Once.SigOp.Info using (_≟SigOpInfo_)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; cong₂; subst; sym; trans)
 open import Data.Empty using (⊥)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe.Properties using (just-injective)
 
 ------------------------------------------------------------------------
 -- Equality decision (needed for eta laws)
@@ -282,7 +284,7 @@ Id ≟Functor (_ ⊗ _) = no (λ ())
 --
 -- Same-constructor cases use the existing decidable equalities for
 -- indices and recurse for sub-IRs. WellFormedF proofs are
--- proof-irrelevant (via `WellFormedF-irrelevant`).
+-- proof-irrelevant (via `WellFormedFI-irrelevant`).
 --
 -- Cross-pair cases (different head constructors) are dispatched via
 -- `ir-head`: a `subst₂`-invariant discriminator. If `ir-head f` and
@@ -375,7 +377,6 @@ ir-head terminal = h-terminal
 ir-head initial = h-initial
 ir-head (curry _ _) = h-curry
 ir-head apply = h-apply
-ir-head arr = h-arr
 ir-head (In _ _) = h-In
 ir-head (out-μ _) = h-out-μ
 ir-head (Cata _ _) = h-Cata
@@ -392,6 +393,29 @@ ir-head (const _ _) = h-const
 -- subst₂ for IR.
 subst₂-IR : ∀ {A B A' B'} → A ≡ A' → B ≡ B' → IR A B → IR A' B'
 subst₂-IR refl refl f = f
+
+-- Plan 0.52 M2: SigOp decidable equality over ERASED objects. `⌊_⌋` is not
+-- injective (drops the arrow grade), so the object equalities `eqA/eqB` cannot
+-- be `refl`-matched. Instead extract the SigOp's Type-PARAMETERS (which ARE
+-- recoverable — they live in the `SigOpInfo`) and compare via `≟Type`.
+uipK : ∀ {ℓ} {A : Set ℓ} {x y : A} (p q : x ≡ y) → p ≡ q
+uipK refl refl = refl
+
+sigop-dom : ∀ {X Y} → IR X Y → Maybe Type
+sigop-dom (SigOp {A} {B} _) = just A
+sigop-dom _ = nothing
+
+sigop-cod : ∀ {X Y} → IR X Y → Maybe Type
+sigop-cod (SigOp {A} {B} _) = just B
+sigop-cod _ = nothing
+
+sigop-dom-subst : ∀ {X Y X' Y'} (p : X ≡ X') (q : Y ≡ Y') (f : IR X Y)
+                → sigop-dom (subst₂-IR p q f) ≡ sigop-dom f
+sigop-dom-subst refl refl f = refl
+
+sigop-cod-subst : ∀ {X Y X' Y'} (p : X ≡ X') (q : Y ≡ Y') (f : IR X Y)
+                → sigop-cod (subst₂-IR p q f) ≡ sigop-cod f
+sigop-cod-subst refl refl f = refl
 
 -- head is preserved under subst₂-IR.
 ir-head-subst₂ : ∀ {A B A' B'} (p : A ≡ A') (q : B ≡ B') (f : IR A B)
@@ -554,40 +578,40 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 ≟IRH-case-aux f₁ f₂ g₁ g₂ (no np)    (yes _)    = no (λ { refl → np refl })
 ≟IRH-case-aux f₁ f₂ g₁ g₂ (no np)    (no _)     = no (λ { refl → np refl })
 
-≟IRH-curry-aux : ∀ {A B C k} (f₁ f₂ : IR (A * B) C) (m₁ m₂ : AllocMode)
+≟IRH-curry-aux : ∀ {A B C} (f₁ f₂ : IR (A * B) C) (m₁ m₂ : AllocMode)
                → Dec (f₁ ≡ f₂) → Dec (m₁ ≡ m₂)
-               → Dec (curry {A} {B} {C} {k} f₁ m₁ ≡ curry f₂ m₂)
+               → Dec (curry {A} {B} {C} f₁ m₁ ≡ curry f₂ m₂)
 ≟IRH-curry-aux f₁ f₂ m₁ m₂ (yes refl) (yes refl) = yes refl
 ≟IRH-curry-aux f₁ f₂ m₁ m₂ (yes refl) (no nm)    = no (λ { refl → nm refl })
 ≟IRH-curry-aux f₁ f₂ m₁ m₂ (no np)    (yes _)    = no (λ { refl → np refl })
 ≟IRH-curry-aux f₁ f₂ m₁ m₂ (no np)    (no _)     = no (λ { refl → np refl })
 
 -- Hylo helper: takes both alg and coalg Dec results; uses rewrite
--- on WellFormedF-irrelevant for the matched-functor case.
+-- on WellFormedFI-irrelevant for the matched-functor case.
 ≟IRH-Hylo-inner : ∀ {F G B}
                 → (wfF₁ wfF₂ : _) (wfG₁ wfG₂ : _)
-                → (alg₁ alg₂ : IR (⟦ F ⟧T B) B)
+                → (alg₁ alg₂ : IR (⟦ F ⟧TI B) B)
                 → (coalg₁ coalg₂ : NatTr G F)
                 → Dec (alg₁ ≡ alg₂) → Dec (coalg₁ ≡ coalg₂)
                 → Dec (Hylo {F} {G} wfF₁ wfG₁ alg₁ coalg₁
                        ≡ Hylo wfF₂ wfG₂ alg₂ coalg₂)
 ≟IRH-Hylo-inner wfF₁ wfF₂ wfG₁ wfG₂ alg₁ alg₂ coalg₁ coalg₂ (yes refl) (yes refl)
-  rewrite WellFormedF-irrelevant wfF₁ wfF₂
-        | WellFormedF-irrelevant wfG₁ wfG₂ = yes refl
+  rewrite WellFormedFI-irrelevant wfF₁ wfF₂
+        | WellFormedFI-irrelevant wfG₁ wfG₂ = yes refl
 ≟IRH-Hylo-inner _ _ _ _ _ _ _ _ (yes refl) (no nq) = no (λ { refl → nq refl })
 ≟IRH-Hylo-inner _ _ _ _ _ _ _ _ (no np)    (yes _) = no (λ { refl → np refl })
 ≟IRH-Hylo-inner _ _ _ _ _ _ _ _ (no np)    (no _)  = no (λ { refl → np refl })
 
 ≟IRH-Fuse-inner : ∀ {F G B}
                 → (wfF₁ wfF₂ : _) (wfG₁ wfG₂ : _)
-                → (alg₁ alg₂ : IR (⟦ F ⟧T B) B)
+                → (alg₁ alg₂ : IR (⟦ F ⟧TI B) B)
                 → (tr₁ tr₂ : NatTr G F)
                 → Dec (alg₁ ≡ alg₂) → Dec (tr₁ ≡ tr₂)
                 → Dec (Fuse {F} {G} wfF₁ wfG₁ alg₁ tr₁
                        ≡ Fuse wfF₂ wfG₂ alg₂ tr₂)
 ≟IRH-Fuse-inner wfF₁ wfF₂ wfG₁ wfG₂ alg₁ alg₂ tr₁ tr₂ (yes refl) (yes refl)
-  rewrite WellFormedF-irrelevant wfF₁ wfF₂
-        | WellFormedF-irrelevant wfG₁ wfG₂ = yes refl
+  rewrite WellFormedFI-irrelevant wfF₁ wfF₂
+        | WellFormedFI-irrelevant wfG₁ wfG₂ = yes refl
 ≟IRH-Fuse-inner _ _ _ _ _ _ _ _ (yes refl) (no nq) = no (λ { refl → nq refl })
 ≟IRH-Fuse-inner _ _ _ _ _ _ _ _ (no np)    (yes _) = no (λ { refl → np refl })
 ≟IRH-Fuse-inner _ _ _ _ _ _ _ _ (no np)    (no _)  = no (λ { refl → np refl })
@@ -601,7 +625,7 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 
 -- _∘_: compare the intermediate (middle) type first, then sub-IRs
 ≟IRH-diag (_∘_ {_} {B} g₁ f₁) (_∘_ {_} {B'} g₂ f₂) _ refl refl =
-  ≟IRH-∘-aux g₁ f₁ g₂ f₂ (B ≟Type B')
+  ≟IRH-∘-aux g₁ f₁ g₂ f₂ (B ≟IRTy B')
 
 -- ⟨_,_⟩: B * C equality refl-unifies both component types
 ≟IRH-diag (⟨ f₁ , g₁ ⟩ m₁) (⟨ f₂ , g₂ ⟩ m₂) _ refl refl =
@@ -629,60 +653,59 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
   ≟IRH-curry-aux f₁ f₂ m₁ m₂ (≟IRH f₁ f₂ refl refl) (m₁ ≟AllocMode m₂)
 
 ≟IRH-diag apply apply _ refl refl = yes refl
-≟IRH-diag arr arr _ refl refl = yes refl
 
 -- In: eqB : μ-type F ≡ μ-type F' gives the Functor tag
-≟IRH-diag (In {F} wf₁ m₁) (In {F'} wf₂ m₂) _ eqA eqB with F ≟Functor F'
+≟IRH-diag (In {F} wf₁ m₁) (In {F'} wf₂ m₂) _ eqA eqB with F ≟IRFun F'
 ... | no fne = no (λ _ → fne (μ-inj eqB))
 ... | yes refl with m₁ ≟AllocMode m₂ | eqA | eqB
-...   | yes refl | refl | refl rewrite WellFormedF-irrelevant wf₁ wf₂ = yes refl
+...   | yes refl | refl | refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 ...   | no nm    | refl | refl = no (λ { refl → nm refl })
 
 -- out-μ: eqA : μ-type F ≡ μ-type F'
-≟IRH-diag (out-μ {F} wf₁) (out-μ {F'} wf₂) _ eqA eqB with F ≟Functor F'
+≟IRH-diag (out-μ {F} wf₁) (out-μ {F'} wf₂) _ eqA eqB with F ≟IRFun F'
 ... | no fne = no (λ _ → fne (μ-inj eqA))
 ... | yes refl with eqA | eqB
-...   | refl | refl rewrite WellFormedF-irrelevant wf₁ wf₂ = yes refl
+...   | refl | refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 
 -- Cata: eqA : μ-type F ≡ μ-type F', eqB : A ≡ A'
 ≟IRH-diag (Cata {F} wf₁ alg₁) (Cata {F'} wf₂ alg₂) _ eqA eqB
-  with F ≟Functor F'
+  with F ≟IRFun F'
 ... | no fne = no (λ _ → fne (μ-inj eqA))
 ... | yes refl with eqA | eqB
 ...   | refl | refl with ≟IRH alg₁ alg₂ refl refl
-...     | yes refl rewrite WellFormedF-irrelevant wf₁ wf₂ = yes refl
+...     | yes refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 ...     | no np = no (λ { refl → np refl })
 
 -- Para: similar
 ≟IRH-diag (Para {F} wf₁ alg₁) (Para {F'} wf₂ alg₂) _ eqA eqB
-  with F ≟Functor F'
+  with F ≟IRFun F'
 ... | no fne = no (λ _ → fne (μ-inj eqA))
 ... | yes refl with eqA | eqB
 ...   | refl | refl with ≟IRH alg₁ alg₂ refl refl
-...     | yes refl rewrite WellFormedF-irrelevant wf₁ wf₂ = yes refl
+...     | yes refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 ...     | no np = no (λ { refl → np refl })
 
 -- Out: eqA : ν-type F ≡ ν-type F'
-≟IRH-diag (Out {F} wf₁) (Out {F'} wf₂) _ eqA eqB with F ≟Functor F'
+≟IRH-diag (Out {F} wf₁) (Out {F'} wf₂) _ eqA eqB with F ≟IRFun F'
 ... | no fne = no (λ _ → fne (ν-inj eqA))
 ... | yes refl with eqA | eqB
-...   | refl | refl rewrite WellFormedF-irrelevant wf₁ wf₂ = yes refl
+...   | refl | refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 
 -- in-ν: eqB : ν-type F ≡ ν-type F'
 ≟IRH-diag (in-ν {F} wf₁ m₁) (in-ν {F'} wf₂ m₂) _ eqA eqB
-  with F ≟Functor F'
+  with F ≟IRFun F'
 ... | no fne = no (λ _ → fne (ν-inj eqB))
 ... | yes refl with m₁ ≟AllocMode m₂ | eqA | eqB
-...   | yes refl | refl | refl rewrite WellFormedF-irrelevant wf₁ wf₂ = yes refl
+...   | yes refl | refl | refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 ...   | no nm    | refl | refl = no (λ { refl → nm refl })
 
 -- Ana: eqB : ν-type F ≡ ν-type F'
 ≟IRH-diag (Ana {F} wf₁ coalg₁) (Ana {F'} wf₂ coalg₂) _ eqA eqB
-  with F ≟Functor F'
+  with F ≟IRFun F'
 ... | no fne = no (λ _ → fne (ν-inj eqB))
 ... | yes refl with eqA | eqB
 ...   | refl | refl with ≟IRH coalg₁ coalg₂ refl refl
-...     | yes refl rewrite WellFormedF-irrelevant wf₁ wf₂ = yes refl
+...     | yes refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 ...     | no np = no (λ { refl → np refl })
 
 -- Hylo: eqA : μ-type G ≡ μ-type G', eqB : B ≡ B'.
@@ -692,10 +715,10 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 -- ≟IRH-Hylo-inner above.
 ≟IRH-diag (Hylo {F} {G} wfF₁ wfG₁ alg₁ coalg₁)
      (Hylo {F'} {G'} wfF₂ wfG₂ alg₂ coalg₂) _ eqA eqB
-  with G ≟Functor G'
+  with G ≟IRFun G'
 ... | no gne = no (λ _ → gne (μ-inj eqA))
 ... | yes refl with eqA | eqB
-...   | refl | refl with F ≟Functor F'
+...   | refl | refl with F ≟IRFun F'
 ...     | no fne  = no (λ { refl → fne refl })
 ...     | yes refl =
             ≟IRH-Hylo-inner wfF₁ wfF₂ wfG₁ wfG₂ alg₁ alg₂ coalg₁ coalg₂
@@ -704,10 +727,10 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 -- Fuse: similar shape to Hylo
 ≟IRH-diag (Fuse {F} {G} wfF₁ wfG₁ alg₁ tr₁)
      (Fuse {F'} {G'} wfF₂ wfG₂ alg₂ tr₂) _ eqA eqB
-  with G ≟Functor G'
+  with G ≟IRFun G'
 ... | no gne = no (λ _ → gne (μ-inj eqA))
 ... | yes refl with eqA | eqB
-...   | refl | refl with F ≟Functor F'
+...   | refl | refl with F ≟IRFun F'
 ...     | no fne = no (λ { refl → fne refl })
 ...     | yes refl =
             ≟IRH-Fuse-inner wfF₁ wfF₂ wfG₁ wfG₂ alg₁ alg₂ tr₁ tr₂
@@ -717,9 +740,12 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 ... | yes refl = yes refl
 ... | no hne   = no (λ { refl → hne refl })
 
-≟IRH-diag (SigOp si₁) (SigOp si₂) _ refl refl with si₁ ≟SigOpInfo si₂
-... | yes refl = yes refl
-... | no ne    = no (λ { refl → ne refl })
+≟IRH-diag (SigOp {A₁} {B₁} si₁) (SigOp {A₂} {B₂} si₂) _ eqA eqB with A₁ ≟Type A₂ | B₁ ≟Type B₂
+... | no ne  | _     = no (λ heq → ne (just-injective (trans (cong sigop-dom heq) (sigop-dom-subst (sym eqA) (sym eqB) (SigOp si₂)))))
+... | yes _  | no ne = no (λ heq → ne (just-injective (trans (cong sigop-cod heq) (sigop-cod-subst (sym eqA) (sym eqB) (SigOp si₂)))))
+... | yes refl | yes refl rewrite uipK eqA refl | uipK eqB refl with si₁ ≟SigOpInfo si₂
+...   | yes refl = yes refl
+...   | no ne    = no (λ { refl → ne refl })
 
 -- Plan 0.11: const ctor decidable equality.
 -- Postulated for now — proper discharge requires decidable equality
@@ -729,10 +755,10 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 ≟IRH-diag (const p₁ v₁) (const p₂ v₂) _ refl refl =
   ≟const-irrelevant p₁ p₂ v₁ v₂
   where
-    open import Once.Functor.Translate using (⟦_⟧-base)
+    open import Once.IRTy using (⟦_⟧-baseI)
     open import Once.Word using (Carrier)
     postulate
-      ≟const-irrelevant : ∀ (q₁ q₂ : FitsInReg _) (u₁ u₂ : ⟦ Carrier ⟧-base _) →
+      ≟const-irrelevant : ∀ (q₁ q₂ : FitsInRegI _) (u₁ u₂ : ⟦ Carrier ⟧-baseI _) →
                           Dec (const q₁ u₁ ≡ const q₂ u₂)
 
 ------------------------------------------------------------------------
@@ -846,19 +872,19 @@ wants-coprod f =
 ------------------------------------------------------------------------
 
 -- View: classify IR terms targeting a product type
-data PairView : ∀ {A B C : Type} → IR A (B * C) → Set where
+data PairView : ∀ {A B C : IRTy} → IR A (B * C) → Set where
   is-pair : ∀ {A B C} (f : IR A B) (g : IR A C) m → PairView (⟨ f , g ⟩ m)
   is-other-pair : ∀ {A B C} (f : IR A (B * C)) → PairView f
 
 -- View: classify IR terms targeting a coproduct type
 -- Note: inl : IR A (A + B), inr : IR B (A + B) - source must match component
-data CoprodView : ∀ {A B D : Type} → IR D (A + B) → Set where
+data CoprodView : ∀ {A B D : IRTy} → IR D (A + B) → Set where
   is-inl : ∀ {A B} m → CoprodView {A} {B} {A} (inl m)
   is-inr : ∀ {A B} m → CoprodView {A} {B} {B} (inr m)
   is-other-coprod : ∀ {A B D} (f : IR D (A + B)) → CoprodView f
 
 -- View: classify IR by optimization-relevant structure (first argument of compose)
-data ComposeFirstView : ∀ {B C : Type} → IR B C → Set where
+data ComposeFirstView : ∀ {B C : IRTy} → IR B C → Set where
   cf-id : ∀ {A} → ComposeFirstView {A} {A} id
   cf-terminal : ∀ {A} → ComposeFirstView {A} {Unit} terminal
   cf-fst : ∀ {A B} → ComposeFirstView {A * B} {A} fst
@@ -867,19 +893,19 @@ data ComposeFirstView : ∀ {B C : Type} → IR B C → Set where
   cf-other : ∀ {B C} (g : IR B C) → ComposeFirstView g
 
 -- View: classify IR by optimization-relevant structure (second argument of compose)
-data ComposeSecondView : ∀ {A B : Type} → IR A B → Set where
+data ComposeSecondView : ∀ {A B : IRTy} → IR A B → Set where
   cs-id : ∀ {A} → ComposeSecondView {A} {A} id
   cs-initial : ∀ {A} → ComposeSecondView {Void} {A} initial
   cs-other : ∀ {A B} (f : IR A B) → ComposeSecondView f
 
 -- View: classify IR as fst, snd, or other (for pair eta law)
-data FstSndView : ∀ {A B : Type} → IR A B → Set where
+data FstSndView : ∀ {A B : IRTy} → IR A B → Set where
   fsv-fst : ∀ {X Y} → FstSndView {X * Y} {X} fst
   fsv-snd : ∀ {X Y} → FstSndView {X * Y} {Y} snd
   fsv-other : ∀ {A B} (f : IR A B) → FstSndView f
 
 -- View: classify IR as inl, inr, or other (for case eta law)
-data InlInrView : ∀ {A B : Type} → IR A B → Set where
+data InlInrView : ∀ {A B : IRTy} → IR A B → Set where
   iiv-inl : ∀ {X Y} m → InlInrView {X} {X + Y} (inl m)
   iiv-inr : ∀ {X Y} m → InlInrView {Y} {X + Y} (inr m)
   iiv-other : ∀ {A B} (f : IR A B) → InlInrView f
@@ -917,7 +943,6 @@ pairView-gen terminal        eq = is-other-pair (subst (IR _) eq terminal)
 pairView-gen initial         eq = is-other-pair (subst (IR _) eq initial)
 pairView-gen (curry f m)     eq = is-other-pair (subst (IR _) eq (curry f m))
 pairView-gen apply           eq = is-other-pair (subst (IR _) eq apply)
-pairView-gen arr             eq = is-other-pair (subst (IR _) eq arr)
 pairView-gen (In wf m)       eq = is-other-pair (subst (IR _) eq (In wf m))
 pairView-gen (out-μ wf)      eq = is-other-pair (subst (IR _) eq (out-μ wf))
 pairView-gen (Cata wf alg)   eq = is-other-pair (subst (IR _) eq (Cata wf alg))
@@ -949,7 +974,6 @@ coprodView-gen terminal        eq = is-other-coprod (subst (IR _) eq terminal)
 coprodView-gen initial         eq = is-other-coprod (subst (IR _) eq initial)
 coprodView-gen (curry f m)     eq = is-other-coprod (subst (IR _) eq (curry f m))
 coprodView-gen apply           eq = is-other-coprod (subst (IR _) eq apply)
-coprodView-gen arr             eq = is-other-coprod (subst (IR _) eq arr)
 coprodView-gen (In wf m)       eq = is-other-coprod (subst (IR _) eq (In wf m))
 coprodView-gen (out-μ wf)      eq = is-other-coprod (subst (IR _) eq (out-μ wf))
 coprodView-gen (Cata wf alg)   eq = is-other-coprod (subst (IR _) eq (Cata wf alg))
@@ -986,7 +1010,6 @@ composeFirstView (inr m)         = cf-other (inr m)
 composeFirstView initial         = cf-other initial
 composeFirstView (curry f m)     = cf-other (curry f m)
 composeFirstView apply           = cf-other apply
-composeFirstView arr             = cf-other arr
 composeFirstView (In wf m)       = cf-other (In wf m)
 composeFirstView (out-μ wf)      = cf-other (out-μ wf)
 composeFirstView (Cata wf alg)   = cf-other (Cata wf alg)
@@ -1013,7 +1036,6 @@ composeSecondView (case f g)     = cs-other (case f g)
 composeSecondView terminal       = cs-other terminal
 composeSecondView (curry f m)    = cs-other (curry f m)
 composeSecondView apply          = cs-other apply
-composeSecondView arr            = cs-other arr
 composeSecondView (In wf m)      = cs-other (In wf m)
 composeSecondView (out-μ wf)     = cs-other (out-μ wf)
 composeSecondView (Cata wf alg)  = cs-other (Cata wf alg)
@@ -1040,7 +1062,6 @@ fstSndView terminal        = fsv-other terminal
 fstSndView initial         = fsv-other initial
 fstSndView (curry f m)     = fsv-other (curry f m)
 fstSndView apply           = fsv-other apply
-fstSndView arr             = fsv-other arr
 fstSndView (In wf m)       = fsv-other (In wf m)
 fstSndView (out-μ wf)      = fsv-other (out-μ wf)
 fstSndView (Cata wf alg)   = fsv-other (Cata wf alg)
@@ -1245,11 +1266,11 @@ mutual
   optimize-once-structural snd = snd
   optimize-once-structural (⟨ f , g ⟩ m) = optimize-pair m (optimize-once f) (optimize-once g)
   -- | inl with Void source is equivalent to initial (no inhabitants)
-  optimize-once-structural (inl {A} {B} m) with A ≟Type Void
+  optimize-once-structural (inl {A} {B} m) with A ≟IRTy II.Void
   ... | yes refl = initial
   ... | no _     = inl m
   -- | inr with Void source is equivalent to initial (no inhabitants)
-  optimize-once-structural (inr {A} {B} m) with B ≟Type Void
+  optimize-once-structural (inr {A} {B} m) with B ≟IRTy II.Void
   ... | yes refl = initial
   ... | no _     = inr m
   optimize-once-structural (case f g) = optimize-case (optimize-once f) (optimize-once g)
@@ -1293,11 +1314,11 @@ mutual
 
   -- | Type-directed optimization
   optimize-once : ∀ {A B} → IR A B → IR A B
-  optimize-once {A} {B} ir with B ≟Type Unit
+  optimize-once {A} {B} ir with B ≟IRTy II.Unit
   ... | yes refl with has-effect? ir
   ...   | false = terminal                     -- pure morphism to Unit → terminal
   ...   | true  = optimize-once-structural ir  -- EFFECTFUL (SigOp/free-heap) → keep; collapsing would drop the observable effect
-  optimize-once {A} {B} ir | no _ with A ≟Type Void
+  optimize-once {A} {B} ir | no _ with A ≟IRTy II.Void
   ...   | yes refl = initial                   -- Source is Void → initial (vacuous: never invoked)
   ...   | no _ = optimize-once-structural ir   -- Otherwise → structural rules
 
