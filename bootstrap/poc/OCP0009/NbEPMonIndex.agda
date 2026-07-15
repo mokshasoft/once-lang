@@ -40,9 +40,13 @@
 --     (Evolution: NbEPMonM right-pure → B pairs → J units/total → F
 --     hoisting; import F.)
 --
+-- L3.4b (ADEQUACY of NF w.r.t. `_≈c_`) — DONE 2026-07-16, --safe:
+-- `adequacy : f ≈c NF f` and `decide : NF f ≡ NF g → f ≈c g`
+-- (`NbEPMonAdq18`, the A1→A4.5 climb; summit = the fundamental lemma
+-- `fund` in `NbEPMonAdq15`, all 12 combinators, transport-free).
+--
 -- OPEN (recorded in plan §10): L3.4a part 2 (same-boundary node order
--- + λ-boundary commutation — the proof-net core) and L3.4b (adequacy
--- of NF w.r.t. `_≈c_` — derivation recorded, NbEPFund-scale climb).
+-- + λ-boundary commutation — the proof-net core).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -75,3 +79,7 @@ module ExtModel = X.ExtModel
 -- 5. Linear NbE: the total, placement-canonical normalizer.
 open import poc.OCP0009.NbEPMonF public
   using ( Val; evalV; reify; reflectTy; NF )
+
+-- 6. L3.4b adequacy: NF is complete for `_≈c_`, and decides it.
+open import poc.OCP0009.NbEPMonAdq18 public
+  using ( adequacy; decide )

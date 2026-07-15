@@ -6,7 +6,18 @@
 
 ## TL;DR of state
 
-- **95 modules, all green** (86 of them `--safe`). **START AT
+- **L3.4b ADEQUACY FOR THE FREE SMCC IS MACHINE-CHECKED (2026-07-16,
+  `--safe`):** the A1→A4.5 climb is complete. `NbEPMonAdq18` exports
+  **`adequacy : f ≈c NF f`** and **`decide : NF f ≡ NF g → f ≈c g`** —
+  the proven decision procedure for `_≈c_`. The summit was the
+  fundamental lemma `fund : R A v t → R B (evalV f v) (f ∘c t)`
+  (`NbEPMonAdq15`, all 12 combinators, transport-free), standing on
+  R-join (`Adq16`), the generic `Tree` splice layer
+  `withSpˡ-Tree`/`withSpʳ-Tree`/`bindSp-Tree` (`Adq17`), and the
+  boundary lemmas R-reify/R-reflectTy (`Adq14`). The α/ƛ/ρ continuations
+  were lifted to top level in `NbEPMonF` (`evkα`…/`⊗Leaf`) so the proof
+  names evalV's exact continuations.
+- **97 modules, all green** (88 of them `--safe`). **START AT
   `NbEPMonIndex.agda`** for the monoidal/linear tower — one `--safe`
   entry point re-exporting the headline theorems (`dec≈`, `complete`,
   `nf`, the axiom re-derivations, the closed-core theory + `bal` +
