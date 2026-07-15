@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **92 modules, all green** (83 of them `--safe`). **START AT
+- **93 modules, all green** (84 of them `--safe`). **START AT
   `NbEPMonIndex.agda`** for the monoidal/linear tower — one `--safe`
   entry point re-exporting the headline theorems (`dec≈`, `complete`,
   `nf`, the axiom re-derivations, the closed-core theory + `bal` +
@@ -245,19 +245,19 @@ the "Other open items" section below.**
    positive types relate a split tree to a term with ⊗ leaves carrying
    component relations, ⊸ Kripke; (type,tree) termination accepted).
    A4.2 DONE (`NbEPMonAdq13`: Kripke monotonicity R-vmap — shallow
-   except ⊸ via padʳ-real). A4.3 WIP (draft
-   `scratchpad/NbEPMonAdq14-WIP.agda`: R-reify/R-reflectNe/R-reflectTy
-   mutual — atoms/unit/function boundary PROVEN incl. R-reflectNe I;
-   4 holes remain, of which **`R⊗-reify` needs the A3 hoist-splice
-   lemmas** — reify = reifySp emit ∘ hoist, and the ⊗ leaf hoists via
-   withSpˡ/withSpʳ, so it consumes withSpˡ-splice/withSpʳ-splice/
-   bind-reify; session-scale). REMAINING: finish A4.3 (esp. R⊗-reify),
-   then **A4.4 the FUNDAMENTAL LEMMA** (R A v t → R B (evalV f v)
-   (f ∘c t), 12 evalV cases), then **A4.5 assembly**: `f ≈c NF f`
-   from R-reflectTy + fund lemma + R-reify + join-split ⇒
-   `NF f ≡ NF g → f ≈c g`, the proven decision procedure. The
-   definitional core (A4.1/A4.2) is committed green; the reify/reflect
-   completion + fundamental lemma are the remaining summit pieces. Rung 3 proper (variance judgments,
+   except ⊸ via padʳ-real). A4.3 DONE
+   (`NbEPMonAdq14`, --safe: R-reify/R-reflectNe/R-reflectTy — the
+   transport-free structure made R⊗-reify's node cases clean recursion,
+   isolating the splice-lemma work to a single leaf). **A4.4 = 7 of 12
+   cases DONE** (WIP `scratchpad/NbEPMonAdq15-WIP.agda`): idc/∘c/⊗c/σc/
+   ƛlc/ρlc/Λc proven; the 5 remaining (αrc/αlc/ƛrc/ρrc/evc) are the
+   absorb/withSp cases sharing a needed **R-absorb** helper (the split-
+   monad join preserves R; R-absorb-ret proven by induction on B with
+   function-η, no funext). evc's ret leaf = R-absorb-ret + R-vmap +
+   R-resp. Then **A4.5 assembly**: `f ≈c NF f` from R-reflectTy + fund
+   lemma + R-reify + join-split ⇒ `NF f ≡ NF g → f ≈c g`. The whole
+   definitional + boundary layer (A4.1/A4.2/A4.3) is committed --safe
+   green; only the 5 absorb cases + assembly remain. Rung 3 proper (variance judgments,
    directed univalence) — gated on the linear/monoidal core decision
    (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT
