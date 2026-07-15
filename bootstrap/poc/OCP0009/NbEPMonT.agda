@@ -146,10 +146,35 @@ pidR : ∀ Δ → Perm Δ (Δ ++ ε)
 pidR ε       = pnil
 pidR (A ∷ Δ) = pcons (pidR Δ) here
 
+pidRInv : ∀ Δ → Perm (Δ ++ ε) Δ
+pidRInv ε       = pnil
+pidRInv (A ∷ Δ) = pcons (pidRInv Δ) here
+
+-- The associativity permutations (identities across ++-assoc, as
+-- STRUCTURAL data — no transports anywhere downstream).
+passoc : ∀ Θ₁ Θ₂ Θ₃ → Perm ((Θ₁ ++ Θ₂) ++ Θ₃) (Θ₁ ++ (Θ₂ ++ Θ₃))
+passoc ε        Θ₂ Θ₃ = pid (Θ₂ ++ Θ₃)
+passoc (A ∷ Θ₁) Θ₂ Θ₃ = pcons (passoc Θ₁ Θ₂ Θ₃) here
+
+passocInv : ∀ Θ₁ Θ₂ Θ₃ → Perm (Θ₁ ++ (Θ₂ ++ Θ₃)) ((Θ₁ ++ Θ₂) ++ Θ₃)
+passocInv ε        Θ₂ Θ₃ = pid (Θ₂ ++ Θ₃)
+passocInv (A ∷ Θ₁) Θ₂ Θ₃ = pcons (passocInv Θ₁ Θ₂ Θ₃) here
+
 -- Γ ++ Δ ⇒ Δ ++ Γ, one head-carry at a time. No transports.
 bswapW : ∀ Γ Δ → Perm (Γ ++ Δ) (Δ ++ Γ)
 bswapW ε       Δ = pidR Δ
 bswapW (A ∷ Γ) Δ = pcons (bswapW Γ Δ) (insEnd Δ)
+
+-- The middle block exchange and the two-head carry (shared by the
+-- model's withSpʳ; previously private in the model modules).
+exch : ∀ Γ₁ Θ₁ Θ₂ → Perm (Γ₁ ++ (Θ₁ ++ Θ₂)) (Θ₁ ++ (Γ₁ ++ Θ₂))
+exch Γ₁ Θ₁ Θ₂ =
+  (passocInv Γ₁ Θ₁ Θ₂ ⊙P padʳ Θ₂ (bswapW Γ₁ Θ₁)) ⊙P passoc Θ₁ Γ₁ Θ₂
+
+carry² : ∀ {X Y} Γ₁ Θ₂ →
+         Perm (X ∷ (Y ∷ (Γ₁ ++ Θ₂))) (Γ₁ ++ (X ∷ (Y ∷ Θ₂)))
+carry² Γ₁ Θ₂ =
+  pcons (pcons (pid (Γ₁ ++ Θ₂)) (insˡ Γ₁ here)) (insˡ Γ₁ here)
 
 ------------------------------------------------------------------------
 -- Demos: composition and symmetry compute.

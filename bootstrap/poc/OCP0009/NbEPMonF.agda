@@ -41,29 +41,16 @@ open import poc.OCP0009.NbEPMonL
         ; CTm; idc; _∘c_; _⊗c_; αrc; αlc; ƛrc; ƛlc; ρrc; ρlc; σc
         ; Λc; evc )
 open import poc.OCP0009.NbEPMonT
-  using ( Ctx; ε; _∷_; _++_; ++-idʳ; ++-assoc
+  using ( Ctx; ε; _∷_; _++_
         ; Ins; here; there; Perm; pnil; pcons; pid
-        ; _⊙P_; insˡ; padˡ; padʳ; bswapW )
+        ; _⊙P_; insˡ; padˡ; padʳ; bswapW
+        ; pidR; pidRInv; passoc; passocInv; exch; carry² )
 open import poc.OCP0009.NbEPMonW
   using ( ⟪_⟫; permC; mult; multInv; ctxOf; splitTm )
 
 private
-  psubst : ∀ {Γ Δ Δ'} → Δ ≡ Δ' → Perm Γ Δ → Perm Γ Δ'
-  psubst refl p = p
-
   perm-ε : ∀ {Γ} → Perm Γ ε → Γ ≡ ε
   perm-ε pnil = refl
-
-  exch : ∀ Γ₁ Θ₁ Θ₂ → Perm (Γ₁ ++ (Θ₁ ++ Θ₂)) (Θ₁ ++ (Γ₁ ++ Θ₂))
-  exch Γ₁ Θ₁ Θ₂ =
-    psubst (++-assoc Θ₁ Γ₁ Θ₂)
-      (psubst (sym (++-assoc Γ₁ Θ₁ Θ₂)) (pid (Γ₁ ++ (Θ₁ ++ Θ₂)))
-       ⊙P padʳ Θ₂ (bswapW Γ₁ Θ₁))
-
-  carry² : ∀ {X Y} Γ₁ Θ₂ →
-           Perm (X ∷ (Y ∷ (Γ₁ ++ Θ₂))) (Γ₁ ++ (X ∷ (Y ∷ Θ₂)))
-  carry² Γ₁ Θ₂ =
-    pcons (pcons (pid (Γ₁ ++ Θ₂)) (insˡ Γ₁ here)) (insˡ Γ₁ here)
 
 ------------------------------------------------------------------------
 -- The split monad (as L3.3).
@@ -106,10 +93,10 @@ withSpˡ : ∀ {P Q : Ctx → Set} {Γ Γ₁ Γ₂} →
           (∀ {Δ₁ Δ} → Perm Δ (Δ₁ ++ Γ₂) → P Δ₁ → Sp Q Δ) → Sp Q Γ
 withSpˡ ρ (ret p) f = f ρ p
 withSpˡ {Γ₂ = Γ₂} ρ (spl {X = X} {Y} {Θ₁} {Θ₂} ρ₁ n k) f =
-  spl (psubst (++-assoc Θ₁ Θ₂ Γ₂) (ρ ⊙P padʳ Γ₂ ρ₁)) n
+  spl ((ρ ⊙P padʳ Γ₂ ρ₁) ⊙P passoc Θ₁ Θ₂ Γ₂) n
       (withSpˡ (pid (X ∷ (Y ∷ (Θ₂ ++ Γ₂)))) k f)
 withSpˡ {Γ₂ = Γ₂} ρ (usI {Γ₁ = Θ₁} {Θ₂} ρ₁ n k) f =
-  usI (psubst (++-assoc Θ₁ Θ₂ Γ₂) (ρ ⊙P padʳ Γ₂ ρ₁)) n
+  usI ((ρ ⊙P padʳ Γ₂ ρ₁) ⊙P passoc Θ₁ Θ₂ Γ₂) n
       (withSpˡ (pid (Θ₂ ++ Γ₂)) k f)
 
 withSpʳ : ∀ {P Q : Ctx → Set} {Γ Γ₁ Γ₂} →
@@ -167,9 +154,9 @@ absorb (A ⊸ B) sp = λ Δ v → absorb B (go Δ v sp)
   go : ∀ Δ → Val A Δ → ∀ {Γ} → Sp (Val (A ⊸ B)) Γ → Sp (Val B) (Γ ++ Δ)
   go Δ v (ret f) = ret (f Δ v)
   go Δ v (spl {Γ₁ = Θ₁} {Θ₂} ρ n k) =
-    spl (psubst (++-assoc Θ₁ Θ₂ Δ) (padʳ Δ ρ)) n (go Δ v k)
+    spl (padʳ Δ ρ ⊙P passoc Θ₁ Θ₂ Δ) n (go Δ v k)
   go Δ v (usI {Γ₁ = Θ₁} {Θ₂} ρ n k) =
-    usI (psubst (++-assoc Θ₁ Θ₂ Δ) (padʳ Δ ρ)) n (go Δ v k)
+    usI (padʳ Δ ρ ⊙P passoc Θ₁ Θ₂ Δ) n (go Δ v k)
 
 ------------------------------------------------------------------------
 -- Evaluation — textually L3.3.
@@ -185,13 +172,13 @@ evalV αrc v =
   bindSp v (λ (Δ₁ , (Δ₂ , (ρ , (vab , vd)))) →
     withSpˡ ρ vab (λ ρ' (Θ₁ , (Θ₂ , (ρᵢ , (va , vb)))) →
       ret (Θ₁ , ((Θ₂ ++ Δ₂) ,
-        ( psubst (++-assoc Θ₁ Θ₂ Δ₂) (ρ' ⊙P padʳ Δ₂ ρᵢ)
+        ( ((ρ' ⊙P padʳ Δ₂ ρᵢ) ⊙P passoc Θ₁ Θ₂ Δ₂)
         , (va , ret (Θ₂ , (Δ₂ , (pid (Θ₂ ++ Δ₂) , (vb , vd))))))))))
 evalV αlc v =
   bindSp v (λ (Δ₁ , (Δ₂ , (ρ , (va , vbd)))) →
     withSpʳ ρ vbd (λ ρ' (Θ₁ , (Θ₂ , (ρᵢ , (vb , vd)))) →
       ret ((Δ₁ ++ Θ₁) , (Θ₂ ,
-        ( psubst (sym (++-assoc Δ₁ Θ₁ Θ₂)) (ρ' ⊙P padˡ Δ₁ ρᵢ)
+        ( ((ρ' ⊙P padˡ Δ₁ ρᵢ) ⊙P passocInv Δ₁ Θ₁ Θ₂)
         , (ret (Δ₁ , (Θ₁ , (pid (Δ₁ ++ Θ₁) , (va , vb)))) , vd))))))
 evalV {B = A} ƛrc v =
   absorb A (bindSp v (λ (Δ₁ , (Δ₂ , (ρ , (vI , va)))) →
@@ -207,9 +194,9 @@ evalV {B = A} ρrc v =
   where
   kρ : ∀ A {Δ₁} → Val A Δ₁ →
        ∀ {Δ₂' Δ} → Perm Δ (Δ₁ ++ Δ₂') → Δ₂' ≡ ε → Sp (Val A) Δ
-  kρ A {Δ₁} va ρ' refl = ret (vmap A (psubst (++-idʳ Δ₁) ρ') va)
+  kρ A {Δ₁} va ρ' refl = ret (vmap A (ρ' ⊙P pidRInv Δ₁) va)
 evalV ρlc {Γ} v =
-  ret (Γ , (ε , (psubst (sym (++-idʳ Γ)) (pid Γ) , (v , ret refl))))
+  ret (Γ , (ε , (pidR Γ , (v , ret refl))))
 evalV σc v =
   mapSp (λ (Δ₁ , (Δ₂ , (ρ , (va , vb)))) →
           Δ₂ , (Δ₁ , ((ρ ⊙P bswapW Δ₁ Δ₂) , (vb , va)))) v
@@ -276,9 +263,9 @@ mutual
   reflectNe ι₁ {Γ} n = ret (Γ , (pid Γ , n))
   reflectNe ι₂ {Γ} n = ret (Γ , (pid Γ , n))
   reflectNe I  {Γ} n =
-    usI (psubst (sym (++-idʳ Γ)) (pid Γ)) n (ret refl)
+    usI (pidR Γ) n (ret refl)
   reflectNe (X ⊗ Y) {Γ} n =
-    spl (psubst (sym (++-idʳ Γ)) (pid Γ)) n
+    spl (pidR Γ) n
         (ret ((X ∷ ε) , ((Y ∷ ε) ,
           ( pid (X ∷ (Y ∷ ε))
           , (reflectNe X ρrc , reflectNe Y ρrc)))))
