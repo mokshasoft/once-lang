@@ -6,7 +6,7 @@
 
 ## TL;DR of state
 
-- **79 modules, all green** (70 of them `--safe`). **START AT
+- **80 modules, all green** (71 of them `--safe`). **START AT
   `NbEPMonIndex.agda`** for the monoidal/linear tower — one `--safe`
   entry point re-exporting the headline theorems (`dec≈`, `complete`,
   `nf`, the axiom re-derivations, the closed-core theory + `bal` +
@@ -213,12 +213,18 @@ the "Other open items" section below.**
    a uniform join, hoisting reify; the u3-class equality now by
    `refl`; stability demos `NF (NF f) ≡ NF f`). REMAINING ON L3:
    **L3.4a part 2** — same-boundary node ORDER (adjacent-swap sort by
-   consumed positions) and λ-boundary commutation; **L3.4b adequacy**
-   — the FULL DERIVATION is recorded in plan §10 (gluing relation R,
-   the lemma stack R-vmap/R-Sp/R-reflect/R-reify, the fundamental
-   lemma, completeness `f ≈c NF f` ⇒ `NF f ≡ NF g → f ≈c g`); it is
-   the NbEPFund/NbEPComplete-scale multi-module climb — transcribe
-   from the recorded derivation in its own session. Rung 3 proper (variance judgments,
+   consumed positions) and λ-boundary commutation; **L3.4b adequacy — THE CLIMB IS UNDERWAY** (staged A1–A4 in plan
+   §10; user decision 2026-07-15: adequacy before consolidation).
+   A1 DONE (`NbEPMonAdq1`: the iso backbone — ≈c chain kit,
+   `mult-inv-l/r`, and `join-split`/`split-join`: generic
+   decomposition is an iso up to `_≈c_`; completeness' final step
+   consumes `join-split`). NEXT: **A2 — the world-realization
+   homomorphism layer** (`permC (ρ ⊙P ρ₀) ≈c permC ρ₀ ∘c permC ρ`
+   etc.): port NbEPMonR/Y/I/Q (swapHead-nat/invol, YB, ins-swap-real,
+   push-real, ⊙P-real) to CTy lists/`_≈c_` — the recipes are proven
+   and element-generic; port, don't reinvent. Then A3 (RSp + Sp
+   combinator lemmas) and A4 (R, fundamental lemma, completeness
+   `f ≈c NF f`). Rung 3 proper (variance judgments,
    directed univalence) — gated on the linear/monoidal core decision
    (§7 route (a)).
 6. **At POC→real transition (intentions recorded in plan §9):** break the DT

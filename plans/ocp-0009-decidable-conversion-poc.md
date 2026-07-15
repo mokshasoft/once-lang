@@ -1126,6 +1126,26 @@ no system anywhere has directed type theory with a decidable kernel.
          `NF f ≡ NF g → f ≈c g` (the useful decision direction).
          Sizing: the NbEPFund/NbEPComplete-scale climb (multi-module,
          its own session) — every Sp splice lemma is an `≈c`-chain.
+         STAGED (2026-07-15), with the discovered prerequisite: the
+         fundamental lemma needs the WORLD-REALIZATION HOMOMORPHISMS
+         (`permC (ρ ⊙P ρ₀) ≈c permC ρ₀ ∘c permC ρ` etc.) — the stage-
+         3C machinery re-run over CTy worlds (the proofs were element-
+         generic recipes; port, don't reinvent):
+         A1 [DONE 2026-07-15, `NbEPMonAdq1`] — the iso backbone:
+            ≈c kit (congs, cancel, fuses), `mult`/`multInv` mutual
+            isos, `joinTm`/`splitTm` round-trips (`join-split ≈c idc`,
+            the lemma completeness' final step consumes).
+         A2 — the homomorphism layer: swapHeadC-nat/invol, YB-C,
+            ins-swap-real/push-real/⊙P-real over CTy lists, plus
+            permC-naturality against mult (nt-perm-nat's analogue).
+         A3 — `RSp` (the Sp-tree gluing relation: ret/spl/usI nodes
+            vs. `≈c`-spliced syntax) + preservation lemmas for every
+            Sp combinator (bind/map/vmapSp/withSpˡ/withSpʳ/absorb-go).
+         A4 — the relation R by type recursion (positive = RSp with
+            component relations; ⊸ = Kripke), R-vmap, R-reflect/R-reify
+            (mutual), THE FUNDAMENTAL LEMMA (12 evalV cases), and
+            COMPLETENESS `f ≈c NF f` via `R (reflectTy A) (joinTm A)`
+            and join-split.
      · Soundness/completeness against `_≈c_` in each stage mirror the
        NbEP adequacy scaffolding (logical relations, stage L2a's `Ext`
        as the semantic side).

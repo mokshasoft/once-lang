@@ -243,7 +243,7 @@ Agda's `--safe` flag *rejects* every unsafe escape hatch — `TERMINATING`,
 is a **machine-checked certificate** that a module (and its whole import closure)
 introduces none of them.
 
-**70 of the 79 modules now compile under `--safe`** (verified 2026-07-15): the
+**71 of the 80 modules now compile under `--safe`** (verified 2026-07-15): the
 standalone expressibility tower (10 modules, 2026-07-12), the QTT stack (step 1,
 2026-07-12), the presheaf/Kripke NbE foundation (step 2, 2026-07-13), and —
 after the `TERMINATING` pragmas proved unnecessary (step 3, 2026-07-13) — the
