@@ -94,10 +94,11 @@ open PolyFunInfo
 
 -- Type checking / elaboration
 open import Once.TypeCheck.Raw using (RawExpr)
-open import Once.TypeCheck.Elaborate using (ctxWithImportsAndSelf; ctxWithImportsAndSelfAndPolys; PolyCtx; emptyPolyCtx; checkElab; resolveExpr)
+open import Once.TypeCheck.Elaborate using (ctxWithImportsAndSelf; ctxWithImportsAndSelfAndPolys; PolyCtx; emptyPolyCtx; checkElab)
+open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.TypeCheck.Elaborate as TE using (CheckElabResult)
 import Once.Surface.Syntax as Srf
-open import Relation.Binary.PropositionalEquality using (subst)
+open import Relation.Binary.PropositionalEquality using (subst; cong)
 -- D007 inference: the self-less context for inferring a sig-less def's type.
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; SigEffectCtx; emptySigEffects; lookupSigEffect; NamedCtx)
 -- D072: the untrusted principal-type oracle (validated by checkElab).
@@ -133,7 +134,7 @@ validateMain ty = inj₁ ("main must have type IO Unit (= Eff Unit Unit), but go
 -- with the verified apply-setup-trace) onto the verified `apply` IR
 -- itself. `_start` then only needs to do kernel-runtime setup
 -- (heap-pool init, stack reservation) and call the wrapped entry.
-wrapMainAsEntry : IR Unit (Unit ⇒[ mk-kind Many eff ] Unit) → IR Unit Unit
+wrapMainAsEntry : IR ⌊ Unit ⌋ ⌊ Unit ⇒[ mk-kind Many eff ] Unit ⌋ → IR ⌊ Unit ⌋ ⌊ Unit ⌋
 -- Plan 0.53: the entry/call apply-pairs must be `Heap`, not `Stack`.
 -- These wrappers can produce ESCAPING closures (a curried direct-call
 -- function `g 4` returns a closure capturing `4`); with a `Stack` pair the
@@ -147,8 +148,8 @@ wrapMainAsEntry mainIR = apply ∘ ⟨ mainIR , terminal ⟩ Heap
 -- | Apply the entry wrap conditionally for the function named "main".
 -- Returns the (possibly-rewritten) type and IR. Non-main functions and
 -- main with a non-validated type pass through unchanged.
-maybeWrapMain : (name : String) (ty : Type) → IR Unit ty
-              → ∃[ ty' ] IR Unit ty'
+maybeWrapMain : (name : String) (ty : Type) → IR ⌊ Unit ⌋ ⌊ ty ⌋
+              → ∃[ ty' ] IR ⌊ Unit ⌋ ⌊ ty' ⌋
 maybeWrapMain "main" (Unit ⇒[ mk-kind Many eff ] Unit) ir = Unit , wrapMainAsEntry ir
 maybeWrapMain _ ty ir = ty , ir
 
@@ -161,7 +162,7 @@ maybeWrapMain _ ty ir = ty , ir
 -- `apply` consumes the closure with the incoming argument `id`, mirroring
 -- `wrapMainAsEntry`. `main` is already `cfType ≡ Unit` (entry-wrapped by
 -- `maybeWrapMain`), so it is non-arrow and passes through untouched.
-directCallIR : (ty : Type) → IR Unit ty → ∃[ D ] ∃[ C ] IR D C
+directCallIR : (ty : Type) → IR ⌊ Unit ⌋ ⌊ ty ⌋ → ∃[ D ] ∃[ C ] IR ⌊ D ⌋ ⌊ C ⌋
 -- Plan 0.53: `Heap`, not `Stack` — see wrapMainAsEntry. A curried direct-call
 -- function's first application returns a closure that captures the first arg
 -- and escapes, so its apply-pair must be heap-allocated.
@@ -201,7 +202,7 @@ extendFunCtx ctx name ty = (name , ty) ∷ ctx
 compileFunBody-aux : ∀ {n} {Δ : Srf.Ctx n}
   → AllocMode → Bool → FunCtx → PolyCtx → (name : String) (ty : Type)
   → Srf.⟦ Δ ⟧ᶜ ≡ Unit
-  → CheckElabResult Δ ty → String ⊎ IR Unit ty
+  → CheckElabResult Δ ty → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFunBody-aux m doOpt ctx polys name ty δ-unit (TE.failure err) =
   inj₁ ("Type error in " ++ name ++ ": " ++ TE.renderError err)
 compileFunBody-aux m doOpt ctx polys name ty δ-unit (TE.success _ surfaceExpr _ _) =
@@ -213,9 +214,9 @@ compileFunBody-aux m doOpt ctx polys name ty δ-unit (TE.success _ surfaceExpr _
   let userList = (name , ty) ∷ ctx
       resolved = resolveExpr polys userList userList 0 surfaceExpr
       ir = elaborate m resolved
-  in inj₂ (subst (λ X → IR X ty) δ-unit (if doOpt then optimize ir else ir))
+  in inj₂ (subst (λ X → IR X ⌊ ty ⌋) (cong ⌊_⌋ δ-unit) (if doOpt then optimize ir else ir))
 
-compileFunBody : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
+compileFunBody : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFunBody m doOpt ctx polys sigEffs name ty expr =
   compileFunBody-aux m doOpt ctx polys name ty refl
     (checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) expr ty)
@@ -227,15 +228,15 @@ compileFunBody m doOpt ctx polys sigEffs name ty expr =
 -- Explicit-argument aux form (Plan 0.48): `compileFun-aux` dispatches on the
 -- `name == "main"` Bool, `compileFun-main-aux` on the `validateMain` result —
 -- both `doOpt`-free guards, so success rides on `compileFunBody` alone.
-compileFun-main-aux : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → String ⊎ ⊤ → String ⊎ IR Unit ty
+compileFun-main-aux : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → String ⊎ ⊤ → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFun-main-aux m doOpt ctx polys sigEffs name ty expr (inj₁ err) = inj₁ err
 compileFun-main-aux m doOpt ctx polys sigEffs name ty expr (inj₂ _)   = compileFunBody m doOpt ctx polys sigEffs name ty expr
 
-compileFun-aux : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → Bool → String ⊎ IR Unit ty
+compileFun-aux : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → Bool → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFun-aux m doOpt ctx polys sigEffs name ty expr true  = compileFun-main-aux m doOpt ctx polys sigEffs name ty expr (validateMain ty)
 compileFun-aux m doOpt ctx polys sigEffs name ty expr false = compileFunBody m doOpt ctx polys sigEffs name ty expr
 
-compileFun : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
+compileFun : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋
 compileFun m doOpt ctx polys sigEffs name ty expr = compileFun-aux m doOpt ctx polys sigEffs name ty expr (name == "main")
 
 ------------------------------------------------------------------------
@@ -249,7 +250,7 @@ record CompiledFun : Set where
   field
     cfName : CanonicalName
     cfType : Type
-    cfIR   : IR Unit cfType
+    cfIR   : IR ⌊ Unit ⌋ ⌊ cfType ⌋
     -- | Plan 0.11: `true` for primitives (signatures whose
     -- implementation is provided externally via
     -- `Strata/Interpretations/<…>.<arch>` files). Their function
@@ -315,8 +316,8 @@ resolveFunType ctx polys nothing   body = inferType ctx polys body
 -- matches a bound `⊎` variable, so proofs can case without the `with`-bite.
 -- `caf-go-cf-aux` calls `compileAllFuns-go` (mutual); the self-recursion is on
 -- the structurally-smaller `rest`.
-caf-go-wrap : (fi : FunInfo) (ty : Type) → IR Unit ty → String ⊎ List CompiledFun → String ⊎ List CompiledFun
-caf-go-cf-aux : AllocMode → Bool → PolyCtx → SigEffectCtx → (fi : FunInfo) → List FunInfo → FunCtx → (ty : Type) → String ⊎ IR Unit ty → String ⊎ List CompiledFun
+caf-go-wrap : (fi : FunInfo) (ty : Type) → IR ⌊ Unit ⌋ ⌊ ty ⌋ → String ⊎ List CompiledFun → String ⊎ List CompiledFun
+caf-go-cf-aux : AllocMode → Bool → PolyCtx → SigEffectCtx → (fi : FunInfo) → List FunInfo → FunCtx → (ty : Type) → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋ → String ⊎ List CompiledFun
 caf-go-rf-aux : AllocMode → Bool → PolyCtx → SigEffectCtx → (fi : FunInfo) → List FunInfo → FunCtx → String ⊎ Type → String ⊎ List CompiledFun
 compileAllFuns-go : AllocMode → Bool → PolyCtx → SigEffectCtx → List FunInfo → FunCtx → String ⊎ List CompiledFun
 
@@ -447,18 +448,18 @@ moduleSyms m doOpt mod = moduleSyms-aux (compileResolvedModule m doOpt mod)
 -- the default AllocMode. Callers thread the user's --alloc choice from
 -- the CLI; backwards-compatible aliases (-default suffix) preserve Heap
 -- as the previous hardcoded behavior.
-pipeline : ∀ {A B} → AllocMode → SurfaceIR A B → IR A B
+pipeline : ∀ {A B} → AllocMode → SurfaceIR A B → IR ⌊ A ⌋ ⌊ B ⌋
 pipeline m ir = escape (optimize (desugar m ir))
 
-pipeline-default : ∀ {A B} → SurfaceIR A B → IR A B
+pipeline-default : ∀ {A B} → SurfaceIR A B → IR ⌊ A ⌋ ⌊ B ⌋
 pipeline-default = pipeline Heap
 
 -- | Pipeline without escape analysis (for comparison/debugging)
-pipeline-no-escape : ∀ {A B} → AllocMode → SurfaceIR A B → IR A B
+pipeline-no-escape : ∀ {A B} → AllocMode → SurfaceIR A B → IR ⌊ A ⌋ ⌊ B ⌋
 pipeline-no-escape m ir = optimize (desugar m ir)
 
 -- | Pipeline without optimization (for debugging)
-pipeline-no-opt : ∀ {A B} → AllocMode → SurfaceIR A B → IR A B
+pipeline-no-opt : ∀ {A B} → AllocMode → SurfaceIR A B → IR ⌊ A ⌋ ⌊ B ⌋
 pipeline-no-opt = desugar
 
 ------------------------------------------------------------------------
