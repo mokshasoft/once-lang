@@ -13,6 +13,8 @@ module Once.Surface.Elaborate where
 open import Once.Type
 open import Once.IR
 open import Once.Surface.Syntax
+open import Once.IRTy.WF using (wf-⌊⌋)
+open import Relation.Binary.PropositionalEquality using (subst)
 -- coerceIRArrow eliminated: curry/apply are now quantity-polymorphic
 
 open import Data.Nat using (ℕ)
@@ -109,7 +111,7 @@ neIR = SigOp ne-info
 -- Given context (Γ, A), index 0 projects A (using snd),
 -- index n+1 projects from Γ (using fst then recursing).
 --
-proj : ∀ {n} {Γ : Ctx n} (i : Fin n) → IR ⟦ Γ ⟧ᶜ (lookup Γ i)
+proj : ∀ {n} {Γ : Ctx n} (i : Fin n) → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ lookup Γ i ⌋
 proj {Γ = Γ , A ^ q} Fin.zero    = snd
 proj {Γ = Γ , A ^ q} (Fin.suc i) = proj i ∘ fst
 
@@ -130,13 +132,13 @@ swap' m = ⟨ snd , fst ⟩ m
 distribute : ∀ {Γ A B} → AllocMode → IR (Γ * (A + B)) ((Γ * A) + (Γ * B))
 distribute {Γ} {A} {B} m = distrib' ∘ swap' m
   where
-    curryInlSwap : IR A (Γ ⇒ ((Γ * A) + (Γ * B)))
+    curryInlSwap : IR A (Γ ⇛ ((Γ * A) + (Γ * B)))
     curryInlSwap = curry (inl m ∘ swap' m) m
 
-    curryInrSwap : IR B (Γ ⇒ ((Γ * A) + (Γ * B)))
+    curryInrSwap : IR B (Γ ⇛ ((Γ * A) + (Γ * B)))
     curryInrSwap = curry (inr m ∘ swap' m) m
 
-    curryDistrib : IR (A + B) (Γ ⇒ ((Γ * A) + (Γ * B)))
+    curryDistrib : IR (A + B) (Γ ⇛ ((Γ * A) + (Γ * B)))
     curryDistrib = case curryInlSwap curryInrSwap
 
     distrib' : IR ((A + B) * Γ) ((Γ * A) + (Γ * B))
@@ -156,7 +158,7 @@ distribute {Γ} {A} {B} m = distrib' ∘ swap' m
 -- --alloc flag via Once.Compile.compileFunBody. Backwards-compatible
 -- alias `elaborate-default = elaborate Heap` preserves the old
 -- semantics for any caller that doesn't want to choose.
-elaborate : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → AllocMode → Expr Γ Ψ A → IR ⟦ Γ ⟧ᶜ A
+elaborate : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → AllocMode → Expr Γ Ψ A → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ A ⌋
 
 -- Variable: project from environment
 elaborate m (var i) = proj i
@@ -177,10 +179,11 @@ elaborate m (app f x) = apply ∘ ⟨ elaborate m f , elaborate m x ⟩ m
 --   `applyEff ∘ ⟨f, x⟩`  : IR Γ B                  -- run f on x
 --   (…) ∘ fst            : IR (Γ * Unit) B         -- ignore Unit input
 --   curry (…) m          : IR Γ (Unit ⇒[Many] B)    -- abstract the Unit
---   arr ∘ curry (…) m    : IR Γ (Unit ⇒[ mk-kind Many eff ] B)        -- tag as Eff
--- No new IR constructors, no coercion, no postulate.
+--   curry (…) m          : IR Γ (Unit ⇛ B)          -- Plan 0.52 M2: ungraded
+-- No new IR constructors, no coercion, no postulate. (`arr` retired: pure and
+-- eff arrows are the same ungraded `⇛` object, so no tag needed.)
 elaborate m (effApp f x) =
-  arr {q = Many} ∘ curry {k = pureK Many} ((apply {k = effK} ∘ ⟨ elaborate m f , elaborate m x ⟩ m) ∘ fst) m
+  curry ((apply ∘ ⟨ elaborate m f , elaborate m x ⟩ m) ∘ fst) m
 
 -- Pair: (a, b) becomes ⟨a, b⟩
 elaborate m (pair a b) = ⟨ elaborate m a , elaborate m b ⟩ m
@@ -265,7 +268,7 @@ elaborate m (ne e₁ e₂) = neIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ �
 -- `λ x → f x` would elaborate, so SigOps and user closures are
 -- now value-equivalent under apply.
 elaborate m (sigOp {A = (Dom ⇒[ k ] Cod)} name (con-fun bDom cCod)) =
-  curry {k = k} (SigOp (arrow-info k name bDom cCod) ∘ snd) m
+  curry (SigOp (arrow-info k name bDom cCod) ∘ snd) m
 elaborate m (sigOp name conc) = SigOp (value-info name base-Unit conc) ∘ terminal
 -- Plan 0.19: user-defined closure reference.
 --
@@ -313,18 +316,18 @@ elaborate m (morph-app morph x) = morph ∘ elaborate m x
 -- `lift-morphism` (`curry (· ∘ snd) m`). No morphism vocabulary, no
 -- parallel lowering — `elaborate` already handles arith/SigOps inside
 -- `alg`. See plans/0.36 "two axes of generality".
-elaborate m (cata {F = F} wfF alg) =
-  curry (Cata wfF (apply ∘ ⟨ elaborate m alg ∘ terminal , id ⟩ m) ∘ snd) m
+elaborate m (cata {F = F} {A = A} wfF alg) =
+  curry (Cata (wf-⌊⌋ wfF) (subst (λ o → IR o ⌊ A ⌋) (⌊⟧T-commute F A) (apply ∘ ⟨ elaborate m alg ∘ terminal , id ⟩ m)) ∘ snd) m
 
 -- Anamorphism (dual of cata): a closed `Ana`, lifted to the surrounding realm
 -- exactly like `cata`. Coalgebra `A → ⟦F⟧T A` built from the closed `coalg`;
 -- `Ana wfF coalgebra : IR A (νF)`; `∘ snd` projects the seed from the curry's
 -- `(env, seed)`; `curry … m : IR Γ (A ⇒ νF)`.
-elaborate m (ana {F = F} wfF coalg) =
-  curry (Ana wfF (apply ∘ ⟨ elaborate m coalg ∘ terminal , id ⟩ m) ∘ snd) m
+elaborate m (ana {F = F} {A = A} wfF coalg) =
+  curry (Ana (wf-⌊⌋ wfF) (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) (apply ∘ ⟨ elaborate m coalg ∘ terminal , id ⟩ m)) ∘ snd) m
 
 -- | Historical default: Heap allocation.
-elaborate-default : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → IR ⟦ Γ ⟧ᶜ A
+elaborate-default : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ A ⌋
 elaborate-default = elaborate Heap
 
 -- | Historical-default distribute (Heap). Used by `Once.Surface.Correct`,

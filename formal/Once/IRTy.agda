@@ -215,3 +215,12 @@ mutual
 ⌈⟧TI-commute Id      X = refl
 ⌈⟧TI-commute (F ⊕ G) X = cong₂ T._+_ (⌈⟧TI-commute F X) (⌈⟧TI-commute G X)
 ⌈⟧TI-commute (F ⊗ G) X = cong₂ T._*_ (⌈⟧TI-commute F X) (⌈⟧TI-commute G X)
+
+-- The `⌊_⌋` dual: erasure commutes with functor application the other way.
+-- Needed by the elaborator, which builds a `⟦F⟧T A`-shaped algebra (surface)
+-- but feeds it to `Cata`/`Ana` demanding `⟦ eraseF F ⟧TI ⌊A⌋`.
+⌊⟧T-commute : ∀ (F : Functor) (A : Type) → ⌊ T.⟦ F ⟧T A ⌋ ≡ ⟦ eraseF F ⟧TI ⌊ A ⌋
+⌊⟧T-commute (T.K B)   A = refl
+⌊⟧T-commute T.Id      A = refl
+⌊⟧T-commute (F T.⊕ G) A = cong₂ _+_ (⌊⟧T-commute F A) (⌊⟧T-commute G A)
+⌊⟧T-commute (F T.⊗ G) A = cong₂ _*_ (⌊⟧T-commute F A) (⌊⟧T-commute G A)
