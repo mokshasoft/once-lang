@@ -29,13 +29,14 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; _++_)
 open import Data.Nat using (zero)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym; subst-sym-subst)
+  using (_≡_; refl; cong; cong₂; sym; trans; subst; subst₂; subst-subst-sym; subst-sym-subst)
 
 open import Once.Word using (Carrier)
 open import Once.Type as TT
   using (Functor; Unit; Void; Int; Str; Float; Buffer; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 open import Once.Functor.Translate using (translateF)
-open import Once.IRTy using (eraseF; ⌈_⌉F)
+open import Once.IRTy using (eraseF; ⌈_⌉F; ⌈⟧TI-commute; ⌊⟧T-commute)
+import Once.IRTy as II
 open import Once.Semantics.Functor
   using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; νS; unfoldS; anaS; sfmapAna)
 open import Once.Semantics.Functor.Laws
@@ -46,7 +47,7 @@ open import Once.IRTy using (⌊_⌋; ⌈_⌉)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.TraceMonad using (T; valueT; returnT)
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; forget; inject; cohᴰ)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; forget; inject; cohᴰ)
 open import Once.Postulates using (extensionality)
 
 ------------------------------------------------------------------------
@@ -285,3 +286,98 @@ mutual
                             (forget-coh-gen A (subst id (cohᴰ A) da))))
                (sym (trans (push→Tᵈ (cohᴰ A) (cohᴰ B) (inject {A ⇒[ k ] B} v) da)
                            (subst-T-returnT (sym (cohᴰ B)) (inject {B} (v (forget {A} (subst id (cohᴰ A) da))))))))))
+
+------------------------------------------------------------------------
+-- `coh-to-TRel`: the shared `v0` of the erased & surface layer values
+-- (both `subst`-transports of `v0 = valueT (evalᴰ p (inject seed)) m`) is
+-- coh-A-related at every `Id`-position — i.e. `TRel` holds. Structural on
+-- `G`, pushing the four transports through `inj`/pair (refl push-helpers),
+-- the `Id`-leaf discharged by `forget-coh-gen`. Feeds `ana-ev-bridge`.
+------------------------------------------------------------------------
+
+-- push `subst id (cong ⟦_⟧ᴰᴵ (cong₂ _+_/_*_ …))` through inj/pair
+pushᴵ+₁ : ∀ {X Y X' Y' : II.IRTy} (p : X ≡ X') (q : Y ≡ Y') (a : ⟦ X ⟧ᴰᴵ)
+  → subst id (cong ⟦_⟧ᴰᴵ (cong₂ II._+_ p q)) (inj₁ a) ≡ inj₁ (subst id (cong ⟦_⟧ᴰᴵ p) a)
+pushᴵ+₁ refl refl a = refl
+
+pushᴵ+₂ : ∀ {X Y X' Y' : II.IRTy} (p : X ≡ X') (q : Y ≡ Y') (b : ⟦ Y ⟧ᴰᴵ)
+  → subst id (cong ⟦_⟧ᴰᴵ (cong₂ II._+_ p q)) (inj₂ b) ≡ inj₂ (subst id (cong ⟦_⟧ᴰᴵ q) b)
+pushᴵ+₂ refl refl b = refl
+
+pushᴵ* : ∀ {X Y X' Y' : II.IRTy} (p : X ≡ X') (q : Y ≡ Y') (a : ⟦ X ⟧ᴰᴵ) (b : ⟦ Y ⟧ᴰᴵ)
+  → subst id (cong ⟦_⟧ᴰᴵ (cong₂ II._*_ p q)) (a , b)
+    ≡ (subst id (cong ⟦_⟧ᴰᴵ p) a , subst id (cong ⟦_⟧ᴰᴵ q) b)
+pushᴵ* refl refl a b = refl
+
+-- push `subst ⟦_⟧ (cong₂ _+_/_*_ …)` (value semantics) through inj/pair
+pushⱽ+₁ : ∀ {X Y X' Y' : TT.Type} (p : X ≡ X') (q : Y ≡ Y') (w : ⟦ X ⟧)
+  → subst ⟦_⟧ (cong₂ TT._+_ p q) (inj₁ w) ≡ inj₁ (subst ⟦_⟧ p w)
+pushⱽ+₁ refl refl w = refl
+
+pushⱽ+₂ : ∀ {X Y X' Y' : TT.Type} (p : X ≡ X') (q : Y ≡ Y') (w : ⟦ Y ⟧)
+  → subst ⟦_⟧ (cong₂ TT._+_ p q) (inj₂ w) ≡ inj₂ (subst ⟦_⟧ q w)
+pushⱽ+₂ refl refl w = refl
+
+pushⱽ* : ∀ {X Y X' Y' : TT.Type} (p : X ≡ X') (q : Y ≡ Y') (u : ⟦ X ⟧) (w : ⟦ Y ⟧)
+  → subst ⟦_⟧ (cong₂ TT._*_ p q) (u , w) ≡ (subst ⟦_⟧ p u , subst ⟦_⟧ q w)
+pushⱽ* refl refl u w = refl
+
+ve-split⊕₁ : ∀ (G₁ G₂ : Functor) (A : TT.Type) (x0 : ⟦ ⌊ TT.⟦ G₁ ⟧T A ⌋ ⟧ᴰᴵ)
+  → subst ⟦_⟧ (⌈⟧TI-commute (eraseF (G₁ TT.⊕ G₂)) ⌊ A ⌋)
+       (forget (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute (G₁ TT.⊕ G₂) A)) (inj₁ x0)))
+    ≡ inj₁ (subst ⟦_⟧ (⌈⟧TI-commute (eraseF G₁) ⌊ A ⌋)
+              (forget (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G₁ A)) x0)))
+ve-split⊕₁ G₁ G₂ A x0 =
+  trans (cong (λ z → subst ⟦_⟧ (⌈⟧TI-commute (eraseF (G₁ TT.⊕ G₂)) ⌊ A ⌋) (forget z))
+              (pushᴵ+₁ (⌊⟧T-commute G₁ A) (⌊⟧T-commute G₂ A) x0))
+        (pushⱽ+₁ (⌈⟧TI-commute (eraseF G₁) ⌊ A ⌋) (⌈⟧TI-commute (eraseF G₂) ⌊ A ⌋)
+                 (forget (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G₁ A)) x0)))
+
+ve-split⊕₂ : ∀ (G₁ G₂ : Functor) (A : TT.Type) (y0 : ⟦ ⌊ TT.⟦ G₂ ⟧T A ⌋ ⟧ᴰᴵ)
+  → subst ⟦_⟧ (⌈⟧TI-commute (eraseF (G₁ TT.⊕ G₂)) ⌊ A ⌋)
+       (forget (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute (G₁ TT.⊕ G₂) A)) (inj₂ y0)))
+    ≡ inj₂ (subst ⟦_⟧ (⌈⟧TI-commute (eraseF G₂) ⌊ A ⌋)
+              (forget (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G₂ A)) y0)))
+ve-split⊕₂ G₁ G₂ A y0 =
+  trans (cong (λ z → subst ⟦_⟧ (⌈⟧TI-commute (eraseF (G₁ TT.⊕ G₂)) ⌊ A ⌋) (forget z))
+              (pushᴵ+₂ (⌊⟧T-commute G₁ A) (⌊⟧T-commute G₂ A) y0))
+        (pushⱽ+₂ (⌈⟧TI-commute (eraseF G₁) ⌊ A ⌋) (⌈⟧TI-commute (eraseF G₂) ⌊ A ⌋)
+                 (forget (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G₂ A)) y0)))
+
+ve-split⊗ : ∀ (G₁ G₂ : Functor) (A : TT.Type)
+              (x0 : ⟦ ⌊ TT.⟦ G₁ ⟧T A ⌋ ⟧ᴰᴵ) (y0 : ⟦ ⌊ TT.⟦ G₂ ⟧T A ⌋ ⟧ᴰᴵ)
+  → subst ⟦_⟧ (⌈⟧TI-commute (eraseF (G₁ TT.⊗ G₂)) ⌊ A ⌋)
+       (forget (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute (G₁ TT.⊗ G₂) A)) (x0 , y0)))
+    ≡ (subst ⟦_⟧ (⌈⟧TI-commute (eraseF G₁) ⌊ A ⌋) (forget (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G₁ A)) x0))
+      , subst ⟦_⟧ (⌈⟧TI-commute (eraseF G₂) ⌊ A ⌋) (forget (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G₂ A)) y0)))
+ve-split⊗ G₁ G₂ A x0 y0 =
+  trans (cong (λ z → subst ⟦_⟧ (⌈⟧TI-commute (eraseF (G₁ TT.⊗ G₂)) ⌊ A ⌋) (forget z))
+              (pushᴵ* (⌊⟧T-commute G₁ A) (⌊⟧T-commute G₂ A) x0 y0))
+        (pushⱽ* (⌈⟧TI-commute (eraseF G₁) ⌊ A ⌋) (⌈⟧TI-commute (eraseF G₂) ⌊ A ⌋)
+                (forget (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G₁ A)) x0))
+                (forget (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G₂ A)) y0)))
+
+coh-to-TRel : ∀ (G : Functor) (A : TT.Type) (v0 : ⟦ ⌊ TT.⟦ G ⟧T A ⌋ ⟧ᴰᴵ)
+  → TRel G A
+      (subst ⟦_⟧ (⌈⟧TI-commute (eraseF G) ⌊ A ⌋)
+             (forget (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G A)) v0)))
+      (forget (subst id (cohᴰ (TT.⟦ G ⟧T A)) v0))
+coh-to-TRel (TT.K B) A v0 = tt
+coh-to-TRel TT.Id A v0 =
+  trans (cong (λ w → subst id (coh A) (forget w)) (sym (subst-sym-subst (cohᴰ A))))
+        (forget-coh-gen A (subst id (cohᴰ A) v0))
+coh-to-TRel (G₁ TT.⊕ G₂) A (inj₁ x0) =
+  subst₂ (TRel (G₁ TT.⊕ G₂) A)
+    (sym (ve-split⊕₁ G₁ G₂ A x0))
+    (sym (cong (forget {TT.⟦ G₁ TT.⊕ G₂ ⟧T A}) (push⊎₁ (cohᴰ (TT.⟦ G₁ ⟧T A)) (cohᴰ (TT.⟦ G₂ ⟧T A)) x0)))
+    (coh-to-TRel G₁ A x0)
+coh-to-TRel (G₁ TT.⊕ G₂) A (inj₂ y0) =
+  subst₂ (TRel (G₁ TT.⊕ G₂) A)
+    (sym (ve-split⊕₂ G₁ G₂ A y0))
+    (sym (cong (forget {TT.⟦ G₁ TT.⊕ G₂ ⟧T A}) (push⊎₂ (cohᴰ (TT.⟦ G₁ ⟧T A)) (cohᴰ (TT.⟦ G₂ ⟧T A)) y0)))
+    (coh-to-TRel G₂ A y0)
+coh-to-TRel (G₁ TT.⊗ G₂) A (x0 , y0) =
+  subst₂ (TRel (G₁ TT.⊗ G₂) A)
+    (sym (ve-split⊗ G₁ G₂ A x0 y0))
+    (sym (cong (forget {TT.⟦ G₁ TT.⊗ G₂ ⟧T A}) (push× (cohᴰ (TT.⟦ G₁ ⟧T A)) (cohᴰ (TT.⟦ G₂ ⟧T A)) x0 y0)))
+    (coh-to-TRel G₁ A x0 , coh-to-TRel G₂ A y0)
