@@ -251,10 +251,13 @@ the "Other open items" section below.**
    isolating the splice-lemma work to a single leaf). **A4.4 = 7 of 12
    cases DONE** (WIP `scratchpad/NbEPMonAdq15-WIP.agda`): idc/∘c/⊗c/σc/
    ƛlc/ρlc/Λc proven; the 5 remaining (αrc/αlc/ƛrc/ρrc/evc) are the
-   absorb/withSp cases sharing a needed **R-absorb** helper (the split-
-   monad join preserves R; R-absorb-ret proven by induction on B with
-   function-η, no funext). evc's ret leaf = R-absorb-ret + R-vmap +
-   R-resp. Then **A4.5 assembly**: `f ≈c NF f` from R-reflectTy + fund
+   absorb/withSp cases sharing the **R-join** helper (split-monad join
+   preserves R), BUILT in scratch `NbEPMonAdq16-WIP.agda`: RVal +
+   R-join with the NON-⊸ cases DONE (absorb=bindSp id threads through
+   nodes cleanly), the ⊸ case reduced to ONE structural equation
+   **(†) = the appSp-splice node computation** (provable via
+   node-perm-real + ⊙P-pidˡ + n-α + mult-head² collapse). After (†),
+   each fund case wires R-join to an RVal-building tree induction. Then **A4.5 assembly**: `f ≈c NF f` from R-reflectTy + fund
    lemma + R-reify + join-split ⇒ `NF f ≡ NF g → f ≈c g`. The whole
    definitional + boundary layer (A4.1/A4.2/A4.3) is committed --safe
    green; only the 5 absorb cases + assembly remain. Rung 3 proper (variance judgments,
