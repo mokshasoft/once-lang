@@ -39,15 +39,18 @@ open import Once.Type
          Int; Float; Str; Buffer; Functor; K; Id; _⊕_; _⊗_; ⟦_⟧T)
 open import Once.IR
   using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
-         initial; curry; apply; arr; SigOp; Cata; In; Out; Ana;
+         initial; curry; apply; SigOp; Cata; In; Out; Ana;
          out-μ; free-heap; const; Para; Hylo; Fuse)
+open import Once.IRTy using (⌈_⌉; ⌈_⌉F; ⌊_⌋; ⟦_⟧TI; ⌈⟧TI-commute; μ-type; ν-type; _*_; _+_)
 open import Once.CCC.Eval as Val using (eval; appNatTr-F)   -- pure value domain `Val.⟦_⟧` + `eval`
 open import Once.SigOp.Info
   using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine
   using (sem-cata; sem-ana; sem-para; sem-In; sem-fuseNat-events;
-         sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
+         sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F; coh)
+open import Once.IRTy.WF using (wf-⌈⌉)
+open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
 open import Once.Denotation.TraceDenote using (events-F)
@@ -95,24 +98,24 @@ open import Once.Denotation.ValueDomain public
 -- `rec-trace-D` with the value via the pure `eval`.
 ------------------------------------------------------------------------
 
-evalᴰ        : ∀ {A B} → IR A B → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
-rec-trace-D  : ∀ {A B} → IR A B → Val.⟦ A ⟧ → ℕ → List SigOpEvent
+evalᴰ        : ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
+rec-trace-D  : ∀ {A B} → IR A B → Val.⟦ ⌈ A ⌉ ⟧ → ℕ → List SigOpEvent
 -- The events algebra for the `Cata` fold: children's events (`events-F`)
 -- followed by this layer's algebra events (`evalᴰ alg` on the rebuilt functor
 -- layer). Plan 0.58: value carried in the MONADIC domain `⟦C⟧ᴰ` (NOT forgotten
 -- to `Val.⟦C⟧`) so an effectful-arrow carrier keeps its apply-time effects.
-cata-ev-algᴰ : ∀ {F C} → ℕ → IR (⟦ F ⟧T C) C
-             → ⟦ F ⟧F (List SigOpEvent × ⟦ C ⟧ᴰ) → List SigOpEvent × ⟦ C ⟧ᴰ
+cata-ev-algᴰ : ∀ {F C} → ℕ → IR (⟦ F ⟧TI C) C
+             → ⟦ ⌈ F ⌉F ⟧F (List SigOpEvent × ⟦ C ⟧ᴰᴵ) → List SigOpEvent × ⟦ C ⟧ᴰᴵ
 -- `Para`'s trace algebra. `sem-para`'s algebra sees `⟦F⟧F (μF × A)` (each
 -- child: its substructure `μF` + its folded result `A`); we fold into
 -- `A = List × value`, applying the para-algebra `alg` to the `(μF , value)`
 -- layer per node and collecting its events.
-para-ev-algᴰ : ∀ {F C} → ℕ → IR (⟦ F ⟧T (μ-type F * C)) C
-             → ⟦ F ⟧F (Val.⟦ μ-type F ⟧ × (List SigOpEvent × Val.⟦ C ⟧))
-             → List SigOpEvent × Val.⟦ C ⟧
+para-ev-algᴰ : ∀ {F C} → ℕ → IR (⟦ F ⟧TI (μ-type F * C)) C
+             → ⟦ ⌈ F ⌉F ⟧F (Val.⟦ ⌈ μ-type F ⌉ ⟧ × (List SigOpEvent × Val.⟦ ⌈ C ⌉ ⟧))
+             → List SigOpEvent × Val.⟦ ⌈ C ⌉ ⟧
 -- The depth-bounded unfold trace: events of the first `n` unfold layers,
 -- in canonical (functor left-to-right) order, from the seed `a`.
-ana-events   : ∀ {F A} → IR A (⟦ F ⟧T A) → Val.⟦ A ⟧ → ℕ → List SigOpEvent
+ana-events   : ∀ {F A} → IR A (⟦ F ⟧TI A) → Val.⟦ ⌈ A ⌉ ⟧ → ℕ → List SigOpEvent
 
 evalᴰ id            a        = returnT a
 evalᴰ (g ∘ f)       a        = evalᴰ f a >>=T evalᴰ g
@@ -127,8 +130,9 @@ evalᴰ terminal      _        = returnT tt
 evalᴰ initial       ()
 evalᴰ (curry f _)   a        = returnT (λ b → evalᴰ f (a , b))
 evalᴰ apply         p        = proj₁ p (proj₂ p)
-evalᴰ arr           f        = returnT f
-evalᴰ (SigOp si)    a        = λ n → (emit-D si (forget a) , inject (semM si (forget a)))
+evalᴰ (SigOp {A} {B} si) a   = λ n →
+  ( emit-D si (subst (λ z → z) (coh A) (forget a))
+  , subst (λ z → z) (sym (cohᴰ B)) (inject (semM si (subst (λ z → z) (coh A) (forget a)))) )
 -- Recursion schemes: VALUE comes from this denotation's OWN trace-fold, NOT a
 -- parallel pure `eval` — `⟦_⟧ᴰ` has ONE model (the trace semantics), exactly
 -- like `⟦_⟧ˢ`. (The old catch-all routed `Cata`/`Ana` values through the pure
@@ -137,12 +141,13 @@ evalᴰ (SigOp si)    a        = λ n → (emit-D si (forget a) , inject (semM s
 -- value is `proj₂` of its post-order fold; `Ana`'s is `sem-ana` over the
 -- coalgebra's OWN (forgotten) trace-value. Structurally identical to `⟦_⟧ˢ`.
 evalᴰ (Cata {F} wf {C} alg)  a = λ n →
-  let r = sem-cata wf (cata-ev-algᴰ {F} {C} n alg) (forget a)
+  let r = sem-cata (wf-⌈⌉ wf) (cata-ev-algᴰ {F} {C} n alg) (forget a)
   in (proj₁ r , proj₂ r)
 evalᴰ (Ana {F} wf {A} coalg) a = λ n →
   ( ana-events {F} {A} coalg (forget a) n
-  , inject (sem-ana F (λ a' → coerce-functor F _
-              (forget (valueT (evalᴰ coalg (inject a')) 0))) (forget a)) )
+  , inject (sem-ana ⌈ F ⌉F (λ a' → coerce-functor ⌈ F ⌉F ⌈ A ⌉
+              (subst (λ T → Val.⟦ T ⟧) (⌈⟧TI-commute F A)
+                (forget (valueT (evalᴰ coalg (inject a')) 0)))) (forget a)) )
 evalᴰ ir            a        = λ n → (rec-trace-D ir (forget a) n , inject (eval ir (forget a)))
 
 -- Cata is FINITE: emit its FULL fold trace (the observation depth `n` never
@@ -150,7 +155,7 @@ evalᴰ ir            a        = λ n → (rec-trace-D ir (forget a) n , inject 
 -- what makes Cata and Ana COMPOSE: a Cata nested in an Ana layer emits fully,
 -- matching the machine that runs that layer's fold to completion. The
 -- event-prefix `take` is applied once, at the observable (⟦_⟧IR / traces-agree).
-rec-trace-D (Cata {F} wf {C} alg)   x n = proj₁ (sem-cata wf (cata-ev-algᴰ {F} {C} n alg) x)
+rec-trace-D (Cata {F} wf {C} alg)   x n = proj₁ (sem-cata (wf-⌈⌉ wf) (cata-ev-algᴰ {F} {C} n alg) x)
 rec-trace-D (Ana {F} wf {A} coalg)  x n = ana-events {F} {A} coalg x n
 rec-trace-D (In wf m)               x n = []
 rec-trace-D (Out wf)                x n = []
@@ -158,7 +163,7 @@ rec-trace-D (Out wf)                x n = []
 rec-trace-D (out-μ wf)              x n = []
 -- DERIVED schemes — the trace of the `cata`/`fuse` fold that DEFINES them
 -- (reusing the value side's `sem-para`/`sem-fuse`/`sem-hylo`), `proj₁` = trace.
-rec-trace-D (Para {F} wf {C} alg)   x n = proj₁ (sem-para wf (para-ev-algᴰ {F} {C} n alg) x)
+rec-trace-D (Para {F} wf {C} alg)   x n = proj₁ (sem-para (wf-⌈⌉ wf) (para-ev-algᴰ {F} {C} n alg) x)
 -- D062 / approach A: Hylo/Fuse carry a NATURAL transformation (`NatTr`), so
 -- the transform realizes no effects — its event contribution is `[]` per layer
 -- (threaded as the monoid unit by `sem-fuseNat-events`), and all accumulation
@@ -168,13 +173,13 @@ rec-trace-D (Para {F} wf {C} alg)   x n = proj₁ (sem-para wf (para-ev-algᴰ {
 -- `cataS (alg ∘ transform)` — and `fuseW` is gone from the meaning's use-chain.
 -- (fuse ≡ hylo: both clauses are identical.)
 rec-trace-D (Hylo {F} {G} wfF wfG {B} alg t) x n =
-  proj₁ (sem-fuseNat-events _++_ [] F G wfF wfG (appNatTr-F t)
-    (λ fb → let r = evalᴰ alg (inject (coerce-functor⁻¹ F B fb))
+  proj₁ (sem-fuseNat-events _++_ [] ⌈ F ⌉F ⌈ G ⌉F (wf-⌈⌉ wfF) (wf-⌈⌉ wfG) (appNatTr-F t)
+    (λ fb → let r = evalᴰ alg (inject (subst (λ T → Val.⟦ T ⟧) (sym (⌈⟧TI-commute F B)) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ B ⌉ fb)))
             in (projTrace r n , forget (valueT r n)))
     x)
 rec-trace-D (Fuse {F} {G} wfF wfG {B} alg t) x n =
-  proj₁ (sem-fuseNat-events _++_ [] F G wfF wfG (appNatTr-F t)
-    (λ fb → let r = evalᴰ alg (inject (coerce-functor⁻¹ F B fb))
+  proj₁ (sem-fuseNat-events _++_ [] ⌈ F ⌉F ⌈ G ⌉F (wf-⌈⌉ wfF) (wf-⌈⌉ wfG) (appNatTr-F t)
+    (λ fb → let r = evalᴰ alg (inject (subst (λ T → Val.⟦ T ⟧) (sym (⌈⟧TI-commute F B)) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ B ⌉ fb)))
             in (projTrace r n , forget (valueT r n)))
     x)
 rec-trace-D (free-heap r)           x n = []
@@ -184,22 +189,23 @@ rec-trace-D (const f v)         x n = []
 rec-trace-D _                       x n = []
 
 cata-ev-algᴰ {F} {C} n alg fc =
-  ( events-F F proj₁ fc ++ projTrace (evalᴰ alg z) n
+  ( events-F ⌈ F ⌉F proj₁ fc ++ projTrace (evalᴰ alg z) n
   , valueT (evalᴰ alg z) n )
-  where z = coerce-functor⁻¹-D F C (sem-fmap F proj₂ fc)
+  where z = subst (λ T → ⟦ T ⟧ᴰ) (sym (⌈⟧TI-commute F C)) (coerce-functor⁻¹-D ⌈ F ⌉F ⌈ C ⌉ (sem-fmap ⌈ F ⌉F proj₂ fc))
 
 -- `Para`'s fold. Children events come from each child's `List` part
 -- (`proj₁ ∘ proj₂`); the algebra runs on the `(μF , value)` layer
 -- (`(proj₁ , proj₂ ∘ proj₂)` per position) and its events follow.
 para-ev-algᴰ {F} {C} n alg fc =
-  ( events-F F (λ p → proj₁ (proj₂ p)) fc ++ projTrace (evalᴰ alg (inject z)) n
-  , forget (valueT (evalᴰ alg (inject z)) n) )
-  where z = coerce-functor⁻¹ F (μ-type F * C)
-              (sem-fmap F (λ p → (proj₁ p , proj₂ (proj₂ p))) fc)
+  ( events-F ⌈ F ⌉F (λ p → proj₁ (proj₂ p)) fc ++ projTrace (evalᴰ alg (inject z')) n
+  , forget (valueT (evalᴰ alg (inject z')) n) )
+  where z = coerce-functor⁻¹ ⌈ F ⌉F ⌈ μ-type F * C ⌉
+              (sem-fmap ⌈ F ⌉F (λ p → (proj₁ p , proj₂ (proj₂ p))) fc)
+        z' = subst (λ T → Val.⟦ T ⟧) (sym (⌈⟧TI-commute F (μ-type F * C))) z
 
 ana-events         coalg a zero    = []
 ana-events {F} {A} coalg a (suc m) =
-  projTrace step m ++ events-F F (λ seed → ana-events {F} {A} coalg seed m) layer
+  projTrace step m ++ events-F ⌈ F ⌉F (λ seed → ana-events {F} {A} coalg seed m) layer
   where
     step  = evalᴰ coalg (inject a)
-    layer = coerce-functor F A (forget (valueT step m))
+    layer = coerce-functor ⌈ F ⌉F ⌈ A ⌉ (subst (λ T → Val.⟦ T ⟧) (⌈⟧TI-commute F A) (forget (valueT step m)))

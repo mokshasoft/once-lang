@@ -22,12 +22,15 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
+
 open import Once.Type
+open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
 open import Once.CCC.Eval as Val using ()
 open import Once.SigOp.Info
 open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
 open import Once.Denotation.TraceMonad using (T; returnT; valueT)
-open import Once.Semantics.Machine using (⟦_⟧F)
+open import Once.Semantics.Machine using (⟦_⟧F; coh)
 
 ------------------------------------------------------------------------
 -- The monadic value domain. Mirrors `Val.⟦_⟧` EXCEPT at the arrow, which
@@ -46,6 +49,28 @@ open import Once.Semantics.Machine using (⟦_⟧F)
 ⟦ Float ⟧ᴰ      = Val.⟦ Float ⟧
 ⟦ Str ⟧ᴰ        = Val.⟦ Str ⟧
 ⟦ Buffer ⟧ᴰ     = Val.⟦ Buffer ⟧
+
+------------------------------------------------------------------------
+-- Plan 0.52 M2: the monadic value domain over the UNGRADED IR objects
+-- (`⟦_⟧ᴰᴵ := ⟦_⟧ᴰ ∘ ⌈_⌉`), used to denote IR morphisms (evalᴰ/realize) now
+-- that IR objects are `IRTy`. `cohᴰ` is the transport `⟦ ⌊T⌋ ⟧ᴰᴵ ≡ ⟦ T ⟧ᴰ`
+-- (μ/ν reuse the pure-domain `coh`; the arrow is grade-blind Kleisli).
+
+⟦_⟧ᴰᴵ : IRTy → Set
+⟦ A ⟧ᴰᴵ = ⟦ ⌈ A ⌉ ⟧ᴰ
+
+cohᴰ : ∀ (T' : Type) → ⟦ ⌊ T' ⌋ ⟧ᴰᴵ ≡ ⟦ T' ⟧ᴰ
+cohᴰ Unit         = refl
+cohᴰ Void         = refl
+cohᴰ (A * B)      = cong₂ _×_ (cohᴰ A) (cohᴰ B)
+cohᴰ (A + B)      = cong₂ _⊎_ (cohᴰ A) (cohᴰ B)
+cohᴰ (A ⇒[ k ] B) = cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ B)
+cohᴰ (μ-type F)   = coh (μ-type F)
+cohᴰ (ν-type F)   = coh (ν-type F)
+cohᴰ Int          = refl
+cohᴰ Float        = refl
+cohᴰ Str          = refl
+cohᴰ Buffer       = refl
 
 ------------------------------------------------------------------------
 -- Forgetful coercions between the monadic and the pure value domains.
