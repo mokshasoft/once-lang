@@ -142,6 +142,76 @@ dependent kernel it needs, in rough dependency order:
 Items 1 and 4 lean directly on what is already done; 2 and 3 are the real new
 construction; 5 is the open research frontier.
 
+## Linearizing the real core (`formal/Once/IR.agda`)
+
+The above is about the *POC* IR. The **real** compiler IR is `formal/Once/IR.agda`
+and it is a **cartesian** closed category — `⟨_,_⟩`/`fst`/`snd`, `inl`/`inr`/
+`case`, `terminal`/`initial`, `curry`/`apply` over ungraded objects (`arr`
+retired; pure→eff is `t-subsume` = id) — plus its real power, the **structured
+recursion schemes** `In`/`Cata`/`Para` (μ), `Out`/`Ana` (ν), `Hylo`/`Fuse`, where
+`Fuse`/`Hylo` carry a **`NatTr`** (a natural transformation between polynomial
+functors) so totality is by construction. Plus `SigOp` (effectful FFI:
+`Pure`/`Emits`/`Halts`), `const` literals, and — the tell — **explicit memory**:
+`free-heap`, and an `AllocMode` threaded through *every introduction form*.
+(Neither this IR nor the compiler imports the OCP-0009 towers today; the linear
+work is a separate POC. Connecting them is precisely the bridge below.)
+
+**The tax of cartesianness.** Look at where the memory annotations live:
+
+```
+⟨_,_⟩ : IR A B → IR A C → AllocMode → IR A (B * C)   -- pairing = DUPLICATION, carries alloc
+inl / inr / curry / In                  … → AllocMode  -- the other value-producers
+free-heap : HeapRef → IR Unit Unit                     -- "added by escape analysis"
+```
+
+The IR does **manual resource management** — an `AllocMode` on every intro plus a
+`free-heap` inserted by a separate escape-analysis pass — and it *must*,
+**because it is cartesian**: a value may be used any number of times
+(`terminal` = 0, `⟨_,_⟩` = 2+), so ownership and lifetime are not structural and
+have to be reconstructed and annotated. The whole allocator-correctness burden
+(`CCC/Machine/Allocation`, `ClosureWellFormed`, escape) is the *cost of
+duplication being implicit*.
+
+**The factorization (Fox's theorem).** A cartesian category is a symmetric
+monoidal category in which every object carries a comonoid (`dup : A → A⊗A`,
+`drop : A → I`). Factor the IR through it: a linear core where `⟨_,_⟩` becomes
+tensor `⊗` and there is no `terminal`, plus a comonoid layer *outside* the core
+where `⟨f,g⟩ = (f⊗g) ∘ dup`, `terminal = drop`, and usage counts size the
+dup-trees.
+
+**The dividend — memory becomes a theorem, not a pass.** In the linear core a
+value is used *exactly once*, so its lifetime ends at its single use:
+`free-heap` placement and Stack-vs-Heap stop being escape-analysis outputs and
+become type-structural. `AllocMode` disappears from `inl`/`curry`/… and survives
+in exactly **one place — `dup`** — because `dup` is the only point where genuine
+sharing (hence heap / refcount) happens. This is the Rust/Austral/linear-Haskell
+dividend, aimed straight at the allocator-verification modules. So the real
+motive to linearize is not decidable equality alone — it is **making resource
+management a consequence of the types**, plus bringing the OCP-0009 `dec≈`/`NF`/
+adequacy theory to bear on real optimization (it applies to the *linear*
+sublanguage only).
+
+**The critical-path gap: linear recursion schemes.** The SMCC we proved adequacy
+for has *no* `μ`/`ν`/`Cata` — nothing. This IR's strength is the schemes, and
+they do not all linearize equally: `Cata` with a linear algebra is fine (consume
+the structure once), but **`Para` inherently duplicates** — a paramorphism hands
+the algebra *both* the recursive result and the original substructure, a `dup`
+baked into the scheme; `Hylo`/`Fuse` avoid inherent duplication but their
+`NatTr`-totality argument needs a linear analogue. **Linear structured recursion
+is a genuine research sub-project — the hardest item on the board**, above the
+linearization pass's own semantics-preservation proof and the payoff theorem
+(*linearity ⟹ correct alloc/free*).
+
+**Where the two paths land on the real IR.** The optimization passes (`Fusion`,
+`Optimize`) *are* the directed `Hom` (`⟶*`) — so Path 2 (transport-along-Hom for
+pass correctness) is about *these*, real leverage. Path 1 (decidable, complete
+equality) is the adequacy dividend — but only over the linear sublanguage, which
+is exactly why linearizing is the move that makes the OCP-0009 theory apply to
+the real thing. Converged thesis: **make the linear SMCC the IR core, recover
+cartesian/duplication as an explicit comonoid layer above it, and get (a)
+decidable+complete optimization, (b) structural memory management, (c) directed
+pass-correctness — with linear recursion schemes as the price of admission.**
+
 ## The decision
 
 The fork is not "symmetric *or* directed" — `Id = core(Hom)`, so the question is
