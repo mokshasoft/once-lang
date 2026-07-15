@@ -21,13 +21,16 @@
 
 module Once.Adequacy.AnaErased where
 
+open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
+open import Data.List using (List; _++_)
 open import Relation.Binary.PropositionalEquality
-  using (_≡_; refl; cong; sym; trans; subst)
+  using (_≡_; refl; cong; cong₂; sym; trans; subst)
 
 open import Once.Word using (Carrier)
-open import Once.Type using (Functor)
+open import Once.Type as TT using (Functor)
 open import Once.Functor.Translate using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F)
 open import Once.Semantics.Functor
@@ -35,7 +38,10 @@ open import Once.Semantics.Functor
 open import Once.Semantics.Functor.Laws
   using (_∼S_; ⟦_⟧SF-rel; unfoldS-∼; bisimS-to-eq)
 open import Once.Semantics.Machine
-  using (⟦_⟧F; sem-ana; sfmapSemAna; coerce-ν-in; tF-coh)
+  using (⟦_⟧F; ⟦_⟧; sem-ana; sfmapSemAna; coerce-ν-in; coerce-functor; coh; tF-coh)
+open import Once.IRTy using (⌊_⌋; ⌈_⌉)
+open import Once.Denotation.Trace using (SigOpEvent)
+open import Once.Denotation.TraceDenote using (events-F)
 
 ------------------------------------------------------------------------
 -- `sem-ana` factors through the νS-level `anaS`: unfolding the raw functor
@@ -94,3 +100,60 @@ sem-ana-erase-coh′ {F} {A} cL cR a ceq =
     (trans (anaS-subst-nat (tF-coh F) (λ x → coerce-ν-in ⌈ eraseF F ⌉F A (cL x)) a)
       (trans (cong (λ c → anaS c a) ceq)
              (sym (sem-ana-anaS cR a))))
+
+------------------------------------------------------------------------
+-- TRACE round-trip core. `events-F` DISCARDS the `K`-leaves (`events-F
+-- (K _) _ _ = []`), which is exactly where `⌈eraseF G⌉F` and `G` differ —
+-- so the erased/surface layer traces coincide as soon as the recursive
+-- children (`Id`-positions) agree. `SFRel` is the structural witness that
+-- the two functor layers agree at `Id` (`⊤` at `K`, discarded).
+------------------------------------------------------------------------
+
+SFRel : ∀ (G : Functor) {Ve Vs : Set} (R : Ve → Vs → Set)
+      → ⟦ ⌈ eraseF G ⌉F ⟧F Ve → ⟦ G ⟧F Vs → Set
+SFRel (TT.K B)   R le        ls        = ⊤
+SFRel TT.Id      R le        ls        = R le ls
+SFRel (G₁ TT.⊕ G₂) R (inj₁ xe) (inj₁ xs) = SFRel G₁ R xe xs
+SFRel (G₁ TT.⊕ G₂) R (inj₁ _)  (inj₂ _)  = ⊥
+SFRel (G₁ TT.⊕ G₂) R (inj₂ _)  (inj₁ _)  = ⊥
+SFRel (G₁ TT.⊕ G₂) R (inj₂ ye) (inj₂ ys) = SFRel G₂ R ye ys
+SFRel (G₁ TT.⊗ G₂) R (xe , ye) (xs , ys) = SFRel G₁ R xe xs × SFRel G₂ R ye ys
+
+events-F-erase : ∀ (G : Functor) {Ve Vs : Set} (R : Ve → Vs → Set)
+    (child-e : Ve → List SigOpEvent) (child-s : Vs → List SigOpEvent)
+    (child-R : ∀ {xe xs} → R xe xs → child-e xe ≡ child-s xs)
+    (le : ⟦ ⌈ eraseF G ⌉F ⟧F Ve) (ls : ⟦ G ⟧F Vs)
+  → SFRel G R le ls
+  → events-F ⌈ eraseF G ⌉F child-e le ≡ events-F G child-s ls
+events-F-erase (TT.K B)   R ce cs cR le        ls        _        = refl
+events-F-erase TT.Id      R ce cs cR le        ls        r        = cR r
+events-F-erase (G₁ TT.⊕ G₂) R ce cs cR (inj₁ xe) (inj₁ xs) r      = events-F-erase G₁ R ce cs cR xe xs r
+events-F-erase (G₁ TT.⊕ G₂) R ce cs cR (inj₂ ye) (inj₂ ys) r      = events-F-erase G₂ R ce cs cR ye ys r
+events-F-erase (G₁ TT.⊗ G₂) R ce cs cR (xe , ye) (xs , ys) (r₁ , r₂) =
+  cong₂ _++_ (events-F-erase G₁ R ce cs cR xe xs r₁)
+             (events-F-erase G₂ R ce cs cR ye ys r₂)
+
+-- The pre-`coerce` structural relation on the layer VALUES (`⟦_⟧T` level):
+-- `coh A` at `Id`, `⊤` at the discarded `K`-leaves. `coerce-functor` (identity
+-- at `K`/`Id`, structural at `⊕`/`⊗`) carries it straight to `SFRel`.
+TRel : ∀ (G : Functor) (A : TT.Type)
+     → ⟦ TT.⟦ ⌈ eraseF G ⌉F ⟧T ⌈ ⌊ A ⌋ ⌉ ⟧ → ⟦ TT.⟦ G ⟧T A ⟧ → Set
+TRel (TT.K B)     A ve        vs        = ⊤
+TRel TT.Id        A ve        vs        = subst (λ z → z) (coh A) ve ≡ vs
+TRel (G₁ TT.⊕ G₂) A (inj₁ xe) (inj₁ xs) = TRel G₁ A xe xs
+TRel (G₁ TT.⊕ G₂) A (inj₁ _)  (inj₂ _)  = ⊥
+TRel (G₁ TT.⊕ G₂) A (inj₂ _)  (inj₁ _)  = ⊥
+TRel (G₁ TT.⊕ G₂) A (inj₂ ye) (inj₂ ys) = TRel G₂ A ye ys
+TRel (G₁ TT.⊗ G₂) A (xe , ye) (xs , ys) = TRel G₁ A xe xs × TRel G₂ A ye ys
+
+coerce-SFRel : ∀ (G : Functor) {A : TT.Type}
+    (ve : ⟦ TT.⟦ ⌈ eraseF G ⌉F ⟧T ⌈ ⌊ A ⌋ ⌉ ⟧) (vs : ⟦ TT.⟦ G ⟧T A ⟧)
+  → TRel G A ve vs
+  → SFRel G (λ xe xs → subst (λ z → z) (coh A) xe ≡ xs)
+      (coerce-functor ⌈ eraseF G ⌉F ⌈ ⌊ A ⌋ ⌉ ve) (coerce-functor G A vs)
+coerce-SFRel (TT.K B)     ve        vs        _        = tt
+coerce-SFRel TT.Id        ve        vs        r        = r
+coerce-SFRel (G₁ TT.⊕ G₂) (inj₁ xe) (inj₁ xs) r        = coerce-SFRel G₁ xe xs r
+coerce-SFRel (G₁ TT.⊕ G₂) (inj₂ ye) (inj₂ ys) r        = coerce-SFRel G₂ ye ys r
+coerce-SFRel (G₁ TT.⊗ G₂) (xe , ye) (xs , ys) (r₁ , r₂) =
+  coerce-SFRel G₁ xe xs r₁ , coerce-SFRel G₂ ye ys r₂
