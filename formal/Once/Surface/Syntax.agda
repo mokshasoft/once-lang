@@ -12,6 +12,7 @@ module Once.Surface.Syntax where
 
 open import Once.Type
 open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
 open import Once.Functor.Translate using (WellFormedF; IsConcrete)
 
 open import Data.Nat using (ℕ)
@@ -136,8 +137,8 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   eq    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
   ne    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
 
-  -- Effect lifting — identity on usage
-  arr'  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → Expr Γ Ψ (A ⇒ B) → Expr Γ Ψ (A ⇒[ mk-kind Many eff ] B)
+  -- (Plan 0.52 M2: `arr'` RETIRED — the pure→eff lift is the typing rule
+  -- `t-subsume`, whose realization is now the identity, so no surface node.)
 
   -- External primitive reference (syscalls, intrinsics) — uses no variables.
   -- Asm-level `once_<name>` directly implements the declared type `A`: at
@@ -196,7 +197,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- threaded purity π. Pure sites infer π = pure (byte-identical to the old
   -- `A ⇒ B`); the effectful fused morphisms (cata algebras) use π = eff.
   lift-morphism : ∀ {n} {Γ : Ctx n} {A B} {π : Purity}
-                → IR A B → Expr Γ zeroUsage (A ⇒[ mk-kind Many π ] B)
+                → IR ⌊ A ⌋ ⌊ B ⌋ → Expr Γ zeroUsage (A ⇒[ mk-kind Many π ] B)
 
   -- Plan 0.2.4.5 D2: morphism-realm application.
   --
@@ -217,7 +218,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- (the default arrow grade). Keeping the shape identical to `app`'s
   -- emission lets us swap call sites without touching judgment rules.
   morph-app : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B}
-            → IR A B → Expr Γ Ψ A → Expr Γ (zeroUsage +ᵘ (Many *ᵘ Ψ)) B
+            → IR ⌊ A ⌋ ⌊ B ⌋ → Expr Γ Ψ A → Expr Γ (zeroUsage +ᵘ (Many *ᵘ Ψ)) B
 
   -- Plan 0.36 Phase 2a: catamorphism whose algebra is an ARBITRARY closed
   -- function (named/arith/effectful — not a fixed point-free vocabulary).

@@ -151,7 +151,6 @@ faithful (neg e)    dγ n rewrite faithful e dγ n = refl
 faithful (pair a b) dγ n rewrite faithful a dγ n | faithful b dγ n = refl
 -- arr': `elaborate = arr ∘ ef` adds one `returnT` bind (an extra ++[]); the kind
 -- change is erased by ⟦_⟧ᴰ, value unchanged ⇒ ++-identityʳ.
-faithful (arr' f)   dγ n rewrite faithful f dγ n = cong₂ _,_ (++-identityʳ _) refl
 -- IR embedding: ⟦_⟧ˢ denotes these AS `evalᴰ morph`; elaborate's
 -- `curry (morph ∘ snd)` / `morph ∘ ex` reduce to the same (returnT/[]++X + eta).
 faithful (lift-morphism morph) dγ k = refl

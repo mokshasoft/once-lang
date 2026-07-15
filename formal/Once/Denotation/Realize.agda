@@ -51,7 +51,7 @@ open import Once.TypeCheck.Judgment
          t-var-poly-instantiate-infer)
 open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
   lam; app; effApp; pair; neg; let'; case'; int; str; unit;
-  add; sub; mul; div; mod'; lt; le; gt; ge; eq; ne; arr'; sigOp; poly;
+  add; sub; mul; div; mod'; lt; le; gt; ge; eq; ne; sigOp; poly;
   lift-morphism; morph-app)
 open import Once.Surface.Elaborate using (intLit; elaborate)
 open import Once.Arith.SigOp.Builders using (value-info)
@@ -153,7 +153,7 @@ realize (t-apply-check dp)      = morph-app IR.apply (realize-infer dp)
 realize (t-inl-app-check d)     = morph-app (IR.inl IR.Heap) (realize d)
 realize (t-inr-app-check d)     = morph-app (IR.inr IR.Heap) (realize d)
 realize (t-initial-app-check d) = morph-app IR.initial (realize d)
-realize (t-subsume d)           = arr' (realize d)
+realize (t-subsume d)           = realize d
 realize (t-arg-driven-app-check _ darg df) = app (realize df) (realize-infer darg)
 -- Plan 0.58 (telescope / E1): a same-module def reference realizes to its
 -- closed body's IR, wrapped as a closed morphism applied to `unit` — so its

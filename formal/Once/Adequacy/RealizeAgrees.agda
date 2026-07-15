@@ -1120,7 +1120,6 @@ faithful-aux : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Usage n} {RT A B} {π : Purity
   → SD.⟦ E ⟧ˢ dγ ≡ subst (λ Ty → T ⟦ Ty ⟧ᴰ) (sym teq) (returnT (evalᴰ m))
 faithful-aux (Surface.lift-morphism m') refl eq dγ =
   cong (λ mm → returnT (evalᴰ mm)) (cong proj₁ (just-injective eq))
-faithful-aux (Surface.arr' e) refl eq dγ = faithful-aux e refl eq dγ
 faithful-aux {Γ = Γ} (Surface.cata wfF' algE') refl eq dγ
   with E.extract-morph-eff algE' in innerEq | eq
 ... | just (m' , refl) | refl =

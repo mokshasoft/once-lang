@@ -122,7 +122,6 @@ resolveExpr-faithful polys imps userFns fresh (Srf.inl' e) dγ k rewrite resolve
 resolveExpr-faithful polys imps userFns fresh (Srf.inr' e) dγ k rewrite resolveExpr-faithful polys imps userFns fresh e dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.neg e) dγ k rewrite resolveExpr-faithful polys imps userFns fresh e dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.absurd e) dγ k rewrite resolveExpr-faithful polys imps userFns fresh e dγ k = refl
-resolveExpr-faithful polys imps userFns fresh (Srf.arr' e) dγ k rewrite resolveExpr-faithful polys imps userFns fresh e dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.morph-app m a) dγ k rewrite resolveExpr-faithful polys imps userFns fresh a dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.app f a) dγ k rewrite resolveExpr-faithful polys imps userFns fresh f dγ k | resolveExpr-faithful polys imps userFns fresh a dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.pair a b) dγ k rewrite resolveExpr-faithful polys imps userFns fresh a dγ k | resolveExpr-faithful polys imps userFns fresh b dγ k = refl

@@ -450,7 +450,7 @@ embedOrSubsume-no : ∀ (ctx : NamedCtx) (e : RawExpr)
 embedOrSubsume-no ctx e (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B')
                         (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
                         eE depth fresh w with A ≟T A' | B ≟T B'
-... | yes refl | yes refl = success _ (Surface.arr' eE) depth fresh , t-subsume (t-embed w)
+... | yes refl | yes refl = success _ (eE) depth fresh , t-subsume (t-embed w)
 ... | _        | _        = failure (TypeMismatch
                               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
                               (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B')) , tt
@@ -625,7 +625,6 @@ extract-morph-eff-aux (Surface.lift-morphism m) refl = just (m , refl)
 -- it denotes an opaque external SigOp — typechecks but miscompiles (e.g.
 -- `once_seven` is a closure-returner, not that SigOp). Extraction stays
 -- faithful: only genuine `lift-morphism`s (and `arr'`/`cata` over them).
-extract-morph-eff-aux (Surface.arr' e)          refl = extract-morph-eff-aux e refl
 -- A `cata` IS a direct morphism `μF → A`. Plan 0.54: the algebra is itself a
 -- morphism, so recover ITS `IR (⟦F⟧T A) A` and wrap in `IR.Cata` directly —
 -- no `apply/⟨⟩/terminal` wrapper. Fuses into an effectful compose/case like any
@@ -1421,7 +1420,7 @@ mutual
             with extract-morph-eff fE | extract-morph-eff gE | extractMorphWitness wF | extractMorphWitness wG
   ...       | just (mf , _) | just (mg , _) | just mFᵐ | just mGᵐ =
               success Surface.zeroUsage
-                (Surface.arr' (Surface.lift-morphism (IR.⟨ mf , mg ⟩ IR.Heap)))
+                ((Surface.lift-morphism (IR.⟨ mf , mg ⟩ IR.Heap)))
                 (suc (df Data.Nat.⊔ dg)) frg , t-subsume (t-morph-lift (m-pair mFᵐ mGᵐ))
   ...       | _ | _ | _ | _ = failure (BuiltinTypeMismatch "pair") , tt
   -- Any other shape falls through to failure. Consistent with
@@ -1458,7 +1457,7 @@ mutual
   ... | (success Ψ eE d fr , w) = success Ψ eE d fr , w
   ... | (failure _ , _)
         with checkCaseGo ctx f_inner arg A B C Once.Type.pure
-  ...     | (success Ψ eE d fr , w) = success Ψ (Surface.arr' eE) d fr , t-subsume w
+  ...     | (success Ψ eE d fr , w) = success Ψ (eE) d fr , t-subsume w
   ...     | (failure err , _) = failure err , tt
   checkCase ctx (Raw.RApp (Raw.RVar "case") f_inner) arg
             ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) =
@@ -1504,7 +1503,7 @@ mutual
   ... | (success Ψ eE d fr , w) = success Ψ eE d fr , w
   ... | (failure _ , _)
         with checkComposeGo ctx f_inner arg A C Once.Type.pure (composeMid ctx f_inner arg A) refl
-  ...     | (success Ψ eE d fr , w) = success Ψ (Surface.arr' eE) d fr , t-subsume w
+  ...     | (success Ψ eE d fr , w) = success Ψ (eE) d fr , t-subsume w
   ...     | (failure err , _) = failure err , tt
   checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
                (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) =
@@ -1542,7 +1541,7 @@ mutual
   ... | failure err , _ = failure err , tt
   ... | success Ψ argE d fr , w with extract-morph-eff argE | extractMorphWitness w
   ...   | just (mf , _) | just mFᵐ =
-          success Surface.zeroUsage (Surface.arr' (Surface.lift-morphism (IR.curry mf IR.Heap))) (suc d) fr
+          success Surface.zeroUsage ((Surface.lift-morphism (IR.curry mf IR.Heap))) (suc d) fr
           , t-subsume (t-morph-lift (m-curry mFᵐ))
   ...   | _ | _ = failure (BuiltinTypeMismatch "curry") , tt
   checkCurry _ _ _ = failure (BuiltinTypeMismatch "curry") , tt
@@ -1621,7 +1620,7 @@ mutual
   ... | (success Ψ eE d fr , w) = success Ψ eE d fr , w
   ... | (failure _ , _)
         with checkCataGo ctx alg F A Once.Type.pure (wellFormedF? F) refl
-  ...     | (success Ψ eE d fr , w) = success Ψ (Surface.arr' eE) d fr , t-subsume w
+  ...     | (success Ψ eE d fr , w) = success Ψ (eE) d fr , t-subsume w
   ...     | (failure err , _) = failure err , tt
   checkCata ctx alg (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) =
     checkCataGo ctx alg F A π (wellFormedF? F) refl
@@ -1787,7 +1786,7 @@ mutual
   checkElabV-wf ctx ac (Raw.RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) with checkElabV (extendNamedCtx ctx x A) body B
   ... | failure err , _ = failure err , tt
   ... | success (q' ∷ᵘ Ψ) bodyE d fr , wBody with decideLeq q' Once.Type.Many
-  ...   | just eq = success _ (Surface.arr' (Surface.lam Once.Type.Many eq bodyE)) (suc d) fr , t-subsume (t-lam eq wBody)
+  ...   | just eq = success _ ((Surface.lam Once.Type.Many eq bodyE)) (suc d) fr , t-subsume (t-lam eq wBody)
   ...   | nothing = failure (UsageViolation x Once.Type.Many q') , tt
   -- Non-arrow T: lambda's only check-mode rules are t-lam (pure) / t-subsume (eff).
   checkElabV-wf ctx ac (Raw.RLam _ _) _ = failure LambdaRequiresFunctionType , tt
@@ -2287,7 +2286,7 @@ mutual
                                               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B))
   ...     | failure err , _ = failure err , tt
   ...     | success Ψf fE df frf , wF =
-            success _ (Surface.arr' (Surface.app fE argE)) (suc (df ⊔ dx)) frf
+            success _ ((Surface.app fE argE)) (suc (df ⊔ dx)) frf
             , t-subsume (t-arg-driven-app-check eqAH wArg wF)
   checkElabV-RApp-other-argdriven-aux ctx f arg T errInfer nothing eqAH | success X Ψx argE dx frx , wArg | eav-other _
           with checkElabV ctx f (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T)
@@ -3163,7 +3162,6 @@ resolveExprWF polys pAcc imps userFns fresh (Surface.eq a b) =
   Surface.eq (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
 resolveExprWF polys pAcc imps userFns fresh (Surface.ne a b) =
   Surface.ne (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
-resolveExprWF polys pAcc imps userFns fresh (Surface.arr' e) = Surface.arr' (resolveExprWF polys pAcc imps userFns fresh e)
 -- Plan 0.19: discriminate sigOp by whether the name is a user-defined
 -- top-level fn (in `userFns`) or an external primitive (in `imps`).
 -- The typechecker emits `Surface.sigOp` for every named-entry RVar
@@ -3458,12 +3456,6 @@ resolveExpr-ne :
 resolveExpr-ne _ _ _ _ _ _ = refl
 
 -- Resolution commutes with arr' (effect lifting).
-resolveExpr-arr' :
-  ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A B}
-    (polys : PolyCtx) (imps userFns : Imports) (fresh : ℕ)
-    (e : Surface.Expr Γ Ψ (A Once.Type.⇒ B))
-  → resolveExpr polys imps userFns fresh (Surface.arr' e) ≡ Surface.arr' (resolveExpr polys imps userFns fresh e)
-resolveExpr-arr' _ _ _ _ _ = refl
 
 -- Plan 0.19: resolveExpr on sigOp depends on whether `s` is in the
 -- `userFns` list — it rewrites to `Surface.closure s` for user-defined

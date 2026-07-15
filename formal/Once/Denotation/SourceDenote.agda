@@ -31,12 +31,13 @@ open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.String using (String)
+open import Relation.Binary.PropositionalEquality using (subst; sym)
 
 open import Once.Type
   using (Type; Unit; Void; Int; Str; _*_; _+_; _⇒[_]_; Functor; ⟦_⟧T; μ-type)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D; coerce-functor⁻¹-D)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D; coerce-functor⁻¹-D; cohᴰ)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.IR using (IR)
@@ -147,7 +148,6 @@ ana-eventsˢ {F} {A} coalgComp a (suc m) =
 ⟦ ge a b ⟧ˢ       dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM ge-info (va , vb))
 ⟦ eq a b ⟧ˢ       dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM eq-info (va , vb))
 ⟦ ne a b ⟧ˢ       dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM ne-info (va , vb))
-⟦ arr' f ⟧ˢ       dγ = ⟦ f ⟧ˢ dγ
 -- effApp: a SUSPENDED effect (`Unit ⇒[eff] B`) — the Eff design (D018). The
 -- effectful application is deferred into the Unit-thunk; its trace fires when the
 -- thunk is applied (at the top-level main run), threaded by `T`. No fork: the old
@@ -158,8 +158,12 @@ ana-eventsˢ {F} {A} coalgComp a (suc m) =
 -- the surface; their meaning IS the IR's denotation `evalᴰ ir` (definitionally
 -- matching elaborate, which maps them straight to `ir`). Not the IR-pivot — these
 -- are leaves embedding a fixed morphism, not the elaboration of a user subterm.
-⟦ lift-morphism ir ⟧ˢ dγ = returnT (evalᴰ ir)
-⟦ morph-app ir e ⟧ˢ   dγ = ⟦ e ⟧ˢ dγ >>=T λ v → evalᴰ ir v
+-- Plan 0.52 M2: `ir : IR ⌊A⌋ ⌊B⌋`, so `evalᴰ ir : ⟦⌊A⌋⟧ᴰᴵ → T ⟦⌊B⌋⟧ᴰᴵ`;
+-- `cohᴰ` transports it to the surface `⟦A⟧ᴰ → T ⟦B⟧ᴰ` (grade-blind erasure).
+⟦ lift-morphism {A = A} {B = B} ir ⟧ˢ dγ =
+  returnT (λ v → subst T (cohᴰ B) (evalᴰ ir (subst (λ z → z) (sym (cohᴰ A)) v)))
+⟦ morph-app {A = A} {B = B} ir e ⟧ˢ dγ =
+  ⟦ e ⟧ˢ dγ >>=T λ v → subst T (cohᴰ B) (evalᴰ ir (subst (λ z → z) (sym (cohᴰ A)) v))
 -- Cata: the structural fold. The algebra is CLOSED (∅), so `⟦alg⟧ˢ tt` is the
 -- algebra closure; fold via `sem-cata` over `cata-ev-algˢ` (trace+value carrier),
 -- mirroring `evalᴰ (Cata …)` but elaborate-free (uses `⟦alg⟧ˢ`, not `evalᴰ alg`).

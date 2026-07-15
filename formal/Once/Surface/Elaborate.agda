@@ -237,7 +237,6 @@ elaborate m (ne e₁ e₂) = neIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ �
 
 -- Effect lifting: arr f lifts pure function to effectful morphism
 -- IR arr : (A ⇒ B) → Eff A B
-elaborate m (arr' f) = arr ∘ elaborate m f
 
 -- OCP-0003: roll'/unroll' removed. Use In/Cata/Out/Ana directly.
 

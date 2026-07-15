@@ -233,7 +233,6 @@ rename {Δ = Δ} θ (Surface.eq {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.eq (rename θ a) (rename θ b))
 rename {Δ = Δ} θ (Surface.ne {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.ne (rename θ a) (rename θ b))
-rename θ (Surface.arr' f) = Surface.arr' (rename θ f)
 rename {Δ = Δ} θ (Surface.sigOp name conc) = subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.sigOp name conc)
 -- Plan 0.19: user-defined closure reference. Same shape as sigOp —
 -- closed by construction (zeroUsage), no context dependency.
