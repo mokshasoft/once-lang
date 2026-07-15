@@ -30,7 +30,7 @@ open import poc.OCP0009.NbEPMonT
 open import poc.OCP0009.NbEPMonW
   using ( ⟪_⟫; permC; mult; multInv )
 open import poc.OCP0009.NbEPMonF
-  using ( Sp; ret; spl; usI; withSpˡ; withSpʳ )
+  using ( Sp; ret; spl; usI; withSpˡ; withSpʳ; bindSp )
 open import poc.OCP0009.NbEPMonW
   using ( swapHeadC )
 open import poc.OCP0009.NbEPMonAdq1
@@ -343,3 +343,35 @@ withSpʳ-Tree {Γ₁ = Γ₁} LP LQ C f Hf ρ
     (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ
               fuse⊗ˡC)))))
     finishI))))))))))))))))))))))
+
+------------------------------------------------------------------------
+-- Generic Tree infrastructure for the fundamental lemma's monad cases.
+------------------------------------------------------------------------
+
+-- Tree respects ≈c on the term side (given the leaf predicate does).
+Tree-resp : ∀ {P : Ctx → Set} {S}
+  (LP : ∀ {Δ} → P Δ → CTm ⟪ Δ ⟫ S → Set)
+  (LPr : ∀ {Δ} (p : P Δ) {s s'} → LP p s → s ≈c s' → LP p s') →
+  ∀ {Γ} {sp : Sp P Γ} {t t'} → Tree LP sp t → t ≈c t' → Tree LP sp t'
+Tree-resp LP LPr {sp = ret p}     r e = LPr p r e
+Tree-resp LP LPr {sp = spl _ _ _} (w , (rk , e0)) e =
+  w , (rk , ≈ctrans (≈csym e) e0)
+Tree-resp LP LPr {sp = usI _ _ _} (w , (rk , e0)) e =
+  w , (rk , ≈ctrans (≈csym e) e0)
+
+-- bindSp threads the tree, dressing every leaf term with the head H.
+bindSp-Tree : ∀ {P Q : Ctx → Set} {S T}
+  (LP : ∀ {Δ} → P Δ → CTm ⟪ Δ ⟫ S → Set)
+  (LQ : ∀ {Δ} → Q Δ → CTm ⟪ Δ ⟫ T → Set)
+  (H : CTm S T)
+  (K : ∀ {Δ} → P Δ → Sp Q Δ)
+  (HK : ∀ {Δ} (p : P Δ) {s} → LP p s → Tree LQ (K p) (H ∘c s)) →
+  ∀ {Γ} (sp : Sp P Γ) {t} → Tree LP sp t →
+  Tree LQ (bindSp sp K) (H ∘c t)
+bindSp-Tree LP LQ H K HK (ret p) rp = HK p rp
+bindSp-Tree LP LQ H K HK (spl ρ n k) (t' , (rk , e)) =
+  _ , (bindSp-Tree LP LQ H K HK k rk ,
+       ≈ctrans (∘c-congʳ e) (≈csym c∘-assoc))
+bindSp-Tree LP LQ H K HK (usI ρ n k) (t' , (rk , e)) =
+  _ , (bindSp-Tree LP LQ H K HK k rk ,
+       ≈ctrans (∘c-congʳ e) (≈csym c∘-assoc))
