@@ -33,6 +33,7 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Type using (Type; Unit; Int; _*_; _+_; _⇒[_]_)
 open import Once.IR
+import Once.IRTy as II
 open import Once.SigOp.Info using (SigOpInfo)
 
 open import Once.Arith.Machine.AbsState
@@ -52,10 +53,12 @@ open import Once.Arith.SigOp.Block using (block-info)
 -- `InputShape` together with the proof `A ≡ shape-as-type sh`. The
 -- proof lets us coerce a recognised block's SigOp (whose domain is
 -- `shape-as-type sh`) back into the IR's domain `A`.
-shape-of : (A : Type) → Maybe (Σ[ sh ∈ InputShape ] (A ≡ shape-as-type sh))
-shape-of Unit                              = just (shape-unit , refl)
-shape-of Int                               = just (shape-int  , refl)
-shape-of (l * r)                           with shape-of l | shape-of r
+-- Plan 0.52 M2: `IR` objects are `IRTy`, so this walks the ERASED domain and
+-- returns `A ≡ ⌊ shape-as-type sh ⌋` (`⌊_⌋` commutes with Unit/Int/`_*_`).
+shape-of : (A : II.IRTy) → Maybe (Σ[ sh ∈ InputShape ] (A ≡ ⌊ shape-as-type sh ⌋))
+shape-of II.Unit                           = just (shape-unit , refl)
+shape-of II.Int                            = just (shape-int  , refl)
+shape-of (l II.* r)                        with shape-of l | shape-of r
 ... | just (sl , refl) | just (sr , refl)  = just (shape-pair sl sr , refl)
 ... | _                | _                 = nothing
 shape-of _                                 = nothing
@@ -85,16 +88,16 @@ has-op (aneg _)    = true
 -- | Build the `IR A Int` whose runtime behaviour is the recognised
 -- arith block. The domain `A` is whatever `shape-of` returned a
 -- shape for; the body is the recognised `MArithIR sh`.
-block-as-ir : ∀ {A sh} → A ≡ shape-as-type sh → MArithIR sh → IR A Int
+block-as-ir : ∀ {A sh} → A ≡ ⌊ shape-as-type sh ⌋ → MArithIR sh → IR A ⌊ Int ⌋
 block-as-ir {A} {sh} eq body =
-  subst (λ T → IR T Int) (sym eq) (SigOp (block-info body))
+  subst (λ T → IR T ⌊ Int ⌋) (sym eq) (SigOp (block-info body))
 
 ------------------------------------------------------------------------
 -- Recognition attempt parameterised on the IR's domain
 ------------------------------------------------------------------------
 
 try-lift : ∀ {A B} → IR A B → Maybe (IR A B × ArithBlock)
-try-lift {A} {Int} ir                              with shape-of A
+try-lift {A} {II.Int} ir                           with shape-of A
 ... | nothing                                       = nothing
 ... | just (sh , eq)                                with recognise-body sh ir
 ...   | nothing                                     = nothing
@@ -150,7 +153,6 @@ rewrite-ir ir with try-lift ir
       let (f' , bf) = rewrite-ir f
       in (curry f' m) , bf
     walk apply             = apply , []
-    walk arr               = arr , []
     walk (In w m)          = In w m , []
     walk (out-μ w)         = out-μ w , []
     walk (Cata w f)        =
