@@ -1253,13 +1253,27 @@ no system anywhere has directed type theory with a decidable kernel.
               via β⊸ + pid-realC). REMAINING (5, the absorb/withSp
               cases): αrc/αlc (bindSp+withSpˡ/withSpʳ), ƛrc/ρrc
               (absorb+withSp), evc (absorb+bindSp — the application).
-              They share a needed helper **`R-absorb`** (the split-
-              monad join preserves R): `R-absorb-ret : R B x u →
-              R B (absorb B (ret x)) u` (induction on B, ⊸ via function
-              η — NO funext, it's about R not ≡), lifted to trees.
-              evc's ret leaf then = R-absorb-ret + R-vmap + R-resp; the
-              α cases add the withSp splice structure. Each is
-              session-scale.
+              They share a helper **`R-join`** (the split-monad join
+              preserves R), BUILT in scratch `NbEPMonAdq16-WIP.agda`:
+              `RVal B sp t` (tree of Val-B leaves R-related, node
+              dressing mirroring reifySp) and `R-join : RVal B sp t →
+              R B (absorb B sp) t`. The NON-⊸ cases (ι/I/⊗) are DONE
+              and clean — absorb = bindSp id threads through spl/usI on
+              the nose (transport-free again). The ⊸ case = `R-join B
+              (appSp Δ w sp) (appSp-RVal …)`, and appSp-RVal's spl/usI
+              nodes reduce to ONE structural equation
+              **(†): `(DR ⊗ idc) ∘c mult Γ Δ ≈c mult (X∷Y∷Θ₂) Δ ∘c
+              NODE`** (DR = the node dress, NODE = the appSp-adjusted
+              node) — literally the appSp-splice node computation
+              (Adq10), provable by node-perm-real + ⊙P-pidˡ + n-α +
+              the mult-head² collapse. With (†) the ⊸ case closes;
+              nodeEq wiring around it is derived (substitute via e,
+              factor (t'∘DR)⊗s = (t'⊗s)∘(DR⊗1), reassoc, apply (†)).
+              REMAINING to finish A4.4: (†), then each of the 5 fund
+              cases wires R-join to an RVal-building tree induction —
+              evc = R-join B (bindSp v K) (evc-tree v r) where
+              evc-tree's ret leaf = rf w s (R-vmap+R-resp); α/ƛ/ρ add
+              the withSp splice on the RVal build.
             A4.5 — assembly: `f ≈c NF f` from R-reflectTy A +
               fundamental lemma + R-reify + join-split, giving
               `NF f ≡ NF g → f ≈c g` — the proven decision procedure.
