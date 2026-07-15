@@ -32,6 +32,7 @@ open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type;
                              Functor; K; Id; _⊕_; _⊗_)
 open import Once.IR as IR using (IR; Heap)
+open import Once.IRTy using (⌊_⌋)
 open import Once.TypeCheck.Raw as Raw using (RawExpr; RVar; RApp)
 
 ------------------------------------------------------------------------
@@ -102,7 +103,7 @@ morphRaw? _ = nothing
 -- those types (e.g. `inl` whose target isn't a sum starting at X).
 ------------------------------------------------------------------------
 
-morphToIR : ∀ {alg} → MorphRaw alg → (X A : Type) → Maybe (IR X A)
+morphToIR : ∀ {alg} → MorphRaw alg → (X A : Type) → Maybe (IR ⌊ X ⌋ ⌊ A ⌋)
 morphToIR mr-id X A with X ≡T? A
 ... | just refl = just IR.id
 ... | nothing   = nothing
@@ -115,11 +116,11 @@ morphToIR mr-snd (P * Q) A with Q ≡T? A
 ... | nothing   = nothing
 morphToIR mr-snd _ _ = nothing
 morphToIR mr-inl X (L + R) with X ≡T? L
-... | just refl = just (IR.inl {A = X} {B = R} Heap)
+... | just refl = just (IR.inl {A = ⌊ X ⌋} {B = ⌊ R ⌋} Heap)
 ... | nothing   = nothing
 morphToIR mr-inl _ _ = nothing
 morphToIR mr-inr X (L + R) with X ≡T? R
-... | just refl = just (IR.inr {A = L} {B = X} Heap)
+... | just refl = just (IR.inr {A = ⌊ L ⌋} {B = ⌊ X ⌋} Heap)
 ... | nothing   = nothing
 morphToIR mr-inr _ _ = nothing
 morphToIR mr-terminal X Unit = just IR.terminal
