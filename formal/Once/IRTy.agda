@@ -23,6 +23,9 @@
 module Once.IRTy where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
+open import Relation.Nullary using (Dec; yes; no)
+open import Data.Nat using (ℕ)
+import Data.Nat.Properties as ℕP
 open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_)
@@ -118,6 +121,104 @@ data WellFormedFI : IRFunctor → Set where
   wf-Id   : WellFormedFI Id
   wf-Sum  : ∀ {F G} → WellFormedFI F → WellFormedFI G → WellFormedFI (F ⊕ G)
   wf-Prod : ∀ {F G} → WellFormedFI F → WellFormedFI G → WellFormedFI (F ⊗ G)
+
+-- Proof-irrelevance of the ungraded witnesses (mirror `IsBaseType-irrelevant` /
+-- `WellFormedF-irrelevant`; needed by the IR decidable-equality deciders).
+IsBaseTypeI-irrelevant : ∀ {A} (ib₁ ib₂ : IsBaseTypeI A) → ib₁ ≡ ib₂
+IsBaseTypeI-irrelevant base-Unit   base-Unit   = refl
+IsBaseTypeI-irrelevant base-Void   base-Void   = refl
+IsBaseTypeI-irrelevant base-Int    base-Int    = refl
+IsBaseTypeI-irrelevant base-Float  base-Float  = refl
+IsBaseTypeI-irrelevant base-Str    base-Str    = refl
+IsBaseTypeI-irrelevant base-Buffer base-Buffer = refl
+IsBaseTypeI-irrelevant (base-Prod a₁ b₁) (base-Prod a₂ b₂) =
+  cong₂ base-Prod (IsBaseTypeI-irrelevant a₁ a₂) (IsBaseTypeI-irrelevant b₁ b₂)
+IsBaseTypeI-irrelevant (base-Sum a₁ b₁) (base-Sum a₂ b₂) =
+  cong₂ base-Sum (IsBaseTypeI-irrelevant a₁ a₂) (IsBaseTypeI-irrelevant b₁ b₂)
+
+WellFormedFI-irrelevant : ∀ {F} (wf₁ wf₂ : WellFormedFI F) → wf₁ ≡ wf₂
+WellFormedFI-irrelevant (wf-K ib₁) (wf-K ib₂) = cong wf-K (IsBaseTypeI-irrelevant ib₁ ib₂)
+WellFormedFI-irrelevant wf-Id wf-Id = refl
+WellFormedFI-irrelevant (wf-Sum wfF₁ wfG₁) (wf-Sum wfF₂ wfG₂) =
+  cong₂ wf-Sum (WellFormedFI-irrelevant wfF₁ wfF₂) (WellFormedFI-irrelevant wfG₁ wfG₂)
+WellFormedFI-irrelevant (wf-Prod wfF₁ wfG₁) (wf-Prod wfF₂ wfG₂) =
+  cong₂ wf-Prod (WellFormedFI-irrelevant wfF₁ wfF₂) (WellFormedFI-irrelevant wfG₁ wfG₂)
+
+-- Decidable equality on IRTy objects (mutual with IRFunctor). Needed by the IR
+-- optimizer's `≟IRH` deciders now that `_∘_`'s middle object is IRTy. `IRTy`
+-- uses the tag+diag pattern (cross-tag cases pruned by the absurd tag equality).
+irtyTag : IRTy → ℕ
+irtyTag Unit       = 0
+irtyTag Void       = 1
+irtyTag (_ * _)    = 2
+irtyTag (_ + _)    = 3
+irtyTag (_ ⇛ _)    = 4
+irtyTag (μ-type _) = 5
+irtyTag (ν-type _) = 6
+irtyTag Int        = 7
+irtyTag Float      = 8
+irtyTag Str        = 9
+irtyTag Buffer     = 10
+
+mutual
+  _≟IRTy_ : (A B : IRTy) → Dec (A ≡ B)
+  A ≟IRTy B = ≟IRTy-aux A B (irtyTag A ℕP.≟ irtyTag B)
+
+  ≟IRTy-aux : (A B : IRTy) → Dec (irtyTag A ≡ irtyTag B) → Dec (A ≡ B)
+  ≟IRTy-aux A B (no hne)  = no (λ eq → hne (cong irtyTag eq))
+  ≟IRTy-aux A B (yes heq) = ≟IRTy-diag A B heq
+
+  ≟IRTy-diag : (A B : IRTy) → irtyTag A ≡ irtyTag B → Dec (A ≡ B)
+  ≟IRTy-diag Unit   Unit   _ = yes refl
+  ≟IRTy-diag Void   Void   _ = yes refl
+  ≟IRTy-diag (A * B) (C * D) _ with A ≟IRTy C | B ≟IRTy D
+  ... | yes refl | yes refl = yes refl
+  ... | no ne    | _        = no (λ { refl → ne refl })
+  ... | _        | no ne    = no (λ { refl → ne refl })
+  ≟IRTy-diag (A + B) (C + D) _ with A ≟IRTy C | B ≟IRTy D
+  ... | yes refl | yes refl = yes refl
+  ... | no ne    | _        = no (λ { refl → ne refl })
+  ... | _        | no ne    = no (λ { refl → ne refl })
+  ≟IRTy-diag (A ⇛ B) (C ⇛ D) _ with A ≟IRTy C | B ≟IRTy D
+  ... | yes refl | yes refl = yes refl
+  ... | no ne    | _        = no (λ { refl → ne refl })
+  ... | _        | no ne    = no (λ { refl → ne refl })
+  ≟IRTy-diag (μ-type F) (μ-type G) _ with F ≟IRFun G
+  ... | yes refl = yes refl
+  ... | no ne    = no (λ { refl → ne refl })
+  ≟IRTy-diag (ν-type F) (ν-type G) _ with F ≟IRFun G
+  ... | yes refl = yes refl
+  ... | no ne    = no (λ { refl → ne refl })
+  ≟IRTy-diag Int    Int    _ = yes refl
+  ≟IRTy-diag Float  Float  _ = yes refl
+  ≟IRTy-diag Str    Str    _ = yes refl
+  ≟IRTy-diag Buffer Buffer _ = yes refl
+
+  _≟IRFun_ : (F G : IRFunctor) → Dec (F ≡ G)
+  K A ≟IRFun K B with A ≟IRTy B
+  ... | yes refl = yes refl
+  ... | no ne    = no (λ { refl → ne refl })
+  Id ≟IRFun Id = yes refl
+  (F ⊕ G) ≟IRFun (F' ⊕ G') with F ≟IRFun F' | G ≟IRFun G'
+  ... | yes refl | yes refl = yes refl
+  ... | no ne    | _        = no (λ { refl → ne refl })
+  ... | _        | no ne    = no (λ { refl → ne refl })
+  (F ⊗ G) ≟IRFun (F' ⊗ G') with F ≟IRFun F' | G ≟IRFun G'
+  ... | yes refl | yes refl = yes refl
+  ... | no ne    | _        = no (λ { refl → ne refl })
+  ... | _        | no ne    = no (λ { refl → ne refl })
+  K _ ≟IRFun Id      = no (λ ())
+  K _ ≟IRFun (_ ⊕ _) = no (λ ())
+  K _ ≟IRFun (_ ⊗ _) = no (λ ())
+  Id  ≟IRFun K _      = no (λ ())
+  Id  ≟IRFun (_ ⊕ _) = no (λ ())
+  Id  ≟IRFun (_ ⊗ _) = no (λ ())
+  (_ ⊕ _) ≟IRFun K _  = no (λ ())
+  (_ ⊕ _) ≟IRFun Id   = no (λ ())
+  (_ ⊕ _) ≟IRFun (_ ⊗ _) = no (λ ())
+  (_ ⊗ _) ≟IRFun K _  = no (λ ())
+  (_ ⊗ _) ≟IRFun Id   = no (λ ())
+  (_ ⊗ _) ≟IRFun (_ ⊕ _) = no (λ ())
 
 -- | Register-resident base IRTy objects (mirror `Once.Type.FitsInReg`),
 -- for the `const` literal constructor.
