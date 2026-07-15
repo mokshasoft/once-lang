@@ -1243,8 +1243,8 @@ no system anywhere has directed type theory with a decidable kernel.
               interchangeC). R-reify ⊸ = η⊸ + join-split; R-reflectNe
               I/⊗ via pidR-real + Kelly ƛ_I=ρ_I + the ρ-triangle;
               R-reflectTy atoms/I/⊗/⊸.
-            A4.4 [7 of 12 cases DONE, WIP in scratch
-              `NbEPMonAdq15-WIP.agda`] — THE FUNDAMENTAL LEMMA
+            A4.4 [DONE 2026-07-16, `NbEPMonAdq15/16/17` — --safe] —
+              THE FUNDAMENTAL LEMMA
               `R A v t → R B (evalV f v) (f ∘c t)` by induction on f.
               PROVEN: idc/∘c (R-resp plumbing), **⊗c/σc** (mapSp tree
               recursion — nodes recurse via push-∘, the ret leaf
@@ -1269,18 +1269,33 @@ no system anywhere has directed type theory with a decidable kernel.
               the mult-head² collapse. With (†) the ⊸ case closes;
               nodeEq wiring around it is derived (substitute via e,
               factor (t'∘DR)⊗s = (t'⊗s)∘(DR⊗1), reassoc, apply (†)).
-              REMAINING to finish A4.4: (†), then each of the 5 fund
-              cases wires R-join to an RVal-building tree induction —
-              evc = R-join B (bindSp v K) (evc-tree v r) where
-              evc-tree's ret leaf = rf w s (R-vmap+R-resp); α/ƛ/ρ add
-              the withSp splice on the RVal build.
-            A4.5 — assembly: `f ≈c NF f` from R-reflectTy A +
-              fundamental lemma + R-reify + join-split, giving
-              `NF f ≡ NF g → f ≈c g` — the proven decision procedure.
-            STATUS: A4.1/A4.2/A4.3 committed --safe green (the relation,
-              monotonicity, and reify/reflect boundary — the whole
-              definitional + boundary layer); A4.4 is 7/12, remaining
-              are the 5 absorb/withSp cases sharing R-absorb.
+              HOW THE 5 CLOSED: `NbEPMonAdq16` = R-join (via (†) =
+              dagger/daggerI + appSp-RVal). `NbEPMonAdq17` = the GENERIC
+              `Tree LP` relation (R⊗/RI/RVal are instances) plus
+              `withSpˡ-Tree`/`withSpʳ-Tree` (the R-level withSp-splices,
+              node computations via nodeL/nodeLI = node-perm-real
+              directly — the transport-free dividend), `Tree-resp`, and
+              `bindSp-Tree` (bindSp threads the tree, dressing each leaf
+              with a head H). `NbEPMonAdq15` = fund itself: evc via
+              R-join+bindSp; **αrc/αlc** via bindSp-Tree+withSp-Tree, the
+              leaf node-computation landing on node-perm-real (αr) / the
+              new **`node-perm-realˡ`** mirror (αl, from passocInv-real +
+              padˡ-real) + cα-nat/α-natˡC; **ƛrc/ρrc** via
+              R-join+bindSp-Tree+withSp-Tree, the unit-leaf coherence
+              from cƛ-iso₁ (mult ε = ƛlc) / pidRInv-real. PREREQUISITE
+              refactor: the α/ƛ/ρ continuations lifted to top-level in
+              `NbEPMonF` (`evkα`/`evkαl`/`evkƛo`/`evkρo` + inner
+              `evkαi`/`evkαli`/`evkƛ`/`evkρ`, over the `⊗Leaf` synonym)
+              so the proof names evalV's exact continuations.
+            A4.5 [DONE 2026-07-16, `NbEPMonAdq18` — --safe] — assembly:
+              `adequacy : f ≈c NF f` from R-reflectTy A + fundamental
+              lemma + R-reify + join-split, giving
+              `decide : NF f ≡ NF g → f ≈c g` — the proven decision
+              procedure for `_≈c_`.
+            STATUS: **A4 COMPLETE, all --safe. L3.4b ADEQUACY FOR THE
+              FREE SMCC IS MACHINE-CHECKED** — `adequacy : f ≈c NF f`
+              and `decide : NF f ≡ NF g → f ≈c g` in `NbEPMonAdq18`.
+              (97 OCP-0009 modules, 88 --safe.)
      · Soundness/completeness against `_≈c_` in each stage mirror the
        NbEP adequacy scaffolding (logical relations, stage L2a's `Ext`
        as the semantic side).
