@@ -79,7 +79,7 @@ ir-size-nt (ntPair t u) = 1 +ℕ ir-size-nt t +ℕ ir-size-nt u
 ⟨,⟩-g-smaller : ∀ {A B C} (f : IR A B) (g : IR A C) {m : AllocMode} → ir-size g < ir-size (⟨ f , g ⟩ m)
 ⟨,⟩-g-smaller f g {m} = s≤s (m≤n+m (ir-size g) (ir-size f))
 
-curry-smaller : ∀ {A B C k} (f : IR (A * B) C) {m : AllocMode} → ir-size f < ir-size (curry {k = k} f m)
+curry-smaller : ∀ {A B C} (f : IR (A * B) C) {m : AllocMode} → ir-size f < ir-size (curry f m)
 curry-smaller f {m} = m≤n⇒m≤1+n (n<1+n (ir-size f))
 
 case-f-smaller : ∀ {A B C} (f : IR A C) (g : IR B C) → ir-size f < ir-size (case f g)
