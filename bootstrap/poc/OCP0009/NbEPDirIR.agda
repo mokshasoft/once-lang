@@ -39,9 +39,11 @@ open import normalizer.Syntax.Types
   using ( Ty; Func; Id; One; Kc; _⊕_; _⊗_; μ_; ⟦_⟧F )
 open import normalizer.Syntax.CCC as C
   using ( Term; id; _∘_; fst; snd; inl; inr; [_,_]; ⟨_,_⟩; In; cata; fmap
-        ; _⟶_; _⟶*_; done; step; assoc-r; ⟶*-trans )
+        ; _⟶_; _⟶*_; done; step; assoc-r; ⟶*-trans
+        ; id-left; id-right; eta-case; eta-pair
+        ; ⟶*-∘-l; ⟶*-∘-r; ⟶*-case; ⟶*-pair )
 open import poc.OCP0009.NbEPDir  using ( Hom )
-open import poc.OCP0009.NbEPDirC using ( cata-run )
+open import poc.OCP0009.NbEPDirC using ( cata-run; cataH )
 
 ------------------------------------------------------------------------
 -- The real IR's `NatTr`, verbatim in shape (its `K` is `Kc` here).
@@ -112,3 +114,56 @@ _ : ∀ {B} (alg : Term (⟦ Id ⊕ Id ⟧F B) B) →
     Hom (fuseD swap⊕ alg ∘ In)
         (alg ∘ (⟦ swap⊕ ⟧nt ∘ fmap (Id ⊕ Id) (fuseD swap⊕ alg)))
 _ = λ alg → fuse-run swap⊕ alg
+
+------------------------------------------------------------------------
+-- Fuse GENERALIZES Cata: the identity structural `NatTr` interprets to the
+-- identity, so `Fuse alg idNat` reduces to `cata alg` — directionally.
+--
+-- `idNat` exists for the ONE-free polynomial functors (`Poly`): the real
+-- IR has no bare `One` leaf — its base is `K Unit`, an `ntK` — and a bare
+-- `One` has no self-`NatTr` (there is no directed `terminal ⟶ id`). The
+-- `idNat-id` proof is `NbEPDirC.fmap-idH` verbatim in shape: the identity
+-- transformation and the identity `fmap` collapse the same way.
+------------------------------------------------------------------------
+
+data Poly : Func → Set where
+  pId : Poly Id
+  pKc : ∀ {G} → Poly (Kc G)
+  p⊕  : ∀ {F G} → Poly F → Poly G → Poly (F ⊕ G)
+  p⊗  : ∀ {F G} → Poly F → Poly G → Poly (F ⊗ G)
+
+idNat : ∀ {F} → Poly F → NatTr F F
+idNat pId        = ntId
+idNat pKc        = ntK id
+idNat (p⊕ pf pg) = ntCase (ntInl (idNat pf)) (ntInr (idNat pg))
+idNat (p⊗ pf pg) = ntPair (ntFst (idNat pf)) (ntSnd (idNat pg))
+
+idNat-id : ∀ {F} (pf : Poly F) {X} → Hom (⟦ idNat pf ⟧nt {X}) id
+idNat-id pId        = done
+idNat-id pKc        = done
+idNat-id (p⊕ pf pg) =
+  ⟶*-trans (⟶*-case (⟶*-∘-r inl (idNat-id pf)) (⟶*-∘-r inr (idNat-id pg)))
+  (⟶*-trans (⟶*-case (step id-right done) (step id-right done))
+            (step eta-case done))
+idNat-id (p⊗ pf pg) =
+  ⟶*-trans (⟶*-pair (⟶*-∘-l fst (idNat-id pf)) (⟶*-∘-l snd (idNat-id pg)))
+  (⟶*-trans (⟶*-pair (step id-left done) (step id-left done))
+            (step eta-pair done))
+
+-- Fuse with the identity structural transformation IS Cata (directionally).
+fuse-idNat : ∀ {F B} (pf : Poly F) (alg : Term (⟦ F ⟧F B) B) →
+             Hom (fuseD (idNat pf) alg) (cata F alg)
+fuse-idNat {F} pf alg =
+  cataH F (⟶*-trans (⟶*-∘-r alg (idNat-id pf)) (step id-right done))
+
+------------------------------------------------------------------------
+-- The ℕ analog `μ(Kc One ⊕ Id)` (the real IR's `K Unit ⊕ Id`): its
+-- identity Fuse reduces to the plain fold.
+------------------------------------------------------------------------
+
+NatK : Func
+NatK = Kc One ⊕ Id
+
+_ : ∀ {B} (alg : Term (⟦ NatK ⟧F B) B) →
+    Hom (fuseD (idNat (p⊕ pKc pId)) alg) (cata NatK alg)
+_ = λ alg → fuse-idNat (p⊕ pKc pId) alg
