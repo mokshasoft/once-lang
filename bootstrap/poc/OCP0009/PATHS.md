@@ -200,7 +200,7 @@ construction; 5 is the open research frontier.
 
 ## The directed tower — module map
 
-The Path-2 POC is a six-module arc over the CCC reduction relation (all
+The Path-2 POC is a seven-module arc over the CCC reduction relation (all
 `--safe`, in `bootstrap/poc/OCP0009/`):
 
 | module | rung | what it establishes |
@@ -213,6 +213,7 @@ The Path-2 POC is a six-module arc over the CCC reduction relation (all
 | `NbEPDirF` | dHoTT-4 | **Fold fusion via semantic cata-uniqueness**: `fusion` (Set) and `fusion-eval` (IR programs, through `eval`) — `h∘alg ≐ alg'∘fmap h ⟹ h∘cata alg ≐ cata alg'`, by induction on `Fix`. The universal property `⟶*` cannot see. |
 | `NbEPDirCwF` | dHoTT-5 | **A directed CwF** — the base of directed dependent types: `Ctx` (contexts = directed categories), `Ty⁺`/`Ty⁻` (co/contravariant types), `Sub`, **variance-respecting substitution** `_[_]⁺`/`_[_]⁻`, `Tm`, comprehension `_▷_` (Grothendieck) with `p`/`q`, `HomTy : Ty⁺(Cᵒᵖ⊗C)` (**the directed identity type as a type former**), the category of contexts (`idSub`/`∘ₛ`/`◇`), and `redHom = HomTy(redCat)` recovering `⟶*` at Once's real IR. |
 | `NbEPDirCwFL` | dHoTT-5b | **The CwF substitution laws, set-level** — `subst-id : A[idSub]⁺ ≡ A` and `subst-∘ : A[σ∘ₛτ]⁺ ≡ (A[σ]⁺)[τ]⁺`, threading `funext` as a hypothesis (no postulate, stays `--safe`). The presheaf laws need **NO UIP**: `subst-id` closes with `funext` + the `J`-lemma `trans-reflˡ`; UIP is required only for the comprehension's category laws (h-set `fam`), not the presheaf laws. |
+| `NbEPDirCwFJ` | dHoTT-5c | **Directed `J` for `HomTy` = the directed Yoneda lemma** — makes `HomTy` load-bearing. Over an abstract `Cat C` morphisms are opaque, so the eliminator can't come from induction (as `DirJ`'s does on `⟶*` chains): it comes from the covariant action. `Yo⁺`/`Yo⁻` (representables = the directed `Id` based at source/target), `Jᶜ P d f = act P f d` (the eliminator), `Jᶜ-id` (computation, from `actid`), `Jᶜ-nat` (it is a natural transformation `Yo⁺ C a ⇛ P`), `Jᶜ-η` (uniqueness, from `unitˡ` + naturality — **no `sym`**), giving the Yoneda iso `(Yo⁺ C a ⇛ P) ≅ P a` pointwise. At `redCat` (Once's IR), `Jᶜ` computes to chain composition `⟶*-trans` definitionally. |
 
 The pattern across `DirC`/`DirF` is the load-bearing one: directed reduction
 gives the *covariant/computational* structure for free (functor actions, the
@@ -222,6 +223,17 @@ semantic model / a completeness fact). Directedness carries computation and
 variance; the invertible/semantic layer closes coherence. The two towers meet in
 `NbEPMonD` (conversion by `nf` as the equality rule; the groupoid core via
 `invS`).
+
+`NbEPDirCwFJ` (dHoTT-5c) answers "is the directed CwF load-bearing?" — yes: it
+has an elimination principle. `DirJ`'s `J` inducts on the *constructors* of a
+concrete `⟶*` chain; the CwF's `HomTy` sits over an *abstract* category whose
+morphisms have no constructors, so the eliminator must be the covariant action
+itself. That this suffices — that a covariant family out of `Hom(a,—)` is fixed
+by its value at `idₒ` — is precisely the **Yoneda lemma**, here read as
+*directed path induction*: computation from `actid`, uniqueness from `unitˡ` +
+naturality, and crucially **no `sym`** anywhere (the same directedness `DirJ`'s
+`no-sym` makes precise, now at the CwF level). Directed J is Yoneda; the
+directed identity type eliminates.
 
 ## Linearizing the real core (`formal/Once/IR.agda`)
 
