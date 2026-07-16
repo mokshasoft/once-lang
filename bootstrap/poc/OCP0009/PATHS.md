@@ -142,6 +142,29 @@ dependent kernel it needs, in rough dependency order:
 Items 1 and 4 lean directly on what is already done; 2 and 3 are the real new
 construction; 5 is the open research frontier.
 
+## The directed tower — module map
+
+The Path-2 POC is a six-module arc over the CCC reduction relation (all
+`--safe`, in `bootstrap/poc/OCP0009/`):
+
+| module | rung | what it establishes |
+|---|---|---|
+| `NbEPDir`  | 0 | `Hom t u = t ⟶* u` — the free category on the reduction graph (`idH`/`∘H`); genuine directedness: `no-way-back : ¬ Hom tgt src` proven (a proposition symmetric equality cannot state). |
+| `NbEPDirU` | 1 | `Hom` internalized as object-language codes (`prog`/`hom`); irreversibility as an internal proposition. |
+| `NbEPDirJ` | dHoTT-1 | **`Hom` is a directed identity type**: `J` in three forms, **`sym` refuted** (not just absent), `transport⟶` (covariant, costs one covariance step), `yo` (the Yoneda action = directed transport at its own hom-family), `J-U` (universe-valued `J`). |
+| `NbEPDirV` | dHoTT-2 | **Variance**: `Homₜ` (types as objects, programs as directed maps); `×→`/`+→` covariant functors (laws by `⟶*`); `⇒→` **contravariant in its domain** — the variance signature. Finding: the exponential's functor law is an η-incompleteness of the (non-confluent) rewrite, not an obstruction (`curry apply = id` semantically). |
+| `NbEPDirC` | dHoTT-3 | **Directed recursion (cata, wall-free)**: `fmapH`/`fmap-idH` (polynomial functors are directed functors by reduction), `cataH` (functorial in the algebra), `cata-run` (the fold computes by a directed step), and the `ℕ = μ(One⊕Id)` unfolding — each constructor layer consumed **exactly once** (cata's linearity in the trace). |
+| `NbEPDirF` | dHoTT-4 | **Fold fusion via semantic cata-uniqueness**: `fusion` (Set) and `fusion-eval` (IR programs, through `eval`) — `h∘alg ≐ alg'∘fmap h ⟹ h∘cata alg ≐ cata alg'`, by induction on `Fix`. The universal property `⟶*` cannot see. |
+
+The pattern across `DirC`/`DirF` is the load-bearing one: directed reduction
+gives the *covariant/computational* structure for free (functor actions, the
+fold's computation, the linearity trace); the *coherence laws* — the
+exponential's functoriality and fold fusion — need a step beyond reduction (the
+semantic model / a completeness fact). Directedness carries computation and
+variance; the invertible/semantic layer closes coherence. The two towers meet in
+`NbEPMonD` (conversion by `nf` as the equality rule; the groupoid core via
+`invS`).
+
 ## Linearizing the real core (`formal/Once/IR.agda`)
 
 The above is about the *POC* IR. The **real** compiler IR is `formal/Once/IR.agda`
