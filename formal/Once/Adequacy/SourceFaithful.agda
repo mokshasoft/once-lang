@@ -29,20 +29,29 @@ open import Data.Nat using (ℕ)
 open import Data.Unit using (tt)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.List using (List; []; _++_)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Empty using (⊥-elim)
-open import Data.Product using (_,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym; subst-sym-subst)
 open import Data.List.Properties using (++-identityʳ; ++-assoc)
 open import Once.Denotation.Trace using (SigOpEvent)
 
-open import Once.Type using (Type; Unit; Void; Int; Str; Float; Buffer; _*_; _+_; _⇒[_]_; μ-type; ν-type)
-open import Once.Functor.Translate using (con-base; con-fun)
+open import Once.Type using (Type; Unit; Void; Int; Str; Float; Buffer; _*_; _+_; _⇒[_]_; μ-type; ν-type; mk-kind; pure; eff; Many)
+open import Once.Functor.Translate using (con-base; con-fun; base-Unit)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ⟦_⟧ᶜ)
-open import Once.Surface.Elaborate using (elaborate; proj)
+open import Once.Surface.Context using () renaming (_,_ to _,ᶜ_)
+open import Once.Surface.Elaborate using (elaborate; proj; distribute)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
-open import Once.IR using (_∘_; ⟨_,_⟩; apply)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; inject)
+open import Once.IR using (_∘_; ⟨_,_⟩; apply; fst; snd; curry; SigOp; terminal; case) renaming (id to idIR)
+open import Once.Arith.SigOp.Builders using (arrow-info; value-info; internal-info)
+open import Once.Adequacy.CataErased using (liftFn-SigOp)
+open import Once.SigOp.Info using (SigOpInfo; semM)
+open import Once.Denotation.DenotTrace using (emit-D)
+open import Once.CanonicalName using (bare)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; inject; liftFn; cohᴰ)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
+open import Once.IRTy using (IRTy; ⌊_⌋) renaming (_*_ to _*ᴵ_; _+_ to _+ᴵ_)
+open import Function using (id)
 open import Once.CCC.Eval as Val using ()
 import Once.Denotation.SourceDenote as SD
 import Once.Compile as C
@@ -67,10 +76,107 @@ inj-uu (inj₂ _) = refl
 -- `var i` ↦ `proj i` (`proj zero = snd`, `proj (suc i) = proj i ∘ fst`), which
 -- mirrors `lookupᴰ`; `∘`/`fst` reduce (returnT, []++X) so `proj (suc i)` peels to
 -- the sub-env. Pure structural induction on the de-Bruijn index.
+-- transport push-helpers (all `refl`)
+proj₁-subst : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (dγ : A' × B')
+            → proj₁ (subst id (sym (cong₂ _×_ p q)) dγ) ≡ subst id (sym p) (proj₁ dγ)
+proj₁-subst refl refl dγ = refl
+
+proj₂-subst : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (dγ : A' × B')
+            → proj₂ (subst id (sym (cong₂ _×_ p q)) dγ) ≡ subst id (sym q) (proj₂ dγ)
+proj₂-subst refl refl dγ = refl
+
+subst-T-returnT : ∀ {X Y : Set} (eq : X ≡ Y) (g : X)
+  → subst T eq (returnT g) ≡ returnT (subst id eq g)
+subst-T-returnT refl g = refl
+
+subst-T-apply : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (n : ℕ)
+  → subst T eq h n ≡ (proj₁ (h n) , subst id eq (proj₂ (h n)))
+subst-T-apply refl h n = refl
+
+pair-subst⁻ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A') (b : B')
+  → subst id (sym (cong₂ _×_ p q)) (a , b) ≡ (subst id (sym p) a , subst id (sym q) b)
+pair-subst⁻ refl refl a b = refl
+
+push⊎₁⁻ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A')
+  → subst id (sym (cong₂ _⊎_ p q)) (inj₁ a) ≡ inj₁ (subst id (sym p) a)
+push⊎₁⁻ refl refl a = refl
+
+push⊎₂⁻ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (b : B')
+  → subst id (sym (cong₂ _⊎_ p q)) (inj₂ b) ≡ inj₂ (subst id (sym q) b)
+push⊎₂⁻ refl refl b = refl
+
+subst-arrowᴰ : ∀ {DI DT EI ET : Set} (pD : DI ≡ DT) (pE : EI ≡ ET) (g : DI → T EI)
+  → subst id (cong₂ (λ x y → x → T y) pD pE) g
+    ≡ (λ x → subst T pE (g (subst id (sym pD) x)))
+subst-arrowᴰ refl refl g = refl
+
+-- MISSING COMBINATOR (not a proof fight): `distribute` is a PURE re-shaping
+-- (`case`/`curry`/`apply`/`swap'`, no SigOps), but its `apply∘curry∘case` body
+-- doesn't β-reduce on its own. Prove once that its denotation is the obvious
+-- `returnT (reshaped v)` (empty trace) — then `case'` closes cleanly.
+distribute-reduce : ∀ {Γ A B : IRTy} (dγ : ⟦ Γ ⟧ᴰᴵ) (v : ⟦ A ⟧ᴰᴵ ⊎ ⟦ B ⟧ᴰᴵ)
+  → evalᴰ (distribute {Γ} {A} {B} C.Heap) (dγ , v)
+    ≡ returnT ([ (λ a → inj₁ (dγ , a)) , (λ b → inj₂ (dγ , b)) ]′ v)
+distribute-reduce dγ (inj₁ a) = refl
+distribute-reduce dγ (inj₂ b) = refl
+
+-- single-subterm projection/injection transports (all `refl`)
+fst-transport : ∀ {AI AT BI BT : Set} (pA : AI ≡ AT) (pB : BI ≡ BT) (h : T (AT × BT)) (n : ℕ)
+  → subst T pA ((subst T (sym (cong₂ _×_ pA pB)) h) >>=T (λ v → returnT (proj₁ v))) n
+    ≡ (h >>=T (λ v → returnT (proj₁ v))) n
+fst-transport refl refl h n = refl
+
+snd-transport : ∀ {AI AT BI BT : Set} (pA : AI ≡ AT) (pB : BI ≡ BT) (h : T (AT × BT)) (n : ℕ)
+  → subst T pB ((subst T (sym (cong₂ _×_ pA pB)) h) >>=T (λ v → returnT (proj₂ v))) n
+    ≡ (h >>=T (λ v → returnT (proj₂ v))) n
+snd-transport refl refl h n = refl
+
+inl-transport : ∀ {AI AT BI BT : Set} (pA : AI ≡ AT) (pB : BI ≡ BT) (h : T AT) (n : ℕ)
+  → subst T (cong₂ _⊎_ pA pB) ((subst T (sym pA) h) >>=T (λ v → returnT (inj₁ v))) n
+    ≡ (h >>=T (λ v → returnT (inj₁ v))) n
+inl-transport refl refl h n = refl
+
+inr-transport : ∀ {AI AT BI BT : Set} (pA : AI ≡ AT) (pB : BI ≡ BT) (h : T BT) (n : ℕ)
+  → subst T (cong₂ _⊎_ pA pB) ((subst T (sym pB) h) >>=T (λ v → returnT (inj₂ v))) n
+    ≡ (h >>=T (λ v → returnT (inj₂ v))) n
+inr-transport refl refl h n = refl
+
+pair-transport : ∀ {AI AT BI BT : Set} (pA : AI ≡ AT) (pB : BI ≡ BT) (ha : T AT) (hb : T BT) (n : ℕ)
+  → subst T (cong₂ _×_ pA pB) ((subst T (sym pA) ha) >>=T (λ va → (subst T (sym pB) hb) >>=T (λ vb → returnT (va , vb)))) n
+    ≡ (ha >>=T (λ va → hb >>=T (λ vb → returnT (va , vb)))) n
+pair-transport refl refl ha hb n = refl
+
+morphapp-transport : ∀ {AI AT BI BT : Set} (pA : AI ≡ AT) (pB : BI ≡ BT)
+    (g : AI → T BI) (h : T AT) (n : ℕ)
+  → subst T pB ((subst T (sym pA) h) >>=T (λ v → g v)) n
+    ≡ (h >>=T (λ v → subst T pB (g (subst id (sym pA) v)))) n
+morphapp-transport refl refl g h n = refl
+
+-- `evalᴰ` of the subterm, `liftFn`→`evalᴰ` converted (for the projection cases)
+ihᴰ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ)
+    → (∀ j → liftFn {⟦ Γ ⟧ᶜ} {A} (elaborate C.Heap e) dγ j ≡ SD.⟦ e ⟧ˢ dγ j)
+    → evalᴰ (elaborate C.Heap e) (subst id (sym (cohᴰ ⟦ Γ ⟧ᶜ)) dγ) ≡ subst T (sym (cohᴰ A)) (SD.⟦ e ⟧ˢ dγ)
+ihᴰ {A = A} e dγ ih = trans (sym (subst-sym-subst (cohᴰ A))) (cong (subst T (sym (cohᴰ A))) (extensionality ih))
+
+-- non-arrow (value-position) `SigOp info ∘ terminal`: `terminal` discards the env,
+-- so `liftFn` = the emit/semM pair transported by `cohᴰ A` (subst-subst-sym).
+sigop-value : ∀ {n} {Γ : Ctx n} {A : Type} (info : SigOpInfo Unit A) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
+  → liftFn {⟦ Γ ⟧ᶜ} {A} (SigOp info ∘ terminal) dγ k ≡ (emit-D info tt , inject (semM info tt))
+sigop-value {A = A} info dγ k =
+  trans (subst-T-apply (cohᴰ A) (evalᴰ (SigOp info) tt) k)
+        (cong₂ _,_ refl (subst-subst-sym (cohᴰ A)))
+
 proj-lookup : ∀ {n} {Γ : Ctx n} (i : Fin n) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-            → evalᴰ (proj {Γ = Γ} i) dγ k ≡ returnT (SD.lookupᴰ Γ i dγ) k
-proj-lookup {Γ = Γ , A ^ q} zero    dγ k = refl
-proj-lookup {Γ = Γ , A ^ q} (suc i) dγ k = proj-lookup {Γ = Γ} i (proj₁ dγ) k
+            → liftFn {⟦ Γ ⟧ᶜ} {lookup Γ i} (proj {Γ = Γ} i) dγ k ≡ returnT (SD.lookupᴰ Γ i dγ) k
+proj-lookup {Γ = Γ , A ^ q} zero    dγ k =
+  cong (λ t → t k)
+    (trans (cong (λ w → subst T (cohᴰ A) (returnT w)) (proj₂-subst (cohᴰ ⟦ Γ ⟧ᶜ) (cohᴰ A) dγ))
+      (trans (subst-T-returnT (cohᴰ A) (subst id (sym (cohᴰ A)) (proj₂ dγ)))
+             (cong returnT (subst-subst-sym (cohᴰ A)))))
+proj-lookup {Γ = Γ , A ^ q} (suc i) dγ k =
+  trans (cong (λ arg → subst T (cohᴰ (lookup Γ i)) (evalᴰ (proj {Γ = Γ} i) arg) k)
+              (proj₁-subst (cohᴰ ⟦ Γ ⟧ᶜ) (cohᴰ A) dγ))
+        (proj-lookup {Γ = Γ} i (proj₁ dγ) k)
 
 -- app/effApp trace shape: the `⟨ef,ex⟩` pair leaves `B ++ []`, and `apply`
 -- re-associates `((A ++ (B ++ [])) ++ C)` vs ⟦_⟧ˢ's `A ++ (B ++ C)`.
@@ -87,37 +193,86 @@ app-trace A B C rewrite ++-identityʳ B = ++-assoc A B C
 case-trace : ∀ (W Z : List SigOpEvent) → ((W ++ []) ++ []) ++ Z ≡ W ++ Z
 case-trace W Z = cong (_++ Z) (trans (++-identityʳ (W ++ [])) (++-identityʳ W))
 
+-- Double transport-apply-bind: the `cohᴰ`-transported closure computation
+-- applied to the `cohᴰ`-back-transported argument computation, transported,
+-- equals the untransported apply-bind (all `refl`).
+app-transport : ∀ {AI AT BI BT : Set} (pA : AI ≡ AT) (pB : BI ≡ BT)
+    (hf : T (AT → T BT)) (hx : T AT) (n : ℕ)
+  → subst T pB ((subst T (sym (cong₂ (λ x y → x → T y) pA pB)) hf)
+                  >>=T (λ vf → (subst T (sym pA) hx) >>=T (λ vx → vf vx))) n
+    ≡ (hf >>=T (λ vf → hx >>=T (λ vx → vf vx))) n
+app-transport refl refl hf hx n = refl
+
 app-body : ∀ {m} {Γ : Ctx m} {Ψ₁ Ψ₂ : Usage m} {A B} {kk}
              (f : Expr Γ Ψ₁ (A ⇒[ kk ] B)) (x : Expr Γ Ψ₂ A)
              (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (n : ℕ)
-           → evalᴰ (elaborate C.Heap f) dγ n ≡ SD.⟦ f ⟧ˢ dγ n
-           → evalᴰ (elaborate C.Heap x) dγ n ≡ SD.⟦ x ⟧ˢ dγ n
-           → evalᴰ (apply ∘ ⟨ elaborate C.Heap f , elaborate C.Heap x ⟩ C.Heap) dγ n
+           → (∀ j → liftFn {⟦ Γ ⟧ᶜ} {A ⇒[ kk ] B} (elaborate C.Heap f) dγ j ≡ SD.⟦ f ⟧ˢ dγ j)
+           → (∀ j → liftFn {⟦ Γ ⟧ᶜ} {A} (elaborate C.Heap x) dγ j ≡ SD.⟦ x ⟧ˢ dγ j)
+           → liftFn {⟦ Γ ⟧ᶜ} {B} (apply ∘ ⟨ elaborate C.Heap f , elaborate C.Heap x ⟩ C.Heap) dγ n
              ≡ (SD.⟦ f ⟧ˢ dγ >>=T (λ vf → SD.⟦ x ⟧ˢ dγ >>=T (λ vx → vf vx))) n
-app-body f x dγ n ihf ihx rewrite ihf | ihx =
-  cong₂ _,_ (app-trace (proj₁ (SD.⟦ f ⟧ˢ dγ n)) (proj₁ (SD.⟦ x ⟧ˢ dγ n))
-                       (proj₁ (proj₂ (SD.⟦ f ⟧ˢ dγ n) (proj₂ (SD.⟦ x ⟧ˢ dγ n)) n))) refl
+app-body {Γ = Γ} {A = A} {B = B} {kk = kk} f x dγ n ihf ihx =
+  trans (cong (λ t → subst T (cohᴰ B) t n)
+              (trans evalᴰ-app-reduce
+                     (cong₂ (λ hf hx → hf >>=T (λ vf → hx >>=T (λ vx → vf vx))) ihf-T ihx-T)))
+        (app-transport (cohᴰ A) (cohᴰ B) (SD.⟦ f ⟧ˢ dγ) (SD.⟦ x ⟧ˢ dγ) n)
+  where
+    dγ' = subst id (sym (cohᴰ ⟦ Γ ⟧ᶜ)) dγ
+    ef = elaborate C.Heap f
+    ex = elaborate C.Heap x
+    ihf-T : evalᴰ ef dγ' ≡ subst T (sym (cong₂ (λ u v → u → T v) (cohᴰ A) (cohᴰ B))) (SD.⟦ f ⟧ˢ dγ)
+    ihf-T = trans (sym (subst-sym-subst (cong₂ (λ u v → u → T v) (cohᴰ A) (cohᴰ B))))
+                  (cong (subst T (sym (cong₂ (λ u v → u → T v) (cohᴰ A) (cohᴰ B)))) (extensionality ihf))
+    ihx-T : evalᴰ ex dγ' ≡ subst T (sym (cohᴰ A)) (SD.⟦ x ⟧ˢ dγ)
+    ihx-T = trans (sym (subst-sym-subst (cohᴰ A))) (cong (subst T (sym (cohᴰ A))) (extensionality ihx))
+    evalᴰ-app-reduce : evalᴰ (apply ∘ ⟨ ef , ex ⟩ C.Heap) dγ'
+                       ≡ (evalᴰ ef dγ' >>=T (λ vf → evalᴰ ex dγ' >>=T (λ vx → vf vx)))
+    evalᴰ-app-reduce = extensionality (λ m →
+      cong₂ _,_ (app-trace (proj₁ (evalᴰ ef dγ' m)) (proj₁ (evalᴰ ex dγ' m))
+                           (proj₁ ((proj₂ (evalᴰ ef dγ' m)) (proj₂ (evalᴰ ex dγ' m)) m))) refl)
 
 faithful :
   ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (e : Expr Γ Ψ A)
     (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-  → evalᴰ (elaborate C.Heap e) dγ k ≡ SD.⟦ e ⟧ˢ dγ k
+  → liftFn (elaborate C.Heap e) dγ k ≡ SD.⟦ e ⟧ˢ dγ k
 -- `unit` ↦ `terminal`; both sides reduce to `returnT tt` ⇒ refl.
 faithful (var {Γ = Γ} i) dγ k = proj-lookup {Γ = Γ} i dγ k
 faithful (arr' f) dγ k = faithful f dγ k
 -- lam ↦ curry: both sides are `returnT <closure>`; the closures are equal by
 -- extensionality over the argument (and over the depth, via the body IH).
-faithful (lam q _ e) dγ k =
-  cong (_,_ []) (extensionality (λ a → extensionality (λ k′ → faithful e (dγ , a) k′)))
+faithful (lam {Γ = Γ} {A = A} {B = B} q _ e) dγ k =
+  trans (cong (λ t → t k) liftFn-curry-reduce)
+        (cong (_,_ []) (extensionality (λ a → extensionality (λ k′ → faithful e (dγ , a) k′))))
+  where
+    dγ' = subst id (sym (cohᴰ ⟦ Γ ⟧ᶜ)) dγ
+    ee = elaborate C.Heap e
+    liftFn-curry-reduce : liftFn {⟦ Γ ⟧ᶜ} {A ⇒[ mk-kind q pure ] B} (curry ee C.Heap) dγ
+                          ≡ returnT (λ a → liftFn {⟦ Γ ,ᶜ A ⟧ᶜ} {B} ee (dγ , a))
+    liftFn-curry-reduce =
+      trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ B)) (λ a → evalᴰ ee (dγ' , a)))
+            (cong returnT
+              (trans (subst-arrowᴰ (cohᴰ A) (cohᴰ B) (λ a → evalᴰ ee (dγ' , a)))
+                     (extensionality (λ a →
+                       cong (λ w → subst T (cohᴰ B) (evalᴰ ee w))
+                            (sym (pair-subst⁻ (cohᴰ ⟦ Γ ⟧ᶜ) (cohᴰ A) dγ a))))))
 -- app: `apply ∘ ⟨ef,ex⟩`. Rewrite both IHs; the closures/args align so `apply`
 -- runs the SAME `vf vx` ⇒ value refl; trace re-associates (app-trace).
-faithful (app f x) dγ n = app-body f x dγ n (faithful f dγ n) (faithful x dγ n)
+faithful (app f x) dγ n = app-body f x dγ n (λ j → faithful f dγ j) (λ j → faithful x dγ j)
 -- effApp: a SUSPENDED closure whose body is the (effectful) application of f to x.
 -- Both sides are `returnT <closure>` (the Unit-thunk); the closure body is exactly
 -- app-body, lifted through extensionality (over the discarded Unit arg + depth).
-faithful (effApp f x) dγ k =
-  cong (_,_ []) (extensionality (λ _ →
-    extensionality (λ n → app-body f x dγ n (faithful f dγ n) (faithful x dγ n))))
+faithful (effApp {Γ = Γ} {A = A} {B = B} f x) dγ k =
+  trans (cong (λ t → t k) liftFn-curry-reduce-effApp)
+        (cong (_,_ []) (extensionality (λ _ →
+          extensionality (λ n → app-body f x dγ n (λ j → faithful f dγ j) (λ j → faithful x dγ j)))))
+  where
+    dγ' = subst id (sym (cohᴰ ⟦ Γ ⟧ᶜ)) dγ
+    body = (apply ∘ ⟨ elaborate C.Heap f , elaborate C.Heap x ⟩ C.Heap) ∘ fst
+    liftFn-curry-reduce-effApp :
+      liftFn {⟦ Γ ⟧ᶜ} {Unit ⇒[ mk-kind Many eff ] B} (curry body C.Heap) dγ
+      ≡ returnT (λ _ → liftFn {⟦ Γ ⟧ᶜ} {B} (apply ∘ ⟨ elaborate C.Heap f , elaborate C.Heap x ⟩ C.Heap) dγ)
+    liftFn-curry-reduce-effApp =
+      trans (subst-T-returnT (cong₂ (λ u v → u → T v) (cohᴰ Unit) (cohᴰ B)) (λ u → evalᴰ body (dγ' , u)))
+            (cong returnT (subst-arrowᴰ (cohᴰ Unit) (cohᴰ B) (λ u → evalᴰ body (dγ' , u))))
 -- absurd v : v has type Void, so `proj₂ (⟦v⟧ˢ dγ n) : ⊥` — vacuous.
 faithful (absurd v) dγ n = ⊥-elim (proj₂ (SD.⟦ v ⟧ˢ dγ n))
 faithful unit    dγ k = refl
@@ -127,50 +282,86 @@ faithful (str s) dγ k = refl   -- ⟦str s⟧ˢ now denotes via str-lit-info's 
 -- and `⟦ op e ⟧ˢ = ⟦e⟧ˢ >>=T (λv → returnT (<prim> v))`; `_>>=T_` sees the same
 -- depth on both sides, so the trace+value at `n` is a function of the SUBTERM's
 -- (trace,value) at `n` — one `cong` over the IH (`faithful e`).
-faithful (fst' e) dγ n = cong (λ r → (proj₁ r ++ [] , proj₁ (proj₂ r))) (faithful e dγ n)
-faithful (snd' e) dγ n = cong (λ r → (proj₁ r ++ [] , proj₂ (proj₂ r))) (faithful e dγ n)
-faithful (inl' e) dγ n = cong (λ r → (proj₁ r ++ [] , inj₁ (proj₂ r))) (faithful e dγ n)
-faithful (inr' e) dγ n = cong (λ r → (proj₁ r ++ [] , inj₂ (proj₂ r))) (faithful e dγ n)
+faithful (fst' {A = A} {B = B} e) dγ n =
+  trans (cong (λ t → subst T (cohᴰ A) t n) (cong (λ h → h >>=T (λ v → returnT (proj₁ v))) (ihᴰ e dγ (λ j → faithful e dγ j))))
+        (fst-transport (cohᴰ A) (cohᴰ B) (SD.⟦ e ⟧ˢ dγ) n)
+faithful (snd' {A = A} {B = B} e) dγ n =
+  trans (cong (λ t → subst T (cohᴰ B) t n) (cong (λ h → h >>=T (λ v → returnT (proj₂ v))) (ihᴰ e dγ (λ j → faithful e dγ j))))
+        (snd-transport (cohᴰ A) (cohᴰ B) (SD.⟦ e ⟧ˢ dγ) n)
+faithful (inl' {A = A} {B = B} e) dγ n =
+  trans (cong (λ t → subst T (cohᴰ (A + B)) t n) (cong (λ h → h >>=T (λ v → returnT (inj₁ v))) (ihᴰ e dγ (λ j → faithful e dγ j))))
+        (inl-transport (cohᴰ A) (cohᴰ B) (SD.⟦ e ⟧ˢ dγ) n)
+faithful (inr' {A = A} {B = B} e) dγ n =
+  trans (cong (λ t → subst T (cohᴰ (A + B)) t n) (cong (λ h → h >>=T (λ v → returnT (inj₂ v))) (ihᴰ e dγ (λ j → faithful e dγ j))))
+        (inr-transport (cohᴰ A) (cohᴰ B) (SD.⟦ e ⟧ˢ dγ) n)
 -- Two-subterm arith (elaborate = `<op>IR ∘ ⟨ea,eb⟩`, ⟦_⟧ˢ via the same `semM`):
 -- rewrite both IHs; the only residual is the IR `SigOp`-bind's extra empty trace
 -- (`(W ++ []) ≡ W`, ++-identityʳ); the value is identical (same `semM`).
-faithful (add a b)  dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) refl
-faithful (sub a b)  dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) refl
-faithful (mul a b)  dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) refl
-faithful (div a b)  dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) refl
-faithful (mod' a b) dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) refl
-faithful (lt a b)   dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) (inj-uu _)
-faithful (le a b)   dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) (inj-uu _)
-faithful (gt a b)   dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) (inj-uu _)
-faithful (ge a b)   dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) (inj-uu _)
-faithful (eq a b)   dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) (inj-uu _)
-faithful (ne a b)   dγ n rewrite faithful a dγ n | faithful b dγ n = cong₂ _,_ (++-identityʳ _) (inj-uu _)
+faithful (add a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
+faithful (sub a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
+faithful (mul a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
+faithful (div a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
+faithful (mod' a b) dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
+faithful (lt a b)   dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) (inj-uu _)
+faithful (le a b)   dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) (inj-uu _)
+faithful (gt a b)   dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) (inj-uu _)
+faithful (ge a b)   dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) (inj-uu _)
+faithful (eq a b)   dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) (inj-uu _)
+faithful (ne a b)   dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) (inj-uu _)
 -- neg: single subterm; IR `negIR ∘ ee` and ⟦_⟧ˢ share the bind+cont, so refl post-IH.
-faithful (neg e)    dγ n rewrite faithful e dγ n = refl
+faithful (neg e)    dγ n rewrite ihᴰ e dγ (λ j → faithful e dγ j) = refl
 -- pair: `elaborate = ⟨ea,eb⟩`, same bind structure as ⟦_⟧ˢ (ends in returnT(va,vb),
 -- no trailing SigOp bind) ⇒ refl post both IHs.
-faithful (pair a b) dγ n rewrite faithful a dγ n | faithful b dγ n = refl
+faithful (pair {A = A} {B = B} a b) dγ n =
+  trans (cong (λ t → subst T (cohᴰ (A * B)) t n)
+              (cong₂ (λ ha hb → ha >>=T (λ va → hb >>=T (λ vb → returnT (va , vb))))
+                     (ihᴰ a dγ (λ j → faithful a dγ j)) (ihᴰ b dγ (λ j → faithful b dγ j))))
+        (pair-transport (cohᴰ A) (cohᴰ B) (SD.⟦ a ⟧ˢ dγ) (SD.⟦ b ⟧ˢ dγ) n)
 -- arr': `elaborate = arr ∘ ef` adds one `returnT` bind (an extra ++[]); the kind
 -- change is erased by ⟦_⟧ᴰ, value unchanged ⇒ ++-identityʳ.
 -- IR embedding: ⟦_⟧ˢ denotes these AS `evalᴰ morph`; elaborate's
 -- `curry (morph ∘ snd)` / `morph ∘ ex` reduce to the same (returnT/[]++X + eta).
-faithful (lift-morphism morph) dγ k = refl
-faithful (morph-app morph e)   dγ n rewrite faithful e dγ n = refl
+faithful (lift-morphism {A = A} {B = B} morph) dγ k =
+  cong (λ t → t k)
+    (trans (subst-T-returnT (cong₂ (λ u v → u → T v) (cohᴰ A) (cohᴰ B)) (λ a → evalᴰ morph a))
+           (cong returnT (subst-arrowᴰ (cohᴰ A) (cohᴰ B) (λ a → evalᴰ morph a))))
+faithful (morph-app {A = A} {B = B} morph e) dγ n =
+  trans (cong (λ t → subst T (cohᴰ B) t n)
+              (cong (λ h → h >>=T (λ v → evalᴰ morph v)) (ihᴰ e dγ (λ j → faithful e dγ j))))
+        (morphapp-transport (cohᴰ A) (cohᴰ B) (λ v → evalᴰ morph v) (SD.⟦ e ⟧ˢ dγ) n)
 -- let': `elaborate = ee2 ∘ ⟨id, ee1⟩`. Rewrite the e1 IH, then the e2 IH at the
 -- extended env (dγ , v1); residual is the ⟨id,…⟩/pair empty traces:
 -- `(W ++ []) ++ Z ≡ W ++ Z`. Value identical.
-faithful (let' e1 e2) dγ n
-  rewrite faithful e1 dγ n | faithful e2 (dγ , proj₂ (SD.⟦ e1 ⟧ˢ dγ n)) n =
-  cong₂ _,_
-    (cong (_++ proj₁ (SD.⟦ e2 ⟧ˢ (dγ , proj₂ (SD.⟦ e1 ⟧ˢ dγ n)) n))
-          (++-identityʳ (proj₁ (SD.⟦ e1 ⟧ˢ dγ n))))
-    refl
+faithful (let' {Γ = Γ} {A = A} {B = B} e1 e2) dγ n =
+  trans (cong (λ t → subst T (cohᴰ B) t n)
+              (trans let-reduce
+                     (cong (λ h → h >>=T (λ v1 → evalᴰ ee2 (dγ' , v1))) (ihᴰ e1 dγ (λ j → faithful e1 dγ j)))))
+        (trans (morphapp-transport (cohᴰ A) (cohᴰ B) (λ v1 → evalᴰ ee2 (dγ' , v1)) (SD.⟦ e1 ⟧ˢ dγ) n)
+               (cong (λ cont → (SD.⟦ e1 ⟧ˢ dγ >>=T cont) n) (extensionality e2-eq)))
+  where
+    dγ' = subst id (sym (cohᴰ ⟦ Γ ⟧ᶜ)) dγ
+    ee1 = elaborate C.Heap e1
+    ee2 = elaborate C.Heap e2
+    let-reduce : evalᴰ (ee2 ∘ ⟨ idIR , ee1 ⟩ C.Heap) dγ'
+                 ≡ (evalᴰ ee1 dγ' >>=T (λ v1 → evalᴰ ee2 (dγ' , v1)))
+    let-reduce = extensionality (λ m →
+      cong₂ _,_ (app-trace [] (proj₁ (evalᴰ ee1 dγ' m))
+                          (proj₁ (evalᴰ ee2 (dγ' , proj₂ (evalᴰ ee1 dγ' m)) m))) refl)
+    e2-eq : ∀ (v1 : ⟦ A ⟧ᴰ) → subst T (cohᴰ B) (evalᴰ ee2 (dγ' , subst id (sym (cohᴰ A)) v1)) ≡ SD.⟦ e2 ⟧ˢ (dγ , v1)
+    e2-eq v1 = trans (cong (λ w → subst T (cohᴰ B) (evalᴰ ee2 w)) (sym (pair-subst⁻ (cohᴰ ⟦ Γ ⟧ᶜ) (cohᴰ A) dγ v1)))
+                     (extensionality (λ j → faithful e2 (dγ , v1) j))
 -- Effect primitives: ⟦_⟧ˢ denotes them through generic-info/emit-D/semM exactly
 -- as elaborate's `SigOp(generic-info name)∘terminal` (non-arrow) / `curry(SigOp∘
 -- snd)` (arrow) reduce ([]++X, returnT, eta) ⇒ refl.
-faithful (sigOp {A = (Dom ⇒[ kk ] Cod)} name (con-fun bDom cCod)) dγ k = refl
-faithful (closure name) dγ k = refl
-faithful (poly name PT) dγ k = refl
+faithful (sigOp {A = (Dom ⇒[ kk ] Cod)} name (con-fun bDom cCod)) dγ k =
+  cong (λ t → t k)
+    (trans (subst-T-returnT (cong₂ (λ u v → u → T v) (cohᴰ Dom) (cohᴰ Cod))
+                            (λ a → evalᴰ (SigOp (arrow-info kk name bDom cCod)) a))
+           (cong returnT
+             (trans (subst-arrowᴰ (cohᴰ Dom) (cohᴰ Cod) (λ a → evalᴰ (SigOp (arrow-info kk name bDom cCod)) a))
+                    (liftFn-SigOp (arrow-info kk name bDom cCod) bDom))))
+faithful {Γ = Γ} {A = A} (closure name) dγ k = sigop-value {Γ = Γ} {A = A} (internal-info (bare name)) dγ k
+faithful {Γ = Γ} (poly name PT) dγ k = sigop-value {Γ = Γ} {A = PT} (internal-info (bare name)) dγ k
 -- NON-ARROW `sigOp`: `elaborate`/`⟦_⟧ˢ` dispatch on `A`'s shape (it stays stuck for
 -- ABSTRACT `A`), so case-split the non-arrow type constructors — each is the pure
 -- `SigOp(generic-info name)∘terminal` shape ⇒ refl. No SigOp purity semantics added;
@@ -181,15 +372,62 @@ faithful (sigOp {A = Int}      name conc) dγ k = refl
 faithful (sigOp {A = Str}      name conc) dγ k = refl
 faithful (sigOp {A = Float}    name conc) dγ k = refl
 faithful (sigOp {A = Buffer}   name conc) dγ k = refl
-faithful (sigOp {A = _ * _}    name conc) dγ k = refl
-faithful (sigOp {A = _ + _}    name conc) dγ k = refl
-faithful (sigOp {A = μ-type _} name conc) dγ k = refl
-faithful (sigOp {A = ν-type _} name conc) dγ k = refl
-faithful (case' s l r) dγ n rewrite faithful s dγ n with proj₂ (SD.⟦ s ⟧ˢ dγ n)
-... | inj₁ a rewrite faithful l (dγ , a) n =
-        cong₂ _,_ (case-trace (proj₁ (SD.⟦ s ⟧ˢ dγ n)) (proj₁ (SD.⟦ l ⟧ˢ (dγ , a) n))) refl
-... | inj₂ b rewrite faithful r (dγ , b) n =
-        cong₂ _,_ (case-trace (proj₁ (SD.⟦ s ⟧ˢ dγ n)) (proj₁ (SD.⟦ r ⟧ˢ (dγ , b) n))) refl
+faithful {Γ = Γ} (sigOp {A = _ * _}    name conc) dγ k = sigop-value {Γ = Γ} (value-info name base-Unit conc) dγ k
+faithful {Γ = Γ} (sigOp {A = _ + _}    name conc) dγ k = sigop-value {Γ = Γ} (value-info name base-Unit conc) dγ k
+faithful {Γ = Γ} (sigOp {A = μ-type _} name conc) dγ k = sigop-value {Γ = Γ} (value-info name base-Unit conc) dγ k
+faithful {Γ = Γ} (sigOp {A = ν-type _} name conc) dγ k = sigop-value {Γ = Γ} (value-info name base-Unit conc) dγ k
+faithful (case' {Γ = Γ} {A = A} {B = B} {C = C} s l r) dγ n =
+  trans (cong (λ t → subst T (cohᴰ C) t n)
+              (trans case-reduce (cong (λ h → h >>=T branchᴰ) (ihᴰ s dγ (λ j → faithful s dγ j)))))
+        (trans (morphapp-transport (cohᴰ (A + B)) (cohᴰ C) branchᴰ (SD.⟦ s ⟧ˢ dγ) n)
+               (cong (λ cont → (SD.⟦ s ⟧ˢ dγ >>=T cont) n) (extensionality branch-eq)))
+  where
+    dγ' = subst id (sym (cohᴰ ⟦ Γ ⟧ᶜ)) dγ
+    es = elaborate C.Heap s
+    ll = elaborate C.Heap l
+    rr = elaborate C.Heap r
+    reshape : ⟦ ⌊ A ⌋ ⟧ᴰᴵ ⊎ ⟦ ⌊ B ⌋ ⟧ᴰᴵ
+            → ⟦ (⌊ ⟦ Γ ⟧ᶜ ⌋ *ᴵ ⌊ A ⌋) +ᴵ (⌊ ⟦ Γ ⟧ᶜ ⌋ *ᴵ ⌊ B ⌋) ⟧ᴰᴵ
+    reshape v = [ (λ a → inj₁ (dγ' , a)) , (λ b → inj₂ (dγ' , b)) ]′ v
+    branchᴰ = λ v → [ (λ a → evalᴰ ll (dγ' , a)) , (λ b → evalᴰ rr (dγ' , b)) ]′ v
+    -- `distribute` is pure (`distribute-reduce`), so `distribute ∘ ⟨id,es⟩` is just
+    -- `es` followed by a pure re-shape of the sum (empty distribute trace).
+    dd-reduce : evalᴰ (distribute {⌊ ⟦ Γ ⟧ᶜ ⌋} {⌊ A ⌋} {⌊ B ⌋} C.Heap ∘ ⟨ idIR , es ⟩ C.Heap) dγ'
+              ≡ (evalᴰ es dγ' >>=T λ v → returnT (reshape v))
+    dd-reduce = extensionality (λ m →
+      cong₂ _,_
+        (trans (cong (λ z → (proj₁ (evalᴰ es dγ' m) ++ []) ++ proj₁ (z m))
+                     (distribute-reduce {⌊ ⟦ Γ ⟧ᶜ ⌋} {⌊ A ⌋} {⌊ B ⌋} dγ' (proj₂ (evalᴰ es dγ' m))))
+               (++-identityʳ (proj₁ (evalᴰ es dγ' m) ++ [])))
+        (cong (λ z → proj₂ (z m)) (distribute-reduce {⌊ ⟦ Γ ⟧ᶜ ⌋} {⌊ A ⌋} {⌊ B ⌋} dγ' (proj₂ (evalᴰ es dγ' m)))))
+    -- reshape-then-`case` fuses to the eliminator, per branch (both refl).
+    case-fuse : ∀ (v : ⟦ ⌊ A ⌋ ⟧ᴰᴵ ⊎ ⟦ ⌊ B ⌋ ⟧ᴰᴵ)
+              → evalᴰ (case ll rr) (reshape v) ≡ branchᴰ v
+    case-fuse (inj₁ a) = refl
+    case-fuse (inj₂ b) = refl
+    -- bind-assoc + case-fuse folded pointwise (no `>>=T-assoc` in the library).
+    assoc-fuse : ∀ (mm : T (⟦ ⌊ A ⌋ ⟧ᴰᴵ ⊎ ⟦ ⌊ B ⌋ ⟧ᴰᴵ))
+               → ((mm >>=T λ v → returnT (reshape v)) >>=T evalᴰ (case ll rr))
+                 ≡ (mm >>=T branchᴰ)
+    assoc-fuse mm = extensionality (λ m →
+      cong₂ _,_
+        (trans (cong (λ z → (proj₁ (mm m) ++ []) ++ proj₁ (z m)) (case-fuse (proj₂ (mm m))))
+               (cong (_++ proj₁ (branchᴰ (proj₂ (mm m)) m)) (++-identityʳ (proj₁ (mm m)))))
+        (cong (λ z → proj₂ (z m)) (case-fuse (proj₂ (mm m)))))
+    case-reduce : evalᴰ (elaborate C.Heap (case' s l r)) dγ' ≡ (evalᴰ es dγ' >>=T branchᴰ)
+    case-reduce = trans (cong (_>>=T evalᴰ (case ll rr)) dd-reduce)
+                        (assoc-fuse (evalᴰ es dγ'))
+    branch-eq : ∀ (v : ⟦ A + B ⟧ᴰ)
+              → subst T (cohᴰ C) (branchᴰ (subst id (sym (cohᴰ (A + B))) v))
+                ≡ [ (λ a → SD.⟦ l ⟧ˢ (dγ , a)) , (λ b → SD.⟦ r ⟧ˢ (dγ , b)) ]′ v
+    branch-eq (inj₁ a) =
+      trans (cong (λ w → subst T (cohᴰ C) (branchᴰ w)) (push⊎₁⁻ (cohᴰ A) (cohᴰ B) a))
+            (trans (cong (λ w → subst T (cohᴰ C) (evalᴰ ll w)) (sym (pair-subst⁻ (cohᴰ ⟦ Γ ⟧ᶜ) (cohᴰ A) dγ a)))
+                   (extensionality (λ j → faithful l (dγ , a) j)))
+    branch-eq (inj₂ b) =
+      trans (cong (λ w → subst T (cohᴰ C) (branchᴰ w)) (push⊎₂⁻ (cohᴰ A) (cohᴰ B) b))
+            (trans (cong (λ w → subst T (cohᴰ C) (evalᴰ rr w)) (sym (pair-subst⁻ (cohᴰ ⟦ Γ ⟧ᶜ) (cohᴰ B) dγ b)))
+                   (extensionality (λ j → faithful r (dγ , b) j)))
 -- cata: both sides fold with per-layer-threaded algebras; reduces to the
 -- closure-bridge (`cata-body`) — the algebra IH + a monad reduction, no
 -- purity assumption (the build trace is threaded, not discarded).
