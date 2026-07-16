@@ -44,7 +44,7 @@ open import poc.OCP0009.NbEPMonAdq4
 open import poc.OCP0009.NbEPMonAdq9
   using ( node-perm-real; mult-head²; mult-headI; n-α )
 open import poc.OCP0009.NbEPMonAdq11
-  using ( exch-real; carry²-real )
+  using ( exch-real; carry²-real; hα; n-ŝ; dance )
 
 ------------------------------------------------------------------------
 -- The generic tree relation.
@@ -165,51 +165,6 @@ withSpˡ-Tree {Γ₂ = Γ₂} LP LQ C f Hf ρ
 ------------------------------------------------------------------------
 -- withSpʳ-Tree — the R-level withSpʳ-splice (the deeper node).
 ------------------------------------------------------------------------
-
-private
-  hα : ∀ {X Y W W'} {h : CTm W W'} →
-       ((idc {X} ⊗c (idc {Y} ⊗c h)) ∘c αrc {X} {Y} {W}) ≈c
-       (αrc {X} {Y} {W'} ∘c (idc {X ⊗ Y} ⊗c h))
-  hα = ≈ctrans (≈csym cα-nat) (∘c-congʳ (⊗c-cong c⊗-id ≈crefl))
-
-  n-ŝ : ∀ {T Z G S} {n : CTm T Z} →
-        ((n ⊗c idc {G ⊗ S}) ∘c swapHeadC {G} {T} {S}) ≈c
-        (swapHeadC {G} {Z} {S} ∘c (idc {G} ⊗c (n ⊗c idc {S})))
-  n-ŝ = ≈csym (≈ctrans swapHeadC-nat
-              (∘c-congˡ (⊗c-cong ≈crefl c⊗-id)))
-
-  dance : ∀ {X Y Γ₁ Θ₂ V}
-            (Z : CTm V (⟪ Γ₁ ⟫ ⊗ ((X ⊗ Y) ⊗ ⟪ Θ₂ ⟫))) →
-          ((swapHeadC {X} {⟪ Γ₁ ⟫} {Y ⊗ ⟪ Θ₂ ⟫} ∘c
-            ((idc {X} ⊗c swapHeadC {Y} {⟪ Γ₁ ⟫} {⟪ Θ₂ ⟫}) ∘c
-             (idc {X} ⊗c (idc {Y} ⊗c mult Γ₁ Θ₂)))) ∘c
-           (αrc {X} {Y} {⟪ Γ₁ ++ Θ₂ ⟫} ∘c
-            ((idc {X ⊗ Y} ⊗c multInv Γ₁ Θ₂) ∘c
-             (swapHeadC {⟪ Γ₁ ⟫} {X ⊗ Y} {⟪ Θ₂ ⟫} ∘c Z)))) ≈c
-          ((idc {⟪ Γ₁ ⟫} ⊗c αrc {X} {Y} {⟪ Θ₂ ⟫}) ∘c Z)
-  dance {X} {Y} {Γ₁} {Θ₂} Z =
-    ≈ctrans c∘-assoc
-    (≈ctrans (∘c-congʳ c∘-assoc)
-    (≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
-    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congˡ hα)))
-    (≈ctrans (∘c-congʳ (∘c-congʳ c∘-assoc))
-    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc))))
-    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ
-              (≈ctrans fuse⊗ˡC
-              (≈ctrans (⊗c-cong ≈crefl (mult-inv-r Γ₁ Θ₂)) c⊗-id))))))
-    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ cid-l)))
-    (≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
-    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congˡ K5′C)))
-    (≈ctrans (∘c-congʳ (≈csym c∘-assoc))
-    (≈ctrans (∘c-congʳ (∘c-congˡ (≈csym c∘-assoc)))
-    (≈ctrans (∘c-congʳ (∘c-congˡ (∘c-congˡ
-              (≈ctrans fuse⊗ˡC
-              (≈ctrans (⊗c-cong ≈crefl swapHeadC-invol) c⊗-id)))))
-    (≈ctrans (∘c-congʳ (∘c-congˡ cid-l))
-    (≈ctrans (∘c-congʳ c∘-assoc)
-    (≈ctrans (≈csym c∘-assoc)
-    (≈ctrans (∘c-congˡ swapHeadC-invol)
-             cid-l))))))))))))))))
 
 withSpʳ-Tree : ∀ {P Q : Ctx → Set} {S T : CTy} {Γ₁}
   (LP : ∀ {Δ} → P Δ → CTm ⟪ Δ ⟫ S → Set)
