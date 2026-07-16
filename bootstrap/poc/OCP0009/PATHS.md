@@ -279,6 +279,20 @@ with their universal laws as theorems — `fox-fst`/`fox-snd` (`fstₗ ∘ ⟨f,
 (`⟨f,g⟩ ∘ h ≈ ⟨f∘h, g∘h⟩`, whose crux `dup ∘ h ≈ (h⊗h) ∘ dup` is exactly where
 the input is used twice — every duplication is one `dup`, nothing else copies).
 
+**The pass, and its correctness (`NbEPLinPass`, linearization-3).** The pass
+itself: `L⟦_⟧` translates the first-order cartesian fragment (`FO` — `id`/`∘`/
+`fst`/`snd`/`⟨,⟩`/`inl`/`inr`/`case`/`terminal`/`In`/`cata`; no exponentials,
+whose linearization needs the comonoid on the argument) into `LTm`, sending
+`fst ↦ fstL`, `⟨f,g⟩ ↦` the `dup`-inserting `⟨_,_⟩L`, `terminal ↦ drop`. Its
+correctness is **semantics preservation** — `L-sound : Lⁱ (L⟦f⟧) x ≡ eval f x`,
+where `Lⁱ` is a denotational semantics for the linear core (`dup a = (a,a)`,
+`drop a = tt` — copy/discard made concrete); the pass does not change meaning.
+And the accounting: `pass-df` — a `PairFree` source linearizes to a fully
+dup-free term, so **every duplication in the output traces to exactly one
+cartesian `⟨_,_⟩`**. What stays research: usage-driven `dup`/`drop` *placement*
+(here it's the canonical Fox placement) and a full operational heap semantics
+for the alloc-correctness payoff on top of `L-sound`.
+
 **The dividend — memory becomes a theorem, not a pass.** In the linear core a
 value is used *exactly once*, so its lifetime ends at its single use:
 `free-heap` placement and Stack-vs-Heap stop being escape-analysis outputs and
