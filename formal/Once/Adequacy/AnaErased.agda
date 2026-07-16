@@ -108,6 +108,19 @@ sem-ana-erase-coh′ {F} {A} cL cR a ceq =
       (trans (cong (λ c → anaS c a) ceq)
              (sym (sem-ana-anaS cR a))))
 
+-- Carrier-eq packaging: fold a carrier equality `ceq2 : A₁ ≡ A₂` into the
+-- erasure round-trip (match-to-refl → `sem-ana-erase-coh′`). Lets `ana-body`
+-- run the erased-carrier `Val.⟦⌈⌊A⌋⌉⟧` sem-ana against the surface-carrier
+-- `Val.⟦A⟧` one without hand-threading the carrier transport.
+sem-ana-erase-full : ∀ {F : Functor} {A₁ A₂ : Set} (ceq2 : A₁ ≡ A₂)
+    (cL : A₁ → ⟦ ⌈ eraseF F ⌉F ⟧F A₁) (cR : A₂ → ⟦ F ⟧F A₂) (a₁ : A₁)
+    (ceq : subst (λ H → A₂ → ⟦ H ⟧SF A₂) (tF-coh F)
+             (λ x → coerce-ν-in ⌈ eraseF F ⌉F A₂
+                      (subst (λ Z → ⟦ ⌈ eraseF F ⌉F ⟧F Z) ceq2 (cL (subst id (sym ceq2) x))))
+           ≡ (λ x → coerce-ν-in F A₂ (cR x)))
+  → subst νS (tF-coh F) (sem-ana ⌈ eraseF F ⌉F cL a₁) ≡ sem-ana F cR (subst id ceq2 a₁)
+sem-ana-erase-full refl cL cR a₁ ceq = sem-ana-erase-coh′ cL cR a₁ ceq
+
 ------------------------------------------------------------------------
 -- TRACE round-trip core. `events-F` DISCARDS the `K`-leaves (`events-F
 -- (K _) _ _ = []`), which is exactly where `⌈eraseF G⌉F` and `G` differ —
