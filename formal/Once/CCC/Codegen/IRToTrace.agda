@@ -66,7 +66,7 @@ open SigOpInfo using (name)
 
 open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
-  curry; apply; arr;
+  curry; apply;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
 -- Plan 0.36 Phase 2b: functor structure drives the cata codegen strategy.
@@ -439,7 +439,6 @@ ir-to-trace' n l snd       = n , l , (load-indirect-suc ∷ []) , []
 -- run-terminal's empty-trace WF spec.
 ir-to-trace' n l terminal  = n , l , [] , []
 ir-to-trace' n l initial   = n , l , (mov-to-output ∷ []) , []
-ir-to-trace' n l arr       = n , l , (mov-to-output ∷ []) , []
 
 -- ────────────────────────────────────────────────────────────────────
 -- Compose: thread output of f into input of g via the abstract bridge.
