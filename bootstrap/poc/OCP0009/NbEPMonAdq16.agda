@@ -39,7 +39,7 @@ open import poc.OCP0009.NbEPMonAdq2
 open import poc.OCP0009.NbEPMonAdq8
   using ( ⊙P-pidˡ )
 open import poc.OCP0009.NbEPMonAdq9
-  using ( node-perm-real; mult-head²; mult-headI; n-α )
+  using ( node-perm-real; collapse²; collapseI )
 open import poc.OCP0009.NbEPMonAdq12
   using ( R )
 
@@ -73,7 +73,8 @@ private
             (αrc ∘c ((n ⊗c idc) ∘c
               (mult Θ₁ (Θ₂ ++ Δ) ∘c permC (padʳ Δ ρ ⊙P passoc Θ₁ Θ₂ Δ)))))
   dagger Γ X Y Θ₁ Θ₂ ρ n Δ =
-    ≈csym (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ npr))) collapse)
+    ≈csym (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ npr)))
+                   (collapse² X Y Θ₂ Δ n (mult Θ₁ Θ₂ ∘c permC ρ) (mult Γ Δ)))
     where
     npr : (mult Θ₁ (Θ₂ ++ Δ) ∘c permC (padʳ Δ ρ ⊙P passoc Θ₁ Θ₂ Δ)) ≈c
           ((idc ⊗c multInv Θ₂ Δ) ∘c
@@ -84,28 +85,6 @@ private
       (≈ctrans (node-perm-real Θ₁ Θ₂ Δ ρ (pid _))
                (∘c-congʳ (∘c-congʳ (∘c-congʳ
                  (≈ctrans (∘c-congʳ (pid-realC _)) cid-r)))))
-    collapse :
-      (mult (X ∷ (Y ∷ Θ₂)) Δ ∘c
-       (αrc ∘c ((n ⊗c idc) ∘c
-         ((idc ⊗c multInv Θ₂ Δ) ∘c
-          (αrc ∘c (((mult Θ₁ Θ₂ ∘c permC ρ) ⊗c idc) ∘c mult Γ Δ)))))) ≈c
-      (((αrc ∘c ((n ⊗c idc) ∘c (mult Θ₁ Θ₂ ∘c permC ρ))) ⊗c idc) ∘c
-       mult Γ Δ)
-    collapse =
-      ≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congˡ interchangeC)))
-      (≈ctrans (∘c-congʳ (∘c-congʳ c∘-assoc))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc))))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ n-α))))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc)))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
-      (≈ctrans (∘c-congʳ (≈csym c∘-assoc))
-      (≈ctrans (≈csym c∘-assoc)
-      (≈ctrans (∘c-congˡ (mult-head² X Y Θ₂ Δ))
-      (≈ctrans (∘c-congʳ (≈csym c∘-assoc))
-      (≈ctrans (∘c-congʳ (∘c-congˡ fuse⊗ʳC))
-      (≈ctrans (≈csym c∘-assoc)
-               (∘c-congˡ fuse⊗ʳC)))))))))))))
 
   daggerI : ∀ Γ Θ₁ Θ₂ (ρ : Perm Γ (Θ₁ ++ Θ₂))
               (n : CTm ⟪ Θ₁ ⟫ I) Δ →
@@ -115,7 +94,8 @@ private
              (ƛrc ∘c ((n ⊗c idc) ∘c
                (mult Θ₁ (Θ₂ ++ Δ) ∘c permC (padʳ Δ ρ ⊙P passoc Θ₁ Θ₂ Δ)))))
   daggerI Γ Θ₁ Θ₂ ρ n Δ =
-    ≈csym (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ npr))) collapseI)
+    ≈csym (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ npr)))
+                   (collapseI Θ₂ Δ n (mult Θ₁ Θ₂ ∘c permC ρ) (mult Γ Δ)))
     where
     npr : (mult Θ₁ (Θ₂ ++ Δ) ∘c permC (padʳ Δ ρ ⊙P passoc Θ₁ Θ₂ Δ)) ≈c
           ((idc ⊗c multInv Θ₂ Δ) ∘c
@@ -126,30 +106,6 @@ private
       (≈ctrans (node-perm-real Θ₁ Θ₂ Δ ρ (pid _))
                (∘c-congʳ (∘c-congʳ (∘c-congʳ
                  (≈ctrans (∘c-congʳ (pid-realC _)) cid-r)))))
-    collapseI :
-      (mult Θ₂ Δ ∘c
-       (ƛrc ∘c ((n ⊗c idc) ∘c
-         ((idc ⊗c multInv Θ₂ Δ) ∘c
-          (αrc ∘c (((mult Θ₁ Θ₂ ∘c permC ρ) ⊗c idc) ∘c mult Γ Δ)))))) ≈c
-      (((ƛrc ∘c ((n ⊗c idc) ∘c (mult Θ₁ Θ₂ ∘c permC ρ))) ⊗c idc) ∘c
-       mult Γ Δ)
-    collapseI =
-      ≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congˡ interchangeC)))
-      (≈ctrans (∘c-congʳ (∘c-congʳ c∘-assoc))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc))))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ
-                 (≈csym (≈ctrans cα-nat
-                          (∘c-congˡ (⊗c-cong ≈crefl c⊗-id))))))))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc)))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
-      (≈ctrans (∘c-congʳ (≈csym c∘-assoc))
-      (≈ctrans (≈csym c∘-assoc)
-      (≈ctrans (∘c-congˡ (mult-headI Θ₂ Δ))
-      (≈ctrans (∘c-congʳ (≈csym c∘-assoc))
-      (≈ctrans (∘c-congʳ (∘c-congˡ fuse⊗ʳC))
-      (≈ctrans (≈csym c∘-assoc)
-               (∘c-congˡ fuse⊗ʳC)))))))))))))
 
 ------------------------------------------------------------------------
 -- The join preserves R.

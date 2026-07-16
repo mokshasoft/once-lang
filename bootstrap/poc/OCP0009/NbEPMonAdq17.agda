@@ -42,7 +42,7 @@ open import poc.OCP0009.NbEPMonAdq3
 open import poc.OCP0009.NbEPMonAdq4
   using ( K4C; K5′C )
 open import poc.OCP0009.NbEPMonAdq9
-  using ( node-perm-real; mult-head²; mult-headI; n-α )
+  using ( node-perm-real; collapse²; collapseI )
 open import poc.OCP0009.NbEPMonAdq11
   using ( exch-real; carry²-real; hα; n-ŝ; dance )
 
@@ -77,22 +77,10 @@ private
            (αrc ∘c ((n ⊗c idc) ∘c
              (mult Θ₁ (Θ₂ ++ Γ₂) ∘c
               permC ((ρ ⊙P padʳ Γ₂ ρ₁) ⊙P passoc Θ₁ Θ₂ Γ₂)))))
-  nodeL X Y Θ₁ Θ₂ Γ₂ ρ₁ ρ n =
-    ≈csym (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (node-perm-real Θ₁ Θ₂ Γ₂ ρ₁ ρ))))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congˡ interchangeC)))
-      (≈ctrans (∘c-congʳ (∘c-congʳ c∘-assoc))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc))))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ n-α))))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc)))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
-      (≈ctrans (∘c-congʳ (≈csym c∘-assoc))
-      (≈ctrans (≈csym c∘-assoc)
-      (≈ctrans (∘c-congˡ (mult-head² X Y Θ₂ Γ₂))
-      (≈ctrans (∘c-congʳ (≈csym c∘-assoc))
-      (≈ctrans (∘c-congʳ (∘c-congˡ fuse⊗ʳC))
-      (≈ctrans (≈csym c∘-assoc)
-               (∘c-congˡ fuse⊗ʳC)))))))))))))))
+  nodeL {Γ₁ = Γ₁} X Y Θ₁ Θ₂ Γ₂ ρ₁ ρ n =
+    ≈csym (≈ctrans
+      (∘c-congʳ (∘c-congʳ (∘c-congʳ (node-perm-real Θ₁ Θ₂ Γ₂ ρ₁ ρ))))
+      (collapse² X Y Θ₂ Γ₂ n (mult Θ₁ Θ₂ ∘c permC ρ₁) (mult Γ₁ Γ₂ ∘c permC ρ)))
 
   nodeLI : ∀ {Γ Γ₁} Θ₁ Θ₂ Γ₂ (ρ₁ : Perm Γ₁ (Θ₁ ++ Θ₂))
              (ρ : Perm Γ (Γ₁ ++ Γ₂)) (n : CTm ⟪ Θ₁ ⟫ I) →
@@ -102,24 +90,10 @@ private
             (ƛrc ∘c ((n ⊗c idc) ∘c
               (mult Θ₁ (Θ₂ ++ Γ₂) ∘c
                permC ((ρ ⊙P padʳ Γ₂ ρ₁) ⊙P passoc Θ₁ Θ₂ Γ₂)))))
-  nodeLI Θ₁ Θ₂ Γ₂ ρ₁ ρ n =
-    ≈csym (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (node-perm-real Θ₁ Θ₂ Γ₂ ρ₁ ρ))))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congˡ interchangeC)))
-      (≈ctrans (∘c-congʳ (∘c-congʳ c∘-assoc))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc))))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ
-                 (≈csym (≈ctrans cα-nat
-                          (∘c-congˡ (⊗c-cong ≈crefl c⊗-id))))))))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc)))
-      (≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
-      (≈ctrans (∘c-congʳ (≈csym c∘-assoc))
-      (≈ctrans (≈csym c∘-assoc)
-      (≈ctrans (∘c-congˡ (mult-headI Θ₂ Γ₂))
-      (≈ctrans (∘c-congʳ (≈csym c∘-assoc))
-      (≈ctrans (∘c-congʳ (∘c-congˡ fuse⊗ʳC))
-      (≈ctrans (≈csym c∘-assoc)
-               (∘c-congˡ fuse⊗ʳC)))))))))))))))
+  nodeLI {Γ₁ = Γ₁} Θ₁ Θ₂ Γ₂ ρ₁ ρ n =
+    ≈csym (≈ctrans
+      (∘c-congʳ (∘c-congʳ (∘c-congʳ (node-perm-real Θ₁ Θ₂ Γ₂ ρ₁ ρ))))
+      (collapseI Θ₂ Γ₂ n (mult Θ₁ Θ₂ ∘c permC ρ₁) (mult Γ₁ Γ₂ ∘c permC ρ)))
 
 
 ------------------------------------------------------------------------
