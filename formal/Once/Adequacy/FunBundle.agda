@@ -35,13 +35,15 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Function using (case_of_)
 
 open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
 import Once.Compile as C
 open import Once.Surface.Syntax using (Expr; ∅; Usage)
 open import Once.Surface.Elaborate using (elaborate)
 open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Elaborate as TE
-  using (CheckElabResult; checkElab; ctxWithImportsAndSelfAndPolys; PolyCtx; _≟T_; resolveExpr)
+  using (CheckElabResult; checkElab; ctxWithImportsAndSelfAndPolys; PolyCtx; _≟T_)
+open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.TypeCheck.Classify using (NamedCtx; SigEffectCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
@@ -67,7 +69,7 @@ data FunBundle (polys : PolyCtx) (sigEffs : SigEffectCtx)
     {Ψ  : Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty))}
     {se : Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty)) Ψ ty}
     {d f : ℕ}
-    {irFun : IR Unit ty} →
+    {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
     (rf : C.resolveFunType ctx polys (funType fi) (funBody fi) ≡ inj₂ ty) →
     (ce : checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty)
             (funBody fi) ty ≡ TE.success Ψ se d f) →
@@ -82,7 +84,7 @@ data FunBundle (polys : PolyCtx) (sigEffs : SigEffectCtx)
 ------------------------------------------------------------------------
 
 compileFunBody-ce : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : PolyCtx)
-  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) {ir : IR Unit ty} →
+  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody C.Heap doOpt ctx polys sigEffs name ty expr ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty)) Ψ ty) (λ se →
@@ -93,7 +95,7 @@ compileFunBody-ce doOpt ctx polys sigEffs name ty expr eq =
     (checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) expr ty) eq
 
 compileFun-main-aux-ce : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : PolyCtx)
-  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR Unit ty} →
+  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-main-aux C.Heap doOpt ctx polys sigEffs name ty expr vm ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty)) Ψ ty) (λ se →
@@ -104,7 +106,7 @@ compileFun-main-aux-ce doOpt ctx polys sigEffs name ty expr (inj₂ _) eq =
   compileFunBody-ce doOpt ctx polys sigEffs name ty expr eq
 
 compileFun-aux-ce : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : PolyCtx)
-  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) (b : Bool) {ir : IR Unit ty} →
+  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-aux C.Heap doOpt ctx polys sigEffs name ty expr b ≡ inj₂ ir →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty)) Ψ ty) (λ se →
@@ -116,7 +118,7 @@ compileFun-aux-ce doOpt ctx polys sigEffs name ty expr false eq =
   compileFunBody-ce doOpt ctx polys sigEffs name ty expr eq
 
 compileFun-ce : ∀ (polys : PolyCtx) (sigEffs : SigEffectCtx)
-  (ctx : C.FunCtx) (ty : Type) (fi : FunInfo) (irFun : IR Unit ty) →
+  (ctx : C.FunCtx) (ty : Type) (fi : FunInfo) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
   C.compileFun C.Heap false ctx polys sigEffs (funName fi) ty (funBody fi) ≡ inj₂ irFun →
   Σ-syntax (Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty))) (λ Ψ →
   Σ-syntax (Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty)) Ψ ty) (λ se →
@@ -167,13 +169,13 @@ cgb-rf : ∀ (polys : PolyCtx) (sigEffs : SigEffectCtx) (fi : FunInfo) (rest : L
   C.caf-go-rf-aux C.Heap false polys sigEffs fi rest ctx rfv ≡ inj₂ compiled →
   CGB polys sigEffs (fi ∷ rest) ctx compiled
 cgb-cf : ∀ (polys : PolyCtx) (sigEffs : SigEffectCtx) (fi : FunInfo) (rest : List FunInfo)
-  (ctx : C.FunCtx) (ty : Type) (compiled : List C.CompiledFun) (cfv : String ⊎ IR Unit ty) →
+  (ctx : C.FunCtx) (ty : Type) (compiled : List C.CompiledFun) (cfv : String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋) →
   C.resolveFunType ctx polys (funType fi) (funBody fi) ≡ inj₂ ty →
   C.compileFun C.Heap false ctx polys sigEffs (funName fi) ty (funBody fi) ≡ cfv →
   C.caf-go-cf-aux C.Heap false polys sigEffs fi rest ctx ty cfv ≡ inj₂ compiled →
   CGB polys sigEffs (fi ∷ rest) ctx compiled
 cgb-rec : ∀ (polys : PolyCtx) (sigEffs : SigEffectCtx) (fi : FunInfo) (rest : List FunInfo)
-  (ctx : C.FunCtx) (ty : Type) (irFun : IR Unit ty) (compiled : List C.CompiledFun)
+  (ctx : C.FunCtx) (ty : Type) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) (compiled : List C.CompiledFun)
   (recv : String ⊎ List C.CompiledFun) →
   C.resolveFunType ctx polys (funType fi) (funBody fi) ≡ inj₂ ty →
   C.compileFun C.Heap false ctx polys sigEffs (funName fi) ty (funBody fi) ≡ inj₂ irFun →
@@ -231,26 +233,26 @@ BMainExists (bcons {fi = fi} {ty = ty} _ _ _ rest) =
 -- (3a) Compile-side selector `bundle-find` + agreement with `findMain`.
 ------------------------------------------------------------------------
 
-bf-dispatch : ∀ {P : Set} {ty} → IR Unit ty →
-  Dec P → Dec (ty ≡ EffUU) → Bool → Maybe (IR Unit Unit) → Maybe (IR Unit Unit)
+bf-dispatch : ∀ {P : Set} {ty} → IR ⌊ Unit ⌋ ⌊ ty ⌋ →
+  Dec P → Dec (ty ≡ EffUU) → Bool → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 bf-dispatch irFun np tq true  cont = cont
 bf-dispatch irFun (yes _) (yes refl) false cont = just (C.wrapMainAsEntry irFun)
 bf-dispatch irFun (no _)  _          false cont = cont
 bf-dispatch irFun (yes _) (no _)     false cont = cont
 
-bundle-find : ∀ {polys sigEffs funs ctx} → FunBundle polys sigEffs funs ctx → Maybe (IR Unit Unit)
+bundle-find : ∀ {polys sigEffs funs ctx} → FunBundle polys sigEffs funs ctx → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 bundle-find bnil = nothing
 bundle-find (bcons {fi = fi} {ty = ty} {irFun = irFun} rf ce cf rest) =
   bf-dispatch irFun (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi) (bundle-find rest)
 
-fa-head : ∀ {polys sigEffs} (fi : FunInfo) (ctx : C.FunCtx) (ty : Type) (irFun : IR Unit ty)
+fa-head : ∀ {polys sigEffs} (fi : FunInfo) (ctx : C.FunCtx) (ty : Type) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋)
   {Ψ : Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty))}
   {se : Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty)) Ψ ty}
   {d f : ℕ}
   (ce : checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty) (funBody fi) ty
           ≡ TE.success Ψ se d f)
   (cf : C.compileFun C.Heap false ctx polys sigEffs (funName fi) ty (funBody fi) ≡ inj₂ irFun)
-  (rest-c : List C.CompiledFun) (rest-f : Maybe (IR Unit Unit)) →
+  (rest-c : List C.CompiledFun) (rest-f : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) →
   findMain rest-c ≡ rest-f →
   findMain (C.mkCompiledFun (bare (funName fi)) (proj₁ (C.maybeWrapMain (funName fi) ty irFun))
              (proj₂ (C.maybeWrapMain (funName fi) ty irFun)) (funIsPrimitive fi) ∷ rest-c)
@@ -378,7 +380,7 @@ bundle-realize-node (bcons {fi = fi} {ty = ty} rf ce cf rest) (inj₂ w) =
 ------------------------------------------------------------------------
 
 bundle-find-exists : ∀ {polys sigEffs funs ctx} (b : FunBundle polys sigEffs funs ctx)
-  {ir : IR Unit Unit} → bundle-find b ≡ just ir → BMainExists b
+  {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} → bundle-find b ≡ just ir → BMainExists b
 bundle-find-exists bnil ()
 bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} rf ce cf rest) eq
   with funName fi ≟str "main" | ty ≟T EffUU | funIsPrimitive fi
@@ -400,7 +402,7 @@ bundle-find-exists (bcons {fi = fi} {ty = ty} {irFun = irFun} rf ce cf rest) eq
 -- IR-form lemma: from the bound `ce`/`cf` at a "main" node, the compiled IR is
 -- the elaboration of the resolved checkElab term (uses the bound `se`/`ce`).
 irFun-main-form : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : SigEffectCtx)
-  (body : RawExpr) (irFun : IR Unit EffUU)
+  (body : RawExpr) (irFun : IR ⌊ Unit ⌋ ⌊ EffUU ⌋)
   {Ψ : Usage 0} {se : Expr ∅ Ψ EffUU} {d f : ℕ}
   (ce : checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs "main" EffUU) body EffUU
           ≡ TE.success Ψ se d f)
@@ -410,7 +412,7 @@ irFun-main-form ctx polys sigEffs body irFun ce cf =
   inj₂-injective (trans (sym cf) (cong (C.compileFunBody-aux C.Heap false ctx polys "main" EffUU refl) ce))
 
 MNodeAt : ∀ (polys : PolyCtx) (sigEffs : SigEffectCtx)
-  → Maybe (IR Unit Unit) → Σ-syntax (Usage 0) (λ Ψ' → Expr ∅ Ψ' EffUU) → Set
+  → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Σ-syntax (Usage 0) (λ Ψ' → Expr ∅ Ψ' EffUU) → Set
 MNodeAt polys sigEffs fr rr =
   Σ-syntax C.FunCtx (λ mctx → Σ-syntax RawExpr (λ mbody →
   Σ-syntax (Usage 0) (λ mΨ → Σ-syntax (Expr ∅ mΨ EffUU) (λ mse → Σ-syntax ℕ (λ md → Σ-syntax ℕ (λ mf →
@@ -427,7 +429,7 @@ bundle-main-node : ∀ {polys sigEffs funs ctx} (b : FunBundle polys sigEffs fun
 bmn-dispatch : ∀ {polys sigEffs rest ctx ty} (fi : FunInfo)
   {Ψ : Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty))}
   {se : Expr (NamedCtx.debruijn (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty)) Ψ ty}
-  {d f : ℕ} {irFun : IR Unit ty}
+  {d f : ℕ} {irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋}
   (ce : checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) ty) (funBody fi) ty
           ≡ TE.success Ψ se d f)
   (cf : C.compileFun C.Heap false ctx polys sigEffs (funName fi) ty (funBody fi) ≡ inj₂ irFun)
