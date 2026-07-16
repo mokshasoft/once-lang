@@ -29,7 +29,7 @@
 module poc.OCP0009.NbEPDirCwF where
 
 open import normalizer.Syntax.Types
-  using ( Σ; _,_; _≡_; refl; cong; trans )
+  using ( Σ; _,_; _×_; ⊤; tt; _≡_; refl; sym; cong; trans )
 open Σ  -- fst / snd
 
 ------------------------------------------------------------------------
@@ -129,3 +129,77 @@ p = record { obₛ = fst ; homₛ = fst ; homid = refl ; hom⨾ = λ _ _ → ref
 -- The generic variable: its naturality IS the extension coherence.
 q : ∀ {Γ} {A : Ty⁺ Γ} → Tm (Γ ▷ A) (A [ p ]⁺)
 q = record { tm = snd ; nat = λ { (f , ef) → ef } }
+
+------------------------------------------------------------------------
+-- Lawful contexts, and the opposite / product constructions.
+------------------------------------------------------------------------
+
+record Cat : Set₁ where
+  field quiv : Ctx
+  open Ctx quiv public
+  field
+    unitˡ : ∀ {x y} (f : x ⇒ y) → (idₒ ⨾ f) ≡ f
+    unitʳ : ∀ {x y} (f : x ⇒ y) → (f ⨾ idₒ) ≡ f
+    assoc : ∀ {w x y z} (f : w ⇒ x) (g : x ⇒ y) (h : y ⇒ z) →
+            ((f ⨾ g) ⨾ h) ≡ (f ⨾ (g ⨾ h))
+
+⌊_⌋ : Cat → Ctx
+⌊ C ⌋ = Cat.quiv C
+
+_ᵒᵖ : Ctx → Ctx
+Γ ᵒᵖ = record { Ob = Ob ; _⇒_ = λ x y → y ⇒ x ; idₒ = idₒ ; _⨾_ = λ f g → g ⨾ f }
+  where open Ctx Γ
+
+_⊗ᶜ_ : Ctx → Ctx → Ctx
+Γ ⊗ᶜ Δ = record
+  { Ob  = Ctx.Ob Γ × Ctx.Ob Δ
+  ; _⇒_ = λ r s → Ctx._⇒_ Γ (fst r) (fst s) × Ctx._⇒_ Δ (snd r) (snd s)
+  ; idₒ = Ctx.idₒ Γ , Ctx.idₒ Δ
+  ; _⨾_ = λ { (f , g) (f' , g') → Ctx._⨾_ Γ f f' , Ctx._⨾_ Δ g g' } }
+
+------------------------------------------------------------------------
+-- THE DIRECTED IDENTITY TYPE, as a type former:
+-- the hom-functor `Hom : Cᵒᵖ × C → Set`, mixed variance packaged as
+-- COVARIANCE over `Cᵒᵖ × C`. This is `NbEPDirJ`'s `Hom`, now a type-in-
+-- context of the directed CwF — the base directed `Id` sits at.
+------------------------------------------------------------------------
+
+HomTy : (C : Cat) → Ty⁺ ((⌊ C ⌋ ᵒᵖ) ⊗ᶜ ⌊ C ⌋)
+HomTy C = record
+  { fam   = λ r → fst r ⇒ snd r
+  ; act   = λ { (f , g) h → f ⨾ (h ⨾ g) }
+  ; actid = λ h → trans (cong (idₒ ⨾_) (unitʳ h)) (unitˡ h)
+  ; act⨾  = λ { (f , g) (f' , g') h →
+               trans (assoc f' f (h ⨾ (g ⨾ g')))
+                     (cong (f' ⨾_)
+                       (sym (trans (assoc f (h ⨾ g) g')
+                                   (cong (f ⨾_) (assoc h g g'))))) } }
+  where open Cat C
+
+------------------------------------------------------------------------
+-- The category of contexts, and the terminal context.
+------------------------------------------------------------------------
+
+idSub : ∀ {Γ} → Sub Γ Γ
+idSub = record { obₛ = λ x → x ; homₛ = λ f → f
+               ; homid = refl ; hom⨾ = λ _ _ → refl }
+
+_∘ₛ_ : ∀ {Θ Δ Γ} → Sub Δ Γ → Sub Θ Δ → Sub Θ Γ
+σ ∘ₛ τ = record
+  { obₛ  = λ x → Sub.obₛ σ (Sub.obₛ τ x)
+  ; homₛ = λ f → Sub.homₛ σ (Sub.homₛ τ f)
+  ; homid = trans (cong (Sub.homₛ σ) (Sub.homid τ)) (Sub.homid σ)
+  ; hom⨾  = λ f g → trans (cong (Sub.homₛ σ) (Sub.hom⨾ τ f g))
+                          (Sub.hom⨾ σ (Sub.homₛ τ f) (Sub.homₛ τ g)) }
+
+-- The terminal (empty) context, and the unique substitution into it.
+◇ : Ctx
+◇ = record { Ob = ⊤ ; _⇒_ = λ _ _ → ⊤ ; idₒ = tt ; _⨾_ = λ _ _ → tt }
+
+◇ᶜ : Cat
+◇ᶜ = record { quiv = ◇ ; unitˡ = λ _ → refl ; unitʳ = λ _ → refl
+            ; assoc = λ _ _ _ → refl }
+
+εSub : ∀ {Γ} → Sub Γ ◇
+εSub = record { obₛ = λ _ → tt ; homₛ = λ _ → tt
+              ; homid = refl ; hom⨾ = λ _ _ → refl }
