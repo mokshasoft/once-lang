@@ -41,8 +41,8 @@ open import normalizer.Testing.Evaluator
 open import poc.OCP0009.NbEPLinRec
   using ( LTm; lid; _∘l_; _⊗l_; ρl; ρl⁻; lul; lul⁻; dup; drop
         ; linl; linr; lcase; lIn; lcata; fstL; sndL; ⟨_,_⟩L
-        ; DupFree; df-∘; df-id; df-drop; df-linl; df-linr; df-case; df-In
-        ; df-cata; fstL-df; sndL-df )
+        ; DupFree; df-∘; df-⊗; df-id; df-ρl; df-ρl⁻; df-lul; df-lul⁻
+        ; df-drop; df-linl; df-linr; df-case; df-In; df-cata; fstL-df; sndL-df )
 
 ------------------------------------------------------------------------
 -- A denotational semantics for the linear core. `dup`/`drop` are where the
@@ -236,3 +236,63 @@ pass-alloc (fo-case p q) = cong₂ _+ℕ_ (pass-alloc p) (pass-alloc q)
 pass-alloc fo-term       = refl
 pass-alloc fo-In         = refl
 pass-alloc (fo-cata p)   = pass-alloc p
+
+------------------------------------------------------------------------
+-- THE BALANCE THEOREM (inductive fragment). "Allocation" = `dup` (the one
+-- genuine-sharing point — where a heap cell with a refcount appears);
+-- "free" = `drop`. Two facts, both structural, no heap and no trace:
+--
+--   1. the LINEAR sublanguage allocates nothing — `DupFree ⟹ allocs ≡ 0`;
+--   2. the atomic alloc/free pair (`dup` then `drop` the copy) is a semantic
+--      NO-OP with matched counts (allocs ≡ frees ≡ 1) — "one free per alloc"
+--      = identity. This is `NbEPLinFox.counitR` realized in the semantics.
+--
+-- So: heap use is exactly the `dup`s the pass inserts for pairings
+-- (`pass-alloc`), each cancellable by its `drop` — balance is the counit law,
+-- not an operational safety proof.
+------------------------------------------------------------------------
+
+frees : ∀ {A B} → LTm A B → ℕ
+frees lid           = zero
+frees (f ∘l g)      = frees f +ℕ frees g
+frees (f ⊗l g)      = frees f +ℕ frees g
+frees ρl            = zero
+frees ρl⁻           = zero
+frees lul           = zero
+frees lul⁻          = zero
+frees dup           = zero
+frees drop          = suc zero
+frees linl          = zero
+frees linr          = zero
+frees (lcase f g)   = frees f +ℕ frees g
+frees lIn           = zero
+frees (lcata F alg) = frees alg
+
+-- 1. The linear sublanguage is allocation-free.
+dupfree-no-alloc : ∀ {A B} {f : LTm A B} → DupFree f → dupCount f ≡ zero
+dupfree-no-alloc df-id        = refl
+dupfree-no-alloc (df-∘ p q)   = cong₂ _+ℕ_ (dupfree-no-alloc p) (dupfree-no-alloc q)
+dupfree-no-alloc (df-⊗ p q)   = cong₂ _+ℕ_ (dupfree-no-alloc p) (dupfree-no-alloc q)
+dupfree-no-alloc df-ρl        = refl
+dupfree-no-alloc df-ρl⁻       = refl
+dupfree-no-alloc df-lul       = refl
+dupfree-no-alloc df-lul⁻      = refl
+dupfree-no-alloc df-drop      = refl
+dupfree-no-alloc df-linl      = refl
+dupfree-no-alloc df-linr      = refl
+dupfree-no-alloc (df-case p q) = cong₂ _+ℕ_ (dupfree-no-alloc p) (dupfree-no-alloc q)
+dupfree-no-alloc df-In        = refl
+dupfree-no-alloc (df-cata F p) = dupfree-no-alloc p
+
+-- The canonical alloc/free pair: duplicate `a`, then free the copy.
+alloc-free : ∀ {A} → LTm A A
+alloc-free = ρl ∘l (lid ⊗l drop) ∘l dup
+
+-- 2a. Matched counts: exactly one alloc and one free.
+atomic-balance : ∀ {A} → dupCount (alloc-free {A}) ≡ frees (alloc-free {A})
+atomic-balance = refl
+
+-- 2b. …and it is the IDENTITY: one free per alloc cancels (the counit, in
+-- the pass semantics). No leak (the alloc is freed), no residue (net identity).
+alloc-free-id : ∀ {A} (a : ⟦ A ⟧T) → Lⁱ (alloc-free {A}) a ≡ a
+alloc-free-id a = refl
