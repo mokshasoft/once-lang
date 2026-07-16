@@ -27,8 +27,7 @@
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe)
-open import Once.IR using (IR)
-open import Once.Type using (Unit)
+open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy `Unit` (IR is IRTy-indexed)
 open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.CPU.Interface using (Arch; ArchSemantics)
 open import Once.CCC.FrameSemantics using (FrameSemantics)

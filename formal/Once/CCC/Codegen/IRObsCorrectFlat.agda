@@ -35,14 +35,24 @@ open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.Type using (Type; ⟦_⟧T; μ-type; FitsInReg; fits-in-reg?)
-open import Once.Functor.Translate using (WellFormedF; WellFormedF-irrelevant)
-open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.IR using (IR; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ)
+-- SigOpInfo is over SURFACE Type (`SigOp : SigOpInfo A B → IR ⌊A⌋ ⌊B⌋`), so the
+-- surface `FitsInReg`/`fits-in-reg?` stay; the μ/functor + value-domain layer is IRTy.
+open import Once.Type using (Type; FitsInReg; fits-in-reg?)
+  renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
+open import Once.IRTy using (WellFormedFI-irrelevant)
+open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
+open import Once.IR using (IR; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ;
+  μ-type; ⟦_⟧TI; WellFormedFI; FitsInRegI; fits-int; fits-float; ⌊_⌋)
+
+-- Surface `FitsInReg B` ⇒ erased `FitsInRegI ⌊B⌋`: `⌊Int⌋=Int`, `⌊Float⌋=Float`
+-- definitionally, so this is a match-to-refl coherence.
+fits-erase : ∀ {B} → FitsInReg B → FitsInRegI ⌊ B ⌋
+fits-erase fits-intˢ   = fits-int
+fits-erase fits-floatˢ = fits-float
 open import Once.SigOp.Info using (effect; EffectShape; Pure; Emits; Halts)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
 open import Once.IR.Size using (ir-size)
-open import Once.CCC.Eval using (eval; ⟦_⟧)
+open import Once.CCC.Eval using (eval)
 open import Once.CCC.Machine.SMCore
   using (LocState; ValueLocation; SV-Ptr; halted; regs; readReg; Input1;
          instr-sigop; module AbstractExec)
@@ -72,13 +82,13 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- the layer's own `ValidAtWF`. Inverting it yields the layer validity
   -- the algebra consumes. (For a `strat-const` functor, `rec-count F = 0`
   -- ⇒ `⟦F⟧T (μ-type F) ≡ ⟦F⟧T A`, so this layer IS `alg`'s input.)
-  -- `WellFormedF-irrelevant` bridges the lemma's `wf` and the proof's.
-  μ-layer-iso : ∀ {m F} (wf : WellFormedF F) (x : ⟦ μ-type F ⟧)
+  -- `WellFormedFI-irrelevant` bridges the lemma's `wf` and the proof's.
+  μ-layer-iso : ∀ {m F} (wf : WellFormedFI F) (x : ⟦ μ-type F ⟧)
                 {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
               → ValidAtWF m alloc {μ-type F} x loc s
-              → ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} (eval (out-μ wf) x) loc s
+              → ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (eval (out-μ wf) x) loc s
   μ-layer-iso wf x (valid-μ-wf wf′ .x layer-v)
-    rewrite WellFormedF-irrelevant wf wf′ = layer-v
+    rewrite WellFormedFI-irrelevant wf wf′ = layer-v
 
   -- The flat run of `ir` from `s`/`alloc` at a given fuel (frontier 0).
   flat-run : ℕ → ∀ {A B} → IR A B → LocState FS → AllocState {FS} → FlatState
@@ -176,7 +186,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- (`flat-events(alg) ≡ otrace(alg)`), the algebra's OWN trace correctness.
   -- `ir-obs-correct` supplies it by recursing on `alg ⊂ Cata wf alg`.
   postulate
-    cata-correct : ∀ {F} (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A)
+    cata-correct : ∀ {F} (wf : WellFormedFI F) {A} (alg : IR (⟦ F ⟧TI A) A)
                  → IRObsCorrectF alg
                  → IRObsCorrectF (Cata wf alg)
 
@@ -233,7 +243,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
           2 , trans (cong (take k) (mach-[] 2))
                     (cong (take k) (sym (denot-[] k)))
       ; value-realized =
-          2 , Stack , input-loc , valid-primitive-wf fitness before
+          2 , Stack , input-loc , valid-primitive-wf (fits-erase fitness) before
       }
     where
       -- Machine side: no fetchable instr emits an event (the sole
