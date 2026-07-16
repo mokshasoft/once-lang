@@ -34,6 +34,7 @@ open import Once.Adequacy.MainIRForm using (findMain-skip; compileFun-main-EffUU
 
 open import Once.Type using (Type; Unit; _⇒[_]_; mk-kind; Many; eff)
 open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
 open import Once.Surface.Syntax using (Expr; ∅; Usage)
 open import Once.Surface.Elaborate using (elaborate)
 -- Plan 0.49 / D063 C4: the elaborator-free reference elaboration. Importing it
@@ -42,7 +43,8 @@ open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (SigEffectCtx)
 open import Once.TypeCheck.Elaborate
-  using (checkElab; ctxWithImportsAndSelfAndPolys; resolveExpr; PolyCtx; _≟T_)
+  using (checkElab; ctxWithImportsAndSelfAndPolys; PolyCtx; _≟T_)
+open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Completeness using (check-complete)
 import Once.Compile as C
@@ -60,7 +62,7 @@ EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 compileFunBody-complete : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : SigEffectCtx)
   (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
   (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) ⊢ᶜ body ∶ ty ⨾ Ψ →
-  Σ-syntax (IR Unit ty) (λ irFun →
+  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFunBody C.Heap false ctx polys sigEffs name ty body ≡ inj₂ irFun)
 compileFunBody-complete ctx polys sigEffs name ty body deriv =
   let (eE , d , f , ce) = check-complete deriv
@@ -76,7 +78,7 @@ compileFun-complete : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : SigEffec
   (name : String) (ty : Type) (body : RawExpr) {Ψ : Usage 0} →
   (name ≡ "main" → ty ≡ EffUU) →
   (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) ⊢ᶜ body ∶ ty ⨾ Ψ →
-  Σ-syntax (IR Unit ty) (λ irFun →
+  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFun C.Heap false ctx polys sigEffs name ty body ≡ inj₂ irFun)
 compileFun-complete ctx polys sigEffs name ty body main-ok deriv with name ≟str "main"
 ... | no ¬p = compileFunBody-complete ctx polys sigEffs name ty body deriv
@@ -126,16 +128,16 @@ caf-go-complete polys sigEffs ctx (AS.tcons {fi = fi} {rest = rest} {ty = ty} rf
 
 -- A wrapped "main" entry: non-primitive ⇒ found; primitive ⇒ skipped to the
 -- tail. Cases the primitive flag as an ARGUMENT, so `fi` is never split.
-findMain-main-or-skip : ∀ (irFun : IR Unit EffUU) (b : Bool) (rest : List C.CompiledFun)
-  (ir-rest : IR Unit Unit) → findMain rest ≡ just ir-rest →
-  Σ-syntax (IR Unit Unit) (λ ir →
+findMain-main-or-skip : ∀ (irFun : IR ⌊ Unit ⌋ ⌊ EffUU ⌋) (b : Bool) (rest : List C.CompiledFun)
+  (ir-rest : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → findMain rest ≡ just ir-rest →
+  Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir →
     findMain (C.mkCompiledFun (bare "main") Unit (C.wrapMainAsEntry irFun) b ∷ rest) ≡ just ir)
 findMain-main-or-skip irFun false rest ir-rest fm = C.wrapMainAsEntry irFun , refl
 findMain-main-or-skip irFun true  rest ir-rest fm = ir-rest , fm
 
 FindResult : ∀ (polys : PolyCtx) (sigEffs : SigEffectCtx) (funs : List FunInfo) (ctx : C.FunCtx) → Set
 FindResult polys sigEffs funs ctx =
-  Σ-syntax (List C.CompiledFun) (λ compiled → Σ-syntax (IR Unit Unit) (λ ir →
+  Σ-syntax (List C.CompiledFun) (λ compiled → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir →
     (C.compileAllFuns-go C.Heap false polys sigEffs funs ctx ≡ inj₂ compiled)
     × (findMain compiled ≡ just ir)))
 
@@ -155,7 +157,7 @@ caf-go-find-complete polys sigEffs ctx (AS.tcons {fi = fi} {rest = rest} {ty = t
                    (cong (C.caf-go-wrap fi EffUU irFun) rec-eq))
         , findMain-main-here irFun compiled-rest
   where
-    findMain-main-here : ∀ (g : IR Unit EffUU) (r : List C.CompiledFun) →
+    findMain-main-here : ∀ (g : IR ⌊ Unit ⌋ ⌊ EffUU ⌋) (r : List C.CompiledFun) →
       findMain (C.mkCompiledFun (bare "main") Unit (C.wrapMainAsEntry g) false ∷ r) ≡ just (C.wrapMainAsEntry g)
     findMain-main-here g r = refl
 -- there: the main is in `rest`; compile `fi`, recurse, then dispatch `fi`.
@@ -203,7 +205,7 @@ HasValidMain-decl m mt =
 
 moduleToIR-complete : ∀ (m : C.Module) (mt : AS.ModuleTyped m) →
   HasValidMain-decl m mt →
-  Σ-syntax (IR Unit Unit) (λ ir → moduleToIR m ≡ just ir)
+  Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → moduleToIR m ≡ just ir)
 moduleToIR-complete m mt (amu , me) with C.extractFunctions (C.extractAliases m) m
 ... | inj₂ (funs , polys)
     with caf-go-find-complete (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m))
@@ -306,7 +308,7 @@ findMain-skip-prim cf rest pp rewrite pp = refl
 -- findMain found an entry ⇒ some main-named non-primitive EffUU function exists.
 caf-go-mainexists : ∀ (polys : PolyCtx) (sigEffs : SigEffectCtx) {funs : List FunInfo}
   (ctx : C.FunCtx) (aft : AS.AllFunsTyped polys sigEffs funs ctx)
-  {compiled : List C.CompiledFun} {ir : IR Unit Unit} →
+  {compiled : List C.CompiledFun} {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} →
   C.compileAllFuns-go C.Heap false polys sigEffs funs ctx ≡ inj₂ compiled →
   findMain compiled ≡ just ir → MainExists aft
 caf-go-mainexists polys sigEffs ctx AS.tnil caf-eq fm =
@@ -349,7 +351,7 @@ caf-go-mainexists polys sigEffs ctx (AS.tcons {fi = fi} {rest = rest} {ty = ty} 
 -- HasValidMain-decl. This is what `correctR-sound` uses to build `tp`.
 ------------------------------------------------------------------------
 
-moduleToIR-sound : ∀ (m : C.Module) (mt : AS.ModuleTyped m) {ir : IR Unit Unit} →
+moduleToIR-sound : ∀ (m : C.Module) (mt : AS.ModuleTyped m) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} →
   moduleToIR m ≡ just ir → HasValidMain-decl m mt
 moduleToIR-sound m mt mi with C.extractFunctions (C.extractAliases m) m
 ... | inj₂ (funs , polys)
