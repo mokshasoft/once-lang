@@ -271,7 +271,13 @@ monoidal category in which every object carries a comonoid (`dup : A → A⊗A`,
 `drop : A → I`). Factor the IR through it: a linear core where `⟨_,_⟩` becomes
 tensor `⊗` and there is no `terminal`, plus a comonoid layer *outside* the core
 where `⟨f,g⟩ = (f⊗g) ∘ dup`, `terminal = drop`, and usage counts size the
-dup-trees.
+dup-trees. **This is now machine-checked** — `NbEPLinFox` (linearization-1):
+the `SMCComonoid` record (a linear SMC + a *natural* comonoid, hypothesis-
+threaded, `--safe`), and in `module Fox` the recovered cartesian operations
+with their universal laws as theorems — `fox-fst`/`fox-snd` (`fstₗ ∘ ⟨f,g⟩ ≈ f`,
+`… ≈ g`), `fox-terminal` (`drop` is the unique map to `I`), and `fox-pair-nat`
+(`⟨f,g⟩ ∘ h ≈ ⟨f∘h, g∘h⟩`, whose crux `dup ∘ h ≈ (h⊗h) ∘ dup` is exactly where
+the input is used twice — every duplication is one `dup`, nothing else copies).
 
 **The dividend — memory becomes a theorem, not a pass.** In the linear core a
 value is used *exactly once*, so its lifetime ends at its single use:
