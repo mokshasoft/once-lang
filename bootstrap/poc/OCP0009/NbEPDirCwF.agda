@@ -29,7 +29,9 @@
 module poc.OCP0009.NbEPDirCwF where
 
 open import normalizer.Syntax.Types
-  using ( Σ; _,_; _×_; ⊤; tt; _≡_; refl; sym; cong; trans )
+  using ( Ty; Σ; _,_; _×_; ⊤; tt; _≡_; refl; sym; cong; trans )
+open import normalizer.Syntax.CCC
+  using ( Term; _⟶*_; done; ⟶*-trans )
 open Σ  -- fst / snd
 
 ------------------------------------------------------------------------
@@ -203,3 +205,35 @@ _∘ₛ_ : ∀ {Θ Δ Γ} → Sub Δ Γ → Sub Θ Δ → Sub Θ Γ
 εSub : ∀ {Γ} → Sub Γ ◇
 εSub = record { obₛ = λ _ → tt ; homₛ = λ _ → tt
               ; homid = refl ; hom⨾ = λ _ _ → refl }
+
+------------------------------------------------------------------------
+-- Instantiating at the REAL IR reduction category.
+--
+-- The programs `Term A B` under reduction `_⟶*_` form a `Cat` (the free
+-- category on the reduction graph — the objects being programs of one
+-- type). `HomTy` over it recovers `NbEPDirJ`'s `Hom t u = t ⟶* u` as a
+-- type-in-context of the directed CwF: the abstract directed identity
+-- type former, instantiated at Once's actual IR, IS the concrete `⟶*` the
+-- whole directed tower is built on.
+------------------------------------------------------------------------
+
+⟶*-runit : ∀ {A B} {t u : Term A B} (p : t ⟶* u) → ⟶*-trans p done ≡ p
+⟶*-runit done       = refl
+⟶*-runit (_⟶*_.step s p) = cong (_⟶*_.step s) (⟶*-runit p)
+
+⟶*-assoc : ∀ {A B} {t u v w : Term A B}
+           (p : t ⟶* u) (q : u ⟶* v) (r : v ⟶* w) →
+           ⟶*-trans (⟶*-trans p q) r ≡ ⟶*-trans p (⟶*-trans q r)
+⟶*-assoc done       q r = refl
+⟶*-assoc (_⟶*_.step s p) q r = cong (_⟶*_.step s) (⟶*-assoc p q r)
+
+redCat : (A B : Ty) → Cat
+redCat A B = record
+  { quiv  = record { Ob = Term A B ; _⇒_ = _⟶*_ ; idₒ = done ; _⨾_ = ⟶*-trans }
+  ; unitˡ = λ _ → refl
+  ; unitʳ = ⟶*-runit
+  ; assoc = ⟶*-assoc }
+
+-- The directed identity type over Once's IR: `fam (t , u) = t ⟶* u`.
+redHom : (A B : Ty) → Ty⁺ ((⌊ redCat A B ⌋ ᵒᵖ) ⊗ᶜ ⌊ redCat A B ⌋)
+redHom A B = HomTy (redCat A B)
