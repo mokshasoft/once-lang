@@ -22,6 +22,7 @@ import qualified MAlonzo.Code.Once.Arith.SigOp.Builders
 import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.IR
+import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Surface.IR
 import qualified MAlonzo.Code.Once.Type
 
@@ -35,7 +36,7 @@ d_sigOp'45'desugar_10 ::
   MAlonzo.Code.Once.IR.T_IR_16
 d_sigOp'45'desugar_10 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.IR.C_SigOp_166
+      MAlonzo.Code.Once.IR.C_SigOp_154 (coe v0) (coe v1)
       (coe
          MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'info_222 v0 v1
          (MAlonzo.Code.Once.CanonicalName.d_bare_12 (coe v4)) v2 v3)
@@ -52,7 +53,8 @@ d_desugar_22 v0 v1 v2 v3
         -> coe MAlonzo.Code.Once.IR.C_id_22
       MAlonzo.Code.Once.Surface.IR.C__'8728'__18 v5 v7 v8
         -> coe
-             MAlonzo.Code.Once.IR.C__'8728'__30 v5
+             MAlonzo.Code.Once.IR.C__'8728'__30
+             (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v5))
              (d_desugar_22 (coe v5) (coe v1) (coe v2) (coe v7))
              (d_desugar_22 (coe v0) (coe v5) (coe v2) (coe v8))
       MAlonzo.Code.Once.Surface.IR.C_fst_24
@@ -87,20 +89,21 @@ d_desugar_22 v0 v1 v2 v3
         -> case coe v1 of
              MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v8 v9 v10
                -> coe
-                    MAlonzo.Code.Once.IR.C_curry_88
+                    MAlonzo.Code.Once.IR.C_curry_86
                     (d_desugar_22
                        (coe MAlonzo.Code.Once.Type.C__'42'__126 (coe v0) (coe v8))
                        (coe v10) (coe v2) (coe v7))
                     v2
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.IR.C_apply_80
-        -> coe MAlonzo.Code.Once.IR.C_apply_96
+        -> coe MAlonzo.Code.Once.IR.C_apply_92
       MAlonzo.Code.Once.Surface.IR.C_arr_86
-        -> coe MAlonzo.Code.Once.IR.C_arr_104
+        -> coe MAlonzo.Code.Once.IR.C_id_22
       MAlonzo.Code.Once.Surface.IR.C_Let_94 v5 v7 v8
         -> coe
              MAlonzo.Code.Once.IR.C__'8728'__30
-             (coe MAlonzo.Code.Once.Type.C__'42'__126 (coe v0) (coe v5))
+             (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                (coe MAlonzo.Code.Once.Type.C__'42'__126 (coe v0) (coe v5)))
              (d_desugar_22
                 (coe MAlonzo.Code.Once.Type.C__'42'__126 (coe v0) (coe v5))
                 (coe v1) (coe v2) (coe v8))

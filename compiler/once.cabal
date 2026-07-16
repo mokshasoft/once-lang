@@ -290,12 +290,20 @@ library
       MAlonzo.Code.Once.CCC.FrameSemantics
       MAlonzo.Code.Once.IR
       MAlonzo.Code.Once.IR.Size
+      MAlonzo.Code.Once.IRTy
+      MAlonzo.Code.Once.IRTy.WF
+      MAlonzo.Code.Once.Semantics.ValueIR
+      MAlonzo.Code.Once.Semantics.Functor.Laws
+      MAlonzo.Code.Once.Adequacy.AnaErased
+      MAlonzo.Code.Once.Adequacy.CataErased
+      MAlonzo.Code.Once.Adequacy.InErased
+      MAlonzo.Code.Once.Adequacy.LiftFnReduce
+      MAlonzo.Code.Once.TypeCheck.ElaborateProofs
       MAlonzo.Code.Once.CCC.IR.Stack
       MAlonzo.Code.Once.CCC.Label
       MAlonzo.Code.Once.CCC.Machine.Allocation
       MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed
       MAlonzo.Code.Once.CCC.Machine.Flat
-      MAlonzo.Code.Once.CCC.Machine.IR.MuValidity
       MAlonzo.Code.Once.CCC.Machine.LocMatchesMode
       MAlonzo.Code.Once.CCC.Machine.Locations
       MAlonzo.Code.Once.CCC.Machine.SMCore

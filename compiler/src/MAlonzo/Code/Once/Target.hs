@@ -22,20 +22,20 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Once.Arith.Machine.IR
 import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.IR
+import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Target.RegConvention
-import qualified MAlonzo.Code.Once.Type
 
 -- Once.Target.Target
 d_Target_4 = ()
 data T_Target_4
   = C_constructor_50 (Integer ->
-                      MAlonzo.Code.Once.Type.T_Type_112 ->
-                      MAlonzo.Code.Once.Type.T_Type_112 ->
+                      MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+                      MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
                       MAlonzo.Code.Once.IR.T_IR_16 ->
                       MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                      (Integer ->
-                      MAlonzo.Code.Once.Type.T_Type_112 ->
-                      MAlonzo.Code.Once.Type.T_Type_112 ->
+                      MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+                      MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
                       MAlonzo.Code.Once.IR.T_IR_16 ->
                       MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
                      MAlonzo.Code.Agda.Builtin.String.T_String_6
@@ -49,8 +49,8 @@ data T_Target_4
 d_irToAsm_32 ::
   T_Target_4 ->
   Integer ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_irToAsm_32 v0
@@ -61,8 +61,8 @@ d_irToAsm_32 v0
 d_irToBodies_38 ::
   T_Target_4 ->
   Integer ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_irToBodies_38 v0

@@ -34,6 +34,7 @@ import qualified MAlonzo.Code.Once.Denotation.DenotTrace
 import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.IR
+import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.Module.Resolve
@@ -212,9 +213,13 @@ d_'10214'_'10215'IR_56 v0
                      MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_62
                      (coe
                         MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_10
-                        (coe MAlonzo.Code.Once.Type.C_Unit_122)
-                        (coe MAlonzo.Code.Once.Type.C_Unit_122) (coe v1)
-                        (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
+                        (coe
+                           MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                           (coe MAlonzo.Code.Once.Type.C_Unit_122))
+                        (coe
+                           MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                           (coe MAlonzo.Code.Once.Type.C_Unit_122))
+                        (coe v1) (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                      (coe v2)))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe (\ v1 -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)

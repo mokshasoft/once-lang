@@ -29,8 +29,8 @@ import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.FrameInstantiation
 import qualified MAlonzo.Code.Once.IR
+import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Target.Arch
-import qualified MAlonzo.Code.Once.Type
 
 -- Once.Adequacy.ArchCorrectness.X86-64.program-bound
 d_program'45'bound_8
@@ -42,8 +42,8 @@ d_flat'45'trace_10
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.ArchCorrectness.X86-64.flat-trace"
 -- Once.Adequacy.ArchCorrectness.X86-64._.ir-obs-correct
 d_ir'45'obs'45'correct_14 ::
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
@@ -52,14 +52,14 @@ d_ir'45'obs'45'correct_14 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_522 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_492 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.T_MachineRefinesObsF_260
+  MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.T_MachineRefinesObsF_262
 d_ir'45'obs'45'correct_14
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_506
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_508
       (coe
          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.FrameInstantiation.d_x86v3'45'frame'45'semantics_302)
       (coe d_program'45'bound_8)

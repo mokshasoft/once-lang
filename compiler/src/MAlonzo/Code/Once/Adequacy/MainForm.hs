@@ -32,7 +32,7 @@ import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Type
-import qualified MAlonzo.Code.Once.TypeCheck.Elaborate
+import qualified MAlonzo.Code.Once.TypeCheck.ElaborateProofs
 
 -- Once.Adequacy.MainForm.EffUU
 d_EffUU_6 :: MAlonzo.Code.Once.Type.T_Type_112
@@ -346,7 +346,7 @@ du_form_262 v0 v1
                                                                                                  (coe
                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                     (coe
-                                                                                                       MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12772
+                                                                                                       MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_2808
                                                                                                        (coe
                                                                                                           (0 ::
                                                                                                              Integer))

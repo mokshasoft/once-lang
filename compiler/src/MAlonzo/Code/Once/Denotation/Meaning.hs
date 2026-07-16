@@ -81,7 +81,7 @@ du_z_26 ::
   MAlonzo.Code.Once.Type.T_Functor_110 -> AgdaAny -> AgdaAny
 du_z_26 v0 v1
   = coe
-      MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'8315''185''45'D_154
+      MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'8315''185''45'D_184
       (coe v0)
       (coe
          MAlonzo.Code.Once.Semantics.Value.du_sem'45'fmap_418 (coe v0)
@@ -107,7 +107,7 @@ du_cata'45'sem_32 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Once.Semantics.Value.du_sem'45'cata_940 v0 v1
       (coe du_cata'45'ev'45'alg'7472''45'D_10 (coe v0) (coe v4) (coe v2))
-      (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_26
+      (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_56
          (coe MAlonzo.Code.Once.Type.C_μ'45'type_132 (coe v0)) (coe v3))
 -- Once.Denotation.Meaning.in-value
 d_in'45'value_50 ::
@@ -119,7 +119,7 @@ d_in'45'value_50 v0 v1
       (coe
          MAlonzo.Code.Once.Semantics.Value.du_coerce'45'functor_94 (coe v0)
          (coe
-            MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_26
+            MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_56
             (coe
                MAlonzo.Code.Once.Type.d_'10214'_'10215'T_166 (coe v0)
                (coe MAlonzo.Code.Once.Type.C_μ'45'type_132 (coe v0)))
@@ -145,20 +145,20 @@ du_named'45'sem_60 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.Denotation.ValueDomain.du_emit'45'D_128 (coe v0)
+         MAlonzo.Code.Once.Denotation.ValueDomain.du_emit'45'D_158 (coe v0)
          (coe
             MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_204 (coe v0)
             (coe v1) (coe v2) (coe v3) (coe v4))
          (coe
-            MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_26 (coe v0)
+            MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_56 (coe v0)
             (coe v5)))
       (coe
-         MAlonzo.Code.Once.Denotation.ValueDomain.d_inject_30 (coe v1)
+         MAlonzo.Code.Once.Denotation.ValueDomain.d_inject_60 (coe v1)
          (coe
             MAlonzo.Code.Once.SigOp.Info.du_semM_188
             (MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_204
                (coe v0) (coe v1) (coe v2) (coe v3) (coe v4))
-            (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_26
+            (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_56
                (coe v0) (coe v5))))
 -- Once.Denotation.Meaning.⟦_⟧ᵍ
 d_'10214'_'10215''7501'_82 ::
@@ -458,11 +458,11 @@ du_sigOpVal'7472'_226 v0 v1
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.Denotation.ValueDomain.du_emit'45'D_128
+         MAlonzo.Code.Once.Denotation.ValueDomain.du_emit'45'D_158
          (coe MAlonzo.Code.Once.Type.C_Unit_122) (coe v1)
          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
       (coe
-         MAlonzo.Code.Once.Denotation.ValueDomain.d_inject_30 (coe v0)
+         MAlonzo.Code.Once.Denotation.ValueDomain.d_inject_60 (coe v0)
          (coe
             MAlonzo.Code.Once.SigOp.Info.du_semM_188 v1
             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)))
@@ -496,21 +496,21 @@ d_sigOpRef'7472'_234 v0 v1 v2
                                coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                  (coe
-                                    MAlonzo.Code.Once.Denotation.ValueDomain.du_emit'45'D_128
+                                    MAlonzo.Code.Once.Denotation.ValueDomain.du_emit'45'D_158
                                     (coe v8)
                                     (coe
                                        MAlonzo.Code.Once.Arith.SigOp.Builders.d_arrow'45'info_246
                                        (coe v8) (coe v10) (coe v9) (coe v1) (coe v6) (coe v7))
                                     (coe
-                                       MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_26 (coe v8)
+                                       MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_56 (coe v8)
                                        (coe v12)))
                                  (coe
-                                    MAlonzo.Code.Once.Denotation.ValueDomain.d_inject_30 (coe v10)
+                                    MAlonzo.Code.Once.Denotation.ValueDomain.d_inject_60 (coe v10)
                                     (coe
                                        MAlonzo.Code.Once.SigOp.Info.du_semM_188
                                        (MAlonzo.Code.Once.Arith.SigOp.Builders.d_arrow'45'info_246
                                           (coe v8) (coe v10) (coe v9) (coe v1) (coe v6) (coe v7))
-                                       (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_26
+                                       (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_56
                                           (coe v8) (coe v12)))))))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError

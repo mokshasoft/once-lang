@@ -42,6 +42,7 @@ import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Completeness
 import qualified MAlonzo.Code.Once.TypeCheck.Context
 import qualified MAlonzo.Code.Once.TypeCheck.Elaborate
+import qualified MAlonzo.Code.Once.TypeCheck.ElaborateProofs
 import qualified MAlonzo.Code.Once.TypeCheck.Judgment
 import qualified MAlonzo.Code.Once.TypeCheck.Raw
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
@@ -87,7 +88,7 @@ du_compileFunBody'45'complete_24 v0 v1 v2 v3 v4 v5 v6
          (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8) (coe v4)
          (coe MAlonzo.Code.Once.IR.C_Heap_8)
          (coe
-            MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12772
+            MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_2808
             (coe (0 :: Integer))
             (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8) (coe v4)
             (coe v1)
@@ -103,7 +104,7 @@ du_compileFunBody'45'complete_24 v0 v1 v2 v3 v4 v5 v6
             (coe
                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                (coe
-                  MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_4950
+                  MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_4952
                   (coe
                      MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                      (coe v0) (coe v1) (coe v2) (coe v3) (coe v4))
@@ -307,7 +308,7 @@ d_caf'45'go'45'find'45'complete_286 v0 v1 v2 v3 v4 v5 v6
                                                                (coe d_EffUU_6)
                                                                (coe MAlonzo.Code.Once.IR.C_Heap_8)
                                                                (coe
-                                                                  MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12772
+                                                                  MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_2808
                                                                   (coe (0 :: Integer))
                                                                   (coe
                                                                      MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
@@ -336,7 +337,7 @@ d_caf'45'go'45'find'45'complete_286 v0 v1 v2 v3 v4 v5 v6
                                                                   (coe
                                                                      MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                                      (coe
-                                                                        MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_4950
+                                                                        MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_4952
                                                                         (coe
                                                                            MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                                                                            (coe v3) (coe v0)

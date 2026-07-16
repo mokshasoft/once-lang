@@ -30,8 +30,8 @@ import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.IR
+import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Target.Arch
-import qualified MAlonzo.Code.Once.Type
 
 -- Once.Adequacy.ArchCorrectness.FlatFromObs._.IRObsCorrectF
 d_IRObsCorrectF_20 ::
@@ -42,8 +42,8 @@ d_IRObsCorrectF_20 ::
   (Maybe MAlonzo.Code.Once.IR.T_IR_16 ->
    Integer ->
    [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]) ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> ()
 d_IRObsCorrectF_20 = erased
 -- Once.Adequacy.ArchCorrectness.FlatFromObs.asm-sem
@@ -84,8 +84,8 @@ d_flat'45'from'45'obs_46 ::
   (Maybe MAlonzo.Code.Once.IR.T_IR_16 ->
    Integer ->
    [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]) ->
-  (MAlonzo.Code.Once.Type.T_Type_112 ->
-   MAlonzo.Code.Once.Type.T_Type_112 ->
+  (MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
    MAlonzo.Code.Once.IR.T_IR_16 ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
    MAlonzo.Code.Once.IR.T_AllocMode_4 ->
@@ -94,11 +94,11 @@ d_flat'45'from'45'obs_46 ::
    MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
    MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_522 ->
+   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_492 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_610 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.T_MachineRefinesObsF_260) ->
+   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.T_MachineRefinesObsF_262) ->
   MAlonzo.Code.Once.Adequacy.Compile.T_ArchCorrect_46
 d_flat'45'from'45'obs_46 ~v0 ~v1 v2 ~v3 v4 ~v5
   = du_flat'45'from'45'obs_46 v2 v4

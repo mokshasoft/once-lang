@@ -25,8 +25,7 @@ import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.Adequacy.CataFold.cata-fold-eq
-d_cata'45'fold'45'eq_26 ::
-  Integer ->
+d_cata'45'fold'45'eq_28 ::
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Functor_110 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -37,20 +36,4 @@ d_cata'45'fold'45'eq_26 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_cata'45'fold'45'eq_26 = erased
--- Once.Adequacy.CataFold._.alg-eq
-d_alg'45'eq_52 ::
-  Integer ->
-  MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
-  MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Type.T_Purity_32 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
-  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
-  MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  AgdaAny ->
-  Integer ->
-  Integer ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_alg'45'eq_52 = erased
+d_cata'45'fold'45'eq_28 = erased

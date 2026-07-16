@@ -33,6 +33,7 @@ import qualified MAlonzo.Code.Once.Arith.Machine.Rewrite
 import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Escape
 import qualified MAlonzo.Code.Once.IR
+import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Optimize
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Core
@@ -52,6 +53,7 @@ import qualified MAlonzo.Code.Once.Target.X86Z45Z64
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Elaborate
+import qualified MAlonzo.Code.Once.TypeCheck.ElaborateProofs
 import qualified MAlonzo.Code.Once.TypeCheck.Error
 import qualified MAlonzo.Code.Once.TypeCheck.Principal
 import qualified MAlonzo.Code.Once.TypeCheck.Raw
@@ -99,17 +101,19 @@ d_wrapMainAsEntry_8 v0
   = coe
       MAlonzo.Code.Once.IR.C__'8728'__30
       (coe
-         MAlonzo.Code.Once.Type.C__'42'__126
+         MAlonzo.Code.Once.IRTy.C__'42'__20
          (coe
-            MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130
-            (coe MAlonzo.Code.Once.Type.C_Unit_122)
+            MAlonzo.Code.Once.IRTy.C__'8667'__24
             (coe
-               MAlonzo.Code.Once.Type.C_mk'45'kind_50
-               (coe MAlonzo.Code.Once.Type.C_Many_10)
-               (coe MAlonzo.Code.Once.Type.C_eff_36))
-            (coe MAlonzo.Code.Once.Type.C_Unit_122))
-         (coe MAlonzo.Code.Once.Type.C_Unit_122))
-      (coe MAlonzo.Code.Once.IR.C_apply_96)
+               MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+               (coe MAlonzo.Code.Once.Type.C_Unit_122))
+            (coe
+               MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+               (coe MAlonzo.Code.Once.Type.C_Unit_122)))
+         (coe
+            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+            (coe MAlonzo.Code.Once.Type.C_Unit_122)))
+      (coe MAlonzo.Code.Once.IR.C_apply_92)
       (coe
          MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v0
          (coe MAlonzo.Code.Once.IR.C_terminal_74)
@@ -170,14 +174,21 @@ d_directCallIR_32 v0 v1
                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v5)
                    (coe
                       MAlonzo.Code.Once.IR.C__'8728'__30
-                      (coe MAlonzo.Code.Once.Type.C__'42'__126 (coe v0) (coe v3))
-                      (coe MAlonzo.Code.Once.IR.C_apply_96)
+                      (coe
+                         MAlonzo.Code.Once.IRTy.C__'42'__20
+                         (coe
+                            MAlonzo.Code.Once.IRTy.C__'8667'__24
+                            (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v3))
+                            (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v5)))
+                         (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v3)))
+                      (coe MAlonzo.Code.Once.IR.C_apply_92)
                       (coe
                          MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38
                          (coe
                             MAlonzo.Code.Once.IR.C__'8728'__30
-                            (coe MAlonzo.Code.Once.Type.C_Unit_122) v1
-                            (coe MAlonzo.Code.Once.IR.C_terminal_74))
+                            (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                               (coe MAlonzo.Code.Once.Type.C_Unit_122))
+                            v1 (coe MAlonzo.Code.Once.IR.C_terminal_74))
                          (coe MAlonzo.Code.Once.IR.C_id_22)
                          (coe MAlonzo.Code.Once.IR.C_Heap_8))))
          _ -> coe v2)
@@ -232,17 +243,18 @@ du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v8
              (coe
                 MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v3)
                 (coe
-                   MAlonzo.Code.Once.Optimize.d_optimize_4128
-                   (coe
-                      MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
-                      (coe v1))
-                   v7
+                   MAlonzo.Code.Once.Optimize.d_optimize_4302
+                   (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                      (coe
+                         MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
+                         (coe v1)))
+                   (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v7))
                    (coe
                       MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108 (coe v1)
                       (coe v7) (coe v2)
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12772 (coe v0)
-                         (coe v1) (coe v7) (coe v5)
+                         MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_2808
+                         (coe v0) (coe v1) (coe v7) (coe v5)
                          (coe
                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                             (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v6) (coe v7))
@@ -256,8 +268,8 @@ du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v8
                    MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108 (coe v1)
                    (coe v7) (coe v2)
                    (coe
-                      MAlonzo.Code.Once.TypeCheck.Elaborate.du_resolveExpr_12772 (coe v0)
-                      (coe v1) (coe v7) (coe v5)
+                      MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_2808
+                      (coe v0) (coe v1) (coe v7) (coe v5)
                       (coe
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                          (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v6) (coe v7))
@@ -297,7 +309,7 @@ d_compileFunBody_112 v0 v1 v2 v3 v4 v5 v6 v7
       (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8) (coe v0)
       (coe v1) (coe v2) (coe v3) (coe v5) (coe v6)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1598
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1608
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
             (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
@@ -442,7 +454,7 @@ d_inferType'45'validate_276 v0 v1 v2 v3
         -> let v5
                  = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                      (coe
-                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1766
+                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1776
                         (coe v0) (coe v1) (coe v4)) in
            coe
              (case coe v5 of
@@ -464,7 +476,7 @@ d_inferType_312 v0 v1 v2
   = let v3
           = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1750
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1760
                  (coe
                     MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_376
                     (coe v0) (coe v1))
@@ -794,9 +806,13 @@ d_pipeline_614 ::
   MAlonzo.Code.Once.IR.T_IR_16
 d_pipeline_614 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Escape.d_escape_148 v0 v1
+      MAlonzo.Code.Once.Escape.d_escape_146
+      (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v0))
+      (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v1))
       (coe
-         MAlonzo.Code.Once.Optimize.d_optimize_4128 v0 v1
+         MAlonzo.Code.Once.Optimize.d_optimize_4302
+         (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v0))
+         (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v1))
          (MAlonzo.Code.Once.Surface.Desugar.d_desugar_22
             (coe v0) (coe v1) (coe v2) (coe v3)))
 -- Once.Compile.pipeline-default
@@ -818,7 +834,9 @@ d_pipeline'45'no'45'escape_630 ::
   MAlonzo.Code.Once.IR.T_IR_16
 d_pipeline'45'no'45'escape_630 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Optimize.d_optimize_4128 v0 v1
+      MAlonzo.Code.Once.Optimize.d_optimize_4302
+      (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v0))
+      (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v1))
       (MAlonzo.Code.Once.Surface.Desugar.d_desugar_22
          (coe v0) (coe v1) (coe v2) (coe v3))
 -- Once.Compile.pipeline-no-opt
@@ -867,31 +885,39 @@ d_compileFunWithTarget_644 v0 v1 v2
                       MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                       (coe
                          MAlonzo.Code.Once.Target.d_irToAsm_32 v0 v1
-                         (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                         (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
                             (coe
-                               d_directCallIR_32 (coe d_cfType_242 (coe v2))
-                               (coe d_cfIR_244 (coe v2))))
-                         (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                            (coe
-                               MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                               MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                (coe
                                   d_directCallIR_32 (coe d_cfType_242 (coe v2))
                                   (coe d_cfIR_244 (coe v2)))))
+                         (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                            (coe
+                               MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                               (coe
+                                  MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                  (coe
+                                     d_directCallIR_32 (coe d_cfType_242 (coe v2))
+                                     (coe d_cfIR_244 (coe v2))))))
                          (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                             (coe
                                MAlonzo.Code.Once.Arith.Machine.Rewrite.d_rewrite'45'ir_130
                                (coe
-                                  MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
                                   (coe
-                                     d_directCallIR_32 (coe d_cfType_242 (coe v2))
-                                     (coe d_cfIR_244 (coe v2))))
-                               (coe
-                                  MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                  (coe
-                                     MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                     MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                      (coe
                                         d_directCallIR_32 (coe d_cfType_242 (coe v2))
                                         (coe d_cfIR_244 (coe v2)))))
+                               (coe
+                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                  (coe
+                                     MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                     (coe
+                                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                        (coe
+                                           d_directCallIR_32 (coe d_cfType_242 (coe v2))
+                                           (coe d_cfIR_244 (coe v2))))))
                                (coe
                                   MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                   (coe
@@ -903,31 +929,39 @@ d_compileFunWithTarget_644 v0 v1 v2
                       MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                       (coe
                          MAlonzo.Code.Once.Target.d_irToBodies_38 v0 v1
-                         (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                         (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
                             (coe
-                               d_directCallIR_32 (coe d_cfType_242 (coe v2))
-                               (coe d_cfIR_244 (coe v2))))
-                         (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                            (coe
-                               MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                               MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                (coe
                                   d_directCallIR_32 (coe d_cfType_242 (coe v2))
                                   (coe d_cfIR_244 (coe v2)))))
+                         (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                            (coe
+                               MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                               (coe
+                                  MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                  (coe
+                                     d_directCallIR_32 (coe d_cfType_242 (coe v2))
+                                     (coe d_cfIR_244 (coe v2))))))
                          (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                             (coe
                                MAlonzo.Code.Once.Arith.Machine.Rewrite.d_rewrite'45'ir_130
                                (coe
-                                  MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
                                   (coe
-                                     d_directCallIR_32 (coe d_cfType_242 (coe v2))
-                                     (coe d_cfIR_244 (coe v2))))
-                               (coe
-                                  MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                  (coe
-                                     MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                     MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                      (coe
                                         d_directCallIR_32 (coe d_cfType_242 (coe v2))
                                         (coe d_cfIR_244 (coe v2)))))
+                               (coe
+                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                  (coe
+                                     MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                     (coe
+                                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                        (coe
+                                           d_directCallIR_32 (coe d_cfType_242 (coe v2))
+                                           (coe d_cfIR_244 (coe v2))))))
                                (coe
                                   MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                   (coe
@@ -947,31 +981,39 @@ d_compileFunWithTarget_644 v0 v1 v2
                          (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                             (coe
                                MAlonzo.Code.Once.Target.d_irToAsm_32 v0 v1
-                               (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                               (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
                                   (coe
-                                     d_directCallIR_32 (coe d_cfType_242 (coe v2))
-                                     (coe d_cfIR_244 (coe v2))))
-                               (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                  (coe
-                                     MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                     MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                      (coe
                                         d_directCallIR_32 (coe d_cfType_242 (coe v2))
                                         (coe d_cfIR_244 (coe v2)))))
+                               (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                  (coe
+                                     MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                     (coe
+                                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                        (coe
+                                           d_directCallIR_32 (coe d_cfType_242 (coe v2))
+                                           (coe d_cfIR_244 (coe v2))))))
                                (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                   (coe
                                      MAlonzo.Code.Once.Arith.Machine.Rewrite.d_rewrite'45'ir_130
                                      (coe
-                                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
                                         (coe
-                                           d_directCallIR_32 (coe d_cfType_242 (coe v2))
-                                           (coe d_cfIR_244 (coe v2))))
-                                     (coe
-                                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                        (coe
-                                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                            (coe
                                               d_directCallIR_32 (coe d_cfType_242 (coe v2))
                                               (coe d_cfIR_244 (coe v2)))))
+                                     (coe
+                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                        (coe
+                                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                           (coe
+                                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                              (coe
+                                                 d_directCallIR_32 (coe d_cfType_242 (coe v2))
+                                                 (coe d_cfIR_244 (coe v2))))))
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                         (coe
@@ -985,31 +1027,39 @@ d_compileFunWithTarget_644 v0 v1 v2
                             (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                (coe
                                   MAlonzo.Code.Once.Target.d_irToBodies_38 v0 v1
-                                  (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                  (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
                                      (coe
-                                        d_directCallIR_32 (coe d_cfType_242 (coe v2))
-                                        (coe d_cfIR_244 (coe v2))))
-                                  (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                     (coe
-                                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                         (coe
                                            d_directCallIR_32 (coe d_cfType_242 (coe v2))
                                            (coe d_cfIR_244 (coe v2)))))
+                                  (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                     (coe
+                                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                        (coe
+                                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                           (coe
+                                              d_directCallIR_32 (coe d_cfType_242 (coe v2))
+                                              (coe d_cfIR_244 (coe v2))))))
                                   (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                      (coe
                                         MAlonzo.Code.Once.Arith.Machine.Rewrite.d_rewrite'45'ir_130
                                         (coe
-                                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                           MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
                                            (coe
-                                              d_directCallIR_32 (coe d_cfType_242 (coe v2))
-                                              (coe d_cfIR_244 (coe v2))))
-                                        (coe
-                                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                           (coe
-                                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                              MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                               (coe
                                                  d_directCallIR_32 (coe d_cfType_242 (coe v2))
                                                  (coe d_cfIR_244 (coe v2)))))
+                                        (coe
+                                           MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                           (coe
+                                              MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                                              (coe
+                                                 MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                                 (coe
+                                                    d_directCallIR_32 (coe d_cfType_242 (coe v2))
+                                                    (coe d_cfIR_244 (coe v2))))))
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                            (coe
@@ -1022,17 +1072,21 @@ d_compileFunWithTarget_644 v0 v1 v2
                       (coe
                          MAlonzo.Code.Once.Arith.Machine.Rewrite.d_rewrite'45'ir_130
                          (coe
-                            MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
                             (coe
-                               d_directCallIR_32 (coe d_cfType_242 (coe v2))
-                               (coe d_cfIR_244 (coe v2))))
-                         (coe
-                            MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                            (coe
-                               MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                               MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                (coe
                                   d_directCallIR_32 (coe d_cfType_242 (coe v2))
                                   (coe d_cfIR_244 (coe v2)))))
+                         (coe
+                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                            (coe
+                               MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                               (coe
+                                  MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                  (coe
+                                     d_directCallIR_32 (coe d_cfType_242 (coe v2))
+                                     (coe d_cfIR_244 (coe v2))))))
                          (coe
                             MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                             (coe

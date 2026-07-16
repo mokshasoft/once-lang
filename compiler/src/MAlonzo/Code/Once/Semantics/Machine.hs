@@ -21,6 +21,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Functor.Translate
+import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Semantics.Functor
 import qualified MAlonzo.Code.Once.Semantics.Value
 import qualified MAlonzo.Code.Once.Type
@@ -432,3 +433,26 @@ d_'10214'μ'10215'_114 = erased
 -- Once.Semantics.Machine._.⟦ν⟧
 d_'10214'ν'10215'_116 :: MAlonzo.Code.Once.Type.T_Functor_110 -> ()
 d_'10214'ν'10215'_116 = erased
+-- Once.Semantics.Machine._.base-coh
+d_base'45'coh_120 ::
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_base'45'coh_120 = erased
+-- Once.Semantics.Machine._.coh
+d_coh_122 ::
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_coh_122 = erased
+-- Once.Semantics.Machine._.tF-coh
+d_tF'45'coh_124 ::
+  MAlonzo.Code.Once.Type.T_Functor_110 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_tF'45'coh_124 = erased
+-- Once.Semantics.Machine._.⟦_⟧Fᴵ
+d_'10214'_'10215'F'7477'_126 ::
+  MAlonzo.Code.Once.IRTy.T_IRFunctor_4 -> () -> ()
+d_'10214'_'10215'F'7477'_126 = erased
+-- Once.Semantics.Machine._.⟦_⟧ᴵ
+d_'10214'_'10215''7477'_128 ::
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 -> ()
+d_'10214'_'10215''7477'_128 = erased
