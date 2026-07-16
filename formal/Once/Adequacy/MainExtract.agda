@@ -36,6 +36,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; cong; trans)
 
 open import Once.Type using (Unit; _⇒[_]_; mk-kind; Many; eff)
 open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
 open import Once.Surface.Syntax using (Expr; ∅; Usage)
 open import Once.Surface.Elaborate using (elaborate)
 import Once.Compile as C
@@ -76,7 +77,7 @@ open import Once.Adequacy.MainForm using (main-ir-form; Form)
 -- reducible to `source-meaningᴰ-aux ir (main-ir-form m ir mi)`, so
 -- `MainRealizeAgrees.main-extract` can `with main-ir-form m ir mi` and share the
 -- abstracted value with this call (recovering `seR`).
-source-meaningᴰ-aux : ∀ (ir : IR Unit Unit) → Form ir →
+source-meaningᴰ-aux : ∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Form ir →
   Σ-syntax (Usage 0) (λ Ψ →
     Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
       ∀ (n : ℕ) → ⟦ just ir ⟧IR n ≡ runMainˢ seR n))
@@ -91,7 +92,7 @@ source-meaningᴰ-aux ir (Ψ , seR , eq , _) = Ψ , seR , bridge
                                   (SD.⟦ seR ⟧ˢ tt) (λ clo → clo tt) n
                                   (faithful seR tt n))))
 
-source-meaningᴰ : ∀ (m : P.Module) (ir : IR Unit Unit) →
+source-meaningᴰ : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
   moduleToIR m ≡ just ir →
   Σ-syntax (Usage 0) (λ Ψ →
     Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
