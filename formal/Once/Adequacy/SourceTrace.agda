@@ -47,6 +47,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Type using (Type; Unit)
 open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 -- Plan 0.52: pull the LEXER+PARSER into the verified front-end — `srcToModule`
@@ -64,7 +65,7 @@ open import Once.Denotation.TraceMonad using (projTrace)
 ------------------------------------------------------------------------
 
 -- | Recognise the `Unit` codomain so `main`'s entry IR (wrapped to
--- `IR Unit Unit` by `maybeWrapMain`) can be coerced.
+-- `IR ⌊ Unit ⌋ ⌊ Unit ⌋` by `maybeWrapMain`) can be coerced.
 isUnit? : (T : Type) → Maybe (T ≡ Unit)
 isUnit? Unit = just refl
 isUnit? _    = nothing
@@ -74,7 +75,7 @@ open C.CompiledFun using (cfName; cfType; cfIR; cfIsPrimitive)
 -- Explicit dispatch on the three decisions (no `with`-opacity, no dependent
 -- `just refl` buried in a `with`), so `findMain`'s "is this the entry?" choice
 -- is analyzable. `just refl` refines `cfType cf` to `Unit`, coercing
--- `cfIR cf : IR Unit (cfType cf)` to `IR Unit Unit`.
+-- `cfIR cf : IR Unit (cfType cf)` to `IR ⌊ Unit ⌋ ⌊ Unit ⌋`.
 --
 -- The FIRST argument is `cfIsPrimitive cf`: a PRIMITIVE is never the entry —
 -- its body is not emitted at codegen (`CompiledFun.cfIsPrimitive`), so it has
@@ -82,7 +83,7 @@ open C.CompiledFun using (cfName; cfType; cfIR; cfIsPrimitive)
 -- backend and makes the entry provably trace back to a `DFunDef`.
 findMain-here :
   (cf : C.CompiledFun) → Bool → Dec (cfName cf ≡ bare "main") → Maybe (cfType cf ≡ Unit)
-  → Maybe (IR Unit Unit) → Maybe (IR Unit Unit)
+  → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 findMain-here cf false (yes _) (just refl) cont = just (cfIR cf)
 findMain-here cf false (yes _) nothing     cont = cont
 findMain-here cf false (no  _) _           cont = cont
@@ -99,13 +100,13 @@ isMain cf with cfIsPrimitive cf | cfName cf ≟cn bare "main" | isUnit? (cfType 
 ... | false | yes _ | just _ = true
 ... | _     | _     | _      = false
 
-findMain : List C.CompiledFun → Maybe (IR Unit Unit)
+findMain : List C.CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 findMain []         = nothing
 findMain (cf ∷ rest) =
   findMain-here cf (cfIsPrimitive cf) (cfName cf ≟cn bare "main") (isUnit? (cfType cf)) (findMain rest)
 
 -- Explicit dispatch on the compile result (no `with`-opacity).
-moduleToIR-aux : String ⊎ List C.CompiledFun → Maybe (IR Unit Unit)
+moduleToIR-aux : String ⊎ List C.CompiledFun → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 moduleToIR-aux (inj₁ _)    = nothing
 moduleToIR-aux (inj₂ funs) = findMain funs
 
@@ -113,7 +114,7 @@ moduleToIR-aux (inj₂ funs) = findMain funs
 -- module-level proofs (`AcceptSound`/`MainBuilds`/`ModuleComplete`) reason
 -- about THIS over a module `mod` (interpreted as the RESOLVED module);
 -- resolution is confined to `srcToModule` below, so those proofs are untouched.
-moduleToIR : P.Module → Maybe (IR Unit Unit)
+moduleToIR : P.Module → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 moduleToIR mod = moduleToIR-aux (C.compileResolvedModule C.Heap false mod)
 
 ------------------------------------------------------------------------
@@ -123,7 +124,7 @@ moduleToIR mod = moduleToIR-aux (C.compileResolvedModule C.Heap false mod)
 -- The SigOp trace the denotational `evalᴰ` reads off `main`'s IR (the
 -- elaborated meaning), at observation depth `n` (Plan 0.46: the monadic
 -- `⟦_⟧ᴰ` is THE source observable; the operational `otrace` is retired).
-⟦_⟧IR : Maybe (IR Unit Unit) → Behavior
+⟦_⟧IR : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Behavior
 ⟦ just ir ⟧IR = λ n → take n (projTrace (evalᴰ ir tt) n)
 ⟦ nothing ⟧IR = λ _ → []
 
