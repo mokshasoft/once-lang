@@ -18,8 +18,7 @@ module Once.Adequacy.ArchCorrectness.X86-64 where
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe)
-open import Once.IR using (IR)
-open import Once.Type using (Unit)
+open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
 open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.CPU using (x86-64; arch-semantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
