@@ -29,7 +29,10 @@ open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Machine.Allocation
 open import Once.Semantics.Machine public
   using (sem-fst; sem-snd; sem-inl; sem-inr; sem-pair)
-  renaming (⟦_⟧ᴵ to ⟦_⟧)
+-- The IRTy value-domain rename is LOCAL to Validity (not re-exported), so it
+-- does not collide with downstream modules' own surface `⟦_⟧` imports.
+open import Once.Semantics.Machine
+  using () renaming (⟦_⟧ᴵ to ⟦_⟧)
 pair = sem-pair
 open import Once.IR
 open import Once.CCC.Eval using (eval)

@@ -27,8 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (LocState; halted; ValueLocation; sucLoc; module MemOps)
-open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.Type using (Type)
+open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
 open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
 open import Once.CCC.Machine.Validity using (module ValidityDef)
 
@@ -57,9 +56,9 @@ module _ {FS : FrameSemantics} (program-bound : ℕ) where
     valid-closure-wf body<bound lm (trans (rl s b cl) r1) (trans (rl s b (sucLoc cl)) r2) bf1 bf2
       (validAtWF-set-halted b venv) bodyc
   validAtWF-set-halted {s = s} b (valid-inl-wf {sum-loc = sl} lm tg r bf1 bf2 va) =
-    valid-inl-wf lm (trans (rl s b sl) tg) (trans (rl s b (sucLoc sl)) r) bf1 bf2 (validAtWF-set-halted b va)
+    valid-inl-wf lm (transport-SumTag (rl s b sl) tg) (trans (rl s b (sucLoc sl)) r) bf1 bf2 (validAtWF-set-halted b va)
   validAtWF-set-halted {s = s} b (valid-inr-wf {sum-loc = sl} lm tg r bf1 bf2 vb) =
-    valid-inr-wf lm (trans (rl s b sl) tg) (trans (rl s b (sucLoc sl)) r) bf1 bf2 (validAtWF-set-halted b vb)
+    valid-inr-wf lm (transport-SumTag (rl s b sl) tg) (trans (rl s b (sucLoc sl)) r) bf1 bf2 (validAtWF-set-halted b vb)
   validAtWF-set-halted b (valid-μ-wf wf x v) =
     valid-μ-wf wf x (validAtWF-set-halted b v)
   validAtWF-set-halted b (valid-ν-wf wf x v) =
@@ -68,5 +67,3 @@ module _ {FS : FrameSemantics} (program-bound : ℕ) where
   validAtWF-set-halted b (valid-float-wf bf) = valid-float-wf bf
   validAtWF-set-halted b (valid-str-wf bf) = valid-str-wf bf
   validAtWF-set-halted b (valid-buffer-wf bf) = valid-buffer-wf bf
-  validAtWF-set-halted b (valid-coerce-kind-wf v) =
-    valid-coerce-kind-wf (validAtWF-set-halted b v)

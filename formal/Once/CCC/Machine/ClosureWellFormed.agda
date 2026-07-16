@@ -33,7 +33,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 import Once.CCC.Machine.SMPrimitives as SMP
-open import Once.Semantics.Machine using (⟦_⟧)
+-- Plan 0.52 M2: machine values are IRTy values (⟦_⟧ᴵ), renamed to ⟦_⟧ locally.
+open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
 open import Once.IR
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.CCC.Eval using (eval)
@@ -47,12 +48,9 @@ open import Once.CCC.Machine.Allocation hiding (AllocMode)
 -- free `trace` field becomes structurally constrained.
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace-at-frontier)
 
--- Import μ-type/ν-type and WellFormedF for recursive type validity
-open import Once.Type using (μ-type; ν-type; Functor; ⟦_⟧T)
-open import Once.Functor.Translate using (WellFormedF)
+-- Plan 0.52 M2: μ-type/ν-type/WellFormedFI/⟦_⟧TI now come from Once.IR (IRTy tier)
+-- via its public re-export of Once.IRTy — no surface Once.Type import needed.
 
--- Import MuValidity for μValid/νValid
-import Once.CCC.Machine.IR.MuValidity as MV
 
 ------------------------------------------------------------------------
 -- BodyResult: Result type for body execution
@@ -73,13 +71,9 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   open TracePrimitives {FS}
   open FrameSemantics FS
 
-  -- Import μValid/νValid and preservation lemmas from MuValidity
-  open MV.MuValidityImpl {FS} program-bound
-    using (μValid; νValid;
-           μValid-mem-only; νValid-mem-only;
-           μValid-frontier-advance; νValid-frontier-advance;
-           μValid-bf-transfer; νValid-bf-transfer;
-           μValid-mem-preserved; νValid-mem-preserved)
+  -- Plan 0.52 M2: μValid/νValid (surface MuValidity) are unused here — the
+  -- valid-μ-wf/valid-ν-wf constructors carry the layer's own ValidAtWF
+  -- (Option 3), so the MuValidity dependency is severed.
 
   -- Import write operations for validity preservation proofs
   open import Once.CCC.Machine.WriteOps using (module WriteWithDisjoint)
@@ -131,7 +125,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     --------------------------------------------------------------------
 
     data ValidAtWF : AllocMode → AllocState {FS} →
-         {A : Type} → ⟦ A ⟧ → ValueLocation FS → LocState FS → Set where
+         {A : IRTy} → ⟦ A ⟧ → ValueLocation FS → LocState FS → Set where
 
       -- Unit: valid at any mode (no representation difference)
       valid-unit-wf : ∀ {m alloc loc s} →
@@ -170,7 +164,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       -- Closures live on both stack and heap per ARCHITECTURE.md —
       -- the m index now tracks the closure-loc's storage class.
       -- CurryStackWF uses m = Stack; CurryAllocWF uses m = Heap.
-      valid-closure-wf : ∀ {m EnvType k A B}
+      valid-closure-wf : ∀ {m EnvType A B}
         {body : IR (EnvType * A) B}
         {env : ⟦ EnvType ⟧}
         {alloc : AllocState {FS}}
@@ -185,7 +179,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         BeforeFrontier alloc (sucLoc closure-loc) →
         ValidAtWF mEnv alloc env env-loc s →
         BodyCorrect body env env-loc program-bound →
-        ValidAtWF m alloc {A ⇒[ k ] B} (λ arg → eval body (pair env arg)) closure-loc s
+        ValidAtWF m alloc {A ⇛ B} (λ arg → eval body (pair env arg)) closure-loc s
 
       valid-inl-wf : ∀ {m A B} {a : ⟦ A ⟧}
         {alloc : AllocState {FS}}
@@ -223,17 +217,17 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       valid-μ-wf : ∀ {m F}
         {alloc : AllocState {FS}}
         {loc : ValueLocation FS} {s : LocState FS}
-        (wf : WellFormedF F)
+        (wf : WellFormedFI F)
         (x : ⟦ μ-type F ⟧) →
-        ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} (eval (out-μ wf) x) loc s →
+        ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (eval (out-μ wf) x) loc s →
         ValidAtWF m alloc {μ-type F} x loc s
 
       valid-ν-wf : ∀ {m F}
         {alloc : AllocState {FS}}
         {loc : ValueLocation FS} {s : LocState FS}
-        (wf : WellFormedF F)
+        (wf : WellFormedFI F)
         (x : ⟦ ν-type F ⟧) →
-        ValidAtWF m alloc {⟦ F ⟧T (ν-type F)} (eval (Out wf) x) loc s →
+        ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (eval (Out wf) x) loc s →
         ValidAtWF m alloc {ν-type F} x loc s
 
       -- Primitive types: valid at any mode if location is before frontier
@@ -263,15 +257,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         BeforeFrontier alloc loc →
         ValidAtWF m alloc {Buffer} x loc s
 
-      -- Effectful morphism: runtime-identical to a pure closure.
-      -- `arr` coerces a pure closure (A ⇒[ mk-kind q pure ] B) to the effect-tagged
-      -- shape (A ⇒[ mk-kind Many eff ] B) without altering the witness.
-      valid-coerce-kind-wf : ∀ {m A B q}
-        {f : ⟦ A ⟧ → ⟦ B ⟧}
-        {alloc : AllocState {FS}}
-        {loc : ValueLocation FS} {s : LocState FS} →
-        ValidAtWF m alloc {A ⇒[ mk-kind q pure ] B} f loc s →
-        ValidAtWF m alloc {A ⇒[ mk-kind Many eff ] B} f loc s
+      -- Plan 0.52 M2: `valid-coerce-kind-wf` (the pure→eff kind coercion) is
+      -- retired.  IRTy erases the ArrowKind, so pure and effectful arrows are
+      -- the SAME object `A ⇛ B`; the coercion would be a redundant identity
+      -- constructor (and a non-decreasing recursion), so it is deleted.
 
     --------------------------------------------------------------------
     -- valid-primitive-wf: Dispatch on FitsInReg evidence
@@ -283,10 +272,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- inhabitants left are Int and Float.
     --------------------------------------------------------------------
 
-    valid-primitive-wf : ∀ {m} {B : Type} {v : ⟦ B ⟧}
+    valid-primitive-wf : ∀ {m} {B : IRTy} {v : ⟦ B ⟧}
       {alloc : AllocState {FS}}
       {loc : ValueLocation FS} {s : LocState FS} →
-      FitsInReg B →
+      FitsInRegI B →
       BeforeFrontier alloc loc →
       ValidAtWF m alloc {B} v loc s
     valid-primitive-wf fits-int   bf = valid-int-wf bf
@@ -334,7 +323,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- mental model. The field never represented heap reclamation
     -- (heap blocks aren't freed by IRs), only the caller's
     -- continuation view of consumed resources.
-    data ResultPlace : (B : Type) (m : AllocMode)
+    data ResultPlace : (B : IRTy) (m : AllocMode)
                        (alloc continuation-alloc : AllocState {FS})
                        (v : ⟦ B ⟧) (s : LocState FS) → Set where
       unit-result : ∀ {m alloc continuation-alloc s} →
@@ -490,7 +479,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     --
     -- See `plans/0.17-type-level-alloc-effect.md`.
     record IRResultBase (m : AllocMode)
-                        {A B : Type}
+                        {A B : IRTy}
                         (ir : IR A B)
                         (x : ⟦ A ⟧)
                         (s : LocState FS)
@@ -624,7 +613,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         -- chaining the syntactic predicate.
 
     record IRResultAWF (m : AllocMode)
-                       {A B : Type}
+                       {A B : IRTy}
                        (ir : IR A B)
                        (x : ⟦ A ⟧)
                        (s : LocState FS)
@@ -724,7 +713,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     --------------------------------------------------------------------
 
     {-# NO_POSITIVITY_CHECK #-}
-    record BodyCorrect {EnvType A B : Type}
+    record BodyCorrect {EnvType A B : IRTy}
                        (body : IR (EnvType * A) B)
                        (env : ⟦ EnvType ⟧)
                        (env-loc : ValueLocation FS)
@@ -786,7 +775,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Curry constructs this, Apply uses it.
   ------------------------------------------------------------------------
 
-  record ClosureWellFormed {EnvType A B : Type}
+  record ClosureWellFormed {EnvType A B : IRTy}
                            (body : IR (EnvType * A) B)
                            (env : ⟦ EnvType ⟧)
                            (body<bound : ir-size body < program-bound)
@@ -813,12 +802,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Decomposition for ValidAtWF closures
   ------------------------------------------------------------------------
 
-  record ClosureValidWF (alloc : AllocState {FS}) {k : ArrowKind} {A B : Type}
-                        (f : ⟦ A ⇒[ k ] B ⟧)
+  record ClosureValidWF (alloc : AllocState {FS}) {A B : IRTy}
+                        (f : ⟦ A ⇛ B ⟧)
                         (closure-loc : ValueLocation FS)
                         (s : LocState FS) : Set where
     field
-      EnvType : Type
+      EnvType : IRTy
       body : IR (EnvType * A) B
       env : ⟦ EnvType ⟧
       body<bound : ir-size body < program-bound
@@ -834,12 +823,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       body-correct : BodyCorrect body env env-loc program-bound
       f-is-closure : f ≡ (λ arg → eval body (pair env arg))
 
-  -- Closures are always Heap mode. Kind-polymorphic: works for both pure
-  -- (⇒[ mk-kind q pure ]) and effectful (Eff) arrows, unwrapping valid-coerce-kind-wf
-  -- as needed.
-  decomposeClosureWF : ∀ {m alloc k A B} {f : ⟦ A ⇒[ k ] B ⟧} {loc s} →
-    ValidAtWF m alloc {A ⇒[ k ] B} f loc s → ClosureValidWF alloc {k = k} f loc s
-  decomposeClosureWF (valid-closure-wf {_} {EnvType} {_} {_} {_} {body} {env} {_}
+  -- Closures are always Heap mode.  Plan 0.52 M2: the ungraded `A ⇛ B` has a
+  -- single closure witness (`valid-coerce-kind-wf` retired), so there is one clause.
+  decomposeClosureWF : ∀ {m alloc A B} {f : ⟦ A ⇛ B ⟧} {loc s} →
+    ValidAtWF m alloc {A ⇛ B} f loc s → ClosureValidWF alloc f loc s
+  decomposeClosureWF (valid-closure-wf {_} {EnvType} {_} {_} {body} {env} {_}
                        bb {_} {el} {_} {mE} {bl} lmm ep cp eb slb ev bc) = record
     { EnvType = EnvType
     ; body = body
@@ -855,23 +843,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     ; env-valid = ev
     ; body-correct = bc
     ; f-is-closure = refl
-    }
-  decomposeClosureWF (valid-coerce-kind-wf {q = _} cv) with decomposeClosureWF cv
-  ... | inner = record
-    { EnvType = ClosureValidWF.EnvType inner
-    ; body = ClosureValidWF.body inner
-    ; env = ClosureValidWF.env inner
-    ; body<bound = ClosureValidWF.body<bound inner
-    ; env-loc = ClosureValidWF.env-loc inner
-    ; body-label = ClosureValidWF.body-label inner
-    ; mEnv = ClosureValidWF.mEnv inner
-    ; env-ptr = ClosureValidWF.env-ptr inner
-    ; code-ptr = ClosureValidWF.code-ptr inner
-    ; env-before = ClosureValidWF.env-before inner
-    ; sucLoc-before = ClosureValidWF.sucLoc-before inner
-    ; env-valid = ClosureValidWF.env-valid inner
-    ; body-correct = ClosureValidWF.body-correct inner
-    ; f-is-closure = ClosureValidWF.f-is-closure inner
     }
 
   -- Plan 0.17.2 follow-up (2026-05-23): `closure-mode-is-heap-proof`
@@ -908,7 +879,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Reference-based model: two pointers at pair-loc and sucLoc pair-loc
   ------------------------------------------------------------------------
 
-  record PairValidWF (alloc : AllocState {FS}) {A B : Type}
+  record PairValidWF (alloc : AllocState {FS}) {A B : IRTy}
                      (p : ⟦ A * B ⟧)
                      (pair-loc : ValueLocation FS)
                      (s : LocState FS) : Set where
@@ -948,7 +919,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Reference-based model: tag + payload-ptr (identical for all modes)
   ------------------------------------------------------------------------
 
-  record InlValidWF (alloc : AllocState {FS}) {A B : Type}
+  record InlValidWF (alloc : AllocState {FS}) {A B : IRTy}
                     (v : ⟦ A + B ⟧)
                     (sum-loc : ValueLocation FS)
                     (s : LocState FS) : Set where
@@ -962,7 +933,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       payload-valid : ValidAtWF mA alloc a payload-loc s
       v-is-inl : v ≡ sem-inl a
 
-  record InrValidWF (alloc : AllocState {FS}) {A B : Type}
+  record InrValidWF (alloc : AllocState {FS}) {A B : IRTy}
                     (v : ⟦ A + B ⟧)
                     (sum-loc : ValueLocation FS)
                     (s : LocState FS) : Set where
@@ -1049,7 +1020,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       fv' = validityWF-mem-only a fl s₁ s₂ stack-eq heap-eq fv
       sv' = validityWF-mem-only b sl s₁ s₂ stack-eq heap-eq sv
 
-  validityWF-mem-only {_} {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s₁ s₂ stack-eq heap-eq
+  validityWF-mem-only {_} {alloc} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s₁ s₂ stack-eq heap-eq
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
     valid-closure-wf bb lmm ep' cp' eb slb ev' bc
     where
@@ -1061,8 +1032,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       ev' = validityWF-mem-only env el s₁ s₂ stack-eq heap-eq ev
 
   -- Kind-coerced closure: recurse on underlying validity, re-coerce.
-  validityWF-mem-only {m} {alloc} {A ⇒[ _ ] B} f loc s₁ s₂ stack-eq heap-eq (valid-coerce-kind-wf cv) =
-    valid-coerce-kind-wf (validityWF-mem-only f loc s₁ s₂ stack-eq heap-eq cv)
 
   -- Eff (effectful morphism): recurse on underlying closure validity
 
@@ -1136,7 +1105,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       fv' = validityWF-write-at-frontier a fl s val fb fv
       sv' = validityWF-write-at-frontier b sl s val sb sv
 
-  validityWF-write-at-frontier {_} {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s val loc-before
+  validityWF-write-at-frontier {_} {alloc} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s val loc-before
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
     valid-closure-wf bb lmm ep' cp' eb slb ev' bc
     where
@@ -1145,8 +1114,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       ev' = validityWF-write-at-frontier env el s val eb ev
 
   -- Kind-coerced closure
-  validityWF-write-at-frontier {m} {alloc} {A ⇒[ _ ] B} f loc s val loc-before (valid-coerce-kind-wf cv) =
-    valid-coerce-kind-wf (validityWF-write-at-frontier f loc s val loc-before cv)
 
   -- inl (any mode)
   validityWF-write-at-frontier {m} {alloc} {A + B} .(sem-inl a) loc s val loc-before
@@ -1204,7 +1171,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       fv' = validityWF-write-at-suc-frontier a fl s val fb fv
       sv' = validityWF-write-at-suc-frontier b sl s val sb sv
 
-  validityWF-write-at-suc-frontier {_} {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s val loc-before
+  validityWF-write-at-suc-frontier {_} {alloc} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s val loc-before
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
     valid-closure-wf bb lmm ep' cp' eb slb ev' bc
     where
@@ -1213,8 +1180,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       ev' = validityWF-write-at-suc-frontier env el s val eb ev
 
   -- Kind-coerced closure
-  validityWF-write-at-suc-frontier {m} {alloc} {A ⇒[ _ ] B} f loc s val loc-before (valid-coerce-kind-wf cv) =
-    valid-coerce-kind-wf (validityWF-write-at-suc-frontier f loc s val loc-before cv)
 
   -- inl (any mode)
   validityWF-write-at-suc-frontier {m} {alloc} {A + B} .(sem-inl a) loc s val loc-before
@@ -1282,7 +1247,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       fv' = validityWF-alloc-advance a fl s n fv
       sv' = validityWF-alloc-advance b sl s n sv
 
-  validityWF-alloc-advance {_} {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s n
+  validityWF-alloc-advance {_} {alloc} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s n
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
     valid-closure-wf bb lmm ep cp eb' slb' ev' bc
     where
@@ -1291,8 +1256,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       ev' = validityWF-alloc-advance env el s n ev
 
   -- Kind-coerced closure
-  validityWF-alloc-advance {m} {alloc} {A ⇒[ _ ] B} f loc s n (valid-coerce-kind-wf cv) =
-    valid-coerce-kind-wf (validityWF-alloc-advance f loc s n cv)
 
   -- inl (any mode)
   validityWF-alloc-advance {m} {alloc} {A + B} .(sem-inl a) loc s n
@@ -1358,7 +1321,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       fv' = validityWF-frontier-advance a fl s cf-eq slot-≤ heap-≤ fv
       sv' = validityWF-frontier-advance b sl s cf-eq slot-≤ heap-≤ sv
 
-  validityWF-frontier-advance {_} {alloc} {alloc'} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s cf-eq slot-≤ heap-≤
+  validityWF-frontier-advance {_} {alloc} {alloc'} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s cf-eq slot-≤ heap-≤
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
     valid-closure-wf bb lmm ep cp eb' slb' ev' bc
     where
@@ -1367,8 +1330,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       ev' = validityWF-frontier-advance env el s cf-eq slot-≤ heap-≤ ev
 
   -- Kind-coerced closure
-  validityWF-frontier-advance {m} {alloc} {alloc'} {A ⇒[ _ ] B} f loc s cf-eq slot-≤ heap-≤ (valid-coerce-kind-wf cv) =
-    valid-coerce-kind-wf (validityWF-frontier-advance f loc s cf-eq slot-≤ heap-≤ cv)
 
   -- inl (any mode)
   validityWF-frontier-advance {m} {alloc} {alloc'} {A + B} .(sem-inl a) loc s cf-eq slot-≤ heap-≤
@@ -1431,14 +1392,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       (validityWF-with-bf-transfer b sl s a₁ a₂ bf sv)
 
   -- Closure
-  validityWF-with-bf-transfer {_} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s a₁ a₂ bf
+  validityWF-with-bf-transfer {_} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s a₁ a₂ bf
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
     valid-closure-wf bb lmm ep cp (bf el eb) (bf (sucLoc loc) slb)
       (validityWF-with-bf-transfer env el s a₁ a₂ bf ev) bc
 
   -- Kind-coerced closure
-  validityWF-with-bf-transfer {m} {A ⇒[ _ ] B} f loc s a₁ a₂ bf (valid-coerce-kind-wf cv) =
-    valid-coerce-kind-wf (validityWF-with-bf-transfer f loc s a₁ a₂ bf cv)
 
   -- inl (any mode)
   validityWF-with-bf-transfer {m} {A + B} .(sem-inl a) loc s a₁ a₂ bf
@@ -1499,7 +1458,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       fv' = validityWF-mem-preserved a fl s₁ s₂ fb mem-eq fv
       sv' = validityWF-mem-preserved b sl s₁ s₂ sb mem-eq sv
 
-  validityWF-mem-preserved {_} {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s₁ s₂ loc-before mem-eq
+  validityWF-mem-preserved {_} {alloc} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s₁ s₂ loc-before mem-eq
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
     valid-closure-wf bb lmm ep' cp' eb slb ev' bc
     where
@@ -1508,8 +1467,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       ev' = validityWF-mem-preserved env el s₁ s₂ eb mem-eq ev
 
   -- Kind-coerced closure
-  validityWF-mem-preserved {m} {alloc} {A ⇒[ _ ] B} f loc s₁ s₂ loc-before mem-eq (valid-coerce-kind-wf cv) =
-    valid-coerce-kind-wf (validityWF-mem-preserved f loc s₁ s₂ loc-before mem-eq cv)
 
   -- inl (any mode)
   validityWF-mem-preserved {m} {alloc} {A + B} .(sem-inl a) loc s₁ s₂ loc-before mem-eq
@@ -1663,7 +1620,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     LocInRegions alloc ib fs cl ×
     LocInRegions alloc ib fs (sucLoc cl) ×
     LocsInRegions ib fs ev
-  LocsInRegions ib fs (valid-coerce-kind-wf cv) = LocsInRegions ib fs cv
   LocsInRegions {alloc = alloc} ib fs
     (valid-inl-wf {sum-loc = sl} lmm _ pp pb slb pv) =
     LocInRegions alloc ib fs sl ×                  -- tag slot
@@ -1709,15 +1665,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- LocsInRegions, which the μ-case doesn't currently carry (LocsInRegions
   -- of a μ-value is stubbed to ⊤). Pre-existing gap, not introduced here.
   postulate
-    μ-validity-in-regions-stub : ∀ {m alloc F} {wf : WellFormedF F} {x loc s₁ s₂}
+    μ-validity-in-regions-stub : ∀ {m alloc F} {wf : WellFormedFI F} {x loc s₁ s₂}
                                    {input-bound fresh-start : ℕ} →
-      ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} (eval (out-μ wf) x) loc s₁ →
-      ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} (eval (out-μ wf) x) loc s₂
+      ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (eval (out-μ wf) x) loc s₁ →
+      ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (eval (out-μ wf) x) loc s₂
 
-    ν-validity-in-regions-stub : ∀ {m alloc F} {wf : WellFormedF F} {x loc s₁ s₂}
+    ν-validity-in-regions-stub : ∀ {m alloc F} {wf : WellFormedFI F} {x loc s₁ s₂}
                                    {input-bound fresh-start : ℕ} →
-      ValidAtWF m alloc {⟦ F ⟧T (ν-type F)} (eval (Out wf) x) loc s₁ →
-      ValidAtWF m alloc {⟦ F ⟧T (ν-type F)} (eval (Out wf) x) loc s₂
+      ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (eval (Out wf) x) loc s₁ →
+      ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (eval (Out wf) x) loc s₂
 
   -- STRONG version: requires an additional LocsInRegions hypothesis that
   -- witnesses the value's sub-locations all land in input/fresh/heap/anc
@@ -1781,11 +1737,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       ev'    = validityWF-mem-preserved-in-regions-strong alloc env el ib fs s₁ s₂
                  eb ib≤fs fs≤next ir fr hr ar ev elocs
 
-  validityWF-mem-preserved-in-regions-strong alloc f loc ib fs s₁ s₂
-    loc-before ib≤fs fs≤next ir fr hr ar (valid-coerce-kind-wf cv) flocs =
-    valid-coerce-kind-wf
-      (validityWF-mem-preserved-in-regions-strong alloc f loc ib fs s₁ s₂
-         loc-before ib≤fs fs≤next ir fr hr ar cv flocs)
 
   validityWF-mem-preserved-in-regions-strong alloc .(sem-inl a) loc ib fs s₁ s₂
     loc-before ib≤fs fs≤next ir fr hr ar
