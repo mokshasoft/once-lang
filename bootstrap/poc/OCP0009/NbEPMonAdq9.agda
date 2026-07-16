@@ -116,9 +116,11 @@ mult-headI Θ₂ Γ₂ =
 -- Sliding a neutral out of a reassociation.
 ------------------------------------------------------------------------
 
-n-α : ∀ {S X Y T E} {n : CTm S (X ⊗ Y)} →
+-- Abstract target `Z` (the `X ⊗ Y` case is the spl-node use; `Z` general
+-- covers the usI-node's non-⊗ neutral as well).
+n-α : ∀ {S Z T E} {n : CTm S Z} →
       ((n ⊗c idc {T ⊗ E}) ∘c αrc {S} {T} {E}) ≈c
-      (αrc {X ⊗ Y} {T} {E} ∘c ((n ⊗c idc {T}) ⊗c idc {E}))
+      (αrc {Z} {T} {E} ∘c ((n ⊗c idc {T}) ⊗c idc {E}))
 n-α = ≈csym (≈ctrans cα-nat (∘c-congˡ (⊗c-cong ≈crefl c⊗-id)))
 
 ------------------------------------------------------------------------

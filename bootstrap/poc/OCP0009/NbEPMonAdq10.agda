@@ -50,12 +50,6 @@ private
   permC-≡ : ∀ {xs ys} {p q : Perm xs ys} → p ≡ q → permC p ≈c permC q
   permC-≡ refl = ≈crefl
 
-  -- n-α at a non-⊗ target (same proof as Adq9's n-α).
-  n-αZ : ∀ {S Z T E} {n : CTm S Z} →
-         ((n ⊗c idc {T ⊗ E}) ∘c αrc {S} {T} {E}) ≈c
-         (αrc {Z} {T} {E} ∘c ((n ⊗c idc {T}) ⊗c idc {E}))
-  n-αZ = ≈csym (≈ctrans cα-nat (∘c-congˡ (⊗c-cong ≈crefl c⊗-id)))
-
   -- Four left factors fuse into one.
   fuse4 : ∀ {W₀ W₁ W₂ W₃ W₄ E V}
             (a : CTm W₃ W₄) (b : CTm W₂ W₃) (c : CTm W₁ W₂)
@@ -143,7 +137,7 @@ withSpˡ-splice {Γ₂ = Γ₂} g h C ρ (usI {Γ₁ = Θ₁} {Θ₂} ρ₁ n k)
   (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congˡ interchangeC)))
   (≈ctrans (∘c-congʳ (∘c-congʳ c∘-assoc))
   (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc))))
-  (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ n-αZ))))
+  (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ n-α))))
   (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc)))
   (≈ctrans c∘-assoc
   (≈ctrans (∘c-congʳ c∘-assoc)
@@ -203,7 +197,7 @@ appSp-splice g h Δ v C H (usI {Γ₁ = Θ₁} {Θ₂} ρ n k) =
   (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congˡ interchangeC)))
   (≈ctrans (∘c-congʳ (∘c-congʳ c∘-assoc))
   (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc))))
-  (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ n-αZ))))
+  (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ n-α))))
   (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc)))
   (≈ctrans c∘-assoc
   (≈ctrans (∘c-congʳ c∘-assoc)
