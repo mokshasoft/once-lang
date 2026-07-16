@@ -31,6 +31,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Function using (case_of_)
 
 open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit; Type)
 import Once.Compile as C
 import Once.Surface.Syntax as Srf
@@ -54,7 +55,7 @@ import Once.Parser.Module.Core as P
 compileFunBody-aux-success : ∀ {n} {Δ : Srf.Ctx n}
   (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
   (name : String) (ty : Type) (δ : Srf.⟦ Δ ⟧ᶜ ≡ Unit)
-  (cr : CheckElabResult Δ ty) {ir : IR Unit ty} →
+  (cr : CheckElabResult Δ ty) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody-aux C.Heap doOpt ctx polys name ty δ cr ≡ inj₂ ir →
   Σ-syntax (Srf.Usage n) (λ Ψ → Σ-syntax (Srf.Expr Δ Ψ ty) (λ se →
     Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f → cr ≡ TE.success Ψ se d f))))
@@ -63,7 +64,7 @@ compileFunBody-aux-success doOpt ctx polys name ty δ (TE.success Ψ se d f) eq 
   Ψ , se , d , f , refl
 
 compileFunBody-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
-  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) {ir : IR Unit ty} →
+  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody C.Heap doOpt ctx polys sigEffs name ty expr ≡ inj₂ ir →
   Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty)))
     (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
@@ -95,7 +96,7 @@ data AllFunsTyped (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
 ------------------------------------------------------------------------
 
 compileFun-main-aux-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
-  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR Unit ty} →
+  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-main-aux C.Heap doOpt ctx polys sigEffs name ty expr vm ≡ inj₂ ir →
   Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty)))
     (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
@@ -104,7 +105,7 @@ compileFun-main-aux-sound doOpt ctx polys sigEffs name ty expr (inj₂ _) eq =
   compileFunBody-sound doOpt ctx polys sigEffs name ty expr eq
 
 compileFun-aux-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
-  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) (b : Bool) {ir : IR Unit ty} →
+  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-aux C.Heap doOpt ctx polys sigEffs name ty expr b ≡ inj₂ ir →
   Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty)))
     (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
@@ -114,7 +115,7 @@ compileFun-aux-sound doOpt ctx polys sigEffs name ty expr false eq =
   compileFunBody-sound doOpt ctx polys sigEffs name ty expr eq
 
 compileFun-sound : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
-  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) {ir : IR Unit ty} →
+  (sigEffs : SigEffectCtx) (name : String) (ty : Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun C.Heap doOpt ctx polys sigEffs name ty expr ≡ inj₂ ir →
   Σ-syntax (Srf.Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty)))
     (λ Ψ → (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) ⊢ᶜ expr ∶ ty ⨾ Ψ)
@@ -200,7 +201,7 @@ crm-sound doOpt m eq =
 -- genuinely well-typed programs (no longer true-by-construction).
 ------------------------------------------------------------------------
 
-moduleToIR-typed : ∀ (m : P.Module) {ir : IR Unit Unit} →
+moduleToIR-typed : ∀ (m : P.Module) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} →
   moduleToIR m ≡ just ir →
   ModuleTyped m
 moduleToIR-typed m mi =
