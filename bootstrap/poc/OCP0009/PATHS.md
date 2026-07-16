@@ -300,7 +300,19 @@ baked into the scheme; `Hylo`/`Fuse` avoid inherent duplication but their
 `NatTr`-totality argument needs a linear analogue. **Linear structured recursion
 is a genuine research sub-project — the hardest item on the board**, above the
 linearization pass's own semantics-preservation proof and the payoff theorem
-(*linearity ⟹ correct alloc/free*).
+(*linearity ⟹ correct alloc/free*). **A first POC now exists** — `NbEPLinRec`
+(linearization-2): a free linear category with an explicit comonoid (`dup`/
+`drop`) and recursion (`lIn`/`lcata`), and a `DupFree` predicate ("uses no
+`dup`") settling each scheme's linearity mechanically — `cata-linear` (**Cata is
+linear**: a fold with a dup-free algebra is dup-free), `para-not-df` (**Para
+inherently duplicates**: its pairing carries a `dup` no rewriting removes), and
+the **`Fuse` split** (`fuse-linear` + `ntPair-dups`): `Fuse` is linear exactly
+when its `NatTr` avoids the diagonal `lntPair` — `lntFst`/`lntSnd` *project*
+(drop the other half — affine), only `lntPair` (into a product target) needs a
+`dup`. This is the linear analogue of the `NatTr`-totality argument. What
+remains research: the linearization *pass* (cartesian IR → this core, inserting
+`dup`/`drop` from usage) and its semantics-preservation + alloc-correctness
+payoff — but the scheme-by-scheme linearity question is now answered.
 
 **Where the two paths land on the real IR.** The optimization passes (`Fusion`,
 `Optimize`) *are* the directed `Hom` (`⟶*`) — so Path 2 (transport-along-Hom for
