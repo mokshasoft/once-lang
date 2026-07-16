@@ -27,10 +27,9 @@ open import Induction.WellFounded using (Acc; acc)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Machine.Allocation
-open import Once.Type public
-  using (Type; Unit; Void; _*_; _+_; Int; Float; Str; Buffer; _⇒[_]_; _⇒_; Quantity)
 open import Once.Semantics.Machine public
-  using (⟦_⟧; sem-fst; sem-snd; sem-inl; sem-inr; sem-pair)
+  using (sem-fst; sem-snd; sem-inl; sem-inr; sem-pair)
+  renaming (⟦_⟧ᴵ to ⟦_⟧)
 pair = sem-pair
 open import Once.IR
 open import Once.CCC.Eval using (eval)
@@ -64,7 +63,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Forward declaration for mutual recursion between ValidAt and valid-closure
   -- valid-closure needs to reference ValidAt for env validity
 
-  data ValidAt (alloc : AllocState {FS}) : {A : Type} → ⟦ A ⟧ → ValueLocation FS → LocState FS → Set where
+  data ValidAt (alloc : AllocState {FS}) : {A : IRTy} → ⟦ A ⟧ → ValueLocation FS → LocState FS → Set where
 
     -- Unit is always valid at any location
     valid-unit : ∀ {loc s} →
@@ -120,7 +119,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- Plan 0.13.2: env and code pointers wrapped as SV-Ptr in memory.
     -- (The semantic question of whether the code slot should hold
     -- SV-Code rather than a SV-Ptr is deferred — Plan 0.13.2 Phase E.)
-    valid-closure : ∀ {EnvType q A B}
+    valid-closure : ∀ {EnvType A B}
       {body : IR (EnvType * A) B}
       {env : ⟦ EnvType ⟧}
       (body<bound : ir-size body < program-bound) →
@@ -131,13 +130,13 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
       BeforeFrontier alloc code-loc →
       BeforeFrontier alloc (sucLoc closure-loc) →
       ValidAt alloc env env-loc s →
-      ValidAt alloc {A ⇒[ mk-kind q pure ] B} (λ arg → eval body (pair env arg)) closure-loc s
+      ValidAt alloc {A ⇛ B} (λ arg → eval body (pair env arg)) closure-loc s
 
   ------------------------------------------------------------------------
   -- PairValid record (extracted structure from valid-pair)
   ------------------------------------------------------------------------
 
-  record PairValid (alloc : AllocState {FS}) {A B : Type}
+  record PairValid (alloc : AllocState {FS}) {A B : IRTy}
                    (p : ⟦ A * B ⟧)
                    (pair-loc : ValueLocation FS)
                    (s : LocState FS) : Set where
@@ -157,12 +156,12 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- NOW INCLUDES THE BODY IR AND SIZE BOUND!
   ------------------------------------------------------------------------
 
-  record ClosureValid (alloc : AllocState {FS}) {q : Quantity} {A B : Type}
-                      (f : ⟦ A ⇒[ mk-kind q pure ] B ⟧)
+  record ClosureValid (alloc : AllocState {FS}) {A B : IRTy}
+                      (f : ⟦ A ⇛ B ⟧)
                       (closure-loc : ValueLocation FS)
                       (s : LocState FS) : Set where
     field
-      EnvType : Type
+      EnvType : IRTy
       body : IR (EnvType * A) B
       env : ⟦ EnvType ⟧
       body<bound : ir-size body < program-bound
@@ -180,7 +179,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- SumValid records (extracted structure from valid-inl/valid-inr)
   ------------------------------------------------------------------------
 
-  record InlValid (alloc : AllocState {FS}) {A B : Type}
+  record InlValid (alloc : AllocState {FS}) {A B : IRTy}
                   (v : ⟦ A + B ⟧)
                   (sum-loc : ValueLocation FS)
                   (s : LocState FS) : Set where
@@ -193,7 +192,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
       payload-valid : ValidAt alloc a payload-loc s
       v-is-inl : v ≡ sem-inl a
 
-  record InrValid (alloc : AllocState {FS}) {A B : Type}
+  record InrValid (alloc : AllocState {FS}) {A B : IRTy}
                   (v : ⟦ A + B ⟧)
                   (sum-loc : ValueLocation FS)
                   (s : LocState FS) : Set where
@@ -226,9 +225,9 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     ; snd-valid = sv
     }
 
-  decomposeClosure : ∀ {alloc q A B} {f : ⟦ A ⇒[ mk-kind q pure ] B ⟧} {loc s} →
-    ValidAt alloc {A ⇒[ mk-kind q pure ] B} f loc s → ClosureValid alloc {q} f loc s
-  decomposeClosure (valid-closure {EnvType} {_} {_} {_} {body} {env}
+  decomposeClosure : ∀ {alloc A B} {f : ⟦ A ⇛ B ⟧} {loc s} →
+    ValidAt alloc {A ⇛ B} f loc s → ClosureValid alloc f loc s
+  decomposeClosure (valid-closure {EnvType} {_} {_} {body} {env}
                      bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev) = record
     { EnvType = EnvType
     ; body = body
@@ -246,7 +245,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     }
 
   decomposeInl : ∀ {alloc A B} {a : ⟦ A ⟧} {loc s} →
-    ValidAt alloc {A + B} (sem-inl {A} {B} a) loc s → InlValid alloc {A} {B} (sem-inl a) loc s
+    ValidAt alloc {A + B} (sem-inl a) loc s → InlValid alloc {A} {B} (sem-inl a) loc s
   decomposeInl {A = A} {B = B} {a = a} (valid-inl {payload-loc = pl} pp pb slb pv) = record
     { a = a
     ; payload-loc = pl
@@ -258,7 +257,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     }
 
   decomposeInr : ∀ {alloc A B} {b : ⟦ B ⟧} {loc s} →
-    ValidAt alloc {A + B} (sem-inr {A} {B} b) loc s → InrValid alloc {A} {B} (sem-inr b) loc s
+    ValidAt alloc {A + B} (sem-inr b) loc s → InrValid alloc {A} {B} (sem-inr b) loc s
   decomposeInr {A = A} {B = B} {b = b} (valid-inr {payload-loc = pl} pp pb slb pv) = record
     { b = b
     ; payload-loc = pl
@@ -288,7 +287,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
   composePair a b pair-loc fst-loc snd-loc s fp sp fb sb slb fv sv =
     valid-pair fp sp fb sb slb fv sv
 
-  composeClosure : ∀ {alloc EnvType q A B}
+  composeClosure : ∀ {alloc EnvType A B}
     (body : IR (EnvType * A) B) (env : ⟦ EnvType ⟧)
     (body<bound : ir-size body < program-bound) →
     (closure-loc env-loc code-loc : ValueLocation FS) (s : LocState FS) →
@@ -298,8 +297,8 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc code-loc →
     BeforeFrontier alloc (sucLoc closure-loc) →
     ValidAt alloc env env-loc s →
-    ValidAt alloc {A ⇒[ mk-kind q pure ] B} (λ arg → eval body (pair env arg)) closure-loc s
-  composeClosure {_} {_} {_} {_} {_} body env bb closure-loc env-loc code-loc s ep cp eb cb slb ev =
+    ValidAt alloc {A ⇛ B} (λ arg → eval body (pair env arg)) closure-loc s
+  composeClosure {_} {_} {_} {_} body env bb closure-loc env-loc code-loc s ep cp eb cb slb ev =
     valid-closure {body = body} {env = env} bb ep cp eb cb slb ev
 
   composeInl : ∀ {alloc A B} (a : ⟦ A ⟧)
@@ -358,8 +357,8 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
       sv' : ValidAt alloc b sl s₂
       sv' = validity-mem-only b sl s₁ s₂ stack-eq heap-eq sv
 
-  validity-mem-only {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s₁ s₂ stack-eq heap-eq
-    (valid-closure {EnvType} {_} {_} {_} {body} {env} ba {env-loc = el} {code-loc = cl} ep cp eb cb slb ev) =
+  validity-mem-only {alloc} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s₁ s₂ stack-eq heap-eq
+    (valid-closure {EnvType} {_} {_} {body} {env} ba {env-loc = el} {code-loc = cl} ep cp eb cb slb ev) =
     valid-closure {body = body} {env = env} ba ep' cp' eb cb slb ev'
     where
       ep' : readLoc s₂ loc ≡ just (SV-Ptr el)
