@@ -23,8 +23,7 @@ open import poc.OCP0009.NbEPMonL
         ; cƛ-nat; cρ-nat; cƛ-iso₁; cƛ-iso₂; cρ-iso₁; cρ-iso₂
         ; β⊸ )
 open import poc.OCP0009.NbEPMonT
-  using ( Ctx; ε; _∷_; _++_; Perm; pid; _⊙P_; padˡ; padʳ; passoc; passocInv
-        ; pidRInv; bswapW )
+  using ( Ctx; ε; _∷_; _++_; Perm; pid; _⊙P_; pidRInv; bswapW )
 open import poc.OCP0009.NbEPMonW
   using ( ⟪_⟫; permC; mult; multInv )
 open import poc.OCP0009.NbEPMonF
@@ -35,12 +34,10 @@ open import poc.OCP0009.NbEPMonAdq1
   using ( ∘c-congˡ; ∘c-congʳ; mult-inv-r )
 open import poc.OCP0009.NbEPMonAdq2
   using ( ⊙P-realC; inv-natC; pid-realC; α-natˡC )
-open import poc.OCP0009.NbEPMonAdq3
-  using ( padˡ-real )
 open import poc.OCP0009.NbEPMonAdq8
-  using ( passocInv-real; pidRInv-real )
+  using ( pidRInv-real )
 open import poc.OCP0009.NbEPMonAdq9
-  using ( node-perm-real )
+  using ( node-perm-real; node-perm-realˡ )
 open import poc.OCP0009.NbEPMonAdq6
   using ( bswapW-real; pidR-real )
 open import poc.OCP0009.NbEPMonAdq12
@@ -99,30 +96,6 @@ private
   RI→Tree (ret refl)   r             = r
   RI→Tree (spl ρ n k) (t' , (rk , e)) = t' , (RI→Tree k rk , e)
   RI→Tree (usI ρ n k) (t' , (rk , e)) = t' , (RI→Tree k rk , e)
-
-  -- The node-permutation realized for the LEFT (αl) side — the mirror
-  -- of `node-perm-real`, from passocInv-real + padˡ-real + ⊙P-realC.
-  node-perm-realˡ :
-    ∀ {Γ Γ₂} Δ₁ Θ₁ Θ₂ (q : Perm Γ₂ (Θ₁ ++ Θ₂)) (ρ : Perm Γ (Δ₁ ++ Γ₂)) →
-    (mult (Δ₁ ++ Θ₁) Θ₂ ∘c permC ((ρ ⊙P padˡ Δ₁ q) ⊙P passocInv Δ₁ Θ₁ Θ₂)) ≈c
-    ((multInv Δ₁ Θ₁ ⊗c idc {⟪ Θ₂ ⟫}) ∘c
-     (αlc ∘c ((idc {⟪ Δ₁ ⟫} ⊗c (mult Θ₁ Θ₂ ∘c permC q)) ∘c
-              (mult Δ₁ Γ₂ ∘c permC ρ))))
-  node-perm-realˡ Δ₁ Θ₁ Θ₂ q ρ =
-    ≈ctrans (∘c-congʳ (⊙P-realC (ρ ⊙P padˡ Δ₁ q) (passocInv Δ₁ Θ₁ Θ₂)))
-    (≈ctrans (≈csym c∘-assoc)
-    (≈ctrans (∘c-congˡ (passocInv-real Δ₁ Θ₁ Θ₂))
-    (≈ctrans (∘c-congʳ (⊙P-realC ρ (padˡ Δ₁ q)))
-    (≈ctrans c∘-assoc
-    (≈ctrans (∘c-congʳ c∘-assoc)
-    (≈ctrans (∘c-congʳ (∘c-congʳ c∘-assoc))
-    (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ
-               (≈ctrans (≈csym c∘-assoc)
-               (≈ctrans (∘c-congˡ (padˡ-real Δ₁ q)) c∘-assoc)))))
-             (∘c-congʳ (∘c-congʳ
-               (≈ctrans (≈csym c∘-assoc)
-                        (∘c-congˡ (≈ctrans (≈csym c⊗-∘)
-                                           (⊗c-cong cid-l ≈crefl)))))))))))))
 
   LV : ∀ B {Δ} → Val B Δ → CTm ⟪ Δ ⟫ B → Set
   LV B x s = R B x s
