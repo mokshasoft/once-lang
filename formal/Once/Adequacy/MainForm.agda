@@ -33,12 +33,14 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 import Once.Denotation.SourceDenote as SD
 open import Once.Type using (Type; Unit; _⇒[_]_; mk-kind; Many; eff)
 open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
 open import Once.Surface.Syntax using (Expr; ∅; Usage)
 open import Once.Surface.Elaborate using (elaborate)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (SigEffectCtx; NamedCtx)
 open import Once.TypeCheck.Elaborate
-  using (checkElab; ctxWithImportsAndSelfAndPolys; resolveExpr; PolyCtx; success)
+  using (checkElab; ctxWithImportsAndSelfAndPolys; PolyCtx; success)
+open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Denotation.Realize using (realize)
@@ -82,7 +84,7 @@ Payload Ψ seR =
        ≡ (Ψ , realize (check-sound (ctxWithImportsAndSelfAndPolys ctx polys sigEffs "main" EffUU)
                          body EffUU ce))))))))))))))
 
-Form : IR Unit Unit → Set
+Form : IR ⌊ Unit ⌋ ⌊ Unit ⌋ → Set
 Form ir = Σ-syntax (Usage 0) (λ Ψ → Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
             (ir ≡ C.wrapMainAsEntry (elaborate C.Heap seR)) × Payload Ψ seR))
 
@@ -95,7 +97,7 @@ Form ir = Σ-syntax (Usage 0) (λ Ψ → Σ-syntax (Expr ∅ Ψ EffUU) (λ seR �
 -- typing derivation `mt` onto THIS node's bundle (`mainRealized-bundle`).
 ------------------------------------------------------------------------
 
-MainNode : (m : C.Module) (ir : IR Unit Unit) → Set
+MainNode : (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Set
 MainNode m ir =
   Σ-syntax (List FunInfo) (λ funs → Σ-syntax (List C.PolyFunInfo) (λ polys →
   Σ-syntax (C.extractFunctions (C.extractAliases m) m ≡ inj₂ (funs , polys)) (λ ef-eq →
@@ -112,7 +114,7 @@ MainNode m ir =
                           mbody EffUU mce)))))))))))))))
 
 build-node : ∀ (m : C.Module) (funs : List FunInfo) (polys : List C.PolyFunInfo)
-  (compiled : List C.CompiledFun) (ir : IR Unit Unit)
+  (compiled : List C.CompiledFun) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
   (caf-eq : C.compileAllFuns-go C.Heap false (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) funs C.emptyFunCtx ≡ inj₂ compiled)
   (mi : findMain compiled ≡ just ir)
   (ef-eq : C.extractFunctions (C.extractAliases m) m ≡ inj₂ (funs , polys)) →
@@ -141,9 +143,9 @@ build-node m funs polys compiled ir caf-eq mi ef-eq =
 -- and never leaves a bare `refl` blocking a caller's abstraction).
 ------------------------------------------------------------------------
 
-main-node-of : ∀ (m : C.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir → MainNode m ir
+main-node-of : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → MainNode m ir
 
-mnf-caf : ∀ (m : C.Module) (ir : IR Unit Unit) (funs : List FunInfo) (polys : List C.PolyFunInfo)
+mnf-caf : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (funs : List FunInfo) (polys : List C.PolyFunInfo)
   (cv : String ⊎ List C.CompiledFun) →
   C.compileAllFuns-go C.Heap false (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) funs C.emptyFunCtx ≡ cv →
   moduleToIR-aux cv ≡ just ir →
@@ -152,7 +154,7 @@ mnf-caf m ir funs polys (inj₁ err) caf-eq mi ef-eq = case mi of λ ()
 mnf-caf m ir funs polys (inj₂ compiled) caf-eq mi ef-eq =
   build-node m funs polys compiled ir caf-eq mi ef-eq
 
-mnf-ef : ∀ (m : C.Module) (ir : IR Unit Unit)
+mnf-ef : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
   (efv : String ⊎ (List FunInfo × List C.PolyFunInfo)) →
   C.extractFunctions (C.extractAliases m) m ≡ efv →
   moduleToIR-aux (C.compileResolvedModule-aux C.Heap false m efv) ≡ just ir → MainNode m ir
@@ -168,7 +170,7 @@ main-node-of m ir mi = mnf-ef m ir (C.extractFunctions (C.extractAliases m) m) r
 -- `main-ir-form` — project `main-node-of` into a `Form` (Payload = the node).
 ------------------------------------------------------------------------
 
-main-ir-form : ∀ (m : C.Module) (ir : IR Unit Unit) → moduleToIR m ≡ just ir → Form ir
+main-ir-form : ∀ (m : C.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → Form ir
 main-ir-form m ir mi = form (main-node-of m ir mi)
   where
     form : MainNode m ir → Form ir
