@@ -31,7 +31,7 @@ open import poc.OCP0009.NbEPMonL
         ; cα-iso₁; cα-iso₂; cpentagon )
 open import poc.OCP0009.NbEPMonT
   using ( Ctx; ε; _∷_; _++_; Perm; pnil; pcons; pid
-        ; _⊙P_; padʳ; passoc )
+        ; _⊙P_; padˡ; padʳ; passoc; passocInv )
 open import poc.OCP0009.NbEPMonW
   using ( ⟪_⟫; permC; mult; multInv )
 open import poc.OCP0009.NbEPMonAdq1
@@ -43,9 +43,9 @@ open import poc.OCP0009.NbEPMonAdq3
 open import poc.OCP0009.NbEPMonAdq4
   using ( K2C )
 open import poc.OCP0009.NbEPMonAdq8
-  using ( passoc-real )
+  using ( passoc-real; passocInv-real )
 open import poc.OCP0009.NbEPMonAdq3
-  using ( padʳ-real )
+  using ( padʳ-real; padˡ-real )
 
 ------------------------------------------------------------------------
 -- The pentagon, solved for αr ⊗ 1.
@@ -146,3 +146,30 @@ node-perm-real Θ₁ Θ₂ Γ₂ q ρ =
   (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc)))
   (≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
            (∘c-congʳ (∘c-congʳ (∘c-congˡ fuse⊗ʳC)))))))))))))
+
+------------------------------------------------------------------------
+-- The node permutation, realized — LEFT (αl) mirror of node-perm-real,
+-- for the withSpʳ / αlc side (passocInv-real + padˡ-real + ⊙P-realC).
+------------------------------------------------------------------------
+
+node-perm-realˡ :
+  ∀ {Γ Γ₂} Δ₁ Θ₁ Θ₂ (q : Perm Γ₂ (Θ₁ ++ Θ₂)) (ρ : Perm Γ (Δ₁ ++ Γ₂)) →
+  (mult (Δ₁ ++ Θ₁) Θ₂ ∘c permC ((ρ ⊙P padˡ Δ₁ q) ⊙P passocInv Δ₁ Θ₁ Θ₂)) ≈c
+  ((multInv Δ₁ Θ₁ ⊗c idc {⟪ Θ₂ ⟫}) ∘c
+   (αlc ∘c ((idc {⟪ Δ₁ ⟫} ⊗c (mult Θ₁ Θ₂ ∘c permC q)) ∘c
+            (mult Δ₁ Γ₂ ∘c permC ρ))))
+node-perm-realˡ Δ₁ Θ₁ Θ₂ q ρ =
+  ≈ctrans (∘c-congʳ (⊙P-realC (ρ ⊙P padˡ Δ₁ q) (passocInv Δ₁ Θ₁ Θ₂)))
+  (≈ctrans (≈csym c∘-assoc)
+  (≈ctrans (∘c-congˡ (passocInv-real Δ₁ Θ₁ Θ₂))
+  (≈ctrans (∘c-congʳ (⊙P-realC ρ (padˡ Δ₁ q)))
+  (≈ctrans c∘-assoc
+  (≈ctrans (∘c-congʳ c∘-assoc)
+  (≈ctrans (∘c-congʳ (∘c-congʳ c∘-assoc))
+  (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ
+             (≈ctrans (≈csym c∘-assoc)
+             (≈ctrans (∘c-congˡ (padˡ-real Δ₁ q)) c∘-assoc)))))
+           (∘c-congʳ (∘c-congʳ
+             (≈ctrans (≈csym c∘-assoc)
+                      (∘c-congˡ (≈ctrans (≈csym c⊗-∘)
+                                         (⊗c-cong cid-l ≈crefl)))))))))))))
