@@ -26,6 +26,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; con
 open import Function using (case_of_)
 
 open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit)
 import Once.Compile as C
 open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-aux)
@@ -43,16 +44,16 @@ import Once.Parser.Module.Core as P
 cfb-aux-doOpt : ∀ {n} {Δ : Srf.Ctx n}
   (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx)
   (name : String) (ty : C.Type) (δ : Srf.⟦ Δ ⟧ᶜ ≡ Unit)
-  (cr : CheckElabResult Δ ty) {ir : IR Unit ty} →
+  (cr : CheckElabResult Δ ty) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody-aux C.Heap false ctx polys name ty δ cr ≡ inj₂ ir →
-  Σ-syntax (IR Unit ty) (λ ir' → C.compileFunBody-aux C.Heap doOpt ctx polys name ty δ cr ≡ inj₂ ir')
+  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody-aux C.Heap doOpt ctx polys name ty δ cr ≡ inj₂ ir')
 cfb-aux-doOpt doOpt ctx polys name ty δ (TE.failure err) ()
 cfb-aux-doOpt doOpt ctx polys name ty δ (TE.success _ se _ _) eq = _ , refl
 
 cfb-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
-  (name : String) (ty : C.Type) (expr : RawExpr) {ir : IR Unit ty} →
+  (name : String) (ty : C.Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFunBody C.Heap false ctx polys sigEffs name ty expr ≡ inj₂ ir →
-  Σ-syntax (IR Unit ty) (λ ir' → C.compileFunBody C.Heap doOpt ctx polys sigEffs name ty expr ≡ inj₂ ir')
+  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFunBody C.Heap doOpt ctx polys sigEffs name ty expr ≡ inj₂ ir')
 cfb-doOpt doOpt ctx polys sigEffs name ty expr eq =
   cfb-aux-doOpt doOpt ctx polys name ty refl
     (TE.checkElab (TE.ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) expr ty) eq
@@ -62,26 +63,26 @@ cfb-doOpt doOpt ctx polys sigEffs name ty expr eq =
 ------------------------------------------------------------------------
 
 cfun-main-aux-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
-  (name : String) (ty : C.Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR Unit ty} →
+  (name : String) (ty : C.Type) (expr : RawExpr) (vm : String ⊎ ⊤) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-main-aux C.Heap false ctx polys sigEffs name ty expr vm ≡ inj₂ ir →
-  Σ-syntax (IR Unit ty) (λ ir' → C.compileFun-main-aux C.Heap doOpt ctx polys sigEffs name ty expr vm ≡ inj₂ ir')
+  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun-main-aux C.Heap doOpt ctx polys sigEffs name ty expr vm ≡ inj₂ ir')
 cfun-main-aux-doOpt doOpt ctx polys sigEffs name ty expr (inj₁ err) ()
 cfun-main-aux-doOpt doOpt ctx polys sigEffs name ty expr (inj₂ _) eq =
   cfb-doOpt doOpt ctx polys sigEffs name ty expr eq
 
 cfun-aux-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
-  (name : String) (ty : C.Type) (expr : RawExpr) (b : Bool) {ir : IR Unit ty} →
+  (name : String) (ty : C.Type) (expr : RawExpr) (b : Bool) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun-aux C.Heap false ctx polys sigEffs name ty expr b ≡ inj₂ ir →
-  Σ-syntax (IR Unit ty) (λ ir' → C.compileFun-aux C.Heap doOpt ctx polys sigEffs name ty expr b ≡ inj₂ ir')
+  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun-aux C.Heap doOpt ctx polys sigEffs name ty expr b ≡ inj₂ ir')
 cfun-aux-doOpt doOpt ctx polys sigEffs name ty expr true eq =
   cfun-main-aux-doOpt doOpt ctx polys sigEffs name ty expr (C.validateMain ty) eq
 cfun-aux-doOpt doOpt ctx polys sigEffs name ty expr false eq =
   cfb-doOpt doOpt ctx polys sigEffs name ty expr eq
 
 cfun-doOpt : ∀ (doOpt : Bool) (ctx : C.FunCtx) (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
-  (name : String) (ty : C.Type) (expr : RawExpr) {ir : IR Unit ty} →
+  (name : String) (ty : C.Type) (expr : RawExpr) {ir : IR ⌊ Unit ⌋ ⌊ ty ⌋} →
   C.compileFun C.Heap false ctx polys sigEffs name ty expr ≡ inj₂ ir →
-  Σ-syntax (IR Unit ty) (λ ir' → C.compileFun C.Heap doOpt ctx polys sigEffs name ty expr ≡ inj₂ ir')
+  Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ ir' → C.compileFun C.Heap doOpt ctx polys sigEffs name ty expr ≡ inj₂ ir')
 cfun-doOpt doOpt ctx polys sigEffs name ty expr eq =
   cfun-aux-doOpt doOpt ctx polys sigEffs name ty expr (name == "main") eq
 
@@ -171,13 +172,13 @@ cfm-built-from-crm doOpt arch m eq =
 -- `moduleToIR m ≡ just ir` ⇒ `compileResolvedModule Heap false m ≡ inj₂ _`.
 ------------------------------------------------------------------------
 
-mtir-aux-inj₂ : ∀ (r : String ⊎ List C.CompiledFun) {ir : IR Unit Unit} →
+mtir-aux-inj₂ : ∀ (r : String ⊎ List C.CompiledFun) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} →
   moduleToIR-aux r ≡ just ir →
   Σ-syntax (List C.CompiledFun) (λ funs → r ≡ inj₂ funs)
 mtir-aux-inj₂ (inj₁ _) ()
 mtir-aux-inj₂ (inj₂ funs) eq = funs , refl
 
-moduleToIR-inj₂ : ∀ (m : P.Module) {ir : IR Unit Unit} →
+moduleToIR-inj₂ : ∀ (m : P.Module) {ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋} →
   moduleToIR m ≡ just ir →
   Σ-syntax (List C.CompiledFun) (λ funs → C.compileResolvedModule C.Heap false m ≡ inj₂ funs)
 moduleToIR-inj₂ m eq = mtir-aux-inj₂ (C.compileResolvedModule C.Heap false m) eq
@@ -186,7 +187,7 @@ moduleToIR-inj₂ m eq = mtir-aux-inj₂ (C.compileResolvedModule C.Heap false m
 -- `main⇒built` — the obligation of `Once.Adequacy.Compile`.
 ------------------------------------------------------------------------
 
-main⇒built : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR Unit Unit) →
+main⇒built : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
   moduleToIR m ≡ just ir →
   Σ-syntax String (λ asm → C.compileFromModule C.Heap C.Build doOpt arch m ≡ C.Built asm)
 main⇒built arch doOpt m ir mi =
