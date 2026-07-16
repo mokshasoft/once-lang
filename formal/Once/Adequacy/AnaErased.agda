@@ -42,7 +42,8 @@ open import Once.Semantics.Functor
 open import Once.Semantics.Functor.Laws
   using (_∼S_; ⟦_⟧SF-rel; unfoldS-∼; bisimS-to-eq)
 open import Once.Semantics.Machine
-  using (⟦_⟧F; ⟦_⟧; sem-ana; sfmapSemAna; coerce-ν-in; coerce-functor; coh; tF-coh)
+  using (⟦_⟧F; ⟦_⟧; sem-ana; sfmapSemAna; coerce-ν-in; coerce-functor; coh; tF-coh;
+         coerce-full-to-base; base-coh)
 open import Once.IRTy using (⌊_⌋; ⌈_⌉)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceDenote using (events-F)
@@ -394,3 +395,160 @@ coh-to-TRel (G₁ TT.⊗ G₂) A (x0 , y0) =
     (sym (ve-split⊗ G₁ G₂ A x0 y0))
     (sym (cong (forget {TT.⟦ G₁ TT.⊗ G₂ ⟧T A}) (push× (cohᴰ (TT.⟦ G₁ ⟧T A)) (cohᴰ (TT.⟦ G₂ ⟧T A)) x0 y0)))
     (coh-to-TRel G₁ A x0 , coh-to-TRel G₂ A y0)
+
+------------------------------------------------------------------------
+-- `coerce-ν-in-erase`: the value-half coalgebra correspondence (`ceq` for
+-- `sem-ana-erase-full`). Dual of `coh-to-TRel` but landing in `⟦_⟧SF` via
+-- `coerce-ν-in` — so, unlike `events-F`, the K-leaves must be reconciled
+-- (`base-in`, via `coerce-full-to-base`/`base-coh`). Structural on `G`.
+------------------------------------------------------------------------
+
+-- K-leaf: `coerce-full-to-base` commutes with the `coh`/`base-coh` transports.
+base-in : ∀ (B : TT.Type) (v0 : ⟦ ⌊ B ⌋ ⟧ᴰᴵ)
+  → subst id (base-coh B) (coerce-full-to-base ⌈ ⌊ B ⌋ ⌉ (forget v0))
+    ≡ coerce-full-to-base B (forget (subst id (cohᴰ B) v0))
+base-in Unit       v0 = refl
+base-in Int        v0 = refl
+base-in Float      v0 = refl
+base-in Str        v0 = refl
+base-in Buffer     v0 = refl
+base-in Void       ()
+base-in (A ⇒[ k ] B) v0 = refl
+base-in (μ-type F) v0 = refl
+base-in (ν-type F) v0 = refl
+base-in (A * B) (a , b) =
+  trans (push× (base-coh A) (base-coh B)
+               (coerce-full-to-base ⌈ ⌊ A ⌋ ⌉ (forget a)) (coerce-full-to-base ⌈ ⌊ B ⌋ ⌉ (forget b)))
+    (trans (cong₂ _,_ (base-in A a) (base-in B b))
+           (sym (cong (coerce-full-to-base (A * B)) (cong forget (push× (cohᴰ A) (cohᴰ B) a b)))))
+base-in (A + B) (inj₁ a) =
+  trans (push⊎₁ (base-coh A) (base-coh B) (coerce-full-to-base ⌈ ⌊ A ⌋ ⌉ (forget a)))
+    (trans (cong inj₁ (base-in A a))
+           (sym (cong (coerce-full-to-base (A + B)) (cong forget (push⊎₁ (cohᴰ A) (cohᴰ B) a)))))
+base-in (A + B) (inj₂ b) =
+  trans (push⊎₂ (base-coh A) (base-coh B) (coerce-full-to-base ⌈ ⌊ B ⌋ ⌉ (forget b)))
+    (trans (cong inj₂ (base-in B b))
+           (sym (cong (coerce-full-to-base (A + B)) (cong forget (push⊎₂ (cohᴰ A) (cohᴰ B) b)))))
+
+-- push `subst (λ H → ⟦H⟧SF X)(cong SK eq)` (SK-constant, carrier-blind)
+pushSK : ∀ {X : Set} {b₁ b₂ : Set} (eq : b₁ ≡ b₂) (v : b₁)
+  → subst (λ H → ⟦ H ⟧SF X) (cong SK eq) v ≡ subst id eq v
+pushSK refl v = refl
+
+-- carrier-align is the identity at a K-leaf (⟦K B'⟧F is carrier-blind)
+subst-KF-const : ∀ {B' : TT.Type} {X Y : Set} (eq : X ≡ Y) (v : ⟦ TT.K B' ⟧F X)
+  → subst (λ Z → ⟦ TT.K B' ⟧F Z) eq v ≡ v
+subst-KF-const refl v = refl
+
+-- the erased-side layer value (from `v0`), factored out for readability
+VE0 : ∀ (G : Functor) (A : TT.Type) (v0 : ⟦ ⌊ TT.⟦ G ⟧T A ⌋ ⟧ᴰᴵ) → ⟦ TT.⟦ ⌈ eraseF G ⌉F ⟧T ⌈ ⌊ A ⌋ ⌉ ⟧
+VE0 G A v0 = subst ⟦_⟧ (⌈⟧TI-commute (eraseF G) ⌊ A ⌋) (forget (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G A)) v0))
+
+-- subst over ⊎-/×-valued families and over `cong₂ _S⊕_/_S⊗_` (all refl-match)
+push-⊎fam₁ : ∀ {W : Set₁} (P Q : W → Set) {w w' : W} (eq : w ≡ w') (z : P w)
+  → subst (λ Z → P Z ⊎ Q Z) eq (inj₁ z) ≡ inj₁ (subst P eq z)
+push-⊎fam₁ P Q refl z = refl
+
+push-⊎fam₂ : ∀ {W : Set₁} (P Q : W → Set) {w w' : W} (eq : w ≡ w') (z : Q w)
+  → subst (λ Z → P Z ⊎ Q Z) eq (inj₂ z) ≡ inj₂ (subst Q eq z)
+push-⊎fam₂ P Q refl z = refl
+
+push-×fam : ∀ {W : Set₁} (P Q : W → Set) {w w' : W} (eq : w ≡ w') (a : P w) (b : Q w)
+  → subst (λ Z → P Z × Q Z) eq (a , b) ≡ (subst P eq a , subst Q eq b)
+push-×fam P Q refl a b = refl
+
+pushS⊕₁ : ∀ {X : Set} {H₁ H₂ H₁' H₂' : SFunctor} (p : H₁ ≡ H₁') (q : H₂ ≡ H₂') (w : ⟦ H₁ ⟧SF X)
+  → subst (λ H → ⟦ H ⟧SF X) (cong₂ _S⊕_ p q) (inj₁ w) ≡ inj₁ (subst (λ H → ⟦ H ⟧SF X) p w)
+pushS⊕₁ refl refl w = refl
+
+pushS⊕₂ : ∀ {X : Set} {H₁ H₂ H₁' H₂' : SFunctor} (p : H₁ ≡ H₁') (q : H₂ ≡ H₂') (w : ⟦ H₂ ⟧SF X)
+  → subst (λ H → ⟦ H ⟧SF X) (cong₂ _S⊕_ p q) (inj₂ w) ≡ inj₂ (subst (λ H → ⟦ H ⟧SF X) q w)
+pushS⊕₂ refl refl w = refl
+
+pushS⊗ : ∀ {X : Set} {H₁ H₂ H₁' H₂' : SFunctor} (p : H₁ ≡ H₁') (q : H₂ ≡ H₂') (a : ⟦ H₁ ⟧SF X) (b : ⟦ H₂ ⟧SF X)
+  → subst (λ H → ⟦ H ⟧SF X) (cong₂ _S⊗_ p q) (a , b)
+    ≡ (subst (λ H → ⟦ H ⟧SF X) p a , subst (λ H → ⟦ H ⟧SF X) q b)
+pushS⊗ refl refl a b = refl
+
+-- surface-side layer value splits (mirror `ve-split`)
+vs-split⊕₁ : ∀ (G₁ G₂ : Functor) (A : TT.Type) (x0 : ⟦ ⌊ TT.⟦ G₁ ⟧T A ⌋ ⟧ᴰᴵ)
+  → forget (subst id (cohᴰ (TT.⟦ G₁ TT.⊕ G₂ ⟧T A)) (inj₁ x0))
+    ≡ inj₁ (forget (subst id (cohᴰ (TT.⟦ G₁ ⟧T A)) x0))
+vs-split⊕₁ G₁ G₂ A x0 =
+  cong (forget {TT.⟦ G₁ TT.⊕ G₂ ⟧T A}) (push⊎₁ (cohᴰ (TT.⟦ G₁ ⟧T A)) (cohᴰ (TT.⟦ G₂ ⟧T A)) x0)
+
+vs-split⊕₂ : ∀ (G₁ G₂ : Functor) (A : TT.Type) (y0 : ⟦ ⌊ TT.⟦ G₂ ⟧T A ⌋ ⟧ᴰᴵ)
+  → forget (subst id (cohᴰ (TT.⟦ G₁ TT.⊕ G₂ ⟧T A)) (inj₂ y0))
+    ≡ inj₂ (forget (subst id (cohᴰ (TT.⟦ G₂ ⟧T A)) y0))
+vs-split⊕₂ G₁ G₂ A y0 =
+  cong (forget {TT.⟦ G₁ TT.⊕ G₂ ⟧T A}) (push⊎₂ (cohᴰ (TT.⟦ G₁ ⟧T A)) (cohᴰ (TT.⟦ G₂ ⟧T A)) y0)
+
+vs-split⊗ : ∀ (G₁ G₂ : Functor) (A : TT.Type) (x0 : ⟦ ⌊ TT.⟦ G₁ ⟧T A ⌋ ⟧ᴰᴵ) (y0 : ⟦ ⌊ TT.⟦ G₂ ⟧T A ⌋ ⟧ᴰᴵ)
+  → forget (subst id (cohᴰ (TT.⟦ G₁ TT.⊗ G₂ ⟧T A)) (x0 , y0))
+    ≡ (forget (subst id (cohᴰ (TT.⟦ G₁ ⟧T A)) x0) , forget (subst id (cohᴰ (TT.⟦ G₂ ⟧T A)) y0))
+vs-split⊗ G₁ G₂ A x0 y0 =
+  cong (forget {TT.⟦ G₁ TT.⊗ G₂ ⟧T A}) (push× (cohᴰ (TT.⟦ G₁ ⟧T A)) (cohᴰ (TT.⟦ G₂ ⟧T A)) x0 y0)
+
+coerce-νin-erase : ∀ (G : Functor) (A : TT.Type) (v0 : ⟦ ⌊ TT.⟦ G ⟧T A ⌋ ⟧ᴰᴵ)
+  → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧) (tF-coh G)
+       (coerce-ν-in ⌈ eraseF G ⌉F ⟦ A ⟧
+         (subst (λ Z → ⟦ ⌈ eraseF G ⌉F ⟧F Z) (coh A)
+           (coerce-functor ⌈ eraseF G ⌉F ⌈ ⌊ A ⌋ ⌉
+             (subst ⟦_⟧ (⌈⟧TI-commute (eraseF G) ⌊ A ⌋)
+                    (forget (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G A)) v0))))))
+    ≡ coerce-ν-in G ⟦ A ⟧ (coerce-functor G A (forget (subst id (cohᴰ (TT.⟦ G ⟧T A)) v0)))
+coerce-νin-erase (TT.K B) A v0 =
+  trans (cong (subst (λ H → ⟦ H ⟧SF ⟦ A ⟧) (tF-coh (TT.K B)))
+              (cong (coerce-ν-in ⌈ eraseF (TT.K B) ⌉F ⟦ A ⟧) (subst-KF-const (coh A) (forget v0))))
+    (trans (pushSK (base-coh B) (coerce-full-to-base ⌈ ⌊ B ⌋ ⌉ (forget v0)))
+           (base-in B v0))
+coerce-νin-erase TT.Id A v0 = coh-to-TRel TT.Id A v0
+coerce-νin-erase (G₁ TT.⊕ G₂) A (inj₁ x0) =
+  trans (cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧) (tF-coh (G₁ TT.⊕ G₂))
+                (coerce-ν-in ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟦ A ⟧
+                  (subst (λ Z → ⟦ ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟧F Z) (coh A)
+                    (coerce-functor ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⌈ ⌊ A ⌋ ⌉ z))))
+              (ve-split⊕₁ G₁ G₂ A x0))
+    (trans (cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧) (tF-coh (G₁ TT.⊕ G₂))
+                  (coerce-ν-in ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟦ A ⟧ z))
+                (push-⊎fam₁ (λ Z → ⟦ ⌈ eraseF G₁ ⌉F ⟧F Z) (λ Z → ⟦ ⌈ eraseF G₂ ⌉F ⟧F Z) (coh A)
+                            (coerce-functor ⌈ eraseF G₁ ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0 G₁ A x0))))
+      (trans (pushS⊕₁ (tF-coh G₁) (tF-coh G₂)
+                (coerce-ν-in ⌈ eraseF G₁ ⌉F ⟦ A ⟧
+                  (subst (λ Z → ⟦ ⌈ eraseF G₁ ⌉F ⟧F Z) (coh A) (coerce-functor ⌈ eraseF G₁ ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0 G₁ A x0)))))
+        (trans (cong inj₁ (coerce-νin-erase G₁ A x0))
+               (sym (cong (λ z → coerce-ν-in (G₁ TT.⊕ G₂) ⟦ A ⟧ (coerce-functor (G₁ TT.⊕ G₂) A z))
+                          (vs-split⊕₁ G₁ G₂ A x0))))))
+coerce-νin-erase (G₁ TT.⊕ G₂) A (inj₂ y0) =
+  trans (cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧) (tF-coh (G₁ TT.⊕ G₂))
+                (coerce-ν-in ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟦ A ⟧
+                  (subst (λ Z → ⟦ ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟧F Z) (coh A)
+                    (coerce-functor ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⌈ ⌊ A ⌋ ⌉ z))))
+              (ve-split⊕₂ G₁ G₂ A y0))
+    (trans (cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧) (tF-coh (G₁ TT.⊕ G₂))
+                  (coerce-ν-in ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟦ A ⟧ z))
+                (push-⊎fam₂ (λ Z → ⟦ ⌈ eraseF G₁ ⌉F ⟧F Z) (λ Z → ⟦ ⌈ eraseF G₂ ⌉F ⟧F Z) (coh A)
+                            (coerce-functor ⌈ eraseF G₂ ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0 G₂ A y0))))
+      (trans (pushS⊕₂ (tF-coh G₁) (tF-coh G₂)
+                (coerce-ν-in ⌈ eraseF G₂ ⌉F ⟦ A ⟧
+                  (subst (λ Z → ⟦ ⌈ eraseF G₂ ⌉F ⟧F Z) (coh A) (coerce-functor ⌈ eraseF G₂ ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0 G₂ A y0)))))
+        (trans (cong inj₂ (coerce-νin-erase G₂ A y0))
+               (sym (cong (λ z → coerce-ν-in (G₁ TT.⊕ G₂) ⟦ A ⟧ (coerce-functor (G₁ TT.⊕ G₂) A z))
+                          (vs-split⊕₂ G₁ G₂ A y0))))))
+coerce-νin-erase (G₁ TT.⊗ G₂) A (x0 , y0) =
+  trans (cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧) (tF-coh (G₁ TT.⊗ G₂))
+                (coerce-ν-in ⌈ eraseF (G₁ TT.⊗ G₂) ⌉F ⟦ A ⟧
+                  (subst (λ Z → ⟦ ⌈ eraseF (G₁ TT.⊗ G₂) ⌉F ⟧F Z) (coh A)
+                    (coerce-functor ⌈ eraseF (G₁ TT.⊗ G₂) ⌉F ⌈ ⌊ A ⌋ ⌉ z))))
+              (ve-split⊗ G₁ G₂ A x0 y0))
+    (trans (cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧) (tF-coh (G₁ TT.⊗ G₂))
+                  (coerce-ν-in ⌈ eraseF (G₁ TT.⊗ G₂) ⌉F ⟦ A ⟧ z))
+                (push-×fam (λ Z → ⟦ ⌈ eraseF G₁ ⌉F ⟧F Z) (λ Z → ⟦ ⌈ eraseF G₂ ⌉F ⟧F Z) (coh A)
+                           (coerce-functor ⌈ eraseF G₁ ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0 G₁ A x0))
+                           (coerce-functor ⌈ eraseF G₂ ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0 G₂ A y0))))
+      (trans (pushS⊗ (tF-coh G₁) (tF-coh G₂)
+                (coerce-ν-in ⌈ eraseF G₁ ⌉F ⟦ A ⟧ (subst (λ Z → ⟦ ⌈ eraseF G₁ ⌉F ⟧F Z) (coh A) (coerce-functor ⌈ eraseF G₁ ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0 G₁ A x0))))
+                (coerce-ν-in ⌈ eraseF G₂ ⌉F ⟦ A ⟧ (subst (λ Z → ⟦ ⌈ eraseF G₂ ⌉F ⟧F Z) (coh A) (coerce-functor ⌈ eraseF G₂ ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0 G₂ A y0)))))
+        (trans (cong₂ _,_ (coerce-νin-erase G₁ A x0) (coerce-νin-erase G₂ A y0))
+               (sym (cong (λ z → coerce-ν-in (G₁ TT.⊗ G₂) ⟦ A ⟧ (coerce-functor (G₁ TT.⊗ G₂) A z))
+                          (vs-split⊗ G₁ G₂ A x0 y0))))))
