@@ -177,3 +177,62 @@ pass-df (pf-case p q) = df-case (pass-df p) (pass-df q)
 pass-df pf-term      = df-drop
 pass-df pf-In        = df-In
 pass-df (pf-cata {F} p) = df-cata F (pass-df p)
+
+------------------------------------------------------------------------
+-- The payoff, quantitative: ALLOCATIONS = SOURCE PAIRINGS. Counting `dup`s in
+-- the output (= heap allocations, the one genuine-sharing point) against
+-- `⟨_,_⟩`s in the source, they are EQUAL — `AllocMode` is exactly one cell per
+-- cartesian pairing, made precise and counted.
+------------------------------------------------------------------------
+
+data ℕ : Set where
+  zero : ℕ
+  suc  : ℕ → ℕ
+
+_+ℕ_ : ℕ → ℕ → ℕ
+zero  +ℕ n = n
+suc m +ℕ n = suc (m +ℕ n)
+
+-- Allocations emitted = number of `dup`s in the linear output.
+dupCount : ∀ {A B} → LTm A B → ℕ
+dupCount lid           = zero
+dupCount (f ∘l g)      = dupCount f +ℕ dupCount g
+dupCount (f ⊗l g)      = dupCount f +ℕ dupCount g
+dupCount ρl            = zero
+dupCount ρl⁻           = zero
+dupCount lul           = zero
+dupCount lul⁻          = zero
+dupCount dup           = suc zero
+dupCount drop          = zero
+dupCount linl          = zero
+dupCount linr          = zero
+dupCount (lcase f g)   = dupCount f +ℕ dupCount g
+dupCount lIn           = zero
+dupCount (lcata F alg) = dupCount alg
+
+-- Pairings in the cartesian source.
+pairCount : ∀ {A B} {f : Term A B} → FO f → ℕ
+pairCount fo-id         = zero
+pairCount (fo-∘ p q)    = pairCount p +ℕ pairCount q
+pairCount fo-fst        = zero
+pairCount fo-snd        = zero
+pairCount (fo-pair p q) = (pairCount p +ℕ pairCount q) +ℕ suc zero
+pairCount fo-inl        = zero
+pairCount fo-inr        = zero
+pairCount (fo-case p q) = pairCount p +ℕ pairCount q
+pairCount fo-term       = zero
+pairCount fo-In         = zero
+pairCount (fo-cata p)   = pairCount p
+
+pass-alloc : ∀ {A B} {f : Term A B} (p : FO f) → dupCount L⟦ p ⟧ ≡ pairCount p
+pass-alloc fo-id         = refl
+pass-alloc (fo-∘ p q)    = cong₂ _+ℕ_ (pass-alloc p) (pass-alloc q)
+pass-alloc fo-fst        = refl
+pass-alloc fo-snd        = refl
+pass-alloc (fo-pair p q) = cong₂ _+ℕ_ (cong₂ _+ℕ_ (pass-alloc p) (pass-alloc q)) refl
+pass-alloc fo-inl        = refl
+pass-alloc fo-inr        = refl
+pass-alloc (fo-case p q) = cong₂ _+ℕ_ (pass-alloc p) (pass-alloc q)
+pass-alloc fo-term       = refl
+pass-alloc fo-In         = refl
+pass-alloc (fo-cata p)   = pass-alloc p
