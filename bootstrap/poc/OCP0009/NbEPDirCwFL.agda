@@ -57,6 +57,12 @@ trans-assoc : ∀ {A : Set} {w x y z : A}
               trans (trans p q) r ≡ trans p (trans q r)
 trans-assoc refl refl refl = refl
 
+-- UIP is available here (the codebase is `--with-K`). `subst-∘`'s witness
+-- comparisons are ALSO closable UIP-free by the path lemmas above (exactly as
+-- `subst-id` is), but since K is on we take the one-liner.
+uip : ∀ {A : Set} {x y : A} (p q : x ≡ y) → p ≡ q
+uip refl refl = refl
+
 ------------------------------------------------------------------------
 -- The laws, given funext (threaded — no postulate, stays --safe).
 ------------------------------------------------------------------------
@@ -89,3 +95,22 @@ module Laws
         ≡ (λ {x y z} → act⨾ {x} {y} {z})
     eqc = funextᵢ₃ (λ x y z → funext (λ f → funext (λ g → funext (λ a →
                     trans-reflˡ (act⨾ f g a)))))
+
+  -- Substitution is functorial (`subst-∘`). Witness comparisons via `uip`.
+  subst-∘ : ∀ {Θ Δ Γ} (A : Ty⁺ Γ) (σ : Sub Δ Γ) (τ : Sub Θ Δ) →
+            (A [ σ ∘ₛ τ ]⁺) ≡₁ ((A [ σ ]⁺) [ τ ]⁺)
+  subst-∘ {Θ} A σ τ = cong₂₁ mk eqa eqc
+    where
+    open Ty⁺ A ; open Ctx Θ
+    OB : Ob → Set
+    OB x = fam (Sub.obₛ σ (Sub.obₛ τ x))
+    AC : ∀ {x y} → x ⇒ y → OB x → OB y
+    AC f a = act (Sub.homₛ σ (Sub.homₛ τ f)) a
+    mk : (∀ {x} (a : OB x) → AC idₒ a ≡ a)
+       → (∀ {x y z} (f : x ⇒ y) (g : y ⇒ z) (a : OB x) →
+            AC (f ⨾ g) a ≡ AC g (AC f a))
+       → Ty⁺ Θ
+    mk pa pc = record { fam = OB ; act = AC ; actid = pa ; act⨾ = pc }
+    eqa = funextᵢ (λ _ → funext (λ _ → uip _ _))
+    eqc = funextᵢ₃ (λ _ _ _ → funext (λ _ → funext (λ _ → funext (λ _ →
+                    uip _ _))))
