@@ -35,6 +35,7 @@ open import Data.Product using (proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit)
 import Once.Parser.Module.Core as P
 open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports)
@@ -82,7 +83,7 @@ resolver-preserves-trace :
   ∀ (mm : ModuleMap) (mU mR : P.Module)
   → resolveImports mm mU ≡ inj₂ mR
   → (mt-U : ModuleTyped mU) → MC.HasValidMain-decl mU mt-U
-  → ∀ {ir-R : IR Unit Unit} → moduleToIR mR ≡ just ir-R
+  → ∀ {ir-R : IR ⌊ Unit ⌋ ⌊ Unit ⌋} → moduleToIR mR ≡ just ir-R
   → ∀ (n : ℕ) → ⟦ moduleToIR mR ⟧IR n ≡ ⟦ moduleToIR mU ⟧IR n
 resolver-preserves-trace mm mU mR res-eq mt-U hvm-U mi-R n =
   let mt-R  = moduleToIR-typed mR mi-R
