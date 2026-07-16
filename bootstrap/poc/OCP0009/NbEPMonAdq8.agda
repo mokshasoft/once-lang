@@ -38,7 +38,7 @@ open import poc.OCP0009.NbEPMonW
   using ( ⟪_⟫; permC; mult; multInv )
 open import poc.OCP0009.NbEPMonAdq1
   using ( ∘c-congˡ; ∘c-congʳ; cancelC; fuse⊗ˡC; fuse⊗ʳC
-        ; mult-inv-l; mult-inv-r )
+        ; mult-inv-l; mult-inv-r; permC-≡ )
 open import poc.OCP0009.NbEPMonAdq2
   using ( inv-natC; α-natˡC; ⊗α-cancelˡC; ⊗α-cancelˡ′C; pid-realC
         ; ⊙P-realC )
@@ -118,10 +118,6 @@ passocInv-inv : ∀ Θ₁ Θ₂ Θ₃ →
 passocInv-inv ε        Θ₂ Θ₃ = ⊙P-pidˡ (pid (Θ₂ ++ Θ₃))
 passocInv-inv (A ∷ Θ₁) Θ₂ Θ₃ =
   cong (λ z → pcons z here) (passocInv-inv Θ₁ Θ₂ Θ₃)
-
-private
-  permC-≡ : ∀ {xs ys} {p q : Perm xs ys} → p ≡ q → permC p ≈c permC q
-  permC-≡ refl = ≈crefl
 
 -- permC passoc ∘ permC passocInv ≈ id, and the flip.
 passoc-cancel : ∀ Θ₁ Θ₂ Θ₃ →
