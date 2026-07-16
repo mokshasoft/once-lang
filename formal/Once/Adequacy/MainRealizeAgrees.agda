@@ -38,6 +38,7 @@ open import Data.Product using (_×_; _,_; Σ-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit; Type)
 
 import Once.Denotation.SourceDenote as SD
@@ -48,8 +49,9 @@ open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate
-  using (checkElab; InferElabResult; CheckElabResult; success; resolveExpr; PolyCtx; Imports;
+  using (checkElab; InferElabResult; CheckElabResult; success; PolyCtx; Imports;
          ctxWithImportsAndSelfAndPolys)
+open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Denotation.Realize using (realize)
@@ -102,7 +104,7 @@ open import Once.Adequacy.RealizeInvariant using (realize-invariant)
 -- concrete bundle) makes `mt` and `b` share `polys`/`sigEffs`/`funs`.
 main-extract :
   ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : MC.HasValidMain-decl m mt)
-    (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
+    (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
   → Σ-syntax NamedCtx (λ cctx →
     Σ-syntax RawExpr (λ body →
     Σ-syntax (Usage (NamedCtx.size cctx)) (λ Ψ →
@@ -134,7 +136,7 @@ main-extract m mt hvm ir mi =
 ------------------------------------------------------------------------
 main-checkElab-coherence :
   ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : MC.HasValidMain-decl m mt)
-    (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
+    (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
   → Σ-syntax NamedCtx (λ cctx →
     Σ-syntax RawExpr (λ body →
     Σ-syntax (Usage (NamedCtx.size cctx)) (λ Ψ →
@@ -158,7 +160,7 @@ main-checkElab-coherence m mt hvm ir mi
 ------------------------------------------------------------------------
 main-realize-agrees-proof :
   ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : MC.HasValidMain-decl m mt)
-    (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
+    (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
   → ∀ n → ME.runMainˢ (proj₁ (proj₂ (ME.source-meaningᴰ m ir mi))) n
           ≡ ME.runMainˢ (proj₂ (MC.mainRealized m mt hvm)) n
 main-realize-agrees-proof m mt hvm ir mi n
