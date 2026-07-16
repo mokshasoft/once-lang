@@ -36,19 +36,19 @@
 module poc.OCP0009.NbEPDirIR where
 
 open import normalizer.Syntax.Types
-  using ( Ty; Func; Id; One; Kc; _⊕_; _⊗_; μ_; ⟦_⟧F
+  using ( Ty; Func; Id; One; Kc; _⊕_; _⊗_; _*_; μ_; ⟦_⟧F
         ; _≡_; refl; sym; trans; cong; cong₂; _×_; _,_; _⊎_; inj₁; inj₂ )
 open import normalizer.Syntax.CCC as C
   using ( Term; id; _∘_; fst; snd; inl; inr; [_,_]; ⟨_,_⟩; In; cata; fmap
         ; _⟶_; _⟶*_; done; step; assoc-r; ⟶*-trans
-        ; id-left; id-right; eta-case; eta-pair
+        ; id-left; id-right; eta-case; eta-pair; cata-β; pair-comp; snd-pair
         ; ⟶*-∘-l; ⟶*-∘-r; ⟶*-case; ⟶*-pair )
 open import normalizer.Testing.Evaluator
-  using ( ⟦_⟧T; ⟦_⟧FS; eval; coherence; coherence⁻¹
+  using ( ⟦_⟧T; ⟦_⟧FS; Fix; fix; eval; coherence; coherence⁻¹
         ; cata-Set; map-cata-Set; fmap-Set )
 open import poc.OCP0009.NbEPDir  using ( Hom )
 open import poc.OCP0009.NbEPDirC using ( cata-run; cataH )
-open import poc.OCP0009.NbEPDirF using ( fusion-eval; eval-fmap )
+open import poc.OCP0009.NbEPDirF using ( fusion-eval; eval-fmap; coh-rt )
 
 ------------------------------------------------------------------------
 -- The real IR's `NatTr`, verbatim in shape (its `K` is `Kc` here).
@@ -246,3 +246,66 @@ deforest {G} {F} {B} τ alg =
     (trans (cong (eval alg)
              (sym (eval-fmap F (cata F alg) (eval (⟦ τ ⟧nt {μ F}) x))))
            (cong (eval alg) (nt-nat τ (cata F alg) x)))
+
+------------------------------------------------------------------------
+-- `Para` — the paramorphism (fold WITH access to the original substructure).
+--
+-- The real IR lists `Para` as `(⟦F⟧(μF × A) → A) → (μF → A)`, "total by
+-- derivation from Cata". Here we EXHIBIT that derivation: `Para` is not
+-- primitive — it is a `cata` building a pair `(reconstructed original,
+-- result)`, then projecting the result. `para-run` is its computation as a
+-- directed step (`cata-β` + the pair laws). The textbook clean rule
+-- `paraD alg ∘ In ≐ alg ∘ fmap F ⟨id, paraD alg⟩` additionally needs the
+-- pairing's first projection to RECONSTRUCT the input — `fst ∘ paraPair ≐
+-- cata In` (fusion, below) then the reflection law `cata In ≐ id` (a
+-- `cata`-uniqueness fact, `NbEPDirF`-style; flagged, not faked).
+------------------------------------------------------------------------
+
+-- The cata that computes `(reconstructed original , para result)`.
+paraPair : ∀ {F A} → Term (⟦ F ⟧F (μ F * A)) A → Term (μ F) (μ F * A)
+paraPair {F} alg = cata F ⟨ In ∘ fmap F fst , alg ⟩
+
+paraD : ∀ {F A} → Term (⟦ F ⟧F (μ F * A)) A → Term (μ F) A
+paraD alg = snd ∘ paraPair alg
+
+-- The paramorphism computation rule, as a directed step.
+para-run : ∀ {F A} (alg : Term (⟦ F ⟧F (μ F * A)) A) →
+           Hom (paraD alg ∘ In) (alg ∘ fmap F (paraPair alg))
+para-run {F} alg =
+  ⟶*-trans (step assoc-r done)
+  (⟶*-trans (⟶*-∘-r snd (step cata-β done))
+  (⟶*-trans (⟶*-∘-r snd (step pair-comp done))
+            (step snd-pair done)))
+
+-- Reconstruction, step one: the first projection of the pairing fuses to
+-- `cata In` (the fusion condition is `refl`).
+para-recon : ∀ {F A} (alg : Term (⟦ F ⟧F (μ F * A)) A) (y : ⟦ μ F ⟧T) →
+             eval (fst ∘ paraPair alg) y ≡ eval (cata F In) y
+para-recon {F} alg =
+  fusion-eval F fst ⟨ In ∘ fmap F fst , alg ⟩ In (λ _ → refl)
+
+-- Reconstruction, step two: the REFLECTION law `cata In ≐ id`, by induction
+-- on the fixpoint (a `cata`-uniqueness fact — the `NbEPDirF` semantic layer,
+-- not `⟶*`). `coh-rt` cancels the `In`-algebra's coherence round-trip.
+mutual
+  cata-In-id : ∀ F (y : Fix F) → eval (cata F In) y ≡ y
+  cata-In-id F (fix x) =
+    trans (cong fix (coh-rt F (map-cata-Set F F
+                       (λ z → eval (In {F}) (coherence⁻¹ F (μ F) z)) x)))
+          (cong fix (map-In-id F F x))
+
+  map-In-id : ∀ F G (x : ⟦ G ⟧FS (Fix F)) →
+              map-cata-Set F G (λ z → eval (In {F}) (coherence⁻¹ F (μ F) z)) x ≡ x
+  map-In-id F Id      x        = cata-In-id F x
+  map-In-id F One     x        = refl
+  map-In-id F (Kc _)  x        = refl
+  map-In-id F (G ⊕ H) (inj₁ y) = cong inj₁ (map-In-id F G y)
+  map-In-id F (G ⊕ H) (inj₂ z) = cong inj₂ (map-In-id F H z)
+  map-In-id F (G ⊗ H) (y , z)  = cong₂ _,_ (map-In-id F G y) (map-In-id F H z)
+
+-- The substructure IS recovered: `fst ∘ paraPair ≐ id`. So `paraPair`
+-- pairs the ORIGINAL input with the para result — the paramorphism's defining
+-- access to the substructure, now proven rather than posited.
+para-recon-id : ∀ {F A} (alg : Term (⟦ F ⟧F (μ F * A)) A) (y : ⟦ μ F ⟧T) →
+                eval (fst ∘ paraPair alg) y ≡ y
+para-recon-id {F} alg y = trans (para-recon alg y) (cata-In-id F y)
