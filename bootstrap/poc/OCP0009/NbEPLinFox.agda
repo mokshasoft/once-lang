@@ -82,6 +82,7 @@ record SMCComonoid : Set₁ where
     drop    : ∀ {A} → A ⊸ I
     counitR : ∀ {A} → ((id {A} ⊗ₘ drop {A}) ∘ dup {A}) ≈ ru⁻
     counitL : ∀ {A} → ((drop {A} ⊗ₘ id {A}) ∘ dup {A}) ≈ lu⁻
+    dupNat  : ∀ {A B} {f : A ⊸ B} → (dup ∘ f) ≈ ((f ⊗ₘ f) ∘ dup)
     dropNat : ∀ {A B} {f : A ⊸ B} → (drop ∘ f) ≈ drop
     dropI   : (drop {I}) ≈ id
 
@@ -166,6 +167,24 @@ module Fox (K : SMCComonoid) where
     g ∘ id
       ≈⟨ idr ⟩
     g ∎
+
+  -- Pairing is natural: `⟨f,g⟩ ∘ h ≈ ⟨f∘h, g∘h⟩`. The load-bearing step is
+  -- `dup ∘ h ≈ (h ⊗ h) ∘ dup` — this is precisely where `h`'s input is USED
+  -- TWICE. Every duplication in the recovered cartesian structure is exactly
+  -- one `dup`; nothing else in the linear core copies. This is the formal
+  -- content of "memory annotations collapse onto `dup`".
+  fox-pair-nat : ∀ {D C A B} {f : C ⊸ A} {g : C ⊸ B} {h : D ⊸ C} →
+                 (⟨ f , g ⟩ₗ ∘ h) ≈ ⟨ f ∘ h , g ∘ h ⟩ₗ
+  fox-pair-nat {f = f} {g} {h} =
+    ((f ⊗ₘ g) ∘ dup) ∘ h
+      ≈⟨ assoc ⟩
+    (f ⊗ₘ g) ∘ (dup ∘ h)
+      ≈⟨ ∘≈ r≈ dupNat ⟩
+    (f ⊗ₘ g) ∘ ((h ⊗ₘ h) ∘ dup)
+      ≈⟨ s≈ assoc ⟩
+    ((f ⊗ₘ g) ∘ (h ⊗ₘ h)) ∘ dup
+      ≈⟨ ∘≈ ⊗∘ r≈ ⟩
+    ((f ∘ h) ⊗ₘ (g ∘ h)) ∘ dup ∎
 
   -- `I` is terminal: `drop` is the UNIQUE morphism into it. This is the
   -- categorical statement of "any value may be discarded" — the counit made
