@@ -38,9 +38,10 @@ open import Relation.Binary.PropositionalEquality using (refl)
 
 open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
-  curry; apply; arr;
+  curry; apply;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
+open import Once.IRTy using (fits-int; fits-float)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace)
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier)
@@ -109,7 +110,6 @@ module _ {FS : FrameSemantics} where
   straight-trace' (case f g)  _ n l = (λ _ _ → refl) ∷ []
   straight-trace' terminal    _ n l = []
   straight-trace' initial     _ n l = (λ _ _ → refl) ∷ []
-  straight-trace' arr         _ n l = (λ _ _ → refl) ∷ []
   straight-trace' (curry b Stack) _ n l =
     (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
   straight-trace' (curry b Heap)  _ n l =
@@ -117,7 +117,9 @@ module _ {FS : FrameSemantics} where
     (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
   straight-trace' apply       _ n l =
     (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
-    (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
+    (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
+    (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
+    (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
   straight-trace' (In _ _)    _ n l = (λ _ _ → refl) ∷ []
   straight-trace' (out-μ _)   _ n l = (λ _ _ → refl) ∷ []
   straight-trace' (Cata _ _)  ()
@@ -129,7 +131,8 @@ module _ {FS : FrameSemantics} where
   straight-trace' (Fuse _ _ _ _) _ n l = []
   straight-trace' (free-heap _)  _ n l = (λ _ _ → refl) ∷ []
   straight-trace' (SigOp _)   _ n l = (λ _ _ → refl) ∷ []
-  straight-trace' (const _ _) _ n l = (λ _ _ → refl) ∷ []
+  straight-trace' (const fits-int _)   _ n l = (λ _ _ → refl) ∷ []
+  straight-trace' (const fits-float _) _ n l = (λ _ _ → refl) ∷ []
 
   ----------------------------------------------------------------------
   -- Corollaries over the public entry points.
