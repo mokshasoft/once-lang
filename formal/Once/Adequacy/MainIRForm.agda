@@ -33,6 +33,7 @@ open import Once.Type
   using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_;
          μ-type; ν-type; mk-kind; Quantity; Zero; One; Many; Purity; pure; eff)
 open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (SigEffectCtx; NamedCtx)
 open import Once.TypeCheck.Elaborate using (PolyCtx)
@@ -94,7 +95,7 @@ validateMain-EffUU ((ν-type _) ⇒[ k ] B)   ()
 ------------------------------------------------------------------------
 
 compileFun-main-EffUU : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : SigEffectCtx)
-  (ty : Type) (body : RawExpr) (irFun : IR Unit ty) →
+  (ty : Type) (body : RawExpr) (irFun : IR ⌊ Unit ⌋ ⌊ ty ⌋) →
   C.compileFun C.Heap false ctx polys sigEffs "main" ty body ≡ inj₂ irFun →
   ty ≡ EffUU
 compileFun-main-EffUU ctx polys sigEffs ty body irFun eq with C.validateMain ty in veq
@@ -106,7 +107,7 @@ compileFun-main-EffUU ctx polys sigEffs ty body irFun eq with C.validateMain ty 
 ------------------------------------------------------------------------
 
 findMain-here-no : ∀ (cf : C.CompiledFun) (b : Bool)
-  (mu : Maybe (C.CompiledFun.cfType cf ≡ Unit)) (cont : Maybe (IR Unit Unit))
+  (mu : Maybe (C.CompiledFun.cfType cf ≡ Unit)) (cont : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋))
   (¬p : ¬ (C.CompiledFun.cfName cf ≡ bare "main")) →
   findMain-here cf b (no ¬p) mu cont ≡ cont
 findMain-here-no cf false mu cont ¬p = refl
