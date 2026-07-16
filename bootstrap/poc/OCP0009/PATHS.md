@@ -108,6 +108,62 @@ riding on Path 1's consistency at no extra cost. The one less-settled place is
 directed univalence, and there the gap is "which model anchors it," not "how many
 more universes."
 
+## Univalence, UIP, and why the kernel stays set-level
+
+The deepest fork underneath both paths is whether Once commits to **univalence**.
+The analysis settles it: **not for the kernel.**
+
+**What univalence buys** — all of it in the layer *above* the kernel. Its slogan
+is "equivalent types are equal" (`(A ≡ B) ≃ (A ≃ B)`), and the power flows from
+transporting along that: prove a theorem for one representation, get it free for
+every equivalent one (the Structure Identity Principle, **representation
+independence**); `funext` becomes a theorem; real quotients / HITs; synthetic
+homotopy. The **directed** analogue (`Hom_U(A,B) ≃ (A → B)`) would give transport
+of *covariant* properties along *maps* — "any property monotone under
+transformation transports along an optimization pass," the type-level cash-out of
+"IR as Hom → compiler lemmas for free." Genuinely powerful — for reasoning
+*about* Once's programs.
+
+**Why the kernel declines it.** The bottleneck is **not** consistency (univalent
+type theory is consistent — simplicial and cubical models). It is **decidability
+and canonicity**, which are distinct from consistency:
+
+- As an *axiom*, univalence **does not compute** — `transport (ua e) x` gets
+  stuck, canonicity fails, and a conversion checker built on reduction *stalls*.
+  That's a broken kernel, not "more to prove." The only repair is **cubical**
+  type theory (where univalence computes) — a qualitatively heavier kernel
+  (interval, Kan composition) with a much more complex conversion algorithm.
+- **It is the antithesis of the transport-free discipline** that bought this POC
+  its simplicity. Transport-free proofs *eliminate* transports in favour of
+  structural data that computes definitionally (the `⊙P` perms compose on the
+  nose — what made the adequacy climb tractable). Univalence *reintroduces*
+  exactly the non-computing transports we removed. The kernel's decidability
+  *rests on* the reduction univalence disturbs.
+- **UIP.** Univalence *refutes* global UIP (two paths `Bool ≡ Bool` from the two
+  self-equivalences) — they are a fork, not a free combination. The kernel needs
+  **no global UIP axiom**: `NbEPDirCwFL` proves the CwF substitution laws with
+  only *threaded funext* (and a `J`-lemma, no `K`); UIP is needed *only* for the
+  comprehension's category laws, and there only as a *local* h-set property of
+  `fam`, not a global commitment. So the kernel stays set-level *and*
+  forward-compatible: valid in the set world and in a future univalent world,
+  without paying for either.
+
+**Consistency of a univalent Once, if ever taken.** The Gödel ladder is unchanged
+in *shape* — `Con(level n)` still proved at `level n+1`, "Once⁺ = Once + one
+universe" still holds, and univalence adds little proof-theoretic *strength*
+(strength comes from universes/HITs as before). What changes is the **model you
+must build**: a *simplicial or cubical* model instead of a set model — far more
+sophisticated to construct *internally*, and for the *directed* case the model
+(Riehl–Shulman simplicial spaces) is partly open research. So univalence makes
+self-consistency **harder to witness**, not impossible.
+
+**The decision this fixes.** The kernel is **set-level, transport-free, and
+decidable** — no univalence, no UIP axiom, just *local* h-sets + *threaded*
+funext. Univalence is reserved as an **optional tool for the mathematics-of-Once
+layer** (representation independence; directed transport-along-transformations),
+taken on only where transport-along-equivalence pays more than the decidability
+it costs — never in the core.
+
 ## What is left to make Path 2 load-bearing
 
 Path 2 today demonstrates the *shape* (Hom as free category `NbEPDir`; as a code
@@ -254,3 +310,10 @@ The gating input is the §7 question: **is Once's core cartesian or
 monoidal/linear?** If cartesian, option 1 is the whole story. If the core goes
 linear, directed homs are *what its equality becomes*, option 2 stops being
 optional, and the two towers need each other — exactly as `NbEPMonD` shows.
+
+**One sub-decision is already fixed** (see *Univalence, UIP, …* above): whichever
+option, the **kernel stays set-level, transport-free, and decidable** — no
+univalence, no UIP axiom, just local h-sets + threaded funext. Univalence's
+power (representation independence; directed transport-along-transformations) is
+reserved for the *mathematics-of-Once* layer above the kernel, never the core,
+because as an axiom it breaks the canonicity the decidable kernel is built on.
