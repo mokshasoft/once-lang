@@ -37,7 +37,7 @@ open import poc.OCP0009.NbEPMonW
 open import poc.OCP0009.NbEPMonAdq1
   using ( ∘c-congˡ; ∘c-congʳ; fuse⊗ˡC; fuse⊗ʳC; mult-inv-r )
 open import poc.OCP0009.NbEPMonAdq2
-  using ( ⊗α-cancelˡC; ⊙P-realC )
+  using ( ⊗α-cancelˡC; ⊙P-realC; interchangeC )
 open import poc.OCP0009.NbEPMonAdq3
   using ( mult-insʳ )
 open import poc.OCP0009.NbEPMonAdq4
@@ -173,3 +173,57 @@ node-perm-realˡ Δ₁ Θ₁ Θ₂ q ρ =
              (≈ctrans (≈csym c∘-assoc)
                       (∘c-congˡ (≈ctrans (≈csym c⊗-∘)
                                          (⊗c-cong cid-l ≈crefl)))))))))))))
+
+------------------------------------------------------------------------
+-- The head collapse, factored out — the chain the appSp `dagger` and the
+-- withSpˡ `nodeL` both run AFTER the node-permutation is realized.
+-- Generic in the inner mult (`P`) and the outer mult (`M`).
+------------------------------------------------------------------------
+
+collapse² : ∀ {Wᴾ Wᴹ} X Y Θ₂ Γ₂ {Θ₁} (n : CTm ⟪ Θ₁ ⟫ (X ⊗ Y))
+            (P : CTm Wᴾ (⟪ Θ₁ ⟫ ⊗ ⟪ Θ₂ ⟫)) (M : CTm Wᴹ (Wᴾ ⊗ ⟪ Γ₂ ⟫)) →
+  (mult (X ∷ (Y ∷ Θ₂)) Γ₂ ∘c
+   (αrc ∘c ((n ⊗c idc) ∘c
+     ((idc ⊗c multInv Θ₂ Γ₂) ∘c
+      (αrc ∘c ((P ⊗c idc) ∘c M)))))) ≈c
+  (((αrc ∘c ((n ⊗c idc) ∘c P)) ⊗c idc) ∘c M)
+collapse² X Y Θ₂ Γ₂ n P M =
+  ≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
+  (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congˡ interchangeC)))
+  (≈ctrans (∘c-congʳ (∘c-congʳ c∘-assoc))
+  (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc))))
+  (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ n-α))))
+  (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc)))
+  (≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
+  (≈ctrans (∘c-congʳ (≈csym c∘-assoc))
+  (≈ctrans (≈csym c∘-assoc)
+  (≈ctrans (∘c-congˡ (mult-head² X Y Θ₂ Γ₂))
+  (≈ctrans (∘c-congʳ (≈csym c∘-assoc))
+  (≈ctrans (∘c-congʳ (∘c-congˡ fuse⊗ʳC))
+  (≈ctrans (≈csym c∘-assoc)
+           (∘c-congˡ fuse⊗ʳC)))))))))))))
+
+collapseI : ∀ {Wᴾ Wᴹ} Θ₂ Γ₂ {Θ₁} (n : CTm ⟪ Θ₁ ⟫ I)
+            (P : CTm Wᴾ (⟪ Θ₁ ⟫ ⊗ ⟪ Θ₂ ⟫)) (M : CTm Wᴹ (Wᴾ ⊗ ⟪ Γ₂ ⟫)) →
+  (mult Θ₂ Γ₂ ∘c
+   (ƛrc ∘c ((n ⊗c idc) ∘c
+     ((idc ⊗c multInv Θ₂ Γ₂) ∘c
+      (αrc ∘c ((P ⊗c idc) ∘c M)))))) ≈c
+  (((ƛrc ∘c ((n ⊗c idc) ∘c P)) ⊗c idc) ∘c M)
+collapseI Θ₂ Γ₂ n P M =
+  ≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
+  (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congˡ interchangeC)))
+  (≈ctrans (∘c-congʳ (∘c-congʳ c∘-assoc))
+  (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc))))
+  (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ (∘c-congˡ
+             (≈csym (≈ctrans cα-nat
+                      (∘c-congˡ (⊗c-cong ≈crefl c⊗-id))))))))
+  (≈ctrans (∘c-congʳ (∘c-congʳ (∘c-congʳ c∘-assoc)))
+  (≈ctrans (∘c-congʳ (∘c-congʳ (≈csym c∘-assoc)))
+  (≈ctrans (∘c-congʳ (≈csym c∘-assoc))
+  (≈ctrans (≈csym c∘-assoc)
+  (≈ctrans (∘c-congˡ (mult-headI Θ₂ Γ₂))
+  (≈ctrans (∘c-congʳ (≈csym c∘-assoc))
+  (≈ctrans (∘c-congʳ (∘c-congˡ fuse⊗ʳC))
+  (≈ctrans (≈csym c∘-assoc)
+           (∘c-congˡ fuse⊗ʳC)))))))))))))
