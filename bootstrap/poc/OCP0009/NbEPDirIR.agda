@@ -37,15 +37,18 @@ module poc.OCP0009.NbEPDirIR where
 
 open import normalizer.Syntax.Types
   using ( Ty; Func; Id; One; Kc; _⊕_; _⊗_; μ_; ⟦_⟧F
-        ; _≡_; refl; cong; cong₂; _×_; _,_; _⊎_; inj₁; inj₂ )
+        ; _≡_; refl; sym; trans; cong; cong₂; _×_; _,_; _⊎_; inj₁; inj₂ )
 open import normalizer.Syntax.CCC as C
   using ( Term; id; _∘_; fst; snd; inl; inr; [_,_]; ⟨_,_⟩; In; cata; fmap
         ; _⟶_; _⟶*_; done; step; assoc-r; ⟶*-trans
         ; id-left; id-right; eta-case; eta-pair
         ; ⟶*-∘-l; ⟶*-∘-r; ⟶*-case; ⟶*-pair )
-open import normalizer.Testing.Evaluator using ( ⟦_⟧T; eval )
+open import normalizer.Testing.Evaluator
+  using ( ⟦_⟧T; ⟦_⟧FS; eval; coherence; coherence⁻¹
+        ; cata-Set; map-cata-Set; fmap-Set )
 open import poc.OCP0009.NbEPDir  using ( Hom )
 open import poc.OCP0009.NbEPDirC using ( cata-run; cataH )
+open import poc.OCP0009.NbEPDirF using ( fusion-eval; eval-fmap )
 
 ------------------------------------------------------------------------
 -- The real IR's `NatTr`, verbatim in shape (its `K` is `Kc` here).
@@ -195,3 +198,51 @@ nt-nat (ntCase τ₁ τ₂) f (inj₂ z)  = nt-nat τ₂ f z
 nt-nat (ntInl τ)      f x         = cong inj₁ (nt-nat τ f x)
 nt-nat (ntInr τ)      f x         = cong inj₂ (nt-nat τ f x)
 nt-nat (ntPair τ₁ τ₂) f x         = cong₂ _,_ (nt-nat τ₁ f x) (nt-nat τ₂ f x)
+
+------------------------------------------------------------------------
+-- DEFORESTATION — the correctness payoff of naturality.
+--
+-- `τ : NatTr G F` induces a MAP on fixpoints, `mapN τ : μG → μF`, relabelling
+-- every G-node to an F-node (`In ∘ ⟦τ⟧` folded over `μG`). The real IR's
+-- point is that `Fuse` = fold-AFTER-map WITHOUT the intermediate `μF`:
+--
+--     (cata F alg) ∘ mapN τ   ≐   fuseD τ alg   (= cata G (alg ∘ ⟦τ⟧))
+--
+-- i.e. building the intermediate structure and folding it equals fusing.
+-- This is `NbEPDirF`'s `fusion` (the cata universal property) whose fusion
+-- CONDITION is exactly `nt-nat` (naturality) glued with `eval-fmap`.
+-- Totality (`fuse-run`) + this correctness = the real IR's `Fuse`/`Hylo`.
+------------------------------------------------------------------------
+
+-- `cata-Set` on a `fix` computes via `map-cata-Set` (inlined for
+-- termination); `eval-fmap` speaks `fmap-Set`. They agree — by induction on
+-- the functor code — which is the one bridge the fusion condition needs.
+mc≡fm : ∀ F G {A : Set} (alg : ⟦ F ⟧FS A → A) (c : ⟦ G ⟧FS _) →
+        map-cata-Set F G alg c ≡ fmap-Set G (cata-Set F alg) c
+mc≡fm F Id      alg c        = refl
+mc≡fm F One     alg c        = refl
+mc≡fm F (Kc _)  alg c        = refl
+mc≡fm F (G ⊕ H) alg (inj₁ y) = cong inj₁ (mc≡fm F G alg y)
+mc≡fm F (G ⊕ H) alg (inj₂ z) = cong inj₂ (mc≡fm F H alg z)
+mc≡fm F (G ⊗ H) alg (y , z)  = cong₂ _,_ (mc≡fm F G alg y) (mc≡fm F H alg z)
+
+-- The functorial action of `τ` on the fixpoints (`fmap` at `μ`).
+mapN : ∀ {G F} → NatTr G F → Term (μ G) (μ F)
+mapN {G} τ = cata G (In ∘ ⟦ τ ⟧nt)
+
+deforest : ∀ {G F B} (τ : NatTr G F) (alg : Term (⟦ F ⟧F B) B)
+           (y : ⟦ μ G ⟧T) →
+           eval (cata F alg ∘ mapN τ) y ≡ eval (fuseD τ alg) y
+deforest {G} {F} {B} τ alg =
+  fusion-eval G (cata F alg) (In ∘ ⟦ τ ⟧nt) (alg ∘ ⟦ τ ⟧nt) cond
+  where
+  alg° : ⟦ F ⟧FS ⟦ B ⟧T → ⟦ B ⟧T
+  alg° y = eval alg (coherence⁻¹ F B y)
+  cond : ∀ x → eval (cata F alg ∘ (In ∘ ⟦ τ ⟧nt)) x
+             ≡ eval ((alg ∘ ⟦ τ ⟧nt) ∘ fmap G (cata F alg)) x
+  cond x =
+    trans (cong (λ m → eval alg (coherence⁻¹ F B m))
+             (mc≡fm F F alg° (coherence F (μ F) (eval (⟦ τ ⟧nt {μ F}) x))))
+    (trans (cong (eval alg)
+             (sym (eval-fmap F (cata F alg) (eval (⟦ τ ⟧nt {μ F}) x))))
+           (cong (eval alg) (nt-nat τ (cata F alg) x)))
