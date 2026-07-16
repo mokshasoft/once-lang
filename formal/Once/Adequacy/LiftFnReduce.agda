@@ -29,7 +29,7 @@ open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 import Once.IR as IR
-open import Once.IR using (IR; _∘_; ⟨_,_⟩; fst; snd; case; curry; terminal)
+open import Once.IR using (IR; _∘_; ⟨_,_⟩; fst; snd; case; curry; terminal; apply)
 open import Once.Postulates using (extensionality)
 
 private
@@ -163,6 +163,19 @@ lift-inj₂-red : ∀ {AI AT BI BT CI CT : Set}
    → subst T pC (cf (subst id (sym (cong₂ _⊎_ pA pB)) (inj₂ b)))
      ≡ subst T pC (gg (subst id (sym pB) b))
 lift-inj₂-red refl refl refl cf gg hyp b = hyp b
+
+-- apply: `evalᴰ apply p = proj₁ p (proj₂ p)`; the closure/arg transports cancel
+-- against `subst T (cohᴰ B)` and the arrow's `cohᴰ`. Match-to-refl.
+apply-red : ∀ {AI AT BI BT : Set} (pA : AI ≡ AT) (pB : BI ≡ BT)
+              (v : (AT → T BT) × AT)
+  → subst T pB (proj₁ (subst id (sym (cong₂ _×_ (cong₂ (λ x y → x → T y) pA pB) pA)) v)
+                       (proj₂ (subst id (sym (cong₂ _×_ (cong₂ (λ x y → x → T y) pA pB) pA)) v)))
+    ≡ proj₁ v (proj₂ v)
+apply-red refl refl v = refl
+
+liftFn-apply : ∀ {A B : Type} {k}
+  → liftFn {(A ⇒[ k ] B) * A} {B} apply ≡ (λ v → proj₁ v (proj₂ v))
+liftFn-apply {A} {B} {k} = extensionality λ v → apply-red (cohᴰ A) (cohᴰ B) v
 
 liftFn-case-inj₁ : ∀ {A B C : Type} (f : IR IR.⌊ A ⌋ IR.⌊ C ⌋) (g : IR IR.⌊ B ⌋ IR.⌊ C ⌋) (a : ⟦ A ⟧ᴰ)
   → liftFn {A + B} {C} (case f g) (inj₁ a) ≡ liftFn {A} {C} f a
