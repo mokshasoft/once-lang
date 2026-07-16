@@ -35,7 +35,6 @@ ir-size terminal = 1
 ir-size initial = 1
 ir-size (curry f _) = 2 +ℕ ir-size f
 ir-size apply = 1
-ir-size arr = 1
 -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
 -- Recursion schemes (OCP-0003) - WellFormedF proofs are ignored for size
 ir-size (In _ _) = 1

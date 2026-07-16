@@ -1088,7 +1088,6 @@ inlInrView terminal        = iiv-other terminal
 inlInrView initial         = iiv-other initial
 inlInrView (curry f m)     = iiv-other (curry f m)
 inlInrView apply           = iiv-other apply
-inlInrView arr             = iiv-other arr
 inlInrView (In wf m)       = iiv-other (In wf m)
 inlInrView (out-μ wf)      = iiv-other (out-μ wf)
 inlInrView (Cata wf alg)   = iiv-other (Cata wf alg)
@@ -1135,7 +1134,6 @@ has-effect? (curry f _)     = has-effect? f
 -- what stops the optimizer collapsing an effect-bearing action thunk
 -- (`applyEff ∘ ⟨closure,x⟩ : _ → Unit`) to `terminal`.
 has-effect? apply           = true
-has-effect? arr             = false
 has-effect? (SigOp _)       = true
 has-effect? (const _ _)   = false
 has-effect? (free-heap _)   = true
@@ -1279,7 +1277,6 @@ mutual
   optimize-once-structural (curry f m) = curry (optimize-once f) m
   optimize-once-structural apply = apply
   -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
-  optimize-once-structural arr = arr
   -- | SigOp with Void source is equivalent to initial (no inhabitants)
   optimize-once-structural (SigOp {A} n) with A ≟Type Void
   ... | yes refl = initial

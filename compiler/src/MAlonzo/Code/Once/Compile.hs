@@ -243,7 +243,7 @@ du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v8
              (coe
                 MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v3)
                 (coe
-                   MAlonzo.Code.Once.Optimize.d_optimize_4302
+                   MAlonzo.Code.Once.Optimize.d_optimize_4296
                    (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
                       (coe
                          MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
@@ -810,7 +810,7 @@ d_pipeline_614 v0 v1 v2 v3
       (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v0))
       (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v1))
       (coe
-         MAlonzo.Code.Once.Optimize.d_optimize_4302
+         MAlonzo.Code.Once.Optimize.d_optimize_4296
          (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v0))
          (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v1))
          (MAlonzo.Code.Once.Surface.Desugar.d_desugar_22
@@ -834,7 +834,7 @@ d_pipeline'45'no'45'escape_630 ::
   MAlonzo.Code.Once.IR.T_IR_16
 d_pipeline'45'no'45'escape_630 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Optimize.d_optimize_4302
+      MAlonzo.Code.Once.Optimize.d_optimize_4296
       (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v0))
       (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v1))
       (MAlonzo.Code.Once.Surface.Desugar.d_desugar_22
