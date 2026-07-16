@@ -34,6 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.IR
+open import Once.IRTy using (⌈_⌉F)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_; fits-int; fits-float)
 open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr;
          mov-to-output; mov-to-input; mov-output-to-input2; mov-input2-to-output;
@@ -312,7 +313,6 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-stable snd             n l = all-stable?-sound _ refl
   ir-stable terminal        n l = all-stable?-sound _ refl
   ir-stable initial         n l = all-stable?-sound _ refl
-  ir-stable arr             n l = all-stable?-sound _ refl
   ir-stable apply           n l = all-stable?-sound _ refl
   ir-stable (curry _ Stack) n l = all-stable?-sound _ refl
   ir-stable (curry _ Heap)  n l = all-stable?-sound _ refl
@@ -340,7 +340,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-stable (case f g)      n l =
     ((tt , tt , All→AllI (ir-stable f n l)) , (tt , tt , All→AllI (ir-stable g _ _))) ∷ᴬ []ᴬ
   ir-stable (Cata {F} _ alg) n l =
-    cata-dispatch-slot-stable (cata-strategy F) _ _ _ (ir-stable alg n l)
+    cata-dispatch-slot-stable (cata-strategy ⌈ F ⌉F) _ _ _ (ir-stable alg n l)
 
   -- top-level: the trace `ir-to-trace ir` (= `trc (ir-to-trace' 0 0 ir)`).
   ir-to-trace-slot-stable : ∀ {A B} (ir : IR A B) → AllSlotStable (ir-to-trace ir)
