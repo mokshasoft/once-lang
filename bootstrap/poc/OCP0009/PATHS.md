@@ -289,9 +289,31 @@ where `Lⁱ` is a denotational semantics for the linear core (`dup a = (a,a)`,
 `drop a = tt` — copy/discard made concrete); the pass does not change meaning.
 And the accounting: `pass-df` — a `PairFree` source linearizes to a fully
 dup-free term, so **every duplication in the output traces to exactly one
-cartesian `⟨_,_⟩`**. What stays research: usage-driven `dup`/`drop` *placement*
-(here it's the canonical Fox placement) and a full operational heap semantics
-for the alloc-correctness payoff on top of `L-sound`.
+cartesian `⟨_,_⟩`** — and quantitatively `pass-alloc : dupCount L⟦p⟧ ≡
+pairCount p` (one allocation per source pairing).
+
+**Alloc/free is a balance law, not a heap proof.** The allocator-correctness we
+need is *not* about heap contents — it is about alloc/free events balancing.
+And that balance is STRUCTURAL, no operational model: `dupfree-no-alloc` (the
+linear sublanguage allocates nothing — `DupFree ⟹ dupCount ≡ 0`), and the
+atomic law `alloc-free-id : Lⁱ (ρl ∘ (id ⊗ drop) ∘ dup) a ≡ a` with
+`atomic-balance` (counts matched, allocs ≡ frees ≡ 1) — "one free per alloc" =
+identity, which is `NbEPLinFox.counitR` realized in the pass semantics. So heap
+use is exactly the `dup`s inserted for pairings, each cancelled by its `drop`.
+
+**Coinductive liveness — the codata dual (`NbEPLinLive`, linearization-4).** For
+the inductive fragment the above is a terminating *count*. For codata (`ν`/`Ana`
+— programs that run forever) the alloc/free trace is an infinite **`Stream`**,
+and "no leak" becomes a **liveness** property: `□(alloc ⟹ ◇free)` (every alloc
+*eventually* freed). POC'd `--safe` with guarded corecursion (no sized types):
+`◇`/`□` (eventually/always) on streams, a balanced producer proven `leak-free`
+by mutual guarded corecursion, and a `leaky` producer shown to *violate*
+`◇free` (the property has teeth — an infinite leak the inductive count cannot
+see). Inductive balance is a count; coinductive balance is `□◇` carried by
+productivity — which is why codata alloc-correctness is the harder frontier.
+Still no heap. What genuinely stays research: usage-driven `dup`/`drop`
+*placement* (here it is the canonical Fox placement) and wiring these event
+models to the recursion schemes end-to-end.
 
 **The dividend — memory becomes a theorem, not a pass.** In the linear core a
 value is used *exactly once*, so its lifetime ends at its single use:
