@@ -29,9 +29,18 @@ open import poc.OCP0009.NbEPMonL
         ; cid-l; cid-r; c∘-assoc; c⊗-id; c⊗-∘
         ; cα-iso₁; cα-iso₂; cƛ-iso₁; cƛ-iso₂; cρ-iso₁; cρ-iso₂ )
 open import poc.OCP0009.NbEPMonT
-  using ( Ctx; ε; _∷_; _++_ )
+  using ( Ctx; ε; _∷_; _++_; Perm )
 open import poc.OCP0009.NbEPMonW
-  using ( ⟪_⟫; mult; multInv; ctxOf; splitTm; joinTm )
+  using ( ⟪_⟫; permC; mult; multInv; ctxOf; splitTm; joinTm )
+open import normalizer.Syntax.Types
+  using ( _≡_; refl )
+
+------------------------------------------------------------------------
+-- Permutation congruence: equal perms give ≈c-equal reifications.
+------------------------------------------------------------------------
+
+permC-≡ : ∀ {xs ys} {p q : Perm xs ys} → p ≡ q → permC p ≈c permC q
+permC-≡ refl = ≈crefl
 
 ------------------------------------------------------------------------
 -- The chain kit (ports of NbEPMonN).

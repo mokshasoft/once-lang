@@ -33,7 +33,7 @@ open import poc.OCP0009.NbEPMonW
 open import poc.OCP0009.NbEPMonF
   using ( Sp; ret; spl; usI; Val; absorb; appSp )
 open import poc.OCP0009.NbEPMonAdq1
-  using ( ∘c-congˡ; ∘c-congʳ; fuse⊗ʳC )
+  using ( ∘c-congˡ; ∘c-congʳ; fuse⊗ʳC; permC-≡ )
 open import poc.OCP0009.NbEPMonAdq2
   using ( interchangeC; pid-realC )
 open import poc.OCP0009.NbEPMonAdq8
@@ -42,10 +42,6 @@ open import poc.OCP0009.NbEPMonAdq9
   using ( node-perm-real; collapse²; collapseI )
 open import poc.OCP0009.NbEPMonAdq12
   using ( R )
-
-private
-  permC-≡ : ∀ {xs ys} {p q : Perm xs ys} → p ≡ q → permC p ≈c permC q
-  permC-≡ refl = ≈crefl
 
 ------------------------------------------------------------------------
 -- The tree relation over Val-B leaves.

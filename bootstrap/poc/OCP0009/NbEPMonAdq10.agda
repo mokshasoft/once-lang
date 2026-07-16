@@ -38,7 +38,7 @@ open import poc.OCP0009.NbEPMonW
 open import poc.OCP0009.NbEPMonF
   using ( Sp; ret; spl; usI; reifySp; withSpˡ; Val; appSp )
 open import poc.OCP0009.NbEPMonAdq1
-  using ( ∘c-congˡ; ∘c-congʳ; fuse⊗ʳC )
+  using ( ∘c-congˡ; ∘c-congʳ; fuse⊗ʳC; permC-≡ )
 open import poc.OCP0009.NbEPMonAdq2
   using ( interchangeC; ⊙P-realC; pid-realC )
 open import poc.OCP0009.NbEPMonAdq8
@@ -47,9 +47,6 @@ open import poc.OCP0009.NbEPMonAdq9
   using ( mult-head²; mult-headI; n-α; node-perm-real )
 
 private
-  permC-≡ : ∀ {xs ys} {p q : Perm xs ys} → p ≡ q → permC p ≈c permC q
-  permC-≡ refl = ≈crefl
-
   -- Four left factors fuse into one.
   fuse4 : ∀ {W₀ W₁ W₂ W₃ W₄ E V}
             (a : CTm W₃ W₄) (b : CTm W₂ W₃) (c : CTm W₁ W₂)
