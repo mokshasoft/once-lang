@@ -41,6 +41,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; _≢_; refl; sym; trans; cong; subst)
 open import Data.List using ([]; take)
 open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
 
 open import Once.Denotation.Behavior using (Source; Behavior)
@@ -173,7 +174,7 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
     -- this arch's flat-machine SigOp trace of the compiled `main` IR
     -- (`nothing` ⇒ a library, no entry ⇒ []); def = `flat-events ∘
     -- ir-to-trace` from the loader entry (rides the per-target flat-sim).
-    flat-trace : Maybe (IR Unit Unit) → Behavior
+    flat-trace : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Behavior
     -- assemble-then-execute reproduces the asm-text meaning. HONEST
     -- precondition (Plan 0.50): `as` is trusted only for asm produced by
     -- compiling a module whose emitted symbols are distinct — the apex
@@ -191,7 +192,7 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
       ∀ (n : ℕ) → asm-sem asm n ≡ flat-trace (moduleToIR m) n
     -- the flat machine's SigOp trace of a compiled IR equals its `obs`.
     ir-flat-correct :
-      ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ) → flat-trace mir n ≡ ⟦ mir ⟧IR n
+      ∀ (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) (n : ℕ) → flat-trace mir n ≡ ⟦ mir ⟧IR n
 
 -- (The former `no-main-empty` library-case postulate is gone: with
 -- `⟦_⟧M = ⟦ moduleToIR m ⟧IR`, the library case `moduleToIR m ≡ nothing` is
@@ -285,7 +286,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   compile-cr arch (C.Checked _)  = nothing
   compile-cr arch (C.Error _)    = nothing
 
-  compile-mir : Arch → Bool → P.Module → Maybe (IR Unit Unit) → Maybe (List Byte)
+  compile-mir : Arch → Bool → P.Module → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe (List Byte)
   compile-mir arch doOpt m nothing   = nothing
   compile-mir arch doOpt m (just _)  = compile-cr arch (C.compileFromModule C.Heap C.Build doOpt arch m)
 
@@ -360,7 +361,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- An unparseable source, or a parseable one with no `main` (`moduleToIR ≡
   -- nothing`), has no behaviour. NOTE (0.48 0b): still THROUGH the front-end —
   -- making it independent (a declarative meaning) is the front-end phase.
-  ⟦_⟧⊥-ir : Maybe (IR Unit Unit) → Maybe Behavior
+  ⟦_⟧⊥-ir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe Behavior
   ⟦ nothing  ⟧⊥-ir = nothing
   ⟦ just ir  ⟧⊥-ir = just (⟦ just ir ⟧IR)
   ⟦_⟧⊥-m : Maybe P.Module → Maybe Behavior
@@ -375,8 +376,8 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- genuinely well-typed programs — soundness is no longer by-construction,
   -- it is discharged against the INDEPENDENT judgment via `AcceptSound`.
   -- With-free (explicit-`Maybe`-argument helpers).
-  ⟦⟧⊥-ir-sound : ∀ (mir : Maybe (IR Unit Unit)) (beh : Behavior) →
-    ⟦ mir ⟧⊥-ir ≡ just beh → Σ-syntax (IR Unit Unit) (λ ir → mir ≡ just ir)
+  ⟦⟧⊥-ir-sound : ∀ (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) (beh : Behavior) →
+    ⟦ mir ⟧⊥-ir ≡ just beh → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → mir ≡ just ir)
   ⟦⟧⊥-ir-sound nothing  beh ()
   ⟦⟧⊥-ir-sound (just ir) beh eq = ir , refl
 
@@ -400,7 +401,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- optimize lift). The doOpt=false trace is PROVEN from the codegen chain
   -- (`trace-false` below).
   postulate
-    opt-trace : ∀ (arch : Arch) (m : P.Module) (asm : String) (ir : IR Unit Unit) →
+    opt-trace : ∀ (arch : Arch) (m : P.Module) (asm : String) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
       C.compileFromModule C.Heap C.Build true arch m ≡ C.Built asm →
       moduleToIR m ≡ just ir →
       ∀ (n : ℕ) → exec arch (string-to-bytes arch asm) n ≡ ⟦ just ir ⟧IR n
@@ -414,7 +415,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- ≡ just ir`) and that the pipeline Builds `asm`, the bytes' trace equals the
   -- source meaning `⟦ just ir ⟧IR`. Supplied per `doOpt` by `correct` below
   -- (the proven codegen chain for `false`; `opt-trace` for `true`).
-  TraceAt : Arch → Bool → P.Module → IR Unit Unit → Set
+  TraceAt : Arch → Bool → P.Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → Set
   TraceAt arch doOpt m ir =
     ∀ (asm : String) → C.compileFromModule C.Heap C.Build doOpt arch m ≡ C.Built asm →
     exec arch (string-to-bytes arch asm) ≋ ⟦ just ir ⟧IR
@@ -422,7 +423,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- Layer 3 — over the compile RESULT. The accept case is `PW.just` of the
   -- supplied trace witness; the three reject results are ruled out by
   -- `main⇒built` (a `main` always Builds), so `compile` here can only Build.
-  correct-cr : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR Unit Unit)
+  correct-cr : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
                  (cr : C.CompileResult) →
                  C.compileFromModule C.Heap C.Build doOpt arch m ≡ cr →
                  moduleToIR m ≡ just ir →
@@ -438,9 +439,9 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
 
   -- Layer 2 — over `moduleToIR m`. No `main` ⇒ both sides `nothing` (the
   -- executable gate, definitional); a `main` ⇒ defer to `correct-cr`.
-  correct-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (mir : Maybe (IR Unit Unit)) →
+  correct-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) →
                   moduleToIR m ≡ mir →
-                  (∀ (ir : IR Unit Unit) → mir ≡ just ir → TraceAt arch doOpt m ir) →
+                  (∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → mir ≡ just ir → TraceAt arch doOpt m ir) →
                   Pointwise _≋_ (map (exec arch) (compile-mir arch doOpt m mir)) (⟦ mir ⟧⊥-ir)
   correct-mir arch doOpt m nothing   mi-eq tw = PW.nothing
   correct-mir arch doOpt m (just ir) mi-eq tw =
@@ -450,7 +451,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- parseable ⇒ defer to `correct-mir`.
   correct-gm : ∀ (arch : Arch) (doOpt : Bool) (gm : Maybe P.Module) →
                  (∀ (m : P.Module) → gm ≡ just m →
-                    ∀ (ir : IR Unit Unit) → moduleToIR m ≡ just ir → TraceAt arch doOpt m ir) →
+                    ∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → TraceAt arch doOpt m ir) →
                  Pointwise _≋_ (map (exec arch) (compile-gm arch doOpt gm)) (⟦ gm ⟧⊥-m)
   correct-gm arch doOpt nothing  tw = PW.nothing
   correct-gm arch doOpt (just m) tw =
@@ -557,7 +558,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- and the `main-checkElab-coherence` hook (strengthened extraction + resolveExpr
   -- faithfulness), NOT this opaque whole-statement axiom.
   main-realize-agrees : ∀ (m : P.Module) (mt : ModuleTyped m)
-    (hvm : MC.HasValidMain-decl m mt) (ir : IR Unit Unit) (mi : moduleToIR m ≡ just ir)
+    (hvm : MC.HasValidMain-decl m mt) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
     → ∀ n → ME.runMainˢ (proj₁ (proj₂ (ME.source-meaningᴰ m ir mi))) n
             ≡ ME.runMainˢ (proj₂ (MC.mainRealized m mt hvm)) n
   main-realize-agrees = MRA.main-realize-agrees-proof
@@ -585,7 +586,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- `compile`/`moduleToIR` run on.
   compile-just-ir : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (m : P.Module) (bytes : List Byte) →
     srcToModule src ≡ just m → compile arch doOpt src ≡ just bytes →
-    Σ-syntax (IR Unit Unit) (λ ir → moduleToIR m ≡ just ir)
+    Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → moduleToIR m ≡ just ir)
   compile-just-ir arch doOpt src m bytes g-eq pf with moduleToIR m in mi
   ... | just ir = ir , refl
   ... | nothing = ⊥-elim (case trans (sym c≡n) pf of λ ())
@@ -593,7 +594,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
           c≡n rewrite g-eq | mi = refl
 
   -- The total meaning at an accepted source: `⟦ src ⟧⊥ ≡ just (⟦ moduleToIR m ⟧IR)`.
-  ⟦⟧⊥-just : ∀ (src : Source) (m : P.Module) (ir : IR Unit Unit) →
+  ⟦⟧⊥-just : ∀ (src : Source) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
     srcToModule src ≡ just m → moduleToIR m ≡ just ir →
     ⟦ src ⟧⊥ ≡ just (⟦ moduleToIR m ⟧IR)
   ⟦⟧⊥-just src m ir g-eq mi rewrite g-eq | mi = refl
