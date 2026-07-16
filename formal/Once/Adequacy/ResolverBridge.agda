@@ -69,6 +69,7 @@ import Once.Adequacy.CanonModule as CMod
 import Once.Adequacy.CanonReflectModule as CRMod
 import Once.Adequacy.ResolverTrace as RT
 open import Once.IR using (IR)
+open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit)
 
 -- (1) FORWARD type-preservation — for COMPLETENESS. A declaratively well-typed
@@ -113,6 +114,6 @@ resolver-preserves-trace :
   ∀ (mm : ModuleMap) (mU mR : P.Module) →
   resolveImports mm mU ≡ inj₂ mR →
   (mt-U : AS.ModuleTyped mU) → MC.HasValidMain-decl mU mt-U →
-  ∀ {ir-R : IR Unit Unit} → moduleToIR mR ≡ just ir-R →
+  ∀ {ir-R : IR ⌊ Unit ⌋ ⌊ Unit ⌋} → moduleToIR mR ≡ just ir-R →
   ∀ (n : ℕ) → ⟦ moduleToIR mR ⟧IR n ≡ ⟦ moduleToIR mU ⟧IR n
 resolver-preserves-trace = RT.resolver-preserves-trace
