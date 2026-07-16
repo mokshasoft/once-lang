@@ -152,3 +152,80 @@ paraPair-not-df alg (df-cata _ dfp) = pair-not-df dfp
 
 para-not-df : ∀ {F A} (alg : LTm (⟦ F ⟧F (μ F * A)) A) → ¬ DupFree (paraL alg)
 para-not-df alg (df-∘ _ dfpp) = paraPair-not-df alg dfpp
+
+-- The recovered projections are dup-free (drop the OTHER factor — affine, not
+-- duplicating): needed to place `Fuse`'s `NatTr` on the linear side.
+fstL-df : ∀ {A B} → DupFree (fstL {A} {B})
+fstL-df = df-∘ df-ρl (df-⊗ df-id df-drop)
+
+sndL-df : ∀ {A B} → DupFree (sndL {A} {B})
+sndL-df = df-∘ df-lul (df-⊗ df-drop df-id)
+
+------------------------------------------------------------------------
+-- FUSE and the NatTr linearity split.
+--
+-- `Fuse alg τ = cata (alg ∘ ⟦τ⟧)` carries a structural `NatTr` (as in
+-- `NbEPDirIR`). Here the interpretation `⟦_⟧Lnt` lands in the LINEAR `LTm`,
+-- and the split is exact: of the eight constructors, only `lntPair` — the one
+-- mapping a source functor into a PRODUCT target — needs a `dup`. `lntFst`/
+-- `lntSnd` PROJECT (drop the other half — affine), `lntInl`/`lntInr`/`lntCase`
+-- reshape coproducts, `lntK`/`lntId` are point/identity. So `Fuse` is LINEAR
+-- exactly when its `NatTr` avoids the diagonal `lntPair` — the linear
+-- analogue of the `NatTr`-totality argument PATHS.md flagged as needed.
+------------------------------------------------------------------------
+
+data LNatTr : Func → Func → Set where
+  lntId   : LNatTr Id Id
+  lntK    : ∀ {G₁ G₂} → LTm (μ G₁) (μ G₂) → LNatTr (Kc G₁) (Kc G₂)
+  lntFst  : ∀ {G₁ G₂ F} → LNatTr G₁ F → LNatTr (G₁ ⊗ G₂) F
+  lntSnd  : ∀ {G₁ G₂ F} → LNatTr G₂ F → LNatTr (G₁ ⊗ G₂) F
+  lntCase : ∀ {G₁ G₂ F} → LNatTr G₁ F → LNatTr G₂ F → LNatTr (G₁ ⊕ G₂) F
+  lntInl  : ∀ {G F₁ F₂} → LNatTr G F₁ → LNatTr G (F₁ ⊕ F₂)
+  lntInr  : ∀ {G F₁ F₂} → LNatTr G F₂ → LNatTr G (F₁ ⊕ F₂)
+  lntPair : ∀ {G F₁ F₂} → LNatTr G F₁ → LNatTr G F₂ → LNatTr G (F₁ ⊗ F₂)
+
+⟦_⟧Lnt : ∀ {G F} → LNatTr G F → ∀ {X} → LTm (⟦ G ⟧F X) (⟦ F ⟧F X)
+⟦ lntId ⟧Lnt {X}         = lid
+⟦ lntK m ⟧Lnt {X}        = m
+⟦ lntFst τ ⟧Lnt {X}      = ⟦ τ ⟧Lnt {X} ∘l fstL
+⟦ lntSnd τ ⟧Lnt {X}      = ⟦ τ ⟧Lnt {X} ∘l sndL
+⟦ lntCase τ₁ τ₂ ⟧Lnt {X} = lcase (⟦ τ₁ ⟧Lnt {X}) (⟦ τ₂ ⟧Lnt {X})
+⟦ lntInl τ ⟧Lnt {X}      = linl ∘l ⟦ τ ⟧Lnt {X}
+⟦ lntInr τ ⟧Lnt {X}      = linr ∘l ⟦ τ ⟧Lnt {X}
+⟦ lntPair τ₁ τ₂ ⟧Lnt {X} = ⟨ ⟦ τ₁ ⟧Lnt {X} , ⟦ τ₂ ⟧Lnt {X} ⟩L
+
+-- The linear NatTrs: everything but the diagonal `lntPair` (and `lntK` of a
+-- linear constant).
+data LinearNat : ∀ {G F} → LNatTr G F → Set where
+  ln-id   : LinearNat lntId
+  ln-K    : ∀ {G₁ G₂} {m : LTm (μ G₁) (μ G₂)} → DupFree m → LinearNat (lntK m)
+  ln-fst  : ∀ {G₁ G₂ F} {τ : LNatTr G₁ F} → LinearNat τ → LinearNat (lntFst {G₂ = G₂} τ)
+  ln-snd  : ∀ {G₁ G₂ F} {τ : LNatTr G₂ F} → LinearNat τ → LinearNat (lntSnd {G₁ = G₁} τ)
+  ln-case : ∀ {G₁ G₂ F} {τ₁ : LNatTr G₁ F} {τ₂ : LNatTr G₂ F} →
+            LinearNat τ₁ → LinearNat τ₂ → LinearNat (lntCase τ₁ τ₂)
+  ln-inl  : ∀ {G F₁ F₂} {τ : LNatTr G F₁} → LinearNat τ → LinearNat (lntInl {F₂ = F₂} τ)
+  ln-inr  : ∀ {G F₁ F₂} {τ : LNatTr G F₂} → LinearNat τ → LinearNat (lntInr {F₁ = F₁} τ)
+  -- (no `ln-pair`)
+
+-- A linear NatTr interprets to a dup-free morphism (uniformly in the carrier).
+natL-df : ∀ {G F} {τ : LNatTr G F} → LinearNat τ → ∀ {X} → DupFree (⟦ τ ⟧Lnt {X})
+natL-df ln-id           {X} = df-id
+natL-df (ln-K dm)       {X} = dm
+natL-df (ln-fst ln)     {X} = df-∘ (natL-df ln {X}) fstL-df
+natL-df (ln-snd ln)     {X} = df-∘ (natL-df ln {X}) sndL-df
+natL-df (ln-case l₁ l₂) {X} = df-case (natL-df l₁ {X}) (natL-df l₂ {X})
+natL-df (ln-inl ln)     {X} = df-∘ df-linl (natL-df ln {X})
+natL-df (ln-inr ln)     {X} = df-∘ df-linr (natL-df ln {X})
+
+fuseL : ∀ {G F B} → LNatTr G F → LTm (⟦ F ⟧F B) B → LTm (μ G) B
+fuseL {G} {B = B} τ alg = lcata G (alg ∘l ⟦ τ ⟧Lnt {B})
+
+-- Fuse is LINEAR given a linear NatTr and a linear algebra.
+fuse-linear : ∀ {G F B} {τ : LNatTr G F} {alg : LTm (⟦ F ⟧F B) B} →
+              LinearNat τ → DupFree alg → DupFree (fuseL τ alg)
+fuse-linear {G = G} {B = B} ln dalg = df-cata G (df-∘ dalg (natL-df ln {B}))
+
+-- …and the diagonal `lntPair` is exactly where a `Fuse` NatTr duplicates.
+ntPair-dups : ∀ {G F₁ F₂} {τ₁ : LNatTr G F₁} {τ₂ : LNatTr G F₂} →
+              ∀ {X} → ¬ DupFree (⟦ lntPair τ₁ τ₂ ⟧Lnt {X})
+ntPair-dups {X = X} = pair-not-df
