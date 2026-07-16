@@ -36,12 +36,14 @@
 module poc.OCP0009.NbEPDirIR where
 
 open import normalizer.Syntax.Types
-  using ( Ty; Func; Id; One; Kc; _⊕_; _⊗_; μ_; ⟦_⟧F )
+  using ( Ty; Func; Id; One; Kc; _⊕_; _⊗_; μ_; ⟦_⟧F
+        ; _≡_; refl; cong; cong₂; _×_; _,_; _⊎_; inj₁; inj₂ )
 open import normalizer.Syntax.CCC as C
   using ( Term; id; _∘_; fst; snd; inl; inr; [_,_]; ⟨_,_⟩; In; cata; fmap
         ; _⟶_; _⟶*_; done; step; assoc-r; ⟶*-trans
         ; id-left; id-right; eta-case; eta-pair
         ; ⟶*-∘-l; ⟶*-∘-r; ⟶*-case; ⟶*-pair )
+open import normalizer.Testing.Evaluator using ( ⟦_⟧T; eval )
 open import poc.OCP0009.NbEPDir  using ( Hom )
 open import poc.OCP0009.NbEPDirC using ( cata-run; cataH )
 
@@ -167,3 +169,29 @@ NatK = Kc One ⊕ Id
 _ : ∀ {B} (alg : Term (⟦ NatK ⟧F B) B) →
     Hom (fuseD (idNat (p⊕ pKc pId)) alg) (cata NatK alg)
 _ = λ alg → fuse-idNat (p⊕ pKc pId) alg
+
+------------------------------------------------------------------------
+-- Every structural `NatTr` IS natural — the coherence layer.
+--
+-- Because `NatTr` is a POLYNOMIAL transformation, naturality is a THEOREM,
+-- provable by induction on the constructor (no coherence field is stored).
+-- Stated semantically (`eval`, pointwise) — the honest form without funext,
+-- matching `NbEPDirF`'s `≡`-level coherence. The square
+-- `fmap F f ∘ ⟦τ⟧ = ⟦τ⟧ ∘ fmap G f` commutes: transporting a carrier `f`
+-- through the target functor after `τ` equals `τ` after transporting through
+-- the source functor. Each case is IH glued by `cong`/`cong₂` — the
+-- CCC/`fmap` plumbing computes the rest definitionally.
+------------------------------------------------------------------------
+
+nt-nat : ∀ {G F} (τ : NatTr G F) {A B} (f : Term A B)
+         (x : ⟦ ⟦ G ⟧F A ⟧T) →
+         eval (fmap F f ∘ ⟦ τ ⟧nt) x ≡ eval (⟦ τ ⟧nt ∘ fmap G f) x
+nt-nat ntId           f x         = refl
+nt-nat (ntK m)        f x         = refl
+nt-nat (ntFst τ)      f (x₁ , x₂) = nt-nat τ f x₁
+nt-nat (ntSnd τ)      f (x₁ , x₂) = nt-nat τ f x₂
+nt-nat (ntCase τ₁ τ₂) f (inj₁ y)  = nt-nat τ₁ f y
+nt-nat (ntCase τ₁ τ₂) f (inj₂ z)  = nt-nat τ₂ f z
+nt-nat (ntInl τ)      f x         = cong inj₁ (nt-nat τ f x)
+nt-nat (ntInr τ)      f x         = cong inj₂ (nt-nat τ f x)
+nt-nat (ntPair τ₁ τ₂) f x         = cong₂ _,_ (nt-nat τ₁ f x) (nt-nat τ₂ f x)
