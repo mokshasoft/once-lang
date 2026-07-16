@@ -21,11 +21,14 @@
 module poc.OCP0009.NbEPDirF where
 
 open import normalizer.Syntax.Types
-  using ( Func; Id; One; Kc; _⊕_; _⊗_
+  using ( Ty; Func; Id; One; Kc; _⊕_; _⊗_; ⟦_⟧F
         ; _⊎_; inj₁; inj₂; _×_; _,_
         ; _≡_; refl; trans; cong; cong₂ )
+open import normalizer.Syntax.CCC as C
+  using ( Term; _∘_; cata; fmap )
 open import normalizer.Testing.Evaluator
-  using ( ⟦_⟧FS; Fix; fix; fmap-Set; cata-Set; map-cata-Set )
+  using ( ⟦_⟧T; ⟦_⟧FS; Fix; fix; fmap-Set; cata-Set; map-cata-Set
+        ; eval; coherence; coherence⁻¹ )
 
 ------------------------------------------------------------------------
 -- Fold fusion, by induction on the fixpoint (the uniqueness ingredient).
@@ -65,3 +68,55 @@ fusion : ∀ F {A B : Set} (h : A → B)
          (∀ z → h (alg z) ≡ alg' (fmap-Set F h z)) →
          ∀ y → h (cata-Set F alg y) ≡ cata-Set F alg' y
 fusion = cata-fuse
+
+------------------------------------------------------------------------
+-- Lifting fusion to Once IR programs, through the evaluator.
+--
+-- `eval (cata F alg) = cata-Set F (eval alg ∘ coherence⁻¹)` and
+-- `eval (f ∘ g) = eval f ∘ eval g` (definitional), so the Set-level fusion
+-- above applies verbatim to IR-fold DENOTATIONS. The only glue is the
+-- coherence round-trip and `eval`-commutes-with-`fmap` (re-derived here,
+-- since `EvalSound` is stale against the current `Func`).
+------------------------------------------------------------------------
+
+-- coherence ∘ coherence⁻¹ ≡ id.
+coh-rt : ∀ F {A} (z : ⟦ F ⟧FS ⟦ A ⟧T) → coherence F A (coherence⁻¹ F A z) ≡ z
+coh-rt Id      z        = refl
+coh-rt One     z        = refl
+coh-rt (Kc G)  z        = refl
+coh-rt (F ⊕ G) (inj₁ x) = cong inj₁ (coh-rt F x)
+coh-rt (F ⊕ G) (inj₂ y) = cong inj₂ (coh-rt G y)
+coh-rt (F ⊗ G) (x , y)  = cong₂ _,_ (coh-rt F x) (coh-rt G y)
+
+-- eval commutes with fmap, through coherence.
+eval-fmap : ∀ F {A B} (h : Term A B) (z : ⟦ ⟦ F ⟧F A ⟧T) →
+            eval (fmap F h) z ≡
+            coherence⁻¹ F B (fmap-Set F (eval h) (coherence F A z))
+eval-fmap Id      h z        = refl
+eval-fmap One     h z        = refl
+eval-fmap (Kc G)  h z        = refl
+eval-fmap (F ⊕ G) h (inj₁ x) = cong inj₁ (eval-fmap F h x)
+eval-fmap (F ⊕ G) h (inj₂ y) = cong inj₂ (eval-fmap G h y)
+eval-fmap (F ⊗ G) h (x , y)  = cong₂ _,_ (eval-fmap F h x) (eval-fmap G h y)
+
+-- Fold fusion for IR programs: if `h ∘ alg` and `alg' ∘ fmap h` denote the
+-- same function, then so do `h ∘ cata alg` and `cata alg'`.
+fusion-eval : ∀ F {A B : Ty} (h : Term A B)
+              (alg : Term (⟦ F ⟧F A) A) (alg' : Term (⟦ F ⟧F B) B) →
+              (∀ x → eval (h ∘ alg) x ≡ eval (alg' ∘ fmap F h) x) →
+              ∀ y → eval (h ∘ cata F alg) y ≡ eval (cata F alg') y
+fusion-eval F {A} {B} h alg alg' cond =
+  cata-fuse F (eval h)
+    (λ z → eval alg  (coherence⁻¹ F A z))
+    (λ z → eval alg' (coherence⁻¹ F B z))
+    cond°
+  where
+  cond° : ∀ z → eval h (eval alg (coherence⁻¹ F A z))
+              ≡ eval alg' (coherence⁻¹ F B (fmap-Set F (eval h) z))
+  cond° z = trans (cond (coherence⁻¹ F A z)) (cong (eval alg') glue)
+    where
+    glue : eval (fmap F h) (coherence⁻¹ F A z)
+         ≡ coherence⁻¹ F B (fmap-Set F (eval h) z)
+    glue = trans (eval-fmap F h (coherence⁻¹ F A z))
+                 (cong (λ w → coherence⁻¹ F B (fmap-Set F (eval h) w))
+                       (coh-rt F z))
