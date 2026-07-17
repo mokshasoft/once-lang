@@ -34,7 +34,7 @@ open import Once.CCC.Target.X86-64.Semantics
   using (State; readReg; fetch; execInstr; Word)
 open State
 open import Once.Arith.Backend.X86-64.StatePreserve using (PreservesCCCState; mkPresState)
-open import Once.Arith.Backend.X86-64.ExecArith using (exec-arith-block; exec-arith-block-preserves)
+open import Once.Arith.Backend.X86-64.ExecArith using (exec-arith-block; exec-arith-block-preserves; all-InFrame)
 
 module _ (val : XInstr → State → Reg → Word) where
 
@@ -73,4 +73,4 @@ module _ (val : XInstr → State → Reg → Word) where
       -- regs/memory of `dispatch-arith blk s` equal the block's (pc is transparent),
       -- so the fields transport even though the record TYPE is indexed by full State.
       P : PreservesCCCState (readReg (regs s) rsp) s (exec-arith-block val blk s)
-      P = exec-arith-block-preserves val blk (readReg (regs s) rsp) s refl 0<r
+      P = exec-arith-block-preserves val blk (readReg (regs s) rsp) s refl 0<r (all-InFrame blk)
