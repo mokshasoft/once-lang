@@ -11,24 +11,27 @@
 --                 `𝒞`-future-cone at `σ x` RESTRICTS to a `𝒟`-cone at `x` by
 --                 `h' ↦ σ.homₛ h'`.
 --
--- THE FINDING: `Π⁺` is NOT STRICTLY stable — `(Π⁺ 𝒞 A B)[σ]` and
--- `Π⁺ 𝒟 (A[σ])(B[σ↑⁻])` are NOT `≡₁`. The future-cone fibre indexes over the
--- BASE CATEGORY's morphisms (`h : x ⇒ y` in `𝒞` vs `𝒟`); under a Cat→Cat
--- substitution the index SET changes, so the two cone-types differ (the
--- `𝒞`-cone carries more data than the `𝒟`-cone unless `σ` is full). This is
--- the well-known reason Kan-extension `Π` is only PSEUDO-stable — strict CwF
--- models need Hofmann strictification (or the pointwise `Π`, which is not a
--- functor here). What DOES hold is the canonical restriction map `Π⁺-restr`.
+-- THE FINDING: `Π⁺` is NOT stable — `(Π⁺ 𝒞 A B)[σ]` and `Π⁺ 𝒟 (A[σ])(B[σ↑⁻])`
+-- are NOT `≡₁`, and NOT EVEN ISO in general (so only LAX-stable, not pseudo).
+-- The future-cone fibre indexes over the BASE CATEGORY's morphisms (`h : x ⇒ y`
+-- in `𝒞` vs `𝒟`); under a Cat→Cat substitution the index SET changes, so
+-- `restrict` (whiskering by `σ`) is neither injective nor surjective for a
+-- general functor `σ` — no inverse. This is the failure of BECK–CHEVALLEY for
+-- the right-Kan-extension `Π`: it commutes with base change only under exactness
+-- conditions (e.g. `σ` an iso). Strict/pseudo stability needs Hofmann
+-- strictification, or a FIXED base (substitution not changing the `Cat`). What
+-- genuinely holds is the canonical LAX comparison `restrict-⇛` (below).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirPiSub where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; Σ; _,_ )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_ )
 open Σ
 open import poc.OCP0009.NbEPDirCwF using ( Ctx; Cat; ⌊_⌋; Ty⁺; Ty⁻; Sub; _[_]⁻; _[_]⁺ )
 open import poc.OCP0009.NbEPDirSig using ( Σ≡; uip )
-open import poc.OCP0009.NbEPDirPiG using ( _▷⁻_; Πfib )
+open import poc.OCP0009.NbEPDirPiG using ( _▷⁻_; Πfib; Π⁺ )
+open import poc.OCP0009.NbEPDirCwFJ using ( _⇛_ )
 
 ------------------------------------------------------------------------
 -- The op-lift.
@@ -57,3 +60,44 @@ module _ {Δ Γ : Ctx} (σ : Sub Δ Γ) (A : Ty⁻ Γ) (B : Ty⁺ (Γ ▷⁻ A))
     ; coh = λ y' z' h' k' a' →
         trans (Πfib.coh G (σ.obₛ y') (σ.obₛ z') (σ.homₛ h') (σ.homₛ k') a')
               (cong (λ m → Πfib.ap G (σ.obₛ z') m a') (sym (σ.hom⨾ h' k'))) }
+
+------------------------------------------------------------------------
+-- The full lax comparison as a MORPHISM of types (`_⇛_`): `restrict` is
+-- natural. Needs `funext` (for `Πfib` equality — the `coh` field is a prop).
+------------------------------------------------------------------------
+
+module _
+  (funext : ∀ {A : Set} {B : A → Set} {f g : (x : A) → B x} →
+            (∀ x → f x ≡ g x) → f ≡ g)
+  where
+
+  -- Πfib extensionality: equal `ap` ⟹ equal fibre (`coh` is a proposition).
+  module _ {Δ : Ctx} {A : Ty⁻ Δ} {B : Ty⁺ (Δ ▷⁻ A)} where
+    private module A = Ty⁻ A ; module B = Ty⁺ B
+    open Ctx Δ
+
+    Πfib-ext : ∀ {x} (p q : Πfib A B x) → Πfib.ap p ≡ Πfib.ap q → p ≡ q
+    Πfib-ext p q e = go (Πfib.ap p) (Πfib.ap q) (Πfib.coh p) (Πfib.coh q) e
+                        (funext (λ y → funext (λ z → funext (λ h → funext (λ k →
+                          funext (λ a → uip _ _))))))
+      where
+      C : ∀ {x} → ((y : Ob) (h : x ⇒ y) (a : A.fam y) → B.fam (y , a)) → Set
+      C {x} ap = (y z : Ob) (h : x ⇒ y) (k : y ⇒ z) (a : A.fam z) →
+                 B.act (k , refl) (ap y h (A.act k a)) ≡ ap z (h ⨾ k) a
+      mk : ∀ {x} (ap : (y : Ob) (h : x ⇒ y) (a : A.fam y) → B.fam (y , a)) →
+           C ap → Πfib A B x
+      mk ap coh = record { ap = ap ; coh = coh }
+      go : ∀ {x} (ap ap' : (y : Ob) (h : x ⇒ y) (a : A.fam y) → B.fam (y , a))
+           (coh : C ap) (coh' : C ap') (e : ap ≡ ap') →
+           subst C e coh ≡ coh' → mk ap coh ≡ mk ap' coh'
+      go ap .ap coh .coh refl refl = refl
+
+  restrict-⇛ : (𝒟 𝒞 : Cat) (σ : Sub ⌊ 𝒟 ⌋ ⌊ 𝒞 ⌋)
+               (A : Ty⁻ ⌊ 𝒞 ⌋) (B : Ty⁺ (⌊ 𝒞 ⌋ ▷⁻ A)) →
+               (Π⁺ funext 𝒞 A B [ σ ]⁺) ⇛ Π⁺ funext 𝒟 (A [ σ ]⁻) (B [ σ ↑⁻ A ]⁺)
+  restrict-⇛ 𝒟 𝒞 σ A B = record
+    { comp    = restrict σ A B
+    ; natural = λ f G →
+        Πfib-ext _ _
+          (funext (λ y' → funext (λ h' → funext (λ a' →
+            cong (λ m → Πfib.ap G (Sub.obₛ σ y') m a') (Sub.hom⨾ σ f h'))))) }
