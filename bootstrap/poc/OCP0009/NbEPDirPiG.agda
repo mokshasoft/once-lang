@@ -30,7 +30,7 @@ module poc.OCP0009.NbEPDirPiG where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; trans; cong; subst; Σ; _,_ )
 open Σ
-open import poc.OCP0009.NbEPDirCwF using ( Ctx; Cat; ⌊_⌋; Ty⁺; Ty⁻ )
+open import poc.OCP0009.NbEPDirCwF using ( Ctx; Cat; ⌊_⌋; Ty⁺; Ty⁻; Tm )
 open import poc.OCP0009.NbEPDirSig using ( uip )
 
 ------------------------------------------------------------------------
@@ -71,12 +71,11 @@ app {Γ} g a = Πfib.ap g _ (Ctx.idₒ Γ) a
 module _ (funext : ∀ {S : Set} {T : S → Set} {f g : (s : S) → T s} →
                    (∀ s → f s ≡ g s) → f ≡ g) where
 
-  Π⁺ : (𝒞 : Cat) (A : Ty⁻ ⌊ 𝒞 ⌋) (B : Ty⁺ (⌊ 𝒞 ⌋ ▷⁻ A)) → Ty⁺ ⌊ 𝒞 ⌋
-  Π⁺ 𝒞 A B = record { fam = Πfib A B ; act = act ; actid = actid ; act⨾ = act⨾ }
-    where
-    module 𝒞 = Cat 𝒞
+  module _ (𝒞 : Cat) (A : Ty⁻ ⌊ 𝒞 ⌋) (B : Ty⁺ (⌊ 𝒞 ⌋ ▷⁻ A)) where
+    private
+      module 𝒞 = Cat 𝒞
+      module A = Ty⁻ A ; module B = Ty⁺ B
     open 𝒞 using ( Ob; _⇒_; idₒ; _⨾_; unitˡ; assoc )
-    module A = Ty⁻ A ; module B = Ty⁺ B
 
     APT : Ob → Set
     APT x = (y : Ob) (h : x ⇒ y) (a : A.fam y) → B.fam (y , a)
@@ -123,3 +122,26 @@ module _ (funext : ∀ {S : Set} {T : S → Set} {f g : (s : S) → T s} →
       Πfib-≡ (act (f ⨾ g) p) (act g (act f p))
         (funext (λ y → funext (λ h → funext (λ a →
            cong (λ hh → Πfib.ap p y hh a) (assoc f g h)))))
+
+    Π⁺ : Ty⁺ ⌊ 𝒞 ⌋
+    Π⁺ = record { fam = Πfib A B ; act = act ; actid = actid ; act⨾ = act⨾ }
+
+    ----------------------------------------------------------------------
+    -- Introduction, and the β rule.
+    --
+    -- `lam` sends a section `b : Tm (⌊𝒞⌋ ▷⁻ A) B` to the future-cone family
+    -- `λ y h a → b(y,a)` (constant in the path `h`) — and its wedge (`coh`)
+    -- is exactly `b`'s OWN naturality (`b.nat (k , refl)`). `β` is then
+    -- DEFINITIONAL: `app (lam b) a = b(x,a)`.
+    ----------------------------------------------------------------------
+
+    lam : Tm (⌊ 𝒞 ⌋ ▷⁻ A) B → Tm ⌊ 𝒞 ⌋ Π⁺
+    lam b = record { tm = ltm ; nat = λ f → Πfib-≡ (act f (ltm _)) (ltm _) refl }
+      where
+      ltm : ∀ x → Πfib A B x
+      ltm x = mk (λ y h a → Tm.tm b (y , a))
+                 (λ y z h k a → Tm.nat b (k , refl))
+
+    app-lam : (b : Tm (⌊ 𝒞 ⌋ ▷⁻ A) B) (x : Ob) (a : A.fam x) →
+              app (Tm.tm (lam b) x) a ≡ Tm.tm b (x , a)
+    app-lam b x a = refl
