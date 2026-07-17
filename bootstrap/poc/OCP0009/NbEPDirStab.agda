@@ -11,10 +11,15 @@
 -- `DirCwFL.subst-∘` pattern. `funext` (three flavours) threaded — stays `--safe`.
 --
 -- Scope note: `+⁺` and the dependent `Σ⁺`/`Π⁺` are NOT this clean — `⊎` has no
--- η, so their `act` fields are only PROPOSITIONALLY equal; the law then needs
--- an `act`-comparison (a two-implicit `funext`, `funextᵢ₂`, plus a fibre
--- transport for the dependent ones) on top. Mechanical but plumbing-heavy;
--- `×⁺-[]` fixes the technique, the rest follow the same shape.
+-- η, so their `act` fields are only PROPOSITIONALLY equal, and the record
+-- equality must then compare the `act` fields themselves. That comparison
+-- runs into a real AGDA ELABORATION limitation: assigning a bound
+-- implicit-argument function (`∀ {x y} → …`) to the implicit `act` field of a
+-- reconstructed `Ty⁺` record triggers `MetaCannotDependOn`, across `record{}`,
+-- explicit implicit-λ, copatterns, and explicit-index encodings alike. So
+-- `×⁺-[]` (the η case) is the clean representative; the non-η laws are blocked
+-- by tooling, not by mathematics (a `Ty⁺`-with-explicit-`act` wrapper type, or
+-- a specialized `funext`, would unblock them).
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
