@@ -24,7 +24,7 @@ module poc.OCP0009.NbEPDirSig where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_ )
 open Σ
-open import poc.OCP0009.NbEPDirCwF using ( Ctx; Ty⁺; _▷_ )
+open import poc.OCP0009.NbEPDirCwF using ( Ctx; Ty⁺; Tm; _▷_ )
 
 -- Uniqueness of identity proofs (available: the codebase is `--with-K`).
 uip : ∀ {A : Set} {x y : A} (p q : x ≡ y) → p ≡ q
@@ -66,3 +66,9 @@ module _ {Γ : Ctx} (A : Ty⁺ Γ) (B : Ty⁺ (Γ ▷ A)) where
                         (uip (A.act⨾ f g (fst p))
                              (snd ((f , refl) ⨾▷ (g , refl)))))
                   (B.act⨾ (f , refl) (g , refl) (snd p)))) }
+
+  -- The first projection is a genuine term (the second is dependent — it lands
+  -- in `B` reindexed along the first, needing the substitution calculus).
+  fstΣ : Tm Γ (Σ⁺) → Tm Γ A
+  fstΣ p = record { tm  = λ x → fst (Tm.tm p x)
+                  ; nat = λ f → cong fst (Tm.nat p f) }
