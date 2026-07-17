@@ -4,24 +4,18 @@
 ------------------------------------------------------------------------
 -- Once.Arith.Backend.RiscV64.Preserve  (Plan 0.54 Phase B / Option 2)
 --
--- riscv64 mirror of the x86-64 CCC-state-preservation framework, over the real
--- riscv64 register file (Once.CCC.Target.RiscV64.Semantics). CCC = the 16
--- registers RISC-V keeps live across a call (incl. hardwired `zero`, whose read
--- is the constant 0 so it agrees trivially); non-CCC writes are io (t0/a0) +
--- arith (a3/a4/a5). Structure identical to the x86-64 `Preserve`.
+-- riscv64 register CCC-preservation: the per-arch BASE only (enumerated
+-- `AgreeCCC` over the 16 CCC registers incl. hardwired `zero`, + its 3 lemmas),
+-- over the real riscv64 `RegFile`. The framework is the arch-generic
+-- `Once.Arith.Backend.PreserveCore`, re-exported.
 ------------------------------------------------------------------------
 
 module Once.Arith.Backend.RiscV64.Preserve where
 
 open import Data.Empty using (⊥-elim)
-open import Data.Product using (_×_; _,_; proj₁)
-open import Data.List using (List; []; _∷_; map)
-open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Data.List.Relation.Unary.All.Properties using (map⁺)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; _≢_)
 
-open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
-open import Once.Arith.Backend.RiscV64.Confine using (writes; confined)
+open import Once.Arith.Backend.RiscV64.Confine using (writes; confined; NotCCC)
 open import Once.CCC.Target.RiscV64.Semantics using (RegFile; readReg; writeReg; Word)
 open import Once.Target.RiscV64.PhysReg using (Reg; t0; a0; a3; a4; a5; zero; ra; sp; fp; a1; a2; a6; a7; s1; s2; s3; s4; t1; t2; t3; t4; owner; ccc)
 
@@ -49,7 +43,7 @@ open AgreeCCC public
 agree-refl-ccc : ∀ rf → AgreeCCC rf rf
 agree-refl-ccc rf = mkAgree refl refl refl refl refl refl refl refl refl refl refl refl refl refl refl refl
 
-write-nonccc-agrees : ∀ rf w v → owner w ≢ ccc → AgreeCCC rf (writeReg rf w v)
+write-nonccc-agrees : ∀ rf w v → NotCCC w → AgreeCCC rf (writeReg rf w v)
 write-nonccc-agrees rf t0 v _   = mkAgree refl refl refl refl refl refl refl refl refl refl refl refl refl refl refl refl
 write-nonccc-agrees rf a0 v _   = mkAgree refl refl refl refl refl refl refl refl refl refl refl refl refl refl refl refl
 write-nonccc-agrees rf a3 v _   = mkAgree refl refl refl refl refl refl refl refl refl refl refl refl refl refl refl refl
@@ -76,30 +70,6 @@ AgreeCCC-trans : ∀ {a b c} → AgreeCCC a b → AgreeCCC b c → AgreeCCC a c
 AgreeCCC-trans (mkAgree p0 p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15) (mkAgree q0 q1 q2 q3 q4 q5 q6 q7 q8 q9 q10 q11 q12 q13 q14 q15) =
   mkAgree (trans p0 q0) (trans p1 q1) (trans p2 q2) (trans p3 q3) (trans p4 q4) (trans p5 q5) (trans p6 q6) (trans p7 q7) (trans p8 q8) (trans p9 q9) (trans p10 q10) (trans p11 q11) (trans p12 q12) (trans p13 q13) (trans p14 q14) (trans p15 q15)
 
-PreservesCCC-rf : (RegFile → RegFile) → Set
-PreservesCCC-rf f = ∀ rf → AgreeCCC rf (f rf)
-
-runFns : List (RegFile → RegFile) → RegFile → RegFile
-runFns []       rf = rf
-runFns (f ∷ fs) rf = runFns fs (f rf)
-
-preserves-runFns : ∀ fs → All PreservesCCC-rf fs → PreservesCCC-rf (runFns fs)
-preserves-runFns []       _          rf = agree-refl-ccc rf
-preserves-runFns (f ∷ fs) (pf ∷ pfs) rf =
-  AgreeCCC-trans (pf rf) (preserves-runFns fs pfs (f rf))
-
-write-regs : List (Reg × Word) → RegFile → RegFile
-write-regs []             rf = rf
-write-regs ((w , v) ∷ ps) rf = write-regs ps (writeReg rf w v)
-
-write-regs-preserves : ∀ ps → All (λ p → owner (proj₁ p) ≢ ccc) ps →
-                       PreservesCCC-rf (write-regs ps)
-write-regs-preserves []             _          rf = agree-refl-ccc rf
-write-regs-preserves ((w , v) ∷ ps) (nc ∷ ncs) rf =
-  AgreeCCC-trans (write-nonccc-agrees rf w v nc) (write-regs-preserves ps ncs (writeReg rf w v))
-
-step-of : XInstr → (Reg → Word) → RegFile → RegFile
-step-of i val = write-regs (map (λ r → (r , val r)) (writes i))
-
-step-of-preserves : ∀ i val → PreservesCCC-rf (step-of i val)
-step-of-preserves i val = write-regs-preserves _ (map⁺ (confined i))
+open import Once.Arith.Backend.PreserveCore
+  writeReg NotCCC AgreeCCC agree-refl-ccc AgreeCCC-trans write-nonccc-agrees writes confined
+  public
