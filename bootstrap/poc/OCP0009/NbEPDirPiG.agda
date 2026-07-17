@@ -28,7 +28,7 @@
 module poc.OCP0009.NbEPDirPiG where
 
 open import normalizer.Syntax.Types
-  using ( _≡_; refl; trans; cong; subst; Σ; _,_ )
+  using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_ )
 open Σ
 open import poc.OCP0009.NbEPDirCwF using ( Ctx; Cat; ⌊_⌋; Ty⁺; Ty⁻; Tm )
 open import poc.OCP0009.NbEPDirSig using ( uip )
@@ -75,7 +75,7 @@ module _ (funext : ∀ {S : Set} {T : S → Set} {f g : (s : S) → T s} →
     private
       module 𝒞 = Cat 𝒞
       module A = Ty⁻ A ; module B = Ty⁺ B
-    open 𝒞 using ( Ob; _⇒_; idₒ; _⨾_; unitˡ; assoc )
+    open 𝒞 using ( Ob; _⇒_; idₒ; _⨾_; unitˡ; unitʳ; assoc )
 
     APT : Ob → Set
     APT x = (y : Ob) (h : x ⇒ y) (a : A.fam y) → B.fam (y , a)
@@ -145,3 +145,50 @@ module _ (funext : ∀ {S : Set} {T : S → Set} {f g : (s : S) → T s} →
     app-lam : (b : Tm (⌊ 𝒞 ⌋ ▷⁻ A) B) (x : Ob) (a : A.fam x) →
               app (Tm.tm (lam b) x) a ≡ Tm.tm b (x , a)
     app-lam b x a = refl
+
+    ----------------------------------------------------------------------
+    -- The other adjoint: `unlam`, and η. `unlam g` evaluates each fibre at
+    -- `idₒ`; its naturality is the transport-heavy direction — the argument
+    -- shifts fibre by the morphism's proof `ef`, so it needs `Bmor` (J on the
+    -- proof) + `apd` (dependent ap) + the wedge `coh`. `lam`/`unlam` are
+    -- mutually inverse: `Πβ` (definitional) and `Πη` — the Π universal property.
+    ----------------------------------------------------------------------
+
+    apd : ∀ {S : Set} {P : S → Set} (fn : (s : S) → P s) {u v : S} (e : u ≡ v) →
+          subst P e (fn u) ≡ fn v
+    apd fn refl = refl
+
+    -- `B.act (f , e)` moves along the fibre proof `e` by a `subst` on argument.
+    Bmor : ∀ {x x'} {a' : A.fam x'} (f : x ⇒ x') {c : A.fam x}
+           (e : A.act f a' ≡ c) (w : B.fam (x , c)) →
+           B.act (f , e) w ≡ B.act (f , refl) (subst (λ c' → B.fam (x , c')) (sym e) w)
+    Bmor f refl w = refl
+
+    unlam : Tm ⌊ 𝒞 ⌋ Π⁺ → Tm (⌊ 𝒞 ⌋ ▷⁻ A) B
+    unlam g = record { tm = utm ; nat = unat }
+      where
+      utm : (p : Σ Ob A.fam) → B.fam p
+      utm p = Πfib.ap (Tm.tm g (fst p)) (fst p) idₒ (snd p)
+      unat : ∀ {p q} (m : Σ (fst p ⇒ fst q) (λ h → A.act h (snd q) ≡ snd p)) →
+             B.act m (utm p) ≡ utm q
+      unat {x , a} {x' , a'} (f , ef) =
+        trans (Bmor f ef (Πfib.ap (Tm.tm g x) x idₒ a))
+        (trans (cong (B.act (f , refl))
+                     (apd (λ a₀ → Πfib.ap (Tm.tm g x) x idₒ a₀) (sym ef)))
+        (trans (Πfib.coh (Tm.tm g x) x x' idₒ f a')
+        (trans (cong (λ hh → Πfib.ap (Tm.tm g x) x' hh a')
+                     (trans (unitˡ f) (sym (unitʳ f))))
+               (cong (λ w → Πfib.ap w x' idₒ a') (Tm.nat g f)))))
+
+    -- β: reading back an abstraction gives the section (definitional).
+    Πβ : (b : Tm (⌊ 𝒞 ⌋ ▷⁻ A) B) (p : Σ Ob A.fam) →
+         Tm.tm (unlam (lam b)) p ≡ Tm.tm b p
+    Πβ b p = refl
+
+    -- η: abstracting a read-back gives the original — by `g`'s own naturality.
+    Πη : (g : Tm ⌊ 𝒞 ⌋ Π⁺) (x : Ob) → Tm.tm (lam (unlam g)) x ≡ Tm.tm g x
+    Πη g x =
+      Πfib-≡ (Tm.tm (lam (unlam g)) x) (Tm.tm g x)
+        (funext (λ y → funext (λ h → funext (λ a →
+          trans (sym (cong (λ w → Πfib.ap w y idₒ a) (Tm.nat g h)))
+                (cong (λ hh → Πfib.ap (Tm.tm g x) y hh a) (unitʳ h))))))
