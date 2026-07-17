@@ -24,8 +24,9 @@
 module poc.OCP0009.NbEPDirUniv where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; ⊤; tt; ⊥ )
-open import poc.OCP0009.NbEPDirCwF using ( Ctx; Ty⁺; Tm )
+open import poc.OCP0009.NbEPDirCwF using ( Ctx; Ty⁺; Tm; _▷_ )
 open import poc.OCP0009.NbEPDirTy  using ( _×⁺_; _+⁺_ )
+open import poc.OCP0009.NbEPDirSig using ( Σ⁺ )
 
 ------------------------------------------------------------------------
 -- The base types: directed unit and void.
@@ -68,3 +69,24 @@ El (c `+ d) = El c +⁺ El d
 -- Coherence: a reflected code reads back to itself (so `El` of it is `El c`).
 ⌜⌝-tm : ∀ {Γ} (c : Code) (x : Ctx.Ob Γ) → Tm.tm (⌜_⌝ {Γ} c) x ≡ c
 ⌜⌝-tm c x = refl
+
+------------------------------------------------------------------------
+-- Dependent codes → the DIRECTED dependent formers. A *small* universe closed
+-- under `Σ`/`Π` needs a syntactic (De Bruijn) code calculus so the family can
+-- reference the bound variable — a larger construction. Here the honest
+-- tractable form is a LARGE universe `LCode : Set₁`: codes carry the actual
+-- types, so a dependent code decodes DIRECTLY to `Σ⁺`. The small codes embed
+-- (`⌈_⌉`), and `` `Σ `` decodes to the directed dependent sum.
+------------------------------------------------------------------------
+
+data LCode (Γ : Ctx) : Set₁ where
+  ⌈_⌉ : Code → LCode Γ
+  `Σ  : (A : Ty⁺ Γ) → Ty⁺ (Γ ▷ A) → LCode Γ
+
+ElL : ∀ {Γ} → LCode Γ → Ty⁺ Γ
+ElL ⌈ c ⌉    = El c        -- the small (non-dependent) codes embed
+ElL (`Σ A B) = Σ⁺ A B      -- a `Σ`-code decodes to the directed dependent sum
+
+-- (A `` `Π `` code decodes to `Π⁺` identically — `` `Π (𝒞)(A : Ty⁻)(B) ↦
+--  Π⁺ funext 𝒞 A B `` — but carries `Π⁺`'s `Cat` + `funext` context, so it
+--  lives in a `funext`-threaded extension rather than this bare `LCode`.)
