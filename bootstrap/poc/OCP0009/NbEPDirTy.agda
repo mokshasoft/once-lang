@@ -30,7 +30,7 @@ open import normalizer.Syntax.Types
   using ( _≡_; refl; cong; cong₂; trans
         ; Σ; _,_; _×_; _⊎_; inj₁; inj₂ )
 open Σ
-open import poc.OCP0009.NbEPDirCwF using ( Ctx; Ty⁺; Ty⁻ )
+open import poc.OCP0009.NbEPDirCwF using ( Ctx; Ty⁺; Ty⁻; Tm )
 
 ------------------------------------------------------------------------
 -- Covariant product and sum — structural, `funext`-free.
@@ -63,6 +63,38 @@ _+⁺_ {Γ} A B = record
          act (f ⨾ g) s ≡ act g (act f s)
   act⨾ f g (inj₁ a) = cong inj₁ (A.act⨾ f g a)
   act⨾ f g (inj₂ b) = cong inj₂ (B.act⨾ f g b)
+
+------------------------------------------------------------------------
+-- Term structure — the universal properties, as CwF terms (natural families).
+-- Product: pairing + projections + β (pointwise). Sum: injections.
+------------------------------------------------------------------------
+
+module _ {Γ : Ctx} {A B : Ty⁺ Γ} where
+  open Ctx Γ
+
+  ⟨_,_⟩⁺ : Tm Γ A → Tm Γ B → Tm Γ (A ×⁺ B)
+  ⟨ s , t ⟩⁺ = record
+    { tm  = λ x → (Tm.tm s x , Tm.tm t x)
+    ; nat = λ f → cong₂ _,_ (Tm.nat s f) (Tm.nat t f) }
+
+  π₁⁺ : Tm Γ (A ×⁺ B) → Tm Γ A
+  π₁⁺ p = record { tm = λ x → fst (Tm.tm p x) ; nat = λ f → cong fst (Tm.nat p f) }
+
+  π₂⁺ : Tm Γ (A ×⁺ B) → Tm Γ B
+  π₂⁺ p = record { tm = λ x → snd (Tm.tm p x) ; nat = λ f → cong snd (Tm.nat p f) }
+
+  -- β, pointwise on the term component (no funext needed at this granularity).
+  ×β₁ : (s : Tm Γ A) (t : Tm Γ B) (x : Ob) → Tm.tm (π₁⁺ ⟨ s , t ⟩⁺) x ≡ Tm.tm s x
+  ×β₁ s t x = refl
+
+  ×β₂ : (s : Tm Γ A) (t : Tm Γ B) (x : Ob) → Tm.tm (π₂⁺ ⟨ s , t ⟩⁺) x ≡ Tm.tm t x
+  ×β₂ s t x = refl
+
+  inl⁺ : Tm Γ A → Tm Γ (A +⁺ B)
+  inl⁺ s = record { tm = λ x → inj₁ (Tm.tm s x) ; nat = λ f → cong inj₁ (Tm.nat s f) }
+
+  inr⁺ : Tm Γ B → Tm Γ (A +⁺ B)
+  inr⁺ t = record { tm = λ x → inj₂ (Tm.tm t x) ; nat = λ f → cong inj₂ (Tm.nat t f) }
 
 ------------------------------------------------------------------------
 -- The directed function type — CONTRAVARIANT domain, covariant codomain.
