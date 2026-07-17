@@ -200,9 +200,10 @@ construction; 5 is the open research frontier.
 
 ## The directed tower — module map
 
-The Path-2 POC is a thirteen-module arc — the directed identity/variance/recursion
+The Path-2 POC is a fourteen-module arc — the directed identity/variance/recursion
 layer over the CCC reduction relation, then a directed CwF with type formers
-(all `--safe`, in `bootstrap/poc/OCP0009/`):
+(product, sum, function, `Σ`, and both representable and general `Π`; all
+`--safe`, in `bootstrap/poc/OCP0009/`):
 
 | module | rung | what it establishes |
 |---|---|---|
@@ -219,6 +220,7 @@ layer over the CCC reduction relation, then a directed CwF with type formers
 | `NbEPDirTy` | dHoTT-7 | **Directed type formers (variance-annotated)** — the formers carry variance. `_×⁺_`/`_+⁺_` (covariant product/sum, structural) and their term structure (`⟨_,_⟩⁺`/`π₁⁺`/`π₂⁺` with pointwise β, `inl⁺`/`inr⁺`); `_⇒⁺_` (the directed function type `Ty⁻ Γ → Ty⁺ Γ → Ty⁺ Γ` — covariant, pre-composes the CONTRAVARIANT domain action, funext-threaded laws). Variance is forced: `_⇒⁺_` does not typecheck with a covariant domain — `DirV`'s `⇒→`-contravariance, now a CwF type former. |
 | `NbEPDirSig` | dHoTT-8 | **The directed dependent sum `Σ⁺`** — the first DEPENDENT directed former: `Σ⁺ A B : Ty⁺ Γ` (`A : Ty⁺ Γ`, `B : Ty⁺ (Γ ▷ A)`), fibre `Σ(a:A x) → B(x,a)`. Its functor laws compare across DIFFERENT fibres (the dependent-TT transport), tamed by `subst-act` (path induction turning each transport into a matched `B.act`) + `uip` (the `▷`-morphisms' proof components agree) — `actid`/`act⨾` land on `B.actid`/`B.act⨾`. First projection `fstΣ` is a term. Boundary recorded: `Σ` (a left adjoint) has no fibre-naturality; the dependent `Π` is an END (naturality baked into elements) — the substantial deferred construction. |
 | `NbEPDirPi` | dHoTT-9 | **Dependent directed `J` = the representable `Π`** — the crown jewel, case (a). The dependent function type over a REPRESENTABLE domain `Hom(a,-)`: its fibre is an END that collapses by directed Yoneda to `B(a , id)`, so it IS fully-dependent directed path induction. Motive `B` over the coslice `⌊C⌋ ▷ Yo⁺ C a` (objects `(x , f)`, `f : a ⇒ x`): `Jᵈ d` (the section from `d : B(a,id)`, `tm (x,f) = B.act (f , unitˡ f) d`, natural via `B.act⨾` + `Σ≡` + `uip`), `Jᵈ-β` (`Jᵈ d` at `(a,id) ≡ d`), `Jᵈ-η` (every section is `Jᵈ` of its value at `(a,id)` — by the section's OWN naturality). β + η = the **dependent Yoneda iso** (sections over the coslice `≅ B(a,id)`). Reuses `Yo⁺` (`DirCwFJ`) + the `Σ⁺` transport toolkit — the pattern's prediction, confirmed: the representable end needs no extra coherence. |
+| `NbEPDirPiG` | dHoTT-10 | **The general directed dependent `Π⁺` (the end)** — case (b). `Π⁺ A B : Ty⁺ ⌊𝒞⌋` for `A : Ty⁻ ⌊𝒞⌋`, `B : Ty⁺ (⌊𝒞⌋ ▷⁻ A)` over the op-Grothendieck `_▷⁻_`. Fibre = the FUTURE-CONE record `Πfib {ap ; coh}` (values indexed by out-morphisms `h : x ⇒ y`; `coh` = the wedge). `act` = pre-composition (no fibre transport), so `actid`/`act⨾` fall to `unitˡ`/`assoc` under `funext`; the wedge is preserved by `assoc` + `g.coh`, and the record laws close because `CohT` is a **proposition** (`funext` + `uip`). `app` = the eliminator. Needs `𝒞 : Cat`. The pattern's promise, delivered: no new idea, just funext record-equality. |
 
 The pattern across `DirC`/`DirF` is the load-bearing one: directed reduction
 gives the *covariant/computational* structure for free (functor actions, the
@@ -229,20 +231,22 @@ variance; the invertible/semantic layer closes coherence. The two towers meet in
 `NbEPMonD` (conversion by `nf` as the equality rule; the groupoid core via
 `invS`).
 
-**The general `Π` — frontier, now mapped.** `NbEPDirPi` does the *representable*
-domain (case a); the general dependent `Π A B` (`A : Ty⁻ Γ`, `B : Ty⁺ (Γ ▷⁻ A)`
-over the *op*-Grothendieck) is the remaining end. The design is worked out: its
+**The general `Π` — BUILT (`NbEPDirPiG`, dHoTT-10).** `NbEPDirPi` does the
+*representable* domain (case a); the general dependent `Π⁺ A B` (`A : Ty⁻ ⌊𝒞⌋`,
+`B : Ty⁺ (⌊𝒞⌋ ▷⁻ A)` over the *op*-Grothendieck) is now a genuine `Ty⁺ ⌊𝒞⌋`. Its
 fibre is the FUTURE-CONE record `Πfib x = record { ap : ∀ y (h : x ⇒ y)(a : A y)
 → B(y,a) ; coh : … }` — indexing values by morphisms *out of* `x` (Yoneda's
-trick) so that `act` is PRE-COMPOSITION `act f g = λ y h a → g y (f ⨾ h) a`,
-which touches no fibre-transport: `actid`/`act⨾` fall to `cong (unitˡ)`/`cong
-(assoc)` + `funext`. What makes it the genuine `Π` (not the too-big product) is
-the `coh` field — the wedge — whose preservation under `act` is `assoc` + `g.coh`
-(clean), and whose record-equality in the laws needs `funext` + `uip` (the
-`DirCwFL` plumbing). So the general `Π` is a funext-threaded module away, no new
-idea — exactly what the "representable-first" pattern promised. `Πfib`'s `coh` is
-where the naturality/liveness lives, the dependent-`Π` face of the same
-`Ana`/codata frontier.
+trick) so that `act` is PRE-COMPOSITION `act f g = λ y h a → ap g y (f ⨾ h) a`,
+touching no fibre-transport: `actid`/`act⨾` fall to `unitˡ`/`assoc` under
+`funext`. What makes it the genuine `Π` (not the too-big product) is the `coh`
+field — the wedge — preserved under `act` by `assoc` + `g.coh`; the record laws
+close because `CohT` is a PROPOSITION (`funext` + `uip`), so the transport never
+needs computing. `app` (the eliminator) evaluates the cone at `idₒ`. It needs
+`𝒞 : Cat` (the base must be lawful — `Π`'s action uses `unitˡ`/`assoc`, unlike
+`Σ⁺`/`×⁺`). Exactly what the "representable-first" pattern promised: no new idea,
+just the `funext` record-equality. `Πfib`'s `coh` is where the naturality/liveness
+lives — the dependent-`Π` face of the same `Ana`/codata frontier. (`lam`/β await
+the section calculus — dependent terms.)
 
 `NbEPDirCwFJ` (dHoTT-5c) answers "is the directed CwF load-bearing?" — yes: it
 has an elimination principle. `DirJ`'s `J` inducts on the *constructors* of a
