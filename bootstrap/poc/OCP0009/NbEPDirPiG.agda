@@ -58,6 +58,12 @@ record Πfib {Γ : Ctx} (A : Ty⁻ Γ) (B : Ty⁺ (Γ ▷⁻ A)) (x : Ctx.Ob Γ)
     coh : (y z : Ob) (h : x ⇒ y) (k : y ⇒ z) (a : A.fam z) →
           B.act (k , refl) (ap y h (A.act k a)) ≡ ap z (h ⨾ k) a
 
+-- Application (the eliminator): evaluate the future-cone at the identity.
+-- `app g a = ap g x idₒ a` — the value "here" (`h = idₒ`).
+app : ∀ {Γ : Ctx} {A : Ty⁻ Γ} {B : Ty⁺ (Γ ▷⁻ A)} {x : Ctx.Ob Γ} →
+      Πfib A B x → (a : Ty⁻.fam A x) → Ty⁺.fam B (x , a)
+app {Γ} g a = Πfib.ap g _ (Ctx.idₒ Γ) a
+
 ------------------------------------------------------------------------
 -- The directed dependent product, over a lawful base, given funext.
 ------------------------------------------------------------------------
