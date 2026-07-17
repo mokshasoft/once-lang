@@ -10,27 +10,36 @@
 -- the `actid`/`act⨾` PROOF fields differ — they agree by `funext` + `uip`, the
 -- `DirCwFL.subst-∘` pattern. `funext` (three flavours) threaded — stays `--safe`.
 --
--- Scope note: `+⁺` and the dependent `Σ⁺`/`Π⁺` are NOT this clean — `⊎` has no
--- η, so their `act` fields are only PROPOSITIONALLY equal, and the record
--- equality must then compare the `act` fields themselves. That comparison
--- runs into a real AGDA ELABORATION limitation: assigning a bound
--- implicit-argument function (`∀ {x y} → …`) to the implicit `act` field of a
--- reconstructed `Ty⁺` record triggers `MetaCannotDependOn`, across `record{}`,
--- explicit implicit-λ, copatterns, and explicit-index encodings alike. So
--- `×⁺-[]` (the η case) is the clean representative; the non-η laws are blocked
--- by tooling, not by mathematics (a `Ty⁺`-with-explicit-`act` wrapper type, or
--- a specialized `funext`, would unblock them).
+-- `×⁺-[]` and `Σ⁺-[]` are the clean η cases (`×`/`Σ` build `act` with `_,_`,
+-- which has η, so both sides' `act` are DEFINITIONALLY equal). `+⁺-[]` is the
+-- non-η case (`⊎` has no η → `act` only propositionally equal): it goes through
+-- the `Ty⁺` EXTENSIONALITY wrapper `NbEPDirTyExt.W`, which sidesteps the Agda
+-- `MetaCannotDependOn` obstruction (reconstructing a `Ty⁺` with a bound
+-- implicit `act`) via an explicit-index `Ty⁺ᵉ` + `cong₁ toTy⁺`. `Σ⁺-[]` also
+-- needs the lifted substitution `σ ↑ A` reindexing the motive. (`Π⁺-[]` needs a
+-- Cat→Cat substitution and the op-lift `σ ↑⁻` — a further construction.)
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirStab where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; inj₁; inj₂ )
-open import poc.OCP0009.NbEPDirCwF using ( Ctx; Ty⁺; Sub; _[_]⁺ )
+open import normalizer.Syntax.Types using ( _≡_; refl; inj₁; inj₂; Σ; _,_ )
+open Σ
+open import poc.OCP0009.NbEPDirCwF using ( Ctx; Ty⁺; Sub; _[_]⁺; _▷_ )
 open import poc.OCP0009.NbEPDirCwFL using ( _≡₁_; cong₂₁ )
 open import poc.OCP0009.NbEPDirTy using ( _×⁺_; _+⁺_ )
-open import poc.OCP0009.NbEPDirSig using ( uip )
+open import poc.OCP0009.NbEPDirSig using ( uip; Σ≡; Σ⁺ )
 open import poc.OCP0009.NbEPDirTyExt using ( cong₁; module W )
+
+-- The lifted substitution `σ ↑ A : (Δ ▷ A[σ]) ⇒ (Γ ▷ A)` — reindexing the
+-- comprehension. Its `homₛ` reuses the input's fibre proof verbatim, so `Σ⁺`'s
+-- action is DEFINITIONALLY stable across it (below).
+_↑_ : ∀ {Δ Γ} (σ : Sub Δ Γ) (A : Ty⁺ Γ) → Sub (Δ ▷ (A [ σ ]⁺)) (Γ ▷ A)
+σ ↑ A = record
+  { obₛ   = λ p → (Sub.obₛ σ (fst p) , snd p)
+  ; homₛ  = λ m → (Sub.homₛ σ (fst m) , snd m)
+  ; homid = Σ≡ (Sub.homid σ) (uip _ _)
+  ; hom⨾  = λ f g → Σ≡ (Sub.hom⨾ σ (fst f) (fst g)) (uip _ _) }
 
 module _
   (funext  : ∀ {A : Set} {B : A → Set} {f g : (x : A) → B x} →
@@ -75,3 +84,19 @@ module _
     LHS = (A +⁺ B) [ σ ]⁺
     RHS = (A [ σ ]⁺) +⁺ (B [ σ ]⁺)
     open W funext Δ
+
+  -- Dependent SUM commutes with substitution (reindexing the motive along the
+  -- lift). `Σ`'s `_,_` has η, so both `fam` and `act` are DEFINITIONALLY equal
+  -- here — the clean `×⁺`-style proof, only the proof fields need `uip`.
+  Σ⁺-[] : ∀ {Δ Γ} (A : Ty⁺ Γ) (B : Ty⁺ (Γ ▷ A)) (σ : Sub Δ Γ) →
+          ((Σ⁺ A B) [ σ ]⁺) ≡₁ (Σ⁺ (A [ σ ]⁺) (B [ σ ↑ A ]⁺))
+  Σ⁺-[] {Δ} A B σ = cong₂₁ mk eqa eqc
+    where
+    open Ty⁺ ((Σ⁺ A B) [ σ ]⁺) ; open Ctx Δ
+    mk : (∀ {x} (p : fam x) → act idₒ p ≡ p)
+       → (∀ {x y z} (f : x ⇒ y) (g : y ⇒ z) (p : fam x) →
+            act (f ⨾ g) p ≡ act g (act f p))
+       → Ty⁺ Δ
+    mk pa pc = record { fam = fam ; act = act ; actid = pa ; act⨾ = pc }
+    eqa = funextᵢ (λ _ → funext (λ _ → uip _ _))
+    eqc = funextᵢ₃ (λ _ _ _ → funext (λ _ → funext (λ _ → funext (λ _ → uip _ _))))
