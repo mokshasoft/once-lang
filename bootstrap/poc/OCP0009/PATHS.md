@@ -311,9 +311,20 @@ by mutual guarded corecursion, and a `leaky` producer shown to *violate*
 `◇free` (the property has teeth — an infinite leak the inductive count cannot
 see). Inductive balance is a count; coinductive balance is `□◇` carried by
 productivity — which is why codata alloc-correctness is the harder frontier.
-Still no heap. What genuinely stays research: usage-driven `dup`/`drop`
-*placement* (here it is the canonical Fox placement) and wiring these event
-models to the recursion schemes end-to-end.
+Still no heap.
+
+**Usage-driven placement + end-to-end (`NbEPLinUse`, linearization-5).** Placement
+is no longer canonical-only: `dupN n` is the usage-sized fan-out — a value used
+`n` times gets a MINIMAL dup-tree, `place-sem` (correct: `n` copies), `place-tight`
+(`dupCount (dupN (suc k)) ≡ k` — `k+1` uses cost exactly `k` allocations, tight),
+`place-drop` (0 uses ⇒ `drop`). "Usage counts size the dup-trees", made precise.
+And the whole pass bundles into one guarantee — `pipeline` : for any first-order
+source, semantics preserved AND allocation = source pairings — fired end-to-end
+on the diagonal `⟨id,id⟩` (`diag-end-to-end`, `diag-alloc-1`: one `dup`,
+computes `(a,a)`, allocates once). What now stays research is narrower: a full
+usage/liveness-*analysis* choosing placement (vs. the here-exhibited optimal
+combinators), and the per-node event multiplicity when the trace runs through a
+recursion scheme (a `cata`'s algebra events × the number of nodes).
 
 **The dividend — memory becomes a theorem, not a pass.** In the linear core a
 value is used *exactly once*, so its lifetime ends at its single use:
