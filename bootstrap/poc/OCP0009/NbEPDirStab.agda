@@ -25,11 +25,12 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirStab where
 
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import normalizer.Syntax.Types using ( _≡_; refl; inj₁; inj₂ )
 open import poc.OCP0009.NbEPDirCwF using ( Ctx; Ty⁺; Sub; _[_]⁺ )
 open import poc.OCP0009.NbEPDirCwFL using ( _≡₁_; cong₂₁ )
 open import poc.OCP0009.NbEPDirTy using ( _×⁺_; _+⁺_ )
 open import poc.OCP0009.NbEPDirSig using ( uip )
+open import poc.OCP0009.NbEPDirTyExt using ( cong₁; module W )
 
 module _
   (funext  : ∀ {A : Set} {B : A → Set} {f g : (x : A) → B x} →
@@ -56,5 +57,21 @@ module _
     eqa = funextᵢ (λ _ → funext (λ _ → uip _ _))
     eqc = funextᵢ₃ (λ _ _ _ → funext (λ _ → funext (λ _ → funext (λ _ → uip _ _))))
 
-  -- (`+⁺` and the dependent formers need the `act`-comparison below — their
-  -- `act` fields are only propositionally equal, unlike `×⁺`'s η-defeq one.)
+  -- Sum commutes with substitution — the `act` fields are only propositionally
+  -- equal (`⊎` has no η), so we go through the `Ty⁺` EXTENSIONALITY wrapper
+  -- (`NbEPDirTyExt.W`): compare `act` as functions (case-split under `funext`),
+  -- transport back by `cong₁ toTy⁺`.
+  +⁺-[] : ∀ {Δ Γ} (A B : Ty⁺ Γ) (σ : Sub Δ Γ) →
+          ((A +⁺ B) [ σ ]⁺) ≡₁ ((A [ σ ]⁺) +⁺ (B [ σ ]⁺))
+  +⁺-[] {Δ} A B σ =
+    cong₁ toTy⁺
+      (Ty⁺ᵉ-≡ (Ty⁺.fam LHS)
+              (λ x y → Ty⁺.act LHS {x} {y}) (λ x y → Ty⁺.act RHS {x} {y})
+              (λ x → Ty⁺.actid LHS {x}) (λ x → Ty⁺.actid RHS {x})
+              (λ x y z → Ty⁺.act⨾ LHS {x} {y} {z}) (λ x y z → Ty⁺.act⨾ RHS {x} {y} {z})
+              (funext (λ _ → funext (λ _ → funext (λ _ → funext
+                (λ { (inj₁ _) → refl ; (inj₂ _) → refl }))))))
+    where
+    LHS = (A +⁺ B) [ σ ]⁺
+    RHS = (A [ σ ]⁺) +⁺ (B [ σ ]⁺)
+    open W funext Δ
