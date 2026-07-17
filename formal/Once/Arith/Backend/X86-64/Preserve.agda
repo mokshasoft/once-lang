@@ -19,11 +19,15 @@
 module Once.Arith.Backend.X86-64.Preserve where
 
 open import Data.Empty using (⊥-elim)
-open import Data.List using (List; []; _∷_)
+open import Data.Product using (_×_; _,_; proj₁)
+open import Data.List using (List; []; _∷_; map)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.List.Relation.Unary.All.Properties using (map⁺)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; _≢_)
 open import Relation.Nullary using (¬_)
 
+open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
+open import Once.Arith.Backend.X86-64.Confine using (writes; confined)
 open import Once.CCC.Target.X86-64.Semantics using (RegFile; readReg; writeReg; Word)
 open import Once.Target.X86-64.PhysReg
   using (Reg; rax; rbx; rcx; rdx; rsi; rdi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
@@ -106,3 +110,38 @@ preserves-runFns : ∀ fs → All PreservesCCC-rf fs → PreservesCCC-rf (runFns
 preserves-runFns []       _          rf = agree-refl-ccc rf
 preserves-runFns (f ∷ fs) (pf ∷ pfs) rf =
   AgreeCCC-trans (pf rf) (preserves-runFns fs pfs (f rf))
+
+------------------------------------------------------------------------
+-- Lowering (register-effect model): an instruction's concrete effect on the
+-- register file is a sequence of writes to its footprint registers. For
+-- CCC-preservation the WRITTEN VALUES are irrelevant (value correctness is
+-- Phase A `block-correct`); only the footprint's CCC-disjointness matters.
+------------------------------------------------------------------------
+
+-- Write a list of (register, value) pairs in order.
+write-regs : List (Reg × Word) → RegFile → RegFile
+write-regs []             rf = rf
+write-regs ((w , v) ∷ ps) rf = write-regs ps (writeReg rf w v)
+
+-- If every written register is non-`ccc`, the whole write-sequence preserves
+-- the CCC registers. This is the bridge `Confine.confined` plugs into: a step
+-- writing exactly `writes i` (any values) preserves CCC because `confined i`
+-- proves `writes i` is CCC-disjoint.
+write-regs-preserves : ∀ ps → All (λ p → owner (proj₁ p) ≢ ccc) ps →
+                       PreservesCCC-rf (write-regs ps)
+write-regs-preserves []             _          rf = agree-refl-ccc rf
+write-regs-preserves ((w , v) ∷ ps) (nc ∷ ncs) rf =
+  AgreeCCC-trans (write-nonccc-agrees rf w v nc) (write-regs-preserves ps ncs (writeReg rf w v))
+
+------------------------------------------------------------------------
+-- CAPSTONE: `Confine.confined` ⇒ the arith instruction's register step
+-- preserves CCC. `step-of i val` is instruction i writing its footprint
+-- `writes i` with values from `val` (the concrete instruction semantics —
+-- irrelevant to preservation). Whole blocks then compose via `preserves-runFns`.
+------------------------------------------------------------------------
+
+step-of : XInstr → (Reg → Word) → RegFile → RegFile
+step-of i val = write-regs (map (λ r → (r , val r)) (writes i))
+
+step-of-preserves : ∀ i val → PreservesCCC-rf (step-of i val)
+step-of-preserves i val = write-regs-preserves _ (map⁺ (confined i))
