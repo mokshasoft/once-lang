@@ -26,8 +26,9 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Relation.Binary.PropositionalEquality using (_≢_)
 
 open import Once.Arith.Backend.XInstr.Syntax
-open import Once.Target.X86-64.PhysReg using (Reg; rax; rdx; owner; ccc)
+open import Once.Target.X86-64.PhysReg using (Reg; rax; rdx; owner; ccc; convention)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg; arith-disjoint)
+open import Once.Arith.Backend.Adequacy using (ArithEmitConfined)
 
 ------------------------------------------------------------------------
 -- The clobber footprint of each XInstr (over-approximation of the
@@ -87,3 +88,10 @@ confined (Xrem-safe-rrr dst _ _)  = arith-notccc dst ∷ rax-notccc ∷ rdx-notc
 confined (Xshl-rri dst _ _)       = arith-notccc dst ∷ []
 confined (Xsdiv-pow2-rri dst _ _) = arith-notccc dst ∷ rax-notccc ∷ []
 confined (Xmov-out _)             = rax-notccc ∷ []
+
+------------------------------------------------------------------------
+-- x86-64 instance of the generic field-① obligation.
+------------------------------------------------------------------------
+
+confined-instance : ArithEmitConfined convention
+confined-instance = record { writes = writes ; confined = confined }
