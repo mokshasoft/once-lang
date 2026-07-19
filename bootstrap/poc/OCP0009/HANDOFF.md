@@ -194,6 +194,19 @@ comonoid counit), not a heap model. Inductive → finite count; coinductive →
   optimizer correctness (17), the sound symmetric core (18), and pass stability
   under substitution (19) — all `--safe`, all zero-axiom (funext only ever
   threaded, never assumed).
+- **[design-VALIDATING · the experiment]** ✅ PASS — dependent Π/Σ, strict
+  substitution stability (`NbEPDirDBPi`, dHoTT-20). The single load-bearing test
+  of §1: does the STRICT SYNTACTIC presentation fix the lax-Π / Beck–Chevalley
+  failure that ruled out the semantic directed CwF as kernel? A genuinely
+  dependent raw de Bruijn syntax (`RTy`/`RTm` mutual, `El` injecting terms into
+  types) with substitution on both. Result: **`(Π A B)[σ] ≡ Π (A[σ])(B[σ↑])`
+  is DEFINITIONAL (`refl`)** — the semantic CwF's lax comparison map is an
+  equality for free — and it sits in a COHERENT strict calculus (`[id]ᵀ`/`[∘]ᵀ`
+  proven; `Π-BeckChevalley` = Π commuting strictly with composed substitution).
+  Zero axioms, funext-free. The design's central bet is confirmed at the syntax
+  level. Next slice: intrinsic typing + β/conversion (`Id = core(Hom)`) on this
+  dependent base — turning the raw syntax into a checked kernel; then η /
+  fattening the core.
 - **[consistency]** Strictification (local universes) of the directed CwF —
   makes the semantic model validate the strict syntactic Π. Needed for
   "Once+ proving Once", not for the kernel.
