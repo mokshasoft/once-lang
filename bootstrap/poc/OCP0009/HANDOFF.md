@@ -216,6 +216,21 @@ comonoid counit), not a heap model. Inductive → finite count; coinductive →
   Next slices, in order: (i) DECIDE `≅ᵀ` by the NbE engine (the "definitional
   equality decided by NbE" half of §1 — the substitution machinery it needs is
   proven in `NbEPDirDBPi`); (ii) subject reduction; (iii) η / fattening the core.
+- **[metatheory i/ii/iii]** ✅ DONE (each at its honest depth):
+  - (i) `NbEPDirDBNorm` (dHoTT-22): deciding conversion by NbE FORCES intrinsic
+    typing — `Ω = (λx.xx)(λx.xx)` self-reduces (`Ω-loops : Ω ⟶ Ω`), so no total
+    `nf` exists on raw `RTm`; the NbE decider must live over `_⊢_∷_` (typed
+    NbE, where SN holds). A real design result, not a gap.
+  - (iii) `NbEPDirDBEta` (dHoTT-23): η-conversion `_≅η_`, with `fatten : y ≅η
+    λx. y x` — distinct normal terms η-identifies, fattening the core. (Π-η;
+    Σ-η awaits pair/projection terms.)
+  - (ii) `NbEPDirDBSR` (dHoTT-24): reduction & conversion are substitution-stable
+    (`sub-comm`, `⟶-sub`/`⟶ᵀ-sub`, `≅ᵀ-sub`) + concrete β subject reduction —
+    the confluence-free half. General SR is blocked on Π-injectivity-of-
+    conversion = CONFLUENCE (Church–Rosser), the honest remaining obstruction.
+  Remaining frontier, now sharply identified: CONFLUENCE (unblocks general SR
+  and Π-injectivity) and TYPED NbE over `_⊢_∷_` (unblocks decidable conversion);
+  plus Σ-introduction/elimination terms (pairs) to exercise `Σ'`/Σ-η.
 - **[consistency]** Strictification (local universes) of the directed CwF —
   makes the semantic model validate the strict syntactic Π. Needed for
   "Once+ proving Once", not for the kernel.
