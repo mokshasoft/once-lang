@@ -175,9 +175,16 @@ comonoid counit), not a heap model. Inductive → finite count; coinductive →
   reductions), and `⟶-sub`/`Id-sub` with the real β substitution lemma
   (`sub-comm`). Honest ceiling: "on the nose" = proven `≡`, not definitional
   `refl` (the latter needs an explicit-substitution QIIT / cubical, outside
-  `--safe` MLTT). Still open: (b) wire a REAL optimizer pass as an `Id`/`⟶*`
-  inhabitant through `Id-sub`; and, on `NbEPDirDB`, port the `Core`/`core→≋`
-  groupoid-core layer (currently only in the point-free `NbEPDirKernel`).
+  `--safe` MLTT).
+  Refinement (b) ✅ DONE — the optimizer-pass POC (`NbEPDirPass`, dHoTT-17):
+  real passes on the CCC IR (identity-elim, dead-code-elim via projection,
+  dead-branch-elim) each AS an `Id`/`⟶*`; correctness (any output property)
+  transports covariantly along a pass by directed transport (`transport⟶`),
+  axiom-free on the concrete dead-code pass; and `dead-code-no-back` shows the
+  pass is irreversible — the payoff justifying a DIRECTED identity type over a
+  symmetric one. Still open: on `NbEPDirDB`, port the `Core`/`core→≋`
+  groupoid-core layer (currently only in the point-free `NbEPDirKernel`); and
+  connect `Id-sub` to a pass under a substitution (pass stability).
 - **[consistency]** Strictification (local universes) of the directed CwF —
   makes the semantic model validate the strict syntactic Π. Needed for
   "Once+ proving Once", not for the kernel.
