@@ -39,9 +39,34 @@ KERNEL. The functor-category CwF survives only as the **consistency MODEL**
 model strictified to match.
 
 --------------------------------------------------------------------------
-## 2. The next POC (what to build)
+## 2. The next POC — BUILT (`NbEPDirKernel`, dHoTT-15)
 
-**A strict cartesian dependent kernel where `Id` is `Hom = ⟶*`.** Minimal shape:
+**A strict cartesian dependent kernel where `Id` is `Hom = ⟶*`.** DELIVERED —
+`poc/OCP0009/NbEPDirKernel.agda`, `--safe`, zero axioms. What it establishes:
+
+- **Substitution = precomposition** (`t[σ] = t ∘ σ`) — the point-free CCC hands
+  this for free; no bespoke substitution calculus.
+- `Id a b = Hom a b = a ⟶* b`; directed `J` reused from `NbEPDirJ`.
+- **The one substantive lemma — substitution commutes with reduction:** `Id-sub`
+  (= `CCC.⟶*-∘-l`), the forward reindexing `(a⟶*b)[σ] → (a[σ]⟶*b[σ])`. `Id` is a
+  substitution-stable former.
+- **Keystone finding:** the substitution coherence laws ARE reductions —
+  `t[id] ⟶ t` is `id-right`, `t[σ][τ] ⟶ t[σ∘τ]` is `assoc-r`. So substitution is
+  strict *up to `Hom`*, and since `core(Hom) =` definitional equality, that is
+  strict up to definitional equality. **"Strict substitution" and "Id = Hom" are
+  the same relation `⟶*`** — there is no separate strictness obligation to discharge.
+- Substitution is a **functor of the directed `Id`** (`Id-sub-idH`/`Id-sub-trans`)
+  = directed `J` commutes with substitution (structural form).
+- **The groupoid core** `Core a b = Id a b × Id b a`: symmetric-by-construction
+  (the symmetry `Id` provably refuses — `no-sym`), reflexive, transitive, and
+  subst-stable — a well-behaved conversion. Reversible reshuffles (`assoc-core`)
+  live in it; the irreversible `opt` provably does not (`opt-∉-core`, via
+  `no-way-back`). This is `core(Hom) =` the definitional equality NbE decides.
+- **Bridge** `core→≋`: `core(Hom) ⊆ ≋` (denotational equality → decided by
+  `Sound.conv-decides` on closed first-order terms), funext-parameterized in
+  general and axiom-free on the associativity witness (`assoc-≋`).
+
+Original minimal shape (all realized above):
 
 - a syntactic Π/Σ with strict substitution, conversion via the NbE engine;
 - `Hom a b := a ⟶* b` as the identity type, `J` = directed `J`
@@ -140,8 +165,19 @@ comonoid counit), not a heap model. Inductive → finite count; coinductive →
 --------------------------------------------------------------------------
 ## 5. Open items / research frontier
 
-- **[design-validating]** The §2 POC: strict cartesian dependent kernel with
-  `Id = Hom`, + `subst`-commutes-with-`⟶*`.
+- **[design-validating]** ✅ DONE — the §2 POC is built (`NbEPDirKernel`,
+  dHoTT-15): strict cartesian dependent kernel, `Id = Hom`, subst-commutes-with-
+  `⟶*`, subst-coherences-are-reductions, groupoid core = definitional equality.
+  Refinement (a) ✅ DONE — the de Bruijn kernel (`NbEPDirDB`, dHoTT-16): an
+  intrinsically-typed cartesian STLC with genuine variables, parallel
+  substitution, the four fusion lemmas + `sub-id` (funext-free), the
+  category-of-contexts laws as propositional `≡` (**on the nose**, not
+  reductions), and `⟶-sub`/`Id-sub` with the real β substitution lemma
+  (`sub-comm`). Honest ceiling: "on the nose" = proven `≡`, not definitional
+  `refl` (the latter needs an explicit-substitution QIIT / cubical, outside
+  `--safe` MLTT). Still open: (b) wire a REAL optimizer pass as an `Id`/`⟶*`
+  inhabitant through `Id-sub`; and, on `NbEPDirDB`, port the `Core`/`core→≋`
+  groupoid-core layer (currently only in the point-free `NbEPDirKernel`).
 - **[consistency]** Strictification (local universes) of the directed CwF —
   makes the semantic model validate the strict syntactic Π. Needed for
   "Once+ proving Once", not for the kernel.

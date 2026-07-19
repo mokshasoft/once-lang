@@ -227,6 +227,8 @@ directed universe, and `ap`/`transport` (all `--safe`, in `bootstrap/poc/OCP0009
 | `NbEPDirAp` | dHoTT-14 | **`ap`/`transport` for the directed `Id`** — the standard vocabulary, derived (all `refl`/one-liners): `transp` (directed transport = the covariant action `P.act`, computing via `transp-id`/`transp-∘`), `apd` (dependent `ap` of a term = its naturality), `apₛ` (`ap` of a substitution = its functor action, `apₛ-id`/`apₛ-∘`), and `transp≡Jᶜ` — transport IS the Yoneda eliminator `Jᶜ` evaluated (**directed `J` and directed transport are one map**). No `sym` — all covariant. |
 | `NbEPDirSub` | dHoTT-11 | **The substitution calculus — `Σ⁺` completed** — the last structural piece of the directed CwF. A section `a : Tm Γ A` IS a substitution `extend-id a : Sub Γ (Γ ▷ A)`, so reindexing `B` is `B [ extend-id a ]⁺`. `_[_]ᵗ` (term substitution); `pairΣ` (dependent pairing, `nat` via `Σ≡` + a local subst-law `sa`); `sndΣ` (the second projection into `B` reindexed along `fstΣ`, `nat` via `sa` + `Σ-snd≡`); `Σβ₁`/`Σβ₂`/`Ση` — β and η, all **definitional** at the term component. The pairing is a genuine iso `Tm Γ (Σ⁺ A B) ≅ Σ (Tm Γ A)(Tm Γ B[-])`. `Σ⁺` joins `Π⁺` as a COMPLETE directed dependent type former. |
 | `NbEPDirPiG` | dHoTT-10 | **The general directed dependent `Π⁺` — a COMPLETE type former** — case (b). `Π⁺ A B : Ty⁺ ⌊𝒞⌋` for `A : Ty⁻ ⌊𝒞⌋`, `B : Ty⁺ (⌊𝒞⌋ ▷⁻ A)` over the op-Grothendieck `_▷⁻_`. Fibre = the FUTURE-CONE record `Πfib {ap ; coh}` (values indexed by out-morphisms `h : x ⇒ y`; `coh` = the wedge). `act` = pre-composition (no fibre transport), so `actid`/`act⨾` fall to `unitˡ`/`assoc` under `funext`; the wedge is preserved by `assoc` + `g.coh`, and the record laws close because `CohT` is a **proposition** (`funext` + `uip`). **Universal property** (`Π` = right adjoint to op-weakening): `lam` (intro — a section becomes `λ y h a → b(y,a)`, its wedge is `b`'s own naturality), `app`/`unlam` (elim), `Πβ` (**definitional**), `Πη` (by the term's own naturality). `unlam`'s naturality is the transport-heavy direction, closed by `Bmor` (J) + `apd` + `coh`. Needs `𝒞 : Cat`. The pattern's promise, delivered in full: no new idea, just funext record-equality. |
+| `NbEPDirKernel` | dHoTT-15 | **The strict cartesian dependent kernel — `Id = Hom`, substitution commutes with `⟶*`** (HANDOFF §2 POC). Substitution = precomposition (`t[σ] = t ∘ σ`); `Id a b = Hom a b = a ⟶* b`. **The substantive lemma**: `Id-sub` (= `⟶*-∘-l`) — reduction stable under substitution, so `Id` is a subst-stable former. Keystone: the substitution coherence laws ARE reductions (`sub-idˡ = id-right`, `sub-∘ = assoc-r`) — substitution is strict *up to `Hom`*, i.e. up to definitional equality; "strict substitution" and "Id = Hom" are the SAME relation. `Id-sub-idH`/`Id-sub-trans`: substitution is a FUNCTOR of the directed `Id` (directed `J` commutes with subst). **`Core = Id a b × Id b a`** — the groupoid core = definitional equality: symmetric-by-construction (the symmetry `Id` refuses, `no-sym`), reflexive/transitive/subst-stable; `assoc-core` is in it, `opt` provably is NOT (`opt-∉-core`, via `no-way-back`). Bridge `core→≋` (denotational equality, `Sound.conv-decides`), funext-parameterized; `assoc-≋` axiom-free. `--safe`, **zero axioms**. |
+| `NbEPDirDB` | dHoTT-16 | **A de Bruijn kernel — substitution strict ON THE NOSE** (HANDOFF §5a). Where `NbEPDirKernel`'s point-free substitution had coherence laws that were *reductions* (strict only up to `Hom`), this pays for genuine variables and gets them as *equalities*. An intrinsically-typed CARTESIAN de Bruijn STLC (`_⊢_`); renamings + parallel substitutions (`ren`/`sub`, `exts`) with the four **fusion lemmas** (`ren-ren`/`sub-ren`/`ren-sub`/`sub-sub`) and `sub-id` — proven `--safe` and **FUNEXT-FREE** (a pointwise `sub-cong` discharges every binder case). **Category-of-contexts laws ON THE NOSE** (propositional `≡`, no reduction): `[id]`, `[∘]`, `∘ₛ` unit + assoc. Then `_⟶_` (β + ξ), `Id = ⟶*`, and THE kernel lemma **`⟶-sub`** (substitution commutes with reduction) — whose β case now has real content: the substitution lemma `sub-comm : sub σ (t [ s ]) ≡ (sub (exts σ) t) [ sub σ s ]`, closed by `sub-sub` + `sub-id`. `Id-sub` follows. Honest ceiling: "on the nose" = proven `≡`, not definitional `refl` (the latter needs an explicit-substitution QIIT/cubical) — but proven `≡` already puts the strictness in the SET of terms, not merely in `Hom`. **Zero axioms.** |
 
 The pattern across `DirC`/`DirF` is the load-bearing one: directed reduction
 gives the *covariant/computational* structure for free (functor actions, the
@@ -251,7 +253,29 @@ needs computing. `app` (the eliminator) evaluates the cone at `idₒ`. It needs
 `𝒞 : Cat` (the base must be lawful — `Π`'s action uses `unitˡ`/`assoc`, unlike
 `Σ⁺`/`×⁺`). Exactly what the "representable-first" pattern promised: no new idea,
 just the `funext` record-equality. `Πfib`'s `coh` is where the naturality/liveness
-lives — the dependent-`Π` face of the same `Ana`/codata frontier. And the full
+lives — the dependent-`Π` face of the same `Ana`/codata frontier.
+
+**The design POC — BUILT (`NbEPDirKernel`, dHoTT-15).** The strict cartesian
+dependent kernel of HANDOFF §1–2, assembled: `Id = Hom = ⟶*` as the identity
+type, substitution = precomposition (`t[σ] = t ∘ σ`), and **the one substantive
+lemma — substitution commutes with reduction** (`Id-sub = CCC.⟶*-∘-l`, the
+forward reindexing `(a⟶*b)[σ] → (a[σ]⟶*b[σ])`), making `Id` a substitution-stable
+former. The keystone finding: **the substitution coherence laws ARE reductions** —
+`t[id] ⟶ t` is `id-right`, `t[σ][τ] ⟶ t[σ∘τ]` is `assoc-r` — so substitution is
+strict *up to `Hom`*, and since `core(Hom)` = definitional equality, that is
+strict up to definitional equality. "Strict substitution" and "Id = Hom" collapse
+to the SAME relation `⟶*`; there is no separate strictness obligation. Substitution
+is a FUNCTOR of the directed `Id` (`Id-sub-idH`/`Id-sub-trans` = directed `J`
+commutes with subst, structural form). The GROUPOID CORE `Core a b = Id a b × Id b
+a` is symmetric-by-construction (the symmetry `Id` refuses, `no-sym`), reflexive,
+transitive, and subst-stable — a well-behaved conversion; the reversible reshuffles
+(`assoc-core`) live in it, the irreversible `opt` provably does NOT (`opt-∉-core`,
+via `no-way-back`). Bridge `core→≋`: `core(Hom) ⊆ ≋` (denotational equality, hence
+`Sound.conv-decides`) — funext-parameterized in general, axiom-free on `assoc-≋`.
+`--safe`, **zero axioms** in the module (funext threaded as a hypothesis, never
+assumed). This is the whole recommendation end-to-end on Once's real IR.
+
+And the full
 UNIVERSAL PROPERTY is now closed too: `lam` ⊣ `unlam` with `Πβ` (definitional)
 and `Πη` (from the term's own naturality) — `Π⁺` is a complete directed
 dependent type former. The one remaining piece for a full directed type theory
