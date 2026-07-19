@@ -182,9 +182,18 @@ comonoid counit), not a heap model. Inductive → finite count; coinductive →
   transports covariantly along a pass by directed transport (`transport⟶`),
   axiom-free on the concrete dead-code pass; and `dead-code-no-back` shows the
   pass is irreversible — the payoff justifying a DIRECTED identity type over a
-  symmetric one. Still open: on `NbEPDirDB`, port the `Core`/`core→≋`
-  groupoid-core layer (currently only in the point-free `NbEPDirKernel`); and
-  connect `Id-sub` to a pass under a substitution (pass stability).
+  symmetric one.
+  Follow-ups ✅ DONE: the groupoid-core layer over the de Bruijn kernel
+  (`NbEPDirDBCore`, dHoTT-18) — `Core` + laws + `core-sub` (subst-stable over
+  STRICT substitution), plus a denotational STLC model with soundness `⟶ ⊆ ≋`
+  giving `core → ≋` (funext-threaded); and pass stability (`NbEPDirDBPass`,
+  dHoTT-19) — `pass-stable = Id-sub`, so an optimization proven on an OPEN term
+  survives instantiation of its free variables (`pass-open ⟶ pass-closed` for
+  free). The strict cartesian dependent kernel design (§1) is now demonstrated
+  end-to-end: kernel (15), strict de Bruijn substitution (16), directed
+  optimizer correctness (17), the sound symmetric core (18), and pass stability
+  under substitution (19) — all `--safe`, all zero-axiom (funext only ever
+  threaded, never assumed).
 - **[consistency]** Strictification (local universes) of the directed CwF —
   makes the semantic model validate the strict syntactic Π. Needed for
   "Once+ proving Once", not for the kernel.
