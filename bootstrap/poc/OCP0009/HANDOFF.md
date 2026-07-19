@@ -204,9 +204,18 @@ comonoid counit), not a heap model. Inductive → finite count; coinductive →
   equality for free — and it sits in a COHERENT strict calculus (`[id]ᵀ`/`[∘]ᵀ`
   proven; `Π-BeckChevalley` = Π commuting strictly with composed substitution).
   Zero axioms, funext-free. The design's central bet is confirmed at the syntax
-  level. Next slice: intrinsic typing + β/conversion (`Id = core(Hom)`) on this
-  dependent base — turning the raw syntax into a checked kernel; then η /
-  fattening the core.
+  level.
+- **[typing+conversion]** ✅ DONE — intrinsic typing + conversion
+  (`NbEPDirDBType`, dHoTT-21). The raw dependent syntax is now a CHECKED kernel:
+  reduction `_⟶_`/`_⟶ᵀ_` (β + congruence), `Hom = ⟶*` (directed Id), `Core`
+  (its core), conversion `_≅_`/`_≅ᵀ_` = the R-S-T closure = definitional
+  equality, with `hom→≅`/`core→≅` making `Id = core(Hom)` operational. Typed
+  contexts + variable typing + the judgment `_⊢_∷_` with `⊢var`/`⊢lam`/dependent
+  `⊢app` (`app t u ∷ B[u]`)/**`⊢conv`**. Concrete `⊢id`, a dependent-app
+  derivation, and `conv-El` (a term re-typed across a β-computation in its type).
+  Next slices, in order: (i) DECIDE `≅ᵀ` by the NbE engine (the "definitional
+  equality decided by NbE" half of §1 — the substitution machinery it needs is
+  proven in `NbEPDirDBPi`); (ii) subject reduction; (iii) η / fattening the core.
 - **[consistency]** Strictification (local universes) of the directed CwF —
   makes the semantic model validate the strict syntactic Π. Needed for
   "Once+ proving Once", not for the kernel.
