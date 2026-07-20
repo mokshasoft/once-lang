@@ -63,7 +63,7 @@ module _ {FS : FrameSemantics} (program-bound : ℕ) where
     valid-μ-wf wf x (validAtWF-set-halted b v)
   validAtWF-set-halted b (valid-ν-wf wf x v) =
     valid-ν-wf wf x (validAtWF-set-halted b v)
-  validAtWF-set-halted b (valid-int-wf bf) = valid-int-wf bf
-  validAtWF-set-halted b (valid-float-wf bf) = valid-float-wf bf
+  validAtWF-set-halted {s = s} b (valid-int-wf {loc = loc} bf r) = valid-int-wf bf (trans (rl s b loc) r)
+  validAtWF-set-halted {s = s} b (valid-float-wf {loc = loc} bf r) = valid-float-wf bf (trans (rl s b loc) r)
   validAtWF-set-halted b (valid-str-wf bf) = valid-str-wf bf
   validAtWF-set-halted b (valid-buffer-wf bf) = valid-buffer-wf bf

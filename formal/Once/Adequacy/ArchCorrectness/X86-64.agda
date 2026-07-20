@@ -30,11 +30,10 @@ postulate
   program-bound : ℕ
   -- the flat-machine SigOp trace of a compiled IR (a named DATA trust input;
   -- Layer 2 defines it concretely as `take n (flat-events (EF …) …)`).
-  flat-trace : Maybe (IR Unit Unit) → Behavior
 
 open IRObsCorrectFlatness {x86v3-frame-semantics} program-bound using (ir-obs-correct)
 
 x86-64-correct : ArchCorrect x86-64 (arch-semantics x86-64)
 x86-64-correct =
   FFO.flat-from-obs x86-64 x86v3-frame-semantics (arch-semantics x86-64)
-    program-bound flat-trace ir-obs-correct
+    program-bound ir-obs-correct
