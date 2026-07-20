@@ -59,9 +59,12 @@ open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
 open import Once.CCC.Codegen.IRObsCorrectFlat using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
 open import Once.CCC.Machine.SMCore
-  using (LocState; ValueLocation; SV-Ptr; regs; readReg; Input1; halted)
+  using (LocState; mkLocState; Registers; mkRegs; ValueLocation; AtDynamic; SV-Ptr;
+         regs; readReg; Input1; halted)
+open import Once.Memory.HeapAddress using (heap-loc; mkHeapRef)
+open import Data.Nat using (z≤n; s≤s)
 open import Once.CCC.Machine.Allocation
-  using (AllocState; next-slot; module FrontierInvariant)
+  using (AllocState; mkAllocState; next-slot; module FrontierInvariant)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
@@ -71,7 +74,7 @@ import Once.Parser.Module.Core as P
 open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; MachineRefinesObsF)
 open FlatMachine {FS} using (mkFlat)
 open FlatEventTrace {FS} using (flat-events)
-open FrontierInvariant {FS} using (BeforeFrontier)
+open FrontierInvariant {FS} using (BeforeFrontier; heap-before)
 open ClosureWellFormedDef {FS} program-bound using (ValidAtWF; valid-unit-wf)
 
 ------------------------------------------------------------------------
@@ -87,15 +90,45 @@ asm-sem asm = ArchSemantics.exec-bytes as (ArchSemantics.assemble as asm)
 -- not halted, `Input1` pointing at the (Unit) argument cell.
 ------------------------------------------------------------------------
 
+-- The loader's initial FRAME is the genuine external trust point (FrameSemantics
+-- documents program entry as exactly that: "we trust the OS/runtime set up
+-- sufficient space before calling our code"). `Frame` is abstract, so it cannot
+-- be constructed here. Everything ELSE about the entry state is now CONSTRUCTED,
+-- and its preconditions are PROVED (was: 8 postulates, now 2).
 postulate
-  entry-s     : LocState FS
-  entry-alloc : AllocState {FS}
-  entry-loc   : ValueLocation FS
+  entry-frame : FrameSemantics.Frame FS
+  -- the compiled `main` fits the (per-arch) program bound.
   entry-size  : ∀ (ir : IR Unit Unit) → ir-size ir < program-bound
-  entry-ns    : next-slot entry-alloc ≡ 0
-  entry-bf    : BeforeFrontier entry-alloc entry-loc
-  entry-nh    : halted entry-s ≡ false
-  entry-rdi   : readReg (regs entry-s) Input1 ≡ SV-Ptr entry-loc
+
+-- A fresh frame: nothing on the stack (`next-slot ≡ 0`), one heap ref reserved
+-- for the (erased) `Unit` argument cell so it is `BeforeFrontier`.
+entry-alloc : AllocState {FS}
+entry-alloc = mkAllocState entry-frame 0 1
+
+entry-loc : ValueLocation FS
+entry-loc = AtDynamic (heap-loc (mkHeapRef 0) 0)
+
+-- Fillers are pointers to the same (erased Unit) cell — no numeric literal is
+-- needed, so no `Number` instance for the machine word domain is required.
+entry-regs : Registers FS
+entry-regs = mkRegs (SV-Ptr entry-loc) (SV-Ptr entry-loc) (SV-Ptr entry-loc)
+                    0 (SV-Ptr entry-loc)
+
+entry-s : LocState FS
+entry-s = mkLocState entry-regs (λ _ _ → nothing) (λ _ → nothing) false
+
+-- All four preconditions now hold BY CONSTRUCTION.
+entry-ns : next-slot entry-alloc ≡ 0
+entry-ns = refl
+
+entry-bf : BeforeFrontier entry-alloc entry-loc
+entry-bf = heap-before (s≤s z≤n)
+
+entry-nh : halted entry-s ≡ false
+entry-nh = refl
+
+entry-rdi : readReg (regs entry-s) Input1 ≡ SV-Ptr entry-loc
+entry-rdi = refl
 
 -- `main`'s machine-refinement witness at the entry state. The `Unit` input's
 -- validity is `valid-unit-wf` — no plumbing needed for it.
