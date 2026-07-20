@@ -38,7 +38,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- SigOpInfo is over SURFACE Type (`SigOp : SigOpInfo A B → IR ⌊A⌋ ⌊B⌋`), so the
 -- surface `FitsInReg`/`fits-in-reg?` stay; the μ/functor + value-domain layer is IRTy.
 open import Once.Type using (Type; FitsInReg; fits-in-reg?)
-  renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
+  renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ; Int to Intˢ)
 open import Once.IRTy using (WellFormedFI-irrelevant)
 open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
 open import Once.IR using (IR; IRTy; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ; _∘_;
@@ -72,12 +72,12 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 
 module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open FlatMachine {FS}
-  open AbstractExec {FS} using (exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; readTyped)
+  open AbstractExec {FS} using (exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; readTyped; readReg-typed)
   open FrontierInvariant {FS} using (BeforeFrontier)
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result; prim-sv)
   open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[])
-  open RTA {FS} program-bound using (Readable; readable?; readTyped-adequate)
+  open RTA {FS} program-bound using (Readable; r-unit; r-int; r-pair; readable?; readTyped-adequate)
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot)
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
 
@@ -304,15 +304,39 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- therefore holds. Residual = the IRTy/Type seam on the INPUT type (the
   -- `⌊A⌋ ≡ Int` inversion `readReg-typed` needs). CONSUMED by the clause below,
   -- so it is a real obligation on the apex path, not an island.
-  postulate
-    pure-sigop-value-reg :
-      ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) → effect si ≡ Pure
+  -- REGISTER-RESIDENT INPUT (`in-reg`) — PROVED. `Input1` holds the value, so
+  -- `sv-as-loc` is `nothing` and `pure-sigop-out-aux` takes its register branch,
+  -- reading the value back with `readReg-typed` (SMCore).
+  --
+  -- The IRTy/Type seam on the INPUT type is supplied by the `Readable A`
+  -- evidence the caller already carries: `r-int` gives `A ≡ Int` DIRECTLY (no
+  -- separate `⌊A⌋ ≡ Int` inversion needed), and the other two readable shapes
+  -- are impossible here — `FitsInRegI ⌊Unit⌋` and `FitsInRegI ⌊_ * _⌋` are empty,
+  -- so those clauses are absurd. (Float is not `Readable`, so no float-input case
+  -- arises.)
+  pure-sigop-value-reg :
+      ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) (rA : Readable A)
+      → effect si ≡ Pure
       → ∀ (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS) (alloc : AllocState {FS})
           (fit : FitsInRegI ⌊ A ⌋)
       → readReg (regs s) Input1 ≡ prim-sv fit x
       → halted s ≡ false
       → readReg (regs (forced (floc (flat-run 2 (SigOp si) s alloc)))) Output
           ≡ prim-sv (fits-erase fitness) (eval (SigOp si) x)
+  pure-sigop-value-reg si fits-intˢ r-int pure-eq x s alloc fits-int rdi-eq nh
+    rewrite nh | sigop-halts-false si pure-eq s =
+    trans (cong (λ e → exec-sigop-output-of e si s) pure-eq) step2
+    where
+      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-int (eval (SigOp si) x)
+      step2 rewrite cong sv-as-loc rdi-eq | cong (readReg-typed Intˢ) rdi-eq = refl
+  pure-sigop-value-reg si fits-floatˢ r-int pure-eq x s alloc fits-int rdi-eq nh
+    rewrite nh | sigop-halts-false si pure-eq s =
+    trans (cong (λ e → exec-sigop-output-of e si s) pure-eq) step2
+    where
+      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-float (eval (SigOp si) x)
+      step2 rewrite cong sv-as-loc rdi-eq | cong (readReg-typed Intˢ) rdi-eq = refl
+  pure-sigop-value-reg si fitness r-unit       pure-eq x s alloc () rdi-eq nh
+  pure-sigop-value-reg si fitness (r-pair _ _) pure-eq x s alloc () rdi-eq nh
 
   pure-sigop-value-correct :
       ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) (rA : Readable A)
@@ -325,9 +349,9 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       → readReg (regs (forced (floc (flat-run 2 (SigOp si) s alloc)))) Output
           ≡ prim-sv (fits-erase fitness) (eval (SigOp si) x)
   pure-sigop-value-correct si fits-intˢ rA pure-eq x input-loc s alloc valid nh (in-reg fit rdi-eq) =
-    pure-sigop-value-reg si fits-intˢ pure-eq x s alloc fit rdi-eq nh
+    pure-sigop-value-reg si fits-intˢ rA pure-eq x s alloc fit rdi-eq nh
   pure-sigop-value-correct si fits-floatˢ rA pure-eq x input-loc s alloc valid nh (in-reg fit rdi-eq) =
-    pure-sigop-value-reg si fits-floatˢ pure-eq x s alloc fit rdi-eq nh
+    pure-sigop-value-reg si fits-floatˢ rA pure-eq x s alloc fit rdi-eq nh
   pure-sigop-value-correct si fits-intˢ rA pure-eq x input-loc s alloc valid nh (in-loc rdi-eq)
     rewrite nh | sigop-halts-false si pure-eq s =
     trans (cong (λ e → exec-sigop-output-of e si s) pure-eq) step2
