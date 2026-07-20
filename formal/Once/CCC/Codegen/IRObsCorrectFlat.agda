@@ -62,6 +62,7 @@ open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
 open import Once.CCC.Codegen.CataIRSlotStable using (module CataIRSlotStable)
 open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
+import Once.CCC.Machine.ReadTypedAdequate as RTA
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.DenotTrace using (evalᴰ; inject)
 open import Once.Denotation.TraceMonad using (projTrace)
@@ -69,11 +70,12 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 
 module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open FlatMachine {FS}
-  open AbstractExec {FS} using (exec-sigop-halts)
+  open AbstractExec {FS} using (exec-sigop-halts; exec-sigop-output-of; pure-sigop-output; readTyped)
   open FrontierInvariant {FS} using (BeforeFrontier)
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; prim-sv)
   open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[])
+  open RTA {FS} program-bound using (Readable; readable?; readTyped-adequate)
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot)
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
 
@@ -250,20 +252,37 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- `refl` on the fits-in-reg base types). Discharge = the next step; stated
   -- here so the apex chain is verified end-to-end against ONE named equation.
   -- ════════════════════════════════════════════════════════════════════
+  -- DISCHARGE STATUS: true by construction — `exec-abstract (instr-sigop si)`
+  -- writes `pure-sigop-output si s = SV-Lit fit (semM si (readTyped A input-loc s))`
+  -- (SMCore, Plan 0.54 A4) and `readTyped-adequate` turns the `ValidAtWF`
+  -- hypothesis into `readTyped A input-loc s ≡ just (subst id (coh A) x)`, which
+  -- with `eval (SigOp si) x = subst (sym (coh B)) (semM si (subst id (coh A) x))`
+  -- (CCC.Eval:83) makes the two sides equal. Verified as far as
+  --   `pure-sigop-output si s | just fits-intˢ | sv-as-loc (input1 (regs s))`
+  -- (i.e. the codomain and input-pointer dispatches both reduce). The residual is
+  -- REDUCTION PLUMBING, not mathematics: `effect` is a DERIVED accessor, so it
+  -- unfolds and `rewrite pure-eq` cannot fire on the second fuel step's
+  -- `exec-sigop-halts-of`. Fix = generalise the goal over `effect si`
+  -- (`with effect si in eq`, or a shape-parameterised helper) so BOTH the output
+  -- and halts dispatches resolve together. All hypotheses needed for the
+  -- discharge are already in the statement.
   postulate
     pure-sigop-value-correct :
-      ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) → effect si ≡ Pure
-      → ∀ {mIn} (x : ⟦ ⌊ A ⌋ ⟧) (input-loc : ValueLocation FS)
-          (s : LocState FS) (alloc : AllocState {FS})
-      → ValidAtWF mIn alloc x input-loc s
-      → readReg (regs (forced (floc (flat-run 2 (SigOp si) s alloc)))) Output
-          ≡ prim-sv (fits-erase fitness) (eval (SigOp si) x)
+        ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) (rA : Readable A)
+        → effect si ≡ Pure
+        → ∀ {mIn} (x : ⟦ ⌊ A ⌋ ⟧) (input-loc : ValueLocation FS)
+            (s : LocState FS) (alloc : AllocState {FS})
+        → ValidAtWF mIn alloc x input-loc s
+        → halted s ≡ false
+        → readReg (regs s) Input1 ≡ SV-Ptr input-loc
+        → readReg (regs (forced (floc (flat-run 2 (SigOp si) s alloc)))) Output
+            ≡ prim-sv (fits-erase fitness) (eval (SigOp si) x)
 
   pure-obs-correct-sigop :
-    ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B)
+    ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) (rA : Readable A)
     → effect si ≡ Pure → IRObsCorrectF (SigOp si)
-  pure-obs-correct-sigop {A} {B} si fitness pure-eq
-    _ mIn x input-loc s alloc _ valid input-before not-halted _ =
+  pure-obs-correct-sigop {A} {B} si fitness rA pure-eq
+    _ mIn x input-loc s alloc _ valid input-before not-halted rdi-eq =
     record
       { traces-agree = λ k →
           2 , trans (cong (take k) (mach-[] 2))
@@ -271,7 +290,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       ; value-realized =
           2 , Stack , falloc (flat-run 2 (SigOp si) s alloc) ,
           at-reg input-loc (fits-erase fitness) before
-            (pure-sigop-value-correct si fitness pure-eq x input-loc s alloc valid) before
+            (pure-sigop-value-correct si fitness rA pure-eq x input-loc s alloc valid not-halted rdi-eq) before
       }
     where
       -- Machine side: no fetchable instr emits an event (the sole
@@ -296,10 +315,15 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       before rewrite keeps-alloc = input-before
 
   obs-correct-sigop : ∀ {A B} (si : SigOpInfo A B) → IRObsCorrectF (SigOp si)
-  obs-correct-sigop {A} {B} si with fits-in-reg? B
-  ... | nothing = obs-correct-rest (SigOp si)
-  ... | just fitness with effect si in pure-eq
-  ...   | Pure    = pure-obs-correct-sigop si fitness pure-eq
+  -- Route on BOTH the codomain (register-resident result) and the domain
+  -- (readable input ⇒ the machine can materialise it and apply `semM`). A Pure
+  -- SigOp over a non-readable input keeps the sentinel, so it makes no value
+  -- claim and falls back to `obs-correct-rest`. Arith is always readable.
+  obs-correct-sigop {A} {B} si with fits-in-reg? B | readable? A
+  ... | nothing      | _       = obs-correct-rest (SigOp si)
+  ... | just fitness | nothing = obs-correct-rest (SigOp si)
+  ... | just fitness | just rA with effect si in pure-eq
+  ...   | Pure    = pure-obs-correct-sigop si fitness rA pure-eq
   ...   | Emits _ = obs-correct-rest (SigOp si)
   ...   | Halts _ = obs-correct-rest (SigOp si)
 
