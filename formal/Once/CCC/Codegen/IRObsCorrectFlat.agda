@@ -75,7 +75,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open AbstractExec {FS} using (exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; readTyped)
   open FrontierInvariant {FS} using (BeforeFrontier)
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; prim-sv)
+    using (ValidAtWF; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result; prim-sv)
   open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[])
   open RTA {FS} program-bound using (Readable; readable?; readTyped-adequate)
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot)
@@ -385,14 +385,37 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   comp-size-g {g = g} {f} sz =
     ≤-<-trans (≤-trans (m≤m+n (ir-size g) (ir-size f)) (n≤1+n _)) sz
 
+  -- THE composition step. `ir-to-trace (g ∘ f) = ft ++ mov-to-input ∷ gt`: run
+  -- `f` (result in `Output`), `mov-to-input` (`Input1 := Output`), run `g`.
+  --
+  -- Its discharge needs FOUR pieces (all machinery identified, none yet written):
+  --  (1) machine split — run `ft`, the mov, then `gt` AT A PC OFFSET. Template:
+  --      `ComposeWF.exec-trace-compose-eq` (same thing for the straight machine);
+  --      relocation: `CataAtRelocate.{shift-pc, flat-relocate-straight/-label/-jmp}`.
+  --  (2) event split — `flat-events` over the concatenation, the mov emitting
+  --      nothing: `flat-events-steps`, `chain-events-++`, `chain-events-subst*`,
+  --      `flat-events-settled`, `flat-events-reify` (Adequacy/FlatEvents).
+  --  (3) denotational split — `evalᴰ (g ∘ f) a = evalᴰ f a >>=T evalᴰ g`
+  --      (DenotTrace:121) is a TRACE-MONAD BIND, so `projTrace … k` splits into
+  --      the two prefixes. (`eval (g ∘ f) x = eval g (eval f x)`, Eval:59.)
+  --  (4) `g`'s PRECONDITION at the post-mov state — and this is decided by `f`'s
+  --      RESIDENCE, which is why `value-realized` is a `ResultPlace`:
+  --        * `at-loc`      — `Output ≡ SV-Ptr loc`, so after the mov
+  --                          `Input1 ≡ SV-Ptr loc`: precondition MET AS-IS.
+  --        * `unit-result` — `Unit` erased; nothing to thread.
+  --        * `at-reg`      — `Output ≡ prim-sv fit v`, so `Input1` holds an
+  --                          `SV-Lit`, NOT a pointer: `g`'s precondition as
+  --                          stated CANNOT be met. THIS is what forces the
+  --                          Place-aware INPUT precondition (the input-side
+  --                          mirror of `at-reg`), and it is the case a
+  --                          primitive-returning (arith) `f` takes — so it is
+  --                          the load-bearing one for rung A.
+  --      Let the discharge dictate that generalisation; do not guess it here.
+  --
+  -- Kept as ONE obligation deliberately: (1)-(3) are COMMON to all three
+  -- residences, so splitting per-residence would duplicate the hard part while
+  -- tripling the postulate count. Only (4) differs, and it is a spec change.
   postulate
-    -- THE composition step: given `g`'s IH (already fed its size bound) and
-    -- `f`'s discharged witness (whose `value-realized` exposes `f`'s result),
-    -- produce `g ∘ f`'s witness. `ir-to-trace (g ∘ f) = ft ++ mov-to-input ∷ gt`,
-    -- so the discharge runs `f`, then `mov-to-input` (`Input1 := Output` = `f`'s
-    -- result), then `g` — which is exactly what forced `f`'s result to be exposed
-    -- as a register `ResultPlace` (`at-reg`) and `g`'s input precondition to
-    -- accept a register value. (Consumes `f`'s `value-realized`.)
     comp-step : ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc}
               → ir-size g < program-bound
               → IRObsCorrectF g → MachineRefinesObsF f x s alloc
