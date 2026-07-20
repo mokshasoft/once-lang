@@ -43,6 +43,19 @@ data Readable : Type → Set where
   r-int  : Readable Int
   r-pair : ∀ {A B} → Readable A → Readable B → Readable (A * B)
 
+-- Decision procedure, so the SigOp dispatch can ROUTE on readability: a Pure
+-- SigOp over a readable input gets the real computed value; anything else falls
+-- back (its `readTyped` is `nothing`, so `pure-sigop-output` keeps the sentinel
+-- and no value claim is made). Arith blocks take tuples of Unit/Int
+-- (`Arith.SigOp.Block.shape-as-type`), so they always take the readable route.
+readable? : (A : Type) → Maybe (Readable A)
+readable? Unit    = just r-unit
+readable? Int     = just r-int
+readable? (A * B) with readable? A | readable? B
+... | just ra | just rb = just (r-pair ra rb)
+... | _       | _       = nothing
+readable? _       = nothing
+
 -- Transport of a product decomposes componentwise (standard J-style).
 subst-×-cong₂ : ∀ {A B A' B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A) (b : B)
               → subst id (cong₂ _×_ p q) (a , b) ≡ (subst id p a , subst id q b)
