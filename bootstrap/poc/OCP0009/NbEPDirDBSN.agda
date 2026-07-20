@@ -4,29 +4,36 @@
 --
 -- The run at [SN] (HANDOFF §3 Tier C — the input `NbEPDirDBDec.dec-conv`
 -- consumes). This module builds the SN FRAMEWORK for the simply-typed λ-calculus
--- and proves CONCRETE strong-normalization witnesses; the GENERAL theorem (via a
--- Kripke logical relation) is scoped precisely below.
+-- and proves the SN CLOSURE THEOREMS — SN is closed under every term former and,
+-- crucially, under β-EXPANSION — culminating in *every normal form is SN*. The
+-- one remaining step to full `Γ⊢A → SN t` (the reducibility fundamental theorem)
+-- is scoped precisely below.
 --
 --   * a self-contained intrinsically-typed STLC (`ι`/`_⇒_`) with the full
 --     substitution calculus (renaming, parallel substitution, the fusion lemmas,
---     `sub-comm` — all funext-free);
---   * β-reduction `_⟶_`, and `⟶-sub` (reduction survives substitution);
---   * `SN` — strong normalization as ACCESSIBILITY (all reducts SN), with the
---     preservation lemmas (`sn-red`, `sn-app*`);
---   * **concrete SN witnesses** — `sn-var`, `sn-lam-id`, and the β-REDEX
---     `sn-βredex` (`(λx.x) y` is SN — it reduces only to `y`, which is SN):
---     the SN machinery exercised on real well-typed terms.
+--     `sub-comm`, `ren-comm` — all funext-free);
+--   * β-reduction `_⟶_`/`_⟶*_` with `⟶-sub`, `⟶-ren`, the `⟶*` congruences, and
+--     substitution monotonicity (`sub-mono`/`[]-mono`);
+--   * `SN` — strong normalization as ACCESSIBILITY, with `sn-red`/`sn-red*`,
+--     `SN-appˡ-inv`, and ★ **`sn-antisub`** (`SN (sub σ t) → SN t` — reductions
+--     of `t` lift through `σ`, so accessibility descends);
+--   * the SN CLOSURE THEOREMS — `sn-lam`, `sn-neutral-app` (application to a
+--     neutral head, β never fires), and ★ **`sn-β-exp`** (SN is closed under
+--     β-EXPANSION: `SN (t[u]) → SN u → SN (app (lam t) u)`, by anti-substitution
+--     + lexicographic induction — the subtle SN lemma, done clean at the
+--     accessibility level with NO reducibility candidates);
+--   * ★ **`nf→SN`** — EVERY β-NORMAL FORM IS SN (mutual `Ne`/`Nf`), and the
+--     concrete witnesses `sn-var`, `sn-lam-id`, `sn-βredex`.
 --
--- HONEST CEILING — the general theorem `Γ ⊢ A → SN t`. It is Girard–Tait
--- reducibility: `Red A t` by recursion on the type, `CR1`/`CR2`/`CR3`, the
--- abstraction lemma, and the fundamental theorem over a reducible substitution.
--- For OPEN terms this needs the KRIPKE form (`Red` quantifies over future
--- renamings, so it is closed under weakening) — plus reduction-reflection through
--- renaming and SN both ways under renaming. That is a substantial (~350-line)
--- formalization in its own right; and the UNIVERSE (`El c` decoding to `Π`/`Σ`)
--- makes it strictly harder still (types grow under substitution → the logical
--- relation needs an induction-recursion, à la Abel–Öhman–Vezzosi). The framework
--- and witnesses here are the honest, complete core. `--safe`, ZERO axioms.
+-- REMAINING — the general theorem `Γ ⊢ A → SN t`. With the closure theorems here
+-- (`sn-β-exp` especially) the accessibility-level subtleties are DISCHARGED; what
+-- is left is Girard–Tait reducibility itself: `Red A t` by recursion on the type,
+-- `CR1`/`CR2`/`CR3`, the abstraction lemma (now standing on `sn-β-exp`), and the
+-- fundamental theorem over a reducible substitution — in the KRIPKE form (`Red`
+-- closed under weakening), needing reduction-reflection through renaming. The
+-- UNIVERSE (`El c` decoding to `Π`/`Σ`) makes it strictly harder still (types grow
+-- under substitution → the logical relation needs an induction-recursion, à la
+-- Abel–Öhman–Vezzosi). Everything here is `--safe`, ZERO axioms.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -276,3 +283,176 @@ sn-βredex = acc λ where
   (β _ _)            → sn-var          -- contractum:  (var vz)[var vz] ↝ var vz
   (ξ-appˡ (ξ-lam ()))                  -- function subterm is normal
   (ξ-appʳ ())                          -- argument subterm is normal
+
+------------------------------------------------------------------------
+-- Renaming commutes with reduction (needed for the SN closure lemmas).
+------------------------------------------------------------------------
+
+idR : Ren Γ Γ
+idR x = x
+
+extR-idR : ∀ {A : Ty} (x : (Γ , B) ∋ A) → extR idR x ≡ idR x
+extR-idR vz     = refl
+extR-idR (vs x) = refl
+
+ren-id : (t : Γ ⊢ A) → ren idR t ≡ t
+ren-id (var x)   = refl
+ren-id (lam t)   = cong lam (trans (ren-cong extR-idR t) (ren-id t))
+ren-id (app f u) = cong₂ app (ren-id f) (ren-id u)
+
+-- the renaming analogue of `sub-comm`:  ρ (t[u]) = (ρ↑ t)[ρ u].
+ren-comm : (ρ : Ren Γ Δ) (t : (Γ , A) ⊢ B) (u : Γ ⊢ A) →
+           ren ρ (t [ u ]) ≡ sub (single (ren ρ u)) (ren (extR ρ) t)
+ren-comm {Γ} ρ t u = trans (ren-sub t) (trans (sub-cong bridge t) (sym (sub-ren t)))
+  where
+  bridge : ∀ {A : Ty} (x : (Γ , _) ∋ A) →
+           (ρ ᵣ∘ₛ single u) x ≡ (single (ren ρ u) ₛ∘ᵣ extR ρ) x
+  bridge vz     = refl
+  bridge (vs x) = refl
+
+⟶-ren : (ρ : Ren Γ Δ) {t u : Γ ⊢ A} → t ⟶ u → ren ρ t ⟶ ren ρ u
+⟶-ren ρ (β t u)    = subst (app (lam (ren (extR ρ) t)) (ren ρ u) ⟶_)
+                           (sym (ren-comm ρ t u)) (β (ren (extR ρ) t) (ren ρ u))
+⟶-ren ρ (ξ-lam r)  = ξ-lam  (⟶-ren (extR ρ) r)
+⟶-ren ρ (ξ-appˡ r) = ξ-appˡ (⟶-ren ρ r)
+⟶-ren ρ (ξ-appʳ r) = ξ-appʳ (⟶-ren ρ r)
+
+------------------------------------------------------------------------
+-- Multi-step reduction, its congruences, and substitution monotonicity.
+------------------------------------------------------------------------
+
+infix 3 _⟶*_
+data _⟶*_ {Γ A} : Γ ⊢ A → Γ ⊢ A → Set where
+  done : ∀ {t}     → t ⟶* t
+  step : ∀ {t u v} → t ⟶ u → u ⟶* v → t ⟶* v
+
+⟶*-trans : {t u v : Γ ⊢ A} → t ⟶* u → u ⟶* v → t ⟶* v
+⟶*-trans done       q = q
+⟶*-trans (step r p) q = step r (⟶*-trans p q)
+
+single-step : {t u : Γ ⊢ A} → t ⟶ u → t ⟶* u
+single-step r = step r done
+
+⟶*-lam : ∀ {Γ A B} {t t' : (Γ , A) ⊢ B} → t ⟶* t' → lam t ⟶* lam t'
+⟶*-lam done       = done
+⟶*-lam (step r p) = step (ξ-lam r) (⟶*-lam p)
+
+⟶*-appˡ : ∀ {Γ A B} {t t' : Γ ⊢ (A ⇒ B)} {u} → t ⟶* t' → app t u ⟶* app t' u
+⟶*-appˡ done       = done
+⟶*-appˡ (step r p) = step (ξ-appˡ r) (⟶*-appˡ p)
+
+⟶*-appʳ : ∀ {Γ A B} {t : Γ ⊢ (A ⇒ B)} {u u'} → u ⟶* u' → app t u ⟶* app t u'
+⟶*-appʳ done       = done
+⟶*-appʳ (step r p) = step (ξ-appʳ r) (⟶*-appʳ p)
+
+⟶*-app : ∀ {Γ A B} {t t' : Γ ⊢ (A ⇒ B)} {u u'} →
+         t ⟶* t' → u ⟶* u' → app t u ⟶* app t' u'
+⟶*-app p q = ⟶*-trans (⟶*-appˡ p) (⟶*-appʳ q)
+
+⟶*-ren : (ρ : Ren Γ Δ) {t u : Γ ⊢ A} → t ⟶* u → ren ρ t ⟶* ren ρ u
+⟶*-ren ρ done       = done
+⟶*-ren ρ (step r p) = step (⟶-ren ρ r) (⟶*-ren ρ p)
+
+-- substitution is monotone in the substitution (pointwise ⟶* ⟹ ⟶*).
+extS-mono : {σ σ' : Sub Γ Δ} → (∀ {A : Ty} (x : Γ ∋ A) → σ x ⟶* σ' x) →
+            ∀ {A : Ty} (x : (Γ , B) ∋ A) → extS σ x ⟶* extS σ' x
+extS-mono h vz     = done
+extS-mono h (vs x) = ⟶*-ren vs (h x)
+
+sub-mono : {σ σ' : Sub Γ Δ} → (∀ {A : Ty} (x : Γ ∋ A) → σ x ⟶* σ' x) →
+           (t : Γ ⊢ A) → sub σ t ⟶* sub σ' t
+sub-mono h (var x)   = h x
+sub-mono h (lam t)   = ⟶*-lam (sub-mono (extS-mono h) t)
+sub-mono h (app f u) = ⟶*-app (sub-mono h f) (sub-mono h u)
+
+single-mono : {u u' : Γ ⊢ A} → u ⟶* u' →
+              ∀ {B : Ty} (x : (Γ , A) ∋ B) → single u x ⟶* single u' x
+single-mono p vz     = p
+single-mono p (vs x) = done
+
+[]-mono : {t : (Γ , A) ⊢ B} {u u' : Γ ⊢ A} → u ⟶ u' → t [ u ] ⟶* t [ u' ]
+[]-mono {t = t} r = sub-mono (single-mono (single-step r)) t
+
+------------------------------------------------------------------------
+-- SN preservation lemmas:  ⟶* closure, inversions, and ANTI-SUBSTITUTION.
+------------------------------------------------------------------------
+
+sn-red* : {t u : Γ ⊢ A} → SN t → t ⟶* u → SN u
+sn-red* st done       = st
+sn-red* st (step r p) = sn-red* (sn-red st r) p
+
+SN-appˡ-inv : ∀ {Γ A B} {t : Γ ⊢ (A ⇒ B)} {u} → SN (app t u) → SN t
+SN-appˡ-inv (acc f) = acc (λ r → SN-appˡ-inv (f (ξ-appˡ r)))
+
+-- ★ ANTI-SUBSTITUTION: if a substitution instance is SN, so is the term.
+--   The engine behind β-expansion closure — reductions of `t` lift to
+--   reductions of `sub σ t` via `⟶-sub`, so accessibility descends.
+sn-antisub : (σ : Sub Γ Δ) {t : Γ ⊢ A} → SN (sub σ t) → SN t
+sn-antisub σ {t} (acc f) = acc (λ {t'} r → sn-antisub σ (f (⟶-sub σ r)))
+
+------------------------------------------------------------------------
+-- Neutral terms, and SN closure under the term formers.
+------------------------------------------------------------------------
+
+data Neutral : Γ ⊢ A → Set where
+  n-var : ∀ {Γ A} {x : Γ ∋ A}                     → Neutral (var x)
+  n-app : ∀ {Γ A B} {f : Γ ⊢ (A ⇒ B)} {u} → Neutral f → Neutral (app f u)
+
+¬lam-neutral : ∀ {Γ A B} {t : (Γ , A) ⊢ B} → Neutral (lam t) → ⊥
+¬lam-neutral ()
+
+neutral-red : {t u : Γ ⊢ A} → Neutral t → t ⟶ u → Neutral u
+neutral-red n-var ()
+neutral-red (n-app nf) (β t u)    = ⊥-elim (¬lam-neutral nf)
+neutral-red (n-app nf) (ξ-appˡ r) = n-app (neutral-red nf r)
+neutral-red (n-app nf) (ξ-appʳ r) = n-app nf
+
+-- SN closed under λ (its only reducts are under the binder).
+sn-lam : ∀ {Γ A B} {t : (Γ , A) ⊢ B} → SN t → SN (lam t)
+sn-lam (acc f) = acc (λ { (ξ-lam r) → sn-lam (f r) })
+
+-- SN closed under application to a NEUTRAL head (β can never fire).
+sn-neutral-app : ∀ {Γ A B} {t : Γ ⊢ (A ⇒ B)} {u} →
+                 Neutral t → SN t → SN u → SN (app t u)
+sn-neutral-app nt (acc ft) (acc fu) = acc λ where
+  (β t u)    → ⊥-elim (¬lam-neutral nt)
+  (ξ-appˡ r) → sn-neutral-app (neutral-red nt r) (ft r) (acc fu)
+  (ξ-appʳ r) → sn-neutral-app nt (acc ft) (fu r)
+
+-- ★ SN CLOSED UNDER β-EXPANSION:  if the contractum `t[u]` and the argument
+--   `u` are SN, so is the redex `(λt) u`.  `t` itself is SN by anti-substitution;
+--   then lexicographic induction on `SN t`/`SN u` clears the ξ-reducts, and the
+--   β-reduct is the given `SN (t[u])`.  This is the subtle SN lemma, done clean.
+sn-β-exp : ∀ {Γ A B} {t : (Γ , A) ⊢ B} {u : Γ ⊢ A} →
+           SN (t [ u ]) → SN u → SN (app (lam t) u)
+sn-β-exp {t = t} {u} stu su = go (sn-antisub (single u) stu) su stu
+  where
+  go : ∀ {t : (Γ , A) ⊢ B} {u} → SN t → SN u → SN (t [ u ]) → SN (app (lam t) u)
+  go {t = t} {u = u} (acc ft) (acc fu) stu = acc λ where
+    (β _ _)            → stu
+    (ξ-appˡ (ξ-lam r)) → go (ft r) (acc fu) (sn-red stu (⟶-sub (single u) r))
+    (ξ-appʳ r)         → go (acc ft) (fu r) (sn-red* stu ([]-mono {t = t} r))
+
+------------------------------------------------------------------------
+-- ★ Every β-NORMAL FORM is strongly normalizing.
+------------------------------------------------------------------------
+
+data Ne : Γ ⊢ A → Set
+data Nf : Γ ⊢ A → Set
+data Ne where
+  ne-var : ∀ {Γ A} {x : Γ ∋ A}                 → Ne (var x)
+  ne-app : ∀ {Γ A B} {f : Γ ⊢ (A ⇒ B)} {a} → Ne f → Nf a → Ne (app f a)
+data Nf where
+  nf-ne  : ∀ {Γ A} {t : Γ ⊢ A}     → Ne t → Nf t
+  nf-lam : ∀ {Γ A B} {t : (Γ , A) ⊢ B} → Nf t → Nf (lam t)
+
+ne→Neutral : {t : Γ ⊢ A} → Ne t → Neutral t
+ne→Neutral ne-var        = n-var
+ne→Neutral (ne-app nf _) = n-app (ne→Neutral nf)
+
+ne→SN : {t : Γ ⊢ A} → Ne t → SN t
+nf→SN : {t : Γ ⊢ A} → Nf t → SN t
+ne→SN ne-var           = sn-var
+ne→SN (ne-app nf nfa)  = sn-neutral-app (ne→Neutral nf) (ne→SN nf) (nf→SN nfa)
+nf→SN (nf-ne ne)       = ne→SN ne
+nf→SN (nf-lam nf)      = sn-lam (nf→SN nf)
