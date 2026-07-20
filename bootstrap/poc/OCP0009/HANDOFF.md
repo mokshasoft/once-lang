@@ -108,11 +108,14 @@ scale. There is no clean small continuation left.
   `refl`). The elimination principle is settled; the syntactic former is the
   small remaining step.
 
-- **[A3] Universe + type-formation judgment.** `U`/coding, `El : Tm U → Ty`
-  (replacing the raw `El`), and `Γ ⊢ A type` well-formedness. Same cost as A1:
-  **extends the core syntax and re-does the metatheory** (or a parallel calculus
-  / standalone universe demo à la the tower's `UnivS`/`UnivV`). *Effort:* LARGE.
-  **STILL OPEN.**
+- **[A3] Universe + type-formation judgment.**
+  - *Standalone demo* — ✅ DONE (`NbEPDirDBUniv`, dHoTT-30): a Tarski `U` with
+    codes and a decoding `El` that computes by TYPE reduction (`El (⌜Π⌝ c d) ⟶ᵀ
+    Π (El c)(El d)`), dependent codes (`⌜Π⌝`'s codomain under the decoded
+    domain), and terms inhabiting named types via `⊢conv`. Touches nothing.
+  - *Integrated* — STILL OPEN, LARGE: replacing the committed kernel's raw `El`
+    with a coded universe (+ `Γ ⊢ A type`) is the same invasive
+    extend-core-and-re-prove pass as integrated A1.
 
 ### Tier B — the well-behavedness foundation — ✅ DONE (confluence + SR)
 
