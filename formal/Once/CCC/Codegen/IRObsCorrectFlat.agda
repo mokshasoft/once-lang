@@ -41,7 +41,7 @@ open import Once.Type using (Type; FitsInReg; fits-in-reg?)
   renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
 open import Once.IRTy using (WellFormedFI-irrelevant)
 open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
-open import Once.IR using (IR; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ; _∘_;
+open import Once.IR using (IR; IRTy; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ; _∘_;
   μ-type; ⟦_⟧TI; WellFormedFI; FitsInRegI; fits-int; fits-float; ⌊_⌋)
 
 -- Surface `FitsInReg B` ⇒ erased `FitsInRegI ⌊B⌋`: `⌊Int⌋=Int`, `⌊Float⌋=Float`
@@ -162,6 +162,19 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
             (eval ir x)
             (forced (floc (flat-run f ir s alloc)))
 
+  -- The INPUT's residence — the input-side mirror of `ResultPlace`. `Input1`
+  -- either POINTS at the value in memory (`in-loc`, the spill path) or HOLDS it
+  -- directly as a register literal (`in-reg`, the fast path). Forced top-down by
+  -- `comp-step`: `ir-to-trace (g ∘ f) = ft ++ mov-to-input ∷ gt`, so after a
+  -- primitive-returning `f` the mov leaves `Input1` holding an `SV-Lit` — a
+  -- pointer-only precondition could never be met, and `g`'s IH could not be
+  -- applied at all. Generalising a PRECONDITION strengthens the obligation (it
+  -- must now hold in more situations); the apex statement is untouched.
+  data InputAt {A : IRTy} (v : ⟦ A ⟧) (loc : ValueLocation FS) (s : LocState FS) : Set where
+    in-loc : readReg (regs s) Input1 ≡ SV-Ptr loc → InputAt v loc s
+    in-reg : (fit : FitsInRegI A) → readReg (regs s) Input1 ≡ prim-sv fit v
+           → InputAt v loc s
+
   -- Same preconditions as `compile-correct-flat`'s semantic side (entry
   -- frontier 0), minus `StraightIR` (loops are allowed); conclusion is
   -- the flat refinement.
@@ -174,7 +187,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
+    InputAt x input-loc s →
     MachineRefinesObsF ir x s alloc
 
   -- `cata-correct`: the single named obligation; the record FIELDS name the
@@ -285,6 +298,22 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
             → sv-as-loc (readReg (regs s) Input1) ≡ just input-loc
   sv-loc-of s input-loc eq = cong sv-as-loc eq
 
+  -- REGISTER-RESIDENT INPUT (`in-reg`). `Input1` holds the value, so
+  -- `sv-as-loc` gives `nothing` and `pure-sigop-out-aux` takes its register
+  -- branch, reading the value with `readReg-typed` (SMCore) — the same equation
+  -- therefore holds. Residual = the IRTy/Type seam on the INPUT type (the
+  -- `⌊A⌋ ≡ Int` inversion `readReg-typed` needs). CONSUMED by the clause below,
+  -- so it is a real obligation on the apex path, not an island.
+  postulate
+    pure-sigop-value-reg :
+      ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) → effect si ≡ Pure
+      → ∀ (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS) (alloc : AllocState {FS})
+          (fit : FitsInRegI ⌊ A ⌋)
+      → readReg (regs s) Input1 ≡ prim-sv fit x
+      → halted s ≡ false
+      → readReg (regs (forced (floc (flat-run 2 (SigOp si) s alloc)))) Output
+          ≡ prim-sv (fits-erase fitness) (eval (SigOp si) x)
+
   pure-sigop-value-correct :
       ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) (rA : Readable A)
       → effect si ≡ Pure
@@ -292,16 +321,20 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
           (s : LocState FS) (alloc : AllocState {FS})
       → ValidAtWF mIn alloc x input-loc s
       → halted s ≡ false
-      → readReg (regs s) Input1 ≡ SV-Ptr input-loc
+      → InputAt x input-loc s
       → readReg (regs (forced (floc (flat-run 2 (SigOp si) s alloc)))) Output
           ≡ prim-sv (fits-erase fitness) (eval (SigOp si) x)
-  pure-sigop-value-correct si fits-intˢ rA pure-eq x input-loc s alloc valid nh rdi-eq
+  pure-sigop-value-correct si fits-intˢ rA pure-eq x input-loc s alloc valid nh (in-reg fit rdi-eq) =
+    pure-sigop-value-reg si fits-intˢ pure-eq x s alloc fit rdi-eq nh
+  pure-sigop-value-correct si fits-floatˢ rA pure-eq x input-loc s alloc valid nh (in-reg fit rdi-eq) =
+    pure-sigop-value-reg si fits-floatˢ pure-eq x s alloc fit rdi-eq nh
+  pure-sigop-value-correct si fits-intˢ rA pure-eq x input-loc s alloc valid nh (in-loc rdi-eq)
     rewrite nh | sigop-halts-false si pure-eq s =
     trans (cong (λ e → exec-sigop-output-of e si s) pure-eq) step2
     where
       step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-int (eval (SigOp si) x)
       step2 rewrite sv-loc-of s input-loc rdi-eq | readTyped-adequate rA valid = refl
-  pure-sigop-value-correct si fits-floatˢ rA pure-eq x input-loc s alloc valid nh rdi-eq
+  pure-sigop-value-correct si fits-floatˢ rA pure-eq x input-loc s alloc valid nh (in-loc rdi-eq)
     rewrite nh | sigop-halts-false si pure-eq s =
     trans (cong (λ e → exec-sigop-output-of e si s) pure-eq) step2
     where

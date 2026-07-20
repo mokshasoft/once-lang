@@ -71,7 +71,7 @@ open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDe
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 
-open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; MachineRefinesObsF)
+open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; MachineRefinesObsF; in-loc)
 open FlatMachine {FS} using (mkFlat)
 open FlatEventTrace {FS} using (flat-events)
 open FrontierInvariant {FS} using (BeforeFrontier; heap-before)
@@ -136,7 +136,7 @@ entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
               → MachineRefinesObsF ir tt entry-s entry-alloc
 entry-witness ir ioc =
   ioc (entry-size ir) Stack tt entry-loc entry-s entry-alloc
-      entry-ns valid-unit-wf entry-bf entry-nh entry-rdi
+      entry-ns valid-unit-wf entry-bf entry-nh (in-loc entry-rdi)
 
 ------------------------------------------------------------------------
 -- `flat-trace` — DEFINED (the adequate fuel is `traces-agree`'s ∃-witness).
