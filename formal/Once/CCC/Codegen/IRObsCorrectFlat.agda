@@ -52,6 +52,7 @@ fits-erase fits-floatˢ = fits-float
 open import Once.SigOp.Info using (effect; EffectShape; Pure; Emits; Halts)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
 open import Once.IR.Size using (ir-size)
+open import Data.Nat.Properties using (≤-<-trans; ≤-trans; m≤m+n; m≤n+m; n≤1+n)
 open import Function using (case_of_)
 open import Once.CCC.Eval using (eval)
 open import Once.CCC.Machine.SMCore
@@ -372,25 +373,36 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- ════════════════════════════════════════════════════════════════════
   -- The two named supporting obligations the composition discharge DECOMPOSES
   -- into (top-down; each is a real lemma, not the flat `obs-correct-rest`):
+  -- Sub-term size bounds — PROVED (were named obligations). `ir-size (g ∘ f)`
+  -- is `1 + ir-size g + ir-size f`, so each sub-term is under the bound.
+  comp-size-f : ∀ {A B C} {g : IR B C} {f : IR A B}
+              → ir-size (g ∘ f) < program-bound → ir-size f < program-bound
+  comp-size-f {g = g} {f} sz =
+    ≤-<-trans (≤-trans (m≤n+m (ir-size f) (ir-size g)) (n≤1+n _)) sz
+
+  comp-size-g : ∀ {A B C} {g : IR B C} {f : IR A B}
+              → ir-size (g ∘ f) < program-bound → ir-size g < program-bound
+  comp-size-g {g = g} {f} sz =
+    ≤-<-trans (≤-trans (m≤m+n (ir-size g) (ir-size f)) (n≤1+n _)) sz
+
   postulate
-    -- `f` is a sub-term of `g ∘ f`, so its size is under the bound (arithmetic).
-    comp-size-f : ∀ {A B C} {g : IR B C} {f : IR A B}
-                → ir-size (g ∘ f) < program-bound → ir-size f < program-bound
-    -- THE composition step: given `g`'s IH and `f`'s discharged witness (whose
-    -- `value-realized` exposes `f`'s result), produce `g ∘ f`'s witness. Its
-    -- discharge runs `mov-to-input` (`Input1 := Output = f`'s result) then `g`;
-    -- that threading is EXACTLY what forces `f`'s result to be exposed as a
-    -- register `ResultPlace` (`at-reg`) AND `g`'s input precondition to accept a
-    -- register value. So `at-reg` + the `Place`-aware precondition are dictated
-    -- by THIS obligation, not guessed. (Consumes `f`'s `value-realized`.)
+    -- THE composition step: given `g`'s IH (already fed its size bound) and
+    -- `f`'s discharged witness (whose `value-realized` exposes `f`'s result),
+    -- produce `g ∘ f`'s witness. `ir-to-trace (g ∘ f) = ft ++ mov-to-input ∷ gt`,
+    -- so the discharge runs `f`, then `mov-to-input` (`Input1 := Output` = `f`'s
+    -- result), then `g` — which is exactly what forced `f`'s result to be exposed
+    -- as a register `ResultPlace` (`at-reg`) and `g`'s input precondition to
+    -- accept a register value. (Consumes `f`'s `value-realized`.)
     comp-step : ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc}
+              → ir-size g < program-bound
               → IRObsCorrectF g → MachineRefinesObsF f x s alloc
               → MachineRefinesObsF (g ∘ f) x s alloc
 
   comp-obs-correct : ∀ {A B C} {g : IR B C} {f : IR A B}
                    → IRObsCorrectF g → IRObsCorrectF f → IRObsCorrectF (g ∘ f)
   comp-obs-correct {g = g} {f} ihg ihf sz mIn x il s alloc ns valid before nh rdi =
-    comp-step ihg (ihf (comp-size-f {g = g} {f} sz) mIn x il s alloc ns valid before nh rdi)
+    comp-step (comp-size-g {g = g} {f} sz) ihg
+      (ihf (comp-size-f {g = g} {f} sz) mIn x il s alloc ns valid before nh rdi)
 
   ir-obs-correct : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
   ir-obs-correct (Cata wf alg) = cata-correct wf alg (ir-obs-correct alg)
