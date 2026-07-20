@@ -182,21 +182,21 @@ decision engine consumes.
       products, so **`sn : Γ⊢A → SN t`** holds there too, `--safe`/zero-axiom. Adds
       the product candidate `Red (A ×ₜ B) t = Red A (fst t) × Red B (snd t)` and the
       pair-introduction lemma `red-pair` (dual to `abs`) to the dHoTT-35 proof.
-    - *The universe — type-normalization core* — ✅ DONE (`NbEPDirDBSNU`,
-      dHoTT-37). The kernel's reduction SPLITS: TERM reduction has no `El` (codes
-      reduce only by ξ), so term SN is STLC+products+inert-codes and dissolves to
-      dHoTT-36 by ERASURE (`El c` erases to a fixed simple type — recursion on the
-      finite code — so the growth rule is erasure-invariant, no IR). The
-      genuinely-new difficulty is all in TYPE reduction, where `El` decodes and a
-      type GROWS; **`snᵀ : (A : Ty) → SNᵀ A`** proves that growth TERMINATES, by a
-      plain STRUCTURAL induction on the code (predicativity: `El (⌜Π⌝ c d)` decodes
-      to types over strictly smaller codes) — no measure, no IR.
-    - *The universe — coupled fundamental theorem* — STILL OPEN, research-scale.
-      Reducibility of terms AT `El`-types (the relation must FOLLOW the decoding)
-      is the induction-recursion (Abel–Öhman–Vezzosi) standing on the dHoTT-37
-      type-normalization core; and a typed λU + the type-preserving erasure that
-      would transfer term SN from dHoTT-36 are routine-but-unbuilt. A formalization
-      **project**, not a slice.
+    - *The universe — TYPE-LEVEL metatheory* — ✅ DONE (`NbEPDirDBSNU`, dHoTT-37).
+      The kernel's reduction SPLITS: TERM reduction has no `El` (codes reduce only
+      by ξ); the genuinely-new difficulty is all in TYPE reduction, where `El`
+      decodes and a type GROWS. This module closes the type side: **`snᵀ`** (type
+      SN — growth terminates, by structural induction on the code since the universe
+      is predicative), a direct normal-form **`nfᵀ`** (`_⟶ᵀ_` is orthogonal), and
+      ★ **`dec-≅ᵀ`** (type conversion is DECIDABLE) — mirroring dHoTT-25/34 at the
+      type level.
+    - *The universe — TERM SN + coupled fundamental theorem* — STILL OPEN,
+      research-scale. NB: term SN does NOT shortcut via erasure — the erased simple
+      type is not conversion-stable (a neutral code can reduce to a real code, so
+      `El(neutral)` and its reduct erase differently: `base` vs `⇒`). So term SN
+      genuinely needs the COUPLED induction-recursion (Abel–Öhman–Vezzosi):
+      reducibility of terms AT `El`-types, FOLLOWING the decoding, standing on the
+      dHoTT-37 type-normalization. A formalization **project**, not a slice.
 
 ### Also open (from the semantic tower — not on the finalization critical path)
 
