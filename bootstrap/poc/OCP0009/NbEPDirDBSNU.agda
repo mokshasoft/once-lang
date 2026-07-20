@@ -1,35 +1,38 @@
 ------------------------------------------------------------------------
--- OCP-0009 · dHoTT step 37 — the UNIVERSE's type-normalization core:
---            El-decoding is STRONGLY NORMALIZING (type-growth terminates)  ✅
+-- OCP-0009 · dHoTT step 37 — the UNIVERSE's TYPE-LEVEL metatheory, closed:
+--   type SN + normalization + DECIDABLE TYPE CONVERSION  ✅
 --
 -- The run at the universe (HANDOFF §3 [SN⁺]).  The kernel's reduction splits:
 --   * TERM reduction `_⟶_` has NO `El` — codes `⌜Π⌝`/`⌜Σ⌝` reduce only by
---     ξ-congruence, never eliminated.  So term SN is STLC+products+inert-codes,
---     and dissolves to dHoTT-36 by ERASURE: `El c` erases to a fixed simple type
---     (recursion on the finite code), so the growth rule `El (⌜Π⌝ c d) ⟶ᵀ
---     Π (El c)(El d)` is erasure-INVARIANT — no induction-recursion needed.
+--     ξ-congruence, never eliminated.  Term SN is thus STLC+products+inert-codes
+--     in shape — but it does NOT shortcut via erasure (see the ceiling below).
 --   * TYPE reduction `_⟶ᵀ_` is where the universe's difficulty lives: `El`
 --     DECODES (`El (⌜Π⌝ c d) ⟶ᵀ Π (El c)(El d)`), so a type GROWS under a step.
---     That "types grow under substitution" is exactly what makes the full
---     reducibility predicate non-structural.
+--     That "types grow under substitution" is what makes the full reducibility
+--     predicate non-structural — and it is the type side this module CLOSES.
 --
--- This module proves the genuinely-new part: **`snᵀ : (A : Ty) → SNᵀ A`** — the
--- decoding relation is STRONGLY NORMALIZING.  The growth terminates because the
--- universe is PREDICATIVE: `El (⌜Π⌝ c d)` decodes to types over the strictly
--- SMALLER codes `c`, `d`, so a plain STRUCTURAL induction on the code closes it —
--- no measure, no well-founded recursion, no IR.  `--safe`, ZERO axioms.
+--   * **`snᵀ : (A : Ty) → SNᵀ A`** — the decoding relation is STRONGLY
+--     NORMALIZING.  The growth terminates because the universe is PREDICATIVE:
+--     `El (⌜Π⌝ c d)` decodes to types over strictly SMALLER codes, so a plain
+--     STRUCTURAL induction on the code (`snEl`) closes it — no measure, no IR.
+--   * **`nfᵀ`** — a DIRECT normal-form function (`_⟶ᵀ_` is orthogonal: codes are
+--     inert ⇒ ≤1 redex per `El`, congruences never overlap), with `nfᵀ-red*` and
+--     `red-nfᵀ`; hence `A ≅ᵀ B iff nfᵀ A ≡ nfᵀ B` and ★ **`dec-≅ᵀ`** — type
+--     conversion is DECIDABLE.  Mirrors dHoTT-25/34 at the type level.
 --
 -- Model (faithful to `NbEPDirDBType` `_⟶ᵀ_`, non-dependent for focus): codes
--- `ĉ⋆`/`ĉπ`/`ĉσ`/`atom` (the `atom` leaf models a NEUTRAL code — a variable of
--- type `U`, which is what a substitution can later turn into a real code, growing
--- the type); types `base`/`U`/`Π`/`Σ`/`El`; and `_⟶ᵀ_` = El-decoding + the
--- `Π`/`Σ` congruences, mirroring `El-⌜base⌝`/`El-⌜Π⌝`/`El-⌜Σ⌝`/`ξ-Π*`/`ξ-Σ*`.
+-- `ĉ⋆`/`ĉπ`/`ĉσ`/`atom` (`atom` models a NEUTRAL code — a variable of type `U`,
+-- what a substitution can later turn into a real code, growing the type); types
+-- `base`/`U`/`Π`/`Σ`/`El`; `_⟶ᵀ_` = El-decoding + `Π`/`Σ` congruences.
 --
--- HONEST CEILING — what remains for FULL kernel SN.  Term SN via erasure (above)
--- is routine but unbuilt here; and the COUPLED fundamental theorem — reducibility
--- of terms AT `El`-types, following the decoding — is the induction-recursion
--- (Abel–Öhman–Vezzosi) that stands on this type-normalization.  This module
--- delivers the decoding-termination core it rests on.
+-- HONEST CEILING — TERM SN and the coupled theorem remain.  Erasure does NOT
+-- shortcut term SN: the erased simple type is not conversion-stable — a neutral
+-- code (`app (lam t) u : U`) can reduce to a real code `⌜Π⌝ …`, so `El` of the
+-- redex and of its reduct erase to DIFFERENT simple types (`base` vs `⇒`).  That
+-- is the very conversion-stability obstruction that makes the universe hard, so
+-- term SN genuinely needs the COUPLED induction-recursion (Abel–Öhman–Vezzosi) —
+-- reducibility of terms AT `El`-types, following the decoding — standing on the
+-- type-normalization delivered here.  `--safe`, ZERO axioms throughout.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
