@@ -70,47 +70,50 @@ path is unblocked; what remains is known, well-scoped metatheory (§3).
 NbE**, with **subject reduction** and decidable typechecking — a system you
 could point at and say "this is how Once does dependent types."
 
-Six remaining items. Ordered within each tier by dependency; effort is a rough
-sense of scale, not a promise.
+Progress this push (dHoTT-25…27): **[B1] confluence — DONE**, **[B2] Π-
+injectivity — DONE** (the blocker; full SR assembly remains, see below),
+**[A2] directed `J` over the kernel terms — DONE**. Remaining below.
 
 ### Tier A — completable bricks (each a focused session, low risk)
 
 - **[A1] Σ intro/elim terms (pairs).** Add `pair`/`fst`/`snd` to `RTm`, extend
   substitution (mechanical — the mutual pattern is set in dHoTT-20), typing
   rules, Σ-β and Σ-η. *Deps:* none. *Unblocks:* exercising `Σ'` and Σ-η
-  (currently `NbEPDirDBEta` only has Π-η). *Effort:* small.
+  (currently `NbEPDirDBEta` only has Π-η). *Effort:* small. **STILL OPEN.**
 
-- **[A2] Internalize the DIRECTED IDENTITY TYPE in the kernel.** Add `Id`/`Hom`
-  as a type former in `RTy` (an identity type between terms), with `refl`
-  introduction and **directed `J`** elimination as rules in `_⊢_∷_`, connected to
-  the reduction `Hom`. This is the distinctively **dHoTT** piece — currently the
-  directed `J` lives only in the *semantic* tower (`NbEPDirJ`/`NbEPDirCwFJ`), not
-  over the syntactic dependent kernel. *Deps:* none hard (directed `J` is
-  structural recursion on `⟶*` chains — done before at dHoTT-1). *Effort:*
-  moderate. *Note:* this makes the theory genuinely directed-HoTT rather than a
-  standard Π/Σ theory with a reduction-based conversion.
+- **[A2] Directed identity type — ✅ DONE (`NbEPDirDBIdJ`, dHoTT-27).** Directed
+  `J⟶`/`J-tgt`, `no-sym` (refuted), `transport⟶`/`yo`, over the actual `RTm`
+  kernel terms. Honest remainder: `Hom` is still the META relation `⟶*`, not an
+  object-language `RTy` former with `refl : RTm` and `J` as *typing rules* —
+  fully internalizing needs extending `RTy`/`RTm` (and the conversion rule to see
+  `refl`). The elimination principle is settled; the syntactic former is the
+  small remaining step.
 
 - **[A3] Universe + type-formation judgment.** `U`/coding, `El : Tm U → Ty`
-  (replacing the raw `El`), and `Γ ⊢ A type` well-formedness. *Deps:* none hard.
-  *Effort:* moderate. *For:* a "complete" system (metatheory wants type
-  formation; `UnivS`/`UnivV` in the tower are the semantic precedents).
+  (replacing the raw `El`), and `Γ ⊢ A type` well-formedness. *Deps:* none hard,
+  but **requires extending the core `RTy`/`RTm` syntax** (cascades to importers)
+  or a parallel extended calculus. *Effort:* moderate–disruptive. *For:* a
+  "complete" system (`UnivS`/`UnivV` in the tower are the semantic precedents).
+  **STILL OPEN.**
 
-### Tier B — the gateway metatheorem (moderate, standard, precedent in repo)
+### Tier B — the gateway metatheorem (DONE: confluence + Π-injectivity)
 
-- **[B1] Confluence (Church–Rosser).** Tait–Martin-Löf parallel reduction +
-  diamond, then confluence of `⟶*`. **Precedent lives in this repo**:
-  `normalizer.Syntax.CCC` already has `_⟹_` + the diamond property for the
-  point-free side — port the technique. β first (standard, ~Takahashi); βη is
-  more delicate (η-postponement). *Deps:* none. *Unblocks:* → **Π-injectivity of
-  conversion** (`Π A B ≅ Π A' B' → A ≅ A' × B ≅ B'`, since Π-headed types have no
-  top-level redex) → general subject reduction; also de-risks B2/typed NbE.
-  *Effort:* moderate, well-scoped, LOW RISK.
+- **[B1] Confluence (Church–Rosser) — ✅ DONE (`NbEPDirDBConf`, dHoTT-25).**
+  Takahashi complete-development method (parallel reduction + triangle → diamond
+  → confluence), ported from `CCC._⟹_`. `confluent` and `church-rosser`
+  (convertible ⇒ joinable). β only; βη-confluence (η-postponement) is a later
+  refinement.
 
-- **[B2] General subject reduction.** With confluence (B1) in hand: invert
-  `⊢ lam t ∷ Π A B` through `⊢conv` via Π-injectivity, plus the **typed
-  substitution lemma** (typed parallel substitution preserves typing — its
-  confluence-free ingredients, `⟶-sub`/`≅ᵀ-sub`, are already proven in
-  `NbEPDirDBSR`). *Deps:* B1. *Effort:* moderate, after B1.
+- **[B2] General subject reduction — blocker DONE, assembly OPEN.** Π-INJECTIVITY
+  of conversion is proven (`NbEPDirDBInj`, dHoTT-26, via type-level confluence) —
+  the exact obstruction dHoTT-24 scoped. What remains for *full* SR is the
+  **standard typed metatheory**, all confluence-free now: (a) the typed
+  substitution lemma (typed renaming + substitution preserve typing — needs a
+  `⊢ˢ`/`Ren⊢` judgment, the ext-lemmas, and type-level `sub-comm`/`wk-cancel`);
+  (b) generation/inversion lemmas through `⊢conv` (using `Π-inj`); (c) context
+  conversion (typing respects `≅ᵀ` in the context). This is ~350–450 lines of
+  mechanical, low-insight proof — deferred here, precisely identified. *Effort:*
+  moderate–large but routine. **ASSEMBLY OPEN.**
 
 ### Tier C — the big rock (research-scale, the design's headline mechanism)
 
@@ -136,27 +139,21 @@ sense of scale, not a promise.
 --------------------------------------------------------------------------
 ## 4. Recommended next step
 
-**Take on [B1] Confluence.** Rationale:
+B1 (confluence), the B2 blocker (Π-injectivity), and A2 (directed `J`) are DONE.
+The natural next move is **complete [B2] — the subject-reduction assembly.**
+Rationale:
 
-1. **Highest leverage among completable items.** It converts the dHoTT-24
-   "confluence-free half of subject reduction" into a real path to *full* SR,
-   and yields **Π-injectivity of conversion** as a corollary — turning the one
-   honestly-scoped ceiling into a completed theorem.
-2. **Standard method with repo precedent.** Parallel reduction + diamond, and
-   `normalizer.Syntax.CCC._⟹_` already does it for the sibling calculus — port,
-   don't invent. LOW RISK, genuinely finishable in a focused session (unlike C1).
-3. **Prerequisite you want in hand before the big rock.** Typed NbE (C1) is much
-   smoother with confluence established; starting C1 cold is the wrong order.
+1. **It finishes a whole metatheorem, now unobstructed.** Π-injectivity is in
+   hand; the rest (typed renaming + substitution lemma, generation lemmas,
+   context conversion) is confluence-free and reuses `NbEPDirDBSR`'s
+   substitution-stability. Routine, not research.
+2. **Ordering.** SR + confluence is the well-behavedness foundation you want
+   solid before the typed-NbE big rock (C1). Do SR, then a quick [A1] (Σ terms,
+   small), and leave [A3] (universe — needs syntax extension) and [C1] (typed
+   NbE / SN via logical relations — research-scale) as the two named large
+   pieces.
 
-**Alternative, if the priority is dHoTT-distinctiveness over metatheory
-completion:** take [A2] (internalize the directed identity type). That is the
-piece that makes this genuinely *directed*-HoTT rather than a standard dependent
-theory, it is moderate and self-contained, and the machinery (directed `J` on
-`⟶*` chains) is already proven semantically. Confluence (B1) is the better
-*type-theory-finalization* move; A2 is the better *design-identity* move. Both
-are right; B1 first is the recommendation.
-
-Do **not** start [C1] cold — sequence B1 → B2 → (A2/A3) → C1.
+Do **not** start [C1] cold — sequence: finish B2 → A1 → A3 → C1.
 
 --------------------------------------------------------------------------
 ## 5. Reference — the two towers (compact)
