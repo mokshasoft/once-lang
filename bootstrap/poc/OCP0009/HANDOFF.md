@@ -117,6 +117,15 @@ scale. There is no clean small continuation left.
     with a coded universe (+ `Γ ⊢ A type`) is the same invasive
     extend-core-and-re-prove pass as integrated A1.
 
+**Feature-completeness (standalone) — ✅ DONE.** The self-contained line now
+carries the whole feature set: `NbEPDirDBSig` (Σ pairs, dHoTT-29), `NbEPDirDBUniv`
+(universe, dHoTT-30), and the capstone `NbEPDirDBFull` (dHoTT-31) — Π + Σ + a
+universe *together*, with codes decoding to `Π`/`Σ`, coded dependent pairs, and
+Π/Σ composing. These DEMONSTRATE the design; they are not wired into the
+committed metatheory (that is the invasive integrated pass, still open). What
+genuinely remains: the *integrated* extensions (A1/A3, LARGE) and *typed NbE/SN*
+(C1, research-scale).
+
 ### Tier B — the well-behavedness foundation — ✅ DONE (confluence + SR)
 
 - **[B1] Confluence (Church–Rosser) — ✅ DONE (`NbEPDirDBConf`, dHoTT-25).**
