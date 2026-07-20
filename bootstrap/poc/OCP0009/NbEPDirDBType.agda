@@ -37,7 +37,7 @@ module poc.OCP0009.NbEPDirDBType where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; Π; Σ'; El; RTm; var; lam; app
-        ; Sub; subTy; subTm; renTy )
+        ; pair; fst; snd; Sub; subTy; subTm; renTy )
 
 private
   variable
@@ -57,10 +57,16 @@ single u (vs x) = var x
 
 infix 3 _⟶_ _⟶ᵀ_
 data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
-  β      : (t : RTm (Γ ∙)) (u : RTm Γ) → app (lam t) u ⟶ subTm (single u) t
-  ξ-lam  : {t t' : RTm (Γ ∙)} → t ⟶ t' → lam t ⟶ lam t'
-  ξ-appˡ : {t t' u : RTm Γ} → t ⟶ t' → app t u ⟶ app t' u
-  ξ-appʳ : {t u u' : RTm Γ} → u ⟶ u' → app t u ⟶ app t u'
+  β       : (t : RTm (Γ ∙)) (u : RTm Γ) → app (lam t) u ⟶ subTm (single u) t
+  βfst    : (a b : RTm Γ) → fst (pair a b) ⟶ a
+  βsnd    : (a b : RTm Γ) → snd (pair a b) ⟶ b
+  ξ-lam   : {t t' : RTm (Γ ∙)} → t ⟶ t' → lam t ⟶ lam t'
+  ξ-appˡ  : {t t' u : RTm Γ} → t ⟶ t' → app t u ⟶ app t' u
+  ξ-appʳ  : {t u u' : RTm Γ} → u ⟶ u' → app t u ⟶ app t u'
+  ξ-pairˡ : {a a' b : RTm Γ} → a ⟶ a' → pair a b ⟶ pair a' b
+  ξ-pairʳ : {a b b' : RTm Γ} → b ⟶ b' → pair a b ⟶ pair a b'
+  ξ-fst   : {p p' : RTm Γ} → p ⟶ p' → fst p ⟶ fst p'
+  ξ-snd   : {p p' : RTm Γ} → p ⟶ p' → snd p ⟶ snd p'
 
 data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   ξ-El : {t t' : RTm Γ} → t ⟶ t' → El t ⟶ᵀ El t'
@@ -148,6 +154,11 @@ data _⊢_∷_ : (Γ : Ctx) → RTm ⌊ Γ ⌋ → RTy ⌊ Γ ⌋ → Set where
   ⊢lam  : ∀ {Γ A B t}   → (Γ ▹ A) ⊢ t ∷ B → Γ ⊢ lam t ∷ Π A B
   ⊢app  : ∀ {Γ A B t u} → Γ ⊢ t ∷ Π A B → Γ ⊢ u ∷ A →
                           Γ ⊢ app t u ∷ subTy (single u) B
+  ⊢pair : ∀ {Γ A B a b} → Γ ⊢ a ∷ A → Γ ⊢ b ∷ subTy (single a) B →
+                          Γ ⊢ pair a b ∷ Σ' A B
+  ⊢fst  : ∀ {Γ A B p}   → Γ ⊢ p ∷ Σ' A B → Γ ⊢ fst p ∷ A
+  ⊢snd  : ∀ {Γ A B p}   → Γ ⊢ p ∷ Σ' A B →
+                          Γ ⊢ snd p ∷ subTy (single (fst p)) B
   ⊢conv : ∀ {Γ t A B}   → Γ ⊢ t ∷ A → A ≅ᵀ B → Γ ⊢ t ∷ B
 
 ------------------------------------------------------------------------
