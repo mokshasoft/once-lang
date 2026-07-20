@@ -1,39 +1,34 @@
 ------------------------------------------------------------------------
 -- OCP-0009 · dHoTT step 35 — STRONG NORMALIZATION for the simply-typed core,
---                            by Girard–Tait reducibility
+--                            by Girard–Tait reducibility  ✅ PROVEN
 --
 -- The run at [SN] (HANDOFF §3 Tier C — the input `NbEPDirDBDec.dec-conv`
--- consumes). This module builds the SN FRAMEWORK for the simply-typed λ-calculus
--- and proves the SN CLOSURE THEOREMS — SN is closed under every term former and,
--- crucially, under β-EXPANSION — culminating in *every normal form is SN*. The
--- one remaining step to full `Γ⊢A → SN t` (the reducibility fundamental theorem)
--- is scoped precisely below.
+-- consumes).  ★ **`sn : Γ ⊢ A → SN t`** — every well-typed term is strongly
+-- normalizing — is proven in full here for the simply-typed λ-calculus, `--safe`
+-- and ZERO axioms.  The build:
 --
 --   * a self-contained intrinsically-typed STLC (`ι`/`_⇒_`) with the full
 --     substitution calculus (renaming, parallel substitution, the fusion lemmas,
 --     `sub-comm`, `ren-comm` — all funext-free);
---   * β-reduction `_⟶_`/`_⟶*_` with `⟶-sub`, `⟶-ren`, the `⟶*` congruences, and
---     substitution monotonicity (`sub-mono`/`[]-mono`);
---   * `SN` — strong normalization as ACCESSIBILITY, with `sn-red`/`sn-red*`,
---     `SN-appˡ-inv`, and ★ **`sn-antisub`** (`SN (sub σ t) → SN t` — reductions
---     of `t` lift through `σ`, so accessibility descends);
---   * the SN CLOSURE THEOREMS — `sn-lam`, `sn-neutral-app` (application to a
---     neutral head, β never fires), and ★ **`sn-β-exp`** (SN is closed under
---     β-EXPANSION: `SN (t[u]) → SN u → SN (app (lam t) u)`, by anti-substitution
---     + lexicographic induction — the subtle SN lemma, done clean at the
---     accessibility level with NO reducibility candidates);
---   * ★ **`nf→SN`** — EVERY β-NORMAL FORM IS SN (mutual `Ne`/`Nf`), and the
---     concrete witnesses `sn-var`, `sn-lam-id`, `sn-βredex`.
+--   * β-reduction `_⟶_`/`_⟶*_` with `⟶-sub`, `⟶-ren`, `⟶-ren-inv` (reduction
+--     REFLECTS through renaming), the `⟶*` congruences, and substitution
+--     monotonicity (`sub-mono`/`[]-mono`);
+--   * `SN` as ACCESSIBILITY, with `sn-red*`, `SN-appˡ-inv`, `sn-ren`/`SN-ren-inv`
+--     (SN both ways under renaming), and ★ `sn-antisub` (`SN (sub σ t) → SN t`);
+--   * the SN CLOSURE THEOREMS — `sn-lam`, `sn-neutral-app`, ★ `sn-β-exp` (SN
+--     closed under β-EXPANSION, done clean at the accessibility level), and
+--     `nf→SN` (every β-normal form is SN);
+--   * ★ REDUCIBILITY (Kripke form): `Red A t` by recursion on the type, `Red-ren`
+--     (closure under weakening), the candidate conditions `CR1`/`CR2`/`CR3`
+--     (mutual on the type; Girard-neutral = not-a-λ, so a redex is neutral and
+--     CR3 applies), the ABSTRACTION lemma `abs`, the FUNDAMENTAL THEOREM `fund`
+--     (every term is reducible under a reducible substitution), and hence `sn`.
 --
--- REMAINING — the general theorem `Γ ⊢ A → SN t`. With the closure theorems here
--- (`sn-β-exp` especially) the accessibility-level subtleties are DISCHARGED; what
--- is left is Girard–Tait reducibility itself: `Red A t` by recursion on the type,
--- `CR1`/`CR2`/`CR3`, the abstraction lemma (now standing on `sn-β-exp`), and the
--- fundamental theorem over a reducible substitution — in the KRIPKE form (`Red`
--- closed under weakening), needing reduction-reflection through renaming. The
--- UNIVERSE (`El c` decoding to `Π`/`Σ`) makes it strictly harder still (types grow
--- under substitution → the logical relation needs an induction-recursion, à la
--- Abel–Öhman–Vezzosi). Everything here is `--safe`, ZERO axioms.
+-- HONEST CEILING — this is the SIMPLY-TYPED calculus.  Dependent Π/Σ (no
+-- universe) reduces to it (types don't grow without `El`); the UNIVERSE is the
+-- genuinely hard extension — `El c` decodes to `Π`/`Σ`, so types grow under
+-- substitution and the logical relation needs an induction-recursion (à la
+-- Abel–Öhman–Vezzosi).  The classical core is delivered here, complete.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -456,3 +451,180 @@ ne→SN ne-var           = sn-var
 ne→SN (ne-app nf nfa)  = sn-neutral-app (ne→Neutral nf) (ne→SN nf) (nf→SN nfa)
 nf→SN (nf-ne ne)       = ne→SN ne
 nf→SN (nf-lam nf)      = sn-lam (nf→SN nf)
+
+------------------------------------------------------------------------
+-- Reduction REFLECTS through renaming, and SN transports both ways.
+------------------------------------------------------------------------
+
+record Σ' (S : Set) (P : S → Set) : Set where
+  constructor _,,_
+  field fst : S
+        snd : P fst
+open Σ'
+
+-- if `ren ρ t` reduces, the redex was already in `t`.
+⟶-ren-inv : (ρ : Ren Γ Δ) {t : Γ ⊢ A} {w : Δ ⊢ A} → ren ρ t ⟶ w →
+            Σ' (Γ ⊢ A) (λ t' → (t ⟶ t') × (w ≡ ren ρ t'))
+⟶-ren-inv ρ {var x} ()
+⟶-ren-inv ρ {lam t} (ξ-lam r) with ⟶-ren-inv (extR ρ) r
+... | t' ,, (rt / eq) = lam t' ,, (ξ-lam rt / cong lam eq)
+⟶-ren-inv ρ {app (var x) a} (ξ-appʳ r) with ⟶-ren-inv ρ r
+... | a' ,, (ra / eq) = app (var x) a' ,, (ξ-appʳ ra / cong (app (var (ρ x))) eq)
+⟶-ren-inv ρ {app (app f g) a} (ξ-appˡ r) with ⟶-ren-inv ρ r
+... | h' ,, (rh / eq) = app h' a ,, (ξ-appˡ rh / cong (λ z → app z (ren ρ a)) eq)
+⟶-ren-inv ρ {app (app f g) a} (ξ-appʳ r) with ⟶-ren-inv ρ r
+... | a' ,, (ra / eq) = app (app f g) a' ,, (ξ-appʳ ra / cong (app (ren ρ (app f g))) eq)
+⟶-ren-inv ρ {app (lam t) a} (β _ _) =
+  (t [ a ]) ,, (β t a / sym (ren-comm ρ t a))
+⟶-ren-inv ρ {app (lam t) a} (ξ-appˡ (ξ-lam r)) with ⟶-ren-inv (extR ρ) r
+... | t' ,, (rt / eq) = app (lam t') a ,, (ξ-appˡ (ξ-lam rt) / cong (λ z → app (lam z) (ren ρ a)) eq)
+⟶-ren-inv ρ {app (lam t) a} (ξ-appʳ r) with ⟶-ren-inv ρ r
+... | a' ,, (ra / eq) = app (lam t) a' ,, (ξ-appʳ ra / cong (app (lam (ren (extR ρ) t))) eq)
+
+-- SN transports forward under renaming (needs the reflection above)...
+sn-ren : (ρ : Ren Γ Δ) {t : Γ ⊢ A} → SN t → SN (ren ρ t)
+sn-ren ρ {t} (acc f) = acc go
+  where
+  go : ∀ {w} → ren ρ t ⟶ w → SN w
+  go r with ⟶-ren-inv ρ r
+  ... | t' ,, (rt / eq) = subst SN (sym eq) (sn-ren ρ (f rt))
+
+-- ...and backward (needs only `⟶-ren`).
+SN-ren-inv : (ρ : Ren Γ Δ) {t : Γ ⊢ A} → SN (ren ρ t) → SN t
+SN-ren-inv ρ (acc f) = acc (λ r → SN-ren-inv ρ (f (⟶-ren ρ r)))
+
+------------------------------------------------------------------------
+-- ★ REDUCIBILITY (Girard–Tait), Kripke form.  `Red A t` by recursion on the
+--   SIMPLE type; the arrow case quantifies over future renamings so that `Red`
+--   is closed under weakening (needed for the fundamental theorem's λ case).
+------------------------------------------------------------------------
+
+-- "neutral" in Girard's sense = NOT a λ (variables and applications).
+data NLam : Γ ⊢ A → Set where
+  nl-var : ∀ {Γ A} {x : Γ ∋ A}                   → NLam (var x)
+  nl-app : ∀ {Γ A B} {f : Γ ⊢ (A ⇒ B)} {u}       → NLam (app f u)
+
+Red : (A : Ty) → ∀ {Γ} → Γ ⊢ A → Set
+Red ι       t         = SN t
+Red (A ⇒ B) {Γ} t     = ∀ {Δ} (ρ : Ren Γ Δ) {a : Δ ⊢ A} → Red A a →
+                        Red B (app (ren ρ t) a)
+
+-- Red is closed under renaming (Kripke monotonicity).
+Red-ren : (ρ : Ren Γ Δ) {t : Γ ⊢ A} → Red A t → Red A (ren ρ t)
+Red-ren {A = ι}     ρ rt          = sn-ren ρ rt
+Red-ren {A = A ⇒ B} ρ {t} rt ρ' ra =
+  subst (λ z → Red B (app z _)) (sym (ren-ren t)) (rt (ρ' ∘ᵣ ρ) ra)
+
+------------------------------------------------------------------------
+-- The three candidate conditions, by mutual recursion on the type.
+------------------------------------------------------------------------
+
+CR1 : {t : Γ ⊢ A} → Red A t → SN t
+CR2 : {t u : Γ ⊢ A} → Red A t → t ⟶ u → Red A u
+CR3 : {t : Γ ⊢ A} → NLam t → (∀ {u} → t ⟶ u → Red A u) → Red A t
+
+CR1 {A = ι}     st         = st
+CR1 {A = A ⇒ B} {t = t} rt =
+  SN-ren-inv vs (SN-appˡ-inv
+    (CR1 (rt vs {a = var vz} (CR3 {A = A} {t = var vz} nl-var (λ ())))))
+
+CR2 {A = ι}     st r = sn-red st r
+CR2 {A = A ⇒ B} rt r = λ ρ ra → CR2 (rt ρ ra) (ξ-appˡ (⟶-ren ρ r))
+
+CR3 {A = ι}         nl h = acc h
+CR3 {A = A ⇒ B} {t = var x} nl-var h ρ {a} ra = go (CR1 ra) ra
+  where
+  go : ∀ {a} → SN a → Red A a → Red B (app (var (ρ x)) a)
+  go {a} (acc fa) ra = CR3 nl-app hyp
+    where
+    hyp : ∀ {w} → app (var (ρ x)) a ⟶ w → Red B w
+    hyp (ξ-appˡ ())
+    hyp (ξ-appʳ r') = go (fa r') (CR2 ra r')
+CR3 {A = A ⇒ B} {t = app f g} nl-app h ρ {a} ra = go (CR1 ra) ra
+  where
+  go : ∀ {a} → SN a → Red A a → Red B (app (ren ρ (app f g)) a)
+  go {a} (acc fa) ra = CR3 nl-app hyp
+    where
+    hyp : ∀ {w} → app (ren ρ (app f g)) a ⟶ w → Red B w
+    hyp (ξ-appˡ r') with ⟶-ren-inv ρ r'
+    ... | t₀ ,, (rt / eq) = subst (λ z → Red B (app z a)) (sym eq) (h rt ρ ra)
+    hyp (ξ-appʳ r') = go (fa r') (CR2 ra r')
+
+red-var : ∀ {Γ A} {x : Γ ∋ A} → Red A (var x)
+red-var = CR3 nl-var (λ ())
+
+CR2* : {t u : Γ ⊢ A} → Red A t → t ⟶* u → Red A u
+CR2* rt done       = rt
+CR2* rt (step r p) = CR2* (CR2 rt r) p
+
+------------------------------------------------------------------------
+-- The ABSTRACTION lemma — `λ` is reducible when its body is, on all reducible
+-- arguments.  β-reduct handled by hypothesis; the ξ-reducts by lexicographic
+-- induction on `SN body`/`SN arg`; `app (λs) a` is neutral (an application),
+-- so `CR3` applies at each step.  (The SN subtleties are already in `sn-β-exp`.)
+------------------------------------------------------------------------
+
+abs : ∀ {Γ A B} {t : (Γ , A) ⊢ B} →
+      (∀ {Δ} (ρ : Ren Γ Δ) {a : Δ ⊢ A} → Red A a →
+             Red B (sub (single a) (ren (extR ρ) t))) →
+      Red (A ⇒ B) (lam t)
+abs {A = A} {B} {t = t} H {Δ} ρ {a} ra =
+  go (sn-antisub (single a) (CR1 (H ρ ra))) (CR1 ra) (H ρ ra)
+  where
+  go : ∀ {s : (Δ , A) ⊢ B} {a : Δ ⊢ A} →
+       SN s → SN a → Red B (sub (single a) s) → Red B (app (lam s) a)
+  go {s} {a} (acc fs) (acc fa) rsa = CR3 nl-app hyp
+    where
+    hyp : ∀ {w} → app (lam s) a ⟶ w → Red B w
+    hyp (β _ _)            = rsa
+    hyp (ξ-appˡ (ξ-lam r)) = go (fs r) (acc fa) (CR2 rsa (⟶-sub (single a) r))
+    hyp (ξ-appʳ r)         = go (acc fs) (fa r) (CR2* rsa ([]-mono {t = s} r))
+
+------------------------------------------------------------------------
+-- The FUNDAMENTAL THEOREM, and STRONG NORMALIZATION.
+------------------------------------------------------------------------
+
+Reds : Sub Γ Δ → Set
+Reds {Γ} σ = ∀ {A} (x : Γ ∋ A) → Red A (σ x)
+
+ext-cons : ∀ {Γ Δ A} → Δ ⊢ A → Sub Γ Δ → Sub (Γ , A) Δ
+ext-cons a τ vz     = a
+ext-cons a τ (vs x) = τ x
+
+reds-ext : ∀ {Γ Δ Δ' A} {σ : Sub Γ Δ} (ρ : Ren Δ Δ') {a : Δ' ⊢ A} →
+           Red A a → Reds σ → Reds (ext-cons a (ρ ᵣ∘ₛ σ))
+reds-ext ρ ra rs vz     = ra
+reds-ext ρ ra rs (vs x) = Red-ren ρ (rs x)
+
+-- the substitution identity behind the λ case:  (σ↑ t) renamed then β-fed `a`
+-- equals `t` under the cons of `a` onto the renamed `σ`.
+fund-lam-eq : ∀ {Γ Δ Δ' A B} (σ : Sub Γ Δ) (ρ : Ren Δ Δ')
+              (a : Δ' ⊢ A) (t : (Γ , A) ⊢ B) →
+              sub (single a) (ren (extR ρ) (sub (extS σ) t)) ≡
+              sub (ext-cons a (ρ ᵣ∘ₛ σ)) t
+fund-lam-eq {Γ} σ ρ a t =
+  trans (cong (sub (single a)) (ren-sub t))
+        (trans (sub-sub t) (sub-cong bridge t))
+  where
+  bridge : ∀ {A : Ty} (x : (Γ , _) ∋ A) →
+           sub (single a) (ren (extR ρ) (extS σ x)) ≡ ext-cons a (ρ ᵣ∘ₛ σ) x
+  bridge vz     = refl
+  bridge (vs y) =
+    trans (cong (sub (single a)) (trans (ren-ren (σ y)) (sym (ren-ren (σ y)))))
+          (trans (sub-ren (ren ρ (σ y))) (sub-id (ren ρ (σ y))))
+
+fund : ∀ {Γ Δ A} {σ : Sub Γ Δ} (t : Γ ⊢ A) → Reds σ → Red A (sub σ t)
+fund (var x) rs = rs x
+fund {σ = σ} (app f u) rs =
+  subst (λ z → Red _ (app z (sub σ u))) (ren-id (sub σ f))
+        (fund f rs idR (fund u rs))
+fund {σ = σ} (lam t) rs =
+  abs (λ ρ {a} ra → subst (Red _) (sym (fund-lam-eq σ ρ a t))
+                          (fund t (reds-ext ρ ra rs)))
+
+ids-reds : Reds (ids {Γ})
+ids-reds x = red-var
+
+-- ★ STRONG NORMALIZATION: every well-typed term is SN.
+sn : (t : Γ ⊢ A) → SN t
+sn t = CR1 (subst (Red _) (sub-id t) (fund t ids-reds))
