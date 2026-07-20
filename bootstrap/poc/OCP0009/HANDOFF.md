@@ -133,8 +133,10 @@ universe *together*, with codes decoding to `Π`/`Σ`, coded dependent pairs, an
 from the committed kernel. **Σ terms (dHoTT-32) AND the universe (dHoTT-33) are
 now integrated into the committed kernel** — so `sr`/confluence cover pairs and
 codes. The committed kernel is a well-behaved, type-safe dependent type theory
-with Π, Σ, and a universe. What genuinely remains: **typed NbE/SN** (C1,
-research-scale — decidable conversion) — the last big item.
+with Π, Σ, and a universe. **C1's decision engine is DONE** (`NbEPDirDBDec`,
+dHoTT-34) — decidable conversion holds *modulo normalization*. What genuinely
+remains: **strong normalization** (SN, research-scale) — the one input the
+decision engine consumes.
 
 ### Tier B — the well-behavedness foundation — ✅ DONE (confluence + SR)
 
@@ -153,15 +155,18 @@ research-scale — decidable conversion) — the last big item.
 
 ### Tier C — the big rock (research-scale, the design's headline mechanism)
 
-- **[C1] Typed NbE / strong normalization over `_⊢_∷_`.** The "decided by NbE"
-  half of §1. Needs **SN for well-typed terms** (reducibility / logical
-  relations — Girard's method) plus a **Kripke/glueing NbE model** that reifies
-  to normal forms and decides conversion (sound + complete). Known-possible
-  (Abel–Öhman–Vezzosi and others machine-checked exactly this), but this is a
-  formalization **project**, not a slice — the single largest remaining effort.
-  *Deps:* wants B1 (confluence) and the typed setting solid (21, B2). Likely
-  needs the **intrinsic** representation (F3 forces the typed setting; raw `RTm`
-  has no total `nf`). *Effort:* LARGE.
+- **[C1] Decidable conversion via NbE.** The "decided by NbE" half of §1. Splits
+  into two parts:
+  - *The decision ENGINE* — ✅ DONE (`NbEPDirDBDec`, dHoTT-34): using CONFLUENCE,
+    convertible normal terms are syntactically equal (`conv-normal-≡`), hence
+    conversion is decidable given weak normalization + decidable NF equality
+    (`dec-conv`); plus a concrete non-conversion needing no inputs (`var≇lam`).
+  - *NORMALIZATION (SN)* — STILL OPEN, research-scale. SN for well-typed terms
+    (reducibility / a Kripke logical relation) is the remaining input the engine
+    consumes. β/Σ-β SN is classical; the UNIVERSE is what makes it hard — `El c`
+    decodes to `Π`/`Σ`, so types GROW under substitution and the reducibility
+    predicate can't be structural recursion on the type (needs a Kripke logical
+    relation, à la Abel–Öhman–Vezzosi). A formalization **project**, not a slice.
 
 ### Also open (from the semantic tower — not on the finalization critical path)
 
@@ -178,22 +183,21 @@ research-scale — decidable conversion) — the last big item.
 **Tier B is fully cleared** — confluence + subject reduction proven. Combined
 with dHoTT-20/21 (strict dependent Π/Σ, typing, `Id = core(Hom)`) and A2
 (directed `J`), the kernel is a well-behaved, type-safe (preservation) dependent
-type theory. Every remaining item is now LARGE (see the §3 reassessment):
+type theory. **Integrated A1 (Σ terms) and A3 (universe) are now DONE** — the
+committed kernel has Π, Σ, and a universe. **C1's decision engine is DONE** — so
+decidable conversion holds *modulo normalization*. Exactly ONE research-scale
+item remains:
 
-- **[A1] Σ terms** or **[A3] universe** — each extends the core syntax and
-  re-does the metatheory (substitution + confluence + SR) for the extended
-  calculus. Pick whichever feature you want first; budget for the full cascade.
-  A *standalone* universe demo (own tiny syntax, à la `UnivS`) is the cheaper way
-  to show A3's design without touching the committed core.
-- **[C1] Typed NbE / SN** — the design's headline "decided by NbE", research-
-  scale (SN via logical relations + a Kripke/glueing NbE model). The single
-  largest piece; needs the intrinsic/typed setting (F3).
+- **[SN] Strong normalization** — the one input `NbEPDirDBDec.dec-conv` still
+  consumes. β/Σ-β SN is classical (reducibility); the UNIVERSE makes it hard
+  (`El c` decodes → types grow under substitution → a Kripke logical relation is
+  needed). A formalization project (Abel–Öhman–Vezzosi-style). Everything else in
+  the design is built and machine-checked.
 
-Recommendation: if the goal is **decidable typechecking** (the design's
-headline), C1 is the target — but scope it as a dedicated project, not an inline
-slice. If the goal is **feature-completeness**, do A1 (Σ terms) as a deliberate
-extended-calculus pass. Either way, there is no more "quick brick" — the
-low-hanging metatheory is done.
+Recommendation: **strong normalization is the last piece.** It is the design's
+headline made fully decidable, and the one thing `dec-conv` still assumes. Scope
+it as a dedicated project (a Kripke logical relation for the Π/Σ/universe
+calculus) — everything the design promised is otherwise built and machine-checked.
 
 --------------------------------------------------------------------------
 ## 5. Reference — the two towers (compact)
