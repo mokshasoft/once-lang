@@ -89,11 +89,16 @@ scale. There is no clean small continuation left.
 
 ### Tier A — now LARGE (syntax extension + metatheory redo)
 
-- **[A1] Σ intro/elim terms (pairs).** Add `pair`/`fst`/`snd` to `RTm`, `Σ`-β
-  (`fst (pair a b) ⟶ a`) + congruences to `_⟶_`, typing rules — then extend
-  substitution, `_⟹_`/`_⁺`/the triangle (`NbEPDirDBConf`), and `sr`
-  (`NbEPDirDBSubj`) with the new cases. *Deps:* none. *Effort:* LARGE (re-does
-  the metatheory for the extended calculus). **STILL OPEN.**
+- **[A1] Σ intro/elim terms (pairs).**
+  - *Standalone demo* — ✅ DONE (`NbEPDirDBSig`, dHoTT-29): a fresh self-contained
+    dependent Π/Σ calculus with `pair`/`fst`/`snd`, Σ-β, Σ-η, dependent typing
+    (`⊢pair`/`⊢fst`/`⊢snd` with `snd`'s type depending on the projection), and a
+    genuinely dependent pair worked end-to-end. Touches nothing committed; shows
+    the Σ-term design.
+  - *Integrated* — STILL OPEN, LARGE: to make the COMMITTED kernel's `sr`/
+    confluence cover pairs, add `pair`/`fst`/`snd` + Σ-β to the shared `RTm`/`_⟶_`
+    and re-prove substitution, `_⟹_`/`_⁺`/triangle (`NbEPDirDBConf`), and `sr`
+    (`NbEPDirDBSubj`) with the new cases. The invasive extended-calculus pass.
 
 - **[A2] Directed identity type — ✅ DONE (`NbEPDirDBIdJ`, dHoTT-27).** Directed
   `J⟶`/`J-tgt`, `no-sym` (refuted), `transport⟶`/`yo`, over the actual `RTm`
