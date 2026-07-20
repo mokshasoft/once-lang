@@ -29,6 +29,7 @@ module Once.Adequacy.CPU.X86-64 where
 open import Data.List using (List)
 open import Data.Maybe using (Maybe)
 open import Data.String using (String)
+open import Data.Nat using (ℕ)
 
 open import Once.Denotation.Behavior      using (Behavior)
 open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
@@ -36,19 +37,40 @@ open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 import Once.CCC.Target.X86-64.Semantics as X64
 import Once.CCC.Target.X86-64.Syntax    as X64S
 
+-- Plan 0.54 Phase B / Option 2: the emit-and-continue trace over the REAL
+-- x86-64 machine (arith blocks dispatched, Pure ⇒ no event), instanced from
+-- the arch-generic `Arith.Backend.RunTraceCore`. This DERIVES `run-trace` from
+-- `X64.run`'s step semantics, replacing the old opaque observable postulate.
+open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
+open import Once.Target.X86-64.PhysReg using (Reg)
+import Once.Arith.Backend.X86-64.RunTrace as RT
+
 ------------------------------------------------------------------------
--- Postulated gaps (named, alongside the existing decode/assemble ones).
+-- run-trace-x86-64 — DERIVED (no longer an opaque observable postulate).
+-- It is `RunTraceCore.run-trace` at the x86-64 telescope; its remaining
+-- ingredients are the named gaps below — smaller and more honest than the
+-- monolithic observable they replace:
+--   * `val-x86-64`        — the concrete XInstr arith interpreter (step 4:
+--                           the real per-XInstr semantics over `State`).
+--   * `arith-env-x86-64`  — the arith-block table (which `once_arith.block.*`
+--                           label ↦ which block), extracted from the program
+--                           (step 4: derive from `prog`'s emitted blocks).
+--   * `ev-x86-64`         — label→SigOp resolution: the honest boundary axiom.
+--   * `step-budget-x86-64`— adequate fuel (event-count ↦ machine steps), the
+--                           SAME honest gap `FlatFromObs.flat-trace` carries.
 ------------------------------------------------------------------------
 
 postulate
-  -- run-trace-x86-64 — the OBSERVABLE (Plan 0.44): the step-indexed SigOp
-  -- trace produced by executing `prog` from `state`. Replaces the old
-  -- value-shaped `observe` (final `%rdi` at halt — an exit code, which
-  -- cannot represent a multi-SigOp trace). To be DERIVED from `X64.run`'s
-  -- step semantics once syscall/call-sym record the invocation and
-  -- continue (the emit-and-continue machine); postulated until then.
-  run-trace-x86-64 : X64S.Program → X64.State → Behavior
+  val-x86-64         : XInstr → X64.State → Reg → X64.Word
+  step-budget-x86-64 : ℕ → ℕ
+  ev-x86-64          : RT.EvExtractor val-x86-64
+  arith-env-x86-64   : X64S.Program → RT.ArithEnv val-x86-64
 
+run-trace-x86-64 : X64S.Program → X64.State → Behavior
+run-trace-x86-64 prog s =
+  RT.run-trace val-x86-64 step-budget-x86-64 ev-x86-64 (arith-env-x86-64 prog) prog s
+
+postulate
   -- decode-x86-64 — POSTULATED. Concrete byte-encoder/decoder per the
   -- Intel SDM is significant work; left as a named gap for now.
   decode-x86-64 : List Byte → Maybe X64S.Program
