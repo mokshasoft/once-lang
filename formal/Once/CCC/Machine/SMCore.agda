@@ -1368,12 +1368,26 @@ module AbstractExec {FS : FrameSemantics} where
   -- `semM` — the flat machine now computes the arith value (was `unit-storedvalue`
   -- sentinel). If the input can't be read (register-resident scalar / unstaged),
   -- fall back to the sentinel (kept total; that path is a later refinement).
-  pure-sigop-output {A} {B} si s with fits-in-reg? B | sv-as-loc (readReg (regs s) Input1)
-  ... | just fitB | just in-loc with readTyped A in-loc s
-  ...   | just a  = SV-Lit fitB (semM si a)
-  ...   | nothing = unit-storedvalue
-  pure-sigop-output {A} {B} si s | just fitB | nothing = unit-storedvalue
-  pure-sigop-output {A} {B} si s | nothing   | _       = structured-pure-sigop-output si s
+  -- Aux-style (explicit `Maybe` arguments), NOT `with`: a `with`-application is
+  -- OPAQUE — its scrutinees are not subterms of the goal, so downstream proofs
+  -- cannot `rewrite` them (this blocked the `pure-sigop-value-correct`
+  -- discharge). With the dispatches as real arguments the caller's `rewrite`s
+  -- (fits-in-reg? / Input1 pointer / readTyped-adequate) all reduce the term.
+  pure-sigop-out-val : ∀ {A B} → SigOpInfo A B → FitsInReg B → Maybe ⟦ A ⟧
+                     → StoredValue FS
+  pure-sigop-out-val si fitB (just a) = SV-Lit fitB (semM si a)
+  pure-sigop-out-val si fitB nothing  = unit-storedvalue
+
+  pure-sigop-out-aux : ∀ {A B} → SigOpInfo A B → LocState FS
+                     → Maybe (FitsInReg B) → Maybe (ValueLocation FS)
+                     → StoredValue FS
+  pure-sigop-out-aux {A} si s (just fitB) (just in-loc) =
+    pure-sigop-out-val si fitB (readTyped A in-loc s)
+  pure-sigop-out-aux si s (just fitB) nothing = unit-storedvalue
+  pure-sigop-out-aux si s nothing     _       = structured-pure-sigop-output si s
+
+  pure-sigop-output {A} {B} si s =
+    pure-sigop-out-aux si s (fits-in-reg? B) (sv-as-loc (readReg (regs s) Input1))
 
   -- | Shape-direct output dispatch. Pattern-matches on EffectShape
   -- directly, so `with effect si` in downstream proofs reduces the

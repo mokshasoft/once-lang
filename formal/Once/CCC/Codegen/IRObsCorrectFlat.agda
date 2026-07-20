@@ -52,9 +52,10 @@ fits-erase fits-floatˢ = fits-float
 open import Once.SigOp.Info using (effect; EffectShape; Pure; Emits; Halts)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
 open import Once.IR.Size using (ir-size)
+open import Function using (case_of_)
 open import Once.CCC.Eval using (eval)
 open import Once.CCC.Machine.SMCore
-  using (LocState; ValueLocation; SV-Ptr; halted; regs; readReg; Input1; Output;
+  using (LocState; ValueLocation; SV-Ptr; sv-as-loc; halted; regs; readReg; Input1; Output;
          instr-sigop; module AbstractExec)
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; module FrontierInvariant)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -70,7 +71,7 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 
 module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open FlatMachine {FS}
-  open AbstractExec {FS} using (exec-sigop-halts; exec-sigop-output-of; pure-sigop-output; readTyped)
+  open AbstractExec {FS} using (exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; readTyped)
   open FrontierInvariant {FS} using (BeforeFrontier)
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; prim-sv)
@@ -266,17 +267,45 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- (`with effect si in eq`, or a shape-parameterised helper) so BOTH the output
   -- and halts dispatches resolve together. All hypotheses needed for the
   -- discharge are already in the statement.
-  postulate
-    pure-sigop-value-correct :
-        ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) (rA : Readable A)
-        → effect si ≡ Pure
-        → ∀ {mIn} (x : ⟦ ⌊ A ⌋ ⟧) (input-loc : ValueLocation FS)
-            (s : LocState FS) (alloc : AllocState {FS})
-        → ValidAtWF mIn alloc x input-loc s
-        → halted s ≡ false
-        → readReg (regs s) Input1 ≡ SV-Ptr input-loc
-        → readReg (regs (forced (floc (flat-run 2 (SigOp si) s alloc)))) Output
-            ≡ prim-sv (fits-erase fitness) (eval (SigOp si) x)
+  -- A `Pure` SigOp does not halt — a top-level helper (a `where` binding cannot
+  -- be used in the clause's own `rewrite`). `exec-sigop-halts si s` IS
+  -- `exec-sigop-halts-of (effect si) si s` definitionally, and
+  -- `exec-sigop-halts-of Pure si s = false`; so `cong` on the derived accessor
+  -- resolves the SECOND fuel step's guard, which plain `rewrite pure-eq` could
+  -- not (the accessor unfolds).
+  sigop-halts-false : ∀ {A B} (si : SigOpInfo A B) → effect si ≡ Pure
+                    → (s : LocState FS) → exec-sigop-halts si s ≡ false
+  sigop-halts-false si pure-eq s = cong (λ e → exec-sigop-halts-of e si s) pure-eq
+
+  -- Same shape at the input-pointer dispatch: state the equation at exactly the
+  -- form the goal holds (`sv-as-loc (readReg …)`), so `rewrite` matches.
+  sv-loc-of : ∀ (s : LocState FS) (input-loc : ValueLocation FS)
+            → readReg (regs s) Input1 ≡ SV-Ptr input-loc
+            → sv-as-loc (readReg (regs s) Input1) ≡ just input-loc
+  sv-loc-of s input-loc eq = cong sv-as-loc eq
+
+  pure-sigop-value-correct :
+      ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) (rA : Readable A)
+      → effect si ≡ Pure
+      → ∀ {mIn} (x : ⟦ ⌊ A ⌋ ⟧) (input-loc : ValueLocation FS)
+          (s : LocState FS) (alloc : AllocState {FS})
+      → ValidAtWF mIn alloc x input-loc s
+      → halted s ≡ false
+      → readReg (regs s) Input1 ≡ SV-Ptr input-loc
+      → readReg (regs (forced (floc (flat-run 2 (SigOp si) s alloc)))) Output
+          ≡ prim-sv (fits-erase fitness) (eval (SigOp si) x)
+  pure-sigop-value-correct si fits-intˢ rA pure-eq x input-loc s alloc valid nh rdi-eq
+    rewrite nh | sigop-halts-false si pure-eq s =
+    trans (cong (λ e → exec-sigop-output-of e si s) pure-eq) step2
+    where
+      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-int (eval (SigOp si) x)
+      step2 rewrite sv-loc-of s input-loc rdi-eq | readTyped-adequate rA valid = refl
+  pure-sigop-value-correct si fits-floatˢ rA pure-eq x input-loc s alloc valid nh rdi-eq
+    rewrite nh | sigop-halts-false si pure-eq s =
+    trans (cong (λ e → exec-sigop-output-of e si s) pure-eq) step2
+    where
+      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-float (eval (SigOp si) x)
+      step2 rewrite sv-loc-of s input-loc rdi-eq | readTyped-adequate rA valid = refl
 
   pure-obs-correct-sigop :
     ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) (rA : Readable A)
