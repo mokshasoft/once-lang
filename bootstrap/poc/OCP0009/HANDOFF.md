@@ -117,19 +117,24 @@ scale. There is no clean small continuation left.
     codes and a decoding `El` that computes by TYPE reduction (`El (⌜Π⌝ c d) ⟶ᵀ
     Π (El c)(El d)`), dependent codes (`⌜Π⌝`'s codomain under the decoded
     domain), and terms inhabiting named types via `⊢conv`. Touches nothing.
-  - *Integrated* — STILL OPEN, LARGE: replacing the committed kernel's raw `El`
-    with a coded universe (+ `Γ ⊢ A type`) is the same invasive
-    extend-core-and-re-prove pass as integrated A1.
+  - *Integrated* — ✅ DONE (dHoTT-33): a Tarski `U` with codes
+    (`⌜base⌝`/`⌜Π⌝`/`⌜Σ⌝`) and El-decoding (`El (⌜Π⌝ c d) ⟶ᵀ Π (El c)(El d)`) is
+    now in the COMMITTED kernel. The substantive part was `NbEPDirDBInj` (type
+    confluence now has El-decode REDEXES — the type complete-development
+    develops them). `NbEPDirDBSubj` needed `conv-ctx` (context conversion via
+    the substitution lemma) for the `ξ-⌜Π⌝ˡ` case. **Confluence AND subject
+    reduction now cover the universe too.** All `--safe`, zero-axiom.
 
 **Feature-completeness (standalone) — ✅ DONE.** The self-contained line now
 carries the whole feature set: `NbEPDirDBSig` (Σ pairs, dHoTT-29), `NbEPDirDBUniv`
 (universe, dHoTT-30), and the capstone `NbEPDirDBFull` (dHoTT-31) — Π + Σ + a
 universe *together*, with codes decoding to `Π`/`Σ`, coded dependent pairs, and
 Π/Σ composing. These DEMONSTRATE the design; the standalone demos are separate
-from the committed kernel. **Σ terms are now ALSO integrated into the committed
-kernel (dHoTT-32)** — so `sr`/confluence cover pairs. What genuinely remains:
-*integrated A3* (the universe — same invasive pass, still open) and *typed
-NbE/SN* (C1, research-scale).
+from the committed kernel. **Σ terms (dHoTT-32) AND the universe (dHoTT-33) are
+now integrated into the committed kernel** — so `sr`/confluence cover pairs and
+codes. The committed kernel is a well-behaved, type-safe dependent type theory
+with Π, Σ, and a universe. What genuinely remains: **typed NbE/SN** (C1,
+research-scale — decidable conversion) — the last big item.
 
 ### Tier B — the well-behavedness foundation — ✅ DONE (confluence + SR)
 
