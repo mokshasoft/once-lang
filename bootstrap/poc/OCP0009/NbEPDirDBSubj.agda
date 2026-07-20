@@ -220,3 +220,11 @@ sr d (ξ-appʳ {u = u} {u' = u'} r) with gen-app d
 ... | A₀ , (B₀ , (d-t , (d-u , cC))) =
       ⊢conv (⊢app d-t (sr d-u r))
             (csymᵀ (ctrnᵀ cC (red→≅ᵀ (subTy-monoˢ (single-mono (step r done)) B₀))))
+
+------------------------------------------------------------------------
+-- Type preservation for MULTI-step reduction — the immediate corollary.
+------------------------------------------------------------------------
+
+sr* : {Γ : Ctx} {t u : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} → Γ ⊢ t ∷ A → t ⟶* u → Γ ⊢ u ∷ A
+sr* d done       = d
+sr* d (step r p) = sr* (sr d r) p
