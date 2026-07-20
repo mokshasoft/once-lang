@@ -161,24 +161,26 @@ decision engine consumes.
     convertible normal terms are syntactically equal (`conv-normal-≡`), hence
     conversion is decidable given weak normalization + decidable NF equality
     (`dec-conv`); plus a concrete non-conversion needing no inputs (`var≇lam`).
-  - *NORMALIZATION (SN)* — FRAMEWORK BUILT, general theorem still research-scale.
-    - *SN framework + witnesses* — ✅ DONE (`NbEPDirDBSN`, dHoTT-35): a self-
-      contained intrinsically-typed STLC with the full funext-free substitution
-      calculus (renaming, parallel substitution, four fusion lemmas, `sub-comm`),
-      β-reduction with `⟶-sub` (reduction survives substitution), `SN` as
-      accessibility of `_⟶_` with its preservation lemma, and CONCRETE SN
-      witnesses exercising the machinery on real well-typed terms (`sn-var`,
-      `sn-lam-id`, and the β-redex `sn-βredex` — `(λx.x) y` is SN, contracting
-      only to `y` with its ξ-reducts ruled out). `--safe`, zero-axiom.
-    - *The general theorem* — STILL OPEN, research-scale. `Γ⊢A → SN t` is
-      Girard–Tait reducibility (`Red` by recursion on the type, `CR1/2/3`, the
-      abstraction lemma, the fundamental theorem over a reducible substitution).
-      For OPEN terms this needs the KRIPKE form (`Red` quantifies over future
-      renamings ⇒ closed under weakening) plus reduction-reflection and SN both
-      ways under renaming — a substantial standalone formalization even for STLC.
-      The UNIVERSE makes it strictly harder: `El c` decodes to `Π`/`Σ`, so types
-      GROW under substitution and the reducibility predicate can't be structural
-      recursion on the type (needs an induction-recursion, à la
+  - *NORMALIZATION (SN)* — ✅ PROVEN for the simply-typed core (`NbEPDirDBSN`,
+    dHoTT-35); the dependent+universe extension remains research-scale.
+    - *STLC strong normalization* — ✅ DONE. **`sn : Γ⊢A → SN t`** is proven in
+      full for the simply-typed λ-calculus, `--safe` and ZERO axioms, by
+      Girard–Tait reducibility. The build: the funext-free substitution calculus
+      (`sub-comm`/`ren-comm`), β-reduction with `⟶-sub`/`⟶-ren`/`⟶-ren-inv`
+      (reduction reflects through renaming), `SN` as accessibility with
+      `sn-antisub` (`SN (sub σ t) → SN t`) and the closure theorems (`sn-lam`,
+      `sn-neutral-app`, ★ **`sn-β-exp`** SN closed under β-expansion, `nf→SN`);
+      then the KRIPKE logical relation `Red` (arrow case over future renamings ⇒
+      `Red-ren` closes it under weakening), the candidate conditions `CR1`/`CR2`/
+      `CR3` (mutual on the type — the crux: Girard-neutral = *not a λ*, so a
+      β-redex is neutral and `CR3` applies), the abstraction lemma `abs`, and the
+      fundamental theorem `fund`. This is the input the decision engine assumed,
+      now discharged for the simply-typed fragment.
+    - *The dependent+universe extension* — STILL OPEN, research-scale. Dependent
+      Π/Σ WITHOUT a universe reduces to the STLC case (types don't grow without
+      `El`); the UNIVERSE is the genuinely hard step — `El c` decodes to `Π`/`Σ`,
+      so types GROW under substitution and the reducibility predicate can't be
+      structural recursion on the type (needs an induction-recursion, à la
       Abel–Öhman–Vezzosi). A formalization **project**, not a slice.
 
 ### Also open (from the semantic tower — not on the finalization critical path)
@@ -198,26 +200,25 @@ with dHoTT-20/21 (strict dependent Π/Σ, typing, `Id = core(Hom)`) and A2
 (directed `J`), the kernel is a well-behaved, type-safe (preservation) dependent
 type theory. **Integrated A1 (Σ terms) and A3 (universe) are now DONE** — the
 committed kernel has Π, Σ, and a universe. **C1's decision engine is DONE** — so
-decidable conversion holds *modulo normalization*. The SN FRAMEWORK is now built
-too (`NbEPDirDBSN`, dHoTT-35 — STLC substitution calculus + `SN` + `⟶-sub` +
-concrete witnesses). Exactly ONE research-scale item remains:
+decidable conversion holds *modulo normalization*. **STLC strong normalization is
+now PROVEN** (`NbEPDirDBSN`, dHoTT-35 — `sn : Γ⊢A → SN t` by Girard–Tait
+reducibility, `--safe`, zero axioms). What remains is ONE research-scale item:
 
-- **[SN] The general strong-normalization theorem** — `Γ⊢A → SN t`, the one
-  input `NbEPDirDBDec.dec-conv` still consumes. The framework and concrete
-  witnesses are in place (dHoTT-35); what remains is the reducibility argument
-  itself. Even for STLC (open terms) this is the KRIPKE logical relation (`Red`
-  closed under weakening, plus reduction-reflection + SN both ways under
-  renaming). The UNIVERSE makes it strictly harder — `El c` decodes → types grow
-  under substitution → an induction-recursion is needed (Abel–Öhman–Vezzosi-
-  style). A formalization project. Everything else in the design is built and
+- **[SN⁺] SN for the DEPENDENT+UNIVERSE kernel** — the STLC reducibility proof
+  (dHoTT-35) is the template; lifting it to the committed kernel's Π/Σ is routine,
+  but the UNIVERSE is the genuinely hard step: `El c` decodes → types grow under
+  substitution → the reducibility predicate needs an induction-recursion
+  (Abel–Öhman–Vezzosi-style) rather than structural recursion on the type. This is
+  what `NbEPDirDBDec.dec-conv` consumes to become an unconditional decision
+  procedure for the *full* kernel. Everything else in the design is built and
   machine-checked.
 
-Recommendation: **the general SN theorem is the last piece.** It is the design's
-headline made fully decidable, and the one thing `dec-conv` still assumes. The
-substitution/reduction/SN scaffolding it stands on is now in `NbEPDirDBSN`; scope
-the reducibility proof as a dedicated project (Kripke logical relation, then the
-universe's induction-recursion) — everything the design promised is otherwise
-built and machine-checked.
+Recommendation: **the dependent+universe SN is the last piece**, and it is a
+dedicated formalization project (the induction-recursion for the universe), not a
+slice. The STLC reducibility proof in `NbEPDirDBSN` is the reusable template — the
+candidate conditions, the Kripke closure, the abstraction lemma, and the
+fundamental-theorem shape all carry over; only the universe's type-growth needs the
+IR upgrade. Everything the design promised is otherwise built and machine-checked.
 
 --------------------------------------------------------------------------
 ## 5. Reference — the two towers (compact)
