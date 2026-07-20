@@ -95,10 +95,14 @@ scale. There is no clean small continuation left.
     (`⊢pair`/`⊢fst`/`⊢snd` with `snd`'s type depending on the projection), and a
     genuinely dependent pair worked end-to-end. Touches nothing committed; shows
     the Σ-term design.
-  - *Integrated* — STILL OPEN, LARGE: to make the COMMITTED kernel's `sr`/
-    confluence cover pairs, add `pair`/`fst`/`snd` + Σ-β to the shared `RTm`/`_⟶_`
-    and re-prove substitution, `_⟹_`/`_⁺`/triangle (`NbEPDirDBConf`), and `sr`
-    (`NbEPDirDBSubj`) with the new cases. The invasive extended-calculus pass.
+  - *Integrated* — ✅ DONE (dHoTT-32): `pair`/`fst`/`snd` + Σ-β are now in the
+    COMMITTED kernel. Six modules extended (`NbEPDirDBPi` syntax+substitution,
+    `NbEPDirDBType` Σ-β + `⊢pair`/`⊢fst`/`⊢snd`, `NbEPDirDBSR`, `NbEPDirDBConf`
+    confluence re-proven with the complete-development for Σ redexes,
+    `NbEPDirDBInj` Σ-injectivity, `NbEPDirDBSubj` `sr` + generation). **Confluence
+    AND subject reduction now genuinely cover pairs.** All `--safe`, zero-axiom;
+    the whole chain re-verified. The kernel is a type-safe dependent theory with
+    BOTH Π and Σ.
 
 - **[A2] Directed identity type — ✅ DONE (`NbEPDirDBIdJ`, dHoTT-27).** Directed
   `J⟶`/`J-tgt`, `no-sym` (refuted), `transport⟶`/`yo`, over the actual `RTm`
@@ -121,10 +125,11 @@ scale. There is no clean small continuation left.
 carries the whole feature set: `NbEPDirDBSig` (Σ pairs, dHoTT-29), `NbEPDirDBUniv`
 (universe, dHoTT-30), and the capstone `NbEPDirDBFull` (dHoTT-31) — Π + Σ + a
 universe *together*, with codes decoding to `Π`/`Σ`, coded dependent pairs, and
-Π/Σ composing. These DEMONSTRATE the design; they are not wired into the
-committed metatheory (that is the invasive integrated pass, still open). What
-genuinely remains: the *integrated* extensions (A1/A3, LARGE) and *typed NbE/SN*
-(C1, research-scale).
+Π/Σ composing. These DEMONSTRATE the design; the standalone demos are separate
+from the committed kernel. **Σ terms are now ALSO integrated into the committed
+kernel (dHoTT-32)** — so `sr`/confluence cover pairs. What genuinely remains:
+*integrated A3* (the universe — same invasive pass, still open) and *typed
+NbE/SN* (C1, research-scale).
 
 ### Tier B — the well-behavedness foundation — ✅ DONE (confluence + SR)
 
