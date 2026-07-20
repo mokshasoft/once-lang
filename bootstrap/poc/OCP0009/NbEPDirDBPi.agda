@@ -63,6 +63,7 @@ data RTm : Cx → Set
 
 data RTy where
   base : ∀ {Γ} → RTy Γ
+  U    : ∀ {Γ} → RTy Γ                    -- a universe (codes decode via `El`)
   Π    : ∀ {Γ} → RTy Γ → RTy (Γ ∙) → RTy Γ
   Σ'   : ∀ {Γ} → RTy Γ → RTy (Γ ∙) → RTy Γ
   El   : ∀ {Γ} → RTm Γ → RTy Γ
@@ -74,6 +75,9 @@ data RTm where
   pair : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ    -- Σ introduction
   fst  : ∀ {Γ} → RTm Γ → RTm Γ            -- Σ elimination
   snd  : ∀ {Γ} → RTm Γ → RTm Γ
+  ⌜base⌝ : ∀ {Γ} → RTm Γ                  -- code for `base`
+  ⌜Π⌝    : ∀ {Γ} → RTm Γ → RTm (Γ ∙) → RTm Γ  -- code for `Π` (dependent codomain)
+  ⌜Σ⌝    : ∀ {Γ} → RTm Γ → RTm (Γ ∙) → RTm Γ  -- code for `Σ`
 
 private
   variable
@@ -93,6 +97,7 @@ extR ρ (vs x) = vs (ρ x)
 renTy : Ren Γ Δ → RTy Γ → RTy Δ
 renTm : Ren Γ Δ → RTm Γ → RTm Δ
 renTy ρ base     = base
+renTy ρ U        = U
 renTy ρ (Π A B)  = Π (renTy ρ A) (renTy (extR ρ) B)
 renTy ρ (Σ' A B) = Σ' (renTy ρ A) (renTy (extR ρ) B)
 renTy ρ (El t)   = El (renTm ρ t)
@@ -102,6 +107,9 @@ renTm ρ (app t u)  = app (renTm ρ t) (renTm ρ u)
 renTm ρ (pair a b) = pair (renTm ρ a) (renTm ρ b)
 renTm ρ (fst p)    = fst (renTm ρ p)
 renTm ρ (snd p)    = snd (renTm ρ p)
+renTm ρ ⌜base⌝     = ⌜base⌝
+renTm ρ (⌜Π⌝ c d)  = ⌜Π⌝ (renTm ρ c) (renTm (extR ρ) d)
+renTm ρ (⌜Σ⌝ c d)  = ⌜Σ⌝ (renTm ρ c) (renTm (extR ρ) d)
 
 ------------------------------------------------------------------------
 -- Parallel substitutions (variable-for-term) and their action.
@@ -117,6 +125,7 @@ extS σ (vs x) = renTm vs (σ x)
 subTy : Sub Γ Δ → RTy Γ → RTy Δ
 subTm : Sub Γ Δ → RTm Γ → RTm Δ
 subTy σ base     = base
+subTy σ U        = U
 subTy σ (Π A B)  = Π (subTy σ A) (subTy (extS σ) B)
 subTy σ (Σ' A B) = Σ' (subTy σ A) (subTy (extS σ) B)
 subTy σ (El t)   = El (subTm σ t)
@@ -126,6 +135,9 @@ subTm σ (app t u)  = app (subTm σ t) (subTm σ u)
 subTm σ (pair a b) = pair (subTm σ a) (subTm σ b)
 subTm σ (fst p)    = fst (subTm σ p)
 subTm σ (snd p)    = snd (subTm σ p)
+subTm σ ⌜base⌝     = ⌜base⌝
+subTm σ (⌜Π⌝ c d)  = ⌜Π⌝ (subTm σ c) (subTm (extS σ) d)
+subTm σ (⌜Σ⌝ c d)  = ⌜Σ⌝ (subTm σ c) (subTm (extS σ) d)
 
 -- Identity and the four composition operators (explicit-index, genuine
 -- Ren/Sub — same shape as NbEPDirDB).
@@ -185,6 +197,7 @@ renTy-cong : {ρ ρ' : Ren Γ Δ} → (∀ (x : Var Γ) → ρ x ≡ ρ' x) →
 renTm-cong : {ρ ρ' : Ren Γ Δ} → (∀ (x : Var Γ) → ρ x ≡ ρ' x) →
              (t : RTm Γ) → renTm ρ t ≡ renTm ρ' t
 renTy-cong h base     = refl
+renTy-cong h U        = refl
 renTy-cong h (Π A B)  = cong₂ Π (renTy-cong h A) (renTy-cong (extR-cong h) B)
 renTy-cong h (Σ' A B) = cong₂ Σ' (renTy-cong h A) (renTy-cong (extR-cong h) B)
 renTy-cong h (El t)   = cong El (renTm-cong h t)
@@ -194,6 +207,9 @@ renTm-cong h (app t u)  = cong₂ app (renTm-cong h t) (renTm-cong h u)
 renTm-cong h (pair a b) = cong₂ pair (renTm-cong h a) (renTm-cong h b)
 renTm-cong h (fst p)    = cong fst (renTm-cong h p)
 renTm-cong h (snd p)    = cong snd (renTm-cong h p)
+renTm-cong h ⌜base⌝     = refl
+renTm-cong h (⌜Π⌝ c d)  = cong₂ ⌜Π⌝ (renTm-cong h c) (renTm-cong (extR-cong h) d)
+renTm-cong h (⌜Σ⌝ c d)  = cong₂ ⌜Σ⌝ (renTm-cong h c) (renTm-cong (extR-cong h) d)
 
 extS-cong : {σ σ' : Sub Γ Δ} → (∀ (x : Var Γ) → σ x ≡ σ' x) →
             ∀ (x : Var (Γ ∙)) → extS σ x ≡ extS σ' x
@@ -205,6 +221,7 @@ subTy-cong : {σ σ' : Sub Γ Δ} → (∀ (x : Var Γ) → σ x ≡ σ' x) →
 subTm-cong : {σ σ' : Sub Γ Δ} → (∀ (x : Var Γ) → σ x ≡ σ' x) →
              (t : RTm Γ) → subTm σ t ≡ subTm σ' t
 subTy-cong h base     = refl
+subTy-cong h U        = refl
 subTy-cong h (Π A B)  = cong₂ Π (subTy-cong h A) (subTy-cong (extS-cong h) B)
 subTy-cong h (Σ' A B) = cong₂ Σ' (subTy-cong h A) (subTy-cong (extS-cong h) B)
 subTy-cong h (El t)   = cong El (subTm-cong h t)
@@ -214,6 +231,9 @@ subTm-cong h (app t u)  = cong₂ app (subTm-cong h t) (subTm-cong h u)
 subTm-cong h (pair a b) = cong₂ pair (subTm-cong h a) (subTm-cong h b)
 subTm-cong h (fst p)    = cong fst (subTm-cong h p)
 subTm-cong h (snd p)    = cong snd (subTm-cong h p)
+subTm-cong h ⌜base⌝     = refl
+subTm-cong h (⌜Π⌝ c d)  = cong₂ ⌜Π⌝ (subTm-cong h c) (subTm-cong (extS-cong h) d)
+subTm-cong h (⌜Σ⌝ c d)  = cong₂ ⌜Σ⌝ (subTm-cong h c) (subTm-cong (extS-cong h) d)
 
 ------------------------------------------------------------------------
 -- The four mutual fusion lemmas (each a type/term pair). Binder cases bridge
@@ -231,6 +251,7 @@ renTy-renTy : {ρ' : Ren Δ Θ} {ρ : Ren Γ Δ} (A : RTy Γ) →
 renTm-renTm : {ρ' : Ren Δ Θ} {ρ : Ren Γ Δ} (t : RTm Γ) →
               renTm ρ' (renTm ρ t) ≡ renTm (ρ' ∘ᵣ ρ) t
 renTy-renTy base     = refl
+renTy-renTy U        = refl
 renTy-renTy {ρ' = ρ'} {ρ} (Π A B) =
   cong₂ Π (renTy-renTy A) (trans (renTy-renTy B) (renTy-cong (extr-extr ρ' ρ) B))
 renTy-renTy {ρ' = ρ'} {ρ} (Σ' A B) =
@@ -243,6 +264,11 @@ renTm-renTm (app t u)  = cong₂ app (renTm-renTm t) (renTm-renTm u)
 renTm-renTm (pair a b) = cong₂ pair (renTm-renTm a) (renTm-renTm b)
 renTm-renTm (fst p)    = cong fst (renTm-renTm p)
 renTm-renTm (snd p)    = cong snd (renTm-renTm p)
+renTm-renTm ⌜base⌝     = refl
+renTm-renTm {ρ' = ρ'} {ρ} (⌜Π⌝ c d) =
+  cong₂ ⌜Π⌝ (renTm-renTm c) (trans (renTm-renTm d) (renTm-cong (extr-extr ρ' ρ) d))
+renTm-renTm {ρ' = ρ'} {ρ} (⌜Σ⌝ c d) =
+  cong₂ ⌜Σ⌝ (renTm-renTm c) (trans (renTm-renTm d) (renTm-cong (extr-extr ρ' ρ) d))
 
 -- sub ∘ ren.
 exts-extr : (σ : Sub Δ Θ) (ρ : Ren Γ Δ) (x : Var (Γ ∙)) →
@@ -255,6 +281,7 @@ subTy-renTy : {σ : Sub Δ Θ} {ρ : Ren Γ Δ} (A : RTy Γ) →
 subTm-renTm : {σ : Sub Δ Θ} {ρ : Ren Γ Δ} (t : RTm Γ) →
               subTm σ (renTm ρ t) ≡ subTm (σ ₛ∘ᵣ ρ) t
 subTy-renTy base     = refl
+subTy-renTy U        = refl
 subTy-renTy {σ = σ} {ρ} (Π A B) =
   cong₂ Π (subTy-renTy A) (trans (subTy-renTy B) (subTy-cong (exts-extr σ ρ) B))
 subTy-renTy {σ = σ} {ρ} (Σ' A B) =
@@ -267,6 +294,11 @@ subTm-renTm (app t u)  = cong₂ app (subTm-renTm t) (subTm-renTm u)
 subTm-renTm (pair a b) = cong₂ pair (subTm-renTm a) (subTm-renTm b)
 subTm-renTm (fst p)    = cong fst (subTm-renTm p)
 subTm-renTm (snd p)    = cong snd (subTm-renTm p)
+subTm-renTm ⌜base⌝     = refl
+subTm-renTm {σ = σ} {ρ} (⌜Π⌝ c d) =
+  cong₂ ⌜Π⌝ (subTm-renTm c) (trans (subTm-renTm d) (subTm-cong (exts-extr σ ρ) d))
+subTm-renTm {σ = σ} {ρ} (⌜Σ⌝ c d) =
+  cong₂ ⌜Σ⌝ (subTm-renTm c) (trans (subTm-renTm d) (subTm-cong (exts-extr σ ρ) d))
 
 -- ren ∘ sub.
 extr-exts : (ρ : Ren Δ Θ) (σ : Sub Γ Δ) (x : Var (Γ ∙)) →
@@ -279,6 +311,7 @@ renTy-subTy : {ρ : Ren Δ Θ} {σ : Sub Γ Δ} (A : RTy Γ) →
 renTm-subTm : {ρ : Ren Δ Θ} {σ : Sub Γ Δ} (t : RTm Γ) →
               renTm ρ (subTm σ t) ≡ subTm (ρ ᵣ∘ₛ σ) t
 renTy-subTy base     = refl
+renTy-subTy U        = refl
 renTy-subTy {ρ = ρ} {σ} (Π A B) =
   cong₂ Π (renTy-subTy A) (trans (renTy-subTy B) (subTy-cong (extr-exts ρ σ) B))
 renTy-subTy {ρ = ρ} {σ} (Σ' A B) =
@@ -291,6 +324,11 @@ renTm-subTm (app t u)  = cong₂ app (renTm-subTm t) (renTm-subTm u)
 renTm-subTm (pair a b) = cong₂ pair (renTm-subTm a) (renTm-subTm b)
 renTm-subTm (fst p)    = cong fst (renTm-subTm p)
 renTm-subTm (snd p)    = cong snd (renTm-subTm p)
+renTm-subTm ⌜base⌝     = refl
+renTm-subTm {ρ = ρ} {σ} (⌜Π⌝ c d) =
+  cong₂ ⌜Π⌝ (renTm-subTm c) (trans (renTm-subTm d) (subTm-cong (extr-exts ρ σ) d))
+renTm-subTm {ρ = ρ} {σ} (⌜Σ⌝ c d) =
+  cong₂ ⌜Σ⌝ (renTm-subTm c) (trans (renTm-subTm d) (subTm-cong (extr-exts ρ σ) d))
 
 -- sub ∘ sub.
 exts-exts : (τ : Sub Δ Θ) (σ : Sub Γ Δ) (x : Var (Γ ∙)) →
@@ -303,6 +341,7 @@ subTy-subTy : {τ : Sub Δ Θ} {σ : Sub Γ Δ} (A : RTy Γ) →
 subTm-subTm : {τ : Sub Δ Θ} {σ : Sub Γ Δ} (t : RTm Γ) →
               subTm τ (subTm σ t) ≡ subTm (τ ∘ₛ σ) t
 subTy-subTy base     = refl
+subTy-subTy U        = refl
 subTy-subTy {τ = τ} {σ} (Π A B) =
   cong₂ Π (subTy-subTy A) (trans (subTy-subTy B) (subTy-cong (exts-exts τ σ) B))
 subTy-subTy {τ = τ} {σ} (Σ' A B) =
@@ -315,6 +354,11 @@ subTm-subTm (app t u)  = cong₂ app (subTm-subTm t) (subTm-subTm u)
 subTm-subTm (pair a b) = cong₂ pair (subTm-subTm a) (subTm-subTm b)
 subTm-subTm (fst p)    = cong fst (subTm-subTm p)
 subTm-subTm (snd p)    = cong snd (subTm-subTm p)
+subTm-subTm ⌜base⌝     = refl
+subTm-subTm {τ = τ} {σ} (⌜Π⌝ c d) =
+  cong₂ ⌜Π⌝ (subTm-subTm c) (trans (subTm-subTm d) (subTm-cong (exts-exts τ σ) d))
+subTm-subTm {τ = τ} {σ} (⌜Σ⌝ c d) =
+  cong₂ ⌜Σ⌝ (subTm-subTm c) (trans (subTm-subTm d) (subTm-cong (exts-exts τ σ) d))
 
 -- Identity: `exts` preserves `idₛ`, hence `subTy idₛ = id`.
 exts-id : (x : Var (Γ ∙)) → extS idₛ x ≡ idₛ x
@@ -324,6 +368,7 @@ exts-id (vs x) = refl
 subTy-id : (A : RTy Γ) → subTy idₛ A ≡ A
 subTm-id : (t : RTm Γ) → subTm idₛ t ≡ t
 subTy-id base     = refl
+subTy-id U        = refl
 subTy-id (Π A B)  = cong₂ Π (subTy-id A) (trans (subTy-cong exts-id B) (subTy-id B))
 subTy-id (Σ' A B) = cong₂ Σ' (subTy-id A) (trans (subTy-cong exts-id B) (subTy-id B))
 subTy-id (El t)   = cong El (subTm-id t)
@@ -333,6 +378,9 @@ subTm-id (app t u)  = cong₂ app (subTm-id t) (subTm-id u)
 subTm-id (pair a b) = cong₂ pair (subTm-id a) (subTm-id b)
 subTm-id (fst p)    = cong fst (subTm-id p)
 subTm-id (snd p)    = cong snd (subTm-id p)
+subTm-id ⌜base⌝     = refl
+subTm-id (⌜Π⌝ c d)  = cong₂ ⌜Π⌝ (subTm-id c) (trans (subTm-cong exts-id d) (subTm-id d))
+subTm-id (⌜Σ⌝ c d)  = cong₂ ⌜Σ⌝ (subTm-id c) (trans (subTm-cong exts-id d) (subTm-id d))
 
 ------------------------------------------------------------------------
 -- ★ THE CATEGORY-OF-CONTEXTS LAWS ON TYPES — the coherence that makes the

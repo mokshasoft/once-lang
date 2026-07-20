@@ -40,7 +40,8 @@ open import poc.OCP0009.NbEPDirDBPi
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
         ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
-        ; _⟶ᵀ_; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
+        ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
+        ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; _⊢_∷_; ⊢var; ⊢lam; ⊢app; here )
 
@@ -84,8 +85,15 @@ sub-comm {Γ} σ t u =
 ⟶-sub σ (ξ-pairʳ r) = ξ-pairʳ (⟶-sub σ r)
 ⟶-sub σ (ξ-fst r)   = ξ-fst (⟶-sub σ r)
 ⟶-sub σ (ξ-snd r)   = ξ-snd (⟶-sub σ r)
+⟶-sub σ (ξ-⌜Π⌝ˡ r) = ξ-⌜Π⌝ˡ (⟶-sub σ r)
+⟶-sub σ (ξ-⌜Π⌝ʳ r) = ξ-⌜Π⌝ʳ (⟶-sub (extS σ) r)
+⟶-sub σ (ξ-⌜Σ⌝ˡ r) = ξ-⌜Σ⌝ˡ (⟶-sub σ r)
+⟶-sub σ (ξ-⌜Σ⌝ʳ r) = ξ-⌜Σ⌝ʳ (⟶-sub (extS σ) r)
 
 ⟶ᵀ-sub : (σ : Sub Γ Δ) {A B : RTy Γ} → A ⟶ᵀ B → subTy σ A ⟶ᵀ subTy σ B
+⟶ᵀ-sub σ (El-⌜base⌝)  = El-⌜base⌝
+⟶ᵀ-sub σ (El-⌜Π⌝ c d) = El-⌜Π⌝ (subTm σ c) (subTm (extS σ) d)
+⟶ᵀ-sub σ (El-⌜Σ⌝ c d) = El-⌜Σ⌝ (subTm σ c) (subTm (extS σ) d)
 ⟶ᵀ-sub σ (ξ-El r) = ξ-El (⟶-sub σ r)
 ⟶ᵀ-sub σ (ξ-Πˡ r) = ξ-Πˡ (⟶ᵀ-sub σ r)
 ⟶ᵀ-sub σ (ξ-Πʳ r) = ξ-Πʳ (⟶ᵀ-sub (extS σ) r)

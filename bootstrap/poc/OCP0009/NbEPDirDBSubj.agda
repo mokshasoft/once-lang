@@ -28,19 +28,21 @@ module poc.OCP0009.NbEPDirDBSubj where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ )
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; Π; Σ'; El; RTm; var; lam; app
-        ; pair; fst; snd
+  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; RTm; var; lam; app
+        ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ
         ; _∘ᵣ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_
         ; subTy-renTy; renTy-subTy; subTy-subTy; renTy-renTy
         ; subTy-cong; renTy-cong; subTy-id; subTm-renTm; subTm-id )
 open import poc.OCP0009.NbEPDirDBType
-  using ( single; _⟶ᵀ_; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
+  using ( single; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
-        ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd; _⟶*_; done; step
+        ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
+        ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
-        ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢conv )
+        ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd
+        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢conv )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub )
 open import poc.OCP0009.NbEPDirDBConf
   using ( ⟶-ren; subTm-monoˢ; extS-mono; single-mono )
@@ -107,6 +109,9 @@ subTy-comm {Γ} σ B u =
 ------------------------------------------------------------------------
 
 ⟶ᵀ-ren : (ρ : Ren Γ Δ) {A B : RTy Γ} → A ⟶ᵀ B → renTy ρ A ⟶ᵀ renTy ρ B
+⟶ᵀ-ren ρ El-⌜base⌝    = El-⌜base⌝
+⟶ᵀ-ren ρ (El-⌜Π⌝ c d) = El-⌜Π⌝ (renTm ρ c) (renTm (extR ρ) d)
+⟶ᵀ-ren ρ (El-⌜Σ⌝ c d) = El-⌜Σ⌝ (renTm ρ c) (renTm (extR ρ) d)
 ⟶ᵀ-ren ρ (ξ-El r) = ξ-El (⟶-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-Πˡ r) = ξ-Πˡ (⟶ᵀ-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-Πʳ r) = ξ-Πʳ (⟶ᵀ-ren (extR ρ) r)
@@ -122,6 +127,7 @@ subTy-comm {Γ} σ B u =
 subTy-monoˢ : {σ σ' : Sub Γ Δ} → (∀ x → σ x ⟶* σ' x) →
               (A : RTy Γ) → subTy σ A ⟶ᵀ* subTy σ' A
 subTy-monoˢ h base     = doneᵀ
+subTy-monoˢ h U        = doneᵀ
 subTy-monoˢ h (El t)   = ⟶ᵀ*-El (subTm-monoˢ h t)
 subTy-monoˢ h (Π A B)  =
   ⟶ᵀ*-trans (⟶ᵀ*-Πˡ (subTy-monoˢ h A)) (⟶ᵀ*-Πʳ (subTy-monoˢ (extS-mono h) B))
@@ -153,6 +159,9 @@ ren-lemma {ρ = ρ} (⊢pair {B = B} {a = a} d₁ d₂) h =
 ren-lemma (⊢fst d) h = ⊢fst (ren-lemma d h)
 ren-lemma {ρ = ρ} (⊢snd {B = B} {p = p} d) h =
   ⊢-cast (sym (ren-comm-ty ρ B (fst p))) (⊢snd (ren-lemma d h))
+ren-lemma ⊢⌜base⌝ h = ⊢⌜base⌝
+ren-lemma (⊢⌜Π⌝ dc dd) h = ⊢⌜Π⌝ (ren-lemma dc h) (ren-lemma dd (Ren⊢-ext h))
+ren-lemma (⊢⌜Σ⌝ dc dd) h = ⊢⌜Σ⌝ (ren-lemma dc h) (ren-lemma dd (Ren⊢-ext h))
 ren-lemma {ρ = ρ} (⊢conv d c) h = ⊢conv (ren-lemma d h) (≅ᵀ-ren ρ c)
 
 ⊢wk : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
@@ -184,6 +193,9 @@ sub-lemma {σ = σ} (⊢pair {B = B} {a = a} d₁ d₂) h =
 sub-lemma (⊢fst d) h = ⊢fst (sub-lemma d h)
 sub-lemma {σ = σ} (⊢snd {B = B} {p = p} d) h =
   ⊢-cast (sym (subTy-comm σ B (fst p))) (⊢snd (sub-lemma d h))
+sub-lemma ⊢⌜base⌝ h = ⊢⌜base⌝
+sub-lemma (⊢⌜Π⌝ dc dd) h = ⊢⌜Π⌝ (sub-lemma dc h) (sub-lemma dd (Sub⊢-ext h))
+sub-lemma (⊢⌜Σ⌝ dc dd) h = ⊢⌜Σ⌝ (sub-lemma dc h) (sub-lemma dd (Sub⊢-ext h))
 sub-lemma {σ = σ} (⊢conv d c) h = ⊢conv (sub-lemma d h) (≅ᵀ-sub σ c)
 
 ⊢[] : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {t : RTm (⌊ Γ ⌋ ∙)} {B : RTy (⌊ Γ ⌋ ∙)}
@@ -194,6 +206,22 @@ sub-lemma {σ = σ} (⊢conv d c) h = ⊢conv (sub-lemma d h) (≅ᵀ-sub σ c)
   single⊢ : Sub⊢ _ _ (single a)
   single⊢ here          = ⊢-cast (sym (wk-cancel a A)) da
   single⊢ (there {A = A₀} v) = ⊢-cast (sym (wk-cancel a A₀)) (⊢var v)
+
+-- Context conversion: converting the LAST context entry along `≅ᵀ`. Derived
+-- from the substitution lemma (identity substitution, with `⊢conv` at `vz`),
+-- sidestepping the induction-on-derivation obstruction.
+conv-ctx : {Γ : Ctx} {A A' : RTy ⌊ Γ ⌋} → A ≅ᵀ A' →
+           {t : RTm (⌊ Γ ⌋ ∙)} {B : RTy (⌊ Γ ⌋ ∙)} →
+           (Γ ▹ A) ⊢ t ∷ B → (Γ ▹ A') ⊢ t ∷ B
+conv-ctx {Γ} {A} {A'} c {t} {B} d =
+  ⊢-cast (subTy-id B)
+    (subst (λ z → (Γ ▹ A') ⊢ z ∷ subTy idₛ B) (subTm-id t) (sub-lemma d idₛ⊢))
+  where
+  idₛ⊢ : Sub⊢ (Γ ▹ A) (Γ ▹ A') idₛ
+  idₛ⊢ here =
+    ⊢-cast (sym (subTy-id (renTy vs A))) (⊢conv (⊢var here) (csymᵀ (≅ᵀ-ren vs c)))
+  idₛ⊢ (there {A = A₀} v) =
+    ⊢-cast (sym (subTy-id (renTy vs A₀))) (⊢var (there v))
 
 ------------------------------------------------------------------------
 -- Generation (inversion through `⊢conv`).
@@ -233,6 +261,20 @@ gen-snd : {Γ : Ctx} {p : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ snd p 
 gen-snd (⊢snd d) = _ , (_ , (d , crflᵀ))
 gen-snd (⊢conv d c) with gen-snd d
 ... | A , (B , (dp , c')) = A , (B , (dp , ctrnᵀ (csymᵀ c) c'))
+
+gen-⌜Π⌝ : {Γ : Ctx} {c : RTm ⌊ Γ ⌋} {d : RTm (⌊ Γ ⌋ ∙)} {C : RTy ⌊ Γ ⌋} →
+          Γ ⊢ ⌜Π⌝ c d ∷ C →
+          (Γ ⊢ c ∷ U) × (((Γ ▹ El c) ⊢ d ∷ U) × (C ≅ᵀ U))
+gen-⌜Π⌝ (⊢⌜Π⌝ dc dd) = dc , (dd , crflᵀ)
+gen-⌜Π⌝ (⊢conv d c) with gen-⌜Π⌝ d
+... | (dc , (dd , c')) = dc , (dd , ctrnᵀ (csymᵀ c) c')
+
+gen-⌜Σ⌝ : {Γ : Ctx} {c : RTm ⌊ Γ ⌋} {d : RTm (⌊ Γ ⌋ ∙)} {C : RTy ⌊ Γ ⌋} →
+          Γ ⊢ ⌜Σ⌝ c d ∷ C →
+          (Γ ⊢ c ∷ U) × (((Γ ▹ El c) ⊢ d ∷ U) × (C ≅ᵀ U))
+gen-⌜Σ⌝ (⊢⌜Σ⌝ dc dd) = dc , (dd , crflᵀ)
+gen-⌜Σ⌝ (⊢conv d c) with gen-⌜Σ⌝ d
+... | (dc , (dd , c')) = dc , (dd , ctrnᵀ (csymᵀ c) c')
 
 ------------------------------------------------------------------------
 -- ★ SUBJECT REDUCTION.
@@ -279,6 +321,16 @@ sr d (ξ-snd r) with gen-snd d
 ... | A₀ , (B₀ , (d-p , cC)) =
       ⊢conv (⊢snd (sr d-p r))
         (csymᵀ (ctrnᵀ cC (red→≅ᵀ (subTy-monoˢ (single-mono (step (ξ-fst r) done)) B₀))))
+sr d (ξ-⌜Π⌝ˡ r) with gen-⌜Π⌝ d
+... | (dc , (dd , cU)) =
+      ⊢conv (⊢⌜Π⌝ (sr dc r) (conv-ctx (credᵀ (ξ-El r)) dd)) (csymᵀ cU)
+sr d (ξ-⌜Π⌝ʳ r) with gen-⌜Π⌝ d
+... | (dc , (dd , cU)) = ⊢conv (⊢⌜Π⌝ dc (sr dd r)) (csymᵀ cU)
+sr d (ξ-⌜Σ⌝ˡ r) with gen-⌜Σ⌝ d
+... | (dc , (dd , cU)) =
+      ⊢conv (⊢⌜Σ⌝ (sr dc r) (conv-ctx (credᵀ (ξ-El r)) dd)) (csymᵀ cU)
+sr d (ξ-⌜Σ⌝ʳ r) with gen-⌜Σ⌝ d
+... | (dc , (dd , cU)) = ⊢conv (⊢⌜Σ⌝ dc (sr dd r)) (csymᵀ cU)
 
 ------------------------------------------------------------------------
 -- Type preservation for MULTI-step reduction — the immediate corollary.
