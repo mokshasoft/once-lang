@@ -58,6 +58,11 @@ table; conclusions: `FINDINGS.md`. In brief:
   (`NbEPDirDBNorm`, Ω self-reduces — F3); (iii) η fattens the core
   (`NbEPDirDBEta`); (ii) reduction & conversion are substitution-stable
   (`NbEPDirDBSR`) — the confluence-free half of subject reduction.
+- **★ Well-behavedness proven** (25–28): **CONFLUENCE** (`NbEPDirDBConf`),
+  **Π-INJECTIVITY** (`NbEPDirDBInj`, via type-level confluence), **SUBJECT
+  REDUCTION** (`NbEPDirDBSubj`, `sr`/`sr*`), and the **directed identity type**
+  over the kernel terms (`NbEPDirDBIdJ`, directed `J`/`no-sym`). The kernel is a
+  well-behaved, type-safe (preservation) dependent type theory. All zero-axiom.
 
 **No blocks discovered.** No impossibility, no undiscovered obstruction. The
 path is unblocked; what remains is known, well-scoped metatheory (§3).
@@ -70,16 +75,25 @@ path is unblocked; what remains is known, well-scoped metatheory (§3).
 NbE**, with **subject reduction** and decidable typechecking — a system you
 could point at and say "this is how Once does dependent types."
 
-Progress this push (dHoTT-25…27): **[B1] confluence — DONE**, **[B2] Π-
-injectivity — DONE** (the blocker; full SR assembly remains, see below),
-**[A2] directed `J` over the kernel terms — DONE**. Remaining below.
+Progress (dHoTT-25…28): **[B1] confluence — DONE** (`NbEPDirDBConf`), **[B2]
+subject reduction — DONE** (`NbEPDirDBInj` Π-injectivity + `NbEPDirDBSubj` the
+full typed metatheory + `sr`/`sr*`), **[A2] directed `J` — DONE**
+(`NbEPDirDBIdJ`). Remaining below.
 
-### Tier A — completable bricks (each a focused session, low risk)
+**Reassessment (important):** the old handoff called A1/A3 "completable bricks."
+That was wrong. Adding constructors to the CORE `RTm`/`RTy` (Σ terms, universe)
+cascades through *every* downstream module and forces **re-proving confluence
+AND subject reduction** for the extended calculus. So every remaining item is
+LARGE: A1/A3 are syntax-extension-with-full-metatheory-redo; C1 is research-
+scale. There is no clean small continuation left.
 
-- **[A1] Σ intro/elim terms (pairs).** Add `pair`/`fst`/`snd` to `RTm`, extend
-  substitution (mechanical — the mutual pattern is set in dHoTT-20), typing
-  rules, Σ-β and Σ-η. *Deps:* none. *Unblocks:* exercising `Σ'` and Σ-η
-  (currently `NbEPDirDBEta` only has Π-η). *Effort:* small. **STILL OPEN.**
+### Tier A — now LARGE (syntax extension + metatheory redo)
+
+- **[A1] Σ intro/elim terms (pairs).** Add `pair`/`fst`/`snd` to `RTm`, `Σ`-β
+  (`fst (pair a b) ⟶ a`) + congruences to `_⟶_`, typing rules — then extend
+  substitution, `_⟹_`/`_⁺`/the triangle (`NbEPDirDBConf`), and `sr`
+  (`NbEPDirDBSubj`) with the new cases. *Deps:* none. *Effort:* LARGE (re-does
+  the metatheory for the extended calculus). **STILL OPEN.**
 
 - **[A2] Directed identity type — ✅ DONE (`NbEPDirDBIdJ`, dHoTT-27).** Directed
   `J⟶`/`J-tgt`, `no-sym` (refuted), `transport⟶`/`yo`, over the actual `RTm`
@@ -90,13 +104,12 @@ injectivity — DONE** (the blocker; full SR assembly remains, see below),
   small remaining step.
 
 - **[A3] Universe + type-formation judgment.** `U`/coding, `El : Tm U → Ty`
-  (replacing the raw `El`), and `Γ ⊢ A type` well-formedness. *Deps:* none hard,
-  but **requires extending the core `RTy`/`RTm` syntax** (cascades to importers)
-  or a parallel extended calculus. *Effort:* moderate–disruptive. *For:* a
-  "complete" system (`UnivS`/`UnivV` in the tower are the semantic precedents).
+  (replacing the raw `El`), and `Γ ⊢ A type` well-formedness. Same cost as A1:
+  **extends the core syntax and re-does the metatheory** (or a parallel calculus
+  / standalone universe demo à la the tower's `UnivS`/`UnivV`). *Effort:* LARGE.
   **STILL OPEN.**
 
-### Tier B — the gateway metatheorem (DONE: confluence + Π-injectivity)
+### Tier B — the well-behavedness foundation — ✅ DONE (confluence + SR)
 
 - **[B1] Confluence (Church–Rosser) — ✅ DONE (`NbEPDirDBConf`, dHoTT-25).**
   Takahashi complete-development method (parallel reduction + triangle → diamond
@@ -104,16 +117,12 @@ injectivity — DONE** (the blocker; full SR assembly remains, see below),
   (convertible ⇒ joinable). β only; βη-confluence (η-postponement) is a later
   refinement.
 
-- **[B2] General subject reduction — blocker DONE, assembly OPEN.** Π-INJECTIVITY
-  of conversion is proven (`NbEPDirDBInj`, dHoTT-26, via type-level confluence) —
-  the exact obstruction dHoTT-24 scoped. What remains for *full* SR is the
-  **standard typed metatheory**, all confluence-free now: (a) the typed
-  substitution lemma (typed renaming + substitution preserve typing — needs a
-  `⊢ˢ`/`Ren⊢` judgment, the ext-lemmas, and type-level `sub-comm`/`wk-cancel`);
-  (b) generation/inversion lemmas through `⊢conv` (using `Π-inj`); (c) context
-  conversion (typing respects `≅ᵀ` in the context). This is ~350–450 lines of
-  mechanical, low-insight proof — deferred here, precisely identified. *Effort:*
-  moderate–large but routine. **ASSEMBLY OPEN.**
+- **[B2] General subject reduction — ✅ DONE** (`NbEPDirDBInj` dHoTT-26 +
+  `NbEPDirDBSubj` dHoTT-28). Π-injectivity of conversion (via type-level
+  confluence), the typed renaming + substitution lemmas (`Ren⊢`/`Sub⊢`), single
+  substitution (`⊢[]`), generation (`gen-lam`/`gen-app`), and **`sr`**/`sr*`.
+  The β case sidesteps context conversion by converting the argument to the λ's
+  domain + the result type via `Π-inj`. The kernel has subject reduction.
 
 ### Tier C — the big rock (research-scale, the design's headline mechanism)
 
@@ -139,21 +148,25 @@ injectivity — DONE** (the blocker; full SR assembly remains, see below),
 --------------------------------------------------------------------------
 ## 4. Recommended next step
 
-B1 (confluence), the B2 blocker (Π-injectivity), and A2 (directed `J`) are DONE.
-The natural next move is **complete [B2] — the subject-reduction assembly.**
-Rationale:
+**Tier B is fully cleared** — confluence + subject reduction proven. Combined
+with dHoTT-20/21 (strict dependent Π/Σ, typing, `Id = core(Hom)`) and A2
+(directed `J`), the kernel is a well-behaved, type-safe (preservation) dependent
+type theory. Every remaining item is now LARGE (see the §3 reassessment):
 
-1. **It finishes a whole metatheorem, now unobstructed.** Π-injectivity is in
-   hand; the rest (typed renaming + substitution lemma, generation lemmas,
-   context conversion) is confluence-free and reuses `NbEPDirDBSR`'s
-   substitution-stability. Routine, not research.
-2. **Ordering.** SR + confluence is the well-behavedness foundation you want
-   solid before the typed-NbE big rock (C1). Do SR, then a quick [A1] (Σ terms,
-   small), and leave [A3] (universe — needs syntax extension) and [C1] (typed
-   NbE / SN via logical relations — research-scale) as the two named large
-   pieces.
+- **[A1] Σ terms** or **[A3] universe** — each extends the core syntax and
+  re-does the metatheory (substitution + confluence + SR) for the extended
+  calculus. Pick whichever feature you want first; budget for the full cascade.
+  A *standalone* universe demo (own tiny syntax, à la `UnivS`) is the cheaper way
+  to show A3's design without touching the committed core.
+- **[C1] Typed NbE / SN** — the design's headline "decided by NbE", research-
+  scale (SN via logical relations + a Kripke/glueing NbE model). The single
+  largest piece; needs the intrinsic/typed setting (F3).
 
-Do **not** start [C1] cold — sequence: finish B2 → A1 → A3 → C1.
+Recommendation: if the goal is **decidable typechecking** (the design's
+headline), C1 is the target — but scope it as a dedicated project, not an inline
+slice. If the goal is **feature-completeness**, do A1 (Σ terms) as a deliberate
+extended-calculus pass. Either way, there is no more "quick brick" — the
+low-hanging metatheory is done.
 
 --------------------------------------------------------------------------
 ## 5. Reference — the two towers (compact)
