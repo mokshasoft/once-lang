@@ -1336,6 +1336,12 @@ module AbstractExec {FS : FrameSemantics} where
   readTyped-pair rA rB (just (SV-Ptr fl)) (just (SV-Ptr sl)) = combine-typed (rA fl) (rB sl)
   readTyped-pair rA rB _                  _                  = nothing
 
+  -- Read a register-resident value of type `A` straight out of a register cell
+  -- (the input-side dual of `readTyped`, which follows a pointer into memory).
+  readReg-typed : (A : Type) → StoredValue FS → Maybe ⟦ A ⟧
+  readReg-typed Int (SV-Lit fits-int v) = just v
+  readReg-typed _   _                   = nothing
+
   readTyped : (A : Type) → ValueLocation FS → LocState FS → Maybe ⟦ A ⟧
   readTyped Unit    loc s = just tt
   readTyped Int     loc s = readTyped-int (readLoc s loc)
@@ -1383,7 +1389,14 @@ module AbstractExec {FS : FrameSemantics} where
                      → StoredValue FS
   pure-sigop-out-aux {A} si s (just fitB) (just in-loc) =
     pure-sigop-out-val si fitB (readTyped A in-loc s)
-  pure-sigop-out-aux si s (just fitB) nothing = unit-storedvalue
+  -- Plan 0.54 rung A: REGISTER-RESIDENT INPUT. `Input1` is not a pointer, so it
+  -- holds the value itself (`SV-Lit`) — the input-side mirror of `at-reg`. Read
+  -- it straight out of the register instead of falling back to the sentinel.
+  -- Forced top-down by `comp-step`: after a primitive-returning `f`,
+  -- `mov-to-input` leaves `Input1` holding an `SV-Lit`, so `g` must be able to
+  -- consume it. (Values travel in registers; memory is the spill path.)
+  pure-sigop-out-aux {A} si s (just fitB) nothing =
+    pure-sigop-out-val si fitB (readReg-typed A (readReg (regs s) Input1))
   pure-sigop-out-aux si s nothing     _       = structured-pure-sigop-output si s
 
   pure-sigop-output {A} {B} si s =
