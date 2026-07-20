@@ -1,0 +1,222 @@
+------------------------------------------------------------------------
+-- OCP-0009 · dHoTT step 28 — (B2, part 2) SUBJECT REDUCTION, completed
+--
+-- The mechanical closing of subject reduction, on the Π-injectivity of
+-- `NbEPDirDBInj` (dHoTT-26). Everything here is confluence-free and reuses the
+-- strict substitution laws of `NbEPDirDBPi`/`NbEPDirDBSR`/`NbEPDirDBConf`.
+--
+--   * Type-level commute/cancel lemmas (`wk-cancel`, `subTy-comm`,
+--     `ren-wk-comm`, `ren-comm-ty`, `exts-wk-ty`) — all via the type fusion
+--     lemmas + refl/`sub-comm` bridges.
+--   * `⟶ᵀ-ren`/`≅ᵀ-ren` — conversion survives renaming; `subTy-monoˢ` — types
+--     are monotone in the substitution.
+--   * `ren-lemma` / `sub-lemma` — TYPED renaming and substitution preserve
+--     typing (the `⊢ˢ`/`Ren⊢` judgments + the ext-lemmas), and `⊢[]` — single
+--     substitution preserves typing (what β needs).
+--   * `gen-lam` / `gen-app` — generation (inversion through `⊢conv`).
+--   * **`sr`** — SUBJECT REDUCTION: `Γ ⊢ t ∷ A → t ⟶ u → Γ ⊢ u ∷ A`. The β case
+--     converts the argument to the λ's domain and the result type (via
+--     `Π-inj`), sidestepping context conversion entirely.
+--
+-- With this, dHoTT-24's scoped ceiling is fully lifted: the kernel enjoys
+-- subject reduction. `--safe`, ZERO axioms.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module poc.OCP0009.NbEPDirDBSubj where
+
+open import normalizer.Syntax.Types
+  using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ )
+open import poc.OCP0009.NbEPDirDBPi
+  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; Π; Σ'; El; RTm; var; lam; app
+        ; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ
+        ; _∘ᵣ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_
+        ; subTy-renTy; renTy-subTy; subTy-subTy; renTy-renTy
+        ; subTy-cong; renTy-cong; subTy-id; subTm-renTm; subTm-id )
+open import poc.OCP0009.NbEPDirDBType
+  using ( single; _⟶ᵀ_; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
+        ; _⟶_; β; ξ-lam; ξ-appˡ; ξ-appʳ; _⟶*_; done; step
+        ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
+        ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
+        ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢conv )
+open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub )
+open import poc.OCP0009.NbEPDirDBConf
+  using ( ⟶-ren; subTm-monoˢ; extS-mono; single-mono )
+open import poc.OCP0009.NbEPDirDBInj
+  using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans
+        ; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ; red→≅ᵀ; Π-inj )
+
+private
+  variable
+    Γ Δ : Cx
+
+-- Transport a judgment along a type equality (fixed motive — avoids the
+-- higher-order motive inference of a bare `subst`).
+∋-cast : {Γ : Ctx} {x : Var ⌊ Γ ⌋} {A A' : RTy ⌊ Γ ⌋} →
+         A ≡ A' → Γ ∋ x ∷ A → Γ ∋ x ∷ A'
+∋-cast refl v = v
+
+⊢-cast : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} {A A' : RTy ⌊ Γ ⌋} →
+         A ≡ A' → Γ ⊢ t ∷ A → Γ ⊢ t ∷ A'
+⊢-cast refl d = d
+
+------------------------------------------------------------------------
+-- Type-level commute / cancel lemmas.
+------------------------------------------------------------------------
+
+wk-cancel : (a : RTm Γ) (A : RTy Γ) → subTy (single a) (renTy vs A) ≡ A
+wk-cancel a A =
+  trans (subTy-renTy A) (trans (subTy-cong (λ _ → refl) A) (subTy-id A))
+
+ren-wk-comm : (ρ : Ren Γ Δ) (C : RTy Γ) →
+              renTy (extR ρ) (renTy vs C) ≡ renTy vs (renTy ρ C)
+ren-wk-comm ρ C =
+  trans (renTy-renTy C) (trans (renTy-cong (λ _ → refl) C) (sym (renTy-renTy C)))
+
+ren-comm-ty : (ρ : Ren Γ Δ) (D : RTy (Γ ∙)) (u : RTm Γ) →
+              renTy ρ (subTy (single u) D) ≡
+              subTy (single (renTm ρ u)) (renTy (extR ρ) D)
+ren-comm-ty {Γ} ρ D u =
+  trans (renTy-subTy D) (trans (subTy-cong bridge D) (sym (subTy-renTy D)))
+  where
+  bridge : ∀ (x : Var (Γ ∙)) →
+           (ρ ᵣ∘ₛ single u) x ≡ (single (renTm ρ u) ₛ∘ᵣ extR ρ) x
+  bridge vz     = refl
+  bridge (vs x) = refl
+
+exts-wk-ty : (σ : Sub Γ Δ) (C : RTy Γ) →
+             subTy (extS σ) (renTy vs C) ≡ renTy vs (subTy σ C)
+exts-wk-ty σ C =
+  trans (subTy-renTy C) (trans (subTy-cong (λ _ → refl) C) (sym (renTy-subTy C)))
+
+subTy-comm : (σ : Sub Γ Δ) (B : RTy (Γ ∙)) (u : RTm Γ) →
+             subTy σ (subTy (single u) B) ≡
+             subTy (single (subTm σ u)) (subTy (extS σ) B)
+subTy-comm {Γ} σ B u =
+  trans (subTy-subTy B) (trans (subTy-cong bridge B) (sym (subTy-subTy B)))
+  where
+  bridge : ∀ (x : Var (Γ ∙)) →
+           (σ ∘ₛ single u) x ≡ (single (subTm σ u) ∘ₛ extS σ) x
+  bridge vz     = refl
+  bridge (vs x) = sym (trans (subTm-renTm (σ x)) (subTm-id (σ x)))
+
+------------------------------------------------------------------------
+-- Conversion survives renaming; types are monotone in the substitution.
+------------------------------------------------------------------------
+
+⟶ᵀ-ren : (ρ : Ren Γ Δ) {A B : RTy Γ} → A ⟶ᵀ B → renTy ρ A ⟶ᵀ renTy ρ B
+⟶ᵀ-ren ρ (ξ-El r) = ξ-El (⟶-ren ρ r)
+⟶ᵀ-ren ρ (ξ-Πˡ r) = ξ-Πˡ (⟶ᵀ-ren ρ r)
+⟶ᵀ-ren ρ (ξ-Πʳ r) = ξ-Πʳ (⟶ᵀ-ren (extR ρ) r)
+⟶ᵀ-ren ρ (ξ-Σˡ r) = ξ-Σˡ (⟶ᵀ-ren ρ r)
+⟶ᵀ-ren ρ (ξ-Σʳ r) = ξ-Σʳ (⟶ᵀ-ren (extR ρ) r)
+
+≅ᵀ-ren : (ρ : Ren Γ Δ) {A B : RTy Γ} → A ≅ᵀ B → renTy ρ A ≅ᵀ renTy ρ B
+≅ᵀ-ren ρ (credᵀ r)   = credᵀ (⟶ᵀ-ren ρ r)
+≅ᵀ-ren ρ crflᵀ       = crflᵀ
+≅ᵀ-ren ρ (csymᵀ c)   = csymᵀ (≅ᵀ-ren ρ c)
+≅ᵀ-ren ρ (ctrnᵀ c d) = ctrnᵀ (≅ᵀ-ren ρ c) (≅ᵀ-ren ρ d)
+
+subTy-monoˢ : {σ σ' : Sub Γ Δ} → (∀ x → σ x ⟶* σ' x) →
+              (A : RTy Γ) → subTy σ A ⟶ᵀ* subTy σ' A
+subTy-monoˢ h base     = doneᵀ
+subTy-monoˢ h (El t)   = ⟶ᵀ*-El (subTm-monoˢ h t)
+subTy-monoˢ h (Π A B)  =
+  ⟶ᵀ*-trans (⟶ᵀ*-Πˡ (subTy-monoˢ h A)) (⟶ᵀ*-Πʳ (subTy-monoˢ (extS-mono h) B))
+subTy-monoˢ h (Σ' A B) =
+  ⟶ᵀ*-trans (⟶ᵀ*-Σˡ (subTy-monoˢ h A)) (⟶ᵀ*-Σʳ (subTy-monoˢ (extS-mono h) B))
+
+------------------------------------------------------------------------
+-- Typed renaming preserves typing.
+------------------------------------------------------------------------
+
+Ren⊢ : (Γ Δ : Ctx) → Ren ⌊ Γ ⌋ ⌊ Δ ⌋ → Set
+Ren⊢ Γ Δ ρ = ∀ {x A} → Γ ∋ x ∷ A → Δ ∋ ρ x ∷ renTy ρ A
+
+Ren⊢-ext : {Γ Δ : Ctx} {ρ : Ren ⌊ Γ ⌋ ⌊ Δ ⌋} {C : RTy ⌊ Γ ⌋} →
+           Ren⊢ Γ Δ ρ → Ren⊢ (Γ ▹ C) (Δ ▹ renTy ρ C) (extR ρ)
+Ren⊢-ext {ρ = ρ} {C = C} h here =
+  ∋-cast (sym (ren-wk-comm ρ C)) here
+Ren⊢-ext {ρ = ρ} h (there {A = A₀} v) =
+  ∋-cast (sym (ren-wk-comm ρ A₀)) (there (h v))
+
+ren-lemma : {Γ Δ : Ctx} {ρ : Ren ⌊ Γ ⌋ ⌊ Δ ⌋} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
+            Γ ⊢ t ∷ A → Ren⊢ Γ Δ ρ → Δ ⊢ renTm ρ t ∷ renTy ρ A
+ren-lemma (⊢var v) h = ⊢var (h v)
+ren-lemma (⊢lam d) h = ⊢lam (ren-lemma d (Ren⊢-ext h))
+ren-lemma {ρ = ρ} (⊢app {B = D} {u = u} d₁ d₂) h =
+  ⊢-cast (sym (ren-comm-ty ρ D u)) (⊢app (ren-lemma d₁ h) (ren-lemma d₂ h))
+ren-lemma {ρ = ρ} (⊢conv d c) h = ⊢conv (ren-lemma d h) (≅ᵀ-ren ρ c)
+
+⊢wk : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
+      Γ ⊢ t ∷ A → (Γ ▹ B) ⊢ renTm vs t ∷ renTy vs A
+⊢wk d = ren-lemma d there
+
+------------------------------------------------------------------------
+-- Typed substitution preserves typing, and single substitution.
+------------------------------------------------------------------------
+
+Sub⊢ : (Γ Δ : Ctx) → Sub ⌊ Γ ⌋ ⌊ Δ ⌋ → Set
+Sub⊢ Γ Δ σ = ∀ {x A} → Γ ∋ x ∷ A → Δ ⊢ subTm σ (var x) ∷ subTy σ A
+
+Sub⊢-ext : {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {C : RTy ⌊ Γ ⌋} →
+           Sub⊢ Γ Δ σ → Sub⊢ (Γ ▹ C) (Δ ▹ subTy σ C) (extS σ)
+Sub⊢-ext {σ = σ} {C = C} h here =
+  ⊢-cast (sym (exts-wk-ty σ C)) (⊢var here)
+Sub⊢-ext {σ = σ} h (there {A = A₀} v) =
+  ⊢-cast (sym (exts-wk-ty σ A₀)) (⊢wk (h v))
+
+sub-lemma : {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
+            Γ ⊢ t ∷ A → Sub⊢ Γ Δ σ → Δ ⊢ subTm σ t ∷ subTy σ A
+sub-lemma (⊢var v) h = h v
+sub-lemma (⊢lam d) h = ⊢lam (sub-lemma d (Sub⊢-ext h))
+sub-lemma {σ = σ} (⊢app {B = D} {u = u} d₁ d₂) h =
+  ⊢-cast (sym (subTy-comm σ D u)) (⊢app (sub-lemma d₁ h) (sub-lemma d₂ h))
+sub-lemma {σ = σ} (⊢conv d c) h = ⊢conv (sub-lemma d h) (≅ᵀ-sub σ c)
+
+⊢[] : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {t : RTm (⌊ Γ ⌋ ∙)} {B : RTy (⌊ Γ ⌋ ∙)}
+      {a : RTm ⌊ Γ ⌋} →
+      (Γ ▹ A) ⊢ t ∷ B → Γ ⊢ a ∷ A → Γ ⊢ subTm (single a) t ∷ subTy (single a) B
+⊢[] {A = A} {a = a} dt da = sub-lemma dt single⊢
+  where
+  single⊢ : Sub⊢ _ _ (single a)
+  single⊢ here          = ⊢-cast (sym (wk-cancel a A)) da
+  single⊢ (there {A = A₀} v) = ⊢-cast (sym (wk-cancel a A₀)) (⊢var v)
+
+------------------------------------------------------------------------
+-- Generation (inversion through `⊢conv`).
+------------------------------------------------------------------------
+
+gen-lam : {Γ : Ctx} {s : RTm (⌊ Γ ⌋ ∙)} {C : RTy ⌊ Γ ⌋} → Γ ⊢ lam s ∷ C →
+          Σ (RTy ⌊ Γ ⌋) (λ A → Σ (RTy (⌊ Γ ⌋ ∙)) (λ B →
+            (C ≅ᵀ Π A B) × ((Γ ▹ A) ⊢ s ∷ B)))
+gen-lam (⊢lam d)    = _ , (_ , (crflᵀ , d))
+gen-lam (⊢conv d c) with gen-lam d
+... | A , (B , (c' , ds)) = A , (B , (ctrnᵀ (csymᵀ c) c' , ds))
+
+gen-app : {Γ : Ctx} {t u : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ app t u ∷ C →
+          Σ (RTy ⌊ Γ ⌋) (λ A → Σ (RTy (⌊ Γ ⌋ ∙)) (λ B →
+            (Γ ⊢ t ∷ Π A B) × ((Γ ⊢ u ∷ A) × (C ≅ᵀ subTy (single u) B))))
+gen-app (⊢app d₁ d₂) = _ , (_ , (d₁ , (d₂ , crflᵀ)))
+gen-app (⊢conv d c) with gen-app d
+... | A , (B , (d₁ , (d₂ , c'))) = A , (B , (d₁ , (d₂ , ctrnᵀ (csymᵀ c) c')))
+
+------------------------------------------------------------------------
+-- ★ SUBJECT REDUCTION.
+------------------------------------------------------------------------
+
+sr : {Γ : Ctx} {t u : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} → Γ ⊢ t ∷ A → t ⟶ u → Γ ⊢ u ∷ A
+sr d (β s a) with gen-app d
+... | A₀ , (B₀ , (d-lam , (d-a , cC))) with gen-lam d-lam
+...   | A₁ , (B₁ , (cΠ , d-s)) with Π-inj cΠ
+...     | (cA , cB) =
+          ⊢conv (⊢[] d-s (⊢conv d-a cA))
+                (ctrnᵀ (≅ᵀ-sub (single a) (csymᵀ cB)) (csymᵀ cC))
+sr d (ξ-lam r) with gen-lam d
+... | A₀ , (B₀ , (cΠ , d-s)) = ⊢conv (⊢lam (sr d-s r)) (csymᵀ cΠ)
+sr d (ξ-appˡ r) with gen-app d
+... | A₀ , (B₀ , (d-t , (d-u , cC))) = ⊢conv (⊢app (sr d-t r) d-u) (csymᵀ cC)
+sr d (ξ-appʳ {u = u} {u' = u'} r) with gen-app d
+... | A₀ , (B₀ , (d-t , (d-u , cC))) =
+      ⊢conv (⊢app d-t (sr d-u r))
+            (csymᵀ (ctrnᵀ cC (red→≅ᵀ (subTy-monoˢ (single-mono (step r done)) B₀))))
