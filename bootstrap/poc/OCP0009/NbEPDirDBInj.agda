@@ -27,13 +27,16 @@ module poc.OCP0009.NbEPDirDBInj where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ )
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; _∙; RTy; base; Π; Σ'; El; RTm )
+  using ( Cx; _∙; RTy; base; U; Π; Σ'; El; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
+        ; var; lam; app; pair; fst; snd )
 open import poc.OCP0009.NbEPDirDBType
-  using ( _⟶ᵀ_; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
+  using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ )
 open import poc.OCP0009.NbEPDirDBConf
-  using ( _⟹_; _⁺; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟶*-trans )
+  using ( _⟹_; pvar; plam; papp; pβ; ppair; pfst; psnd; pβfst; pβsnd
+        ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝
+        ; _⁺; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟶*-trans )
 
 private
   variable
@@ -79,17 +82,27 @@ data _⟶ᵀ*_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 infix 3 _⟹ᵀ_
 data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   pbase : base {Γ} ⟹ᵀ base
+  pU    : U {Γ} ⟹ᵀ U
   pEl   : {t t' : RTm Γ} → t ⟹ t' → El t ⟹ᵀ El t'
   pΠ    : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} → A ⟹ᵀ A' → B ⟹ᵀ B' → Π A B ⟹ᵀ Π A' B'
   pΣ    : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} → A ⟹ᵀ A' → B ⟹ᵀ B' → Σ' A B ⟹ᵀ Σ' A' B'
+  pEl-⌜base⌝ : El (⌜base⌝ {Γ}) ⟹ᵀ base
+  pEl-⌜Π⌝ : {c c' : RTm Γ} {d d' : RTm (Γ ∙)} →
+            c ⟹ c' → d ⟹ d' → El (⌜Π⌝ c d) ⟹ᵀ Π (El c') (El d')
+  pEl-⌜Σ⌝ : {c c' : RTm Γ} {d d' : RTm (Γ ∙)} →
+            c ⟹ c' → d ⟹ d' → El (⌜Σ⌝ c d) ⟹ᵀ Σ' (El c') (El d')
 
 ⟹ᵀ-refl : (A : RTy Γ) → A ⟹ᵀ A
 ⟹ᵀ-refl base     = pbase
 ⟹ᵀ-refl (El t)   = pEl (⟹-refl t)
+⟹ᵀ-refl U        = pU
 ⟹ᵀ-refl (Π A B)  = pΠ (⟹ᵀ-refl A) (⟹ᵀ-refl B)
 ⟹ᵀ-refl (Σ' A B) = pΣ (⟹ᵀ-refl A) (⟹ᵀ-refl B)
 
 ⟶ᵀ→⟹ᵀ : {A B : RTy Γ} → A ⟶ᵀ B → A ⟹ᵀ B
+⟶ᵀ→⟹ᵀ El-⌜base⌝    = pEl-⌜base⌝
+⟶ᵀ→⟹ᵀ (El-⌜Π⌝ c d) = pEl-⌜Π⌝ (⟹-refl c) (⟹-refl d)
+⟶ᵀ→⟹ᵀ (El-⌜Σ⌝ c d) = pEl-⌜Σ⌝ (⟹-refl c) (⟹-refl d)
 ⟶ᵀ→⟹ᵀ (ξ-El r) = pEl (⟶→⟹ r)
 ⟶ᵀ→⟹ᵀ (ξ-Πˡ r) = pΠ (⟶ᵀ→⟹ᵀ r) (⟹ᵀ-refl _)
 ⟶ᵀ→⟹ᵀ (ξ-Πʳ r) = pΠ (⟹ᵀ-refl _) (⟶ᵀ→⟹ᵀ r)
@@ -98,25 +111,57 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 
 ⟹ᵀ→⟶ᵀ* : {A B : RTy Γ} → A ⟹ᵀ B → A ⟶ᵀ* B
 ⟹ᵀ→⟶ᵀ* pbase    = doneᵀ
+⟹ᵀ→⟶ᵀ* pU       = doneᵀ
 ⟹ᵀ→⟶ᵀ* (pEl p)  = ⟶ᵀ*-El (⟹→⟶* p)
 ⟹ᵀ→⟶ᵀ* (pΠ p q) = ⟶ᵀ*-trans (⟶ᵀ*-Πˡ (⟹ᵀ→⟶ᵀ* p)) (⟶ᵀ*-Πʳ (⟹ᵀ→⟶ᵀ* q))
 ⟹ᵀ→⟶ᵀ* (pΣ p q) = ⟶ᵀ*-trans (⟶ᵀ*-Σˡ (⟹ᵀ→⟶ᵀ* p)) (⟶ᵀ*-Σʳ (⟹ᵀ→⟶ᵀ* q))
+⟹ᵀ→⟶ᵀ* pEl-⌜base⌝ = stepᵀ El-⌜base⌝ doneᵀ
+⟹ᵀ→⟶ᵀ* (pEl-⌜Π⌝ {c = c} {d = d} p q) =
+  stepᵀ (El-⌜Π⌝ c d)
+    (⟶ᵀ*-trans (⟶ᵀ*-Πˡ (⟶ᵀ*-El (⟹→⟶* p))) (⟶ᵀ*-Πʳ (⟶ᵀ*-El (⟹→⟶* q))))
+⟹ᵀ→⟶ᵀ* (pEl-⌜Σ⌝ {c = c} {d = d} p q) =
+  stepᵀ (El-⌜Σ⌝ c d)
+    (⟶ᵀ*-trans (⟶ᵀ*-Σˡ (⟶ᵀ*-El (⟹→⟶* p))) (⟶ᵀ*-Σʳ (⟶ᵀ*-El (⟹→⟶* q))))
 
 ------------------------------------------------------------------------
 -- Complete development + triangle for types.
 ------------------------------------------------------------------------
 
 _⁺ᵀ : RTy Γ → RTy Γ
-base ⁺ᵀ   = base
-El t ⁺ᵀ   = El (t ⁺)
-Π A B ⁺ᵀ  = Π (A ⁺ᵀ) (B ⁺ᵀ)
-Σ' A B ⁺ᵀ = Σ' (A ⁺ᵀ) (B ⁺ᵀ)
+base ⁺ᵀ         = base
+U ⁺ᵀ            = U
+El (var x) ⁺ᵀ   = El (var x ⁺)
+El (lam t) ⁺ᵀ   = El (lam t ⁺)
+El (app f a) ⁺ᵀ = El (app f a ⁺)
+El (pair a b) ⁺ᵀ = El (pair a b ⁺)
+El (fst p) ⁺ᵀ   = El (fst p ⁺)
+El (snd p) ⁺ᵀ   = El (snd p ⁺)
+El ⌜base⌝ ⁺ᵀ    = base
+El (⌜Π⌝ c d) ⁺ᵀ = Π (El (c ⁺)) (El (d ⁺))
+El (⌜Σ⌝ c d) ⁺ᵀ = Σ' (El (c ⁺)) (El (d ⁺))
+Π A B ⁺ᵀ        = Π (A ⁺ᵀ) (B ⁺ᵀ)
+Σ' A B ⁺ᵀ       = Σ' (A ⁺ᵀ) (B ⁺ᵀ)
 
 ⟹ᵀ-⁺ : {A B : RTy Γ} → A ⟹ᵀ B → B ⟹ᵀ A ⁺ᵀ
-⟹ᵀ-⁺ pbase    = pbase
-⟹ᵀ-⁺ (pEl p)  = pEl (⟹-⁺ p)
-⟹ᵀ-⁺ (pΠ p q) = pΠ (⟹ᵀ-⁺ p) (⟹ᵀ-⁺ q)
-⟹ᵀ-⁺ (pΣ p q) = pΣ (⟹ᵀ-⁺ p) (⟹ᵀ-⁺ q)
+⟹ᵀ-⁺ pbase          = pbase
+⟹ᵀ-⁺ pU             = pU
+⟹ᵀ-⁺ (pEl (pvar x)) = pEl (⟹-⁺ (pvar x))
+⟹ᵀ-⁺ (pEl (plam p)) = pEl (⟹-⁺ (plam p))
+⟹ᵀ-⁺ (pEl (papp p q)) = pEl (⟹-⁺ (papp p q))
+⟹ᵀ-⁺ (pEl (pβ p q))  = pEl (⟹-⁺ (pβ p q))
+⟹ᵀ-⁺ (pEl (ppair p q)) = pEl (⟹-⁺ (ppair p q))
+⟹ᵀ-⁺ (pEl (pfst p))  = pEl (⟹-⁺ (pfst p))
+⟹ᵀ-⁺ (pEl (psnd p))  = pEl (⟹-⁺ (psnd p))
+⟹ᵀ-⁺ (pEl (pβfst p q)) = pEl (⟹-⁺ (pβfst p q))
+⟹ᵀ-⁺ (pEl (pβsnd p q)) = pEl (⟹-⁺ (pβsnd p q))
+⟹ᵀ-⁺ (pEl p⌜base⌝)   = pEl-⌜base⌝
+⟹ᵀ-⁺ (pEl (p⌜Π⌝ p q)) = pEl-⌜Π⌝ (⟹-⁺ p) (⟹-⁺ q)
+⟹ᵀ-⁺ (pEl (p⌜Σ⌝ p q)) = pEl-⌜Σ⌝ (⟹-⁺ p) (⟹-⁺ q)
+⟹ᵀ-⁺ (pΠ p q)       = pΠ (⟹ᵀ-⁺ p) (⟹ᵀ-⁺ q)
+⟹ᵀ-⁺ (pΣ p q)       = pΣ (⟹ᵀ-⁺ p) (⟹ᵀ-⁺ q)
+⟹ᵀ-⁺ pEl-⌜base⌝     = pbase
+⟹ᵀ-⁺ (pEl-⌜Π⌝ p q)  = pΠ (pEl (⟹-⁺ p)) (pEl (⟹-⁺ q))
+⟹ᵀ-⁺ (pEl-⌜Σ⌝ p q)  = pΣ (pEl (⟹-⁺ p)) (pEl (⟹-⁺ q))
 
 ------------------------------------------------------------------------
 -- Diamond → confluence → Church–Rosser, for types.

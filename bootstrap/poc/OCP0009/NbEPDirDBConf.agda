@@ -28,12 +28,14 @@ module poc.OCP0009.NbEPDirDBConf where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ )
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app; pair; fst; snd; Ren; extR; renTm
+  using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app; pair; fst; snd
+        ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; Ren; extR; renTm
         ; Sub; extS; subTm; renTm-subTm; subTm-renTm; subTm-cong
         ; _ᵣ∘ₛ_; _ₛ∘ᵣ_ )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
-        ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd; _⟶*_; done; step
+        ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
+        ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; _⟶*_; done; step
         ; _≅_; cred; crfl; csym; ctrn )
 open import poc.OCP0009.NbEPDirDBSR using ( sub-comm; ⟶-sub )
 
@@ -77,6 +79,22 @@ private
 ⟶*-snd done       = done
 ⟶*-snd (step r q) = step (ξ-snd r) (⟶*-snd q)
 
+⟶*-⌜Π⌝ˡ : {c c' : RTm Γ} {d : RTm (Γ ∙)} → c ⟶* c' → ⌜Π⌝ c d ⟶* ⌜Π⌝ c' d
+⟶*-⌜Π⌝ˡ done       = done
+⟶*-⌜Π⌝ˡ (step r p) = step (ξ-⌜Π⌝ˡ r) (⟶*-⌜Π⌝ˡ p)
+
+⟶*-⌜Π⌝ʳ : {c : RTm Γ} {d d' : RTm (Γ ∙)} → d ⟶* d' → ⌜Π⌝ c d ⟶* ⌜Π⌝ c d'
+⟶*-⌜Π⌝ʳ done       = done
+⟶*-⌜Π⌝ʳ (step r p) = step (ξ-⌜Π⌝ʳ r) (⟶*-⌜Π⌝ʳ p)
+
+⟶*-⌜Σ⌝ˡ : {c c' : RTm Γ} {d : RTm (Γ ∙)} → c ⟶* c' → ⌜Σ⌝ c d ⟶* ⌜Σ⌝ c' d
+⟶*-⌜Σ⌝ˡ done       = done
+⟶*-⌜Σ⌝ˡ (step r p) = step (ξ-⌜Σ⌝ˡ r) (⟶*-⌜Σ⌝ˡ p)
+
+⟶*-⌜Σ⌝ʳ : {c : RTm Γ} {d d' : RTm (Γ ∙)} → d ⟶* d' → ⌜Σ⌝ c d ⟶* ⌜Σ⌝ c d'
+⟶*-⌜Σ⌝ʳ done       = done
+⟶*-⌜Σ⌝ʳ (step r p) = step (ξ-⌜Σ⌝ʳ r) (⟶*-⌜Σ⌝ʳ p)
+
 ⟶*-sub : (σ : Sub Γ Δ) {t u : RTm Γ} → t ⟶* u → subTm σ t ⟶* subTm σ u
 ⟶*-sub σ done       = done
 ⟶*-sub σ (step r p) = step (⟶-sub σ r) (⟶*-sub σ p)
@@ -110,6 +128,10 @@ ren-comm {Γ} ρ t u =
 ⟶-ren ρ (ξ-pairʳ r) = ξ-pairʳ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-fst r)   = ξ-fst (⟶-ren ρ r)
 ⟶-ren ρ (ξ-snd r)   = ξ-snd (⟶-ren ρ r)
+⟶-ren ρ (ξ-⌜Π⌝ˡ r) = ξ-⌜Π⌝ˡ (⟶-ren ρ r)
+⟶-ren ρ (ξ-⌜Π⌝ʳ r) = ξ-⌜Π⌝ʳ (⟶-ren (extR ρ) r)
+⟶-ren ρ (ξ-⌜Σ⌝ˡ r) = ξ-⌜Σ⌝ˡ (⟶-ren ρ r)
+⟶-ren ρ (ξ-⌜Σ⌝ʳ r) = ξ-⌜Σ⌝ʳ (⟶-ren (extR ρ) r)
 
 ⟶*-ren : (ρ : Ren Γ Δ) {t u : RTm Γ} → t ⟶* u → renTm ρ t ⟶* renTm ρ u
 ⟶*-ren ρ done       = done
@@ -134,6 +156,11 @@ subTm-monoˢ h (pair a b) =
   ⟶*-trans (⟶*-pairˡ (subTm-monoˢ h a)) (⟶*-pairʳ (subTm-monoˢ h b))
 subTm-monoˢ h (fst p) = ⟶*-fst (subTm-monoˢ h p)
 subTm-monoˢ h (snd p) = ⟶*-snd (subTm-monoˢ h p)
+subTm-monoˢ h ⌜base⌝  = done
+subTm-monoˢ h (⌜Π⌝ c d) =
+  ⟶*-trans (⟶*-⌜Π⌝ˡ (subTm-monoˢ h c)) (⟶*-⌜Π⌝ʳ (subTm-monoˢ (extS-mono h) d))
+subTm-monoˢ h (⌜Σ⌝ c d) =
+  ⟶*-trans (⟶*-⌜Σ⌝ˡ (subTm-monoˢ h c)) (⟶*-⌜Σ⌝ʳ (subTm-monoˢ (extS-mono h) d))
 
 single-mono : {u u' : RTm Γ} → u ⟶* u' →
               ∀ (x : Var (Γ ∙)) → single u x ⟶* single u' x
@@ -156,6 +183,9 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   psnd  : {p p' : RTm Γ} → p ⟹ p' → snd p ⟹ snd p'
   pβfst : {a a' b b' : RTm Γ} → a ⟹ a' → b ⟹ b' → fst (pair a b) ⟹ a'
   pβsnd : {a a' b b' : RTm Γ} → a ⟹ a' → b ⟹ b' → snd (pair a b) ⟹ b'
+  p⌜base⌝ : ⌜base⌝ {Γ} ⟹ ⌜base⌝
+  p⌜Π⌝ : {c c' : RTm Γ} {d d' : RTm (Γ ∙)} → c ⟹ c' → d ⟹ d' → ⌜Π⌝ c d ⟹ ⌜Π⌝ c' d'
+  p⌜Σ⌝ : {c c' : RTm Γ} {d d' : RTm (Γ ∙)} → c ⟹ c' → d ⟹ d' → ⌜Σ⌝ c d ⟹ ⌜Σ⌝ c' d'
 
 ⟹-refl : (t : RTm Γ) → t ⟹ t
 ⟹-refl (var x)    = pvar x
@@ -164,6 +194,9 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟹-refl (pair a b) = ppair (⟹-refl a) (⟹-refl b)
 ⟹-refl (fst p)    = pfst (⟹-refl p)
 ⟹-refl (snd p)    = psnd (⟹-refl p)
+⟹-refl ⌜base⌝     = p⌜base⌝
+⟹-refl (⌜Π⌝ c d)  = p⌜Π⌝ (⟹-refl c) (⟹-refl d)
+⟹-refl (⌜Σ⌝ c d)  = p⌜Σ⌝ (⟹-refl c) (⟹-refl d)
 
 ⟶→⟹ : {t u : RTm Γ} → t ⟶ u → t ⟹ u
 ⟶→⟹ (β t u)     = pβ (⟹-refl t) (⟹-refl u)
@@ -176,6 +209,10 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟶→⟹ (ξ-pairʳ r) = ppair (⟹-refl _) (⟶→⟹ r)
 ⟶→⟹ (ξ-fst r)   = pfst (⟶→⟹ r)
 ⟶→⟹ (ξ-snd r)   = psnd (⟶→⟹ r)
+⟶→⟹ (ξ-⌜Π⌝ˡ r) = p⌜Π⌝ (⟶→⟹ r) (⟹-refl _)
+⟶→⟹ (ξ-⌜Π⌝ʳ r) = p⌜Π⌝ (⟹-refl _) (⟶→⟹ r)
+⟶→⟹ (ξ-⌜Σ⌝ˡ r) = p⌜Σ⌝ (⟶→⟹ r) (⟹-refl _)
+⟶→⟹ (ξ-⌜Σ⌝ʳ r) = p⌜Σ⌝ (⟹-refl _) (⟶→⟹ r)
 
 ⟹→⟶* : {t u : RTm Γ} → t ⟹ u → t ⟶* u
 ⟹→⟶* (pvar x)  = done
@@ -192,6 +229,11 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟹→⟶* (psnd p) = ⟶*-snd (⟹→⟶* p)
 ⟹→⟶* (pβfst {a = a} {b = b} p q) = step (βfst a b) (⟹→⟶* p)
 ⟹→⟶* (pβsnd {a = a} {b = b} p q) = step (βsnd a b) (⟹→⟶* q)
+⟹→⟶* p⌜base⌝ = done
+⟹→⟶* (p⌜Π⌝ p q) =
+  ⟶*-trans (⟶*-⌜Π⌝ˡ (⟹→⟶* p)) (⟶*-⌜Π⌝ʳ (⟹→⟶* q))
+⟹→⟶* (p⌜Σ⌝ p q) =
+  ⟶*-trans (⟶*-⌜Σ⌝ˡ (⟹→⟶* p)) (⟶*-⌜Σ⌝ʳ (⟹→⟶* q))
 
 ------------------------------------------------------------------------
 -- Parallel reduction is stable under renaming and substitution.
@@ -210,6 +252,9 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟹-ren ρ (psnd p)    = psnd (⟹-ren ρ p)
 ⟹-ren ρ (pβfst p q) = pβfst (⟹-ren ρ p) (⟹-ren ρ q)
 ⟹-ren ρ (pβsnd p q) = pβsnd (⟹-ren ρ p) (⟹-ren ρ q)
+⟹-ren ρ p⌜base⌝     = p⌜base⌝
+⟹-ren ρ (p⌜Π⌝ p q)  = p⌜Π⌝ (⟹-ren ρ p) (⟹-ren (extR ρ) q)
+⟹-ren ρ (p⌜Σ⌝ p q)  = p⌜Σ⌝ (⟹-ren ρ p) (⟹-ren (extR ρ) q)
 
 ⟹-exts : {σ σ' : Sub Γ Δ} → (∀ x → σ x ⟹ σ' x) →
          ∀ (x : Var (Γ ∙)) → extS σ x ⟹ extS σ' x
@@ -230,6 +275,9 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟹-sub h (psnd p)    = psnd (⟹-sub h p)
 ⟹-sub h (pβfst p q) = pβfst (⟹-sub h p) (⟹-sub h q)
 ⟹-sub h (pβsnd p q) = pβsnd (⟹-sub h p) (⟹-sub h q)
+⟹-sub h p⌜base⌝     = p⌜base⌝
+⟹-sub h (p⌜Π⌝ p q)  = p⌜Π⌝ (⟹-sub h p) (⟹-sub (⟹-exts h) q)
+⟹-sub h (p⌜Σ⌝ p q)  = p⌜Σ⌝ (⟹-sub h p) (⟹-sub (⟹-exts h) q)
 
 single-⟹ : {u u' : RTm Γ} → u ⟹ u' →
            (x : Var (Γ ∙)) → single u x ⟹ single u' x
@@ -250,18 +298,30 @@ app (app f a) u ⁺  = app (app f a ⁺) (u ⁺)
 app (pair a b) u ⁺ = app (pair a b ⁺) (u ⁺)
 app (fst p) u ⁺    = app (fst p ⁺) (u ⁺)
 app (snd p) u ⁺    = app (snd p ⁺) (u ⁺)
+app ⌜base⌝ u ⁺     = app (⌜base⌝ ⁺) (u ⁺)
+app (⌜Π⌝ c d) u ⁺  = app (⌜Π⌝ c d ⁺) (u ⁺)
+app (⌜Σ⌝ c d) u ⁺  = app (⌜Σ⌝ c d ⁺) (u ⁺)
 fst (pair a b) ⁺   = a ⁺
 fst (var x) ⁺      = fst (var x ⁺)
 fst (lam t) ⁺      = fst (lam t ⁺)
 fst (app f a) ⁺    = fst (app f a ⁺)
 fst (fst p) ⁺      = fst (fst p ⁺)
 fst (snd p) ⁺      = fst (snd p ⁺)
+fst ⌜base⌝ ⁺       = fst (⌜base⌝ ⁺)
+fst (⌜Π⌝ c d) ⁺    = fst (⌜Π⌝ c d ⁺)
+fst (⌜Σ⌝ c d) ⁺    = fst (⌜Σ⌝ c d ⁺)
 snd (pair a b) ⁺   = b ⁺
 snd (var x) ⁺      = snd (var x ⁺)
 snd (lam t) ⁺      = snd (lam t ⁺)
 snd (app f a) ⁺    = snd (app f a ⁺)
 snd (fst p) ⁺      = snd (fst p ⁺)
 snd (snd p) ⁺      = snd (snd p ⁺)
+snd ⌜base⌝ ⁺       = snd (⌜base⌝ ⁺)
+snd (⌜Π⌝ c d) ⁺    = snd (⌜Π⌝ c d ⁺)
+snd (⌜Σ⌝ c d) ⁺    = snd (⌜Σ⌝ c d ⁺)
+⌜base⌝ ⁺           = ⌜base⌝
+⌜Π⌝ c d ⁺          = ⌜Π⌝ (c ⁺) (d ⁺)
+⌜Σ⌝ c d ⁺          = ⌜Σ⌝ (c ⁺) (d ⁺)
 
 ⟹-⁺ : {t u : RTm Γ} → t ⟹ u → u ⟹ t ⁺
 ⟹-⁺ (pvar x)               = pvar x
@@ -276,6 +336,9 @@ snd (snd p) ⁺      = snd (snd p ⁺)
 ⟹-⁺ (papp (psnd p₁) q)     = papp (⟹-⁺ (psnd p₁)) (⟹-⁺ q)
 ⟹-⁺ (papp (pβfst p₁ p₂) q) = papp (⟹-⁺ (pβfst p₁ p₂)) (⟹-⁺ q)
 ⟹-⁺ (papp (pβsnd p₁ p₂) q) = papp (⟹-⁺ (pβsnd p₁ p₂)) (⟹-⁺ q)
+⟹-⁺ (papp p⌜base⌝ q)       = papp (⟹-⁺ p⌜base⌝) (⟹-⁺ q)
+⟹-⁺ (papp (p⌜Π⌝ p₁ p₂) q)  = papp (⟹-⁺ (p⌜Π⌝ p₁ p₂)) (⟹-⁺ q)
+⟹-⁺ (papp (p⌜Σ⌝ p₁ p₂) q)  = papp (⟹-⁺ (p⌜Σ⌝ p₁ p₂)) (⟹-⁺ q)
 ⟹-⁺ (pfst (pvar x))        = pfst (pvar x)
 ⟹-⁺ (pfst (plam p))        = pfst (⟹-⁺ (plam p))
 ⟹-⁺ (pfst (papp p₁ p₂))    = pfst (⟹-⁺ (papp p₁ p₂))
@@ -285,6 +348,9 @@ snd (snd p) ⁺      = snd (snd p ⁺)
 ⟹-⁺ (pfst (psnd p₁))       = pfst (⟹-⁺ (psnd p₁))
 ⟹-⁺ (pfst (pβfst p₁ p₂))   = pfst (⟹-⁺ (pβfst p₁ p₂))
 ⟹-⁺ (pfst (pβsnd p₁ p₂))   = pfst (⟹-⁺ (pβsnd p₁ p₂))
+⟹-⁺ (pfst p⌜base⌝)         = pfst (⟹-⁺ p⌜base⌝)
+⟹-⁺ (pfst (p⌜Π⌝ p₁ p₂))    = pfst (⟹-⁺ (p⌜Π⌝ p₁ p₂))
+⟹-⁺ (pfst (p⌜Σ⌝ p₁ p₂))    = pfst (⟹-⁺ (p⌜Σ⌝ p₁ p₂))
 ⟹-⁺ (psnd (pvar x))        = psnd (pvar x)
 ⟹-⁺ (psnd (plam p))        = psnd (⟹-⁺ (plam p))
 ⟹-⁺ (psnd (papp p₁ p₂))    = psnd (⟹-⁺ (papp p₁ p₂))
@@ -294,9 +360,15 @@ snd (snd p) ⁺      = snd (snd p ⁺)
 ⟹-⁺ (psnd (psnd p₁))       = psnd (⟹-⁺ (psnd p₁))
 ⟹-⁺ (psnd (pβfst p₁ p₂))   = psnd (⟹-⁺ (pβfst p₁ p₂))
 ⟹-⁺ (psnd (pβsnd p₁ p₂))   = psnd (⟹-⁺ (pβsnd p₁ p₂))
+⟹-⁺ (psnd p⌜base⌝)         = psnd (⟹-⁺ p⌜base⌝)
+⟹-⁺ (psnd (p⌜Π⌝ p₁ p₂))    = psnd (⟹-⁺ (p⌜Π⌝ p₁ p₂))
+⟹-⁺ (psnd (p⌜Σ⌝ p₁ p₂))    = psnd (⟹-⁺ (p⌜Σ⌝ p₁ p₂))
 ⟹-⁺ (pβ p q)               = ⟹-sub (single-⟹ (⟹-⁺ q)) (⟹-⁺ p)
 ⟹-⁺ (pβfst p q)            = ⟹-⁺ p
 ⟹-⁺ (pβsnd p q)            = ⟹-⁺ q
+⟹-⁺ p⌜base⌝                = p⌜base⌝
+⟹-⁺ (p⌜Π⌝ p q)             = p⌜Π⌝ (⟹-⁺ p) (⟹-⁺ q)
+⟹-⁺ (p⌜Σ⌝ p q)             = p⌜Σ⌝ (⟹-⁺ p) (⟹-⁺ q)
 
 ------------------------------------------------------------------------
 -- Diamond (from the triangle), then confluence of `⟹*`, then of `⟶*`.
