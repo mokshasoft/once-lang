@@ -176,12 +176,17 @@ decision engine consumes.
       β-redex is neutral and `CR3` applies), the abstraction lemma `abs`, and the
       fundamental theorem `fund`. This is the input the decision engine assumed,
       now discharged for the simply-typed fragment.
-    - *The dependent+universe extension* — STILL OPEN, research-scale. Dependent
-      Π/Σ WITHOUT a universe reduces to the STLC case (types don't grow without
-      `El`); the UNIVERSE is the genuinely hard step — `El c` decodes to `Π`/`Σ`,
-      so types GROW under substitution and the reducibility predicate can't be
-      structural recursion on the type (needs an induction-recursion, à la
-      Abel–Öhman–Vezzosi). A formalization **project**, not a slice.
+    - *The Π/Σ fragment (functions + products)* — ✅ DONE (`NbEPDirDBSNSig`,
+      dHoTT-36). Turns the "reduces to STLC" claim into a THEOREM: without `U`/`El`,
+      kernel types are term-free `base`/Π/Σ trees = simple types with functions and
+      products, so **`sn : Γ⊢A → SN t`** holds there too, `--safe`/zero-axiom. Adds
+      the product candidate `Red (A ×ₜ B) t = Red A (fst t) × Red B (snd t)` and the
+      pair-introduction lemma `red-pair` (dual to `abs`) to the dHoTT-35 proof.
+    - *The universe* — STILL OPEN, research-scale, and now the SOLE remaining SN
+      frontier. `El c` decodes to `Π`/`Σ`, so types GROW under substitution and the
+      reducibility predicate can't be structural recursion on the type (needs an
+      induction-recursion, à la Abel–Öhman–Vezzosi). A formalization **project**,
+      not a slice.
 
 ### Also open (from the semantic tower — not on the finalization critical path)
 
@@ -204,21 +209,23 @@ decidable conversion holds *modulo normalization*. **STLC strong normalization i
 now PROVEN** (`NbEPDirDBSN`, dHoTT-35 — `sn : Γ⊢A → SN t` by Girard–Tait
 reducibility, `--safe`, zero axioms). What remains is ONE research-scale item:
 
-- **[SN⁺] SN for the DEPENDENT+UNIVERSE kernel** — the STLC reducibility proof
-  (dHoTT-35) is the template; lifting it to the committed kernel's Π/Σ is routine,
-  but the UNIVERSE is the genuinely hard step: `El c` decodes → types grow under
+- **[SN⁺] SN for the UNIVERSE** — the SOLE remaining SN frontier. STLC SN
+  (dHoTT-35) and the Π/Σ fragment with products (dHoTT-36, `sn` proven for
+  functions+products = the kernel WITHOUT the universe) are both machine-checked.
+  What is left is exactly the universe: `El c` decodes → types grow under
   substitution → the reducibility predicate needs an induction-recursion
   (Abel–Öhman–Vezzosi-style) rather than structural recursion on the type. This is
   what `NbEPDirDBDec.dec-conv` consumes to become an unconditional decision
   procedure for the *full* kernel. Everything else in the design is built and
   machine-checked.
 
-Recommendation: **the dependent+universe SN is the last piece**, and it is a
-dedicated formalization project (the induction-recursion for the universe), not a
-slice. The STLC reducibility proof in `NbEPDirDBSN` is the reusable template — the
-candidate conditions, the Kripke closure, the abstraction lemma, and the
-fundamental-theorem shape all carry over; only the universe's type-growth needs the
-IR upgrade. Everything the design promised is otherwise built and machine-checked.
+Recommendation: **the universe SN is the last piece**, and it is a dedicated
+formalization project (the induction-recursion for the universe), not a slice. The
+reducibility proofs in `NbEPDirDBSN` (STLC) and `NbEPDirDBSNSig` (adding products)
+are the reusable template — the candidate conditions, the Kripke closure, the
+intro lemmas (`abs`/`red-pair`), and the fundamental-theorem shape all carry over;
+only the universe's type-growth needs the IR upgrade. Everything the design
+promised is otherwise built and machine-checked.
 
 --------------------------------------------------------------------------
 ## 5. Reference — the two towers (compact)
