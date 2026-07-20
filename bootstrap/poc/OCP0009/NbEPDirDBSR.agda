@@ -38,7 +38,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Sub; subTy; subTm; extS; _∘ₛ_
         ; subTm-subTm; subTm-cong; subTm-renTm; subTm-id )
 open import poc.OCP0009.NbEPDirDBType
-  using ( single; _⟶_; β; ξ-lam; ξ-appˡ; ξ-appʳ
+  using ( single; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
+        ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
         ; _⟶ᵀ_; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; _⊢_∷_; ⊢var; ⊢lam; ⊢app; here )
@@ -74,9 +75,15 @@ sub-comm {Γ} σ t u =
   subst (λ z → app (lam (subTm (extS σ) t)) (subTm σ s) ⟶ z)
         (sym (sub-comm σ t s))
         (β (subTm (extS σ) t) (subTm σ s))
-⟶-sub σ (ξ-lam r)  = ξ-lam (⟶-sub (extS σ) r)
-⟶-sub σ (ξ-appˡ r) = ξ-appˡ (⟶-sub σ r)
-⟶-sub σ (ξ-appʳ r) = ξ-appʳ (⟶-sub σ r)
+⟶-sub σ (βfst a b)  = βfst (subTm σ a) (subTm σ b)
+⟶-sub σ (βsnd a b)  = βsnd (subTm σ a) (subTm σ b)
+⟶-sub σ (ξ-lam r)   = ξ-lam (⟶-sub (extS σ) r)
+⟶-sub σ (ξ-appˡ r)  = ξ-appˡ (⟶-sub σ r)
+⟶-sub σ (ξ-appʳ r)  = ξ-appʳ (⟶-sub σ r)
+⟶-sub σ (ξ-pairˡ r) = ξ-pairˡ (⟶-sub σ r)
+⟶-sub σ (ξ-pairʳ r) = ξ-pairʳ (⟶-sub σ r)
+⟶-sub σ (ξ-fst r)   = ξ-fst (⟶-sub σ r)
+⟶-sub σ (ξ-snd r)   = ξ-snd (⟶-sub σ r)
 
 ⟶ᵀ-sub : (σ : Sub Γ Δ) {A B : RTy Γ} → A ⟶ᵀ B → subTy σ A ⟶ᵀ subTy σ B
 ⟶ᵀ-sub σ (ξ-El r) = ξ-El (⟶-sub σ r)

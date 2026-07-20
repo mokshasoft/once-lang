@@ -29,22 +29,24 @@ open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; Π; Σ'; El; RTm; var; lam; app
+        ; pair; fst; snd
         ; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ
         ; _∘ᵣ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_
         ; subTy-renTy; renTy-subTy; subTy-subTy; renTy-renTy
         ; subTy-cong; renTy-cong; subTy-id; subTm-renTm; subTm-id )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶ᵀ_; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
-        ; _⟶_; β; ξ-lam; ξ-appˡ; ξ-appʳ; _⟶*_; done; step
+        ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
+        ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
-        ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢conv )
+        ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢conv )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub )
 open import poc.OCP0009.NbEPDirDBConf
   using ( ⟶-ren; subTm-monoˢ; extS-mono; single-mono )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans
-        ; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ; red→≅ᵀ; Π-inj )
+        ; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ; red→≅ᵀ; Π-inj; Σ-inj )
 
 private
   variable
@@ -146,6 +148,11 @@ ren-lemma (⊢var v) h = ⊢var (h v)
 ren-lemma (⊢lam d) h = ⊢lam (ren-lemma d (Ren⊢-ext h))
 ren-lemma {ρ = ρ} (⊢app {B = D} {u = u} d₁ d₂) h =
   ⊢-cast (sym (ren-comm-ty ρ D u)) (⊢app (ren-lemma d₁ h) (ren-lemma d₂ h))
+ren-lemma {ρ = ρ} (⊢pair {B = B} {a = a} d₁ d₂) h =
+  ⊢pair (ren-lemma d₁ h) (⊢-cast (ren-comm-ty ρ B a) (ren-lemma d₂ h))
+ren-lemma (⊢fst d) h = ⊢fst (ren-lemma d h)
+ren-lemma {ρ = ρ} (⊢snd {B = B} {p = p} d) h =
+  ⊢-cast (sym (ren-comm-ty ρ B (fst p))) (⊢snd (ren-lemma d h))
 ren-lemma {ρ = ρ} (⊢conv d c) h = ⊢conv (ren-lemma d h) (≅ᵀ-ren ρ c)
 
 ⊢wk : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
@@ -172,6 +179,11 @@ sub-lemma (⊢var v) h = h v
 sub-lemma (⊢lam d) h = ⊢lam (sub-lemma d (Sub⊢-ext h))
 sub-lemma {σ = σ} (⊢app {B = D} {u = u} d₁ d₂) h =
   ⊢-cast (sym (subTy-comm σ D u)) (⊢app (sub-lemma d₁ h) (sub-lemma d₂ h))
+sub-lemma {σ = σ} (⊢pair {B = B} {a = a} d₁ d₂) h =
+  ⊢pair (sub-lemma d₁ h) (⊢-cast (subTy-comm σ B a) (sub-lemma d₂ h))
+sub-lemma (⊢fst d) h = ⊢fst (sub-lemma d h)
+sub-lemma {σ = σ} (⊢snd {B = B} {p = p} d) h =
+  ⊢-cast (sym (subTy-comm σ B (fst p))) (⊢snd (sub-lemma d h))
 sub-lemma {σ = σ} (⊢conv d c) h = ⊢conv (sub-lemma d h) (≅ᵀ-sub σ c)
 
 ⊢[] : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {t : RTm (⌊ Γ ⌋ ∙)} {B : RTy (⌊ Γ ⌋ ∙)}
@@ -201,6 +213,27 @@ gen-app (⊢app d₁ d₂) = _ , (_ , (d₁ , (d₂ , crflᵀ)))
 gen-app (⊢conv d c) with gen-app d
 ... | A , (B , (d₁ , (d₂ , c'))) = A , (B , (d₁ , (d₂ , ctrnᵀ (csymᵀ c) c')))
 
+gen-pair : {Γ : Ctx} {a b : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ pair a b ∷ C →
+           Σ (RTy ⌊ Γ ⌋) (λ A → Σ (RTy (⌊ Γ ⌋ ∙)) (λ B →
+             (C ≅ᵀ Σ' A B) × ((Γ ⊢ a ∷ A) × (Γ ⊢ b ∷ subTy (single a) B))))
+gen-pair (⊢pair da db) = _ , (_ , (crflᵀ , (da , db)))
+gen-pair (⊢conv d c) with gen-pair d
+... | A , (B , (c' , (da , db))) = A , (B , (ctrnᵀ (csymᵀ c) c' , (da , db)))
+
+gen-fst : {Γ : Ctx} {p : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ fst p ∷ C →
+          Σ (RTy ⌊ Γ ⌋) (λ A → Σ (RTy (⌊ Γ ⌋ ∙)) (λ B →
+            (Γ ⊢ p ∷ Σ' A B) × (C ≅ᵀ A)))
+gen-fst (⊢fst d) = _ , (_ , (d , crflᵀ))
+gen-fst (⊢conv d c) with gen-fst d
+... | A , (B , (dp , c')) = A , (B , (dp , ctrnᵀ (csymᵀ c) c'))
+
+gen-snd : {Γ : Ctx} {p : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ snd p ∷ C →
+          Σ (RTy ⌊ Γ ⌋) (λ A → Σ (RTy (⌊ Γ ⌋ ∙)) (λ B →
+            (Γ ⊢ p ∷ Σ' A B) × (C ≅ᵀ subTy (single (fst p)) B)))
+gen-snd (⊢snd d) = _ , (_ , (d , crflᵀ))
+gen-snd (⊢conv d c) with gen-snd d
+... | A , (B , (dp , c')) = A , (B , (dp , ctrnᵀ (csymᵀ c) c'))
+
 ------------------------------------------------------------------------
 -- ★ SUBJECT REDUCTION.
 ------------------------------------------------------------------------
@@ -220,6 +253,32 @@ sr d (ξ-appʳ {u = u} {u' = u'} r) with gen-app d
 ... | A₀ , (B₀ , (d-t , (d-u , cC))) =
       ⊢conv (⊢app d-t (sr d-u r))
             (csymᵀ (ctrnᵀ cC (red→≅ᵀ (subTy-monoˢ (single-mono (step r done)) B₀))))
+sr d (βfst a b) with gen-fst d
+... | A₀ , (B₀ , (d-pair , cC)) with gen-pair d-pair
+...   | A₁ , (B₁ , (cΣ , (d-a , d-b))) with Σ-inj cΣ
+...     | (cA , cB) = ⊢conv d-a (csymᵀ (ctrnᵀ cC cA))
+sr d (βsnd a b) with gen-snd d
+... | A₀ , (B₀ , (d-pair , cC)) with gen-pair d-pair
+...   | A₁ , (B₁ , (cΣ , (d-a , d-b))) with Σ-inj cΣ
+...     | (cA , cB) =
+          ⊢conv d-b
+            (csymᵀ (ctrnᵀ cC
+              (ctrnᵀ (red→≅ᵀ (subTy-monoˢ (single-mono (step (βfst a b) done)) B₀))
+                     (≅ᵀ-sub (single a) cB))))
+sr d (ξ-pairˡ r) with gen-pair d
+... | A₀ , (B₀ , (cΣ , (d-a , d-b))) =
+      ⊢conv (⊢pair (sr d-a r)
+              (⊢conv d-b (red→≅ᵀ (subTy-monoˢ (single-mono (step r done)) B₀))))
+            (csymᵀ cΣ)
+sr d (ξ-pairʳ r) with gen-pair d
+... | A₀ , (B₀ , (cΣ , (d-a , d-b))) =
+      ⊢conv (⊢pair d-a (sr d-b r)) (csymᵀ cΣ)
+sr d (ξ-fst r) with gen-fst d
+... | A₀ , (B₀ , (d-p , cC)) = ⊢conv (⊢fst (sr d-p r)) (csymᵀ cC)
+sr d (ξ-snd r) with gen-snd d
+... | A₀ , (B₀ , (d-p , cC)) =
+      ⊢conv (⊢snd (sr d-p r))
+        (csymᵀ (ctrnᵀ cC (red→≅ᵀ (subTy-monoˢ (single-mono (step (ξ-fst r) done)) B₀))))
 
 ------------------------------------------------------------------------
 -- Type preservation for MULTI-step reduction — the immediate corollary.

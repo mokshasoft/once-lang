@@ -206,3 +206,36 @@ red→≅ᵀ (stepᵀ r p) = ctrnᵀ (credᵀ r) (red→≅ᵀ p)
 ...       | (eqA , eqB) =
             ctrnᵀ (red→≅ᵀ rA₁) (csymᵀ (red→≅ᵀ (subst (_ ⟶ᵀ*_) (sym eqA) rA₂)))
           , ctrnᵀ (red→≅ᵀ rB₁) (csymᵀ (red→≅ᵀ (subst (_ ⟶ᵀ*_) (sym eqB) rB₂)))
+
+------------------------------------------------------------------------
+-- Σ-injectivity (mirrors Π-injectivity) — for `⊢fst`/`⊢snd` inversion (A1).
+------------------------------------------------------------------------
+
+record ΣRed {Γ} (A : RTy Γ) (B : RTy (Γ ∙)) (C : RTy Γ) : Set where
+  constructor mkΣRed
+  field
+    A'' : RTy Γ
+    B'' : RTy (Γ ∙)
+    eqC : C ≡ Σ' A'' B''
+    rA  : A ⟶ᵀ* A''
+    rB  : B ⟶ᵀ* B''
+
+Σ-reduct : {A : RTy Γ} {B : RTy (Γ ∙)} {C : RTy Γ} → Σ' A B ⟶ᵀ* C → ΣRed A B C
+Σ-reduct {A = A} {B} doneᵀ = mkΣRed A B refl doneᵀ doneᵀ
+Σ-reduct (stepᵀ (ξ-Σˡ r) rest) with Σ-reduct rest
+... | mkΣRed A'' B'' eqC rA rB = mkΣRed A'' B'' eqC (stepᵀ r rA) rB
+Σ-reduct (stepᵀ (ξ-Σʳ r) rest) with Σ-reduct rest
+... | mkΣRed A'' B'' eqC rA rB = mkΣRed A'' B'' eqC rA (stepᵀ r rB)
+
+Σinj≡ : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} → Σ' A B ≡ Σ' A' B' → (A ≡ A') × (B ≡ B')
+Σinj≡ refl = refl , refl
+
+Σ-inj : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} →
+        Σ' A B ≅ᵀ Σ' A' B' → (A ≅ᵀ A') × (B ≅ᵀ B')
+Σ-inj c with church-rosserᵀ c
+... | C , (r₁ , r₂) with Σ-reduct r₁ | Σ-reduct r₂
+...   | mkΣRed A₁ B₁ eq₁ rA₁ rB₁ | mkΣRed A₂ B₂ eq₂ rA₂ rB₂
+        with Σinj≡ (trans (sym eq₁) eq₂)
+...       | (eqA , eqB) =
+            ctrnᵀ (red→≅ᵀ rA₁) (csymᵀ (red→≅ᵀ (subst (_ ⟶ᵀ*_) (sym eqA) rA₂)))
+          , ctrnᵀ (red→≅ᵀ rB₁) (csymᵀ (red→≅ᵀ (subst (_ ⟶ᵀ*_) (sym eqB) rB₂)))

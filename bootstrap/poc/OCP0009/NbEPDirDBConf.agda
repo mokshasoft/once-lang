@@ -28,11 +28,12 @@ module poc.OCP0009.NbEPDirDBConf where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ )
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app; Ren; extR; renTm
+  using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app; pair; fst; snd; Ren; extR; renTm
         ; Sub; extS; subTm; renTm-subTm; subTm-renTm; subTm-cong
         ; _ᵣ∘ₛ_; _ₛ∘ᵣ_ )
 open import poc.OCP0009.NbEPDirDBType
-  using ( single; _⟶_; β; ξ-lam; ξ-appˡ; ξ-appʳ; _⟶*_; done; step
+  using ( single; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
+        ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd; _⟶*_; done; step
         ; _≅_; cred; crfl; csym; ctrn )
 open import poc.OCP0009.NbEPDirDBSR using ( sub-comm; ⟶-sub )
 
@@ -60,6 +61,22 @@ private
 ⟶*-appʳ done       = done
 ⟶*-appʳ (step r p) = step (ξ-appʳ r) (⟶*-appʳ p)
 
+⟶*-pairˡ : {a a' b : RTm Γ} → a ⟶* a' → pair a b ⟶* pair a' b
+⟶*-pairˡ done       = done
+⟶*-pairˡ (step r p) = step (ξ-pairˡ r) (⟶*-pairˡ p)
+
+⟶*-pairʳ : {a b b' : RTm Γ} → b ⟶* b' → pair a b ⟶* pair a b'
+⟶*-pairʳ done       = done
+⟶*-pairʳ (step r p) = step (ξ-pairʳ r) (⟶*-pairʳ p)
+
+⟶*-fst : {p p' : RTm Γ} → p ⟶* p' → fst p ⟶* fst p'
+⟶*-fst done       = done
+⟶*-fst (step r q) = step (ξ-fst r) (⟶*-fst q)
+
+⟶*-snd : {p p' : RTm Γ} → p ⟶* p' → snd p ⟶* snd p'
+⟶*-snd done       = done
+⟶*-snd (step r q) = step (ξ-snd r) (⟶*-snd q)
+
 ⟶*-sub : (σ : Sub Γ Δ) {t u : RTm Γ} → t ⟶* u → subTm σ t ⟶* subTm σ u
 ⟶*-sub σ done       = done
 ⟶*-sub σ (step r p) = step (⟶-sub σ r) (⟶*-sub σ p)
@@ -84,9 +101,15 @@ ren-comm {Γ} ρ t u =
   subst (λ z → renTm ρ (app (lam t) u) ⟶ z)
         (sym (ren-comm ρ t u))
         (β (renTm (extR ρ) t) (renTm ρ u))
-⟶-ren ρ (ξ-lam r)  = ξ-lam (⟶-ren (extR ρ) r)
-⟶-ren ρ (ξ-appˡ r) = ξ-appˡ (⟶-ren ρ r)
-⟶-ren ρ (ξ-appʳ r) = ξ-appʳ (⟶-ren ρ r)
+⟶-ren ρ (βfst a b)  = βfst (renTm ρ a) (renTm ρ b)
+⟶-ren ρ (βsnd a b)  = βsnd (renTm ρ a) (renTm ρ b)
+⟶-ren ρ (ξ-lam r)   = ξ-lam (⟶-ren (extR ρ) r)
+⟶-ren ρ (ξ-appˡ r)  = ξ-appˡ (⟶-ren ρ r)
+⟶-ren ρ (ξ-appʳ r)  = ξ-appʳ (⟶-ren ρ r)
+⟶-ren ρ (ξ-pairˡ r) = ξ-pairˡ (⟶-ren ρ r)
+⟶-ren ρ (ξ-pairʳ r) = ξ-pairʳ (⟶-ren ρ r)
+⟶-ren ρ (ξ-fst r)   = ξ-fst (⟶-ren ρ r)
+⟶-ren ρ (ξ-snd r)   = ξ-snd (⟶-ren ρ r)
 
 ⟶*-ren : (ρ : Ren Γ Δ) {t u : RTm Γ} → t ⟶* u → renTm ρ t ⟶* renTm ρ u
 ⟶*-ren ρ done       = done
@@ -107,6 +130,10 @@ subTm-monoˢ h (var x)   = h x
 subTm-monoˢ h (lam t)   = ⟶*-lam (subTm-monoˢ (extS-mono h) t)
 subTm-monoˢ h (app t u) =
   ⟶*-trans (⟶*-appˡ (subTm-monoˢ h t)) (⟶*-appʳ (subTm-monoˢ h u))
+subTm-monoˢ h (pair a b) =
+  ⟶*-trans (⟶*-pairˡ (subTm-monoˢ h a)) (⟶*-pairʳ (subTm-monoˢ h b))
+subTm-monoˢ h (fst p) = ⟶*-fst (subTm-monoˢ h p)
+subTm-monoˢ h (snd p) = ⟶*-snd (subTm-monoˢ h p)
 
 single-mono : {u u' : RTm Γ} → u ⟶* u' →
               ∀ (x : Var (Γ ∙)) → single u x ⟶* single u' x
@@ -119,22 +146,36 @@ single-mono p (vs x) = done
 
 infix 3 _⟹_
 data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
-  pvar : (x : Var Γ) → var x ⟹ var x
-  plam : {t t' : RTm (Γ ∙)} → t ⟹ t' → lam t ⟹ lam t'
-  papp : {t t' u u' : RTm Γ} → t ⟹ t' → u ⟹ u' → app t u ⟹ app t' u'
-  pβ   : {t t' : RTm (Γ ∙)} {u u' : RTm Γ} →
-         t ⟹ t' → u ⟹ u' → app (lam t) u ⟹ subTm (single u') t'
+  pvar  : (x : Var Γ) → var x ⟹ var x
+  plam  : {t t' : RTm (Γ ∙)} → t ⟹ t' → lam t ⟹ lam t'
+  papp  : {t t' u u' : RTm Γ} → t ⟹ t' → u ⟹ u' → app t u ⟹ app t' u'
+  pβ    : {t t' : RTm (Γ ∙)} {u u' : RTm Γ} →
+          t ⟹ t' → u ⟹ u' → app (lam t) u ⟹ subTm (single u') t'
+  ppair : {a a' b b' : RTm Γ} → a ⟹ a' → b ⟹ b' → pair a b ⟹ pair a' b'
+  pfst  : {p p' : RTm Γ} → p ⟹ p' → fst p ⟹ fst p'
+  psnd  : {p p' : RTm Γ} → p ⟹ p' → snd p ⟹ snd p'
+  pβfst : {a a' b b' : RTm Γ} → a ⟹ a' → b ⟹ b' → fst (pair a b) ⟹ a'
+  pβsnd : {a a' b b' : RTm Γ} → a ⟹ a' → b ⟹ b' → snd (pair a b) ⟹ b'
 
 ⟹-refl : (t : RTm Γ) → t ⟹ t
-⟹-refl (var x)   = pvar x
-⟹-refl (lam t)   = plam (⟹-refl t)
-⟹-refl (app t u) = papp (⟹-refl t) (⟹-refl u)
+⟹-refl (var x)    = pvar x
+⟹-refl (lam t)    = plam (⟹-refl t)
+⟹-refl (app t u)  = papp (⟹-refl t) (⟹-refl u)
+⟹-refl (pair a b) = ppair (⟹-refl a) (⟹-refl b)
+⟹-refl (fst p)    = pfst (⟹-refl p)
+⟹-refl (snd p)    = psnd (⟹-refl p)
 
 ⟶→⟹ : {t u : RTm Γ} → t ⟶ u → t ⟹ u
-⟶→⟹ (β t u)    = pβ (⟹-refl t) (⟹-refl u)
-⟶→⟹ (ξ-lam r)  = plam (⟶→⟹ r)
-⟶→⟹ (ξ-appˡ r) = papp (⟶→⟹ r) (⟹-refl _)
-⟶→⟹ (ξ-appʳ r) = papp (⟹-refl _) (⟶→⟹ r)
+⟶→⟹ (β t u)     = pβ (⟹-refl t) (⟹-refl u)
+⟶→⟹ (βfst a b)  = pβfst (⟹-refl a) (⟹-refl b)
+⟶→⟹ (βsnd a b)  = pβsnd (⟹-refl a) (⟹-refl b)
+⟶→⟹ (ξ-lam r)   = plam (⟶→⟹ r)
+⟶→⟹ (ξ-appˡ r)  = papp (⟶→⟹ r) (⟹-refl _)
+⟶→⟹ (ξ-appʳ r)  = papp (⟹-refl _) (⟶→⟹ r)
+⟶→⟹ (ξ-pairˡ r) = ppair (⟶→⟹ r) (⟹-refl _)
+⟶→⟹ (ξ-pairʳ r) = ppair (⟹-refl _) (⟶→⟹ r)
+⟶→⟹ (ξ-fst r)   = pfst (⟶→⟹ r)
+⟶→⟹ (ξ-snd r)   = psnd (⟶→⟹ r)
 
 ⟹→⟶* : {t u : RTm Γ} → t ⟹ u → t ⟶* u
 ⟹→⟶* (pvar x)  = done
@@ -145,6 +186,12 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   step (β t u)
        (⟶*-trans (⟶*-sub (single u) (⟹→⟶* p))
                  (subTm-monoˢ (single-mono (⟹→⟶* q)) t'))
+⟹→⟶* (ppair p q) =
+  ⟶*-trans (⟶*-pairˡ (⟹→⟶* p)) (⟶*-pairʳ (⟹→⟶* q))
+⟹→⟶* (pfst p) = ⟶*-fst (⟹→⟶* p)
+⟹→⟶* (psnd p) = ⟶*-snd (⟹→⟶* p)
+⟹→⟶* (pβfst {a = a} {b = b} p q) = step (βfst a b) (⟹→⟶* p)
+⟹→⟶* (pβsnd {a = a} {b = b} p q) = step (βsnd a b) (⟹→⟶* q)
 
 ------------------------------------------------------------------------
 -- Parallel reduction is stable under renaming and substitution.
@@ -158,6 +205,11 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   subst (λ z → renTm ρ (app (lam t) u) ⟹ z)
         (sym (ren-comm ρ t' u'))
         (pβ (⟹-ren (extR ρ) p) (⟹-ren ρ q))
+⟹-ren ρ (ppair p q) = ppair (⟹-ren ρ p) (⟹-ren ρ q)
+⟹-ren ρ (pfst p)    = pfst (⟹-ren ρ p)
+⟹-ren ρ (psnd p)    = psnd (⟹-ren ρ p)
+⟹-ren ρ (pβfst p q) = pβfst (⟹-ren ρ p) (⟹-ren ρ q)
+⟹-ren ρ (pβsnd p q) = pβsnd (⟹-ren ρ p) (⟹-ren ρ q)
 
 ⟹-exts : {σ σ' : Sub Γ Δ} → (∀ x → σ x ⟹ σ' x) →
          ∀ (x : Var (Γ ∙)) → extS σ x ⟹ extS σ' x
@@ -173,6 +225,11 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   subst (λ z → subTm σ (app (lam t) u) ⟹ z)
         (sym (sub-comm σ' t' u'))
         (pβ (⟹-sub (⟹-exts h) p) (⟹-sub h q))
+⟹-sub h (ppair p q) = ppair (⟹-sub h p) (⟹-sub h q)
+⟹-sub h (pfst p)    = pfst (⟹-sub h p)
+⟹-sub h (psnd p)    = psnd (⟹-sub h p)
+⟹-sub h (pβfst p q) = pβfst (⟹-sub h p) (⟹-sub h q)
+⟹-sub h (pβsnd p q) = pβsnd (⟹-sub h p) (⟹-sub h q)
 
 single-⟹ : {u u' : RTm Γ} → u ⟹ u' →
            (x : Var (Γ ∙)) → single u x ⟹ single u' x
@@ -184,20 +241,62 @@ single-⟹ p (vs x) = pvar x
 ------------------------------------------------------------------------
 
 _⁺ : RTm Γ → RTm Γ
-var x ⁺           = var x
-lam t ⁺           = lam (t ⁺)
-app (lam t) u ⁺   = subTm (single (u ⁺)) (t ⁺)
-app (var x) u ⁺   = app (var x) (u ⁺)
-app (app f a) u ⁺ = app (app f a ⁺) (u ⁺)
+var x ⁺            = var x
+lam t ⁺            = lam (t ⁺)
+pair a b ⁺         = pair (a ⁺) (b ⁺)
+app (lam t) u ⁺    = subTm (single (u ⁺)) (t ⁺)
+app (var x) u ⁺    = app (var x ⁺) (u ⁺)
+app (app f a) u ⁺  = app (app f a ⁺) (u ⁺)
+app (pair a b) u ⁺ = app (pair a b ⁺) (u ⁺)
+app (fst p) u ⁺    = app (fst p ⁺) (u ⁺)
+app (snd p) u ⁺    = app (snd p ⁺) (u ⁺)
+fst (pair a b) ⁺   = a ⁺
+fst (var x) ⁺      = fst (var x ⁺)
+fst (lam t) ⁺      = fst (lam t ⁺)
+fst (app f a) ⁺    = fst (app f a ⁺)
+fst (fst p) ⁺      = fst (fst p ⁺)
+fst (snd p) ⁺      = fst (snd p ⁺)
+snd (pair a b) ⁺   = b ⁺
+snd (var x) ⁺      = snd (var x ⁺)
+snd (lam t) ⁺      = snd (lam t ⁺)
+snd (app f a) ⁺    = snd (app f a ⁺)
+snd (fst p) ⁺      = snd (fst p ⁺)
+snd (snd p) ⁺      = snd (snd p ⁺)
 
 ⟹-⁺ : {t u : RTm Γ} → t ⟹ u → u ⟹ t ⁺
-⟹-⁺ (pvar x)              = pvar x
-⟹-⁺ (plam p)              = plam (⟹-⁺ p)
-⟹-⁺ (papp (pvar x) q)     = papp (pvar x) (⟹-⁺ q)
-⟹-⁺ (papp (plam p) q)     = pβ (⟹-⁺ p) (⟹-⁺ q)
-⟹-⁺ (papp (papp p₁ p₂) q) = papp (⟹-⁺ (papp p₁ p₂)) (⟹-⁺ q)
-⟹-⁺ (papp (pβ p₁ p₂) q)   = papp (⟹-⁺ (pβ p₁ p₂)) (⟹-⁺ q)
-⟹-⁺ (pβ p q)              = ⟹-sub (single-⟹ (⟹-⁺ q)) (⟹-⁺ p)
+⟹-⁺ (pvar x)               = pvar x
+⟹-⁺ (plam p)               = plam (⟹-⁺ p)
+⟹-⁺ (ppair p q)            = ppair (⟹-⁺ p) (⟹-⁺ q)
+⟹-⁺ (papp (pvar x) q)      = papp (pvar x) (⟹-⁺ q)
+⟹-⁺ (papp (plam p) q)      = pβ (⟹-⁺ p) (⟹-⁺ q)
+⟹-⁺ (papp (papp p₁ p₂) q)  = papp (⟹-⁺ (papp p₁ p₂)) (⟹-⁺ q)
+⟹-⁺ (papp (pβ p₁ p₂) q)    = papp (⟹-⁺ (pβ p₁ p₂)) (⟹-⁺ q)
+⟹-⁺ (papp (ppair p₁ p₂) q) = papp (⟹-⁺ (ppair p₁ p₂)) (⟹-⁺ q)
+⟹-⁺ (papp (pfst p₁) q)     = papp (⟹-⁺ (pfst p₁)) (⟹-⁺ q)
+⟹-⁺ (papp (psnd p₁) q)     = papp (⟹-⁺ (psnd p₁)) (⟹-⁺ q)
+⟹-⁺ (papp (pβfst p₁ p₂) q) = papp (⟹-⁺ (pβfst p₁ p₂)) (⟹-⁺ q)
+⟹-⁺ (papp (pβsnd p₁ p₂) q) = papp (⟹-⁺ (pβsnd p₁ p₂)) (⟹-⁺ q)
+⟹-⁺ (pfst (pvar x))        = pfst (pvar x)
+⟹-⁺ (pfst (plam p))        = pfst (⟹-⁺ (plam p))
+⟹-⁺ (pfst (papp p₁ p₂))    = pfst (⟹-⁺ (papp p₁ p₂))
+⟹-⁺ (pfst (pβ p₁ p₂))      = pfst (⟹-⁺ (pβ p₁ p₂))
+⟹-⁺ (pfst (ppair p₁ p₂))   = pβfst (⟹-⁺ p₁) (⟹-⁺ p₂)
+⟹-⁺ (pfst (pfst p₁))       = pfst (⟹-⁺ (pfst p₁))
+⟹-⁺ (pfst (psnd p₁))       = pfst (⟹-⁺ (psnd p₁))
+⟹-⁺ (pfst (pβfst p₁ p₂))   = pfst (⟹-⁺ (pβfst p₁ p₂))
+⟹-⁺ (pfst (pβsnd p₁ p₂))   = pfst (⟹-⁺ (pβsnd p₁ p₂))
+⟹-⁺ (psnd (pvar x))        = psnd (pvar x)
+⟹-⁺ (psnd (plam p))        = psnd (⟹-⁺ (plam p))
+⟹-⁺ (psnd (papp p₁ p₂))    = psnd (⟹-⁺ (papp p₁ p₂))
+⟹-⁺ (psnd (pβ p₁ p₂))      = psnd (⟹-⁺ (pβ p₁ p₂))
+⟹-⁺ (psnd (ppair p₁ p₂))   = pβsnd (⟹-⁺ p₁) (⟹-⁺ p₂)
+⟹-⁺ (psnd (pfst p₁))       = psnd (⟹-⁺ (pfst p₁))
+⟹-⁺ (psnd (psnd p₁))       = psnd (⟹-⁺ (psnd p₁))
+⟹-⁺ (psnd (pβfst p₁ p₂))   = psnd (⟹-⁺ (pβfst p₁ p₂))
+⟹-⁺ (psnd (pβsnd p₁ p₂))   = psnd (⟹-⁺ (pβsnd p₁ p₂))
+⟹-⁺ (pβ p q)               = ⟹-sub (single-⟹ (⟹-⁺ q)) (⟹-⁺ p)
+⟹-⁺ (pβfst p q)            = ⟹-⁺ p
+⟹-⁺ (pβsnd p q)            = ⟹-⁺ q
 
 ------------------------------------------------------------------------
 -- Diamond (from the triangle), then confluence of `⟹*`, then of `⟶*`.
