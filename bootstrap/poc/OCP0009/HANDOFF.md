@@ -182,11 +182,21 @@ decision engine consumes.
       products, so **`sn : Γ⊢A → SN t`** holds there too, `--safe`/zero-axiom. Adds
       the product candidate `Red (A ×ₜ B) t = Red A (fst t) × Red B (snd t)` and the
       pair-introduction lemma `red-pair` (dual to `abs`) to the dHoTT-35 proof.
-    - *The universe* — STILL OPEN, research-scale, and now the SOLE remaining SN
-      frontier. `El c` decodes to `Π`/`Σ`, so types GROW under substitution and the
-      reducibility predicate can't be structural recursion on the type (needs an
-      induction-recursion, à la Abel–Öhman–Vezzosi). A formalization **project**,
-      not a slice.
+    - *The universe — type-normalization core* — ✅ DONE (`NbEPDirDBSNU`,
+      dHoTT-37). The kernel's reduction SPLITS: TERM reduction has no `El` (codes
+      reduce only by ξ), so term SN is STLC+products+inert-codes and dissolves to
+      dHoTT-36 by ERASURE (`El c` erases to a fixed simple type — recursion on the
+      finite code — so the growth rule is erasure-invariant, no IR). The
+      genuinely-new difficulty is all in TYPE reduction, where `El` decodes and a
+      type GROWS; **`snᵀ : (A : Ty) → SNᵀ A`** proves that growth TERMINATES, by a
+      plain STRUCTURAL induction on the code (predicativity: `El (⌜Π⌝ c d)` decodes
+      to types over strictly smaller codes) — no measure, no IR.
+    - *The universe — coupled fundamental theorem* — STILL OPEN, research-scale.
+      Reducibility of terms AT `El`-types (the relation must FOLLOW the decoding)
+      is the induction-recursion (Abel–Öhman–Vezzosi) standing on the dHoTT-37
+      type-normalization core; and a typed λU + the type-preserving erasure that
+      would transfer term SN from dHoTT-36 are routine-but-unbuilt. A formalization
+      **project**, not a slice.
 
 ### Also open (from the semantic tower — not on the finalization critical path)
 
