@@ -43,9 +43,9 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- info (name + semI + semM), not just the name. This unlocks per-name
 -- discharge of `ir-to-trace-correct-sigop` and per-(arch, name)
 -- discharge of `sigop-codegen-faithful`.
-open import Once.Type using (Type; FitsInReg; fits-int; fits-in-reg?)
+open import Once.Type using (Type; Unit; Int; _*_; FitsInReg; fits-int; fits-in-reg?)
 open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts)
+open import Once.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
 
 private
   -- Helper: just is injective (private to avoid name clashes)
@@ -1312,6 +1312,38 @@ module AbstractExec {FS : FrameSemantics} where
   unit-storedvalue : StoredValue FS
   unit-storedvalue = SV-Lit fits-int 0
 
+  -- Plan 0.54 Phase B rung A (A4): the type-directed VALUE READER — the inverse
+  -- of how `ValidAtWF` stores a value. `readTyped A loc s` materialises the
+  -- `⟦ A ⟧` a representation at `loc` denotes (Int/Float from the `SV-Lit`, a
+  -- product from the two `SV-Ptr` slots recursively, Unit trivially). This is
+  -- what lets `pure-sigop-output` COMPUTE a Pure SigOp's real `semM` result
+  -- instead of a sentinel. Non-arith shapes → `nothing`; arith inputs are tuples
+  -- of Unit/Int (`Arith.SigOp.Block.shape-as-type`), the covered cases.
+  combine-typed : ∀ {A B : Type} → Maybe ⟦ A ⟧ → Maybe ⟦ B ⟧ → Maybe ⟦ A * B ⟧
+  combine-typed (just a) (just b) = just (a , b)
+  combine-typed _        _        = nothing
+
+  -- Aux-style (Maybe-argument) helpers so the adequacy proof
+  -- (`ReadTypedAdequate`) can `rewrite` the `readLoc` results — a `with` on the
+  -- abstract `readLoc s loc` would not reduce under the proof's rewrites.
+  readTyped-int : Maybe (StoredValue FS) → Maybe ⟦ Int ⟧
+  readTyped-int (just (SV-Lit fits-int v)) = just v
+  readTyped-int _                          = nothing
+
+  readTyped-pair : ∀ {A B : Type}
+                 → (ValueLocation FS → Maybe ⟦ A ⟧) → (ValueLocation FS → Maybe ⟦ B ⟧)
+                 → Maybe (StoredValue FS) → Maybe (StoredValue FS) → Maybe ⟦ A * B ⟧
+  readTyped-pair rA rB (just (SV-Ptr fl)) (just (SV-Ptr sl)) = combine-typed (rA fl) (rB sl)
+  readTyped-pair rA rB _                  _                  = nothing
+
+  readTyped : (A : Type) → ValueLocation FS → LocState FS → Maybe ⟦ A ⟧
+  readTyped Unit    loc s = just tt
+  readTyped Int     loc s = readTyped-int (readLoc s loc)
+  readTyped (A * B) loc s =
+    readTyped-pair (λ l → readTyped A l s) (λ l → readTyped B l s)
+      (readLoc s loc) (readLoc s (sucLoc loc))
+  readTyped _       loc s = nothing
+
   -- Plan 0.26 — `pure-sigop-output` discharged via `FitsInReg`.
   --
   -- For codomains satisfying `FitsInReg` (i.e. `Int`, `Float`), the
@@ -1331,9 +1363,17 @@ module AbstractExec {FS : FrameSemantics} where
 
   pure-sigop-output : ∀ {A B} → SigOpInfo A B → LocState FS →
                       StoredValue FS
-  pure-sigop-output {A} {B} si s with fits-in-reg? B
-  ... | just _  = unit-storedvalue
-  ... | nothing = structured-pure-sigop-output si s
+  -- Plan 0.54 rung A (A4): compute the REAL output. For a fits-in-reg codomain,
+  -- read the SigOp's input `⟦ A ⟧` off `Input1`'s pointee (`readTyped`) and apply
+  -- `semM` — the flat machine now computes the arith value (was `unit-storedvalue`
+  -- sentinel). If the input can't be read (register-resident scalar / unstaged),
+  -- fall back to the sentinel (kept total; that path is a later refinement).
+  pure-sigop-output {A} {B} si s with fits-in-reg? B | sv-as-loc (readReg (regs s) Input1)
+  ... | just fitB | just in-loc with readTyped A in-loc s
+  ...   | just a  = SV-Lit fitB (semM si a)
+  ...   | nothing = unit-storedvalue
+  pure-sigop-output {A} {B} si s | just fitB | nothing = unit-storedvalue
+  pure-sigop-output {A} {B} si s | nothing   | _       = structured-pure-sigop-output si s
 
   -- | Shape-direct output dispatch. Pattern-matches on EffectShape
   -- directly, so `with effect si` in downstream proofs reduces the

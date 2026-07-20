@@ -41,7 +41,7 @@ open import Once.Type using (Type; FitsInReg; fits-in-reg?)
   renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
 open import Once.IRTy using (WellFormedFI-irrelevant)
 open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
-open import Once.IR using (IR; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ;
+open import Once.IR using (IR; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ; _∘_;
   μ-type; ⟦_⟧TI; WellFormedFI; FitsInRegI; fits-int; fits-float; ⌊_⌋)
 
 -- Surface `FitsInReg B` ⇒ erased `FitsInRegI ⌊B⌋`: `⌊Int⌋=Int`, `⌊Float⌋=Float`
@@ -54,7 +54,7 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
 open import Once.IR.Size using (ir-size)
 open import Once.CCC.Eval using (eval)
 open import Once.CCC.Machine.SMCore
-  using (LocState; ValueLocation; SV-Ptr; halted; regs; readReg; Input1;
+  using (LocState; ValueLocation; SV-Ptr; halted; regs; readReg; Input1; Output;
          instr-sigop; module AbstractExec)
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; module FrontierInvariant)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -71,7 +71,8 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open FlatMachine {FS}
   open AbstractExec {FS} using (exec-sigop-halts)
   open FrontierInvariant {FS} using (BeforeFrontier)
-  open ClosureWellFormedDef {FS} program-bound using (ValidAtWF; valid-μ-wf; valid-primitive-wf)
+  open ClosureWellFormedDef {FS} program-bound
+    using (ValidAtWF; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; prim-sv)
   open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[])
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot)
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
@@ -145,14 +146,16 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
         ∀ (k : ℕ) → ∃[ f ]
           take k (flat-events f (ir-to-trace ir) (mkFlat s alloc 0))
             ≡ take k (projTrace (evalᴰ ir (inject x)) k)
-      -- The value device (`ValidAtWF` — "the value the next effectful SigOp
-      -- reads is right", Behavior.agda). Final-value form (terminating
-      -- specialization, its own fuel `f`); the per-effectful-SigOp form for
-      -- productive `Ana` (no final value) is the next value-device refinement.
+      -- The value device: "the value the next effectful SigOp reads is right".
+      -- Plan 0.54 rung A: a `ResultPlace` (register `at-reg` OR memory `at-loc`),
+      -- NOT bare `ValidAtWF` at a memory loc — a Pure primitive result is
+      -- register-resident (`Output`), so the memory-only form could not capture
+      -- it. This is the `Place` split (register-allocation both-residences); the
+      -- register count per arch is rung B. Final-value form (its own fuel `f`).
       value-realized :
-        ∃[ f ] ∃[ mOut ] ∃[ result-loc ]
-          ValidAtWF mOut (falloc (flat-run f ir s alloc))
-            (eval ir x) result-loc
+        ∃[ f ] ∃[ mOut ] ∃[ ca ]
+          ResultPlace B mOut (falloc (flat-run f ir s alloc)) ca
+            (eval ir x)
             (forced (floc (flat-run f ir s alloc)))
 
   -- Same preconditions as `compile-correct-flat`'s semantic side (entry
@@ -233,6 +236,29 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- Non-`Pure` or non-fits-in-reg SigOps still route to `obs-correct-rest`,
   -- so the total IR dispatch is preserved.
   -- ════════════════════════════════════════════════════════════════════
+  -- ════════════════════════════════════════════════════════════════════
+  -- THE ARITH VALUE OBLIGATION (Plan 0.54 rung A) — the single named residual
+  -- the whole apex chain now reduces to for a Pure register-returning SigOp:
+  -- after the `instr-sigop` step, `Output` holds the REAL result.
+  --
+  -- TRUE by construction since A4: `exec-abstract (instr-sigop si)` writes
+  -- `pure-sigop-output si s = SV-Lit fitB (semM si (readTyped A input-loc s))`
+  -- (SMCore), and `readTyped-adequate` (ReadTypedAdequate) turns the `ValidAtWF`
+  -- hypothesis into `readTyped A input-loc s ≡ just (subst id (coh A) x)`; with
+  -- `eval (SigOp si) x = subst (sym (coh B)) (semM si (subst id (coh A) x))`
+  -- (CCC.Eval:83) the two sides coincide modulo the `coh` transports (which are
+  -- `refl` on the fits-in-reg base types). Discharge = the next step; stated
+  -- here so the apex chain is verified end-to-end against ONE named equation.
+  -- ════════════════════════════════════════════════════════════════════
+  postulate
+    pure-sigop-value-correct :
+      ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) → effect si ≡ Pure
+      → ∀ {mIn} (x : ⟦ ⌊ A ⌋ ⟧) (input-loc : ValueLocation FS)
+          (s : LocState FS) (alloc : AllocState {FS})
+      → ValidAtWF mIn alloc x input-loc s
+      → readReg (regs (forced (floc (flat-run 2 (SigOp si) s alloc)))) Output
+          ≡ prim-sv (fits-erase fitness) (eval (SigOp si) x)
+
   pure-obs-correct-sigop :
     ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B)
     → effect si ≡ Pure → IRObsCorrectF (SigOp si)
@@ -243,7 +269,9 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
           2 , trans (cong (take k) (mach-[] 2))
                     (cong (take k) (sym (denot-[] k)))
       ; value-realized =
-          2 , Stack , input-loc , valid-primitive-wf (fits-erase fitness) before
+          2 , Stack , falloc (flat-run 2 (SigOp si) s alloc) ,
+          at-reg input-loc (fits-erase fitness) before
+            (pure-sigop-value-correct si fitness pure-eq x input-loc s alloc valid) before
       }
     where
       -- Machine side: no fetchable instr emits an event (the sole
@@ -275,7 +303,44 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   ...   | Emits _ = obs-correct-rest (SigOp si)
   ...   | Halts _ = obs-correct-rest (SigOp si)
 
+  -- ════════════════════════════════════════════════════════════════════
+  -- `comp-obs-correct` — the COMPOSITION case, CARVED from `obs-correct-rest`
+  -- top-down (Plan 0.54 rung A). `ir-to-trace (g ∘ f) = ft ++ mov-to-input ∷ gt`:
+  -- run `f` (result in `Output`), `mov-to-input` (`Input1 := Output`), run `g`.
+  -- So the discharge COMPOSES the sub-witnesses — making them load-bearing:
+  --   * `traces-agree (g ∘ f)` = `traces-agree f` ++ (mov, no event) ++
+  --     `traces-agree g` with `g`'s input `= f`'s result. The value threading
+  --     `Output → Input1` is supplied by **`f`'s `value-realized`** — this is
+  --     exactly why the value lemmas support trace correctness.
+  --   * `value-realized (g ∘ f)` rides `g`'s `value-realized`.
+  -- Currently a NAMED obligation taking the two IHs (recurses, unlike the flat
+  -- `obs-correct-rest` postulate); its body decomposes into the state-threading
+  -- + `flat-events`-`++` supporting lemmas (next).
+  -- ════════════════════════════════════════════════════════════════════
+  -- The two named supporting obligations the composition discharge DECOMPOSES
+  -- into (top-down; each is a real lemma, not the flat `obs-correct-rest`):
+  postulate
+    -- `f` is a sub-term of `g ∘ f`, so its size is under the bound (arithmetic).
+    comp-size-f : ∀ {A B C} {g : IR B C} {f : IR A B}
+                → ir-size (g ∘ f) < program-bound → ir-size f < program-bound
+    -- THE composition step: given `g`'s IH and `f`'s discharged witness (whose
+    -- `value-realized` exposes `f`'s result), produce `g ∘ f`'s witness. Its
+    -- discharge runs `mov-to-input` (`Input1 := Output = f`'s result) then `g`;
+    -- that threading is EXACTLY what forces `f`'s result to be exposed as a
+    -- register `ResultPlace` (`at-reg`) AND `g`'s input precondition to accept a
+    -- register value. So `at-reg` + the `Place`-aware precondition are dictated
+    -- by THIS obligation, not guessed. (Consumes `f`'s `value-realized`.)
+    comp-step : ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc}
+              → IRObsCorrectF g → MachineRefinesObsF f x s alloc
+              → MachineRefinesObsF (g ∘ f) x s alloc
+
+  comp-obs-correct : ∀ {A B C} {g : IR B C} {f : IR A B}
+                   → IRObsCorrectF g → IRObsCorrectF f → IRObsCorrectF (g ∘ f)
+  comp-obs-correct {g = g} {f} ihg ihf sz mIn x il s alloc ns valid before nh rdi =
+    comp-step ihg (ihf (comp-size-f {g = g} {f} sz) mIn x il s alloc ns valid before nh rdi)
+
   ir-obs-correct : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
   ir-obs-correct (Cata wf alg) = cata-correct wf alg (ir-obs-correct alg)
   ir-obs-correct (SigOp si)    = obs-correct-sigop si
+  ir-obs-correct (g ∘ f)       = comp-obs-correct (ir-obs-correct g) (ir-obs-correct f)
   ir-obs-correct ir            = obs-correct-rest ir

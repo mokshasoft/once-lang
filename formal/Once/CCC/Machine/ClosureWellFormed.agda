@@ -35,6 +35,9 @@ open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 import Once.CCC.Machine.SMPrimitives as SMP
 -- Plan 0.52 M2: machine values are IRTy values (⟦_⟧ᴵ), renamed to ⟦_⟧ locally.
 open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
+-- Plan 0.54 Phase B rung A: the Type-level `fits-int`/`fits-float` for the stored
+-- `SV-Lit` (SMCore's `SV-Lit` is Type-indexed) in the strengthened primitive leaves.
+open import Once.Type using () renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
 open import Once.IR
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.CCC.Eval using (eval)
@@ -113,6 +116,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
                    → SumTag m t s₁ loc → SumTag m t s₂ loc
   transport-SumTag {Heap}  eq tg = trans eq tg
   transport-SumTag {Stack} eq tg = tt
+
+  -- Plan 0.54 Phase B rung A (A2): the primitive-storage bridge. Crosses the
+  -- 0.52-M2 IRTy/Type seam ONCE (the IRTy value `v : ⟦ B ⟧ᴵ` is stored as the
+  -- Type-indexed `SV-Lit`), so the strengthened primitive-value premise reads
+  -- uniformly `readLoc s loc ≡ just (prim-sv fit v)` — the stored machine value
+  -- IS the semantic value. `fits-int`/`fits-float` here are the IRTy `FitsInRegI`
+  -- constructors; `fits-intˢ`/`fits-floatˢ` the Type-level ones `SV-Lit` wants.
+  prim-sv : ∀ {B : IRTy} → FitsInRegI B → ⟦ B ⟧ → StoredValue FS
+  prim-sv fits-int   v = SV-Lit fits-intˢ   v
+  prim-sv fits-float v = SV-Lit fits-floatˢ v
 
   mutual
     --------------------------------------------------------------------
@@ -231,18 +244,24 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         ValidAtWF m alloc {ν-type F} x loc s
 
       -- Primitive types: valid at any mode if location is before frontier
-      -- Primitives are single-slot values (Int, Float, Str, Buffer).
-      -- No structural constraints needed - just location validity.
+      -- AND the stored value equals the semantic value `n` (Plan 0.54 Phase B
+      -- rung A, 2026-07-20: the value device must actually FORCE the primitive
+      -- value, else a Pure-SigOp sentinel `SV-Lit 0` satisfies it vacuously and
+      -- an arith result that feeds an Emits/Halts SigOp is never pinned — the
+      -- `obs-correct-rest` gap. Mirrors `valid-pair-wf`'s `readLoc` content
+      -- premise, bottoming the value recursion at the primitive leaf.)
       valid-int-wf : ∀ {m} {n : ⟦ Int ⟧}
         {alloc : AllocState {FS}}
         {loc : ValueLocation FS} {s : LocState FS} →
         BeforeFrontier alloc loc →
+        readLoc s loc ≡ just (prim-sv fits-int n) →
         ValidAtWF m alloc {Int} n loc s
 
       valid-float-wf : ∀ {m} {x : ⟦ Float ⟧}
         {alloc : AllocState {FS}}
         {loc : ValueLocation FS} {s : LocState FS} →
         BeforeFrontier alloc loc →
+        readLoc s loc ≡ just (prim-sv fits-float x) →
         ValidAtWF m alloc {Float} x loc s
 
       valid-str-wf : ∀ {m} {x : ⟦ Str ⟧}
@@ -275,11 +294,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-primitive-wf : ∀ {m} {B : IRTy} {v : ⟦ B ⟧}
       {alloc : AllocState {FS}}
       {loc : ValueLocation FS} {s : LocState FS} →
-      FitsInRegI B →
+      (fit : FitsInRegI B) →
       BeforeFrontier alloc loc →
+      readLoc s loc ≡ just (prim-sv fit v) →
       ValidAtWF m alloc {B} v loc s
-    valid-primitive-wf fits-int   bf = valid-int-wf bf
-    valid-primitive-wf fits-float bf = valid-float-wf bf
+    valid-primitive-wf fits-int   bf rl = valid-int-wf bf rl
+    valid-primitive-wf fits-float bf rl = valid-float-wf bf rl
 
     --------------------------------------------------------------------
     -- IRResultAWF: Mode-indexed IR execution result
@@ -345,12 +365,21 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       -- carries `ValidAtWF`/`BeforeFrontier`, while the rax field HONESTLY
       -- records `Output ≡ unit-storedvalue` — provable, unlike the refutable
       -- `SV-Ptr` claim `at-loc` would force on a sentinel.
+      -- Plan 0.54 rung A (A2.5): register-resident primitive result. The value `v`
+      -- lives in `Output` as its REAL literal `prim-sv fit v` (was the sentinel
+      -- `unit-storedvalue` — the register half of killing the sentinel). This is the
+      -- fast-path residence; spilled primitives use `at-loc` instead.
+      -- NOTE (rung A): `at-reg` carries NO `ValidAtWF`. Since `valid-int/float-wf`
+      -- now force a stored value (`readLoc … ≡ just (prim-sv fit v)`), a memory
+      -- witness would demand a cell that a register-resident result does not have
+      -- (`ir-to-trace (SigOp si) = instr-sigop si ∷ []` stores nothing). The value
+      -- witness for this residence IS the register equation below. Shape dictated
+      -- by the consumer `comp-step`, which reads only `place-rax`.
       at-reg      : ∀ {B m alloc continuation-alloc v s}
                     (loc : ValueLocation FS)
-                  → ValidAtWF m alloc v loc s
+                    (fit : FitsInRegI B)
                   → BeforeFrontier alloc loc
-                  → readReg (regs s) Output ≡ unit-storedvalue
-                  → ValidAtWF m continuation-alloc v loc s
+                  → readReg (regs s) Output ≡ prim-sv fit v
                   → BeforeFrontier continuation-alloc loc
                   → ResultPlace B m alloc continuation-alloc v s
 
@@ -390,21 +419,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- spec migration covered. Tracked as Plan 0.2.4.5 D1 task #28.
     place-loc : ∀ {B m a₁ a₂ v s} → ResultPlace B m a₁ a₂ v s → ValueLocation FS
     place-loc (at-loc loc _ _ _ _ _) = loc
-    place-loc (at-reg loc _ _ _ _ _) = loc
+    place-loc (at-reg loc _ _ _ _) = loc
     place-loc {Unit} unit-result = unit-result-loc-stub
       where postulate unit-result-loc-stub : ValueLocation FS
 
-    place-valid : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
-                  ValidAtWF m a₁ v (place-loc rp) s
-    place-valid (at-loc _ valid _ _ _ _) = valid
-    place-valid (at-reg _ valid _ _ _ _) = valid
-    place-valid {Unit} {m} {a₁} {_} {tt} {s} unit-result = valid-unit-stub
-      where postulate valid-unit-stub : ValidAtWF m a₁ {Unit} tt _ s
+    -- (`place-valid` / `place-cont-valid` DELETED — Plan 0.54 rung A. They were
+    -- dead (every remaining reference is a comment) and `at-reg` no longer
+    -- carries a memory `ValidAtWF`. Deleting them removes 2 postulate stubs.)
 
     place-before : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
                    BeforeFrontier a₁ (place-loc rp)
     place-before (at-loc _ _ before _ _ _) = before
-    place-before (at-reg _ _ before _ _ _) = before
+    place-before (at-reg _ _ before _ _) = before
     place-before {Unit} {_} {a₁} unit-result = before-stub
       where postulate before-stub : BeforeFrontier a₁ _
 
@@ -414,28 +440,21 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- `SV-Ptr (place-loc rp)`, so existing `at-loc`-only consumers are unchanged.
     place-sv : ∀ {B m a₁ a₂ v s} → ResultPlace B m a₁ a₂ v s → StoredValue FS
     place-sv (at-loc loc _ _ _ _ _) = SV-Ptr loc
-    place-sv (at-reg _   _ _ _ _ _) = unit-storedvalue
+    place-sv {v = v} (at-reg _ fit _ _ _) = prim-sv fit v
     place-sv {Unit} unit-result     = SV-Ptr unit-result-sv-loc
       where postulate unit-result-sv-loc : ValueLocation FS
 
     place-rax : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
                 readReg (regs s) Output ≡ place-sv rp
     place-rax (at-loc _ _ _ rax _ _) = rax
-    place-rax (at-reg _ _ _ rax _ _) = rax
+    place-rax (at-reg _ _ _ rax _) = rax
     place-rax {Unit} {_} {_} {_} {_} {s} unit-result = rax-stub
       where postulate rax-stub : readReg (regs s) Output ≡ place-sv {Unit} unit-result
-
-    place-cont-valid : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
-                       ValidAtWF m a₂ v (place-loc rp) s
-    place-cont-valid (at-loc _ _ _ _ cvalid _) = cvalid
-    place-cont-valid (at-reg _ _ _ _ cvalid _) = cvalid
-    place-cont-valid {Unit} {m} {_} {a₂} {tt} {s} unit-result = valid-unit-cs
-      where postulate valid-unit-cs : ValidAtWF m a₂ {Unit} tt _ s
 
     place-cont-before : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
                        BeforeFrontier a₂ (place-loc rp)
     place-cont-before (at-loc _ _ _ _ _ cbefore) = cbefore
-    place-cont-before (at-reg _ _ _ _ _ cbefore) = cbefore
+    place-cont-before (at-reg _ _ _ _ cbefore) = cbefore
     place-cont-before {Unit} {_} {_} {a₂} unit-result = before-cs
       where postulate before-cs : BeforeFrontier a₂ _
 
@@ -1068,10 +1087,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-ν-wf wf x (validityWF-mem-only (eval (Out wf) x) loc s₁ s₂ stack-eq heap-eq lv)
 
   -- Primitives: memory-independent (BeforeFrontier doesn't depend on state)
-  validityWF-mem-only {m} {alloc} {Int} _ loc s₁ s₂ stack-eq heap-eq (valid-int-wf bf) =
-    valid-int-wf bf
-  validityWF-mem-only {m} {alloc} {Float} _ loc s₁ s₂ stack-eq heap-eq (valid-float-wf bf) =
-    valid-float-wf bf
+  validityWF-mem-only {m} {alloc} {Int} _ loc s₁ s₂ stack-eq heap-eq (valid-int-wf bf rl) =
+    valid-int-wf bf (trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) rl)
+  validityWF-mem-only {m} {alloc} {Float} _ loc s₁ s₂ stack-eq heap-eq (valid-float-wf bf rl) =
+    valid-float-wf bf (trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) rl)
   validityWF-mem-only {m} {alloc} {Str} _ loc s₁ s₂ stack-eq heap-eq (valid-str-wf bf) =
     valid-str-wf bf
   validityWF-mem-only {m} {alloc} {Buffer} _ loc s₁ s₂ stack-eq heap-eq (valid-buffer-wf bf) =
@@ -1142,10 +1161,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-ν-wf wf x (validityWF-write-at-frontier (eval (Out wf) x) loc s val loc-before lv)
 
   -- Primitives: BeforeFrontier unchanged
-  validityWF-write-at-frontier {m} {alloc} {Int} _ loc s val loc-before (valid-int-wf bf) =
-    valid-int-wf bf
-  validityWF-write-at-frontier {m} {alloc} {Float} _ loc s val loc-before (valid-float-wf bf) =
-    valid-float-wf bf
+  validityWF-write-at-frontier {m} {alloc} {Int} _ loc s val loc-before (valid-int-wf bf rl) =
+    valid-int-wf bf (trans (write-at-frontier-preserves-before s alloc loc val loc-before) rl)
+  validityWF-write-at-frontier {m} {alloc} {Float} _ loc s val loc-before (valid-float-wf bf rl) =
+    valid-float-wf bf (trans (write-at-frontier-preserves-before s alloc loc val loc-before) rl)
   validityWF-write-at-frontier {m} {alloc} {Str} _ loc s val loc-before (valid-str-wf bf) =
     valid-str-wf bf
   validityWF-write-at-frontier {m} {alloc} {Buffer} _ loc s val loc-before (valid-buffer-wf bf) =
@@ -1208,10 +1227,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-ν-wf wf x (validityWF-write-at-suc-frontier (eval (Out wf) x) loc s val loc-before lv)
 
   -- Primitives: BeforeFrontier unchanged
-  validityWF-write-at-suc-frontier {m} {alloc} {Int} _ loc s val loc-before (valid-int-wf bf) =
-    valid-int-wf bf
-  validityWF-write-at-suc-frontier {m} {alloc} {Float} _ loc s val loc-before (valid-float-wf bf) =
-    valid-float-wf bf
+  validityWF-write-at-suc-frontier {m} {alloc} {Int} _ loc s val loc-before (valid-int-wf bf rl) =
+    valid-int-wf bf (trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) rl)
+  validityWF-write-at-suc-frontier {m} {alloc} {Float} _ loc s val loc-before (valid-float-wf bf rl) =
+    valid-float-wf bf (trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) rl)
   validityWF-write-at-suc-frontier {m} {alloc} {Str} _ loc s val loc-before (valid-str-wf bf) =
     valid-str-wf bf
   validityWF-write-at-suc-frontier {m} {alloc} {Buffer} _ loc s val loc-before (valid-buffer-wf bf) =
@@ -1283,10 +1302,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-ν-wf wf x (validityWF-alloc-advance (eval (Out wf) x) loc s n lv)
 
   -- Primitives: advance BeforeFrontier
-  validityWF-alloc-advance {m} {alloc} {Int} _ loc s n (valid-int-wf bf) =
-    valid-int-wf (stack-alloc-advances alloc n loc bf)
-  validityWF-alloc-advance {m} {alloc} {Float} _ loc s n (valid-float-wf bf) =
-    valid-float-wf (stack-alloc-advances alloc n loc bf)
+  validityWF-alloc-advance {m} {alloc} {Int} _ loc s n (valid-int-wf bf rl) =
+    valid-int-wf (stack-alloc-advances alloc n loc bf) rl
+  validityWF-alloc-advance {m} {alloc} {Float} _ loc s n (valid-float-wf bf rl) =
+    valid-float-wf (stack-alloc-advances alloc n loc bf) rl
   validityWF-alloc-advance {m} {alloc} {Str} _ loc s n (valid-str-wf bf) =
     valid-str-wf (stack-alloc-advances alloc n loc bf)
   validityWF-alloc-advance {m} {alloc} {Buffer} _ loc s n (valid-buffer-wf bf) =
@@ -1357,10 +1376,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-ν-wf wf x (validityWF-frontier-advance (eval (Out wf) x) loc s cf-eq slot-≤ heap-≤ lv)
 
   -- Primitives: advance BeforeFrontier
-  validityWF-frontier-advance {m} {alloc} {alloc'} {Int} _ loc s cf-eq slot-≤ heap-≤ (valid-int-wf bf) =
-    valid-int-wf (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc bf)
-  validityWF-frontier-advance {m} {alloc} {alloc'} {Float} _ loc s cf-eq slot-≤ heap-≤ (valid-float-wf bf) =
-    valid-float-wf (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc bf)
+  validityWF-frontier-advance {m} {alloc} {alloc'} {Int} _ loc s cf-eq slot-≤ heap-≤ (valid-int-wf bf rl) =
+    valid-int-wf (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc bf) rl
+  validityWF-frontier-advance {m} {alloc} {alloc'} {Float} _ loc s cf-eq slot-≤ heap-≤ (valid-float-wf bf rl) =
+    valid-float-wf (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc bf) rl
   validityWF-frontier-advance {m} {alloc} {alloc'} {Str} _ loc s cf-eq slot-≤ heap-≤ (valid-str-wf bf) =
     valid-str-wf (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc bf)
   validityWF-frontier-advance {m} {alloc} {alloc'} {Buffer} _ loc s cf-eq slot-≤ heap-≤ (valid-buffer-wf bf) =
@@ -1419,10 +1438,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-ν-wf wf x (validityWF-with-bf-transfer (eval (Out wf) x) loc s a₁ a₂ bf lv)
 
   -- Primitives: transfer BeforeFrontier
-  validityWF-with-bf-transfer {m} {Int} _ loc s a₁ a₂ bf (valid-int-wf bfr) =
-    valid-int-wf (bf loc bfr)
-  validityWF-with-bf-transfer {m} {Float} _ loc s a₁ a₂ bf (valid-float-wf bfr) =
-    valid-float-wf (bf loc bfr)
+  validityWF-with-bf-transfer {m} {Int} _ loc s a₁ a₂ bf (valid-int-wf bfr rl) =
+    valid-int-wf (bf loc bfr) rl
+  validityWF-with-bf-transfer {m} {Float} _ loc s a₁ a₂ bf (valid-float-wf bfr rl) =
+    valid-float-wf (bf loc bfr) rl
   validityWF-with-bf-transfer {m} {Str} _ loc s a₁ a₂ bf (valid-str-wf bfr) =
     valid-str-wf (bf loc bfr)
   validityWF-with-bf-transfer {m} {Buffer} _ loc s a₁ a₂ bf (valid-buffer-wf bfr) =
@@ -1494,10 +1513,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-ν-wf wf x (validityWF-mem-preserved (eval (Out wf) x) loc s₁ s₂ loc-before mem-eq lv)
 
   -- Primitives: BeforeFrontier unchanged
-  validityWF-mem-preserved {m} {alloc} {Int} _ loc s₁ s₂ loc-before mem-eq (valid-int-wf bf) =
-    valid-int-wf bf
-  validityWF-mem-preserved {m} {alloc} {Float} _ loc s₁ s₂ loc-before mem-eq (valid-float-wf bf) =
-    valid-float-wf bf
+  validityWF-mem-preserved {m} {alloc} {Int} _ loc s₁ s₂ loc-before mem-eq (valid-int-wf bf rl) =
+    valid-int-wf bf (trans (mem-eq loc loc-before) rl)
+  validityWF-mem-preserved {m} {alloc} {Float} _ loc s₁ s₂ loc-before mem-eq (valid-float-wf bf rl) =
+    valid-float-wf bf (trans (mem-eq loc loc-before) rl)
   validityWF-mem-preserved {m} {alloc} {Str} _ loc s₁ s₂ loc-before mem-eq (valid-str-wf bf) =
     valid-str-wf bf
   validityWF-mem-preserved {m} {alloc} {Buffer} _ loc s₁ s₂ loc-before mem-eq (valid-buffer-wf bf) =
@@ -1632,8 +1651,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     LocsInRegions ib fs pv
   LocsInRegions ib fs (valid-μ-wf wf x μv) = ⊤    -- handled via μ-stub
   LocsInRegions ib fs (valid-ν-wf wf x νv) = ⊤    -- handled via ν-stub
-  LocsInRegions ib fs (valid-int-wf bf)    = ⊤
-  LocsInRegions ib fs (valid-float-wf bf)  = ⊤
+  -- Plan 0.54 rung A: primitives now carry a stored VALUE (valid-int/float-wf's
+  -- `readLoc` premise), so their location must be tracked in a PRESERVED region
+  -- (not the reserved gap) for the value to survive a state change — the witness
+  -- the strong preservation lemma consumes via `loc-mem-eq-from-regions`.
+  LocsInRegions {alloc = alloc} ib fs (valid-int-wf {loc = loc} bf rl)    = LocInRegions alloc ib fs loc
+  LocsInRegions {alloc = alloc} ib fs (valid-float-wf {loc = loc} bf rl)  = LocInRegions alloc ib fs loc
   LocsInRegions ib fs (valid-str-wf bf)    = ⊤
   LocsInRegions ib fs (valid-buffer-wf bf) = ⊤
 
@@ -1772,9 +1795,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Primitives: BeforeFrontier alone is sufficient.
   validityWF-mem-preserved-in-regions-strong alloc _ loc ib fs s₁ s₂
-    loc-before _ _ _ _ _ _ (valid-int-wf bf) _ = valid-int-wf bf
+    loc-before _ _ ir fr hr ar (valid-int-wf bf rl) loc-ir =
+    valid-int-wf bf (trans (loc-mem-eq-from-regions ir fr hr ar loc-ir) rl)
   validityWF-mem-preserved-in-regions-strong alloc _ loc ib fs s₁ s₂
-    loc-before _ _ _ _ _ _ (valid-float-wf bf) _ = valid-float-wf bf
+    loc-before _ _ ir fr hr ar (valid-float-wf bf rl) loc-ir =
+    valid-float-wf bf (trans (loc-mem-eq-from-regions ir fr hr ar loc-ir) rl)
   validityWF-mem-preserved-in-regions-strong alloc _ loc ib fs s₁ s₂
     loc-before _ _ _ _ _ _ (valid-str-wf bf) _ = valid-str-wf bf
   validityWF-mem-preserved-in-regions-strong alloc _ loc ib fs s₁ s₂

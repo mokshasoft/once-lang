@@ -33,7 +33,6 @@ import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
 postulate
   program-bound : ℕ
-  flat-trace : Maybe (IR Unit Unit) → Behavior  -- Layer 2 defines concretely
 
 open IRObsCorrectFlatness {x86-32-frame-semantics} program-bound using (ir-obs-correct)
 
@@ -41,4 +40,4 @@ open IRObsCorrectFlatness {x86-32-frame-semantics} program-bound using (ir-obs-c
 x86-32-correct : ArchCorrect x86-32 (arch-semantics x86-32)
 x86-32-correct =
   FFO.flat-from-obs x86-32 x86-32-frame-semantics (arch-semantics x86-32)
-    program-bound flat-trace ir-obs-correct
+    program-bound ir-obs-correct
