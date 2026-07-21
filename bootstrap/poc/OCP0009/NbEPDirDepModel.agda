@@ -17,9 +17,10 @@ open import Agda.Builtin.Equality using ( _≡_; refl )
 open import poc.OCP0009.NbEPDirDep
   using ( Cx; ε; _∙; Var; vz; vs; Tm; var; lam; app; ⌜⊥⌝; ⌜Π⌝
         ; Ren; extR; ren; _∘ᵣ_; ren-ren
-        ; Sub; sub; single; _ᵣ∘ₛ_; _ₛ∘ᵣ_; ren-sub; sub-ren; sub-cong )
+        ; Sub; sub; extS; single; sub-comm; _ᵣ∘ₛ_; _ₛ∘ᵣ_
+        ; ren-sub; sub-ren; sub-cong )
 open import poc.OCP0009.NbEPDirDepTy
-  using ( RTy; U; El; renTy; Con; ε; _▷_; _∋_∷_; vz; vs; _⊢_∷_
+  using ( RTy; U; El; renTy; subTy; Con; ε; _▷_; _∋_∷_; vz; vs; _⊢_∷_
         ; ⊢var; ⊢lam; ⊢app; ⊢⌜⊥⌝; ⊢⌜Π⌝ )
 
 cong : ∀ {a b} {A : Set a} {B : Set b} (f : A → B) {x y} → x ≡ y → f x ≡ f y
@@ -72,3 +73,40 @@ ren-⊢ {ρ = ρ} (⊢app {d = d} {f = f} {u = u} tf tu) rρ =
         (⊢app (ren-⊢ tf rρ) (ren-⊢ tu rρ))
 ren-⊢ ⊢⌜⊥⌝         rρ = ⊢⌜⊥⌝
 ren-⊢ (⊢⌜Π⌝ tc td) rρ = ⊢⌜Π⌝ (ren-⊢ tc rρ) (ren-⊢ td (⊢ᵣ-ext rρ))
+
+------------------------------------------------------------------------
+-- M3b — typed SUBSTITUTIONS, and SUBSTITUTION PRESERVES TYPING.
+------------------------------------------------------------------------
+
+-- `subTy` weakening commute (dual of `renTy-wk`).
+subTy-wk : ∀ {Γ Δ} {σ : Sub Γ Δ} (A : RTy Γ) →
+           subTy (extS σ) (renTy vs A) ≡ renTy vs (subTy σ A)
+subTy-wk U      = refl
+subTy-wk (El t) = cong El (trans (sub-ren t) (sym (ren-sub t)))
+
+-- the weakening renaming is typed.
+wk-⊢ᵣ : ∀ {Γ} {Θ : Con Γ} {B : RTy Γ} → (Θ ▷ B) ⊢ᵣ vs ∷ Θ
+wk-⊢ᵣ x = vs x
+
+-- `Θ ⊢ₛ σ ∷ Γ` — the substitution σ maps Γ's typed variables to Θ-terms.
+_⊢ₛ_∷_ : ∀ {Γ Δ} → Con Δ → Sub Γ Δ → Con Γ → Set
+Θ ⊢ₛ σ ∷ Γ = ∀ {x A} → Γ ∋ x ∷ A → Θ ⊢ σ x ∷ subTy σ A
+
+⊢ₛ-ext : ∀ {Γ Δ} {Θ : Con Δ} {Γc : Con Γ} {σ : Sub Γ Δ} {A : RTy Γ} →
+         Θ ⊢ₛ σ ∷ Γc → (Θ ▷ subTy σ A) ⊢ₛ extS σ ∷ (Γc ▷ A)
+⊢ₛ-ext {Θ = Θ} {σ = σ} sσ (vz {A = A₀}) =
+  subst (λ z → (Θ ▷ subTy σ A₀) ⊢ var vz ∷ z) (sym (subTy-wk {σ = σ} A₀)) (⊢var vz)
+⊢ₛ-ext {Θ = Θ} {σ = σ} {A = A} sσ (vs {A = A₀} x) =
+  subst (λ z → (Θ ▷ subTy σ A) ⊢ _ ∷ z) (sym (subTy-wk {σ = σ} A₀))
+        (ren-⊢ (sσ x) wk-⊢ᵣ)
+
+-- ★ SUBSTITUTION PRESERVES TYPING.
+sub-⊢ : ∀ {Γ Δ} {Γc : Con Γ} {Θ : Con Δ} {t A} {σ : Sub Γ Δ} →
+        Γc ⊢ t ∷ A → Θ ⊢ₛ σ ∷ Γc → Θ ⊢ sub σ t ∷ subTy σ A
+sub-⊢ (⊢var x)     sσ = sσ x
+sub-⊢ (⊢lam td)    sσ = ⊢lam (sub-⊢ td (⊢ₛ-ext sσ))
+sub-⊢ {σ = σ} (⊢app {d = d} {f = f} {u = u} tf tu) sσ =
+  subst (λ z → _ ⊢ app (sub σ f) (sub σ u) ∷ El z) (sym (sub-comm σ d u))
+        (⊢app (sub-⊢ tf sσ) (sub-⊢ tu sσ))
+sub-⊢ ⊢⌜⊥⌝         sσ = ⊢⌜⊥⌝
+sub-⊢ (⊢⌜Π⌝ tc td) sσ = ⊢⌜Π⌝ (sub-⊢ tc sσ) (sub-⊢ td (⊢ₛ-ext sσ))
