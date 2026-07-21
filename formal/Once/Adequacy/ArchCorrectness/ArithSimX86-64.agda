@@ -32,8 +32,8 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (yes; no) renaming (¬_ to ¬′_)
 
 open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg)
-open import Once.Arith.Machine.Shape using (InputShape)
-open import Once.Arith.Machine.AbsState using (ArithAbsState; Store; _[_])
+open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S)
+open import Once.Arith.Machine.AbsState using (ArithAbsState; Store; _[_]; init)
 open import Once.Arith.Machine.AbsInstr using (bin-op; un-op)
 import Once.Arith.Backend.Correct as Correct
 open Correct 64 using (exec-xinstr; exec-xprog; xreg-idx)
@@ -323,3 +323,14 @@ result-correct : ∀ {sh} (src : XReg) (s-abs : ArithAbsState sh) (s-conc : Stat
                → ArithAbsState.regs s-abs [ xreg-idx src ] ≡ just v
                → readReg (regs (EA.exec1 val-x86-64 (XI.Xmov-out src) s-conc)) rax ≡ v
 result-correct src s-abs s-conc v r eq = sym (r src v eq)
+
+------------------------------------------------------------------------
+-- Piece 3 — init correspondence (register part). `init env` has EMPTY registers
+-- (empty-store), so no register cell is defined and R holds VACUOUSLY for ANY
+-- concrete state. (The scratch part is likewise vacuous; the INPUT part —
+-- abstract `env` ↔ the concrete rdi memory layout — is the genuine content that
+-- comes with R's input extension, alongside reload/arg.)
+------------------------------------------------------------------------
+
+R-init : ∀ {sh} (env : ⟦ sh ⟧S) (s-conc : State) → R (init env) s-conc
+R-init env s-conc x w eq = ⊥-elim (n≢j eq)
