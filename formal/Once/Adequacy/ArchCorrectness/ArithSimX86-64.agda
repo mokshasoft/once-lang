@@ -38,7 +38,12 @@ open import Once.Arith.Machine.AbsState using (ArithAbsState; Store; _[_]; init)
 open import Once.Arith.Machine.AbsInstr using (bin-op; un-op; maybe-zero)
 import Once.Arith.Backend.Correct as Correct
 open Correct 64 using (exec-xinstr; exec-xprog; xreg-idx)
-open import Once.Arith.Backend.XInstr.CodeGen using (_≟x_)
+open import Once.Arith.Machine.IR using (MArithIR)
+open import Once.Arith.Backend.XInstr.CodeGen using (_≟x_; emit-program)
+open import Once.Arith.Machine.Compile using (compile-abs)
+open import Once.Arith.SigOp.Block using (block-semM)
+open import Once.Arith.SigOp.BlockSemBridge using (toWord)
+open import Once.Arith.Backend.BlockValueSemM using (block-value-semM)
 open import Once.Arith.Machine.AbsState using (store-write-same; store-write-other)
 open import Once.Target.X86-64.PhysReg using (Reg; rax; rdx; r8; r9; r10; r11)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
@@ -431,3 +436,47 @@ Rf-sim : ∀ {sh} (xs : List XInstr) (s-abs : ArithAbsState sh) (s-conc : State)
 Rf-sim []       s-abs s-conc rf = rf
 Rf-sim (i ∷ is) s-abs s-conc rf =
   Rf-sim is (exec-xinstr i s-abs) (EA.exec1 val-x86-64 i s-conc) (Rf-step i s-abs s-conc rf)
+
+------------------------------------------------------------------------
+-- Rf at block entry (`init env`). Registers + scratch are empty (vacuous, like
+-- R-init); the input correspondence is the caller's hypothesis (how the
+-- `Int`-typed input is laid out in memory at rdi).
+------------------------------------------------------------------------
+
+R-scratch-init : ∀ {sh} (env : ⟦ sh ⟧S) (s-conc : State) → R-scratch (init env) s-conc
+R-scratch-init env s-conc sc w eq = ⊥-elim (n≢j eq)
+
+Rf-init : ∀ {sh} (env : ⟦ sh ⟧S) (s-conc : State)
+        → R-input (init env) s-conc → Rf (init env) s-conc
+Rf-init env s-conc ri = R-init env s-conc , R-scratch-init env s-conc , ri
+
+------------------------------------------------------------------------
+-- THE ARITH-BLOCK VALUE THEOREM (top-down capstone). Running the compiled arith
+-- block on the concrete machine leaves the REAL result `block-semM (toWord env)`
+-- in `rax` — the value rung A's flat machine computes (`pure-sigop-output =
+-- semM`). This is the arith slice of `conc-flat-sim` (B2.4).
+--
+-- Reduced to: Rf-sim (block simulation, proved modulo the frame lemmas) +
+-- block-value-semM (abstract output = block-semM, PROVED) + `output-extract` (the
+-- final Xmov-out sets rax = the abstract output — result-correct at the block's
+-- last instruction; named, structural).
+------------------------------------------------------------------------
+
+open import Once.Arith.Machine.AbsState using (output-of)
+
+postulate
+  output-extract : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) (s-conc : State)
+    → R (exec-xprog (emit-program (compile-abs e)) (init env))
+        (EA.exec-arith-block val-x86-64 (emit-program (compile-abs e)) s-conc)
+    → output-of (exec-xprog (emit-program (compile-abs e)) (init env))
+        ≡ just (readReg (regs (EA.exec-arith-block val-x86-64 (emit-program (compile-abs e)) s-conc)) rax)
+
+arith-block-correct : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) (s-conc : State)
+  → R-input (init env) s-conc
+  → readReg (regs (EA.exec-arith-block val-x86-64 (emit-program (compile-abs e)) s-conc)) rax
+      ≡ block-semM e (toWord sh env)
+arith-block-correct e env s-conc ri =
+  just-injective
+    (trans (sym (output-extract e env s-conc
+                   (proj₁ (Rf-sim (emit-program (compile-abs e)) (init env) s-conc (Rf-init env s-conc ri)))))
+           (block-value-semM e env))
