@@ -6,15 +6,20 @@
 -- Combines M2 (directed dependent TT, Hom-type) with an OBJECT UNIVERSE: a small
 -- Tarski universe of DIRECTED SETS `û`/`êl` decoding to `DirSet`.  Then:
 --   * `U` is an object type (the `DirSet` of codes); `El` decodes a `U`-term;
---   * codes `⌜⊥⌝`/`⌜Π⌝` are `U`-terms (`⌜Π⌝` DEPENDENT);
---   * ★ `El-π : ElT (⌜Π⌝ c d) ≡ ΠT (ElT c) (ElT d)` is **`refl`** — El-conversion
---     is DEFINITIONAL, because `êl (π̂ a b)` IS the dependent-function `DirSet`;
+--   * codes `⌜⊥⌝`/`⌜⇒⌝` are `U`-terms;
+--   * ★ `El-⇒ : ElT (⌜⇒⌝ c d) ≡ ⇒T (ElT c) (ElT d)` is **`refl`** — El-conversion
+--     is DEFINITIONAL, because `êl (π̂ a b)` IS the function `DirSet`;
+--   * DEPENDENCY is at the object type level (`ΠT`/`lam`/`app`, via the IR trick
+--     — no syntactic substitution); the directed identity via `HomT`/`hrfl` and
+--     `transpD` (covariant J, with β-rule + functoriality below);
 --   * ★ `consistency : Tm ε (El ⌜⊥⌝) → Empty` — the empty type, reached through
 --     a CODE and `El`, has no closed inhabitant;
 --   * ★ `no-sym` — the directed identity is genuinely directed.
 --
--- All three of the universe's hard features (dependency, El-conversion) PLUS the
--- directed identity, unified in one machine-checked model.
+-- Dependency + El-conversion + the DIRECTED identity, unified in one
+-- machine-checked model.  (Universe codes are non-dependent; dependent codes put
+-- `⟦c⟧` in an argument type, which the IR meta-solver rejects, and aren't needed
+-- since dependency lives at the object type level.)
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -143,3 +148,27 @@ consistency t = ⟦ t ⟧ tt
 
 no-sym : HomD (êl ι̂) t1 t0 → Empty
 no-sym (() ◃ _)
+
+------------------------------------------------------------------------
+-- The directed eliminator is WELL-BEHAVED: β-rule + functoriality.
+------------------------------------------------------------------------
+
+-- ★ directed J β-RULE: transport along `rfl` is the identity (definitional).
+transpD-rfl : (A : DirSet) (P : Car A → Set)
+              (mono : ∀ {x y} → St A x y → P x → P y) {x : Car A} (px : P x) →
+              transpD A P mono (rfl {A} {x}) px ≡ px
+transpD-rfl A P mono px = refl
+
+-- composition of directed paths.
+_⊙_ : ∀ {A} {x y z : Car A} → HomD A x y → HomD A y z → HomD A x z
+rfl     ⊙ q = q
+(s ◃ p) ⊙ q = s ◃ (p ⊙ q)
+
+-- ★ directed transport is FUNCTORIAL in the path (covariant action).
+transpD-⊙ : (A : DirSet) (P : Car A → Set)
+            (mono : ∀ {x y} → St A x y → P x → P y)
+            {x y z : Car A} (h : HomD A x y) (h' : HomD A y z) (px : P x) →
+            transpD A P mono (h ⊙ h') px
+              ≡ transpD A P mono h' (transpD A P mono h px)
+transpD-⊙ A P mono rfl     h' px = refl
+transpD-⊙ A P mono (s ◃ h) h' px = transpD-⊙ A P mono h h' (mono s px)
