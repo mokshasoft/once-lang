@@ -260,10 +260,20 @@ decision engine consumes.
     inherit directedness; `El-⇒`/`consistency`/`no-sym` all still hold.
   - *#4 syntactic directed elimination* — ✅ DONE (`NbEPDirDHoTT4`): `hcomp :
     Hom x y → Hom y z → Hom x z` as an OBJECT term (a directed-J instance).
-  - *#2 dependent universe codes* — ✅ DONE via the raw route (`NbEPDirDepTy`):
-    the IR/semantic-types trick CANNOT do dependent codes (`⌜Π⌝`'s `d` context
-    needs `⟦c⟧` to reduce during constructor elaboration); the raw typing relation
-    does (`⌜Π⌝` dependent, `⊢app` uses `sub (single u) d`).
+  - *#2 dependent universe codes* — ⚠ CORRECTED (found while attempting M3c): the
+    raw-route CODE-BASED `⌜Π⌝` is NOT genuinely dependent, so #2 as claimed is
+    OVERCLAIMED. `⊢⌜Π⌝` requires `(Δ ▷ El c) ⊢ d ∷ U`, but the domain variable has
+    type `El (ren vs c)` (El-typed), never `U` — and the minimal Tarski universe
+    has no `El → U` eliminator — so the codomain code `d` CANNOT reference the
+    domain value. The `sub (single u) d` in `⊢app` is therefore vacuous (`d` never
+    uses the bound var). Net: the code-based raw route is SIMPLY-TYPED-with-a-
+    universe, and its consistency IS the dHoTT-40 result (`NbEPDirConv`), already
+    proven. GENUINE dependency needs the TYPE-FORMER `Π A B` with `B : RTy` (so
+    `B = El (var vz)` is a real dependency), where `app` substitutes into the
+    `RTy` codomain — and THAT version's M3c needs the genuine (non-vacuous)
+    substitution lemma. The `dHoTT-42` DIRECTED model (`DirSet`s) is the genuinely
+    dependent + directed one; the raw route needs restructuring to `Π A B` to be
+    genuinely dependent.
   - *#1 raw-syntax faithful* — IN PROGRESS, syntactic metatheory COMPLETE.
     M1 (`NbEPDirDep`: raw syntax + full substitution algebra), M2 (`NbEPDirDepTy`:
     the dependent typing relation), M3a (`NbEPDirDepModel`: `ren-⊢` — renaming
@@ -281,11 +291,15 @@ decision engine consumes.
            `⟦ren vs t⟧ (ρ,v) = ⟦t⟧ ρ`;
       (iii) `⟦app⟧` needs the semantic SUBSTITUTION lemma
             `⟦sub (single u) d⟧ ρ = ⟦d⟧ (ρ , ⟦u⟧ ρ)`.
-    (ii)/(iii) are mutual with the interpretation (with the usual termination
-    subtleties); they stand on the completed syntactic metatheory (`ren-⊢`,
-    `sub-⊢`, `sub-comm`). A focused ~200-line build → `Con(the raw dependent
-    kernel)`. (The exploratory framework module was removed to keep the repo
-    hole-free; its design is captured here.)
+    (ii)/(iii) are mutual with the interpretation. — BUT attempting this REVEALED
+    (see #2 above) that the code-based calculus is NON-DEPENDENT, so its M3c would
+    re-prove dHoTT-40, not new dependent consistency. The genuinely-dependent
+    raw route is a REDESIGN: types `RTy` closed under a type-former `Π A B`
+    (`A B : RTy`, `B` over `Δ ▷ A`, so `B = El (var vz)` is a real dependency),
+    `⊢app` giving `subTy (single u) B`, and then the interpretation with the
+    GENUINE substitution lemma `⟦subTy (single u) B⟧ ρ = ⟦B⟧ (ρ , ⟦u⟧ ρ)` (now
+    non-vacuous). The completed metatheory (M1–M3b) and the meta IR universe carry
+    over. That is the real remaining build for a faithful DEPENDENT raw kernel.
 - **[Π stability special case]** For `σ` an EXACT map (iso / discrete fibration),
   `restrict-⇛` becomes an iso → `Π⁺` strictly stable there. NB (dHoTT-38 finding):
   for a GENERAL `σ` this is genuine mathematics, not a coherence artifact —
