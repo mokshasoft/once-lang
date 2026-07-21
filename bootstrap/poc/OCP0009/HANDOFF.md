@@ -200,10 +200,30 @@ decision engine consumes.
 
 ### Also open (from the semantic tower — not on the finalization critical path)
 
-- **[consistency]** Strictification (local universes) of the directed CwF, so
-  the semantic model validates the strict syntactic Π. For "Once+ proving Once".
-- **[Π stability special case]** For `σ` an iso / discrete fibration,
-  `restrict-⇛` becomes an iso → `Π⁺` strictly stable there.
+- **[strict CwF core]** — ✅ DONE (`NbEPDirStrict`, dHoTT-38). The transport-free
+  redesign: separate DATA from LAWS so substitution is definitionally strict.
+  A `Sub` is LAW-FREE functor data (`ob`/`mor`) ⇒ `_∘_` is function composition
+  (`∘-idˡ`/`∘-idʳ`/`∘-assoc` all `refl`); a `Ty` is a LAW-FREE covariant family
+  (`fam`/`act`) ⇒ `_[_]` is precomposition (`[]-id`/`[]-∘` `refl`); hence
+  `Σ-stable`/`×-stable` are **`refl`** — no funext/uip/subst/wrapper. Same
+  strictness-by-construction as the syntactic kernel (dHoTT-20), now semantic.
+  UNIVERSE-PARAMETRIC (polymorphic in the fibre level) — the shape of the
+  consistency tower's generic rung. Honest scope: makes the covariant-stable
+  formers `refl`-stable; does NOT fix the directed `Π⁺` (genuine Beck–Chevalley).
+- **[consistency tower]** The north star: make the dHoTT-38 rung's model
+  construction fully level-parametric, so `Once_n` modelled in `Once_{n+1}` for
+  all `n` from one construction — a ladder of relative consistency `Con(Once_n) ⊢
+  Once_{n+1}` (each real Once artifact, using finitely many levels, is certified
+  one notch up). Does NOT bypass Gödel (trust retreats to `Once_ω`), but
+  reorganizes it into an infinite family of PROVABLE relative claims. Next brick:
+  a universe former `U` in the strict core (a level-`ℓ'` type classified at
+  `lsuc ℓ'`), with `refl`-stable `El` — the covariant universe is intricate (cf.
+  `NbEPDirUniv`), the real remaining work here.
+- **[Π stability special case]** For `σ` an EXACT map (iso / discrete fibration),
+  `restrict-⇛` becomes an iso → `Π⁺` strictly stable there. NB (dHoTT-38 finding):
+  for a GENERAL `σ` this is genuine mathematics, not a coherence artifact —
+  strictification does not remove it; only exactness (or definitional/strict iso)
+  makes it `refl`.
 - **[compiler]** Wire `redCat` (`formal/Once/IR.agda`) through the dependent
   formers / a real pass through `transp`.
 
