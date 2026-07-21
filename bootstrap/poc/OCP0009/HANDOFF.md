@@ -264,12 +264,15 @@ decision engine consumes.
     the IR/semantic-types trick CANNOT do dependent codes (`⌜Π⌝`'s `d` context
     needs `⟦c⟧` to reduce during constructor elaboration); the raw typing relation
     does (`⌜Π⌝` dependent, `⊢app` uses `sub (single u) d`).
-  - *#1 raw-syntax faithful* — IN PROGRESS. M1 (`NbEPDirDep`: raw syntax + full
-    substitution algebra) + M2 (`NbEPDirDepTy`: the dependent typing relation)
-    DONE. M3 REMAINING: the set-model interpretation over the typing derivations +
-    the semantic SUBSTITUTION LEMMA (stratified via codes-into-`Û`) →
-    `Con(the raw dependent kernel)` — the classical dependent-TT soundness crux, a
-    dedicated multi-session build (not a tail-of-session slice).
+  - *#1 raw-syntax faithful* — IN PROGRESS, syntactic metatheory COMPLETE.
+    M1 (`NbEPDirDep`: raw syntax + full substitution algebra), M2 (`NbEPDirDepTy`:
+    the dependent typing relation), M3a (`NbEPDirDepModel`: `ren-⊢` — renaming
+    preserves typing, via `renTy-wk`/`ren-comm`), M3b (same module: `sub-⊢` —
+    substitution preserves typing, via `subTy-wk`/`sub-comm`) all DONE, no
+    postulates. M3c REMAINING (the final piece): the set-model interpretation
+    (`⟦Con⟧`/`⟦Ty⟧`/`⟦Tm⟧` over the meta dependent IR universe `Û`) + the semantic
+    substitution lemma (its `app` case now standing on `sub-⊢`/`sub-comm`) →
+    `Con(the raw dependent kernel)`. The model construction is the last mile.
 - **[Π stability special case]** For `σ` an EXACT map (iso / discrete fibration),
   `restrict-⇛` becomes an iso → `Π⁺` strictly stable there. NB (dHoTT-38 finding):
   for a GENERAL `σ` this is genuine mathematics, not a coherence artifact —
