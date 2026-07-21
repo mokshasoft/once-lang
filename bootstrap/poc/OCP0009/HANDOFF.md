@@ -268,11 +268,24 @@ decision engine consumes.
     M1 (`NbEPDirDep`: raw syntax + full substitution algebra), M2 (`NbEPDirDepTy`:
     the dependent typing relation), M3a (`NbEPDirDepModel`: `ren-⊢` — renaming
     preserves typing, via `renTy-wk`/`ren-comm`), M3b (same module: `sub-⊢` —
-    substitution preserves typing, via `subTy-wk`/`sub-comm`) all DONE, no
-    postulates. M3c REMAINING (the final piece): the set-model interpretation
-    (`⟦Con⟧`/`⟦Ty⟧`/`⟦Tm⟧` over the meta dependent IR universe `Û`) + the semantic
-    substitution lemma (its `app` case now standing on `sub-⊢`/`sub-comm`) →
-    `Con(the raw dependent kernel)`. The model construction is the last mile.
+    postulates. M3c REMAINING (the final piece), DESIGN VALIDATED: the mutual
+    interpretation FRAMEWORK — `Wf` (well-formed context) + `_⊨_type` +
+    `⟦_⟧C`/`⟦_⟧T`/`⟦_⟧M` over the meta dependent IR universe `Û` — was built and
+    Agda ACCEPTS its structure (the `⌜⊥⌝`/`⌜Π⌝` term cases compile); filling the
+    rest surfaced the EXACT three requirements (this is the standard full
+    dependent-TT-soundness construction, not a slice):
+      (i) the typing must be AUGMENTED so `⊢app`/`⊢lam` carry the Π-code's
+          well-formedness (`c ∷ U`, `d ∷ U`) — M2's `⊢app` does NOT carry `d`'s
+          derivation, which `⟦app⟧` needs to interpret its result type;
+      (ii) `⟦var⟧` needs a semantic RENAMING (weakening) lemma
+           `⟦ren vs t⟧ (ρ,v) = ⟦t⟧ ρ`;
+      (iii) `⟦app⟧` needs the semantic SUBSTITUTION lemma
+            `⟦sub (single u) d⟧ ρ = ⟦d⟧ (ρ , ⟦u⟧ ρ)`.
+    (ii)/(iii) are mutual with the interpretation (with the usual termination
+    subtleties); they stand on the completed syntactic metatheory (`ren-⊢`,
+    `sub-⊢`, `sub-comm`). A focused ~200-line build → `Con(the raw dependent
+    kernel)`. (The exploratory framework module was removed to keep the repo
+    hole-free; its design is captured here.)
 - **[Π stability special case]** For `σ` an EXACT map (iso / discrete fibration),
   `restrict-⇛` becomes an iso → `Π⁺` strictly stable there. NB (dHoTT-38 finding):
   for a GENERAL `σ` this is genuine mathematics, not a coherence artifact —
