@@ -78,30 +78,33 @@ open import Data.Maybe using (just; nothing)
 -- so the value bridge `val = semM` (B2.3) is stated at one width.
 -- `val i s r` is the value written to register `r` by `i`; `step-of` only reads
 -- it at `r ∈ writes i`, so single-target instructions ignore `r`.
-private
-  rd : State → XReg → X64.Word
-  rd s x = readReg (regs s) (arith-reg x)
+-- Exposed (not private): `scratch-addr` / `path-load` are the memory addresses
+-- `val` reads, so the concrete↔abstract R-scratch / R-input correspondences
+-- (Once.Adequacy.ArchCorrectness.ArithSimX86-64, B2.3) must be stated against
+-- exactly them.
+rd : State → XReg → X64.Word
+rd s x = readReg (regs s) (arith-reg x)
 
-  def : Maybe X64.Word → X64.Word
-  def (just w) = w
-  def nothing  = 0
+def : Maybe X64.Word → X64.Word
+def (just w) = w
+def nothing  = 0
 
-  scratch-addr : State → XScratch → X64.Word
-  scratch-addr s sc = readReg (regs s) rsp ∸ (8 * suc (XScratch.slot sc))
+scratch-addr : State → XScratch → X64.Word
+scratch-addr s sc = readReg (regs s) rsp ∸ (8 * suc (XScratch.slot sc))
 
-  side-off : Side → X64.Word
-  side-off Fst = 0
-  side-off Snd = 8
+side-off : Side → X64.Word
+side-off Fst = 0
+side-off Snd = 8
 
-  -- Chase the input path from an address through memory (each Fst/Snd hop
-  -- offsets then dereferences; the final leaf is the value at the address).
-  path-load-go : State → X64.Word → InputPath → X64.Word
-  path-load-go s addr []          = def (readMem (memory s) addr)
-  path-load-go s addr (sd ∷ rest) =
-    path-load-go s (def (readMem (memory s) (addr +ℕ side-off sd))) rest
+-- Chase the input path from an address through memory (each Fst/Snd hop
+-- offsets then dereferences; the final leaf is the value at the address).
+path-load-go : State → X64.Word → InputPath → X64.Word
+path-load-go s addr []          = def (readMem (memory s) addr)
+path-load-go s addr (sd ∷ rest) =
+  path-load-go s (def (readMem (memory s) (addr +ℕ side-off sd))) rest
 
-  path-load : State → InputPath → X64.Word
-  path-load s p = path-load-go s (readReg (regs s) rdi) p
+path-load : State → InputPath → X64.Word
+path-load s p = path-load-go s (readReg (regs s) rdi) p
 
 val-x86-64 : XInstr → X64.State → Reg → X64.Word
 val-x86-64 (XI.Xmov-imm d z)          s _ = W.fromℤ z

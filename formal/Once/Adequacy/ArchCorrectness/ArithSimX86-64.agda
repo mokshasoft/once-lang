@@ -31,7 +31,7 @@ open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (yes; no) renaming (¬_ to ¬′_)
 
-open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg)
+open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch)
 open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S)
 open import Once.Arith.Machine.AbsState using (ArithAbsState; Store; _[_]; init)
 open import Once.Arith.Machine.AbsInstr using (bin-op; un-op)
@@ -43,9 +43,9 @@ open import Once.Target.X86-64.PhysReg using (Reg; rax; rdx; r8; r9; r10; r11)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
 open XI using (XR0; XR1; XR2; XR3)
 import Once.CCC.Target.X86-64.Semantics as X64
-open X64 using (State; readReg; writeReg; RegFile; Word)
-open X64.State using (regs)
-open import Once.Adequacy.CPU.X86-64 using (val-x86-64)
+open X64 using (State; readReg; writeReg; readMem; RegFile; Word)
+open X64.State using (regs; memory)
+open import Once.Adequacy.CPU.X86-64 using (val-x86-64; scratch-addr; def)
 import Once.Arith.Backend.X86-64.ExecArith as EA
 
 ------------------------------------------------------------------------
@@ -334,3 +334,31 @@ result-correct src s-abs s-conc v r eq = sym (r src v eq)
 
 R-init : ∀ {sh} (env : ⟦ sh ⟧S) (s-conc : State) → R (init env) s-conc
 R-init env s-conc x w eq = ⊥-elim (n≢j eq)
+
+------------------------------------------------------------------------
+-- R-scratch — the scratch correspondence (for reload). Abstract scratch slot ↔
+-- concrete `readMem (memory) (scratch-addr sc)` — the rsp-relative scratch region
+-- (`rsp − 8·(slot+1)`) `val` reads. (Preserved across the block by spill's slot
+-- update + below-frontier memory framing; that + the Rf integration is next.)
+------------------------------------------------------------------------
+
+R-scratch : ∀ {sh} → ArithAbsState sh → State → Set
+R-scratch s-abs s-conc =
+  ∀ (sc : XScratch) (w : ℕ)
+  → (ArithAbsState.scratch s-abs [ XScratch.slot sc ]) ≡ just w
+  → readMem (memory s-conc) (scratch-addr s-conc sc) ≡ just w
+
+-- Reload (`Xmov-m-r d sc`): writes reg d from the scratch slot. Given R and
+-- R-scratch, R is preserved. (Standalone; wired via Rf-step next.)
+R-step-reload : ∀ {sh} (d : XReg) (sc : XScratch) (s-abs : ArithAbsState sh) (s-conc : State)
+              → R s-abs s-conc → R-scratch s-abs s-conc
+              → R (exec-xinstr (XI.Xmov-m-r d sc) s-abs) (EA.exec1 val-x86-64 (XI.Xmov-m-r d sc) s-conc)
+R-step-reload d sc s-abs s-conc r rs x w eq with x ≟x d
+... | yes refl =
+      -- x ≡ d: abstract cell = scratch[slot]; concrete = def(readMem@scratch-addr).
+      sym (trans (readReg-wr-arith-same (regs s-conc) d _)
+                 (cong def (rs sc w (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))))
+... | no ¬eq =
+      trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
+                                  (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
+            (sym (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de))))
