@@ -26,7 +26,7 @@
 
 module Once.Adequacy.CPU.X86-64 where
 
-open import Data.List using (List)
+open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe)
 open import Data.String using (String)
 open import Data.Nat using (ℕ)
@@ -41,9 +41,18 @@ import Once.CCC.Target.X86-64.Syntax    as X64S
 -- x86-64 machine (arith blocks dispatched, Pure ⇒ no event), instanced from
 -- the arch-generic `Arith.Backend.RunTraceCore`. This DERIVES `run-trace` from
 -- `X64.run`'s step semantics, replacing the old opaque observable postulate.
-open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
-open import Once.Target.X86-64.PhysReg using (Reg)
+open import Once.Arith.Backend.XInstr.Syntax as XI
+  using (XInstr; XReg; XScratch)
+open import Once.Target.X86-64.PhysReg using (Reg; rsp; rdi)
+open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
+open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)
 import Once.Arith.Backend.X86-64.RunTrace as RT
+open X64 using (State; readReg; readMem)
+open X64.State using (regs; memory)
+import Once.Word as OnceWord
+module W = OnceWord.Word64
+open import Data.Nat using (_∸_; _*_; suc) renaming (_+_ to _+ℕ_)
+open import Data.Maybe using (just; nothing)
 
 ------------------------------------------------------------------------
 -- run-trace-x86-64 — DERIVED (no longer an opaque observable postulate).
@@ -60,8 +69,59 @@ import Once.Arith.Backend.X86-64.RunTrace as RT
 --                           SAME honest gap `FlatFromObs.flat-trace` carries.
 ------------------------------------------------------------------------
 
+-- ── val-x86-64 — the concrete XInstr arith interpreter (Plan 0.54 rung B / B2.2).
+-- DEFINED (was a postulate). Mirrors `exec-xinstr` (Arith.Backend.Correct, over
+-- ArithAbsState) onto the REAL `X64.State`: registers via `readReg`, spill/reload
+-- via `readMem` at `rsp − 8·(slot+1)`, arg-load by chasing the InputPath from
+-- `rdi` through memory (Fst = +0, Snd = +8, matching CCC's pair layout). The
+-- word ops are `Word64` — the SAME width `block-semM` uses (`X64.Word = W.Word = ℕ`),
+-- so the value bridge `val = semM` (B2.3) is stated at one width.
+-- `val i s r` is the value written to register `r` by `i`; `step-of` only reads
+-- it at `r ∈ writes i`, so single-target instructions ignore `r`.
+private
+  rd : State → XReg → X64.Word
+  rd s x = readReg (regs s) (arith-reg x)
+
+  def : Maybe X64.Word → X64.Word
+  def (just w) = w
+  def nothing  = 0
+
+  scratch-addr : State → XScratch → X64.Word
+  scratch-addr s sc = readReg (regs s) rsp ∸ (8 * suc (XScratch.slot sc))
+
+  side-off : Side → X64.Word
+  side-off Fst = 0
+  side-off Snd = 8
+
+  -- Chase the input path from an address through memory (each Fst/Snd hop
+  -- offsets then dereferences; the final leaf is the value at the address).
+  path-load-go : State → X64.Word → InputPath → X64.Word
+  path-load-go s addr []          = def (readMem (memory s) addr)
+  path-load-go s addr (sd ∷ rest) =
+    path-load-go s (def (readMem (memory s) (addr +ℕ side-off sd))) rest
+
+  path-load : State → InputPath → X64.Word
+  path-load s p = path-load-go s (readReg (regs s) rdi) p
+
+val-x86-64 : XInstr → X64.State → Reg → X64.Word
+val-x86-64 (XI.Xmov-imm d z)          s _ = W.fromℤ z
+val-x86-64 (XI.Xmov-rr d src)         s _ = rd s src
+val-x86-64 (XI.Xmov-r-m sc src)       s _ = rd s src            -- writes = []; unused
+val-x86-64 (XI.Xmov-m-r d sc)         s _ = def (readMem (memory s) (scratch-addr s sc))
+val-x86-64 (XI.Xmov-arg d p)          s _ = path-load s p
+val-x86-64 (XI.Xadd-rr d src)         s _ = rd s d W.⊕ rd s src
+val-x86-64 (XI.Xsub-rr d src)         s _ = rd s d W.⊖ rd s src
+val-x86-64 (XI.Ximul-rr d src)        s _ = rd s d W.⊗ rd s src
+val-x86-64 (XI.Xdiv-rrr d a b)        s _ = rd s a W./ˢ rd s b
+val-x86-64 (XI.Xrem-rrr d a b)        s _ = rd s a W.%ˢ rd s b
+val-x86-64 (XI.Xdiv-safe-rrr d a b)   s _ = rd s a W./ˢ rd s b
+val-x86-64 (XI.Xrem-safe-rrr d a b)   s _ = rd s a W.%ˢ rd s b
+val-x86-64 (XI.Xshl-rri d src imm)    s _ = W.shlᵂ (rd s src) imm
+val-x86-64 (XI.Xsdiv-pow2-rri d src imm) s _ = W.sdiv2ᵏ (rd s src) imm
+val-x86-64 (XI.Xneg-r d)              s _ = W.⊝ (rd s d)
+val-x86-64 (XI.Xmov-out src)          s _ = rd s src
+
 postulate
-  val-x86-64         : XInstr → X64.State → Reg → X64.Word
   step-budget-x86-64 : ℕ → ℕ
   ev-x86-64          : RT.EvExtractor val-x86-64
   arith-env-x86-64   : X64S.Program → RT.ArithEnv val-x86-64
