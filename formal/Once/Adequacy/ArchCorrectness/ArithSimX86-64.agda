@@ -27,7 +27,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Arith.Backend.XInstr.Syntax using (XInstr; XReg)
+open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg)
 open import Once.Arith.Machine.Shape using (InputShape)
 open import Once.Arith.Machine.AbsState using (ArithAbsState; Store; _[_])
 import Once.Arith.Backend.Correct as Correct
@@ -60,9 +60,19 @@ R s-abs s-conc =
 -- scratch/input extension. Named obligation for now.
 ------------------------------------------------------------------------
 
+-- Frame-only case `Xmov-r-m` (spill): `writes = []`, so `step-of` = identity and
+-- `exec-xinstr` updates only `scratch` — BOTH machines leave registers unchanged,
+-- so R holds by the SAME witness. PROVED (definitional). The remaining cases (12
+-- arithmetic near-refl, reload/arg needing R's scratch/input extension) are the
+-- named obligation.
 postulate
-  R-step : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : State)
-         → R s-abs s-conc → R (exec-xinstr i s-abs) (EA.exec1 val-x86-64 i s-conc)
+  R-step-rest : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : State)
+              → R s-abs s-conc → R (exec-xinstr i s-abs) (EA.exec1 val-x86-64 i s-conc)
+
+R-step : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : State)
+       → R s-abs s-conc → R (exec-xinstr i s-abs) (EA.exec1 val-x86-64 i s-conc)
+R-step (XI.Xmov-r-m sc src) s-abs s-conc r = r
+R-step i                    s-abs s-conc r = R-step-rest i s-abs s-conc r
 
 ------------------------------------------------------------------------
 -- The block simulation — PROVED by induction, reducing to `R-step`. Both folds
