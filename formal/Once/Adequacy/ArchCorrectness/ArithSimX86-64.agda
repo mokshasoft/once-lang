@@ -39,7 +39,7 @@ import Once.Arith.Backend.Correct as Correct
 open Correct 64 using (exec-xinstr; exec-xprog; xreg-idx)
 open import Once.Arith.Backend.XInstr.CodeGen using (_≟x_)
 open import Once.Arith.Machine.AbsState using (store-write-same; store-write-other)
-open import Once.Target.X86-64.PhysReg using (Reg; rax; r8; r9; r10; r11)
+open import Once.Target.X86-64.PhysReg using (Reg; rax; rdx; r8; r9; r10; r11)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
 open XI using (XR0; XR1; XR2; XR3)
 import Once.CCC.Target.X86-64.Semantics as X64
@@ -98,6 +98,19 @@ readReg-wr-rax-arith rf XR0 v = refl
 readReg-wr-rax-arith rf XR1 v = refl
 readReg-wr-rax-arith rf XR2 v = refl
 readReg-wr-rax-arith rf XR3 v = refl
+
+-- Same for rdx (∉ {r8..r11}).
+readReg-wr-rdx-arith : ∀ (rf : RegFile) (x : XReg) (v : Word)
+                     → readReg (writeReg rf rdx v) (arith-reg x) ≡ readReg rf (arith-reg x)
+readReg-wr-rdx-arith rf XR0 v = refl
+readReg-wr-rdx-arith rf XR1 v = refl
+readReg-wr-rdx-arith rf XR2 v = refl
+readReg-wr-rdx-arith rf XR3 v = refl
+
+-- Peel the rax+rdx clobbers (div/rem write [arith-reg d, rax, rdx]).
+peel-io2 : ∀ (rf : RegFile) (x : XReg) (v : Word)
+         → readReg (writeReg (writeReg rf rax v) rdx v) (arith-reg x) ≡ readReg rf (arith-reg x)
+peel-io2 rf x v = trans (readReg-wr-rdx-arith (writeReg rf rax v) x v) (readReg-wr-rax-arith rf x v)
 
 -- `xreg-idx` is injective (XR0..XR3 ↦ 0..3).
 xreg-idx-inj : ∀ {x y} → xreg-idx x ≡ xreg-idx y → x ≡ y
@@ -231,6 +244,57 @@ R-step (XI.Xshl-rri d src imm) s-abs s-conc r x w eq with x ≟x d
       trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
                                   (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
             (sym (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de))))
+R-step (XI.Xdiv-rrr d a b) s-abs s-conc r x w eq with x ≟x d
+... | yes refl =
+      trans (bin-value _/ˢ_ a b s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+            (sym (trans (peel-io2 (writeReg (regs s-conc) (arith-reg d) _) d _)
+                        (readReg-wr-arith-same (regs s-conc) d _)))
+... | no ¬eq =
+      trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
+                                  (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
+            (sym (trans (peel-io2 (writeReg (regs s-conc) (arith-reg d) _) x _)
+                        (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de)))))
+R-step (XI.Xrem-rrr d a b) s-abs s-conc r x w eq with x ≟x d
+... | yes refl =
+      trans (bin-value _%ˢ_ a b s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+            (sym (trans (peel-io2 (writeReg (regs s-conc) (arith-reg d) _) d _)
+                        (readReg-wr-arith-same (regs s-conc) d _)))
+... | no ¬eq =
+      trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
+                                  (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
+            (sym (trans (peel-io2 (writeReg (regs s-conc) (arith-reg d) _) x _)
+                        (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de)))))
+R-step (XI.Xdiv-safe-rrr d a b) s-abs s-conc r x w eq with x ≟x d
+... | yes refl =
+      trans (bin-value _/ˢ_ a b s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+            (sym (trans (peel-io2 (writeReg (regs s-conc) (arith-reg d) _) d _)
+                        (readReg-wr-arith-same (regs s-conc) d _)))
+... | no ¬eq =
+      trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
+                                  (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
+            (sym (trans (peel-io2 (writeReg (regs s-conc) (arith-reg d) _) x _)
+                        (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de)))))
+R-step (XI.Xrem-safe-rrr d a b) s-abs s-conc r x w eq with x ≟x d
+... | yes refl =
+      trans (bin-value _%ˢ_ a b s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+            (sym (trans (peel-io2 (writeReg (regs s-conc) (arith-reg d) _) d _)
+                        (readReg-wr-arith-same (regs s-conc) d _)))
+... | no ¬eq =
+      trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
+                                  (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
+            (sym (trans (peel-io2 (writeReg (regs s-conc) (arith-reg d) _) x _)
+                        (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de)))))
+R-step (XI.Xsdiv-pow2-rri d src imm) s-abs s-conc r x w eq with x ≟x d
+... | yes refl =
+      trans (un-value (λ q → sdiv2ᵏ q imm) src s-abs s-conc w r
+               (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+            (sym (trans (readReg-wr-rax-arith (writeReg (regs s-conc) (arith-reg d) _) d _)
+                        (readReg-wr-arith-same (regs s-conc) d _)))
+... | no ¬eq =
+      trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
+                                  (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
+            (sym (trans (readReg-wr-rax-arith (writeReg (regs s-conc) (arith-reg d) _) x _)
+                        (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de)))))
 R-step i                    s-abs s-conc r = R-step-rest i s-abs s-conc r
 
 ------------------------------------------------------------------------
