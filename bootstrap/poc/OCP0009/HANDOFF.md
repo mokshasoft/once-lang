@@ -210,15 +210,20 @@ decision engine consumes.
   UNIVERSE-PARAMETRIC (polymorphic in the fibre level) — the shape of the
   consistency tower's generic rung. Honest scope: makes the covariant-stable
   formers `refl`-stable; does NOT fix the directed `Π⁺` (genuine Beck–Chevalley).
-- **[consistency tower]** The north star: make the dHoTT-38 rung's model
-  construction fully level-parametric, so `Once_n` modelled in `Once_{n+1}` for
-  all `n` from one construction — a ladder of relative consistency `Con(Once_n) ⊢
-  Once_{n+1}` (each real Once artifact, using finitely many levels, is certified
-  one notch up). Does NOT bypass Gödel (trust retreats to `Once_ω`), but
-  reorganizes it into an infinite family of PROVABLE relative claims. Next brick:
-  a universe former `U` in the strict core (a level-`ℓ'` type classified at
-  `lsuc ℓ'`), with `refl`-stable `El` — the covariant universe is intricate (cf.
-  `NbEPDirUniv`), the real remaining work here.
+- **[consistency tower]** — ✅ RUNG BUILT (`NbEPDirStrict`, dHoTT-38b). The
+  level-parametric reflection: `U ℓ'` over Γ (`: Ty Γ (ℓ ⊔ lsuc ℓ')`) reflects the
+  collection of level-`ℓ'` types as one type ONE LEVEL UP; `code`/`El` witness it;
+  ★ **`El-code : El (code A) ≡ A`** is `refl` — the decode is DEFINITIONAL, the
+  soundness of the reflection (`Once_n`'s types are faithfully objects at the next
+  level). ★ **`ladder : El (code (U ℓ')) ≡ U ℓ'`** — the universe of one level is
+  itself classified (decoding back definitionally) at the next; level-parametric,
+  so `ℓ' := ℓ'₀, lsuc ℓ'₀, …` gives `Once ⊂ Once⁺ ⊂ …` from ONE construction.
+  Gödel not bypassed (the reflection needs a level strictly above; the ladder
+  never closes on itself — trust retreats to `Once_ω`). Honest scope: this is the
+  "large" reflection universe (classifies the level below, definitional decode);
+  `El`'s general `act` uses one transport (subst along a code's naturality), the
+  key rule `El-code` still `refl`. A substitution-STABLE small universe is
+  Hofmann–Streicher (covariant, intricate) — the remaining refinement.
 - **[Π stability special case]** For `σ` an EXACT map (iso / discrete fibration),
   `restrict-⇛` becomes an iso → `Π⁺` strictly stable there. NB (dHoTT-38 finding):
   for a GENERAL `σ` this is genuine mathematics, not a coherence artifact —
