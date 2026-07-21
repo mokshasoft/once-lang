@@ -232,6 +232,18 @@ decision engine consumes.
   `ℓ`) ⇒ the generic rung `Con(Once_n) ⊢ Once_{n+1}`; Gödel intact (model needs
   `Set (lsuc ℓ)` strictly above). Honest scope: simply-typed-with-universe; the
   FULL dependent-kernel soundness (term-dependency + `El`-conversion) is larger.
+- **[soundness: El-conversion]** — ✅ DONE (`NbEPDirConv`, dHoTT-40). Scales the
+  bridge to RESPECT `El`-conversion (`El (⌜⇒⌝ c d) ≅ (El c) ⇒ (El d)`), via a META
+  induction-recursion Tarski universe (`Û`/`Êl`, `Êl (⇒̂ a b) = Êl a → Êl b`
+  definitional), so `conv-sound` on the `El` rules is `refl`; ★ `consistency :
+  Tm ∅ (El ⌜⊥⌝) → Empty`. Two of the universe's three hard features (level-
+  stratification dHoTT-39, `El`-conversion dHoTT-40) are now modelled.
+- **[soundness: DEPENDENCY]** — OPEN, the remaining piece of A. The third hard
+  feature: `⌜Π⌝ c d` with `d` a term in an extended context (types depending on
+  terms). Its soundness needs the semantic SUBSTITUTION LEMMA (`⟦d[u]⟧ γ =
+  ⟦d⟧ (γ, ⟦u⟧ γ)`) — i.e. essentially formalizing dependent-TT soundness, a known
+  substantial construction (intrinsic dependent substitution / a CwF syntax). Not
+  a slice; a real project.
 - **[Π stability special case]** For `σ` an EXACT map (iso / discrete fibration),
   `restrict-⇛` becomes an iso → `Π⁺` strictly stable there. NB (dHoTT-38 finding):
   for a GENERAL `σ` this is genuine mathematics, not a coherence artifact —
