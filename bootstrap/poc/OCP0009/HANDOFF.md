@@ -254,11 +254,22 @@ decision engine consumes.
   interesting target — dHoTT-specific soundness, not standard DTT: types carry
   directed hom-structure (`DirSet` / a meta directed IR universe), `Hom` = the
   refl-trans closure, directed J = covariant transport. `Con(dHoTT kernel)`
-  via IR (semantic types → no syntactic substitution). Remaining refinements: a
-  SYNTACTIC directed-J term (directed elimination in the object language); the
-  COVARIANT (natural-transformation) function hom instead of discrete; dependent
-  universe codes; and the fully raw-syntax faithful version (dHoTT-41 M1 route +
-  substitution lemma). Not obstructions — polish on a complete directed model.
+  via IR (semantic types → no syntactic substitution). The four refinements:
+  - *#3 covariant function hom* — ✅ DONE (`NbEPDirDHoTT4`): the function space is
+    no longer discrete (`St (Π A B) f g = ∀ x → St (B..)(f x)(g x)`), so functions
+    inherit directedness; `El-⇒`/`consistency`/`no-sym` all still hold.
+  - *#4 syntactic directed elimination* — ✅ DONE (`NbEPDirDHoTT4`): `hcomp :
+    Hom x y → Hom y z → Hom x z` as an OBJECT term (a directed-J instance).
+  - *#2 dependent universe codes* — ✅ DONE via the raw route (`NbEPDirDepTy`):
+    the IR/semantic-types trick CANNOT do dependent codes (`⌜Π⌝`'s `d` context
+    needs `⟦c⟧` to reduce during constructor elaboration); the raw typing relation
+    does (`⌜Π⌝` dependent, `⊢app` uses `sub (single u) d`).
+  - *#1 raw-syntax faithful* — IN PROGRESS. M1 (`NbEPDirDep`: raw syntax + full
+    substitution algebra) + M2 (`NbEPDirDepTy`: the dependent typing relation)
+    DONE. M3 REMAINING: the set-model interpretation over the typing derivations +
+    the semantic SUBSTITUTION LEMMA (stratified via codes-into-`Û`) →
+    `Con(the raw dependent kernel)` — the classical dependent-TT soundness crux, a
+    dedicated multi-session build (not a tail-of-session slice).
 - **[Π stability special case]** For `σ` an EXACT map (iso / discrete fibration),
   `restrict-⇛` becomes an iso → `Π⁺` strictly stable there. NB (dHoTT-38 finding):
   for a GENERAL `σ` this is genuine mathematics, not a coherence artifact —
