@@ -380,6 +380,14 @@ ren⊨ r ⊨⊥            = ⊨⊥
 ren⊨ r (⊨𝕀 tb w𝔹 wA wB) = ⊨𝕀 (ren⊢ r tb) (ren⊨ r w𝔹) (ren⊨ r wA) (ren⊨ r wB)
 ren⊨ r (⊨Π wA wB)    = ⊨Π (ren⊨ r wA) (ren⊨ (keep r wA) wB)
 
+-- non-variable clauses FIRST (so `ren⊢ r td` reduces without splitting `r`,
+-- which the naturality proof `nat-MI` relies on).
+ren⊢ r ⊢tt            = ⊢tt
+ren⊢ r ⊢ff            = ⊢ff
+ren⊢ r (⊢lam wA td)   = ⊢lam (ren⊨ r wA) (ren⊢ (keep r wA) td)
+ren⊢ {o = o} r (⊢app {B = B} {u = u} wΠ tf tu) =
+  subst (λ z → _ ⊢ app _ _ ∷ z) (sym (renTy-comm ⌜ o ⌝ u B))
+        (⊢app (ren⊨ r wΠ) (ren⊢ r tf) (ren⊢ r tu))
 ren⊢ (keep {Θc = Θc} {o = o'} r' w) (⊢vz {A = A} wR) =
   subst (λ z → (Θc ▷ ren⊨ r' w) ⊢ var vz ∷ z) (sym (renTy-wk {ρ = ⌜ o' ⌝} A))
         (⊢vz {wA = ren⊨ r' w}
@@ -401,12 +409,6 @@ ren⊢ (skip {Θc = Θc} {o = o'} r' w) (⊢vs {A = A} {x = x} wA wR td) =
              (subst (λ z → (Θc ▷ w) ⊨ z) (sym (renTy-renTy {ρ' = vs} {ρ = ⌜ o' ⌝} (renTy vs A)))
                     (ren⊨ (skip r' w) wR))
              (ren⊢ r' (⊢vs wA wR td)))
-ren⊢ r ⊢tt            = ⊢tt
-ren⊢ r ⊢ff            = ⊢ff
-ren⊢ r (⊢lam wA td)   = ⊢lam (ren⊨ r wA) (ren⊢ (keep r wA) td)
-ren⊢ {o = o} r (⊢app {B = B} {u = u} wΠ tf tu) =
-  subst (λ z → _ ⊢ app _ _ ∷ z) (sym (renTy-comm ⌜ o ⌝ u B))
-        (⊢app (ren⊨ r wΠ) (ren⊢ r tf) (ren⊢ r tu))
 
 lkcompat (keep {o = o} r {A = A} wA) vz = sym (renTy-wk {ρ = ⌜ o ⌝} A)
 lkcompat (keep {Δc = Δc} {o = o} r wA) (vs x) =
