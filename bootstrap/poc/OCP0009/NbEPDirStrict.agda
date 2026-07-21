@@ -149,3 +149,58 @@ A ×' B = record
 ×-stable : ∀ {ℓ ℓ'} {Δ Γ : Ctx ℓ} (σ : Sub Δ Γ) (A B : Ty Γ ℓ') →
            (A ×' B) [ σ ] ≡ (A [ σ ]) ×' (B [ σ ])
 ×-stable σ A B = refl
+
+------------------------------------------------------------------------
+-- Terms (natural sections), and a UNIVERSE reflecting the level below —
+-- the relative-consistency ladder's generic rung.
+------------------------------------------------------------------------
+
+subst : ∀ {a p} {A : Set a} (P : A → Set p) {x y : A} → x ≡ y → P x → P y
+subst P refl px = px
+
+-- a term is a natural section of a type.
+record Tm {ℓ ℓ'} (Γ : Ctx ℓ) (A : Ty Γ ℓ') : Set (ℓ ⊔ ℓ') where
+  field
+    tm  : (x : W Γ) → fam A x
+    nat : ∀ {x y} (h : Hom Γ x y) → act A h (tm x) ≡ tm y
+open Tm
+
+-- terms substitute (and, like types, definitionally).
+infix 8 _[_]ᵗ
+_[_]ᵗ : ∀ {ℓ ℓ'} {Δ Γ : Ctx ℓ} {A : Ty Γ ℓ'} → Tm Γ A → (σ : Sub Δ Γ) → Tm Δ (A [ σ ])
+t [ σ ]ᵗ = record { tm = λ x → tm t (ob σ x) ; nat = λ h → nat t (mor σ h) }
+
+------------------------------------------------------------------------
+-- The universe.  `U ℓ'` over Γ REFLECTS the collection of level-`ℓ'` types as a
+-- single type ONE LEVEL UP (`Ty Γ (ℓ ⊔ lsuc ℓ')`).  `code`/`El` witness the
+-- reflection, and the computation rule `El (code A) ≡ A` is **`refl`** — the
+-- decode is DEFINITIONAL (transport-free), because a code's naturality is `refl`
+-- and `subst P refl` computes away.
+------------------------------------------------------------------------
+
+U : ∀ {ℓ} (ℓ' : Level) {Γ : Ctx ℓ} → Ty Γ (ℓ ⊔ lsuc ℓ')
+U ℓ' {Γ} = record { fam = λ _ → Ty Γ ℓ' ; act = λ _ A → A }
+
+code : ∀ {ℓ ℓ'} {Γ : Ctx ℓ} → Ty Γ ℓ' → Tm Γ (U ℓ')
+code A = record { tm = λ _ → A ; nat = λ _ → refl }
+
+El : ∀ {ℓ ℓ'} {Γ : Ctx ℓ} → Tm Γ (U ℓ') → Ty Γ ℓ'
+El t = record
+  { fam = λ x → fam (tm t x) x
+  ; act = λ {x} {y} h v → subst (λ C → fam C y) (nat t h) (act (tm t x) h v) }
+
+-- ★ the universe COMPUTATION RULE — decode after encode is the identity,
+--   DEFINITIONALLY.  This is the soundness of the reflection: `Once_n`'s types
+--   are faithfully present as objects at the next level.
+El-code : ∀ {ℓ ℓ'} {Γ : Ctx ℓ} (A : Ty Γ ℓ') → El (code A) ≡ A
+El-code A = refl
+
+-- ★ THE LADDER RUNG, ITERATED.  The universe of level `ℓ'` is ITSELF classified
+--   one level up (`code (U ℓ')`), and decodes back DEFINITIONALLY.  Because the
+--   whole core is level-parametric, this is uniform in the level — instantiating
+--   `ℓ' := ℓ'₀, lsuc ℓ'₀, …` gives the relative-consistency tower
+--   `Once ⊂ Once⁺ ⊂ Once⁺⁺ ⊂ …`, each rung modelled in the next, all from ONE
+--   construction.  (Gödel is not bypassed — the reflection needs a level strictly
+--   above, so the ladder never closes on itself; trust retreats to the limit.)
+ladder : ∀ {ℓ ℓ'} {Γ : Ctx ℓ} → El (code (U ℓ' {Γ})) ≡ U ℓ' {Γ}
+ladder {ℓ' = ℓ'} {Γ = Γ} = El-code (U ℓ' {Γ})
