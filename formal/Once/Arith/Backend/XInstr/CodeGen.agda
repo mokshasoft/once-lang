@@ -37,32 +37,20 @@ open import Once.Arith.Backend.XInstr.Syntax
 _≟x_ : (a b : XReg) → Dec (a ≡ b)
 XR0 ≟x XR0 = yes refl
 XR1 ≟x XR1 = yes refl
-XR2 ≟x XR2 = yes refl
-XR3 ≟x XR3 = yes refl
 XR0 ≟x XR1 = no λ ()
-XR0 ≟x XR2 = no λ ()
-XR0 ≟x XR3 = no λ ()
 XR1 ≟x XR0 = no λ ()
-XR1 ≟x XR2 = no λ ()
-XR1 ≟x XR3 = no λ ()
-XR2 ≟x XR0 = no λ ()
-XR2 ≟x XR1 = no λ ()
-XR2 ≟x XR3 = no λ ()
-XR3 ≟x XR0 = no λ ()
-XR3 ≟x XR1 = no λ ()
-XR3 ≟x XR2 = no λ ()
 
 ------------------------------------------------------------------------
 -- Register allocation
 ------------------------------------------------------------------------
 
--- | Map an abstract reg index to its concrete register (XR0–XR3).
+-- | Map an abstract reg index to its concrete register (XR0/XR1). `compile-go`
+-- only ever emits reg 0/1 (2-register + stack-spill discipline), so indices ≥ 2
+-- are unreachable and map to `nothing`.
 abs-reg : ℕ → Maybe XReg
-abs-reg zero                              = just XR0
-abs-reg (suc zero)                        = just XR1
-abs-reg (suc (suc zero))                  = just XR2
-abs-reg (suc (suc (suc zero)))            = just XR3
-abs-reg (suc (suc (suc (suc _))))         = nothing
+abs-reg zero              = just XR0
+abs-reg (suc zero)        = just XR1
+abs-reg (suc (suc _))     = nothing
 
 ------------------------------------------------------------------------
 -- Input-path → byte-offset

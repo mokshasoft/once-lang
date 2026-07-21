@@ -51,20 +51,14 @@ open Exec bits using (step; run-abstract)
 xreg-idx : XReg → ℕ
 xreg-idx XR0 = 0
 xreg-idx XR1 = 1
-xreg-idx XR2 = 2
-xreg-idx XR3 = 3
 
 -- Round-trip: if `emit` used `abs-reg r ≡ just xr`, the concrete reg maps back.
 abs-reg-idx : ∀ (r : ℕ) (xr : XReg) → abs-reg r ≡ just xr → xreg-idx xr ≡ r
-abs-reg-idx zero                         xr eq with eq
+abs-reg-idx zero          xr eq with eq
 ... | refl = refl
-abs-reg-idx (suc zero)                   xr eq with eq
+abs-reg-idx (suc zero)    xr eq with eq
 ... | refl = refl
-abs-reg-idx (suc (suc zero))             xr eq with eq
-... | refl = refl
-abs-reg-idx (suc (suc (suc zero)))       xr eq with eq
-... | refl = refl
-abs-reg-idx (suc (suc (suc (suc _))))    xr ()
+abs-reg-idx (suc (suc _)) xr ()
 
 ------------------------------------------------------------------------
 -- The concrete XInstr machine (XState = ArithAbsState, concretise = id)
@@ -224,12 +218,8 @@ refine-neg dst a xd xa eqd eqa s
 xreg-idx-inj : ∀ xd xb → xreg-idx xd ≡ xreg-idx xb → xd ≡ xb
 xreg-idx-inj XR0 XR0 _ = refl
 xreg-idx-inj XR1 XR1 _ = refl
-xreg-idx-inj XR2 XR2 _ = refl
-xreg-idx-inj XR3 XR3 _ = refl
-xreg-idx-inj XR0 XR1 () ; xreg-idx-inj XR0 XR2 () ; xreg-idx-inj XR0 XR3 ()
-xreg-idx-inj XR1 XR0 () ; xreg-idx-inj XR1 XR2 () ; xreg-idx-inj XR1 XR3 ()
-xreg-idx-inj XR2 XR0 () ; xreg-idx-inj XR2 XR1 () ; xreg-idx-inj XR2 XR3 ()
-xreg-idx-inj XR3 XR0 () ; xreg-idx-inj XR3 XR1 () ; xreg-idx-inj XR3 XR2 ()
+xreg-idx-inj XR0 XR1 ()
+xreg-idx-inj XR1 XR0 ()
 
 -- dst ≡ a from xd ≡ xa (via round-trips).
 idx-eq : ∀ {r₁ r₂ x₁ x₂} → abs-reg r₁ ≡ just x₁ → abs-reg r₂ ≡ just x₂ → x₁ ≡ x₂ → r₁ ≡ r₂

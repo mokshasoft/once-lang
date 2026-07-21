@@ -38,11 +38,13 @@ open import Once.Arith.Machine.AbsState using (InputPath)
 -- | The arith subsystem uses callee-saved GPRs r12-r15 as its abstract
 -- register file. Phase F's allocator can grow the set; Phase G's
 -- comparison ops may need rax/rdx for `idiv` / `cqo`.
+-- The arith compiler (`compile-abs`) is a 2-register + stack-spill discipline:
+-- `compile-go` only ever uses reg 0 (accumulator) and reg 1 (reload target),
+-- spilling everything else to scratch slots. So `XReg` needs exactly two
+-- constructors; there is no register-pressure case that a third would serve.
 data XReg : Set where
   XR0 : XReg   -- accumulator (AbsReg 0)
   XR1 : XReg   -- reload target (AbsReg 1)
-  XR2 : XReg
-  XR3 : XReg
 
 ------------------------------------------------------------------------
 -- Scratch slot addressing (stack-relative)
