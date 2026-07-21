@@ -38,7 +38,7 @@ import Once.Arith.Backend.Correct as Correct
 open Correct 64 using (exec-xinstr; exec-xprog; xreg-idx)
 open import Once.Arith.Backend.XInstr.CodeGen using (_≟x_)
 open import Once.Arith.Machine.AbsState using (store-write-same; store-write-other)
-open import Once.Target.X86-64.PhysReg using (Reg; r8; r9; r10; r11)
+open import Once.Target.X86-64.PhysReg using (Reg; rax; r8; r9; r10; r11)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
 open XI using (XR0; XR1; XR2; XR3)
 import Once.CCC.Target.X86-64.Semantics as X64
@@ -90,6 +90,14 @@ readReg-wr-arith-same rf XR1 v = refl
 readReg-wr-arith-same rf XR2 v = refl
 readReg-wr-arith-same rf XR3 v = refl
 
+-- Writing rax (an io reg, ∉ {r8..r11}) leaves the arith regs' reads unchanged.
+readReg-wr-rax-arith : ∀ (rf : RegFile) (x : XReg) (v : Word)
+                     → readReg (writeReg rf rax v) (arith-reg x) ≡ readReg rf (arith-reg x)
+readReg-wr-rax-arith rf XR0 v = refl
+readReg-wr-rax-arith rf XR1 v = refl
+readReg-wr-rax-arith rf XR2 v = refl
+readReg-wr-rax-arith rf XR3 v = refl
+
 -- `xreg-idx` is injective (XR0..XR3 ↦ 0..3).
 xreg-idx-inj : ∀ {x y} → xreg-idx x ≡ xreg-idx y → x ≡ y
 xreg-idx-inj {XR0} {XR0} refl = refl
@@ -139,6 +147,17 @@ R-step (XI.Xmov-imm d z) s-abs s-conc r x w eq with x ≟x d
       trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
                                   (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
             (sym (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de))))
+R-step (XI.Xmov-rr d src) s-abs s-conc r x w eq with x ≟x d
+... | yes refl =
+      trans (r src w (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+            (sym (readReg-wr-arith-same (regs s-conc) d _))
+... | no ¬eq =
+      trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
+                                  (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
+            (sym (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de))))
+R-step (XI.Xmov-out src) s-abs s-conc r x w eq =
+      -- exec-xinstr writes `output` (regs unchanged); concrete writes rax (∉ arith).
+      trans (r x w eq) (sym (readReg-wr-rax-arith (regs s-conc) x _))
 R-step i                    s-abs s-conc r = R-step-rest i s-abs s-conc r
 
 ------------------------------------------------------------------------
