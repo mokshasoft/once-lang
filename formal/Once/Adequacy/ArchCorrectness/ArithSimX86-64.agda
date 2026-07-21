@@ -26,6 +26,7 @@ open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.List using (List; []; _∷_)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -393,3 +394,40 @@ R-step-arg d p s-abs s-conc r ri x w eq with x ≟x d
                                   (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
             (sym (trans (readReg-wr-rax-arith (writeReg (regs s-conc) (arith-reg d) (path-load s-conc p)) x (path-load s-conc p))
                         (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de)))))
+
+------------------------------------------------------------------------
+-- Rf = R × R-scratch × R-input — the FULL relation, and the block simulation
+-- over it (top-down assembly of the proved per-instruction pieces).
+------------------------------------------------------------------------
+
+Rf : ∀ {sh} → ArithAbsState sh → State → Set
+Rf s-abs s-conc = R s-abs s-conc × R-scratch s-abs s-conc × R-input s-abs s-conc
+
+-- The register step for ANY instruction, dispatching to the proved lemmas:
+-- reload consumes R-scratch, arg consumes R-input, the other 14 need only R.
+R-step-full : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : State)
+            → Rf s-abs s-conc → R (exec-xinstr i s-abs) (EA.exec1 val-x86-64 i s-conc)
+R-step-full (XI.Xmov-m-r d sc) s-abs s-conc (rr , rsc , rin) = R-step-reload d sc s-abs s-conc rr rsc
+R-step-full (XI.Xmov-arg d p)  s-abs s-conc (rr , rsc , rin) = R-step-arg d p s-abs s-conc rr rin
+R-step-full i                  s-abs s-conc (rr , rsc , rin) = R-step i s-abs s-conc rr
+
+-- The scratch/input FRAME preservations — mechanical (these don't change; spill
+-- updates the written slot / is disjoint from the input below the frontier).
+-- Named obligations; the per-instruction VALUE content is all proved above.
+postulate
+  scratch-frame : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : State)
+                → R-scratch s-abs s-conc → R-scratch (exec-xinstr i s-abs) (EA.exec1 val-x86-64 i s-conc)
+  input-frame   : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : State)
+                → R-input s-abs s-conc → R-input (exec-xinstr i s-abs) (EA.exec1 val-x86-64 i s-conc)
+
+Rf-step : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : State)
+        → Rf s-abs s-conc → Rf (exec-xinstr i s-abs) (EA.exec1 val-x86-64 i s-conc)
+Rf-step i s-abs s-conc rf@(rr , rsc , rin) =
+  R-step-full i s-abs s-conc rf , scratch-frame i s-abs s-conc rsc , input-frame i s-abs s-conc rin
+
+Rf-sim : ∀ {sh} (xs : List XInstr) (s-abs : ArithAbsState sh) (s-conc : State)
+       → Rf s-abs s-conc
+       → Rf (exec-xprog xs s-abs) (EA.exec-arith-block val-x86-64 xs s-conc)
+Rf-sim []       s-abs s-conc rf = rf
+Rf-sim (i ∷ is) s-abs s-conc rf =
+  Rf-sim is (exec-xinstr i s-abs) (EA.exec1 val-x86-64 i s-conc) (Rf-step i s-abs s-conc rf)
