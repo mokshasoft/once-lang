@@ -34,6 +34,10 @@ cong₃ : ∀ {a b c d} {A : Set a} {B : Set b} {C : Set c} {D : Set d}
         (f : A → B → C → D) {x x' y y' z z'} →
         x ≡ x' → y ≡ y' → z ≡ z' → f x y z ≡ f x' y' z'
 cong₃ f refl refl refl = refl
+cong₄ : ∀ {a b c d e} {A : Set a} {B : Set b} {C : Set c} {D : Set d} {E : Set e}
+        (f : A → B → C → D → E) {x x' y y' z z' w w'} →
+        x ≡ x' → y ≡ y' → z ≡ z' → w ≡ w' → f x y z w ≡ f x' y' z' w'
+cong₄ f refl refl refl refl = refl
 sym   : ∀ {a} {A : Set a} {x y : A} → x ≡ y → y ≡ x
 sym refl = refl
 trans : ∀ {a} {A : Set a} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
@@ -259,7 +263,7 @@ lkTy (Δ ▷ wB)       (vs x) = renTy vs (lkTy Δ x)
 data _⊨_ where
   ⊨𝔹 : ∀ {Γ}{Δ : Con Γ}         → Δ ⊨ 𝔹
   ⊨⊥ : ∀ {Γ}{Δ : Con Γ}         → Δ ⊨ ⊥̇
-  ⊨𝕀 : ∀ {Γ}{Δ : Con Γ}{t A B}  → Δ ⊢ t ∷ 𝔹 → Δ ⊨ A → Δ ⊨ B → Δ ⊨ 𝕀 t A B
+  ⊨𝕀 : ∀ {Γ}{Δ : Con Γ}{t A B}  → Δ ⊢ t ∷ 𝔹 → Δ ⊨ 𝔹 → Δ ⊨ A → Δ ⊨ B → Δ ⊨ 𝕀 t A B
   ⊨Π : ∀ {Γ}{Δ : Con Γ}{A B}    → (wA : Δ ⊨ A) → (Δ ▷ wA) ⊨ B → Δ ⊨ Π̇ A B
 
 data _⊢_∷_ where
@@ -269,7 +273,7 @@ data _⊢_∷_ where
   ⊢lam : ∀ {Γ}{Δ : Con Γ}{A B}{t} → (wA : Δ ⊨ A) → (Δ ▷ wA) ⊢ t ∷ B →
          Δ ⊢ lam A t ∷ Π̇ A B
   ⊢app : ∀ {Γ}{Δ : Con Γ}{A B}{f u} →
-         (wA : Δ ⊨ A) → (Δ ▷ wA) ⊨ B →
+         (wΠ : Δ ⊨ Π̇ A B) →
          Δ ⊢ f ∷ Π̇ A B → Δ ⊢ u ∷ A → Δ ⊢ app f u ∷ subTy (single u) B
 
 
@@ -302,8 +306,8 @@ uip refl = refl
 
 ⊨-unique ⊨𝔹 ⊨𝔹 = refl
 ⊨-unique ⊨⊥ ⊨⊥ = refl
-⊨-unique (⊨𝕀 tb wA wB) (⊨𝕀 tb' wA' wB') =
-  cong₃ ⊨𝕀 (⊢-unique tb tb') (⊨-unique wA wA') (⊨-unique wB wB')
+⊨-unique (⊨𝕀 tb w𝔹 wA wB) (⊨𝕀 tb' w𝔹' wA' wB') =
+  cong₄ ⊨𝕀 (⊢-unique tb tb') (⊨-unique w𝔹 w𝔹') (⊨-unique wA wA') (⊨-unique wB wB')
 ⊨-unique (⊨Π wA wB) (⊨Π wA' wB') with ⊨-unique wA wA'
 ... | refl = cong (⊨Π wA) (⊨-unique wB wB')
 
@@ -313,10 +317,9 @@ uip refl = refl
 ⊢≡ (⊢lam wA td) (⊢lam wA' td') with ⊨-unique wA wA'
 ... | refl with ⊢≡ td td'
 ...   | refl , refl = refl , refl
-⊢≡ (⊢app wA wB tf tu) (⊢app wA' wB' tf' tu') with ⊢≡ tf tf'
-... | refl , refl with ⊨-unique wA wA'
-...   | refl with ⊨-unique wB wB' | ⊢≡ tu tu'
-...     | refl | refl , refl = refl , refl
+⊢≡ (⊢app wΠ tf tu) (⊢app wΠ' tf' tu') with ⊢≡ tf tf'
+... | refl , refl with ⊨-unique wΠ wΠ' | ⊢≡ tu tu'
+...   | refl | refl , refl = refl , refl
 
 ------------------------------------------------------------------------
 -- Stage 5 — RENAMING METATHEORY along order-preserving embeddings (OPEs): the
@@ -363,7 +366,7 @@ data _⊑[_]_ where
 
 ren⊨ r ⊨𝔹            = ⊨𝔹
 ren⊨ r ⊨⊥            = ⊨⊥
-ren⊨ r (⊨𝕀 tb wA wB) = ⊨𝕀 (ren⊢ r tb) (ren⊨ r wA) (ren⊨ r wB)
+ren⊨ r (⊨𝕀 tb w𝔹 wA wB) = ⊨𝕀 (ren⊢ r tb) (ren⊨ r w𝔹) (ren⊨ r wA) (ren⊨ r wB)
 ren⊨ r (⊨Π wA wB)    = ⊨Π (ren⊨ r wA) (ren⊨ (keep r wA) wB)
 
 ren⊢ {o = o} r (⊢var x) =
@@ -371,9 +374,9 @@ ren⊢ {o = o} r (⊢var x) =
 ren⊢ r ⊢tt            = ⊢tt
 ren⊢ r ⊢ff            = ⊢ff
 ren⊢ r (⊢lam wA td)   = ⊢lam (ren⊨ r wA) (ren⊢ (keep r wA) td)
-ren⊢ {o = o} r (⊢app {B = B} {u = u} wA wB tf tu) =
+ren⊢ {o = o} r (⊢app {B = B} {u = u} wΠ tf tu) =
   subst (λ z → _ ⊢ app _ _ ∷ z) (sym (renTy-comm ⌜ o ⌝ u B))
-        (⊢app (ren⊨ r wA) (ren⊨ (keep r wA) wB) (ren⊢ r tf) (ren⊢ r tu))
+        (⊢app (ren⊨ r wΠ) (ren⊢ r tf) (ren⊢ r tu))
 
 lkcompat (keep {o = o} r {A = A} wA) vz = sym (renTy-wk {ρ = ⌜ o ⌝} A)
 lkcompat (keep {Δc = Δc} {o = o} r wA) (vs x) =
