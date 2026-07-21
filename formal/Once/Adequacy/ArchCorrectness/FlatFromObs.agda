@@ -150,16 +150,24 @@ flat-trace-of ioc (just ir) n =
                       (ir-to-trace ir) (mkFlat entry-s entry-alloc 0))
 
 ------------------------------------------------------------------------
--- The NAMED postulate that REMAINS (Layer-1 gap): printer / loader
--- faithfulness — the concrete-machine half (Plan 0.54 rung B).
+-- The concrete↔abstract seam (Plan 0.54 rung B). At THIS module the machine
+-- (`as : ArchSemantics`) is OPAQUE (injected), so `asm-trace-correct` cannot be
+-- decomposed here — it would be an un-dischargeable internal postulate. Instead
+-- it is a PARAMETER of `flat-from-obs`, supplied by the per-arch instance where
+-- the concrete `X64.State`/`run-events` machine IS visible, so the arith slice
+-- can consume `dispatch-arith-preserves` there (the rest = the explicit ISA /
+-- printer / loader trust). Same move that un-postulated `ir-flat-correct`:
+-- localise the obligation to where it can be discharged.
+--
+-- The `AsmTraceCorrect ft` type is the shape the per-arch instance must supply
+-- (against the DEFINED `flat-trace-of ioc`).
 ------------------------------------------------------------------------
 
-postulate
-  asm-trace-correct :
-    (ft : Maybe (IR Unit Unit) → Behavior) →
-    ∀ (m : P.Module) (asm : String) →
-    C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-    ∀ (n : ℕ) → asm-sem asm n ≡ ft (moduleToIR m) n
+AsmTraceCorrect : (Maybe (IR Unit Unit) → Behavior) → Set
+AsmTraceCorrect ft =
+  ∀ (m : P.Module) (asm : String) →
+  C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
+  ∀ (n : ℕ) → asm-sem asm n ≡ ft (moduleToIR m) n
 
 ------------------------------------------------------------------------
 -- `ir-flat-correct` — PROVED from `traces-agree` (was a postulate).
@@ -177,11 +185,13 @@ ir-flat-correct-of ioc (just ir) n =
 ------------------------------------------------------------------------
 
 flat-from-obs :
-  (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir) → ArchCorrect arch as
-flat-from-obs ioc = record
+  (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
+  → AsmTraceCorrect (flat-trace-of ioc)
+  → ArchCorrect arch as
+flat-from-obs ioc atc = record
   { asm-sem           = asm-sem
   ; flat-trace        = flat-trace-of ioc
   ; assemble-correct  = λ _ _ _ _ _ → refl
-  ; asm-trace-correct = asm-trace-correct (flat-trace-of ioc)
+  ; asm-trace-correct = atc
   ; ir-flat-correct   = ir-flat-correct-of ioc
   }

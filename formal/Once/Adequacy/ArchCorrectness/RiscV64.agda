@@ -37,7 +37,18 @@ postulate
 open IRObsCorrectFlatness {rv64-frame-semantics} program-bound using (ir-obs-correct)
 
 -- riscv64's witness, CONSTRUCTED via the shared FlatFromObs (Phase B L1).
+-- Plan 0.54 rung B: the concrete↔abstract seam, now LOCALISED here (was an
+-- internal FlatFromObs postulate). At this per-arch instance the concrete
+-- machine IS visible, so the arith slice is dischargeable from
+-- `dispatch-arith-preserves`; the non-arith remainder is the explicit ISA /
+-- printer / loader trust (GNU `as` class). Stated against the DEFINED
+-- `flat-trace` via `FFO.AsmTraceCorrect`.
+postulate
+  asm-trace-correct-riscv64 :
+    FFO.AsmTraceCorrect riscv64 rv64-frame-semantics (arch-semantics riscv64) program-bound
+      (FFO.flat-trace-of riscv64 rv64-frame-semantics (arch-semantics riscv64) program-bound ir-obs-correct)
+
 riscv64-correct : ArchCorrect riscv64 (arch-semantics riscv64)
 riscv64-correct =
   FFO.flat-from-obs riscv64 rv64-frame-semantics (arch-semantics riscv64)
-    program-bound ir-obs-correct
+    program-bound ir-obs-correct asm-trace-correct-riscv64
