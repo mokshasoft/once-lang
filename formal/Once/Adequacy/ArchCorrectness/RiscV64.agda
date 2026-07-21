@@ -22,13 +22,24 @@
 module Once.Adequacy.ArchCorrectness.RiscV64 where
 
 open import Data.Nat using (ℕ)
-open import Data.Maybe using (Maybe)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.List using ([])
+open import Data.Bool using (false)
+open import Data.Product using (proj₂)
+open import Data.String using (String)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans)
 open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
 open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.CPU using (riscv64; arch-semantics)
+open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
+open import Once.Adequacy.SourceTrace using (moduleToIR)
 open import Once.CCC.Target.RiscV64.FrameInstantiation using (rv64-frame-semantics)
 open import Once.CCC.Codegen.IRObsCorrectFlat using (module IRObsCorrectFlatness)
+open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
+open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace-cnt)
+import Once.Compile as C
+import Once.Parser.Module.Core as P
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
 postulate
@@ -36,17 +47,36 @@ postulate
 
 open IRObsCorrectFlatness {rv64-frame-semantics} program-bound using (ir-obs-correct)
 
--- riscv64's witness, CONSTRUCTED via the shared FlatFromObs (Phase B L1).
--- Plan 0.54 rung B: the concrete↔abstract seam, now LOCALISED here (was an
--- internal FlatFromObs postulate). At this per-arch instance the concrete
--- machine IS visible, so the arith slice is dischargeable from
--- `dispatch-arith-preserves`; the non-arith remainder is the explicit ISA /
--- printer / loader trust (GNU `as` class). Stated against the DEFINED
--- `flat-trace` via `FFO.AsmTraceCorrect`.
+module FFOr = FFO riscv64 rv64-frame-semantics (arch-semantics riscv64) program-bound
+asR = arch-semantics riscv64
+
+-- The concrete machine's SigOp trace of a compiled IR (see X86-64 for the full
+-- rationale): lower the IR to a concrete riscv64 `Program` (the compiler's real
+-- path `compile-trace-cnt ∘ ir-to-trace`) and run the concrete machine on it.
+conc-trace : Maybe (IR Unit Unit) → Behavior
+conc-trace nothing   _ = []
+conc-trace (just ir) =
+  ArchSemantics.run-trace asR (proj₂ (compile-trace-cnt 0 (ir-to-trace ir)))
+                          (ArchSemantics.initialState asR)
+
 postulate
-  asm-trace-correct-riscv64 :
-    FFO.AsmTraceCorrect riscv64 rv64-frame-semantics (arch-semantics riscv64) program-bound
-      (FFO.flat-trace-of riscv64 rv64-frame-semantics (arch-semantics riscv64) program-bound ir-obs-correct)
+  -- (A) TOOLCHAIN TRUST — assembler + loader + printer + decoder round-trip
+  -- (GNU `as` class); NOT the CPU, NOT the arith logic.
+  riscv64-loader-faithful :
+    ∀ (m : P.Module) (asm : String) →
+    C.compileFromModule C.Heap C.Build false riscv64 m ≡ C.Built asm →
+    ∀ (n : ℕ) → FFOr.asm-sem asm n ≡ conc-trace (moduleToIR m) n
+  -- (B) THE SIMULATION — PROVABLE: concrete `run-events` ≡ abstract
+  -- `flat-events`, a correspondence between two of OUR models. Arith slice =
+  -- `dispatch-arith-preserves`. The named target of the simulation proof.
+  riscv64-conc-flat-sim :
+    ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ) →
+    conc-trace mir n ≡ FFOr.flat-trace-of ir-obs-correct mir n
+
+asm-trace-correct-riscv64 : FFOr.AsmTraceCorrect (FFOr.flat-trace-of ir-obs-correct)
+asm-trace-correct-riscv64 m asm eq n =
+  trans (riscv64-loader-faithful m asm eq n)
+        (riscv64-conc-flat-sim (moduleToIR m) n)
 
 riscv64-correct : ArchCorrect riscv64 (arch-semantics riscv64)
 riscv64-correct =

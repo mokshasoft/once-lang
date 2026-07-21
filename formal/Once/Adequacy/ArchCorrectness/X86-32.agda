@@ -22,13 +22,23 @@
 module Once.Adequacy.ArchCorrectness.X86-32 where
 
 open import Data.Nat using (ℕ)
-open import Data.Maybe using (Maybe)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.List using ([])
+open import Data.Bool using (false)
+open import Data.String using (String)
+open import Relation.Binary.PropositionalEquality using (_≡_; trans)
 open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
 open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.CPU using (x86-32; arch-semantics)
+open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
+open import Once.Adequacy.SourceTrace using (moduleToIR)
 open import Once.CCC.Target.X86-32.FrameInstantiation using (x86-32-frame-semantics)
 open import Once.CCC.Codegen.IRObsCorrectFlat using (module IRObsCorrectFlatness)
+open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
+open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace)
+import Once.Compile as C
+import Once.Parser.Module.Core as P
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
 postulate
@@ -43,10 +53,36 @@ open IRObsCorrectFlatness {x86-32-frame-semantics} program-bound using (ir-obs-c
 -- `dispatch-arith-preserves`; the non-arith remainder is the explicit ISA /
 -- printer / loader trust (GNU `as` class). Stated against the DEFINED
 -- `flat-trace` via `FFO.AsmTraceCorrect`.
+module FFOc = FFO x86-32 x86-32-frame-semantics (arch-semantics x86-32) program-bound
+asC = arch-semantics x86-32
+
+-- The concrete machine's SigOp trace of a compiled IR (see X86-64 for rationale):
+-- lower the IR to a concrete x86-32 `Program` (`compile-trace ∘ ir-to-trace`) and
+-- run the concrete machine on it.
+conc-trace : Maybe (IR Unit Unit) → Behavior
+conc-trace nothing   _ = []
+conc-trace (just ir) =
+  ArchSemantics.run-trace asC (compile-trace (ir-to-trace ir))
+                          (ArchSemantics.initialState asC)
+
 postulate
-  asm-trace-correct-x86-32 :
-    FFO.AsmTraceCorrect x86-32 x86-32-frame-semantics (arch-semantics x86-32) program-bound
-      (FFO.flat-trace-of x86-32 x86-32-frame-semantics (arch-semantics x86-32) program-bound ir-obs-correct)
+  -- (A) TOOLCHAIN TRUST — assembler + loader + printer + decoder (GNU `as`
+  -- class); NOT the CPU, NOT the arith logic.
+  x86-32-loader-faithful :
+    ∀ (m : P.Module) (asm : String) →
+    C.compileFromModule C.Heap C.Build false x86-32 m ≡ C.Built asm →
+    ∀ (n : ℕ) → FFOc.asm-sem asm n ≡ conc-trace (moduleToIR m) n
+  -- (B) THE SIMULATION — PROVABLE: concrete `run-events` ≡ abstract
+  -- `flat-events`. Arith slice = `dispatch-arith-preserves` (here also the
+  -- borrow/restore `BorrowRestoreCore`, still to build). Named simulation target.
+  x86-32-conc-flat-sim :
+    ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ) →
+    conc-trace mir n ≡ FFOc.flat-trace-of ir-obs-correct mir n
+
+asm-trace-correct-x86-32 : FFOc.AsmTraceCorrect (FFOc.flat-trace-of ir-obs-correct)
+asm-trace-correct-x86-32 m asm eq n =
+  trans (x86-32-loader-faithful m asm eq n)
+        (x86-32-conc-flat-sim (moduleToIR m) n)
 
 x86-32-correct : ArchCorrect x86-32 (arch-semantics x86-32)
 x86-32-correct =
