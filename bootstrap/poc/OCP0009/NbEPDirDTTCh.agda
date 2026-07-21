@@ -317,3 +317,100 @@ uip refl = refl
 ... | refl , refl with ⊨-unique wA wA'
 ...   | refl with ⊨-unique wB wB' | ⊢≡ tu tu'
 ...     | refl | refl , refl = refl , refl
+
+------------------------------------------------------------------------
+-- Stage 5 — RENAMING METATHEORY along order-preserving embeddings (OPEs): the
+-- syntactic naturality the semantic weakening lemma rests on.
+------------------------------------------------------------------------
+
+-- renaming commutes with a single substitution (needed in `ren⊢`'s app case).
+renTy-comm : ∀ {Γ Δ} (ρ : Ren Γ Δ) (u : Tm Γ) (B : Ty (Γ ∙)) →
+             renTy ρ (subTy (single u) B) ≡ subTy (single (ren ρ u)) (renTy (extR ρ) B)
+renTy-comm ρ u B =
+  trans (renTy-subTy B) (trans (subTy-cong bridge B) (sym (subTy-renTy B)))
+  where
+  bridge : ∀ (x : Var (_ ∙)) → (ρ ᵣ∘ₛ single u) x ≡ (single (ren ρ u) ₛ∘ᵣ extR ρ) x
+  bridge vz     = refl
+  bridge (vs x) = refl
+
+renTy-wk : ∀ {Γ Δ} {ρ : Ren Γ Δ} (A : Ty Γ) →
+           renTy (extR ρ) (renTy vs A) ≡ renTy vs (renTy ρ A)
+renTy-wk {ρ = ρ} A =
+  trans (renTy-renTy A) (trans (renTy-cong (λ _ → refl) A) (sym (renTy-renTy A)))
+
+data OPE : Cx → Cx → Set where
+  done : OPE ε ε
+  keep : ∀ {Γ Δ} → OPE Γ Δ → OPE (Γ ∙) (Δ ∙)
+  skip : ∀ {Γ Δ} → OPE Γ Δ → OPE Γ (Δ ∙)
+
+⌜_⌝ : ∀ {Γ Δ} → OPE Γ Δ → Ren Γ Δ
+⌜ done ⌝   ()
+⌜ keep o ⌝ = extR ⌜ o ⌝
+⌜ skip o ⌝ = λ x → vs (⌜ o ⌝ x)
+
+data _⊑[_]_ : ∀ {Γ Δ} → Con Γ → OPE Γ Δ → Con Δ → Set
+ren⊨ : ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){A} → Δc ⊨ A → Θc ⊨ renTy ⌜ o ⌝ A
+ren⊢ : ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){t A} → Δc ⊢ t ∷ A → Θc ⊢ ren ⌜ o ⌝ t ∷ renTy ⌜ o ⌝ A
+lkcompat : ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc)(x : Var Γ) →
+           lkTy Θc (⌜ o ⌝ x) ≡ renTy ⌜ o ⌝ (lkTy Δc x)
+
+data _⊑[_]_ where
+  done : ε ⊑[ done ] ε
+  keep : ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){A}(wA : Δc ⊨ A) →
+         (Δc ▷ wA) ⊑[ keep o ] (Θc ▷ ren⊨ r wA)
+  skip : ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){B}(wB : Θc ⊨ B) →
+         Δc ⊑[ skip o ] (Θc ▷ wB)
+
+ren⊨ r ⊨𝔹            = ⊨𝔹
+ren⊨ r ⊨⊥            = ⊨⊥
+ren⊨ r (⊨𝕀 tb wA wB) = ⊨𝕀 (ren⊢ r tb) (ren⊨ r wA) (ren⊨ r wB)
+ren⊨ r (⊨Π wA wB)    = ⊨Π (ren⊨ r wA) (ren⊨ (keep r wA) wB)
+
+ren⊢ {o = o} r (⊢var x) =
+  subst (λ z → _ ⊢ var (⌜ o ⌝ x) ∷ z) (lkcompat r x) (⊢var (⌜ o ⌝ x))
+ren⊢ r ⊢tt            = ⊢tt
+ren⊢ r ⊢ff            = ⊢ff
+ren⊢ r (⊢lam wA td)   = ⊢lam (ren⊨ r wA) (ren⊢ (keep r wA) td)
+ren⊢ {o = o} r (⊢app {B = B} {u = u} wA wB tf tu) =
+  subst (λ z → _ ⊢ app _ _ ∷ z) (sym (renTy-comm ⌜ o ⌝ u B))
+        (⊢app (ren⊨ r wA) (ren⊨ (keep r wA) wB) (ren⊢ r tf) (ren⊢ r tu))
+
+lkcompat (keep {o = o} r {A = A} wA) vz = sym (renTy-wk {ρ = ⌜ o ⌝} A)
+lkcompat (keep {Δc = Δc} {o = o} r wA) (vs x) =
+  trans (cong (renTy vs) (lkcompat r x)) (sym (renTy-wk {ρ = ⌜ o ⌝} (lkTy Δc x)))
+lkcompat (skip {Δc = Δc} {o = o} r wB) x =
+  trans (cong (renTy vs) (lkcompat r x)) (renTy-renTy {ρ' = vs} {ρ = ⌜ o ⌝} (lkTy Δc x))
+
+-- the identity OPE, and the weakening OPE (drop the top variable).
+idOPE : ∀ {Γ} → OPE Γ Γ
+idOPE {ε}   = done
+idOPE {Γ ∙} = keep idOPE
+
+idOPE-id : ∀ {Γ}(x : Var Γ) → ⌜ idOPE ⌝ x ≡ x
+idOPE-id vz     = refl
+idOPE-id (vs x) = cong vs (idOPE-id x)
+
+ren-idOPE   : ∀ {Γ}(t : Tm Γ) → ren ⌜ idOPE ⌝ t ≡ t
+renTy-idOPE : ∀ {Γ}(A : Ty Γ) → renTy ⌜ idOPE ⌝ A ≡ A
+ren-idOPE (var x)   = cong var (idOPE-id x)
+ren-idOPE tt        = refl
+ren-idOPE ff        = refl
+ren-idOPE (lam A t) = cong₂ lam (renTy-idOPE A) (ren-idOPE t)
+ren-idOPE (app t u) = cong₂ app (ren-idOPE t) (ren-idOPE u)
+renTy-idOPE 𝔹        = refl
+renTy-idOPE ⊥̇        = refl
+renTy-idOPE (𝕀 t A B) = cong₃ 𝕀 (ren-idOPE t) (renTy-idOPE A) (renTy-idOPE B)
+renTy-idOPE (Π̇ A B)  = cong₂ Π̇ (renTy-idOPE A) (renTy-idOPE B)
+
+▷≡ : ∀ {Γ}{Δc : Con Γ}{A A'}(p : A ≡ A'){wA : Δc ⊨ A}{wA' : Δc ⊨ A'} →
+     subst (Δc ⊨_) p wA ≡ wA' → (Δc ▷ wA) ≡ (Δc ▷ wA')
+▷≡ {Δc = Δc} refl q = cong (Δc ▷_) q
+
+id⊑ : ∀ {Γ}(Δc : Con Γ) → Δc ⊑[ idOPE ] Δc
+id⊑ ε         = done
+id⊑ (Δc ▷ wA) =
+  subst (λ Θ → (Δc ▷ wA) ⊑[ keep idOPE ] Θ)
+        (▷≡ (renTy-idOPE _) (⊨-unique _ wA)) (keep (id⊑ Δc) wA)
+
+wk⊑ : ∀ {Γ}(Δc : Con Γ){C}(wC : Δc ⊨ C) → Δc ⊑[ skip idOPE ] (Δc ▷ wC)
+wk⊑ Δc wC = skip (id⊑ Δc) wC
