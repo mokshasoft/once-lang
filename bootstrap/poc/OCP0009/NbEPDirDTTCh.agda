@@ -267,7 +267,14 @@ data _⊨_ where
   ⊨Π : ∀ {Γ}{Δ : Con Γ}{A B}    → (wA : Δ ⊨ A) → (Δ ▷ wA) ⊨ B → Δ ⊨ Π̇ A B
 
 data _⊢_∷_ where
-  ⊢var : ∀ {Γ}{Δ : Con Γ}(x : Var Γ) → Δ ⊢ var x ∷ lkTy Δ x
+  -- intrinsic de-Bruijn variable rules (carry the own type-wf `wR`, so `ren⊢`
+  -- renames it in-block via `ren⊨`; `⊢vs` also carries the sub-derivation's wf
+  -- `wA` so `MI` recurses STRUCTURALLY on the `⊢` derivation — no separate lookup).
+  ⊢vz : ∀ {Γ}{Δ : Con Γ}{A}{wA : Δ ⊨ A}
+        (wR : (Δ ▷ wA) ⊨ renTy vs A) → (Δ ▷ wA) ⊢ var vz ∷ renTy vs A
+  ⊢vs : ∀ {Γ}{Δ : Con Γ}{A B}{wB : Δ ⊨ B}{x}
+        (wA : Δ ⊨ A) (wR : (Δ ▷ wB) ⊨ renTy vs A) → Δ ⊢ var x ∷ A →
+        (Δ ▷ wB) ⊢ var (vs x) ∷ renTy vs A
   ⊢tt  : ∀ {Γ}{Δ : Con Γ}      → Δ ⊢ tt ∷ 𝔹
   ⊢ff  : ∀ {Γ}{Δ : Con Γ}      → Δ ⊢ ff ∷ 𝔹
   ⊢lam : ∀ {Γ}{Δ : Con Γ}{A B}{t} → (wA : Δ ⊨ A) → (Δ ▷ wA) ⊢ t ∷ B →
@@ -311,7 +318,11 @@ uip refl = refl
 ⊨-unique (⊨Π wA wB) (⊨Π wA' wB') with ⊨-unique wA wA'
 ... | refl = cong (⊨Π wA) (⊨-unique wB wB')
 
-⊢≡ (⊢var x) (⊢var x) = refl , refl
+⊢≡ (⊢vz wR) (⊢vz wR') with ⊨-unique wR wR'
+... | refl = refl , refl
+⊢≡ (⊢vs wA wR td) (⊢vs wA' wR' td') with ⊢≡ td td'
+... | refl , refl with ⊨-unique wA wA' | ⊨-unique wR wR'
+...   | refl | refl = refl , refl
 ⊢≡ ⊢tt ⊢tt = refl , refl
 ⊢≡ ⊢ff ⊢ff = refl , refl
 ⊢≡ (⊢lam wA td) (⊢lam wA' td') with ⊨-unique wA wA'
@@ -369,8 +380,27 @@ ren⊨ r ⊨⊥            = ⊨⊥
 ren⊨ r (⊨𝕀 tb w𝔹 wA wB) = ⊨𝕀 (ren⊢ r tb) (ren⊨ r w𝔹) (ren⊨ r wA) (ren⊨ r wB)
 ren⊨ r (⊨Π wA wB)    = ⊨Π (ren⊨ r wA) (ren⊨ (keep r wA) wB)
 
-ren⊢ {o = o} r (⊢var x) =
-  subst (λ z → _ ⊢ var (⌜ o ⌝ x) ∷ z) (lkcompat r x) (⊢var (⌜ o ⌝ x))
+ren⊢ (keep {Θc = Θc} {o = o'} r' w) (⊢vz {A = A} wR) =
+  subst (λ z → (Θc ▷ ren⊨ r' w) ⊢ var vz ∷ z) (sym (renTy-wk {ρ = ⌜ o' ⌝} A))
+        (⊢vz {wA = ren⊨ r' w}
+             (subst (λ z → (Θc ▷ ren⊨ r' w) ⊨ z) (renTy-wk {ρ = ⌜ o' ⌝} A) (ren⊨ (keep r' w) wR)))
+ren⊢ (skip {Θc = Θc} {o = o'} r' w) (⊢vz {A = A} wR) =
+  subst (λ z → (Θc ▷ w) ⊢ var (vs (⌜ o' ⌝ vz)) ∷ z) (renTy-renTy {ρ' = vs} {ρ = ⌜ o' ⌝} (renTy vs A))
+        (⊢vs {wB = w} (ren⊨ r' wR)
+             (subst (λ z → (Θc ▷ w) ⊨ z) (sym (renTy-renTy {ρ' = vs} {ρ = ⌜ o' ⌝} (renTy vs A)))
+                    (ren⊨ (skip r' w) wR))
+             (ren⊢ r' (⊢vz wR)))
+ren⊢ (keep {Θc = Θc} {o = o'} r' w) (⊢vs {A = A} {x = x} wA wR td) =
+  subst (λ z → (Θc ▷ ren⊨ r' w) ⊢ var (vs (⌜ o' ⌝ x)) ∷ z) (sym (renTy-wk {ρ = ⌜ o' ⌝} A))
+        (⊢vs {wB = ren⊨ r' w} (ren⊨ r' wA)
+             (subst (λ z → (Θc ▷ ren⊨ r' w) ⊨ z) (renTy-wk {ρ = ⌜ o' ⌝} A) (ren⊨ (keep r' w) wR))
+             (ren⊢ r' td))
+ren⊢ (skip {Θc = Θc} {o = o'} r' w) (⊢vs {A = A} {x = x} wA wR td) =
+  subst (λ z → (Θc ▷ w) ⊢ var (vs (⌜ o' ⌝ (vs x))) ∷ z) (renTy-renTy {ρ' = vs} {ρ = ⌜ o' ⌝} (renTy vs A))
+        (⊢vs {wB = w} (ren⊨ r' wR)
+             (subst (λ z → (Θc ▷ w) ⊨ z) (sym (renTy-renTy {ρ' = vs} {ρ = ⌜ o' ⌝} (renTy vs A)))
+                    (ren⊨ (skip r' w) wR))
+             (ren⊢ r' (⊢vs wA wR td)))
 ren⊢ r ⊢tt            = ⊢tt
 ren⊢ r ⊢ff            = ⊢ff
 ren⊢ r (⊢lam wA td)   = ⊢lam (ren⊨ r wA) (ren⊢ (keep r wA) td)
