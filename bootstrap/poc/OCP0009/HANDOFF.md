@@ -224,6 +224,14 @@ decision engine consumes.
   `El`'s general `act` uses one transport (subst along a code's naturality), the
   key rule `El-code` still `refl`. A substitution-STABLE small universe is
   Hofmann–Streicher (covariant, intricate) — the remaining refinement.
+- **[soundness bridge]** — ✅ DONE (`NbEPDirCon`, dHoTT-39). Turns the rung into
+  an actual relative-consistency claim: a syntactic type theory WITH a universe
+  (intrinsic; Tarski codes `c⊥`/`c→`, `El`; no conversion) interpreted into `Set`,
+  `⟦U⟧ = Set ℓ` ONE LEVEL UP, giving ★ **`consistency : Tm ∅ (El c⊥) → Empty`** —
+  the empty type has no closed inhabitant. Level-parametric (`Interp ℓ`, every
+  `ℓ`) ⇒ the generic rung `Con(Once_n) ⊢ Once_{n+1}`; Gödel intact (model needs
+  `Set (lsuc ℓ)` strictly above). Honest scope: simply-typed-with-universe; the
+  FULL dependent-kernel soundness (term-dependency + `El`-conversion) is larger.
 - **[Π stability special case]** For `σ` an EXACT map (iso / discrete fibration),
   `restrict-⇛` becomes an iso → `Π⁺` strictly stable there. NB (dHoTT-38 finding):
   for a GENERAL `σ` this is genuine mathematics, not a coherence artifact —
