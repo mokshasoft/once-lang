@@ -247,12 +247,18 @@ decision engine consumes.
   (λ _ → ⊥̂) → Empty`. Scope: dependent Π + ⊥; the object universe-as-a-type is
   separate (dHoTT-39/40). All three hard features (level-stratification, El-
   conversion, dependency) are now each shown consistent.
-- **[soundness: unified full kernel]** — OPEN, the remaining faithful target. A
-  SINGLE calculus with all three features (object universe U + El-conversion +
-  dependency), i.e. `Con(the exact raw kernel)`. Needs the RAW-syntax route
-  (dHoTT-41 M1 `NbEPDirDep`: raw syntax + the substitution algebra, already
-  built) + the semantic SUBSTITUTION LEMMA over a typed interpretation. The
-  hard/faithful path; the IR route above shows dependency is not the obstruction.
+- **[soundness: unified full kernel]** — ✅ DONE for the DIRECTED kernel
+  (`NbEPDirDHoTT`/`2`/`3`, dHoTT-42 M1–M3). One model with dependency + object
+  universe `U`/`El` + `El`-conversion (`refl`) + the DIRECTED identity `Hom` +
+  `no-sym` + covariant `transp` (with β-rule + functoriality). This is the
+  interesting target — dHoTT-specific soundness, not standard DTT: types carry
+  directed hom-structure (`DirSet` / a meta directed IR universe), `Hom` = the
+  refl-trans closure, directed J = covariant transport. `Con(dHoTT kernel)`
+  via IR (semantic types → no syntactic substitution). Remaining refinements: a
+  SYNTACTIC directed-J term (directed elimination in the object language); the
+  COVARIANT (natural-transformation) function hom instead of discrete; dependent
+  universe codes; and the fully raw-syntax faithful version (dHoTT-41 M1 route +
+  substitution lemma). Not obstructions — polish on a complete directed model.
 - **[Π stability special case]** For `σ` an EXACT map (iso / discrete fibration),
   `restrict-⇛` becomes an iso → `Π⁺` strictly stable there. NB (dHoTT-38 finding):
   for a GENERAL `σ` this is genuine mathematics, not a coherence artifact —
