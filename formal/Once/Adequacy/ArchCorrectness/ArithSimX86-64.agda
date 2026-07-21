@@ -32,9 +32,9 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (yes; no) renaming (¬_ to ¬′_)
 
 open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch)
-open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S)
+open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath; project)
 open import Once.Arith.Machine.AbsState using (ArithAbsState; Store; _[_]; init)
-open import Once.Arith.Machine.AbsInstr using (bin-op; un-op)
+open import Once.Arith.Machine.AbsInstr using (bin-op; un-op; maybe-zero)
 import Once.Arith.Backend.Correct as Correct
 open Correct 64 using (exec-xinstr; exec-xprog; xreg-idx)
 open import Once.Arith.Backend.XInstr.CodeGen using (_≟x_)
@@ -45,7 +45,7 @@ open XI using (XR0; XR1; XR2; XR3)
 import Once.CCC.Target.X86-64.Semantics as X64
 open X64 using (State; readReg; writeReg; readMem; RegFile; Word)
 open X64.State using (regs; memory)
-open import Once.Adequacy.CPU.X86-64 using (val-x86-64; scratch-addr; def)
+open import Once.Adequacy.CPU.X86-64 using (val-x86-64; scratch-addr; def; path-load)
 import Once.Arith.Backend.X86-64.ExecArith as EA
 
 ------------------------------------------------------------------------
@@ -121,7 +121,7 @@ xreg-idx-inj {XR3} {XR3} refl = refl
 
 -- Word64 arith ops (the width `val` and `exec-xinstr`/`block-semM` share).
 import Once.Word as OnceWord
-open OnceWord.Word64 using (_⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; shlᵂ; sdiv2ᵏ)
+open OnceWord.Word64 using (_⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; shlᵂ; sdiv2ᵏ; fromℤ)
 
 ------------------------------------------------------------------------
 -- R — the register correspondence (piece 1, register part).
@@ -362,3 +362,34 @@ R-step-reload d sc s-abs s-conc r rs x w eq with x ≟x d
       trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
                                   (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
             (sym (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de))))
+
+------------------------------------------------------------------------
+-- R-input — the input correspondence (for arg). The concrete rdi memory chase
+-- `path-load p` equals the abstract input value at path `p`
+-- (`fromℤ (maybe-zero (project _ p env))`). Holds by how the caller lays the
+-- `Int`-typed input out in memory (CCC arg-passing); preserved across the block
+-- since no instruction changes rdi and spill writes below the frontier (disjoint
+-- from the input region). A hypothesis of the simulation, like R / R-scratch.
+------------------------------------------------------------------------
+
+R-input : ∀ {sh} → ArithAbsState sh → State → Set
+R-input {sh} s-abs s-conc =
+  ∀ (p : InputPath)
+  → path-load s-conc p ≡ fromℤ (maybe-zero (project sh p (ArithAbsState.input s-abs)))
+
+-- Arg (`Xmov-arg d p`): writes reg d from the input (rdi chase). Given R and
+-- R-input, R is preserved. (Standalone; wired via Rf-step next.)
+R-step-arg : ∀ {sh} (d : XReg) (p : InputPath) (s-abs : ArithAbsState sh) (s-conc : State)
+           → R s-abs s-conc → R-input s-abs s-conc
+           → R (exec-xinstr (XI.Xmov-arg d p) s-abs) (EA.exec1 val-x86-64 (XI.Xmov-arg d p) s-conc)
+R-step-arg d p s-abs s-conc r ri x w eq with x ≟x d
+... | yes refl =
+      sym (trans (trans (readReg-wr-rax-arith (writeReg (regs s-conc) (arith-reg d) (path-load s-conc p)) d (path-load s-conc p))
+                        (readReg-wr-arith-same (regs s-conc) d (path-load s-conc p)))
+                 (trans (ri p)
+                        (just-injective (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))))
+... | no ¬eq =
+      trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
+                                  (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
+            (sym (trans (readReg-wr-rax-arith (writeReg (regs s-conc) (arith-reg d) (path-load s-conc p)) x (path-load s-conc p))
+                        (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de)))))
