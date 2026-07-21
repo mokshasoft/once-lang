@@ -238,12 +238,21 @@ decision engine consumes.
   definitional), so `conv-sound` on the `El` rules is `refl`; ★ `consistency :
   Tm ∅ (El ⌜⊥⌝) → Empty`. Two of the universe's three hard features (level-
   stratification dHoTT-39, `El`-conversion dHoTT-40) are now modelled.
-- **[soundness: DEPENDENCY]** — OPEN, the remaining piece of A. The third hard
-  feature: `⌜Π⌝ c d` with `d` a term in an extended context (types depending on
-  terms). Its soundness needs the semantic SUBSTITUTION LEMMA (`⟦d[u]⟧ γ =
-  ⟦d⟧ (γ, ⟦u⟧ γ)`) — i.e. essentially formalizing dependent-TT soundness, a known
-  substantial construction (intrinsic dependent substitution / a CwF syntax). Not
-  a slice; a real project.
+- **[soundness: DEPENDENCY]** — ✅ DONE (`NbEPDirDepIR`, dHoTT-41 M2–M4). The
+  third hard feature. Achieved via the STANDARD MODEL AS AN INDUCTION-RECURSION:
+  types are SEMANTIC (code-families `⟦Γ⟧ → Û`), the deep term syntax `Tm` is
+  defined MUTUALLY with `⟦_⟧` by IR, so `app`'s codomain is the semantic
+  instantiation `b (γ , ⟦u⟧ γ)` — dependency is meta-level function application,
+  SUBSTITUTION/CONVERSION FREE (no substitution lemma). ★ `consistency : Tm ε
+  (λ _ → ⊥̂) → Empty`. Scope: dependent Π + ⊥; the object universe-as-a-type is
+  separate (dHoTT-39/40). All three hard features (level-stratification, El-
+  conversion, dependency) are now each shown consistent.
+- **[soundness: unified full kernel]** — OPEN, the remaining faithful target. A
+  SINGLE calculus with all three features (object universe U + El-conversion +
+  dependency), i.e. `Con(the exact raw kernel)`. Needs the RAW-syntax route
+  (dHoTT-41 M1 `NbEPDirDep`: raw syntax + the substitution algebra, already
+  built) + the semantic SUBSTITUTION LEMMA over a typed interpretation. The
+  hard/faithful path; the IR route above shows dependency is not the obstruction.
 - **[Π stability special case]** For `σ` an EXACT map (iso / discrete fibration),
   `restrict-⇛` becomes an iso → `Π⁺` strictly stable there. NB (dHoTT-38 finding):
   for a GENERAL `σ` this is genuine mathematics, not a coherence artifact —
