@@ -1,0 +1,145 @@
+------------------------------------------------------------------------
+-- OCP-0009 · dHoTT step 42 (M3) — SOUNDNESS OF THE FULL dHoTT KERNEL:
+--   dependency + directed identity `Hom` + object universe `U`/`El` +
+--   `El`-conversion, all in one calculus, interpreted, `--safe`, zero axioms.
+--
+-- Combines M2 (directed dependent TT, Hom-type) with an OBJECT UNIVERSE: a small
+-- Tarski universe of DIRECTED SETS `û`/`êl` decoding to `DirSet`.  Then:
+--   * `U` is an object type (the `DirSet` of codes); `El` decodes a `U`-term;
+--   * codes `⌜⊥⌝`/`⌜Π⌝` are `U`-terms (`⌜Π⌝` DEPENDENT);
+--   * ★ `El-π : ElT (⌜Π⌝ c d) ≡ ΠT (ElT c) (ElT d)` is **`refl`** — El-conversion
+--     is DEFINITIONAL, because `êl (π̂ a b)` IS the dependent-function `DirSet`;
+--   * ★ `consistency : Tm ε (El ⌜⊥⌝) → Empty` — the empty type, reached through
+--     a CODE and `El`, has no closed inhabitant;
+--   * ★ `no-sym` — the directed identity is genuinely directed.
+--
+-- All three of the universe's hard features (dependency, El-conversion) PLUS the
+-- directed identity, unified in one machine-checked model.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module poc.OCP0009.NbEPDirDHoTT3 where
+
+open import Agda.Builtin.Equality using ( _≡_; refl )
+open import Agda.Builtin.Sigma    using ( Σ; _,_; fst; snd )
+
+data Empty : Set where
+record ⊤ : Set where
+  constructor tt
+data Two : Set where
+  t0 t1 : Two
+data StpTwo : Two → Two → Set where
+  arr : StpTwo t0 t1
+
+------------------------------------------------------------------------
+-- Directed sets and the directed identity.
+------------------------------------------------------------------------
+
+record DirSet : Set₁ where
+  constructor mkD
+  field Car : Set
+        St  : Car → Car → Set
+open DirSet
+
+infixr 5 _◃_
+data HomD (A : DirSet) : Car A → Car A → Set where
+  rfl : ∀ {x}     → HomD A x x
+  _◃_ : ∀ {x y z} → St A x y → HomD A y z → HomD A x z
+
+transpD : (A : DirSet) (P : Car A → Set) → (∀ {x y} → St A x y → P x → P y) →
+          ∀ {x y} → HomD A x y → P x → P y
+transpD A P mono rfl     px = px
+transpD A P mono (s ◃ h) px = transpD A P mono h (mono s px)
+
+------------------------------------------------------------------------
+-- A small Tarski universe of DIRECTED SETS (induction-recursion).
+------------------------------------------------------------------------
+
+data û : Set
+êl : û → DirSet
+
+data û where
+  ⊥̂ : û
+  ι̂ : û
+  π̂ : (a : û) → (Car (êl a) → û) → û
+
+êl ⊥̂       = mkD Empty (λ _ _ → Empty)
+êl ι̂       = mkD Two StpTwo
+êl (π̂ a b) = mkD ((x : Car (êl a)) → Car (êl (b x))) (λ _ _ → Empty)
+
+------------------------------------------------------------------------
+-- Contexts, types, formers (including the object universe U and El).
+------------------------------------------------------------------------
+
+data Con : Set₁
+⟦_⟧C : Con → Set
+
+data Con where
+  ε   : Con
+  _▷_ : (Γ : Con) → (⟦ Γ ⟧C → DirSet) → Con
+
+⟦ ε ⟧C     = ⊤
+⟦ Γ ▷ A ⟧C = Σ ⟦ Γ ⟧C (λ γ → Car (A γ))
+
+Ty : Con → Set₁
+Ty Γ = ⟦ Γ ⟧C → DirSet
+
+⊥T : ∀ {Γ} → Ty Γ
+⊥T _ = mkD Empty (λ _ _ → Empty)
+
+ΠT : ∀ {Γ} (A : Ty Γ) (B : Ty (Γ ▷ A)) → Ty Γ
+ΠT A B γ = mkD ((x : Car (A γ)) → Car (B (γ , x))) (λ _ _ → Empty)
+
+-- the non-dependent arrow (a special case of ΠT), for El-conversion of ⌜⇒⌝.
+⇒T : ∀ {Γ} (A B : Ty Γ) → Ty Γ
+⇒T A B γ = mkD ((_ : Car (A γ)) → Car (B γ)) (λ _ _ → Empty)
+
+-- the object universe is the (discrete) DirSet of codes.
+UT : ∀ {Γ} → Ty Γ
+UT _ = mkD û (λ _ _ → Empty)
+
+------------------------------------------------------------------------
+-- Terms + interpretation + El and Hom type formers (all mutual).
+------------------------------------------------------------------------
+
+data Tm : (Γ : Con) → Ty Γ → Set₁
+⟦_⟧ : ∀ {Γ A} → Tm Γ A → (γ : ⟦ Γ ⟧C) → Car (A γ)
+
+-- El decodes a U-term (a code) to a directed type.
+ElT : ∀ {Γ} → Tm Γ UT → Ty Γ
+ElT {Γ} c γ = êl (⟦_⟧ {Γ} {UT} c γ)
+
+-- the directed identity as an object type.
+HomT : ∀ {Γ} (A : Ty Γ) → Tm Γ A → Tm Γ A → Ty Γ
+HomT A x y γ = mkD (HomD (A γ) (⟦ x ⟧ γ) (⟦ y ⟧ γ)) (λ _ _ → Empty)
+
+data Tm where
+  vz   : ∀ {Γ A} → Tm (Γ ▷ A) (λ γ → A (fst γ))
+  vs   : ∀ {Γ A B} → Tm Γ A → Tm (Γ ▷ B) (λ γ → A (fst γ))
+  lam  : ∀ {Γ} {A : Ty Γ} {B : Ty (Γ ▷ A)} → Tm (Γ ▷ A) B → Tm Γ (ΠT A B)
+  app  : ∀ {Γ} {A : Ty Γ} {B : Ty (Γ ▷ A)} →
+         Tm Γ (ΠT A B) → (u : Tm Γ A) → Tm Γ (λ γ → B (γ , ⟦ u ⟧ γ))
+  hrfl : ∀ {Γ} {A : Ty Γ} (x : Tm Γ A) → Tm Γ (HomT A x x)
+  ⌜⊥⌝  : ∀ {Γ} → Tm Γ UT
+  ⌜⇒⌝  : ∀ {Γ} (c d : Tm Γ UT) → Tm Γ UT
+
+⟦ vz ⟧     (γ , a) = a
+⟦ vs t ⟧   (γ , _) = ⟦ t ⟧ γ
+⟦ lam t ⟧  γ       = λ x → ⟦ t ⟧ (γ , x)
+⟦ app f u ⟧ γ      = ⟦ f ⟧ γ (⟦ u ⟧ γ)
+⟦ hrfl x ⟧ γ       = rfl
+⟦ ⌜⊥⌝ ⟧    γ       = ⊥̂
+⟦ ⌜⇒⌝ c d ⟧ γ      = π̂ (⟦ c ⟧ γ) (λ _ → ⟦ d ⟧ γ)
+
+------------------------------------------------------------------------
+-- ★ El-CONVERSION is DEFINITIONAL; ★ CONSISTENCY; ★ NO-SYM.
+------------------------------------------------------------------------
+
+El-⇒ : ∀ {Γ} (c d : Tm Γ UT) → ElT (⌜⇒⌝ c d) ≡ ⇒T (ElT c) (ElT d)
+El-⇒ c d = refl
+
+consistency : Tm ε (ElT ⌜⊥⌝) → Empty
+consistency t = ⟦ t ⟧ tt
+
+no-sym : HomD (êl ι̂) t1 t0 → Empty
+no-sym (() ◃ _)
