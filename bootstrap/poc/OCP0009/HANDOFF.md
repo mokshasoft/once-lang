@@ -294,12 +294,34 @@ decision engine consumes.
     (ii)/(iii) are mutual with the interpretation. — BUT attempting this REVEALED
     (see #2 above) that the code-based calculus is NON-DEPENDENT, so its M3c would
     re-prove dHoTT-40, not new dependent consistency. The genuinely-dependent
-    raw route is a REDESIGN: types `RTy` closed under a type-former `Π A B`
-    (`A B : RTy`, `B` over `Δ ▷ A`, so `B = El (var vz)` is a real dependency),
-    `⊢app` giving `subTy (single u) B`, and then the interpretation with the
-    GENUINE substitution lemma `⟦subTy (single u) B⟧ ρ = ⟦B⟧ (ρ , ⟦u⟧ ρ)` (now
-    non-vacuous). The completed metatheory (M1–M3b) and the meta IR universe carry
-    over. That is the real remaining build for a faithful DEPENDENT raw kernel.
+    raw route is a REDESIGN — now BUILT: **`NbEPDirDTT` (dHoTT-43)**.
+  - *#1′ genuinely-dependent raw route* — ✅ SYNTAX + METATHEORY DONE
+    (`NbEPDirDTT`, dHoTT-43). Instead of dependent universe codes (which the
+    minimal Tarski universe can't express, see #2), dependency comes from a
+    TYPE-LEVEL large elimination `𝕀 t A B` (`if t then A else B`): types `Ty`
+    depend on TERMS, so `Π̇ 𝔹 (𝕀 (var vz) A B)` is a REAL dependent function type
+    and `⊢app`'s result `subTy (single u) B` is genuinely NON-vacuous (`dep-example
+    : Ty ε` is a concrete witness). All `--safe`, zero axioms/postulates/holes:
+    terms + term-dependent types, de Bruijn renaming/substitution + the full
+    fusion algebra, the dependent typing relation, and ★ `ren-⊢` (renaming
+    preserves typing) + ★ `sub-⊢` (substitution preserves typing — the `app` case
+    via the genuine, non-vacuous `subTy-comm` for the dependent codomain). This is
+    the full syntactic metatheory M1–M3b lifted from the non-dependent code route
+    to GENUINE dependency.
+    M3c (the set interpretation → consistency) REMAINS the standard
+    coherence-heavy DTT-soundness core: `⟦_⟧` needs the semantic weakening lemma
+    `⟦renTy vs A⟧ (ρ,v) = ⟦A⟧ ρ` (for `⟦var⟧`) and the semantic substitution
+    lemma `⟦subTy (single u) B⟧ ρ = ⟦B⟧ (ρ , ⟦u⟧ ρ)` (for `⟦app⟧`), mutual with
+    the interpretation, PLUS derivation-coherence (the raw+typing presentation
+    carries a separate `_⊨_` well-formedness derivation whose interpretation Agda
+    cannot see as unique — the syntax-directedness must be discharged or the
+    syntax made intrinsic). The interpretation FRAMEWORK typechecks (`⟦_⟧C`/
+    `⟦_⟧T`/`⟦_⟧M` structure with `tt`/`ff` filled); only `var`/`lam`/`app` remain,
+    and they are exactly this coherence-heavy core — a dedicated formalization,
+    not a tail fill. Its SEMANTIC analogue (genuinely-dependent CONSISTENCY) is
+    ALREADY proven intrinsically: `NbEPDirDepIR` (dHoTT-41) and the full directed
+    kernel `NbEPDirDHoTT3` (dHoTT-42), where intrinsic semantic types sidestep both
+    the substitution lemma and the coherence.
 - **[Π stability special case]** For `σ` an EXACT map (iso / discrete fibration),
   `restrict-⇛` becomes an iso → `Π⁺` strictly stable there. NB (dHoTT-38 finding):
   for a GENERAL `σ` this is genuine mathematics, not a coherence artifact —

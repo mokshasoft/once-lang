@@ -169,3 +169,15 @@ Honest boundaries, so the findings aren't over-read:
 - Much of the substitution/fusion machinery is careful re-derivation of known
   results (McBride-style Kits etc.), made funext-free — the novelty is in the
   *method* (P1/P2) and the *synthesis*, not the individual lemmas.
+- **The genuinely-dependent RAW route (`NbEPDirDTT`, dHoTT-43) has SYNTAX +
+  METATHEORY, not yet the interpretation.** Real dependency is achieved (a
+  type-level `if`, so `⊢app`'s `subTy (single u) B` is non-vacuous — witnessed by
+  `dep-example`), and renaming/substitution PRESERVE TYPING (`ren-⊢`/`sub-⊢`,
+  zero-axiom). What is NOT done is the set model `⟦_⟧` → consistency: it needs the
+  semantic weakening/substitution lemmas (mutual with `⟦_⟧`) *plus*
+  derivation-coherence for the raw+typing presentation — the standard
+  coherence-heavy DTT-soundness core. Genuinely-dependent CONSISTENCY itself is
+  NOT missing — it is proven INTRINSICALLY (`NbEPDirDepIR` dHoTT-41,
+  `NbEPDirDHoTT3` dHoTT-42), where semantic types make substitution and coherence
+  free. So dHoTT-43's remaining rung is *faithfulness of the raw presentation*,
+  not the consistency result.
