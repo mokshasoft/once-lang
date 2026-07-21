@@ -309,19 +309,26 @@ decision engine consumes.
     the full syntactic metatheory M1–M3b lifted from the non-dependent code route
     to GENUINE dependency.
     M3c (the set interpretation → consistency) REMAINS the standard
-    coherence-heavy DTT-soundness core: `⟦_⟧` needs the semantic weakening lemma
-    `⟦renTy vs A⟧ (ρ,v) = ⟦A⟧ ρ` (for `⟦var⟧`) and the semantic substitution
-    lemma `⟦subTy (single u) B⟧ ρ = ⟦B⟧ (ρ , ⟦u⟧ ρ)` (for `⟦app⟧`), mutual with
-    the interpretation, PLUS derivation-coherence (the raw+typing presentation
-    carries a separate `_⊨_` well-formedness derivation whose interpretation Agda
-    cannot see as unique — the syntax-directedness must be discharged or the
-    syntax made intrinsic). The interpretation FRAMEWORK typechecks (`⟦_⟧C`/
-    `⟦_⟧T`/`⟦_⟧M` structure with `tt`/`ff` filled); only `var`/`lam`/`app` remain,
-    and they are exactly this coherence-heavy core — a dedicated formalization,
-    not a tail fill. Its SEMANTIC analogue (genuinely-dependent CONSISTENCY) is
-    ALREADY proven intrinsically: `NbEPDirDepIR` (dHoTT-41) and the full directed
-    kernel `NbEPDirDHoTT3` (dHoTT-42), where intrinsic semantic types sidestep both
-    the substitution lemma and the coherence.
+    coherence-heavy DTT-soundness core. The interpretation FRAMEWORK typechecks
+    (`CI`/`TI`/`MI` mutual, `tt`/`ff` filled); filling `var`/`lam`/`app` needs the
+    semantic weakening lemma `TI (⊨ renTy vs A) (ρ,v) = TI (⊨ A) ρ` (for `⟦var⟧`)
+    and substitution lemma `TI (⊨ subTy (single u) B) ρ = TI (⊨ B) (ρ,⟦u⟧ρ)` (for
+    `⟦app⟧`), mutual with `MI`. ★ The passed-wf structuring makes `⟦app⟧` COHERENCE-
+    FREE (it reuses `⊢app`'s own carried `wA`/`wB` for both `f` and `u`), but
+    `⟦lam⟧` needs TI-IRRELEVANCE (the `⊨Π` wf and the `⊢lam` context wf are two
+    `Δ ⊨ A` derivations), which needs MI-irrelevance (for `𝕀`'s condition), which
+    needs TYPE-UNIQUENESS — and type-uniqueness is FALSE for Curry-style `lam`:
+    ★ MACHINE-CHECKED, `lam (var vz)` inhabits BOTH `Π̇ 𝔹 𝔹` and `Π̇ ⊥̇ ⊥̇`. So raw
+    M3c requires CHURCH-STYLE (domain-annotated) `lam` for type-uniqueness, then a
+    heterogeneous TI-irr/MI-irr proof + the two semantic lemmas + threaded funext —
+    a dedicated formalization, not a tail fill.
+    The SEMANTIC analogue is proven and CLOSED: **`NbEPDirDTTSem` (dHoTT-43c)**
+    models the SAME type-level-`if` mechanism intrinsically (types semantic, `Tm`
+    mutual with `⟦_⟧` by IR) — `consistency` + genuinely-dependent terms
+    (`dep-true : IfT _ _ b1` ⇒ then-branch, `dep-false : IfT _ _ b0` ⇒ else-branch,
+    both `refl`-checked), no substitution lemma, no coherence. Also
+    `NbEPDirDepIR` (dHoTT-41) and `NbEPDirDHoTT3` (dHoTT-42). The remaining raw-M3c
+    rung is FAITHFULNESS of the raw presentation, not the consistency result.
 - **[Π stability special case]** For `σ` an EXACT map (iso / discrete fibration),
   `restrict-⇛` becomes an iso → `Π⁺` strictly stable there. NB (dHoTT-38 finding):
   for a GENERAL `σ` this is genuine mathematics, not a coherence artifact —
