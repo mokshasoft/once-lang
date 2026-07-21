@@ -309,3 +309,17 @@ R-sim : ∀ {sh} (xs : List XInstr) (s-abs : ArithAbsState sh) (s-conc : State)
 R-sim []       s-abs s-conc r = r
 R-sim (i ∷ is) s-abs s-conc r =
   R-sim is (exec-xinstr i s-abs) (EA.exec1 val-x86-64 i s-conc) (R-step i s-abs s-conc r)
+
+------------------------------------------------------------------------
+-- Piece 4 — the output/result endpoint. After `Xmov-out src`, the concrete
+-- result register `rax` holds the abstract source value. So when R holds at the
+-- point of Xmov-out (which R-sim delivers for the block up to it), the concrete
+-- result equals the abstract `output-of` — the value `block-value-semM` pins to
+-- `block-semM (toWord env)`.
+------------------------------------------------------------------------
+
+result-correct : ∀ {sh} (src : XReg) (s-abs : ArithAbsState sh) (s-conc : State) (v : ℕ)
+               → R s-abs s-conc
+               → ArithAbsState.regs s-abs [ xreg-idx src ] ≡ just v
+               → readReg (regs (EA.exec1 val-x86-64 (XI.Xmov-out src) s-conc)) rax ≡ v
+result-correct src s-abs s-conc v r eq = sym (r src v eq)
