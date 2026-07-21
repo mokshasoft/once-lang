@@ -37,7 +37,18 @@ postulate
 open IRObsCorrectFlatness {x86-32-frame-semantics} program-bound using (ir-obs-correct)
 
 -- x86-32's witness, CONSTRUCTED via the shared FlatFromObs (Phase B L1).
+-- Plan 0.54 rung B: the concrete↔abstract seam, now LOCALISED here (was an
+-- internal FlatFromObs postulate). At this per-arch instance the concrete
+-- machine IS visible, so the arith slice is dischargeable from
+-- `dispatch-arith-preserves`; the non-arith remainder is the explicit ISA /
+-- printer / loader trust (GNU `as` class). Stated against the DEFINED
+-- `flat-trace` via `FFO.AsmTraceCorrect`.
+postulate
+  asm-trace-correct-x86-32 :
+    FFO.AsmTraceCorrect x86-32 x86-32-frame-semantics (arch-semantics x86-32) program-bound
+      (FFO.flat-trace-of x86-32 x86-32-frame-semantics (arch-semantics x86-32) program-bound ir-obs-correct)
+
 x86-32-correct : ArchCorrect x86-32 (arch-semantics x86-32)
 x86-32-correct =
   FFO.flat-from-obs x86-32 x86-32-frame-semantics (arch-semantics x86-32)
-    program-bound ir-obs-correct
+    program-bound ir-obs-correct asm-trace-correct-x86-32
