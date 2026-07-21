@@ -26,14 +26,15 @@ open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.List using (List; []; _∷_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
 open import Relation.Nullary using (¬_)
-open import Data.Empty using (⊥-elim)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (yes; no) renaming (¬_ to ¬′_)
 
 open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg)
 open import Once.Arith.Machine.Shape using (InputShape)
 open import Once.Arith.Machine.AbsState using (ArithAbsState; Store; _[_])
+open import Once.Arith.Machine.AbsInstr using (bin-op; un-op)
 import Once.Arith.Backend.Correct as Correct
 open Correct 64 using (exec-xinstr; exec-xprog; xreg-idx)
 open import Once.Arith.Backend.XInstr.CodeGen using (_≟x_)
@@ -105,6 +106,10 @@ xreg-idx-inj {XR1} {XR1} refl = refl
 xreg-idx-inj {XR2} {XR2} refl = refl
 xreg-idx-inj {XR3} {XR3} refl = refl
 
+-- Word64 arith ops (the width `val` and `exec-xinstr`/`block-semM` share).
+import Once.Word as OnceWord
+open OnceWord.Word64 using (_⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; shlᵂ; sdiv2ᵏ)
+
 ------------------------------------------------------------------------
 -- R — the register correspondence (piece 1, register part).
 --
@@ -118,6 +123,34 @@ R s-abs s-conc =
   ∀ (x : XReg) (w : ℕ)
   → (ArithAbsState.regs s-abs [ xreg-idx x ]) ≡ just w
   → w ≡ readReg (regs s-conc) (arith-reg x)
+
+n≢j : ∀ {w : ℕ} → nothing ≡ just w → ⊥
+n≢j ()
+
+-- Inversion: a defined `bin-op`/`un-op` result forces both operand cells
+-- defined; with R, the value is the op of the concrete register reads.
+bin-value : ∀ {sh} (f : ℕ → ℕ → ℕ) (dr sr : XReg)
+              (s-abs : ArithAbsState sh) (s-conc : State) (w : ℕ)
+          → R s-abs s-conc
+          → bin-op f (ArithAbsState.regs s-abs [ xreg-idx dr ])
+                     (ArithAbsState.regs s-abs [ xreg-idx sr ]) ≡ just w
+          → w ≡ f (readReg (regs s-conc) (arith-reg dr)) (readReg (regs s-conc) (arith-reg sr))
+bin-value f dr sr s-abs s-conc w r eq
+  with ArithAbsState.regs s-abs [ xreg-idx dr ] in ed | ArithAbsState.regs s-abs [ xreg-idx sr ] in es
+... | just a | just b = trans (sym (just-injective eq)) (cong₂ f (r dr a ed) (r sr b es))
+... | just a | nothing = ⊥-elim (n≢j eq)
+... | nothing | just b = ⊥-elim (n≢j eq)
+... | nothing | nothing = ⊥-elim (n≢j eq)
+
+un-value : ∀ {sh} (f : ℕ → ℕ) (sr : XReg)
+             (s-abs : ArithAbsState sh) (s-conc : State) (w : ℕ)
+         → R s-abs s-conc
+         → un-op f (ArithAbsState.regs s-abs [ xreg-idx sr ]) ≡ just w
+         → w ≡ f (readReg (regs s-conc) (arith-reg sr))
+un-value f sr s-abs s-conc w r eq
+  with ArithAbsState.regs s-abs [ xreg-idx sr ] in es
+... | just a  = trans (sym (just-injective eq)) (cong f (r sr a es))
+... | nothing = ⊥-elim (n≢j eq)
 
 ------------------------------------------------------------------------
 -- The per-instruction step (piece 2). NEAR-DEFINITIONAL for arithmetic
@@ -158,6 +191,46 @@ R-step (XI.Xmov-rr d src) s-abs s-conc r x w eq with x ≟x d
 R-step (XI.Xmov-out src) s-abs s-conc r x w eq =
       -- exec-xinstr writes `output` (regs unchanged); concrete writes rax (∉ arith).
       trans (r x w eq) (sym (readReg-wr-rax-arith (regs s-conc) x _))
+R-step (XI.Xadd-rr d src) s-abs s-conc r x w eq with x ≟x d
+... | yes refl =
+      trans (bin-value _⊕_ d src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+            (sym (readReg-wr-arith-same (regs s-conc) d _))
+... | no ¬eq =
+      trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
+                                  (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
+            (sym (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de))))
+R-step (XI.Xsub-rr d src) s-abs s-conc r x w eq with x ≟x d
+... | yes refl =
+      trans (bin-value _⊖_ d src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+            (sym (readReg-wr-arith-same (regs s-conc) d _))
+... | no ¬eq =
+      trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
+                                  (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
+            (sym (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de))))
+R-step (XI.Ximul-rr d src) s-abs s-conc r x w eq with x ≟x d
+... | yes refl =
+      trans (bin-value _⊗_ d src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+            (sym (readReg-wr-arith-same (regs s-conc) d _))
+... | no ¬eq =
+      trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
+                                  (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
+            (sym (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de))))
+R-step (XI.Xneg-r d) s-abs s-conc r x w eq with x ≟x d
+... | yes refl =
+      trans (un-value ⊝_ d s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+            (sym (readReg-wr-arith-same (regs s-conc) d _))
+... | no ¬eq =
+      trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
+                                  (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
+            (sym (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de))))
+R-step (XI.Xshl-rri d src imm) s-abs s-conc r x w eq with x ≟x d
+... | yes refl =
+      trans (un-value (λ q → shlᵂ q imm) src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+            (sym (readReg-wr-arith-same (regs s-conc) d _))
+... | no ¬eq =
+      trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
+                                  (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
+            (sym (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de))))
 R-step i                    s-abs s-conc r = R-step-rest i s-abs s-conc r
 
 ------------------------------------------------------------------------
