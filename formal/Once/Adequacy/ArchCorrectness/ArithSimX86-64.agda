@@ -24,21 +24,78 @@ module Once.Adequacy.ArchCorrectness.ArithSimX86-64 where
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe.Properties using (just-injective)
 open import Data.List using (List; []; _∷_)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Nullary using (¬_)
+open import Data.Empty using (⊥-elim)
+open import Relation.Nullary using (yes; no) renaming (¬_ to ¬′_)
 
 open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg)
 open import Once.Arith.Machine.Shape using (InputShape)
 open import Once.Arith.Machine.AbsState using (ArithAbsState; Store; _[_])
 import Once.Arith.Backend.Correct as Correct
 open Correct 64 using (exec-xinstr; exec-xprog; xreg-idx)
-open import Once.Target.X86-64.PhysReg using (Reg)
+open import Once.Arith.Backend.XInstr.CodeGen using (_≟x_)
+open import Once.Arith.Machine.AbsState using (store-write-same; store-write-other)
+open import Once.Target.X86-64.PhysReg using (Reg; r8; r9; r10; r11)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
+open XI using (XR0; XR1; XR2; XR3)
 import Once.CCC.Target.X86-64.Semantics as X64
-open X64 using (State; readReg)
+open X64 using (State; readReg; writeReg; RegFile; Word)
 open X64.State using (regs)
 open import Once.Adequacy.CPU.X86-64 using (val-x86-64)
 import Once.Arith.Backend.X86-64.ExecArith as EA
+
+------------------------------------------------------------------------
+-- Frame machinery for the arithmetic R-step cases. R only ever reads
+-- `arith-reg` registers (r8-r11), so `writeReg-other` is needed only on that
+-- 4-register window (a 4x4 analysis, not the full 16x16).
+------------------------------------------------------------------------
+
+-- `arith-reg` is injective (XR0..XR3 ↦ r8..r11, distinct constructors).
+arith-reg-inj : ∀ {x y} → arith-reg x ≡ arith-reg y → x ≡ y
+arith-reg-inj {XR0} {XR0} refl = refl
+arith-reg-inj {XR1} {XR1} refl = refl
+arith-reg-inj {XR2} {XR2} refl = refl
+arith-reg-inj {XR3} {XR3} refl = refl
+
+-- Writing one arith register leaves the OTHER arith registers' reads unchanged.
+readReg-wr-arith-other : ∀ (rf : RegFile) (x y : XReg) (v : Word)
+                       → ¬ (x ≡ y)
+                       → readReg (writeReg rf (arith-reg x) v) (arith-reg y)
+                           ≡ readReg rf (arith-reg y)
+readReg-wr-arith-other rf XR0 XR0 v ¬eq = ⊥-elim (¬eq refl)
+readReg-wr-arith-other rf XR0 XR1 v _ = refl
+readReg-wr-arith-other rf XR0 XR2 v _ = refl
+readReg-wr-arith-other rf XR0 XR3 v _ = refl
+readReg-wr-arith-other rf XR1 XR0 v _ = refl
+readReg-wr-arith-other rf XR1 XR1 v ¬eq = ⊥-elim (¬eq refl)
+readReg-wr-arith-other rf XR1 XR2 v _ = refl
+readReg-wr-arith-other rf XR1 XR3 v _ = refl
+readReg-wr-arith-other rf XR2 XR0 v _ = refl
+readReg-wr-arith-other rf XR2 XR1 v _ = refl
+readReg-wr-arith-other rf XR2 XR2 v ¬eq = ⊥-elim (¬eq refl)
+readReg-wr-arith-other rf XR2 XR3 v _ = refl
+readReg-wr-arith-other rf XR3 XR0 v _ = refl
+readReg-wr-arith-other rf XR3 XR1 v _ = refl
+readReg-wr-arith-other rf XR3 XR2 v _ = refl
+readReg-wr-arith-other rf XR3 XR3 v ¬eq = ⊥-elim (¬eq refl)
+
+-- Writing an arith register, read back at the SAME register (refl per field).
+readReg-wr-arith-same : ∀ (rf : RegFile) (x : XReg) (v : Word)
+                      → readReg (writeReg rf (arith-reg x) v) (arith-reg x) ≡ v
+readReg-wr-arith-same rf XR0 v = refl
+readReg-wr-arith-same rf XR1 v = refl
+readReg-wr-arith-same rf XR2 v = refl
+readReg-wr-arith-same rf XR3 v = refl
+
+-- `xreg-idx` is injective (XR0..XR3 ↦ 0..3).
+xreg-idx-inj : ∀ {x y} → xreg-idx x ≡ xreg-idx y → x ≡ y
+xreg-idx-inj {XR0} {XR0} refl = refl
+xreg-idx-inj {XR1} {XR1} refl = refl
+xreg-idx-inj {XR2} {XR2} refl = refl
+xreg-idx-inj {XR3} {XR3} refl = refl
 
 ------------------------------------------------------------------------
 -- R — the register correspondence (piece 1, register part).
@@ -72,6 +129,16 @@ postulate
 R-step : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : State)
        → R s-abs s-conc → R (exec-xinstr i s-abs) (EA.exec1 val-x86-64 i s-conc)
 R-step (XI.Xmov-r-m sc src) s-abs s-conc r = r
+R-step (XI.Xmov-imm d z) s-abs s-conc r x w eq with x ≟x d
+... | yes refl =
+      -- x ≡ d: abstract cell = just(fromℤ z) ⇒ w = fromℤ z; concrete read = W.fromℤ z.
+      trans (sym (just-injective (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq)))
+            (sym (readReg-wr-arith-same (regs s-conc) d _))
+... | no ¬eq =
+      -- x ≢ d: both sides fall through to the pre-state via the frame lemmas + R.
+      trans (r x w (trans (sym (store-write-other (ArithAbsState.regs s-abs) (xreg-idx d) (xreg-idx x) _
+                                  (λ ie → ¬eq (sym (xreg-idx-inj ie))))) eq))
+            (sym (readReg-wr-arith-other (regs s-conc) d x _ (λ de → ¬eq (sym de))))
 R-step i                    s-abs s-conc r = R-step-rest i s-abs s-conc r
 
 ------------------------------------------------------------------------
