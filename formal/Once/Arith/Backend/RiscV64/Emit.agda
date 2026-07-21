@@ -56,14 +56,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 arith-reg : XReg → Reg
 arith-reg XR0 = a3
 arith-reg XR1 = a4
-arith-reg XR2 = a5
-arith-reg XR3 = a5
 
 arith-disjoint : ∀ x → owner (arith-reg x) ≡ arith
 arith-disjoint XR0 = refl
 arith-disjoint XR1 = refl
-arith-disjoint XR2 = refl
-arith-disjoint XR3 = refl
 
 reg-text : XReg → String
 reg-text x = showReg (arith-reg x)

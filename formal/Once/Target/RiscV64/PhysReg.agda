@@ -14,9 +14,9 @@
 --   * ccc  — live in CCC across a SigOp call: its address-computation
 --            temporaries t1-t4 (CCC emits t1 ~45×), the argument regs
 --            a1 a2 a6 a7, the saved regs s1-s4, and sp ra fp (+ zero).
---   * arith— a3 a4 a5: the caller-saved argument registers CCC never
---            emits. (Only 3 free; `compile-go` uses just XR0/XR1, so the
---            arith emitter aliases the dead XR2/XR3 onto a5.)
+--   * arith— a3 a4: the caller-saved argument registers CCC never emits.
+--            (`compile-go` is a 2-register + stack-spill discipline, so the
+--            arith reg file `XReg` = {XR0, XR1} maps to just a3/a4.)
 ------------------------------------------------------------------------
 
 module Once.Target.RiscV64.PhysReg where

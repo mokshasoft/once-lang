@@ -41,7 +41,7 @@ open import Relation.Nullary using (¬_; yes; no)
 open import Data.Empty using (⊥; ⊥-elim)
 
 open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch)
-open XI using (XR0; XR1; XR2; XR3)
+open XI using (XR0; XR1)
 open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath; project)
 open import Once.Arith.Machine.AbsState
   using (ArithAbsState; Store; _[_]; init; store-write-same; store-write-other; output-of)
@@ -127,8 +127,6 @@ module Core
   xreg-idx-inj : ∀ {x y} → xreg-idx x ≡ xreg-idx y → x ≡ y
   xreg-idx-inj {XR0} {XR0} refl = refl
   xreg-idx-inj {XR1} {XR1} refl = refl
-  xreg-idx-inj {XR2} {XR2} refl = refl
-  xreg-idx-inj {XR3} {XR3} refl = refl
 
   -- Peel the rax+rdx clobbers (div/rem write [arith-reg d, rax, rdx]).
   peel-io2 : ∀ (rf : RegFile) (x : XReg) (v : ℕ)

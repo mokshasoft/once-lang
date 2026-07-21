@@ -64,16 +64,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 arith-reg : XReg → Reg
 arith-reg XR0 = r8
 arith-reg XR1 = r9
-arith-reg XR2 = r10
-arith-reg XR3 = r11
 
 -- Every arith working register is `arith`-owned, hence never a CCC-live
 -- register (`owner`'s `ccc`/`io` classes are distinct constructors).
 arith-disjoint : ∀ x → owner (arith-reg x) ≡ arith
 arith-disjoint XR0 = refl
 arith-disjoint XR1 = refl
-arith-disjoint XR2 = refl
-arith-disjoint XR3 = refl
 
 reg-text : XReg → String
 reg-text x = showReg (arith-reg x)

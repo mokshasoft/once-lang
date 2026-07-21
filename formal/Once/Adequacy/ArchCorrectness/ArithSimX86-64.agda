@@ -26,7 +26,7 @@ open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
 
 open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch)
-open XI using (XR0; XR1; XR2; XR3)
+open XI using (XR0; XR1)
 open import Once.Target.X86-64.PhysReg using (Reg; rax; rdx; r8; r9; r10; r11)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
 import Once.CCC.Target.X86-64.Semantics as X64
@@ -46,41 +46,23 @@ readReg-wr-arith-other : ∀ (rf : RegFile) (x y : XReg) (v : Word)
                            ≡ readReg rf (arith-reg y)
 readReg-wr-arith-other rf XR0 XR0 v ¬eq = ⊥-elim (¬eq refl)
 readReg-wr-arith-other rf XR0 XR1 v _ = refl
-readReg-wr-arith-other rf XR0 XR2 v _ = refl
-readReg-wr-arith-other rf XR0 XR3 v _ = refl
 readReg-wr-arith-other rf XR1 XR0 v _ = refl
 readReg-wr-arith-other rf XR1 XR1 v ¬eq = ⊥-elim (¬eq refl)
-readReg-wr-arith-other rf XR1 XR2 v _ = refl
-readReg-wr-arith-other rf XR1 XR3 v _ = refl
-readReg-wr-arith-other rf XR2 XR0 v _ = refl
-readReg-wr-arith-other rf XR2 XR1 v _ = refl
-readReg-wr-arith-other rf XR2 XR2 v ¬eq = ⊥-elim (¬eq refl)
-readReg-wr-arith-other rf XR2 XR3 v _ = refl
-readReg-wr-arith-other rf XR3 XR0 v _ = refl
-readReg-wr-arith-other rf XR3 XR1 v _ = refl
-readReg-wr-arith-other rf XR3 XR2 v _ = refl
-readReg-wr-arith-other rf XR3 XR3 v ¬eq = ⊥-elim (¬eq refl)
 
 readReg-wr-arith-same : ∀ (rf : RegFile) (x : XReg) (v : Word)
                       → readReg (writeReg rf (arith-reg x) v) (arith-reg x) ≡ v
 readReg-wr-arith-same rf XR0 v = refl
 readReg-wr-arith-same rf XR1 v = refl
-readReg-wr-arith-same rf XR2 v = refl
-readReg-wr-arith-same rf XR3 v = refl
 
 readReg-wr-rax-arith : ∀ (rf : RegFile) (x : XReg) (v : Word)
                      → readReg (writeReg rf rax v) (arith-reg x) ≡ readReg rf (arith-reg x)
 readReg-wr-rax-arith rf XR0 v = refl
 readReg-wr-rax-arith rf XR1 v = refl
-readReg-wr-rax-arith rf XR2 v = refl
-readReg-wr-rax-arith rf XR3 v = refl
 
 readReg-wr-rdx-arith : ∀ (rf : RegFile) (x : XReg) (v : Word)
                      → readReg (writeReg rf rdx v) (arith-reg x) ≡ readReg rf (arith-reg x)
 readReg-wr-rdx-arith rf XR0 v = refl
 readReg-wr-rdx-arith rf XR1 v = refl
-readReg-wr-rdx-arith rf XR2 v = refl
-readReg-wr-rdx-arith rf XR3 v = refl
 
 readReg-wr-rax-same : ∀ (rf : RegFile) (v : Word) → readReg (writeReg rf rax v) rax ≡ v
 readReg-wr-rax-same rf v = refl
