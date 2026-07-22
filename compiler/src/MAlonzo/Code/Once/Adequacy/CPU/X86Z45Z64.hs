@@ -19,8 +19,8 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
-import qualified MAlonzo.Code.Agda.Builtin.Nat
 import qualified MAlonzo.Code.Data.Nat.Base
+import qualified MAlonzo.Code.Data.Product.Base
 import qualified MAlonzo.Code.Once.Adequacy.CPU.Interface
 import qualified MAlonzo.Code.Once.Arith.Backend.RunTraceCore
 import qualified MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Dispatch
@@ -374,18 +374,17 @@ d_scratch'45'addr_132 ::
   Integer
 d_scratch'45'addr_132 v0 v1
   = coe
-      MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22
-      (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_readReg_80
+      addInt
+      (coe
+         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_readReg_80
          (coe
             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_regs_226
             (coe v0))
          (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rsp_24))
-      (mulInt
-         (coe (8 :: Integer))
+      (coe
+         mulInt (coe (8 :: Integer))
          (coe
-            addInt (coe (1 :: Integer))
-            (coe
-               MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.d_slot_20 (coe v1))))
+            MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.d_slot_20 (coe v1)))
 -- Once.Adequacy.CPU.X86-64.side-off
 d_side'45'off_138 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22 -> Integer
@@ -548,8 +547,11 @@ d_run'45'trace'45'x86'45'64_272 v0 v1
       (coe
          MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.RunTrace.d_ret'45'past_14)
       (coe
-         MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Dispatch.d_dispatch'45'arith_18
-         (\ v2 v3 v4 -> coe du_val'45'x86'45'64_160 v2 v3))
+         MAlonzo.Code.Data.Product.Base.du_uncurry_244
+         (\ v2 v3 v4 ->
+            coe
+              MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Dispatch.du_dispatch'45'arith_18
+              (\ v5 v6 v7 -> coe du_val'45'x86'45'64_160 v5 v6) v2 v4))
       (coe d_step'45'budget'45'x86'45'64_266) (coe d_ev'45'x86'45'64_268)
       (coe d_arith'45'env'45'x86'45'64_270 v0) (coe v0) (coe v1)
 -- Once.Adequacy.CPU.X86-64.decode-x86-64

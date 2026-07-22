@@ -65,14 +65,10 @@ d_scratch'45'text_20 v0
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_mk'45'scratch_22 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             ("-" :: Data.Text.Text)
              (coe
-                MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (coe
-                   MAlonzo.Code.Data.Nat.Show.d_show_56
-                   (mulInt
-                      (coe (8 :: Integer)) (coe addInt (coe (1 :: Integer)) (coe v1))))
-                ("(%rsp)" :: Data.Text.Text))
+                MAlonzo.Code.Data.Nat.Show.d_show_56
+                (mulInt (coe (8 :: Integer)) (coe v1)))
+             ("(%rsp)" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.X86-64.Emit.instr-text
 d_instr'45'text_24 ::
