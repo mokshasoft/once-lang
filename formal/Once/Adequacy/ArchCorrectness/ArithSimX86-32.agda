@@ -43,7 +43,7 @@ open X32.State using (regs; memory)
 import Once.Arith.Backend.X86-32.ExecArith as EA
 import Once.Word as OnceWord
 module W = OnceWord.Word64
-open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; module Core)
+open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; ¬d≡x; module Core)
 
 ------------------------------------------------------------------------
 -- val-x86-32 — the concrete XInstr arith interpreter over X32.State.
@@ -63,10 +63,8 @@ side-off : Side → Word
 side-off Fst = 0
 side-off Snd = 4
 
-path-load-go : State → Word → InputPath → Word
-path-load-go s addr []          = def (readMem (memory s) addr)
-path-load-go s addr (sd ∷ rest) =
-  path-load-go s (def (readMem (memory s) (addr + side-off sd))) rest
+open import Once.Adequacy.ArchCorrectness.ArithSimPathLoad State memory def side-off
+  using (path-load-go; plg-mem-cong)
 
 path-load : State → InputPath → Word
 path-load s p = path-load-go s (readReg (regs s) ecx) p
@@ -132,8 +130,6 @@ rr s r = readReg (regs s) r
 mem : State → ℕ → Maybe ℕ
 mem s a = readMem (memory s) a
 
-¬d≡x : ∀ (d x : XReg) → (∀ d' → just d ≡ just d' → ¬ (x ≡ d')) → ¬ (d ≡ x)
-¬d≡x d x h d≡x = h d refl (sym d≡x)
 
 -- The value instruction `i` writes to its target (val ignores the reg arg).
 V : XInstr → State → Word
@@ -265,12 +261,6 @@ mem-spill-miss sc' src s addr ne =
 -- path-load invariance (input-frame). ecx (input pointer) never written +
 -- memory untouched (non-spill); spill = disjointness residual.
 ------------------------------------------------------------------------
-
-plg-mem-cong : ∀ A B addr p → memory A ≡ memory B → path-load-go A addr p ≡ path-load-go B addr p
-plg-mem-cong A B addr []          meq = cong (λ m → def (readMem m addr)) meq
-plg-mem-cong A B addr (sd ∷ rest) meq =
-  trans (cong (λ m → path-load-go A (def (readMem m (addr + side-off sd))) rest) meq)
-        (plg-mem-cong A B (def (readMem (memory B) (addr + side-off sd))) rest meq)
 
 pl-inv-ns : ∀ i s p → memory (EA.exec1 val-x86-32 i s) ≡ memory s
           → path-load (EA.exec1 val-x86-32 i s) p ≡ path-load s p

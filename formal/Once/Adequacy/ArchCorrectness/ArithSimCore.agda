@@ -88,6 +88,12 @@ tgt (XI.Xsdiv-pow2-rri d _ _) = just d
 tgt (XI.Xmov-r-m _ _)         = nothing
 tgt (XI.Xmov-out _)           = nothing
 
+-- The frame hypothesis every instance's `rf-other` feeds to its arith-window
+-- lemma: from a non-target `x` (via the `rf-other` hypothesis at `just d`),
+-- the physical-register inequality `¬ (d ≡ x)`. Generic over XReg.
+¬d≡x : ∀ (d x : XReg) → (∀ d' → just d ≡ just d' → ¬ (x ≡ d')) → ¬ (d ≡ x)
+¬d≡x d x h d≡x = h d refl (sym d≡x)
+
 ------------------------------------------------------------------------
 -- Block structure (arch-neutral). The compiled arith block ENDS with
 -- `Xmov-out XR0`: `compile-abs e = compile-go 0 e ++ [move-to-out 0]`, and
