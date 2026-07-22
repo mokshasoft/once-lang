@@ -29,7 +29,9 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_; _++_; take)
-open import Data.Bool using (Bool; if_then_else_)
+open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.Product using (Σ; _,_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.Behavior using (Behavior)
@@ -104,3 +106,34 @@ module RunTrace
   ----------------------------------------------------------------------
   run-trace : (stepBudget : ℕ → ℕ) → EvExtractor → ArithEnv → Program → State → Behavior
   run-trace stepBudget ev env prog s n = take n (run-events ev env (stepBudget n) prog s)
+
+  ----------------------------------------------------------------------
+  -- "No reachable external SigOp ⇒ empty trace" — the concrete analogue of the
+  -- abstract `FlatEvents.flat-events-[]`. The ONLY emitting branch of
+  -- `run-events` is `run-events-call … nothing` (an external SigOp, `env lbl ≡
+  -- nothing`); so if every fetchable `call-sym` is instead an ARITH block
+  -- (`env lbl ≡ just pl`, dispatched with no event), the whole `run-events`
+  -- trace is `[]`. By fuel induction, mirroring `run-events`'s fetch/instr/
+  -- call/exec dispatch. This is the D4 pure/straight-line case: it pairs with
+  -- `flat-events-[]` to give `conc-flat-sim` for any IR whose lowering invokes
+  -- no external SigOp (both sides `[]`).
+  --
+  -- Hypothesis: at every program counter, a fetched instruction that is a
+  -- `call-sym lbl` resolves to an arith block (`env lbl ≡ just pl`).
+  ----------------------------------------------------------------------
+  run-events-[] :
+      ∀ (ev : EvExtractor) (env : ArithEnv) (prog : Program)
+    → (∀ pc i lbl → fetch prog pc ≡ just i → matchCall i ≡ just lbl
+         → Σ Payload (λ pl → env lbl ≡ just pl))
+    → ∀ (fuel : ℕ) (s : State) → run-events ev env fuel prog s ≡ []
+  run-events-[] ev env prog H zero    s = refl
+  run-events-[] ev env prog H (suc n) s with halted s
+  ... | true  = refl
+  ... | false with fetch prog (pc s) in eqf
+  ...   | nothing = refl
+  ...   | just i  with matchCall i in eqm
+  ...     | just lbl with H (pc s) i lbl eqf eqm
+  ...       | (pl , eqv) rewrite eqv = run-events-[] ev env prog H n (dispatchArith pl s)
+  run-events-[] ev env prog H (suc n) s | false | just i | nothing with execInstr prog s i
+  ...       | nothing  = refl
+  ...       | just s'  = run-events-[] ev env prog H n s'
