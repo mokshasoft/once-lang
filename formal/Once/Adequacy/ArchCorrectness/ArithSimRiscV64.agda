@@ -26,10 +26,13 @@
 
 module Once.Adequacy.ArchCorrectness.ArithSimRiscV64 where
 
-open import Data.Nat using (ℕ; _+_; _*_; suc)
+open import Data.Nat using (ℕ; _+_; _*_; suc; _≡ᵇ_)
+open import Data.Nat.Properties using (≡⇒≡ᵇ; +-cancelˡ-≡; *-cancelˡ-≡)
+open import Data.Bool using (true; false; T)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Data.Unit using (⊤; tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
 
@@ -39,12 +42,14 @@ open import Once.Arith.Machine.Shape using (⟦_⟧S; InputPath; Side; Fst; Snd)
 open import Once.Target.RiscV64.PhysReg using (Reg; a0; a3; a4; sp; t0)
 open import Once.Arith.Backend.RiscV64.Emit using (arith-reg)
 import Once.CCC.Target.RiscV64.Semantics as RV
-open RV using (State; readReg; writeReg; readMem; RegFile; Word)
+open RV using (State; readReg; writeReg; readMem; writeMem; RegFile; Word)
 open RV.State using (regs; memory)
 import Once.Arith.Backend.RiscV64.ExecArith as EA
+open import Once.Arith.Backend.RiscV64.Preserve using (step-of; step-of-preserves; a-sp)
+open import Once.Arith.Backend.RiscV64.MemPreserve using (readMem-writeMem-other)
 import Once.Word as OnceWord
 module W = OnceWord.Word64
-open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; module Core)
+open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; module Core)
 
 ------------------------------------------------------------------------
 -- val-riscv64 — the concrete XInstr arith interpreter over RV.State.
@@ -126,10 +131,59 @@ mem s a = readMem (memory s) a
 ¬d≡x d x h d≡x = h d refl (sym d≡x)
 
 ------------------------------------------------------------------------
+-- Memory-effect primitives (drive the core's scratch-frame). Unlike x86-64,
+-- riscv's ADDITIVE scratch addressing `sp + 8·slot` is UNCONDITIONALLY
+-- injective, so `sa-inj` is PROVED here (no frontier postulate).
+------------------------------------------------------------------------
+
+readMem-writeMem-same : ∀ m addr val → readMem (writeMem m addr val) addr ≡ just val
+readMem-writeMem-same m addr val with addr ≡ᵇ addr in eq
+... | true  = refl
+... | false = ⊥-elim (subst T eq (≡⇒≡ᵇ addr addr refl))
+
+sa-inj : ∀ s sc sc' → ¬ (XScratch.slot sc ≡ XScratch.slot sc') → ¬ (scratch-addr s sc ≡ scratch-addr s sc')
+sa-inj s sc sc' ne eq =
+  ne (*-cancelˡ-≡ (XScratch.slot sc) (XScratch.slot sc') 8
+        (+-cancelˡ-≡ (readReg (regs s) sp) (8 * XScratch.slot sc) (8 * XScratch.slot sc') eq))
+
+------------------------------------------------------------------------
 -- The instance, parameterised by the scratch-frame size `N`.
 ------------------------------------------------------------------------
 
 module _ (N : ℕ) where
+
+  -- scratch-addr is step-invariant: arith never writes sp (CCC-preserved).
+  sa-inv : ∀ i s sc → scratch-addr (EA.exec1 val-riscv64 N i s) sc ≡ scratch-addr s sc
+  sa-inv i s sc = cong (λ r → r + (8 * XScratch.slot sc))
+                       (sym (a-sp (step-of-preserves i (val-riscv64 i s) (regs s))))
+
+  -- Only spill writes memory; the other 15 leave memory untouched.
+  mem-keep : ∀ i s addr → NonSpill i → readMem (memory (EA.exec1 val-riscv64 N i s)) addr ≡ readMem (memory s) addr
+  mem-keep (XI.Xmov-imm _ _)         s addr _ = refl
+  mem-keep (XI.Xmov-rr _ _)          s addr _ = refl
+  mem-keep (XI.Xmov-m-r _ _)         s addr _ = refl
+  mem-keep (XI.Xmov-arg _ _)         s addr _ = refl
+  mem-keep (XI.Xadd-rr _ _)          s addr _ = refl
+  mem-keep (XI.Xsub-rr _ _)          s addr _ = refl
+  mem-keep (XI.Ximul-rr _ _)         s addr _ = refl
+  mem-keep (XI.Xneg-r _)             s addr _ = refl
+  mem-keep (XI.Xshl-rri _ _ _)       s addr _ = refl
+  mem-keep (XI.Xdiv-rrr _ _ _)       s addr _ = refl
+  mem-keep (XI.Xrem-rrr _ _ _)       s addr _ = refl
+  mem-keep (XI.Xdiv-safe-rrr _ _ _)  s addr _ = refl
+  mem-keep (XI.Xrem-safe-rrr _ _ _)  s addr _ = refl
+  mem-keep (XI.Xsdiv-pow2-rri _ _ _) s addr _ = refl
+  mem-keep (XI.Xmov-out _)           s addr _ = refl
+
+  mem-spill-hit : ∀ sc' src s
+                → readMem (memory (EA.exec1 val-riscv64 N (XI.Xmov-r-m sc' src) s)) (scratch-addr s sc')
+                    ≡ just (readReg (regs s) (arith-reg src))
+  mem-spill-hit sc' src s = readMem-writeMem-same (memory s) (scratch-addr s sc') (readReg (regs s) (arith-reg src))
+
+  mem-spill-miss : ∀ sc' src s addr → ¬ (addr ≡ scratch-addr s sc')
+                 → readMem (memory (EA.exec1 val-riscv64 N (XI.Xmov-r-m sc' src) s)) addr ≡ readMem (memory s) addr
+  mem-spill-miss sc' src s addr ne =
+    readMem-writeMem-other (memory s) (scratch-addr s sc') (readReg (regs s) (arith-reg src)) addr ne
 
   -- The value instruction `i` writes to its target (val ignores the reg arg).
   V : XInstr → State → Word
@@ -168,6 +222,7 @@ module _ (N : ℕ) where
     scratch-addr path-load
     (EA.exec1 val-riscv64 N) (EA.exec-arith-block val-riscv64 N)
     (λ _ → refl) (λ _ _ _ → refl)
+    sa-inv sa-inj mem-keep mem-spill-hit mem-spill-miss
     rf-other
     -- rt-mov-imm rt-mov-rr rt-reload
     (λ d z s   → readReg-wr-arith-same (regs s) d _)

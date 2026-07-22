@@ -20,23 +20,28 @@
 
 module Once.Adequacy.ArchCorrectness.ArithSimX86-64 where
 
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; _∸_; _*_; suc; _≡ᵇ_)
+open import Data.Nat.Properties using (≡⇒≡ᵇ)
+open import Data.Bool using (true; false; T)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Data.Unit using (⊤; tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
 
 open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch)
 open XI using (XR0; XR1)
-open import Once.Target.X86-64.PhysReg using (Reg; rax; rdx; r8; r9)
+open import Once.Target.X86-64.PhysReg using (Reg; rax; rdx; rsp; r8; r9)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
 import Once.CCC.Target.X86-64.Semantics as X64
-open X64 using (State; readReg; writeReg; readMem; RegFile; Word)
+open X64 using (State; readReg; writeReg; readMem; writeMem; RegFile; Word)
 open X64.State using (regs; memory)
 open import Once.Adequacy.CPU.X86-64 using (val-x86-64; scratch-addr; def; path-load)
 import Once.Arith.Backend.X86-64.ExecArith as EA
-open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; module Core)
+open import Once.Arith.Backend.X86-64.Preserve using (step-of; step-of-preserves; a-rsp)
+open import Once.Arith.Backend.X86-64.MemPreserve using (readMem-writeMem-other)
+open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; module Core)
 
 ------------------------------------------------------------------------
 -- Frame lemmas — the 2×2 analysis on the arith window (r8/r9), plus the io
@@ -132,6 +137,57 @@ rf-other (XI.Xmov-r-m sc src) s x h = refl
 rf-other (XI.Xmov-out src) s x h = readReg-wr-rax-arith (regs s) x (V (XI.Xmov-out src) s)
 
 ------------------------------------------------------------------------
+-- Memory-effect primitives (drive the core's scratch-frame).
+------------------------------------------------------------------------
+
+-- A write reads back at its own address.
+readMem-writeMem-same : ∀ m addr val → readMem (writeMem m addr val) addr ≡ just val
+readMem-writeMem-same m addr val with addr ≡ᵇ addr in eq
+... | true  = refl
+... | false = ⊥-elim (subst T eq (≡⇒≡ᵇ addr addr refl))
+
+-- scratch-addr is step-invariant: arith never writes rsp (CCC-preserved).
+sa-inv : ∀ i s sc → scratch-addr (EA.exec1 val-x86-64 i s) sc ≡ scratch-addr s sc
+sa-inv i s sc = cong (λ r → r ∸ (8 * suc (XScratch.slot sc)))
+                     (sym (a-rsp (step-of-preserves i (val-x86-64 i s) (regs s))))
+
+-- Only spill writes memory; the other 15 leave memory untouched.
+mem-keep : ∀ i s addr → NonSpill i → readMem (memory (EA.exec1 val-x86-64 i s)) addr ≡ readMem (memory s) addr
+mem-keep (XI.Xmov-imm _ _)         s addr _ = refl
+mem-keep (XI.Xmov-rr _ _)          s addr _ = refl
+mem-keep (XI.Xmov-m-r _ _)         s addr _ = refl
+mem-keep (XI.Xmov-arg _ _)         s addr _ = refl
+mem-keep (XI.Xadd-rr _ _)          s addr _ = refl
+mem-keep (XI.Xsub-rr _ _)          s addr _ = refl
+mem-keep (XI.Ximul-rr _ _)         s addr _ = refl
+mem-keep (XI.Xneg-r _)             s addr _ = refl
+mem-keep (XI.Xshl-rri _ _ _)       s addr _ = refl
+mem-keep (XI.Xdiv-rrr _ _ _)       s addr _ = refl
+mem-keep (XI.Xrem-rrr _ _ _)       s addr _ = refl
+mem-keep (XI.Xdiv-safe-rrr _ _ _)  s addr _ = refl
+mem-keep (XI.Xrem-safe-rrr _ _ _)  s addr _ = refl
+mem-keep (XI.Xsdiv-pow2-rri _ _ _) s addr _ = refl
+mem-keep (XI.Xmov-out _)           s addr _ = refl
+
+mem-spill-hit : ∀ sc' src s
+              → readMem (memory (EA.exec1 val-x86-64 (XI.Xmov-r-m sc' src) s)) (scratch-addr s sc')
+                  ≡ just (readReg (regs s) (arith-reg src))
+mem-spill-hit sc' src s = readMem-writeMem-same (memory s) (scratch-addr s sc') (readReg (regs s) (arith-reg src))
+
+mem-spill-miss : ∀ sc' src s addr → ¬ (addr ≡ scratch-addr s sc')
+               → readMem (memory (EA.exec1 val-x86-64 (XI.Xmov-r-m sc' src) s)) addr ≡ readMem (memory s) addr
+mem-spill-miss sc' src s addr ne =
+  readMem-writeMem-other (memory s) (scratch-addr s sc') (readReg (regs s) (arith-reg src)) addr ne
+
+-- scratch-addr injectivity in the slot. x86-64's SUBTRACTIVE addressing
+-- (rsp − 8·(slot+1)) is injective only WITHIN the reserved frame (0 ≤ addr),
+-- i.e. given the frontier bound `8·(slot+1) ≤ rsp`. That bound is the honest
+-- residual — it needs the block's frontier well-formedness threaded (riscv's
+-- additive `sp + 8·slot` is unconditionally injective; see ArithSimRiscV64).
+postulate
+  sa-inj : ∀ s sc sc' → ¬ (XScratch.slot sc ≡ XScratch.slot sc') → ¬ (scratch-addr s sc ≡ scratch-addr s sc')
+
+------------------------------------------------------------------------
 -- The instance. `rt-*` facts are passed inline (types from the telescope):
 -- single-write = one `readReg-wr-arith-same`; div/rem peel rax/rdx; sdiv/arg
 -- peel rax; out reads rax back. Every `eb`/`def-just` is `refl`.
@@ -145,6 +201,7 @@ open Core
   scratch-addr path-load
   (EA.exec1 val-x86-64) (EA.exec-arith-block val-x86-64)
   (λ _ → refl) (λ _ _ _ → refl)
+  sa-inv sa-inj mem-keep mem-spill-hit mem-spill-miss
   rf-other
   -- rt-mov-imm rt-mov-rr rt-reload
   (λ d z s   → readReg-wr-arith-same (regs s) d _)
