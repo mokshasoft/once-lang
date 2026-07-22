@@ -268,26 +268,70 @@ pl-inv-ns i s p meq =
   trans (cong (λ a → path-load-go (EA.exec1 val-x86-32 i s) a p) (safe-inv ecx wr-arith-ecx wr-eax-ecx i s))
         (plg-mem-cong (EA.exec1 val-x86-32 i s) s (readReg (regs s) ecx) p meq)
 
-postulate
-  pl-inv-spill : ∀ sc' src s p → path-load (EA.exec1 val-x86-32 (XI.Xmov-r-m sc' src) s) p ≡ path-load s p
+-- The GLOBAL region model (RuntimeContract linker guarantee) at the x86-32 layout.
+open import Once.CCC.Target.X86-32.Layout using (InStack; InHeap; stackAddr-write-preserves-heap)
+open import Once.Adequacy.ArchCorrectness.ArithSimPathLoadRegion
+  InStack InHeap stackAddr-write-preserves-heap def side-off
+  using (plg; HeapChase; plg-stack-write-invisible; heapchase-agree)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 
-pl-inv : ∀ i s p → path-load (EA.exec1 val-x86-32 i s) p ≡ path-load s p
-pl-inv (XI.Xmov-imm d z) s p = pl-inv-ns (XI.Xmov-imm d z) s p refl
-pl-inv (XI.Xmov-rr d src) s p = pl-inv-ns (XI.Xmov-rr d src) s p refl
-pl-inv (XI.Xmov-m-r d sc) s p = pl-inv-ns (XI.Xmov-m-r d sc) s p refl
-pl-inv (XI.Xmov-arg d q) s p = pl-inv-ns (XI.Xmov-arg d q) s p refl
-pl-inv (XI.Xadd-rr d src) s p = pl-inv-ns (XI.Xadd-rr d src) s p refl
-pl-inv (XI.Xsub-rr d src) s p = pl-inv-ns (XI.Xsub-rr d src) s p refl
-pl-inv (XI.Ximul-rr d src) s p = pl-inv-ns (XI.Ximul-rr d src) s p refl
-pl-inv (XI.Xneg-r d) s p = pl-inv-ns (XI.Xneg-r d) s p refl
-pl-inv (XI.Xshl-rri d src imm) s p = pl-inv-ns (XI.Xshl-rri d src imm) s p refl
-pl-inv (XI.Xdiv-rrr d a b) s p = pl-inv-ns (XI.Xdiv-rrr d a b) s p refl
-pl-inv (XI.Xrem-rrr d a b) s p = pl-inv-ns (XI.Xrem-rrr d a b) s p refl
-pl-inv (XI.Xdiv-safe-rrr d a b) s p = pl-inv-ns (XI.Xdiv-safe-rrr d a b) s p refl
-pl-inv (XI.Xrem-safe-rrr d a b) s p = pl-inv-ns (XI.Xrem-safe-rrr d a b) s p refl
-pl-inv (XI.Xsdiv-pow2-rri d src imm) s p = pl-inv-ns (XI.Xsdiv-pow2-rri d src imm) s p refl
-pl-inv (XI.Xmov-out src) s p = pl-inv-ns (XI.Xmov-out src) s p refl
-pl-inv (XI.Xmov-r-m sc' src) s p = pl-inv-spill sc' src s p
+-- LayoutWF: scratch is in-stack; the input value is heap-resident (frame contract).
+WF : State → Set
+WF s = (∀ sc → InStack (scratch-addr s sc)) × (∀ p → HeapChase (memory s) (readReg (regs s) ecx) p)
+
+pathloadgo≡plg : ∀ s addr p → path-load-go s addr p ≡ plg (memory s) addr p
+pathloadgo≡plg s addr []          = refl
+pathloadgo≡plg s addr (sd ∷ rest) = pathloadgo≡plg s (def (readMem (memory s) (addr + side-off sd))) rest
+
+mem-agree-heap : ∀ i s → (∀ sc → InStack (scratch-addr s sc)) → ∀ a → InHeap a
+               → readMem (memory (EA.exec1 val-x86-32 i s)) a ≡ readMem (memory s) a
+mem-agree-heap (XI.Xmov-r-m sc src) s inStk a inH =
+  stackAddr-write-preserves-heap (memory s) (scratch-addr s sc) (readReg (regs s) (arith-reg src)) a (inStk sc) inH
+mem-agree-heap (XI.Xmov-imm d z) s inStk a inH = mem-keep (XI.Xmov-imm d z) s a tt
+mem-agree-heap (XI.Xmov-rr d src) s inStk a inH = mem-keep (XI.Xmov-rr d src) s a tt
+mem-agree-heap (XI.Xmov-m-r d sc) s inStk a inH = mem-keep (XI.Xmov-m-r d sc) s a tt
+mem-agree-heap (XI.Xmov-arg d p) s inStk a inH = mem-keep (XI.Xmov-arg d p) s a tt
+mem-agree-heap (XI.Xadd-rr d src) s inStk a inH = mem-keep (XI.Xadd-rr d src) s a tt
+mem-agree-heap (XI.Xsub-rr d src) s inStk a inH = mem-keep (XI.Xsub-rr d src) s a tt
+mem-agree-heap (XI.Ximul-rr d src) s inStk a inH = mem-keep (XI.Ximul-rr d src) s a tt
+mem-agree-heap (XI.Xneg-r d) s inStk a inH = mem-keep (XI.Xneg-r d) s a tt
+mem-agree-heap (XI.Xshl-rri d src imm) s inStk a inH = mem-keep (XI.Xshl-rri d src imm) s a tt
+mem-agree-heap (XI.Xdiv-rrr d x y) s inStk a inH = mem-keep (XI.Xdiv-rrr d x y) s a tt
+mem-agree-heap (XI.Xrem-rrr d x y) s inStk a inH = mem-keep (XI.Xrem-rrr d x y) s a tt
+mem-agree-heap (XI.Xdiv-safe-rrr d x y) s inStk a inH = mem-keep (XI.Xdiv-safe-rrr d x y) s a tt
+mem-agree-heap (XI.Xrem-safe-rrr d x y) s inStk a inH = mem-keep (XI.Xrem-safe-rrr d x y) s a tt
+mem-agree-heap (XI.Xsdiv-pow2-rri d src imm) s inStk a inH = mem-keep (XI.Xsdiv-pow2-rri d src imm) s a tt
+mem-agree-heap (XI.Xmov-out src) s inStk a inH = mem-keep (XI.Xmov-out src) s a tt
+
+wf-e1 : ∀ i s → WF s → WF (EA.exec1 val-x86-32 i s)
+wf-e1 i s (inStk , inHp) =
+  (λ sc → subst InStack (sym (sa-inv i s sc)) (inStk sc)) ,
+  (λ p → subst (λ ptr → HeapChase (memory (EA.exec1 val-x86-32 i s)) ptr p)
+               (sym (safe-inv ecx wr-arith-ecx wr-eax-ecx i s))
+               (heapchase-agree (memory s) (memory (EA.exec1 val-x86-32 i s)) (readReg (regs s) ecx) p
+                                (mem-agree-heap i s inStk) (inHp p)))
+
+pl-inv : ∀ i s → WF s → ∀ p → path-load (EA.exec1 val-x86-32 i s) p ≡ path-load s p
+pl-inv (XI.Xmov-imm d z) s wf p = pl-inv-ns (XI.Xmov-imm d z) s p refl
+pl-inv (XI.Xmov-rr d src) s wf p = pl-inv-ns (XI.Xmov-rr d src) s p refl
+pl-inv (XI.Xmov-m-r d sc) s wf p = pl-inv-ns (XI.Xmov-m-r d sc) s p refl
+pl-inv (XI.Xmov-arg d q) s wf p = pl-inv-ns (XI.Xmov-arg d q) s p refl
+pl-inv (XI.Xadd-rr d src) s wf p = pl-inv-ns (XI.Xadd-rr d src) s p refl
+pl-inv (XI.Xsub-rr d src) s wf p = pl-inv-ns (XI.Xsub-rr d src) s p refl
+pl-inv (XI.Ximul-rr d src) s wf p = pl-inv-ns (XI.Ximul-rr d src) s p refl
+pl-inv (XI.Xneg-r d) s wf p = pl-inv-ns (XI.Xneg-r d) s p refl
+pl-inv (XI.Xshl-rri d src imm) s wf p = pl-inv-ns (XI.Xshl-rri d src imm) s p refl
+pl-inv (XI.Xdiv-rrr d a b) s wf p = pl-inv-ns (XI.Xdiv-rrr d a b) s p refl
+pl-inv (XI.Xrem-rrr d a b) s wf p = pl-inv-ns (XI.Xrem-rrr d a b) s p refl
+pl-inv (XI.Xdiv-safe-rrr d a b) s wf p = pl-inv-ns (XI.Xdiv-safe-rrr d a b) s p refl
+pl-inv (XI.Xrem-safe-rrr d a b) s wf p = pl-inv-ns (XI.Xrem-safe-rrr d a b) s p refl
+pl-inv (XI.Xsdiv-pow2-rri d src imm) s wf p = pl-inv-ns (XI.Xsdiv-pow2-rri d src imm) s p refl
+pl-inv (XI.Xmov-out src) s wf p = pl-inv-ns (XI.Xmov-out src) s p refl
+pl-inv (XI.Xmov-r-m sc' src) s (inStk , inHp) p =
+  trans (pathloadgo≡plg (EA.exec1 val-x86-32 (XI.Xmov-r-m sc' src) s) (readReg (regs s) ecx) p)
+        (trans (plg-stack-write-invisible (memory s) (scratch-addr s sc') (readReg (regs s) (arith-reg src))
+                  (readReg (regs s) ecx) p (inStk sc') (inHp p))
+               (sym (pathloadgo≡plg s (readReg (regs s) ecx) p)))
 
 ------------------------------------------------------------------------
 -- The instance.
@@ -302,6 +346,7 @@ open Core
   (EA.exec1 val-x86-32) (EA.exec-arith-block val-x86-32)
   (λ _ → refl) (λ _ _ _ → refl)
   sa-inv sa-inj mem-keep mem-spill-hit mem-spill-miss
+  WF wf-e1
   pl-inv
   rf-other
   -- rt-mov-imm rt-mov-rr rt-reload

@@ -181,9 +181,18 @@ module Core
   (mem-keep     : ∀ i s addr → NonSpill i → mem (e1 i s) addr ≡ mem s addr)
   (mem-spill-hit  : ∀ sc' src s → mem (e1 (XI.Xmov-r-m sc' src) s) (sa s sc') ≡ just (rr s (arith-reg src)))
   (mem-spill-miss : ∀ sc' src s addr → ¬ (addr ≡ sa s sc') → mem (e1 (XI.Xmov-r-m sc' src) s) addr ≡ mem s addr)
+  -- LAYOUT well-formedness at a state — the frame's calling-convention contract
+  -- (scratch is in-stack with headroom; the input value is heap-resident). Its
+  -- content is per-arch; it is PRESERVED across each step (arith touches neither
+  -- the stack pointer nor the input region) and threaded through Rf so the
+  -- memory-layout obligations (pl-inv's spill case; sa-inj) discharge from the
+  -- GLOBAL region model rather than being postulated. Supplied by the frame.
+  (WF           : St → Set)
+  (wf-e1        : ∀ i s → WF s → WF (e1 i s))
   -- PATH-LOAD invariance: no instruction changes the concrete input read (the
-  -- input pointer is never written; spill's write is disjoint from the input).
-  (pl-inv       : ∀ i s p → pl (e1 i s) p ≡ pl s p)
+  -- input pointer is never written; spill's write is disjoint from the input,
+  -- which `WF s` witnesses via the region model).
+  (pl-inv       : ∀ i s → WF s → ∀ p → pl (e1 i s) p ≡ pl s p)
   -- READ-FRAME: reading a non-target arith register is unchanged by `i`.
   (rf-other : ∀ i s x → (∀ d → tgt i ≡ just d → ¬ (x ≡ d))
             → rr (e1 i s) (arith-reg x) ≡ rr s (arith-reg x))
@@ -332,7 +341,7 @@ module Core
   -- Rf = R × R-scratch × R-input — the FULL relation and block simulation.
   ----------------------------------------------------------------------
   Rf : ∀ {sh} → ArithAbsState sh → St → Set
-  Rf s-abs s-conc = R s-abs s-conc × R-scratch s-abs s-conc × R-input s-abs s-conc
+  Rf s-abs s-conc = R s-abs s-conc × R-scratch s-abs s-conc × R-input s-abs s-conc × WF s-conc
 
   -- The per-instruction step, TOTAL over XInstr. UNIFORM: the `yes` (x ≡ target)
   -- branch combines the abstract value inversion with `rt-<i>`; the `no` branch
@@ -340,8 +349,8 @@ module Core
   -- R-scratch/R-input components; spill/out write no arith register (rf-other).
   R-step-full : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
               → Rf s-abs s-conc → R (exec-xinstr i s-abs) (e1 i s-conc)
-  R-step-full (XI.Xmov-m-r d sc) s-abs s-conc (r , rsc , _) = R-step-reload d sc s-abs s-conc r rsc
-  R-step-full (XI.Xmov-arg d p)  s-abs s-conc (r , _ , rin) = R-step-arg d p s-abs s-conc r rin
+  R-step-full (XI.Xmov-m-r d sc) s-abs s-conc (r , rsc , _ , _) = R-step-reload d sc s-abs s-conc r rsc
+  R-step-full (XI.Xmov-arg d p)  s-abs s-conc (r , _ , rin , _) = R-step-arg d p s-abs s-conc r rin
   R-step-full (XI.Xmov-r-m sc src) s-abs s-conc (r , _ , _) x w eq =
     trans (r x w eq) (sym (rf-other (XI.Xmov-r-m sc src) s-conc x (no-tgt-hyp (XI.Xmov-r-m sc src) refl)))
   R-step-full (XI.Xmov-out src) s-abs s-conc (r , _ , _) x w eq =
@@ -398,9 +407,9 @@ module Core
   -- The INPUT frame — R-input preservation. PROVED from `pl-inv` (the concrete
   -- input read is unchanged) + `input-unchanged` (the abstract input is unchanged).
   input-frame : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
-              → R-input s-abs s-conc → R-input (exec-xinstr i s-abs) (e1 i s-conc)
-  input-frame i s-abs s-conc rin p =
-    trans (pl-inv i s-conc p)
+              → WF s-conc → R-input s-abs s-conc → R-input (exec-xinstr i s-abs) (e1 i s-conc)
+  input-frame i s-abs s-conc wf rin p =
+    trans (pl-inv i s-conc wf p)
           (trans (rin p) (cong (λ v → fromℤ (maybe-zero (project _ p v))) (sym (input-unchanged i s-abs))))
 
   -- Same slot ⇒ same scratch address (XScratch eta: `sc = mk-scratch (slot sc)`).
@@ -455,8 +464,9 @@ module Core
 
   Rf-step : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
           → Rf s-abs s-conc → Rf (exec-xinstr i s-abs) (e1 i s-conc)
-  Rf-step i s-abs s-conc rf@(rr₀ , rsc , rin) =
-    R-step-full i s-abs s-conc rf , scratch-frame i s-abs s-conc rr₀ rsc , input-frame i s-abs s-conc rin
+  Rf-step i s-abs s-conc rf@(rr₀ , rsc , rin , wf) =
+    R-step-full i s-abs s-conc rf , scratch-frame i s-abs s-conc rr₀ rsc
+    , input-frame i s-abs s-conc wf rin , wf-e1 i s-conc wf
 
   Rf-sim : ∀ {sh} (xs : List XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
          → Rf s-abs s-conc
@@ -472,8 +482,8 @@ module Core
   R-scratch-init env s-conc sc w eq = ⊥-elim (n≢j eq)
 
   Rf-init : ∀ {sh} (env : ⟦ sh ⟧S) (s-conc : St)
-          → R-input (init env) s-conc → Rf (init env) s-conc
-  Rf-init env s-conc ri = R-init env s-conc , R-scratch-init env s-conc , ri
+          → WF s-conc → R-input (init env) s-conc → Rf (init env) s-conc
+  Rf-init env s-conc wf ri = R-init env s-conc , R-scratch-init env s-conc , ri , wf
 
   ----------------------------------------------------------------------
   -- THE ARITH-BLOCK VALUE THEOREM (top-down capstone).
@@ -517,11 +527,12 @@ module Core
                    (sym (trans (cong (λ t → rr t out-reg) ebk≡) (rt-out XR0 cPre)))
 
   arith-block-correct : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) (s-conc : St)
+    → WF s-conc
     → R-input (init env) s-conc
     → rr (eb (emit-program (compile-abs e)) s-conc) out-reg
         ≡ block-semM e (toWord sh env)
-  arith-block-correct e env s-conc ri =
+  arith-block-correct e env s-conc wf ri =
     just-injective
       (trans (sym (output-extract e env s-conc
-                     (proj₁ (Rf-sim (emit-program (compile-abs e)) (init env) s-conc (Rf-init env s-conc ri)))))
+                     (proj₁ (Rf-sim (emit-program (compile-abs e)) (init env) s-conc (Rf-init env s-conc wf ri)))))
              (block-value-semM e env))

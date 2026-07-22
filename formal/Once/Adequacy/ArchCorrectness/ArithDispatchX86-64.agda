@@ -41,7 +41,7 @@ open State using (regs)
 open import Once.Adequacy.CPU.X86-64 using (val-x86-64)
 open import Once.Arith.Backend.X86-64.StatePreserve using (PreservesCCCState)
 open import Once.Arith.Backend.X86-64.Dispatch using (dispatch-arith; dispatch-arith-preserves)
-open import Once.Adequacy.ArchCorrectness.ArithSimX86-64 using (arith-block-correct; R-input)
+open import Once.Adequacy.ArchCorrectness.ArithSimX86-64 using (arith-block-correct; R-input; WF)
 
 ------------------------------------------------------------------------
 -- The arith dispatch is CORRECT: it preserves CCC state AND leaves the real
@@ -56,11 +56,12 @@ open import Once.Adequacy.ArchCorrectness.ArithSimX86-64 using (arith-block-corr
 arith-dispatch-correct :
     ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) (s : State)
   → 0 < readReg (regs s) rsp
+  → WF s
   → R-input (init env) s
   → PreservesCCCState (readReg (regs s) rsp) s
       (dispatch-arith val-x86-64 (emit-program (compile-abs e)) s)
   × ( readReg (regs (dispatch-arith val-x86-64 (emit-program (compile-abs e)) s)) rax
         ≡ block-semM e (toWord sh env) )
-arith-dispatch-correct e env s 0<rsp ri =
+arith-dispatch-correct e env s 0<rsp wf ri =
     dispatch-arith-preserves val-x86-64 (emit-program (compile-abs e)) s 0<rsp
-  , arith-block-correct e env s ri
+  , arith-block-correct e env s wf ri
