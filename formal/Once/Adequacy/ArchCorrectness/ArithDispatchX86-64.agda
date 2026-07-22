@@ -23,8 +23,10 @@
 
 module Once.Adequacy.ArchCorrectness.ArithDispatchX86-64 where
 
-open import Data.Nat using (ℕ; _<_)
+open import Data.Nat using (ℕ; _+_; _<_)
 open import Data.Product using (_×_; _,_)
+open import Data.List using (List)
+open import Data.List.Relation.Unary.All using (All)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S)
@@ -40,8 +42,9 @@ open import Once.CCC.Target.X86-64.Semantics using (State; readReg)
 open State using (regs)
 open import Once.Adequacy.CPU.X86-64 using (val-x86-64)
 open import Once.Arith.Backend.X86-64.StatePreserve using (PreservesCCCState)
+open import Once.Arith.Backend.X86-64.ExecArith using (InFrame)
 open import Once.Arith.Backend.X86-64.Dispatch using (dispatch-arith; dispatch-arith-preserves)
-open import Once.Adequacy.ArchCorrectness.ArithSimX86-64 using (arith-block-correct; R-input; WF)
+import Once.Adequacy.ArchCorrectness.ArithSimX86-64 as ASX
 
 ------------------------------------------------------------------------
 -- The arith dispatch is CORRECT: it preserves CCC state AND leaves the real
@@ -54,14 +57,15 @@ open import Once.Adequacy.ArchCorrectness.ArithSimX86-64 using (arith-block-corr
 ------------------------------------------------------------------------
 
 arith-dispatch-correct :
-    ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) (s : State)
-  → 0 < readReg (regs s) rsp
-  → WF s
-  → R-input (init env) s
-  → PreservesCCCState (readReg (regs s) rsp) s
-      (dispatch-arith val-x86-64 (emit-program (compile-abs e)) s)
-  × ( readReg (regs (dispatch-arith val-x86-64 (emit-program (compile-abs e)) s)) rax
+    ∀ (N : ℕ) {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) (s : State)
+  → 0 < readReg (regs s) rsp + N
+  → All (InFrame N) (emit-program (compile-abs e))
+  → ASX.WF s
+  → ASX.R-input N (init env) s
+  → PreservesCCCState (readReg (regs s) rsp + N) s
+      (dispatch-arith val-x86-64 (emit-program (compile-abs e)) N s)
+  × ( readReg (regs (dispatch-arith val-x86-64 (emit-program (compile-abs e)) N s)) rax
         ≡ block-semM e (toWord sh env) )
-arith-dispatch-correct e env s 0<rsp wf ri =
-    dispatch-arith-preserves val-x86-64 (emit-program (compile-abs e)) s 0<rsp
-  , arith-block-correct e env s wf ri
+arith-dispatch-correct N e env s 0<fr inf wf ri =
+    dispatch-arith-preserves val-x86-64 (emit-program (compile-abs e)) N s 0<fr inf
+  , ASX.arith-block-correct N e env s wf ri

@@ -74,12 +74,13 @@ arith-disjoint XR1 = refl
 reg-text : XReg → String
 reg-text x = showReg (arith-reg x)
 
--- | A scratch slot lives at `[%rsp - 8*(slot+1)]` once the prologue
--- has reserved `8 * required-scratch` bytes below the original
--- %rsp.
+-- | A scratch slot lives at `8*slot(%rsp)` — ADDITIVE from the reserved frame
+-- base, exactly like riscv64/x86-32's `8*slot(sp)`. The prologue reserves
+-- `8 * required-scratch` bytes (`sub $N, %rsp`); addressing UP from the lowered
+-- %rsp keeps every slot inside the reserved frame [%rsp, %rsp+N).
 scratch-text : XScratch → String
 scratch-text record { slot = s } =
-  "-" ++ showℕ (8 * suc s) ++ "(%rsp)"
+  showℕ (8 * s) ++ "(%rsp)"
 
 ------------------------------------------------------------------------
 -- Per-instruction text
