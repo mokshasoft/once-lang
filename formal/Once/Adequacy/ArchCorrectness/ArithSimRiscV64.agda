@@ -146,6 +146,20 @@ sa-inj s sc sc' ne eq =
   ne (*-cancelˡ-≡ (XScratch.slot sc) (XScratch.slot sc') 8
         (+-cancelˡ-≡ (readReg (regs s) sp) (8 * XScratch.slot sc) (8 * XScratch.slot sc') eq))
 
+-- t0 (the input pointer) is never written by arith; path-load-go depends on the
+-- state only through memory (induction on the path). Feed pl-inv (input-frame).
+wr-arith-t0 : ∀ rf x v → readReg (writeReg rf (arith-reg x) v) t0 ≡ readReg rf t0
+wr-arith-t0 rf XR0 v = refl
+wr-arith-t0 rf XR1 v = refl
+wr-a0-t0 : ∀ rf v → readReg (writeReg rf a0 v) t0 ≡ readReg rf t0
+wr-a0-t0 rf v = refl
+
+plg-mem-cong : ∀ A B addr p → memory A ≡ memory B → path-load-go A addr p ≡ path-load-go B addr p
+plg-mem-cong A B addr []          meq = cong (λ m → def (readMem m addr)) meq
+plg-mem-cong A B addr (sd ∷ rest) meq =
+  trans (cong (λ m → path-load-go A (def (readMem m (addr + side-off sd))) rest) meq)
+        (plg-mem-cong A B (def (readMem (memory B) (addr + side-off sd))) rest meq)
+
 ------------------------------------------------------------------------
 -- The instance, parameterised by the scratch-frame size `N`.
 ------------------------------------------------------------------------
@@ -214,6 +228,57 @@ module _ (N : ℕ) where
   rf-other (XI.Xmov-r-m sc src) s x h = refl
   rf-other (XI.Xmov-out src) s x h = readReg-wr-a0-arith (regs s) x (V (XI.Xmov-out src) s)
 
+  -- t0-inv: arith never writes the input pointer t0 (div/rem are SINGLE-write on
+  -- riscv — no a0 peel; only arg/sdiv/out touch a0).
+  t0-inv : ∀ i s → readReg (regs (EA.exec1 val-riscv64 N i s)) t0 ≡ readReg (regs s) t0
+  t0-inv (XI.Xmov-imm d z) s = wr-arith-t0 (regs s) d (V (XI.Xmov-imm d z) s)
+  t0-inv (XI.Xmov-rr d src) s = wr-arith-t0 (regs s) d (V (XI.Xmov-rr d src) s)
+  t0-inv (XI.Xmov-m-r d sc) s = wr-arith-t0 (regs s) d (V (XI.Xmov-m-r d sc) s)
+  t0-inv (XI.Xmov-arg d p) s =
+    trans (wr-a0-t0 (writeReg (regs s) (arith-reg d) (V (XI.Xmov-arg d p) s)) (V (XI.Xmov-arg d p) s))
+          (wr-arith-t0 (regs s) d (V (XI.Xmov-arg d p) s))
+  t0-inv (XI.Xadd-rr d src) s = wr-arith-t0 (regs s) d (V (XI.Xadd-rr d src) s)
+  t0-inv (XI.Xsub-rr d src) s = wr-arith-t0 (regs s) d (V (XI.Xsub-rr d src) s)
+  t0-inv (XI.Ximul-rr d src) s = wr-arith-t0 (regs s) d (V (XI.Ximul-rr d src) s)
+  t0-inv (XI.Xneg-r d) s = wr-arith-t0 (regs s) d (V (XI.Xneg-r d) s)
+  t0-inv (XI.Xshl-rri d src imm) s = wr-arith-t0 (regs s) d (V (XI.Xshl-rri d src imm) s)
+  t0-inv (XI.Xdiv-rrr d a b) s = wr-arith-t0 (regs s) d (V (XI.Xdiv-rrr d a b) s)
+  t0-inv (XI.Xrem-rrr d a b) s = wr-arith-t0 (regs s) d (V (XI.Xrem-rrr d a b) s)
+  t0-inv (XI.Xdiv-safe-rrr d a b) s = wr-arith-t0 (regs s) d (V (XI.Xdiv-safe-rrr d a b) s)
+  t0-inv (XI.Xrem-safe-rrr d a b) s = wr-arith-t0 (regs s) d (V (XI.Xrem-safe-rrr d a b) s)
+  t0-inv (XI.Xsdiv-pow2-rri d src imm) s =
+    trans (wr-a0-t0 (writeReg (regs s) (arith-reg d) (V (XI.Xsdiv-pow2-rri d src imm) s)) (V (XI.Xsdiv-pow2-rri d src imm) s))
+          (wr-arith-t0 (regs s) d (V (XI.Xsdiv-pow2-rri d src imm) s))
+  t0-inv (XI.Xmov-out src) s = wr-a0-t0 (regs s) (V (XI.Xmov-out src) s)
+  t0-inv (XI.Xmov-r-m sc src) s = refl
+
+  pl-inv-ns : ∀ i s p → memory (EA.exec1 val-riscv64 N i s) ≡ memory s
+            → path-load (EA.exec1 val-riscv64 N i s) p ≡ path-load s p
+  pl-inv-ns i s p meq =
+    trans (cong (λ a → path-load-go (EA.exec1 val-riscv64 N i s) a p) (t0-inv i s))
+          (plg-mem-cong (EA.exec1 val-riscv64 N i s) s (readReg (regs s) t0) p meq)
+
+  postulate
+    pl-inv-spill : ∀ sc' src s p → path-load (EA.exec1 val-riscv64 N (XI.Xmov-r-m sc' src) s) p ≡ path-load s p
+
+  pl-inv : ∀ i s p → path-load (EA.exec1 val-riscv64 N i s) p ≡ path-load s p
+  pl-inv (XI.Xmov-imm d z) s p = pl-inv-ns (XI.Xmov-imm d z) s p refl
+  pl-inv (XI.Xmov-rr d src) s p = pl-inv-ns (XI.Xmov-rr d src) s p refl
+  pl-inv (XI.Xmov-m-r d sc) s p = pl-inv-ns (XI.Xmov-m-r d sc) s p refl
+  pl-inv (XI.Xmov-arg d q) s p = pl-inv-ns (XI.Xmov-arg d q) s p refl
+  pl-inv (XI.Xadd-rr d src) s p = pl-inv-ns (XI.Xadd-rr d src) s p refl
+  pl-inv (XI.Xsub-rr d src) s p = pl-inv-ns (XI.Xsub-rr d src) s p refl
+  pl-inv (XI.Ximul-rr d src) s p = pl-inv-ns (XI.Ximul-rr d src) s p refl
+  pl-inv (XI.Xneg-r d) s p = pl-inv-ns (XI.Xneg-r d) s p refl
+  pl-inv (XI.Xshl-rri d src imm) s p = pl-inv-ns (XI.Xshl-rri d src imm) s p refl
+  pl-inv (XI.Xdiv-rrr d a b) s p = pl-inv-ns (XI.Xdiv-rrr d a b) s p refl
+  pl-inv (XI.Xrem-rrr d a b) s p = pl-inv-ns (XI.Xrem-rrr d a b) s p refl
+  pl-inv (XI.Xdiv-safe-rrr d a b) s p = pl-inv-ns (XI.Xdiv-safe-rrr d a b) s p refl
+  pl-inv (XI.Xrem-safe-rrr d a b) s p = pl-inv-ns (XI.Xrem-safe-rrr d a b) s p refl
+  pl-inv (XI.Xsdiv-pow2-rri d src imm) s p = pl-inv-ns (XI.Xsdiv-pow2-rri d src imm) s p refl
+  pl-inv (XI.Xmov-out src) s p = pl-inv-ns (XI.Xmov-out src) s p refl
+  pl-inv (XI.Xmov-r-m sc' src) s p = pl-inv-spill sc' src s p
+
   open Core
     State Reg
     rr mem
@@ -223,6 +288,7 @@ module _ (N : ℕ) where
     (EA.exec1 val-riscv64 N) (EA.exec-arith-block val-riscv64 N)
     (λ _ → refl) (λ _ _ _ → refl)
     sa-inv sa-inj mem-keep mem-spill-hit mem-spill-miss
+    pl-inv
     rf-other
     -- rt-mov-imm rt-mov-rr rt-reload
     (λ d z s   → readReg-wr-arith-same (regs s) d _)

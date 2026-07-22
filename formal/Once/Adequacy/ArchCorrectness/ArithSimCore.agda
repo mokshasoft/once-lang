@@ -133,6 +133,26 @@ scratch-unchanged (XI.Xrem-safe-rrr _ _ _)  _ s = refl
 scratch-unchanged (XI.Xsdiv-pow2-rri _ _ _) _ s = refl
 scratch-unchanged (XI.Xmov-out _)           _ s = refl
 
+-- NO instruction changes the abstract input (all update regs/scratch/output).
+input-unchanged : ∀ i {sh} (s : ArithAbsState sh)
+                → ArithAbsState.input (exec-xinstr i s) ≡ ArithAbsState.input s
+input-unchanged (XI.Xmov-imm _ _)         s = refl
+input-unchanged (XI.Xmov-rr _ _)          s = refl
+input-unchanged (XI.Xmov-r-m _ _)         s = refl
+input-unchanged (XI.Xmov-m-r _ _)         s = refl
+input-unchanged (XI.Xmov-arg _ _)         s = refl
+input-unchanged (XI.Xadd-rr _ _)          s = refl
+input-unchanged (XI.Xsub-rr _ _)          s = refl
+input-unchanged (XI.Ximul-rr _ _)         s = refl
+input-unchanged (XI.Xneg-r _)             s = refl
+input-unchanged (XI.Xshl-rri _ _ _)       s = refl
+input-unchanged (XI.Xdiv-rrr _ _ _)       s = refl
+input-unchanged (XI.Xrem-rrr _ _ _)       s = refl
+input-unchanged (XI.Xdiv-safe-rrr _ _ _)  s = refl
+input-unchanged (XI.Xrem-safe-rrr _ _ _)  s = refl
+input-unchanged (XI.Xsdiv-pow2-rri _ _ _) s = refl
+input-unchanged (XI.Xmov-out _)           s = refl
+
 module Core
   (St Reg  : Set)
   (rr       : St → Reg → ℕ)                    -- read a register (= readReg ∘ regs)
@@ -155,6 +175,9 @@ module Core
   (mem-keep     : ∀ i s addr → NonSpill i → mem (e1 i s) addr ≡ mem s addr)
   (mem-spill-hit  : ∀ sc' src s → mem (e1 (XI.Xmov-r-m sc' src) s) (sa s sc') ≡ just (rr s (arith-reg src)))
   (mem-spill-miss : ∀ sc' src s addr → ¬ (addr ≡ sa s sc') → mem (e1 (XI.Xmov-r-m sc' src) s) addr ≡ mem s addr)
+  -- PATH-LOAD invariance: no instruction changes the concrete input read (the
+  -- input pointer is never written; spill's write is disjoint from the input).
+  (pl-inv       : ∀ i s p → pl (e1 i s) p ≡ pl s p)
   -- READ-FRAME: reading a non-target arith register is unchanged by `i`.
   (rf-other : ∀ i s x → (∀ d → tgt i ≡ just d → ¬ (x ≡ d))
             → rr (e1 i s) (arith-reg x) ≡ rr s (arith-reg x))
@@ -366,12 +389,13 @@ module Core
                          (sym (rt-sdiv d src imm s-conc))
   ... | no ¬eq = step-other (XI.Xsdiv-pow2-rri d src imm) d x w s-abs s-conc refl r ¬eq eq
 
-  -- The INPUT frame — R-input preservation. Memory-layout obligation: no
-  -- instruction changes the input pointer, and spill's write is disjoint from
-  -- the input region (input ≥ frontier > scratch). Named residual.
-  postulate
-    input-frame : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
-                → R-input s-abs s-conc → R-input (exec-xinstr i s-abs) (e1 i s-conc)
+  -- The INPUT frame — R-input preservation. PROVED from `pl-inv` (the concrete
+  -- input read is unchanged) + `input-unchanged` (the abstract input is unchanged).
+  input-frame : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
+              → R-input s-abs s-conc → R-input (exec-xinstr i s-abs) (e1 i s-conc)
+  input-frame i s-abs s-conc rin p =
+    trans (pl-inv i s-conc p)
+          (trans (rin p) (cong (λ v → fromℤ (maybe-zero (project _ p v))) (sym (input-unchanged i s-abs))))
 
   -- Same slot ⇒ same scratch address (XScratch eta: `sc = mk-scratch (slot sc)`).
   sa-slot-eq : ∀ s sc sc' → XScratch.slot sc ≡ XScratch.slot sc' → sa s sc ≡ sa s sc'
