@@ -25,7 +25,7 @@
 module Once.Adequacy.ArchCorrectness.ArithSimX86-64 where
 
 open import Data.Nat using (ℕ; _+_; _∸_; _*_; suc; _≡ᵇ_)
-open import Data.Nat.Properties using (≡⇒≡ᵇ; *-cancelˡ-≡; +-cancelˡ-≡)
+open import Data.Nat.Properties using (≡⇒≡ᵇ)
 open import Data.Bool using (true; false; T)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
@@ -45,7 +45,7 @@ open import Once.Adequacy.CPU.X86-64 using (val-x86-64; scratch-addr; def; path-
 import Once.Arith.Backend.X86-64.ExecArith as EA
 open import Once.Arith.Backend.X86-64.Preserve using (step-of; step-of-preserves; a-rsp)
 open import Once.Arith.Backend.X86-64.MemPreserve using (readMem-writeMem-other)
-open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; ¬d≡x; module Core)
+open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; ¬d≡x; additive-sa-inj; module Core)
 
 ------------------------------------------------------------------------
 -- Frame lemmas — the 2×2 analysis on the arith window (r8/r9), plus the io
@@ -112,9 +112,7 @@ readMem-writeMem-same m addr val with addr ≡ᵇ addr in eq
 -- LayoutWF threading. The abstract machine has no stack-growth direction; this
 -- arch instance picks additive addressing.
 sa-inj : ∀ s sc sc' → ¬ (XScratch.slot sc ≡ XScratch.slot sc') → ¬ (scratch-addr s sc ≡ scratch-addr s sc')
-sa-inj s sc sc' ne eq =
-  ne (*-cancelˡ-≡ (XScratch.slot sc) (XScratch.slot sc') 8
-        (+-cancelˡ-≡ (readReg (regs s) rsp) (8 * XScratch.slot sc) (8 * XScratch.slot sc') eq))
+sa-inj s sc sc' = additive-sa-inj (readReg (regs s) rsp) 8 (XScratch.slot sc) (XScratch.slot sc')
 
 -- rdi (the input pointer) is never written by arith.
 wr-arith-rdi : ∀ rf x v → readReg (writeReg rf (arith-reg x) v) rdi ≡ readReg rf rdi

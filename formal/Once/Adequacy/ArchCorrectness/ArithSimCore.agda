@@ -34,7 +34,8 @@
 
 module Once.Adequacy.ArchCorrectness.ArithSimCore where
 
-open import Data.Nat using (ℕ; _≟_)
+open import Data.Nat using (ℕ; _≟_; _+_; _*_; NonZero)
+open import Data.Nat.Properties using (*-cancelˡ-≡; +-cancelˡ-≡)
 open import Data.Integer using (ℤ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
@@ -93,6 +94,18 @@ tgt (XI.Xmov-out _)           = nothing
 -- the physical-register inequality `¬ (d ≡ x)`. Generic over XReg.
 ¬d≡x : ∀ (d x : XReg) → (∀ d' → just d ≡ just d' → ¬ (x ≡ d')) → ¬ (d ≡ x)
 ¬d≡x d x h d≡x = h d refl (sym d≡x)
+
+-- ADDITIVE scratch-address injectivity — the arch-generic core of every backend's
+-- `sa-inj`. Every arch now addresses scratch as `base + stride·slot` (the reserved
+-- frame, addressed UP from the lowered stack pointer): x86-64/riscv64 stride 8,
+-- x86-32 stride 4. Stacks grow downward on all three; the abstract machine has no
+-- stack-growth direction, so each arch picks additive addressing, making the
+-- slot→address map UNCONDITIONALLY injective (no frontier bound). Each `sa-inj` is
+-- one application of this: `additive-sa-inj (readReg (regs s) <sp>) <stride> …`.
+additive-sa-inj : ∀ (base stride k₁ k₂ : ℕ) .{{_ : NonZero stride}}
+                → ¬ (k₁ ≡ k₂) → ¬ (base + stride * k₁ ≡ base + stride * k₂)
+additive-sa-inj base stride k₁ k₂ ne eq =
+  ne (*-cancelˡ-≡ k₁ k₂ stride (+-cancelˡ-≡ base (stride * k₁) (stride * k₂) eq))
 
 ------------------------------------------------------------------------
 -- Block structure (arch-neutral). The compiled arith block ENDS with
