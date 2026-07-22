@@ -19,6 +19,8 @@ open import Data.String using (String)
 open import Data.Nat using (ℕ; suc)
 open import Data.List using (List)
 
+open import Data.Product using (_×_; uncurry)
+
 open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
 open import Once.Target.X86-64.PhysReg using (Reg)
 open import Once.CCC.Target.X86-64.Syntax using (Program; Instr; call-sym)
@@ -38,5 +40,5 @@ ret-past : State → State
 ret-past s = record s { pc = suc (pc s) }
 
 module _ (val : XInstr → State → Reg → Word) where
-  open Core.RunTrace State Program Instr (List XInstr)
-    halted pc fetch execInstr matchCall ret-past (dispatch-arith val) public
+  open Core.RunTrace State Program Instr (List XInstr × ℕ)
+    halted pc fetch execInstr matchCall ret-past (uncurry (dispatch-arith val)) public

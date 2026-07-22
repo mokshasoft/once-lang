@@ -22,8 +22,10 @@ module Once.Arith.Backend.X86-64.Dispatch where
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
-open import Data.Nat using (ℕ; suc; _<_)
+open import Data.Nat using (ℕ; suc; _+_; _<_)
 open import Data.List using (List)
+open import Data.List.Relation.Unary.All using (All)
+open import Data.Product using (_×_; _,_)
 open import Data.Bool using (true)
 open import Relation.Binary.PropositionalEquality using (refl)
 
@@ -34,23 +36,23 @@ open import Once.CCC.Target.X86-64.Semantics
   using (State; readReg; fetch; execInstr; Word)
 open State
 open import Once.Arith.Backend.X86-64.StatePreserve using (PreservesCCCState; mkPresState)
-open import Once.Arith.Backend.X86-64.ExecArith using (exec-arith-block; exec-arith-block-preserves; all-InFrame)
+open import Once.Arith.Backend.X86-64.ExecArith using (exec-arith-block; exec-arith-block-preserves; InFrame)
 
 module _ (val : XInstr → State → Reg → Word) where
 
-  -- Which call labels name arith subroutines (vs external SigOp invocations).
+  -- Call labels → (arith block, reserved frame size N).
   ArithEnv : Set
-  ArithEnv = String → Maybe (List XInstr)
+  ArithEnv = String → Maybe (List XInstr × ℕ)
 
   -- Dispatch a `call once_arith.block.*`: run the block, return past the call.
-  dispatch-arith : List XInstr → State → State
-  dispatch-arith blk s = record (exec-arith-block val blk s) { pc = suc (pc s) }
+  dispatch-arith : List XInstr → ℕ → State → State
+  dispatch-arith blk N s = record (exec-arith-block val N blk s) { pc = suc (pc s) }
 
   -- Resolve one fetched instruction: arith-block call → dispatch; else CCC.
   step-instr : ArithEnv → Program → State → Instr → Maybe State
   step-instr env prog s (call-sym lbl) with env lbl
-  ... | just blk = just (dispatch-arith blk s)
-  ... | nothing  = execInstr prog s (call-sym lbl)
+  ... | just (blk , N) = just (dispatch-arith blk N s)
+  ... | nothing        = execInstr prog s (call-sym lbl)
   step-instr env prog s i = execInstr prog s i
 
   -- One whole-program step.
@@ -63,14 +65,16 @@ module _ (val : XInstr → State → Reg → Word) where
   -- Dispatching to an arith block preserves CCC state.
   -- `dispatch-arith` = `exec-arith-block` with a transparent `pc` update, so
   -- its regs/memory equal the block's, and `exec-arith-block-preserves` applies.
+  -- With additive addressing the frontier is `rsp + N` and the block's in-frame
+  -- witness `All (InFrame N) blk` is a premise (like riscv64), not vacuous.
   ------------------------------------------------------------------------
 
-  dispatch-arith-preserves : ∀ blk s → 0 < readReg (regs s) rsp →
-                             PreservesCCCState (readReg (regs s) rsp) s (dispatch-arith blk s)
-  dispatch-arith-preserves blk s 0<r =
+  dispatch-arith-preserves : ∀ blk N s → 0 < readReg (regs s) rsp + N → All (InFrame N) blk →
+                             PreservesCCCState (readReg (regs s) rsp + N) s (dispatch-arith blk N s)
+  dispatch-arith-preserves blk N s 0<fr allInf =
     mkPresState (PreservesCCCState.regs≈ P) (PreservesCCCState.mem≈ P)
     where
-      -- regs/memory of `dispatch-arith blk s` equal the block's (pc is transparent),
+      -- regs/memory of `dispatch-arith blk N s` equal the block's (pc is transparent),
       -- so the fields transport even though the record TYPE is indexed by full State.
-      P : PreservesCCCState (readReg (regs s) rsp) s (exec-arith-block val blk s)
-      P = exec-arith-block-preserves val blk (readReg (regs s) rsp) s refl 0<r (all-InFrame blk)
+      P : PreservesCCCState (readReg (regs s) rsp + N) s (exec-arith-block val N blk s)
+      P = exec-arith-block-preserves val N blk (readReg (regs s) rsp + N) s refl 0<fr allInf

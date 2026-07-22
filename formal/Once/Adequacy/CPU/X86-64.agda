@@ -89,8 +89,13 @@ def : Maybe X64.Word → X64.Word
 def (just w) = w
 def nothing  = 0
 
+-- Scratch slots live at `8·slot(%rsp)` — ADDITIVE from the reserved frame base
+-- (the post-prologue rsp), exactly like riscv64/x86-32's `8·slot(sp)`. Both
+-- stacks grow downward (prologue `sub rsp, 8N`); addressing UP from the lowered
+-- rsp keeps every slot inside the reserved frame [rsp, rsp+8N) and makes the
+-- slot→address map unconditionally injective (see `sa-inj`, no frontier needed).
 scratch-addr : State → XScratch → X64.Word
-scratch-addr s sc = readReg (regs s) rsp ∸ (8 * suc (XScratch.slot sc))
+scratch-addr s sc = readReg (regs s) rsp +ℕ (8 * XScratch.slot sc)
 
 side-off : Side → X64.Word
 side-off Fst = 0
