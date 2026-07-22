@@ -34,18 +34,19 @@
 
 module Once.Adequacy.ArchCorrectness.ArithSimCore where
 
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; _≟_)
 open import Data.Integer using (ℤ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-assoc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst₂)
 open import Relation.Nullary using (¬_; yes; no)
 open import Data.Empty using (⊥; ⊥-elim)
 
-open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch)
+open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch; mk-scratch)
 open XI using (XR0; XR1)
 open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath; project)
 open import Once.Arith.Machine.AbsState
@@ -104,6 +105,34 @@ block-shape : ∀ {sh} (e : MArithIR sh)
             → emit-program (compile-abs e) ≡ emit-program (compile-go 0 e) ++ (XI.Xmov-out XR0 ∷ [])
 block-shape e = emit-program-++ (compile-go 0 e) (move-to-out 0 ∷ [])
 
+------------------------------------------------------------------------
+-- Spill is the ONLY instruction that writes the abstract scratch store (and,
+-- concretely, memory). `NonSpill` marks the other 15; `scratch-unchanged` is
+-- their (arch-neutral) abstract-scratch invariance, feeding `scratch-frame`.
+------------------------------------------------------------------------
+
+NonSpill : XInstr → Set
+NonSpill (XI.Xmov-r-m _ _) = ⊥
+NonSpill _                 = ⊤
+
+scratch-unchanged : ∀ i → NonSpill i → ∀ {sh} (s : ArithAbsState sh)
+                  → ArithAbsState.scratch (exec-xinstr i s) ≡ ArithAbsState.scratch s
+scratch-unchanged (XI.Xmov-imm _ _)         _ s = refl
+scratch-unchanged (XI.Xmov-rr _ _)          _ s = refl
+scratch-unchanged (XI.Xmov-m-r _ _)         _ s = refl
+scratch-unchanged (XI.Xmov-arg _ _)         _ s = refl
+scratch-unchanged (XI.Xadd-rr _ _)          _ s = refl
+scratch-unchanged (XI.Xsub-rr _ _)          _ s = refl
+scratch-unchanged (XI.Ximul-rr _ _)         _ s = refl
+scratch-unchanged (XI.Xneg-r _)             _ s = refl
+scratch-unchanged (XI.Xshl-rri _ _ _)       _ s = refl
+scratch-unchanged (XI.Xdiv-rrr _ _ _)       _ s = refl
+scratch-unchanged (XI.Xrem-rrr _ _ _)       _ s = refl
+scratch-unchanged (XI.Xdiv-safe-rrr _ _ _)  _ s = refl
+scratch-unchanged (XI.Xrem-safe-rrr _ _ _)  _ s = refl
+scratch-unchanged (XI.Xsdiv-pow2-rri _ _ _) _ s = refl
+scratch-unchanged (XI.Xmov-out _)           _ s = refl
+
 module Core
   (St Reg  : Set)
   (rr       : St → Reg → ℕ)                    -- read a register (= readReg ∘ regs)
@@ -118,6 +147,14 @@ module Core
   (eb       : List XInstr → St → St)           -- concrete block fold (opaque)
   (eb-nil   : ∀ s → eb [] s ≡ s)
   (eb-cons  : ∀ i is s → eb (i ∷ is) s ≡ eb is (e1 i s))
+  -- MEMORY-EFFECT primitives (drive scratch-frame). Only spill writes memory;
+  -- the scratch address is step-invariant (sp is never written), and injective
+  -- in the slot (riscv `sp+8·slot` unconditionally; x86-64 needs its frontier).
+  (sa-inv       : ∀ i s sc → sa (e1 i s) sc ≡ sa s sc)
+  (sa-inj       : ∀ s sc sc' → ¬ (XScratch.slot sc ≡ XScratch.slot sc') → ¬ (sa s sc ≡ sa s sc'))
+  (mem-keep     : ∀ i s addr → NonSpill i → mem (e1 i s) addr ≡ mem s addr)
+  (mem-spill-hit  : ∀ sc' src s → mem (e1 (XI.Xmov-r-m sc' src) s) (sa s sc') ≡ just (rr s (arith-reg src)))
+  (mem-spill-miss : ∀ sc' src s addr → ¬ (addr ≡ sa s sc') → mem (e1 (XI.Xmov-r-m sc' src) s) addr ≡ mem s addr)
   -- READ-FRAME: reading a non-target arith register is unchanged by `i`.
   (rf-other : ∀ i s x → (∀ d → tgt i ≡ just d → ¬ (x ≡ d))
             → rr (e1 i s) (arith-reg x) ≡ rr s (arith-reg x))
@@ -329,17 +366,67 @@ module Core
                          (sym (rt-sdiv d src imm s-conc))
   ... | no ¬eq = step-other (XI.Xsdiv-pow2-rri d src imm) d x w s-abs s-conc refl r ¬eq eq
 
-  -- The scratch/input FRAME preservations — memory-layout obligations.
+  -- The INPUT frame — R-input preservation. Memory-layout obligation: no
+  -- instruction changes the input pointer, and spill's write is disjoint from
+  -- the input region (input ≥ frontier > scratch). Named residual.
   postulate
-    scratch-frame : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
-                  → R-scratch s-abs s-conc → R-scratch (exec-xinstr i s-abs) (e1 i s-conc)
-    input-frame   : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
-                  → R-input s-abs s-conc → R-input (exec-xinstr i s-abs) (e1 i s-conc)
+    input-frame : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
+                → R-input s-abs s-conc → R-input (exec-xinstr i s-abs) (e1 i s-conc)
+
+  -- Same slot ⇒ same scratch address (XScratch eta: `sc = mk-scratch (slot sc)`).
+  sa-slot-eq : ∀ s sc sc' → XScratch.slot sc ≡ XScratch.slot sc' → sa s sc ≡ sa s sc'
+  sa-slot-eq s sc sc' slot≡ = cong (λ n → sa s (mk-scratch n)) slot≡
+
+  -- The 15 NON-spill instructions leave both abstract scratch and concrete
+  -- memory@scratch-addr untouched (scratch-unchanged + mem-keep), and the
+  -- address is step-invariant (sa-inv) ⇒ R-scratch rides through unchanged.
+  nonspill-sf : ∀ i (nsp : NonSpill i) {sh} (s-abs : ArithAbsState sh) (s-conc : St)
+              → R-scratch s-abs s-conc → R-scratch (exec-xinstr i s-abs) (e1 i s-conc)
+  nonspill-sf i nsp s-abs s-conc rsc sc w eq =
+    trans (cong (λ a → mem (e1 i s-conc) a) (sa-inv i s-conc sc))
+          (trans (mem-keep i s-conc (sa s-conc sc) nsp)
+                 (rsc sc w (trans (sym (cong (λ σ → σ [ XScratch.slot sc ]) (scratch-unchanged i nsp s-abs))) eq)))
+
+  -- The SCRATCH frame — R-scratch preservation. PROVED from the memory-effect
+  -- primitives (+ R for the spill hit, whose new cell = the spilled register).
+  scratch-frame : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
+                → R s-abs s-conc → R-scratch s-abs s-conc
+                → R-scratch (exec-xinstr i s-abs) (e1 i s-conc)
+  scratch-frame (XI.Xmov-r-m sc' src) s-abs s-conc r rsc sc w eq with XScratch.slot sc ≟ XScratch.slot sc'
+  ... | yes slot≡ =
+        trans (cong (λ a → mem (e1 (XI.Xmov-r-m sc' src) s-conc) a)
+                    (trans (sa-inv (XI.Xmov-r-m sc' src) s-conc sc) (sa-slot-eq s-conc sc sc' slot≡)))
+              (trans (mem-spill-hit sc' src s-conc)
+                     (cong just (sym (r src w
+                       (trans (sym (store-write-same (ArithAbsState.scratch s-abs) (XScratch.slot sc')
+                                     (ArithAbsState.regs s-abs [ xreg-idx src ])))
+                              (subst (λ n → (ArithAbsState.scratch s-abs [ XScratch.slot sc' ↦ ArithAbsState.regs s-abs [ xreg-idx src ] ]) [ n ] ≡ just w)
+                                     slot≡ eq))))))
+  ... | no slot≢ =
+        trans (cong (λ a → mem (e1 (XI.Xmov-r-m sc' src) s-conc) a) (sa-inv (XI.Xmov-r-m sc' src) s-conc sc))
+              (trans (mem-spill-miss sc' src s-conc (sa s-conc sc) (sa-inj s-conc sc sc' slot≢))
+                     (rsc sc w (trans (sym (store-write-other (ArithAbsState.scratch s-abs) (XScratch.slot sc') (XScratch.slot sc)
+                                             (ArithAbsState.regs s-abs [ xreg-idx src ]) (λ e → slot≢ (sym e)))) eq)))
+  scratch-frame (XI.Xmov-imm d z) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-imm d z) tt s-abs s-conc rsc
+  scratch-frame (XI.Xmov-rr d src) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-rr d src) tt s-abs s-conc rsc
+  scratch-frame (XI.Xmov-m-r d sc) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-m-r d sc) tt s-abs s-conc rsc
+  scratch-frame (XI.Xmov-arg d p) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-arg d p) tt s-abs s-conc rsc
+  scratch-frame (XI.Xadd-rr d src) s-abs s-conc r rsc = nonspill-sf (XI.Xadd-rr d src) tt s-abs s-conc rsc
+  scratch-frame (XI.Xsub-rr d src) s-abs s-conc r rsc = nonspill-sf (XI.Xsub-rr d src) tt s-abs s-conc rsc
+  scratch-frame (XI.Ximul-rr d src) s-abs s-conc r rsc = nonspill-sf (XI.Ximul-rr d src) tt s-abs s-conc rsc
+  scratch-frame (XI.Xneg-r d) s-abs s-conc r rsc = nonspill-sf (XI.Xneg-r d) tt s-abs s-conc rsc
+  scratch-frame (XI.Xshl-rri d src imm) s-abs s-conc r rsc = nonspill-sf (XI.Xshl-rri d src imm) tt s-abs s-conc rsc
+  scratch-frame (XI.Xdiv-rrr d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xdiv-rrr d a b) tt s-abs s-conc rsc
+  scratch-frame (XI.Xrem-rrr d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xrem-rrr d a b) tt s-abs s-conc rsc
+  scratch-frame (XI.Xdiv-safe-rrr d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xdiv-safe-rrr d a b) tt s-abs s-conc rsc
+  scratch-frame (XI.Xrem-safe-rrr d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xrem-safe-rrr d a b) tt s-abs s-conc rsc
+  scratch-frame (XI.Xsdiv-pow2-rri d src imm) s-abs s-conc r rsc = nonspill-sf (XI.Xsdiv-pow2-rri d src imm) tt s-abs s-conc rsc
+  scratch-frame (XI.Xmov-out src) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-out src) tt s-abs s-conc rsc
 
   Rf-step : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
           → Rf s-abs s-conc → Rf (exec-xinstr i s-abs) (e1 i s-conc)
   Rf-step i s-abs s-conc rf@(rr₀ , rsc , rin) =
-    R-step-full i s-abs s-conc rf , scratch-frame i s-abs s-conc rsc , input-frame i s-abs s-conc rin
+    R-step-full i s-abs s-conc rf , scratch-frame i s-abs s-conc rr₀ rsc , input-frame i s-abs s-conc rin
 
   Rf-sim : ∀ {sh} (xs : List XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
          → Rf s-abs s-conc
