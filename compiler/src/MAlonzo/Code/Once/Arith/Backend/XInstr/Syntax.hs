@@ -21,35 +21,35 @@ import qualified MAlonzo.Code.Once.Arith.Machine.Shape
 
 -- Once.Arith.Backend.XInstr.Syntax.XReg
 d_XReg_10 = ()
-data T_XReg_10 = C_XR0_12 | C_XR1_14 | C_XR2_16 | C_XR3_18
+data T_XReg_10 = C_XR0_12 | C_XR1_14
 -- Once.Arith.Backend.XInstr.Syntax.XScratch
-d_XScratch_20 = ()
-newtype T_XScratch_20 = C_mk'45'scratch_26 Integer
+d_XScratch_16 = ()
+newtype T_XScratch_16 = C_mk'45'scratch_22 Integer
 -- Once.Arith.Backend.XInstr.Syntax.XScratch.slot
-d_slot_24 :: T_XScratch_20 -> Integer
-d_slot_24 v0
+d_slot_20 :: T_XScratch_16 -> Integer
+d_slot_20 v0
   = case coe v0 of
-      C_mk'45'scratch_26 v1 -> coe v1
+      C_mk'45'scratch_22 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.XInstr.Syntax.XInstr
-d_XInstr_28 = ()
-data T_XInstr_28
-  = C_Xmov'45'imm_30 T_XReg_10 Integer |
-    C_Xmov'45'rr_32 T_XReg_10 T_XReg_10 |
-    C_Xmov'45'r'45'm_34 T_XScratch_20 T_XReg_10 |
-    C_Xmov'45'm'45'r_36 T_XReg_10 T_XScratch_20 |
-    C_Xmov'45'arg_38 T_XReg_10
+d_XInstr_24 = ()
+data T_XInstr_24
+  = C_Xmov'45'imm_26 T_XReg_10 Integer |
+    C_Xmov'45'rr_28 T_XReg_10 T_XReg_10 |
+    C_Xmov'45'r'45'm_30 T_XScratch_16 T_XReg_10 |
+    C_Xmov'45'm'45'r_32 T_XReg_10 T_XScratch_16 |
+    C_Xmov'45'arg_34 T_XReg_10
                      [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22] |
-    C_Xadd'45'rr_40 T_XReg_10 T_XReg_10 |
-    C_Xsub'45'rr_42 T_XReg_10 T_XReg_10 |
-    C_Ximul'45'rr_44 T_XReg_10 T_XReg_10 | C_Xneg'45'r_46 T_XReg_10 |
-    C_Xdiv'45'rrr_48 T_XReg_10 T_XReg_10 T_XReg_10 |
-    C_Xrem'45'rrr_50 T_XReg_10 T_XReg_10 T_XReg_10 |
-    C_Xdiv'45'safe'45'rrr_52 T_XReg_10 T_XReg_10 T_XReg_10 |
-    C_Xrem'45'safe'45'rrr_54 T_XReg_10 T_XReg_10 T_XReg_10 |
-    C_Xshl'45'rri_56 T_XReg_10 T_XReg_10 Integer |
-    C_Xsdiv'45'pow2'45'rri_58 T_XReg_10 T_XReg_10 Integer |
-    C_Xmov'45'out_60 T_XReg_10
+    C_Xadd'45'rr_36 T_XReg_10 T_XReg_10 |
+    C_Xsub'45'rr_38 T_XReg_10 T_XReg_10 |
+    C_Ximul'45'rr_40 T_XReg_10 T_XReg_10 | C_Xneg'45'r_42 T_XReg_10 |
+    C_Xdiv'45'rrr_44 T_XReg_10 T_XReg_10 T_XReg_10 |
+    C_Xrem'45'rrr_46 T_XReg_10 T_XReg_10 T_XReg_10 |
+    C_Xdiv'45'safe'45'rrr_48 T_XReg_10 T_XReg_10 T_XReg_10 |
+    C_Xrem'45'safe'45'rrr_50 T_XReg_10 T_XReg_10 T_XReg_10 |
+    C_Xshl'45'rri_52 T_XReg_10 T_XReg_10 Integer |
+    C_Xsdiv'45'pow2'45'rri_54 T_XReg_10 T_XReg_10 Integer |
+    C_Xmov'45'out_56 T_XReg_10
 -- Once.Arith.Backend.XInstr.Syntax.XProgram
-d_XProgram_62 :: ()
-d_XProgram_62 = erased
+d_XProgram_58 :: ()
+d_XProgram_58 = erased

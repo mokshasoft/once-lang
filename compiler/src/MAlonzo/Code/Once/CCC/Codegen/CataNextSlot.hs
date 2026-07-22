@@ -73,7 +73,7 @@ d_exec'45'abstract_100 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_exec'45'abstract_100 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_2458
+      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_2548
       (coe v0)
 -- Once.CCC.Codegen.CataNextSlot.CataNextSlot._.exec-load-from-slot-with-value
 d_exec'45'load'45'from'45'slot'45'with'45'value_104 ::
