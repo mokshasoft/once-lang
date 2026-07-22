@@ -43,11 +43,12 @@ arith-dispatch-correct :
     ∀ (N : ℕ) {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) (s : State)
   → 0 < readReg (regs s) sp + N
   → All (InFrame N) (emit-program (compile-abs e))
+  → ASR.WF s
   → ASR.R-input N (init env) s
   → PreservesCCCState (readReg (regs s) sp + N) s
       (dispatch-arith ASR.val-riscv64 (emit-program (compile-abs e)) N s)
   × ( readReg (regs (dispatch-arith ASR.val-riscv64 (emit-program (compile-abs e)) N s)) a0
         ≡ block-semM e (toWord sh env) )
-arith-dispatch-correct N e env s 0<fr inf ri =
+arith-dispatch-correct N e env s 0<fr inf wf ri =
     dispatch-arith-preserves ASR.val-riscv64 (emit-program (compile-abs e)) N s 0<fr inf
-  , ASR.arith-block-correct N e env s ri
+  , ASR.arith-block-correct N e env s wf ri

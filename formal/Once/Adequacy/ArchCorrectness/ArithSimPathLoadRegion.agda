@@ -58,13 +58,16 @@ plg-stack-write-invisible m sA v addr (sd ∷ rest) inS (hc-∷ inH hcRest) =
               (stack-write-preserves-heap m sA v (addr + side-off sd) inS inH))
         (plg-stack-write-invisible m sA v (def (readMem m (addr + side-off sd))) rest inS hcRest)
 
--- HeapChase itself SURVIVES a stack write (needed to thread the input-heap
--- witness across a spill in wf-e1): the reads it inspects are all in-heap, so a
--- stack write leaves them — hence the same chase witnesses the new memory.
-heapchase-stack-write :
-    ∀ m sA v addr p → InStack sA → HeapChase m addr p → HeapChase (writeMem m sA v) addr p
-heapchase-stack-write m sA v addr [] inS (hc-[] inH) = hc-[] inH
-heapchase-stack-write m sA v addr (sd ∷ rest) inS (hc-∷ inH hcRest) =
-  hc-∷ inH (subst (λ x → HeapChase (writeMem m sA v) (def x) rest)
-                  (sym (stack-write-preserves-heap m sA v (addr + side-off sd) inS inH))
-                  (heapchase-stack-write m sA v (def (readMem m (addr + side-off sd))) rest inS hcRest))
+-- HeapChase SURVIVES any memory change that AGREES on in-heap addresses (needed
+-- to thread the input-heap witness across each step in wf-e1): the chase inspects
+-- only in-heap reads, so the same chase witnesses `m'`. Its `[]` case is
+-- memory-independent (just `InHeap addr`). Non-spill: `m' = e1`'s memory,
+-- agreement from `mem-keep`. Spill: `m' = writeMem`, agreement from FrameOps.
+heapchase-agree :
+    ∀ m m' addr p → (∀ a → InHeap a → readMem m' a ≡ readMem m a)
+  → HeapChase m addr p → HeapChase m' addr p
+heapchase-agree m m' addr []          agree (hc-[] inH) = hc-[] inH
+heapchase-agree m m' addr (sd ∷ rest) agree (hc-∷ inH hcRest) =
+  hc-∷ inH (subst (λ x → HeapChase m' (def x) rest)
+                  (sym (agree (addr + side-off sd) inH))
+                  (heapchase-agree m m' (def (readMem m (addr + side-off sd))) rest agree hcRest))

@@ -31,14 +31,15 @@ open import Once.Target.X86-32.PhysReg using (eax)
 open import Once.CCC.Target.X86-32.Semantics using (State; readReg)
 open State using (regs)
 open import Once.Arith.Backend.X86-32.Dispatch using (dispatch-arith)
-open import Once.Adequacy.ArchCorrectness.ArithSimX86-32 using (val-x86-32; arith-block-correct; R-input)
+open import Once.Adequacy.ArchCorrectness.ArithSimX86-32 using (val-x86-32; arith-block-correct; R-input; WF)
 
 -- The arith dispatch leaves the real block value in eax. The pc bump is a record
 -- update on pc only, so `regs (dispatch-arith …) = regs (exec-arith-block …)` and
 -- `arith-block-correct` transfers by defeq.
 arith-dispatch-value :
     ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) (s : State)
+  → WF s
   → R-input (init env) s
   → readReg (regs (dispatch-arith val-x86-32 (emit-program (compile-abs e)) s)) eax
       ≡ block-semM e (toWord sh env)
-arith-dispatch-value e env s ri = arith-block-correct e env s ri
+arith-dispatch-value e env s wf ri = arith-block-correct e env s wf ri
