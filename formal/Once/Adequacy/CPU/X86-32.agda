@@ -14,6 +14,7 @@ module Once.Adequacy.CPU.X86-32 where
 open import Data.List using (List)
 open import Data.Maybe using (Maybe)
 open import Data.String using (String)
+open import Data.Nat using (ℕ)
 
 open import Once.Denotation.Behavior      using (Behavior)
 open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
@@ -21,16 +22,32 @@ open import Once.Adequacy.CPU.Interface using (Byte; ArchSemantics)
 import Once.CCC.Target.X86-32.Semantics as X32
 import Once.CCC.Target.X86-32.Syntax    as X32S
 
+-- Plan 0.54 Phase B / Option 2: the emit-and-continue trace over the REAL
+-- x86-32 machine, instanced from `Arith.Backend.RunTraceCore` like x86-64/riscv64.
+-- DERIVES `run-trace` from `X32.run`'s step semantics, replacing the old opaque
+-- observable postulate with the real machine + three small named sub-gaps.
+import Once.Arith.Backend.X86-32.RunTrace as RT
+open import Once.Adequacy.ArchCorrectness.ArithSimX86-32 using (val-x86-32)
+
 ------------------------------------------------------------------------
--- Postulated gaps (named).
+-- run-trace-x86-32 — DERIVED (no longer an opaque observable postulate). Its
+-- remaining ingredients are the SAME named gaps x86-64/riscv64 carry:
+--   * `val-x86-32`        — the concrete XInstr arith interpreter (DEFINED).
+--   * `arith-env-x86-32`  — the arith-block table (label ↦ block).
+--   * `ev-x86-32`         — label→SigOp resolution (inverse of symbol lowering).
+--   * `step-budget-x86-32`— adequate fuel (event-count ↦ machine steps).
 ------------------------------------------------------------------------
 
 postulate
-  -- run-trace-x86-32 — the OBSERVABLE (Plan 0.44): step-indexed SigOp
-  -- trace of executing `prog`. Replaces the value-shaped `observe`
-  -- (final `%ebx` exit code). Derived from X32.run's step semantics once
-  -- syscalls emit-and-continue; postulated until then.
-  run-trace-x86-32 : X32S.Program → X32.State → Behavior
+  step-budget-x86-32 : ℕ → ℕ
+  ev-x86-32          : RT.EvExtractor val-x86-32
+  arith-env-x86-32   : X32S.Program → RT.ArithEnv val-x86-32
+
+run-trace-x86-32 : X32S.Program → X32.State → Behavior
+run-trace-x86-32 prog s =
+  RT.run-trace val-x86-32 step-budget-x86-32 ev-x86-32 (arith-env-x86-32 prog) prog s
+
+postulate
   decode-x86-32 : List Byte → Maybe X32S.Program
   -- GNU `as --target=x86-32` trust point; removed by B1.
   assemble-x86-32 : String → List Byte
