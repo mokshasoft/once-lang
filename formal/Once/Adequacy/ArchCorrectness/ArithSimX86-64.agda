@@ -41,7 +41,7 @@ open import Once.Adequacy.CPU.X86-64 using (val-x86-64; scratch-addr; def; path-
 import Once.Arith.Backend.X86-64.ExecArith as EA
 open import Once.Arith.Backend.X86-64.Preserve using (step-of; step-of-preserves; a-rsp)
 open import Once.Arith.Backend.X86-64.MemPreserve using (readMem-writeMem-other)
-open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; module Core)
+open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; ¬d≡x; module Core)
 
 ------------------------------------------------------------------------
 -- Frame lemmas — the 2×2 analysis on the arith window (r8/r9), plus the io
@@ -95,8 +95,6 @@ mem s a = readMem (memory s) a
 -- `h` gives `¬ (x ≡ d)` via `h d refl`; div/rem/sdiv/arg peel their io writes.
 ------------------------------------------------------------------------
 
-¬d≡x : ∀ (d x : XReg) → (∀ d' → just d ≡ just d' → ¬ (x ≡ d')) → ¬ (d ≡ x)
-¬d≡x d x h d≡x = h d refl (sym d≡x)
 
 -- The value instruction `i` writes to its arith target (val ignores the reg
 -- arg, so any reg gives the same value definitionally). Supplied EXPLICITLY to

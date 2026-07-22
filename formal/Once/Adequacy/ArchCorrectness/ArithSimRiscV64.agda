@@ -49,7 +49,7 @@ open import Once.Arith.Backend.RiscV64.Preserve using (step-of; step-of-preserve
 open import Once.Arith.Backend.RiscV64.MemPreserve using (readMem-writeMem-other)
 import Once.Word as OnceWord
 module W = OnceWord.Word64
-open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; module Core)
+open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; ¬d≡x; module Core)
 
 ------------------------------------------------------------------------
 -- val-riscv64 — the concrete XInstr arith interpreter over RV.State.
@@ -69,10 +69,8 @@ side-off : Side → Word
 side-off Fst = 0
 side-off Snd = 8
 
-path-load-go : State → Word → InputPath → Word
-path-load-go s addr []          = def (readMem (memory s) addr)
-path-load-go s addr (sd ∷ rest) =
-  path-load-go s (def (readMem (memory s) (addr + side-off sd))) rest
+open import Once.Adequacy.ArchCorrectness.ArithSimPathLoad State memory def side-off
+  using (path-load-go; plg-mem-cong)
 
 path-load : State → InputPath → Word
 path-load s p = path-load-go s (readReg (regs s) t0) p
@@ -127,8 +125,6 @@ rr s r = readReg (regs s) r
 mem : State → ℕ → Maybe ℕ
 mem s a = readMem (memory s) a
 
-¬d≡x : ∀ (d x : XReg) → (∀ d' → just d ≡ just d' → ¬ (x ≡ d')) → ¬ (d ≡ x)
-¬d≡x d x h d≡x = h d refl (sym d≡x)
 
 ------------------------------------------------------------------------
 -- Memory-effect primitives (drive the core's scratch-frame). Unlike x86-64,
@@ -153,12 +149,6 @@ wr-arith-t0 rf XR0 v = refl
 wr-arith-t0 rf XR1 v = refl
 wr-a0-t0 : ∀ rf v → readReg (writeReg rf a0 v) t0 ≡ readReg rf t0
 wr-a0-t0 rf v = refl
-
-plg-mem-cong : ∀ A B addr p → memory A ≡ memory B → path-load-go A addr p ≡ path-load-go B addr p
-plg-mem-cong A B addr []          meq = cong (λ m → def (readMem m addr)) meq
-plg-mem-cong A B addr (sd ∷ rest) meq =
-  trans (cong (λ m → path-load-go A (def (readMem m (addr + side-off sd))) rest) meq)
-        (plg-mem-cong A B (def (readMem (memory B) (addr + side-off sd))) rest meq)
 
 ------------------------------------------------------------------------
 -- The instance, parameterised by the scratch-frame size `N`.
