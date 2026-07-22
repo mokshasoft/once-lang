@@ -38,9 +38,10 @@ open import Data.Nat using (ℕ)
 open import Data.Integer using (ℤ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_; _++_)
+open import Data.List.Properties using (++-assoc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst₂)
 open import Relation.Nullary using (¬_; yes; no)
 open import Data.Empty using (⊥; ⊥-elim)
 
@@ -49,12 +50,12 @@ open XI using (XR0; XR1)
 open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath; project)
 open import Once.Arith.Machine.AbsState
   using (ArithAbsState; Store; _[_]; _[_↦_]; init; store-write-same; store-write-other; output-of)
-open import Once.Arith.Machine.AbsInstr using (bin-op; un-op; maybe-zero)
+open import Once.Arith.Machine.AbsInstr using (bin-op; un-op; maybe-zero; move-to-out)
 import Once.Arith.Backend.Correct as Correct
-open Correct 64 using (exec-xinstr; exec-xprog; xreg-idx)
+open Correct 64 using (exec-xinstr; exec-xprog; exec-xprog-++; xreg-idx)
 open import Once.Arith.Machine.IR using (MArithIR)
-open import Once.Arith.Backend.XInstr.CodeGen using (_≟x_; emit-program)
-open import Once.Arith.Machine.Compile using (compile-abs)
+open import Once.Arith.Backend.XInstr.CodeGen using (_≟x_; emit; emit-program)
+open import Once.Arith.Machine.Compile using (compile-abs; compile-go)
 open import Once.Arith.SigOp.Block using (block-semM)
 open import Once.Arith.SigOp.BlockSemBridge using (toWord)
 open import Once.Arith.Backend.BlockValueSemM using (block-value-semM)
@@ -85,6 +86,23 @@ tgt (XI.Xrem-safe-rrr d _ _)  = just d
 tgt (XI.Xsdiv-pow2-rri d _ _) = just d
 tgt (XI.Xmov-r-m _ _)         = nothing
 tgt (XI.Xmov-out _)           = nothing
+
+------------------------------------------------------------------------
+-- Block structure (arch-neutral). The compiled arith block ENDS with
+-- `Xmov-out XR0`: `compile-abs e = compile-go 0 e ++ [move-to-out 0]`, and
+-- `emit (move-to-out 0) = [Xmov-out XR0]` (abs-reg 0 = just XR0). Used to
+-- discharge `output-extract` (the block's result is the final Xmov-out).
+------------------------------------------------------------------------
+
+emit-program-++ : ∀ (xs ys : List _) → emit-program (xs ++ ys) ≡ emit-program xs ++ emit-program ys
+emit-program-++ []       ys = refl
+emit-program-++ (i ∷ is) ys =
+  trans (cong (emit i ++_) (emit-program-++ is ys))
+        (sym (++-assoc (emit i) (emit-program is) (emit-program ys)))
+
+block-shape : ∀ {sh} (e : MArithIR sh)
+            → emit-program (compile-abs e) ≡ emit-program (compile-go 0 e) ++ (XI.Xmov-out XR0 ∷ [])
+block-shape e = emit-program-++ (compile-go 0 e) (move-to-out 0 ∷ [])
 
 module Core
   (St Reg  : Set)
@@ -343,12 +361,43 @@ module Core
   ----------------------------------------------------------------------
   -- THE ARITH-BLOCK VALUE THEOREM (top-down capstone).
   ----------------------------------------------------------------------
-  postulate
-    output-extract : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) (s-conc : St)
-      → R (exec-xprog (emit-program (compile-abs e)) (init env))
-          (eb (emit-program (compile-abs e)) s-conc)
-      → output-of (exec-xprog (emit-program (compile-abs e)) (init env))
-          ≡ just (rr (eb (emit-program (compile-abs e)) s-conc) out-reg)
+  -- `eb` over a concatenation (derived from the opaque `eb-nil`/`eb-cons`).
+  eb-++ : ∀ xs ys s → eb (xs ++ ys) s ≡ eb ys (eb xs s)
+  eb-++ []       ys s = cong (eb ys) (sym (eb-nil s))
+  eb-++ (i ∷ is) ys s =
+    trans (eb-cons i (is ++ ys) s)
+          (trans (eb-++ is ys (e1 i s)) (cong (eb ys) (sym (eb-cons i is s))))
+
+  -- The block ENDS with `Xmov-out XR0` (block-shape). Running it, the concrete
+  -- result register holds the abstract output — PROVED: the final Xmov-out's
+  -- concrete out-reg = arith-reg XR0's read (rt-out), which R ties to the
+  -- abstract reg 0 = the block output (block-value-semM makes it defined).
+  output-extract : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) (s-conc : St)
+    → R (exec-xprog (emit-program (compile-abs e)) (init env))
+        (eb (emit-program (compile-abs e)) s-conc)
+    → output-of (exec-xprog (emit-program (compile-abs e)) (init env))
+        ≡ just (rr (eb (emit-program (compile-abs e)) s-conc) out-reg)
+  output-extract {sh} e env s-conc R-end = trans (block-value-semM e env) (cong just body)
+    where
+      pre = emit-program (compile-go 0 e)
+      aPre  = exec-xprog pre (init env)
+      cPre  = eb pre s-conc
+      blk≡ : exec-xprog (emit-program (compile-abs e)) (init env) ≡ exec-xinstr (XI.Xmov-out XR0) aPre
+      blk≡ = trans (cong (λ p → exec-xprog p (init env)) (block-shape e))
+                   (exec-xprog-++ pre (XI.Xmov-out XR0 ∷ []) (init env))
+      ebk≡ : eb (emit-program (compile-abs e)) s-conc ≡ e1 (XI.Xmov-out XR0) cPre
+      ebk≡ = trans (cong (λ p → eb p s-conc) (block-shape e))
+                   (trans (eb-++ pre (XI.Xmov-out XR0 ∷ []) s-conc)
+                          (trans (eb-cons (XI.Xmov-out XR0) [] cPre) (eb-nil (e1 (XI.Xmov-out XR0) cPre))))
+      R' : R (exec-xinstr (XI.Xmov-out XR0) aPre) (e1 (XI.Xmov-out XR0) cPre)
+      R' = subst₂ (λ a b → R a b) blk≡ ebk≡ R-end
+      bvs' : ArithAbsState.regs aPre [ xreg-idx XR0 ] ≡ just (block-semM e (toWord sh env))
+      bvs' = subst (λ t → output-of t ≡ just (block-semM e (toWord sh env))) blk≡ (block-value-semM e env)
+      rr-eq : block-semM e (toWord sh env) ≡ rr (e1 (XI.Xmov-out XR0) cPre) (arith-reg XR0)
+      rr-eq = R' XR0 (block-semM e (toWord sh env)) bvs'
+      body : block-semM e (toWord sh env) ≡ rr (eb (emit-program (compile-abs e)) s-conc) out-reg
+      body = trans (trans rr-eq (rf-other (XI.Xmov-out XR0) cPre XR0 (no-tgt-hyp (XI.Xmov-out XR0) refl)))
+                   (sym (trans (cong (λ t → rr t out-reg) ebk≡) (rt-out XR0 cPre)))
 
   arith-block-correct : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) (s-conc : St)
     → R-input (init env) s-conc
