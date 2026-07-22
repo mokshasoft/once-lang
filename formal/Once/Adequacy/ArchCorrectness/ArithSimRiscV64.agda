@@ -27,7 +27,7 @@
 module Once.Adequacy.ArchCorrectness.ArithSimRiscV64 where
 
 open import Data.Nat using (ℕ; _+_; _*_; suc; _≡ᵇ_)
-open import Data.Nat.Properties using (≡⇒≡ᵇ; +-cancelˡ-≡; *-cancelˡ-≡)
+open import Data.Nat.Properties using (≡⇒≡ᵇ)
 open import Data.Bool using (true; false; T)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
@@ -49,7 +49,7 @@ open import Once.Arith.Backend.RiscV64.Preserve using (step-of; step-of-preserve
 open import Once.Arith.Backend.RiscV64.MemPreserve using (readMem-writeMem-other)
 import Once.Word as OnceWord
 module W = OnceWord.Word64
-open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; ¬d≡x; module Core)
+open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; ¬d≡x; additive-sa-inj; module Core)
 
 ------------------------------------------------------------------------
 -- val-riscv64 — the concrete XInstr arith interpreter over RV.State.
@@ -157,9 +157,7 @@ readMem-writeMem-same m addr val with addr ≡ᵇ addr in eq
 ... | false = ⊥-elim (subst T eq (≡⇒≡ᵇ addr addr refl))
 
 sa-inj : ∀ s sc sc' → ¬ (XScratch.slot sc ≡ XScratch.slot sc') → ¬ (scratch-addr s sc ≡ scratch-addr s sc')
-sa-inj s sc sc' ne eq =
-  ne (*-cancelˡ-≡ (XScratch.slot sc) (XScratch.slot sc') 8
-        (+-cancelˡ-≡ (readReg (regs s) sp) (8 * XScratch.slot sc) (8 * XScratch.slot sc') eq))
+sa-inj s sc sc' = additive-sa-inj (readReg (regs s) sp) 8 (XScratch.slot sc) (XScratch.slot sc')
 
 -- t0 (the input pointer) is never written by arith; path-load-go depends on the
 -- state only through memory (induction on the path). Feed pl-inv (input-frame).

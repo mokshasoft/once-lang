@@ -23,7 +23,7 @@
 module Once.Adequacy.ArchCorrectness.ArithSimX86-32 where
 
 open import Data.Nat using (ℕ; _+_; _*_; suc; _≡ᵇ_)
-open import Data.Nat.Properties using (≡⇒≡ᵇ; +-cancelˡ-≡; *-cancelˡ-≡)
+open import Data.Nat.Properties using (≡⇒≡ᵇ)
 open import Data.Bool using (true; false; T)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
@@ -43,7 +43,7 @@ open X32.State using (regs; memory)
 import Once.Arith.Backend.X86-32.ExecArith as EA
 import Once.Word as OnceWord
 module W = OnceWord.Word64
-open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; ¬d≡x; module Core)
+open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; ¬d≡x; additive-sa-inj; module Core)
 
 ------------------------------------------------------------------------
 -- val-x86-32 — the concrete XInstr arith interpreter over X32.State.
@@ -187,9 +187,7 @@ readMem-writeMem-other m addr val a neq with a ≡ᵇ addr in eq
   where open import Data.Nat.Properties using (≡ᵇ⇒≡)
 
 sa-inj : ∀ s sc sc' → ¬ (XScratch.slot sc ≡ XScratch.slot sc') → ¬ (scratch-addr s sc ≡ scratch-addr s sc')
-sa-inj s sc sc' ne eq =
-  ne (*-cancelˡ-≡ (XScratch.slot sc) (XScratch.slot sc') 4
-        (+-cancelˡ-≡ (readReg (regs s) esp) (4 * XScratch.slot sc) (4 * XScratch.slot sc') eq))
+sa-inj s sc sc' = additive-sa-inj (readReg (regs s) esp) 4 (XScratch.slot sc) (XScratch.slot sc')
 
 -- esp/ecx are NEVER written by arith (writes ⊆ {edx, edi, eax}); one shared
 -- 16-way proof, reused for both (safe-inv), parameterised by the two frame
