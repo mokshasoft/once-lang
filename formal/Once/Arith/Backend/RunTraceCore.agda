@@ -160,6 +160,13 @@ module RunTrace
   -- uses for the `instr-sigop` case.
   ----------------------------------------------------------------------
 
+  -- HALTED: a halted state emits no further events (one fuel step suffices; the
+  -- `if halted s` guard fires `[]`). The concrete analogue of `flat-events-step
+  -- true = []`; `events-agree`'s base/halted case pairs the two.
+  run-events-halted : ∀ ev env n prog s → halted s ≡ true
+                    → run-events ev env (suc n) prog s ≡ []
+  run-events-halted ev env n prog s h rewrite h = refl
+
   -- ARITH block (`env lbl ≡ just pl`): dispatch the block, emit NO event, and
   -- advance to the dispatched post-state. (Pure ⇒ matches `flat-events`' `[]`.)
   run-events-arith : ∀ ev env n prog s i lbl pl
