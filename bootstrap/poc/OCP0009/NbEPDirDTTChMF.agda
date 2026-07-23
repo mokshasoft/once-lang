@@ -77,6 +77,9 @@ uip' : ∀ {a}{A : Set a}{x y : A}(p q : x ≡ y) → p ≡ q
 uip' refl refl = refl
 coe-trans : ∀ {A B C : Set}(p : A ≡ B)(q : B ≡ C)(x : A) → coe q (coe p x) ≡ coe (trans p q) x
 coe-trans refl refl x = refl
+-- any two coe-paths of the same element between the same endpoints agree (UIP on the proofs).
+coe-uip : ∀ {A B : Set}(p q : A ≡ B)(x : A) → coe p x ≡ coe q x
+coe-uip p q x = cong (λ e → coe e x) (uip' p q)
 congÊl-trans : ∀ {a b c}(p : a ≡ b)(q : b ≡ c) → congÊl (trans p q) ≡ trans (congÊl p) (congÊl q)
 congÊl-trans refl refl = refl
 subst≡coe : ∀ {A : Set}{B : A → Set}{a a'}(p : a ≡ a')(y : B a) → subst B p y ≡ coe (cong B p) y
@@ -252,6 +255,9 @@ nat-TI-Π : (m : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑
            (b1 : szT (ren⊨ r (⊨Π wA wB)) + szCon Θc < suc m)(b2 : szT (⊨Π wA wB) + szCon Δc < suc m)
            (bO : szCon Θc < suc m)
            → TI (suc m) (ren⊨ r (⊨Π wA wB)) δ b1 ≡ TI (suc m) (⊨Π wA wB) (envO (suc m) r δ bO) b2
+envO-⇓   : (m : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc)(δ : CI (suc m) Θc)
+           (bO : szCon Θc < suc m)(bO' : szCon Θc < m)
+           → envO m r (⇓ m δ) bO' ≡ ⇓ m (envO (suc m) r δ bO)
 postulate
   nat-MI   : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){t A}(wA : Δc ⊨ A)
              (td : Δc ⊢ t ∷ A)(δ : CI n Θc)
@@ -262,9 +268,6 @@ postulate
   envO-wk⊑ : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C)(ρ : CI n Δc)
              (vf : (b : szT wC + szCon Δc < n) → Êl (TI n wC ρ b))(bO : szCon (Δc ▷ wC) < n)
              → envO n (wk⊑ Δc wC) (ρ , vf) bO ≡ ρ
-  envO-⇓   : (m : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc)(δ : CI (suc m) Θc)
-             (bO : szCon Θc < suc m)(bO' : szCon Θc < m)
-             → envO m r (⇓ m δ) bO' ≡ ⇓ m (envO (suc m) r δ bO)
   subTI  : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C){B}(wB : (Δc ▷ wC) ⊨ B){u}
            (wS : Δc ⊨ subTy (single u) B)(tu : Δc ⊢ u ∷ C)(ρ : CI (suc n) Δc)
            (uf : (b : szT wC + szCon Δc < n) → Êl (TI n wC (⇓ n ρ) b))
@@ -278,6 +281,33 @@ envO n (keep r wA) (δ , xf) bO =
   envO n r δ (<+r (szT (ren⊨ r wA)) bO) ,
   (λ b → coe (congÊl (nat-TI n r wA δ bO b (<+r (szT (ren⊨ r wA)) bO))) (xf bO))
 envO n (skip r wB) (δ , x)  bO = envO n r δ (<+r (szT wB) bO)
+
+-- envO-⇓: envO and ⇓ commute (both restrict/decrement).  done=refl; skip drops the top on both
+-- sides and recurses; keep is the dependent-pair coherence (envO-irr-level, function-encoded value).
+envO-⇓ m done       δ         bO bO' = refl
+envO-⇓ m (skip r wB) (δ , x)  bO bO' = envO-⇓ m r δ (<+r (szT wB) bO) (<+r (szT wB) bO')
+envO-⇓ m {Δc = Δc} (keep r wA) (δ , xf) bO bO' = pair-≡ eqEnv
+  (trans (subst-Π {C = λ e b → Êl (TI m wA e b)} eqEnv LHSfn)
+         (funextP coherence))
+  where eqEnv = envO-⇓ m r δ (<+r (szT (ren⊨ r wA)) bO) (<+r (szT (ren⊨ r wA)) bO')
+        LHSfn : (b : szCon Δc < m) → Êl (TI m wA (envO m r (⇓ m δ) (<+r (szT (ren⊨ r wA)) bO')) b)
+        LHSfn b = coe (congÊl (nat-TI m r wA (⇓ m δ) _ b _))
+                      (coe (congÊl (TI-irr m (ren⊨ r wA) δ _ _)) (xf bO))
+        coherence : ∀ b → subst (λ e → Êl (TI m wA e b)) eqEnv (LHSfn b)
+                    ≡ coe (congÊl (TI-irr m wA (envO (suc m) r δ (<+r (szT (ren⊨ r wA)) bO)) _ _))
+                          (coe (congÊl (nat-TI (suc m) r wA δ _ _ _)) (xf bO))
+        coherence b =
+          trans (subst≡coe {B = λ e → Êl (TI m wA e b)} eqEnv (LHSfn b))
+          (trans (cong (coe (cong (λ e → Êl (TI m wA e b)) eqEnv))
+                       (coe-trans (congÊl (TI-irr m (ren⊨ r wA) δ _ _))
+                                  (congÊl (nat-TI m r wA (⇓ m δ) _ b _)) (xf bO)))
+          (trans (coe-trans (trans (congÊl (TI-irr m (ren⊨ r wA) δ _ _))
+                                   (congÊl (nat-TI m r wA (⇓ m δ) _ b _)))
+                            (cong (λ e → Êl (TI m wA e b)) eqEnv) (xf bO))
+          (trans (coe-uip _ (trans (congÊl (nat-TI (suc m) r wA δ _ _ _))
+                                   (congÊl (TI-irr m wA (envO (suc m) r δ (<+r (szT (ren⊨ r wA)) bO)) _ _))) (xf bO))
+                 (sym (coe-trans (congÊl (nat-TI (suc m) r wA δ _ _ _))
+                                 (congÊl (TI-irr m wA (envO (suc m) r δ (<+r (szT (ren⊨ r wA)) bO)) _ _)) (xf bO))))))
 
 -- nat-TI: renaming naturality for TI, by induction on wA.  Base = refl; 𝕀 via Ifᵁ-cong + nat-MI;
 -- Π via π̂-cong; both use nat-TI recursion at fuel m + envO-⇓ commutation.
