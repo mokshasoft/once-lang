@@ -2,8 +2,9 @@
 -- FUEL-threaded naturality (shared Nat measure szO(keep r wA)=suc(2*szT wA+szO r); --prop bounds
 -- are defeq-irrelevant; --termination-depth=3 lets SCT compose the nat-TI↔envO cycle — Agda STILL
 -- fully verifies termination, NO sized-types, NO TERMINATING pragmas).
--- ★ PROVEN: envO, envO-irr (dependent Σ-eq), nat-TI (all cases), nat-MI (all cases incl nat-LAM).
--- Remaining postulates: nat-var, nat-app (var/app naturality); wkTI, subTI (weakening/subst — what
+-- ★ PROVEN: envO, envO-irr (dependent Σ-eq), nat-TI (all cases), nat-MI (all cases incl nat-LAM),
+--   nat-var (all 4 cases keep/skip × vz/vs, via MI-subst + coe4/5 collapse + szT-weakening-mono).
+-- Remaining postulates: nat-app (app naturality); wkTI, subTI (weakening/subst — what
 -- consistency actually needs).
 {-# OPTIONS --prop --termination-depth=3 #-}
 module poc.OCP0009.NbEPDirDTTChM where
@@ -364,6 +365,9 @@ nat-var : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ 
           → coe (congÊl (nat-TI n r wA δ (<+r (sz td) bnd))) (MI (ren⊨ r wA) (ren⊢ r td) δ)
             ≡ MI wA td (envO n r δ (<+r (szT wA + szT wA) (<+r (sz td) bnd)))
 postulate
+  -- app naturality: the last naturality gap. Needs subTI-naturality (how substitution-in-type
+  -- commutes with env restriction) + coe-π̂ application of nat-MI(tf) + nat-MI(tu). Tightly coupled
+  -- with the still-postulated subTI (opaque), so closing it means de-postulating subTI/wkTI first.
   nat-app : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){A f u}(wA : Δc ⊨ A)
             (td : Δc ⊢ app f u ∷ A)(δ : CI Θc)(bnd : sz td + ((szT wA + szT wA) + szO r) < n)
             → coe (congÊl (nat-TI n r wA δ (<+r (sz td) bnd))) (MI (ren⊨ r wA) (ren⊢ r td) δ)
