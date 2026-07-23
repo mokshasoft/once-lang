@@ -42,6 +42,8 @@ n≤m+n (suc m) n = ≤-trans (n≤m+n m n) ≤-suc
 <sn p = ≤-trans p ≤-suc
 le-lt : ∀ {a b c} → a ≤ b → b < c → a < c
 le-lt p q = ≤-trans (s≤s p) q
+<≡ : ∀ {a a' n} → a ≡ a' → a < n → a' < n
+<≡ refl p = p
 
 data Empty : Set where
 record ⊤ : Set where
@@ -90,6 +92,10 @@ dsz (⊢app wΠ tf tu)          = suc (szT wΠ + (dsz tf + dsz tu))
 1≤dsz ⊢ff            = ≤-refl
 1≤dsz (⊢lam wA td)   = s≤s z≤n
 1≤dsz (⊢app wΠ tf tu) = s≤s z≤n
+szT-subst : ∀ {Γ}{Δ : Con Γ}{A A'}(eq : A ≡ A')(w : Δ ⊨ A) → szT (subst (λ z → Δ ⊨ z) eq w) ≡ szT w
+szT-subst refl w = refl
+renTy-wk⊑ : ∀ {Γ}(A : Ty Γ) → renTy ⌜ skip {Γ = Γ} idOPE ⌝ A ≡ renTy vs A
+renTy-wk⊑ A = trans (sym (renTy-renTy A)) (cong (renTy vs) (renTy-idOPE A))
 
 -- fuel-indexed interpretation.  CI is FUNCTION-ENCODED: the env value is a function of the
 -- (proof-irrelevant) TI bound, so CI n (Δ▷wA) is well-formed without a bound in scope.
@@ -140,16 +146,44 @@ TI-irr (suc m) (⊨Π wA wB) ρ b' b =
 TI-irr zero    (⊨𝕀 tb ⊨𝔹 wA wB) ρ b' ()
 TI-irr zero    (⊨Π wA wB)        ρ b' ()
 
--- wkTI, subTI postulated for this step (derived in Step 3).  Placed after CI's clauses so
--- CI n (Δ▷wA) reduces to the Σ in these signatures.
+-- TI transport helpers (bounds are --prop ⇒ irrelevant).
+congTI : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{A}(wA : Δ ⊨ A){δ δ' : CI n Δ}(p : δ ≡ δ'){b b'}
+         → TI n wA δ b ≡ TI n wA δ' b'
+congTI n wA refl = refl
+TI-wf-eq : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{A}{wA wA' : Δ ⊨ A}(p : wA ≡ wA')(δ : CI n Δ){b b'}
+           → TI n wA δ b ≡ TI n wA' δ b'
+TI-wf-eq n refl δ = refl
+TI-resp-eq : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{A A'}(eq : A ≡ A')(w : Δ ⊨ A)(δ : CI n Δ){b b'}
+             → TI n w δ b ≡ TI n (subst (λ z → Δ ⊨ z) eq w) δ b'
+TI-resp-eq n refl w δ = refl
+
+-- nat-TI/envO/envO-wk⊑ postulated (Step-3 bodies to port); subTI postulated (needs subst framework).
+-- nat-TI is measured by szT(ren⊨ r wA); envO restricts along an OPE.
 postulate
-  wkTI   : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C){A}(wA₀ : Δc ⊨ A)
-           (wA : (Δc ▷ wC) ⊨ renTy vs A)(ρ : CI n Δc)(vf : (b : szT wC < n) → Êl (TI n wC ρ b))
-           (bw : szT wA < n)(bw₀ : szT wA₀ < n) → TI n wA (ρ , vf) bw ≡ TI n wA₀ ρ bw₀
+  envO     : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc)(δ : CI n Θc) → CI n Δc
+  nat-TI   : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){A}(wA : Δc ⊨ A)(δ : CI n Θc)
+             (b1 : szT (ren⊨ r wA) < n)(b2 : szT wA < n)
+             → TI n (ren⊨ r wA) δ b1 ≡ TI n wA (envO n r δ) b2
+  envO-wk⊑ : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C)(ρ : CI n Δc)
+             (vf : (b : szT wC < n) → Êl (TI n wC ρ b)) → envO n (wk⊑ Δc wC) (ρ , vf) ≡ ρ
   subTI  : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C){B}(wB : (Δc ▷ wC) ⊨ B){u}
            (wS : Δc ⊨ subTy (single u) B)(tu : Δc ⊢ u ∷ C)(ρ : CI (suc n) Δc)
            (uf : (b : szT wC < n) → Êl (TI n wC (⇓ n ρ) b))(bS : szT wS < suc n)(bB : szT wB < n)
            → TI (suc n) wS ρ bS ≡ TI n wB (⇓ n ρ , uf) bB
+
+-- wkTI DERIVED (Step 3): ⊨-unique transport of wA to the wk⊑-weakening of wA₀, then nat-TI(wk⊑),
+-- then envO-wk⊑ collapses the restricted env back to ρ.
+wkTI : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C){A}(wA₀ : Δc ⊨ A)
+       (wA : (Δc ▷ wC) ⊨ renTy vs A)(ρ : CI n Δc)(vf : (b : szT wC < n) → Êl (TI n wC ρ b))
+       (bw : szT wA < n)(bw₀ : szT wA₀ < n) → TI n wA (ρ , vf) bw ≡ TI n wA₀ ρ bw₀
+wkTI n wC {A} wA₀ wA ρ vf bw bw₀ =
+  trans (TI-wf-eq n (⊨-unique wA W) (ρ , vf) {bw} {bW})
+  (trans (sym (TI-resp-eq n (renTy-wk⊑ A) (ren⊨ (wk⊑ _ wC) wA₀) (ρ , vf) {b1} {bW}))
+  (trans (nat-TI n (wk⊑ _ wC) wA₀ (ρ , vf) b1 bw₀)
+         (congTI n wA₀ (envO-wk⊑ n wC ρ vf) {bw₀} {bw₀})))
+  where W  = subst (λ z → _ ⊨ z) (renTy-wk⊑ A) (ren⊨ (wk⊑ _ wC) wA₀)
+        bW = <≡ (cong szT (⊨-unique wA W)) bw
+        b1 = <≡ (szT-subst (renTy-wk⊑ A) (ren⊨ (wk⊑ _ wC) wA₀)) bW
 
 -- MI (interpreter), fuel-indexed + bounded.  var via wkTI, app via subTI (postulated), lam decrements
 -- to fuel n; env values coerced across fuel by TI-irr.  Zero fuel ABSURD via (bt).
