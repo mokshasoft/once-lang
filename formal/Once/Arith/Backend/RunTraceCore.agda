@@ -31,7 +31,7 @@ open import Data.Nat using (ℕ; zero; suc)
 open import Data.List using (List; []; _∷_; _++_; take)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Product using (Σ; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.Behavior using (Behavior)
@@ -166,6 +166,18 @@ module RunTrace
   run-events-halted : ∀ ev env n prog s → halted s ≡ true
                     → run-events ev env (suc n) prog s ≡ []
   run-events-halted ev env n prog s h rewrite h = refl
+
+  -- FETCH-NONE: when the pc fetches nothing (past the program end), run-events
+  -- emits [] (the `run-events-fetch … nothing` branch — or [] directly if halted).
+  -- The concrete analogue of `flat-events-fetch nothing = []`; closes the program-
+  -- end (wp-end) case of events-agree. With-free (J-bridge on halted s).
+  run-events-fetch-none : ∀ ev env n prog s → fetch prog (pc s) ≡ nothing
+                        → run-events ev env (suc n) prog s ≡ []
+  run-events-fetch-none ev env n prog s ft = go (halted s) refl
+    where go : ∀ (b : Bool) → halted s ≡ b
+             → (if b then [] else run-events-fetch ev env n prog s (fetch prog (pc s))) ≡ []
+          go true  _ = refl
+          go false _ = cong (run-events-fetch ev env n prog s) ft
 
   -- ARITH block (`env lbl ≡ just pl`): dispatch the block, emit NO event, and
   -- advance to the dispatched post-state. (Pure ⇒ matches `flat-events`' `[]`.)
