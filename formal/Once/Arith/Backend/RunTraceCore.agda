@@ -153,3 +153,27 @@ module RunTrace
                      → run-events ev env (suc n) prog s ≡ run-events ev env n prog s'
   run-events-noncall ev env n prog s i hs ft mc ex
     rewrite hs | ft | mc | ex = refl
+
+  ----------------------------------------------------------------------
+  -- Per-step reductions at a SigOp `call-sym` (the two cases `run-events`
+  -- handles that `X.exec` cannot). These are what the `events-agree` induction
+  -- uses for the `instr-sigop` case.
+  ----------------------------------------------------------------------
+
+  -- ARITH block (`env lbl ≡ just pl`): dispatch the block, emit NO event, and
+  -- advance to the dispatched post-state. (Pure ⇒ matches `flat-events`' `[]`.)
+  run-events-arith : ∀ ev env n prog s i lbl pl
+                   → halted s ≡ false → fetch prog (pc s) ≡ just i
+                   → matchCall i ≡ just lbl → env lbl ≡ just pl
+                   → run-events ev env (suc n) prog s ≡ run-events ev env n prog (dispatchArith pl s)
+  run-events-arith ev env n prog s i lbl pl hs ft mc el
+    rewrite hs | ft | mc | el = refl
+
+  -- EXTERNAL SigOp (`env lbl ≡ nothing`): emit its event `ev lbl s` and continue
+  -- past the call. (Matches `flat-events`' `machine-event si` via the contract.)
+  run-events-external : ∀ ev env n prog s i lbl
+                      → halted s ≡ false → fetch prog (pc s) ≡ just i
+                      → matchCall i ≡ just lbl → env lbl ≡ nothing
+                      → run-events ev env (suc n) prog s ≡ ev lbl s ++ run-events ev env n prog (ret-past s)
+  run-events-external ev env n prog s i lbl hs ft mc el
+    rewrite hs | ft | mc | el = refl
