@@ -137,3 +137,19 @@ module RunTrace
   run-events-[] ev env prog H (suc n) s | false | just i | nothing with execInstr prog s i
   ...       | nothing  = refl
   ...       | just s'  = run-events-[] ev env prog H n s'
+
+  ----------------------------------------------------------------------
+  -- Per-step bridge for a NON-call instruction: one `run-events` step over an
+  -- ordinary instruction (`matchCall i ≡ nothing`) emits NO event and advances
+  -- to `execInstr`'s post-state — i.e. it behaves exactly as the plain execInstr
+  -- loop (`X.exec`) does, with an empty event contribution. This is what lets
+  -- the recovered `X.exec`-based `block-step`s (which cover the call-free
+  -- CCC-structural blocks) be reused inside the `run-events` induction:
+  -- `run-events` IS the machine, `X.exec` is its call-free sub-engine.
+  ----------------------------------------------------------------------
+  run-events-noncall : ∀ ev env n prog s i {s'}
+                     → halted s ≡ false → fetch prog (pc s) ≡ just i
+                     → matchCall i ≡ nothing → execInstr prog s i ≡ just s'
+                     → run-events ev env (suc n) prog s ≡ run-events ev env n prog s'
+  run-events-noncall ev env n prog s i hs ft mc ex
+    rewrite hs | ft | mc | ex = refl
