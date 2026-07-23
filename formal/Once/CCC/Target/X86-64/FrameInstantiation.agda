@@ -213,8 +213,8 @@ x86-frame-disjoint-with-capacity f₁ f₂ k₁ k₂ capacity f₁<f₂ k₁<cap
 -- X86-64 FrameSemantics Instance
 ------------------------------------------------------------------------
 
-x86v3-frame-semantics : FrameSemantics
-x86v3-frame-semantics = record
+x86-64-frame-semantics : FrameSemantics
+x86-64-frame-semantics = record
   { Frame = X86Frame
   ; _≟F_ = _x86-≟F_
   ; frame-base = x86-frame-base
@@ -232,7 +232,7 @@ x86v3-frame-semantics = record
 -- Convenience Re-exports
 ------------------------------------------------------------------------
 
-open FrameSemantics x86v3-frame-semantics public
+open FrameSemantics x86-64-frame-semantics public
   renaming ( Frame to X86-64-Frame
            ; frame-base to X86-64-frame-base
            ; slot-addr to X86-64-slot-addr
