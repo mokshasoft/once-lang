@@ -364,11 +364,6 @@ nat-var : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ 
           → coe (congÊl (nat-TI n r wA δ (<+r (sz td) bnd))) (MI (ren⊨ r wA) (ren⊢ r td) δ)
             ≡ MI wA td (envO n r δ (<+r (szT wA + szT wA) (<+r (sz td) bnd)))
 postulate
-  nat-var-rest : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){x A}(wA : Δc ⊨ A)
-          (td : Δc ⊢ var x ∷ A)(δ : CI Θc)(bnd : sz td + ((szT wA + szT wA) + szO r) < n)
-          → coe (congÊl (nat-TI n r wA δ (<+r (sz td) bnd))) (MI (ren⊨ r wA) (ren⊢ r td) δ)
-            ≡ MI wA td (envO n r δ (<+r (szT wA + szT wA) (<+r (sz td) bnd)))
-
   nat-app : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){A f u}(wA : Δc ⊨ A)
             (td : Δc ⊢ app f u ∷ A)(δ : CI Θc)(bnd : sz td + ((szT wA + szT wA) + szO r) < n)
             → coe (congÊl (nat-TI n r wA δ (<+r (sz td) bnd))) (MI (ren⊨ r wA) (ren⊢ r td) δ)
@@ -572,7 +567,39 @@ nat-var (suc n) {Θc = Θ} (keep r' w) wB' (⊢vs wA wR td) (ρ , v) bnd =
                       (≤-unsuc bnd)
     rec     = nat-var n r' wA td ρ bnd-rec
     Meq     = trans (sym (coe-sym2 nat-rec M)) (cong (coe c2) rec)
-nat-var n r wA td δ bnd = nat-var-rest n r wA td δ bnd
+nat-var (suc n) {Θc = Θ} (skip r' w) wB' (⊢vs wA wR td) (ρ , v) bnd =
+  trans (cong (coe c5) (MI-subst (renTy-renTy (renTy vs _)) (ren⊨ (skip r' w) wB') Wsrc dvs (ρ , v)))
+        (trans (cong (λ z → coe c5 (coe c4 (coe c3 z))) Meq)
+               (trans (coe4≡coe1 c2 c3 c4 c5 wfbridge T)
+                      (MI-wf-irr-coe (⊨-unique wR wB') (⊢vs wA wR td) g)))
+  where
+    g        = envO n r' ρ _
+    dvs      = ⊢vs (ren⊨ r' wR)
+                   (subst (λ z → Θ ⊨ z) (sym (renTy-renTy (renTy vs _))) (ren⊨ (skip r' w) wR))
+                   (ren⊢ r' (⊢vs wA wR td))
+    Wsrc     = subst (λ z → Θ ⊨ z) (sym (renTy-renTy (renTy vs _))) (ren⊨ (skip r' w) wB')
+    M        = MI (ren⊨ r' wR) (ren⊢ r' (⊢vs wA wR td)) ρ
+    T        = MI wR (⊢vs wA wR td) g
+    szeq2    = cong (λ k → k + k) (cong szT (⊨-unique wR wB'))
+    bub      = trans (cong (sz td +_) (+-suc (szT wB' + szT wB') (szT w + szT w + szO r')))
+                     (+-suc (sz td) (szT wB' + szT wB' + (szT w + szT w + szO r')))
+    bnd-rec  = ≤-trans (s≤s (≤≡r (sym bub)
+                              (s≤s (+-mono (≤-refl {sz td})
+                                     (+-mono (≤≡r szeq2 ≤-refl) (n≤m+n (szT w + szT w) (szO r')))))))
+                       (≤-unsuc bnd)
+    rec      = nat-var n r' wR (⊢vs wA wR td) ρ bnd-rec
+    nat-rec  = congÊl (nat-TI n r' wR ρ _)
+    c2       = sym nat-rec
+    c3       = congÊl (sym (wkTI w (ren⊨ r' wR) Wsrc ρ v))
+    Pms      = trans (TI-resp-eq (renTy-renTy (renTy vs _)) Wsrc (ρ , v))
+                     (cong (λ w₁ → TI w₁ (ρ , v))
+                           (⊨-unique (subst (λ z → Θ ⊨ z) (renTy-renTy (renTy vs _)) Wsrc)
+                                     (ren⊨ (skip r' w) wB')))
+    c4       = congÊl Pms
+    c5       = congÊl (nat-TI (suc n) (skip r' w) wB' (ρ , v) _)
+    wfbridge = congÊl (cong (λ w₁ → TI w₁ g) (⊨-unique wR wB'))
+    Meq      = trans (sym (coe-sym2 nat-rec M)) (cong (coe c2) rec)
+nat-var zero r wA td δ ()
 
 consistency : ∀ {t} → ε ⊢ t ∷ ⊥̇ → Empty
 consistency td = MI ⊨⊥ td ⋆
