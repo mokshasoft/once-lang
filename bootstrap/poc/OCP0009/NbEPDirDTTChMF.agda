@@ -66,11 +66,32 @@ coe refl a = a
 congÊl : ∀ {c d} → c ≡ d → Êl c ≡ Êl d
 congÊl refl = refl
 postulate funext : ∀ {a b}{A : Set a}{B : A → Set b}{f g : (x : A) → B x} → (∀ x → f x ≡ g x) → f ≡ g
+-- Prop-domain function extensionality (the env value-functions have a Prop bound as domain).
+postulate funextP : ∀ {b}{A : Prop}{B : A → Set b}{f g : (x : A) → B x} → (∀ x → f x ≡ g x) → f ≡ g
 Ifᵁ-cong : ∀ {b b'}{c c' d d'} → b ≡ b' → c ≡ c' → d ≡ d' → Ifᵁ b c d ≡ Ifᵁ b' c' d'
 Ifᵁ-cong refl refl refl = refl
 π̂-cong : ∀ {a a'}{b : Êl a → Û}{b' : Êl a' → Û}(p : a ≡ a')
          → (∀ x → b x ≡ b' (coe (congÊl p) x)) → π̂ a b ≡ π̂ a' b'
 π̂-cong refl q = cong (π̂ _) (funext q)
+uip' : ∀ {a}{A : Set a}{x y : A}(p q : x ≡ y) → p ≡ q
+uip' refl refl = refl
+coe-trans : ∀ {A B C : Set}(p : A ≡ B)(q : B ≡ C)(x : A) → coe q (coe p x) ≡ coe (trans p q) x
+coe-trans refl refl x = refl
+congÊl-trans : ∀ {a b c}(p : a ≡ b)(q : b ≡ c) → congÊl (trans p q) ≡ trans (congÊl p) (congÊl q)
+congÊl-trans refl refl = refl
+subst≡coe : ∀ {A : Set}{B : A → Set}{a a'}(p : a ≡ a')(y : B a) → subst B p y ≡ coe (cong B p) y
+subst≡coe refl y = refl
+subst-app : ∀ {A : Set}(P : A → Set)(g : (z : A) → P z){w x : A}(q : w ≡ x)
+            → subst P q (g w) ≡ g x
+subst-app P g refl = refl
+-- dependent Σ-equality: equal firsts (p) + second transported (q) ⇒ pair equal.
+pair-≡ : ∀ {A : Set}{B : A → Set}{a a' : A}{b : B a}{b' : B a'}(p : a ≡ a')
+         → subst B p b ≡ b' → (a , b) ≡ (a' , b')
+pair-≡ refl refl = refl
+-- subst over a Π commutes with the λ (pointwise).
+subst-Π : ∀ {A : Set}{B : Prop}{C : A → B → Set}{a a'}(q : a ≡ a')(fn : (b : B) → C a b)
+          → subst (λ e → (b : B) → C e b) q fn ≡ (λ b → subst (λ e → C e b) q (fn b))
+subst-Π refl fn = refl
 
 -- measures
 szT : ∀ {Γ}{Δ : Con Γ}{A} → Δ ⊨ A → Nat
@@ -226,6 +247,11 @@ envO     : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[
 nat-TI   : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){A}(wA : Δc ⊨ A)(δ : CI n Θc)
            (b1 : szT (ren⊨ r wA) + szCon Θc < n)(b2 : szT wA + szCon Δc < n)(bO : szCon Θc < n)
            → TI n (ren⊨ r wA) δ b1 ≡ TI n wA (envO n r δ bO) b2
+nat-TI-Π : (m : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){A B}(wA : Δc ⊨ A)
+           (wB : (Δc ▷ wA) ⊨ B)(δ : CI (suc m) Θc)
+           (b1 : szT (ren⊨ r (⊨Π wA wB)) + szCon Θc < suc m)(b2 : szT (⊨Π wA wB) + szCon Δc < suc m)
+           (bO : szCon Θc < suc m)
+           → TI (suc m) (ren⊨ r (⊨Π wA wB)) δ b1 ≡ TI (suc m) (⊨Π wA wB) (envO (suc m) r δ bO) b2
 postulate
   nat-MI   : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){t A}(wA : Δc ⊨ A)
              (td : Δc ⊢ t ∷ A)(δ : CI n Θc)
@@ -239,11 +265,6 @@ postulate
   envO-⇓   : (m : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc)(δ : CI (suc m) Θc)
              (bO : szCon Θc < suc m)(bO' : szCon Θc < m)
              → envO m r (⇓ m δ) bO' ≡ ⇓ m (envO (suc m) r δ bO)
-  nat-TI-Π : (m : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){A B}(wA : Δc ⊨ A)
-             (wB : (Δc ▷ wA) ⊨ B)(δ : CI (suc m) Θc)
-             (b1 : szT (ren⊨ r (⊨Π wA wB)) + szCon Θc < suc m)(b2 : szT (⊨Π wA wB) + szCon Δc < suc m)
-             (bO : szCon Θc < suc m)
-             → TI (suc m) (ren⊨ r (⊨Π wA wB)) δ b1 ≡ TI (suc m) (⊨Π wA wB) (envO (suc m) r δ bO) b2
   subTI  : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C){B}(wB : (Δc ▷ wC) ⊨ B){u}
            (wS : Δc ⊨ subTy (single u) B)(tu : Δc ⊢ u ∷ C)(ρ : CI (suc n) Δc)
            (uf : (b : szT wC + szCon Δc < n) → Êl (TI n wC (⇓ n ρ) b))
@@ -280,6 +301,38 @@ nat-TI (suc m) r (⊨𝕀 tb ⊨𝔹 wA wB) δ b1 b2 bO =
 nat-TI (suc m) r (⊨Π wA wB)       δ b1 b2 bO = nat-TI-Π m r wA wB δ b1 b2 bO
 nat-TI zero    r (⊨𝕀 tb ⊨𝔹 wA wB) δ () b2 bO
 nat-TI zero    r (⊨Π wA wB)       δ () b2 bO
+
+nat-TI-Π m {Δc = Δc} {Θc = Θc} r wA wB δ b1 b2 bO = π̂-cong domeq codeq
+  where wRA  = ren⊨ r wA
+        wRB  = ren⊨ (keep r wA) wB
+        db1  = sub-bnd< (szTΠl< wRA wRB) b1                  -- szT(ren⊨ r wA)+szCon Θc < m
+        db2  = sub-bnd< (szTΠl< wA wB) b2                    -- szT wA+szCon Δc < m
+        dbO  = sub-bnd< (1≤szT (ren⊨ r (⊨Π wA wB))) b1       -- szCon Θc < m
+        domeq = trans (nat-TI m r wA (⇓ m δ) db1 db2 dbO) (congTI m wA (envO-⇓ m r δ bO dbO))
+        cb1  = <≡ (trans (cong (_+ szCon Θc) (+-comm (szT wRA) (szT wRB))) (+-assoc (szT wRB) (szT wRA) (szCon Θc)))
+                  (<-inv b1)
+        cb2  = <≡ (trans (cong (_+ szCon Δc) (+-comm (szT wA) (szT wB))) (+-assoc (szT wB) (szT wA) (szCon Δc)))
+                  (<-inv b2)
+        goalenv : ∀ x → _≡_ {A = CI m (Δc ▷ wA)}
+                          (envO m (keep r wA) (⇓ m δ , λ _ → x) db1)
+                          (⇓ m (envO (suc m) r δ bO) , λ _ → coe (congÊl domeq) x)
+        goalenv x = pair-≡ (envO-⇓ m r δ bO dbO)
+                      (trans (subst-Π {C = λ e b → Êl (TI m wA e b)} (envO-⇓ m r δ bO dbO)
+                                      (λ b → coe (congÊl (nat-TI m r wA (⇓ m δ) db1 db2 dbO)) x))
+                             (funextP (λ b →
+                               trans (subst≡coe {B = λ e → Êl (TI m wA e b)} (envO-⇓ m r δ bO dbO)
+                                                (coe (congÊl (nat-TI m r wA (⇓ m δ) db1 db2 dbO)) x))
+                               (trans (cong (λ e → coe e (coe (congÊl (nat-TI m r wA (⇓ m δ) db1 db2 dbO)) x))
+                                            (uip' (cong (λ e → Êl (TI m wA e b)) (envO-⇓ m r δ bO dbO))
+                                                  (congÊl (congTI m wA (envO-⇓ m r δ bO dbO)))))
+                               (trans (coe-trans (congÊl (nat-TI m r wA (⇓ m δ) db1 db2 dbO))
+                                                 (congÊl (congTI m wA (envO-⇓ m r δ bO dbO))) x)
+                                      (cong (λ e → coe e x)
+                                            (sym (congÊl-trans (nat-TI m r wA (⇓ m δ) db1 db2 dbO)
+                                                               (congTI m wA (envO-⇓ m r δ bO dbO))))))))))
+        codeq : ∀ x → _ ≡ _
+        codeq x = trans (nat-TI m (keep r wA) wB (⇓ m δ , λ _ → x) cb1 cb2 db1)
+                        (congTI m wB (goalenv x))
 
 -- wkTI DERIVED (Step 3): ⊨-unique transport of wA to the wk⊑-weakening of wA₀, then nat-TI(wk⊑),
 -- then envO-wk⊑ collapses the restricted env back to ρ.
