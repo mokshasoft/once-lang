@@ -26,6 +26,8 @@ m < n = suc m ≤ n
 ≤-suc : ∀ {n} → n ≤ suc n
 ≤-suc {zero}  = z≤n
 ≤-suc {suc n} = s≤s ≤-suc
+<-weaken : ∀ {m n} → m < n → m ≤ n
+<-weaken (s≤s p) = ≤-trans p ≤-suc
 m≤m+n : (m n : Nat) → m ≤ m + n
 m≤m+n zero    n = z≤n
 m≤m+n (suc m) n = s≤s (m≤m+n m n)
@@ -36,6 +38,10 @@ n≤m+n (suc m) n = ≤-trans (n≤m+n m n) ≤-suc
 <+l a {b} bnd = ≤-trans (s≤s (m≤m+n a b)) bnd
 <+r : ∀ a {b n} → a + b < n → b < n
 <+r a {b} bnd = ≤-trans (s≤s (n≤m+n a b)) bnd
+<sn : ∀ {a n} → a < n → a < suc n
+<sn p = ≤-trans p ≤-suc
+le-lt : ∀ {a b c} → a ≤ b → b < c → a < c
+le-lt p q = ≤-trans (s≤s p) q
 
 data Empty : Set where
 record ⊤ : Set where
@@ -93,10 +99,10 @@ TI : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{A}(wA : Δ ⊨ A) → CI n Δ → szT w
 -- TI-irr (fuel-restriction irrelevance) is REAL (defined below, mutual with TI/⇓).
 TI-irr : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{A}(wA : Δ ⊨ A)(ρ : CI (suc n) Δ)(b' : szT wA < suc n)(b : szT wA < n)
          → TI (suc n) wA ρ b' ≡ TI n wA (⇓ n ρ) b
--- MI (interpreter) + MI-irr postulated for this step; defined in step 2.
+-- MI (interpreter) is REAL (defined below, Step 2), mutual with TI/⇓/TI-irr.
+MI     : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{t A}(wA : Δ ⊨ A)(td : Δ ⊢ t ∷ A)(ρ : CI n Δ)
+         (bt : dsz td < n)(bw : szT wA < n) → Êl (TI n wA ρ bw)
 postulate
-  MI     : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{t A}(wA : Δ ⊨ A)(td : Δ ⊢ t ∷ A)(ρ : CI n Δ)
-           (bt : dsz td < n)(bw : szT wA < n) → Êl (TI n wA ρ bw)
   MI-irr : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{t A}(wA : Δ ⊨ A)(td : Δ ⊢ t ∷ A)(ρ : CI (suc n) Δ)
            (bt' : dsz td < suc n)(bw' : szT wA < suc n)(bt : dsz td < n)(bw : szT wA < n)
            → coe (congÊl (TI-irr n wA ρ bw' bw)) (MI (suc n) wA td ρ bt' bw') ≡ MI n wA td (⇓ n ρ) bt bw
@@ -133,6 +139,46 @@ TI-irr (suc m) (⊨Π wA wB) ρ b' b =
          (λ x → TI-irr m wB (⇓ (suc m) ρ , λ _ → x) _ _)
 TI-irr zero    (⊨𝕀 tb ⊨𝔹 wA wB) ρ b' ()
 TI-irr zero    (⊨Π wA wB)        ρ b' ()
+
+-- wkTI, subTI postulated for this step (derived in Step 3).  Placed after CI's clauses so
+-- CI n (Δ▷wA) reduces to the Σ in these signatures.
+postulate
+  wkTI   : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C){A}(wA₀ : Δc ⊨ A)
+           (wA : (Δc ▷ wC) ⊨ renTy vs A)(ρ : CI n Δc)(vf : (b : szT wC < n) → Êl (TI n wC ρ b))
+           (bw : szT wA < n)(bw₀ : szT wA₀ < n) → TI n wA (ρ , vf) bw ≡ TI n wA₀ ρ bw₀
+  subTI  : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C){B}(wB : (Δc ▷ wC) ⊨ B){u}
+           (wS : Δc ⊨ subTy (single u) B)(tu : Δc ⊢ u ∷ C)(ρ : CI (suc n) Δc)
+           (uf : (b : szT wC < n) → Êl (TI n wC (⇓ n ρ) b))(bS : szT wS < suc n)(bB : szT wB < n)
+           → TI (suc n) wS ρ bS ≡ TI n wB (⇓ n ρ , uf) bB
+
+-- MI (interpreter), fuel-indexed + bounded.  var via wkTI, app via subTI (postulated), lam decrements
+-- to fuel n; env values coerced across fuel by TI-irr.  Zero fuel ABSURD via (bt).
+MI (suc n) wA' (⊢vz {wA = wA} wR) (ρ , vf) bt bw =
+  coe (congÊl (sym (wkTI (suc n) wA wA wA' ρ vf bw bw₀))) (vf bw₀)
+  where bw₀ = <sn (<+l (szT wA) (<-inv bt))
+MI (suc n) wA' (⊢vs {wB = wB} wA wR td) (ρ , vf) bt bw =
+  coe (congÊl (sym (wkTI (suc n) wB wA wA' ρ vf bw bwA))) (MI (suc n) wA td ρ btd bwA)
+  where btd = <sn (<+r (szT wR) (<+r (szT wB + szT wA) (<-inv bt)))
+        bwA = <sn (<+r (szT wB) (<+l (szT wB + szT wA) (<-inv bt)))
+MI (suc n) ⊨𝔹 ⊢tt ρ bt bw = 1₂
+MI (suc n) ⊨𝔹 ⊢ff ρ bt bw = 0₂
+MI (suc n) (⊨Π wA wB) (⊢lam wA' td) ρ bt bw with ⊨-unique wA' wA
+... | refl = λ x → MI n wB td (⇓ n ρ , λ _ → x) btd bB
+  where btd = <+r (szT wA) (<-inv bt)
+        bB  = <+r (szT wA) (<-inv bw)
+MI (suc n) wA (⊢app wΠ@(⊨Π wA' wB) tf tu) ρ bt bw =
+  coe (congÊl (sym (subTI n wA' wB wA tu ρ uf bw bB)))
+      (MI (suc n) wΠ tf ρ btf bΠ
+        (coe (congÊl (TI-irr n wA' ρ bA' bA'n)) (MI (suc n) wA' tu ρ btu bA')))
+  where bΠ  = <sn (<+l (szT wΠ) (<-inv bt))
+        btf = <sn (<+l (dsz tf) (<+r (szT wΠ) (<-inv bt)))
+        btu = <sn (<+r (dsz tf) (<+r (szT wΠ) (<-inv bt)))
+        bΠn  = <+l (szT wΠ) (<-inv bt)                                       -- szT wΠ < n
+        bA'n = ≤-trans (s≤s (m≤m+n (szT wA') (szT wB))) (<-weaken bΠn)       -- szT wA' < n
+        bA'  = <sn bA'n
+        bB   = ≤-trans (s≤s (n≤m+n (szT wA') (szT wB))) (<-weaken bΠn)       -- szT wB < n
+        uf   = λ b → coe (congÊl (TI-irr n wA' ρ (<sn b) b)) (MI (suc n) wA' tu ρ btu (<sn b))
+MI zero wA td ρ () bw
 
 consistency : ∀ {t} → ε ⊢ t ∷ ⊥̇ → Empty
 consistency td = MI (suc (dsz td)) ⊨⊥ td ⋆ ≤-refl (s≤s (1≤dsz td))
