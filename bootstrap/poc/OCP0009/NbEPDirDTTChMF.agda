@@ -461,20 +461,17 @@ MI (suc n) {Δ = Δ} (⊨Π wA wB) (⊢lam wA' td) ρ bt bw with ⊨-unique wA' 
         bB  = <≡ (trans (cong (_+ szCon Δ) (+-comm (szT wA) (szT wB))) (+-assoc (szT wB) (szT wA) (szCon Δ))) (<-inv bw)
 MI (suc n) {Δ = Δ} wA (⊢app wΠ@(⊨Π wA' wB) tf tu) ρ bt bw =
   coe (congÊl (sym (subTI n wA' wB wA tu ρ uf bw bB)))
-      (MI (suc n) wΠ tf ρ btf bΠ
-        (coe (congÊl (TI-irr n wA' ρ bA' bA'n)) (MI (suc n) wA' tu ρ btu bA')))
+      (MI (suc n) wΠ tf ρ btf bΠ (MI n wA' tu (⇓ n ρ) btun bA'n))
   where q     = <-inv bt
         Π≤    = m≤m+n (szT wΠ) (dsz tf + dsz tu)                              -- szT wΠ ≤ szT wΠ+(tf+tu)
         A'≤Π  = ≤-trans (m≤m+n (szT wA') (szT wB)) ≤-suc                       -- szT wA' ≤ szT wΠ
-        B≤Π   = ≤-trans (n≤m+n (szT wA') (szT wB)) ≤-suc                       -- szT wB ≤ szT wΠ
         bΠ    = +mono< (≤-trans Π≤ ≤-suc) ≤-refl bt
         btf   = +mono< (≤-trans (m≤m+n (dsz tf) (dsz tu)) (≤-trans (n≤m+n (szT wΠ) _) ≤-suc)) ≤-refl bt
-        btu   = +mono< (≤-trans (n≤m+n (dsz tf) (dsz tu)) (≤-trans (n≤m+n (szT wΠ) _) ≤-suc)) ≤-refl bt
-        bA'   = +mono< (≤-trans A'≤Π (≤-trans Π≤ ≤-suc)) ≤-refl bt
+        btun  = +mono< (≤-trans (n≤m+n (dsz tf) (dsz tu)) (n≤m+n (szT wΠ) _)) ≤-refl q
         bA'n  = +mono< (≤-trans A'≤Π Π≤) ≤-refl q
         bB    = <≡ (trans (cong (_+ szCon Δ) (+-comm (szT wA') (szT wB))) (+-assoc (szT wB) (szT wA') (szCon Δ)))
                    (+mono< (≤-trans ≤-suc Π≤) ≤-refl q)
-        uf    = λ b → coe (congÊl (TI-irr n wA' ρ (<sn b) b)) (MI (suc n) wA' tu ρ btu (<sn b))
+        uf    = λ b → MI n wA' tu (⇓ n ρ) btun b
 MI zero wA td ρ () bw
 
 consistency : ∀ {t} → ε ⊢ t ∷ ⊥̇ → Empty
