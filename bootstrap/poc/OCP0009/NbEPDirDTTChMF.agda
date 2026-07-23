@@ -100,10 +100,6 @@ szT-subst refl w = refl
 szCon : ∀ {Γ} → Con Γ → Nat
 szCon ε        = zero
 szCon (Δ ▷ wA) = szT wA + szCon Δ
-szOR : ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o} → Δc ⊑[ o ] Θc → Nat
-szOR done        = zero
-szOR (keep r wA) = suc (szT (ren⊨ r wA) + szOR r)
-szOR (skip r wB) = suc (szOR r)
 <-pred : ∀ {a n} → suc a < n → a < n
 <-pred p = ≤-trans ≤-suc p
 ≤-unsuc : ∀ {a b} → suc a ≤ suc b → a ≤ b
@@ -217,21 +213,29 @@ TI-resp-eq n refl w δ = refl
 
 -- nat-TI/envO/envO-wk⊑ postulated (Step-3 bodies to port); subTI postulated (needs subst framework).
 -- nat-TI is measured by szT(ren⊨ r wA); envO restricts along an OPE.
+-- envO (env restriction along an OPE) is REAL (below); nat-TI/envO-wk⊑/subTI postulated.
+envO     : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc)(δ : CI n Θc)
+           (bO : szCon Θc < n) → CI n Δc
 postulate
-  envO     : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc)(δ : CI n Θc)
-             (bO : szOR r < n) → CI n Δc
   nat-TI   : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){A}(wA : Δc ⊨ A)(δ : CI n Θc)
-             (b1 : szT (ren⊨ r wA) + szCon Θc < n)(b2 : szT wA + szCon Δc < n)(bO : szOR r < n)
+             (b1 : szT (ren⊨ r wA) + szCon Θc < n)(b2 : szT wA + szCon Δc < n)(bO : szCon Θc < n)
              → TI n (ren⊨ r wA) δ b1 ≡ TI n wA (envO n r δ bO) b2
   envO-wk⊑ : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C)(ρ : CI n Δc)
-             (vf : (b : szT wC + szCon Δc < n) → Êl (TI n wC ρ b))(bO : szOR (wk⊑ Δc wC) < n)
+             (vf : (b : szT wC + szCon Δc < n) → Êl (TI n wC ρ b))(bO : szCon (Δc ▷ wC) < n)
              → envO n (wk⊑ Δc wC) (ρ , vf) bO ≡ ρ
-  szOR-id≤ : ∀ {Γ}(Δc : Con Γ) → szOR (id⊑ Δc) ≤ szCon Δc
   subTI  : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C){B}(wB : (Δc ▷ wC) ⊨ B){u}
            (wS : Δc ⊨ subTy (single u) B)(tu : Δc ⊢ u ∷ C)(ρ : CI (suc n) Δc)
            (uf : (b : szT wC + szCon Δc < n) → Êl (TI n wC (⇓ n ρ) b))
            (bS : szT wS + szCon Δc < suc n)(bB : szT wB + szCon (Δc ▷ wC) < n)
            → TI (suc n) wS ρ bS ≡ TI n wB (⇓ n ρ , uf) bB
+
+-- envO body: structural on the OPE.  keep coerces the top env value via nat-TI (b1 = bO exactly);
+-- skip drops it.  The codomain-context bound szCon Θc < n threads by <+r.
+envO n done       δ        bO = δ
+envO n (keep r wA) (δ , xf) bO =
+  envO n r δ (<+r (szT (ren⊨ r wA)) bO) ,
+  (λ b → coe (congÊl (nat-TI n r wA δ bO b (<+r (szT (ren⊨ r wA)) bO))) (xf bO))
+envO n (skip r wB) (δ , x)  bO = envO n r δ (<+r (szT wB) bO)
 
 -- wkTI DERIVED (Step 3): ⊨-unique transport of wA to the wk⊑-weakening of wA₀, then nat-TI(wk⊑),
 -- then envO-wk⊑ collapses the restricted env back to ρ.
@@ -247,7 +251,7 @@ wkTI n wC {A} wA₀ wA ρ vf bw bw₀ =
   where W  = subst (λ z → _ ⊨ z) (renTy-wk⊑ A) (ren⊨ (wk⊑ _ wC) wA₀)
         bW = <≡ (cong (_+ szCon (_ ▷ wC)) (cong szT (⊨-unique wA W))) bw
         b1 = <≡ (cong (_+ szCon (_ ▷ wC)) (szT-subst (renTy-wk⊑ A) (ren⊨ (wk⊑ _ wC) wA₀))) bW
-        bO = ≤-trans (s≤s (s≤s (szOR-id≤ _))) (le-lt (+-mono (1≤szT wA₀) ≤-refl) bw₀)
+        bO = <+r (szT wA) bw
 
 -- MI (interpreter), fuel-indexed + bounded.  var via wkTI, app via subTI (postulated), lam decrements
 -- to fuel n; env values coerced across fuel by TI-irr.  Zero fuel ABSURD via (bt).
