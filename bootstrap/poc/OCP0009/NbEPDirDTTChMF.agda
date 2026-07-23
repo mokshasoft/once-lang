@@ -94,6 +94,18 @@ dsz (⊢app wΠ tf tu)          = suc (szT wΠ + (dsz tf + dsz tu))
 1≤dsz (⊢app wΠ tf tu) = s≤s z≤n
 szT-subst : ∀ {Γ}{Δ : Con Γ}{A A'}(eq : A ≡ A')(w : Δ ⊨ A) → szT (subst (λ z → Δ ⊨ z) eq w) ≡ szT w
 szT-subst refl w = refl
+-- context size and renamed-OPE size (for the context/naturality bounds).
+-- NOTE: szCon has NO leading suc — that is what makes the COMBINED bound (szT wA + szCon Δ < n)
+-- decrement STRICTLY through the ⊢lam case (context grows by szT wA while dsz shrinks by ≥ suc).
+szCon : ∀ {Γ} → Con Γ → Nat
+szCon ε        = zero
+szCon (Δ ▷ wA) = szT wA + szCon Δ
+szOR : ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o} → Δc ⊑[ o ] Θc → Nat
+szOR done        = zero
+szOR (keep r wA) = suc (szT (ren⊨ r wA) + szOR r)
+szOR (skip r wB) = suc (szOR r)
+<-pred : ∀ {a n} → suc a < n → a < n
+<-pred p = ≤-trans ≤-suc p
 renTy-wk⊑ : ∀ {Γ}(A : Ty Γ) → renTy ⌜ skip {Γ = Γ} idOPE ⌝ A ≡ renTy vs A
 renTy-wk⊑ A = trans (sym (renTy-renTy A)) (cong (renTy vs) (renTy-idOPE A))
 
