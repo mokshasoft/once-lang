@@ -87,6 +87,9 @@ subst≡coe refl y = refl
 subst-app : ∀ {A : Set}(P : A → Set)(g : (z : A) → P z){w x : A}(q : w ≡ x)
             → subst P q (g w) ≡ g x
 subst-app P g refl = refl
+-- Prop-valued transport (the szCon bound is Prop, so ordinary subst won't carry it).
+substP : ∀ {a}{A : Set a}{x y : A}(P : A → Prop)(eq : x ≡ y) → P x → P y
+substP P refl p = p
 -- dependent Σ-equality: equal firsts (p) + second transported (q) ⇒ pair equal.
 pair-≡ : ∀ {A : Set}{B : A → Set}{a a' : A}{b : B a}{b' : B a'}(p : a ≡ a')
          → subst B p b ≡ b' → (a , b) ≡ (a' , b')
@@ -258,6 +261,12 @@ nat-TI-Π : (m : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑
 envO-⇓   : (m : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc)(δ : CI (suc m) Θc)
            (bO : szCon Θc < suc m)(bO' : szCon Θc < m)
            → envO m r (⇓ m δ) bO' ≡ ⇓ m (envO (suc m) r δ bO)
+-- envO commutes with a subst on the OPE's codomain context (peels id⊑'s subst).
+envO-substcod : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{o}{Θ Θ' : Con Δ}(ceq : Θ ≡ Θ')
+                (r : Δc ⊑[ o ] Θ)(δ : CI n Θ')(b : szCon Θ' < n)
+                → envO n (subst (λ Z → Δc ⊑[ o ] Z) ceq r) δ b
+                  ≡ envO n r (subst (CI n) (sym ceq) δ) (substP (λ Z → szCon Z < n) (sym ceq) b)
+envO-id  : (n : Nat) → ∀ {Γ}(Δc : Con Γ)(ρ : CI n Δc)(b : szCon Δc < n) → envO n (id⊑ Δc) ρ b ≡ ρ
 postulate
   nat-MI   : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){t A}(wA : Δc ⊨ A)
              (td : Δc ⊢ t ∷ A)(δ : CI n Θc)
@@ -265,9 +274,6 @@ postulate
              (bd1 : dsz (ren⊢ r td) + szCon Θc < n)(bd2 : dsz td + szCon Δc < n)
              → coe (congÊl (nat-TI n r wA δ b1 b2 bO)) (MI n (ren⊨ r wA) (ren⊢ r td) δ bd1 b1)
                ≡ MI n wA td (envO n r δ bO) bd2 b2
-  envO-wk⊑ : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C)(ρ : CI n Δc)
-             (vf : (b : szT wC + szCon Δc < n) → Êl (TI n wC ρ b))(bO : szCon (Δc ▷ wC) < n)
-             → envO n (wk⊑ Δc wC) (ρ , vf) bO ≡ ρ
   subTI  : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C){B}(wB : (Δc ▷ wC) ⊨ B){u}
            (wS : Δc ⊨ subTy (single u) B)(tu : Δc ⊢ u ∷ C)(ρ : CI (suc n) Δc)
            (uf : (b : szT wC + szCon Δc < n) → Êl (TI n wC (⇓ n ρ) b))
@@ -281,6 +287,62 @@ envO n (keep r wA) (δ , xf) bO =
   envO n r δ (<+r (szT (ren⊨ r wA)) bO) ,
   (λ b → coe (congÊl (nat-TI n r wA δ bO b (<+r (szT (ren⊨ r wA)) bO))) (xf bO))
 envO n (skip r wB) (δ , x)  bO = envO n r δ (<+r (szT wB) bO)
+
+envO-substcod n refl r δ b = refl
+
+-- The top-value type of CI, as a function of the packaged (type, wf) Σ — lets a single subst
+-- transport BOTH the type index and the Prop bound at once.
+Top : (n : Nat) → ∀ {Γ}{Δc : Con Γ}(ρ : CI n Δc) → Σ _ (Δc ⊨_) → Set
+Top n {Δc = Δc} ρ (X , wX) = (b : szT wX + szCon Δc < n) → Êl (TI n wX ρ b)
+
+-- subst over sym(▷≡ p q) (fixed base) splits: base ρ, top value Σ-transported.  Proven by J on p,q
+-- (refl/refl), so it APPLIES to the stuck renTy-idOPE / ⊨-unique proofs as a non-reducing term.
+subst-CI-cons : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{X Y}(p : X ≡ Y){wX : Δc ⊨ X}{wY : Δc ⊨ Y}
+                (q : subst (Δc ⊨_) p wX ≡ wY)(ρ : CI n Δc)(v : Top n ρ (Y , wY))
+                → subst (CI n) (sym (▷≡ p q)) (ρ , v) ≡ (ρ , subst (Top n ρ) (sym (pair-≡ p q)) v)
+subst-CI-cons n refl refl ρ v = refl
+-- applying a Σ-transported top value = coe of the untransported value (J on the Σ-eq); the coe
+-- proof teq is passed explicitly (avoids an internal per-z bound meta), collapsed later by coe-uip.
+subst-Top-app : (n : Nat) → ∀ {Γ}{Δc : Con Γ}(ρ : CI n Δc){XY XY' : Σ _ (Δc ⊨_)}(e : XY ≡ XY')
+                (v : Top n ρ XY)(b : szT (snd XY') + szCon Δc < n){bx : szT (snd XY) + szCon Δc < n}
+                (teq : TI n (snd XY) ρ bx ≡ TI n (snd XY') ρ b)
+                → subst (Top n ρ) e v b ≡ coe (congÊl teq) (v bx)
+subst-Top-app n ρ refl v b teq = coe-uip refl (congÊl teq) (v _)
+
+-- envO-id: envO along the identity OPE = identity.  ε=refl; ▷ peels id⊑'s subst (envO-substcod +
+-- subst-CI-cons), reduces the keep clause, IH on the base, collapses the value coe by UIP.
+envO-id n ε         ρ b = refl
+envO-id n (_▷_ Δc {A} wA) (ρ , v) b =
+  trans (envO-substcod n (▷≡ (renTy-idOPE A) (⊨-unique (subst (_⊨_ Δc) (renTy-idOPE A) (ren⊨ (id⊑ Δc) wA)) wA))
+                        (keep (id⊑ Δc) wA) (ρ , v) b)
+  (trans (cong (λ z → envO n (keep (id⊑ Δc) wA) z bXW)
+               (subst-CI-cons n (renTy-idOPE A) (⊨-unique (subst (_⊨_ Δc) (renTy-idOPE A) (ren⊨ (id⊑ Δc) wA)) wA) ρ v))
+         (pair-≡ (envO-id n Δc ρ bb)
+           (trans (subst-Π {C = λ e b₁ → Êl (TI n wA e b₁)} (envO-id n Δc ρ bb)
+                     (λ b₁ → coe (congÊl (nat-TI n (id⊑ Δc) wA ρ bXW b₁ bb)) (subst (Top n ρ) STeq v bXW)))
+           (funextP (λ b₁ →
+             let nat   = nat-TI n (id⊑ Δc) wA ρ bXW b₁ bb
+                 bMid  = <≡ (cong (_+ szCon Δc) (sym (szT-subst (sym (renTy-idOPE A)) wA))) b₁
+                 teq   = trans (TI-resp-eq n (sym (renTy-idOPE A)) wA ρ {b₁} {bMid})
+                               (TI-wf-eq n (⊨-unique (subst (λ z → Δc ⊨ z) (sym (renTy-idOPE A)) wA) (ren⊨ (id⊑ Δc) wA)) ρ {bMid} {bXW})
+                 value = coe (congÊl nat) (subst (Top n ρ) STeq v bXW)
+                 P     = trans (congÊl teq) (congÊl nat)
+                 v≡    : value ≡ coe P (v b₁)
+                 v≡    = trans (cong (coe (congÊl nat)) (subst-Top-app n ρ STeq v bXW teq))
+                               (coe-trans (congÊl teq) (congÊl nat) (v b₁))
+             in trans (cong (subst (λ e → Êl (TI n wA e b₁)) (envO-id n Δc ρ bb)) v≡)
+                (trans (subst≡coe {B = λ e → Êl (TI n wA e b₁)} (envO-id n Δc ρ bb) (coe P (v b₁)))
+                (trans (coe-trans P (cong (λ e → Êl (TI n wA e b₁)) (envO-id n Δc ρ bb)) (v b₁))
+                       (coe-uip _ refl (v b₁)))))))))
+  where STeq = sym (pair-≡ (renTy-idOPE A) (⊨-unique (subst (_⊨_ Δc) (renTy-idOPE A) (ren⊨ (id⊑ Δc) wA)) wA))
+        bb   = <+r (szT wA) b
+        bXW  = substP (λ Z → szCon Z < n)
+                      (sym (▷≡ (renTy-idOPE A) (⊨-unique (subst (_⊨_ Δc) (renTy-idOPE A) (ren⊨ (id⊑ Δc) wA)) wA))) b
+
+envO-wk⊑ : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C)(ρ : CI n Δc)
+           (vf : (b : szT wC + szCon Δc < n) → Êl (TI n wC ρ b))(bO : szCon (Δc ▷ wC) < n)
+           → envO n (wk⊑ Δc wC) (ρ , vf) bO ≡ ρ
+envO-wk⊑ n {Δc = Δc} wC ρ vf bO = envO-id n Δc ρ (<+r (szT wC) bO)
 
 -- envO-⇓: envO and ⇓ commute (both restrict/decrement).  done=refl; skip drops the top on both
 -- sides and recurses; keep is the dependent-pair coherence (envO-irr-level, function-encoded value).
