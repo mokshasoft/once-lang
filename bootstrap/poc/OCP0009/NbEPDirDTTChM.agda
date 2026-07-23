@@ -261,6 +261,57 @@ szT𝕀l< : ∀ {Γ}{Δ : Con Γ}{t A B}(tb : Δ ⊢ t ∷ 𝔹)(wA : Δ ⊨ A)(
 szT𝕀l< tb wA wB = s≤s (≤-trans (m≤m+n (szT wA) (szT wB)) (n≤m+n (sz tb) _))
 szT𝕀r< : ∀ {Γ}{Δ : Con Γ}{t A B}(tb : Δ ⊢ t ∷ 𝔹)(wA : Δ ⊨ A)(wB : Δ ⊨ B) → szT wB < szT (⊨𝕀 tb ⊨𝔹 wA wB)
 szT𝕀r< tb wA wB = s≤s (≤-trans (n≤m+n (szT wA) (szT wB)) (n≤m+n (sz tb) _))
+
+-- renaming never SHRINKS the sz/szT measures (it may deepen embedded 𝕀-condition
+-- variables). This is what lets the nat-var vs-cases recurse: the sub-variable's
+-- (unweakened) type-wf is ≤ the ⊢vs's (weakened) type-wf in szT.
+sz-subst : ∀ {Γ}{Δ : Con Γ}{t A A'}(eq : A ≡ A')(d : Δ ⊢ t ∷ A)
+           → sz (subst (λ z → Δ ⊢ t ∷ z) eq d) ≡ sz d
+sz-subst refl d = refl
+szT-subst : ∀ {Γ}{Δ : Con Γ}{A A'}(eq : A ≡ A')(w : Δ ⊨ A)
+            → szT (subst (λ z → Δ ⊨ z) eq w) ≡ szT w
+szT-subst refl w = refl
+sz-ren-mono  : ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){t A}(td : Δc ⊢ t ∷ A)
+               → sz td ≤ sz (ren⊢ r td)
+szT-ren-mono : ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){A}(wA : Δc ⊨ A)
+               → szT wA ≤ szT (ren⊨ r wA)
+sz-ren-mono r ⊢tt = ≤-refl
+sz-ren-mono r ⊢ff = ≤-refl
+sz-ren-mono r (⊢lam wA td) = s≤s (sz-ren-mono (keep r wA) td)
+sz-ren-mono r (⊢app wΠ tf tu) =
+  ≤≡r (sym (sz-subst _ (⊢app (ren⊨ r wΠ) (ren⊢ r tf) (ren⊢ r tu))))
+      (s≤s (+-mono (sz-ren-mono r tf) (sz-ren-mono r tu)))
+sz-ren-mono {Θc = Θ} (keep r' w) (⊢vz wR) =
+  ≤≡r (sym (sz-subst _ (⊢vz (subst (λ z → Θ ⊨ z) (renTy-wk _) (ren⊨ (keep r' w) wR))))) ≤-refl
+sz-ren-mono {Θc = Θ} (skip r' w) (⊢vz wR) =
+  ≤≡r (sym (sz-subst _ (⊢vs (ren⊨ r' wR)
+                             (subst (λ z → Θ ⊨ z) (sym (renTy-renTy _)) (ren⊨ (skip r' w) wR))
+                             (ren⊢ r' (⊢vz wR)))))
+      (≤-trans (sz-ren-mono r' (⊢vz wR)) ≤-suc)
+sz-ren-mono {Θc = Θ} (keep r' w) (⊢vs wA wR td) =
+  ≤≡r (sym (sz-subst _ (⊢vs (ren⊨ r' wA)
+                             (subst (λ z → Θ ⊨ z) (renTy-wk _) (ren⊨ (keep r' w) wR))
+                             (ren⊢ r' td))))
+      (s≤s (sz-ren-mono r' td))
+sz-ren-mono {Θc = Θ} (skip r' w) (⊢vs wA wR td) =
+  ≤≡r (sym (sz-subst _ (⊢vs (ren⊨ r' wR)
+                             (subst (λ z → Θ ⊨ z) (sym (renTy-renTy _)) (ren⊨ (skip r' w) wR))
+                             (ren⊢ r' (⊢vs wA wR td)))))
+      (≤-trans (sz-ren-mono r' (⊢vs wA wR td)) ≤-suc)
+szT-ren-mono r ⊨𝔹 = ≤-refl
+szT-ren-mono r ⊨⊥ = ≤-refl
+szT-ren-mono r (⊨𝕀 tb ⊨𝔹 wA wB) =
+  s≤s (+-mono (sz-ren-mono r tb) (+-mono (szT-ren-mono r wA) (szT-ren-mono r wB)))
+szT-ren-mono r (⊨Π wA wB) =
+  s≤s (+-mono (szT-ren-mono r wA) (szT-ren-mono (keep r wA) wB))
+renTy-wk⊑ : ∀ {Γ}(A : Ty Γ) → renTy ⌜ skip {Γ = Γ} idOPE ⌝ A ≡ renTy vs A
+renTy-wk⊑ A = trans (sym (renTy-renTy A)) (cong (renTy vs) (renTy-idOPE A))
+szT-wk-mono : ∀ {Γ}{Δc : Con Γ}{A}(wA : Δc ⊨ A){C}(w : Δc ⊨ C)(wR : (Δc ▷ w) ⊨ renTy vs A)
+              → szT wA ≤ szT wR
+szT-wk-mono {Δc = Δc} wA w wR =
+  ≤≡r (trans (sym (szT-subst (renTy-wk⊑ _) (ren⊨ (wk⊑ Δc w) wA)))
+             (cong szT (⊨-unique (subst (λ z → _ ⊨ z) (renTy-wk⊑ _) (ren⊨ (wk⊑ Δc w) wA)) wR)))
+      (szT-ren-mono (wk⊑ Δc w) wA)
 -- codomain measure equality for Π (parent ≡ suc codomain)
 codΠ-suc : ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){A B}(wA : Δc ⊨ A)(wB : (Δc ▷ wA) ⊨ B)
            → (szT (⊨Π wA wB) + szT (⊨Π wA wB)) + szO r ≡ suc ((szT wB + szT wB) + szO (keep r wA))
@@ -492,6 +543,35 @@ nat-var (suc n) {Θc = Θ} (skip r' w) wA' (⊢vz wR) (ρ , v) bnd =
     c5       = congÊl (nat-TI (suc n) (skip r' w) wA' (ρ , v) _)
     wfbridge = congÊl (cong (λ w₁ → TI w₁ g) (⊨-unique wR wA'))
     Meq      = trans (sym (coe-sym2 nat-rec M)) (cong (coe c2) rec)
+nat-var (suc n) {Θc = Θ} (keep r' w) wB' (⊢vs wA wR td) (ρ , v) bnd =
+  trans (cong (coe c5) (MI-subst (sym (renTy-wk _)) (ren⊨ (keep r' w) wB') Wsrc dvs (ρ , v)))
+        (trans (cong (λ z → coe c5 (coe c4 (coe c3 z))) Meq)
+               (coe4≡coe1 c2 c3 c4 c5 dlayer T))
+  where
+    g       = envO n r' ρ _
+    dvs     = ⊢vs (ren⊨ r' wA)
+                  (subst (λ z → Θ ⊨ z) (renTy-wk _) (ren⊨ (keep r' w) wR))
+                  (ren⊢ r' td)
+    Wsrc    = subst (λ z → Θ ⊨ z) (renTy-wk _) (ren⊨ (keep r' w) wR)
+    M       = MI (ren⊨ r' wA) (ren⊢ r' td) ρ
+    T       = MI wA td g
+    nat-rec = congÊl (nat-TI n r' wA ρ _)
+    c2      = sym nat-rec
+    c3      = congÊl (sym (wkTI (ren⊨ r' w) (ren⊨ r' wA) Wsrc ρ v))
+    Pms     = trans (TI-resp-eq (sym (renTy-wk _)) Wsrc (ρ , v))
+                    (cong (λ w₁ → TI w₁ (ρ , v))
+                          (⊨-unique (subst (λ z → Θ ⊨ z) (sym (renTy-wk _)) Wsrc)
+                                    (ren⊨ (keep r' w) wB')))
+    c4      = congÊl Pms
+    c5      = congÊl (nat-TI (suc n) (keep r' w) wB' (ρ , v) _)
+    dlayer  = congÊl (sym (wkTI w wA wB' g (coe (congÊl (nat-TI n r' w ρ _)) v)))
+    szle    = szT-wk-mono wA w wB'
+    bnd-rec = ≤-trans (s≤s (+-mono (≤-refl {sz td})
+                              (+-mono (+-mono szle szle)
+                                      (≤-trans (n≤m+n (szT w + szT w) (szO r')) ≤-suc))))
+                      (≤-unsuc bnd)
+    rec     = nat-var n r' wA td ρ bnd-rec
+    Meq     = trans (sym (coe-sym2 nat-rec M)) (cong (coe c2) rec)
 nat-var n r wA td δ bnd = nat-var-rest n r wA td δ bnd
 
 consistency : ∀ {t} → ε ⊢ t ∷ ⊥̇ → Empty
