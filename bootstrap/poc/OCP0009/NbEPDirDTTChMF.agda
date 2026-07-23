@@ -8,6 +8,7 @@ open import Agda.Builtin.Equality using ( _≡_; refl )
 open import Agda.Builtin.Sigma    using ( Σ; _,_; fst; snd )
 open import Agda.Builtin.Nat      using ( Nat; zero; suc; _+_ )
 open import poc.OCP0009.NbEPDirDTTCh
+open import poc.OCP0009.NbEPDirDTTChSub
 
 infix 4 _≤_ _<_
 data _≤_ : Nat → Nat → Prop where
@@ -127,6 +128,10 @@ szT-subst refl w = refl
 szCon : ∀ {Γ} → Con Γ → Nat
 szCon ε        = zero
 szCon (Δ ▷ wA) = szT wA + szCon Δ
+-- measure of a typed substitution = the substituted term's derivation size (extW adds only var vz).
+szSubW : ∀ {Γ Δ}{Δc : Con Δ}{Γc : Con Γ}{σ} → SubW Δc Γc σ → Nat
+szSubW (singleW wC tu) = dsz tu
+szSubW (extW wA wSA sσ) = szSubW sσ
 <-pred : ∀ {a n} → suc a < n → a < n
 <-pred p = ≤-trans ≤-suc p
 ≤-unsuc : ∀ {a b} → suc a ≤ suc b → a ≤ b
@@ -151,6 +156,15 @@ sub-bnd< : ∀ {sa pa c n} → sa < pa → pa + c < suc n → sa + c < n
 sub-bnd< lt q = ≤-trans (+-mono lt ≤-refl) (≤-unsuc q)
 +mono< : ∀ {ca pa cc pc m} → ca ≤ pa → cc ≤ pc → pa + pc < m → ca + cc < m
 +mono< l1 l2 q = le-lt (+-mono l1 l2) q
+-- combined-bound helpers (sub-TI/sub-MI carry bC = szSubW + (szT wS + szCon Δc) < n).
+-- combStep: from sw+(big+c)<suc n and small<big, get sw+(small+c)<n (the substitution measure keeps
+-- its slack through the fuel decrement because the TYPE shrinks).  Covers child-recursion (small=szT
+-- wSA, big=szT wS) AND the envS-⇓ fuel drop (small=zero, big=szT wS via 1≤szT).
+combStep : ∀ {sw small big c n} → small < big → sw + (big + c) < suc n → sw + (small + c) < n
+combStep {sw} {small} {c = c} {n = n} lt p =
+  substP (λ z → z ≤ n) (+-suc sw (small + c)) (≤-trans (+-mono ≤-refl (+-mono lt ≤-refl)) (≤-unsuc p))
+bC→bE : ∀ {sw tw c n} → sw + (tw + c) < n → sw + c < n
+bC→bE {sw} {tw} {c} p = le-lt (+-mono {a = sw} ≤-refl (n≤m+n tw c)) p
 1≤szT : ∀ {Γ}{Δ : Con Γ}{A}(wA : Δ ⊨ A) → suc zero ≤ szT wA
 1≤szT ⊨𝔹 = ≤-refl
 1≤szT ⊨⊥ = ≤-refl
@@ -169,8 +183,7 @@ szT𝕀r< : ∀ {Γ}{Δ : Con Γ}{t A B}(tb : Δ ⊢ t ∷ 𝔹)(wA : Δ ⊨ A)(
 szT𝕀r< tb wA wB = s≤s (≤-trans (n≤m+n (szT wA) (szT wB)) (n≤m+n (dsz tb) _))
 szT𝕀𝔹< : ∀ {Γ}{Δ : Con Γ}{t A B}(tb : Δ ⊢ t ∷ 𝔹)(wA : Δ ⊨ A)(wB : Δ ⊨ B) → szT (⊨𝔹 {Δ = Δ}) < szT (⊨𝕀 tb ⊨𝔹 wA wB)
 szT𝕀𝔹< tb wA wB = s≤s (≤-trans (1≤dsz tb) (m≤m+n (dsz tb) (szT wA + szT wB)))
-renTy-wk⊑ : ∀ {Γ}(A : Ty Γ) → renTy ⌜ skip {Γ = Γ} idOPE ⌝ A ≡ renTy vs A
-renTy-wk⊑ A = trans (sym (renTy-renTy A)) (cong (renTy vs) (renTy-idOPE A))
+-- renTy-wk⊑ is imported from NbEPDirDTTChSub.
 
 -- fuel-indexed interpretation.  CI is FUNCTION-ENCODED: the env value is a function of the
 -- (proof-irrelevant) TI bound, so CI n (Δ▷wA) is well-formed without a bound in scope.
@@ -243,6 +256,10 @@ congMI : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{t A}(wA : Δ ⊨ A)(td : Δ ⊢ t �
          {bt bt' bw bw'}
          → coe (congÊl (congTI n wA p)) (MI n wA td δ bt bw) ≡ MI n wA td δ' bt' bw'
 congMI n wA td refl = refl
+-- MI is derivation-irrelevant (bounds are Prop): equal derivations ⇒ equal interpretations.
+MI-⊢irr : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{t A}(wA : Δ ⊨ A)(δ : CI n Δ){td td' : Δ ⊢ t ∷ A}(p : td ≡ td')
+          {bt bt' bw bw'} → MI n wA td δ bt bw ≡ MI n wA td' δ bt' bw'
+MI-⊢irr n wA δ refl = refl
 
 -- nat-TI/envO/envO-wk⊑ postulated (Step-3 bodies to port); subTI postulated (needs subst framework).
 -- nat-TI is measured by szT(ren⊨ r wA); envO restricts along an OPE.
@@ -267,6 +284,22 @@ envO-substcod : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{o}{Θ Θ' : Con Δ}(ceq 
                 → envO n (subst (λ Z → Δc ⊑[ o ] Z) ceq r) δ b
                   ≡ envO n r (subst (CI n) (sym ceq) δ) (substP (λ Z → szCon Z < n) (sym ceq) b)
 envO-id  : (n : Nat) → ∀ {Γ}(Δc : Con Γ)(ρ : CI n Δc)(b : szCon Δc < n) → envO n (id⊑ Δc) ρ b ≡ ρ
+-- envS: the semantic environment for a typed substitution SubW (definitional: singleW extends by
+-- MI-of-u, extW keeps the top, coercing it across the substitution via sub-TI).
+envS   : (n : Nat) → ∀ {Γ Δ}{Δc : Con Δ}{Γc : Con Γ}{σ}(sσ : SubW Δc Γc σ)(δ : CI n Δc)
+         (bE : szSubW sσ + szCon Δc < n) → CI n Γc
+sub-TI : (n : Nat) → ∀ {Γ Δ}{Δc : Con Δ}{Γc : Con Γ}{σ}(sσ : SubW Δc Γc σ){A}(wA : Γc ⊨ A)
+         (wS : Δc ⊨ subTy σ A)(δ : CI n Δc)(bS : szT wS + szCon Δc < n)(bA : szT wA + szCon Γc < n)
+         (bE : szSubW sσ + szCon Δc < n)(bC : szSubW sσ + (szT wS + szCon Δc) < n)
+         → TI n wS δ bS ≡ TI n wA (envS n sσ δ bE) bA
+sub-TI-Π : (m : Nat) → ∀ {Γ Δ}{Δc : Con Δ}{Γc : Con Γ}{σ}(sσ : SubW Δc Γc σ){A B}(wA : Γc ⊨ A)
+           (wB : (Γc ▷ wA) ⊨ B)(wSA : Δc ⊨ subTy σ A)(wSB : (Δc ▷ wSA) ⊨ subTy (extS σ) B)(δ : CI (suc m) Δc)
+           (bS : szT (⊨Π wSA wSB) + szCon Δc < suc m)(bA : szT (⊨Π wA wB) + szCon Γc < suc m)
+           (bE : szSubW sσ + szCon Δc < suc m)(bC : szSubW sσ + (szT (⊨Π wSA wSB) + szCon Δc) < suc m)
+           → TI (suc m) (⊨Π wSA wSB) δ bS ≡ TI (suc m) (⊨Π wA wB) (envS (suc m) sσ δ bE) bA
+envS-⇓ : (m : Nat) → ∀ {Γ Δ}{Δc : Con Δ}{Γc : Con Γ}{σ}(sσ : SubW Δc Γc σ)(δ : CI (suc m) Δc)
+         (bE : szSubW sσ + szCon Δc < suc m)(bE' : szSubW sσ + szCon Δc < m)
+         → envS m sσ (⇓ m δ) bE' ≡ ⇓ m (envS (suc m) sσ δ bE)
 postulate
   nat-MI   : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){t A}(wA : Δc ⊨ A)
              (td : Δc ⊢ t ∷ A)(δ : CI n Θc)
@@ -279,6 +312,13 @@ postulate
            (uf : (b : szT wC + szCon Δc < n) → Êl (TI n wC (⇓ n ρ) b))
            (bS : szT wS + szCon Δc < suc n)(bB : szT wB + szCon (Δc ▷ wC) < n)
            → TI (suc n) wS ρ bS ≡ TI n wB (⇓ n ρ , uf) bB
+  sub-MI : (n : Nat) → ∀ {Γ Δ}{Δc : Con Δ}{Γc : Con Γ}{σ}(sσ : SubW Δc Γc σ){t A}(wA : Γc ⊨ A)
+           (wS : Δc ⊨ subTy σ A)(td : Γc ⊢ t ∷ A)(δ : CI n Δc)
+           (bS : szT wS + szCon Δc < n)(bA : szT wA + szCon Γc < n)(bE : szSubW sσ + szCon Δc < n)
+           (bC : szSubW sσ + (szT wS + szCon Δc) < n)
+           (bdS : dsz (sub-⊢ sσ td) + szCon Δc < n)(bdA : dsz td + szCon Γc < n)
+           → coe (congÊl (sub-TI n sσ wA wS δ bS bA bE bC)) (MI n wS (sub-⊢ sσ td) δ bdS bS)
+             ≡ MI n wA td (envS n sσ δ bE) bdA bA
 
 -- envO body: structural on the OPE.  keep coerces the top env value via nat-TI (b1 = bO exactly);
 -- skip drops it.  The codomain-context bound szCon Θc < n threads by <+r.
@@ -287,6 +327,97 @@ envO n (keep r wA) (δ , xf) bO =
   envO n r δ (<+r (szT (ren⊨ r wA)) bO) ,
   (λ b → coe (congÊl (nat-TI n r wA δ bO b (<+r (szT (ren⊨ r wA)) bO))) (xf bO))
 envO n (skip r wB) (δ , x)  bO = envO n r δ (<+r (szT wB) bO)
+
+-- envS body: singleW extends by MI-of-u (definitional!); extW keeps the top, coercing via sub-TI.
+envS n (singleW wC tu) δ bE = δ , (λ b → MI n wC tu δ bE b)
+envS n (extW {Δc = Δc} {σ = σ} wA wSA sσ) (δ , xf) bE =
+  envS n sσ δ bE' , (λ b → coe (congÊl (sub-TI n sσ wA wSA δ bS' b bE' bE)) (xf bS'))
+  where bE' = bC→bE {tw = szT wSA} {c = szCon Δc} bE
+        bS' = <+r (szSubW sσ) bE
+
+-- sub-TI: substitution soundness for TI, by induction on the source type-wf wA.  Base = TI-wf-eq
+-- (TI of 𝔹/⊥ is constant); 𝕀 via Ifᵁ-cong + sub-MI; Π via π̂-cong + recurse under extW.
+sub-TI n sσ ⊨𝔹 ⊨𝔹 δ bS bA bE bC = refl
+sub-TI n sσ ⊨⊥ ⊨⊥ δ bS bA bE bC = refl
+sub-TI (suc n) {Δc = Δc} sσ {A = 𝕀 t A B} (⊨𝕀 tb ⊨𝔹 wA wB) (⊨𝕀 tb' ⊨𝔹 wSA wSB) δ bS bA bE bC =
+  Ifᵁ-cong
+    (trans (MI-⊢irr n ⊨𝔹 (⇓ n δ) (⊢-unique tb' (sub-⊢ sσ tb)))
+    (trans (sub-MI n sσ ⊨𝔹 ⊨𝔹 tb (⇓ n δ) bS-c bA-c bE' bC-c bdS-c bdA-c)
+           (cong (λ e → MI n ⊨𝔹 tb e bdA-c bA-c) (envS-⇓ n sσ δ bE bE'))))
+    (trans (sub-TI n sσ wA wSA (⇓ n δ) bS-A bA-A bE' bC-A) (congTI n wA (envS-⇓ n sσ δ bE bE')))
+    (trans (sub-TI n sσ wB wSB (⇓ n δ) bS-B bA-B bE' bC-B) (congTI n wB (envS-⇓ n sσ δ bE bE')))
+  where bE'  = combStep (1≤szT (⊨𝕀 tb' ⊨𝔹 wSA wSB)) bC
+        bS-A = sub-bnd< (szT𝕀l< tb' wSA wSB) bS
+        bA-A = sub-bnd< (szT𝕀l< tb wA wB) bA
+        bC-A = combStep (szT𝕀l< tb' wSA wSB) bC
+        bS-B = sub-bnd< (szT𝕀r< tb' wSA wSB) bS
+        bA-B = sub-bnd< (szT𝕀r< tb wA wB) bA
+        bC-B = combStep (szT𝕀r< tb' wSA wSB) bC
+        bS-c = sub-bnd< (szT𝕀𝔹< tb' wSA wSB) bS
+        bA-c = sub-bnd< (szT𝕀𝔹< tb wA wB) bA
+        bC-c = combStep (szT𝕀𝔹< tb' wSA wSB) bC
+        bdS-c = <≡ (cong (_+ szCon Δc) (cong dsz (⊢-unique tb' (sub-⊢ sσ tb)))) (sub-bnd< (szT𝕀c< tb' wSA wSB) bS)
+        bdA-c = sub-bnd< (szT𝕀c< tb wA wB) bA
+sub-TI (suc n) sσ (⊨Π wA wB)       (⊨Π wSA wSB)          δ bS bA bE bC =
+  sub-TI-Π n sσ wA wB wSA wSB δ bS bA bE bC
+sub-TI zero    sσ (⊨𝕀 tb w𝔹 wA wB) wS δ bS () bE bC
+sub-TI zero    sσ (⊨Π wA wB)       wS δ bS () bE bC
+
+sub-TI-Π m {Δc = Δc} {Γc = Γc} sσ wA wB wSA wSB δ bS bA bE bC = π̂-cong domeq codeq
+  where bE'  = combStep (1≤szT (⊨Π wSA wSB)) bC
+        dbS  = sub-bnd< (szTΠl< wSA wSB) bS
+        dbA  = sub-bnd< (szTΠl< wA wB) bA
+        dbC  = combStep (szTΠl< wSA wSB) bC
+        subDom = sub-TI m sσ wA wSA (⇓ m δ) dbS dbA bE' dbC
+        eqE    = envS-⇓ m sσ δ bE bE'
+        domeq  = trans subDom (congTI m wA eqE)
+        cbS  = <≡ (trans (cong (_+ szCon Δc) (+-comm (szT wSA) (szT wSB))) (+-assoc (szT wSB) (szT wSA) (szCon Δc))) (<-inv bS)
+        cbA  = <≡ (trans (cong (_+ szCon Γc) (+-comm (szT wA) (szT wB))) (+-assoc (szT wB) (szT wA) (szCon Γc))) (<-inv bA)
+        cbC  = <≡ (cong (szSubW sσ +_) (trans (cong (_+ szCon Δc) (+-comm (szT wSA) (szT wSB))) (+-assoc (szT wSB) (szT wSA) (szCon Δc))))
+                  (<-inv (<≡ (+-suc (szSubW sσ) _) bC))
+        goalenv : ∀ x → _≡_ {A = CI m (Γc ▷ wA)}
+                          (envS m (extW wA wSA sσ) (⇓ m δ , λ _ → x) dbC)
+                          (⇓ m (envS (suc m) sσ δ bE) , λ _ → coe (congÊl domeq) x)
+        goalenv x = pair-≡ eqE
+                      (trans (subst-Π {C = λ e b → Êl (TI m wA e b)} eqE (λ b → coe (congÊl subDom) x))
+                             (funextP (λ b →
+                               trans (subst≡coe {B = λ e → Êl (TI m wA e b)} eqE (coe (congÊl subDom) x))
+                               (trans (cong (λ e → coe e (coe (congÊl subDom) x))
+                                            (uip' (cong (λ e → Êl (TI m wA e b)) eqE) (congÊl (congTI m wA eqE))))
+                               (trans (coe-trans (congÊl subDom) (congÊl (congTI m wA eqE)) x)
+                                      (cong (λ e → coe e x) (sym (congÊl-trans subDom (congTI m wA eqE)))))))))
+        codeq : ∀ x → _ ≡ _
+        codeq x = trans (sub-TI m (extW wA wSA sσ) wB wSB (⇓ m δ , λ _ → x) cbS cbA dbC cbC)
+                        (congTI m wB (goalenv x))
+
+-- envS-⇓: envS commutes with the fuel restriction ⇓.  singleW = MI-irr (the substituted value's
+-- fuel shift); extW = the TI-irr ∘ sub-TI commuting square, collapsed by UIP (mirrors envO-⇓ keep).
+envS-⇓ m (singleW wC tu) δ bE bE' =
+  pair-≡ refl (funextP (λ b → sym (MI-irr m wC tu δ bE (<sn b) bE' b)))
+envS-⇓ m (extW {Δc = Δc1} {Γc = Γc1} {σ = σ} wA wSA sσ) (δ , xf) bE bE' = pair-≡ eqEnv
+  (trans (subst-Π {C = λ e b → Êl (TI m wA e b)} eqEnv LHSfn) (funextP coherence))
+  where bEs  = bC→bE {sw = szSubW sσ} {tw = szT wSA} {c = szCon Δc1} bE
+        bEs' = bC→bE {sw = szSubW sσ} {tw = szT wSA} {c = szCon Δc1} bE'
+        eqEnv = envS-⇓ m sσ δ bEs bEs'
+        bxf  = <+r (szSubW sσ) bE
+        LHSfn : (b : szT wA + szCon Γc1 < m) → Êl (TI m wA (envS m sσ (⇓ m δ) bEs') b)
+        LHSfn b = coe (congÊl (sub-TI m sσ wA wSA (⇓ m δ) _ b _ _))
+                      (coe (congÊl (TI-irr m wSA δ _ _)) (xf bxf))
+        coherence : ∀ b → subst (λ e → Êl (TI m wA e b)) eqEnv (LHSfn b)
+                    ≡ coe (congÊl (TI-irr m wA (envS (suc m) sσ δ (bC→bE {sw = szSubW sσ} {tw = szT wSA} {c = szCon Δc1} bE)) _ _))
+                          (coe (congÊl (sub-TI (suc m) sσ wA wSA δ _ _ _ _)) (xf bxf))
+        coherence b =
+          trans (subst≡coe {B = λ e → Êl (TI m wA e b)} eqEnv (LHSfn b))
+          (trans (cong (coe (cong (λ e → Êl (TI m wA e b)) eqEnv))
+                       (coe-trans (congÊl (TI-irr m wSA δ _ _))
+                                  (congÊl (sub-TI m sσ wA wSA (⇓ m δ) _ b _ _)) (xf bxf)))
+          (trans (coe-trans (trans (congÊl (TI-irr m wSA δ _ _))
+                                   (congÊl (sub-TI m sσ wA wSA (⇓ m δ) _ b _ _)))
+                            (cong (λ e → Êl (TI m wA e b)) eqEnv) (xf bxf))
+          (trans (coe-uip _ (trans (congÊl (sub-TI (suc m) sσ wA wSA δ _ _ _ _))
+                                   (congÊl (TI-irr m wA (envS (suc m) sσ δ (bC→bE {sw = szSubW sσ} {tw = szT wSA} {c = szCon Δc1} bE)) _ _))) (xf bxf))
+                 (sym (coe-trans (congÊl (sub-TI (suc m) sσ wA wSA δ _ _ _ _))
+                                 (congÊl (TI-irr m wA (envS (suc m) sσ δ (bC→bE {sw = szSubW sσ} {tw = szT wSA} {c = szCon Δc1} bE)) _ _)) (xf bxf))))))
 
 envO-substcod n refl r δ b = refl
 
