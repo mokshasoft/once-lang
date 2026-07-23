@@ -201,28 +201,49 @@ TI-irr zero    (⊨𝕀 tb ⊨𝔹 wA wB) ρ b' ()
 TI-irr zero    (⊨Π wA wB)        ρ b' ()
 
 -- TI transport helpers (bounds are --prop ⇒ irrelevant).
+-- cong-based (NOT refl-matched) so congTI n ⊨𝔹 p reduces to refl for ANY p (TI n ⊨𝔹 is constant),
+-- letting the coe vanish where TI doesn't depend on the env.
 congTI : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{A}(wA : Δ ⊨ A){δ δ' : CI n Δ}(p : δ ≡ δ'){b b'}
          → TI n wA δ b ≡ TI n wA δ' b'
-congTI n wA refl = refl
+congTI n wA {δ} {δ'} p {b} = cong (λ d → TI n wA d b) p
 TI-wf-eq : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{A}{wA wA' : Δ ⊨ A}(p : wA ≡ wA')(δ : CI n Δ){b b'}
            → TI n wA δ b ≡ TI n wA' δ b'
 TI-wf-eq n refl δ = refl
 TI-resp-eq : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{A A'}(eq : A ≡ A')(w : Δ ⊨ A)(δ : CI n Δ){b b'}
              → TI n w δ b ≡ TI n (subst (λ z → Δ ⊨ z) eq w) δ b'
 TI-resp-eq n refl w δ = refl
+congMI : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{t A}(wA : Δ ⊨ A)(td : Δ ⊢ t ∷ A){δ δ' : CI n Δ}(p : δ ≡ δ')
+         {bt bt' bw bw'}
+         → coe (congÊl (congTI n wA p)) (MI n wA td δ bt bw) ≡ MI n wA td δ' bt' bw'
+congMI n wA td refl = refl
 
 -- nat-TI/envO/envO-wk⊑ postulated (Step-3 bodies to port); subTI postulated (needs subst framework).
 -- nat-TI is measured by szT(ren⊨ r wA); envO restricts along an OPE.
--- envO (env restriction along an OPE) is REAL (below); nat-TI/envO-wk⊑/subTI postulated.
+-- envO (env restriction) + nat-TI (renaming naturality for TI) are REAL (below); nat-TI is mutual
+-- with nat-MI (postulated here, defined later) and envO/⇓.
 envO     : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc)(δ : CI n Θc)
            (bO : szCon Θc < n) → CI n Δc
+nat-TI   : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){A}(wA : Δc ⊨ A)(δ : CI n Θc)
+           (b1 : szT (ren⊨ r wA) + szCon Θc < n)(b2 : szT wA + szCon Δc < n)(bO : szCon Θc < n)
+           → TI n (ren⊨ r wA) δ b1 ≡ TI n wA (envO n r δ bO) b2
 postulate
-  nat-TI   : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){A}(wA : Δc ⊨ A)(δ : CI n Θc)
+  nat-MI   : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){t A}(wA : Δc ⊨ A)
+             (td : Δc ⊢ t ∷ A)(δ : CI n Θc)
              (b1 : szT (ren⊨ r wA) + szCon Θc < n)(b2 : szT wA + szCon Δc < n)(bO : szCon Θc < n)
-             → TI n (ren⊨ r wA) δ b1 ≡ TI n wA (envO n r δ bO) b2
+             (bd1 : dsz (ren⊢ r td) + szCon Θc < n)(bd2 : dsz td + szCon Δc < n)
+             → coe (congÊl (nat-TI n r wA δ b1 b2 bO)) (MI n (ren⊨ r wA) (ren⊢ r td) δ bd1 b1)
+               ≡ MI n wA td (envO n r δ bO) bd2 b2
   envO-wk⊑ : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C)(ρ : CI n Δc)
              (vf : (b : szT wC + szCon Δc < n) → Êl (TI n wC ρ b))(bO : szCon (Δc ▷ wC) < n)
              → envO n (wk⊑ Δc wC) (ρ , vf) bO ≡ ρ
+  envO-⇓   : (m : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc)(δ : CI (suc m) Θc)
+             (bO : szCon Θc < suc m)(bO' : szCon Θc < m)
+             → envO m r (⇓ m δ) bO' ≡ ⇓ m (envO (suc m) r δ bO)
+  nat-TI-Π : (m : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[ o ] Θc){A B}(wA : Δc ⊨ A)
+             (wB : (Δc ▷ wA) ⊨ B)(δ : CI (suc m) Θc)
+             (b1 : szT (ren⊨ r (⊨Π wA wB)) + szCon Θc < suc m)(b2 : szT (⊨Π wA wB) + szCon Δc < suc m)
+             (bO : szCon Θc < suc m)
+             → TI (suc m) (ren⊨ r (⊨Π wA wB)) δ b1 ≡ TI (suc m) (⊨Π wA wB) (envO (suc m) r δ bO) b2
   subTI  : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C){B}(wB : (Δc ▷ wC) ⊨ B){u}
            (wS : Δc ⊨ subTy (single u) B)(tu : Δc ⊢ u ∷ C)(ρ : CI (suc n) Δc)
            (uf : (b : szT wC + szCon Δc < n) → Êl (TI n wC (⇓ n ρ) b))
@@ -236,6 +257,29 @@ envO n (keep r wA) (δ , xf) bO =
   envO n r δ (<+r (szT (ren⊨ r wA)) bO) ,
   (λ b → coe (congÊl (nat-TI n r wA δ bO b (<+r (szT (ren⊨ r wA)) bO))) (xf bO))
 envO n (skip r wB) (δ , x)  bO = envO n r δ (<+r (szT wB) bO)
+
+-- nat-TI: renaming naturality for TI, by induction on wA.  Base = refl; 𝕀 via Ifᵁ-cong + nat-MI;
+-- Π via π̂-cong; both use nat-TI recursion at fuel m + envO-⇓ commutation.
+nat-TI n       r ⊨𝔹 δ b1 b2 bO = refl
+nat-TI n       r ⊨⊥ δ b1 b2 bO = refl
+nat-TI (suc m) r (⊨𝕀 tb ⊨𝔹 wA wB) δ b1 b2 bO =
+  Ifᵁ-cong (trans (nat-MI m r ⊨𝔹 tb (⇓ m δ) c1 c2 cO cd1 cd2)
+                  (cong (λ e → MI m ⊨𝔹 tb e cd2 c2) (envO-⇓ m r δ bO cO)))
+           (trans (nat-TI m r wA (⇓ m δ) (sub-bnd< (szT𝕀l< R wRA wRB) b1) (sub-bnd< (szT𝕀l< tb wA wB) b2) cO)
+                  (congTI m wA (envO-⇓ m r δ bO cO)))
+           (trans (nat-TI m r wB (⇓ m δ) (sub-bnd< (szT𝕀r< R wRA wRB) b1) (sub-bnd< (szT𝕀r< tb wA wB) b2) cO)
+                  (congTI m wB (envO-⇓ m r δ bO cO)))
+  where R   = ren⊢ r tb
+        wRA = ren⊨ r wA
+        wRB = ren⊨ r wB
+        cO  = sub-bnd< (1≤szT (ren⊨ r (⊨𝕀 tb ⊨𝔹 wA wB))) b1   -- szCon Θc < m
+        c1  = sub-bnd< (szT𝕀𝔹< R wRA wRB) b1                    -- szT ⊨𝔹 + szCon Θc < m
+        c2  = sub-bnd< (szT𝕀𝔹< tb wA wB) b2                     -- szT ⊨𝔹 + szCon Δc < m
+        cd1 = sub-bnd< (szT𝕀c< R wRA wRB) b1                    -- dsz(ren⊢ r tb) + szCon Θc < m
+        cd2 = sub-bnd< (szT𝕀c< tb wA wB) b2                     -- dsz tb + szCon Δc < m
+nat-TI (suc m) r (⊨Π wA wB)       δ b1 b2 bO = nat-TI-Π m r wA wB δ b1 b2 bO
+nat-TI zero    r (⊨𝕀 tb ⊨𝔹 wA wB) δ () b2 bO
+nat-TI zero    r (⊨Π wA wB)       δ () b2 bO
 
 -- wkTI DERIVED (Step 3): ⊨-unique transport of wA to the wk⊑-weakening of wA₀, then nat-TI(wk⊑),
 -- then envO-wk⊑ collapses the restricted env back to ρ.
