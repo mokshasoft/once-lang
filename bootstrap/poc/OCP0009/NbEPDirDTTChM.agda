@@ -206,6 +206,24 @@ coe3≡coe2 c1 c2 c3 d1 d2 x =
   (trans (coe-trans (trans c1 c2) c3 x)
   (trans (coe-irr (trans (trans c1 c2) c3) (trans d1 d2) x)
          (sym (coe-trans d1 d2 x))))
+coe-sym2 : ∀ {A B : Set}(p : A ≡ B)(x : A) → coe (sym p) (coe p x) ≡ x
+coe-sym2 p x = trans (coe-trans p (sym p) x) (coe-irr (trans p (sym p)) refl x)
+coe5≡coe1 : ∀ {A B C D E F : Set}(c1 : A ≡ B)(c2 : B ≡ C)(c3 : C ≡ D)(c4 : D ≡ E)(c5 : E ≡ F)
+            (d1 : A ≡ F)(x : A)
+            → coe c5 (coe c4 (coe c3 (coe c2 (coe c1 x)))) ≡ coe d1 x
+coe5≡coe1 c1 c2 c3 c4 c5 d1 x =
+  trans (cong (λ y → coe c5 (coe c4 (coe c3 y))) (coe-trans c1 c2 x))
+  (trans (cong (λ y → coe c5 (coe c4 y)) (coe-trans (trans c1 c2) c3 x))
+  (trans (cong (coe c5) (coe-trans (trans (trans c1 c2) c3) c4 x))
+  (trans (coe-trans (trans (trans (trans c1 c2) c3) c4) c5 x)
+         (coe-irr (trans (trans (trans (trans c1 c2) c3) c4) c5) d1 x))))
+coe4≡coe1 : ∀ {A B C D E : Set}(c1 : A ≡ B)(c2 : B ≡ C)(c3 : C ≡ D)(c4 : D ≡ E)(d1 : A ≡ E)(x : A)
+            → coe c4 (coe c3 (coe c2 (coe c1 x))) ≡ coe d1 x
+coe4≡coe1 c1 c2 c3 c4 d1 x =
+  trans (cong (λ y → coe c4 (coe c3 y)) (coe-trans c1 c2 x))
+  (trans (cong (coe c4) (coe-trans (trans c1 c2) c3 x))
+  (trans (coe-trans (trans (trans c1 c2) c3) c4 x)
+         (coe-irr (trans (trans (trans c1 c2) c3) c4) d1 x)))
 subst≡coe : ∀ {A : Set}{B : A → Set}{a a'}(p : a ≡ a')(y : B a) → subst B p y ≡ coe (cong B p) y
 subst≡coe refl y = refl
 pair-≡ : ∀ {A : Set}{B : A → Set}{a a' : A}(p : a ≡ a'){b : B a}{b' : B a'}
@@ -445,6 +463,35 @@ nat-var (suc n) {Θc = Θ} (keep r' w) wA' (⊢vz wR) (ρ , v) bnd =
                           (⊨-unique (subst (λ z → Θ ⊨ z) (sym (renTy-wk _)) W'')
                                     (ren⊨ (keep r' w) wA')))
         c2  = congÊl Pms
+nat-var (suc n) {Θc = Θ} (skip r' w) wA' (⊢vz wR) (ρ , v) bnd =
+  trans (cong (coe c5) (MI-subst (renTy-renTy (renTy vs _)) (ren⊨ (skip r' w) wA') Wsrc dvs (ρ , v)))
+        (trans (cong (λ z → coe c5 (coe c4 (coe c3 z))) Meq)
+               (trans (coe4≡coe1 c2 c3 c4 c5 wfbridge T)
+                      (MI-wf-irr-coe (⊨-unique wR wA') (⊢vz wR) g)))
+  where
+    g        = envO n r' ρ _
+    dvs      = ⊢vs (ren⊨ r' wR)
+                   (subst (λ z → Θ ⊨ z) (sym (renTy-renTy (renTy vs _))) (ren⊨ (skip r' w) wR))
+                   (ren⊢ r' (⊢vz wR))
+    Wsrc     = subst (λ z → Θ ⊨ z) (sym (renTy-renTy (renTy vs _))) (ren⊨ (skip r' w) wA')
+    M        = MI (ren⊨ r' wR) (ren⊢ r' (⊢vz wR)) ρ
+    T        = MI wR (⊢vz wR) g
+    szeq2    = cong (λ k → k + k) (cong szT (⊨-unique wR wA'))
+    bnd-rec  = ≤-trans (s≤s (≤≡r (sym (+-suc (szT wA' + szT wA') (szT w + szT w + szO r')))
+                                 (s≤s (+-mono (≤≡r szeq2 ≤-refl) (n≤m+n (szT w + szT w) (szO r'))))))
+                       (≤-unsuc bnd)
+    rec      = nat-var n r' wR (⊢vz wR) ρ bnd-rec
+    nat-rec  = congÊl (nat-TI n r' wR ρ _)
+    c2       = sym nat-rec
+    c3       = congÊl (sym (wkTI w (ren⊨ r' wR) Wsrc ρ v))
+    Pms      = trans (TI-resp-eq (renTy-renTy (renTy vs _)) Wsrc (ρ , v))
+                     (cong (λ w₁ → TI w₁ (ρ , v))
+                           (⊨-unique (subst (λ z → Θ ⊨ z) (renTy-renTy (renTy vs _)) Wsrc)
+                                     (ren⊨ (skip r' w) wA')))
+    c4       = congÊl Pms
+    c5       = congÊl (nat-TI (suc n) (skip r' w) wA' (ρ , v) _)
+    wfbridge = congÊl (cong (λ w₁ → TI w₁ g) (⊨-unique wR wA'))
+    Meq      = trans (sym (coe-sym2 nat-rec M)) (cong (coe c2) rec)
 nat-var n r wA td δ bnd = nat-var-rest n r wA td δ bnd
 
 consistency : ∀ {t} → ε ⊢ t ∷ ⊥̇ → Empty
