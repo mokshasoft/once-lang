@@ -57,6 +57,12 @@ coe   : {A B : Set} → A ≡ B → A → B
 coe refl a = a
 congÊl : ∀ {c d} → c ≡ d → Êl c ≡ Êl d
 congÊl refl = refl
+postulate funext : ∀ {a b}{A : Set a}{B : A → Set b}{f g : (x : A) → B x} → (∀ x → f x ≡ g x) → f ≡ g
+Ifᵁ-cong : ∀ {b b'}{c c' d d'} → b ≡ b' → c ≡ c' → d ≡ d' → Ifᵁ b c d ≡ Ifᵁ b' c' d'
+Ifᵁ-cong refl refl refl = refl
+π̂-cong : ∀ {a a'}{b : Êl a → Û}{b' : Êl a' → Û}(p : a ≡ a')
+         → (∀ x → b x ≡ b' (coe (congÊl p) x)) → π̂ a b ≡ π̂ a' b'
+π̂-cong refl q = cong (π̂ _) (funext q)
 
 -- measures
 szT : ∀ {Γ}{Δ : Con Γ}{A} → Δ ⊨ A → Nat
@@ -84,12 +90,16 @@ dsz (⊢app wΠ tf tu)          = suc (szT wΠ + (dsz tf + dsz tu))
 CI : (n : Nat) → ∀ {Γ} → Con Γ → Set
 TI : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{A}(wA : Δ ⊨ A) → CI n Δ → szT wA < n → Û
 ⇓  : (n : Nat) → ∀ {Γ}{Δ : Con Γ} → CI (suc n) Δ → CI n Δ
--- forward decls (postulated for this milestone; fuel+bound carrying).
+-- TI-irr (fuel-restriction irrelevance) is REAL (defined below, mutual with TI/⇓).
+TI-irr : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{A}(wA : Δ ⊨ A)(ρ : CI (suc n) Δ)(b' : szT wA < suc n)(b : szT wA < n)
+         → TI (suc n) wA ρ b' ≡ TI n wA (⇓ n ρ) b
+-- MI (interpreter) + MI-irr postulated for this step; defined in step 2.
 postulate
   MI     : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{t A}(wA : Δ ⊨ A)(td : Δ ⊢ t ∷ A)(ρ : CI n Δ)
            (bt : dsz td < n)(bw : szT wA < n) → Êl (TI n wA ρ bw)
-  TI-irr : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{A}(wA : Δ ⊨ A)(ρ : CI (suc n) Δ)(b' : szT wA < suc n)(b : szT wA < n)
-           → TI (suc n) wA ρ b' ≡ TI n wA (⇓ n ρ) b
+  MI-irr : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{t A}(wA : Δ ⊨ A)(td : Δ ⊢ t ∷ A)(ρ : CI (suc n) Δ)
+           (bt' : dsz td < suc n)(bw' : szT wA < suc n)(bt : dsz td < n)(bw : szT wA < n)
+           → coe (congÊl (TI-irr n wA ρ bw' bw)) (MI (suc n) wA td ρ bt' bw') ≡ MI n wA td (⇓ n ρ) bt bw
 
 CI n       ε        = ⊤
 CI n       (Δ ▷ wA) = Σ (CI n Δ) (λ ρ → (bnd : szT wA < n) → Êl (TI n wA ρ bnd))
@@ -109,6 +119,20 @@ TI (suc n) (⊨Π wA wB) ρ bnd =
 ⇓ n {Δ = ε}      ρ       = ⋆
 ⇓ n {Δ = Δ ▷ wA} (ρ , vf) =
   ⇓ n ρ , λ b → coe (congÊl (TI-irr n wA ρ (≤-trans b ≤-suc) b)) (vf (≤-trans b ≤-suc))
+
+-- TI-irrelevance: TI at fuel (suc n) on ρ = TI at fuel n on ⇓ n ρ.  Base = refl; 𝕀 via Ifᵁ-cong
+-- (+ MI-irr for the condition); Π via π̂-cong (env-matching is definitional by --prop irrelevance).
+TI-irr n       ⊨𝔹 ρ b' b = refl
+TI-irr n       ⊨⊥ ρ b' b = refl
+TI-irr (suc m) (⊨𝕀 tb ⊨𝔹 wA wB) ρ b' b =
+  Ifᵁ-cong (MI-irr m ⊨𝔹 tb (⇓ (suc m) ρ) _ _ _ _)
+           (TI-irr m wA (⇓ (suc m) ρ) _ _)
+           (TI-irr m wB (⇓ (suc m) ρ) _ _)
+TI-irr (suc m) (⊨Π wA wB) ρ b' b =
+  π̂-cong (TI-irr m wA (⇓ (suc m) ρ) _ _)
+         (λ x → TI-irr m wB (⇓ (suc m) ρ , λ _ → x) _ _)
+TI-irr zero    (⊨𝕀 tb ⊨𝔹 wA wB) ρ b' ()
+TI-irr zero    (⊨Π wA wB)        ρ b' ()
 
 consistency : ∀ {t} → ε ⊢ t ∷ ⊥̇ → Empty
 consistency td = MI (suc (dsz td)) ⊨⊥ td ⋆ ≤-refl (s≤s (1≤dsz td))
