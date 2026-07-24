@@ -40,7 +40,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence
   where
 
 open import Data.Nat using (zero; suc; _+_; _∸_; _≡ᵇ_; _≟_; _<_)
-open import Data.Nat.Properties using (+-comm; +-cancelˡ-≡; *-cancelʳ-≡)
+open import Data.Nat.Properties using (+-comm; +-cancelˡ-≡; *-cancelʳ-≡; n∸n≡0)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (yes; no; Dec)
@@ -571,6 +571,31 @@ sim-alloc-stack n newFlags fs s corr entry fresh-abs fresh-x86 liveinv = record
     stk : ∀ k → k < n → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k)
             ≡ enc-maybe (stackMem (floc fs) (current-frame (falloc fs)) k)
     stk k k<n = trans (fresh-x86 k k<n) (sym (cong enc-maybe (fresh-abs k k<n)))
+
+------------------------------------------------------------------------
+-- STACK DEALLOCATION: `instr-dealloc-stack n` (free n slots) ↔ `add rsp, n*8`.
+-- The abstract lowers the runtime depth (stackSlot −= n); the x86 raises rsp by
+-- n*8. At a FULL-frame exit (stackSlot ≡ n ⇒ post stackSlot = n∸n = 0), the
+-- bounded stack-eq post is VACUOUS (k < 0), so it holds trivially — no need to
+-- re-anchor the freed slots across the rsp shift. The 4 tracked regs / halt /
+-- heap are untouched (dealloc changes neither falloc nor stackMem). Flag-parametric.
+------------------------------------------------------------------------
+sim-dealloc-stack : ∀ (n : ℕ) (newFlags : X.Flags) (fs : FlatState) (s : X.State) → FlatCorr fs s
+  → stackSlot (regs (floc fs)) ≡ n                  -- WF: full-frame exit (runtime depth n → 0)
+  → FlatCorr (flat-exec-instr (instr-dealloc-stack n) [] fs)
+             (mkstate (xwriteReg (xregs s) rsp (X.readReg (xregs s) rsp + slots n))
+                      (memory s) newFlags (pc s + 1) (xhalted s))
+sim-dealloc-stack n newFlags fs s corr full = record
+  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
+  ; halt-eq = halt-eq corr
+  ; heap-eq = heap-eq corr
+  ; stack-eq = λ k k<ss → ⊥-elim (bad k k<ss) }
+  where
+    ss≡0 : stackSlot (regs (floc fs)) ∸ n ≡ 0
+    ss≡0 = trans (cong (_∸ n) full) (n∸n≡0 n)
+    bad : ∀ k → k < stackSlot (regs (floc fs)) ∸ n → ⊥
+    bad k k<ss with subst (k <_) ss≡0 k<ss
+    ... | ()
 
 ------------------------------------------------------------------------
 -- Arithmetic reg-ops (Plan 0.34: flag-free, so the post is parametric over

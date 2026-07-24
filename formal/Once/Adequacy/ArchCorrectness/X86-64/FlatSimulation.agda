@@ -508,6 +508,35 @@ block-step-alloc-stack prog fs s n cc h ft entry fresh-abs fresh-x86 liveinv =
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-alloc-stack n) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-alloc-stack n) ft))
 
+-- dealloc-stack: free n slots ↔ `add rsp, n*8`. At a full-frame exit
+-- (stackSlot ≡ n), sim-dealloc-stack's post bound is vacuous. Uses step-add-ri.
+block-step-dealloc-stack : ∀ prog fs s n → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-dealloc-stack n)
+  → stackSlot (regs (floc fs)) ≡ n
+  → BlockStep prog fs s (instr-dealloc-stack n)
+block-step-dealloc-stack prog fs s n cc h ft full =
+  post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (add (reg rsp) (imm (slots n)))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-dealloc-stack n) ft)
+    newFlags : X.Flags
+    newFlags = updateFlags (xreadReg (xregs s) rsp + slots n) (xreadReg (xregs s) rsp)
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) rsp (xreadReg (xregs s) rsp + slots n)
+                    ; flags = newFlags ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-add-ri {compile-trace prog} {s} {rsp} {slots n} fetch-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    dataPost : C.FlatCorr (flat-exec-instr (instr-dealloc-stack n) prog fs) post
+    dataPost = C.sim-dealloc-stack n newFlags fs s dc full
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-dealloc-stack n) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-dealloc-stack n) ft))
+
 -- worklist-push / worklist-pop: their abstract semantics + x86 lowering are
 -- IDENTICAL to store-at-slot / load-from-slot respectively (SMCore/AbstractToX86),
 -- so flat-exec-instr reduces the same way and the sim-* lemmas are reused verbatim.

@@ -423,6 +423,9 @@ postulate
   alloc-stack-liveinv : ∀ (fs : FlatState) (n : ℕ)
                       → ∀ hl → LiveIn (record (falloc fs) { next-slot = next-slot (falloc fs) + n }) hl
                              → LiveIn (falloc fs) hl
+  -- dealloc-stack frees the WHOLE current frame (runtime depth n → 0) — the WF
+  -- pairing of an entry alloc-stack n with its matching exit dealloc-stack n.
+  dealloc-stack-full : ∀ (fs : FlatState) (n : ℕ) → stackSlot (regs (floc fs)) ≡ n
   -- worklist-pop from an empty worklist slot: both machines halt (as load-from-slot-empty).
   worklist-pop-empty : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                          prog fs s slot → CompiledCorr prog fs s → halted (floc fs) ≡ false
@@ -524,6 +527,9 @@ mutual
     ccc-step-bs n ev env prog fs s (instr-alloc-stack k)
       (block-step-alloc-stack prog fs s k cc h ftq (alloc-stack-entry fs k) (alloc-stack-fresh-abs fs k)
          (alloc-stack-fresh-x86 fs s k) (alloc-stack-liveinv fs k)) refl h
+  events-running-fetch n ev env prog fs s (instr-dealloc-stack k) cc h ftq =
+    ccc-step-bs n ev env prog fs s (instr-dealloc-stack k)
+      (block-step-dealloc-stack prog fs s k cc h ftq (dealloc-stack-full fs k)) refl h
   -- Trivial cata bookkeeping (x86-len 0, flat identity): proven block-step ⇒ ccc-step-bs.
   events-running-fetch n ev env prog fs s (worklist-init k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-init k) (block-step-worklist-init prog fs s k cc h ftq) refl h
   events-running-fetch n ev env prog fs s (worklist-check k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-check k) (block-step-worklist-check prog fs s k cc h ftq) refl h
