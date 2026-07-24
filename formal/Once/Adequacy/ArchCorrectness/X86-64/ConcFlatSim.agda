@@ -360,6 +360,12 @@ postulate
                        → fetch prog (fpc fs) ≡ just (load-from-slot slot)
                        → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                              ≡ event-of (load-from-slot slot) fs ++ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs))
+  -- restore-input on an uninitialised slot: both machines halt (same as load-from-slot-empty).
+  restore-input-empty : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                          prog fs s slot → CompiledCorr prog fs s → halted (floc fs) ≡ false
+                      → fetch prog (fpc fs) ≡ just (restore-input slot)
+                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                            ≡ event-of (restore-input slot) fs ++ flat-events n prog (flat-exec-instr (restore-input slot) prog fs))
 
   -- ARITH SIGOP interpretation contract (D061): the internal-producer obligation,
   -- discharged OFFLINE from the arith proofs (dispatch-arith-preserves + arith-block-
@@ -446,6 +452,7 @@ mutual
   events-running-fetch n ev env prog fs s (store-at-slot slot) cc h ftq =
     ccc-step-bs n ev env prog fs s (store-at-slot slot)
       (block-step-store-at-slot prog fs s slot cc h ftq (store-at-slot-stack-disj fs s slot)) refl h
+  events-running-fetch n ev env prog fs s (restore-input slot) cc h ftq = restore-input-step n ev env prog fs s slot cc h ftq
   -- Trivial cata bookkeeping (x86-len 0, flat identity): proven block-step ⇒ ccc-step-bs.
   events-running-fetch n ev env prog fs s (worklist-init k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-init k) (block-step-worklist-init prog fs s k cc h ftq) refl h
   events-running-fetch n ev env prog fs s (worklist-check k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-check k) (block-step-worklist-check prog fs s k cc h ftq) refl h
@@ -619,6 +626,25 @@ mutual
             where hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
           go-mem nothing st-eq = load-from-slot-empty n ev env prog fs s slot cc h ftq
+
+  -- STACK restore-input: identical to load-from-slot but writes Input1 (rdi).
+  restore-input-step : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                         prog fs s slot → CompiledCorr prog fs s → halted (floc fs) ≡ false
+                     → fetch prog (fpc fs) ≡ just (restore-input slot)
+                     → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                           ≡ event-of (restore-input slot) fs ++ flat-events n prog (flat-exec-instr (restore-input slot) prog fs))
+  restore-input-step n ev env prog fs s slot cc h ftq =
+    go-mem (stackMem (floc fs) (current-frame (falloc fs)) slot) refl
+    where go-mem : ∀ (mw : Maybe (StoredValue FS)) → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ mw
+                 → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                       ≡ event-of (restore-input slot) fs ++ flat-events n prog (flat-exec-instr (restore-input slot) prog fs))
+          go-mem (just w) st-eq =
+            ccc-step-bs n ev env prog fs s (restore-input slot)
+              (block-step-restore-input prog fs s slot w cc h ftq st-eq)
+              refl hpost
+            where hpost : halted (floc (flat-exec-instr (restore-input slot) prog fs)) ≡ false
+                  hpost rewrite st-eq = h
+          go-mem nothing st-eq = restore-input-empty n ev env prog fs s slot cc h ftq
 
   -- MEMORY store-indirect: case the Output-target pointer. A live dynamic pointer ⇒ the
   -- PROVEN block-step-store-indirect (LiveIn from store-indirect-live; the writeLoc↔heap

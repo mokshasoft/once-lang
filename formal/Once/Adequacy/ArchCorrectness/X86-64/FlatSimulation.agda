@@ -446,6 +446,33 @@ block-step-load-from-slot prog fs s slot w cc h ft st-eq =
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (load-from-slot slot) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (load-from-slot slot) ft))
 
+-- restore-input: Input1 := stack[current-frame, slot] ↔ `mov rdi, [rsp+disp]`.
+-- Identical to load-from-slot but the destination register is rdi (Input1).
+block-step-restore-input : ∀ prog fs s slot w → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (restore-input slot)
+  → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
+  → BlockStep prog fs s (restore-input slot)
+block-step-restore-input prog fs s slot w cc h ft st-eq =
+  post , exec-eq , record { dataCorr = C.sim-restore-input slot w fs s dc st-eq ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
+              ≡ just (mov (reg rdi) (mem (base+disp rsp (slot-to-disp slot))))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (restore-input slot) ft)
+    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rsp (slot-to-disp slot))) ≡ just (C.enc-sv w)
+    rd = trans (C.stack-eq dc slot) (cong C.enc-maybe st-eq)
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) rdi (C.enc-sv w) ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-mov-rm {compile-trace prog} {s} {rdi} {base+disp rsp (slot-to-disp slot)} {C.enc-sv w} fetch-x86 rd
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (restore-input slot) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (restore-input slot) ft))
+
 -- store-indirect: *Input1 := Output ↔ `mov [rdi], rax`. step-mov-mr writes
 -- the RAW register values (readReg rdi / readReg rax); sim-store-indirect's
 -- post has the ENCODED values (enc-hl hl / enc-sv Output) — bridge the two

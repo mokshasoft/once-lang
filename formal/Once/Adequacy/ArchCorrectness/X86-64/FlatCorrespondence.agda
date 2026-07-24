@@ -62,7 +62,7 @@ open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; e
                           ; exec-store-via-resolved; exec-store-suc-via-resolved)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
-open AbstractExec {FS} using (exec-abstract; exec-load-from-slot-with-value)
+open AbstractExec {FS} using (exec-abstract; exec-load-from-slot-with-value; exec-restore-input-with-value)
 open FrameSemantics FS using (Frame)
 
 ------------------------------------------------------------------------
@@ -430,6 +430,34 @@ sim-store-indirect-suc hl fs s corr i-eq live-shl guard disj =
       ; heap-eq = store-heap-eq (falloc fs) (sucHL hl) v s (floc fs) live-shl (heap-eq corr)
       ; stack-eq = store-stack-eq (enc-hl (sucHL hl)) (enc-sv v) s
                      (stackMem (floc fs) (current-frame (falloc fs))) (stack-eq corr) disj }
+
+------------------------------------------------------------------------
+-- STACK RESTORE: `restore-input slot` (Input1 := stack[current-frame, slot]) ↔
+-- `mov rdi, [rsp + slot-to-disp slot]`. Identical to load-from-slot but the
+-- destination is Input1/rdi (not Output/rax). Success case only; empty slot
+-- routed as a residual.
+------------------------------------------------------------------------
+sim-restore-input : ∀ (slot : Slot) (w : StoredValue FS) (fs : FlatState) (s : X.State) → FlatCorr fs s
+  → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
+  → FlatCorr (flat-exec-instr (restore-input slot) [] fs)
+             (mkstate (xwriteReg (xregs s) rdi (enc-sv w)) (memory s) (flags s) (pc s + 1) (xhalted s))
+sim-restore-input slot w fs s corr st-eq =
+  subst (λ z → FlatCorr z xpost) (sym reduces) corr-clean
+  where
+    xpost : X.State
+    xpost = mkstate (xwriteReg (xregs s) rdi (enc-sv w)) (memory s) (flags s) (pc s + 1) (xhalted s)
+    ex-eq : exec-abstract (restore-input slot) (floc fs) (falloc fs)
+            ≡ (record (floc fs) { regs = writeReg (regs (floc fs)) Input1 w } , falloc fs)
+    ex-eq = cong (λ mv → exec-restore-input-with-value mv (floc fs) (falloc fs)) st-eq
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Input1 w }
+                          ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    reduces : flat-exec-instr (restore-input slot) [] fs ≡ cleanFlat
+    reduces = cong (λ p → record fs { floc = proj₁ p ; falloc = proj₂ p ; fpc = suc (fpc fs) }) ex-eq
+    corr-clean : FlatCorr cleanFlat xpost
+    corr-clean = record
+      { rdi-eq = refl ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
+      ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
 
 ------------------------------------------------------------------------
 -- STACK STORE: `store-at-slot slot` (stack[current-frame, slot] := Output) ↔
