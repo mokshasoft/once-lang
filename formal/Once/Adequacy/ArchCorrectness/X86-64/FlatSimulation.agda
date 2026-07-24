@@ -473,6 +473,70 @@ block-step-restore-input prog fs s slot w cc h ft st-eq =
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (restore-input slot) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (restore-input slot) ft))
 
+-- worklist-push / worklist-pop: their abstract semantics + x86 lowering are
+-- IDENTICAL to store-at-slot / load-from-slot respectively (SMCore/AbstractToX86),
+-- so flat-exec-instr reduces the same way and the sim-* lemmas are reused verbatim.
+block-step-worklist-push : ∀ prog fs s slot → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (worklist-push slot)
+  → (∀ hl' → LiveIn (falloc fs) hl' → (X.readReg (xregs s) rsp + slot-to-disp slot ≡ enc-hl hl') → ⊥)
+  → BlockStep prog fs s (worklist-push slot)
+block-step-worklist-push prog fs s slot cc h ft disj =
+  post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
+              ≡ just (mov (mem (base+disp rsp (slot-to-disp slot))) (reg rax))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (worklist-push slot) ft)
+    post : X.State
+    post = record s { memory = writeMem (memory s) (X.effectiveAddr s (base+disp rsp (slot-to-disp slot)))
+                                        (xreadReg (xregs s) rax)
+                    ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-mov-mr {compile-trace prog} {s} {base+disp rsp (slot-to-disp slot)} {rax} fetch-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    post-eq : post ≡ mkstate (xregs s)
+                             (writeMem (memory s) (X.readReg (xregs s) rsp + slot-to-disp slot)
+                                       (C.enc-sv (readReg (regs (floc fs)) Output)))
+                             (flags s) (pc s + 1) (xhalted s)
+    post-eq = cong (λ v → mkstate (xregs s)
+                            (writeMem (memory s) (X.readReg (xregs s) rsp + slot-to-disp slot) v)
+                            (flags s) (pc s + 1) (xhalted s))
+                   (C.rax-eq dc)
+    dataPost : C.FlatCorr (flat-exec-instr (worklist-push slot) prog fs) post
+    dataPost = subst (C.FlatCorr (flat-exec-instr (worklist-push slot) prog fs)) (sym post-eq)
+                     (C.sim-store-at-slot slot fs s dc disj)
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (worklist-push slot) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (worklist-push slot) ft))
+
+block-step-worklist-pop : ∀ prog fs s slot w → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (worklist-pop slot)
+  → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
+  → BlockStep prog fs s (worklist-pop slot)
+block-step-worklist-pop prog fs s slot w cc h ft st-eq =
+  post , exec-eq , record { dataCorr = C.sim-load-from-slot slot w fs s dc st-eq ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
+              ≡ just (mov (reg rax) (mem (base+disp rsp (slot-to-disp slot))))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (worklist-pop slot) ft)
+    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rsp (slot-to-disp slot))) ≡ just (C.enc-sv w)
+    rd = trans (C.stack-eq dc slot) (cong C.enc-maybe st-eq)
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) rax (C.enc-sv w) ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-mov-rm {compile-trace prog} {s} {rax} {base+disp rsp (slot-to-disp slot)} {C.enc-sv w} fetch-x86 rd
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (worklist-pop slot) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (worklist-pop slot) ft))
+
 -- store-indirect: *Input1 := Output ↔ `mov [rdi], rax`. step-mov-mr writes
 -- the RAW register values (readReg rdi / readReg rax); sim-store-indirect's
 -- post has the ENCODED values (enc-hl hl / enc-sv Output) — bridge the two
