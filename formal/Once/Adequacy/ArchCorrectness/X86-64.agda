@@ -120,7 +120,7 @@ entry-corr ir = record
       ; rbx-eq  = sym enc-hl-entry
       ; halt-eq = refl
       ; heap-eq = λ _ _ → refl
-      ; stack-eq = λ _ → refl   -- entry stack is empty (stackMem ≡ λ _ _ → nothing)
+      ; stack-eq = λ _ ()   -- entry frame: next-slot ≡ 0, so the k < 0 bound is absurd
       }
   ; pc-off = refl
   }

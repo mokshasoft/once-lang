@@ -39,7 +39,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence
                    → LiveIn as a → LiveIn as b → enc-hl a ≡ enc-hl b → a ≡ b)
   where
 
-open import Data.Nat using (zero; suc; _+_; _∸_; _≡ᵇ_; _≟_)
+open import Data.Nat using (zero; suc; _+_; _∸_; _≡ᵇ_; _≟_; _<_)
 open import Data.Nat.Properties using (+-comm; +-cancelˡ-≡; *-cancelʳ-≡)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -107,7 +107,13 @@ record FlatCorr (fs : FlatState) (s : X.State) : Set where
     halt-eq : X.State.halted s ≡ halted (floc fs)
     heap-eq : ∀ (hl : HeapLocation) → LiveIn (falloc fs) hl →
               X.readMem (X.State.memory s) (enc-hl hl) ≡ enc-maybe (heapMem (floc fs) hl)
-    stack-eq : ∀ (k : Slot) →
+    -- BOUNDED to the current frame's LIVE slots (k < next-slot), exactly as
+    -- heap-eq is bounded by LiveIn and as BeforeFrontier.stack-before requires.
+    -- An UNBOUNDED ∀ k would be unsatisfiable: it would claim the CALLER's slots
+    -- (above rsp, holding the caller's live data) equal the abstract `nothing`.
+    -- Slots at/above next-slot belong to callers / are not this frame's — never
+    -- claimed. (Frame ops shift rsp only at frame boundaries, where next-slot=0.)
+    stack-eq : ∀ (k : Slot) → k < next-slot (falloc fs) →
               X.readMem (X.State.memory s) (X.readReg (X.State.regs s) rsp + slot-to-disp k)
               ≡ enc-maybe (stackMem (floc fs) (current-frame (falloc fs)) k)
 open FlatCorr public
@@ -353,12 +359,12 @@ store-heap-eq as hl v s ls live-hl pre hl' live-hl' with hl ≟HL hl'
 -- heap write, so the current-frame stack correspondence is preserved — the
 -- rsp-relative analogue of `store-heap-eq`'s no-alias branch. `stk` is the
 -- current frame's slot→value slice (`stackMem ls (current-frame …)`).
-store-stack-eq : ∀ (addr : ℕ) (v' : X.Word) (s : X.State) (stk : Slot → Maybe (StoredValue FS))
-  → (∀ k → X.readMem (memory s) (X.readReg (xregs s) rsp + slot-to-disp k) ≡ enc-maybe (stk k))
+store-stack-eq : ∀ (addr : ℕ) (v' : X.Word) (s : X.State) (stk : Slot → Maybe (StoredValue FS)) (bound : ℕ)
+  → (∀ k → k < bound → X.readMem (memory s) (X.readReg (xregs s) rsp + slot-to-disp k) ≡ enc-maybe (stk k))
   → (∀ k → (X.readReg (xregs s) rsp + slot-to-disp k ≡ addr) → ⊥)
-  → ∀ k → X.readMem (writeMem (memory s) addr v') (X.readReg (xregs s) rsp + slot-to-disp k)
+  → ∀ k → k < bound → X.readMem (writeMem (memory s) addr v') (X.readReg (xregs s) rsp + slot-to-disp k)
           ≡ enc-maybe (stk k)
-store-stack-eq addr v' s stk pre disj k rewrite ≢→≡ᵇfalse (disj k) = pre k
+store-stack-eq addr v' s stk bound pre disj k k<b rewrite ≢→≡ᵇfalse (disj k) = pre k k<b
 
 -- store-indirect: *Input1 := Output ↔ `mov [rdi], rax`. Hypotheses:
 --   Input1 = SV-Ptr (AtDynamic hl)   (destination is a heap cell)
@@ -396,7 +402,7 @@ sim-store-indirect hl fs s corr i-eq live-hl guard disj =
       ; halt-eq = halt-eq corr
       ; heap-eq = store-heap-eq (falloc fs) hl v s (floc fs) live-hl (heap-eq corr)
       ; stack-eq = store-stack-eq (enc-hl hl) (enc-sv v) s
-                     (stackMem (floc fs) (current-frame (falloc fs))) (stack-eq corr) disj }
+                     (stackMem (floc fs) (current-frame (falloc fs))) (next-slot (falloc fs)) (stack-eq corr) disj }
 
 -- store-indirect-suc: *(sucLoc Input1) := Output ↔ `mov [rdi+slot], rax`.
 sim-store-indirect-suc : ∀ (hl : HeapLocation) (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -429,7 +435,7 @@ sim-store-indirect-suc hl fs s corr i-eq live-shl guard disj =
       ; halt-eq = halt-eq corr
       ; heap-eq = store-heap-eq (falloc fs) (sucHL hl) v s (floc fs) live-shl (heap-eq corr)
       ; stack-eq = store-stack-eq (enc-hl (sucHL hl)) (enc-sv v) s
-                     (stackMem (floc fs) (current-frame (falloc fs))) (stack-eq corr) disj }
+                     (stackMem (floc fs) (current-frame (falloc fs))) (next-slot (falloc fs)) (stack-eq corr) disj }
 
 ------------------------------------------------------------------------
 -- STACK RESTORE: `restore-input slot` (Input1 := stack[current-frame, slot]) ↔
@@ -495,11 +501,11 @@ store-slot-heap-eq as waddr v' s ls pre disj hl' live
 -- would abstract the scrutinee inside the abstract `writeStackMem-aux (… ≟F …) (slot ≟ k)`
 -- as `yes refl`, diverging from the read-back lemma's `slot ≟ slot` form. Feeding the
 -- Dec to `go` keeps the goal's readLoc/writeLoc intact so the lemmas apply.
-store-slot-stack-eq : ∀ (base : ℕ) (slot : Slot) (Out : StoredValue FS) (s : X.State) (ls : LocState FS) (cf : Frame)
-  → (∀ k → X.readMem (memory s) (base + slot-to-disp k) ≡ enc-maybe (stackMem ls cf k))
-  → ∀ k → X.readMem (writeMem (memory s) (base + slot-to-disp slot) (enc-sv Out)) (base + slot-to-disp k)
+store-slot-stack-eq : ∀ (base : ℕ) (slot : Slot) (Out : StoredValue FS) (s : X.State) (ls : LocState FS) (cf : Frame) (bound : ℕ)
+  → (∀ k → k < bound → X.readMem (memory s) (base + slot-to-disp k) ≡ enc-maybe (stackMem ls cf k))
+  → ∀ k → k < bound → X.readMem (writeMem (memory s) (base + slot-to-disp slot) (enc-sv Out)) (base + slot-to-disp k)
           ≡ enc-maybe (readLoc (writeLoc ls (AtStack cf slot) Out) (AtStack cf k))
-store-slot-stack-eq base slot Out s ls cf old k = go (k ≟ slot)
+store-slot-stack-eq base slot Out s ls cf bound old k k<b = go (k ≟ slot)
   where go : Dec (k ≡ slot)
            → X.readMem (writeMem (memory s) (base + slot-to-disp slot) (enc-sv Out)) (base + slot-to-disp k)
              ≡ enc-maybe (readLoc (writeLoc ls (AtStack cf slot) Out) (AtStack cf k))
@@ -508,7 +514,7 @@ store-slot-stack-eq base slot Out s ls cf old k = go (k ≟ slot)
         go (no  p)    rewrite ≢→≡ᵇfalse {base + slot-to-disp k} {base + slot-to-disp slot}
                                 (λ eq → p (slot-addr-inj base k slot eq))
                             | writeLoc-preserves-other ls (AtStack cf slot) (AtStack cf k) Out
-                                (λ eq → p (sym (atstack-slot-inj cf eq))) = old k
+                                (λ eq → p (sym (atstack-slot-inj cf eq))) = old k k<b
 
 sim-store-at-slot : ∀ (slot : Slot) (fs : FlatState) (s : X.State) → FlatCorr fs s
   -- stack/heap disjointness: the written slot address aliases no live heap cell.
@@ -532,7 +538,7 @@ sim-store-at-slot slot fs s corr disj = corr-clean
       ; halt-eq = halt-eq corr
       ; heap-eq = store-slot-heap-eq (falloc fs) (base + slot-to-disp slot) (enc-sv Out) s (floc fs)
                     (heap-eq corr) disj
-      ; stack-eq = store-slot-stack-eq base slot Out s (floc fs) cf (stack-eq corr) }
+      ; stack-eq = store-slot-stack-eq base slot Out s (floc fs) cf (next-slot (falloc fs)) (stack-eq corr) }
 
 ------------------------------------------------------------------------
 -- Arithmetic reg-ops (Plan 0.34: flag-free, so the post is parametric over

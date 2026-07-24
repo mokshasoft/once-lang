@@ -28,7 +28,7 @@ open import Once.CCC.Target.X86-64.Syntax using
   ( slot-size; Program; Instr; rsp
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
   ; ret; push; pop; nop; ud2; syscall; label )
-open import Data.Nat using (ℕ; _+_)
+open import Data.Nat using (ℕ; _+_; _<_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
@@ -403,6 +403,12 @@ postulate
                       → fetch prog (fpc fs) ≡ just (restore-input slot)
                       → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                             ≡ event-of (restore-input slot) fs ++ flat-events n prog (flat-exec-instr (restore-input slot) prog fs))
+  -- A read stack slot that holds a value is FRAME-LIVE (slot < next-slot frontier) — the
+  -- WF invariant that reads stay within the current frame's allocated slots. The stack
+  -- analogue of load-indirect-live (a written heap cell is LiveIn).
+  slot-read-live : ∀ (fs : FlatState) (slot : Slot) {w : StoredValue FS}
+                 → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
+                 → slot < next-slot (falloc fs)
   -- worklist-pop from an empty worklist slot: both machines halt (as load-from-slot-empty).
   worklist-pop-empty : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                          prog fs s slot → CompiledCorr prog fs s → halted (floc fs) ≡ false
@@ -762,7 +768,7 @@ mutual
                        ≡ event-of (load-from-slot slot) fs ++ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs))
           go-mem (just w) st-eq =
             ccc-step-bs n ev env prog fs s (load-from-slot slot)
-              (block-step-load-from-slot prog fs s slot w cc h ftq st-eq)
+              (block-step-load-from-slot prog fs s slot w cc h ftq (slot-read-live fs slot st-eq) st-eq)
               refl hpost
             where hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
@@ -781,7 +787,7 @@ mutual
                        ≡ event-of (restore-input slot) fs ++ flat-events n prog (flat-exec-instr (restore-input slot) prog fs))
           go-mem (just w) st-eq =
             ccc-step-bs n ev env prog fs s (restore-input slot)
-              (block-step-restore-input prog fs s slot w cc h ftq st-eq)
+              (block-step-restore-input prog fs s slot w cc h ftq (slot-read-live fs slot st-eq) st-eq)
               refl hpost
             where hpost : halted (floc (flat-exec-instr (restore-input slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
@@ -800,7 +806,7 @@ mutual
                        ≡ event-of (worklist-pop slot) fs ++ flat-events n prog (flat-exec-instr (worklist-pop slot) prog fs))
           go-mem (just w) st-eq =
             ccc-step-bs n ev env prog fs s (worklist-pop slot)
-              (block-step-worklist-pop prog fs s slot w cc h ftq st-eq)
+              (block-step-worklist-pop prog fs s slot w cc h ftq (slot-read-live fs slot st-eq) st-eq)
               refl hpost
             where hpost : halted (floc (flat-exec-instr (worklist-pop slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
