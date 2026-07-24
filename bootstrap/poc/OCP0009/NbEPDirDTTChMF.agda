@@ -988,25 +988,103 @@ sub-MI (suc n) {Δc = Δc} {Γc = Γc} sσ (⊨Π wA wB) (⊨Π wSA wSB) (⊢lam
                                      (trans (cong (coe (congÊl A')) (MI-⊢irr n wSB (⇓ n δ , λ _ → xv) (⊢-unique _ D)))
                                             (sub-MI n (extW wA wSA sσ) wB wSB td'RHS (⇓ n δ , λ _ → xv) cbS cbA dbC cbC _ _ _)))
                                (congMI n wB td'RHS (goalenv xv))))
-sub-MI (suc n) sσ wA wS (⊢app (⊨Π wA' wB) tf tu) δ bS bA bE bC bdS bdA bDS =
+sub-MI (suc n) {Δc = Δc} {Γc = Γc} sσ wA wS (⊢app (⊨Π wA' wB) tf tu) δ bS bA bE bC bdS bdA bDS =
   trans (cong (coe P_L)
               (trans (MI-subst (suc n) (sym (subTy-comm _ _ _)) wS wSc (⊢app (⊨Π wSA' wSB') tfs tus) δ)
-                     (cong (coe Qc) (MI-app-red n wSA' wSB' wSc tfs tus δ _ _))))
-  (trans {!!}
-         (sym (MI-app-red n wA' wB wA tf tu (envS (suc n) sσ δ bE) _ _)))
+                     (cong (coe Qc) (MI-app-red n wSA' wSB' wSc tfs tus δ bdS_u bS_u))))
+  (trans (trans (cong (λ w → coe P_L (coe Qc (coe SL' w))) fal-eq)
+                (trans (coe4-uip CE SL' Qc P_L R'' BASE')
+                       (trans (sym (coe3-uip QCg MOT2coe SR'' R'' BASE'))
+                              (cong (coe SR'') (sym fr-eq)))))
+         (sym (MI-app-red n wA' wB wA tf tu (envS (suc n) sσ δ bE) bdA_u bA_u)))
   where wSA' = sub-⊨ sσ wA'
         wSB' = sub-⊨ (extW wA' wSA' sσ) wB
         wSc  = subst (λ z → _ ⊨ z) (subTy-comm _ _ _) wS
         tfs  = sub-⊢ sσ tf
         tus  = sub-⊢ sσ tu
+        rapp = ⊢app (⊨Π wSA' wSB') tfs tus
+        ΠSub = szT (⊨Π wSA' wSB')
+        ΠSrc = szT (⊨Π wA' wB)
+        bdS' = <≡ (cong (_+ szCon Δc) (dsz-subst (sym (subTy-comm _ _ _)) rapp)) bdS
+        bDS' = <≡ (cong (λ z → szSubW sσ + (z + szCon Δc)) (dsz-subst (sym (subTy-comm _ _ _)) rapp)) bDS
+        qS   = <-inv bdS'
+        q2   = <-inv bdA
+        qDS  = <-inv (<≡ (+-suc (szSubW sσ) _) bDS')
+        szΠSub< = <-weaken (s≤s (m≤m+n ΠSub (dsz tfs + dsz tus)))
+        -- fuel-(suc n) function bounds
+        bS_f  = +mono< (≤-trans (m≤m+n ΠSub (dsz tfs + dsz tus)) ≤-suc) ≤-refl bdS'
+        bA_f  = +mono< (≤-trans (m≤m+n ΠSrc (dsz tf + dsz tu)) ≤-suc) ≤-refl bdA
+        bC_f  = +mono< ≤-refl (+-mono szΠSub< ≤-refl) bDS'
+        bdS_f = +mono< (≤-trans (m≤m+n (dsz tfs) (dsz tus)) (≤-trans (n≤m+n ΠSub (dsz tfs + dsz tus)) ≤-suc)) ≤-refl bdS'
+        bdA_f = +mono< (≤-trans (m≤m+n (dsz tf) (dsz tu)) (≤-trans (n≤m+n ΠSrc (dsz tf + dsz tu)) ≤-suc)) ≤-refl bdA
+        bDS_f = +mono< ≤-refl (+-mono (≤-trans (m≤m+n (dsz tfs) (dsz tus)) (≤-trans (n≤m+n ΠSub (dsz tfs + dsz tus)) ≤-suc)) ≤-refl) bDS'
+        -- fuel-n argument bounds
+        bS_u  = +mono< (≤-trans (≤-trans (m≤m+n (szT wSA') (szT wSB')) ≤-suc) (m≤m+n ΠSub (dsz tfs + dsz tus))) ≤-refl qS
+        bA_u  = +mono< (≤-trans (≤-trans (m≤m+n (szT wA') (szT wB)) ≤-suc) (m≤m+n ΠSrc (dsz tf + dsz tu))) ≤-refl q2
+        bdS_u = +mono< (≤-trans (n≤m+n (dsz tfs) (dsz tus)) (n≤m+n ΠSub (dsz tfs + dsz tus))) ≤-refl qS
+        bdA_u = +mono< (≤-trans (n≤m+n (dsz tf) (dsz tu)) (n≤m+n ΠSrc (dsz tf + dsz tu))) ≤-refl q2
+        bE_u  = +mono< ≤-refl (n≤m+n (ΠSub + (dsz tfs + dsz tus)) (szCon Δc)) qDS
+        bC_u  = +mono< ≤-refl (+-mono (≤-trans (≤-trans (m≤m+n (szT wSA') (szT wSB')) ≤-suc) (m≤m+n ΠSub (dsz tfs + dsz tus))) ≤-refl) qDS
+        bDS_u = +mono< ≤-refl (+-mono (≤-trans (n≤m+n (dsz tfs) (dsz tus)) (n≤m+n ΠSub (dsz tfs + dsz tus))) ≤-refl) qDS
         P_L  = congÊl (sub-TI (suc n) sσ wA wS δ bS bA bE bC)
         Qc   = congÊl (trans (TI-resp-eq (suc n) (sym (subTy-comm _ _ _)) wSc δ)
                              (TI-wf-eq (suc n) (⊨-unique (subst (λ z → _ ⊨ z) (sym (subTy-comm _ _ _)) wSc) wS) δ))
-        -- residual (compiles as hole): both sides reduce to coe-stacks of BASE = f_L arg_L; the full
-        -- proof (MI-app-red + π̂-inj-dom + coe-π̂-app-arg + G-trick + coe3/coe2-uip collapse) is in
-        -- scratchpad/MF-app-full-attempt.agda but blocks on the tf-recursion bound bC_f = szSubW sσ +
-        -- (szT (⊨Π wSA' wSB') + szCon Δc) < suc n, which is NOT derivable from sub-MI's current bounds
-        -- (needs a szSubW+dsz combined bound for the app subterms — a measure/signature extension).
+        -- sub-TI-Π reconstruction for the FUNCTION (pa = domeq, qc = codeq)
+        bE'f = combStep (1≤szT (⊨Π wSA' wSB')) bC_f
+        dbSf = sub-bnd< (szTΠl< wSA' wSB') bS_f
+        dbAf = sub-bnd< (szTΠl< wA' wB) bA_f
+        dbCf = combStep (szTΠl< wSA' wSB') bC_f
+        subDom = sub-TI n sσ wA' wSA' (⇓ n δ) dbSf dbAf bE'f dbCf
+        eqE    = envS-⇓ n sσ δ bE bE'f
+        pa   = trans subDom (congTI n wA' eqE)
+        cbSf = <≡ (trans (cong (_+ szCon Δc) (+-comm (szT wSA') (szT wSB'))) (+-assoc (szT wSB') (szT wSA') (szCon Δc))) (<-inv bS_f)
+        cbAf = <≡ (trans (cong (_+ szCon Γc) (+-comm (szT wA') (szT wB))) (+-assoc (szT wB) (szT wA') (szCon Γc))) (<-inv bA_f)
+        cbCf = <≡ (cong (szSubW sσ +_) (trans (cong (_+ szCon Δc) (+-comm (szT wSA') (szT wSB'))) (+-assoc (szT wSB') (szT wSA') (szCon Δc))))
+                  (<-inv (<≡ (+-suc (szSubW sσ) _) bC_f))
+        goalenv : ∀ x → _≡_ {A = CI n (Γc ▷ wA')}
+                          (envS n (extW wA' wSA' sσ) (⇓ n δ , λ _ → x) dbCf)
+                          (⇓ n (envS (suc n) sσ δ bE) , λ _ → coe (congÊl pa) x)
+        goalenv x = pair-≡ eqE
+                      (trans (subst-Π {C = λ e b → Êl (TI n wA' e b)} eqE (λ b → coe (congÊl subDom) x))
+                             (funextP (λ b →
+                               trans (subst≡coe {B = λ e → Êl (TI n wA' e b)} eqE (coe (congÊl subDom) x))
+                               (trans (cong (λ e → coe e (coe (congÊl subDom) x))
+                                            (uip' (cong (λ e → Êl (TI n wA' e b)) eqE) (congÊl (congTI n wA' eqE))))
+                               (trans (coe-trans (congÊl subDom) (congÊl (congTI n wA' eqE)) x)
+                                      (cong (λ e → coe e x) (sym (congÊl-trans subDom (congTI n wA' eqE)))))))))
+        qc : ∀ x → TI n wSB' (⇓ n δ , λ _ → x) cbSf
+                   ≡ TI n wB (⇓ n (envS (suc n) sσ δ bE) , λ _ → coe (congÊl pa) x) cbAf
+        qc x = trans (sub-TI n (extW wA' wSA' sσ) wB wSB' (⇓ n δ , λ _ → x) cbSf cbAf dbCf cbCf) (congTI n wB (goalenv x))
+        f_L  = MI (suc n) (⊨Π wSA' wSB') tfs δ bdS_f bS_f
+        arg_L = MI n wSA' tus (⇓ n δ) bdS_u bS_u
+        arg_R = MI n wA' tu (⇓ n (envS (suc n) sσ δ bE)) bdA_u bA_u
+        f_R  = MI (suc n) (⊨Π wA' wB) tf (envS (suc n) sσ δ bE) bdA_f bA_f
+        STu  = sub-TI n sσ wA' wSA' (⇓ n δ) bS_u bA_u bE_u bC_u
+        recf = sub-MI (suc n) sσ (⊨Π wA' wB) (⊨Π wSA' wSB') tf δ bS_f bA_f bE bC_f bdS_f bdA_f bDS_f
+        recu = sub-MI n sσ wA' wSA' tu (⇓ n δ) bS_u bA_u bE_u bC_u bdS_u bdA_u bDS_u
+        argeq = trans (sym (congMI n wA' tu (envS-⇓ n sσ δ bE bE_u)))
+                (trans (cong (coe (congÊl (congTI n wA' (envS-⇓ n sσ δ bE bE_u)))) (sym recu))
+                       (coe2-uip (congÊl STu) (congÊl (congTI n wA' (envS-⇓ n sσ δ bE bE_u))) (congÊl pa) arg_L))
+        bS_SL = <≡ (cong (_+ szCon Δc) (sym (szT-subst (subTy-comm _ _ _) wS))) bS
+        bB_SL = <≡ (trans (cong (_+ szCon Δc) (+-comm (szT wSA') (szT wSB'))) (+-assoc (szT wSB') (szT wSA') (szCon Δc)))
+                   (+mono< (≤-trans ≤-suc (m≤m+n ΠSub (dsz tfs + dsz tus))) ≤-refl qS)
+        bB_SR = <≡ (trans (cong (_+ szCon Γc) (+-comm (szT wA') (szT wB))) (+-assoc (szT wB) (szT wA') (szCon Γc)))
+                   (+mono< (≤-trans ≤-suc (m≤m+n ΠSrc (dsz tf + dsz tu))) ≤-refl q2)
+        SL'   = congÊl (sym (subTI n wSA' wSB' wSc tus δ (λ b → MI n wSA' tus (⇓ n δ) bdS_u b) bS_SL bB_SL))
+        argL0 = coe (sym (congÊl pa)) arg_R
+        argL0eq = trans (cong (coe (sym (congÊl pa))) argeq) (coe-symˡ (congÊl pa) arg_L)
+        BASE' = f_L argL0
+        bL    = λ z → TI n wSB' (⇓ n δ , (λ _ → z)) cbSf
+        CE    = cong (λ z → Êl (bL z)) argL0eq
+        fal-eq = trans (sym (subst-app (λ z → Êl (bL z)) f_L argL0eq)) (subst≡coe argL0eq (f_L argL0))
+        MOT2    = λ z → Êl (TI n wB (⇓ n (envS (suc n) sσ δ bE) , (λ _ → z)) cbAf)
+        MOT2coe = cong MOT2 (coe-sym' (congÊl pa) arg_R)
+        QCg   = congÊl (qc argL0)
+        SR''  = congÊl (sym (subTI n wA' wB wA tu (envS (suc n) sσ δ bE)
+                                  (λ b → MI n wA' tu (⇓ n (envS (suc n) sσ δ bE)) bdA_u b) bA bB_SR))
+        R''   = trans CE (trans SL' (trans Qc P_L))
+        fr-eq = trans (cong (λ h → h arg_R) (sym recf))
+                      (trans (coe-π̂-gen pa qc f_L arg_R) (subst≡coe (coe-sym' (congÊl pa) arg_R) (coe QCg BASE')))
 sub-MI zero sσ wA wS td δ bS bA bE bC bdS bdA ()
 
 consistency : ∀ {t} → ε ⊢ t ∷ ⊥̇ → Empty
