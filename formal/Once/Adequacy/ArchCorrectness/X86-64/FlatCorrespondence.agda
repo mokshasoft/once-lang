@@ -625,6 +625,36 @@ sim-push-frame n fs s xp corr rdi-p rsi-p rax-p rbx-p halt-p heap-p = record
   ; stack-eq = λ _ () }   -- writeStackSlot 0 ⇒ post stackSlot ≡ 0 ⇒ k < 0 absurd
 
 ------------------------------------------------------------------------
+-- FRAME POP: `instr-pop-frame` ↔ `mov rsp,rbp; pop rbp`. The abstract is IDENTITY
+-- ("frame restoration is external"). At a well-formed frame teardown the callee's
+-- slots are already freed (stackSlot ≡ 0), so the bounded stack-eq post is VACUOUS
+-- — no callee slots to re-anchor across the rsp restore. `pop` only READS memory,
+-- so heap-eq copies through with NO disjointness. The 4 tracked regs (rdi/rsi/rax/
+-- rbx) are untouched (mov/pop hit only rsp/rbp). Parametric over the post + facts,
+-- exactly like sim-push-frame; only the vacuous stack-eq is proved here.
+------------------------------------------------------------------------
+sim-pop-frame : ∀ (fs : FlatState) (s xp : X.State) → FlatCorr fs s
+  → stackSlot (regs (floc fs)) ≡ 0                 -- WF: frame emptied before pop
+  → X.readReg (X.State.regs xp) rdi ≡ X.readReg (X.State.regs s) rdi
+  → X.readReg (X.State.regs xp) rsi ≡ X.readReg (X.State.regs s) rsi
+  → X.readReg (X.State.regs xp) rax ≡ X.readReg (X.State.regs s) rax
+  → X.readReg (X.State.regs xp) rbx ≡ X.readReg (X.State.regs s) rbx
+  → X.State.halted xp ≡ X.State.halted s
+  → (∀ hl → LiveIn (falloc fs) hl → X.readMem (X.State.memory xp) (enc-hl hl)
+                                  ≡ X.readMem (X.State.memory s) (enc-hl hl))
+  → FlatCorr (flat-exec-instr instr-pop-frame [] fs) xp
+sim-pop-frame fs s xp corr ss0 rdi-p rsi-p rax-p rbx-p halt-p heap-p = record
+  { rdi-eq = trans rdi-p (rdi-eq corr) ; rsi-eq = trans rsi-p (rsi-eq corr)
+  ; rax-eq = trans rax-p (rax-eq corr) ; rbx-eq = trans rbx-p (rbx-eq corr)
+  ; halt-eq = trans halt-p (halt-eq corr)
+  ; heap-eq = λ hl live → trans (heap-p hl live) (heap-eq corr hl live)
+  ; stack-eq = λ k k<ss → ⊥-elim (bad k k<ss) }
+  where
+    bad : ∀ k → k < stackSlot (regs (floc fs)) → ⊥
+    bad k k<ss with subst (k <_) ss0 k<ss
+    ... | ()
+
+------------------------------------------------------------------------
 -- Arithmetic reg-ops (Plan 0.34: flag-free, so the post is parametric over
 -- the x86 flags). input2-inc / scratch-dec increment/decrement a TAG.
 ------------------------------------------------------------------------

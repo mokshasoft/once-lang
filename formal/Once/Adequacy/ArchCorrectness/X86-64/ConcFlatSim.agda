@@ -25,7 +25,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Target.X86-64.Syntax using
-  ( slot-size; Program; Instr; rsp
+  ( slot-size; Program; Instr; rsp; rbp
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
   ; ret; push; pop; nop; ud2; syscall; label )
 open import Data.Nat using (ℕ; _+_; _<_; _∸_)
@@ -430,6 +430,11 @@ postulate
   -- heap cell (heap/stack disjointness, as for the store residuals).
   push-frame-heap-disj : ∀ (s : X.State) (fs : FlatState)
                        → ∀ hl → LiveIn (falloc fs) hl → (X.readReg (X.State.regs s) rsp ∸ slot-size ≡ enc-hl hl) → ⊥
+  -- pop-frame WF: the callee frame is emptied before it is popped (stackSlot ≡ 0),
+  -- and the saved caller rbp is present at [rbp] for `pop` to succeed.
+  pop-frame-empty : ∀ (fs : FlatState) → stackSlot (regs (floc fs)) ≡ 0
+  pop-frame-saved : ∀ (s : X.State)
+                  → Σ ℕ (λ v → X.readMem (X.State.memory s) (X.readReg (X.State.regs s) rbp) ≡ just v)
   -- worklist-pop from an empty worklist slot: both machines halt (as load-from-slot-empty).
   worklist-pop-empty : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                          prog fs s slot → CompiledCorr prog fs s → halted (floc fs) ≡ false
@@ -537,6 +542,10 @@ mutual
   events-running-fetch n ev env prog fs s (instr-push-frame k) cc h ftq =
     ccc-step-bs n ev env prog fs s (instr-push-frame k)
       (block-step-push-frame prog fs s k cc h ftq (push-frame-heap-disj s fs)) refl h
+  events-running-fetch n ev env prog fs s instr-pop-frame cc h ftq =
+    ccc-step-bs n ev env prog fs s instr-pop-frame
+      (block-step-pop-frame prog fs s (proj₁ (pop-frame-saved s)) cc h ftq
+         (pop-frame-empty fs) (proj₂ (pop-frame-saved s))) refl h
   -- Trivial cata bookkeeping (x86-len 0, flat identity): proven block-step ⇒ ccc-step-bs.
   events-running-fetch n ev env prog fs s (worklist-init k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-init k) (block-step-worklist-init prog fs s k cc h ftq) refl h
   events-running-fetch n ev env prog fs s (worklist-check k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-check k) (block-step-worklist-check prog fs s k cc h ftq) refl h

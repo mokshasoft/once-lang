@@ -115,6 +115,15 @@ step-push : ∀ {prog s r}
                              ; pc     = pc s + 1 })
 step-push ft rewrite ft = refl
 
+-- pop reg: reg := [rsp] ; rsp := rsp + 8 ; pc += 1  (needs [rsp] mapped)
+step-pop : ∀ {prog s r v}
+         → fetch prog (pc s) ≡ just (pop r)
+         → readMem (memory s) (readReg (regs s) rsp) ≡ just v
+         → step-not-halted prog s
+           ≡ just (record s { regs = writeReg (writeReg (regs s) r v) rsp (readReg (regs s) rsp + slot-size)
+                            ; pc   = pc s + 1 })
+step-pop ft rd rewrite ft | rd = refl
+
 -- mov reg ← imm
 step-mov-ri : ∀ {prog s r n}
             → fetch prog (pc s) ≡ just (mov (reg r) (imm n))
