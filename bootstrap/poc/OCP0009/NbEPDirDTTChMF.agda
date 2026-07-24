@@ -376,6 +376,21 @@ nat-MI   : (n : Nat) → ∀ {Γ Δ}{Δc : Con Γ}{Θc : Con Δ}{o}(r : Δc ⊑[
            (bd1 : dsz (ren⊢ r td) + szCon Θc < n)(bd2 : dsz td + szCon Δc < n)
            → coe (congÊl (nat-TI n r wA δ b1 b2 bO)) (MI n (ren⊨ r wA) (ren⊢ r td) δ bd1 b1)
              ≡ MI n wA td (envO n r δ bO) bd2 b2
+-- var cases of nat-MI, extracted so the keep/skip split on the OPE r happens in isolation
+-- (casing r in nat-MI's LHS stalls the coverage checker on ⊢app/⊨𝔹).  Mutual with nat-MI.
+nat-var-vz : (n : Nat) → ∀ {Γ Δ}{Δc' : Con Γ}{Ad}{wd : Δc' ⊨ Ad}{Θc : Con Δ}{o}
+             (r : (Δc' ▷ wd) ⊑[ o ] Θc)(wA : (Δc' ▷ wd) ⊨ renTy vs Ad)(wR : (Δc' ▷ wd) ⊨ renTy vs Ad)(δ : CI n Θc)
+             (b1 : szT (ren⊨ r wA) + szCon Θc < n)(b2 : szT wA + szCon (Δc' ▷ wd) < n)(bO : szCon Θc < n)
+             (bd1 : dsz (ren⊢ r (⊢vz {wA = wd} wR)) + szCon Θc < n)(bd2 : dsz (⊢vz {wA = wd} wR) + szCon (Δc' ▷ wd) < n)
+             → coe (congÊl (nat-TI n r wA δ b1 b2 bO)) (MI n (ren⊨ r wA) (ren⊢ r (⊢vz {wA = wd} wR)) δ bd1 b1)
+               ≡ MI n wA (⊢vz {wA = wd} wR) (envO n r δ bO) bd2 b2
+nat-var-vs : (n : Nat) → ∀ {Γ Δ}{Δc' : Con Γ}{Bd}{wB : Δc' ⊨ Bd}{Ad}{x}{Θc : Con Δ}{o}
+             (r : (Δc' ▷ wB) ⊑[ o ] Θc)(wA : (Δc' ▷ wB) ⊨ renTy vs Ad)(wA₀ : Δc' ⊨ Ad)
+             (wR : (Δc' ▷ wB) ⊨ renTy vs Ad)(td : Δc' ⊢ var x ∷ Ad)(δ : CI n Θc)
+             (b1 : szT (ren⊨ r wA) + szCon Θc < n)(b2 : szT wA + szCon (Δc' ▷ wB) < n)(bO : szCon Θc < n)
+             (bd1 : dsz (ren⊢ r (⊢vs wA₀ wR td)) + szCon Θc < n)(bd2 : dsz (⊢vs wA₀ wR td) + szCon (Δc' ▷ wB) < n)
+             → coe (congÊl (nat-TI n r wA δ b1 b2 bO)) (MI n (ren⊨ r wA) (ren⊢ r (⊢vs wA₀ wR td)) δ bd1 b1)
+               ≡ MI n wA (⊢vs wA₀ wR td) (envO n r δ bO) bd2 b2
 postulate
   subTI  : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C){B}(wB : (Δc ▷ wC) ⊨ B){u}
            (wS : Δc ⊨ subTy (single u) B)(tu : Δc ⊢ u ∷ C)(ρ : CI (suc n) Δc)
@@ -684,6 +699,15 @@ MI-vz-red : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{A}{wA : Δ ⊨ A}{wA' : (Δ ▷ 
               ≡ coe (congÊl (sym (wkTI (suc n) wA wA wA' (fst ρ') (snd ρ') bw b0))) (snd ρ' b0)
 MI-vz-red n wR ρ' bt bw b0 = refl
 
+-- MI-vs-red packages MI's ⊢vs reduction analogously (bound-irrelevant btd0/bwA0).
+MI-vs-red : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{B}{wB : Δ ⊨ B}{A}{wA : Δ ⊨ A}{wA' : (Δ ▷ wB) ⊨ renTy vs A}{x}
+            (wR : (Δ ▷ wB) ⊨ renTy vs A)(td : Δ ⊢ var x ∷ A)(ρ' : CI (suc n) (Δ ▷ wB))
+            (bt : dsz (⊢vs wA wR td) + szCon (Δ ▷ wB) < suc n)(bw : szT wA' + szCon (Δ ▷ wB) < suc n)
+            (btd0 : dsz td + szCon Δ < suc n)(bwA0 : szT wA + szCon Δ < suc n)
+            → MI (suc n) wA' (⊢vs wA wR td) ρ' bt bw
+              ≡ coe (congÊl (sym (wkTI (suc n) wB wA wA' (fst ρ') (snd ρ') bw bwA0))) (MI (suc n) wA td (fst ρ') btd0 bwA0)
+MI-vs-red n wR td ρ' bt bw btd0 bwA0 = refl
+
 -- MI ignores a term-index subst on the derivation (MI's type Êl(TI n wA ρ) is term-independent).
 MI-tmsubst : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{t t' A}(wA : Δ ⊨ A)(p : t ≡ t')(td : Δ ⊢ t ∷ A)
              (ρ : CI n Δ){bt bt' bw} → MI n wA (subst (λ tm → Δ ⊢ tm ∷ A) p td) ρ bt' bw ≡ MI n wA td ρ bt bw
@@ -733,8 +757,8 @@ MI-app-red n wA' wB wA tf tu ρ argbt argbw = refl
 -- nat-MI (renaming naturality of MI), by induction on td.  Placed after MI's clauses so MI reduces.
 -- tt/ff = refl; vz/vs/lam TODO; app = "nat-app" (dsz-bounded recursion — validates the measure design,
 -- since nat-MI already carries dsz bounds bd1/bd2, unlike sub-MI's szSubW-combined bC).
-nat-MI (suc n) r wA (⊢vz wR) δ b1 b2 bO bd1 bd2 = {!!}
-nat-MI (suc n) r wA (⊢vs wA₀ wR td) δ b1 b2 bO bd1 bd2 = {!!}
+nat-MI (suc n) r wA (⊢vz wR) δ b1 b2 bO bd1 bd2 = nat-var-vz (suc n) r wA wR δ b1 b2 bO bd1 bd2
+nat-MI (suc n) r wA (⊢vs wA₀ wR td) δ b1 b2 bO bd1 bd2 = nat-var-vs (suc n) r wA wA₀ wR td δ b1 b2 bO bd1 bd2
 nat-MI (suc n) {Δc = Δc} {Θc = Θc} r (⊨Π wD wCo) (⊢lam {t = t} wA' td) δ b1 b2 bO bd1 bd2 =
   funext pointwise
   where wRD  = ren⊨ r wD
@@ -880,6 +904,33 @@ nat-MI (suc n) {Δc = Δc} {Θc = Θc} {o = o} r wA (⊢app (⊨Π wA' wB) tf tu
 nat-MI (suc n) r ⊨𝔹 ⊢tt δ b1 b2 bO bd1 bd2 = refl
 nat-MI (suc n) r ⊨𝔹 ⊢ff δ b1 b2 bO bd1 bd2 = refl
 nat-MI zero r wA td δ b1 () bO bd1 bd2
+
+-- nat-var-vz: keep = MI-vz-red both sides collapsed over (snd δ); skip = ⊢vs, recurse nat-var-vz.
+nat-var-vz (suc n) {Ad = A} (keep {Θc = Θc} {o = o'} r' w) wA wR δ b1 b2 bO bd1 bd2 =
+  trans (cong (coe P_L)
+              (trans (MI-subst (suc n) (sym (renTy-wk {ρ = ⌜ o' ⌝} A)) (ren⊨ (keep r' w) wA) wR'' (⊢vz wR'') δ)
+                     (cong (coe Q_out) (MI-vz-red n {wA = ren⊨ r' w} {wA' = wR''} wR'' δ _ _ _))))
+  (trans (coe3-uip SL Q_out P_L R (snd δ _))
+  (trans (sym (coe2-uip ST WR R (snd δ _)))
+         (sym (MI-vz-red n {wA = w} {wA' = wA} wR (envO (suc n) (keep r' w) δ bO) _ _ _))))
+  where P_L = congÊl (nat-TI (suc n) (keep r' w) wA δ b1 b2 bO)
+        wR'' = subst (λ z → (Θc ▷ ren⊨ r' w) ⊨ z) (renTy-wk {ρ = ⌜ o' ⌝} A) (ren⊨ (keep r' w) wR)
+        Q_out = congÊl (trans (TI-resp-eq (suc n) (sym (renTy-wk {ρ = ⌜ o' ⌝} A)) wR'' δ)
+                              (TI-wf-eq (suc n)
+                                 (⊨-unique (subst (λ z → (Θc ▷ ren⊨ r' w) ⊨ z) (sym (renTy-wk {ρ = ⌜ o' ⌝} A)) wR'')
+                                           (ren⊨ (keep r' w) wA)) δ))
+        SL = congÊl (sym (wkTI (suc n) (ren⊨ r' w) (ren⊨ r' w) wR'' (fst δ) (snd δ) _ _))
+        ST = congÊl (nat-TI (suc n) r' w (fst δ) _ _ _)
+        WR = congÊl (sym (wkTI (suc n) w w wA (envO (suc n) r' (fst δ) _)
+                               (snd (envO (suc n) (keep r' w) δ bO)) _ _))
+        R  = trans ST WR
+nat-var-vz (suc n) (skip {Θc = Θc} {o = o'} r' w) wA wR δ b1 b2 bO bd1 bd2 = {!!}
+nat-var-vz zero r wA wR δ b1 () bO bd1 bd2
+
+-- nat-var-vs: keep = ⊢vs, recurse nat-MI on td; skip = ⊢vs, recurse nat-var-vs.
+nat-var-vs (suc n) (keep {Θc = Θc} {o = o'} r' w) wA wA₀ wR td δ b1 b2 bO bd1 bd2 = {!!}
+nat-var-vs (suc n) (skip {Θc = Θc} {o = o'} r' w) wA wA₀ wR td δ b1 b2 bO bd1 bd2 = {!!}
+nat-var-vs zero r wA wA₀ wR td δ b1 () bO bd1 bd2
 
 -- sub-MI: substitution soundness for MI, by induction on td (cased on sσ so sub-⊢ reduces; placed
 -- AFTER MI's clauses so MI reduces).
