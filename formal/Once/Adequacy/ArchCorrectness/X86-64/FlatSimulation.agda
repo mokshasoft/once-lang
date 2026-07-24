@@ -309,9 +309,6 @@ block-step-worklist-check prog fs s n cc h ft = s , refl , record
 postulate
   LiveIn-reclaim : ∀ (alloc : AllocState {FS}) (n : ℕ) (hl : HeapLocation)
                  → LiveIn (record alloc { next-slot = n }) hl → LiveIn alloc hl
-  -- reclaim-to only SHRINKS the slot frontier (n ≤ next-slot alloc), so a slot live
-  -- after reclaim (k < n) was live before — the stack analogue of LiveIn-reclaim.
-  reclaim-slot-shrinks : ∀ (alloc : AllocState {FS}) (n : ℕ) {k : ℕ} → k < n → k < next-slot alloc
 
 block-step-reclaim-to : ∀ prog fs s n → CompiledCorr prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reclaim-to n) → BlockStep prog fs s (instr-reclaim-to n)
@@ -319,7 +316,7 @@ block-step-reclaim-to prog fs s n cc h ft = s , refl , record
   { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
                       ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc
                       ; heap-eq = λ hl live → C.heap-eq dc hl (LiveIn-reclaim (falloc fs) n hl live)
-                      ; stack-eq = λ k k<n → C.stack-eq dc k (reclaim-slot-shrinks (falloc fs) n k<n) }
+                      ; stack-eq = C.stack-eq dc }   -- reclaim-to changes next-slot, not stackSlot ⇒ bound stable
   ; pc-off = trans (pc-off cc)
              (sym (trans (x86-off-suc prog (fpc fs) (instr-reclaim-to n) ft) (+-identityʳ _))) }
   where dc = dataCorr cc
@@ -426,7 +423,7 @@ block-step-load-indirect-suc prog fs s hl w cc h ft i-eq live-shl h-eq =
 -- FIRST consumer of stack-eq: deleting the field breaks `rd`.
 block-step-load-from-slot : ∀ prog fs s slot w → CompiledCorr prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (load-from-slot slot)
-  → slot < next-slot (falloc fs)        -- the read slot is allocated (frame-live, WF)
+  → slot < stackSlot (regs (floc fs))   -- the read slot is within the runtime frame (WF)
   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
   → BlockStep prog fs s (load-from-slot slot)
 block-step-load-from-slot prog fs s slot w cc h ft slot<ns st-eq =
@@ -454,7 +451,7 @@ block-step-load-from-slot prog fs s slot w cc h ft slot<ns st-eq =
 -- Identical to load-from-slot but the destination register is rdi (Input1).
 block-step-restore-input : ∀ prog fs s slot w → CompiledCorr prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (restore-input slot)
-  → slot < next-slot (falloc fs)        -- the read slot is allocated (frame-live, WF)
+  → slot < stackSlot (regs (floc fs))   -- the read slot is within the runtime frame (WF)
   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
   → BlockStep prog fs s (restore-input slot)
 block-step-restore-input prog fs s slot w cc h ft slot<ns st-eq =
@@ -483,7 +480,7 @@ block-step-restore-input prog fs s slot w cc h ft slot<ns st-eq =
 -- fresh-abs, fresh-x86, liveinv) are threaded to sim-alloc-stack.
 block-step-alloc-stack : ∀ prog fs s n → CompiledCorr prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-alloc-stack n)
-  → next-slot (falloc fs) ≡ 0
+  → stackSlot (regs (floc fs)) ≡ 0
   → (∀ k → k < n → stackMem (floc fs) (current-frame (falloc fs)) k ≡ nothing)
   → (∀ k → k < n → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k) ≡ nothing)
   → (∀ hl → LiveIn (record (falloc fs) { next-slot = next-slot (falloc fs) + n }) hl → LiveIn (falloc fs) hl)
@@ -552,7 +549,7 @@ block-step-worklist-push prog fs s slot cc h ft disj =
 
 block-step-worklist-pop : ∀ prog fs s slot w → CompiledCorr prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (worklist-pop slot)
-  → slot < next-slot (falloc fs)        -- the read slot is allocated (frame-live, WF)
+  → slot < stackSlot (regs (floc fs))   -- the read slot is within the runtime frame (WF)
   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
   → BlockStep prog fs s (worklist-pop slot)
 block-step-worklist-pop prog fs s slot w cc h ft slot<ns st-eq =

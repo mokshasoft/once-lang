@@ -409,12 +409,12 @@ postulate
   -- analogue of load-indirect-live (a written heap cell is LiveIn).
   slot-read-live : ∀ (fs : FlatState) (slot : Slot) {w : StoredValue FS}
                  → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
-                 → slot < next-slot (falloc fs)
+                 → slot < stackSlot (regs (floc fs))
   -- alloc-stack FRESH-FRAME facts (alloc-stack sits at a frame entry): next-slot ≡ 0,
   -- the n new slots are uninitialised on BOTH sides (abstract stackMem / the fresh x86
   -- stack region below rsp), and heap liveness is invariant under the next-slot bump.
   -- Honest WF / memory-region / allocator invariants (discharged at instantiation).
-  alloc-stack-entry : ∀ (fs : FlatState) (n : ℕ) → next-slot (falloc fs) ≡ 0
+  alloc-stack-entry : ∀ (fs : FlatState) (n : ℕ) → stackSlot (regs (floc fs)) ≡ 0
   alloc-stack-fresh-abs : ∀ (fs : FlatState) (n : ℕ)
                         → ∀ k → k < n → stackMem (floc fs) (current-frame (falloc fs)) k ≡ nothing
   alloc-stack-fresh-x86 : ∀ (fs : FlatState) (s : X.State) (n : ℕ)

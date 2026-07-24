@@ -107,13 +107,15 @@ record FlatCorr (fs : FlatState) (s : X.State) : Set where
     halt-eq : X.State.halted s ≡ halted (floc fs)
     heap-eq : ∀ (hl : HeapLocation) → LiveIn (falloc fs) hl →
               X.readMem (X.State.memory s) (enc-hl hl) ≡ enc-maybe (heapMem (floc fs) hl)
-    -- BOUNDED to the current frame's LIVE slots (k < next-slot), exactly as
-    -- heap-eq is bounded by LiveIn and as BeforeFrontier.stack-before requires.
-    -- An UNBOUNDED ∀ k would be unsatisfiable: it would claim the CALLER's slots
-    -- (above rsp, holding the caller's live data) equal the abstract `nothing`.
-    -- Slots at/above next-slot belong to callers / are not this frame's — never
-    -- claimed. (Frame ops shift rsp only at frame boundaries, where next-slot=0.)
-    stack-eq : ∀ (k : Slot) → k < next-slot (falloc fs) →
+    -- BOUNDED to the current frame's live RUNTIME slots (k < stackSlot). An
+    -- UNBOUNDED ∀ k would be unsatisfiable (it would claim the CALLER's slots,
+    -- above rsp, holding live data, ≡ the abstract `nothing`). The bound is the
+    -- RUNTIME slot counter `stackSlot` (the "like rsp, as slot count" register
+    -- that tracks rsp: rsp = INIT − stackSlot·8), NOT the compile-time frontier
+    -- next-slot — so frame ops that move rsp (alloc/dealloc-stack) shrink/grow
+    -- the bound in lockstep with rsp, and reclaim-to (next-slot only) leaves it
+    -- stable. Mirrors heap-eq's LiveIn bound.
+    stack-eq : ∀ (k : Slot) → k < stackSlot (regs (floc fs)) →
               X.readMem (X.State.memory s) (X.readReg (X.State.regs s) rsp + slot-to-disp k)
               ≡ enc-maybe (stackMem (floc fs) (current-frame (falloc fs)) k)
 open FlatCorr public
@@ -402,7 +404,7 @@ sim-store-indirect hl fs s corr i-eq live-hl guard disj =
       ; halt-eq = halt-eq corr
       ; heap-eq = store-heap-eq (falloc fs) hl v s (floc fs) live-hl (heap-eq corr)
       ; stack-eq = store-stack-eq (enc-hl hl) (enc-sv v) s
-                     (stackMem (floc fs) (current-frame (falloc fs))) (next-slot (falloc fs)) (stack-eq corr) disj }
+                     (stackMem (floc fs) (current-frame (falloc fs))) (stackSlot (regs (floc fs))) (stack-eq corr) disj }
 
 -- store-indirect-suc: *(sucLoc Input1) := Output ↔ `mov [rdi+slot], rax`.
 sim-store-indirect-suc : ∀ (hl : HeapLocation) (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -435,7 +437,7 @@ sim-store-indirect-suc hl fs s corr i-eq live-shl guard disj =
       ; halt-eq = halt-eq corr
       ; heap-eq = store-heap-eq (falloc fs) (sucHL hl) v s (floc fs) live-shl (heap-eq corr)
       ; stack-eq = store-stack-eq (enc-hl (sucHL hl)) (enc-sv v) s
-                     (stackMem (floc fs) (current-frame (falloc fs))) (next-slot (falloc fs)) (stack-eq corr) disj }
+                     (stackMem (floc fs) (current-frame (falloc fs))) (stackSlot (regs (floc fs))) (stack-eq corr) disj }
 
 ------------------------------------------------------------------------
 -- STACK RESTORE: `restore-input slot` (Input1 := stack[current-frame, slot]) ↔
@@ -538,7 +540,7 @@ sim-store-at-slot slot fs s corr disj = corr-clean
       ; halt-eq = halt-eq corr
       ; heap-eq = store-slot-heap-eq (falloc fs) (base + slot-to-disp slot) (enc-sv Out) s (floc fs)
                     (heap-eq corr) disj
-      ; stack-eq = store-slot-stack-eq base slot Out s (floc fs) cf (next-slot (falloc fs)) (stack-eq corr) }
+      ; stack-eq = store-slot-stack-eq base slot Out s (floc fs) cf (stackSlot (regs (floc fs))) (stack-eq corr) }
 
 ------------------------------------------------------------------------
 -- STACK ALLOCATION: `instr-alloc-stack n` (reserve n slots) ↔ `sub rsp, n*8`.
@@ -553,7 +555,7 @@ sim-store-at-slot slot fs s corr disj = corr-clean
 -- clobbered by `sub` but FlatCorr is flag-free, so the post is flag-parametric.
 ------------------------------------------------------------------------
 sim-alloc-stack : ∀ (n : ℕ) (newFlags : X.Flags) (fs : FlatState) (s : X.State) → FlatCorr fs s
-  → next-slot (falloc fs) ≡ 0                       -- WF: alloc-stack at frame entry
+  → stackSlot (regs (floc fs)) ≡ 0                  -- WF: alloc-stack at frame entry (runtime depth 0)
   → (∀ k → k < n → stackMem (floc fs) (current-frame (falloc fs)) k ≡ nothing)   -- fresh (abstract)
   → (∀ k → k < n → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k) ≡ nothing)  -- fresh (x86)
   → (∀ hl → LiveIn (record (falloc fs) { next-slot = next-slot (falloc fs) + n }) hl → LiveIn (falloc fs) hl)
