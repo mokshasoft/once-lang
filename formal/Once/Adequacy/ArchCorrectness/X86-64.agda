@@ -81,6 +81,8 @@ postulate
 -- The apex node `conc-flat-sim-just` is DEFINED via `events-agree`; every gap it
 -- rests on is a NAMED obligation on THIS path (deleting it fails the typecheck).
 open FlatMachine {x86-64-frame-semantics} using (mkFlat)
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open FlatEventTrace {x86-64-frame-semantics} using (flat-events)
 
 -- Instantiation params the recovered cluster is parametric over: the heap-location
 -- encoding (`enc-hl`) + the allocator's live-cell injectivity (`LiveIn`/`enc-hl-inj-
@@ -100,8 +102,7 @@ postulate
 
 open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
   x86-64-frame-semantics enc-hl LiveIn enc-hl-inj-live enc-hl-suc
-  using (events-agree; CompiledCorr; dataCorr; pc-off
-        ; rdi-eq; rsi-eq; rax-eq; rbx-eq; halt-eq; heap-eq)
+  using (events-agree; CompiledCorr)
 
 -- Initial-state correspondence, PROVEN: the concrete `initState` (all registers 0,
 -- empty memory, pc 0, running) relates to the flat entry state `mkFlat entry-s
@@ -123,13 +124,32 @@ entry-corr ir = record
   ; pc-off = refl
   }
 
+-- The flat adequacy witness for `ir` at event-count `n`: the flat step-fuel that
+-- `traces-agree` guarantees emits the first `n` events. `flat-trace-of` and
+-- `events-agree` both index the flat trace by exactly this `N`.
+Nof : IR Unit Unit → ℕ → ℕ
+Nof ir n = proj₁ (MachineRefinesObsF.traces-agree (FFOx.entry-witness ir (ir-obs-correct ir)) n)
+
 postulate
-  -- FUEL ADEQUACY seam (surfaced by wiring): `events-agree` gives an EXISTENTIAL fuel
-  -- `M` with `run-events M ≡ flat-events N`, but `conc-trace` is committed to
-  -- `step-budget-x86-64 n`. Their first-`n` events agree because run-events' prefix is
-  -- stable once the fuel suffices and `step-budget` is adequate. The honest fuel seam
-  -- (`step-budget-x86-64` is already the abstract ℕ→ℕ adequate-fuel map).
+  -- STEP-BUDGET ADEQUACY / fuel coherence — the honest abstract adequate-fuel seam (D5),
+  -- the SAME gap `FlatFromObs.flat-trace` / `traces-agree` carry on the flat side.
+  --
+  -- `events-agree` supplies an existential concrete fuel `M` that REPRODUCES the adequate
+  -- flat prefix `flat-events (Nof ir n)` — the flat trace at the adequacy witness for `n`
+  -- events (that is the `hyp` argument). `conc-trace` runs at the DESIGNED budget
+  -- `step-budget-x86-64 n`. Because `M` already reproduces the first-`n`-event prefix and
+  -- `step-budget-x86-64 n` is adequate, their `take n` prefixes agree.
+  --
+  -- This is TRUE, unlike the earlier `∀ M` form (which was false — at `M ≡ 0`,
+  -- `run-events 0 ≡ []`, so it claimed `take n adequate-run ≡ []`). The `hyp` argument
+  -- ties `M` to the adequate flat trace, so the only remaining content is that
+  -- `step-budget-x86-64 n` itself reaches ≥ n events — the abstract adequacy of the
+  -- postulated `ℕ→ℕ` fuel map. Provable core: `run-events` fuel-prefix monotonicity;
+  -- residual leaf: `step-budget-x86-64` adequacy (needs `step-budget` pinned, D5).
   conc-fuel : ∀ (ir : IR Unit Unit) (n M : ℕ) →
+      RTx.run-events val-x86-64 ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
+        M (compile-trace (ir-to-trace ir)) (ArchSemantics.initialState as64)
+      ≡ flat-events (Nof ir n) (ir-to-trace ir) (mkFlat FFOx.entry-s FFOx.entry-alloc 0) →
       take n (RTx.run-events val-x86-64 ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
                 (step-budget-x86-64 n) (compile-trace (ir-to-trace ir)) (ArchSemantics.initialState as64))
     ≡ take n (RTx.run-events val-x86-64 ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
@@ -139,10 +159,9 @@ conc-flat-sim-just :
   ∀ (ir : IR Unit Unit) (n : ℕ) →
   conc-trace (just ir) n ≡ FFOx.flat-trace-of ir-obs-correct (just ir) n
 conc-flat-sim-just ir n =
-  trans (conc-fuel ir n (proj₁ agree)) (cong (take n) (proj₂ agree))
+  trans (conc-fuel ir n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
   where
-    agree = events-agree
-              (proj₁ (MachineRefinesObsF.traces-agree (FFOx.entry-witness ir (ir-obs-correct ir)) n))
+    agree = events-agree (Nof ir n)
               ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
               (ir-to-trace ir) (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
               (ArchSemantics.initialState as64) (entry-corr ir)
