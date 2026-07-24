@@ -28,7 +28,7 @@ open import Once.CCC.Target.X86-64.Syntax using
   ( slot-size; Program; Instr; rsp
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
   ; ret; push; pop; nop; ud2; syscall; label )
-open import Data.Nat using (ℕ; _+_; _<_)
+open import Data.Nat using (ℕ; _+_; _<_; _∸_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
@@ -60,6 +60,7 @@ open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
   using (x86-len; x86-off; drop-compile; fetch-drop; drop-[])
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; slot-to-disp)
+open import Once.CCC.Target.X86-64.Syntax using (slots)
 
 ------------------------------------------------------------------------
 -- Imports for the run-events event-trace correspondence (block-run-exec + the
@@ -409,6 +410,19 @@ postulate
   slot-read-live : ∀ (fs : FlatState) (slot : Slot) {w : StoredValue FS}
                  → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
                  → slot < next-slot (falloc fs)
+  -- alloc-stack FRESH-FRAME facts (alloc-stack sits at a frame entry): next-slot ≡ 0,
+  -- the n new slots are uninitialised on BOTH sides (abstract stackMem / the fresh x86
+  -- stack region below rsp), and heap liveness is invariant under the next-slot bump.
+  -- Honest WF / memory-region / allocator invariants (discharged at instantiation).
+  alloc-stack-entry : ∀ (fs : FlatState) (n : ℕ) → next-slot (falloc fs) ≡ 0
+  alloc-stack-fresh-abs : ∀ (fs : FlatState) (n : ℕ)
+                        → ∀ k → k < n → stackMem (floc fs) (current-frame (falloc fs)) k ≡ nothing
+  alloc-stack-fresh-x86 : ∀ (fs : FlatState) (s : X.State) (n : ℕ)
+                        → ∀ k → k < n → X.readMem (X.State.memory s)
+                            ((X.readReg (X.State.regs s) rsp ∸ slots n) + slot-to-disp k) ≡ nothing
+  alloc-stack-liveinv : ∀ (fs : FlatState) (n : ℕ)
+                      → ∀ hl → LiveIn (record (falloc fs) { next-slot = next-slot (falloc fs) + n }) hl
+                             → LiveIn (falloc fs) hl
   -- worklist-pop from an empty worklist slot: both machines halt (as load-from-slot-empty).
   worklist-pop-empty : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                          prog fs s slot → CompiledCorr prog fs s → halted (floc fs) ≡ false
@@ -506,6 +520,10 @@ mutual
     ccc-step-bs n ev env prog fs s (worklist-push slot)
       (block-step-worklist-push prog fs s slot cc h ftq (store-at-slot-stack-disj fs s slot)) refl h
   events-running-fetch n ev env prog fs s (worklist-pop slot) cc h ftq = worklist-pop-step n ev env prog fs s slot cc h ftq
+  events-running-fetch n ev env prog fs s (instr-alloc-stack k) cc h ftq =
+    ccc-step-bs n ev env prog fs s (instr-alloc-stack k)
+      (block-step-alloc-stack prog fs s k cc h ftq (alloc-stack-entry fs k) (alloc-stack-fresh-abs fs k)
+         (alloc-stack-fresh-x86 fs s k) (alloc-stack-liveinv fs k)) refl h
   -- Trivial cata bookkeeping (x86-len 0, flat identity): proven block-step ⇒ ccc-step-bs.
   events-running-fetch n ev env prog fs s (worklist-init k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-init k) (block-step-worklist-init prog fs s k cc h ftq) refl h
   events-running-fetch n ev env prog fs s (worklist-check k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-check k) (block-step-worklist-check prog fs s k cc h ftq) refl h

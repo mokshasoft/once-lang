@@ -53,7 +53,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 open X using (mkstate; mkflags; _<ᵇ_; writeMem)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
-open import Once.CCC.Target.X86-64.Syntax using (rax; rbx; rsi; rdi; rsp; slot-size)
+open import Once.CCC.Target.X86-64.Syntax using (rax; rbx; rsi; rdi; rsp; slot-size; slots)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (slot-to-disp)
 open import Once.CCC.Machine.SMCore
 open MemOps {FS} using (writeLoc; writeLocToHeap; writeHeapMem
@@ -539,6 +539,36 @@ sim-store-at-slot slot fs s corr disj = corr-clean
       ; heap-eq = store-slot-heap-eq (falloc fs) (base + slot-to-disp slot) (enc-sv Out) s (floc fs)
                     (heap-eq corr) disj
       ; stack-eq = store-slot-stack-eq base slot Out s (floc fs) cf (next-slot (falloc fs)) (stack-eq corr) }
+
+------------------------------------------------------------------------
+-- STACK ALLOCATION: `instr-alloc-stack n` (reserve n slots) ↔ `sub rsp, n*8`.
+-- The abstract advances the slot frontier (next-slot += n) and the stackSlot
+-- counter; the x86 lowers rsp by n*8. Because alloc-stack sits at a FRAME
+-- ENTRY (`next-slot ≡ 0`, WF), the bounded stack-eq covers ONLY the fresh new
+-- slots k < n — no existing slots to re-anchor across the rsp shift. Those
+-- fresh slots are uninitialised on BOTH sides (abstract stackMem = nothing;
+-- the fresh x86 stack region below rsp is unwritten), so the new correspondence
+-- is `nothing ≡ nothing`. The 4 tracked registers, halt, and heap are untouched
+-- (heap liveness is invariant under a next-slot change — `liveinv`). Flags are
+-- clobbered by `sub` but FlatCorr is flag-free, so the post is flag-parametric.
+------------------------------------------------------------------------
+sim-alloc-stack : ∀ (n : ℕ) (newFlags : X.Flags) (fs : FlatState) (s : X.State) → FlatCorr fs s
+  → next-slot (falloc fs) ≡ 0                       -- WF: alloc-stack at frame entry
+  → (∀ k → k < n → stackMem (floc fs) (current-frame (falloc fs)) k ≡ nothing)   -- fresh (abstract)
+  → (∀ k → k < n → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k) ≡ nothing)  -- fresh (x86)
+  → (∀ hl → LiveIn (record (falloc fs) { next-slot = next-slot (falloc fs) + n }) hl → LiveIn (falloc fs) hl)
+  → FlatCorr (flat-exec-instr (instr-alloc-stack n) [] fs)
+             (mkstate (xwriteReg (xregs s) rsp (X.readReg (xregs s) rsp ∸ slots n))
+                      (memory s) newFlags (pc s + 1) (xhalted s))
+sim-alloc-stack n newFlags fs s corr entry fresh-abs fresh-x86 liveinv = record
+  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
+  ; halt-eq = halt-eq corr
+  ; heap-eq = λ hl live → heap-eq corr hl (liveinv hl live)
+  ; stack-eq = λ k k<ns → stk k (subst (k <_) (cong (_+ n) entry) k<ns) }
+  where
+    stk : ∀ k → k < n → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k)
+            ≡ enc-maybe (stackMem (floc fs) (current-frame (falloc fs)) k)
+    stk k k<n = trans (fresh-x86 k k<n) (sym (cong enc-maybe (fresh-abs k k<n)))
 
 ------------------------------------------------------------------------
 -- Arithmetic reg-ops (Plan 0.34: flag-free, so the post is parametric over

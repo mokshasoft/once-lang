@@ -58,8 +58,8 @@ open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem; updateFlags)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax
-  using (rax; rbx; rsi; rdi; rsp; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; base; base+disp)
-open import Data.Maybe using (just)
+  using (rax; rbx; rsi; rdi; rsp; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; base; base+disp; slots)
+open import Data.Maybe using (just; nothing)
 open import Data.Bool using (true; false)
 open import Data.List using (_∷_; []; _++_; drop; length)
 open import Relation.Binary.PropositionalEquality using (refl)
@@ -477,6 +477,39 @@ block-step-restore-input prog fs s slot w cc h ft slot<ns st-eq =
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (restore-input slot) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (restore-input slot) ft))
+
+-- alloc-stack: reserve n slots ↔ `sub rsp, n*8`. Uses step-sub-ri; the flag
+-- clobber is invisible (FlatCorr flag-free). The 4 fresh-frame facts (entry,
+-- fresh-abs, fresh-x86, liveinv) are threaded to sim-alloc-stack.
+block-step-alloc-stack : ∀ prog fs s n → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-alloc-stack n)
+  → next-slot (falloc fs) ≡ 0
+  → (∀ k → k < n → stackMem (floc fs) (current-frame (falloc fs)) k ≡ nothing)
+  → (∀ k → k < n → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k) ≡ nothing)
+  → (∀ hl → LiveIn (record (falloc fs) { next-slot = next-slot (falloc fs) + n }) hl → LiveIn (falloc fs) hl)
+  → BlockStep prog fs s (instr-alloc-stack n)
+block-step-alloc-stack prog fs s n cc h ft entry fresh-abs fresh-x86 liveinv =
+  post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (sub (reg rsp) (imm (slots n)))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-alloc-stack n) ft)
+    newFlags : X.Flags
+    newFlags = updateFlags (xreadReg (xregs s) rsp ∸ slots n) (xreadReg (xregs s) rsp)
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) rsp (xreadReg (xregs s) rsp ∸ slots n)
+                    ; flags = newFlags ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-sub-ri {compile-trace prog} {s} {rsp} {slots n} fetch-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    dataPost : C.FlatCorr (flat-exec-instr (instr-alloc-stack n) prog fs) post
+    dataPost = C.sim-alloc-stack n newFlags fs s dc entry fresh-abs fresh-x86 liveinv
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-alloc-stack n) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-alloc-stack n) ft))
 
 -- worklist-push / worklist-pop: their abstract semantics + x86 lowering are
 -- IDENTICAL to store-at-slot / load-from-slot respectively (SMCore/AbstractToX86),
