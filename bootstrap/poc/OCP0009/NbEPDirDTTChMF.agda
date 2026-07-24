@@ -366,6 +366,7 @@ sub-MI : (n : Nat) → ∀ {Γ Δ}{Δc : Con Δ}{Γc : Con Γ}{σ}(sσ : SubW Δ
          (bS : szT wS + szCon Δc < n)(bA : szT wA + szCon Γc < n)(bE : szSubW sσ + szCon Δc < n)
          (bC : szSubW sσ + (szT wS + szCon Δc) < n)
          (bdS : dsz (sub-⊢ sσ td) + szCon Δc < n)(bdA : dsz td + szCon Γc < n)
+         (bDS : szSubW sσ + (dsz (sub-⊢ sσ td) + szCon Δc) < n)
          → coe (congÊl (sub-TI n sσ wA wS δ bS bA bE bC)) (MI n wS (sub-⊢ sσ td) δ bdS bS)
            ≡ MI n wA td (envS n sσ δ bE) bdA bA
 -- nat-MI (renaming naturality of MI) — now DEFINED (clauses after MI's, below).  Was a postulate.
@@ -404,7 +405,7 @@ sub-TI n sσ ⊨⊥ ⊨⊥ δ bS bA bE bC = refl
 sub-TI (suc n) {Δc = Δc} sσ {A = 𝕀 t A B} (⊨𝕀 tb ⊨𝔹 wA wB) (⊨𝕀 tb' ⊨𝔹 wSA wSB) δ bS bA bE bC =
   Ifᵁ-cong
     (trans (MI-⊢irr n ⊨𝔹 (⇓ n δ) (⊢-unique tb' (sub-⊢ sσ tb)))
-    (trans (sub-MI n sσ ⊨𝔹 ⊨𝔹 tb (⇓ n δ) bS-c bA-c bE' bC-c bdS-c bdA-c)
+    (trans (sub-MI n sσ ⊨𝔹 ⊨𝔹 tb (⇓ n δ) bS-c bA-c bE' bC-c bdS-c bdA-c _)
            (cong (λ e → MI n ⊨𝔹 tb e bdA-c bA-c) (envS-⇓ n sσ δ bE bE'))))
     (trans (sub-TI n sσ wA wSA (⇓ n δ) bS-A bA-A bE' bC-A) (congTI n wA (envS-⇓ n sσ δ bE bE')))
     (trans (sub-TI n sσ wB wSB (⇓ n δ) bS-B bA-B bE' bC-B) (congTI n wB (envS-⇓ n sσ δ bE bE')))
@@ -882,7 +883,7 @@ nat-MI zero r wA td δ b1 () bO bd1 bd2
 
 -- sub-MI: substitution soundness for MI, by induction on td (cased on sσ so sub-⊢ reduces; placed
 -- AFTER MI's clauses so MI reduces).
-sub-MI (suc n) {Δc = Δc} (singleW wC tu)  wA wS (⊢vz wR) δ bS bA bE bC bdS bdA =
+sub-MI (suc n) {Δc = Δc} (singleW wC tu)  wA wS (⊢vz wR) δ bS bA bE bC bdS bdA bDS =
   trans (cong (coe P_L) (MI-subst (suc n) (sym (subTy-single-wk _ _)) wS wC tu δ))
   (trans (coe-trans Q P_L (MI (suc n) wC tu δ bE bwC))
          (coe-uip _ _ (MI (suc n) wC tu δ bE bwC)))
@@ -890,7 +891,7 @@ sub-MI (suc n) {Δc = Δc} (singleW wC tu)  wA wS (⊢vz wR) δ bS bA bE bC bdS 
         Q   = congÊl (trans (TI-resp-eq (suc n) (sym (subTy-single-wk _ _)) wC δ)
                             (TI-wf-eq (suc n) (⊨-unique (subst (λ z → Δc ⊨ z) (sym (subTy-single-wk _ _)) wC) wS) δ))
         bwC = <+r (szT wA) bA
-sub-MI (suc n) (extW {Δc = Δci} {σ = σ} wA₁ wSA sσ) wA wS (⊢vz wR) δ bS bA bE bC bdS bdA =
+sub-MI (suc n) (extW {Δc = Δci} {σ = σ} wA₁ wSA sσ) wA wS (⊢vz wR) δ bS bA bE bC bdS bdA bDS =
   trans (cong (coe P_L)
               (trans (MI-subst (suc n) (sym (subTy-extS-wk _ _)) wS wR' (⊢vz wR') δ)
                      (cong (coe Q_out) (MI-vz-red n {wA = wSA} {wA' = wR'} wR' δ _ _ _))))
@@ -907,7 +908,7 @@ sub-MI (suc n) (extW {Δc = Δci} {σ = σ} wA₁ wSA sσ) wA wS (⊢vz wR) δ b
         WR = congÊl (sym (wkTI (suc n) wA₁ wA₁ wA (envS (suc n) sσ (fst δ) _)
                                (snd (envS (suc n) (extW wA₁ wSA sσ) δ bE)) _ _))
         R  = trans ST WR
-sub-MI (suc n) {Δc = Δc} (singleW wC tu)  wA wS (⊢vs wA₀ wR td) δ bS bA bE bC bdS bdA =
+sub-MI (suc n) {Δc = Δc} (singleW wC tu)  wA wS (⊢vs wA₀ wR td) δ bS bA bE bC bdS bdA bDS =
   trans (cong (coe P_L) (MI-subst (suc n) (sym (subTy-single-wk _ _)) wS wA₀ td δ))
   (trans (coe-trans Q P_L (MI (suc n) wA₀ td δ btd bwA))
          (coe-uip _ _ (MI (suc n) wA₀ td δ btd bwA)))
@@ -918,7 +919,7 @@ sub-MI (suc n) {Δc = Δc} (singleW wC tu)  wA wS (⊢vs wA₀ wR td) δ bS bA b
                      (n≤m+n (szT wC) (szCon Δc)) bdA
         bwA = +mono< (≤-trans (n≤m+n (szT wC) (szT wA₀)) (≤-trans (m≤m+n (szT wC + szT wA₀) _) ≤-suc))
                      (n≤m+n (szT wC) (szCon Δc)) bdA
-sub-MI (suc n) (extW {Δc = Δci} {σ = σ} wA₁ wSA sσ) wA wS (⊢vs wA₀ wR td) δ bS bA bE bC bdS bdA =
+sub-MI (suc n) (extW {Δc = Δci} {σ = σ} wA₁ wSA sσ) wA wS (⊢vs wA₀ wR td) δ bS bA bE bC bdS bdA bDS =
   trans (cong (coe P_L)
               (trans (MI-subst (suc n) (sym (subTy-extS-wk σ _)) wS wSm (wk⊢ wSA (sub-⊢ sσ td)) δ)
                      (cong (coe Q_out) (wkMI n wSA (sub-⊨ sσ wA₀) wSm (sub-⊢ sσ td) δ _ _ _ _))))
@@ -936,12 +937,12 @@ sub-MI (suc n) (extW {Δc = Δci} {σ = σ} wA₁ wSA sσ) wA wS (⊢vs wA₀ wR
         WR  = congÊl (sym (wkTI (suc n) wA₁ wA₀ wA (envS (suc n) sσ (fst δ) _)
                                (snd (envS (suc n) (extW wA₁ wSA sσ) δ bE)) _ _))
         R   = trans ST₀ WR
-        recEq = sub-MI (suc n) sσ wA₀ (sub-⊨ sσ wA₀) td (fst δ) _ _ _ _ _ _
-sub-MI (suc n) sσ ⊨𝔹 ⊨𝔹 ⊢tt δ bS bA bE bC bdS bdA =
+        recEq = sub-MI (suc n) sσ wA₀ (sub-⊨ sσ wA₀) td (fst δ) _ _ _ _ _ _ _
+sub-MI (suc n) sσ ⊨𝔹 ⊨𝔹 ⊢tt δ bS bA bE bC bdS bdA bDS =
   coe-uip (congÊl (sub-TI (suc n) sσ ⊨𝔹 ⊨𝔹 δ bS bA bE bC)) refl (MI (suc n) ⊨𝔹 (sub-⊢ sσ ⊢tt) δ bdS bS)
-sub-MI (suc n) sσ ⊨𝔹 ⊨𝔹 ⊢ff δ bS bA bE bC bdS bdA =
+sub-MI (suc n) sσ ⊨𝔹 ⊨𝔹 ⊢ff δ bS bA bE bC bdS bdA bDS =
   coe-uip (congÊl (sub-TI (suc n) sσ ⊨𝔹 ⊨𝔹 δ bS bA bE bC)) refl (MI (suc n) ⊨𝔹 (sub-⊢ sσ ⊢ff) δ bdS bS)
-sub-MI (suc n) {Δc = Δc} {Γc = Γc} sσ (⊨Π wA wB) (⊨Π wSA wSB) (⊢lam {t = t} wA' td) δ bS bA bE bC bdS bdA =
+sub-MI (suc n) {Δc = Δc} {Γc = Γc} sσ (⊨Π wA wB) (⊨Π wSA wSB) (⊢lam {t = t} wA' td) δ bS bA bE bC bdS bdA bDS =
   funext pointwise
   where MI-LHS-fn = MI (suc n) (⊨Π wSA wSB) (sub-⊢ sσ (⊢lam wA' td)) δ bdS bS
         td'RHS = subst (λ w → (Γc ▷ w) ⊢ t ∷ _) (⊨-unique wA' wA) td
@@ -985,9 +986,9 @@ sub-MI (suc n) {Δc = Δc} {Γc = Γc} sσ (⊨Π wA wB) (⊨Π wSA wSB) (⊢lam
                         (trans (sym (coe-trans (congÊl A') (congÊl B') (MI-LHS-fn xv)))
                         (trans (cong (coe (congÊl B'))
                                      (trans (cong (coe (congÊl A')) (MI-⊢irr n wSB (⇓ n δ , λ _ → xv) (⊢-unique _ D)))
-                                            (sub-MI n (extW wA wSA sσ) wB wSB td'RHS (⇓ n δ , λ _ → xv) cbS cbA dbC cbC _ _)))
+                                            (sub-MI n (extW wA wSA sσ) wB wSB td'RHS (⇓ n δ , λ _ → xv) cbS cbA dbC cbC _ _ _)))
                                (congMI n wB td'RHS (goalenv xv))))
-sub-MI (suc n) sσ wA wS (⊢app (⊨Π wA' wB) tf tu) δ bS bA bE bC bdS bdA =
+sub-MI (suc n) sσ wA wS (⊢app (⊨Π wA' wB) tf tu) δ bS bA bE bC bdS bdA bDS =
   trans (cong (coe P_L)
               (trans (MI-subst (suc n) (sym (subTy-comm _ _ _)) wS wSc (⊢app (⊨Π wSA' wSB') tfs tus) δ)
                      (cong (coe Qc) (MI-app-red n wSA' wSB' wSc tfs tus δ _ _))))
@@ -1006,7 +1007,7 @@ sub-MI (suc n) sσ wA wS (⊢app (⊨Π wA' wB) tf tu) δ bS bA bE bC bdS bdA =
         -- scratchpad/MF-app-full-attempt.agda but blocks on the tf-recursion bound bC_f = szSubW sσ +
         -- (szT (⊨Π wSA' wSB') + szCon Δc) < suc n, which is NOT derivable from sub-MI's current bounds
         -- (needs a szSubW+dsz combined bound for the app subterms — a measure/signature extension).
-sub-MI zero sσ wA wS td δ bS bA bE bC () bdA
+sub-MI zero sσ wA wS td δ bS bA bE bC bdS bdA ()
 
 consistency : ∀ {t} → ε ⊢ t ∷ ⊥̇ → Empty
 consistency td = MI (suc (dsz td)) ⊨⊥ td ⋆ (<≡ (sym (+0 (dsz td))) ≤-refl) (s≤s (1≤dsz td))
