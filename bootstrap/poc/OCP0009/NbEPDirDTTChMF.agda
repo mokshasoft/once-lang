@@ -734,7 +734,53 @@ MI-app-red n wA' wB wA tf tu ρ argbt argbw = refl
 -- since nat-MI already carries dsz bounds bd1/bd2, unlike sub-MI's szSubW-combined bC).
 nat-MI (suc n) r wA (⊢vz wR) δ b1 b2 bO bd1 bd2 = {!!}
 nat-MI (suc n) r wA (⊢vs wA₀ wR td) δ b1 b2 bO bd1 bd2 = {!!}
-nat-MI (suc n) r wA (⊢lam wA' td) δ b1 b2 bO bd1 bd2 = {!!}
+nat-MI (suc n) {Δc = Δc} {Θc = Θc} r (⊨Π wD wCo) (⊢lam {t = t} wA' td) δ b1 b2 bO bd1 bd2 =
+  funext pointwise
+  where wRD  = ren⊨ r wD
+        wRCo = ren⊨ (keep r wD) wCo
+        MI-LHS-fn = MI (suc n) (⊨Π wRD wRCo) (ren⊢ r (⊢lam wA' td)) δ bd1 b1
+        td'RHS = subst (λ w → (Δc ▷ w) ⊢ t ∷ _) (⊨-unique wA' wD) td
+        db1  = sub-bnd< (szTΠl< wRD wRCo) b1
+        db2  = sub-bnd< (szTΠl< wD wCo) b2
+        dbO  = sub-bnd< (1≤szT (ren⊨ r (⊨Π wD wCo))) b1
+        domeq = trans (nat-TI n r wD (⇓ n δ) db1 db2 dbO) (congTI n wD (envO-⇓ n r δ bO dbO))
+        cb1  = <≡ (trans (cong (_+ szCon Θc) (+-comm (szT wRD) (szT wRCo))) (+-assoc (szT wRCo) (szT wRD) (szCon Θc))) (<-inv b1)
+        cb2  = <≡ (trans (cong (_+ szCon Δc) (+-comm (szT wD) (szT wCo))) (+-assoc (szT wCo) (szT wD) (szCon Δc))) (<-inv b2)
+        goalenv : ∀ x → _≡_ {A = CI n (Δc ▷ wD)}
+                          (envO n (keep r wD) (⇓ n δ , λ _ → x) db1)
+                          (⇓ n (envO (suc n) r δ bO) , λ _ → coe (congÊl domeq) x)
+        goalenv x = pair-≡ (envO-⇓ n r δ bO dbO)
+                      (trans (subst-Π {C = λ e b → Êl (TI n wD e b)} (envO-⇓ n r δ bO dbO)
+                                      (λ b → coe (congÊl (nat-TI n r wD (⇓ n δ) db1 db2 dbO)) x))
+                             (funextP (λ b →
+                               trans (subst≡coe {B = λ e → Êl (TI n wD e b)} (envO-⇓ n r δ bO dbO)
+                                                (coe (congÊl (nat-TI n r wD (⇓ n δ) db1 db2 dbO)) x))
+                               (trans (cong (λ e → coe e (coe (congÊl (nat-TI n r wD (⇓ n δ) db1 db2 dbO)) x))
+                                            (uip' (cong (λ e → Êl (TI n wD e b)) (envO-⇓ n r δ bO dbO))
+                                                  (congÊl (congTI n wD (envO-⇓ n r δ bO dbO)))))
+                               (trans (coe-trans (congÊl (nat-TI n r wD (⇓ n δ) db1 db2 dbO))
+                                                 (congÊl (congTI n wD (envO-⇓ n r δ bO dbO))) x)
+                                      (cong (λ e → coe e x) (sym (congÊl-trans (nat-TI n r wD (⇓ n δ) db1 db2 dbO)
+                                                                               (congTI n wD (envO-⇓ n r δ bO dbO))))))))))
+        codeq : ∀ x → _ ≡ _
+        codeq x = trans (nat-TI n (keep r wD) wCo (⇓ n δ , λ _ → x) cb1 cb2 db1) (congTI n wCo (goalenv x))
+        pointwise : ∀ x' → coe (congÊl (nat-TI (suc n) r (⊨Π wD wCo) δ b1 b2 bO)) MI-LHS-fn x'
+                          ≡ MI (suc n) (⊨Π wD wCo) (⊢lam wA' td) (envO (suc n) r δ bO) bd2 b2 x'
+        pointwise x' = trans (coe-π̂-gen domeq codeq MI-LHS-fn x')
+                             (trans (cong (subst MOT q) inner) (subst-app MOT g q))
+          where xv = coe (sym (congÊl domeq)) x'
+                q  = coe-sym' (congÊl domeq) x'
+                D  = ren⊢ (keep r wD) td'RHS
+                MOT = λ z → Êl (TI n wCo (⇓ n (envO (suc n) r δ bO) , (λ _ → z)) _)
+                g   = λ z → MI n wCo td'RHS (⇓ n (envO (suc n) r δ bO) , (λ _ → z)) _ _
+                A' = nat-TI n (keep r wD) wCo (⇓ n δ , λ _ → xv) cb1 cb2 db1
+                B' = congTI n wCo (goalenv xv)
+                inner = trans (cong (λ p → coe p (MI-LHS-fn xv)) (congÊl-trans A' B'))
+                        (trans (sym (coe-trans (congÊl A') (congÊl B') (MI-LHS-fn xv)))
+                        (trans (cong (coe (congÊl B'))
+                                     (trans (cong (coe (congÊl A')) (MI-⊢irr n wRCo (⇓ n δ , λ _ → xv) (⊢-unique _ D)))
+                                            (nat-MI n (keep r wD) wCo td'RHS (⇓ n δ , λ _ → xv) cb1 cb2 db1 _ _)))
+                               (congMI n wCo td'RHS (goalenv xv))))
 nat-MI (suc n) {Δc = Δc} {Θc = Θc} {o = o} r wA (⊢app (⊨Π wA' wB) tf tu) δ b1 b2 bO bd1 bd2 =
   trans (cong (coe P_L)
               (trans (MI-subst (suc n) (sym (renTy-comm ⌜ o ⌝ _ _)) (ren⊨ r wA) wRc
