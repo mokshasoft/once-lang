@@ -19,8 +19,8 @@ open import Data.String using (String)
 open import Data.List using ([]; take)
 open import Data.Bool using (false)
 open import Data.Product using (proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; mkHeapRef)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.X86-64.Syntax using (slot-size)
@@ -91,18 +91,39 @@ postulate
   enc-hl-inj-live : ∀ (as : AllocState {x86-64-frame-semantics}) {a b : HeapLocation}
                   → LiveIn as a → LiveIn as b → enc-hl a ≡ enc-hl b → a ≡ b
   enc-hl-suc : ∀ (hl : HeapLocation) → enc-hl (sucHL hl) ≡ enc-hl hl + slot-size
+  -- The entry "unit-filler" pointer (`entry-loc = AtDynamic (heap-loc 0 0)`) encodes
+  -- to address 0 — the concrete x86 entry registers are all 0 (`emptyRegFile`), so
+  -- this is exactly what makes the initial register correspondence hold. A property
+  -- of the concrete heap layout, discharged when `enc-hl` is instantiated. (Leaf
+  -- surfaced by proving `entry-corr` below top-down.)
+  enc-hl-entry : enc-hl (heap-loc (mkHeapRef 0) 0) ≡ 0
 
 open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
   x86-64-frame-semantics enc-hl LiveIn enc-hl-inj-live enc-hl-suc
-  using (events-agree; CompiledCorr)
+  using (events-agree; CompiledCorr; dataCorr; pc-off
+        ; rdi-eq; rsi-eq; rax-eq; rbx-eq; halt-eq; heap-eq)
+
+-- Initial-state correspondence, PROVEN: the concrete `initState` (all registers 0,
+-- empty memory, pc 0, running) relates to the flat entry state `mkFlat entry-s
+-- entry-alloc 0`. The four register equalities all reduce to `enc-hl (entry heap-
+-- loc) ≡ 0` (the `enc-hl-entry` leaf); halt/pc are refl; heap-eq is vacuous
+-- (`nothing ≡ nothing`, the entry heap is empty). No longer a postulate.
+entry-corr : ∀ (ir : IR Unit Unit)
+           → CompiledCorr (ir-to-trace ir) (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
+                          (ArchSemantics.initialState as64)
+entry-corr ir = record
+  { dataCorr = record
+      { rdi-eq  = sym enc-hl-entry
+      ; rsi-eq  = sym enc-hl-entry
+      ; rax-eq  = sym enc-hl-entry
+      ; rbx-eq  = sym enc-hl-entry
+      ; halt-eq = refl
+      ; heap-eq = λ _ _ → refl
+      }
+  ; pc-off = refl
+  }
 
 postulate
-  -- Initial-state correspondence: the concrete `initState` relates to the flat
-  -- entry state `mkFlat entry-s entry-alloc 0` for the compiled IR.
-  entry-corr : ∀ (ir : IR Unit Unit)
-             → CompiledCorr (ir-to-trace ir) (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
-                            (ArchSemantics.initialState as64)
-
   -- FUEL ADEQUACY seam (surfaced by wiring): `events-agree` gives an EXISTENTIAL fuel
   -- `M` with `run-events M ≡ flat-events N`, but `conc-trace` is committed to
   -- `step-budget-x86-64 n`. Their first-`n` events agree because run-events' prefix is
