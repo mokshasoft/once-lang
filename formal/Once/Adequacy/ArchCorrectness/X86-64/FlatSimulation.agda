@@ -58,7 +58,7 @@ open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem; updateFlags)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax
-  using (rax; rbx; rsi; rdi; rsp; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; base; base+disp; slots)
+  using (rax; rbx; rsi; rdi; rsp; rbp; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; push; base; base+disp; slots; slot-size)
 open import Data.Maybe using (just; nothing)
 open import Data.Bool using (true; false)
 open import Data.List using (_∷_; []; _++_; drop; length)
@@ -68,12 +68,12 @@ import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FC
 module C = FC FS enc-hl LiveIn enc-hl-inj-live   -- enc-sv / FlatCorr data fields
 open import Once.CCC.Label using (once)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
-  using (x86-off; x86-len; x86-off-suc; fetch-block-head; find-label-corr; fetch-block-2nd)
-open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-sub-ri; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not)
+  using (x86-off; x86-len; x86-off-suc; fetch-block-head; find-label-corr; fetch-block-2nd; fetch-block-3rd)
+open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-sub-ri; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-push)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (zero; suc)
-open import Data.Nat.Properties using (+-assoc; +-identityʳ)
+open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-comm)
 open import Data.Product using (Σ; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst)
 open MemOps {FS} using (writeLoc; writeLocToHeap)
@@ -536,6 +536,64 @@ block-step-dealloc-stack prog fs s n cc h ft full =
     dataPost = C.sim-dealloc-stack n newFlags fs s dc full
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-dealloc-stack n) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-dealloc-stack n) ft))
+
+-- push-frame: `push rbp; mov rbp,rsp; sub rsp,cap*8` (3 steps). The abstract
+-- resets the runtime depth (stackSlot:=0) ⇒ vacuous stack-eq (sim-push-frame). The
+-- prologue touches only rbp/rsp (4 tracked regs preserved: refl) and writes ONE
+-- cell (saved rbp at [rsp−8]); heap-eq is preserved by a disjointness residual.
+block-step-push-frame : ∀ prog fs s n → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-push-frame n)
+  → (∀ hl → LiveIn (falloc fs) hl → (X.readReg (xregs s) rsp ∸ slot-size ≡ enc-hl hl) → ⊥)
+  → BlockStep prog fs s (instr-push-frame n)
+block-step-push-frame prog fs s n cc h ft disj =
+  post-sub , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-push : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (push (reg rbp))
+    fetch-push = trans (cong (X.fetch (compile-trace prog)) po)
+                       (fetch-block-head prog (fpc fs) (instr-push-frame n) ft)
+    post-push : X.State
+    post-push = record s { regs = xwriteReg (xregs s) rsp (xreadReg (xregs s) rsp ∸ slot-size)
+                         ; memory = writeMem (memory s) (xreadReg (xregs s) rsp ∸ slot-size) (xreadReg (xregs s) rbp)
+                         ; pc = pc s + 1 }
+    step1 : X.step-not-halted (compile-trace prog) s ≡ just post-push
+    step1 = step-push {compile-trace prog} {s} {rbp} fetch-push
+    fetch-mov : X.fetch (compile-trace prog) (X.State.pc post-push) ≡ just (mov (reg rbp) (reg rsp))
+    fetch-mov = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) po)
+                      (fetch-block-2nd prog (fpc fs) (instr-push-frame n) ft)
+    post-mov : X.State
+    post-mov = record post-push { regs = xwriteReg (xregs post-push) rbp (xreadReg (xregs post-push) rsp)
+                                ; pc = pc post-push + 1 }
+    step2 : X.step-not-halted (compile-trace prog) post-push ≡ just post-mov
+    step2 = step-mov-rr {compile-trace prog} {post-push} {rbp} {rsp} fetch-mov
+    fetch-sub : X.fetch (compile-trace prog) (X.State.pc post-mov) ≡ just (sub (reg rsp) (imm (slots n)))
+    fetch-sub = trans (cong (λ p → X.fetch (compile-trace prog) ((p + 1) + 1)) po)
+                (trans (cong (X.fetch (compile-trace prog)) (+-assoc (x86-off prog (fpc fs)) 1 1))
+                       (fetch-block-3rd prog (fpc fs) (instr-push-frame n) ft))
+    post-sub : X.State
+    post-sub = record post-mov { regs = xwriteReg (xregs post-mov) rsp (xreadReg (xregs post-mov) rsp ∸ slots n)
+                               ; flags = updateFlags (xreadReg (xregs post-mov) rsp ∸ slots n) (xreadReg (xregs post-mov) rsp)
+                               ; pc = pc post-mov + 1 }
+    step3 : X.step-not-halted (compile-trace prog) post-mov ≡ just post-sub
+    step3 = step-sub-ri {compile-trace prog} {post-mov} {rsp} {slots n} fetch-sub
+    exec-eq : X.exec 3 (compile-trace prog) s ≡ just post-sub
+    exec-eq = trans (exec-1 {compile-trace prog} {2} {s} {post-push} halt-s step1 halt-s)
+              (trans (exec-1 {compile-trace prog} {1} {post-push} {post-mov} halt-s step2 halt-s)
+                     (exec-1 {compile-trace prog} {0} {post-mov} {post-sub} halt-s step3 halt-s))
+    heap-p : ∀ hl → LiveIn (falloc fs) hl
+           → X.readMem (X.State.memory post-sub) (enc-hl hl) ≡ X.readMem (X.State.memory s) (enc-hl hl)
+    heap-p hl live rewrite C.≢→≡ᵇfalse {enc-hl hl} {xreadReg (xregs s) rsp ∸ slot-size}
+                             (λ eq → disj hl live (sym eq)) = refl
+    dataPost : C.FlatCorr (flat-exec-instr (instr-push-frame n) prog fs) post-sub
+    dataPost = C.sim-push-frame n fs s post-sub dc refl refl refl refl refl heap-p
+    pco' : X.State.pc post-sub ≡ x86-off prog (fpc (flat-exec-instr (instr-push-frame n) prog fs))
+    pco' = trans (trans (cong (λ p → ((p + 1) + 1) + 1) po) assoc)
+                 (sym (x86-off-suc prog (fpc fs) (instr-push-frame n) ft))
+      where m = x86-off prog (fpc fs)
+            assoc : ((m + 1) + 1) + 1 ≡ m + 3
+            assoc = trans (cong (_+ 1) (+-assoc m 1 1)) (+-assoc m 2 1)
 
 -- worklist-push / worklist-pop: their abstract semantics + x86 lowering are
 -- IDENTICAL to store-at-slot / load-from-slot respectively (SMCore/AbstractToX86),

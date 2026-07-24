@@ -598,6 +598,33 @@ sim-dealloc-stack n newFlags fs s corr full = record
     ... | ()
 
 ------------------------------------------------------------------------
+-- FRAME PUSH: `instr-push-frame cap` ↔ `push rbp; mov rbp,rsp; sub rsp,cap*8`.
+-- The abstract RESETS the runtime depth (writeStackSlot 0) — a fresh frame — so
+-- the bounded stack-eq post is VACUOUS (stackSlot ≡ 0 ⇒ k < 0), holding trivially.
+-- The x86 3-instruction prologue touches only rbp/rsp (the 4 tracked registers,
+-- rdi/rsi/rax/rbx, are preserved) and writes ONE cell (the saved rbp at [rsp−8]).
+-- So the sim is parametric over the post state `xp` + the preservation facts the
+-- block-step establishes (4 regs unchanged; halt unchanged; heap unchanged at every
+-- LIVE cell — the block-step discharges that via a heap/stack disjointness for the
+-- push write). Only the vacuous stack-eq is proved here.
+------------------------------------------------------------------------
+sim-push-frame : ∀ (n : ℕ) (fs : FlatState) (s xp : X.State) → FlatCorr fs s
+  → X.readReg (X.State.regs xp) rdi ≡ X.readReg (X.State.regs s) rdi
+  → X.readReg (X.State.regs xp) rsi ≡ X.readReg (X.State.regs s) rsi
+  → X.readReg (X.State.regs xp) rax ≡ X.readReg (X.State.regs s) rax
+  → X.readReg (X.State.regs xp) rbx ≡ X.readReg (X.State.regs s) rbx
+  → X.State.halted xp ≡ X.State.halted s
+  → (∀ hl → LiveIn (falloc fs) hl → X.readMem (X.State.memory xp) (enc-hl hl)
+                                  ≡ X.readMem (X.State.memory s) (enc-hl hl))
+  → FlatCorr (flat-exec-instr (instr-push-frame n) [] fs) xp
+sim-push-frame n fs s xp corr rdi-p rsi-p rax-p rbx-p halt-p heap-p = record
+  { rdi-eq = trans rdi-p (rdi-eq corr) ; rsi-eq = trans rsi-p (rsi-eq corr)
+  ; rax-eq = trans rax-p (rax-eq corr) ; rbx-eq = trans rbx-p (rbx-eq corr)
+  ; halt-eq = trans halt-p (halt-eq corr)
+  ; heap-eq = λ hl live → trans (heap-p hl live) (heap-eq corr hl live)
+  ; stack-eq = λ _ () }   -- writeStackSlot 0 ⇒ post stackSlot ≡ 0 ⇒ k < 0 absurd
+
+------------------------------------------------------------------------
 -- Arithmetic reg-ops (Plan 0.34: flag-free, so the post is parametric over
 -- the x86 flags). input2-inc / scratch-dec increment/decrement a TAG.
 ------------------------------------------------------------------------

@@ -327,3 +327,16 @@ fetch-block-2nd prog k i ft =
               (trans (drop-+ (x86-off prog k) 1 (compile-trace prog))
                      (trans (cong (drop 1) (drop-compile prog k))
                             (cong (λ p → drop 1 (compile-trace p)) (drop-fetch prog k i ft)))))
+
+-- The THIRD x86 instruction of the block at flat index k (offset +2). Same shape
+-- as fetch-block-2nd; needed by 3-instruction blocks (e.g. push-frame).
+fetch-block-3rd : ∀ (prog : AbstractTrace) (k : ℕ) (i : AbstractInstr)
+  → fetch prog k ≡ just i
+  → X.fetch (compile-trace prog) (x86-off prog k + 2)
+    ≡ X.fetch (drop 2 (compile-abstract i ++ compile-trace (drop (suc k) prog))) 0
+fetch-block-3rd prog k i ft =
+  trans (fetch-drop (compile-trace prog) (x86-off prog k + 2))
+        (cong (λ xs → X.fetch xs 0)
+              (trans (drop-+ (x86-off prog k) 2 (compile-trace prog))
+                     (trans (cong (drop 2) (drop-compile prog k))
+                            (cong (λ p → drop 2 (compile-trace p)) (drop-fetch prog k i ft)))))

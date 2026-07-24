@@ -426,6 +426,10 @@ postulate
   -- dealloc-stack frees the WHOLE current frame (runtime depth n → 0) — the WF
   -- pairing of an entry alloc-stack n with its matching exit dealloc-stack n.
   dealloc-stack-full : ∀ (fs : FlatState) (n : ℕ) → stackSlot (regs (floc fs)) ≡ n
+  -- push-frame writes the saved rbp at [rsp−8]; that stack address aliases no LIVE
+  -- heap cell (heap/stack disjointness, as for the store residuals).
+  push-frame-heap-disj : ∀ (s : X.State) (fs : FlatState)
+                       → ∀ hl → LiveIn (falloc fs) hl → (X.readReg (X.State.regs s) rsp ∸ slot-size ≡ enc-hl hl) → ⊥
   -- worklist-pop from an empty worklist slot: both machines halt (as load-from-slot-empty).
   worklist-pop-empty : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                          prog fs s slot → CompiledCorr prog fs s → halted (floc fs) ≡ false
@@ -530,6 +534,9 @@ mutual
   events-running-fetch n ev env prog fs s (instr-dealloc-stack k) cc h ftq =
     ccc-step-bs n ev env prog fs s (instr-dealloc-stack k)
       (block-step-dealloc-stack prog fs s k cc h ftq (dealloc-stack-full fs k)) refl h
+  events-running-fetch n ev env prog fs s (instr-push-frame k) cc h ftq =
+    ccc-step-bs n ev env prog fs s (instr-push-frame k)
+      (block-step-push-frame prog fs s k cc h ftq (push-frame-heap-disj s fs)) refl h
   -- Trivial cata bookkeeping (x86-len 0, flat identity): proven block-step ⇒ ccc-step-bs.
   events-running-fetch n ev env prog fs s (worklist-init k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-init k) (block-step-worklist-init prog fs s k cc h ftq) refl h
   events-running-fetch n ev env prog fs s (worklist-check k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-check k) (block-step-worklist-check prog fs s k cc h ftq) refl h
