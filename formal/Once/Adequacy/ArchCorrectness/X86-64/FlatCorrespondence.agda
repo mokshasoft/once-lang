@@ -45,6 +45,7 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (yes; no)
 open import Data.List using ([])
+open import Data.Product using (proj₁; proj₂; _,_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
 
@@ -52,13 +53,15 @@ import Once.CCC.Target.X86-64.Semantics as X
 open X using (mkstate; mkflags; _<ᵇ_; writeMem)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
-open import Once.CCC.Target.X86-64.Syntax using (rax; rbx; rsi; rdi)
+open import Once.CCC.Target.X86-64.Syntax using (rax; rbx; rsi; rdi; rsp)
+open import Once.CCC.Target.X86-64.AbstractToX86 using (slot-to-disp)
 open import Once.CCC.Machine.SMCore
 open MemOps {FS} using (writeLoc; writeLocToHeap; writeHeapMem)
 open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-load-with-value
                           ; exec-store-via-resolved; exec-store-suc-via-resolved)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
+open AbstractExec {FS} using (exec-abstract; exec-load-from-slot-with-value)
 
 ------------------------------------------------------------------------
 -- Value encoding: typed StoredValue → untyped x86 Word.
@@ -82,9 +85,16 @@ enc-maybe nothing  = nothing
 ------------------------------------------------------------------------
 -- The correspondence: a FlatState and an x86 State agree on the four
 -- abstract registers (under enc-sv), the pc, the zero-flag, the halt
--- flag, and the heap memory (under enc-hl + enc-sv).
--- (Stack memory correspondence is added with the stack-using lemmas;
--- the cata is heap-only.)
+-- flag, the heap memory (under enc-hl + enc-sv), and the CURRENT-FRAME
+-- stack memory (rsp-relative, under enc-sv).
+--
+-- `stack-eq`: the current frame's slot `k` lives at x86 address
+-- `rsp + slot-to-disp k` (the `%rsp`-relative frameless layout the
+-- compiler emits — `AbstractToX86`), and holds the same value as the
+-- abstract `stackMem (current-frame) k` under `enc-sv`. Only the current
+-- frame is related (rsp points at its base); older frames sit at higher
+-- addresses and are re-synced across push/pop-frame. This unlocks the
+-- slot/frame/worklist cluster (load/store-at-slot, restore-input, …).
 ------------------------------------------------------------------------
 record FlatCorr (fs : FlatState) (s : X.State) : Set where
   field
@@ -95,6 +105,9 @@ record FlatCorr (fs : FlatState) (s : X.State) : Set where
     halt-eq : X.State.halted s ≡ halted (floc fs)
     heap-eq : ∀ (hl : HeapLocation) → LiveIn (falloc fs) hl →
               X.readMem (X.State.memory s) (enc-hl hl) ≡ enc-maybe (heapMem (floc fs) hl)
+    stack-eq : ∀ (k : Slot) →
+              X.readMem (X.State.memory s) (X.readReg (X.State.regs s) rsp + slot-to-disp k)
+              ≡ enc-maybe (stackMem (floc fs) (current-frame (falloc fs)) k)
 open FlatCorr public
 
 ------------------------------------------------------------------------
@@ -120,6 +133,7 @@ sim-mov-to-output fs s corr = record
   ; rbx-eq  = rbx-eq corr
   ; halt-eq = halt-eq corr
   ; heap-eq = heap-eq corr
+  ; stack-eq = stack-eq corr
   }
 
 -- mov-to-input (Input1 := Output) ↔ `mov rdi, rax`.
@@ -128,7 +142,7 @@ sim-mov-to-input : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
              (mkstate (xwriteReg (xregs s) rdi (xreadReg (xregs s) rax)) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-mov-to-input fs s corr = record
   { rdi-eq = rax-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
-  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
 
 -- mov-input2-to-output (Output := Input2) ↔ `mov rax, rsi`.
 sim-mov-input2-to-output : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -136,7 +150,7 @@ sim-mov-input2-to-output : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
              (mkstate (xwriteReg (xregs s) rax (xreadReg (xregs s) rsi)) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-mov-input2-to-output fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rsi-eq corr ; rbx-eq = rbx-eq corr
-  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
 
 -- mov-output-to-input2 (Input2 := Output) ↔ `mov rsi, rax`.
 sim-mov-output-to-input2 : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -144,7 +158,7 @@ sim-mov-output-to-input2 : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
              (mkstate (xwriteReg (xregs s) rsi (xreadReg (xregs s) rax)) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-mov-output-to-input2 fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rax-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
-  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
 
 -- instr-load-tag-lit n (Output := SV-Tag n) ↔ `mov rax, n`. enc(SV-Tag n)=n ⟹ rax-eq=refl.
 sim-load-tag-lit : ∀ (n : ℕ) (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -152,7 +166,7 @@ sim-load-tag-lit : ∀ (n : ℕ) (fs : FlatState) (s : X.State) → FlatCorr fs 
              (mkstate (xwriteReg (xregs s) rax n) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-load-tag-lit n fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
-  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
 
 -- instr-reg-op scratch-one (Scratch := SV-Tag 1) ↔ `mov rbx, 1`. rbx-eq=refl.
 sim-reg-scratch-one : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -160,7 +174,7 @@ sim-reg-scratch-one : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
              (mkstate (xwriteReg (xregs s) rbx 1) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-reg-scratch-one fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = refl
-  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
 
 -- instr-reg-op scratch-zero (Scratch := SV-Tag 0) ↔ `mov rbx, 0`. rbx-eq=refl.
 sim-reg-scratch-zero : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -168,7 +182,7 @@ sim-reg-scratch-zero : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
              (mkstate (xwriteReg (xregs s) rbx 0) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-reg-scratch-zero fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = refl
-  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
 
 -- instr-reg-op input2-zero (Input2 := SV-Tag 0) ↔ `mov rsi, 0`. rsi-eq=refl.
 sim-reg-input2-zero : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -176,7 +190,7 @@ sim-reg-input2-zero : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
              (mkstate (xwriteReg (xregs s) rsi 0) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-reg-input2-zero fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = refl ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
-  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
 
 -- instr-reg-op scratch-load-count (Scratch := Input2) ↔ `mov rbx, rsi`. rbx-eq=rsi-eq.
 sim-reg-scratch-load-count : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -184,7 +198,7 @@ sim-reg-scratch-load-count : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs 
              (mkstate (xwriteReg (xregs s) rbx (xreadReg (xregs s) rsi)) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-reg-scratch-load-count fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rsi-eq corr
-  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
 
 ------------------------------------------------------------------------
 -- Boolean bridge for the conditional-branch correspondence (Plan 0.34):
@@ -232,7 +246,7 @@ sim-load-indirect-suc hl w fs s corr i-eq h-eq =
     corr-clean : FlatCorr cleanFlat xpost
     corr-clean = record
       { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
-      ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+      ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
 
 ------------------------------------------------------------------------
 -- Heap load (no offset): load-indirect (Output := *Input1) ↔
@@ -261,7 +275,38 @@ sim-load-indirect hl w fs s corr i-eq h-eq =
     corr-clean : FlatCorr cleanFlat xpost
     corr-clean = record
       { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
-      ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+      ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
+
+------------------------------------------------------------------------
+-- STACK LOAD: `load-from-slot slot` (Output := stack[current-frame, slot]) ↔
+-- `mov rax, [rsp + slot-to-disp slot]`. The read VALUE comes from `stack-eq`
+-- (memory s at rsp+disp = enc-maybe of the slot's abstract value); the x86 post
+-- is identical in shape to `sim-load-indirect` (rax := enc-sv w). Only the
+-- SUCCESS case (slot holds `just w`) — the empty-slot (`nothing`→halt) case is
+-- routed as a WF residual, exactly like load-indirect's bad case. This is the
+-- FIRST consumer of the new `stack-eq` field (via block-step-load-from-slot).
+------------------------------------------------------------------------
+sim-load-from-slot : ∀ (slot : Slot) (w : StoredValue FS) (fs : FlatState) (s : X.State) → FlatCorr fs s
+  → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
+  → FlatCorr (flat-exec-instr (load-from-slot slot) [] fs)
+             (mkstate (xwriteReg (xregs s) rax (enc-sv w)) (memory s) (flags s) (pc s + 1) (xhalted s))
+sim-load-from-slot slot w fs s corr st-eq =
+  subst (λ z → FlatCorr z xpost) (sym reduces) corr-clean
+  where
+    xpost : X.State
+    xpost = mkstate (xwriteReg (xregs s) rax (enc-sv w)) (memory s) (flags s) (pc s + 1) (xhalted s)
+    ex-eq : exec-abstract (load-from-slot slot) (floc fs) (falloc fs)
+            ≡ (record (floc fs) { regs = writeReg (regs (floc fs)) Output w } , falloc fs)
+    ex-eq = cong (λ mv → exec-load-from-slot-with-value mv (floc fs) (falloc fs)) st-eq
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+                          ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    reduces : flat-exec-instr (load-from-slot slot) [] fs ≡ cleanFlat
+    reduces = cong (λ p → record fs { floc = proj₁ p ; falloc = proj₂ p ; fpc = suc (fpc fs) }) ex-eq
+    corr-clean : FlatCorr cleanFlat xpost
+    corr-clean = record
+      { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
+      ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
 
 ------------------------------------------------------------------------
 -- Heap STORES (Plan 0.32 Phase D). A heap write ↔ x86 `mov [addr], reg`.
@@ -299,6 +344,20 @@ store-heap-eq as hl v s ls live-hl pre hl' live-hl' with hl ≟HL hl'
 ... | no ¬p rewrite ≢→≡ᵇfalse {enc-hl hl'} {enc-hl hl}
       (λ q → ¬p (sym (enc-hl-inj-live as live-hl' live-hl q))) = pre hl' live-hl'
 
+-- STACK preservation under a HEAP store: writing the x86 memory at heap
+-- address `addr` (= `enc-hl hl`) leaves every current-frame stack slot value
+-- unchanged, GIVEN heap/stack disjointness (`disj`: no current-frame slot
+-- aliases the heap write target). The abstract `stackMem` is untouched by a
+-- heap write, so the current-frame stack correspondence is preserved — the
+-- rsp-relative analogue of `store-heap-eq`'s no-alias branch. `stk` is the
+-- current frame's slot→value slice (`stackMem ls (current-frame …)`).
+store-stack-eq : ∀ (addr : ℕ) (v' : X.Word) (s : X.State) (stk : Slot → Maybe (StoredValue FS))
+  → (∀ k → X.readMem (memory s) (X.readReg (xregs s) rsp + slot-to-disp k) ≡ enc-maybe (stk k))
+  → (∀ k → (X.readReg (xregs s) rsp + slot-to-disp k ≡ addr) → ⊥)
+  → ∀ k → X.readMem (writeMem (memory s) addr v') (X.readReg (xregs s) rsp + slot-to-disp k)
+          ≡ enc-maybe (stk k)
+store-stack-eq addr v' s stk pre disj k rewrite ≢→≡ᵇfalse (disj k) = pre k
+
 -- store-indirect: *Input1 := Output ↔ `mov [rdi], rax`. Hypotheses:
 --   Input1 = SV-Ptr (AtDynamic hl)   (destination is a heap cell)
 --   the value is heap-storable (writeLoc reduces to writeLocToHeap) — the
@@ -309,11 +368,14 @@ sim-store-indirect : ∀ (hl : HeapLocation) (fs : FlatState) (s : X.State) → 
   → LiveIn (falloc fs) hl        -- the store target is a live block (store-WF)
   → writeLoc (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)
     ≡ writeLocToHeap (floc fs) hl (readReg (regs (floc fs)) Output)
+  -- heap/stack disjointness: the heap write target does NOT alias any
+  -- current-frame stack slot (heap and stack occupy disjoint x86 regions).
+  → (∀ k → (X.readReg (xregs s) rsp + slot-to-disp k ≡ enc-hl hl) → ⊥)
   → FlatCorr (flat-exec-instr store-indirect [] fs)
              (mkstate (xregs s)
                       (writeMem (memory s) (enc-hl hl) (enc-sv (readReg (regs (floc fs)) Output)))
                       (flags s) (pc s + 1) (xhalted s))
-sim-store-indirect hl fs s corr i-eq live-hl guard =
+sim-store-indirect hl fs s corr i-eq live-hl guard disj =
   subst (λ z → FlatCorr z xpost) (sym reduces) corr-clean
   where
     v = readReg (regs (floc fs)) Output
@@ -330,7 +392,9 @@ sim-store-indirect hl fs s corr i-eq live-hl guard =
     corr-clean = record
       { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
       ; halt-eq = halt-eq corr
-      ; heap-eq = store-heap-eq (falloc fs) hl v s (floc fs) live-hl (heap-eq corr) }
+      ; heap-eq = store-heap-eq (falloc fs) hl v s (floc fs) live-hl (heap-eq corr)
+      ; stack-eq = store-stack-eq (enc-hl hl) (enc-sv v) s
+                     (stackMem (floc fs) (current-frame (falloc fs))) (stack-eq corr) disj }
 
 -- store-indirect-suc: *(sucLoc Input1) := Output ↔ `mov [rdi+slot], rax`.
 sim-store-indirect-suc : ∀ (hl : HeapLocation) (fs : FlatState) (s : X.State) → FlatCorr fs s
@@ -338,11 +402,13 @@ sim-store-indirect-suc : ∀ (hl : HeapLocation) (fs : FlatState) (s : X.State) 
   → LiveIn (falloc fs) (sucHL hl)     -- the store target (second cell) is live
   → writeLoc (floc fs) (AtDynamic (sucHL hl)) (readReg (regs (floc fs)) Output)
     ≡ writeLocToHeap (floc fs) (sucHL hl) (readReg (regs (floc fs)) Output)
+  -- heap/stack disjointness for the second-cell write target.
+  → (∀ k → (X.readReg (xregs s) rsp + slot-to-disp k ≡ enc-hl (sucHL hl)) → ⊥)
   → FlatCorr (flat-exec-instr store-indirect-suc [] fs)
              (mkstate (xregs s)
                       (writeMem (memory s) (enc-hl (sucHL hl)) (enc-sv (readReg (regs (floc fs)) Output)))
                       (flags s) (pc s + 1) (xhalted s))
-sim-store-indirect-suc hl fs s corr i-eq live-shl guard =
+sim-store-indirect-suc hl fs s corr i-eq live-shl guard disj =
   subst (λ z → FlatCorr z xpost) (sym reduces) corr-clean
   where
     v = readReg (regs (floc fs)) Output
@@ -359,7 +425,9 @@ sim-store-indirect-suc hl fs s corr i-eq live-shl guard =
     corr-clean = record
       { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
       ; halt-eq = halt-eq corr
-      ; heap-eq = store-heap-eq (falloc fs) (sucHL hl) v s (floc fs) live-shl (heap-eq corr) }
+      ; heap-eq = store-heap-eq (falloc fs) (sucHL hl) v s (floc fs) live-shl (heap-eq corr)
+      ; stack-eq = store-stack-eq (enc-hl (sucHL hl)) (enc-sv v) s
+                     (stackMem (floc fs) (current-frame (falloc fs))) (stack-eq corr) disj }
 
 ------------------------------------------------------------------------
 -- Arithmetic reg-ops (Plan 0.34: flag-free, so the post is parametric over
@@ -380,7 +448,7 @@ sim-reg-input2-inc : ∀ (k : ℕ) (newFlags : X.Flags) (fs : FlatState) (s : X.
 sim-reg-input2-inc k newFlags fs s corr i2-eq = record
   { rdi-eq = rdi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
   ; rsi-eq = trans (cong (_+ 1) (rsi-eq corr)) (inc-enc (readReg (regs (floc fs)) Input2) k i2-eq)
-  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
 
 sim-reg-scratch-dec : ∀ (k : ℕ) (newFlags : X.Flags) (fs : FlatState) (s : X.State) → FlatCorr fs s
   → readReg (regs (floc fs)) Scratch ≡ SV-Tag k
@@ -390,4 +458,4 @@ sim-reg-scratch-dec : ∀ (k : ℕ) (newFlags : X.Flags) (fs : FlatState) (s : X
 sim-reg-scratch-dec k newFlags fs s corr sc-eq = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr
   ; rbx-eq = trans (cong (_∸ 1) (rbx-eq corr)) (dec-enc (readReg (regs (floc fs)) Scratch) k sc-eq)
-  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr }
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }

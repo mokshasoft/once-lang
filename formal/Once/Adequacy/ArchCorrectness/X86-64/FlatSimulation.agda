@@ -58,7 +58,7 @@ open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem; updateFlags)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax
-  using (rax; rbx; rsi; rdi; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; base; base+disp)
+  using (rax; rbx; rsi; rdi; rsp; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; base; base+disp)
 open import Data.Maybe using (just)
 open import Data.Bool using (true; false)
 open import Data.List using (_∷_; []; _++_; drop; length)
@@ -70,7 +70,8 @@ open import Once.CCC.Label using (once)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
   using (x86-off; x86-len; x86-off-suc; fetch-block-head; find-label-corr; fetch-block-2nd)
 open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-sub-ri; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not)
-open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract)
+open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
+open import Data.Empty using (⊥)
 open import Data.Nat using (zero; suc)
 open import Data.Nat.Properties using (+-assoc; +-identityʳ)
 open import Data.Product using (Σ; _×_; _,_)
@@ -258,7 +259,8 @@ block-step-c-label : ∀ prog fs s n → CompiledCorr prog fs s → halted (floc
 block-step-c-label prog fs s n cc h ft = post , exec-eq , record
   { dataCorr = record { rdi-eq = C.rdi-eq (dataCorr cc) ; rsi-eq = C.rsi-eq (dataCorr cc)
                       ; rax-eq = C.rax-eq (dataCorr cc) ; rbx-eq = C.rbx-eq (dataCorr cc)
-                      ; halt-eq = C.halt-eq (dataCorr cc) ; heap-eq = C.heap-eq (dataCorr cc) }
+                      ; halt-eq = C.halt-eq (dataCorr cc) ; heap-eq = C.heap-eq (dataCorr cc)
+                      ; stack-eq = C.stack-eq (dataCorr cc) }
   ; pc-off = pco' }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -284,7 +286,8 @@ block-step-worklist-init : ∀ prog fs s n → CompiledCorr prog fs s → halted
   → fetch prog (fpc fs) ≡ just (worklist-init n) → BlockStep prog fs s (worklist-init n)
 block-step-worklist-init prog fs s n cc h ft = s , refl , record
   { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
-                      ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc }
+                      ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc
+                      ; stack-eq = C.stack-eq dc }
   ; pc-off = trans (pc-off cc)
              (sym (trans (x86-off-suc prog (fpc fs) (worklist-init n) ft) (+-identityʳ _))) }
   where dc = dataCorr cc
@@ -293,7 +296,8 @@ block-step-worklist-check : ∀ prog fs s n → CompiledCorr prog fs s → halte
   → fetch prog (fpc fs) ≡ just (worklist-check n) → BlockStep prog fs s (worklist-check n)
 block-step-worklist-check prog fs s n cc h ft = s , refl , record
   { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
-                      ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc }
+                      ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc
+                      ; stack-eq = C.stack-eq dc }
   ; pc-off = trans (pc-off cc)
              (sym (trans (x86-off-suc prog (fpc fs) (worklist-check n) ft) (+-identityʳ _))) }
   where dc = dataCorr cc
@@ -311,7 +315,8 @@ block-step-reclaim-to : ∀ prog fs s n → CompiledCorr prog fs s → halted (f
 block-step-reclaim-to prog fs s n cc h ft = s , refl , record
   { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
                       ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc
-                      ; heap-eq = λ hl live → C.heap-eq dc hl (LiveIn-reclaim (falloc fs) n hl live) }
+                      ; heap-eq = λ hl live → C.heap-eq dc hl (LiveIn-reclaim (falloc fs) n hl live)
+                      ; stack-eq = C.stack-eq dc }
   ; pc-off = trans (pc-off cc)
              (sym (trans (x86-off-suc prog (fpc fs) (instr-reclaim-to n) ft) (+-identityʳ _))) }
   where dc = dataCorr cc
@@ -343,7 +348,8 @@ block-step-c-jmp prog fs s n j cc h ft fl-eq = block-step
     block-step rewrite fl-eq = post , exec-eq , record
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc
                           ; rax-eq = C.rax-eq dc ; rbx-eq = C.rbx-eq dc
-                          ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc }
+                          ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc
+                          ; stack-eq = C.stack-eq dc }
       ; pc-off = refl }
 
 -- load-indirect: Output := *Input1 ↔ `mov rax, [rdi]`. The read VALUE comes
@@ -410,6 +416,36 @@ block-step-load-indirect-suc prog fs s hl w cc h ft i-eq live-shl h-eq =
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr load-indirect-suc prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) load-indirect-suc ft))
 
+-- load-from-slot: Output := stack[current-frame, slot] ↔ `mov rax, [rsp + disp]`.
+-- The read VALUE comes from the NEW stack-eq field (memory s at rsp+disp = enc-maybe
+-- of the slot's abstract value); with the slot holding `just w`, that pins the x86
+-- read to `just (enc-sv w)` — feeding step-mov-rm exactly as load-indirect uses heap-eq.
+-- FIRST consumer of stack-eq: deleting the field breaks `rd`.
+block-step-load-from-slot : ∀ prog fs s slot w → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (load-from-slot slot)
+  → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
+  → BlockStep prog fs s (load-from-slot slot)
+block-step-load-from-slot prog fs s slot w cc h ft st-eq =
+  post , exec-eq , record { dataCorr = C.sim-load-from-slot slot w fs s dc st-eq ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
+              ≡ just (mov (reg rax) (mem (base+disp rsp (slot-to-disp slot))))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (load-from-slot slot) ft)
+    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rsp (slot-to-disp slot))) ≡ just (C.enc-sv w)
+    rd = trans (C.stack-eq dc slot) (cong C.enc-maybe st-eq)
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) rax (C.enc-sv w) ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-mov-rm {compile-trace prog} {s} {rax} {base+disp rsp (slot-to-disp slot)} {C.enc-sv w} fetch-x86 rd
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (load-from-slot slot) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (load-from-slot slot) ft))
+
 -- store-indirect: *Input1 := Output ↔ `mov [rdi], rax`. step-mov-mr writes
 -- the RAW register values (readReg rdi / readReg rax); sim-store-indirect's
 -- post has the ENCODED values (enc-hl hl / enc-sv Output) — bridge the two
@@ -420,8 +456,9 @@ block-step-store-indirect : ∀ prog fs s hl → CompiledCorr prog fs s → halt
   → LiveIn (falloc fs) hl        -- the store target is live (store-WF)
   → writeLoc (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)
     ≡ writeLocToHeap (floc fs) hl (readReg (regs (floc fs)) Output)
+  → (∀ k → (X.readReg (xregs s) rsp + slot-to-disp k ≡ enc-hl hl) → ⊥)   -- heap/stack disjoint
   → BlockStep prog fs s store-indirect
-block-step-store-indirect prog fs s hl cc h ft i-eq live-hl guard =
+block-step-store-indirect prog fs s hl cc h ft i-eq live-hl guard disj =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -446,7 +483,7 @@ block-step-store-indirect prog fs s hl cc h ft i-eq live-hl guard =
                    (cong₂ (writeMem (memory s)) rdi-val (C.rax-eq dc))
     dataPost : C.FlatCorr (flat-exec-instr store-indirect prog fs) post
     dataPost = subst (C.FlatCorr (flat-exec-instr store-indirect prog fs)) (sym post-eq)
-                     (C.sim-store-indirect hl fs s dc i-eq live-hl guard)
+                     (C.sim-store-indirect hl fs s dc i-eq live-hl guard disj)
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr store-indirect prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) store-indirect ft))
 
@@ -458,8 +495,9 @@ block-step-store-indirect-suc : ∀ prog fs s hl → CompiledCorr prog fs s → 
   → LiveIn (falloc fs) (sucHL hl)     -- the store target (second cell) is live (store-WF)
   → writeLoc (floc fs) (AtDynamic (sucHL hl)) (readReg (regs (floc fs)) Output)
     ≡ writeLocToHeap (floc fs) (sucHL hl) (readReg (regs (floc fs)) Output)
+  → (∀ k → (X.readReg (xregs s) rsp + slot-to-disp k ≡ enc-hl (sucHL hl)) → ⊥)   -- heap/stack disjoint
   → BlockStep prog fs s store-indirect-suc
-block-step-store-indirect-suc prog fs s hl cc h ft i-eq live-shl guard =
+block-step-store-indirect-suc prog fs s hl cc h ft i-eq live-shl guard disj =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -485,7 +523,7 @@ block-step-store-indirect-suc prog fs s hl cc h ft i-eq live-shl guard =
                    (cong₂ (writeMem (memory s)) addr-val (C.rax-eq dc))
     dataPost : C.FlatCorr (flat-exec-instr store-indirect-suc prog fs) post
     dataPost = subst (C.FlatCorr (flat-exec-instr store-indirect-suc prog fs)) (sym post-eq)
-                     (C.sim-store-indirect-suc hl fs s dc i-eq live-shl guard)
+                     (C.sim-store-indirect-suc hl fs s dc i-eq live-shl guard disj)
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr store-indirect-suc prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) store-indirect-suc ft))
 
@@ -583,7 +621,8 @@ block-step-c-branch-scratch-zero prog fs s n zero j cc h ft sc-eq fl-eq = result
     result : BlockStep prog fs s (instr-ctrl (c-branch-scratch-zero n))
     result rewrite sc-eq | fl-eq = post-je , exec-eq , record
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
-                          ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc }
+                          ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc
+                      ; stack-eq = C.stack-eq dc }
       ; pc-off = refl }
 block-step-c-branch-scratch-zero prog fs s n (suc m) j cc h ft sc-eq fl-eq = result
   where
@@ -616,7 +655,8 @@ block-step-c-branch-scratch-zero prog fs s n (suc m) j cc h ft sc-eq fl-eq = res
     result : BlockStep prog fs s (instr-ctrl (c-branch-scratch-zero n))
     result rewrite sc-eq = post-je , exec-eq , record
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
-                          ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc }
+                          ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc
+                      ; stack-eq = C.stack-eq dc }
       ; pc-off = pco' }
 
 -- c-branch-tag-zero: cmp [rdi],0 ; je n. Like scratch-zero but the condition
@@ -663,7 +703,8 @@ block-step-c-branch-tag-zero prog fs s n hl zero j cc h ft i-eq live-hl h-eq fl-
     result : BlockStep prog fs s (instr-ctrl (c-branch-tag-zero n))
     result rewrite cond-eq | fl-eq = post-je , exec-eq , record
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
-                          ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc }
+                          ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc
+                      ; stack-eq = C.stack-eq dc }
       ; pc-off = refl }
 block-step-c-branch-tag-zero prog fs s n hl (suc m) j cc h ft i-eq live-hl h-eq fl-eq = result
   where
@@ -698,5 +739,6 @@ block-step-c-branch-tag-zero prog fs s n hl (suc m) j cc h ft i-eq live-hl h-eq 
     result : BlockStep prog fs s (instr-ctrl (c-branch-tag-zero n))
     result rewrite cond-eq = post-je , exec-eq , record
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
-                          ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc }
+                          ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc ; heap-eq = C.heap-eq dc
+                      ; stack-eq = C.stack-eq dc }
       ; pc-off = pco' }

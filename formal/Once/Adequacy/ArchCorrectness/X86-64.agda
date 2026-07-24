@@ -120,6 +120,7 @@ entry-corr ir = record
       ; rbx-eq  = sym enc-hl-entry
       ; halt-eq = refl
       ; heap-eq = λ _ _ → refl
+      ; stack-eq = λ _ → refl   -- entry stack is empty (stackMem ≡ λ _ _ → nothing)
       }
   ; pc-off = refl
   }

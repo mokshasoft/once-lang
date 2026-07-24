@@ -25,7 +25,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Target.X86-64.Syntax using
-  ( slot-size; Program; Instr
+  ( slot-size; Program; Instr; rsp
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
   ; ret; push; pop; nop; ud2; syscall; label )
 open import Data.Nat using (ℕ; _+_)
@@ -59,7 +59,7 @@ open import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
   using (x86-len; x86-off; drop-compile; fetch-drop; drop-[])
-open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace)
+open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; slot-to-disp)
 
 ------------------------------------------------------------------------
 -- Imports for the run-events event-trace correspondence (block-run-exec + the
@@ -330,12 +330,31 @@ postulate
                      → fetch prog (fpc fs) ≡ just store-indirect
                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                            ≡ event-of store-indirect fs ++ flat-events n prog (flat-exec-instr store-indirect prog fs))
+  -- HEAP/STACK DISJOINTNESS at a heap store: the write target `enc-hl hl` aliases
+  -- no current-frame stack slot `rsp + slot-to-disp k`. Heap and stack occupy
+  -- disjoint x86 regions — an honest layout invariant, discharged at instantiation
+  -- (allocator heap-base vs the rsp frame window). Needed now that FlatCorr tracks
+  -- the current-frame stack (`stack-eq`): a heap store must not perturb it.
+  store-indirect-stack-disj : ∀ (s : X.State) (hl : HeapLocation) →
+      ∀ k → (X.readReg (X.State.regs s) rsp + slot-to-disp k ≡ enc-hl hl) → ⊥
+  store-indirect-suc-stack-disj : ∀ (s : X.State) (hl : HeapLocation) →
+      ∀ k → (X.readReg (X.State.regs s) rsp + slot-to-disp k ≡ enc-hl (sucHL hl)) → ⊥
   store-indirect-suc-live : ∀ fs hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl) → LiveIn (falloc fs) (sucHL hl)
   store-indirect-suc-bad : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                              prog fs s → CompiledCorr prog fs s → halted (floc fs) ≡ false
                          → fetch prog (fpc fs) ≡ just store-indirect-suc
                          → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                                ≡ event-of store-indirect-suc fs ++ flat-events n prog (flat-exec-instr store-indirect-suc prog fs))
+
+  -- load-from-slot on an UNINITIALISED slot (`stackMem … slot ≡ nothing`): the abstract
+  -- machine HALTS (exec-load-from-slot-with-value nothing → halted := true) and so does
+  -- the concrete `mov rax, [rsp+disp]` from unmapped memory. A WF residual (a live cata
+  -- never loads an unwritten slot), same class as `load-indirect-bad`.
+  load-from-slot-empty : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                           prog fs s slot → CompiledCorr prog fs s → halted (floc fs) ≡ false
+                       → fetch prog (fpc fs) ≡ just (load-from-slot slot)
+                       → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                             ≡ event-of (load-from-slot slot) fs ++ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs))
 
   -- ARITH SIGOP interpretation contract (D061): the internal-producer obligation,
   -- discharged OFFLINE from the arith proofs (dispatch-arith-preserves + arith-block-
@@ -418,6 +437,7 @@ mutual
   events-running-fetch n ev env prog fs s load-indirect-suc cc h ftq = load-indirect-suc-step n ev env prog fs s cc h ftq
   events-running-fetch n ev env prog fs s store-indirect cc h ftq = store-indirect-step n ev env prog fs s cc h ftq
   events-running-fetch n ev env prog fs s store-indirect-suc cc h ftq = store-indirect-suc-step n ev env prog fs s cc h ftq
+  events-running-fetch n ev env prog fs s (load-from-slot slot) cc h ftq = load-from-slot-step n ev env prog fs s slot cc h ftq
   -- Trivial cata bookkeeping (x86-len 0, flat identity): proven block-step ⇒ ccc-step-bs.
   events-running-fetch n ev env prog fs s (worklist-init k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-init k) (block-step-worklist-init prog fs s k cc h ftq) refl h
   events-running-fetch n ev env prog fs s (worklist-check k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-check k) (block-step-worklist-check prog fs s k cc h ftq) refl h
@@ -571,6 +591,27 @@ mutual
           go-ptr (SV-Lit _ _)            i-eq = load-indirect-suc-bad n ev env prog fs s cc h ftq
           go-ptr (SV-Code _)             i-eq = load-indirect-suc-bad n ev env prog fs s cc h ftq
 
+  -- STACK load-from-slot: J-bridge on the slot's abstract value. `just w` ⇒ the PROVEN
+  -- block-step-load-from-slot (the stack read pinned by stack-eq) ⇒ ccc-step-bs; the
+  -- empty-slot `nothing` ⇒ `load-from-slot-empty` (both machines halt — WF residual).
+  load-from-slot-step : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                          prog fs s slot → CompiledCorr prog fs s → halted (floc fs) ≡ false
+                      → fetch prog (fpc fs) ≡ just (load-from-slot slot)
+                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                            ≡ event-of (load-from-slot slot) fs ++ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs))
+  load-from-slot-step n ev env prog fs s slot cc h ftq =
+    go-mem (stackMem (floc fs) (current-frame (falloc fs)) slot) refl
+    where go-mem : ∀ (mw : Maybe (StoredValue FS)) → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ mw
+                 → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                       ≡ event-of (load-from-slot slot) fs ++ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs))
+          go-mem (just w) st-eq =
+            ccc-step-bs n ev env prog fs s (load-from-slot slot)
+              (block-step-load-from-slot prog fs s slot w cc h ftq st-eq)
+              refl hpost
+            where hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ false
+                  hpost rewrite st-eq = h
+          go-mem nothing st-eq = load-from-slot-empty n ev env prog fs s slot cc h ftq
+
   -- MEMORY store-indirect: case the Output-target pointer. A live dynamic pointer ⇒ the
   -- PROVEN block-step-store-indirect (LiveIn from store-indirect-live; the writeLoc↔heap
   -- guard from store-indirect-guard) ⇒ ccc-step-bs. Bad shapes ⇒ store-indirect-bad.
@@ -586,7 +627,8 @@ mutual
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq =
             ccc-step-bs n ev env prog fs s store-indirect
               (block-step-store-indirect prog fs s hl cc h ftq i-eq
-                 (store-indirect-live fs hl i-eq) (store-guard fs hl))
+                 (store-indirect-live fs hl i-eq) (store-guard fs hl)
+                 (store-indirect-stack-disj s hl))
               refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)) h
@@ -608,7 +650,8 @@ mutual
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq =
             ccc-step-bs n ev env prog fs s store-indirect-suc
               (block-step-store-indirect-suc prog fs s hl cc h ftq i-eq
-                 (store-indirect-suc-live fs hl i-eq) (store-guard fs (sucHL hl)))
+                 (store-indirect-suc-live fs hl i-eq) (store-guard fs (sucHL hl))
+                 (store-indirect-suc-stack-disj s hl))
               refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic (sucHL hl)) (readReg (regs (floc fs)) Output)) h
