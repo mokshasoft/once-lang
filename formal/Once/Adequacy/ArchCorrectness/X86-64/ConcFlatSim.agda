@@ -299,6 +299,28 @@ postulate
                     → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                           ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
                             ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs))
+  -- c-branch-tag-zero WF residuals (the tag is read THROUGH Input1's pointer): the branch
+  -- reads a live heap TAG cell, and the label resolves. branch-tag-badptr = Input1 not a
+  -- dynamic pointer; branch-tag-bad = heap value not a tag / unmapped; branch-tag-label-miss
+  -- = missing target. (Liveness reuses load-indirect-live.)
+  branch-tag-badptr : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                        prog fs s m → CompiledCorr prog fs s → halted (floc fs) ≡ false
+                    → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
+                    → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                          ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                            ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
+  branch-tag-bad : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                     prog fs s m → CompiledCorr prog fs s → halted (floc fs) ≡ false
+                 → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
+                 → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                       ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                         ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
+  branch-tag-label-miss : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                            prog fs s m → CompiledCorr prog fs s → halted (floc fs) ≡ false
+                        → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m)) → find-label prog m ≡ nothing
+                        → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                              ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                                ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
 
   -- scratch-dec on a NON-tag Scratch — ruled out by well-formedness (the loop counter
   -- is a tag at every scratch-dec site). The WF residual for this reg-op.
@@ -486,6 +508,7 @@ mutual
   events-running-fetch n ev env prog fs s (instr-ctrl (c-label m)) cc h ftq = ccc-step-bs n ev env prog fs s (instr-ctrl (c-label m)) (block-step-c-label prog fs s m cc h ftq) refl h
   events-running-fetch n ev env prog fs s (instr-ctrl (c-jmp m)) cc h ftq = cjmp-step n ev env prog fs s m cc h ftq
   events-running-fetch n ev env prog fs s (instr-ctrl (c-branch-scratch-zero m)) cc h ftq = branch-step n ev env prog fs s m cc h ftq
+  events-running-fetch n ev env prog fs s (instr-ctrl (c-branch-tag-zero m)) cc h ftq = tag-branch-step n ev env prog fs s m cc h ftq
   events-running-fetch n ev env prog fs s (instr-sigop si) cc h ftq = sigop-step n ev env prog fs s si cc h ftq
   events-running-fetch n ev env prog fs s i cc h ftq =
     events-running-fetch-rest n ev env prog fs s i cc h ftq
@@ -572,6 +595,57 @@ mutual
       go-sv (SV-Ptr _)   sc-eq = branch-scratch-nontag n ev env prog fs s m cc h ftq
       go-sv (SV-Lit _ _) sc-eq = branch-scratch-nontag n ev env prog fs s m cc h ftq
       go-sv (SV-Code _)  sc-eq = branch-scratch-nontag n ev env prog fs s m cc h ftq
+
+  -- CONTROL c-branch-tag-zero: the condition reads a tag THROUGH Input1's pointer. Chain
+  -- load-indirect's witness bridge (Input1 ⇒ dynamic ptr hl; heapMem hl ⇒ just (SV-Tag k))
+  -- with the branch's find-label + k pattern-match, then the PROVEN block-step-c-branch-
+  -- tag-zero (both taken/not-taken). Liveness reuses load-indirect-live. hpost reduces
+  -- flat-read-tag via i-eq/h-eq (as load-indirect), then do-branch as branch-step.
+  tag-branch-step : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                      prog fs s m → CompiledCorr prog fs s → halted (floc fs) ≡ false
+                  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
+                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                        ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                          ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
+  tag-branch-step n ev env prog fs s m cc h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
+    where
+      go-good : ∀ hl j → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl) → find-label prog m ≡ just j
+              → ∀ (mv : Maybe (StoredValue FS)) → heapMem (floc fs) hl ≡ mv
+              → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                    ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                      ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
+      go-good hl j i-eq fl-eq (just (SV-Tag zero)) h-eq =
+        ccc-step-bs n ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
+          (block-step-c-branch-tag-zero prog fs s m hl zero j cc h ftq i-eq
+             (load-indirect-live fs hl i-eq h-eq) h-eq fl-eq) refl hpost
+        where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
+              hpost rewrite i-eq | h-eq | fl-eq = h
+      go-good hl j i-eq fl-eq (just (SV-Tag (suc k'))) h-eq =
+        ccc-step-bs n ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
+          (block-step-c-branch-tag-zero prog fs s m hl (suc k') j cc h ftq i-eq
+             (load-indirect-live fs hl i-eq h-eq) h-eq fl-eq) refl hpost
+        where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
+              hpost rewrite i-eq | h-eq = h
+      go-good hl j i-eq fl-eq (just (SV-Ptr _))  h-eq = branch-tag-bad n ev env prog fs s m cc h ftq
+      go-good hl j i-eq fl-eq (just (SV-Lit _ _)) h-eq = branch-tag-bad n ev env prog fs s m cc h ftq
+      go-good hl j i-eq fl-eq (just (SV-Code _)) h-eq = branch-tag-bad n ev env prog fs s m cc h ftq
+      go-good hl j i-eq fl-eq nothing            h-eq = branch-tag-bad n ev env prog fs s m cc h ftq
+      go-fl : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+            → ∀ (mj : Maybe ℕ) → find-label prog m ≡ mj
+            → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                  ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                    ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
+      go-fl hl i-eq (just j) fl-eq = go-good hl j i-eq fl-eq (heapMem (floc fs) hl) refl
+      go-fl hl i-eq nothing  fl-eq = branch-tag-label-miss n ev env prog fs s m cc h ftq fl-eq
+      go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
+             → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                   ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                     ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
+      go-ptr (SV-Ptr (AtDynamic hl)) i-eq = go-fl hl i-eq (find-label prog m) refl
+      go-ptr (SV-Ptr (AtStack _ _))  i-eq = branch-tag-badptr n ev env prog fs s m cc h ftq
+      go-ptr (SV-Tag _)              i-eq = branch-tag-badptr n ev env prog fs s m cc h ftq
+      go-ptr (SV-Lit _ _)            i-eq = branch-tag-badptr n ev env prog fs s m cc h ftq
+      go-ptr (SV-Code _)             i-eq = branch-tag-badptr n ev env prog fs s m cc h ftq
 
   -- REG-OP scratch-dec: case the Scratch value (J-bridge, no with). A tag ⇒ the PROVEN
   -- block-step-scratch-dec applies (reg-op preserves halted: hpost=h) ⇒ ccc-step-bs.
