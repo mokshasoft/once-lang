@@ -103,6 +103,10 @@ coe4-uip : ∀ {A B C D E : Set}(p : A ≡ B)(q : B ≡ C)(s : C ≡ D)(t : D �
            → coe t (coe s (coe q (coe p x))) ≡ coe r x
 coe4-uip p q s t r x = trans (cong (coe t) (coe3-uip p q s (trans p (trans q s)) x))
                              (coe2-uip (trans p (trans q s)) t r x)
+coe5-uip : ∀ {A B C D E F : Set}(p : A ≡ B)(q : B ≡ C)(s : C ≡ D)(t : D ≡ E)(u : E ≡ F)(r : A ≡ F)(x : A)
+           → coe u (coe t (coe s (coe q (coe p x)))) ≡ coe r x
+coe5-uip p q s t u r x = trans (cong (coe u) (coe4-uip p q s t (trans p (trans q (trans s t))) x))
+                               (coe2-uip (trans p (trans q (trans s t))) u r x)
 congÊl-trans : ∀ {a b c}(p : a ≡ b)(q : b ≡ c) → congÊl (trans p q) ≡ trans (congÊl p) (congÊl q)
 congÊl-trans refl refl = refl
 subst≡coe : ∀ {A : Set}{B : A → Set}{a a'}(p : a ≡ a')(y : B a) → subst B p y ≡ coe (cong B p) y
@@ -924,7 +928,33 @@ nat-var-vz (suc n) {Ad = A} (keep {Θc = Θc} {o = o'} r' w) wA wR δ b1 b2 bO b
         WR = congÊl (sym (wkTI (suc n) w w wA (envO (suc n) r' (fst δ) _)
                                (snd (envO (suc n) (keep r' w) δ bO)) _ _))
         R  = trans ST WR
-nat-var-vz (suc n) (skip {Θc = Θc} {o = o'} r' w) wA wR δ b1 b2 bO bd1 bd2 = {!!}
+nat-var-vz (suc n) {Ad = A} {wd = wd} (skip {Θc = Θc} {o = o'} r' w) wA wR δ b1 b2 bO bd1 bd2 =
+  trans (cong (coe P_L)
+              (trans (MI-subst (suc n) RR (ren⊨ (skip r' w) wA) wVsPre
+                               (⊢vs {wB = w} (ren⊨ r' wR) wRsub (ren⊢ r' (⊢vz wR))) δ)
+                     (cong (coe Q_out)
+                           (MI-vs-red n {wB = w} {wA = ren⊨ r' wR} {wA' = wVsPre}
+                                       wRsub (ren⊢ r' (⊢vz wR)) δ _ _ _ _))))
+  (trans (cong (λ z → coe P_L (coe Q_out (coe SL' z))) Xeq2)
+  (trans (coe5-uip WR_wR (sym NT) SL' Q_out P_L WR_wA (snd envO' _))
+         (sym MvzA)))
+  where P_L = congÊl (nat-TI (suc n) (skip r' w) wA δ b1 b2 bO)
+        RR  = renTy-renTy {ρ' = vs} {ρ = ⌜ o' ⌝} (renTy vs A)
+        wRsub  = subst (λ z → (Θc ▷ w) ⊨ z) (sym RR) (ren⊨ (skip r' w) wR)
+        wVsPre = subst (λ z → (Θc ▷ w) ⊨ z) (sym RR) (ren⊨ (skip r' w) wA)
+        Q_out = congÊl (trans (TI-resp-eq (suc n) RR wVsPre δ)
+                              (TI-wf-eq (suc n)
+                                 (⊨-unique (subst (λ z → (Θc ▷ w) ⊨ z) RR wVsPre) (ren⊨ (skip r' w) wA)) δ))
+        SL' = congÊl (sym (wkTI (suc n) w (ren⊨ r' wR) wVsPre (fst δ) (snd δ) _ _))
+        X   = MI (suc n) (ren⊨ r' wR) (ren⊢ r' (⊢vz wR)) (fst δ) _ _
+        NT  = congÊl (nat-TI (suc n) r' wR (fst δ) _ _ _)
+        recEq = nat-var-vz (suc n) r' wR wR (fst δ) _ _ _ _ _
+        envO' = envO (suc n) r' (fst δ) _
+        WR_wR = congÊl (sym (wkTI (suc n) wd wd wR (fst envO') (snd envO') _ _))
+        WR_wA = congÊl (sym (wkTI (suc n) wd wd wA (fst envO') (snd envO') _ _))
+        MvzR  = MI-vz-red n {wA = wd} {wA' = wR} wR envO' _ _ _
+        MvzA  = MI-vz-red n {wA = wd} {wA' = wA} wR envO' _ _ _
+        Xeq2  = trans (sym (coe-symˡ NT X)) (cong (coe (sym NT)) (trans recEq MvzR))
 nat-var-vz zero r wA wR δ b1 () bO bd1 bd2
 
 -- nat-var-vs: keep = ⊢vs, recurse nat-MI on td; skip = ⊢vs, recurse nat-var-vs.
