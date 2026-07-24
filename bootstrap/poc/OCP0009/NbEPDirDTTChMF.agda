@@ -958,8 +958,58 @@ nat-var-vz (suc n) {Ad = A} {wd = wd} (skip {Θc = Θc} {o = o'} r' w) wA wR δ 
 nat-var-vz zero r wA wR δ b1 () bO bd1 bd2
 
 -- nat-var-vs: keep = ⊢vs, recurse nat-MI on td; skip = ⊢vs, recurse nat-var-vs.
-nat-var-vs (suc n) (keep {Θc = Θc} {o = o'} r' w) wA wA₀ wR td δ b1 b2 bO bd1 bd2 = {!!}
-nat-var-vs (suc n) (skip {Θc = Θc} {o = o'} r' w) wA wA₀ wR td δ b1 b2 bO bd1 bd2 = {!!}
+nat-var-vs (suc n) {Ad = A} (keep {Θc = Θc} {o = o'} r' w) wA wA₀ wR td δ b1 b2 bO bd1 bd2 =
+  trans (cong (coe P_L)
+              (trans (MI-subst (suc n) (sym (renTy-wk {ρ = ⌜ o' ⌝} A)) (ren⊨ (keep r' w) wA) wVsPre
+                               (⊢vs {wB = ren⊨ r' w} (ren⊨ r' wA₀) wRm (ren⊢ r' td)) δ)
+                     (cong (coe Q_out)
+                           (MI-vs-red n {wB = ren⊨ r' w} {wA = ren⊨ r' wA₀} {wA' = wVsPre}
+                                       wRm (ren⊢ r' td) δ _ _ _ _))))
+  (trans (coe3-uip SL' Q_out P_L R X_a)
+  (trans (sym (coe2-uip NT_a WR R X_a))
+         (cong (coe WR) recEq)))
+  where P_L = congÊl (nat-TI (suc n) (keep r' w) wA δ b1 b2 bO)
+        wRm = subst (λ z → (Θc ▷ ren⊨ r' w) ⊨ z) (renTy-wk {ρ = ⌜ o' ⌝} A) (ren⊨ (keep r' w) wR)
+        wVsPre = subst (λ z → (Θc ▷ ren⊨ r' w) ⊨ z) (renTy-wk {ρ = ⌜ o' ⌝} A) (ren⊨ (keep r' w) wA)
+        Q_out = congÊl (trans (TI-resp-eq (suc n) (sym (renTy-wk {ρ = ⌜ o' ⌝} A)) wVsPre δ)
+                              (TI-wf-eq (suc n)
+                                 (⊨-unique (subst (λ z → (Θc ▷ ren⊨ r' w) ⊨ z) (sym (renTy-wk {ρ = ⌜ o' ⌝} A)) wVsPre)
+                                           (ren⊨ (keep r' w) wA)) δ))
+        SL' = congÊl (sym (wkTI (suc n) (ren⊨ r' w) (ren⊨ r' wA₀) wVsPre (fst δ) (snd δ) _ _))
+        X_a = MI (suc n) (ren⊨ r' wA₀) (ren⊢ r' td) (fst δ) _ _
+        NT_a = congÊl (nat-TI (suc n) r' wA₀ (fst δ) _ _ _)
+        WR  = congÊl (sym (wkTI (suc n) w wA₀ wA (fst (envO (suc n) (keep r' w) δ bO))
+                               (snd (envO (suc n) (keep r' w) δ bO)) _ _))
+        R   = trans NT_a WR
+        recEq = nat-MI (suc n) r' wA₀ td (fst δ) _ _ _ _ _
+nat-var-vs (suc n) {Bd = Bd} {wB = wB} {Ad = A} (skip {Θc = Θc} {o = o'} r' w) wA wA₀ wR td δ b1 b2 bO bd1 bd2 =
+  trans (cong (coe P_L)
+              (trans (MI-subst (suc n) RR (ren⊨ (skip r' w) wA) wVsPre
+                               (⊢vs {wB = w} (ren⊨ r' wR) wR2 (ren⊢ r' (⊢vs wA₀ wR td))) δ)
+                     (cong (coe Q_out)
+                           (MI-vs-red n {wB = w} {wA = ren⊨ r' wR} {wA' = wVsPre}
+                                       wR2 (ren⊢ r' (⊢vs wA₀ wR td)) δ _ _ _ _))))
+  (trans (cong (λ z → coe P_L (coe Q_out (coe SL' z))) Xeq2)
+  (trans (coe5-uip WR_wR (sym NT) SL' Q_out P_L WR_wA Y)
+         (sym MvsA)))
+  where P_L = congÊl (nat-TI (suc n) (skip r' w) wA δ b1 b2 bO)
+        RR  = renTy-renTy {ρ' = vs} {ρ = ⌜ o' ⌝} (renTy vs A)
+        wR2    = subst (λ z → (Θc ▷ w) ⊨ z) (sym RR) (ren⊨ (skip r' w) wR)
+        wVsPre = subst (λ z → (Θc ▷ w) ⊨ z) (sym RR) (ren⊨ (skip r' w) wA)
+        Q_out = congÊl (trans (TI-resp-eq (suc n) RR wVsPre δ)
+                              (TI-wf-eq (suc n)
+                                 (⊨-unique (subst (λ z → (Θc ▷ w) ⊨ z) RR wVsPre) (ren⊨ (skip r' w) wA)) δ))
+        SL' = congÊl (sym (wkTI (suc n) w (ren⊨ r' wR) wVsPre (fst δ) (snd δ) _ _))
+        X_v = MI (suc n) (ren⊨ r' wR) (ren⊢ r' (⊢vs wA₀ wR td)) (fst δ) _ _
+        NT  = congÊl (nat-TI (suc n) r' wR (fst δ) _ _ _)
+        recEq = nat-var-vs (suc n) r' wR wA₀ wR td (fst δ) _ _ _ _ _
+        envO' = envO (suc n) r' (fst δ) _
+        Y   = MI (suc n) wA₀ td (fst envO') _ _
+        WR_wR = congÊl (sym (wkTI (suc n) wB wA₀ wR (fst envO') (snd envO') _ _))
+        WR_wA = congÊl (sym (wkTI (suc n) wB wA₀ wA (fst envO') (snd envO') _ _))
+        MvsR  = MI-vs-red n {wB = wB} {wA = wA₀} {wA' = wR} wR td envO' _ _ _ _
+        MvsA  = MI-vs-red n {wB = wB} {wA = wA₀} {wA' = wA} wR td envO' _ _ _ _
+        Xeq2  = trans (sym (coe-symˡ NT X_v)) (cong (coe (sym NT)) (trans recEq MvsR))
 nat-var-vs zero r wA wA₀ wR td δ b1 () bO bd1 bd2
 
 -- sub-MI: substitution soundness for MI, by induction on td (cased on sσ so sub-⊢ reduces; placed
