@@ -285,6 +285,21 @@ postulate
                   ≡ event-of (instr-ctrl (c-jmp m)) fs
                     ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs))
 
+  -- c-branch-scratch-zero WF residuals: the Scratch is a tag (branch-scratch-nontag)
+  -- and the branch's target label resolves (branch-label-miss) at every branch site.
+  branch-scratch-nontag : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                            prog fs s m → CompiledCorr prog fs s → halted (floc fs) ≡ false
+                        → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero m))
+                        → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                              ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
+                                ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs))
+  branch-label-miss : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                        prog fs s m → CompiledCorr prog fs s → halted (floc fs) ≡ false
+                    → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero m)) → find-label prog m ≡ nothing
+                    → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                          ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
+                            ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs))
+
   -- scratch-dec on a NON-tag Scratch — ruled out by well-formedness (the loop counter
   -- is a tag at every scratch-dec site). The WF residual for this reg-op.
   scratch-dec-nontag : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
@@ -470,6 +485,7 @@ mutual
   events-running-fetch n ev env prog fs s (instr-load-tag-lit k) cc h ftq = ccc-step-bs n ev env prog fs s (instr-load-tag-lit k) (block-step-load-tag-lit prog fs s k cc h ftq) refl h
   events-running-fetch n ev env prog fs s (instr-ctrl (c-label m)) cc h ftq = ccc-step-bs n ev env prog fs s (instr-ctrl (c-label m)) (block-step-c-label prog fs s m cc h ftq) refl h
   events-running-fetch n ev env prog fs s (instr-ctrl (c-jmp m)) cc h ftq = cjmp-step n ev env prog fs s m cc h ftq
+  events-running-fetch n ev env prog fs s (instr-ctrl (c-branch-scratch-zero m)) cc h ftq = branch-step n ev env prog fs s m cc h ftq
   events-running-fetch n ev env prog fs s (instr-sigop si) cc h ftq = sigop-step n ev env prog fs s si cc h ftq
   events-running-fetch n ev env prog fs s i cc h ftq =
     events-running-fetch-rest n ev env prog fs s i cc h ftq
@@ -515,6 +531,47 @@ mutual
             where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) ≡ false
                   hpost rewrite fl-eq = h
           go-fl nothing fl-eq = cjmp-miss n ev env prog fs s m cc h ftq fl-eq
+
+  -- CONTROL c-branch-scratch-zero: J-bridge on the Scratch value AND find-label. A tag
+  -- `SV-Tag k` + a resolvable target ⇒ the PROVEN block-step-c-branch-scratch-zero (both
+  -- taken k=0 and not-taken k=suc). Non-tag ⇒ branch-scratch-nontag; missing label ⇒
+  -- branch-label-miss. hpost: do-branch stays running (taken jumps to the found label via
+  -- fl-eq, not-taken advances) — cased on k after rewriting sc-eq (then fl-eq for k=0).
+  branch-step : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                  prog fs s m → CompiledCorr prog fs s → halted (floc fs) ≡ false
+              → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero m))
+              → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                    ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
+                      ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs))
+  branch-step n ev env prog fs s m cc h ftq = go-sv (readReg (regs (floc fs)) Scratch) refl
+    where
+      -- Pattern-match k (not `with`, which errors on the bound variable) so
+      -- sv-is-zero (SV-Tag k) reduces: k=0 taken (do-jump the found label), k=suc
+      -- not-taken (advance) — both leave the machine running.
+      go-fl : ∀ k → readReg (regs (floc fs)) Scratch ≡ SV-Tag k
+            → ∀ (mj : Maybe ℕ) → find-label prog m ≡ mj
+            → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                  ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
+                    ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs))
+      go-fl zero sc-eq (just j) fl-eq =
+        ccc-step-bs n ev env prog fs s (instr-ctrl (c-branch-scratch-zero m))
+          (block-step-c-branch-scratch-zero prog fs s m zero j cc h ftq sc-eq fl-eq) refl hpost
+        where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) ≡ false
+              hpost rewrite sc-eq | fl-eq = h
+      go-fl (suc k') sc-eq (just j) fl-eq =
+        ccc-step-bs n ev env prog fs s (instr-ctrl (c-branch-scratch-zero m))
+          (block-step-c-branch-scratch-zero prog fs s m (suc k') j cc h ftq sc-eq fl-eq) refl hpost
+        where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) ≡ false
+              hpost rewrite sc-eq = h
+      go-fl k sc-eq nothing fl-eq = branch-label-miss n ev env prog fs s m cc h ftq fl-eq
+      go-sv : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Scratch ≡ sv
+            → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                  ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
+                    ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs))
+      go-sv (SV-Tag k)   sc-eq = go-fl k sc-eq (find-label prog m) refl
+      go-sv (SV-Ptr _)   sc-eq = branch-scratch-nontag n ev env prog fs s m cc h ftq
+      go-sv (SV-Lit _ _) sc-eq = branch-scratch-nontag n ev env prog fs s m cc h ftq
+      go-sv (SV-Code _)  sc-eq = branch-scratch-nontag n ev env prog fs s m cc h ftq
 
   -- REG-OP scratch-dec: case the Scratch value (J-bridge, no with). A tag ⇒ the PROVEN
   -- block-step-scratch-dec applies (reg-op preserves halted: hpost=h) ⇒ ccc-step-bs.
