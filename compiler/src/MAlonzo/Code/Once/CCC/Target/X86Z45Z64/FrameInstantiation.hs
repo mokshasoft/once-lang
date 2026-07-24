@@ -405,10 +405,10 @@ du_slot'45'bound_300 v0 v1 v2 v3 v4
   = coe
       du_x86'45'slot'45'within'45'capacity'45'bound_248 (coe v0) (coe v1)
       (coe v2) (coe v3) (coe v4)
--- Once.CCC.Target.X86-64.FrameInstantiation.x86v3-frame-semantics
-d_x86v3'45'frame'45'semantics_302 ::
+-- Once.CCC.Target.X86-64.FrameInstantiation.x86-64-frame-semantics
+d_x86'45'64'45'frame'45'semantics_302 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6
-d_x86v3'45'frame'45'semantics_302
+d_x86'45'64'45'frame'45'semantics_302
   = coe
       MAlonzo.Code.Once.CCC.FrameSemantics.C_constructor_116
       d__x86'45''8799'F__32 d_x86'45'frame'45'base_66

@@ -36,10 +36,10 @@ d_arch'45'semantics_6 v0
              MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64.d_arch'45'semantics_282
       MAlonzo.Code.Once.Target.Arch.C_x86'45'32_10
         -> coe
-             MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z32.d_arch'45'semantics_14
+             MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z32.d_arch'45'semantics_24
       MAlonzo.Code.Once.Target.Arch.C_riscv64_12
         -> coe
-             MAlonzo.Code.Once.Adequacy.CPU.RiscV64.d_arch'45'semantics_14
+             MAlonzo.Code.Once.Adequacy.CPU.RiscV64.d_arch'45'semantics_24
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CPU.exec
 d_exec_8 ::
