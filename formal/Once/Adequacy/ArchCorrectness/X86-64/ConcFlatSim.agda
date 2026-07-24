@@ -339,6 +339,11 @@ postulate
       ∀ k → (X.readReg (X.State.regs s) rsp + slot-to-disp k ≡ enc-hl hl) → ⊥
   store-indirect-suc-stack-disj : ∀ (s : X.State) (hl : HeapLocation) →
       ∀ k → (X.readReg (X.State.regs s) rsp + slot-to-disp k ≡ enc-hl (sucHL hl)) → ⊥
+  -- STACK-WRITE / HEAP disjointness: writing current-frame slot `slot` (x86 addr
+  -- rsp+slot-to-disp slot) aliases no LIVE heap cell — symmetric to the store
+  -- residuals above; the honest stack/heap layout invariant for store-at-slot.
+  store-at-slot-stack-disj : ∀ (fs : FlatState) (s : X.State) (slot : Slot) →
+      ∀ hl' → LiveIn (falloc fs) hl' → (X.readReg (X.State.regs s) rsp + slot-to-disp slot ≡ enc-hl hl') → ⊥
   store-indirect-suc-live : ∀ fs hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl) → LiveIn (falloc fs) (sucHL hl)
   store-indirect-suc-bad : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                              prog fs s → CompiledCorr prog fs s → halted (floc fs) ≡ false
@@ -438,6 +443,9 @@ mutual
   events-running-fetch n ev env prog fs s store-indirect cc h ftq = store-indirect-step n ev env prog fs s cc h ftq
   events-running-fetch n ev env prog fs s store-indirect-suc cc h ftq = store-indirect-suc-step n ev env prog fs s cc h ftq
   events-running-fetch n ev env prog fs s (load-from-slot slot) cc h ftq = load-from-slot-step n ev env prog fs s slot cc h ftq
+  events-running-fetch n ev env prog fs s (store-at-slot slot) cc h ftq =
+    ccc-step-bs n ev env prog fs s (store-at-slot slot)
+      (block-step-store-at-slot prog fs s slot cc h ftq (store-at-slot-stack-disj fs s slot)) refl h
   -- Trivial cata bookkeeping (x86-len 0, flat identity): proven block-step ⇒ ccc-step-bs.
   events-running-fetch n ev env prog fs s (worklist-init k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-init k) (block-step-worklist-init prog fs s k cc h ftq) refl h
   events-running-fetch n ev env prog fs s (worklist-check k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-check k) (block-step-worklist-check prog fs s k cc h ftq) refl h

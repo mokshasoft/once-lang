@@ -527,6 +527,46 @@ block-step-store-indirect-suc prog fs s hl cc h ft i-eq live-shl guard disj =
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr store-indirect-suc prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) store-indirect-suc ft))
 
+-- store-at-slot: stack[current-frame, slot] := Output ↔ `mov [rsp+disp], rax`.
+-- step-mov-mr writes the RAW rax; sim-store-at-slot's post has enc-sv Output —
+-- bridge via rax-eq (the address is rsp+disp, definitional, no register bridge).
+-- The stack/heap disjointness (`disj`) is threaded to sim-store-at-slot.
+block-step-store-at-slot : ∀ prog fs s slot → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (store-at-slot slot)
+  → (∀ hl' → LiveIn (falloc fs) hl' → (X.readReg (xregs s) rsp + slot-to-disp slot ≡ enc-hl hl') → ⊥)
+  → BlockStep prog fs s (store-at-slot slot)
+block-step-store-at-slot prog fs s slot cc h ft disj =
+  post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
+              ≡ just (mov (mem (base+disp rsp (slot-to-disp slot))) (reg rax))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (store-at-slot slot) ft)
+    post : X.State
+    post = record s { memory = writeMem (memory s) (X.effectiveAddr s (base+disp rsp (slot-to-disp slot)))
+                                        (xreadReg (xregs s) rax)
+                    ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-mov-mr {compile-trace prog} {s} {base+disp rsp (slot-to-disp slot)} {rax} fetch-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    post-eq : post ≡ mkstate (xregs s)
+                             (writeMem (memory s) (X.readReg (xregs s) rsp + slot-to-disp slot)
+                                       (C.enc-sv (readReg (regs (floc fs)) Output)))
+                             (flags s) (pc s + 1) (xhalted s)
+    post-eq = cong (λ v → mkstate (xregs s)
+                            (writeMem (memory s) (X.readReg (xregs s) rsp + slot-to-disp slot) v)
+                            (flags s) (pc s + 1) (xhalted s))
+                   (C.rax-eq dc)
+    dataPost : C.FlatCorr (flat-exec-instr (store-at-slot slot) prog fs) post
+    dataPost = subst (C.FlatCorr (flat-exec-instr (store-at-slot slot) prog fs)) (sym post-eq)
+                     (C.sim-store-at-slot slot fs s dc disj)
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (store-at-slot slot) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (store-at-slot slot) ft))
+
 -- Arithmetic reg-ops: input2-inc (add rsi,1) / scratch-dec (sub rbx,1).
 -- x86 add/sub set flags as a side effect, but CompiledCorr/FlatCorr are
 -- flag-free (Plan 0.34), so the flag clobber is invisible — the sim-* lemma
