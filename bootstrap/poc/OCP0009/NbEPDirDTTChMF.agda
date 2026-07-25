@@ -1039,7 +1039,23 @@ MI-irr (suc m) wA (⊢vs {wB = wB} wA₀ wR td) ρ bt' bw' bt bw =
         MvsR    = MI-vs-red m {wB = wB} {wA = wA₀} {wA' = wA} wR td (⇓ (suc m) ρ) bt bw _ _
         WR_vs   = congÊl (sym (wkTI (suc m) wB wA₀ wA (fst (⇓ (suc m) ρ)) (snd (⇓ (suc m) ρ)) bw _))
         T       = trans WL_vs TIirr
-MI-irr (suc m) (⊨Π wD wCo) (⊢lam wA' td) ρ bt' bw' bt bw = {!!}
+MI-irr (suc m) {Δ = Δ} (⊨Π wD wCo) (⊢lam {B = B} {t = t} wA' td) ρ bt' bw' bt bw =
+  funext pointwise
+  where td' = subst (λ w → (Δ ▷ w) ⊢ t ∷ B) (⊨-unique wA' wD) td
+        MI-LHS-fn = MI (suc (suc m)) (⊨Π wD wCo) (⊢lam wA' td) ρ bt' bw'
+        pa = TI-irr m wD (⇓ (suc m) ρ) _ _
+        qc : ∀ x → TI (suc m) wCo (⇓ (suc m) ρ , (λ _ → x)) _
+                  ≡ TI m wCo (⇓ m (⇓ (suc m) ρ) , (λ _ → coe (congÊl pa) x)) _
+        qc x = TI-irr m wCo (⇓ (suc m) ρ , (λ _ → x)) _ _
+        pointwise : ∀ x' → coe (congÊl (TI-irr (suc m) (⊨Π wD wCo) ρ bw' bw)) MI-LHS-fn x'
+                          ≡ MI (suc m) (⊨Π wD wCo) (⊢lam wA' td) (⇓ (suc m) ρ) bt bw x'
+        pointwise x' = trans (coe-π̂-gen pa qc MI-LHS-fn x')
+                             (trans (cong (subst MOT q) inner) (subst-app MOT g q))
+          where xv  = coe (sym (congÊl pa)) x'
+                q   = coe-sym' (congÊl pa) x'
+                MOT = λ z → Êl (TI m wCo (⇓ m (⇓ (suc m) ρ) , (λ _ → z)) _)
+                g   = λ z → MI m wCo td' (⇓ m (⇓ (suc m) ρ) , (λ _ → z)) _ _
+                inner = MI-irr m wCo td' (⇓ (suc m) ρ , (λ _ → xv)) _ _ _ _
 MI-irr (suc m) wA (⊢app (⊨Π wA' wB) tf tu) ρ bt' bw' bt bw = {!!}
 MI-irr (suc m) ⊨𝔹 ⊢tt ρ bt' bw' bt bw = refl
 MI-irr (suc m) ⊨𝔹 ⊢ff ρ bt' bw' bt bw = refl
