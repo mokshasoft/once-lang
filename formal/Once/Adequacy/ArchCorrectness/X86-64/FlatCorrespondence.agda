@@ -21,6 +21,8 @@
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Memory.HeapAddress using (HeapLocation)
+open import Once.Word using (Carrier)
+open import Once.Type using (Int; fits-int)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -73,12 +75,24 @@ open FrameSemantics FS using (Frame)
 -- get placeholder encodings for now — they don't occur in cata traces;
 -- a faithful primitive-literal encoding is future work (Phase D'').
 ------------------------------------------------------------------------
+-- ⟦ Int ⟧ = Carrier = ℕ = X.Word; the explicit Carrier→Word target forces the
+-- parameterised-module projection `⟦ Int ⟧` to reduce (it stays stuck when the
+-- return type is bare `ℕ`). This is the `mov rax, imm v` immediate value.
+lit-word : Carrier → X.Word
+lit-word x = x
+
 enc-sv : StoredValue FS → X.Word
-enc-sv (SV-Tag n)               = n
-enc-sv (SV-Ptr (AtDynamic hl))  = enc-hl hl
-enc-sv (SV-Ptr (AtStack _ _))   = 0
-enc-sv (SV-Lit _ _)             = 0
-enc-sv (SV-Code n)              = n
+enc-sv (SV-Tag n)                = n
+enc-sv (SV-Ptr (AtDynamic hl))   = enc-hl hl
+enc-sv (SV-Ptr (AtStack _ _))    = 0
+-- A register-fittable INT literal encodes to its own value — exactly the immediate
+-- `compile-const fits-int v = mov rax, v` loads (so load-const's rax-eq is refl and
+-- literal values flow through FlatCorr instead of collapsing to 0). Float is
+-- unimplemented (`compile-const fits-float` traps to ud2), so it gets no register
+-- correspondence — encode 0.
+enc-sv (SV-Lit {Int} fits-int v) = lit-word v
+enc-sv (SV-Lit _ _)              = 0
+enc-sv (SV-Code n)               = n
 
 enc-maybe : Maybe (StoredValue FS) → Maybe X.Word
 enc-maybe (just v) = just (enc-sv v)
@@ -653,6 +667,19 @@ sim-pop-frame fs s xp corr ss0 rdi-p rsi-p rax-p rbx-p halt-p heap-p = record
     bad : ∀ k → k < stackSlot (regs (floc fs)) → ⊥
     bad k k<ss with subst (k <_) ss0 k<ss
     ... | ()
+
+------------------------------------------------------------------------
+-- LOAD CONST (int): `instr-load-const fits-int v` (Output := SV-Lit fits-int v)
+-- ↔ `mov rax, imm v`. With enc-sv(SV-Lit fits-int v) = v, the loaded immediate
+-- matches the encoded literal exactly, so rax-eq is refl; nothing else changes
+-- (writeReg Output preserves the other regs / stack / heap / halt).
+------------------------------------------------------------------------
+sim-load-const : ∀ (v : Carrier) (fs : FlatState) (s : X.State) → FlatCorr fs s
+  → FlatCorr (flat-exec-instr (instr-load-const fits-int v) [] fs)
+             (mkstate (xwriteReg (xregs s) rax (lit-word v)) (memory s) (flags s) (pc s + 1) (xhalted s))
+sim-load-const v fs s corr = record
+  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
 
 ------------------------------------------------------------------------
 -- Arithmetic reg-ops (Plan 0.34: flag-free, so the post is parametric over

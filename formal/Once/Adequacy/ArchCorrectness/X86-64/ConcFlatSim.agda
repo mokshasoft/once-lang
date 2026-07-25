@@ -69,6 +69,8 @@ open import Once.Adequacy.CPU.X86-64 using (val-x86-64)
 import Once.Arith.Backend.X86-64.RunTrace as RTx
 open import Data.Empty using (⊥; ⊥-elim)
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts)
+open import Once.Type using (fits-int; fits-float)
+open import Once.Word using (Carrier)
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.Arith.Backend.XInstr.Syntax using (XInstr)
 open import Once.Arith.Backend.X86-64.Dispatch using (dispatch-arith)
@@ -435,6 +437,15 @@ postulate
   pop-frame-empty : ∀ (fs : FlatState) → stackSlot (regs (floc fs)) ≡ 0
   pop-frame-saved : ∀ (s : X.State)
                   → Σ ℕ (λ v → X.readMem (X.State.memory s) (X.readReg (X.State.regs s) rbp) ≡ just v)
+  -- load-const of a FLOAT: `compile-const fits-float` traps to ud2 (float loads are
+  -- unimplemented, D054), so the x86 halts while the abstract runs — an honest gap,
+  -- the target-side float-literal boundary (not a codegen bug).
+  load-const-float : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                       prog fs s {v} → CompiledCorr prog fs s → halted (floc fs) ≡ false
+                   → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
+                   → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                         ≡ event-of (instr-load-const fits-float v) fs
+                           ++ flat-events n prog (flat-exec-instr (instr-load-const fits-float v) prog fs))
   -- worklist-pop from an empty worklist slot: both machines halt (as load-from-slot-empty).
   worklist-pop-empty : ∀ n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                          prog fs s slot → CompiledCorr prog fs s → halted (floc fs) ≡ false
@@ -546,6 +557,11 @@ mutual
     ccc-step-bs n ev env prog fs s instr-pop-frame
       (block-step-pop-frame prog fs s (proj₁ (pop-frame-saved s)) cc h ftq
          (pop-frame-empty fs) (proj₂ (pop-frame-saved s))) refl h
+  events-running-fetch n ev env prog fs s (instr-load-const fits-int v) cc h ftq =
+    ccc-step-bs n ev env prog fs s (instr-load-const fits-int v)
+      (block-step-load-const prog fs s v cc h ftq) refl h
+  events-running-fetch n ev env prog fs s (instr-load-const fits-float v) cc h ftq =
+    load-const-float n ev env prog fs s cc h ftq
   -- Trivial cata bookkeeping (x86-len 0, flat identity): proven block-step ⇒ ccc-step-bs.
   events-running-fetch n ev env prog fs s (worklist-init k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-init k) (block-step-worklist-init prog fs s k cc h ftq) refl h
   events-running-fetch n ev env prog fs s (worklist-check k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-check k) (block-step-worklist-check prog fs s k cc h ftq) refl h

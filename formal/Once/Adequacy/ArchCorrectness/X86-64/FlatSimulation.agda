@@ -34,6 +34,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Target.X86-64.Syntax using (slot-size)
+open import Once.Type using (fits-int)
+open import Once.Word using (Carrier)
 open import Data.Nat using (ℕ; _+_; _∸_; _≡ᵇ_; _<_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
@@ -639,6 +641,29 @@ block-step-pop-frame prog fs s v cc h ft ss0 saved =
     pco' : X.State.pc post-pop ≡ x86-off prog (fpc (flat-exec-instr instr-pop-frame prog fs))
     pco' = trans (trans (cong (λ p → (p + 1) + 1) po) (+-assoc (x86-off prog (fpc fs)) 1 1))
                  (sym (x86-off-suc prog (fpc fs) instr-pop-frame ft))
+
+-- load-const (int): Output := SV-Lit fits-int v ↔ `mov rax, imm v` (1 step).
+-- With the enc-sv fix the immediate matches exactly (sim-load-const's rax-eq = refl).
+block-step-load-const : ∀ prog fs s (v : Carrier) → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-load-const fits-int v)
+  → BlockStep prog fs s (instr-load-const fits-int v)
+block-step-load-const prog fs s v cc h ft =
+  post , exec-eq , record { dataCorr = C.sim-load-const v fs s dc ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (imm v))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-load-const fits-int v) ft)
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) rax v ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-mov-ri {compile-trace prog} {s} {rax} {v} fetch-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-load-const fits-int v) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-load-const fits-int v) ft))
 
 -- worklist-push / worklist-pop: their abstract semantics + x86 lowering are
 -- IDENTICAL to store-at-slot / load-from-slot respectively (SMCore/AbstractToX86),
