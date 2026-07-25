@@ -250,11 +250,11 @@ TI-irr : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{A}(wA : Δ ⊨ A)(ρ : CI (suc n) �
 -- MI (interpreter) is REAL (defined below, Step 2), mutual with TI/⇓/TI-irr.
 MI     : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{t A}(wA : Δ ⊨ A)(td : Δ ⊢ t ∷ A)(ρ : CI n Δ)
          (bt : dsz td + szCon Δ < n)(bw : szT wA + szCon Δ < n) → Êl (TI n wA ρ bw)
-postulate
-  MI-irr : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{t A}(wA : Δ ⊨ A)(td : Δ ⊢ t ∷ A)(ρ : CI (suc n) Δ)
-           (bt' : dsz td + szCon Δ < suc n)(bw' : szT wA + szCon Δ < suc n)
-           (bt : dsz td + szCon Δ < n)(bw : szT wA + szCon Δ < n)
-           → coe (congÊl (TI-irr n wA ρ bw' bw)) (MI (suc n) wA td ρ bt' bw') ≡ MI n wA td (⇓ n ρ) bt bw
+-- MI-irr (fuel-restriction irrelevance for the interpreter) — now DEFINED (clauses after MI's).
+MI-irr : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{t A}(wA : Δ ⊨ A)(td : Δ ⊢ t ∷ A)(ρ : CI (suc n) Δ)
+         (bt' : dsz td + szCon Δ < suc n)(bw' : szT wA + szCon Δ < suc n)
+         (bt : dsz td + szCon Δ < n)(bw : szT wA + szCon Δ < n)
+         → coe (congÊl (TI-irr n wA ρ bw' bw)) (MI (suc n) wA td ρ bt' bw') ≡ MI n wA td (⇓ n ρ) bt bw
 
 CI n       ε        = ⊤
 CI n       (Δ ▷ wA) = Σ (CI n Δ) (λ ρ → (bnd : szT wA + szCon Δ < n) → Êl (TI n wA ρ bnd))
@@ -1011,6 +1011,39 @@ nat-var-vs (suc n) {Bd = Bd} {wB = wB} {Ad = A} (skip {Θc = Θc} {o = o'} r' w)
         MvsA  = MI-vs-red n {wB = wB} {wA = wA₀} {wA' = wA} wR td envO' _ _ _ _
         Xeq2  = trans (sym (coe-symˡ NT X_v)) (cong (coe (sym NT)) (trans recEq MvsR))
 nat-var-vs zero r wA wA₀ wR td δ b1 () bO bd1 bd2
+
+-- MI-irr (fuel restriction) by induction on td.  tt/ff = refl (TI-irr ⊨𝔹 = refl); vz/vs collapse
+-- over the env value (⇓ coerces the top by TI-irr); lam via funext; app via MI-app-red + subTI-irr.
+MI-irr (suc m) wA (⊢vz {wA = wd} wR) ρ bt' bw' bt bw =
+  trans (cong (coe TIirr) (MI-vz-red (suc m) {wA = wd} {wA' = wA} wR ρ bt' bw' _))
+  (trans (coe2-uip WL TIirr T (snd ρ _))
+  (trans (sym (coe2-uip TIirr_d WR_n T (snd ρ _)))
+         (sym (MI-vz-red m {wA = wd} {wA' = wA} wR (⇓ (suc m) ρ) bt bw _))))
+  where TIirr   = congÊl (TI-irr (suc m) wA ρ bw' bw)
+        WL      = congÊl (sym (wkTI (suc (suc m)) wd wd wA (fst ρ) (snd ρ) bw' _))
+        TIirr_d = congÊl (TI-irr (suc m) wd (fst ρ) _ _)
+        WR_n    = congÊl (sym (wkTI (suc m) wd wd wA (fst (⇓ (suc m) ρ)) (snd (⇓ (suc m) ρ)) bw _))
+        T       = trans WL TIirr
+MI-irr (suc m) wA (⊢vs {wB = wB} wA₀ wR td) ρ bt' bw' bt bw =
+  trans (cong (coe TIirr) MvsL)
+  (trans (coe2-uip WL_vs TIirr T X_hi)
+  (trans (sym (coe2-uip TIirr_a WR_vs T X_hi))
+  (trans (cong (coe WR_vs) recEq)
+         (sym MvsR))))
+  where TIirr   = congÊl (TI-irr (suc m) wA ρ bw' bw)
+        X_hi    = MI (suc (suc m)) wA₀ td (fst ρ) _ _
+        MvsL    = MI-vs-red (suc m) {wB = wB} {wA = wA₀} {wA' = wA} wR td ρ bt' bw' _ _
+        WL_vs   = congÊl (sym (wkTI (suc (suc m)) wB wA₀ wA (fst ρ) (snd ρ) bw' _))
+        recEq   = MI-irr (suc m) wA₀ td (fst ρ) _ _ _ _
+        TIirr_a = congÊl (TI-irr (suc m) wA₀ (fst ρ) _ _)
+        MvsR    = MI-vs-red m {wB = wB} {wA = wA₀} {wA' = wA} wR td (⇓ (suc m) ρ) bt bw _ _
+        WR_vs   = congÊl (sym (wkTI (suc m) wB wA₀ wA (fst (⇓ (suc m) ρ)) (snd (⇓ (suc m) ρ)) bw _))
+        T       = trans WL_vs TIirr
+MI-irr (suc m) (⊨Π wD wCo) (⊢lam wA' td) ρ bt' bw' bt bw = {!!}
+MI-irr (suc m) wA (⊢app (⊨Π wA' wB) tf tu) ρ bt' bw' bt bw = {!!}
+MI-irr (suc m) ⊨𝔹 ⊢tt ρ bt' bw' bt bw = refl
+MI-irr (suc m) ⊨𝔹 ⊢ff ρ bt' bw' bt bw = refl
+MI-irr zero wA td ρ bt' bw' () bw
 
 -- sub-MI: substitution soundness for MI, by induction on td (cased on sσ so sub-⊢ reduces; placed
 -- AFTER MI's clauses so MI reduces).
