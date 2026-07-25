@@ -115,6 +115,13 @@ step-push : ∀ {prog s r}
                              ; pc     = pc s + 1 })
 step-push ft rewrite ft = refl
 
+-- lea reg, mem: reg := effectiveAddr mem ; pc += 1
+step-lea : ∀ {prog s r m}
+         → fetch prog (pc s) ≡ just (lea r m)
+         → step-not-halted prog s
+           ≡ just (record s { regs = writeReg (regs s) r (effectiveAddr s m) ; pc = pc s + 1 })
+step-lea ft rewrite ft = refl
+
 -- pop reg: reg := [rsp] ; rsp := rsp + 8 ; pc += 1  (needs [rsp] mapped)
 step-pop : ∀ {prog s r v}
          → fetch prog (pc s) ≡ just (pop r)

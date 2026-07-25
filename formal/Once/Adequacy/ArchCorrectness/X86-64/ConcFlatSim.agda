@@ -562,6 +562,10 @@ mutual
       (block-step-load-const prog fs s v cc h ftq) refl h
   events-running-fetch n ev env prog fs s (instr-load-const fits-float v) cc h ftq =
     load-const-float n ev env prog fs s cc h ftq
+  events-running-fetch n ev env prog fs s (instr-load-code-addr k) cc h ftq =
+    ccc-step-bs n ev env prog fs s (instr-load-code-addr k) (block-step-load-code-addr prog fs s k cc h ftq) refl h
+  events-running-fetch n ev env prog fs s instr-save-closure-reg cc h ftq =
+    ccc-step-bs n ev env prog fs s instr-save-closure-reg (block-step-save-closure-reg prog fs s cc h ftq) refl h
   -- Trivial cata bookkeeping (x86-len 0, flat identity): proven block-step ⇒ ccc-step-bs.
   events-running-fetch n ev env prog fs s (worklist-init k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-init k) (block-step-worklist-init prog fs s k cc h ftq) refl h
   events-running-fetch n ev env prog fs s (worklist-check k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-check k) (block-step-worklist-check prog fs s k cc h ftq) refl h

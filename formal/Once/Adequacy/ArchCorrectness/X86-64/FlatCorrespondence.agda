@@ -55,7 +55,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 open X using (mkstate; mkflags; _<ᵇ_; writeMem)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
-open import Once.CCC.Target.X86-64.Syntax using (rax; rbx; rsi; rdi; rsp; slot-size; slots)
+open import Once.CCC.Target.X86-64.Syntax using (rax; rbx; rsi; rdi; rsp; r12; slot-size; slots)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (slot-to-disp)
 open import Once.CCC.Machine.SMCore
 open MemOps {FS} using (writeLoc; writeLocToHeap; writeHeapMem
@@ -679,6 +679,30 @@ sim-load-const : ∀ (v : Carrier) (fs : FlatState) (s : X.State) → FlatCorr f
              (mkstate (xwriteReg (xregs s) rax (lit-word v)) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-load-const v fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
+
+------------------------------------------------------------------------
+-- LOAD CODE ADDR: `instr-load-code-addr n` (Output := SV-Code n) ↔ `lea rax,
+-- [rip+label n]`. The x86 effective address of a label is `n` (linker-resolved,
+-- abstract), and enc-sv(SV-Code n) = n, so rax := n matches — rax-eq is refl.
+------------------------------------------------------------------------
+sim-load-code-addr : ∀ (n : ℕ) (fs : FlatState) (s : X.State) → FlatCorr fs s
+  → FlatCorr (flat-exec-instr (instr-load-code-addr n) [] fs)
+             (mkstate (xwriteReg (xregs s) rax n) (memory s) (flags s) (pc s + 1) (xhalted s))
+sim-load-code-addr n fs s corr = record
+  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
+  ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
+
+------------------------------------------------------------------------
+-- SAVE CLOSURE REG: `instr-save-closure-reg` ↔ `mov r12, rdi`. Abstract identity;
+-- x86 writes r12 (the reserved closure pointer), which FlatCorr does NOT track —
+-- so the whole correspondence is unchanged. Only the fpc bumps.
+------------------------------------------------------------------------
+sim-save-closure-reg : ∀ (fs : FlatState) (s : X.State) → FlatCorr fs s
+  → FlatCorr (flat-exec-instr instr-save-closure-reg [] fs)
+             (mkstate (xwriteReg (xregs s) r12 (xreadReg (xregs s) rdi)) (memory s) (flags s) (pc s + 1) (xhalted s))
+sim-save-closure-reg fs s corr = record
+  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
   ; halt-eq = halt-eq corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
 
 ------------------------------------------------------------------------

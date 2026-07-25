@@ -60,7 +60,7 @@ open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem; updateFlags)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax
-  using (rax; rbx; rsi; rdi; rsp; rbp; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; push; pop; base; base+disp; slots; slot-size)
+  using (rax; rbx; rsi; rdi; rsp; rbp; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; push; pop; lea; rip+label; r12; base; base+disp; slots; slot-size)
 open import Data.Maybe using (just; nothing)
 open import Data.Bool using (true; false)
 open import Data.List using (_∷_; []; _++_; drop; length)
@@ -71,7 +71,7 @@ module C = FC FS enc-hl LiveIn enc-hl-inj-live   -- enc-sv / FlatCorr data field
 open import Once.CCC.Label using (once)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
   using (x86-off; x86-len; x86-off-suc; fetch-block-head; find-label-corr; fetch-block-2nd; fetch-block-3rd)
-open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-sub-ri; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-push; step-pop)
+open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-sub-ri; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-push; step-pop; step-lea)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (zero; suc)
@@ -664,6 +664,52 @@ block-step-load-const prog fs s v cc h ft =
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-load-const fits-int v) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-load-const fits-int v) ft))
+
+-- load-code-addr: Output := SV-Code n ↔ `lea rax, [rip+label n]` (1 step). The
+-- effective address of a label is n, and enc-sv(SV-Code n)=n ⇒ rax-eq = refl.
+block-step-load-code-addr : ∀ prog fs s n → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-load-code-addr n)
+  → BlockStep prog fs s (instr-load-code-addr n)
+block-step-load-code-addr prog fs s n cc h ft =
+  post , exec-eq , record { dataCorr = C.sim-load-code-addr n fs s dc ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (lea rax (rip+label n))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-load-code-addr n) ft)
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) rax (X.effectiveAddr s (rip+label n)) ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-lea {compile-trace prog} {s} {rax} {rip+label n} fetch-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-load-code-addr n) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-load-code-addr n) ft))
+
+-- save-closure-reg: abstract identity ↔ `mov r12, rdi`. r12 is untracked, so the
+-- whole FlatCorr copies through (sim-save-closure-reg).
+block-step-save-closure-reg : ∀ prog fs s → CompiledCorr prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just instr-save-closure-reg
+  → BlockStep prog fs s instr-save-closure-reg
+block-step-save-closure-reg prog fs s cc h ft =
+  post , exec-eq , record { dataCorr = C.sim-save-closure-reg fs s dc ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg r12) (reg rdi))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) instr-save-closure-reg ft)
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) r12 (xreadReg (xregs s) rdi) ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-mov-rr {compile-trace prog} {s} {r12} {rdi} fetch-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr instr-save-closure-reg prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) instr-save-closure-reg ft))
 
 -- worklist-push / worklist-pop: their abstract semantics + x86 lowering are
 -- IDENTICAL to store-at-slot / load-from-slot respectively (SMCore/AbstractToX86),
