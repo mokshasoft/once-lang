@@ -1095,7 +1095,17 @@ mutual
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)) h
-          go-ptr (SV-Ptr (AtStack _ _))  i-eq = store-indirect-bad n ev env prog fs s cc wf h ftq
+          -- STORE through a stack pointer: `writeLoc … (AtStack f k)` is the plain
+          -- stack write (no cross-region guard needed — that is the heap branch),
+          -- and the x86 writes at `rsp + 8·k`.
+          go-ptr (SV-Ptr (AtStack f k))  i-eq =
+            ccc-step-bs {hv} n ev env prog fs s store-indirect
+              (block-step-store-indirect-stack prog fs s f k cc h ftq i-eq
+                 (proj₁ (stack-ptr-current fs f k i-eq)) (proj₂ (stack-ptr-current fs f k i-eq))
+                 (store-at-slot-stack-disj {hv} fs s k))
+              wf refl hpost
+            where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
+                  hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtStack f k) (readReg (regs (floc fs)) Output)) h
           go-ptr (SV-Tag _)              i-eq = store-indirect-bad n ev env prog fs s cc wf h ftq
           go-ptr (SV-Lit _ _)            i-eq = store-indirect-bad n ev env prog fs s cc wf h ftq
           go-ptr (SV-Code _)             i-eq = store-indirect-bad n ev env prog fs s cc wf h ftq

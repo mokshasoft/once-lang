@@ -1468,3 +1468,47 @@ block-step-load-indirect-suc-stack {hv} prog fs s f k w cc h ft i-eq f-eq sk<ss 
                  (trans (cong (λ fr → stackMem (floc fs) fr (suc k)) f-eq) st-eq)
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr load-indirect-suc prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) load-indirect-suc ft))
+
+-- store-indirect through a stack pointer ↔ `mov [rdi], rax`, where rdi is the
+-- slot's address. Same shape as `block-step-store-at-slot`, with the address
+-- coming from Input1 (`rdi-eq` + `slot-addr-linear` + `rsp-eq`).
+block-step-store-indirect-stack : ∀ {hv : HeapView} prog fs s f k → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just store-indirect
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+  → f ≡ current-frame (falloc fs)
+  → k < stackSlot (regs (floc fs))
+  → (∀ hl' → HDom hv hl' → (X.readReg (xregs s) rsp + slot-to-disp k ≡ haddr hv hl') → ⊥)
+  → BlockStep hv prog fs s store-indirect
+block-step-store-indirect-stack {hv} prog fs s f k cc h ft i-eq f-eq k<ss disj =
+  post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    Out = readReg (regs (floc fs)) Output
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (mem (base rdi)) (reg rax))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) store-indirect ft)
+    rdi-val : xreadReg (xregs s) rdi ≡ xreadReg (xregs s) rsp + slot-to-disp k
+    rdi-val = trans (C.rdi-eq dc)
+              (trans (cong (C.enc-sv hv) i-eq)
+              (trans (cong (λ fr → slot-addr FS fr k) f-eq)
+              (trans (slot-addr-linear FS (current-frame (falloc fs)) k)
+                     (cong₂ (λ b w' → b + k * w') (sym (C.rsp-eq dc)) word-eq))))
+    i-eq' : readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack (current-frame (falloc fs)) k)
+    i-eq' = trans i-eq (cong (λ fr → SV-Ptr (AtStack fr k)) f-eq)
+    post : X.State
+    post = record s { memory = writeMem (memory s) (xreadReg (xregs s) rsp + slot-to-disp k)
+                                        (C.enc-sv hv Out)
+                    ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = trans (step-mov-mr {compile-trace prog} {s} {base rdi} {rax} fetch-x86)
+                (cong just (cong₂ (λ a v → record s { memory = writeMem (memory s) a v ; pc = pc s + 1 })
+                                  rdi-val (C.rax-eq dc)))
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    dataPost : C.FlatCorr hv (flat-exec-instr store-indirect prog fs) post
+    dataPost = C.sim-store-indirect-stack k fs s dc i-eq' disj
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr store-indirect prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) store-indirect ft))
