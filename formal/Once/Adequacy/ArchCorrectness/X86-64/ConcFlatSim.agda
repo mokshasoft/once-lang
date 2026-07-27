@@ -1101,7 +1101,7 @@ mutual
           go-ptr (SV-Ptr (AtStack f k))  i-eq =
             ccc-step-bs {hv} n ev env prog fs s store-indirect
               (block-step-store-indirect-stack prog fs s f k cc h ftq i-eq
-                 (proj₁ (stack-ptr-current fs f k i-eq)) (proj₂ (stack-ptr-current fs f k i-eq))
+                 (proj₁ (stack-ptr-current fs f k i-eq))
                  (store-at-slot-stack-disj {hv} fs s k))
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
@@ -1128,7 +1128,16 @@ mutual
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic (sucHL hl)) (readReg (regs (floc fs)) Output)) h
-          go-ptr (SV-Ptr (AtStack _ _))  i-eq = store-indirect-suc-bad n ev env prog fs s cc wf h ftq
+          -- STORE-SUC through a stack pointer: the pair's SECOND slot, `suc k`,
+          -- reserved by the same prologue (`stack-ptr-current`) — an ordinary step.
+          go-ptr (SV-Ptr (AtStack f k))  i-eq =
+            ccc-step-bs {hv} n ev env prog fs s store-indirect-suc
+              (block-step-store-indirect-suc-stack prog fs s f k cc h ftq i-eq
+                 (proj₁ (stack-ptr-current fs f k i-eq))
+                 (store-at-slot-stack-disj {hv} fs s (suc k)))
+              wf refl hpost
+            where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
+                  hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtStack f (suc k)) (readReg (regs (floc fs)) Output)) h
           go-ptr (SV-Tag _)              i-eq = store-indirect-suc-bad n ev env prog fs s cc wf h ftq
           go-ptr (SV-Lit _ _)            i-eq = store-indirect-suc-bad n ev env prog fs s cc wf h ftq
           go-ptr (SV-Code _)             i-eq = store-indirect-suc-bad n ev env prog fs s cc wf h ftq

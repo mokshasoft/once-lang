@@ -1233,3 +1233,42 @@ sim-store-indirect-stack {hv} k fs s corr i-eq disj =
                     (heap-eq corr) disj
       ; stack-eq = store-slot-stack-eq base k Out s (floc fs) cf (stackSlot (regs (floc fs)))
                      (stack-eq corr) }
+
+-- …and the SECOND cell. `sucLoc (AtStack cf k) = AtStack cf (suc k)` reduces, so
+-- this is literally the same proof at slot `suc k` — `store-slot-stack-eq` is
+-- generic in the written slot, and the pair's second slot belongs to the same
+-- frame the prologue reserved (`stack-ptr-current-suc`).
+sim-store-indirect-suc-stack : {hv : HeapView} (k : Slot) (fs : FlatState) (s : X.State) → FlatCorr hv fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack (current-frame (falloc fs)) k)
+  → (∀ hl' → HDom hv hl' → (X.readReg (xregs s) rsp + slot-to-disp (suc k) ≡ haddr hv hl') → ⊥)
+  → FlatCorr hv (flat-exec-instr store-indirect-suc [] fs)
+             (mkstate (xregs s)
+                      (writeMem (memory s) (X.readReg (xregs s) rsp + slot-to-disp (suc k))
+                                (enc-sv hv (readReg (regs (floc fs)) Output)))
+                      (flags s) (pc s + 1) (xhalted s))
+sim-store-indirect-suc-stack {hv} k fs s corr i-eq disj =
+  subst (λ z → FlatCorr hv z xpost) (sym reduces) corr-clean
+  where
+    base = X.readReg (xregs s) rsp
+    Out  = readReg (regs (floc fs)) Output
+    cf   = current-frame (falloc fs)
+    xpost : X.State
+    xpost = mkstate (xregs s) (writeMem (memory s) (base + slot-to-disp (suc k)) (enc-sv hv Out))
+                    (flags s) (pc s + 1) (xhalted s)
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = writeLocToStack (floc fs) cf (suc k) Out
+                          ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    floc-eq : exec-store-suc-via-resolved (sv-as-loc (readReg (regs (floc fs)) Input1)) Out (floc fs)
+              ≡ writeLocToStack (floc fs) cf (suc k) Out
+    floc-eq = cong (λ m → exec-store-suc-via-resolved m Out (floc fs)) (cong sv-as-loc i-eq)
+    reduces : flat-exec-instr store-indirect-suc [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    corr-clean : FlatCorr hv cleanFlat xpost
+    corr-clean = record
+      { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
+      ; halt-eq = halt-eq corr ; rsp-eq = rsp-eq corr ; r15-eq = r15-eq corr
+      ; dom-fresh = dom-fresh corr
+      ; heap-eq = store-slot-heap-eq hv (base + slot-to-disp (suc k)) (enc-sv hv Out) s (floc fs)
+                    (heap-eq corr) disj
+      ; stack-eq = store-slot-stack-eq base (suc k) Out s (floc fs) cf (stackSlot (regs (floc fs)))
+                     (stack-eq corr) }
