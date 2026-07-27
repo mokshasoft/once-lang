@@ -59,7 +59,7 @@ open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
 open import Once.CCC.Codegen.IRObsCorrectFlat using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
 open import Once.CCC.Machine.SMCore
-  using (LocState; mkLocState; Registers; mkRegs; ValueLocation; AtDynamic; SV-Ptr;
+  using (LocState; mkLocState; Registers; mkRegs; ValueLocation; AtDynamic; SV-Ptr; SV-Tag;
          regs; readReg; Input1; halted)
 open import Once.Memory.HeapAddress using (heap-loc; mkHeapRef)
 open import Data.Nat using (z≤n; s≤s)

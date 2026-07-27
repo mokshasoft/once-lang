@@ -99,7 +99,7 @@ open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
   x86-64-frame-semantics refl
   using (events-agree; CompiledCorr; HeapView)
 open import Once.CCC.Machine.FlatStoreWF x86-64-frame-semantics using (FlatWF; sv-below)
-open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Input2; Output; Scratch; readReg; regs)
+open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Input2; Output; Scratch; Count; readReg; regs)
 
 -- The heap address map is CARRIED by the correspondence and EXTENDED at each
 -- `instr-alloc-heap` (the fresh block lands at the concrete `%r15` frontier), so
@@ -144,6 +144,8 @@ entry-corr ir = record
       ; rsi-eq  = refl
       ; rax-eq  = refl
       ; rbx-eq  = refl
+      -- emptyRegFile's %r14 ≡ 0 ≡ enc-sv (SV-Tag 0), the entry `Count` filler
+      ; r14-eq  = refl
       ; halt-eq = refl
       ; rsp-eq  = sym entry-frame-base   -- emptyRegFile's %rsp ≡ 0 ≡ the entry frame's base
       ; r15-eq  = refl          -- emptyRegFile's %r15 ≡ 0 ≡ the entry frontier
@@ -167,7 +169,10 @@ entry-wf = record
     reg-below Input1  = s≤s z≤n
     reg-below Input2  = s≤s z≤n
     reg-below Output  = s≤s z≤n
-    reg-below Scratch = s≤s z≤n
+    -- plan 0.54 D item 4: the two counters start as TAGS, and `sv-below` puts no
+    -- constraint on a non-pointer — so these are `tt`, not the filler's `s≤s z≤n`.
+    reg-below Scratch = tt
+    reg-below Count   = tt
 
 -- The flat adequacy witness for `ir` at event-count `n`: the flat step-fuel that
 -- `traces-agree` guarantees emits the first `n` events. `flat-trace-of` and
