@@ -379,3 +379,43 @@ fetch-block-6th prog k i ft =
               (trans (drop-+ (x86-off prog k) 5 (compile-trace prog))
                      (trans (cong (drop 5) (drop-compile prog k))
                             (cong (λ p → drop 5 (compile-trace p)) (drop-fetch prog k i ft)))))
+
+------------------------------------------------------------------------
+-- find-label, NEGATIVE direction: if the flat scan finds no `c-label m`,
+-- the compiled scan finds no `label (once m)` either.
+--
+-- The invariant this needs is PROVENANCE, not disjointness: `compile-abstract`
+-- emits a `label` only for `instr-ctrl (c-label m)`, and then exactly
+-- `label (once m)` — which is what `HeadView` already enumerates (`hv-clabel` /
+-- `hv-plain`'s `has-label ≡ false`). Label UNIQUENESS is never needed: both
+-- scanners return their first match, so duplicates align rather than conflict.
+------------------------------------------------------------------------
+find-label-none-go : ∀ (prog : AbstractTrace) (target acc xi : ℕ)
+  → All HeadView prog
+  → fl-go prog target acc ≡ nothing
+  → X.find-label-go (once target) (compile-trace prog) xi ≡ nothing
+find-label-none-go [] target acc xi _ _ = refl
+find-label-none-go (i ∷ rest) target acc xi (hv-plain nl fl-p ∷ all-rest) fl-eq =
+  trans (find-label-go-skip (once target) (compile-abstract i)
+                            (compile-trace rest) xi nl)
+        (find-label-none-go rest target (suc acc) (xi + length (compile-abstract i))
+                            all-rest (trans (sym (fl-p rest target acc)) fl-eq))
+find-label-none-go (i ∷ rest) target acc xi (hv-clabel m ca-eq fl-c ∷ all-rest) fl-eq
+  with m ≡ᵇ target in meq
+-- a MATCH contradicts the flat scan's `nothing`
+... | true  = absurd (trans (sym fl-eq)
+                (trans (fl-c rest target acc)
+                       (cong (λ b → fl-label-match b rest target acc) meq)))
+  where absurd : ∀ {A : Set} {x : A} → (nothing ≡ just x)
+               → X.find-label-go (once target) (compile-trace (i ∷ rest)) xi ≡ nothing
+        absurd ()
+... | false rewrite ca-eq | meq =
+  find-label-none-go rest target (suc acc) (suc xi) all-rest
+    (trans (sym (cong (λ b → fl-label-match b rest target acc) meq))
+           (trans (sym (fl-c rest target acc)) fl-eq))
+
+find-label-none-corr : ∀ (prog : AbstractTrace) (target : ℕ)
+  → fl-go prog target 0 ≡ nothing
+  → X.find-label (compile-trace prog) (once target) ≡ nothing
+find-label-none-corr prog target fl-eq =
+  find-label-none-go prog target 0 0 (all-headView prog) fl-eq

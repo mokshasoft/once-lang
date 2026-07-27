@@ -24,6 +24,7 @@
 open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame; frame-word; frame-base)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.CCC.Machine.SMCore using (AllocState)
+open import Once.CCC.Label using (once)
 open import Once.CCC.Target.X86-64.Syntax using
   ( slot-size; Program; Instr; Reg; Operand; reg; mem; base+disp; rsp; rbp; rax; rdi
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
@@ -54,7 +55,8 @@ open import Once.CCC.Machine.FlatStoreWF FS using (FlatWF; flat-wf-step; wf-regs
 open C using (HeapView; haddr; HDom; hfront) public
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
-  using (x86-len; x86-off; drop-compile; fetch-drop; drop-[]; fetch-block-head)
+  using (x86-len; x86-off; drop-compile; fetch-drop; drop-[]; fetch-block-head
+        ; find-label-none-corr)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
 
@@ -332,16 +334,6 @@ postulate
                             → fetch prog (fpc fs) ≡ just i
                             → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                                   ≡ event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs))
-
-  -- c-jmp to a MISSING label: both the flat machine (do-jump nothing) and the concrete
-  -- machine (x86 jmp to an absent label) HALT, so both traces are []. Residual = the
-  -- x86↔flat label-miss correspondence (find-label-corr's negative direction).
-  cjmp-miss : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                prog fs s m → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
-            → fetch prog (fpc fs) ≡ just (instr-ctrl (c-jmp m)) → find-label prog m ≡ nothing
-            → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                  ≡ event-of (instr-ctrl (c-jmp m)) fs
-                    ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs))
 
   -- c-branch-scratch-zero WF residuals: the Scratch is a tag (branch-scratch-nontag)
   -- and the branch's target label resolves (branch-label-miss) at every branch site.
@@ -708,7 +700,29 @@ mutual
               (block-step-c-jmp prog fs s m j cc h ftq fl-eq) wf refl hpost
             where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) ≡ false
                   hpost rewrite fl-eq = h
-          go-fl nothing fl-eq = cjmp-miss n ev env prog fs s m cc wf h ftq fl-eq
+          go-fl nothing fl-eq = 2 , result
+            where
+              halt-s : X.State.halted s ≡ false
+              halt-s = trans (C.halt-eq (dataCorr cc)) h
+              fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (jmp (once m))
+              fetch-x86 = trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
+                                (fetch-block-head prog (fpc fs) (instr-ctrl (c-jmp m)) ftq)
+              s' : X.State
+              s' = record s { halted = true }
+              -- a concrete jump to a MISSING label HALTS (it does not get stuck)
+              step-eq : X.execInstr (compile-trace prog) s (jmp (once m)) ≡ just s'
+              step-eq rewrite find-label-none-corr prog m fl-eq = refl
+              hpost : halted (floc (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) ≡ true
+              hpost rewrite fl-eq = refl
+              result : RTx.run-events val-x86-64 ev env 2 (compile-trace prog) s
+                     ≡ event-of (instr-ctrl (c-jmp m)) fs
+                       ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)
+              result =
+                trans (RTx.run-events-noncall val-x86-64 ev env 1 (compile-trace prog) s
+                         (jmp (once m)) halt-s fetch-x86 refl step-eq)
+                      (trans (RTx.run-events-halted val-x86-64 ev env 0 (compile-trace prog) s' refl)
+                             (sym (flat-events-halted n prog
+                                    (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs) hpost)))
 
   -- CONTROL c-branch-scratch-zero: J-bridge on the Scratch value AND find-label. A tag
   -- `SV-Tag k` + a resolvable target ⇒ the PROVEN block-step-c-branch-scratch-zero (both
