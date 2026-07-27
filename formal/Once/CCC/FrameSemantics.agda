@@ -33,7 +33,7 @@
 
 module Once.CCC.FrameSemantics where
 
-open import Data.Nat using (ℕ; zero; _<_; _≤_)
+open import Data.Nat using (ℕ; zero; _<_; _≤_; _+_; _∸_; _*_)
 open import Data.Empty using (⊥)
 open import Data.Sum using (_⊎_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
@@ -107,6 +107,17 @@ record FrameSemantics : Set₁ where
     -- caller's frame from the frame stack `AllocState.saved-frames`, mirroring
     -- how the prologue/epilogue pair up.
     shift-frame : Frame → ℕ → Frame
+
+    -- | Slot size in bytes (the machine word).
+    frame-word : ℕ
+
+    -- | Slots are LINEAR from the frame base — the target's `[sp + k·word]`.
+    -- This is what lets a stack POINTER (`AtStack f k`) be given an address.
+    slot-addr-linear : ∀ f k → slot-addr f k ≡ frame-base f + k * frame-word
+
+    -- | A shifted frame's base is exactly `n` slots down: the prologue's
+    -- `sub sp, n·word`.
+    shift-base : ∀ f n → frame-base (shift-frame f n) ≡ frame-base f ∸ n * frame-word
 
     --------------------------------------------------------------------
     -- Frame Ordering

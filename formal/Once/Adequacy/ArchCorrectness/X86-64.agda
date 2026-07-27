@@ -22,7 +22,8 @@ open import Data.Bool using (false)
 open import Data.Product using (proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; mkHeapRef; heap-offset)
-open import Once.CCC.Machine.SMCore using (AllocState)
+open import Once.CCC.Machine.SMCore using (AllocState; current-frame)
+open import Once.CCC.FrameSemantics using (frame-base)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.X86-64.Syntax using (slot-size)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (slot-to-disp)
@@ -90,7 +91,7 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {x86-64-frame-semantics} using (flat-events)
 
 open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
-  x86-64-frame-semantics
+  x86-64-frame-semantics refl
   using (events-agree; CompiledCorr; HeapView)
 open import Once.CCC.Machine.FlatStoreWF x86-64-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Input2; Output; Scratch; readReg; regs)
@@ -117,6 +118,13 @@ entry-view = record
                                     ≡ slot-to-disp (heap-offset hl) + slot-size
     suc-law (heap-loc r o) = +-comm slot-size (o * slot-size)
 
+postulate
+  -- The entry frame's base is the initial %rsp (both 0 in the model's
+  -- `initState`). A property of the (abstract) entry frame `FlatFromObs`
+  -- postulates — the runtime hands `main` a stack whose base is where %rsp is.
+  entry-frame-base : frame-base x86-64-frame-semantics
+                       (current-frame FFOx.entry-alloc) ≡ 0
+
 -- Initial-state correspondence, PROVEN: the concrete `initState` (all registers 0,
 -- empty memory, pc 0, running) relates to the flat entry state `mkFlat entry-s
 -- entry-alloc 0`. The four register equalities all reduce to `enc-hl (entry heap-
@@ -132,6 +140,7 @@ entry-corr ir = record
       ; rax-eq  = refl
       ; rbx-eq  = refl
       ; halt-eq = refl
+      ; rsp-eq  = sym entry-frame-base   -- emptyRegFile's %rsp ≡ 0 ≡ the entry frame's base
       ; r15-eq  = refl          -- emptyRegFile's %r15 ≡ 0 ≡ the entry frontier
       ; dom-fresh = λ ()        -- nothing is mapped yet
       ; heap-eq = λ _ ()

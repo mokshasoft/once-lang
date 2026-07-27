@@ -21,7 +21,7 @@
 -- supplied once, at the point this feeds `conc-flat-sim`.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame)
+open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame; frame-word; frame-base)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Target.X86-64.Syntax using
@@ -34,6 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
   (FS : FrameSemantics)
+  (word-eq : frame-word FS ≡ slot-size)
   where
 
 open import Data.Maybe using (Maybe; just; nothing; maybe′)
@@ -48,7 +49,7 @@ open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 import Once.CCC.Target.X86-64.Semantics as X
 
-open import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation FS public
+open import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation FS word-eq public
 open import Once.CCC.Machine.FlatStoreWF FS using (FlatWF; flat-wf-step; wf-regs; wf-heap; wf-stack; wf-fresh)
 open C using (HeapView; haddr; HDom; hfront) public
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
@@ -426,6 +427,16 @@ postulate
   alloc-heap-fresh-x86 : ∀ (s : X.State) (n : ℕ) → ∀ i → i < n
                        → X.readMem (X.State.memory s)
                            (X.readReg (X.State.regs s) r15 + slot-to-disp i) ≡ nothing
+  -- MATCHED PROLOGUE/EPILOGUE (plan 0.61): the frame an epilogue restores is the
+  -- one its matching prologue shifted away from, so %rsp lands exactly on the
+  -- restored frame's base. A pairing property of emitted code (the same class as
+  -- `dealloc-stack-full` / `pop-frame-empty` below), not of an arbitrary state.
+  dealloc-stack-restores : ∀ (fs : FlatState) (s : X.State) (n : ℕ)
+    → X.readReg (X.State.regs s) rsp + slots n
+        ≡ frame-base FS (current-frame (leave-frame (falloc fs)))
+  pop-frame-restores : ∀ (fs : FlatState) (s : X.State)
+    → X.readReg (X.State.regs s) rbp + slot-size
+        ≡ frame-base FS (current-frame (leave-frame (falloc fs)))
   -- dealloc-stack frees the WHOLE current frame (runtime depth n → 0) — the WF
   -- pairing of an entry alloc-stack n with its matching exit dealloc-stack n.
   dealloc-stack-full : ∀ (fs : FlatState) (n : ℕ) → stackSlot (regs (floc fs)) ≡ n
@@ -556,19 +567,24 @@ mutual
          (λ hl eq → wf-fresh wf hl (≤-reflexive (sym eq))) (alloc-heap-fresh-x86 s k)) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-dealloc-stack k)
-      (block-step-dealloc-stack prog fs s k cc h ftq (dealloc-stack-full fs k)) wf refl h
+      (block-step-dealloc-stack prog fs s k cc h ftq (dealloc-stack-full fs k)
+         (dealloc-stack-restores fs s k)) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-push-frame k) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-push-frame k)
       (block-step-push-frame prog fs s k cc h ftq (push-frame-heap-disj {hv} s fs)) wf refl h
   events-running-fetch {hv} n ev env prog fs s instr-pop-frame cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s instr-pop-frame
       (block-step-pop-frame prog fs s (proj₁ (pop-frame-saved s)) cc h ftq
-         (pop-frame-empty fs) (proj₂ (pop-frame-saved s))) wf refl h
+         (pop-frame-empty fs) (proj₂ (pop-frame-saved s)) (pop-frame-restores fs s)) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-int v) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-load-const fits-int v)
       (block-step-load-const prog fs s v cc h ftq) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-float v) cc wf h ftq =
     load-const-float n ev env prog fs s cc wf h ftq
+  -- plan 0.61: a stack POINTER now has an address, so lea-slot routes.
+  events-running-fetch {hv} n ev env prog fs s (lea-slot slot) cc wf h ftq =
+    ccc-step-bs {hv} n ev env prog fs s (lea-slot slot)
+      (block-step-lea-slot prog fs s slot cc h ftq) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-load-code-addr k) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-load-code-addr k) (block-step-load-code-addr prog fs s k cc h ftq) wf refl h
   events-running-fetch {hv} n ev env prog fs s instr-save-closure-reg cc wf h ftq =
