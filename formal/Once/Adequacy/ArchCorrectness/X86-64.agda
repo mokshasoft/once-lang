@@ -13,7 +13,8 @@
 
 module Once.Adequacy.ArchCorrectness.X86-64 where
 
-open import Data.Nat using (ℕ; _+_)
+open import Data.Nat using (ℕ; _+_; s≤s; z≤n)
+open import Data.Unit using (tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
 open import Data.List using ([]; take)
@@ -91,6 +92,8 @@ open FlatEventTrace {x86-64-frame-semantics} using (flat-events)
 open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
   x86-64-frame-semantics
   using (events-agree; CompiledCorr; HeapView)
+open import Once.CCC.Machine.FlatStoreWF x86-64-frame-semantics using (FlatWF; sv-below)
+open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Input2; Output; Scratch; readReg; regs)
 
 -- The heap address map is CARRIED by the correspondence and EXTENDED at each
 -- `instr-alloc-heap` (the fresh block lands at the concrete `%r15` frontier), so
@@ -137,6 +140,21 @@ entry-corr ir = record
   ; pc-off = refl
   }
 
+-- The ENTRY store-WF: at the entry state the heap and stack are empty and the four
+-- registers hold the erased-Unit filler pointer into block 0, which IS below the
+-- entry frontier (`next-heap-ref entry-alloc ≡ 1`). Everything downstream is the
+-- flat-machine theorem (`FlatStoreWF.flat-wf-step`), applied once per step inside
+-- `ccc-step-bs` — no per-instruction obligation here.
+entry-wf : FlatWF (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
+entry-wf = record
+  { wf-regs = reg-below ; wf-heap = λ _ → tt ; wf-stack = λ _ _ → tt ; wf-fresh = λ _ _ → refl }
+  where
+    reg-below : ∀ (r : AbstractReg) → sv-below 1 (readReg (regs FFOx.entry-s) r)
+    reg-below Input1  = s≤s z≤n
+    reg-below Input2  = s≤s z≤n
+    reg-below Output  = s≤s z≤n
+    reg-below Scratch = s≤s z≤n
+
 -- The flat adequacy witness for `ir` at event-count `n`: the flat step-fuel that
 -- `traces-agree` guarantees emits the first `n` events. `flat-trace-of` and
 -- `events-agree` both index the flat trace by exactly this `N`.
@@ -177,7 +195,7 @@ conc-flat-sim-just ir n =
     agree = events-agree (Nof ir n)
               ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
               (ir-to-trace ir) (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
-              (ArchSemantics.initialState as64) (entry-corr ir)
+              (ArchSemantics.initialState as64) (entry-corr ir) entry-wf
 
 -- conc-flat-sim, top-down: `nothing` proven (both traces `[]`); `just` delegates
 -- to `conc-flat-sim-just` — the single refinement obligation the recovered cluster

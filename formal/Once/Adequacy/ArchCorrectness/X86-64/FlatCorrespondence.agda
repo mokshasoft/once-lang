@@ -59,6 +59,7 @@ open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; e
                           ; exec-store-via-resolved; exec-store-suc-via-resolved)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
+open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
 open AbstractExec {FS} using (exec-abstract; exec-load-from-slot-with-value; exec-restore-input-with-value)
 open FrameSemantics FS using (Frame)
 
@@ -897,20 +898,11 @@ extend-view hv st n fresh = record
         off-eq = *-cancelʳ-≡ oa ob slot-size
                    (+-cancelˡ-≡ (hfront hv) (slot-to-disp oa) (slot-to-disp ob) addr-eq)
 
--- "NO FORWARD POINTERS": a stored value never references a block the abstract
--- allocator has not handed out yet. This is the store-WF side-condition the
--- extension needs — the only values whose ENCODING an extension could move are
--- pointers into the fresh ref, and a well-formed state has none.
-sv-below : ℕ → StoredValue FS → Set
-sv-below st (SV-Ptr (AtDynamic hl)) = ref-id (heap-ref hl) < st
-sv-below st (SV-Ptr (AtStack _ _))  = ⊤
-sv-below st (SV-Tag _)              = ⊤
-sv-below st (SV-Lit _ _)            = ⊤
-sv-below st (SV-Code _)             = ⊤
-
-svm-below : ℕ → Maybe (StoredValue FS) → Set
-svm-below st (just v) = sv-below st v
-svm-below st nothing  = ⊤
+-- "NO FORWARD POINTERS" (`sv-below`, from `Once.CCC.Machine.FlatStoreWF`): a
+-- stored value never references a block the abstract allocator has not handed
+-- out yet. This is the store-WF side-condition the extension needs — the only
+-- values whose ENCODING an extension could move are pointers into the fresh
+-- ref, and a well-formed flat state has none (`FlatStoreWF.flat-wf-step`).
 
 -- Encoding stability across the extension, for every value that is below the
 -- fresh ref: the extension only ADDS addresses.
@@ -956,16 +948,18 @@ sim-alloc-heap : ∀ {hv : HeapView} (n : ℕ) (newFlags : X.Flags) (newPc : ℕ
                                  (X.readReg (xregs s) r15 + slots n))
                       (memory s) newFlags newPc (xhalted s))
 sim-alloc-heap {hv} n newFlags newPc fs s corr wf1 wf2 wfs wf-heap wf-stack fresh-abs fresh-x86 = record
-  { rdi-eq  = trans (rdi-eq corr) (sym (enc-ext hv st n dfr _ wf1))
-  ; rsi-eq  = trans (rsi-eq corr) (sym (enc-ext hv st n dfr _ wf2))
+  { rdi-eq  = trans (rdi-eq corr) (sym (enc-ext hv st n dfr (readReg (regs (floc fs)) Input1) wf1))
+  ; rsi-eq  = trans (rsi-eq corr) (sym (enc-ext hv st n dfr (readReg (regs (floc fs)) Input2) wf2))
   ; rax-eq  = trans (r15-eq corr) (sym (ext-addr-base hv st))
-  ; rbx-eq  = trans (rbx-eq corr) (sym (enc-ext hv st n dfr _ wfs))
+  ; rbx-eq  = trans (rbx-eq corr) (sym (enc-ext hv st n dfr (readReg (regs (floc fs)) Scratch) wfs))
   ; halt-eq = halt-eq corr
   ; r15-eq  = cong (_+ slots n) (r15-eq corr)
   ; dom-fresh = df
   ; heap-eq = hp
   ; stack-eq = λ k k< → trans (stack-eq corr k k<)
-                              (sym (enc-ext-maybe hv st n dfr _ (wf-stack k k<)))
+                              (sym (enc-ext-maybe hv st n dfr
+                                     (stackMem (floc fs) (current-frame (falloc fs)) k)
+                                     (wf-stack k k<)))
   }
   where
     st  = next-heap-ref (falloc fs)

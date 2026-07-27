@@ -29,6 +29,7 @@ open import Once.CCC.Target.X86-64.Syntax using
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
   ; ret; push; pop; nop; ud2; syscall; label )
 open import Data.Nat using (ℕ; _+_; _<_; _∸_)
+open import Data.Nat.Properties using (≤-reflexive)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
@@ -48,6 +49,7 @@ open FlatMachine {FS}
 import Once.CCC.Target.X86-64.Semantics as X
 
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation FS public
+open import Once.CCC.Machine.FlatStoreWF FS using (FlatWF; flat-wf-step; wf-regs; wf-heap; wf-stack; wf-fresh)
 open C using (HeapView; haddr; HDom; hfront) public
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
@@ -249,10 +251,10 @@ sigop-run-external ev env n prog fs s si cc h ftq env-eq =
 -- — fetch there is `nothing`, hence run-events emits []. Chain: pc-off ▸ fetch-drop ▸
 -- drop-compile ▸ fetch-nothing-drop (drop past ⇒ [] ⇒ compile-trace [] ⇒ fetch [] = nothing).
 events-running-end : ∀ {hv : HeapView} (n : ℕ) (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                       prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                       prog fs s → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ nothing
                    → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s ≡ [])
-events-running-end {hv} n ev env prog fs s cc h ftq =
+events-running-end {hv} n ev env prog fs s cc wf h ftq =
   1 , RTx.run-events-fetch-none val-x86-64 ev env 0 (compile-trace prog) s cfetch-nothing
   where cfetch-nothing : X.fetch (compile-trace prog) (X.State.pc s) ≡ nothing
         cfetch-nothing =
@@ -266,7 +268,7 @@ postulate
   -- (instr-sigop arith/external, control jmp/branch, memory/frame/slot). Shrinks as
   -- each is wired (arith→run-events-arith, external→run-events-external+contract, …).
   events-running-fetch-rest : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                                prog fs s i → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                                prog fs s i → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                             → fetch prog (fpc fs) ≡ just i
                             → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                                   ≡ event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs))
@@ -275,7 +277,7 @@ postulate
   -- machine (x86 jmp to an absent label) HALT, so both traces are []. Residual = the
   -- x86↔flat label-miss correspondence (find-label-corr's negative direction).
   cjmp-miss : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                prog fs s m → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                prog fs s m → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
             → fetch prog (fpc fs) ≡ just (instr-ctrl (c-jmp m)) → find-label prog m ≡ nothing
             → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                   ≡ event-of (instr-ctrl (c-jmp m)) fs
@@ -284,13 +286,13 @@ postulate
   -- c-branch-scratch-zero WF residuals: the Scratch is a tag (branch-scratch-nontag)
   -- and the branch's target label resolves (branch-label-miss) at every branch site.
   branch-scratch-nontag : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                            prog fs s m → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                            prog fs s m → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                         → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero m))
                         → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                               ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
                                 ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs))
   branch-label-miss : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                        prog fs s m → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                        prog fs s m → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                     → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero m)) → find-label prog m ≡ nothing
                     → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                           ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
@@ -300,19 +302,19 @@ postulate
   -- dynamic pointer; branch-tag-bad = heap value not a tag / unmapped; branch-tag-label-miss
   -- = missing target. (Liveness reuses load-indirect-live.)
   branch-tag-badptr : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                        prog fs s m → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                        prog fs s m → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                     → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
                     → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                           ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
                             ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
   branch-tag-bad : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                     prog fs s m → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                     prog fs s m → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                        ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
                          ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
   branch-tag-label-miss : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                            prog fs s m → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                            prog fs s m → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                         → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m)) → find-label prog m ≡ nothing
                         → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                               ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
@@ -321,13 +323,13 @@ postulate
   -- scratch-dec on a NON-tag Scratch — ruled out by well-formedness (the loop counter
   -- is a tag at every scratch-dec site). The WF residual for this reg-op.
   scratch-dec-nontag : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                         prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                         prog fs s → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                      → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-dec)
                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                            ≡ event-of (instr-reg-op scratch-dec) fs
                              ++ flat-events n prog (flat-exec-instr (instr-reg-op scratch-dec) prog fs))
   input2-inc-nontag : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                        prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                        prog fs s → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                     → fetch prog (fpc fs) ≡ just (instr-reg-op input2-inc)
                     → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                           ≡ event-of (instr-reg-op input2-inc) fs
@@ -342,7 +344,7 @@ postulate
   -- load-indirect on a non-live-dynamic-pointer target (non-pointer / stack ptr /
   -- unallocated) — ruled out by well-formedness (loads hit live heap cells).
   load-indirect-bad : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                        prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                        prog fs s → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                     → fetch prog (fpc fs) ≡ just load-indirect
                     → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                           ≡ event-of load-indirect fs ++ flat-events n prog (flat-exec-instr load-indirect prog fs))
@@ -353,13 +355,13 @@ postulate
   load-indirect-suc-live : ∀ {hv : HeapView} fs hl {w} → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                          → heapMem (floc fs) (sucHL hl) ≡ just w → HDom hv (sucHL hl)
   load-indirect-suc-bad : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                            prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                            prog fs s → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                         → fetch prog (fpc fs) ≡ just load-indirect-suc
                         → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                               ≡ event-of load-indirect-suc fs ++ flat-events n prog (flat-exec-instr load-indirect-suc prog fs))
   store-indirect-live : ∀ {hv : HeapView} fs hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl) → HDom hv hl
   store-indirect-bad : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                         prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                         prog fs s → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                      → fetch prog (fpc fs) ≡ just store-indirect
                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                            ≡ event-of store-indirect fs ++ flat-events n prog (flat-exec-instr store-indirect prog fs))
@@ -379,7 +381,7 @@ postulate
       ∀ hl' → HDom hv hl' → (X.readReg (X.State.regs s) rsp + slot-to-disp slot ≡ haddr hv hl') → ⊥
   store-indirect-suc-live : ∀ {hv : HeapView} fs hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl) → HDom hv (sucHL hl)
   store-indirect-suc-bad : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                             prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                             prog fs s → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                          → fetch prog (fpc fs) ≡ just store-indirect-suc
                          → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                                ≡ event-of store-indirect-suc fs ++ flat-events n prog (flat-exec-instr store-indirect-suc prog fs))
@@ -389,13 +391,13 @@ postulate
   -- the concrete `mov rax, [rsp+disp]` from unmapped memory. A WF residual (a live cata
   -- never loads an unwritten slot), same class as `load-indirect-bad`.
   load-from-slot-empty : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                           prog fs s slot → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                           prog fs s slot → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                        → fetch prog (fpc fs) ≡ just (load-from-slot slot)
                        → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                              ≡ event-of (load-from-slot slot) fs ++ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs))
   -- restore-input on an uninitialised slot: both machines halt (same as load-from-slot-empty).
   restore-input-empty : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                          prog fs s slot → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                          prog fs s slot → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                       → fetch prog (fpc fs) ≡ just (restore-input slot)
                       → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                             ≡ event-of (restore-input slot) fs ++ flat-events n prog (flat-exec-instr (restore-input slot) prog fs))
@@ -415,29 +417,9 @@ postulate
   alloc-stack-fresh-x86 : ∀ (fs : FlatState) (s : X.State) (n : ℕ)
                         → ∀ k → k < n → X.readMem (X.State.memory s)
                             ((X.readReg (X.State.regs s) rsp ∸ slots n) + slot-to-disp k) ≡ nothing
-  -- ALLOC-HEAP store-WF — "NO FORWARD POINTERS": no live value references the block
-  -- the allocator is ABOUT to hand out (a ref-id can only appear in a value AFTER its
-  -- allocation). True of every reachable flat state; it is the store-WF closure of the
-  -- D-heap model, provable by induction over the flat execution once the closure is
-  -- carried in FlatCorr. It is what makes the view EXTENSION invisible to every value
-  -- that already exists (`enc-ext`).
-  alloc-heap-wf-in1 : ∀ (fs : FlatState)
-                    → C.sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Input1)
-  alloc-heap-wf-in2 : ∀ (fs : FlatState)
-                    → C.sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Input2)
-  alloc-heap-wf-scr : ∀ (fs : FlatState)
-                    → C.sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Scratch)
-  alloc-heap-wf-heap : ∀ {hv : HeapView} (fs : FlatState) → ∀ hl → HDom hv hl
-                     → C.svm-below (next-heap-ref (falloc fs)) (heapMem (floc fs) hl)
-  alloc-heap-wf-stack : ∀ (fs : FlatState) → ∀ k → k < stackSlot (regs (floc fs))
-                      → C.svm-below (next-heap-ref (falloc fs))
-                                    (stackMem (floc fs) (current-frame (falloc fs)) k)
-  -- The fresh block is UNWRITTEN on both sides: abstractly, no cell of a not-yet-
-  -- allocated ref was ever stored to; concretely, the region at/above the bump
-  -- frontier (%r15) is unmapped. The heap analogue of alloc-stack's fresh facts.
-  alloc-heap-fresh-abs : ∀ (fs : FlatState) → ∀ hl
-                       → ref-id (heap-ref hl) ≡ next-heap-ref (falloc fs)
-                       → heapMem (floc fs) hl ≡ nothing
+  -- The fresh block is UNWRITTEN on the CONCRETE side: the region at/above the bump
+  -- frontier (%r15) is unmapped. (Its abstract counterpart — nothing references or
+  -- has written the not-yet-allocated block — is now PROVEN, `FlatStoreWF`.)
   alloc-heap-fresh-x86 : ∀ (s : X.State) (n : ℕ) → ∀ i → i < n
                        → X.readMem (X.State.memory s)
                            (X.readReg (X.State.regs s) r15 + slot-to-disp i) ≡ nothing
@@ -457,14 +439,14 @@ postulate
   -- unimplemented, D054), so the x86 halts while the abstract runs — an honest gap,
   -- the target-side float-literal boundary (not a codegen bug).
   load-const-float : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                       prog fs s {v} → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                       prog fs s {v} → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
                    → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                          ≡ event-of (instr-load-const fits-float v) fs
                            ++ flat-events n prog (flat-exec-instr (instr-load-const fits-float v) prog fs))
   -- worklist-pop from an empty worklist slot: both machines halt (as load-from-slot-empty).
   worklist-pop-empty : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                         prog fs s slot → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                         prog fs s slot → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                      → fetch prog (fpc fs) ≡ just (worklist-pop slot)
                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                            ≡ event-of (worklist-pop slot) fs ++ flat-events n prog (flat-exec-instr (worklist-pop slot) prog fs))
@@ -500,35 +482,35 @@ postulate
 -- (the proven block-run-exec), then recurse (events-agree). Mutual on the fuel n.
 mutual
   events-agree : ∀ {hv : HeapView} N (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                   prog fs s → CompiledCorr hv prog fs s
+                   prog fs s → CompiledCorr hv prog fs s → FlatWF fs
                → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s ≡ flat-events N prog fs)
-  events-agree {hv} zero    ev env prog fs s cc = 0 , refl
-  events-agree {hv} (suc n) ev env prog fs s cc = go-h (halted (floc fs)) refl
+  events-agree {hv} zero    ev env prog fs s cc wf = 0 , refl
+  events-agree {hv} (suc n) ev env prog fs s cc wf = go-h (halted (floc fs)) refl
     where go-h : ∀ (b : Bool) → halted (floc fs) ≡ b
               → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                            ≡ flat-events-step b n prog fs)
           go-h true  eqh = 1 , RTx.run-events-halted val-x86-64 ev env 0 (compile-trace prog) s
                                  (trans (C.halt-eq (dataCorr cc)) eqh)
-          go-h false eqh = events-running n ev env prog fs s cc eqh
+          go-h false eqh = events-running n ev env prog fs s cc wf eqh
 
   -- Running step: `flat-events (suc n)` (halted false) reduces to the abstract
   -- fetch-dispatch; case the fetch via a J-style `go` bridge and route.
   events-running : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                     prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                     prog fs s → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                               ≡ flat-events-fetch (fetch prog (fpc fs)) n prog fs)
-  events-running {hv} n ev env prog fs s cc h = go (fetch prog (fpc fs)) refl
+  events-running {hv} n ev env prog fs s cc wf h = go (fetch prog (fpc fs)) refl
     where go : ∀ (mi : Maybe AbstractInstr) → fetch prog (fpc fs) ≡ mi
              → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                           ≡ flat-events-fetch mi n prog fs)
-          go nothing  eqf = events-running-end   n ev env prog fs s cc h eqf
-          go (just i) eqf = events-running-fetch n ev env prog fs s i cc h eqf
+          go nothing  eqf = events-running-end   n ev env prog fs s cc wf h eqf
+          go (just i) eqf = events-running-fetch n ev env prog fs s i cc wf h eqf
 
   -- Per-instruction dispatch (with-free constructor matching on `i`). c-label is a
   -- CCC step (event-of []; flat-exec-instr leaves `floc` unchanged so halted-post =
   -- h). All other `i` route to the residual for now.
   events-running-fetch : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                           prog fs s i → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                           prog fs s i → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                        → fetch prog (fpc fs) ≡ just i
                        → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                              ≡ event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs))
@@ -536,70 +518,70 @@ mutual
   -- leave `halted` untouched (exec-abstract is a `record {regs=…}` or flat-exec-instr
   -- just bumps fpc), so halted-post = h and event-of = [] (refl). Each feeds its PROVEN
   -- block-step lemma directly to ccc-step-bs (no block-step-any dispatcher — deleted).
-  events-running-fetch {hv} n ev env prog fs s mov-to-output          cc h ftq = ccc-step-bs n ev env prog fs s mov-to-output          (block-step-mov-to-output          prog fs s cc h ftq) refl h
-  events-running-fetch {hv} n ev env prog fs s mov-to-input           cc h ftq = ccc-step-bs n ev env prog fs s mov-to-input           (block-step-mov-to-input           prog fs s cc h ftq) refl h
-  events-running-fetch {hv} n ev env prog fs s mov-output-to-input2   cc h ftq = ccc-step-bs n ev env prog fs s mov-output-to-input2   (block-step-mov-output-to-input2   prog fs s cc h ftq) refl h
-  events-running-fetch {hv} n ev env prog fs s mov-input2-to-output   cc h ftq = ccc-step-bs n ev env prog fs s mov-input2-to-output   (block-step-mov-input2-to-output   prog fs s cc h ftq) refl h
-  events-running-fetch {hv} n ev env prog fs s (instr-reg-op scratch-one)        cc h ftq = ccc-step-bs n ev env prog fs s (instr-reg-op scratch-one)        (block-step-scratch-one        prog fs s cc h ftq) refl h
-  events-running-fetch {hv} n ev env prog fs s (instr-reg-op scratch-zero)       cc h ftq = ccc-step-bs n ev env prog fs s (instr-reg-op scratch-zero)       (block-step-scratch-zero       prog fs s cc h ftq) refl h
-  events-running-fetch {hv} n ev env prog fs s (instr-reg-op input2-zero)        cc h ftq = ccc-step-bs n ev env prog fs s (instr-reg-op input2-zero)        (block-step-input2-zero        prog fs s cc h ftq) refl h
-  events-running-fetch {hv} n ev env prog fs s (instr-reg-op scratch-load-count) cc h ftq = ccc-step-bs n ev env prog fs s (instr-reg-op scratch-load-count) (block-step-scratch-load-count prog fs s cc h ftq) refl h
-  events-running-fetch {hv} n ev env prog fs s (instr-reg-op scratch-dec) cc h ftq = scratch-dec-step n ev env prog fs s cc h ftq
-  events-running-fetch {hv} n ev env prog fs s (instr-reg-op input2-inc) cc h ftq = input2-inc-step n ev env prog fs s cc h ftq
-  events-running-fetch {hv} n ev env prog fs s load-indirect cc h ftq = load-indirect-step n ev env prog fs s cc h ftq
-  events-running-fetch {hv} n ev env prog fs s load-indirect-suc cc h ftq = load-indirect-suc-step n ev env prog fs s cc h ftq
-  events-running-fetch {hv} n ev env prog fs s store-indirect cc h ftq = store-indirect-step n ev env prog fs s cc h ftq
-  events-running-fetch {hv} n ev env prog fs s store-indirect-suc cc h ftq = store-indirect-suc-step n ev env prog fs s cc h ftq
-  events-running-fetch {hv} n ev env prog fs s (load-from-slot slot) cc h ftq = load-from-slot-step n ev env prog fs s slot cc h ftq
-  events-running-fetch {hv} n ev env prog fs s (store-at-slot slot) cc h ftq =
+  events-running-fetch {hv} n ev env prog fs s mov-to-output          cc wf h ftq = ccc-step-bs n ev env prog fs s mov-to-output          (block-step-mov-to-output          prog fs s cc h ftq) wf refl h
+  events-running-fetch {hv} n ev env prog fs s mov-to-input           cc wf h ftq = ccc-step-bs n ev env prog fs s mov-to-input           (block-step-mov-to-input           prog fs s cc h ftq) wf refl h
+  events-running-fetch {hv} n ev env prog fs s mov-output-to-input2   cc wf h ftq = ccc-step-bs n ev env prog fs s mov-output-to-input2   (block-step-mov-output-to-input2   prog fs s cc h ftq) wf refl h
+  events-running-fetch {hv} n ev env prog fs s mov-input2-to-output   cc wf h ftq = ccc-step-bs n ev env prog fs s mov-input2-to-output   (block-step-mov-input2-to-output   prog fs s cc h ftq) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (instr-reg-op scratch-one)        cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-reg-op scratch-one)        (block-step-scratch-one        prog fs s cc h ftq) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (instr-reg-op scratch-zero)       cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-reg-op scratch-zero)       (block-step-scratch-zero       prog fs s cc h ftq) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (instr-reg-op input2-zero)        cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-reg-op input2-zero)        (block-step-input2-zero        prog fs s cc h ftq) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (instr-reg-op scratch-load-count) cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-reg-op scratch-load-count) (block-step-scratch-load-count prog fs s cc h ftq) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (instr-reg-op scratch-dec) cc wf h ftq = scratch-dec-step n ev env prog fs s cc wf h ftq
+  events-running-fetch {hv} n ev env prog fs s (instr-reg-op input2-inc) cc wf h ftq = input2-inc-step n ev env prog fs s cc wf h ftq
+  events-running-fetch {hv} n ev env prog fs s load-indirect cc wf h ftq = load-indirect-step n ev env prog fs s cc wf h ftq
+  events-running-fetch {hv} n ev env prog fs s load-indirect-suc cc wf h ftq = load-indirect-suc-step n ev env prog fs s cc wf h ftq
+  events-running-fetch {hv} n ev env prog fs s store-indirect cc wf h ftq = store-indirect-step n ev env prog fs s cc wf h ftq
+  events-running-fetch {hv} n ev env prog fs s store-indirect-suc cc wf h ftq = store-indirect-suc-step n ev env prog fs s cc wf h ftq
+  events-running-fetch {hv} n ev env prog fs s (load-from-slot slot) cc wf h ftq = load-from-slot-step n ev env prog fs s slot cc wf h ftq
+  events-running-fetch {hv} n ev env prog fs s (store-at-slot slot) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (store-at-slot slot)
-      (block-step-store-at-slot prog fs s slot cc h ftq (store-at-slot-stack-disj {hv} fs s slot)) refl h
-  events-running-fetch {hv} n ev env prog fs s (restore-input slot) cc h ftq = restore-input-step n ev env prog fs s slot cc h ftq
-  events-running-fetch {hv} n ev env prog fs s (worklist-push slot) cc h ftq =
+      (block-step-store-at-slot prog fs s slot cc h ftq (store-at-slot-stack-disj {hv} fs s slot)) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (restore-input slot) cc wf h ftq = restore-input-step n ev env prog fs s slot cc wf h ftq
+  events-running-fetch {hv} n ev env prog fs s (worklist-push slot) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (worklist-push slot)
-      (block-step-worklist-push prog fs s slot cc h ftq (store-at-slot-stack-disj {hv} fs s slot)) refl h
-  events-running-fetch {hv} n ev env prog fs s (worklist-pop slot) cc h ftq = worklist-pop-step n ev env prog fs s slot cc h ftq
-  events-running-fetch {hv} n ev env prog fs s (instr-alloc-stack k) cc h ftq =
+      (block-step-worklist-push prog fs s slot cc h ftq (store-at-slot-stack-disj {hv} fs s slot)) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (worklist-pop slot) cc wf h ftq = worklist-pop-step n ev env prog fs s slot cc wf h ftq
+  events-running-fetch {hv} n ev env prog fs s (instr-alloc-stack k) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-alloc-stack k)
       (block-step-alloc-stack prog fs s k cc h ftq (alloc-stack-entry fs k) (alloc-stack-fresh-abs fs k)
-         (alloc-stack-fresh-x86 fs s k)) refl h
-  events-running-fetch {hv} n ev env prog fs s (instr-alloc-heap k) cc h ftq =
+         (alloc-stack-fresh-x86 fs s k)) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (instr-alloc-heap k) cc wf h ftq =
     ccc-step-bs n ev env prog fs s (instr-alloc-heap k)
       (block-step-alloc-heap prog fs s k cc h ftq
-         (alloc-heap-wf-in1 fs) (alloc-heap-wf-in2 fs) (alloc-heap-wf-scr fs)
-         (alloc-heap-wf-heap {hv} fs) (alloc-heap-wf-stack fs)
-         (alloc-heap-fresh-abs fs) (alloc-heap-fresh-x86 s k)) refl h
-  events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc h ftq =
+         (wf-regs wf Input1) (wf-regs wf Input2) (wf-regs wf Scratch)
+         (λ hl _ → wf-heap wf hl) (λ k' _ → wf-stack wf (current-frame (falloc fs)) k')
+         (λ hl eq → wf-fresh wf hl (≤-reflexive (sym eq))) (alloc-heap-fresh-x86 s k)) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-dealloc-stack k)
-      (block-step-dealloc-stack prog fs s k cc h ftq (dealloc-stack-full fs k)) refl h
-  events-running-fetch {hv} n ev env prog fs s (instr-push-frame k) cc h ftq =
+      (block-step-dealloc-stack prog fs s k cc h ftq (dealloc-stack-full fs k)) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (instr-push-frame k) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-push-frame k)
-      (block-step-push-frame prog fs s k cc h ftq (push-frame-heap-disj {hv} s fs)) refl h
-  events-running-fetch {hv} n ev env prog fs s instr-pop-frame cc h ftq =
+      (block-step-push-frame prog fs s k cc h ftq (push-frame-heap-disj {hv} s fs)) wf refl h
+  events-running-fetch {hv} n ev env prog fs s instr-pop-frame cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s instr-pop-frame
       (block-step-pop-frame prog fs s (proj₁ (pop-frame-saved s)) cc h ftq
-         (pop-frame-empty fs) (proj₂ (pop-frame-saved s))) refl h
-  events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-int v) cc h ftq =
+         (pop-frame-empty fs) (proj₂ (pop-frame-saved s))) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-int v) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-load-const fits-int v)
-      (block-step-load-const prog fs s v cc h ftq) refl h
-  events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-float v) cc h ftq =
-    load-const-float n ev env prog fs s cc h ftq
-  events-running-fetch {hv} n ev env prog fs s (instr-load-code-addr k) cc h ftq =
-    ccc-step-bs {hv} n ev env prog fs s (instr-load-code-addr k) (block-step-load-code-addr prog fs s k cc h ftq) refl h
-  events-running-fetch {hv} n ev env prog fs s instr-save-closure-reg cc h ftq =
-    ccc-step-bs {hv} n ev env prog fs s instr-save-closure-reg (block-step-save-closure-reg prog fs s cc h ftq) refl h
+      (block-step-load-const prog fs s v cc h ftq) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-float v) cc wf h ftq =
+    load-const-float n ev env prog fs s cc wf h ftq
+  events-running-fetch {hv} n ev env prog fs s (instr-load-code-addr k) cc wf h ftq =
+    ccc-step-bs {hv} n ev env prog fs s (instr-load-code-addr k) (block-step-load-code-addr prog fs s k cc h ftq) wf refl h
+  events-running-fetch {hv} n ev env prog fs s instr-save-closure-reg cc wf h ftq =
+    ccc-step-bs {hv} n ev env prog fs s instr-save-closure-reg (block-step-save-closure-reg prog fs s cc h ftq) wf refl h
   -- Trivial cata bookkeeping (x86-len 0, flat identity): proven block-step ⇒ ccc-step-bs.
-  events-running-fetch {hv} n ev env prog fs s (worklist-init k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-init k) (block-step-worklist-init prog fs s k cc h ftq) refl h
-  events-running-fetch {hv} n ev env prog fs s (worklist-check k) cc h ftq = ccc-step-bs n ev env prog fs s (worklist-check k) (block-step-worklist-check prog fs s k cc h ftq) refl h
-  events-running-fetch {hv} n ev env prog fs s (instr-reclaim-to k) cc h ftq = ccc-step-bs n ev env prog fs s (instr-reclaim-to k) (block-step-reclaim-to prog fs s k cc h ftq) refl h
-  events-running-fetch {hv} n ev env prog fs s (instr-load-tag-lit k) cc h ftq = ccc-step-bs n ev env prog fs s (instr-load-tag-lit k) (block-step-load-tag-lit prog fs s k cc h ftq) refl h
-  events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-label m)) cc h ftq = ccc-step-bs n ev env prog fs s (instr-ctrl (c-label m)) (block-step-c-label prog fs s m cc h ftq) refl h
-  events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-jmp m)) cc h ftq = cjmp-step n ev env prog fs s m cc h ftq
-  events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-branch-scratch-zero m)) cc h ftq = branch-step n ev env prog fs s m cc h ftq
-  events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m)) cc h ftq = tag-branch-step n ev env prog fs s m cc h ftq
-  events-running-fetch {hv} n ev env prog fs s (instr-sigop si) cc h ftq = sigop-step n ev env prog fs s si cc h ftq
-  events-running-fetch {hv} n ev env prog fs s i cc h ftq =
-    events-running-fetch-rest n ev env prog fs s i cc h ftq
+  events-running-fetch {hv} n ev env prog fs s (worklist-init k) cc wf h ftq = ccc-step-bs n ev env prog fs s (worklist-init k) (block-step-worklist-init prog fs s k cc h ftq) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (worklist-check k) cc wf h ftq = ccc-step-bs n ev env prog fs s (worklist-check k) (block-step-worklist-check prog fs s k cc h ftq) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (instr-reclaim-to k) cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-reclaim-to k) (block-step-reclaim-to prog fs s k cc h ftq) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (instr-load-tag-lit k) cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-load-tag-lit k) (block-step-load-tag-lit prog fs s k cc h ftq) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-label m)) cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-ctrl (c-label m)) (block-step-c-label prog fs s m cc h ftq) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-jmp m)) cc wf h ftq = cjmp-step n ev env prog fs s m cc wf h ftq
+  events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-branch-scratch-zero m)) cc wf h ftq = branch-step n ev env prog fs s m cc wf h ftq
+  events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m)) cc wf h ftq = tag-branch-step n ev env prog fs s m cc wf h ftq
+  events-running-fetch {hv} n ev env prog fs s (instr-sigop si) cc wf h ftq = sigop-step n ev env prog fs s si cc wf h ftq
+  events-running-fetch {hv} n ev env prog fs s i cc wf h ftq =
+    events-running-fetch-rest n ev env prog fs s i cc wf h ftq
 
   -- The reusable CCC engine, GENERALISED to take an explicit BlockStep: one abstract
   -- step `i` (event-of i fs = [], flat step leaves the machine running: hpost) ↦ its
@@ -608,12 +590,15 @@ mutual
   -- lets witnessed cases (c-jmp with its found-label, …) feed their PROVEN block-step
   -- lemma rather than routing through block-step-any's residual.
   ccc-step-bs : ∀ {hv' : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                  prog fs s i → BlockStep hv' prog fs s i → event-of i fs ≡ []
+                  prog fs s i → BlockStep hv' prog fs s i → FlatWF fs → event-of i fs ≡ []
               → halted (floc (flat-exec-instr i prog fs)) ≡ false
               → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                     ≡ event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs))
-  ccc-step-bs n ev env prog fs s i bs ev[] hpost = (x86-len i + proj₁ rec) , result
-    where rec = events-agree n ev env prog (flat-exec-instr i prog fs) (proj₁ bs) (proj₂ (proj₂ bs))
+  ccc-step-bs n ev env prog fs s i bs wf ev[] hpost = (x86-len i + proj₁ rec) , result
+    where -- the post-state invariant comes from the FLAT-MACHINE theorem, once,
+          -- for every instruction (`FlatStoreWF.flat-wf-step`).
+          rec = events-agree n ev env prog (flat-exec-instr i prog fs) (proj₁ bs)
+                             (proj₂ (proj₂ bs)) (flat-wf-step i prog fs wf)
           result : RTx.run-events val-x86-64 ev env (x86-len i + proj₁ rec) (compile-trace prog) s
                  ≡ event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs)
           result rewrite ev[] =
@@ -626,22 +611,22 @@ mutual
   -- gives the BlockStep ⇒ ccc-step-bs. Missing ⇒ both machines halt on the missing
   -- label — the small `cjmp-miss` residual (the label-missing halt correspondence).
   cjmp-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                prog fs s m → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                prog fs s m → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
               → fetch prog (fpc fs) ≡ just (instr-ctrl (c-jmp m))
               → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                     ≡ event-of (instr-ctrl (c-jmp m)) fs
                       ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs))
-  cjmp-step {hv} n ev env prog fs s m cc h ftq = go-fl (find-label prog m) refl
+  cjmp-step {hv} n ev env prog fs s m cc wf h ftq = go-fl (find-label prog m) refl
     where go-fl : ∀ (mj : Maybe ℕ) → find-label prog m ≡ mj
                 → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                       ≡ event-of (instr-ctrl (c-jmp m)) fs
                         ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs))
           go-fl (just j) fl-eq =
             ccc-step-bs {hv} n ev env prog fs s (instr-ctrl (c-jmp m))
-              (block-step-c-jmp prog fs s m j cc h ftq fl-eq) refl hpost
+              (block-step-c-jmp prog fs s m j cc h ftq fl-eq) wf refl hpost
             where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) ≡ false
                   hpost rewrite fl-eq = h
-          go-fl nothing fl-eq = cjmp-miss n ev env prog fs s m cc h ftq fl-eq
+          go-fl nothing fl-eq = cjmp-miss n ev env prog fs s m cc wf h ftq fl-eq
 
   -- CONTROL c-branch-scratch-zero: J-bridge on the Scratch value AND find-label. A tag
   -- `SV-Tag k` + a resolvable target ⇒ the PROVEN block-step-c-branch-scratch-zero (both
@@ -649,12 +634,12 @@ mutual
   -- branch-label-miss. hpost: do-branch stays running (taken jumps to the found label via
   -- fl-eq, not-taken advances) — cased on k after rewriting sc-eq (then fl-eq for k=0).
   branch-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                  prog fs s m → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                  prog fs s m → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
               → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero m))
               → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                     ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
                       ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs))
-  branch-step {hv} n ev env prog fs s m cc h ftq = go-sv (readReg (regs (floc fs)) Scratch) refl
+  branch-step {hv} n ev env prog fs s m cc wf h ftq = go-sv (readReg (regs (floc fs)) Scratch) refl
     where
       -- Pattern-match k (not `with`, which errors on the bound variable) so
       -- sv-is-zero (SV-Tag k) reduces: k=0 taken (do-jump the found label), k=suc
@@ -666,23 +651,23 @@ mutual
                     ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs))
       go-fl zero sc-eq (just j) fl-eq =
         ccc-step-bs {hv} n ev env prog fs s (instr-ctrl (c-branch-scratch-zero m))
-          (block-step-c-branch-scratch-zero prog fs s m zero j cc h ftq sc-eq fl-eq) refl hpost
+          (block-step-c-branch-scratch-zero prog fs s m zero j cc h ftq sc-eq fl-eq) wf refl hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) ≡ false
               hpost rewrite sc-eq | fl-eq = h
       go-fl (suc k') sc-eq (just j) fl-eq =
         ccc-step-bs {hv} n ev env prog fs s (instr-ctrl (c-branch-scratch-zero m))
-          (block-step-c-branch-scratch-zero prog fs s m (suc k') j cc h ftq sc-eq fl-eq) refl hpost
+          (block-step-c-branch-scratch-zero prog fs s m (suc k') j cc h ftq sc-eq fl-eq) wf refl hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) ≡ false
               hpost rewrite sc-eq = h
-      go-fl k sc-eq nothing fl-eq = branch-label-miss n ev env prog fs s m cc h ftq fl-eq
+      go-fl k sc-eq nothing fl-eq = branch-label-miss n ev env prog fs s m cc wf h ftq fl-eq
       go-sv : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Scratch ≡ sv
             → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                   ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
                     ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs))
       go-sv (SV-Tag k)   sc-eq = go-fl k sc-eq (find-label prog m) refl
-      go-sv (SV-Ptr _)   sc-eq = branch-scratch-nontag n ev env prog fs s m cc h ftq
-      go-sv (SV-Lit _ _) sc-eq = branch-scratch-nontag n ev env prog fs s m cc h ftq
-      go-sv (SV-Code _)  sc-eq = branch-scratch-nontag n ev env prog fs s m cc h ftq
+      go-sv (SV-Ptr _)   sc-eq = branch-scratch-nontag n ev env prog fs s m cc wf h ftq
+      go-sv (SV-Lit _ _) sc-eq = branch-scratch-nontag n ev env prog fs s m cc wf h ftq
+      go-sv (SV-Code _)  sc-eq = branch-scratch-nontag n ev env prog fs s m cc wf h ftq
 
   -- CONTROL c-branch-tag-zero: the condition reads a tag THROUGH Input1's pointer. Chain
   -- load-indirect's witness bridge (Input1 ⇒ dynamic ptr hl; heapMem hl ⇒ just (SV-Tag k))
@@ -690,12 +675,12 @@ mutual
   -- tag-zero (both taken/not-taken). Liveness reuses load-indirect-live. hpost reduces
   -- flat-read-tag via i-eq/h-eq (as load-indirect), then do-branch as branch-step.
   tag-branch-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                      prog fs s m → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                      prog fs s m → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
                   → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                         ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
                           ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
-  tag-branch-step {hv} n ev env prog fs s m cc h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
+  tag-branch-step {hv} n ev env prog fs s m cc wf h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
     where
       go-good : ∀ hl j → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl) → find-label prog m ≡ just j
               → ∀ (mv : Maybe (StoredValue FS)) → heapMem (floc fs) hl ≡ mv
@@ -705,75 +690,75 @@ mutual
       go-good hl j i-eq fl-eq (just (SV-Tag zero)) h-eq =
         ccc-step-bs {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
           (block-step-c-branch-tag-zero prog fs s m hl zero j cc h ftq i-eq
-             (load-indirect-live {hv} fs hl i-eq h-eq) h-eq fl-eq) refl hpost
+             (load-indirect-live {hv} fs hl i-eq h-eq) h-eq fl-eq) wf refl hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
               hpost rewrite i-eq | h-eq | fl-eq = h
       go-good hl j i-eq fl-eq (just (SV-Tag (suc k'))) h-eq =
         ccc-step-bs {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
           (block-step-c-branch-tag-zero prog fs s m hl (suc k') j cc h ftq i-eq
-             (load-indirect-live {hv} fs hl i-eq h-eq) h-eq fl-eq) refl hpost
+             (load-indirect-live {hv} fs hl i-eq h-eq) h-eq fl-eq) wf refl hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
               hpost rewrite i-eq | h-eq = h
-      go-good hl j i-eq fl-eq (just (SV-Ptr _))  h-eq = branch-tag-bad n ev env prog fs s m cc h ftq
-      go-good hl j i-eq fl-eq (just (SV-Lit _ _)) h-eq = branch-tag-bad n ev env prog fs s m cc h ftq
-      go-good hl j i-eq fl-eq (just (SV-Code _)) h-eq = branch-tag-bad n ev env prog fs s m cc h ftq
-      go-good hl j i-eq fl-eq nothing            h-eq = branch-tag-bad n ev env prog fs s m cc h ftq
+      go-good hl j i-eq fl-eq (just (SV-Ptr _))  h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
+      go-good hl j i-eq fl-eq (just (SV-Lit _ _)) h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
+      go-good hl j i-eq fl-eq (just (SV-Code _)) h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
+      go-good hl j i-eq fl-eq nothing            h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
       go-fl : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
             → ∀ (mj : Maybe ℕ) → find-label prog m ≡ mj
             → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                   ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
                     ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
       go-fl hl i-eq (just j) fl-eq = go-good hl j i-eq fl-eq (heapMem (floc fs) hl) refl
-      go-fl hl i-eq nothing  fl-eq = branch-tag-label-miss n ev env prog fs s m cc h ftq fl-eq
+      go-fl hl i-eq nothing  fl-eq = branch-tag-label-miss n ev env prog fs s m cc wf h ftq fl-eq
       go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
              → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                    ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
                      ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
       go-ptr (SV-Ptr (AtDynamic hl)) i-eq = go-fl hl i-eq (find-label prog m) refl
-      go-ptr (SV-Ptr (AtStack _ _))  i-eq = branch-tag-badptr n ev env prog fs s m cc h ftq
-      go-ptr (SV-Tag _)              i-eq = branch-tag-badptr n ev env prog fs s m cc h ftq
-      go-ptr (SV-Lit _ _)            i-eq = branch-tag-badptr n ev env prog fs s m cc h ftq
-      go-ptr (SV-Code _)             i-eq = branch-tag-badptr n ev env prog fs s m cc h ftq
+      go-ptr (SV-Ptr (AtStack _ _))  i-eq = branch-tag-badptr n ev env prog fs s m cc wf h ftq
+      go-ptr (SV-Tag _)              i-eq = branch-tag-badptr n ev env prog fs s m cc wf h ftq
+      go-ptr (SV-Lit _ _)            i-eq = branch-tag-badptr n ev env prog fs s m cc wf h ftq
+      go-ptr (SV-Code _)             i-eq = branch-tag-badptr n ev env prog fs s m cc wf h ftq
 
   -- REG-OP scratch-dec: case the Scratch value (J-bridge, no with). A tag ⇒ the PROVEN
   -- block-step-scratch-dec applies (reg-op preserves halted: hpost=h) ⇒ ccc-step-bs.
   -- A non-tag ⇒ the WF residual (a loop counter is always a tag at scratch-dec).
   scratch-dec-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                       prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                       prog fs s → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                    → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-dec)
                    → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                          ≡ event-of (instr-reg-op scratch-dec) fs
                            ++ flat-events n prog (flat-exec-instr (instr-reg-op scratch-dec) prog fs))
-  scratch-dec-step {hv} n ev env prog fs s cc h ftq = go-sv (readReg (regs (floc fs)) Scratch) refl
+  scratch-dec-step {hv} n ev env prog fs s cc wf h ftq = go-sv (readReg (regs (floc fs)) Scratch) refl
     where go-sv : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Scratch ≡ sv
                 → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                       ≡ event-of (instr-reg-op scratch-dec) fs
                         ++ flat-events n prog (flat-exec-instr (instr-reg-op scratch-dec) prog fs))
           go-sv (SV-Tag k)   sc-eq =
             ccc-step-bs {hv} n ev env prog fs s (instr-reg-op scratch-dec)
-              (block-step-scratch-dec prog fs s k cc h ftq sc-eq) refl h
-          go-sv (SV-Ptr _)   sc-eq = scratch-dec-nontag n ev env prog fs s cc h ftq
-          go-sv (SV-Lit _ _) sc-eq = scratch-dec-nontag n ev env prog fs s cc h ftq
-          go-sv (SV-Code _)  sc-eq = scratch-dec-nontag n ev env prog fs s cc h ftq
+              (block-step-scratch-dec prog fs s k cc h ftq sc-eq) wf refl h
+          go-sv (SV-Ptr _)   sc-eq = scratch-dec-nontag n ev env prog fs s cc wf h ftq
+          go-sv (SV-Lit _ _) sc-eq = scratch-dec-nontag n ev env prog fs s cc wf h ftq
+          go-sv (SV-Code _)  sc-eq = scratch-dec-nontag n ev env prog fs s cc wf h ftq
 
   -- REG-OP input2-inc: mirror of scratch-dec on Input2 (block-step-input2-inc exists).
   input2-inc-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                      prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                      prog fs s → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                   → fetch prog (fpc fs) ≡ just (instr-reg-op input2-inc)
                   → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                         ≡ event-of (instr-reg-op input2-inc) fs
                           ++ flat-events n prog (flat-exec-instr (instr-reg-op input2-inc) prog fs))
-  input2-inc-step {hv} n ev env prog fs s cc h ftq = go-sv (readReg (regs (floc fs)) Input2) refl
+  input2-inc-step {hv} n ev env prog fs s cc wf h ftq = go-sv (readReg (regs (floc fs)) Input2) refl
     where go-sv : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input2 ≡ sv
                 → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                       ≡ event-of (instr-reg-op input2-inc) fs
                         ++ flat-events n prog (flat-exec-instr (instr-reg-op input2-inc) prog fs))
           go-sv (SV-Tag k)   i2-eq =
             ccc-step-bs {hv} n ev env prog fs s (instr-reg-op input2-inc)
-              (block-step-input2-inc prog fs s k cc h ftq i2-eq) refl h
-          go-sv (SV-Ptr _)   i2-eq = input2-inc-nontag n ev env prog fs s cc h ftq
-          go-sv (SV-Lit _ _) i2-eq = input2-inc-nontag n ev env prog fs s cc h ftq
-          go-sv (SV-Code _)  i2-eq = input2-inc-nontag n ev env prog fs s cc h ftq
+              (block-step-input2-inc prog fs s k cc h ftq i2-eq) wf refl h
+          go-sv (SV-Ptr _)   i2-eq = input2-inc-nontag n ev env prog fs s cc wf h ftq
+          go-sv (SV-Lit _ _) i2-eq = input2-inc-nontag n ev env prog fs s cc wf h ftq
+          go-sv (SV-Code _)  i2-eq = input2-inc-nontag n ev env prog fs s cc wf h ftq
 
   -- MEMORY load-indirect: case the Input1 pointer + the heap cell (both J-bridges, no
   -- with). A live dynamic pointer to an allocated cell ⇒ the PROVEN block-step-load-
@@ -781,11 +766,11 @@ mutual
   -- so it comes from the WF residual `load-indirect-live`; bad shapes (non-pointer /
   -- stack pointer / unallocated) ⇒ `load-indirect-bad` (WF: loads hit live heap cells).
   load-indirect-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                         prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                         prog fs s → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                      → fetch prog (fpc fs) ≡ just load-indirect
                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                            ≡ event-of load-indirect fs ++ flat-events n prog (flat-exec-instr load-indirect prog fs))
-  load-indirect-step {hv} n ev env prog fs s cc h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
+  load-indirect-step {hv} n ev env prog fs s cc wf h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
     where go-mem : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                  → ∀ (mw : Maybe (StoredValue FS)) → heapMem (floc fs) hl ≡ mw
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
@@ -794,26 +779,26 @@ mutual
             ccc-step-bs {hv} n ev env prog fs s load-indirect
               (block-step-load-indirect prog fs s hl w cc h ftq i-eq
                  (load-indirect-live {hv} fs hl i-eq h-eq) h-eq)
-              refl hpost
+              wf refl hpost
             where hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ false
                   hpost rewrite i-eq | h-eq = h
-          go-mem hl i-eq nothing h-eq = load-indirect-bad n ev env prog fs s cc h ftq
+          go-mem hl i-eq nothing h-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
           go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                        ≡ event-of load-indirect fs ++ flat-events n prog (flat-exec-instr load-indirect prog fs))
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq = go-mem hl i-eq (heapMem (floc fs) hl) refl
-          go-ptr (SV-Ptr (AtStack _ _))  i-eq = load-indirect-bad n ev env prog fs s cc h ftq
-          go-ptr (SV-Tag _)              i-eq = load-indirect-bad n ev env prog fs s cc h ftq
-          go-ptr (SV-Lit _ _)            i-eq = load-indirect-bad n ev env prog fs s cc h ftq
-          go-ptr (SV-Code _)             i-eq = load-indirect-bad n ev env prog fs s cc h ftq
+          go-ptr (SV-Ptr (AtStack _ _))  i-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
+          go-ptr (SV-Tag _)              i-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
+          go-ptr (SV-Lit _ _)            i-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
+          go-ptr (SV-Code _)             i-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
 
   -- MEMORY load-indirect-suc: as load-indirect but the SECOND cell (sucHL hl).
   load-indirect-suc-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                             prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                             prog fs s → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                          → fetch prog (fpc fs) ≡ just load-indirect-suc
                          → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                                ≡ event-of load-indirect-suc fs ++ flat-events n prog (flat-exec-instr load-indirect-suc prog fs))
-  load-indirect-suc-step {hv} n ev env prog fs s cc h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
+  load-indirect-suc-step {hv} n ev env prog fs s cc wf h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
     where go-mem : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                  → ∀ (mw : Maybe (StoredValue FS)) → heapMem (floc fs) (sucHL hl) ≡ mw
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
@@ -822,28 +807,28 @@ mutual
             ccc-step-bs {hv} n ev env prog fs s load-indirect-suc
               (block-step-load-indirect-suc prog fs s hl w cc h ftq i-eq
                  (load-indirect-suc-live {hv} fs hl i-eq h-eq) h-eq)
-              refl hpost
+              wf refl hpost
             where hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq | h-eq = h
-          go-mem hl i-eq nothing h-eq = load-indirect-suc-bad n ev env prog fs s cc h ftq
+          go-mem hl i-eq nothing h-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
           go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                        ≡ event-of load-indirect-suc fs ++ flat-events n prog (flat-exec-instr load-indirect-suc prog fs))
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq = go-mem hl i-eq (heapMem (floc fs) (sucHL hl)) refl
-          go-ptr (SV-Ptr (AtStack _ _))  i-eq = load-indirect-suc-bad n ev env prog fs s cc h ftq
-          go-ptr (SV-Tag _)              i-eq = load-indirect-suc-bad n ev env prog fs s cc h ftq
-          go-ptr (SV-Lit _ _)            i-eq = load-indirect-suc-bad n ev env prog fs s cc h ftq
-          go-ptr (SV-Code _)             i-eq = load-indirect-suc-bad n ev env prog fs s cc h ftq
+          go-ptr (SV-Ptr (AtStack _ _))  i-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
+          go-ptr (SV-Tag _)              i-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
+          go-ptr (SV-Lit _ _)            i-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
+          go-ptr (SV-Code _)             i-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
 
   -- STACK load-from-slot: J-bridge on the slot's abstract value. `just w` ⇒ the PROVEN
   -- block-step-load-from-slot (the stack read pinned by stack-eq) ⇒ ccc-step-bs; the
   -- empty-slot `nothing` ⇒ `load-from-slot-empty` (both machines halt — WF residual).
   load-from-slot-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                          prog fs s slot → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                          prog fs s slot → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                       → fetch prog (fpc fs) ≡ just (load-from-slot slot)
                       → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                             ≡ event-of (load-from-slot slot) fs ++ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs))
-  load-from-slot-step {hv} n ev env prog fs s slot cc h ftq =
+  load-from-slot-step {hv} n ev env prog fs s slot cc wf h ftq =
     go-mem (stackMem (floc fs) (current-frame (falloc fs)) slot) refl
     where go-mem : ∀ (mw : Maybe (StoredValue FS)) → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ mw
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
@@ -851,18 +836,18 @@ mutual
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n ev env prog fs s (load-from-slot slot)
               (block-step-load-from-slot prog fs s slot w cc h ftq (slot-read-live fs slot st-eq) st-eq)
-              refl hpost
+              wf refl hpost
             where hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
-          go-mem nothing st-eq = load-from-slot-empty n ev env prog fs s slot cc h ftq
+          go-mem nothing st-eq = load-from-slot-empty n ev env prog fs s slot cc wf h ftq
 
   -- STACK restore-input: identical to load-from-slot but writes Input1 (rdi).
   restore-input-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                         prog fs s slot → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                         prog fs s slot → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                      → fetch prog (fpc fs) ≡ just (restore-input slot)
                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                            ≡ event-of (restore-input slot) fs ++ flat-events n prog (flat-exec-instr (restore-input slot) prog fs))
-  restore-input-step {hv} n ev env prog fs s slot cc h ftq =
+  restore-input-step {hv} n ev env prog fs s slot cc wf h ftq =
     go-mem (stackMem (floc fs) (current-frame (falloc fs)) slot) refl
     where go-mem : ∀ (mw : Maybe (StoredValue FS)) → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ mw
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
@@ -870,18 +855,18 @@ mutual
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n ev env prog fs s (restore-input slot)
               (block-step-restore-input prog fs s slot w cc h ftq (slot-read-live fs slot st-eq) st-eq)
-              refl hpost
+              wf refl hpost
             where hpost : halted (floc (flat-exec-instr (restore-input slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
-          go-mem nothing st-eq = restore-input-empty n ev env prog fs s slot cc h ftq
+          go-mem nothing st-eq = restore-input-empty n ev env prog fs s slot cc wf h ftq
 
   -- STACK worklist-pop: identical to load-from-slot (same abstract sem + lowering).
   worklist-pop-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                        prog fs s slot → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                        prog fs s slot → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                     → fetch prog (fpc fs) ≡ just (worklist-pop slot)
                     → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                           ≡ event-of (worklist-pop slot) fs ++ flat-events n prog (flat-exec-instr (worklist-pop slot) prog fs))
-  worklist-pop-step {hv} n ev env prog fs s slot cc h ftq =
+  worklist-pop-step {hv} n ev env prog fs s slot cc wf h ftq =
     go-mem (stackMem (floc fs) (current-frame (falloc fs)) slot) refl
     where go-mem : ∀ (mw : Maybe (StoredValue FS)) → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ mw
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
@@ -889,20 +874,20 @@ mutual
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n ev env prog fs s (worklist-pop slot)
               (block-step-worklist-pop prog fs s slot w cc h ftq (slot-read-live fs slot st-eq) st-eq)
-              refl hpost
+              wf refl hpost
             where hpost : halted (floc (flat-exec-instr (worklist-pop slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
-          go-mem nothing st-eq = worklist-pop-empty n ev env prog fs s slot cc h ftq
+          go-mem nothing st-eq = worklist-pop-empty n ev env prog fs s slot cc wf h ftq
 
   -- MEMORY store-indirect: case the Output-target pointer. A live dynamic pointer ⇒ the
   -- PROVEN block-step-store-indirect (LiveIn from store-indirect-live; the writeLoc↔heap
   -- guard from store-indirect-guard) ⇒ ccc-step-bs. Bad shapes ⇒ store-indirect-bad.
   store-indirect-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                          prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                          prog fs s → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                       → fetch prog (fpc fs) ≡ just store-indirect
                       → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                             ≡ event-of store-indirect fs ++ flat-events n prog (flat-exec-instr store-indirect prog fs))
-  store-indirect-step {hv} n ev env prog fs s cc h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
+  store-indirect-step {hv} n ev env prog fs s cc wf h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
     where go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                        ≡ event-of store-indirect fs ++ flat-events n prog (flat-exec-instr store-indirect prog fs))
@@ -911,21 +896,21 @@ mutual
               (block-step-store-indirect prog fs s hl cc h ftq i-eq
                  (store-indirect-live {hv} fs hl i-eq) (store-guard fs hl)
                  (store-indirect-stack-disj {hv} s hl))
-              refl hpost
+              wf refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)) h
-          go-ptr (SV-Ptr (AtStack _ _))  i-eq = store-indirect-bad n ev env prog fs s cc h ftq
-          go-ptr (SV-Tag _)              i-eq = store-indirect-bad n ev env prog fs s cc h ftq
-          go-ptr (SV-Lit _ _)            i-eq = store-indirect-bad n ev env prog fs s cc h ftq
-          go-ptr (SV-Code _)             i-eq = store-indirect-bad n ev env prog fs s cc h ftq
+          go-ptr (SV-Ptr (AtStack _ _))  i-eq = store-indirect-bad n ev env prog fs s cc wf h ftq
+          go-ptr (SV-Tag _)              i-eq = store-indirect-bad n ev env prog fs s cc wf h ftq
+          go-ptr (SV-Lit _ _)            i-eq = store-indirect-bad n ev env prog fs s cc wf h ftq
+          go-ptr (SV-Code _)             i-eq = store-indirect-bad n ev env prog fs s cc wf h ftq
 
   -- MEMORY store-indirect-suc: as store-indirect but the SECOND cell (sucHL hl).
   store-indirect-suc-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                              prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                              prog fs s → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                           → fetch prog (fpc fs) ≡ just store-indirect-suc
                           → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                                 ≡ event-of store-indirect-suc fs ++ flat-events n prog (flat-exec-instr store-indirect-suc prog fs))
-  store-indirect-suc-step {hv} n ev env prog fs s cc h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
+  store-indirect-suc-step {hv} n ev env prog fs s cc wf h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
     where go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                        ≡ event-of store-indirect-suc fs ++ flat-events n prog (flat-exec-instr store-indirect-suc prog fs))
@@ -934,13 +919,13 @@ mutual
               (block-step-store-indirect-suc prog fs s hl cc h ftq i-eq
                  (store-indirect-suc-live {hv} fs hl i-eq) (store-guard fs (sucHL hl))
                  (store-indirect-suc-stack-disj {hv} s hl))
-              refl hpost
+              wf refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic (sucHL hl)) (readReg (regs (floc fs)) Output)) h
-          go-ptr (SV-Ptr (AtStack _ _))  i-eq = store-indirect-suc-bad n ev env prog fs s cc h ftq
-          go-ptr (SV-Tag _)              i-eq = store-indirect-suc-bad n ev env prog fs s cc h ftq
-          go-ptr (SV-Lit _ _)            i-eq = store-indirect-suc-bad n ev env prog fs s cc h ftq
-          go-ptr (SV-Code _)             i-eq = store-indirect-suc-bad n ev env prog fs s cc h ftq
+          go-ptr (SV-Ptr (AtStack _ _))  i-eq = store-indirect-suc-bad n ev env prog fs s cc wf h ftq
+          go-ptr (SV-Tag _)              i-eq = store-indirect-suc-bad n ev env prog fs s cc wf h ftq
+          go-ptr (SV-Lit _ _)            i-eq = store-indirect-suc-bad n ev env prog fs s cc wf h ftq
+          go-ptr (SV-Code _)             i-eq = store-indirect-suc-bad n ev env prog fs s cc wf h ftq
 
   -- SIGOP engine. Split on effect si (J-bridge, no with): Pure ⇒ arith — the run-events
   -- mechanics are PROVEN (sigop-run-arith: pc-align + run-events-arith), event-of is []
@@ -948,11 +933,11 @@ mutual
   -- is `arith-sigop-contract` (the offline arith obligation). Emits/Halts ⇒ external
   -- (sigop-external-rest, the value-carrying observable — next).
   sigop-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                 prog fs s {A B} (si : SigOpInfo A B) → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                 prog fs s {A B} (si : SigOpInfo A B) → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                → fetch prog (fpc fs) ≡ just (instr-sigop si)
                → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                      ≡ event-of (instr-sigop si) fs ++ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs))
-  sigop-step {hv} n ev env prog fs s {A} {B} si cc h ftq = go-eff (effect si) refl
+  sigop-step {hv} n ev env prog fs s {A} {B} si cc wf h ftq = go-eff (effect si) refl
     where go-eff : ∀ (e : EffectShape B) → effect si ≡ e
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                        ≡ event-of (instr-sigop si) fs ++ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs))
@@ -961,13 +946,14 @@ mutual
                   pl  = proj₁ contract
                   rec = events-agree n ev env prog (flat-exec-instr (instr-sigop si) prog fs)
                           (uncurry (dispatch-arith val-x86-64) pl s) (proj₂ (proj₂ contract))
+                          (flat-wf-step (instr-sigop si) prog fs wf)
                   goal : RTx.run-events val-x86-64 ev env (suc (proj₁ rec)) (compile-trace prog) s
                        ≡ event-of (instr-sigop si) fs ++ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs)
                   goal rewrite event-of-pure si fs eqe =
                     trans (sigop-run-arith ev env (proj₁ rec) prog fs s si pl cc h ftq (proj₁ (proj₂ contract)))
                           (proj₂ rec)
-          go-eff (Emits _) eqe = sigop-external n ev env prog fs s si cc h ftq
-          go-eff (Halts _) eqe = sigop-external n ev env prog fs s si cc h ftq
+          go-eff (Emits _) eqe = sigop-external n ev env prog fs s si cc wf h ftq
+          go-eff (Halts _) eqe = sigop-external n ev env prog fs s si cc wf h ftq
 
   -- EXTERNAL SIGOP engine: run-events-external EMITS `ev lbl s` then continues past the
   -- call (sigop-run-external, PROVEN); the external contract pins `ev ≡ event-of` and the
@@ -975,14 +961,15 @@ mutual
   -- (the honest per-target observable obligation). Emits AND Halts share this — for Halts
   -- the flat post-state is halted and both tails run to [] (events-agree's halted case).
   sigop-external : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                     prog fs s {A B} (si : SigOpInfo A B) → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                     prog fs s {A B} (si : SigOpInfo A B) → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
                  → fetch prog (fpc fs) ≡ just (instr-sigop si)
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                        ≡ event-of (instr-sigop si) fs ++ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs))
-  sigop-external n ev env prog fs s si cc h ftq = suc (proj₁ rec) , goal
+  sigop-external n ev env prog fs s si cc wf h ftq = suc (proj₁ rec) , goal
     where contract = external-sigop-contract ev env prog fs s si cc ftq
           rec = events-agree n ev env prog (flat-exec-instr (instr-sigop si) prog fs)
                   (RTx.ret-past s) (proj₂ (proj₂ contract))
+                  (flat-wf-step (instr-sigop si) prog fs wf)
           goal : RTx.run-events val-x86-64 ev env (suc (proj₁ rec)) (compile-trace prog) s
                ≡ event-of (instr-sigop si) fs ++ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs)
           goal = trans (sigop-run-external ev env (proj₁ rec) prog fs s si cc h ftq (proj₁ contract))

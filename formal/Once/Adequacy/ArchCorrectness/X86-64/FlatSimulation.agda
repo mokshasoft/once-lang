@@ -46,6 +46,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
+open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below; StoreWF; FlatWF; flat-wf-step; wf-regs; wf-heap; wf-stack; wf-fresh)
 import Once.CCC.Target.X86-64.Semantics as X
 open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem; updateFlags)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
@@ -1115,12 +1116,12 @@ block-step-c-branch-tag-zero {hv} prog fs s n hl (suc m) j cc h ft i-eq live-hl 
 block-step-alloc-heap : ∀ {hv : HeapView} prog fs s n → (cc : CompiledCorr hv prog fs s)
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-alloc-heap n)
-  → C.sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Input1)
-  → C.sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Input2)
-  → C.sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Scratch)
-  → (∀ hl → HDom hv hl → C.svm-below (next-heap-ref (falloc fs)) (heapMem (floc fs) hl))
+  → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Input1)
+  → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Input2)
+  → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Scratch)
+  → (∀ hl → HDom hv hl → svm-below (next-heap-ref (falloc fs)) (heapMem (floc fs) hl))
   → (∀ k → k < stackSlot (regs (floc fs))
-         → C.svm-below (next-heap-ref (falloc fs)) (stackMem (floc fs) (current-frame (falloc fs)) k))
+         → svm-below (next-heap-ref (falloc fs)) (stackMem (floc fs) (current-frame (falloc fs)) k))
   → (∀ hl → ref-id (heap-ref hl) ≡ next-heap-ref (falloc fs) → heapMem (floc fs) hl ≡ nothing)
   → (∀ i → i < n → X.readMem (memory s) (xreadReg (xregs s) r15 + slot-to-disp i) ≡ nothing)
   → BlockStep (C.extend-view hv (next-heap-ref (falloc fs)) n (C.dom-fresh (dataCorr cc)))
