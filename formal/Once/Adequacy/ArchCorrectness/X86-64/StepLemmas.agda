@@ -190,6 +190,16 @@ step-add-ri : ∀ {prog s r n}
                                ; pc = pc s + 1 })
 step-add-ri ft rewrite ft = refl
 
+-- add reg, reg (the lea-indexed doublings: `add rcx, rcx`)
+step-add-rr : ∀ {prog s r r'}
+            → fetch prog (pc s) ≡ just (add (reg r) (reg r'))
+            → step-not-halted prog s
+              ≡ just (record s { regs = writeReg (regs s) r (readReg (regs s) r + readReg (regs s) r')
+                               ; flags = updateFlags (readReg (regs s) r + readReg (regs s) r')
+                                                     (readReg (regs s) r)
+                               ; pc = pc s + 1 })
+step-add-rr ft rewrite ft = refl
+
 -- sub reg, imm
 step-sub-ri : ∀ {prog s r n}
             → fetch prog (pc s) ≡ just (sub (reg r) (imm n))

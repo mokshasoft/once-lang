@@ -340,3 +340,42 @@ fetch-block-3rd prog k i ft =
               (trans (drop-+ (x86-off prog k) 2 (compile-trace prog))
                      (trans (cong (drop 2) (drop-compile prog k))
                             (cong (λ p → drop 2 (compile-trace p)) (drop-fetch prog k i ft)))))
+
+-- The FOURTH x86 instruction of the block at flat index k (offset +3) — the
+-- 6-instruction `lea-indexed` block needs these.
+fetch-block-4th : ∀ (prog : AbstractTrace) (k : ℕ) (i : AbstractInstr)
+  → fetch prog k ≡ just i
+  → X.fetch (compile-trace prog) (x86-off prog k + 3)
+    ≡ X.fetch (drop 3 (compile-abstract i ++ compile-trace (drop (suc k) prog))) 0
+fetch-block-4th prog k i ft =
+  trans (fetch-drop (compile-trace prog) (x86-off prog k + 3))
+        (cong (λ xs → X.fetch xs 0)
+              (trans (drop-+ (x86-off prog k) 3 (compile-trace prog))
+                     (trans (cong (drop 3) (drop-compile prog k))
+                            (cong (λ p → drop 3 (compile-trace p)) (drop-fetch prog k i ft)))))
+
+-- The FIFTH x86 instruction of the block at flat index k (offset +4) — the
+-- 6-instruction `lea-indexed` block needs these.
+fetch-block-5th : ∀ (prog : AbstractTrace) (k : ℕ) (i : AbstractInstr)
+  → fetch prog k ≡ just i
+  → X.fetch (compile-trace prog) (x86-off prog k + 4)
+    ≡ X.fetch (drop 4 (compile-abstract i ++ compile-trace (drop (suc k) prog))) 0
+fetch-block-5th prog k i ft =
+  trans (fetch-drop (compile-trace prog) (x86-off prog k + 4))
+        (cong (λ xs → X.fetch xs 0)
+              (trans (drop-+ (x86-off prog k) 4 (compile-trace prog))
+                     (trans (cong (drop 4) (drop-compile prog k))
+                            (cong (λ p → drop 4 (compile-trace p)) (drop-fetch prog k i ft)))))
+
+-- The SIXTH x86 instruction of the block at flat index k (offset +5) — the
+-- 6-instruction `lea-indexed` block needs these.
+fetch-block-6th : ∀ (prog : AbstractTrace) (k : ℕ) (i : AbstractInstr)
+  → fetch prog k ≡ just i
+  → X.fetch (compile-trace prog) (x86-off prog k + 5)
+    ≡ X.fetch (drop 5 (compile-abstract i ++ compile-trace (drop (suc k) prog))) 0
+fetch-block-6th prog k i ft =
+  trans (fetch-drop (compile-trace prog) (x86-off prog k + 5))
+        (cong (λ xs → X.fetch xs 0)
+              (trans (drop-+ (x86-off prog k) 5 (compile-trace prog))
+                     (trans (cong (drop 5) (drop-compile prog k))
+                            (cong (λ p → drop 5 (compile-trace p)) (drop-fetch prog k i ft)))))

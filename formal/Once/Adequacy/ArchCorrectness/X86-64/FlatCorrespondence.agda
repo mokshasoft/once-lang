@@ -61,7 +61,8 @@ open import Once.CCC.Machine.SMCore
 open MemOps {FS} using (writeLoc; writeLocToHeap; writeHeapMem
                        ; readLoc; writeLoc-read-same-stack; writeLoc-preserves-other)
 open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; exec-load-with-value
-                          ; exec-store-via-resolved; exec-store-suc-via-resolved)
+                          ; exec-store-via-resolved; exec-store-suc-via-resolved
+                          ; exec-lea-indexed-via; slot-base)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open FrameSemantics FS using (shift-frame)
@@ -1048,3 +1049,90 @@ sim-lea-slot {hv} slot fs s corr = record
     addr-eq = trans (cong (_+ slot-to-disp slot) (rsp-eq corr))
                     (trans (cong (λ w → frame-base cf + slot * w) (sym word-eq))
                            (sym (slot-addr-linear cf slot)))
+
+------------------------------------------------------------------------
+-- INDEXED ADDRESS: `lea-indexed slot` (Input1 := &(base + idx)) ↔ the 6-instr
+-- chain `mov rdi,[rsp+8k]; mov rcx,rbx; add rcx,rcx ×3; add rdi,rcx`.
+--
+-- The address law for an OFFSET cell is derived from the view's successor law
+-- (`offsetHL hl (suc i) ≡ sucHL (offsetHL hl i)` definitionally), so the carried
+-- heap view needs no new field; the stack case is `slot-addr-linear` plus
+-- arithmetic.
+------------------------------------------------------------------------
+haddr-offset : ∀ (hv : HeapView) (hl : HeapLocation) (i : ℕ)
+             → haddr hv (offsetHL hl i) ≡ haddr hv hl + i * slot-size
+haddr-offset hv (heap-loc r o) zero    = +-comm 0 (haddr hv (heap-loc r o))
+haddr-offset hv (heap-loc r o) (suc i) =
+  trans (haddr-suc hv (heap-loc r (i + o)))
+        (trans (cong (_+ slot-size) (haddr-offset hv (heap-loc r o) i))
+               (trans (+-assoc (haddr hv (heap-loc r o)) (i * slot-size) slot-size)
+                      (cong (haddr hv (heap-loc r o) +_)
+                            (+-comm (i * slot-size) slot-size))))
+
+-- The encoding of an OFFSET pointer: base address plus `i` slots, on either side.
+enc-offset : ∀ (hv : HeapView) (loc : ValueLocation FS) (i : ℕ)
+           → enc-sv hv (SV-Ptr (offsetLoc loc i))
+             ≡ enc-sv hv (SV-Ptr loc) + i * slot-size
+enc-offset hv (AtDynamic hl) i = haddr-offset hv hl i
+enc-offset hv (AtStack f k)  i =
+  trans (slot-addr-linear f (i + k))
+        (trans (cong (λ w → frame-base f + (i + k) * w) word-eq)
+               (trans (cong (frame-base f +_) (*-distribʳ-+ slot-size i k))
+                      (trans (sym (+-assoc (frame-base f) (i * slot-size) (k * slot-size)))
+                             (trans (cong (_+ k * slot-size)
+                                          (+-comm (frame-base f) (i * slot-size)))
+                                    (trans (+-assoc (i * slot-size) (frame-base f) (k * slot-size))
+                                           (trans (+-comm (i * slot-size)
+                                                          (frame-base f + k * slot-size))
+                                                  (cong (_+ i * slot-size)
+                                                        (sym base-k))))))))
+  where
+    open import Data.Nat.Properties using (*-distribʳ-+)
+    base-k : slot-addr f k ≡ frame-base f + k * slot-size
+    base-k = trans (slot-addr-linear f k) (cong (λ w → frame-base f + k * w) word-eq)
+
+-- Parametric over the post state (the compiled block is 6 instructions and
+-- clobbers %rcx + the flags, neither of which FlatCorr tracks): the block-step
+-- supplies the register/memory preservation facts.
+sim-lea-indexed : {hv : HeapView} (slot : Slot) (loc : ValueLocation FS) (idx : ℕ)
+                  (fs : FlatState) (s xp : X.State) → FlatCorr hv fs s
+  → readLoc (floc fs) (AtStack (current-frame (falloc fs)) slot) ≡ just (SV-Ptr loc)
+  → readReg (regs (floc fs)) Scratch ≡ SV-Tag idx
+  → X.readReg (X.State.regs xp) rdi ≡ enc-sv hv (SV-Ptr loc) + idx * slot-size
+  → X.readReg (X.State.regs xp) rsi ≡ X.readReg (xregs s) rsi
+  → X.readReg (X.State.regs xp) rax ≡ X.readReg (xregs s) rax
+  → X.readReg (X.State.regs xp) rbx ≡ X.readReg (xregs s) rbx
+  → X.readReg (X.State.regs xp) rsp ≡ X.readReg (xregs s) rsp
+  → X.readReg (X.State.regs xp) r15 ≡ X.readReg (xregs s) r15
+  → X.State.halted xp ≡ X.State.halted s
+  → X.State.memory xp ≡ X.State.memory s
+  → FlatCorr hv (flat-exec-instr (lea-indexed slot) [] fs) xp
+sim-lea-indexed {hv} slot loc idx fs s xp corr slot-eq sc-eq
+                rdi-p rsi-p rax-p rbx-p rsp-p r15-p halt-p mem-p =
+  subst (λ z → FlatCorr hv z xpost) (sym reduces) corr-clean
+  where
+    xpost : X.State
+    xpost = xp
+    cleanFlat : FlatState
+    cleanFlat = record fs
+      { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Input1
+                                           (SV-Ptr (offsetLoc loc idx)) }
+      ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    -- the abstract dispatch reduces once the slot read and the tag are supplied
+    reduces : flat-exec-instr (lea-indexed slot) [] fs ≡ cleanFlat
+    reduces = cong (λ p → record fs { floc = proj₁ p ; falloc = proj₂ p ; fpc = suc (fpc fs) })
+                   (cong₂ (λ ml sv → exec-lea-indexed-via (slot-base ml) (sv-tag-val sv) (floc fs)
+                                     , falloc fs)
+                          slot-eq sc-eq)
+    corr-clean : FlatCorr hv cleanFlat xpost
+    corr-clean = record
+      { rdi-eq = trans rdi-p (sym (enc-offset hv loc idx))
+      ; rsi-eq = trans rsi-p (rsi-eq corr) ; rax-eq = trans rax-p (rax-eq corr)
+      ; rbx-eq = trans rbx-p (rbx-eq corr)
+      ; halt-eq = trans halt-p (halt-eq corr)
+      ; rsp-eq = trans rsp-p (rsp-eq corr) ; r15-eq = trans r15-p (r15-eq corr)
+      ; dom-fresh = dom-fresh corr
+      ; heap-eq = λ hl live → trans (cong (λ m → X.readMem m (haddr hv hl)) mem-p)
+                                    (heap-eq corr hl live)
+      ; stack-eq = λ k k< → trans (cong₂ (λ m r → X.readMem m (r + slot-to-disp k)) mem-p rsp-p)
+                                  (stack-eq corr k k<) }

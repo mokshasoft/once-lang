@@ -44,7 +44,7 @@ open import Data.Nat using (zero; suc)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
 
 open import Once.CCC.Machine.SMCore
-open MemOps {FS} using (writeLoc; writeLocToHeap; writeLoc-halted)
+open MemOps {FS} using (writeLoc; writeLocToHeap; writeLoc-halted; readLoc)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 import Once.CCC.Target.X86-64.Semantics as X
@@ -235,6 +235,15 @@ store-guard fs hl no-stackref = go (readReg (regs (floc fs)) Output) refl
         go (SV-Code c)            o-eq rewrite o-eq = refl
         go (SV-Ptr (AtDynamic w)) o-eq rewrite o-eq = refl
         go (SV-Ptr (AtStack f k)) o-eq = ⊥-elim (no-stackref o-eq)
+
+-- lea-indexed keeps the machine RUNNING when the base slot really holds a pointer
+-- (the halting branch of `exec-lea-indexed-via` is the non-pointer one).
+lea-indexed-hpost : ∀ prog (fs : FlatState) (slot : Slot) (loc : ValueLocation FS) (idx : ℕ)
+  → readLoc (floc fs) (AtStack (current-frame (falloc fs)) slot) ≡ just (SV-Ptr loc)
+  → readReg (regs (floc fs)) Scratch ≡ SV-Tag idx
+  → halted (floc fs) ≡ false
+  → halted (floc (flat-exec-instr (lea-indexed slot) prog fs)) ≡ false
+lea-indexed-hpost prog fs slot loc idx slot-eq sc-eq h rewrite slot-eq | sc-eq = h
 
 -- The run-events REDUCTION at an EXTERNAL (Emits/Halts) SigOp, PROVEN given the
 -- external-env contract (env maps the symbol to `nothing`): the compiled `call-sym`
@@ -436,6 +445,16 @@ postulate
   alloc-heap-fresh-x86 : ∀ (s : X.State) (n : ℕ) → ∀ i → i < n
                        → X.readMem (X.State.memory s)
                            (X.readReg (X.State.regs s) r15 + slot-to-disp i) ≡ nothing
+  -- lea-indexed WF (conditioned on the site): the indexed base slot holds a
+  -- POINTER and `Scratch` holds the index as a TAG — the cata's payload-cursor
+  -- discipline. Same class as `branch-scratch-nontag` / `load-from-slot-empty`.
+  lea-indexed-wf : ∀ prog (fs : FlatState) (slot : Slot)
+                 → fetch prog (fpc fs) ≡ just (lea-indexed slot)
+                 → Σ (ValueLocation FS) (λ loc →
+                     readLoc (floc fs) (AtStack (current-frame (falloc fs)) slot)
+                       ≡ just (SV-Ptr loc))
+                   × Σ ℕ (λ idx → readReg (regs (floc fs)) Scratch ≡ SV-Tag idx)
+
   -- MATCHED PROLOGUE/EPILOGUE (plan 0.61): the frame an epilogue restores is the
   -- one its matching prologue shifted away from, so %rsp lands exactly on the
   -- restored frame's base. A pairing property of emitted code (the same class as
@@ -590,6 +609,18 @@ mutual
       (block-step-load-const prog fs s v cc h ftq) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-float v) cc wf h ftq =
     load-const-float n ev env prog fs s cc wf h ftq
+  -- plan 0.61: with stack addresses, the indexed cursor computes a real address.
+  events-running-fetch {hv} n ev env prog fs s (lea-indexed slot) cc wf h ftq =
+    ccc-step-bs {hv} n ev env prog fs s (lea-indexed slot)
+      (block-step-lea-indexed prog fs s slot (proj₁ (proj₁ (lea-indexed-wf prog fs slot ftq)))
+         (proj₁ (proj₂ (lea-indexed-wf prog fs slot ftq))) cc h ftq
+         (proj₂ (proj₁ (lea-indexed-wf prog fs slot ftq)))
+         (proj₂ (proj₂ (lea-indexed-wf prog fs slot ftq)))
+         (slot-read-live fs slot (proj₂ (proj₁ (lea-indexed-wf prog fs slot ftq)))))
+      wf refl (lea-indexed-hpost prog fs slot (proj₁ (proj₁ (lea-indexed-wf prog fs slot ftq)))
+                (proj₁ (proj₂ (lea-indexed-wf prog fs slot ftq)))
+                (proj₂ (proj₁ (lea-indexed-wf prog fs slot ftq)))
+                (proj₂ (proj₂ (lea-indexed-wf prog fs slot ftq))) h)
   -- plan 0.61: a stack POINTER now has an address, so lea-slot routes.
   events-running-fetch {hv} n ev env prog fs s (lea-slot slot) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (lea-slot slot)
