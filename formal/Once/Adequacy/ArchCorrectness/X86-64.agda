@@ -41,7 +41,10 @@ open import Once.Adequacy.SourceTrace using (moduleToIR)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (x86-64-frame-semantics)
 open import Once.CCC.Codegen.IRObsCorrectFlat using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
-open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace)
+open import Once.CCC.Target.X86-64.AbstractToX86
+  using (compile-trace; compile-trace-cnt; compile-trace-cnt-agrees; NoNested; NoNested?)
+open import Relation.Nullary using (Dec; yes; no)
+open import Data.Empty using (⊥)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
@@ -68,7 +71,9 @@ as64 = arch-semantics x86-64
 conc-trace : Maybe (IR Unit Unit) → Behavior
 conc-trace nothing   _ = []
 conc-trace (just ir) =
-  ArchSemantics.run-trace as64 (compile-trace (ir-to-trace ir))
+  -- THE REAL EMITTER: `Once.Target.X86-64` lowers via `compile-trace-cnt`
+  -- (which threads the label counter through case/loop), not the plain fold.
+  ArchSemantics.run-trace as64 (proj₂ (compile-trace-cnt 0 (ir-to-trace ir)))
                           (ArchSemantics.initialState as64)
 
 postulate
@@ -195,16 +200,34 @@ postulate
     ≡ take n (RTx.run-events val-x86-64 ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
                 M (compile-trace (ir-to-trace ir)) (ArchSemantics.initialState as64))
 
+postulate
+  -- THE NESTED FRAGMENT. `compile-trace-cnt` (what the compiler emits) and the
+  -- plain `compile-trace` (what the cluster's fetch/offset layer is stated over)
+  -- differ on EXACTLY `instr-case-on-tag` and `instr-loop`, where the fold emits
+  -- the `ud2` sentinel and the threaded version emits the real label/branch
+  -- lowering. For traces containing them the correspondence is unproven ANYWAY
+  -- (they are the two constructors still in `events-running-fetch-rest`), so this
+  -- names that one gap instead of leaving the emitter mismatch silent.
+  conc-flat-sim-nested :
+    ∀ (ir : IR Unit Unit) (n : ℕ) → (NoNested (ir-to-trace ir) → ⊥) →
+    conc-trace (just ir) n ≡ FFOx.flat-trace-of ir-obs-correct (just ir) n
+
 conc-flat-sim-just :
   ∀ (ir : IR Unit Unit) (n : ℕ) →
   conc-trace (just ir) n ≡ FFOx.flat-trace-of ir-obs-correct (just ir) n
-conc-flat-sim-just ir n =
-  trans (conc-fuel ir n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
+conc-flat-sim-just ir n = go (NoNested? (ir-to-trace ir))
   where
     agree = events-agree (Nof ir n)
               ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
               (ir-to-trace ir) (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
               (ArchSemantics.initialState as64) (entry-corr ir) entry-wf
+    -- on the case/loop-FREE fragment the two lowerings coincide, so the
+    -- correspondence proved over `compile-trace` IS about the emitted program.
+    go : Dec (NoNested (ir-to-trace ir))
+       → conc-trace (just ir) n ≡ FFOx.flat-trace-of ir-obs-correct (just ir) n
+    go (yes nn) rewrite compile-trace-cnt-agrees 0 (ir-to-trace ir) nn =
+      trans (conc-fuel ir n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
+    go (no ¬nn) = conc-flat-sim-nested ir n ¬nn
 
 -- conc-flat-sim, top-down: `nothing` proven (both traces `[]`); `just` delegates
 -- to `conc-flat-sim-just` — the single refinement obligation the recovered cluster
