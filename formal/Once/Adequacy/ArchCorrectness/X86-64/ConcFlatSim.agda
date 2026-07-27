@@ -396,6 +396,11 @@ postulate
   stack-ptr-current : ∀ (fs : FlatState) (f : Frame) (k : Slot)
                     → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
                     → (f ≡ current-frame (falloc fs)) × (k < stackSlot (regs (floc fs)))
+  -- …and for a PAIR the second cell is live too (`lea-slot` addresses the first
+  -- of two adjacent slots the same prologue reserved).
+  stack-ptr-current-suc : ∀ (fs : FlatState) (f : Frame) (k : Slot)
+                        → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+                        → (f ≡ current-frame (falloc fs)) × (suc k < stackSlot (regs (floc fs)))
 
   -- load-indirect on a non-live-dynamic-pointer target (non-pointer / stack ptr /
   -- unallocated) — ruled out by well-formedness (loads hit live heap cells).
@@ -974,11 +979,27 @@ mutual
             where hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq | h-eq = h
           go-mem hl i-eq nothing h-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
+          -- SECOND cell of a stack pair: `[rdi+8]` is slot `suc k` of the same frame.
+          go-stack : ∀ f k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+                   → (f ≡ current-frame (falloc fs)) × (suc k < stackSlot (regs (floc fs)))
+                   → ∀ (mw : Maybe (StoredValue FS))
+                   → stackMem (floc fs) (current-frame (falloc fs)) (suc k) ≡ mw
+                   → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                         ≡ event-of load-indirect-suc fs ++ flat-events n prog (flat-exec-instr load-indirect-suc prog fs))
+          go-stack f k i-eq (f-eq , sk<ss) (just w) st-eq =
+            ccc-step-bs {hv} n ev env prog fs s load-indirect-suc
+              (block-step-load-indirect-suc-stack prog fs s f k w cc h ftq i-eq f-eq sk<ss st-eq)
+              wf refl hpost
+            where hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ false
+                  hpost rewrite i-eq | f-eq | st-eq = h
+          go-stack f k i-eq _ nothing st-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
           go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                        ≡ event-of load-indirect-suc fs ++ flat-events n prog (flat-exec-instr load-indirect-suc prog fs))
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq = go-mem hl i-eq (heapMem (floc fs) (sucHL hl)) refl
-          go-ptr (SV-Ptr (AtStack _ _))  i-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
+          go-ptr (SV-Ptr (AtStack f k))  i-eq =
+            go-stack f k i-eq (stack-ptr-current-suc fs f k i-eq)
+                     (stackMem (floc fs) (current-frame (falloc fs)) (suc k)) refl
           go-ptr (SV-Tag _)              i-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
           go-ptr (SV-Lit _ _)            i-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
           go-ptr (SV-Code _)             i-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq

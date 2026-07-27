@@ -1166,3 +1166,31 @@ sim-load-indirect-stack {hv} f k w fs s corr i-eq st-eq =
       { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
       ; halt-eq = halt-eq corr ; rsp-eq = rsp-eq corr ; r15-eq = r15-eq corr
       ; dom-fresh = dom-fresh corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
+
+-- Second cell through a STACK pointer: `sucLoc (AtStack f k) = AtStack f (suc k)`,
+-- so this is `sim-load-indirect-stack` one slot along.
+sim-load-indirect-suc-stack : {hv : HeapView} (f : Frame) (k : Slot) (w : StoredValue FS)
+                              (fs : FlatState) (s : X.State) → FlatCorr hv fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+  → readLoc (floc fs) (AtStack f (suc k)) ≡ just w
+  → FlatCorr hv (flat-exec-instr load-indirect-suc [] fs)
+             (mkstate (xwriteReg (xregs s) rax (enc-sv hv w)) (memory s) (flags s) (pc s + 1) (xhalted s))
+sim-load-indirect-suc-stack {hv} f k w fs s corr i-eq st-eq =
+  subst (λ z → FlatCorr hv z xpost) (sym reduces) corr-clean
+  where
+    xpost : X.State
+    xpost = mkstate (xwriteReg (xregs s) rax (enc-sv hv w)) (memory s) (flags s) (pc s + 1) (xhalted s)
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+                          ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    floc-eq : exec-load-suc-via-resolved Output (sv-as-loc (readReg (regs (floc fs)) Input1)) (floc fs)
+              ≡ record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+    floc-eq = trans (cong (λ m → exec-load-suc-via-resolved Output m (floc fs)) (cong sv-as-loc i-eq))
+                    (cong (λ mv → exec-load-with-value Output mv (floc fs)) st-eq)
+    reduces : flat-exec-instr load-indirect-suc [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    corr-clean : FlatCorr hv cleanFlat xpost
+    corr-clean = record
+      { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
+      ; halt-eq = halt-eq corr ; rsp-eq = rsp-eq corr ; r15-eq = r15-eq corr
+      ; dom-fresh = dom-fresh corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
