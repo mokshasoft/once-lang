@@ -1331,3 +1331,48 @@ block-step-lea-indexed {hv} prog fs s slot loc idx cc h ft slot-eq sc-eq slot<ss
                     (trans (cong (λ z → (z + 1) + 1) (+-assoc m 3 1))
                     (trans (cong (_+ 1) (+-assoc m 4 1))
                            (+-assoc m 5 1))))
+
+
+-- c-branch NOT TAKEN (`Scratch ≡ SV-Tag (suc m)`): the `je` falls through, so the
+-- jump target is never consulted — no label premise, which is what lets the
+-- MISSING-label case of a not-taken branch be an ordinary step rather than a
+-- residual. (The taken case still needs `find-label ≡ just j`.)
+block-step-c-branch-nz : ∀ {hv : HeapView} prog fs s n m → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero n))
+  → readReg (regs (floc fs)) Scratch ≡ SV-Tag (suc m)
+  → BlockStep hv prog fs s (instr-ctrl (c-branch-scratch-zero n))
+block-step-c-branch-nz {hv} prog fs s n m cc h ft sc-eq = result
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (reg rbx) (imm 0))
+    fetch-cmp = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-scratch-zero n)) ft)
+    post-cmp : X.State
+    post-cmp = record s { flags = mkflags (xreadReg (xregs s) rbx ≡ᵇ 0) (xreadReg (xregs s) rbx <ᵇ 0) false ; pc = pc s + 1 }
+    step-cmp : X.step-not-halted (compile-trace prog) s ≡ just post-cmp
+    step-cmp = step-cmp-ri {compile-trace prog} {s} {rbx} {0} fetch-cmp
+    rbx-val : xreadReg (xregs s) rbx ≡ suc m
+    rbx-val = trans (C.rbx-eq dc) (cong (C.enc-sv hv) sc-eq)
+    fetch-je : X.fetch (compile-trace prog) (X.State.pc post-cmp) ≡ just (je (once n))
+    fetch-je = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) po)
+                     (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-branch-scratch-zero n)) ft)
+    zf-false : X.Flags.zf (flags post-cmp) ≡ false
+    zf-false = cong (_≡ᵇ 0) rbx-val
+    post-je : X.State
+    post-je = record post-cmp { pc = X.State.pc post-cmp + 1 }
+    step-je : X.step-not-halted (compile-trace prog) post-cmp ≡ just post-je
+    step-je = step-je-not {compile-trace prog} {post-cmp} {once n} fetch-je zf-false
+    exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-je
+    exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-cmp} halt-s step-cmp halt-s)
+                    (exec-1 {compile-trace prog} {0} {post-cmp} {post-je} halt-s step-je halt-s)
+    pco' : X.State.pc post-je ≡ x86-off prog (suc (fpc fs))
+    pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (x86-off-suc prog (fpc fs) (instr-ctrl (c-branch-scratch-zero n)) ft)))
+    result : BlockStep hv prog fs s (instr-ctrl (c-branch-scratch-zero n))
+    result rewrite sc-eq = post-je , exec-eq , record
+      { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
+                          ; rbx-eq = C.rbx-eq dc ; halt-eq = C.halt-eq dc ; rsp-eq = C.rsp-eq dc ; r15-eq = C.r15-eq dc ; dom-fresh = C.dom-fresh dc ; heap-eq = C.heap-eq dc
+                      ; stack-eq = C.stack-eq dc }
+      ; pc-off = pco' }
+

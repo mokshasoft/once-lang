@@ -26,10 +26,10 @@ open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Label using (once)
 open import Once.CCC.Target.X86-64.Syntax using
-  ( slot-size; Program; Instr; Reg; Operand; reg; mem; base+disp; rsp; rbp; rax; rdi
+  ( slot-size; Program; Instr; Reg; Operand; reg; imm; mem; base+disp; rsp; rbp; rax; rdi; rbx
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
   ; ret; push; pop; nop; ud2; syscall; label )
-open import Data.Nat using (ℕ; _+_; _<_; _∸_)
+open import Data.Nat using (ℕ; _+_; _<_; _∸_; _≡ᵇ_)
 open import Data.Nat.Properties using (≤-reflexive)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
@@ -56,7 +56,7 @@ open C using (HeapView; haddr; HDom; hfront) public
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
   using (x86-len; x86-off; drop-compile; fetch-drop; drop-[]; fetch-block-head
-        ; find-label-none-corr)
+        ; find-label-none-corr; fetch-block-2nd)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
 
@@ -343,12 +343,6 @@ postulate
                         → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                               ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
                                 ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs))
-  branch-label-miss : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                        prog fs s m → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
-                    → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero m)) → find-label prog m ≡ nothing
-                    → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                          ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
-                            ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs))
   -- c-branch-tag-zero WF residuals (the tag is read THROUGH Input1's pointer): the branch
   -- reads a live heap TAG cell, and the label resolves. branch-tag-badptr = Input1 not a
   -- dynamic pointer; branch-tag-bad = heap value not a tag / unmapped; branch-tag-label-miss
@@ -755,7 +749,51 @@ mutual
           (block-step-c-branch-scratch-zero prog fs s m (suc k') j cc h ftq sc-eq fl-eq) wf refl hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) ≡ false
               hpost rewrite sc-eq = h
-      go-fl k sc-eq nothing fl-eq = branch-label-miss n ev env prog fs s m cc wf h ftq fl-eq
+      -- NOT TAKEN: the missing label is never consulted, so this is the ordinary
+      -- fall-through step (no label premise — `block-step-c-branch-nz`).
+      go-fl (suc k') sc-eq nothing fl-eq =
+        ccc-step-bs {hv} n ev env prog fs s (instr-ctrl (c-branch-scratch-zero m))
+          (block-step-c-branch-nz prog fs s m k' cc h ftq sc-eq) wf refl hpost
+        where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) ≡ false
+              hpost rewrite sc-eq = h
+      -- TAKEN + MISSING: `cmp` then a `je` whose label is absent — the concrete
+      -- machine HALTS (as `jmp` does), and so does `do-jump nothing`. Both [].
+      go-fl zero sc-eq nothing fl-eq = 3 , result
+        where
+          dc = dataCorr cc
+          halt-s : X.State.halted s ≡ false
+          halt-s = trans (C.halt-eq dc) h
+          rbx0 : X.readReg (X.State.regs s) rbx ≡ 0
+          rbx0 = trans (C.rbx-eq dc) (cong (C.enc-sv hv) sc-eq)
+          fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (reg rbx) (imm 0))
+          fetch-cmp = trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
+                            (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-scratch-zero m)) ftq)
+          post-cmp : X.State
+          post-cmp = record s { flags = X.mkflags (X.readReg (X.State.regs s) rbx ≡ᵇ 0)
+                                                  (X.readReg (X.State.regs s) rbx X.<ᵇ 0) false
+                              ; pc = X.State.pc s + 1 }
+          step-cmp : X.execInstr (compile-trace prog) s (cmp (reg rbx) (imm 0)) ≡ just post-cmp
+          step-cmp = b-cmp-reg-imm (compile-trace prog) s rbx 0
+          fetch-je : X.fetch (compile-trace prog) (X.State.pc post-cmp) ≡ just (je (once m))
+          fetch-je = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) (pc-off cc))
+                           (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-branch-scratch-zero m)) ftq)
+          post-je : X.State
+          post-je = record post-cmp { halted = true }
+          step-je : X.execInstr (compile-trace prog) post-cmp (je (once m)) ≡ just post-je
+          step-je rewrite rbx0 | find-label-none-corr prog m fl-eq = refl
+          hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) ≡ true
+          hpost rewrite sc-eq | fl-eq = refl
+          result : RTx.run-events val-x86-64 ev env 3 (compile-trace prog) s
+                 ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
+                   ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)
+          result =
+            trans (RTx.run-events-noncall val-x86-64 ev env 2 (compile-trace prog) s
+                     (cmp (reg rbx) (imm 0)) halt-s fetch-cmp refl step-cmp)
+            (trans (RTx.run-events-noncall val-x86-64 ev env 1 (compile-trace prog) post-cmp
+                     (je (once m)) halt-s fetch-je refl step-je)
+            (trans (RTx.run-events-halted val-x86-64 ev env 0 (compile-trace prog) post-je refl)
+                   (sym (flat-events-halted n prog
+                          (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs) hpost))))
       go-sv : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Scratch ≡ sv
             → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                   ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
