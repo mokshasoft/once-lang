@@ -102,6 +102,14 @@ module FlatEventTrace {FS : FrameSemantics} where
   flat-events-fetch (just i) n prog fs =
     event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs)
 
+  -- A HALTED flat state emits nothing, at any fuel — the abstract counterpart of
+  -- `RunTraceCore.run-events-halted` / `-stuck`. Used by every "both machines
+  -- stop here" correspondence case.
+  flat-events-halted : ∀ (n : ℕ) (prog : AbstractTrace) (fs : FlatState)
+                     → halted (floc fs) ≡ true → flat-events n prog fs ≡ []
+  flat-events-halted zero    prog fs _ = refl
+  flat-events-halted (suc n) prog fs h rewrite h = refl
+
   ----------------------------------------------------------------------
   -- Machine-side "no SigOp ⇒ empty trace": if every instruction the run
   -- can fetch emits nothing (`event-of … ≡ []` — i.e. no `instr-sigop`),

@@ -25,7 +25,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame; frame-wo
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Target.X86-64.Syntax using
-  ( slot-size; Program; Instr; rsp; rbp
+  ( slot-size; Program; Instr; Reg; Operand; reg; mem; base+disp; rsp; rbp; rax; rdi
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
   ; ret; push; pop; nop; ud2; syscall; label )
 open import Data.Nat using (ℕ; _+_; _<_; _∸_)
@@ -54,8 +54,8 @@ open import Once.CCC.Machine.FlatStoreWF FS using (FlatWF; flat-wf-step; wf-regs
 open C using (HeapView; haddr; HDom; hfront) public
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
-  using (x86-len; x86-off; drop-compile; fetch-drop; drop-[])
-open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; slot-to-disp)
+  using (x86-len; x86-off; drop-compile; fetch-drop; drop-[]; fetch-block-head)
+open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
 
 ------------------------------------------------------------------------
@@ -144,7 +144,7 @@ block-run-exec ev env (suc L) rest cprog s {s'} eq hs' with X.State.halted s in 
 -- events on both sides (events-running, the per-instruction step).
 ------------------------------------------------------------------------
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
-open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of)
+open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch; event-of; flat-events-halted)
 open import Data.List using (List; []; _∷_; _++_; drop)
 open import Once.Denotation.Trace using (SigOpEvent)
 
@@ -235,6 +235,47 @@ store-guard fs hl no-stackref = go (readReg (regs (floc fs)) Output) refl
         go (SV-Code c)            o-eq rewrite o-eq = refl
         go (SV-Ptr (AtDynamic w)) o-eq rewrite o-eq = refl
         go (SV-Ptr (AtStack f k)) o-eq = ⊥-elim (no-stackref o-eq)
+
+-- BOTH MACHINES STOP: the abstract state has halted and the x86 instruction is a
+-- `mov dst, [rsp+8k]` from an UNMAPPED cell, so `execInstr` fails. Both traces
+-- are `[]`. This is the shared brick for the empty-slot reads (load-from-slot,
+-- restore-input, worklist-pop): `stack-eq` turns "the abstract slot is empty"
+-- into "the concrete cell is unmapped", which is exactly the machine's stuck
+-- condition — no postulate needed.
+slot-empty-stop : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                    prog fs s (slot : Slot) (dst : Reg) (i : AbstractInstr)
+                → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                → fetch prog (fpc fs) ≡ just i
+                → compile-abstract i ≡ mov (reg dst) (mem (base+disp rsp (slot-to-disp slot))) ∷ []
+                → slot < stackSlot (regs (floc fs))
+                → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ nothing
+                → halted (floc (flat-exec-instr i prog fs)) ≡ true
+                → event-of i fs ≡ []
+                → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                      ≡ event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs))
+slot-empty-stop {hv} n ev env prog fs s slot dst i cc h ftq ca slot<ss empty hpost ev[] =
+  1 , result
+  where
+    dc = dataCorr cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
+              ≡ just (mov (reg dst) (mem (base+disp rsp (slot-to-disp slot))))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
+                      (trans (fetch-block-head prog (fpc fs) i ftq)
+                             (cong (λ b → X.fetch (b ++ compile-trace (drop (suc (fpc fs)) prog)) 0) ca))
+    -- the concrete cell is unmapped: `stack-eq` at an EMPTY in-frame slot
+    rd : X.readMem (X.State.memory s) (X.effectiveAddr s (base+disp rsp (slot-to-disp slot))) ≡ nothing
+    rd = trans (C.stack-eq dc slot slot<ss) (cong (C.enc-maybe hv) empty)
+    stuck : X.execInstr (compile-trace prog) s
+              (mov (reg dst) (mem (base+disp rsp (slot-to-disp slot)))) ≡ nothing
+    stuck rewrite rd = refl
+    result : RTx.run-events val-x86-64 ev env 1 (compile-trace prog) s
+           ≡ event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs)
+    result rewrite ev[] =
+      trans (RTx.run-events-stuck val-x86-64 ev env 0 (compile-trace prog) s
+               (mov (reg dst) (mem (base+disp rsp (slot-to-disp slot)))) halt-s fetch-x86 refl stuck)
+            (sym (flat-events-halted n prog (flat-exec-instr i prog fs) hpost))
 
 -- lea-indexed keeps the machine RUNNING when the base slot really holds a pointer
 -- (the halting branch of `exec-lea-indexed-via` is the non-pointer one).
@@ -405,27 +446,15 @@ postulate
                          → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                                ≡ event-of store-indirect-suc fs ++ flat-events n prog (flat-exec-instr store-indirect-suc prog fs))
 
-  -- load-from-slot on an UNINITIALISED slot (`stackMem … slot ≡ nothing`): the abstract
-  -- machine HALTS (exec-load-from-slot-with-value nothing → halted := true) and so does
-  -- the concrete `mov rax, [rsp+disp]` from unmapped memory. A WF residual (a live cata
-  -- never loads an unwritten slot), same class as `load-indirect-bad`.
-  load-from-slot-empty : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                           prog fs s slot → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
-                       → fetch prog (fpc fs) ≡ just (load-from-slot slot)
-                       → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                             ≡ event-of (load-from-slot slot) fs ++ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs))
-  -- restore-input on an uninitialised slot: both machines halt (same as load-from-slot-empty).
-  restore-input-empty : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                          prog fs s slot → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
-                      → fetch prog (fpc fs) ≡ just (restore-input slot)
-                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                            ≡ event-of (restore-input slot) fs ++ flat-events n prog (flat-exec-instr (restore-input slot) prog fs))
-  -- A read stack slot that holds a value is FRAME-LIVE (slot < next-slot frontier) — the
-  -- WF invariant that reads stay within the current frame's allocated slots. The stack
-  -- analogue of load-indirect-live {hv} (a written heap cell is LiveIn).
-  slot-read-live : ∀ (fs : FlatState) (slot : Slot) {w : StoredValue FS}
-                 → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
-                 → slot < stackSlot (regs (floc fs))
+  -- A slot the emitted code READS is frame-live (`slot < stackSlot`): reads stay
+  -- inside the frame the prologue reserved. Conditioned on the SITE (a property of
+  -- emitted programs, not of arbitrary states) and covering the empty case too —
+  -- which is what lets the empty-slot reads be PROVED rather than postulated
+  -- (`slot-empty-stop`), retiring `load-from-slot-empty`, `restore-input-empty`
+  -- and `worklist-pop-empty`.
+  slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr)
+                     → fetch prog (fpc fs) ≡ just i
+                     → slot < stackSlot (regs (floc fs))
   -- alloc-stack FRESH-FRAME facts (alloc-stack sits at a frame entry): next-slot ≡ 0,
   -- the n new slots are uninitialised on BOTH sides (abstract stackMem / the fresh x86
   -- stack region below rsp), and heap liveness is invariant under the next-slot bump.
@@ -486,12 +515,6 @@ postulate
                    → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                          ≡ event-of (instr-load-const fits-float v) fs
                            ++ flat-events n prog (flat-exec-instr (instr-load-const fits-float v) prog fs))
-  -- worklist-pop from an empty worklist slot: both machines halt (as load-from-slot-empty).
-  worklist-pop-empty : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                         prog fs s slot → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
-                     → fetch prog (fpc fs) ≡ just (worklist-pop slot)
-                     → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                           ≡ event-of (worklist-pop slot) fs ++ flat-events n prog (flat-exec-instr (worklist-pop slot) prog fs))
 
   -- ARITH SIGOP interpretation contract (D061): the internal-producer obligation,
   -- discharged OFFLINE from the arith proofs (dispatch-arith-preserves + arith-block-
@@ -616,7 +639,7 @@ mutual
          (proj₁ (proj₂ (lea-indexed-wf prog fs slot ftq))) cc h ftq
          (proj₂ (proj₁ (lea-indexed-wf prog fs slot ftq)))
          (proj₂ (proj₂ (lea-indexed-wf prog fs slot ftq)))
-         (slot-read-live fs slot (proj₂ (proj₁ (lea-indexed-wf prog fs slot ftq)))))
+         (slot-read-in-frame prog fs slot (lea-indexed slot) ftq))
       wf refl (lea-indexed-hpost prog fs slot (proj₁ (proj₁ (lea-indexed-wf prog fs slot ftq)))
                 (proj₁ (proj₂ (lea-indexed-wf prog fs slot ftq)))
                 (proj₂ (proj₁ (lea-indexed-wf prog fs slot ftq)))
@@ -894,11 +917,15 @@ mutual
                        ≡ event-of (load-from-slot slot) fs ++ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs))
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n ev env prog fs s (load-from-slot slot)
-              (block-step-load-from-slot prog fs s slot w cc h ftq (slot-read-live fs slot st-eq) st-eq)
+              (block-step-load-from-slot prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ ftq) st-eq)
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
-          go-mem nothing st-eq = load-from-slot-empty n ev env prog fs s slot cc wf h ftq
+          go-mem nothing st-eq =
+            slot-empty-stop {hv} n ev env prog fs s slot rax (load-from-slot slot) cc h ftq refl
+              (slot-read-in-frame prog fs slot (load-from-slot slot) ftq) st-eq hpost refl
+            where hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ true
+                  hpost rewrite st-eq = refl
 
   -- STACK restore-input: identical to load-from-slot but writes Input1 (rdi).
   restore-input-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
@@ -913,11 +940,15 @@ mutual
                        ≡ event-of (restore-input slot) fs ++ flat-events n prog (flat-exec-instr (restore-input slot) prog fs))
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n ev env prog fs s (restore-input slot)
-              (block-step-restore-input prog fs s slot w cc h ftq (slot-read-live fs slot st-eq) st-eq)
+              (block-step-restore-input prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ ftq) st-eq)
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr (restore-input slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
-          go-mem nothing st-eq = restore-input-empty n ev env prog fs s slot cc wf h ftq
+          go-mem nothing st-eq =
+            slot-empty-stop {hv} n ev env prog fs s slot rdi (restore-input slot) cc h ftq refl
+              (slot-read-in-frame prog fs slot (restore-input slot) ftq) st-eq hpost refl
+            where hpost : halted (floc (flat-exec-instr (restore-input slot) prog fs)) ≡ true
+                  hpost rewrite st-eq = refl
 
   -- STACK worklist-pop: identical to load-from-slot (same abstract sem + lowering).
   worklist-pop-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
@@ -932,11 +963,15 @@ mutual
                        ≡ event-of (worklist-pop slot) fs ++ flat-events n prog (flat-exec-instr (worklist-pop slot) prog fs))
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n ev env prog fs s (worklist-pop slot)
-              (block-step-worklist-pop prog fs s slot w cc h ftq (slot-read-live fs slot st-eq) st-eq)
+              (block-step-worklist-pop prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ ftq) st-eq)
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr (worklist-pop slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
-          go-mem nothing st-eq = worklist-pop-empty n ev env prog fs s slot cc wf h ftq
+          go-mem nothing st-eq =
+            slot-empty-stop {hv} n ev env prog fs s slot rax (worklist-pop slot) cc h ftq refl
+              (slot-read-in-frame prog fs slot (worklist-pop slot) ftq) st-eq hpost refl
+            where hpost : halted (floc (flat-exec-instr (worklist-pop slot) prog fs)) ≡ true
+                  hpost rewrite st-eq = refl
 
   -- MEMORY store-indirect: case the Output-target pointer. A live dynamic pointer ⇒ the
   -- PROVEN block-step-store-indirect (LiveIn from store-indirect-live; the writeLoc↔heap

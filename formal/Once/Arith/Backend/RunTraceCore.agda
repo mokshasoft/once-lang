@@ -154,6 +154,17 @@ module RunTrace
   run-events-noncall ev env n prog s i hs ft mc ex
     rewrite hs | ft | mc | ex = refl
 
+  -- STUCK: an ordinary instruction whose `execInstr` fails (an unmapped memory
+  -- operand, a bad address) ends the trace — `run-events-exec … nothing ≡ []`.
+  -- The concrete counterpart of the abstract machine HALTING, so it is what the
+  -- "both machines stop here" correspondence cases ride on.
+  run-events-stuck : ∀ ev env n prog s i
+                   → halted s ≡ false → fetch prog (pc s) ≡ just i
+                   → matchCall i ≡ nothing → execInstr prog s i ≡ nothing
+                   → run-events ev env (suc n) prog s ≡ []
+  run-events-stuck ev env n prog s i hs ft mc ex
+    rewrite hs | ft | mc | ex = refl
+
   ----------------------------------------------------------------------
   -- Per-step reductions at a SigOp `call-sym` (the two cases `run-events`
   -- handles that `X.exec` cannot). These are what the `events-agree` induction
