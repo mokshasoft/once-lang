@@ -375,12 +375,12 @@ postulate
                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                            ≡ event-of (instr-reg-op scratch-dec) fs
                              ++ flat-events n prog (flat-exec-instr (instr-reg-op scratch-dec) prog fs))
-  input2-inc-nontag : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+  count-inc-nontag : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                         prog fs s → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
-                    → fetch prog (fpc fs) ≡ just (instr-reg-op input2-inc)
+                    → fetch prog (fpc fs) ≡ just (instr-reg-op count-inc)
                     → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                          ≡ event-of (instr-reg-op input2-inc) fs
-                            ++ flat-events n prog (flat-exec-instr (instr-reg-op input2-inc) prog fs))
+                          ≡ event-of (instr-reg-op count-inc) fs
+                            ++ flat-events n prog (flat-exec-instr (instr-reg-op count-inc) prog fs))
 
   -- STORE-LIVENESS witness for load-indirect: the loaded dynamic pointer targets a LIVE
   -- heap cell. This is the ONE genuinely-residual witness (LiveIn is a ConcFlatSim param
@@ -590,10 +590,10 @@ mutual
   events-running-fetch {hv} n ev env prog fs s mov-input2-to-output   cc wf h ftq = ccc-step-bs n ev env prog fs s mov-input2-to-output   (block-step-mov-input2-to-output   prog fs s cc h ftq) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-reg-op scratch-one)        cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-reg-op scratch-one)        (block-step-scratch-one        prog fs s cc h ftq) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-reg-op scratch-zero)       cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-reg-op scratch-zero)       (block-step-scratch-zero       prog fs s cc h ftq) wf refl h
-  events-running-fetch {hv} n ev env prog fs s (instr-reg-op input2-zero)        cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-reg-op input2-zero)        (block-step-input2-zero        prog fs s cc h ftq) wf refl h
+  events-running-fetch {hv} n ev env prog fs s (instr-reg-op count-zero)        cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-reg-op count-zero)        (block-step-count-zero        prog fs s cc h ftq) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-reg-op scratch-load-count) cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-reg-op scratch-load-count) (block-step-scratch-load-count prog fs s cc h ftq) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-reg-op scratch-dec) cc wf h ftq = scratch-dec-step n ev env prog fs s cc wf h ftq
-  events-running-fetch {hv} n ev env prog fs s (instr-reg-op input2-inc) cc wf h ftq = input2-inc-step n ev env prog fs s cc wf h ftq
+  events-running-fetch {hv} n ev env prog fs s (instr-reg-op count-inc) cc wf h ftq = count-inc-step n ev env prog fs s cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s load-indirect cc wf h ftq = load-indirect-step n ev env prog fs s cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s load-indirect-suc cc wf h ftq = load-indirect-suc-step n ev env prog fs s cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s store-indirect cc wf h ftq = store-indirect-step n ev env prog fs s cc wf h ftq
@@ -614,7 +614,7 @@ mutual
   events-running-fetch {hv} n ev env prog fs s (instr-alloc-heap k) cc wf h ftq =
     ccc-step-bs n ev env prog fs s (instr-alloc-heap k)
       (block-step-alloc-heap prog fs s k cc h ftq
-         (wf-regs wf Input1) (wf-regs wf Input2) (wf-regs wf Scratch)
+         (wf-regs wf Input1) (wf-regs wf Input2) (wf-regs wf Scratch) (wf-regs wf Count)
          (λ hl _ → wf-heap wf hl) (λ k' _ → wf-stack wf (current-frame (falloc fs)) k')
          (λ hl eq → wf-fresh wf hl (≤-reflexive (sym eq))) (alloc-heap-fresh-x86 s k)) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc wf h ftq =
@@ -890,24 +890,24 @@ mutual
           go-sv (SV-Lit _ _) sc-eq = scratch-dec-nontag n ev env prog fs s cc wf h ftq
           go-sv (SV-Code _)  sc-eq = scratch-dec-nontag n ev env prog fs s cc wf h ftq
 
-  -- REG-OP input2-inc: mirror of scratch-dec on Input2 (block-step-input2-inc exists).
-  input2-inc-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+  -- REG-OP count-inc: mirror of scratch-dec on the tally register Count.
+  count-inc-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                       prog fs s → CompiledCorr hv prog fs s → FlatWF fs → halted (floc fs) ≡ false
-                  → fetch prog (fpc fs) ≡ just (instr-reg-op input2-inc)
+                  → fetch prog (fpc fs) ≡ just (instr-reg-op count-inc)
                   → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                        ≡ event-of (instr-reg-op input2-inc) fs
-                          ++ flat-events n prog (flat-exec-instr (instr-reg-op input2-inc) prog fs))
-  input2-inc-step {hv} n ev env prog fs s cc wf h ftq = go-sv (readReg (regs (floc fs)) Input2) refl
-    where go-sv : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input2 ≡ sv
+                        ≡ event-of (instr-reg-op count-inc) fs
+                          ++ flat-events n prog (flat-exec-instr (instr-reg-op count-inc) prog fs))
+  count-inc-step {hv} n ev env prog fs s cc wf h ftq = go-sv (readReg (regs (floc fs)) Count) refl
+    where go-sv : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Count ≡ sv
                 → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                      ≡ event-of (instr-reg-op input2-inc) fs
-                        ++ flat-events n prog (flat-exec-instr (instr-reg-op input2-inc) prog fs))
+                      ≡ event-of (instr-reg-op count-inc) fs
+                        ++ flat-events n prog (flat-exec-instr (instr-reg-op count-inc) prog fs))
           go-sv (SV-Tag k)   i2-eq =
-            ccc-step-bs {hv} n ev env prog fs s (instr-reg-op input2-inc)
-              (block-step-input2-inc prog fs s k cc h ftq i2-eq) wf refl h
-          go-sv (SV-Ptr _)   i2-eq = input2-inc-nontag n ev env prog fs s cc wf h ftq
-          go-sv (SV-Lit _ _) i2-eq = input2-inc-nontag n ev env prog fs s cc wf h ftq
-          go-sv (SV-Code _)  i2-eq = input2-inc-nontag n ev env prog fs s cc wf h ftq
+            ccc-step-bs {hv} n ev env prog fs s (instr-reg-op count-inc)
+              (block-step-count-inc prog fs s k cc h ftq i2-eq) wf refl h
+          go-sv (SV-Ptr _)   i2-eq = count-inc-nontag n ev env prog fs s cc wf h ftq
+          go-sv (SV-Lit _ _) i2-eq = count-inc-nontag n ev env prog fs s cc wf h ftq
+          go-sv (SV-Code _)  i2-eq = count-inc-nontag n ev env prog fs s cc wf h ftq
 
   -- MEMORY load-indirect: case the Input1 pointer + the heap cell (both J-bridges, no
   -- with). A live dynamic pointer to an allocated cell ⇒ the PROVEN block-step-load-

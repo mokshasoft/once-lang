@@ -138,6 +138,25 @@ data AbstractReg : Set where
   -- primitive or SigOp ever writes it (see `exec-abstract`), so it is
   -- preserved by every loop-body instruction for free.
   Scratch : AbstractReg
+  -- Plan 0.54 rung D (item 4): the descend TALLY, split off `Input2`.
+  --
+  -- The tally used to live in `Input2`, which is ALSO the second argument
+  -- location of the split-input calling convention (`mov-output-to-input2`
+  -- writes an arbitrary value there). Those two roles contradict: the tally
+  -- is always an `SV-Tag`, an argument is anything. That conflation made
+  -- `count-inc`/`scratch-dec`/`c-branch-scratch-zero` UNPROVABLE against the
+  -- concrete machine (abstract `sv-succ`/`sv-pred` coerce a non-tag to a tag;
+  -- x86 `add`/`sub` work on the encoding), and it was false by DESIGN INTENT,
+  -- not by accident — it merely is not violated yet, because the nested-pair
+  -- codegen that would write a value into `Input2` is unimplemented.
+  --
+  -- With the roles split, `Count` and `Scratch` are written ONLY with tags
+  -- (`count-zero`/`count-inc`/`scratch-one`/`scratch-zero`/`scratch-dec`, and
+  -- `scratch-load-count : Scratch := Count`), so "both hold tags" is a STATE
+  -- invariant provable by induction over every instruction — see
+  -- `Once.CCC.Machine.FlatRegTagWF`. `Input2` is left completely
+  -- unconstrained: it is a pure value register again.
+  Count : AbstractReg
 
 -- `ValueLocation` (AtStack / AtDynamic) is defined in
 -- Once.CCC.Machine.Locations (D062) and re-exported above.
@@ -271,6 +290,15 @@ Scratch ≟R Input1 = no (λ ())
 Scratch ≟R Input2 = no (λ ())
 Scratch ≟R Output = no (λ ())
 Scratch ≟R Scratch = yes refl
+Input1 ≟R Count = no (λ ())
+Input2 ≟R Count = no (λ ())
+Output ≟R Count = no (λ ())
+Scratch ≟R Count = no (λ ())
+Count ≟R Input1 = no (λ ())
+Count ≟R Input2 = no (λ ())
+Count ≟R Output = no (λ ())
+Count ≟R Scratch = no (λ ())
+Count ≟R Count = yes refl
 
 -- Plan 0.13.2: registers hold `StoredValue`, not `ValueLocation`.
 -- Real machines load tags / ints / pointers into the same registers
@@ -282,6 +310,7 @@ record Registers (FS : FrameSemantics) : Set where
     input1 input2 output : StoredValue FS
     stackSlot : ℕ  -- current stack slot index (like rsp, but as slot count)
     scratch : StoredValue FS  -- Plan 0.29: loop-private (rbx); see AbstractReg.Scratch
+    count : StoredValue FS    -- Plan 0.54 D item 4: descend tally; see AbstractReg.Count
 
 open Registers public
 
@@ -290,12 +319,14 @@ readReg r Input1 = input1 r
 readReg r Input2 = input2 r
 readReg r Output = output r
 readReg r Scratch = scratch r
+readReg r Count = count r
 
 writeReg : ∀ {FS} → Registers FS → AbstractReg → StoredValue FS → Registers FS
 writeReg r Input1 v = record r { input1 = v }
 writeReg r Input2 v = record r { input2 = v }
 writeReg r Output v = record r { output = v }
 writeReg r Scratch v = record r { scratch = v }
+writeReg r Count v = record r { count = v }
 
 -- | Update stackSlot
 writeStackSlot : ∀ {FS} → Registers FS → ℕ → Registers FS
@@ -334,6 +365,16 @@ writeReg-preserves regs Scratch Input2 v r≢dst = refl
 writeReg-preserves regs Scratch Output v r≢dst = refl
 writeReg-preserves regs Scratch Scratch v r≢dst = ⊥-elim (r≢dst refl)
   where open import Data.Empty using (⊥-elim)
+writeReg-preserves regs Input1 Count v r≢dst = refl
+writeReg-preserves regs Input2 Count v r≢dst = refl
+writeReg-preserves regs Output Count v r≢dst = refl
+writeReg-preserves regs Scratch Count v r≢dst = refl
+writeReg-preserves regs Count Input1 v r≢dst = refl
+writeReg-preserves regs Count Input2 v r≢dst = refl
+writeReg-preserves regs Count Output v r≢dst = refl
+writeReg-preserves regs Count Scratch v r≢dst = refl
+writeReg-preserves regs Count Count v r≢dst = ⊥-elim (r≢dst refl)
+  where open import Data.Empty using (⊥-elim)
 
 -- Key lemma: writing to a register and reading it back gives the written value
 writeReg-same : ∀ {FS} (regs : Registers FS) dst v →
@@ -342,6 +383,7 @@ writeReg-same regs Input1 v = refl
 writeReg-same regs Input2 v = refl
 writeReg-same regs Output v = refl
 writeReg-same regs Scratch v = refl
+writeReg-same regs Count v = refl
 
 -- Key lemma: writeReg preserves stackSlot
 writeReg-preserves-stackSlot : ∀ {FS} (regs : Registers FS) dst v →
@@ -350,6 +392,7 @@ writeReg-preserves-stackSlot regs Input1 v = refl
 writeReg-preserves-stackSlot regs Input2 v = refl
 writeReg-preserves-stackSlot regs Output v = refl
 writeReg-preserves-stackSlot regs Scratch v = refl
+writeReg-preserves-stackSlot regs Count v = refl
 
 -- Key lemma: writing twice to same register is same as writing once
 writeReg-overwrite : ∀ {FS} (regs : Registers FS) dst x y →
@@ -358,15 +401,20 @@ writeReg-overwrite regs Input1 x y = refl
 writeReg-overwrite regs Input2 x y = refl
 writeReg-overwrite regs Output x y = refl
 writeReg-overwrite regs Scratch x y = refl
+writeReg-overwrite regs Count x y = refl
 
 -- Plan 0.29 (M5): register pokes for recursion-scheme loop bodies.
 data RegOp : Set where
   scratch-one        : RegOp  -- Scratch := SV-Tag 1   (descend continue flag)
   scratch-zero       : RegOp  -- Scratch := SV-Tag 0   (stop / break)
   scratch-dec        : RegOp  -- Scratch := pred Scratch (ascend countdown)
-  scratch-load-count : RegOp  -- Scratch := Input2      (count → counter)
-  input2-zero        : RegOp  -- Input2  := SV-Tag 0    (descend tally init)
-  input2-inc         : RegOp  -- Input2  := succ Input2 (descend count++)
+  scratch-load-count : RegOp  -- Scratch := Count       (count → counter)
+  -- Plan 0.54 D item 4: the tally lives in `Count`, NOT in the ABI's second
+  -- argument register. Both writers produce an `SV-Tag` unconditionally, which
+  -- is what makes `FlatRegTagWF` a state invariant. (Was `count-zero`/
+  -- `count-inc`; see AbstractReg.Count for why the split was necessary.)
+  count-zero         : RegOp  -- Count   := SV-Tag 0    (descend tally init)
+  count-inc          : RegOp  -- Count   := succ Count  (descend count++)
 
 -- Plan 0.29 (M5): SV-Tag counter arithmetic for instr-reg-op.
 sv-succ : ∀ {FS} → StoredValue FS → StoredValue FS
@@ -405,9 +453,9 @@ setReg : ∀ {FS} → RegOp → Registers FS → Registers FS
 setReg scratch-one        r = writeReg r Scratch (SV-Tag 1)
 setReg scratch-zero       r = writeReg r Scratch (SV-Tag 0)
 setReg scratch-dec        r = writeReg r Scratch (sv-pred (readReg r Scratch))
-setReg scratch-load-count r = writeReg r Scratch (readReg r Input2)
-setReg input2-zero        r = writeReg r Input2 (SV-Tag 0)
-setReg input2-inc         r = writeReg r Input2 (sv-succ (readReg r Input2))
+setReg scratch-load-count r = writeReg r Scratch (readReg r Count)
+setReg count-zero         r = writeReg r Count (SV-Tag 0)
+setReg count-inc          r = writeReg r Count (sv-succ (readReg r Count))
 
 -- Uniform record-update on `regs`: heapMem/stackMem/halted preserved
 -- definitionally for ANY op (the op case-split lives inside setReg).

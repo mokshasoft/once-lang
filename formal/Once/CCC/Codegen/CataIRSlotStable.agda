@@ -232,7 +232,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- discharge via `all-stable?-sound refl`; the spliced algebra trace
   -- `at` uses the hypothesis `sat`; `++⁺` mirrors each concatenation.
   ----------------------------------------------------------------------
-  -- NatF (Tier-0): scratch-one ∷ input2-zero ∷ descend-flat(12) ∷
+  -- NatF (Tier-0): scratch-one ∷ count-zero ∷ descend-flat(12) ∷
   -- scratch-load-count ∷ load-tag ∷ mov ∷ build-layer-0(10) ∷ mov ∷
   -- (at ++ ascend-flat); ascend-flat = la-top ∷ la-end ∷ mov ∷
   -- build-layer-1(10) ∷ mov ∷ ((at ++ [scratch-dec]) ++ [jmp,label]).

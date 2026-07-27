@@ -64,7 +64,7 @@ open import Once.CCC.Machine.SMCore
          instr-save-closure-reg;
          instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl;
          -- RegOp constructors (Plan 0.53 reg-op lowering)
-         scratch-one; scratch-zero; scratch-dec; scratch-load-count; input2-zero; input2-inc;
+         scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc;
          -- FlatCtrl constructors (Plan 0.53 flat-control lowering)
          c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero)
 
@@ -294,8 +294,8 @@ compile-abstract (instr-reg-op scratch-zero)       = li s3 (+ 0) ∷ []
 compile-abstract (instr-reg-op scratch-dec)        = addi s3 s3 (Data.Integer.-_ (+ 1)) ∷ []
   where import Data.Integer
 compile-abstract (instr-reg-op scratch-load-count) = mv s3 s4 ∷ []
-compile-abstract (instr-reg-op input2-zero)        = li s4 (+ 0) ∷ []
-compile-abstract (instr-reg-op input2-inc)         = addi s4 s4 (+ 1) ∷ []
+compile-abstract (instr-reg-op count-zero)        = li s4 (+ 0) ∷ []
+compile-abstract (instr-reg-op count-inc)         = addi s4 s4 (+ 1) ∷ []
 -- Plan 0.53 (mirror x86-64 M3/0.34): flat control lowers 1-to-1. Labels/jumps
 -- reuse RV64's `.L<n>` label space; the conditional branches are single
 -- compare-and-branch (no flags on RISC-V). Input1 pointer = t0; Scratch = s3.

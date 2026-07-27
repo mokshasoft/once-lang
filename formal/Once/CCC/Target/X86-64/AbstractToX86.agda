@@ -269,9 +269,12 @@ compile-abstract (instr-loop _) =
 compile-abstract (instr-reg-op scratch-one)        = mov (reg rbx) (imm 1) ∷ []
 compile-abstract (instr-reg-op scratch-zero)       = mov (reg rbx) (imm 0) ∷ []
 compile-abstract (instr-reg-op scratch-dec)        = sub (reg rbx) (imm 1) ∷ []
-compile-abstract (instr-reg-op scratch-load-count) = mov (reg rbx) (reg rsi) ∷ []
-compile-abstract (instr-reg-op input2-zero)        = mov (reg rsi) (imm 0) ∷ []
-compile-abstract (instr-reg-op input2-inc)         = add (reg rsi) (imm 1) ∷ []
+-- Plan 0.54 D item 4: the tally is `Count` (r14, callee-saved like rbx), NOT
+-- rsi. rsi is the ABI's second argument register (Input2) and holds arbitrary
+-- values; sharing it with a ℕ counter is what made the counter ops unprovable.
+compile-abstract (instr-reg-op scratch-load-count) = mov (reg rbx) (reg r14) ∷ []
+compile-abstract (instr-reg-op count-zero)         = mov (reg r14) (imm 0) ∷ []
+compile-abstract (instr-reg-op count-inc)          = add (reg r14) (imm 1) ∷ []
 -- Plan 0.32 (M3): flat control flow lowers 1-to-1 to x86 (the whole point
 -- of flattening — abstract jump ↔ target jump, no structured expansion).
 compile-abstract (instr-ctrl (c-label n))          = label (once n) ∷ []

@@ -88,7 +88,7 @@ open import Once.CCC.Machine.SMCore
          instr-loop; instr-reg-op;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
          scratch-one; scratch-zero; scratch-dec; scratch-load-count;
-         input2-zero; input2-inc)
+         count-zero; count-inc)
 
 ------------------------------------------------------------------------
 -- IR → AbstractTrace, state-passing
@@ -184,7 +184,7 @@ cata-trace-nat n1 l1 at =
         instr-ctrl (c-label ld-top) ∷
         instr-ctrl (c-branch-scratch-zero ld-end) ∷
         instr-ctrl (c-branch-tag-zero ld-inl) ∷
-        instr-reg-op input2-inc ∷ load-indirect-suc ∷ mov-to-input ∷
+        instr-reg-op count-inc ∷ load-indirect-suc ∷ mov-to-input ∷
         instr-ctrl (c-jmp ld-de) ∷
         instr-ctrl (c-label ld-inl) ∷ instr-reg-op scratch-zero ∷
         instr-ctrl (c-label ld-de) ∷ instr-ctrl (c-jmp ld-top) ∷
@@ -196,7 +196,7 @@ cata-trace-nat n1 l1 at =
         instr-ctrl (c-branch-scratch-zero la-end) ∷
         (ascend-body ++ (instr-ctrl (c-jmp la-top) ∷ instr-ctrl (c-label la-end) ∷ []))
       trace =
-        instr-reg-op scratch-one ∷ instr-reg-op input2-zero ∷
+        instr-reg-op scratch-one ∷ instr-reg-op count-zero ∷
         (descend-flat ++
          (instr-reg-op scratch-load-count ∷
           instr-load-tag-lit 0 ∷ mov-to-input ∷
@@ -234,11 +234,11 @@ cata-trace-linear n1 l1 at =
       la-top = suc (suc l1) ; la-end = suc (suc (suc l1))
       l2     = suc (suc (suc (suc l1)))                   -- l1 + 4
       descend =
-        instr-reg-op input2-zero ∷
+        instr-reg-op count-zero ∷
         instr-load-tag-lit 0 ∷ store-at-slot stack-top ∷
         instr-ctrl (c-label ld-top) ∷
         instr-ctrl (c-branch-tag-zero ld-end) ∷
-        instr-reg-op input2-inc ∷
+        instr-reg-op count-inc ∷
         load-indirect-suc ∷ mov-to-input ∷                -- Input1 := pair
         load-indirect ∷ store-at-slot xstash ∷            -- xstash := x = pair[0]
         load-indirect-suc ∷ store-at-slot node-cur ∷      -- node-cur := child = pair[1]

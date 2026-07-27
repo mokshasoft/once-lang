@@ -10,7 +10,7 @@
 -- `CataIsEvenInduction` POC only as a technique reference.
 --
 -- First piece: the descend BODY — the three straight instructions a
--- cons (`inr`) node runs each iteration: `input2-inc` (depth++),
+-- cons (`inr`) node runs each iteration: `count-inc` (depth++),
 -- `load-indirect-suc` (Output := child = *(Input1[1])), `mov-to-input`
 -- (Input1 := child). `load-indirect-suc` HALTS unless Input1 is a
 -- pointer AND the child cell exists, so both hypotheses are required
@@ -32,7 +32,7 @@ open import Once.CCC.Machine.SMCore
          writeReg; writeReg-same; writeReg-preserves; sv-succ; SV-Tag;
          sv-as-loc; sucLoc; StoredValue; ValueLocation; AtStack; AtDynamic;
          RegOp; exec-reg-op; AbstractTrace;
-         instr-reg-op; input2-inc; load-indirect-suc; mov-to-input; scratch-zero;
+         instr-reg-op; count-inc; load-indirect-suc; mov-to-input; scratch-zero;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
          module AbstractExec; module MemOps)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -58,7 +58,7 @@ module CataNatDescend {FS : FrameSemantics} where
   load-suc-keeps-halted s alloc loc v p1 p2 rewrite p1 | p2 = refl
 
   -- `exec-reg-op` preserves memory reads (it touches only `regs`), so the
-  -- `child`-cell hypothesis about `fs` transfers across `input2-inc`.
+  -- `child`-cell hypothesis about `fs` transfers across `count-inc`.
   -- Cases on the location (`readLoc` matches it); `stackMem`/`heapMem`
   -- are unchanged by a `regs`-only record update.
   reg-op-keeps-readLoc : ∀ (op : RegOp) (s : LocState FS) (loc : ValueLocation FS)
@@ -66,27 +66,27 @@ module CataNatDescend {FS : FrameSemantics} where
   reg-op-keeps-readLoc op s (AtStack f k) = refl
   reg-op-keeps-readLoc op s (AtDynamic hl) = refl
 
-  -- The descend body's resulting state: `input2-inc` (depth++) then
+  -- The descend body's resulting state: `count-inc` (depth++) then
   -- `load-indirect-suc` (Output := child) then `mov-to-input` (Input1 :=
   -- child), all straight. Named so it can appear in result types.
   body-result : AbstractTrace → FlatState → FlatState
   body-result prog fs =
     flat-exec-instr mov-to-input prog
       (flat-exec-instr load-indirect-suc prog
-        (flat-exec-instr (instr-reg-op input2-inc) prog fs))
+        (flat-exec-instr (instr-reg-op count-inc) prog fs))
 
-  -- `input2-inc` preserves the Input1 register (it writes Input2).
+  -- `count-inc` preserves the Input1 register (it writes Input2).
   input2-keeps-input1 : ∀ (s : LocState FS)
-                      → readReg (regs (exec-reg-op input2-inc s)) Input1 ≡ readReg (regs s) Input1
+                      → readReg (regs (exec-reg-op count-inc s)) Input1 ≡ readReg (regs s) Input1
   input2-keeps-input1 s =
     writeReg-preserves (regs s) Input2 Input1 (sv-succ (readReg (regs s) Input2)) (λ ())
 
-  -- The body leaves Input1 pointing at the child: `input2-inc` preserves
+  -- The body leaves Input1 pointing at the child: `count-inc` preserves
   -- Input1, `load-indirect-suc` puts the child (`*(Input1+1)`) in Output,
   -- `mov-to-input` copies Output to Input1. So `body-result`'s Input1 = the
   -- child pointer `v`. This is the REGISTER INVARIANT the descend loop
   -- maintains (Input1 advances to the next cell each iteration). The two
-  -- rewrites relocate the cons facts across `input2-inc` (Input1-read +
+  -- rewrites relocate the cons facts across `count-inc` (Input1-read +
   -- memory preserved); the load + mov then reduce definitionally.
   body-input1 : ∀ (prog : AbstractTrace) (fs : FlatState)
                   (loc : ValueLocation FS) (v : StoredValue FS)
@@ -95,7 +95,7 @@ module CataNatDescend {FS : FrameSemantics} where
     → readReg (regs (floc (body-result prog fs))) Input1 ≡ v
   body-input1 prog fs loc v ptr child
     rewrite trans (cong sv-as-loc (input2-keeps-input1 (floc fs))) ptr
-          | trans (reg-op-keeps-readLoc input2-inc (floc fs) (sucLoc loc)) child = refl
+          | trans (reg-op-keeps-readLoc count-inc (floc fs) (sucLoc loc)) child = refl
 
   -- The body PRESERVES the Scratch register (it writes only Input2 /
   -- Output / Input1) — so the descend's depth-counter condition (Scratch ≠
@@ -109,7 +109,7 @@ module CataNatDescend {FS : FrameSemantics} where
     → readReg (regs (floc (body-result prog fs))) Scratch ≡ readReg (regs (floc fs)) Scratch
   body-scratch prog fs loc v ptr child
     rewrite trans (cong sv-as-loc (input2-keeps-input1 (floc fs))) ptr
-          | trans (reg-op-keeps-readLoc input2-inc (floc fs) (sucLoc loc)) child =
+          | trans (reg-op-keeps-readLoc count-inc (floc fs) (sucLoc loc)) child =
     trans (writeReg-preserves R2 Input1 Scratch v (λ ()))
           (trans (writeReg-preserves R1 Output Scratch v (λ ()))
                  (writeReg-preserves R0 Input2 Scratch succ-v (λ ())))
@@ -130,16 +130,16 @@ module CataNatDescend {FS : FrameSemantics} where
     → readLoc (floc (body-result prog fs)) loc' ≡ readLoc (floc fs) loc'
   body-readLoc prog fs loc v loc' ptr child
     rewrite trans (cong sv-as-loc (input2-keeps-input1 (floc fs))) ptr
-          | trans (reg-op-keeps-readLoc input2-inc (floc fs) (sucLoc loc)) child
+          | trans (reg-op-keeps-readLoc count-inc (floc fs) (sucLoc loc)) child
     with loc'
   ... | AtStack f k = refl
   ... | AtDynamic hl = refl
 
   -- The whole 3-instr body preserves `halted` (given Input1 a pointer +
   -- the child cell present, so `load-indirect-suc` doesn't halt). `mov-to
-  -- -input`/`input2-inc` are reg-ops (preserve `halted` definitionally);
+  -- -input`/`count-inc` are reg-ops (preserve `halted` definitionally);
   -- the `load` goes through `load-suc-keeps-halted` at the post-`input2-
-  -- inc` state, where `ptr`/`child` (about `fs`) transfer (input2-inc
+  -- inc` state, where `ptr`/`child` (about `fs`) transfer (count-inc
   -- leaves Input1 + memory). Reused as `descend-post`'s `halted` premise.
   body-keeps-halted : ∀ (prog : AbstractTrace) (fs : FlatState)
                         (loc : ValueLocation FS) (v : StoredValue FS)
@@ -148,10 +148,10 @@ module CataNatDescend {FS : FrameSemantics} where
     → halted (floc (body-result prog fs)) ≡ halted (floc fs)
   body-keeps-halted prog fs loc v ptr child =
     load-suc-keeps-halted
-      (floc (flat-exec-instr (instr-reg-op input2-inc) prog fs))
-      (falloc (flat-exec-instr (instr-reg-op input2-inc) prog fs))
+      (floc (flat-exec-instr (instr-reg-op count-inc) prog fs))
+      (falloc (flat-exec-instr (instr-reg-op count-inc) prog fs))
       loc v ptr
-      (trans (reg-op-keeps-readLoc input2-inc (floc fs) (sucLoc loc)) child)
+      (trans (reg-op-keeps-readLoc count-inc (floc fs) (sucLoc loc)) child)
 
   -- The descend loop-head→loop-head state transform: one continue
   -- iteration's result state (= `descend-iter-flat`'s result). `fpc` is
@@ -209,14 +209,14 @@ module CataNatDescend {FS : FrameSemantics} where
   -- The descend body's three straight steps, as a `FlatSteps`-of-3.
   -- Links 1,2 preserve `halted` definitionally (reg/mem updates);
   -- link 3 (after `load`) goes through `body-keeps-halted`. `ptr`/
-  -- `child` are about `fs`, but `input2-inc` preserves Input1 and memory,
-  -- so they reduce to the post-`input2-inc` state's reads.
+  -- `child` are about `fs`, but `count-inc` preserves Input1 and memory,
+  -- so they reduce to the post-`count-inc` state's reads.
   descend-body-flat : ∀ (prog : AbstractTrace) (fs : FlatState)
                         (loc : ValueLocation FS) (v : StoredValue FS)
     → halted (floc fs) ≡ false
     → sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just loc
     → readLoc (floc fs) (sucLoc loc) ≡ just v
-    → fetch prog (fpc fs)             ≡ just (instr-reg-op input2-inc)
+    → fetch prog (fpc fs)             ≡ just (instr-reg-op count-inc)
     → fetch prog (suc (fpc fs))       ≡ just load-indirect-suc
     → fetch prog (suc (suc (fpc fs))) ≡ just mov-to-input
     → FlatSteps prog 3 fs (body-result prog fs)
@@ -299,7 +299,7 @@ module CataNatDescend {FS : FrameSemantics} where
     → fetch prog (fpc fs)                               ≡ just (instr-ctrl (c-label ld-top))
     → fetch prog (suc (fpc fs))                         ≡ just (instr-ctrl (c-branch-scratch-zero ld-end))
     → fetch prog (suc (suc (fpc fs)))                   ≡ just (instr-ctrl (c-branch-tag-zero ld-inl))
-    → fetch prog (suc (suc (suc (fpc fs))))             ≡ just (instr-reg-op input2-inc)
+    → fetch prog (suc (suc (suc (fpc fs))))             ≡ just (instr-reg-op count-inc)
     → fetch prog (suc (suc (suc (suc (fpc fs)))))       ≡ just load-indirect-suc
     → fetch prog (suc (suc (suc (suc (suc (fpc fs)))))) ≡ just mov-to-input
     → fetch prog (suc (suc (suc (suc (suc (suc (fpc fs))))))) ≡ just (instr-ctrl (c-jmp ld-de))
@@ -394,7 +394,7 @@ module CataNatDescend {FS : FrameSemantics} where
   ----------------------------------------------------------------------
   -- The DESCEND phase emits NO SigOp events (trace-side `traces-agree`).
   --
-  -- Every descend instruction (labels, branches, `input2-inc`, `load-
+  -- Every descend instruction (labels, branches, `count-inc`, `load-
   -- indirect-suc`, `mov-to-input`, jumps, `scratch-zero`) is non-`instr-
   -- sigop`, so `event-of … ≡ []` DEFINITIONALLY. We prove silence per-
   -- CHAIN (not via `flat-events-[]`): the surrounding `prog` also holds
@@ -418,7 +418,7 @@ module CataNatDescend {FS : FrameSemantics} where
   ++-silent xs ys px py =
     trans (chain-events-++ xs ys) (trans (cong (_++ chain-events ys) px) py)
 
-  -- The descend body's three straight steps (`input2-inc`, `load-
+  -- The descend body's three straight steps (`count-inc`, `load-
   -- indirect-suc`, `mov-to-input`) all emit `[]` — `chain-events` of the
   -- raw cons-list reduces directly (no `subst` to step over).
   descend-body-silent : ∀ (prog : AbstractTrace) (fs : FlatState)
@@ -426,7 +426,7 @@ module CataNatDescend {FS : FrameSemantics} where
     → (hf : halted (floc fs) ≡ false)
     → (ptr : sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just loc)
     → (child : readLoc (floc fs) (sucLoc loc) ≡ just v)
-    → (f0 : fetch prog (fpc fs)             ≡ just (instr-reg-op input2-inc))
+    → (f0 : fetch prog (fpc fs)             ≡ just (instr-reg-op count-inc))
     → (f1 : fetch prog (suc (fpc fs))       ≡ just load-indirect-suc)
     → (f2 : fetch prog (suc (suc (fpc fs))) ≡ just mov-to-input)
     → chain-events (descend-body-flat prog fs loc v hf ptr child f0 f1 f2) ≡ []
@@ -495,7 +495,7 @@ module CataNatDescend {FS : FrameSemantics} where
     → (fL0 : fetch prog (fpc fs)                               ≡ just (instr-ctrl (c-label ld-top)))
     → (fB0 : fetch prog (suc (fpc fs))                         ≡ just (instr-ctrl (c-branch-scratch-zero ld-end)))
     → (fB1 : fetch prog (suc (suc (fpc fs)))                   ≡ just (instr-ctrl (c-branch-tag-zero ld-inl)))
-    → (fi : fetch prog (suc (suc (suc (fpc fs))))             ≡ just (instr-reg-op input2-inc))
+    → (fi : fetch prog (suc (suc (suc (fpc fs))))             ≡ just (instr-reg-op count-inc))
     → (fl : fetch prog (suc (suc (suc (suc (fpc fs)))))       ≡ just load-indirect-suc)
     → (fm : fetch prog (suc (suc (suc (suc (suc (fpc fs)))))) ≡ just mov-to-input)
     → (fJ1 : fetch prog (suc (suc (suc (suc (suc (suc (fpc fs))))))) ≡ just (instr-ctrl (c-jmp ld-de)))

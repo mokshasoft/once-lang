@@ -110,9 +110,12 @@ entry-loc = AtDynamic (heap-loc (mkHeapRef 0) 0)
 
 -- Fillers are pointers to the same (erased Unit) cell — no numeric literal is
 -- needed, so no `Number` instance for the machine word domain is required.
+-- Plan 0.54 D item 4: `Scratch` and `Count` start as TAGS, not pointer fillers —
+-- that is what `FlatRegTagWF`'s entry case needs, and both encode to 0 just as
+-- the pointer filler did (`enc-sv (SV-Tag 0) = 0`), so `entry-corr` is unchanged.
 entry-regs : Registers FS
 entry-regs = mkRegs (SV-Ptr entry-loc) (SV-Ptr entry-loc) (SV-Ptr entry-loc)
-                    0 (SV-Ptr entry-loc)
+                    0 (SV-Tag 0) (SV-Tag 0)
 
 entry-s : LocState FS
 entry-s = mkLocState entry-regs (λ _ _ → nothing) (λ _ → nothing) false

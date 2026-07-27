@@ -31,7 +31,7 @@ open import Once.CCC.Machine.SMCore
   using (LocState; AllocState; halted; regs; readReg; Input1; Scratch;
          sv-as-loc; sucLoc; SV-Tag; SV-Ptr; StoredValue; ValueLocation;
          exec-reg-op; scratch-zero; AbstractTrace;
-         instr-reg-op; input2-inc; load-indirect-suc; mov-to-input;
+         instr-reg-op; count-inc; load-indirect-suc; mov-to-input;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
          module MemOps)
 open import Once.CCC.Machine.Allocation using (next-slot)
@@ -56,7 +56,7 @@ module CataNatDescendRun {FS : FrameSemantics} where
       cL   : fetch prog q-top                               ≡ just (instr-ctrl (c-label ld-top))
       cBs  : fetch prog (suc q-top)                         ≡ just (instr-ctrl (c-branch-scratch-zero ld-end))
       cBt  : fetch prog (suc (suc q-top))                   ≡ just (instr-ctrl (c-branch-tag-zero ld-inl))
-      ci   : fetch prog (suc (suc (suc q-top)))             ≡ just (instr-reg-op input2-inc)
+      ci   : fetch prog (suc (suc (suc q-top)))             ≡ just (instr-reg-op count-inc)
       cl   : fetch prog (suc (suc (suc (suc q-top))))       ≡ just load-indirect-suc
       cm   : fetch prog (suc (suc (suc (suc (suc q-top))))) ≡ just mov-to-input
       cJ1  : fetch prog (suc (suc (suc (suc (suc (suc q-top)))))) ≡ just (instr-ctrl (c-jmp ld-de))
@@ -118,7 +118,7 @@ module CataNatDescendRun {FS : FrameSemantics} where
         rec = descend-chain-runs prog ld-top ld-end ld-inl ld-de q-top q-de q-inl q-end code
                 m ls' alloc' child-loc ptr' sc' hlt' chain'
     -- `alloc' = falloc (desc-step …) = alloc` definitionally (the descend
-    -- body preserves falloc: input2-inc reg, load-indirect-suc `, alloc`,
+    -- body preserves falloc: count-inc reg, load-indirect-suc `, alloc`,
     -- mov reg), so the recursion's next-slot fact is already `≡ next-slot
     -- alloc`. Descend allocates nothing.
     in proj₁ rec , FlatSteps-++ iter (proj₁ (proj₂ rec)) , proj₂ (proj₂ rec)

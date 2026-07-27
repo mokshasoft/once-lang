@@ -164,6 +164,15 @@ rw-below n rf Scratch Input1  v _  bo = bo
 rw-below n rf Scratch Input2  v _  bo = bo
 rw-below n rf Scratch Output  v _  bo = bo
 rw-below n rf Scratch Scratch v bv _  = bv
+rw-below n rf Input1  Count   v _  bo = bo
+rw-below n rf Input2  Count   v _  bo = bo
+rw-below n rf Output  Count   v _  bo = bo
+rw-below n rf Scratch Count   v _  bo = bo
+rw-below n rf Count   Input1  v _  bo = bo
+rw-below n rf Count   Input2  v _  bo = bo
+rw-below n rf Count   Output  v _  bo = bo
+rw-below n rf Count   Scratch v _  bo = bo
+rw-below n rf Count   Count   v bv _  = bv
 
 wf-write-reg : ∀ {n ls} (x : AbstractReg) (v : StoredValue FS)
              → StoreWF n ls → sv-below (n) v
@@ -193,6 +202,7 @@ regs-ss n rf m Input1  b = b
 regs-ss n rf m Input2  b = b
 regs-ss n rf m Output  b = b
 regs-ss n rf m Scratch b = b
+regs-ss n rf m Count   b = b
 
 wf-stack-slot : ∀ {n ls} (m : ℕ) → StoreWF n ls
               → StoreWF n (record ls { regs = record (regs ls) { stackSlot = m } })
@@ -456,11 +466,11 @@ mutual
     wf-write-reg Scratch (sv-pred (readReg (regs ls) Scratch)) wf
       (sv-pred-below (next-heap-ref alloc) (readReg (regs ls) Scratch)) , ≤-refl
   wf-abstract (instr-reg-op scratch-load-count) ls alloc wf =
-    wf-write-reg Scratch (readReg (regs ls) Input2) wf (wf-regs wf Input2) , ≤-refl
-  wf-abstract (instr-reg-op input2-zero) ls alloc wf = wf-write-reg Input2 (SV-Tag 0) wf tt , ≤-refl
-  wf-abstract (instr-reg-op input2-inc) ls alloc wf =
-    wf-write-reg Input2 (sv-succ (readReg (regs ls) Input2)) wf
-      (sv-succ-below (next-heap-ref alloc) (readReg (regs ls) Input2)) , ≤-refl
+    wf-write-reg Scratch (readReg (regs ls) Count) wf (wf-regs wf Count) , ≤-refl
+  wf-abstract (instr-reg-op count-zero) ls alloc wf = wf-write-reg Count (SV-Tag 0) wf tt , ≤-refl
+  wf-abstract (instr-reg-op count-inc) ls alloc wf =
+    wf-write-reg Count (sv-succ (readReg (regs ls) Count)) wf
+      (sv-succ-below (next-heap-ref alloc) (readReg (regs ls) Count)) , ≤-refl
   wf-abstract (instr-ctrl c) ls alloc wf = wf , ≤-refl
 
   wf-trace : ∀ (t : AbstractTrace) (ls : LocState FS) (alloc : AllocState {FS})

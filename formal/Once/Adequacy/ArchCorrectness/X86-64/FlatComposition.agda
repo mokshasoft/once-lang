@@ -139,8 +139,8 @@ reg-op-no-label scratch-one = refl
 reg-op-no-label scratch-zero = refl
 reg-op-no-label scratch-dec = refl
 reg-op-no-label scratch-load-count = refl
-reg-op-no-label input2-zero = refl
-reg-op-no-label input2-inc = refl
+reg-op-no-label count-zero = refl
+reg-op-no-label count-inc = refl
 
 const-no-label : ∀ {A} (p : FitsInReg A) (v : _) → has-label (compile-abstract (instr-load-const p v)) ≡ false
 const-no-label fits-int   v = refl

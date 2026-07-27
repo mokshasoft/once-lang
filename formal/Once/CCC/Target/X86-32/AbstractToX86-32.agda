@@ -56,7 +56,7 @@ open import Once.CCC.Machine.SMCore
          instr-save-closure-reg;
          instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl;
          -- Plan 0.53: RegOp + FlatCtrl constructors for reg-op / flat-control lowering
-         scratch-one; scratch-zero; scratch-dec; scratch-load-count; input2-zero; input2-inc;
+         scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc;
          c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero)
 
 ------------------------------------------------------------------------
@@ -249,8 +249,8 @@ compile-abstract (instr-reg-op scratch-one)        = mov (reg edx) (imm 1) ∷ [
 compile-abstract (instr-reg-op scratch-zero)       = mov (reg edx) (imm 0) ∷ []
 compile-abstract (instr-reg-op scratch-dec)        = sub (reg edx) (imm 1) ∷ []
 compile-abstract (instr-reg-op scratch-load-count) = mov (reg edx) (reg edi) ∷ []
-compile-abstract (instr-reg-op input2-zero)        = mov (reg edi) (imm 0) ∷ []
-compile-abstract (instr-reg-op input2-inc)         = add (reg edi) (imm 1) ∷ []
+compile-abstract (instr-reg-op count-zero)        = mov (reg edi) (imm 0) ∷ []
+compile-abstract (instr-reg-op count-inc)         = add (reg edi) (imm 1) ∷ []
 -- Plan 0.53 (mirror x86-64 M3/0.34): flat control. Input1 ptr = ecx (tag at
 -- 0(ecx)); Scratch = edx.
 compile-abstract (instr-ctrl (c-label n))               = label n ∷ []

@@ -30,7 +30,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
   using (LocState; AllocState; halted; regs; readReg; Input1; Scratch;
          sv-as-loc; sucLoc; StoredValue; ValueLocation; AbstractTrace;
-         instr-reg-op; input2-inc; load-indirect-suc; mov-to-input;
+         instr-reg-op; count-inc; load-indirect-suc; mov-to-input;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
          module MemOps)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -128,7 +128,7 @@ module CataNatTraceSilent {FS : FrameSemantics} where
     → fetch prog (fpc fs)                               ≡ just (instr-ctrl (c-label ld-top))
     → fetch prog (suc (fpc fs))                         ≡ just (instr-ctrl (c-branch-scratch-zero ld-end))
     → fetch prog (suc (suc (fpc fs)))                   ≡ just (instr-ctrl (c-branch-tag-zero ld-inl))
-    → fetch prog (suc (suc (suc (fpc fs))))             ≡ just (instr-reg-op input2-inc)
+    → fetch prog (suc (suc (suc (fpc fs))))             ≡ just (instr-reg-op count-inc)
     → fetch prog (suc (suc (suc (suc (fpc fs)))))       ≡ just load-indirect-suc
     → fetch prog (suc (suc (suc (suc (suc (fpc fs)))))) ≡ just mov-to-input
     → fetch prog (suc (suc (suc (suc (suc (suc (fpc fs))))))) ≡ just (instr-ctrl (c-jmp ld-de))
