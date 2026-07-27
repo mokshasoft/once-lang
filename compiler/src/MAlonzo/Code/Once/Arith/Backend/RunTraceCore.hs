@@ -429,8 +429,35 @@ d_run'45'events'45'noncall_390 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_run'45'events'45'noncall_390 = erased
+-- Once.Arith.Backend.RunTraceCore.RunTrace.run-events-stuck
+d_run'45'events'45'stuck_440 ::
+  () ->
+  () ->
+  () ->
+  () ->
+  (AgdaAny -> Bool) ->
+  (AgdaAny -> Integer) ->
+  (AgdaAny -> Integer -> Maybe AgdaAny) ->
+  (AgdaAny -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
+  (AgdaAny -> Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6) ->
+  (AgdaAny -> AgdaAny) ->
+  (AgdaAny -> AgdaAny -> AgdaAny) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   AgdaAny ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Maybe AgdaAny) ->
+  Integer ->
+  AgdaAny ->
+  AgdaAny ->
+  AgdaAny ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_run'45'events'45'stuck_440 = erased
 -- Once.Arith.Backend.RunTraceCore.RunTrace.run-events-halted
-d_run'45'events'45'halted_438 ::
+d_run'45'events'45'halted_488 ::
   () ->
   () ->
   () ->
@@ -451,9 +478,9 @@ d_run'45'events'45'halted_438 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_run'45'events'45'halted_438 = erased
+d_run'45'events'45'halted_488 = erased
 -- Once.Arith.Backend.RunTraceCore.RunTrace.run-events-fetch-none
-d_run'45'events'45'fetch'45'none_466 ::
+d_run'45'events'45'fetch'45'none_516 ::
   () ->
   () ->
   () ->
@@ -474,9 +501,9 @@ d_run'45'events'45'fetch'45'none_466 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_run'45'events'45'fetch'45'none_466 = erased
+d_run'45'events'45'fetch'45'none_516 = erased
 -- Once.Arith.Backend.RunTraceCore.RunTrace._.go
-d_go_486 ::
+d_go_536 ::
   () ->
   () ->
   () ->
@@ -499,9 +526,9 @@ d_go_486 ::
   Bool ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_go_486 = erased
+d_go_536 = erased
 -- Once.Arith.Backend.RunTraceCore.RunTrace.run-events-arith
-d_run'45'events'45'arith_504 ::
+d_run'45'events'45'arith_554 ::
   () ->
   () ->
   () ->
@@ -528,9 +555,9 @@ d_run'45'events'45'arith_504 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_run'45'events'45'arith_504 = erased
+d_run'45'events'45'arith_554 = erased
 -- Once.Arith.Backend.RunTraceCore.RunTrace.run-events-external
-d_run'45'events'45'external_560 ::
+d_run'45'events'45'external_610 ::
   () ->
   () ->
   () ->
@@ -556,4 +583,4 @@ d_run'45'events'45'external_560 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_run'45'events'45'external_560 = erased
+d_run'45'events'45'external_610 = erased

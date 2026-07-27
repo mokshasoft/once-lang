@@ -47,7 +47,7 @@ du_readTyped_82 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
   Maybe AgdaAny
 du_readTyped_82
-  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readTyped_2408
+  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readTyped_2444
 -- Once.CCC.Machine.ReadTypedAdequate._.ValidAtWF
 d_ValidAtWF_130 a0 a1 a2 a3 a4 a5 a6 a7 = ()
 -- Once.CCC.Machine.ReadTypedAdequate.Readable
@@ -112,6 +112,6 @@ d_readTyped'45'adequate_234 ::
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
   AgdaAny ->
-  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_514 ->
+  MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_522 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_readTyped'45'adequate_234 = erased

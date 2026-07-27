@@ -463,143 +463,162 @@ du_a'8760'k'8804'upper_176 v0 v1 v2
          MAlonzo.Code.Data.Nat.Properties.d_m'8760'n'8804'm_5184 (coe v0)
          (coe v1))
       (coe v2)
+-- Once.CCC.Target.X86-32.Layout.stack-sub-preserves'
+d_stack'45'sub'45'preserves''_182 ::
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_stack'45'sub'45'preserves''_182 v0 v1 v2
+  = case coe v2 of
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
+        -> coe
+             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+             (coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26)
+             (coe
+                MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
+                (coe
+                   MAlonzo.Code.Data.Nat.Properties.d_m'8760'n'8804'm_5184 (coe v0)
+                   (coe v1))
+                (coe v4))
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-32.Layout.slot-addr-≥-base
-d_slot'45'addr'45''8805''45'base_182 ::
+d_slot'45'addr'45''8805''45'base_196 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_slot'45'addr'45''8805''45'base_182 v0 ~v1
-  = du_slot'45'addr'45''8805''45'base_182 v0
-du_slot'45'addr'45''8805''45'base_182 ::
+d_slot'45'addr'45''8805''45'base_196 v0 ~v1
+  = du_slot'45'addr'45''8805''45'base_196 v0
+du_slot'45'addr'45''8805''45'base_196 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_slot'45'addr'45''8805''45'base_182 v0
+du_slot'45'addr'45''8805''45'base_196 v0
   = coe
       MAlonzo.Code.Data.Nat.Properties.du_m'8804'm'43'n_3624
       (coe MAlonzo.Code.Once.Memory.StackSlots.d_addr_20 (coe v0))
 -- Once.CCC.Target.X86-32.Layout.slot-addr-next-is-base-plus-word
-d_slot'45'addr'45'next'45'is'45'base'45'plus'45'word_190 ::
+d_slot'45'addr'45'next'45'is'45'base'45'plus'45'word_204 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_slot'45'addr'45'next'45'is'45'base'45'plus'45'word_190 = erased
+d_slot'45'addr'45'next'45'is'45'base'45'plus'45'word_204 = erased
 -- Once.CCC.Target.X86-32.Layout.frame-below-slot0-disjoint
-d_frame'45'below'45'slot0'45'disjoint_200 ::
+d_frame'45'below'45'slot0'45'disjoint_214 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_frame'45'below'45'slot0'45'disjoint_200 = erased
+d_frame'45'below'45'slot0'45'disjoint_214 = erased
 -- Once.CCC.Target.X86-32.Layout._.slot0-eq
-d_slot0'45'eq_216 ::
+d_slot0'45'eq_230 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_slot0'45'eq_216 = erased
+d_slot0'45'eq_230 = erased
 -- Once.CCC.Target.X86-32.Layout._.slot-k-≥-frame2
-d_slot'45'k'45''8805''45'frame2_218 ::
+d_slot'45'k'45''8805''45'frame2_232 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_slot'45'k'45''8805''45'frame2_218 ~v0 v1 ~v2 ~v3 ~v4
-  = du_slot'45'k'45''8805''45'frame2_218 v1
-du_slot'45'k'45''8805''45'frame2_218 ::
+d_slot'45'k'45''8805''45'frame2_232 ~v0 v1 ~v2 ~v3 ~v4
+  = du_slot'45'k'45''8805''45'frame2_232 v1
+du_slot'45'k'45''8805''45'frame2_232 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_slot'45'k'45''8805''45'frame2_218 v0
-  = coe du_slot'45'addr'45''8805''45'base_182 (coe v0)
+du_slot'45'k'45''8805''45'frame2_232 v0
+  = coe du_slot'45'addr'45''8805''45'base_196 (coe v0)
 -- Once.CCC.Target.X86-32.Layout._.slot0<slot-k
-d_slot0'60'slot'45'k_220 ::
+d_slot0'60'slot'45'k_234 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_slot0'60'slot'45'k_220 ~v0 v1 ~v2 v3 ~v4
-  = du_slot0'60'slot'45'k_220 v1 v3
-du_slot0'60'slot'45'k_220 ::
+d_slot0'60'slot'45'k_234 ~v0 v1 ~v2 v3 ~v4
+  = du_slot0'60'slot'45'k_234 v1 v3
+du_slot0'60'slot'45'k_234 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_slot0'60'slot'45'k_220 v0 v1
+du_slot0'60'slot'45'k_234 v0 v1
   = coe
       MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
-      (coe v1) (coe du_slot'45'k'45''8805''45'frame2_218 (coe v0))
+      (coe v1) (coe du_slot'45'k'45''8805''45'frame2_232 (coe v0))
 -- Once.CCC.Target.X86-32.Layout._.slot0≡slot-k
-d_slot0'8801'slot'45'k_224 ::
+d_slot0'8801'slot'45'k_238 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_slot0'8801'slot'45'k_224 = erased
+d_slot0'8801'slot'45'k_238 = erased
 -- Once.CCC.Target.X86-32.Layout.frame-preserved-slot0-disjoint
-d_frame'45'preserved'45'slot0'45'disjoint_232 ::
+d_frame'45'preserved'45'slot0'45'disjoint_246 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_frame'45'preserved'45'slot0'45'disjoint_232 = erased
+d_frame'45'preserved'45'slot0'45'disjoint_246 = erased
 -- Once.CCC.Target.X86-32.Layout._.word-size>0
-d_word'45'size'62'0_246 ::
+d_word'45'size'62'0_260 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_word'45'size'62'0_246 ~v0 ~v1 ~v2 ~v3 = du_word'45'size'62'0_246
-du_word'45'size'62'0_246 ::
+d_word'45'size'62'0_260 ~v0 ~v1 ~v2 ~v3 = du_word'45'size'62'0_260
+du_word'45'size'62'0_260 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_word'45'size'62'0_246
+du_word'45'size'62'0_260
   = coe
       MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
       (coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26)
 -- Once.CCC.Target.X86-32.Layout._.frame1<frame1+4
-d_frame1'60'frame1'43'4_248 ::
+d_frame1'60'frame1'43'4_262 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_frame1'60'frame1'43'4_248 v0 ~v1 ~v2 ~v3
-  = du_frame1'60'frame1'43'4_248 v0
-du_frame1'60'frame1'43'4_248 ::
+d_frame1'60'frame1'43'4_262 v0 ~v1 ~v2 ~v3
+  = du_frame1'60'frame1'43'4_262 v0
+du_frame1'60'frame1'43'4_262 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_frame1'60'frame1'43'4_248 v0
+du_frame1'60'frame1'43'4_262 v0
   = coe
       MAlonzo.Code.Data.Nat.Properties.du_m'60'm'43'n_3736
       (coe MAlonzo.Code.Once.Memory.StackSlots.d_addr_20 (coe v0))
-      (coe du_word'45'size'62'0_246)
+      (coe du_word'45'size'62'0_260)
 -- Once.CCC.Target.X86-32.Layout._.frame1<frame2
-d_frame1'60'frame2_250 ::
+d_frame1'60'frame2_264 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_frame1'60'frame2_250 v0 ~v1 ~v2 v3
-  = du_frame1'60'frame2_250 v0 v3
-du_frame1'60'frame2_250 ::
+d_frame1'60'frame2_264 v0 ~v1 ~v2 v3
+  = du_frame1'60'frame2_264 v0 v3
+du_frame1'60'frame2_264 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_frame1'60'frame2_250 v0 v1
+du_frame1'60'frame2_264 v0 v1
   = coe
       MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
-      (coe du_frame1'60'frame1'43'4_248 (coe v0)) (coe v1)
+      (coe du_frame1'60'frame1'43'4_262 (coe v0)) (coe v1)
 -- Once.CCC.Target.X86-32.Layout.slot-addr-above-thunk-ebp
-d_slot'45'addr'45'above'45'thunk'45'ebp_260 ::
+d_slot'45'addr'45'above'45'thunk'45'ebp_274 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   Integer ->
   Integer ->
@@ -608,15 +627,15 @@ d_slot'45'addr'45'above'45'thunk'45'ebp_260 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_slot'45'addr'45'above'45'thunk'45'ebp_260 ~v0 ~v1 v2 ~v3 ~v4 ~v5
+d_slot'45'addr'45'above'45'thunk'45'ebp_274 ~v0 ~v1 v2 ~v3 ~v4 ~v5
                                             ~v6
-  = du_slot'45'addr'45'above'45'thunk'45'ebp_260 v2
-du_slot'45'addr'45'above'45'thunk'45'ebp_260 ::
+  = du_slot'45'addr'45'above'45'thunk'45'ebp_274 v2
+du_slot'45'addr'45'above'45'thunk'45'ebp_274 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_slot'45'addr'45'above'45'thunk'45'ebp_260 v0
-  = coe du_slot'62'ebp_294 (coe v0)
+du_slot'45'addr'45'above'45'thunk'45'ebp_274 v0
+  = coe du_slot'62'ebp_308 (coe v0)
 -- Once.CCC.Target.X86-32.Layout._.slot-eq
-d_slot'45'eq_280 ::
+d_slot'45'eq_294 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   Integer ->
   Integer ->
@@ -625,9 +644,9 @@ d_slot'45'eq_280 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_slot'45'eq_280 = erased
+d_slot'45'eq_294 = erased
 -- Once.CCC.Target.X86-32.Layout._.slot≥esp+4
-d_slot'8805'esp'43'4_284 ::
+d_slot'8805'esp'43'4_298 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   Integer ->
   Integer ->
@@ -636,16 +655,16 @@ d_slot'8805'esp'43'4_284 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_slot'8805'esp'43'4_284 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6
-  = du_slot'8805'esp'43'4_284 v2
-du_slot'8805'esp'43'4_284 ::
+d_slot'8805'esp'43'4_298 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6
+  = du_slot'8805'esp'43'4_298 v2
+du_slot'8805'esp'43'4_298 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_slot'8805'esp'43'4_284 v0
+du_slot'8805'esp'43'4_298 v0
   = coe
       MAlonzo.Code.Data.Nat.Properties.du_m'8804'm'43'n_3624
       (coe addInt (coe (4 :: Integer)) (coe v0))
 -- Once.CCC.Target.X86-32.Layout._.esp+4>esp
-d_esp'43'4'62'esp_288 ::
+d_esp'43'4'62'esp_302 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   Integer ->
   Integer ->
@@ -654,18 +673,18 @@ d_esp'43'4'62'esp_288 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_esp'43'4'62'esp_288 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6
-  = du_esp'43'4'62'esp_288 v2
-du_esp'43'4'62'esp_288 ::
+d_esp'43'4'62'esp_302 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6
+  = du_esp'43'4'62'esp_302 v2
+du_esp'43'4'62'esp_302 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_esp'43'4'62'esp_288 v0
+du_esp'43'4'62'esp_302 v0
   = coe
       MAlonzo.Code.Data.Nat.Properties.du_m'60'm'43'n_3736 (coe v0)
       (coe
          MAlonzo.Code.Data.Nat.Base.C_s'8804's_34
          (coe MAlonzo.Code.Data.Nat.Base.C_z'8804'n_26))
 -- Once.CCC.Target.X86-32.Layout._.ebp≤esp
-d_ebp'8804'esp_290 ::
+d_ebp'8804'esp_304 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   Integer ->
   Integer ->
@@ -674,16 +693,16 @@ d_ebp'8804'esp_290 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_ebp'8804'esp_290 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6
-  = du_ebp'8804'esp_290 v2
-du_ebp'8804'esp_290 ::
+d_ebp'8804'esp_304 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6
+  = du_ebp'8804'esp_304 v2
+du_ebp'8804'esp_304 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_ebp'8804'esp_290 v0
+du_ebp'8804'esp_304 v0
   = coe
       MAlonzo.Code.Data.Nat.Properties.d_m'8760'n'8804'm_5184 (coe v0)
       (coe (8 :: Integer))
 -- Once.CCC.Target.X86-32.Layout._.slot>ebp
-d_slot'62'ebp_294 ::
+d_slot'62'ebp_308 ::
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   Integer ->
   Integer ->
@@ -692,21 +711,21 @@ d_slot'62'ebp_294 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_slot'62'ebp_294 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6
-  = du_slot'62'ebp_294 v2
-du_slot'62'ebp_294 ::
+d_slot'62'ebp_308 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6
+  = du_slot'62'ebp_308 v2
+du_slot'62'ebp_308 ::
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_slot'62'ebp_294 v0
+du_slot'62'ebp_308 v0
   = coe
       MAlonzo.Code.Data.Nat.Properties.du_'8804''45''60''45'trans_3128
-      (coe du_ebp'8804'esp_290 (coe v0))
+      (coe du_ebp'8804'esp_304 (coe v0))
       (coe
          MAlonzo.Code.Data.Nat.Properties.du_'60''45''8804''45'trans_3134
-         (coe du_esp'43'4'62'esp_288 (coe v0))
-         (coe du_slot'8805'esp'43'4_284 (coe v0)))
+         (coe du_esp'43'4'62'esp_302 (coe v0))
+         (coe du_slot'8805'esp'43'4_298 (coe v0)))
 -- Once.CCC.Target.X86-32.Layout.init-frame-slot-at-base
-d_init'45'frame'45'slot'45'at'45'base_300 ::
+d_init'45'frame'45'slot'45'at'45'base_314 ::
   (Integer -> Maybe Integer) ->
   MAlonzo.Code.Once.Memory.StackSlots.T_StackAddr_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_init'45'frame'45'slot'45'at'45'base_300 = erased
+d_init'45'frame'45'slot'45'at'45'base_314 = erased
