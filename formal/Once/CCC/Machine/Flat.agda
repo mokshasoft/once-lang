@@ -33,6 +33,8 @@ open import Once.CCC.Machine.SMCore
 
 module FlatMachine {FS : FrameSemantics} where
   open MemOps {FS}
+  open FrameSemantics FS using (Frame; shift-frame)
+  open import Relation.Binary.PropositionalEquality using (_≡_; refl)
   open AbstractExec {FS} using (exec-abstract; exec-trace; exec-trace-cons)
 
   -- Flat machine state: the typed LocState + allocator + pc.
@@ -117,6 +119,57 @@ module FlatMachine {FS : FrameSemantics} where
               ; falloc = proj₂ (exec-abstract i (floc fs) (falloc fs))
               ; fpc    = suc (fpc fs) }
 
+  ----------------------------------------------------------------------
+  -- Plan 0.61: FRAMES MOVE WITH THE STACK POINTER.
+  --
+  -- The flat machine is the semantics of record, so — exactly like control
+  -- flow — the frame discipline lives HERE rather than in the structured
+  -- `exec-abstract` (which the legacy IR-WF layer still reads with the old,
+  -- degenerate "frame never moves" model). Every %rsp-moving instruction
+  -- shifts `current-frame` in the growth direction and remembers the caller's
+  -- frame; the matching epilogue restores it. This is what makes a callee's
+  -- slot `k` a DIFFERENT cell from its caller's slot `k` — without it no stack
+  -- address has a meaning, because the abstract state would identify two cells
+  -- the hardware keeps apart.
+  ----------------------------------------------------------------------
+  enter-frame : ℕ → AllocState {FS} → AllocState {FS}
+  enter-frame n alloc =
+    record alloc { current-frame = shift-frame (current-frame alloc) n
+                 ; saved-frames  = current-frame alloc ∷ saved-frames alloc }
+
+  -- Pop the frame stack (identity when empty — a malformed epilogue; the
+  -- well-formedness premises pair every prologue with its epilogue).
+  -- Aux-style on the frame stack so downstream proofs can reduce it.
+  leave-frame-aux : List Frame → AllocState {FS} → AllocState {FS}
+  leave-frame-aux []       alloc = alloc
+  leave-frame-aux (f ∷ fs) alloc = record alloc { current-frame = f ; saved-frames = fs }
+
+  leave-frame : AllocState {FS} → AllocState {FS}
+  leave-frame alloc = leave-frame-aux (saved-frames alloc) alloc
+
+  -- The frame move touches ONLY the frame fields.
+  leave-frame-next-slot : ∀ (alloc : AllocState {FS})
+                        → next-slot (leave-frame alloc) ≡ next-slot alloc
+  leave-frame-next-slot alloc = go (saved-frames alloc)
+    where go : ∀ (fl : List Frame) → next-slot (leave-frame-aux fl alloc) ≡ next-slot alloc
+          go []       = refl
+          go (f ∷ fs) = refl
+
+  leave-frame-heap-ref : ∀ (alloc : AllocState {FS})
+                       → next-heap-ref (leave-frame alloc) ≡ next-heap-ref alloc
+  leave-frame-heap-ref alloc = go (saved-frames alloc)
+    where go : ∀ (fl : List Frame) → next-heap-ref (leave-frame-aux fl alloc) ≡ next-heap-ref alloc
+          go []       = refl
+          go (f ∷ fs) = refl
+
+  -- straight-line step whose AllocState is post-processed by the frame move.
+  flat-step-frame : AbstractInstr → (AllocState {FS} → AllocState {FS})
+                  → FlatState → FlatState
+  flat-step-frame i g fs =
+    record fs { floc   = proj₁ (exec-abstract i (floc fs) (falloc fs))
+              ; falloc = g (proj₂ (exec-abstract i (floc fs) (falloc fs)))
+              ; fpc    = suc (fpc fs) }
+
   flat-exec-instr : AbstractInstr → AbstractTrace → FlatState → FlatState
   flat-exec-instr (instr-ctrl (c-label _))               _    fs = record fs { fpc = suc (fpc fs) }
   flat-exec-instr (instr-ctrl (c-jmp n))                 prog fs = do-jump (find-label prog n) fs
@@ -124,6 +177,11 @@ module FlatMachine {FS : FrameSemantics} where
     do-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) n prog fs
   flat-exec-instr (instr-ctrl (c-branch-tag-zero n))     prog fs =
     do-branch (tag-zf (flat-read-tag (floc fs))) n prog fs
+  -- the four %rsp-moving instructions also MOVE THE FRAME
+  flat-exec-instr (instr-alloc-stack n)   _ fs = flat-step-frame (instr-alloc-stack n)   (enter-frame n)         fs
+  flat-exec-instr (instr-dealloc-stack n) _ fs = flat-step-frame (instr-dealloc-stack n) leave-frame             fs
+  flat-exec-instr (instr-push-frame cap)  _ fs = flat-step-frame (instr-push-frame cap)  (enter-frame (suc cap)) fs
+  flat-exec-instr instr-pop-frame         _ fs = flat-step-frame instr-pop-frame         leave-frame             fs
   flat-exec-instr i                                      _    fs = flat-step-straight i fs
 
   ----------------------------------------------------------------------

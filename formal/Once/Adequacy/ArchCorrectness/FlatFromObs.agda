@@ -103,7 +103,7 @@ postulate
 -- A fresh frame: nothing on the stack (`next-slot ≡ 0`), one heap ref reserved
 -- for the (erased) `Unit` argument cell so it is `BeforeFrontier`.
 entry-alloc : AllocState {FS}
-entry-alloc = mkAllocState entry-frame 0 1
+entry-alloc = mkAllocState entry-frame [] 0 1
 
 entry-loc : ValueLocation FS
 entry-loc = AtDynamic (heap-loc (mkHeapRef 0) 0)

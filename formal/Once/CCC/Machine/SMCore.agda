@@ -453,6 +453,20 @@ record AllocState {FS : FrameSemantics} : Set where
   open FrameSemantics FS
   field
     current-frame : Frame
+    -- Plan 0.61: the FRAME STACK — the caller frames, innermost first.
+    --
+    -- Frames MOVE with the stack pointer: the FLAT machine (`Machine.Flat`,
+    -- which is THE semantics — `exec-flat`) shifts `current-frame` at every
+    -- %rsp-moving instruction and restores the caller's frame here at the
+    -- epilogue, so a callee's slot `k` is no longer the same cell as its
+    -- caller's slot `k`. Without that the machine identifies two cells the
+    -- hardware keeps apart and stack ADDRESSES have no meaning.
+    --
+    -- The legacy STRUCTURED layer (`exec-abstract` below, consumed only by the
+    -- IR well-formedness modules — not on the apex path) keeps the degenerate
+    -- model where the frame never moves; plan 0.61 stage 3 re-truths it when
+    -- that layer is retired.
+    saved-frames : List Frame
     next-slot : ℕ
     next-heap-ref : ℕ
   -- Note: frame-capacity removed in Phase 3 of core invariants refactoring.
@@ -1555,12 +1569,11 @@ module AbstractExec {FS : FrameSemantics} where
   -- Note: capacity parameter retained for API compatibility but not stored
   exec-abstract (instr-push-frame cap) s alloc =
     record s { regs = writeStackSlot (regs s) 0 } ,
-    alloc  -- AllocState unchanged (frame-capacity removed)
+    alloc  -- the STRUCTURED layer keeps the degenerate frame model (see below)
 
-  -- instr-pop-frame: restore caller frame
+  -- instr-pop-frame: the STRUCTURED layer keeps the degenerate frame model.
   -- Note: stackSlot restoration handled by caller (who saved it)
-  exec-abstract instr-pop-frame s alloc =
-    s , alloc  -- Frame identity restoration is external
+  exec-abstract instr-pop-frame s alloc = s , alloc
 
   -- instr-call-closure: transfer control to closure code
   -- This is a no-op at abstract level - the call happens via BodyCorrect.execute

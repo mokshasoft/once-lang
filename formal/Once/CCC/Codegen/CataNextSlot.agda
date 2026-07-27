@@ -199,9 +199,11 @@ module CataNextSlot {FS : FrameSemantics} where
   flat-keeps-next-slot prog fs store-indirect-suc      _ = refl
   flat-keeps-next-slot prog fs (lea-slot k)            _ = refl
   flat-keeps-next-slot prog fs (lea-indexed k)         _ = refl
-  flat-keeps-next-slot prog fs (instr-dealloc-stack n) _ = refl
+  -- Plan 0.61: these MOVE THE FRAME in the flat machine; the move touches only
+  -- the frame fields, so `next-slot` still rides through.
+  flat-keeps-next-slot prog fs (instr-dealloc-stack n) _ = leave-frame-next-slot (falloc fs)
   flat-keeps-next-slot prog fs (instr-push-frame c)    _ = refl
-  flat-keeps-next-slot prog fs instr-pop-frame         _ = refl
+  flat-keeps-next-slot prog fs instr-pop-frame         _ = leave-frame-next-slot (falloc fs)
   flat-keeps-next-slot prog fs instr-call-closure      _ = refl
   flat-keeps-next-slot prog fs (worklist-init k)       _ = refl
   flat-keeps-next-slot prog fs (worklist-push k)       _ = refl

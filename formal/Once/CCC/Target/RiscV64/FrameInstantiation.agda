@@ -22,7 +22,7 @@
 
 module Once.CCC.Target.RiscV64.FrameInstantiation where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≥_; _+_; _*_; s≤s; z≤n)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≥_; _+_; _*_; s≤s; z≤n; _∸_)
 open import Data.Nat.Properties using (<⇒≢; <-trans; <-≤-trans; ≤-<-trans; m≤m+n; *-monoˡ-<; +-monoʳ-<; _≟_; ≤-irrelevant; <-irrefl; <-cmp)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -41,7 +41,7 @@ open import Once.CCC.Target.RiscV64.Layout
          grow-identity; sp-distinct; offset-distinct;
          frame-below-slot0-disjoint; slot-addr-≥-base;
          InStack; in-stack)
-open import Once.CCC.Target.RiscV64.Layout using () renaming (addr to sp-addr)
+open import Once.CCC.Target.RiscV64.Layout using (stack-addr; in-stack; stack-sub-preserves') renaming (addr to sp-addr)
 
 ------------------------------------------------------------------------
 -- RISC-V 64 Frame Type
@@ -210,6 +210,16 @@ rv64-frame-disjoint-with-capacity f₁ f₂ k₁ k₂ capacity f₁<f₂ k₁<ca
     slot-bound = rv64-slot-within-capacity-bound f₁ f₂ k₁ capacity k₁<cap gap-sufficient
 
 ------------------------------------------------------------------------
+-- Frame movement: the callee frame sits `n` slots DOWN (the prologue's
+-- `sub sp, n·word`). The stack region is downward-closed, so this is total.
+------------------------------------------------------------------------
+
+rv64-shift-frame : RV64Frame → ℕ → RV64Frame
+rv64-shift-frame f n =
+  stack-addr (sp-addr f ∸ n * word-size)
+             (stack-sub-preserves' (sp-addr f) (n * word-size) (in-stack f))
+
+------------------------------------------------------------------------
 -- RISC-V 64 FrameSemantics Instance
 ------------------------------------------------------------------------
 
@@ -219,6 +229,7 @@ rv64-frame-semantics = record
   ; _≟F_ = _rv64-≟F_
   ; frame-base = rv64-frame-base
   ; slot-addr = rv64-slot-addr
+  ; shift-frame = rv64-shift-frame
   ; slot-zero-at-base = rv64-slot-zero-at-base
   ; slot-injective = rv64-slot-injective
   ; _≺_ = _rv64-≺_

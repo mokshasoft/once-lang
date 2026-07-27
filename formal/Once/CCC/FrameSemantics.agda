@@ -92,6 +92,23 @@ record FrameSemantics : Set₁ where
     slot-injective : ∀ f k₁ k₂ → k₁ ≢ k₂ → slot-addr f k₁ ≢ slot-addr f k₂
 
     --------------------------------------------------------------------
+    -- Frame MOVEMENT (Plan 0.54 rung D)
+    --
+    -- Frames move with the stack pointer: a prologue's `sub rsp, n·word`
+    -- makes the CALLEE's frame, `n` slots below the caller's, and the
+    -- matching epilogue moves back. This is what distinguishes a callee's
+    -- slot `k` from its caller's slot `k` — without it the abstract machine
+    -- identifies two cells the hardware keeps apart, and no stack ADDRESS
+    -- can be given a meaning (see `AtStack` in SMCore).
+    --------------------------------------------------------------------
+
+    -- | The frame `n` slots further in the growth direction (callee side).
+    -- The way BACK is not an address computation — the machine restores the
+    -- caller's frame from the frame stack `AllocState.saved-frames`, mirroring
+    -- how the prologue/epilogue pair up.
+    shift-frame : Frame → ℕ → Frame
+
+    --------------------------------------------------------------------
     -- Frame Ordering
     --
     -- Callee's frame is "further" than caller's in growth direction.

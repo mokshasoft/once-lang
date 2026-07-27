@@ -59,6 +59,7 @@ open ExecFinal {FS} using (exec-load-via-resolved; exec-load-suc-via-resolved; e
                           ; exec-store-via-resolved; exec-store-suc-via-resolved)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
+open FrameSemantics FS using (shift-frame)
 open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
 open AbstractExec {FS} using (exec-abstract; exec-load-from-slot-with-value; exec-restore-input-with-value)
 open FrameSemantics FS using (Frame)
@@ -614,7 +615,11 @@ sim-store-at-slot {hv} slot fs s corr disj = corr-clean
 ------------------------------------------------------------------------
 sim-alloc-stack : {hv : HeapView} (n : ℕ) (newFlags : X.Flags) (fs : FlatState) (s : X.State) → FlatCorr hv fs s
   → stackSlot (regs (floc fs)) ≡ 0                  -- WF: alloc-stack at frame entry (runtime depth 0)
-  → (∀ k → k < n → stackMem (floc fs) (current-frame (falloc fs)) k ≡ nothing)   -- fresh (abstract)
+  -- fresh (abstract): the CALLEE frame the reservation moves into is unwritten.
+  -- Plan 0.61: the flat machine shifts `current-frame` here, so this is about
+  -- the SHIFTED frame — a strictly weaker (and more obviously true) premise
+  -- than the old one about the caller's frame.
+  → (∀ k → k < n → stackMem (floc fs) (shift-frame (current-frame (falloc fs)) n) k ≡ nothing)
   → (∀ k → k < n → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k) ≡ nothing)  -- fresh (x86)
   → FlatCorr hv (flat-exec-instr (instr-alloc-stack n) [] fs)
              (mkstate (xwriteReg (xregs s) rsp (X.readReg (xregs s) rsp ∸ slots n))
@@ -626,7 +631,7 @@ sim-alloc-stack {hv} n newFlags fs s corr entry fresh-abs fresh-x86 = record
   ; stack-eq = λ k k<ns → stk k (subst (k <_) (cong (_+ n) entry) k<ns) }
   where
     stk : ∀ k → k < n → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k)
-            ≡ enc-maybe hv (stackMem (floc fs) (current-frame (falloc fs)) k)
+            ≡ enc-maybe hv (stackMem (floc fs) (shift-frame (current-frame (falloc fs)) n) k)
     stk k k<n = trans (fresh-x86 k k<n) (sym (cong (enc-maybe hv) (fresh-abs k k<n)))
 
 ------------------------------------------------------------------------
@@ -644,7 +649,11 @@ sim-dealloc-stack : {hv : HeapView} (n : ℕ) (newFlags : X.Flags) (fs : FlatSta
                       (memory s) newFlags (pc s + 1) (xhalted s))
 sim-dealloc-stack {hv} n newFlags fs s corr full = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
-  ; halt-eq = halt-eq corr ; r15-eq = r15-eq corr ; dom-fresh = dom-fresh corr
+  ; halt-eq = halt-eq corr ; r15-eq = r15-eq corr
+  -- Plan 0.61: the epilogue RESTORES the caller's frame; the move leaves the
+  -- allocation frontier alone, so `dom-fresh` only needs transporting.
+  ; dom-fresh = λ {hl} d → subst (λ m → ref-id (heap-ref hl) < m)
+                                 (sym (leave-frame-heap-ref (falloc fs))) (dom-fresh corr d)
   ; heap-eq = heap-eq corr
   ; stack-eq = λ k k<ss → ⊥-elim (bad k k<ss) }
   where
@@ -705,7 +714,10 @@ sim-pop-frame : {hv : HeapView} (fs : FlatState) (s xp : X.State) → FlatCorr h
 sim-pop-frame {hv} fs s xp corr ss0 rdi-p rsi-p rax-p rbx-p halt-p r15-p heap-p = record
   { rdi-eq = trans rdi-p (rdi-eq corr) ; rsi-eq = trans rsi-p (rsi-eq corr)
   ; rax-eq = trans rax-p (rax-eq corr) ; rbx-eq = trans rbx-p (rbx-eq corr)
-  ; halt-eq = trans halt-p (halt-eq corr) ; r15-eq = trans r15-p (r15-eq corr) ; dom-fresh = dom-fresh corr
+  ; halt-eq = trans halt-p (halt-eq corr) ; r15-eq = trans r15-p (r15-eq corr)
+  -- Plan 0.61: the epilogue restores the caller's frame (frontier untouched).
+  ; dom-fresh = λ {hl} d → subst (λ m → ref-id (heap-ref hl) < m)
+                                 (sym (leave-frame-heap-ref (falloc fs))) (dom-fresh corr d)
   ; heap-eq = λ hl live → trans (heap-p hl live) (heap-eq corr hl live)
   ; stack-eq = λ k k<ss → ⊥-elim (bad k k<ss) }
   where

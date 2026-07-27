@@ -17,6 +17,7 @@
 module Once.CCC.Machine.Allocation where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.List using (_∷_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; n≤1+n; <⇒≤; +-monoʳ-≤)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -470,6 +471,8 @@ module FrameOps {FS : FrameSemantics} where
              → AllocState {FS}
   push-frame parent cf _ = record
     { current-frame = cf
+    -- Plan 0.61: the caller's frame is remembered so the epilogue can restore it.
+    ; saved-frames = current-frame parent ∷ saved-frames parent
     ; next-slot = 0
     ; next-heap-ref = next-heap-ref parent  -- Heap shared
     }

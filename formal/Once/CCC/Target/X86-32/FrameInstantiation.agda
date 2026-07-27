@@ -22,7 +22,7 @@
 
 module Once.CCC.Target.X86-32.FrameInstantiation where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≥_; _+_; _*_; s≤s; z≤n)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≥_; _+_; _*_; s≤s; z≤n; _∸_)
 open import Data.Nat.Properties using (<⇒≢; <-trans; <-≤-trans; ≤-<-trans; m≤m+n; *-monoˡ-<; +-monoʳ-<; _≟_; ≤-irrelevant; <-irrefl; <-cmp)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -41,7 +41,7 @@ open import Once.CCC.Target.X86-32.Layout
          grow-identity; sp-distinct; offset-distinct;
          frame-below-slot0-disjoint; slot-addr-≥-base;
          InStack; in-stack)
-open import Once.CCC.Target.X86-32.Layout using () renaming (addr to sp-addr)
+open import Once.CCC.Target.X86-32.Layout using (stack-addr; in-stack; stack-sub-preserves') renaming (addr to sp-addr)
 
 ------------------------------------------------------------------------
 -- x86-32 Frame Type
@@ -190,6 +190,16 @@ x86-32-frame-disjoint-with-capacity f₁ f₂ k₁ k₂ capacity f₁<f₂ k₁<
     slot-bound = x86-32-slot-within-capacity-bound f₁ f₂ k₁ capacity k₁<cap gap-sufficient
 
 ------------------------------------------------------------------------
+-- Frame movement: the callee frame sits `n` slots DOWN (the prologue's
+-- `sub esp, n·word`). The stack region is downward-closed, so this is total.
+------------------------------------------------------------------------
+
+x86-32-shift-frame : X86-32Frame → ℕ → X86-32Frame
+x86-32-shift-frame f n =
+  stack-addr (sp-addr f ∸ n * word-size)
+             (stack-sub-preserves' (sp-addr f) (n * word-size) (in-stack f))
+
+------------------------------------------------------------------------
 -- x86-32 FrameSemantics Instance
 ------------------------------------------------------------------------
 
@@ -199,6 +209,7 @@ x86-32-frame-semantics = record
   ; _≟F_ = _x86-32-≟F_
   ; frame-base = x86-32-frame-base
   ; slot-addr = x86-32-slot-addr
+  ; shift-frame = x86-32-shift-frame
   ; slot-zero-at-base = x86-32-slot-zero-at-base
   ; slot-injective = x86-32-slot-injective
   ; _≺_ = _x86-32-≺_

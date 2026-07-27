@@ -30,7 +30,7 @@
 --   [ ] wire into Correct.agda (retires compile-ir).
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-ref; ref-id)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Target.X86-64.Syntax using (slot-size)
@@ -479,7 +479,9 @@ block-step-restore-input {hv} prog fs s slot w cc h ft slot<ns st-eq =
 block-step-alloc-stack : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-alloc-stack n)
   → stackSlot (regs (floc fs)) ≡ 0
-  → (∀ k → k < n → stackMem (floc fs) (current-frame (falloc fs)) k ≡ nothing)
+  -- Plan 0.61: the reservation MOVES into the callee frame, so the freshness is
+  -- about the SHIFTED frame (a weaker premise than the caller-frame one).
+  → (∀ k → k < n → stackMem (floc fs) (shift-frame FS (current-frame (falloc fs)) n) k ≡ nothing)
   → (∀ k → k < n → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k) ≡ nothing)
   → BlockStep hv prog fs s (instr-alloc-stack n)
 block-step-alloc-stack {hv} prog fs s n cc h ft entry fresh-abs fresh-x86 =

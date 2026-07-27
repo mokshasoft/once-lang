@@ -133,6 +133,11 @@ stack-sub-preserves a k (lower≤a , a≤upper) k≤a = (z≤n , a∸k≤upper)
     a∸k≤upper : a ∸ k ≤ upper stack-bounds
     a∸k≤upper = ≤-trans (m∸n≤m a k) a≤upper
 
+-- | Unconditional form (the `k ≤ a` premise above is unused — `lower = 0` and
+-- `a ∸ k ≤ a`). Needed to move a FRAME down the stack (`shift-frame`).
+stack-sub-preserves' : ∀ a k → InStack a → InStack (a ∸ k)
+stack-sub-preserves' a k (lower≤a , a≤upper) = (z≤n , ≤-trans (m∸n≤m a k) a≤upper)
+
 ------------------------------------------------------------------------
 -- X86-Specific Slot Addressing Lemmas
 --

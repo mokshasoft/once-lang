@@ -21,7 +21,7 @@
 -- supplied once, at the point this feeds `conc-flat-sim`.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Target.X86-64.Syntax using
@@ -412,8 +412,11 @@ postulate
   -- stack region below rsp), and heap liveness is invariant under the next-slot bump.
   -- Honest WF / memory-region / allocator invariants (discharged at instantiation).
   alloc-stack-entry : ∀ (fs : FlatState) (n : ℕ) → stackSlot (regs (floc fs)) ≡ 0
+  -- Plan 0.61: the reservation moves into the CALLEE frame, so the freshness is
+  -- about the shifted frame (weaker, and obviously true of a fresh frame).
   alloc-stack-fresh-abs : ∀ (fs : FlatState) (n : ℕ)
-                        → ∀ k → k < n → stackMem (floc fs) (current-frame (falloc fs)) k ≡ nothing
+                        → ∀ k → k < n
+                        → stackMem (floc fs) (shift-frame FS (current-frame (falloc fs)) n) k ≡ nothing
   alloc-stack-fresh-x86 : ∀ (fs : FlatState) (s : X.State) (n : ℕ)
                         → ∀ k → k < n → X.readMem (X.State.memory s)
                             ((X.readReg (X.State.regs s) rsp ∸ slots n) + slot-to-disp k) ≡ nothing

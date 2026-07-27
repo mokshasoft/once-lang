@@ -35,7 +35,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_)
 open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; heap-ref; ref-id; sucHL)
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts)
@@ -566,10 +566,21 @@ flat-wf-step (lea-slot k)             prog fs wf = proj₁ (wf-abstract (lea-slo
 flat-wf-step (restore-input k)        prog fs wf = proj₁ (wf-abstract (restore-input k) (floc fs) (falloc fs) wf)
 flat-wf-step (lea-indexed k)          prog fs wf = proj₁ (wf-abstract (lea-indexed k) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-alloc-stack k)    prog fs wf = proj₁ (wf-abstract (instr-alloc-stack k) (floc fs) (falloc fs) wf)
-flat-wf-step (instr-dealloc-stack k)  prog fs wf = proj₁ (wf-abstract (instr-dealloc-stack k) (floc fs) (falloc fs) wf)
+-- Plan 0.61: the flat machine MOVES THE FRAME on dealloc-stack / pop-frame.
+-- `StoreWF` is indexed by the allocation FRONTIER and quantifies over ALL
+-- frames, so the move is invisible to it — only the frontier term has to be
+-- transported through `leave-frame` (`enter-frame` is a record update, so
+-- alloc-stack / push-frame need nothing).
+flat-wf-step (instr-dealloc-stack k)  prog fs wf =
+  subst (λ n → StoreWF n (proj₁ (exec-abstract (instr-dealloc-stack k) (floc fs) (falloc fs))))
+        (sym (leave-frame-heap-ref (proj₂ (exec-abstract (instr-dealloc-stack k) (floc fs) (falloc fs)))))
+        (proj₁ (wf-abstract (instr-dealloc-stack k) (floc fs) (falloc fs) wf))
 flat-wf-step (instr-reclaim-to k)     prog fs wf = proj₁ (wf-abstract (instr-reclaim-to k) (floc fs) (falloc fs) wf)
 flat-wf-step (instr-push-frame k)     prog fs wf = proj₁ (wf-abstract (instr-push-frame k) (floc fs) (falloc fs) wf)
-flat-wf-step instr-pop-frame          prog fs wf = proj₁ (wf-abstract instr-pop-frame (floc fs) (falloc fs) wf)
+flat-wf-step instr-pop-frame          prog fs wf =
+  subst (λ n → StoreWF n (proj₁ (exec-abstract instr-pop-frame (floc fs) (falloc fs))))
+        (sym (leave-frame-heap-ref (proj₂ (exec-abstract instr-pop-frame (floc fs) (falloc fs)))))
+        (proj₁ (wf-abstract instr-pop-frame (floc fs) (falloc fs) wf))
 flat-wf-step instr-call-closure       prog fs wf = proj₁ (wf-abstract instr-call-closure (floc fs) (falloc fs) wf)
 flat-wf-step (worklist-init k)        prog fs wf = proj₁ (wf-abstract (worklist-init k) (floc fs) (falloc fs) wf)
 flat-wf-step (worklist-push k)        prog fs wf = proj₁ (wf-abstract (worklist-push k) (floc fs) (falloc fs) wf)
