@@ -55,8 +55,8 @@ d_ir'45'obs'45'correct_12 ::
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_540 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_594 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_522 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
@@ -88,7 +88,7 @@ d_asm'45'sem_18
          (coe MAlonzo.Code.Once.Target.Arch.C_x86'45'32_10))
 -- Once.Adequacy.ArchCorrectness.X86-32.FFOc.entry-alloc
 d_entry'45'alloc_20 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_594
 d_entry'45'alloc_20
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.d_entry'45'alloc_94
@@ -136,13 +136,13 @@ d_entry'45'rdi_32 ::
 d_entry'45'rdi_32 = erased
 -- Once.Adequacy.ArchCorrectness.X86-32.FFOc.entry-regs
 d_entry'45'regs_34 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_Registers_124
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_Registers_126
 d_entry'45'regs_34
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45'regs_98
 -- Once.Adequacy.ArchCorrectness.X86-32.FFOc.entry-s
 d_entry'45's_36 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_540
 d_entry'45's_36
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs.du_entry'45's_100
@@ -165,8 +165,8 @@ d_entry'45'witness_40 ::
    MAlonzo.Code.Once.IR.T_AllocMode_4 ->
    MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 ->
    MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
-   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_540 ->
+   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_594 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_522 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
@@ -193,8 +193,8 @@ d_flat'45'from'45'obs_42 ::
    MAlonzo.Code.Once.IR.T_AllocMode_4 ->
    AgdaAny ->
    MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
-   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_540 ->
+   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_594 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_522 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
@@ -225,8 +225,8 @@ d_flat'45'trace'45'of_44 ::
    MAlonzo.Code.Once.IR.T_AllocMode_4 ->
    AgdaAny ->
    MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
-   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_540 ->
+   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_594 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_522 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
@@ -254,8 +254,8 @@ d_ir'45'flat'45'correct'45'of_46 ::
    MAlonzo.Code.Once.IR.T_AllocMode_4 ->
    AgdaAny ->
    MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
-   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_540 ->
+   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_594 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_522 ->
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->

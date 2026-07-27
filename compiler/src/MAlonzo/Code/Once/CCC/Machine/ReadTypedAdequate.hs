@@ -38,16 +38,16 @@ d_readTyped_82 ::
   Integer ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_540 ->
   Maybe AgdaAny
 d_readTyped_82 ~v0 ~v1 = du_readTyped_82
 du_readTyped_82 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_540 ->
   Maybe AgdaAny
 du_readTyped_82
-  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readTyped_2444
+  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readTyped_2528
 -- Once.CCC.Machine.ReadTypedAdequate._.ValidAtWF
 d_ValidAtWF_130 a0 a1 a2 a3 a4 a5 a6 a7 = ()
 -- Once.CCC.Machine.ReadTypedAdequate.Readable
@@ -108,9 +108,9 @@ d_readTyped'45'adequate_234 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   T_Readable_164 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_456 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_540 ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_510 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_594 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_522 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
