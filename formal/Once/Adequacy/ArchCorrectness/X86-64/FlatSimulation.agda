@@ -30,7 +30,7 @@
 --   [ ] wire into Correct.agda (retires compile-ir).
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame; frame-word; frame-base; shift-base)
+open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame; frame-word; frame-base; shift-base; slot-addr; slot-addr-linear)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-ref; ref-id)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Target.X86-64.Syntax using (slot-size)
@@ -1376,3 +1376,47 @@ block-step-c-branch-nz {hv} prog fs s n m cc h ft sc-eq = result
                       ; stack-eq = C.stack-eq dc }
       ; pc-off = pco' }
 
+
+-- load-indirect through a STACK pointer ↔ `mov rax, [rdi]`. `rdi-eq` gives
+-- rdi ≡ slot-addr f k; for the CURRENT frame `rsp-eq` + `slot-addr-linear` turn
+-- that into `rsp + slot-to-disp k`, which is exactly the address `stack-eq`
+-- speaks about — so the loaded value is the slot's. Unprovable before plan 0.61,
+-- when a stack pointer encoded to the placeholder `0`.
+block-step-load-indirect-stack : ∀ {hv : HeapView} prog fs s f k w → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just load-indirect
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+  → f ≡ current-frame (falloc fs)
+  → k < stackSlot (regs (floc fs))
+  → stackMem (floc fs) (current-frame (falloc fs)) k ≡ just w
+  → BlockStep hv prog fs s load-indirect
+block-step-load-indirect-stack {hv} prog fs s f k w cc h ft i-eq f-eq k<ss st-eq =
+  post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base rdi)))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) load-indirect ft)
+    -- rdi is the slot's ADDRESS, and for the current frame that is rsp-relative
+    rdi-val : xreadReg (xregs s) rdi ≡ xreadReg (xregs s) rsp + slot-to-disp k
+    rdi-val = trans (C.rdi-eq dc)
+              (trans (cong (C.enc-sv hv) i-eq)
+              (trans (cong (λ fr → slot-addr FS fr k) f-eq)
+              (trans (slot-addr-linear FS (current-frame (falloc fs)) k)
+                     (cong₂ (λ b w' → b + k * w') (sym (C.rsp-eq dc)) word-eq))))
+    rd : X.readMem (memory s) (X.effectiveAddr s (base rdi)) ≡ just (C.enc-sv hv w)
+    rd = trans (cong (X.readMem (memory s)) rdi-val)
+               (trans (C.stack-eq dc k k<ss) (cong (C.enc-maybe hv) st-eq))
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) rax (C.enc-sv hv w) ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-mov-rm {compile-trace prog} {s} {rax} {base rdi} {C.enc-sv hv w} fetch-x86 rd
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    dataPost : C.FlatCorr hv (flat-exec-instr load-indirect prog fs) post
+    dataPost = C.sim-load-indirect-stack f k w fs s dc i-eq
+                 (trans (cong (λ fr → stackMem (floc fs) fr k) f-eq) st-eq)
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr load-indirect prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) load-indirect ft))

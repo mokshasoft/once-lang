@@ -46,6 +46,7 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong;
 
 open import Once.CCC.Machine.SMCore
 open MemOps {FS} using (writeLoc; writeLocToHeap; writeLoc-halted; readLoc)
+open FrameSemantics FS using (Frame)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 import Once.CCC.Target.X86-64.Semantics as X
@@ -386,6 +387,15 @@ postulate
   -- fed by the allocator's blocks-disjoint); the mechanics use the PROVEN block-step.
   load-indirect-live : ∀ {hv : HeapView} fs hl {w} → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
                      → heapMem (floc fs) hl ≡ just w → HDom hv hl
+
+  -- A stack pointer held in `Input1` targets the CURRENT frame's live slots.
+  -- True of emitted code — `lea-slot` takes the address of a slot the current
+  -- prologue reserved, and the pointer is consumed before the frame is left —
+  -- and it is what lets a load through it be an ordinary step. (An older
+  -- frame's slots would need `stack-eq` to reach beyond the current frame.)
+  stack-ptr-current : ∀ (fs : FlatState) (f : Frame) (k : Slot)
+                    → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+                    → (f ≡ current-frame (falloc fs)) × (k < stackSlot (regs (floc fs)))
 
   -- load-indirect on a non-live-dynamic-pointer target (non-pointer / stack ptr /
   -- unallocated) — ruled out by well-formedness (loads hit live heap cells).
@@ -917,11 +927,30 @@ mutual
             where hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ false
                   hpost rewrite i-eq | h-eq = h
           go-mem hl i-eq nothing h-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
+          go-stack : ∀ f k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+                   → (f ≡ current-frame (falloc fs)) × (k < stackSlot (regs (floc fs)))
+                   → ∀ (mw : Maybe (StoredValue FS))
+                   → stackMem (floc fs) (current-frame (falloc fs)) k ≡ mw
+                   → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                         ≡ event-of load-indirect fs ++ flat-events n prog (flat-exec-instr load-indirect prog fs))
+          go-stack f k i-eq (f-eq , k<ss) (just w) st-eq =
+            ccc-step-bs {hv} n ev env prog fs s load-indirect
+              (block-step-load-indirect-stack prog fs s f k w cc h ftq i-eq f-eq k<ss st-eq)
+              wf refl hpost
+            where hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ false
+                  hpost rewrite i-eq | f-eq | st-eq = h
+          go-stack f k i-eq _ nothing st-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
           go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                        ≡ event-of load-indirect fs ++ flat-events n prog (flat-exec-instr load-indirect prog fs))
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq = go-mem hl i-eq (heapMem (floc fs) hl) refl
-          go-ptr (SV-Ptr (AtStack _ _))  i-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
+          -- Plan 0.61: a load THROUGH A STACK POINTER is now an ordinary step —
+          -- the pointer denotes `slot-addr f k`, and for the CURRENT frame's live
+          -- slots `rsp-eq` + `stack-eq` relate exactly that cell. (Pointers into
+          -- an older frame keep the residual: `stack-eq` says nothing there.)
+          go-ptr (SV-Ptr (AtStack f k))  i-eq =
+            go-stack f k i-eq (stack-ptr-current fs f k i-eq)
+                     (stackMem (floc fs) (current-frame (falloc fs)) k) refl
           go-ptr (SV-Tag _)              i-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
           go-ptr (SV-Lit _ _)            i-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
           go-ptr (SV-Code _)             i-eq = load-indirect-bad n ev env prog fs s cc wf h ftq

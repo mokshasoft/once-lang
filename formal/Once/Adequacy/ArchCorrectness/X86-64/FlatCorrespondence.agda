@@ -1136,3 +1136,33 @@ sim-lea-indexed {hv} slot loc idx fs s xp corr slot-eq sc-eq
                                     (heap-eq corr hl live)
       ; stack-eq = λ k k< → trans (cong₂ (λ m r → X.readMem m (r + slot-to-disp k)) mem-p rsp-p)
                                   (stack-eq corr k k<) }
+
+-- Load through a STACK pointer (plan 0.61): `Input1` holds `SV-Ptr (AtStack f k)`
+-- and the slot holds `w`. Structurally identical to `sim-load-indirect`; only the
+-- residence differs, and it is only expressible at all because a stack pointer
+-- now denotes `slot-addr f k` instead of the old placeholder `0`.
+sim-load-indirect-stack : {hv : HeapView} (f : Frame) (k : Slot) (w : StoredValue FS)
+                          (fs : FlatState) (s : X.State) → FlatCorr hv fs s
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+  → readLoc (floc fs) (AtStack f k) ≡ just w
+  → FlatCorr hv (flat-exec-instr load-indirect [] fs)
+             (mkstate (xwriteReg (xregs s) rax (enc-sv hv w)) (memory s) (flags s) (pc s + 1) (xhalted s))
+sim-load-indirect-stack {hv} f k w fs s corr i-eq st-eq =
+  subst (λ z → FlatCorr hv z xpost) (sym reduces) corr-clean
+  where
+    xpost : X.State
+    xpost = mkstate (xwriteReg (xregs s) rax (enc-sv hv w)) (memory s) (flags s) (pc s + 1) (xhalted s)
+    cleanFlat : FlatState
+    cleanFlat = record fs { floc = record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+                          ; falloc = falloc fs ; fpc = suc (fpc fs) }
+    floc-eq : exec-load-via-resolved Output (sv-as-loc (readReg (regs (floc fs)) Input1)) (floc fs)
+              ≡ record (floc fs) { regs = writeReg (regs (floc fs)) Output w }
+    floc-eq = trans (cong (λ m → exec-load-via-resolved Output m (floc fs)) (cong sv-as-loc i-eq))
+                    (cong (λ mv → exec-load-with-value Output mv (floc fs)) st-eq)
+    reduces : flat-exec-instr load-indirect [] fs ≡ cleanFlat
+    reduces = cong (λ fl → record fs { floc = fl ; falloc = falloc fs ; fpc = suc (fpc fs) }) floc-eq
+    corr-clean : FlatCorr hv cleanFlat xpost
+    corr-clean = record
+      { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr
+      ; halt-eq = halt-eq corr ; rsp-eq = rsp-eq corr ; r15-eq = r15-eq corr
+      ; dom-fresh = dom-fresh corr ; heap-eq = heap-eq corr ; stack-eq = stack-eq corr }
