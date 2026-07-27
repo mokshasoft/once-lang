@@ -203,10 +203,18 @@ sigop-run-arith ev env n prog fs s si pl cc h ftq env-eq =
 event-of-pure : ∀ {A B} (si : SigOpInfo A B) fs → effect si ≡ Pure → event-of (instr-sigop si) fs ≡ []
 event-of-pure si fs eqe rewrite eqe = refl
 
--- WF: the Output register never holds a STACK pointer at a heap store (cross-region
--- heap→stack refs are forbidden). The one residual behind the store-guard.
+-- WF: at a HEAP STORE the Output register does not hold a stack pointer
+-- (cross-region heap→stack refs are forbidden — the escape analysis heap-allocates
+-- anything that escapes). Plan 0.61: this MUST be conditioned on the store site.
+-- Unconditionally it is FALSE, because `lea-slot` legitimately puts a stack pointer
+-- in Output (and now that stack pointers have real addresses, that is visible).
 postulate
-  store-output-not-stackref : ∀ fs {f k} → readReg (regs (floc fs)) Output ≡ SV-Ptr (AtStack f k) → ⊥
+  store-output-not-stackref : ∀ prog fs {f k}
+                            → fetch prog (fpc fs) ≡ just store-indirect
+                            → readReg (regs (floc fs)) Output ≡ SV-Ptr (AtStack f k) → ⊥
+  store-suc-output-not-stackref : ∀ prog fs {f k}
+                                → fetch prog (fpc fs) ≡ just store-indirect-suc
+                                → readReg (regs (floc fs)) Output ≡ SV-Ptr (AtStack f k) → ⊥
 
 -- STORE-GUARD, PROVEN: `writeLoc (AtDynamic hl) v ≡ writeLocToHeap hl v` for the stored
 -- value `v = readReg Output` — holds for every StoredValue shape EXCEPT a stack pointer
@@ -215,9 +223,10 @@ postulate
 -- and the illegal stack-ref shape is ruled out by WF (`store-output-not-stackref`). Covers
 -- BOTH store-indirect (hl) and store-indirect-suc (sucHL hl) — parameterised by hl.
 store-guard : ∀ fs (hl : HeapLocation)
+            → (∀ {f k} → readReg (regs (floc fs)) Output ≡ SV-Ptr (AtStack f k) → ⊥)
             → writeLoc (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)
               ≡ writeLocToHeap (floc fs) hl (readReg (regs (floc fs)) Output)
-store-guard fs hl = go (readReg (regs (floc fs)) Output) refl
+store-guard fs hl no-stackref = go (readReg (regs (floc fs)) Output) refl
   where go : ∀ (v : StoredValue FS) → readReg (regs (floc fs)) Output ≡ v
            → writeLoc (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)
              ≡ writeLocToHeap (floc fs) hl (readReg (regs (floc fs)) Output)
@@ -225,7 +234,7 @@ store-guard fs hl = go (readReg (regs (floc fs)) Output) refl
         go (SV-Lit p v)           o-eq rewrite o-eq = refl
         go (SV-Code c)            o-eq rewrite o-eq = refl
         go (SV-Ptr (AtDynamic w)) o-eq rewrite o-eq = refl
-        go (SV-Ptr (AtStack f k)) o-eq = ⊥-elim (store-output-not-stackref fs o-eq)
+        go (SV-Ptr (AtStack f k)) o-eq = ⊥-elim (no-stackref o-eq)
 
 -- The run-events REDUCTION at an EXTERNAL (Emits/Halts) SigOp, PROVEN given the
 -- external-env contract (env maps the symbol to `nothing`): the compiled `call-sym`
@@ -913,7 +922,7 @@ mutual
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq =
             ccc-step-bs {hv} n ev env prog fs s store-indirect
               (block-step-store-indirect prog fs s hl cc h ftq i-eq
-                 (store-indirect-live {hv} fs hl i-eq) (store-guard fs hl)
+                 (store-indirect-live {hv} fs hl i-eq) (store-guard fs hl (store-output-not-stackref prog fs ftq))
                  (store-indirect-stack-disj {hv} s hl))
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
@@ -936,7 +945,7 @@ mutual
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq =
             ccc-step-bs {hv} n ev env prog fs s store-indirect-suc
               (block-step-store-indirect-suc prog fs s hl cc h ftq i-eq
-                 (store-indirect-suc-live {hv} fs hl i-eq) (store-guard fs (sucHL hl))
+                 (store-indirect-suc-live {hv} fs hl i-eq) (store-guard fs (sucHL hl) (store-suc-output-not-stackref prog fs ftq))
                  (store-indirect-suc-stack-disj {hv} s hl))
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
