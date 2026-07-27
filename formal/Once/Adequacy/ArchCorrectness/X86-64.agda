@@ -20,10 +20,14 @@ open import Data.List using ([]; take)
 open import Data.Bool using (false)
 open import Data.Product using (proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; mkHeapRef)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; mkHeapRef; heap-offset)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.X86-64.Syntax using (slot-size)
+open import Once.CCC.Target.X86-64.AbstractToX86 using (slot-to-disp)
+open import Data.Empty using (⊥)
+open import Data.Nat using (_*_)
+open import Data.Nat.Properties using (+-comm)
 open import Once.Adequacy.CPU.X86-64 using (ev-x86-64; arith-env-x86-64; step-budget-x86-64; val-x86-64)
 import Once.Arith.Backend.X86-64.RunTrace as RTx
 open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
@@ -84,25 +88,31 @@ open FlatMachine {x86-64-frame-semantics} using (mkFlat)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {x86-64-frame-semantics} using (flat-events)
 
--- Instantiation params the recovered cluster is parametric over: the heap-location
--- encoding (`enc-hl`) + the allocator's live-cell injectivity (`LiveIn`/`enc-hl-inj-
--- live`, from `blocks-disjoint`) + the successor law. Genuine apex obligations.
-postulate
-  enc-hl : HeapLocation → ℕ
-  LiveIn : AllocState {x86-64-frame-semantics} → HeapLocation → Set
-  enc-hl-inj-live : ∀ (as : AllocState {x86-64-frame-semantics}) {a b : HeapLocation}
-                  → LiveIn as a → LiveIn as b → enc-hl a ≡ enc-hl b → a ≡ b
-  enc-hl-suc : ∀ (hl : HeapLocation) → enc-hl (sucHL hl) ≡ enc-hl hl + slot-size
-  -- The entry "unit-filler" pointer (`entry-loc = AtDynamic (heap-loc 0 0)`) encodes
-  -- to address 0 — the concrete x86 entry registers are all 0 (`emptyRegFile`), so
-  -- this is exactly what makes the initial register correspondence hold. A property
-  -- of the concrete heap layout, discharged when `enc-hl` is instantiated. (Leaf
-  -- surfaced by proving `entry-corr` below top-down.)
-  enc-hl-entry : enc-hl (heap-loc (mkHeapRef 0) 0) ≡ 0
-
 open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
-  x86-64-frame-semantics enc-hl LiveIn enc-hl-inj-live enc-hl-suc
-  using (events-agree; CompiledCorr)
+  x86-64-frame-semantics
+  using (events-agree; CompiledCorr; HeapView)
+
+-- The heap address map is CARRIED by the correspondence and EXTENDED at each
+-- `instr-alloc-heap` (the fresh block lands at the concrete `%r15` frontier), so
+-- the apex no longer postulates a global `enc-hl` / `LiveIn` / injectivity /
+-- successor law / entry-address — it EXHIBITS the entry view and the extension
+-- proves the rest. At entry nothing is allocated yet: the domain is EMPTY, the
+-- frontier is 0 (= the concrete `%r15` of `emptyRegFile`), and the placeholder
+-- address map only has to be slot-linear (`haddr-suc`) and put the erased Unit
+-- filler cell at 0 — which the x86 entry registers (all 0) match exactly.
+entry-view : HeapView
+entry-view = record
+  { haddr     = λ hl → slot-to-disp (heap-offset hl)
+  ; HDom      = λ _ → ⊥
+  ; hfront    = 0
+  ; haddr-suc = suc-law
+  ; haddr-inj = λ ()
+  ; dom-below = λ ()
+  }
+  where
+    suc-law : ∀ (hl : HeapLocation) → slot-to-disp (heap-offset (sucHL hl))
+                                    ≡ slot-to-disp (heap-offset hl) + slot-size
+    suc-law (heap-loc r o) = +-comm slot-size (o * slot-size)
 
 -- Initial-state correspondence, PROVEN: the concrete `initState` (all registers 0,
 -- empty memory, pc 0, running) relates to the flat entry state `mkFlat entry-s
@@ -110,16 +120,18 @@ open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
 -- loc) ≡ 0` (the `enc-hl-entry` leaf); halt/pc are refl; heap-eq is vacuous
 -- (`nothing ≡ nothing`, the entry heap is empty). No longer a postulate.
 entry-corr : ∀ (ir : IR Unit Unit)
-           → CompiledCorr (ir-to-trace ir) (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
+           → CompiledCorr entry-view (ir-to-trace ir) (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
                           (ArchSemantics.initialState as64)
 entry-corr ir = record
   { dataCorr = record
-      { rdi-eq  = sym enc-hl-entry
-      ; rsi-eq  = sym enc-hl-entry
-      ; rax-eq  = sym enc-hl-entry
-      ; rbx-eq  = sym enc-hl-entry
+      { rdi-eq  = refl
+      ; rsi-eq  = refl
+      ; rax-eq  = refl
+      ; rbx-eq  = refl
       ; halt-eq = refl
-      ; heap-eq = λ _ _ → refl
+      ; r15-eq  = refl          -- emptyRegFile's %r15 ≡ 0 ≡ the entry frontier
+      ; dom-fresh = λ ()        -- nothing is mapped yet
+      ; heap-eq = λ _ ()
       ; stack-eq = λ _ ()   -- entry frame: next-slot ≡ 0, so the k < 0 bound is absurd
       }
   ; pc-off = refl
