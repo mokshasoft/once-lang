@@ -204,16 +204,51 @@ Delivered, all `--safe`, zero postulates, whole chain exit 0:
 which the IH gives only pointwise. Threaded as a hypothesis per §1.2, so the modules
 stay `--safe` and postulate-free; `L-sound` and `pipeline` gained a `FunExt` argument.
 
-⚠ **The one genuine finding — static ≠ dynamic accounting.** `dupCount (lcurry f) =
+⚠ **The finding this surfaced — static ≠ dynamic accounting.** `dupCount (lcurry f) =
 dupCount f` counts the closure body's dups ONCE, but the body runs once per
-application: a closure applied `n` times performs `n ×` (its body's dups) allocations.
-`pass-alloc` remains exactly true as a syntactic identity (the `fo-curry` case is
-proven), but **"allocations = source pairings" as an OPERATIONAL claim now holds only
-for closure-free code.** This is the same per-node multiplicity issue `PATHS.md`
-already flags for recursion schemes ("a cata's algebra events × the number of nodes");
-closures put it on the exponentials too. A dynamic account needs an event trace, not a
-count — `NbEPLinLive`'s `□◇` streams are the shape that would take. **This is now the
-top open item on the linearization side**, ahead of §1.3 gap 2.
+application. **Followed up and settled in W0b below.**
+
+### W0b — Dynamic allocation cost  ✅ **DONE (linearization-7, `NbEPLinDyn`)**
+
+`--safe`, zero postulates, exit 0, whole Lin chain re-verified. The follow-up found
+the divergence is **worse than linearization-6 recorded, and closures are not the only
+cause**: `dupCount` is neither an upper nor a lower bound, and `case` already breaks it
+inside the first-order fragment.
+
+**Built:** an instrumented value domain `⟦_⟧C` (identical to the evaluator's `⟦_⟧T`
+except at `⇒`, where a function reports its own cost), the cost semantics
+`Lᶜ : LTm A B → ⟦A⟧C → ⟦B⟧C × ℕ` (writer-monad reading of `Lⁱ`; `dup` is the only
+costly generator, building a closure is FREE, its body is paid at `leval` per call),
+and `cataC`/`sumF` for folds.
+
+**The four divergences, each witnessed by `refl`:**
+| where | direction | witness |
+|---|---|---|
+| `case` | **over**counts — static adds both branches, a run takes one | `case-over` / `case-left` |
+| `lcurry` (build) | **over**counts — building a closure is free whatever its body holds | `closure-build-free` |
+| `lcurry` (run) | **under**counts — body dups fire once per application | `closure-per-app`, `closure-twice` |
+| `lcata` | **under**counts — algebra runs once per node (3-node tree pays 2 for a static 1) | `cata-under`, `cata-zero-nodes` |
+
+**★ `dyn-linear` — operational linearity.** A `DupFree` morphism run on `Free` inputs
+performs **zero allocations at runtime** and returns a `Free` result. This upgrades
+`dupfree-no-alloc` from a statement about SYNTAX to one about EXECUTION — which is what
+"the linear sublanguage allocates nothing" has to mean for the memory dividend to hold.
+`Free` is a genuine logical relation (at `⇒`: "applying it to any `Free` argument costs
+nothing"), needed because `DupFree` alone cannot bound `leval`, whose input closure is
+an arbitrary semantic value. Supporting lemmas `cata-free`, `cata-ok`/`map-ok`
+(the fold preserves `Free` and stays cost-free), `FreeG`/`freeCoh`.
+
+**★ `pass-dyn` — end-to-end.** Composed with `pass-df`: a **pairing-free cartesian
+source compiles to a program that performs no allocation at runtime.**
+
+⇒ **The honest form of the payoff.** `pass-alloc` is the right SYNTACTIC invariant for
+comparing pass output against pass input, and it stays exactly true. It is not an
+operational bound. Operationally: pairing-free ⇒ provably zero allocations; otherwise
+the figure depends on the run (branch taken, tree size, application count) and cannot
+be read off the syntax at all. **A full dynamic account needs an event trace, not a
+count** — `NbEPLinLive`'s `□◇` streams are the shape that would take. That trace, and
+value-agreement between `Lᶜ` and `Lⁱ` (a section/retraction at `⇒` plus funext,
+deliberately not attempted), are what remain here.
 
 *(Original scoping retained below for the record.)*
 
@@ -365,10 +400,12 @@ modules, so land them as ONE cascade rather than two.
 
 **Phase 3.** W4, then W5, then W6.
 
-**Running alongside, on the linearization side** (not blocking W1–W6): the dynamic /
-multiplicity accounting that W0 surfaced, then §1.3 gap 2 (linear recursion schemes,
+**Running alongside, on the linearization side** (not blocking W1–W6): ~~the dynamic /
+multiplicity accounting~~ ✅ done (W0b), then §1.3 gap 2 (linear recursion schemes,
 where `Para` inherently duplicating is a language-design decision to take
-deliberately), then gap 3 (the Lin↔QTT bridge).
+deliberately), then gap 3 (the Lin↔QTT bridge). The residue of W0b — an event trace
+for the non-linear fragment, and `Lᶜ`/`Lⁱ` value-agreement — is optional refinement,
+not a gate.
 
 **Out of scope, explicitly:** directed univalence and its directed model (§1.1);
 anything requiring cubical machinery; the raw-M3c faithfulness grind (§5).
