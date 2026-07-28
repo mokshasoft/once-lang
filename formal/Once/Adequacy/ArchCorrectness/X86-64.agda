@@ -32,6 +32,7 @@ open import Data.Nat using (_*_)
 open import Data.Nat.Properties using (+-comm)
 open import Once.Adequacy.CPU.X86-64 using (ev-x86-64; arith-env-x86-64; step-budget-x86-64; val-x86-64)
 import Once.Arith.Backend.X86-64.RunTrace as RTx
+import Once.CCC.Target.X86-64.Semantics as X
 open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
 open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.CPU using (x86-64; arch-semantics)
@@ -125,11 +126,15 @@ entry-view = record
     suc-law (heap-loc r o) = +-comm slot-size (o * slot-size)
 
 postulate
-  -- The entry frame's base is the initial %rsp (both 0 in the model's
-  -- `initState`). A property of the (abstract) entry frame `FlatFromObs`
-  -- postulates — the runtime hands `main` a stack whose base is where %rsp is.
+  -- The entry frame's base IS the %rsp the loader hands `main` (`X64.stack-top`,
+  -- the one opaque entry-layout constant). A property of the (abstract) entry
+  -- frame `FlatFromObs` postulates, tying it to the concrete entry state.
+  -- Plan 0.54 rung D: this used to say `≡ 0`, which together with the entry
+  -- heap base (also 0) made stack slot `k` and heap cell `(block 0, offset k)`
+  -- the SAME address — the layout was degenerate, so every heap/stack
+  -- disjointness assumption below it was false.
   entry-frame-base : frame-base x86-64-frame-semantics
-                       (current-frame FFOx.entry-alloc) ≡ 0
+                       (current-frame FFOx.entry-alloc) ≡ X.stack-top
 
 -- Initial-state correspondence, PROVEN: the concrete `initState` (all registers 0,
 -- empty memory, pc 0, running) relates to the flat entry state `mkFlat entry-s

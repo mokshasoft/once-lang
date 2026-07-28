@@ -139,17 +139,35 @@ open State
 -- Initial state
 ------------------------------------------------------------------------
 
-emptyRegFile : RegFile
-emptyRegFile = mkregfile 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-
 emptyMemory : Memory
 emptyMemory = λ _ → nothing
 
 initFlags : Flags
 initFlags = mkflags false false false
 
+------------------------------------------------------------------------
+-- THE ENTRY MEMORY LAYOUT (plan 0.54 rung D).
+--
+-- The loader hands `main` a stack; `_start` points `%r15` at the heap pool
+-- (`Once.Target.X86-64`: `leaq once_heap_base(%rip), %r15`). The two regions
+-- then grow TOWARDS each other — the heap up (`add r15, n*8`), the stack down
+-- (`sub rsp, n*8`) — so all the disjointness the correspondence needs follows
+-- from ONE inequality, `heap-frontier ≤ %rsp`, carried per step. No maximum
+-- stack depth has to be known (it cannot be: a SigOp's stack use is outside the
+-- model), and no address has to be pinned (different systems, different memory
+-- sizes — only the ordering matters).
+--
+-- `%rsp`'s entry value is therefore OPAQUE: the one thing the loader tells us.
+-- The heap base is 0 without loss of generality (addresses are ℕ and only the
+-- relative order matters), which is why `0 ≤ stack-top` needs no assumption.
+postulate
+  stack-top : Word          -- the %rsp the loader hands `main`
+
+emptyRegFile : RegFile
+emptyRegFile = mkregfile 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
 initState : State
-initState = mkstate emptyRegFile emptyMemory initFlags 0 false
+initState = mkstate (writeReg emptyRegFile rsp stack-top) emptyMemory initFlags 0 false
 
 ------------------------------------------------------------------------
 -- Operand evaluation
