@@ -9,40 +9,69 @@
 --
 --   * `Lⁱ`      — a denotational semantics for the linear core (`dup a =
 --                 (a,a)`, `drop a = tt` — the sharing/discard made concrete);
---   * `FO`      — the first-order recursion-scheme fragment of the cartesian
---                 syntax (`id`/`∘`/`fst`/`snd`/`⟨,⟩`/`inl`/`inr`/`case`/
---                 `terminal`/`In`/`cata`) — where linearization is clean (no
---                 exponentials: `curry`/`apply` need the comonoid on the
---                 argument, a separate story);
+--   * `FO`      — the LINEARIZABLE fragment of the cartesian syntax. Since
+--                 linearization-6 this includes the EXPONENTIALS
+--                 (`fo-curry`/`fo-apply`); what it still omits is `initial`,
+--                 `Out`, and the coinductive schemes. (The name is historical:
+--                 it was the first-order fragment before closures were added.)
 --   * `L⟦_⟧`    — THE PASS: `FO f → LTm A B`, `fst ↦ fstL`, `⟨f,g⟩ ↦ dup`-
---                 inserting `⟨_,_⟩L`, `terminal ↦ drop`, structurally;
+--                 inserting `⟨_,_⟩L`, `terminal ↦ drop`, `curry ↦ lcurry`,
+--                 `apply ↦ leval`, structurally;
 --   * `L-sound` — **semantics preservation**: `Lⁱ (L⟦f⟧) x ≡ eval f x`, by
 --                 induction on the fragment (the `cata` case via a fold
 --                 congruence `cata-Set-cong`). The pass is meaning-preserving.
 --
--- This is the pass PATHS.md flagged as remaining research, POC'd on the clean
--- fragment; what stays open is usage-driven `dup`/`drop` PLACEMENT (here the
--- placement is the canonical one Fox dictates) and the alloc-correctness
--- payoff on top of this soundness.
+-- ★ LINEARIZATION-6 — THE EXPONENTIAL GAP, CLOSED. `PATHS.md` deferred
+-- `curry`/`apply` as "needing the comonoid on the argument, a separate story".
+-- The verdict is that they need NO comonoid at all. In this core `_*_` IS the
+-- tensor, so `lcurry : LTm (A * B) C → LTm A (B ⇒ C)` SPLITS the environment
+-- from the argument rather than duplicating a shared source, and `leval`
+-- consumes closure and argument exactly once each. Both are dup-free
+-- (`df-lcurry`/`df-leval`), so `pass-df` extends: **a pairing-free source with
+-- closures still linearizes to a fully dup-free term** — closures contribute no
+-- duplication of their own. The only cost is `funext`, needed in exactly one
+-- clause of `L-sound` (`curry`'s conclusion is an equality of FUNCTIONS), and
+-- threaded as a hypothesis per the POC's ground rules — the module stays
+-- `--safe` and postulate-free.
+--
+-- ⚠ WHAT THIS DOES *NOT* SAY — read before quoting `pass-alloc` at closures.
+-- `dupCount` is a STATIC count of `dup` generators. With closures the static
+-- count stops being the DYNAMIC allocation count: `dupCount (lcurry f) =
+-- dupCount f` counts the body's dups ONCE, but the body runs once per
+-- application, so a closure applied n times performs n × (its body's dups)
+-- allocations. `pass-alloc` remains exactly true as stated (a syntactic
+-- identity, and the `fo-curry` case is proven), but "allocations = source
+-- pairings" as an OPERATIONAL claim now holds only for closure-free code. This
+-- is the same per-node multiplicity issue `PATHS.md` already flags for
+-- recursion schemes ("a cata's algebra events × the number of nodes"); closures
+-- put it on the exponentials too. A dynamic account needs an event trace, not a
+-- count — see `NbEPLinLive` for the shape that would take.
+--
+-- What stays open after this: usage-driven `dup`/`drop` PLACEMENT for captured
+-- environments (here the placement is the canonical one Fox dictates), and the
+-- dynamic/multiplicity accounting above.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPLinPass where
 
 open import normalizer.Syntax.Types
-  using ( Ty; Func; Id; One; Kc; _⊕_; _⊗_; μ_; ⟦_⟧F
+  using ( Ty; Func; Id; One; Kc; _⊕_; _⊗_; _*_; μ_; ⟦_⟧F
         ; ⊤; tt; _×_; _,_; _⊎_; inj₁; inj₂
         ; _≡_; refl; trans; cong; cong₂ )
 open import normalizer.Syntax.CCC as C
-  using ( Term; id; _∘_; fst; snd; ⟨_,_⟩; inl; inr; [_,_]; terminal; In; cata )
+  using ( Term; id; _∘_; fst; snd; ⟨_,_⟩; inl; inr; [_,_]; terminal; In; cata
+        ; curry; apply )
 open import normalizer.Testing.Evaluator
   using ( ⟦_⟧T; ⟦_⟧FS; Fix; fix; eval; coherence; coherence⁻¹
         ; cata-Set; map-cata-Set )
 open import poc.OCP0009.NbEPLinRec
   using ( LTm; lid; _∘l_; _⊗l_; ρl; ρl⁻; lul; lul⁻; dup; drop
         ; linl; linr; lcase; lIn; lcata; fstL; sndL; ⟨_,_⟩L
+        ; lcurry; leval
         ; DupFree; df-∘; df-⊗; df-id; df-ρl; df-ρl⁻; df-lul; df-lul⁻
-        ; df-drop; df-linl; df-linr; df-case; df-In; df-cata; fstL-df; sndL-df )
+        ; df-drop; df-linl; df-linr; df-case; df-In; df-cata; fstL-df; sndL-df
+        ; df-lcurry; df-leval )
 
 ------------------------------------------------------------------------
 -- A denotational semantics for the linear core. `dup`/`drop` are where the
@@ -65,6 +94,9 @@ Lⁱ (lcase f g)  (inj₁ a) = Lⁱ f a
 Lⁱ (lcase f g)  (inj₂ b) = Lⁱ g b
 Lⁱ (lIn {F})    x        = fix (coherence F (μ F) x)
 Lⁱ (lcata F alg) x       = cata-Set F (λ y → Lⁱ alg (coherence⁻¹ F _ y)) x
+-- the closure captures `a` (the tensor's left factor) and awaits `b`.
+Lⁱ (lcurry f)   a        = λ b → Lⁱ f (a , b)
+Lⁱ leval        (f , a)  = f a
 
 ------------------------------------------------------------------------
 -- The first-order recursion-scheme fragment of the cartesian syntax.
@@ -82,6 +114,9 @@ data FO : ∀ {A B} → Term A B → Set where
   fo-term  : ∀ {A} → FO (terminal {A})
   fo-In    : ∀ {F} → FO (In {F})
   fo-cata  : ∀ {F A} {alg : Term (⟦ F ⟧F A) A} → FO alg → FO (cata F alg)
+  -- exponentials (linearization-6)
+  fo-curry : ∀ {A B C} {f : Term (A * B) C} → FO f → FO (curry f)
+  fo-apply : ∀ {A B} → FO (apply {A} {B})
 
 ------------------------------------------------------------------------
 -- THE PASS: cartesian → linear, inserting `dup`/`drop`.
@@ -99,6 +134,8 @@ L⟦ fo-case p q ⟧ = lcase L⟦ p ⟧ L⟦ q ⟧
 L⟦ fo-term ⟧     = drop
 L⟦ fo-In ⟧       = lIn
 L⟦ fo-cata {F} p ⟧ = lcata F L⟦ p ⟧
+L⟦ fo-curry p ⟧  = lcurry L⟦ p ⟧
+L⟦ fo-apply ⟧    = leval
 
 ------------------------------------------------------------------------
 -- Fold congruence: pointwise-equal algebras give equal folds. (The `cata`
@@ -123,24 +160,35 @@ mutual
 
 ------------------------------------------------------------------------
 -- SEMANTICS PRESERVATION: the pass preserves meaning.
+--
+-- `funext` is THREADED, not postulated (the POC's ground rule), and is needed
+-- in exactly ONE clause: `curry`'s conclusion equates two FUNCTIONS
+-- (`λ b → Lⁱ L⟦p⟧ (x , b)` vs `λ b → eval f (x , b)`), which the IH gives only
+-- pointwise. Every other clause is unchanged and funext-free.
 ------------------------------------------------------------------------
 
-L-sound : ∀ {A B} {f : Term A B} (p : FO f) (x : ⟦ A ⟧T) →
+FunExt : Set₁
+FunExt = {A B : Set} {f g : A → B} → (∀ x → f x ≡ g x) → f ≡ g
+
+L-sound : FunExt → ∀ {A B} {f : Term A B} (p : FO f) (x : ⟦ A ⟧T) →
           Lⁱ L⟦ p ⟧ x ≡ eval f x
-L-sound fo-id          x        = refl
-L-sound (fo-∘ {g = g} p q) x    =
-  trans (cong (Lⁱ L⟦ p ⟧) (L-sound q x)) (L-sound p (eval g x))
-L-sound fo-fst         (a , b)  = refl
-L-sound fo-snd         (a , b)  = refl
-L-sound (fo-pair p q)  x        = cong₂ _,_ (L-sound p x) (L-sound q x)
-L-sound fo-inl         x        = refl
-L-sound fo-inr         x        = refl
-L-sound (fo-case p q)  (inj₁ a) = L-sound p a
-L-sound (fo-case p q)  (inj₂ b) = L-sound q b
-L-sound fo-term        x        = refl
-L-sound fo-In          x        = refl
-L-sound (fo-cata {F} {alg = alg} p) x =
-  cata-Set-cong F (λ y → L-sound p (coherence⁻¹ F _ y)) x
+L-sound fe fo-id          x        = refl
+L-sound fe (fo-∘ {g = g} p q) x    =
+  trans (cong (Lⁱ L⟦ p ⟧) (L-sound fe q x)) (L-sound fe p (eval g x))
+L-sound fe fo-fst         (a , b)  = refl
+L-sound fe fo-snd         (a , b)  = refl
+L-sound fe (fo-pair p q)  x        = cong₂ _,_ (L-sound fe p x) (L-sound fe q x)
+L-sound fe fo-inl         x        = refl
+L-sound fe fo-inr         x        = refl
+L-sound fe (fo-case p q)  (inj₁ a) = L-sound fe p a
+L-sound fe (fo-case p q)  (inj₂ b) = L-sound fe q b
+L-sound fe fo-term        x        = refl
+L-sound fe fo-In          x        = refl
+L-sound fe (fo-cata {F} {alg = alg} p) x =
+  cata-Set-cong F (λ y → L-sound fe p (coherence⁻¹ F _ y)) x
+-- ★ the closure case: pointwise by the IH, then funext.
+L-sound fe (fo-curry p)   x        = fe (λ b → L-sound fe p (x , b))
+L-sound fe fo-apply       (f , a)  = refl
 
 ------------------------------------------------------------------------
 -- The payoff, first half: the pass inserts `dup` EXACTLY for pairings.
@@ -164,6 +212,11 @@ data PairFree : ∀ {A B} {f : Term A B} → FO f → Set where
   pf-In   : ∀ {F} → PairFree (fo-In {F})
   pf-cata : ∀ {F A} {alg : Term (⟦ F ⟧F A) A} {p : FO alg} →
             PairFree p → PairFree (fo-cata p)
+  -- ★ closures: pairing-freedom passes THROUGH a `curry`, and `apply` is a leaf.
+  -- This is what makes `pass-df` extend to the exponentials.
+  pf-curry : ∀ {A B C} {f : Term (A * B) C} {p : FO f} →
+             PairFree p → PairFree (fo-curry p)
+  pf-apply : ∀ {A B} → PairFree (fo-apply {A} {B})
   -- (no `pf-pair`: a pairing is the one construct the pass linearizes with `dup`)
 
 pass-df : ∀ {A B} {f : Term A B} {p : FO f} → PairFree p → DupFree L⟦ p ⟧
@@ -177,6 +230,8 @@ pass-df (pf-case p q) = df-case (pass-df p) (pass-df q)
 pass-df pf-term      = df-drop
 pass-df pf-In        = df-In
 pass-df (pf-cata {F} p) = df-cata F (pass-df p)
+pass-df (pf-curry p) = df-lcurry (pass-df p)
+pass-df pf-apply     = df-leval
 
 ------------------------------------------------------------------------
 -- The payoff, quantitative: ALLOCATIONS = SOURCE PAIRINGS. Counting `dup`s in
@@ -209,6 +264,10 @@ dupCount linr          = zero
 dupCount (lcase f g)   = dupCount f +ℕ dupCount g
 dupCount lIn           = zero
 dupCount (lcata F alg) = dupCount alg
+-- ⚠ STATIC: the body's dups are counted ONCE, but run once per application.
+-- See the header's multiplicity caveat before reading this operationally.
+dupCount (lcurry f)    = dupCount f
+dupCount leval         = zero
 
 -- Pairings in the cartesian source.
 pairCount : ∀ {A B} {f : Term A B} → FO f → ℕ
@@ -223,6 +282,8 @@ pairCount (fo-case p q) = pairCount p +ℕ pairCount q
 pairCount fo-term       = zero
 pairCount fo-In         = zero
 pairCount (fo-cata p)   = pairCount p
+pairCount (fo-curry p)  = pairCount p
+pairCount fo-apply      = zero
 
 pass-alloc : ∀ {A B} {f : Term A B} (p : FO f) → dupCount L⟦ p ⟧ ≡ pairCount p
 pass-alloc fo-id         = refl
@@ -236,6 +297,8 @@ pass-alloc (fo-case p q) = cong₂ _+ℕ_ (pass-alloc p) (pass-alloc q)
 pass-alloc fo-term       = refl
 pass-alloc fo-In         = refl
 pass-alloc (fo-cata p)   = pass-alloc p
+pass-alloc (fo-curry p)  = pass-alloc p
+pass-alloc fo-apply      = refl
 
 ------------------------------------------------------------------------
 -- THE BALANCE THEOREM (inductive fragment). "Allocation" = `dup` (the one
@@ -267,6 +330,8 @@ frees linr          = zero
 frees (lcase f g)   = frees f +ℕ frees g
 frees lIn           = zero
 frees (lcata F alg) = frees alg
+frees (lcurry f)    = frees f
+frees leval         = zero
 
 -- 1. The linear sublanguage is allocation-free.
 dupfree-no-alloc : ∀ {A B} {f : LTm A B} → DupFree f → dupCount f ≡ zero
@@ -283,6 +348,8 @@ dupfree-no-alloc df-linr      = refl
 dupfree-no-alloc (df-case p q) = cong₂ _+ℕ_ (dupfree-no-alloc p) (dupfree-no-alloc q)
 dupfree-no-alloc df-In        = refl
 dupfree-no-alloc (df-cata F p) = dupfree-no-alloc p
+dupfree-no-alloc (df-lcurry p) = dupfree-no-alloc p
+dupfree-no-alloc df-leval     = refl
 
 -- The canonical alloc/free pair: duplicate `a`, then free the copy.
 alloc-free : ∀ {A} → LTm A A
