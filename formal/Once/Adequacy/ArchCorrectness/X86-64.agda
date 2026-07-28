@@ -157,6 +157,10 @@ entry-corr ir = record
       ; r15-eq  = refl          -- emptyRegFile's %r15 ≡ 0 ≡ the entry frontier
       ; dom-fresh = λ ()        -- nothing is mapped yet
       ; heap-eq = λ _ ()
+      -- LAYOUT SEPARATION at entry: the heap frontier is 0 and %rsp is the
+      -- loader's `stack-top`, so the heap is (vacuously) below the stack. This is
+      -- the base case of the invariant that replaces the disjointness postulates.
+      ; sep = z≤n
       ; stack-eq = λ _ ()   -- entry frame: next-slot ≡ 0, so the k < 0 bound is absurd
       }
   ; pc-off = refl

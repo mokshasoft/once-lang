@@ -29,8 +29,8 @@ open import Once.CCC.Target.X86-64.Syntax using
   ( slot-size; Program; Instr; Reg; Operand; reg; imm; mem; base+disp; rsp; rbp; rax; rdi; rbx
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
   ; ret; push; pop; nop; ud2; syscall; label )
-open import Data.Nat using (ℕ; _+_; _<_; _∸_; _≡ᵇ_)
-open import Data.Nat.Properties using (≤-reflexive)
+open import Data.Nat using (ℕ; _+_; _<_; _≤_; _∸_; _≡ᵇ_)
+open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-transˡ; <-irrefl; m≤m+n; m∸n≤m)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
@@ -137,6 +137,35 @@ flat-inv-step i prog fs inv = flat-wf-step i prog fs (proj₁ inv)
 -- reduces at the use sites). This is what ties a slot-liveness assumption to
 -- the instruction actually fetched: a residual stated for an *arbitrary* slot
 -- at a site is not a weaker assumption, it is an inconsistent one.
+------------------------------------------------------------------------
+-- HEAP/STACK DISJOINTNESS, DERIVED (plan 0.54 rung D).
+--
+-- The two regions grow towards each other, and `FlatCorr.sep` carries the one
+-- fact that says so: the heap frontier is at or below `%rsp`. A LIVE heap cell
+-- is strictly below the frontier (`HeapView.dom-below`), hence below any address
+-- at or above `%rsp` — which is every stack slot the emitted code touches. So
+-- the four disjointness residuals are now THEOREMS; what is assumed instead is
+-- only that the allocating instructions have room (the `*-room` block below),
+-- i.e. that the program does not exhaust memory.
+------------------------------------------------------------------------
+above-frontier-disj : ∀ {hv : HeapView} (a : ℕ) → hfront hv ≤ a
+                    → ∀ hl → HDom hv hl → a ≡ haddr hv hl → ⊥
+above-frontier-disj {hv} a le hl live eq = <-irrefl (sym eq) (<-transˡ (C.dom-below hv live) le)
+
+-- a current-frame slot address is at or above %rsp, hence above every live cell
+slot-heap-disj : ∀ {hv : HeapView} (fs : FlatState) (s : X.State) → C.FlatCorr hv fs s
+               → (k : Slot) → ∀ hl → HDom hv hl
+               → (X.readReg (X.State.regs s) rsp + slot-to-disp k ≡ haddr hv hl) → ⊥
+slot-heap-disj {hv} fs s corr k =
+  above-frontier-disj {hv} (X.readReg (X.State.regs s) rsp + slot-to-disp k)
+    (≤-trans (C.sep corr) (m≤m+n (X.readReg (X.State.regs s) rsp) (slot-to-disp k)))
+
+-- the same fact with the argument order the store-through-a-pointer block-steps want
+ptr-heap-disj : ∀ {hv : HeapView} (fs : FlatState) (s : X.State) → C.FlatCorr hv fs s
+              → (hl : HeapLocation) → HDom hv hl
+              → ∀ k → (X.readReg (X.State.regs s) rsp + slot-to-disp k ≡ haddr hv hl) → ⊥
+ptr-heap-disj fs s corr hl live k eq = slot-heap-disj fs s corr k hl live eq
+
 slot-of : AbstractInstr → Maybe Slot
 slot-of (load-from-slot k)  = just k
 slot-of (store-at-slot k)   = just k
@@ -467,23 +496,6 @@ postulate
                      → fetch prog (fpc fs) ≡ just store-indirect
                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                            ≡ event-of store-indirect fs ++ flat-events n prog (flat-exec-instr store-indirect prog fs))
-  -- HEAP/STACK DISJOINTNESS at a heap store: the write target `haddr hv hl` aliases
-  -- no current-frame stack slot `rsp + slot-to-disp k`. Heap and stack occupy
-  -- disjoint x86 regions — an honest layout invariant, discharged at instantiation
-  -- (allocator heap-base vs the rsp frame window). Needed now that FlatCorr tracks
-  -- the current-frame stack (`stack-eq`): a heap store must not perturb it.
-  store-indirect-stack-disj : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (hl : HeapLocation) →
-      CompiledCorr hv prog fs s → HDom hv hl →
-      ∀ k → (X.readReg (X.State.regs s) rsp + slot-to-disp k ≡ haddr hv hl) → ⊥
-  store-indirect-suc-stack-disj : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (hl : HeapLocation) →
-      CompiledCorr hv prog fs s → HDom hv (sucHL hl) →
-      ∀ k → (X.readReg (X.State.regs s) rsp + slot-to-disp k ≡ haddr hv (sucHL hl)) → ⊥
-  -- STACK-WRITE / HEAP disjointness: writing current-frame slot `slot` (x86 addr
-  -- rsp+slot-to-disp slot) aliases no LIVE heap cell — symmetric to the store
-  -- residuals above; the honest stack/heap layout invariant for store-at-slot.
-  store-at-slot-stack-disj : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (slot : Slot) →
-      CompiledCorr hv prog fs s →
-      ∀ hl' → HDom hv hl' → (X.readReg (X.State.regs s) rsp + slot-to-disp slot ≡ haddr hv hl') → ⊥
   store-indirect-suc-live : ∀ {hv : HeapView} fs hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl) → HDom hv (sucHL hl)
   store-indirect-suc-bad : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                              prog fs s → CompiledCorr hv prog fs s → FlatInv fs → halted (floc fs) ≡ false
@@ -503,6 +515,26 @@ postulate
   slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr)
                      → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot
                      → slot < stackSlot (regs (floc fs))
+  -- MEMORY EXHAUSTION (plan 0.54 rung D) — the price of "the two regions grow
+  -- towards each other", and the ONLY thing the layout separation assumes. Each
+  -- allocating instruction has room between the heap frontier and %rsp; the
+  -- disjointness facts that used to be postulated are derived from the carried
+  -- `sep` these keep true. A real runtime failure mode (OOM / stack overflow),
+  -- not a claim about addresses — the same class as the `conc-fuel` step budget.
+  heap-room : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (n : ℕ)
+            → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-alloc-heap n)
+            → hfront hv + slots n ≤ X.readReg (X.State.regs s) rsp
+  stack-room : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (n : ℕ)
+             → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-alloc-stack n)
+             → hfront hv + slots n ≤ X.readReg (X.State.regs s) rsp
+  frame-room : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (cap : ℕ)
+             → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-push-frame cap)
+             → hfront hv ≤ (X.readReg (X.State.regs s) rsp ∸ slot-size) ∸ slots cap
+  -- the epilogue's restored (caller) frame is likewise above the frontier
+  pop-room : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State)
+           → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just instr-pop-frame
+           → hfront hv ≤ X.readReg (X.State.regs s) rbp + slot-size
+
   -- alloc-stack FRESH-FRAME facts (alloc-stack sits at a frame entry): next-slot ≡ 0,
   -- the n new slots are uninitialised on BOTH sides (abstract stackMem / the fresh x86
   -- stack region below rsp), and heap liveness is invariant under the next-slot bump.
@@ -558,11 +590,6 @@ postulate
   dealloc-stack-full : ∀ prog (fs : FlatState) (n : ℕ)
                      → fetch prog (fpc fs) ≡ just (instr-dealloc-stack n)
                      → stackSlot (regs (floc fs)) ≡ n
-  -- push-frame writes the saved rbp at [rsp−8]; that stack address aliases no LIVE
-  -- heap cell (heap/stack disjointness, as for the store residuals).
-  push-frame-heap-disj : ∀ {hv : HeapView} prog (s : X.State) (fs : FlatState) (cap : ℕ)
-                       → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-push-frame cap)
-                       → ∀ hl → HDom hv hl → (X.readReg (X.State.regs s) rsp ∸ slot-size ≡ haddr hv hl) → ⊥
   -- pop-frame WF: the callee frame is emptied before it is popped (stackSlot ≡ 0),
   -- and the saved caller rbp is present at [rbp] for `pop` to succeed.
   pop-frame-empty : ∀ prog (fs : FlatState) → fetch prog (fpc fs) ≡ just instr-pop-frame
@@ -664,36 +691,43 @@ mutual
   events-running-fetch {hv} n ev env prog fs s (load-from-slot slot) cc wf h ftq = load-from-slot-step n ev env prog fs s slot cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (store-at-slot slot) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (store-at-slot slot)
-      (block-step-store-at-slot prog fs s slot cc h ftq (store-at-slot-stack-disj {hv} prog fs s slot cc)) wf refl h
+      (block-step-store-at-slot prog fs s slot cc h ftq (slot-heap-disj {hv} fs s (dataCorr cc) slot)) wf refl h
   events-running-fetch {hv} n ev env prog fs s (restore-input slot) cc wf h ftq = restore-input-step n ev env prog fs s slot cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (worklist-push slot) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (worklist-push slot)
-      (block-step-worklist-push prog fs s slot cc h ftq (store-at-slot-stack-disj {hv} prog fs s slot cc)) wf refl h
+      (block-step-worklist-push prog fs s slot cc h ftq (slot-heap-disj {hv} fs s (dataCorr cc) slot)) wf refl h
   events-running-fetch {hv} n ev env prog fs s (worklist-pop slot) cc wf h ftq = worklist-pop-step n ev env prog fs s slot cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-alloc-stack k) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-alloc-stack k)
       (block-step-alloc-stack prog fs s k cc h ftq (alloc-stack-entry prog fs k ftq)
          (alloc-stack-fresh-abs prog fs k ftq)
-         (alloc-stack-fresh-x86 prog fs s k cc ftq)) wf refl h
+         (alloc-stack-fresh-x86 prog fs s k cc ftq)
+         (stack-room {hv} prog fs s k cc ftq)) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-alloc-heap k) cc wf h ftq =
     ccc-step-bs n ev env prog fs s (instr-alloc-heap k)
       (block-step-alloc-heap prog fs s k cc h ftq
          (wf-regs (proj₁ wf) Input1) (wf-regs (proj₁ wf) Input2)
          (wf-regs (proj₁ wf) Scratch) (wf-regs (proj₁ wf) Count)
          (λ hl _ → wf-heap (proj₁ wf) hl) (λ k' _ → wf-stack (proj₁ wf) (current-frame (falloc fs)) k')
-         (λ hl eq → wf-fresh (proj₁ wf) hl (≤-reflexive (sym eq))) (alloc-heap-fresh-x86 prog fs s k cc ftq)) wf refl h
+         (λ hl eq → wf-fresh (proj₁ wf) hl (≤-reflexive (sym eq))) (alloc-heap-fresh-x86 prog fs s k cc ftq)
+         (heap-room prog fs s k cc ftq)) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-dealloc-stack k)
       (block-step-dealloc-stack prog fs s k cc h ftq (dealloc-stack-full prog fs k ftq)
          (dealloc-stack-restores prog fs s k cc ftq)) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-push-frame k) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-push-frame k)
-      (block-step-push-frame prog fs s k cc h ftq (push-frame-heap-disj {hv} prog s fs k cc ftq)) wf refl h
+      (block-step-push-frame prog fs s k cc h ftq
+         (above-frontier-disj {hv} (X.readReg (X.State.regs s) rsp ∸ slot-size)
+            (≤-trans (frame-room {hv} prog fs s k cc ftq)
+                     (m∸n≤m (X.readReg (X.State.regs s) rsp ∸ slot-size) (slots k)))
+         )
+         (frame-room {hv} prog fs s k cc ftq)) wf refl h
   events-running-fetch {hv} n ev env prog fs s instr-pop-frame cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s instr-pop-frame
       (block-step-pop-frame prog fs s (proj₁ (pop-frame-saved prog fs s cc ftq)) cc h ftq
          (pop-frame-empty prog fs ftq) (proj₂ (pop-frame-saved prog fs s cc ftq))
-         (pop-frame-restores prog fs s cc ftq)) wf refl h
+         (pop-frame-restores prog fs s cc ftq) (pop-room prog fs s cc ftq)) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-int v) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-load-const fits-int v)
       (block-step-load-const prog fs s v cc h ftq) wf refl h
@@ -1165,7 +1199,7 @@ mutual
             ccc-step-bs {hv} n ev env prog fs s store-indirect
               (block-step-store-indirect prog fs s hl cc h ftq i-eq
                  (store-indirect-live {hv} fs hl i-eq) (store-guard fs hl (store-output-not-stackref prog fs ftq))
-                 (store-indirect-stack-disj {hv} prog fs s hl cc (store-indirect-live {hv} fs hl i-eq)))
+                 (ptr-heap-disj {hv} fs s (dataCorr cc) hl (store-indirect-live {hv} fs hl i-eq)))
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)) h
@@ -1176,7 +1210,7 @@ mutual
             ccc-step-bs {hv} n ev env prog fs s store-indirect
               (block-step-store-indirect-stack prog fs s f k cc h ftq i-eq
                  (proj₁ (stack-ptr-current fs f k i-eq))
-                 (store-at-slot-stack-disj {hv} prog fs s k cc))
+                 (slot-heap-disj {hv} fs s (dataCorr cc) k))
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtStack f k) (readReg (regs (floc fs)) Output)) h
@@ -1198,7 +1232,7 @@ mutual
             ccc-step-bs {hv} n ev env prog fs s store-indirect-suc
               (block-step-store-indirect-suc prog fs s hl cc h ftq i-eq
                  (store-indirect-suc-live {hv} fs hl i-eq) (store-guard fs (sucHL hl) (store-suc-output-not-stackref prog fs ftq))
-                 (store-indirect-suc-stack-disj {hv} prog fs s hl cc (store-indirect-suc-live {hv} fs hl i-eq)))
+                 (ptr-heap-disj {hv} fs s (dataCorr cc) (sucHL hl) (store-indirect-suc-live {hv} fs hl i-eq)))
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic (sucHL hl)) (readReg (regs (floc fs)) Output)) h
@@ -1208,7 +1242,7 @@ mutual
             ccc-step-bs {hv} n ev env prog fs s store-indirect-suc
               (block-step-store-indirect-suc-stack prog fs s f k cc h ftq i-eq
                  (proj₁ (stack-ptr-current fs f k i-eq))
-                 (store-at-slot-stack-disj {hv} prog fs s (suc k) cc))
+                 (slot-heap-disj {hv} fs s (dataCorr cc) (suc k)))
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtStack f (suc k)) (readReg (regs (floc fs)) Output)) h
