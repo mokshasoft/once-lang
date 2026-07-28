@@ -19,7 +19,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
 open import Data.List using ([]; take)
 open import Data.Bool using (false)
-open import Data.Product using (proj₁; proj₂)
+open import Data.Product using (proj₁; proj₂; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-loc; mkHeapRef; heap-offset)
 open import Once.CCC.Machine.SMCore using (AllocState; current-frame)
@@ -99,6 +99,7 @@ open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
   x86-64-frame-semantics refl
   using (events-agree; CompiledCorr; HeapView)
 open import Once.CCC.Machine.FlatStoreWF x86-64-frame-semantics using (FlatWF; sv-below)
+open import Once.CCC.Machine.FlatRegTagWF x86-64-frame-semantics using (FlatRegTag)
 open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Input2; Output; Scratch; Count; readReg; regs)
 
 -- The heap address map is CARRIED by the correspondence and EXTENDED at each
@@ -174,6 +175,15 @@ entry-wf = record
     reg-below Scratch = tt
     reg-below Count   = tt
 
+-- The ENTRY register-tag WF: `entry-regs` starts both counters at `SV-Tag 0`
+-- (`FlatFromObs.entry-regs`), so the invariant that makes the counter
+-- instructions correspond to their x86 lowerings holds at entry by
+-- construction. Downstream it is the flat-machine theorem
+-- (`FlatRegTagWF.flat-regtag-step`), applied once per step inside
+-- `ccc-step-bs` alongside the store-WF one.
+entry-regtag : FlatRegTag (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
+entry-regtag = record { scratch-tag = 0 , refl ; count-tag = 0 , refl }
+
 -- The flat adequacy witness for `ir` at event-count `n`: the flat step-fuel that
 -- `traces-agree` guarantees emits the first `n` events. `flat-trace-of` and
 -- `events-agree` both index the flat trace by exactly this `N`.
@@ -225,7 +235,7 @@ conc-flat-sim-just ir n = go (NoNested? (ir-to-trace ir))
     agree = events-agree (Nof ir n)
               ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
               (ir-to-trace ir) (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
-              (ArchSemantics.initialState as64) (entry-corr ir) entry-wf
+              (ArchSemantics.initialState as64) (entry-corr ir) (entry-wf , entry-regtag)
     -- on the case/loop-FREE fragment the two lowerings coincide, so the
     -- correspondence proved over `compile-trace` IS about the emitted program.
     go : Dec (NoNested (ir-to-trace ir))
