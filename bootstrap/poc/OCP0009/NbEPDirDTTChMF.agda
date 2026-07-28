@@ -238,6 +238,126 @@ szT𝕀𝔹< : ∀ {Γ}{Δ : Con Γ}{t A B}(tb : Δ ⊢ t ∷ 𝔹)(wA : Δ ⊨ 
 szT𝕀𝔹< tb wA wB = s≤s (≤-trans (1≤dsz tb) (m≤m+n (dsz tb) (szT wA + szT wB)))
 -- renTy-wk⊑ is imported from NbEPDirDTTChSub.
 
+-- ⊢app BOUND PROJECTIONS — lifted OUT of the ⊢app `where` blocks.
+-- Every ⊢app clause (MI, MI-irr, nat-MI, sub-MI) derives the same five sub-bounds from its
+-- incoming `dsz (⊢app …) + szCon Δ < n`; only the fuel and which bound is fed in differ.
+-- Kept OUTSIDE the mutual block (pure szT/dsz arithmetic — no TI/MI), so the towers are
+-- elaborated ONCE here instead of once per binding per clause, and each use site is a
+-- 5-argument call rather than an application of the whole clause telescope (~16 args).
+private
+  -- the reassociation behind every Π/⊢app codomain bound, at Nat level …
+  codEq : ∀ p q c → (p + q) + c ≡ q + (p + c)
+  codEq p q c = trans (cong (_+ c) (+-comm p q)) (+-assoc q p c)
+
+  -- … and its szT/szCon instance, used by TI/TI-irr/nat-TI-Π/sub-TI-Π and every ⊢app/⊢lam bound.
+  ΠcodEq : ∀ {Γ}{Δ : Con Γ}{A B}(wA' : Δ ⊨ A)(wB : (Δ ▷ wA') ⊨ B)
+           → (szT wA' + szT wB) + szCon Δ ≡ szT wB + szCon (Δ ▷ wA')
+  ΠcodEq {Δ = Δ} wA' wB = codEq (szT wA') (szT wB) (szCon Δ)
+
+  -- ≤-WITNESSES into the ⊢app measure  AS = szT (⊨Π wA' wB) + (dsz tf + dsz tu).
+  -- Since dsz (⊢app (⊨Π wA' wB) tf tu) = suc AS, the SAME-fuel bounds compose these with ≤-suc
+  -- and the ONE-FUEL-DOWN bounds (which go through <-inv) use them directly.  Factored out so the
+  -- plain bounds AND sub-MI's szSubW-combined bounds share one copy of each tower.
+  ≤fnT : ∀ {Γ}{Δ : Con Γ}{A B f u}(wA' : Δ ⊨ A)(wB : (Δ ▷ wA') ⊨ B)
+         (tf : Δ ⊢ f ∷ Π̇ A B)(tu : Δ ⊢ u ∷ A)
+         → szT (⊨Π wA' wB) ≤ szT (⊨Π wA' wB) + (dsz tf + dsz tu)
+  ≤fnT wA' wB tf tu = m≤m+n (szT (⊨Π wA' wB)) (dsz tf + dsz tu)
+
+  ≤fnD : ∀ {Γ}{Δ : Con Γ}{A B f u}(wA' : Δ ⊨ A)(wB : (Δ ▷ wA') ⊨ B)
+         (tf : Δ ⊢ f ∷ Π̇ A B)(tu : Δ ⊢ u ∷ A)
+         → dsz tf ≤ szT (⊨Π wA' wB) + (dsz tf + dsz tu)
+  ≤fnD wA' wB tf tu =
+    ≤-trans (m≤m+n (dsz tf) (dsz tu)) (n≤m+n (szT (⊨Π wA' wB)) (dsz tf + dsz tu))
+
+  ≤argD : ∀ {Γ}{Δ : Con Γ}{A B f u}(wA' : Δ ⊨ A)(wB : (Δ ▷ wA') ⊨ B)
+          (tf : Δ ⊢ f ∷ Π̇ A B)(tu : Δ ⊢ u ∷ A)
+          → dsz tu ≤ szT (⊨Π wA' wB) + (dsz tf + dsz tu)
+  ≤argD wA' wB tf tu =
+    ≤-trans (n≤m+n (dsz tf) (dsz tu)) (n≤m+n (szT (⊨Π wA' wB)) (dsz tf + dsz tu))
+
+  ≤argT : ∀ {Γ}{Δ : Con Γ}{A B f u}(wA' : Δ ⊨ A)(wB : (Δ ▷ wA') ⊨ B)
+          (tf : Δ ⊢ f ∷ Π̇ A B)(tu : Δ ⊢ u ∷ A)
+          → szT wA' ≤ szT (⊨Π wA' wB) + (dsz tf + dsz tu)
+  ≤argT wA' wB tf tu =
+    ≤-trans (≤-trans (m≤m+n (szT wA') (szT wB)) ≤-suc)
+            (m≤m+n (szT (⊨Π wA' wB)) (dsz tf + dsz tu))
+
+  ≤codT : ∀ {Γ}{Δ : Con Γ}{A B f u}(wA' : Δ ⊨ A)(wB : (Δ ▷ wA') ⊨ B)
+          (tf : Δ ⊢ f ∷ Π̇ A B)(tu : Δ ⊢ u ∷ A)
+          → szT wA' + szT wB ≤ szT (⊨Π wA' wB) + (dsz tf + dsz tu)
+  ≤codT wA' wB tf tu = ≤-trans ≤-suc (m≤m+n (szT (⊨Π wA' wB)) (dsz tf + dsz tu))
+
+  -- the function's TYPE bound, SAME fuel.
+  appFnT : ∀ {Γ}{Δ : Con Γ}{A B f u}(wA' : Δ ⊨ A)(wB : (Δ ▷ wA') ⊨ B)
+           (tf : Δ ⊢ f ∷ Π̇ A B)(tu : Δ ⊢ u ∷ A){n}
+           → dsz (⊢app (⊨Π wA' wB) tf tu) + szCon Δ < n → szT (⊨Π wA' wB) + szCon Δ < n
+  appFnT wA' wB tf tu b = +mono< (≤-trans (≤fnT wA' wB tf tu) ≤-suc) ≤-refl b
+
+  -- the function's DERIVATION bound, SAME fuel.
+  appFnD : ∀ {Γ}{Δ : Con Γ}{A B f u}(wA' : Δ ⊨ A)(wB : (Δ ▷ wA') ⊨ B)
+           (tf : Δ ⊢ f ∷ Π̇ A B)(tu : Δ ⊢ u ∷ A){n}
+           → dsz (⊢app (⊨Π wA' wB) tf tu) + szCon Δ < n → dsz tf + szCon Δ < n
+  appFnD wA' wB tf tu b = +mono< (≤-trans (≤fnD wA' wB tf tu) ≤-suc) ≤-refl b
+
+  -- the argument's DERIVATION bound, ONE fuel down.
+  appArgD : ∀ {Γ}{Δ : Con Γ}{A B f u}(wA' : Δ ⊨ A)(wB : (Δ ▷ wA') ⊨ B)
+            (tf : Δ ⊢ f ∷ Π̇ A B)(tu : Δ ⊢ u ∷ A){n}
+            → dsz (⊢app (⊨Π wA' wB) tf tu) + szCon Δ < suc n → dsz tu + szCon Δ < n
+  appArgD wA' wB tf tu b = +mono< (≤argD wA' wB tf tu) ≤-refl (<-inv b)
+
+  -- the argument's TYPE bound, ONE fuel down.
+  appArgT : ∀ {Γ}{Δ : Con Γ}{A B f u}(wA' : Δ ⊨ A)(wB : (Δ ▷ wA') ⊨ B)
+            (tf : Δ ⊢ f ∷ Π̇ A B)(tu : Δ ⊢ u ∷ A){n}
+            → dsz (⊢app (⊨Π wA' wB) tf tu) + szCon Δ < suc n → szT wA' + szCon Δ < n
+  appArgT wA' wB tf tu b = +mono< (≤argT wA' wB tf tu) ≤-refl (<-inv b)
+
+  -- the CODOMAIN bound, ONE fuel down.
+  appCodT : ∀ {Γ}{Δ : Con Γ}{A B f u}(wA' : Δ ⊨ A)(wB : (Δ ▷ wA') ⊨ B)
+            (tf : Δ ⊢ f ∷ Π̇ A B)(tu : Δ ⊢ u ∷ A){n}
+            → dsz (⊢app (⊨Π wA' wB) tf tu) + szCon Δ < suc n → szT wB + szCon (Δ ▷ wA') < n
+  appCodT wA' wB tf tu b =
+    <≡ (ΠcodEq wA' wB) (+mono< (≤codT wA' wB tf tu) ≤-refl (<-inv b))
+
+  -- sub-MI carries the COMBINED substitution measure  szSubW sσ + (· + szCon Δc) < n.
+  -- subCmb pushes any sub-measure ≤ through it; subAppDn drops one fuel off the ⊢app form.
+  -- ⚠ sw/c/as/p/q are EXPLICIT on purpose.  Left implicit, Agda must solve `?a + ?c = <concrete>`,
+  -- i.e. INVERT addition — which it cannot do, so every call leaks two unsolved metas and a blocked
+  -- constraint.  (Measured: the implicit-argument version of these three took the file from 66 to 99
+  -- unsolved metas and introduced UnsolvedConstraints.)  The longhand towers these replaced were
+  -- pinning the same decomposition by passing it to n≤m+n/m≤m+n explicitly — that was load-bearing.
+  -- ⚠ +mono<'s {ca}{pa} must be pinned too: with a bare ≤-refl, Agda has to split the RESULT sum
+  -- (ca + cc = sw + (x + c)) to learn ca, which is the same `+` inversion — it blocks on _ca.
+  subCmb : ∀ sw {x y} c {n} → x ≤ y → sw + (y + c) < n → sw + (x + c) < n
+  subCmb sw c le b = +mono< {ca = sw} {pa = sw} ≤-refl (+-mono le (≤-refl {c})) b
+
+  subAppDn : ∀ sw as c {n} → sw + (suc as + c) < suc n → sw + (as + c) < n
+  subAppDn sw as c b = <-inv (<≡ (+-suc sw (as + c)) b)
+
+  -- szSubW-combined Π codomain: sw + (szT (⊨Π p q) + c) < suc n  ⇒  sw + (szT q + (szT p + c)) < n.
+  subΠcod : ∀ sw p q c {n} → sw + (suc (p + q) + c) < suc n → sw + (q + (p + c)) < n
+  subΠcod sw p q c b = <≡ (cong (sw +_) (codEq p q c)) (subAppDn sw (p + q) c b)
+
+  -- ⊢vs BOUND PROJECTIONS.  dsz (⊢vs {wB} wA wR td) = suc ((szT wB + szT wA) + (szT wR + dsz td))
+  -- and szCon (Δ ▷ wB) = szT wB + szCon Δ, so the incoming bound has the shape below.  Stated over
+  -- bare Nats (the derivations only enter through szT/dsz), so MI's and sub-MI's ⊢vs clauses —
+  -- which had byte-identical towers under different names — share one copy.
+  vsD : ∀ b a r d c {n} → suc ((b + a) + (r + d)) + (b + c) < n → d + c < n
+  vsD b a r d c bnd =
+    +mono< (≤-trans (n≤m+n r d) (≤-trans (n≤m+n (b + a) (r + d)) ≤-suc)) (n≤m+n b c) bnd
+
+  vsT : ∀ b a r d c {n} → suc ((b + a) + (r + d)) + (b + c) < n → a + c < n
+  vsT b a r d c bnd =
+    +mono< (≤-trans (n≤m+n b a) (≤-trans (m≤m+n (b + a) (r + d)) ≤-suc)) (n≤m+n b c) bnd
+
+  -- from the function's TYPE bound at suc n: the Π's domain / codomain bound at n.
+  appΠdom : ∀ {Γ}{Δ : Con Γ}{A B}(wA' : Δ ⊨ A)(wB : (Δ ▷ wA') ⊨ B){n}
+            → szT (⊨Π wA' wB) + szCon Δ < suc n → szT wA' + szCon Δ < n
+  appΠdom wA' wB b = sub-bnd< (szTΠl< wA' wB) b
+
+  appΠcod : ∀ {Γ}{Δ : Con Γ}{A B}(wA' : Δ ⊨ A)(wB : (Δ ▷ wA') ⊨ B){n}
+            → szT (⊨Π wA' wB) + szCon Δ < suc n → szT wB + szCon (Δ ▷ wA') < n
+  appΠcod wA' wB b = <≡ (ΠcodEq wA' wB) (<-inv b)
+
 -- fuel-indexed interpretation.  CI is FUNCTION-ENCODED: the env value is a function of the
 -- (proof-irrelevant) TI bound, so CI n (Δ▷wA) is well-formed without a bound in scope.
 CI : (n : Nat) → ∀ {Γ} → Con Γ → Set
@@ -271,7 +391,7 @@ TI (suc n) {Δ = Δ} (⊨Π wA wB) ρ b =
   π̂ (TI n wA (⇓ n ρ) (sub-bnd< (szTΠl< wA wB) b))
     (λ x → TI n wB (⇓ n ρ , λ _ → x) (<≡ codeq (<-inv b)))
   where codeq : (szT wA + szT wB) + szCon Δ ≡ szT wB + (szT wA + szCon Δ)
-        codeq = trans (cong (_+ szCon Δ) (+-comm (szT wA) (szT wB))) (+-assoc (szT wB) (szT wA) (szCon Δ))
+        codeq = ΠcodEq wA wB
 TI zero    (⊨𝕀 tb ⊨𝔹 wA wB) ρ ()
 TI zero    (⊨Π wA wB)        ρ ()
 
@@ -396,11 +516,23 @@ nat-var-vs : (n : Nat) → ∀ {Γ Δ}{Δc' : Con Γ}{Bd}{wB : Δc' ⊨ Bd}{Ad}{
              → coe (congÊl (nat-TI n r wA δ b1 b2 bO)) (MI n (ren⊨ r wA) (ren⊢ r (⊢vs wA₀ wR td)) δ bd1 b1)
                ≡ MI n wA (⊢vs wA₀ wR td) (envO n r δ bO) bd2 b2
 postulate
+  -- ⚠⚠ THE OLD SIGNATURE WAS FALSE.  It quantified over an ARBITRARY env-top
+  --      (uf : (b : szT wC + szCon Δc < n) → Êl (TI n wC (⇓ n ρ) b))
+  -- and claimed  TI (suc n) wS ρ bS ≡ TI n wB (⇓ n ρ , uf) bB  for every such uf.
+  -- But TI's ⊨𝕀 clause READS the environment:
+  --      TI (suc n) (⊨𝕀 tb ⊨𝔹 wA wB) ρ b = Ifᵁ (MI n ⊨𝔹 tb (⇓ n ρ) …) … …
+  -- so with C = 𝔹 and B = 𝕀 (var vz) A₁ A₂ over (Δc ▷ ⊨𝔹), the RHS picks a different Ifᵁ
+  -- branch for different uf while the LHS is fixed.  Two distinct uf ⇒ contradiction, i.e. the
+  -- postulate was inhabitable only by an inconsistency and `consistency` was vacuous.
+  -- FIX: uf is not arbitrary — every one of the 8 call sites passes exactly
+  --      λ b → MI n wC tu (⇓ n ρ) btu b
+  -- so take the BOUND btu and build that env-top here.  (--prop makes the choice of btu
+  -- irrelevant, so callers may pass whichever bound they have.)
   subTI  : (n : Nat) → ∀ {Γ}{Δc : Con Γ}{C}(wC : Δc ⊨ C){B}(wB : (Δc ▷ wC) ⊨ B){u}
            (wS : Δc ⊨ subTy (single u) B)(tu : Δc ⊢ u ∷ C)(ρ : CI (suc n) Δc)
-           (uf : (b : szT wC + szCon Δc < n) → Êl (TI n wC (⇓ n ρ) b))
+           (btu : dsz tu + szCon Δc < n)
            (bS : szT wS + szCon Δc < suc n)(bB : szT wB + szCon (Δc ▷ wC) < n)
-           → TI (suc n) wS ρ bS ≡ TI n wB (⇓ n ρ , uf) bB
+           → TI (suc n) wS ρ bS ≡ TI n wB (⇓ n ρ , (λ b → MI n wC tu (⇓ n ρ) btu b)) bB
 
 -- envO body: structural on the OPE.  keep coerces the top env value via nat-TI (b1 = bO exactly);
 -- skip drops it.  The codomain-context bound szCon Θc < n threads by <+r.
@@ -453,10 +585,9 @@ sub-TI-Π m {Δc = Δc} {Γc = Γc} sσ wA wB wSA wSB δ bS bA bE bC = π̂-cong
         subDom = sub-TI m sσ wA wSA (⇓ m δ) dbS dbA bE' dbC
         eqE    = envS-⇓ m sσ δ bE bE'
         domeq  = trans subDom (congTI m wA eqE)
-        cbS  = <≡ (trans (cong (_+ szCon Δc) (+-comm (szT wSA) (szT wSB))) (+-assoc (szT wSB) (szT wSA) (szCon Δc))) (<-inv bS)
-        cbA  = <≡ (trans (cong (_+ szCon Γc) (+-comm (szT wA) (szT wB))) (+-assoc (szT wB) (szT wA) (szCon Γc))) (<-inv bA)
-        cbC  = <≡ (cong (szSubW sσ +_) (trans (cong (_+ szCon Δc) (+-comm (szT wSA) (szT wSB))) (+-assoc (szT wSB) (szT wSA) (szCon Δc))))
-                  (<-inv (<≡ (+-suc (szSubW sσ) _) bC))
+        cbS  = <≡ (ΠcodEq wSA wSB) (<-inv bS)
+        cbA  = <≡ (ΠcodEq wA wB) (<-inv bA)
+        cbC  = subΠcod (szSubW sσ) (szT wSA) (szT wSB) (szCon Δc) bC
         goalenv : ∀ x → _≡_ {A = CI m (Γc ▷ wA)}
                           (envS m (extW wA wSA sσ) (⇓ m δ , λ _ → x) dbC)
                           (⇓ m (envS (suc m) sσ δ bE) , λ _ → coe (congÊl domeq) x)
@@ -614,9 +745,9 @@ nat-TI-Π m {Δc = Δc} {Θc = Θc} r wA wB δ b1 b2 bO = π̂-cong domeq codeq
         db2  = sub-bnd< (szTΠl< wA wB) b2                    -- szT wA+szCon Δc < m
         dbO  = sub-bnd< (1≤szT (ren⊨ r (⊨Π wA wB))) b1       -- szCon Θc < m
         domeq = trans (nat-TI m r wA (⇓ m δ) db1 db2 dbO) (congTI m wA (envO-⇓ m r δ bO dbO))
-        cb1  = <≡ (trans (cong (_+ szCon Θc) (+-comm (szT wRA) (szT wRB))) (+-assoc (szT wRB) (szT wRA) (szCon Θc)))
+        cb1  = <≡ (ΠcodEq wRA wRB)
                   (<-inv b1)
-        cb2  = <≡ (trans (cong (_+ szCon Δc) (+-comm (szT wA) (szT wB))) (+-assoc (szT wB) (szT wA) (szCon Δc)))
+        cb2  = <≡ (ΠcodEq wA wB)
                   (<-inv b2)
         goalenv : ∀ x → _≡_ {A = CI m (Δc ▷ wA)}
                           (envO m (keep r wA) (⇓ m δ , λ _ → x) db1)
@@ -662,10 +793,8 @@ MI (suc n) wA' (⊢vz {wA = wA} wR) ρ' bt bw =
   where bw₀ = <+r (suc (szT wA + szT wR)) bt
 MI (suc n) wA' (⊢vs {Δ = Δc} {wB = wB} wA wR td) ρ' bt bw =
   coe (congÊl (sym (wkTI (suc n) wB wA wA' (fst ρ') (snd ρ') bw bwA))) (MI (suc n) wA td (fst ρ') btd bwA)
-  where btd = +mono< (≤-trans (n≤m+n (szT wR) (dsz td)) (≤-trans (n≤m+n (szT wB + szT wA) _) ≤-suc))
-                     (n≤m+n (szT wB) (szCon Δc)) bt
-        bwA = +mono< (≤-trans (n≤m+n (szT wB) (szT wA)) (≤-trans (m≤m+n (szT wB + szT wA) _) ≤-suc))
-                     (n≤m+n (szT wB) (szCon Δc)) bt
+  where btd = vsD (szT wB) (szT wA) (szT wR) (dsz td) (szCon Δc) bt
+        bwA = vsT (szT wB) (szT wA) (szT wR) (dsz td) (szCon Δc) bt
 MI (suc n) ⊨𝔹 ⊢tt ρ bt bw = 1₂
 MI (suc n) ⊨𝔹 ⊢ff ρ bt bw = 0₂
 MI (suc n) {Δ = Δ} (⊨Π wA wB) (⊢lam {B = B} {t = t} wA' td) ρ bt bw =
@@ -676,20 +805,15 @@ MI (suc n) {Δ = Δ} (⊨Π wA wB) (⊢lam {B = B} {t = t} wA' td) ρ bt bw =
                                (trans (cong (λ a → dsz td + (a + szCon Δ)) (sym (szT-uniq wA wA')))
                                       (cong (_+ (szT wA + szCon Δ)) (sym (dsz-ctx (⊨-unique wA' wA) td))))))
                  (<-inv bt)
-        bB  = <≡ (trans (cong (_+ szCon Δ) (+-comm (szT wA) (szT wB))) (+-assoc (szT wB) (szT wA) (szCon Δ))) (<-inv bw)
+        bB  = <≡ (ΠcodEq wA wB) (<-inv bw)
 MI (suc n) {Δ = Δ} wA (⊢app wΠ@(⊨Π wA' wB) tf tu) ρ bt bw =
-  coe (congÊl (sym (subTI n wA' wB wA tu ρ uf bw bB)))
+  coe (congÊl (sym (subTI n wA' wB wA tu ρ btun bw bB)))
       (MI (suc n) wΠ tf ρ btf bΠ (MI n wA' tu (⇓ n ρ) btun bA'n))
-  where q     = <-inv bt
-        Π≤    = m≤m+n (szT wΠ) (dsz tf + dsz tu)                              -- szT wΠ ≤ szT wΠ+(tf+tu)
-        A'≤Π  = ≤-trans (m≤m+n (szT wA') (szT wB)) ≤-suc                       -- szT wA' ≤ szT wΠ
-        bΠ    = +mono< (≤-trans Π≤ ≤-suc) ≤-refl bt
-        btf   = +mono< (≤-trans (m≤m+n (dsz tf) (dsz tu)) (≤-trans (n≤m+n (szT wΠ) _) ≤-suc)) ≤-refl bt
-        btun  = +mono< (≤-trans (n≤m+n (dsz tf) (dsz tu)) (n≤m+n (szT wΠ) _)) ≤-refl q
-        bA'n  = +mono< (≤-trans A'≤Π Π≤) ≤-refl q
-        bB    = <≡ (trans (cong (_+ szCon Δ) (+-comm (szT wA') (szT wB))) (+-assoc (szT wB) (szT wA') (szCon Δ)))
-                   (+mono< (≤-trans ≤-suc Π≤) ≤-refl q)
-        uf    = λ b → MI n wA' tu (⇓ n ρ) btun b
+  where bΠ    = appFnT  wA' wB tf tu bt
+        btf   = appFnD  wA' wB tf tu bt
+        btun  = appArgD wA' wB tf tu bt
+        bA'n  = appArgT wA' wB tf tu bt
+        bB    = appCodT wA' wB tf tu bt
 MI zero wA td ρ () bw
 
 -- MI-vz-red packages MI's ⊢vz reduction (forces the wkTI proof to a named form so nested-coe
@@ -754,7 +878,7 @@ MI-app-red : (n : Nat) → ∀ {Γ}{Δ : Con Γ}{A B f u}(wA' : Δ ⊨ A)(wB : (
              (wA : Δ ⊨ subTy (single u) B)(tf : Δ ⊢ f ∷ Π̇ A B)(tu : Δ ⊢ u ∷ A)(ρ : CI (suc n) Δ)
              {bt bw bw2 bB btf bΠ}(argbt : dsz tu + szCon Δ < n)(argbw : szT wA' + szCon Δ < n)
              → MI (suc n) wA (⊢app (⊨Π wA' wB) tf tu) ρ bt bw
-               ≡ coe (congÊl (sym (subTI n wA' wB wA tu ρ (λ b → MI n wA' tu (⇓ n ρ) argbt b) bw2 bB)))
+               ≡ coe (congÊl (sym (subTI n wA' wB wA tu ρ argbt bw2 bB)))
                      (MI (suc n) (⊨Π wA' wB) tf ρ btf bΠ (MI n wA' tu (⇓ n ρ) argbt argbw))
 MI-app-red n wA' wB wA tf tu ρ argbt argbw = refl
 
@@ -773,8 +897,8 @@ nat-MI (suc n) {Δc = Δc} {Θc = Θc} r (⊨Π wD wCo) (⊢lam {t = t} wA' td) 
         db2  = sub-bnd< (szTΠl< wD wCo) b2
         dbO  = sub-bnd< (1≤szT (ren⊨ r (⊨Π wD wCo))) b1
         domeq = trans (nat-TI n r wD (⇓ n δ) db1 db2 dbO) (congTI n wD (envO-⇓ n r δ bO dbO))
-        cb1  = <≡ (trans (cong (_+ szCon Θc) (+-comm (szT wRD) (szT wRCo))) (+-assoc (szT wRCo) (szT wRD) (szCon Θc))) (<-inv b1)
-        cb2  = <≡ (trans (cong (_+ szCon Δc) (+-comm (szT wD) (szT wCo))) (+-assoc (szT wCo) (szT wD) (szCon Δc))) (<-inv b2)
+        cb1  = <≡ (ΠcodEq wRD wRCo) (<-inv b1)
+        cb2  = <≡ (ΠcodEq wD wCo) (<-inv b2)
         goalenv : ∀ x → _≡_ {A = CI n (Δc ▷ wD)}
                           (envO n (keep r wD) (⇓ n δ , λ _ → x) db1)
                           (⇓ n (envO (suc n) r δ bO) , λ _ → coe (congÊl domeq) x)
@@ -826,24 +950,20 @@ nat-MI (suc n) {Δc = Δc} {Θc = Θc} {o = o} r wA (⊢app (⊨Π wA' wB) tf tu
         tfr  = ren⊢ r tf
         tur  = ren⊢ r tu
         ΠR   = szT (⊨Π wRA' wRB')
-        ΠS   = szT (⊨Π wA' wB)
         bd1' = <≡ (cong (_+ szCon Θc) (dsz-subst (sym (renTy-comm ⌜ o ⌝ _ _)) (⊢app (ren⊨ r (⊨Π wA' wB)) tfr tur))) bd1
-        q1   = <-inv bd1'
-        q2   = <-inv bd2
-        b1u  = +mono< (≤-trans (≤-trans (m≤m+n (szT wRA') (szT wRB')) ≤-suc) (m≤m+n ΠR (dsz tfr + dsz tur))) ≤-refl q1
-        b2u  = +mono< (≤-trans (≤-trans (m≤m+n (szT wA') (szT wB)) ≤-suc) (m≤m+n ΠS (dsz tf + dsz tu))) ≤-refl q2
-        bOu  = <+r (ΠR + (dsz tfr + dsz tur)) q1
-        bd1u = +mono< (≤-trans (n≤m+n (dsz tfr) (dsz tur)) (n≤m+n ΠR (dsz tfr + dsz tur))) ≤-refl q1
-        bd2u = +mono< (≤-trans (n≤m+n (dsz tf) (dsz tu)) (n≤m+n ΠS (dsz tf + dsz tu))) ≤-refl q2
-        b1f  = +mono< (≤-trans (m≤m+n ΠR (dsz tfr + dsz tur)) ≤-suc) ≤-refl bd1'
-        b2f  = +mono< (≤-trans (m≤m+n ΠS (dsz tf + dsz tu)) ≤-suc) ≤-refl bd2
-        bd1f = +mono< (≤-trans (m≤m+n (dsz tfr) (dsz tur)) (≤-trans (n≤m+n ΠR (dsz tfr + dsz tur)) ≤-suc)) ≤-refl bd1'
-        bd2f = +mono< (≤-trans (m≤m+n (dsz tf) (dsz tu)) (≤-trans (n≤m+n ΠS (dsz tf + dsz tu)) ≤-suc)) ≤-refl bd2
+        -- the R-side bounds are the SAME lemmas at the RENAMED wf/derivations (wRA'/wRB'/tfr/tur).
+        b1u  = appArgT wRA' wRB' tfr tur bd1'
+        b2u  = appArgT wA'  wB   tf  tu  bd2
+        bOu  = <+r (ΠR + (dsz tfr + dsz tur)) (<-inv bd1')
+        bd1u = appArgD wRA' wRB' tfr tur bd1'
+        bd2u = appArgD wA'  wB   tf  tu  bd2
+        b1f  = appFnT  wRA' wRB' tfr tur bd1'
+        b2f  = appFnT  wA'  wB   tf  tu  bd2
+        bd1f = appFnD  wRA' wRB' tfr tur bd1'
+        bd2f = appFnD  wA'  wB   tf  tu  bd2
         bS_SL = <≡ (cong (_+ szCon Θc) (sym (szT-subst (renTy-comm ⌜ o ⌝ _ _) (ren⊨ r wA)))) b1
-        bB_SL = <≡ (trans (cong (_+ szCon Θc) (+-comm (szT wRA') (szT wRB'))) (+-assoc (szT wRB') (szT wRA') (szCon Θc)))
-                   (+mono< (≤-trans ≤-suc (m≤m+n ΠR (dsz tfr + dsz tur))) ≤-refl q1)
-        bB_SR = <≡ (trans (cong (_+ szCon Δc) (+-comm (szT wA') (szT wB))) (+-assoc (szT wB) (szT wA') (szCon Δc)))
-                   (+mono< (≤-trans ≤-suc (m≤m+n ΠS (dsz tf + dsz tu))) ≤-refl q2)
+        bB_SL = appCodT wRA' wRB' tfr tur bd1'
+        bB_SR = appCodT wA'  wB   tf  tu  bd2
         P_L  = congÊl (nat-TI (suc n) r wA δ b1 b2 bO)
         Qc   = congÊl (trans (TI-resp-eq (suc n) (sym (renTy-comm ⌜ o ⌝ _ _)) wRc δ)
                              (TI-wf-eq (suc n)
@@ -861,8 +981,8 @@ nat-MI (suc n) {Δc = Δc} {Θc = Θc} {o = o} r wA (⊢app (⊨Π wA' wB) tf tu
         dbF2 = sub-bnd< (szTΠl< wA' wB) b2f
         dbFO = sub-bnd< (1≤szT (ren⊨ r (⊨Π wA' wB))) b1f
         pa   = trans (nat-TI n r wA' (⇓ n δ) dbF1 dbF2 dbFO) (congTI n wA' (envO-⇓ n r δ bO dbFO))
-        cbF1 = <≡ (trans (cong (_+ szCon Θc) (+-comm (szT wRA') (szT wRB'))) (+-assoc (szT wRB') (szT wRA') (szCon Θc))) (<-inv b1f)
-        cbF2 = <≡ (trans (cong (_+ szCon Δc) (+-comm (szT wA') (szT wB))) (+-assoc (szT wB) (szT wA') (szCon Δc))) (<-inv b2f)
+        cbF1 = <≡ (ΠcodEq wRA' wRB') (<-inv b1f)
+        cbF2 = <≡ (ΠcodEq wA' wB) (<-inv b2f)
         genv : ∀ x → _≡_ {A = CI n (Δc ▷ wA')}
                         (envO n (keep r wA') (⇓ n δ , λ _ → x) dbF1)
                         (⇓ n (envO (suc n) r δ bO) , λ _ → coe (congÊl pa) x)
@@ -890,7 +1010,7 @@ nat-MI (suc n) {Δc = Δc} {Θc = Θc} {o = o} r wA (⊢app (⊨Π wA' wB) tf tu
                        (coe2-uip (congÊl STu) (congÊl (congTI n wA' (envO-⇓ n r δ bO bOu))) (congÊl pa) arg_L))
         -- coe-π̂-gen collapse (application of a coe'd function to a coe'd argument): keep argL0 = coe(sym
         -- pa)arg_R; both LHS and RHS become coe-stacks of f_L argL0, related to f_L arg_L by subst-app.
-        SL'   = congÊl (sym (subTI n wRA' wRB' wRc tur δ (λ b → MI n wRA' tur (⇓ n δ) bd1u b) bS_SL bB_SL))
+        SL'   = congÊl (sym (subTI n wRA' wRB' wRc tur δ bd1u bS_SL bB_SL))
         argL0 = coe (sym (congÊl pa)) arg_R
         argL0eq = trans (cong (coe (sym (congÊl pa))) argeq) (coe-symˡ (congÊl pa) arg_L)
         BASE' = f_L argL0
@@ -900,8 +1020,7 @@ nat-MI (suc n) {Δc = Δc} {Θc = Θc} {o = o} r wA (⊢app (⊨Π wA' wB) tf tu
         MOT2    = λ z → Êl (TI n wB (⇓ n (envO (suc n) r δ bO) , (λ _ → z)) cbF2)
         MOT2coe = cong MOT2 (coe-sym' (congÊl pa) arg_R)
         QCg   = congÊl (qc argL0)
-        SR''  = congÊl (sym (subTI n wA' wB wA tu (envO (suc n) r δ bO)
-                                  (λ b → MI n wA' tu (⇓ n (envO (suc n) r δ bO)) bd2u b) b2 bB_SR))
+        SR''  = congÊl (sym (subTI n wA' wB wA tu (envO (suc n) r δ bO) bd2u b2 bB_SR))
         R''   = trans CE (trans SL' (trans Qc P_L))
         fr-eq = trans (cong (λ h → h arg_R) (sym recf))
                       (trans (coe-π̂-gen pa qc f_L arg_R) (subst≡coe (coe-sym' (congÊl pa) arg_R) (coe QCg BASE')))
@@ -1056,7 +1175,66 @@ MI-irr (suc m) {Δ = Δ} (⊨Π wD wCo) (⊢lam {B = B} {t = t} wA' td) ρ bt' b
                 MOT = λ z → Êl (TI m wCo (⇓ m (⇓ (suc m) ρ) , (λ _ → z)) _)
                 g   = λ z → MI m wCo td' (⇓ m (⇓ (suc m) ρ) , (λ _ → z)) _ _
                 inner = MI-irr m wCo td' (⇓ (suc m) ρ , (λ _ → xv)) _ _ _ _
-MI-irr (suc m) wA (⊢app (⊨Π wA' wB) tf tu) ρ bt' bw' bt bw = {!!}
+MI-irr (suc m) {Δ = Δ} wA (⊢app (⊨Π wA' wB) tf tu) ρ bt' bw' bt bw =
+  trans (cong (coe P_L) (MI-app-red (suc m) wA' wB wA tf tu ρ
+                           {bt = bt'} {bw = bw'} {bw2 = bw'} {bB = bB_SL} {btf = bd1f} {bΠ = b1f}
+                           bd1u b1u))
+  (trans (trans (cong (λ w → coe P_L (coe SL' w)) fal-eq)
+                (trans (coe3-uip CE SL' P_L R'' BASE')
+                       (trans (sym (coe3-uip QCg MOT2coe SR'' R'' BASE'))
+                              (cong (coe SR'') (sym fr-eq)))))
+         (sym (MI-app-red m wA' wB wA tf tu (⇓ (suc m) ρ)
+                 {bt = bt} {bw = bw} {bw2 = bw} {bB = bB_SR} {btf = bd2f} {bΠ = b2f}
+                 bd2u b2u)))
+  where -- The bound NAMES stay (each use is one local reference); only their BODIES moved to the
+        -- top-level `private` block, so the +mono</≤-trans towers are elaborated once up there
+        -- instead of once per binding per ⊢app clause.  ΠS/q/q' are gone (folded into the lemmas).
+        bd1f = appFnD  wA' wB tf tu bt'
+        b1f  = appFnT  wA' wB tf tu bt'
+        bd1u = appArgD wA' wB tf tu bt'
+        b1u  = appArgT wA' wB tf tu bt'
+        bd2f = appFnD  wA' wB tf tu bt
+        b2f  = appFnT  wA' wB tf tu bt
+        bd2u = appArgD wA' wB tf tu bt
+        b2u  = appArgT wA' wB tf tu bt
+        dbF1 = appΠdom wA' wB b1f
+        dbF2 = appΠdom wA' wB b2f
+        cbF1 = appΠcod wA' wB b1f
+        cbF2 = appΠcod wA' wB b2f
+        bB_SL = appCodT wA' wB tf tu bt'
+        bB_SR = appCodT wA' wB tf tu bt
+        -- VALUE bindings stay inline: they call MI/MI-irr/TI-irr, so lifting them to top level
+        -- would move recursive calls into the mutual block's termination check.
+        f_hi   = MI (suc (suc m)) (⊨Π wA' wB) tf ρ bd1f b1f
+        arg_hi = MI (suc m) wA' tu (⇓ (suc m) ρ) bd1u b1u
+        arg_lo = MI m wA' tu (⇓ m (⇓ (suc m) ρ)) bd2u b2u
+        -- TI-irr on the Π = π̂-cong pa qc (defeq via TI-irr's Π clause + prop-irr on bounds)
+        pa = TI-irr m wA' (⇓ (suc m) ρ) dbF1 dbF2
+        qc : ∀ x → TI (suc m) wB (⇓ (suc m) ρ , (λ _ → x)) cbF1
+                   ≡ TI m wB (⇓ m (⇓ (suc m) ρ) , (λ _ → coe (congÊl pa) x)) cbF2
+        qc x = TI-irr m wB (⇓ (suc m) ρ , (λ _ → x)) cbF1 cbF2
+        -- MI-irr recursion on tf and tu
+        recf = MI-irr (suc m) (⊨Π wA' wB) tf ρ bd1f b1f bd2f b2f
+        recu = MI-irr m wA' tu (⇓ (suc m) ρ) bd1u b1u bd2u b2u
+        -- pull the RHS argument back to the LHS domain (argL0), show it equals arg_hi
+        argL0   = coe (sym (congÊl pa)) arg_lo
+        argL0eq = trans (cong (coe (sym (congÊl pa))) (sym recu)) (coe-symˡ (congÊl pa) arg_hi)
+        -- subTI-coe endpoints (LHS @ suc m, RHS @ m); coe only needs endpoints, subTI opaque is fine
+        SL' = congÊl (sym (subTI (suc m) wA' wB wA tu ρ bd1u bw' bB_SL))
+        SR'' = congÊl (sym (subTI m wA' wB wA tu (⇓ (suc m) ρ) bd2u bw bB_SR))
+        -- coe-π̂-gen collapse plumbing (both sides become coe-stacks of BASE' = f_hi argL0)
+        BASE'   = f_hi argL0
+        bL      = λ z → TI (suc m) wB (⇓ (suc m) ρ , (λ _ → z)) cbF1
+        CE      = cong (λ z → Êl (bL z)) argL0eq
+        fal-eq  = trans (sym (subst-app (λ z → Êl (bL z)) f_hi argL0eq)) (subst≡coe argL0eq (f_hi argL0))
+        MOT2    = λ z → Êl (TI m wB (⇓ m (⇓ (suc m) ρ) , (λ _ → z)) cbF2)
+        MOT2coe = cong MOT2 (coe-sym' (congÊl pa) arg_lo)
+        QCg     = congÊl (qc argL0)
+        P_L     = congÊl (TI-irr (suc m) wA ρ bw' bw)
+        R''     = trans CE (trans SL' P_L)
+        fr-eq   = trans (cong (λ h → h arg_lo) (sym recf))
+                        (trans (coe-π̂-gen pa qc f_hi arg_lo)
+                               (subst≡coe (coe-sym' (congÊl pa) arg_lo) (coe QCg BASE')))
 MI-irr (suc m) ⊨𝔹 ⊢tt ρ bt' bw' bt bw = refl
 MI-irr (suc m) ⊨𝔹 ⊢ff ρ bt' bw' bt bw = refl
 MI-irr zero wA td ρ bt' bw' () bw
@@ -1095,10 +1273,8 @@ sub-MI (suc n) {Δc = Δc} (singleW wC tu)  wA wS (⊢vs wA₀ wR td) δ bS bA b
   where P_L = congÊl (sub-TI (suc n) (singleW wC tu) wA wS δ bS bA bE bC)
         Q   = congÊl (trans (TI-resp-eq (suc n) (sym (subTy-single-wk _ _)) wA₀ δ)
                             (TI-wf-eq (suc n) (⊨-unique (subst (λ z → Δc ⊨ z) (sym (subTy-single-wk _ _)) wA₀) wS) δ))
-        btd = +mono< (≤-trans (n≤m+n (szT wR) (dsz td)) (≤-trans (n≤m+n (szT wC + szT wA₀) _) ≤-suc))
-                     (n≤m+n (szT wC) (szCon Δc)) bdA
-        bwA = +mono< (≤-trans (n≤m+n (szT wC) (szT wA₀)) (≤-trans (m≤m+n (szT wC + szT wA₀) _) ≤-suc))
-                     (n≤m+n (szT wC) (szCon Δc)) bdA
+        btd = vsD (szT wC) (szT wA₀) (szT wR) (dsz td) (szCon Δc) bdA
+        bwA = vsT (szT wC) (szT wA₀) (szT wR) (dsz td) (szCon Δc) bdA
 sub-MI (suc n) (extW {Δc = Δci} {σ = σ} wA₁ wSA sσ) wA wS (⊢vs wA₀ wR td) δ bS bA bE bC bdS bdA bDS =
   trans (cong (coe P_L)
               (trans (MI-subst (suc n) (sym (subTy-extS-wk σ _)) wS wSm (wk⊢ wSA (sub-⊢ sσ td)) δ)
@@ -1133,10 +1309,9 @@ sub-MI (suc n) {Δc = Δc} {Γc = Γc} sσ (⊨Π wA wB) (⊨Π wSA wSB) (⊢lam
         subDom = sub-TI n sσ wA wSA (⇓ n δ) dbS dbA bE' dbC
         eqE    = envS-⇓ n sσ δ bE bE'
         domeq  = trans subDom (congTI n wA eqE)
-        cbS  = <≡ (trans (cong (_+ szCon Δc) (+-comm (szT wSA) (szT wSB))) (+-assoc (szT wSB) (szT wSA) (szCon Δc))) (<-inv bS)
-        cbA  = <≡ (trans (cong (_+ szCon Γc) (+-comm (szT wA) (szT wB))) (+-assoc (szT wB) (szT wA) (szCon Γc))) (<-inv bA)
-        cbC  = <≡ (cong (szSubW sσ +_) (trans (cong (_+ szCon Δc) (+-comm (szT wSA) (szT wSB))) (+-assoc (szT wSB) (szT wSA) (szCon Δc))))
-                  (<-inv (<≡ (+-suc (szSubW sσ) _) bC))
+        cbS  = <≡ (ΠcodEq wSA wSB) (<-inv bS)
+        cbA  = <≡ (ΠcodEq wA wB) (<-inv bA)
+        cbC  = subΠcod (szSubW sσ) (szT wSA) (szT wSB) (szCon Δc) bC
         goalenv : ∀ x → _≡_ {A = CI n (Γc ▷ wA)}
                           (envS n (extW wA wSA sσ) (⇓ n δ , λ _ → x) dbC)
                           (⇓ n (envS (suc n) sσ δ bE) , λ _ → coe (congÊl domeq) x)
@@ -1183,44 +1358,39 @@ sub-MI (suc n) {Δc = Δc} {Γc = Γc} sσ wA wS (⊢app (⊨Π wA' wB) tf tu) �
         tfs  = sub-⊢ sσ tf
         tus  = sub-⊢ sσ tu
         rapp = ⊢app (⊨Π wSA' wSB') tfs tus
-        ΠSub = szT (⊨Π wSA' wSB')
-        ΠSrc = szT (⊨Π wA' wB)
         bdS' = <≡ (cong (_+ szCon Δc) (dsz-subst (sym (subTy-comm _ _ _)) rapp)) bdS
         bDS' = <≡ (cong (λ z → szSubW sσ + (z + szCon Δc)) (dsz-subst (sym (subTy-comm _ _ _)) rapp)) bDS
-        qS   = <-inv bdS'
-        q2   = <-inv bdA
-        qDS  = <-inv (<≡ (+-suc (szSubW sσ) _) bDS')
-        szΠSub< = <-weaken (s≤s (m≤m+n ΠSub (dsz tfs + dsz tus)))
-        -- fuel-(suc n) function bounds
-        bS_f  = +mono< (≤-trans (m≤m+n ΠSub (dsz tfs + dsz tus)) ≤-suc) ≤-refl bdS'
-        bA_f  = +mono< (≤-trans (m≤m+n ΠSrc (dsz tf + dsz tu)) ≤-suc) ≤-refl bdA
-        bC_f  = +mono< ≤-refl (+-mono szΠSub< ≤-refl) bDS'
-        bdS_f = +mono< (≤-trans (m≤m+n (dsz tfs) (dsz tus)) (≤-trans (n≤m+n ΠSub (dsz tfs + dsz tus)) ≤-suc)) ≤-refl bdS'
-        bdA_f = +mono< (≤-trans (m≤m+n (dsz tf) (dsz tu)) (≤-trans (n≤m+n ΠSrc (dsz tf + dsz tu)) ≤-suc)) ≤-refl bdA
-        bDS_f = +mono< ≤-refl (+-mono (≤-trans (m≤m+n (dsz tfs) (dsz tus)) (≤-trans (n≤m+n ΠSub (dsz tfs + dsz tus)) ≤-suc)) ≤-refl) bDS'
-        -- fuel-n argument bounds
-        bS_u  = +mono< (≤-trans (≤-trans (m≤m+n (szT wSA') (szT wSB')) ≤-suc) (m≤m+n ΠSub (dsz tfs + dsz tus))) ≤-refl qS
-        bA_u  = +mono< (≤-trans (≤-trans (m≤m+n (szT wA') (szT wB)) ≤-suc) (m≤m+n ΠSrc (dsz tf + dsz tu))) ≤-refl q2
-        bdS_u = +mono< (≤-trans (n≤m+n (dsz tfs) (dsz tus)) (n≤m+n ΠSub (dsz tfs + dsz tus))) ≤-refl qS
-        bdA_u = +mono< (≤-trans (n≤m+n (dsz tf) (dsz tu)) (n≤m+n ΠSrc (dsz tf + dsz tu))) ≤-refl q2
-        bE_u  = +mono< ≤-refl (n≤m+n (ΠSub + (dsz tfs + dsz tus)) (szCon Δc)) qDS
-        bC_u  = +mono< ≤-refl (+-mono (≤-trans (≤-trans (m≤m+n (szT wSA') (szT wSB')) ≤-suc) (m≤m+n ΠSub (dsz tfs + dsz tus))) ≤-refl) qDS
-        bDS_u = +mono< ≤-refl (+-mono (≤-trans (n≤m+n (dsz tfs) (dsz tus)) (n≤m+n ΠSub (dsz tfs + dsz tus))) ≤-refl) qDS
+        qDS  = subAppDn (szSubW sσ) (szT (⊨Π wSA' wSB') + (dsz tfs + dsz tus)) (szCon Δc) bDS'
+        -- fuel-(suc n) / fuel-n bounds.  S-side = SUBSTITUTED wf+derivs (wSA'/wSB'/tfs/tus),
+        -- A-side = source (wA'/wB/tf/tu).  Same lemmas, different instantiation.
+        bS_f  = appFnT  wSA' wSB' tfs tus bdS'
+        bA_f  = appFnT  wA'  wB   tf  tu  bdA
+        bdS_f = appFnD  wSA' wSB' tfs tus bdS'
+        bdA_f = appFnD  wA'  wB   tf  tu  bdA
+        bS_u  = appArgT wSA' wSB' tfs tus bdS'
+        bA_u  = appArgT wA'  wB   tf  tu  bdA
+        bdS_u = appArgD wSA' wSB' tfs tus bdS'
+        bdA_u = appArgD wA'  wB   tf  tu  bdA
+        -- the COMBINED szSubW measure: the SAME ≤-witnesses, pushed through subCmb.
+        bC_f  = subCmb (szSubW sσ) (szCon Δc) (≤-trans (≤fnT  wSA' wSB' tfs tus) ≤-suc) bDS'
+        bDS_f = subCmb (szSubW sσ) (szCon Δc) (≤-trans (≤fnD  wSA' wSB' tfs tus) ≤-suc) bDS'
+        bE_u  = bC→bE {sw = szSubW sσ} {tw = szT (⊨Π wSA' wSB') + (dsz tfs + dsz tus)} {c = szCon Δc} qDS
+        bC_u  = subCmb (szSubW sσ) (szCon Δc) (≤argT wSA' wSB' tfs tus) qDS
+        bDS_u = subCmb (szSubW sσ) (szCon Δc) (≤argD wSA' wSB' tfs tus) qDS
         P_L  = congÊl (sub-TI (suc n) sσ wA wS δ bS bA bE bC)
         Qc   = congÊl (trans (TI-resp-eq (suc n) (sym (subTy-comm _ _ _)) wSc δ)
                              (TI-wf-eq (suc n) (⊨-unique (subst (λ z → _ ⊨ z) (sym (subTy-comm _ _ _)) wSc) wS) δ))
         -- sub-TI-Π reconstruction for the FUNCTION (pa = domeq, qc = codeq)
         bE'f = combStep (1≤szT (⊨Π wSA' wSB')) bC_f
-        dbSf = sub-bnd< (szTΠl< wSA' wSB') bS_f
-        dbAf = sub-bnd< (szTΠl< wA' wB) bA_f
+        dbSf = appΠdom wSA' wSB' bS_f
+        dbAf = appΠdom wA'  wB   bA_f
         dbCf = combStep (szTΠl< wSA' wSB') bC_f
         subDom = sub-TI n sσ wA' wSA' (⇓ n δ) dbSf dbAf bE'f dbCf
         eqE    = envS-⇓ n sσ δ bE bE'f
         pa   = trans subDom (congTI n wA' eqE)
-        cbSf = <≡ (trans (cong (_+ szCon Δc) (+-comm (szT wSA') (szT wSB'))) (+-assoc (szT wSB') (szT wSA') (szCon Δc))) (<-inv bS_f)
-        cbAf = <≡ (trans (cong (_+ szCon Γc) (+-comm (szT wA') (szT wB))) (+-assoc (szT wB) (szT wA') (szCon Γc))) (<-inv bA_f)
-        cbCf = <≡ (cong (szSubW sσ +_) (trans (cong (_+ szCon Δc) (+-comm (szT wSA') (szT wSB'))) (+-assoc (szT wSB') (szT wSA') (szCon Δc))))
-                  (<-inv (<≡ (+-suc (szSubW sσ) _) bC_f))
+        cbSf = appΠcod wSA' wSB' bS_f
+        cbAf = appΠcod wA'  wB   bA_f
+        cbCf = subΠcod (szSubW sσ) (szT wSA') (szT wSB') (szCon Δc) bC_f
         goalenv : ∀ x → _≡_ {A = CI n (Γc ▷ wA')}
                           (envS n (extW wA' wSA' sσ) (⇓ n δ , λ _ → x) dbCf)
                           (⇓ n (envS (suc n) sσ δ bE) , λ _ → coe (congÊl pa) x)
@@ -1246,11 +1416,9 @@ sub-MI (suc n) {Δc = Δc} {Γc = Γc} sσ wA wS (⊢app (⊨Π wA' wB) tf tu) �
                 (trans (cong (coe (congÊl (congTI n wA' (envS-⇓ n sσ δ bE bE_u)))) (sym recu))
                        (coe2-uip (congÊl STu) (congÊl (congTI n wA' (envS-⇓ n sσ δ bE bE_u))) (congÊl pa) arg_L))
         bS_SL = <≡ (cong (_+ szCon Δc) (sym (szT-subst (subTy-comm _ _ _) wS))) bS
-        bB_SL = <≡ (trans (cong (_+ szCon Δc) (+-comm (szT wSA') (szT wSB'))) (+-assoc (szT wSB') (szT wSA') (szCon Δc)))
-                   (+mono< (≤-trans ≤-suc (m≤m+n ΠSub (dsz tfs + dsz tus))) ≤-refl qS)
-        bB_SR = <≡ (trans (cong (_+ szCon Γc) (+-comm (szT wA') (szT wB))) (+-assoc (szT wB) (szT wA') (szCon Γc)))
-                   (+mono< (≤-trans ≤-suc (m≤m+n ΠSrc (dsz tf + dsz tu))) ≤-refl q2)
-        SL'   = congÊl (sym (subTI n wSA' wSB' wSc tus δ (λ b → MI n wSA' tus (⇓ n δ) bdS_u b) bS_SL bB_SL))
+        bB_SL = appCodT wSA' wSB' tfs tus bdS'
+        bB_SR = appCodT wA'  wB   tf  tu  bdA
+        SL'   = congÊl (sym (subTI n wSA' wSB' wSc tus δ bdS_u bS_SL bB_SL))
         argL0 = coe (sym (congÊl pa)) arg_R
         argL0eq = trans (cong (coe (sym (congÊl pa))) argeq) (coe-symˡ (congÊl pa) arg_L)
         BASE' = f_L argL0
@@ -1260,8 +1428,7 @@ sub-MI (suc n) {Δc = Δc} {Γc = Γc} sσ wA wS (⊢app (⊨Π wA' wB) tf tu) �
         MOT2    = λ z → Êl (TI n wB (⇓ n (envS (suc n) sσ δ bE) , (λ _ → z)) cbAf)
         MOT2coe = cong MOT2 (coe-sym' (congÊl pa) arg_R)
         QCg   = congÊl (qc argL0)
-        SR''  = congÊl (sym (subTI n wA' wB wA tu (envS (suc n) sσ δ bE)
-                                  (λ b → MI n wA' tu (⇓ n (envS (suc n) sσ δ bE)) bdA_u b) bA bB_SR))
+        SR''  = congÊl (sym (subTI n wA' wB wA tu (envS (suc n) sσ δ bE) bdA_u bA bB_SR))
         R''   = trans CE (trans SL' (trans Qc P_L))
         fr-eq = trans (cong (λ h → h arg_R) (sym recf))
                       (trans (coe-π̂-gen pa qc f_L arg_R) (subst≡coe (coe-sym' (congÊl pa) arg_R) (coe QCg BASE')))
