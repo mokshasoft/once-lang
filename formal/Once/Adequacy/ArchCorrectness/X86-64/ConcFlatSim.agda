@@ -133,6 +133,45 @@ flat-inv-step : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
 flat-inv-step i prog fs inv = flat-wf-step i prog fs (proj₁ inv)
                             , flat-regtag-step i prog fs (proj₂ inv)
 
+-- THE SLOT AN INSTRUCTION ADDRESSES, if any. Enumerated (no catch-all, so it
+-- reduces at the use sites). This is what ties a slot-liveness assumption to
+-- the instruction actually fetched: a residual stated for an *arbitrary* slot
+-- at a site is not a weaker assumption, it is an inconsistent one.
+slot-of : AbstractInstr → Maybe Slot
+slot-of (load-from-slot k)  = just k
+slot-of (store-at-slot k)   = just k
+slot-of (lea-slot k)        = just k
+slot-of (restore-input k)   = just k
+slot-of (lea-indexed k)     = just k
+slot-of (worklist-init k)   = just k
+slot-of (worklist-push k)   = just k
+slot-of (worklist-pop k)    = just k
+slot-of (worklist-check k)  = just k
+slot-of mov-to-output          = nothing
+slot-of mov-to-input           = nothing
+slot-of mov-output-to-input2   = nothing
+slot-of mov-input2-to-output   = nothing
+slot-of load-indirect          = nothing
+slot-of load-indirect-suc      = nothing
+slot-of store-indirect         = nothing
+slot-of store-indirect-suc     = nothing
+slot-of (instr-alloc-stack _)  = nothing
+slot-of (instr-dealloc-stack _) = nothing
+slot-of (instr-reclaim-to _)   = nothing
+slot-of (instr-push-frame _)   = nothing
+slot-of instr-pop-frame        = nothing
+slot-of instr-call-closure     = nothing
+slot-of (instr-sigop _)        = nothing
+slot-of (instr-load-const _ _) = nothing
+slot-of (instr-load-code-addr _) = nothing
+slot-of instr-save-closure-reg = nothing
+slot-of (instr-load-tag-lit _) = nothing
+slot-of (instr-case-on-tag _ _) = nothing
+slot-of (instr-alloc-heap _)   = nothing
+slot-of (instr-loop _)         = nothing
+slot-of (instr-reg-op _)       = nothing
+slot-of (instr-ctrl _)         = nothing
+
 -- WITNESS-FREE block chaining: if `X.exec L` reaches a NON-halted `s'`, then every
 -- one of the L steps was non-halting (else exec would have stopped at a halted
 -- state ≠ s'), hence non-call — so run-events mirrors it, emitting [] and landing
@@ -433,14 +472,17 @@ postulate
   -- disjoint x86 regions — an honest layout invariant, discharged at instantiation
   -- (allocator heap-base vs the rsp frame window). Needed now that FlatCorr tracks
   -- the current-frame stack (`stack-eq`): a heap store must not perturb it.
-  store-indirect-stack-disj : ∀ {hv : HeapView} (s : X.State) (hl : HeapLocation) →
+  store-indirect-stack-disj : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (hl : HeapLocation) →
+      CompiledCorr hv prog fs s → HDom hv hl →
       ∀ k → (X.readReg (X.State.regs s) rsp + slot-to-disp k ≡ haddr hv hl) → ⊥
-  store-indirect-suc-stack-disj : ∀ {hv : HeapView} (s : X.State) (hl : HeapLocation) →
+  store-indirect-suc-stack-disj : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (hl : HeapLocation) →
+      CompiledCorr hv prog fs s → HDom hv (sucHL hl) →
       ∀ k → (X.readReg (X.State.regs s) rsp + slot-to-disp k ≡ haddr hv (sucHL hl)) → ⊥
   -- STACK-WRITE / HEAP disjointness: writing current-frame slot `slot` (x86 addr
   -- rsp+slot-to-disp slot) aliases no LIVE heap cell — symmetric to the store
   -- residuals above; the honest stack/heap layout invariant for store-at-slot.
-  store-at-slot-stack-disj : ∀ {hv : HeapView} (fs : FlatState) (s : X.State) (slot : Slot) →
+  store-at-slot-stack-disj : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (slot : Slot) →
+      CompiledCorr hv prog fs s →
       ∀ hl' → HDom hv hl' → (X.readReg (X.State.regs s) rsp + slot-to-disp slot ≡ haddr hv hl') → ⊥
   store-indirect-suc-live : ∀ {hv : HeapView} fs hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl) → HDom hv (sucHL hl)
   store-indirect-suc-bad : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
@@ -454,27 +496,38 @@ postulate
   -- emitted programs, not of arbitrary states) and covering the empty case too —
   -- which is what lets the empty-slot reads be PROVED rather than postulated
   -- (`slot-empty-stop`), retiring `load-from-slot-empty`, `restore-input-empty`
-  -- and `worklist-pop-empty`.
+  -- and `worklist-pop-empty`. The slot MUST be the fetched instruction's own
+  -- (`slot-of i ≡ just slot`): quantified over an unrelated `slot` this claims
+  -- `slot < stackSlot` for every slot, which is inconsistent (take `slot ≡
+  -- stackSlot`) — it would prove the whole correspondence vacuously.
   slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr)
-                     → fetch prog (fpc fs) ≡ just i
+                     → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot
                      → slot < stackSlot (regs (floc fs))
   -- alloc-stack FRESH-FRAME facts (alloc-stack sits at a frame entry): next-slot ≡ 0,
   -- the n new slots are uninitialised on BOTH sides (abstract stackMem / the fresh x86
   -- stack region below rsp), and heap liveness is invariant under the next-slot bump.
   -- Honest WF / memory-region / allocator invariants (discharged at instantiation).
-  alloc-stack-entry : ∀ (fs : FlatState) (n : ℕ) → stackSlot (regs (floc fs)) ≡ 0
+  alloc-stack-entry : ∀ prog (fs : FlatState) (n : ℕ)
+                    → fetch prog (fpc fs) ≡ just (instr-alloc-stack n)
+                    → stackSlot (regs (floc fs)) ≡ 0
   -- Plan 0.61: the reservation moves into the CALLEE frame, so the freshness is
   -- about the shifted frame (weaker, and obviously true of a fresh frame).
-  alloc-stack-fresh-abs : ∀ (fs : FlatState) (n : ℕ)
+  alloc-stack-fresh-abs : ∀ prog (fs : FlatState) (n : ℕ)
+                        → fetch prog (fpc fs) ≡ just (instr-alloc-stack n)
                         → ∀ k → k < n
                         → stackMem (floc fs) (shift-frame FS (current-frame (falloc fs)) n) k ≡ nothing
-  alloc-stack-fresh-x86 : ∀ (fs : FlatState) (s : X.State) (n : ℕ)
+  alloc-stack-fresh-x86 : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (n : ℕ)
+                        → CompiledCorr hv prog fs s
+                        → fetch prog (fpc fs) ≡ just (instr-alloc-stack n)
                         → ∀ k → k < n → X.readMem (X.State.memory s)
                             ((X.readReg (X.State.regs s) rsp ∸ slots n) + slot-to-disp k) ≡ nothing
   -- The fresh block is UNWRITTEN on the CONCRETE side: the region at/above the bump
   -- frontier (%r15) is unmapped. (Its abstract counterpart — nothing references or
   -- has written the not-yet-allocated block — is now PROVEN, `FlatStoreWF`.)
-  alloc-heap-fresh-x86 : ∀ (s : X.State) (n : ℕ) → ∀ i → i < n
+  alloc-heap-fresh-x86 : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (n : ℕ)
+                       → CompiledCorr hv prog fs s
+                       → fetch prog (fpc fs) ≡ just (instr-alloc-heap n)
+                       → ∀ i → i < n
                        → X.readMem (X.State.memory s)
                            (X.readReg (X.State.regs s) r15 + slot-to-disp i) ≡ nothing
   -- lea-indexed WF (conditioned on the site): the indexed base slot holds a
@@ -492,23 +545,30 @@ postulate
   -- one its matching prologue shifted away from, so %rsp lands exactly on the
   -- restored frame's base. A pairing property of emitted code (the same class as
   -- `dealloc-stack-full` / `pop-frame-empty` below), not of an arbitrary state.
-  dealloc-stack-restores : ∀ (fs : FlatState) (s : X.State) (n : ℕ)
+  dealloc-stack-restores : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (n : ℕ)
+    → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-dealloc-stack n)
     → X.readReg (X.State.regs s) rsp + slots n
         ≡ frame-base FS (current-frame (leave-frame (falloc fs)))
-  pop-frame-restores : ∀ (fs : FlatState) (s : X.State)
+  pop-frame-restores : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State)
+    → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just instr-pop-frame
     → X.readReg (X.State.regs s) rbp + slot-size
         ≡ frame-base FS (current-frame (leave-frame (falloc fs)))
   -- dealloc-stack frees the WHOLE current frame (runtime depth n → 0) — the WF
   -- pairing of an entry alloc-stack n with its matching exit dealloc-stack n.
-  dealloc-stack-full : ∀ (fs : FlatState) (n : ℕ) → stackSlot (regs (floc fs)) ≡ n
+  dealloc-stack-full : ∀ prog (fs : FlatState) (n : ℕ)
+                     → fetch prog (fpc fs) ≡ just (instr-dealloc-stack n)
+                     → stackSlot (regs (floc fs)) ≡ n
   -- push-frame writes the saved rbp at [rsp−8]; that stack address aliases no LIVE
   -- heap cell (heap/stack disjointness, as for the store residuals).
-  push-frame-heap-disj : ∀ {hv : HeapView} (s : X.State) (fs : FlatState)
+  push-frame-heap-disj : ∀ {hv : HeapView} prog (s : X.State) (fs : FlatState) (cap : ℕ)
+                       → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-push-frame cap)
                        → ∀ hl → HDom hv hl → (X.readReg (X.State.regs s) rsp ∸ slot-size ≡ haddr hv hl) → ⊥
   -- pop-frame WF: the callee frame is emptied before it is popped (stackSlot ≡ 0),
   -- and the saved caller rbp is present at [rbp] for `pop` to succeed.
-  pop-frame-empty : ∀ (fs : FlatState) → stackSlot (regs (floc fs)) ≡ 0
-  pop-frame-saved : ∀ (s : X.State)
+  pop-frame-empty : ∀ prog (fs : FlatState) → fetch prog (fpc fs) ≡ just instr-pop-frame
+                  → stackSlot (regs (floc fs)) ≡ 0
+  pop-frame-saved : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State)
+                  → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just instr-pop-frame
                   → Σ ℕ (λ v → X.readMem (X.State.memory s) (X.readReg (X.State.regs s) rbp) ≡ just v)
   -- load-const of a FLOAT: `compile-const fits-float` traps to ud2 (float loads are
   -- unimplemented, D054), so the x86 halts while the abstract runs — an honest gap,
@@ -604,34 +664,36 @@ mutual
   events-running-fetch {hv} n ev env prog fs s (load-from-slot slot) cc wf h ftq = load-from-slot-step n ev env prog fs s slot cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (store-at-slot slot) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (store-at-slot slot)
-      (block-step-store-at-slot prog fs s slot cc h ftq (store-at-slot-stack-disj {hv} fs s slot)) wf refl h
+      (block-step-store-at-slot prog fs s slot cc h ftq (store-at-slot-stack-disj {hv} prog fs s slot cc)) wf refl h
   events-running-fetch {hv} n ev env prog fs s (restore-input slot) cc wf h ftq = restore-input-step n ev env prog fs s slot cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (worklist-push slot) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (worklist-push slot)
-      (block-step-worklist-push prog fs s slot cc h ftq (store-at-slot-stack-disj {hv} fs s slot)) wf refl h
+      (block-step-worklist-push prog fs s slot cc h ftq (store-at-slot-stack-disj {hv} prog fs s slot cc)) wf refl h
   events-running-fetch {hv} n ev env prog fs s (worklist-pop slot) cc wf h ftq = worklist-pop-step n ev env prog fs s slot cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-alloc-stack k) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-alloc-stack k)
-      (block-step-alloc-stack prog fs s k cc h ftq (alloc-stack-entry fs k) (alloc-stack-fresh-abs fs k)
-         (alloc-stack-fresh-x86 fs s k)) wf refl h
+      (block-step-alloc-stack prog fs s k cc h ftq (alloc-stack-entry prog fs k ftq)
+         (alloc-stack-fresh-abs prog fs k ftq)
+         (alloc-stack-fresh-x86 prog fs s k cc ftq)) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-alloc-heap k) cc wf h ftq =
     ccc-step-bs n ev env prog fs s (instr-alloc-heap k)
       (block-step-alloc-heap prog fs s k cc h ftq
          (wf-regs (proj₁ wf) Input1) (wf-regs (proj₁ wf) Input2)
          (wf-regs (proj₁ wf) Scratch) (wf-regs (proj₁ wf) Count)
          (λ hl _ → wf-heap (proj₁ wf) hl) (λ k' _ → wf-stack (proj₁ wf) (current-frame (falloc fs)) k')
-         (λ hl eq → wf-fresh (proj₁ wf) hl (≤-reflexive (sym eq))) (alloc-heap-fresh-x86 s k)) wf refl h
+         (λ hl eq → wf-fresh (proj₁ wf) hl (≤-reflexive (sym eq))) (alloc-heap-fresh-x86 prog fs s k cc ftq)) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-dealloc-stack k)
-      (block-step-dealloc-stack prog fs s k cc h ftq (dealloc-stack-full fs k)
-         (dealloc-stack-restores fs s k)) wf refl h
+      (block-step-dealloc-stack prog fs s k cc h ftq (dealloc-stack-full prog fs k ftq)
+         (dealloc-stack-restores prog fs s k cc ftq)) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-push-frame k) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-push-frame k)
-      (block-step-push-frame prog fs s k cc h ftq (push-frame-heap-disj {hv} s fs)) wf refl h
+      (block-step-push-frame prog fs s k cc h ftq (push-frame-heap-disj {hv} prog s fs k cc ftq)) wf refl h
   events-running-fetch {hv} n ev env prog fs s instr-pop-frame cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s instr-pop-frame
-      (block-step-pop-frame prog fs s (proj₁ (pop-frame-saved s)) cc h ftq
-         (pop-frame-empty fs) (proj₂ (pop-frame-saved s)) (pop-frame-restores fs s)) wf refl h
+      (block-step-pop-frame prog fs s (proj₁ (pop-frame-saved prog fs s cc ftq)) cc h ftq
+         (pop-frame-empty prog fs ftq) (proj₂ (pop-frame-saved prog fs s cc ftq))
+         (pop-frame-restores prog fs s cc ftq)) wf refl h
   events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-int v) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-load-const fits-int v)
       (block-step-load-const prog fs s v cc h ftq) wf refl h
@@ -644,7 +706,7 @@ mutual
          (proj₁ (scratch-tag (proj₂ wf))) cc h ftq
          (proj₂ (lea-indexed-wf prog fs slot ftq))
          (proj₂ (scratch-tag (proj₂ wf)))
-         (slot-read-in-frame prog fs slot (lea-indexed slot) ftq))
+         (slot-read-in-frame prog fs slot (lea-indexed slot) ftq refl))
       wf refl (lea-indexed-hpost prog fs slot (proj₁ (lea-indexed-wf prog fs slot ftq))
                 (proj₁ (scratch-tag (proj₂ wf)))
                 (proj₂ (lea-indexed-wf prog fs slot ftq))
@@ -1031,13 +1093,13 @@ mutual
                        ≡ event-of (load-from-slot slot) fs ++ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs))
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n ev env prog fs s (load-from-slot slot)
-              (block-step-load-from-slot prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ ftq) st-eq)
+              (block-step-load-from-slot prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ ftq refl) st-eq)
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
           go-mem nothing st-eq =
             slot-empty-stop {hv} n ev env prog fs s slot rax (load-from-slot slot) cc h ftq refl
-              (slot-read-in-frame prog fs slot (load-from-slot slot) ftq) st-eq hpost refl
+              (slot-read-in-frame prog fs slot (load-from-slot slot) ftq refl) st-eq hpost refl
             where hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ true
                   hpost rewrite st-eq = refl
 
@@ -1054,13 +1116,13 @@ mutual
                        ≡ event-of (restore-input slot) fs ++ flat-events n prog (flat-exec-instr (restore-input slot) prog fs))
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n ev env prog fs s (restore-input slot)
-              (block-step-restore-input prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ ftq) st-eq)
+              (block-step-restore-input prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ ftq refl) st-eq)
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr (restore-input slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
           go-mem nothing st-eq =
             slot-empty-stop {hv} n ev env prog fs s slot rdi (restore-input slot) cc h ftq refl
-              (slot-read-in-frame prog fs slot (restore-input slot) ftq) st-eq hpost refl
+              (slot-read-in-frame prog fs slot (restore-input slot) ftq refl) st-eq hpost refl
             where hpost : halted (floc (flat-exec-instr (restore-input slot) prog fs)) ≡ true
                   hpost rewrite st-eq = refl
 
@@ -1077,13 +1139,13 @@ mutual
                        ≡ event-of (worklist-pop slot) fs ++ flat-events n prog (flat-exec-instr (worklist-pop slot) prog fs))
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n ev env prog fs s (worklist-pop slot)
-              (block-step-worklist-pop prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ ftq) st-eq)
+              (block-step-worklist-pop prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ ftq refl) st-eq)
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr (worklist-pop slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
           go-mem nothing st-eq =
             slot-empty-stop {hv} n ev env prog fs s slot rax (worklist-pop slot) cc h ftq refl
-              (slot-read-in-frame prog fs slot (worklist-pop slot) ftq) st-eq hpost refl
+              (slot-read-in-frame prog fs slot (worklist-pop slot) ftq refl) st-eq hpost refl
             where hpost : halted (floc (flat-exec-instr (worklist-pop slot) prog fs)) ≡ true
                   hpost rewrite st-eq = refl
 
@@ -1103,7 +1165,7 @@ mutual
             ccc-step-bs {hv} n ev env prog fs s store-indirect
               (block-step-store-indirect prog fs s hl cc h ftq i-eq
                  (store-indirect-live {hv} fs hl i-eq) (store-guard fs hl (store-output-not-stackref prog fs ftq))
-                 (store-indirect-stack-disj {hv} s hl))
+                 (store-indirect-stack-disj {hv} prog fs s hl cc (store-indirect-live {hv} fs hl i-eq)))
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)) h
@@ -1114,7 +1176,7 @@ mutual
             ccc-step-bs {hv} n ev env prog fs s store-indirect
               (block-step-store-indirect-stack prog fs s f k cc h ftq i-eq
                  (proj₁ (stack-ptr-current fs f k i-eq))
-                 (store-at-slot-stack-disj {hv} fs s k))
+                 (store-at-slot-stack-disj {hv} prog fs s k cc))
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtStack f k) (readReg (regs (floc fs)) Output)) h
@@ -1136,7 +1198,7 @@ mutual
             ccc-step-bs {hv} n ev env prog fs s store-indirect-suc
               (block-step-store-indirect-suc prog fs s hl cc h ftq i-eq
                  (store-indirect-suc-live {hv} fs hl i-eq) (store-guard fs (sucHL hl) (store-suc-output-not-stackref prog fs ftq))
-                 (store-indirect-suc-stack-disj {hv} s hl))
+                 (store-indirect-suc-stack-disj {hv} prog fs s hl cc (store-indirect-suc-live {hv} fs hl i-eq)))
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic (sucHL hl)) (readReg (regs (floc fs)) Output)) h
@@ -1146,7 +1208,7 @@ mutual
             ccc-step-bs {hv} n ev env prog fs s store-indirect-suc
               (block-step-store-indirect-suc-stack prog fs s f k cc h ftq i-eq
                  (proj₁ (stack-ptr-current fs f k i-eq))
-                 (store-at-slot-stack-disj {hv} fs s (suc k)))
+                 (store-at-slot-stack-disj {hv} prog fs s (suc k) cc))
               wf refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtStack f (suc k)) (readReg (regs (floc fs)) Output)) h
