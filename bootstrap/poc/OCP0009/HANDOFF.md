@@ -1,5 +1,10 @@
 # OCP-0009 · Handoff — dependent types for Once (dHoTT path)
 
+> ℹ **Current status lives in `HANDOFF-2026-07-27.md`.** This document (the broad design
+> arc) is still accurate; read it for context, not for what to do next. §3's raw-M3c item
+> and §4's recommendation are unchanged and still correct — note especially that §3 already
+> says the raw-M3c rung is **faithfulness, not the consistency result**.
+
 Branch `ocp-0009-poc0-nbe`. All modules `--safe`. Verify any module from
 `bootstrap/` with `./check.sh poc/OCP0009/<Module>.agda`. Companion docs:
 `FINDINGS.md` (design conclusions + proof patterns), `PATHS.md` (per-module
