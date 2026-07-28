@@ -24,13 +24,16 @@ module poc.OCP0009.NbEPLinUse where
 
 open import normalizer.Syntax.Types
   using ( Ty; Unit; _*_; ⊤; tt; _×_; _,_; _≡_; refl; trans; cong )
-open import normalizer.Syntax.CCC as C using ( Term; id; ⟨_,_⟩ )
+open import normalizer.Syntax.CCC as C
+  using ( Term; id; _∘_; snd; ⟨_,_⟩; curry; apply )
 open import normalizer.Testing.Evaluator using ( ⟦_⟧T; eval )
 open import poc.OCP0009.NbEPLinRec
-  using ( LTm; lid; _∘l_; _⊗l_; ρl⁻; dup; drop )
+  using ( LTm; lid; _∘l_; _⊗l_; ρl⁻; dup; drop; DupFree )
 open import poc.OCP0009.NbEPLinPass
   using ( ℕ; zero; suc; _+ℕ_; Lⁱ; dupCount; frees
-        ; FO; fo-id; fo-pair; L⟦_⟧; L-sound; pass-alloc; pairCount )
+        ; FO; fo-id; fo-snd; fo-∘; fo-pair; fo-curry; fo-apply
+        ; L⟦_⟧; L-sound; pass-alloc; pairCount; FunExt
+        ; PairFree; pf-snd; pf-curry; pass-df )
 
 ------------------------------------------------------------------------
 -- The `n`-fold power object and its diagonal (the intended semantics).
@@ -82,12 +85,16 @@ place-drop = (refl , refl)
 
 ------------------------------------------------------------------------
 -- END-TO-END: the whole pass as ONE guarantee — semantics preserved AND
--- allocation = source pairings — for any first-order source.
+-- allocation = source pairings — for any source in the linearizable fragment.
+--
+-- `funext` is THREADED (linearization-6): the fragment now includes closures,
+-- and `curry`'s soundness equates two functions. Closure-free callers may pass
+-- any proof; nothing else in this module needs it.
 ------------------------------------------------------------------------
 
-pipeline : ∀ {A B} {f : Term A B} (p : FO f) →
+pipeline : FunExt → ∀ {A B} {f : Term A B} (p : FO f) →
            (∀ x → Lⁱ L⟦ p ⟧ x ≡ eval f x) × (dupCount L⟦ p ⟧ ≡ pairCount p)
-pipeline p = (L-sound p , pass-alloc p)
+pipeline fe p = (L-sound fe p , pass-alloc p)
 
 ------------------------------------------------------------------------
 -- Fired on a concrete program: the DIAGONAL `⟨id,id⟩` (use the input twice) —
@@ -99,11 +106,45 @@ diag : ∀ {A} → FO (⟨ id {A} , id {A} ⟩)
 diag = fo-pair fo-id fo-id
 
 diag-end-to-end :
-  ∀ {A} →
+  FunExt → ∀ {A} →
   (∀ (a : ⟦ A ⟧T) → Lⁱ L⟦ diag {A} ⟧ a ≡ eval (⟨ id {A} , id {A} ⟩) a)
   × (dupCount L⟦ diag {A} ⟧ ≡ pairCount (diag {A}))
-diag-end-to-end = pipeline diag
+diag-end-to-end fe = pipeline fe diag
 
 -- …and that allocation count is `1` — one cell for the one duplication.
 diag-alloc-1 : ∀ {A} → dupCount L⟦ diag {A} ⟧ ≡ suc zero
 diag-alloc-1 = refl
+
+------------------------------------------------------------------------
+-- ★ THE EXPONENTIAL GATE (linearization-6), fired concretely.
+--
+-- `PATHS.md` deferred `curry`/`apply` as "needing the comonoid on the
+-- argument". They do not. In this core `_*_` IS the tensor, so `lcurry` splits
+-- the environment from the argument and `leval` consumes each exactly once.
+-- The two demos below are the claim, executable.
+------------------------------------------------------------------------
+
+-- A closure that DROPS its captured environment: `curry snd : B → (B ⇒ B)`.
+closure : ∀ {B} → FO (curry (snd {B} {B}))
+closure = fo-curry fo-snd
+
+-- ★ It is pairing-free, and therefore linearizes to a FULLY DUP-FREE term:
+--   a closure contributes NO duplication of its own.
+closure-df : ∀ {B} → DupFree L⟦ closure {B} ⟧
+closure-df = pass-df (pf-curry pf-snd)
+
+closure-alloc-0 : ∀ {B} → dupCount L⟦ closure {B} ⟧ ≡ zero
+closure-alloc-0 = refl
+
+-- The β-redex: build a closure and apply it to the SAME source. The one
+-- cartesian `⟨_,_⟩` is the only sharing point, so the output has exactly ONE
+-- `dup` — `apply` itself contributes nothing.
+beta : ∀ {B} → FO (apply {B} {B} ∘ ⟨ curry (snd {B} {B}) , id {B} ⟩)
+beta = fo-∘ fo-apply (fo-pair (fo-curry fo-snd) fo-id)
+
+beta-alloc-1 : ∀ {B} → dupCount L⟦ beta {B} ⟧ ≡ suc zero
+beta-alloc-1 = refl
+
+-- …and it computes: the whole thing is the identity, through the closure.
+beta-computes : ∀ {B} (b : ⟦ B ⟧T) → Lⁱ L⟦ beta {B} ⟧ b ≡ b
+beta-computes b = refl

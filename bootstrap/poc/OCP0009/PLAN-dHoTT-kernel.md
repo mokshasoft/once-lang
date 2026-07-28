@@ -120,10 +120,12 @@ its equality already is. This is the same meeting point `NbEPMonD` sketches.
   soundness, the erasing term elaboration.
 
 #### The three gaps, in priority order
-1. **Exponentials are NOT linearized** — `NbEPLinPass` covers only the first-order
-   fragment `FO`; `curry`/`apply` are excluded because their linearization needs the
-   comonoid on the argument. Once is a *closed* cartesian category, so this decides
-   whether the linear core can carry Once at all. **This is W0 — do it first** (§3).
+1. ~~**Exponentials are NOT linearized**~~ — ✅ **CLOSED (linearization-6, W0).** They
+   need no comonoid: `_*_` is the tensor, so `lcurry` splits rather than duplicates.
+   Closures contribute no duplication of their own. **The gate passes**; the linear
+   core can carry a closed cartesian language. Cost: `funext` in one clause, threaded.
+   Replaced by a NEW item — **static `dupCount` is not the dynamic allocation count
+   once closures exist** (a closure body's dups fire once per application). See §3 W0.
 2. **Linear recursion schemes** — `PATHS.md`'s "hardest item on the board". `Para`
    inherently duplicating is a *language-design* consequence, not a proof detail.
 3. **No bridge between the Lin line and the QTT line.** Verified: zero modules import
@@ -177,7 +179,45 @@ modules. Budget W2 and W3 the same way; there are no small continuations left.
 --------------------------------------------------------------------------
 ## 3. The workstreams
 
-### W0 — Linearize the exponentials  🟡 *architecture-deciding; smallest of the big items*
+### W0 — Linearize the exponentials  ✅ **DONE (linearization-6). THE GATE PASSES.**
+
+**Verdict: exponentials need no comonoid at all, and closures contribute no
+duplication of their own.** `PATHS.md`'s deferral ("`curry`/`apply` need the comonoid
+on the argument, a separate story") was a conservative deferral, not a proven
+obstruction. In this core `_*_` IS the tensor, so
+`lcurry : LTm (A * B) C → LTm A (B ⇒ C)` **splits** the environment from the argument
+rather than duplicating a shared source, and `leval : LTm ((A ⇒ B) * A) B` consumes
+closure and argument exactly once each.
+
+Delivered, all `--safe`, zero postulates, whole chain exit 0:
+- `NbEPLinRec` — `lcurry`/`leval` in `LTm`; `df-lcurry`/`df-leval` in `DupFree`
+  (both generators are linear; `lcurry` is dup-free exactly when its body is).
+- `NbEPLinPass` — `Lⁱ` cases (matching `eval`'s `curry`/`apply` on the nose), `FO`
+  extended with `fo-curry`/`fo-apply`, the pass, `L-sound`, `PairFree`/`pass-df`,
+  `dupCount`/`frees`/`pairCount`/`pass-alloc`, `dupfree-no-alloc`.
+- `NbEPLinUse` — the gate fired concretely: `closure-df` (a pairing-free source WITH
+  a closure linearizes fully dup-free), `closure-alloc-0`, and the β-redex
+  `beta-alloc-1` (exactly one `dup`, from the one cartesian pairing — `apply`
+  contributes nothing) with `beta-computes`.
+
+**Cost: `funext`, in exactly one clause.** `curry`'s soundness equates two FUNCTIONS,
+which the IH gives only pointwise. Threaded as a hypothesis per §1.2, so the modules
+stay `--safe` and postulate-free; `L-sound` and `pipeline` gained a `FunExt` argument.
+
+⚠ **The one genuine finding — static ≠ dynamic accounting.** `dupCount (lcurry f) =
+dupCount f` counts the closure body's dups ONCE, but the body runs once per
+application: a closure applied `n` times performs `n ×` (its body's dups) allocations.
+`pass-alloc` remains exactly true as a syntactic identity (the `fo-curry` case is
+proven), but **"allocations = source pairings" as an OPERATIONAL claim now holds only
+for closure-free code.** This is the same per-node multiplicity issue `PATHS.md`
+already flags for recursion schemes ("a cata's algebra events × the number of nodes");
+closures put it on the exponentials too. A dynamic account needs an event trace, not a
+count — `NbEPLinLive`'s `□◇` streams are the shape that would take. **This is now the
+top open item on the linearization side**, ahead of §1.3 gap 2.
+
+*(Original scoping retained below for the record.)*
+
+### W0 (original scoping)  🟡 *architecture-deciding; smallest of the big items*
 
 **Why first:** §1.3 gap 1. `NbEPLinPass`'s `L⟦_⟧` handles the first-order fragment
 `FO` (`id`/`∘`/`fst`/`snd`/`⟨,⟩`/`inl`/`inr`/`case`/`terminal`/`In`/`cata`) and
@@ -306,29 +346,29 @@ the denotational bridge `core → ≋`.
 ## 4. Sequencing
 
 ```
-W0  exponentials ═══► GATE: is the linear core viable?   [start now, independent]
-                            │ yes                  │ no
-W1  SN⁺ ────────────────────┼──► unconditional dec-conv  │  reopen §1.3
-                            │                            │  (W2–W6 revert to
-W2  internalize Hom ──┐     │                            │   optional research)
-                      ├──► W6  welding ◄─────────────────┘
+W0  exponentials ═══► GATE PASSED ✅ (linearization-6)
+                            │
+W1  SN⁺ ────────────────────┼──► unconditional dec-conv   [START HERE]
+                            │
+W2  internalize Hom ──┐     │
+                      ├──► W6  welding
 W3  variance judgment ┴──► W4  directed CwF
                       └──► W5  directed NF
 ```
 
-**Phase 1 (now).** W0 and W1, in parallel — they share no modules. W1 completes the
-kernel for *both* paths, so it is unregretted regardless of how W0's gate resolves,
-and it is the only item whose technique is fully known (the reducibility template is
-proven twice). W0 is the cheaper of the two and decides the architecture.
+**Phase 1 — W0 ✅ done; W1 is now the whole of Phase 1.** W1 completes the kernel for
+*both* paths, and it is the only remaining item whose technique is fully known (the
+reducibility template is proven twice, in `NbEPDirDBSN` and `NbEPDirDBSNSig`).
 
-**Phase 2 (only if W0's gate passes).** W2 and W3 in parallel; they touch the same
+**Phase 2 (unblocked — the gate passed).** W2 and W3 in parallel; they touch the same
 modules, so land them as ONE cascade rather than two.
 
 **Phase 3.** W4, then W5, then W6.
 
-**If W0's gate fails**, §1.3 reopens: Once stays cartesian, Path 1 is the whole story,
-W1 still finishes it, and W2–W6 return to being a research annex. That branch is a
-legitimate outcome, not a failure — it is what the gate is for.
+**Running alongside, on the linearization side** (not blocking W1–W6): the dynamic /
+multiplicity accounting that W0 surfaced, then §1.3 gap 2 (linear recursion schemes,
+where `Para` inherently duplicating is a language-design decision to take
+deliberately), then gap 3 (the Lin↔QTT bridge).
 
 **Out of scope, explicitly:** directed univalence and its directed model (§1.1);
 anything requiring cubical machinery; the raw-M3c faithfulness grind (§5).

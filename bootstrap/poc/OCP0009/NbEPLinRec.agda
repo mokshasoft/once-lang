@@ -28,7 +28,7 @@
 module poc.OCP0009.NbEPLinRec where
 
 open import normalizer.Syntax.Types
-  using ( Ty; Unit; _*_; _+_; μ_; ⟦_⟧F
+  using ( Ty; Unit; _*_; _+_; _⇒_; μ_; ⟦_⟧F
         ; Func; Id; One; Kc; _⊕_; _⊗_
         ; ⊥; ¬_ )
 
@@ -59,6 +59,14 @@ data LTm : Ty → Ty → Set where
   -- initial algebra
   lIn   : ∀ {F} → LTm (⟦ F ⟧F (μ F)) (μ F)
   lcata : ∀ F {A} → LTm (⟦ F ⟧F A) A → LTm (μ F) A
+  -- MONOIDAL CLOSURE (linearization-6).  `_*_` is the tensor here, so `lcurry`
+  -- is the ⊗-curry: it SPLITS the environment (captured `A`) from the argument
+  -- (`B`) instead of duplicating a shared source, and `leval` consumes the
+  -- closure and its argument exactly once each.  Neither generator duplicates —
+  -- see `df-lcurry`/`df-leval` below.  Every duplication a closure performs is
+  -- a `dup` INSIDE its body, contributed by the source pairing it came from.
+  lcurry : ∀ {A B C} → LTm (A * B) C → LTm A (B ⇒ C)
+  leval  : ∀ {A B} → LTm ((A ⇒ B) * A) B
 
 ------------------------------------------------------------------------
 -- The recovered cartesian operations (Fox layer, `NbEPLinFox` concretely).
@@ -106,6 +114,11 @@ data DupFree : ∀ {A B} → LTm A B → Set where
   df-In   : ∀ {F} → DupFree (lIn {F})
   df-cata : ∀ F {A} {alg : LTm (⟦ F ⟧F A) A} →
             DupFree alg → DupFree (lcata F alg)
+  -- CLOSURE: both exponential generators are linear.  `lcurry` is dup-free
+  -- exactly when its body is (the closure copies nothing the body did not
+  -- already copy); `leval` is dup-free outright.
+  df-lcurry : ∀ {A B C} {f : LTm (A * B) C} → DupFree f → DupFree (lcurry f)
+  df-leval  : ∀ {A B} → DupFree (leval {A} {B})
   -- (no `df-dup`: `dup` is the one non-linear generator)
 
 -- `dup` is not dup-free (there is no constructor for it).
