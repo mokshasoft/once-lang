@@ -629,17 +629,57 @@ of the logical relation rather than of a termination measure.
 | `sem-⌜base⌝`, ★ `sem-⌜Π⌝` | the code introductions; `sem-⌜Π⌝` is where PREDICATIVITY does structural work |
 | `sem-lam`/`sem-app` | unchanged in substance from `SpikeSNJ` |
 
-#### W1f — consolidate, then `fund`  🔴 **NEXT**
+#### W1f — the relation, CONSOLIDATED  ✅ **DONE (`NbEPDirDBLR`, 2026-07-30)**
 
-⚠ **Consolidation first, and this is now overdue.** The relation has been declared
-four times (SNW over accessibility-SN, SNJ over inductive-SN, SNK's two levels).
-Separate spikes were right while the shape was moving; it has stopped. Merge SNJ+SNK
-and port `SpikeSNW`'s `irrel`/`fwd*`/`bwd*`/`conv-⊩` in ONCE, at both levels — they
-port verbatim, none of them inspecting `SN` or membership.
+`--safe`, zero postulates, zero holes, 728 lines, ~3.5 s. **Promoted out of the
+`Spike` line** — one module for what W1a–W1e established across five, over the real
+kernel syntax, with **no dependency on any `Spike*` module**. The spikes stay in the
+tree as the negative-result record.
 
-Then: (a) take the kernel decision in Finding 1; (b) `fund-ty`/`fund` mutual, with
-the level-0→1 embedding; (c) `Σ'` at both levels plus `sem-⌜Σ⌝`; (d) `wnorm :
-Γ ⊢ t ∷ A → WN t` via `SpikeSNJ.wn`, hence `dec-conv` unconditional.
+Merged: the JM presentation (W1d), the whnf-carrying shape (W1b), the stratification
+`⊩₀`/`⊩₁` (W1e), and the transfer layer at **both levels** — `irrel₀`/`irrel₁`,
+`fwd₀`/`fwd₁`, `bwd₀`/`bwd₁`, `conv₀`/`conv₁`. ⚠ That port was the real work item:
+the handoff recorded it as "verbatim" on the grounds that none of those proofs
+inspects `SN` or membership. Confirmed — but now *executed*, not asserted.
+
+Also new here, not in any spike:
+
+- ★ **`emb`/`emb-coh`** — the level-0 → level-1 embedding, needed by `fund-ty`'s
+  `ty-El` case. Mutual with a membership-coherence bi-implication, for the same
+  reason `irrel` is one. **One finding:** the round trip `⊩F →₁ →₀` is *not*
+  definitionally the identity, so the `Π` family lands at `⊩G u r₀'` for a different
+  proof `r₀'` of the same membership. Both are `⊩₀` derivations of the *same type*,
+  so `irrel₀` at `crflᵀ` bridges them — proof-irrelevance in the membership argument
+  falls out of the transfer layer for free.
+- **`Ne` separated from `SNe`.** The TYPE-level neutrality payload is now a plain
+  syntactic `Ne`, with a forgetful `sne→ne`. `El-ne-reduct` needs neutrality closed
+  under reduction, and for `SNe` that would require `SN` closed under reduction — a
+  real JM lemma, since `sne-app` carries `SN` of the argument. Nothing at type level
+  uses the `SN` payload (it is only consumed by `joinW`-driven shape refutation), so
+  the cheap predicate is the right one.
+
+Everything else carries over: `CR1`/`CR3`/`exp`/`⊩var` at both levels, `sem-var`/
+`sem-conv`/`sem-lam`/`sem-app`/`sem-El`/`sem-⌜base⌝`/`sem-⌜Π⌝`, `wn`/`wne`/`⊩wn₀`/
+`⊩wn₁`, and the non-vacuity witnesses.
+
+⚠ **`Σ'` is NOT yet in the relation** — the one item from the handoff's §2.3 left
+undone, deliberately. It takes `irrel`'s case count from 9 to 16 at level 0 and 16 to
+25 at level 1, and is purely additive: every new case is an identity, a `joinW`
+refutation, or a copy of the `Π` case. Landing the port verified first was the safer
+order. `SNRed` already carries `snr-βfst`/`snr-βsnd`/`snr-fst`/`snr-snd`, and
+`SNe`/`SN` already carry the pair/projection constructors, so the follow-up touches
+only `⊩₀`/`⊩₁` and the four proofs over them.
+
+#### W1g — `Σ'`, the `⊢ty` decision, then `fund`  🔴 **NEXT**
+
+1. **`Σ'` at both levels** (above) — mechanical, per dHoTT-36's template.
+2. **★ Take the `⊢ty` decision** — `HANDOFF-2026-07-30.md` §3 has the complete
+   analysis. Recommendation: option A (intrinsic premises), landed as one cascade;
+   measured cost is TWO modules (`NbEPDirDBType`, `NbEPDirDBSubj`), not six, because
+   `Conf`/`Inj`/`SR`/`Dec` never mention `_⊢_∷_`.
+3. **`fund-ty`/`fund`** mutual, with reducible substitutions `⊩ˢ Γ σ`. Every rule
+   already has its semantic lemma in `NbEPDirDBLR`.
+4. **`wnorm : ⊢ Γ → Γ ⊢ t ∷ A → WN t`**, hence `dec-conv` unconditional.
 
 --------------------------------------------------------------------------
 ## 4. Sequencing
@@ -652,7 +692,8 @@ W1b conversion transfer ✅ (SpikeSNW — irrel, fwd*, conv-⊩)
 W1c 🟡 (SpikeSNX — Kripke STRUCK; sem-var/app/conv, sn-exp, non-Π exp)
 W1d ✅ (SpikeSNJ — JM inductive SN: exp, sem-lam, wn. The wall is gone.)
 W1e 🟡 (SpikeSNK — ⊩ not total; LR must be STRATIFIED by level. Both checked.)
-     └► W1f consolidate ──► fund ──► Σ' ──► wnorm ──► dec-conv
+W1f ✅ (NbEPDirDBLR — the relation CONSOLIDATED, promoted out of the Spike line)
+     └► W1g Σ' ──► ⊢ty decision ──► fund ──► wnorm ──► dec-conv
                             ├──► unconditional dec-conv   [START HERE]
                             │
 W2  internalize Hom ──┐     │
@@ -728,7 +769,7 @@ conversion rule. Two consequences:
 | ~~W1c: the Kripke action's mutual block~~ | ~~medium~~ | ✅ **STRUCK 2026-07-30 by `SpikeSNX`** — not needed at all: `fund` is substitution-based, so its λ-case extends the substitution and the target context never grows; `SpikeSNU`'s `SN t` conjunct in the `Π` clause already removed the one place Kripke is classically forced (CR1 at `Π`) |
 | ~~W1d: SN closed under head expansion under a spine~~ | ~~medium~~ | ✅ **RETIRED 2026-07-30 by `SpikeSNJ`** — Joachimski–Matthes makes head expansion a CONSTRUCTOR, so the lemma vanishes; and the feared cost (relating the presentation to accessibility-`SN`) never arises, because `dec-conv` consumes WEAK normalization and `wn` falls out structurally |
 | ⚠ **The kernel may need `Γ ⊢ty A` premises** — `⊩` is not total over `RTy` (`SpikeSNK.¬⊩elLam`), so normalization for `_⊢_∷_` as it stands is not provable | **high** | a kernel-design decision, not a proof detail; adding premises to `⊢lam`/`⊢app`/`⊢pair` cascades through `NbEPDirDBSubj`/`NbEPDirDBDec` per §2. Alternative: state the theorem only for derivations with independently well-formed types |
-| Four separate declarations of the logical relation have accumulated | medium | the shape has stopped moving; W1f consolidates before `fund` is built on any one of them |
+| ~~Four separate declarations of the logical relation~~ | ~~medium~~ | ✅ **RETIRED 2026-07-30 by `NbEPDirDBLR`** — consolidated into one promoted module, spike-free, both levels, transfer layer ported and verified |
 | The headline result is now WN, not SN | low | `dec-conv` consumes WN — nothing downstream needs SN. Revisit only if SN is wanted for its own sake; the missing piece would be inductive-`SN` ⊆ accessibility-`SN` |
 | An obstruction is scheduled that the repo has already discharged elsewhere | medium | **this happened here** — W1b was scoped as "lift confluence" when dHoTT-26 had already lifted it. Grep the module list for the needed result before scheduling a research item |
 | W2/W3 cascade blows up the metatheory beyond one person's reach | high | land them as ONE cascade; re-verify the six-module chain per dHoTT-32/33's pattern, which is the measured precedent |
