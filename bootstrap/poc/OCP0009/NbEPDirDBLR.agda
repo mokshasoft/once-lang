@@ -23,15 +23,18 @@
 -- consumes the real confluence results (`NbEPDirDBInj`).  `--safe`, zero
 -- postulates, zero holes, no dependency on any `Spike*` module.
 --
--- ⚠ SCOPE — `Σ'` IS NOT YET IN THE RELATION.  Deliberate, and it is the one
--- item from the handoff's §2.3 not done here.  Rationale: adding the fourth
--- whnf shape takes `irrel`'s case count from 9 to 16 at level 0 and from 16 to
--- 25 at level 1, and it is purely additive — every new case is either an
--- identity, a `joinW` refutation, or a copy of the `Π` case.  Landing the port
--- verified first, then tripling the case count, is the safer order.  `SNRed`
--- below already carries `snr-βfst`/`snr-βsnd`/`snr-fst`/`snr-snd` for it, and
--- `SNe`/`SN` already carry the pair/projection constructors, so the follow-up
--- touches only `⊩₀`/`⊩₁` and the four proofs over them.  Nothing else blocks it.
+-- `Σ'` IS IN THE RELATION at both levels (added 2026-07-30, W1g): `⊩₀Σ`/`⊩₁Σ`
+-- with the DEPENDENT-pair membership
+--     ⊩Σ _ ⊩F ⊩G ⊩∋ t = SN t × Σ (⊩F ⊩∋ fst t) (λ r → (⊩G (fst t) r) ⊩∋ snd t)
+-- and every proof extended: 8 cross cases + the real `Σ'/Σ'` case in `irrel` at
+-- each level, plus `fwd`/`CR1`/`CR3`/`exp`/`bwd`/`emb`.
+--
+-- ⚠ ONE THING THE `Π` CASES DID NOT PREPARE FOR.  `Σ'` is the first former whose
+-- second component's TYPE moves when the term does: expanding `t` to `t'` changes
+-- `fst t`, hence `G[fst t]` vs `G[fst t']`.  So `exp` at `Σ'` needs a genuine
+-- CONVERSION (via `subTy-monoˢ` + `irrel`), where `exp` at `Π` needed only a
+-- congruence (`snr-app`).  Same in `sem-pair`, because `fst (pair a b) ⟶ a`.
+-- That is why `Σ'` was not the pure copy-paste the plan projected.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -54,6 +57,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ )
 open import poc.OCP0009.NbEPDirDBSR using ( ⟶ᵀ-sub; ≅ᵀ-sub )
+open import poc.OCP0009.NbEPDirDBSubj using ( subTy-monoˢ )
+open import poc.OCP0009.NbEPDirDBConf using ( single-mono )
 open import poc.OCP0009.NbEPDirDBConf
   using ( ⟶*-trans; ⟶*-lam; ⟶*-appˡ; ⟶*-appʳ
         ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-fst; ⟶*-snd
@@ -61,7 +66,8 @@ open import poc.OCP0009.NbEPDirDBConf
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El
         ; confluentᵀ; church-rosserᵀ
-        ; ΠRed; mkΠRed; Π-reduct; Πinj≡; red→≅ᵀ )
+        ; ΠRed; mkΠRed; Π-reduct; Πinj≡
+        ; ΣRed; mkΣRed; Σ-reduct; Σinj≡; red→≅ᵀ )
 
 private
   variable
@@ -74,6 +80,13 @@ projl (p , _) = p
 
 projr : {P Q : Set} → P × Q → Q
 projr (_ , q) = q
+
+-- dependent projections, for the `Σ'` membership clauses
+dfst : {S : Set} {P : S → Set} → Σ S P → S
+dfst (a , _) = a
+
+dsnd : {S : Set} {P : S → Set} → (p : Σ S P) → P (dfst p)
+dsnd (_ , b) = b
 
 ------------------------------------------------------------------------
 -- 1. THE JOACHIMSKI–MATTHES PRESENTATION (W1d).
@@ -206,15 +219,24 @@ data ⊩₀_ {Γ} where
          → (⊩F : ⊩₀ F)
          → ((u : RTm Γ) → ⊩F ⊩₀∋ u → ⊩₀ (subTy (single u) G))
          → ⊩₀ A
+  ⊩₀Σ    : {A : RTy Γ} {F : RTy Γ} {G : RTy (Γ ∙)}
+         → A ⟶ᵀ* Σ' F G
+         → (⊩F : ⊩₀ F)
+         → ((u : RTm Γ) → ⊩F ⊩₀∋ u → ⊩₀ (subTy (single u) G))
+         → ⊩₀ A
 
 ⊩₀base _     ⊩₀∋ t = SN t
 ⊩₀ne _ _     ⊩₀∋ t = SN t
 ⊩₀Π _ ⊩F ⊩G  ⊩₀∋ t = SN t × ((u : RTm _) (r : ⊩F ⊩₀∋ u) → (⊩G u r) ⊩₀∋ app t u)
+-- the DEPENDENT pair: the second component's type depends on the first.
+⊩₀Σ _ ⊩F ⊩G  ⊩₀∋ t =
+  SN t × Σ (⊩F ⊩₀∋ fst t) (λ r → (⊩G (fst t) r) ⊩₀∋ snd t)
 
 bwd₀ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₀ B → ⊩₀ A
 bwd₀ p (⊩₀base q)    = ⊩₀base (⟶ᵀ*-trans p q)
 bwd₀ p (⊩₀ne q n)    = ⊩₀ne   (⟶ᵀ*-trans p q) n
 bwd₀ p (⊩₀Π q ⊩F ⊩G) = ⊩₀Π    (⟶ᵀ*-trans p q) ⊩F ⊩G
+bwd₀ p (⊩₀Σ q ⊩F ⊩G) = ⊩₀Σ    (⟶ᵀ*-trans p q) ⊩F ⊩G
 
 ------------------------------------------------------------------------
 -- 3a. IRRELEVANCE UP TO CONVERSION, at level 0.
@@ -254,6 +276,32 @@ irrel₀ c (⊩₀Π p _ _) (⊩₀ne q n) with joinW c p q
 ...   | mkElNe _ _ refl with Π-reduct πE
 ...     | mkΠRed _ _ () _ _
 
+-- `Σ'` against `base`/`ne`/`Π`, both ways: impossible.
+irrel₀ c (⊩₀base p) (⊩₀Σ q _ _) with joinW c p q
+... | E , (bE , σE) with base-nf bE
+...   | refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₀ c (⊩₀ne p n) (⊩₀Σ q _ _) with joinW c p q
+... | E , (eE , σE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₀ c (⊩₀Σ p _ _) (⊩₀base q) with joinW c p q
+... | E , (σE , bE) with base-nf bE
+...   | refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₀ c (⊩₀Σ p _ _) (⊩₀ne q n) with joinW c p q
+... | E , (σE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₀ c (⊩₀Π p _ _) (⊩₀Σ q _ _) with joinW c p q
+... | E , (πE , σE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₀ c (⊩₀Σ p _ _) (⊩₀Π q _ _) with joinW c p q
+... | E , (σE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+
 -- the real case: confluence forces convertible domain AND codomain.
 irrel₀ c (⊩₀Π p ⊩F ⊩G) (⊩₀Π q ⊩F' ⊩G') with joinW c p q
 ... | E , (πE₁ , πE₂) with Π-reduct πE₁ | Π-reduct πE₂
@@ -283,6 +331,39 @@ irrel₀ c (⊩₀Π p ⊩F ⊩G) (⊩₀Π q ⊩F' ⊩G') with joinW c p q
                                                       (csymᵀ (red→≅ᵀ rF₂)))
                                                ⊩F ⊩F') u r))))
 
+-- the `Σ'/Σ'` case: same shape as `Π/Π`, but the second component's type
+-- depends on the FIRST, so the domain transfer has to happen before the
+-- codomain one can even be stated.
+irrel₀ c (⊩₀Σ p ⊩F ⊩G) (⊩₀Σ q ⊩F' ⊩G') with joinW c p q
+... | E , (σE₁ , σE₂) with Σ-reduct σE₁ | Σ-reduct σE₂
+...   | mkΣRed F₁ G₁ eq₁ rF₁ rG₁ | mkΣRed F₂ G₂ eq₂ rF₂ rG₂
+        with Σinj≡ (trans (sym eq₁) eq₂)
+...       | (refl , refl) =
+            (λ t h →
+               (projl h
+               , ( projl (irrel₀ (ctrnᵀ (red→≅ᵀ rF₁) (csymᵀ (red→≅ᵀ rF₂))) ⊩F ⊩F')
+                         (fst t) (dfst (projr h))
+                 , projl (irrel₀ (≅ᵀ-sub (single (fst t))
+                                   (ctrnᵀ (red→≅ᵀ rG₁) (csymᵀ (red→≅ᵀ rG₂))))
+                                 (⊩G (fst t) (dfst (projr h)))
+                                 (⊩G' (fst t)
+                                   (projl (irrel₀ (ctrnᵀ (red→≅ᵀ rF₁)
+                                                         (csymᵀ (red→≅ᵀ rF₂)))
+                                                  ⊩F ⊩F') (fst t) (dfst (projr h)))))
+                         (snd t) (dsnd (projr h)) )))
+          , (λ t h →
+               (projl h
+               , ( projr (irrel₀ (ctrnᵀ (red→≅ᵀ rF₁) (csymᵀ (red→≅ᵀ rF₂))) ⊩F ⊩F')
+                         (fst t) (dfst (projr h))
+                 , projr (irrel₀ (≅ᵀ-sub (single (fst t))
+                                   (ctrnᵀ (red→≅ᵀ rG₁) (csymᵀ (red→≅ᵀ rG₂))))
+                                 (⊩G (fst t)
+                                   (projr (irrel₀ (ctrnᵀ (red→≅ᵀ rF₁)
+                                                         (csymᵀ (red→≅ᵀ rF₂)))
+                                                  ⊩F ⊩F') (fst t) (dfst (projr h))))
+                                 (⊩G' (fst t) (dfst (projr h))))
+                         (snd t) (dsnd (projr h)) )))
+
 ------------------------------------------------------------------------
 -- 3b. FORWARD TRANSFER at level 0, and hence transfer along CONVERSION.
 ------------------------------------------------------------------------
@@ -304,6 +385,13 @@ fwd₀ p (⊩₀Π q ⊩F ⊩G) with confluentᵀ p q
               (λ u r → fwd₀ (⟶ᵀ*-sub (single u) rG)
                             (⊩G u (projr (irrel₀ (red→≅ᵀ rF) ⊩F (fwd₀ rF ⊩F)) u r)))
 
+fwd₀ p (⊩₀Σ q ⊩F ⊩G) with confluentᵀ p q
+... | E , (bE , σE) with Σ-reduct σE
+...   | mkΣRed F₁ G₁ refl rF rG =
+        ⊩₀Σ bE (fwd₀ rF ⊩F)
+              (λ u r → fwd₀ (⟶ᵀ*-sub (single u) rG)
+                            (⊩G u (projr (irrel₀ (red→≅ᵀ rF) ⊩F (fwd₀ rF ⊩F)) u r)))
+
 conv₀ : {A B : RTy Γ} → A ≅ᵀ B → ⊩₀ A → ⊩₀ B
 conv₀ c R with church-rosserᵀ c
 ... | C , (aC , bC) = bwd₀ bC (fwd₀ aC R)
@@ -316,18 +404,34 @@ CR1₀ : {A : RTy Γ} (R : ⊩₀ A) {t : RTm Γ} → R ⊩₀∋ t → SN t
 CR1₀ (⊩₀base _)  h = h
 CR1₀ (⊩₀ne _ _)  h = h
 CR1₀ (⊩₀Π _ _ _) h = projl h
+CR1₀ (⊩₀Σ _ _ _) h = projl h
 
 CR3₀ : {A : RTy Γ} (R : ⊩₀ A) {t : RTm Γ} → SNe t → R ⊩₀∋ t
 CR3₀ (⊩₀base _)    nt = sn-ne nt
 CR3₀ (⊩₀ne _ _)    nt = sn-ne nt
 CR3₀ (⊩₀Π _ ⊩F ⊩G) nt =
   (sn-ne nt , λ u ru → CR3₀ (⊩G u ru) (sne-app nt (CR1₀ ⊩F ru)))
+CR3₀ (⊩₀Σ _ ⊩F ⊩G) {t} nt =
+  (sn-ne nt , ( CR3₀ ⊩F (sne-fst nt)
+              , CR3₀ (⊩G (fst t) (CR3₀ ⊩F (sne-fst nt))) (sne-snd nt) ))
 
 exp₀ : {A : RTy Γ} (R : ⊩₀ A) {t t' : RTm Γ} → SNRed t t' → R ⊩₀∋ t' → R ⊩₀∋ t
 exp₀ (⊩₀base _)    r h = sn-exp r h
 exp₀ (⊩₀ne _ _)    r h = sn-exp r h
 exp₀ (⊩₀Π _ ⊩F ⊩G) r h =
   (sn-exp r (projl h) , λ v rv → exp₀ (⊩G v rv) (snr-app r) (projr h v rv))
+-- ★ the `Σ'` case needs a CONVERSION, not just a congruence: expanding `t` to
+-- `t'` changes `fst t`, so the second component's TYPE changes with it —
+-- `G[fst t]` vs `G[fst t']` — and `subTy-monoˢ` + `irrel₀` bridge the two.
+exp₀ (⊩₀Σ {G = G} _ ⊩F ⊩G) {t} {t'} r h =
+  ( sn-exp r (projl h)
+  , ( exp₀ ⊩F (snr-fst r) (dfst (projr h))
+    , projl (irrel₀ (csymᵀ (red→≅ᵀ (subTy-monoˢ
+                              (single-mono (step (ξ-fst (snr→⟶ r)) done)) G)))
+                    (⊩G (fst t') (dfst (projr h)))
+                    (⊩G (fst t) (exp₀ ⊩F (snr-fst r) (dfst (projr h)))))
+            (snd t)
+            (exp₀ (⊩G (fst t') (dfst (projr h))) (snr-snd r) (dsnd (projr h))) ))
 
 ⊩var₀ : {A : RTy Γ} (R : ⊩₀ A) (x : Var Γ) → R ⊩₀∋ var x
 ⊩var₀ R x = CR3₀ R (sne-var x)
@@ -358,17 +462,25 @@ data ⊩₁_ {Γ} where
          → (⊩F : ⊩₁ F)
          → ((u : RTm Γ) → ⊩F ⊩₁∋ u → ⊩₁ (subTy (single u) G))
          → ⊩₁ A
+  ⊩₁Σ    : {A : RTy Γ} {F : RTy Γ} {G : RTy (Γ ∙)}
+         → A ⟶ᵀ* Σ' F G
+         → (⊩F : ⊩₁ F)
+         → ((u : RTm Γ) → ⊩F ⊩₁∋ u → ⊩₁ (subTy (single u) G))
+         → ⊩₁ A
 
 ⊩₁base _     ⊩₁∋ t = SN t
 ⊩₁U _        ⊩₁∋ t = SN t × (⊩₀ (El t))
 ⊩₁ne _ _     ⊩₁∋ t = SN t
 ⊩₁Π _ ⊩F ⊩G  ⊩₁∋ t = SN t × ((u : RTm _) (r : ⊩F ⊩₁∋ u) → (⊩G u r) ⊩₁∋ app t u)
+⊩₁Σ _ ⊩F ⊩G  ⊩₁∋ t =
+  SN t × Σ (⊩F ⊩₁∋ fst t) (λ r → (⊩G (fst t) r) ⊩₁∋ snd t)
 
 bwd₁ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₁ B → ⊩₁ A
 bwd₁ p (⊩₁base q)    = ⊩₁base (⟶ᵀ*-trans p q)
 bwd₁ p (⊩₁U q)       = ⊩₁U    (⟶ᵀ*-trans p q)
 bwd₁ p (⊩₁ne q n)    = ⊩₁ne   (⟶ᵀ*-trans p q) n
 bwd₁ p (⊩₁Π q ⊩F ⊩G) = ⊩₁Π    (⟶ᵀ*-trans p q) ⊩F ⊩G
+bwd₁ p (⊩₁Σ q ⊩F ⊩G) = ⊩₁Σ    (⟶ᵀ*-trans p q) ⊩F ⊩G
 
 ------------------------------------------------------------------------
 -- 4a. IRRELEVANCE at level 1.
@@ -433,7 +545,71 @@ irrel₁ c (⊩₁Π p _ _) (⊩₁ne q n) with joinW c p q
 ...   | mkElNe _ _ refl with Π-reduct πE
 ...     | mkΠRed _ _ () _ _
 
--- the real case.
+-- `Σ'` against everything else, both ways: impossible.
+irrel₁ c (⊩₁base p) (⊩₁Σ q _ _) with joinW c p q
+... | E , (bE , σE) with base-nf bE
+...   | refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₁ c (⊩₁ne p n) (⊩₁Σ q _ _) with joinW c p q
+... | E , (eE , σE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₁ c (⊩₁U p) (⊩₁Σ q _ _) with joinW c p q
+... | E , (uE , σE) with U-nf uE
+...   | refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₁ c (⊩₁Σ p _ _) (⊩₁base q) with joinW c p q
+... | E , (σE , bE) with base-nf bE
+...   | refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₁ c (⊩₁Σ p _ _) (⊩₁ne q n) with joinW c p q
+... | E , (σE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₁ c (⊩₁Σ p _ _) (⊩₁U q) with joinW c p q
+... | E , (σE , uE) with U-nf uE
+...   | refl with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₁ c (⊩₁Π p _ _) (⊩₁Σ q _ _) with joinW c p q
+... | E , (πE , σE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+irrel₁ c (⊩₁Σ p _ _) (⊩₁Π q _ _) with joinW c p q
+... | E , (σE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+
+irrel₁ c (⊩₁Σ p ⊩F ⊩G) (⊩₁Σ q ⊩F' ⊩G') with joinW c p q
+... | E , (σE₁ , σE₂) with Σ-reduct σE₁ | Σ-reduct σE₂
+...   | mkΣRed F₁ G₁ eq₁ rF₁ rG₁ | mkΣRed F₂ G₂ eq₂ rF₂ rG₂
+        with Σinj≡ (trans (sym eq₁) eq₂)
+...       | (refl , refl) =
+            (λ t h →
+               (projl h
+               , ( projl (irrel₁ (ctrnᵀ (red→≅ᵀ rF₁) (csymᵀ (red→≅ᵀ rF₂))) ⊩F ⊩F')
+                         (fst t) (dfst (projr h))
+                 , projl (irrel₁ (≅ᵀ-sub (single (fst t))
+                                   (ctrnᵀ (red→≅ᵀ rG₁) (csymᵀ (red→≅ᵀ rG₂))))
+                                 (⊩G (fst t) (dfst (projr h)))
+                                 (⊩G' (fst t)
+                                   (projl (irrel₁ (ctrnᵀ (red→≅ᵀ rF₁)
+                                                         (csymᵀ (red→≅ᵀ rF₂)))
+                                                  ⊩F ⊩F') (fst t) (dfst (projr h)))))
+                         (snd t) (dsnd (projr h)) )))
+          , (λ t h →
+               (projl h
+               , ( projr (irrel₁ (ctrnᵀ (red→≅ᵀ rF₁) (csymᵀ (red→≅ᵀ rF₂))) ⊩F ⊩F')
+                         (fst t) (dfst (projr h))
+                 , projr (irrel₁ (≅ᵀ-sub (single (fst t))
+                                   (ctrnᵀ (red→≅ᵀ rG₁) (csymᵀ (red→≅ᵀ rG₂))))
+                                 (⊩G (fst t)
+                                   (projr (irrel₁ (ctrnᵀ (red→≅ᵀ rF₁)
+                                                         (csymᵀ (red→≅ᵀ rF₂)))
+                                                  ⊩F ⊩F') (fst t) (dfst (projr h))))
+                                 (⊩G' (fst t) (dfst (projr h))))
+                         (snd t) (dsnd (projr h)) )))
+
+-- the real `Π` case.
 irrel₁ c (⊩₁Π p ⊩F ⊩G) (⊩₁Π q ⊩F' ⊩G') with joinW c p q
 ... | E , (πE₁ , πE₂) with Π-reduct πE₁ | Π-reduct πE₂
 ...   | mkΠRed F₁ G₁ eq₁ rF₁ rG₁ | mkΠRed F₂ G₂ eq₂ rF₂ rG₂
@@ -487,6 +663,13 @@ fwd₁ p (⊩₁Π q ⊩F ⊩G) with confluentᵀ p q
               (λ u r → fwd₁ (⟶ᵀ*-sub (single u) rG)
                             (⊩G u (projr (irrel₁ (red→≅ᵀ rF) ⊩F (fwd₁ rF ⊩F)) u r)))
 
+fwd₁ p (⊩₁Σ q ⊩F ⊩G) with confluentᵀ p q
+... | E , (bE , σE) with Σ-reduct σE
+...   | mkΣRed F₁ G₁ refl rF rG =
+        ⊩₁Σ bE (fwd₁ rF ⊩F)
+              (λ u r → fwd₁ (⟶ᵀ*-sub (single u) rG)
+                            (⊩G u (projr (irrel₁ (red→≅ᵀ rF) ⊩F (fwd₁ rF ⊩F)) u r)))
+
 -- ★ the shape `⊢conv` needs.
 conv₁ : {A B : RTy Γ} → A ≅ᵀ B → ⊩₁ A → ⊩₁ B
 conv₁ c R with church-rosserᵀ c
@@ -505,6 +688,7 @@ CR1₁ (⊩₁base _)  h = h
 CR1₁ (⊩₁U _)     h = projl h
 CR1₁ (⊩₁ne _ _)  h = h
 CR1₁ (⊩₁Π _ _ _) h = projl h
+CR1₁ (⊩₁Σ _ _ _) h = projl h
 
 CR3₁ : {A : RTy Γ} (R : ⊩₁ A) {t : RTm Γ} → SNe t → R ⊩₁∋ t
 CR3₁ (⊩₁base _)    nt = sn-ne nt
@@ -512,6 +696,9 @@ CR3₁ (⊩₁U _)       nt = (sn-ne nt , ⊩₀ne doneᵀ (sne→ne nt))
 CR3₁ (⊩₁ne _ _)    nt = sn-ne nt
 CR3₁ (⊩₁Π _ ⊩F ⊩G) nt =
   (sn-ne nt , λ u ru → CR3₁ (⊩G u ru) (sne-app nt (CR1₁ ⊩F ru)))
+CR3₁ (⊩₁Σ _ ⊩F ⊩G) {t} nt =
+  (sn-ne nt , ( CR3₁ ⊩F (sne-fst nt)
+              , CR3₁ (⊩G (fst t) (CR3₁ ⊩F (sne-fst nt))) (sne-snd nt) ))
 
 exp₁ : {A : RTy Γ} (R : ⊩₁ A) {t t' : RTm Γ} → SNRed t t' → R ⊩₁∋ t' → R ⊩₁∋ t
 exp₁ (⊩₁base _)    r h = sn-exp r h
@@ -520,6 +707,15 @@ exp₁ (⊩₁U _)       r h =
   (sn-exp r (projl h) , bwd₀ (⟶ᵀ*-El (step (snr→⟶ r) done)) (projr h))
 exp₁ (⊩₁Π _ ⊩F ⊩G) r h =
   (sn-exp r (projl h) , λ v rv → exp₁ (⊩G v rv) (snr-app r) (projr h v rv))
+exp₁ (⊩₁Σ {G = G} _ ⊩F ⊩G) {t} {t'} r h =
+  ( sn-exp r (projl h)
+  , ( exp₁ ⊩F (snr-fst r) (dfst (projr h))
+    , projl (irrel₁ (csymᵀ (red→≅ᵀ (subTy-monoˢ
+                              (single-mono (step (ξ-fst (snr→⟶ r)) done)) G)))
+                    (⊩G (fst t') (dfst (projr h)))
+                    (⊩G (fst t) (exp₁ ⊩F (snr-fst r) (dfst (projr h)))))
+            (snd t)
+            (exp₁ (⊩G (fst t') (dfst (projr h))) (snr-snd r) (dsnd (projr h))) ))
 
 ⊩var₁ : {A : RTy Γ} (R : ⊩₁ A) (x : Var Γ) → R ⊩₁∋ var x
 ⊩var₁ R x = CR3₁ R (sne-var x)
@@ -542,9 +738,46 @@ emb (⊩₀base p)    = ⊩₁base p
 emb (⊩₀ne p n)    = ⊩₁ne p n
 emb (⊩₀Π p ⊩F ⊩G) =
   ⊩₁Π p (emb ⊩F) (λ u r → emb (⊩G u (projr (emb-coh ⊩F) u r)))
+emb (⊩₀Σ p ⊩F ⊩G) =
+  ⊩₁Σ p (emb ⊩F) (λ u r → emb (⊩G u (projr (emb-coh ⊩F) u r)))
 
 emb-coh (⊩₀base _) = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀ne _ _) = (λ _ h → h) , (λ _ h → h)
+emb-coh (⊩₀Σ _ ⊩F ⊩G) =
+    (λ t h → (projl h
+             , ( projl (emb-coh ⊩F) (fst t) (dfst (projr h))
+               , projl (emb-coh (⊩G (fst t)
+                          (projr (emb-coh ⊩F) (fst t)
+                            (projl (emb-coh ⊩F) (fst t) (dfst (projr h))))))
+                       (snd t)
+                       (projl (irrel₀ crflᵀ
+                                (⊩G (fst t) (dfst (projr h)))
+                                (⊩G (fst t)
+                                  (projr (emb-coh ⊩F) (fst t)
+                                    (projl (emb-coh ⊩F) (fst t) (dfst (projr h))))))
+                              (snd t) (dsnd (projr h))) )))
+  , (λ t h → (projl h
+             , ( projr (emb-coh ⊩F) (fst t) (dfst (projr h))
+               , projl (irrel₀ crflᵀ
+                          (⊩G (fst t)
+                            (projr (emb-coh ⊩F) (fst t)
+                              (projl (emb-coh ⊩F) (fst t)
+                                (projr (emb-coh ⊩F) (fst t) (dfst (projr h))))))
+                          (⊩G (fst t) (projr (emb-coh ⊩F) (fst t) (dfst (projr h)))))
+                       (snd t)
+                       (projr (emb-coh (⊩G (fst t)
+                                 (projr (emb-coh ⊩F) (fst t)
+                                   (projl (emb-coh ⊩F) (fst t)
+                                     (projr (emb-coh ⊩F) (fst t) (dfst (projr h)))))))
+                              (snd t)
+                              (projl (irrel₁ crflᵀ
+                                       (emb (⊩G (fst t)
+                                         (projr (emb-coh ⊩F) (fst t) (dfst (projr h)))))
+                                       (emb (⊩G (fst t)
+                                         (projr (emb-coh ⊩F) (fst t)
+                                           (projl (emb-coh ⊩F) (fst t)
+                                             (projr (emb-coh ⊩F) (fst t) (dfst (projr h))))))))
+                                     (snd t) (dsnd (projr h)))) )))
 emb-coh (⊩₀Π _ ⊩F ⊩G) =
     (λ t h → (projl h , λ u r₁ →
        projl (emb-coh (⊩G u (projr (emb-coh ⊩F) u r₁)))
@@ -591,6 +824,39 @@ sem-app : {A : RTy Γ} {F : RTy Γ} {G : RTy (Γ ∙)}
           (⊩₁Π p ⊩F ⊩G) ⊩₁∋ t → (r : ⊩F ⊩₁∋ u) → (⊩G u r) ⊩₁∋ app t u
 sem-app p ⊩F ⊩G h r = projr h _ r
 
+-- Σ' introduction and elimination.  `sem-fst`/`sem-snd` are the two projections
+-- of the membership clause; `sem-pair` is the one with content, because
+-- `fst (pair a b) ⟶ a` moves the SECOND component's TYPE (`G[fst (pair a b)]`
+-- vs `G[a]`), so it needs `exp₁` at both components and `irrel₁` to bridge.
+sem-fst : {A : RTy Γ} {F : RTy Γ} {G : RTy (Γ ∙)}
+          (p : A ⟶ᵀ* Σ' F G) (⊩F : ⊩₁ F)
+          (⊩G : (u : RTm Γ) → ⊩F ⊩₁∋ u → ⊩₁ (subTy (single u) G))
+          {t : RTm Γ} → (⊩₁Σ p ⊩F ⊩G) ⊩₁∋ t → ⊩F ⊩₁∋ fst t
+sem-fst p ⊩F ⊩G h = dfst (projr h)
+
+sem-snd : {A : RTy Γ} {F : RTy Γ} {G : RTy (Γ ∙)}
+          (p : A ⟶ᵀ* Σ' F G) (⊩F : ⊩₁ F)
+          (⊩G : (u : RTm Γ) → ⊩F ⊩₁∋ u → ⊩₁ (subTy (single u) G))
+          {t : RTm Γ} (h : (⊩₁Σ p ⊩F ⊩G) ⊩₁∋ t) →
+          (⊩G (fst t) (dfst (projr h))) ⊩₁∋ snd t
+sem-snd p ⊩F ⊩G h = dsnd (projr h)
+
+sem-pair : {A : RTy Γ} {F : RTy Γ} {G : RTy (Γ ∙)}
+           (p : A ⟶ᵀ* Σ' F G) (⊩F : ⊩₁ F)
+           (⊩G : (u : RTm Γ) → ⊩F ⊩₁∋ u → ⊩₁ (subTy (single u) G))
+           {a b : RTm Γ} → SN a → SN b →
+           (ra : ⊩F ⊩₁∋ a) → (⊩G a ra) ⊩₁∋ b →
+           (⊩₁Σ p ⊩F ⊩G) ⊩₁∋ pair a b
+sem-pair {G = G} p ⊩F ⊩G {a} {b} sna snb ra rb =
+  ( sn-pair sna snb
+  , ( exp₁ ⊩F (snr-βfst snb) ra
+    , projl (irrel₁ (csymᵀ (red→≅ᵀ (subTy-monoˢ
+                              (single-mono (step (βfst a b) done)) G)))
+                    (⊩G a ra)
+                    (⊩G (fst (pair a b)) (exp₁ ⊩F (snr-βfst snb) ra)))
+            (snd (pair a b))
+            (exp₁ (⊩G a ra) (snr-βsnd sna) rb) ))
+
 -- ★ the `ty-El` obligation: one projection, level 1 → 0.
 sem-El : {A : RTy Γ} (p : A ⟶ᵀ* U) {c : RTm Γ} → (⊩₁U p) ⊩₁∋ c → ⊩₀ (El c)
 sem-El p h = projr h
@@ -607,6 +873,14 @@ sem-⌜Π⌝ : {A : RTy Γ} (p : A ⟶ᵀ* U) {c : RTm Γ} {d : RTm (Γ ∙)}
         → (⊩₁U p) ⊩₁∋ ⌜Π⌝ c d
 sem-⌜Π⌝ p snc snD ⊩c f =
   (sn-cΠ snc snD , ⊩₀Π (stepᵀ (El-⌜Π⌝ _ _) doneᵀ) ⊩c f)
+
+sem-⌜Σ⌝ : {A : RTy Γ} (p : A ⟶ᵀ* U) {c : RTm Γ} {d : RTm (Γ ∙)}
+        → SN c → SN d
+        → (⊩c : ⊩₀ (El c))
+        → ((u : RTm Γ) → ⊩c ⊩₀∋ u → ⊩₀ (El (subTm (single u) d)))
+        → (⊩₁U p) ⊩₁∋ ⌜Σ⌝ c d
+sem-⌜Σ⌝ p snc snD ⊩c f =
+  (sn-cΣ snc snD , ⊩₀Σ (stepᵀ (El-⌜Σ⌝ _ _) doneᵀ) ⊩c f)
 
 ------------------------------------------------------------------------
 -- 7. WEAK NORMALIZATION — exactly `NbEPDirDBDec.dec-conv`'s input.
