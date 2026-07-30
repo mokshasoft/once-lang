@@ -186,8 +186,12 @@ Each box: what the layer ADDS, then the options tried, with verdicts.
 │       ✅ subject reduction, Π/Σ injectivity, typed renaming/subst        │
 │       ✅ dec-≅ᵀ, snᵀ, nfᵀ  — the TYPE level is CLOSED (dHoTT-37)         │
 │       🔴 W1: TERM SN with the universe. The sole remaining input.        │
-│           Technique known (Abel–Öhman–Vezzosi induction-recursion),      │
-│           template proven twice (NbEPDirDBSN / SNSig).                   │
+│           ✅ W1a the IR shape SPIKED and accepted (SpikeSNU), with       │
+│              CR1/CR2/CR3 — the "positivity checker" risk is RETIRED.     │
+│           🔴 W1b the REAL obstruction, relocated by that spike:          │
+│              forward conversion transfer needs TYPE-LEVEL CONFLUENCE.    │
+│              Confluence work, not reducibility work — dHoTT-25's         │
+│              technique, already executed once here for terms.            │
 │           ⚠ the erasure shortcut is REFUTED, not unattempted.            │
 │  ✅ consistency — SpikeErase (raw), NbEPDirDTTSem (dependent mechanism)  │
 │  ❌ sized types — HARD BAN. structural or WF recursion only.             │
@@ -368,11 +372,25 @@ and for types: don't compute at all, stay in the nat-trans + cata fragment.
   W0b dynamic cost semantics  ✅                 (linearization-7, NbEPLinDyn)
   W0c Lin↔QTT bridge          ✅ UNCOMMITTED     (linearization-8, NbEPLinQTT)
   ──────────────────────────────────────────────────────────────────────
-  W0e CODATA in the linear core   🔴 ★ NEXT — SpikeLinNu.agda, not started
+  W0e CODATA in the linear core   🔴 SpikeLinNu.agda, not started
        └► W0d port the real IR    🟡 blocked only on W0e
-  W1  term SN + universe          🔴 research-scale, on BOTH paths' path
+  W1a SN⁺ induction-recursion     ✅ SPIKED — SpikeSNU, CR1/CR2/CR3, risk retired
+  W1b type-level confluence       🔴 ★ NEXT — the relocated obstruction
+       └► Kripke action → fund → Σ → port onto NbEPDirDBPi
        └► W2/W3 → W4 → W5 → W6    🔴 the directed layer, no prior art
 ```
+
+**What the W1 spike changed.** The plan had W1 as one undifferentiated
+research-scale item whose top risk was "the induction-recursion may not go
+through Agda's positivity checker". It does go through — indexed over dependent
+syntax, with a substitution-computed index, and with all three candidate
+conditions proven over it. What the spike then found is that the difficulty was
+never there: it is in the FORWARD conversion transfer `A ⟶ᵀ B → ⊩ A → ⊩ B`, and
+inducting on `⊩` localises it to a single constructor (`⊩red`), where two
+reductions out of one type must be joined. That is **confluence work, not
+reducibility work** — the same technique as dHoTT-25, already executed once in
+this repo for terms. A different and much better-understood job than the one
+the plan was budgeting for.
 
 The working tree holds linearization-8 (`NbEPLinQTT.agda` new,
 `NbEPLinRec/Pass/Dyn` gained the `lassoc`/`lassoc⁻`/`lswap` clauses, plan +

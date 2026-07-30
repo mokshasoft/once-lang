@@ -415,6 +415,55 @@ where erasure DOES work, and exactly why.)
 conditions `CR1`/`CR2`/`CR3`, Kripke closure `Red-ren`, intro lemmas `abs`/`red-pair`,
 the `fund` shape. Only the type-growth needs the IR upgrade.
 
+#### W1a — the IR spike  ✅ **DONE (`SpikeSNU`, 2026-07-30). The top risk is RETIRED.**
+
+`--safe`, zero postulates, zero holes, 418 lines, ~0.5 s. §6's mitigation
+("spike the IR shape in isolation BEFORE touching the kernel") executed.
+
+**The shape goes through.** The inductive-recursive pair — `⊩_` an inductive family
+over `Ty Γ`, `_⊩∋_` a function by recursion on it, used NEGATIVELY inside `⊩Π` — is
+accepted by Agda 2.8's positivity *and* termination checkers, **indexed over dependent
+syntax with a substitution-computed index** (`⊩Π`'s codomain is `⊩ (subTy (single u) B)`,
+depending on the very `u` the field binds). That last part is what had no textbook
+precedent here; Dybjer's `π : (a : U) → (T a → U) → U` is unindexed.
+
+| built | what it says |
+|---|---|
+| `⊩_` / `_⊩∋_` | the IR knot, accepted; `⊩red` absorbs `El`-decoding, and being a DATA constructor it *encodes* decoding-termination in the evidence rather than assuming it |
+| `El-Π-computes` | `refl`: membership at `El (⌜Π⌝ ⌜base⌝ ⌜base⌝)` computes to the FUNCTION-SPACE clause — the decoding genuinely changes semantic shape, which is exactly what erasure cannot see |
+| ★ `CR1`/`CR2`/`CR3` | all three candidate conditions, by recursion on `⊩`, including the `⊩B u r` recursion *under a constructor's function field* (the `f x < sup f` pattern) |
+| `⊩var` | every semantic type is inhabited at every variable |
+
+Design note worth keeping in the port: the `Π` clause carries `SN t` as an explicit
+conjunct. That is what makes CR1 hold at `Π` *without* applying `t` to a fresh variable
+— which would otherwise force the Kripke layer up front.
+
+#### W1b — ★ the REAL obstruction, now named: TYPE-LEVEL CONFLUENCE  🔴 **NEXT**
+
+The spike also relocated the difficulty, and this is the more valuable half of it.
+`⊢conv` needs the FORWARD transfer `A ⟶ᵀ B → ⊩ A → ⊩ B` (`⊩red` is only backward).
+Inducting on `⊩` localises the obstruction to **exactly one constructor**:
+
+- `⊩base`/`⊩U` — ✅ machine-checked vacuous (`fwd-base`/`fwd-U`);
+- `⊩ne` — ✅ machine-checked (`fwd-ne`): `El n ⟶ᵀ B` with `n` neutral *forces* `ξ-El`,
+  since `El-⌜base⌝`/`El-⌜Π⌝` need the code to BE a constructor;
+- `⊩Π` — analysis only: wants ⊩-irrelevance + `_⟶ᵀ_` substitution-stability, both routine;
+- **`⊩red` — ✗ two reductions leave the same type and must be JOINED.** Nothing
+  structural does that, and the non-determinism is real: `El (⌜Π⌝ c d)` steps both by
+  `El-⌜Π⌝` (decode) and by `ξ-El` (reduce inside the code).
+
+⇒ **Type-level confluence is the precise missing input, and the ONLY missing input for
+transfer.** `critical-pair-joins` machine-checks that the interesting critical pair does
+join, and every remaining overlap bottoms out in TERM confluence — already proven
+(dHoTT-25). **So W1's remaining core is CONFLUENCE work, not reducibility work**: lift
+`NbEPDirDBConf.church-rosser` from `_⟶_` to `_⟶ᵀ_`. Same technique as dHoTT-25, which
+this repo has already executed once. That is a materially better position than
+"research-scale induction-recursion", and it is why the risk table below is revised.
+
+**Then:** the Kripke action (`⊩`/`⊩∋` stable under renaming — mechanical but bulky,
+needed for `fund`'s λ-case), `fund` itself, Σ/pairs per dHoTT-36's template, and the
+port onto `NbEPDirDBPi`'s real syntax.
+
 **Done when:** `sn : Γ ⊢ A → SN t` for the full committed kernel; `dec-conv`
 unconditional. **Independent of W2–W6 — start here.**
 
@@ -499,7 +548,9 @@ the denotational bridge `core → ≋`.
 ```
 W0  exponentials ═══► GATE PASSED ✅ (linearization-6)
                             │
-W1  SN⁺ ────────────────────┼──► unconditional dec-conv   [START HERE]
+W1a IR spike ✅ (SpikeSNU)  │
+     └► W1b type-level confluence ──► Kripke ──► fund ──► Σ ──► port
+                            ├──► unconditional dec-conv   [START HERE]
                             │
 W2  internalize Hom ──┐     │
                       ├──► W6  welding
@@ -569,7 +620,8 @@ conversion rule. Two consequences:
 
 | risk | severity | mitigation |
 |---|---|---|
-| W1's induction-recursion does not go through in Agda's positivity checker | high | it is the published Abel–Öhman–Vezzosi construction; spike the IR shape in isolation BEFORE touching the kernel, as the SpikeCIR line did |
+| ~~W1's induction-recursion does not go through in Agda's positivity checker~~ | ~~high~~ | ✅ **RETIRED 2026-07-30 by `SpikeSNU`** — the knot is accepted indexed over dependent syntax with a substitution-computed index, and CR1/CR2/CR3 are proven over it. The mitigation (spike in isolation first) was executed and paid |
+| **W1's real core: lifting confluence from `_⟶_` to `_⟶ᵀ_`** (the `⊩red` case of forward conversion transfer) | medium | the technique is dHoTT-25's, already executed once in this repo for terms; `SpikeSNU.critical-pair-joins` checks that the one interesting critical pair joins, and every other overlap bottoms out in term confluence |
 | W2/W3 cascade blows up the metatheory beyond one person's reach | high | land them as ONE cascade; re-verify the six-module chain per dHoTT-32/33's pattern, which is the measured precedent |
 | W4 has no prior art and may hit a genuine obstruction | medium | dHoTT-20 says the syntactic route dissolves the semantic one's blocker; if a NEW obstruction appears, record it and stop — do not grind (the raw-M3c lesson) |
 | §1.3's linear answer couples this plan to a SECOND research project (gaps 1–3) | high | W0 is the gate and the cheapest of the three; if exponentials do not linearize cleanly, reopen §1.3 BEFORE any Phase-2 work |
