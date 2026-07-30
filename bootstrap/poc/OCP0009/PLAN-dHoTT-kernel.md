@@ -527,13 +527,61 @@ becomes a datatype — exactly what the spine route lacks. Cost moves to proving
 inductive presentation sound for accessibility-`SN`, the direction actually needed.
 Secondary benefit: it also handles η-expansion, so it survives a later η change.
 
-#### W1d — remaining  🔴 **NEXT**
+#### W1d — Joachimski–Matthes inductive SN  ✅ **DONE (`SpikeSNJ`, 2026-07-30). THE WALL IS GONE.**
 
-1. **Inductive SN** (Joachimski–Matthes) and hence `sn-exp·`, hence the LR-level `exp`.
-2. **`fund`** over `_⊢_∷_` — `⊢var`/`⊢app`/`⊢conv` already discharged (W1c), `⊢lam`
-   unblocked by (1).
-3. **Σ'** — the fourth whnf shape and the `pair`/`fst`/`snd` clauses (mechanical).
-4. **`sn : Γ ⊢ t ∷ A → SN t`**, hence `dec-conv` unconditional.
+`--safe`, zero postulates, zero holes, 362 lines, ~1.0 s, over the real `RTm`.
+
+**★ The move.** `_⟶ₕ_` becomes an inductive family `SNRed` with a congruence
+constructor `snr-app : SNRed t t' → SNRed (app t u) (app t' u)`, and head expansion
+becomes a **constructor** of `SN` rather than a lemma about it. The `Π` case of the
+LR's expansion — the thing that needed the whole spine generalization — is then:
+
+```agda
+exp (⊩Π _ ⊩F ⊩G) r h =
+  (sn-exp r (projl h) , λ v rv → exp (⊩G v rv) (snr-app r) (projr h v rv))
+```
+
+One `snr-app` and a structurally smaller recursive call. No spine, no inversion,
+nothing stuck. **W1c's `sn-exp` — the classic `abs` lemma that cost a lexicographic
+induction — is subsumed by the `snr-β` constructor.** So is `sn-app-ne`: `sne-app`
+*is* the constructor, which is why `CR3` here is four lines.
+
+**★ And the `SN → Acc` direction never arises.** The standard objection to JM is that
+its cost moves to proving the presentation sound for accessibility-`SN`, the hard
+direction. It does not arise, because of what the consumer actually asks for:
+`NbEPDirDBDec.dec-conv` takes `t ⟶* n` and `IsNormal n` — **weak** normalization. And
+WN falls out of the inductive presentation by structural recursion (`wn`/`wne`), since
+`sn-exp` records a reduction and every other constructor records a congruence.
+
+| built | what it says |
+|---|---|
+| `SNe`/`SN`/`SNRed` | the JM presentation over the kernel's real `RTm`, incl. pairs and codes |
+| ★ `exp` | LR head expansion — W1c's wall |
+| ★ `sem-lam` | `fund`'s λ-case, COMPLETE |
+| `CR1`/`CR3`/`⊩var`, `sem-app` | the rest of the candidate/semantic layer |
+| ★ `wn`/`wne`, `⊩wn` | weak normalization — exactly `dec-conv`'s input |
+| `redexSN`/`redex-nf` | non-vacuity: a real β-redex is `SN`, and `wn` computes its NF by `refl` |
+
+**⚠ Honest scope.** (i) The headline is now **weak** normalization, not strong. Nothing
+here proves inductive-`SN` equivalent to accessibility-`SN`; that is open and only worth
+doing if SN is wanted as a result in its own right. `SpikeSNW`/`SpikeSNX` are about
+accessibility-`SN` and stand unaffected. (ii) The LR is re-declared over the inductive
+`SN`; `SpikeSNW`'s `irrel`/`fwd*`/`bwd*`/`conv-⊩` port **verbatim**, since none of them
+touches `SN` or even membership — the nine non-`Π` cases of `irrel` are `λ _ h → h`, and
+the transfer lemmas only manipulate stored whnf reductions. Not copied, to keep the
+delta reviewable. (iii) `Σ'` still absent from `⊩`.
+
+#### W1e — assembling `fund`  🔴 **NEXT**
+
+Every case now has its lemma; what remains is the assembly.
+
+1. **Port `irrel`/`fwd*`/`conv-⊩`** onto the inductive-`SN` LR (verbatim, per above),
+   so one module holds the whole relation.
+2. **`fund`** over `_⊢_∷_` with reducible substitutions: `⊢var` (`⊩var`), `⊢app`
+   (`sem-app`), `⊢lam` (`sem-lam`), `⊢conv` (`conv-⊩` + `irrel`).
+3. **Σ'** — the fourth whnf shape plus `pair`/`fst`/`snd`; `SNRed` already carries
+   `snr-βfst`/`snr-βsnd`/`snr-fst`/`snr-snd` for it.
+4. **`wnorm : Γ ⊢ t ∷ A → WN t`**, hence `dec-conv` unconditional.
 
 *(superseded scoping retained below)*
 
@@ -650,7 +698,8 @@ W0  exponentials ═══► GATE PASSED ✅ (linearization-6)
 W1a IR spike ✅ (SpikeSNU)  │
 W1b conversion transfer ✅ (SpikeSNW — irrel, fwd*, conv-⊩)
 W1c 🟡 (SpikeSNX — Kripke STRUCK; sem-var/app/conv, sn-exp, non-Π exp)
-     └► W1d inductive SN ──► exp ──► fund ──► Σ' ──► sn ──► dec-conv
+W1d ✅ (SpikeSNJ — JM inductive SN: exp, sem-lam, wn. The wall is gone.)
+     └► W1e port irrel/fwd* ──► fund ──► Σ' ──► wnorm ──► dec-conv
                             ├──► unconditional dec-conv   [START HERE]
                             │
 W2  internalize Hom ──┐     │
@@ -724,7 +773,8 @@ conversion rule. Two consequences:
 | ~~W1's induction-recursion does not go through in Agda's positivity checker~~ | ~~high~~ | ✅ **RETIRED 2026-07-30 by `SpikeSNU`** — the knot is accepted indexed over dependent syntax with a substitution-computed index, and CR1/CR2/CR3 are proven over it. The mitigation (spike in isolation first) was executed and paid |
 | ~~W1's real core: lifting confluence from `_⟶_` to `_⟶ᵀ_`~~ | ~~medium~~ | ✅ **RETIRED 2026-07-30 by `SpikeSNW`** — and the lift did not have to be written at all: `NbEPDirDBInj` (dHoTT-26) already had `confluentᵀ`/`church-rosserᵀ`/`Π-reduct`, built for Π-injectivity. What W1b needed was the whnf-carrying redesign that consumes them; `conv-⊩` is proven |
 | ~~W1c: the Kripke action's mutual block~~ | ~~medium~~ | ✅ **STRUCK 2026-07-30 by `SpikeSNX`** — not needed at all: `fund` is substitution-based, so its λ-case extends the substitution and the target context never grows; `SpikeSNU`'s `SN t` conjunct in the `Π` clause already removed the one place Kripke is classically forced (CR1 at `Π`) |
-| **W1d: SN closed under head expansion under a spine** — the last input to `fund`'s λ-case | medium | the spine-inversion route is REFUTED (Agda cannot split `β` against the stuck `_·_`); go via Joachimski–Matthes inductive `SN`, where head expansion is a constructor. Known technique, but a new presentation of `SN` to relate to the accessibility one |
+| ~~W1d: SN closed under head expansion under a spine~~ | ~~medium~~ | ✅ **RETIRED 2026-07-30 by `SpikeSNJ`** — Joachimski–Matthes makes head expansion a CONSTRUCTOR, so the lemma vanishes; and the feared cost (relating the presentation to accessibility-`SN`) never arises, because `dec-conv` consumes WEAK normalization and `wn` falls out structurally |
+| The headline result is now WN, not SN | low | `dec-conv` consumes WN — nothing downstream needs SN. Revisit only if SN is wanted for its own sake; the missing piece would be inductive-`SN` ⊆ accessibility-`SN` |
 | An obstruction is scheduled that the repo has already discharged elsewhere | medium | **this happened here** — W1b was scoped as "lift confluence" when dHoTT-26 had already lifted it. Grep the module list for the needed result before scheduling a research item |
 | W2/W3 cascade blows up the metatheory beyond one person's reach | high | land them as ONE cascade; re-verify the six-module chain per dHoTT-32/33's pattern, which is the measured precedent |
 | W4 has no prior art and may hit a genuine obstruction | medium | dHoTT-20 says the syntactic route dissolves the semantic one's blocker; if a NEW obstruction appears, record it and stop — do not grind (the raw-M3c lesson) |
