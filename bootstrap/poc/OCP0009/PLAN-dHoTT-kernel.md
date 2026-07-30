@@ -670,16 +670,69 @@ order. `SNRed` already carries `snr-βfst`/`snr-βsnd`/`snr-fst`/`snr-snd`, and
 `SNe`/`SN` already carry the pair/projection constructors, so the follow-up touches
 only `⊩₀`/`⊩₁` and the four proofs over them.
 
-#### W1g — `Σ'`, the `⊢ty` decision, then `fund`  🔴 **NEXT**
+#### W1g — `⊢ty` (option A) + `Σ'`  ✅ **DONE (2026-07-30)**
 
-1. **`Σ'` at both levels** (above) — mechanical, per dHoTT-36's template.
-2. **★ Take the `⊢ty` decision** — `HANDOFF-2026-07-30.md` §3 has the complete
-   analysis. Recommendation: option A (intrinsic premises), landed as one cascade;
-   measured cost is TWO modules (`NbEPDirDBType`, `NbEPDirDBSubj`), not six, because
-   `Conf`/`Inj`/`SR`/`Dec` never mention `_⊢_∷_`.
-3. **`fund-ty`/`fund`** mutual, with reducible substitutions `⊩ˢ Γ σ`. Every rule
-   already has its semantic lemma in `NbEPDirDBLR`.
-4. **`wnorm : ⊢ Γ → Γ ⊢ t ∷ A → WN t`**, hence `dec-conv` unconditional.
+**Option A taken** (owner's call). `NbEPDirDBType` gains `_⊢ty_` (`ty-base`/`ty-U`/
+`ty-Π`/`ty-Σ`/`ty-El`) and `⊢ctx_`, mutual with `_⊢_∷_`. **Only two rules gained a
+premise** — `⊢lam` (`Γ ⊢ty A`) and `⊢pair` (`(Γ ▹ A) ⊢ty B`); everywhere else the
+type is recovered from the subderivations.
+
+**The cascade matched the measurement exactly: two modules plus one example.**
+`NbEPDirDBSubj` gained `ren-ty`/`sub-ty` mutual with `ren-lemma`/`sub-lemma`, and
+`gen-lam`/`gen-pair` now also return the well-formedness that `sr`'s `ξ-lam`/
+`ξ-pair*` need to reconstruct those constructors. `NbEPDirDBSR` had one example.
+Nothing on the reduction side moved — `Conf`/`Inj`/`Dec`/`Core`/`Pass`/`Eta`/`Norm`
+never mention `_⊢_∷_`.
+
+**`Σ'` in the relation** at both levels, with the dependent-pair membership, all
+eight cross cases + the real `Σ'/Σ'` case in `irrel` per level, and
+`sem-pair`/`sem-fst`/`sem-snd`/`sem-⌜Σ⌝`.
+
+⚠ **The one thing `Π` did not prepare for.** `Σ'` is the first former whose second
+component's TYPE moves when the term does: expanding `t` to `t'` changes `fst t`, so
+the codomain instance changes. `exp` at `Σ'` therefore needs a genuine CONVERSION
+(`subTy-monoˢ` + `irrel`) where `exp` at `Π` needed only a congruence (`snr-app`).
+Same in `sem-pair`, since `fst (pair a b) ⟶ a`. So `Σ'` was not the pure copy-paste
+W1f projected — the cross cases were, the real case was not.
+
+#### W1h — `fund`  🔴 **NEXT**
+
+★ **A design finding that removes the obvious first step: SYNTACTIC VALIDITY IS NOT
+NEEDED, and `⊢conv` needs no premise.** The natural plan is
+`validity : ⊢ctx Γ → Γ ⊢ t ∷ A → Γ ⊢ty A`, and its `⊢conv` case would need `⊢ty`
+closed under conversion — which is **not provable**: the forward direction works
+(via `sr`), but the backward one does not, because a `ty-Π` derivation does not
+record that its components were `El`s. That would force a `Γ ⊢ty B` premise on
+`⊢conv`, cascading into every one of `sr`'s ~14 `⊢conv` reconstructions.
+
+None of that is necessary. State `fund` in **existential** form:
+
+```agda
+fund : ⊢ctx Γ → Γ ⊢ t ∷ A → ⊩ˢ Γ σ →
+       Σ (⊩₁ (subTy σ A)) (λ R → R ⊩₁∋ subTm σ t)
+```
+
+Then `⊢conv` is discharged by `conv₁` + `sem-conv` — **the logical relation is
+already closed under conversion, which is exactly what W1b bought.** No validity
+lemma, no `⊢conv` premise, no `⊢ty`-closed-under-conversion. This is why option A's
+cascade stayed at two modules.
+
+Remaining, in order:
+
+1. **`⊩ˢ Γ σ`** — reducible substitutions: for each `Γ ∋ x ∷ A`, a `⊩₁ (subTy σ A)`
+   and a member at `subTm σ (var x)`. Plus extension (`⊩ˢ` for `σ,u`) and the
+   identity/variable instance.
+2. **`⊩₁`-SHAPE INVERSION** — the one genuinely new lemma. `⊢app` recurses on the
+   function to get some `R : ⊩₁ (Π A B)[σ]`, and must read off its `Π` payload; but
+   `R` could a priori be any constructor. `⊩₁ne`/`⊩₁base`/`⊩₁U`/`⊩₁Σ` at a Π-shaped
+   type are all refutable by `joinW` + `Π-reduct` — the same refutations `irrel`
+   already contains, so extract them as `⊩₁-Π-inv` / `⊩₁-Σ-inv` (~30 lines each).
+3. **`fund-ty`/`fund`** mutual. Every case now has its lemma: `⊢var`→`⊩var₁`,
+   `⊢lam`→`sem-lam` (its `⊢ty` premise feeds `fund-ty`), `⊢app`→`⊩₁-Π-inv`+`sem-app`,
+   `⊢pair`→`sem-pair`, `⊢fst`/`⊢snd`→`⊩₁-Σ-inv`+`sem-fst`/`sem-snd`,
+   `⊢⌜base⌝`/`⊢⌜Π⌝`/`⊢⌜Σ⌝`→`sem-⌜…⌝`, `⊢conv`→`conv₁`+`sem-conv`; `ty-El`→`sem-El`+`emb`.
+4. **`wnorm : ⊢ctx Γ → Γ ⊢ t ∷ A → WN t`** via `wn`, hence **`dec-conv`
+   unconditional** and Phase 1 closed.
 
 --------------------------------------------------------------------------
 ## 4. Sequencing
@@ -693,7 +746,8 @@ W1c 🟡 (SpikeSNX — Kripke STRUCK; sem-var/app/conv, sn-exp, non-Π exp)
 W1d ✅ (SpikeSNJ — JM inductive SN: exp, sem-lam, wn. The wall is gone.)
 W1e 🟡 (SpikeSNK — ⊩ not total; LR must be STRATIFIED by level. Both checked.)
 W1f ✅ (NbEPDirDBLR — the relation CONSOLIDATED, promoted out of the Spike line)
-     └► W1g Σ' ──► ⊢ty decision ──► fund ──► wnorm ──► dec-conv
+W1g ✅ (option A in the kernel: ⊢ty/⊢ctx, cascade = 2 modules; Σ' in the relation)
+     └► W1h ⊩ˢ ──► shape inversion ──► fund ──► wnorm ──► dec-conv
                             ├──► unconditional dec-conv   [START HERE]
                             │
 W2  internalize Hom ──┐     │
@@ -768,7 +822,8 @@ conversion rule. Two consequences:
 | ~~W1's real core: lifting confluence from `_⟶_` to `_⟶ᵀ_`~~ | ~~medium~~ | ✅ **RETIRED 2026-07-30 by `SpikeSNW`** — and the lift did not have to be written at all: `NbEPDirDBInj` (dHoTT-26) already had `confluentᵀ`/`church-rosserᵀ`/`Π-reduct`, built for Π-injectivity. What W1b needed was the whnf-carrying redesign that consumes them; `conv-⊩` is proven |
 | ~~W1c: the Kripke action's mutual block~~ | ~~medium~~ | ✅ **STRUCK 2026-07-30 by `SpikeSNX`** — not needed at all: `fund` is substitution-based, so its λ-case extends the substitution and the target context never grows; `SpikeSNU`'s `SN t` conjunct in the `Π` clause already removed the one place Kripke is classically forced (CR1 at `Π`) |
 | ~~W1d: SN closed under head expansion under a spine~~ | ~~medium~~ | ✅ **RETIRED 2026-07-30 by `SpikeSNJ`** — Joachimski–Matthes makes head expansion a CONSTRUCTOR, so the lemma vanishes; and the feared cost (relating the presentation to accessibility-`SN`) never arises, because `dec-conv` consumes WEAK normalization and `wn` falls out structurally |
-| ⚠ **The kernel may need `Γ ⊢ty A` premises** — `⊩` is not total over `RTy` (`SpikeSNK.¬⊩elLam`), so normalization for `_⊢_∷_` as it stands is not provable | **high** | a kernel-design decision, not a proof detail; adding premises to `⊢lam`/`⊢app`/`⊢pair` cascades through `NbEPDirDBSubj`/`NbEPDirDBDec` per §2. Alternative: state the theorem only for derivations with independently well-formed types |
+| ~~The kernel may need `Γ ⊢ty A` premises~~ | ~~high~~ | ✅ **RESOLVED 2026-07-30 — option A taken and landed.** Cascade was two modules as measured. Validity turned out NOT to be needed (existential `fund` + `conv₁`), so `⊢conv` gained no premise |
+| *(historical)* | — | a kernel-design decision, not a proof detail; adding premises to `⊢lam`/`⊢app`/`⊢pair` cascades through `NbEPDirDBSubj`/`NbEPDirDBDec` per §2. Alternative: state the theorem only for derivations with independently well-formed types |
 | ~~Four separate declarations of the logical relation~~ | ~~medium~~ | ✅ **RETIRED 2026-07-30 by `NbEPDirDBLR`** — consolidated into one promoted module, spike-free, both levels, transfer layer ported and verified |
 | The headline result is now WN, not SN | low | `dec-conv` consumes WN — nothing downstream needs SN. Revisit only if SN is wanted for its own sake; the missing piece would be inductive-`SN` ⊆ accessibility-`SN` |
 | An obstruction is scheduled that the repo has already discharged elsewhere | medium | **this happened here** — W1b was scoped as "lift confluence" when dHoTT-26 had already lifted it. Grep the module list for the needed result before scheduling a research item |
