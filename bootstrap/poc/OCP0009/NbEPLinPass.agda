@@ -68,10 +68,10 @@ open import normalizer.Testing.Evaluator
 open import poc.OCP0009.NbEPLinRec
   using ( LTm; lid; _∘l_; _⊗l_; ρl; ρl⁻; lul; lul⁻; dup; drop
         ; linl; linr; lcase; lIn; lcata; fstL; sndL; ⟨_,_⟩L
-        ; lcurry; leval
+        ; lcurry; leval; lassoc; lassoc⁻; lswap
         ; DupFree; df-∘; df-⊗; df-id; df-ρl; df-ρl⁻; df-lul; df-lul⁻
         ; df-drop; df-linl; df-linr; df-case; df-In; df-cata; fstL-df; sndL-df
-        ; df-lcurry; df-leval )
+        ; df-lcurry; df-leval; df-lassoc; df-lassoc⁻; df-lswap )
 
 ------------------------------------------------------------------------
 -- A denotational semantics for the linear core. `dup`/`drop` are where the
@@ -86,6 +86,9 @@ Lⁱ ρl           (a , tt) = a
 Lⁱ ρl⁻          a        = (a , tt)
 Lⁱ lul          (tt , a) = a
 Lⁱ lul⁻         a        = (tt , a)
+Lⁱ lassoc       ((a , b) , c) = (a , (b , c))
+Lⁱ lassoc⁻      (a , (b , c)) = ((a , b) , c)
+Lⁱ lswap        (a , b)  = (b , a)
 Lⁱ dup          a        = (a , a)
 Lⁱ drop         a        = tt
 Lⁱ linl         a        = inj₁ a
@@ -257,6 +260,9 @@ dupCount ρl            = zero
 dupCount ρl⁻           = zero
 dupCount lul           = zero
 dupCount lul⁻          = zero
+dupCount lassoc        = zero
+dupCount lassoc⁻       = zero
+dupCount lswap         = zero
 dupCount dup           = suc zero
 dupCount drop          = zero
 dupCount linl          = zero
@@ -323,6 +329,9 @@ frees ρl            = zero
 frees ρl⁻           = zero
 frees lul           = zero
 frees lul⁻          = zero
+frees lassoc        = zero
+frees lassoc⁻       = zero
+frees lswap         = zero
 frees dup           = zero
 frees drop          = suc zero
 frees linl          = zero
@@ -342,6 +351,9 @@ dupfree-no-alloc df-ρl        = refl
 dupfree-no-alloc df-ρl⁻       = refl
 dupfree-no-alloc df-lul       = refl
 dupfree-no-alloc df-lul⁻      = refl
+dupfree-no-alloc df-lassoc    = refl
+dupfree-no-alloc df-lassoc⁻   = refl
+dupfree-no-alloc df-lswap     = refl
 dupfree-no-alloc df-drop      = refl
 dupfree-no-alloc df-linl      = refl
 dupfree-no-alloc df-linr      = refl
