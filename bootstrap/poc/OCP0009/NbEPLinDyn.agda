@@ -69,10 +69,10 @@ open import normalizer.Testing.Evaluator
 open import poc.OCP0009.NbEPLinRec
   using ( LTm; lid; _∘l_; _⊗l_; ρl; ρl⁻; lul; lul⁻; dup; drop
         ; linl; linr; lcase; lIn; lcata; lcurry; leval
-        ; fstL; sndL; ⟨_,_⟩L
+        ; fstL; sndL; ⟨_,_⟩L; lassoc; lassoc⁻; lswap
         ; DupFree; df-∘; df-⊗; df-id; df-ρl; df-ρl⁻; df-lul; df-lul⁻
         ; df-drop; df-linl; df-linr; df-case; df-In; df-cata
-        ; df-lcurry; df-leval )
+        ; df-lcurry; df-leval; df-lassoc; df-lassoc⁻; df-lswap )
 open import poc.OCP0009.NbEPLinPass
   using ( ℕ; zero; suc; _+ℕ_; dupCount; FO; PairFree; pass-df; L⟦_⟧ )
 
@@ -149,6 +149,11 @@ Lᶜ ρl            (a , tt) = retᶜ a
 Lᶜ ρl⁻           a        = retᶜ (a , tt)
 Lᶜ lul           (tt , a) = retᶜ a
 Lᶜ lul⁻          a        = retᶜ (tt , a)
+-- ★ the structural isos are FREE: reassociating and braiding move data, they
+-- do not copy it. This is what makes a graded context split cost nothing.
+Lᶜ lassoc        ((a , b) , c) = retᶜ (a , (b , c))
+Lᶜ lassoc⁻       (a , (b , c)) = retᶜ ((a , b) , c)
+Lᶜ lswap         (a , b)  = retᶜ (b , a)
 Lᶜ dup           a        = ((a , a) , (suc zero))  -- ★ THE allocation
 Lᶜ drop          a        = retᶜ tt
 Lᶜ linl          a        = retᶜ (inj₁ a)
@@ -354,6 +359,9 @@ dyn-linear df-ρl           (a , tt) (fa , _)  = (fa , refl)
 dyn-linear df-ρl⁻          a        fa        = ((fa , tt) , refl)
 dyn-linear df-lul          (tt , a) (_ , fa)  = (fa , refl)
 dyn-linear df-lul⁻         a        fa        = ((tt , fa) , refl)
+dyn-linear df-lassoc  ((a , b) , c) ((fa , fb) , fc) = ((fa , (fb , fc)) , refl)
+dyn-linear df-lassoc⁻ (a , (b , c)) (fa , (fb , fc)) = (((fa , fb) , fc) , refl)
+dyn-linear df-lswap        (a , b)  (fa , fb) = ((fb , fa) , refl)
 dyn-linear df-drop         a        fa        = (tt , refl)
 dyn-linear df-linl         a        fa        = (fa , refl)
 dyn-linear df-linr         b        fb        = (fb , refl)

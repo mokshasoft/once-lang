@@ -49,6 +49,17 @@ data LTm : Ty → Ty → Set where
   ρl⁻   : ∀ {A} → LTm A (A * Unit)
   lul   : ∀ {A} → LTm (Unit * A) A
   lul⁻  : ∀ {A} → LTm A (Unit * A)
+  -- ASSOCIATOR + BRAIDING (linearization-8).  The SMC structural isomorphisms.
+  -- They were absent until the QTT bridge needed them, because the cartesian
+  -- pass routes every rearrangement through `dup` (`⟨_,_⟩L` can express any
+  -- reshuffle at the cost of a copy) — so nothing before `NbEPLinQTT` ever had
+  -- to move data WITHOUT duplicating it.  Splitting a graded context does:
+  -- `split` must carry a slot to whichever side demands it, and doing that with
+  -- `⟨_,_⟩L` would insert exactly the `dup` the grading proves unnecessary.
+  -- All three are dup-free and cost nothing (`Lᶜ` charges only `dup`).
+  lassoc  : ∀ {A B C} → LTm ((A * B) * C) (A * (B * C))
+  lassoc⁻ : ∀ {A B C} → LTm (A * (B * C)) ((A * B) * C)
+  lswap   : ∀ {A B} → LTm (A * B) (B * A)
   -- the comonoid — the ONLY sources of duplication / discard
   dup   : ∀ {A} → LTm A (A * A)
   drop  : ∀ {A} → LTm A Unit
@@ -106,6 +117,10 @@ data DupFree : ∀ {A B} → LTm A B → Set where
   df-ρl⁻  : ∀ {A} → DupFree (ρl⁻ {A})
   df-lul  : ∀ {A} → DupFree (lul {A})
   df-lul⁻ : ∀ {A} → DupFree (lul⁻ {A})
+  -- the structural isos move data without copying it
+  df-lassoc  : ∀ {A B C} → DupFree (lassoc {A} {B} {C})
+  df-lassoc⁻ : ∀ {A B C} → DupFree (lassoc⁻ {A} {B} {C})
+  df-lswap   : ∀ {A B} → DupFree (lswap {A} {B})
   df-drop : ∀ {A} → DupFree (drop {A})
   df-linl : ∀ {A B} → DupFree (linl {A} {B})
   df-linr : ∀ {A B} → DupFree (linr {A} {B})
@@ -173,6 +188,29 @@ fstL-df = df-∘ df-ρl (df-⊗ df-id df-drop)
 
 sndL-df : ∀ {A B} → DupFree (sndL {A} {B})
 sndL-df = df-∘ df-lul (df-⊗ df-drop df-id)
+
+------------------------------------------------------------------------
+-- The MIDDLE-FOUR INTERCHANGE, built from the structural isos alone.
+--
+--   (L ⊗ R) ⊗ (X ⊗ Y)  ⟶  (L ⊗ X) ⊗ (R ⊗ Y)
+--
+-- The one rearrangement a context split needs that the unitors cannot give:
+-- it regroups "environments together, payloads together" into "left half,
+-- right half". Dup-free — nothing is copied, only re-associated and braided.
+------------------------------------------------------------------------
+
+-- Route (each step named by the redex it moves):
+--   (L⊗R)⊗(X⊗Y) → L⊗(R⊗(X⊗Y)) → L⊗((R⊗X)⊗Y) → L⊗((X⊗R)⊗Y)
+--               → L⊗(X⊗(R⊗Y)) → (L⊗X)⊗(R⊗Y)
+mixL : ∀ {L R X Y} → LTm ((L * R) * (X * Y)) ((L * X) * (R * Y))
+mixL = lassoc⁻ ∘l (lid ⊗l lassoc) ∘l (lid ⊗l (lswap ⊗l lid))
+         ∘l (lid ⊗l lassoc⁻) ∘l lassoc
+
+mixL-df : ∀ {L R X Y} → DupFree (mixL {L} {R} {X} {Y})
+mixL-df = df-∘ df-lassoc⁻
+            (df-∘ (df-⊗ df-id df-lassoc)
+              (df-∘ (df-⊗ df-id (df-⊗ df-lswap df-id))
+                (df-∘ (df-⊗ df-id df-lassoc⁻) df-lassoc)))
 
 ------------------------------------------------------------------------
 -- FUSE and the NatTr linearity split.

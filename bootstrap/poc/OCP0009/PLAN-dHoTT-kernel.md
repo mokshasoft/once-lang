@@ -128,10 +128,13 @@ its equality already is. This is the same meeting point `NbEPMonD` sketches.
    once closures exist** (a closure body's dups fire once per application). See §3 W0.
 2. **Linear recursion schemes** — `PATHS.md`'s "hardest item on the board". `Para`
    inherently duplicating is a *language-design* consequence, not a proof detail.
-3. **No bridge between the Lin line and the QTT line.** Verified: zero modules import
-   both. QTT is a graded calculus over the NbE side; Lin is Fox over a free linear
-   category. **The "QTT layer in front of a linear core" is precisely the unbuilt
-   join.**
+3. ~~**No bridge between the Lin line and the QTT line.**~~ ✅ **CLOSED
+   (linearization-8, `NbEPLinQTT`).** The join is built and `--safe`: `Γ ⊢[ρ] A`
+   elaborates DIRECTLY into `LTm`, with the usage vector indexing the context
+   OBJECT. `𝟙` reaches the core with no `dup` (`bridge-linear`), `ω` goes through
+   the comonoid (`ω-alloc-1`), `𝟘` erases definitionally (`erase-K≡id`).
+   Semantics preserved (`Lq-sound`, threaded funext) and zero runtime allocation
+   for the graded-linear fragment (`bridge-dyn`). See §3 W0c.
 
 #### ⚠ The coupling risk this decision creates
 Going linear makes this plan depend on a SECOND research project carrying gaps 1–3.
@@ -249,6 +252,119 @@ be read off the syntax at all. **A full dynamic account needs an event trace, no
 count** — `NbEPLinLive`'s `□◇` streams are the shape that would take. That trace, and
 value-agreement between `Lᶜ` and `Lⁱ` (a section/retraction at `⇒` plus funext,
 deliberately not attempted), are what remain here.
+
+### W0c — The Lin↔QTT bridge  ✅ **DONE (linearization-8, `NbEPLinQTT`)**
+
+`--safe`, zero postulates, zero holes, 491 lines, ~1.9 s. The first module to import
+both lines. §1.3 gap 3 closed.
+
+**The central move: CONTEXT ADDITION IS TENSOR SPLITTING, NOT DUPLICATION.** QTT's
+`app`/`pair` combine sub-usages with `_+ᵘ_`. `NbEPQTTJ.⟦_⟧` renders that as the
+cartesian `⟨_,_⟩`, which `NbEPLinPass.L⟦_⟧` must then linearize with a `dup` — one
+allocation per application and per pairing, *unconditionally*. Here `_+ᵘ_` becomes
+`split`, which ROUTES each slot to whichever side demands it. A `dup` appears in
+exactly one clause: both sides demanding the same slot.
+
+**And the semiring makes that clause the `ω` clause.** `𝟙` is not a sum of two nonzero
+multiplicities (`𝟙 +ᵐ 𝟙 = ω`), so a linearly-used slot can never be demanded by both
+halves of a split. "A `𝟙`-graded variable reaches the linear core with no `dup`" is
+therefore not an optimization to argue for — it is forced by `Mult`'s addition, and
+`split-df`'s four both-demanded clauses are literally absurd patterns.
+
+| built | what it says |
+|---|---|
+| `⟪_⟫ᶜ` | the context object INDEXED BY USAGE; a `𝟘` slot is absent, not ignored |
+| `split` | `_+ᵘ_` as a linear morphism — the routing table |
+| `scale𝟙`/`scaleω` | `_·ᵘ_` at nonzero `π` is a relabelling, built from identities |
+| `Lq⟦_⟧` | `Γ ⊢[ρ] A → LTm ⟪ρ⟫ᶜ ⌊A⌋ᵗ` — the direct elaboration |
+| ★ `bridge-linear` | `LinD t → DupFree Lq⟦t⟧` — the `𝟙` half of §1.3's shape |
+| ★ `Lq-sound` | semantics preserved (threaded funext, the two `lcurry` clauses) |
+| ★ `bridge-dyn` | via `dyn-linear`: **zero allocations at runtime**, from a graded source |
+| `erase-K≡id` | `𝟘` erases on the nose: `Lq⟦K⟧ ≡ Lq⟦idₗ⟧ ≡ lcurry sndL` |
+| `ω-alloc-1` / `ω-not-linear` | `ω` costs exactly one `dup`, and `LinD` correctly refuses it |
+
+**★ THE PAYOFF, MEASURED.** Both routes, same source, `refl` witnesses:
+
+| source | naive (`⟦_⟧` then `L⟦_⟧`) | bridge |
+|---|---|---|
+| `pair (var (vs vz)) (var vz)` — two linear vars | `naive-dupPair-1` = **1** | `bridge-dupPair-0` = **0** |
+| `app (var (vs vz)) (var vz)` — linear `f x` | `naive-applyLin-1` = **1** | `bridge-applyLin-0` = **0** |
+
+That allocation is the price of discarding the usage vector at elaboration. §1.3's
+"stop throwing away information you already compute", as a number.
+
+**⚠ WHAT IT COST THE LINEAR CORE — a real finding.** `LTm` had **no associator and no
+braiding** until this module needed them. The cartesian pass never did, because
+`⟨_,_⟩L` expresses any rearrangement at the price of a copy; splitting cannot pay that
+price without inserting the very `dup` the grading proves unnecessary. So
+`lassoc`/`lassoc⁻`/`lswap` (dup-free, cost 0) were added to `NbEPLinRec`, with clauses
+through `Lⁱ`/`dupCount`/`frees`/`dupfree-no-alloc`/`Lᶜ`/`dyn-linear`, plus the derived
+middle-four interchange `mixL`. **The core is only now genuinely symmetric monoidal.**
+Whole Lin+QTT chain re-verified: 11 modules, all exit 0.
+
+**⚠ SCOPE, unchanged from W0b.** `dupCount` is static; the four divergences apply
+here too. The operational claim is `bridge-dyn`, for the `LinD` fragment only.
+**`ω` is a PERMISSION to allocate, not a count of allocations.**
+
+### W0e — CODATA in the linear core  🔴 **NEXT. The sole remaining blocker to W0d.**
+
+Scoped 2026-07-28, after §8.1 dispositioned `Para`, `AllocMode` and effects out of the
+way. **This is the next thing to attempt.** Start here.
+
+**Why it is not just "add two constructors".** The obstruction is in the COST SEMANTICS,
+and it is a typing obstruction, not a difficulty:
+
+> `Lᶜ : LTm A B → ⟦ A ⟧C → ⟦ B ⟧C × ℕ`. **For codata the cost of a program is not a
+> `ℕ`.** An `Ana` never finishes; there is no finite number of allocations to return.
+> So `Lᶜ` cannot be extended to `ν` by adding a clause — its RESULT TYPE is wrong.
+
+This is the same wall `NbEPLinLive` hit from the other side and answered for traces
+("inductive balance is a count; coinductive balance is `□◇` carried by productivity").
+W0e is that answer brought inside the core.
+
+**The shape to aim at — codata is the CLOSURE case again.** W0b already established the
+pattern: `⟦ A ⇒ B ⟧C = ⟦ A ⟧C → ⟦ B ⟧C × ℕ`, "a function reports its own cost";
+building a closure is FREE, its body paid at `leval` *per call*. `ν` is to `Out` what
+`⇒` is to `leval`:
+
+- `⟦ ν F ⟧C` = a coinductive record whose `force` field is
+  `⟦F⟧FS (Nu F) × ℕ` — **unfolding reports its own cost**;
+- `lana` builds FREE (nothing runs until observed);
+- `lOut` PAYS, once per observation, exactly one coalgebra step.
+
+**Then "linear ⇒ allocates nothing" becomes coinductive.** `Free` at `ν` is a coinductive
+record — `costZero : snd (force x) ≡ zero` plus `next`, the same recursively at every
+position — so the theorem reads *every observation, at every depth, costs zero*. That is
+`dyn-linear`'s codata form, and it is a `□` statement, matching `NbEPLinLive`'s shape.
+
+**Plan of attack (a SPIKE, not a modification of `LTm`).** `Ty` has no `ν` and extending
+it would cascade through the whole POC-0 chain, so build `SpikeLinNu.agda` standalone,
+`--safe --guardedness` (the `NbEPLinLive` precedent), with a minimal object language and
+only the generators needed to state the result:
+
+1. `NTy` = `U1`/`⊗t`/`⊕t`/`νt`, with `NF : Func → NTy → NTy` and `⟦_⟧N`.
+2. `Nu F` as a coinductive record MUTUAL with its own `FS : Func → Set → Set` (mirror
+   the Evaluator's `Fix`/`⟦_⟧FS` knot — do NOT try to reuse `⟦_⟧FS` from another module,
+   positivity will not see through it).
+3. `NTm` with `nid`/`∘n`/`⊗n`/`ndup`/`ndrop`/`ninl`/`ninr`/`ncase` + **`nout`/`nana`**.
+4. `Nᶜ` — the cost semantics, `nana` free, `nout` paying.
+5. `unfoldNu`/`mapU` — mutual guarded corecursion (the dual of `cata-Set`/`map-cata-Set`).
+6. `FreeN`/`FreeNu`/`FreeU` — mutual, coinductive at `ν`.
+7. ★ `dynN` — `DupFreeN f → Free input → Free output × cost ≡ zero`, INCLUDING at `ν`,
+   with `freeAna`/`freeMap` in the same mutual block (`dynN` inducts on `DupFreeN`,
+   `freeAna` corecurses under the `next` copattern).
+8. ★ A NEGATIVE CONTROL, per the method rule. Take `F = Id ⊗ Id`, so a coalgebra
+   `NTm A (A ⊗t A)` is literally `ndup`: `badAna = nana (Id ⊗ Id) ndup` builds free but
+   pays one per observation, forever — witnessing that no `ℕ` can be its cost.
+
+**Risk: the guardedness checker**, at step 7 (mixed induction–coinduction: `dynN`
+inducts while `freeAna` corecurses). Medium. If it balks, the finding — *why* codata
+resists the `dyn-linear` pattern — is itself the deliverable; record it and stop rather
+than grind (the raw-M3c lesson). **No sized types** (hard ban, §1.2) — guarded
+corecursion only.
+
+**Done when:** `--safe`, zero postulates, `nout`/`nana` in a linear core, `dynN` covering
+`ν`, and the negative control firing. Then W0d's codata exclusion can be lifted.
 
 *(Original scoping retained below for the record.)*
 
@@ -401,11 +517,15 @@ modules, so land them as ONE cascade rather than two.
 **Phase 3.** W4, then W5, then W6.
 
 **Running alongside, on the linearization side** (not blocking W1–W6): ~~the dynamic /
-multiplicity accounting~~ ✅ done (W0b), then §1.3 gap 2 (linear recursion schemes,
-where `Para` inherently duplicating is a language-design decision to take
-deliberately), then gap 3 (the Lin↔QTT bridge). The residue of W0b — an event trace
-for the non-linear fragment, and `Lᶜ`/`Lⁱ` value-agreement — is optional refinement,
-not a gate.
+multiplicity accounting~~ ✅ done (W0b); ~~gap 3, the Lin↔QTT bridge~~ ✅ done (W0c);
+~~§1.3 gap 2, linear recursion schemes~~ — DEFERRED, `Para` ruled an optimization (§8.1).
+
+    W0c bridge ✅ ──► W0e  codata in the core  [★ NEXT — the sole blocker]
+                              │
+                              └──► W0d  port the real IR (§8)
+
+**W0e is the next item to attempt.** The residue of W0b — an event trace for the
+non-linear fragment, and `Lᶜ`/`Lⁱ` value-agreement — is optional refinement, not a gate.
 
 **Out of scope, explicitly:** directed univalence and its directed model (§1.1);
 anything requiring cubical machinery; the raw-M3c faithfulness grind (§5).
@@ -472,3 +592,95 @@ that is on both paths' critical path, and then **a directed layer that has never
 built syntactically by anyone** (W2–W6) whose feasibility rests on the single
 strongest result in this POC — that the strict *syntactic* presentation dissolves the
 Beck–Chevalley obstruction that killed the semantic one.
+
+--------------------------------------------------------------------------
+## 8. W0d — porting the real IR to the linear core: what the bridge does and does not unlock
+
+Assessed against `formal/Once/IR.agda` (305 lines, 24 constructors), `formal/Once/Type.agda`
+and `formal/Once/Surface/Elaborate.agda` — not against `PATHS.md`'s prose.
+
+**Two facts that make the port closer than it looks.**
+
+1. **The semirings are already the same.** `formal/Once/Type.agda`'s
+   `Quantity = {Zero, One, Many}` with `_+q_`/`_*q_` is table-for-table
+   `NbEPQTT.Mult = {𝟘,𝟙,ω}` with `_+ᵐ_`/`_·ᵐ_`. And the real arrow is *already* graded:
+   `_⇒[ ArrowKind ]_` carries `quantity` (QTT) and `purity`, with `_⊸_`/`_⇒_`/`_⇒₀_`
+   as the three smart constructors. W0c's bridge is over the multiplicity structure
+   the compiler already has.
+2. **The discard is a single type signature.**
+   `elaborate : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → AllocMode → Expr Γ Ψ A → IR ⟦ Γ ⟧ᶜ A`
+   — the usage vector `Ψ` indexes the SOURCE and appears nowhere in the target; `⟦ Γ ⟧ᶜ`
+   never mentions it. Contrast W0c's `Lq⟦_⟧ : Γ ⊢[ρ] A → LTm ⟪ρ⟫ᶜ ⌊A⌋ᵗ`, where the usage
+   indexes the target OBJECT. That one change of indexing is the whole architecture.
+
+   Measured, in the same file: `swap' m = ⟨ snd , fst ⟩ m` — **swapping a pair costs an
+   allocation** in the cartesian IR, and `distribute` spends two of them. `lswap` is free.
+
+**Coverage, constructor by constructor.**
+
+| `IR` | linear core | |
+|---|---|---|
+| `id` `_∘_` `fst` `snd` `⟨_,_⟩` `terminal` | `lid` `_∘l_` `fstL` `sndL` `⟨_,_⟩L` `drop` | ✅ Fox |
+| `inl` `inr` `case` | `linl` `linr` `lcase` | ✅ |
+| `curry` `apply` | `lcurry` `leval` | ✅ W0 |
+| `In` `Cata` | `lIn` `lcata` | ✅ |
+| `Fuse` + `NatTr` | `fuseL` + `LNatTr`/`LinearNat` | ✅ linear iff no `ntPair` |
+| `Para` | `paraL` | ⚠️ **refuted linear** (`para-not-df`) |
+| `initial` | — | trivial to add |
+| `out-μ` | — | missing (the destructor) |
+| `Hylo` | — | semantically `Fuse alg (coalg ∘ In)`; not ported |
+| `Out` `in-ν` `Ana` (ν / codata) | — | ❌ **absent entirely from `LTm`** |
+| `const` `SigOp` (FFI, `Emits`/`Halts`) | — | ❌ no linear treatment |
+| `arr` (pure→eff) | — | is `id` in the IR; n/a |
+| `free-heap` | — | ✅ *deleted* — this is the dividend |
+
+**Verdict: the bridge unlocks the front half, not the port.** Surface→linear-core for
+the pure first-order inductive fragment is now a real path — the surface is graded, the
+bridge consumes the grading, and `bridge-dyn` gives the operational guarantee at the end
+of it. Four things were raised as blocking the *whole* IR; **three have since been
+dispositioned (2026-07-28, owner's call) and one remains.**
+
+### 8.1 Dispositions taken — do not re-litigate these either
+
+**(2) `Para` — DEFERRED. Not a blocker.** Ruled an *optimization*, not an expressiveness
+primitive, and that is correct on the mechanics: `paraL` is **already definable in
+`LTm`** (`paraL alg = sndL ∘l lcata F ⟨ lIn ∘l fmapL F fstL , alg ⟩L`) — `NbEPLinRec`
+defines it. What `para-not-df` refutes is its *linearity*, not its expressibility. So the
+port carries `Para` across as-is, `ω`-graded, and simply does not claim `DupFree` for
+programs that use it. §1.3 gap 2 stops gating W0d.
+
+**(3) `AllocMode` — TO BE REMOVED, in favour of a single allocation model.** Accepted,
+**with the invariant restated**, because deleting the annotation does not delete the
+allocation: `In` still builds a cons cell. What W0–W0c actually prove is that
+`dup` is the only site of **non-structural LIFETIME** — a linear value's constructor
+cells pair alloc with free by construction (`alloc-free-id`, `atomic-balance`), so
+lifetime is structural everywhere *except* where a value is shared. Therefore:
+
+> **The single allocation model is `dup`, and its invariant reads *sharing*, not
+> *memory touched*.** Every figure in W0–W0c (`pass-alloc`, `beta-alloc-1`,
+> `bridge-dupPair-0`, `ω-alloc-1`) counts SHARING events. Quoting them as
+> "allocations" in the boxing sense would overstate them.
+
+Under that reading the six `AllocMode` sites collapse to one and the mismatch is gone.
+The refactor itself is compiler work (it also removes `free-heap` and the escape pass),
+not a linear-core question.
+
+**(4) Effects and base types — NOT A PROBLEM.** Accepted. `Int`/`Float`/`Str`/`Buffer`
+are inert leaves: adding them to the object language costs a constructor each and no
+theory (they carry no functor structure and cannot duplicate themselves). `SigOp` is an
+opaque generator consuming its input once and producing its output — effects do not
+inherently duplicate, and where an effect *must not* be duplicated that is exactly what
+the `𝟙` grading already expresses. Mechanical, not research.
+
+### 8.2 ⚠ WHAT REMAINS: (1) CODATA. This is the whole of the gap.
+
+`ν-type`/`Out`/`in-ν`/`Ana` have **no linear core at all**. Verified, not assumed:
+`NbEPLinLive` — the only codata module on this line — imports exactly
+`_≡_; refl; ¬_` and **never mentions `LTm`**. It proved `□(alloc ⟹ ◇free)` for a
+*stream of events*, which is the right SHAPE, but it is not attached to the linear
+core's syntax or semantics. Nothing else in `NbEPLin*` mentions `ν`.
+
+**Recommended scoping for W0d (unchanged in substance, now unblocked by 8.1):** port the
+pure first-order inductive fragment first, keeping the real `Type`/`IR` and threading
+`Usage` into the target index the way `⟪_⟫ᶜ` does. Codata stays out until W0e lands.
+
