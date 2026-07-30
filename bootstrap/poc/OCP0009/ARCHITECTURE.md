@@ -190,7 +190,11 @@ Each box: what the layer ADDS, then the options tried, with verdicts.
 │           ✅ W1b conversion transfer: irrel / fwd* / conv-⊩ (SpikeSNW),  │
 │              on the REAL syntax. Type confluence turned out to already   │
 │              exist (NbEPDirDBInj, built for Π-injectivity).              │
-│           🔴 W1c Kripke action → fund → Σ' → sn → dec-conv               │
+│           ✅ W1c Kripke action STRUCK; sem-var/app/conv (SpikeSNX)       │
+│           ✅ W1d JM inductive SN — head expansion is a CONSTRUCTOR,      │
+│              so the wall vanishes; wn gives dec-conv's input (SpikeSNJ)  │
+│              ⚠ headline is now WEAK normalization — all dec-conv needs   │
+│           🔴 W1e assemble fund → Σ' → wnorm → dec-conv                   │
 │           ⚠ the erasure shortcut is REFUTED, not unattempted.            │
 │  ✅ consistency — SpikeErase (raw), NbEPDirDTTSem (dependent mechanism)  │
 │  ❌ sized types — HARD BAN. structural or WF recursion only.             │
@@ -377,7 +381,9 @@ and for types: don't compute at all, stay in the nat-trans + cata fragment.
   W1b conversion transfer         ✅ SpikeSNW — irrel, fwd*, conv-⊩, real syntax
   W1c toward fund                 🟡 SpikeSNX — Kripke action STRUCK (not needed);
                                      sem-var/app/conv, sn-exp, non-Π expansion
-  W1d inductive SN (Joachimski–Matthes)  🔴 ★ NEXT → exp → fund → Σ' → sn → dec-conv
+  W1d inductive SN (Joachimski–Matthes)  ✅ SpikeSNJ — exp, sem-lam, wn.
+                                     The head-expansion wall is gone.
+  W1e assemble fund               🔴 ★ NEXT → Σ' → wnorm → dec-conv
        └► W2/W3 → W4 → W5 → W6    🔴 the directed layer, no prior art
 ```
 
