@@ -41,7 +41,7 @@ open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.Adequacy.SourceTrace using (moduleToIR)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (x86-64-frame-semantics)
 open import Once.CCC.Codegen.IRObsCorrectFlat using (module IRObsCorrectFlatness)
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
+open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Target.X86-64.AbstractToX86
   using (compile-trace; compile-trace-cnt; compile-trace-cnt-agrees; NoNested; NoNested?)
 open import Relation.Nullary using (Dec; yes; no)
@@ -150,7 +150,7 @@ postulate
 -- loc) ≡ 0` (the `enc-hl-entry` leaf); halt/pc are refl; heap-eq is vacuous
 -- (`nothing ≡ nothing`, the entry heap is empty). No longer a postulate.
 entry-corr : ∀ (ir : IR Unit Unit)
-           → CompiledCorr entry-view (ir-to-trace ir) (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
+           → CompiledCorr entry-view (ir-to-trace ir) (mkFlat (FFOx.entry-s (ir-stack-budget ir)) FFOx.entry-alloc 0)
                           (ArchSemantics.initialState as64)
 entry-corr ir = record
   { dataCorr = record
@@ -178,7 +178,10 @@ entry-corr ir = record
       -- THE VIRGIN REGION at entry: `initState`'s memory is `emptyMemory`, so
       -- every address reads `nothing` — no address arithmetic needed.
       ; untouched = λ _ _ _ → refl
-      ; stack-eq = λ _ ()   -- entry frame: next-slot ≡ 0, so the k < 0 bound is absurd
+      -- THE RESERVED FRAME AGREES, and this is now real content rather than a
+      -- vacuous bound: the prologue's `slots` cells are UNWRITTEN on both sides —
+      -- `emptyMemory` concretely, `λ _ _ → nothing` abstractly.
+      ; stack-eq = λ _ _ → refl
       }
   ; pc-off = refl
   }
@@ -188,11 +191,11 @@ entry-corr ir = record
 -- entry frontier (`next-heap-ref entry-alloc ≡ 1`). Everything downstream is the
 -- flat-machine theorem (`FlatStoreWF.flat-wf-step`), applied once per step inside
 -- `ccc-step-bs` — no per-instruction obligation here.
-entry-wf : FlatWF (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
-entry-wf = record
+entry-wf : ∀ (B : ℕ) → FlatWF (mkFlat (FFOx.entry-s B) FFOx.entry-alloc 0)
+entry-wf B = record
   { wf-regs = reg-below ; wf-heap = λ _ → tt ; wf-stack = λ _ _ → tt ; wf-fresh = λ _ _ → refl }
   where
-    reg-below : ∀ (r : AbstractReg) → sv-below 1 (readReg (regs FFOx.entry-s) r)
+    reg-below : ∀ (r : AbstractReg) → sv-below 1 (readReg (regs (FFOx.entry-s B)) r)
     reg-below Input1  = s≤s z≤n
     reg-below Input2  = s≤s z≤n
     reg-below Output  = s≤s z≤n
@@ -207,8 +210,8 @@ entry-wf = record
 -- construction. Downstream it is the flat-machine theorem
 -- (`FlatRegTagWF.flat-regtag-step`), applied once per step inside
 -- `ccc-step-bs` alongside the store-WF one.
-entry-regtag : FlatRegTag (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
-entry-regtag = record { scratch-tag = 0 , refl ; count-tag = 0 , refl }
+entry-regtag : ∀ (B : ℕ) → FlatRegTag (mkFlat (FFOx.entry-s B) FFOx.entry-alloc 0)
+entry-regtag B = record { scratch-tag = 0 , refl ; count-tag = 0 , refl }
 
 ------------------------------------------------------------------------
 -- THE RUN CONTEXT AT ENTRY (2026-07-30, the vacuity fix).
@@ -222,20 +225,24 @@ entry-regtag = record { scratch-tag = 0 , refl ; count-tag = 0 , refl }
 
 -- the loader's state is a legitimate starting state: first instruction, running,
 -- nothing allocated on stack or heap, no block sized yet
-entry-like : EntryLike (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
-entry-like = refl , refl , refl , refl , refl
-           , (λ _ → refl) , (λ _ _ → refl) , (λ _ → refl)
+-- NB `stackSlot ≡ 0` is GONE from `EntryLike`: the loader hands `main` a frame the
+-- prologue already reserved (`ir-stack-budget`), which is exactly what makes the
+-- slot residuals dischargeable instead of false. See the note in `FlatFromObs`.
+entry-like : ∀ (B : ℕ) → EntryLike (mkFlat (FFOx.entry-s B) FFOx.entry-alloc 0)
+entry-like B = refl , refl , refl , refl
+             , (λ _ → refl) , (λ _ _ → refl) , (λ _ → refl)
 
 entry-inv : ∀ (ir : IR Unit Unit)
           → FlatInv ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
-                    (ir-to-trace ir) (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
+                    (ir-to-trace ir) (mkFlat (FFOx.entry-s (ir-stack-budget ir)) FFOx.entry-alloc 0)
 entry-inv ir = record
-  { inv-wf      = entry-wf
-  ; inv-regtag  = entry-regtag
+  { inv-wf      = entry-wf (ir-stack-budget ir)
+  ; inv-regtag  = entry-regtag (ir-stack-budget ir)
   ; inv-ev      = refl        -- the apex runs the REAL extractor
   ; inv-env     = refl        -- …and the REAL arith env
   ; inv-emitted = ir , refl   -- the program is this IR's emitted trace
-  ; inv-reach   = reach-start (mkFlat FFOx.entry-s FFOx.entry-alloc 0) entry-like
+  ; inv-reach   = reach-start (mkFlat (FFOx.entry-s (ir-stack-budget ir)) FFOx.entry-alloc 0)
+                              (entry-like (ir-stack-budget ir))
   }
 
 -- The flat adequacy witness for `ir` at event-count `n`: the flat step-fuel that
@@ -263,7 +270,7 @@ postulate
   conc-fuel : ∀ (ir : IR Unit Unit) (n M : ℕ) →
       RTx.run-events val-x86-64 ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
         M (compile-trace (ir-to-trace ir)) (ArchSemantics.initialState as64)
-      ≡ flat-events (Nof ir n) (ir-to-trace ir) (mkFlat FFOx.entry-s FFOx.entry-alloc 0) →
+      ≡ flat-events (Nof ir n) (ir-to-trace ir) (mkFlat (FFOx.entry-s (ir-stack-budget ir)) FFOx.entry-alloc 0) →
       take n (RTx.run-events val-x86-64 ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
                 (step-budget-x86-64 n) (compile-trace (ir-to-trace ir)) (ArchSemantics.initialState as64))
     ≡ take n (RTx.run-events val-x86-64 ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
@@ -288,7 +295,7 @@ conc-flat-sim-just ir n = go (NoNested? (ir-to-trace ir))
   where
     agree = events-agree (Nof ir n)
               ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
-              (ir-to-trace ir) (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
+              (ir-to-trace ir) (mkFlat (FFOx.entry-s (ir-stack-budget ir)) FFOx.entry-alloc 0)
               (ArchSemantics.initialState as64) (entry-corr ir) (entry-inv ir)
     -- on the case/loop-FREE fragment the two lowerings coincide, so the
     -- correspondence proved over `compile-trace` IS about the emitted program.

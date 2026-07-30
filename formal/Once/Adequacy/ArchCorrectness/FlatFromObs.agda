@@ -57,7 +57,7 @@ open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
 open import Once.CCC.Codegen.IRObsCorrectFlat using (module IRObsCorrectFlatness)
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
+open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Machine.SMCore
   using (LocState; mkLocState; Registers; mkRegs; ValueLocation; AtDynamic; SV-Ptr; SV-Tag;
          regs; readReg; Input1; halted)
@@ -116,12 +116,28 @@ entry-loc = AtDynamic (heap-loc (mkHeapRef 0) 0)
 -- Plan 0.54 D item 4: `Scratch` and `Count` start as TAGS, not pointer fillers —
 -- that is what `FlatRegTagWF`'s entry case needs, and both encode to 0 just as
 -- the pointer filler did (`enc-sv (SV-Tag 0) = 0`), so `entry-corr` is unchanged.
-entry-regs : Registers FS
-entry-regs = mkRegs (SV-Ptr entry-loc) (SV-Ptr entry-loc) (SV-Ptr entry-loc)
-                    0 (SV-Tag 0) (SV-Tag 0)
+-- `slots` = the frame the prologue reserved (`ir-stack-budget`), i.e. the initial
+-- `stackSlot`. Everything else is the erased-Unit filler.
+entry-regs : ℕ → Registers FS
+entry-regs slots = mkRegs (SV-Ptr entry-loc) (SV-Ptr entry-loc) (SV-Ptr entry-loc)
+                          slots (SV-Tag 0) (SV-Tag 0)
 
-entry-s : LocState FS
-entry-s = mkLocState entry-regs (λ _ _ → nothing) (λ _ → nothing) false
+-- THE ENTRY STATE IS INDEXED BY THE FRAME THE PROLOGUE RESERVED (2026-07-30).
+--
+-- `stackSlot` — the runtime slot counter the correspondence uses to bound the live
+-- stack window — is moved ONLY by `instr-alloc-stack` / `-dealloc-stack` /
+-- `-push-frame`, and `ir-to-trace` emits NONE of them: the frame reservation is the
+-- `subq $budget*8, %rsp` bracket the per-arch emitter wraps around the trace. So
+-- with `stackSlot ≡ 0` at entry it is 0 for the WHOLE run, the correspondence's
+-- `stack-eq` says nothing about any slot, and "the slot this instruction reads is
+-- in frame" (`slot-read-in-frame`) is FALSE for every emitted program that touches
+-- a slot — an assumption that cannot be discharged, only refuted.
+--
+-- Entering with the reservation already made is both faithful (the machine really
+-- starts inside its frame) and what makes that residual DISCHARGEABLE: it becomes
+-- `slot < ir-stack-budget ir`, which is the emitter's own static invariant.
+entry-s : ℕ → LocState FS
+entry-s slots = mkLocState (entry-regs slots) (λ _ _ → nothing) (λ _ → nothing) false
 
 -- All four preconditions now hold BY CONSTRUCTION.
 entry-ns : next-slot entry-alloc ≡ 0
@@ -130,19 +146,20 @@ entry-ns = refl
 entry-bf : BeforeFrontier entry-alloc entry-loc
 entry-bf = heap-before (s≤s z≤n)
 
-entry-nh : halted entry-s ≡ false
-entry-nh = refl
+entry-nh : ∀ (slots : ℕ) → halted (entry-s slots) ≡ false
+entry-nh _ = refl
 
-entry-rdi : readReg (regs entry-s) Input1 ≡ SV-Ptr entry-loc
-entry-rdi = refl
+entry-rdi : ∀ (slots : ℕ) → readReg (regs (entry-s slots)) Input1 ≡ SV-Ptr entry-loc
+entry-rdi _ = refl
 
 -- `main`'s machine-refinement witness at the entry state. The `Unit` input's
 -- validity is `valid-unit-wf` — no plumbing needed for it.
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
-              → MachineRefinesObsF ir tt entry-s entry-alloc
+              → MachineRefinesObsF ir tt (entry-s (ir-stack-budget ir)) entry-alloc
 entry-witness ir ioc =
-  ioc (entry-size ir) Stack tt entry-loc entry-s entry-alloc
-      entry-ns valid-unit-wf entry-bf entry-nh (in-loc entry-rdi)
+  ioc (entry-size ir) Stack tt entry-loc (entry-s (ir-stack-budget ir)) entry-alloc
+      entry-ns valid-unit-wf entry-bf (entry-nh (ir-stack-budget ir))
+            (in-loc (entry-rdi (ir-stack-budget ir)))
 
 ------------------------------------------------------------------------
 -- `flat-trace` — DEFINED (the adequate fuel is `traces-agree`'s ∃-witness).
@@ -153,7 +170,7 @@ flat-trace-of : (∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
 flat-trace-of ioc nothing   _ = []
 flat-trace-of ioc (just ir) n =
   take n (flat-events (proj₁ (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir)) n))
-                      (ir-to-trace ir) (mkFlat entry-s entry-alloc 0))
+                      (ir-to-trace ir) (mkFlat (entry-s (ir-stack-budget ir)) entry-alloc 0))
 
 ------------------------------------------------------------------------
 -- The concrete↔abstract seam (Plan 0.54 rung B). At THIS module the machine

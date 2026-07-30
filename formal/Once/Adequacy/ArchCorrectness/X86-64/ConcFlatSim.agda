@@ -148,10 +148,15 @@ open import Data.List using ([])   -- for `EntryLike`'s empty frame stack
 
 -- A state a program can START in: at the first instruction, running, with nothing
 -- allocated on either side. (The apex's entry state is one — see `entry-run`.)
+-- NB: NOT `stackSlot ≡ 0`. The loader hands `main` a frame the per-arch prologue
+-- has already reserved (`subq $budget*8, %rsp`), and `ir-to-trace` emits no frame
+-- op that could reserve one later — so a start state whose `stackSlot` is 0 would
+-- make the live stack window empty FOR THE WHOLE RUN, and every "the slot this
+-- instruction reads is in frame" residual false. `FlatFromObs.entry-s` therefore
+-- starts at `ir-stack-budget`, and this predicate leaves `stackSlot` free.
 EntryLike : FlatState → Set
 EntryLike fs = (fpc fs ≡ 0)
              × (halted (floc fs) ≡ false)
-             × (stackSlot (regs (floc fs)) ≡ 0)
              × (next-slot (falloc fs) ≡ 0)
              × (saved-frames (falloc fs) ≡ [])
              × (∀ hl → heapMem (floc fs) hl ≡ nothing)
