@@ -42,7 +42,9 @@ open import poc.OCP0009.NbEPDirDBType
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd
-        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢conv )
+        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢conv
+        ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El
+        ; ⊢ctx_; c-◇; c-▹ )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub )
 open import poc.OCP0009.NbEPDirDBConf
   using ( ⟶-ren; subTm-monoˢ; extS-mono; single-mono )
@@ -148,14 +150,26 @@ Ren⊢-ext {ρ = ρ} {C = C} h here =
 Ren⊢-ext {ρ = ρ} h (there {A = A₀} v) =
   ∋-cast (sym (ren-wk-comm ρ A₀)) (there (h v))
 
+-- Typed renaming, now MUTUAL with renaming for TYPE FORMATION: `⊢lam`/`⊢pair`
+-- carry `⊢ty` premises (2026-07-30, option A), so the two must move together.
 ren-lemma : {Γ Δ : Ctx} {ρ : Ren ⌊ Γ ⌋ ⌊ Δ ⌋} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
             Γ ⊢ t ∷ A → Ren⊢ Γ Δ ρ → Δ ⊢ renTm ρ t ∷ renTy ρ A
+ren-ty : {Γ Δ : Ctx} {ρ : Ren ⌊ Γ ⌋ ⌊ Δ ⌋} {A : RTy ⌊ Γ ⌋} →
+         Γ ⊢ty A → Ren⊢ Γ Δ ρ → Δ ⊢ty renTy ρ A
+
+ren-ty ty-base       h = ty-base
+ren-ty ty-U          h = ty-U
+ren-ty (ty-Π dA dB)  h = ty-Π (ren-ty dA h) (ren-ty dB (Ren⊢-ext h))
+ren-ty (ty-Σ dA dB)  h = ty-Σ (ren-ty dA h) (ren-ty dB (Ren⊢-ext h))
+ren-ty (ty-El dc)    h = ty-El (ren-lemma dc h)
+
 ren-lemma (⊢var v) h = ⊢var (h v)
-ren-lemma (⊢lam d) h = ⊢lam (ren-lemma d (Ren⊢-ext h))
+ren-lemma (⊢lam dA d) h = ⊢lam (ren-ty dA h) (ren-lemma d (Ren⊢-ext h))
 ren-lemma {ρ = ρ} (⊢app {B = D} {u = u} d₁ d₂) h =
   ⊢-cast (sym (ren-comm-ty ρ D u)) (⊢app (ren-lemma d₁ h) (ren-lemma d₂ h))
-ren-lemma {ρ = ρ} (⊢pair {B = B} {a = a} d₁ d₂) h =
-  ⊢pair (ren-lemma d₁ h) (⊢-cast (ren-comm-ty ρ B a) (ren-lemma d₂ h))
+ren-lemma {ρ = ρ} (⊢pair {B = B} {a = a} dB d₁ d₂) h =
+  ⊢pair (ren-ty dB (Ren⊢-ext h))
+        (ren-lemma d₁ h) (⊢-cast (ren-comm-ty ρ B a) (ren-lemma d₂ h))
 ren-lemma (⊢fst d) h = ⊢fst (ren-lemma d h)
 ren-lemma {ρ = ρ} (⊢snd {B = B} {p = p} d) h =
   ⊢-cast (sym (ren-comm-ty ρ B (fst p))) (⊢snd (ren-lemma d h))
@@ -184,12 +198,22 @@ Sub⊢-ext {σ = σ} h (there {A = A₀} v) =
 
 sub-lemma : {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
             Γ ⊢ t ∷ A → Sub⊢ Γ Δ σ → Δ ⊢ subTm σ t ∷ subTy σ A
+sub-ty : {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {A : RTy ⌊ Γ ⌋} →
+         Γ ⊢ty A → Sub⊢ Γ Δ σ → Δ ⊢ty subTy σ A
+
+sub-ty ty-base      h = ty-base
+sub-ty ty-U         h = ty-U
+sub-ty (ty-Π dA dB) h = ty-Π (sub-ty dA h) (sub-ty dB (Sub⊢-ext h))
+sub-ty (ty-Σ dA dB) h = ty-Σ (sub-ty dA h) (sub-ty dB (Sub⊢-ext h))
+sub-ty (ty-El dc)   h = ty-El (sub-lemma dc h)
+
 sub-lemma (⊢var v) h = h v
-sub-lemma (⊢lam d) h = ⊢lam (sub-lemma d (Sub⊢-ext h))
+sub-lemma (⊢lam dA d) h = ⊢lam (sub-ty dA h) (sub-lemma d (Sub⊢-ext h))
 sub-lemma {σ = σ} (⊢app {B = D} {u = u} d₁ d₂) h =
   ⊢-cast (sym (subTy-comm σ D u)) (⊢app (sub-lemma d₁ h) (sub-lemma d₂ h))
-sub-lemma {σ = σ} (⊢pair {B = B} {a = a} d₁ d₂) h =
-  ⊢pair (sub-lemma d₁ h) (⊢-cast (subTy-comm σ B a) (sub-lemma d₂ h))
+sub-lemma {σ = σ} (⊢pair {B = B} {a = a} dB d₁ d₂) h =
+  ⊢pair (sub-ty dB (Sub⊢-ext h))
+        (sub-lemma d₁ h) (⊢-cast (subTy-comm σ B a) (sub-lemma d₂ h))
 sub-lemma (⊢fst d) h = ⊢fst (sub-lemma d h)
 sub-lemma {σ = σ} (⊢snd {B = B} {p = p} d) h =
   ⊢-cast (sym (subTy-comm σ B (fst p))) (⊢snd (sub-lemma d h))
@@ -229,10 +253,12 @@ conv-ctx {Γ} {A} {A'} c {t} {B} d =
 
 gen-lam : {Γ : Ctx} {s : RTm (⌊ Γ ⌋ ∙)} {C : RTy ⌊ Γ ⌋} → Γ ⊢ lam s ∷ C →
           Σ (RTy ⌊ Γ ⌋) (λ A → Σ (RTy (⌊ Γ ⌋ ∙)) (λ B →
-            (C ≅ᵀ Π A B) × ((Γ ▹ A) ⊢ s ∷ B)))
-gen-lam (⊢lam d)    = _ , (_ , (crflᵀ , d))
+            (C ≅ᵀ Π A B) × ((Γ ⊢ty A) × ((Γ ▹ A) ⊢ s ∷ B))))
+-- ⚠ now also returns the DOMAIN's well-formedness: `sr`'s `ξ-lam` case
+-- reconstructs a `⊢lam`, which needs it (2026-07-30, option A).
+gen-lam (⊢lam dA d) = _ , (_ , (crflᵀ , (dA , d)))
 gen-lam (⊢conv d c) with gen-lam d
-... | A , (B , (c' , ds)) = A , (B , (ctrnᵀ (csymᵀ c) c' , ds))
+... | A , (B , (c' , (dA , ds))) = A , (B , (ctrnᵀ (csymᵀ c) c' , (dA , ds)))
 
 gen-app : {Γ : Ctx} {t u : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ app t u ∷ C →
           Σ (RTy ⌊ Γ ⌋) (λ A → Σ (RTy (⌊ Γ ⌋ ∙)) (λ B →
@@ -243,10 +269,13 @@ gen-app (⊢conv d c) with gen-app d
 
 gen-pair : {Γ : Ctx} {a b : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ pair a b ∷ C →
            Σ (RTy ⌊ Γ ⌋) (λ A → Σ (RTy (⌊ Γ ⌋ ∙)) (λ B →
-             (C ≅ᵀ Σ' A B) × ((Γ ⊢ a ∷ A) × (Γ ⊢ b ∷ subTy (single a) B))))
-gen-pair (⊢pair da db) = _ , (_ , (crflᵀ , (da , db)))
+             (C ≅ᵀ Σ' A B) ×
+             (((Γ ▹ A) ⊢ty B) × ((Γ ⊢ a ∷ A) × (Γ ⊢ b ∷ subTy (single a) B)))))
+-- ⚠ likewise returns the CODOMAIN's well-formedness, for `sr`'s `ξ-pair*`.
+gen-pair (⊢pair dB da db) = _ , (_ , (crflᵀ , (dB , (da , db))))
 gen-pair (⊢conv d c) with gen-pair d
-... | A , (B , (c' , (da , db))) = A , (B , (ctrnᵀ (csymᵀ c) c' , (da , db)))
+... | A , (B , (c' , (dB , (da , db)))) =
+      A , (B , (ctrnᵀ (csymᵀ c) c' , (dB , (da , db))))
 
 gen-fst : {Γ : Ctx} {p : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ fst p ∷ C →
           Σ (RTy ⌊ Γ ⌋) (λ A → Σ (RTy (⌊ Γ ⌋ ∙)) (λ B →
@@ -283,12 +312,13 @@ gen-⌜Σ⌝ (⊢conv d c) with gen-⌜Σ⌝ d
 sr : {Γ : Ctx} {t u : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} → Γ ⊢ t ∷ A → t ⟶ u → Γ ⊢ u ∷ A
 sr d (β s a) with gen-app d
 ... | A₀ , (B₀ , (d-lam , (d-a , cC))) with gen-lam d-lam
-...   | A₁ , (B₁ , (cΠ , d-s)) with Π-inj cΠ
+...   | A₁ , (B₁ , (cΠ , (tyA₁ , d-s))) with Π-inj cΠ
 ...     | (cA , cB) =
           ⊢conv (⊢[] d-s (⊢conv d-a cA))
                 (ctrnᵀ (≅ᵀ-sub (single a) (csymᵀ cB)) (csymᵀ cC))
 sr d (ξ-lam r) with gen-lam d
-... | A₀ , (B₀ , (cΠ , d-s)) = ⊢conv (⊢lam (sr d-s r)) (csymᵀ cΠ)
+... | A₀ , (B₀ , (cΠ , (tyA₀ , d-s))) =
+      ⊢conv (⊢lam tyA₀ (sr d-s r)) (csymᵀ cΠ)
 sr d (ξ-appˡ r) with gen-app d
 ... | A₀ , (B₀ , (d-t , (d-u , cC))) = ⊢conv (⊢app (sr d-t r) d-u) (csymᵀ cC)
 sr d (ξ-appʳ {u = u} {u' = u'} r) with gen-app d
@@ -297,24 +327,24 @@ sr d (ξ-appʳ {u = u} {u' = u'} r) with gen-app d
             (csymᵀ (ctrnᵀ cC (red→≅ᵀ (subTy-monoˢ (single-mono (step r done)) B₀))))
 sr d (βfst a b) with gen-fst d
 ... | A₀ , (B₀ , (d-pair , cC)) with gen-pair d-pair
-...   | A₁ , (B₁ , (cΣ , (d-a , d-b))) with Σ-inj cΣ
+...   | A₁ , (B₁ , (cΣ , (tyB₁ , (d-a , d-b)))) with Σ-inj cΣ
 ...     | (cA , cB) = ⊢conv d-a (csymᵀ (ctrnᵀ cC cA))
 sr d (βsnd a b) with gen-snd d
 ... | A₀ , (B₀ , (d-pair , cC)) with gen-pair d-pair
-...   | A₁ , (B₁ , (cΣ , (d-a , d-b))) with Σ-inj cΣ
+...   | A₁ , (B₁ , (cΣ , (tyB₁ , (d-a , d-b)))) with Σ-inj cΣ
 ...     | (cA , cB) =
           ⊢conv d-b
             (csymᵀ (ctrnᵀ cC
               (ctrnᵀ (red→≅ᵀ (subTy-monoˢ (single-mono (step (βfst a b) done)) B₀))
                      (≅ᵀ-sub (single a) cB))))
 sr d (ξ-pairˡ r) with gen-pair d
-... | A₀ , (B₀ , (cΣ , (d-a , d-b))) =
-      ⊢conv (⊢pair (sr d-a r)
+... | A₀ , (B₀ , (cΣ , (tyB₀ , (d-a , d-b)))) =
+      ⊢conv (⊢pair tyB₀ (sr d-a r)
               (⊢conv d-b (red→≅ᵀ (subTy-monoˢ (single-mono (step r done)) B₀))))
             (csymᵀ cΣ)
 sr d (ξ-pairʳ r) with gen-pair d
-... | A₀ , (B₀ , (cΣ , (d-a , d-b))) =
-      ⊢conv (⊢pair d-a (sr d-b r)) (csymᵀ cΣ)
+... | A₀ , (B₀ , (cΣ , (tyB₀ , (d-a , d-b)))) =
+      ⊢conv (⊢pair tyB₀ d-a (sr d-b r)) (csymᵀ cΣ)
 sr d (ξ-fst r) with gen-fst d
 ... | A₀ , (B₀ , (d-p , cC)) = ⊢conv (⊢fst (sr d-p r)) (csymᵀ cC)
 sr d (ξ-snd r) with gen-snd d

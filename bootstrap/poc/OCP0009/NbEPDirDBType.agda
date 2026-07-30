@@ -155,13 +155,33 @@ data _∋_∷_ : (Γ : Ctx) → Var ⌊ Γ ⌋ → RTy ⌊ Γ ⌋ → Set where
 -- THE TYPING JUDGMENT — dependent `app`, and the conversion rule.
 ------------------------------------------------------------------------
 
+-- TYPE FORMATION, mutual with term typing (2026-07-30, "option A").
+--
+-- WHY IT EXISTS. Without it the judgment derives terms at MEANINGLESS types:
+-- `El (lam (var vz))` is a normal type whose code is neither a constructor nor
+-- neutral, so it has no semantic counterpart, yet `⊢lam` would happily type
+-- `λx.t ∷ Π (El (lam y)) B`. That makes a normalization theorem for `_⊢_∷_`
+-- unprovable (`NbEPDirDBLR`; the counterexample is `SpikeSNK.¬⊩elLam`). Not an
+-- inconsistency — a well-formedness defect, and this closes it.
+--
+-- ⚠ MINIMAL BY DESIGN: only `⊢lam` and `⊢pair` gain a premise. Everywhere else
+-- the type is recovered from the subderivations by syntactic validity —
+-- `⊢app`'s `Π A B` comes from the IH on the function and `⊢ty` is invertible at
+-- `Π`, `⊢fst`/`⊢snd` likewise at `Σ'`, and `⊢⌜Π⌝`/`⊢⌜Σ⌝` conclude at `U`, which
+-- is well-formed outright. Adding premises those rules do not need would cost
+-- cascade for nothing.
 infix 3 _⊢_∷_
-data _⊢_∷_ : (Γ : Ctx) → RTm ⌊ Γ ⌋ → RTy ⌊ Γ ⌋ → Set where
+infix 3 _⊢ty_
+data _⊢_∷_ : (Γ : Ctx) → RTm ⌊ Γ ⌋ → RTy ⌊ Γ ⌋ → Set
+data _⊢ty_ : (Γ : Ctx) → RTy ⌊ Γ ⌋ → Set
+
+data _⊢_∷_ where
   ⊢var  : ∀ {Γ x A}     → Γ ∋ x ∷ A → Γ ⊢ var x ∷ A
-  ⊢lam  : ∀ {Γ A B t}   → (Γ ▹ A) ⊢ t ∷ B → Γ ⊢ lam t ∷ Π A B
+  ⊢lam  : ∀ {Γ A B t}   → Γ ⊢ty A → (Γ ▹ A) ⊢ t ∷ B → Γ ⊢ lam t ∷ Π A B
   ⊢app  : ∀ {Γ A B t u} → Γ ⊢ t ∷ Π A B → Γ ⊢ u ∷ A →
                           Γ ⊢ app t u ∷ subTy (single u) B
-  ⊢pair : ∀ {Γ A B a b} → Γ ⊢ a ∷ A → Γ ⊢ b ∷ subTy (single a) B →
+  ⊢pair : ∀ {Γ A B a b} → (Γ ▹ A) ⊢ty B →
+                          Γ ⊢ a ∷ A → Γ ⊢ b ∷ subTy (single a) B →
                           Γ ⊢ pair a b ∷ Σ' A B
   ⊢fst  : ∀ {Γ A B p}   → Γ ⊢ p ∷ Σ' A B → Γ ⊢ fst p ∷ A
   ⊢snd  : ∀ {Γ A B p}   → Γ ⊢ p ∷ Σ' A B →
@@ -171,17 +191,32 @@ data _⊢_∷_ : (Γ : Ctx) → RTm ⌊ Γ ⌋ → RTy ⌊ Γ ⌋ → Set where
   ⊢⌜Σ⌝  : ∀ {Γ c d}     → Γ ⊢ c ∷ U → (Γ ▹ El c) ⊢ d ∷ U → Γ ⊢ ⌜Σ⌝ c d ∷ U
   ⊢conv : ∀ {Γ t A B}   → Γ ⊢ t ∷ A → A ≅ᵀ B → Γ ⊢ t ∷ B
 
+data _⊢ty_ where
+  ty-base : ∀ {Γ}     → Γ ⊢ty base
+  ty-U    : ∀ {Γ}     → Γ ⊢ty U
+  ty-Π    : ∀ {Γ A B} → Γ ⊢ty A → (Γ ▹ A) ⊢ty B → Γ ⊢ty Π A B
+  ty-Σ    : ∀ {Γ A B} → Γ ⊢ty A → (Γ ▹ A) ⊢ty B → Γ ⊢ty Σ' A B
+  ty-El   : ∀ {Γ c}   → Γ ⊢ c ∷ U → Γ ⊢ty El c
+
+-- CONTEXT well-formedness. Needed because `⊢var`'s type comes from a lookup:
+-- syntactic validity at `⊢var` is exactly "a lookup in a well-formed context
+-- yields a well-formed type", and `⊢lam` maintains it via its new premise.
+infix 3 ⊢ctx_
+data ⊢ctx_ : Ctx → Set where
+  c-◇ : ⊢ctx ◇
+  c-▹ : ∀ {Γ A} → ⊢ctx Γ → Γ ⊢ty A → ⊢ctx (Γ ▹ A)
+
 ------------------------------------------------------------------------
 -- Concrete derivations — the kernel is non-vacuous.
 ------------------------------------------------------------------------
 
 -- The identity function: `◇ ⊢ λx.x ∷ Π base base`.
 ⊢id : ◇ ⊢ lam (var vz) ∷ Π base base
-⊢id = ⊢lam (⊢var here)
+⊢id = ⊢lam ty-base (⊢var here)
 
 -- A dependent-`app` derivation: `(◇ ▹ base) ⊢ (λx.x) y ∷ base`.
 ⊢appex : (◇ ▹ base) ⊢ app (lam (var vz)) (var vz) ∷ base
-⊢appex = ⊢app (⊢lam (⊢var here)) (⊢var here)
+⊢appex = ⊢app (⊢lam ty-base (⊢var here)) (⊢var here)
 
 -- β-reduction is directed `Hom`, and reduction ⊆ conversion. The redex
 -- `(λx.x) y` reduces to `y`, and the two are convertible.
