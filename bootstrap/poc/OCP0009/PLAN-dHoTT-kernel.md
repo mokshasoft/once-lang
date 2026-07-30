@@ -438,7 +438,64 @@ Design note worth keeping in the port: the `Π` clause carries `SN t` as an expl
 conjunct. That is what makes CR1 hold at `Π` *without* applying `t` to a fresh variable
 — which would otherwise force the Kripke layer up front.
 
-#### W1b — ★ the REAL obstruction, now named: TYPE-LEVEL CONFLUENCE  🔴 **NEXT**
+#### W1b — conversion transfer  ✅ **DONE (`SpikeSNW`, 2026-07-30)**
+
+`--safe`, zero postulates, zero holes, 398 lines, ~1.7 s, on the **real kernel
+syntax** (`NbEPDirDBPi`/`Type`), not a standalone model.
+
+**★ First finding: the input W1b named was already in hand.** `NbEPDirDBInj`
+(dHoTT-26) proves `confluentᵀ`/`church-rosserᵀ` for `_⟶ᵀ_`, plus `Π-reduct`
+(Π-shape preservation) and `Πinj≡` — all built to derive Π-injectivity, and never
+since used for anything else. `NbEPDirDBSR` supplies `⟶ᵀ-sub`/`≅ᵀ-sub`. So W1b was
+not a confluence proof to write; it was a **redesign that consumes confluence
+already proven**. Worth remembering as a method note: the obstruction register
+should be checked against the module list before it is scheduled.
+
+**★ Second finding — the fix is WHERE the reduction is stored.** `SpikeSNU` closed
+`⊩` under type reduction with a constructor `⊩red : A ⟶ᵀ B → ⊩ B → ⊩ A`. That is
+what makes forward transfer non-structural: a reduction has to be joined against an
+unbounded stack of `⊩red`s. Here **each constructor carries its own reduction to
+weak head normal form** (`A ⟶ᵀ* base`, `A ⟶ᵀ* Π F G`, …). Same information,
+different place — and transfer becomes one appeal to confluence *at* the
+constructor, with the recursion staying structural.
+
+| built | what it says |
+|---|---|
+| `⊩_`/`_⊩∋_` | the whnf-carrying logical relation, over the real `RTy`/`RTm` |
+| ★ `irrel` | irrelevance up to conversion: `A ≅ᵀ B` ⇒ same members, BOTH directions |
+| ★ `fwd*` | `A ⟶ᵀ* B → ⊩ A → ⊩ B` — W1b's target |
+| `bwd*` | the backward direction, now free (prepend to the stored reduction) |
+| ★ `conv-⊩` | `A ≅ᵀ B → ⊩ A → ⊩ B` — the shape `⊢conv` actually needs |
+| `CR1`/`CR2`/`CR3`, `⊩var` | re-proven over the new shape |
+| `⊩El-Π`, `fwd-decode`, `conv-decode` | non-vacuity, and the transfer FIRING across an `El`-decode step — the case that motivated the whole item |
+
+**Why `irrel` is a bi-implication.** The `Π/Π` case must convert a member of the
+RIGHT domain into one of the LEFT before it can apply the left family. Stated
+one-directionally that needs the recursive call with its arguments swapped, and
+then neither argument position decreases. With both directions returned at once,
+the domain step is a call whose two arguments are the two domains — each a strict
+subterm of its own side. That is the whole trick, and it is what makes Agda accept
+the termination.
+
+**Scope.** `Σ'` is deliberately absent from `⊩`: it adds a fourth whnf shape and six
+more cross cases to `irrel` without testing anything new (mechanical, per dHoTT-36).
+
+#### W1c — the Kripke action, then `fund`  🔴 **NEXT**
+
+The remaining structure, in order:
+
+1. **Kripke action** — `⊩`/`⊩∋` stable under renaming, defined mutually. Needed for
+   `fund`'s λ-case, and it is what forces `⊩Π`'s function field to quantify over
+   future contexts rather than just `RTm Γ`. Mechanical but bulky; medium risk is
+   the mutual block's termination, exactly as `irrel`'s was.
+2. **`fund`** — the fundamental theorem over `_⊢_∷_`, with `⊢conv` discharged by
+   `conv-⊩` (done above) and `⊢lam` by the Kripke action.
+3. **Σ'** — the fourth whnf shape and the `pair`/`fst`/`snd` clauses.
+4. **`sn : Γ ⊢ t ∷ A → SN t`**, hence `dec-conv` unconditional.
+
+*(superseded scoping retained below)*
+
+#### W1b — ★ the obstruction as first named: TYPE-LEVEL CONFLUENCE
 
 The spike also relocated the difficulty, and this is the more valuable half of it.
 `⊢conv` needs the FORWARD transfer `A ⟶ᵀ B → ⊩ A → ⊩ B` (`⊩red` is only backward).
@@ -549,7 +606,8 @@ the denotational bridge `core → ≋`.
 W0  exponentials ═══► GATE PASSED ✅ (linearization-6)
                             │
 W1a IR spike ✅ (SpikeSNU)  │
-     └► W1b type-level confluence ──► Kripke ──► fund ──► Σ ──► port
+W1b conversion transfer ✅ (SpikeSNW — irrel, fwd*, conv-⊩)
+     └► W1c Kripke action ──► fund ──► Σ' ──► sn ──► dec-conv
                             ├──► unconditional dec-conv   [START HERE]
                             │
 W2  internalize Hom ──┐     │
@@ -621,7 +679,9 @@ conversion rule. Two consequences:
 | risk | severity | mitigation |
 |---|---|---|
 | ~~W1's induction-recursion does not go through in Agda's positivity checker~~ | ~~high~~ | ✅ **RETIRED 2026-07-30 by `SpikeSNU`** — the knot is accepted indexed over dependent syntax with a substitution-computed index, and CR1/CR2/CR3 are proven over it. The mitigation (spike in isolation first) was executed and paid |
-| **W1's real core: lifting confluence from `_⟶_` to `_⟶ᵀ_`** (the `⊩red` case of forward conversion transfer) | medium | the technique is dHoTT-25's, already executed once in this repo for terms; `SpikeSNU.critical-pair-joins` checks that the one interesting critical pair joins, and every other overlap bottoms out in term confluence |
+| ~~W1's real core: lifting confluence from `_⟶_` to `_⟶ᵀ_`~~ | ~~medium~~ | ✅ **RETIRED 2026-07-30 by `SpikeSNW`** — and the lift did not have to be written at all: `NbEPDirDBInj` (dHoTT-26) already had `confluentᵀ`/`church-rosserᵀ`/`Π-reduct`, built for Π-injectivity. What W1b needed was the whnf-carrying redesign that consumes them; `conv-⊩` is proven |
+| **W1c: the Kripke action's mutual block** (`⊩`/`⊩∋` under renaming) — needed for `fund`'s λ-case | medium | same shape as `irrel`'s mutual block, which went through; if the termination checker balks, the bi-implication trick that fixed `irrel` is the first thing to try |
+| An obstruction is scheduled that the repo has already discharged elsewhere | medium | **this happened here** — W1b was scoped as "lift confluence" when dHoTT-26 had already lifted it. Grep the module list for the needed result before scheduling a research item |
 | W2/W3 cascade blows up the metatheory beyond one person's reach | high | land them as ONE cascade; re-verify the six-module chain per dHoTT-32/33's pattern, which is the measured precedent |
 | W4 has no prior art and may hit a genuine obstruction | medium | dHoTT-20 says the syntactic route dissolves the semantic one's blocker; if a NEW obstruction appears, record it and stop — do not grind (the raw-M3c lesson) |
 | §1.3's linear answer couples this plan to a SECOND research project (gaps 1–3) | high | W0 is the gate and the cheapest of the three; if exponentials do not linearize cleanly, reopen §1.3 BEFORE any Phase-2 work |
