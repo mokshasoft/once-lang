@@ -194,7 +194,11 @@ Each box: what the layer ADDS, then the options tried, with verdicts.
 │           ✅ W1d JM inductive SN — head expansion is a CONSTRUCTOR,      │
 │              so the wall vanishes; wn gives dec-conv's input (SpikeSNJ)  │
 │              ⚠ headline is now WEAK normalization — all dec-conv needs   │
-│           🔴 W1e assemble fund → Σ' → wnorm → dec-conv                   │
+│           🟡 W1e ⊩ is NOT total over RTy, and the LR must be STRATIFIED  │
+│              by universe level — both checked (SpikeSNK). Surfaces a     │
+│              KERNEL decision: `⊢lam`'s domain is unconstrained and there │
+│              is no type-formation judgment.                              │
+│           🔴 W1f consolidate → fund → Σ' → wnorm → dec-conv              │
 │           ⚠ the erasure shortcut is REFUTED, not unattempted.            │
 │  ✅ consistency — SpikeErase (raw), NbEPDirDTTSem (dependent mechanism)  │
 │  ❌ sized types — HARD BAN. structural or WF recursion only.             │
@@ -383,7 +387,16 @@ and for types: don't compute at all, stay in the nat-trans + cata fragment.
                                      sem-var/app/conv, sn-exp, non-Π expansion
   W1d inductive SN (Joachimski–Matthes)  ✅ SpikeSNJ — exp, sem-lam, wn.
                                      The head-expansion wall is gone.
-  W1e assemble fund               🔴 ★ NEXT → Σ' → wnorm → dec-conv
+  W1e "assemble fund"             🟡 SpikeSNK — NOT assembly. ⊩ is not total
+                                     over RTy, and the LR must be STRATIFIED
+                                     by universe level. Both machine-checked.
+  W1f consolidate → fund          🔴 ★ NEXT → Σ' → wnorm → dec-conv
+
+  ⚠ W1e surfaced a KERNEL decision, not just a proof detail: `⊢lam`'s domain is
+    unconstrained and the kernel has no type-formation judgment, so
+    normalization for `_⊢_∷_` as it stands is not provable. Either add `Γ ⊢ty A`
+    premises (cascades through DBSubj/DBDec) or restrict the theorem to
+    derivations with independently well-formed types.
        └► W2/W3 → W4 → W5 → W6    🔴 the directed layer, no prior art
 ```
 
