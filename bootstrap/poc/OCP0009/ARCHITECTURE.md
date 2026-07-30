@@ -186,12 +186,11 @@ Each box: what the layer ADDS, then the options tried, with verdicts.
 │       ✅ subject reduction, Π/Σ injectivity, typed renaming/subst        │
 │       ✅ dec-≅ᵀ, snᵀ, nfᵀ  — the TYPE level is CLOSED (dHoTT-37)         │
 │       🔴 W1: TERM SN with the universe. The sole remaining input.        │
-│           ✅ W1a the IR shape SPIKED and accepted (SpikeSNU), with       │
-│              CR1/CR2/CR3 — the "positivity checker" risk is RETIRED.     │
-│           🔴 W1b the REAL obstruction, relocated by that spike:          │
-│              forward conversion transfer needs TYPE-LEVEL CONFLUENCE.    │
-│              Confluence work, not reducibility work — dHoTT-25's         │
-│              technique, already executed once here for terms.            │
+│           ✅ W1a IR shape spiked + CR1/CR2/CR3    (SpikeSNU)             │
+│           ✅ W1b conversion transfer: irrel / fwd* / conv-⊩ (SpikeSNW),  │
+│              on the REAL syntax. Type confluence turned out to already   │
+│              exist (NbEPDirDBInj, built for Π-injectivity).              │
+│           🔴 W1c Kripke action → fund → Σ' → sn → dec-conv               │
 │           ⚠ the erasure shortcut is REFUTED, not unattempted.            │
 │  ✅ consistency — SpikeErase (raw), NbEPDirDTTSem (dependent mechanism)  │
 │  ❌ sized types — HARD BAN. structural or WF recursion only.             │
@@ -374,9 +373,9 @@ and for types: don't compute at all, stay in the nat-trans + cata fragment.
   ──────────────────────────────────────────────────────────────────────
   W0e CODATA in the linear core   🔴 SpikeLinNu.agda, not started
        └► W0d port the real IR    🟡 blocked only on W0e
-  W1a SN⁺ induction-recursion     ✅ SPIKED — SpikeSNU, CR1/CR2/CR3, risk retired
-  W1b type-level confluence       🔴 ★ NEXT — the relocated obstruction
-       └► Kripke action → fund → Σ → port onto NbEPDirDBPi
+  W1a SN⁺ induction-recursion     ✅ SpikeSNU — CR1/CR2/CR3, risk retired
+  W1b conversion transfer         ✅ SpikeSNW — irrel, fwd*, conv-⊩, real syntax
+  W1c Kripke action               🔴 ★ NEXT → fund → Σ' → sn → dec-conv
        └► W2/W3 → W4 → W5 → W6    🔴 the directed layer, no prior art
 ```
 
@@ -391,6 +390,19 @@ reductions out of one type must be joined. That is **confluence work, not
 reducibility work** — the same technique as dHoTT-25, already executed once in
 this repo for terms. A different and much better-understood job than the one
 the plan was budgeting for.
+
+**And W1b then found the confluence was already there.** `NbEPDirDBInj`
+(dHoTT-26) proved `confluentᵀ`/`church-rosserᵀ`/`Π-reduct` to get
+Π-injectivity, and nothing had used them since. So W1b was not a proof to
+write but a redesign to consume them: store each constructor's reduction to
+weak head normal form *inside the constructor* rather than closing the family
+under reduction with a separate `⊩red`. Same information, different place —
+and the place is what decides whether transfer stays structural. `SpikeSNW`
+delivers `irrel`, `fwd*`, `bwd*` and `conv-⊩` on the real kernel syntax.
+
+The method lesson, now in the risk table: **an obstruction was scheduled that
+the repo had already discharged elsewhere.** Grep the module list for the
+needed result before booking a research item.
 
 The working tree holds linearization-8 (`NbEPLinQTT.agda` new,
 `NbEPLinRec/Pass/Dyn` gained the `lassoc`/`lassoc⁻`/`lswap` clauses, plan +
