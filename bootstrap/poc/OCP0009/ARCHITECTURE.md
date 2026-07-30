@@ -375,7 +375,9 @@ and for types: don't compute at all, stay in the nat-trans + cata fragment.
        └► W0d port the real IR    🟡 blocked only on W0e
   W1a SN⁺ induction-recursion     ✅ SpikeSNU — CR1/CR2/CR3, risk retired
   W1b conversion transfer         ✅ SpikeSNW — irrel, fwd*, conv-⊩, real syntax
-  W1c Kripke action               🔴 ★ NEXT → fund → Σ' → sn → dec-conv
+  W1c toward fund                 🟡 SpikeSNX — Kripke action STRUCK (not needed);
+                                     sem-var/app/conv, sn-exp, non-Π expansion
+  W1d inductive SN (Joachimski–Matthes)  🔴 ★ NEXT → exp → fund → Σ' → sn → dec-conv
        └► W2/W3 → W4 → W5 → W6    🔴 the directed layer, no prior art
 ```
 

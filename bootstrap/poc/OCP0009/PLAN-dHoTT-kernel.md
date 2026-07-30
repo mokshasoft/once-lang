@@ -480,17 +480,59 @@ the termination.
 **Scope.** `Σ'` is deliberately absent from `⊩`: it adds a fourth whnf shape and six
 more cross cases to `irrel` without testing anything new (mechanical, per dHoTT-36).
 
-#### W1c — the Kripke action, then `fund`  🔴 **NEXT**
+#### W1c — toward `fund`  🟡 **PARTIAL (`SpikeSNX`, 2026-07-30)**
 
-The remaining structure, in order:
+`--safe`, zero postulates, zero holes, 244 lines.
 
-1. **Kripke action** — `⊩`/`⊩∋` stable under renaming, defined mutually. Needed for
-   `fund`'s λ-case, and it is what forces `⊩Π`'s function field to quantify over
-   future contexts rather than just `RTm Γ`. Mechanical but bulky; medium risk is
-   the mutual block's termination, exactly as `irrel`'s was.
-2. **`fund`** — the fundamental theorem over `_⊢_∷_`, with `⊢conv` discharged by
-   `conv-⊩` (done above) and `⊢lam` by the Kripke action.
-3. **Σ'** — the fourth whnf shape and the `pair`/`fst`/`snd` clauses.
+**★ 1. THE KRIPKE ACTION IS NOT NEEDED — strike item 1.** It was scheduled here on
+the grounds that `fund`'s λ-case needs `⊩`/`⊩∋` stable under renaming. It does not:
+`fund` is stated over a SUBSTITUTION `σ : Sub Γ Δ`, and its λ-case extends σ to
+`σ,u : Sub (Γ ∙) Δ` for the argument — **the target context Δ never changes, so
+nothing is ever weakened.** The one place a Kripke action is classically forced is
+CR1 at `Π`, which otherwise applies `t` to a fresh variable — and `SpikeSNU` already
+removed that by carrying `SN t` as a conjunct in the `Π` clause. A design decision
+taken there for a local reason turns out to buy the entire Kripke layer.
+
+**2. The semantic rules that need no expansion — built.** `sem-var`, `sem-conv`,
+`sem-app` (the `Π` elimination, via the stored family + `irrel`), and `sn-exp`:
+SN closed under head expansion **at the top redex**, `SN u → SN s[u] → SN (app (lam s) u)`
+— the classic `abs` lemma, lexicographic on `(SN u, SN s[u])`. Plus `exp-base`/
+`exp-U`/`exp-ne`: LR-level expansion for every non-`Π` semantic type, i.e. the whole
+first-order fragment.
+
+**★ 3. WHAT IS LEFT IS ONE LEMMA, and it is the classic hard one.** `fund`'s λ-case
+at a `Π` codomain needs the spine generalization
+`sn-exp· : SN u → SN (s[u] · sp) → SN (app (lam s) u · sp)`, of which the delivered
+`sn-exp` is exactly the `sp = ε` case.
+
+⚠ **The obvious route was tried and REFUTED, not merely reconsidered.** Writing the
+spine inversion (a datatype enumerating the four ways `app (lam s) u · sp` steps) is
+not bulky — it is **impossible to state**. Agda answers:
+
+```
+SplitError.UnificationStuck
+I'm not sure if there should be a case for the constructor β …
+  app (lam t) u ≟ app (lam s) u₁ · (sp ▸ x)
+```
+
+`_·_` is a function, so with `sp` a variable the term is STUCK, and a stuck term can
+never be unified against a constructor pattern — the `β` case can be neither taken
+nor refuted. Restructuring the inversion datatype does not help (its own proof needs
+the same split), nor does cons-shaping `_·_`. **The head redex has to stop being a
+stuck term.**
+
+⇒ **Route: Joachimski–Matthes inductive SN** (`SN`/`SNe`/`SNRed` mutual, head
+expansion as a CONSTRUCTOR). No inversion is ever needed because head-redex-hood
+becomes a datatype — exactly what the spine route lacks. Cost moves to proving the
+inductive presentation sound for accessibility-`SN`, the direction actually needed.
+Secondary benefit: it also handles η-expansion, so it survives a later η change.
+
+#### W1d — remaining  🔴 **NEXT**
+
+1. **Inductive SN** (Joachimski–Matthes) and hence `sn-exp·`, hence the LR-level `exp`.
+2. **`fund`** over `_⊢_∷_` — `⊢var`/`⊢app`/`⊢conv` already discharged (W1c), `⊢lam`
+   unblocked by (1).
+3. **Σ'** — the fourth whnf shape and the `pair`/`fst`/`snd` clauses (mechanical).
 4. **`sn : Γ ⊢ t ∷ A → SN t`**, hence `dec-conv` unconditional.
 
 *(superseded scoping retained below)*
@@ -607,7 +649,8 @@ W0  exponentials ═══► GATE PASSED ✅ (linearization-6)
                             │
 W1a IR spike ✅ (SpikeSNU)  │
 W1b conversion transfer ✅ (SpikeSNW — irrel, fwd*, conv-⊩)
-     └► W1c Kripke action ──► fund ──► Σ' ──► sn ──► dec-conv
+W1c 🟡 (SpikeSNX — Kripke STRUCK; sem-var/app/conv, sn-exp, non-Π exp)
+     └► W1d inductive SN ──► exp ──► fund ──► Σ' ──► sn ──► dec-conv
                             ├──► unconditional dec-conv   [START HERE]
                             │
 W2  internalize Hom ──┐     │
@@ -680,7 +723,8 @@ conversion rule. Two consequences:
 |---|---|---|
 | ~~W1's induction-recursion does not go through in Agda's positivity checker~~ | ~~high~~ | ✅ **RETIRED 2026-07-30 by `SpikeSNU`** — the knot is accepted indexed over dependent syntax with a substitution-computed index, and CR1/CR2/CR3 are proven over it. The mitigation (spike in isolation first) was executed and paid |
 | ~~W1's real core: lifting confluence from `_⟶_` to `_⟶ᵀ_`~~ | ~~medium~~ | ✅ **RETIRED 2026-07-30 by `SpikeSNW`** — and the lift did not have to be written at all: `NbEPDirDBInj` (dHoTT-26) already had `confluentᵀ`/`church-rosserᵀ`/`Π-reduct`, built for Π-injectivity. What W1b needed was the whnf-carrying redesign that consumes them; `conv-⊩` is proven |
-| **W1c: the Kripke action's mutual block** (`⊩`/`⊩∋` under renaming) — needed for `fund`'s λ-case | medium | same shape as `irrel`'s mutual block, which went through; if the termination checker balks, the bi-implication trick that fixed `irrel` is the first thing to try |
+| ~~W1c: the Kripke action's mutual block~~ | ~~medium~~ | ✅ **STRUCK 2026-07-30 by `SpikeSNX`** — not needed at all: `fund` is substitution-based, so its λ-case extends the substitution and the target context never grows; `SpikeSNU`'s `SN t` conjunct in the `Π` clause already removed the one place Kripke is classically forced (CR1 at `Π`) |
+| **W1d: SN closed under head expansion under a spine** — the last input to `fund`'s λ-case | medium | the spine-inversion route is REFUTED (Agda cannot split `β` against the stuck `_·_`); go via Joachimski–Matthes inductive `SN`, where head expansion is a constructor. Known technique, but a new presentation of `SN` to relate to the accessibility one |
 | An obstruction is scheduled that the repo has already discharged elsewhere | medium | **this happened here** — W1b was scoped as "lift confluence" when dHoTT-26 had already lifted it. Grep the module list for the needed result before scheduling a research item |
 | W2/W3 cascade blows up the metatheory beyond one person's reach | high | land them as ONE cascade; re-verify the six-module chain per dHoTT-32/33's pattern, which is the measured precedent |
 | W4 has no prior art and may hit a genuine obstruction | medium | dHoTT-20 says the syntactic route dissolves the semantic one's blocker; if a NEW obstruction appears, record it and stop — do not grind (the raw-M3c lesson) |
