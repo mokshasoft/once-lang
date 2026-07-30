@@ -571,123 +571,73 @@ touches `SN` or even membership — the nine non-`Π` cases of `irrel` are `λ _
 the transfer lemmas only manipulate stored whnf reductions. Not copied, to keep the
 delta reviewable. (iii) `Σ'` still absent from `⊩`.
 
-#### W1e — assembling `fund`  🔴 **NEXT**
+#### W1e — `fund` is NOT assembly  🟡 **TWO FINDINGS (`SpikeSNK`, 2026-07-30)**
 
-Every case now has its lemma; what remains is the assembly.
+`--safe`, zero postulates, zero holes, 283 lines. W1e was booked as assembly.
+Trying to write `fund` exposed two design facts that had never been checked, both
+about the universe.
 
-1. **Port `irrel`/`fwd*`/`conv-⊩`** onto the inductive-`SN` LR (verbatim, per above),
-   so one module holds the whole relation.
-2. **`fund`** over `_⊢_∷_` with reducible substitutions: `⊢var` (`⊩var`), `⊢app`
-   (`sem-app`), `⊢lam` (`sem-lam`), `⊢conv` (`conv-⊩` + `irrel`).
-3. **Σ'** — the fourth whnf shape plus `pair`/`fst`/`snd`; `SNRed` already carries
-   `snr-βfst`/`snr-βsnd`/`snr-fst`/`snr-snd` for it.
-4. **`wnorm : Γ ⊢ t ∷ A → WN t`**, hence `dec-conv` unconditional.
+**★ Finding 1 — the relation is NOT TOTAL over `RTy`** (`¬⊩elLam`, machine-checked).
+`El (lam (var vz))` is a *normal* type — `El-⌜base⌝`/`El-⌜Π⌝`/`El-⌜Σ⌝` need the code
+to BE a constructor and `ξ-El` needs it to step, but `lam (var vz)` is normal —
+whose code is not neutral either. No constructor of `⊩` applies.
 
-*(superseded scoping retained below)*
+⚠ **This is a statement about the KERNEL, not the proof.** `⊢lam : (Γ ▹ A) ⊢ t ∷ B
+→ Γ ⊢ lam t ∷ Π A B` puts no condition on `A`, and the kernel has **no type-formation
+judgment at all** (verified). So a normalization theorem for `_⊢_∷_` *as it stands* is
+not provable — `fund` can neither produce `⊩ (subTy σ A)` nor take it as input
+(`⊢app` would need one for `Π A B` before it has it). **Either the kernel gains
+`Γ ⊢ty A` premises on `⊢lam`/`⊢app`/`⊢pair` — which cascades through `NbEPDirDBSubj`
+and `NbEPDirDBDec` exactly as §2's warning describes — or the theorem is stated only
+for derivations whose types are independently well-formed. A decision to take
+deliberately before building further.**
 
-#### W1b — ★ the obstruction as first named: TYPE-LEVEL CONFLUENCE
+**★ Finding 2 — the obvious fix is REJECTED, and STRATIFICATION is forced.** The
+type-formation judgment's universe rule `ty-El : Γ ⊢ c ∷ U → Γ ⊢ty El c` needs
+`⊩ (El c[σ])` out of the semantics of `U`, which under W1d's LR is just `SN c[σ]` —
+and cannot give it, Finding 1 being the counterexample. So the `U` clause must carry
+it: `⊩U _ ⊩∋ t = SN t × ⊩ (El t)`. **That does not typecheck** (checked, not assumed):
 
-The spike also relocated the difficulty, and this is the more valuable half of it.
-`⊢conv` needs the FORWARD transfer `A ⟶ᵀ B → ⊩ A → ⊩ B` (`⊩red` is only backward).
-Inducting on `⊩` localises the obstruction to **exactly one constructor**:
+```
+NotStrictlyPositive
+⊩_ is not strictly positive, because it occurs
+  in the second argument of _×_ in the second clause
+  in the definition of _⊩∋_, which occurs
+  to the left of an arrow in the type of the constructor ⊩Π
+```
 
-- `⊩base`/`⊩U` — ✅ machine-checked vacuous (`fwd-base`/`fwd-U`);
-- `⊩ne` — ✅ machine-checked (`fwd-ne`): `El n ⟶ᵀ B` with `n` neutral *forces* `ξ-El`,
-  since `El-⌜base⌝`/`El-⌜Π⌝` need the code to BE a constructor;
-- `⊩Π` — analysis only: wants ⊩-irrelevance + `_⟶ᵀ_` substitution-stability, both routine;
-- **`⊩red` — ✗ two reductions leave the same type and must be JOINED.** Nothing
-  structural does that, and the non-determinism is real: `El (⌜Π⌝ c d)` steps both by
-  `El-⌜Π⌝` (decode) and by `ξ-El` (reduce inside the code).
+`⊩Π`'s function field puts `⊩∋` negatively, so a `⊩` in `⊩∋`'s result makes `⊩` occur
+negatively in its own definition. W1a's knot (`⊩∋` inside `⊩Π`) and this one (`⊩`
+inside `⊩∋`) are each fine alone and not together.
 
-⇒ **Type-level confluence is the precise missing input, and the ONLY missing input for
-transfer.** `critical-pair-joins` machine-checks that the interesting critical pair does
-join, and every remaining overlap bottoms out in TERM confluence — already proven
-(dHoTT-25). **So W1's remaining core is CONFLUENCE work, not reducibility work**: lift
-`NbEPDirDBConf.church-rosser` from `_⟶_` to `_⟶ᵀ_`. Same technique as dHoTT-25, which
-this repo has already executed once. That is a materially better position than
-"research-scale induction-recursion", and it is why the risk table below is revised.
+⇒ **The relation must be STRATIFIED BY UNIVERSE LEVEL** — what `logrel-mltt` does, and
+what W1a–W1d had no occasion to discover. Built and checked here: `⊩₀` (small types,
+the decodings of codes, **no `U`**) and `⊩₁` (large types, with
+`⊩₁U _ ⊩₁∋ t = SN t × (⊩₀ (El t))`). No cycle, because the kernel's universe is
+**predicative** — the codes are `⌜base⌝`/`⌜Π⌝`/`⌜Σ⌝` with *no code for `U`* — so two
+levels suffice. This is dHoTT-37's `snEl` observation cashed out as a stratification
+of the logical relation rather than of a termination measure.
 
-**Then:** the Kripke action (`⊩`/`⊩∋` stable under renaming — mechanical but bulky,
-needed for `fund`'s λ-case), `fund` itself, Σ/pairs per dHoTT-36's template, and the
-port onto `NbEPDirDBPi`'s real syntax.
+| built | what it says |
+|---|---|
+| ★ `¬⊩elLam` | Finding 1 |
+| ★ `⊩₀_`/`⊩₁_` | the stratified relation |
+| `CR1₁`/`CR3₁`/`exp₁`/`⊩var₁`, `bwd₀` | the candidate layer at the large level |
+| ★ `sem-El` | the `ty-El` obligation — one projection, level 1 → 0 |
+| `sem-⌜base⌝`, ★ `sem-⌜Π⌝` | the code introductions; `sem-⌜Π⌝` is where PREDICATIVITY does structural work |
+| `sem-lam`/`sem-app` | unchanged in substance from `SpikeSNJ` |
 
-**Done when:** `sn : Γ ⊢ A → SN t` for the full committed kernel; `dec-conv`
-unconditional. **Independent of W2–W6 — start here.**
+#### W1f — consolidate, then `fund`  🔴 **NEXT**
 
-### W2 — Internalize the directed identity type  🟠 *large: syntax + full metatheory redo*
+⚠ **Consolidation first, and this is now overdue.** The relation has been declared
+four times (SNW over accessibility-SN, SNJ over inductive-SN, SNK's two levels).
+Separate spikes were right while the shape was moving; it has stopped. Merge SNJ+SNK
+and port `SpikeSNW`'s `irrel`/`fwd*`/`bwd*`/`conv-⊩` in ONCE, at both levels — they
+port verbatim, none of them inspecting `SN` or membership.
 
-**Why:** without it "dHoTT kernel" is aspirational — the directed `J` is a meta-level
-theorem about `⟶*`, not something a program can eliminate over.
-
-**What:** extend `RTy` with a former `Hom A a b`, `RTm` with `refl`, and `_⊢_∷_` with
-directed-`J` typing rules; teach conversion to see `refl`. Then re-prove, for the
-extended calculus: confluence (complete development for the new redexes), Π/Σ/Hom
-injectivity, subject reduction, and re-check `dec-conv`.
-
-**Constraint:** `no-sym` must survive internalization — the object-level `Hom` must
-still refuse symmetry (`NbEPDirDBIdJ.no-sym` is the meta-level statement to port).
-
-**Reuse:** `NbEPDirJ` (three forms of `J`, `transport⟶`, `yo`), `NbEPDirCwFJ`
-(`Jᶜ`/`Jᶜ-β`/`Jᶜ-η` — the Yoneda formulation, and the proof that directed `J` and
-directed transport are ONE map, `NbEPDirAp.transp≡Jᶜ`).
-
-**Done when:** a closed derivation eliminates over an object-level `Hom`, `sr` and
-confluence cover the new rules, all `--safe` zero-axiom.
-
-### W3 — Variance as a judgment  🟠 *large; prerequisite for W4*
-
-**Why:** `NbEPDirJ` has covariance as a side-condition on motives. A kernel needs
-`Γ ⊢ A covariant-in x` propagated through every type former (the Nuyts–Devriese
-direction). Without it, W4's variance-respecting substitution cannot be stated.
-
-**What:** a variance judgment, its propagation rules for `base`/`Π`/`Σ`/`U`/`El`/`Hom`,
-and the proof that the contravariant-domain rule is forced (`NbEPDirV`'s `⇒→`
-contravariance and `NbEPDirTy`'s `_⇒⁺_` are the semantic statements to mirror —
-note `_⇒⁺_` does not even typecheck with a covariant domain).
-
-**Done when:** every former carries variance, and the metatheory (`sr`, confluence)
-is re-proven variance-aware.
-
-### W4 — The directed CwF, syntactically  🔴 *the real new construction*
-
-**Why:** `PATHS.md`: *"Does not exist syntactically anywhere (Riehl–Shulman have the
-semantics only)."* This is the piece with no prior art.
-
-**What:** contexts, types, terms, substitution — variance-annotated, with substitution
-required to respect direction.
-
-**The reason to expect this to work:** dHoTT-20. The semantic attempt died on
-Beck–Chevalley (`Π⁺` lax-stable, and *not even iso* for a general functor `σ`); the
-syntactic presentation makes the same stability definitional. Build it syntactically
-and the obstruction that killed the semantic route is structurally absent.
-
-**Depends on:** W3.
-
-### W5 — Decidable directed conversion  🟠
-
-**Why:** the `Hom` analogue of `dec≈`/adequacy — the engine that would REPLACE POC-0's.
-
-**What:** the good news first — for a confluent, terminating rewrite system `t ⟶* u`
-is *reachability*, decidable via the normalizer (`u ⟶* NF t`), so the reduction
-fragment is nearly free once W1 lands. The open part is a **normal form for the
-general variance-carrying directed morphism** — the directed twin of `NF`, with its
-own adequacy proof. Direct parallel to the L3.4b climb already completed.
-
-**Depends on:** W1 (normalization), W3 (variance).
-
-### W6 — The welding proof: `definitional-equality = core(directed)`, computing  🟠
-
-**Why:** this is the claim that lets Path 1 be *recovered* rather than maintained. It
-is what "replaces the NbE one" ultimately means.
-
-**What:** prove the definitional-equality checker **is** the core of the directed
-structure, and that it computes on closed programs. `NbEPMonD` is the skeleton
-(conversion by `nf`, the groupoid core via `invS`); `NbEPDirKernel` already has
-`Core = Id a b × Id b a` with `assoc-core` in it and `opt-∉-core` proven via
-`no-way-back`; `NbEPDirDBCore` ports the core to the strict de Bruijn kernel with
-the denotational bridge `core → ≋`.
-
-**Depends on:** W2, W5.
+Then: (a) take the kernel decision in Finding 1; (b) `fund-ty`/`fund` mutual, with
+the level-0→1 embedding; (c) `Σ'` at both levels plus `sem-⌜Σ⌝`; (d) `wnorm :
+Γ ⊢ t ∷ A → WN t` via `SpikeSNJ.wn`, hence `dec-conv` unconditional.
 
 --------------------------------------------------------------------------
 ## 4. Sequencing
@@ -699,7 +649,8 @@ W1a IR spike ✅ (SpikeSNU)  │
 W1b conversion transfer ✅ (SpikeSNW — irrel, fwd*, conv-⊩)
 W1c 🟡 (SpikeSNX — Kripke STRUCK; sem-var/app/conv, sn-exp, non-Π exp)
 W1d ✅ (SpikeSNJ — JM inductive SN: exp, sem-lam, wn. The wall is gone.)
-     └► W1e port irrel/fwd* ──► fund ──► Σ' ──► wnorm ──► dec-conv
+W1e 🟡 (SpikeSNK — ⊩ not total; LR must be STRATIFIED by level. Both checked.)
+     └► W1f consolidate ──► fund ──► Σ' ──► wnorm ──► dec-conv
                             ├──► unconditional dec-conv   [START HERE]
                             │
 W2  internalize Hom ──┐     │
@@ -774,6 +725,8 @@ conversion rule. Two consequences:
 | ~~W1's real core: lifting confluence from `_⟶_` to `_⟶ᵀ_`~~ | ~~medium~~ | ✅ **RETIRED 2026-07-30 by `SpikeSNW`** — and the lift did not have to be written at all: `NbEPDirDBInj` (dHoTT-26) already had `confluentᵀ`/`church-rosserᵀ`/`Π-reduct`, built for Π-injectivity. What W1b needed was the whnf-carrying redesign that consumes them; `conv-⊩` is proven |
 | ~~W1c: the Kripke action's mutual block~~ | ~~medium~~ | ✅ **STRUCK 2026-07-30 by `SpikeSNX`** — not needed at all: `fund` is substitution-based, so its λ-case extends the substitution and the target context never grows; `SpikeSNU`'s `SN t` conjunct in the `Π` clause already removed the one place Kripke is classically forced (CR1 at `Π`) |
 | ~~W1d: SN closed under head expansion under a spine~~ | ~~medium~~ | ✅ **RETIRED 2026-07-30 by `SpikeSNJ`** — Joachimski–Matthes makes head expansion a CONSTRUCTOR, so the lemma vanishes; and the feared cost (relating the presentation to accessibility-`SN`) never arises, because `dec-conv` consumes WEAK normalization and `wn` falls out structurally |
+| ⚠ **The kernel may need `Γ ⊢ty A` premises** — `⊩` is not total over `RTy` (`SpikeSNK.¬⊩elLam`), so normalization for `_⊢_∷_` as it stands is not provable | **high** | a kernel-design decision, not a proof detail; adding premises to `⊢lam`/`⊢app`/`⊢pair` cascades through `NbEPDirDBSubj`/`NbEPDirDBDec` per §2. Alternative: state the theorem only for derivations with independently well-formed types |
+| Four separate declarations of the logical relation have accumulated | medium | the shape has stopped moving; W1f consolidates before `fund` is built on any one of them |
 | The headline result is now WN, not SN | low | `dec-conv` consumes WN — nothing downstream needs SN. Revisit only if SN is wanted for its own sake; the missing piece would be inductive-`SN` ⊆ accessibility-`SN` |
 | An obstruction is scheduled that the repo has already discharged elsewhere | medium | **this happened here** — W1b was scoped as "lift confluence" when dHoTT-26 had already lifted it. Grep the module list for the needed result before scheduling a research item |
 | W2/W3 cascade blows up the metatheory beyond one person's reach | high | land them as ONE cascade; re-verify the six-module chain per dHoTT-32/33's pattern, which is the measured precedent |
