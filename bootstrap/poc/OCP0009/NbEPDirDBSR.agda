@@ -43,7 +43,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
-        ; Ctx; ◇; _▹_; _⊢_∷_; ⊢var; ⊢lam; ⊢app; here )
+        ; Ctx; ◇; _▹_; _⊢_∷_; ⊢var; ⊢lam; ⊢app; here
+        ; _⊢ty_; ty-base )
 
 private
   variable
@@ -117,7 +118,7 @@ sub-comm {Γ} σ t u =
 
 -- the redex is well-typed (dHoTT-21's `⊢appex`)
 sr-redex : (◇ ▹ base) ⊢ app (lam (var vz)) (var vz) ∷ base
-sr-redex = ⊢app (⊢lam (⊢var here)) (⊢var here)
+sr-redex = ⊢app (⊢lam ty-base (⊢var here)) (⊢var here)
 
 -- it β-reduces to `y = var vz`
 sr-step : app (lam (var vz)) (var vz) ⟶ var (vz {ε})
