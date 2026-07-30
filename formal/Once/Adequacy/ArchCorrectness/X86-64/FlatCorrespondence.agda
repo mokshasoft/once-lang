@@ -140,29 +140,53 @@ open HeapView public
 lit-word : Carrier → X.Word
 lit-word x = x
 
-enc-sv : HeapView → StoredValue FS → X.Word
-enc-sv hv (SV-Tag n)                = n
-enc-sv hv (SV-Ptr (AtDynamic hl))   = haddr hv hl
+-- THE ENCODING IS A FUNCTION OF THE ADDRESS MAP ALONE, and it says so: the
+-- matching definition takes an `AddrMap`, and the view-level name is a one-clause
+-- projection wrapper. That is not cosmetic — it is what keeps the correspondence
+-- STABLE under view fields the encoding does not read.
+--
+-- Why it matters: `enc-sv hv v` on a VARIABLE `v` is stuck, and Agda compares
+-- stuck applications ARGUMENT-WISE. With the view passed whole, adding any field
+-- (the step-3 high-water mark `lo`, or tomorrow's stack-memory keys) made
+-- `enc-sv hv' v` and `enc-sv hv v` non-convertible even when `haddr hv' ≡ haddr hv`
+-- BY DEFINITION, and every affected field of every affected `sim-*` needed a
+-- transport lemma. Through the wrapper both sides unfold to
+-- `enc-sv-at (haddr hv) v` — the same term — so a view change the map survives is
+-- INVISIBLE, with no lemma and no per-field boilerplate.
+AddrMap : Set
+AddrMap = HeapLocation → ℕ
+
+enc-sv-at : AddrMap → StoredValue FS → X.Word
+enc-sv-at am (SV-Tag n)                = n
+enc-sv-at am (SV-Ptr (AtDynamic hl))   = am hl
 -- Plan 0.61: a stack pointer is the SLOT'S ADDRESS. This is only meaningful
 -- because frames now move with %rsp (`Machine.Flat`) — with the old model the
 -- callee's slot k and its caller's slot k were the same abstract cell, so no
 -- address could be assigned and this was a (false) `0`.
-enc-sv hv (SV-Ptr (AtStack f k))    = slot-addr f k
+enc-sv-at am (SV-Ptr (AtStack f k))    = slot-addr f k
 -- A register-fittable INT literal encodes to its own value — exactly the immediate
 -- `compile-const fits-int v = mov rax, v` loads (so load-const's rax-eq is refl and
 -- literal values flow through FlatCorr instead of collapsing to 0). Float is
 -- unimplemented (`compile-const fits-float` traps to ud2), so it gets no register
 -- correspondence — encode 0.
 -- ENUMERATED (no catch-all): a `SV-Lit _ _` catch-all does not survive the
--- case-tree translation, so `enc-sv hv (SV-Lit fits-float v)` would not reduce
+-- case-tree translation, so `enc-sv-at am (SV-Lit fits-float v)` would not reduce
 -- and the extension-stability lemma below could not be stated by `refl`.
-enc-sv hv (SV-Lit fits-int v)       = lit-word v
-enc-sv hv (SV-Lit fits-float v)     = 0
-enc-sv hv (SV-Code n)               = n
+enc-sv-at am (SV-Lit fits-int v)       = lit-word v
+enc-sv-at am (SV-Lit fits-float v)     = 0
+enc-sv-at am (SV-Code n)               = n
+
+enc-maybe-at : AddrMap → Maybe (StoredValue FS) → Maybe X.Word
+enc-maybe-at am (just v) = just (enc-sv-at am v)
+enc-maybe-at am nothing  = nothing
+
+-- The view-level names every proof uses: one clause each, so they UNFOLD during
+-- conversion checking and the comparison lands on the address map.
+enc-sv : HeapView → StoredValue FS → X.Word
+enc-sv hv = enc-sv-at (haddr hv)
 
 enc-maybe : HeapView → Maybe (StoredValue FS) → Maybe X.Word
-enc-maybe hv (just v) = just (enc-sv hv v)
-enc-maybe hv nothing  = nothing
+enc-maybe hv = enc-maybe-at (haddr hv)
 
 ------------------------------------------------------------------------
 -- The correspondence: a FlatState and an x86 State agree on the four
@@ -274,26 +298,10 @@ descend-view hv lo' _ front-lo' = record
   ; front-lo  = front-lo'
   }
 
--- The DESCENT IS INVISIBLE TO THE ENCODING: `enc-sv` reads only `haddr`, which the
--- descent copies verbatim. It still has to be said, because `enc-sv hv v` on a
--- VARIABLE `v` is stuck, and a stuck application is compared argument-wise — so
--- Agda does not see the two views as equal on its own. Enumerated (no catch-all),
--- like `enc-ext`: a catch-all would not survive the case-tree translation.
-enc-desc : ∀ (hv : HeapView) (lo' : ℕ) (le : lo' ≤ lo hv) (fl : hfront hv ≤ lo')
-             (v : StoredValue FS)
-         → enc-sv (descend-view hv lo' le fl) v ≡ enc-sv hv v
-enc-desc hv lo' le fl (SV-Ptr (AtDynamic hl)) = refl
-enc-desc hv lo' le fl (SV-Ptr (AtStack _ _)) = refl
-enc-desc hv lo' le fl (SV-Tag _)             = refl
-enc-desc hv lo' le fl (SV-Lit fits-int v)    = refl
-enc-desc hv lo' le fl (SV-Lit fits-float v)  = refl
-enc-desc hv lo' le fl (SV-Code _)            = refl
-
-enc-desc-maybe : ∀ (hv : HeapView) (lo' : ℕ) (le : lo' ≤ lo hv) (fl : hfront hv ≤ lo')
-                   (mv : Maybe (StoredValue FS))
-               → enc-maybe (descend-view hv lo' le fl) mv ≡ enc-maybe hv mv
-enc-desc-maybe hv lo' le fl (just v) = cong just (enc-desc hv lo' le fl v)
-enc-desc-maybe hv lo' le fl nothing  = refl
+-- (No encoding-transport lemma is needed across a descent: `descend-view` copies
+-- `haddr` verbatim, and the encoding is a function of the map alone — `enc-sv`
+-- unfolds to `enc-sv-at (haddr hv)` on both sides. That is the whole reason the
+-- wrapper above exists.)
 
 -- `untouched` at the descended view: the region only shrank.
 untouched-descend : ∀ {hv : HeapView} {fs : FlatState} {s : X.State}
@@ -408,7 +416,9 @@ sv-tag-zero : ∀ (n : ℕ) → sv-is-zero (SV-Tag {FS} n) ≡ (n ≡ᵇ 0)
 sv-tag-zero zero    = refl
 sv-tag-zero (suc _) = refl
 
-enc-zero : ∀ {hv : HeapView} (v : StoredValue FS) (n : ℕ) → v ≡ SV-Tag n → (enc-sv hv v ≡ᵇ 0) ≡ sv-is-zero v
+-- (Over the ADDRESS MAP, like the other encoding lemmas: a `{hv}` used only under
+-- `enc-sv`/`haddr` cannot be inferred — see the note at `enc-sv-at`.)
+enc-zero : ∀ {am : AddrMap} (v : StoredValue FS) (n : ℕ) → v ≡ SV-Tag n → (enc-sv-at am v ≡ᵇ 0) ≡ sv-is-zero v
 enc-zero .(SV-Tag n) n refl = sym (sv-tag-zero n)
 
 ------------------------------------------------------------------------
@@ -576,12 +586,12 @@ store-heap-eq hv hl v s ls live-hl pre hl' live-hl' with hl ≟HL hl'
 -- heap write, so the current-frame stack correspondence is preserved — the
 -- rsp-relative analogue of `store-heap-eq`'s no-alias branch. `stk` is the
 -- current frame's slot→value slice (`stackMem ls (current-frame …)`).
-store-stack-eq : ∀ {hv : HeapView} (addr : ℕ) (v' : X.Word) (s : X.State) (stk : Slot → Maybe (StoredValue FS)) (bound : ℕ)
-  → (∀ k → k < bound → X.readMem (memory s) (X.readReg (xregs s) rsp + slot-to-disp k) ≡ enc-maybe hv (stk k))
+store-stack-eq : ∀ {am : AddrMap} (addr : ℕ) (v' : X.Word) (s : X.State) (stk : Slot → Maybe (StoredValue FS)) (bound : ℕ)
+  → (∀ k → k < bound → X.readMem (memory s) (X.readReg (xregs s) rsp + slot-to-disp k) ≡ enc-maybe-at am (stk k))
   → (∀ k → (X.readReg (xregs s) rsp + slot-to-disp k ≡ addr) → ⊥)
   → ∀ k → k < bound → X.readMem (writeMem (memory s) addr v') (X.readReg (xregs s) rsp + slot-to-disp k)
-          ≡ enc-maybe hv (stk k)
-store-stack-eq {hv} addr v' s stk bound pre disj k k<b rewrite ≢→≡ᵇfalse (disj k) = pre k k<b
+          ≡ enc-maybe-at am (stk k)
+store-stack-eq {am} addr v' s stk bound pre disj k k<b rewrite ≢→≡ᵇfalse (disj k) = pre k k<b
 
 -- store-indirect: *Input1 := Output ↔ `mov [rdi], rax`. Hypotheses:
 --   Input1 = SV-Ptr (AtDynamic hl)   (destination is a heap cell)
@@ -722,14 +732,14 @@ store-slot-heap-eq hv waddr v' s ls pre disj hl' live
 -- would abstract the scrutinee inside the abstract `writeStackMem-aux (… ≟F …) (slot ≟ k)`
 -- as `yes refl`, diverging from the read-back lemma's `slot ≟ slot` form. Feeding the
 -- Dec to `go` keeps the goal's readLoc/writeLoc intact so the lemmas apply.
-store-slot-stack-eq : ∀ {hv : HeapView} (base : ℕ) (slot : Slot) (Out : StoredValue FS) (s : X.State) (ls : LocState FS) (cf : Frame) (bound : ℕ)
-  → (∀ k → k < bound → X.readMem (memory s) (base + slot-to-disp k) ≡ enc-maybe hv (stackMem ls cf k))
-  → ∀ k → k < bound → X.readMem (writeMem (memory s) (base + slot-to-disp slot) (enc-sv hv Out)) (base + slot-to-disp k)
-          ≡ enc-maybe hv (readLoc (writeLoc ls (AtStack cf slot) Out) (AtStack cf k))
-store-slot-stack-eq {hv} base slot Out s ls cf bound old k k<b = go (k ≟ slot)
+store-slot-stack-eq : ∀ {am : AddrMap} (base : ℕ) (slot : Slot) (Out : StoredValue FS) (s : X.State) (ls : LocState FS) (cf : Frame) (bound : ℕ)
+  → (∀ k → k < bound → X.readMem (memory s) (base + slot-to-disp k) ≡ enc-maybe-at am (stackMem ls cf k))
+  → ∀ k → k < bound → X.readMem (writeMem (memory s) (base + slot-to-disp slot) (enc-sv-at am Out)) (base + slot-to-disp k)
+          ≡ enc-maybe-at am (readLoc (writeLoc ls (AtStack cf slot) Out) (AtStack cf k))
+store-slot-stack-eq {am} base slot Out s ls cf bound old k k<b = go (k ≟ slot)
   where go : Dec (k ≡ slot)
-           → X.readMem (writeMem (memory s) (base + slot-to-disp slot) (enc-sv hv Out)) (base + slot-to-disp k)
-             ≡ enc-maybe hv (readLoc (writeLoc ls (AtStack cf slot) Out) (AtStack cf k))
+           → X.readMem (writeMem (memory s) (base + slot-to-disp slot) (enc-sv-at am Out)) (base + slot-to-disp k)
+             ≡ enc-maybe-at am (readLoc (writeLoc ls (AtStack cf slot) Out) (AtStack cf k))
         go (yes refl) rewrite ≡ᵇ-refl (base + slot-to-disp slot)
                             | writeLoc-read-same-stack ls cf slot Out = refl
         go (no  p)    rewrite ≢→≡ᵇfalse {base + slot-to-disp k} {base + slot-to-disp slot}
@@ -797,29 +807,22 @@ sim-alloc-stack : {hv : HeapView} (n : ℕ) (newFlags : X.Flags) (fs : FlatState
              (mkstate (xwriteReg (xregs s) rsp (X.readReg (xregs s) rsp ∸ slots n))
                       (memory s) newFlags (pc s + 1) (xhalted s))
 sim-alloc-stack {hv} n newFlags fs s corr entry fresh-abs fresh-x86 lo' lo'≤lo front-lo' lo'≤rsp = record
-  { rdi-eq = reg-eq Input1 (rdi-eq corr) ; rsi-eq = reg-eq Input2 (rsi-eq corr)
-  ; rax-eq = reg-eq Output (rax-eq corr) ; rbx-eq = reg-eq Scratch (rbx-eq corr)
-  ; r14-eq = reg-eq Count  (r14-eq corr)
+  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
+  ; r14-eq = r14-eq corr
   ; halt-eq = halt-eq corr
   -- the reservation moves %rsp DOWN n slots and the frame with it (`shift-base`)
   ; rsp-eq = trans (cong (_∸ slots n) (rsp-eq corr))
                    (trans (cong (λ w → frame-base (current-frame (falloc fs)) ∸ n * w) (sym word-eq))
                           (sym (shift-base (current-frame (falloc fs)) n)))
   ; r15-eq = r15-eq corr ; dom-fresh = dom-fresh corr
-  ; heap-eq = λ hl live → trans (heap-eq corr hl live) (sym (enc-desc-maybe hv lo' lo'≤lo front-lo' _))
+  ; heap-eq = heap-eq corr
   ; lo-le = lo'≤rsp
   ; untouched = untouched-descend lo' lo'≤lo front-lo' corr
   ; stack-eq = λ k k<ns → stk k (subst (k <_) (cong (_+ n) entry) k<ns) }
   where
-    hv' = descend-view hv lo' lo'≤lo front-lo'
-    -- the descent leaves every encoded register value alone (`enc-desc`)
-    reg-eq : ∀ (r : AbstractReg) {w : X.Word}
-           → w ≡ enc-sv hv (readReg (regs (floc fs)) r)
-           → w ≡ enc-sv hv' (readReg (regs (floc fs)) r)
-    reg-eq r eq = trans eq (sym (enc-desc hv lo' lo'≤lo front-lo' (readReg (regs (floc fs)) r)))
     stk : ∀ k → k < n → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k)
-            ≡ enc-maybe hv' (stackMem (floc fs) (shift-frame (current-frame (falloc fs)) n) k)
-    stk k k<n = trans (fresh-x86 k k<n) (sym (cong (enc-maybe hv') (fresh-abs k k<n)))
+            ≡ enc-maybe hv (stackMem (floc fs) (shift-frame (current-frame (falloc fs)) n) k)
+    stk k k<n = trans (fresh-x86 k k<n) (sym (cong (enc-maybe hv) (fresh-abs k k<n)))
 
 ------------------------------------------------------------------------
 -- STACK DEALLOCATION: `instr-dealloc-stack n` (free n slots) ↔ `add rsp, n*8`.
@@ -900,25 +903,16 @@ sim-push-frame : {hv : HeapView} (n : ℕ) (fs : FlatState) (s xp : X.State) →
              (flat-exec-instr (instr-push-frame n) [] fs) xp
 sim-push-frame {hv} n fs s xp corr rdi-p rsi-p rax-p rbx-p r14-p halt-p r15-p rsp-p
                lo' lo'≤lo front-lo' lo'≤rsp virgin-p heap-p = record
-  { rdi-eq = reg-eq Input1 (trans rdi-p (rdi-eq corr))
-  ; rsi-eq = reg-eq Input2 (trans rsi-p (rsi-eq corr))
-  ; rax-eq = reg-eq Output (trans rax-p (rax-eq corr))
-  ; rbx-eq = reg-eq Scratch (trans rbx-p (rbx-eq corr))
-  ; r14-eq = reg-eq Count  (trans r14-p (r14-eq corr))
+  { rdi-eq = trans rdi-p (rdi-eq corr) ; rsi-eq = trans rsi-p (rsi-eq corr)
+  ; rax-eq = trans rax-p (rax-eq corr) ; rbx-eq = trans rbx-p (rbx-eq corr)
+  ; r14-eq = trans r14-p (r14-eq corr)
   ; halt-eq = trans halt-p (halt-eq corr) ; rsp-eq = rsp-p
   ; r15-eq = trans r15-p (r15-eq corr) ; dom-fresh = dom-fresh corr
-  ; heap-eq = λ hl live → trans (trans (heap-p hl live) (heap-eq corr hl live))
-                                (sym (enc-desc-maybe hv lo' lo'≤lo front-lo' _))
+  ; heap-eq = λ hl live → trans (heap-p hl live) (heap-eq corr hl live)
   ; lo-le = lo'≤rsp
   ; untouched = λ a fa a<lo' → trans (virgin-p a fa a<lo')
                                      (untouched corr a fa (<-transˡ a<lo' lo'≤lo))
   ; stack-eq = λ _ () }   -- writeStackSlot 0 ⇒ post stackSlot ≡ 0 ⇒ k < 0 absurd
-  where
-    -- the descent leaves every encoded register value alone (`enc-desc`)
-    reg-eq : ∀ (r : AbstractReg) {w : X.Word}
-           → w ≡ enc-sv hv (readReg (regs (floc fs)) r)
-           → w ≡ enc-sv (descend-view hv lo' lo'≤lo front-lo') (readReg (regs (floc fs)) r)
-    reg-eq r eq = trans eq (sym (enc-desc hv lo' lo'≤lo front-lo' (readReg (regs (floc fs)) r)))
 
 ------------------------------------------------------------------------
 -- FRAME POP: `instr-pop-frame` ↔ `mov rsp,rbp; pop rbp`. The abstract is IDENTITY
@@ -1010,10 +1004,12 @@ sim-save-closure-reg {hv} fs s corr = record
 -- Arithmetic reg-ops (Plan 0.34: flag-free, so the post is parametric over
 -- the x86 flags). count-inc / scratch-dec increment/decrement a TAG.
 ------------------------------------------------------------------------
-inc-enc : ∀ {hv : HeapView} (v : StoredValue FS) (k : ℕ) → v ≡ SV-Tag k → enc-sv hv v + 1 ≡ enc-sv hv (sv-succ v)
+inc-enc : ∀ {am : AddrMap} (v : StoredValue FS) (k : ℕ) → v ≡ SV-Tag k
+        → enc-sv-at am v + 1 ≡ enc-sv-at am (sv-succ v)
 inc-enc .(SV-Tag k) k refl = +-comm k 1
 
-dec-enc : ∀ {hv : HeapView} (v : StoredValue FS) (k : ℕ) → v ≡ SV-Tag k → enc-sv hv v ∸ 1 ≡ enc-sv hv (sv-pred v)
+dec-enc : ∀ {am : AddrMap} (v : StoredValue FS) (k : ℕ) → v ≡ SV-Tag k
+        → enc-sv-at am v ∸ 1 ≡ enc-sv-at am (sv-pred v)
 dec-enc .(SV-Tag zero)    zero    refl = refl
 dec-enc .(SV-Tag (suc m)) (suc m) refl = refl
 
