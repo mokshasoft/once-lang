@@ -29,7 +29,7 @@ open import Once.CCC.Target.X86-64.Syntax using (slot-size)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (_*_)
-open import Data.Nat.Properties using (+-comm)
+open import Data.Nat.Properties using (+-comm; ≤-refl)
 open import Once.Adequacy.CPU.X86-64 using (ev-x86-64; arith-env-x86-64; step-budget-x86-64; val-x86-64)
 import Once.Arith.Backend.X86-64.RunTrace as RTx
 import Once.CCC.Target.X86-64.Semantics as X
@@ -119,6 +119,12 @@ entry-view = record
   ; haddr-suc = suc-law
   ; haddr-inj = λ ()
   ; dom-below = λ ()
+  -- THE ENTRY HIGH-WATER MARK (plan 0.54 rung D step 3): nothing has run yet, so
+  -- the lowest %rsp ever reached IS the loader's `stack-top`, and the whole gap
+  -- `[0, stack-top)` is virgin — which `entry-corr.untouched` discharges from
+  -- `emptyMemory`. `front-lo` is `z≤n`: the heap base is 0 WLOG.
+  ; lo        = X.stack-top
+  ; front-lo  = z≤n
   }
   where
     suc-law : ∀ (hl : HeapLocation) → slot-to-disp (heap-offset (sucHL hl))
@@ -153,14 +159,18 @@ entry-corr ir = record
       -- emptyRegFile's %r14 ≡ 0 ≡ enc-sv (SV-Tag 0), the entry `Count` filler
       ; r14-eq  = refl
       ; halt-eq = refl
-      ; rsp-eq  = sym entry-frame-base   -- emptyRegFile's %rsp ≡ 0 ≡ the entry frame's base
+      ; rsp-eq  = sym entry-frame-base   -- initState's %rsp IS the entry frame's base
       ; r15-eq  = refl          -- emptyRegFile's %r15 ≡ 0 ≡ the entry frontier
       ; dom-fresh = λ ()        -- nothing is mapped yet
       ; heap-eq = λ _ ()
-      -- LAYOUT SEPARATION at entry: the heap frontier is 0 and %rsp is the
-      -- loader's `stack-top`, so the heap is (vacuously) below the stack. This is
-      -- the base case of the invariant that replaces the disjointness postulates.
-      ; sep = z≤n
+      -- LAYOUT SEPARATION at entry: the heap frontier is 0 and both the mark and
+      -- %rsp are the loader's `stack-top`, so the heap is (vacuously) below the
+      -- stack. This is the base case of the invariant that replaced the
+      -- disjointness postulates (`front-lo` = `z≤n` in `entry-view`).
+      ; lo-le = ≤-refl          -- initState's %rsp IS `stack-top` (the entry mark)
+      -- THE VIRGIN REGION at entry: `initState`'s memory is `emptyMemory`, so
+      -- every address reads `nothing` — no address arithmetic needed.
+      ; untouched = λ _ _ _ → refl
       ; stack-eq = λ _ ()   -- entry frame: next-slot ≡ 0, so the k < 0 bound is absurd
       }
   ; pc-off = refl

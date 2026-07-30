@@ -69,7 +69,8 @@ open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (zero; suc)
-open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-comm; ∸-+-assoc; *-suc; *-identityʳ; *-assoc)
+open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-comm; ∸-+-assoc; *-suc; *-identityʳ; *-assoc
+                                      ; <⇒≢; <-transˡ; ≤-trans; m∸n≤m; m≤m+n)
 open import Data.Product using (Σ; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
@@ -263,7 +264,7 @@ block-step-c-label {hv} prog fs s n cc h ft = post , exec-eq , record
                       ; halt-eq = C.halt-eq (dataCorr cc) ; heap-eq = C.heap-eq (dataCorr cc)
                       ; rsp-eq = C.rsp-eq (dataCorr cc)
                       ; rsp-eq = C.rsp-eq (dataCorr cc) ; r15-eq = C.r15-eq (dataCorr cc) ; dom-fresh = C.dom-fresh (dataCorr cc)
-                      ; sep = C.sep (dataCorr cc) ; stack-eq = C.stack-eq (dataCorr cc) }
+                      ; lo-le = C.lo-le (dataCorr cc) ; untouched = C.untouched (dataCorr cc) ; stack-eq = C.stack-eq (dataCorr cc) }
   ; pc-off = pco' }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -290,7 +291,7 @@ block-step-worklist-init : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv p
 block-step-worklist-init {hv} prog fs s n cc h ft = s , refl , record
   { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
                       ; rbx-eq = C.rbx-eq dc ; r14-eq = C.r14-eq dc ; halt-eq = C.halt-eq dc ; rsp-eq = C.rsp-eq dc ; r15-eq = C.r15-eq dc ; dom-fresh = C.dom-fresh dc ; heap-eq = C.heap-eq dc
-                      ; sep = C.sep dc ; stack-eq = C.stack-eq dc }
+                      ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
   ; pc-off = trans (pc-off cc)
              (sym (trans (x86-off-suc prog (fpc fs) (worklist-init n) ft) (+-identityʳ _))) }
   where dc = dataCorr cc
@@ -300,7 +301,7 @@ block-step-worklist-check : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv 
 block-step-worklist-check {hv} prog fs s n cc h ft = s , refl , record
   { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
                       ; rbx-eq = C.rbx-eq dc ; r14-eq = C.r14-eq dc ; halt-eq = C.halt-eq dc ; rsp-eq = C.rsp-eq dc ; r15-eq = C.r15-eq dc ; dom-fresh = C.dom-fresh dc ; heap-eq = C.heap-eq dc
-                      ; sep = C.sep dc ; stack-eq = C.stack-eq dc }
+                      ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
   ; pc-off = trans (pc-off cc)
              (sym (trans (x86-off-suc prog (fpc fs) (worklist-check n) ft) (+-identityʳ _))) }
   where dc = dataCorr cc
@@ -315,7 +316,7 @@ block-step-reclaim-to {hv} prog fs s n cc h ft = s , refl , record
   { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
                       ; rbx-eq = C.rbx-eq dc ; r14-eq = C.r14-eq dc ; halt-eq = C.halt-eq dc ; rsp-eq = C.rsp-eq dc ; r15-eq = C.r15-eq dc ; dom-fresh = C.dom-fresh dc
                       ; heap-eq = C.heap-eq dc
-                      ; sep = C.sep dc ; stack-eq = C.stack-eq dc }   -- reclaim-to changes next-slot, not stackSlot ⇒ bound stable
+                      ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }   -- reclaim-to changes next-slot, not stackSlot ⇒ bound stable
   ; pc-off = trans (pc-off cc)
              (sym (trans (x86-off-suc prog (fpc fs) (instr-reclaim-to n) ft) (+-identityʳ _))) }
   where dc = dataCorr cc
@@ -348,7 +349,7 @@ block-step-c-jmp {hv} prog fs s n j cc h ft fl-eq = block-step
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc
                           ; rax-eq = C.rax-eq dc ; rbx-eq = C.rbx-eq dc ; r14-eq = C.r14-eq dc
                           ; halt-eq = C.halt-eq dc ; rsp-eq = C.rsp-eq dc ; r15-eq = C.r15-eq dc ; dom-fresh = C.dom-fresh dc ; heap-eq = C.heap-eq dc
-                          ; sep = C.sep dc ; stack-eq = C.stack-eq dc }
+                          ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
       ; pc-off = refl }
 
 -- load-indirect: Output := *Input1 ↔ `mov rax, [rdi]`. The read VALUE comes
@@ -485,10 +486,13 @@ block-step-alloc-stack : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv pro
   -- about the SHIFTED frame (a weaker premise than the caller-frame one).
   → (∀ k → k < n → stackMem (floc fs) (shift-frame FS (current-frame (falloc fs)) n) k ≡ nothing)
   → (∀ k → k < n → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k) ≡ nothing)
-  -- ROOM: the reservation stays above the heap frontier (stack overflow)
-  → C.hfront hv + slots n ≤ X.readReg (xregs s) rsp
-  → BlockStep hv prog fs s (instr-alloc-stack n)
-block-step-alloc-stack {hv} prog fs s n cc h ft entry fresh-abs fresh-x86 room =
+  -- THE DESCENT (plan 0.54 rung D step 3): %rsp drops, so the view's high-water
+  -- mark drops with it and the step lands at the DESCENDED view. The ROOM premise
+  -- (stack overflow) is what the dispatcher spends on `front-lo'`.
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
+  → lo' ≤ X.readReg (xregs s) rsp ∸ slots n
+  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-alloc-stack n)
+block-step-alloc-stack {hv} prog fs s n cc h ft entry fresh-abs fresh-x86 lo' lo'≤lo front-lo' lo'≤rsp =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -506,8 +510,10 @@ block-step-alloc-stack {hv} prog fs s n cc h ft entry fresh-abs fresh-x86 room =
     snh = step-sub-ri {compile-trace prog} {s} {rsp} {slots n} fetch-x86
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    dataPost : C.FlatCorr hv (flat-exec-instr (instr-alloc-stack n) prog fs) post
-    dataPost = C.sim-alloc-stack n newFlags fs s dc entry fresh-abs fresh-x86 room
+    dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
+                          (flat-exec-instr (instr-alloc-stack n) prog fs) post
+    dataPost = C.sim-alloc-stack n newFlags fs s dc entry fresh-abs fresh-x86
+                                 lo' lo'≤lo front-lo' lo'≤rsp
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-alloc-stack n) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-alloc-stack n) ft))
 
@@ -550,11 +556,15 @@ block-step-dealloc-stack {hv} prog fs s n cc h ft full restores =
 block-step-push-frame : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-push-frame n)
   → (∀ hl → HDom hv hl → (X.readReg (xregs s) rsp ∸ slot-size ≡ haddr hv hl) → ⊥)
-  -- ROOM: the new frame stays above the heap frontier (stack overflow). Stated on
-  -- the POST %rsp, which the prologue's three steps land on the callee base.
-  → C.hfront hv ≤ (X.readReg (xregs s) rsp ∸ slot-size) ∸ slots n
-  → BlockStep hv prog fs s (instr-push-frame n)
-block-step-push-frame {hv} prog fs s n cc h ft disj room =
+  -- THE DESCENT (plan 0.54 rung D step 3): the prologue lowers %rsp onto the callee
+  -- base, so the view's high-water mark descends there too — and it is that descent
+  -- that legitimises the prologue's own write below the old %rsp (the saved %rbp
+  -- lands at or above `lo'`, outside the virgin region). ROOM (stack overflow) is
+  -- what the dispatcher spends on `front-lo'`.
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
+  → lo' ≤ (X.readReg (xregs s) rsp ∸ slot-size) ∸ slots n
+  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-push-frame n)
+block-step-push-frame {hv} prog fs s n cc h ft disj lo' lo'≤lo front-lo' lo'≤rsp =
   post-sub , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -603,10 +613,20 @@ block-step-push-frame {hv} prog fs s n cc h ft disj room =
             (trans (∸-+-assoc (frame-base FS (current-frame (falloc fs))) slot-size (slots n))
             (trans (cong (λ w → frame-base FS (current-frame (falloc fs)) ∸ (w + n * w)) (sym word-eq))
                    (sym (shift-base FS (current-frame (falloc fs)) (suc n)))))
-    dataPost : C.FlatCorr hv (flat-exec-instr (instr-push-frame n) prog fs) post-sub
+    -- the prologue's ONE write (the saved %rbp at [rsp−8]) is at or above the new
+    -- high-water mark, so it misses the virgin region entirely
+    virgin-p : ∀ (a : ℕ) → C.hfront hv ≤ a → a < lo'
+             → X.readMem (X.State.memory post-sub) a ≡ X.readMem (X.State.memory s) a
+    virgin-p a _ a<lo'
+      rewrite C.≢→≡ᵇfalse {a} {xreadReg (xregs s) rsp ∸ slot-size}
+                (<⇒≢ (<-transˡ a<lo' (≤-trans lo'≤rsp
+                        (m∸n≤m (xreadReg (xregs s) rsp ∸ slot-size) (slots n))))) = refl
+    dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
+                          (flat-exec-instr (instr-push-frame n) prog fs) post-sub
     -- 7 refls: rdi/rsi/rax/rbx/r14/halt/r15 — the prologue (`push rbp; mov rbp,rsp;
     -- sub rsp,n·8`) touches only rbp and rsp, so the tally survives the call.
-    dataPost = C.sim-push-frame n fs s post-sub dc refl refl refl refl refl refl refl rsp-p room heap-p
+    dataPost = C.sim-push-frame n fs s post-sub dc refl refl refl refl refl refl refl rsp-p
+                                lo' lo'≤lo front-lo' lo'≤rsp virgin-p heap-p
     pco' : X.State.pc post-sub ≡ x86-off prog (fpc (flat-exec-instr (instr-push-frame n) prog fs))
     pco' = trans (trans (cong (λ p → ((p + 1) + 1) + 1) po) assoc)
                  (sym (x86-off-suc prog (fpc fs) (instr-push-frame n) ft))
@@ -625,8 +645,11 @@ block-step-pop-frame : ∀ {hv : HeapView} prog fs s (v : X.Word) → CompiledCo
   -- matched pairing: `mov rsp,rbp; pop rbp` lands %rsp on the caller frame's base
   → xreadReg (xregs s) rbp + slot-size
       ≡ frame-base FS (current-frame (leave-frame (falloc fs)))
-  -- ROOM: the restored caller frame is still above the heap frontier
-  → C.hfront hv ≤ xreadReg (xregs s) rbp + slot-size
+  -- ROOM: the saved-rbp cell — and hence the restored caller frame above it — is
+  -- at or above the HIGH-WATER MARK (which does not rise with the epilogue: the
+  -- callee's cells keep their contents). Stated at `%rbp` so that the cell `pop`
+  -- reads is provably OUTSIDE the virgin region.
+  → C.lo hv ≤ xreadReg (xregs s) rbp
   → BlockStep hv prog fs s instr-pop-frame
 block-step-pop-frame {hv} prog fs s v cc h ft ss0 saved restores room =
   post-pop , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
@@ -661,7 +684,10 @@ block-step-pop-frame {hv} prog fs s v cc h ft ss0 saved restores room =
     dataPost : C.FlatCorr hv (flat-exec-instr instr-pop-frame prog fs) post-pop
     -- 7 refls: rdi/rsi/rax/rbx/r14/halt/r15 — the epilogue (`mov rsp,rbp; pop rbp`)
     -- touches only rbp/rsp, so the tally survives the return.
-    dataPost = C.sim-pop-frame fs s post-pop dc ss0 refl refl refl refl refl refl refl restores room heap-p
+    -- `pop` only READS memory, so the virgin region is untouched by construction.
+    dataPost = C.sim-pop-frame fs s post-pop dc ss0 refl refl refl refl refl refl refl restores
+                               (≤-trans room (m≤m+n (xreadReg (xregs s) rbp) slot-size))
+                               (λ _ _ _ → refl) heap-p
     pco' : X.State.pc post-pop ≡ x86-off prog (fpc (flat-exec-instr instr-pop-frame prog fs))
     pco' = trans (trans (cong (λ p → (p + 1) + 1) po) (+-assoc (x86-off prog (fpc fs)) 1 1))
                  (sym (x86-off-suc prog (fpc fs) instr-pop-frame ft))
@@ -1016,7 +1042,7 @@ block-step-c-branch-scratch-zero {hv} prog fs s n zero j cc h ft sc-eq fl-eq = r
     result rewrite sc-eq | fl-eq = post-je , exec-eq , record
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
                           ; rbx-eq = C.rbx-eq dc ; r14-eq = C.r14-eq dc ; halt-eq = C.halt-eq dc ; rsp-eq = C.rsp-eq dc ; r15-eq = C.r15-eq dc ; dom-fresh = C.dom-fresh dc ; heap-eq = C.heap-eq dc
-                      ; sep = C.sep dc ; stack-eq = C.stack-eq dc }
+                      ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
       ; pc-off = refl }
 block-step-c-branch-scratch-zero {hv} prog fs s n (suc m) j cc h ft sc-eq fl-eq = result
   where
@@ -1050,7 +1076,7 @@ block-step-c-branch-scratch-zero {hv} prog fs s n (suc m) j cc h ft sc-eq fl-eq 
     result rewrite sc-eq = post-je , exec-eq , record
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
                           ; rbx-eq = C.rbx-eq dc ; r14-eq = C.r14-eq dc ; halt-eq = C.halt-eq dc ; rsp-eq = C.rsp-eq dc ; r15-eq = C.r15-eq dc ; dom-fresh = C.dom-fresh dc ; heap-eq = C.heap-eq dc
-                      ; sep = C.sep dc ; stack-eq = C.stack-eq dc }
+                      ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
       ; pc-off = pco' }
 
 -- c-branch-tag-zero: cmp [rdi],0 ; je n. Like scratch-zero but the condition
@@ -1098,7 +1124,7 @@ block-step-c-branch-tag-zero {hv} prog fs s n hl zero j cc h ft i-eq live-hl h-e
     result rewrite cond-eq | fl-eq = post-je , exec-eq , record
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
                           ; rbx-eq = C.rbx-eq dc ; r14-eq = C.r14-eq dc ; halt-eq = C.halt-eq dc ; rsp-eq = C.rsp-eq dc ; r15-eq = C.r15-eq dc ; dom-fresh = C.dom-fresh dc ; heap-eq = C.heap-eq dc
-                      ; sep = C.sep dc ; stack-eq = C.stack-eq dc }
+                      ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
       ; pc-off = refl }
 block-step-c-branch-tag-zero {hv} prog fs s n hl (suc m) j cc h ft i-eq live-hl h-eq fl-eq = result
   where
@@ -1134,7 +1160,7 @@ block-step-c-branch-tag-zero {hv} prog fs s n hl (suc m) j cc h ft i-eq live-hl 
     result rewrite cond-eq = post-je , exec-eq , record
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
                           ; rbx-eq = C.rbx-eq dc ; r14-eq = C.r14-eq dc ; halt-eq = C.halt-eq dc ; rsp-eq = C.rsp-eq dc ; r15-eq = C.r15-eq dc ; dom-fresh = C.dom-fresh dc ; heap-eq = C.heap-eq dc
-                      ; sep = C.sep dc ; stack-eq = C.stack-eq dc }
+                      ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
       ; pc-off = pco' }
 
 -- alloc-heap: `mov rax, r15 ; add r15, n*8` (2 steps) ↔ the abstract fresh block.
@@ -1153,12 +1179,15 @@ block-step-alloc-heap : ∀ {hv : HeapView} prog fs s n → (cc : CompiledCorr h
   → (∀ k → k < stackSlot (regs (floc fs))
          → svm-below (next-heap-ref (falloc fs)) (stackMem (floc fs) (current-frame (falloc fs)) k))
   → (∀ hl → ref-id (heap-ref hl) ≡ next-heap-ref (falloc fs) → heapMem (floc fs) hl ≡ nothing)
-  → (∀ i → i < n → X.readMem (memory s) (xreadReg (xregs s) r15 + slot-to-disp i) ≡ nothing)
-  -- ROOM: the bump stays below the stack pointer (heap exhaustion)
-  → C.hfront hv + slots n ≤ xreadReg (xregs s) rsp
-  → BlockStep (C.extend-view hv (next-heap-ref (falloc fs)) n (C.dom-fresh (dataCorr cc)))
+  -- ROOM: the bump stays below the stack's HIGH-WATER MARK (heap exhaustion). Plan
+  -- 0.54 rung D step 3: measured against `lo`, not `%rsp`, because a region the
+  -- stack has already visited keeps its contents — and that is exactly what makes
+  -- the fresh block's cells provably unwritten (the old `fresh-x86` premise, and
+  -- with it the postulate `alloc-heap-fresh-x86`, is GONE).
+  → (room : C.hfront hv + slots n ≤ C.lo hv)
+  → BlockStep (C.extend-view hv (next-heap-ref (falloc fs)) n (C.dom-fresh (dataCorr cc)) room)
               prog fs s (instr-alloc-heap n)
-block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wf2 wfs wfc wf-heap wf-stack fresh-abs fresh-x86 room =
+block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wf2 wfs wfc wf-heap wf-stack fresh-abs room =
   post-add , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -1184,13 +1213,10 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wf2 wfs wfc wf-heap wf-stack 
     exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-add
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-mov} halt-s step1 halt-s)
                     (exec-1 {compile-trace prog} {0} {post-mov} {post-add} halt-s step2 halt-s)
-    dataPost : C.FlatCorr (C.extend-view hv (next-heap-ref (falloc fs)) n (C.dom-fresh dc))
+    dataPost : C.FlatCorr (C.extend-view hv (next-heap-ref (falloc fs)) n (C.dom-fresh dc) room)
                           (flat-exec-instr (instr-alloc-heap n) prog fs) post-add
-    fresh-x86' : ∀ i → i < n → X.readMem (memory s) (hfront hv + slot-to-disp i) ≡ nothing
-    fresh-x86' i i<n = subst (λ a → X.readMem (memory s) (a + slot-to-disp i) ≡ nothing)
-                             (C.r15-eq dc) (fresh-x86 i i<n)
     dataPost = C.sim-alloc-heap n (X.State.flags post-add) (pc post-mov + 1) fs s dc
-                 wf1 wf2 wfs wfc wf-heap wf-stack fresh-abs fresh-x86' room
+                 wf1 wf2 wfs wfc wf-heap wf-stack fresh-abs room
     pco' : X.State.pc post-add ≡ x86-off prog (fpc (flat-exec-instr (instr-alloc-heap n) prog fs))
     pco' = trans (trans (cong (λ p → (p + 1) + 1) po) (+-assoc (x86-off prog (fpc fs)) 1 1))
                  (sym (x86-off-suc prog (fpc fs) (instr-alloc-heap n) ft))
@@ -1387,7 +1413,7 @@ block-step-c-branch-nz {hv} prog fs s n m cc h ft sc-eq = result
     result rewrite sc-eq = post-je , exec-eq , record
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
                           ; rbx-eq = C.rbx-eq dc ; r14-eq = C.r14-eq dc ; halt-eq = C.halt-eq dc ; rsp-eq = C.rsp-eq dc ; r15-eq = C.r15-eq dc ; dom-fresh = C.dom-fresh dc ; heap-eq = C.heap-eq dc
-                      ; sep = C.sep dc ; stack-eq = C.stack-eq dc }
+                      ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
       ; pc-off = pco' }
 
 
