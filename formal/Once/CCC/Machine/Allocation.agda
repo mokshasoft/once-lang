@@ -475,6 +475,7 @@ module FrameOps {FS : FrameSemantics} where
     ; saved-frames = current-frame parent ∷ saved-frames parent
     ; next-slot = 0
     ; next-heap-ref = next-heap-ref parent  -- Heap shared
+    ; block-size = block-size parent        -- …and so are the block sizes
     }
 
   -- Pop back to parent frame after body execution
@@ -487,6 +488,7 @@ module FrameOps {FS : FrameSemantics} where
   pop-frame child parent rs = record parent
     { next-slot = rs
     ; next-heap-ref = next-heap-ref child  -- Heap may have advanced
+    ; block-size = block-size child        -- …with the sizes it recorded
     }
 
   ------------------------------------------------------------------------

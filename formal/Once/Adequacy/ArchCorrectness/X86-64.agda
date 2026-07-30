@@ -98,7 +98,9 @@ open FlatEventTrace {x86-64-frame-semantics} using (flat-events)
 
 open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
   x86-64-frame-semantics refl
-  using (events-agree; CompiledCorr; HeapView)
+  using (events-agree; CompiledCorr; HeapView
+        ; FlatInv; EntryLike; Reachable; reach-start
+        ; inv-wf; inv-regtag; inv-ev; inv-env; inv-emitted; inv-reach)
 open import Once.CCC.Machine.FlatStoreWF x86-64-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.FlatRegTagWF x86-64-frame-semantics using (FlatRegTag)
 open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Input2; Output; Scratch; Count; readReg; regs)
@@ -162,6 +164,11 @@ entry-corr ir = record
       ; rsp-eq  = sym entry-frame-base   -- initState's %rsp IS the entry frame's base
       ; r15-eq  = refl          -- emptyRegFile's %r15 ≡ 0 ≡ the entry frontier
       ; dom-fresh = λ ()        -- nothing is mapped yet
+      -- …and nothing needs to be: the entry heap is empty (`dom-written`'s
+      -- hypothesis is `nothing ≡ just w`) and no block has a size yet
+      -- (`dom-sized`'s is `offset < 0`). Both absurd, both `λ _ ()`.
+      ; dom-written = λ _ ()
+      ; dom-sized = λ _ ()
       ; heap-eq = λ _ ()
       -- LAYOUT SEPARATION at entry: the heap frontier is 0 and both the mark and
       -- %rsp are the loader's `stack-top`, so the heap is (vacuously) below the
@@ -202,6 +209,34 @@ entry-wf = record
 -- `ccc-step-bs` alongside the store-WF one.
 entry-regtag : FlatRegTag (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
 entry-regtag = record { scratch-tag = 0 , refl ; count-tag = 0 , refl }
+
+------------------------------------------------------------------------
+-- THE RUN CONTEXT AT ENTRY (2026-07-30, the vacuity fix).
+--
+-- Every state/program residual in ConcFlatSim is now conditioned on "this program
+-- is compiler output and this state is one it can reach" — without that they were
+-- FALSE (⊥ was derivable from six of them by hand-building a violating state). The
+-- apex is where the hypothesis is EXHIBITED, and it costs nothing real: the
+-- program IS `ir-to-trace ir`, and the entry state IS a start state.
+------------------------------------------------------------------------
+
+-- the loader's state is a legitimate starting state: first instruction, running,
+-- nothing allocated on stack or heap, no block sized yet
+entry-like : EntryLike (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
+entry-like = refl , refl , refl , refl , refl
+           , (λ _ → refl) , (λ _ _ → refl) , (λ _ → refl)
+
+entry-inv : ∀ (ir : IR Unit Unit)
+          → FlatInv ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
+                    (ir-to-trace ir) (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
+entry-inv ir = record
+  { inv-wf      = entry-wf
+  ; inv-regtag  = entry-regtag
+  ; inv-ev      = refl        -- the apex runs the REAL extractor
+  ; inv-env     = refl        -- …and the REAL arith env
+  ; inv-emitted = ir , refl   -- the program is this IR's emitted trace
+  ; inv-reach   = reach-start (mkFlat FFOx.entry-s FFOx.entry-alloc 0) entry-like
+  }
 
 -- The flat adequacy witness for `ir` at event-count `n`: the flat step-fuel that
 -- `traces-agree` guarantees emits the first `n` events. `flat-trace-of` and
@@ -254,7 +289,7 @@ conc-flat-sim-just ir n = go (NoNested? (ir-to-trace ir))
     agree = events-agree (Nof ir n)
               ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
               (ir-to-trace ir) (mkFlat FFOx.entry-s FFOx.entry-alloc 0)
-              (ArchSemantics.initialState as64) (entry-corr ir) (entry-wf , entry-regtag)
+              (ArchSemantics.initialState as64) (entry-corr ir) (entry-inv ir)
     -- on the case/loop-FREE fragment the two lowerings coincide, so the
     -- correspondence proved over `compile-trace` IS about the emitted program.
     go : Dec (NoNested (ir-to-trace ir))

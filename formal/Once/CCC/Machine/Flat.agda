@@ -162,6 +162,16 @@ module FlatMachine {FS : FrameSemantics} where
           go []       = refl
           go (f ∷ fs) = refl
 
+  -- …and the BLOCK SIZES survive a frame move too (the heap is shared across
+  -- frames): the sibling of `leave-frame-heap-ref`, needed by the correspondence's
+  -- in-bounds coverage field (`dom-sized`).
+  leave-frame-block-size : ∀ (alloc : AllocState {FS})
+                         → block-size (leave-frame alloc) ≡ block-size alloc
+  leave-frame-block-size alloc = go (saved-frames alloc)
+    where go : ∀ (fl : List Frame) → block-size (leave-frame-aux fl alloc) ≡ block-size alloc
+          go []       = refl
+          go (f ∷ fs) = refl
+
   -- straight-line step whose AllocState is post-processed by the frame move.
   flat-step-frame : AbstractInstr → (AllocState {FS} → AllocState {FS})
                   → FlatState → FlatState

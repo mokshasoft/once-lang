@@ -496,6 +496,15 @@ data AllocMode : Set where
 -- the need for global capacity tracking in AllocState.
 ------------------------------------------------------------------------
 
+-- The block-size update at an allocation: the fresh ref gets `n`, others keep
+-- theirs. Aux-style (a `Dec` argument, no `with`) so it REDUCES at proof sites.
+size-with-aux : ∀ (n : ℕ) {r st : ℕ} → (ℕ → ℕ) → Dec (r ≡ st) → ℕ
+size-with-aux n         szs (yes _) = n
+size-with-aux n {r} {_} szs (no  _) = szs r
+
+size-with : ∀ (n st : ℕ) → (ℕ → ℕ) → ℕ → ℕ
+size-with n st szs r = size-with-aux n {r} {st} szs (r ≟ st)
+
 record AllocState {FS : FrameSemantics} : Set where
   constructor mkAllocState
   open FrameSemantics FS
@@ -517,6 +526,16 @@ record AllocState {FS : FrameSemantics} : Set where
     saved-frames : List Frame
     next-slot : ℕ
     next-heap-ref : ℕ
+    -- THE BLOCK SIZES (2026-07-30 vacuity fix): how many slots each allocated
+    -- block has (`0` for a ref the allocator has not handed out). The counter
+    -- alone cannot say whether a heap pointer is IN BOUNDS, and in-bounds-ness is
+    -- what makes "this cell is mapped by the correspondence" TRUE — without it the
+    -- store-target coverage residuals (`store-indirect{,-suc}-live`) were false for
+    -- any view, since a view legitimately excludes out-of-bounds cells (in the
+    -- bump layout, block k's cell at offset ≥ its size IS block k+1's cell).
+    -- Set by `instr-alloc-heap`; read only by proofs (the extracted pipeline never
+    -- inspects `AllocState`).
+    block-size : ℕ → ℕ
   -- Note: frame-capacity removed in Phase 3 of core invariants refactoring.
   -- Capacity bounds are now enforced per-closure via scratch-bounded invariant.
 
@@ -1730,7 +1749,9 @@ module AbstractExec {FS : FrameSemantics} where
         addr = proj₁ result
         new-state = proj₁ (proj₂ result)
     in record s { regs = writeReg (regs s) Output (SV-Ptr (AtDynamic addr)) } ,
-       record alloc { next-heap-ref = new-state }
+       record alloc { next-heap-ref = new-state
+                    -- the fresh block gets `n` slots; older refs keep theirs
+                    ; block-size = size-with n (next-heap-ref alloc) (block-size alloc) }
 
   -- Plan 0.29: generic loop — run `body` while `Scratch` is a nonzero
   -- counter, fuel-bounded (1e6 ≥ any real iteration count; out-of-fuel

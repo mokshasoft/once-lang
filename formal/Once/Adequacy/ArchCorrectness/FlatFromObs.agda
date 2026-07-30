@@ -103,7 +103,10 @@ postulate
 -- A fresh frame: nothing on the stack (`next-slot ≡ 0`), one heap ref reserved
 -- for the (erased) `Unit` argument cell so it is `BeforeFrontier`.
 entry-alloc : AllocState {FS}
-entry-alloc = mkAllocState entry-frame [] 0 1
+-- the entry allocator: one ref reserved for the erased Unit cell, and NO block
+-- has a size yet (the entry heap is empty, so `block-size ≡ λ _ → 0` — which makes
+-- the correspondence's in-bounds coverage vacuously true at entry)
+entry-alloc = mkAllocState entry-frame [] 0 1 (λ _ → 0)
 
 entry-loc : ValueLocation FS
 entry-loc = AtDynamic (heap-loc (mkHeapRef 0) 0)
