@@ -4,9 +4,11 @@
 be a consistent general dependent type theory that REPLACES the conversion-tower /
 NbE kernel (Path 1) rather than sitting beside it as a research annex.*
 
-Companion documents: `PATHS.md` (the strategic map and the decision), `HANDOFF.md`
-(status per rung), `FINDINGS.md` (the method results), `README.md` (POC-0, the
-NbE engine this would replace). This file is the **work plan**; those are the
+Companion documents: `ARCHITECTURE.md` (the orientation map — read first),
+`HANDOFF-2026-07-30.md` (current entry point, incl. the pending `⊢ty` decision),
+`PATHS.md` (the strategic map and the decision), `HANDOFF.md` (status per rung),
+`FINDINGS.md` (the method results), `README.md` (POC-0, the NbE engine this
+would replace). This file is the **work plan**; those are the
 reasoning. Nothing here restates a decision already fixed elsewhere — it records
 which decisions are fixed, and builds the schedule on top of them.
 
