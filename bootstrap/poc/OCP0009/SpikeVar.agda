@@ -81,40 +81,44 @@ transport-bwd {B = B} p d =
   ⊢conv d (csymᵀ (red→≅ᵀ (subTy-monoˢ (single-mono p) B)))
 
 ------------------------------------------------------------------------
--- 3. WHAT THIS MEANS FOR W2 AND W3.
+-- 3. WHAT THIS MEANS — and the correct reading (revised 2026-07-31).
 --
--- ★ FOR W2 (internalize `Hom`).  Adding `Hom A t u` as an `RTy` former whose
--- inhabitants are reductions buys NO DIRECTED STRUCTURE OVER TYPE FAMILIES:
--- §1/§2 show the kernel already transports both ways, for free, for every
--- family, before any such former exists.  A directed `J` over it would have a
--- symmetric transport as a derivable consequence — which is the opposite of the
--- point.  **The gate W2 was given (spike the `⊩`-clause) is not the first
--- question.  This is.**
+-- ⚠ A first draft of this section concluded that `core(Hom)` had to be
+-- abandoned.  That OVERSTATED it.  The finding is narrower and sharper:
 --
--- Two ways out, and they are genuinely different projects:
+--     ★ REDUCTION IS TOO SMALL TO BE A PATH TYPE.
 --
---   (a) `Hom` is NOT reduction.  Give it its own inhabitants and its own
---       formation/intro/elim, with conversion NOT identifying `B[t]` and
---       `B[u]`.  Then transport must be earned, the covariance fee is real, and
---       W3's judgment is what pays it.  This is the honest dHoTT reading and it
---       is a much bigger change than "add an `RTy` constructor" — it means the
---       kernel's definitional equality stops being `core(Hom)`, which is the
---       design's own slogan (ARCHITECTURE K3).
---   (b) Keep `Hom = ⟶*` and accept that the directed content lives at
---       `Homₜ` — variance of the type FORMERS (`NbEPDirV`: `⇒` contravariant in
---       its domain), not transport along term paths.  Then W3 is about
---       functoriality for W4's CwF, and W2 as scoped is largely vacuous.
+-- Under `Hom = ⟶*`, every INHABITED `Hom t u` has `t ≅ᵀ u` — its endpoints are
+-- DEFINITIONALLY equal.  So `B[t]` and `B[u]` are convertible by congruence and
+-- §1/§2 follow immediately.  That is not a directedness failure; it is the
+-- ordinary congruence of definitional equality, which every type theory has.
+-- The problem is that a path type whose inhabitants only ever connect
+-- definitionally-equal endpoints HAS NOTHING TO TRANSPORT ALONG.
 --
--- ★ FOR W3.  Under (b) the judgment is about `Homₜ`, and `NbEPDirV` already has
--- the semantics; under (a) it is about the motive, and it cannot be written
--- until (a)'s kernel exists.  **Either way W3's current scoping — "the motive's
--- covariance fee, made a judgment" — is aimed at a fee this kernel does not
--- charge.**  Do not build it before choosing (a) or (b).
+-- ⇒ **`Hom` must have inhabitants between DEFINITIONALLY DISTINCT terms.**  Then
+-- `B[t]` and `B[u]` are not convertible, `⊢conv` does not apply, transport must
+-- come from `J`, and the covariance fee is REAL — which restores exactly the
+-- motivation W3 was scoped around.  `SpikeHom` exhibits the non-conversion that
+-- makes this concrete.
 --
--- ⚠ RECORDED AND STOPPED, per the standing rule: this is a design question the
--- measurement raised, not a proof that failed.  Both `transport-fwd` and
--- `transport-bwd` are three lines and check; the cost of finding this out was
--- small precisely because it was asked before the judgment was built.
+-- WHAT SURVIVES, and it is nearly everything.  Definitional equality stays β/η
+-- conversion — reduction-based, confluent, DECIDABLE.  Phase 1 is untouched:
+-- confluence, SR, `dec-conv`, WN, `fund`.  `Hom` is a type former added on top
+-- with the usual six-module cascade.  What moves is only the READING of
+-- `Id = core(Hom)`: it is about the PROPOSITIONAL identity, not the definitional
+-- one.  The kernel had been reading the slogan one level too low.
+--
+-- ★ AND THIS IS WHY `no-sym` CURRENTLY EARNS LESS THAN IT LOOKS.  It is proven
+-- and true — a reduction cannot be inverted — but under `Hom = ⟶*` NOTHING
+-- DOWNSTREAM CAN OBSERVE the asymmetry, because every consumer routes through
+-- `⊢conv`, and `⊢conv` consumes `_≅ᵀ_`, which forgot.  Option (a) is what makes
+-- `no-sym` do work.
+--
+-- ⇒ **OPTION (a) TAKEN** (2026-07-31): `Hom` gets its own inhabitants.  See
+-- PLAN §3 W2 and `SpikeHom`.  Option (b) — keep `Hom = ⟶*` and put the directed
+-- content at `Homₜ` (`NbEPDirV`'s type-former variance) — is not wrong, just
+-- SMALLER: it is real content that W4's CwF needs regardless, but it does not
+-- give a directed IDENTITY TYPE, which is the thing the project is named for.
 --
 -- `--safe`, zero postulates, zero holes.
 ------------------------------------------------------------------------
