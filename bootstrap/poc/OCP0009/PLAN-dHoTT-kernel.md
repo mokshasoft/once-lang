@@ -1315,13 +1315,37 @@ the decision log says so.**
 from the normalizer POC.** `NbEPLinPass`'s source SHAPE was right all along; only its
 provenance was wrong.
 
-★ **ONE PARAMETER IS OPEN, AND IT IS EXACTLY THIS POC'S SUBJECT.** D063 makes `⊢ᵐ`
-**grade-free** — "the IR is grade-erased per D046; closed ⇒ no usage index". That is
-the point W0c disputes: usage should index the TARGET OBJECT (`⟪ ρ ⟫ᶜ`), not be
-discarded at the elaboration boundary. And there is **no decision on a linear core,
-SMCC, comonoid or substructural typing anywhere in the 66-decision log** — checked.
-Linearity is this POC's PROPOSAL, not compiler policy, which is the correct division
-of labour.
+★★ **AND THERE IS NOTHING TO OVERRIDE.** An earlier draft of this section said the
+POC "disputes D063". **That was wrong**, and the correction matters, because it would
+have sent the next session in to argue with a decision that is not in its way.
+
+- **"Grade" in the decision log means PURITY, not quantity.** Every grade-erasure
+  statement traces to D046, which is entirely about unifying `Eff` into the arrow; its
+  claim is that `eff ∘` IS `pure ∘` at runtime. **Quantity was never erased** — it
+  lives in `ArrowKind.quantity`, stays in `Type`, and reaches the IR.
+- **D063's "no usage index" is justified by CLOSEDNESS, not policy**: "closed ⇒ no
+  usage index, like `⊢ᵍ`". `Ψ` counts uses of CONTEXT VARIABLES, and a closed morphism
+  has an empty context. True — and silent on how a morphism uses its DOMAIN, which is
+  the POC's question.
+- ★ **D066 OVERRIDES D065, and its reason is the POC's own.** D065 said "Bare
+  Morphisms Are Grade-Free"; **D066 reverses it** — "The Morphism Realm Is
+  Grade-Indexed" — because *"a grade-free `⊢ᵐ` … is both incomplete and unsound"* for
+  proving `morph-complete`. **The index came back because the proofs needed it.** And
+  in the shape the POC wants: *"The IR stays grade-erased (`realize-morph` ignores
+  `π`); `π` lives only in the surface type"* — index at the typing level, discharge the
+  theorem, erase at runtime.
+- **No decision anywhere discusses erasing QUANTITY or enforcing linearity on
+  morphisms** — checked across all 66.
+
+⇒ The POC would add a **second, orthogonal index** to `⊢ᵐ`, on D066's established
+pattern, on an axis no decision has closed. D046's own rationale invites it:
+*"Quantity and purity are categorically independent dimensions of an arrow. … Keep
+them independent and prove the restrictions at the use sites that need them."* The
+linear core is that use site.
+
+⚠ **The one thing that WOULD be a change to Once**, and is not settled here: whether
+enforcing linearity REJECTS programs the compiler currently accepts. Separable from
+everything above, and not yet checked.
 
 ⇒ **THE POC'S SOURCE LANGUAGE: `⊢ᵐ`-shaped point-free categorical combinators WITH THE
 USAGE INDEX PUT BACK.** D063's morphism realm minus D046's grade erasure. Small and
