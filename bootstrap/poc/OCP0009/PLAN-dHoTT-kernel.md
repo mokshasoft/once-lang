@@ -71,6 +71,15 @@ plan.**
 - **No shipped `TERMINATING` pragmas.**
 - **funext is threaded as a hypothesis, never postulated**, to stay `--safe`.
 - **No `sym` anywhere on the directed side** — every map is covariant.
+- ★ **THE POC OWNS ITS SYNTAX.** No dependence on `bootstrap/normalizer/**` — that is
+  ANOTHER POC, not shared infrastructure — and none on `formal/Once/**`. Borrowing
+  either one's object language couples this POC's design decisions to somebody else's
+  accidental ones, and then their limits get recorded as our constraints (this is
+  exactly how W0d went wrong; see §8.3). We are here to find the structure we want
+  Once to HAVE — top-down. The ambient prelude (`_≡_`, `Σ`, `⊎`, `⊥`, `⊤`) is the only
+  thing worth sharing, and even that should be POC-local in new work.
+  The kernel line already complies (`NbEPDirDBPi` defines its own `Cx`/`RTy`/`RTm`);
+  the linearization line does not, and §8.3 measures where.
 
 ### 1.3 The gating strategic question — RESOLVED: linear core, QTT layer in front
 
@@ -1154,67 +1163,72 @@ the `𝟙` grading already expresses. Mechanical, not research.
 *stream of events*, which is the right SHAPE, but it is not attached to the linear
 core's syntax or semantics. Nothing else in `NbEPLin*` mentions `ν`.
 
-### 8.3 ★ W0d MEASURED (`NbEPLinIR`, 2026-07-31) — THE BLOCKER MOVED
+### 8.3 ★ W0d IS POINTED THE WRONG WAY (2026-07-31). RE-SCOPED.
 
-`--guardedness` (not `--safe` — see below), zero postulates, zero holes, 281 lines,
-against the real `Once.Type`/`Once.Functor.Translate` rather than against prose.
+W0d was scoped as "port the real IR to the linear core" — take `Once.IR`/`Once.Type`
+as given and measure what the linear core can receive. **That is bottom-up, and it is
+the wrong direction for this POC.** The POC's job is to find the structure we want
+Once to HAVE; the real compiler is what conforms afterwards. A port measures the gap
+between two existing artifacts and calls the accidental shape of the older one a
+constraint — which is exactly what happened: every wall the port hit got written down
+as a limit on the POC rather than as a decision to be made.
 
-★ **THE BLOCKER IS NO LONGER CODATA. IT IS `Ty` ITSELF.** §8.2 said codata was "the
-whole of the gap" and the note above said the exclusion could be lifted "at the price
-of folding `ν` into `Ty`/`LTm`". **That price is not payable.** `LTm : Ty → Ty → Set`
-over `normalizer.Syntax.Types.Ty`, and of the eleven modules that pattern-match on
-`Ty`'s constructors, **ten are in `normalizer/TCB0/`** — the trusted computing base.
-Extending `Ty` means re-verifying the TCB for a POC experiment. And it is not
-codata-specific: §8.1(4)'s "mechanical, not research" base types
-(`Int`/`Float`/`Str`/`Buffer`) hit exactly the same wall.
+An attempt at the port (`NbEPLinIR`, deleted in the same commit that recorded this)
+made the error concrete: it imported the real `Once.Type` and derived from it a
+"portable fragment" that excluded `ν`, `Int`, `List Int` and `const`. Those are not
+findings about the right shape. They are findings about `normalizer.Syntax.Types.Ty`,
+which the POC was never obliged to build on.
 
-★ **THE MISMATCH IS TWO-SIDED**, which §8's coverage table did not record. Stated as
-a proper inclusion and checked:
+★ **THE GOVERNING RULE, now explicit (see also §1.2).**
 
-- `PortableF ⊆ WellFormedF` (`portable→wf`) — the port never widens the real
-  compiler's well-formedness discipline;
-- **strictly** (`wf-not-portable` + `K-Int-not-portable`) — `K Int` is well-formed
-  and has no `Func` counterpart;
-- and in the OTHER direction `Kc` is **unreachable** (`Kc-unreachable`): no
-  well-formed real functor translates to `Func`'s code-constant, because
-  `WellFormedF` admits `K A` only for base `A` and `Kc` wants a code.
+> **The POC owns its own syntax.** It does not depend on `bootstrap/normalizer/**` —
+> that is ANOTHER POC, not shared infrastructure, and borrowing its object language
+> couples two POCs' design decisions together. Borrowing the real `formal/Once/**`
+> is the same error one level further out.
 
-The two functor languages each say something the other cannot, and agree on exactly
-one constant: `Unit`.
+**Measured, the linearization line violates this at the root**, not just at the edge:
 
-**Delivered.** `PortableT`/`PortableF` (the fragment with a target, as a PREDICATE so
-the domain is named rather than hidden in a `Maybe`), the translations `⌊_⌋ᵀ`/`⌊_⌋ᶠ`
-defined on the witness, proof-irrelevance of both, and ★ `appP-coh` — the
-functor-action coherence `⌊ appP pf pa ⌋ᵀ ≡ ⟦ ⌊ pf ⌋ᶠ ⟧F ⌊ pa ⌋ᵀ` that every one of
-`In`/`out-μ`/`Cata`/`Para`/`Fuse` would consume. Witnesses: `Nat` ports, `Tree Unit`
-ports, **`List Int` does not** (the element, not the list), and a `Unit`-stream's
-FUNCTOR ports while `ν-type` applied to it does not — read together, that is the
-proof that W0e's result is not what blocks codata here.
+| module | borrows from the normalizer POC |
+|---|---|
+| `NbEPLinRec` | `Ty`, `Func`, `⟦_⟧F` — the OBJECT LANGUAGE `LTm` is indexed by |
+| `NbEPLinDyn` | + `Fix`, `⟦_⟧FS`, `cata-Set`, `map-cata-Set`, `Term` |
+| `NbEPLinPass` | + `Syntax.CCC` (the cartesian SOURCE language), `eval` |
+| `NbEPLinQTT` | + `⟦_⟧T`, `Fix`, `eval` |
+| `SpikeLinNu` | `Func` (its `FS`/`Nu` knot is already its own — the right instinct) |
 
-⚠ **Flags.** This is the one module on the Lin line without `--safe`, because
-importing the real `Once.Type` requires `--guardedness` and the `Once` library sets
-no `--safe`. That is a library-flag fact, not unsoundness — `Once.Type` has no
-postulates. Mirroring it locally to keep the flag would measure a COPY, and W0d's
-method is to assess against the real files.
+The kernel line does NOT have this problem: `NbEPDirDBPi` defines `Cx`/`RTy`/`RTm`
+itself and borrows only the ambient prelude. **The Lin line should look like the
+kernel line.**
 
-**The remaining obligation** — `⌈_⌉ : IR A B → LTm ⌊A⌋ᵀ ⌊B⌋ᵀ` — is now mechanical
-rather than open, and should NOT be written yet: the fragment it would cover (no `ν`,
-no base types, hence no `const`, hence no `SigOp`) is **narrower than what W0e already
-justifies**, so it would bank a result weaker than the theory in hand and be redone
-the moment `Ty` grows. The gate is architectural:
+**W0d, re-scoped.** The POC's deliverable is the SHAPE of the linear core, owning its
+syntax, with `ν` and base types present *because the theory wants them* — not absent
+because someone else's `Ty` lacks a constructor. Porting the real IR onto that shape
+is downstream compiler work, gated on the shape being settled, and belongs outside
+this plan.
 
-| | | |
-|---|---|---|
-| **A** extend `Ty` | ❌ REJECTED on measurement | ten of eleven `Ty`-matching modules are TCB0 |
-| **B** own object language for the linear core | ★ **RECOMMENDED** | `SpikeLinNu`'s `NTy` grown up; `LTm`'s generators re-declared over it + a conservative-extension theorem back to `Ty`. Costs a core re-declaration plus three structural inductions (`DupFree`, `Lᶜ`, `dyn-linear`). POC-local, touches no TCB |
-| **C** port only what fits today | dominated | `List Int` is excluded — see `listF-Int-not-portable` |
+★ **What this buys, immediately.** Option B (§ the old 8.3) was "own object language
+PLUS a conservative-extension theorem back to `Ty`". **The bridging obligation
+disappears** — it existed only because `Ty` was being treated as authoritative. What
+is left is: declare the language, re-declare the generators over it, redo the three
+structural inductions (`DupFree`, `Lᶜ`, `dyn-linear`). `SpikeLinNu` is already most
+of that shape.
 
-★ **Option B ALSO SUBSUMES THE W0e CONSOLIDATION.** "Consolidate `SpikeLinNu` into the
-real core" and "give W0d a target that can receive `ν`" are the same piece of work.
-They should be done as ONE item, not in sequence — which is a change to this plan's
-ordering, made on measurement.
+★ **And the blocker evaporates.** `ν` and the base types were never blocked by theory
+— W0e proved the codata semantics — nor, it turns out, by anything real. They were
+blocked by a `Ty` the POC was never obliged to use.
 
-**Recommended scoping for W0d (superseded in ordering by 8.3, unchanged in substance):** port the
+**NEXT on this line: `NbEPLinCore`** — the consolidation, which is now the same item
+as "give W0d a target". Self-contained: prelude, functor codes, object language
+(`Unit`/`Void`/`⊗`/`⊕`/`⇒`/`μ`/**`ν`**/base leaves), `Fix` and the cost-carrying `Nu`
+mutual with the functor interpretation, the full `LTm` generator set including
+`nout`/`nana`, `DupFree`, `Lᶜ`, `Free`/`FreeNu`, and `dyn-linear` covering **both**
+`μ` and `ν`. Then `Rec`/`Dyn` retire into it, and `Pass`/`QTT` — which additionally
+borrow a cartesian SOURCE language — are re-pointed or re-scoped separately.
+
+*(The old "recommended scoping" below is retained for the record and is superseded by
+the above.)*
+
+**Superseded — original W0d scoping:** port the
 pure first-order inductive fragment first, keeping the real `Type`/`IR` and threading
 `Usage` into the target index the way `⟪_⟫ᶜ` does. ~~Codata stays out until W0e lands.~~ W0e landed 2026-07-31 (`SpikeLinNu`): the cost-carrying `ν` and `dynN`'s `ν` case are proven, so the codata exclusion can be lifted — at the price of folding `ν` into `Ty`/`LTm`, which is a syntax extension and cascades.
 
