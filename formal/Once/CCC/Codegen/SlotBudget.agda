@@ -47,7 +47,10 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   free-heap; SigOp; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
 open import Once.Type using (Functor)
-open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; Slot; lea-slot)
+open import Once.CCC.Machine.SMCore using
+  (AbstractInstr; AbstractTrace; Slot; lea-slot;
+   mov-to-output; mov-to-input; store-at-slot; load-from-slot;
+   store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Codegen.IRToTrace using
   (ir-to-trace'; ir-to-trace; ir-stack-budget;
@@ -183,11 +186,54 @@ frontier-mono (const fits-float _) n l = ≤-refl
 lt-refl : ∀ {k} → k < suc k
 lt-refl = ≤-refl
 
+-- `build-layer tag` (inside `cata-trace-nat`): the two stash slots are `n1` and
+-- `suc n1`, both below that strategy's frontier `suc (suc n1)`.
+cata-nat-layer : ∀ (n1 tag b : ℕ) → n1 < b → suc n1 < b
+               → All (SlotBelow b)
+                   (mov-to-output ∷ store-at-slot n1 ∷ instr-alloc-heap 2 ∷
+                    store-at-slot (suc n1) ∷ mov-to-input ∷ instr-load-tag-lit tag ∷
+                    store-indirect ∷ load-from-slot n1 ∷ store-indirect-suc ∷
+                    load-from-slot (suc n1) ∷ [])
+cata-nat-layer n1 tag b p<b s<b =
+  sb-none refl ∷ sb-slot refl p<b (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+  sb-slot refl p<b (λ _ ()) ∷ sb-none refl ∷ sb-slot refl s<b (λ _ ()) ∷ []
+
+-- STRATEGY `strat-nat` DISCHARGED: the Nat-shaped cata reserves exactly two
+-- slots above the algebra's frontier, and every other instruction of the
+-- skeleton is slot-free (loop labels, jumps, reg-ops, the two `at` splices).
+cata-nat-below : ∀ (n1 l1 : ℕ) (at : AbstractTrace) → All (SlotBelow n1) at
+               → All (SlotBelow (cata-budget-of (cata-dispatch strat-nat n1 l1 at)))
+                     (cata-trace-of (cata-dispatch strat-nat n1 l1 at))
+cata-nat-below n1 l1 at ff =
+  sb-none refl ∷ sb-none refl ∷
+  ++⁺ descend
+      (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+       ++⁺ (cata-nat-layer n1 0 _ p<b s<b)
+           (sb-none refl ∷
+            ++⁺ at'
+                (sb-none refl ∷ sb-none refl ∷
+                 ++⁺ (sb-none refl ∷
+                      ++⁺ (cata-nat-layer n1 1 _ p<b s<b)
+                          (sb-none refl ∷ ++⁺ at' (sb-none refl ∷ [])))
+                     (sb-none refl ∷ sb-none refl ∷ []))))
+  where
+    p<b : n1 < suc (suc n1)
+    p<b = ≤-step ≤-refl
+    s<b : suc n1 < suc (suc n1)
+    s<b = ≤-refl
+    at' = sb-weaken {b' = suc (suc n1)} (≤-step (≤-step ≤-refl)) ff
+    descend : All (SlotBelow (suc (suc n1))) _
+    descend = sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+              sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+              sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ []
+
 postulate
-  -- THE ONE PIECE LEFT (plan 0.54 rung D, item 2). Each cata strategy reserves
+  -- THE PIECE LEFT (plan 0.54 rung D, item 2). The two remaining cata strategies
+  -- reserve
   -- its OWN slots in `[n1, next)`, above the algebra's frontier `n1`:
-  -- `cata-trace-nat` takes 2, `cata-trace-linear` 6, `cata-trace-branching`
-  -- `4·fsize F + 4` — the last behind the compile-time functor walks
+  -- `cata-trace-linear` 6 and `cata-trace-branching` `4·fsize F + 4` — the
+  -- latter behind the compile-time functor walks
   -- (`visit-walk` / `rebuild-walk`), whose slots need an `s + 4·fsize F + 4`
   -- bound by induction on `F`. Fixed arithmetic per strategy; no model content,
   -- and no state or program is quantified over — this is a claim about three
@@ -203,7 +249,7 @@ cata-slots-below : ∀ (st : CataStrategy) (n1 l1 : ℕ) (at : AbstractTrace)
                  → All (SlotBelow (cata-budget-of (cata-dispatch st n1 l1 at)))
                        (cata-trace-of (cata-dispatch st n1 l1 at))
 cata-slots-below strat-const         n1 l1 at ff = ff
-cata-slots-below strat-nat           n1 l1 at ff = cata-skeleton-slots-below strat-nat n1 l1 at ff
+cata-slots-below strat-nat           n1 l1 at ff = cata-nat-below n1 l1 at ff
 cata-slots-below strat-linear        n1 l1 at ff = cata-skeleton-slots-below strat-linear n1 l1 at ff
 cata-slots-below (strat-branching F) n1 l1 at ff = cata-skeleton-slots-below (strat-branching F) n1 l1 at ff
 
