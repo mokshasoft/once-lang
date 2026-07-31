@@ -896,21 +896,61 @@ transports both ways, for free, for every family, before any such former exists.
 A directed `J` over it would have symmetric transport as a derivable consequence.
 **So the gate W2 was given (spike the `⊩`-clause) is not the first question. This is.**
 
-★ **THE CHOICE**, and the two branches are genuinely different projects:
+### ✅ OPTION (a) TAKEN (2026-07-31). And it costs far less than first stated.
 
-  **(a) `Hom` is NOT reduction.** Own inhabitants, own formation/intro/elim, with
-  conversion NOT identifying `B[t]` and `B[u]`. Then transport must be earned, the fee
-  is real, and W3's judgment pays it. This is the honest dHoTT reading — and it is far
-  bigger than "add an `RTy` constructor": it means definitional equality stops being
-  `core(Hom)`, which is the design's own slogan.
+An earlier draft said (a) means "definitional equality stops being `core(Hom)`".
+**Wrong.** The finding is narrower: **reduction is too small to be a path type.** Under
+`Hom = ⟶*` every INHABITED `Hom t u` has definitionally equal endpoints, so
+`B[t] ≅ᵀ B[u]` by congruence — the ordinary congruence every type theory has. The
+problem is only that such a path type has nothing to transport along.
 
-  **(b) Keep `Hom = ⟶*`.** Then the directed content lives at `Homₜ` — variance of the
-  type FORMERS (`NbEPDirV`: `⇒` contravariant in its domain) — not transport along term
-  paths. W3 becomes functoriality for W4's CwF, and **W2 as scoped is largely vacuous**.
+**(a) means:** `Hom A t u` is a type former with genuine inhabitants, including between
+definitionally DISTINCT terms.
 
-Under (b) `NbEPDirV` already has the semantics; under (a) the judgment cannot be
-written until (a)'s kernel exists. **Either way, W3's scoping below is aimed at a fee
-this kernel does not charge. Do not build it before choosing.**
+**What survives — nearly everything.** Definitional equality stays β/η conversion:
+reduction-based, confluent, DECIDABLE. **Phase 1 is untouched** — confluence, SR,
+`dec-conv`, WN, `fund`. `Hom` is added on top with the usual six-module cascade, which
+is what W2 was already priced at. What moves is only the READING of `Id = core(Hom)`:
+it is about the PROPOSITIONAL identity, not the definitional one. The kernel had been
+reading the slogan one level too low.
+
+**And it is why `no-sym` currently earns less than it looks.** True and proven — but
+under `Hom = ⟶*` nothing downstream can OBSERVE the asymmetry, because every consumer
+routes through `⊢conv`, which consumes `_≅ᵀ_`, which forgot. (a) is what makes
+`no-sym` do work.
+
+★ **VALIDATED, not assumed — `SpikeHom`.** (a) is only worth taking if transport
+genuinely cannot be recovered from `⊢conv` once endpoints may differ definitionally.
+That is a NON-CONVERSION claim, and this kernel proves those:
+
+- `base≇Π` — `base ≅ᵀ Π A B` refuted (Church–Rosser + `base-nf` + `Π-reduct`).
+- ★ `fee-is-real` — a type family (`El x`) and two closed codes whose instances are
+  **not convertible**.
+
+So `SpikeVar` §1/§2 and `fee-is-real` are the two halves of one statement: **transport
+is free precisely where the endpoints are definitionally equal, and nowhere else.**
+
+★ **WHERE THE PATHS COME FROM.** The two codes decode to `base` and `Π base base`, and
+a directed path between them is a MAP. The universe is a CATEGORY whose hom is the
+function type — `NbEPDirV`'s `Homₜ A B = Term A B` verbatim. **The two `Hom`s meet at
+the universe:** `Hom` at `U` IS `Homₜ`, and `NbEPDirV`'s variance results (`_⇒→_`
+contravariant in its domain) become the semantics W3 discharges against rather than
+re-derives.
+
+⚠ **ORDER, settled.** Under (a) W2 and W3 are MUTUALLY dependent — the fee cannot be
+stated until `Hom` exists, and `Hom`'s eliminator cannot be stated without the motive
+condition. **They close together**, as §4 originally had it. The cost argument still
+says write the variance judgment first as a self-contained piece; it no longer says it
+lands first.
+
+🔴 **THE NEXT QUESTION, named and not solved: WHAT INHABITS `Hom` AT TYPES OTHER THAN
+`U`?** At `U` the answer is maps. At `base`, at a `Π`, at an `El` — unknown. This is
+where ARCHITECTURE's "no prior art anywhere" starts to bite, and it is what to scope
+before any cascade.
+
+*(Option (b) — keep `Hom = ⟶*`, put the directed content at `Homₜ` — is not wrong,
+just SMALLER: real content W4's CwF needs regardless, but no directed IDENTITY TYPE,
+which is the thing the project is named for.)*
 
 --------------------------------------------------------------------------
 
