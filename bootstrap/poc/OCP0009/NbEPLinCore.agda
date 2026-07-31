@@ -420,58 +420,357 @@ data DupFree : ∀ {A B} → LTm A B → Set where
   df-eval    : ∀ {A B} → DupFree (leval {A} {B})
 
 ------------------------------------------------------------------------
--- 8. ★★ WHERE THIS STOPS, AND WHY — `Free` DOES NOT FIT IN ONE RECURSION.
+-- 8. ★★ "ALLOCATES NOTHING" — AND WHY IT MUST BE STRATIFIED.
 --
--- The payoff theorem is NOT below.  Building it top-down surfaced a structural
--- obstruction that the borrowed core could never have shown, and it is the same
--- one the KERNEL line hit at W1e (`SpikeSNK`).  Measured, not guessed:
+-- The obvious definition does not typecheck, and the reason is structural.
+-- `Free (A ⇒t B) f = (a : ⟦ A ⟧) → Free A a → …` puts `Free` NEGATIVELY, and
+-- that hypothesis is not removable: it is exactly what bounds `leval`, whose
+-- closure is an arbitrary semantic value.  If `Free` at `μt`/`νt` is then a
+-- DATATYPE, it occurs negatively in its own definition — take a fixpoint as a
+-- closure DOMAIN and the knot closes.  Measured:
 --
---     FreeMu is not strictly positive, because it occurs
---     in the 7th clause in the definition of Free, which occurs
---       to the left of an arrow in the 6th clause in the definition of Free,
---       which occurs in the first clause in the definition of FreeFS,
---       which occurs in the type of the constructor freeMu
---     in the definition of FreeMu.
+--     FreeMu is not strictly positive, because it occurs … to the left of an
+--     arrow in the definition of Free, which occurs … in the type of the
+--     constructor freeMu in the definition of FreeMu.
 --
--- ★ THE CAUSE.  `Free (A ⇒t B) f = (a : ⟦ A ⟧) → Free A a → …` puts `Free`
--- NEGATIVELY — and that hypothesis is not removable: it is exactly what bounds
--- `leval`, whose closure is an arbitrary semantic value (`NbEPLinDyn` calls it
--- "the case the logical relation exists for").  Meanwhile `Free (μt F)` and
--- `Free (νt F)` must be REAL, so they re-enter `Free`, and the knot closes:
--- take `A = μt F` as a closure DOMAIN and `FreeMu` occurs negatively in its
--- own definition.
+-- ⚠ THE BORROWED CORE COULD NOT HAVE SHOWN THIS.  `NbEPLinDyn` sets
+-- `Free (μ F) x = ⊤`, justified by "a `Mu F` holds no functions".  True, and
+-- beside the point: with `Kν` among the codes, DATA CAN HOLD A PRODUCER, and a
+-- producer has prices.  Making `ν` a real citizen is what forces the inductive
+-- half of the relation to inspect what the data contains — and that is what
+-- closes the loop.  It is W1e's finding (`SpikeSNK`, "`⊩Π`'s function field
+-- puts `⊩∋` negatively") reached from the other line.
 --
--- ★ WHY THE BORROWED CORE NEVER SAW IT.  `NbEPLinDyn` sets `Free (μ F) x = ⊤`,
--- justified by "`Func` is `Ty`-independent, so a `Mu F` holds no functions".
--- That is true and is NOT the point.  Here `LF` has `Kν`, so **data can hold a
--- PRODUCER**, and a producer has prices — `⊤` is simply wrong.  Making `ν` a
--- real citizen is what forces the inductive half of the relation to look at
--- what the data contains, and that is what closes the loop.
+-- ★ THE STRATIFICATION, and the observation that makes it work:
 --
--- ★ IT IS W1e'S FINDING, AT THE OTHER LINE.  There: "`⊩Π`'s function field puts
--- `⊩∋` negatively, so a `⊩` in `⊩∋`'s result makes `⊩` occur negatively in its
--- own definition" — and the answer was to STRATIFY.  The two lines hit the same
--- wall from opposite directions, which is worth knowing before either is
--- extended again.
+--     `FS G C` is built from `⊤`, base carriers, `Mu`, `Nu`, `⊎`, `×`.
+--     IT CONTAINS NO FUNCTION SPACE, EVER.
 --
--- ★ THE RESOLUTION, designed and not yet built.  Stratify by WHAT CAN APPEAR IN
--- A FIXPOINT PAYLOAD, which is decidable from `LF` alone:
+-- So the freedom of a fixpoint payload never needs the `⇒t` clause.  Hence:
 --
---   `FS G X` is built from `⊤`, base carriers, `Mu`, `Nu`, `⊎`, `×` — it has
---   NO function space, ever.  So the freedom of a fixpoint payload never needs
---   the `⇒t` clause.
---
---   1. Define `FreeMu`/`FreeNu` and their code-indexed lifts over the DATA
---      FRAGMENT ONLY, mutually.  No arrows appear, so they are strictly
---      positive and `FreeNu` may stay a coinductive record.
---   2. Define `Free : ∀ A → ⟦ A ⟧ → Set` AFTERWARDS, as a plain function
---      recursive on the OBJECT TYPE, using (1) at `μt`/`νt`.  Its negative
---      occurrence at `⇒t` is then harmless — it is a function, not a datatype,
---      and its recursion is structural in `LTy`.
---   3. Define `FreeFS G {X}` for arbitrary `X` after `Free` (the `lcata`
---      carrier can be an arrow, which is the only place it is needed), and
---      bridge it to (1) at `X = μt F` / `X = νt F` with two small inductions on
---      the code — they agree clause by clause.
---
--- Everything above this line is independent of that choice and checks as is.
+--   LAYER 1 — `FreeMu`/`FreeNu` and their lifts, over the DATA FRAGMENT ONLY.
+--     No arrow occurs, so these are strictly positive and `FreeNu` may stay a
+--     coinductive record.
+--   LAYER 2 — `Free`, a plain FUNCTION recursive on the OBJECT TYPE, using
+--     layer 1 at `μt`/`νt`.  Its negative occurrence at `⇒t` is now harmless:
+--     no datatype is being defined, and the recursion is structural in `LTy`.
+--   LAYER 3 — `FreeFS G {X}` for an ARBITRARY carrier, after `Free` (the
+--     `lcata` carrier can be an arrow — the one place it is needed), bridged
+--     to layer 1 at `X = μt F`/`νt F`.  The two agree clause by clause; the
+--     bridges are the four one-line inductions below.
 ------------------------------------------------------------------------
+
+-- LAYER 1 — the data fragment.  Arrow-free, hence strictly positive.
+mutual
+  data FreeMu (F : LF) : Mu F → Set where
+    freeMu : ∀ {w} → FreeMuF F F w → FreeMu F (inμ w)
+
+  FreeMuF : ∀ F G → FS G (Mu F) → Set
+  FreeMuF F Idf      v        = FreeMu F v
+  FreeMuF F Kone     _        = ⊤
+  FreeMuF F (Kb _)   _        = ⊤
+  FreeMuF F (Kμ G)   v        = FreeMu G v
+  FreeMuF F (Kν G)   v        = FreeNu G v
+  FreeMuF F (G ⊕f H) (inj₁ y) = FreeMuF F G y
+  FreeMuF F (G ⊕f H) (inj₂ z) = FreeMuF F H z
+  FreeMuF F (G ⊗f H) (y , z)  = FreeMuF F G y × FreeMuF F H z
+
+  record FreeNu (F : LF) (x : Nu F) : Set where
+    coinductive
+    field
+      costZero : snd (force x) ≡ zero        -- ★ THIS observation is free…
+      next     : FreeNuF F F (fst (force x)) -- ★ …and everything after it
+  FreeNuF : ∀ F G → FS G (Nu F) → Set
+  FreeNuF F Idf      v        = FreeNu F v
+  FreeNuF F Kone     _        = ⊤
+  FreeNuF F (Kb _)   _        = ⊤
+  FreeNuF F (Kμ G)   v        = FreeMu G v
+  FreeNuF F (Kν G)   v        = FreeNu G v
+  FreeNuF F (G ⊕f H) (inj₁ y) = FreeNuF F G y
+  FreeNuF F (G ⊕f H) (inj₂ z) = FreeNuF F H z
+  FreeNuF F (G ⊗f H) (y , z)  = FreeNuF F G y × FreeNuF F H z
+open FreeNu
+
+-- LAYER 2 — a FUNCTION, structural in `LTy`.  The `⇒t` clause is negative and
+-- that is now fine: nothing inductive is being declared.
+Free : ∀ A → ⟦ A ⟧ → Set
+Free One       x        = ⊤
+Free Zero      ()
+Free (A ⊗t B)  (a , b)  = Free A a × Free B b
+Free (A ⊕t B)  (inj₁ a) = Free A a
+Free (A ⊕t B)  (inj₂ b) = Free B b
+Free (A ⇒t B)  f        =
+  (a : ⟦ A ⟧) → Free A a → Free B (fst (f a)) × (snd (f a) ≡ zero)
+Free (μt F)    x        = FreeMu F x
+Free (νt F)    x        = FreeNu F x
+Free (Bt b)    x        = ⊤        -- ★ inert: a base leaf cannot allocate
+
+-- LAYER 3 — arbitrary carrier, for `lcata`'s.
+-- ⚠ the carrier is EXPLICIT.  Implicit, the recursive calls in the `⊕f`/`⊗f`
+-- clauses leave it a metavariable — there is nothing in `FS H ⟦ _ ⟧` to solve
+-- it against.
+FreeFS : ∀ G (A : LTy) → FS G ⟦ A ⟧ → Set
+FreeFS Idf      A v        = Free A v
+FreeFS Kone     A _        = ⊤
+FreeFS (Kb _)   A _        = ⊤
+FreeFS (Kμ G)   A v        = FreeMu G v
+FreeFS (Kν G)   A v        = FreeNu G v
+FreeFS (G ⊕f H) A (inj₁ y) = FreeFS G A y
+FreeFS (G ⊕f H) A (inj₂ z) = FreeFS H A z
+FreeFS (G ⊗f H) A (y , z)  = FreeFS G A y × FreeFS H A z
+
+-- THE BRIDGES.  Layer 3 at a fixpoint carrier IS layer 1 — the clauses match
+-- one for one, and only `⊕f`/`⊗f` have any content.
+muF→fs : ∀ F G (v : FS G (Mu F)) → FreeMuF F G v → FreeFS G (μt F) v
+muF→fs F Idf      v        p        = p
+muF→fs F Kone     v        p        = tt
+muF→fs F (Kb _)   v        p        = tt
+muF→fs F (Kμ _)   v        p        = p
+muF→fs F (Kν _)   v        p        = p
+muF→fs F (G ⊕f H) (inj₁ y) p        = muF→fs F G y p
+muF→fs F (G ⊕f H) (inj₂ z) p        = muF→fs F H z p
+muF→fs F (G ⊗f H) (y , z)  (p , q)  = (muF→fs F G y p , muF→fs F H z q)
+
+fs→muF : ∀ F G (v : FS G (Mu F)) → FreeFS G (μt F) v → FreeMuF F G v
+fs→muF F Idf      v        p        = p
+fs→muF F Kone     v        p        = tt
+fs→muF F (Kb _)   v        p        = tt
+fs→muF F (Kμ _)   v        p        = p
+fs→muF F (Kν _)   v        p        = p
+fs→muF F (G ⊕f H) (inj₁ y) p        = fs→muF F G y p
+fs→muF F (G ⊕f H) (inj₂ z) p        = fs→muF F H z p
+fs→muF F (G ⊗f H) (y , z)  (p , q)  = (fs→muF F G y p , fs→muF F H z q)
+
+nuF→fs : ∀ F G (v : FS G (Nu F)) → FreeNuF F G v → FreeFS G (νt F) v
+nuF→fs F Idf      v        p        = p
+nuF→fs F Kone     v        p        = tt
+nuF→fs F (Kb _)   v        p        = tt
+nuF→fs F (Kμ _)   v        p        = p
+nuF→fs F (Kν _)   v        p        = p
+nuF→fs F (G ⊕f H) (inj₁ y) p        = nuF→fs F G y p
+nuF→fs F (G ⊕f H) (inj₂ z) p        = nuF→fs F H z p
+nuF→fs F (G ⊗f H) (y , z)  (p , q)  = (nuF→fs F G y p , nuF→fs F H z q)
+
+fs→nuF : ∀ F G (v : FS G (Nu F)) → FreeFS G (νt F) v → FreeNuF F G v
+fs→nuF F Idf      v        p        = p
+fs→nuF F Kone     v        p        = tt
+fs→nuF F (Kb _)   v        p        = tt
+fs→nuF F (Kμ _)   v        p        = p
+fs→nuF F (Kν _)   v        p        = p
+fs→nuF F (G ⊕f H) (inj₁ y) p        = fs→nuF F G y p
+fs→nuF F (G ⊕f H) (inj₂ z) p        = fs→nuF F H z p
+fs→nuF F (G ⊗f H) (y , z)  (p , q)  = (fs→nuF F G y p , fs→nuF F H z q)
+
+-- `Free` transported across the functor coherence.
+freeCoh : ∀ G X (v : ⟦ LF∙ G X ⟧) → Free (LF∙ G X) v → FreeFS G X (coh G X v)
+freeCoh Idf      X v        fv        = fv
+freeCoh Kone     X v        fv        = tt
+freeCoh (Kb _)   X v        fv        = tt
+freeCoh (Kμ _)   X v        fv        = fv
+freeCoh (Kν _)   X v        fv        = fv
+freeCoh (G ⊕f H) X (inj₁ y) fy        = freeCoh G X y fy
+freeCoh (G ⊕f H) X (inj₂ z) fz        = freeCoh H X z fz
+freeCoh (G ⊗f H) X (y , z)  (fy , fz) = (freeCoh G X y fy , freeCoh H X z fz)
+
+freeCoh⁻¹ : ∀ G X (v : FS G ⟦ X ⟧) → FreeFS G X v → Free (LF∙ G X) (coh⁻¹ G X v)
+freeCoh⁻¹ Idf      X v        fv        = fv
+freeCoh⁻¹ Kone     X v        fv        = tt
+freeCoh⁻¹ (Kb _)   X v        fv        = tt
+freeCoh⁻¹ (Kμ _)   X v        fv        = fv
+freeCoh⁻¹ (Kν _)   X v        fv        = fv
+freeCoh⁻¹ (G ⊕f H) X (inj₁ y) fy        = freeCoh⁻¹ G X y fy
+freeCoh⁻¹ (G ⊕f H) X (inj₂ z) fz        = freeCoh⁻¹ H X z fz
+freeCoh⁻¹ (G ⊗f H) X (y , z)  (fy , fz) =
+  (freeCoh⁻¹ G X y fy , freeCoh⁻¹ H X z fz)
+
+------------------------------------------------------------------------
+-- 9. ★★ THE OPERATIONAL LINEARITY THEOREM, OVER BOTH FIXPOINTS.
+--
+-- A `DupFree` morphism applied to `Free` inputs performs ZERO allocations and
+-- returns a `Free` result — where at `ν` "zero allocations" is necessarily the
+-- coinductive statement, because there is no total to be zero.  This is
+-- `NbEPLinDyn`'s `dyn-linear` and `SpikeLinNu`'s `dynN` merged into ONE
+-- induction, which is only possible now that both fixpoints live in one core.
+--
+-- Five-way mutual, and the cycles are discharged three different ways:
+--   · `dyn-linear`/`cata-ok`/`map-ok` — STRUCTURAL, on the `DupFree` derivation
+--     and on the shrinking `Mu`;
+--   · `freeAna`/`freeMap` — GUARDED, under the `next` copattern;
+--   · `dyn-linear (df-Ana …) → freeAna → dyn-linear` — decreasing on the
+--     derivation, which is what lets the two disciplines meet.
+------------------------------------------------------------------------
+
+mutual
+  dyn-linear : ∀ {A B} {f : LTm A B} → DupFree f → (x : ⟦ A ⟧) → Free A x →
+               Free B (fst (Lᶜ f x)) × (snd (Lᶜ f x) ≡ zero)
+  dyn-linear df-id           x             fx        = (fx , refl)
+  dyn-linear (df-∘ p q)      x             fx        =
+    ( fst (dyn-linear p _ (fst (dyn-linear q x fx)))
+    , cong₂ _+ℕ_ (snd (dyn-linear q x fx))
+                 (snd (dyn-linear p _ (fst (dyn-linear q x fx)))) )
+  dyn-linear (df-⊗ p q)      (a , b)       (fa , fb) =
+    ( ( fst (dyn-linear p a fa) , fst (dyn-linear q b fb) )
+    , cong₂ _+ℕ_ (snd (dyn-linear p a fa))
+                 (cong₂ _+ℕ_ (snd (dyn-linear q b fb)) refl) )
+  dyn-linear df-ρl           (a , tt)      (fa , _)  = (fa , refl)
+  dyn-linear df-ρl⁻          a             fa        = ((fa , tt) , refl)
+  dyn-linear df-lul          (tt , a)      (_ , fa)  = (fa , refl)
+  dyn-linear df-lul⁻         a             fa        = ((tt , fa) , refl)
+  dyn-linear df-lassoc       ((a , b) , c) ((fa , fb) , fc) =
+    ((fa , (fb , fc)) , refl)
+  dyn-linear df-lassoc⁻      (a , (b , c)) (fa , (fb , fc)) =
+    (((fa , fb) , fc) , refl)
+  dyn-linear df-lswap        (a , b)       (fa , fb) = ((fb , fa) , refl)
+  dyn-linear df-drop         a             fa        = (tt , refl)
+  dyn-linear df-linl         a             fa        = (fa , refl)
+  dyn-linear df-linr         b             fb        = (fb , refl)
+  dyn-linear (df-case p q)   (inj₁ a)      fa        = dyn-linear p a fa
+  dyn-linear (df-case p q)   (inj₂ b)      fb        = dyn-linear q b fb
+  dyn-linear df-zero         ()
+  -- μ: the two Lambek isos wrap and unwrap; neither copies.
+  dyn-linear (df-In {F})     x             fx        =
+    ( freeMu (fs→muF F F (coh F (μt F) x) (freeCoh F (μt F) x fx)) , refl )
+  dyn-linear (df-Outμ {F})   (inμ w)       (freeMu fw) =
+    ( freeCoh⁻¹ F (μt F) w (muF→fs F F w fw) , refl )
+  dyn-linear (df-cata F p)   x             fx        =
+    cata-ok F _ (λ w fw → dyn-linear p (coh⁻¹ F _ w) (freeCoh⁻¹ F _ w fw)) x fx
+  -- ★ ν: observing pays what the producer reports — and a `Free` producer
+  --   reports zero and hands back a `Free` layer.  Both straight from `FreeNu`.
+  dyn-linear (df-Out {F})    x             fx        =
+    ( freeCoh⁻¹ F (νt F) (fst (force x))
+                (nuF→fs F F (fst (force x)) (next fx))
+    , costZero fx )
+  -- ★ building is free either way: `lAna` corecursively, `lInν` in one step
+  --   because the layer is already there.
+  dyn-linear (df-Ana F p)    a             fa        = (freeAna p a fa , refl)
+  dyn-linear (df-Inν {F})    x             fx        =
+    ( freeInν (fs→nuF F F (coh F (νt F) x) (freeCoh F (νt F) x fx)) , refl )
+  -- the closure cases: `Free` is exactly the hypothesis `leval` needs, and the
+  -- only place it is consumed.
+  dyn-linear (df-curry p)    a             fa        =
+    ( (λ b fb → dyn-linear p (a , b) (fa , fb)) , refl )
+  dyn-linear df-eval         (f , a)       (ff , fa) = ff a fa
+
+  freeInν : ∀ {F} {w : FS F (Nu F)} → FreeNuF F F w → FreeNu F (inν w)
+  costZero (freeInν fw) = refl
+  next     (freeInν fw) = fw
+
+  cata-ok : ∀ F {X : LTy} (alg : FS F ⟦ X ⟧ → ⟦ X ⟧ × ℕ) →
+            (∀ w → FreeFS F X w → Free X (fst (alg w)) × (snd (alg w) ≡ zero)) →
+            ∀ (x : Mu F) → FreeMu F x →
+            Free X (fst (cataC F alg x)) × (snd (cataC F alg x) ≡ zero)
+  cata-ok F alg h (inμ w) (freeMu fw) =
+    ( fst (h (fst (sumF F (mapC F F alg w))) (fst (map-ok F F alg h w fw)))
+    , cong₂ _+ℕ_ (snd (map-ok F F alg h w fw))
+                 (snd (h (fst (sumF F (mapC F F alg w)))
+                         (fst (map-ok F F alg h w fw)))) )
+
+  map-ok : ∀ F G {X : LTy} (alg : FS F ⟦ X ⟧ → ⟦ X ⟧ × ℕ) →
+           (∀ w → FreeFS F X w → Free X (fst (alg w)) × (snd (alg w) ≡ zero)) →
+           (y : FS G (Mu F)) → FreeMuF F G y →
+           FreeFS G X (fst (sumF G (mapC F G alg y)))
+           × (snd (sumF G (mapC F G alg y)) ≡ zero)
+  map-ok F Idf      alg h y        fy        = cata-ok F alg h y fy
+  map-ok F Kone     alg h y        fy        = (tt , refl)
+  map-ok F (Kb _)   alg h y        fy        = (tt , refl)
+  map-ok F (Kμ _)   alg h y        fy        = (fy , refl)
+  map-ok F (Kν _)   alg h y        fy        = (fy , refl)
+  map-ok F (G ⊕f H) alg h (inj₁ y) fy        = map-ok F G alg h y fy
+  map-ok F (G ⊕f H) alg h (inj₂ z) fz        = map-ok F H alg h z fz
+  map-ok F (G ⊗f H) alg h (y , z)  (fy , fz) =
+    ( ( fst (map-ok F G alg h y fy) , fst (map-ok F H alg h z fz) )
+    , cong₂ _+ℕ_ (snd (map-ok F G alg h y fy))
+                 (snd (map-ok F H alg h z fz)) )
+
+  freeAna : ∀ {A F} {c : LTm A (LF∙ F A)} → DupFree c →
+            (a : ⟦ A ⟧) → Free A a → FreeNu F (unfoldNu F c a)
+  costZero (freeAna dc a fa) = snd (dyn-linear dc a fa)
+  next (freeAna {A} {F} {c} dc a fa) =
+    freeMap dc F (coh F A (fst (Lᶜ c a)))
+                 (freeCoh F A (fst (Lᶜ c a)) (fst (dyn-linear dc a fa)))
+
+  freeMap : ∀ {A F} {c : LTm A (LF∙ F A)} → DupFree c → ∀ G →
+            (y : FS G ⟦ A ⟧) → FreeFS G A y → FreeNuF F G (mapU F G c y)
+  freeMap dc Idf      y        fy        = freeAna dc y fy
+  freeMap dc Kone     y        fy        = tt
+  freeMap dc (Kb _)   y        fy        = tt
+  freeMap dc (Kμ _)   y        fy        = fy
+  freeMap dc (Kν _)   y        fy        = fy
+  freeMap dc (G ⊕f H) (inj₁ y) fy        = freeMap dc G y fy
+  freeMap dc (G ⊕f H) (inj₂ z) fz        = freeMap dc H z fz
+  freeMap dc (G ⊗f H) (y , z)  (fy , fz) =
+    (freeMap dc G y fy , freeMap dc H z fz)
+
+------------------------------------------------------------------------
+-- 10. CONTROLS.
+------------------------------------------------------------------------
+
+-- ★ NEGATIVE.  `LF∙ (Idf ⊗f Idf) A = A ⊗t A`, so `dup` IS a coalgebra: the
+-- producer that duplicates forever.  It builds free and pays one per
+-- observation, at every depth — no `n : ℕ` bounds it, which is why the cost
+-- had to move onto `force` in the first place.
+badF : LF
+badF = Idf ⊗f Idf
+
+badAna : ∀ {A} → LTm A (νt badF)
+badAna = lAna badF dup
+
+badProd : Nu badF
+badProd = fst (Lᶜ (badAna {One}) tt)
+
+bad-build-free : snd (Lᶜ (badAna {One}) tt) ≡ zero
+bad-build-free = refl
+
+spineL : ℕ → Nu badF → Nu badF
+spineL zero    x = x
+spineL (suc n) x = spineL n (fst (fst (force x)))
+
+bad-forever : ∀ n → snd (force (spineL n badProd)) ≡ suc zero
+bad-forever zero    = refl
+bad-forever (suc n) = bad-forever n
+
+bad-not-free : ¬ (FreeNu badF badProd)
+bad-not-free fn with costZero fn
+... | ()
+
+bad-not-linear : ¬ (DupFree (badAna {One}))
+bad-not-linear (df-Ana _ ())
+
+-- ★★ THE CONTROL THAT JUSTIFIES THE WHOLE REDESIGN.  `NbEPLinDyn` sets
+-- `Free (μ F) x = ⊤` because "a fixpoint holds no functions".  With `Kν` among
+-- the codes it can hold a PRODUCER — so here is inductive DATA that is not
+-- free, and `⊤` would have called it free.  This is what forced §8's
+-- stratification, and it is not reachable in the borrowed core at all.
+boxF : LF
+boxF = Kν badF
+
+box-not-free : ¬ (FreeMu boxF (inμ badProd))
+box-not-free (freeMu fp) with costZero fp
+... | ()
+
+-- ★ POSITIVE — and it must exist, or `FreeNu` could be vacuous and the `ν`
+-- case of `dyn-linear` with it.  `lAna Idf lid` is a genuinely non-terminating
+-- producer whose every step is free, proven so BY THE THEOREM.  This is the
+-- case where the inductive statement ("the run costs zero") is not expressible.
+goodAna : LTm One (νt Idf)
+goodAna = lAna Idf lid
+
+good-linear : DupFree goodAna
+good-linear = df-Ana Idf df-id
+
+good-free : FreeNu Idf (fst (Lᶜ goodAna tt))
+good-free = fst (dyn-linear good-linear tt tt)
+
+good-observe-free : snd (Lᶜ (lOut {Idf} ∘l goodAna) tt) ≡ zero
+good-observe-free = snd (dyn-linear (df-∘ df-Out good-linear) tt tt)
+
+-- ★ and the μ side still works: a fold with a dup-free algebra is free.
+natF : LF
+natF = Kone ⊕f Idf
+
+natAlg : LTm (LF∙ natF One) One
+natAlg = lcase lid lid
+
+nat-fold-free : ∀ (n : Mu natF) → FreeMu natF n →
+                snd (Lᶜ (lcata natF natAlg) n) ≡ zero
+nat-fold-free n fn = snd (dyn-linear (df-cata natF (df-case df-id df-id)) n fn)
