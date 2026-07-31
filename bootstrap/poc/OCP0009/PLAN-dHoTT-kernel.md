@@ -848,6 +848,104 @@ is stale.)
 predicate; nothing proves it equivalent to accessibility-`SN`, and that stays
 open. Nothing downstream needs it — `dec-conv` consumes `WN`.
 
+#### W3 — THE VARIANCE JUDGMENT  🔴 **NEXT on the kernel line. Scoped 2026-07-31.**
+
+★ **DO W3 BEFORE W2.** §4's diagram has said "W2 and W3 in parallel; land them as ONE
+cascade" since before W1g. W1g measured the distinction that makes that wrong:
+
+> "PLAN §2's 'budget six modules' warning is about adding CONSTRUCTORS to `RTm`/`RTy`,
+> which forces re-proving confluence and SR; **adding premises to typing rules does
+> not**." — W1g, confirmed by the option-A cascade landing at exactly two modules.
+
+W3 adds a JUDGMENT. W2 adds a TYPE FORMER. Those are different orders of cost, and
+running them as one cascade prices W3 at W2's rate. Doing W3 first also means W2's
+`Hom` former arrives into a kernel that already has the variance discipline its
+eliminator needs, rather than needing it retrofitted.
+
+**Where it starts.** `NbEPDirV` (dHoTT-2) already has variance as functorial ACTIONS
+on `Homₜ` over the CCC terms — `_×→_`/`_+→_` covariant, `_⇒→_` **contravariant in its
+domain**. What does not exist is variance as a JUDGMENT over the dependent kernel, so
+`J`'s motive is currently a side-condition rather than something checked.
+
+**The technical content.** A judgment `Γ ⊢var A ∷ υ` (υ ∈ {+, −, 0}) MUTUAL with
+`_⊢ty_`, exactly the shape W1g used:
+
+- `Π`/`Σ'` covariant in the codomain, `Π` **contravariant in the domain** — this is
+  the one rule with content, and `NbEPDirV._⇒→_` is its semantic justification;
+- `El` inherits from its code; `base`/`U` are constant (variance `0`);
+- the context carries a sign, so a variable's variance is a lookup.
+
+**The cascade, priced against W1g's measurement.** Mutual-with-`_⊢ty_` means:
+`NbEPDirDBSubj` (ren/sub for the new judgment, mutual with `ren-ty`/`sub-ty`),
+`NbEPDirDBSR` (`sr`'s reconstructions), `NbEPDirDBFund` (a `fund-var` alongside
+`fund-ty`). **Nothing on the reduction side moves** — `Conf`/`Inj`/`Dec`/`Core`/
+`Pass`/`Eta`/`Norm` never mention `_⊢_∷_`, which W1g verified rather than assumed.
+Budget: **three modules**, not six.
+
+**Risk: LOW-MEDIUM.** The one real question is whether variance needs to be an INDEX
+on `_⊢ty_` or a separate judgment over it. Separate is cheaper and is the default;
+index it only if a rule needs to dispatch on the variance of a subderivation.
+
+**Done when:** `_⊢var_` mutual with `_⊢ty_`, the contravariant `Π`-domain rule
+derivable-and-checked, `ren`/`sub`/`sr` extended, `fund-var` closing the semantic
+side, and a NEGATIVE control — a motive that is *not* covariant, refuted.
+
+--------------------------------------------------------------------------
+
+#### W2 — INTERNALIZE `Hom`  🔴 **After W3. Scoped 2026-07-31, with a GATE.**
+
+**Where it starts.** `Hom t u = t ⟶* u` is proven to be a directed identity type
+TWICE — `NbEPDirJ` (dHoTT-1) over the CCC point-free terms and `NbEPDirDBIdJ`
+(dHoTT-27) over the real kernel `RTm`, both with directed `J` and `sym` **refuted**,
+not merely absent. What is missing is that `Hom` is a META relation at `Set`, not an
+`RTy` former — `NbEPDirDBIdJ`'s own stated ceiling. W2 makes the kernel able to TYPE
+directed paths.
+
+**The technical content.** An `RTy` constructor `Hom : RTy Γ → RTm Γ → RTm Γ → RTy Γ`,
+`RTm` constructors for `hrefl` and the eliminator `J`, and the reduction rule
+`J … hrefl ⟶ …`.
+
+★ **THE GATE — RUN THIS BEFORE TOUCHING `RTy`.** From W1h's flip condition: the
+logical relation survives new formers cheaply *only if* no clause needs a member of
+`⊩` **at a larger scope**. `sem-lam` wanted only `SN` under a binder, which
+anti-renaming supplies; a clause quantifying over CONTEXT EXTENSIONS cannot be
+supplied that way, because **`⊩₁` admits no renaming action** (W1h finding (2)) — and
+then the relation is a Kripke redesign, ~1000 lines, not an extension.
+
+`J`'s motive binds (`C : (y : A) → Hom A x y → Type`), so the SN-under-a-binder
+pattern recurs and is already handled. The open question is the `⊩`-clause for `Hom`
+itself. **Spike it first** — `SpikeHomLR`, the `⊩₀`/`⊩₁` clause for `Hom` plus
+`irrel`/`exp` — before any syntax changes. That is the W1a–W1e method (spike the hard
+part, promote once the shape stops moving), and it is the cheapest possible test of
+the flip condition. **If the clause needs a larger scope, STOP and record it** — the
+raw-M3c lesson.
+
+**The cascade, if the gate passes.** A new `RTy` constructor is the expensive kind:
+`NbEPDirDBConf` (confluence — the Takahashi complete development gains cases),
+`NbEPDirDBSR` (subject reduction), `NbEPDirDBInj` (a `Hom-reduct` shape lemma, which
+every refutation in the LR then consumes), `NbEPDirDBSubj`, `NbEPDirDBLR` (the
+`⊩₀`/`⊩₁` clause **plus every cross case** in `irrel`/`fwd`/`bwd`/`conv`/`CR1`/`CR3`/
+`exp`/`emb`), `NbEPDirDBFund`. Budget **six modules**, per §2's warning.
+
+⚠ Two numbers from W1g/W1h to price the LR module honestly. `Σ'` cost **eight cross
+cases per level plus the real case**, and the real case was *not* the copy-paste W1f
+projected — it was the first former whose second component's TYPE moves when the term
+does. Expect `Hom` to be worse: its indices are TERMS, so every clause that mentions
+them moves under reduction. And `sn-anti`/`snr-anti` in `NbEPDirDBFund` need ~3 lines
+per new `RTm` constructor, plus a substitution/renaming commutation lemma for `J`
+(the analogue of `ren-single` for `β`).
+
+**Risk: HIGH** — §6's table already rates the W2/W3 cascade "beyond one person's
+reach". Splitting W3 off (above) removes part of that; the gate removes the rest of
+the *unknown* part, leaving a large but MEASURED piece of work.
+
+**Done when:** the gate is answered in writing either way; and if it passes, `Hom`/
+`hrefl`/`J` in `RTy`/`RTm`, confluence and SR re-proven, the `⊩` clause in
+`NbEPDirDBLR`, `fund` extended, and `no-sym` re-proven INTERNALLY (the directed
+content must survive internalization — if `sym` becomes derivable, the former is
+wrong).
+
+--------------------------------------------------------------------------
 --------------------------------------------------------------------------
 ## 4. Sequencing
 
@@ -862,12 +960,12 @@ W1e 🟡 (SpikeSNK — ⊩ not total; LR must be STRATIFIED by level. Both check
 W1f ✅ (NbEPDirDBLR — the relation CONSOLIDATED, promoted out of the Spike line)
 W1g ✅ (option A in the kernel: ⊢ty/⊢ctx, cascade = 2 modules; Σ' in the relation)
 W1h ✅ (NbEPDirDBFund — ⊩ˢ, shape inversion, fund, ⊩ˢ-ren, wnorm, dec-conv-typed)
-     └► PHASE 1 CLOSED ✅                              [START HERE: W2/W3 — scope first]
+     └► PHASE 1 CLOSED ✅                                      [START HERE: W3]
                             │
-W2  internalize Hom ──┐     │
-                      ├──► W6  welding
-W3  variance judgment ┴──► W4  directed CwF
-                      └──► W5  directed NF
+W3  variance judgment ──► W2  internalize Hom ──┐
+    (judgment: 3 modules)     (former: 6 modules,  ├──► W6  welding
+    🔴 NEXT                    GATE first)         ┴──► W4  directed CwF
+                                                   └──► W5  directed NF
 ```
 
 **Phase 1 — ✅ CLOSED (W0 and W1 both done, 2026-07-31).** W1h landed `fund`, so
@@ -875,8 +973,12 @@ W3  variance judgment ┴──► W4  directed CwF
 *both* paths. What remains is Phase 2/3 (the directed layer, no prior art) and,
 independently, the linearization line — where W0e also landed 2026-07-31, leaving W0d.
 
-**Phase 2 (unblocked — the gate passed).** W2 and W3 in parallel; they touch the same
-modules, so land them as ONE cascade rather than two.
+**Phase 2 (unblocked — the gate passed).** ~~W2 and W3 in parallel; they touch the same
+modules, so land them as ONE cascade rather than two.~~ **REVISED 2026-07-31 on W1g's
+measurement: W3 FIRST, then W2.** W3 adds a JUDGMENT (three modules — the reduction
+side never moves); W2 adds a TYPE FORMER (six, including the logical relation).
+Pricing them as one cascade charges W3 at W2's rate. W2 additionally carries a GATE
+that must be answered before any syntax change — see its section.
 
 **Phase 3.** W4, then W5, then W6.
 
@@ -1052,7 +1154,67 @@ the `𝟙` grading already expresses. Mechanical, not research.
 *stream of events*, which is the right SHAPE, but it is not attached to the linear
 core's syntax or semantics. Nothing else in `NbEPLin*` mentions `ν`.
 
-**Recommended scoping for W0d (unchanged in substance, now unblocked by 8.1):** port the
+### 8.3 ★ W0d MEASURED (`NbEPLinIR`, 2026-07-31) — THE BLOCKER MOVED
+
+`--guardedness` (not `--safe` — see below), zero postulates, zero holes, 281 lines,
+against the real `Once.Type`/`Once.Functor.Translate` rather than against prose.
+
+★ **THE BLOCKER IS NO LONGER CODATA. IT IS `Ty` ITSELF.** §8.2 said codata was "the
+whole of the gap" and the note above said the exclusion could be lifted "at the price
+of folding `ν` into `Ty`/`LTm`". **That price is not payable.** `LTm : Ty → Ty → Set`
+over `normalizer.Syntax.Types.Ty`, and of the eleven modules that pattern-match on
+`Ty`'s constructors, **ten are in `normalizer/TCB0/`** — the trusted computing base.
+Extending `Ty` means re-verifying the TCB for a POC experiment. And it is not
+codata-specific: §8.1(4)'s "mechanical, not research" base types
+(`Int`/`Float`/`Str`/`Buffer`) hit exactly the same wall.
+
+★ **THE MISMATCH IS TWO-SIDED**, which §8's coverage table did not record. Stated as
+a proper inclusion and checked:
+
+- `PortableF ⊆ WellFormedF` (`portable→wf`) — the port never widens the real
+  compiler's well-formedness discipline;
+- **strictly** (`wf-not-portable` + `K-Int-not-portable`) — `K Int` is well-formed
+  and has no `Func` counterpart;
+- and in the OTHER direction `Kc` is **unreachable** (`Kc-unreachable`): no
+  well-formed real functor translates to `Func`'s code-constant, because
+  `WellFormedF` admits `K A` only for base `A` and `Kc` wants a code.
+
+The two functor languages each say something the other cannot, and agree on exactly
+one constant: `Unit`.
+
+**Delivered.** `PortableT`/`PortableF` (the fragment with a target, as a PREDICATE so
+the domain is named rather than hidden in a `Maybe`), the translations `⌊_⌋ᵀ`/`⌊_⌋ᶠ`
+defined on the witness, proof-irrelevance of both, and ★ `appP-coh` — the
+functor-action coherence `⌊ appP pf pa ⌋ᵀ ≡ ⟦ ⌊ pf ⌋ᶠ ⟧F ⌊ pa ⌋ᵀ` that every one of
+`In`/`out-μ`/`Cata`/`Para`/`Fuse` would consume. Witnesses: `Nat` ports, `Tree Unit`
+ports, **`List Int` does not** (the element, not the list), and a `Unit`-stream's
+FUNCTOR ports while `ν-type` applied to it does not — read together, that is the
+proof that W0e's result is not what blocks codata here.
+
+⚠ **Flags.** This is the one module on the Lin line without `--safe`, because
+importing the real `Once.Type` requires `--guardedness` and the `Once` library sets
+no `--safe`. That is a library-flag fact, not unsoundness — `Once.Type` has no
+postulates. Mirroring it locally to keep the flag would measure a COPY, and W0d's
+method is to assess against the real files.
+
+**The remaining obligation** — `⌈_⌉ : IR A B → LTm ⌊A⌋ᵀ ⌊B⌋ᵀ` — is now mechanical
+rather than open, and should NOT be written yet: the fragment it would cover (no `ν`,
+no base types, hence no `const`, hence no `SigOp`) is **narrower than what W0e already
+justifies**, so it would bank a result weaker than the theory in hand and be redone
+the moment `Ty` grows. The gate is architectural:
+
+| | | |
+|---|---|---|
+| **A** extend `Ty` | ❌ REJECTED on measurement | ten of eleven `Ty`-matching modules are TCB0 |
+| **B** own object language for the linear core | ★ **RECOMMENDED** | `SpikeLinNu`'s `NTy` grown up; `LTm`'s generators re-declared over it + a conservative-extension theorem back to `Ty`. Costs a core re-declaration plus three structural inductions (`DupFree`, `Lᶜ`, `dyn-linear`). POC-local, touches no TCB |
+| **C** port only what fits today | dominated | `List Int` is excluded — see `listF-Int-not-portable` |
+
+★ **Option B ALSO SUBSUMES THE W0e CONSOLIDATION.** "Consolidate `SpikeLinNu` into the
+real core" and "give W0d a target that can receive `ν`" are the same piece of work.
+They should be done as ONE item, not in sequence — which is a change to this plan's
+ordering, made on measurement.
+
+**Recommended scoping for W0d (superseded in ordering by 8.3, unchanged in substance):** port the
 pure first-order inductive fragment first, keeping the real `Type`/`IR` and threading
 `Usage` into the target index the way `⟪_⟫ᶜ` does. ~~Codata stays out until W0e lands.~~ W0e landed 2026-07-31 (`SpikeLinNu`): the cost-carrying `ν` and `dynN`'s `ν` case are proven, so the codata exclusion can be lifted — at the price of folding `ν` into `Ty`/`LTm`, which is a syntax extension and cascades.
 
