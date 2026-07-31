@@ -63,6 +63,7 @@ open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
         ; find-label-none-corr; fetch-block-2nd)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
+open import Once.CCC.Codegen.FrameFreeTrace using (FrameFree; fetch-frame-free)
 open import Once.IR using (IR; Unit)
 open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
 
@@ -72,7 +73,6 @@ open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
 open import Once.Adequacy.CPU.X86-64 using (val-x86-64; ev-x86-64; arith-env-x86-64)
 import Once.Arith.Backend.X86-64.RunTrace as RTx
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Unit using (⊤)
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Word using (Carrier)
@@ -215,13 +215,14 @@ RunAt prog fs = Emitted prog × Reachable prog fs
 -- `frame-room`, `pop-frame-{empty,saved,restores}`, `pop-room`. That is the point
 -- of stating it this way rather than proving each: they were facts about matched
 -- prologue/epilogue pairs the emitter never produces.
-FrameFree : AbstractInstr → Set
-FrameFree (instr-alloc-stack _)   = ⊥
-FrameFree (instr-dealloc-stack _) = ⊥
-FrameFree (instr-push-frame _)    = ⊥
-FrameFree instr-pop-frame         = ⊥
-{-# CATCHALL #-}
-FrameFree _                       = ⊤
+--
+-- `FrameFree` and its emitter induction live in the codegen layer
+-- (`Once.CCC.Codegen.FrameFreeTrace`) — this is a fact about `ir-to-trace`, not
+-- about the machine. Here it is only APPLIED, at the `Emitted` witness the run
+-- context already carries.
+frame-op-absurd : ∀ prog (fs : FlatState) (i : AbstractInstr) → Emitted prog
+                → fetch prog (fpc fs) ≡ just i → FrameFree i
+frame-op-absurd .(ir-to-trace ir) fs i (ir , refl) ftq = fetch-frame-free {FS} ir ftq
 
 flat-inv-step : ∀ {ev env} (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
               → fetch prog (fpc fs) ≡ just i → halted (floc fs) ≡ false
@@ -521,13 +522,6 @@ events-running-end {hv} n ev env prog fs s cc wf h ftq =
                  (cong (λ z → X.fetch (compile-trace z) 0) (fetch-nothing-drop prog (fpc fs) ftq))))
 
 postulate
-  -- THE EMITTER FACT behind the four unreachable frame clauses (see `FrameFree`).
-  -- It is a property of `ir-to-trace` — an induction over the emitter, NOT a fact
-  -- about the machine — so it is stated here at the single site that needs it and
-  -- discharged in the codegen layer. It replaces ELEVEN state/program residuals.
-  frame-op-absurd : ∀ prog (fs : FlatState) (i : AbstractInstr) → Emitted prog
-                  → fetch prog (fpc fs) ≡ just i → FrameFree i
-
   -- PER-INSTRUCTION DISPATCH residual for the cases not yet routed to `ccc-step`
   -- (instr-sigop arith/external, control jmp/branch, memory/frame/slot). Shrinks as
   -- each is wired (arith→run-events-arith, external→run-events-external+contract, …).
