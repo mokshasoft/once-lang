@@ -253,14 +253,16 @@ wf-write-heap {n} {ls} hl v wf lt bv = record
   ; wf-fresh = λ hl' le → whm-fresh (n) (hl ≟HL hl')
                             (heapMem ls hl') v lt le (wf-fresh wf hl' le) }
 
--- A `writeLoc` at ANY below-frontier location (the stack branch, the heap
--- branch, and the cross-region no-op the heap branch rejects).
+-- A `writeLoc` at ANY below-frontier location (the stack branch and the heap
+-- branch; since 2026-07-31 a stack pointer stored into a heap cell is an
+-- ordinary heap write, not a no-op — `sv-below` holds of it vacuously, since it
+-- references no block at all).
 wf-write-loc : ∀ {n ls} (loc : ValueLocation FS) (v : StoredValue FS)
              → StoreWF n ls → loc-below (n) loc
              → sv-below (n) v
              → StoreWF n (writeLoc ls loc v)
 wf-write-loc (AtStack f k)  v                        wf _  bv = wf-write-stack f k v wf bv
-wf-write-loc (AtDynamic hl) (SV-Ptr (AtStack _ _))   wf _  _  = wf        -- cross-region: no-op
+wf-write-loc (AtDynamic hl) (SV-Ptr (AtStack f k))   wf lt bv = wf-write-heap hl _ wf lt bv
 wf-write-loc (AtDynamic hl) (SV-Ptr (AtDynamic hl')) wf lt bv = wf-write-heap hl _ wf lt bv
 wf-write-loc (AtDynamic hl) (SV-Tag t)               wf lt bv = wf-write-heap hl _ wf lt bv
 wf-write-loc (AtDynamic hl) (SV-Lit p x)             wf lt bv = wf-write-heap hl _ wf lt bv

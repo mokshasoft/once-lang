@@ -615,13 +615,22 @@ module MemOps {FS : FrameSemantics} where
 
   -- | Write a value (StoredValue) to memory.
   --
-  -- Plan 0.14: heap cells accept any StoredValue *except* a stack
-  -- pointer. Cross-region pointers heap→stack are forbidden (lifetime
-  -- reasoning); primitives (SV-Lit, SV-Tag, SV-Code) and heap pointers
-  -- are all legal. The single illegal case stays a no-op.
+  -- A MEMORY WRITE WRITES (2026-07-31, plan 0.54 rung D). Plan 0.14 made the
+  -- one cross-region case — a stack pointer into a heap cell — a silent NO-OP,
+  -- on lifetime grounds: a heap cell outliving the frame it points into is a
+  -- dangling reference. But the hardware has no such rule (`mov [rdi],rax`
+  -- stores the address and moves on), so as a MACHINE model the no-op was
+  -- simply wrong, and it is what forced the x86-64 correspondence to assume
+  -- `store-{,suc-}output-not-stackref` — "the emitted code never has a stack
+  -- pointer in Output at a store site" — a dataflow claim about codegen that
+  -- was never proved and is not even expressible as a property of the trace.
+  --
+  -- The lifetime discipline is a LANGUAGE-level obligation (which is why plan
+  -- 0.53 moved apply's (env,arg) pair to the heap after the x86-32 dangling
+  -- read), not something a store instruction can enforce by losing the write.
   writeLoc : LocState FS → ValueLocation FS → StoredValue FS → LocState FS
   writeLoc s (AtStack f k)  v                          = writeLocToStack s f k v
-  writeLoc s (AtDynamic hl) (SV-Ptr (AtStack _ _))     = s  -- Invalid: stack ref in heap
+  writeLoc s (AtDynamic hl) (SV-Ptr (AtStack f k))     = writeLocToHeap s hl (SV-Ptr (AtStack f k))
   writeLoc s (AtDynamic hl) (SV-Ptr (AtDynamic v))     = writeLocToHeap s hl (SV-Ptr (AtDynamic v))
   writeLoc s (AtDynamic hl) (SV-Tag t)                 = writeLocToHeap s hl (SV-Tag t)
   writeLoc s (AtDynamic hl) (SV-Lit p v)               = writeLocToHeap s hl (SV-Lit p v)
@@ -714,8 +723,13 @@ module MemOps {FS : FrameSemantics} where
   ... | yes refl = ⊥-elim (neq refl)
     where open import Data.Empty using (⊥-elim)
   ... | no _ = refl
-  -- Writing the one still-forbidden value (stack pointer to heap) is a no-op
-  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (SV-Ptr (AtStack _ _)) _ = refl
+  -- …including a stack pointer, which a heap cell now accepts like any other
+  -- value (2026-07-31: the cross-region no-op is gone — see `writeLoc`)
+  writeLoc-preserves-other s (AtDynamic hl1) (AtDynamic hl2) (SV-Ptr (AtStack f k)) neq
+    with hl1 ≟HL hl2
+  ... | yes refl = ⊥-elim (neq refl)
+    where open import Data.Empty using (⊥-elim)
+  ... | no _ = refl
 
   -- writeLoc-read-same: Reading from the location we just wrote returns the written value
   -- Stack case: writeLoc s (AtStack f k) v → readLoc (AtStack f k) ≡ just v

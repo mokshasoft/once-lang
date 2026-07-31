@@ -197,7 +197,7 @@ regtag-stack-slot {ls} m wf = regtag-transport ls refl refl wf
 regtag-write-loc : ∀ {ls} (loc : ValueLocation FS) (v : StoredValue FS)
                  → RegTagWF ls → RegTagWF (writeLoc ls loc v)
 regtag-write-loc {ls} (AtStack f k)  v                        wf = regtag-transport ls refl refl wf
-regtag-write-loc {ls} (AtDynamic hl) (SV-Ptr (AtStack _ _))   wf = wf     -- cross-region: no-op
+regtag-write-loc {ls} (AtDynamic hl) (SV-Ptr (AtStack f k))   wf = regtag-transport ls refl refl wf
 regtag-write-loc {ls} (AtDynamic hl) (SV-Ptr (AtDynamic hl')) wf = regtag-transport ls refl refl wf
 regtag-write-loc {ls} (AtDynamic hl) (SV-Tag t)               wf = regtag-transport ls refl refl wf
 regtag-write-loc {ls} (AtDynamic hl) (SV-Lit p x)             wf = regtag-transport ls refl refl wf
