@@ -308,10 +308,58 @@ Whole Lin+QTT chain re-verified: 11 modules, all exit 0.
 here too. The operational claim is `bridge-dyn`, for the `LinD` fragment only.
 **`ω` is a PERMISSION to allocate, not a count of allocations.**
 
-### W0e — CODATA in the linear core  🔴 **NEXT. The sole remaining blocker to W0d.**
+### W0e — CODATA in the linear core  ✅ **DONE (`SpikeLinNu`, 2026-07-31). W0d IS UNBLOCKED.**
 
-Scoped 2026-07-28, after §8.1 dispositioned `Para`, `AllocMode` and effects out of the
-way. **This is the next thing to attempt.** Start here.
+`--safe --guardedness`, zero postulates, zero holes, 404 lines. All eight scoped
+steps landed, and **the flagged risk did not fire**: the mixed induction–coinduction
+at step 7 went through on the first attempt. The two cycles are discharged by
+different means, which is why —
+
+- `dynN (dfn-ana dc) → freeAna dc → dynN dc` **decreases** on the `DupFreeN`
+  derivation;
+- `freeAna dc → freeMap dc → freeAna dc` is **guarded** by the `next` copattern.
+
+★ **THE FINDING, and it is smaller than the scoping feared.** `Nᶜ`'s result type is
+**unchanged** — still `⟦ B ⟧N × ℕ`. Codata does not force a different cost monad;
+it forces the cost to be **carried by the value**. `⟦ νt F ⟧N` is a coinductive
+record whose `force` field is `FS F (Nu F) × ℕ`, so `nana` returns
+`(producer , zero)` and the producer's prices sit in its `force` fields, paid one
+at a time by whoever observes. The total is never assembled, and none is asked for.
+This is the `⇒` case again, exactly as projected: `ν` is to `nout` what `⇒` is to
+`leval`.
+
+What replaces "the run costs zero" is `FreeNu` — a coinductive record, *every
+observation at every depth is free* — i.e. `NbEPLinLive`'s `□` moved from the trace
+domain to the cost domain. `dynN` is `dyn-linear` with that as its `ν` case.
+
+**One simplification against the plan.** Step 6 scoped `FreeN`/`FreeNu`/`FreeU` as
+three definitions; only two are needed. `FreeFS G {A}`'s `Id` case at `A = νt F` IS
+`FreeNu F`, so the "every position of the unfolded step is free" predicate and the
+"free through a functor" predicate are the same thing at different indices.
+
+**Both controls fire.**
+- ★ NEGATIVE, as scoped: `F = Id ⊗ Id` makes `ndup` a coalgebra, so
+  `badAna = nana (Id ⊗ Id) ndup` builds free and pays one per observation. Sharpened
+  past the scoping — `bad-forever : ∀ n → snd (force (spineL n badProd)) ≡ suc zero`
+  proves it pays one at EVERY depth of the leftmost spine, so no `n : ℕ` bounds the
+  run: observe `n+1` times and you have paid `n+1`. That is the concrete witness that
+  `Lᶜ`'s result type could not be extended to `ν`. Plus `bad-not-free` and
+  `bad-not-linear` — the property has teeth.
+- ★ POSITIVE, added because the scoping did not ask for it and it is load-bearing:
+  a coinductive record with an unsatisfiable field is still a legal `Set`, so
+  `FreeNu` could have been vacuous. `nana Id nid` is a genuinely non-terminating
+  producer whose every step is free, and `dynN` proves it — the case where the
+  inductive statement ("the run costs zero") is not even expressible.
+
+**Next on this line: W0d** — porting the real IR to the linear core. Its codata
+exclusion (§8, "codata stays out until W0e lands") can now be lifted. ⚠ `SpikeLinNu`
+is a SPIKE with its own `NTy`/`NTm`/`FS`/`Nu`; folding `ν` into `Ty`/`LTm` proper is
+the six-module cascade every syntax extension costs, and is W0d's problem, not this
+one's.
+
+*(Original scoping retained below for the record.)*
+
+#### W0e — original scoping
 
 **Why it is not just "add two constructors".** The obstruction is in the COST SEMANTICS,
 and it is a typing obstruction, not a difficulty:
@@ -814,7 +862,7 @@ W1e 🟡 (SpikeSNK — ⊩ not total; LR must be STRATIFIED by level. Both check
 W1f ✅ (NbEPDirDBLR — the relation CONSOLIDATED, promoted out of the Spike line)
 W1g ✅ (option A in the kernel: ⊢ty/⊢ctx, cascade = 2 modules; Σ' in the relation)
 W1h ✅ (NbEPDirDBFund — ⊩ˢ, shape inversion, fund, ⊩ˢ-ren, wnorm, dec-conv-typed)
-     └► PHASE 1 CLOSED ✅                                  [START HERE: W2 or W0e]
+     └► PHASE 1 CLOSED ✅                              [START HERE: W2/W3 — scope first]
                             │
 W2  internalize Hom ──┐     │
                       ├──► W6  welding
@@ -825,7 +873,7 @@ W3  variance judgment ┴──► W4  directed CwF
 **Phase 1 — ✅ CLOSED (W0 and W1 both done, 2026-07-31).** W1h landed `fund`, so
 `dec-conv` no longer carries a normalization premise and the kernel completes for
 *both* paths. What remains is Phase 2/3 (the directed layer, no prior art) and,
-independently, the linearization line's W0e.
+independently, the linearization line — where W0e also landed 2026-07-31, leaving W0d.
 
 **Phase 2 (unblocked — the gate passed).** W2 and W3 in parallel; they touch the same
 modules, so land them as ONE cascade rather than two.
@@ -836,11 +884,11 @@ modules, so land them as ONE cascade rather than two.
 multiplicity accounting~~ ✅ done (W0b); ~~gap 3, the Lin↔QTT bridge~~ ✅ done (W0c);
 ~~§1.3 gap 2, linear recursion schemes~~ — DEFERRED, `Para` ruled an optimization (§8.1).
 
-    W0c bridge ✅ ──► W0e  codata in the core  [★ NEXT — the sole blocker]
+    W0c bridge ✅ ──► W0e ✅ (SpikeLinNu) ──► W0d  port the real IR  [★ NEXT]
                               │
                               └──► W0d  port the real IR (§8)
 
-**W0e is the next item to attempt.** The residue of W0b — an event trace for the
+**W0e is DONE (`SpikeLinNu`); W0d is now the next item on this line.** The residue of W0b — an event trace for the
 non-linear fragment, and `Lᶜ`/`Lⁱ` value-agreement — is optional refinement, not a gate.
 
 **Out of scope, explicitly:** directed univalence and its directed model (§1.1);
@@ -1006,5 +1054,5 @@ core's syntax or semantics. Nothing else in `NbEPLin*` mentions `ν`.
 
 **Recommended scoping for W0d (unchanged in substance, now unblocked by 8.1):** port the
 pure first-order inductive fragment first, keeping the real `Type`/`IR` and threading
-`Usage` into the target index the way `⟪_⟫ᶜ` does. Codata stays out until W0e lands.
+`Usage` into the target index the way `⟪_⟫ᶜ` does. ~~Codata stays out until W0e lands.~~ W0e landed 2026-07-31 (`SpikeLinNu`): the cost-carrying `ν` and `dynN`'s `ν` case are proven, so the codata exclusion can be lifted — at the price of folding `ν` into `Ty`/`LTm`, which is a syntax extension and cascades.
 
