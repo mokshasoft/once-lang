@@ -222,8 +222,11 @@ mutual
   ss-abstract (instr-alloc-heap n)     ls alloc ff =
     ss-write ls Output
       (SV-Ptr (AtDynamic (proj₁ (AI.alloc-impl n (next-heap-ref alloc)))))
-  ss-abstract (instr-loop body)        ls alloc ff =
-    ss-loop-run (exec-trace body) 1000000 ls alloc (λ ls' alloc' → ss-trace body ls' alloc' ff)
+  -- `instr-loop` has NO PRODUCER either (2026-07-31) — a retired fossil, `⊥` in
+  -- the predicate, so this route is unreachable rather than proved. The generic
+  -- `ss-loop-run` above is kept: it is what a future structured loop would need,
+  -- and it is the fuel induction that retired this proof's pragma.
+  ss-abstract (instr-loop body)        ls alloc ()
   ss-abstract (instr-reg-op op)        ls alloc ff = ss-reg-op ls op
   ss-abstract (instr-ctrl c)           ls alloc ff = refl
 
@@ -293,5 +296,5 @@ flat-stack-slot instr-save-closure-reg   prog fs ff = ss-abstract instr-save-clo
 flat-stack-slot (instr-load-tag-lit k)   prog fs ff = ss-abstract (instr-load-tag-lit k) (floc fs) (falloc fs) ff
 flat-stack-slot (instr-case-on-tag f g)  prog fs ff = ss-abstract (instr-case-on-tag f g) (floc fs) (falloc fs) ff
 flat-stack-slot (instr-alloc-heap k)     prog fs ff = ss-abstract (instr-alloc-heap k) (floc fs) (falloc fs) ff
-flat-stack-slot (instr-loop body)        prog fs ff = ss-abstract (instr-loop body) (floc fs) (falloc fs) ff
+flat-stack-slot (instr-loop body)        prog fs ()
 flat-stack-slot (instr-reg-op op)        prog fs ff = ss-abstract (instr-reg-op op) (floc fs) (falloc fs) ff

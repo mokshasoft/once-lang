@@ -4,7 +4,16 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Machine.FrameFree   (Plan 0.54 rung D, item 2)
 --
--- "This instruction is not a frame op, and neither is anything it runs."
+-- "This instruction is one the live emitter can produce, and so is everything
+-- it runs." Concretely: not a frame op, and not `instr-loop`.
+--
+-- NAMING DEBT (2026-07-31): the module is still called FrameFree, but the
+-- predicate now also excludes `instr-loop`. Both are instructions with NO
+-- PRODUCER — `ir-to-trace` emits neither (grep: both appear only in IRToTrace's
+-- import list) — so both are ⊥ here and both dispatch clauses in the flat↔x86-64
+-- correspondence are unreachable. Adding the loop cost no proof at all: the
+-- emitter induction in `Once.CCC.Codegen.FrameFreeTrace` never produces one, so
+-- every clause of it stands unchanged.
 --
 -- The four abstract frame instructions — `instr-alloc-stack`,
 -- `instr-dealloc-stack`, `instr-push-frame`, `instr-pop-frame` — are the ONLY
@@ -43,7 +52,9 @@ mutual
   FrameFreeI (instr-push-frame _)      = ⊥
   FrameFreeI instr-pop-frame           = ⊥
   FrameFreeI (instr-case-on-tag t₁ t₂) = FrameFreeT t₁ × FrameFreeT t₂
-  FrameFreeI (instr-loop t)            = FrameFreeT t
+  -- `instr-loop` is a RETIRED FOSSIL: the cata codegen compiles to flat control
+  -- (`c-label`/`c-jmp`/`c-branch-*`), never to a structured loop instruction.
+  FrameFreeI (instr-loop t)            = ⊥
   {-# CATCHALL #-}
   FrameFreeI _                         = ⊤
 

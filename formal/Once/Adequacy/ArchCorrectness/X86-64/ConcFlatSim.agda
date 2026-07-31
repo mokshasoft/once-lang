@@ -513,11 +513,35 @@ postulate
   -- PER-INSTRUCTION DISPATCH residual for the cases not yet routed to `ccc-step`
   -- (instr-sigop arith/external, control jmp/branch, memory/frame/slot). Shrinks as
   -- each is wired (arith→run-events-arith, external→run-events-external+contract, …).
-  events-running-fetch-rest : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                                prog fs s i → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
-                            → fetch prog (fpc fs) ≡ just i
-                            → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                                  ≡ event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs))
+  -- THE NESTED-TRACE CORRESPONDENCE (`instr-case-on-tag`) — the one real
+  -- coverage gap left. One flat step runs a whole branch via `exec-trace`; the
+  -- x86 side runs the compiled dispatch block. Needs a TRACE-level simulation
+  -- mutual with the per-instruction block-steps.
+  --
+  -- MIND THE MODEL when discharging: inside a branch, `exec-trace` treats
+  -- `instr-ctrl` as the IDENTITY (SMCore: "flat control flow is NEVER in a
+  -- structured trace"), while the compiled branch has REAL labels. So for a
+  -- branch containing flat control — which is what a `Cata` inside a `case`
+  -- emits — the two sides do not agree, and the residual is not merely
+  -- unproved. Establish the flat-control-free fragment first (`StraightTrace`
+  -- characterises it), or fix the flat machine to branch on the tag instead of
+  -- running the branch inline.
+  events-running-case : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                          prog fs s f g → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
+                      → fetch prog (fpc fs) ≡ just (instr-case-on-tag f g)
+                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                            ≡ event-of (instr-case-on-tag f g) fs
+                              ++ flat-events n prog (flat-exec-instr (instr-case-on-tag f g) prog fs))
+  -- THE CLOSURE CALL — a MODEL gap: `exec-abstract instr-call-closure = s , alloc`
+  -- (identity) while the concrete `call *0x8(%r12)` transfers control to the
+  -- closure body. No proof can bridge that; the abstract machine has to model
+  -- the call (or codegen has to inline it) first.
+  events-running-call : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                          prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
+                      → fetch prog (fpc fs) ≡ just instr-call-closure
+                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                            ≡ event-of instr-call-closure fs
+                              ++ flat-events n prog (flat-exec-instr instr-call-closure prog fs))
 
   -- c-branch-tag-zero WF residuals (the tag is read THROUGH Input1's pointer): the branch
   -- reads a live heap TAG cell, and the label resolves. branch-tag-badptr = Input1 not a
@@ -917,8 +941,28 @@ mutual
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-branch-scratch-zero m)) cc wf h ftq = branch-step n ev env prog fs s m cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m)) cc wf h ftq = tag-branch-step n ev env prog fs s m cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-sigop si) cc wf h ftq = sigop-step n ev env prog fs s si cc wf h ftq
-  events-running-fetch {hv} n ev env prog fs s i cc wf h ftq =
-    events-running-fetch-rest n ev env prog fs s i cc wf h ftq
+  -- WHAT IS LEFT UNROUTED, now one clause each instead of a catch-all over `i`
+  -- (2026-07-31). Naming them separately is what showed that only TWO of the
+  -- three are real: `instr-loop` has no producer at all.
+  --
+  -- `instr-loop` — a RETIRED FOSSIL. The cata codegen compiles to flat control
+  -- (`c-label`/`c-jmp`/`c-branch-*`), so `ir-to-trace` never emits it and the
+  -- route is UNREACHABLE, exactly like the four frame ops.
+  events-running-fetch {hv} n ev env prog fs s (instr-loop body) cc wf h ftq =
+    ⊥-elim (frame-op-absurd prog fs (instr-loop body) (run-emitted (inv-run wf)) ftq)
+  -- `instr-case-on-tag` — GENUINELY EMITTED (`case f g`, and the Tier-2 functor
+  -- walks). One flat step runs a whole nested trace through `exec-case-dispatch`
+  -- → `exec-trace`, while the x86 side is a `cmp`/`je`/branch-block: this needs a
+  -- multi-step, TRACE-level correspondence, not a block-step. It is the last
+  -- real coverage gap, and `conc-flat-sim-nested` at the apex is its other half.
+  events-running-fetch {hv} n ev env prog fs s (instr-case-on-tag f g) cc wf h ftq =
+    events-running-case n ev env prog fs s f g cc wf h ftq
+  -- `instr-call-closure` — GENUINELY EMITTED (`apply`), and a MODEL gap rather
+  -- than a proof gap: the abstract semantics is the IDENTITY while the concrete
+  -- `call *0x8(%r12)` transfers control. Closing it needs the abstract machine to
+  -- model the call, not more proof effort here.
+  events-running-fetch {hv} n ev env prog fs s instr-call-closure cc wf h ftq =
+    events-running-call n ev env prog fs s cc wf h ftq
 
   -- The reusable CCC engine, GENERALISED to take an explicit BlockStep: one abstract
   -- step `i` (event-of i fs = [], flat step leaves the machine running: hpost) ↦ its
