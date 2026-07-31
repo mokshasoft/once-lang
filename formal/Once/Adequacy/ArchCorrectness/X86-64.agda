@@ -103,7 +103,7 @@ open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
         ; inv-wf; inv-regtag; inv-ev; inv-env; inv-run; mkRunAt)
 open import Once.CCC.Machine.FlatStoreWF x86-64-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.FlatRegTagWF x86-64-frame-semantics using (FlatRegTag)
-open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Input2; Output; Scratch; Count; readReg; regs)
+open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Input2; Output; Scratch; Count; readReg; regs; SV-Ptr; AtStack)
 
 -- The heap address map is CARRIED by the correspondence and EXTENDED at each
 -- `instr-alloc-heap` (the fresh block lands at the concrete `%r15` frontier), so
@@ -231,6 +231,16 @@ entry-regtag B = record { scratch-tag = 0 , refl ; count-tag = 0 , refl }
 entry-like : ∀ (B : ℕ) → EntryLike (mkFlat (FFOx.entry-s B) FFOx.entry-alloc 0)
 entry-like B = refl , refl , refl , refl
              , (λ _ → refl) , (λ _ _ → refl) , (λ _ → refl)
+             -- no register holds a stack pointer: `main`'s argument is the heap
+             -- filler `entry-loc`, and the two counters start as tags
+             , no-stack-ptr
+  where no-stack-ptr : ∀ (r : AbstractReg) f k
+                     → readReg (regs (FFOx.entry-s B)) r ≡ SV-Ptr (AtStack f k) → ⊥
+        no-stack-ptr Input1  f k ()
+        no-stack-ptr Input2  f k ()
+        no-stack-ptr Output  f k ()
+        no-stack-ptr Scratch f k ()
+        no-stack-ptr Count   f k ()
 
 entry-inv : ∀ (ir : IR Unit Unit)
           → FlatInv ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))

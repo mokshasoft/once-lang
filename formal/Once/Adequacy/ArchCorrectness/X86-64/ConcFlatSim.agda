@@ -66,6 +66,8 @@ open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Machine.FrameFree using (FrameFreeI)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Machine.FlatStackSlot FS using (flat-stack-slot)
+open import Once.CCC.Machine.FlatStackPtr FS using
+  (StackPtrWF; StackPtrOK; StackPtrOK?; stack-ptr-frame; stack-ptr-live; stack-ptr-suc-live)
 open import Once.CCC.Codegen.FrameFreeTrace using (fetch-frame-free)
 open import Once.CCC.Codegen.SlotBudget using (ir-slots-below-budget; below)
 open import Once.IR using (IR; Unit)
@@ -77,6 +79,7 @@ open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
 open import Once.Adequacy.CPU.X86-64 using (val-x86-64; ev-x86-64; arith-env-x86-64)
 import Once.Arith.Backend.X86-64.RunTrace as RTx
 open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Unit using (⊤; tt)
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Word using (Carrier)
@@ -167,6 +170,12 @@ EntryLike fs = (fpc fs ≡ 0)
              × (∀ hl → heapMem (floc fs) hl ≡ nothing)
              × (∀ f k → stackMem (floc fs) f k ≡ nothing)
              × (∀ r → block-size (falloc fs) r ≡ 0)
+             -- …and NO REGISTER holds a stack pointer. The loader hands `main`
+             -- its argument in the heap (`FlatFromObs.entry-loc`), so this is
+             -- true of the entry state by construction; it is what starts the
+             -- stack-pointer invariant off (`entry-stack-ptr`).
+             × (∀ (r : AbstractReg) (f : Frame) (k : Slot)
+                → readReg (regs (floc fs)) r ≡ SV-Ptr (AtStack f k) → ⊥)
 
 -- …indexed by the STATIC SLOT BUDGET `B` the prologue reserved. The entry state
 -- pins `stackSlot` to it (`reach-start`), and no reachable step can move it —
@@ -534,19 +543,31 @@ postulate
                                 ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
 
 
-  -- A stack pointer held in `Input1` targets the CURRENT frame's live slots.
-  -- True of emitted code — `lea-slot` takes the address of a slot the current
-  -- prologue reserved, and the pointer is consumed before the frame is left —
-  -- and it is what lets a load through it be an ordinary step. (An older
-  -- frame's slots would need `stack-eq` to reach beyond the current frame.)
-  stack-ptr-current : ∀ prog (fs : FlatState) (f : Frame) (k : Slot) → RunAt prog fs
-                    → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                    → (f ≡ current-frame (falloc fs)) × (k < stackSlot (regs (floc fs)))
-  -- …and for a PAIR the second cell is live too (`lea-slot` addresses the first
-  -- of two adjacent slots the same prologue reserved).
-  stack-ptr-current-suc : ∀ prog (fs : FlatState) (f : Frame) (k : Slot) → RunAt prog fs
-                        → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                        → (f ≡ current-frame (falloc fs)) × (suc k < stackSlot (regs (floc fs)))
+  -- THE STACK-POINTER INVARIANT, one step (plan 0.54 rung D, item 2). Replaces
+  -- `stack-ptr-current{,-suc}`, which ASSUMED at each use site what is really a
+  -- state invariant: every stack pointer in the state addresses a live PAIR of
+  -- the current frame (`Once.CCC.Machine.FlatStackPtr`). It is an invariant at
+  -- all only because the frame ops are unemittable, so `current-frame` and
+  -- `stackSlot` are fixed for the whole run.
+  --
+  -- The `lea-slot` premise is what the producer case needs: that instruction
+  -- writes `SV-Ptr (AtStack current-frame slot)` into Output, so the pair bound
+  -- has to come in from the emitter (`emitted-lea-slot-pair` below). The
+  -- remaining producer to check when discharging this is `lea-indexed`, whose
+  -- `offsetLoc` walks a cursor — on the Tier-1 payload stack that cursor is a
+  -- HEAP pointer, so the stack route should be vacuous, but that is exactly the
+  -- kind of claim this residual is standing in for.
+  stack-ptr-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → FrameFreeI i
+                 → (∀ slot → i ≡ lea-slot slot → suc slot < stackSlot (regs (floc fs)))
+                 → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
+  -- …and the EMITTER half of that premise: a `lea-slot` addresses the first of
+  -- TWO adjacent slots the same prologue reserved — the pair `⟨_,_⟩ Stack`, the
+  -- closure record `curry _ Stack`, the sum payload `inl`/`inr Stack`. A
+  -- strengthening of `Once.CCC.Codegen.SlotBudget`'s induction (which today
+  -- bounds the slot itself), to be discharged there.
+  emitted-lea-slot-pair : ∀ (ir : IR Unit Unit) (k : ℕ) (slot : Slot)
+                        → fetch (ir-to-trace ir) k ≡ just (lea-slot slot)
+                        → suc slot < ir-stack-budget ir
 
   -- load-indirect on a non-live-dynamic-pointer target (non-pointer / stack ptr /
   -- unallocated) — ruled out by well-formedness (loads hit live heap cells).
@@ -718,6 +739,57 @@ run-stack-slot prog fs (mkRunAt ir eq reach) = go fs reach
           trans (flat-stack-slot i prog fs''
                    (frame-op-absurd prog fs'' i (ir , eq) ftq))
                 (go fs'' r')
+
+-- A start state satisfies the invariant vacuously: both memories are empty and
+-- no register holds a stack pointer.
+entry-stack-ptr : ∀ (fs : FlatState) → EntryLike fs → StackPtrWF fs
+entry-stack-ptr fs (_ , _ , _ , _ , hemp , semp , _ , nosp) = record
+  { sp-regs  = λ r → go r (readReg (regs (floc fs)) r) refl
+  ; sp-heap  = λ hl → subst (StackPtrOK? _ _) (sym (hemp hl)) tt
+  ; sp-stack = λ f k → subst (StackPtrOK? _ _) (sym (semp f k)) tt }
+  where go : ∀ (r : AbstractReg) (v : StoredValue FS) → readReg (regs (floc fs)) r ≡ v
+           → StackPtrOK (current-frame (falloc fs)) (stackSlot (regs (floc fs)))
+                        (readReg (regs (floc fs)) r)
+        go r (SV-Ptr (AtStack f k))  eq = ⊥-elim (nosp r f k eq)
+        go r (SV-Ptr (AtDynamic hl)) eq rewrite eq = tt
+        go r (SV-Tag t)              eq rewrite eq = tt
+        go r (SV-Lit p v)            eq rewrite eq = tt
+        go r (SV-Code c)             eq rewrite eq = tt
+
+-- Every stack pointer in a reachable state addresses a live pair of the current
+-- frame. Induction on `Reachable`, exactly like `run-stack-slot`: the entry
+-- state holds no stack pointer at all (its registers hold the heap filler and
+-- both memories are empty), and each step preserves the invariant because the
+-- program is emitted — frame-free, and its `lea-slot`s address reserved pairs.
+run-stack-ptr : ∀ prog (fs : FlatState) (r : RunAt prog fs) → StackPtrWF fs
+run-stack-ptr prog fs (mkRunAt ir eq reach) = go fs reach
+  where go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs' → StackPtrWF fs'
+        go fs' (reach-start .fs' el _) = entry-stack-ptr fs' el
+        go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
+          stack-ptr-step i prog fs''
+            (frame-op-absurd prog fs'' i (ir , eq) ftq)
+            (λ slot i-eq →
+              subst (λ z → suc slot < z)
+                (sym (run-stack-slot prog fs'' (mkRunAt ir eq r')))
+                (emitted-lea-slot-pair ir (fpc fs'') slot
+                  (subst (λ p → fetch p (fpc fs'') ≡ just (lea-slot slot)) eq
+                         (subst (λ z → fetch prog (fpc fs'') ≡ just z) i-eq ftq))))
+            (go fs'' r')
+
+-- the two forms the block-steps ask for, now READ OFF the invariant
+stack-ptr-current : ∀ prog (fs : FlatState) (f : Frame) (k : Slot) → RunAt prog fs
+                  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+                  → (f ≡ current-frame (falloc fs)) × (k < stackSlot (regs (floc fs)))
+stack-ptr-current prog fs f k r eq =
+  stack-ptr-frame fs Input1 f k (run-stack-ptr prog fs r) eq
+  , stack-ptr-live fs Input1 f k (run-stack-ptr prog fs r) eq
+
+stack-ptr-current-suc : ∀ prog (fs : FlatState) (f : Frame) (k : Slot) → RunAt prog fs
+                      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+                      → (f ≡ current-frame (falloc fs)) × (suc k < stackSlot (regs (floc fs)))
+stack-ptr-current-suc prog fs f k r eq =
+  stack-ptr-frame fs Input1 f k (run-stack-ptr prog fs r) eq
+  , stack-ptr-suc-live fs Input1 f k (run-stack-ptr prog fs r) eq
 
 slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunAt prog fs
                    → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot
