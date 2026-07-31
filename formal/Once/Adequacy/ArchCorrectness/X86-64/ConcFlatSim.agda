@@ -64,8 +64,10 @@ open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Machine.FrameFree using (FrameFreeI)
+open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Machine.FlatStackSlot FS using (flat-stack-slot)
 open import Once.CCC.Codegen.FrameFreeTrace using (fetch-frame-free)
+open import Once.CCC.Codegen.SlotBudget using (ir-slots-below-budget; below)
 open import Once.IR using (IR; Unit)
 open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
 
@@ -289,40 +291,6 @@ ptr-heap-disj : ∀ {hv : HeapView} (fs : FlatState) (s : X.State) → C.FlatCor
               → ∀ k → (X.readReg (X.State.regs s) rsp + slot-to-disp k ≡ haddr hv hl) → ⊥
 ptr-heap-disj fs s corr hl live k eq = slot-heap-disj fs s corr k hl live eq
 
-slot-of : AbstractInstr → Maybe Slot
-slot-of (load-from-slot k)  = just k
-slot-of (store-at-slot k)   = just k
-slot-of (lea-slot k)        = just k
-slot-of (restore-input k)   = just k
-slot-of (lea-indexed k)     = just k
-slot-of (worklist-init k)   = just k
-slot-of (worklist-push k)   = just k
-slot-of (worklist-pop k)    = just k
-slot-of (worklist-check k)  = just k
-slot-of mov-to-output          = nothing
-slot-of mov-to-input           = nothing
-slot-of mov-output-to-input2   = nothing
-slot-of mov-input2-to-output   = nothing
-slot-of load-indirect          = nothing
-slot-of load-indirect-suc      = nothing
-slot-of store-indirect         = nothing
-slot-of store-indirect-suc     = nothing
-slot-of (instr-alloc-stack _)  = nothing
-slot-of (instr-dealloc-stack _) = nothing
-slot-of (instr-reclaim-to _)   = nothing
-slot-of (instr-push-frame _)   = nothing
-slot-of instr-pop-frame        = nothing
-slot-of instr-call-closure     = nothing
-slot-of (instr-sigop _)        = nothing
-slot-of (instr-load-const _ _) = nothing
-slot-of (instr-load-code-addr _) = nothing
-slot-of instr-save-closure-reg = nothing
-slot-of (instr-load-tag-lit _) = nothing
-slot-of (instr-case-on-tag _ _) = nothing
-slot-of (instr-alloc-heap _)   = nothing
-slot-of (instr-loop _)         = nothing
-slot-of (instr-reg-op _)       = nothing
-slot-of (instr-ctrl _)         = nothing
 
 -- WITNESS-FREE block chaining: if `X.exec L` reaches a NON-halted `s'`, then every
 -- one of the L steps was non-halting (else exec would have stopped at a halted
@@ -640,13 +608,6 @@ postulate
   -- (`slot-of i ≡ just slot`): quantified over an unrelated `slot` this claims
   -- `slot < stackSlot` for every slot, which is inconsistent (take `slot ≡
   -- stackSlot`) — it would prove the whole correspondence vacuously.
-  -- EMITTER FACT — the emitter's own frontier discipline: every slot an
-  -- emitted instruction addresses is below the static budget the prologue
-  -- reserved for that trace (`ir-to-trace'` threads the frontier and returns it
-  -- as `ir-stack-budget`).
-  emitted-slot-below-budget : ∀ (ir : IR Unit Unit) (k : ℕ) (i : AbstractInstr) (slot : Slot)
-                            → fetch (ir-to-trace ir) k ≡ just i → slot-of i ≡ just slot
-                            → slot < ir-stack-budget ir
   -- MEMORY EXHAUSTION (plan 0.54 rung D) — the price of "the two regions grow
   -- towards each other", and the ONLY thing the layout separation assumes. The
   -- ONE allocating instruction the emitter produces has room between the heap
@@ -743,6 +704,15 @@ postulate
 -- `lea-indexed`). It splits cleanly into a MACHINE fact and an EMITTER fact:
 -- the live window never moves during a run, and it started out big enough.
 ------------------------------------------------------------------------
+
+-- THE EMITTER HALF: every slot an emitted instruction addresses is below the
+-- static budget the prologue reserved for that trace (`ir-to-trace'` threads the
+-- frontier and hands it back as `ir-stack-budget`). Proved in the codegen layer.
+emitted-slot-below-budget : ∀ (ir : IR Unit Unit) (k : ℕ) (i : AbstractInstr) (slot : Slot)
+                          → fetch (ir-to-trace ir) k ≡ just i → slot-of i ≡ just slot
+                          → slot < ir-stack-budget ir
+emitted-slot-below-budget ir k i slot ftq soq =
+  below (fetch-All (ir-slots-below-budget ir) ftq) slot soq
 
 -- The live stack window is CONSTANT along a run of an emitted program: it is the
 -- budget the prologue reserved. Induction on `Reachable`; each step is frame-free
