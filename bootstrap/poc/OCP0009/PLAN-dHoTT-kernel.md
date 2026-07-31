@@ -1226,13 +1226,51 @@ of that shape.
 — W0e proved the codata semantics — nor, it turns out, by anything real. They were
 blocked by a `Ty` the POC was never obliged to use.
 
-**NEXT on this line: `NbEPLinCore`** — the consolidation, which is now the same item
-as "give W0d a target". Self-contained: prelude, functor codes, object language
-(`Unit`/`Void`/`⊗`/`⊕`/`⇒`/`μ`/**`ν`**/base leaves), `Fix` and the cost-carrying `Nu`
-mutual with the functor interpretation, the full `LTm` generator set including
-`nout`/`nana`, `DupFree`, `Lᶜ`, `Free`/`FreeNu`, and `dyn-linear` covering **both**
-`μ` and `ν`. Then `Rec`/`Dyn` retire into it, and `Pass`/`QTT` — which additionally
-borrow a cartesian SOURCE language — are re-pointed or re-scoped separately.
+### 8.4 ✅ `NbEPLinCore` — DONE (2026-07-31). The consolidation, owned.
+
+776 lines, `--safe --guardedness`, zero postulates, zero holes, zero pragmas, **zero
+imports** (prelude included). `LF` (functor codes, object-language-independent), `LTy`
+(with `νt` and base leaves from the start), the instrumented `⟦_⟧`, `Mu`/`Nu` in one
+knot, the full `LTm` generator set — including `lzero`, `lOutμ`, `lOut`/`lAna`/`lInν`,
+the three §8 listed as gaps — `Lᶜ`, `DupFree`, `Free`, and **`dyn-linear` covering
+BOTH fixpoints**. Base leaves are module parameters: the theory says only that they
+are inert.
+
+★ **NO GENERAL FIXPOINT.** `Mu`/`Nu` are the initial algebra and final coalgebra;
+their only eliminators are `lcata` (structural) and `lOut` (one observation). Named
+after Once's own `In`/`out-μ`/`Out`/`in-ν`. See §1.2 — and note the slip that produced
+that rule: the first draft broke the DEPENDENCY on the normalizer POC but kept its
+NAMES (`Fix`/`fix`), which is the same coupling one level down.
+
+★ **`Free` HAD TO BE STRATIFIED**, and this is the module's real finding.
+`Free (A ⇒t B) f = (a : ⟦A⟧) → Free A a → …` puts `Free` negatively — and that
+hypothesis is exactly what bounds `leval`, so it cannot go — while `Free` at
+`μt`/`νt` must be real and re-enters. `FreeMu` then occurs negatively in its own
+definition. **It is W1e's finding (`SpikeSNK`) reached from the other line**, and the
+answer is the same: stratify.
+
+What makes it work: `FS G C` is built from `⊤`, base carriers, `Mu`, `Nu`, `⊎`, `×`
+and contains **no function space, ever** — so a fixpoint payload's freedom never needs
+the `⇒t` clause. Three layers: (1) `FreeMu`/`FreeNu` over the data fragment only,
+arrow-free hence strictly positive; (2) `Free` as a plain function structural in
+`LTy`, where the negative occurrence is harmless; (3) `FreeFS G A` for an arbitrary
+carrier (the `lcata` carrier can be an arrow), bridged to (1) by four one-line
+inductions. ⚠ The carrier in (3) must be EXPLICIT — implicit, the `⊕f`/`⊗f` recursive
+calls leave it an unsolvable metavariable.
+
+★★ **AND THE BORROWED CORE COULD NOT HAVE SHOWN ANY OF IT.** `NbEPLinDyn` sets
+`Free (μ F) x = ⊤`, justified by "a fixpoint holds no functions". True, and beside the
+point: with `Kν` among the codes, **data can hold a PRODUCER**. `box-not-free` is the
+concrete refutation — inductive data that is not free, which `⊤` would have called
+free — and it is **not statable in the borrowed core at all**, whose functor codes
+cannot put a `ν` inside a `μ`. Owning the syntax is what made the counterexample
+expressible.
+
+**NEXT on this line.** `Rec`/`Dyn` retire into `NbEPLinCore` (mechanical — it is a
+superset). `Pass`/`QTT` additionally borrow a cartesian SOURCE language and `eval`
+from the normalizer POC, so they need re-pointing or re-scoping separately, and that
+is a bigger decision than a port: what the POC wants as its SOURCE language is itself
+a shape question.
 
 *(The old "recommended scoping" below is retained for the record and is superseded by
 the above.)*
