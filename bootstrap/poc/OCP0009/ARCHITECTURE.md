@@ -40,7 +40,7 @@ easy confusion:
   * `formal/Once/Type.Type` — the real one: adds `ν-type`, `Int/Float/Str/Buffer`,
     and a **graded** arrow `_⇒[ ArrowKind ]_` (quantity × purity).
 
-Closing that gap is **W0d**; the only thing blocking it is **W0e** (codata).
+Closing that gap is **W0d**. Its blocker **W0e** (codata) landed 2026-07-31 (`SpikeLinNu`).
 
 --------------------------------------------------------------------------
 ## 1. DRAWING A — the whole system
@@ -264,7 +264,8 @@ Each box: what the layer ADDS, then the options tried, with verdicts.
    │  closed:    lcurry leval      ← W0 gate: exponentials need NO     │
    │                                 comonoid, `*` IS the tensor so    │
    │                                 lcurry SPLITS instead of copying  │
-   │  🔴 MISSING: ν / lOut / lana  ← W0e, THE NEXT THING               │
+   │  ✅ ν / nout / nana — SPIKED in SpikeLinNu (W0e); folding into    │
+   │     Ty/LTm proper is W0d's cascade                                │
    └───────────────────────────────────────────────────────────────────┘
         │                    │                     │
    Lⁱ (meaning)        dupCount (STATIC)      Lᶜ (COST, W0b)
@@ -298,7 +299,7 @@ Each box: what the layer ADDS, then the options tried, with verdicts.
    Fuse + NatTr              ──► fuseL + LinearNat               ✅ iff no ntPair
    Para                      ──► paraL                           ⚠ definable, NOT linear
    initial · out-μ · Hylo    ──► —                               🟡 mechanical
-   Out · in-ν · Ana  (ν)     ──► —                               🔴 W0e  ← THE GAP
+   Out · in-ν · Ana  (ν)     ──► nout/nana                      ✅ W0e (SpikeLinNu)
    const · SigOp (FFI)       ──► —                               🟡 inert leaves
    free-heap                 ──► DELETED                         ★ the dividend
 ```
@@ -366,8 +367,8 @@ DIFFERENTLY at the three levels, and the difference is the whole answer to
 > W1 (§5). Three independent arguments, one shape: *if it doesn't compute
 > to a normal form, the checker stalls.*
 
-**And note the beautiful symmetry with W0e**, which is the next task on the
-board. W0e's obstruction, from the *cost* side:
+**And note the beautiful symmetry with W0e**, now discharged. W0e's obstruction,
+from the *cost* side:
 
 > `Lᶜ : LTm A B → ⟦A⟧C → ⟦B⟧C × ℕ`. For codata **the cost of a program is
 > not a `ℕ`** — an `Ana` never finishes. `Lᶜ` cannot be extended to `ν` by
@@ -376,7 +377,8 @@ board. W0e's obstruction, from the *cost* side:
 That is literally the same sentence as the type-level one with "cost"
 swapped for "normal form". Both are answered the same way — *replace the
 finite summary with an observation-indexed one*: `□◇` for traces
-(`NbEPLinLive`), "the value reports its own cost" for `ν` (W0e's plan),
+(`NbEPLinLive`), "the value reports its own cost" for `ν` (W0e, PROVEN —
+`SpikeLinNu.Nu`'s `force` field is `FS F (Nu F) × ℕ`),
 and for types: don't compute at all, stay in the nat-trans + cata fragment.
 
 --------------------------------------------------------------------------
@@ -387,8 +389,9 @@ and for types: don't compute at all, stay in the nat-trans + cata fragment.
   W0b dynamic cost semantics  ✅                 (linearization-7, NbEPLinDyn)
   W0c Lin↔QTT bridge          ✅ UNCOMMITTED     (linearization-8, NbEPLinQTT)
   ──────────────────────────────────────────────────────────────────────
-  W0e CODATA in the linear core   🔴 SpikeLinNu.agda, not started
-       └► W0d port the real IR    🟡 blocked only on W0e
+  W0e CODATA in the linear core   ✅ SpikeLinNu — cost carried on `force`;
+                                     dynN covers ν; both controls fire
+       └► W0d port the real IR    🔴 ★ NEXT on this line — unblocked
   W1a SN⁺ induction-recursion     ✅ SpikeSNU — CR1/CR2/CR3, risk retired
   W1b conversion transfer         ✅ SpikeSNW — irrel, fwd*, conv-⊩, real syntax
   W1c toward fund                 🟡 SpikeSNX — Kripke action STRUCK (not needed);
