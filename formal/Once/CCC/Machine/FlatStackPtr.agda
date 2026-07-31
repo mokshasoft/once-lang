@@ -39,6 +39,7 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
@@ -109,3 +110,72 @@ stack-ptr-live : ∀ (fs : FlatState) (r : AbstractReg) (f : Frame) (k : Slot)
                → k < stackSlot (regs (floc fs))
 stack-ptr-live fs r f k wf eq =
   ≤-trans (n≤1+n (suc k)) (stack-ptr-suc-live fs r f k wf eq)
+
+------------------------------------------------------------------------
+-- BRICKS FOR THE PRESERVATION PROOF (`ConcFlatSim.stack-ptr-step`).
+--
+-- The step lemma is a per-instruction induction, but every case has the same
+-- two moves: the ANCHORS (`current-frame`, `stackSlot`) do not move — a
+-- frame-free instruction cannot touch either — and the VALUE written is one the
+-- invariant already covers (read out of a register or a cell) or a freshly
+-- built non-stack-pointer. These bricks are those two moves, stated once.
+------------------------------------------------------------------------
+
+-- Reading back a register after a write: either you get the written value, or
+-- the write missed you. Enumerated, because `writeReg` dispatches on the
+-- register, so each entry holds DEFINITIONALLY.
+readReg-write : ∀ (rf : Registers FS) (x r : AbstractReg) (v : StoredValue FS)
+              → (readReg (writeReg rf x v) r ≡ v) ⊎ (readReg (writeReg rf x v) r ≡ readReg rf r)
+readReg-write rf Input1  Input1  v = inj₁ refl
+readReg-write rf Input1  Input2  v = inj₂ refl
+readReg-write rf Input1  Output  v = inj₂ refl
+readReg-write rf Input1  Scratch v = inj₂ refl
+readReg-write rf Input1  Count   v = inj₂ refl
+readReg-write rf Input2  Input1  v = inj₂ refl
+readReg-write rf Input2  Input2  v = inj₁ refl
+readReg-write rf Input2  Output  v = inj₂ refl
+readReg-write rf Input2  Scratch v = inj₂ refl
+readReg-write rf Input2  Count   v = inj₂ refl
+readReg-write rf Output  Input1  v = inj₂ refl
+readReg-write rf Output  Input2  v = inj₂ refl
+readReg-write rf Output  Output  v = inj₁ refl
+readReg-write rf Output  Scratch v = inj₂ refl
+readReg-write rf Output  Count   v = inj₂ refl
+readReg-write rf Scratch Input1  v = inj₂ refl
+readReg-write rf Scratch Input2  v = inj₂ refl
+readReg-write rf Scratch Output  v = inj₂ refl
+readReg-write rf Scratch Scratch v = inj₁ refl
+readReg-write rf Scratch Count   v = inj₂ refl
+readReg-write rf Count   Input1  v = inj₂ refl
+readReg-write rf Count   Input2  v = inj₂ refl
+readReg-write rf Count   Output  v = inj₂ refl
+readReg-write rf Count   Scratch v = inj₂ refl
+readReg-write rf Count   Count   v = inj₁ refl
+
+-- A register write of an OK value preserves the invariant. `writeReg` leaves
+-- both anchors alone (`writeReg-preserves-stackSlot`; the frame lives in the
+-- AllocState, which a register write does not touch), so the goal's anchors are
+-- the same ones the hypothesis speaks about.
+sp-write-reg : ∀ (fs : FlatState) (x : AbstractReg) (v : StoredValue FS)
+             → StackPtrOK (current-frame (falloc fs)) (stackSlot (regs (floc fs))) v
+             → StackPtrWF fs
+             → StackPtrWF (record fs { floc = record (floc fs)
+                                         { regs = writeReg (regs (floc fs)) x v } })
+sp-write-reg fs x v ok wf = record
+  { sp-regs  = λ r → go r (readReg-write (regs (floc fs)) x r v)
+  ; sp-heap  = λ hl → subst (λ n → StackPtrOK? (current-frame (falloc fs)) n (heapMem (floc fs) hl))
+                            (sym (writeReg-preserves-stackSlot (regs (floc fs)) x v))
+                            (sp-heap wf hl)
+  ; sp-stack = λ f k → subst (λ n → StackPtrOK? (current-frame (falloc fs)) n (stackMem (floc fs) f k))
+                             (sym (writeReg-preserves-stackSlot (regs (floc fs)) x v))
+                             (sp-stack wf f k) }
+  where
+    anchor : stackSlot (writeReg (regs (floc fs)) x v) ≡ stackSlot (regs (floc fs))
+    anchor = writeReg-preserves-stackSlot (regs (floc fs)) x v
+    go : ∀ (r : AbstractReg)
+       → (readReg (writeReg (regs (floc fs)) x v) r ≡ v)
+       ⊎ (readReg (writeReg (regs (floc fs)) x v) r ≡ readReg (regs (floc fs)) r)
+       → StackPtrOK (current-frame (falloc fs)) (stackSlot (writeReg (regs (floc fs)) x v))
+                    (readReg (writeReg (regs (floc fs)) x v) r)
+    go r (inj₁ eq) rewrite anchor | eq = ok
+    go r (inj₂ eq) rewrite anchor | eq = sp-regs wf r
