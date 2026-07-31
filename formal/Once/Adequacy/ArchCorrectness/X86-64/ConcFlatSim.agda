@@ -72,6 +72,7 @@ open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
 open import Once.Adequacy.CPU.X86-64 using (val-x86-64; ev-x86-64; arith-env-x86-64)
 import Once.Arith.Backend.X86-64.RunTrace as RTx
 open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Unit using (⊤)
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Word using (Carrier)
@@ -199,6 +200,28 @@ open FlatInv public
 -- sites pass `(inv-emitted wf , inv-reach wf)`.
 RunAt : AbstractTrace → FlatState → Set
 RunAt prog fs = Emitted prog × Reachable prog fs
+
+-- THE FRAME OPS HAVE NO PRODUCER (plan 0.54 rung D, item 2). The four abstract
+-- frame instructions are not a fragment the correspondence has yet to cover —
+-- an EMITTED program cannot contain them at all: the per-arch backend brackets
+-- each trace with `subq $budget*8, %rsp` / `addq` itself (`ir-stack-budget`), so
+-- `ir-to-trace` never emits `instr-alloc-stack` / `instr-dealloc-stack` /
+-- `instr-push-frame` / `instr-pop-frame`; they survive only in the legacy IR-WF
+-- layer, which is not on this path.
+--
+-- Consequently the four dispatch clauses below are UNREACHABLE (`⊥-elim`), and
+-- with them go ELEVEN residuals that used to condition them — `alloc-stack-entry`,
+-- `alloc-stack-fresh-{abs,x86}`, `stack-room`, `dealloc-stack-{full,restores}`,
+-- `frame-room`, `pop-frame-{empty,saved,restores}`, `pop-room`. That is the point
+-- of stating it this way rather than proving each: they were facts about matched
+-- prologue/epilogue pairs the emitter never produces.
+FrameFree : AbstractInstr → Set
+FrameFree (instr-alloc-stack _)   = ⊥
+FrameFree (instr-dealloc-stack _) = ⊥
+FrameFree (instr-push-frame _)    = ⊥
+FrameFree instr-pop-frame         = ⊥
+{-# CATCHALL #-}
+FrameFree _                       = ⊤
 
 flat-inv-step : ∀ {ev env} (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
               → fetch prog (fpc fs) ≡ just i → halted (floc fs) ≡ false
@@ -498,6 +521,13 @@ events-running-end {hv} n ev env prog fs s cc wf h ftq =
                  (cong (λ z → X.fetch (compile-trace z) 0) (fetch-nothing-drop prog (fpc fs) ftq))))
 
 postulate
+  -- THE EMITTER FACT behind the four unreachable frame clauses (see `FrameFree`).
+  -- It is a property of `ir-to-trace` — an induction over the emitter, NOT a fact
+  -- about the machine — so it is stated here at the single site that needs it and
+  -- discharged in the codegen layer. It replaces ELEVEN state/program residuals.
+  frame-op-absurd : ∀ prog (fs : FlatState) (i : AbstractInstr) → Emitted prog
+                  → fetch prog (fpc fs) ≡ just i → FrameFree i
+
   -- PER-INSTRUCTION DISPATCH residual for the cases not yet routed to `ccc-step`
   -- (instr-sigop arith/external, control jmp/branch, memory/frame/slot). Shrinks as
   -- each is wired (arith→run-events-arith, external→run-events-external+contract, …).
@@ -600,8 +630,9 @@ postulate
                      → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot
                      → slot < stackSlot (regs (floc fs))
   -- MEMORY EXHAUSTION (plan 0.54 rung D) — the price of "the two regions grow
-  -- towards each other", and the ONLY thing the layout separation assumes. Each
-  -- allocating instruction has room between the heap frontier and %rsp; the
+  -- towards each other", and the ONLY thing the layout separation assumes. The
+  -- ONE allocating instruction the emitter produces has room between the heap
+  -- frontier and the stack's high-water mark; the
   -- disjointness facts that used to be postulated are derived from the carried
   -- `sep` these keep true. A real runtime failure mode (OOM / stack overflow),
   -- not a claim about addresses — the same class as the `conc-fuel` step budget.
@@ -613,53 +644,12 @@ postulate
   heap-room : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (n : ℕ) → RunAt prog fs
             → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-alloc-heap n)
             → hfront hv + slots n ≤ lo hv
-  stack-room : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (n : ℕ) → RunAt prog fs
-             → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-alloc-stack n)
-             → hfront hv + slots n ≤ X.readReg (X.State.regs s) rsp
-  frame-room : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (cap : ℕ) → RunAt prog fs
-             → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-push-frame cap)
-             → hfront hv ≤ (X.readReg (X.State.regs s) rsp ∸ slot-size) ∸ slots cap
-  -- the epilogue's restored (caller) frame is likewise above the HIGH-WATER MARK
-  -- (plan 0.54 rung D step 3): the mark is the lowest %rsp ever reached and the
-  -- caller's base is above every %rsp since the call, so this is the same
-  -- frame-nesting fact as before, stated at the strength the invariant needs.
-  -- Stated about `%rbp` ITSELF, not about `rbp + slot-size`: the saved-rbp cell the
-  -- epilogue POPS must not sit in the virgin region, or it would be both mapped
-  -- (`pop-frame-saved`) and unmapped (`FlatCorr.untouched`) — i.e. the weaker form
-  -- `lo ≤ rbp + slot-size` would make the pair INCONSISTENT at `rbp ≡ lo ∸ 8`.
-  -- True as stated: the mark is at or below the callee's %rsp, which is at or below
-  -- its %rbp. (The probe recipe of 2026-07-28, applied to the step-3 residuals.)
-  pop-room : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) → RunAt prog fs
-           → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just instr-pop-frame
-           → lo hv ≤ X.readReg (X.State.regs s) rbp
-
-  -- alloc-stack FRESH-FRAME facts (alloc-stack sits at a frame entry): next-slot ≡ 0,
-  -- the n new slots are uninitialised on BOTH sides (abstract stackMem / the fresh x86
-  -- stack region below rsp), and heap liveness is invariant under the next-slot bump.
-  -- Honest WF / memory-region / allocator invariants (discharged at instantiation).
-  alloc-stack-entry : ∀ prog (fs : FlatState) (n : ℕ) → RunAt prog fs
-                    → fetch prog (fpc fs) ≡ just (instr-alloc-stack n)
-                    → stackSlot (regs (floc fs)) ≡ 0
-  -- Plan 0.61: the reservation moves into the CALLEE frame, so the freshness is
-  -- about the shifted frame (weaker, and obviously true of a fresh frame).
-  --
-  -- WHY THE PAIR STAYS (plan 0.54 rung D step 3, deliberate): unlike the heap's
-  -- freshness, these two are NOT consequences of the high-water mark. A frame the
-  -- program has ENTERED BEFORE is below the mark, and its cells keep the previous
-  -- callee's values on BOTH machines — so each half is false in general, and they
-  -- are false TOGETHER (they agree, which is why nothing has broken). Deriving the
-  -- agreement instead of assuming freshness needs the abstract stack memory to be
-  -- ADDRESS-keyed rather than (Frame, Slot)-keyed — a model change well beyond the
-  -- mark, and the natural successor to this step.
-  alloc-stack-fresh-abs : ∀ prog (fs : FlatState) (n : ℕ) → RunAt prog fs
-                        → fetch prog (fpc fs) ≡ just (instr-alloc-stack n)
-                        → ∀ k → k < n
-                        → stackMem (floc fs) (shift-frame FS (current-frame (falloc fs)) n) k ≡ nothing
-  alloc-stack-fresh-x86 : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (n : ℕ) → RunAt prog fs
-                        → CompiledCorr hv prog fs s
-                        → fetch prog (fpc fs) ≡ just (instr-alloc-stack n)
-                        → ∀ k → k < n → X.readMem (X.State.memory s)
-                            ((X.readReg (X.State.regs s) rsp ∸ slots n) + slot-to-disp k) ≡ nothing
+  -- RETIRED 2026-07-31 (plan 0.54 rung D, item 2): `stack-room` / `frame-room` /
+  -- `pop-room`, and the alloc-stack FRESH-FRAME pair `alloc-stack-fresh-{abs,x86}`
+  -- together with `alloc-stack-entry`, all conditioned a frame-op site — and an
+  -- EMITTED program has none (`FrameFree` / `frame-op-absurd`). The fresh-frame
+  -- pair was the one place where the correspondence assumed something FALSE of a
+  -- re-entered frame (both halves false, agreeing); it is gone with its site.
   -- RETIRED 2026-07-30 (plan 0.54 rung D step 3): "the fresh block is UNWRITTEN on
   -- the concrete side" was `alloc-heap-fresh-x86`, and stated over the region at or
   -- above `%r15` it was FALSE — a deep call that returns leaves written cells below
@@ -679,30 +669,10 @@ postulate
                      readLoc (floc fs) (AtStack (current-frame (falloc fs)) slot)
                        ≡ just (SV-Ptr loc))
 
-  -- MATCHED PROLOGUE/EPILOGUE (plan 0.61): the frame an epilogue restores is the
-  -- one its matching prologue shifted away from, so %rsp lands exactly on the
-  -- restored frame's base. A pairing property of emitted code (the same class as
-  -- `dealloc-stack-full` / `pop-frame-empty` below), not of an arbitrary state.
-  dealloc-stack-restores : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (n : ℕ) → RunAt prog fs
-    → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-dealloc-stack n)
-    → X.readReg (X.State.regs s) rsp + slots n
-        ≡ frame-base FS (current-frame (leave-frame (falloc fs)))
-  pop-frame-restores : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) → RunAt prog fs
-    → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just instr-pop-frame
-    → X.readReg (X.State.regs s) rbp + slot-size
-        ≡ frame-base FS (current-frame (leave-frame (falloc fs)))
-  -- dealloc-stack frees the WHOLE current frame (runtime depth n → 0) — the WF
-  -- pairing of an entry alloc-stack n with its matching exit dealloc-stack n.
-  dealloc-stack-full : ∀ prog (fs : FlatState) (n : ℕ) → RunAt prog fs
-                     → fetch prog (fpc fs) ≡ just (instr-dealloc-stack n)
-                     → stackSlot (regs (floc fs)) ≡ n
-  -- pop-frame WF: the callee frame is emptied before it is popped (stackSlot ≡ 0),
-  -- and the saved caller rbp is present at [rbp] for `pop` to succeed.
-  pop-frame-empty : ∀ prog (fs : FlatState) → RunAt prog fs → fetch prog (fpc fs) ≡ just instr-pop-frame
-                  → stackSlot (regs (floc fs)) ≡ 0
-  pop-frame-saved : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) → RunAt prog fs
-                  → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just instr-pop-frame
-                  → Σ ℕ (λ v → X.readMem (X.State.memory s) (X.readReg (X.State.regs s) rbp) ≡ just v)
+  -- RETIRED 2026-07-31 (plan 0.54 rung D, item 2): the MATCHED PROLOGUE/EPILOGUE
+  -- family — `dealloc-stack-restores`, `pop-frame-restores`, `dealloc-stack-full`,
+  -- `pop-frame-empty`, `pop-frame-saved`. Each was a pairing property of emitted
+  -- code at a frame-op site, and emitted code contains no frame op.
   -- load-const of a FLOAT: `compile-const fits-float` traps to ud2 (float loads are
   -- unimplemented, D054), so the x86 halts while the abstract runs — an honest gap,
   -- the target-side float-literal boundary (not a codegen bug).
@@ -812,22 +782,10 @@ mutual
     ccc-step-bs {hv} n ev env prog fs s (worklist-push slot)
       (block-step-worklist-push prog fs s slot cc h ftq (slot-heap-disj {hv} fs s (dataCorr cc) slot)) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (worklist-pop slot) cc wf h ftq = worklist-pop-step n ev env prog fs s slot cc wf h ftq
-  -- THE STACK DESCENT (plan 0.54 rung D step 3): the new high-water mark is
-  -- `lo hv ⊓ (rsp ∸ 8k)` — the mark never rises, so a re-entered frame is not
-  -- (falsely) re-declared virgin. `⊓-glb` needs it above the frontier on BOTH
-  -- sides: from the view's own `front-lo`, and from `stack-room` (stack overflow).
+  -- THE FOUR FRAME OPS ARE UNREACHABLE (plan 0.54 rung D, item 2): `ir-to-trace`
+  -- emits none of them, and `FlatInv` carries `Emitted prog`. See `FrameFree`.
   events-running-fetch {hv} n ev env prog fs s (instr-alloc-stack k) cc wf h ftq =
-    -- NB: no `{hv}` — the block-step lands at the DESCENDED view, and
-    -- `ccc-step-bs` is view-polymorphic, so the post view is inferred.
-    ccc-step-bs n ev env prog fs s (instr-alloc-stack k)
-      (block-step-alloc-stack prog fs s k cc h ftq (alloc-stack-entry prog fs k (inv-emitted wf , inv-reach wf) ftq)
-         (alloc-stack-fresh-abs prog fs k (inv-emitted wf , inv-reach wf) ftq)
-         (alloc-stack-fresh-x86 prog fs s k (inv-emitted wf , inv-reach wf) cc ftq)
-         (lo hv ⊓ (X.readReg (X.State.regs s) rsp ∸ slots k))
-         (m⊓n≤m (lo hv) (X.readReg (X.State.regs s) rsp ∸ slots k))
-         (⊓-glb (C.front-lo hv)
-                (m+n≤o⇒m≤o∸n (hfront hv) (stack-room {hv} prog fs s k (inv-emitted wf , inv-reach wf) cc ftq)))
-         (m⊓n≤n (lo hv) (X.readReg (X.State.regs s) rsp ∸ slots k))) wf ftq h refl h
+    ⊥-elim (frame-op-absurd prog fs (instr-alloc-stack k) (inv-emitted wf) ftq)
   events-running-fetch {hv} n ev env prog fs s (instr-alloc-heap k) cc wf h ftq =
     ccc-step-bs n ev env prog fs s (instr-alloc-heap k)
       (block-step-alloc-heap prog fs s k cc h ftq
@@ -837,26 +795,11 @@ mutual
          (λ hl eq → wf-fresh (inv-wf wf) hl (≤-reflexive (sym eq)))
          (heap-room prog fs s k (inv-emitted wf , inv-reach wf) cc ftq)) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc wf h ftq =
-    ccc-step-bs {hv} n ev env prog fs s (instr-dealloc-stack k)
-      (block-step-dealloc-stack prog fs s k cc h ftq (dealloc-stack-full prog fs k (inv-emitted wf , inv-reach wf) ftq)
-         (dealloc-stack-restores prog fs s k (inv-emitted wf , inv-reach wf) cc ftq)) wf ftq h refl h
+    ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (inv-emitted wf) ftq)
   events-running-fetch {hv} n ev env prog fs s (instr-push-frame k) cc wf h ftq =
-    ccc-step-bs n ev env prog fs s (instr-push-frame k)   -- descended view, inferred
-      (block-step-push-frame prog fs s k cc h ftq
-         (above-frontier-disj {hv} (X.readReg (X.State.regs s) rsp ∸ slot-size)
-            (≤-trans (frame-room {hv} prog fs s k (inv-emitted wf , inv-reach wf) cc ftq)
-                     (m∸n≤m (X.readReg (X.State.regs s) rsp ∸ slot-size) (slots k)))
-         )
-         -- the prologue's descent: the mark drops to the callee frame's base
-         (lo hv ⊓ ((X.readReg (X.State.regs s) rsp ∸ slot-size) ∸ slots k))
-         (m⊓n≤m (lo hv) ((X.readReg (X.State.regs s) rsp ∸ slot-size) ∸ slots k))
-         (⊓-glb (C.front-lo hv) (frame-room {hv} prog fs s k (inv-emitted wf , inv-reach wf) cc ftq))
-         (m⊓n≤n (lo hv) ((X.readReg (X.State.regs s) rsp ∸ slot-size) ∸ slots k))) wf ftq h refl h
+    ⊥-elim (frame-op-absurd prog fs (instr-push-frame k) (inv-emitted wf) ftq)
   events-running-fetch {hv} n ev env prog fs s instr-pop-frame cc wf h ftq =
-    ccc-step-bs {hv} n ev env prog fs s instr-pop-frame
-      (block-step-pop-frame prog fs s (proj₁ (pop-frame-saved prog fs s (inv-emitted wf , inv-reach wf) cc ftq)) cc h ftq
-         (pop-frame-empty prog fs (inv-emitted wf , inv-reach wf) ftq) (proj₂ (pop-frame-saved prog fs s (inv-emitted wf , inv-reach wf) cc ftq))
-         (pop-frame-restores prog fs s (inv-emitted wf , inv-reach wf) cc ftq) (pop-room prog fs s (inv-emitted wf , inv-reach wf) cc ftq)) wf ftq h refl h
+    ⊥-elim (frame-op-absurd prog fs instr-pop-frame (inv-emitted wf) ftq)
   events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-int v) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-load-const fits-int v)
       (block-step-load-const prog fs s v cc h ftq) wf ftq h refl h
