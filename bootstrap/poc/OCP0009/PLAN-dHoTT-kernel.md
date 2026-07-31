@@ -868,8 +868,57 @@ open. Nothing downstream needs it — `dec-conv` consumes `WN`.
 
 #### W3 — THE VARIANCE JUDGMENT  🔴 **NEXT on the kernel line. Scoped 2026-07-31.**
 
-★★ **W3 IS A PREREQUISITE FOR W2, NOT MERELY CHEAPER.** The cost argument below is
-real but secondary. The load-bearing reason is `NbEPDirJ`'s own signature:
+🛑 **BLOCKED ON A DESIGN CHOICE — `SpikeVar`, 2026-07-31. READ THIS FIRST.**
+
+W3 was scoped around the covariance fee (below). Before building the judgment the fee
+was located in the DEPENDENT kernel, and **it is not charged there**. Two lemmas,
+three lines each, both check:
+
+```agda
+transport-fwd : t ⟶* t' → Γ ⊢ x ∷ B[t]  → Γ ⊢ x ∷ B[t']
+transport-bwd : t ⟶* t' → Γ ⊢ x ∷ B[t'] → Γ ⊢ x ∷ B[t]     -- ★ BOTH WAYS
+```
+
+`transport⟶` needs the fee because its `P` is an arbitrary Agda family. In the kernel
+the family is a TYPE and substitution is monotone (`subTy-monoˢ`), so the fee is
+discharged structurally for EVERY `B`, with no premise. And it is discharged
+**backwards too**: transport lands via `⊢conv`, which consumes `_≅ᵀ_`, and `_≅ᵀ_` has
+`csymᵀ`. **The direction is forgotten.**
+
+⚠ `no-sym` is NOT contradicted — you still cannot invert a reduction. What collapses
+is the reduction's ACTION on type families. And that collapse is a CONSEQUENCE OF THE
+DESIGN, not a defect: definitional equality here IS `core(Hom)` (ARCHITECTURE K3), the
+symmetric completion. It was simply never checked what that costs at the type level.
+
+★ **CONSEQUENCE FOR W2.** Adding `Hom A t u` as an `RTy` former whose inhabitants are
+reductions buys **no directed structure over type families** — the kernel already
+transports both ways, for free, for every family, before any such former exists.
+A directed `J` over it would have symmetric transport as a derivable consequence.
+**So the gate W2 was given (spike the `⊩`-clause) is not the first question. This is.**
+
+★ **THE CHOICE**, and the two branches are genuinely different projects:
+
+  **(a) `Hom` is NOT reduction.** Own inhabitants, own formation/intro/elim, with
+  conversion NOT identifying `B[t]` and `B[u]`. Then transport must be earned, the fee
+  is real, and W3's judgment pays it. This is the honest dHoTT reading — and it is far
+  bigger than "add an `RTy` constructor": it means definitional equality stops being
+  `core(Hom)`, which is the design's own slogan.
+
+  **(b) Keep `Hom = ⟶*`.** Then the directed content lives at `Homₜ` — variance of the
+  type FORMERS (`NbEPDirV`: `⇒` contravariant in its domain) — not transport along term
+  paths. W3 becomes functoriality for W4's CwF, and **W2 as scoped is largely vacuous**.
+
+Under (b) `NbEPDirV` already has the semantics; under (a) the judgment cannot be
+written until (a)'s kernel exists. **Either way, W3's scoping below is aimed at a fee
+this kernel does not charge. Do not build it before choosing.**
+
+--------------------------------------------------------------------------
+
+*(Original W3 scoping, retained — accurate about cost and cascade, superseded on
+motivation by the above.)*
+
+★★ **W3 WAS SCOPED AS A PREREQUISITE FOR W2.** The cost argument below is
+real but secondary. The stated load-bearing reason was `NbEPDirJ`'s signature:
 
 ```agda
 transport⟶ : (P : Term A B → Set)
