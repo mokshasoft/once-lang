@@ -38,7 +38,7 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
 
 open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
@@ -47,7 +47,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   free-heap; SigOp; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
 open import Once.Type using (Functor)
-open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; Slot)
+open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; Slot; lea-slot)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Codegen.IRToTrace using
   (ir-to-trace'; ir-to-trace; ir-stack-budget;
@@ -78,18 +78,32 @@ cata-trace-of (_ , _ , t) = t
 -- application `slot-of i`, which is not invertible.
 record SlotBelow (b : ℕ) (i : AbstractInstr) : Set where
   constructor mkSlotBelow
-  field below : ∀ (slot : Slot) → slot-of i ≡ just slot → slot < b
+  field
+    below : ∀ (slot : Slot) → slot-of i ≡ just slot → slot < b
+    -- …and if this is a `lea-slot`, the NEXT slot is below the budget too: it
+    -- addresses the first of a PAIR the same prologue reserved (`⟨_,_⟩ Stack`
+    -- fst/snd, `curry _ Stack` env/code, `inl`/`inr Stack` tag/payload). Carried
+    -- in the SAME record as `below` so the whole induction is walked once; on
+    -- every other instruction the field is vacuous.
+    pair-below : ∀ (slot : Slot) → i ≡ lea-slot slot → suc slot < b
 open SlotBelow public
 
--- an instruction that addresses no slot (`slot-of` reduces to `nothing`)
+-- an instruction that addresses no slot (`slot-of` reduces to `nothing`). Such
+-- an instruction is not a `lea-slot` either — that one HAS a slot — so the pair
+-- field is vacuous, and derivably so.
 sb-none : ∀ {b} {i} → slot-of i ≡ nothing → SlotBelow b i
-sb-none eq = mkSlotBelow (λ slot eq' → go (trans (sym eq) eq'))
-  where go : ∀ {slot : Slot} {b : ℕ} → nothing ≡ just slot → slot < b
+sb-none {b} {i} eq = mkSlotBelow (λ slot eq' → go (trans (sym eq) eq'))
+                                 (λ slot eq' → go (trans (sym eq) (cong slot-of eq')))
+  where go : ∀ {A : Set} {slot : Slot} → nothing ≡ just slot → A
         go ()
 
--- …and one that does
-sb-slot : ∀ {b} {k} {i} → slot-of i ≡ just k → k < b → SlotBelow b i
-sb-slot {b} eq lt = mkSlotBelow (λ slot eq' → subst (_< b) (just-inj (trans (sym eq) eq')) lt)
+-- …and one that does. The pair fact is an ARGUMENT: at a non-`lea-slot` site it
+-- is `λ _ ()` (the instruction is a different constructor), and at a `lea-slot`
+-- the caller supplies the real bound.
+sb-slot : ∀ {b} {k} {i} → slot-of i ≡ just k → k < b
+        → (∀ (slot : Slot) → i ≡ lea-slot slot → suc slot < b)
+        → SlotBelow b i
+sb-slot {b} eq lt pb = mkSlotBelow (λ slot eq' → subst (_< b) (just-inj (trans (sym eq) eq')) lt) pb
   where just-inj : ∀ {m n : ℕ} → just m ≡ just n → m ≡ n
         just-inj refl = refl
 
@@ -97,7 +111,10 @@ sb-slot {b} eq lt = mkSlotBelow (λ slot eq' → subst (_< b) (just-inj (trans (
 -- outer one
 sb-weaken : ∀ {b b'} {t} → b ≤ b' → All (SlotBelow b) t → All (SlotBelow b') t
 sb-weaken le []         = []
-sb-weaken le (px ∷ pxs) = mkSlotBelow (λ slot eq → ≤-trans (below px slot eq) le) ∷ sb-weaken le pxs
+sb-weaken le (px ∷ pxs) =
+  mkSlotBelow (λ slot eq → ≤-trans (below px slot eq) le)
+              (λ slot eq → ≤-trans (pair-below px slot eq) le)
+  ∷ sb-weaken le pxs
 
 ------------------------------------------------------------------------
 -- THE FRONTIER NEVER RETREATS.
@@ -206,59 +223,68 @@ slots-below (g ∘ f)  n l =
   ++⁺ (sb-weaken (frontier-mono g _ _) (slots-below f n l))
       (sb-none refl ∷ slots-below g _ _)
 slots-below (⟨ f , g ⟩ Stack) n l =
-  sb-none refl ∷ sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) ∷
+  sb-none refl ∷ sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) (λ _ ()) ∷
   ++⁺ (sb-weaken (frontier-mono g _ _) (slots-below f _ l))
-      (sb-slot refl (≤-trans (≤-step ≤-refl) h) ∷
-       sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) ∷
+      (sb-slot refl (≤-trans (≤-step ≤-refl) h) (λ _ ()) ∷
+       sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) (λ _ ()) ∷
        ++⁺ (slots-below g _ _)
-           (sb-slot refl h ∷ sb-slot refl (≤-trans (≤-step ≤-refl) h) ∷ []))
+           (sb-slot refl h (λ _ ()) ∷
+            -- `lea-slot fst-slot`: fst = `suc n`, and `snd = suc (suc n)` is the
+            -- slot the SAME clause reserved — that is exactly `h`.
+            sb-slot refl (≤-trans (≤-step ≤-refl) h) (λ { _ refl → h }) ∷ []))
   where h : suc (suc (suc n)) ≤ budget-of (ir-to-trace' n l (⟨ f , g ⟩ Stack))
         h = ≤-trans (frontier-mono f _ l) (frontier-mono g _ _)
 slots-below (⟨ f , g ⟩ Heap) n l =
-  sb-none refl ∷ sb-slot refl (≤-trans (≤-step (≤-step (≤-step ≤-refl))) h) ∷
+  sb-none refl ∷ sb-slot refl (≤-trans (≤-step (≤-step (≤-step ≤-refl))) h) (λ _ ()) ∷
   ++⁺ (sb-weaken (frontier-mono g _ _) (slots-below f _ l))
-      (sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) ∷
-       sb-slot refl (≤-trans (≤-step (≤-step (≤-step ≤-refl))) h) ∷
+      (sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) (λ _ ()) ∷
+       sb-slot refl (≤-trans (≤-step (≤-step (≤-step ≤-refl))) h) (λ _ ()) ∷
        ++⁺ (slots-below g _ _)
-           (sb-slot refl (≤-trans (≤-step ≤-refl) h) ∷
+           (sb-slot refl (≤-trans (≤-step ≤-refl) h) (λ _ ()) ∷
             sb-none refl ∷
-            sb-slot refl h ∷
+            sb-slot refl h (λ _ ()) ∷
             sb-none refl ∷
-            sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) ∷
+            sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) (λ _ ()) ∷
             sb-none refl ∷
-            sb-slot refl (≤-trans (≤-step ≤-refl) h) ∷
+            sb-slot refl (≤-trans (≤-step ≤-refl) h) (λ _ ()) ∷
             sb-none refl ∷
-            sb-slot refl h ∷ []))
+            sb-slot refl h (λ _ ()) ∷ []))
   where h : suc (suc (suc (suc n))) ≤ budget-of (ir-to-trace' n l (⟨ f , g ⟩ Heap))
         h = ≤-trans (frontier-mono f _ l) (frontier-mono g _ _)
 slots-below (curry b Stack) n l =
-  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) ∷ sb-none refl ∷
-  sb-slot refl ≤-refl ∷ sb-slot refl (≤-step ≤-refl) ∷ []
+  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl ≤-refl (λ _ ()) ∷
+  -- the record/pair base: `lea-slot n`, with `suc n` reserved beside it
+  sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷ []
 slots-below (curry b Heap) n l =
-  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) ∷ sb-none refl ∷
-  sb-slot refl ≤-refl ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) ∷
-  sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl ∷ []
+  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
+  sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ []
 slots-below apply n l =
-  sb-none refl ∷ sb-slot refl (≤-step (≤-step ≤-refl)) ∷ sb-none refl ∷
+  sb-none refl ∷ sb-slot refl (≤-step (≤-step ≤-refl)) (λ _ ()) ∷ sb-none refl ∷
   sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-  sb-slot refl (≤-step ≤-refl) ∷ sb-none refl ∷ sb-slot refl ≤-refl ∷
-  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) ∷ sb-none refl ∷
-  sb-slot refl (≤-step (≤-step ≤-refl)) ∷ sb-none refl ∷
-  sb-slot refl ≤-refl ∷ sb-none refl ∷ sb-none refl ∷ []
+  sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷
+  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl (≤-step (≤-step ≤-refl)) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ []
 slots-below (inl Stack) n l =
-  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) ∷ sb-none refl ∷
-  sb-slot refl ≤-refl ∷ sb-slot refl (≤-step ≤-refl) ∷ []
+  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl ≤-refl (λ _ ()) ∷
+  -- the record/pair base: `lea-slot n`, with `suc n` reserved beside it
+  sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷ []
 slots-below (inr Stack) n l =
-  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) ∷ sb-none refl ∷
-  sb-slot refl ≤-refl ∷ sb-slot refl (≤-step ≤-refl) ∷ []
+  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl ≤-refl (λ _ ()) ∷
+  -- the record/pair base: `lea-slot n`, with `suc n` reserved beside it
+  sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷ []
 slots-below (inl Heap) n l =
-  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) ∷ sb-none refl ∷
-  sb-slot refl ≤-refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-  sb-slot refl (≤-step ≤-refl) ∷ sb-none refl ∷ sb-slot refl ≤-refl ∷ []
+  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+  sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ []
 slots-below (inr Heap) n l =
-  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) ∷ sb-none refl ∷
-  sb-slot refl ≤-refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-  sb-slot refl (≤-step ≤-refl) ∷ sb-none refl ∷ sb-slot refl ≤-refl ∷ []
+  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+  sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ []
 -- the branch bodies are ARGUMENTS of `instr-case-on-tag`, and `slot-of` is
 -- `nothing` on it — the flat `fpc` never indexes into a nested trace
 slots-below (case f g) n l = sb-none refl ∷ []

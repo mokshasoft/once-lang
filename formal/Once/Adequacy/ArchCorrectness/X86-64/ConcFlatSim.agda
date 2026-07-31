@@ -69,7 +69,7 @@ open import Once.CCC.Machine.FlatStackSlot FS using (flat-stack-slot)
 open import Once.CCC.Machine.FlatStackPtr FS using
   (StackPtrWF; StackPtrOK; StackPtrOK?; stack-ptr-frame; stack-ptr-live; stack-ptr-suc-live)
 open import Once.CCC.Codegen.FrameFreeTrace using (fetch-frame-free)
-open import Once.CCC.Codegen.SlotBudget using (ir-slots-below-budget; below)
+open import Once.CCC.Codegen.SlotBudget using (ir-slots-below-budget; below; pair-below)
 open import Once.IR using (IR; Unit)
 open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
 
@@ -584,14 +584,6 @@ postulate
   stack-ptr-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → FrameFreeI i
                  → (∀ slot → i ≡ lea-slot slot → suc slot < stackSlot (regs (floc fs)))
                  → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
-  -- …and the EMITTER half of that premise: a `lea-slot` addresses the first of
-  -- TWO adjacent slots the same prologue reserved — the pair `⟨_,_⟩ Stack`, the
-  -- closure record `curry _ Stack`, the sum payload `inl`/`inr Stack`. A
-  -- strengthening of `Once.CCC.Codegen.SlotBudget`'s induction (which today
-  -- bounds the slot itself), to be discharged there.
-  emitted-lea-slot-pair : ∀ (ir : IR Unit Unit) (k : ℕ) (slot : Slot)
-                        → fetch (ir-to-trace ir) k ≡ just (lea-slot slot)
-                        → suc slot < ir-stack-budget ir
 
   -- load-indirect on a non-live-dynamic-pointer target (non-pointer / stack ptr /
   -- unallocated) — ruled out by well-formedness (loads hit live heap cells).
@@ -763,6 +755,16 @@ run-stack-slot prog fs (mkRunAt ir eq reach) = go fs reach
           trans (flat-stack-slot i prog fs''
                    (frame-op-absurd prog fs'' i (ir , eq) ftq))
                 (go fs'' r')
+
+-- THE EMITTER HALF of `stack-ptr-step`'s premise: a `lea-slot` addresses the
+-- first of TWO adjacent slots the same prologue reserved — the pair `⟨_,_⟩
+-- Stack`, the closure record `curry _ Stack`, the sum payload `inl`/`inr Stack`.
+-- Carried by `SlotBudget`'s induction alongside the single-slot bound.
+emitted-lea-slot-pair : ∀ (ir : IR Unit Unit) (k : ℕ) (slot : Slot)
+                      → fetch (ir-to-trace ir) k ≡ just (lea-slot slot)
+                      → suc slot < ir-stack-budget ir
+emitted-lea-slot-pair ir k slot ftq =
+  pair-below (fetch-All (ir-slots-below-budget ir) ftq) slot refl
 
 -- A start state satisfies the invariant vacuously: both memories are empty and
 -- no register holds a stack pointer.
