@@ -71,6 +71,15 @@ plan.**
 - **No shipped `TERMINATING` pragmas.**
 - **funext is threaded as a hypothesis, never postulated**, to stay `--safe`.
 - **No `sym` anywhere on the directed side** — every map is covariant.
+- **NO GENERAL FIXPOINT — structured recursion only.** `μ`/`ν` are the initial
+  algebra and final coalgebra of a polynomial code, eliminated by `cata` and one
+  observation respectively. No `fold`/`unfold`, no fixpoint combinator, no `Hylo`
+  as a primitive. OCP-0003 removed `fold`/`unfold` from the real IR to keep
+  totality and productivity BY CONSTRUCTION, and POC vocabulary must not
+  re-import the idea: name things `Mu`/`Nu`/`inμ`/`outμ`/`inν` after Once's own
+  `In`/`out-μ`/`Out`/`in-ν`, never `Fix`/`fix`. ⚠ Breaking a dependency on
+  another POC while keeping its NAMES is the same coupling one level down —
+  `NbEPLinCore` made exactly that slip and it was caught by review, not by Agda.
 - ★ **THE POC OWNS ITS SYNTAX.** No dependence on `bootstrap/normalizer/**` — that is
   ANOTHER POC, not shared infrastructure — and none on `formal/Once/**`. Borrowing
   either one's object language couples this POC's design decisions to somebody else's

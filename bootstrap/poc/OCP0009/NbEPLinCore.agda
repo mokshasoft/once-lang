@@ -7,7 +7,7 @@
 --
 -- ★ WHY THAT MATTERS, and why this module exists at all.  `NbEPLinRec` indexes
 -- `LTm` by the NORMALIZER POC's `Ty`, and `Dyn`/`Pass`/`QTT` go further,
--- borrowing its `Fix`/`⟦_⟧FS`/`Term`/`eval`.  So the shape of the linear core
+-- borrowing its `Mu`/`⟦_⟧FS`/`Term`/`eval`.  So the shape of the linear core
 -- was being decided by a peer POC's accidental choices — and the moment W0d
 -- tried to use it, that peer's limits started getting recorded as OUR
 -- constraints: no `ν`, no base types, "`List Int` is out".  None of those were
@@ -17,11 +17,22 @@
 --
 -- WHAT IS DECIDED HERE, as opposed to inherited:
 --
+--   * NO GENERAL FIXPOINT.  `Mu`/`Nu` are the INITIAL ALGEBRA and FINAL
+--     COALGEBRA of a polynomial code, and their only eliminators are `lcata`
+--     (structured fold) and `lOut` (one observation) — there is no `fold`, no
+--     `unfold`, no `Hylo`, no fixpoint combinator, and no pragma anywhere.
+--     Named `Mu`/`Nu`/`inμ`/`outμ`/`inν` to match Once's own `In`/`out-μ`/
+--     `Out`/`in-ν` rather than the normalizer POC's `Fix`/`fix`: OCP-0003
+--     removed `fold`/`unfold` from the IR precisely to keep totality and
+--     productivity by construction, and the core's vocabulary should not
+--     re-import the idea it rejected.  (This module broke the DEPENDENCY on
+--     that POC; keeping its NAMES would have been the same mistake one level
+--     down.)
 --   * `LF` — polynomial functor codes, kept OBJECT-LANGUAGE-INDEPENDENT.  A
 --     constant is `Kone`, an inert leaf `Kb`, or a CODE (`Kμ`/`Kν`) — never an
 --     arbitrary `LTy`.  This is a real structural decision, not a copy: it is
---     exactly what makes `Fix` strictly positive with no pragma, and it is what
---     lets `Fix` and the cost-carrying `Nu` share one knot.
+--     exactly what makes `Mu` strictly positive with no pragma, and it is what
+--     lets `Mu` and the cost-carrying `Nu` share one knot.
 --   * `LTy` — with `νt` AND base leaves from the start.
 --   * `⟦_⟧` — INSTRUMENTED: `⟦ A ⇒t B ⟧ = ⟦ A ⟧ → ⟦ B ⟧ × ℕ` and `Nu`'s `force`
 --     carries a `ℕ`.  Both say the same thing — "the value reports its own
@@ -115,8 +126,8 @@ suc m +ℕ n = suc (m +ℕ n)
 --
 -- ★ `LF` mentions no `LTy`.  Its constants are the Unit leaf, an INERT base
 -- leaf, or the CODE of another fixpoint — `Kμ`/`Kν`, never an arbitrary object
--- type.  That restriction is the reason `Fix` below is strictly positive with
--- no pragma AND the reason `Fix` and `Nu` can share one interpretation knot.
+-- type.  That restriction is the reason `Mu` below is strictly positive with
+-- no pragma AND the reason `Mu` and `Nu` can share one interpretation knot.
 -- It is also the honest reading of what a functor code is FOR: codes store
 -- sub-codes and leaves; a function type is never a functor position.
 ------------------------------------------------------------------------
@@ -162,7 +173,7 @@ LF∙ (F ⊗f G)  X = LF∙ F X ⊗t LF∙ G X
 ------------------------------------------------------------------------
 -- 3. ★ THE INSTRUMENTED SEMANTICS — one knot for both fixpoints.
 --
--- `Fix` (inductive, a `data`) and `Nu` (coinductive, a `record` whose `force`
+-- `Mu` (inductive, a `data`) and `Nu` (coinductive, a `record` whose `force`
 -- carries the step's price) share `FS`.  Putting them in ONE mutual block is
 -- the payoff of §1's restriction on `LF`: neither interpretation mentions
 -- `⟦_⟧`, so `⇒t`'s negative occurrence cannot taint either one's positivity.
@@ -173,13 +184,13 @@ mutual
   FS Idf      X = X
   FS Kone     X = ⊤
   FS (Kb b)   X = ⟦ b ⟧b
-  FS (Kμ G)   X = Fix G
+  FS (Kμ G)   X = Mu G
   FS (Kν G)   X = Nu G
   FS (F ⊕f G) X = FS F X ⊎ FS G X
   FS (F ⊗f G) X = FS F X × FS G X
 
-  data Fix (F : LF) : Set where
-    fix : FS F (Fix F) → Fix F
+  data Mu (F : LF) : Set where
+    inμ : FS F (Mu F) → Mu F
 
   -- ★ unfolding reports its own cost.  The `ν` analogue of a closure reporting
   -- its own cost — the same decision, at the other fixpoint.
@@ -188,12 +199,12 @@ mutual
     field force : FS F (Nu F) × ℕ
 open Nu
 
-unfix : ∀ {F} → Fix F → FS F (Fix F)
-unfix (fix w) = w
+outμ : ∀ {F} → Mu F → FS F (Mu F)
+outμ (inμ w) = w
 
 -- building one layer of a `ν` costs nothing extra: the layer is already there.
-mkNu : ∀ {F} → FS F (Nu F) → Nu F
-force (mkNu w) = (w , zero)
+inν : ∀ {F} → FS F (Nu F) → Nu F
+force (inν w) = (w , zero)
 
 ⟦_⟧ : LTy → Set
 ⟦ One ⟧      = ⊤
@@ -201,7 +212,7 @@ force (mkNu w) = (w , zero)
 ⟦ A ⊗t B ⟧   = ⟦ A ⟧ × ⟦ B ⟧
 ⟦ A ⊕t B ⟧   = ⟦ A ⟧ ⊎ ⟦ B ⟧
 ⟦ A ⇒t B ⟧   = ⟦ A ⟧ → ⟦ B ⟧ × ℕ    -- ★ a function reports its own cost
-⟦ μt F ⟧     = Fix F
+⟦ μt F ⟧     = Mu F
 ⟦ νt F ⟧     = Nu F
 ⟦ Bt b ⟧     = ⟦ b ⟧b
 
@@ -239,6 +250,19 @@ coh⁻¹ (F ⊗f G) X (x , y)  = (coh⁻¹ F X x , coh⁻¹ G X y)
 
 ------------------------------------------------------------------------
 -- 5. THE LINEAR CORE.
+--
+-- ★ TOTALITY AND PRODUCTIVITY ARE BY CONSTRUCTION, not by a side condition.
+-- The only recursion generators are `lcata` (structural on a `Mu`) and `lAna`
+-- (guarded under `force`).  `lOutμ`/`lInν` are the two Lambek isomorphisms —
+-- one unwrapping each, no recursion.
+--
+-- ⚠ Where non-termination WOULD enter if one were careless: a hylomorphism —
+-- `lOutμ` used inside an `lAna` coalgebra, folding what you are unfolding.  It
+-- cannot here, and for a structural reason rather than a check: `lAna`'s result
+-- is a `Nu`, produced under `force`, so every cycle through it is guarded.
+-- That is why `Hylo`/`Fuse` are absent rather than restricted — they are
+-- optimizations over these generators, not primitives, and adding them means
+-- discharging their termination argument separately.
 --
 -- Symmetric monoidal over `⊗t` + additive coproducts + an EXPLICIT comonoid
 -- (`dup`/`drop`, the only sources of duplication) + both fixpoints.
@@ -291,7 +315,7 @@ data LTm : LTy → LTy → Set where
 -- building a closure is free and paid at `leval` per call; building a `ν` is
 -- free and paid at `lOut` per observation; a fold pays its algebra per NODE.
 --
--- `cataC`/`mapC` descend a shrinking `Fix`; `unfoldNu`/`mapU` corecurse under
+-- `cataC`/`mapC` descend a shrinking `Mu`; `unfoldNu`/`mapU` corecurse under
 -- `force`.  They are exact duals and sit in one mutual block with `Lᶜ`.
 ------------------------------------------------------------------------
 
@@ -325,21 +349,21 @@ mutual
   Lᶜ (lcase f g)    (inj₁ a)       = Lᶜ f a                 -- ★ only the branch taken
   Lᶜ (lcase f g)    (inj₂ b)       = Lᶜ g b
   Lᶜ lzero          ()
-  Lᶜ (lIn {F})      x              = retᶜ (fix (coh F (μt F) x))
-  Lᶜ (lOutμ {F})    x              = retᶜ (coh⁻¹ F (μt F) (unfix x))
+  Lᶜ (lIn {F})      x              = retᶜ (inμ (coh F (μt F) x))
+  Lᶜ (lOutμ {F})    x              = retᶜ (coh⁻¹ F (μt F) (outμ x))
   Lᶜ (lcata F alg)  x              = cataC F (λ y → Lᶜ alg (coh⁻¹ F _ y)) x
   -- ★ observing PAYS what this step reports…
   Lᶜ (lOut {F})     x              = (coh⁻¹ F (νt F) (fst (force x)) , snd (force x))
   -- ★ …and building, either way, is FREE.
   Lᶜ (lAna F c)     a              = retᶜ (unfoldNu F c a)
-  Lᶜ (lInν {F})     x              = retᶜ (mkNu (coh F (νt F) x))
+  Lᶜ (lInν {F})     x              = retᶜ (inν (coh F (νt F) x))
   Lᶜ (lcurry f)     a              = retᶜ (λ b → Lᶜ f (a , b))
   Lᶜ leval          (f , a)        = f a
 
-  cataC : ∀ F {X : Set} → (FS F X → X × ℕ) → Fix F → X × ℕ
-  cataC F alg (fix w) = sumF F (mapC F F alg w) >>=ᶜ alg
+  cataC : ∀ F {X : Set} → (FS F X → X × ℕ) → Mu F → X × ℕ
+  cataC F alg (inμ w) = sumF F (mapC F F alg w) >>=ᶜ alg
 
-  mapC : ∀ F G {X : Set} → (FS F X → X × ℕ) → FS G (Fix F) → FS G (X × ℕ)
+  mapC : ∀ F G {X : Set} → (FS F X → X × ℕ) → FS G (Mu F) → FS G (X × ℕ)
   mapC F Idf       alg y        = cataC F alg y
   mapC F Kone      alg y        = y
   mapC F (Kb _)    alg y        = y
@@ -402,23 +426,23 @@ data DupFree : ∀ {A B} → LTm A B → Set where
 -- obstruction that the borrowed core could never have shown, and it is the same
 -- one the KERNEL line hit at W1e (`SpikeSNK`).  Measured, not guessed:
 --
---     FreeFix is not strictly positive, because it occurs
+--     FreeMu is not strictly positive, because it occurs
 --     in the 7th clause in the definition of Free, which occurs
 --       to the left of an arrow in the 6th clause in the definition of Free,
 --       which occurs in the first clause in the definition of FreeFS,
---       which occurs in the type of the constructor freeFix
---     in the definition of FreeFix.
+--       which occurs in the type of the constructor freeMu
+--     in the definition of FreeMu.
 --
 -- ★ THE CAUSE.  `Free (A ⇒t B) f = (a : ⟦ A ⟧) → Free A a → …` puts `Free`
 -- NEGATIVELY — and that hypothesis is not removable: it is exactly what bounds
 -- `leval`, whose closure is an arbitrary semantic value (`NbEPLinDyn` calls it
 -- "the case the logical relation exists for").  Meanwhile `Free (μt F)` and
 -- `Free (νt F)` must be REAL, so they re-enter `Free`, and the knot closes:
--- take `A = μt F` as a closure DOMAIN and `FreeFix` occurs negatively in its
+-- take `A = μt F` as a closure DOMAIN and `FreeMu` occurs negatively in its
 -- own definition.
 --
 -- ★ WHY THE BORROWED CORE NEVER SAW IT.  `NbEPLinDyn` sets `Free (μ F) x = ⊤`,
--- justified by "`Func` is `Ty`-independent, so a `Fix F` holds no functions".
+-- justified by "`Func` is `Ty`-independent, so a `Mu F` holds no functions".
 -- That is true and is NOT the point.  Here `LF` has `Kν`, so **data can hold a
 -- PRODUCER**, and a producer has prices — `⊤` is simply wrong.  Making `ν` a
 -- real citizen is what forces the inductive half of the relation to look at
@@ -433,11 +457,11 @@ data DupFree : ∀ {A B} → LTm A B → Set where
 -- ★ THE RESOLUTION, designed and not yet built.  Stratify by WHAT CAN APPEAR IN
 -- A FIXPOINT PAYLOAD, which is decidable from `LF` alone:
 --
---   `FS G X` is built from `⊤`, base carriers, `Fix`, `Nu`, `⊎`, `×` — it has
+--   `FS G X` is built from `⊤`, base carriers, `Mu`, `Nu`, `⊎`, `×` — it has
 --   NO function space, ever.  So the freedom of a fixpoint payload never needs
 --   the `⇒t` clause.
 --
---   1. Define `FreeFix`/`FreeNu` and their code-indexed lifts over the DATA
+--   1. Define `FreeMu`/`FreeNu` and their code-indexed lifts over the DATA
 --      FRAGMENT ONLY, mutually.  No arrows appear, so they are strictly
 --      positive and `FreeNu` may stay a coinductive record.
 --   2. Define `Free : ∀ A → ⟦ A ⟧ → Set` AFTERWARDS, as a plain function
