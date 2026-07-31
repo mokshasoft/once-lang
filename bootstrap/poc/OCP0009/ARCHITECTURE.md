@@ -391,7 +391,12 @@ and for types: don't compute at all, stay in the nat-trans + cata fragment.
   ──────────────────────────────────────────────────────────────────────
   W0e CODATA in the linear core   ✅ SpikeLinNu — cost carried on `force`;
                                      dynN covers ν; both controls fire
-       └► W0d port the real IR    🔴 ★ NEXT on this line — unblocked
+       └► W0d port the real IR    🟡 MEASURED (NbEPLinIR): the blocker
+                                     MOVED — not codata, but `Ty` itself
+                                     (10 of 11 Ty-matching modules are TCB0).
+                                     Needs option B: own object language for
+                                     the linear core, which also subsumes the
+                                     W0e consolidation. ONE item, not two.
   W1a SN⁺ induction-recursion     ✅ SpikeSNU — CR1/CR2/CR3, risk retired
   W1b conversion transfer         ✅ SpikeSNW — irrel, fwd*, conv-⊩, real syntax
   W1c toward fund                 🟡 SpikeSNX — Kripke action STRUCK (not needed);
