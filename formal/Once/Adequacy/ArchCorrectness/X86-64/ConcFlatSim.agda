@@ -62,7 +62,7 @@ open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
   using (x86-len; x86-off; drop-compile; fetch-drop; drop-[]; fetch-block-head
         ; find-label-none-corr; fetch-block-2nd)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
+open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Machine.FrameFree using (FrameFreeI)
 open import Once.CCC.Codegen.FrameFreeTrace using (fetch-frame-free)
 open import Once.IR using (IR; Unit)
@@ -165,13 +165,21 @@ EntryLike fs = (fpc fs ≡ 0)
              × (∀ f k → stackMem (floc fs) f k ≡ nothing)
              × (∀ r → block-size (falloc fs) r ≡ 0)
 
-data Reachable (prog : AbstractTrace) : FlatState → Set where
-  reach-start : ∀ (fs : FlatState) → EntryLike fs → Reachable prog fs
+-- …indexed by the STATIC SLOT BUDGET `B` the prologue reserved. The entry state
+-- pins `stackSlot` to it (`reach-start`), and no reachable step can move it —
+-- `ir-to-trace` emits no frame op, and the frame ops are the only writers of
+-- `stackSlot`. That is what turns "the slot this instruction addresses is in
+-- frame" from an assumption about arbitrary states into arithmetic about the
+-- emitter's own frontier (`run-stack-slot` + `emitted-slot-below-budget` below).
+data Reachable (prog : AbstractTrace) (B : ℕ) : FlatState → Set where
+  reach-start : ∀ (fs : FlatState) → EntryLike fs
+              → stackSlot (regs (floc fs)) ≡ B
+              → Reachable prog B fs
   reach-step  : ∀ (i : AbstractInstr) (fs : FlatState)
-              → Reachable prog fs
+              → Reachable prog B fs
               → fetch prog (fpc fs) ≡ just i
               → halted (floc fs) ≡ false
-              → Reachable prog (flat-exec-instr i prog fs)
+              → Reachable prog B (flat-exec-instr i prog fs)
 
 -- …and the program is one the compiler EMITTED. Without this, a hand-picked
 -- `prog` refutes the program-shape residuals AT THE ENTRY STATE (e.g.
@@ -179,11 +187,27 @@ data Reachable (prog : AbstractTrace) : FlatState → Set where
 Emitted : AbstractTrace → Set
 Emitted prog = Σ (IR Unit Unit) (λ ir → prog ≡ ir-to-trace ir)
 
--- The bundle threaded through `events-agree`, replacing the old `FlatInv`: the two
--- proved state invariants PLUS the three hypotheses that make the residuals true.
--- `ev`/`env` are pinned because the SigOp contracts speak about them: quantified
--- over an arbitrary `env`, `arith-sigop-contract` asserts `env sym ≡ just pl`, which
--- `env := λ _ → nothing` refutes.
+-- THE RUN CONTEXT every state/program fact below needs, as ONE record: the
+-- program is `ir`'s emitted trace, and the state is reachable in a run that
+-- started in `ir`'s reserved frame. The budget is tied to the SAME `ir` as the
+-- program — bundling is what makes that possible (two separate hypotheses would
+-- quantify over unrelated IRs, and "same trace ⇒ same budget" is not available).
+record RunAt (prog : AbstractTrace) (fs : FlatState) : Set where
+  constructor mkRunAt
+  field
+    run-ir    : IR Unit Unit
+    run-emit  : prog ≡ ir-to-trace run-ir
+    run-reach : Reachable prog (ir-stack-budget run-ir) fs
+open RunAt public
+
+run-emitted : ∀ {prog fs} → RunAt prog fs → Emitted prog
+run-emitted r = run-ir r , run-emit r
+
+-- The bundle threaded through `events-agree`: the two proved state invariants
+-- PLUS the hypotheses that make the residuals true. `ev`/`env` are pinned because
+-- the SigOp contracts speak about them: quantified over an arbitrary `env`,
+-- `arith-sigop-contract` asserts `env sym ≡ just pl`, which `env := λ _ → nothing`
+-- refutes.
 record FlatInv (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                (prog : AbstractTrace) (fs : FlatState) : Set where
   constructor mkFlatInv
@@ -192,15 +216,8 @@ record FlatInv (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
     inv-regtag  : FlatRegTag fs
     inv-ev      : ev ≡ ev-x86-64
     inv-env     : env ≡ arith-env-x86-64 (compile-trace prog)
-    inv-emitted : Emitted prog
-    inv-reach   : Reachable prog fs
+    inv-run     : RunAt prog fs
 open FlatInv public
-
--- The hypothesis every STATE/PROGRAM fact below needs: the program is compiler
--- output and the state is one it can actually reach. `FlatInv` carries both, so use
--- sites pass `(inv-emitted wf , inv-reach wf)`.
-RunAt : AbstractTrace → FlatState → Set
-RunAt prog fs = Emitted prog × Reachable prog fs
 
 -- THE FRAME OPS HAVE NO PRODUCER (plan 0.54 rung D, item 2). The four abstract
 -- frame instructions are not a fragment the correspondence has yet to cover —
@@ -234,8 +251,8 @@ flat-inv-step i prog fs ftq h inv = record
   ; inv-regtag  = flat-regtag-step i prog fs (inv-regtag inv)
   ; inv-ev      = inv-ev inv
   ; inv-env     = inv-env inv
-  ; inv-emitted = inv-emitted inv
-  ; inv-reach   = reach-step i fs (inv-reach inv) ftq h
+  ; inv-run     = mkRunAt (run-ir (inv-run inv)) (run-emit (inv-run inv))
+                          (reach-step i fs (run-reach (inv-run inv)) ftq h)
   }
 
 -- THE SLOT AN INSTRUCTION ADDRESSES, if any. Enumerated (no catch-all, so it
@@ -622,9 +639,21 @@ postulate
   -- (`slot-of i ≡ just slot`): quantified over an unrelated `slot` this claims
   -- `slot < stackSlot` for every slot, which is inconsistent (take `slot ≡
   -- stackSlot`) — it would prove the whole correspondence vacuously.
-  slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunAt prog fs
-                     → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot
-                     → slot < stackSlot (regs (floc fs))
+  -- (1) MACHINE FACT — a frame-free instruction leaves the live stack window
+  -- alone. The four frame ops are the only writers of `stackSlot` in
+  -- `exec-abstract`, and a nested `instr-case-on-tag` step runs a whole trace,
+  -- which is why `FrameFreeI` is deep.
+  frame-free-stackSlot : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
+                       → FrameFreeI i
+                       → stackSlot (regs (floc (flat-exec-instr i prog fs)))
+                           ≡ stackSlot (regs (floc fs))
+  -- (2) EMITTER FACT — the emitter's own frontier discipline: every slot an
+  -- emitted instruction addresses is below the static budget the prologue
+  -- reserved for that trace (`ir-to-trace'` threads the frontier and returns it
+  -- as `ir-stack-budget`).
+  emitted-slot-below-budget : ∀ (ir : IR Unit Unit) (k : ℕ) (i : AbstractInstr) (slot : Slot)
+                            → fetch (ir-to-trace ir) k ≡ just i → slot-of i ≡ just slot
+                            → slot < ir-stack-budget ir
   -- MEMORY EXHAUSTION (plan 0.54 rung D) — the price of "the two regions grow
   -- towards each other", and the ONLY thing the layout separation assumes. The
   -- ONE allocating instruction the emitter produces has room between the heap
@@ -713,6 +742,37 @@ postulate
                             × (ev (once-symbol-path (SigOpInfo.name si)) s ≡ event-of (instr-sigop si) fs)
                             × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs) (RTx.ret-past s)
 
+------------------------------------------------------------------------
+-- SLOT LIVENESS IS NOW A THEOREM (plan 0.54 rung D, item 2).
+--
+-- `slot-read-in-frame` used to be the residual that carried the whole slot
+-- cluster (`load-from-slot`, `store-at-slot`, `restore-input`, `worklist-*`,
+-- `lea-indexed`). It splits cleanly into a MACHINE fact and an EMITTER fact:
+-- the live window never moves during a run, and it started out big enough.
+------------------------------------------------------------------------
+
+-- The live stack window is CONSTANT along a run of an emitted program: it is the
+-- budget the prologue reserved. Induction on `Reachable`; each step is frame-free
+-- because the program is emitted (`frame-op-absurd`).
+run-stack-slot : ∀ prog (fs : FlatState) (r : RunAt prog fs)
+               → stackSlot (regs (floc fs)) ≡ ir-stack-budget (run-ir r)
+run-stack-slot prog fs (mkRunAt ir eq reach) = go fs reach
+  where go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs'
+           → stackSlot (regs (floc fs')) ≡ ir-stack-budget ir
+        go fs' (reach-start .fs' _ eqB)       = eqB
+        go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
+          trans (frame-free-stackSlot i prog fs''
+                   (frame-op-absurd prog fs'' i (ir , eq) ftq))
+                (go fs'' r')
+
+slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunAt prog fs
+                   → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot
+                   → slot < stackSlot (regs (floc fs))
+slot-read-in-frame prog fs slot i r ftq soq =
+  subst (slot <_) (sym (run-stack-slot prog fs r))
+    (emitted-slot-below-budget (run-ir r) (fpc fs) i slot
+      (subst (λ p → fetch p (fpc fs) ≡ just i) (run-emit r) ftq) soq)
+
 -- The event-trace induction, fully with-FREE (J-style aux bridges for every case
 -- split — no `with … in` goal-abstraction). `ccc-step` is the reusable CCC engine:
 -- one abstract step ↦ its compiled block (block-step-any) mirrored into run-events
@@ -781,7 +841,7 @@ mutual
   -- THE FOUR FRAME OPS ARE UNREACHABLE (plan 0.54 rung D, item 2): `ir-to-trace`
   -- emits none of them, and `FlatInv` carries `Emitted prog`. See `FrameFree`.
   events-running-fetch {hv} n ev env prog fs s (instr-alloc-stack k) cc wf h ftq =
-    ⊥-elim (frame-op-absurd prog fs (instr-alloc-stack k) (inv-emitted wf) ftq)
+    ⊥-elim (frame-op-absurd prog fs (instr-alloc-stack k) (run-emitted (inv-run wf)) ftq)
   events-running-fetch {hv} n ev env prog fs s (instr-alloc-heap k) cc wf h ftq =
     ccc-step-bs n ev env prog fs s (instr-alloc-heap k)
       (block-step-alloc-heap prog fs s k cc h ftq
@@ -789,13 +849,13 @@ mutual
          (wf-regs (inv-wf wf) Scratch) (wf-regs (inv-wf wf) Count)
          (λ hl _ → wf-heap (inv-wf wf) hl) (λ k' _ → wf-stack (inv-wf wf) (current-frame (falloc fs)) k')
          (λ hl eq → wf-fresh (inv-wf wf) hl (≤-reflexive (sym eq)))
-         (heap-room prog fs s k (inv-emitted wf , inv-reach wf) cc ftq)) wf ftq h refl h
+         (heap-room prog fs s k (inv-run wf) cc ftq)) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc wf h ftq =
-    ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (inv-emitted wf) ftq)
+    ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (run-emitted (inv-run wf)) ftq)
   events-running-fetch {hv} n ev env prog fs s (instr-push-frame k) cc wf h ftq =
-    ⊥-elim (frame-op-absurd prog fs (instr-push-frame k) (inv-emitted wf) ftq)
+    ⊥-elim (frame-op-absurd prog fs (instr-push-frame k) (run-emitted (inv-run wf)) ftq)
   events-running-fetch {hv} n ev env prog fs s instr-pop-frame cc wf h ftq =
-    ⊥-elim (frame-op-absurd prog fs instr-pop-frame (inv-emitted wf) ftq)
+    ⊥-elim (frame-op-absurd prog fs instr-pop-frame (run-emitted (inv-run wf)) ftq)
   events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-int v) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-load-const fits-int v)
       (block-step-load-const prog fs s v cc h ftq) wf ftq h refl h
@@ -804,14 +864,14 @@ mutual
   -- plan 0.61: with stack addresses, the indexed cursor computes a real address.
   events-running-fetch {hv} n ev env prog fs s (lea-indexed slot) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (lea-indexed slot)
-      (block-step-lea-indexed prog fs s slot (proj₁ (lea-indexed-wf prog fs slot (inv-emitted wf , inv-reach wf) ftq))
+      (block-step-lea-indexed prog fs s slot (proj₁ (lea-indexed-wf prog fs slot (inv-run wf) ftq))
          (proj₁ (scratch-tag (inv-regtag wf))) cc h ftq
-         (proj₂ (lea-indexed-wf prog fs slot (inv-emitted wf , inv-reach wf) ftq))
+         (proj₂ (lea-indexed-wf prog fs slot (inv-run wf) ftq))
          (proj₂ (scratch-tag (inv-regtag wf)))
-         (slot-read-in-frame prog fs slot (lea-indexed slot) (inv-emitted wf , inv-reach wf) ftq refl))
-      wf ftq h refl (lea-indexed-hpost prog fs slot (proj₁ (lea-indexed-wf prog fs slot (inv-emitted wf , inv-reach wf) ftq))
+         (slot-read-in-frame prog fs slot (lea-indexed slot) (inv-run wf) ftq refl))
+      wf ftq h refl (lea-indexed-hpost prog fs slot (proj₁ (lea-indexed-wf prog fs slot (inv-run wf) ftq))
                 (proj₁ (scratch-tag (inv-regtag wf)))
-                (proj₂ (lea-indexed-wf prog fs slot (inv-emitted wf , inv-reach wf) ftq))
+                (proj₂ (lea-indexed-wf prog fs slot (inv-run wf) ftq))
                 (proj₂ (scratch-tag (inv-regtag wf))) h)
   -- plan 0.61: a stack POINTER now has an address, so lea-slot routes.
   events-running-fetch {hv} n ev env prog fs s (lea-slot slot) cc wf h ftq =
@@ -1134,7 +1194,7 @@ mutual
           -- slots `rsp-eq` + `stack-eq` relate exactly that cell. (Pointers into
           -- an older frame keep the residual: `stack-eq` says nothing there.)
           go-ptr (SV-Ptr (AtStack f k))  i-eq =
-            go-stack f k i-eq (stack-ptr-current prog fs f k (inv-emitted wf , inv-reach wf) i-eq)
+            go-stack f k i-eq (stack-ptr-current prog fs f k (inv-run wf) i-eq)
                      (stackMem (floc fs) (current-frame (falloc fs)) k) refl
           go-ptr (SV-Tag _)              i-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
           go-ptr (SV-Lit _ _)            i-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
@@ -1178,7 +1238,7 @@ mutual
                        ≡ event-of load-indirect-suc fs ++ flat-events n prog (flat-exec-instr load-indirect-suc prog fs))
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq = go-mem hl i-eq (heapMem (floc fs) (sucHL hl)) refl
           go-ptr (SV-Ptr (AtStack f k))  i-eq =
-            go-stack f k i-eq (stack-ptr-current-suc prog fs f k (inv-emitted wf , inv-reach wf) i-eq)
+            go-stack f k i-eq (stack-ptr-current-suc prog fs f k (inv-run wf) i-eq)
                      (stackMem (floc fs) (current-frame (falloc fs)) (suc k)) refl
           go-ptr (SV-Tag _)              i-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
           go-ptr (SV-Lit _ _)            i-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
@@ -1199,13 +1259,13 @@ mutual
                        ≡ event-of (load-from-slot slot) fs ++ flat-events n prog (flat-exec-instr (load-from-slot slot) prog fs))
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n ev env prog fs s (load-from-slot slot)
-              (block-step-load-from-slot prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-emitted wf , inv-reach wf) ftq refl) st-eq)
+              (block-step-load-from-slot prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) ftq refl) st-eq)
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
           go-mem nothing st-eq =
             slot-empty-stop {hv} n ev env prog fs s slot rax (load-from-slot slot) cc h ftq refl
-              (slot-read-in-frame prog fs slot (load-from-slot slot) (inv-emitted wf , inv-reach wf) ftq refl) st-eq hpost refl
+              (slot-read-in-frame prog fs slot (load-from-slot slot) (inv-run wf) ftq refl) st-eq hpost refl
             where hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ true
                   hpost rewrite st-eq = refl
 
@@ -1222,13 +1282,13 @@ mutual
                        ≡ event-of (restore-input slot) fs ++ flat-events n prog (flat-exec-instr (restore-input slot) prog fs))
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n ev env prog fs s (restore-input slot)
-              (block-step-restore-input prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-emitted wf , inv-reach wf) ftq refl) st-eq)
+              (block-step-restore-input prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) ftq refl) st-eq)
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr (restore-input slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
           go-mem nothing st-eq =
             slot-empty-stop {hv} n ev env prog fs s slot rdi (restore-input slot) cc h ftq refl
-              (slot-read-in-frame prog fs slot (restore-input slot) (inv-emitted wf , inv-reach wf) ftq refl) st-eq hpost refl
+              (slot-read-in-frame prog fs slot (restore-input slot) (inv-run wf) ftq refl) st-eq hpost refl
             where hpost : halted (floc (flat-exec-instr (restore-input slot) prog fs)) ≡ true
                   hpost rewrite st-eq = refl
 
@@ -1245,13 +1305,13 @@ mutual
                        ≡ event-of (worklist-pop slot) fs ++ flat-events n prog (flat-exec-instr (worklist-pop slot) prog fs))
           go-mem (just w) st-eq =
             ccc-step-bs {hv} n ev env prog fs s (worklist-pop slot)
-              (block-step-worklist-pop prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-emitted wf , inv-reach wf) ftq refl) st-eq)
+              (block-step-worklist-pop prog fs s slot w cc h ftq (slot-read-in-frame prog fs slot _ (inv-run wf) ftq refl) st-eq)
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr (worklist-pop slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
           go-mem nothing st-eq =
             slot-empty-stop {hv} n ev env prog fs s slot rax (worklist-pop slot) cc h ftq refl
-              (slot-read-in-frame prog fs slot (worklist-pop slot) (inv-emitted wf , inv-reach wf) ftq refl) st-eq hpost refl
+              (slot-read-in-frame prog fs slot (worklist-pop slot) (inv-run wf) ftq refl) st-eq hpost refl
             where hpost : halted (floc (flat-exec-instr (worklist-pop slot) prog fs)) ≡ true
                   hpost rewrite st-eq = refl
 
@@ -1270,8 +1330,8 @@ mutual
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq =
             ccc-step-bs {hv} n ev env prog fs s store-indirect
               (block-step-store-indirect prog fs s hl cc h ftq i-eq
-                 (C.dom-sized (dataCorr cc) hl (store-indirect-inbounds prog fs hl (inv-emitted wf , inv-reach wf) ftq i-eq)) (store-guard fs hl (store-output-not-stackref prog fs (inv-emitted wf , inv-reach wf) ftq))
-                 (ptr-heap-disj {hv} fs s (dataCorr cc) hl (C.dom-sized (dataCorr cc) hl (store-indirect-inbounds prog fs hl (inv-emitted wf , inv-reach wf) ftq i-eq))))
+                 (C.dom-sized (dataCorr cc) hl (store-indirect-inbounds prog fs hl (inv-run wf) ftq i-eq)) (store-guard fs hl (store-output-not-stackref prog fs (inv-run wf) ftq))
+                 (ptr-heap-disj {hv} fs s (dataCorr cc) hl (C.dom-sized (dataCorr cc) hl (store-indirect-inbounds prog fs hl (inv-run wf) ftq i-eq))))
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)) h
@@ -1281,7 +1341,7 @@ mutual
           go-ptr (SV-Ptr (AtStack f k))  i-eq =
             ccc-step-bs {hv} n ev env prog fs s store-indirect
               (block-step-store-indirect-stack prog fs s f k cc h ftq i-eq
-                 (proj₁ (stack-ptr-current prog fs f k (inv-emitted wf , inv-reach wf) i-eq))
+                 (proj₁ (stack-ptr-current prog fs f k (inv-run wf) i-eq))
                  (slot-heap-disj {hv} fs s (dataCorr cc) k))
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
@@ -1303,8 +1363,8 @@ mutual
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq =
             ccc-step-bs {hv} n ev env prog fs s store-indirect-suc
               (block-step-store-indirect-suc prog fs s hl cc h ftq i-eq
-                 (C.dom-sized (dataCorr cc) (sucHL hl) (store-indirect-suc-inbounds prog fs hl (inv-emitted wf , inv-reach wf) ftq i-eq)) (store-guard fs (sucHL hl) (store-suc-output-not-stackref prog fs (inv-emitted wf , inv-reach wf) ftq))
-                 (ptr-heap-disj {hv} fs s (dataCorr cc) (sucHL hl) (C.dom-sized (dataCorr cc) (sucHL hl) (store-indirect-suc-inbounds prog fs hl (inv-emitted wf , inv-reach wf) ftq i-eq))))
+                 (C.dom-sized (dataCorr cc) (sucHL hl) (store-indirect-suc-inbounds prog fs hl (inv-run wf) ftq i-eq)) (store-guard fs (sucHL hl) (store-suc-output-not-stackref prog fs (inv-run wf) ftq))
+                 (ptr-heap-disj {hv} fs s (dataCorr cc) (sucHL hl) (C.dom-sized (dataCorr cc) (sucHL hl) (store-indirect-suc-inbounds prog fs hl (inv-run wf) ftq i-eq))))
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic (sucHL hl)) (readReg (regs (floc fs)) Output)) h
@@ -1313,7 +1373,7 @@ mutual
           go-ptr (SV-Ptr (AtStack f k))  i-eq =
             ccc-step-bs {hv} n ev env prog fs s store-indirect-suc
               (block-step-store-indirect-suc-stack prog fs s f k cc h ftq i-eq
-                 (proj₁ (stack-ptr-current prog fs f k (inv-emitted wf , inv-reach wf) i-eq))
+                 (proj₁ (stack-ptr-current prog fs f k (inv-run wf) i-eq))
                  (slot-heap-disj {hv} fs s (dataCorr cc) (suc k)))
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
@@ -1337,7 +1397,7 @@ mutual
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                        ≡ event-of (instr-sigop si) fs ++ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs))
           go-eff Pure eqe = suc (proj₁ rec) , goal
-            where contract = arith-sigop-contract env prog fs s si (inv-emitted wf , inv-reach wf) (inv-env wf) eqe cc ftq
+            where contract = arith-sigop-contract env prog fs s si (inv-run wf) (inv-env wf) eqe cc ftq
                   pl  = proj₁ contract
                   rec = events-agree n ev env prog (flat-exec-instr (instr-sigop si) prog fs)
                           (uncurry (dispatch-arith val-x86-64) pl s) (proj₂ (proj₂ contract))
@@ -1361,7 +1421,7 @@ mutual
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                        ≡ event-of (instr-sigop si) fs ++ flat-events n prog (flat-exec-instr (instr-sigop si) prog fs))
   sigop-external n ev env prog fs s si cc wf h ftq = suc (proj₁ rec) , goal
-    where contract = external-sigop-contract ev env prog fs s si (inv-emitted wf , inv-reach wf) (inv-ev wf) (inv-env wf) cc ftq
+    where contract = external-sigop-contract ev env prog fs s si (inv-run wf) (inv-ev wf) (inv-env wf) cc ftq
           rec = events-agree n ev env prog (flat-exec-instr (instr-sigop si) prog fs)
                   (RTx.ret-past s) (proj₂ (proj₂ contract))
                   (flat-inv-step (instr-sigop si) prog fs ftq h wf)

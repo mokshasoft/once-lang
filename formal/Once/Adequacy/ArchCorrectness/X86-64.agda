@@ -100,7 +100,7 @@ open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
   x86-64-frame-semantics refl
   using (events-agree; CompiledCorr; HeapView
         ; FlatInv; EntryLike; Reachable; reach-start
-        ; inv-wf; inv-regtag; inv-ev; inv-env; inv-emitted; inv-reach)
+        ; inv-wf; inv-regtag; inv-ev; inv-env; inv-run; mkRunAt)
 open import Once.CCC.Machine.FlatStoreWF x86-64-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.FlatRegTagWF x86-64-frame-semantics using (FlatRegTag)
 open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Input2; Output; Scratch; Count; readReg; regs)
@@ -240,9 +240,12 @@ entry-inv ir = record
   ; inv-regtag  = entry-regtag (ir-stack-budget ir)
   ; inv-ev      = refl        -- the apex runs the REAL extractor
   ; inv-env     = refl        -- …and the REAL arith env
-  ; inv-emitted = ir , refl   -- the program is this IR's emitted trace
-  ; inv-reach   = reach-start (mkFlat (FFOx.entry-s (ir-stack-budget ir)) FFOx.entry-alloc 0)
-                              (entry-like (ir-stack-budget ir))
+  -- the program is this IR's emitted trace, and the loader's state starts the run
+  -- INSIDE the frame the prologue reserved: `stackSlot ≡ ir-stack-budget ir`,
+  -- which is what makes the slot cluster a theorem rather than an assumption.
+  ; inv-run     = mkRunAt ir refl
+                    (reach-start (mkFlat (FFOx.entry-s (ir-stack-budget ir)) FFOx.entry-alloc 0)
+                                 (entry-like (ir-stack-budget ir)) refl)
   }
 
 -- The flat adequacy witness for `ir` at event-count `n`: the flat step-fuel that
