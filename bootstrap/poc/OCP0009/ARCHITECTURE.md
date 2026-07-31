@@ -68,9 +68,9 @@ Closing that gap is **W0d**; the only thing blocking it is **W0e** (codata).
   │  research                    │        │  shipping                   │
   ├──────────────────────────────┤        ├─────────────────────────────┤
   │ K5 decision procedure        │        │ C5 Surface syntax           │
-  │    dec-conv (⚠ modulo SN)    │        │    Syntax/Desugar/Grammar   │
+  │    ✅ dec-conv, UNCONDITIONAL│        │    Syntax/Desugar/Grammar   │
   │    ✅ dec-≅ᵀ types           │        │    total+productive by ctor │
-  │    🔴 W1  term SN + universe │        ├─────────────────────────────┤
+  │    ✅ W1  term WN + universe │        ├─────────────────────────────┤
   ├──────────────────────────────┤        │ C4 Typing + QTT usage       │
   │ K4 metatheory                │        │    Surface/Context.agda     │
   │    ✅ confluence (Takahashi) │        │    Ctx/Usage/Quantity       │
@@ -185,7 +185,7 @@ Each box: what the layer ADDS, then the options tried, with verdicts.
 │       ✅ confluence (Takahashi complete development)                     │
 │       ✅ subject reduction, Π/Σ injectivity, typed renaming/subst        │
 │       ✅ dec-≅ᵀ, snᵀ, nfᵀ  — the TYPE level is CLOSED (dHoTT-37)         │
-│       🔴 W1: TERM SN with the universe. The sole remaining input.        │
+│       ✅ W1: TERM WN with the universe — CLOSED 2026-07-31.              │
 │           ✅ W1a IR shape spiked + CR1/CR2/CR3    (SpikeSNU)             │
 │           ✅ W1b conversion transfer: irrel / fwd* / conv-⊩ (SpikeSNW),  │
 │              on the REAL syntax. Type confluence turned out to already   │
@@ -198,7 +198,12 @@ Each box: what the layer ADDS, then the options tried, with verdicts.
 │              by universe level — both checked (SpikeSNK). Surfaces a     │
 │              KERNEL decision: `⊢lam`'s domain is unconstrained and there │
 │              is no type-formation judgment.                              │
-│           🔴 W1f consolidate → fund → Σ' → wnorm → dec-conv              │
+│           ✅ W1f the relation CONSOLIDATED + promoted (NbEPDirDBLR)      │
+│           ✅ W1g option A — `⊢ty`/`⊢ctx` in the kernel; Σ' in the LR      │
+│           ✅ W1h fund → ⊩ˢ-ren → wnorm → dec-conv-typed (NbEPDirDBFund)   │
+│              ⚠ `sem-lam`'s SN-of-the-BODY premise needed ANTI-RENAMING    │
+│              for SN; a renaming action on ⊩₁ does NOT exist (its Π clause │
+│              quantifies over all terms of the target scope). See PLAN W1h.│
 │           ⚠ the erasure shortcut is REFUTED, not unattempted.            │
 │  ✅ consistency — SpikeErase (raw), NbEPDirDTTSem (dependent mechanism)  │
 │  ❌ sized types — HARD BAN. structural or WF recursion only.             │
@@ -390,13 +395,18 @@ and for types: don't compute at all, stay in the nat-trans + cata fragment.
   W1e "assemble fund"             🟡 SpikeSNK — NOT assembly. ⊩ is not total
                                      over RTy, and the LR must be STRATIFIED
                                      by universe level. Both machine-checked.
-  W1f consolidate → fund          🔴 ★ NEXT → Σ' → wnorm → dec-conv
+  W1f consolidate the relation    ✅ NbEPDirDBLR — one module, both levels,
+                                     promoted out of the Spike line
+  W1g ⊢ty (option A) + Σ'         ✅ type formation IS in the kernel; the
+                                     cascade was two modules, as measured
+  W1h fund                        ✅ NbEPDirDBFund — ⊩ˢ, shape inversion,
+                                     fund/fund-ty, ⊩ˢ-ren, wnorm, and
+                                     dec-conv-typed. PHASE 1 IS CLOSED.
 
-  ⚠ W1e surfaced a KERNEL decision, not just a proof detail: `⊢lam`'s domain is
-    unconstrained and the kernel has no type-formation judgment, so
-    normalization for `_⊢_∷_` as it stands is not provable. Either add `Γ ⊢ty A`
-    premises (cascades through DBSubj/DBDec) or restrict the theorem to
-    derivations with independently well-formed types.
+  ⚠ W1e surfaced a KERNEL decision, not just a proof detail: `⊢lam`'s domain was
+    unconstrained and the kernel had no type-formation judgment. RESOLVED by W1g,
+    option A: `_⊢ty_`/`⊢ctx_` are mutual with `_⊢_∷_`, and only `⊢lam`/`⊢pair`
+    gained a premise. Expressiveness is unchanged — `lam s ∷ U` is underivable.
        └► W2/W3 → W4 → W5 → W6    🔴 the directed layer, no prior art
 ```
 
