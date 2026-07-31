@@ -727,11 +727,22 @@ place W1c's "Kripke is not needed" (PLAN §6, `SpikeSNX`) was **too strong**: th
 confirms — but the λ-case's *`SN` premise* did need something, and a renaming
 action on `⊩₁` is **not available to supply it**:
 
-> `ren₁ : (ρ : Ren Θ Ξ) → ⊩₁ A → ⊩₁ (renTy ρ A)` is UNPROVABLE at `⊩₁Π`. The
-> stored family covers `u` of the SOURCE scope only, transported forward; the
-> renamed `Π` clause quantifies over ALL `v : RTm Ξ`, and a renaming cannot be
-> undone on `v`. This is precisely why Kripke-indexed relations exist. Do not
-> re-attempt it — the fix below is cheaper than the redesign.
+> `ren₁ : (ρ : Ren Θ Ξ) → ⊩₁ A → ⊩₁ (renTy ρ A)` — the STRUCTURAL TRANSPORT IS
+> BLOCKED at `⊩₁Π`. The stored family offers instances only at `v = renTm ρ u`;
+> the renamed `Π` clause demands one at EVERY `v : RTm Ξ`, and a renaming cannot
+> be undone on `v`. The missing instances cannot be manufactured either, because
+> **`⊩` is not total over `RTy`** — W1e/`SpikeSNK` — so there is no fallback for
+> the induction to reach for. Note this kills the obvious weaker ask too: for
+> `ρ = vs`, a `v : RTm (Ξ ∙)` may mention `vz` and is equally outside the image.
+> This is precisely why Kripke-indexed relations exist.
+>
+> ⚠ EVIDENCE, stated honestly: this is an ARGUED obstruction resting on an
+> already-machine-checked fact (non-totality), NOT a measured checker rejection
+> like §5's other entries, and NOT a refutation — `ren₁` is not shown false, only
+> unreachable by the induction. That is deliberately the right strength: the only
+> decision it licenses is "do not build it, use anti-renaming", and it licenses
+> that completely. A refutation would license a claim nothing downstream consumes.
+> Precedent for an argued strike: W1c's Kripke entry, "struck, not built".
 
 The fix is local and needs nothing from the relation:
 
@@ -761,6 +772,29 @@ refuted by `Π-reduct`/`Σ-reduct` alone — `joinW` is not needed, because the 
 is literally `Π F G`, not merely convertible to one. `⊢conv`, `⊢app`, `⊢fst`,
 `⊢snd`, `⊢var` are one line apiece. The whole substitution calculus `fund` needs
 is five equations, all instances of `NbEPDirDBPi`'s mutual laws.
+
+**★ THE FLIP CONDITION, for W2–W6's scoping.** Anti-renaming scales to the
+directed layer for a structural reason: `sn-anti` is a lemma about RAW SYNTAX and
+never mentions `⊩`, so it is immune to whatever W2/W3 do to the relation, and
+sensitive only to `_⟶_`. Cost per syntax extension is ~3 lines of
+`snr-anti`/`sn-anti` per new `RTm` constructor, plus one commutation lemma per
+former that both BINDS and REDUCES (`ren-single` is that lemma for `β`) — noise
+against the six-module confluence-and-SR cascade every extension already costs.
+`Hom` itself does not bind; its eliminator's motive does, which is exactly the
+pattern already handled.
+
+There is ONE condition that brings Kripke back: **the kernel adopting η-LONG
+normal forms**, whether via βη definitional equality or via W5 going NbE-shaped.
+Reify-at-a-fresh-variable IS the Kripke step. Today that condition is not met —
+η lives in a SEPARATE relation (`NbEPDirDBEta`'s `_≅η_`, layered over
+β-conversion), the kernel's `⊢conv` uses the β-only `_≅ᵀ_`, and ARCHITECTURE
+commits to reduction-based conversion (NbE was refuted here on separate grounds:
+it forces intrinsic typing). If W5 reopens it, `⊩` is redesigned wholesale and
+the strength of this entry is moot either way.
+
+(Aside, for whoever costs βη: `NbEPDirDBEta`'s header says Σ-η is out of scope
+because `RTm` lacks pair/projection constructors. W1g landed them. That blocker
+is stale.)
 
 ⚠ **The headline is WEAK normalization.** `SN` here is the inductive JM
 predicate; nothing proves it equivalent to accessibility-`SN`, and that stays
@@ -853,7 +887,7 @@ conversion rule. Two consequences:
 |---|---|---|
 | ~~W1's induction-recursion does not go through in Agda's positivity checker~~ | ~~high~~ | ✅ **RETIRED 2026-07-30 by `SpikeSNU`** — the knot is accepted indexed over dependent syntax with a substitution-computed index, and CR1/CR2/CR3 are proven over it. The mitigation (spike in isolation first) was executed and paid |
 | ~~W1's real core: lifting confluence from `_⟶_` to `_⟶ᵀ_`~~ | ~~medium~~ | ✅ **RETIRED 2026-07-30 by `SpikeSNW`** — and the lift did not have to be written at all: `NbEPDirDBInj` (dHoTT-26) already had `confluentᵀ`/`church-rosserᵀ`/`Π-reduct`, built for Π-injectivity. What W1b needed was the whnf-carrying redesign that consumes them; `conv-⊩` is proven |
-| ~~W1c: the Kripke action's mutual block~~ | ~~medium~~ | ✅ **STRUCK 2026-07-30 by `SpikeSNX`**, and the strike HELD in `fund` (W1h) — `fund` is substitution-based, so its λ-case extends the substitution and the target context never grows; `SpikeSNU`'s `SN t` conjunct in the `Π` clause already removed the one place Kripke is classically forced (CR1 at `Π`). ⚠ **But the strike was stated too broadly.** `sem-lam`'s `SN`-of-the-BODY premise still needed SN to come out of a substitution, and a renaming action on `⊩₁` does not exist to supply it (the `Π` clause quantifies over all terms of the target scope). W1h paid for it with ANTI-RENAMING for `SN` (~60 lines) instead of a Kripke redesign — see W1h finding (2) |
+| ~~W1c: the Kripke action's mutual block~~ | ~~medium~~ | ✅ **STRUCK 2026-07-30 by `SpikeSNX`**, and the strike HELD in `fund` (W1h) — `fund` is substitution-based, so its λ-case extends the substitution and the target context never grows; `SpikeSNU`'s `SN t` conjunct in the `Π` clause already removed the one place Kripke is classically forced (CR1 at `Π`). ⚠ **But the strike was stated too broadly.** `sem-lam`'s `SN`-of-the-BODY premise still needed SN to come out of a substitution, and the structural transport `ren₁` is BLOCKED at `⊩₁Π` (the renamed clause quantifies over all terms of the target scope, and `⊩` is not total, so nothing manufactures the missing instances — argued, not measured; not a refutation). W1h paid for it with ANTI-RENAMING for `SN` (~60 lines) instead of a Kripke redesign. Flip condition: η-long NFs / NbE-shaped W5 — see W1h finding (2) |
 | ~~W1d: SN closed under head expansion under a spine~~ | ~~medium~~ | ✅ **RETIRED 2026-07-30 by `SpikeSNJ`** — Joachimski–Matthes makes head expansion a CONSTRUCTOR, so the lemma vanishes; and the feared cost (relating the presentation to accessibility-`SN`) never arises, because `dec-conv` consumes WEAK normalization and `wn` falls out structurally |
 | ~~The kernel may need `Γ ⊢ty A` premises~~ | ~~high~~ | ✅ **RESOLVED 2026-07-30 — option A taken and landed.** Cascade was two modules as measured. Validity turned out NOT to be needed (existential `fund` + `conv₁`), so `⊢conv` gained no premise |
 | *(historical)* | — | a kernel-design decision, not a proof detail; adding premises to `⊢lam`/`⊢app`/`⊢pair` cascades through `NbEPDirDBSubj`/`NbEPDirDBDec` per §2. Alternative: state the theorem only for derivations with independently well-formed types |

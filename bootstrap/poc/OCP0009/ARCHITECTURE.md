@@ -202,8 +202,11 @@ Each box: what the layer ADDS, then the options tried, with verdicts.
 │           ✅ W1g option A — `⊢ty`/`⊢ctx` in the kernel; Σ' in the LR      │
 │           ✅ W1h fund → ⊩ˢ-ren → wnorm → dec-conv-typed (NbEPDirDBFund)   │
 │              ⚠ `sem-lam`'s SN-of-the-BODY premise needed ANTI-RENAMING    │
-│              for SN; a renaming action on ⊩₁ does NOT exist (its Π clause │
-│              quantifies over all terms of the target scope). See PLAN W1h.│
+│              for SN; the structural transport ren₁ is BLOCKED at ⊩₁Π (its │
+│              renamed clause quantifies over ALL terms of the target scope,│
+│              and ⊩ is not total, so nothing supplies the rest). Argued,   │
+│              not measured; NOT a refutation. Flips only if the kernel     │
+│              goes η-LONG / NbE-shaped. See PLAN W1h finding (2).          │
 │           ⚠ the erasure shortcut is REFUTED, not unattempted.            │
 │  ✅ consistency — SpikeErase (raw), NbEPDirDTTSem (dependent mechanism)  │
 │  ❌ sized types — HARD BAN. structural or WF recursion only.             │
