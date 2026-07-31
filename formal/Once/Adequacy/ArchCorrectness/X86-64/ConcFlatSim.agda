@@ -64,6 +64,7 @@ open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Machine.FrameFree using (FrameFreeI)
+open import Once.CCC.Machine.FlatStackSlot FS using (flat-stack-slot)
 open import Once.CCC.Codegen.FrameFreeTrace using (fetch-frame-free)
 open import Once.IR using (IR; Unit)
 open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
@@ -639,15 +640,7 @@ postulate
   -- (`slot-of i ≡ just slot`): quantified over an unrelated `slot` this claims
   -- `slot < stackSlot` for every slot, which is inconsistent (take `slot ≡
   -- stackSlot`) — it would prove the whole correspondence vacuously.
-  -- (1) MACHINE FACT — a frame-free instruction leaves the live stack window
-  -- alone. The four frame ops are the only writers of `stackSlot` in
-  -- `exec-abstract`, and a nested `instr-case-on-tag` step runs a whole trace,
-  -- which is why `FrameFreeI` is deep.
-  frame-free-stackSlot : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
-                       → FrameFreeI i
-                       → stackSlot (regs (floc (flat-exec-instr i prog fs)))
-                           ≡ stackSlot (regs (floc fs))
-  -- (2) EMITTER FACT — the emitter's own frontier discipline: every slot an
+  -- EMITTER FACT — the emitter's own frontier discipline: every slot an
   -- emitted instruction addresses is below the static budget the prologue
   -- reserved for that trace (`ir-to-trace'` threads the frontier and returns it
   -- as `ir-stack-budget`).
@@ -761,7 +754,7 @@ run-stack-slot prog fs (mkRunAt ir eq reach) = go fs reach
            → stackSlot (regs (floc fs')) ≡ ir-stack-budget ir
         go fs' (reach-start .fs' _ eqB)       = eqB
         go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
-          trans (frame-free-stackSlot i prog fs''
+          trans (flat-stack-slot i prog fs''
                    (frame-op-absurd prog fs'' i (ir , eq) ftq))
                 (go fs'' r')
 
