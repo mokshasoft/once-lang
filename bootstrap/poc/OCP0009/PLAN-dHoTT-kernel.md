@@ -868,6 +868,28 @@ open. Nothing downstream needs it — `dec-conv` consumes `WN`.
 
 #### W3 — THE VARIANCE JUDGMENT  🔴 **NEXT on the kernel line. Scoped 2026-07-31.**
 
+★★ **W3 IS A PREREQUISITE FOR W2, NOT MERELY CHEAPER.** The cost argument below is
+real but secondary. The load-bearing reason is `NbEPDirJ`'s own signature:
+
+```agda
+transport⟶ : (P : Term A B → Set)
+           → (∀ {u v} → u ⟶ v → P u → P v)   -- ★ THE COVARIANCE FEE
+           → Hom t u → P t → P u
+```
+
+> "Directed transport is NOT free (in `Id`-land it falls out of J): **it costs exactly
+> STEP-COVARIANCE of the motive**." — `NbEPDirJ`
+
+Today that fee is paid by an AGDA-LEVEL HYPOTHESIS handed to `transport⟶`, because
+`Hom` is a meta relation and the motive is an Agda family. W2 internalizes `Hom`, so
+the motive becomes a KERNEL type family — and then the fee has to be STATED IN THE
+KERNEL. A variance judgment is exactly that statement. **Without W3, W2's eliminator
+has a premise the kernel cannot express**, which is why ARCHITECTURE K2 already reads
+"W3 variance as a JUDGMENT (Nuyts–Devriese), not a motive side-cond".
+
+Prior art exists for W3 (Nuyts–Devriese). It does not for W4 ("NO PRIOR ART
+ANYWHERE") — so W3 is also the last step before the genuinely unexplored part.
+
 ★ **DO W3 BEFORE W2.** §4's diagram has said "W2 and W3 in parallel; land them as ONE
 cascade" since before W1g. W1g measured the distinction that makes that wrong:
 
@@ -1267,10 +1289,49 @@ cannot put a `ν` inside a `μ`. Owning the syntax is what made the counterexamp
 expressible.
 
 **NEXT on this line.** `Rec`/`Dyn` retire into `NbEPLinCore` (mechanical — it is a
-superset). `Pass`/`QTT` additionally borrow a cartesian SOURCE language and `eval`
-from the normalizer POC, so they need re-pointing or re-scoping separately, and that
-is a bigger decision than a port: what the POC wants as its SOURCE language is itself
-a shape question.
+superset). For `Pass`/`QTT`, see §8.5 — the source-language question turned out to be
+ALREADY ANSWERED.
+
+### 8.5 ★ THE SOURCE LANGUAGE IS ALREADY DECIDED — D063 + D070 (checked 2026-07-31)
+
+An earlier draft of this plan warned that re-pointing `Pass`/`QTT` needed a
+source-language decision first, "a shape question, not a port". **That was wrong, and
+the decision log says so.**
+
+- **D063** introduced `⊢ᵐ`, the MORPHISM REALM — "structural over the categorical
+  combinators (`m-compose`/`m-case`/`m-pair`/`m-curry`/`m-cata`) with extensional
+  leaves". Point-free, by construction.
+- **D070** then moved CLOSED LAMBDAS into it by bracket abstraction, on
+  Curry–Howard–Lambek grounds, explicitly to "remove the only non-point-free thing in
+  the pipeline": *"a closed lambda `A → B` IS a morphism `A → B`; bracket abstraction
+  is the isomorphism; the `⊢ᶜ`/`⊢ᵐ` distinction for lambdas is a syntactic
+  presentation artifact."* The IR was already point-free; D070 aligns the TYPING level
+  with it.
+- **D020** corroborates from the surface: point-free is first-class, and its own
+  example is `dup = pair id id` — the cartesian duplication the linear core exists to
+  make explicit and charge for.
+
+★ **So point-free is where Once is DELIBERATELY HEADING, not a legacy shape inherited
+from the normalizer POC.** `NbEPLinPass`'s source SHAPE was right all along; only its
+provenance was wrong.
+
+★ **ONE PARAMETER IS OPEN, AND IT IS EXACTLY THIS POC'S SUBJECT.** D063 makes `⊢ᵐ`
+**grade-free** — "the IR is grade-erased per D046; closed ⇒ no usage index". That is
+the point W0c disputes: usage should index the TARGET OBJECT (`⟪ ρ ⟫ᶜ`), not be
+discarded at the elaboration boundary. And there is **no decision on a linear core,
+SMCC, comonoid or substructural typing anywhere in the 66-decision log** — checked.
+Linearity is this POC's PROPOSAL, not compiler policy, which is the correct division
+of labour.
+
+⇒ **THE POC'S SOURCE LANGUAGE: `⊢ᵐ`-shaped point-free categorical combinators WITH THE
+USAGE INDEX PUT BACK.** D063's morphism realm minus D046's grade erasure. Small and
+closed: `id`, `∘`, `⟨,⟩`, `fst`, `snd`, `inl`, `inr`, `case`, `curry`, `apply`,
+`In`/`Cata`/`Out`/`Ana`, `const`, `named` — each graded. Target: `NbEPLinCore.LTm`.
+
+⚠ **And `NbEPLinQTT` should TRANSFER, not be redone.** Its graded LAMBDA calculus is
+the presentation D070 calls an artifact — but D070 also says bracket abstraction IS
+the isomorphism, so W0c's grading results should carry across to the point-free form.
+Confirm that before rebuilding anything.
 
 *(The old "recommended scoping" below is retained for the record and is superseded by
 the above.)*
