@@ -385,6 +385,55 @@ Preserves : (ls : LocState FS) (alloc : AllocState {FS})
 Preserves ls alloc (ls' , alloc') =
   StoreWF (next-heap-ref alloc') ls' × (next-heap-ref alloc ≤ next-heap-ref alloc')
 
+------------------------------------------------------------------------
+-- THE LOOP, as a plain FUEL induction over the reified `exec-loop-run`
+-- (2026-07-31). It takes "the body runner preserves the invariant" as a
+-- hypothesis and never calls into the mutual block, so it is structural — this
+-- is what retired the `{-# TERMINATING #-}` this proof used to carry.
+------------------------------------------------------------------------
+BodyPreserves : BodyRunner → Set
+BodyPreserves run = ∀ (ls : LocState FS) (alloc : AllocState {FS})
+                  → StoreWF (next-heap-ref alloc) ls → Preserves ls alloc (run ls alloc)
+
+mutual
+  wf-loop-run : ∀ (run : BodyRunner) (fuel : ℕ) (ls : LocState FS) (alloc : AllocState {FS})
+              → BodyPreserves run
+              → StoreWF (next-heap-ref alloc) ls
+              → Preserves ls alloc (exec-loop-run run fuel ls alloc)
+  wf-loop-run run zero    ls alloc h wf = wf-halt wf , ≤-refl
+  wf-loop-run run (suc n) ls alloc h wf with halted ls
+  ... | true  = wf , ≤-refl
+  ... | false with readReg (regs ls) Scratch
+  ...   | SV-Tag zero    = wf , ≤-refl
+  ...   | SV-Tag (suc m) = wf-loop-run-go run n ls alloc h wf
+  ...   | SV-Ptr _       = wf-loop-run-go run n ls alloc h wf
+  ...   | SV-Lit _ _     = wf-loop-run-go run n ls alloc h wf
+  ...   | SV-Code _      = wf-loop-run-go run n ls alloc h wf
+
+  -- one iteration: run the body, RE-ANCHOR the stack/frame (the loop restores
+  -- them), recurse on fuel. The re-anchored stack is the PRE-state's, so its
+  -- values need the frontier monotonicity the body's step provides.
+  wf-loop-run-go : ∀ (run : BodyRunner) (n : ℕ) (ls : LocState FS) (alloc : AllocState {FS})
+                 → BodyPreserves run
+                 → StoreWF (next-heap-ref alloc) ls
+                 → Preserves ls alloc
+                     (exec-loop-run run n
+                       (loop-reanchor-loc ls (proj₁ (run ls alloc)))
+                       (loop-reanchor-alloc alloc (proj₂ (run ls alloc))))
+  wf-loop-run-go run n ls alloc h wf =
+    proj₁ rec , ≤-trans (proj₂ step) (proj₂ rec)
+    where
+      step = h ls alloc wf
+      ls'' = loop-reanchor-loc ls (proj₁ (run ls alloc))
+      al'' = loop-reanchor-alloc alloc (proj₂ (run ls alloc))
+      wf'' : StoreWF (next-heap-ref al'') ls''
+      wf'' = record
+        { wf-regs  = wf-regs (proj₁ step)
+        ; wf-heap  = wf-heap (proj₁ step)
+        ; wf-stack = λ f k → svm-mono (stackMem ls f k) (proj₂ step) (wf-stack wf f k)
+        ; wf-fresh = wf-fresh (proj₁ step) }
+      rec = wf-loop-run run n ls'' al'' h wf''
+
 mutual
   wf-abstract : ∀ (i : AbstractInstr) (ls : LocState FS) (alloc : AllocState {FS})
               → StoreWF (next-heap-ref alloc) ls → Preserves ls alloc (exec-abstract i ls alloc)
@@ -461,7 +510,8 @@ mutual
       ; wf-stack = λ f k → svm-mono (stackMem ls f k) (n≤1+n (next-heap-ref alloc)) (wf-stack wf f k)
       ; wf-fresh = λ hl le → wf-fresh wf hl (≤-trans (n≤1+n (next-heap-ref alloc)) le)
       } , n≤1+n (next-heap-ref alloc)
-  wf-abstract (instr-loop body) ls alloc wf = wf-loop 1000000 body ls alloc wf
+  wf-abstract (instr-loop body) ls alloc wf =
+    wf-loop-run (exec-trace body) 1000000 ls alloc (λ ls' alloc' → wf-trace body ls' alloc') wf
   wf-abstract (instr-reg-op scratch-one) ls alloc wf = wf-write-reg Scratch (SV-Tag 1) wf tt , ≤-refl
   wf-abstract (instr-reg-op scratch-zero) ls alloc wf = wf-write-reg Scratch (SV-Tag 0) wf tt , ≤-refl
   wf-abstract (instr-reg-op scratch-dec) ls alloc wf =
@@ -495,47 +545,6 @@ mutual
   wf-case (just (SV-Lit _ _))     f g ls alloc wf = wf-halt wf , ≤-refl
   wf-case (just (SV-Code _))      f g ls alloc wf = wf-halt wf , ≤-refl
   wf-case nothing                 f g ls alloc wf = wf-halt wf , ≤-refl
-
-  -- Mirrors `exec-loop`'s own TERMINATING recursion (fuel decreases, but the
-  -- decrease is lost across the `exec-trace body` boundary — same argument).
-  {-# TERMINATING #-}
-  wf-loop : ∀ (fuel : ℕ) (body : AbstractTrace) (ls : LocState FS) (alloc : AllocState {FS})
-          → StoreWF (next-heap-ref alloc) ls → Preserves ls alloc (exec-loop fuel body ls alloc)
-  wf-loop zero body ls alloc wf = wf-halt wf , ≤-refl
-  wf-loop (suc n) body ls alloc wf with halted ls
-  ... | true  = wf , ≤-refl
-  ... | false with readReg (regs ls) Scratch
-  ...   | SV-Tag zero    = wf , ≤-refl
-  ...   | SV-Tag (suc m) = wf-loop-go n body ls alloc wf
-  ...   | SV-Ptr _       = wf-loop-go n body ls alloc wf
-  ...   | SV-Lit _ _     = wf-loop-go n body ls alloc wf
-  ...   | SV-Code _      = wf-loop-go n body ls alloc wf
-
-  -- one iteration: run the body, RE-ANCHOR the stack/frame (the loop restores
-  -- them), recurse on fuel. The re-anchored stack is the PRE-state's, so its
-  -- values need the frontier monotonicity the body's step provides.
-  wf-loop-go : ∀ (n : ℕ) (body : AbstractTrace) (ls : LocState FS) (alloc : AllocState {FS})
-             → StoreWF (next-heap-ref alloc) ls
-             → Preserves ls alloc
-                 (exec-loop n body
-                   (record (proj₁ (exec-trace body ls alloc)) { stackMem = stackMem ls })
-                   (record (proj₂ (exec-trace body ls alloc))
-                     { current-frame = current-frame alloc ; next-slot = next-slot alloc }))
-  wf-loop-go n body ls alloc wf =
-    proj₁ rec , ≤-trans (proj₂ step) (proj₂ rec)
-    where
-      step = wf-trace body ls alloc wf
-      ls'  = proj₁ (exec-trace body ls alloc)
-      al'  = proj₂ (exec-trace body ls alloc)
-      ls'' = record ls' { stackMem = stackMem ls }
-      al'' = record al' { current-frame = current-frame alloc ; next-slot = next-slot alloc }
-      wf'' : StoreWF (next-heap-ref al'') ls''
-      wf'' = record
-        { wf-regs  = wf-regs (proj₁ step)
-        ; wf-heap  = wf-heap (proj₁ step)
-        ; wf-stack = λ f k → svm-mono (stackMem ls f k) (proj₂ step) (wf-stack wf f k)
-        ; wf-fresh = wf-fresh (proj₁ step) }
-      rec = wf-loop n body ls'' al'' wf''
 
 ------------------------------------------------------------------------
 -- Lifted to the FLAT machine: the same invariant, indexed by a FlatState.

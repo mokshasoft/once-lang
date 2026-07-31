@@ -263,6 +263,39 @@ regtag-slot-load-in1 nothing  ls alloc wf = regtag-halt wf
 -- to transport and no monotonicity side-condition — the loop case re-anchors
 -- the stack, which `RegTagWF` cannot see.
 ------------------------------------------------------------------------
+-- THE LOOP, as a plain FUEL induction over the reified `exec-loop-run`
+-- (2026-07-31). It takes "the body runner preserves the invariant" as a
+-- hypothesis and never calls into the mutual block, so it is structural — this
+-- is what retired the `{-# TERMINATING #-}` this proof used to carry.
+------------------------------------------------------------------------
+mutual
+  regtag-loop-run : ∀ (run : BodyRunner) (fuel : ℕ) (ls : LocState FS) (alloc : AllocState {FS})
+                  → (∀ ls' alloc' → RegTagWF ls' → RegTagWF (proj₁ (run ls' alloc')))
+                  → RegTagWF ls → RegTagWF (proj₁ (exec-loop-run run fuel ls alloc))
+  regtag-loop-run run zero    ls alloc h wf = regtag-halt wf
+  regtag-loop-run run (suc n) ls alloc h wf with halted ls
+  ... | true  = wf
+  ... | false with readReg (regs ls) Scratch
+  ...   | SV-Tag zero    = wf
+  ...   | SV-Tag (suc m) = regtag-loop-run-go run n ls alloc h wf
+  ...   | SV-Ptr _       = regtag-loop-run-go run n ls alloc h wf
+  ...   | SV-Lit _ _     = regtag-loop-run-go run n ls alloc h wf
+  ...   | SV-Code _      = regtag-loop-run-go run n ls alloc h wf
+
+  -- one iteration: run the body, RE-ANCHOR the stack/frame, recurse on fuel.
+  -- The re-anchoring is invisible to this invariant (it touches `stackMem` and
+  -- the frame fields, not `regs`), so the body's witness transports by `refl`.
+  regtag-loop-run-go : ∀ (run : BodyRunner) (n : ℕ) (ls : LocState FS) (alloc : AllocState {FS})
+                     → (∀ ls' alloc' → RegTagWF ls' → RegTagWF (proj₁ (run ls' alloc')))
+                     → RegTagWF ls
+                     → RegTagWF (proj₁ (exec-loop-run run n
+                         (loop-reanchor-loc ls (proj₁ (run ls alloc)))
+                         (loop-reanchor-alloc alloc (proj₂ (run ls alloc)))))
+  regtag-loop-run-go run n ls alloc h wf =
+    regtag-loop-run run n _ _ h
+      (regtag-transport (proj₁ (run ls alloc)) refl refl (h ls alloc wf))
+
+------------------------------------------------------------------------
 mutual
   regtag-abstract : ∀ (i : AbstractInstr) (ls : LocState FS) (alloc : AllocState {FS})
                   → RegTagWF ls → RegTagWF (proj₁ (exec-abstract i ls alloc))
@@ -317,7 +350,9 @@ mutual
   regtag-abstract (instr-case-on-tag f g) ls alloc wf = regtag-case (case-tag-at ls) f g ls alloc wf
   regtag-abstract (instr-alloc-heap n) ls alloc wf =
     regtag-write-nc Output tt _ wf
-  regtag-abstract (instr-loop body) ls alloc wf = regtag-loop 1000000 body ls alloc wf
+  regtag-abstract (instr-loop body) ls alloc wf =
+    regtag-loop-run (exec-trace body) 1000000 ls alloc
+      (λ ls' alloc' → regtag-trace body ls' alloc') wf
   -- THE COUNTER WRITES. All six produce a tag unconditionally; `scratch-dec`
   -- and `count-inc` do so BY THE INVARIANT (`sv-pred`/`sv-succ` of a tag),
   -- `scratch-load-count` by the other half of it.
@@ -355,41 +390,6 @@ mutual
   regtag-case (just (SV-Lit _ _))     f g ls alloc wf = regtag-halt wf
   regtag-case (just (SV-Code _))      f g ls alloc wf = regtag-halt wf
   regtag-case nothing                 f g ls alloc wf = regtag-halt wf
-
-  -- Mirrors `exec-loop`'s own TERMINATING recursion (the fuel decrease is lost
-  -- across the `exec-trace body` boundary — same argument).
-  {-# TERMINATING #-}
-  regtag-loop : ∀ (fuel : ℕ) (body : AbstractTrace) (ls : LocState FS)
-                  (alloc : AllocState {FS})
-              → RegTagWF ls → RegTagWF (proj₁ (exec-loop fuel body ls alloc))
-  regtag-loop zero body ls alloc wf = regtag-halt wf
-  regtag-loop (suc n) body ls alloc wf with halted ls
-  ... | true  = wf
-  ... | false with readReg (regs ls) Scratch
-  ...   | SV-Tag zero    = wf
-  ...   | SV-Tag (suc m) = regtag-loop-go n body ls alloc wf
-  ...   | SV-Ptr _       = regtag-loop-go n body ls alloc wf
-  ...   | SV-Lit _ _     = regtag-loop-go n body ls alloc wf
-  ...   | SV-Code _      = regtag-loop-go n body ls alloc wf
-
-  -- one iteration: run the body, RE-ANCHOR the stack/frame, recurse on fuel.
-  -- The re-anchoring is invisible to this invariant (it touches `stackMem` and
-  -- the frame fields, not `regs`), so the body's witness transports by `refl`.
-  regtag-loop-go : ∀ (n : ℕ) (body : AbstractTrace) (ls : LocState FS)
-                     (alloc : AllocState {FS})
-                 → RegTagWF ls
-                 → RegTagWF (proj₁ (exec-loop n body
-                     (record (proj₁ (exec-trace body ls alloc)) { stackMem = stackMem ls })
-                     (record (proj₂ (exec-trace body ls alloc))
-                       { current-frame = current-frame alloc ; next-slot = next-slot alloc })))
-  regtag-loop-go n body ls alloc wf = regtag-loop n body ls'' al'' wf''
-    where
-      ls'  = proj₁ (exec-trace body ls alloc)
-      al'  = proj₂ (exec-trace body ls alloc)
-      ls'' = record ls' { stackMem = stackMem ls }
-      al'' = record al' { current-frame = current-frame alloc ; next-slot = next-slot alloc }
-      wf'' : RegTagWF ls''
-      wf'' = regtag-transport ls' refl refl (regtag-trace body ls alloc wf)
 
 ------------------------------------------------------------------------
 -- Lifted to the FLAT machine.

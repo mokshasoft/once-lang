@@ -1541,6 +1541,46 @@ module AbstractExec {FS : FrameSemantics} where
   ... | just loc = readLoc s loc
   ... | nothing  = nothing
 
+  ------------------------------------------------------------------------
+  -- THE LOOP, REIFIED (2026-07-31). `exec-loop` used to sit INSIDE the mutual
+  -- block and call `exec-trace body` directly, which cost a `{-# TERMINATING #-}`
+  -- — foetus lost the fuel decrease across that boundary (`exec-trace` carries no
+  -- fuel, and a nested `instr-loop` resets fuel to `loopFuel`). A pragma is a
+  -- postulate in disguise (D062), and this one was replicated in every proof that
+  -- mirrors the loop.
+  --
+  -- Abstracting the body runner away fixes it: `exec-loop-run` recurses on FUEL
+  -- ALONE, structurally, with no call into the mutual block at all. The mutual
+  -- block supplies `exec-trace body` as that runner — a call whose argument
+  -- `body` is a strict subterm of `instr-loop body`, which foetus does see.
+  --
+  -- The same reification carries the PROOFS: their loop lemmas become plain fuel
+  -- inductions taking "the runner preserves P" as a hypothesis, and lose their
+  -- pragmas too.
+  ------------------------------------------------------------------------
+  BodyRunner : Set
+  BodyRunner = LocState FS → AllocState {FS} → LocState FS × AllocState {FS}
+
+  -- one iteration's re-anchoring: the loop RESTORES the stack state
+  -- (`stackMem`, `current-frame`, `next-slot`) after the body, keeping only
+  -- register and heap progress. See the frame-balance note below.
+  loop-reanchor-loc : LocState FS → LocState FS → LocState FS
+  loop-reanchor-loc s s' = record s' { stackMem = stackMem s }
+
+  loop-reanchor-alloc : AllocState {FS} → AllocState {FS} → AllocState {FS}
+  loop-reanchor-alloc alloc alloc' =
+    record alloc' { current-frame = current-frame alloc ; next-slot = next-slot alloc }
+
+  exec-loop-run : BodyRunner → ℕ → LocState FS → AllocState {FS} →
+                  LocState FS × AllocState {FS}
+  exec-loop-run run zero    s alloc = record s { halted = true } , alloc
+  exec-loop-run run (suc n) s alloc with halted s
+  ... | true  = s , alloc
+  ... | false with readReg (regs s) Scratch
+  ...   | SV-Tag 0 = s , alloc
+  ...   | _        = exec-loop-run run n (loop-reanchor-loc s (proj₁ (run s alloc)))
+                                         (loop-reanchor-alloc alloc (proj₂ (run s alloc)))
+
   -- Plan 0.13.1: mutually recursive with exec-trace (case-on-tag
   -- dispatches into one of two sub-traces).
   exec-abstract : AbstractInstr → LocState FS → AllocState {FS} →
@@ -1549,12 +1589,9 @@ module AbstractExec {FS : FrameSemantics} where
                LocState FS × AllocState {FS}
   -- Plan 0.29: fuel-bounded execution of a loop body. Re-runs `body`
   -- while the `Scratch` register is a nonzero counter; the body updates
-  -- `Scratch` each iteration. `TERMINATING`: the function DOES terminate
-  -- (every call has finite fuel and `exec-trace`/`exec-abstract` are
-  -- structural), but foetus can't see it — the fuel decrease is lost
-  -- across the `exec-trace body` boundary (it doesn't carry fuel), and
-  -- a nested `instr-loop` resets fuel to `loopFuel`. Sound by the same
-  -- argument the x86 `Semantics.exec` fuel model relies on.
+  -- `Scratch` each iteration. Since 2026-07-31 this is a WRAPPER around the
+  -- reified `exec-loop-run` above — same reduction behaviour, structural
+  -- recursion, and the `{-# TERMINATING #-}` pragma is gone.
   exec-loop : ℕ → AbstractTrace → LocState FS → AllocState {FS} →
               LocState FS × AllocState {FS}
   -- Plan 0.30: branch dispatcher for case-on-tag. Mutually recursive with
@@ -1803,18 +1840,7 @@ module AbstractExec {FS : FrameSemantics} where
   -- of `body` — the ~50 per-instruction invariant lemmas hold without a
   -- body hypothesis. Sound in heap mode (the body never uses the stack;
   -- its data lives on the heap). See Plan 0.29 D1b.
-  {-# TERMINATING #-}
-  exec-loop zero    _    s alloc = record s { halted = true } , alloc
-  exec-loop (suc n) body s alloc with halted s
-  ... | true  = s , alloc
-  ... | false with readReg (regs s) Scratch
-  ...   | SV-Tag 0 = s , alloc
-  ...   | _        = let (s' , alloc') = exec-trace body s alloc
-                         s''     = record s' { stackMem = stackMem s }
-                         alloc'' = record alloc'
-                                     { current-frame = current-frame alloc
-                                     ; next-slot     = next-slot alloc }
-                     in exec-loop n body s'' alloc''
+  exec-loop n body s alloc = exec-loop-run (exec-trace body) n s alloc
 
   -- Plan 0.30: dispatch on the tag read. tag 0 → f, tag ≥ 1 → g,
   -- anything else (no pointer / non-tag cell) → halt (malformed input).

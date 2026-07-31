@@ -137,6 +137,37 @@ ss-reg-op ls count-zero         = ss-write ls Count (SV-Tag 0)
 ss-reg-op ls count-inc          = ss-write ls Count (sv-succ (readReg (regs ls) Count))
 
 ------------------------------------------------------------------------
+-- THE LOOP, as a plain FUEL induction over the reified `exec-loop-run`
+-- (2026-07-31). It takes "the body runner preserves the window" as a
+-- hypothesis and never calls into the mutual block, so it is structural — this
+-- is what retired the `{-# TERMINATING #-}` this proof used to carry.
+------------------------------------------------------------------------
+mutual
+  ss-loop-run : ∀ (run : BodyRunner) (fuel : ℕ) (ls : LocState FS) (alloc : AllocState {FS})
+              → (∀ ls' alloc' → SameSlot (proj₁ (run ls' alloc')) ls')
+              → SameSlot (proj₁ (exec-loop-run run fuel ls alloc)) ls
+  ss-loop-run run zero    ls alloc h = refl
+  ss-loop-run run (suc n) ls alloc h with halted ls
+  ... | true  = refl
+  ... | false with readReg (regs ls) Scratch
+  ...   | SV-Tag zero    = refl
+  ...   | SV-Tag (suc m) = ss-loop-run-go run n ls alloc h
+  ...   | SV-Ptr _       = ss-loop-run-go run n ls alloc h
+  ...   | SV-Lit _ _     = ss-loop-run-go run n ls alloc h
+  ...   | SV-Code _      = ss-loop-run-go run n ls alloc h
+
+  -- one iteration: run the body, RE-ANCHOR the stack/frame, recurse on fuel.
+  -- The re-anchoring touches `stackMem` and the frame fields, not `regs`, so
+  -- the body's equation transports unchanged.
+  ss-loop-run-go : ∀ (run : BodyRunner) (n : ℕ) (ls : LocState FS) (alloc : AllocState {FS})
+                 → (∀ ls' alloc' → SameSlot (proj₁ (run ls' alloc')) ls')
+                 → SameSlot (proj₁ (exec-loop-run run n
+                     (loop-reanchor-loc ls (proj₁ (run ls alloc)))
+                     (loop-reanchor-alloc alloc (proj₂ (run ls alloc))))) ls
+  ss-loop-run-go run n ls alloc h =
+    trans (ss-loop-run run n _ _ h) (h ls alloc)
+
+------------------------------------------------------------------------
 -- THE INDUCTION over the structured semantics.
 ------------------------------------------------------------------------
 mutual
@@ -191,7 +222,8 @@ mutual
   ss-abstract (instr-alloc-heap n)     ls alloc ff =
     ss-write ls Output
       (SV-Ptr (AtDynamic (proj₁ (AI.alloc-impl n (next-heap-ref alloc)))))
-  ss-abstract (instr-loop body)        ls alloc ff = ss-loop 1000000 body ls alloc ff
+  ss-abstract (instr-loop body)        ls alloc ff =
+    ss-loop-run (exec-trace body) 1000000 ls alloc (λ ls' alloc' → ss-trace body ls' alloc' ff)
   ss-abstract (instr-reg-op op)        ls alloc ff = ss-reg-op ls op
   ss-abstract (instr-ctrl c)           ls alloc ff = refl
 
@@ -215,39 +247,6 @@ mutual
   ss-case (just (SV-Lit _ _))     f g ls alloc fff ffg = refl
   ss-case (just (SV-Code _))      f g ls alloc fff ffg = refl
   ss-case nothing                 f g ls alloc fff ffg = refl
-
-  -- Mirrors `exec-loop`'s own TERMINATING recursion (the fuel decrease is lost
-  -- across the `exec-trace body` boundary — same argument).
-  {-# TERMINATING #-}
-  ss-loop : ∀ (fuel : ℕ) (body : AbstractTrace) (ls : LocState FS) (alloc : AllocState {FS})
-          → FrameFreeT body
-          → SameSlot (proj₁ (exec-loop fuel body ls alloc)) ls
-  ss-loop zero    body ls alloc ff = refl
-  ss-loop (suc n) body ls alloc ff with halted ls
-  ... | true  = refl
-  ... | false with readReg (regs ls) Scratch
-  ...   | SV-Tag zero    = refl
-  ...   | SV-Tag (suc m) = ss-loop-go n body ls alloc ff
-  ...   | SV-Ptr _       = ss-loop-go n body ls alloc ff
-  ...   | SV-Lit _ _     = ss-loop-go n body ls alloc ff
-  ...   | SV-Code _      = ss-loop-go n body ls alloc ff
-
-  -- one iteration: run the body, RE-ANCHOR the stack/frame, recurse on fuel.
-  -- The re-anchoring touches `stackMem` and the frame fields, not `regs`, so
-  -- the body's equation transports unchanged.
-  ss-loop-go : ∀ (n : ℕ) (body : AbstractTrace) (ls : LocState FS) (alloc : AllocState {FS})
-             → FrameFreeT body
-             → SameSlot (proj₁ (exec-loop n body
-                 (record (proj₁ (exec-trace body ls alloc)) { stackMem = stackMem ls })
-                 (record (proj₂ (exec-trace body ls alloc))
-                   { current-frame = current-frame alloc ; next-slot = next-slot alloc }))) ls
-  ss-loop-go n body ls alloc ff =
-    trans (ss-loop n body ls'' al'' ff) (ss-trace body ls alloc ff)
-    where
-      ls'  = proj₁ (exec-trace body ls alloc)
-      al'  = proj₂ (exec-trace body ls alloc)
-      ls'' = record ls' { stackMem = stackMem ls }
-      al'' = record al' { current-frame = current-frame alloc ; next-slot = next-slot alloc }
 
 ------------------------------------------------------------------------
 -- Lifted to the FLAT machine. The control cases move `fpc`/`halted` only; the
