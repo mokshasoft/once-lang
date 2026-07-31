@@ -4,39 +4,39 @@
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.FrameFreeTrace   (Plan 0.54 rung D, item 2)
 --
--- THE FRAME OPS HAVE NO PRODUCER. No main trace `ir-to-trace` emits contains
+-- THE FRAME OPS HAVE NO PRODUCER. No trace `ir-to-trace` emits contains
 -- `instr-alloc-stack` / `instr-dealloc-stack` / `instr-push-frame` /
--- `instr-pop-frame`: each per-arch backend brackets a trace with
--- `subq $budget*8, %rsp` / `addq` of its own accord (`ir-stack-budget`), so the
--- four abstract frame instructions have no producer in the live codegen at all.
--- They survive only in the legacy IR-WF layer.
+-- `instr-pop-frame` — not in the main trace, and not in any nested
+-- (`instr-case-on-tag`) branch either. Each per-arch backend brackets a trace
+-- with `subq $budget*8, %rsp` / `addq` of its own accord (`ir-stack-budget`), so
+-- those four abstract instructions have no producer in the live codegen at all;
+-- they survive only in the legacy IR-WF layer.
 --
 -- THIS DISCHARGES `ConcFlatSim.frame-op-absurd`, which is what the flat↔x86-64
--- correspondence asks of the emitter: every residual there is conditioned on
--- `RunAt prog fs = Emitted prog × Reachable prog fs`, and `Emitted prog` says
--- `prog ≡ ir-to-trace ir`. So a fetched frame op at such a site is ABSURD, and
--- the eleven residuals that used to condition the four frame dispatch clauses
--- (`alloc-stack-entry`, `alloc-stack-fresh-{abs,x86}`, `stack-room`,
--- `dealloc-stack-{full,restores}`, `frame-room`, `pop-frame-{empty,saved,
--- restores}`, `pop-room`) are gone with their sites.
+-- correspondence asks of the emitter: every residual there is conditioned on a
+-- run context containing `Emitted prog` (`prog ≡ ir-to-trace ir`), so a fetched
+-- frame op at such a site is ABSURD. That deleted the eleven residuals which
+-- used to condition the four frame dispatch clauses (`alloc-stack-entry`,
+-- `alloc-stack-fresh-{abs,x86}`, `stack-room`, `dealloc-stack-{full,restores}`,
+-- `frame-room`, `pop-frame-{empty,saved,restores}`, `pop-room`).
 --
--- Scope: the TOP-LEVEL trace, which is exactly what `fetch` reads. A nested
--- trace inside `instr-case-on-tag` / `instr-loop` is an ARGUMENT of the
--- instruction (`fpc` never indexes into it) and a closure body lands in the
--- separate bodies list — so the `case` / `curry` clauses stay one-liners.
+-- DEPTH: the predicate (`Once.CCC.Machine.FrameFree`) is deep, because one flat
+-- step at an `instr-case-on-tag` runs a whole NESTED trace — and the stackSlot
+-- invariance the slot residuals need must survive that step. `curry` bodies are
+-- a separate matter: they land in the bodies list, not in this trace, so the
+-- `curry` clauses stay one-liners.
 --
 -- Shape: the induction of `Once.CCC.Codegen.StraightTrace` (`All P` over
 -- `trace-of (ir-to-trace' n l ir)`, `++⁺` at every splice). Unlike that one,
 -- `Cata` is NOT excluded — the cata codegen emits no frame op either, in any of
--- its three strategies or in the functor-driven `visit-walk` / `rebuild-walk`
--- node walks — so this theorem is unconditional in `ir`.
+-- its three strategies or in the compile-time functor walks `visit-walk` /
+-- `rebuild-walk` — so this theorem is unconditional in `ir`.
 ------------------------------------------------------------------------
 
 module Once.CCC.Codegen.FrameFreeTrace where
 
 open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
@@ -53,30 +53,15 @@ open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using
-  (AbstractInstr; AbstractTrace;
-   instr-alloc-stack; instr-dealloc-stack; instr-push-frame; instr-pop-frame)
+  (AbstractInstr; AbstractTrace; load-indirect-suc; mov-to-input)
+open import Once.CCC.Machine.FrameFree using
+  (FrameFreeI; FrameFreeT; frame-free-nest)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.IRToTrace using
   (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
    cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk)
-
-------------------------------------------------------------------------
--- The predicate. Positive cases go through a CATCHALL, which still REDUCES on
--- a concrete constructor (the case tree splits on the head), so every
--- non-frame instruction's witness is `tt` and every frame one's goal is `⊥`.
-------------------------------------------------------------------------
-FrameFree : AbstractInstr → Set
-FrameFree (instr-alloc-stack _)   = ⊥
-FrameFree (instr-dealloc-stack _) = ⊥
-FrameFree (instr-push-frame _)    = ⊥
-FrameFree instr-pop-frame         = ⊥
-{-# CATCHALL #-}
-FrameFree _                       = ⊤
-
-FrameFreeTrace : AbstractTrace → Set
-FrameFreeTrace = All FrameFree
 
 -- third projection of `ir-to-trace'`'s 4-tuple / of `cata-dispatch`'s 3-tuple
 -- (record patterns, so they reduce under eta — unlike IRToTrace's own
@@ -86,6 +71,21 @@ trace-of (_ , _ , t , _) = t
 
 cata-trace-of : ℕ × ℕ × AbstractTrace → AbstractTrace
 cata-trace-of (_ , _ , t) = t
+
+-- This induction carries the `All` form: it is a DATATYPE, so `++⁺` unifies at
+-- every splice `t₁ ++ t₂` (the equivalent `FrameFreeT` is a recursive product,
+-- under which a spliced goal has already lost its `++` structure).
+-- `frame-free-nest` converts, at the nested-branch obligations only.
+FrameFreeTrace : AbstractTrace → Set
+FrameFreeTrace = All FrameFreeI
+
+-- Every `instr-case-on-tag` branch the emitter builds is the two-instruction
+-- sum-branch prologue followed by a body. Stated with the branch trace as an
+-- ARGUMENT (not read off the goal): at a nested obligation the goal has already
+-- reduced to a product, so it no longer says which instructions it is about.
+branch-ff : ∀ {t} → FrameFreeTrace t
+          → FrameFreeT (load-indirect-suc ∷ mov-to-input ∷ t)
+branch-ff ff = tt , tt , frame-free-nest ff
 
 ------------------------------------------------------------------------
 -- The heap-linked-stack bricks the cata codegen is built from.
@@ -101,28 +101,34 @@ wrap-sum-ff tag s = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt �
 
 ------------------------------------------------------------------------
 -- The compile-time functor walks (Tier 2). A sum node's dispatch is ONE
--- `instr-case-on-tag` whose branches are arguments, so the `⊕` cases are
--- single-element lists with no recursive obligation.
+-- `instr-case-on-tag`, whose two branch bodies are the walk's own recursive
+-- calls — this is where the predicate's DEPTH earns its keep.
 ------------------------------------------------------------------------
 visit-walk-ff : ∀ todoSlot tv tb F s → FrameFreeTrace (visit-walk todoSlot tv tb F s)
 visit-walk-ff todoSlot tv tb (K _)   s = []
 visit-walk-ff todoSlot tv tb Id      s = tt ∷ push2-ff todoSlot tv tb
-visit-walk-ff todoSlot tv tb (F ⊕ G) s = tt ∷ []
+visit-walk-ff todoSlot tv tb (F ⊕ G) s =
+  ( branch-ff (visit-walk-ff todoSlot tv tb F (s + 4))
+  , branch-ff (visit-walk-ff todoSlot tv tb G (s + 4)) )
+  ∷ []
 visit-walk-ff todoSlot tv tb (F ⊗ G) s =
   ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
-      (++⁺ (visit-walk-ff todoSlot tv tb G _)
+      (++⁺ (visit-walk-ff todoSlot tv tb G (s + 4))
            (++⁺ (tt ∷ tt ∷ tt ∷ [])
-                (visit-walk-ff todoSlot tv tb F _)))
+                (visit-walk-ff todoSlot tv tb F (s + 4))))
 
 rebuild-walk-ff : ∀ valSlot tv tb F s → FrameFreeTrace (rebuild-walk valSlot tv tb F s)
 rebuild-walk-ff valSlot tv tb (K _)   s = tt ∷ []
 rebuild-walk-ff valSlot tv tb Id      s = pop2-ff valSlot
-rebuild-walk-ff valSlot tv tb (F ⊕ G) s = tt ∷ []
+rebuild-walk-ff valSlot tv tb (F ⊕ G) s =
+  ( branch-ff (++⁺ (rebuild-walk-ff valSlot tv tb F (s + 4)) (wrap-sum-ff 0 s))
+  , branch-ff (++⁺ (rebuild-walk-ff valSlot tv tb G (s + 4)) (wrap-sum-ff 1 s)) )
+  ∷ []
 rebuild-walk-ff valSlot tv tb (F ⊗ G) s =
   ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
-      (++⁺ (rebuild-walk-ff valSlot tv tb F _)
+      (++⁺ (rebuild-walk-ff valSlot tv tb F (s + 4))
            (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
-                (++⁺ (rebuild-walk-ff valSlot tv tb G _)
+                (++⁺ (rebuild-walk-ff valSlot tv tb G (s + 4))
                      (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []))))
 
 ------------------------------------------------------------------------
@@ -137,7 +143,7 @@ cata-nat-ff n1 l1 at ff =
       (tt ∷ tt ∷ tt ∷
        ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])       -- build-layer 0
            (tt ∷ ++⁺ ff
-             -- ascend-flat = 2 loop instrs, ascend-body, then jmp/label
+             -- ascend-flat: two loop instrs, ascend-body, then jmp/label
              (tt ∷ tt ∷
               ++⁺ (tt ∷ ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
                             (tt ∷ ++⁺ ff (tt ∷ [])))
@@ -145,9 +151,7 @@ cata-nat-ff n1 l1 at ff =
 
 cata-linear-ff : ∀ n1 l1 at → FrameFreeTrace at
                → FrameFreeTrace (cata-trace-of (cata-trace-linear n1 l1 at))
-cata-linear-ff n1 l1 at ff =
-  ++⁺ descend
-      (tt ∷ ++⁺ ff ascend)
+cata-linear-ff n1 l1 at ff = ++⁺ descend (tt ∷ ++⁺ ff ascend)
   where
     descend : FrameFreeTrace _
     descend = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
@@ -169,18 +173,20 @@ cata-branching-ff F n1 l1 at ff =
     flatten = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
                   (++⁺ (push2-ff (suc n1) (n1 + 4) (n1 + 5))
                        (++⁺ (tt ∷ tt ∷ [])
-                            (++⁺ (visit-walk-ff n1 (n1 + 4) (n1 + 5) F (n1 + 7)) (tt ∷ tt ∷ []))))
+                            (++⁺ (visit-walk-ff n1 (n1 + 4) (n1 + 5) F (n1 + 7))
+                                 (tt ∷ tt ∷ []))))
     fold : FrameFreeTrace _
     fold = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
                (++⁺ (rebuild-walk-ff (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7))
                     (++⁺ (tt ∷ [])
-                         (++⁺ ff (++⁺ (push2-ff (n1 + 2) (n1 + 4) (n1 + 5)) (tt ∷ tt ∷ [])))))
+                         (++⁺ ff (++⁺ (push2-ff (n1 + 2) (n1 + 4) (n1 + 5))
+                                      (tt ∷ tt ∷ [])))))
 
 cata-dispatch-ff : ∀ st n1 l1 at → FrameFreeTrace at
                  → FrameFreeTrace (cata-trace-of (cata-dispatch st n1 l1 at))
-cata-dispatch-ff strat-const        n1 l1 at ff = ff
-cata-dispatch-ff strat-nat          n1 l1 at ff = cata-nat-ff n1 l1 at ff
-cata-dispatch-ff strat-linear       n1 l1 at ff = cata-linear-ff n1 l1 at ff
+cata-dispatch-ff strat-const         n1 l1 at ff = ff
+cata-dispatch-ff strat-nat           n1 l1 at ff = cata-nat-ff n1 l1 at ff
+cata-dispatch-ff strat-linear        n1 l1 at ff = cata-linear-ff n1 l1 at ff
 cata-dispatch-ff (strat-branching F) n1 l1 at ff = cata-branching-ff F n1 l1 at ff
 
 ------------------------------------------------------------------------
@@ -188,12 +194,12 @@ cata-dispatch-ff (strat-branching F) n1 l1 at ff = cata-branching-ff F n1 l1 at 
 ------------------------------------------------------------------------
 frame-free-trace' : ∀ {A B} (ir : IR A B) (n l : ℕ)
                   → FrameFreeTrace (trace-of (ir-to-trace' n l ir))
-frame-free-trace' id      n l = tt ∷ []
-frame-free-trace' fst     n l = tt ∷ []
-frame-free-trace' snd     n l = tt ∷ []
+frame-free-trace' id       n l = tt ∷ []
+frame-free-trace' fst      n l = tt ∷ []
+frame-free-trace' snd      n l = tt ∷ []
 frame-free-trace' terminal n l = []
-frame-free-trace' initial n l = tt ∷ []
-frame-free-trace' (g ∘ f) n l =
+frame-free-trace' initial  n l = tt ∷ []
+frame-free-trace' (g ∘ f)  n l =
   ++⁺ (frame-free-trace' f _ _) (tt ∷ frame-free-trace' g _ _)
 frame-free-trace' (⟨ f , g ⟩ Stack) n l =
   tt ∷ tt ∷
@@ -217,9 +223,14 @@ frame-free-trace' (inl Heap)  n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 frame-free-trace' (inr Heap)  n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-frame-free-trace' (case f g) n l = tt ∷ []
-frame-free-trace' (In _ _)   n l = tt ∷ []
-frame-free-trace' (out-μ _)  n l = tt ∷ []
+-- the ONE nested case in the IR-driven emitter: both branch bodies are
+-- themselves emitted traces, so the depth obligation is the two IHs.
+frame-free-trace' (case f g) n l =
+  ( branch-ff (frame-free-trace' f _ _)
+  , branch-ff (frame-free-trace' g _ _) )
+  ∷ []
+frame-free-trace' (In _ _)  n l = tt ∷ []
+frame-free-trace' (out-μ _) n l = tt ∷ []
 frame-free-trace' (Cata {F} _ alg) n l =
   cata-dispatch-ff (cata-strategy ⌈ F ⌉F) _ _ _ (frame-free-trace' alg n l)
 frame-free-trace' (Para _ _)     n l = []
@@ -246,9 +257,13 @@ frame-free-at-frontier ir n with ir-to-trace' n 0 ir | frame-free-trace' ir n 0
 ir-to-trace-frame-free : ∀ {A B} (ir : IR A B) → FrameFreeTrace (ir-to-trace ir)
 ir-to-trace-frame-free ir = frame-free-at-frontier ir 0
 
+-- …and as the DEEP trace predicate, for the nested obligations downstream.
+ir-to-trace-frame-free-deep : ∀ {A B} (ir : IR A B) → FrameFreeT (ir-to-trace ir)
+ir-to-trace-frame-free-deep ir = frame-free-nest (ir-to-trace-frame-free ir)
+
 module _ {FS : FrameSemantics} where
   open FlatMachine {FS}
 
   fetch-frame-free : ∀ {A B} (ir : IR A B) {k i}
-                   → fetch (ir-to-trace ir) k ≡ just i → FrameFree i
+                   → fetch (ir-to-trace ir) k ≡ just i → FrameFreeI i
   fetch-frame-free ir = fetch-All (ir-to-trace-frame-free ir)

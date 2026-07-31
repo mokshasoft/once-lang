@@ -63,7 +63,8 @@ open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
         ; find-label-none-corr; fetch-block-2nd)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
-open import Once.CCC.Codegen.FrameFreeTrace using (FrameFree; fetch-frame-free)
+open import Once.CCC.Machine.FrameFree using (FrameFreeI)
+open import Once.CCC.Codegen.FrameFreeTrace using (fetch-frame-free)
 open import Once.IR using (IR; Unit)
 open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
 
@@ -216,12 +217,13 @@ RunAt prog fs = Emitted prog × Reachable prog fs
 -- of stating it this way rather than proving each: they were facts about matched
 -- prologue/epilogue pairs the emitter never produces.
 --
--- `FrameFree` and its emitter induction live in the codegen layer
+-- `FrameFreeI` (`Once.CCC.Machine.FrameFree`) and its emitter induction live
+-- below this layer
 -- (`Once.CCC.Codegen.FrameFreeTrace`) — this is a fact about `ir-to-trace`, not
 -- about the machine. Here it is only APPLIED, at the `Emitted` witness the run
 -- context already carries.
 frame-op-absurd : ∀ prog (fs : FlatState) (i : AbstractInstr) → Emitted prog
-                → fetch prog (fpc fs) ≡ just i → FrameFree i
+                → fetch prog (fpc fs) ≡ just i → FrameFreeI i
 frame-op-absurd .(ir-to-trace ir) fs i (ir , refl) ftq = fetch-frame-free {FS} ir ftq
 
 flat-inv-step : ∀ {ev env} (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
