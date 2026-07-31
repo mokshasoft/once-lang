@@ -55,7 +55,7 @@ open import Once.CCC.Codegen.IRToTrace
 
 module CataIRSlotStable {FS : FrameSemantics} where
   open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
-  open CataNextSlot {FS} using (SlotStable; AllSlotStable)
+  open CataNextSlot {FS} using (SlotStable; SlotStableT; AllSlotStable)
   open AbstractExec {FS} using (AllI)
 
   -- the trace component of `ir-to-trace'`'s 4-tuple (proj-trace is private
@@ -63,10 +63,11 @@ module CataIRSlotStable {FS : FrameSemantics} where
   trc : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace) → AbstractTrace
   trc (_ , _ , t , _) = t
 
-  -- stdlib `All SlotStable` → SMCore's custom `AllI SlotStable` (used by
-  -- `case`/`SlotStable (case-on-tag …)`). A genuine conversion between the
-  -- two all-encodings (no stdlib equivalent — `AllI` is custom).
-  All→AllI : ∀ {t} → All SlotStable t → AllI SlotStable t
+  -- stdlib `All SlotStable` → the spelled-out `SlotStableT` that
+  -- `SlotStable (instr-case-on-tag …)` now asks for. (It used to target
+  -- SMCore's `AllI SlotStable`; the predicate moved to a mutual definition so
+  -- that its recursion is structural — see CataNextSlot, 2026-07-31.)
+  All→AllI : ∀ {t} → All SlotStable t → SlotStableT t
   All→AllI []ᴬ        = tt
   All→AllI (px ∷ᴬ ps) = px , All→AllI ps
 
@@ -144,7 +145,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- Rest) ++ final-read` shape is a NEUTRAL `++` that `++⁺` cannot split;
   -- the boolean equation navigates associativity cleanly instead.
   ----------------------------------------------------------------------
-  AllI→All : ∀ {t} → AllI SlotStable t → All SlotStable t
+  AllI→All : ∀ {t} → SlotStableT t → All SlotStable t
   AllI→All {[]}     _        = []ᴬ
   AllI→All {_ ∷ _} (px , ps) = px ∷ᴬ AllI→All ps
 

@@ -27,21 +27,22 @@
 
 module Once.CCC.Codegen.CataNextSlot where
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ; zero; suc)
 open import Data.Bool using (true; false)
 open import Data.Maybe using (just; nothing)
 open import Data.Unit using (⊤)
 open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List)
+open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All)
-open import Data.Product using (_×_; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Data.Product using (_×_; _,_; proj₁)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Allocation using (current-frame; next-slot; AllocState)
 open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Scratch; AtStack; AbstractInstr; AbstractTrace; LocState; StoredValue;
+         SV-Tag; SV-Ptr; SV-Lit; SV-Code;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
          load-from-slot; restore-input; instr-alloc-stack; instr-reclaim-to; instr-loop;
          instr-case-on-tag;
@@ -58,7 +59,7 @@ open import Data.Product using (proj₂)
 module CataNextSlot {FS : FrameSemantics} where
   open FlatMachine {FS}
   open MemOps {FS} using (readLoc)
-  open AbstractExec {FS} using (AllI; exec-abstract; exec-abstract-case-invariant;
+  open AbstractExec {FS} using (exec-abstract; exec-trace; exec-case-dispatch; case-tag-at;
                                 exec-load-from-slot-with-value; exec-restore-input-with-value)
 
   -- Maybe-helper allocator preservation (plain `refl` per case — NO `with`;
@@ -77,69 +78,98 @@ module CataNextSlot {FS : FrameSemantics} where
   -- reclaim-to (sets) do; instr-loop is a retired fossil (its exec-loop
   -- would restore next-slot, but ir-to-trace never emits it, so we exclude
   -- it rather than carry the exec-loop induction).
-  -- TERMINATING: the case-on-tag recursion (`AllI SlotStable f` calls
-  -- SlotStable on f's instructions) is structural in the sub-instructions,
-  -- but foetus can't see the decrease through the `AllI` predicate
-  -- application. Sound (sub-traces are strictly smaller).
-  {-# TERMINATING #-}
-  SlotStable : AbstractInstr → Set
-  SlotStable (instr-alloc-stack _)    = ⊥
-  SlotStable (instr-reclaim-to _)     = ⊥
-  SlotStable (instr-loop _)           = ⊥   -- retired fossil (not emitted)
-  -- case-on-tag dispatches to `exec-trace` on a sub-trace, so it preserves
-  -- next-slot iff its sub-traces do (recursive — `AllI` over the branches).
-  SlotStable (instr-case-on-tag f g)  = AllI SlotStable f × AllI SlotStable g
-  SlotStable _                        = ⊤
+  -- 2026-07-31: the trace level is SPELLED OUT (`SlotStableT`) rather than
+  -- routed through `AllI SlotStable`. Going through a predicate APPLICATION hid
+  -- the structural decrease from foetus and cost a `{-# TERMINATING #-}` — a
+  -- postulate in disguise (D062). Written mutually it is structural.
+  mutual
+    SlotStable : AbstractInstr → Set
+    SlotStable (instr-alloc-stack _)    = ⊥
+    SlotStable (instr-reclaim-to _)     = ⊥
+    SlotStable (instr-loop _)           = ⊥   -- retired fossil (not emitted)
+    -- case-on-tag dispatches to `exec-trace` on a sub-trace, so it preserves
+    -- next-slot iff its sub-traces do.
+    SlotStable (instr-case-on-tag f g)  = SlotStableT f × SlotStableT g
+    {-# CATCHALL #-}
+    SlotStable _                        = ⊤
 
-  -- exec-abstract-level next-slot preservation (the per-instruction fact
-  -- the case-on-tag recursion needs as its `pi`). Most instructions return
-  -- the same allocator (alloc-heap bumps only next-heap-ref); the memory
-  -- loads reduce through their Maybe to it; case-on-tag recurses via the
-  -- SMCore `exec-abstract-case-invariant`. TERMINATING: the case-on-tag
-  -- recursion is structural in the sub-traces (foetus can't see it through
-  -- the higher-order `exec-abstract-case-invariant`/`exec-trace` args).
-  {-# TERMINATING #-}
-  abstract-keeps-next-slot : ∀ (i : AbstractInstr) → SlotStable i
-    → ∀ (s : LocState FS) (alloc : AllocState {FS})
-    → next-slot (proj₂ (exec-abstract i s alloc)) ≡ next-slot alloc
-  abstract-keeps-next-slot (instr-ctrl _)        _ s alloc = refl
-  abstract-keeps-next-slot mov-to-output         _ s alloc = refl
-  abstract-keeps-next-slot mov-to-input          _ s alloc = refl
-  abstract-keeps-next-slot mov-output-to-input2  _ s alloc = refl
-  abstract-keeps-next-slot mov-input2-to-output  _ s alloc = refl
-  abstract-keeps-next-slot load-indirect         _ s alloc = refl
-  abstract-keeps-next-slot load-indirect-suc     _ s alloc = refl
-  abstract-keeps-next-slot (store-at-slot k)     _ s alloc = refl
-  abstract-keeps-next-slot store-indirect        _ s alloc = refl
-  abstract-keeps-next-slot store-indirect-suc    _ s alloc = refl
-  abstract-keeps-next-slot (lea-slot k)          _ s alloc = refl
-  abstract-keeps-next-slot (lea-indexed k)       _ s alloc = refl
-  abstract-keeps-next-slot (instr-dealloc-stack n) _ s alloc = refl
-  abstract-keeps-next-slot (instr-push-frame c)  _ s alloc = refl
-  abstract-keeps-next-slot instr-pop-frame       _ s alloc = refl
-  abstract-keeps-next-slot instr-call-closure    _ s alloc = refl
-  abstract-keeps-next-slot (worklist-init k)     _ s alloc = refl
-  abstract-keeps-next-slot (worklist-push k)     _ s alloc = refl
-  abstract-keeps-next-slot (worklist-check k)    _ s alloc = refl
-  abstract-keeps-next-slot (instr-sigop si)      _ s alloc = refl
-  abstract-keeps-next-slot (instr-load-const p v) _ s alloc = refl
-  abstract-keeps-next-slot (instr-load-code-addr n) _ s alloc = refl
-  abstract-keeps-next-slot instr-save-closure-reg _ s alloc = refl
-  abstract-keeps-next-slot (instr-load-tag-lit n) _ s alloc = refl
-  abstract-keeps-next-slot (instr-alloc-heap n)  _ s alloc = refl
-  abstract-keeps-next-slot (instr-reg-op op)     _ s alloc = refl
-  abstract-keeps-next-slot (worklist-pop slot)   _ s alloc =
-    cong next-slot (elfs-alloc (readLoc s (AtStack (current-frame alloc) slot)) s alloc)
-  abstract-keeps-next-slot (load-from-slot slot)  _ s alloc =
-    cong next-slot (elfs-alloc (readLoc s (AtStack (current-frame alloc) slot)) s alloc)
-  abstract-keeps-next-slot (restore-input slot)   _ s alloc =
-    cong next-slot (eris-alloc (readLoc s (AtStack (current-frame alloc) slot)) s alloc)
-  abstract-keeps-next-slot (instr-alloc-stack n) ()
-  abstract-keeps-next-slot (instr-reclaim-to n)  ()
-  abstract-keeps-next-slot (instr-loop body)     ()
-  abstract-keeps-next-slot (instr-case-on-tag f g) (aft , agt) s alloc =
-    exec-abstract-case-invariant next-slot SlotStable
-      (λ i s' alloc' si → abstract-keeps-next-slot i si s' alloc') f g aft agt s alloc
+    SlotStableT : AbstractTrace → Set
+    SlotStableT []       = ⊤
+    SlotStableT (i ∷ is) = SlotStable i × SlotStableT is
+
+  -- exec-abstract-level next-slot preservation. Most instructions return the
+  -- same allocator (alloc-heap bumps only next-heap-ref); the memory loads
+  -- reduce through their Maybe to it.
+  --
+  -- 2026-07-31: case-on-tag recurses through an EXPLICIT mutual pair
+  -- (`trace-keeps-next-slot` / `case-keeps-next-slot`) instead of the
+  -- higher-order `exec-abstract-case-invariant`. Passing the per-instruction
+  -- fact as a function ARGUMENT hid the structural decrease from foetus and
+  -- cost the second `{-# TERMINATING #-}`; spelled out, `f`/`g` are visibly
+  -- subterms of `instr-case-on-tag f g`.
+  mutual
+    abstract-keeps-next-slot : ∀ (i : AbstractInstr) → SlotStable i
+      → ∀ (s : LocState FS) (alloc : AllocState {FS})
+      → next-slot (proj₂ (exec-abstract i s alloc)) ≡ next-slot alloc
+    abstract-keeps-next-slot (instr-ctrl _)        _ s alloc = refl
+    abstract-keeps-next-slot mov-to-output         _ s alloc = refl
+    abstract-keeps-next-slot mov-to-input          _ s alloc = refl
+    abstract-keeps-next-slot mov-output-to-input2  _ s alloc = refl
+    abstract-keeps-next-slot mov-input2-to-output  _ s alloc = refl
+    abstract-keeps-next-slot load-indirect         _ s alloc = refl
+    abstract-keeps-next-slot load-indirect-suc     _ s alloc = refl
+    abstract-keeps-next-slot (store-at-slot k)     _ s alloc = refl
+    abstract-keeps-next-slot store-indirect        _ s alloc = refl
+    abstract-keeps-next-slot store-indirect-suc    _ s alloc = refl
+    abstract-keeps-next-slot (lea-slot k)          _ s alloc = refl
+    abstract-keeps-next-slot (lea-indexed k)       _ s alloc = refl
+    abstract-keeps-next-slot (instr-dealloc-stack n) _ s alloc = refl
+    abstract-keeps-next-slot (instr-push-frame c)  _ s alloc = refl
+    abstract-keeps-next-slot instr-pop-frame       _ s alloc = refl
+    abstract-keeps-next-slot instr-call-closure    _ s alloc = refl
+    abstract-keeps-next-slot (worklist-init k)     _ s alloc = refl
+    abstract-keeps-next-slot (worklist-push k)     _ s alloc = refl
+    abstract-keeps-next-slot (worklist-check k)    _ s alloc = refl
+    abstract-keeps-next-slot (instr-sigop si)      _ s alloc = refl
+    abstract-keeps-next-slot (instr-load-const p v) _ s alloc = refl
+    abstract-keeps-next-slot (instr-load-code-addr n) _ s alloc = refl
+    abstract-keeps-next-slot instr-save-closure-reg _ s alloc = refl
+    abstract-keeps-next-slot (instr-load-tag-lit n) _ s alloc = refl
+    abstract-keeps-next-slot (instr-alloc-heap n)  _ s alloc = refl
+    abstract-keeps-next-slot (instr-reg-op op)     _ s alloc = refl
+    abstract-keeps-next-slot (worklist-pop slot)   _ s alloc =
+      cong next-slot (elfs-alloc (readLoc s (AtStack (current-frame alloc) slot)) s alloc)
+    abstract-keeps-next-slot (load-from-slot slot)  _ s alloc =
+      cong next-slot (elfs-alloc (readLoc s (AtStack (current-frame alloc) slot)) s alloc)
+    abstract-keeps-next-slot (restore-input slot)   _ s alloc =
+      cong next-slot (eris-alloc (readLoc s (AtStack (current-frame alloc) slot)) s alloc)
+    abstract-keeps-next-slot (instr-alloc-stack n) ()
+    abstract-keeps-next-slot (instr-reclaim-to n)  ()
+    abstract-keeps-next-slot (instr-loop body)     ()
+    abstract-keeps-next-slot (instr-case-on-tag f g) (aft , agt) s alloc =
+      case-keeps-next-slot (case-tag-at s) f g aft agt s alloc
+
+    trace-keeps-next-slot : ∀ (t : AbstractTrace) → SlotStableT t
+      → ∀ (s : LocState FS) (alloc : AllocState {FS})
+      → next-slot (proj₂ (exec-trace t s alloc)) ≡ next-slot alloc
+    trace-keeps-next-slot []       ss        s alloc = refl
+    trace-keeps-next-slot (i ∷ is) (si , ss) s alloc with halted s
+    ... | true  = refl
+    ... | false =
+      trans (trace-keeps-next-slot is ss (proj₁ (exec-abstract i s alloc))
+                                         (proj₂ (exec-abstract i s alloc)))
+            (abstract-keeps-next-slot i si s alloc)
+
+    case-keeps-next-slot : ∀ (mv : Maybe (StoredValue FS)) (f g : AbstractTrace)
+      → SlotStableT f → SlotStableT g
+      → ∀ (s : LocState FS) (alloc : AllocState {FS})
+      → next-slot (proj₂ (exec-case-dispatch mv f g s alloc)) ≡ next-slot alloc
+    case-keeps-next-slot (just (SV-Tag zero))    f g sf sg s alloc = trace-keeps-next-slot f sf s alloc
+    case-keeps-next-slot (just (SV-Tag (suc _))) f g sf sg s alloc = trace-keeps-next-slot g sg s alloc
+    case-keeps-next-slot (just (SV-Ptr _))       f g sf sg s alloc = refl
+    case-keeps-next-slot (just (SV-Lit _ _))     f g sf sg s alloc = refl
+    case-keeps-next-slot (just (SV-Code _))      f g sf sg s alloc = refl
+    case-keeps-next-slot nothing                 f g sf sg s alloc = refl
 
   -- Per-instruction: a slot-stable instruction's `flat-exec-instr`
   -- preserves `next-slot`. Control flow touches only `fpc`/`halted`
