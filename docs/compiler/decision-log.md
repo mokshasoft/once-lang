@@ -5387,3 +5387,60 @@ Option 2, in three parts:
   so the postulated scaffolds `obs-correct-rest`/`cata-correct` now claim
   unit-input runs work with arbitrary `Input1` content — which is true of the
   machine (unit is never read) and required for the composition discharge.
+
+## D075: The Layering Refactor Is Rejected — `Emitted` Is Load-Bearing for the Dataflow Residuals
+
+**Date**: 2026-08-01
+**Status**: Accepted (probe run and reproduced; refactor NOT landed)
+**Relates**: the 2026-07-30 vacuity fix (which introduced `Emitted prog` into
+the run context), D073 (site-discipline dataflow residuals), D074 (tag entry
+fillers — they make the probe's refutation immediate)
+
+### Context
+
+Plan 0.54 rung D item 4 proposed replacing `Emitted prog`
+(`Σ ir → prog ≡ ir-to-trace ir`) in ConcFlatSim's run context with a
+TRACE-PREDICATE bundle (`FrameFreeT prog × All (SlotBelow B) prog ×
+All AllocMinI prog`), so the machine correspondence stops importing the
+codegen layer. The 2026-08-01 analysis flagged the move as vacuity-sensitive
+and required the probe recipe before landing.
+
+### The probe (recipe of 2026-07-28/30, re-run 2026-08-01)
+
+A scratch module stated the WOULD-BE bundle-conditioned forms of the two
+dataflow residual shapes and derived `⊥` from both:
+
+- `prog₁ = load-indirect ∷ []` satisfies the whole bundle trivially
+  (`(tt , tt) , (sb-none refl ∷ []) , (tt ∷ [])`) and is fetched at the REAL
+  entry state (`reach-start` + the apex's `entry-like`); the candidate
+  `load-indirect-target-ptr` then hands back
+  `readReg Input1 ≡ SV-Ptr loc` while D074's entry filler makes that
+  register `SV-Tag 0` — constructor clash, `⊥`.
+- `prog₂ = instr-ctrl (c-branch-tag-zero 0) ∷ []` refutes the candidate
+  `branch-tag-scrutinee-wf` the same way.
+
+One refutable residual anywhere makes the whole correspondence vacuous
+(vacuity is all-or-nothing), so the swap cannot land in any form that
+weakens the dataflow residuals' hypothesis.
+
+### Decision
+
+The refactor is REJECTED; `Emitted prog` stays in `RunAt`. The "impurity"
+of ConcFlatSim importing the codegen layer is the honest structure: the
+dataflow residuals are claims about programs THE EMITTER PRODUCED, and no
+trace-SHAPE predicate can express the dataflow discipline they encode — a
+bundle admits hand-buildable programs whose sites lack the discipline.
+
+A partial swap (bundle for the theorem layer only, `Emitted` kept for the
+residuals) was considered and rejected too: `Emitted` must stay in the run
+context regardless, so the move would shuffle imports without changing the
+trust story.
+
+### Consequences
+
+- Item 4 is CLOSED (rejected with evidence), not deferred.
+- The only principled path that could ever weaken `Emitted` for the
+  dataflow class is the per-site register-shape invariant (a static
+  dataflow analysis over the trace, proved of the emitter and preserved by
+  the machine — the FlatStackPtr pattern). That is those residuals'
+  discharge trajectory anyway; do that, not a layering refactor.
