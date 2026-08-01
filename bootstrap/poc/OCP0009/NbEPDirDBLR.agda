@@ -41,13 +41,14 @@
 module poc.OCP0009.NbEPDirDBLR where
 
 open import normalizer.Syntax.Types
-  using ( _≡_; refl; sym; trans; subst; ¬_; ⊥; ⊥-elim; Σ; _,_; _×_ )
+  using ( _≡_; refl; sym; trans; subst; cong; cong₂; ¬_; ⊥; ⊥-elim; Σ; _,_; _×_ )
 
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; base; U; Π; Σ'; El
+        ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
-        ; Sub; subTy; subTm; extS )
+        ; Sub; subTy; subTm; extS; renTm
+        ; subTm-renTm; subTm-id; Hom-cong₃ )
 open import poc.OCP0009.NbEPDirDBType
   using ( single
         ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
@@ -55,6 +56,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
         ; _⟶*_; done; step
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
+        ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ )
 open import poc.OCP0009.NbEPDirDBSR using ( ⟶ᵀ-sub; ≅ᵀ-sub )
 open import poc.OCP0009.NbEPDirDBSubj using ( subTy-monoˢ )
@@ -64,7 +66,7 @@ open import poc.OCP0009.NbEPDirDBConf
         ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-fst; ⟶*-snd
         ; ⟶*-⌜Π⌝ˡ; ⟶*-⌜Π⌝ʳ; ⟶*-⌜Σ⌝ˡ; ⟶*-⌜Σ⌝ʳ )
 open import poc.OCP0009.NbEPDirDBInj
-  using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El
+  using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Homᵀ
         ; confluentᵀ; church-rosserᵀ
         ; ΠRed; mkΠRed; Π-reduct; Πinj≡
         ; ΣRed; mkΣRed; Σ-reduct; Σinj≡; red→≅ᵀ )
@@ -189,6 +191,56 @@ record ElNe {Γ} (A : RTy Γ) : Set where
 El-ne-reduct : {n : RTm Γ} {A : RTy Γ} → Ne n → El n ⟶ᵀ* A → ElNe A
 El-ne-reduct {n = n} ne doneᵀ              = mkElNe n ne refl
 El-ne-reduct         ne (stepᵀ (ξ-El r) p) = El-ne-reduct (ne-red ne r) p
+
+------------------------------------------------------------------------
+-- 2b. W2 — the STUCK HEADS of `Hom`, closed under reduction.
+--
+-- A `Hom H a b` is stuck exactly when `H`'s head carries no unfolding rule:
+-- `base` (discrete by generation, item 4), a NEUTRAL `El`, `Σ'` (unfolding
+-- deferred to transport), or a stuck `Hom` (higher paths).  `U` and `Π` are
+-- deliberately ABSENT — those unfold — and that absence is what makes
+-- `stkhd-red` total: the unfolding rules hit `StkHd` as absurd patterns.
+-- Note `sh-Hom` REQUIRES the inner head stuck: `Hom (Hom U c d) x y` is NOT
+-- stuck — the inner `Hom` unfolds to a `Π` and then the outer fires.
+------------------------------------------------------------------------
+
+data StkHd {Γ} : RTy Γ → Set where
+  sh-base : StkHd base
+  sh-ne   : {n : RTm Γ} → Ne n → StkHd (El n)
+  sh-Σ    : {A : RTy Γ} {B : RTy (Γ ∙)} → StkHd (Σ' A B)
+  sh-Hom  : {H : RTy Γ} {a b : RTm Γ} → StkHd H → StkHd (Hom H a b)
+
+stkhd-red : {H H' : RTy Γ} → StkHd H → H ⟶ᵀ H' → StkHd H'
+stkhd-red (sh-ne ()) El-⌜base⌝
+stkhd-red (sh-ne ()) (El-⌜Π⌝ _ _)
+stkhd-red (sh-ne ()) (El-⌜Σ⌝ _ _)
+stkhd-red (sh-ne n)  (ξ-El r)    = sh-ne (ne-red n r)
+stkhd-red sh-Σ       (ξ-Σˡ r)    = sh-Σ
+stkhd-red sh-Σ       (ξ-Σʳ r)    = sh-Σ
+stkhd-red (sh-Hom ()) (Hom-U _ _)
+stkhd-red (sh-Hom ()) (Hom-Π _ _ _ _)
+stkhd-red (sh-Hom s) (ξ-Homᵀ r) = sh-Hom (stkhd-red s r)
+stkhd-red (sh-Hom s) (ξ-Homˡ r) = sh-Hom s
+stkhd-red (sh-Hom s) (ξ-Homʳ r) = sh-Hom s
+
+record HomStk {Γ} (C : RTy Γ) : Set where
+  constructor mkHomStk
+  field
+    hH    : RTy Γ
+    ha hb : RTm Γ
+    hstk  : StkHd hH
+    heq   : C ≡ Hom hH ha hb
+
+-- reducts of a stuck `Hom` are stuck `Hom`s — the shape lemma the transfer
+-- layer consumes, exactly `El-ne-reduct`'s pattern.
+Hom-stk-reduct : {H : RTy Γ} {a b : RTm Γ} {C : RTy Γ} →
+                 StkHd H → Hom H a b ⟶ᵀ* C → HomStk C
+Hom-stk-reduct s doneᵀ                    = mkHomStk _ _ _ s refl
+Hom-stk-reduct () (stepᵀ (Hom-U _ _) p)
+Hom-stk-reduct () (stepᵀ (Hom-Π _ _ _ _) p)
+Hom-stk-reduct s (stepᵀ (ξ-Homᵀ r) p) = Hom-stk-reduct (stkhd-red s r) p
+Hom-stk-reduct s (stepᵀ (ξ-Homˡ r) p) = Hom-stk-reduct s p
+Hom-stk-reduct s (stepᵀ (ξ-Homʳ r) p) = Hom-stk-reduct s p
 
 ⟶ᵀ*-sub : (σ : Sub Γ Δ) {A B : RTy Γ} → A ⟶ᵀ* B → subTy σ A ⟶ᵀ* subTy σ B
 ⟶ᵀ*-sub σ doneᵀ       = doneᵀ
@@ -467,6 +519,13 @@ data ⊩₁_ {Γ} where
          → (⊩F : ⊩₁ F)
          → ((u : RTm Γ) → ⊩F ⊩₁∋ u → ⊩₁ (subTy (single u) G))
          → ⊩₁ A
+  -- W2: a STUCK `Hom` is a semantic type whose members are the SN terms —
+  -- nothing constructs it (no `refl`/`J` yet), so it behaves like `base`.
+  -- ★ LEVEL 0 NEEDS NO `Hom` CLAUSE AT ALL: level 0 covers only decodings
+  -- of codes, and there is no `⌜Hom⌝` code, so no level-0 type ever reduces
+  -- to a `Hom`.  The predicative cut does structural work again.
+  ⊩₁Hom  : {A H : RTy Γ} {a b : RTm Γ}
+         → A ⟶ᵀ* Hom H a b → StkHd H → ⊩₁ A
 
 ⊩₁base _     ⊩₁∋ t = SN t
 ⊩₁U _        ⊩₁∋ t = SN t × (⊩₀ (El t))
@@ -474,6 +533,7 @@ data ⊩₁_ {Γ} where
 ⊩₁Π _ ⊩F ⊩G  ⊩₁∋ t = SN t × ((u : RTm _) (r : ⊩F ⊩₁∋ u) → (⊩G u r) ⊩₁∋ app t u)
 ⊩₁Σ _ ⊩F ⊩G  ⊩₁∋ t =
   SN t × Σ (⊩F ⊩₁∋ fst t) (λ r → (⊩G (fst t) r) ⊩₁∋ snd t)
+⊩₁Hom _ _    ⊩₁∋ t = SN t
 
 bwd₁ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₁ B → ⊩₁ A
 bwd₁ p (⊩₁base q)    = ⊩₁base (⟶ᵀ*-trans p q)
@@ -481,6 +541,7 @@ bwd₁ p (⊩₁U q)       = ⊩₁U    (⟶ᵀ*-trans p q)
 bwd₁ p (⊩₁ne q n)    = ⊩₁ne   (⟶ᵀ*-trans p q) n
 bwd₁ p (⊩₁Π q ⊩F ⊩G) = ⊩₁Π    (⟶ᵀ*-trans p q) ⊩F ⊩G
 bwd₁ p (⊩₁Σ q ⊩F ⊩G) = ⊩₁Σ    (⟶ᵀ*-trans p q) ⊩F ⊩G
+bwd₁ p (⊩₁Hom q s)   = ⊩₁Hom  (⟶ᵀ*-trans p q) s
 
 ------------------------------------------------------------------------
 -- 4a. IRRELEVANCE at level 1.
@@ -500,6 +561,51 @@ irrel₁ c (⊩₁base _) (⊩₁ne _ _) = (λ _ h → h) , (λ _ h → h)
 irrel₁ c (⊩₁ne _ _) (⊩₁base _) = (λ _ h → h) , (λ _ h → h)
 irrel₁ c (⊩₁ne _ _) (⊩₁ne _ _) = (λ _ h → h) , (λ _ h → h)
 irrel₁ c (⊩₁U _)    (⊩₁U _)    = (λ _ h → h) , (λ _ h → h)
+irrel₁ c (⊩₁Hom _ _) (⊩₁Hom _ _) = (λ _ h → h) , (λ _ h → h)
+
+-- W2 `Hom` (stuck) against everything else, both ways: impossible — reducts
+-- of a stuck `Hom` stay `Hom`-headed (`Hom-stk-reduct`), and the other side's
+-- shape lemma pins a different head.
+irrel₁ c (⊩₁base p) (⊩₁Hom q s) with joinW c p q
+... | E , (bE , hE) with base-nf bE
+...   | refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁ c (⊩₁Hom p s) (⊩₁base q) with joinW c p q
+... | E , (hE , bE) with base-nf bE
+...   | refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁ c (⊩₁U p) (⊩₁Hom q s) with joinW c p q
+... | E , (uE , hE) with U-nf uE
+...   | refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁ c (⊩₁Hom p s) (⊩₁U q) with joinW c p q
+... | E , (hE , uE) with U-nf uE
+...   | refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁ c (⊩₁ne p n) (⊩₁Hom q s) with joinW c p q
+... | E , (eE , hE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁ c (⊩₁Hom p s) (⊩₁ne q n) with joinW c p q
+... | E , (hE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁ c (⊩₁Π p _ _) (⊩₁Hom q s) with joinW c p q
+... | E , (πE , hE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁ c (⊩₁Hom p s) (⊩₁Π q _ _) with joinW c p q
+... | E , (hE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁ c (⊩₁Σ p _ _) (⊩₁Hom q s) with joinW c p q
+... | E , (σE , hE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₁ c (⊩₁Hom p s) (⊩₁Σ q _ _) with joinW c p q
+... | E , (hE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
 
 -- `U` against a non-`U`: refuted.
 irrel₁ c (⊩₁U p) (⊩₁base q) with joinW c p q
@@ -670,6 +776,10 @@ fwd₁ p (⊩₁Σ q ⊩F ⊩G) with confluentᵀ p q
               (λ u r → fwd₁ (⟶ᵀ*-sub (single u) rG)
                             (⊩G u (projr (irrel₁ (red→≅ᵀ rF) ⊩F (fwd₁ rF ⊩F)) u r)))
 
+fwd₁ p (⊩₁Hom q s) with confluentᵀ p q
+... | E , (bE , hE) with Hom-stk-reduct s hE
+...   | mkHomStk _ _ _ s' refl = ⊩₁Hom bE s'
+
 -- ★ the shape `⊢conv` needs.
 conv₁ : {A B : RTy Γ} → A ≅ᵀ B → ⊩₁ A → ⊩₁ B
 conv₁ c R with church-rosserᵀ c
@@ -689,11 +799,13 @@ CR1₁ (⊩₁U _)     h = projl h
 CR1₁ (⊩₁ne _ _)  h = h
 CR1₁ (⊩₁Π _ _ _) h = projl h
 CR1₁ (⊩₁Σ _ _ _) h = projl h
+CR1₁ (⊩₁Hom _ _) h = h
 
 CR3₁ : {A : RTy Γ} (R : ⊩₁ A) {t : RTm Γ} → SNe t → R ⊩₁∋ t
 CR3₁ (⊩₁base _)    nt = sn-ne nt
 CR3₁ (⊩₁U _)       nt = (sn-ne nt , ⊩₀ne doneᵀ (sne→ne nt))
 CR3₁ (⊩₁ne _ _)    nt = sn-ne nt
+CR3₁ (⊩₁Hom _ _)   nt = sn-ne nt
 CR3₁ (⊩₁Π _ ⊩F ⊩G) nt =
   (sn-ne nt , λ u ru → CR3₁ (⊩G u ru) (sne-app nt (CR1₁ ⊩F ru)))
 CR3₁ (⊩₁Σ _ ⊩F ⊩G) {t} nt =
@@ -703,6 +815,7 @@ CR3₁ (⊩₁Σ _ ⊩F ⊩G) {t} nt =
 exp₁ : {A : RTy Γ} (R : ⊩₁ A) {t t' : RTm Γ} → SNRed t t' → R ⊩₁∋ t' → R ⊩₁∋ t
 exp₁ (⊩₁base _)    r h = sn-exp r h
 exp₁ (⊩₁ne _ _)    r h = sn-exp r h
+exp₁ (⊩₁Hom _ _)   r h = sn-exp r h
 exp₁ (⊩₁U _)       r h =
   (sn-exp r (projl h) , bwd₀ (⟶ᵀ*-El (step (snr→⟶ r) done)) (projr h))
 exp₁ (⊩₁Π _ ⊩F ⊩G) r h =
@@ -881,6 +994,47 @@ sem-⌜Σ⌝ : {A : RTy Γ} (p : A ⟶ᵀ* U) {c : RTm Γ} {d : RTm (Γ ∙)}
         → (⊩₁U p) ⊩₁∋ ⌜Σ⌝ c d
 sem-⌜Σ⌝ p snc snD ⊩c f =
   (sn-cΣ snc snD , ⊩₀Σ (stepᵀ (El-⌜Σ⌝ _ _) doneᵀ) ⊩c f)
+
+------------------------------------------------------------------------
+-- 6b. ★ W2 — `sem-Hom` (`homSem₁`): the SEMANTIC ACTION OF `Hom`.
+--
+-- Given a semantic type and two members, the `Hom` between them is a
+-- semantic type.  BY STRUCTURAL RECURSION ON THE `⊩₁` DERIVATION — the
+-- recursive calls go through the stored `Π`-family, which is the SAME,
+-- ALREADY-HANDLED scope pattern (`⊩G u r` is a structural component).  This
+-- is the measured answer to the `SpikeHomLR` gate W2 carried: the `Hom`
+-- clause needs NO member of `⊩` at a larger scope.
+--
+--   * stuck heads (`base`/`ne`/`Σ'`/stuck-`Hom`): one `⊩₁Hom` each;
+--   * `Π`: unfold pointwise, recurse through the family — `wk-single`
+--     rewrites `(wk a)[v] · v` back to `a · v`;
+--   * `U`: DIRECTED UNIVALENCE does the work — the members of `⊩₁U` carry
+--     `⊩₀ (El _)` (the stratification's payload), which after `emb` is
+--     exactly the domain and codomain the unfolded `Π` needs.
+------------------------------------------------------------------------
+
+wk-single : {v : RTm Γ} (t : RTm Γ) → subTm (single v) (renTm vs t) ≡ t
+wk-single t = trans (subTm-renTm t) (subTm-id t)
+
+homSem₁ : {A : RTy Γ} (R : ⊩₁ A) {a b : RTm Γ} →
+          R ⊩₁∋ a → R ⊩₁∋ b → ⊩₁ (Hom A a b)
+homSem₁ (⊩₁base p)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) sh-base
+homSem₁ (⊩₁ne p n)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-ne n)
+homSem₁ (⊩₁Σ p ⊩F ⊩G) ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) sh-Σ
+homSem₁ (⊩₁Hom p s)   ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom s)
+homSem₁ (⊩₁U p) {c} {d} hc hd =
+  ⊩₁Π (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ p) (stepᵀ (Hom-U c d) doneᵀ))
+      (emb (projr hc))
+      (λ v r → subst ⊩₁_ (sym (cong El (wk-single d))) (emb (projr hd)))
+homSem₁ (⊩₁Π {F = F} {G = G} p ⊩F ⊩G) {a} {b} ha hb =
+  ⊩₁Π (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ p) (stepᵀ (Hom-Π F G a b) doneᵀ))
+      ⊩F
+      (λ v r →
+        subst ⊩₁_
+              (sym (Hom-cong₃ refl
+                     (cong₂ app (wk-single a) refl)
+                     (cong₂ app (wk-single b) refl)))
+              (homSem₁ (⊩G v r) (projr ha v r) (projr hb v r)))
 
 ------------------------------------------------------------------------
 -- 7. WEAK NORMALIZATION — exactly `NbEPDirDBDec.dec-conv`'s input.

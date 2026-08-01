@@ -251,3 +251,28 @@ conv-βex = hom→≅ (step βex done)
 -- `Id = core(Hom)` in the conversion rule.
 conv-El : ∀ {Γ t u u'} → Γ ⊢ t ∷ El u → u ⟶ u' → Γ ⊢ t ∷ El u'
 conv-El d r = ⊢conv d (credᵀ (ξ-El r))
+
+------------------------------------------------------------------------
+-- W2 non-vacuity: `Hom` COMPUTES, and has real inhabitants.
+------------------------------------------------------------------------
+
+-- The identity path at `⌜base⌝` in the universe: `Hom U ⌜base⌝ ⌜base⌝`
+-- unfolds to `Π (El ⌜base⌝) (El ⌜base⌝)`, and the identity function inhabits
+-- it — a directed path derived by COMPUTATION, not by a `refl` primitive.
+⊢hom-id : ◇ ⊢ lam (var vz) ∷ Hom U ⌜base⌝ ⌜base⌝
+⊢hom-id =
+  ⊢conv (⊢lam (ty-El ⊢⌜base⌝) (⊢var here))
+        (csymᵀ (credᵀ (Hom-U ⌜base⌝ ⌜base⌝)))
+
+-- ★ A path between DEFINITIONALLY DISTINCT codes — `SpikeHom`'s fee-is-real
+-- pair, internalized.  `⌜base⌝` and `⌜Π⌝ ⌜base⌝ ⌜base⌝` are not convertible,
+-- yet `Hom U` between them is INHABITED: the constant-function map
+-- `λx.λy.x`.  This is exactly what option (a) bought — `Hom` with
+-- inhabitants where `⟶*` has none.
+⊢hom-across : ◇ ⊢ lam (lam (var (vs vz)))
+                ∷ Hom U ⌜base⌝ (⌜Π⌝ ⌜base⌝ ⌜base⌝)
+⊢hom-across =
+  ⊢conv (⊢lam (ty-El ⊢⌜base⌝)
+              (⊢conv (⊢lam (ty-El ⊢⌜base⌝) (⊢var (there here)))
+                     (csymᵀ (credᵀ (El-⌜Π⌝ ⌜base⌝ ⌜base⌝)))))
+        (csymᵀ (credᵀ (Hom-U ⌜base⌝ (⌜Π⌝ ⌜base⌝ ⌜base⌝))))
