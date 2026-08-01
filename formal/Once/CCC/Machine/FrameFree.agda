@@ -43,7 +43,7 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace;
    instr-alloc-stack; instr-dealloc-stack; instr-push-frame; instr-pop-frame;
-   instr-case-on-tag; instr-loop)
+   instr-case-on-tag; instr-loop; lea-indexed)
 
 mutual
   FrameFreeI : AbstractInstr → Set
@@ -55,6 +55,12 @@ mutual
   -- `instr-loop` is a RETIRED FOSSIL: the cata codegen compiles to flat control
   -- (`c-label`/`c-jmp`/`c-branch-*`), never to a structured loop instruction.
   FrameFreeI (instr-loop t)            = ⊥
+  -- `lea-indexed` is a RETIRED FOSSIL too (2026-08-01): the Tier-1/Tier-2 cata
+  -- codegen walks HEAP-LINKED stacks (`push2`/`pop2`, "NOT lea-indexed" —
+  -- IRToTrace), so no emitted trace contains an indexed cursor. Retiring it
+  -- deletes the `lea-indexed-wf` cursor-discipline residual with its site, and
+  -- the pointer-bounds invariant needs no cursor case at all.
+  FrameFreeI (lea-indexed _)           = ⊥
   {-# CATCHALL #-}
   FrameFreeI _                         = ⊤
 

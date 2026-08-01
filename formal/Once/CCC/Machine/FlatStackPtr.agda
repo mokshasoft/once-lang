@@ -32,12 +32,14 @@
 -- frame-free instruction EXCEPT `instr-case-on-tag`: one flat step there runs
 -- whole NESTED branch traces, whose `lea-slot`s need pair bounds the emitter
 -- states only for the MAIN trace (`SlotBudget` — `slot-of` is `nothing` on the
--- carrying instruction), and whose `lea-indexed` cursors cannot be
--- site-conditioned at all. That fragment is behind the `events-running-case`
+-- carrying instruction). That fragment is behind the `events-running-case`
 -- model defect anyway; ConcFlatSim carries it as the site-conditioned residual
 -- `stack-ptr-case`, which dies wholesale when `case` compiles to flat control
 -- (the way `Cata` already does) and `instr-case-on-tag` joins the unemittable
--- set. `CaseFree` below is that exclusion.
+-- set. `CaseFree` below is that exclusion. (`lea-indexed` needed a cursor
+-- discipline here until 2026-08-01, when it turned out to be UNEMITTABLE —
+-- the cata codegen walks heap-linked stacks — and joined `FrameFreeI`'s ⊥
+-- set, taking the `lea-indexed-wf` residual with it.)
 ------------------------------------------------------------------------
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -380,36 +382,9 @@ sp-reg-op cf ls count-inc          wf =
   sp-write-reg cf ls Count (sv-succ (readReg (regs ls) Count))
                (sp-succ cf _ (readReg (regs ls) Count)) wf
 
-------------------------------------------------------------------------
--- THE `lea-indexed` CURSOR. `offsetLoc` on a STACK pointer would produce a
--- pointer at an arbitrary offset the pair invariant cannot bound — the route
--- is closed by the cursor DISCIPLINE instead: the indexed base slot holds a
--- HEAP pointer (the cata's Tier-1 payload stacks are heap-allocated linked
--- stacks), which is `ConcFlatSim.lea-indexed-wf`, fed in here as the negative
--- premise "the cursor is not a stack pointer".
-------------------------------------------------------------------------
-sp-lea-indexed : ∀ (cf : Frame) (ls : LocState FS)
-                   (ml : Maybe (ValueLocation FS)) (idx : ℕ)
-               → (∀ f k → ml ≡ just (AtStack f k) → ⊥)
-               → SPInv cf ls
-               → SPInv cf (exec-lea-indexed-via ml idx ls)
-sp-lea-indexed cf ls nothing              idx ncur wf = sp-halt cf ls true wf
-sp-lea-indexed cf ls (just (AtStack f k)) idx ncur wf = ⊥-elim (ncur f k refl)
-sp-lea-indexed cf ls (just (AtDynamic hl)) idx ncur wf =
-  sp-write-reg cf ls Input1 (SV-Ptr (offsetLoc (AtDynamic hl) idx)) tt wf
-
--- …and the bridge from the value-level premise (what the residual states) to
--- the location-level one (what the route above consumes): `slot-base` produces
--- a stack location only from a stored stack pointer.
-cursor-not-stack : ∀ (mv : Maybe (StoredValue FS))
-                 → (∀ f k → mv ≡ just (SV-Ptr (AtStack f k)) → ⊥)
-                 → ∀ f k → slot-base mv ≡ just (AtStack f k) → ⊥
-cursor-not-stack nothing                      h f k ()
-cursor-not-stack (just (SV-Ptr (AtStack g m))) h f k eq = h g m refl
-cursor-not-stack (just (SV-Ptr (AtDynamic _))) h f k ()
-cursor-not-stack (just (SV-Tag _))             h f k ()
-cursor-not-stack (just (SV-Lit _ _))           h f k ()
-cursor-not-stack (just (SV-Code _))            h f k ()
+-- (`lea-indexed` needs no cursor case at all: it joined the unemittable set
+-- 2026-08-01 — the cata codegen walks heap-LINKED stacks, never an indexed
+-- cursor — so its route below is `⊥`-elim on `FrameFreeI`.)
 
 ------------------------------------------------------------------------
 -- THE SIGOP OUTPUT. `Emits`/`Halts` produce `unit-storedvalue`; a `Pure`
@@ -461,88 +436,78 @@ CaseFree _                       = ⊤
 sp-abstract : ∀ (i : AbstractInstr) (ls : LocState FS) (alloc : AllocState {FS})
             → FrameFreeI i → CaseFree i
             → (∀ k → i ≡ lea-slot k → suc k < stackSlot (regs ls))
-            → (∀ k f k' → i ≡ lea-indexed k
-               → readLoc ls (AtStack (current-frame alloc) k)
-                   ≡ just (SV-Ptr (AtStack f k'))
-               → ⊥)
             → SPInv (current-frame alloc) ls
             → SPInv (current-frame (proj₂ (exec-abstract i ls alloc)))
                     (proj₁ (exec-abstract i ls alloc))
-sp-abstract mov-to-output ls alloc ff cfree leap ncur wf =
+sp-abstract mov-to-output ls alloc ff cfree leap wf =
   sp-write-reg _ ls Output (readReg (regs ls) Input1) (sp-regs wf Input1) wf
-sp-abstract mov-to-input ls alloc ff cfree leap ncur wf =
+sp-abstract mov-to-input ls alloc ff cfree leap wf =
   sp-write-reg _ ls Input1 (readReg (regs ls) Output) (sp-regs wf Output) wf
-sp-abstract mov-output-to-input2 ls alloc ff cfree leap ncur wf =
+sp-abstract mov-output-to-input2 ls alloc ff cfree leap wf =
   sp-write-reg _ ls Input2 (readReg (regs ls) Output) (sp-regs wf Output) wf
-sp-abstract mov-input2-to-output ls alloc ff cfree leap ncur wf =
+sp-abstract mov-input2-to-output ls alloc ff cfree leap wf =
   sp-write-reg _ ls Output (readReg (regs ls) Input2) (sp-regs wf Input2) wf
-sp-abstract load-indirect ls alloc ff cfree leap ncur wf =
+sp-abstract load-indirect ls alloc ff cfree leap wf =
   sp-load-resolved _ ls Output (sv-as-loc (readReg (regs ls) Input1)) wf
-sp-abstract load-indirect-suc ls alloc ff cfree leap ncur wf =
+sp-abstract load-indirect-suc ls alloc ff cfree leap wf =
   sp-load-suc-resolved _ ls Output (sv-as-loc (readReg (regs ls) Input1)) wf
-sp-abstract (load-from-slot slot) ls alloc ff cfree leap ncur wf =
+sp-abstract (load-from-slot slot) ls alloc ff cfree leap wf =
   sp-from-slot ls alloc (readLoc ls (AtStack (current-frame alloc) slot))
                (sp-read-loc _ ls wf (AtStack (current-frame alloc) slot)) wf
-sp-abstract (store-at-slot slot) ls alloc ff cfree leap ncur wf =
+sp-abstract (store-at-slot slot) ls alloc ff cfree leap wf =
   sp-write-mem _ ls (AtStack (current-frame alloc) slot)
                (readReg (regs ls) Output) (sp-regs wf Output) wf
-sp-abstract store-indirect ls alloc ff cfree leap ncur wf =
+sp-abstract store-indirect ls alloc ff cfree leap wf =
   sp-store-resolved _ ls (sv-as-loc (readReg (regs ls) Input1))
                     (readReg (regs ls) Output) (sp-regs wf Output) wf
-sp-abstract store-indirect-suc ls alloc ff cfree leap ncur wf =
+sp-abstract store-indirect-suc ls alloc ff cfree leap wf =
   sp-store-suc-resolved _ ls (sv-as-loc (readReg (regs ls) Input1))
                         (readReg (regs ls) Output) (sp-regs wf Output) wf
 -- THE PRODUCER: the pair bound comes in from the emitter
 -- (`ConcFlatSim.emitted-lea-slot-pair`), through the premise.
-sp-abstract (lea-slot slot) ls alloc ff cfree leap ncur wf =
+sp-abstract (lea-slot slot) ls alloc ff cfree leap wf =
   sp-write-reg _ ls Output (SV-Ptr (AtStack (current-frame alloc) slot))
                (refl , leap slot refl) wf
-sp-abstract (restore-input slot) ls alloc ff cfree leap ncur wf =
+sp-abstract (restore-input slot) ls alloc ff cfree leap wf =
   sp-restore ls alloc (readLoc ls (AtStack (current-frame alloc) slot))
              (sp-read-loc _ ls wf (AtStack (current-frame alloc) slot)) wf
--- THE OTHER PRODUCER: the cursor is a heap pointer (the premise), so the
--- written value is a heap pointer too.
-sp-abstract (lea-indexed slot) ls alloc ff cfree leap ncur wf =
-  sp-lea-indexed _ ls (slot-base (readLoc ls (AtStack (current-frame alloc) slot)))
-                 (sv-tag-val (readReg (regs ls) Scratch))
-                 (cursor-not-stack (readLoc ls (AtStack (current-frame alloc) slot))
-                                   (λ f k' eq → ncur slot f k' refl eq))
-                 wf
+-- `lea-indexed` is unemittable (2026-08-01) — `⊥` in `FrameFreeI`
+sp-abstract (lea-indexed slot) ls alloc () cfree leap wf
 -- the frame ops and the loop are unemittable — `⊥` in `FrameFreeI`
-sp-abstract (instr-alloc-stack n)   ls alloc () cfree leap ncur wf
-sp-abstract (instr-dealloc-stack n) ls alloc () cfree leap ncur wf
-sp-abstract (instr-push-frame cap)  ls alloc () cfree leap ncur wf
-sp-abstract instr-pop-frame         ls alloc () cfree leap ncur wf
-sp-abstract (instr-loop body)       ls alloc () cfree leap ncur wf
+sp-abstract (instr-alloc-stack n)   ls alloc () cfree leap wf
+sp-abstract (instr-dealloc-stack n) ls alloc () cfree leap wf
+sp-abstract (instr-push-frame cap)  ls alloc () cfree leap wf
+sp-abstract instr-pop-frame         ls alloc () cfree leap wf
+sp-abstract (instr-loop body)       ls alloc () cfree leap wf
 -- the case runs nested traces — EXCLUDED here (`CaseFree`), residual in
 -- ConcFlatSim until `case` compiles to flat control
-sp-abstract (instr-case-on-tag f g) ls alloc ff () leap ncur wf
-sp-abstract (instr-reclaim-to n)  ls alloc ff cfree leap ncur wf = wf
-sp-abstract instr-call-closure    ls alloc ff cfree leap ncur wf = wf
-sp-abstract (worklist-init slot)  ls alloc ff cfree leap ncur wf = wf
-sp-abstract (worklist-push slot)  ls alloc ff cfree leap ncur wf =
+sp-abstract (instr-case-on-tag f g) ls alloc ff () leap wf
+sp-abstract (instr-reclaim-to n)  ls alloc ff cfree leap wf = wf
+sp-abstract instr-call-closure    ls alloc ff cfree leap wf = wf
+sp-abstract (worklist-init slot)  ls alloc ff cfree leap wf = wf
+sp-abstract (worklist-push slot)  ls alloc ff cfree leap wf =
   sp-write-mem _ ls (AtStack (current-frame alloc) slot)
                (readReg (regs ls) Output) (sp-regs wf Output) wf
-sp-abstract (worklist-pop slot)   ls alloc ff cfree leap ncur wf =
+sp-abstract (worklist-pop slot)   ls alloc ff cfree leap wf =
   sp-from-slot ls alloc (readLoc ls (AtStack (current-frame alloc) slot))
                (sp-read-loc _ ls wf (AtStack (current-frame alloc) slot)) wf
-sp-abstract (worklist-check slot) ls alloc ff cfree leap ncur wf = wf
-sp-abstract (instr-sigop si) ls alloc ff cfree leap ncur wf =
+sp-abstract (worklist-check slot) ls alloc ff cfree leap wf = wf
+sp-abstract (instr-sigop si) ls alloc ff cfree leap wf =
   sp-write-reg-halt _ ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls)
                     (sigop-output-ok _ _ si ls) wf
-sp-abstract (instr-load-const p v)   ls alloc ff cfree leap ncur wf =
+sp-abstract (instr-load-const p v)   ls alloc ff cfree leap wf =
   sp-write-reg _ ls Output (SV-Lit p v) tt wf
-sp-abstract (instr-load-code-addr n) ls alloc ff cfree leap ncur wf =
+sp-abstract (instr-load-code-addr n) ls alloc ff cfree leap wf =
   sp-write-reg _ ls Output (SV-Code n) tt wf
-sp-abstract instr-save-closure-reg   ls alloc ff cfree leap ncur wf = wf
-sp-abstract (instr-load-tag-lit n)   ls alloc ff cfree leap ncur wf =
+sp-abstract instr-save-closure-reg   ls alloc ff cfree leap wf = wf
+sp-abstract (instr-load-tag-lit n)   ls alloc ff cfree leap wf =
   sp-write-reg _ ls Output (SV-Tag n) tt wf
-sp-abstract (instr-alloc-heap n)     ls alloc ff cfree leap ncur wf =
+sp-abstract (instr-alloc-heap n)     ls alloc ff cfree leap wf =
   sp-write-reg _ ls Output
     (SV-Ptr (AtDynamic (proj₁ (AI.alloc-impl n (next-heap-ref alloc))))) tt wf
-sp-abstract (instr-reg-op op)        ls alloc ff cfree leap ncur wf =
+sp-abstract (instr-reg-op op)        ls alloc ff cfree leap wf =
   sp-reg-op _ ls op wf
-sp-abstract (instr-ctrl c)           ls alloc ff cfree leap ncur wf = wf
+sp-abstract (instr-ctrl c)           ls alloc ff cfree leap wf = wf
 
 ------------------------------------------------------------------------
 -- Lifted to the FLAT machine. The control cases move `fpc`/`halted` only; the
@@ -563,73 +528,68 @@ sp-branch false m prog fs wf = wf
 flat-stack-ptr : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
                → FrameFreeI i → CaseFree i
                → (∀ k → i ≡ lea-slot k → suc k < stackSlot (regs (floc fs)))
-               → (∀ k f k' → i ≡ lea-indexed k
-                  → readLoc (floc fs) (AtStack (current-frame (falloc fs)) k)
-                      ≡ just (SV-Ptr (AtStack f k'))
-                  → ⊥)
                → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
-flat-stack-ptr (instr-ctrl (c-label m))               prog fs ff cfree leap ncur wf = wf
-flat-stack-ptr (instr-ctrl (c-jmp m))                 prog fs ff cfree leap ncur wf =
+flat-stack-ptr (instr-ctrl (c-label m))               prog fs ff cfree leap wf = wf
+flat-stack-ptr (instr-ctrl (c-jmp m))                 prog fs ff cfree leap wf =
   sp-jump (find-label prog m) fs wf
-flat-stack-ptr (instr-ctrl (c-branch-scratch-zero m)) prog fs ff cfree leap ncur wf =
+flat-stack-ptr (instr-ctrl (c-branch-scratch-zero m)) prog fs ff cfree leap wf =
   sp-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) m prog fs wf
-flat-stack-ptr (instr-ctrl (c-branch-tag-zero m))     prog fs ff cfree leap ncur wf =
+flat-stack-ptr (instr-ctrl (c-branch-tag-zero m))     prog fs ff cfree leap wf =
   sp-branch (tag-zf (flat-read-tag (floc fs))) m prog fs wf
-flat-stack-ptr (instr-alloc-stack n)   prog fs () cfree leap ncur wf
-flat-stack-ptr (instr-dealloc-stack n) prog fs () cfree leap ncur wf
-flat-stack-ptr (instr-push-frame cap)  prog fs () cfree leap ncur wf
-flat-stack-ptr instr-pop-frame         prog fs () cfree leap ncur wf
-flat-stack-ptr (instr-loop body)       prog fs () cfree leap ncur wf
-flat-stack-ptr (instr-case-on-tag f g) prog fs ff () leap ncur wf
-flat-stack-ptr mov-to-output            prog fs ff cfree leap ncur wf =
-  sp-abstract mov-to-output (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr mov-to-input             prog fs ff cfree leap ncur wf =
-  sp-abstract mov-to-input (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr mov-output-to-input2     prog fs ff cfree leap ncur wf =
-  sp-abstract mov-output-to-input2 (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr mov-input2-to-output     prog fs ff cfree leap ncur wf =
-  sp-abstract mov-input2-to-output (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr load-indirect            prog fs ff cfree leap ncur wf =
-  sp-abstract load-indirect (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr load-indirect-suc        prog fs ff cfree leap ncur wf =
-  sp-abstract load-indirect-suc (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr (load-from-slot k)       prog fs ff cfree leap ncur wf =
-  sp-abstract (load-from-slot k) (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr (store-at-slot k)        prog fs ff cfree leap ncur wf =
-  sp-abstract (store-at-slot k) (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr store-indirect           prog fs ff cfree leap ncur wf =
-  sp-abstract store-indirect (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr store-indirect-suc       prog fs ff cfree leap ncur wf =
-  sp-abstract store-indirect-suc (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr (lea-slot k)             prog fs ff cfree leap ncur wf =
-  sp-abstract (lea-slot k) (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr (restore-input k)        prog fs ff cfree leap ncur wf =
-  sp-abstract (restore-input k) (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr (lea-indexed k)          prog fs ff cfree leap ncur wf =
-  sp-abstract (lea-indexed k) (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr (instr-reclaim-to k)     prog fs ff cfree leap ncur wf =
-  sp-abstract (instr-reclaim-to k) (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr instr-call-closure       prog fs ff cfree leap ncur wf =
-  sp-abstract instr-call-closure (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr (worklist-init k)        prog fs ff cfree leap ncur wf =
-  sp-abstract (worklist-init k) (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr (worklist-push k)        prog fs ff cfree leap ncur wf =
-  sp-abstract (worklist-push k) (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr (worklist-pop k)         prog fs ff cfree leap ncur wf =
-  sp-abstract (worklist-pop k) (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr (worklist-check k)       prog fs ff cfree leap ncur wf =
-  sp-abstract (worklist-check k) (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr (instr-sigop si)         prog fs ff cfree leap ncur wf =
-  sp-abstract (instr-sigop si) (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr (instr-load-const p v)   prog fs ff cfree leap ncur wf =
-  sp-abstract (instr-load-const p v) (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr (instr-load-code-addr k) prog fs ff cfree leap ncur wf =
-  sp-abstract (instr-load-code-addr k) (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr instr-save-closure-reg   prog fs ff cfree leap ncur wf =
-  sp-abstract instr-save-closure-reg (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr (instr-load-tag-lit k)   prog fs ff cfree leap ncur wf =
-  sp-abstract (instr-load-tag-lit k) (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr (instr-alloc-heap k)     prog fs ff cfree leap ncur wf =
-  sp-abstract (instr-alloc-heap k) (floc fs) (falloc fs) ff cfree leap ncur wf
-flat-stack-ptr (instr-reg-op op)        prog fs ff cfree leap ncur wf =
-  sp-abstract (instr-reg-op op) (floc fs) (falloc fs) ff cfree leap ncur wf
+flat-stack-ptr (instr-alloc-stack n)   prog fs () cfree leap wf
+flat-stack-ptr (instr-dealloc-stack n) prog fs () cfree leap wf
+flat-stack-ptr (instr-push-frame cap)  prog fs () cfree leap wf
+flat-stack-ptr instr-pop-frame         prog fs () cfree leap wf
+flat-stack-ptr (instr-loop body)       prog fs () cfree leap wf
+flat-stack-ptr (instr-case-on-tag f g) prog fs ff () leap wf
+flat-stack-ptr mov-to-output            prog fs ff cfree leap wf =
+  sp-abstract mov-to-output (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr mov-to-input             prog fs ff cfree leap wf =
+  sp-abstract mov-to-input (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr mov-output-to-input2     prog fs ff cfree leap wf =
+  sp-abstract mov-output-to-input2 (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr mov-input2-to-output     prog fs ff cfree leap wf =
+  sp-abstract mov-input2-to-output (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr load-indirect            prog fs ff cfree leap wf =
+  sp-abstract load-indirect (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr load-indirect-suc        prog fs ff cfree leap wf =
+  sp-abstract load-indirect-suc (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr (load-from-slot k)       prog fs ff cfree leap wf =
+  sp-abstract (load-from-slot k) (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr (store-at-slot k)        prog fs ff cfree leap wf =
+  sp-abstract (store-at-slot k) (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr store-indirect           prog fs ff cfree leap wf =
+  sp-abstract store-indirect (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr store-indirect-suc       prog fs ff cfree leap wf =
+  sp-abstract store-indirect-suc (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr (lea-slot k)             prog fs ff cfree leap wf =
+  sp-abstract (lea-slot k) (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr (restore-input k)        prog fs ff cfree leap wf =
+  sp-abstract (restore-input k) (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr (lea-indexed k)          prog fs () cfree leap wf
+flat-stack-ptr (instr-reclaim-to k)     prog fs ff cfree leap wf =
+  sp-abstract (instr-reclaim-to k) (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr instr-call-closure       prog fs ff cfree leap wf =
+  sp-abstract instr-call-closure (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr (worklist-init k)        prog fs ff cfree leap wf =
+  sp-abstract (worklist-init k) (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr (worklist-push k)        prog fs ff cfree leap wf =
+  sp-abstract (worklist-push k) (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr (worklist-pop k)         prog fs ff cfree leap wf =
+  sp-abstract (worklist-pop k) (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr (worklist-check k)       prog fs ff cfree leap wf =
+  sp-abstract (worklist-check k) (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr (instr-sigop si)         prog fs ff cfree leap wf =
+  sp-abstract (instr-sigop si) (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr (instr-load-const p v)   prog fs ff cfree leap wf =
+  sp-abstract (instr-load-const p v) (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr (instr-load-code-addr k) prog fs ff cfree leap wf =
+  sp-abstract (instr-load-code-addr k) (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr instr-save-closure-reg   prog fs ff cfree leap wf =
+  sp-abstract instr-save-closure-reg (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr (instr-load-tag-lit k)   prog fs ff cfree leap wf =
+  sp-abstract (instr-load-tag-lit k) (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr (instr-alloc-heap k)     prog fs ff cfree leap wf =
+  sp-abstract (instr-alloc-heap k) (floc fs) (falloc fs) ff cfree leap wf
+flat-stack-ptr (instr-reg-op op)        prog fs ff cfree leap wf =
+  sp-abstract (instr-reg-op op) (floc fs) (falloc fs) ff cfree leap wf
