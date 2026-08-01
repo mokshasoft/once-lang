@@ -30,7 +30,7 @@ module Once.CCC.Codegen.IRObsCorrectFlat where
 open import Data.Nat using (ℕ; zero; suc; _<_)
 open import Data.Bool using (false; true)
 open import Data.List using (length; take; []; _∷_)
-open import Data.Maybe using (just; nothing)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
@@ -38,11 +38,12 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- SigOpInfo is over SURFACE Type (`SigOp : SigOpInfo A B → IR ⌊A⌋ ⌊B⌋`), so the
 -- surface `FitsInReg`/`fits-in-reg?` stay; the μ/functor + value-domain layer is IRTy.
 open import Once.Type using (Type; FitsInReg; fits-in-reg?)
-  renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ; Int to Intˢ)
+  renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ; Int to Intˢ; Unit to Unitˢ)
 open import Once.IRTy using (WellFormedFI-irrelevant)
 open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
-open import Once.IR using (IR; IRTy; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ; _∘_;
+open import Once.IR using (IR; IRTy; Unit; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ; _∘_;
   μ-type; ⟦_⟧TI; WellFormedFI; FitsInRegI; fits-int; fits-float; ⌊_⌋)
+open import Data.Unit using (tt)
 
 -- Surface `FitsInReg B` ⇒ erased `FitsInRegI ⌊B⌋`: `⌊Int⌋=Int`, `⌊Float⌋=Float`
 -- definitionally, so this is a match-to-refl coherence.
@@ -72,7 +73,7 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 
 module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open FlatMachine {FS}
-  open AbstractExec {FS} using (exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; readTyped; readReg-typed)
+  open AbstractExec {FS} using (exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed)
   open FrontierInvariant {FS} using (BeforeFrontier)
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result; prim-sv)
@@ -174,6 +175,13 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     in-loc : readReg (regs s) Input1 ≡ SV-Ptr loc → InputAt v loc s
     in-reg : (fit : FitsInRegI A) → readReg (regs s) Input1 ≡ prim-sv fit v
            → InputAt v loc s
+    -- D074: a UNIT input has no residence at all — `Input1` may hold anything
+    -- (the entry state's tag filler; after `f : IR A Unit` in a composition,
+    -- `f`'s unit output is likewise unconstrained, so a residence premise
+    -- would make `comp-step`'s IH inapplicable). The machine never reads a
+    -- unit input: `readTyped Unit` and `readReg-typed Unit` both materialise
+    -- `tt` regardless of what is there.
+    in-unit : A ≡ Unit → InputAt v loc s
 
   -- Same preconditions as `compile-correct-flat`'s semantic side (entry
   -- frontier 0), minus `StraightIR` (loops are allowed); conclusion is
@@ -338,6 +346,19 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   pure-sigop-value-reg si fitness r-unit       pure-eq x s alloc () rdi-eq nh
   pure-sigop-value-reg si fitness (r-pair _ _) pure-eq x s alloc () rdi-eq nh
 
+  -- UNIT-DOMAIN input (`in-unit`, D074) — a unit input has no residence, so
+  -- the output equation must hold whatever `Input1` contains. It does: the
+  -- pointer branch ignores the pointee (`readTyped Unit loc s = just tt`) and
+  -- the register branch materialises the unit (`readReg-typed Unit _ =
+  -- just tt`), so both dispatch arms of `pure-sigop-out-aux` reduce to
+  -- `just tt` and each clause is `refl`.
+  pure-sigop-out-unit : ∀ {B} (si : SigOpInfo Unitˢ B) (fitB : FitsInReg B)
+                        (s : LocState FS) (ml : Maybe (ValueLocation FS))
+                      → pure-sigop-out-aux si s (just fitB) ml
+                        ≡ pure-sigop-out-val si fitB (just tt)
+  pure-sigop-out-unit si fitB s (just l) = refl
+  pure-sigop-out-unit si fitB s nothing  = refl
+
   pure-sigop-value-correct :
       ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) (rA : Readable A)
       → effect si ≡ Pure
@@ -364,6 +385,18 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     where
       step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-float (eval (SigOp si) x)
       step2 rewrite sv-loc-of s input-loc rdi-eq | readTyped-adequate rA valid = refl
+  -- D074: the unit-input route. `r-unit` pins `A ≡ Unitˢ`, so `⌊A⌋ ≡ Unit`
+  -- holds by `refl` and the other two readable shapes refute the equality.
+  pure-sigop-value-correct si fits-intˢ r-unit pure-eq x input-loc s alloc valid nh (in-unit refl)
+    rewrite nh | sigop-halts-false si pure-eq s =
+    trans (cong (λ e → exec-sigop-output-of e si s) pure-eq)
+          (pure-sigop-out-unit si fits-intˢ s (sv-as-loc (readReg (regs s) Input1)))
+  pure-sigop-value-correct si fits-floatˢ r-unit pure-eq x input-loc s alloc valid nh (in-unit refl)
+    rewrite nh | sigop-halts-false si pure-eq s =
+    trans (cong (λ e → exec-sigop-output-of e si s) pure-eq)
+          (pure-sigop-out-unit si fits-floatˢ s (sv-as-loc (readReg (regs s) Input1)))
+  pure-sigop-value-correct si fitness r-int        pure-eq x input-loc s alloc valid nh (in-unit ())
+  pure-sigop-value-correct si fitness (r-pair _ _) pure-eq x input-loc s alloc valid nh (in-unit ())
 
   pure-obs-correct-sigop :
     ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) (rA : Readable A)

@@ -59,8 +59,8 @@ open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
 open import Once.CCC.Codegen.IRObsCorrectFlat using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Machine.SMCore
-  using (LocState; mkLocState; Registers; mkRegs; ValueLocation; AtDynamic; SV-Ptr; SV-Tag;
-         regs; readReg; Input1; halted)
+  using (LocState; mkLocState; Registers; mkRegs; ValueLocation; AtDynamic; SV-Tag;
+         halted)
 open import Once.Memory.HeapAddress using (heap-loc; mkHeapRef)
 open import Data.Nat using (z≤n; s≤s)
 open import Once.CCC.Machine.Allocation
@@ -71,7 +71,7 @@ open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDe
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 
-open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; MachineRefinesObsF; in-loc)
+open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; MachineRefinesObsF; in-unit)
 open FlatMachine {FS} using (mkFlat)
 open FlatEventTrace {FS} using (flat-events)
 open FrontierInvariant {FS} using (BeforeFrontier; heap-before)
@@ -87,7 +87,8 @@ asm-sem asm = ArchSemantics.exec-bytes as (ArchSemantics.assemble as asm)
 ------------------------------------------------------------------------
 -- The ENTRY STATE residual (narrow, named; replaces the opaque postulates).
 -- The loader hands `main` a fresh frame: nothing allocated (`next-slot ≡ 0`),
--- not halted, `Input1` pointing at the (Unit) argument cell.
+-- not halted. `main`'s (erased) Unit argument has no residence (D074) —
+-- every register starts as the tag filler `SV-Tag 0`.
 ------------------------------------------------------------------------
 
 -- The loader's initial FRAME is the genuine external trust point (FrameSemantics
@@ -111,15 +112,18 @@ entry-alloc = mkAllocState entry-frame [] 0 1 (λ _ → 0)
 entry-loc : ValueLocation FS
 entry-loc = AtDynamic (heap-loc (mkHeapRef 0) 0)
 
--- Fillers are pointers to the same (erased Unit) cell — no numeric literal is
--- needed, so no `Number` instance for the machine word domain is required.
--- Plan 0.54 D item 4: `Scratch` and `Count` start as TAGS, not pointer fillers —
--- that is what `FlatRegTagWF`'s entry case needs, and both encode to 0 just as
--- the pointer filler did (`enc-sv (SV-Tag 0) = 0`), so `entry-corr` is unchanged.
--- `slots` = the frame the prologue reserved (`ir-stack-budget`), i.e. the initial
--- `stackSlot`. Everything else is the erased-Unit filler.
+-- D074: EVERY filler is a TAG. `main`'s (erased) Unit argument has no
+-- residence (`in-unit`), so nothing requires Input1 to be a pointer — and a
+-- pointer filler into the sizeless block 0 is exactly what made the heap
+-- in-bounds invariant FALSE at entry. `SV-Tag 0` encodes to 0 just as the
+-- pointer filler did (`enc-sv (SV-Tag 0) = 0`), so `entry-corr` is unchanged;
+-- with no pointer anywhere in the entry state the in-bounds invariant holds
+-- vacuously at the start of the run. (Plan 0.54 D item 4 made `Scratch` and
+-- `Count` tags for `FlatRegTagWF`'s entry case; this finishes the move.)
+-- `slots` = the frame the prologue reserved (`ir-stack-budget`), i.e. the
+-- initial `stackSlot`.
 entry-regs : ℕ → Registers FS
-entry-regs slots = mkRegs (SV-Ptr entry-loc) (SV-Ptr entry-loc) (SV-Ptr entry-loc)
+entry-regs slots = mkRegs (SV-Tag 0) (SV-Tag 0) (SV-Tag 0)
                           slots (SV-Tag 0) (SV-Tag 0)
 
 -- THE ENTRY STATE IS INDEXED BY THE FRAME THE PROLOGUE RESERVED (2026-07-30).
@@ -149,17 +153,15 @@ entry-bf = heap-before (s≤s z≤n)
 entry-nh : ∀ (slots : ℕ) → halted (entry-s slots) ≡ false
 entry-nh _ = refl
 
-entry-rdi : ∀ (slots : ℕ) → readReg (regs (entry-s slots)) Input1 ≡ SV-Ptr entry-loc
-entry-rdi _ = refl
-
 -- `main`'s machine-refinement witness at the entry state. The `Unit` input's
--- validity is `valid-unit-wf` — no plumbing needed for it.
+-- validity is `valid-unit-wf`, and its residence is `in-unit` (D074: a unit
+-- input needs none — the tag filler in `Input1` is never read).
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
               → MachineRefinesObsF ir tt (entry-s (ir-stack-budget ir)) entry-alloc
 entry-witness ir ioc =
   ioc (entry-size ir) Stack tt entry-loc (entry-s (ir-stack-budget ir)) entry-alloc
       entry-ns valid-unit-wf entry-bf (entry-nh (ir-stack-budget ir))
-            (in-loc (entry-rdi (ir-stack-budget ir)))
+            (in-unit refl)
 
 ------------------------------------------------------------------------
 -- `flat-trace` — DEFINED (the adequate fuel is `traces-agree`'s ∃-witness).

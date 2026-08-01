@@ -3946,7 +3946,6 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     with sv-as-loc (readReg (regs s) Input1)
   ... | just _  = refl
   ... | nothing = refl
-  ... | nothing = refl
 
   -- exec-trace (restore-input slot ∷ []) preserves alloc when not halted
   restore-trace-preserves-alloc : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →

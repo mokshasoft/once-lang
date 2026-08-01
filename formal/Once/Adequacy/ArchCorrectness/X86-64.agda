@@ -186,21 +186,19 @@ entry-corr ir = record
   ; pc-off = refl
   }
 
--- The ENTRY store-WF: at the entry state the heap and stack are empty and the four
--- registers hold the erased-Unit filler pointer into block 0, which IS below the
--- entry frontier (`next-heap-ref entry-alloc ≡ 1`). Everything downstream is the
--- flat-machine theorem (`FlatStoreWF.flat-wf-step`), applied once per step inside
--- `ccc-step-bs` — no per-instruction obligation here.
+-- The ENTRY store-WF: at the entry state the heap and stack are empty and every
+-- register holds the tag filler `SV-Tag 0` (D074) — `sv-below` puts no
+-- constraint on a non-pointer, so every case is `tt`. Everything downstream is
+-- the flat-machine theorem (`FlatStoreWF.flat-wf-step`), applied once per step
+-- inside `ccc-step-bs` — no per-instruction obligation here.
 entry-wf : ∀ (B : ℕ) → FlatWF (mkFlat (FFOx.entry-s B) FFOx.entry-alloc 0)
 entry-wf B = record
   { wf-regs = reg-below ; wf-heap = λ _ → tt ; wf-stack = λ _ _ → tt ; wf-fresh = λ _ _ → refl }
   where
     reg-below : ∀ (r : AbstractReg) → sv-below 1 (readReg (regs (FFOx.entry-s B)) r)
-    reg-below Input1  = s≤s z≤n
-    reg-below Input2  = s≤s z≤n
-    reg-below Output  = s≤s z≤n
-    -- plan 0.54 D item 4: the two counters start as TAGS, and `sv-below` puts no
-    -- constraint on a non-pointer — so these are `tt`, not the filler's `s≤s z≤n`.
+    reg-below Input1  = tt
+    reg-below Input2  = tt
+    reg-below Output  = tt
     reg-below Scratch = tt
     reg-below Count   = tt
 
@@ -231,8 +229,8 @@ entry-regtag B = record { scratch-tag = 0 , refl ; count-tag = 0 , refl }
 entry-like : ∀ (B : ℕ) → EntryLike (mkFlat (FFOx.entry-s B) FFOx.entry-alloc 0)
 entry-like B = refl , refl , refl , refl
              , (λ _ → refl) , (λ _ _ → refl) , (λ _ → refl)
-             -- no register holds a stack pointer: `main`'s argument is the heap
-             -- filler `entry-loc`, and the two counters start as tags
+             -- no register holds a stack pointer: every entry register is the
+             -- tag filler `SV-Tag 0` (D074)
              , no-stack-ptr
   where no-stack-ptr : ∀ (r : AbstractReg) f k
                      → readReg (regs (FFOx.entry-s B)) r ≡ SV-Ptr (AtStack f k) → ⊥

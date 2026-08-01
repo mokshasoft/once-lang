@@ -171,10 +171,10 @@ EntryLike fs = (fpc fs ≡ 0)
              × (∀ hl → heapMem (floc fs) hl ≡ nothing)
              × (∀ f k → stackMem (floc fs) f k ≡ nothing)
              × (∀ r → block-size (falloc fs) r ≡ 0)
-             -- …and NO REGISTER holds a stack pointer. The loader hands `main`
-             -- its argument in the heap (`FlatFromObs.entry-loc`), so this is
-             -- true of the entry state by construction; it is what starts the
-             -- stack-pointer invariant off (`entry-stack-ptr`).
+             -- …and NO REGISTER holds a stack pointer. Every entry register is
+             -- the tag filler `SV-Tag 0` (D074), so this is true of the entry
+             -- state by construction; it is what starts the stack-pointer
+             -- invariant off (`entry-stack-ptr`).
              × (∀ (r : AbstractReg) (f : Frame) (k : Slot)
                 → readReg (regs (floc fs)) r ≡ SV-Ptr (AtStack f k) → ⊥)
 

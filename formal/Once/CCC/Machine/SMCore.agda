@@ -1434,6 +1434,10 @@ module AbstractExec {FS : FrameSemantics} where
   -- Read a register-resident value of type `A` straight out of a register cell
   -- (the input-side dual of `readTyped`, which follows a pointer into memory).
   readReg-typed : (A : Type) → StoredValue FS → Maybe ⟦ A ⟧
+  -- D074: a unit value is materialisable from ANY register content (mirrors
+  -- `readTyped Unit`) — unit has no representation, so a unit input imposes
+  -- no residence discipline on `Input1`.
+  readReg-typed Unit _                  = just tt
   readReg-typed Int (SV-Lit fits-int v) = just v
   readReg-typed _   _                   = nothing
 

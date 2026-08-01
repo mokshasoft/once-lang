@@ -5324,3 +5324,66 @@ bricks + `run-events-stuck`).
 - `store-indirect{,-suc}-bad` are NOT covered: stores are a genuine model gap
   (the concrete write-through-non-pointer succeeds where the abstract halts)
   and stay parked on the address-keyed-memory / store-site-check decision.
+
+## D074: The Entry Fillers Are Tags — a Unit Input Has No Residence
+
+**Date**: 2026-08-01
+**Status**: Accepted
+**Relates**: D073 (no tagging, heap base 0 — this closes the entry-model fork
+its consequences section left open), D054 (raw unboxed representation), the
+Plan 0.54-D item-4 move that already made `Scratch`/`Count` entry tags
+
+### Context
+
+The heap in-bounds invariant ("every dynamic pointer the machine holds is
+in-bounds for its block", the discharge trajectory for
+`store-indirect{,-suc}-inbounds` and D073's `load-indirect{,-suc}-target-wf`)
+was FALSE at the entry state: `FlatFromObs.entry-regs` filled
+Input1/Input2/Output with `SV-Ptr (AtDynamic (heap-loc (mkHeapRef 0) 0))`
+while `entry-alloc` gives every block size 0, so the filler pointer required
+`0 < 0`. The fork: (a) give ref 0 a real size at entry, or (b) make the
+fillers non-pointers.
+
+### Options
+
+1. **Real size for ref 0 at entry.** Rejected: `dom-sized` (in-bounds ⇒
+   mapped) then forces the entry heap view to contain the cell, `dom-below`
+   forces the entry frontier to 8, and `r15-eq` forces the concrete `%r15` to
+   heap-base+8 — but the emitted startup code sets `%r15` to exactly
+   `once_heap_base`. So (a) is an extracted-compiler change (startup
+   reservation + full malonzo/cabal/exit-test ×3 cycle) fabricating a phantom
+   allocation no program reads.
+2. **Tag fillers + residence-free unit input.** The same move Plan 0.54-D
+   item 4 already made for `Scratch`/`Count`: `SV-Tag 0` encodes to 0
+   (`enc-sv (SV-Tag 0) = 0`), exactly what the pointer filler encoded to, so
+   `entry-corr` stays `refl` and NO binary change is needed.
+
+### Decision
+
+Option 2, in three parts:
+
+- `FlatFromObs.entry-regs` fills Input1/Input2/Output with `SV-Tag 0`.
+- `InputAt` gains `in-unit : A ≡ Unit → InputAt v loc s` — a unit input has
+  NO residence requirement. This is needed independently of the entry state:
+  after `f : IR A Unit` in a composition, `g`'s unit input residence is
+  unconstrainable, so a pointer-only premise would make `comp-step`'s IH
+  inapplicable.
+- `readReg-typed Unit _ = just tt` (SMCore) — a unit value is materialisable
+  from any register content, mirroring `readTyped Unit loc s = just tt`. Both
+  `pure-sigop-out-aux` dispatch branches then land on `just tt`, so the
+  Pure-SigOp value equation holds for unit-domain SigOps whatever `Input1`
+  holds (`pure-sigop-out-unit`).
+
+### Consequences
+
+- No register (nor heap/stack cell) holds a pointer at entry, so the heap
+  in-bounds invariant is TRUE (vacuously) at the entry state — the in-bounds
+  family (`store-indirect{,-suc}-inbounds`, `load-indirect{,-suc}-target-wf`)
+  is unblocked for its preservation induction.
+- `entry-alloc` still reserves ref 0 (`next-heap-ref ≡ 1`): `entry-loc` (the
+  input-loc index, now pointed at by nothing) must stay `BeforeFrontier` for
+  `entry-witness`. Harmless: no pointer to the sizeless block exists anywhere.
+- `IRObsCorrectF` got STRONGER (its `InputAt` premise is easier to inhabit),
+  so the postulated scaffolds `obs-correct-rest`/`cata-correct` now claim
+  unit-input runs work with arbitrary `Input1` content — which is true of the
+  machine (unit is never read) and required for the composition discharge.
