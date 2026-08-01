@@ -1163,6 +1163,116 @@ block-step-c-branch-tag-zero {hv} prog fs s n hl (suc m) j cc h ft i-eq live-hl 
                       ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
       ; pc-off = pco' }
 
+------------------------------------------------------------------------
+-- THE EMPTY-CELL STUCK FACTS (D073): a load through a pointer whose target
+-- cell is UNWRITTEN reads unmapped memory — `execInstr` fails, ending the
+-- concrete trace exactly where the abstract machine halts. One per addressing
+-- form (heap/stack × first/second cell); ConcFlatSim assembles each with
+-- `run-events-stuck` + `flat-events-halted`. The heap forms take `HDom` (fed
+-- from `dom-sized` + the load-site in-bounds discipline); the stack forms take
+-- the live-pair witnesses `stack-ptr-current{,-suc}` provide.
+------------------------------------------------------------------------
+load-indirect-heap-empty-stuck : ∀ {hv : HeapView} prog fs s hl → CompiledCorr hv prog fs s
+  → fetch prog (fpc fs) ≡ just load-indirect
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → HDom hv hl
+  → heapMem (floc fs) hl ≡ nothing
+  → (X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base rdi))))
+    × (X.execInstr (compile-trace prog) s (mov (reg rax) (mem (base rdi))) ≡ nothing)
+load-indirect-heap-empty-stuck {hv} prog fs s hl cc ft i-eq dom h-eq = fetch-x86 , stuck
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base rdi)))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) load-indirect ft)
+    rdi-val : xreadReg (xregs s) rdi ≡ haddr hv hl
+    rdi-val = trans (C.rdi-eq dc) (cong (C.enc-sv hv) i-eq)
+    rd : X.readMem (memory s) (X.effectiveAddr s (base rdi)) ≡ nothing
+    rd = trans (cong (X.readMem (memory s)) rdi-val)
+               (trans (C.heap-eq dc hl dom) (cong (C.enc-maybe hv) h-eq))
+    stuck : X.execInstr (compile-trace prog) s (mov (reg rax) (mem (base rdi))) ≡ nothing
+    stuck rewrite rd = refl
+
+load-indirect-stack-empty-stuck : ∀ {hv : HeapView} prog fs s f k → CompiledCorr hv prog fs s
+  → fetch prog (fpc fs) ≡ just load-indirect
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+  → f ≡ current-frame (falloc fs)
+  → k < stackSlot (regs (floc fs))
+  → stackMem (floc fs) (current-frame (falloc fs)) k ≡ nothing
+  → (X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base rdi))))
+    × (X.execInstr (compile-trace prog) s (mov (reg rax) (mem (base rdi))) ≡ nothing)
+load-indirect-stack-empty-stuck {hv} prog fs s f k cc ft i-eq f-eq k<ss st-eq = fetch-x86 , stuck
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base rdi)))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) load-indirect ft)
+    rdi-val : xreadReg (xregs s) rdi ≡ xreadReg (xregs s) rsp + slot-to-disp k
+    rdi-val = trans (C.rdi-eq dc)
+              (trans (cong (C.enc-sv hv) i-eq)
+              (trans (cong (λ fr → slot-addr FS fr k) f-eq)
+              (trans (slot-addr-linear FS (current-frame (falloc fs)) k)
+                     (cong₂ (λ b w' → b + k * w') (sym (C.rsp-eq dc)) word-eq))))
+    rd : X.readMem (memory s) (X.effectiveAddr s (base rdi)) ≡ nothing
+    rd = trans (cong (X.readMem (memory s)) rdi-val)
+               (trans (C.stack-eq dc k k<ss) (cong (C.enc-maybe hv) st-eq))
+    stuck : X.execInstr (compile-trace prog) s (mov (reg rax) (mem (base rdi))) ≡ nothing
+    stuck rewrite rd = refl
+
+load-indirect-suc-heap-empty-stuck : ∀ {hv : HeapView} prog fs s hl → CompiledCorr hv prog fs s
+  → fetch prog (fpc fs) ≡ just load-indirect-suc
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → HDom hv (sucHL hl)
+  → heapMem (floc fs) (sucHL hl) ≡ nothing
+  → (X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base+disp rdi slot-size))))
+    × (X.execInstr (compile-trace prog) s (mov (reg rax) (mem (base+disp rdi slot-size))) ≡ nothing)
+load-indirect-suc-heap-empty-stuck {hv} prog fs s hl cc ft i-eq dom h-eq = fetch-x86 , stuck
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base+disp rdi slot-size)))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) load-indirect-suc ft)
+    rdi-val : xreadReg (xregs s) rdi ≡ haddr hv hl
+    rdi-val = trans (C.rdi-eq dc) (cong (C.enc-sv hv) i-eq)
+    addr-eq : X.effectiveAddr s (base+disp rdi slot-size) ≡ haddr hv (sucHL hl)
+    addr-eq = trans (cong (_+ slot-size) rdi-val) (sym (C.haddr-suc hv hl))
+    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rdi slot-size)) ≡ nothing
+    rd = trans (cong (X.readMem (memory s)) addr-eq)
+               (trans (C.heap-eq dc (sucHL hl) dom) (cong (C.enc-maybe hv) h-eq))
+    stuck : X.execInstr (compile-trace prog) s (mov (reg rax) (mem (base+disp rdi slot-size))) ≡ nothing
+    stuck rewrite rd = refl
+
+load-indirect-suc-stack-empty-stuck : ∀ {hv : HeapView} prog fs s f k → CompiledCorr hv prog fs s
+  → fetch prog (fpc fs) ≡ just load-indirect-suc
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+  → f ≡ current-frame (falloc fs)
+  → suc k < stackSlot (regs (floc fs))
+  → stackMem (floc fs) (current-frame (falloc fs)) (suc k) ≡ nothing
+  → (X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base+disp rdi slot-size))))
+    × (X.execInstr (compile-trace prog) s (mov (reg rax) (mem (base+disp rdi slot-size))) ≡ nothing)
+load-indirect-suc-stack-empty-stuck {hv} prog fs s f k cc ft i-eq f-eq sk<ss st-eq = fetch-x86 , stuck
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base+disp rdi slot-size)))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) load-indirect-suc ft)
+    addr-eq : X.effectiveAddr s (base+disp rdi slot-size)
+            ≡ xreadReg (xregs s) rsp + slot-to-disp (suc k)
+    addr-eq = trans (cong (_+ slot-size)
+                      (trans (C.rdi-eq dc)
+                      (trans (cong (C.enc-sv hv) i-eq)
+                      (trans (cong (λ fr → slot-addr FS fr k) f-eq)
+                      (trans (slot-addr-linear FS (current-frame (falloc fs)) k)
+                             (cong₂ (λ b w' → b + k * w') (sym (C.rsp-eq dc)) word-eq))))))
+                    (trans (+-assoc (xreadReg (xregs s) rsp) (k * slot-size) slot-size)
+                           (cong (xreadReg (xregs s) rsp +_)
+                                 (+-comm (k * slot-size) slot-size)))
+    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rdi slot-size)) ≡ nothing
+    rd = trans (cong (X.readMem (memory s)) addr-eq)
+               (trans (C.stack-eq dc (suc k) sk<ss) (cong (C.enc-maybe hv) st-eq))
+    stuck : X.execInstr (compile-trace prog) s (mov (reg rax) (mem (base+disp rdi slot-size))) ≡ nothing
+    stuck rewrite rd = refl
+
 -- c-branch-tag-zero NOT TAKEN, label-free: a nonzero tag never consults the
 -- label, so the fall-through needs no `find-label` premise at all — this is
 -- what discharges the not-taken route of `branch-tag-label-miss` (the missing

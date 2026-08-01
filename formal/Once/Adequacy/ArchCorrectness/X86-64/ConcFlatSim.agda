@@ -26,7 +26,7 @@ open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; hea
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Label using (once)
 open import Once.CCC.Target.X86-64.Syntax using
-  ( slot-size; Program; Instr; Reg; Operand; reg; imm; mem; base+disp; rsp; rbp; rax; rdi; rbx
+  ( slot-size; Program; Instr; Reg; Operand; reg; imm; mem; base; base+disp; rsp; rbp; rax; rdi; rbx
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
   ; ret; push; pop; nop; ud2; syscall; label )
 open import Data.Nat using (ℕ; _+_; _<_; _≤_; _∸_; _≡ᵇ_; _⊓_)
@@ -544,22 +544,22 @@ postulate
                             ≡ event-of instr-call-closure fs
                               ++ flat-events n prog (flat-exec-instr instr-call-closure prog fs))
 
-  -- c-branch-tag-zero WF residuals (the tag is read THROUGH Input1's pointer): the branch
-  -- reads a live heap TAG cell, and the label resolves. branch-tag-badptr = Input1 not a
-  -- dynamic pointer; branch-tag-bad = heap value not a tag / unmapped; branch-tag-label-miss
-  -- = missing target. (Liveness now rides `FlatCorr.dom-written`.)
-  branch-tag-badptr : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                        prog fs s m → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
-                    → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
-                    → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                          ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
-                            ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
-  branch-tag-bad : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                     prog fs s m → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
-                 → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
-                 → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                       ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
-                         ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
+  -- THE BRANCH SCRUTINEE DISCIPLINE (D073, replaces `branch-tag-badptr` +
+  -- `branch-tag-bad`): at an emitted `c-branch-tag-zero` site the scrutinee
+  -- register holds a live heap pointer to a WRITTEN TAG cell — codegen only
+  -- emits the tag branch right after loading a constructed node's pointer.
+  -- The old pair asserted a RUN-EVENTS equation for the divergent routes,
+  -- which is closable by NO layout choice (D054 literals are arbitrary words,
+  -- so a non-pointer's encoding can always collide with a mapped address);
+  -- this is the honest dataflow fact instead, in the `lea-indexed-wf` /
+  -- `store-indirect-inbounds` mold. Discharge trajectory: a per-site
+  -- register-shape invariant (static expectation at each emitted site +
+  -- preservation, the FlatStackPtr pattern).
+  branch-tag-scrutinee-wf : ∀ prog (fs : FlatState) (m : ℕ) → RunAt prog fs
+                          → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
+                          → Σ HeapLocation (λ hl → Σ ℕ (λ k →
+                              (readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl))
+                              × (heapMem (floc fs) hl ≡ just (SV-Tag k))))
   -- `branch-tag-label-miss` RETIRED 2026-08-01 — a theorem now (`go-miss` in
   -- `tag-branch-step`): not-taken rides the label-free
   -- `block-step-c-branch-tag-nz`, taken-plus-missing is the je-halt template
@@ -583,22 +583,28 @@ postulate
                  → StackPtrWF fs
                  → StackPtrWF (flat-exec-instr (instr-case-on-tag f g) prog fs)
 
-  -- load-indirect on a non-live-dynamic-pointer target (non-pointer / stack ptr /
-  -- unallocated) — ruled out by well-formedness (loads hit live heap cells).
-  load-indirect-bad : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                        prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
-                    → fetch prog (fpc fs) ≡ just load-indirect
-                    → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                          ≡ event-of load-indirect fs ++ flat-events n prog (flat-exec-instr load-indirect prog fs))
-
-  -- Same WF witnesses/bad-case residuals for the other three heap ops (second-cell +
-  -- the two stores). The store `guard` (writeLoc AtDynamic ≡ writeLocToHeap) is the
-  -- heap-model consistency law; LiveIn is the store-liveness param.
-  load-indirect-suc-bad : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                            prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
-                        → fetch prog (fpc fs) ≡ just load-indirect-suc
-                        → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                              ≡ event-of load-indirect-suc fs ++ flat-events n prog (flat-exec-instr load-indirect-suc prog fs))
+  -- THE LOAD TARGET DISCIPLINE (D073, replaces `load-indirect{,-suc}-bad`):
+  -- at an emitted load site the dereferenced register holds a POINTER, and a
+  -- dynamic one is IN-BOUNDS for its block — the same conjunct the store
+  -- family (`store-indirect{,-suc}-inbounds`) already carries, so the whole
+  -- dereference family is now uniform and is discharged together by the
+  -- item-5 pointer invariant. With it, every route is a theorem: stack /
+  -- written-heap loads are ordinary steps, and an EMPTY cell halts both
+  -- machines (`stack-eq` / `dom-sized` + `heap-eq` make the concrete read
+  -- unmapped — the `*-empty-stuck` bricks in FlatSimulation).
+  load-indirect-target-wf : ∀ prog (fs : FlatState) → RunAt prog fs
+                          → fetch prog (fpc fs) ≡ just load-indirect
+                          → Σ (ValueLocation FS) (λ loc →
+                              (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+                              × (∀ hl → loc ≡ AtDynamic hl
+                                 → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))))
+  -- …and for the second-cell load the SECOND cell is the in-bounds one.
+  load-indirect-suc-target-wf : ∀ prog (fs : FlatState) → RunAt prog fs
+                              → fetch prog (fpc fs) ≡ just load-indirect-suc
+                              → Σ (ValueLocation FS) (λ loc →
+                                  (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+                                  × (∀ hl → loc ≡ AtDynamic hl
+                                     → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))))
   -- THE STORE TARGET IS IN BOUNDS (2026-07-30 vacuity fix). Was
   -- `store-indirect-live : … → HDom hv hl` with `hv` UNIVERSALLY QUANTIFIED — false
   -- for a view that excludes the (as yet unwritten) cell, which no field forbade.
@@ -1222,49 +1228,44 @@ mutual
                   → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                         ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
                           ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
-  tag-branch-step {hv} n ev env prog fs s m cc wf h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
+  tag-branch-step {hv} n ev env prog fs s m cc wf h ftq =
+    go-fl (proj₁ wits) (proj₁ (proj₂ wits))
+          (proj₁ (proj₂ (proj₂ wits))) (proj₂ (proj₂ (proj₂ wits)))
+          (find-label prog m) refl
     where
-      go-good : ∀ hl j → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl) → find-label prog m ≡ just j
-              → ∀ (mv : Maybe (StoredValue FS)) → heapMem (floc fs) hl ≡ mv
-              → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                    ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
-                      ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
-      go-good hl j i-eq fl-eq (just (SV-Tag zero)) h-eq =
+      -- D073: the scrutinee discipline hands the pointer + written-tag-cell
+      -- witnesses directly — the non-pointer and non-tag routes are gone.
+      wits = branch-tag-scrutinee-wf prog fs m (inv-run wf) ftq
+      go-fl : ∀ hl k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+            → heapMem (floc fs) hl ≡ just (SV-Tag k)
+            → ∀ (mj : Maybe ℕ) → find-label prog m ≡ mj
+            → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                  ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                    ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
+      go-fl hl zero i-eq h-eq (just j) fl-eq =
         ccc-step-bs {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
           (block-step-c-branch-tag-zero prog fs s m hl zero j cc h ftq i-eq
              (C.dom-written (dataCorr cc) hl h-eq) h-eq fl-eq) wf ftq h refl hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
               hpost rewrite i-eq | h-eq | fl-eq = h
-      go-good hl j i-eq fl-eq (just (SV-Tag (suc k'))) h-eq =
+      go-fl hl (suc k') i-eq h-eq (just j) fl-eq =
         ccc-step-bs {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
           (block-step-c-branch-tag-zero prog fs s m hl (suc k') j cc h ftq i-eq
              (C.dom-written (dataCorr cc) hl h-eq) h-eq fl-eq) wf ftq h refl hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
               hpost rewrite i-eq | h-eq = h
-      go-good hl j i-eq fl-eq (just (SV-Ptr _))  h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
-      go-good hl j i-eq fl-eq (just (SV-Lit _ _)) h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
-      go-good hl j i-eq fl-eq (just (SV-Code _)) h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
-      go-good hl j i-eq fl-eq nothing            h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
-      -- MISSING LABEL (was the `branch-tag-label-miss` residual; a THEOREM since
-      -- 2026-08-01): case the tag read. NOT TAKEN never consults the label — the
-      -- ordinary fall-through via the label-free `block-step-c-branch-tag-nz`.
-      -- TAKEN + MISSING halts on both sides: the concrete `je` to an absent
-      -- label sets `halted` (`find-label-none-corr`), and `do-jump nothing`
-      -- halts the flat machine — both traces []. The bad-read routes are
-      -- exactly the ones `branch-tag-bad` already carries at a found label.
-      go-miss : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-              → find-label prog m ≡ nothing
-              → ∀ (mv : Maybe (StoredValue FS)) → heapMem (floc fs) hl ≡ mv
-              → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                    ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
-                      ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
-      go-miss hl i-eq fl-eq (just (SV-Tag (suc k'))) h-eq =
+      -- MISSING LABEL, NOT TAKEN: never consults the label — the ordinary
+      -- fall-through via the label-free `block-step-c-branch-tag-nz`.
+      go-fl hl (suc k') i-eq h-eq nothing fl-eq =
         ccc-step-bs {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
           (block-step-c-branch-tag-nz prog fs s m hl k' cc h ftq i-eq
              (C.dom-written (dataCorr cc) hl h-eq) h-eq) wf ftq h refl hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
               hpost rewrite i-eq | h-eq = h
-      go-miss hl i-eq fl-eq (just (SV-Tag zero)) h-eq = 3 , result
+      -- MISSING LABEL, TAKEN: both machines halt — the concrete `je` to an
+      -- absent label sets `halted` (`find-label-none-corr`), and
+      -- `do-jump nothing` halts the flat machine. Both traces [].
+      go-fl hl zero i-eq h-eq nothing fl-eq = 3 , result
         where
           dc = dataCorr cc
           halt-s : X.State.halted s ≡ false
@@ -1306,26 +1307,6 @@ mutual
             (trans (RTx.run-events-halted val-x86-64 ev env 0 (compile-trace prog) post-je refl)
                    (sym (flat-events-halted n prog
                           (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) hpost))))
-      go-miss hl i-eq fl-eq (just (SV-Ptr _))   h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
-      go-miss hl i-eq fl-eq (just (SV-Lit _ _)) h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
-      go-miss hl i-eq fl-eq (just (SV-Code _))  h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
-      go-miss hl i-eq fl-eq nothing             h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
-      go-fl : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-            → ∀ (mj : Maybe ℕ) → find-label prog m ≡ mj
-            → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                  ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
-                    ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
-      go-fl hl i-eq (just j) fl-eq = go-good hl j i-eq fl-eq (heapMem (floc fs) hl) refl
-      go-fl hl i-eq nothing  fl-eq = go-miss hl i-eq fl-eq (heapMem (floc fs) hl) refl
-      go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
-             → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                   ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
-                     ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
-      go-ptr (SV-Ptr (AtDynamic hl)) i-eq = go-fl hl i-eq (find-label prog m) refl
-      go-ptr (SV-Ptr (AtStack _ _))  i-eq = branch-tag-badptr n ev env prog fs s m cc wf h ftq
-      go-ptr (SV-Tag _)              i-eq = branch-tag-badptr n ev env prog fs s m cc wf h ftq
-      go-ptr (SV-Lit _ _)            i-eq = branch-tag-badptr n ev env prog fs s m cc wf h ftq
-      go-ptr (SV-Code _)             i-eq = branch-tag-badptr n ev env prog fs s m cc wf h ftq
 
   -- REG-OP scratch-dec: case the Scratch value (J-bridge, no with). A tag ⇒ the PROVEN
   -- block-step-scratch-dec applies (reg-op preserves halted: hpost=h) ⇒ ccc-step-bs.
@@ -1372,29 +1353,43 @@ mutual
           go-sv (SV-Lit pr v) i2-eq = ⊥-elim (flat-count-is-tag fs (SV-Lit pr v) (inv-regtag wf) i2-eq)
           go-sv (SV-Code c)   i2-eq = ⊥-elim (flat-count-is-tag fs (SV-Code c) (inv-regtag wf) i2-eq)
 
-  -- MEMORY load-indirect: case the Input1 pointer + the heap cell (both J-bridges, no
-  -- with). A live dynamic pointer to an allocated cell ⇒ the PROVEN block-step-load-
-  -- indirect ⇒ ccc-step-bs. The `LiveIn` store-liveness witness is a ConcFlatSim param,
-  -- so it comes from the correspondence field `dom-written`; bad shapes (non-pointer /
-  -- stack pointer / unallocated) ⇒ `load-indirect-bad` (WF: loads hit live heap cells).
+  -- MEMORY load-indirect (D073: every route is a theorem now). The load-site
+  -- discipline (`load-indirect-target-wf`) hands the pointer + dynamic
+  -- in-bounds witnesses; a WRITTEN cell is the PROVEN block-step, an EMPTY
+  -- cell halts both machines (`*-empty-stuck` + `run-events-stuck` — the
+  -- concrete read is unmapped via `dom-sized`+`heap-eq` / `stack-eq`).
   load-indirect-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                          prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                      → fetch prog (fpc fs) ≡ just load-indirect
                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                            ≡ event-of load-indirect fs ++ flat-events n prog (flat-exec-instr load-indirect prog fs))
-  load-indirect-step {hv} n ev env prog fs s cc wf h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
-    where go-mem : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  load-indirect-step {hv} n ev env prog fs s cc wf h ftq =
+    go-loc (proj₁ wits) (proj₁ (proj₂ wits)) (proj₂ (proj₂ wits))
+    where wits = load-indirect-target-wf prog fs (inv-run wf) ftq
+          go-mem : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                 → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))
                  → ∀ (mw : Maybe (StoredValue FS)) → heapMem (floc fs) hl ≡ mw
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                        ≡ event-of load-indirect fs ++ flat-events n prog (flat-exec-instr load-indirect prog fs))
-          go-mem hl i-eq (just w) h-eq =
+          go-mem hl i-eq ib (just w) h-eq =
             ccc-step-bs {hv} n ev env prog fs s load-indirect
               (block-step-load-indirect prog fs s hl w cc h ftq i-eq
                  (C.dom-written (dataCorr cc) hl h-eq) h-eq)
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ false
                   hpost rewrite i-eq | h-eq = h
-          go-mem hl i-eq nothing h-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
+          go-mem hl i-eq ib nothing h-eq = 1 , result
+            where stuckp = load-indirect-heap-empty-stuck prog fs s hl cc ftq i-eq
+                             (C.dom-sized (dataCorr cc) hl ib) h-eq
+                  halt-s : X.State.halted s ≡ false
+                  halt-s = trans (C.halt-eq (dataCorr cc)) h
+                  hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ true
+                  hpost rewrite i-eq | h-eq = refl
+                  result : RTx.run-events val-x86-64 ev env 1 (compile-trace prog) s
+                         ≡ event-of load-indirect fs ++ flat-events n prog (flat-exec-instr load-indirect prog fs)
+                  result = trans (RTx.run-events-stuck val-x86-64 ev env 0 (compile-trace prog) s
+                                    (mov (reg rax) (mem (base rdi))) halt-s (proj₁ stuckp) refl (proj₂ stuckp))
+                                 (sym (flat-events-halted n prog (flat-exec-instr load-indirect prog fs) hpost))
           go-stack : ∀ f k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
                    → (f ≡ current-frame (falloc fs)) × (k < stackSlot (regs (floc fs)))
                    → ∀ (mw : Maybe (StoredValue FS))
@@ -1407,21 +1402,30 @@ mutual
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ false
                   hpost rewrite i-eq | f-eq | st-eq = h
-          go-stack f k i-eq _ nothing st-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
-          go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
+          go-stack f k i-eq (f-eq , k<ss) nothing st-eq = 1 , result
+            where stuckp = load-indirect-stack-empty-stuck prog fs s f k cc ftq i-eq f-eq k<ss st-eq
+                  halt-s : X.State.halted s ≡ false
+                  halt-s = trans (C.halt-eq (dataCorr cc)) h
+                  hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ true
+                  hpost rewrite i-eq | f-eq | st-eq = refl
+                  result : RTx.run-events val-x86-64 ev env 1 (compile-trace prog) s
+                         ≡ event-of load-indirect fs ++ flat-events n prog (flat-exec-instr load-indirect prog fs)
+                  result = trans (RTx.run-events-stuck val-x86-64 ev env 0 (compile-trace prog) s
+                                    (mov (reg rax) (mem (base rdi))) halt-s (proj₁ stuckp) refl (proj₂ stuckp))
+                                 (sym (flat-events-halted n prog (flat-exec-instr load-indirect prog fs) hpost))
+          go-loc : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+                 → (∀ hl → loc ≡ AtDynamic hl
+                    → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl)))
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                        ≡ event-of load-indirect fs ++ flat-events n prog (flat-exec-instr load-indirect prog fs))
-          go-ptr (SV-Ptr (AtDynamic hl)) i-eq = go-mem hl i-eq (heapMem (floc fs) hl) refl
-          -- Plan 0.61: a load THROUGH A STACK POINTER is now an ordinary step —
+          go-loc (AtDynamic hl) i-eq ib = go-mem hl i-eq (ib hl refl) (heapMem (floc fs) hl) refl
+          -- Plan 0.61: a load THROUGH A STACK POINTER is an ordinary step —
           -- the pointer denotes `slot-addr f k`, and for the CURRENT frame's live
-          -- slots `rsp-eq` + `stack-eq` relate exactly that cell. (Pointers into
-          -- an older frame keep the residual: `stack-eq` says nothing there.)
-          go-ptr (SV-Ptr (AtStack f k))  i-eq =
+          -- slots (`stack-ptr-current`, a THEOREM) `rsp-eq` + `stack-eq` relate
+          -- exactly that cell.
+          go-loc (AtStack f k)  i-eq ib =
             go-stack f k i-eq (stack-ptr-current prog fs f k (inv-run wf) i-eq)
                      (stackMem (floc fs) (current-frame (falloc fs)) k) refl
-          go-ptr (SV-Tag _)              i-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
-          go-ptr (SV-Lit _ _)            i-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
-          go-ptr (SV-Code _)             i-eq = load-indirect-bad n ev env prog fs s cc wf h ftq
 
   -- MEMORY load-indirect-suc: as load-indirect but the SECOND cell (sucHL hl).
   load-indirect-suc-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
@@ -1429,19 +1433,33 @@ mutual
                          → fetch prog (fpc fs) ≡ just load-indirect-suc
                          → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                                ≡ event-of load-indirect-suc fs ++ flat-events n prog (flat-exec-instr load-indirect-suc prog fs))
-  load-indirect-suc-step {hv} n ev env prog fs s cc wf h ftq = go-ptr (readReg (regs (floc fs)) Input1) refl
-    where go-mem : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  load-indirect-suc-step {hv} n ev env prog fs s cc wf h ftq =
+    go-loc (proj₁ wits) (proj₁ (proj₂ wits)) (proj₂ (proj₂ wits))
+    where wits = load-indirect-suc-target-wf prog fs (inv-run wf) ftq
+          go-mem : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                 → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))
                  → ∀ (mw : Maybe (StoredValue FS)) → heapMem (floc fs) (sucHL hl) ≡ mw
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                        ≡ event-of load-indirect-suc fs ++ flat-events n prog (flat-exec-instr load-indirect-suc prog fs))
-          go-mem hl i-eq (just w) h-eq =
+          go-mem hl i-eq ib (just w) h-eq =
             ccc-step-bs {hv} n ev env prog fs s load-indirect-suc
               (block-step-load-indirect-suc prog fs s hl w cc h ftq i-eq
                  (C.dom-written (dataCorr cc) (sucHL hl) h-eq) h-eq)
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq | h-eq = h
-          go-mem hl i-eq nothing h-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
+          go-mem hl i-eq ib nothing h-eq = 1 , result
+            where stuckp = load-indirect-suc-heap-empty-stuck prog fs s hl cc ftq i-eq
+                             (C.dom-sized (dataCorr cc) (sucHL hl) ib) h-eq
+                  halt-s : X.State.halted s ≡ false
+                  halt-s = trans (C.halt-eq (dataCorr cc)) h
+                  hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ true
+                  hpost rewrite i-eq | h-eq = refl
+                  result : RTx.run-events val-x86-64 ev env 1 (compile-trace prog) s
+                         ≡ event-of load-indirect-suc fs ++ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)
+                  result = trans (RTx.run-events-stuck val-x86-64 ev env 0 (compile-trace prog) s
+                                    (mov (reg rax) (mem (base+disp rdi slot-size))) halt-s (proj₁ stuckp) refl (proj₂ stuckp))
+                                 (sym (flat-events-halted n prog (flat-exec-instr load-indirect-suc prog fs) hpost))
           -- SECOND cell of a stack pair: `[rdi+8]` is slot `suc k` of the same frame.
           go-stack : ∀ f k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
                    → (f ≡ current-frame (falloc fs)) × (suc k < stackSlot (regs (floc fs)))
@@ -1455,17 +1473,26 @@ mutual
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq | f-eq | st-eq = h
-          go-stack f k i-eq _ nothing st-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
-          go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
+          go-stack f k i-eq (f-eq , sk<ss) nothing st-eq = 1 , result
+            where stuckp = load-indirect-suc-stack-empty-stuck prog fs s f k cc ftq i-eq f-eq sk<ss st-eq
+                  halt-s : X.State.halted s ≡ false
+                  halt-s = trans (C.halt-eq (dataCorr cc)) h
+                  hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ true
+                  hpost rewrite i-eq | f-eq | st-eq = refl
+                  result : RTx.run-events val-x86-64 ev env 1 (compile-trace prog) s
+                         ≡ event-of load-indirect-suc fs ++ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)
+                  result = trans (RTx.run-events-stuck val-x86-64 ev env 0 (compile-trace prog) s
+                                    (mov (reg rax) (mem (base+disp rdi slot-size))) halt-s (proj₁ stuckp) refl (proj₂ stuckp))
+                                 (sym (flat-events-halted n prog (flat-exec-instr load-indirect-suc prog fs) hpost))
+          go-loc : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+                 → (∀ hl → loc ≡ AtDynamic hl
+                    → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl))))
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                        ≡ event-of load-indirect-suc fs ++ flat-events n prog (flat-exec-instr load-indirect-suc prog fs))
-          go-ptr (SV-Ptr (AtDynamic hl)) i-eq = go-mem hl i-eq (heapMem (floc fs) (sucHL hl)) refl
-          go-ptr (SV-Ptr (AtStack f k))  i-eq =
+          go-loc (AtDynamic hl) i-eq ib = go-mem hl i-eq (ib hl refl) (heapMem (floc fs) (sucHL hl)) refl
+          go-loc (AtStack f k)  i-eq ib =
             go-stack f k i-eq (stack-ptr-current-suc prog fs f k (inv-run wf) i-eq)
                      (stackMem (floc fs) (current-frame (falloc fs)) (suc k)) refl
-          go-ptr (SV-Tag _)              i-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
-          go-ptr (SV-Lit _ _)            i-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
-          go-ptr (SV-Code _)             i-eq = load-indirect-suc-bad n ev env prog fs s cc wf h ftq
 
   -- STACK load-from-slot: J-bridge on the slot's abstract value. `just w` ⇒ the PROVEN
   -- block-step-load-from-slot (the stack read pinned by stack-eq) ⇒ ccc-step-bs; the

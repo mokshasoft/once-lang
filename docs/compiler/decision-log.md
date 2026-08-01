@@ -5247,3 +5247,80 @@ Proof-engineering notes (for the next oracle-adjacent change): keep the traversa
 (cata/In/ana bodies need functor metavariables; unresolved `RQualified` leaves; sig-less
 bodies referencing earlier USER defs use the empty-context criterion, so only builtin-built
 bodies generalize).
+
+## D073: No Pointer Tagging, Heap Base Stays 0 — Dereference Divergences Close via Site-Discipline Facts
+
+**Date**: 2026-08-01
+**Status**: Accepted (implemented same day: `branch-tag-scrutinee-wf`,
+`load-indirect{,-suc}-target-wf`, the `*-empty-stuck` bricks)
+**Relates**: D054 (`Int` is a full-width modular `Word`), D061 (contracts come
+from interpretations), the flat↔x86-64 correspondence's vacuity discipline
+(2026-07-30 audit)
+
+### Context
+
+The flat↔x86-64 correspondence carried four residuals asserting run-events
+equations for states where the dereferenced register (`Input1`) holds a
+NON-pointer at an emitted `c-branch-tag-zero` / `load-indirect{,-suc}` site
+(`branch-tag-badptr`, `branch-tag-bad`, `load-indirect{,-suc}-bad`). There the
+machines genuinely diverge: the abstract branch falls through and the abstract
+load halts, while the concrete `cmp [rdi],0` / `mov rax,[rdi]` reads memory at
+the value's encoding — stuck if unmapped, garbage-and-continue if mapped. The
+routes correspond only under "a non-pointer's encoding is not a mapped
+address", which is false with tags encoding to small naturals and the heap
+based at 0.
+
+### Options
+
+1. **Move the heap base up** so tag/code encodings sit below it. Rejected:
+   D054 makes an int literal an arbitrary machine word, so no base or address
+   range can ever separate literal encodings from mapped addresses; the ripple
+   (entry view, `sep`, the high-water `untouched` region) buys a partial fix
+   at best.
+2. **Tagged/boxed value representation** (disjoint encodings for pointers vs
+   non-pointers, e.g. low-bit tagging). Rejected: `enc-sv (SV-Lit fits-int v)
+   = v` is the correspondence's statement that compiled code runs on RAW
+   UNBOXED words — the binary really loads the immediate `v`, and the arith
+   path computes on it. Changing the encoding is a runtime-representation
+   redesign of the language, not a proof fix.
+3. **Abstract machine halts on a non-live scrutinee** (model change). Rejected:
+   the mapped-garbage concrete route still continues while the abstract halts,
+   so the (false) encoding claim is still needed — plus it ripples every
+   machine-invariant proof.
+4. **Site-discipline (dataflow WF) residuals** — the divergent routes are
+   unreachable in well-typed emitted programs: codegen emits a tag branch only
+   after loading a constructed node's pointer, and a `load-indirect` only to
+   dereference a pair/node pointer. State that per site, conditioned on the
+   run context, in the `lea-indexed-wf` / `store-indirect{,-suc}-inbounds`
+   mold.
+
+### Decision
+
+Option 4. The heap base stays 0 and `enc-sv` stays raw. The four divergence
+residuals are replaced by three narrower dataflow facts:
+
+- `branch-tag-scrutinee-wf` — at an emitted `c-branch-tag-zero` site,
+  `Input1` holds a heap pointer to a WRITTEN TAG cell (replaces both
+  `branch-tag-badptr` and `branch-tag-bad`; `dom-written` supplies the
+  block-step's liveness);
+- `load-indirect{,-suc}-target-wf` — at an emitted load site, `Input1` holds
+  a pointer, in-bounds for its block when dynamic (the store family's exact
+  conjunct, so the whole dereference family is uniform and is discharged
+  together by the pointer-in-bounds invariant).
+
+Two previously-residual routes became THEOREMS in the same move: an empty
+stack cell and an empty (allocated, unwritten) heap cell halt both machines —
+`stack-eq` / `dom-sized` + `heap-eq` make the concrete read unmapped, so the
+trace ends exactly where the abstract machine halts (the `*-empty-stuck`
+bricks + `run-events-stuck`).
+
+### Consequences
+
+- The `*-bad`/`badptr` class is gone from the residual map; what remains of
+  the dereference story is the honest dataflow class with a discharge
+  trajectory: a per-site register-shape invariant (static expectation at each
+  emitted site + preservation induction — the `FlatStackPtr` pattern), plus
+  the entry-model decision the in-bounds family already waits on.
+- `store-indirect{,-suc}-bad` are NOT covered: stores are a genuine model gap
+  (the concrete write-through-non-pointer succeeds where the abstract halts)
+  and stay parked on the address-keyed-memory / store-site-check decision.
