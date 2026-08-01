@@ -36,8 +36,8 @@ module poc.OCP0009.NbEPDirDBType where
 
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; RTm; var; lam; app
-        ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; Sub; subTy; subTm; renTy )
+  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
+        ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; Sub; subTy; subTm; renTy; renTm )
 
 private
   variable
@@ -81,15 +81,33 @@ data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   ξ-Πʳ : {A : RTy Γ} {B B' : RTy (Γ ∙)} → B ⟶ᵀ B' → Π A B ⟶ᵀ Π A B'
   ξ-Σˡ : {A A' : RTy Γ} {B : RTy (Γ ∙)} → A ⟶ᵀ A' → Σ' A B ⟶ᵀ Σ' A' B
   ξ-Σʳ : {A : RTy Γ} {B B' : RTy (Γ ∙)} → B ⟶ᵀ B' → Σ' A B ⟶ᵀ Σ' A B'
+  -- ★ W2: `Hom` COMPUTES, like `El` (SpikeHomTy's clauses, promoted).
+  -- `Hom-U` is DIRECTED UNIVALENCE as a computation rule: a path between
+  -- codes IS a map between their decodings.  `Hom-Π` is the POINTWISE family
+  -- (item 2: naturality is not carried; item 3: it must not be).  There is
+  -- deliberately NO rule at `base` (discrete by generation, item 4), none at
+  -- `Σ'` (its unfolding needs transport, a term former W2's eliminator will
+  -- introduce — deferred, not dropped), none at a stuck `El`, none at `Hom`.
+  Hom-U : (c d : RTm Γ) → Hom U c d ⟶ᵀ Π (El c) (El (renTm vs d))
+  Hom-Π : (A : RTy Γ) (B : RTy (Γ ∙)) (f g : RTm Γ) →
+          Hom (Π A B) f g ⟶ᵀ
+          Π A (Hom B (app (renTm vs f) (var vz)) (app (renTm vs g) (var vz)))
+  ξ-Homᵀ : {A A' : RTy Γ} {t u : RTm Γ} → A ⟶ᵀ A' → Hom A t u ⟶ᵀ Hom A' t u
+  ξ-Homˡ : {A : RTy Γ} {t t' u : RTm Γ} → t ⟶ t' → Hom A t u ⟶ᵀ Hom A t' u
+  ξ-Homʳ : {A : RTy Γ} {t u u' : RTm Γ} → u ⟶ u' → Hom A t u ⟶ᵀ Hom A t u'
 
 infix 3 _⟶*_
 data _⟶*_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   done : {t : RTm Γ} → t ⟶* t
   step : {t u v : RTm Γ} → t ⟶ u → u ⟶* v → t ⟶* v
 
--- `Hom` = the directed identity type; `Core` = its groupoid core.
-Hom : RTm Γ → RTm Γ → Set
-Hom t u = t ⟶* u
+-- ⚠ READING CORRECTED (W2 §4.0): `_⟶*_` is NOT the directed identity type —
+-- reduction is too small to be a path type (`SpikeVar`).  The internal `Hom`
+-- is now the TYPE FORMER above.  The meta-level relation keeps only its
+-- operational role, renamed `Hom⟶`; `Core⟶` is its symmetric core, and it is
+-- what conversion completes.
+Hom⟶ : RTm Γ → RTm Γ → Set
+Hom⟶ t u = t ⟶* u
 
 infixr 4 _,,_
 record _×_ (P Q : Set) : Set where
@@ -97,8 +115,8 @@ record _×_ (P Q : Set) : Set where
   field π₁ : P
         π₂ : Q
 
-Core : RTm Γ → RTm Γ → Set
-Core t u = Hom t u × Hom u t
+Core⟶ : RTm Γ → RTm Γ → Set
+Core⟶ t u = Hom⟶ t u × Hom⟶ u t
 
 ------------------------------------------------------------------------
 -- Conversion = definitional equality = the R-S-T closure of reduction.
@@ -118,13 +136,12 @@ data _≅ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   csymᵀ : {A B : RTy Γ}   → A ≅ᵀ B → B ≅ᵀ A
   ctrnᵀ : {A B C : RTy Γ} → A ≅ᵀ B → B ≅ᵀ C → A ≅ᵀ C
 
--- `Id = core(Hom)`, operational: the directed `Hom` (and its core) lands in
--- the conversion the typechecker uses.
-hom→≅ : {t u : RTm Γ} → Hom t u → t ≅ u
+-- Reduction (and its core) lands in the conversion the typechecker uses.
+hom→≅ : {t u : RTm Γ} → Hom⟶ t u → t ≅ u
 hom→≅ done       = crfl
 hom→≅ (step r p) = ctrn (cred r) (hom→≅ p)
 
-core→≅ : {t u : RTm Γ} → Core t u → t ≅ u
+core→≅ : {t u : RTm Γ} → Core⟶ t u → t ≅ u
 core→≅ c = hom→≅ (_×_.π₁ c)
 
 ------------------------------------------------------------------------
@@ -197,6 +214,8 @@ data _⊢ty_ where
   ty-Π    : ∀ {Γ A B} → Γ ⊢ty A → (Γ ▹ A) ⊢ty B → Γ ⊢ty Π A B
   ty-Σ    : ∀ {Γ A B} → Γ ⊢ty A → (Γ ▹ A) ⊢ty B → Γ ⊢ty Σ' A B
   ty-El   : ∀ {Γ c}   → Γ ⊢ c ∷ U → Γ ⊢ty El c
+  -- W2: `Hom` FORMATION — both endpoints at the same (well-formed) type.
+  ty-Hom  : ∀ {Γ A t u} → Γ ⊢ty A → Γ ⊢ t ∷ A → Γ ⊢ u ∷ A → Γ ⊢ty Hom A t u
 
 -- CONTEXT well-formedness. Needed because `⊢var`'s type comes from a lookup:
 -- syntactic validity at `⊢var` is exactly "a lookup in a well-formed context

@@ -27,16 +27,18 @@ module poc.OCP0009.NbEPDirDBInj where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ )
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; _∙; RTy; base; U; Π; Σ'; El; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
-        ; var; lam; app; pair; fst; snd )
+  using ( Cx; _∙; RTy; base; U; Π; Σ'; El; Hom; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
+        ; var; lam; app; pair; fst; snd; vz; vs; renTm )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
+        ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ )
 open import poc.OCP0009.NbEPDirDBConf
   using ( _⟹_; pvar; plam; papp; pβ; ppair; pfst; psnd; pβfst; pβsnd
         ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝
-        ; _⁺; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟶*-trans )
+        ; _⁺; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟶*-trans
+        ; ⟹-ren; ⟶*-ren; ⟶*-appˡ )
 
 private
   variable
@@ -75,6 +77,18 @@ data _⟶ᵀ*_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟶ᵀ*-Σʳ doneᵀ       = doneᵀ
 ⟶ᵀ*-Σʳ (stepᵀ r p) = stepᵀ (ξ-Σʳ r) (⟶ᵀ*-Σʳ p)
 
+⟶ᵀ*-Homᵀ : {A A' : RTy Γ} {t u : RTm Γ} → A ⟶ᵀ* A' → Hom A t u ⟶ᵀ* Hom A' t u
+⟶ᵀ*-Homᵀ doneᵀ       = doneᵀ
+⟶ᵀ*-Homᵀ (stepᵀ r p) = stepᵀ (ξ-Homᵀ r) (⟶ᵀ*-Homᵀ p)
+
+⟶ᵀ*-Homˡ : {A : RTy Γ} {t t' u : RTm Γ} → t ⟶* t' → Hom A t u ⟶ᵀ* Hom A t' u
+⟶ᵀ*-Homˡ done       = doneᵀ
+⟶ᵀ*-Homˡ (step r p) = stepᵀ (ξ-Homˡ r) (⟶ᵀ*-Homˡ p)
+
+⟶ᵀ*-Homʳ : {A : RTy Γ} {t u u' : RTm Γ} → u ⟶* u' → Hom A t u ⟶ᵀ* Hom A t u'
+⟶ᵀ*-Homʳ done       = doneᵀ
+⟶ᵀ*-Homʳ (step r p) = stepᵀ (ξ-Homʳ r) (⟶ᵀ*-Homʳ p)
+
 ------------------------------------------------------------------------
 -- Parallel type reduction; reuses the TERM triangle at `El` leaves.
 ------------------------------------------------------------------------
@@ -91,6 +105,15 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
             c ⟹ c' → d ⟹ d' → El (⌜Π⌝ c d) ⟹ᵀ Π (El c') (El d')
   pEl-⌜Σ⌝ : {c c' : RTm Γ} {d d' : RTm (Γ ∙)} →
             c ⟹ c' → d ⟹ d' → El (⌜Σ⌝ c d) ⟹ᵀ Σ' (El c') (El d')
+  -- W2: `Hom` congruence, and its two unfoldings (`SpikeHomTy` promoted).
+  pHom : {A A' : RTy Γ} {t t' u u' : RTm Γ} →
+         A ⟹ᵀ A' → t ⟹ t' → u ⟹ u' → Hom A t u ⟹ᵀ Hom A' t' u'
+  pHom-U : {c c' d d' : RTm Γ} →
+           c ⟹ c' → d ⟹ d' → Hom U c d ⟹ᵀ Π (El c') (El (renTm vs d'))
+  pHom-Π : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} {f f' g g' : RTm Γ} →
+           A ⟹ᵀ A' → B ⟹ᵀ B' → f ⟹ f' → g ⟹ g' →
+           Hom (Π A B) f g ⟹ᵀ
+           Π A' (Hom B' (app (renTm vs f') (var vz)) (app (renTm vs g') (var vz)))
 
 ⟹ᵀ-refl : (A : RTy Γ) → A ⟹ᵀ A
 ⟹ᵀ-refl base     = pbase
@@ -98,6 +121,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ-refl U        = pU
 ⟹ᵀ-refl (Π A B)  = pΠ (⟹ᵀ-refl A) (⟹ᵀ-refl B)
 ⟹ᵀ-refl (Σ' A B) = pΣ (⟹ᵀ-refl A) (⟹ᵀ-refl B)
+⟹ᵀ-refl (Hom A t u) = pHom (⟹ᵀ-refl A) (⟹-refl t) (⟹-refl u)
 
 ⟶ᵀ→⟹ᵀ : {A B : RTy Γ} → A ⟶ᵀ B → A ⟹ᵀ B
 ⟶ᵀ→⟹ᵀ El-⌜base⌝    = pEl-⌜base⌝
@@ -108,6 +132,12 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟶ᵀ→⟹ᵀ (ξ-Πʳ r) = pΠ (⟹ᵀ-refl _) (⟶ᵀ→⟹ᵀ r)
 ⟶ᵀ→⟹ᵀ (ξ-Σˡ r) = pΣ (⟶ᵀ→⟹ᵀ r) (⟹ᵀ-refl _)
 ⟶ᵀ→⟹ᵀ (ξ-Σʳ r) = pΣ (⟹ᵀ-refl _) (⟶ᵀ→⟹ᵀ r)
+⟶ᵀ→⟹ᵀ (Hom-U c d)     = pHom-U (⟹-refl c) (⟹-refl d)
+⟶ᵀ→⟹ᵀ (Hom-Π A B f g) =
+  pHom-Π (⟹ᵀ-refl A) (⟹ᵀ-refl B) (⟹-refl f) (⟹-refl g)
+⟶ᵀ→⟹ᵀ (ξ-Homᵀ r) = pHom (⟶ᵀ→⟹ᵀ r) (⟹-refl _) (⟹-refl _)
+⟶ᵀ→⟹ᵀ (ξ-Homˡ r) = pHom (⟹ᵀ-refl _) (⟶→⟹ r) (⟹-refl _)
+⟶ᵀ→⟹ᵀ (ξ-Homʳ r) = pHom (⟹ᵀ-refl _) (⟹-refl _) (⟶→⟹ r)
 
 ⟹ᵀ→⟶ᵀ* : {A B : RTy Γ} → A ⟹ᵀ B → A ⟶ᵀ* B
 ⟹ᵀ→⟶ᵀ* pbase    = doneᵀ
@@ -122,6 +152,19 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ→⟶ᵀ* (pEl-⌜Σ⌝ {c = c} {d = d} p q) =
   stepᵀ (El-⌜Σ⌝ c d)
     (⟶ᵀ*-trans (⟶ᵀ*-Σˡ (⟶ᵀ*-El (⟹→⟶* p))) (⟶ᵀ*-Σʳ (⟶ᵀ*-El (⟹→⟶* q))))
+⟹ᵀ→⟶ᵀ* (pHom p q r) =
+  ⟶ᵀ*-trans (⟶ᵀ*-Homᵀ (⟹ᵀ→⟶ᵀ* p))
+    (⟶ᵀ*-trans (⟶ᵀ*-Homˡ (⟹→⟶* q)) (⟶ᵀ*-Homʳ (⟹→⟶* r)))
+⟹ᵀ→⟶ᵀ* (pHom-U {c = c} {d = d} p q) =
+  stepᵀ (Hom-U c d)
+    (⟶ᵀ*-trans (⟶ᵀ*-Πˡ (⟶ᵀ*-El (⟹→⟶* p)))
+               (⟶ᵀ*-Πʳ (⟶ᵀ*-El (⟶*-ren vs (⟹→⟶* q)))))
+⟹ᵀ→⟶ᵀ* (pHom-Π {A = A} {B = B} {f = f} {g = g} pA pB pf pg) =
+  stepᵀ (Hom-Π A B f g)
+    (⟶ᵀ*-trans (⟶ᵀ*-Πˡ (⟹ᵀ→⟶ᵀ* pA))
+      (⟶ᵀ*-Πʳ (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ (⟹ᵀ→⟶ᵀ* pB))
+        (⟶ᵀ*-trans (⟶ᵀ*-Homˡ (⟶*-appˡ (⟶*-ren vs (⟹→⟶* pf))))
+                   (⟶ᵀ*-Homʳ (⟶*-appˡ (⟶*-ren vs (⟹→⟶* pg))))))))
 
 ------------------------------------------------------------------------
 -- Complete development + triangle for types.
@@ -141,6 +184,18 @@ El (⌜Π⌝ c d) ⁺ᵀ = Π (El (c ⁺)) (El (d ⁺))
 El (⌜Σ⌝ c d) ⁺ᵀ = Σ' (El (c ⁺)) (El (d ⁺))
 Π A B ⁺ᵀ        = Π (A ⁺ᵀ) (B ⁺ᵀ)
 Σ' A B ⁺ᵀ       = Σ' (A ⁺ᵀ) (B ⁺ᵀ)
+-- W2: `Hom` develops by the head of its TYPE argument.  Where the head is
+-- already `U`/`Π` the unfolding fires (with components developed); where it
+-- is an `El` code the development DECODES ONLY — one parallel step cannot
+-- both decode and unfold, the same one-step-behind pattern `El` itself uses.
+Hom base t u ⁺ᵀ        = Hom base (t ⁺) (u ⁺)
+Hom U c d ⁺ᵀ           = Π (El (c ⁺)) (El (renTm vs (d ⁺)))
+Hom (Π A B) f g ⁺ᵀ     =
+  Π (A ⁺ᵀ) (Hom (B ⁺ᵀ) (app (renTm vs (f ⁺)) (var vz))
+                       (app (renTm vs (g ⁺)) (var vz)))
+Hom (Σ' A B) t u ⁺ᵀ    = Hom (Σ' (A ⁺ᵀ) (B ⁺ᵀ)) (t ⁺) (u ⁺)
+Hom (El e) t u ⁺ᵀ      = Hom ((El e) ⁺ᵀ) (t ⁺) (u ⁺)
+Hom (Hom A a b) t u ⁺ᵀ = Hom ((Hom A a b) ⁺ᵀ) (t ⁺) (u ⁺)
 
 ⟹ᵀ-⁺ : {A B : RTy Γ} → A ⟹ᵀ B → B ⟹ᵀ A ⁺ᵀ
 ⟹ᵀ-⁺ pbase          = pbase
@@ -162,6 +217,33 @@ El (⌜Σ⌝ c d) ⁺ᵀ = Σ' (El (c ⁺)) (El (d ⁺))
 ⟹ᵀ-⁺ pEl-⌜base⌝     = pbase
 ⟹ᵀ-⁺ (pEl-⌜Π⌝ p q)  = pΠ (pEl (⟹-⁺ p)) (pEl (⟹-⁺ q))
 ⟹ᵀ-⁺ (pEl-⌜Σ⌝ p q)  = pΣ (pEl (⟹-⁺ p)) (pEl (⟹-⁺ q))
+-- W2: the `Hom` triangle, dispatching on the type argument's evidence.
+-- Only two cases are non-uniform — the heads whose development UNFOLDS.
+⟹ᵀ-⁺ (pHom pU pt pu)         = pHom-U (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom (pΠ pA pB) pt pu) =
+  pHom-Π (⟹ᵀ-⁺ pA) (⟹ᵀ-⁺ pB) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pbase pt pu)      = pHom pbase (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom (pΣ pA pB) pt pu) =
+  pHom (pΣ (⟹ᵀ-⁺ pA) (⟹ᵀ-⁺ pB)) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom (pEl pe) pt pu)   =
+  pHom (⟹ᵀ-⁺ (pEl pe)) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pEl-⌜base⌝ pt pu) =
+  pHom (⟹ᵀ-⁺ pEl-⌜base⌝) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom (pEl-⌜Π⌝ p q) pt pu) =
+  pHom (⟹ᵀ-⁺ (pEl-⌜Π⌝ p q)) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom (pEl-⌜Σ⌝ p q) pt pu) =
+  pHom (⟹ᵀ-⁺ (pEl-⌜Σ⌝ p q)) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom (pHom pA pa pb) pt pu) =
+  pHom (⟹ᵀ-⁺ (pHom pA pa pb)) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom (pHom-U p q) pt pu) =
+  pHom (⟹ᵀ-⁺ (pHom-U p q)) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom (pHom-Π pA pB pf pg) pt pu) =
+  pHom (⟹ᵀ-⁺ (pHom-Π pA pB pf pg)) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom-U p q) = pΠ (pEl (⟹-⁺ p)) (pEl (⟹-ren vs (⟹-⁺ q)))
+⟹ᵀ-⁺ (pHom-Π pA pB pf pg) =
+  pΠ (⟹ᵀ-⁺ pA)
+     (pHom (⟹ᵀ-⁺ pB) (papp (⟹-ren vs (⟹-⁺ pf)) (pvar vz))
+                     (papp (⟹-ren vs (⟹-⁺ pg)) (pvar vz)))
 
 ------------------------------------------------------------------------
 -- Diamond → confluence → Church–Rosser, for types.

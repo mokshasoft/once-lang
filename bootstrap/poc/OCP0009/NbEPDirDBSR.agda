@@ -32,16 +32,17 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBSR where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; subst )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; subst; cong₂ )
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; RTm; var; lam; app
-        ; Sub; subTy; subTm; extS; _∘ₛ_
-        ; subTm-subTm; subTm-cong; subTm-renTm; subTm-id )
+  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
+        ; Sub; subTy; subTm; extS; _∘ₛ_; renTm
+        ; subTm-subTm; subTm-cong; subTm-renTm; subTm-id; renTm-subTm )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
         ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
+        ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; _⊢_∷_; ⊢var; ⊢lam; ⊢app; here
         ; _⊢ty_; ty-base )
@@ -91,6 +92,13 @@ sub-comm {Γ} σ t u =
 ⟶-sub σ (ξ-⌜Σ⌝ˡ r) = ξ-⌜Σ⌝ˡ (⟶-sub σ r)
 ⟶-sub σ (ξ-⌜Σ⌝ʳ r) = ξ-⌜Σ⌝ʳ (⟶-sub (extS σ) r)
 
+-- Weakening then substituting under the binder is substituting then
+-- weakening — the bridge the `Hom-U`/`Hom-Π` cases need.  Both composites
+-- are DEFINITIONALLY the pointwise substitution `x ↦ renTm vs (σ x)`.
+wk-sub : (σ : Sub Γ Δ) (t : RTm Γ) →
+         subTm (extS σ) (renTm vs t) ≡ renTm vs (subTm σ t)
+wk-sub σ t = trans (subTm-renTm t) (sym (renTm-subTm t))
+
 ⟶ᵀ-sub : (σ : Sub Γ Δ) {A B : RTy Γ} → A ⟶ᵀ B → subTy σ A ⟶ᵀ subTy σ B
 ⟶ᵀ-sub σ (El-⌜base⌝)  = El-⌜base⌝
 ⟶ᵀ-sub σ (El-⌜Π⌝ c d) = El-⌜Π⌝ (subTm σ c) (subTm (extS σ) d)
@@ -100,6 +108,19 @@ sub-comm {Γ} σ t u =
 ⟶ᵀ-sub σ (ξ-Πʳ r) = ξ-Πʳ (⟶ᵀ-sub (extS σ) r)
 ⟶ᵀ-sub σ (ξ-Σˡ r) = ξ-Σˡ (⟶ᵀ-sub σ r)
 ⟶ᵀ-sub σ (ξ-Σʳ r) = ξ-Σʳ (⟶ᵀ-sub (extS σ) r)
+⟶ᵀ-sub σ (Hom-U c d) =
+  subst (λ z → Hom U (subTm σ c) (subTm σ d) ⟶ᵀ Π (El (subTm σ c)) (El z))
+        (sym (wk-sub σ d))
+        (Hom-U (subTm σ c) (subTm σ d))
+⟶ᵀ-sub σ (Hom-Π A B f g) =
+  subst (λ Z → Hom (Π (subTy σ A) (subTy (extS σ) B)) (subTm σ f) (subTm σ g) ⟶ᵀ Z)
+        (cong₂ (λ x y → Π (subTy σ A)
+                          (Hom (subTy (extS σ) B) (app x (var vz)) (app y (var vz))))
+               (sym (wk-sub σ f)) (sym (wk-sub σ g)))
+        (Hom-Π (subTy σ A) (subTy (extS σ) B) (subTm σ f) (subTm σ g))
+⟶ᵀ-sub σ (ξ-Homᵀ r) = ξ-Homᵀ (⟶ᵀ-sub σ r)
+⟶ᵀ-sub σ (ξ-Homˡ r) = ξ-Homˡ (⟶-sub σ r)
+⟶ᵀ-sub σ (ξ-Homʳ r) = ξ-Homʳ (⟶-sub σ r)
 
 ------------------------------------------------------------------------
 -- Hence conversion is substitution-stable — the `⊢conv`-case ingredient.
