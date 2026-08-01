@@ -50,7 +50,7 @@ open import normalizer.Syntax.Types
 
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; base; U; Π; Σ'; El
+        ; RTy; base; U; Π; Σ'; El; Hom; Hom-cong₃
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; Ren; extR; renTy; renTm
         ; Sub; subTy; subTm; extS
@@ -69,7 +69,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd
         ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢conv
-        ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El
+        ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom
         ; ⊢ctx_; c-◇; c-▹
         ; ⊢id; ⊢appex )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub )
@@ -80,11 +80,12 @@ open import poc.OCP0009.NbEPDirDBLR
         ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-exp
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
         ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; _⊩₀∋_
-        ; ⊩₁_; ⊩₁base; ⊩₁U; ⊩₁ne; ⊩₁Π; ⊩₁Σ; _⊩₁∋_
+        ; ⊩₁_; ⊩₁base; ⊩₁U; ⊩₁ne; ⊩₁Π; ⊩₁Σ; ⊩₁Hom; _⊩₁∋_
         ; bwd₁; irrel₁; conv₁; CR1₀; CR1₁; CR3₀; CR3₁
         ; emb; emb-coh
         ; sem-conv; sem-lam; sem-app; sem-fst; sem-snd; sem-pair
         ; sem-El; sem-⌜base⌝; sem-⌜Π⌝; sem-⌜Σ⌝
+        ; homSem₁
         ; ⟶ᵀ*-sub
         ; IsNormal; WN; mkWN; wn
         ; projl; projr; dfst; dsnd )
@@ -129,6 +130,8 @@ subTy-var ρ (Σ' A B) =
   cong₂ Σ' (subTy-var ρ A)
            (trans (subTy-cong (exts-var ρ) B) (subTy-var (extR ρ) B))
 subTy-var ρ (El t)   = cong El (subTm-var ρ t)
+subTy-var ρ (Hom A t u) =
+  Hom-cong₃ (subTy-var ρ A) (subTm-var ρ t) (subTm-var ρ u)
 subTm-var ρ (var x)   = refl
 subTm-var ρ (lam t)   =
   cong lam (trans (subTm-cong (exts-var ρ) t) (subTm-var (extR ρ) t))
@@ -356,6 +359,8 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 ... | mkΠRed _ _ () _ _
 ⊩₁-app (⊩₁Σ p _ _) S h k with Π-reduct p
 ... | mkΠRed _ _ () _ _
+⊩₁-app (⊩₁Hom p _) S h k with Π-reduct p
+... | mkΠRed _ _ () _ _
 ⊩₁-app (⊩₁Π p ⊩F ⊩G) S {v = v} h k with Π-reduct p
 ... | mkΠRed _ _ refl rF rG =
       ( bwd₁ q (⊩G v r)
@@ -374,6 +379,8 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 ... | mkΣRed _ _ () _ _
 ⊩₁-fstm (⊩₁Π p _ _) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
+⊩₁-fstm (⊩₁Hom p _) h with Σ-reduct p
+... | mkΣRed _ _ () _ _
 ⊩₁-fstm (⊩₁Σ p ⊩F ⊩G) h with Σ-reduct p
 ... | mkΣRed _ _ refl rF rG =
       ( bwd₁ rF ⊩F
@@ -388,6 +395,8 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 ⊩₁-sndm (⊩₁ne p n) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
 ⊩₁-sndm (⊩₁Π p _ _) h with Σ-reduct p
+... | mkΣRed _ _ () _ _
+⊩₁-sndm (⊩₁Hom p _) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
 ⊩₁-sndm (⊩₁Σ p ⊩F ⊩G) {w = w} h with Σ-reduct p
 ... | mkΣRed _ _ refl rF rG =
@@ -441,6 +450,17 @@ fund-ty {σ = σ} (ty-El {c = c} dc) x₀ ρ = emb (sem-El doneᵀ hc)
     -- and the `U` clause's second component IS the decoding.
     hc = projl (irrel₁ crflᵀ (dfst (fund dc x₀ ρ)) (⊩₁U doneᵀ))
                (subTm σ c) (dsnd (fund dc x₀ ρ))
+-- W2 `ty-Hom` — the semantic action `homSem₁` does all the work; the only
+-- plumbing is moving each endpoint's membership onto the IH's derivation of
+-- `⊩₁ A[σ]` (the `ty-El` idiom: `irrel₁` at `crflᵀ`).  `Hom` is
+-- substitution-stable definitionally, so the goal needs no cast.
+fund-ty {σ = σ} (ty-Hom {t = t} {u = u} tyA dt du) x₀ ρ = homSem₁ R ht hu
+  where
+    R  = fund-ty tyA x₀ ρ
+    ht = projl (irrel₁ crflᵀ (dfst (fund dt x₀ ρ)) R)
+               (subTm σ t) (dsnd (fund dt x₀ ρ))
+    hu = projl (irrel₁ crflᵀ (dfst (fund du x₀ ρ)) R)
+               (subTm σ u) (dsnd (fund du x₀ ρ))
 
 -- TERMS.
 fund (⊢var d) x₀ ρ = ρ d
