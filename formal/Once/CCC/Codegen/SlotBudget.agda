@@ -30,7 +30,8 @@ module Once.CCC.Codegen.SlotBudget where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
 open import Data.Nat.Properties using
-  (≤-refl; ≤-trans; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-comm; ≤-step)
+  (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-comm; +-assoc;
+   *-suc; *-monoʳ-≤; ≤-step)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_)
@@ -46,7 +47,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
-open import Once.Type using (Functor)
+open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace; Slot; lea-slot;
    mov-to-output; mov-to-input; store-at-slot; load-from-slot;
@@ -55,7 +56,8 @@ open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Codegen.IRToTrace using
   (ir-to-trace'; ir-to-trace; ir-stack-budget;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
-   cata-strategy; cata-dispatch; fsize)
+   cata-strategy; cata-dispatch; fsize;
+   push2; pop2; visit-walk; rebuild-walk)
 
 -- the two projections of `ir-to-trace'`'s 4-tuple this module reads (record
 -- patterns, so they reduce under eta — IRToTrace's own are private)
@@ -285,19 +287,174 @@ cata-linear-below n1 l1 at ff =
       sb-slot refl p0 (λ _ ()) ∷ sb-none refl ∷
       ++⁺ at' (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
 
-postulate
-  -- THE PIECE LEFT (plan 0.54 rung D, item 2). The one remaining cata strategy:
-  -- `cata-trace-branching` reserves its OWN slots in `[n1, next)`, above the
-  -- algebra's frontier `n1` — `4·fsize F + 4` of them, behind the compile-time
-  -- functor walks (`visit-walk` / `rebuild-walk`), whose slots need an
-  -- `s + 4·fsize F + 4` bound by induction on `F` (plus push2/pop2/wrap-sum
-  -- brick lemmas). Fixed arithmetic; no model content, and no state or program
-  -- is quantified over — this is a claim about one CLOSED trace-building
-  -- function.
-  cata-branching-slots-below : ∀ (F : Functor) (n1 l1 : ℕ) (at : AbstractTrace)
-                             → All (SlotBelow n1) at
-                             → All (SlotBelow (cata-budget-of (cata-dispatch (strat-branching F) n1 l1 at)))
-                                   (cata-trace-of (cata-dispatch (strat-branching F) n1 l1 at))
+------------------------------------------------------------------------
+-- STRATEGY `strat-branching` DISCHARGED (2026-08-01) — the last one.
+--
+-- The Tier-2 branching cata reserves `4·fsize F + 4` slots above the algebra's
+-- frontier: seven fixed ones (`s-todo`..`t2` at n1..n1+6, plus the base `wb` at
+-- n1+7) and a stride-4 window per functor-nesting level for the compile-time
+-- walks. The walk lemmas are inductions on `F` with the premise
+-- `s + 4·fsize F ≤ b`: a `⊗` level owns `[s, s+3]` and recurses at `s+4` on
+-- both sides, which `fsize (F ⊗ G) = 1 + fsize F + fsize G` covers; a `⊕`
+-- level is a SINGLE `instr-case-on-tag` (its branch walks are nested traces,
+-- and `slot-of` is `nothing` on the carrying instruction — the flat `fpc`
+-- never indexes into them), so it contributes nothing at the `All` level and
+-- `wrap-sum` needs no brick at all.
+------------------------------------------------------------------------
+
+-- push the value in Output onto a 2-cell linked stack: three addressed slots
+push2-below : ∀ (topSlot tv tb b : ℕ) → topSlot < b → tv < b → tb < b
+            → All (SlotBelow b) (push2 topSlot tv tb)
+push2-below topSlot tv tb b pt pv pb =
+  sb-slot refl pv (λ _ ()) ∷ sb-none refl ∷ sb-slot refl pb (λ _ ()) ∷
+  sb-none refl ∷ sb-slot refl pv (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl pt (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl pb (λ _ ()) ∷ sb-slot refl pt (λ _ ()) ∷ []
+
+-- pop it: one addressed slot
+pop2-below : ∀ (topSlot b : ℕ) → topSlot < b → All (SlotBelow b) (pop2 topSlot)
+pop2-below topSlot b pt =
+  sb-slot refl pt (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
+  sb-slot refl pt (λ _ ()) ∷ sb-none refl ∷ []
+
+-- the VISIT walk: `Id` is a push (fixed slots), `⊕` one case instruction,
+-- `⊗` owns `s` and recurses at `s+4`
+visit-below : ∀ (F : Functor) (todo tv tb s b : ℕ)
+            → todo < b → tv < b → tb < b → s + 4 * fsize F ≤ b
+            → All (SlotBelow b) (visit-walk todo tv tb F s)
+visit-below (K _) todo tv tb s b pt pv pb h = []
+visit-below Id    todo tv tb s b pt pv pb h =
+  sb-none refl ∷ push2-below todo tv tb b pt pv pb
+visit-below (F ⊕ G) todo tv tb s b pt pv pb h = sb-none refl ∷ []
+visit-below (F ⊗ G) todo tv tb s b pt pv pb h =
+  ++⁺ (sb-none refl ∷ sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
+      (++⁺ (visit-below G todo tv tb (s + 4) b pt pv pb recG)
+           (++⁺ (sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
+                (visit-below F todo tv tb (s + 4) b pt pv pb recF)))
+  where
+    room4 : s + 4 ≤ b
+    room4 = ≤-trans (+-monoʳ-≤ s (subst (4 ≤_) (sym (*-suc 4 (fsize F + fsize G)))
+                                        (m≤m+n 4 (4 * (fsize F + fsize G))))) h
+    s<b : s < b
+    s<b = ≤-trans (subst (suc s ≤_) (+-comm 4 s) (m≤n+m (suc s) 3)) room4
+    recF : s + 4 + 4 * fsize F ≤ b
+    recF = ≤-trans (≤-reflexive (+-assoc s 4 (4 * fsize F)))
+           (≤-trans (+-monoʳ-≤ s (+-monoʳ-≤ 4 (*-monoʳ-≤ 4 (m≤m+n (fsize F) (fsize G)))))
+           (≤-trans (≤-reflexive (cong (s +_) (sym (*-suc 4 (fsize F + fsize G))))) h))
+    recG : s + 4 + 4 * fsize G ≤ b
+    recG = ≤-trans (≤-reflexive (+-assoc s 4 (4 * fsize G)))
+           (≤-trans (+-monoʳ-≤ s (+-monoʳ-≤ 4 (*-monoʳ-≤ 4 (m≤n+m (fsize G) (fsize F)))))
+           (≤-trans (≤-reflexive (cong (s +_) (sym (*-suc 4 (fsize F + fsize G))))) h))
+
+-- the REBUILD walk: `Id` is a pop (the value slot), `⊕` one case instruction
+-- (`wrap-sum` lives inside its branches), `⊗` owns `[s, s+3]`
+rebuild-below : ∀ (F : Functor) (val tv tb s b : ℕ)
+              → val < b → s + 4 * fsize F ≤ b
+              → All (SlotBelow b) (rebuild-walk val tv tb F s)
+rebuild-below (K _) val tv tb s b pt h = sb-none refl ∷ []
+rebuild-below Id    val tv tb s b pt h = pop2-below val b pt
+rebuild-below (F ⊕ G) val tv tb s b pt h = sb-none refl ∷ []
+rebuild-below (F ⊗ G) val tv tb s b pt h =
+  ++⁺ (sb-none refl ∷ sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
+      (++⁺ (rebuild-below F val tv tb (s + 4) b pt recF)
+           (++⁺ (sb-slot refl b-ss (λ _ ()) ∷ sb-slot refl s<b (λ _ ()) ∷
+                 sb-none refl ∷ sb-none refl ∷ [])
+                (++⁺ (rebuild-below G val tv tb (s + 4) b pt recG)
+                     (sb-slot refl b-s2 (λ _ ()) ∷ sb-none refl ∷
+                      sb-slot refl b-s3 (λ _ ()) ∷ sb-none refl ∷
+                      sb-slot refl b-ss (λ _ ()) ∷ sb-none refl ∷
+                      sb-slot refl b-s2 (λ _ ()) ∷ sb-none refl ∷
+                      sb-slot refl b-s3 (λ _ ()) ∷ []))))
+  where
+    room4 : s + 4 ≤ b
+    room4 = ≤-trans (+-monoʳ-≤ s (subst (4 ≤_) (sym (*-suc 4 (fsize F + fsize G)))
+                                        (m≤m+n 4 (4 * (fsize F + fsize G))))) h
+    s<b : s < b
+    s<b = ≤-trans (subst (suc s ≤_) (+-comm 4 s) (m≤n+m (suc s) 3)) room4
+    b-ss : suc s < b
+    b-ss = ≤-trans (subst (suc (suc s) ≤_) (+-comm 4 s) (m≤n+m (suc (suc s)) 2)) room4
+    b-s2 : s + 2 < b
+    b-s2 = ≤-trans (subst (λ z → suc z ≤ s + 4) (+-comm 2 s)
+                          (subst (λ w → suc (2 + s) ≤ w) (+-comm 4 s) (n≤1+n (3 + s))))
+                   room4
+    b-s3 : s + 3 < b
+    b-s3 = ≤-trans (subst (λ z → suc z ≤ s + 4) (+-comm 3 s)
+                          (subst (λ w → suc (3 + s) ≤ w) (+-comm 4 s) ≤-refl))
+                   room4
+    recF : s + 4 + 4 * fsize F ≤ b
+    recF = ≤-trans (≤-reflexive (+-assoc s 4 (4 * fsize F)))
+           (≤-trans (+-monoʳ-≤ s (+-monoʳ-≤ 4 (*-monoʳ-≤ 4 (m≤m+n (fsize F) (fsize G)))))
+           (≤-trans (≤-reflexive (cong (s +_) (sym (*-suc 4 (fsize F + fsize G))))) h))
+    recG : s + 4 + 4 * fsize G ≤ b
+    recG = ≤-trans (≤-reflexive (+-assoc s 4 (4 * fsize G)))
+           (≤-trans (+-monoʳ-≤ s (+-monoʳ-≤ 4 (*-monoʳ-≤ 4 (m≤n+m (fsize G) (fsize F)))))
+           (≤-trans (≤-reflexive (cong (s +_) (sym (*-suc 4 (fsize F + fsize G))))) h))
+
+cata-branching-below : ∀ (F : Functor) (n1 l1 : ℕ) (at : AbstractTrace)
+                     → All (SlotBelow n1) at
+                     → All (SlotBelow (cata-budget-of (cata-dispatch (strat-branching F) n1 l1 at)))
+                           (cata-trace-of (cata-dispatch (strat-branching F) n1 l1 at))
+cata-branching-below F n1 l1 at ff =
+  ++⁺ init-all (++⁺ flatten-all (++⁺ fold-all final-all))
+  where
+    b = n1 + 7 + 4 * fsize F + 4
+    fixed7 : n1 + 7 ≤ b
+    fixed7 = ≤-trans (m≤m+n (n1 + 7) (4 * fsize F)) (m≤m+n (n1 + 7 + 4 * fsize F) 4)
+    fixed7' : 7 + n1 ≤ b
+    fixed7' = subst (_≤ b) (+-comm n1 7) fixed7
+    q0 : n1 < b
+    q0 = ≤-trans (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))) fixed7'
+    q1 : suc n1 < b
+    q1 = ≤-trans (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))) fixed7'
+    q2 : n1 + 2 < b
+    q2 = ≤-trans (subst (λ z → suc z ≤ 7 + n1) (+-comm 2 n1)
+                        (≤-step (≤-step (≤-step (≤-step ≤-refl))))) fixed7'
+    q3 : n1 + 3 < b
+    q3 = ≤-trans (subst (λ z → suc z ≤ 7 + n1) (+-comm 3 n1)
+                        (≤-step (≤-step (≤-step ≤-refl)))) fixed7'
+    q4 : n1 + 4 < b
+    q4 = ≤-trans (subst (λ z → suc z ≤ 7 + n1) (+-comm 4 n1)
+                        (≤-step (≤-step ≤-refl))) fixed7'
+    q5 : n1 + 5 < b
+    q5 = ≤-trans (subst (λ z → suc z ≤ 7 + n1) (+-comm 5 n1) (≤-step ≤-refl)) fixed7'
+    q6 : n1 + 6 < b
+    q6 = ≤-trans (subst (λ z → suc z ≤ 7 + n1) (+-comm 6 n1) ≤-refl) fixed7'
+    walk-room : n1 + 7 + 4 * fsize F ≤ b
+    walk-room = m≤m+n (n1 + 7 + 4 * fsize F) 4
+    at' : All (SlotBelow b) at
+    at' = sb-weaken {b' = b} (≤-trans (m≤m+n n1 7) fixed7) ff
+    init-all : All (SlotBelow b) _
+    init-all =
+      ++⁺ (sb-none refl ∷ sb-slot refl q3 (λ _ ()) ∷
+           sb-none refl ∷ sb-slot refl q6 (λ _ ()) ∷ sb-none refl ∷
+           sb-none refl ∷ sb-none refl ∷
+           sb-slot refl q6 (λ _ ()) ∷ sb-slot refl q1 (λ _ ()) ∷
+           sb-slot refl q6 (λ _ ()) ∷ sb-slot refl q2 (λ _ ()) ∷
+           sb-slot refl q6 (λ _ ()) ∷ sb-slot refl q0 (λ _ ()) ∷
+           sb-slot refl q3 (λ _ ()) ∷ [])
+          (push2-below n1 (n1 + 4) (n1 + 5) b q0 q4 q5)
+    flatten-all : All (SlotBelow b) _
+    flatten-all =
+      ++⁺ (sb-none refl ∷ sb-slot refl q0 (λ _ ()) ∷ sb-none refl ∷
+           sb-none refl ∷ sb-none refl ∷ sb-slot refl q0 (λ _ ()) ∷
+           sb-none refl ∷ sb-none refl ∷ sb-slot refl q3 (λ _ ()) ∷
+           sb-slot refl q3 (λ _ ()) ∷ [])
+          (++⁺ (push2-below (suc n1) (n1 + 4) (n1 + 5) b q1 q4 q5)
+               (++⁺ (sb-slot refl q3 (λ _ ()) ∷ sb-none refl ∷ [])
+                    (++⁺ (visit-below F n1 (n1 + 4) (n1 + 5) (n1 + 7) b q0 q4 q5 walk-room)
+                         (sb-none refl ∷ sb-none refl ∷ []))))
+    fold-all : All (SlotBelow b) _
+    fold-all =
+      ++⁺ (sb-none refl ∷ sb-slot refl q1 (λ _ ()) ∷ sb-none refl ∷
+           sb-none refl ∷ sb-none refl ∷ sb-slot refl q1 (λ _ ()) ∷
+           sb-none refl ∷ sb-none refl ∷ [])
+          (++⁺ (rebuild-below F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) b q2 walk-room)
+               (++⁺ (sb-none refl ∷ [])
+                    (++⁺ at'
+                         (++⁺ (push2-below (n1 + 2) (n1 + 4) (n1 + 5) b q2 q4 q5)
+                              (sb-none refl ∷ sb-none refl ∷ [])))))
+    final-all : All (SlotBelow b) _
+    final-all = sb-slot refl q2 (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ []
 
 -- `strat-const` needs no skeleton at all — the cata IS its algebra there.
 cata-slots-below : ∀ (st : CataStrategy) (n1 l1 : ℕ) (at : AbstractTrace)
@@ -307,7 +464,7 @@ cata-slots-below : ∀ (st : CataStrategy) (n1 l1 : ℕ) (at : AbstractTrace)
 cata-slots-below strat-const         n1 l1 at ff = ff
 cata-slots-below strat-nat           n1 l1 at ff = cata-nat-below n1 l1 at ff
 cata-slots-below strat-linear        n1 l1 at ff = cata-linear-below n1 l1 at ff
-cata-slots-below (strat-branching F) n1 l1 at ff = cata-branching-slots-below F n1 l1 at ff
+cata-slots-below (strat-branching F) n1 l1 at ff = cata-branching-below F n1 l1 at ff
 
 ------------------------------------------------------------------------
 -- THE INDUCTION: every instruction of the emitted MAIN trace addresses a slot
