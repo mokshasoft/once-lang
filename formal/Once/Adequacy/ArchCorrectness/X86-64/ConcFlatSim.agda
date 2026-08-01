@@ -31,7 +31,7 @@ open import Once.CCC.Target.X86-64.Syntax using
   ; ret; push; pop; nop; ud2; syscall; label )
 open import Data.Nat using (ℕ; _+_; _<_; _≤_; _∸_; _≡ᵇ_; _⊓_)
 open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-transˡ; <-irrefl; m≤m+n; m∸n≤m
-                                      ; ⊓-glb; m⊓n≤m; m⊓n≤n; m+n≤o⇒m≤o∸n)
+                                      ; ⊓-glb; m⊓n≤m; m⊓n≤n; m+n≤o⇒m≤o∸n; +-identityʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
@@ -560,12 +560,11 @@ postulate
                  → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                        ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
                          ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
-  branch-tag-label-miss : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                            prog fs s m → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
-                        → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m)) → find-label prog m ≡ nothing
-                        → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                              ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
-                                ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
+  -- `branch-tag-label-miss` RETIRED 2026-08-01 — a theorem now (`go-miss` in
+  -- `tag-branch-step`): not-taken rides the label-free
+  -- `block-step-c-branch-tag-nz`, taken-plus-missing is the je-halt template
+  -- on `find-label-none-corr`, and the bad-read routes fold into
+  -- `branch-tag-bad` (they never depended on the label).
 
 
   -- THE STACK-POINTER INVARIANT'S CASE STEP (plan 0.54 rung D, item 2). Every
@@ -1246,13 +1245,78 @@ mutual
       go-good hl j i-eq fl-eq (just (SV-Lit _ _)) h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
       go-good hl j i-eq fl-eq (just (SV-Code _)) h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
       go-good hl j i-eq fl-eq nothing            h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
+      -- MISSING LABEL (was the `branch-tag-label-miss` residual; a THEOREM since
+      -- 2026-08-01): case the tag read. NOT TAKEN never consults the label — the
+      -- ordinary fall-through via the label-free `block-step-c-branch-tag-nz`.
+      -- TAKEN + MISSING halts on both sides: the concrete `je` to an absent
+      -- label sets `halted` (`find-label-none-corr`), and `do-jump nothing`
+      -- halts the flat machine — both traces []. The bad-read routes are
+      -- exactly the ones `branch-tag-bad` already carries at a found label.
+      go-miss : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+              → find-label prog m ≡ nothing
+              → ∀ (mv : Maybe (StoredValue FS)) → heapMem (floc fs) hl ≡ mv
+              → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                    ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                      ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
+      go-miss hl i-eq fl-eq (just (SV-Tag (suc k'))) h-eq =
+        ccc-step-bs {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
+          (block-step-c-branch-tag-nz prog fs s m hl k' cc h ftq i-eq
+             (C.dom-written (dataCorr cc) hl h-eq) h-eq) wf ftq h refl hpost
+        where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
+              hpost rewrite i-eq | h-eq = h
+      go-miss hl i-eq fl-eq (just (SV-Tag zero)) h-eq = 3 , result
+        where
+          dc = dataCorr cc
+          halt-s : X.State.halted s ≡ false
+          halt-s = trans (C.halt-eq dc) h
+          fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s)
+                    ≡ just (cmp (mem (base+disp rdi 0)) (imm 0))
+          fetch-cmp = trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
+                            (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-tag-zero m)) ftq)
+          addr-val : X.readReg (X.State.regs s) rdi + 0 ≡ haddr hv hl
+          addr-val = trans (+-identityʳ (X.readReg (X.State.regs s) rdi))
+                           (trans (C.rdi-eq dc) (cong (C.enc-sv hv) i-eq))
+          rd : X.readMem (X.State.memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just 0
+          rd = trans (cong (X.readMem (X.State.memory s)) addr-val)
+                     (trans (C.heap-eq dc hl (C.dom-written dc hl h-eq))
+                            (cong (C.enc-maybe hv) h-eq))
+          post-cmp : X.State
+          post-cmp = record s { flags = X.mkflags (0 ≡ᵇ 0) (0 X.<ᵇ 0) false
+                              ; pc = X.State.pc s + 1 }
+          step-cmp : X.execInstr (compile-trace prog) s (cmp (mem (base+disp rdi 0)) (imm 0))
+                   ≡ just post-cmp
+          step-cmp rewrite rd = refl
+          fetch-je : X.fetch (compile-trace prog) (X.State.pc post-cmp) ≡ just (je (once m))
+          fetch-je = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) (pc-off cc))
+                           (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-branch-tag-zero m)) ftq)
+          post-je : X.State
+          post-je = record post-cmp { halted = true }
+          step-je : X.execInstr (compile-trace prog) post-cmp (je (once m)) ≡ just post-je
+          step-je rewrite find-label-none-corr prog m fl-eq = refl
+          hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ true
+          hpost rewrite i-eq | h-eq | fl-eq = refl
+          result : RTx.run-events val-x86-64 ev env 3 (compile-trace prog) s
+                 ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                   ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)
+          result =
+            trans (RTx.run-events-noncall val-x86-64 ev env 2 (compile-trace prog) s
+                     (cmp (mem (base+disp rdi 0)) (imm 0)) halt-s fetch-cmp refl step-cmp)
+            (trans (RTx.run-events-noncall val-x86-64 ev env 1 (compile-trace prog) post-cmp
+                     (je (once m)) halt-s fetch-je refl step-je)
+            (trans (RTx.run-events-halted val-x86-64 ev env 0 (compile-trace prog) post-je refl)
+                   (sym (flat-events-halted n prog
+                          (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) hpost))))
+      go-miss hl i-eq fl-eq (just (SV-Ptr _))   h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
+      go-miss hl i-eq fl-eq (just (SV-Lit _ _)) h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
+      go-miss hl i-eq fl-eq (just (SV-Code _))  h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
+      go-miss hl i-eq fl-eq nothing             h-eq = branch-tag-bad n ev env prog fs s m cc wf h ftq
       go-fl : ∀ hl → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
             → ∀ (mj : Maybe ℕ) → find-label prog m ≡ mj
             → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                   ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
                     ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
       go-fl hl i-eq (just j) fl-eq = go-good hl j i-eq fl-eq (heapMem (floc fs) hl) refl
-      go-fl hl i-eq nothing  fl-eq = branch-tag-label-miss n ev env prog fs s m cc wf h ftq fl-eq
+      go-fl hl i-eq nothing  fl-eq = go-miss hl i-eq fl-eq (heapMem (floc fs) hl) refl
       go-ptr : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Input1 ≡ sv
              → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                    ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs

@@ -1163,6 +1163,54 @@ block-step-c-branch-tag-zero {hv} prog fs s n hl (suc m) j cc h ft i-eq live-hl 
                       ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
       ; pc-off = pco' }
 
+-- c-branch-tag-zero NOT TAKEN, label-free: a nonzero tag never consults the
+-- label, so the fall-through needs no `find-label` premise at all — this is
+-- what discharges the not-taken route of `branch-tag-label-miss` (the missing
+-- label is irrelevant when the branch is not taken). Body identical to the
+-- `suc` clause above minus the unused label witness.
+block-step-c-branch-tag-nz : ∀ {hv : HeapView} prog fs s n hl m → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → HDom hv hl
+  → heapMem (floc fs) hl ≡ just (SV-Tag (suc m))
+  → BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
+block-step-c-branch-tag-nz {hv} prog fs s n hl m cc h ft i-eq live-hl h-eq = result
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (mem (base+disp rdi 0)) (imm 0))
+    fetch-cmp = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)
+    addr-val : xreadReg (xregs s) rdi + 0 ≡ haddr hv hl
+    addr-val = trans (+-identityʳ (xreadReg (xregs s) rdi)) (trans (C.rdi-eq dc) (cong (C.enc-sv hv) i-eq))
+    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just (suc m)
+    rd = trans (cong (X.readMem (memory s)) addr-val) (trans (C.heap-eq dc hl live-hl) (cong (C.enc-maybe hv) h-eq))
+    post-cmp : X.State
+    post-cmp = record s { flags = mkflags (suc m ≡ᵇ 0) (suc m <ᵇ 0) false ; pc = pc s + 1 }
+    step-cmp : X.step-not-halted (compile-trace prog) s ≡ just post-cmp
+    step-cmp = step-cmp-mi {compile-trace prog} {s} {base+disp rdi 0} {0} {suc m} fetch-cmp rd
+    fetch-je : X.fetch (compile-trace prog) (X.State.pc post-cmp) ≡ just (je (once n))
+    fetch-je = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) po)
+                     (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)
+    post-je : X.State
+    post-je = record post-cmp { pc = X.State.pc post-cmp + 1 }
+    step-je : X.step-not-halted (compile-trace prog) post-cmp ≡ just post-je
+    step-je = step-je-not {compile-trace prog} {post-cmp} {once n} fetch-je refl
+    exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-je
+    exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-cmp} halt-s step-cmp halt-s)
+                    (exec-1 {compile-trace prog} {0} {post-cmp} {post-je} halt-s step-je halt-s)
+    cond-eq : tag-zf (flat-read-tag (floc fs)) ≡ sv-is-zero (SV-Tag {FS} (suc m))
+    cond-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) h-eq)
+    pco' : X.State.pc post-je ≡ x86-off prog (suc (fpc fs))
+    pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (x86-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))
+    result : BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
+    result rewrite cond-eq = post-je , exec-eq , record
+      { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
+                          ; rbx-eq = C.rbx-eq dc ; r14-eq = C.r14-eq dc ; halt-eq = C.halt-eq dc ; rsp-eq = C.rsp-eq dc ; r15-eq = C.r15-eq dc ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc ; heap-eq = C.heap-eq dc
+                      ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
+      ; pc-off = pco' }
+
 -- alloc-heap: `mov rax, r15 ; add r15, n*8` (2 steps) ↔ the abstract fresh block.
 -- THE view-EXTENDING step: the post-state correspondence holds at
 -- `C.extend-view hv (next-heap-ref …) n (dom-fresh …)`, where the fresh block sits
