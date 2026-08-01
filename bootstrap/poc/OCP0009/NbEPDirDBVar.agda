@@ -52,6 +52,15 @@
 -- univalence computing a third time), and discards at constant motives.
 -- Exact rule set to be settled by spike at consolidation.
 --
+-- ⚠ SETTLED — and the spec above is SUPERSEDED — by `SpikeTr`
+-- (2026-08-01): the motive is a CODE (`tr d p e`, motive `El d`), the
+-- premise is `PosC` (a strict subset of `Pos` — constant motives are
+-- excluded, they never need `tr`), and the rules are PATH-KEYED, five of
+-- them (unkeyed J and unkeyed taut both break raw confluence, measured
+-- there; a pointwise-composition rule at `⌜Π⌝`-ambient motives is forced
+-- by canonicity).  `Pos` below is untouched: it remains the semantic
+-- statement; `PosC` is its computing fragment.
+--
 -- `--safe`, zero postulates, zero holes.
 ------------------------------------------------------------------------
 
