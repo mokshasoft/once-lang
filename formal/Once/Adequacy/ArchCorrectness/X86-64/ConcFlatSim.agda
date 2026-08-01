@@ -67,7 +67,8 @@ open import Once.CCC.Machine.FrameFree using (FrameFreeI)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Machine.FlatStackSlot FS using (flat-stack-slot)
 open import Once.CCC.Machine.FlatStackPtr FS using
-  (StackPtrWF; StackPtrOK; StackPtrOK?; stack-ptr-frame; stack-ptr-live; stack-ptr-suc-live)
+  (StackPtrWF; StackPtrOK; StackPtrOK?; stack-ptr-frame; stack-ptr-live; stack-ptr-suc-live
+  ; flat-stack-ptr)
 open import Once.CCC.Codegen.FrameFreeTrace using (fetch-frame-free)
 open import Once.CCC.Codegen.SlotBudget using (ir-slots-below-budget; below; pair-below)
 open import Once.IR using (IR; Unit)
@@ -567,23 +568,21 @@ postulate
                                 ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
 
 
-  -- THE STACK-POINTER INVARIANT, one step (plan 0.54 rung D, item 2). Replaces
-  -- `stack-ptr-current{,-suc}`, which ASSUMED at each use site what is really a
-  -- state invariant: every stack pointer in the state addresses a live PAIR of
-  -- the current frame (`Once.CCC.Machine.FlatStackPtr`). It is an invariant at
-  -- all only because the frame ops are unemittable, so `current-frame` and
-  -- `stackSlot` are fixed for the whole run.
-  --
-  -- The `lea-slot` premise is what the producer case needs: that instruction
-  -- writes `SV-Ptr (AtStack current-frame slot)` into Output, so the pair bound
-  -- has to come in from the emitter (`emitted-lea-slot-pair` below). The
-  -- remaining producer to check when discharging this is `lea-indexed`, whose
-  -- `offsetLoc` walks a cursor — on the Tier-1 payload stack that cursor is a
-  -- HEAP pointer, so the stack route should be vacuous, but that is exactly the
-  -- kind of claim this residual is standing in for.
-  stack-ptr-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → FrameFreeI i
-                 → (∀ slot → i ≡ lea-slot slot → suc slot < stackSlot (regs (floc fs)))
-                 → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
+  -- THE STACK-POINTER INVARIANT'S CASE STEP (plan 0.54 rung D, item 2). Every
+  -- OTHER frame-free step is a THEOREM now (`FlatStackPtr.flat-stack-ptr`,
+  -- dispatched by `stack-ptr-step` below); `instr-case-on-tag` is the one that
+  -- is not, because one flat step there runs whole NESTED branch traces: their
+  -- `lea-slot`s need pair bounds the emitter states only for the MAIN trace
+  -- (`SlotBudget` — `slot-of` is `nothing` on the carrying instruction), and
+  -- their `lea-indexed` cursors cannot be site-conditioned at all. The case
+  -- fragment is already behind the `events-running-case` model defect; when
+  -- `case` compiles to flat control (the way `Cata` does) this residual dies
+  -- with it — `instr-case-on-tag` joins the unemittable set and the clause
+  -- becomes `⊥-elim`.
+  stack-ptr-case : ∀ prog (fs : FlatState) (f g : AbstractTrace) → RunAt prog fs
+                 → fetch prog (fpc fs) ≡ just (instr-case-on-tag f g)
+                 → StackPtrWF fs
+                 → StackPtrWF (flat-exec-instr (instr-case-on-tag f g) prog fs)
 
   -- load-indirect on a non-live-dynamic-pointer target (non-pointer / stack ptr /
   -- unallocated) — ruled out by well-formedness (loads hit live heap cells).
@@ -666,15 +665,20 @@ postulate
   -- (Its abstract counterpart — nothing references or has written the not-yet-
   -- allocated block — was already PROVEN, `FlatStoreWF`.)
   -- lea-indexed WF (conditioned on the site): the indexed base slot holds a
-  -- POINTER — the cata's payload-cursor discipline. Same class as
-  -- `load-from-slot-empty`. (Its second half — "`Scratch` holds the index as a
-  -- TAG" — is no longer assumed: that is now the STATE INVARIANT `FlatRegTagWF`,
-  -- fed in at the use site as `scratch-tag`.)
+  -- HEAP pointer — the cata's payload-cursor discipline (the Tier-1 payload
+  -- stacks are heap-allocated linked stacks, so the walked cursor is always
+  -- `AtDynamic`). Same class as `load-from-slot-empty`. STRENGTHENED 2026-08-01
+  -- from "holds a pointer" to "holds a heap pointer": the residence matters now,
+  -- because `offsetLoc` on a STACK pointer would fabricate a stack pointer at an
+  -- arbitrary offset, which the pair invariant (`StackPtrWF`) cannot bound —
+  -- this is what closes `stack-ptr-step`'s `lea-indexed` route. (Its other
+  -- half — "`Scratch` holds the index as a TAG" — is no longer assumed: that is
+  -- the STATE INVARIANT `FlatRegTagWF`, fed in at the use site as `scratch-tag`.)
   lea-indexed-wf : ∀ prog (fs : FlatState) (slot : Slot) → RunAt prog fs
                  → fetch prog (fpc fs) ≡ just (lea-indexed slot)
-                 → Σ (ValueLocation FS) (λ loc →
+                 → Σ HeapLocation (λ hl →
                      readLoc (floc fs) (AtStack (current-frame (falloc fs)) slot)
-                       ≡ just (SV-Ptr loc))
+                       ≡ just (SV-Ptr (AtDynamic hl)))
 
   -- RETIRED 2026-07-31 (plan 0.54 rung D, item 2): the MATCHED PROLOGUE/EPILOGUE
   -- family — `dealloc-stack-restores`, `pop-frame-restores`, `dealloc-stack-full`,
@@ -766,6 +770,93 @@ emitted-lea-slot-pair : ∀ (ir : IR Unit Unit) (k : ℕ) (slot : Slot)
 emitted-lea-slot-pair ir k slot ftq =
   pair-below (fetch-All (ir-slots-below-budget ir) ftq) slot refl
 
+-- ONE FRAME-FREE STEP PRESERVES THE INVARIANT — a THEOREM for every
+-- constructor except `instr-case-on-tag` (the `stack-ptr-case` residual; see
+-- its comment). The dispatch feeds `FlatStackPtr.flat-stack-ptr` its two
+-- producer premises from the run context: the `lea-slot` pair bound from the
+-- emitter (`emitted-lea-slot-pair`, transported along `run-stack-slot`), and
+-- the `lea-indexed` cursor discipline from `lea-indexed-wf` (the slot holds a
+-- HEAP pointer, so the stack route is vacuous). Enumerated: the vacuous
+-- premises (`λ ()`), and `CaseFree i` (⊤ per constructor), need `i` concrete.
+stack-ptr-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog fs
+               → fetch prog (fpc fs) ≡ just i → FrameFreeI i
+               → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
+stack-ptr-step (lea-slot slot) prog fs r ftq ff wf =
+  flat-stack-ptr (lea-slot slot) prog fs ff tt
+    (λ { k refl → bound }) (λ { _ _ _ () }) wf
+  where bound : suc slot < stackSlot (regs (floc fs))
+        bound = subst (λ z → suc slot < z) (sym (run-stack-slot prog fs r))
+                  (emitted-lea-slot-pair (run-ir r) (fpc fs) slot
+                    (subst (λ p → fetch p (fpc fs) ≡ just (lea-slot slot))
+                           (run-emit r) ftq))
+stack-ptr-step (lea-indexed slot) prog fs r ftq ff wf =
+  flat-stack-ptr (lea-indexed slot) prog fs ff tt (λ { _ () })
+    (λ { k f' k' refl rl →
+         ptr-clash (trans (sym (proj₂ (lea-indexed-wf prog fs slot r ftq))) rl) })
+    wf
+  where ptr-clash : ∀ {hl : HeapLocation} {f' : Frame} {k' : Slot}
+                  → _≡_ {A = Maybe (StoredValue FS)}
+                        (just (SV-Ptr (AtDynamic hl))) (just (SV-Ptr (AtStack f' k')))
+                  → ⊥
+        ptr-clash ()
+stack-ptr-step (instr-case-on-tag f g) prog fs r ftq ff wf =
+  stack-ptr-case prog fs f g r ftq wf
+stack-ptr-step (instr-alloc-stack n)   prog fs r ftq () wf
+stack-ptr-step (instr-dealloc-stack n) prog fs r ftq () wf
+stack-ptr-step (instr-push-frame cap)  prog fs r ftq () wf
+stack-ptr-step instr-pop-frame         prog fs r ftq () wf
+stack-ptr-step (instr-loop body)       prog fs r ftq () wf
+stack-ptr-step mov-to-output prog fs r ftq ff wf =
+  flat-stack-ptr mov-to-output prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step mov-to-input prog fs r ftq ff wf =
+  flat-stack-ptr mov-to-input prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step mov-output-to-input2 prog fs r ftq ff wf =
+  flat-stack-ptr mov-output-to-input2 prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step mov-input2-to-output prog fs r ftq ff wf =
+  flat-stack-ptr mov-input2-to-output prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step load-indirect prog fs r ftq ff wf =
+  flat-stack-ptr load-indirect prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step load-indirect-suc prog fs r ftq ff wf =
+  flat-stack-ptr load-indirect-suc prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step (load-from-slot k) prog fs r ftq ff wf =
+  flat-stack-ptr (load-from-slot k) prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step (store-at-slot k) prog fs r ftq ff wf =
+  flat-stack-ptr (store-at-slot k) prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step store-indirect prog fs r ftq ff wf =
+  flat-stack-ptr store-indirect prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step store-indirect-suc prog fs r ftq ff wf =
+  flat-stack-ptr store-indirect-suc prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step (restore-input k) prog fs r ftq ff wf =
+  flat-stack-ptr (restore-input k) prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step (instr-reclaim-to k) prog fs r ftq ff wf =
+  flat-stack-ptr (instr-reclaim-to k) prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step instr-call-closure prog fs r ftq ff wf =
+  flat-stack-ptr instr-call-closure prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step (worklist-init k) prog fs r ftq ff wf =
+  flat-stack-ptr (worklist-init k) prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step (worklist-push k) prog fs r ftq ff wf =
+  flat-stack-ptr (worklist-push k) prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step (worklist-pop k) prog fs r ftq ff wf =
+  flat-stack-ptr (worklist-pop k) prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step (worklist-check k) prog fs r ftq ff wf =
+  flat-stack-ptr (worklist-check k) prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step (instr-sigop si) prog fs r ftq ff wf =
+  flat-stack-ptr (instr-sigop si) prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step (instr-load-const p v) prog fs r ftq ff wf =
+  flat-stack-ptr (instr-load-const p v) prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step (instr-load-code-addr k) prog fs r ftq ff wf =
+  flat-stack-ptr (instr-load-code-addr k) prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step instr-save-closure-reg prog fs r ftq ff wf =
+  flat-stack-ptr instr-save-closure-reg prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step (instr-load-tag-lit k) prog fs r ftq ff wf =
+  flat-stack-ptr (instr-load-tag-lit k) prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step (instr-alloc-heap k) prog fs r ftq ff wf =
+  flat-stack-ptr (instr-alloc-heap k) prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step (instr-reg-op op) prog fs r ftq ff wf =
+  flat-stack-ptr (instr-reg-op op) prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+stack-ptr-step (instr-ctrl c) prog fs r ftq ff wf =
+  flat-stack-ptr (instr-ctrl c) prog fs ff tt (λ { _ () }) (λ { _ _ _ () }) wf
+
 -- A start state satisfies the invariant vacuously: both memories are empty and
 -- no register holds a stack pointer.
 entry-stack-ptr : ∀ (fs : FlatState) → EntryLike fs → StackPtrWF fs
@@ -792,14 +883,8 @@ run-stack-ptr prog fs (mkRunAt ir eq reach) = go fs reach
   where go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs' → StackPtrWF fs'
         go fs' (reach-start .fs' el _) = entry-stack-ptr fs' el
         go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
-          stack-ptr-step i prog fs''
+          stack-ptr-step i prog fs'' (mkRunAt ir eq r') ftq
             (frame-op-absurd prog fs'' i (ir , eq) ftq)
-            (λ slot i-eq →
-              subst (λ z → suc slot < z)
-                (sym (run-stack-slot prog fs'' (mkRunAt ir eq r')))
-                (emitted-lea-slot-pair ir (fpc fs'') slot
-                  (subst (λ p → fetch p (fpc fs'') ≡ just (lea-slot slot)) eq
-                         (subst (λ z → fetch prog (fpc fs'') ≡ just z) i-eq ftq))))
             (go fs'' r')
 
 -- the two forms the block-steps ask for, now READ OFF the invariant
@@ -916,12 +1001,14 @@ mutual
   -- plan 0.61: with stack addresses, the indexed cursor computes a real address.
   events-running-fetch {hv} n ev env prog fs s (lea-indexed slot) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (lea-indexed slot)
-      (block-step-lea-indexed prog fs s slot (proj₁ (lea-indexed-wf prog fs slot (inv-run wf) ftq))
+      (block-step-lea-indexed prog fs s slot
+         (AtDynamic (proj₁ (lea-indexed-wf prog fs slot (inv-run wf) ftq)))
          (proj₁ (scratch-tag (inv-regtag wf))) cc h ftq
          (proj₂ (lea-indexed-wf prog fs slot (inv-run wf) ftq))
          (proj₂ (scratch-tag (inv-regtag wf)))
          (slot-read-in-frame prog fs slot (lea-indexed slot) (inv-run wf) ftq refl))
-      wf ftq h refl (lea-indexed-hpost prog fs slot (proj₁ (lea-indexed-wf prog fs slot (inv-run wf) ftq))
+      wf ftq h refl (lea-indexed-hpost prog fs slot
+                (AtDynamic (proj₁ (lea-indexed-wf prog fs slot (inv-run wf) ftq)))
                 (proj₁ (scratch-tag (inv-regtag wf)))
                 (proj₂ (lea-indexed-wf prog fs slot (inv-run wf) ftq))
                 (proj₂ (scratch-tag (inv-regtag wf))) h)
