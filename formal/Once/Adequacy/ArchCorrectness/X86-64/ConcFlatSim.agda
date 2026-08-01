@@ -53,7 +53,8 @@ open FlatMachine {FS}
 import Once.CCC.Target.X86-64.Semantics as X
 
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation FS word-eq public
-open import Once.CCC.Machine.FlatStoreWF FS using (FlatWF; flat-wf-step; wf-regs; wf-heap; wf-stack; wf-fresh)
+open import Once.CCC.Machine.FlatStoreWF FS using
+  (FlatWF; flat-wf-step; wf-regs; wf-heap; wf-stack; wf-fresh; sv-below; svm-below)
 open import Once.CCC.Machine.FlatRegTagWF FS using
   (FlatRegTag; flat-regtag-step; flat-scratch-is-tag; flat-count-is-tag; scratch-tag)
 open C using (HeapView; haddr; HDom; hfront; lo) public
@@ -69,7 +70,11 @@ open import Once.CCC.Machine.FlatStackSlot FS using (flat-stack-slot)
 open import Once.CCC.Machine.FlatStackPtr FS using
   (StackPtrWF; StackPtrOK; StackPtrOK?; stack-ptr-frame; stack-ptr-live; stack-ptr-suc-live
   ; flat-stack-ptr)
+open import Once.CCC.Machine.FlatPtrBounds FS using
+  (PtrBoundsWF; PtrB; PtrB?; ptr-bounds-cell; ptr-bounds-suc; flat-ptr-bounds
+  ; mkPtrBounds; pb-regs; pb-heap; pb-stack)
 open import Once.CCC.Codegen.FrameFreeTrace using (fetch-frame-free)
+open import Once.CCC.Codegen.AllocMin using (AllocMinI; fetch-alloc-min)
 open import Once.CCC.Codegen.SlotBudget using (ir-slots-below-budget; below; pair-below)
 open import Once.IR using (IR; Unit)
 open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
@@ -171,12 +176,16 @@ EntryLike fs = (fpc fs ≡ 0)
              × (∀ hl → heapMem (floc fs) hl ≡ nothing)
              × (∀ f k → stackMem (floc fs) f k ≡ nothing)
              × (∀ r → block-size (falloc fs) r ≡ 0)
-             -- …and NO REGISTER holds a stack pointer. Every entry register is
-             -- the tag filler `SV-Tag 0` (D074), so this is true of the entry
-             -- state by construction; it is what starts the stack-pointer
-             -- invariant off (`entry-stack-ptr`).
-             × (∀ (r : AbstractReg) (f : Frame) (k : Slot)
-                → readReg (regs (floc fs)) r ≡ SV-Ptr (AtStack f k) → ⊥)
+             -- …and NO REGISTER holds a pointer AT ALL. Every entry register
+             -- is the tag filler `SV-Tag 0` (D074), so this is true of the
+             -- entry state by construction. STRENGTHENED 2026-08-01 from "no
+             -- stack pointer": with the block sizes all 0, a dynamic filler
+             -- pointer would refute the pointer-bounds invariant at entry the
+             -- same way a stack filler would refute the stack-pointer one —
+             -- this component starts BOTH invariants (and the store-WF one)
+             -- off (`entry-stack-ptr` / `entry-ptr-bounds` / `entry-flat-wf`).
+             × (∀ (r : AbstractReg) (loc : ValueLocation FS)
+                → readReg (regs (floc fs)) r ≡ SV-Ptr loc → ⊥)
 
 -- …indexed by the STATIC SLOT BUDGET `B` the prologue reserved. The entry state
 -- pins `stackSlot` to it (`reach-start`), and no reachable step can move it —
@@ -572,49 +581,35 @@ postulate
                  → fetch prog (fpc fs) ≡ just (instr-case-on-tag f g)
                  → StackPtrWF fs
                  → StackPtrWF (flat-exec-instr (instr-case-on-tag f g) prog fs)
+  -- …and the SAME exclusion for the pointer-bounds invariant (item 5): a case
+  -- step runs nested branch traces whose alloc sites the shallow emitter fact
+  -- (`AllocMin`) does not reach. Dies with item 6, exactly like the above.
+  ptr-bounds-case : ∀ prog (fs : FlatState) (f g : AbstractTrace) → RunAt prog fs
+                  → fetch prog (fpc fs) ≡ just (instr-case-on-tag f g)
+                  → PtrBoundsWF fs
+                  → PtrBoundsWF (flat-exec-instr (instr-case-on-tag f g) prog fs)
 
-  -- THE LOAD TARGET DISCIPLINE (D073, replaces `load-indirect{,-suc}-bad`):
-  -- at an emitted load site the dereferenced register holds a POINTER, and a
-  -- dynamic one is IN-BOUNDS for its block — the same conjunct the store
-  -- family (`store-indirect{,-suc}-inbounds`) already carries, so the whole
-  -- dereference family is now uniform and is discharged together by the
-  -- item-5 pointer invariant. With it, every route is a theorem: stack /
-  -- written-heap loads are ordinary steps, and an EMPTY cell halts both
-  -- machines (`stack-eq` / `dom-sized` + `heap-eq` make the concrete read
-  -- unmapped — the `*-empty-stuck` bricks in FlatSimulation).
-  load-indirect-target-wf : ∀ prog (fs : FlatState) → RunAt prog fs
-                          → fetch prog (fpc fs) ≡ just load-indirect
-                          → Σ (ValueLocation FS) (λ loc →
-                              (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-                              × (∀ hl → loc ≡ AtDynamic hl
-                                 → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))))
-  -- …and for the second-cell load the SECOND cell is the in-bounds one.
-  load-indirect-suc-target-wf : ∀ prog (fs : FlatState) → RunAt prog fs
-                              → fetch prog (fpc fs) ≡ just load-indirect-suc
-                              → Σ (ValueLocation FS) (λ loc →
-                                  (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-                                  × (∀ hl → loc ≡ AtDynamic hl
-                                     → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))))
-  -- THE STORE TARGET IS IN BOUNDS (2026-07-30 vacuity fix). Was
-  -- `store-indirect-live : … → HDom hv hl` with `hv` UNIVERSALLY QUANTIFIED — false
-  -- for a view that excludes the (as yet unwritten) cell, which no field forbade.
-  -- Now a fact about the ABSTRACT STATE ONLY: the cell the emitted code stores
-  -- through lies inside its block (codegen stores into the block it just
-  -- allocated). `FlatCorr.dom-sized` turns it into the `HDom` the block-step wants.
-  store-indirect-inbounds : ∀ prog (fs : FlatState) (hl : HeapLocation) → RunAt prog fs
-                          → fetch prog (fpc fs) ≡ just store-indirect
-                          → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-                          → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))
+  -- THE LOAD TARGET DISCIPLINE (D073, replaces `load-indirect{,-suc}-bad`),
+  -- NARROWED 2026-08-01 to the pointer-SHAPE half: at an emitted load site
+  -- the dereferenced register holds a POINTER (codegen emits a `load-indirect`
+  -- only right after loading a node/pair pointer). The in-bounds half is now
+  -- a THEOREM — the pointer-bounds invariant (`run-ptr-bounds` below), which
+  -- also retired `store-indirect{,-suc}-inbounds` outright: those never
+  -- claimed a register shape, only bounds. The combined forms the block-steps
+  -- consume (`load-indirect{,-suc}-target-wf`) are DERIVED below.
+  load-indirect-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs
+                           → fetch prog (fpc fs) ≡ just load-indirect
+                           → Σ (ValueLocation FS) (λ loc →
+                               readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+  load-indirect-suc-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs
+                               → fetch prog (fpc fs) ≡ just load-indirect-suc
+                               → Σ (ValueLocation FS) (λ loc →
+                                   readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
   store-indirect-bad : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                          prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                      → fetch prog (fpc fs) ≡ just store-indirect
                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                            ≡ event-of store-indirect fs ++ flat-events n prog (flat-exec-instr store-indirect prog fs))
-  -- …and the pair's SECOND cell (`sucHL hl`) is in bounds too.
-  store-indirect-suc-inbounds : ∀ prog (fs : FlatState) (hl : HeapLocation) → RunAt prog fs
-                              → fetch prog (fpc fs) ≡ just store-indirect-suc
-                              → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-                              → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))
   store-indirect-suc-bad : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                              prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                          → fetch prog (fpc fs) ≡ just store-indirect-suc
@@ -833,20 +828,46 @@ stack-ptr-step (instr-ctrl c) prog fs r ftq ff wf =
   flat-stack-ptr (instr-ctrl c) prog fs ff tt (λ { _ () }) wf
 
 -- A start state satisfies the invariant vacuously: both memories are empty and
--- no register holds a stack pointer.
+-- no register holds a pointer.
 entry-stack-ptr : ∀ (fs : FlatState) → EntryLike fs → StackPtrWF fs
-entry-stack-ptr fs (_ , _ , _ , _ , hemp , semp , _ , nosp) = record
+entry-stack-ptr fs (_ , _ , _ , _ , hemp , semp , _ , noptr) = record
   { sp-regs  = λ r → go r (readReg (regs (floc fs)) r) refl
   ; sp-heap  = λ hl → subst (StackPtrOK? _ _) (sym (hemp hl)) tt
   ; sp-stack = λ f k → subst (StackPtrOK? _ _) (sym (semp f k)) tt }
   where go : ∀ (r : AbstractReg) (v : StoredValue FS) → readReg (regs (floc fs)) r ≡ v
            → StackPtrOK (current-frame (falloc fs)) (stackSlot (regs (floc fs)))
                         (readReg (regs (floc fs)) r)
-        go r (SV-Ptr (AtStack f k))  eq = ⊥-elim (nosp r f k eq)
-        go r (SV-Ptr (AtDynamic hl)) eq rewrite eq = tt
-        go r (SV-Tag t)              eq rewrite eq = tt
-        go r (SV-Lit p v)            eq rewrite eq = tt
-        go r (SV-Code c)             eq rewrite eq = tt
+        go r (SV-Ptr loc)  eq = ⊥-elim (noptr r loc eq)
+        go r (SV-Tag t)    eq rewrite eq = tt
+        go r (SV-Lit p v)  eq rewrite eq = tt
+        go r (SV-Code c)   eq rewrite eq = tt
+
+-- …and the pointer-bounds and store-WF invariants likewise (D074: the entry
+-- registers are all tags, both memories empty).
+entry-ptr-bounds : ∀ (fs : FlatState) → EntryLike fs → PtrBoundsWF fs
+entry-ptr-bounds fs (_ , _ , _ , _ , hemp , semp , _ , noptr) = record
+  { pb-regs  = λ r → go r (readReg (regs (floc fs)) r) refl
+  ; pb-heap  = λ hl → subst (PtrB? _) (sym (hemp hl)) tt
+  ; pb-stack = λ f k → subst (PtrB? _) (sym (semp f k)) tt }
+  where go : ∀ (r : AbstractReg) (v : StoredValue FS) → readReg (regs (floc fs)) r ≡ v
+           → PtrB (block-size (falloc fs)) (readReg (regs (floc fs)) r)
+        go r (SV-Ptr loc)  eq = ⊥-elim (noptr r loc eq)
+        go r (SV-Tag t)    eq rewrite eq = tt
+        go r (SV-Lit p v)  eq rewrite eq = tt
+        go r (SV-Code c)   eq rewrite eq = tt
+
+entry-flat-wf : ∀ (fs : FlatState) → EntryLike fs → FlatWF fs
+entry-flat-wf fs (_ , _ , _ , _ , hemp , semp , _ , noptr) = record
+  { wf-regs  = λ r → go r (readReg (regs (floc fs)) r) refl
+  ; wf-heap  = λ hl → subst (svm-below _) (sym (hemp hl)) tt
+  ; wf-stack = λ f k → subst (svm-below _) (sym (semp f k)) tt
+  ; wf-fresh = λ hl _ → hemp hl }
+  where go : ∀ (r : AbstractReg) (v : StoredValue FS) → readReg (regs (floc fs)) r ≡ v
+           → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) r)
+        go r (SV-Ptr loc)  eq = ⊥-elim (noptr r loc eq)
+        go r (SV-Tag t)    eq rewrite eq = tt
+        go r (SV-Lit p v)  eq rewrite eq = tt
+        go r (SV-Code c)   eq rewrite eq = tt
 
 -- Every stack pointer in a reachable state addresses a live pair of the current
 -- frame. Induction on `Reachable`, exactly like `run-stack-slot`: the entry
@@ -884,6 +905,157 @@ slot-read-in-frame prog fs slot i r ftq soq =
   subst (slot <_) (sym (run-stack-slot prog fs r))
     (emitted-slot-below-budget (run-ir r) (fpc fs) i slot
       (subst (λ p → fetch p (fpc fs) ≡ just i) (run-emit r) ftq) soq)
+
+------------------------------------------------------------------------
+-- THE POINTER-BOUNDS INVARIANT IS A THEOREM (plan 0.54 rung D, item 5).
+--
+-- Every dynamic pointer a reachable state holds is in-bounds for its block —
+-- in the PAIR form (`Once.CCC.Machine.FlatPtrBounds`). Same shape as
+-- `run-stack-ptr`, with two extra inputs: the emitter's allocation discipline
+-- (every emitted `instr-alloc-heap` is a 2-cell pair block, `AllocMin`) and
+-- the store-WF invariant (carried through the SAME induction — an allocation
+-- cannot shrink the block under a live pointer because no live pointer
+-- references the fresh ref). This is what turned the in-bounds residual
+-- family into theorems: `store-indirect{,-suc}-inbounds` outright, and the
+-- in-bounds conjunct of `load-indirect{,-suc}-target-wf` (whose pointer-SHAPE
+-- half stays the D073 site-discipline residual, now named `-target-ptr`).
+------------------------------------------------------------------------
+
+-- THE EMITTER HALF: a fetched instruction of an emitted program satisfies the
+-- allocation discipline (`AllocMinI`).
+emitted-alloc-min : ∀ prog (fs : FlatState) (i : AbstractInstr) → Emitted prog
+                  → fetch prog (fpc fs) ≡ just i → AllocMinI i
+emitted-alloc-min .(ir-to-trace ir) fs i (ir , refl) ftq = fetch-alloc-min {FS} ir ftq
+
+-- ONE FRAME-FREE STEP PRESERVES THE INVARIANT — enumerated like
+-- `stack-ptr-step` (`CaseFree i` and the vacuous alloc premises need `i`
+-- concrete). The case route is the `ptr-bounds-case` residual.
+ptr-bounds-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog fs
+                → fetch prog (fpc fs) ≡ just i → FrameFreeI i
+                → FlatWF fs
+                → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)
+ptr-bounds-step (instr-case-on-tag f g) prog fs r ftq ff wfS wf =
+  ptr-bounds-case prog fs f g r ftq wf
+ptr-bounds-step (instr-alloc-stack n)   prog fs r ftq () wfS wf
+ptr-bounds-step (instr-dealloc-stack n) prog fs r ftq () wfS wf
+ptr-bounds-step (instr-push-frame cap)  prog fs r ftq () wfS wf
+ptr-bounds-step instr-pop-frame         prog fs r ftq () wfS wf
+ptr-bounds-step (instr-loop body)       prog fs r ftq () wfS wf
+ptr-bounds-step (lea-indexed slot)      prog fs r ftq () wfS wf
+-- THE PRODUCER: the emitter's alloc discipline comes in through the premise.
+ptr-bounds-step (instr-alloc-heap k) prog fs r ftq ff wfS wf =
+  flat-ptr-bounds (instr-alloc-heap k) prog fs ff tt
+    (λ n eq → subst AllocMinI eq
+                (emitted-alloc-min prog fs (instr-alloc-heap k) (run-emitted r) ftq))
+    wfS wf
+ptr-bounds-step mov-to-output prog fs r ftq ff wfS wf =
+  flat-ptr-bounds mov-to-output prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step mov-to-input prog fs r ftq ff wfS wf =
+  flat-ptr-bounds mov-to-input prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step mov-output-to-input2 prog fs r ftq ff wfS wf =
+  flat-ptr-bounds mov-output-to-input2 prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step mov-input2-to-output prog fs r ftq ff wfS wf =
+  flat-ptr-bounds mov-input2-to-output prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step load-indirect prog fs r ftq ff wfS wf =
+  flat-ptr-bounds load-indirect prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step load-indirect-suc prog fs r ftq ff wfS wf =
+  flat-ptr-bounds load-indirect-suc prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step (load-from-slot k) prog fs r ftq ff wfS wf =
+  flat-ptr-bounds (load-from-slot k) prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step (store-at-slot k) prog fs r ftq ff wfS wf =
+  flat-ptr-bounds (store-at-slot k) prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step store-indirect prog fs r ftq ff wfS wf =
+  flat-ptr-bounds store-indirect prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step store-indirect-suc prog fs r ftq ff wfS wf =
+  flat-ptr-bounds store-indirect-suc prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step (lea-slot k) prog fs r ftq ff wfS wf =
+  flat-ptr-bounds (lea-slot k) prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step (restore-input k) prog fs r ftq ff wfS wf =
+  flat-ptr-bounds (restore-input k) prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step (instr-reclaim-to k) prog fs r ftq ff wfS wf =
+  flat-ptr-bounds (instr-reclaim-to k) prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step instr-call-closure prog fs r ftq ff wfS wf =
+  flat-ptr-bounds instr-call-closure prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step (worklist-init k) prog fs r ftq ff wfS wf =
+  flat-ptr-bounds (worklist-init k) prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step (worklist-push k) prog fs r ftq ff wfS wf =
+  flat-ptr-bounds (worklist-push k) prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step (worklist-pop k) prog fs r ftq ff wfS wf =
+  flat-ptr-bounds (worklist-pop k) prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step (worklist-check k) prog fs r ftq ff wfS wf =
+  flat-ptr-bounds (worklist-check k) prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step (instr-sigop si) prog fs r ftq ff wfS wf =
+  flat-ptr-bounds (instr-sigop si) prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step (instr-load-const p v) prog fs r ftq ff wfS wf =
+  flat-ptr-bounds (instr-load-const p v) prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step (instr-load-code-addr k) prog fs r ftq ff wfS wf =
+  flat-ptr-bounds (instr-load-code-addr k) prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step instr-save-closure-reg prog fs r ftq ff wfS wf =
+  flat-ptr-bounds instr-save-closure-reg prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step (instr-load-tag-lit k) prog fs r ftq ff wfS wf =
+  flat-ptr-bounds (instr-load-tag-lit k) prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step (instr-reg-op op) prog fs r ftq ff wfS wf =
+  flat-ptr-bounds (instr-reg-op op) prog fs ff tt (λ { _ () }) wfS wf
+ptr-bounds-step (instr-ctrl c) prog fs r ftq ff wfS wf =
+  flat-ptr-bounds (instr-ctrl c) prog fs ff tt (λ { _ () }) wfS wf
+
+-- THE RUN INDUCTION, carrying the store-WF invariant alongside (the alloc
+-- step's freshness needs it at every PRE state, and `EntryLike` — all-tag
+-- registers, empty memories — starts both off).
+run-wf-ptr-bounds : ∀ prog (fs : FlatState) (r : RunAt prog fs)
+                  → FlatWF fs × PtrBoundsWF fs
+run-wf-ptr-bounds prog fs (mkRunAt ir eq reach) = go fs reach
+  where go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs'
+           → FlatWF fs' × PtrBoundsWF fs'
+        go fs' (reach-start .fs' el _) = entry-flat-wf fs' el , entry-ptr-bounds fs' el
+        go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
+          let ih = go fs'' r' in
+          flat-wf-step i prog fs'' (proj₁ ih) ,
+          ptr-bounds-step i prog fs'' (mkRunAt ir eq r') ftq
+            (frame-op-absurd prog fs'' i (ir , eq) ftq)
+            (proj₁ ih) (proj₂ ih)
+
+run-ptr-bounds : ∀ prog (fs : FlatState) (r : RunAt prog fs) → PtrBoundsWF fs
+run-ptr-bounds prog fs r = proj₂ (run-wf-ptr-bounds prog fs r)
+
+-- THE FOUR IN-BOUNDS FACTS THE BLOCK-STEPS CONSUME, now read off the
+-- invariant (the store pair was residual until 2026-08-01; the load pair
+-- combines the `-target-ptr` residual's pointer shape with the theorem).
+store-indirect-inbounds : ∀ prog (fs : FlatState) (hl : HeapLocation) → RunAt prog fs
+                        → fetch prog (fpc fs) ≡ just store-indirect
+                        → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                        → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))
+store-indirect-inbounds prog fs hl r ftq eq =
+  ptr-bounds-cell fs Input1 hl (run-ptr-bounds prog fs r) eq
+
+store-indirect-suc-inbounds : ∀ prog (fs : FlatState) (hl : HeapLocation) → RunAt prog fs
+                            → fetch prog (fpc fs) ≡ just store-indirect-suc
+                            → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+                            → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))
+store-indirect-suc-inbounds prog fs hl r ftq eq =
+  ptr-bounds-suc fs Input1 hl (run-ptr-bounds prog fs r) eq
+
+load-indirect-target-wf : ∀ prog (fs : FlatState) → RunAt prog fs
+                        → fetch prog (fpc fs) ≡ just load-indirect
+                        → Σ (ValueLocation FS) (λ loc →
+                            (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+                            × (∀ hl → loc ≡ AtDynamic hl
+                               → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl))))
+load-indirect-target-wf prog fs r ftq with load-indirect-target-ptr prog fs r ftq
+... | loc , eq = loc , eq ,
+  λ hl leq → ptr-bounds-cell fs Input1 hl (run-ptr-bounds prog fs r)
+               (trans eq (cong SV-Ptr leq))
+
+load-indirect-suc-target-wf : ∀ prog (fs : FlatState) → RunAt prog fs
+                            → fetch prog (fpc fs) ≡ just load-indirect-suc
+                            → Σ (ValueLocation FS) (λ loc →
+                                (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+                                × (∀ hl → loc ≡ AtDynamic hl
+                                   → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl)))))
+load-indirect-suc-target-wf prog fs r ftq with load-indirect-suc-target-ptr prog fs r ftq
+... | loc , eq = loc , eq ,
+  λ hl leq → ptr-bounds-suc fs Input1 hl (run-ptr-bounds prog fs r)
+               (trans eq (cong SV-Ptr leq))
 
 -- The event-trace induction, fully with-FREE (J-style aux bridges for every case
 -- split — no `with … in` goal-abstraction). `ccc-step` is the reusable CCC engine:

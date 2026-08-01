@@ -229,16 +229,16 @@ entry-regtag B = record { scratch-tag = 0 , refl ; count-tag = 0 , refl }
 entry-like : ∀ (B : ℕ) → EntryLike (mkFlat (FFOx.entry-s B) FFOx.entry-alloc 0)
 entry-like B = refl , refl , refl , refl
              , (λ _ → refl) , (λ _ _ → refl) , (λ _ → refl)
-             -- no register holds a stack pointer: every entry register is the
+             -- no register holds ANY pointer: every entry register is the
              -- tag filler `SV-Tag 0` (D074)
-             , no-stack-ptr
-  where no-stack-ptr : ∀ (r : AbstractReg) f k
-                     → readReg (regs (FFOx.entry-s B)) r ≡ SV-Ptr (AtStack f k) → ⊥
-        no-stack-ptr Input1  f k ()
-        no-stack-ptr Input2  f k ()
-        no-stack-ptr Output  f k ()
-        no-stack-ptr Scratch f k ()
-        no-stack-ptr Count   f k ()
+             , no-ptr
+  where no-ptr : ∀ (r : AbstractReg) loc
+               → readReg (regs (FFOx.entry-s B)) r ≡ SV-Ptr loc → ⊥
+        no-ptr Input1  loc ()
+        no-ptr Input2  loc ()
+        no-ptr Output  loc ()
+        no-ptr Scratch loc ()
+        no-ptr Count   loc ()
 
 entry-inv : ∀ (ir : IR Unit Unit)
           → FlatInv ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
