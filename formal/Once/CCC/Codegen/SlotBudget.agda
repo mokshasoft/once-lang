@@ -228,20 +228,76 @@ cata-nat-below n1 l1 at ff =
               sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
               sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ []
 
+-- STRATEGY `strat-linear` DISCHARGED (2026-08-01): the Tier-1 linear cata
+-- reserves exactly SIX slots above the algebra's frontier — `pstash` (n1),
+-- `sstash`, `node-cur`, `stack-top`, `acc-slot`, `xstash` (n1+5) — and every
+-- other instruction of the skeleton is slot-free (loop labels, branches,
+-- reg-ops, the heap-linked payload-stack loads/stores, the two `at` splices).
+-- Same shape as `cata-nat-below`, just longer.
+cata-linear-below : ∀ (n1 l1 : ℕ) (at : AbstractTrace) → All (SlotBelow n1) at
+                  → All (SlotBelow (cata-budget-of (cata-dispatch strat-linear n1 l1 at)))
+                        (cata-trace-of (cata-dispatch strat-linear n1 l1 at))
+cata-linear-below n1 l1 at ff =
+  ++⁺ descend (sb-none refl ∷ ++⁺ at' ascend)
+  where
+    b = suc (suc (suc (suc (suc (suc n1)))))
+    p0 : n1 < b
+    p0 = ≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))
+    p1 : suc n1 < b
+    p1 = ≤-step (≤-step (≤-step (≤-step ≤-refl)))
+    p2 : suc (suc n1) < b
+    p2 = ≤-step (≤-step (≤-step ≤-refl))
+    p3 : suc (suc (suc n1)) < b
+    p3 = ≤-step (≤-step ≤-refl)
+    p4 : suc (suc (suc (suc n1))) < b
+    p4 = ≤-step ≤-refl
+    p5 : suc (suc (suc (suc (suc n1)))) < b
+    p5 = ≤-refl
+    at' : All (SlotBelow b) at
+    at' = sb-weaken {b' = b}
+            (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))) ff
+    descend : All (SlotBelow b) _
+    descend =
+      sb-none refl ∷ sb-none refl ∷ sb-slot refl p3 (λ _ ()) ∷
+      sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+      sb-none refl ∷ sb-none refl ∷
+      sb-none refl ∷ sb-slot refl p5 (λ _ ()) ∷
+      sb-none refl ∷ sb-slot refl p2 (λ _ ()) ∷
+      sb-none refl ∷ sb-slot refl p1 (λ _ ()) ∷ sb-none refl ∷
+      sb-slot refl p5 (λ _ ()) ∷ sb-none refl ∷
+      sb-slot refl p3 (λ _ ()) ∷ sb-none refl ∷
+      sb-slot refl p1 (λ _ ()) ∷ sb-slot refl p3 (λ _ ()) ∷
+      sb-slot refl p2 (λ _ ()) ∷ sb-none refl ∷
+      sb-none refl ∷ sb-none refl ∷ []
+    ascend : All (SlotBelow b) _
+    ascend =
+      sb-none refl ∷ sb-none refl ∷
+      sb-slot refl p4 (λ _ ()) ∷
+      sb-slot refl p3 (λ _ ()) ∷ sb-none refl ∷
+      sb-none refl ∷ sb-slot refl p5 (λ _ ()) ∷
+      sb-none refl ∷ sb-slot refl p3 (λ _ ()) ∷
+      sb-none refl ∷ sb-slot refl p1 (λ _ ()) ∷ sb-none refl ∷
+      sb-slot refl p5 (λ _ ()) ∷ sb-none refl ∷
+      sb-slot refl p4 (λ _ ()) ∷ sb-none refl ∷
+      sb-none refl ∷ sb-slot refl p0 (λ _ ()) ∷ sb-none refl ∷
+      sb-none refl ∷ sb-none refl ∷
+      sb-slot refl p1 (λ _ ()) ∷ sb-none refl ∷
+      sb-slot refl p0 (λ _ ()) ∷ sb-none refl ∷
+      ++⁺ at' (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
+
 postulate
-  -- THE PIECE LEFT (plan 0.54 rung D, item 2). The two remaining cata strategies
-  -- reserve
-  -- its OWN slots in `[n1, next)`, above the algebra's frontier `n1`:
-  -- `cata-trace-linear` 6 and `cata-trace-branching` `4·fsize F + 4` — the
-  -- latter behind the compile-time functor walks
-  -- (`visit-walk` / `rebuild-walk`), whose slots need an `s + 4·fsize F + 4`
-  -- bound by induction on `F`. Fixed arithmetic per strategy; no model content,
-  -- and no state or program is quantified over — this is a claim about three
-  -- CLOSED trace-building functions.
-  cata-skeleton-slots-below : ∀ (st : CataStrategy) (n1 l1 : ℕ) (at : AbstractTrace)
-                            → All (SlotBelow n1) at
-                            → All (SlotBelow (cata-budget-of (cata-dispatch st n1 l1 at)))
-                                  (cata-trace-of (cata-dispatch st n1 l1 at))
+  -- THE PIECE LEFT (plan 0.54 rung D, item 2). The one remaining cata strategy:
+  -- `cata-trace-branching` reserves its OWN slots in `[n1, next)`, above the
+  -- algebra's frontier `n1` — `4·fsize F + 4` of them, behind the compile-time
+  -- functor walks (`visit-walk` / `rebuild-walk`), whose slots need an
+  -- `s + 4·fsize F + 4` bound by induction on `F` (plus push2/pop2/wrap-sum
+  -- brick lemmas). Fixed arithmetic; no model content, and no state or program
+  -- is quantified over — this is a claim about one CLOSED trace-building
+  -- function.
+  cata-branching-slots-below : ∀ (F : Functor) (n1 l1 : ℕ) (at : AbstractTrace)
+                             → All (SlotBelow n1) at
+                             → All (SlotBelow (cata-budget-of (cata-dispatch (strat-branching F) n1 l1 at)))
+                                   (cata-trace-of (cata-dispatch (strat-branching F) n1 l1 at))
 
 -- `strat-const` needs no skeleton at all — the cata IS its algebra there.
 cata-slots-below : ∀ (st : CataStrategy) (n1 l1 : ℕ) (at : AbstractTrace)
@@ -250,8 +306,8 @@ cata-slots-below : ∀ (st : CataStrategy) (n1 l1 : ℕ) (at : AbstractTrace)
                        (cata-trace-of (cata-dispatch st n1 l1 at))
 cata-slots-below strat-const         n1 l1 at ff = ff
 cata-slots-below strat-nat           n1 l1 at ff = cata-nat-below n1 l1 at ff
-cata-slots-below strat-linear        n1 l1 at ff = cata-skeleton-slots-below strat-linear n1 l1 at ff
-cata-slots-below (strat-branching F) n1 l1 at ff = cata-skeleton-slots-below (strat-branching F) n1 l1 at ff
+cata-slots-below strat-linear        n1 l1 at ff = cata-linear-below n1 l1 at ff
+cata-slots-below (strat-branching F) n1 l1 at ff = cata-branching-slots-below F n1 l1 at ff
 
 ------------------------------------------------------------------------
 -- THE INDUCTION: every instruction of the emitted MAIN trace addresses a slot
