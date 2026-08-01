@@ -57,7 +57,7 @@ open import Once.CCC.Codegen.IRToTrace using
   (ir-to-trace'; ir-to-trace; ir-stack-budget;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; fsize;
-   push2; pop2; visit-walk; rebuild-walk)
+   push2; pop2; wrap-sum; visit-walk; rebuild-walk)
 
 -- the two projections of `ir-to-trace'`'s 4-tuple this module reads (record
 -- patterns, so they reduce under eta — IRToTrace's own are private)
@@ -161,7 +161,8 @@ frontier-mono (inl Stack) n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 frontier-mono (inr Stack) n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 frontier-mono (inl Heap)  n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 frontier-mono (inr Heap)  n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
-frontier-mono (case f g)  n l = ≤-trans (frontier-mono f n l) (frontier-mono g _ _)
+frontier-mono (case f g)  n l =
+  ≤-trans (frontier-mono f n (suc (suc l))) (frontier-mono g _ _)
 frontier-mono (In _ _)    n l = ≤-refl
 frontier-mono (out-μ _)   n l = ≤-refl
 frontier-mono (Cata {F} _ alg) n l =
@@ -317,20 +318,45 @@ pop2-below topSlot b pt =
   sb-slot refl pt (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
   sb-slot refl pt (λ _ ()) ∷ sb-none refl ∷ []
 
+-- wrap the payload into a sum node: two addressed slots (item 6 made this a
+-- MAIN-trace segment — it used to hide inside a nested `⊕` branch)
+wrap-sum-below : ∀ (tag s b : ℕ) → s < b → suc s < b
+               → All (SlotBelow b) (wrap-sum tag s)
+wrap-sum-below tag s b ps pss =
+  sb-slot refl ps (λ _ ()) ∷ sb-none refl ∷ sb-slot refl pss (λ _ ()) ∷
+  sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+  sb-slot refl ps (λ _ ()) ∷ sb-none refl ∷ sb-slot refl pss (λ _ ()) ∷ []
+
 -- the VISIT walk: `Id` is a push (fixed slots), `⊕` one case instruction,
 -- `⊗` owns `s` and recurses at `s+4`
-visit-below : ∀ (F : Functor) (todo tv tb s b : ℕ)
+visit-below : ∀ (F : Functor) (todo tv tb s lb b : ℕ)
             → todo < b → tv < b → tb < b → s + 4 * fsize F ≤ b
-            → All (SlotBelow b) (visit-walk todo tv tb F s)
-visit-below (K _) todo tv tb s b pt pv pb h = []
-visit-below Id    todo tv tb s b pt pv pb h =
+            → All (SlotBelow b) (visit-walk todo tv tb F s lb)
+visit-below (K _) todo tv tb s lb b pt pv pb h = []
+visit-below Id    todo tv tb s lb b pt pv pb h =
   sb-none refl ∷ push2-below todo tv tb b pt pv pb
-visit-below (F ⊕ G) todo tv tb s b pt pv pb h = sb-none refl ∷ []
-visit-below (F ⊗ G) todo tv tb s b pt pv pb h =
+-- item 6: the ⊕ dispatch is FLAT — branch prologues/joins are label/ctrl
+-- instructions (slot-free), the branch walks are inline splices.
+visit-below (F ⊕ G) todo tv tb s lb b pt pv pb h =
+  ++⁺ (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
+      (++⁺ (visit-below G todo tv tb (s + 4) _ b pt pv pb recG)
+           (++⁺ (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
+                (++⁺ (visit-below F todo tv tb (s + 4) _ b pt pv pb recF)
+                     (sb-none refl ∷ []))))
+  where
+    recF : s + 4 + 4 * fsize F ≤ b
+    recF = ≤-trans (≤-reflexive (+-assoc s 4 (4 * fsize F)))
+           (≤-trans (+-monoʳ-≤ s (+-monoʳ-≤ 4 (*-monoʳ-≤ 4 (m≤m+n (fsize F) (fsize G)))))
+           (≤-trans (≤-reflexive (cong (s +_) (sym (*-suc 4 (fsize F + fsize G))))) h))
+    recG : s + 4 + 4 * fsize G ≤ b
+    recG = ≤-trans (≤-reflexive (+-assoc s 4 (4 * fsize G)))
+           (≤-trans (+-monoʳ-≤ s (+-monoʳ-≤ 4 (*-monoʳ-≤ 4 (m≤n+m (fsize G) (fsize F)))))
+           (≤-trans (≤-reflexive (cong (s +_) (sym (*-suc 4 (fsize F + fsize G))))) h))
+visit-below (F ⊗ G) todo tv tb s lb b pt pv pb h =
   ++⁺ (sb-none refl ∷ sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
-      (++⁺ (visit-below G todo tv tb (s + 4) b pt pv pb recG)
+      (++⁺ (visit-below G todo tv tb (s + 4) _ b pt pv pb recG)
            (++⁺ (sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
-                (visit-below F todo tv tb (s + 4) b pt pv pb recF)))
+                (visit-below F todo tv tb (s + 4) _ b pt pv pb recF)))
   where
     room4 : s + 4 ≤ b
     room4 = ≤-trans (+-monoʳ-≤ s (subst (4 ≤_) (sym (*-suc 4 (fsize F + fsize G)))
@@ -348,18 +374,42 @@ visit-below (F ⊗ G) todo tv tb s b pt pv pb h =
 
 -- the REBUILD walk: `Id` is a pop (the value slot), `⊕` one case instruction
 -- (`wrap-sum` lives inside its branches), `⊗` owns `[s, s+3]`
-rebuild-below : ∀ (F : Functor) (val tv tb s b : ℕ)
+rebuild-below : ∀ (F : Functor) (val tv tb s lb b : ℕ)
               → val < b → s + 4 * fsize F ≤ b
-              → All (SlotBelow b) (rebuild-walk val tv tb F s)
-rebuild-below (K _) val tv tb s b pt h = sb-none refl ∷ []
-rebuild-below Id    val tv tb s b pt h = pop2-below val b pt
-rebuild-below (F ⊕ G) val tv tb s b pt h = sb-none refl ∷ []
-rebuild-below (F ⊗ G) val tv tb s b pt h =
+              → All (SlotBelow b) (rebuild-walk val tv tb F s lb)
+rebuild-below (K _) val tv tb s lb b pt h = sb-none refl ∷ []
+rebuild-below Id    val tv tb s lb b pt h = pop2-below val b pt
+-- item 6: flat ⊕ — the `wrap-sum`s are main-trace segments now.
+rebuild-below (F ⊕ G) val tv tb s lb b pt h =
+  ++⁺ (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
+      (++⁺ (rebuild-below G val tv tb (s + 4) _ b pt recG)
+           (++⁺ (wrap-sum-below 1 s b s<b b-ss)
+                (++⁺ (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
+                     (++⁺ (rebuild-below F val tv tb (s + 4) _ b pt recF)
+                          (++⁺ (wrap-sum-below 0 s b s<b b-ss)
+                               (sb-none refl ∷ []))))))
+  where
+    room4 : s + 4 ≤ b
+    room4 = ≤-trans (+-monoʳ-≤ s (subst (4 ≤_) (sym (*-suc 4 (fsize F + fsize G)))
+                                        (m≤m+n 4 (4 * (fsize F + fsize G))))) h
+    s<b : s < b
+    s<b = ≤-trans (subst (suc s ≤_) (+-comm 4 s) (m≤n+m (suc s) 3)) room4
+    b-ss : suc s < b
+    b-ss = ≤-trans (subst (suc (suc s) ≤_) (+-comm 4 s) (m≤n+m (suc (suc s)) 2)) room4
+    recF : s + 4 + 4 * fsize F ≤ b
+    recF = ≤-trans (≤-reflexive (+-assoc s 4 (4 * fsize F)))
+           (≤-trans (+-monoʳ-≤ s (+-monoʳ-≤ 4 (*-monoʳ-≤ 4 (m≤m+n (fsize F) (fsize G)))))
+           (≤-trans (≤-reflexive (cong (s +_) (sym (*-suc 4 (fsize F + fsize G))))) h))
+    recG : s + 4 + 4 * fsize G ≤ b
+    recG = ≤-trans (≤-reflexive (+-assoc s 4 (4 * fsize G)))
+           (≤-trans (+-monoʳ-≤ s (+-monoʳ-≤ 4 (*-monoʳ-≤ 4 (m≤n+m (fsize G) (fsize F)))))
+           (≤-trans (≤-reflexive (cong (s +_) (sym (*-suc 4 (fsize F + fsize G))))) h))
+rebuild-below (F ⊗ G) val tv tb s lb b pt h =
   ++⁺ (sb-none refl ∷ sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
-      (++⁺ (rebuild-below F val tv tb (s + 4) b pt recF)
+      (++⁺ (rebuild-below F val tv tb (s + 4) _ b pt recF)
            (++⁺ (sb-slot refl b-ss (λ _ ()) ∷ sb-slot refl s<b (λ _ ()) ∷
                  sb-none refl ∷ sb-none refl ∷ [])
-                (++⁺ (rebuild-below G val tv tb (s + 4) b pt recG)
+                (++⁺ (rebuild-below G val tv tb (s + 4) _ b pt recG)
                      (sb-slot refl b-s2 (λ _ ()) ∷ sb-none refl ∷
                       sb-slot refl b-s3 (λ _ ()) ∷ sb-none refl ∷
                       sb-slot refl b-ss (λ _ ()) ∷ sb-none refl ∷
@@ -441,14 +491,14 @@ cata-branching-below F n1 l1 at ff =
            sb-slot refl q3 (λ _ ()) ∷ [])
           (++⁺ (push2-below (suc n1) (n1 + 4) (n1 + 5) b q1 q4 q5)
                (++⁺ (sb-slot refl q3 (λ _ ()) ∷ sb-none refl ∷ [])
-                    (++⁺ (visit-below F n1 (n1 + 4) (n1 + 5) (n1 + 7) b q0 q4 q5 walk-room)
+                    (++⁺ (visit-below F n1 (n1 + 4) (n1 + 5) (n1 + 7) _ b q0 q4 q5 walk-room)
                          (sb-none refl ∷ sb-none refl ∷ []))))
     fold-all : All (SlotBelow b) _
     fold-all =
       ++⁺ (sb-none refl ∷ sb-slot refl q1 (λ _ ()) ∷ sb-none refl ∷
            sb-none refl ∷ sb-none refl ∷ sb-slot refl q1 (λ _ ()) ∷
            sb-none refl ∷ sb-none refl ∷ [])
-          (++⁺ (rebuild-below F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) b q2 walk-room)
+          (++⁺ (rebuild-below F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) _ b q2 walk-room)
                (++⁺ (sb-none refl ∷ [])
                     (++⁺ at'
                          (++⁺ (push2-below (n1 + 2) (n1 + 4) (n1 + 5) b q2 q4 q5)
@@ -544,9 +594,14 @@ slots-below (inr Heap) n l =
   sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
   sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ []
--- the branch bodies are ARGUMENTS of `instr-case-on-tag`, and `slot-of` is
--- `nothing` on it — the flat `fpc` never indexes into a nested trace
-slots-below (case f g) n l = sb-none refl ∷ []
+-- item 6: case is FLAT CONTROL — the branches are main-trace splices, bounded
+-- by their own inductions (f weakened through g's frontier, like `∘`).
+slots-below (case f g) n l =
+  ++⁺ (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
+      (++⁺ (slots-below g _ _)
+           (++⁺ (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
+                (++⁺ (sb-weaken (frontier-mono g _ _) (slots-below f n (suc (suc l))))
+                     (sb-none refl ∷ []))))
 slots-below (In _ _)   n l = sb-none refl ∷ []
 slots-below (out-μ _)  n l = sb-none refl ∷ []
 slots-below (Cata {F} _ alg) n l =

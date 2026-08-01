@@ -61,7 +61,7 @@ open import Once.CCC.Codegen.IRToTrace using
   (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
-   cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk)
+   cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize)
 
 -- third projection of `ir-to-trace'`'s 4-tuple / of `cata-dispatch`'s 3-tuple
 -- (record patterns, so they reduce under eta — unlike IRToTrace's own
@@ -78,14 +78,6 @@ cata-trace-of (_ , _ , t) = t
 -- `frame-free-nest` converts, at the nested-branch obligations only.
 FrameFreeTrace : AbstractTrace → Set
 FrameFreeTrace = All FrameFreeI
-
--- Every `instr-case-on-tag` branch the emitter builds is the two-instruction
--- sum-branch prologue followed by a body. Stated with the branch trace as an
--- ARGUMENT (not read off the goal): at a nested obligation the goal has already
--- reduced to a product, so it no longer says which instructions it is about.
-branch-ff : ∀ {t} → FrameFreeTrace t
-          → FrameFreeT (load-indirect-suc ∷ mov-to-input ∷ t)
-branch-ff ff = tt , tt , frame-free-nest ff
 
 ------------------------------------------------------------------------
 -- The heap-linked-stack bricks the cata codegen is built from.
@@ -104,31 +96,36 @@ wrap-sum-ff tag s = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt �
 -- `instr-case-on-tag`, whose two branch bodies are the walk's own recursive
 -- calls — this is where the predicate's DEPTH earns its keep.
 ------------------------------------------------------------------------
-visit-walk-ff : ∀ todoSlot tv tb F s → FrameFreeTrace (visit-walk todoSlot tv tb F s)
-visit-walk-ff todoSlot tv tb (K _)   s = []
-visit-walk-ff todoSlot tv tb Id      s = tt ∷ push2-ff todoSlot tv tb
-visit-walk-ff todoSlot tv tb (F ⊕ G) s =
-  ( branch-ff (visit-walk-ff todoSlot tv tb F (s + 4))
-  , branch-ff (visit-walk-ff todoSlot tv tb G (s + 4)) )
-  ∷ []
-visit-walk-ff todoSlot tv tb (F ⊗ G) s =
-  ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
-      (++⁺ (visit-walk-ff todoSlot tv tb G (s + 4))
-           (++⁺ (tt ∷ tt ∷ tt ∷ [])
-                (visit-walk-ff todoSlot tv tb F (s + 4))))
-
-rebuild-walk-ff : ∀ valSlot tv tb F s → FrameFreeTrace (rebuild-walk valSlot tv tb F s)
-rebuild-walk-ff valSlot tv tb (K _)   s = tt ∷ []
-rebuild-walk-ff valSlot tv tb Id      s = pop2-ff valSlot
-rebuild-walk-ff valSlot tv tb (F ⊕ G) s =
-  ( branch-ff (++⁺ (rebuild-walk-ff valSlot tv tb F (s + 4)) (wrap-sum-ff 0 s))
-  , branch-ff (++⁺ (rebuild-walk-ff valSlot tv tb G (s + 4)) (wrap-sum-ff 1 s)) )
-  ∷ []
-rebuild-walk-ff valSlot tv tb (F ⊗ G) s =
-  ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
-      (++⁺ (rebuild-walk-ff valSlot tv tb F (s + 4))
+visit-walk-ff : ∀ todoSlot tv tb F s lb → FrameFreeTrace (visit-walk todoSlot tv tb F s lb)
+visit-walk-ff todoSlot tv tb (K _)   s lb = []
+visit-walk-ff todoSlot tv tb Id      s lb = tt ∷ push2-ff todoSlot tv tb
+visit-walk-ff todoSlot tv tb (F ⊕ G) s lb =
+  ++⁺ (tt ∷ tt ∷ tt ∷ [])
+      (++⁺ (visit-walk-ff todoSlot tv tb G (s + 4) (suc (suc lb) + lsize F))
            (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
-                (++⁺ (rebuild-walk-ff valSlot tv tb G (s + 4))
+                (++⁺ (visit-walk-ff todoSlot tv tb F (s + 4) (suc (suc lb)))
+                     (tt ∷ []))))
+visit-walk-ff todoSlot tv tb (F ⊗ G) s lb =
+  ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
+      (++⁺ (visit-walk-ff todoSlot tv tb G (s + 4) (lb + lsize F))
+           (++⁺ (tt ∷ tt ∷ tt ∷ [])
+                (visit-walk-ff todoSlot tv tb F (s + 4) lb)))
+
+rebuild-walk-ff : ∀ valSlot tv tb F s lb → FrameFreeTrace (rebuild-walk valSlot tv tb F s lb)
+rebuild-walk-ff valSlot tv tb (K _)   s lb = tt ∷ []
+rebuild-walk-ff valSlot tv tb Id      s lb = pop2-ff valSlot
+rebuild-walk-ff valSlot tv tb (F ⊕ G) s lb =
+  ++⁺ (tt ∷ tt ∷ tt ∷ [])
+      (++⁺ (rebuild-walk-ff valSlot tv tb G (s + 4) (suc (suc lb) + lsize F))
+           (++⁺ (wrap-sum-ff 1 s)
+                (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
+                     (++⁺ (rebuild-walk-ff valSlot tv tb F (s + 4) (suc (suc lb)))
+                          (++⁺ (wrap-sum-ff 0 s) (tt ∷ []))))))
+rebuild-walk-ff valSlot tv tb (F ⊗ G) s lb =
+  ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
+      (++⁺ (rebuild-walk-ff valSlot tv tb F (s + 4) lb)
+           (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
+                (++⁺ (rebuild-walk-ff valSlot tv tb G (s + 4) (lb + lsize F))
                      (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []))))
 
 ------------------------------------------------------------------------
@@ -173,11 +170,11 @@ cata-branching-ff F n1 l1 at ff =
     flatten = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
                   (++⁺ (push2-ff (suc n1) (n1 + 4) (n1 + 5))
                        (++⁺ (tt ∷ tt ∷ [])
-                            (++⁺ (visit-walk-ff n1 (n1 + 4) (n1 + 5) F (n1 + 7))
+                            (++⁺ (visit-walk-ff n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4))
                                  (tt ∷ tt ∷ []))))
     fold : FrameFreeTrace _
     fold = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-               (++⁺ (rebuild-walk-ff (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7))
+               (++⁺ (rebuild-walk-ff (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) ((l1 + 4) + lsize F))
                     (++⁺ (tt ∷ [])
                          (++⁺ ff (++⁺ (push2-ff (n1 + 2) (n1 + 4) (n1 + 5))
                                       (tt ∷ tt ∷ [])))))
@@ -223,12 +220,12 @@ frame-free-trace' (inl Heap)  n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 frame-free-trace' (inr Heap)  n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
--- the ONE nested case in the IR-driven emitter: both branch bodies are
--- themselves emitted traces, so the depth obligation is the two IHs.
+-- case is FLAT CONTROL since item 6 — plain splices, no depth obligation.
 frame-free-trace' (case f g) n l =
-  ( branch-ff (frame-free-trace' f _ _)
-  , branch-ff (frame-free-trace' g _ _) )
-  ∷ []
+  ++⁺ (tt ∷ tt ∷ tt ∷ [])
+      (++⁺ (frame-free-trace' g _ _)
+           (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
+                (++⁺ (frame-free-trace' f _ _) (tt ∷ []))))
 frame-free-trace' (In _ _)  n l = tt ∷ []
 frame-free-trace' (out-μ _) n l = tt ∷ []
 frame-free-trace' (Cata {F} _ alg) n l =

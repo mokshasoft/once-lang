@@ -333,35 +333,53 @@ wrap-sum tag s =
 -- onto the todo stack, RIGHT-to-LEFT. `s` = structural-walk slot base
 -- (stride 4 per level, so a level's own slots [s..s+3] never overlap its
 -- children's [s+4..]).
-visit-walk : (todoSlot tv tb : ℕ) → Functor → (s : ℕ) → AbstractTrace
-visit-walk todoSlot tv tb (K _) s = []
-visit-walk todoSlot tv tb Id    s = mov-to-output ∷ push2 todoSlot tv tb
-visit-walk todoSlot tv tb (F ⊕ G) s =
-  instr-case-on-tag
-    ((load-indirect-suc ∷ mov-to-input ∷ []) ++ visit-walk todoSlot tv tb F (s +ℕ 4))
-    ((load-indirect-suc ∷ mov-to-input ∷ []) ++ visit-walk todoSlot tv tb G (s +ℕ 4))
-   ∷ []
-visit-walk todoSlot tv tb (F ⊗ G) s =
+-- LABEL BUDGET of a functor walk: each ⊕ node consumes exactly TWO labels
+-- (branch target + join). Positional allocation — a node at label base `lb`
+-- takes [lb, lb+1], its F child starts at lb+2, its G child at lb+2+lsize F —
+-- so the walks stay plain trace-builders (no threaded counter to return).
+lsize : Functor → ℕ
+lsize (K _)   = 0
+lsize Id      = 0
+lsize (F ⊕ G) = suc (suc (lsize F +ℕ lsize G))
+lsize (F ⊗ G) = lsize F +ℕ lsize G
+
+-- Plan 0.54 item 6 (2026-08-01): the ⊕ dispatch is FLAT CONTROL, not a nested
+-- `instr-case-on-tag` — same shape as `case f g` below and as the branching
+-- cata's own loop: `c-branch-tag-zero` to the inl branch, inr falls through,
+-- `c-jmp` joins. Branch prologue (payload into Input1) unchanged.
+visit-walk : (todoSlot tv tb : ℕ) → Functor → (s lb : ℕ) → AbstractTrace
+visit-walk todoSlot tv tb (K _) s lb = []
+visit-walk todoSlot tv tb Id    s lb = mov-to-output ∷ push2 todoSlot tv tb
+visit-walk todoSlot tv tb (F ⊕ G) s lb =
+  (instr-ctrl (c-branch-tag-zero lb) ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
+  visit-walk todoSlot tv tb G (s +ℕ 4) (suc (suc lb) +ℕ lsize F) ++
+  (instr-ctrl (c-jmp (suc lb)) ∷ instr-ctrl (c-label lb) ∷
+   load-indirect-suc ∷ mov-to-input ∷ []) ++
+  visit-walk todoSlot tv tb F (s +ℕ 4) (suc (suc lb)) ++
+  (instr-ctrl (c-label (suc lb)) ∷ [])
+visit-walk todoSlot tv tb (F ⊗ G) s lb =
   (mov-to-output ∷ store-at-slot s ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
-  visit-walk todoSlot tv tb G (s +ℕ 4) ++
+  visit-walk todoSlot tv tb G (s +ℕ 4) (lb +ℕ lsize F) ++
   (restore-input s ∷ load-indirect ∷ mov-to-input ∷ []) ++
-  visit-walk todoSlot tv tb F (s +ℕ 4)
+  visit-walk todoSlot tv tb F (s +ℕ 4) lb
 
 -- REBUILD walk: Input1 = repr(G) (the node sublayer); build the ⟦G⟧A layer
 -- in Output, popping one value-stack result per Id position, LEFT-to-RIGHT.
-rebuild-walk : (valSlot tv tb : ℕ) → Functor → (s : ℕ) → AbstractTrace
-rebuild-walk valSlot tv tb (K _) s = mov-to-output ∷ []
-rebuild-walk valSlot tv tb Id    s = pop2 valSlot
-rebuild-walk valSlot tv tb (F ⊕ G) s =
-  instr-case-on-tag
-    ((load-indirect-suc ∷ mov-to-input ∷ []) ++ rebuild-walk valSlot tv tb F (s +ℕ 4) ++ wrap-sum 0 s)
-    ((load-indirect-suc ∷ mov-to-input ∷ []) ++ rebuild-walk valSlot tv tb G (s +ℕ 4) ++ wrap-sum 1 s)
-   ∷ []
-rebuild-walk valSlot tv tb (F ⊗ G) s =
+rebuild-walk : (valSlot tv tb : ℕ) → Functor → (s lb : ℕ) → AbstractTrace
+rebuild-walk valSlot tv tb (K _) s lb = mov-to-output ∷ []
+rebuild-walk valSlot tv tb Id    s lb = pop2 valSlot
+rebuild-walk valSlot tv tb (F ⊕ G) s lb =
+  (instr-ctrl (c-branch-tag-zero lb) ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
+  rebuild-walk valSlot tv tb G (s +ℕ 4) (suc (suc lb) +ℕ lsize F) ++ wrap-sum 1 s ++
+  (instr-ctrl (c-jmp (suc lb)) ∷ instr-ctrl (c-label lb) ∷
+   load-indirect-suc ∷ mov-to-input ∷ []) ++
+  rebuild-walk valSlot tv tb F (s +ℕ 4) (suc (suc lb)) ++ wrap-sum 0 s ++
+  (instr-ctrl (c-label (suc lb)) ∷ [])
+rebuild-walk valSlot tv tb (F ⊗ G) s lb =
   (mov-to-output ∷ store-at-slot s ∷ load-indirect ∷ mov-to-input ∷ []) ++
-  rebuild-walk valSlot tv tb F (s +ℕ 4) ++
+  rebuild-walk valSlot tv tb F (s +ℕ 4) lb ++
   (store-at-slot (suc s) ∷ restore-input s ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
-  rebuild-walk valSlot tv tb G (s +ℕ 4) ++
+  rebuild-walk valSlot tv tb G (s +ℕ 4) (lb +ℕ lsize F) ++
   (store-at-slot (s +ℕ 2) ∷ instr-alloc-heap 2 ∷ store-at-slot (s +ℕ 3) ∷ mov-to-input ∷
    load-from-slot (suc s) ∷ store-indirect ∷
    load-from-slot (s +ℕ 2) ∷ store-indirect-suc ∷
@@ -376,7 +394,12 @@ cata-trace-branching F n1 l1 at =
       wb   = n1 +ℕ 7
       next = wb +ℕ (4 * fsize F) +ℕ 4
       f-top = l1 ; f-end = suc l1 ; g-top = l1 +ℕ 2 ; g-end = l1 +ℕ 3
-      l2    = l1 +ℕ 4
+      -- item 6: the two functor walks own DISJOINT label ranges after the
+      -- loop's own four (visit at `lv`, rebuild at `lr` — sharing a base
+      -- would emit duplicate `c-label`s and cross-wire the joins).
+      lv    = l1 +ℕ 4
+      lr    = lv +ℕ lsize F
+      l2    = lr +ℕ lsize F
       init =
         (mov-to-output ∷ store-at-slot s-node ∷
          instr-alloc-heap 2 ∷ store-at-slot t2 ∷ mov-to-input ∷
@@ -392,14 +415,14 @@ cata-trace-branching F n1 l1 at =
          load-indirect-suc ∷ store-at-slot s-todo ∷
          load-indirect ∷ mov-to-input ∷ store-at-slot s-node ∷
          load-from-slot s-node ∷ []) ++ push2 s-eval t0 t1 ++
-        (load-from-slot s-node ∷ mov-to-input ∷ []) ++ visit-walk s-todo t0 t1 F wb ++
+        (load-from-slot s-node ∷ mov-to-input ∷ []) ++ visit-walk s-todo t0 t1 F wb lv ++
         (instr-ctrl (c-jmp f-top) ∷ instr-ctrl (c-label f-end) ∷ [])
       fold =
         (instr-ctrl (c-label g-top) ∷
          load-from-slot s-eval ∷ mov-to-input ∷
          instr-ctrl (c-branch-tag-zero g-end) ∷
          load-indirect-suc ∷ store-at-slot s-eval ∷
-         load-indirect ∷ mov-to-input ∷ []) ++ rebuild-walk s-val t0 t1 F wb ++
+         load-indirect ∷ mov-to-input ∷ []) ++ rebuild-walk s-val t0 t1 F wb lr ++
         (mov-to-input ∷ []) ++ at ++ push2 s-val t0 t1 ++
         (instr-ctrl (c-jmp g-top) ∷ instr-ctrl (c-label g-end) ∷ [])
       final-read = load-from-slot s-val ∷ mov-to-input ∷ load-indirect ∷ []
@@ -717,19 +740,38 @@ ir-to-trace' n l (inr Heap) =
      []
 
 -- ────────────────────────────────────────────────────────────────────
--- case f g — sum elimination (Plan 0.13.1 Phase 4).
--- Per-branch dispatch trace (load payload pointer from sucLoc Input1,
--- mov it into Input1, then run the branch body):
---   load-indirect-suc ∷ mov-to-input ∷ <sub-trace>
--- Then wrap the two branches in instr-case-on-tag.
+-- case f g — sum elimination (Plan 0.13.1 Phase 4; FLAT since Plan 0.54
+-- item 6, 2026-08-01). Compiled to flat control the way `Cata` already is —
+-- the exact shape the x86 lowering always had
+-- (`cmp [rdi],0 ; je inl ; <g> ; jmp end ; inl: <f>`):
+--
+--   c-branch-tag-zero l-inl ∷        -- tag 0 (inl) → jump to f's branch
+--   load-indirect-suc ∷ mov-to-input ∷ gt ++   -- inr falls through
+--   c-jmp l-end ∷ c-label l-inl ∷
+--   load-indirect-suc ∷ mov-to-input ∷ ft ++
+--   c-label l-end ∷ []
+--
+-- Per-branch prologue (payload pointer from sucLoc Input1 into Input1)
+-- unchanged. Labels come from the SAME counter as the cata's, so they are
+-- collision-free by construction; `instr-case-on-tag` now has NO PRODUCER
+-- (it joins the frame ops / `instr-loop` / `lea-indexed` in `FrameFreeI`'s
+-- ⊥ set) and the flat machine needs no nested-trace correspondence at all.
 -- ────────────────────────────────────────────────────────────────────
 
 ir-to-trace' n l (case f g) =
-  let (n1 , l1 , ft , fb) = ir-to-trace' n  l  f
+  let l-inl = l
+      l-end = suc l
+      (n1 , l1 , ft , fb) = ir-to-trace' n  (suc (suc l)) f
       (n2 , l2 , gt , gb) = ir-to-trace' n1 l1 g
-      f-dispatch = load-indirect-suc ∷ mov-to-input ∷ ft
-      g-dispatch = load-indirect-suc ∷ mov-to-input ∷ gt
-  in n2 , l2 , (instr-case-on-tag f-dispatch g-dispatch ∷ []) , (fb ++ gb)
+  in n2 , l2 ,
+     (instr-ctrl (c-branch-tag-zero l-inl) ∷
+      load-indirect-suc ∷ mov-to-input ∷ []) ++
+     gt ++
+     (instr-ctrl (c-jmp l-end) ∷ instr-ctrl (c-label l-inl) ∷
+      load-indirect-suc ∷ mov-to-input ∷ []) ++
+     ft ++
+     (instr-ctrl (c-label l-end) ∷ []) ,
+     (fb ++ gb)
 
 -- In: μ Lambek constructor. Heap-identity — the F-layer node IS the
 -- μ-value (same pointer). `mov-to-output` (Output := Input1) passes the

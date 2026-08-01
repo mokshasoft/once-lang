@@ -21,7 +21,7 @@
 
 module Once.CCC.Codegen.CataIRSlotStable where
 
-open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.Bool.Properties using (∧-assoc)
 open import Data.Unit using (⊤; tt)
@@ -51,7 +51,7 @@ open import Once.CCC.Codegen.IRToTrace
   using (ir-to-trace; ir-to-trace'; cata-strategy; cata-dispatch;
          CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
          cata-trace-nat; cata-trace-linear; cata-trace-branching;
-         visit-walk; rebuild-walk)
+         visit-walk; rebuild-walk; lsize)
 
 module CataIRSlotStable {FS : FrameSemantics} where
   open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
@@ -199,33 +199,40 @@ module CataIRSlotStable {FS : FrameSemantics} where
     ∧-intro (stable?-complete i px) (all-stable?-complete is ps)
 
   ----------------------------------------------------------------------
-  -- Tier-2 structural walks (`visit-walk` / `rebuild-walk`) are functor-
-  -- recursive and carry nested `instr-case-on-tag`; AllSlotStable by
-  -- induction on the functor F (each concrete chunk via `all-stable?-sound
-  -- refl`; the case-on-tag branches recurse, converted with `All→AllI`).
+  -- Tier-2 structural walks (`visit-walk` / `rebuild-walk`): since item 6
+  -- the ⊕ dispatch is FLAT control, so every clause is a plain splice of
+  -- concrete chunks (ctrl/prologue instructions, `all-stable?`-sound) and
+  -- the recursive walks.
   ----------------------------------------------------------------------
-  visit-walk-stable : ∀ td tv tb F s → AllSlotStable (visit-walk td tv tb F s)
-  visit-walk-stable td tv tb (K _)   s = []ᴬ
-  visit-walk-stable td tv tb Id      s = all-stable?-sound _ refl
-  visit-walk-stable td tv tb (F ⊕ G) s =
-    ((tt , tt , All→AllI (visit-walk-stable td tv tb F _)) ,
-     (tt , tt , All→AllI (visit-walk-stable td tv tb G _))) ∷ᴬ []ᴬ
-  visit-walk-stable td tv tb (F ⊗ G) s =
-    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-    ++⁺ (visit-walk-stable td tv tb G _)
-      (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ visit-walk-stable td tv tb F _)
-
-  rebuild-walk-stable : ∀ vs tv tb F s → AllSlotStable (rebuild-walk vs tv tb F s)
-  rebuild-walk-stable vs tv tb (K _)   s = all-stable?-sound _ refl
-  rebuild-walk-stable vs tv tb Id      s = all-stable?-sound _ refl
-  rebuild-walk-stable vs tv tb (F ⊕ G) s =
-    ((tt , tt , All→AllI (++⁺ (rebuild-walk-stable vs tv tb F _) (all-stable?-sound _ refl))) ,
-     (tt , tt , All→AllI (++⁺ (rebuild-walk-stable vs tv tb G _) (all-stable?-sound _ refl)))) ∷ᴬ []ᴬ
-  rebuild-walk-stable vs tv tb (F ⊗ G) s =
-    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-    ++⁺ (rebuild-walk-stable vs tv tb F _)
+  visit-walk-stable : ∀ td tv tb F s lb → AllSlotStable (visit-walk td tv tb F s lb)
+  visit-walk-stable td tv tb (K _)   s lb = []ᴬ
+  visit-walk-stable td tv tb Id      s lb = all-stable?-sound _ refl
+  visit-walk-stable td tv tb (F ⊕ G) s lb =
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+    ++⁺ (visit-walk-stable td tv tb G _ _)
       (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-       ++⁺ (rebuild-walk-stable vs tv tb G _) (all-stable?-sound _ refl))
+       ++⁺ (visit-walk-stable td tv tb F _ _) (tt ∷ᴬ []ᴬ))
+  visit-walk-stable td tv tb (F ⊗ G) s lb =
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+    ++⁺ (visit-walk-stable td tv tb G _ _)
+      (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ visit-walk-stable td tv tb F _ _)
+
+  rebuild-walk-stable : ∀ vs tv tb F s lb → AllSlotStable (rebuild-walk vs tv tb F s lb)
+  rebuild-walk-stable vs tv tb (K _)   s lb = all-stable?-sound _ refl
+  rebuild-walk-stable vs tv tb Id      s lb = all-stable?-sound _ refl
+  rebuild-walk-stable vs tv tb (F ⊕ G) s lb =
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+    ++⁺ (rebuild-walk-stable vs tv tb G _ _)
+      (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ   -- wrap-sum 1 s
+       tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ                                   -- jmp, label, prologue
+       ++⁺ (rebuild-walk-stable vs tv tb F _ _)
+         (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ -- wrap-sum 0 s
+          tt ∷ᴬ []ᴬ))
+  rebuild-walk-stable vs tv tb (F ⊗ G) s lb =
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+    ++⁺ (rebuild-walk-stable vs tv tb F _ _)
+      (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+       ++⁺ (rebuild-walk-stable vs tv tb G _ _) (all-stable?-sound _ refl))
 
   ----------------------------------------------------------------------
   -- The three non-degenerate cata strategy traces. Concrete scaffold
@@ -274,17 +281,17 @@ module CataIRSlotStable {FS : FrameSemantics} where
   branching-true : ∀ F n1 l1 at → all-stable? at ≡ true
                  → all-stable? (proj₂ (proj₂ (cata-trace-branching F n1 l1 at))) ≡ true
   branching-true F n1 l1 at sa =
-    trans (all-stable?-++ (visit-walk n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) ++ _) _)
+    trans (all-stable?-++ (visit-walk n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4) ++ _) _)
       (∧-intro
         -- all-stable? (visit-walk F ++ [jmp,label])  (the [jmp,label] reduces to true)
-        (trans (all-stable?-++ (visit-walk n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7)) _)
-          (∧-intro (all-stable?-complete _ (visit-walk-stable n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7))) refl))
+        (trans (all-stable?-++ (visit-walk n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4)) _)
+          (∧-intro (all-stable?-complete _ (visit-walk-stable n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4))) refl))
         -- all-stable? (fold ++ final-read)  (fold head reduces; final-read reduces to true)
-        (trans (all-stable?-++ (rebuild-walk (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) ++ _) _)
+        (trans (all-stable?-++ (rebuild-walk (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) ((l1 +ℕ 4) +ℕ lsize F) ++ _) _)
           (∧-intro
             -- all-stable? (rebuild-walk F ++ Rest)
-            (trans (all-stable?-++ (rebuild-walk (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7)) _)
-              (∧-intro (all-stable?-complete _ (rebuild-walk-stable (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7)))
+            (trans (all-stable?-++ (rebuild-walk (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) ((l1 +ℕ 4) +ℕ lsize F)) _)
+              (∧-intro (all-stable?-complete _ (rebuild-walk-stable (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) ((l1 +ℕ 4) +ℕ lsize F)))
                 -- all-stable? (mov ∷ (at ++ push2 ++ [jmp,label]))  → all-stable? (at ++ …)
                 (trans (all-stable?-++ at _) (∧-intro sa refl))))
             refl)))
@@ -338,8 +345,12 @@ module CataIRSlotStable {FS : FrameSemantics} where
     tt ∷ᴬ tt ∷ᴬ ++⁺ (ir-stable f _ _) (tt ∷ᴬ tt ∷ᴬ ++⁺ (ir-stable g _ _) (tt ∷ᴬ tt ∷ᴬ []ᴬ))
   ir-stable (⟨ f , g ⟩ Heap) n l =
     tt ∷ᴬ tt ∷ᴬ ++⁺ (ir-stable f _ _) (tt ∷ᴬ tt ∷ᴬ ++⁺ (ir-stable g _ _) (all-stable?-sound _ refl))
+  -- item 6: case is FLAT CONTROL — plain splices.
   ir-stable (case f g)      n l =
-    ((tt , tt , All→AllI (ir-stable f n l)) , (tt , tt , All→AllI (ir-stable g _ _))) ∷ᴬ []ᴬ
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+    ++⁺ (ir-stable g _ _)
+      (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+       ++⁺ (ir-stable f n (suc (suc l))) (tt ∷ᴬ []ᴬ))
   ir-stable (Cata {F} _ alg) n l =
     cata-dispatch-slot-stable (cata-strategy ⌈ F ⌉F) _ _ _ (ir-stable alg n l)
 

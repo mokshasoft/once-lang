@@ -14,12 +14,10 @@
 -- (`Once.CCC.Machine.FlatPtrBounds`): the fresh pointer an alloc hands out is
 -- the START of a pair, so `suc offset < block-size` holds for it.
 --
--- SHALLOW, unlike `FrameFreeTrace`: the predicate is `⊤` on
--- `instr-case-on-tag` (nested branch traces are NOT covered), because the
--- flat correspondence excludes the case step anyway (`ptr-bounds-case`, the
--- same exclusion as `stack-ptr-case`) — it dies when `case` compiles to flat
--- control (item 6). Structure: the induction of `FrameFreeTrace` (`All P`
--- over `trace-of (ir-to-trace' n l ir)`, `++⁺` at every splice).
+-- Since item 6 (case compiles to FLAT control) there is no nesting anywhere:
+-- every alloc site of every branch is in the main trace, so this `All` covers
+-- the WHOLE emitted program. Structure: the induction of `FrameFreeTrace`
+-- (`All P` over `trace-of (ir-to-trace' n l ir)`, `++⁺` at every splice).
 ------------------------------------------------------------------------
 
 module Once.CCC.Codegen.AllocMin where
@@ -47,7 +45,7 @@ open import Once.CCC.Codegen.IRToTrace using
   (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
-   cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk)
+   cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize)
 open import Once.CCC.Codegen.FrameFreeTrace using (trace-of; cata-trace-of)
 
 -- The per-instruction fact, reducing on every constructor (CATCHALL): only an
@@ -80,25 +78,36 @@ wrap-sum-am tag s = tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt 
 -- The compile-time functor walks. A sum node's dispatch is ONE
 -- `instr-case-on-tag`, on which the predicate is `⊤` (shallow — see header).
 ------------------------------------------------------------------------
-visit-walk-am : ∀ todoSlot tv tb F s → AllocMinTrace (visit-walk todoSlot tv tb F s)
-visit-walk-am todoSlot tv tb (K _)   s = []
-visit-walk-am todoSlot tv tb Id      s = tt ∷ push2-am todoSlot tv tb
-visit-walk-am todoSlot tv tb (F ⊕ G) s = tt ∷ []
-visit-walk-am todoSlot tv tb (F ⊗ G) s =
-  ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
-      (++⁺ (visit-walk-am todoSlot tv tb G (s + 4))
-           (++⁺ (tt ∷ tt ∷ tt ∷ [])
-                (visit-walk-am todoSlot tv tb F (s + 4))))
-
-rebuild-walk-am : ∀ valSlot tv tb F s → AllocMinTrace (rebuild-walk valSlot tv tb F s)
-rebuild-walk-am valSlot tv tb (K _)   s = tt ∷ []
-rebuild-walk-am valSlot tv tb Id      s = pop2-am valSlot
-rebuild-walk-am valSlot tv tb (F ⊕ G) s = tt ∷ []
-rebuild-walk-am valSlot tv tb (F ⊗ G) s =
-  ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
-      (++⁺ (rebuild-walk-am valSlot tv tb F (s + 4))
+visit-walk-am : ∀ todoSlot tv tb F s lb → AllocMinTrace (visit-walk todoSlot tv tb F s lb)
+visit-walk-am todoSlot tv tb (K _)   s lb = []
+visit-walk-am todoSlot tv tb Id      s lb = tt ∷ push2-am todoSlot tv tb
+visit-walk-am todoSlot tv tb (F ⊕ G) s lb =
+  ++⁺ (tt ∷ tt ∷ tt ∷ [])
+      (++⁺ (visit-walk-am todoSlot tv tb G (s + 4) (suc (suc lb) + lsize F))
            (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
-                (++⁺ (rebuild-walk-am valSlot tv tb G (s + 4))
+                (++⁺ (visit-walk-am todoSlot tv tb F (s + 4) (suc (suc lb)))
+                     (tt ∷ []))))
+visit-walk-am todoSlot tv tb (F ⊗ G) s lb =
+  ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
+      (++⁺ (visit-walk-am todoSlot tv tb G (s + 4) (lb + lsize F))
+           (++⁺ (tt ∷ tt ∷ tt ∷ [])
+                (visit-walk-am todoSlot tv tb F (s + 4) lb)))
+
+rebuild-walk-am : ∀ valSlot tv tb F s lb → AllocMinTrace (rebuild-walk valSlot tv tb F s lb)
+rebuild-walk-am valSlot tv tb (K _)   s lb = tt ∷ []
+rebuild-walk-am valSlot tv tb Id      s lb = pop2-am valSlot
+rebuild-walk-am valSlot tv tb (F ⊕ G) s lb =
+  ++⁺ (tt ∷ tt ∷ tt ∷ [])
+      (++⁺ (rebuild-walk-am valSlot tv tb G (s + 4) (suc (suc lb) + lsize F))
+           (++⁺ (wrap-sum-am 1 s)
+                (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
+                     (++⁺ (rebuild-walk-am valSlot tv tb F (s + 4) (suc (suc lb)))
+                          (++⁺ (wrap-sum-am 0 s) (tt ∷ []))))))
+rebuild-walk-am valSlot tv tb (F ⊗ G) s lb =
+  ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
+      (++⁺ (rebuild-walk-am valSlot tv tb F (s + 4) lb)
+           (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
+                (++⁺ (rebuild-walk-am valSlot tv tb G (s + 4) (lb + lsize F))
                      (tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []))))
 
 ------------------------------------------------------------------------
@@ -141,11 +150,11 @@ cata-branching-am F n1 l1 at am =
     flatten = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
                   (++⁺ (push2-am (suc n1) (n1 + 4) (n1 + 5))
                        (++⁺ (tt ∷ tt ∷ [])
-                            (++⁺ (visit-walk-am n1 (n1 + 4) (n1 + 5) F (n1 + 7))
+                            (++⁺ (visit-walk-am n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4))
                                  (tt ∷ tt ∷ []))))
     fold : AllocMinTrace _
     fold = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-               (++⁺ (rebuild-walk-am (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7))
+               (++⁺ (rebuild-walk-am (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) ((l1 + 4) + lsize F))
                     (++⁺ (tt ∷ [])
                          (++⁺ am (++⁺ (push2-am (n1 + 2) (n1 + 4) (n1 + 5))
                                       (tt ∷ tt ∷ [])))))
@@ -191,8 +200,12 @@ alloc-min-trace' (inl Heap)  n l =
   tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 alloc-min-trace' (inr Heap)  n l =
   tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
--- the case carries its branches NESTED — `⊤` for this (shallow) predicate
-alloc-min-trace' (case f g) n l = tt ∷ []
+-- case is FLAT CONTROL since item 6 — plain splices.
+alloc-min-trace' (case f g) n l =
+  ++⁺ (tt ∷ tt ∷ tt ∷ [])
+      (++⁺ (alloc-min-trace' g _ _)
+           (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
+                (++⁺ (alloc-min-trace' f _ _) (tt ∷ []))))
 alloc-min-trace' (In _ _)  n l = tt ∷ []
 alloc-min-trace' (out-μ _) n l = tt ∷ []
 alloc-min-trace' (Cata {F} _ alg) n l =
