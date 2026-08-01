@@ -67,6 +67,14 @@ data RTy where
   Π    : ∀ {Γ} → RTy Γ → RTy (Γ ∙) → RTy Γ
   Σ'   : ∀ {Γ} → RTy Γ → RTy (Γ ∙) → RTy Γ
   El   : ∀ {Γ} → RTm Γ → RTy Γ
+  -- ★ W2 (option a): the DIRECTED IDENTITY TYPE, a primitive former that
+  -- COMPUTES like `El` (SpikeHomTy): it unfolds at `U` (directed univalence as
+  -- a computation rule) and at `Π` (the pointwise family, item 2); it is STUCK
+  -- at `base` (discrete by generation, item 4), at a neutral `El`, at `Σ'`
+  -- (the unfolding needs transport in the second component — a TERM former
+  -- W2's eliminator introduces; deferred, not dropped), and at `Hom` (higher
+  -- paths, unscoped).
+  Hom  : ∀ {Γ} → RTy Γ → RTm Γ → RTm Γ → RTy Γ
 
 data RTm where
   var  : ∀ {Γ} → Var Γ → RTm Γ
@@ -101,6 +109,7 @@ renTy ρ U        = U
 renTy ρ (Π A B)  = Π (renTy ρ A) (renTy (extR ρ) B)
 renTy ρ (Σ' A B) = Σ' (renTy ρ A) (renTy (extR ρ) B)
 renTy ρ (El t)   = El (renTm ρ t)
+renTy ρ (Hom A t u) = Hom (renTy ρ A) (renTm ρ t) (renTm ρ u)
 renTm ρ (var x)   = var (ρ x)
 renTm ρ (lam t)   = lam (renTm (extR ρ) t)
 renTm ρ (app t u)  = app (renTm ρ t) (renTm ρ u)
@@ -129,6 +138,7 @@ subTy σ U        = U
 subTy σ (Π A B)  = Π (subTy σ A) (subTy (extS σ) B)
 subTy σ (Σ' A B) = Σ' (subTy σ A) (subTy (extS σ) B)
 subTy σ (El t)   = El (subTm σ t)
+subTy σ (Hom A t u) = Hom (subTy σ A) (subTm σ t) (subTm σ u)
 subTm σ (var x)   = σ x
 subTm σ (lam t)   = lam (subTm (extS σ) t)
 subTm σ (app t u)  = app (subTm σ t) (subTm σ u)
@@ -175,6 +185,17 @@ _∘ₛ_ : Sub Δ Θ → Sub Γ Δ → Sub Γ Θ
 El-stable : (σ : Sub Γ Δ) (t : RTm Γ) → subTy σ (El t) ≡ El (subTm σ t)
 El-stable σ t = refl
 
+-- `Hom` is substitution-stable definitionally too — the former adds no
+-- Beck–Chevalley debt.
+Hom-stable : (σ : Sub Γ Δ) (A : RTy Γ) (t u : RTm Γ) →
+             subTy σ (Hom A t u) ≡ Hom (subTy σ A) (subTm σ t) (subTm σ u)
+Hom-stable σ A t u = refl
+
+-- three-argument congruence, for the `Hom` clauses of the calculus below
+Hom-cong₃ : {A A' : RTy Γ} {t t' u u' : RTm Γ} →
+            A ≡ A' → t ≡ t' → u ≡ u' → Hom A t u ≡ Hom A' t' u'
+Hom-cong₃ refl refl refl = refl
+
 -- A concrete dependent type and its substitution: `(x : base) → El x`.
 Πdep : RTy Γ
 Πdep = Π base (El (var vz))
@@ -201,6 +222,8 @@ renTy-cong h U        = refl
 renTy-cong h (Π A B)  = cong₂ Π (renTy-cong h A) (renTy-cong (extR-cong h) B)
 renTy-cong h (Σ' A B) = cong₂ Σ' (renTy-cong h A) (renTy-cong (extR-cong h) B)
 renTy-cong h (El t)   = cong El (renTm-cong h t)
+renTy-cong h (Hom A t u) =
+  Hom-cong₃ (renTy-cong h A) (renTm-cong h t) (renTm-cong h u)
 renTm-cong h (var x)   = cong var (h x)
 renTm-cong h (lam t)   = cong lam (renTm-cong (extR-cong h) t)
 renTm-cong h (app t u)  = cong₂ app (renTm-cong h t) (renTm-cong h u)
@@ -225,6 +248,8 @@ subTy-cong h U        = refl
 subTy-cong h (Π A B)  = cong₂ Π (subTy-cong h A) (subTy-cong (extS-cong h) B)
 subTy-cong h (Σ' A B) = cong₂ Σ' (subTy-cong h A) (subTy-cong (extS-cong h) B)
 subTy-cong h (El t)   = cong El (subTm-cong h t)
+subTy-cong h (Hom A t u) =
+  Hom-cong₃ (subTy-cong h A) (subTm-cong h t) (subTm-cong h u)
 subTm-cong h (var x)   = h x
 subTm-cong h (lam t)   = cong lam (subTm-cong (extS-cong h) t)
 subTm-cong h (app t u)  = cong₂ app (subTm-cong h t) (subTm-cong h u)
@@ -257,6 +282,8 @@ renTy-renTy {ρ' = ρ'} {ρ} (Π A B) =
 renTy-renTy {ρ' = ρ'} {ρ} (Σ' A B) =
   cong₂ Σ' (renTy-renTy A) (trans (renTy-renTy B) (renTy-cong (extr-extr ρ' ρ) B))
 renTy-renTy (El t)   = cong El (renTm-renTm t)
+renTy-renTy (Hom A t u) =
+  Hom-cong₃ (renTy-renTy A) (renTm-renTm t) (renTm-renTm u)
 renTm-renTm (var x)   = refl
 renTm-renTm {ρ' = ρ'} {ρ} (lam t) =
   cong lam (trans (renTm-renTm t) (renTm-cong (extr-extr ρ' ρ) t))
@@ -287,6 +314,8 @@ subTy-renTy {σ = σ} {ρ} (Π A B) =
 subTy-renTy {σ = σ} {ρ} (Σ' A B) =
   cong₂ Σ' (subTy-renTy A) (trans (subTy-renTy B) (subTy-cong (exts-extr σ ρ) B))
 subTy-renTy (El t)   = cong El (subTm-renTm t)
+subTy-renTy (Hom A t u) =
+  Hom-cong₃ (subTy-renTy A) (subTm-renTm t) (subTm-renTm u)
 subTm-renTm (var x)   = refl
 subTm-renTm {σ = σ} {ρ} (lam t) =
   cong lam (trans (subTm-renTm t) (subTm-cong (exts-extr σ ρ) t))
@@ -317,6 +346,8 @@ renTy-subTy {ρ = ρ} {σ} (Π A B) =
 renTy-subTy {ρ = ρ} {σ} (Σ' A B) =
   cong₂ Σ' (renTy-subTy A) (trans (renTy-subTy B) (subTy-cong (extr-exts ρ σ) B))
 renTy-subTy (El t)   = cong El (renTm-subTm t)
+renTy-subTy (Hom A t u) =
+  Hom-cong₃ (renTy-subTy A) (renTm-subTm t) (renTm-subTm u)
 renTm-subTm (var x)   = refl
 renTm-subTm {ρ = ρ} {σ} (lam t) =
   cong lam (trans (renTm-subTm t) (subTm-cong (extr-exts ρ σ) t))
@@ -347,6 +378,8 @@ subTy-subTy {τ = τ} {σ} (Π A B) =
 subTy-subTy {τ = τ} {σ} (Σ' A B) =
   cong₂ Σ' (subTy-subTy A) (trans (subTy-subTy B) (subTy-cong (exts-exts τ σ) B))
 subTy-subTy (El t)   = cong El (subTm-subTm t)
+subTy-subTy (Hom A t u) =
+  Hom-cong₃ (subTy-subTy A) (subTm-subTm t) (subTm-subTm u)
 subTm-subTm (var x)   = refl
 subTm-subTm {τ = τ} {σ} (lam t) =
   cong lam (trans (subTm-subTm t) (subTm-cong (exts-exts τ σ) t))
@@ -372,6 +405,7 @@ subTy-id U        = refl
 subTy-id (Π A B)  = cong₂ Π (subTy-id A) (trans (subTy-cong exts-id B) (subTy-id B))
 subTy-id (Σ' A B) = cong₂ Σ' (subTy-id A) (trans (subTy-cong exts-id B) (subTy-id B))
 subTy-id (El t)   = cong El (subTm-id t)
+subTy-id (Hom A t u) = Hom-cong₃ (subTy-id A) (subTm-id t) (subTm-id u)
 subTm-id (var x)   = refl
 subTm-id (lam t)   = cong lam (trans (subTm-cong exts-id t) (subTm-id t))
 subTm-id (app t u)  = cong₂ app (subTm-id t) (subTm-id u)
