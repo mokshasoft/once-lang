@@ -217,8 +217,9 @@ mutual
   ss-abstract (instr-load-code-addr n) ls alloc ff = ss-write ls Output (SV-Code n)
   ss-abstract instr-save-closure-reg   ls alloc ff = refl
   ss-abstract (instr-load-tag-lit n)   ls alloc ff = ss-write ls Output (SV-Tag n)
-  ss-abstract (instr-case-on-tag f g)  ls alloc ff =
-    ss-case (case-tag-at ls) f g ls alloc (proj₁ ff) (proj₂ ff)
+  -- `instr-case-on-tag` has NO PRODUCER since Plan 0.54 item 6 — `case`
+  -- compiles to flat control, so this route is unreachable.
+  ss-abstract (instr-case-on-tag f g)  ls alloc ()
   ss-abstract (instr-alloc-heap n)     ls alloc ff =
     ss-write ls Output
       (SV-Ptr (AtDynamic (proj₁ (AI.alloc-impl n (next-heap-ref alloc)))))

@@ -38,6 +38,8 @@ open import Once.CCC.Target.X86-64.Syntax
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.Machine.FrameFree using (FrameFreeI)
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.CCC.Label using (Label; once)
   using (AbstractInstr; AbstractTrace; Slot;
@@ -355,6 +357,51 @@ NoNestedI _                       = ⊤
 NoNested : AbstractTrace → Set
 NoNested []       = ⊤
 NoNested (i ∷ is) = NoNestedI i × NoNested is
+
+-- Item 6 (2026-08-01): the unemittable set (`FrameFreeI`'s ⊥ cases) SUBSUMES
+-- the nested set, so every emitted trace is `NoNested` — which makes
+-- `compile-trace-cnt` and the plain `compile-trace` coincide on every emitted
+-- program (`compile-trace-cnt-agrees` applies unconditionally at the apex,
+-- retiring the `conc-flat-sim-nested` split).
+no-nested-of-frame-free : ∀ (i : AbstractInstr) → FrameFreeI i → NoNestedI i
+no-nested-of-frame-free mov-to-output           _ = tt
+no-nested-of-frame-free mov-to-input            _ = tt
+no-nested-of-frame-free mov-output-to-input2    _ = tt
+no-nested-of-frame-free mov-input2-to-output    _ = tt
+no-nested-of-frame-free load-indirect           _ = tt
+no-nested-of-frame-free load-indirect-suc       _ = tt
+no-nested-of-frame-free (load-from-slot _)      _ = tt
+no-nested-of-frame-free (store-at-slot _)       _ = tt
+no-nested-of-frame-free store-indirect          _ = tt
+no-nested-of-frame-free store-indirect-suc      _ = tt
+no-nested-of-frame-free (lea-slot _)            _ = tt
+no-nested-of-frame-free (restore-input _)       _ = tt
+no-nested-of-frame-free (lea-indexed _)         ()
+no-nested-of-frame-free (instr-alloc-stack _)   ()
+no-nested-of-frame-free (instr-dealloc-stack _) ()
+no-nested-of-frame-free (instr-push-frame _)    ()
+no-nested-of-frame-free instr-pop-frame         ()
+no-nested-of-frame-free (instr-loop _)          ()
+no-nested-of-frame-free (instr-case-on-tag _ _) ()
+no-nested-of-frame-free (instr-reclaim-to _)    _ = tt
+no-nested-of-frame-free instr-call-closure      _ = tt
+no-nested-of-frame-free (worklist-init _)       _ = tt
+no-nested-of-frame-free (worklist-push _)       _ = tt
+no-nested-of-frame-free (worklist-pop _)        _ = tt
+no-nested-of-frame-free (worklist-check _)      _ = tt
+no-nested-of-frame-free (instr-sigop _)         _ = tt
+no-nested-of-frame-free (instr-load-const _ _)  _ = tt
+no-nested-of-frame-free (instr-load-code-addr _) _ = tt
+no-nested-of-frame-free instr-save-closure-reg  _ = tt
+no-nested-of-frame-free (instr-load-tag-lit _)  _ = tt
+no-nested-of-frame-free (instr-alloc-heap _)    _ = tt
+no-nested-of-frame-free (instr-reg-op _)        _ = tt
+no-nested-of-frame-free (instr-ctrl _)          _ = tt
+
+no-nested-of-all : ∀ (t : AbstractTrace) → All FrameFreeI t → NoNested t
+no-nested-of-all []       _          = tt
+no-nested-of-all (i ∷ is) (fi ∷ fis) =
+  no-nested-of-frame-free i fi , no-nested-of-all is fis
 
 -- Backward-compatible non-threaded variant — direct foldr.
 -- Doesn't dispatch case-on-tag (emits ud2 for it via compile-abstract).

@@ -45,28 +45,33 @@ open import Once.CCC.Machine.SMCore using
    instr-alloc-stack; instr-dealloc-stack; instr-push-frame; instr-pop-frame;
    instr-case-on-tag; instr-loop; lea-indexed)
 
-mutual
-  FrameFreeI : AbstractInstr → Set
-  FrameFreeI (instr-alloc-stack _)     = ⊥
-  FrameFreeI (instr-dealloc-stack _)   = ⊥
-  FrameFreeI (instr-push-frame _)      = ⊥
-  FrameFreeI instr-pop-frame           = ⊥
-  FrameFreeI (instr-case-on-tag t₁ t₂) = FrameFreeT t₁ × FrameFreeT t₂
-  -- `instr-loop` is a RETIRED FOSSIL: the cata codegen compiles to flat control
-  -- (`c-label`/`c-jmp`/`c-branch-*`), never to a structured loop instruction.
-  FrameFreeI (instr-loop t)            = ⊥
-  -- `lea-indexed` is a RETIRED FOSSIL too (2026-08-01): the Tier-1/Tier-2 cata
-  -- codegen walks HEAP-LINKED stacks (`push2`/`pop2`, "NOT lea-indexed" —
-  -- IRToTrace), so no emitted trace contains an indexed cursor. Retiring it
-  -- deletes the `lea-indexed-wf` cursor-discipline residual with its site, and
-  -- the pointer-bounds invariant needs no cursor case at all.
-  FrameFreeI (lea-indexed _)           = ⊥
-  {-# CATCHALL #-}
-  FrameFreeI _                         = ⊤
+-- No mutual needed since Plan 0.54 item 6: with `instr-case-on-tag` in the ⊥
+-- set there is NO nested trace anywhere — the predicate is shallow.
+FrameFreeI : AbstractInstr → Set
+FrameFreeI (instr-alloc-stack _)     = ⊥
+FrameFreeI (instr-dealloc-stack _)   = ⊥
+FrameFreeI (instr-push-frame _)      = ⊥
+FrameFreeI instr-pop-frame           = ⊥
+-- `instr-case-on-tag` is a RETIRED FOSSIL (Plan 0.54 item 6, 2026-08-01):
+-- `case` compiles to flat control (`c-branch-tag-zero`/`c-jmp`/`c-label`,
+-- branches inlined into the main trace) the way `Cata` always did — one flat
+-- step never runs a nested trace again.
+FrameFreeI (instr-case-on-tag t₁ t₂) = ⊥
+-- `instr-loop` is a RETIRED FOSSIL: the cata codegen compiles to flat control
+-- (`c-label`/`c-jmp`/`c-branch-*`), never to a structured loop instruction.
+FrameFreeI (instr-loop t)            = ⊥
+-- `lea-indexed` is a RETIRED FOSSIL too (2026-08-01): the Tier-1/Tier-2 cata
+-- codegen walks HEAP-LINKED stacks (`push2`/`pop2`, "NOT lea-indexed" —
+-- IRToTrace), so no emitted trace contains an indexed cursor. Retiring it
+-- deletes the `lea-indexed-wf` cursor-discipline residual with its site, and
+-- the pointer-bounds invariant needs no cursor case at all.
+FrameFreeI (lea-indexed _)           = ⊥
+{-# CATCHALL #-}
+FrameFreeI _                         = ⊤
 
-  FrameFreeT : AbstractTrace → Set
-  FrameFreeT []       = ⊤
-  FrameFreeT (i ∷ is) = FrameFreeI i × FrameFreeT is
+FrameFreeT : AbstractTrace → Set
+FrameFreeT []       = ⊤
+FrameFreeT (i ∷ is) = FrameFreeI i × FrameFreeT is
 
 -- Splicing two frame-free traces keeps them frame-free (every emitter clause
 -- that concatenates needs this).

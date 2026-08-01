@@ -33,11 +33,8 @@
 --
 -- The per-instruction premise `2 ≤ n` at an alloc site is the EMITTER's
 -- discipline (`Once.CCC.Codegen.AllocMin` — every emitted `instr-alloc-heap`
--- is literally `instr-alloc-heap 2`). `instr-case-on-tag` is excluded exactly
--- as in `FlatStackPtr` (`CaseFree`): one flat step there runs nested traces
--- whose alloc sites the shallow emitter fact does not reach; ConcFlatSim
--- carries that as the site-conditioned residual `ptr-bounds-case`, which dies
--- when `case` compiles to flat control (item 6). `lea-indexed` — the one
+-- is literally `instr-alloc-heap 2`). `instr-case-on-tag` is unemittable
+-- since item 6 (`case` compiles to flat control). `lea-indexed` — the one
 -- instruction that could fabricate an interior pointer — is UNEMITTABLE
 -- (2026-08-01, `FrameFreeI`), so its route is `⊥`-elim.
 ------------------------------------------------------------------------
@@ -70,9 +67,9 @@ open AbstractExec {FS}
 open import Once.CCC.Machine.FrameFree using (FrameFreeI)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
--- the shared bricks: the register read-after-write enumeration, the case
--- exclusion, and the `writeLoc` fold-back
-open import Once.CCC.Machine.FlatStackPtr FS using (readReg-write; CaseFree; writeLoc-dyn)
+-- the shared bricks: the register read-after-write enumeration and the
+-- `writeLoc` fold-back
+open import Once.CCC.Machine.FlatStackPtr FS using (readReg-write; writeLoc-dyn)
 open import Once.CCC.Machine.FlatStoreWF FS
   using (StoreWF; wf-regs; wf-heap; wf-stack; sv-below; svm-below)
 
@@ -356,76 +353,75 @@ sigop-output-pb bs {A} {B} si ls = go (effect si)
 -- `size-with` only writes the frontier's ref.
 ------------------------------------------------------------------------
 pb-abstract : ∀ (i : AbstractInstr) (ls : LocState FS) (alloc : AllocState {FS})
-            → FrameFreeI i → CaseFree i
+            → FrameFreeI i
             → (∀ n → i ≡ instr-alloc-heap n → 2 ≤ n)
             → StoreWF (next-heap-ref alloc) ls
             → PBInv (block-size alloc) ls
             → PBInv (block-size (proj₂ (exec-abstract i ls alloc)))
                     (proj₁ (exec-abstract i ls alloc))
-pb-abstract mov-to-output ls alloc ff cfree am wfS wf =
+pb-abstract mov-to-output ls alloc ff am wfS wf =
   pb-write-reg _ ls Output (readReg (regs ls) Input1) (pb-regs wf Input1) wf
-pb-abstract mov-to-input ls alloc ff cfree am wfS wf =
+pb-abstract mov-to-input ls alloc ff am wfS wf =
   pb-write-reg _ ls Input1 (readReg (regs ls) Output) (pb-regs wf Output) wf
-pb-abstract mov-output-to-input2 ls alloc ff cfree am wfS wf =
+pb-abstract mov-output-to-input2 ls alloc ff am wfS wf =
   pb-write-reg _ ls Input2 (readReg (regs ls) Output) (pb-regs wf Output) wf
-pb-abstract mov-input2-to-output ls alloc ff cfree am wfS wf =
+pb-abstract mov-input2-to-output ls alloc ff am wfS wf =
   pb-write-reg _ ls Output (readReg (regs ls) Input2) (pb-regs wf Input2) wf
-pb-abstract load-indirect ls alloc ff cfree am wfS wf =
+pb-abstract load-indirect ls alloc ff am wfS wf =
   pb-load-resolved _ ls Output (sv-as-loc (readReg (regs ls) Input1)) wf
-pb-abstract load-indirect-suc ls alloc ff cfree am wfS wf =
+pb-abstract load-indirect-suc ls alloc ff am wfS wf =
   pb-load-suc-resolved _ ls Output (sv-as-loc (readReg (regs ls) Input1)) wf
-pb-abstract (load-from-slot slot) ls alloc ff cfree am wfS wf =
+pb-abstract (load-from-slot slot) ls alloc ff am wfS wf =
   pb-from-slot ls alloc (readLoc ls (AtStack (current-frame alloc) slot))
                (pb-read-loc _ ls wf (AtStack (current-frame alloc) slot)) wf
-pb-abstract (store-at-slot slot) ls alloc ff cfree am wfS wf =
+pb-abstract (store-at-slot slot) ls alloc ff am wfS wf =
   pb-write-mem _ ls (AtStack (current-frame alloc) slot)
                (readReg (regs ls) Output) (pb-regs wf Output) wf
-pb-abstract store-indirect ls alloc ff cfree am wfS wf =
+pb-abstract store-indirect ls alloc ff am wfS wf =
   pb-store-resolved _ ls (sv-as-loc (readReg (regs ls) Input1))
                     (readReg (regs ls) Output) (pb-regs wf Output) wf
-pb-abstract store-indirect-suc ls alloc ff cfree am wfS wf =
+pb-abstract store-indirect-suc ls alloc ff am wfS wf =
   pb-store-suc-resolved _ ls (sv-as-loc (readReg (regs ls) Input1))
                         (readReg (regs ls) Output) (pb-regs wf Output) wf
 -- a stack pointer is unconstrained by this invariant
-pb-abstract (lea-slot slot) ls alloc ff cfree am wfS wf =
+pb-abstract (lea-slot slot) ls alloc ff am wfS wf =
   pb-write-reg _ ls Output (SV-Ptr (AtStack (current-frame alloc) slot)) tt wf
-pb-abstract (restore-input slot) ls alloc ff cfree am wfS wf =
+pb-abstract (restore-input slot) ls alloc ff am wfS wf =
   pb-restore ls alloc (readLoc ls (AtStack (current-frame alloc) slot))
              (pb-read-loc _ ls wf (AtStack (current-frame alloc) slot)) wf
 -- `lea-indexed` is unemittable (2026-08-01) — `⊥` in `FrameFreeI`
-pb-abstract (lea-indexed slot) ls alloc () cfree am wfS wf
+pb-abstract (lea-indexed slot) ls alloc () am wfS wf
 -- the frame ops and the loop are unemittable — `⊥` in `FrameFreeI`
-pb-abstract (instr-alloc-stack n)   ls alloc () cfree am wfS wf
-pb-abstract (instr-dealloc-stack n) ls alloc () cfree am wfS wf
-pb-abstract (instr-push-frame cap)  ls alloc () cfree am wfS wf
-pb-abstract instr-pop-frame         ls alloc () cfree am wfS wf
-pb-abstract (instr-loop body)       ls alloc () cfree am wfS wf
--- the case runs nested traces — EXCLUDED here (`CaseFree`), residual in
--- ConcFlatSim until `case` compiles to flat control
-pb-abstract (instr-case-on-tag f g) ls alloc ff () am wfS wf
-pb-abstract (instr-reclaim-to n)  ls alloc ff cfree am wfS wf = wf
-pb-abstract instr-call-closure    ls alloc ff cfree am wfS wf = wf
-pb-abstract (worklist-init slot)  ls alloc ff cfree am wfS wf = wf
-pb-abstract (worklist-push slot)  ls alloc ff cfree am wfS wf =
+pb-abstract (instr-alloc-stack n)   ls alloc () am wfS wf
+pb-abstract (instr-dealloc-stack n) ls alloc () am wfS wf
+pb-abstract (instr-push-frame cap)  ls alloc () am wfS wf
+pb-abstract instr-pop-frame         ls alloc () am wfS wf
+pb-abstract (instr-loop body)       ls alloc () am wfS wf
+-- the case is unemittable since item 6 (`case` compiles to flat control)
+pb-abstract (instr-case-on-tag f g) ls alloc () am wfS wf
+pb-abstract (instr-reclaim-to n)  ls alloc ff am wfS wf = wf
+pb-abstract instr-call-closure    ls alloc ff am wfS wf = wf
+pb-abstract (worklist-init slot)  ls alloc ff am wfS wf = wf
+pb-abstract (worklist-push slot)  ls alloc ff am wfS wf =
   pb-write-mem _ ls (AtStack (current-frame alloc) slot)
                (readReg (regs ls) Output) (pb-regs wf Output) wf
-pb-abstract (worklist-pop slot)   ls alloc ff cfree am wfS wf =
+pb-abstract (worklist-pop slot)   ls alloc ff am wfS wf =
   pb-from-slot ls alloc (readLoc ls (AtStack (current-frame alloc) slot))
                (pb-read-loc _ ls wf (AtStack (current-frame alloc) slot)) wf
-pb-abstract (worklist-check slot) ls alloc ff cfree am wfS wf = wf
-pb-abstract (instr-sigop si) ls alloc ff cfree am wfS wf =
+pb-abstract (worklist-check slot) ls alloc ff am wfS wf = wf
+pb-abstract (instr-sigop si) ls alloc ff am wfS wf =
   pb-write-reg-halt _ ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls)
                     (sigop-output-pb _ si ls) wf
-pb-abstract (instr-load-const p v)   ls alloc ff cfree am wfS wf =
+pb-abstract (instr-load-const p v)   ls alloc ff am wfS wf =
   pb-write-reg _ ls Output (SV-Lit p v) tt wf
-pb-abstract (instr-load-code-addr n) ls alloc ff cfree am wfS wf =
+pb-abstract (instr-load-code-addr n) ls alloc ff am wfS wf =
   pb-write-reg _ ls Output (SV-Code n) tt wf
-pb-abstract instr-save-closure-reg   ls alloc ff cfree am wfS wf = wf
-pb-abstract (instr-load-tag-lit n)   ls alloc ff cfree am wfS wf =
+pb-abstract instr-save-closure-reg   ls alloc ff am wfS wf = wf
+pb-abstract (instr-load-tag-lit n)   ls alloc ff am wfS wf =
   pb-write-reg _ ls Output (SV-Tag n) tt wf
 -- THE PRODUCER: fresh block start, `n ≥ 2` cells (the emitter premise);
 -- everything old keeps its size (`StoreWF` freshness + `size-with-old`).
-pb-abstract (instr-alloc-heap n) ls alloc ff cfree am wfS wf = record
+pb-abstract (instr-alloc-heap n) ls alloc ff am wfS wf = record
   { pb-regs  = λ r → go r (readReg-write (regs ls) Output r fresh)
   ; pb-heap  = λ hl → pbm-ext n st bs (heapMem ls hl) (wf-heap wfS hl) (pb-heap wf hl)
   ; pb-stack = λ f k → pbm-ext n st bs (stackMem ls f k) (wf-stack wfS f k) (pb-stack wf f k) }
@@ -442,9 +438,9 @@ pb-abstract (instr-alloc-heap n) ls alloc ff cfree am wfS wf = record
        → PtrB (size-with n st bs) (readReg (writeReg (regs ls) Output fresh) r)
     go r (inj₁ eq) rewrite eq = fresh-ok
     go r (inj₂ eq) rewrite eq = ptrb-ext n st bs (readReg (regs ls) r) (wf-regs wfS r) (pb-regs wf r)
-pb-abstract (instr-reg-op op)        ls alloc ff cfree am wfS wf =
+pb-abstract (instr-reg-op op)        ls alloc ff am wfS wf =
   pb-reg-op _ ls op wf
-pb-abstract (instr-ctrl c)           ls alloc ff cfree am wfS wf = wf
+pb-abstract (instr-ctrl c)           ls alloc ff am wfS wf = wf
 
 ------------------------------------------------------------------------
 -- Lifted to the FLAT machine. The control cases move `fpc`/`halted` only;
@@ -463,71 +459,71 @@ pb-branch true  m prog fs wf = pb-jump (find-label prog m) fs wf
 pb-branch false m prog fs wf = wf
 
 flat-ptr-bounds : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
-                → FrameFreeI i → CaseFree i
+                → FrameFreeI i
                 → (∀ n → i ≡ instr-alloc-heap n → 2 ≤ n)
                 → StoreWF (next-heap-ref (falloc fs)) (floc fs)
                 → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)
-flat-ptr-bounds (instr-ctrl (c-label m))               prog fs ff cfree am wfS wf = wf
-flat-ptr-bounds (instr-ctrl (c-jmp m))                 prog fs ff cfree am wfS wf =
+flat-ptr-bounds (instr-ctrl (c-label m))               prog fs ff am wfS wf = wf
+flat-ptr-bounds (instr-ctrl (c-jmp m))                 prog fs ff am wfS wf =
   pb-jump (find-label prog m) fs wf
-flat-ptr-bounds (instr-ctrl (c-branch-scratch-zero m)) prog fs ff cfree am wfS wf =
+flat-ptr-bounds (instr-ctrl (c-branch-scratch-zero m)) prog fs ff am wfS wf =
   pb-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) m prog fs wf
-flat-ptr-bounds (instr-ctrl (c-branch-tag-zero m))     prog fs ff cfree am wfS wf =
+flat-ptr-bounds (instr-ctrl (c-branch-tag-zero m))     prog fs ff am wfS wf =
   pb-branch (tag-zf (flat-read-tag (floc fs))) m prog fs wf
-flat-ptr-bounds (instr-alloc-stack n)   prog fs () cfree am wfS wf
-flat-ptr-bounds (instr-dealloc-stack n) prog fs () cfree am wfS wf
-flat-ptr-bounds (instr-push-frame cap)  prog fs () cfree am wfS wf
-flat-ptr-bounds instr-pop-frame         prog fs () cfree am wfS wf
-flat-ptr-bounds (instr-loop body)       prog fs () cfree am wfS wf
-flat-ptr-bounds (lea-indexed k)         prog fs () cfree am wfS wf
-flat-ptr-bounds (instr-case-on-tag f g) prog fs ff () am wfS wf
-flat-ptr-bounds mov-to-output            prog fs ff cfree am wfS wf =
-  pb-abstract mov-to-output (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds mov-to-input             prog fs ff cfree am wfS wf =
-  pb-abstract mov-to-input (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds mov-output-to-input2     prog fs ff cfree am wfS wf =
-  pb-abstract mov-output-to-input2 (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds mov-input2-to-output     prog fs ff cfree am wfS wf =
-  pb-abstract mov-input2-to-output (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds load-indirect            prog fs ff cfree am wfS wf =
-  pb-abstract load-indirect (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds load-indirect-suc        prog fs ff cfree am wfS wf =
-  pb-abstract load-indirect-suc (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds (load-from-slot k)       prog fs ff cfree am wfS wf =
-  pb-abstract (load-from-slot k) (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds (store-at-slot k)        prog fs ff cfree am wfS wf =
-  pb-abstract (store-at-slot k) (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds store-indirect           prog fs ff cfree am wfS wf =
-  pb-abstract store-indirect (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds store-indirect-suc       prog fs ff cfree am wfS wf =
-  pb-abstract store-indirect-suc (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds (lea-slot k)             prog fs ff cfree am wfS wf =
-  pb-abstract (lea-slot k) (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds (restore-input k)        prog fs ff cfree am wfS wf =
-  pb-abstract (restore-input k) (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds (instr-reclaim-to k)     prog fs ff cfree am wfS wf =
-  pb-abstract (instr-reclaim-to k) (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds instr-call-closure       prog fs ff cfree am wfS wf =
-  pb-abstract instr-call-closure (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds (worklist-init k)        prog fs ff cfree am wfS wf =
-  pb-abstract (worklist-init k) (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds (worklist-push k)        prog fs ff cfree am wfS wf =
-  pb-abstract (worklist-push k) (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds (worklist-pop k)         prog fs ff cfree am wfS wf =
-  pb-abstract (worklist-pop k) (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds (worklist-check k)       prog fs ff cfree am wfS wf =
-  pb-abstract (worklist-check k) (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds (instr-sigop si)         prog fs ff cfree am wfS wf =
-  pb-abstract (instr-sigop si) (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds (instr-load-const p v)   prog fs ff cfree am wfS wf =
-  pb-abstract (instr-load-const p v) (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds (instr-load-code-addr k) prog fs ff cfree am wfS wf =
-  pb-abstract (instr-load-code-addr k) (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds instr-save-closure-reg   prog fs ff cfree am wfS wf =
-  pb-abstract instr-save-closure-reg (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds (instr-load-tag-lit k)   prog fs ff cfree am wfS wf =
-  pb-abstract (instr-load-tag-lit k) (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds (instr-alloc-heap k)     prog fs ff cfree am wfS wf =
-  pb-abstract (instr-alloc-heap k) (floc fs) (falloc fs) ff cfree am wfS wf
-flat-ptr-bounds (instr-reg-op op)        prog fs ff cfree am wfS wf =
-  pb-abstract (instr-reg-op op) (floc fs) (falloc fs) ff cfree am wfS wf
+flat-ptr-bounds (instr-alloc-stack n)   prog fs () am wfS wf
+flat-ptr-bounds (instr-dealloc-stack n) prog fs () am wfS wf
+flat-ptr-bounds (instr-push-frame cap)  prog fs () am wfS wf
+flat-ptr-bounds instr-pop-frame         prog fs () am wfS wf
+flat-ptr-bounds (instr-loop body)       prog fs () am wfS wf
+flat-ptr-bounds (lea-indexed k)         prog fs () am wfS wf
+flat-ptr-bounds (instr-case-on-tag f g) prog fs () am wfS wf
+flat-ptr-bounds mov-to-output            prog fs ff am wfS wf =
+  pb-abstract mov-to-output (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds mov-to-input             prog fs ff am wfS wf =
+  pb-abstract mov-to-input (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds mov-output-to-input2     prog fs ff am wfS wf =
+  pb-abstract mov-output-to-input2 (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds mov-input2-to-output     prog fs ff am wfS wf =
+  pb-abstract mov-input2-to-output (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds load-indirect            prog fs ff am wfS wf =
+  pb-abstract load-indirect (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds load-indirect-suc        prog fs ff am wfS wf =
+  pb-abstract load-indirect-suc (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (load-from-slot k)       prog fs ff am wfS wf =
+  pb-abstract (load-from-slot k) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (store-at-slot k)        prog fs ff am wfS wf =
+  pb-abstract (store-at-slot k) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds store-indirect           prog fs ff am wfS wf =
+  pb-abstract store-indirect (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds store-indirect-suc       prog fs ff am wfS wf =
+  pb-abstract store-indirect-suc (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (lea-slot k)             prog fs ff am wfS wf =
+  pb-abstract (lea-slot k) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (restore-input k)        prog fs ff am wfS wf =
+  pb-abstract (restore-input k) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (instr-reclaim-to k)     prog fs ff am wfS wf =
+  pb-abstract (instr-reclaim-to k) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds instr-call-closure       prog fs ff am wfS wf =
+  pb-abstract instr-call-closure (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (worklist-init k)        prog fs ff am wfS wf =
+  pb-abstract (worklist-init k) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (worklist-push k)        prog fs ff am wfS wf =
+  pb-abstract (worklist-push k) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (worklist-pop k)         prog fs ff am wfS wf =
+  pb-abstract (worklist-pop k) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (worklist-check k)       prog fs ff am wfS wf =
+  pb-abstract (worklist-check k) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (instr-sigop si)         prog fs ff am wfS wf =
+  pb-abstract (instr-sigop si) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (instr-load-const p v)   prog fs ff am wfS wf =
+  pb-abstract (instr-load-const p v) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (instr-load-code-addr k) prog fs ff am wfS wf =
+  pb-abstract (instr-load-code-addr k) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds instr-save-closure-reg   prog fs ff am wfS wf =
+  pb-abstract instr-save-closure-reg (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (instr-load-tag-lit k)   prog fs ff am wfS wf =
+  pb-abstract (instr-load-tag-lit k) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (instr-alloc-heap k)     prog fs ff am wfS wf =
+  pb-abstract (instr-alloc-heap k) (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds (instr-reg-op op)        prog fs ff am wfS wf =
+  pb-abstract (instr-reg-op op) (floc fs) (falloc fs) ff am wfS wf

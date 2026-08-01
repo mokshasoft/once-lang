@@ -514,25 +514,10 @@ postulate
   -- PER-INSTRUCTION DISPATCH residual for the cases not yet routed to `ccc-step`
   -- (instr-sigop arith/external, control jmp/branch, memory/frame/slot). Shrinks as
   -- each is wired (arith→run-events-arith, external→run-events-external+contract, …).
-  -- THE NESTED-TRACE CORRESPONDENCE (`instr-case-on-tag`) — the one real
-  -- coverage gap left. One flat step runs a whole branch via `exec-trace`; the
-  -- x86 side runs the compiled dispatch block. Needs a TRACE-level simulation
-  -- mutual with the per-instruction block-steps.
-  --
-  -- MIND THE MODEL when discharging: inside a branch, `exec-trace` treats
-  -- `instr-ctrl` as the IDENTITY (SMCore: "flat control flow is NEVER in a
-  -- structured trace"), while the compiled branch has REAL labels. So for a
-  -- branch containing flat control — which is what a `Cata` inside a `case`
-  -- emits — the two sides do not agree, and the residual is not merely
-  -- unproved. Establish the flat-control-free fragment first (`StraightTrace`
-  -- characterises it), or fix the flat machine to branch on the tag instead of
-  -- running the branch inline.
-  events-running-case : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                          prog fs s f g → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
-                      → fetch prog (fpc fs) ≡ just (instr-case-on-tag f g)
-                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                            ≡ event-of (instr-case-on-tag f g) fs
-                              ++ flat-events n prog (flat-exec-instr (instr-case-on-tag f g) prog fs))
+  -- `events-running-case` RETIRED (Plan 0.54 item 6, 2026-08-01): `case`
+  -- compiles to FLAT control, `instr-case-on-tag` has no producer, and the
+  -- nested-trace correspondence it demanded is not needed at all — the
+  -- dispatch clause is `⊥`-elim like the frame ops.
   -- THE CLOSURE CALL — a MODEL gap: `exec-abstract instr-call-closure = s , alloc`
   -- (identity) while the concrete `call *0x8(%r12)` transfers control to the
   -- closure body. No proof can bridge that; the abstract machine has to model
@@ -567,27 +552,8 @@ postulate
   -- `branch-tag-bad` (they never depended on the label).
 
 
-  -- THE STACK-POINTER INVARIANT'S CASE STEP (plan 0.54 rung D, item 2). Every
-  -- OTHER frame-free step is a THEOREM now (`FlatStackPtr.flat-stack-ptr`,
-  -- dispatched by `stack-ptr-step` below); `instr-case-on-tag` is the one that
-  -- is not, because one flat step there runs whole NESTED branch traces: their
-  -- `lea-slot`s need pair bounds the emitter states only for the MAIN trace
-  -- (`SlotBudget` — `slot-of` is `nothing` on the carrying instruction). The case
-  -- fragment is already behind the `events-running-case` model defect; when
-  -- `case` compiles to flat control (the way `Cata` does) this residual dies
-  -- with it — `instr-case-on-tag` joins the unemittable set and the clause
-  -- becomes `⊥-elim`.
-  stack-ptr-case : ∀ prog (fs : FlatState) (f g : AbstractTrace) → RunAt prog fs
-                 → fetch prog (fpc fs) ≡ just (instr-case-on-tag f g)
-                 → StackPtrWF fs
-                 → StackPtrWF (flat-exec-instr (instr-case-on-tag f g) prog fs)
-  -- …and the SAME exclusion for the pointer-bounds invariant (item 5): a case
-  -- step runs nested branch traces whose alloc sites the shallow emitter fact
-  -- (`AllocMin`) does not reach. Dies with item 6, exactly like the above.
-  ptr-bounds-case : ∀ prog (fs : FlatState) (f g : AbstractTrace) → RunAt prog fs
-                  → fetch prog (fpc fs) ≡ just (instr-case-on-tag f g)
-                  → PtrBoundsWF fs
-                  → PtrBoundsWF (flat-exec-instr (instr-case-on-tag f g) prog fs)
+  -- `stack-ptr-case` / `ptr-bounds-case` RETIRED with item 6: the case steps
+  -- of both invariants are absurd on `FrameFreeI` now.
 
   -- THE LOAD TARGET DISCIPLINE (D073, replaces `load-indirect{,-suc}-bad`),
   -- NARROWED 2026-08-01 to the pointer-SHAPE half: at an emitted load site
@@ -749,19 +715,17 @@ emitted-lea-slot-pair : ∀ (ir : IR Unit Unit) (k : ℕ) (slot : Slot)
 emitted-lea-slot-pair ir k slot ftq =
   pair-below (fetch-All (ir-slots-below-budget ir) ftq) slot refl
 
--- ONE FRAME-FREE STEP PRESERVES THE INVARIANT — a THEOREM for every
--- constructor except `instr-case-on-tag` (the `stack-ptr-case` residual; see
--- its comment). The dispatch feeds `FlatStackPtr.flat-stack-ptr` its one
--- producer premise from the run context: the `lea-slot` pair bound from the
--- emitter (`emitted-lea-slot-pair`, transported along `run-stack-slot`).
--- (`lea-indexed` is unemittable since 2026-08-01, so its route is absurd.)
--- Enumerated: the vacuous premises (`λ ()`), and `CaseFree i` (⊤ per
--- constructor), need `i` concrete.
+-- ONE FRAME-FREE STEP PRESERVES THE INVARIANT — a THEOREM for EVERY
+-- constructor (item 6 made the case absurd too). The dispatch feeds
+-- `FlatStackPtr.flat-stack-ptr` its one producer premise from the run
+-- context: the `lea-slot` pair bound from the emitter
+-- (`emitted-lea-slot-pair`, transported along `run-stack-slot`).
+-- Enumerated: the vacuous premises (`λ ()`) need `i` concrete.
 stack-ptr-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog fs
                → fetch prog (fpc fs) ≡ just i → FrameFreeI i
                → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
 stack-ptr-step (lea-slot slot) prog fs r ftq ff wf =
-  flat-stack-ptr (lea-slot slot) prog fs ff tt
+  flat-stack-ptr (lea-slot slot) prog fs ff
     (λ { k refl → bound }) wf
   where bound : suc slot < stackSlot (regs (floc fs))
         bound = subst (λ z → suc slot < z) (sym (run-stack-slot prog fs r))
@@ -769,63 +733,62 @@ stack-ptr-step (lea-slot slot) prog fs r ftq ff wf =
                     (subst (λ p → fetch p (fpc fs) ≡ just (lea-slot slot))
                            (run-emit r) ftq))
 stack-ptr-step (lea-indexed slot) prog fs r ftq () wf
-stack-ptr-step (instr-case-on-tag f g) prog fs r ftq ff wf =
-  stack-ptr-case prog fs f g r ftq wf
+stack-ptr-step (instr-case-on-tag f g) prog fs r ftq () wf
 stack-ptr-step (instr-alloc-stack n)   prog fs r ftq () wf
 stack-ptr-step (instr-dealloc-stack n) prog fs r ftq () wf
 stack-ptr-step (instr-push-frame cap)  prog fs r ftq () wf
 stack-ptr-step instr-pop-frame         prog fs r ftq () wf
 stack-ptr-step (instr-loop body)       prog fs r ftq () wf
 stack-ptr-step mov-to-output prog fs r ftq ff wf =
-  flat-stack-ptr mov-to-output prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr mov-to-output prog fs ff (λ { _ () }) wf
 stack-ptr-step mov-to-input prog fs r ftq ff wf =
-  flat-stack-ptr mov-to-input prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr mov-to-input prog fs ff (λ { _ () }) wf
 stack-ptr-step mov-output-to-input2 prog fs r ftq ff wf =
-  flat-stack-ptr mov-output-to-input2 prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr mov-output-to-input2 prog fs ff (λ { _ () }) wf
 stack-ptr-step mov-input2-to-output prog fs r ftq ff wf =
-  flat-stack-ptr mov-input2-to-output prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr mov-input2-to-output prog fs ff (λ { _ () }) wf
 stack-ptr-step load-indirect prog fs r ftq ff wf =
-  flat-stack-ptr load-indirect prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr load-indirect prog fs ff (λ { _ () }) wf
 stack-ptr-step load-indirect-suc prog fs r ftq ff wf =
-  flat-stack-ptr load-indirect-suc prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr load-indirect-suc prog fs ff (λ { _ () }) wf
 stack-ptr-step (load-from-slot k) prog fs r ftq ff wf =
-  flat-stack-ptr (load-from-slot k) prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr (load-from-slot k) prog fs ff (λ { _ () }) wf
 stack-ptr-step (store-at-slot k) prog fs r ftq ff wf =
-  flat-stack-ptr (store-at-slot k) prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr (store-at-slot k) prog fs ff (λ { _ () }) wf
 stack-ptr-step store-indirect prog fs r ftq ff wf =
-  flat-stack-ptr store-indirect prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr store-indirect prog fs ff (λ { _ () }) wf
 stack-ptr-step store-indirect-suc prog fs r ftq ff wf =
-  flat-stack-ptr store-indirect-suc prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr store-indirect-suc prog fs ff (λ { _ () }) wf
 stack-ptr-step (restore-input k) prog fs r ftq ff wf =
-  flat-stack-ptr (restore-input k) prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr (restore-input k) prog fs ff (λ { _ () }) wf
 stack-ptr-step (instr-reclaim-to k) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-reclaim-to k) prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr (instr-reclaim-to k) prog fs ff (λ { _ () }) wf
 stack-ptr-step instr-call-closure prog fs r ftq ff wf =
-  flat-stack-ptr instr-call-closure prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr instr-call-closure prog fs ff (λ { _ () }) wf
 stack-ptr-step (worklist-init k) prog fs r ftq ff wf =
-  flat-stack-ptr (worklist-init k) prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr (worklist-init k) prog fs ff (λ { _ () }) wf
 stack-ptr-step (worklist-push k) prog fs r ftq ff wf =
-  flat-stack-ptr (worklist-push k) prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr (worklist-push k) prog fs ff (λ { _ () }) wf
 stack-ptr-step (worklist-pop k) prog fs r ftq ff wf =
-  flat-stack-ptr (worklist-pop k) prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr (worklist-pop k) prog fs ff (λ { _ () }) wf
 stack-ptr-step (worklist-check k) prog fs r ftq ff wf =
-  flat-stack-ptr (worklist-check k) prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr (worklist-check k) prog fs ff (λ { _ () }) wf
 stack-ptr-step (instr-sigop si) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-sigop si) prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr (instr-sigop si) prog fs ff (λ { _ () }) wf
 stack-ptr-step (instr-load-const p v) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-load-const p v) prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr (instr-load-const p v) prog fs ff (λ { _ () }) wf
 stack-ptr-step (instr-load-code-addr k) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-load-code-addr k) prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr (instr-load-code-addr k) prog fs ff (λ { _ () }) wf
 stack-ptr-step instr-save-closure-reg prog fs r ftq ff wf =
-  flat-stack-ptr instr-save-closure-reg prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr instr-save-closure-reg prog fs ff (λ { _ () }) wf
 stack-ptr-step (instr-load-tag-lit k) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-load-tag-lit k) prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr (instr-load-tag-lit k) prog fs ff (λ { _ () }) wf
 stack-ptr-step (instr-alloc-heap k) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-alloc-heap k) prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr (instr-alloc-heap k) prog fs ff (λ { _ () }) wf
 stack-ptr-step (instr-reg-op op) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-reg-op op) prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr (instr-reg-op op) prog fs ff (λ { _ () }) wf
 stack-ptr-step (instr-ctrl c) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-ctrl c) prog fs ff tt (λ { _ () }) wf
+  flat-stack-ptr (instr-ctrl c) prog fs ff (λ { _ () }) wf
 
 -- A start state satisfies the invariant vacuously: both memories are empty and
 -- no register holds a pointer.
@@ -928,14 +891,12 @@ emitted-alloc-min : ∀ prog (fs : FlatState) (i : AbstractInstr) → Emitted pr
 emitted-alloc-min .(ir-to-trace ir) fs i (ir , refl) ftq = fetch-alloc-min {FS} ir ftq
 
 -- ONE FRAME-FREE STEP PRESERVES THE INVARIANT — enumerated like
--- `stack-ptr-step` (`CaseFree i` and the vacuous alloc premises need `i`
--- concrete). The case route is the `ptr-bounds-case` residual.
+-- `stack-ptr-step` (the vacuous alloc premises need `i` concrete).
 ptr-bounds-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog fs
                 → fetch prog (fpc fs) ≡ just i → FrameFreeI i
                 → FlatWF fs
                 → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)
-ptr-bounds-step (instr-case-on-tag f g) prog fs r ftq ff wfS wf =
-  ptr-bounds-case prog fs f g r ftq wf
+ptr-bounds-step (instr-case-on-tag f g) prog fs r ftq () wfS wf
 ptr-bounds-step (instr-alloc-stack n)   prog fs r ftq () wfS wf
 ptr-bounds-step (instr-dealloc-stack n) prog fs r ftq () wfS wf
 ptr-bounds-step (instr-push-frame cap)  prog fs r ftq () wfS wf
@@ -944,60 +905,60 @@ ptr-bounds-step (instr-loop body)       prog fs r ftq () wfS wf
 ptr-bounds-step (lea-indexed slot)      prog fs r ftq () wfS wf
 -- THE PRODUCER: the emitter's alloc discipline comes in through the premise.
 ptr-bounds-step (instr-alloc-heap k) prog fs r ftq ff wfS wf =
-  flat-ptr-bounds (instr-alloc-heap k) prog fs ff tt
+  flat-ptr-bounds (instr-alloc-heap k) prog fs ff
     (λ n eq → subst AllocMinI eq
                 (emitted-alloc-min prog fs (instr-alloc-heap k) (run-emitted r) ftq))
     wfS wf
 ptr-bounds-step mov-to-output prog fs r ftq ff wfS wf =
-  flat-ptr-bounds mov-to-output prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds mov-to-output prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step mov-to-input prog fs r ftq ff wfS wf =
-  flat-ptr-bounds mov-to-input prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds mov-to-input prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step mov-output-to-input2 prog fs r ftq ff wfS wf =
-  flat-ptr-bounds mov-output-to-input2 prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds mov-output-to-input2 prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step mov-input2-to-output prog fs r ftq ff wfS wf =
-  flat-ptr-bounds mov-input2-to-output prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds mov-input2-to-output prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step load-indirect prog fs r ftq ff wfS wf =
-  flat-ptr-bounds load-indirect prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds load-indirect prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step load-indirect-suc prog fs r ftq ff wfS wf =
-  flat-ptr-bounds load-indirect-suc prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds load-indirect-suc prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (load-from-slot k) prog fs r ftq ff wfS wf =
-  flat-ptr-bounds (load-from-slot k) prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds (load-from-slot k) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (store-at-slot k) prog fs r ftq ff wfS wf =
-  flat-ptr-bounds (store-at-slot k) prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds (store-at-slot k) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step store-indirect prog fs r ftq ff wfS wf =
-  flat-ptr-bounds store-indirect prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds store-indirect prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step store-indirect-suc prog fs r ftq ff wfS wf =
-  flat-ptr-bounds store-indirect-suc prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds store-indirect-suc prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (lea-slot k) prog fs r ftq ff wfS wf =
-  flat-ptr-bounds (lea-slot k) prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds (lea-slot k) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (restore-input k) prog fs r ftq ff wfS wf =
-  flat-ptr-bounds (restore-input k) prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds (restore-input k) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-reclaim-to k) prog fs r ftq ff wfS wf =
-  flat-ptr-bounds (instr-reclaim-to k) prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds (instr-reclaim-to k) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step instr-call-closure prog fs r ftq ff wfS wf =
-  flat-ptr-bounds instr-call-closure prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds instr-call-closure prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (worklist-init k) prog fs r ftq ff wfS wf =
-  flat-ptr-bounds (worklist-init k) prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds (worklist-init k) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (worklist-push k) prog fs r ftq ff wfS wf =
-  flat-ptr-bounds (worklist-push k) prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds (worklist-push k) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (worklist-pop k) prog fs r ftq ff wfS wf =
-  flat-ptr-bounds (worklist-pop k) prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds (worklist-pop k) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (worklist-check k) prog fs r ftq ff wfS wf =
-  flat-ptr-bounds (worklist-check k) prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds (worklist-check k) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-sigop si) prog fs r ftq ff wfS wf =
-  flat-ptr-bounds (instr-sigop si) prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds (instr-sigop si) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-load-const p v) prog fs r ftq ff wfS wf =
-  flat-ptr-bounds (instr-load-const p v) prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds (instr-load-const p v) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-load-code-addr k) prog fs r ftq ff wfS wf =
-  flat-ptr-bounds (instr-load-code-addr k) prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds (instr-load-code-addr k) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step instr-save-closure-reg prog fs r ftq ff wfS wf =
-  flat-ptr-bounds instr-save-closure-reg prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds instr-save-closure-reg prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-load-tag-lit k) prog fs r ftq ff wfS wf =
-  flat-ptr-bounds (instr-load-tag-lit k) prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds (instr-load-tag-lit k) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-reg-op op) prog fs r ftq ff wfS wf =
-  flat-ptr-bounds (instr-reg-op op) prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds (instr-reg-op op) prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step (instr-ctrl c) prog fs r ftq ff wfS wf =
-  flat-ptr-bounds (instr-ctrl c) prog fs ff tt (λ { _ () }) wfS wf
+  flat-ptr-bounds (instr-ctrl c) prog fs ff (λ { _ () }) wfS wf
 
 -- THE RUN INDUCTION, carrying the store-WF invariant alongside (the alloc
 -- step's freshness needs it at every PRE state, and `EntryLike` — all-tag
@@ -1182,8 +1143,10 @@ mutual
   -- → `exec-trace`, while the x86 side is a `cmp`/`je`/branch-block: this needs a
   -- multi-step, TRACE-level correspondence, not a block-step. It is the last
   -- real coverage gap, and `conc-flat-sim-nested` at the apex is its other half.
+  -- item 6: `case` compiles to flat control — `instr-case-on-tag` has no
+  -- producer, so the route is absurd like the frame ops and the loop.
   events-running-fetch {hv} n ev env prog fs s (instr-case-on-tag f g) cc wf h ftq =
-    events-running-case n ev env prog fs s f g cc wf h ftq
+    ⊥-elim (frame-op-absurd prog fs (instr-case-on-tag f g) (run-emitted (inv-run wf)) ftq)
   -- `instr-call-closure` — GENUINELY EMITTED (`apply`), and a MODEL gap rather
   -- than a proof gap: the abstract semantics is the IDENTITY while the concrete
   -- `call *0x8(%r12)` transfers control. Closing it needs the abstract machine to
