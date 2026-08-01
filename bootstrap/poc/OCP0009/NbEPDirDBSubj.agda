@@ -26,16 +26,18 @@
 module poc.OCP0009.NbEPDirDBSubj where
 
 open import normalizer.Syntax.Types
-  using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ )
+  using ( _≡_; refl; sym; trans; subst; cong₂; Σ; _,_; _×_ )
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; RTm; var; lam; app
+  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ
         ; _∘ᵣ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_
         ; subTy-renTy; renTy-subTy; subTy-subTy; renTy-renTy
-        ; subTy-cong; renTy-cong; subTy-id; subTm-renTm; subTm-id )
+        ; subTy-cong; renTy-cong; subTy-id; subTm-renTm; subTm-id
+        ; renTm-renTm )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
+        ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
         ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; _⟶*_; done; step
@@ -43,14 +45,15 @@ open import poc.OCP0009.NbEPDirDBType
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd
         ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢conv
-        ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El
+        ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom
         ; ⊢ctx_; c-◇; c-▹ )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub )
 open import poc.OCP0009.NbEPDirDBConf
   using ( ⟶-ren; subTm-monoˢ; extS-mono; single-mono )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans
-        ; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ; red→≅ᵀ; Π-inj; Σ-inj )
+        ; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ
+        ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ; red→≅ᵀ; Π-inj; Σ-inj )
 
 private
   variable
@@ -110,6 +113,12 @@ subTy-comm {Γ} σ B u =
 -- Conversion survives renaming; types are monotone in the substitution.
 ------------------------------------------------------------------------
 
+-- Weakening commutes with a renaming, at TERMS — both composites are
+-- definitionally `x ↦ vs (ρ x)`.  The `Hom-U`/`Hom-Π` cases need it.
+wk-ren : (ρ : Ren Γ Δ) (t : RTm Γ) →
+         renTm (extR ρ) (renTm vs t) ≡ renTm vs (renTm ρ t)
+wk-ren ρ t = trans (renTm-renTm t) (sym (renTm-renTm t))
+
 ⟶ᵀ-ren : (ρ : Ren Γ Δ) {A B : RTy Γ} → A ⟶ᵀ B → renTy ρ A ⟶ᵀ renTy ρ B
 ⟶ᵀ-ren ρ El-⌜base⌝    = El-⌜base⌝
 ⟶ᵀ-ren ρ (El-⌜Π⌝ c d) = El-⌜Π⌝ (renTm ρ c) (renTm (extR ρ) d)
@@ -119,6 +128,19 @@ subTy-comm {Γ} σ B u =
 ⟶ᵀ-ren ρ (ξ-Πʳ r) = ξ-Πʳ (⟶ᵀ-ren (extR ρ) r)
 ⟶ᵀ-ren ρ (ξ-Σˡ r) = ξ-Σˡ (⟶ᵀ-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-Σʳ r) = ξ-Σʳ (⟶ᵀ-ren (extR ρ) r)
+⟶ᵀ-ren ρ (Hom-U c d) =
+  subst (λ z → Hom U (renTm ρ c) (renTm ρ d) ⟶ᵀ Π (El (renTm ρ c)) (El z))
+        (sym (wk-ren ρ d))
+        (Hom-U (renTm ρ c) (renTm ρ d))
+⟶ᵀ-ren ρ (Hom-Π A B f g) =
+  subst (λ Z → Hom (Π (renTy ρ A) (renTy (extR ρ) B)) (renTm ρ f) (renTm ρ g) ⟶ᵀ Z)
+        (cong₂ (λ x y → Π (renTy ρ A)
+                          (Hom (renTy (extR ρ) B) (app x (var vz)) (app y (var vz))))
+               (sym (wk-ren ρ f)) (sym (wk-ren ρ g)))
+        (Hom-Π (renTy ρ A) (renTy (extR ρ) B) (renTm ρ f) (renTm ρ g))
+⟶ᵀ-ren ρ (ξ-Homᵀ r) = ξ-Homᵀ (⟶ᵀ-ren ρ r)
+⟶ᵀ-ren ρ (ξ-Homˡ r) = ξ-Homˡ (⟶-ren ρ r)
+⟶ᵀ-ren ρ (ξ-Homʳ r) = ξ-Homʳ (⟶-ren ρ r)
 
 ≅ᵀ-ren : (ρ : Ren Γ Δ) {A B : RTy Γ} → A ≅ᵀ B → renTy ρ A ≅ᵀ renTy ρ B
 ≅ᵀ-ren ρ (credᵀ r)   = credᵀ (⟶ᵀ-ren ρ r)
@@ -135,6 +157,9 @@ subTy-monoˢ h (Π A B)  =
   ⟶ᵀ*-trans (⟶ᵀ*-Πˡ (subTy-monoˢ h A)) (⟶ᵀ*-Πʳ (subTy-monoˢ (extS-mono h) B))
 subTy-monoˢ h (Σ' A B) =
   ⟶ᵀ*-trans (⟶ᵀ*-Σˡ (subTy-monoˢ h A)) (⟶ᵀ*-Σʳ (subTy-monoˢ (extS-mono h) B))
+subTy-monoˢ h (Hom A t u) =
+  ⟶ᵀ*-trans (⟶ᵀ*-Homᵀ (subTy-monoˢ h A))
+    (⟶ᵀ*-trans (⟶ᵀ*-Homˡ (subTm-monoˢ h t)) (⟶ᵀ*-Homʳ (subTm-monoˢ h u)))
 
 ------------------------------------------------------------------------
 -- Typed renaming preserves typing.
@@ -162,6 +187,8 @@ ren-ty ty-U          h = ty-U
 ren-ty (ty-Π dA dB)  h = ty-Π (ren-ty dA h) (ren-ty dB (Ren⊢-ext h))
 ren-ty (ty-Σ dA dB)  h = ty-Σ (ren-ty dA h) (ren-ty dB (Ren⊢-ext h))
 ren-ty (ty-El dc)    h = ty-El (ren-lemma dc h)
+ren-ty (ty-Hom dA dt du) h =
+  ty-Hom (ren-ty dA h) (ren-lemma dt h) (ren-lemma du h)
 
 ren-lemma (⊢var v) h = ⊢var (h v)
 ren-lemma (⊢lam dA d) h = ⊢lam (ren-ty dA h) (ren-lemma d (Ren⊢-ext h))
@@ -206,6 +233,8 @@ sub-ty ty-U         h = ty-U
 sub-ty (ty-Π dA dB) h = ty-Π (sub-ty dA h) (sub-ty dB (Sub⊢-ext h))
 sub-ty (ty-Σ dA dB) h = ty-Σ (sub-ty dA h) (sub-ty dB (Sub⊢-ext h))
 sub-ty (ty-El dc)   h = ty-El (sub-lemma dc h)
+sub-ty (ty-Hom dA dt du) h =
+  ty-Hom (sub-ty dA h) (sub-lemma dt h) (sub-lemma du h)
 
 sub-lemma (⊢var v) h = h v
 sub-lemma (⊢lam dA d) h = ⊢lam (sub-ty dA h) (sub-lemma d (Sub⊢-ext h))
