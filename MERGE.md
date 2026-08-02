@@ -39,6 +39,15 @@ Special scrutiny, in order:
   state/program-fact class.
 - **`{-# TERMINATING #-}` / `--allow-unsolved` pragmas.** None may enter the
   correspondence cone (Machine / Codegen / Adequacy).
+- **No islands — every change must be load-bearing on the apex proof path.**
+  For every new module/lemma the branch adds, deleting it must break the
+  build of `certified` (or the three-arch cluster) — an unwired supporting
+  module is dead code that hides gaps instead of surfacing them as type
+  errors (the `conc-flat-sim-just` lesson: a postulated apex node lets
+  everything under it float disconnected). Spot-check by grepping who
+  imports each new module; anything reachable from no apex is either
+  deleted before merge or explicitly justified as a decision-logged
+  exception.
 - **Extracted-cone changes.** List which changed files the extraction covers
   (parser, resolver, typechecker, `ir-to-trace`, the per-arch emitters,
   `Once.Compile`, machine-semantics modules in the closure) — this determines
