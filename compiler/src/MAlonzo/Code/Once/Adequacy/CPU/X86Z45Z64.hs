@@ -539,9 +539,9 @@ d_run'45'trace'45'x86'45'64_272 v0 v1
          (\ v2 ->
             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_pc_232
               (coe v2)))
-      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_fetch_554)
+      (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_fetch_556)
       (coe
-         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_execInstr_332)
+         MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_execInstr_334)
       (coe
          MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.RunTrace.d_matchCall_10)
       (coe
@@ -568,7 +568,7 @@ d_arch'45'semantics_282 ::
 d_arch'45'semantics_282
   = coe
       MAlonzo.Code.Once.Adequacy.CPU.Interface.C_constructor_56
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_initState_246
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_run_598
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_initState_248
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_run_600
       d_run'45'trace'45'x86'45'64_272 d_decode'45'x86'45'64_278
       d_assemble'45'x86'45'64_280

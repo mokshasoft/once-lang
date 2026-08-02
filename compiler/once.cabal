@@ -282,10 +282,19 @@ library
       MAlonzo.Code.Once.Arith.SigOp.IntLit
       MAlonzo.Code.Once.Arith.Type
       MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable
+      MAlonzo.Code.Once.CCC.Codegen.AllocMin
       MAlonzo.Code.Once.CCC.Codegen.CataNextSlot
       MAlonzo.Code.Once.CCC.Codegen.FlatStepLemmas
+      MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace
+      MAlonzo.Code.Once.CCC.Codegen.SlotBudget
+      MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds
+      MAlonzo.Code.Once.CCC.Machine.FlatRegTagWF
+      MAlonzo.Code.Once.CCC.Machine.FlatStackPtr
+      MAlonzo.Code.Once.CCC.Machine.FlatStackSlot
+      MAlonzo.Code.Once.CCC.Machine.FrameFree
+      MAlonzo.Code.Once.CCC.Machine.InstrSlot
       MAlonzo.Code.Once.CCC.Eval
       MAlonzo.Code.Once.CCC.FrameSemantics
       MAlonzo.Code.Once.IR
