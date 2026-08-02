@@ -37,7 +37,8 @@ module poc.OCP0009.NbEPDirDBType where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
-        ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; Sub; subTy; subTm; renTy; renTm )
+        ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr
+        ; Ren; extR; Sub; subTy; subTm; renTy; renTm )
 
 private
   variable
@@ -50,6 +51,16 @@ private
 single : RTm Γ → Sub (Γ ∙) Γ
 single u vz     = u
 single u (vs x) = var x
+
+-- The top-two-variable SWAP renaming — what `tr-pw` uses to move the
+-- `⌜Π⌝`-codomain code under the new lambda: the Π-binder becomes the new
+-- outer variable, the (necessarily absent, per `PosC`) old transported
+-- variable maps onto the new one.  A RENAMING, not a substitution — the
+-- commutation lemmas downstream stay in the renaming fragment.
+swp : Ren ((Γ ∙) ∙) ((Γ ∙) ∙)
+swp vz          = vs vz
+swp (vs vz)     = vz
+swp (vs (vs x)) = vs (vs x)
 
 ------------------------------------------------------------------------
 -- Reduction — the directed `Hom`. β on terms; congruence onto types.
@@ -71,11 +82,53 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   ξ-⌜Π⌝ʳ  : {c : RTm Γ} {d d' : RTm (Γ ∙)} → d ⟶ d' → ⌜Π⌝ c d ⟶ ⌜Π⌝ c d'
   ξ-⌜Σ⌝ˡ  : {c c' : RTm Γ} {d : RTm (Γ ∙)} → c ⟶ c' → ⌜Σ⌝ c d ⟶ ⌜Σ⌝ c' d
   ξ-⌜Σ⌝ʳ  : {c : RTm Γ} {d d' : RTm (Γ ∙)} → d ⟶ d' → ⌜Σ⌝ c d ⟶ ⌜Σ⌝ c d'
+  -- ★ W2 eliminator (SpikeHomRefl + SpikeTr).  `tr` is an ELIMINATOR OF
+  -- ITS PATH, so its rules are keyed on the path's canonical form
+  -- (SpikeTr: the motive-keyed variants have unjoinable raw critical
+  -- pairs).  J fires only where `hrefl` is canonical.
+  --
+  -- ⚠ CONSOLIDATION FINDING (2026-08-01), correcting SpikeTr/SpikeHomRefl:
+  -- `⌜Hom⌝` is NOT a uniformly stuck head.  A `⌜Hom⌝` code whose ambient
+  -- SPINE bottoms out in `⌜Π⌝` (`⌜Hom⌝ⁿ (⌜Π⌝ …) …` — higher paths over
+  -- function-type paths) decodes to a type that unfolds pointwise to a
+  -- `Π`, so `hrefl` there is not canonical — `hrefl`'s unfolding is a
+  -- SPINE-RECURSIVE family, not the single `⌜Π⌝` clause SpikeHomRefl
+  -- measured, and J at `⌜Hom⌝` needs spine-stuckness — an unbounded-depth
+  -- key no finite pattern expresses.  HIGHER PATHS WERE ALREADY UNSCOPED
+  -- in this kernel (see `Hom`'s note in NbEPDirDBPi), so the whole
+  -- CANONICITY PACKAGE is deferred to that work item as one unit — the
+  -- `hrefl` unfold family (incl. `hrefl-Π`), J at `⌜Hom⌝` codes, and
+  -- `tr-pw` — with the clean shape being a pair of spine judgments
+  -- (`Pw`/`StkC`) premising the rules.  The `swp`/`extR vs` renaming
+  -- bridges in SR/Conf are kept, pre-paid.  Until then `hrefl` is
+  -- OPERATIONALLY INERT (congruences only) — the LR treats it as neutral,
+  -- exactly as long as it has no computation.  This tower's LR is
+  -- SN-based (weak normalization + decidability, not canonicity), so
+  -- nothing below needs the deferred rules.
+  tr-J-base : (d : RTm (Γ ∙)) (s e : RTm Γ) →
+              tr d (hrefl ⌜base⌝ s) e ⟶ e
+  tr-J-Σ    : (d : RTm (Γ ∙)) (c₁ : RTm Γ) (c₂ : RTm (Γ ∙)) (s e : RTm Γ) →
+              tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e ⟶ e
+  -- directed univalence computing a third time: transport at the
+  -- tautological motive along a (canonical) universe path is application
+  tr-taut   : (f : RTm (Γ ∙)) (e : RTm Γ) →
+              tr (var vz) (lam f) e ⟶ app (lam f) e
+  ξ-⌜Hom⌝ᶜ : {c c' a b : RTm Γ} → c ⟶ c' → ⌜Hom⌝ c a b ⟶ ⌜Hom⌝ c' a b
+  ξ-⌜Hom⌝ˡ : {c a a' b : RTm Γ} → a ⟶ a' → ⌜Hom⌝ c a b ⟶ ⌜Hom⌝ c a' b
+  ξ-⌜Hom⌝ʳ : {c a b b' : RTm Γ} → b ⟶ b' → ⌜Hom⌝ c a b ⟶ ⌜Hom⌝ c a b'
+  ξ-hreflᶜ : {c c' t : RTm Γ} → c ⟶ c' → hrefl c t ⟶ hrefl c' t
+  ξ-hreflᵃ : {c t t' : RTm Γ} → t ⟶ t' → hrefl c t ⟶ hrefl c t'
+  ξ-trᵈ    : {d d' : RTm (Γ ∙)} {p e : RTm Γ} → d ⟶ d' → tr d p e ⟶ tr d' p e
+  ξ-trᵖ    : {d : RTm (Γ ∙)} {p p' e : RTm Γ} → p ⟶ p' → tr d p e ⟶ tr d p' e
+  ξ-trᵉ    : {d : RTm (Γ ∙)} {p e e' : RTm Γ} → e ⟶ e' → tr d p e ⟶ tr d p e'
 
 data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   El-⌜base⌝ : El (⌜base⌝ {Γ}) ⟶ᵀ base
   El-⌜Π⌝    : (c : RTm Γ) (d : RTm (Γ ∙)) → El (⌜Π⌝ c d) ⟶ᵀ Π (El c) (El d)
   El-⌜Σ⌝    : (c : RTm Γ) (d : RTm (Γ ∙)) → El (⌜Σ⌝ c d) ⟶ᵀ Σ' (El c) (El d)
+  -- W2 eliminator: the `⌜Hom⌝` code decodes to the `Hom` former
+  -- (hom-sets of small types are small; still no code for `U`)
+  El-⌜Hom⌝  : (c a b : RTm Γ) → El (⌜Hom⌝ c a b) ⟶ᵀ Hom (El c) a b
   ξ-El : {t t' : RTm Γ} → t ⟶ t' → El t ⟶ᵀ El t'
   ξ-Πˡ : {A A' : RTy Γ} {B : RTy (Γ ∙)} → A ⟶ᵀ A' → Π A B ⟶ᵀ Π A' B
   ξ-Πʳ : {A : RTy Γ} {B B' : RTy (Γ ∙)} → B ⟶ᵀ B' → Π A B ⟶ᵀ Π A B'
@@ -206,6 +259,17 @@ data _⊢_∷_ where
   ⊢⌜base⌝ : ∀ {Γ}       → Γ ⊢ ⌜base⌝ ∷ U
   ⊢⌜Π⌝  : ∀ {Γ c d}     → Γ ⊢ c ∷ U → (Γ ▹ El c) ⊢ d ∷ U → Γ ⊢ ⌜Π⌝ c d ∷ U
   ⊢⌜Σ⌝  : ∀ {Γ c d}     → Γ ⊢ c ∷ U → (Γ ▹ El c) ⊢ d ∷ U → Γ ⊢ ⌜Σ⌝ c d ∷ U
+  -- ★ W2 eliminator (SpikeHomRefl + SpikeTr).  `⊢⌜Hom⌝` and `⊢hrefl`
+  -- join the kernel judgment.  `⊢tr` — the revised CODE-motive spec
+  -- (SpikeTr §0), with the `PosC` premise — is STAGED in the additive
+  -- module `NbEPDirDBTr`: its subject reduction is proven there against
+  -- this judgment, while its `fund` case needs the Hom-membership to
+  -- package a transport closure (the `SpikeHomLR` gate, reopened at the
+  -- ELIMINATOR — next session's spike).
+  ⊢⌜Hom⌝ : ∀ {Γ c a b}  → Γ ⊢ c ∷ U → Γ ⊢ a ∷ El c → Γ ⊢ b ∷ El c →
+                          Γ ⊢ ⌜Hom⌝ c a b ∷ U
+  ⊢hrefl : ∀ {Γ c t}    → Γ ⊢ c ∷ U → Γ ⊢ t ∷ El c →
+                          Γ ⊢ hrefl c t ∷ Hom (El c) t t
   ⊢conv : ∀ {Γ t A B}   → Γ ⊢ t ∷ A → A ≅ᵀ B → Γ ⊢ t ∷ B
 
 data _⊢ty_ where
