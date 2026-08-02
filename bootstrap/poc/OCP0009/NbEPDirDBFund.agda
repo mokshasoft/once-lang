@@ -77,8 +77,13 @@ open import poc.OCP0009.NbEPDirDBDec using ( Dec; dec-conv )
 open import poc.OCP0009.NbEPDirDBInj using ( _⟶ᵀ*_; doneᵀ; red→≅ᵀ; Π-reduct; Σ-reduct; mkΠRed; mkΣRed )
 open import poc.OCP0009.NbEPDirDBLR
   using ( SNe; sne-var; sne-app; sne-fst; sne-snd; sne-hrefl
+        ; sne-tr-stk; sne-tr-lam
         ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-exp
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
+        ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-taut; snr-trᵖ
+        ; NeV; nv-var; nv-app; nv-fst; nv-snd
+        ; StableCd; sc-lam; sc-pair; sc-cΠ; sc-cH; sc-hrefl; sc-nev
+        ; PathStk; ps-nev; ps-h
         ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; _⊩₀∋_
         ; ⊩₁_; ⊩₁base; ⊩₁U; ⊩₁ne; ⊩₁Π; ⊩₁Σ; ⊩₁Hom; _⊩₁∋_
         ; bwd₁; irrel₁; conv₁; CR1₀; CR1₁; CR3₀; CR3₁
@@ -212,6 +217,42 @@ sub-comm-Ty σ a B =
 -- reachable without a Kripke-indexed relation.
 ------------------------------------------------------------------------
 
+-- the shape judgments reflect through renamings, like everything raw
+nev-anti : {ρ : Ren Θ Ξ} {t : RTm Θ} → NeV (renTm ρ t) → NeV t
+nev-anti {t = var x}   _          = nv-var x
+nev-anti {t = app t u} (nv-app n) = nv-app (nev-anti n)
+nev-anti {t = fst p}   (nv-fst n) = nv-fst (nev-anti n)
+nev-anti {t = snd p}   (nv-snd n) = nv-snd (nev-anti n)
+
+stablecd-anti : {ρ : Ren Θ Ξ} {t : RTm Θ} → StableCd (renTm ρ t) → StableCd t
+stablecd-anti {t = lam s}       sc-lam     = sc-lam
+stablecd-anti {t = pair a b}    sc-pair    = sc-pair
+stablecd-anti {t = ⌜Π⌝ c d}     sc-cΠ      = sc-cΠ
+stablecd-anti {t = ⌜Hom⌝ c a b} sc-cH      = sc-cH
+stablecd-anti {t = hrefl c s}   sc-hrefl   = sc-hrefl
+stablecd-anti {t = var x}       (sc-nev n) = sc-nev (nv-var x)
+stablecd-anti {t = app t u}     (sc-nev n) = sc-nev (nev-anti n)
+stablecd-anti {t = fst p}       (sc-nev n) = sc-nev (nev-anti n)
+stablecd-anti {t = snd p}       (sc-nev n) = sc-nev (nev-anti n)
+stablecd-anti {t = ⌜base⌝}      (sc-nev ())
+stablecd-anti {t = ⌜Σ⌝ c d}     (sc-nev ())
+stablecd-anti {t = tr d p e}    (sc-nev ())
+
+pathstk-anti : {ρ : Ren Θ Ξ} {t : RTm Θ} → PathStk (renTm ρ t) → PathStk t
+pathstk-anti {t = hrefl c s} (ps-h sc)  = ps-h (stablecd-anti sc)
+pathstk-anti {t = hrefl c s} (ps-nev ())
+pathstk-anti {t = var x}     (ps-nev n) = ps-nev (nv-var x)
+pathstk-anti {t = app t u}   (ps-nev n) = ps-nev (nev-anti n)
+pathstk-anti {t = fst p}     (ps-nev n) = ps-nev (nev-anti n)
+pathstk-anti {t = snd p}     (ps-nev n) = ps-nev (nev-anti n)
+pathstk-anti {t = lam s}        (ps-nev ())
+pathstk-anti {t = pair a b}     (ps-nev ())
+pathstk-anti {t = ⌜base⌝}       (ps-nev ())
+pathstk-anti {t = ⌜Π⌝ c d}      (ps-nev ())
+pathstk-anti {t = ⌜Σ⌝ c d}      (ps-nev ())
+pathstk-anti {t = ⌜Hom⌝ c a b}  (ps-nev ())
+pathstk-anti {t = tr d p e}     (ps-nev ())
+
 sne-anti : {ρ : Ren Θ Ξ} {t : RTm Θ} → SNe (renTm ρ t) → SNe t
 sn-anti  : {ρ : Ren Θ Ξ} {t : RTm Θ} → SN  (renTm ρ t) → SN t
 snr-anti : {ρ : Ren Θ Ξ} {t : RTm Θ} {v : RTm Ξ} → SNRed (renTm ρ t) v →
@@ -223,6 +264,75 @@ sne-anti {t = fst p}    (sne-fst n)   = sne-fst (sne-anti n)
 sne-anti {t = snd p}    (sne-snd n)   = sne-snd (sne-anti n)
 sne-anti {t = hrefl c t} (sne-hrefl hc ht) =
   sne-hrefl (sn-anti hc) (sn-anti ht)
+sne-anti {ρ = ρ} {t = tr d (var x) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = var x} hp)
+             (pathstk-anti {ρ = ρ} {t = var x} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr d (app g w) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = app g w} hp)
+             (pathstk-anti {ρ = ρ} {t = app g w} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr d (pair g w) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = pair g w} hp)
+             (pathstk-anti {ρ = ρ} {t = pair g w} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr d (fst g) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = fst g} hp)
+             (pathstk-anti {ρ = ρ} {t = fst g} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr d (snd g) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = snd g} hp)
+             (pathstk-anti {ρ = ρ} {t = snd g} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr d (⌜base⌝) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = ⌜base⌝} hp)
+             (pathstk-anti {ρ = ρ} {t = ⌜base⌝} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr d (⌜Π⌝ g w) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = ⌜Π⌝ g w} hp)
+             (pathstk-anti {ρ = ρ} {t = ⌜Π⌝ g w} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr d (⌜Σ⌝ g w) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = ⌜Σ⌝ g w} hp)
+             (pathstk-anti {ρ = ρ} {t = ⌜Σ⌝ g w} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr d (⌜Hom⌝ g w v) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = ⌜Hom⌝ g w v} hp)
+             (pathstk-anti {ρ = ρ} {t = ⌜Hom⌝ g w v} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr d (hrefl g w) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = hrefl g w} hp)
+             (pathstk-anti {ρ = ρ} {t = hrefl g w} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr d (tr g w v) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = tr g w v} hp)
+             (pathstk-anti {ρ = ρ} {t = tr g w v} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr (var x) (lam f) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti {ρ = extR ρ} {t = var x} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
+             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr (lam g) (lam f) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti {ρ = extR ρ} {t = lam g} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
+             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr (app g w) (lam f) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti {ρ = extR ρ} {t = app g w} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
+             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr (pair g w) (lam f) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti {ρ = extR ρ} {t = pair g w} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
+             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr (fst g) (lam f) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti {ρ = extR ρ} {t = fst g} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
+             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr (snd g) (lam f) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti {ρ = extR ρ} {t = snd g} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
+             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr (⌜base⌝) (lam f) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti {ρ = extR ρ} {t = ⌜base⌝} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
+             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr (⌜Π⌝ g w) (lam f) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti {ρ = extR ρ} {t = ⌜Π⌝ g w} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
+             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr (⌜Σ⌝ g w) (lam f) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti {ρ = extR ρ} {t = ⌜Σ⌝ g w} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
+             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr (hrefl g w) (lam f) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti {ρ = extR ρ} {t = hrefl g w} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
+             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
+sne-anti {ρ = ρ} {t = tr (tr g w v) (lam f) e} (sne-tr-stk hd hp ps he) =
+  sne-tr-stk (sn-anti {ρ = extR ρ} {t = tr g w v} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
+             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
+sne-anti {t = tr (⌜Hom⌝ d₁ d₂ d₃) (lam f) e} (sne-tr-stk hd hp (ps-nev ()) he)
+sne-anti {t = tr (⌜Hom⌝ d₁ d₂ d₃) (lam f) e} (sne-tr-lam h₁ h₂ h₃ h₄ h₅) =
+  sne-tr-lam (sn-anti h₁) (sn-anti h₂) (sn-anti h₃) (sn-anti h₄) (sn-anti h₅)
 
 sn-anti {t = var x}    _              = sn-ne (sne-var x)
 sn-anti {t = lam s}    (sn-lam h)     = sn-lam (sn-anti h)
@@ -233,9 +343,11 @@ sn-anti {t = ⌜Σ⌝ c d}  (sn-cΣ hc hd)  = sn-cΣ (sn-anti hc) (sn-anti hd)
 sn-anti {t = ⌜Hom⌝ c a b} (sn-cH hc ha hb) =
   sn-cH (sn-anti hc) (sn-anti ha) (sn-anti hb)
 sn-anti {t = hrefl c t} (sn-ne n)     = sn-ne (sne-anti n)
-sn-anti {t = hrefl c t} (sn-exp () _)
-sn-anti {t = tr d p e}  (sn-ne ())
-sn-anti {t = tr d p e}  (sn-exp () _)
+sn-anti {t = hrefl c t} (sn-exp r h) with snr-anti r
+... | t' , (r' , refl) = sn-exp r' (sn-anti h)
+sn-anti {t = tr d p e}  (sn-ne n)     = sn-ne (sne-anti n)
+sn-anti {t = tr d p e}  (sn-exp r h) with snr-anti r
+... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = app t u}  (sn-ne n)      = sn-ne (sne-anti n)
 sn-anti {t = fst p}    (sn-ne n)      = sn-ne (sne-anti n)
 sn-anti {t = snd p}    (sn-ne n)      = sn-ne (sne-anti n)
@@ -270,6 +382,46 @@ snr-anti {t = snd (fst p)}      (snr-snd r) with snr-anti r
 ... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
 snr-anti {t = snd (snd p)}      (snr-snd r) with snr-anti r
 ... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
+snr-anti {t = hrefl c s} (snr-hreflᶜ r) with snr-anti r
+... | c' , (r' , refl) = hrefl c' s , (snr-hreflᶜ r' , refl)
+snr-anti {t = tr d (hrefl ⌜base⌝ s) e} (snr-J-base hd hs) =
+  e , (snr-J-base (sn-anti hd) (sn-anti hs) , refl)
+snr-anti {t = tr d (hrefl ⌜base⌝ s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-J-Σ hd h₁ h₂ hs) =
+  e , (snr-J-Σ (sn-anti hd) (sn-anti h₁) (sn-anti h₂) (sn-anti hs) , refl)
+snr-anti {t = tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr (var vz) (lam f) e} snr-taut =
+  app (lam f) e , (snr-taut , refl)
+snr-anti {t = tr d (hrefl (var x) s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl (lam g) s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl (app g w) s) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (pair g w) s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl (fst g) s) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (snd g) s) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (⌜Π⌝ g w) s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl (⌜Hom⌝ g w v) s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl (hrefl g w) s) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (tr g w v) s) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (var x) e} (snr-trᵖ ())
+snr-anti {t = tr d (lam g) e} (snr-trᵖ ())
+snr-anti {t = tr d (app g w) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (pair g w) e} (snr-trᵖ ())
+snr-anti {t = tr d (fst g) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (snd g) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d ⌜base⌝ e} (snr-trᵖ ())
+snr-anti {t = tr d (⌜Π⌝ g w) e} (snr-trᵖ ())
+snr-anti {t = tr d (⌜Σ⌝ g w) e} (snr-trᵖ ())
+snr-anti {t = tr d (⌜Hom⌝ g w v) e} (snr-trᵖ ())
+snr-anti {t = tr d (tr g w v) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
 -- the heads that reduce to nothing: a renaming cannot turn them into redexes.
 snr-anti {t = app (var x) u}    (snr-app ())
 snr-anti {t = app (pair a b) u} (snr-app ())
@@ -282,14 +434,20 @@ snr-anti {t = fst ⌜base⌝}       (snr-fst ())
 snr-anti {t = fst (⌜Π⌝ c d)}    (snr-fst ())
 snr-anti {t = fst (⌜Σ⌝ c d)}    (snr-fst ())
 snr-anti {t = app (⌜Hom⌝ c a b) u} (snr-app ())
-snr-anti {t = app (hrefl c s) u}   (snr-app ())
-snr-anti {t = app (tr d p e) u}    (snr-app ())
+snr-anti {t = app (hrefl c s) u}   (snr-app r) with snr-anti r
+... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
+snr-anti {t = app (tr d p e) u}    (snr-app r) with snr-anti r
+... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
 snr-anti {t = fst (⌜Hom⌝ c a b)}   (snr-fst ())
-snr-anti {t = fst (hrefl c s)}     (snr-fst ())
-snr-anti {t = fst (tr d p e)}      (snr-fst ())
+snr-anti {t = fst (hrefl c s)}     (snr-fst r) with snr-anti r
+... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
+snr-anti {t = fst (tr d p e)}      (snr-fst r) with snr-anti r
+... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
 snr-anti {t = snd (⌜Hom⌝ c a b)}   (snr-snd ())
-snr-anti {t = snd (hrefl c s)}     (snr-snd ())
-snr-anti {t = snd (tr d p e)}      (snr-snd ())
+snr-anti {t = snd (hrefl c s)}     (snr-snd r) with snr-anti r
+... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
+snr-anti {t = snd (tr d p e)}      (snr-snd r) with snr-anti r
+... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
 snr-anti {t = snd (var x)}      (snr-snd ())
 snr-anti {t = snd (lam s)}      (snr-snd ())
 snr-anti {t = snd ⌜base⌝}       (snr-snd ())

@@ -56,6 +56,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ
+        ; tr-J-base; tr-J-Σ; tr-taut; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
         ; _⟶*_; done; step
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
@@ -67,7 +68,8 @@ open import poc.OCP0009.NbEPDirDBConf
   using ( ⟶*-trans; ⟶*-lam; ⟶*-appˡ; ⟶*-appʳ
         ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-fst; ⟶*-snd
         ; ⟶*-⌜Π⌝ˡ; ⟶*-⌜Π⌝ʳ; ⟶*-⌜Σ⌝ˡ; ⟶*-⌜Σ⌝ʳ
-        ; ⟶*-⌜Hom⌝ᶜ; ⟶*-⌜Hom⌝ˡ; ⟶*-⌜Hom⌝ʳ; ⟶*-hreflᶜ; ⟶*-hreflᵃ )
+        ; ⟶*-⌜Hom⌝ᶜ; ⟶*-⌜Hom⌝ˡ; ⟶*-⌜Hom⌝ʳ; ⟶*-hreflᶜ; ⟶*-hreflᵃ
+        ; ⟶*-trᵈ; ⟶*-trᵖ; ⟶*-trᵉ )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Homᵀ
         ; confluentᵀ; church-rosserᵀ
@@ -106,6 +108,71 @@ dsnd (_ , b) = b
 -- argument away, and `(λx. y) Ω ⟶ y` must not make `(λx. y) Ω` normal.
 ------------------------------------------------------------------------
 
+-- W2 stage 2: shape judgments for the `tr` head strategy.  `NeV` is a
+-- var-rooted spine (the STRICT neutrals — unlike `Ne`, never `hrefl`- or
+-- `tr`-rooted); `StableCd` are the code heads reduction cannot change
+-- and on which no J rule fires; `PathStk` are the path shapes on which
+-- no `tr` root rule can EVER fire — each closed under reduction.
+data NeV {Γ} : RTm Γ → Set where
+  nv-var : (x : Var Γ) → NeV (var x)
+  nv-app : {t u : RTm Γ} → NeV t → NeV (app t u)
+  nv-fst : {p : RTm Γ} → NeV p → NeV (fst p)
+  nv-snd : {p : RTm Γ} → NeV p → NeV (snd p)
+
+data StableCd {Γ} : RTm Γ → Set where
+  sc-lam   : {t : RTm (Γ ∙)} → StableCd (lam t)
+  sc-pair  : {a b : RTm Γ} → StableCd (pair a b)
+  sc-cΠ    : {c : RTm Γ} {d : RTm (Γ ∙)} → StableCd (⌜Π⌝ c d)
+  sc-cH    : {c a b : RTm Γ} → StableCd (⌜Hom⌝ c a b)
+  sc-hrefl : {c t : RTm Γ} → StableCd (hrefl c t)
+  sc-nev   : {n : RTm Γ} → NeV n → StableCd n
+
+data PathStk {Γ} : RTm Γ → Set where
+  ps-nev : {p : RTm Γ} → NeV p → PathStk p
+  ps-h   : {c t : RTm Γ} → StableCd c → PathStk (hrefl c t)
+
+nev-red : {t t' : RTm Γ} → NeV t → t ⟶ t' → NeV t'
+nev-red (nv-var x) ()
+nev-red (nv-app n) (ξ-appˡ r) = nv-app (nev-red n r)
+nev-red (nv-app n) (ξ-appʳ r) = nv-app n
+nev-red (nv-fst n) (ξ-fst r)  = nv-fst (nev-red n r)
+nev-red (nv-snd n) (ξ-snd r)  = nv-snd (nev-red n r)
+
+stablecd-red : {t t' : RTm Γ} → StableCd t → t ⟶ t' → StableCd t'
+stablecd-red sc-lam   (ξ-lam r)     = sc-lam
+stablecd-red sc-pair  (ξ-pairˡ r)   = sc-pair
+stablecd-red sc-pair  (ξ-pairʳ r)   = sc-pair
+stablecd-red sc-cΠ    (ξ-⌜Π⌝ˡ r)   = sc-cΠ
+stablecd-red sc-cΠ    (ξ-⌜Π⌝ʳ r)   = sc-cΠ
+stablecd-red sc-cH    (ξ-⌜Hom⌝ᶜ r) = sc-cH
+stablecd-red sc-cH    (ξ-⌜Hom⌝ˡ r) = sc-cH
+stablecd-red sc-cH    (ξ-⌜Hom⌝ʳ r) = sc-cH
+stablecd-red sc-hrefl (ξ-hreflᶜ r) = sc-hrefl
+stablecd-red sc-hrefl (ξ-hreflᵃ r) = sc-hrefl
+stablecd-red (sc-nev n) r          = sc-nev (nev-red n r)
+
+pathstk-red : {t t' : RTm Γ} → PathStk t → t ⟶ t' → PathStk t'
+pathstk-red (ps-nev n) r            = ps-nev (nev-red n r)
+pathstk-red (ps-h sc) (ξ-hreflᶜ r)  = ps-h (stablecd-red sc r)
+pathstk-red (ps-h sc) (ξ-hreflᵃ r)  = ps-h sc
+
+-- no `tr` root rule ever fires on a `PathStk` path
+pathstk-no-J-base : {s : RTm Γ} → PathStk (hrefl ⌜base⌝ s) → ⊥
+pathstk-no-J-base (ps-nev ())
+pathstk-no-J-base (ps-h (sc-nev ()))
+
+pathstk-no-J-Σ : {c₁ : RTm Γ} {c₂ : RTm (Γ ∙)} {s : RTm Γ} →
+                 PathStk (hrefl (⌜Σ⌝ c₁ c₂) s) → ⊥
+pathstk-no-J-Σ (ps-nev ())
+pathstk-no-J-Σ (ps-h (sc-nev ()))
+
+pathstk-no-lam : {f : RTm (Γ ∙)} → PathStk (lam f) → ⊥
+pathstk-no-lam (ps-nev ())
+
+pathstk-red* : {t t' : RTm Γ} → PathStk t → t ⟶* t' → PathStk t'
+pathstk-red* ps done       = ps
+pathstk-red* ps (step r q) = pathstk-red* (pathstk-red ps r) q
+
 data SNe {Γ} : RTm Γ → Set
 data SN  {Γ} : RTm Γ → Set
 data SNRed {Γ} : RTm Γ → RTm Γ → Set
@@ -115,11 +182,21 @@ data SNe {Γ} where
   sne-app : {t u : RTm Γ} → SNe t → SN u → SNe (app t u)
   sne-fst : {p : RTm Γ} → SNe p → SNe (fst p)
   sne-snd : {p : RTm Γ} → SNe p → SNe (snd p)
-  -- W2 stage 1: `hrefl` is OPERATIONALLY INERT (its unfold family is
-  -- deferred with the canonicity package, NbEPDirDBType), so it never
+  -- W2: `hrefl` is OPERATIONALLY INERT while its unfold family is
+  -- deferred with the canonicity package (NbEPDirDBType), so it never
   -- becomes a `lam` and behaves as a neutral for this SN-flavored LR —
   -- exactly as long as it has no computation.
   sne-hrefl : {c t : RTm Γ} → SN c → SN t → SNe (hrefl c t)
+  -- W2 stage 2: a `tr` whose path is ROOT-STABLE (`PathStk` below — no
+  -- J/taut can ever fire) is permanently stuck and hence neutral; so is
+  -- a `tr` on a lambda at a `⌜Hom⌝`-headed motive (`taut` needs the
+  -- LITERAL `var vz` motive and `⌜Hom⌝` heads are reduction-stable;
+  -- pointwise composition is deferred with the canonicity package).
+  sne-tr-stk : {d : RTm (Γ ∙)} {p e : RTm Γ} →
+               SN d → SN p → PathStk p → SN e → SNe (tr d p e)
+  sne-tr-lam : {c a m : RTm (Γ ∙)} {f : RTm (Γ ∙)} {e : RTm Γ} →
+               SN c → SN a → SN m → SN f → SN e →
+               SNe (tr (⌜Hom⌝ c a m) (lam f) e)
 
 data SN {Γ} where
   sn-ne   : {t : RTm Γ} → SNe t → SN t
@@ -139,6 +216,19 @@ data SNRed {Γ} where
   snr-app  : {t t' u : RTm Γ} → SNRed t t' → SNRed (app t u) (app t' u)
   snr-fst  : {p p' : RTm Γ} → SNRed p p' → SNRed (fst p) (fst p')
   snr-snd  : {p p' : RTm Γ} → SNRed p p' → SNRed (snd p) (snd p')
+  -- W2 stage 2: `hrefl` and `tr` are ELIMINATORS (of the code, of the
+  -- path) — their scrutinee positions join the head strategy.  The J
+  -- rules carry the DISCARDED material's `SN`, exactly like `snr-β`.
+  snr-hreflᶜ : {c c' t : RTm Γ} → SNRed c c' → SNRed (hrefl c t) (hrefl c' t)
+  snr-J-base : {d : RTm (Γ ∙)} {s e : RTm Γ} → SN d → SN s →
+               SNRed (tr d (hrefl ⌜base⌝ s) e) e
+  snr-J-Σ    : {d : RTm (Γ ∙)} {c₁ : RTm Γ} {c₂ : RTm (Γ ∙)} {s e : RTm Γ} →
+               SN d → SN c₁ → SN c₂ → SN s →
+               SNRed (tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e) e
+  snr-taut   : {f : RTm (Γ ∙)} {e : RTm Γ} →
+               SNRed (tr (var vz) (lam f) e) (app (lam f) e)
+  snr-trᵖ    : {d : RTm (Γ ∙)} {p p' e : RTm Γ} → SNRed p p' →
+               SNRed (tr d p e) (tr d p' e)
 
 snr→⟶ : {t t' : RTm Γ} → SNRed t t' → t ⟶ t'
 snr→⟶ (snr-β {s} {u} _)    = β s u
@@ -147,6 +237,66 @@ snr→⟶ (snr-βsnd {a} {b} _) = βsnd a b
 snr→⟶ (snr-app r)          = ξ-appˡ (snr→⟶ r)
 snr→⟶ (snr-fst r)          = ξ-fst (snr→⟶ r)
 snr→⟶ (snr-snd r)          = ξ-snd (snr→⟶ r)
+snr→⟶ (snr-hreflᶜ r)       = ξ-hreflᶜ (snr→⟶ r)
+snr→⟶ (snr-J-base _ _)     = tr-J-base _ _ _
+snr→⟶ (snr-J-Σ _ _ _ _)    = tr-J-Σ _ _ _ _ _
+snr→⟶ snr-taut             = tr-taut _ _
+snr→⟶ (snr-trᵖ r)          = ξ-trᵖ (snr→⟶ r)
+
+------------------------------------------------------------------------
+-- W2 stage 2: the head strategy is DETERMINISTIC, so `SN` and every
+-- MEMBERSHIP move FORWARD along it (`sn-whred`/`mem-whred₁` below) —
+-- the transfer `fund`'s `tr` case runs its path analysis on.
+------------------------------------------------------------------------
+
+snr-det : {t u u' : RTm Γ} → SNRed t u → SNRed t u' → u ≡ u'
+snr-det (snr-β _)    (snr-β _)     = refl
+snr-det (snr-β _)    (snr-app ())
+snr-det (snr-app ()) (snr-β _)
+snr-det (snr-app {u = u} r) (snr-app r') =
+  cong (λ z → app z u) (snr-det r r')
+snr-det (snr-βfst _) (snr-βfst _)  = refl
+snr-det (snr-βfst _) (snr-fst ())
+snr-det (snr-fst ()) (snr-βfst _)
+snr-det (snr-fst r)  (snr-fst r')  = cong fst (snr-det r r')
+snr-det (snr-βsnd _) (snr-βsnd _)  = refl
+snr-det (snr-βsnd _) (snr-snd ())
+snr-det (snr-snd ()) (snr-βsnd _)
+snr-det (snr-snd r)  (snr-snd r')  = cong snd (snr-det r r')
+snr-det (snr-hreflᶜ {t = t} r) (snr-hreflᶜ r') =
+  cong (λ z → hrefl z t) (snr-det r r')
+snr-det (snr-J-base _ _) (snr-J-base _ _) = refl
+snr-det (snr-J-base _ _) (snr-trᵖ (snr-hreflᶜ ()))
+snr-det (snr-trᵖ (snr-hreflᶜ ())) (snr-J-base _ _)
+snr-det (snr-J-Σ _ _ _ _) (snr-J-Σ _ _ _ _) = refl
+snr-det (snr-J-Σ _ _ _ _) (snr-trᵖ (snr-hreflᶜ ()))
+snr-det (snr-trᵖ (snr-hreflᶜ ())) (snr-J-Σ _ _ _ _)
+snr-det snr-taut snr-taut = refl
+snr-det snr-taut (snr-trᵖ ())
+snr-det (snr-trᵖ {d = d} {e = e} r) (snr-trᵖ r') =
+  cong (λ z → tr d z e) (snr-det r r')
+
+sne-whred : {t t' : RTm Γ} → SNe t → SNRed t t' → SNe t'
+sn-whred  : {t t' : RTm Γ} → SN t → SNRed t t' → SN t'
+
+sne-whred (sne-app n s) (snr-app r) = sne-app (sne-whred n r) s
+sne-whred (sne-fst n)   (snr-fst r) = sne-fst (sne-whred n r)
+sne-whred (sne-snd n)   (snr-snd r) = sne-snd (sne-whred n r)
+sne-whred (sne-hrefl snc snt) (snr-hreflᶜ r) =
+  sne-hrefl (sn-whred snc r) snt
+sne-whred (sne-tr-stk snd₀ snp ps sne₀) (snr-J-base _ _) =
+  ⊥-elim (pathstk-no-J-base ps)
+sne-whred (sne-tr-stk snd₀ snp ps sne₀) (snr-J-Σ _ _ _ _) =
+  ⊥-elim (pathstk-no-J-Σ ps)
+sne-whred (sne-tr-stk snd₀ snp ps sne₀) snr-taut =
+  ⊥-elim (pathstk-no-lam ps)
+sne-whred (sne-tr-stk snd₀ snp ps sne₀) (snr-trᵖ r) =
+  sne-tr-stk snd₀ (sn-whred snp r) (pathstk-red ps (snr→⟶ r)) sne₀
+sne-whred (sne-tr-lam _ _ _ _ _) (snr-trᵖ ())
+
+sn-whred (sn-ne n)      r = sn-ne (sne-whred n r)
+sn-whred (sn-exp r₀ h) r with snr-det r₀ r
+... | refl = h
 
 ------------------------------------------------------------------------
 -- 2. WHNF SHAPE LEMMAS, and the workhorse `joinW`.
@@ -177,6 +327,9 @@ data Ne {Γ} : RTm Γ → Set where
   ne-fst : {p : RTm Γ} → Ne p → Ne (fst p)
   ne-snd : {p : RTm Γ} → Ne p → Ne (snd p)
   ne-hrefl : {c t : RTm Γ} → Ne (hrefl c t)
+  ne-tr-stk : {d : RTm (Γ ∙)} {p e : RTm Γ} → PathStk p → Ne (tr d p e)
+  ne-tr-lam : {c a m : RTm (Γ ∙)} {f : RTm (Γ ∙)} {e : RTm Γ} →
+              Ne (tr (⌜Hom⌝ c a m) (lam f) e)
 
 ne-red : {t t' : RTm Γ} → Ne t → t ⟶ t' → Ne t'
 ne-red (ne-var x) ()
@@ -186,6 +339,17 @@ ne-red (ne-fst n) (ξ-fst r)  = ne-fst (ne-red n r)
 ne-red (ne-snd n) (ξ-snd r)  = ne-snd (ne-red n r)
 ne-red ne-hrefl (ξ-hreflᶜ r) = ne-hrefl
 ne-red ne-hrefl (ξ-hreflᵃ r) = ne-hrefl
+ne-red (ne-tr-stk ps) (tr-J-base _ _ _)  = ⊥-elim (pathstk-no-J-base ps)
+ne-red (ne-tr-stk ps) (tr-J-Σ _ _ _ _ _) = ⊥-elim (pathstk-no-J-Σ ps)
+ne-red (ne-tr-stk ps) (tr-taut _ _)      = ⊥-elim (pathstk-no-lam ps)
+ne-red (ne-tr-stk ps) (ξ-trᵈ r) = ne-tr-stk ps
+ne-red (ne-tr-stk ps) (ξ-trᵖ r) = ne-tr-stk (pathstk-red ps r)
+ne-red (ne-tr-stk ps) (ξ-trᵉ r) = ne-tr-stk ps
+ne-red ne-tr-lam (ξ-trᵈ (ξ-⌜Hom⌝ᶜ r)) = ne-tr-lam
+ne-red ne-tr-lam (ξ-trᵈ (ξ-⌜Hom⌝ˡ r)) = ne-tr-lam
+ne-red ne-tr-lam (ξ-trᵈ (ξ-⌜Hom⌝ʳ r)) = ne-tr-lam
+ne-red ne-tr-lam (ξ-trᵖ (ξ-lam r))    = ne-tr-lam
+ne-red ne-tr-lam (ξ-trᵉ r)            = ne-tr-lam
 
 sne→ne : {t : RTm Γ} → SNe t → Ne t
 sne→ne (sne-var x)   = ne-var x
@@ -193,6 +357,8 @@ sne→ne (sne-app n _) = ne-app (sne→ne n)
 sne→ne (sne-fst n)   = ne-fst (sne→ne n)
 sne→ne (sne-snd n)   = ne-snd (sne→ne n)
 sne→ne (sne-hrefl _ _) = ne-hrefl
+sne→ne (sne-tr-stk _ _ ps _) = ne-tr-stk ps
+sne→ne (sne-tr-lam _ _ _ _ _) = ne-tr-lam
 
 record ElNe {Γ} (A : RTy Γ) : Set where
   constructor mkElNe
@@ -898,6 +1064,32 @@ exp₁ (⊩₁Σ {G = G} _ ⊩F ⊩G) {t} {t'} r h =
 ⊩var₁ : {A : RTy Γ} (R : ⊩₁ A) (x : Var Γ) → R ⊩₁∋ var x
 ⊩var₁ R x = CR3₁ R (sne-var x)
 
+-- W2 stage 2: memberships move FORWARD along the (deterministic) head
+-- strategy — `exp₁`'s converse.  The `Σ'` case bridges the moving type
+-- of the second component exactly as `exp₁`'s does, direction flipped;
+-- the `U` case pushes the decoded type forward along the step.
+mem-whred₁ : {A : RTy Γ} (R : ⊩₁ A) {t t' : RTm Γ} →
+             SNRed t t' → R ⊩₁∋ t → R ⊩₁∋ t'
+mem-whred₁ (⊩₁base _)  r h = sn-whred h r
+mem-whred₁ (⊩₁ne _ _)  r h = sn-whred h r
+mem-whred₁ (⊩₁Hom _ _) r h = sn-whred h r
+mem-whred₁ (⊩₁U _)     r h =
+  ( sn-whred (projl h) r
+  , fwd₀ (⟶ᵀ*-El (step (snr→⟶ r) done)) (projr h) )
+mem-whred₁ (⊩₁Π _ ⊩F ⊩G) r h =
+  ( sn-whred (projl h) r
+  , λ u ru → mem-whred₁ (⊩G u ru) (snr-app r) (projr h u ru) )
+mem-whred₁ (⊩₁Σ {G = G} _ ⊩F ⊩G) {t} {t'} r h =
+  ( sn-whred (projl h) r
+  , ( mem-whred₁ ⊩F (snr-fst r) (dfst (projr h))
+    , projl (irrel₁ (red→≅ᵀ (subTy-monoˢ
+                       (single-mono (step (ξ-fst (snr→⟶ r)) done)) G))
+                    (⊩G (fst t) (dfst (projr h)))
+                    (⊩G (fst t') (mem-whred₁ ⊩F (snr-fst r) (dfst (projr h)))))
+            (snd t')
+            (mem-whred₁ (⊩G (fst t) (dfst (projr h))) (snr-snd r)
+                        (dsnd (projr h))) ))
+
 ------------------------------------------------------------------------
 -- ★ 5. THE LEVEL-0 → LEVEL-1 EMBEDDING.
 --
@@ -1195,6 +1387,38 @@ wne (sne-hrefl c t) with wn c | wn t
     nrm' : IsNormal (hrefl n₁ n₂)
     nrm' (ξ-hreflᶜ q) = nm₁ q
     nrm' (ξ-hreflᵃ q) = nm₂ q
+wne (sne-tr-stk {p = p} d₀ p₀ ps e₀) with wn d₀ | wn p₀ | wn e₀
+... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃ =
+      mkWNe (tr n₁ n₂ n₃)
+            (⟶*-trans (⟶*-trᵈ r₁) (⟶*-trans (⟶*-trᵖ r₂) (⟶*-trᵉ r₃)))
+            nrm' (sne-tr-stk sn₁ sn₂ ps' sn₃)
+  where
+    ps' : PathStk n₂
+    ps' = pathstk-red* ps r₂
+
+    nrm' : IsNormal (tr n₁ n₂ n₃)
+    nrm' (tr-J-base _ _ _)  = ⊥-elim (pathstk-no-J-base ps')
+    nrm' (tr-J-Σ _ _ _ _ _) = ⊥-elim (pathstk-no-J-Σ ps')
+    nrm' (tr-taut _ _)      = ⊥-elim (pathstk-no-lam ps')
+    nrm' (ξ-trᵈ q) = nm₁ q
+    nrm' (ξ-trᵖ q) = nm₂ q
+    nrm' (ξ-trᵉ q) = nm₃ q
+wne (sne-tr-lam c₀ a₀ m₀ f₀ e₀)
+  with wn c₀ | wn a₀ | wn m₀ | wn f₀ | wn e₀
+... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃
+    | mkWN n₄ r₄ nm₄ sn₄ | mkWN n₅ r₅ nm₅ sn₅ =
+      mkWNe (tr (⌜Hom⌝ n₁ n₂ n₃) (lam n₄) n₅)
+            (⟶*-trans (⟶*-trᵈ (⟶*-trans (⟶*-⌜Hom⌝ᶜ r₁)
+                                (⟶*-trans (⟶*-⌜Hom⌝ˡ r₂) (⟶*-⌜Hom⌝ʳ r₃))))
+              (⟶*-trans (⟶*-trᵖ (⟶*-lam r₄)) (⟶*-trᵉ r₅)))
+            nrm' (sne-tr-lam sn₁ sn₂ sn₃ sn₄ sn₅)
+  where
+    nrm' : IsNormal (tr (⌜Hom⌝ n₁ n₂ n₃) (lam n₄) n₅)
+    nrm' (ξ-trᵈ (ξ-⌜Hom⌝ᶜ q)) = nm₁ q
+    nrm' (ξ-trᵈ (ξ-⌜Hom⌝ˡ q)) = nm₂ q
+    nrm' (ξ-trᵈ (ξ-⌜Hom⌝ʳ q)) = nm₃ q
+    nrm' (ξ-trᵖ (ξ-lam q))    = nm₄ q
+    nrm' (ξ-trᵉ q)            = nm₅ q
 
 wn (sn-ne n) with wne n
 ... | mkWNe n₁ r₁ nm₁ ne₁ = mkWN n₁ r₁ nm₁ (sn-ne ne₁)
