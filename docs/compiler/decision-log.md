@@ -5496,3 +5496,56 @@ statement is reusable by the value layer.
   checked by hand for `strat-nat` first) are hard stops if they fail.
 - Until M4 lands, the three disciplines remain honest site+run-conditioned
   residuals; nothing else in the correspondence waits on them.
+
+## D077: The Branch-Tag Scrutinee Discipline Is Residence-Generic (Vacuity Fix)
+
+**Date**: 2026-08-02
+**Status**: Accepted (implemented same day; probe confirmed before, refuted after)
+**Relates**: D073 (which introduced the residual heap-only), plan 0.61 (which
+gave stack pointers real addresses, making the fix expressible), the
+2026-07-30 vacuity discipline
+
+### Context
+
+While building Plan 0.62's `Meets` interpretation, the shape semantics of
+sums exposed that `branch-tag-scrutinee-wf` — "at an emitted
+`c-branch-tag-zero` site, Input1 holds a HEAP pointer (`AtDynamic`) to a
+written tag" — is REFUTABLE: `inl/inr Stack` write their tag into a STACK
+slot (`instr-load-tag-lit t ∷ store-at-slot …`) and hand back an `AtStack`
+pointer (`lea-slot`), and `case id id ∘ inl Stack : IR Unit Unit` reaches
+the branch site with that stack pointer after six mechanical steps from the
+entry state. A probe (recipe of 2026-07-28) derived `⊥`. Since vacuity is
+all-or-nothing, the whole conditional correspondence was vacuous while this
+stood (introduced with D073 on 2026-08-01).
+
+### Decision
+
+The residual is restated RESIDENCE-GENERICALLY — the scrutinee holds a
+pointer (either residence) to a written tag cell, with `readLoc` covering
+both:
+
+    Σ loc. (Input1 ≡ SV-Ptr loc) × Σ k. (readLoc (floc fs) loc ≡ just (SV-Tag k))
+
+and the machinery was DE-SPECIALIZED rather than duplicated: the tag-branch
+block-steps (`block-step-c-branch-tag-zero`, `-nz`) never depended on the
+residence — only on the abstract read and the CONCRETE read — so the
+concrete-read equation became a PREMISE, and the routing site
+(`tag-branch-step`) derives it per residence: heap via
+`heap-eq`/`dom-written` (as before), stack via the live-pair theorem
+`stack-ptr-current` + `rsp-eq`/`slot-addr-linear`/`stack-eq` (the same
+chain plan 0.61's stack-pointer loads use). The je-halt (missing label)
+route generalizes identically.
+
+### Consequences
+
+- The probe no longer typechecks (the refutation is impossible); the
+  residual is again in the honest site-discipline class.
+- Plan 0.62's discharge obligation for this residual now targets the
+  generic form: the shape layer's `TagAt` covers heap sums; the stack-sum
+  route will need the tag fact for stack-mode sums too (`SumTag Stack = ⊤`
+  in the VALUE layer understates what the emitted code guarantees — noted
+  in the plan as an M3 concern).
+- Lesson (again): a residual whose statement bakes in a REPRESENTATION
+  CHOICE (heap-only) for a claim that is really about a VALUE-LEVEL fact
+  (a written tag) is the vacuity-prone shape; state disciplines over
+  `readLoc`, not over a residence.

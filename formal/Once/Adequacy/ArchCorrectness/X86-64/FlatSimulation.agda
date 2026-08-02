@@ -1083,14 +1083,20 @@ block-step-c-branch-scratch-zero {hv} prog fs s n (suc m) j cc h ft sc-eq fl-eq 
 -- is the heap tag at *Input1 (cond-eq reduces it to sv-is-zero (SV-Tag k)
 -- like sim-test-tag); the x86 cmp reads the same value via heap-eq. The
 -- address is base+disp rdi 0, so effectiveAddr carries a +0.
-block-step-c-branch-tag-zero : ∀ {hv : HeapView} prog fs s n hl k j → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+-- RESIDENCE-GENERIC (2026-08-02 vacuity fix): the branch never cared where
+-- the tag cell lives — only the ABSTRACT read (`readLoc`, both residences)
+-- and the CONCRETE read (`rd`, supplied by the routing site per residence:
+-- heap via `heap-eq`/`dom-written`, stack via `stack-eq` + the live-pair
+-- witness). Stack-mode sums (`inl/inr Stack`) DO write their tag — into a
+-- stack slot — so the old `AtDynamic`-only form was REFUTABLE (probe).
+block-step-c-branch-tag-zero : ∀ {hv : HeapView} prog fs s n loc k j → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
-  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-  → HDom hv hl        -- the branch reads the tag at a live cell (store-WF)
-  → heapMem (floc fs) hl ≡ just (SV-Tag k)
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+  → readLoc (floc fs) loc ≡ just (SV-Tag k)
+  → X.readMem (memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just k
   → find-label prog n ≡ just j
   → BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
-block-step-c-branch-tag-zero {hv} prog fs s n hl zero j cc h ft i-eq live-hl h-eq fl-eq = result
+block-step-c-branch-tag-zero {hv} prog fs s n loc zero j cc h ft i-eq r-eq rd fl-eq = result
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
@@ -1098,10 +1104,6 @@ block-step-c-branch-tag-zero {hv} prog fs s n hl zero j cc h ft i-eq live-hl h-e
     fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (mem (base+disp rdi 0)) (imm 0))
     fetch-cmp = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)
-    addr-val : xreadReg (xregs s) rdi + 0 ≡ haddr hv hl
-    addr-val = trans (+-identityʳ (xreadReg (xregs s) rdi)) (trans (C.rdi-eq dc) (cong (C.enc-sv hv) i-eq))
-    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just 0
-    rd = trans (cong (X.readMem (memory s)) addr-val) (trans (C.heap-eq dc hl live-hl) (cong (C.enc-maybe hv) h-eq))
     post-cmp : X.State
     post-cmp = record s { flags = mkflags (0 ≡ᵇ 0) (0 <ᵇ 0) false ; pc = pc s + 1 }
     step-cmp : X.step-not-halted (compile-trace prog) s ≡ just post-cmp
@@ -1119,14 +1121,14 @@ block-step-c-branch-tag-zero {hv} prog fs s n hl zero j cc h ft i-eq live-hl h-e
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-cmp} halt-s step-cmp halt-s)
                     (exec-1 {compile-trace prog} {0} {post-cmp} {post-je} halt-s step-je halt-s)
     cond-eq : tag-zf (flat-read-tag (floc fs)) ≡ sv-is-zero (SV-Tag {FS} zero)
-    cond-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) h-eq)
+    cond-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) r-eq)
     result : BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
     result rewrite cond-eq | fl-eq = post-je , exec-eq , record
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
                           ; rbx-eq = C.rbx-eq dc ; r14-eq = C.r14-eq dc ; halt-eq = C.halt-eq dc ; rsp-eq = C.rsp-eq dc ; r15-eq = C.r15-eq dc ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc ; heap-eq = C.heap-eq dc
                       ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
       ; pc-off = refl }
-block-step-c-branch-tag-zero {hv} prog fs s n hl (suc m) j cc h ft i-eq live-hl h-eq fl-eq = result
+block-step-c-branch-tag-zero {hv} prog fs s n loc (suc m) j cc h ft i-eq r-eq rd fl-eq = result
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
@@ -1134,10 +1136,6 @@ block-step-c-branch-tag-zero {hv} prog fs s n hl (suc m) j cc h ft i-eq live-hl 
     fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (mem (base+disp rdi 0)) (imm 0))
     fetch-cmp = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)
-    addr-val : xreadReg (xregs s) rdi + 0 ≡ haddr hv hl
-    addr-val = trans (+-identityʳ (xreadReg (xregs s) rdi)) (trans (C.rdi-eq dc) (cong (C.enc-sv hv) i-eq))
-    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just (suc m)
-    rd = trans (cong (X.readMem (memory s)) addr-val) (trans (C.heap-eq dc hl live-hl) (cong (C.enc-maybe hv) h-eq))
     post-cmp : X.State
     post-cmp = record s { flags = mkflags (suc m ≡ᵇ 0) (suc m <ᵇ 0) false ; pc = pc s + 1 }
     step-cmp : X.step-not-halted (compile-trace prog) s ≡ just post-cmp
@@ -1153,7 +1151,7 @@ block-step-c-branch-tag-zero {hv} prog fs s n hl (suc m) j cc h ft i-eq live-hl 
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-cmp} halt-s step-cmp halt-s)
                     (exec-1 {compile-trace prog} {0} {post-cmp} {post-je} halt-s step-je halt-s)
     cond-eq : tag-zf (flat-read-tag (floc fs)) ≡ sv-is-zero (SV-Tag {FS} (suc m))
-    cond-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) h-eq)
+    cond-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) r-eq)
     pco' : X.State.pc post-je ≡ x86-off prog (suc (fpc fs))
     pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (x86-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))
     result : BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
@@ -1278,13 +1276,13 @@ load-indirect-suc-stack-empty-stuck {hv} prog fs s f k cc ft i-eq f-eq sk<ss st-
 -- what discharges the not-taken route of `branch-tag-label-miss` (the missing
 -- label is irrelevant when the branch is not taken). Body identical to the
 -- `suc` clause above minus the unused label witness.
-block-step-c-branch-tag-nz : ∀ {hv : HeapView} prog fs s n hl m → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+block-step-c-branch-tag-nz : ∀ {hv : HeapView} prog fs s n loc m → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
-  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-  → HDom hv hl
-  → heapMem (floc fs) hl ≡ just (SV-Tag (suc m))
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+  → readLoc (floc fs) loc ≡ just (SV-Tag (suc m))
+  → X.readMem (memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just (suc m)
   → BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
-block-step-c-branch-tag-nz {hv} prog fs s n hl m cc h ft i-eq live-hl h-eq = result
+block-step-c-branch-tag-nz {hv} prog fs s n loc m cc h ft i-eq r-eq rd = result
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
@@ -1292,10 +1290,6 @@ block-step-c-branch-tag-nz {hv} prog fs s n hl m cc h ft i-eq live-hl h-eq = res
     fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (mem (base+disp rdi 0)) (imm 0))
     fetch-cmp = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)
-    addr-val : xreadReg (xregs s) rdi + 0 ≡ haddr hv hl
-    addr-val = trans (+-identityʳ (xreadReg (xregs s) rdi)) (trans (C.rdi-eq dc) (cong (C.enc-sv hv) i-eq))
-    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just (suc m)
-    rd = trans (cong (X.readMem (memory s)) addr-val) (trans (C.heap-eq dc hl live-hl) (cong (C.enc-maybe hv) h-eq))
     post-cmp : X.State
     post-cmp = record s { flags = mkflags (suc m ≡ᵇ 0) (suc m <ᵇ 0) false ; pc = pc s + 1 }
     step-cmp : X.step-not-halted (compile-trace prog) s ≡ just post-cmp
@@ -1311,7 +1305,7 @@ block-step-c-branch-tag-nz {hv} prog fs s n hl m cc h ft i-eq live-hl h-eq = res
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-cmp} halt-s step-cmp halt-s)
                     (exec-1 {compile-trace prog} {0} {post-cmp} {post-je} halt-s step-je halt-s)
     cond-eq : tag-zf (flat-read-tag (floc fs)) ≡ sv-is-zero (SV-Tag {FS} (suc m))
-    cond-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) h-eq)
+    cond-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) r-eq)
     pco' : X.State.pc post-je ≡ x86-off prog (suc (fpc fs))
     pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (x86-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))
     result : BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))

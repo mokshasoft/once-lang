@@ -21,7 +21,7 @@
 -- supplied once, at the point this feeds `conc-flat-sim`.
 ------------------------------------------------------------------------
 
-open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame; frame-word; frame-base)
+open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame; frame-word; frame-base; slot-addr; slot-addr-linear)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; heap-ref; ref-id)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Label using (once)
@@ -29,7 +29,7 @@ open import Once.CCC.Target.X86-64.Syntax using
   ( slot-size; Program; Instr; Reg; Operand; reg; imm; mem; base; base+disp; rsp; rbp; rax; rdi; rbx
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
   ; ret; push; pop; nop; ud2; syscall; label )
-open import Data.Nat using (ℕ; _+_; _<_; _≤_; _∸_; _≡ᵇ_; _⊓_)
+open import Data.Nat using (ℕ; _+_; _*_; _<_; _≤_; _∸_; _≡ᵇ_; _⊓_)
 open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-transˡ; <-irrefl; m≤m+n; m∸n≤m
                                       ; ⊓-glb; m⊓n≤m; m⊓n≤n; m+n≤o⇒m≤o∸n; +-identityʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -43,7 +43,7 @@ open import Data.Maybe using (Maybe; just; nothing; maybe′)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Nat using (zero; suc)
-open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst)
 
 open import Once.CCC.Machine.SMCore
 open MemOps {FS} using (writeLoc; writeLocToHeap; writeLoc-halted; readLoc)
@@ -404,6 +404,15 @@ sigop-run-arith ev env n prog fs s si pl cc h ftq env-eq =
     refl
     env-eq
 
+-- `execInstr` at a memory-compare with a known read (aux helper — a
+-- `rewrite` inside the deep tag-branch where-block does not abstract).
+execInstr-cmp-mi : ∀ prog (s : X.State) a v
+  → X.readMem (X.State.memory s) (X.effectiveAddr s a) ≡ just v
+  → X.execInstr prog s (cmp (mem a) (imm 0))
+    ≡ just (record s { flags = X.mkflags (v ≡ᵇ 0) (v X.<ᵇ 0) false
+                     ; pc = X.State.pc s + 1 })
+execInstr-cmp-mi prog s a v rd rewrite rd = refl
+
 -- A Pure SigOp emits no event (ev-of-loc's Pure branch is []).
 event-of-pure : ∀ {A B} (si : SigOpInfo A B) fs → effect si ≡ Pure → event-of (instr-sigop si) fs ≡ []
 event-of-pure si fs eqe rewrite eqe = refl
@@ -540,11 +549,18 @@ postulate
   -- `store-indirect-inbounds` mold. Discharge trajectory: a per-site
   -- register-shape invariant (static expectation at each emitted site +
   -- preservation, the FlatStackPtr pattern).
+  -- RESIDENCE-GENERIC since 2026-08-02 (vacuity fix, probe-confirmed): the
+  -- old `AtDynamic`-only form was REFUTABLE — `inl/inr Stack` write their
+  -- tag into a STACK slot and hand back an `AtStack` pointer (`lea-slot`),
+  -- and `case id id ∘ inl Stack : IR Unit Unit` reaches the branch with it.
+  -- `readLoc` covers both residences; the consumer derives the concrete
+  -- read per residence (heap via `heap-eq`/`dom-written`, stack via
+  -- `stack-eq` + the live-pair theorem `stack-ptr-current`).
   branch-tag-scrutinee-wf : ∀ prog (fs : FlatState) (m : ℕ) → RunAt prog fs
                           → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
-                          → Σ HeapLocation (λ hl → Σ ℕ (λ k →
-                              (readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl))
-                              × (heapMem (floc fs) hl ≡ just (SV-Tag k))))
+                          → Σ (ValueLocation FS) (λ loc → Σ ℕ (λ k →
+                              (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+                              × (readLoc (floc fs) loc ≡ just (SV-Tag k))))
   -- `branch-tag-label-miss` RETIRED 2026-08-01 — a theorem now (`go-miss` in
   -- `tag-branch-step`): not-taken rides the label-free
   -- `block-step-c-branch-tag-nz`, taken-plus-missing is the je-halt template
@@ -1325,43 +1341,44 @@ mutual
                         ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
                           ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
   tag-branch-step {hv} n ev env prog fs s m cc wf h ftq =
-    go-fl (proj₁ wits) (proj₁ (proj₂ wits))
-          (proj₁ (proj₂ (proj₂ wits))) (proj₂ (proj₂ (proj₂ wits)))
-          (find-label prog m) refl
+    go-loc (proj₁ wits) (proj₁ (proj₂ wits))
+           (proj₁ (proj₂ (proj₂ wits))) (proj₂ (proj₂ (proj₂ wits)))
     where
-      -- D073: the scrutinee discipline hands the pointer + written-tag-cell
-      -- witnesses directly — the non-pointer and non-tag routes are gone.
+      -- The scrutinee discipline hands a POINTER (either residence) to a
+      -- written TAG cell; the concrete read is derived per residence below
+      -- and everything downstream is residence-generic.
       wits = branch-tag-scrutinee-wf prog fs m (inv-run wf) ftq
-      go-fl : ∀ hl k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
-            → heapMem (floc fs) hl ≡ just (SV-Tag k)
+      go-fl : ∀ loc k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+            → readLoc (floc fs) loc ≡ just (SV-Tag k)
+            → X.readMem (X.State.memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just k
             → ∀ (mj : Maybe ℕ) → find-label prog m ≡ mj
             → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                   ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
                     ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
-      go-fl hl zero i-eq h-eq (just j) fl-eq =
+      go-fl loc zero i-eq r-eq rd (just j) fl-eq =
         ccc-step-bs {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
-          (block-step-c-branch-tag-zero prog fs s m hl zero j cc h ftq i-eq
-             (C.dom-written (dataCorr cc) hl h-eq) h-eq fl-eq) wf ftq h refl hpost
+          (block-step-c-branch-tag-zero prog fs s m loc zero j cc h ftq i-eq r-eq rd fl-eq)
+          wf ftq h refl hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
-              hpost rewrite i-eq | h-eq | fl-eq = h
-      go-fl hl (suc k') i-eq h-eq (just j) fl-eq =
+              hpost rewrite i-eq | r-eq | fl-eq = h
+      go-fl loc (suc k') i-eq r-eq rd (just j) fl-eq =
         ccc-step-bs {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
-          (block-step-c-branch-tag-zero prog fs s m hl (suc k') j cc h ftq i-eq
-             (C.dom-written (dataCorr cc) hl h-eq) h-eq fl-eq) wf ftq h refl hpost
+          (block-step-c-branch-tag-zero prog fs s m loc (suc k') j cc h ftq i-eq r-eq rd fl-eq)
+          wf ftq h refl hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
-              hpost rewrite i-eq | h-eq = h
+              hpost rewrite i-eq | r-eq = h
       -- MISSING LABEL, NOT TAKEN: never consults the label — the ordinary
       -- fall-through via the label-free `block-step-c-branch-tag-nz`.
-      go-fl hl (suc k') i-eq h-eq nothing fl-eq =
+      go-fl loc (suc k') i-eq r-eq rd nothing fl-eq =
         ccc-step-bs {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m))
-          (block-step-c-branch-tag-nz prog fs s m hl k' cc h ftq i-eq
-             (C.dom-written (dataCorr cc) hl h-eq) h-eq) wf ftq h refl hpost
+          (block-step-c-branch-tag-nz prog fs s m loc k' cc h ftq i-eq r-eq rd)
+          wf ftq h refl hpost
         where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ false
-              hpost rewrite i-eq | h-eq = h
+              hpost rewrite i-eq | r-eq = h
       -- MISSING LABEL, TAKEN: both machines halt — the concrete `je` to an
       -- absent label sets `halted` (`find-label-none-corr`), and
       -- `do-jump nothing` halts the flat machine. Both traces [].
-      go-fl hl zero i-eq h-eq nothing fl-eq = 3 , result
+      go-fl loc zero i-eq r-eq rd nothing fl-eq = 3 , result
         where
           dc = dataCorr cc
           halt-s : X.State.halted s ≡ false
@@ -1370,19 +1387,12 @@ mutual
                     ≡ just (cmp (mem (base+disp rdi 0)) (imm 0))
           fetch-cmp = trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
                             (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-tag-zero m)) ftq)
-          addr-val : X.readReg (X.State.regs s) rdi + 0 ≡ haddr hv hl
-          addr-val = trans (+-identityʳ (X.readReg (X.State.regs s) rdi))
-                           (trans (C.rdi-eq dc) (cong (C.enc-sv hv) i-eq))
-          rd : X.readMem (X.State.memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just 0
-          rd = trans (cong (X.readMem (X.State.memory s)) addr-val)
-                     (trans (C.heap-eq dc hl (C.dom-written dc hl h-eq))
-                            (cong (C.enc-maybe hv) h-eq))
           post-cmp : X.State
           post-cmp = record s { flags = X.mkflags (0 ≡ᵇ 0) (0 X.<ᵇ 0) false
                               ; pc = X.State.pc s + 1 }
           step-cmp : X.execInstr (compile-trace prog) s (cmp (mem (base+disp rdi 0)) (imm 0))
                    ≡ just post-cmp
-          step-cmp rewrite rd = refl
+          step-cmp = execInstr-cmp-mi (compile-trace prog) s (base+disp rdi 0) 0 rd
           fetch-je : X.fetch (compile-trace prog) (X.State.pc post-cmp) ≡ just (je (once m))
           fetch-je = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) (pc-off cc))
                            (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-branch-tag-zero m)) ftq)
@@ -1391,7 +1401,7 @@ mutual
           step-je : X.execInstr (compile-trace prog) post-cmp (je (once m)) ≡ just post-je
           step-je rewrite find-label-none-corr prog m fl-eq = refl
           hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ true
-          hpost rewrite i-eq | h-eq | fl-eq = refl
+          hpost rewrite i-eq | r-eq | fl-eq = refl
           result : RTx.run-events val-x86-64 ev env 3 (compile-trace prog) s
                  ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
                    ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)
@@ -1403,6 +1413,47 @@ mutual
             (trans (RTx.run-events-halted val-x86-64 ev env 0 (compile-trace prog) post-je refl)
                    (sym (flat-events-halted n prog
                           (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) hpost))))
+      -- THE RESIDENCE DISPATCH: derive the concrete read per residence.
+      go-loc : ∀ (loc : ValueLocation FS) (k : ℕ)
+             → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+             → readLoc (floc fs) loc ≡ just (SV-Tag k)
+             → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                   ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
+                     ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs))
+      -- HEAP: the tag cell is written ⇒ mapped (`dom-written`), `heap-eq`
+      -- relates it, and the address is the pointer's encoding.
+      go-loc (AtDynamic hl) k i-eq r-eq =
+        go-fl (AtDynamic hl) k i-eq r-eq rd-heap (find-label prog m) refl
+        where
+          dc = dataCorr cc
+          addr-val : X.readReg (X.State.regs s) rdi + 0 ≡ haddr hv hl
+          addr-val = trans (+-identityʳ (X.readReg (X.State.regs s) rdi))
+                           (trans (C.rdi-eq dc) (cong (C.enc-sv hv) i-eq))
+          rd-heap : X.readMem (X.State.memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just k
+          rd-heap = trans (cong (X.readMem (X.State.memory s)) addr-val)
+                          (trans (C.heap-eq dc hl (C.dom-written dc hl r-eq))
+                                 (cong (C.enc-maybe hv) r-eq))
+      -- STACK (the probe's route): the pointer denotes `slot-addr f k'`; the
+      -- live-pair theorem pins it to the current frame's live window, where
+      -- `rsp-eq` + `stack-eq` relate exactly that cell.
+      go-loc (AtStack f k') k i-eq r-eq =
+        go-fl (AtStack f k') k i-eq r-eq rd-stack (find-label prog m) refl
+        where
+          dc = dataCorr cc
+          spc = stack-ptr-current prog fs f k' (inv-run wf) i-eq
+          st-cf : stackMem (floc fs) (current-frame (falloc fs)) k' ≡ just (SV-Tag k)
+          st-cf = trans (cong (λ fr → stackMem (floc fs) fr k') (sym (proj₁ spc))) r-eq
+          rdi-val : X.readReg (X.State.regs s) rdi + 0
+                  ≡ X.readReg (X.State.regs s) rsp + slot-to-disp k'
+          rdi-val = trans (+-identityʳ (X.readReg (X.State.regs s) rdi))
+                    (trans (C.rdi-eq dc)
+                    (trans (cong (C.enc-sv hv) i-eq)
+                    (trans (cong (λ fr → slot-addr FS fr k') (proj₁ spc))
+                    (trans (slot-addr-linear FS (current-frame (falloc fs)) k')
+                           (cong₂ (λ b w' → b + k' * w') (sym (C.rsp-eq dc)) word-eq)))))
+          rd-stack : X.readMem (X.State.memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just k
+          rd-stack = trans (cong (X.readMem (X.State.memory s)) rdi-val)
+                           (trans (C.stack-eq dc k' (proj₂ spc)) (cong (C.enc-maybe hv) st-cf))
 
   -- REG-OP scratch-dec: case the Scratch value (J-bridge, no with). A tag ⇒ the PROVEN
   -- block-step-scratch-dec applies (reg-op preserves halted: hpost=h) ⇒ ccc-step-bs.
