@@ -28,15 +28,18 @@ open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; base; U; Π; Σ'; El; Hom; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
+        ; ⌜Hom⌝; hrefl; tr
         ; var; lam; app; pair; fst; snd; vz; vs; renTm )
 open import poc.OCP0009.NbEPDirDBType
-  using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
+  using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
+        ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ )
 open import poc.OCP0009.NbEPDirDBConf
   using ( _⟹_; pvar; plam; papp; pβ; ppair; pfst; psnd; pβfst; pβsnd
-        ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝
+        ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝; p⌜Hom⌝; phrefl
+        ; ptr; ptr-J-base; ptr-J-Σ; ptr-taut
         ; _⁺; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟶*-trans
         ; ⟹-ren; ⟶*-ren; ⟶*-appˡ )
 
@@ -105,6 +108,9 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
             c ⟹ c' → d ⟹ d' → El (⌜Π⌝ c d) ⟹ᵀ Π (El c') (El d')
   pEl-⌜Σ⌝ : {c c' : RTm Γ} {d d' : RTm (Γ ∙)} →
             c ⟹ c' → d ⟹ d' → El (⌜Σ⌝ c d) ⟹ᵀ Σ' (El c') (El d')
+  pEl-⌜Hom⌝ : {c c' a a' b b' : RTm Γ} →
+              c ⟹ c' → a ⟹ a' → b ⟹ b' →
+              El (⌜Hom⌝ c a b) ⟹ᵀ Hom (El c') a' b'
   -- W2: `Hom` congruence, and its two unfoldings (`SpikeHomTy` promoted).
   pHom : {A A' : RTy Γ} {t t' u u' : RTm Γ} →
          A ⟹ᵀ A' → t ⟹ t' → u ⟹ u' → Hom A t u ⟹ᵀ Hom A' t' u'
@@ -127,6 +133,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟶ᵀ→⟹ᵀ El-⌜base⌝    = pEl-⌜base⌝
 ⟶ᵀ→⟹ᵀ (El-⌜Π⌝ c d) = pEl-⌜Π⌝ (⟹-refl c) (⟹-refl d)
 ⟶ᵀ→⟹ᵀ (El-⌜Σ⌝ c d) = pEl-⌜Σ⌝ (⟹-refl c) (⟹-refl d)
+⟶ᵀ→⟹ᵀ (El-⌜Hom⌝ c a b) = pEl-⌜Hom⌝ (⟹-refl c) (⟹-refl a) (⟹-refl b)
 ⟶ᵀ→⟹ᵀ (ξ-El r) = pEl (⟶→⟹ r)
 ⟶ᵀ→⟹ᵀ (ξ-Πˡ r) = pΠ (⟶ᵀ→⟹ᵀ r) (⟹ᵀ-refl _)
 ⟶ᵀ→⟹ᵀ (ξ-Πʳ r) = pΠ (⟹ᵀ-refl _) (⟶ᵀ→⟹ᵀ r)
@@ -152,6 +159,10 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ→⟶ᵀ* (pEl-⌜Σ⌝ {c = c} {d = d} p q) =
   stepᵀ (El-⌜Σ⌝ c d)
     (⟶ᵀ*-trans (⟶ᵀ*-Σˡ (⟶ᵀ*-El (⟹→⟶* p))) (⟶ᵀ*-Σʳ (⟶ᵀ*-El (⟹→⟶* q))))
+⟹ᵀ→⟶ᵀ* (pEl-⌜Hom⌝ {c = c} {c'} {a} {a'} {b} {b'} p q r) =
+  stepᵀ (El-⌜Hom⌝ c a b)
+    (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ (⟶ᵀ*-El (⟹→⟶* p)))
+               (⟶ᵀ*-trans (⟶ᵀ*-Homˡ (⟹→⟶* q)) (⟶ᵀ*-Homʳ (⟹→⟶* r))))
 ⟹ᵀ→⟶ᵀ* (pHom p q r) =
   ⟶ᵀ*-trans (⟶ᵀ*-Homᵀ (⟹ᵀ→⟶ᵀ* p))
     (⟶ᵀ*-trans (⟶ᵀ*-Homˡ (⟹→⟶* q)) (⟶ᵀ*-Homʳ (⟹→⟶* r)))
@@ -182,6 +193,9 @@ El (snd p) ⁺ᵀ   = El (snd p ⁺)
 El ⌜base⌝ ⁺ᵀ    = base
 El (⌜Π⌝ c d) ⁺ᵀ = Π (El (c ⁺)) (El (d ⁺))
 El (⌜Σ⌝ c d) ⁺ᵀ = Σ' (El (c ⁺)) (El (d ⁺))
+El (⌜Hom⌝ c a b) ⁺ᵀ = Hom (El (c ⁺)) (a ⁺) (b ⁺)
+El (hrefl c t) ⁺ᵀ   = El (hrefl c t ⁺)
+El (tr d p e) ⁺ᵀ    = El (tr d p e ⁺)
 Π A B ⁺ᵀ        = Π (A ⁺ᵀ) (B ⁺ᵀ)
 Σ' A B ⁺ᵀ       = Σ' (A ⁺ᵀ) (B ⁺ᵀ)
 -- W2: `Hom` develops by the head of its TYPE argument.  Where the head is
@@ -212,6 +226,12 @@ Hom (Hom A a b) t u ⁺ᵀ = Hom ((Hom A a b) ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl p⌜base⌝)   = pEl-⌜base⌝
 ⟹ᵀ-⁺ (pEl (p⌜Π⌝ p q)) = pEl-⌜Π⌝ (⟹-⁺ p) (⟹-⁺ q)
 ⟹ᵀ-⁺ (pEl (p⌜Σ⌝ p q)) = pEl-⌜Σ⌝ (⟹-⁺ p) (⟹-⁺ q)
+⟹ᵀ-⁺ (pEl (p⌜Hom⌝ p q r)) = pEl-⌜Hom⌝ (⟹-⁺ p) (⟹-⁺ q) (⟹-⁺ r)
+⟹ᵀ-⁺ (pEl w@(phrefl _ _))      = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(ptr _ _ _))       = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(ptr-J-base _))    = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(ptr-J-Σ _))       = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(ptr-taut _ _))    = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pΠ p q)       = pΠ (⟹ᵀ-⁺ p) (⟹ᵀ-⁺ q)
 ⟹ᵀ-⁺ (pΣ p q)       = pΣ (⟹ᵀ-⁺ p) (⟹ᵀ-⁺ q)
 ⟹ᵀ-⁺ pEl-⌜base⌝     = pbase
@@ -233,12 +253,15 @@ Hom (Hom A a b) t u ⁺ᵀ = Hom ((Hom A a b) ⁺ᵀ) (t ⁺) (u ⁺)
   pHom (⟹ᵀ-⁺ (pEl-⌜Π⌝ p q)) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom (pEl-⌜Σ⌝ p q) pt pu) =
   pHom (⟹ᵀ-⁺ (pEl-⌜Σ⌝ p q)) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom (pEl-⌜Hom⌝ p q r) pt pu) =
+  pHom (⟹ᵀ-⁺ (pEl-⌜Hom⌝ p q r)) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom (pHom pA pa pb) pt pu) =
   pHom (⟹ᵀ-⁺ (pHom pA pa pb)) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom (pHom-U p q) pt pu) =
   pHom (⟹ᵀ-⁺ (pHom-U p q)) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom (pHom-Π pA pB pf pg) pt pu) =
   pHom (⟹ᵀ-⁺ (pHom-Π pA pB pf pg)) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pEl-⌜Hom⌝ p q r) = pHom (pEl (⟹-⁺ p)) (⟹-⁺ q) (⟹-⁺ r)
 ⟹ᵀ-⁺ (pHom-U p q) = pΠ (pEl (⟹-⁺ p)) (pEl (⟹-ren vs (⟹-⁺ q)))
 ⟹ᵀ-⁺ (pHom-Π pA pB pf pg) =
   pΠ (⟹ᵀ-⁺ pA)

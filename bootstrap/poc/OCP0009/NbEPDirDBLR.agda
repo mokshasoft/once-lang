@@ -47,6 +47,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
+        ; ⌜Hom⌝; hrefl; tr
         ; Sub; subTy; subTm; extS; renTm
         ; subTm-renTm; subTm-id; Hom-cong₃ )
 open import poc.OCP0009.NbEPDirDBType
@@ -54,8 +55,9 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
         ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
+        ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ
         ; _⟶*_; done; step
-        ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
+        ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ )
 open import poc.OCP0009.NbEPDirDBSR using ( ⟶ᵀ-sub; ≅ᵀ-sub )
@@ -64,7 +66,8 @@ open import poc.OCP0009.NbEPDirDBConf using ( single-mono )
 open import poc.OCP0009.NbEPDirDBConf
   using ( ⟶*-trans; ⟶*-lam; ⟶*-appˡ; ⟶*-appʳ
         ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-fst; ⟶*-snd
-        ; ⟶*-⌜Π⌝ˡ; ⟶*-⌜Π⌝ʳ; ⟶*-⌜Σ⌝ˡ; ⟶*-⌜Σ⌝ʳ )
+        ; ⟶*-⌜Π⌝ˡ; ⟶*-⌜Π⌝ʳ; ⟶*-⌜Σ⌝ˡ; ⟶*-⌜Σ⌝ʳ
+        ; ⟶*-⌜Hom⌝ᶜ; ⟶*-⌜Hom⌝ˡ; ⟶*-⌜Hom⌝ʳ; ⟶*-hreflᶜ; ⟶*-hreflᵃ )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Homᵀ
         ; confluentᵀ; church-rosserᵀ
@@ -112,6 +115,11 @@ data SNe {Γ} where
   sne-app : {t u : RTm Γ} → SNe t → SN u → SNe (app t u)
   sne-fst : {p : RTm Γ} → SNe p → SNe (fst p)
   sne-snd : {p : RTm Γ} → SNe p → SNe (snd p)
+  -- W2 stage 1: `hrefl` is OPERATIONALLY INERT (its unfold family is
+  -- deferred with the canonicity package, NbEPDirDBType), so it never
+  -- becomes a `lam` and behaves as a neutral for this SN-flavored LR —
+  -- exactly as long as it has no computation.
+  sne-hrefl : {c t : RTm Γ} → SN c → SN t → SNe (hrefl c t)
 
 data SN {Γ} where
   sn-ne   : {t : RTm Γ} → SNe t → SN t
@@ -120,6 +128,7 @@ data SN {Γ} where
   sn-cb   : SN (⌜base⌝ {Γ})
   sn-cΠ   : {c : RTm Γ} {d : RTm (Γ ∙)} → SN c → SN d → SN (⌜Π⌝ c d)
   sn-cΣ   : {c : RTm Γ} {d : RTm (Γ ∙)} → SN c → SN d → SN (⌜Σ⌝ c d)
+  sn-cH   : {c a b : RTm Γ} → SN c → SN a → SN b → SN (⌜Hom⌝ c a b)
   sn-exp  : {t t' : RTm Γ} → SNRed t t' → SN t' → SN t
 
 data SNRed {Γ} where
@@ -167,6 +176,7 @@ data Ne {Γ} : RTm Γ → Set where
   ne-app : {t u : RTm Γ} → Ne t → Ne (app t u)
   ne-fst : {p : RTm Γ} → Ne p → Ne (fst p)
   ne-snd : {p : RTm Γ} → Ne p → Ne (snd p)
+  ne-hrefl : {c t : RTm Γ} → Ne (hrefl c t)
 
 ne-red : {t t' : RTm Γ} → Ne t → t ⟶ t' → Ne t'
 ne-red (ne-var x) ()
@@ -174,12 +184,15 @@ ne-red (ne-app n) (ξ-appˡ r) = ne-app (ne-red n r)
 ne-red (ne-app n) (ξ-appʳ r) = ne-app n
 ne-red (ne-fst n) (ξ-fst r)  = ne-fst (ne-red n r)
 ne-red (ne-snd n) (ξ-snd r)  = ne-snd (ne-red n r)
+ne-red ne-hrefl (ξ-hreflᶜ r) = ne-hrefl
+ne-red ne-hrefl (ξ-hreflᵃ r) = ne-hrefl
 
 sne→ne : {t : RTm Γ} → SNe t → Ne t
 sne→ne (sne-var x)   = ne-var x
 sne→ne (sne-app n _) = ne-app (sne→ne n)
 sne→ne (sne-fst n)   = ne-fst (sne→ne n)
 sne→ne (sne-snd n)   = ne-snd (sne→ne n)
+sne→ne (sne-hrefl _ _) = ne-hrefl
 
 record ElNe {Γ} (A : RTy Γ) : Set where
   constructor mkElNe
@@ -276,6 +289,12 @@ data ⊩₀_ {Γ} where
          → (⊩F : ⊩₀ F)
          → ((u : RTm Γ) → ⊩F ⊩₀∋ u → ⊩₀ (subTy (single u) G))
          → ⊩₀ A
+  -- ★ W2 stage 1: the LEVEL-0 `Hom` clause RETURNS, exactly as
+  -- SpikeHomRefl priced — with a `⌜Hom⌝` code, small types CAN reduce to
+  -- stuck `Hom`s (`El (⌜Hom⌝ c a b) ⟶ᵀ Hom (El c) a b`).  Membership is
+  -- `SN`, like `base`.
+  ⊩₀Hom  : {A H : RTy Γ} {a b : RTm Γ}
+         → A ⟶ᵀ* Hom H a b → StkHd H → ⊩₀ A
 
 ⊩₀base _     ⊩₀∋ t = SN t
 ⊩₀ne _ _     ⊩₀∋ t = SN t
@@ -283,12 +302,14 @@ data ⊩₀_ {Γ} where
 -- the DEPENDENT pair: the second component's type depends on the first.
 ⊩₀Σ _ ⊩F ⊩G  ⊩₀∋ t =
   SN t × Σ (⊩F ⊩₀∋ fst t) (λ r → (⊩G (fst t) r) ⊩₀∋ snd t)
+⊩₀Hom _ _    ⊩₀∋ t = SN t
 
 bwd₀ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₀ B → ⊩₀ A
 bwd₀ p (⊩₀base q)    = ⊩₀base (⟶ᵀ*-trans p q)
 bwd₀ p (⊩₀ne q n)    = ⊩₀ne   (⟶ᵀ*-trans p q) n
 bwd₀ p (⊩₀Π q ⊩F ⊩G) = ⊩₀Π    (⟶ᵀ*-trans p q) ⊩F ⊩G
 bwd₀ p (⊩₀Σ q ⊩F ⊩G) = ⊩₀Σ    (⟶ᵀ*-trans p q) ⊩F ⊩G
+bwd₀ p (⊩₀Hom q s)   = ⊩₀Hom  (⟶ᵀ*-trans p q) s
 
 ------------------------------------------------------------------------
 -- 3a. IRRELEVANCE UP TO CONVERSION, at level 0.
@@ -353,6 +374,43 @@ irrel₀ c (⊩₀Σ p _ _) (⊩₀Π q _ _) with joinW c p q
 ... | E , (σE , πE) with Π-reduct πE
 ...   | mkΠRed _ _ refl _ _ with Σ-reduct σE
 ...     | mkΣRed _ _ () _ _
+
+-- W2 stage 1: stuck-`Hom` identity, and its refutations against the
+-- other heads (`Hom-stk-reduct` pins the head, the other side's shape
+-- lemma pins a different one).
+irrel₀ c (⊩₀Hom _ _) (⊩₀Hom _ _) = (λ _ h → h) , (λ _ h → h)
+irrel₀ c (⊩₀base p) (⊩₀Hom q s) with joinW c p q
+... | E , (bE , hE) with base-nf bE
+...   | refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₀ c (⊩₀Hom p s) (⊩₀base q) with joinW c p q
+... | E , (hE , bE) with base-nf bE
+...   | refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₀ c (⊩₀ne p n) (⊩₀Hom q s) with joinW c p q
+... | E , (eE , hE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₀ c (⊩₀Hom p s) (⊩₀ne q n) with joinW c p q
+... | E , (hE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₀ c (⊩₀Π p _ _) (⊩₀Hom q s) with joinW c p q
+... | E , (πE , hE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₀ c (⊩₀Hom p s) (⊩₀Π q _ _) with joinW c p q
+... | E , (hE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₀ c (⊩₀Σ p _ _) (⊩₀Hom q s) with joinW c p q
+... | E , (σE , hE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
+irrel₀ c (⊩₀Hom p s) (⊩₀Σ q _ _) with joinW c p q
+... | E , (hE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Hom-stk-reduct s hE
+...     | mkHomStk _ _ _ _ ()
 
 -- the real case: confluence forces convertible domain AND codomain.
 irrel₀ c (⊩₀Π p ⊩F ⊩G) (⊩₀Π q ⊩F' ⊩G') with joinW c p q
@@ -444,6 +502,10 @@ fwd₀ p (⊩₀Σ q ⊩F ⊩G) with confluentᵀ p q
               (λ u r → fwd₀ (⟶ᵀ*-sub (single u) rG)
                             (⊩G u (projr (irrel₀ (red→≅ᵀ rF) ⊩F (fwd₀ rF ⊩F)) u r)))
 
+fwd₀ p (⊩₀Hom q s) with confluentᵀ p q
+... | E , (bE , hE) with Hom-stk-reduct s hE
+...   | mkHomStk _ _ _ s' refl = ⊩₀Hom bE s'
+
 conv₀ : {A B : RTy Γ} → A ≅ᵀ B → ⊩₀ A → ⊩₀ B
 conv₀ c R with church-rosserᵀ c
 ... | C , (aC , bC) = bwd₀ bC (fwd₀ aC R)
@@ -457,9 +519,11 @@ CR1₀ (⊩₀base _)  h = h
 CR1₀ (⊩₀ne _ _)  h = h
 CR1₀ (⊩₀Π _ _ _) h = projl h
 CR1₀ (⊩₀Σ _ _ _) h = projl h
+CR1₀ (⊩₀Hom _ _) h = h
 
 CR3₀ : {A : RTy Γ} (R : ⊩₀ A) {t : RTm Γ} → SNe t → R ⊩₀∋ t
 CR3₀ (⊩₀base _)    nt = sn-ne nt
+CR3₀ (⊩₀Hom _ _)   nt = sn-ne nt
 CR3₀ (⊩₀ne _ _)    nt = sn-ne nt
 CR3₀ (⊩₀Π _ ⊩F ⊩G) nt =
   (sn-ne nt , λ u ru → CR3₀ (⊩G u ru) (sne-app nt (CR1₀ ⊩F ru)))
@@ -469,6 +533,7 @@ CR3₀ (⊩₀Σ _ ⊩F ⊩G) {t} nt =
 
 exp₀ : {A : RTy Γ} (R : ⊩₀ A) {t t' : RTm Γ} → SNRed t t' → R ⊩₀∋ t' → R ⊩₀∋ t
 exp₀ (⊩₀base _)    r h = sn-exp r h
+exp₀ (⊩₀Hom _ _)   r h = sn-exp r h
 exp₀ (⊩₀ne _ _)    r h = sn-exp r h
 exp₀ (⊩₀Π _ ⊩F ⊩G) r h =
   (sn-exp r (projl h) , λ v rv → exp₀ (⊩G v rv) (snr-app r) (projr h v rv))
@@ -848,6 +913,7 @@ emb-coh : {A : RTy Γ} (R : ⊩₀ A) →
         × ((t : RTm Γ) → (emb R) ⊩₁∋ t → R ⊩₀∋ t)
 
 emb (⊩₀base p)    = ⊩₁base p
+emb (⊩₀Hom p s)   = ⊩₁Hom p s
 emb (⊩₀ne p n)    = ⊩₁ne p n
 emb (⊩₀Π p ⊩F ⊩G) =
   ⊩₁Π p (emb ⊩F) (λ u r → emb (⊩G u (projr (emb-coh ⊩F) u r)))
@@ -855,6 +921,7 @@ emb (⊩₀Σ p ⊩F ⊩G) =
   ⊩₁Σ p (emb ⊩F) (λ u r → emb (⊩G u (projr (emb-coh ⊩F) u r)))
 
 emb-coh (⊩₀base _) = (λ _ h → h) , (λ _ h → h)
+emb-coh (⊩₀Hom _ _) = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀ne _ _) = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Σ _ ⊩F ⊩G) =
     (λ t h → (projl h
@@ -1036,6 +1103,45 @@ homSem₁ (⊩₁Π {F = F} {G = G} p ⊩F ⊩G) {a} {b} ha hb =
                      (cong₂ app (wk-single b) refl)))
               (homSem₁ (⊩G v r) (projr ha v r) (projr hb v r)))
 
+-- ★ W2 stage 1: `homSem₀` — the level-0 mirror, owed since `⌜Hom⌝` made
+-- small types reach `Hom`s (`SpikeHomRefl`'s repeal of "level 0 needs no
+-- `Hom` clause").  STRICTLY SIMPLER than `homSem₁`: level 0 has no `U`
+-- clause, so directed univalence never fires here — four stuck heads and
+-- the pointwise `Π` recursion.
+homSem₀ : {A : RTy Γ} (R : ⊩₀ A) {a b : RTm Γ} →
+          R ⊩₀∋ a → R ⊩₀∋ b → ⊩₀ (Hom A a b)
+homSem₀ (⊩₀base p)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) sh-base
+homSem₀ (⊩₀ne p n)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-ne n)
+homSem₀ (⊩₀Σ p ⊩F ⊩G) ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) sh-Σ
+homSem₀ (⊩₀Hom p s)   ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom s)
+homSem₀ (⊩₀Π {F = F} {G = G} p ⊩F ⊩G) {a} {b} ha hb =
+  ⊩₀Π (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ p) (stepᵀ (Hom-Π F G a b) doneᵀ))
+      ⊩F
+      (λ v r →
+        subst ⊩₀_
+              (sym (Hom-cong₃ refl
+                     (cong₂ app (wk-single a) refl)
+                     (cong₂ app (wk-single b) refl)))
+              (homSem₀ (⊩G v r) (projr ha v r) (projr hb v r)))
+
+-- ★ `sem-⌜Hom⌝`: the `⌜Hom⌝` code is a semantic CODE — its decoding is a
+-- small semantic type, via `homSem₀` and one decode step.
+sem-⌜Hom⌝ : {A : RTy Γ} (p : A ⟶ᵀ* U) {c a b : RTm Γ}
+          → SN c → SN a → SN b
+          → (⊩c : ⊩₀ (El c))
+          → ⊩c ⊩₀∋ a → ⊩c ⊩₀∋ b
+          → (⊩₁U p) ⊩₁∋ ⌜Hom⌝ c a b
+sem-⌜Hom⌝ p snc sna snb ⊩c ha hb =
+  ( sn-cH snc sna snb
+  , bwd₀ (stepᵀ (El-⌜Hom⌝ _ _ _) doneᵀ) (homSem₀ ⊩c ha hb) )
+
+-- ★ `sem-hrefl`: while `hrefl` is operationally inert (stage 1), it is a
+-- neutral, and neutrals inhabit every semantic type — in particular the
+-- `Hom` at its own endpoints.
+sem-hrefl : {F : RTy Γ} (R : ⊩₁ F) {c t : RTm Γ} → SN c → SN t →
+            (ht : R ⊩₁∋ t) → (homSem₁ R ht ht) ⊩₁∋ hrefl c t
+sem-hrefl R snc snt ht = CR3₁ (homSem₁ R ht ht) (sne-hrefl snc snt)
+
 ------------------------------------------------------------------------
 -- 7. WEAK NORMALIZATION — exactly `NbEPDirDBDec.dec-conv`'s input.
 ------------------------------------------------------------------------
@@ -1081,6 +1187,14 @@ wne (sne-snd n) with wne n
   where
     nrm' : IsNormal (snd n₁)
     nrm' (ξ-snd q) = nm₁ q
+wne (sne-hrefl c t) with wn c | wn t
+... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ =
+      mkWNe (hrefl n₁ n₂) (⟶*-trans (⟶*-hreflᶜ r₁) (⟶*-hreflᵃ r₂)) nrm'
+            (sne-hrefl sn₁ sn₂)
+  where
+    nrm' : IsNormal (hrefl n₁ n₂)
+    nrm' (ξ-hreflᶜ q) = nm₁ q
+    nrm' (ξ-hreflᵃ q) = nm₂ q
 
 wn (sn-ne n) with wne n
 ... | mkWNe n₁ r₁ nm₁ ne₁ = mkWN n₁ r₁ nm₁ (sn-ne ne₁)
@@ -1112,6 +1226,16 @@ wn (sn-cΣ c d) with wn c | wn d
     nrm' : IsNormal (⌜Σ⌝ n₁ n₂)
     nrm' (ξ-⌜Σ⌝ˡ q) = nm₁ q
     nrm' (ξ-⌜Σ⌝ʳ q) = nm₂ q
+wn (sn-cH c a b) with wn c | wn a | wn b
+... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃ =
+      mkWN (⌜Hom⌝ n₁ n₂ n₃)
+           (⟶*-trans (⟶*-⌜Hom⌝ᶜ r₁) (⟶*-trans (⟶*-⌜Hom⌝ˡ r₂) (⟶*-⌜Hom⌝ʳ r₃)))
+           nrm' (sn-cH sn₁ sn₂ sn₃)
+  where
+    nrm' : IsNormal (⌜Hom⌝ n₁ n₂ n₃)
+    nrm' (ξ-⌜Hom⌝ᶜ q) = nm₁ q
+    nrm' (ξ-⌜Hom⌝ˡ q) = nm₂ q
+    nrm' (ξ-⌜Hom⌝ʳ q) = nm₃ q
 wn (sn-exp r h) with wn h
 ... | mkWN n₁ r₁ nm₁ sn₁ = mkWN n₁ (step (snr→⟶ r) r₁) nm₁ sn₁
 

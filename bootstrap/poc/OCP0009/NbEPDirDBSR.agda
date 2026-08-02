@@ -32,16 +32,20 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBSR where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; subst; cong₂ )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; subst; cong; cong₂ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
-        ; Sub; subTy; subTm; extS; _∘ₛ_; renTm
-        ; subTm-subTm; subTm-cong; subTm-renTm; subTm-id; renTm-subTm )
+        ; ⌜Π⌝; ⌜Hom⌝; hrefl; tr; ⌜Hom⌝-cong₃; tr-cong₃
+        ; Ren; extR; Sub; subTy; subTm; extS; _∘ₛ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; renTm
+        ; subTm-subTm; subTm-cong; subTm-renTm; subTm-id; renTm-subTm
+        ; renTm-renTm; renTm-cong )
 open import poc.OCP0009.NbEPDirDBType
-  using ( single; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
+  using ( single; swp; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
         ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
-        ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
+        ; tr-J-base; tr-J-Σ; tr-taut
+        ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
+        ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; _⊢_∷_; ⊢var; ⊢lam; ⊢app; here
@@ -70,6 +74,46 @@ sub-comm {Γ} σ t u =
   bridge (vs x) = sym (trans (subTm-renTm (σ x)) (subTm-id (σ x)))
 
 ------------------------------------------------------------------------
+-- Weakening/renaming vs substitution commutation — the bridges the
+-- `Hom-U`/`Hom-Π`/`hrefl-Π`/`tr-pw` cases need.  All three are pointwise
+-- arguments in the RENAMING fragment (no new substitution machinery —
+-- exactly the shape SpikeTr priced).
+------------------------------------------------------------------------
+
+wk-sub : (σ : Sub Γ Δ) (t : RTm Γ) →
+         subTm (extS σ) (renTm vs t) ≡ renTm vs (subTm σ t)
+wk-sub σ t = trans (subTm-renTm t) (sym (renTm-subTm t))
+
+-- the same commutation one binder down: `extR vs` against `extS (extS σ)`
+wk₁-sub : (σ : Sub Γ Δ) (t : RTm (Γ ∙)) →
+          subTm (extS (extS σ)) (renTm (extR vs) t) ≡
+          renTm (extR vs) (subTm (extS σ) t)
+wk₁-sub σ t =
+  trans (subTm-renTm t) (trans (subTm-cong ptw t) (sym (renTm-subTm t)))
+  where
+  ptw : ∀ x → (extS (extS σ) ₛ∘ᵣ extR vs) x ≡ (extR vs ᵣ∘ₛ extS σ) x
+  ptw vz     = refl
+  ptw (vs z) =
+    trans (renTm-renTm (σ z))
+          (trans (renTm-cong (λ _ → refl) (σ z)) (sym (renTm-renTm (σ z))))
+
+-- the top-two-variable swap against `extS (extS σ)`
+swp-sub : (σ : Sub Γ Δ) (t : RTm ((Γ ∙) ∙)) →
+          subTm (extS (extS σ)) (renTm swp t) ≡
+          renTm swp (subTm (extS (extS σ)) t)
+swp-sub σ t =
+  trans (subTm-renTm t) (trans (subTm-cong ptw t) (sym (renTm-subTm t)))
+  where
+  ptw : ∀ x → (extS (extS σ) ₛ∘ᵣ swp) x ≡ (swp ᵣ∘ₛ extS (extS σ)) x
+  ptw vz          = refl
+  ptw (vs vz)     = refl
+  ptw (vs (vs z)) =
+    trans (renTm-renTm (σ z))
+          (trans (renTm-cong (λ _ → refl) (σ z))
+                 (sym (trans (renTm-renTm (renTm vs (σ z)))
+                             (renTm-renTm (σ z)))))
+
+------------------------------------------------------------------------
 -- Reduction is substitution-stable — terms, then types.
 ------------------------------------------------------------------------
 
@@ -91,18 +135,27 @@ sub-comm {Γ} σ t u =
 ⟶-sub σ (ξ-⌜Π⌝ʳ r) = ξ-⌜Π⌝ʳ (⟶-sub (extS σ) r)
 ⟶-sub σ (ξ-⌜Σ⌝ˡ r) = ξ-⌜Σ⌝ˡ (⟶-sub σ r)
 ⟶-sub σ (ξ-⌜Σ⌝ʳ r) = ξ-⌜Σ⌝ʳ (⟶-sub (extS σ) r)
-
--- Weakening then substituting under the binder is substituting then
--- weakening — the bridge the `Hom-U`/`Hom-Π` cases need.  Both composites
--- are DEFINITIONALLY the pointwise substitution `x ↦ renTm vs (σ x)`.
-wk-sub : (σ : Sub Γ Δ) (t : RTm Γ) →
-         subTm (extS σ) (renTm vs t) ≡ renTm vs (subTm σ t)
-wk-sub σ t = trans (subTm-renTm t) (sym (renTm-subTm t))
+-- W2 eliminator: the two J rules and `tr-taut` are direct.
+⟶-sub σ (tr-J-base d s e) =
+  tr-J-base (subTm (extS σ) d) (subTm σ s) (subTm σ e)
+⟶-sub σ (tr-J-Σ d c₁ c₂ s e) =
+  tr-J-Σ (subTm (extS σ) d) (subTm σ c₁) (subTm (extS σ) c₂)
+         (subTm σ s) (subTm σ e)
+⟶-sub σ (tr-taut f e) = tr-taut (subTm (extS σ) f) (subTm σ e)
+⟶-sub σ (ξ-⌜Hom⌝ᶜ r) = ξ-⌜Hom⌝ᶜ (⟶-sub σ r)
+⟶-sub σ (ξ-⌜Hom⌝ˡ r) = ξ-⌜Hom⌝ˡ (⟶-sub σ r)
+⟶-sub σ (ξ-⌜Hom⌝ʳ r) = ξ-⌜Hom⌝ʳ (⟶-sub σ r)
+⟶-sub σ (ξ-hreflᶜ r) = ξ-hreflᶜ (⟶-sub σ r)
+⟶-sub σ (ξ-hreflᵃ r) = ξ-hreflᵃ (⟶-sub σ r)
+⟶-sub σ (ξ-trᵈ r)    = ξ-trᵈ (⟶-sub (extS σ) r)
+⟶-sub σ (ξ-trᵖ r)    = ξ-trᵖ (⟶-sub σ r)
+⟶-sub σ (ξ-trᵉ r)    = ξ-trᵉ (⟶-sub σ r)
 
 ⟶ᵀ-sub : (σ : Sub Γ Δ) {A B : RTy Γ} → A ⟶ᵀ B → subTy σ A ⟶ᵀ subTy σ B
 ⟶ᵀ-sub σ (El-⌜base⌝)  = El-⌜base⌝
 ⟶ᵀ-sub σ (El-⌜Π⌝ c d) = El-⌜Π⌝ (subTm σ c) (subTm (extS σ) d)
 ⟶ᵀ-sub σ (El-⌜Σ⌝ c d) = El-⌜Σ⌝ (subTm σ c) (subTm (extS σ) d)
+⟶ᵀ-sub σ (El-⌜Hom⌝ c a b) = El-⌜Hom⌝ (subTm σ c) (subTm σ a) (subTm σ b)
 ⟶ᵀ-sub σ (ξ-El r) = ξ-El (⟶-sub σ r)
 ⟶ᵀ-sub σ (ξ-Πˡ r) = ξ-Πˡ (⟶ᵀ-sub σ r)
 ⟶ᵀ-sub σ (ξ-Πʳ r) = ξ-Πʳ (⟶ᵀ-sub (extS σ) r)

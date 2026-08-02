@@ -30,28 +30,28 @@ module poc.OCP0009.NbEPDirDBIdJ where
 open import normalizer.Syntax.Types using ( _≡_; refl; ¬_; ⊥ )
 open import poc.OCP0009.NbEPDirDBPi using ( Cx; ε; _∙; Var; vz; RTm; var; lam; app )
 open import poc.OCP0009.NbEPDirDBType
-  using ( _⟶_; β; _⟶*_; done; step; Hom )
+  using ( _⟶_; β; _⟶*_; done; step; Hom⟶ )
 
 private
   variable
     Γ : Cx
 
 ------------------------------------------------------------------------
--- Directed path induction: `Hom` IS a directed identity type.
+-- Directed path induction: `Hom⟶` IS a directed identity type.
 ------------------------------------------------------------------------
 
-J⟶ : (P : (t u : RTm Γ) → Hom t u → Set)
+J⟶ : (P : (t u : RTm Γ) → Hom⟶ t u → Set)
    → (∀ t → P t t done)
-   → (∀ {t u v} (s : t ⟶ u) (p : Hom u v) → P u v p → P t v (step s p))
-   → ∀ {t u} (p : Hom t u) → P t u p
+   → (∀ {t u v} (s : t ⟶ u) (p : Hom⟶ u v) → P u v p → P t v (step s p))
+   → ∀ {t u} (p : Hom⟶ t u) → P t u p
 J⟶ P prefl pstep done       = prefl _
 J⟶ P prefl pstep (step s p) = pstep s p (J⟶ P prefl pstep p)
 
 -- Based at the target (structural, because chains grow at the source).
-J-tgt : {v : RTm Γ} (P : ∀ t → Hom t v → Set)
+J-tgt : {v : RTm Γ} (P : ∀ t → Hom⟶ t v → Set)
       → P v done
-      → (∀ {t u} (s : t ⟶ u) (p : Hom u v) → P u p → P t (step s p))
-      → ∀ {t} (p : Hom t v) → P t p
+      → (∀ {t u} (s : t ⟶ u) (p : Hom⟶ u v) → P u p → P t (step s p))
+      → ∀ {t} (p : Hom⟶ t v) → P t p
 J-tgt P prefl pstep done       = prefl
 J-tgt P prefl pstep (step s p) = pstep s p (J-tgt P prefl pstep p)
 
@@ -66,13 +66,13 @@ var-stuck ()
 βid : app (lam (var vz)) (var vz) ⟶ var (vz {ε})
 βid = β (var vz) (var vz)
 
-opt : Hom (app (lam (var vz)) (var vz)) (var (vz {ε}))
+opt : Hom⟶ (app (lam (var vz)) (var vz)) (var (vz {ε}))
 opt = step βid done
 
-no-back : ¬ Hom (var (vz {ε})) (app (lam (var vz)) (var vz))
+no-back : ¬ Hom⟶ (var (vz {ε})) (app (lam (var vz)) (var vz))
 no-back (step s _) = var-stuck s
 
-no-sym : ¬ ({Γ : Cx} {t u : RTm Γ} → Hom t u → Hom u t)
+no-sym : ¬ ({Γ : Cx} {t u : RTm Γ} → Hom⟶ t u → Hom⟶ u t)
 no-sym symH = no-back (symH opt)
 
 ------------------------------------------------------------------------
@@ -81,14 +81,14 @@ no-sym symH = no-back (symH opt)
 
 transport⟶ : (P : RTm Γ → Set)
            → (∀ {u v} → u ⟶ v → P u → P v)
-           → ∀ {t u} → Hom t u → P t → P u
+           → ∀ {t u} → Hom⟶ t u → P t → P u
 transport⟶ P cov done       x = x
 transport⟶ P cov (step s p) x = transport⟶ P cov p (cov s x)
 
 -- The canonical covariant family is the hom-family itself (Yoneda action).
-snoc : {t u v : RTm Γ} → Hom t u → u ⟶ v → Hom t v
+snoc : {t u v : RTm Γ} → Hom⟶ t u → u ⟶ v → Hom⟶ t v
 snoc done       s = step s done
 snoc (step s₀ p) s = step s₀ (snoc p s)
 
-yo : {t u v : RTm Γ} → Hom u v → Hom t u → Hom t v
-yo q = transport⟶ (Hom _) (λ s r → snoc r s) q
+yo : {t u v : RTm Γ} → Hom⟶ u v → Hom⟶ t u → Hom⟶ t v
+yo q = transport⟶ (Hom⟶ _) (λ s r → snoc r s) q

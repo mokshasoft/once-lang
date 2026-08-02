@@ -67,12 +67,13 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBVar where
 
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
-        ; Ren; extR; renTy; renTm )
+        ; ⌜Hom⌝; hrefl; tr; ⌜Hom⌝-cong₃; tr-cong₃
+        ; Ren; extR; renTy; renTm; Sub; extS; subTm )
 
 private
   variable
@@ -115,6 +116,9 @@ occTm x (snd p)    = occTm x p
 occTm x ⌜base⌝     = false
 occTm x (⌜Π⌝ c d)  = occTm x c ∨ occTm (vs x) d
 occTm x (⌜Σ⌝ c d)  = occTm x c ∨ occTm (vs x) d
+occTm x (⌜Hom⌝ c a b) = occTm x c ∨ occTm x a ∨ occTm x b
+occTm x (hrefl c t)   = occTm x c ∨ occTm x t
+occTm x (tr d p e)    = occTm (vs x) d ∨ occTm x p ∨ occTm x e
 
 ------------------------------------------------------------------------
 -- 2. ★ THE POLARITY JUDGMENT.
@@ -194,6 +198,12 @@ occ-ren-tm h (⌜Π⌝ c d)  =
   ∨-false (occ-ren-tm h c) (occ-ren-tm (avoids-ext h) d)
 occ-ren-tm h (⌜Σ⌝ c d)  =
   ∨-false (occ-ren-tm h c) (occ-ren-tm (avoids-ext h) d)
+occ-ren-tm h (⌜Hom⌝ c a b) =
+  ∨-false (occ-ren-tm h c) (∨-false (occ-ren-tm h a) (occ-ren-tm h b))
+occ-ren-tm h (hrefl c t)   = ∨-false (occ-ren-tm h c) (occ-ren-tm h t)
+occ-ren-tm h (tr d p e)    =
+  ∨-false (occ-ren-tm (avoids-ext h) d)
+          (∨-false (occ-ren-tm h p) (occ-ren-tm h e))
 
 avoids-wk : Avoids (vs {Γ}) vz
 avoids-wk y = refl
@@ -243,3 +253,211 @@ sym-motive-neg = neg-Hom refl refl
 -- by the type checker accepting these).
 flip-pos : Pos (vz {Γ = Γ ∙}) (Π base (El (var (vs vz))))
 flip-pos = pos-Π (neg-const refl) pos-El
+
+------------------------------------------------------------------------
+-- 5. ★ `PosC` — THE `tr` LICENSE (SpikeTr, 2026-08-01): the fragment of
+--    covariance that comes WITH a computation rule.  `Pos` above is the
+--    semantic statement; `⊢tr`'s premise is this strictly smaller
+--    judgment on motive CODES (`tr d p e` has motive `El d`).
+--
+--    Deliberately absent, each absence content (SpikeTr §8):
+--      * no `posc-const` — a constant motive's action is the identity,
+--        and substitution cannot even see it (`const-motive-invisible`);
+--        licensing it without a rule is a canonicity hole;
+--      * no `⌜Π⌝`/`⌜Σ⌝` congruence rules — covariant compound motives
+--        without a computation rule are the same hole; those transports
+--        are derivable pointwise per instance (the `⊢hom-id` pattern).
+------------------------------------------------------------------------
+
+data PosC {Γ} : Var Γ → RTm Γ → Set where
+  posc-var : {x : Var Γ} → PosC x (var x)
+  posc-Hom : {x : Var Γ} {c a : RTm Γ} →
+             occTm x c ≡ false → occTm x a ≡ false →
+             PosC x (⌜Hom⌝ c a (var x))
+
+-- the composition motive is licensed over any ambient code and source —
+-- with `⊢tr` this is `trans : Hom (El c) a t → Hom (El c) t u → Hom (El c) a u`
+comp-posc : (c a : RTm Γ) →
+            PosC vz (⌜Hom⌝ (renTm vs c) (renTm vs a) (var vz))
+comp-posc c a = posc-Hom (occ-ren-tm avoids-wk c) (occ-ren-tm avoids-wk a)
+
+-- the tautological motive is licensed — transport along a universe path
+-- is application (directed univalence, computing)
+taut-posc : PosC (vz {Γ = Γ ∙}) (var vz)
+taut-posc = posc-var
+
+-- ★★★ NEGATIVE — `sym`'s motive CODE, marker in the FIRST (contravariant)
+-- endpoint: refuted by PATTERN alone (`posc-Hom` wants the marker in the
+-- second endpoint, `posc-var` wants a bare variable).
+sym-code : RTm ((ε ∙) ∙)
+sym-code = ⌜Hom⌝ ⌜base⌝ (var vz) (var (vs vz))
+
+sym-code-not-posc : PosC vz sym-code → (∀ {P : Set} → P)
+sym-code-not-posc ()
+
+-- NEGATIVE — the loop motive `⌜Hom⌝ c (var x) (var x)` (marker at BOTH
+-- endpoints) fails the vz-freeness premise by computation.
+loop-code-not-posc : PosC (vz {Γ = Γ ∙}) (⌜Hom⌝ ⌜base⌝ (var vz) (var vz)) →
+                     (∀ {P : Set} → P)
+loop-code-not-posc (posc-Hom _ ())
+
+------------------------------------------------------------------------
+-- 6. OCCURRENCE TRANSPORT — what typed renaming/substitution and `sr`
+--    need to carry `PosC` through `⊢tr` (consolidation, 2026-08-01).
+------------------------------------------------------------------------
+
+∨-inl : {x y : 𝔹} → x ≡ true → (x ∨ y) ≡ true
+∨-inl refl = refl
+
+∨-inr : (x : 𝔹) {y : 𝔹} → y ≡ true → (x ∨ y) ≡ true
+∨-inr true  h = refl
+∨-inr false h = h
+
+∨-false₁ : (x : 𝔹) {y : 𝔹} → (x ∨ y) ≡ false → x ≡ false
+∨-false₁ false h = refl
+
+∨-false₂ : (x : 𝔹) {y : 𝔹} → (x ∨ y) ≡ false → y ≡ false
+∨-false₂ false h = h
+
+eqv-refl : (x : Var Γ) → eqv x x ≡ true
+eqv-refl vz     = refl
+eqv-refl (vs x) = eqv-refl x
+
+-- Renaming transports occurrence pointwise: if the renaming carries the
+-- tracked variable exactly (`eqv x' (ρ y) ≡ eqv x y`), occurrence of the
+-- image equals occurrence of the source.
+ext-eq : {ρ : Ren Γ Δ} {x : Var Γ} {x' : Var Δ} →
+         (∀ y → eqv x' (ρ y) ≡ eqv x y) →
+         ∀ y → eqv (vs x') (extR ρ y) ≡ eqv (vs x) y
+ext-eq h vz     = refl
+ext-eq h (vs y) = h y
+
+occ-ren-eq : {ρ : Ren Γ Δ} {x : Var Γ} {x' : Var Δ} →
+             (∀ y → eqv x' (ρ y) ≡ eqv x y) →
+             (t : RTm Γ) → occTm x' (renTm ρ t) ≡ occTm x t
+occ-ren-eq h (var y)    = h y
+occ-ren-eq h (lam t)    = occ-ren-eq (ext-eq h) t
+occ-ren-eq h (app t u)  = cong₂ _∨_ (occ-ren-eq h t) (occ-ren-eq h u)
+occ-ren-eq h (pair a b) = cong₂ _∨_ (occ-ren-eq h a) (occ-ren-eq h b)
+occ-ren-eq h (fst p)    = occ-ren-eq h p
+occ-ren-eq h (snd p)    = occ-ren-eq h p
+occ-ren-eq h ⌜base⌝     = refl
+occ-ren-eq h (⌜Π⌝ c d)  =
+  cong₂ _∨_ (occ-ren-eq h c) (occ-ren-eq (ext-eq h) d)
+occ-ren-eq h (⌜Σ⌝ c d)  =
+  cong₂ _∨_ (occ-ren-eq h c) (occ-ren-eq (ext-eq h) d)
+occ-ren-eq h (⌜Hom⌝ c a b) =
+  cong₂ _∨_ (occ-ren-eq h c) (cong₂ _∨_ (occ-ren-eq h a) (occ-ren-eq h b))
+occ-ren-eq h (hrefl c t)   = cong₂ _∨_ (occ-ren-eq h c) (occ-ren-eq h t)
+occ-ren-eq h (tr d p e)    =
+  cong₂ _∨_ (occ-ren-eq (ext-eq h) d)
+            (cong₂ _∨_ (occ-ren-eq h p) (occ-ren-eq h e))
+
+-- Substitution KILLS occurrence: if the substitution's images avoid the
+-- tracked target variable on every source variable the term can mention,
+-- the result avoids it too.
+ext-occ : {σ : Sub Γ Δ} {x : Var Γ} {x' : Var Δ} →
+          (∀ y → eqv x y ≡ false → occTm x' (σ y) ≡ false) →
+          ∀ y → eqv (vs x) y ≡ false → occTm (vs x') (extS σ y) ≡ false
+ext-occ h vz     _ = refl
+ext-occ {σ = σ} h (vs y) e =
+  trans (occ-ren-eq (λ _ → refl) (σ y)) (h y e)
+
+occ-sub : {σ : Sub Γ Δ} {x : Var Γ} {x' : Var Δ} →
+          (∀ y → eqv x y ≡ false → occTm x' (σ y) ≡ false) →
+          (t : RTm Γ) → occTm x t ≡ false → occTm x' (subTm σ t) ≡ false
+occ-sub h (var y)    e = h y e
+occ-sub h (lam t)    e = occ-sub (ext-occ h) t e
+occ-sub {x = x} h (app t u) e =
+  ∨-false (occ-sub h t (∨-false₁ (occTm x t) e))
+          (occ-sub h u (∨-false₂ (occTm x t) e))
+occ-sub {x = x} h (pair a b) e =
+  ∨-false (occ-sub h a (∨-false₁ (occTm x a) e))
+          (occ-sub h b (∨-false₂ (occTm x a) e))
+occ-sub h (fst p)    e = occ-sub h p e
+occ-sub h (snd p)    e = occ-sub h p e
+occ-sub h ⌜base⌝     e = refl
+occ-sub {x = x} h (⌜Π⌝ c d) e =
+  ∨-false (occ-sub h c (∨-false₁ (occTm x c) e))
+          (occ-sub (ext-occ h) d (∨-false₂ (occTm x c) e))
+occ-sub {x = x} h (⌜Σ⌝ c d) e =
+  ∨-false (occ-sub h c (∨-false₁ (occTm x c) e))
+          (occ-sub (ext-occ h) d (∨-false₂ (occTm x c) e))
+occ-sub {x = x} h (⌜Hom⌝ c a b) e =
+  ∨-false (occ-sub h c (∨-false₁ (occTm x c) e))
+          (∨-false (occ-sub h a (∨-false₁ (occTm x a) (∨-false₂ (occTm x c) e)))
+                   (occ-sub h b (∨-false₂ (occTm x a) (∨-false₂ (occTm x c) e))))
+occ-sub {x = x} h (hrefl c t) e =
+  ∨-false (occ-sub h c (∨-false₁ (occTm x c) e))
+          (occ-sub h t (∨-false₂ (occTm x c) e))
+occ-sub {x = x} h (tr d p q) e =
+  ∨-false (occ-sub (ext-occ h) d (∨-false₁ (occTm (vs x) d) e))
+          (∨-false (occ-sub h p (∨-false₁ (occTm x p) (∨-false₂ (occTm (vs x) d) e)))
+                   (occ-sub h q (∨-false₂ (occTm x p) (∨-false₂ (occTm (vs x) d) e))))
+
+-- Two substitutions agreeing on every OCCURRING variable act equally
+-- (SpikeTr §9, promoted) — how `sr`'s `tr-pw` case bridges the swap
+-- renaming to a typed substitution on a variable-avoiding motive.
+ext-agree : {σ τ : Sub Γ Δ} (f : Var (Γ ∙) → 𝔹) →
+            ((y : Var Γ) → f (vs y) ≡ true → σ y ≡ τ y) →
+            (x : Var (Γ ∙)) → f x ≡ true → extS σ x ≡ extS τ x
+ext-agree f g vz     _ = refl
+ext-agree f g (vs y) o = cong (renTm vs) (g y o)
+
+subTm-occ : {σ τ : Sub Γ Δ} (m : RTm Γ) →
+            ((x : Var Γ) → occTm x m ≡ true → σ x ≡ τ x) →
+            subTm σ m ≡ subTm τ m
+subTm-occ (var y)    h = h y (eqv-refl y)
+subTm-occ (lam m)    h = cong lam (subTm-occ m (ext-agree (λ x → occTm x m) h))
+subTm-occ (app m k)  h = cong₂ app
+  (subTm-occ m (λ x o → h x (∨-inl o)))
+  (subTm-occ k (λ x o → h x (∨-inr (occTm x m) o)))
+subTm-occ (pair m k) h = cong₂ pair
+  (subTm-occ m (λ x o → h x (∨-inl o)))
+  (subTm-occ k (λ x o → h x (∨-inr (occTm x m) o)))
+subTm-occ (fst m)    h = cong fst (subTm-occ m h)
+subTm-occ (snd m)    h = cong snd (subTm-occ m h)
+subTm-occ ⌜base⌝     h = refl
+subTm-occ (⌜Π⌝ m k)  h = cong₂ ⌜Π⌝
+  (subTm-occ m (λ x o → h x (∨-inl o)))
+  (subTm-occ k (ext-agree (λ x → occTm x k) (λ y o → h y (∨-inr (occTm y m) o))))
+subTm-occ (⌜Σ⌝ m k)  h = cong₂ ⌜Σ⌝
+  (subTm-occ m (λ x o → h x (∨-inl o)))
+  (subTm-occ k (ext-agree (λ x → occTm x k) (λ y o → h y (∨-inr (occTm y m) o))))
+subTm-occ (⌜Hom⌝ m k l) h =
+  ⌜Hom⌝-cong₃
+    (subTm-occ m (λ x o → h x (∨-inl o)))
+    (subTm-occ k (λ x o → h x (∨-inr (occTm x m) (∨-inl o))))
+    (subTm-occ l (λ x o → h x (∨-inr (occTm x m) (∨-inr (occTm x k) o))))
+subTm-occ (hrefl m k) h = cong₂ hrefl
+  (subTm-occ m (λ x o → h x (∨-inl o)))
+  (subTm-occ k (λ x o → h x (∨-inr (occTm x m) o)))
+subTm-occ (tr m k l) h =
+  tr-cong₃
+    (subTm-occ m (ext-agree (λ x → occTm x m) (λ y o → h y (∨-inl o))))
+    (subTm-occ k (λ x o → h x (∨-inr (occTm (vs x) m) (∨-inl o))))
+    (subTm-occ l (λ x o → h x (∨-inr (occTm (vs x) m) (∨-inr (occTm x k) o))))
+
+------------------------------------------------------------------------
+-- 7. `PosC` survives renaming and substitution — `⊢tr` moves under both.
+------------------------------------------------------------------------
+
+posc-ren : {ρ : Ren Γ Δ} {d : RTm (Γ ∙)} →
+           PosC vz d → PosC vz (renTm (extR ρ) d)
+posc-ren posc-var = posc-var
+posc-ren {ρ = ρ} (posc-Hom {c = c} {a = a} hc ha) =
+  posc-Hom (trans (occ-ren-eq inv c) hc) (trans (occ-ren-eq inv a) ha)
+  where
+  inv : ∀ y → eqv vz (extR ρ y) ≡ eqv vz y
+  inv vz     = refl
+  inv (vs y) = refl
+
+posc-sub : {σ : Sub Γ Δ} {d : RTm (Γ ∙)} →
+           PosC vz d → PosC vz (subTm (extS σ) d)
+posc-sub posc-var = posc-var
+posc-sub {σ = σ} (posc-Hom {c = c} {a = a} hc ha) =
+  posc-Hom (occ-sub hs c hc) (occ-sub hs a ha)
+  where
+  hs : ∀ y → eqv vz y ≡ false → occTm vz (extS σ y) ≡ false
+  hs vz ()
+  hs (vs y) _ = occ-ren-tm avoids-wk (σ y)

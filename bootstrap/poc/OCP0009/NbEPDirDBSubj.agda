@@ -26,34 +26,44 @@
 module poc.OCP0009.NbEPDirDBSubj where
 
 open import normalizer.Syntax.Types
-  using ( _≡_; refl; sym; trans; subst; cong₂; Σ; _,_; _×_ )
+  using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ ; ⊥ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
-        ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
+        ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr
         ; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ
         ; _∘ᵣ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_
         ; subTy-renTy; renTy-subTy; subTy-subTy; renTy-renTy
-        ; subTy-cong; renTy-cong; subTy-id; subTm-renTm; subTm-id
+        ; subTy-cong; renTy-cong; subTy-id; subTm-renTm; subTm-id; subTm-cong
         ; renTm-renTm )
+open import poc.OCP0009.NbEPDirDBVar
+  using ( 𝔹; true; false; _∨_; occTm; ∨-false; ∨-false₁; ∨-false₂
+        ; occ-ren-eq; occ-sub; eqv
+        ; PosC; posc-var; posc-Hom; posc-ren; posc-sub )
 open import poc.OCP0009.NbEPDirDBType
-  using ( single; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
+  using ( single; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
+        ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
         ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
-        ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; _⟶*_; done; step
+        ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
+        ; tr-J-base; tr-J-Σ; tr-taut
+        ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
+        ; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd
-        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢conv
+        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢conv
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom
         ; ⊢ctx_; c-◇; c-▹ )
-open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub )
+open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; ⟶-sub )
 open import poc.OCP0009.NbEPDirDBConf
-  using ( ⟶-ren; subTm-monoˢ; extS-mono; single-mono )
+  using ( ⟶-ren; ⟶*-ren; ren-comm; subTm-monoˢ; extS-mono; single-mono )
+open import poc.OCP0009.NbEPDirDBSR using ( sub-comm )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans
         ; ⟶ᵀ*-El; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ
-        ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ; red→≅ᵀ; Π-inj; Σ-inj )
+        ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ; red→≅ᵀ; Π-inj; Σ-inj
+        ; church-rosserᵀ; Π-reduct; ΠRed; mkΠRed )
 
 private
   variable
@@ -123,6 +133,7 @@ wk-ren ρ t = trans (renTm-renTm t) (sym (renTm-renTm t))
 ⟶ᵀ-ren ρ El-⌜base⌝    = El-⌜base⌝
 ⟶ᵀ-ren ρ (El-⌜Π⌝ c d) = El-⌜Π⌝ (renTm ρ c) (renTm (extR ρ) d)
 ⟶ᵀ-ren ρ (El-⌜Σ⌝ c d) = El-⌜Σ⌝ (renTm ρ c) (renTm (extR ρ) d)
+⟶ᵀ-ren ρ (El-⌜Hom⌝ c a b) = El-⌜Hom⌝ (renTm ρ c) (renTm ρ a) (renTm ρ b)
 ⟶ᵀ-ren ρ (ξ-El r) = ξ-El (⟶-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-Πˡ r) = ξ-Πˡ (⟶ᵀ-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-Πʳ r) = ξ-Πʳ (⟶ᵀ-ren (extR ρ) r)
@@ -160,6 +171,201 @@ subTy-monoˢ h (Σ' A B) =
 subTy-monoˢ h (Hom A t u) =
   ⟶ᵀ*-trans (⟶ᵀ*-Homᵀ (subTy-monoˢ h A))
     (⟶ᵀ*-trans (⟶ᵀ*-Homˡ (subTm-monoˢ h t)) (⟶ᵀ*-Homʳ (subTm-monoˢ h u)))
+
+------------------------------------------------------------------------
+-- W2 eliminator support: term-level cancels, type reduction under
+-- renaming (star), occurrence preservation under reduction (`PosC`
+-- survives `ξ-trᵈ`), and the reduct analyses `sr`'s new root cases need.
+------------------------------------------------------------------------
+
+wk-cancel-tm : (a t : RTm Γ) → subTm (single a) (renTm vs t) ≡ t
+wk-cancel-tm a t =
+  trans (subTm-renTm t) (trans (subTm-cong (λ _ → refl) t) (subTm-id t))
+
+wk-inst : (d : RTm (Γ ∙)) → subTm (single (var vz)) (renTm (extR vs) d) ≡ d
+wk-inst d =
+  trans (subTm-renTm d) (trans (subTm-cong ptw d) (subTm-id d))
+  where
+  ptw : ∀ x → (single (var vz) ₛ∘ᵣ extR vs) x ≡ idₛ x
+  ptw vz     = refl
+  ptw (vs y) = refl
+
+⟶ᵀ*-ren : (ρ : Ren Γ Δ) {A B : RTy Γ} → A ⟶ᵀ* B → renTy ρ A ⟶ᵀ* renTy ρ B
+⟶ᵀ*-ren ρ doneᵀ       = doneᵀ
+⟶ᵀ*-ren ρ (stepᵀ r p) = stepᵀ (⟶ᵀ-ren ρ r) (⟶ᵀ*-ren ρ p)
+
+-- Reduction never INTRODUCES a free variable — so `PosC` (whose content
+-- is vz-freeness of the motive's frozen components) survives `ξ-trᵈ`.
+occ-red : {x : Var Γ} {t t' : RTm Γ} →
+          t ⟶ t' → occTm x t ≡ false → occTm x t' ≡ false
+occ-red {x = x} (β t u) e = occ-sub h t (∨-false₁ (occTm (vs x) t) e)
+  where
+  h : ∀ y → eqv (vs x) y ≡ false → occTm x (single u y) ≡ false
+  h vz     _ = ∨-false₂ (occTm (vs x) t) e
+  h (vs z) q = q
+occ-red {x = x} (βfst a b) e = ∨-false₁ (occTm x a) e
+occ-red {x = x} (βsnd a b) e = ∨-false₂ (occTm x a) e
+occ-red (ξ-lam r) e = occ-red r e
+occ-red {x = x} (ξ-appˡ {t = t} r) e =
+  ∨-false (occ-red r (∨-false₁ (occTm x t) e)) (∨-false₂ (occTm x t) e)
+occ-red {x = x} (ξ-appʳ {t = t} r) e =
+  ∨-false (∨-false₁ (occTm x t) e) (occ-red r (∨-false₂ (occTm x t) e))
+occ-red {x = x} (ξ-pairˡ {a = a} r) e =
+  ∨-false (occ-red r (∨-false₁ (occTm x a) e)) (∨-false₂ (occTm x a) e)
+occ-red {x = x} (ξ-pairʳ {a = a} r) e =
+  ∨-false (∨-false₁ (occTm x a) e) (occ-red r (∨-false₂ (occTm x a) e))
+occ-red (ξ-fst r) e = occ-red r e
+occ-red (ξ-snd r) e = occ-red r e
+occ-red {x = x} (ξ-⌜Π⌝ˡ {c = c} r) e =
+  ∨-false (occ-red r (∨-false₁ (occTm x c) e)) (∨-false₂ (occTm x c) e)
+occ-red {x = x} (ξ-⌜Π⌝ʳ {c = c} r) e =
+  ∨-false (∨-false₁ (occTm x c) e) (occ-red r (∨-false₂ (occTm x c) e))
+occ-red {x = x} (ξ-⌜Σ⌝ˡ {c = c} r) e =
+  ∨-false (occ-red r (∨-false₁ (occTm x c) e)) (∨-false₂ (occTm x c) e)
+occ-red {x = x} (ξ-⌜Σ⌝ʳ {c = c} r) e =
+  ∨-false (∨-false₁ (occTm x c) e) (occ-red r (∨-false₂ (occTm x c) e))
+occ-red {x = x} (tr-J-base d s e₀) e =
+  ∨-false₂ (occTm x (hrefl ⌜base⌝ s)) (∨-false₂ (occTm (vs x) d) e)
+occ-red {x = x} (tr-J-Σ d c₁ c₂ s e₀) e =
+  ∨-false₂ (occTm x (hrefl (⌜Σ⌝ c₁ c₂) s)) (∨-false₂ (occTm (vs x) d) e)
+occ-red (tr-taut f e₀) e = e
+occ-red {x = x} (ξ-⌜Hom⌝ᶜ {c = c} r) e =
+  ∨-false (occ-red r (∨-false₁ (occTm x c) e)) (∨-false₂ (occTm x c) e)
+occ-red {x = x} (ξ-⌜Hom⌝ˡ {c = c} {a = a} r) e =
+  ∨-false (∨-false₁ (occTm x c) e)
+          (∨-false (occ-red r (∨-false₁ (occTm x a) (∨-false₂ (occTm x c) e)))
+                   (∨-false₂ (occTm x a) (∨-false₂ (occTm x c) e)))
+occ-red {x = x} (ξ-⌜Hom⌝ʳ {c = c} {a = a} r) e =
+  ∨-false (∨-false₁ (occTm x c) e)
+          (∨-false (∨-false₁ (occTm x a) (∨-false₂ (occTm x c) e))
+                   (occ-red r (∨-false₂ (occTm x a) (∨-false₂ (occTm x c) e))))
+occ-red {x = x} (ξ-hreflᶜ {c = c} r) e =
+  ∨-false (occ-red r (∨-false₁ (occTm x c) e)) (∨-false₂ (occTm x c) e)
+occ-red {x = x} (ξ-hreflᵃ {c = c} r) e =
+  ∨-false (∨-false₁ (occTm x c) e) (occ-red r (∨-false₂ (occTm x c) e))
+occ-red {x = x} (ξ-trᵈ {d = d} r) e =
+  ∨-false (occ-red r (∨-false₁ (occTm (vs x) d) e)) (∨-false₂ (occTm (vs x) d) e)
+occ-red {x = x} (ξ-trᵖ {d = d} {p = p} r) e =
+  ∨-false (∨-false₁ (occTm (vs x) d) e)
+          (∨-false (occ-red r (∨-false₁ (occTm x p) (∨-false₂ (occTm (vs x) d) e)))
+                   (∨-false₂ (occTm x p) (∨-false₂ (occTm (vs x) d) e)))
+occ-red {x = x} (ξ-trᵉ {d = d} {p = p} r) e =
+  ∨-false (∨-false₁ (occTm (vs x) d) e)
+          (∨-false (∨-false₁ (occTm x p) (∨-false₂ (occTm (vs x) d) e))
+                   (occ-red r (∨-false₂ (occTm x p) (∨-false₂ (occTm (vs x) d) e))))
+
+posc-red : {d d' : RTm (Γ ∙)} → PosC vz d → d ⟶ d' → PosC vz d'
+posc-red posc-var ()
+posc-red (posc-Hom hc ha) (ξ-⌜Hom⌝ᶜ r) = posc-Hom (occ-red r hc) ha
+posc-red (posc-Hom hc ha) (ξ-⌜Hom⌝ˡ r) = posc-Hom hc (occ-red r ha)
+posc-red (posc-Hom hc ha) (ξ-⌜Hom⌝ʳ ())
+
+------------------------------------------------------------------------
+-- Reduct analyses for `sr`'s J and taut cases.  A `Hom` whose ambient
+-- satisfies a reduction-closed, U/Π-free predicate never unfolds, so its
+-- reducts are `Hom`s with componentwise reductions; a `Hom` that reduces
+-- to a `Π` did unfold exactly once, via `Hom-U` or `Hom-Π`.
+------------------------------------------------------------------------
+
+record HomRed {Γ} (A : RTy Γ) (t u : RTm Γ)
+              (A' : RTy Γ) (t' u' : RTm Γ) : Set where
+  constructor mkHomRed
+  field
+    rA : A ⟶ᵀ* A'
+    rt : t ⟶* t'
+    ru : u ⟶* u'
+
+Hom-to-Hom : {A A' : RTy Γ} {t u t' u' : RTm Γ} →
+             Hom A t u ⟶ᵀ* Hom A' t' u' → HomRed A t u A' t' u'
+Hom-to-Hom doneᵀ = mkHomRed doneᵀ done done
+Hom-to-Hom (stepᵀ (ξ-Homᵀ r) rest) with Hom-to-Hom rest
+... | mkHomRed rA rt ru = mkHomRed (stepᵀ r rA) rt ru
+Hom-to-Hom (stepᵀ (ξ-Homˡ r) rest) with Hom-to-Hom rest
+... | mkHomRed rA rt ru = mkHomRed rA (step r rt) ru
+Hom-to-Hom (stepᵀ (ξ-Homʳ r) rest) with Hom-to-Hom rest
+... | mkHomRed rA rt ru = mkHomRed rA rt (step r ru)
+Hom-to-Hom (stepᵀ (Hom-U c d) rest) with Π-reduct rest
+... | mkΠRed _ _ () _ _
+Hom-to-Hom (stepᵀ (Hom-Π A B f g) rest) with Π-reduct rest
+... | mkΠRed _ _ () _ _
+
+homred-inv : {P : RTy Γ → Set} →
+             (∀ {X Y : RTy Γ} → P X → X ⟶ᵀ Y → P Y) →
+             (P U → ⊥) →
+             (∀ {F : RTy Γ} {G : RTy (Γ ∙)} → P (Π F G) → ⊥) →
+             {A : RTy Γ} {t u : RTm Γ} {C : RTy Γ} →
+             P A → Hom A t u ⟶ᵀ* C →
+             Σ (RTy Γ) (λ A' → Σ (RTm Γ) (λ t' → Σ (RTm Γ) (λ u' →
+               (C ≡ Hom A' t' u') × ((t ⟶* t') × (u ⟶* u')))))
+homred-inv pres noU noΠ pA doneᵀ = _ , (_ , (_ , (refl , (done , done))))
+homred-inv pres noU noΠ pA (stepᵀ (ξ-Homᵀ r) rest) =
+  homred-inv pres noU noΠ (pres pA r) rest
+homred-inv pres noU noΠ pA (stepᵀ (ξ-Homˡ r) rest)
+  with homred-inv pres noU noΠ pA rest
+... | A' , (t' , (u' , (eq , (rt , ru)))) =
+      A' , (t' , (u' , (eq , (step r rt , ru))))
+homred-inv pres noU noΠ pA (stepᵀ (ξ-Homʳ r) rest)
+  with homred-inv pres noU noΠ pA rest
+... | A' , (t' , (u' , (eq , (rt , ru)))) =
+      A' , (t' , (u' , (eq , (rt , step r ru))))
+homred-inv pres noU noΠ pA (stepᵀ (Hom-U c d) rest) with noU pA
+... | ()
+homred-inv pres noU noΠ pA (stepᵀ (Hom-Π A B f g) rest) with noΠ pA
+... | ()
+
+data BaseAmb {Γ} : RTy Γ → Set where
+  ba-el   : BaseAmb (El (⌜base⌝ {Γ}))
+  ba-base : BaseAmb (base {Γ})
+
+baseamb-red : {X Y : RTy Γ} → BaseAmb X → X ⟶ᵀ Y → BaseAmb Y
+baseamb-red ba-el El-⌜base⌝ = ba-base
+baseamb-red ba-el (ξ-El ())
+baseamb-red ba-base ()
+
+data ΣAmb {Γ} : RTy Γ → Set where
+  sa-el : {c : RTm Γ} {d : RTm (Γ ∙)} → ΣAmb (El (⌜Σ⌝ c d))
+  sa-Σ  : {A : RTy Γ} {B : RTy (Γ ∙)} → ΣAmb (Σ' A B)
+
+σamb-red : {X Y : RTy Γ} → ΣAmb X → X ⟶ᵀ Y → ΣAmb Y
+σamb-red sa-el (El-⌜Σ⌝ c d)      = sa-Σ
+σamb-red sa-el (ξ-El (ξ-⌜Σ⌝ˡ r)) = sa-el
+σamb-red sa-el (ξ-El (ξ-⌜Σ⌝ʳ r)) = sa-el
+σamb-red sa-Σ  (ξ-Σˡ r)          = sa-Σ
+σamb-red sa-Σ  (ξ-Σʳ r)          = sa-Σ
+
+U-reduct : {C : RTy Γ} → U ⟶ᵀ* C → C ≡ U
+U-reduct doneᵀ        = refl
+U-reduct (stepᵀ () _)
+
+data HomToΠ {Γ} (A : RTy Γ) (t u : RTm Γ)
+            (P : RTy Γ) (Q : RTy (Γ ∙)) : Set where
+  via-U : {t₁ u₁ : RTm Γ} →
+          A ⟶ᵀ* U → t ⟶* t₁ → u ⟶* u₁ →
+          El t₁ ⟶ᵀ* P → El (renTm vs u₁) ⟶ᵀ* Q →
+          HomToΠ A t u P Q
+  via-Π : {F : RTy Γ} {G : RTy (Γ ∙)} →
+          A ⟶ᵀ* Π F G →
+          HomToΠ A t u P Q
+
+hom-to-Π : {A : RTy Γ} {t u : RTm Γ} {P : RTy Γ} {Q : RTy (Γ ∙)} →
+           Hom A t u ⟶ᵀ* Π P Q → HomToΠ A t u P Q
+hom-to-Π (stepᵀ (ξ-Homᵀ r) rest) with hom-to-Π rest
+... | via-U rA rt ru rP rQ = via-U (stepᵀ r rA) rt ru rP rQ
+... | via-Π rA             = via-Π (stepᵀ r rA)
+hom-to-Π (stepᵀ (ξ-Homˡ r) rest) with hom-to-Π rest
+... | via-U rA rt ru rP rQ = via-U rA (step r rt) ru rP rQ
+... | via-Π rA             = via-Π rA
+hom-to-Π (stepᵀ (ξ-Homʳ r) rest) with hom-to-Π rest
+... | via-U rA rt ru rP rQ = via-U rA rt (step r ru) rP rQ
+... | via-Π rA             = via-Π rA
+hom-to-Π (stepᵀ (Hom-U c d) rest) with Π-reduct rest
+... | mkΠRed _ _ refl rP rQ = via-U doneᵀ done done rP rQ
+hom-to-Π (stepᵀ (Hom-Π A B f g) rest) = via-Π doneᵀ
+
+-- transporting the payload's type across convertible endpoints
+mono-El[] : (d₀ : RTm (Γ ∙)) {t w : RTm Γ} → t ⟶* w →
+            El (subTm (single t) d₀) ≅ᵀ El (subTm (single w) d₀)
+mono-El[] d₀ r = red→≅ᵀ (⟶ᵀ*-El (subTm-monoˢ (single-mono r) d₀))
 
 ------------------------------------------------------------------------
 -- Typed renaming preserves typing.
@@ -203,6 +409,9 @@ ren-lemma {ρ = ρ} (⊢snd {B = B} {p = p} d) h =
 ren-lemma ⊢⌜base⌝ h = ⊢⌜base⌝
 ren-lemma (⊢⌜Π⌝ dc dd) h = ⊢⌜Π⌝ (ren-lemma dc h) (ren-lemma dd (Ren⊢-ext h))
 ren-lemma (⊢⌜Σ⌝ dc dd) h = ⊢⌜Σ⌝ (ren-lemma dc h) (ren-lemma dd (Ren⊢-ext h))
+ren-lemma (⊢⌜Hom⌝ dc da db) h =
+  ⊢⌜Hom⌝ (ren-lemma dc h) (ren-lemma da h) (ren-lemma db h)
+ren-lemma (⊢hrefl dc dt) h = ⊢hrefl (ren-lemma dc h) (ren-lemma dt h)
 ren-lemma {ρ = ρ} (⊢conv d c) h = ⊢conv (ren-lemma d h) (≅ᵀ-ren ρ c)
 
 ⊢wk : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
@@ -249,6 +458,9 @@ sub-lemma {σ = σ} (⊢snd {B = B} {p = p} d) h =
 sub-lemma ⊢⌜base⌝ h = ⊢⌜base⌝
 sub-lemma (⊢⌜Π⌝ dc dd) h = ⊢⌜Π⌝ (sub-lemma dc h) (sub-lemma dd (Sub⊢-ext h))
 sub-lemma (⊢⌜Σ⌝ dc dd) h = ⊢⌜Σ⌝ (sub-lemma dc h) (sub-lemma dd (Sub⊢-ext h))
+sub-lemma (⊢⌜Hom⌝ dc da db) h =
+  ⊢⌜Hom⌝ (sub-lemma dc h) (sub-lemma da h) (sub-lemma db h)
+sub-lemma (⊢hrefl dc dt) h = ⊢hrefl (sub-lemma dc h) (sub-lemma dt h)
 sub-lemma {σ = σ} (⊢conv d c) h = ⊢conv (sub-lemma d h) (≅ᵀ-sub σ c)
 
 ⊢[] : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {t : RTm (⌊ Γ ⌋ ∙)} {B : RTy (⌊ Γ ⌋ ∙)}
@@ -334,6 +546,32 @@ gen-⌜Σ⌝ (⊢⌜Σ⌝ dc dd) = dc , (dd , crflᵀ)
 gen-⌜Σ⌝ (⊢conv d c) with gen-⌜Σ⌝ d
 ... | (dc , (dd , c')) = dc , (dd , ctrnᵀ (csymᵀ c) c')
 
+gen-var : {Γ : Ctx} {x : Var ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} → Γ ⊢ var x ∷ C →
+          Σ (RTy ⌊ Γ ⌋) (λ A → (Γ ∋ x ∷ A) × (C ≅ᵀ A))
+gen-var (⊢var v) = _ , (v , crflᵀ)
+gen-var (⊢conv d c) with gen-var d
+... | A , (v , c') = A , (v , ctrnᵀ (csymᵀ c) c')
+
+gen-⌜Hom⌝ : {Γ : Ctx} {c a b : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+            Γ ⊢ ⌜Hom⌝ c a b ∷ C →
+            (Γ ⊢ c ∷ U) × ((Γ ⊢ a ∷ El c) × ((Γ ⊢ b ∷ El c) × (C ≅ᵀ U)))
+gen-⌜Hom⌝ (⊢⌜Hom⌝ dc da db) = dc , (da , (db , crflᵀ))
+gen-⌜Hom⌝ (⊢conv d c) with gen-⌜Hom⌝ d
+... | (dc , (da , (db , c'))) = dc , (da , (db , ctrnᵀ (csymᵀ c) c'))
+
+gen-hrefl : {Γ : Ctx} {c t₀ : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+            Γ ⊢ hrefl c t₀ ∷ C →
+            (Γ ⊢ c ∷ U) × ((Γ ⊢ t₀ ∷ El c) × (C ≅ᵀ Hom (El c) t₀ t₀))
+gen-hrefl (⊢hrefl dc dt) = dc , (dt , crflᵀ)
+gen-hrefl (⊢conv d c) with gen-hrefl d
+... | (dc , (dt , c')) = dc , (dt , ctrnᵀ (csymᵀ c) c')
+
+-- With `⊢tr` STAGED out of the base judgment (see NbEPDirDBTr), a base
+-- typing of a `tr`-term is impossible — its `sr` cases are vacuous.
+no-tr : {Γ : Ctx} {d₀ : RTm (⌊ Γ ⌋ ∙)} {p e : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+        Γ ⊢ tr d₀ p e ∷ C → ⊥
+no-tr (⊢conv d _) = no-tr d
+
 ------------------------------------------------------------------------
 -- ★ SUBJECT REDUCTION.
 ------------------------------------------------------------------------
@@ -390,6 +628,38 @@ sr d (ξ-⌜Σ⌝ˡ r) with gen-⌜Σ⌝ d
       ⊢conv (⊢⌜Σ⌝ (sr dc r) (conv-ctx (credᵀ (ξ-El r)) dd)) (csymᵀ cU)
 sr d (ξ-⌜Σ⌝ʳ r) with gen-⌜Σ⌝ d
 ... | (dc , (dd , cU)) = ⊢conv (⊢⌜Σ⌝ dc (sr dd r)) (csymᵀ cU)
+-- `tr`-rule reductions: vacuous in the base judgment (`no-tr`); the
+-- contentful subject-reduction cases live in NbEPDirDBTr's `srᵗ`.
+sr d (tr-J-base d₂ s e₀)    with no-tr d
+... | ()
+sr d (tr-J-Σ d₂ c₁ c₂ s e₀) with no-tr d
+... | ()
+sr d (tr-taut f e₀)         with no-tr d
+... | ()
+-- congruence cases for the three new formers.
+sr d (ξ-⌜Hom⌝ᶜ r) with gen-⌜Hom⌝ d
+... | (dc , (da , (db , cU))) =
+      ⊢conv (⊢⌜Hom⌝ (sr dc r) (⊢conv da (credᵀ (ξ-El r)))
+                    (⊢conv db (credᵀ (ξ-El r))))
+            (csymᵀ cU)
+sr d (ξ-⌜Hom⌝ˡ r) with gen-⌜Hom⌝ d
+... | (dc , (da , (db , cU))) = ⊢conv (⊢⌜Hom⌝ dc (sr da r) db) (csymᵀ cU)
+sr d (ξ-⌜Hom⌝ʳ r) with gen-⌜Hom⌝ d
+... | (dc , (da , (db , cU))) = ⊢conv (⊢⌜Hom⌝ dc da (sr db r)) (csymᵀ cU)
+sr d (ξ-hreflᶜ r) with gen-hrefl d
+... | (dc , (dt , cH)) =
+      ⊢conv (⊢hrefl (sr dc r) (⊢conv dt (credᵀ (ξ-El r))))
+            (csymᵀ (ctrnᵀ cH (credᵀ (ξ-Homᵀ (ξ-El r)))))
+sr d (ξ-hreflᵃ r) with gen-hrefl d
+... | (dc , (dt , cH)) =
+      ⊢conv (⊢hrefl dc (sr dt r))
+            (csymᵀ (ctrnᵀ cH (ctrnᵀ (credᵀ (ξ-Homˡ r)) (credᵀ (ξ-Homʳ r)))))
+sr d (ξ-trᵈ r) with no-tr d
+... | ()
+sr d (ξ-trᵖ r) with no-tr d
+... | ()
+sr d (ξ-trᵉ r) with no-tr d
+... | ()
 
 ------------------------------------------------------------------------
 -- Type preservation for MULTI-step reduction — the immediate corollary.

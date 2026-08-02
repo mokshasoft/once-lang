@@ -50,8 +50,8 @@ open import normalizer.Syntax.Types
 
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; base; U; Π; Σ'; El; Hom; Hom-cong₃
-        ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
+        ; RTy; base; U; Π; Σ'; El; Hom; Hom-cong₃; ⌜Hom⌝-cong₃; tr-cong₃
+        ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr
         ; Ren; extR; renTy; renTm
         ; Sub; subTy; subTm; extS
         ; _∘ᵣ_
@@ -68,7 +68,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; Ctx; ◇; _▹_; ⌊_⌋
         ; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd
-        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢conv
+        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢conv
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom
         ; ⊢ctx_; c-◇; c-▹
         ; ⊢id; ⊢appex )
@@ -76,15 +76,15 @@ open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub )
 open import poc.OCP0009.NbEPDirDBDec using ( Dec; dec-conv )
 open import poc.OCP0009.NbEPDirDBInj using ( _⟶ᵀ*_; doneᵀ; red→≅ᵀ; Π-reduct; Σ-reduct; mkΠRed; mkΣRed )
 open import poc.OCP0009.NbEPDirDBLR
-  using ( SNe; sne-var; sne-app; sne-fst; sne-snd
-        ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-exp
+  using ( SNe; sne-var; sne-app; sne-fst; sne-snd; sne-hrefl
+        ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-exp
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
         ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; _⊩₀∋_
         ; ⊩₁_; ⊩₁base; ⊩₁U; ⊩₁ne; ⊩₁Π; ⊩₁Σ; ⊩₁Hom; _⊩₁∋_
         ; bwd₁; irrel₁; conv₁; CR1₀; CR1₁; CR3₀; CR3₁
         ; emb; emb-coh
         ; sem-conv; sem-lam; sem-app; sem-fst; sem-snd; sem-pair
-        ; sem-El; sem-⌜base⌝; sem-⌜Π⌝; sem-⌜Σ⌝
+        ; sem-El; sem-⌜base⌝; sem-⌜Π⌝; sem-⌜Σ⌝; sem-⌜Hom⌝; sem-hrefl
         ; homSem₁
         ; ⟶ᵀ*-sub
         ; IsNormal; WN; mkWN; wn
@@ -146,6 +146,12 @@ subTm-var ρ (⌜Π⌝ c d)  =
 subTm-var ρ (⌜Σ⌝ c d)  =
   cong₂ ⌜Σ⌝ (subTm-var ρ c)
             (trans (subTm-cong (exts-var ρ) d) (subTm-var (extR ρ) d))
+subTm-var ρ (⌜Hom⌝ c a b) =
+  ⌜Hom⌝-cong₃ (subTm-var ρ c) (subTm-var ρ a) (subTm-var ρ b)
+subTm-var ρ (hrefl c t) = cong₂ hrefl (subTm-var ρ c) (subTm-var ρ t)
+subTm-var ρ (tr d p e)  =
+  tr-cong₃ (trans (subTm-cong (exts-var ρ) d) (subTm-var (extR ρ) d))
+           (subTm-var ρ p) (subTm-var ρ e)
 
 -- (1b) single substitution commutes with renaming — what `snr-β` needs when
 -- reflected through a renaming (§2).
@@ -215,6 +221,8 @@ sne-anti {t = var x}    _             = sne-var x
 sne-anti {t = app t u}  (sne-app n s) = sne-app (sne-anti n) (sn-anti s)
 sne-anti {t = fst p}    (sne-fst n)   = sne-fst (sne-anti n)
 sne-anti {t = snd p}    (sne-snd n)   = sne-snd (sne-anti n)
+sne-anti {t = hrefl c t} (sne-hrefl hc ht) =
+  sne-hrefl (sn-anti hc) (sn-anti ht)
 
 sn-anti {t = var x}    _              = sn-ne (sne-var x)
 sn-anti {t = lam s}    (sn-lam h)     = sn-lam (sn-anti h)
@@ -222,6 +230,12 @@ sn-anti {t = pair a b} (sn-pair ha hb) = sn-pair (sn-anti ha) (sn-anti hb)
 sn-anti {t = ⌜base⌝}   _              = sn-cb
 sn-anti {t = ⌜Π⌝ c d}  (sn-cΠ hc hd)  = sn-cΠ (sn-anti hc) (sn-anti hd)
 sn-anti {t = ⌜Σ⌝ c d}  (sn-cΣ hc hd)  = sn-cΣ (sn-anti hc) (sn-anti hd)
+sn-anti {t = ⌜Hom⌝ c a b} (sn-cH hc ha hb) =
+  sn-cH (sn-anti hc) (sn-anti ha) (sn-anti hb)
+sn-anti {t = hrefl c t} (sn-ne n)     = sn-ne (sne-anti n)
+sn-anti {t = hrefl c t} (sn-exp () _)
+sn-anti {t = tr d p e}  (sn-ne ())
+sn-anti {t = tr d p e}  (sn-exp () _)
 sn-anti {t = app t u}  (sn-ne n)      = sn-ne (sne-anti n)
 sn-anti {t = fst p}    (sn-ne n)      = sn-ne (sne-anti n)
 sn-anti {t = snd p}    (sn-ne n)      = sn-ne (sne-anti n)
@@ -267,6 +281,15 @@ snr-anti {t = fst (lam s)}      (snr-fst ())
 snr-anti {t = fst ⌜base⌝}       (snr-fst ())
 snr-anti {t = fst (⌜Π⌝ c d)}    (snr-fst ())
 snr-anti {t = fst (⌜Σ⌝ c d)}    (snr-fst ())
+snr-anti {t = app (⌜Hom⌝ c a b) u} (snr-app ())
+snr-anti {t = app (hrefl c s) u}   (snr-app ())
+snr-anti {t = app (tr d p e) u}    (snr-app ())
+snr-anti {t = fst (⌜Hom⌝ c a b)}   (snr-fst ())
+snr-anti {t = fst (hrefl c s)}     (snr-fst ())
+snr-anti {t = fst (tr d p e)}      (snr-fst ())
+snr-anti {t = snd (⌜Hom⌝ c a b)}   (snr-snd ())
+snr-anti {t = snd (hrefl c s)}     (snr-snd ())
+snr-anti {t = snd (tr d p e)}      (snr-snd ())
 snr-anti {t = snd (var x)}      (snr-snd ())
 snr-anti {t = snd (lam s)}      (snr-snd ())
 snr-anti {t = snd ⌜base⌝}       (snr-snd ())
@@ -573,6 +596,37 @@ fund {Ξ = Ξ} {σ = σ} (⊢⌜Σ⌝ {c = c} {d = e} dc de) x₀ ρ =
     sne = sn-body x₀ (subst SN (sym (sub-single-Tm σ (var x₀) e))
                             (CR1₁ (dfst (body (var x₀) r₀))
                                   (dsnd (body (var x₀) r₀))))
+
+-- W2 stage 1: the `⌜Hom⌝` code is semantic via `homSem₀` (through
+-- `sem-⌜Hom⌝`); its endpoints come down to level 0 through `emb-coh`.
+fund {σ = σ} (⊢⌜Hom⌝ {c = c} {a = a} {b = b} dc da db) x₀ ρ =
+  ( ⊩₁U doneᵀ , sem-⌜Hom⌝ doneᵀ snc sna snb ⊩c ha hb )
+  where
+    hc = projl (irrel₁ crflᵀ (dfst (fund dc x₀ ρ)) (⊩₁U doneᵀ))
+               (subTm σ c) (dsnd (fund dc x₀ ρ))
+    snc = projl hc
+    ⊩c  = sem-El doneᵀ hc
+
+    ha = projr (emb-coh ⊩c) (subTm σ a)
+               (projl (irrel₁ crflᵀ (dfst (fund da x₀ ρ)) (emb ⊩c))
+                      (subTm σ a) (dsnd (fund da x₀ ρ)))
+    hb = projr (emb-coh ⊩c) (subTm σ b)
+               (projl (irrel₁ crflᵀ (dfst (fund db x₀ ρ)) (emb ⊩c))
+                      (subTm σ b) (dsnd (fund db x₀ ρ)))
+
+    sna = CR1₀ ⊩c ha
+    snb = CR1₀ ⊩c hb
+
+-- W2 stage 1: `hrefl` is an inert neutral (its unfold family is deferred
+-- with the canonicity package), so it inhabits the `Hom` at its own
+-- endpoints by `CR3` — via `sem-hrefl`.
+fund {σ = σ} (⊢hrefl {c = c} {t = t} dc dt) x₀ ρ =
+  ( homSem₁ (dfst Rt) (dsnd Rt) (dsnd Rt)
+  , sem-hrefl (dfst Rt) snc snt (dsnd Rt) )
+  where
+    Rt = fund dt x₀ ρ
+    snc = CR1₁ (dfst (fund dc x₀ ρ)) (dsnd (fund dc x₀ ρ))
+    snt = CR1₁ (dfst Rt) (dsnd Rt)
 
 -- ★ `⊢conv` — no validity premise, no `⊢ty` closed under conversion.  The
 -- relation is already closed under conversion; this is the whole of §4.0.

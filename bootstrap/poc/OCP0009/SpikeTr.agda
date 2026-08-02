@@ -127,7 +127,10 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; Var; vz; vs
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
-        ; Sub; extS; subTm; renTm )
+        ; ⌜Hom⌝; ⌜Hom⌝-cong₃; tr-cong₃ )
+open import poc.OCP0009.NbEPDirDBPi
+  using ( Sub; extS; subTm; renTm )
+open import poc.OCP0009.NbEPDirDBPi using ( hrefl; tr )
 open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false; _∨_; eqv; occTm )
 open import poc.OCP0009.NbEPDirDBType using ( single )
@@ -495,6 +498,18 @@ subTm-occ (⌜Π⌝ m k)  h = cong₂ ⌜Π⌝
 subTm-occ (⌜Σ⌝ m k)  h = cong₂ ⌜Σ⌝
   (subTm-occ m (λ x o → h x (∨-inl o)))
   (subTm-occ k (ext-agree (λ x → occTm x k) (λ y o → h y (∨-inr (occTm y m) o))))
+-- (the three W2 formers, added when the consolidation landed them in `RTm`)
+subTm-occ (⌜Hom⌝ m k l) h = ⌜Hom⌝-cong₃
+  (subTm-occ m (λ x o → h x (∨-inl o)))
+  (subTm-occ k (λ x o → h x (∨-inr (occTm x m) (∨-inl o))))
+  (subTm-occ l (λ x o → h x (∨-inr (occTm x m) (∨-inr (occTm x k) o))))
+subTm-occ (hrefl m k) h = cong₂ hrefl
+  (subTm-occ m (λ x o → h x (∨-inl o)))
+  (subTm-occ k (λ x o → h x (∨-inr (occTm x m) o)))
+subTm-occ (tr m k l) h = tr-cong₃
+  (subTm-occ m (ext-agree (λ x → occTm x m) (λ y o → h y (∨-inl o))))
+  (subTm-occ k (λ x o → h x (∨-inr (occTm (vs x) m) (∨-inl o))))
+  (subTm-occ l (λ x o → h x (∨-inr (occTm (vs x) m) (∨-inr (occTm x k) o))))
 
 const-motive-invisible :
   (m : RTm (Γ ∙)) → occTm vz m ≡ false → (x y : RTm Γ) →

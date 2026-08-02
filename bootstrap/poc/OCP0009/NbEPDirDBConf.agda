@@ -26,18 +26,23 @@
 module poc.OCP0009.NbEPDirDBConf where
 
 open import normalizer.Syntax.Types
-  using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ )
+  using ( _≡_; refl; sym; trans; subst; cong; Σ; _,_; _×_ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app; pair; fst; snd
-        ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; Ren; extR; renTm
+        ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ⌜Hom⌝-cong₃; tr-cong₃
+        ; Ren; extR; renTm; renTm-renTm; renTm-cong
         ; Sub; extS; subTm; renTm-subTm; subTm-renTm; subTm-cong
-        ; _ᵣ∘ₛ_; _ₛ∘ᵣ_ )
+        ; _ᵣ∘ₛ_; _ₛ∘ᵣ_; _∘ᵣ_ )
 open import poc.OCP0009.NbEPDirDBType
-  using ( single; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
+  using ( single; swp; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
         ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
-        ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; _⟶*_; done; step
+        ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
+        ; tr-J-base; tr-J-Σ; tr-taut
+        ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
+        ; _⟶*_; done; step
         ; _≅_; cred; crfl; csym; ctrn )
-open import poc.OCP0009.NbEPDirDBSR using ( sub-comm; ⟶-sub )
+open import poc.OCP0009.NbEPDirDBSR
+  using ( sub-comm; ⟶-sub; wk-sub; wk₁-sub; swp-sub )
 
 private
   variable
@@ -95,6 +100,38 @@ private
 ⟶*-⌜Σ⌝ʳ done       = done
 ⟶*-⌜Σ⌝ʳ (step r p) = step (ξ-⌜Σ⌝ʳ r) (⟶*-⌜Σ⌝ʳ p)
 
+⟶*-⌜Hom⌝ᶜ : {c c' a b : RTm Γ} → c ⟶* c' → ⌜Hom⌝ c a b ⟶* ⌜Hom⌝ c' a b
+⟶*-⌜Hom⌝ᶜ done       = done
+⟶*-⌜Hom⌝ᶜ (step r p) = step (ξ-⌜Hom⌝ᶜ r) (⟶*-⌜Hom⌝ᶜ p)
+
+⟶*-⌜Hom⌝ˡ : {c a a' b : RTm Γ} → a ⟶* a' → ⌜Hom⌝ c a b ⟶* ⌜Hom⌝ c a' b
+⟶*-⌜Hom⌝ˡ done       = done
+⟶*-⌜Hom⌝ˡ (step r p) = step (ξ-⌜Hom⌝ˡ r) (⟶*-⌜Hom⌝ˡ p)
+
+⟶*-⌜Hom⌝ʳ : {c a b b' : RTm Γ} → b ⟶* b' → ⌜Hom⌝ c a b ⟶* ⌜Hom⌝ c a b'
+⟶*-⌜Hom⌝ʳ done       = done
+⟶*-⌜Hom⌝ʳ (step r p) = step (ξ-⌜Hom⌝ʳ r) (⟶*-⌜Hom⌝ʳ p)
+
+⟶*-hreflᶜ : {c c' t : RTm Γ} → c ⟶* c' → hrefl c t ⟶* hrefl c' t
+⟶*-hreflᶜ done       = done
+⟶*-hreflᶜ (step r p) = step (ξ-hreflᶜ r) (⟶*-hreflᶜ p)
+
+⟶*-hreflᵃ : {c t t' : RTm Γ} → t ⟶* t' → hrefl c t ⟶* hrefl c t'
+⟶*-hreflᵃ done       = done
+⟶*-hreflᵃ (step r p) = step (ξ-hreflᵃ r) (⟶*-hreflᵃ p)
+
+⟶*-trᵈ : {d d' : RTm (Γ ∙)} {p e : RTm Γ} → d ⟶* d' → tr d p e ⟶* tr d' p e
+⟶*-trᵈ done       = done
+⟶*-trᵈ (step r q) = step (ξ-trᵈ r) (⟶*-trᵈ q)
+
+⟶*-trᵖ : {d : RTm (Γ ∙)} {p p' e : RTm Γ} → p ⟶* p' → tr d p e ⟶* tr d p' e
+⟶*-trᵖ done       = done
+⟶*-trᵖ (step r q) = step (ξ-trᵖ r) (⟶*-trᵖ q)
+
+⟶*-trᵉ : {d : RTm (Γ ∙)} {p e e' : RTm Γ} → e ⟶* e' → tr d p e ⟶* tr d p e'
+⟶*-trᵉ done       = done
+⟶*-trᵉ (step r q) = step (ξ-trᵉ r) (⟶*-trᵉ q)
+
 ⟶*-sub : (σ : Sub Γ Δ) {t u : RTm Γ} → t ⟶* u → subTm σ t ⟶* subTm σ u
 ⟶*-sub σ done       = done
 ⟶*-sub σ (step r p) = step (⟶-sub σ r) (⟶*-sub σ p)
@@ -114,6 +151,35 @@ ren-comm {Γ} ρ t u =
   bridge vz     = refl
   bridge (vs x) = refl
 
+-- The pure-renaming commutation bridges (all pointwise-definitional):
+-- weakening, weakening-under-a-binder, and the top-two-variable swap
+-- each commute with an arbitrary lifted renaming.
+wk-ren : (ρ : Ren Γ Δ) (t : RTm Γ) →
+         renTm (extR ρ) (renTm vs t) ≡ renTm vs (renTm ρ t)
+wk-ren ρ t =
+  trans (renTm-renTm t) (trans (renTm-cong (λ _ → refl) t) (sym (renTm-renTm t)))
+
+wk₁-ren : (ρ : Ren Γ Δ) (t : RTm (Γ ∙)) →
+          renTm (extR (extR ρ)) (renTm (extR vs) t) ≡
+          renTm (extR vs) (renTm (extR ρ) t)
+wk₁-ren ρ t =
+  trans (renTm-renTm t) (trans (renTm-cong ptw t) (sym (renTm-renTm t)))
+  where
+  ptw : ∀ x → (extR (extR ρ) ∘ᵣ extR vs) x ≡ (extR vs ∘ᵣ extR ρ) x
+  ptw vz     = refl
+  ptw (vs z) = refl
+
+swp-ren : (ρ : Ren Γ Δ) (t : RTm ((Γ ∙) ∙)) →
+          renTm (extR (extR ρ)) (renTm swp t) ≡
+          renTm swp (renTm (extR (extR ρ)) t)
+swp-ren ρ t =
+  trans (renTm-renTm t) (trans (renTm-cong ptw t) (sym (renTm-renTm t)))
+  where
+  ptw : ∀ x → (extR (extR ρ) ∘ᵣ swp) x ≡ (swp ∘ᵣ extR (extR ρ)) x
+  ptw vz          = refl
+  ptw (vs vz)     = refl
+  ptw (vs (vs z)) = refl
+
 ⟶-ren : (ρ : Ren Γ Δ) {t u : RTm Γ} → t ⟶ u → renTm ρ t ⟶ renTm ρ u
 ⟶-ren ρ (β t u)    =
   subst (λ z → renTm ρ (app (lam t) u) ⟶ z)
@@ -132,6 +198,20 @@ ren-comm {Γ} ρ t u =
 ⟶-ren ρ (ξ-⌜Π⌝ʳ r) = ξ-⌜Π⌝ʳ (⟶-ren (extR ρ) r)
 ⟶-ren ρ (ξ-⌜Σ⌝ˡ r) = ξ-⌜Σ⌝ˡ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-⌜Σ⌝ʳ r) = ξ-⌜Σ⌝ʳ (⟶-ren (extR ρ) r)
+⟶-ren ρ (tr-J-base d s e) =
+  tr-J-base (renTm (extR ρ) d) (renTm ρ s) (renTm ρ e)
+⟶-ren ρ (tr-J-Σ d c₁ c₂ s e) =
+  tr-J-Σ (renTm (extR ρ) d) (renTm ρ c₁) (renTm (extR ρ) c₂)
+         (renTm ρ s) (renTm ρ e)
+⟶-ren ρ (tr-taut f e) = tr-taut (renTm (extR ρ) f) (renTm ρ e)
+⟶-ren ρ (ξ-⌜Hom⌝ᶜ r) = ξ-⌜Hom⌝ᶜ (⟶-ren ρ r)
+⟶-ren ρ (ξ-⌜Hom⌝ˡ r) = ξ-⌜Hom⌝ˡ (⟶-ren ρ r)
+⟶-ren ρ (ξ-⌜Hom⌝ʳ r) = ξ-⌜Hom⌝ʳ (⟶-ren ρ r)
+⟶-ren ρ (ξ-hreflᶜ r) = ξ-hreflᶜ (⟶-ren ρ r)
+⟶-ren ρ (ξ-hreflᵃ r) = ξ-hreflᵃ (⟶-ren ρ r)
+⟶-ren ρ (ξ-trᵈ r)    = ξ-trᵈ (⟶-ren (extR ρ) r)
+⟶-ren ρ (ξ-trᵖ r)    = ξ-trᵖ (⟶-ren ρ r)
+⟶-ren ρ (ξ-trᵉ r)    = ξ-trᵉ (⟶-ren ρ r)
 
 ⟶*-ren : (ρ : Ren Γ Δ) {t u : RTm Γ} → t ⟶* u → renTm ρ t ⟶* renTm ρ u
 ⟶*-ren ρ done       = done
@@ -161,6 +241,15 @@ subTm-monoˢ h (⌜Π⌝ c d) =
   ⟶*-trans (⟶*-⌜Π⌝ˡ (subTm-monoˢ h c)) (⟶*-⌜Π⌝ʳ (subTm-monoˢ (extS-mono h) d))
 subTm-monoˢ h (⌜Σ⌝ c d) =
   ⟶*-trans (⟶*-⌜Σ⌝ˡ (subTm-monoˢ h c)) (⟶*-⌜Σ⌝ʳ (subTm-monoˢ (extS-mono h) d))
+subTm-monoˢ h (⌜Hom⌝ c a b) =
+  ⟶*-trans (⟶*-⌜Hom⌝ᶜ (subTm-monoˢ h c))
+           (⟶*-trans (⟶*-⌜Hom⌝ˡ (subTm-monoˢ h a))
+                     (⟶*-⌜Hom⌝ʳ (subTm-monoˢ h b)))
+subTm-monoˢ h (hrefl c t) =
+  ⟶*-trans (⟶*-hreflᶜ (subTm-monoˢ h c)) (⟶*-hreflᵃ (subTm-monoˢ h t))
+subTm-monoˢ h (tr d p e) =
+  ⟶*-trans (⟶*-trᵈ (subTm-monoˢ (extS-mono h) d))
+           (⟶*-trans (⟶*-trᵖ (subTm-monoˢ h p)) (⟶*-trᵉ (subTm-monoˢ h e)))
 
 single-mono : {u u' : RTm Γ} → u ⟶* u' →
               ∀ (x : Var (Γ ∙)) → single u x ⟶* single u' x
@@ -186,6 +275,21 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   p⌜base⌝ : ⌜base⌝ {Γ} ⟹ ⌜base⌝
   p⌜Π⌝ : {c c' : RTm Γ} {d d' : RTm (Γ ∙)} → c ⟹ c' → d ⟹ d' → ⌜Π⌝ c d ⟹ ⌜Π⌝ c' d'
   p⌜Σ⌝ : {c c' : RTm Γ} {d d' : RTm (Γ ∙)} → c ⟹ c' → d ⟹ d' → ⌜Σ⌝ c d ⟹ ⌜Σ⌝ c' d'
+  -- W2 eliminator: congruences for the three new formers, plus the six
+  -- root rules (`hrefl`-unfold and the five path-keyed `tr` rules).
+  -- Discarding rules (the three Js) carry premises only for what the
+  -- RHS mentions — the standard Takahashi shape.
+  p⌜Hom⌝ : {c c' a a' b b' : RTm Γ} → c ⟹ c' → a ⟹ a' → b ⟹ b' →
+           ⌜Hom⌝ c a b ⟹ ⌜Hom⌝ c' a' b'
+  phrefl : {c c' t t' : RTm Γ} → c ⟹ c' → t ⟹ t' → hrefl c t ⟹ hrefl c' t'
+  ptr : {d d' : RTm (Γ ∙)} {p p' e e' : RTm Γ} →
+        d ⟹ d' → p ⟹ p' → e ⟹ e' → tr d p e ⟹ tr d' p' e'
+  ptr-J-base : {d : RTm (Γ ∙)} {s e e' : RTm Γ} →
+               e ⟹ e' → tr d (hrefl ⌜base⌝ s) e ⟹ e'
+  ptr-J-Σ : {d : RTm (Γ ∙)} {c₁ : RTm Γ} {c₂ : RTm (Γ ∙)} {s e e' : RTm Γ} →
+            e ⟹ e' → tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e ⟹ e'
+  ptr-taut : {f f' : RTm (Γ ∙)} {e e' : RTm Γ} → f ⟹ f' → e ⟹ e' →
+             tr (var vz) (lam f) e ⟹ app (lam f') e'
 
 ⟹-refl : (t : RTm Γ) → t ⟹ t
 ⟹-refl (var x)    = pvar x
@@ -197,6 +301,9 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟹-refl ⌜base⌝     = p⌜base⌝
 ⟹-refl (⌜Π⌝ c d)  = p⌜Π⌝ (⟹-refl c) (⟹-refl d)
 ⟹-refl (⌜Σ⌝ c d)  = p⌜Σ⌝ (⟹-refl c) (⟹-refl d)
+⟹-refl (⌜Hom⌝ c a b) = p⌜Hom⌝ (⟹-refl c) (⟹-refl a) (⟹-refl b)
+⟹-refl (hrefl c t)   = phrefl (⟹-refl c) (⟹-refl t)
+⟹-refl (tr d p e)    = ptr (⟹-refl d) (⟹-refl p) (⟹-refl e)
 
 ⟶→⟹ : {t u : RTm Γ} → t ⟶ u → t ⟹ u
 ⟶→⟹ (β t u)     = pβ (⟹-refl t) (⟹-refl u)
@@ -213,6 +320,17 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟶→⟹ (ξ-⌜Π⌝ʳ r) = p⌜Π⌝ (⟹-refl _) (⟶→⟹ r)
 ⟶→⟹ (ξ-⌜Σ⌝ˡ r) = p⌜Σ⌝ (⟶→⟹ r) (⟹-refl _)
 ⟶→⟹ (ξ-⌜Σ⌝ʳ r) = p⌜Σ⌝ (⟹-refl _) (⟶→⟹ r)
+⟶→⟹ (tr-J-base d s e)    = ptr-J-base (⟹-refl e)
+⟶→⟹ (tr-J-Σ d c₁ c₂ s e) = ptr-J-Σ (⟹-refl e)
+⟶→⟹ (tr-taut f e)        = ptr-taut (⟹-refl f) (⟹-refl e)
+⟶→⟹ (ξ-⌜Hom⌝ᶜ r) = p⌜Hom⌝ (⟶→⟹ r) (⟹-refl _) (⟹-refl _)
+⟶→⟹ (ξ-⌜Hom⌝ˡ r) = p⌜Hom⌝ (⟹-refl _) (⟶→⟹ r) (⟹-refl _)
+⟶→⟹ (ξ-⌜Hom⌝ʳ r) = p⌜Hom⌝ (⟹-refl _) (⟹-refl _) (⟶→⟹ r)
+⟶→⟹ (ξ-hreflᶜ r) = phrefl (⟶→⟹ r) (⟹-refl _)
+⟶→⟹ (ξ-hreflᵃ r) = phrefl (⟹-refl _) (⟶→⟹ r)
+⟶→⟹ (ξ-trᵈ r)    = ptr (⟶→⟹ r) (⟹-refl _) (⟹-refl _)
+⟶→⟹ (ξ-trᵖ r)    = ptr (⟹-refl _) (⟶→⟹ r) (⟹-refl _)
+⟶→⟹ (ξ-trᵉ r)    = ptr (⟹-refl _) (⟹-refl _) (⟶→⟹ r)
 
 ⟹→⟶* : {t u : RTm Γ} → t ⟹ u → t ⟶* u
 ⟹→⟶* (pvar x)  = done
@@ -234,6 +352,19 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   ⟶*-trans (⟶*-⌜Π⌝ˡ (⟹→⟶* p)) (⟶*-⌜Π⌝ʳ (⟹→⟶* q))
 ⟹→⟶* (p⌜Σ⌝ p q) =
   ⟶*-trans (⟶*-⌜Σ⌝ˡ (⟹→⟶* p)) (⟶*-⌜Σ⌝ʳ (⟹→⟶* q))
+⟹→⟶* (p⌜Hom⌝ p q r) =
+  ⟶*-trans (⟶*-⌜Hom⌝ᶜ (⟹→⟶* p))
+           (⟶*-trans (⟶*-⌜Hom⌝ˡ (⟹→⟶* q)) (⟶*-⌜Hom⌝ʳ (⟹→⟶* r)))
+⟹→⟶* (phrefl p q) =
+  ⟶*-trans (⟶*-hreflᶜ (⟹→⟶* p)) (⟶*-hreflᵃ (⟹→⟶* q))
+⟹→⟶* (ptr p q r) =
+  ⟶*-trans (⟶*-trᵈ (⟹→⟶* p))
+           (⟶*-trans (⟶*-trᵖ (⟹→⟶* q)) (⟶*-trᵉ (⟹→⟶* r)))
+⟹→⟶* (ptr-J-base {d = d} {s} {e} p)          = step (tr-J-base d s e) (⟹→⟶* p)
+⟹→⟶* (ptr-J-Σ {d = d} {c₁} {c₂} {s} {e} p)   = step (tr-J-Σ d c₁ c₂ s e) (⟹→⟶* p)
+⟹→⟶* (ptr-taut {f = f} {f'} {e} {e'} p q) =
+  step (tr-taut f e)
+       (⟶*-trans (⟶*-appˡ (⟶*-lam (⟹→⟶* p))) (⟶*-appʳ (⟹→⟶* q)))
 
 ------------------------------------------------------------------------
 -- Parallel reduction is stable under renaming and substitution.
@@ -255,6 +386,12 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟹-ren ρ p⌜base⌝     = p⌜base⌝
 ⟹-ren ρ (p⌜Π⌝ p q)  = p⌜Π⌝ (⟹-ren ρ p) (⟹-ren (extR ρ) q)
 ⟹-ren ρ (p⌜Σ⌝ p q)  = p⌜Σ⌝ (⟹-ren ρ p) (⟹-ren (extR ρ) q)
+⟹-ren ρ (p⌜Hom⌝ p q r) = p⌜Hom⌝ (⟹-ren ρ p) (⟹-ren ρ q) (⟹-ren ρ r)
+⟹-ren ρ (phrefl p q)   = phrefl (⟹-ren ρ p) (⟹-ren ρ q)
+⟹-ren ρ (ptr p q r) = ptr (⟹-ren (extR ρ) p) (⟹-ren ρ q) (⟹-ren ρ r)
+⟹-ren ρ (ptr-J-base p) = ptr-J-base (⟹-ren ρ p)
+⟹-ren ρ (ptr-J-Σ p)    = ptr-J-Σ (⟹-ren ρ p)
+⟹-ren ρ (ptr-taut p q) = ptr-taut (⟹-ren (extR ρ) p) (⟹-ren ρ q)
 
 ⟹-exts : {σ σ' : Sub Γ Δ} → (∀ x → σ x ⟹ σ' x) →
          ∀ (x : Var (Γ ∙)) → extS σ x ⟹ extS σ' x
@@ -278,6 +415,12 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟹-sub h p⌜base⌝     = p⌜base⌝
 ⟹-sub h (p⌜Π⌝ p q)  = p⌜Π⌝ (⟹-sub h p) (⟹-sub (⟹-exts h) q)
 ⟹-sub h (p⌜Σ⌝ p q)  = p⌜Σ⌝ (⟹-sub h p) (⟹-sub (⟹-exts h) q)
+⟹-sub h (p⌜Hom⌝ p q r) = p⌜Hom⌝ (⟹-sub h p) (⟹-sub h q) (⟹-sub h r)
+⟹-sub h (phrefl p q)   = phrefl (⟹-sub h p) (⟹-sub h q)
+⟹-sub h (ptr p q r) = ptr (⟹-sub (⟹-exts h) p) (⟹-sub h q) (⟹-sub h r)
+⟹-sub h (ptr-J-base p) = ptr-J-base (⟹-sub h p)
+⟹-sub h (ptr-J-Σ p)    = ptr-J-Σ (⟹-sub h p)
+⟹-sub h (ptr-taut p q) = ptr-taut (⟹-sub (⟹-exts h) p) (⟹-sub h q)
 
 single-⟹ : {u u' : RTm Γ} → u ⟹ u' →
            (x : Var (Γ ∙)) → single u x ⟹ single u' x
@@ -301,6 +444,9 @@ app (snd p) u ⁺    = app (snd p ⁺) (u ⁺)
 app ⌜base⌝ u ⁺     = app (⌜base⌝ ⁺) (u ⁺)
 app (⌜Π⌝ c d) u ⁺  = app (⌜Π⌝ c d ⁺) (u ⁺)
 app (⌜Σ⌝ c d) u ⁺  = app (⌜Σ⌝ c d ⁺) (u ⁺)
+app (⌜Hom⌝ c a b) u ⁺ = app (⌜Hom⌝ c a b ⁺) (u ⁺)
+app (hrefl c t) u ⁺   = app (hrefl c t ⁺) (u ⁺)
+app (tr d p e) u ⁺    = app (tr d p e ⁺) (u ⁺)
 fst (pair a b) ⁺   = a ⁺
 fst (var x) ⁺      = fst (var x ⁺)
 fst (lam t) ⁺      = fst (lam t ⁺)
@@ -310,6 +456,9 @@ fst (snd p) ⁺      = fst (snd p ⁺)
 fst ⌜base⌝ ⁺       = fst (⌜base⌝ ⁺)
 fst (⌜Π⌝ c d) ⁺    = fst (⌜Π⌝ c d ⁺)
 fst (⌜Σ⌝ c d) ⁺    = fst (⌜Σ⌝ c d ⁺)
+fst (⌜Hom⌝ c a b) ⁺ = fst (⌜Hom⌝ c a b ⁺)
+fst (hrefl c t) ⁺   = fst (hrefl c t ⁺)
+fst (tr d p e) ⁺    = fst (tr d p e ⁺)
 snd (pair a b) ⁺   = b ⁺
 snd (var x) ⁺      = snd (var x ⁺)
 snd (lam t) ⁺      = snd (lam t ⁺)
@@ -319,9 +468,24 @@ snd (snd p) ⁺      = snd (snd p ⁺)
 snd ⌜base⌝ ⁺       = snd (⌜base⌝ ⁺)
 snd (⌜Π⌝ c d) ⁺    = snd (⌜Π⌝ c d ⁺)
 snd (⌜Σ⌝ c d) ⁺    = snd (⌜Σ⌝ c d ⁺)
+snd (⌜Hom⌝ c a b) ⁺ = snd (⌜Hom⌝ c a b ⁺)
+snd (hrefl c t) ⁺   = snd (hrefl c t ⁺)
+snd (tr d p e) ⁺    = snd (tr d p e ⁺)
 ⌜base⌝ ⁺           = ⌜base⌝
 ⌜Π⌝ c d ⁺          = ⌜Π⌝ (c ⁺) (d ⁺)
 ⌜Σ⌝ c d ⁺          = ⌜Σ⌝ (c ⁺) (d ⁺)
+⌜Hom⌝ c a b ⁺      = ⌜Hom⌝ (c ⁺) (a ⁺) (b ⁺)
+-- `hrefl` is operationally inert (its unfold family is deferred to the
+-- canonicity package) — congruence only.
+hrefl c f ⁺         = hrefl (c ⁺) (f ⁺)
+-- `tr` — the five path-keyed rules (SpikeTr), then congruence.  The
+-- clause order encodes the case tree: split the path first (J fires on
+-- canonical `hrefl` — head-stable stuck codes only), then the motive
+-- (taut at `var vz`, pointwise composition at a `⌜Π⌝`-ambient `⌜Hom⌝`).
+tr d (hrefl ⌜base⌝ s) e ⁺        = e ⁺
+tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e ⁺   = e ⁺
+tr (var vz) (lam f) e ⁺          = app (lam (f ⁺)) (e ⁺)
+tr d p e ⁺ = tr (d ⁺) (p ⁺) (e ⁺)
 
 ⟹-⁺ : {t u : RTm Γ} → t ⟹ u → u ⟹ t ⁺
 ⟹-⁺ (pvar x)               = pvar x
@@ -369,6 +533,131 @@ snd (⌜Σ⌝ c d) ⁺    = snd (⌜Σ⌝ c d ⁺)
 ⟹-⁺ p⌜base⌝                = p⌜base⌝
 ⟹-⁺ (p⌜Π⌝ p q)             = p⌜Π⌝ (⟹-⁺ p) (⟹-⁺ q)
 ⟹-⁺ (p⌜Σ⌝ p q)             = p⌜Σ⌝ (⟹-⁺ p) (⟹-⁺ q)
+-- W2 formers as `app`/`fst`/`snd` heads — plain congruence (as-patterns
+-- keep every recursive call on a strict subterm for the termination
+-- checker; the pattern's only job is to pin the head so `_⁺` reduces).
+⟹-⁺ (papp w@(p⌜Hom⌝ _ _ _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
+⟹-⁺ (papp w@(phrefl _ _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
+⟹-⁺ (papp w@(ptr _ _ _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
+⟹-⁺ (papp w@(ptr-J-base _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
+⟹-⁺ (papp w@(ptr-J-Σ _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
+⟹-⁺ (papp w@(ptr-taut _ _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
+⟹-⁺ (pfst w@(p⌜Hom⌝ _ _ _)) = pfst (⟹-⁺ w)
+⟹-⁺ (pfst w@(phrefl _ _)) = pfst (⟹-⁺ w)
+⟹-⁺ (pfst w@(ptr _ _ _)) = pfst (⟹-⁺ w)
+⟹-⁺ (pfst w@(ptr-J-base _)) = pfst (⟹-⁺ w)
+⟹-⁺ (pfst w@(ptr-J-Σ _)) = pfst (⟹-⁺ w)
+⟹-⁺ (pfst w@(ptr-taut _ _)) = pfst (⟹-⁺ w)
+⟹-⁺ (psnd w@(p⌜Hom⌝ _ _ _)) = psnd (⟹-⁺ w)
+⟹-⁺ (psnd w@(phrefl _ _)) = psnd (⟹-⁺ w)
+⟹-⁺ (psnd w@(ptr _ _ _)) = psnd (⟹-⁺ w)
+⟹-⁺ (psnd w@(ptr-J-base _)) = psnd (⟹-⁺ w)
+⟹-⁺ (psnd w@(ptr-J-Σ _)) = psnd (⟹-⁺ w)
+⟹-⁺ (psnd w@(ptr-taut _ _)) = psnd (⟹-⁺ w)
+-- `⌜Hom⌝` — congruence only.
+⟹-⁺ (p⌜Hom⌝ p q r)         = p⌜Hom⌝ (⟹-⁺ p) (⟹-⁺ q) (⟹-⁺ r)
+-- `hrefl` — inert: congruence only.
+⟹-⁺ (phrefl p q) = phrefl (⟹-⁺ p) (⟹-⁺ q)
+-- the five `tr` roots.
+⟹-⁺ (ptr-J-base p)  = ⟹-⁺ p
+⟹-⁺ (ptr-J-Σ p)     = ⟹-⁺ p
+⟹-⁺ (ptr-taut p q)  = papp (plam (⟹-⁺ p)) (⟹-⁺ q)
+-- `tr` congruence — mirroring `_⁺`'s tree: the path's derivation
+-- discriminates first (J at the three stable stuck codes), then the
+-- motive (taut at `var vz`, pointwise at the `⌜Π⌝`-ambient `⌜Hom⌝`).
+⟹-⁺ (ptr pd (phrefl p⌜base⌝ ps) pe)           = ptr-J-base (⟹-⁺ pe)
+⟹-⁺ (ptr pd (phrefl (p⌜Σ⌝ p₁ p₂) ps) pe)      = ptr-J-Σ (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (p⌜Hom⌝ _ _ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (p⌜Π⌝ _ _) _) pe) =
+  ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (pvar _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (plam _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (papp _ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (pβ _ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (ppair _ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (pfst _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (psnd _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (pβfst _ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (pβsnd _ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (phrefl _ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (ptr _ _ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (ptr-J-base _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (ptr-J-Σ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (ptr-taut _ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+-- Path is a lambda — split the motive.
+⟹-⁺ (ptr (pvar vz) (plam pf) pe)     = ptr-taut (⟹-⁺ pf) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pvar (vs _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (pvar vz)) v@(plam _) pe) =
+  ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (pvar (vs _))) v@(plam _) pe) =
+  ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (plam _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (papp _ _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (pβ _ _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (ppair _ _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (pfst _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (psnd _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (pβfst _ _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (pβsnd _ _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (p⌜base⌝)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (p⌜Π⌝ _ _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (p⌜Σ⌝ _ _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (p⌜Hom⌝ _ _ _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (phrefl _ _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (ptr _ _ _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (ptr-J-base _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (ptr-J-Σ _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Π⌝ _ _) _ (ptr-taut _ _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (pvar _) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (plam _) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (papp _ _) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (pβ _ _) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (ppair _ _) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (pfst _) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (psnd _) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (pβfst _ _) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (pβsnd _ _) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜base⌝) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Σ⌝ _ _) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (p⌜Hom⌝ _ _ _) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (phrefl _ _) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (ptr _ _ _) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (ptr-J-base _) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (ptr-J-Σ _) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ (ptr-taut _ _) _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(plam _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(papp _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pβ _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(ppair _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pfst _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(psnd _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pβfst _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pβsnd _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜base⌝) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Π⌝ _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Σ⌝ _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(phrefl _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(ptr _ _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(ptr-J-base _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(ptr-J-Σ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(ptr-taut _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+-- Path in any other shape — plain congruence.
+⟹-⁺ (ptr pd w@(pvar _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(papp _ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(pβ _ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(ppair _ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(pfst _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(psnd _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(pβfst _ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(pβsnd _ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(p⌜base⌝) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(p⌜Π⌝ _ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(p⌜Σ⌝ _ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(p⌜Hom⌝ _ _ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(ptr _ _ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(ptr-J-base _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(ptr-J-Σ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(ptr-taut _ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 
 ------------------------------------------------------------------------
 -- Diamond (from the triangle), then confluence of `⟹*`, then of `⟶*`.
