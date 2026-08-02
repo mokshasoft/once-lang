@@ -1,6 +1,18 @@
 ------------------------------------------------------------------------
--- OCP-0009 · W2 eliminator, STAGE 1 — `⊢tr` as a STAGED judgment, with
---                                     subject reduction.
+-- OCP-0009 · W2 eliminator — the TAUT-motive staging, and the
+--                             eliminator demos.
+--
+-- ⚠ STAGE 2 LANDED (2026-08-02): `⊢tr` AT THE COMPOSITION MOTIVE now
+-- lives in the BASE judgment (`NbEPDirDBType`), with `sr`
+-- (`NbEPDirDBSubj`) and `fund` (`NbEPDirDBFund` — the semantic
+-- validation of the variance floor, via the head-strategy machinery and
+-- `homSem₀-mem-endpoints`).  What remains STAGED here is only the
+-- TAUTOLOGICAL motive (`SpikeTrLR`'s measured obstruction: its
+-- J-branches need `t ≅ u`, which only typing can see), together with
+-- the eliminator demos — including the base-judgment `trans` that
+-- `fund` now NORMALIZES.
+--
+-- (Original stage-1 header follows.)
 --
 -- The consolidation (2026-08-01/02) landed the three W2 term formers
 -- (`⌜Hom⌝`/`hrefl`/`tr`) in the kernel syntax with SpikeTr's path-keyed
@@ -52,12 +64,15 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⟶ᵀ_; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢conv
-        ; ⊢⌜base⌝; ⊢⌜Hom⌝; ⊢hrefl; _⊢ty_; ty-El )
+        ; ⊢⌜base⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; _⊢ty_; ty-El
+        ; ⊢ctx_; c-◇; c-▹ )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; ⟶-sub )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-ren )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; red→≅ᵀ
         ; church-rosserᵀ; Π-reduct; ΠRed; mkΠRed )
+open import poc.OCP0009.NbEPDirDBFund using ( wnorm )
+open import poc.OCP0009.NbEPDirDBLR using ( WN )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( sr; ⊢-cast; gen-lam; gen-var; gen-hrefl
         ; homred-inv; BaseAmb; ba-el; ba-base; baseamb-red
@@ -224,3 +239,24 @@ univ-tr-β = β (var vz) (var vz)
 -- (`SpikeNoSym` holds the semantic half: `sym` is FALSE at `U`).
 no-sym-tr : PosC vz sym-code → (∀ {P : Set} → P)
 no-sym-tr = sym-code-not-posc
+
+------------------------------------------------------------------------
+-- ★ STAGE 2: the same composition `tr`, now in the BASE judgment — so it
+-- has `sr` AND `fund`: `wnorm` COMPUTES the composite along an identity
+-- path down to the original path, by the J-equation.
+------------------------------------------------------------------------
+
+⊢trans-base : Γ₁ ⊢ trans-tr ∷ El (subTm (single x₁) compM)
+⊢trans-base =
+  ⊢tr ⊢⌜base⌝ (⊢var (there here)) (⊢var here) refl refl
+      ⊢x₁ ⊢x₁ ⊢idpath
+      (⊢conv (⊢hrefl ⊢⌜base⌝ ⊢x₁)
+             (csymᵀ (credᵀ (El-⌜Hom⌝ ⌜base⌝ x₁ x₁))))
+
+⊢trans-base-red : Γ₁ ⊢ hrefl ⌜base⌝ x₁ ∷ El (subTm (single x₁) compM)
+⊢trans-base-red = sr ⊢trans-base trans-tr-J
+
+-- the fundamental theorem normalizes it: the J-equation, computed.
+trans-wnorm : WN.nfm (wnorm (c-▹ c-◇ (ty-El ⊢⌜base⌝)) ⊢trans-base)
+            ≡ hrefl ⌜base⌝ x₁
+trans-wnorm = refl

@@ -48,7 +48,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; ⌜Hom⌝; hrefl; tr
-        ; Sub; subTy; subTm; extS; renTm
+        ; Ren; extR; Sub; subTy; subTm; extS; renTm
         ; subTm-renTm; subTm-id; Hom-cong₃ )
 open import poc.OCP0009.NbEPDirDBType
   using ( single
@@ -61,6 +61,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ )
+open import poc.OCP0009.NbEPDirDBVar using ( 𝔹; true; false )
 open import poc.OCP0009.NbEPDirDBSR using ( ⟶ᵀ-sub; ≅ᵀ-sub )
 open import poc.OCP0009.NbEPDirDBSubj using ( subTy-monoˢ )
 open import poc.OCP0009.NbEPDirDBConf using ( single-mono )
@@ -108,70 +109,235 @@ dsnd (_ , b) = b
 -- argument away, and `(λx. y) Ω ⟶ y` must not make `(λx. y) Ω` normal.
 ------------------------------------------------------------------------
 
--- W2 stage 2: shape judgments for the `tr` head strategy.  `NeV` is a
--- var-rooted spine (the STRICT neutrals — unlike `Ne`, never `hrefl`- or
--- `tr`-rooted); `StableCd` are the code heads reduction cannot change
--- and on which no J rule fires; `PathStk` are the path shapes on which
--- no `tr` root rule can EVER fire — each closed under reduction.
-data NeV {Γ} : RTm Γ → Set where
-  nv-var : (x : Var Γ) → NeV (var x)
-  nv-app : {t u : RTm Γ} → NeV t → NeV (app t u)
-  nv-fst : {p : RTm Γ} → NeV p → NeV (fst p)
-  nv-snd : {p : RTm Γ} → NeV p → NeV (snd p)
+-- W2 stage 2: SHAPE CLASSIFIERS for the `tr` head strategy, as BOOLEAN
+-- functions — shape-only, so renaming preserves them ON THE NOSE (the
+-- anti-renaming bill is one equality per classifier) and every
+-- refutation is definitional.
+--   `spine?`    — safe app/fst/snd spine heads: never become `lam` or
+--                 `pair` at the root;
+--   `stablecd?` — codes that never become `⌜base⌝`/`⌜Σ⌝`-headed (the
+--                 J-able heads) — what keeps an `hrefl` path inert;
+--   `pathstk?`  — paths on which no `tr` root rule can EVER fire;
+--   `trstk?`    — the permanently stuck `tr d p e` configurations: an
+--                 inert path, or a lambda path at a `⌜Hom⌝`-headed
+--                 motive (taut needs the LITERAL `var vz` motive, and
+--                 pointwise composition is deferred with the canonicity
+--                 package).
+homheaded? : RTm Γ → 𝔹
+homheaded? (⌜Hom⌝ _ _ _) = true
+homheaded? _             = false
 
-data StableCd {Γ} : RTm Γ → Set where
-  sc-lam   : {t : RTm (Γ ∙)} → StableCd (lam t)
-  sc-pair  : {a b : RTm Γ} → StableCd (pair a b)
-  sc-cΠ    : {c : RTm Γ} {d : RTm (Γ ∙)} → StableCd (⌜Π⌝ c d)
-  sc-cH    : {c a b : RTm Γ} → StableCd (⌜Hom⌝ c a b)
-  sc-hrefl : {c t : RTm Γ} → StableCd (hrefl c t)
-  sc-nev   : {n : RTm Γ} → NeV n → StableCd n
+spine? stablecd? pathstk? : RTm Γ → 𝔹
+trstk? : RTm (Γ ∙) → RTm Γ → 𝔹
 
-data PathStk {Γ} : RTm Γ → Set where
-  ps-nev : {p : RTm Γ} → NeV p → PathStk p
-  ps-h   : {c t : RTm Γ} → StableCd c → PathStk (hrefl c t)
+spine? (var x)        = true
+spine? (app t u)      = spine? t
+spine? (fst t)        = spine? t
+spine? (snd t)        = spine? t
+spine? (⌜Π⌝ c d)      = true
+spine? (⌜Hom⌝ c a b)  = true
+spine? (hrefl c t)    = true
+spine? (tr d p e)     = trstk? d p
+spine? _              = false
 
-nev-red : {t t' : RTm Γ} → NeV t → t ⟶ t' → NeV t'
-nev-red (nv-var x) ()
-nev-red (nv-app n) (ξ-appˡ r) = nv-app (nev-red n r)
-nev-red (nv-app n) (ξ-appʳ r) = nv-app n
-nev-red (nv-fst n) (ξ-fst r)  = nv-fst (nev-red n r)
-nev-red (nv-snd n) (ξ-snd r)  = nv-snd (nev-red n r)
+stablecd? (var x)       = true
+stablecd? (lam t)       = true
+stablecd? (app t u)     = spine? t
+stablecd? (pair a b)    = true
+stablecd? (fst t)       = spine? t
+stablecd? (snd t)       = spine? t
+stablecd? (⌜Π⌝ c d)     = true
+stablecd? (⌜Hom⌝ c a b) = true
+stablecd? (hrefl c t)   = true
+stablecd? (tr d p e)    = trstk? d p
+stablecd? _             = false
 
-stablecd-red : {t t' : RTm Γ} → StableCd t → t ⟶ t' → StableCd t'
-stablecd-red sc-lam   (ξ-lam r)     = sc-lam
-stablecd-red sc-pair  (ξ-pairˡ r)   = sc-pair
-stablecd-red sc-pair  (ξ-pairʳ r)   = sc-pair
-stablecd-red sc-cΠ    (ξ-⌜Π⌝ˡ r)   = sc-cΠ
-stablecd-red sc-cΠ    (ξ-⌜Π⌝ʳ r)   = sc-cΠ
-stablecd-red sc-cH    (ξ-⌜Hom⌝ᶜ r) = sc-cH
-stablecd-red sc-cH    (ξ-⌜Hom⌝ˡ r) = sc-cH
-stablecd-red sc-cH    (ξ-⌜Hom⌝ʳ r) = sc-cH
-stablecd-red sc-hrefl (ξ-hreflᶜ r) = sc-hrefl
-stablecd-red sc-hrefl (ξ-hreflᵃ r) = sc-hrefl
-stablecd-red (sc-nev n) r          = sc-nev (nev-red n r)
+pathstk? (var x)        = true
+pathstk? (lam t)        = false
+pathstk? (app t u)      = spine? t
+pathstk? (pair a b)     = true
+pathstk? (fst t)        = spine? t
+pathstk? (snd t)        = spine? t
+pathstk? ⌜base⌝         = true
+pathstk? (⌜Π⌝ c d)      = true
+pathstk? (⌜Σ⌝ c d)      = true
+pathstk? (⌜Hom⌝ c a b)  = true
+pathstk? (hrefl c t)    = stablecd? c
+pathstk? (tr d p e)     = trstk? d p
 
-pathstk-red : {t t' : RTm Γ} → PathStk t → t ⟶ t' → PathStk t'
-pathstk-red (ps-nev n) r            = ps-nev (nev-red n r)
-pathstk-red (ps-h sc) (ξ-hreflᶜ r)  = ps-h (stablecd-red sc r)
-pathstk-red (ps-h sc) (ξ-hreflᵃ r)  = ps-h sc
+trstk? d (lam f) = homheaded? d
+trstk? d p       = pathstk? p
 
--- no `tr` root rule ever fires on a `PathStk` path
-pathstk-no-J-base : {s : RTm Γ} → PathStk (hrefl ⌜base⌝ s) → ⊥
-pathstk-no-J-base (ps-nev ())
-pathstk-no-J-base (ps-h (sc-nev ()))
+f≢t : false ≡ true → ⊥
+f≢t ()
 
-pathstk-no-J-Σ : {c₁ : RTm Γ} {c₂ : RTm (Γ ∙)} {s : RTm Γ} →
-                 PathStk (hrefl (⌜Σ⌝ c₁ c₂) s) → ⊥
-pathstk-no-J-Σ (ps-nev ())
-pathstk-no-J-Σ (ps-h (sc-nev ()))
+-- each classifier is closed under reduction (`true` is preserved; the
+-- root rules that would break a shape are refuted definitionally).
+homheaded?-red : {t t' : RTm Γ} → t ⟶ t' →
+                 homheaded? t ≡ true → homheaded? t' ≡ true
+homheaded?-red (ξ-⌜Hom⌝ᶜ r) h = h
+homheaded?-red (ξ-⌜Hom⌝ˡ r) h = h
+homheaded?-red (ξ-⌜Hom⌝ʳ r) h = h
+homheaded?-red (β _ _) ()
+homheaded?-red (βfst _ _) ()
+homheaded?-red (βsnd _ _) ()
+homheaded?-red (ξ-lam _) ()
+homheaded?-red (ξ-appˡ _) ()
+homheaded?-red (ξ-appʳ _) ()
+homheaded?-red (ξ-pairˡ _) ()
+homheaded?-red (ξ-pairʳ _) ()
+homheaded?-red (ξ-fst _) ()
+homheaded?-red (ξ-snd _) ()
+homheaded?-red (ξ-⌜Π⌝ˡ _) ()
+homheaded?-red (ξ-⌜Π⌝ʳ _) ()
+homheaded?-red (ξ-⌜Σ⌝ˡ _) ()
+homheaded?-red (ξ-⌜Σ⌝ʳ _) ()
+homheaded?-red (ξ-hreflᶜ _) ()
+homheaded?-red (ξ-hreflᵃ _) ()
+homheaded?-red (tr-J-base _ _ _) ()
+homheaded?-red (tr-J-Σ _ _ _ _ _) ()
+homheaded?-red (tr-taut _ _) ()
+homheaded?-red (ξ-trᵈ _) ()
+homheaded?-red (ξ-trᵖ _) ()
+homheaded?-red (ξ-trᵉ _) ()
 
-pathstk-no-lam : {f : RTm (Γ ∙)} → PathStk (lam f) → ⊥
-pathstk-no-lam (ps-nev ())
+spine?-red    : {t t' : RTm Γ} → t ⟶ t' → spine? t ≡ true → spine? t' ≡ true
+stablecd?-red : {t t' : RTm Γ} → t ⟶ t' →
+                stablecd? t ≡ true → stablecd? t' ≡ true
+pathstk?-red  : {t t' : RTm Γ} → t ⟶ t' →
+                pathstk? t ≡ true → pathstk? t' ≡ true
+trstk?-red-d  : {d d' : RTm (Γ ∙)} {p : RTm Γ} → d ⟶ d' →
+                trstk? d p ≡ true → trstk? d' p ≡ true
+trstk?-red-p  : {d : RTm (Γ ∙)} {p p' : RTm Γ} → p ⟶ p' →
+                trstk? d p ≡ true → trstk? d p' ≡ true
 
-pathstk-red* : {t t' : RTm Γ} → PathStk t → t ⟶* t' → PathStk t'
-pathstk-red* ps done       = ps
-pathstk-red* ps (step r q) = pathstk-red* (pathstk-red ps r) q
+spine?-red (β _ _) ()
+spine?-red (βfst _ _) ()
+spine?-red (βsnd _ _) ()
+spine?-red (ξ-lam _) ()
+spine?-red (ξ-appˡ r) h = spine?-red r h
+spine?-red (ξ-appʳ r) h = h
+spine?-red (ξ-pairˡ _) ()
+spine?-red (ξ-pairʳ _) ()
+spine?-red (ξ-fst r) h = spine?-red r h
+spine?-red (ξ-snd r) h = spine?-red r h
+spine?-red (ξ-⌜Π⌝ˡ r) h = h
+spine?-red (ξ-⌜Π⌝ʳ r) h = h
+spine?-red (ξ-⌜Σ⌝ˡ _) ()
+spine?-red (ξ-⌜Σ⌝ʳ _) ()
+spine?-red (ξ-⌜Hom⌝ᶜ r) h = h
+spine?-red (ξ-⌜Hom⌝ˡ r) h = h
+spine?-red (ξ-⌜Hom⌝ʳ r) h = h
+spine?-red (ξ-hreflᶜ r) h = h
+spine?-red (ξ-hreflᵃ r) h = h
+spine?-red (tr-J-base _ _ _) ()
+spine?-red (tr-J-Σ _ _ _ _ _) ()
+spine?-red (tr-taut _ _) ()
+spine?-red (ξ-trᵈ {p = p} r) h = trstk?-red-d {p = p} r h
+spine?-red (ξ-trᵖ {d = d} r) h = trstk?-red-p {d = d} r h
+spine?-red (ξ-trᵉ {d = d} {p = p} r) h = h
+
+stablecd?-red (β _ _) ()
+stablecd?-red (βfst _ _) ()
+stablecd?-red (βsnd _ _) ()
+stablecd?-red (ξ-lam r) h = h
+stablecd?-red (ξ-appˡ r) h = spine?-red r h
+stablecd?-red (ξ-appʳ r) h = h
+stablecd?-red (ξ-pairˡ r) h = h
+stablecd?-red (ξ-pairʳ r) h = h
+stablecd?-red (ξ-fst r) h = spine?-red r h
+stablecd?-red (ξ-snd r) h = spine?-red r h
+stablecd?-red (ξ-⌜Π⌝ˡ r) h = h
+stablecd?-red (ξ-⌜Π⌝ʳ r) h = h
+stablecd?-red (ξ-⌜Σ⌝ˡ _) ()
+stablecd?-red (ξ-⌜Σ⌝ʳ _) ()
+stablecd?-red (ξ-⌜Hom⌝ᶜ r) h = h
+stablecd?-red (ξ-⌜Hom⌝ˡ r) h = h
+stablecd?-red (ξ-⌜Hom⌝ʳ r) h = h
+stablecd?-red (ξ-hreflᶜ r) h = h
+stablecd?-red (ξ-hreflᵃ r) h = h
+stablecd?-red (tr-J-base _ _ _) ()
+stablecd?-red (tr-J-Σ _ _ _ _ _) ()
+stablecd?-red (tr-taut _ _) ()
+stablecd?-red (ξ-trᵈ {p = p} r) h = trstk?-red-d {p = p} r h
+stablecd?-red (ξ-trᵖ {d = d} r) h = trstk?-red-p {d = d} r h
+stablecd?-red (ξ-trᵉ {d = d} {p = p} r) h = h
+
+pathstk?-red (β _ _) ()
+pathstk?-red (βfst _ _) ()
+pathstk?-red (βsnd _ _) ()
+pathstk?-red (ξ-lam _) ()
+pathstk?-red (ξ-appˡ r) h = spine?-red r h
+pathstk?-red (ξ-appʳ r) h = h
+pathstk?-red (ξ-pairˡ r) h = h
+pathstk?-red (ξ-pairʳ r) h = h
+pathstk?-red (ξ-fst r) h = spine?-red r h
+pathstk?-red (ξ-snd r) h = spine?-red r h
+pathstk?-red (ξ-⌜Π⌝ˡ r) h = h
+pathstk?-red (ξ-⌜Π⌝ʳ r) h = h
+pathstk?-red (ξ-⌜Σ⌝ˡ r) h = h
+pathstk?-red (ξ-⌜Σ⌝ʳ r) h = h
+pathstk?-red (ξ-⌜Hom⌝ᶜ r) h = h
+pathstk?-red (ξ-⌜Hom⌝ˡ r) h = h
+pathstk?-red (ξ-⌜Hom⌝ʳ r) h = h
+pathstk?-red (ξ-hreflᶜ r) h = stablecd?-red r h
+pathstk?-red (ξ-hreflᵃ r) h = h
+pathstk?-red (tr-J-base _ _ _) ()
+pathstk?-red (tr-J-Σ _ _ _ _ _) ()
+pathstk?-red (tr-taut _ _) ()
+pathstk?-red (ξ-trᵈ {p = p} r) h = trstk?-red-d {p = p} r h
+pathstk?-red (ξ-trᵖ {d = d} r) h = trstk?-red-p {d = d} r h
+pathstk?-red (ξ-trᵉ {d = d} {p = p} r) h = h
+
+trstk?-red-d {p = var x} r h = h
+trstk?-red-d {p = lam f} r h = homheaded?-red r h
+trstk?-red-d {p = app t u} r h = h
+trstk?-red-d {p = pair a b} r h = h
+trstk?-red-d {p = fst t} r h = h
+trstk?-red-d {p = snd t} r h = h
+trstk?-red-d {p = ⌜base⌝} r h = h
+trstk?-red-d {p = ⌜Π⌝ c d} r h = h
+trstk?-red-d {p = ⌜Σ⌝ c d} r h = h
+trstk?-red-d {p = ⌜Hom⌝ c a b} r h = h
+trstk?-red-d {p = hrefl c t} r h = h
+trstk?-red-d {p = tr d p e} r h = h
+
+trstk?-red-p (β _ _) ()
+trstk?-red-p (βfst _ _) ()
+trstk?-red-p (βsnd _ _) ()
+trstk?-red-p (ξ-lam r) h = h
+trstk?-red-p (ξ-appˡ r) h = spine?-red r h
+trstk?-red-p (ξ-appʳ r) h = h
+trstk?-red-p (ξ-pairˡ r) h = h
+trstk?-red-p (ξ-pairʳ r) h = h
+trstk?-red-p (ξ-fst r) h = spine?-red r h
+trstk?-red-p (ξ-snd r) h = spine?-red r h
+trstk?-red-p (ξ-⌜Π⌝ˡ r) h = h
+trstk?-red-p (ξ-⌜Π⌝ʳ r) h = h
+trstk?-red-p (ξ-⌜Σ⌝ˡ r) h = h
+trstk?-red-p (ξ-⌜Σ⌝ʳ r) h = h
+trstk?-red-p (ξ-⌜Hom⌝ᶜ r) h = h
+trstk?-red-p (ξ-⌜Hom⌝ˡ r) h = h
+trstk?-red-p (ξ-⌜Hom⌝ʳ r) h = h
+trstk?-red-p (ξ-hreflᶜ r) h = stablecd?-red r h
+trstk?-red-p (ξ-hreflᵃ r) h = h
+trstk?-red-p (tr-J-base _ _ _) ()
+trstk?-red-p (tr-J-Σ _ _ _ _ _) ()
+trstk?-red-p (tr-taut _ _) ()
+trstk?-red-p (ξ-trᵈ {p = p} r) h = trstk?-red-d {p = p} r h
+trstk?-red-p (ξ-trᵖ {d = d} r) h = trstk?-red-p {d = d} r h
+trstk?-red-p (ξ-trᵉ {d = d} {p = p} r) h = h
+
+trstk?-red-d* : {d d' : RTm (Γ ∙)} {p : RTm Γ} → d ⟶* d' →
+                trstk? d p ≡ true → trstk? d' p ≡ true
+trstk?-red-d* {p = p} done       h = h
+trstk?-red-d* {p = p} (step r q) h =
+  trstk?-red-d* {p = p} q (trstk?-red-d {p = p} r h)
+
+trstk?-red-p* : {d : RTm (Γ ∙)} {p p' : RTm Γ} → p ⟶* p' →
+                trstk? d p ≡ true → trstk? d p' ≡ true
+trstk?-red-p* done       h = h
+trstk?-red-p* (step r q) h = trstk?-red-p* q (trstk?-red-p r h)
 
 data SNe {Γ} : RTm Γ → Set
 data SN  {Γ} : RTm Γ → Set
@@ -187,16 +353,10 @@ data SNe {Γ} where
   -- becomes a `lam` and behaves as a neutral for this SN-flavored LR —
   -- exactly as long as it has no computation.
   sne-hrefl : {c t : RTm Γ} → SN c → SN t → SNe (hrefl c t)
-  -- W2 stage 2: a `tr` whose path is ROOT-STABLE (`PathStk` below — no
-  -- J/taut can ever fire) is permanently stuck and hence neutral; so is
-  -- a `tr` on a lambda at a `⌜Hom⌝`-headed motive (`taut` needs the
-  -- LITERAL `var vz` motive and `⌜Hom⌝` heads are reduction-stable;
-  -- pointwise composition is deferred with the canonicity package).
-  sne-tr-stk : {d : RTm (Γ ∙)} {p e : RTm Γ} →
-               SN d → SN p → PathStk p → SN e → SNe (tr d p e)
-  sne-tr-lam : {c a m : RTm (Γ ∙)} {f : RTm (Γ ∙)} {e : RTm Γ} →
-               SN c → SN a → SN m → SN f → SN e →
-               SNe (tr (⌜Hom⌝ c a m) (lam f) e)
+  -- W2 stage 2: a PERMANENTLY STUCK `tr` (`trstk?` — an inert path, or
+  -- a lambda path at a `⌜Hom⌝`-headed motive) is neutral.
+  sne-tr : {d : RTm (Γ ∙)} {p e : RTm Γ} →
+           SN d → SN p → SN e → trstk? d p ≡ true → SNe (tr d p e)
 
 data SN {Γ} where
   sn-ne   : {t : RTm Γ} → SNe t → SN t
@@ -284,15 +444,11 @@ sne-whred (sne-fst n)   (snr-fst r) = sne-fst (sne-whred n r)
 sne-whred (sne-snd n)   (snr-snd r) = sne-snd (sne-whred n r)
 sne-whred (sne-hrefl snc snt) (snr-hreflᶜ r) =
   sne-hrefl (sn-whred snc r) snt
-sne-whred (sne-tr-stk snd₀ snp ps sne₀) (snr-J-base _ _) =
-  ⊥-elim (pathstk-no-J-base ps)
-sne-whred (sne-tr-stk snd₀ snp ps sne₀) (snr-J-Σ _ _ _ _) =
-  ⊥-elim (pathstk-no-J-Σ ps)
-sne-whred (sne-tr-stk snd₀ snp ps sne₀) snr-taut =
-  ⊥-elim (pathstk-no-lam ps)
-sne-whred (sne-tr-stk snd₀ snp ps sne₀) (snr-trᵖ r) =
-  sne-tr-stk snd₀ (sn-whred snp r) (pathstk-red ps (snr→⟶ r)) sne₀
-sne-whred (sne-tr-lam _ _ _ _ _) (snr-trᵖ ())
+sne-whred (sne-tr snd₀ snp sne₀ ()) (snr-J-base _ _)
+sne-whred (sne-tr snd₀ snp sne₀ ()) (snr-J-Σ _ _ _ _)
+sne-whred (sne-tr snd₀ snp sne₀ ()) snr-taut
+sne-whred (sne-tr snd₀ snp sne₀ key) (snr-trᵖ r) =
+  sne-tr snd₀ (sn-whred snp r) sne₀ (trstk?-red-p (snr→⟶ r) key)
 
 sn-whred (sn-ne n)      r = sn-ne (sne-whred n r)
 sn-whred (sn-exp r₀ h) r with snr-det r₀ r
@@ -327,9 +483,8 @@ data Ne {Γ} : RTm Γ → Set where
   ne-fst : {p : RTm Γ} → Ne p → Ne (fst p)
   ne-snd : {p : RTm Γ} → Ne p → Ne (snd p)
   ne-hrefl : {c t : RTm Γ} → Ne (hrefl c t)
-  ne-tr-stk : {d : RTm (Γ ∙)} {p e : RTm Γ} → PathStk p → Ne (tr d p e)
-  ne-tr-lam : {c a m : RTm (Γ ∙)} {f : RTm (Γ ∙)} {e : RTm Γ} →
-              Ne (tr (⌜Hom⌝ c a m) (lam f) e)
+  ne-tr : {d : RTm (Γ ∙)} {p e : RTm Γ} →
+          trstk? d p ≡ true → Ne (tr d p e)
 
 ne-red : {t t' : RTm Γ} → Ne t → t ⟶ t' → Ne t'
 ne-red (ne-var x) ()
@@ -339,17 +494,12 @@ ne-red (ne-fst n) (ξ-fst r)  = ne-fst (ne-red n r)
 ne-red (ne-snd n) (ξ-snd r)  = ne-snd (ne-red n r)
 ne-red ne-hrefl (ξ-hreflᶜ r) = ne-hrefl
 ne-red ne-hrefl (ξ-hreflᵃ r) = ne-hrefl
-ne-red (ne-tr-stk ps) (tr-J-base _ _ _)  = ⊥-elim (pathstk-no-J-base ps)
-ne-red (ne-tr-stk ps) (tr-J-Σ _ _ _ _ _) = ⊥-elim (pathstk-no-J-Σ ps)
-ne-red (ne-tr-stk ps) (tr-taut _ _)      = ⊥-elim (pathstk-no-lam ps)
-ne-red (ne-tr-stk ps) (ξ-trᵈ r) = ne-tr-stk ps
-ne-red (ne-tr-stk ps) (ξ-trᵖ r) = ne-tr-stk (pathstk-red ps r)
-ne-red (ne-tr-stk ps) (ξ-trᵉ r) = ne-tr-stk ps
-ne-red ne-tr-lam (ξ-trᵈ (ξ-⌜Hom⌝ᶜ r)) = ne-tr-lam
-ne-red ne-tr-lam (ξ-trᵈ (ξ-⌜Hom⌝ˡ r)) = ne-tr-lam
-ne-red ne-tr-lam (ξ-trᵈ (ξ-⌜Hom⌝ʳ r)) = ne-tr-lam
-ne-red ne-tr-lam (ξ-trᵖ (ξ-lam r))    = ne-tr-lam
-ne-red ne-tr-lam (ξ-trᵉ r)            = ne-tr-lam
+ne-red (ne-tr ()) (tr-J-base _ _ _)
+ne-red (ne-tr ()) (tr-J-Σ _ _ _ _ _)
+ne-red (ne-tr ()) (tr-taut _ _)
+ne-red (ne-tr key) (ξ-trᵈ {p = p} r) = ne-tr (trstk?-red-d {p = p} r key)
+ne-red (ne-tr key) (ξ-trᵖ {d = d} r) = ne-tr (trstk?-red-p {d = d} r key)
+ne-red (ne-tr key) (ξ-trᵉ r) = ne-tr key
 
 sne→ne : {t : RTm Γ} → SNe t → Ne t
 sne→ne (sne-var x)   = ne-var x
@@ -357,8 +507,103 @@ sne→ne (sne-app n _) = ne-app (sne→ne n)
 sne→ne (sne-fst n)   = ne-fst (sne→ne n)
 sne→ne (sne-snd n)   = ne-snd (sne→ne n)
 sne→ne (sne-hrefl _ _) = ne-hrefl
-sne→ne (sne-tr-stk _ _ ps _) = ne-tr-stk ps
-sne→ne (sne-tr-lam _ _ _ _ _) = ne-tr-lam
+sne→ne (sne-tr _ _ _ key) = ne-tr key
+
+-- extractors for `fund`'s path analysis: strict neutrals are safe spine
+-- heads and stable codes.
+sne→spine : {t : RTm Γ} → SNe t → spine? t ≡ true
+sne→spine (sne-var x)        = refl
+sne→spine (sne-app n _)      = sne→spine n
+sne→spine (sne-fst n)        = sne→spine n
+sne→spine (sne-snd n)        = sne→spine n
+sne→spine (sne-hrefl _ _)    = refl
+sne→spine (sne-tr _ _ _ key) = key
+
+sne→stablecd : {t : RTm Γ} → SNe t → stablecd? t ≡ true
+sne→stablecd (sne-var x)        = refl
+sne→stablecd (sne-app n _)      = sne→spine n
+sne→stablecd (sne-fst n)        = sne→spine n
+sne→stablecd (sne-snd n)        = sne→spine n
+sne→stablecd (sne-hrefl _ _)    = refl
+sne→stablecd (sne-tr _ _ _ key) = key
+
+-- renaming preserves every classifier ON THE NOSE — the entire
+-- anti-renaming bill for the shape layer.
+homheaded?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) →
+                 homheaded? (renTm ρ t) ≡ homheaded? t
+homheaded?-ren ρ (var x)       = refl
+homheaded?-ren ρ (lam t)       = refl
+homheaded?-ren ρ (app t u)     = refl
+homheaded?-ren ρ (pair a b)    = refl
+homheaded?-ren ρ (fst t)       = refl
+homheaded?-ren ρ (snd t)       = refl
+homheaded?-ren ρ ⌜base⌝        = refl
+homheaded?-ren ρ (⌜Π⌝ c d)     = refl
+homheaded?-ren ρ (⌜Σ⌝ c d)     = refl
+homheaded?-ren ρ (⌜Hom⌝ c a b) = refl
+homheaded?-ren ρ (hrefl c t)   = refl
+homheaded?-ren ρ (tr d p e)    = refl
+
+spine?-ren    : (ρ : Ren Γ Δ) (t : RTm Γ) → spine? (renTm ρ t) ≡ spine? t
+stablecd?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) →
+                stablecd? (renTm ρ t) ≡ stablecd? t
+pathstk?-ren  : (ρ : Ren Γ Δ) (t : RTm Γ) →
+                pathstk? (renTm ρ t) ≡ pathstk? t
+trstk?-ren    : (ρ : Ren Γ Δ) (d : RTm (Γ ∙)) (p : RTm Γ) →
+                trstk? (renTm (extR ρ) d) (renTm ρ p) ≡ trstk? d p
+
+spine?-ren ρ (var x)       = refl
+spine?-ren ρ (lam t)       = refl
+spine?-ren ρ (app t u)     = spine?-ren ρ t
+spine?-ren ρ (pair a b)    = refl
+spine?-ren ρ (fst t)       = spine?-ren ρ t
+spine?-ren ρ (snd t)       = spine?-ren ρ t
+spine?-ren ρ ⌜base⌝        = refl
+spine?-ren ρ (⌜Π⌝ c d)     = refl
+spine?-ren ρ (⌜Σ⌝ c d)     = refl
+spine?-ren ρ (⌜Hom⌝ c a b) = refl
+spine?-ren ρ (hrefl c t)   = refl
+spine?-ren ρ (tr d p e)    = trstk?-ren ρ d p
+
+stablecd?-ren ρ (var x)       = refl
+stablecd?-ren ρ (lam t)       = refl
+stablecd?-ren ρ (app t u)     = spine?-ren ρ t
+stablecd?-ren ρ (pair a b)    = refl
+stablecd?-ren ρ (fst t)       = spine?-ren ρ t
+stablecd?-ren ρ (snd t)       = spine?-ren ρ t
+stablecd?-ren ρ ⌜base⌝        = refl
+stablecd?-ren ρ (⌜Π⌝ c d)     = refl
+stablecd?-ren ρ (⌜Σ⌝ c d)     = refl
+stablecd?-ren ρ (⌜Hom⌝ c a b) = refl
+stablecd?-ren ρ (hrefl c t)   = refl
+stablecd?-ren ρ (tr d p e)    = trstk?-ren ρ d p
+
+pathstk?-ren ρ (var x)       = refl
+pathstk?-ren ρ (lam t)       = refl
+pathstk?-ren ρ (app t u)     = spine?-ren ρ t
+pathstk?-ren ρ (pair a b)    = refl
+pathstk?-ren ρ (fst t)       = spine?-ren ρ t
+pathstk?-ren ρ (snd t)       = spine?-ren ρ t
+pathstk?-ren ρ ⌜base⌝        = refl
+pathstk?-ren ρ (⌜Π⌝ c d)     = refl
+pathstk?-ren ρ (⌜Σ⌝ c d)     = refl
+pathstk?-ren ρ (⌜Hom⌝ c a b) = refl
+pathstk?-ren ρ (hrefl c t)   = stablecd?-ren ρ c
+pathstk?-ren ρ (tr d p e)    = trstk?-ren ρ d p
+
+trstk?-ren ρ d (var x)       = refl
+trstk?-ren ρ d (lam f)       = homheaded?-ren (extR ρ) d
+trstk?-ren ρ d (app t u)     = spine?-ren ρ t
+trstk?-ren ρ d (pair a b)    = refl
+trstk?-ren ρ d (fst t)       = spine?-ren ρ t
+trstk?-ren ρ d (snd t)       = spine?-ren ρ t
+trstk?-ren ρ d ⌜base⌝        = refl
+trstk?-ren ρ d (⌜Π⌝ c e)     = refl
+trstk?-ren ρ d (⌜Σ⌝ c e)     = refl
+trstk?-ren ρ d (⌜Hom⌝ c a b) = refl
+trstk?-ren ρ d (hrefl c t)   = stablecd?-ren ρ c
+trstk?-ren ρ d (tr e q w)    = trstk?-ren ρ e q
+
 
 record ElNe {Γ} (A : RTy Γ) : Set where
   constructor mkElNe
@@ -1316,6 +1561,47 @@ homSem₀ (⊩₀Π {F = F} {G = G} p ⊩F ⊩G) {a} {b} ha hb =
                      (cong₂ app (wk-single b) refl)))
               (homSem₀ (⊩G v r) (projr ha v r) (projr hb v r)))
 
+-- membership transport through `subst`-casts of a level-0 interp
+mem₀-cast : {A B : RTy Γ} (eq : A ≡ B) (R : ⊩₀ A) {t : RTm Γ} →
+            R ⊩₀∋ t → (subst ⊩₀_ eq R) ⊩₀∋ t
+mem₀-cast refl R h = h
+
+mem₀-cast⁻ : {A B : RTy Γ} (eq : A ≡ B) (R : ⊩₀ A) {t : RTm Γ} →
+             (subst ⊩₀_ eq R) ⊩₀∋ t → R ⊩₀∋ t
+mem₀-cast⁻ refl R h = h
+
+-- ★ memberships at a `homSem₀`-interp do not depend on the ENDPOINTS
+-- (SpikeTrLR, promoted): `SN` at every stuck leaf, pointwise through the
+-- `Π` skeleton.  This hands `fund`'s J-branches their payload across the
+-- endpoint switch — the `PosC`-pinned motive is endpoint-blind in every
+-- other component.
+homSem₀-mem-endpoints :
+  {A : RTy Γ} (R : ⊩₀ A) {a b a' b' : RTm Γ}
+  (ha : R ⊩₀∋ a) (hb : R ⊩₀∋ b) (ha' : R ⊩₀∋ a') (hb' : R ⊩₀∋ b')
+  {t : RTm Γ} →
+  (homSem₀ R ha hb) ⊩₀∋ t → (homSem₀ R ha' hb') ⊩₀∋ t
+homSem₀-mem-endpoints (⊩₀base p)    ha hb ha' hb' h = h
+homSem₀-mem-endpoints (⊩₀ne p n)    ha hb ha' hb' h = h
+homSem₀-mem-endpoints (⊩₀Σ p ⊩F ⊩G) ha hb ha' hb' h = h
+homSem₀-mem-endpoints (⊩₀Hom p s)   ha hb ha' hb' h = h
+homSem₀-mem-endpoints (⊩₀Π {F = F} {G = G} p ⊩F ⊩G)
+                      {a} {b} {a'} {b'} ha hb ha' hb' {t} h =
+  ( projl h
+  , λ v r →
+      mem₀-cast
+        (sym (Hom-cong₃ refl
+               (cong₂ app (wk-single a') refl)
+               (cong₂ app (wk-single b') refl)))
+        (homSem₀ (⊩G v r) (projr ha' v r) (projr hb' v r))
+        (homSem₀-mem-endpoints (⊩G v r)
+          (projr ha v r) (projr hb v r) (projr ha' v r) (projr hb' v r)
+          (mem₀-cast⁻
+            (sym (Hom-cong₃ refl
+                   (cong₂ app (wk-single a) refl)
+                   (cong₂ app (wk-single b) refl)))
+            (homSem₀ (⊩G v r) (projr ha v r) (projr hb v r))
+            (projr h v r))) )
+
 -- ★ `sem-⌜Hom⌝`: the `⌜Hom⌝` code is a semantic CODE — its decoding is a
 -- small semantic type, via `homSem₀` and one decode step.
 sem-⌜Hom⌝ : {A : RTy Γ} (p : A ⟶ᵀ* U) {c a b : RTm Γ}
@@ -1387,39 +1673,22 @@ wne (sne-hrefl c t) with wn c | wn t
     nrm' : IsNormal (hrefl n₁ n₂)
     nrm' (ξ-hreflᶜ q) = nm₁ q
     nrm' (ξ-hreflᵃ q) = nm₂ q
-wne (sne-tr-stk {p = p} d₀ p₀ ps e₀) with wn d₀ | wn p₀ | wn e₀
+wne (sne-tr {d = d} {p = p} d₀ p₀ e₀ key) with wn d₀ | wn p₀ | wn e₀
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃ =
       mkWNe (tr n₁ n₂ n₃)
             (⟶*-trans (⟶*-trᵈ r₁) (⟶*-trans (⟶*-trᵖ r₂) (⟶*-trᵉ r₃)))
-            nrm' (sne-tr-stk sn₁ sn₂ ps' sn₃)
+            nrm' (sne-tr sn₁ sn₂ sn₃ key')
   where
-    ps' : PathStk n₂
-    ps' = pathstk-red* ps r₂
+    key' : trstk? n₁ n₂ ≡ true
+    key' = trstk?-red-p* {d = n₁} r₂ (trstk?-red-d* {p = p} r₁ key)
 
     nrm' : IsNormal (tr n₁ n₂ n₃)
-    nrm' (tr-J-base _ _ _)  = ⊥-elim (pathstk-no-J-base ps')
-    nrm' (tr-J-Σ _ _ _ _ _) = ⊥-elim (pathstk-no-J-Σ ps')
-    nrm' (tr-taut _ _)      = ⊥-elim (pathstk-no-lam ps')
+    nrm' (tr-J-base _ _ _)  = ⊥-elim (f≢t key')
+    nrm' (tr-J-Σ _ _ _ _ _) = ⊥-elim (f≢t key')
+    nrm' (tr-taut _ _)      = ⊥-elim (f≢t key')
     nrm' (ξ-trᵈ q) = nm₁ q
     nrm' (ξ-trᵖ q) = nm₂ q
     nrm' (ξ-trᵉ q) = nm₃ q
-wne (sne-tr-lam c₀ a₀ m₀ f₀ e₀)
-  with wn c₀ | wn a₀ | wn m₀ | wn f₀ | wn e₀
-... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃
-    | mkWN n₄ r₄ nm₄ sn₄ | mkWN n₅ r₅ nm₅ sn₅ =
-      mkWNe (tr (⌜Hom⌝ n₁ n₂ n₃) (lam n₄) n₅)
-            (⟶*-trans (⟶*-trᵈ (⟶*-trans (⟶*-⌜Hom⌝ᶜ r₁)
-                                (⟶*-trans (⟶*-⌜Hom⌝ˡ r₂) (⟶*-⌜Hom⌝ʳ r₃))))
-              (⟶*-trans (⟶*-trᵖ (⟶*-lam r₄)) (⟶*-trᵉ r₅)))
-            nrm' (sne-tr-lam sn₁ sn₂ sn₃ sn₄ sn₅)
-  where
-    nrm' : IsNormal (tr (⌜Hom⌝ n₁ n₂ n₃) (lam n₄) n₅)
-    nrm' (ξ-trᵈ (ξ-⌜Hom⌝ᶜ q)) = nm₁ q
-    nrm' (ξ-trᵈ (ξ-⌜Hom⌝ˡ q)) = nm₂ q
-    nrm' (ξ-trᵈ (ξ-⌜Hom⌝ʳ q)) = nm₃ q
-    nrm' (ξ-trᵖ (ξ-lam q))    = nm₄ q
-    nrm' (ξ-trᵉ q)            = nm₅ q
-
 wn (sn-ne n) with wne n
 ... | mkWNe n₁ r₁ nm₁ ne₁ = mkWN n₁ r₁ nm₁ (sn-ne ne₁)
 wn (sn-lam s) with wn s

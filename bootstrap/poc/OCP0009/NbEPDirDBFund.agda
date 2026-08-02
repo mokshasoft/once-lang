@@ -68,23 +68,24 @@ open import poc.OCP0009.NbEPDirDBType
         ; Ctx; ◇; _▹_; ⌊_⌋
         ; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd
-        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢conv
+        ; El-⌜Hom⌝
+        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢conv
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom
         ; ⊢ctx_; c-◇; c-▹
         ; ⊢id; ⊢appex )
-open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub )
+open import poc.OCP0009.NbEPDirDBVar using ( 𝔹; true; false; occTm; subTm-occ )
+open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; sub-comm )
 open import poc.OCP0009.NbEPDirDBDec using ( Dec; dec-conv )
-open import poc.OCP0009.NbEPDirDBInj using ( _⟶ᵀ*_; doneᵀ; red→≅ᵀ; Π-reduct; Σ-reduct; mkΠRed; mkΣRed )
+open import poc.OCP0009.NbEPDirDBInj using ( _⟶ᵀ*_; doneᵀ; stepᵀ; red→≅ᵀ; Π-reduct; Σ-reduct; mkΠRed; mkΣRed )
 open import poc.OCP0009.NbEPDirDBLR
-  using ( SNe; sne-var; sne-app; sne-fst; sne-snd; sne-hrefl
-        ; sne-tr-stk; sne-tr-lam
+  using ( SNe; sne-var; sne-app; sne-fst; sne-snd; sne-hrefl; sne-tr
         ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-exp
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
         ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-taut; snr-trᵖ
-        ; NeV; nv-var; nv-app; nv-fst; nv-snd
-        ; StableCd; sc-lam; sc-pair; sc-cΠ; sc-cH; sc-hrefl; sc-nev
-        ; PathStk; ps-nev; ps-h
-        ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; _⊩₀∋_
+        ; trstk?-ren
+        ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; _⊩₀∋_; bwd₀; exp₁
+        ; mem-whred₁; homSem₀; homSem₀-mem-endpoints
+        ; sne→spine; sne→stablecd; trstk?
         ; ⊩₁_; ⊩₁base; ⊩₁U; ⊩₁ne; ⊩₁Π; ⊩₁Σ; ⊩₁Hom; _⊩₁∋_
         ; bwd₁; irrel₁; conv₁; CR1₀; CR1₁; CR3₀; CR3₁
         ; emb; emb-coh
@@ -217,42 +218,6 @@ sub-comm-Ty σ a B =
 -- reachable without a Kripke-indexed relation.
 ------------------------------------------------------------------------
 
--- the shape judgments reflect through renamings, like everything raw
-nev-anti : {ρ : Ren Θ Ξ} {t : RTm Θ} → NeV (renTm ρ t) → NeV t
-nev-anti {t = var x}   _          = nv-var x
-nev-anti {t = app t u} (nv-app n) = nv-app (nev-anti n)
-nev-anti {t = fst p}   (nv-fst n) = nv-fst (nev-anti n)
-nev-anti {t = snd p}   (nv-snd n) = nv-snd (nev-anti n)
-
-stablecd-anti : {ρ : Ren Θ Ξ} {t : RTm Θ} → StableCd (renTm ρ t) → StableCd t
-stablecd-anti {t = lam s}       sc-lam     = sc-lam
-stablecd-anti {t = pair a b}    sc-pair    = sc-pair
-stablecd-anti {t = ⌜Π⌝ c d}     sc-cΠ      = sc-cΠ
-stablecd-anti {t = ⌜Hom⌝ c a b} sc-cH      = sc-cH
-stablecd-anti {t = hrefl c s}   sc-hrefl   = sc-hrefl
-stablecd-anti {t = var x}       (sc-nev n) = sc-nev (nv-var x)
-stablecd-anti {t = app t u}     (sc-nev n) = sc-nev (nev-anti n)
-stablecd-anti {t = fst p}       (sc-nev n) = sc-nev (nev-anti n)
-stablecd-anti {t = snd p}       (sc-nev n) = sc-nev (nev-anti n)
-stablecd-anti {t = ⌜base⌝}      (sc-nev ())
-stablecd-anti {t = ⌜Σ⌝ c d}     (sc-nev ())
-stablecd-anti {t = tr d p e}    (sc-nev ())
-
-pathstk-anti : {ρ : Ren Θ Ξ} {t : RTm Θ} → PathStk (renTm ρ t) → PathStk t
-pathstk-anti {t = hrefl c s} (ps-h sc)  = ps-h (stablecd-anti sc)
-pathstk-anti {t = hrefl c s} (ps-nev ())
-pathstk-anti {t = var x}     (ps-nev n) = ps-nev (nv-var x)
-pathstk-anti {t = app t u}   (ps-nev n) = ps-nev (nev-anti n)
-pathstk-anti {t = fst p}     (ps-nev n) = ps-nev (nev-anti n)
-pathstk-anti {t = snd p}     (ps-nev n) = ps-nev (nev-anti n)
-pathstk-anti {t = lam s}        (ps-nev ())
-pathstk-anti {t = pair a b}     (ps-nev ())
-pathstk-anti {t = ⌜base⌝}       (ps-nev ())
-pathstk-anti {t = ⌜Π⌝ c d}      (ps-nev ())
-pathstk-anti {t = ⌜Σ⌝ c d}      (ps-nev ())
-pathstk-anti {t = ⌜Hom⌝ c a b}  (ps-nev ())
-pathstk-anti {t = tr d p e}     (ps-nev ())
-
 sne-anti : {ρ : Ren Θ Ξ} {t : RTm Θ} → SNe (renTm ρ t) → SNe t
 sn-anti  : {ρ : Ren Θ Ξ} {t : RTm Θ} → SN  (renTm ρ t) → SN t
 snr-anti : {ρ : Ren Θ Ξ} {t : RTm Θ} {v : RTm Ξ} → SNRed (renTm ρ t) v →
@@ -264,75 +229,9 @@ sne-anti {t = fst p}    (sne-fst n)   = sne-fst (sne-anti n)
 sne-anti {t = snd p}    (sne-snd n)   = sne-snd (sne-anti n)
 sne-anti {t = hrefl c t} (sne-hrefl hc ht) =
   sne-hrefl (sn-anti hc) (sn-anti ht)
-sne-anti {ρ = ρ} {t = tr d (var x) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = var x} hp)
-             (pathstk-anti {ρ = ρ} {t = var x} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr d (app g w) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = app g w} hp)
-             (pathstk-anti {ρ = ρ} {t = app g w} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr d (pair g w) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = pair g w} hp)
-             (pathstk-anti {ρ = ρ} {t = pair g w} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr d (fst g) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = fst g} hp)
-             (pathstk-anti {ρ = ρ} {t = fst g} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr d (snd g) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = snd g} hp)
-             (pathstk-anti {ρ = ρ} {t = snd g} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr d (⌜base⌝) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = ⌜base⌝} hp)
-             (pathstk-anti {ρ = ρ} {t = ⌜base⌝} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr d (⌜Π⌝ g w) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = ⌜Π⌝ g w} hp)
-             (pathstk-anti {ρ = ρ} {t = ⌜Π⌝ g w} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr d (⌜Σ⌝ g w) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = ⌜Σ⌝ g w} hp)
-             (pathstk-anti {ρ = ρ} {t = ⌜Σ⌝ g w} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr d (⌜Hom⌝ g w v) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = ⌜Hom⌝ g w v} hp)
-             (pathstk-anti {ρ = ρ} {t = ⌜Hom⌝ g w v} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr d (hrefl g w) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = hrefl g w} hp)
-             (pathstk-anti {ρ = ρ} {t = hrefl g w} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr d (tr g w v) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti hd) (sn-anti {ρ = ρ} {t = tr g w v} hp)
-             (pathstk-anti {ρ = ρ} {t = tr g w v} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr (var x) (lam f) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti {ρ = extR ρ} {t = var x} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
-             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr (lam g) (lam f) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti {ρ = extR ρ} {t = lam g} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
-             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr (app g w) (lam f) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti {ρ = extR ρ} {t = app g w} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
-             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr (pair g w) (lam f) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti {ρ = extR ρ} {t = pair g w} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
-             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr (fst g) (lam f) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti {ρ = extR ρ} {t = fst g} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
-             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr (snd g) (lam f) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti {ρ = extR ρ} {t = snd g} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
-             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr (⌜base⌝) (lam f) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti {ρ = extR ρ} {t = ⌜base⌝} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
-             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr (⌜Π⌝ g w) (lam f) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti {ρ = extR ρ} {t = ⌜Π⌝ g w} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
-             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr (⌜Σ⌝ g w) (lam f) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti {ρ = extR ρ} {t = ⌜Σ⌝ g w} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
-             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr (hrefl g w) (lam f) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti {ρ = extR ρ} {t = hrefl g w} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
-             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
-sne-anti {ρ = ρ} {t = tr (tr g w v) (lam f) e} (sne-tr-stk hd hp ps he) =
-  sne-tr-stk (sn-anti {ρ = extR ρ} {t = tr g w v} hd) (sn-anti {ρ = ρ} {t = lam f} hp)
-             (pathstk-anti {ρ = ρ} {t = lam f} ps) (sn-anti he)
-sne-anti {t = tr (⌜Hom⌝ d₁ d₂ d₃) (lam f) e} (sne-tr-stk hd hp (ps-nev ()) he)
-sne-anti {t = tr (⌜Hom⌝ d₁ d₂ d₃) (lam f) e} (sne-tr-lam h₁ h₂ h₃ h₄ h₅) =
-  sne-tr-lam (sn-anti h₁) (sn-anti h₂) (sn-anti h₃) (sn-anti h₄) (sn-anti h₅)
+sne-anti {ρ = ρ} {t = tr d p e} (sne-tr hd hp he key) =
+  sne-tr (sn-anti hd) (sn-anti hp) (sn-anti he)
+         (trans (sym (trstk?-ren ρ d p)) key)
 
 sn-anti {t = var x}    _              = sn-ne (sne-var x)
 sn-anti {t = lam s}    (sn-lam h)     = sn-lam (sn-anti h)
@@ -785,6 +684,211 @@ fund {σ = σ} (⊢hrefl {c = c} {t = t} dc dt) x₀ ρ =
     Rt = fund dt x₀ ρ
     snc = CR1₁ (dfst (fund dc x₀ ρ)) (dsnd (fund dc x₀ ρ))
     snt = CR1₁ (dfst Rt) (dsnd Rt)
+
+-- ★★ W2 stage 2 — `⊢tr` AT THE COMPOSITION MOTIVE: the semantic
+-- validation the variance floor promised.  The motive's vz-freeness
+-- (the inlined `posc-Hom` premises) makes every component
+-- ENDPOINT-BLIND (`subTm-occ`), so the source- and target-types differ
+-- only in the transported endpoint; the path analysis runs by induction
+-- on the path's `SN` derivation — head steps expand
+-- (`exp₁` ∘ `mem-whred₁`, the deterministic-strategy transfer), the
+-- permanently stuck shapes are neutral (`sne-tr` + the classifier
+-- extractors), and the J-branches hand the payload across the endpoint
+-- switch with `homSem₀-mem-endpoints`.
+fund {Ξ = Ξ} {σ = σ}
+  (⊢tr {A = A} {c = c₀} {a = a₀} {p = p₀} {e = e₀} {t = t₀} {u = u₀}
+       dc' da' dv hc ha dt du dp de) x₀ ρ =
+  relTy (cong El (sym (sub-comm σ (⌜Hom⌝ c₀ a₀ (var vz)) u₀)))
+        (go (CR1₁ (dfst (fund dp x₀ ρ)) (dsnd (fund dp x₀ ρ)))
+            (dsnd (fund dp x₀ ρ)))
+  where
+  dI : RTm (Ξ ∙)
+  dI = subTm (extS σ) (⌜Hom⌝ c₀ a₀ (var vz))
+  tI uI pI eI : RTm Ξ
+  tI = subTm σ t₀
+  uI = subTm σ u₀
+  pI = subTm σ p₀
+  eI = subTm σ e₀
+
+  Rt   = fund dt x₀ ρ
+  R_A  = dfst Rt
+  ht   = dsnd Rt
+  hu   = projl (irrel₁ crflᵀ (dfst (fund du x₀ ρ)) R_A) uI
+               (dsnd (fund du x₀ ρ))
+  R_H  = dfst (fund dp x₀ ρ)
+  Re'  = relTy (cong El (sub-comm σ (⌜Hom⌝ c₀ a₀ (var vz)) t₀))
+               (fund de x₀ ρ)
+  R_e  = dfst Re'
+  he   = dsnd Re'
+  snE  = CR1₁ R_e he
+
+  -- `SN` of the substituted motive, componentwise via instantiation at
+  -- a fresh variable (the `sem-⌜Π⌝` pattern)
+  r₀    = CR3₁ R_A (sne-var x₀)
+  bodyC = fund dc' x₀ (⊩ˢ-ext ρ R_A (var x₀) r₀)
+  bodyA = fund da' x₀ (⊩ˢ-ext ρ R_A (var x₀) r₀)
+  snD : SN dI
+  snD = sn-cH
+          (sn-body x₀ (subst SN (sym (sub-single-Tm σ (var x₀) c₀))
+                             (CR1₁ (dfst bodyC) (dsnd bodyC))))
+          (sn-body x₀ (subst SN (sym (sub-single-Tm σ (var x₀) a₀))
+                             (CR1₁ (dfst bodyA) (dsnd bodyA))))
+          (sn-ne (sne-var vz))
+
+  -- the motive's components at the t-endpoint environment
+  envT = ⊩ˢ-ext ρ R_A tI ht
+  envU = ⊩ˢ-ext ρ R_A uI hu
+
+  cT aT : RTm Ξ
+  cT = subTm (σ ,ₛ tI) c₀
+  aT = subTm (σ ,ₛ tI) a₀
+
+  hcT = projl (irrel₁ crflᵀ (dfst (fund dc' x₀ envT)) (⊩₁U doneᵀ))
+              cT (dsnd (fund dc' x₀ envT))
+  Rc : ⊩₀ (El cT)
+  Rc = sem-El doneᵀ hcT
+
+  haT : Rc ⊩₀∋ aT
+  haT = projr (emb-coh Rc) aT
+              (projl (irrel₁ crflᵀ (dfst (fund da' x₀ envT)) (emb Rc))
+                     aT (dsnd (fund da' x₀ envT)))
+
+  htT : Rc ⊩₀∋ tI
+  htT = projr (emb-coh Rc) tI
+              (projl (irrel₁ crflᵀ (dfst (fund dv x₀ envT)) (emb Rc))
+                     tI (dsnd (fund dv x₀ envT)))
+
+  -- endpoint-blindness of the components (`subTm-occ` on the premises)
+  agree-c : (x : Var (_ ∙)) → occTm x c₀ ≡ true → (σ ,ₛ uI) x ≡ (σ ,ₛ tI) x
+  agree-c vz o with trans (sym o) hc
+  ... | ()
+  agree-c (vs y) o = refl
+
+  agree-a : (x : Var (_ ∙)) → occTm x a₀ ≡ true → (σ ,ₛ uI) x ≡ (σ ,ₛ tI) x
+  agree-a vz o with trans (sym o) ha
+  ... | ()
+  agree-a (vs y) o = refl
+
+  eqc : subTm (σ ,ₛ uI) c₀ ≡ cT
+  eqc = subTm-occ c₀ agree-c
+  eqa : subTm (σ ,ₛ uI) a₀ ≡ aT
+  eqa = subTm-occ a₀ agree-a
+
+  huT : Rc ⊩₀∋ uI
+  huT = projr (emb-coh Rc) uI
+              (projl (irrel₁ crflᵀ
+                        (dfst (relTy (cong El eqc) (fund dv x₀ envU)))
+                        (emb Rc))
+                     uI (dsnd (relTy (cong El eqc) (fund dv x₀ envU))))
+
+  -- source and target decoded interps, and the payload's transfer
+  eq-ct : subTm (single tI) (subTm (extS σ) c₀) ≡ cT
+  eq-ct = sub-single-Tm σ tI c₀
+  eq-at : subTm (single tI) (subTm (extS σ) a₀) ≡ aT
+  eq-at = sub-single-Tm σ tI a₀
+  eq-cu : subTm (single uI) (subTm (extS σ) c₀) ≡ cT
+  eq-cu = trans (sub-single-Tm σ uI c₀) eqc
+  eq-au : subTm (single uI) (subTm (extS σ) a₀) ≡ aT
+  eq-au = trans (sub-single-Tm σ uI a₀) eqa
+
+  eqSrc : El (⌜Hom⌝ cT aT tI) ≡ El (subTm (single tI) dI)
+  eqSrc = cong El (sym (⌜Hom⌝-cong₃ eq-ct eq-at refl))
+  eqTgt : El (⌜Hom⌝ cT aT uI) ≡ El (subTm (single uI) dI)
+  eqTgt = cong El (sym (⌜Hom⌝-cong₃ eq-cu eq-au refl))
+
+  srcBase = bwd₀ (stepᵀ (El-⌜Hom⌝ cT aT tI) doneᵀ) (homSem₀ Rc haT htT)
+  tgtBase = bwd₀ (stepᵀ (El-⌜Hom⌝ cT aT uI) doneᵀ) (homSem₀ Rc haT huT)
+
+  R₀t : ⊩₀ (El (subTm (single tI) dI))
+  R₀t = ⊩₀cast eqSrc srcBase
+  R₀u : ⊩₀ (El (subTm (single uI) dI))
+  R₀u = ⊩₀cast eqTgt tgtBase
+
+  R_result : ⊩₁ (El (subTm (single uI) dI))
+  R_result = emb R₀u
+
+  mem₀-castF : {X Y : RTy Ξ} (eq : X ≡ Y) (R : ⊩₀ X) {w : RTm Ξ} →
+               R ⊩₀∋ w → (⊩₀cast eq R) ⊩₀∋ w
+  mem₀-castF refl R h = h
+
+  mem₀-castF⁻ : {X Y : RTy Ξ} (eq : X ≡ Y) (R : ⊩₀ X) {w : RTm Ξ} →
+                (⊩₀cast eq R) ⊩₀∋ w → R ⊩₀∋ w
+  mem₀-castF⁻ refl R h = h
+
+  mem-bwd₀ : {X Y : RTy Ξ} (q : X ⟶ᵀ* Y) (R : ⊩₀ Y) {w : RTm Ξ} →
+             R ⊩₀∋ w → (bwd₀ q R) ⊩₀∋ w
+  mem-bwd₀ q (⊩₀base _)  h = h
+  mem-bwd₀ q (⊩₀ne _ _)  h = h
+  mem-bwd₀ q (⊩₀Π _ _ _) h = h
+  mem-bwd₀ q (⊩₀Σ _ _ _) h = h
+  mem-bwd₀ q (⊩₀Hom _ _) h = h
+
+  mem-bwd₀⁻ : {X Y : RTy Ξ} (q : X ⟶ᵀ* Y) (R : ⊩₀ Y) {w : RTm Ξ} →
+              (bwd₀ q R) ⊩₀∋ w → R ⊩₀∋ w
+  mem-bwd₀⁻ q (⊩₀base _)  h = h
+  mem-bwd₀⁻ q (⊩₀ne _ _)  h = h
+  mem-bwd₀⁻ q (⊩₀Π _ _ _) h = h
+  mem-bwd₀⁻ q (⊩₀Σ _ _ _) h = h
+  mem-bwd₀⁻ q (⊩₀Hom _ _) h = h
+
+  heTgt : R_result ⊩₁∋ eI
+  heTgt =
+    projl (emb-coh R₀u) eI
+      (mem₀-castF eqTgt tgtBase
+        (mem-bwd₀ (stepᵀ (El-⌜Hom⌝ cT aT uI) doneᵀ) (homSem₀ Rc haT huT)
+          (homSem₀-mem-endpoints Rc haT htT haT huT
+            (mem-bwd₀⁻ (stepᵀ (El-⌜Hom⌝ cT aT tI) doneᵀ) (homSem₀ Rc haT htT)
+              (mem₀-castF⁻ eqSrc srcBase
+                (projr (emb-coh R₀t) eI
+                  (projl (irrel₁ crflᵀ R_e (emb R₀t)) eI he)))))))
+
+  -- ★ the path analysis.
+  cr3 : {p' : RTm Ξ} → SN p' → trstk? dI p' ≡ true →
+        Σ (⊩₁ (El (subTm (single uI) dI)))
+          (λ R → R ⊩₁∋ tr dI p' eI)
+  cr3 snp key = ( R_result , CR3₁ R_result (sne-tr snD snp snE key) )
+
+  go  : {p' : RTm Ξ} → SN p' → R_H ⊩₁∋ p' →
+        Σ (⊩₁ (El (subTm (single uI) dI)))
+          (λ R → R ⊩₁∋ tr dI p' eI)
+  goh : {c' s' : RTm Ξ} → SN c' → SN s' → R_H ⊩₁∋ hrefl c' s' →
+        Σ (⊩₁ (El (subTm (single uI) dI)))
+          (λ R → R ⊩₁∋ tr dI (hrefl c' s') eI)
+
+  go (sn-exp r snp') hp' =
+    ( dfst z , exp₁ (dfst z) (snr-trᵖ r) (dsnd z) )
+    where z = go snp' (mem-whred₁ R_H r hp')
+  go (sn-ne (sne-var x)) hp'         = cr3 (sn-ne (sne-var x)) refl
+  go (sn-ne (sne-app n s)) hp'       = cr3 (sn-ne (sne-app n s)) (sne→spine n)
+  go (sn-ne (sne-fst n)) hp'         = cr3 (sn-ne (sne-fst n)) (sne→spine n)
+  go (sn-ne (sne-snd n)) hp'         = cr3 (sn-ne (sne-snd n)) (sne→spine n)
+  go (sn-ne (sne-hrefl snc sns)) hp' = goh snc sns hp'
+  go (sn-ne (sne-tr h₁ h₂ h₃ key)) hp' =
+    cr3 (sn-ne (sne-tr h₁ h₂ h₃ key)) key
+  go (sn-lam snf) hp'      = cr3 (sn-lam snf) refl
+  go (sn-pair sa sb) hp'   = cr3 (sn-pair sa sb) refl
+  go sn-cb hp'             = cr3 sn-cb refl
+  go (sn-cΠ h₁ h₂) hp'     = cr3 (sn-cΠ h₁ h₂) refl
+  go (sn-cΣ h₁ h₂) hp'     = cr3 (sn-cΣ h₁ h₂) refl
+  go (sn-cH h₁ h₂ h₃) hp'  = cr3 (sn-cH h₁ h₂ h₃) refl
+
+  goh sn-cb sns hp' =
+    ( R_result , exp₁ R_result (snr-J-base snD sns) heTgt )
+  goh (sn-cΣ h₁ h₂) sns hp' =
+    ( R_result , exp₁ R_result (snr-J-Σ snD h₁ h₂ sns) heTgt )
+  goh (sn-exp rc snc') sns hp' =
+    ( dfst z , exp₁ (dfst z) (snr-trᵖ (snr-hreflᶜ rc)) (dsnd z) )
+    where z = goh snc' sns (mem-whred₁ R_H (snr-hreflᶜ rc) hp')
+  goh (sn-ne nc) sns hp' =
+    cr3 (sn-ne (sne-hrefl (sn-ne nc) sns)) (sne→stablecd nc)
+  goh (sn-lam snb) sns hp' =
+    cr3 (sn-ne (sne-hrefl (sn-lam snb) sns)) refl
+  goh (sn-pair sa sb) sns hp' =
+    cr3 (sn-ne (sne-hrefl (sn-pair sa sb) sns)) refl
+  goh (sn-cΠ h₁ h₂) sns hp' =
+    cr3 (sn-ne (sne-hrefl (sn-cΠ h₁ h₂) sns)) refl
+  goh (sn-cH h₁ h₂ h₃) sns hp' =
+    cr3 (sn-ne (sne-hrefl (sn-cH h₁ h₂ h₃) sns)) refl
 
 -- ★ `⊢conv` — no validity premise, no `⊢ty` closed under conversion.  The
 -- relation is already closed under conversion; this is the whole of §4.0.
