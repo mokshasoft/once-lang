@@ -39,6 +39,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr
         ; Ren; extR; Sub; subTy; subTm; renTy; renTm )
+open import poc.OCP0009.NbEPDirDBVar using ( 𝔹; true; false; occTm )
 
 private
   variable
@@ -259,17 +260,30 @@ data _⊢_∷_ where
   ⊢⌜base⌝ : ∀ {Γ}       → Γ ⊢ ⌜base⌝ ∷ U
   ⊢⌜Π⌝  : ∀ {Γ c d}     → Γ ⊢ c ∷ U → (Γ ▹ El c) ⊢ d ∷ U → Γ ⊢ ⌜Π⌝ c d ∷ U
   ⊢⌜Σ⌝  : ∀ {Γ c d}     → Γ ⊢ c ∷ U → (Γ ▹ El c) ⊢ d ∷ U → Γ ⊢ ⌜Σ⌝ c d ∷ U
-  -- ★ W2 eliminator (SpikeHomRefl + SpikeTr).  `⊢⌜Hom⌝` and `⊢hrefl`
-  -- join the kernel judgment.  `⊢tr` — the revised CODE-motive spec
-  -- (SpikeTr §0), with the `PosC` premise — is STAGED in the additive
-  -- module `NbEPDirDBTr`: its subject reduction is proven there against
-  -- this judgment, while its `fund` case needs the Hom-membership to
-  -- package a transport closure (the `SpikeHomLR` gate, reopened at the
-  -- ELIMINATOR — next session's spike).
+  -- ★ W2 eliminator (SpikeHomRefl + SpikeTr + SpikeTrLR).  `⊢⌜Hom⌝` and
+  -- `⊢hrefl` join the kernel judgment, and — stage 2 — so does `⊢tr` AT
+  -- THE COMPOSITION MOTIVE, its shape pinned in the rule (`posc-Hom`'s
+  -- content inlined as the two vz-freeness premises) with ENDPOINT
+  -- premises (the `⊢lam` option-A pattern: `sr` never needed them,
+  -- `fund` does).  The TAUTOLOGICAL motive stays STAGED in
+  -- `NbEPDirDBTr`: its `fund` case needs `t ≅ u` in a J-branch, which
+  -- only typing can see (the configuration is typed-vacuous but `fund`'s
+  -- induction is raw) — see SpikeTrLR's obstruction record.
   ⊢⌜Hom⌝ : ∀ {Γ c a b}  → Γ ⊢ c ∷ U → Γ ⊢ a ∷ El c → Γ ⊢ b ∷ El c →
                           Γ ⊢ ⌜Hom⌝ c a b ∷ U
   ⊢hrefl : ∀ {Γ c t}    → Γ ⊢ c ∷ U → Γ ⊢ t ∷ El c →
                           Γ ⊢ hrefl c t ∷ Hom (El c) t t
+  -- (the motive's `⊢⌜Hom⌝` premise is carried COMPONENTWISE so `fund`'s
+  -- recursion stays structural)
+  ⊢tr   : ∀ {Γ A c a p e t u} →
+          (Γ ▹ A) ⊢ c ∷ U → (Γ ▹ A) ⊢ a ∷ El c →
+          (Γ ▹ A) ⊢ var vz ∷ El c →
+          occTm vz c ≡ false → occTm vz a ≡ false →
+          Γ ⊢ t ∷ A → Γ ⊢ u ∷ A →
+          Γ ⊢ p ∷ Hom A t u →
+          Γ ⊢ e ∷ El (subTm (single t) (⌜Hom⌝ c a (var vz))) →
+          Γ ⊢ tr (⌜Hom⌝ c a (var vz)) p e
+            ∷ El (subTm (single u) (⌜Hom⌝ c a (var vz)))
   ⊢conv : ∀ {Γ t A B}   → Γ ⊢ t ∷ A → A ≅ᵀ B → Γ ⊢ t ∷ B
 
 data _⊢ty_ where

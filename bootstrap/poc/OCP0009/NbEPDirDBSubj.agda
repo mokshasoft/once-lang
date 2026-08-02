@@ -52,7 +52,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd
-        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢conv
+        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢conv
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom
         ; ⊢ctx_; c-◇; c-▹ )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; ⟶-sub )
@@ -367,6 +367,17 @@ mono-El[] : (d₀ : RTm (Γ ∙)) {t w : RTm Γ} → t ⟶* w →
             El (subTm (single t) d₀) ≅ᵀ El (subTm (single w) d₀)
 mono-El[] d₀ r = red→≅ᵀ (⟶ᵀ*-El (subTm-monoˢ (single-mono r) d₀))
 
+-- inversion of a step on a `⌜Hom⌝`-headed term
+data HomStep {Γ} (c a m : RTm Γ) : RTm Γ → Set where
+  hsᶜ : {c' : RTm Γ} → c ⟶ c' → HomStep c a m (⌜Hom⌝ c' a m)
+  hsˡ : {a' : RTm Γ} → a ⟶ a' → HomStep c a m (⌜Hom⌝ c a' m)
+  hsʳ : {m' : RTm Γ} → m ⟶ m' → HomStep c a m (⌜Hom⌝ c a m')
+
+hom-step : {c a m x : RTm Γ} → ⌜Hom⌝ c a m ⟶ x → HomStep c a m x
+hom-step (ξ-⌜Hom⌝ᶜ r) = hsᶜ r
+hom-step (ξ-⌜Hom⌝ˡ r) = hsˡ r
+hom-step (ξ-⌜Hom⌝ʳ r) = hsʳ r
+
 ------------------------------------------------------------------------
 -- Typed renaming preserves typing.
 ------------------------------------------------------------------------
@@ -412,6 +423,17 @@ ren-lemma (⊢⌜Σ⌝ dc dd) h = ⊢⌜Σ⌝ (ren-lemma dc h) (ren-lemma dd (Re
 ren-lemma (⊢⌜Hom⌝ dc da db) h =
   ⊢⌜Hom⌝ (ren-lemma dc h) (ren-lemma da h) (ren-lemma db h)
 ren-lemma (⊢hrefl dc dt) h = ⊢hrefl (ren-lemma dc h) (ren-lemma dt h)
+ren-lemma {ρ = ρ} (⊢tr {c = cM} {a = aM} {t = t} {u = u} dc da dv hc ha dt du dp de) h
+  with posc-ren {ρ = ρ} (posc-Hom {c = cM} {a = aM} hc ha)
+... | posc-Hom hc' ha' =
+      ⊢-cast (cong El (sym (ren-comm ρ (⌜Hom⌝ cM aM (var vz)) u)))
+        (⊢tr {c = renTm (extR ρ) cM} {a = renTm (extR ρ) aM}
+             {t = renTm ρ t} {u = renTm ρ u}
+             (ren-lemma dc (Ren⊢-ext h)) (ren-lemma da (Ren⊢-ext h))
+             (ren-lemma dv (Ren⊢-ext h)) hc' ha'
+             (ren-lemma dt h) (ren-lemma du h) (ren-lemma dp h)
+             (⊢-cast (cong El (ren-comm ρ (⌜Hom⌝ cM aM (var vz)) t))
+                     (ren-lemma de h)))
 ren-lemma {ρ = ρ} (⊢conv d c) h = ⊢conv (ren-lemma d h) (≅ᵀ-ren ρ c)
 
 ⊢wk : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
@@ -461,6 +483,17 @@ sub-lemma (⊢⌜Σ⌝ dc dd) h = ⊢⌜Σ⌝ (sub-lemma dc h) (sub-lemma dd (Su
 sub-lemma (⊢⌜Hom⌝ dc da db) h =
   ⊢⌜Hom⌝ (sub-lemma dc h) (sub-lemma da h) (sub-lemma db h)
 sub-lemma (⊢hrefl dc dt) h = ⊢hrefl (sub-lemma dc h) (sub-lemma dt h)
+sub-lemma {σ = σ} (⊢tr {c = cM} {a = aM} {t = t} {u = u} dc da dv hc ha dt du dp de) h
+  with posc-sub {σ = σ} (posc-Hom {c = cM} {a = aM} hc ha)
+... | posc-Hom hc' ha' =
+      ⊢-cast (cong El (sym (sub-comm σ (⌜Hom⌝ cM aM (var vz)) u)))
+        (⊢tr {c = subTm (extS σ) cM} {a = subTm (extS σ) aM}
+             {t = subTm σ t} {u = subTm σ u}
+             (sub-lemma dc (Sub⊢-ext h)) (sub-lemma da (Sub⊢-ext h))
+             (sub-lemma dv (Sub⊢-ext h)) hc' ha'
+             (sub-lemma dt h) (sub-lemma du h) (sub-lemma dp h)
+             (⊢-cast (cong El (sub-comm σ (⌜Hom⌝ cM aM (var vz)) t))
+                     (sub-lemma de h)))
 sub-lemma {σ = σ} (⊢conv d c) h = ⊢conv (sub-lemma d h) (≅ᵀ-sub σ c)
 
 ⊢[] : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {t : RTm (⌊ Γ ⌋ ∙)} {B : RTy (⌊ Γ ⌋ ∙)}
@@ -566,11 +599,34 @@ gen-hrefl (⊢hrefl dc dt) = dc , (dt , crflᵀ)
 gen-hrefl (⊢conv d c) with gen-hrefl d
 ... | (dc , (dt , c')) = dc , (dt , ctrnᵀ (csymᵀ c) c')
 
--- With `⊢tr` STAGED out of the base judgment (see NbEPDirDBTr), a base
--- typing of a `tr`-term is impossible — its `sr` cases are vacuous.
-no-tr : {Γ : Ctx} {d₀ : RTm (⌊ Γ ⌋ ∙)} {p e : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
-        Γ ⊢ tr d₀ p e ∷ C → ⊥
-no-tr (⊢conv d _) = no-tr d
+-- Inversion for `⊢tr` (stage 2: the composition motive, pinned in the
+-- rule).  `deq` records that ANY typeable `tr`-motive has that shape.
+record TrInv (Γ : Ctx) (d₀ : RTm (⌊ Γ ⌋ ∙)) (p e : RTm ⌊ Γ ⌋)
+             (C : RTy ⌊ Γ ⌋) : Set where
+  constructor mkTrInv
+  field
+    cM aM : RTm (⌊ Γ ⌋ ∙)
+    deq  : d₀ ≡ ⌜Hom⌝ cM aM (var vz)
+    A    : RTy ⌊ Γ ⌋
+    t u  : RTm ⌊ Γ ⌋
+    dcM  : (Γ ▹ A) ⊢ cM ∷ U
+    daM  : (Γ ▹ A) ⊢ aM ∷ El cM
+    dvM  : (Γ ▹ A) ⊢ var vz ∷ El cM
+    hcM  : occTm vz cM ≡ false
+    haM  : occTm vz aM ≡ false
+    dt   : Γ ⊢ t ∷ A
+    du   : Γ ⊢ u ∷ A
+    dp   : Γ ⊢ p ∷ Hom A t u
+    de   : Γ ⊢ e ∷ El (subTm (single t) (⌜Hom⌝ cM aM (var vz)))
+    cC   : C ≅ᵀ El (subTm (single u) (⌜Hom⌝ cM aM (var vz)))
+
+gen-tr : {Γ : Ctx} {d₀ : RTm (⌊ Γ ⌋ ∙)} {p e : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+         Γ ⊢ tr d₀ p e ∷ C → TrInv Γ d₀ p e C
+gen-tr (⊢tr dc da dv hc ha dt du dp de) =
+  mkTrInv _ _ refl _ _ _ dc da dv hc ha dt du dp de crflᵀ
+gen-tr (⊢conv d c) with gen-tr d
+... | mkTrInv cM aM deq A t u dc da dv hc ha dt du dp de cC =
+      mkTrInv cM aM deq A t u dc da dv hc ha dt du dp de (ctrnᵀ (csymᵀ c) cC)
 
 ------------------------------------------------------------------------
 -- ★ SUBJECT REDUCTION.
@@ -628,14 +684,39 @@ sr d (ξ-⌜Σ⌝ˡ r) with gen-⌜Σ⌝ d
       ⊢conv (⊢⌜Σ⌝ (sr dc r) (conv-ctx (credᵀ (ξ-El r)) dd)) (csymᵀ cU)
 sr d (ξ-⌜Σ⌝ʳ r) with gen-⌜Σ⌝ d
 ... | (dc , (dd , cU)) = ⊢conv (⊢⌜Σ⌝ dc (sr dd r)) (csymᵀ cU)
--- `tr`-rule reductions: vacuous in the base judgment (`no-tr`); the
--- contentful subject-reduction cases live in NbEPDirDBTr's `srᵗ`.
-sr d (tr-J-base d₂ s e₀)    with no-tr d
-... | ()
-sr d (tr-J-Σ d₂ c₁ c₂ s e₀) with no-tr d
-... | ()
-sr d (tr-taut f e₀)         with no-tr d
-... | ()
+-- `tr`-rule reductions (stage 2).  The J cases extract the endpoint
+-- conversion a canonical identity path witnesses via confluence
+-- (stuck-ambient `Hom`s never unfold, so reducts decompose
+-- componentwise); the taut case is VACUOUS in the base judgment — the
+-- rule pins the motive to a `⌜Hom⌝`, never `var vz`.
+sr d (tr-J-base d₂ s e₀) with gen-tr d
+... | mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC with gen-hrefl dp
+...   | (dc , (ds , cH)) with church-rosserᵀ cH
+...     | W , (rL , rR) with homred-inv baseamb-red (λ ()) (λ ()) ba-el rR
+...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
+            with Hom-to-Hom (subst (Hom A t u ⟶ᵀ*_) eqW rL)
+...         | mkHomRed rA rt ru =
+              ⊢conv de
+                (ctrnᵀ (ctrnᵀ (mono-El[] d₂ rt)
+                         (ctrnᵀ (csymᵀ (mono-El[] d₂ rs₁))
+                           (ctrnᵀ (mono-El[] d₂ rs₂)
+                             (csymᵀ (mono-El[] d₂ ru)))))
+                       (csymᵀ cC))
+sr d (tr-J-Σ d₂ c₁ c₂ s e₀) with gen-tr d
+... | mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC with gen-hrefl dp
+...   | (dc , (ds , cH)) with church-rosserᵀ cH
+...     | W , (rL , rR) with homred-inv σamb-red (λ ()) (λ ()) sa-el rR
+...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
+            with Hom-to-Hom (subst (Hom A t u ⟶ᵀ*_) eqW rL)
+...         | mkHomRed rA rt ru =
+              ⊢conv de
+                (ctrnᵀ (ctrnᵀ (mono-El[] d₂ rt)
+                         (ctrnᵀ (csymᵀ (mono-El[] d₂ rs₁))
+                           (ctrnᵀ (mono-El[] d₂ rs₂)
+                             (csymᵀ (mono-El[] d₂ ru)))))
+                       (csymᵀ cC))
+sr d (tr-taut f e₀) with gen-tr d
+... | mkTrInv cM aM () A t u dcM daM dvM hcM haM dt du dp de cC
 -- congruence cases for the three new formers.
 sr d (ξ-⌜Hom⌝ᶜ r) with gen-⌜Hom⌝ d
 ... | (dc , (da , (db , cU))) =
@@ -654,12 +735,25 @@ sr d (ξ-hreflᵃ r) with gen-hrefl d
 ... | (dc , (dt , cH)) =
       ⊢conv (⊢hrefl dc (sr dt r))
             (csymᵀ (ctrnᵀ cH (ctrnᵀ (credᵀ (ξ-Homˡ r)) (credᵀ (ξ-Homʳ r)))))
-sr d (ξ-trᵈ r) with no-tr d
-... | ()
-sr d (ξ-trᵖ r) with no-tr d
-... | ()
-sr d (ξ-trᵉ r) with no-tr d
-... | ()
+sr d (ξ-trᵈ r) with gen-tr d
+... | mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC with hom-step r
+...   | hsᶜ rc =
+        ⊢conv (⊢tr (sr dcM rc) (⊢conv daM (credᵀ (ξ-El rc)))
+                   (⊢conv dvM (credᵀ (ξ-El rc)))
+                   (occ-red rc hcM) haM dt du dp
+                   (⊢conv de (credᵀ (ξ-El (⟶-sub (single t) r)))))
+              (csymᵀ (ctrnᵀ cC (credᵀ (ξ-El (⟶-sub (single u) r)))))
+...   | hsˡ ra =
+        ⊢conv (⊢tr dcM (sr daM ra) dvM hcM (occ-red ra haM) dt du dp
+                   (⊢conv de (credᵀ (ξ-El (⟶-sub (single t) r)))))
+              (csymᵀ (ctrnᵀ cC (credᵀ (ξ-El (⟶-sub (single u) r)))))
+...   | hsʳ ()
+sr d (ξ-trᵖ r) with gen-tr d
+... | mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC =
+      ⊢conv (⊢tr dcM daM dvM hcM haM dt du (sr dp r) de) (csymᵀ cC)
+sr d (ξ-trᵉ r) with gen-tr d
+... | mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC =
+      ⊢conv (⊢tr dcM daM dvM hcM haM dt du dp (sr de r)) (csymᵀ cC)
 
 ------------------------------------------------------------------------
 -- Type preservation for MULTI-step reduction — the immediate corollary.
