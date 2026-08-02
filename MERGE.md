@@ -68,6 +68,22 @@ Special scrutiny, in order:
   its behavioral justification stated (what the compiled output now does
   differently, and why that is right).
 
+## 1b. Plans-folder hygiene (part of the analysis)
+
+The same read of the branch determines the state of every plan it touched
+(`plans/*.md`):
+
+- **Finished plans are DELETED** — a completed plan left in the folder reads
+  as open work. Before deleting, extract anything of durable value (design
+  findings, residual genealogy, techniques) into the decision log or the
+  module headers it belongs in, and commit that extraction; the plan file's
+  deletion notes in its commit message where the content went (the D073/P5
+  precedent: the plan's own final phase instructed its deletion).
+- **Unfinished plans are UPDATED** — the file must clearly state the NEXT
+  item to pick up and the context needed to pick it up cold (what is done,
+  what is in flight and where it lives, which gates passed). A stale plan
+  whose "next step" was done three sessions ago is worse than no plan.
+
 ## 2. Decision-log coverage
 
 Every design decision the branch embodies must exist as a `D0xx` entry in
