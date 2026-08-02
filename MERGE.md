@@ -30,6 +30,18 @@ Special scrutiny, in order:
   implementation (top-down specs). Legitimate reasons are a language-level
   decision recorded in the decision log, or a pure addition that defines a
   new observable.
+- **Top-level module impact.** The analysis must STATE which top-level
+  modules the diff touches, each with what changed and why — these are the
+  trust anchors, so their diffs get read hunk by hunk, not skimmed:
+  `Once.Spec` (strictest, above), `Once.Certified` (what the certification
+  claims), `Once.Compiler` / `Once.Compile` (the compiler statement and
+  pipeline — also the extraction root), `Once.Postulates` /
+  `Once.ProofObligation` (the trusted base), and the core object-language
+  types (`Once.IR`, `Once.Type`, `Once.IRTy`). A change to any of these that
+  the analysis cannot justify in one paragraph is a stop-the-merge finding.
+  "No top-level module touched" is itself a statement the analysis must make
+  explicitly (and verify by path filter, e.g.
+  `git diff master..HEAD --stat -- 'formal/Once/*.agda'`).
 - **Postulate delta.** Count residuals/postulates on master vs the branch
   (`grep -rn postulate` over the correspondence cone). The delta must be
   explainable residual by residual: every NEW postulate needs a name, a
