@@ -5549,3 +5549,42 @@ route generalizes identically.
   CHOICE (heap-only) for a claim that is really about a VALUE-LEVEL fact
   (a written tag) is the vacuity-prone shape; state disciplines over
   `readLoc`, not over a residence.
+
+## D078: `SumTag` Is Mode-Independent — Stack Sums Write Their Tag Too
+
+**Date**: 2026-08-02
+**Status**: Accepted (implemented same day; cluster + certified green)
+**Relates**: D077 (whose probe PROVED the stack tag write is reachable),
+Plan 0.62 (whose branch-site fact needs the tag from the shape layer)
+
+### Context
+
+`ClosureWellFormedDef.SumTag` said `Stack ↦ ⊤` ("stack sums are
+reference-based and don't store the tag") — but the emitter's
+`inl/inr Stack` lowering writes `SV-Tag t` into the sum slot
+(`instr-load-tag-lit t ∷ store-at-slot sum-slot ∷ …`), and the D077 probe
+mechanically reached a branch reading exactly that cell. The value layer
+UNDERSTATED the representation, and the understatement propagated into
+Plan 0.62's `TagAt` (the shape erasure), making the branch-site tag fact
+underivable for stack-mode sums.
+
+### Decision
+
+`SumTag m t s loc = readLoc s loc ≡ just (SV-Tag t)` for BOTH modes — kept
+as per-mode clauses (identical bodies) so the symbol stays RIGID on an
+abstract mode (a fully-reducing definition un-pins `transport-SumTag`'s
+implicits at every call site — unification cannot invert `readLoc`).
+`transport-SumTag` becomes `trans eq tg` in both clauses. `ShapeAt.TagAt`
+and gate G1's `tag-of` strengthen in lockstep (the projection stays 1:1).
+
+### Consequences
+
+- The branch-site fact of Plan 0.62 (`site-ok` + `Meets` ⇒ a written tag
+  cell, either residence) is derivable for every sum claim.
+- On-path consumers all route through `transport-SumTag` — no other change.
+  The orphaned legacy module `Once.CCC.Machine.IR.SumRecWF` (imported by
+  nothing) constructs a Stack-mode `valid-inl-wf` with `tt` and now needs
+  the tag equation its own trace provides; it joins `ApplyWF` as
+  known-broken-off-path until the legacy layer is revived or deleted.
+- The value layer is now FAITHFUL to the emitted representation for sums —
+  the `obs-correct-rest` discharge will need exactly this field.

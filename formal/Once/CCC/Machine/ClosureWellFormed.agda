@@ -106,16 +106,22 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- indirect`); STACK-mode sums are reference-based and don't, so the
   -- obligation is vacuous there. Mode-conditional so each producer
   -- discharges what its representation actually guarantees.
+  -- MODE-INDEPENDENT since D078 (2026-08-02): the emitted code writes the
+  -- tag in BOTH modes (`inl/inr Stack` = `instr-load-tag-lit t ∷
+  -- store-at-slot sum-slot ∷ …` — the D077 probe proved it reachable), so
+  -- `SumTag Stack = ⊤` UNDERSTATED the representation and made the branch
+  -- scrutinee's tag fact underivable for stack sums. The mode argument is
+  -- kept for signature compatibility.
   SumTag : AllocMode → ℕ → LocState FS → ValueLocation FS → Set
   SumTag Heap  t s loc = readLoc s loc ≡ just (SV-Tag t)
-  SumTag Stack t s loc = ⊤
+  SumTag Stack t s loc = readLoc s loc ≡ just (SV-Tag t)
 
   -- Transport `SumTag` across a state change preserving the cell's read.
   transport-SumTag : ∀ {m t s₁ s₂ loc}
                    → readLoc s₂ loc ≡ readLoc s₁ loc
                    → SumTag m t s₁ loc → SumTag m t s₂ loc
   transport-SumTag {Heap}  eq tg = trans eq tg
-  transport-SumTag {Stack} eq tg = tt
+  transport-SumTag {Stack} eq tg = trans eq tg
 
   -- Plan 0.54 Phase B rung A (A2): the primitive-storage bridge. Crosses the
   -- 0.52-M2 IRTy/Type seam ONCE (the IRTy value `v : ⟦ B ⟧ᴵ` is stored as the
