@@ -198,10 +198,12 @@ swp-ren ρ t =
 ⟶-ren ρ (ξ-⌜Π⌝ʳ r) = ξ-⌜Π⌝ʳ (⟶-ren (extR ρ) r)
 ⟶-ren ρ (ξ-⌜Σ⌝ˡ r) = ξ-⌜Σ⌝ˡ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-⌜Σ⌝ʳ r) = ξ-⌜Σ⌝ʳ (⟶-ren (extR ρ) r)
-⟶-ren ρ (tr-J-base d s e) =
-  tr-J-base (renTm (extR ρ) d) (renTm ρ s) (renTm ρ e)
-⟶-ren ρ (tr-J-Σ d c₁ c₂ s e) =
-  tr-J-Σ (renTm (extR ρ) d) (renTm ρ c₁) (renTm (extR ρ) c₂)
+⟶-ren ρ (tr-J-base c a m s e) =
+  tr-J-base (renTm (extR ρ) c) (renTm (extR ρ) a) (renTm (extR ρ) m)
+            (renTm ρ s) (renTm ρ e)
+⟶-ren ρ (tr-J-Σ c a m c₁ c₂ s e) =
+  tr-J-Σ (renTm (extR ρ) c) (renTm (extR ρ) a) (renTm (extR ρ) m)
+         (renTm ρ c₁) (renTm (extR ρ) c₂)
          (renTm ρ s) (renTm ρ e)
 ⟶-ren ρ (tr-taut f e) = tr-taut (renTm (extR ρ) f) (renTm ρ e)
 ⟶-ren ρ (ξ-⌜Hom⌝ᶜ r) = ξ-⌜Hom⌝ᶜ (⟶-ren ρ r)
@@ -284,10 +286,10 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   phrefl : {c c' t t' : RTm Γ} → c ⟹ c' → t ⟹ t' → hrefl c t ⟹ hrefl c' t'
   ptr : {d d' : RTm (Γ ∙)} {p p' e e' : RTm Γ} →
         d ⟹ d' → p ⟹ p' → e ⟹ e' → tr d p e ⟹ tr d' p' e'
-  ptr-J-base : {d : RTm (Γ ∙)} {s e e' : RTm Γ} →
-               e ⟹ e' → tr d (hrefl ⌜base⌝ s) e ⟹ e'
-  ptr-J-Σ : {d : RTm (Γ ∙)} {c₁ : RTm Γ} {c₂ : RTm (Γ ∙)} {s e e' : RTm Γ} →
-            e ⟹ e' → tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e ⟹ e'
+  ptr-J-base : {c a m : RTm (Γ ∙)} {s e e' : RTm Γ} →
+               e ⟹ e' → tr (⌜Hom⌝ c a m) (hrefl ⌜base⌝ s) e ⟹ e'
+  ptr-J-Σ : {c a m : RTm (Γ ∙)} {c₁ : RTm Γ} {c₂ : RTm (Γ ∙)} {s e e' : RTm Γ} →
+            e ⟹ e' → tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e ⟹ e'
   ptr-taut : {f f' : RTm (Γ ∙)} {e e' : RTm Γ} → f ⟹ f' → e ⟹ e' →
              tr (var vz) (lam f) e ⟹ app (lam f') e'
 
@@ -320,8 +322,8 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟶→⟹ (ξ-⌜Π⌝ʳ r) = p⌜Π⌝ (⟹-refl _) (⟶→⟹ r)
 ⟶→⟹ (ξ-⌜Σ⌝ˡ r) = p⌜Σ⌝ (⟶→⟹ r) (⟹-refl _)
 ⟶→⟹ (ξ-⌜Σ⌝ʳ r) = p⌜Σ⌝ (⟹-refl _) (⟶→⟹ r)
-⟶→⟹ (tr-J-base d s e)    = ptr-J-base (⟹-refl e)
-⟶→⟹ (tr-J-Σ d c₁ c₂ s e) = ptr-J-Σ (⟹-refl e)
+⟶→⟹ (tr-J-base c a m s e)    = ptr-J-base (⟹-refl e)
+⟶→⟹ (tr-J-Σ c a m c₁ c₂ s e) = ptr-J-Σ (⟹-refl e)
 ⟶→⟹ (tr-taut f e)        = ptr-taut (⟹-refl f) (⟹-refl e)
 ⟶→⟹ (ξ-⌜Hom⌝ᶜ r) = p⌜Hom⌝ (⟶→⟹ r) (⟹-refl _) (⟹-refl _)
 ⟶→⟹ (ξ-⌜Hom⌝ˡ r) = p⌜Hom⌝ (⟹-refl _) (⟶→⟹ r) (⟹-refl _)
@@ -360,8 +362,10 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟹→⟶* (ptr p q r) =
   ⟶*-trans (⟶*-trᵈ (⟹→⟶* p))
            (⟶*-trans (⟶*-trᵖ (⟹→⟶* q)) (⟶*-trᵉ (⟹→⟶* r)))
-⟹→⟶* (ptr-J-base {d = d} {s} {e} p)          = step (tr-J-base d s e) (⟹→⟶* p)
-⟹→⟶* (ptr-J-Σ {d = d} {c₁} {c₂} {s} {e} p)   = step (tr-J-Σ d c₁ c₂ s e) (⟹→⟶* p)
+⟹→⟶* (ptr-J-base {c = c} {a} {m} {s} {e} p) =
+  step (tr-J-base c a m s e) (⟹→⟶* p)
+⟹→⟶* (ptr-J-Σ {c = c} {a} {m} {c₁} {c₂} {s} {e} p) =
+  step (tr-J-Σ c a m c₁ c₂ s e) (⟹→⟶* p)
 ⟹→⟶* (ptr-taut {f = f} {f'} {e} {e'} p q) =
   step (tr-taut f e)
        (⟶*-trans (⟶*-appˡ (⟶*-lam (⟹→⟶* p))) (⟶*-appʳ (⟹→⟶* q)))
@@ -431,7 +435,12 @@ single-⟹ p (vs x) = pvar x
 -- The complete development, and the triangle: `t ⟹ u → u ⟹ t⁺`.
 ------------------------------------------------------------------------
 
+-- (the J decision is PATH-major then motive-major: `_⁺` discriminates
+-- the path, and the two helpers discriminate the ⌜Hom⌝-keyed motive —
+-- keeping every congruence row reducible at generic sub-shapes)
 _⁺ : RTm Γ → RTm Γ
+trB⁺ : RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
+trS⁺ : RTm (Γ ∙) → RTm Γ → RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
 var x ⁺            = var x
 lam t ⁺            = lam (t ⁺)
 pair a b ⁺         = pair (a ⁺) (b ⁺)
@@ -482,10 +491,16 @@ hrefl c f ⁺         = hrefl (c ⁺) (f ⁺)
 -- clause order encodes the case tree: split the path first (J fires on
 -- canonical `hrefl` — head-stable stuck codes only), then the motive
 -- (taut at `var vz`, pointwise composition at a `⌜Π⌝`-ambient `⌜Hom⌝`).
-tr d (hrefl ⌜base⌝ s) e ⁺        = e ⁺
-tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e ⁺   = e ⁺
+tr d (hrefl ⌜base⌝ s) e ⁺        = trB⁺ d s e
+tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e ⁺   = trS⁺ d c₁ c₂ s e
 tr (var vz) (lam f) e ⁺          = app (lam (f ⁺)) (e ⁺)
 tr d p e ⁺ = tr (d ⁺) (p ⁺) (e ⁺)
+
+trB⁺ (⌜Hom⌝ c a m) s e = e ⁺
+trB⁺ d s e = tr (d ⁺) (hrefl ⌜base⌝ (s ⁺)) (e ⁺)
+
+trS⁺ (⌜Hom⌝ c a m) c₁ c₂ s e = e ⁺
+trS⁺ d c₁ c₂ s e = tr (d ⁺) (hrefl (⌜Σ⌝ (c₁ ⁺) (c₂ ⁺)) (s ⁺)) (e ⁺)
 
 ⟹-⁺ : {t u : RTm Γ} → t ⟹ u → u ⟹ t ⁺
 ⟹-⁺ (pvar x)               = pvar x
@@ -565,8 +580,45 @@ tr d p e ⁺ = tr (d ⁺) (p ⁺) (e ⁺)
 -- `tr` congruence — mirroring `_⁺`'s tree: the path's derivation
 -- discriminates first (J at the three stable stuck codes), then the
 -- motive (taut at `var vz`, pointwise at the `⌜Π⌝`-ambient `⌜Hom⌝`).
-⟹-⁺ (ptr pd (phrefl p⌜base⌝ ps) pe)           = ptr-J-base (⟹-⁺ pe)
-⟹-⁺ (ptr pd (phrefl (p⌜Σ⌝ p₁ p₂) ps) pe)      = ptr-J-Σ (⟹-⁺ pe)
+-- J's stable codes — the MOTIVE discriminates too (J is
+-- ⌜Hom⌝-motive-keyed): `p⌜Hom⌝` motives take the J leaf, everything
+-- else is congruence (the redex does not exist there).
+⟹-⁺ (ptr (p⌜Hom⌝ pc pa pm) (phrefl p⌜base⌝ ps) pe) = ptr-J-base (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pvar _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(plam _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(papp _ _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pβ _ _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ppair _ _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pfst _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(psnd _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pβfst _ _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pβsnd _ _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@p⌜base⌝ w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(p⌜Π⌝ _ _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(p⌜Σ⌝ _ _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(phrefl _ _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr _ _ _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-J-base _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-J-Σ _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-taut _ _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr (p⌜Hom⌝ pc pa pm) (phrefl (p⌜Σ⌝ p₁ p₂) ps) pe) = ptr-J-Σ (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pvar _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(plam _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(papp _ _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pβ _ _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ppair _ _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pfst _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(psnd _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pβfst _ _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pβsnd _ _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@p⌜base⌝ w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(p⌜Π⌝ _ _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(p⌜Σ⌝ _ _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(phrefl _ _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr _ _ _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-J-base _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-J-Σ _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-taut _ _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(phrefl (p⌜Hom⌝ _ _ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(phrefl (p⌜Π⌝ _ _) _) pe) =
   ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)

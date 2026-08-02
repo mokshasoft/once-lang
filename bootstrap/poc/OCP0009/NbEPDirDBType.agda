@@ -106,10 +106,18 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   -- exactly as long as it has no computation.  This tower's LR is
   -- SN-based (weak normalization + decidability, not canonicity), so
   -- nothing below needs the deferred rules.
-  tr-J-base : (d : RTm (Γ ∙)) (s e : RTm Γ) →
-              tr d (hrefl ⌜base⌝ s) e ⟶ e
-  tr-J-Σ    : (d : RTm (Γ ∙)) (c₁ : RTm Γ) (c₂ : RTm (Γ ∙)) (s e : RTm Γ) →
-              tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e ⟶ e
+  -- ⚠ STAGE 3 RE-KEYING (2026-08-02): J is keyed on the MOTIVE too — it
+  -- fires only at `⌜Hom⌝`-headed motives.  At a `var`-motive (the
+  -- tautological case, ambient ≅ `U`) a path can NEVER be a typed
+  -- `hrefl` (`Hom U t u` unfolds toward `Π` while `Hom (El c) s s` is
+  -- headed for a stuck `Hom` — the shapes clash under confluence), so
+  -- the un-keyed rule was never typed-exercised; keying it makes the
+  -- configuration PERMANENTLY STUCK, hence LR-neutral — which is what
+  -- dissolves SpikeTrLR's taut obstruction and lets `⊢trU` merge below.
+  tr-J-base : (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
+              tr (⌜Hom⌝ c a m) (hrefl ⌜base⌝ s) e ⟶ e
+  tr-J-Σ    : (c a m : RTm (Γ ∙)) (c₁ : RTm Γ) (c₂ : RTm (Γ ∙)) (s e : RTm Γ) →
+              tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e ⟶ e
   -- directed univalence computing a third time: transport at the
   -- tautological motive along a (canonical) universe path is application
   tr-taut   : (f : RTm (Γ ∙)) (e : RTm Γ) →
@@ -265,16 +273,24 @@ data _⊢_∷_ where
   -- THE COMPOSITION MOTIVE, its shape pinned in the rule (`posc-Hom`'s
   -- content inlined as the two vz-freeness premises) with ENDPOINT
   -- premises (the `⊢lam` option-A pattern: `sr` never needed them,
-  -- `fund` does).  The TAUTOLOGICAL motive stays STAGED in
-  -- `NbEPDirDBTr`: its `fund` case needs `t ≅ u` in a J-branch, which
-  -- only typing can see (the configuration is typed-vacuous but `fund`'s
-  -- induction is raw) — see SpikeTrLR's obstruction record.
+  -- `fund` does).  Stage 3 merged the TAUTOLOGICAL motive too (`⊢trU`
+  -- below): re-keying J on `⌜Hom⌝`-headed motives made the taut
+  -- J-configurations permanently stuck, dissolving SpikeTrLR's
+  -- obstruction (its J-branches ceased to exist).
   ⊢⌜Hom⌝ : ∀ {Γ c a b}  → Γ ⊢ c ∷ U → Γ ⊢ a ∷ El c → Γ ⊢ b ∷ El c →
                           Γ ⊢ ⌜Hom⌝ c a b ∷ U
   ⊢hrefl : ∀ {Γ c t}    → Γ ⊢ c ∷ U → Γ ⊢ t ∷ El c →
                           Γ ⊢ hrefl c t ∷ Hom (El c) t t
   -- (the motive's `⊢⌜Hom⌝` premise is carried COMPONENTWISE so `fund`'s
   -- recursion stays structural)
+  -- …and the TAUTOLOGICAL motive, ambient pinned to `U` (a merely
+  -- convertible ambient reaches this rule through `⊢conv` on the path —
+  -- conversion is a `Hom`-congruence).  Transport along a universe path
+  -- is application: directed univalence, in the kernel judgment.
+  ⊢trU  : ∀ {Γ p e t u} →
+          Γ ⊢ t ∷ U → Γ ⊢ u ∷ U →
+          Γ ⊢ p ∷ Hom U t u → Γ ⊢ e ∷ El t →
+          Γ ⊢ tr (var vz) p e ∷ El u
   ⊢tr   : ∀ {Γ A c a p e t u} →
           (Γ ▹ A) ⊢ c ∷ U → (Γ ▹ A) ⊢ a ∷ El c →
           (Γ ▹ A) ⊢ var vz ∷ El c →

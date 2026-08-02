@@ -165,8 +165,11 @@ pathstk? (⌜Hom⌝ c a b)  = true
 pathstk? (hrefl c t)    = stablecd? c
 pathstk? (tr d p e)     = trstk? d p
 
-trstk? d (lam f) = homheaded? d
-trstk? d p       = pathstk? p
+trstk? d (lam f)           = homheaded? d
+-- J is ⌜Hom⌝-MOTIVE-KEYED (stage 3): at a `var` motive — head-stable,
+-- never ⌜Hom⌝ — an `hrefl` path is stuck OUTRIGHT, no code condition.
+trstk? (var x) (hrefl c s) = true
+trstk? d p                 = pathstk? p
 
 f≢t : false ≡ true → ⊥
 f≢t ()
@@ -194,8 +197,8 @@ homheaded?-red (ξ-⌜Σ⌝ˡ _) ()
 homheaded?-red (ξ-⌜Σ⌝ʳ _) ()
 homheaded?-red (ξ-hreflᶜ _) ()
 homheaded?-red (ξ-hreflᵃ _) ()
-homheaded?-red (tr-J-base _ _ _) ()
-homheaded?-red (tr-J-Σ _ _ _ _ _) ()
+homheaded?-red (tr-J-base _ _ _ _ _) ()
+homheaded?-red (tr-J-Σ _ _ _ _ _ _ _) ()
 homheaded?-red (tr-taut _ _) ()
 homheaded?-red (ξ-trᵈ _) ()
 homheaded?-red (ξ-trᵖ _) ()
@@ -210,6 +213,18 @@ trstk?-red-d  : {d d' : RTm (Γ ∙)} {p : RTm Γ} → d ⟶ d' →
                 trstk? d p ≡ true → trstk? d' p ≡ true
 trstk?-red-p  : {d : RTm (Γ ∙)} {p p' : RTm Γ} → p ⟶ p' →
                 trstk? d p ≡ true → trstk? d p' ≡ true
+-- the `hrefl`-path clauses of `trstk?` discriminate the motive, so the
+-- transport lemmas do too (a stepping motive can BECOME a `var`, which
+-- only widens stuckness).
+trstk?-hrefl-mono : (d : RTm (Γ ∙)) {c t : RTm Γ} →
+                    stablecd? c ≡ true → trstk? d (hrefl c t) ≡ true
+trstk?-hreflᶜ : (d : RTm (Γ ∙)) {c c' t : RTm Γ} → c ⟶ c' →
+                trstk? d (hrefl c t) ≡ true → trstk? d (hrefl c' t) ≡ true
+trstk?-hreflᵃ : (d : RTm (Γ ∙)) {c t t' : RTm Γ} →
+                trstk? d (hrefl c t) ≡ true → trstk? d (hrefl c t') ≡ true
+trstk?-red-d-hrefl : {d d' : RTm (Γ ∙)} {c t : RTm Γ} → d ⟶ d' →
+                     trstk? d (hrefl c t) ≡ true →
+                     trstk? d' (hrefl c t) ≡ true
 
 spine?-red (β _ _) ()
 spine?-red (βfst _ _) ()
@@ -230,8 +245,8 @@ spine?-red (ξ-⌜Hom⌝ˡ r) h = h
 spine?-red (ξ-⌜Hom⌝ʳ r) h = h
 spine?-red (ξ-hreflᶜ r) h = h
 spine?-red (ξ-hreflᵃ r) h = h
-spine?-red (tr-J-base _ _ _) ()
-spine?-red (tr-J-Σ _ _ _ _ _) ()
+spine?-red (tr-J-base _ _ _ _ _) ()
+spine?-red (tr-J-Σ _ _ _ _ _ _ _) ()
 spine?-red (tr-taut _ _) ()
 spine?-red (ξ-trᵈ {p = p} r) h = trstk?-red-d {p = p} r h
 spine?-red (ξ-trᵖ {d = d} r) h = trstk?-red-p {d = d} r h
@@ -256,8 +271,8 @@ stablecd?-red (ξ-⌜Hom⌝ˡ r) h = h
 stablecd?-red (ξ-⌜Hom⌝ʳ r) h = h
 stablecd?-red (ξ-hreflᶜ r) h = h
 stablecd?-red (ξ-hreflᵃ r) h = h
-stablecd?-red (tr-J-base _ _ _) ()
-stablecd?-red (tr-J-Σ _ _ _ _ _) ()
+stablecd?-red (tr-J-base _ _ _ _ _) ()
+stablecd?-red (tr-J-Σ _ _ _ _ _ _ _) ()
 stablecd?-red (tr-taut _ _) ()
 stablecd?-red (ξ-trᵈ {p = p} r) h = trstk?-red-d {p = p} r h
 stablecd?-red (ξ-trᵖ {d = d} r) h = trstk?-red-p {d = d} r h
@@ -282,8 +297,8 @@ pathstk?-red (ξ-⌜Hom⌝ˡ r) h = h
 pathstk?-red (ξ-⌜Hom⌝ʳ r) h = h
 pathstk?-red (ξ-hreflᶜ r) h = stablecd?-red r h
 pathstk?-red (ξ-hreflᵃ r) h = h
-pathstk?-red (tr-J-base _ _ _) ()
-pathstk?-red (tr-J-Σ _ _ _ _ _) ()
+pathstk?-red (tr-J-base _ _ _ _ _) ()
+pathstk?-red (tr-J-Σ _ _ _ _ _ _ _) ()
 pathstk?-red (tr-taut _ _) ()
 pathstk?-red (ξ-trᵈ {p = p} r) h = trstk?-red-d {p = p} r h
 pathstk?-red (ξ-trᵖ {d = d} r) h = trstk?-red-p {d = d} r h
@@ -299,7 +314,7 @@ trstk?-red-d {p = ⌜base⌝} r h = h
 trstk?-red-d {p = ⌜Π⌝ c d} r h = h
 trstk?-red-d {p = ⌜Σ⌝ c d} r h = h
 trstk?-red-d {p = ⌜Hom⌝ c a b} r h = h
-trstk?-red-d {p = hrefl c t} r h = h
+trstk?-red-d {p = hrefl c t} r h = trstk?-red-d-hrefl r h
 trstk?-red-d {p = tr d p e} r h = h
 
 trstk?-red-p (β _ _) ()
@@ -319,14 +334,64 @@ trstk?-red-p (ξ-⌜Σ⌝ʳ r) h = h
 trstk?-red-p (ξ-⌜Hom⌝ᶜ r) h = h
 trstk?-red-p (ξ-⌜Hom⌝ˡ r) h = h
 trstk?-red-p (ξ-⌜Hom⌝ʳ r) h = h
-trstk?-red-p (ξ-hreflᶜ r) h = stablecd?-red r h
-trstk?-red-p (ξ-hreflᵃ r) h = h
-trstk?-red-p (tr-J-base _ _ _) ()
-trstk?-red-p (tr-J-Σ _ _ _ _ _) ()
+trstk?-red-p {d = d} (ξ-hreflᶜ r) h = trstk?-hreflᶜ d r h
+trstk?-red-p {d = d} (ξ-hreflᵃ {t' = t'} r) h = trstk?-hreflᵃ d {t' = t'} h
+trstk?-red-p (tr-J-base _ _ _ _ _) ()
+trstk?-red-p (tr-J-Σ _ _ _ _ _ _ _) ()
 trstk?-red-p (tr-taut _ _) ()
 trstk?-red-p (ξ-trᵈ {p = p} r) h = trstk?-red-d {p = p} r h
 trstk?-red-p (ξ-trᵖ {d = d} r) h = trstk?-red-p {d = d} r h
 trstk?-red-p (ξ-trᵉ {d = d} {p = p} r) h = h
+
+trstk?-hrefl-mono (var x)        h = refl
+trstk?-hrefl-mono (lam b)        h = h
+trstk?-hrefl-mono (app f u)      h = h
+trstk?-hrefl-mono (pair a b)     h = h
+trstk?-hrefl-mono (fst q)        h = h
+trstk?-hrefl-mono (snd q)        h = h
+trstk?-hrefl-mono ⌜base⌝         h = h
+trstk?-hrefl-mono (⌜Π⌝ c₁ d₁)    h = h
+trstk?-hrefl-mono (⌜Σ⌝ c₁ d₁)    h = h
+trstk?-hrefl-mono (⌜Hom⌝ c₁ a₁ b₁) h = h
+trstk?-hrefl-mono (hrefl c₁ t₁)  h = h
+trstk?-hrefl-mono (tr d₁ p₁ e₁)  h = h
+
+trstk?-hreflᶜ (var x)          r h = refl
+trstk?-hreflᶜ (lam b)          r h = stablecd?-red r h
+trstk?-hreflᶜ (app f u)        r h = stablecd?-red r h
+trstk?-hreflᶜ (pair a b)       r h = stablecd?-red r h
+trstk?-hreflᶜ (fst q)          r h = stablecd?-red r h
+trstk?-hreflᶜ (snd q)          r h = stablecd?-red r h
+trstk?-hreflᶜ ⌜base⌝           r h = stablecd?-red r h
+trstk?-hreflᶜ (⌜Π⌝ c₁ d₁)      r h = stablecd?-red r h
+trstk?-hreflᶜ (⌜Σ⌝ c₁ d₁)      r h = stablecd?-red r h
+trstk?-hreflᶜ (⌜Hom⌝ c₁ a₁ b₁) r h = stablecd?-red r h
+trstk?-hreflᶜ (hrefl c₁ t₁)    r h = stablecd?-red r h
+trstk?-hreflᶜ (tr d₁ p₁ e₁)    r h = stablecd?-red r h
+
+trstk?-hreflᵃ (var x)          h = refl
+trstk?-hreflᵃ (lam b)          h = h
+trstk?-hreflᵃ (app f u)        h = h
+trstk?-hreflᵃ (pair a b)       h = h
+trstk?-hreflᵃ (fst q)          h = h
+trstk?-hreflᵃ (snd q)          h = h
+trstk?-hreflᵃ ⌜base⌝           h = h
+trstk?-hreflᵃ (⌜Π⌝ c₁ d₁)      h = h
+trstk?-hreflᵃ (⌜Σ⌝ c₁ d₁)      h = h
+trstk?-hreflᵃ (⌜Hom⌝ c₁ a₁ b₁) h = h
+trstk?-hreflᵃ (hrefl c₁ t₁)    h = h
+trstk?-hreflᵃ (tr d₁ p₁ e₁)    h = h
+
+trstk?-red-d-hrefl {d = lam b} {d' = d'} r h = trstk?-hrefl-mono d' h
+trstk?-red-d-hrefl {d = app f u} {d' = d'} r h = trstk?-hrefl-mono d' h
+trstk?-red-d-hrefl {d = pair a b} {d' = d'} r h = trstk?-hrefl-mono d' h
+trstk?-red-d-hrefl {d = fst q} {d' = d'} r h = trstk?-hrefl-mono d' h
+trstk?-red-d-hrefl {d = snd q} {d' = d'} r h = trstk?-hrefl-mono d' h
+trstk?-red-d-hrefl {d = ⌜Π⌝ c₁ d₁} {d' = d'} r h = trstk?-hrefl-mono d' h
+trstk?-red-d-hrefl {d = ⌜Σ⌝ c₁ d₁} {d' = d'} r h = trstk?-hrefl-mono d' h
+trstk?-red-d-hrefl {d = ⌜Hom⌝ c₁ a₁ b₁} {d' = d'} r h = trstk?-hrefl-mono d' h
+trstk?-red-d-hrefl {d = hrefl c₁ t₁} {d' = d'} r h = trstk?-hrefl-mono d' h
+trstk?-red-d-hrefl {d = tr d₁ p₁ e₁} {d' = d'} r h = trstk?-hrefl-mono d' h
 
 trstk?-red-d* : {d d' : RTm (Γ ∙)} {p : RTm Γ} → d ⟶* d' →
                 trstk? d p ≡ true → trstk? d' p ≡ true
@@ -380,11 +445,12 @@ data SNRed {Γ} where
   -- path) — their scrutinee positions join the head strategy.  The J
   -- rules carry the DISCARDED material's `SN`, exactly like `snr-β`.
   snr-hreflᶜ : {c c' t : RTm Γ} → SNRed c c' → SNRed (hrefl c t) (hrefl c' t)
-  snr-J-base : {d : RTm (Γ ∙)} {s e : RTm Γ} → SN d → SN s →
-               SNRed (tr d (hrefl ⌜base⌝ s) e) e
-  snr-J-Σ    : {d : RTm (Γ ∙)} {c₁ : RTm Γ} {c₂ : RTm (Γ ∙)} {s e : RTm Γ} →
-               SN d → SN c₁ → SN c₂ → SN s →
-               SNRed (tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e) e
+  snr-J-base : {c a m : RTm (Γ ∙)} {s e : RTm Γ} →
+               SN (⌜Hom⌝ c a m) → SN s →
+               SNRed (tr (⌜Hom⌝ c a m) (hrefl ⌜base⌝ s) e) e
+  snr-J-Σ    : {c a m : RTm (Γ ∙)} {c₁ : RTm Γ} {c₂ : RTm (Γ ∙)} {s e : RTm Γ} →
+               SN (⌜Hom⌝ c a m) → SN c₁ → SN c₂ → SN s →
+               SNRed (tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e) e
   snr-taut   : {f : RTm (Γ ∙)} {e : RTm Γ} →
                SNRed (tr (var vz) (lam f) e) (app (lam f) e)
   snr-trᵖ    : {d : RTm (Γ ∙)} {p p' e : RTm Γ} → SNRed p p' →
@@ -398,8 +464,8 @@ snr→⟶ (snr-app r)          = ξ-appˡ (snr→⟶ r)
 snr→⟶ (snr-fst r)          = ξ-fst (snr→⟶ r)
 snr→⟶ (snr-snd r)          = ξ-snd (snr→⟶ r)
 snr→⟶ (snr-hreflᶜ r)       = ξ-hreflᶜ (snr→⟶ r)
-snr→⟶ (snr-J-base _ _)     = tr-J-base _ _ _
-snr→⟶ (snr-J-Σ _ _ _ _)    = tr-J-Σ _ _ _ _ _
+snr→⟶ (snr-J-base _ _)     = tr-J-base _ _ _ _ _
+snr→⟶ (snr-J-Σ _ _ _ _)    = tr-J-Σ _ _ _ _ _ _ _
 snr→⟶ snr-taut             = tr-taut _ _
 snr→⟶ (snr-trᵖ r)          = ξ-trᵖ (snr→⟶ r)
 
@@ -494,8 +560,8 @@ ne-red (ne-fst n) (ξ-fst r)  = ne-fst (ne-red n r)
 ne-red (ne-snd n) (ξ-snd r)  = ne-snd (ne-red n r)
 ne-red ne-hrefl (ξ-hreflᶜ r) = ne-hrefl
 ne-red ne-hrefl (ξ-hreflᵃ r) = ne-hrefl
-ne-red (ne-tr ()) (tr-J-base _ _ _)
-ne-red (ne-tr ()) (tr-J-Σ _ _ _ _ _)
+ne-red (ne-tr ()) (tr-J-base _ _ _ _ _)
+ne-red (ne-tr ()) (tr-J-Σ _ _ _ _ _ _ _)
 ne-red (ne-tr ()) (tr-taut _ _)
 ne-red (ne-tr key) (ξ-trᵈ {p = p} r) = ne-tr (trstk?-red-d {p = p} r key)
 ne-red (ne-tr key) (ξ-trᵖ {d = d} r) = ne-tr (trstk?-red-p {d = d} r key)
@@ -601,7 +667,18 @@ trstk?-ren ρ d ⌜base⌝        = refl
 trstk?-ren ρ d (⌜Π⌝ c e)     = refl
 trstk?-ren ρ d (⌜Σ⌝ c e)     = refl
 trstk?-ren ρ d (⌜Hom⌝ c a b) = refl
-trstk?-ren ρ d (hrefl c t)   = stablecd?-ren ρ c
+trstk?-ren ρ (var x) (hrefl c t)          = refl
+trstk?-ren ρ (lam b) (hrefl c t)          = stablecd?-ren ρ c
+trstk?-ren ρ (app f u) (hrefl c t)        = stablecd?-ren ρ c
+trstk?-ren ρ (pair a b) (hrefl c t)       = stablecd?-ren ρ c
+trstk?-ren ρ (fst q) (hrefl c t)          = stablecd?-ren ρ c
+trstk?-ren ρ (snd q) (hrefl c t)          = stablecd?-ren ρ c
+trstk?-ren ρ ⌜base⌝ (hrefl c t)           = stablecd?-ren ρ c
+trstk?-ren ρ (⌜Π⌝ c₁ d₁) (hrefl c t)      = stablecd?-ren ρ c
+trstk?-ren ρ (⌜Σ⌝ c₁ d₁) (hrefl c t)      = stablecd?-ren ρ c
+trstk?-ren ρ (⌜Hom⌝ c₁ a₁ b₁) (hrefl c t) = stablecd?-ren ρ c
+trstk?-ren ρ (hrefl c₁ t₁) (hrefl c t)    = stablecd?-ren ρ c
+trstk?-ren ρ (tr d₁ p₁ e₁) (hrefl c t)    = stablecd?-ren ρ c
 trstk?-ren ρ d (tr e q w)    = trstk?-ren ρ e q
 
 
@@ -1683,8 +1760,8 @@ wne (sne-tr {d = d} {p = p} d₀ p₀ e₀ key) with wn d₀ | wn p₀ | wn e₀
     key' = trstk?-red-p* {d = n₁} r₂ (trstk?-red-d* {p = p} r₁ key)
 
     nrm' : IsNormal (tr n₁ n₂ n₃)
-    nrm' (tr-J-base _ _ _)  = ⊥-elim (f≢t key')
-    nrm' (tr-J-Σ _ _ _ _ _) = ⊥-elim (f≢t key')
+    nrm' (tr-J-base _ _ _ _ _)  = ⊥-elim (f≢t key')
+    nrm' (tr-J-Σ _ _ _ _ _ _ _) = ⊥-elim (f≢t key')
     nrm' (tr-taut _ _)      = ⊥-elim (f≢t key')
     nrm' (ξ-trᵈ q) = nm₁ q
     nrm' (ξ-trᵖ q) = nm₂ q

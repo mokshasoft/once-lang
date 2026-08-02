@@ -68,7 +68,17 @@
 -- `Hom U`s — a clause change after all, but scoped to `Hom-U`;
 -- (iii) keep taut STAGED (it is one `srᵗ`-checked rule with a computing
 -- demo) until canonicity-package work makes the vacuity syntactic.
--- Until then: `⊢tr`-at-composition merges; taut stays in `NbEPDirDBTr`.
+--
+-- ★ RESOLVED (2026-08-02, stage 3) — by a FOURTH route none of the
+-- candidates named: RE-KEY J ON THE MOTIVE.  J fires only at
+-- `⌜Hom⌝`-headed motives; at a `var` motive a path can never be a typed
+-- `hrefl` (`Hom U t u` unfolds toward `Π`, `Hom (El c) s s` toward a
+-- stuck `Hom` — the shapes clash under confluence), so the un-keyed
+-- rule was never typed-exercised, and keying it makes the taut
+-- J-configurations PERMANENTLY STUCK (`trstk?`'s var-motive clause) —
+-- the J-branches that needed `t ≅ u` simply ceased to exist.  Taut is
+-- merged as `⊢trU` (ambient pinned `U`) with `sr` and `fund` in the
+-- base judgment; the staged judgment is retired.
 --
 -- `--safe`, zero postulates, zero holes.
 ------------------------------------------------------------------------
