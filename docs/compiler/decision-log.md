@@ -5444,3 +5444,55 @@ trust story.
   dataflow analysis over the trace, proved of the emitter and preserved by
   the machine — the FlatStackPtr pattern). That is those residuals'
   discharge trajectory anyway; do that, not a layering refactor.
+
+## D076: The Dataflow Disciplines Discharge via Type-Indexed Shape Correctness (Plan 0.62)
+
+**Date**: 2026-08-02
+**Status**: Accepted (design + plan; execution not started)
+**Relates**: D073 (which created the discipline residuals), D074 (whose tag
+filler is one of the counterexamples), D075 (which rejected the bundle
+refactor and named this as the only principled weakening of `Emitted`)
+
+### Context
+
+Three dataflow residuals remain in the flat↔x86-64 correspondence:
+`branch-tag-scrutinee-wf` and `load-indirect{,-suc}-target-ptr` — per-site
+facts about what `Input1` holds at emitted dereference/branch sites. The
+standing estimate ("the FlatStackPtr pattern — static expectation per site +
+preservation") understated the problem.
+
+### Findings (each verified against the code, 2026-08-02)
+
+1. No pc-free state invariant can express the facts — the D074 entry filler
+   and literal-producing fragments legitimately put non-pointers in the
+   constrained registers at other pcs.
+2. No type-free (syntactic) dataflow analysis suffices — in the cata descend
+   loop the next scrutinee is loaded FROM THE HEAP, and only heap TYPING
+   ("a sum node's payload cell holds a node pointer") gives loads a usable
+   shape.
+3. The tag conjunct of the branch discipline is load-bearing: `tag-zf` is
+   `false` on non-tags while the concrete `cmp` compares raw encodings
+   (`enc-sv (SV-Lit fits-int 0) = 0`), so a non-tag cell flips the branch
+   decision; and sum-vs-pair node discrimination is type information.
+
+### Decision
+
+Discharge via a TYPE-INDEXED SHAPE-CORRECTNESS theorem for codegen, built as
+a standalone shape layer (Plan 0.62): `ShapeAt` = the shape-level erasure of
+`ValidAtWF` (existentials where `ValidAtWF` is exact), a per-pc expectation
+table emitted by a typed re-walk of `ir-to-trace'`, and a run-level
+consistency preservation theorem. Design constraint: `ValidAtWF → ShapeAt`
+must be a projection (gate G1), so the eventual value-correctness layer
+subsumes the shape layer instead of duplicating it. The alternatives —
+folding into the `obs-correct-rest` discharge (gates on the bigger semantic
+theorem) and parking the disciplines (leaves D073's trajectory unwalked) —
+were considered and set aside; the shape layer is self-contained and its
+statement is reusable by the value layer.
+
+### Consequences
+
+- Plan 0.62 is the execution vehicle; milestone gates G1 (erasure is a
+  projection) and G2 (the cata loop invariants close under the back-jump,
+  checked by hand for `strat-nat` first) are hard stops if they fail.
+- Until M4 lands, the three disciplines remain honest site+run-conditioned
+  residuals; nothing else in the correspondence waits on them.
