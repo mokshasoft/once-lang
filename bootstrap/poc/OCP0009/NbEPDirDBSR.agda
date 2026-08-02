@@ -136,10 +136,12 @@ swp-sub σ t =
 ⟶-sub σ (ξ-⌜Σ⌝ˡ r) = ξ-⌜Σ⌝ˡ (⟶-sub σ r)
 ⟶-sub σ (ξ-⌜Σ⌝ʳ r) = ξ-⌜Σ⌝ʳ (⟶-sub (extS σ) r)
 -- W2 eliminator: the two J rules and `tr-taut` are direct.
-⟶-sub σ (tr-J-base d s e) =
-  tr-J-base (subTm (extS σ) d) (subTm σ s) (subTm σ e)
-⟶-sub σ (tr-J-Σ d c₁ c₂ s e) =
-  tr-J-Σ (subTm (extS σ) d) (subTm σ c₁) (subTm (extS σ) c₂)
+⟶-sub σ (tr-J-base c a m s e) =
+  tr-J-base (subTm (extS σ) c) (subTm (extS σ) a) (subTm (extS σ) m)
+            (subTm σ s) (subTm σ e)
+⟶-sub σ (tr-J-Σ c a m c₁ c₂ s e) =
+  tr-J-Σ (subTm (extS σ) c) (subTm (extS σ) a) (subTm (extS σ) m)
+         (subTm σ c₁) (subTm (extS σ) c₂)
          (subTm σ s) (subTm σ e)
 ⟶-sub σ (tr-taut f e) = tr-taut (subTm (extS σ) f) (subTm σ e)
 ⟶-sub σ (ξ-⌜Hom⌝ᶜ r) = ξ-⌜Hom⌝ᶜ (⟶-sub σ r)

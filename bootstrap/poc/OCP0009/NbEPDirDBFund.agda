@@ -64,19 +64,26 @@ open import poc.OCP0009.NbEPDirDBType
   using ( single
         ; _⟶_; _⟶*_; done; step
         ; _≅_
-        ; _≅ᵀ_; crflᵀ
+        ; _≅ᵀ_; crflᵀ; csymᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋
         ; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd
         ; El-⌜Hom⌝
-        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢conv
+        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢trU; ⊢conv
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom
         ; ⊢ctx_; c-◇; c-▹
         ; ⊢id; ⊢appex )
 open import poc.OCP0009.NbEPDirDBVar using ( 𝔹; true; false; occTm; subTm-occ )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; sub-comm )
 open import poc.OCP0009.NbEPDirDBDec using ( Dec; dec-conv )
-open import poc.OCP0009.NbEPDirDBInj using ( _⟶ᵀ*_; doneᵀ; stepᵀ; red→≅ᵀ; Π-reduct; Σ-reduct; mkΠRed; mkΣRed )
+open import poc.OCP0009.NbEPDirDBInj
+  using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El
+        ; red→≅ᵀ; Π-reduct; Σ-reduct; mkΠRed; mkΣRed )
+open import poc.OCP0009.NbEPDirDBSubj
+  using ( HomΠShape; hsΠ; hsH; hom-shape
+        ; HomRed; mkHomRed; Hom-to-Hom
+        ; HomToΠ; via-U; via-Π; hom-to-Π
+        ; U-reduct; wk-cancel-tm )
 open import poc.OCP0009.NbEPDirDBLR
   using ( SNe; sne-var; sne-app; sne-fst; sne-snd; sne-hrefl; sne-tr
         ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-exp
@@ -283,10 +290,10 @@ snr-anti {t = snd (snd p)}      (snr-snd r) with snr-anti r
 ... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
 snr-anti {t = hrefl c s} (snr-hreflᶜ r) with snr-anti r
 ... | c' , (r' , refl) = hrefl c' s , (snr-hreflᶜ r' , refl)
-snr-anti {t = tr d (hrefl ⌜base⌝ s) e} (snr-J-base hd hs) =
+snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl ⌜base⌝ s) e} (snr-J-base hd hs) =
   e , (snr-J-base (sn-anti hd) (sn-anti hs) , refl)
 snr-anti {t = tr d (hrefl ⌜base⌝ s) e} (snr-trᵖ (snr-hreflᶜ ()))
-snr-anti {t = tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-J-Σ hd h₁ h₂ hs) =
+snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-J-Σ hd h₁ h₂ hs) =
   e , (snr-J-Σ (sn-anti hd) (sn-anti h₁) (sn-anti h₂) (sn-anti hs) , refl)
 snr-anti {t = tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-trᵖ (snr-hreflᶜ ()))
 snr-anti {t = tr (var vz) (lam f) e} snr-taut =
@@ -684,6 +691,105 @@ fund {σ = σ} (⊢hrefl {c = c} {t = t} dc dt) x₀ ρ =
     Rt = fund dt x₀ ρ
     snc = CR1₁ (dfst (fund dc x₀ ρ)) (dsnd (fund dc x₀ ρ))
     snt = CR1₁ (dfst Rt) (dsnd Rt)
+
+-- ★★ W2 stage 3 — `⊢trU`, the TAUTOLOGICAL motive: transport along a
+-- universe path IS application (directed univalence, semantically).
+-- With J ⌜Hom⌝-MOTIVE-KEYED, a `tr` at the `var vz` motive whose path
+-- is an `hrefl` is PERMANENTLY STUCK (`trstk?`'s var-motive clause), so
+-- SpikeTrLR's obstruction — the J-branches' need for `t ≅ u` — has no
+-- cases left.  The path's type `Hom U tI uI` can only interp as `⊩₁Π`
+-- (every other clause dies on `hom-shape`, and the stuck-`Hom` clause
+-- on `U-reduct` against `StkHd`); its membership is the app-closure
+-- that discharges the one computing branch, taut itself.
+fund {Ξ = Ξ} {σ = σ}
+  (⊢trU {p = p₀} {e = e₀} {t = t₀} {u = u₀} dt du dp de) x₀ ρ =
+  main (dfst (fund dp x₀ ρ)) (dsnd (fund dp x₀ ρ))
+  where
+  tI uI pI eI : RTm Ξ
+  tI = subTm σ t₀
+  uI = subTm σ u₀
+  pI = subTm σ p₀
+  eI = subTm σ e₀
+
+  hUu : (⊩₁U doneᵀ) ⊩₁∋ uI
+  hUu = projl (irrel₁ crflᵀ (dfst (fund du x₀ ρ)) (⊩₁U doneᵀ)) uI
+              (dsnd (fund du x₀ ρ))
+
+  R_result : ⊩₁ (El uI)
+  R_result = emb (projr hUu)
+
+  R_e : ⊩₁ (El tI)
+  R_e = dfst (fund de x₀ ρ)
+  he  : R_e ⊩₁∋ eI
+  he  = dsnd (fund de x₀ ρ)
+  snE = CR1₁ R_e he
+
+  -- every permanently stuck configuration, in one place: at a `var`
+  -- motive, `trstk?` needs only the path to be rule-dead.
+  nkey : {p' : RTm Ξ} → SNe p' → trstk? (var (vz {Ξ})) p' ≡ true
+  nkey (sne-var x)        = refl
+  nkey (sne-app n s)      = sne→spine n
+  nkey (sne-fst n)        = sne→spine n
+  nkey (sne-snd n)        = sne→spine n
+  nkey (sne-hrefl _ _)    = refl
+  nkey (sne-tr _ _ _ key) = key
+
+  cr3 : {p' : RTm Ξ} → SN p' → trstk? (var (vz {Ξ})) p' ≡ true →
+        Σ (⊩₁ (El uI)) (λ R → R ⊩₁∋ tr (var vz) p' eI)
+  cr3 snp key =
+    ( R_result
+    , CR3₁ R_result (sne-tr (sn-ne (sne-var vz)) snp snE key) )
+
+  piCase : {F : RTy Ξ} {G : RTy (Ξ ∙)} {t₁ u₁ : RTm Ξ}
+           (q : Hom U tI uI ⟶ᵀ* Π F G)
+           (⊩F : ⊩₁ F)
+           (⊩G : (v : RTm Ξ) → ⊩F ⊩₁∋ v → ⊩₁ (subTy (single v) G)) →
+           tI ⟶* t₁ → uI ⟶* u₁ →
+           El t₁ ⟶ᵀ* F → El (renTm vs u₁) ⟶ᵀ* G →
+           {p' : RTm Ξ} → SN p' → (⊩₁Π q ⊩F ⊩G) ⊩₁∋ p' →
+           Σ (⊩₁ (El uI)) (λ R → R ⊩₁∋ tr (var vz) p' eI)
+  piCase q ⊩F ⊩G rt ru rEt rEu (sn-exp r snp') hp' =
+    ( dfst z , exp₁ (dfst z) (snr-trᵖ r) (dsnd z) )
+    where z = piCase q ⊩F ⊩G rt ru rEt rEu snp'
+                     (mem-whred₁ (⊩₁Π q ⊩F ⊩G) r hp')
+  piCase {u₁ = u₁} q ⊩F ⊩G rt ru rEt rEu {lam f} (sn-lam snf) hp' =
+    ( R_result , exp₁ R_result snr-taut m-res )
+    where
+    he-F = projl (irrel₁ (red→≅ᵀ (⟶ᵀ*-trans (⟶ᵀ*-El rt) rEt)) R_e ⊩F)
+                 eI he
+    cG : El uI ≅ᵀ subTy (single eI) _
+    cG = red→≅ᵀ
+           (⟶ᵀ*-trans (⟶ᵀ*-El ru)
+             (subst (λ z → El z ⟶ᵀ* _) (wk-cancel-tm eI u₁)
+                    (⟶ᵀ*-sub (single eI) rEu)))
+    m-res = projl (irrel₁ (csymᵀ cG) (⊩G eI he-F) R_result)
+                  (app (lam f) eI) (projr hp' eI he-F)
+  piCase q ⊩F ⊩G rt ru rEt rEu (sn-ne n) hp'      = cr3 (sn-ne n) (nkey n)
+  piCase q ⊩F ⊩G rt ru rEt rEu (sn-pair sa sb) hp' = cr3 (sn-pair sa sb) refl
+  piCase q ⊩F ⊩G rt ru rEt rEu sn-cb hp'           = cr3 sn-cb refl
+  piCase q ⊩F ⊩G rt ru rEt rEu (sn-cΠ h₁ h₂) hp'   = cr3 (sn-cΠ h₁ h₂) refl
+  piCase q ⊩F ⊩G rt ru rEt rEu (sn-cΣ h₁ h₂) hp'   = cr3 (sn-cΣ h₁ h₂) refl
+  piCase q ⊩F ⊩G rt ru rEt rEu (sn-cH h₁ h₂ h₃) hp' = cr3 (sn-cH h₁ h₂ h₃) refl
+
+  main : (R : ⊩₁ (Hom U tI uI)) → R ⊩₁∋ pI →
+         Σ (⊩₁ (El uI)) (λ R' → R' ⊩₁∋ tr (var vz) pI eI)
+  main (⊩₁base q) hp with hom-shape q
+  ... | ()
+  main (⊩₁U q) hp with hom-shape q
+  ... | ()
+  main (⊩₁ne q n) hp with hom-shape q
+  ... | ()
+  main (⊩₁Σ q ⊩F ⊩G) hp with hom-shape q
+  ... | ()
+  main (⊩₁Hom q sh) hp with Hom-to-Hom q
+  ... | mkHomRed rA rt ru with U-reduct rA
+  ...   | refl with sh
+  ...     | ()
+  main (⊩₁Π q ⊩F ⊩G) hp with hom-to-Π q
+  ... | via-Π rA with U-reduct rA
+  ...   | ()
+  main (⊩₁Π q ⊩F ⊩G) hp | via-U rA rt ru rEt rEu =
+    piCase q ⊩F ⊩G rt ru rEt rEu (projl hp) hp
 
 -- ★★ W2 stage 2 — `⊢tr` AT THE COMPOSITION MOTIVE: the semantic
 -- validation the variance floor promised.  The motive's vz-freeness
