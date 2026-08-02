@@ -40,8 +40,9 @@ Special scrutiny, in order:
   types (`Once.IR`, `Once.Type`, `Once.IRTy`). A change to any of these that
   the analysis cannot justify in one paragraph is a stop-the-merge finding.
   "No top-level module touched" is itself a statement the analysis must make
-  explicitly (and verify by path filter, e.g.
-  `git diff master..HEAD --stat -- 'formal/Once/*.agda'`).
+  explicitly (and verify by path filter:
+  `git diff master..HEAD --stat -- ':(glob)formal/Once/*.agda'` — the
+  `:(glob)` matters, a bare `*` crosses directories).
 - **Postulate delta.** Count residuals/postulates on master vs the branch
   (`grep -rn postulate` over the correspondence cone). The delta must be
   explainable residual by residual: every NEW postulate needs a name, a
