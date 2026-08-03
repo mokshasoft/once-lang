@@ -5791,3 +5791,59 @@ into it.
 - Shrinks what `x86-64-loader-faithful` must paper over — the same
   direction as bringing the prologue bracket and bodies inside the
   modelled pipeline.
+
+## D082: Closure-Body Labels Get Their Own Provenance (`thunk`)
+
+**Date**: 2026-08-03
+**Status**: Accepted (design settled; execution = Plan 0.63 step 1)
+**Relates**: D033 (provenance-typed labels), D081 (a code address is where
+the label is), Plan 0.63
+
+### Context
+
+Modelling the closure call requires the callee's body to be findable in the
+MODELLED program. The abstract `find-label : AbstractTrace → ℕ → Maybe ℕ`
+scans for `instr-ctrl (c-label n)`, but `c-label n` lowers to
+`label (once n)` → `.Lonce_n`, whereas the `lea` that CREATES a code
+pointer renders `.L_thunk_n(%rip)` and `emit-thunk-body` emits
+`.L_thunk_n:`. Marking body starts with plain `c-label` would make the two
+sides disagree about the label's name.
+
+### Decision
+
+Give body labels their own provenance, mirroring D033's compiler/SigOp
+split:
+
+- `Label` gains `thunk : ℕ → Label`, rendering `_thunk_n` so the EMITTED
+  TEXT IS BYTE-IDENTICAL to today's (`.L_thunk_n`) — the change is to the
+  model, not to the binary;
+- `FlatCtrl` gains `c-thunk : ℕ → FlatCtrl` (the body-start marker),
+  lowering to `label (thunk n)`, with an abstract `find-thunk` beside
+  `find-label`;
+- a CALL resolves through `find-thunk`; a JUMP through `find-label`.
+
+### Why (correct by construction)
+
+`_≡ᵇᴸ_` is `false` across distinct provenances by its catch-all, so a call
+target can NEVER match a jump label — definitionally, with no appeal to
+counter uniqueness. That matters beyond tidiness: today main labels and
+body labels happen to share one counter, so a unified `once` namespace
+(the rejected alternative) would be collision-free only by that accident,
+and would silently become unsound if bodies were ever given their own
+counter. Provenance makes the property structural instead of incidental.
+
+### Rejected: unify on `once`
+
+Fewer constructors, but it changes the emitted label names, and it makes
+collision-freedom depend on the shared-counter accident rather than on the
+type. D033 rejected exactly this shape once already, for the compiler/SigOp
+boundary.
+
+### Consequences
+
+- Plan 0.63 step 1 is now fully specified: `thunk` + `c-thunk` + `c-ret`
+  constructors, their dispatch sweep, the `FlatState` extension
+  (`mkFlatFull` + defaulted `mkFlat` wrapper, `fret` + `fclosure`), then
+  bodies into `ir-to-trace`.
+- No emitted instruction or label name changes, so existing binaries and
+  the exit-test suite are unaffected by the model work.
