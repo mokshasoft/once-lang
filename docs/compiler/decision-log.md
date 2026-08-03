@@ -5718,3 +5718,76 @@ Do not treat the two contracts as a single honest axiom. The planned split:
   adequacy) and is NOT part of this split.
 - Until the split lands, the census should describe these two as "one
   wiring gap + one FFI axiom", not as two axioms.
+
+## D081: A Code Address Is Where the Label Is — Resolve at `lea`, Not at `call`
+
+**Date**: 2026-08-03
+**Status**: Accepted (design decision; execution = Plan 0.63)
+**Relates**: D079 (the previous false-postulate finding), the
+`x86-64-loader-faithful` trust surface, Plan 0.63
+
+### Context
+
+Closing `events-running-call` forced the question "what IS a code address
+in the modelled machine?", and answering it exposed an inconsistency:
+
+- `execInstr prog s (call target)` pushes `pc s + 1` and sets
+  `pc := <the operand's VALUE>` — faithful to hardware;
+- but `effectiveAddr s (rip+label n) = n`, with the comment "label
+  resolved by linker; abstract" — the resolution is STUBBED, so `lea` of
+  a body label yields the bare label NUMBER;
+- while every other control transfer (`c-jmp`, `je`) resolves through
+  `find-label`, which returns an instruction INDEX.
+
+So a modelled closure call jumps to a label number interpreted as an
+index. Consequently `events-running-call` is not merely unproven but
+FALSE in general (same class as `load-const-float`, D079).
+
+NOTE: the EMITTED CODE is correct and unaffected. `lea .L_thunk_n(%rip)`
+materializes a real address and `call *0x8(%r12)` is the standard indirect
+closure call — necessary, since a call site cannot know statically which
+closure it invokes. There are no performance implications in any option;
+the defect is entirely in the model's interpretation.
+
+### Decision
+
+Make the stubbed line true: **the address of a label is where the label
+is**. `find-label` IS the linker in this model, so
+
+    lea r (rip+label n)  ⇒  r := <resolved location of label n>
+
+and `call`/`ret` are left EXACTLY as they are — they are already faithful
+(push `pc+1`, jump to the value read; pop and jump back). `enc-sv
+(SV-Code n)` becomes the resolved address, which means the encoding gains
+a CODE MAP alongside the heap `AddrMap` it already carries (static, so
+unlike the heap map it needs no extension lemmas).
+
+### Rejected: resolve at `call`
+
+Having `call` look its target up via `find-label` (making it consistent
+with `c-jmp`) is a smaller diff, but it is a FICTION: real `call *mem`
+jumps to an address and does not consult a label table. Every fiction in
+the ISA model must be absorbed by `x86-64-loader-faithful`, which is the
+bottom of the trust stack — this would GROW it, where resolving at `lea`
+SHRINKS it (the model's `lea` then does what the assembler does).
+
+### Rejected: full byte-level addresses
+
+Modelling the program's real byte layout (address↔index map through the
+whole ISA layer) is more faithful still and subsumes the parked
+address-keyed-memory redesign, but it is a much larger change and is not
+required to make code addresses coherent: at the model's granularity the
+code address space IS instruction indices, and `find-label` maps labels
+into it.
+
+### Consequences
+
+- `call`/`ret` semantics unchanged; one `execInstr` clause (`lea` of a
+  label) changes; `enc-sv`/`sim-load-code-addr`/`block-step-load-code-addr`
+  follow.
+- The remaining Plan 0.63 work is unchanged in shape but now rests on a
+  coherent address model: bodies into the modelled program, flat-machine
+  call/ret with a return-pc stack, per-body frames.
+- Shrinks what `x86-64-loader-faithful` must paper over — the same
+  direction as bringing the prologue bracket and bodies inside the
+  modelled pipeline.
