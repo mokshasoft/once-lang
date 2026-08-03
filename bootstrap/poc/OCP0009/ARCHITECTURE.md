@@ -4,7 +4,8 @@
 and why, and where the two towers meet. Companion to `PATHS.md` (the strategic
 fork), `PLAN-dHoTT-kernel.md` (the work plan), `HANDOFF-*.md` (status).*
 
-*Written 2026-07-30 against: `PLAN-dHoTT-kernel.md`, `PATHS.md`,
+*Written 2026-07-30; STATUS + §7 GAP ANALYSIS updated 2026-08-03 (post
+W2 stages 1–3 and the W2b spike). Originally against: `PLAN-dHoTT-kernel.md`, `PATHS.md`,
 `HANDOFF-2026-07-28.md`, linearization-8, `docs/compiler/decision-log.md`
 (D003/D037/D046/D062/D063), `formal/Once/IR.agda`, `formal/Once/Type.agda`,
 `bootstrap/normalizer/Syntax/Types.agda`, `NbEPLinRec/Pass/Dyn/QTT`.*
@@ -29,8 +30,12 @@ fork), `PLAN-dHoTT-kernel.md` (the work plan), `HANDOFF-*.md` (status).*
         Id       :=  core(Hom)        (the invertible fragment = conversion)
 
 So the IR supplies the *directedness*; the kernel *internalizes* it as its
-identity type. That internalization is **not done** — in the committed kernel
-`Hom` is still a META relation `⟶*`, not an `RTy` former (that is W2).
+identity type. ★ That internalization is **DONE** (W2, landed 2026-08-02):
+`Hom` is an `RTy` former in the committed kernel, `Hom-U`/`Hom-Π` compute,
+and the eliminator transports at both motive classes with `fund` behind it.
+The meta relation `⟶*` keeps only its operational role (`Hom⟶`).  What
+remains of the directed layer is §7's gap list (G1 = the spiked W2b
+canonicity package).
 
 ⚠ And there are currently **two** IR-ish term languages, which is the other
 easy confusion:
@@ -84,8 +89,8 @@ Closing that gap is **W0d**. Its blocker **W0e** (codata) landed 2026-07-31 (`Sp
   ├──────────────────────────────┤        ├─────────────────────────────┤
   │ K2 type formers              │        │ C2 IR — the CCC             │
   │    ✅ Π  Σ  Tarski-U/El      │◄───────┤    id ∘ ⟨,⟩ fst snd         │
-  │    🔴 W2  Hom as an RTy      │  the   │    inl inr case             │
-  │    🔴 W3  variance judgment  │  same  │    curry apply              │
+  │    ✅ W2  Hom as an RTy      │  the   │    inl inr case             │
+  │    ✅ W3  variance (floor)   │  same  │    curry apply              │
   ├──────────────────────────────┤  type  │    In out-μ Cata Para       │
   │ K1 structural core           │  formers    Out in-ν Ana             │
   │    (see Drawing C)           │        │    Fuse/Hylo + NatTr        │
@@ -156,8 +161,19 @@ Each box: what the layer ADDS, then the options tried, with verdicts.
 │       (Russell not used; decoding-by-reduction is what makes El-stable   │
 │        refl — and also what refutes the W1 erasure shortcut, §5)         │
 │  ✅ μ / polynomial functors + cata      🔴 ν / ana — see Drawing D       │
-│  🔴 W2  Hom as an object-level RTy former + directed J                   │
-│  🔴 W3  variance as a JUDGMENT (Nuyts–Devriese), not a motive side-cond  │
+│  ✅ W2  Hom as an object-level RTy former — LANDED 2026-08-02:           │
+│       `Hom`/`⌜Hom⌝`/`hrefl`/`tr` in RTy/RTm; `Hom-U` (directed           │
+│       univalence) + `Hom-Π` (pointwise) COMPUTE; the eliminator at       │
+│       BOTH motives (`⊢tr` composition, `⊢trU` tautological) with sr      │
+│       AND fund; J ⌜Hom⌝-motive-keyed; `no-sym` INTERNAL (`no-sym-tr`)    │
+│  ✅ W3  variance as a JUDGMENT — the FLOOR: `Pos`/`Neg` polarity on raw  │
+│       kernel types (NbEPDirDBVar), `PosC` its computing fragment;        │
+│       sym's motive is `Neg` and the checker can tell.  ⚠ `Pos ⊋ PosC`    │
+│       is a PROVEN boundary, not laziness (SpikeTr: general-`Pos`         │
+│       transport has no confluent computation rule; constant motives      │
+│       are invisible).  Full N–D-style annotations = W4's business.       │
+│  🟡 W2b the canonicity package — SPIKED 2026-08-03 (`SpikeCanon`),       │
+│       rule format settled + coherence mechanized; landing = gap G1 (§7) │
 │  🔴 W4  the variance-annotated CwF — NO PRIOR ART ANYWHERE               │
 └──────────────────────────────────────────────────────────────────────────┘
                                     ▲
@@ -208,6 +224,10 @@ Each box: what the layer ADDS, then the options tried, with verdicts.
 │              not measured; NOT a refutation. Flips only if the kernel     │
 │              goes η-LONG / NbE-shaped. See PLAN W1h finding (2).          │
 │           ⚠ the erasure shortcut is REFUTED, not unattempted.            │
+│       ✅ W2 metatheory EXTENDED (2026-08-01..03): confluence, subject    │
+│           reduction, the stratified LR, fund and wnorm all cover         │
+│           `⌜Hom⌝`/`hrefl`/`tr` — Boolean shape classifiers keep          │
+│           Takahashi premise-free and anti-renaming one line per key     │
 │  ✅ consistency — SpikeErase (raw), NbEPDirDTTSem (dependent mechanism)  │
 │  ❌ sized types — HARD BAN. structural or WF recursion only.             │
 │  ❌ shipped TERMINATING pragmas · ❌ postulated funext (threaded instead)│
@@ -418,7 +438,12 @@ and for types: don't compute at all, stay in the nat-trans + cata fragment.
     unconstrained and the kernel had no type-formation judgment. RESOLVED by W1g,
     option A: `_⊢ty_`/`⊢ctx_` are mutual with `_⊢_∷_`, and only `⊢lam`/`⊢pair`
     gained a premise. Expressiveness is unchanged — `lam s ∷ U` is underivable.
-       └► W2/W3 → W4 → W5 → W6    🔴 the directed layer, no prior art
+       └► W2/W3   ✅ LANDED (2026-08-01..03) — the directed layer's floor:
+          W3 floor (Pos/Neg + PosC) → W2 stage 1 (Hom/hrefl/tr through the
+          tower) → stage 2 (⊢tr composition motive + fund) → stage 3 (J
+          re-keyed, ⊢trU taut motive, eliminator CLOSED) → W2b SPIKED
+          (SpikeCanon: rule format settled).  What remains: §7's gap list
+          (G1 = land W2b; then W4 → W5 → W6, still no prior art).
 ```
 
 **What the W1 spike changed.** The plan had W1 as one undifferentiated
@@ -449,3 +474,133 @@ needed result before booking a research item.
 The working tree holds linearization-8 (`NbEPLinQTT.agda` new,
 `NbEPLinRec/Pass/Dyn` gained the `lassoc`/`lassoc⁻`/`lswap` clauses, plan +
 handoff updated) — verified, 11 modules exit 0, **not yet committed**.
+
+--------------------------------------------------------------------------
+## 7. GAP ANALYSIS — 2026-08-03: what stands between HERE and the full
+##    dHoTT dependent-types kernel
+
+*Written after W2 stage 3 + the W2b spike.  The kernel now TYPES directed
+paths, transports along them at both motive classes, and normalizes the
+results definitionally (`trans-wnorm = refl`, `univ-wnorm = refl`).  The
+gaps below are ordered by recommended attack; each is priced against a
+measured precedent.  G1 is "integrate the last spike"; G2–G4 complete the
+kernel's own story; G5–G8 are the remaining research layer.*
+
+### The scoreboard (what is DONE and load-bearing)
+
+| piece | status | where |
+|---|---|---|
+| de Bruijn kernel, strict substitution | ✅ | NbEPDirDBPi |
+| Π, Σ, Tarski U/El, decode-by-reduction | ✅ | NbEPDirDBType |
+| confluence (premise-free Takahashi), SR, Π/Σ-inj | ✅ | Conf/Subj/Inj |
+| stratified two-level LR, fund, wnorm, dec-conv-typed | ✅ | LR/Fund/Dec |
+| W3 floor: Pos/Neg judgment, PosC computing fragment | ✅ | NbEPDirDBVar |
+| W2: Hom/⌜Hom⌝/hrefl/tr internal, Hom-U + Hom-Π compute | ✅ | Type…Fund |
+| eliminator BOTH motives (⊢tr, ⊢trU), sr + fund, demos | ✅ | Subj/Fund/Tr |
+| no-sym internal (syntactic) + sym FALSE at U (semantic) | ✅ | Tr/SpikeNoSym |
+| W2b rule format + coherence lemma + classifier bill | ✅ spike | SpikeCanon |
+
+### G1 — LAND W2b (the canonicity package)            ★ NEXT, fully scoped
+
+The spike settled everything design-shaped: three Boolean-keyed rules
+(`hrefl-pw`, `tr-J-Hom`, `tr-pw`), total classifier/body functions
+(`pw?`/`stkC?`/`pwBody` — import-ready), the coherence join
+(`pw-Hom-decode`, mechanized), and the per-module bill (SpikeCanon
+header).  Pattern precedent: W2 stages 1–3 (the same six-module cascade,
+paid three times now).  The one flip to respect: `hrefl` stops being
+unconditionally inert — `sne-hrefl` gets keyed, `pathstk?`'s hrefl clause
+narrows to neutral spines, `trstk?`'s lam clause gains `not ∘ pw?`.
+Estimated 2–3 sessions at stage-2/3 velocity.
+
+### G2 — the W2b done-when: CODE CANONICITY            after G1, small
+
+Closed normal codes of type `U` split as `pw? ∨ stkC?`; hence closed
+normal paths at decoded types are `hrefl`s or lambdas; hence closed `tr`s
+always step.  A typed closed-normal-form analysis (generation + progress
+flavor) — the extended kernel's substitute for a consistency theorem
+(there is no empty type in this syntax; the directed-content guarantees
+are `no-sym` + canonicity).  New machinery: none expected beyond
+generation lemmas that already exist.
+
+### G3 — `Hom` at `Σ'` ambients (the last silent type)  unblocked by W2
+
+`Hom (Σ' A B) p q` deliberately has NO rule today (Drawing B: "its
+unfolding needs transport").  `tr` now exists, so the deferral expired:
+the rule is `Σ'`-of-Homs with the second component TRANSPORTED —
+the first reduction rule whose RHS mentions `tr`.  Cascade: `StkHd`
+loses `sh-Σ`, the LR's stuck-`Hom` clause and `⊩₀Σ/⊩₁Σ` interplay
+reopen, and `hrefl` at `⌜Σ⌝` codes stops being J-only (it unfolds to a
+pair).  Same shape as G1 but with a genuinely new ingredient (transport
+in a rule RHS) — spike the rule's critical pairs first (half-session),
+then the known cascade.  ⚠ G1's `stkC?` counts `⌜Σ⌝` as stable; G3
+moves `⌜Σ⌝` to a `pw?`-like unfoldable class — land G1 first, then flip
+the classifier ONCE, or the same key gets paid twice.
+
+### G4 — η IN THE KERNEL JUDGMENT                       decision + work
+
+The committed `⊢conv`/`dec-conv` are β-only; η lives in the satellite
+`NbEPDirDBEta` (Π-η only, and written before `pair`/`fst`/`snd` existed —
+Σ-η is now expressible but unproven; Hom/hrefl-η is unexplored theory).
+Without η, `core(Hom)` is thin (≈ α-equality on NFs) — the welding (G7)
+wants the fat core.  ⚠ THE KNOWN TRAP: η-long normal forms are the
+recorded flip condition for the whole LR (`⊩₁` has no renaming action;
+η-long forces Kripke, a ~1000-line redesign).  So G4 is first a DECISION:
+η by untyped expansion in `dec-conv` (cheap, no LR change — the
+NbEPDirDBEta route, extended to Σ) vs η-long NFs (expensive, flips W1h).
+Recommendation: the former, unless G7's welding proof demands more.
+
+### G5 — W4, the variance-annotated CwF                 research, no prior art
+
+The semantic side already has the strict transport-free CwF core
+(`NbEPDirStrict`: Σ/×-stable by `refl`, universe ladder) and the directed
+CwF with HomTy (`NbEPDirCwF` line).  The no-prior-art piece is the
+VARIANCE-ANNOTATED one — contexts carrying polarity, `Ty⁺`/`Ty⁻` with
+W3's judgment internalized, `Π`'s domain contravariance structural.
+W3's floor was scoped as exactly its prerequisite.  Entry point:
+re-read `NbEPDirV`'s `_⇒→_` contravariance + NbEPDirDBVar's Pos/Neg.
+Risk posture per the plan: if a genuine obstruction appears, RECORD and
+stop (the raw-M3c lesson) — do not grind.
+
+### G6 — W5, directed normal forms                      likely SUBSUMED
+
+The reduction-based checker already extends to every W2 former (wnorm
+normalizes `tr`; dec-conv-typed is total).  W5 as a separate NbE-shaped
+artifact is needed ONLY if G4 chooses η-long NFs — otherwise its
+content is G1's canonical-forms theorem (G2) plus the existing wnorm.
+Recommendation: fold W5 into G2+G4 and strike it as a standalone item.
+
+### G7 — W6, the welding: `Id = core(Hom)`, computing   the finish line
+
+The design's payoff sentence — definitional equality IS the invertible
+fragment of the directed structure.  Meta-level versions exist
+(`NbEPDirDBIdJ` over kernel terms; `Core⟶` in Type).  The internal
+statement needs: internal `Hom`-inversion (which paths are invertible —
+after G1's canonicity this is "the `hrefl`s and the pointwise-invertible
+lambdas"), and the round-trip against `_≅_`/`_≅η_` (G4 decides which).
+Blocked behind G1 (canonicity) + G4 (which core is fat enough to weld).
+
+### G8 — naturality: a DECIDED boundary, not a gap      (recorded here so
+nobody reopens it by accident)
+
+`Hom-Π` is the PLAIN pointwise family; naturality is NOT carried — at `U`
+it is REFUTABLE (SpikeHomNatU), and on the plain-family reading `Hom`
+formation needs no variance judgment at all (SpikeHomNat).  The kernel
+is a directed type theory of FAMILIES, not of functors — L7's
+mathematics-of-Once layer is where functorial content (and univalence)
+lives, by design.  Reopen only if G7's welding turns out to need
+naturality cells — no current evidence it does.
+
+### Not on this list
+
+* **W0d** (port the real IR to the linear core) — the OTHER line's next
+  item; independent, does not block any G.
+* **Raw-M3c faithfulness** — closed as an obstruction record; SpikeErase
+  owns raw consistency.
+* **ν/ana at type level, cubical, global UIP, sized types** — excluded
+  by Drawing D / K3 / the hard bans, unchanged.
+
+### The recommended order, in one line
+
+    G1 (land W2b) → G2 (canonicity) → G3 (Σ' Hom, flip stkC? once)
+      → G4 (η decision) → G7 (welding), with G5 (W4 CwF) as the
+      parallel research track and G6 struck.
