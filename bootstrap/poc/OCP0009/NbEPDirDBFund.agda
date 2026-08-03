@@ -53,13 +53,13 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTy; base; U; Π; Σ'; El; Hom; Hom-cong₃; ⌜Hom⌝-cong₃; tr-cong₃
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr
         ; Ren; extR; renTy; renTm
-        ; Sub; subTy; subTm; extS
+        ; Sub; subTy; subTm; extS; idₛ
         ; _∘ᵣ_
         ; subTy-cong; subTm-cong
         ; subTy-renTy; subTm-renTm
         ; renTy-subTy; renTm-subTm
         ; subTy-subTy; subTm-subTm
-        ; subTy-id; subTm-id )
+        ; subTy-id; subTm-id; renTm-renTm; renTm-cong )
 open import poc.OCP0009.NbEPDirDBType
   using ( single
         ; _⟶_; _⟶*_; done; step
@@ -77,7 +77,8 @@ open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false; occTm; subTm-occ
         ; pw?; stkC?; pwBody; pwDom; pwShift
         ; pw?-ren; stkC?-ren; pwBody-ren; wk-ren-tm; pw?-sub
-        ; stk⊥pw; pw⊥stk )
+        ; wk-sub-tm; stk⊥pw; pw⊥stk
+        ; eqv; occ-sub; occ-ren-tm; avoids-wk )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; sub-comm )
 open import poc.OCP0009.NbEPDirDBConf using ( pwShift-ren )
 open import poc.OCP0009.NbEPDirDBDec using ( Dec; dec-conv )
@@ -88,24 +89,26 @@ open import poc.OCP0009.NbEPDirDBSubj
   using ( HomΠShape; hsΠ; hsH; hom-shape; pw-El-decode
         ; HomRed; mkHomRed; Hom-to-Hom
         ; HomToΠ; via-U; via-Π; hom-to-Π
-        ; U-reduct; wk-cancel-tm )
+        ; U-reduct; wk-cancel-tm; ≅ᵀ-Homᵀ; gen-var )
 open import poc.OCP0009.NbEPDirDBLR
   using ( SNe; sne-var; sne-app; sne-fst; sne-snd; sne-hrefl; sne-tr
         ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-exp
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
         ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-taut; snr-trᵖ
-        ; trstk?-ren; nopw?-ren; trlam?-ren; nopw?; trlam?
+        ; trstk?-ren; nopw?-ren; trlam?-ren
         ; nopw⊥pw; stk⊥dead; pw⊥dead; dead→nopw; snr-nonpw
         ; snr-hrefl-pw; snr-J-Hom; snr-tr-pw; snr-tr-mot
         ; deadmot?; deadmot?-red; deadmot?-ren; deadmot→nopw; stk→deadmot
-        ; trlam?; nopw?-red; nopw?-red*
+        ; nopw?-red; nopw?-red*
         ; CSR; csr-here; csr-hom; csr→⟶; csr-nonpw; csr-stk⊥; sn-csr
+        ; csr-det
         ; _⟶csr*_; csr-done; csr-step; csrs-hom
         ; PayT; payChain; payT-exp; payT-whred; payT-irrel
         ; payT-cast; payT-code; payHomT; _⟶snr*_; snr-done; snr-step
         ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; _⊩₀∋_; bwd₀; exp₁
         ; base-nf; El-ne-reduct; mkElNe; Hom-stk-reduct; mkHomStk
-        ; nopw?; stkC?; stablecd?; sne→spine; wk-single; snr→⟶
+        ; nopw?; trlam?; stablecd?; sne→spine; wk-single; snr→⟶
+        ; exp₀; f≢t
         ; mem-whred₁; homSem₀; homSem₀-mem-endpoints
         ; sne→stablecd; trstk?
         ; ⊩₁_; ⊩₁base; ⊩₁U; ⊩₁ne; ⊩₁Π; ⊩₁Σ; ⊩₁Hom; _⊩₁∋_
@@ -916,6 +919,429 @@ nopw?-csrs : {t t' : RTm Ξ} → t ⟶csr* t' → nopw? t ≡ true → nopw? t' 
 nopw?-csrs csr-done       h = h
 nopw?-csrs (csr-step σ q) h = nopw?-csrs q (nopw?-red (csr→⟶ σ) h)
 
+
+------------------------------------------------------------------------
+-- ★★ W2b, THE LAST HOLE — `semTr`: the pointwise-transport membership,
+-- a go-REPLICA at level 0, parameterized by layer.  The strengthening
+-- collapse (the motive's binder form is `renTm vs` of the strengthened
+-- code) and the pwShift collapse (pwShift ∘ extR vs ≡ vs) make each
+-- layer's recursion invariant DEFINITIONAL; the payload node supplies
+-- the spine-normalization, the pw-key, and the body data; the path's
+-- own Π-closure supplies the instantiated inner paths.
+------------------------------------------------------------------------
+
+csrs-det : {c x y : RTm Ξ} → c ⟶csr* x → pw? x ≡ true →
+           c ⟶csr* y → pw? y ≡ true → x ≡ y
+csrs-det csr-done kx csr-done ky = refl
+csrs-det csr-done kx (csr-step σ q) ky =
+  ⊥-elim (f≢t (trans (sym (csr-nonpw σ)) kx))
+csrs-det (csr-step σ q) kx csr-done ky =
+  ⊥-elim (f≢t (trans (sym (csr-nonpw σ)) ky))
+csrs-det (csr-step σ q) kx (csr-step σ' q') ky with csr-det σ σ'
+... | refl = csrs-det q kx q' ky
+
+csrs-ren : {ρ : Ren Θ Ξ} {x y : RTm Θ} → x ⟶csr* y →
+           renTm ρ x ⟶csr* renTm ρ y
+csrs-ren csr-done       = csr-done
+csrs-ren (csr-step σ q) = csr-step (csr-ren σ) (csrs-ren q)
+
+mem₀cast : {A B : RTy Ξ} (eq : A ≡ B) (R : ⊩₀ A) {w : RTm Ξ} →
+           R ⊩₀∋ w → (subst ⊩₀_ eq R) ⊩₀∋ w
+mem₀cast refl R h = h
+
+mem₀cast⁻ : {A B : RTy Ξ} (eq : A ≡ B) (R : ⊩₀ A) {w : RTm Ξ} →
+            (subst ⊩₀_ eq R) ⊩₀∋ w → R ⊩₀∋ w
+mem₀cast⁻ refl R h = h
+
+mem₁cast⁻ : {A B : RTy Ξ} (eq : A ≡ B) (R : ⊩₁ A) {w : RTm Ξ} →
+            (subst ⊩₁_ eq R) ⊩₁∋ w → R ⊩₁∋ w
+mem₁cast⁻ refl R h = h
+
+memTm : {A : RTy Ξ} (R : ⊩₀ A) {w w' : RTm Ξ} → w ≡ w' →
+        R ⊩₀∋ w → R ⊩₀∋ w'
+memTm R refl h = h
+
+expStar₀ : {A : RTy Ξ} (R : ⊩₀ A) {t t' : RTm Ξ} →
+           t ⟶snr* t' → R ⊩₀∋ t' → R ⊩₀∋ t
+expStar₀ R snr-done       h = h
+expStar₀ R (snr-step r q) h = exp₀ R r (expStar₀ R q h)
+
+-- the pwShift collapse: after strengthening, the junk slot vanishes.
+pwvs : {X : RTm (Θ ∙)} → renTm pwShift (renTm (extR vs) X) ≡ renTm vs X
+pwvs {X = X} = trans (renTm-renTm X) (renTm-cong ptw X)
+  where
+  ptw : ∀ x → _
+  ptw vz     = refl
+  ptw (vs i) = refl
+
+semTr :
+  (x₀ : Var Ξ) {X : RTy Ξ} (R : ⊩₀ X) {CT : RTm Ξ}
+  (lk : X ≅ᵀ El CT) (snCT : SN CT) (payR : PayT R CT)
+  {aP tP uP : RTm Ξ}
+  (hA : R ⊩₀∋ aP) (hT : R ⊩₀∋ tP) (hU : R ⊩₀∋ uP)
+  {p' : RTm Ξ} (snp : SN p')
+  (hTe : (emb R) ⊩₁∋ tP) (hUe : (emb R) ⊩₁∋ uP)
+  (hp : (homSem₁ (emb R) hTe hUe) ⊩₁∋ p')
+  {eP : RTm Ξ} (hE : (homSem₀ R hA hT) ⊩₀∋ eP) →
+  (homSem₀ R hA hU) ⊩₀∋
+    tr (⌜Hom⌝ (renTm vs CT) (renTm vs aP) (var vz)) p' eP
+
+snrs-trans : {t u v : RTm Ξ} → t ⟶snr* u → u ⟶snr* v → t ⟶snr* v
+snrs-trans snr-done       q = q
+snrs-trans (snr-step r p) q = snr-step r (snrs-trans p q)
+
+csrs-app : {t u v : RTm Ξ} → t ⟶csr* u → u ⟶csr* v → t ⟶csr* v
+csrs-app csr-done       q = q
+csrs-app (csr-step σ p) q = csr-step σ (csrs-app p q)
+
+-- the MOTIVE-code fate: fully normalize down CSR (recursing into
+-- hrefl-codes' own codes — a live inner code either unfolds the hrefl
+-- to a lam, dead, or the whole hrefl is dead with it).
+data MFate {Ξ : Cx} (c* : RTm Ξ) : Set where
+  mf-pw   : pw? c* ≡ true → MFate c*
+  mf-dead : deadmot? c* ≡ true → MFate c*
+
+motFate : {c' : RTm Ξ} → SN c' →
+          Σ (RTm Ξ) (λ c* → (c' ⟶csr* c*) × MFate c*)
+motFate (sn-exp r h) with motFate h
+... | c* , (csr , fate) = c* , (csr-step (csr-here r) csr , fate)
+motFate (sn-ne (sne-var x)) = _ , (csr-done , mf-dead refl)
+motFate (sn-ne (sne-app n s)) = _ , (csr-done , mf-dead (sne→spine n))
+motFate (sn-ne (sne-fst n)) = _ , (csr-done , mf-dead (sne→spine n))
+motFate (sn-ne (sne-snd n)) = _ , (csr-done , mf-dead (sne→spine n))
+motFate (sn-ne (sne-hrefl {c = c₂} {t = t₂} snc snt kn)) with motFate snc
+... | C₃ , (csr₃ , mf-pw k) =
+      lam (hrefl (pwBody C₃) (app (renTm vs t₂) (var vz)))
+      , ( csrs-app (hrmap csr₃)
+                   (csr-step (csr-here (snr-hrefl-pw k)) csr-done)
+        , mf-dead refl )
+  where
+  hrmap : {x y : RTm _} → x ⟶csr* y → hrefl x t₂ ⟶csr* hrefl y t₂
+  hrmap csr-done       = csr-done
+  hrmap (csr-step σ w) = csr-step (csr-here (snr-hreflᶜ σ)) (hrmap w)
+... | C₃ , (csr₃ , mf-dead k) =
+      hrefl C₃ t₂ , (hrmap csr₃ , mf-dead k)
+  where
+  hrmap : {x y : RTm _} → x ⟶csr* y → hrefl x t₂ ⟶csr* hrefl y t₂
+  hrmap csr-done       = csr-done
+  hrmap (csr-step σ w) = csr-step (csr-here (snr-hreflᶜ σ)) (hrmap w)
+motFate (sn-ne (sne-tr h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
+motFate (sn-lam h) = _ , (csr-done , mf-dead refl)
+motFate (sn-pair a b) = _ , (csr-done , mf-dead refl)
+motFate sn-cb = _ , (csr-done , mf-dead refl)
+motFate (sn-cΠ h₁ h₂) = _ , (csr-done , mf-pw refl)
+motFate (sn-cΣ h₁ h₂) = _ , (csr-done , mf-dead refl)
+motFate (sn-cH {c = C₂} {a = a₂} {b = b₂} hC ha hb) with motFate hC
+... | C* , (csr , mf-pw k)   = ⌜Hom⌝ C* a₂ b₂ , (csrs-hom csr , mf-pw k)
+... | C* , (csr , mf-dead k) = ⌜Hom⌝ C* a₂ b₂ , (csrs-hom csr , mf-dead k)
+
+-- the SN-only worker (the non-Π interps' membership IS this SN).
+snTrGo :
+  {CT aP eP : RTm Ξ} →
+  (∀ {P : RTy Ξ} {Q : RTy (Ξ ∙)} → El CT ⟶ᵀ* Π P Q → ⊥) →
+  SN CT → SN aP → SN eP →
+  {p' : RTm Ξ} → SN p' →
+  SN (tr (⌜Hom⌝ (renTm vs CT) (renTm vs aP) (var vz)) p' eP)
+snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
+  where
+  M : RTm (Ξ ∙)
+  M = ⌜Hom⌝ (renTm vs CT) (renTm vs aP) (var vz)
+  snM : SN M
+  snM = sn-cH (sn-ren snCT) (sn-ren snA) (sn-ne (sne-var vz))
+
+  tstar : {p₁ p₂ : RTm Ξ} → p₁ ⟶snr* p₂ → tr M p₁ eP ⟶snr* tr M p₂ eP
+  tstar snr-done       = snr-done
+  tstar (snr-step r q) = snr-step (snr-trᵖ r) (tstar q)
+
+  mstar : {x y : RTm Ξ} → x ⟶csr* y → {f : RTm (Ξ ∙)} →
+          tr (⌜Hom⌝ (renTm vs x) (renTm vs aP) (var vz)) (lam f) eP ⟶snr*
+          tr (⌜Hom⌝ (renTm vs y) (renTm vs aP) (var vz)) (lam f) eP
+  mstar csr-done       = snr-done
+  mstar (csr-step σ w) = snr-step (snr-tr-mot (csr-ren σ)) (mstar w)
+
+  go' : {p' : RTm Ξ} → SN p' → SN (tr M p' eP)
+  goH : {c' s' : RTm Ξ} → SN c' → SN s' → nopw? c' ≡ true →
+        SN (tr M (hrefl c' s') eP)
+
+  go' (sn-exp r h) = sn-exp (snr-trᵖ r) (go' h)
+  go' (sn-ne (sne-var x)) =
+    sn-ne (sne-tr snM (sn-ne (sne-var x)) snE refl)
+  go' (sn-ne (sne-app n s)) =
+    sn-ne (sne-tr snM (sn-ne (sne-app n s)) snE (sne→spine n))
+  go' (sn-ne (sne-fst n)) =
+    sn-ne (sne-tr snM (sn-ne (sne-fst n)) snE (sne→spine n))
+  go' (sn-ne (sne-snd n)) =
+    sn-ne (sne-tr snM (sn-ne (sne-snd n)) snE (sne→spine n))
+  go' (sn-ne (sne-hrefl snc sns kn)) = goH snc sns kn
+  go' (sn-ne (sne-tr h₁ h₂ h₃ key)) =
+    sn-ne (sne-tr snM (sn-ne (sne-tr h₁ h₂ h₃ key)) snE key)
+  go' (sn-lam snf) with motFate snCT
+  ... | CT* , (csr , mf-pw k) =
+        ⊥-elim (noPiT (⟶ᵀ*-trans (⟶ᵀ*-El (csrs→⟶* csr))
+                        (Σ.fst (Σ.snd (pw-El-decode CT* k)))))
+  ... | CT* , (csr , mf-dead k) =
+        snExpStar (mstar csr)
+          (sn-ne (sne-tr (sn-cH (sn-ren (sn-csrs snCT csr)) (sn-ren snA)
+                                (sn-ne (sne-var vz)))
+                         (sn-lam snf) snE
+                         (trans (deadmot?-ren vs CT*) k)))
+  go' (sn-pair a b)    = sn-ne (sne-tr snM (sn-pair a b) snE refl)
+  go' sn-cb            = sn-ne (sne-tr snM sn-cb snE refl)
+  go' (sn-cΠ h₁ h₂)    = sn-ne (sne-tr snM (sn-cΠ h₁ h₂) snE refl)
+  go' (sn-cΣ h₁ h₂)    = sn-ne (sne-tr snM (sn-cΣ h₁ h₂) snE refl)
+  go' (sn-cH h₁ h₂ h₃) = sn-ne (sne-tr snM (sn-cH h₁ h₂ h₃) snE refl)
+
+  goH sn-cb sns kn = sn-exp (snr-J-base snM sns) snE
+  goH (sn-cΣ h₁ h₂) sns kn = sn-exp (snr-J-Σ snM h₁ h₂ sns) snE
+  goH (sn-exp rc snc') sns kn =
+    sn-exp (snr-trᵖ (snr-hreflᶜ (csr-here rc)))
+           (goH snc' sns (nopw?-red (snr→⟶ rc) kn))
+  goH (sn-ne nc) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-ne nc) sns (sne→nopw nc)))
+                  snE (sne→stablecd nc))
+  goH (sn-lam h) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-lam h) sns refl)) snE refl)
+  goH (sn-pair a b) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-pair a b) sns refl)) snE refl)
+  goH (sn-cΠ h₁ h₂) sns ()
+  goH (sn-cH hC h₂ h₃) sns kn with codeNorm hC kn
+  ... | C*c , (csr , cf-stk k) =
+        snExpStar (tstar (snrs-hreflᶜ (csrs-hom csr)))
+          (sn-exp (snr-J-Hom snM (sn-csrs hC csr) h₂ h₃ sns k) snE)
+  ... | C*c , (csr , cf-dead k) =
+        snExpStar (tstar (snrs-hreflᶜ (csrs-hom csr)))
+          (sn-ne (sne-tr snM
+                   (sn-ne (sne-hrefl (sn-cH (sn-csrs hC csr) h₂ h₃) sns
+                                     (nopw?-csrs csr kn)))
+                   snE k))
+
+semTr x₀ (⊩₀base p) lk snCT payR hA hT hU snp hTe hUe hp hE =
+  snTrGo noPiT snCT (CR1₀ (⊩₀base p) hA)
+         (CR1₀ (homSem₀ (⊩₀base p) hA hT) hE) snp
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (bE , πE) with base-nf bE
+  ...   | refl with Π-reduct πE
+  ...     | mkΠRed _ _ () _ _
+semTr x₀ (⊩₀ne p n) lk snCT payR hA hT hU snp hTe hUe hp hE =
+  snTrGo noPiT snCT (CR1₀ (⊩₀ne p n) hA)
+         (CR1₀ (homSem₀ (⊩₀ne p n) hA hT) hE) snp
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (nE , πE) with El-ne-reduct n nE
+  ...   | mkElNe _ _ refl with Π-reduct πE
+  ...     | mkΠRed _ _ () _ _
+semTr x₀ (⊩₀Σ p ⊩F ⊩G) lk snCT payR hA hT hU snp hTe hUe hp hE =
+  snTrGo noPiT snCT (CR1₀ (⊩₀Σ p ⊩F ⊩G) hA)
+         (CR1₀ (homSem₀ (⊩₀Σ p ⊩F ⊩G) hA hT) hE) snp
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (σE , πE) with Σ-reduct σE
+  ...   | mkΣRed _ _ refl _ _ with Π-reduct πE
+  ...     | mkΠRed _ _ () _ _
+semTr x₀ (⊩₀Hom p sh) lk snCT payR hA hT hU snp hTe hUe hp hE =
+  snTrGo noPiT snCT (CR1₀ (⊩₀Hom p sh) hA)
+         (CR1₀ (homSem₀ (⊩₀Hom p sh) hA hT) hE) snp
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (hE₂ , πE) with Hom-stk-reduct sh hE₂
+  ...   | mkHomStk _ _ _ _ refl with Π-reduct πE
+  ...     | mkΠRed _ _ () _ _
+semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
+      {aP} {tP} {uP} hA hT hU {p'} snp hTe hUe hp {eP} hE = go₀ snp hp
+  where
+  RcΠ = ⊩₀Π {A = X} q Fc Gc
+  M : RTm (_ ∙)
+  M = ⌜Hom⌝ (renTm vs CT) (renTm vs aP) (var vz)
+  snA  = CR1₀ RcΠ hA
+  snE' = CR1₀ (homSem₀ RcΠ hA hT) hE
+  RH0  = homSem₀ RcΠ hA hU
+  snM : SN M
+  snM = sn-cH (sn-ren snCT) (sn-ren snA) (sn-ne (sne-var vz))
+
+  heU : RH0 ⊩₀∋ eP
+  heU = homSem₀-mem-endpoints RcΠ hA hT hA hU hE
+
+  tstar : {p₁ p₂ : RTm _} → p₁ ⟶snr* p₂ → tr M p₁ eP ⟶snr* tr M p₂ eP
+  tstar snr-done       = snr-done
+  tstar (snr-step r w) = snr-step (snr-trᵖ r) (tstar w)
+
+  -- the x₀-node pins the (unique) spine-normalization of CT.
+  r₀ = CR3₀ Fc (sne-var x₀)
+  n₀ = payR (var x₀) r₀
+  cT*  = Σ.fst n₀
+  csr₀ = Σ.fst (Σ.snd n₀)
+  key₀ = Σ.fst (Σ.snd (Σ.snd n₀))
+
+  go₀  : {pʹ : RTm _} → SN pʹ →
+         (homSem₁ (emb RcΠ) hTe hUe) ⊩₁∋ pʹ → RH0 ⊩₀∋ tr M pʹ eP
+  goH₀ : {c' s' : RTm _} → SN c' → SN s' → nopw? c' ≡ true →
+         RH0 ⊩₀∋ tr M (hrefl c' s') eP
+  pwC  : {f : RTm (_ ∙)} → SN f →
+         (homSem₁ (emb RcΠ) hTe hUe) ⊩₁∋ lam f → RH0 ⊩₀∋ tr M (lam f) eP
+
+  go₀ (sn-exp r h) hpʹ =
+    exp₀ RH0 (snr-trᵖ r) (go₀ h (mem-whred₁ (homSem₁ (emb RcΠ) hTe hUe) r hpʹ))
+  go₀ (sn-ne (sne-var x)) hpʹ =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-var x)) snE' refl)
+  go₀ (sn-ne (sne-app n s)) hpʹ =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-app n s)) snE' (sne→spine n))
+  go₀ (sn-ne (sne-fst n)) hpʹ =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-fst n)) snE' (sne→spine n))
+  go₀ (sn-ne (sne-snd n)) hpʹ =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-snd n)) snE' (sne→spine n))
+  go₀ (sn-ne (sne-hrefl snc sns kn)) hpʹ = goH₀ snc sns kn
+  go₀ (sn-ne (sne-tr h₁ h₂ h₃ key)) hpʹ =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-tr h₁ h₂ h₃ key)) snE' key)
+  go₀ (sn-lam snf) hpʹ = pwC snf hpʹ
+  go₀ (sn-pair a b) hpʹ    = CR3₀ RH0 (sne-tr snM (sn-pair a b) snE' refl)
+  go₀ sn-cb hpʹ            = CR3₀ RH0 (sne-tr snM sn-cb snE' refl)
+  go₀ (sn-cΠ h₁ h₂) hpʹ    = CR3₀ RH0 (sne-tr snM (sn-cΠ h₁ h₂) snE' refl)
+  go₀ (sn-cΣ h₁ h₂) hpʹ    = CR3₀ RH0 (sne-tr snM (sn-cΣ h₁ h₂) snE' refl)
+  go₀ (sn-cH h₁ h₂ h₃) hpʹ = CR3₀ RH0 (sne-tr snM (sn-cH h₁ h₂ h₃) snE' refl)
+
+  goH₀ sn-cb sns kn = exp₀ RH0 (snr-J-base snM sns) heU
+  goH₀ (sn-cΣ h₁ h₂) sns kn = exp₀ RH0 (snr-J-Σ snM h₁ h₂ sns) heU
+  goH₀ (sn-exp rc snc') sns kn =
+    exp₀ RH0 (snr-trᵖ (snr-hreflᶜ (csr-here rc)))
+         (goH₀ snc' sns (nopw?-red (snr→⟶ rc) kn))
+  goH₀ (sn-ne nc) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-ne nc) sns (sne→nopw nc)))
+                     snE' (sne→stablecd nc))
+  goH₀ (sn-lam h) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-lam h) sns refl)) snE' refl)
+  goH₀ (sn-pair a b) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-pair a b) sns refl)) snE' refl)
+  goH₀ (sn-cΠ h₁ h₂) sns ()
+  goH₀ (sn-cH hC h₂ h₃) sns kn with codeNorm hC kn
+  ... | C*c , (csr , cf-stk k) =
+        expStar₀ RH0 (tstar (snrs-hreflᶜ (csrs-hom csr)))
+          (exp₀ RH0 (snr-J-Hom snM (sn-csrs hC csr) h₂ h₃ sns k) heU)
+  ... | C*c , (csr , cf-dead k) =
+        expStar₀ RH0 (tstar (snrs-hreflᶜ (csrs-hom csr)))
+          (CR3₀ RH0 (sne-tr snM
+                      (sn-ne (sne-hrefl (sn-cH (sn-csrs hC csr) h₂ h₃) sns
+                                        (nopw?-csrs csr kn)))
+                      snE' k))
+
+  -- ★ the pointwise case: the payload node fires the strategy, the
+  -- collapse equalities make the β-instances line up definitionally,
+  -- and the recursion descends one interp layer per Π.
+  pwC {f = f} snf hpf = expStar₀ RH0 chainAll memLam
+    where
+    cS* = renTm vs cT*
+    BODYt : RTm (_ ∙)
+    BODYt = tr (⌜Hom⌝ (renTm pwShift (pwBody cS*))
+                      (app (renTm vs (renTm vs aP)) (var (vs vz)))
+                      (var vz))
+               f (app (renTm vs eP) (var vz))
+    LAMt = lam BODYt
+
+    mstar : {x y : RTm _} → x ⟶csr* y →
+            tr (⌜Hom⌝ (renTm vs x) (renTm vs aP) (var vz)) (lam f) eP
+              ⟶snr*
+            tr (⌜Hom⌝ (renTm vs y) (renTm vs aP) (var vz)) (lam f) eP
+    mstar csr-done       = snr-done
+    mstar (csr-step σ w) = snr-step (snr-tr-mot (csr-ren σ)) (mstar w)
+
+    chainAll : tr M (lam f) eP ⟶snr* LAMt
+    chainAll =
+      snrs-trans (mstar csr₀)
+        (snr-step (snr-tr-pw (sn-ren (sn-csrs snCT csr₀)) (sn-ren snA)
+                             (trans (pw?-ren vs cT*) key₀))
+                  snr-done)
+
+    bodyEq : (v : RTm _) →
+      subTm (single v) BODYt
+      ≡ tr (⌜Hom⌝ (renTm vs (subTm (single v) (pwBody cT*)))
+                  (renTm vs (app aP v)) (var vz))
+           (subTm (single v) f) (app eP v)
+    bodyEq v =
+      tr-cong₃
+        (⌜Hom⌝-cong₃
+          (trans (cong (subTm (extS (single v)))
+                       (trans (cong (renTm pwShift) (pwBody-ren vs cT* key₀))
+                              pwvs))
+                 (wk-sub-tm (single v) (pwBody cT*)))
+          (cong₂ app (trans (wk-sub-tm (single v) (renTm vs aP))
+                            (cong (renTm vs) (wk-cancel-tm v aP)))
+                     refl)
+          refl)
+        refl
+        (cong₂ app (wk-cancel-tm v eP) refl)
+
+    bodyLk : (v : RTm _) →
+             subTy (single v) G ≅ᵀ El (subTm (single v) (pwBody cT*))
+    bodyLk v =
+      ctrnᵀ (≅ᵀ-sub (single v)
+              (Σ.snd (Π-inj
+                (ctrnᵀ (csymᵀ (red→≅ᵀ q))
+                  (ctrnᵀ lk
+                    (red→≅ᵀ
+                      (⟶ᵀ*-trans (⟶ᵀ*-El (csrs→⟶* csr₀))
+                        (Σ.fst (Σ.snd (pw-El-decode cT* key₀))))))))))
+            (csymᵀ (≅ᵀ-sub (single v)
+              (red→≅ᵀ (Σ.snd (Σ.snd (pw-El-decode cT* key₀))))))
+
+    inner : (v : RTm _) (r : Fc ⊩₀∋ v) →
+            (homSem₀ (Gc v r) (projr hA v r) (projr hU v r)) ⊩₀∋
+              tr (⌜Hom⌝ (renTm vs (subTm (single v) (pwBody cT*)))
+                        (renTm vs (app aP v)) (var vz))
+                 (subTm (single v) f) (app eP v)
+    inner v r =
+      semTr x₀ (Gc v r) (bodyLk v) snb' pay'
+            (projr hA v r) (projr hT v r) (projr hU v r)
+            (CR1₁ _ fv) hTe' hUe'
+            (projl (irrel₁ crflᵀ _ (homSem₁ (emb (Gc v r)) hTe' hUe'))
+                   (subTm (single v) f) fv)
+            (mem₀cast⁻ (sym (Hom-cong₃ refl
+                              (cong₂ app (wk-single aP) refl)
+                              (cong₂ app (wk-single tP) refl)))
+                       (homSem₀ (Gc v r) (projr hA v r) (projr hT v r))
+                       (projr hE v r))
+      where
+      nv = payR v r
+      ceq : Σ.fst nv ≡ cT*
+      ceq = csrs-det (Σ.fst (Σ.snd nv)) (Σ.fst (Σ.snd (Σ.snd nv))) csr₀ key₀
+      snb' : SN (subTm (single v) (pwBody cT*))
+      snb' = subst (λ z → SN (subTm (single v) (pwBody z))) ceq
+                   (Σ.fst (Σ.snd (Σ.snd (Σ.snd nv))))
+      pay' : PayT (Gc v r) (subTm (single v) (pwBody cT*))
+      pay' = payT-code (Gc v r)
+                       (cong (λ z → subTm (single v) (pwBody z)) ceq)
+                       (Σ.snd (Σ.snd (Σ.snd (Σ.snd nv))))
+      hTe' = projl (emb-coh (Gc v r)) (app tP v) (projr hT v r)
+      hUe' = projl (emb-coh (Gc v r)) (app uP v) (projr hU v r)
+      re = projl (emb-coh Fc) v r
+      fv = mem-whred₁ _ (snr-β (CR1₁ (emb Fc) re))
+             (mem₁cast⁻ (sym (Hom-cong₃ refl
+                               (cong₂ app (wk-single tP) refl)
+                               (cong₂ app (wk-single uP) refl)))
+                        _ (projr hpf v re))
+
+    memLam : RH0 ⊩₀∋ LAMt
+    memLam =
+      ( sn-lam (sn-body x₀
+          (subst SN (sym (bodyEq (var x₀)))
+            (CR1₀ (homSem₀ (Gc (var x₀) r₀) (projr hA (var x₀) r₀)
+                           (projr hU (var x₀) r₀))
+                  (inner (var x₀) r₀))))
+      , (λ v r →
+           mem₀cast (sym (Hom-cong₃ refl
+                           (cong₂ app (wk-single aP) refl)
+                           (cong₂ app (wk-single uP) refl)))
+                    (homSem₀ (Gc v r) (projr hA v r) (projr hU v r))
+             (exp₀ _ (snr-β (CR1₀ Fc r))
+               (memTm _ (sym (bodyEq v)) (inner v r)))) )
+
 fund : {σ : Sub ⌊ Γ ⌋ Ξ} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
        Γ ⊢ t ∷ A → Var Ξ → Γ ⊩ˢ σ → Rel (subTy σ A) (subTm σ t)
 
@@ -1388,6 +1814,78 @@ fund {Ξ = Ξ} {σ = σ}
           (λ R → R ⊩₁∋ tr dI p' eI)
   cr3 snp key = ( R_result , CR3₁ R_result (sne-tr snD snp snE key) )
 
+  -- ★★ W2b, the LAST branch: a lam path — POINTWISE TRANSPORT,
+  -- discharged by `semTr` at layer 1.  The strengthening equalities
+  -- rewrite semTr's motive onto dI; the membership then rides
+  -- heTgt's exact forward chain up to R_result.
+  goLam : {f : RTm (Ξ ∙)} → SN f → R_H ⊩₁∋ lam f →
+          Σ (⊩₁ (El (subTm (single uI) dI)))
+            (λ R → R ⊩₁∋ tr dI (lam f) eI)
+  goLam {f = f} snf hp' with gen-var dv
+  ... | _ , (here , cv) =
+    ( R_result
+    , projl (emb-coh R₀u) (tr dI (lam f) eI)
+        (mem₀-castF eqTgt tgtBase
+          (mem-bwd₀ (stepᵀ (El-⌜Hom⌝ cT aT uI) doneᵀ) (homSem₀ Rc haT huT)
+            (memTm (homSem₀ Rc haT huT) trEq
+              (semTr x₀ Rc crflᵀ (projl hcT) (Σ.snd (projr hcT))
+                     haT htT huT (sn-lam snf) hTe hUe hpX hEX)))) )
+    where
+    hTe = projl (emb-coh Rc) tI htT
+    hUe = projl (emb-coh Rc) uI huT
+
+    eqA : subTy (σ ,ₛ tI) (renTy vs A) ≡ subTy σ A
+    eqA = trans (subTy-renTy A) (subTy-cong (λ _ → refl) A)
+
+    cA : subTy σ A ≅ᵀ El cT
+    cA = csymᵀ (subst (λ z → El cT ≅ᵀ z) eqA (≅ᵀ-sub (σ ,ₛ tI) cv))
+
+    hpX : (homSem₁ (emb Rc) hTe hUe) ⊩₁∋ lam f
+    hpX = projl (irrel₁ (≅ᵀ-Homᵀ cA) R_H (homSem₁ (emb Rc) hTe hUe))
+                (lam f) hp'
+
+    hEX : (homSem₀ Rc haT htT) ⊩₀∋ eI
+    hEX = mem-bwd₀⁻ (stepᵀ (El-⌜Hom⌝ cT aT tI) doneᵀ) (homSem₀ Rc haT htT)
+            (mem₀-castF⁻ eqSrc srcBase
+              (projr (emb-coh R₀t) eI
+                (projl (irrel₁ crflᵀ R_e (emb R₀t)) eI he)))
+
+    occCS : occTm vz (subTm (extS σ) c₀) ≡ false
+    occCS = occ-sub hs c₀ hc
+      where
+      hs : ∀ y → eqv vz y ≡ false → occTm vz (extS σ y) ≡ false
+      hs vz ()
+      hs (vs y) _ = occ-ren-tm avoids-wk (σ y)
+
+    occAS : occTm vz (subTm (extS σ) a₀) ≡ false
+    occAS = occ-sub hs a₀ ha
+      where
+      hs : ∀ y → eqv vz y ≡ false → occTm vz (extS σ y) ≡ false
+      hs vz ()
+      hs (vs y) _ = occ-ren-tm avoids-wk (σ y)
+
+    strength : (t₂ : RTm (Ξ ∙)) → occTm vz t₂ ≡ false →
+               renTm vs (subTm (single tI) t₂) ≡ t₂
+    strength t₂ o =
+      trans (renTm-subTm t₂) (trans (subTm-occ t₂ agree) (subTm-id t₂))
+      where
+      agree : ∀ x → occTm x t₂ ≡ true → _
+      agree vz oc with trans (sym oc) o
+      ... | ()
+      agree (vs i) oc = refl
+
+    strengthC : renTm vs cT ≡ subTm (extS σ) c₀
+    strengthC = trans (cong (renTm vs) (sym eq-ct))
+                      (strength (subTm (extS σ) c₀) occCS)
+
+    strengthA : renTm vs aT ≡ subTm (extS σ) a₀
+    strengthA = trans (cong (renTm vs) (sym eq-at))
+                      (strength (subTm (extS σ) a₀) occAS)
+
+    trEq : tr (⌜Hom⌝ (renTm vs cT) (renTm vs aT) (var vz)) (lam f) eI
+           ≡ tr dI (lam f) eI
+    trEq = tr-cong₃ (⌜Hom⌝-cong₃ strengthC strengthA refl) refl refl
+
   go  : {p' : RTm Ξ} → SN p' → R_H ⊩₁∋ p' →
         Σ (⊩₁ (El (subTm (single uI) dI)))
           (λ R → R ⊩₁∋ tr dI p' eI)
@@ -1406,7 +1904,7 @@ fund {Ξ = Ξ} {σ = σ}
   go (sn-ne (sne-hrefl snc sns kn)) hp' = goh snc sns kn hp'
   go (sn-ne (sne-tr h₁ h₂ h₃ key)) hp' =
     cr3 (sn-ne (sne-tr h₁ h₂ h₃ key)) key
-  go (sn-lam snf) hp'      = cr3 (sn-lam snf) refl
+  go (sn-lam snf) hp'      = goLam snf hp'
   go (sn-pair sa sb) hp'   = cr3 (sn-pair sa sb) refl
   go sn-cb hp'             = cr3 sn-cb refl
   go (sn-cΠ h₁ h₂) hp'     = cr3 (sn-cΠ h₁ h₂) refl
