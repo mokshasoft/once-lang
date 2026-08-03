@@ -42,6 +42,7 @@ open import Once.Adequacy.SourceTrace using (moduleToIR)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (x86-64-frame-semantics)
 open import Once.CCC.Codegen.IRObsCorrectFlat using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-stack-budget)
+open import Once.CCC.Codegen.ShapeTable using (HeapModed)
 open import Once.CCC.Target.X86-64.AbstractToX86
   using (compile-trace; compile-trace-cnt; compile-trace-cnt-agrees; no-nested-of-all)
 open import Once.CCC.Codegen.FrameFreeTrace using (ir-to-trace-frame-free)
@@ -134,6 +135,15 @@ entry-view = record
     suc-law (heap-loc r o) = +-comm slot-size (o * slot-size)
 
 postulate
+  -- THE PIPELINE'S ALLOCATION MODE (Plan 0.62 wiring, 2026-08-02): the
+  -- compiler builds with `C.Heap` (`compileFromModule C.Heap C.Build …` —
+  -- the apex's own `AsmTraceCorrect` statement fixes it), so every
+  -- `AllocMode` argument of the IR it produces is `Heap`. A FRONTEND-CLASS
+  -- fact about `moduleToIR`, named here rather than left implicit; the
+  -- shape checker needs it because a stack-mode representation lives in
+  -- slots that `store-at-slot` overwrites.
+  main-heap-moded : ∀ (ir : IR Unit Unit) → HeapModed ir
+
   -- The entry frame's base IS the %rsp the loader hands `main` (`X64.stack-top`,
   -- the one opaque entry-layout constant). A property of the (abstract) entry
   -- frame `FlatFromObs` postulates, tying it to the concrete entry state.
@@ -251,7 +261,7 @@ entry-inv ir = record
   -- the program is this IR's emitted trace, and the loader's state starts the run
   -- INSIDE the frame the prologue reserved: `stackSlot ≡ ir-stack-budget ir`,
   -- which is what makes the slot cluster a theorem rather than an assumption.
-  ; inv-run     = mkRunAt ir refl
+  ; inv-run     = mkRunAt ir refl (main-heap-moded ir)
                     (reach-start (mkFlat (FFOx.entry-s (ir-stack-budget ir)) FFOx.entry-alloc 0)
                                  (entry-like (ir-stack-budget ir)) refl)
   }

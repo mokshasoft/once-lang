@@ -75,6 +75,10 @@ open import Once.CCC.Machine.FlatPtrBounds FS using
   ; mkPtrBounds; pb-regs; pb-heap; pb-stack)
 open import Once.CCC.Codegen.FrameFreeTrace using (fetch-frame-free)
 open import Once.CCC.Codegen.AllocMin using (AllocMinI; fetch-alloc-min)
+open import Once.CCC.Codegen.ShapeTable as ST using
+  (LabelEnv; Expect; entry-expect; check-shapes; state-at; check-at; at-pc;
+   HeapModed; e-in1)
+open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; fetch-at-pc)
 open import Once.CCC.Codegen.SlotBudget using (ir-slots-below-budget; below; pair-below)
 open import Once.IR using (IR; Unit)
 open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
@@ -219,6 +223,10 @@ record RunAt (prog : AbstractTrace) (fs : FlatState) : Set where
   field
     run-ir    : IR Unit Unit
     run-emit  : prog ≡ ir-to-trace run-ir
+    -- Plan 0.62 wiring: the run's IR is HEAP-MODED (the pipeline compiles
+    -- with `C.Heap`; supplied at the apex via `moduleToIR-heap`). The shape
+    -- checker's claims are heap-shaped, so its emitter fact needs this.
+    run-heap  : HeapModed run-ir
     run-reach : Reachable prog (ir-stack-budget run-ir) fs
 open RunAt public
 
@@ -274,6 +282,7 @@ flat-inv-step i prog fs ftq h inv = record
   ; inv-ev      = inv-ev inv
   ; inv-env     = inv-env inv
   ; inv-run     = mkRunAt (run-ir (inv-run inv)) (run-emit (inv-run inv))
+                          (run-heap (inv-run inv))
                           (reach-step i fs (run-reach (inv-run inv)) ftq h)
   }
 
@@ -549,18 +558,27 @@ postulate
   -- `store-indirect-inbounds` mold. Discharge trajectory: a per-site
   -- register-shape invariant (static expectation at each emitted site +
   -- preservation, the FlatStackPtr pattern).
-  -- RESIDENCE-GENERIC since 2026-08-02 (vacuity fix, probe-confirmed): the
-  -- old `AtDynamic`-only form was REFUTABLE — `inl/inr Stack` write their
-  -- tag into a STACK slot and hand back an `AtStack` pointer (`lea-slot`),
-  -- and `case id id ∘ inl Stack : IR Unit Unit` reaches the branch with it.
-  -- `readLoc` covers both residences; the consumer derives the concrete
-  -- read per residence (heap via `heap-eq`/`dom-written`, stack via
-  -- `stack-eq` + the live-pair theorem `stack-ptr-current`).
-  branch-tag-scrutinee-wf : ∀ prog (fs : FlatState) (m : ℕ) → RunAt prog fs
-                          → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
-                          → Σ (ValueLocation FS) (λ loc → Σ ℕ (λ k →
-                              (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-                              × (readLoc (floc fs) loc ≡ just (SV-Tag k))))
+  -- PLAN 0.62's TWO OBLIGATIONS (the dataflow disciplines' discharge now
+  -- routes through the typed shape checker; these are the remaining named
+  -- milestones — their TYPES are the M2b/M3 specs):
+  --
+  -- M2b — THE EMITTER SHAPE CHECK: for a heap-moded IR, the typed
+  -- expectation checker accepts the emitted trace (some label environment —
+  -- the cata/case loop invariants — makes every site and control transfer
+  -- check). Discharge: the FrameFreeTrace/SlotBudget-mold walk over
+  -- `ir-to-trace'`, `check-++` at every splice, the G2 invariants as the
+  -- LabelEnv values.
+  emitted-shape-check : ∀ (ir : IR Unit Unit) → HeapModed ir
+                      → Σ LabelEnv (λ env →
+                          check-shapes env (entry-expect Unit) (ir-to-trace ir) ≡ true)
+  -- M3 — RUN CONSISTENCY: a reachable state of a CHECKED program meets the
+  -- scanned expectation at its pc. Discharge: induction on `Reachable`
+  -- (entry: the D074 all-tag state meets `entry-expect Unit` via `rs-unit`;
+  -- step: per-instruction transfer soundness — the `shape-uw`/
+  -- `meets-cell-uw` store bricks, `sub-expect-sound` at control).
+  run-meets : ∀ prog (fs : FlatState) → RunAt prog fs → (env : LabelEnv)
+            → check-shapes env (entry-expect Unit) prog ≡ true
+            → Meets (state-at env (entry-expect Unit) prog (fpc fs)) fs
   -- `branch-tag-label-miss` RETIRED 2026-08-01 — a theorem now (`go-miss` in
   -- `tag-branch-step`): not-taken rides the label-free
   -- `block-step-c-branch-tag-nz`, taken-plus-missing is the je-halt template
@@ -571,22 +589,10 @@ postulate
   -- `stack-ptr-case` / `ptr-bounds-case` RETIRED with item 6: the case steps
   -- of both invariants are absurd on `FrameFreeI` now.
 
-  -- THE LOAD TARGET DISCIPLINE (D073, replaces `load-indirect{,-suc}-bad`),
-  -- NARROWED 2026-08-01 to the pointer-SHAPE half: at an emitted load site
-  -- the dereferenced register holds a POINTER (codegen emits a `load-indirect`
-  -- only right after loading a node/pair pointer). The in-bounds half is now
-  -- a THEOREM — the pointer-bounds invariant (`run-ptr-bounds` below), which
-  -- also retired `store-indirect{,-suc}-inbounds` outright: those never
-  -- claimed a register shape, only bounds. The combined forms the block-steps
-  -- consume (`load-indirect{,-suc}-target-wf`) are DERIVED below.
-  load-indirect-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs
-                           → fetch prog (fpc fs) ≡ just load-indirect
-                           → Σ (ValueLocation FS) (λ loc →
-                               readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
-  load-indirect-suc-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs
-                               → fetch prog (fpc fs) ≡ just load-indirect-suc
-                               → Σ (ValueLocation FS) (λ loc →
-                                   readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+  -- The load/branch DISCIPLINE residuals are GONE (Plan 0.62 wiring,
+  -- 2026-08-02): `load-indirect{,-suc}-target-ptr` and
+  -- `branch-tag-scrutinee-wf` are now THEOREMS below, derived from
+  -- `emitted-shape-check` + `run-meets` + the checker's site extraction.
   store-indirect-bad : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                          prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                      → fetch prog (fpc fs) ≡ just store-indirect
@@ -712,7 +718,7 @@ emitted-slot-below-budget ir k i slot ftq soq =
 -- because the program is emitted (`frame-op-absurd`).
 run-stack-slot : ∀ prog (fs : FlatState) (r : RunAt prog fs)
                → stackSlot (regs (floc fs)) ≡ ir-stack-budget (run-ir r)
-run-stack-slot prog fs (mkRunAt ir eq reach) = go fs reach
+run-stack-slot prog fs (mkRunAt ir eq hm reach) = go fs reach
   where go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs'
            → stackSlot (regs (floc fs')) ≡ ir-stack-budget ir
         go fs' (reach-start .fs' _ eqB)       = eqB
@@ -854,11 +860,11 @@ entry-flat-wf fs (_ , _ , _ , _ , hemp , semp , _ , noptr) = record
 -- both memories are empty), and each step preserves the invariant because the
 -- program is emitted — frame-free, and its `lea-slot`s address reserved pairs.
 run-stack-ptr : ∀ prog (fs : FlatState) (r : RunAt prog fs) → StackPtrWF fs
-run-stack-ptr prog fs (mkRunAt ir eq reach) = go fs reach
+run-stack-ptr prog fs (mkRunAt ir eq hm reach) = go fs reach
   where go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs' → StackPtrWF fs'
         go fs' (reach-start .fs' el _) = entry-stack-ptr fs' el
         go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
-          stack-ptr-step i prog fs'' (mkRunAt ir eq r') ftq
+          stack-ptr-step i prog fs'' (mkRunAt ir eq hm r') ftq
             (frame-op-absurd prog fs'' i (ir , eq) ftq)
             (go fs'' r')
 
@@ -981,19 +987,95 @@ ptr-bounds-step (instr-ctrl c) prog fs r ftq ff wfS wf =
 -- registers, empty memories — starts both off).
 run-wf-ptr-bounds : ∀ prog (fs : FlatState) (r : RunAt prog fs)
                   → FlatWF fs × PtrBoundsWF fs
-run-wf-ptr-bounds prog fs (mkRunAt ir eq reach) = go fs reach
+run-wf-ptr-bounds prog fs (mkRunAt ir eq hm reach) = go fs reach
   where go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs'
            → FlatWF fs' × PtrBoundsWF fs'
         go fs' (reach-start .fs' el _) = entry-flat-wf fs' el , entry-ptr-bounds fs' el
         go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
           let ih = go fs'' r' in
           flat-wf-step i prog fs'' (proj₁ ih) ,
-          ptr-bounds-step i prog fs'' (mkRunAt ir eq r') ftq
+          ptr-bounds-step i prog fs'' (mkRunAt ir eq hm r') ftq
             (frame-op-absurd prog fs'' i (ir , eq) ftq)
             (proj₁ ih) (proj₂ ih)
 
 run-ptr-bounds : ∀ prog (fs : FlatState) (r : RunAt prog fs) → PtrBoundsWF fs
 run-ptr-bounds prog fs r = proj₂ (run-wf-ptr-bounds prog fs r)
+
+------------------------------------------------------------------------
+-- THE DATAFLOW DISCIPLINES ARE THEOREMS (Plan 0.62 wiring, 2026-08-02).
+--
+-- The emitter's typed shape check (`emitted-shape-check`, M2b) accepts the
+-- program; run consistency (`run-meets`, M3) puts the current state inside
+-- the checker's expectation at its pc; `check-at` localizes the positive
+-- check to the fetched site; and the SITE FACTS (`site-load-ptr`,
+-- `site-branch-tag` — proven in `ShapeTable.Sem`) convert expectation +
+-- state into exactly the residual conclusions. This is what makes the
+-- whole shape layer (ShapeAt, the checker, the interpretation, the store
+-- bricks) LOAD-BEARING on the apex path.
+------------------------------------------------------------------------
+
+-- the run's program passes the shape check (via `Emitted` + `HeapModed`)
+run-shape-check : ∀ prog (fs : FlatState) (r : RunAt prog fs)
+                → Σ LabelEnv (λ env →
+                    check-shapes env (entry-expect Unit) prog ≡ true)
+run-shape-check prog fs r =
+  proj₁ chk ,
+  subst (λ p → check-shapes (proj₁ chk) (entry-expect Unit) p ≡ true)
+        (sym (run-emit r)) (proj₂ chk)
+  where chk = emitted-shape-check (run-ir r) (run-heap r)
+
+load-indirect-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs
+                         → fetch prog (fpc fs) ≡ just load-indirect
+                         → Σ (ValueLocation FS) (λ loc →
+                             readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+load-indirect-target-ptr prog fs r ftq =
+  site-load-ptr (e-in1 st) ok (proj₁ (run-meets prog fs r env chk))
+  where
+    sc  = run-shape-check prog fs r
+    env = proj₁ sc
+    chk = proj₂ sc
+    st  = state-at env (entry-expect Unit) prog (fpc fs)
+    ok : ST.is-ptr (e-in1 st) ≡ true
+    ok = proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
+                  (trans (sym (fetch-at-pc prog (fpc fs))) ftq))
+
+load-indirect-suc-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs
+                             → fetch prog (fpc fs) ≡ just load-indirect-suc
+                             → Σ (ValueLocation FS) (λ loc →
+                                 readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+load-indirect-suc-target-ptr prog fs r ftq =
+  site-load-ptr (e-in1 st) ok (proj₁ (run-meets prog fs r env chk))
+  where
+    sc  = run-shape-check prog fs r
+    env = proj₁ sc
+    chk = proj₂ sc
+    st  = state-at env (entry-expect Unit) prog (fpc fs)
+    ok : ST.is-ptr (e-in1 st) ≡ true
+    ok = proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
+                  (trans (sym (fetch-at-pc prog (fpc fs))) ftq))
+
+branch-tag-scrutinee-wf : ∀ prog (fs : FlatState) (m : ℕ) → RunAt prog fs
+                        → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
+                        → Σ (ValueLocation FS) (λ loc → Σ ℕ (λ k →
+                            (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+                            × (readLoc (floc fs) loc ≡ just (SV-Tag k))))
+branch-tag-scrutinee-wf prog fs m r ftq =
+  repack (site-branch-tag (e-in1 st) ok (proj₁ (run-meets prog fs r env chk)))
+  where
+    sc  = run-shape-check prog fs r
+    env = proj₁ sc
+    chk = proj₂ sc
+    st  = state-at env (entry-expect Unit) prog (fpc fs)
+    ok : ST.tag-site-ok (e-in1 st) ≡ true
+    ok = proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
+                  (trans (sym (fetch-at-pc prog (fpc fs))) ftq))
+    repack : Σ (ValueLocation FS) (λ loc →
+               (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+               × Σ ℕ (λ t → readLoc (floc fs) loc ≡ just (SV-Tag t)))
+           → Σ (ValueLocation FS) (λ loc → Σ ℕ (λ k →
+               (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+               × (readLoc (floc fs) loc ≡ just (SV-Tag k))))
+    repack (loc , i-eq , t , r-eq) = loc , t , i-eq , r-eq
 
 -- THE FOUR IN-BOUNDS FACTS THE BLOCK-STEPS CONSUME, now read off the
 -- invariant (the store pair was residual until 2026-08-01; the load pair
