@@ -1025,3 +1025,17 @@ module Sem (FS : FrameSemantics) where
   fetch-at-pc []       k       = refl
   fetch-at-pc (i ∷ is) zero    = refl
   fetch-at-pc (i ∷ is) (suc k) = fetch-at-pc is k
+
+  -- a store site's requirement (`is-fresh`) is stronger than a load's
+  fresh⇒ptr : ∀ (e : RegExpect) → is-fresh e ≡ true → is-ptr e ≡ true
+  fresh⇒ptr (e-fresh _ _) ok = refl
+  fresh⇒ptr e-any        ()
+  fresh⇒ptr (e-repr _)   ()
+  fresh⇒ptr (e-inl _ _)  ()
+  fresh⇒ptr (e-inr _ _)  ()
+  fresh⇒ptr (e-tag _)    ()
+
+  site-store-ptr : ∀ (e₁ : RegExpect) {alloc v ls} → is-fresh e₁ ≡ true
+                 → MeetsR e₁ alloc v ls
+                 → Σ (ValueLocation FS) λ loc → v ≡ SV-Ptr loc
+  site-store-ptr e₁ ok m = site-load-ptr e₁ (fresh⇒ptr e₁ ok) m

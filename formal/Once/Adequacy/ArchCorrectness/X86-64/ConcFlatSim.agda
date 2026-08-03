@@ -78,7 +78,7 @@ open import Once.CCC.Codegen.AllocMin using (AllocMinI; fetch-alloc-min)
 open import Once.CCC.Codegen.ShapeTable as ST using
   (LabelEnv; Expect; entry-expect; check-shapes; state-at; check-at; at-pc;
    HeapModed; e-in1)
-open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; fetch-at-pc)
+open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; site-store-ptr; fetch-at-pc)
 open import Once.CCC.Codegen.SlotBudget using (ir-slots-below-budget; below; pair-below)
 open import Once.IR using (IR; Unit)
 open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
@@ -593,16 +593,10 @@ postulate
   -- 2026-08-02): `load-indirect{,-suc}-target-ptr` and
   -- `branch-tag-scrutinee-wf` are now THEOREMS below, derived from
   -- `emitted-shape-check` + `run-meets` + the checker's site extraction.
-  store-indirect-bad : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                         prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
-                     → fetch prog (fpc fs) ≡ just store-indirect
-                     → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                           ≡ event-of store-indirect fs ++ flat-events n prog (flat-exec-instr store-indirect prog fs))
-  store-indirect-suc-bad : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                             prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
-                         → fetch prog (fpc fs) ≡ just store-indirect-suc
-                         → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                               ≡ event-of store-indirect-suc fs ++ flat-events n prog (flat-exec-instr store-indirect-suc prog fs))
+  -- `store-indirect{,-suc}-bad` RETIRED 2026-08-03: the divergent route (a
+  -- store through a NON-pointer) is unreachable in emitted code — the
+  -- shape checker's store-site discipline (`is-fresh`) makes it absurd.
+  -- See `store-indirect{,-suc}-target-ptr` below.
 
   -- A slot the emitted code READS is frame-live (`slot < stackSlot`): reads stay
   -- inside the frame the prologue reserved. Conditioned on the SITE (a property of
@@ -1053,6 +1047,63 @@ load-indirect-suc-target-ptr prog fs r ftq =
     ok : ST.is-ptr (e-in1 st) ≡ true
     ok = proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
                   (trans (sym (fetch-at-pc prog (fpc fs))) ftq))
+
+-- THE STORE TARGET DISCIPLINE (2026-08-03): at an emitted store site the
+-- target register holds a POINTER — the shape checker requires the block
+-- under construction there (`site-ok … store-indirect = is-fresh`), which
+-- is the emitter's initialization discipline (allocate, fill, then share).
+-- This is what retires `store-indirect{,-suc}-bad`: the divergent route
+-- (a store THROUGH a non-pointer, where the concrete `mov [rdi],rax`
+-- writes at the value's encoding and continues while the abstract machine
+-- halts) is UNREACHABLE in emitted code, so it needs no correspondence.
+store-indirect-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs
+                          → fetch prog (fpc fs) ≡ just store-indirect
+                          → Σ (ValueLocation FS) (λ loc →
+                              readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+store-indirect-target-ptr prog fs r ftq =
+  site-store-ptr (e-in1 st) ok (proj₁ (run-meets prog fs r env chk))
+  where
+    sc  = run-shape-check prog fs r
+    env = proj₁ sc
+    chk = proj₂ sc
+    st  = state-at env (entry-expect Unit) prog (fpc fs)
+    ok : ST.is-fresh (e-in1 st) ≡ true
+    ok = proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
+                  (trans (sym (fetch-at-pc prog (fpc fs))) ftq))
+
+store-indirect-suc-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs
+                              → fetch prog (fpc fs) ≡ just store-indirect-suc
+                              → Σ (ValueLocation FS) (λ loc →
+                                  readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)
+store-indirect-suc-target-ptr prog fs r ftq =
+  site-store-ptr (e-in1 st) ok (proj₁ (run-meets prog fs r env chk))
+  where
+    sc  = run-shape-check prog fs r
+    env = proj₁ sc
+    chk = proj₂ sc
+    st  = state-at env (entry-expect Unit) prog (fpc fs)
+    ok : ST.is-fresh (e-in1 st) ≡ true
+    ok = proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
+                  (trans (sym (fetch-at-pc prog (fpc fs))) ftq))
+
+-- the non-pointer routes of a store site are absurd
+store-nonptr-absurd : ∀ prog (fs : FlatState) {v : StoredValue FS} → RunAt prog fs
+                    → fetch prog (fpc fs) ≡ just store-indirect
+                    → readReg (regs (floc fs)) Input1 ≡ v
+                    → (∀ (loc : ValueLocation FS) → v ≡ SV-Ptr loc → ⊥)
+                    → ⊥
+store-nonptr-absurd prog fs r ftq i-eq nptr =
+  nptr (proj₁ wits) (trans (sym i-eq) (proj₂ wits))
+  where wits = store-indirect-target-ptr prog fs r ftq
+
+store-suc-nonptr-absurd : ∀ prog (fs : FlatState) {v : StoredValue FS} → RunAt prog fs
+                        → fetch prog (fpc fs) ≡ just store-indirect-suc
+                        → readReg (regs (floc fs)) Input1 ≡ v
+                        → (∀ (loc : ValueLocation FS) → v ≡ SV-Ptr loc → ⊥)
+                        → ⊥
+store-suc-nonptr-absurd prog fs r ftq i-eq nptr =
+  nptr (proj₁ wits) (trans (sym i-eq) (proj₂ wits))
+  where wits = store-indirect-suc-target-ptr prog fs r ftq
 
 branch-tag-scrutinee-wf : ∀ prog (fs : FlatState) (m : ℕ) → RunAt prog fs
                         → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
@@ -1825,9 +1876,12 @@ mutual
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtStack f k) (readReg (regs (floc fs)) Output)) h
-          go-ptr (SV-Tag _)              i-eq = store-indirect-bad n ev env prog fs s cc wf h ftq
-          go-ptr (SV-Lit _ _)            i-eq = store-indirect-bad n ev env prog fs s cc wf h ftq
-          go-ptr (SV-Code _)             i-eq = store-indirect-bad n ev env prog fs s cc wf h ftq
+          go-ptr (SV-Tag _)   i-eq =
+            ⊥-elim (store-nonptr-absurd prog fs (inv-run wf) ftq i-eq (λ { _ () }))
+          go-ptr (SV-Lit _ _) i-eq =
+            ⊥-elim (store-nonptr-absurd prog fs (inv-run wf) ftq i-eq (λ { _ () }))
+          go-ptr (SV-Code _)  i-eq =
+            ⊥-elim (store-nonptr-absurd prog fs (inv-run wf) ftq i-eq (λ { _ () }))
 
   -- MEMORY store-indirect-suc: as store-indirect but the SECOND cell (sucHL hl).
   store-indirect-suc-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
@@ -1857,9 +1911,12 @@ mutual
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtStack f (suc k)) (readReg (regs (floc fs)) Output)) h
-          go-ptr (SV-Tag _)              i-eq = store-indirect-suc-bad n ev env prog fs s cc wf h ftq
-          go-ptr (SV-Lit _ _)            i-eq = store-indirect-suc-bad n ev env prog fs s cc wf h ftq
-          go-ptr (SV-Code _)             i-eq = store-indirect-suc-bad n ev env prog fs s cc wf h ftq
+          go-ptr (SV-Tag _)   i-eq =
+            ⊥-elim (store-suc-nonptr-absurd prog fs (inv-run wf) ftq i-eq (λ { _ () }))
+          go-ptr (SV-Lit _ _) i-eq =
+            ⊥-elim (store-suc-nonptr-absurd prog fs (inv-run wf) ftq i-eq (λ { _ () }))
+          go-ptr (SV-Code _)  i-eq =
+            ⊥-elim (store-suc-nonptr-absurd prog fs (inv-run wf) ftq i-eq (λ { _ () }))
 
   -- SIGOP engine. Split on effect si (J-bridge, no with): Pure ⇒ arith — the run-events
   -- mechanics are PROVEN (sigop-run-arith: pc-align + run-events-arith), event-of is []
