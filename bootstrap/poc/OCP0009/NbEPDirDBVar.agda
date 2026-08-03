@@ -74,7 +74,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; ⌜Hom⌝; hrefl; tr; ⌜Hom⌝-cong₃; tr-cong₃
         ; Ren; extR; renTy; renTm; Sub; extS; subTm
-        ; renTm-renTm; subTm-renTm; renTm-subTm )
+        ; renTm-renTm; subTm-renTm; renTm-subTm; subTm-cong )
 
 private
   variable
@@ -675,3 +675,73 @@ pw⊥stk (⌜Σ⌝ c d) ()
 pw⊥stk (⌜Hom⌝ C a b) h = pw⊥stk C h
 pw⊥stk (hrefl c t) ()
 pw⊥stk (tr d p e) ()
+
+-- a renaming IS a variable-image substitution — lets `subTm-occ`'s
+-- occurrence-agreement machinery reach mixed ren/sub equations.
+ren-as-sub : (ρ : Ren Γ Δ) (t : RTm Γ) →
+             renTm ρ t ≡ subTm (λ x → var (ρ x)) t
+ren-as-sub ρ (var x)    = refl
+ren-as-sub ρ (lam t)    =
+  cong lam (trans (ren-as-sub (extR ρ) t)
+                  (subTm-cong ptw t))
+  where
+  ptw : ∀ x → var (extR ρ x) ≡ extS (λ y → var (ρ y)) x
+  ptw vz     = refl
+  ptw (vs x) = refl
+ren-as-sub ρ (app t u)  = cong₂ app (ren-as-sub ρ t) (ren-as-sub ρ u)
+ren-as-sub ρ (pair a b) = cong₂ pair (ren-as-sub ρ a) (ren-as-sub ρ b)
+ren-as-sub ρ (fst t)    = cong fst (ren-as-sub ρ t)
+ren-as-sub ρ (snd t)    = cong snd (ren-as-sub ρ t)
+ren-as-sub ρ ⌜base⌝     = refl
+ren-as-sub ρ (⌜Π⌝ c d)  =
+  cong₂ ⌜Π⌝ (ren-as-sub ρ c)
+        (trans (ren-as-sub (extR ρ) d) (subTm-cong ptw d))
+  where
+  ptw : ∀ x → var (extR ρ x) ≡ extS (λ y → var (ρ y)) x
+  ptw vz     = refl
+  ptw (vs x) = refl
+ren-as-sub ρ (⌜Σ⌝ c d)  =
+  cong₂ ⌜Σ⌝ (ren-as-sub ρ c)
+        (trans (ren-as-sub (extR ρ) d) (subTm-cong ptw d))
+  where
+  ptw : ∀ x → var (extR ρ x) ≡ extS (λ y → var (ρ y)) x
+  ptw vz     = refl
+  ptw (vs x) = refl
+ren-as-sub ρ (⌜Hom⌝ c a b) =
+  ⌜Hom⌝-cong₃ (ren-as-sub ρ c) (ren-as-sub ρ a) (ren-as-sub ρ b)
+ren-as-sub ρ (hrefl c t) =
+  cong₂ hrefl (ren-as-sub ρ c) (ren-as-sub ρ t)
+ren-as-sub ρ (tr d p e) =
+  tr-cong₃ (trans (ren-as-sub (extR ρ) d) (subTm-cong ptw d))
+           (ren-as-sub ρ p) (ren-as-sub ρ e)
+  where
+  ptw : ∀ x → var (extR ρ x) ≡ extS (λ y → var (ρ y)) x
+  ptw vz     = refl
+  ptw (vs x) = refl
+
+-- the pointwise body preserves NON-occurrence (one binder deeper).
+pwBody-occ : {x : Var Γ} (C : RTm Γ) → pw? C ≡ true →
+             occTm x C ≡ false → occTm (vs x) (pwBody C) ≡ false
+pwBody-occ (var y) () o
+pwBody-occ (lam t) () o
+pwBody-occ (app t u) () o
+pwBody-occ (pair a b) () o
+pwBody-occ (fst t) () o
+pwBody-occ (snd t) () o
+pwBody-occ ⌜base⌝ () o
+pwBody-occ {x = x} (⌜Π⌝ γ δ) h o = ∨-false₂ (occTm x γ) o
+pwBody-occ (⌜Σ⌝ c d) () o
+pwBody-occ {x = x} (⌜Hom⌝ C a b) h o =
+  ∨-false (pwBody-occ C h (∨-false₁ (occTm x C) o))
+    (∨-false
+      (∨-false (occ-shift a (∨-false₁ (occTm x a) (∨-false₂ (occTm x C) o)))
+               refl)
+      (∨-false (occ-shift b (∨-false₂ (occTm x a) (∨-false₂ (occTm x C) o)))
+               refl))
+  where
+  occ-shift : {x : Var Γ} (t : RTm Γ) → occTm x t ≡ false →
+              occTm (vs x) (renTm vs t) ≡ false
+  occ-shift {x = x} t o' =
+    trans (occ-ren-eq (λ y → refl) t) o'
+pwBody-occ (hrefl c t) () o
+pwBody-occ (tr d p e) () o
