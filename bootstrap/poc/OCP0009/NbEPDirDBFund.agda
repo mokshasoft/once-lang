@@ -46,7 +46,7 @@
 module poc.OCP0009.NbEPDirDBFund where
 
 open import normalizer.Syntax.Types
-  using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_ )
+  using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
 
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
@@ -64,11 +64,11 @@ open import poc.OCP0009.NbEPDirDBType
   using ( single
         ; _⟶_; _⟶*_; done; step
         ; _≅_
-        ; _≅ᵀ_; crflᵀ; csymᵀ
+        ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋
         ; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd
-        ; El-⌜Hom⌝
+        ; El-⌜Hom⌝; ξ-El; El-⌜Π⌝
         ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢trU; ⊢conv
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom
         ; ⊢ctx_; c-◇; c-▹
@@ -82,10 +82,10 @@ open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; sub-comm )
 open import poc.OCP0009.NbEPDirDBConf using ( pwShift-ren )
 open import poc.OCP0009.NbEPDirDBDec using ( Dec; dec-conv )
 open import poc.OCP0009.NbEPDirDBInj
-  using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El
+  using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; confluentᵀ; church-rosserᵀ; Π-inj
         ; red→≅ᵀ; Π-reduct; Σ-reduct; mkΠRed; mkΣRed )
 open import poc.OCP0009.NbEPDirDBSubj
-  using ( HomΠShape; hsΠ; hsH; hom-shape
+  using ( HomΠShape; hsΠ; hsH; hom-shape; pw-El-decode
         ; HomRed; mkHomRed; Hom-to-Hom
         ; HomToΠ; via-U; via-Π; hom-to-Π
         ; U-reduct; wk-cancel-tm )
@@ -97,9 +97,15 @@ open import poc.OCP0009.NbEPDirDBLR
         ; trstk?-ren; nopw?-ren; trlam?-ren; nopw?; trlam?
         ; nopw⊥pw; stk⊥dead; pw⊥dead; dead→nopw; snr-nonpw
         ; snr-hrefl-pw; snr-J-Hom; snr-tr-pw; nopw?-red; nopw?-red*
+        ; CSR; csr-here; csr-hom; csr→⟶; csr-nonpw; csr-stk⊥; sn-csr
+        ; _⟶csr*_; csr-done; csr-step; csrs-hom
+        ; PayT; payChain; payT-exp; payT-whred; payT-irrel
+        ; payT-cast; payT-code; payHomT; _⟶snr*_; snr-done; snr-step
         ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; _⊩₀∋_; bwd₀; exp₁
+        ; base-nf; El-ne-reduct; mkElNe; Hom-stk-reduct; mkHomStk
+        ; nopw?; stkC?; stablecd?; sne→spine; wk-single; snr→⟶
         ; mem-whred₁; homSem₀; homSem₀-mem-endpoints
-        ; sne→spine; sne→stablecd; trstk?
+        ; sne→stablecd; trstk?
         ; ⊩₁_; ⊩₁base; ⊩₁U; ⊩₁ne; ⊩₁Π; ⊩₁Σ; ⊩₁Hom; _⊩₁∋_
         ; bwd₁; irrel₁; conv₁; CR1₀; CR1₁; CR3₀; CR3₁
         ; emb; emb-coh
@@ -236,6 +242,8 @@ sne-anti : {ρ : Ren Θ Ξ} {t : RTm Θ} → SNe (renTm ρ t) → SNe t
 sn-anti  : {ρ : Ren Θ Ξ} {t : RTm Θ} → SN  (renTm ρ t) → SN t
 snr-anti : {ρ : Ren Θ Ξ} {t : RTm Θ} {v : RTm Ξ} → SNRed (renTm ρ t) v →
            Σ (RTm Θ) (λ t' → SNRed t t' × (v ≡ renTm ρ t'))
+csr-anti : {ρ : Ren Θ Ξ} {t : RTm Θ} {v : RTm Ξ} → CSR (renTm ρ t) v →
+           Σ (RTm Θ) (λ t' → CSR t t' × (v ≡ renTm ρ t'))
 
 sne-anti {t = var x}    _             = sne-var x
 sne-anti {t = app t u}  (sne-app n s) = sne-app (sne-anti n) (sn-anti s)
@@ -295,8 +303,8 @@ snr-anti {t = snd (fst p)}      (snr-snd r) with snr-anti r
 ... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
 snr-anti {t = snd (snd p)}      (snr-snd r) with snr-anti r
 ... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
-snr-anti {t = hrefl c s} (snr-hreflᶜ r) with snr-anti r
-... | c' , (r' , refl) = hrefl c' s , (snr-hreflᶜ r' , refl)
+snr-anti {t = hrefl c s} (snr-hreflᶜ σ) with csr-anti σ
+... | c' , (σ' , refl) = hrefl c' s , (snr-hreflᶜ σ' , refl)
 snr-anti {ρ = ρ} {t = hrefl c s} (snr-hrefl-pw kp) =
   lam (hrefl (pwBody c) (app (renTm vs s) (var vz)))
   , ( snr-hrefl-pw (trans (sym (pw?-ren ρ c)) kp)
@@ -305,11 +313,11 @@ snr-anti {ρ = ρ} {t = hrefl c s} (snr-hrefl-pw kp) =
             (sym (wk-ren-tm ρ s)) )
 snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl ⌜base⌝ s) e} (snr-J-base hd hs) =
   e , (snr-J-base (sn-anti hd) (sn-anti hs) , refl)
-snr-anti {t = tr d (hrefl ⌜base⌝ s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl ⌜base⌝ s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl ⌜base⌝ s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-J-Σ hd h₁ h₂ hs) =
   e , (snr-J-Σ (sn-anti hd) (sn-anti h₁) (sn-anti h₂) (sn-anti hs) , refl)
-snr-anti {t = tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr (var vz) (lam f) e} snr-taut =
   app (lam f) e , (snr-taut , refl)
@@ -336,13 +344,13 @@ snr-anti {ρ = ρ} {t = tr (⌜Hom⌝ c a (var vz)) (lam f) e}
           (cong (λ z → app z (var vz)) (sym (wk-ren-tm ρ e)))) )
   where
   kp' = trans (sym (pw?-ren (extR _) c)) kp
-snr-anti {t = tr d (hrefl (var x) s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl (var x) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl (var x) s) e} (snr-trᵖ (snr-hrefl-pw ()))
-snr-anti {t = tr d (hrefl (lam g) s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl (lam g) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl (lam g) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (app g w) s) e} (snr-trᵖ r) with snr-anti r
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (hrefl (pair g w) s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl (pair g w) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl (pair g w) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (fst g) s) e} (snr-trᵖ r) with snr-anti r
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
@@ -371,6 +379,7 @@ snr-anti {t = tr d (⌜Σ⌝ g w) e} (snr-trᵖ ())
 snr-anti {t = tr d (⌜Hom⌝ g w v) e} (snr-trᵖ ())
 snr-anti {t = tr d (tr g w v) e} (snr-trᵖ r) with snr-anti r
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+
 -- the heads that reduce to nothing: a renaming cannot turn them into redexes.
 snr-anti {t = app (var x) u}    (snr-app ())
 snr-anti {t = app (pair a b) u} (snr-app ())
@@ -402,6 +411,26 @@ snr-anti {t = snd (lam s)}      (snr-snd ())
 snr-anti {t = snd ⌜base⌝}       (snr-snd ())
 snr-anti {t = snd (⌜Π⌝ c d)}    (snr-snd ())
 snr-anti {t = snd (⌜Σ⌝ c d)}    (snr-snd ())
+
+csr-anti {t = var x} (csr-here ())
+csr-anti {t = lam _} (csr-here ())
+csr-anti {t = pair _ _} (csr-here ())
+csr-anti {t = ⌜base⌝} (csr-here ())
+csr-anti {t = ⌜Π⌝ _ _} (csr-here ())
+csr-anti {t = ⌜Σ⌝ _ _} (csr-here ())
+csr-anti {t = app f u} (csr-here r) with snr-anti r
+... | t' , (r' , refl) = t' , (csr-here r' , refl)
+csr-anti {t = fst q} (csr-here r) with snr-anti r
+... | t' , (r' , refl) = t' , (csr-here r' , refl)
+csr-anti {t = snd q} (csr-here r) with snr-anti r
+... | t' , (r' , refl) = t' , (csr-here r' , refl)
+csr-anti {t = hrefl _ _} (csr-here r) with snr-anti r
+... | t' , (r' , refl) = t' , (csr-here r' , refl)
+csr-anti {t = tr _ _ _} (csr-here r) with snr-anti r
+... | t' , (r' , refl) = t' , (csr-here r' , refl)
+csr-anti {t = ⌜Hom⌝ c a b} (csr-here ())
+csr-anti {t = ⌜Hom⌝ c a b} (csr-hom σ) with csr-anti σ
+... | c' , (σ' , refl) = ⌜Hom⌝ c' a b , (csr-hom σ' , refl)
 
 -- ★ the corollary actually used: instantiating a body at a VARIABLE is a
 -- renaming, so `SN` comes back out of it.
@@ -440,7 +469,7 @@ relTy p h = relCast p refl h
 ⊩₁cast refl R = R
 
 ⊩₀cast : {A A' : RTy Θ} → A ≡ A' → ⊩₀ A → ⊩₀ A'
-⊩₀cast refl R = R
+⊩₀cast eq R = subst ⊩₀_ eq R
 
 ------------------------------------------------------------------------
 -- 4. REDUCIBLE SUBSTITUTIONS.
@@ -551,6 +580,258 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 
 fund-ty : {σ : Sub ⌊ Γ ⌋ Ξ} {A : RTy ⌊ Γ ⌋} →
           Γ ⊢ty A → Var Ξ → Γ ⊩ˢ σ → ⊩₁ (subTy σ A)
+------------------------------------------------------------------------
+-- ★★ W2b (G1f) — `hrefl`'s SEMANTIC VALIDATION, payload-powered.
+-- At non-Π interps the membership is SN-only: `snHH` builds it by
+-- descending the code's ⌜Hom⌝ SPINE (CSR), with the interp's own
+-- non-Π chain refuting the ⌜Π⌝-leaf by confluence.  At Π interps the
+-- payload's node supplies the unfolding: the closure head-expands
+-- along `payChain` into the RECURSIVE membership one Π-layer down,
+-- and the SN part instantiates the node at the fresh `x₀` (the
+-- established `sn-body` pattern).
+------------------------------------------------------------------------
+
+-- neutral codes are pw-immune.
+sne→nopw : {t : RTm Ξ} → SNe t → nopw? t ≡ true
+sne→nopw (sne-var x)        = refl
+sne→nopw (sne-app n _)      = sne→spine n
+sne→nopw (sne-fst n)        = sne→spine n
+sne→nopw (sne-snd n)        = sne→spine n
+sne→nopw (sne-hrefl _ _ _)  = refl
+sne→nopw (sne-tr _ _ _ key) = key
+
+-- star-folds for the head strategy.
+snrs-hreflᶜ : {c c* t : RTm Ξ} → c ⟶csr* c* → hrefl c t ⟶snr* hrefl c* t
+snrs-hreflᶜ csr-done       = snr-done
+snrs-hreflᶜ (csr-step σ q) = snr-step (snr-hreflᶜ σ) (snrs-hreflᶜ q)
+
+snExpStar : {t t' : RTm Ξ} → t ⟶snr* t' → SN t' → SN t
+snExpStar snr-done       h = h
+snExpStar (snr-step r q) h = sn-exp r (snExpStar q h)
+
+expStar₁ : {A : RTy Ξ} (R : ⊩₁ A) {t t' : RTm Ξ} →
+           t ⟶snr* t' → R ⊩₁∋ t' → R ⊩₁∋ t
+expStar₁ R snr-done       h = h
+expStar₁ R (snr-step r q) h = exp₁ R r (expStar₁ R q h)
+
+mem₁-cast : {A B : RTy Ξ} (eq : A ≡ B) (R : ⊩₁ A) {w : RTm Ξ} →
+            R ⊩₁∋ w → (subst ⊩₁_ eq R) ⊩₁∋ w
+mem₁-cast refl R h = h
+
+-- the ⌜Hom⌝-spine context for the raw-SN construction.
+data Spine (Ξ : Cx) : Set where
+  sp-nil  : Spine Ξ
+  sp-cons : (a b : RTm Ξ) → SN a → SN b → Spine Ξ → Spine Ξ
+
+plug : {Ξ : Cx} → Spine Ξ → RTm Ξ → RTm Ξ
+plug sp-nil x                = x
+plug (sp-cons a b _ _ sp) x  = plug sp (⌜Hom⌝ x a b)
+
+wrapCSR : (sp : Spine Ξ) {x y : RTm Ξ} → CSR x y →
+          CSR (plug sp x) (plug sp y)
+wrapCSR sp-nil σ                = σ
+wrapCSR (sp-cons a b _ _ sp) σ  = wrapCSR sp (csr-hom σ)
+
+nopw-plug : (sp : Spine Ξ) {x : RTm Ξ} → nopw? x ≡ true →
+            nopw? (plug sp x) ≡ true
+nopw-plug sp-nil h               = h
+nopw-plug (sp-cons a b _ _ sp) h = nopw-plug sp h
+
+pw-plug : (sp : Spine Ξ) {x : RTm Ξ} → pw? x ≡ true →
+          pw? (plug sp x) ≡ true
+pw-plug sp-nil h               = h
+pw-plug (sp-cons a b _ _ sp) h = pw-plug sp h
+
+snPlug : (sp : Spine Ξ) {x : RTm Ξ} → SN x → SN (plug sp x)
+snPlug sp-nil h                    = h
+snPlug (sp-cons a b sa sb sp) h    = snPlug sp (sn-cH h sa sb)
+
+-- SN of `hrefl` at a code whose decode NEVER reaches Π: descend the
+-- spine; leaves are neutral (`sne→nopw`) or canonical-non-pw; the
+-- ⌜Π⌝-leaf contradicts the ambient interp through `pw-El-decode`.
+snHH : (sp : Spine Ξ) {C : RTm Ξ} (snC : SN C) {t : RTm Ξ} (snt : SN t) →
+       (∀ {P : RTy Ξ} {Q : RTy (Ξ ∙)} → El (plug sp C) ⟶ᵀ* Π P Q → ⊥) →
+       SN (hrefl (plug sp C) t)
+snHH sp (sn-exp r h) snt noPiT =
+  sn-exp (snr-hreflᶜ (wrapCSR sp (csr-here r)))
+         (snHH sp h snt
+               (λ ch → noPiT (stepᵀ (ξ-El (csr→⟶ (wrapCSR sp (csr-here r)))) ch)))
+snHH sp (sn-ne n) snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-ne n)) snt (nopw-plug sp (sne→nopw n)))
+snHH sp (sn-lam h) snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-lam h)) snt (nopw-plug sp refl))
+snHH sp (sn-pair ha hb) snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-pair ha hb)) snt (nopw-plug sp refl))
+snHH sp sn-cb snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp sn-cb) snt (nopw-plug sp refl))
+snHH sp (sn-cΣ h₁ h₂) snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-cΣ h₁ h₂)) snt (nopw-plug sp refl))
+snHH sp (sn-cΠ {c = γ} {d = δ} h₁ h₂) snt noPiT =
+  ⊥-elim (noPiT (Σ.fst (Σ.snd (pw-El-decode (plug sp (⌜Π⌝ γ δ))
+                                            (pw-plug sp refl)))))
+snHH sp (sn-cH {c = C'} {a = a'} {b = b'} hC ha hb) snt noPiT =
+  snHH (sp-cons a' b' ha hb sp) hC snt noPiT
+
+-- ★ the membership itself, by recursion on the interp.  The interp's
+-- type and the code stay LINKED by a conversion (`lk`) — it powers the
+-- ⌜Π⌝-leaf refutations at non-Π interps and the body-link one Π-layer
+-- down.
+csrs→⟶* : {c c* : RTm Ξ} → c ⟶csr* c* → c ⟶* c*
+csrs→⟶* csr-done       = done
+csrs→⟶* (csr-step σ q) = step (csr→⟶ σ) (csrs→⟶* q)
+
+semHreflPay :
+  (x₀ : Var Ξ) {A : RTy Ξ} {c t : RTm Ξ} (R₀ : ⊩₀ A)
+  (lk : A ≅ᵀ El c) → SN c → PayT R₀ c →
+  SN t → (ht : (emb R₀) ⊩₁∋ t) →
+  (homSem₁ (emb R₀) ht ht) ⊩₁∋ hrefl c t
+semHreflPay x₀ (⊩₀base p) lk snc pay snt ht =
+  snHH sp-nil snc snt noPiT
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (bE , πE) with base-nf bE
+  ...   | refl with Π-reduct πE
+  ...     | mkΠRed _ _ () _ _
+semHreflPay x₀ (⊩₀ne p n) lk snc pay snt ht =
+  snHH sp-nil snc snt noPiT
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (nE , πE) with El-ne-reduct n nE
+  ...   | mkElNe _ _ refl with Π-reduct πE
+  ...     | mkΠRed _ _ () _ _
+semHreflPay x₀ (⊩₀Σ p ⊩F ⊩G) lk snc pay snt ht =
+  snHH sp-nil snc snt noPiT
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (σE , πE) with Σ-reduct σE
+  ...   | mkΣRed _ _ refl _ _ with Π-reduct πE
+  ...     | mkΠRed _ _ () _ _
+semHreflPay x₀ (⊩₀Hom p sh) lk snc pay snt ht =
+  snHH sp-nil snc snt noPiT
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (hE , πE) with Hom-stk-reduct sh hE
+  ...   | mkHomStk _ _ _ _ refl with Π-reduct πE
+  ...     | mkΠRed _ _ () _ _
+semHreflPay x₀ {c = c} {t = t} (⊩₀Π {G = G} p ⊩F ⊩G) lk snc pay snt ht =
+  ( snWhole , closure )
+  where
+  -- the code-side decode of any payload node, linked to the interp's
+  -- own Π-chain through `lk`.
+  bodyLk : (v : RTm _) (r : ⊩F ⊩₀∋ v) →
+           subTy (single v) G
+           ≅ᵀ El (subTm (single v)
+                        (pwBody (Σ.fst (pay v r))))
+  bodyLk v r =
+    ctrnᵀ (≅ᵀ-sub (single v)
+            (Σ.snd (Π-inj
+              (ctrnᵀ (csymᵀ (red→≅ᵀ p))
+                (ctrnᵀ lk
+                  (red→≅ᵀ
+                    (⟶ᵀ*-trans
+                      (⟶ᵀ*-El (csrs→⟶* (Σ.fst (Σ.snd (pay v r)))))
+                      (Σ.fst (Σ.snd (pw-El-decode (Σ.fst (pay v r))
+                               (Σ.fst (Σ.snd (Σ.snd (pay v r))))))))))))))
+          (csymᵀ (≅ᵀ-sub (single v)
+            (red→≅ᵀ (Σ.snd (Σ.snd (pw-El-decode (Σ.fst (pay v r))
+                       (Σ.fst (Σ.snd (Σ.snd (pay v r))))))))))
+
+  rE₀ = CR3₁ (emb ⊩F) (sne-var x₀)
+  r₀  = projr (emb-coh ⊩F) (var x₀) rE₀
+  htv₀ = projr ht (var x₀) rE₀
+
+  rmem₀ =
+    semHreflPay x₀ (⊩G (var x₀) r₀) (bodyLk (var x₀) r₀)
+      (Σ.fst (Σ.snd (Σ.snd (Σ.snd (pay (var x₀) r₀)))))
+      (Σ.snd (Σ.snd (Σ.snd (Σ.snd (pay (var x₀) r₀)))))
+      (CR1₁ (emb (⊩G (var x₀) r₀)) htv₀) htv₀
+
+  body-eq : hrefl (subTm (single (var x₀)) (pwBody (Σ.fst (pay (var x₀) r₀))))
+                  (app t (var x₀))
+            ≡ subTm (single (var x₀))
+                    (hrefl (pwBody (Σ.fst (pay (var x₀) r₀)))
+                           (app (renTm vs t) (var vz)))
+  body-eq = cong (λ z → hrefl (subTm (single (var x₀))
+                                     (pwBody (Σ.fst (pay (var x₀) r₀))))
+                              (app z (var x₀)))
+                 (sym (wk-single t))
+
+  snWhole : SN (hrefl c t)
+  snWhole =
+    snExpStar (snrs-hreflᶜ (Σ.fst (Σ.snd (pay (var x₀) r₀))))
+      (sn-exp (snr-hrefl-pw (Σ.fst (Σ.snd (Σ.snd (pay (var x₀) r₀)))))
+        (sn-lam (sn-body x₀
+          (subst SN body-eq (CR1₁ _ rmem₀)))))
+
+  closure : (v : RTm _) (r' : (emb ⊩F) ⊩₁∋ v) → _
+  closure v r' =
+    mem₁-cast
+      (sym (Hom-cong₃ refl
+             (cong₂ app (wk-single t) refl)
+             (cong₂ app (wk-single t) refl)))
+      (homSem₁ (emb (⊩G v (projr (emb-coh ⊩F) v r')))
+               (projr ht v r') (projr ht v r'))
+      (expStar₁ _
+        (payChain (Σ.fst (Σ.snd (pay v (projr (emb-coh ⊩F) v r'))))
+                  (Σ.fst (Σ.snd (Σ.snd (pay v (projr (emb-coh ⊩F) v r')))))
+                  v (CR1₁ (emb ⊩F) r') t)
+        (semHreflPay x₀ (⊩G v (projr (emb-coh ⊩F) v r'))
+          (bodyLk v (projr (emb-coh ⊩F) v r'))
+          (Σ.fst (Σ.snd (Σ.snd (Σ.snd (pay v (projr (emb-coh ⊩F) v r'))))))
+          (Σ.snd (Σ.snd (Σ.snd (Σ.snd (pay v (projr (emb-coh ⊩F) v r'))))))
+          (CR1₁ (emb (⊩G v (projr (emb-coh ⊩F) v r'))) (projr ht v r'))
+          (projr ht v r')))
+
+
+-- ★ W2b: the CODE-FATE analysis for `goh` — normalize an hrefl-path's
+-- code down its ⌜Hom⌝ spine (CSR); the leaf is either J-able (stable)
+-- or forever-dead.  Replaces per-shape rows with one recursion.
+data CodeFate {Ξ : Cx} (c* : RTm Ξ) : Set where
+  cf-stk  : stkC? c* ≡ true → CodeFate c*
+  cf-dead : stablecd? c* ≡ true → CodeFate c*
+
+codeNorm : {c' : RTm Ξ} → SN c' → nopw? c' ≡ true →
+           Σ (RTm Ξ) (λ c* → (c' ⟶csr* c*) × CodeFate c*)
+codeNorm (sn-exp r h) kn with codeNorm h (nopw?-red (snr→⟶ r) kn)
+... | c* , (csr , fate) = c* , (csr-step (csr-here r) csr , fate)
+codeNorm (sn-ne n) kn = _ , (csr-done , cf-dead (sne→stablecd n))
+codeNorm (sn-lam h) kn = _ , (csr-done , cf-dead refl)
+codeNorm (sn-pair ha hb) kn = _ , (csr-done , cf-dead refl)
+codeNorm sn-cb kn = _ , (csr-done , cf-stk refl)
+codeNorm (sn-cΣ h₁ h₂) kn = _ , (csr-done , cf-stk refl)
+codeNorm (sn-cΠ h₁ h₂) ()
+codeNorm (sn-cH {a = a₂} {b = b₂} hC ha hb) kn with codeNorm hC kn
+... | C* , (csr , cf-stk k)  =
+      ⌜Hom⌝ C* a₂ b₂ , (csrs-hom' csr , cf-stk k)
+  where
+  csrs-hom' : {x y : RTm _} → x ⟶csr* y →
+              ⌜Hom⌝ x a₂ b₂ ⟶csr* ⌜Hom⌝ y a₂ b₂
+  csrs-hom' csr-done       = csr-done
+  csrs-hom' (csr-step σ q) = csr-step (csr-hom σ) (csrs-hom' q)
+... | C* , (csr , cf-dead k) =
+      ⌜Hom⌝ C* a₂ b₂ , (csrs-hom' csr , cf-dead k)
+  where
+  csrs-hom' : {x y : RTm _} → x ⟶csr* y →
+              ⌜Hom⌝ x a₂ b₂ ⟶csr* ⌜Hom⌝ y a₂ b₂
+  csrs-hom' csr-done       = csr-done
+  csrs-hom' (csr-step σ q) = csr-step (csr-hom σ) (csrs-hom' q)
+
+sn-csrs : {t t' : RTm Ξ} → SN t → t ⟶csr* t' → SN t'
+sn-csrs h csr-done       = h
+sn-csrs h (csr-step σ q) = sn-csrs (sn-csr h σ) q
+
+nopw?-csrs : {t t' : RTm Ξ} → t ⟶csr* t' → nopw? t ≡ true → nopw? t' ≡ true
+nopw?-csrs csr-done       h = h
+nopw?-csrs (csr-step σ q) h = nopw?-csrs q (nopw?-red (csr→⟶ σ) h)
+
 fund : {σ : Sub ⌊ Γ ⌋ Ξ} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
        Γ ⊢ t ∷ A → Var Ξ → Γ ⊩ˢ σ → Rel (subTy σ A) (subTm σ t)
 
@@ -655,7 +936,7 @@ fund {σ = σ} (⊢snd {B = B} {p = p} d) x₀ ρ =
 fund ⊢⌜base⌝ x₀ ρ = ( ⊩₁U doneᵀ , sem-⌜base⌝ doneᵀ )
 
 fund {Ξ = Ξ} {σ = σ} (⊢⌜Π⌝ {c = c} {d = e} dc de) x₀ ρ =
-  ( ⊩₁U doneᵀ , sem-⌜Π⌝ doneᵀ snc sne ⊩c f )
+  ( ⊩₁U doneᵀ , sem-⌜Π⌝ doneᵀ snc sne ⊩c f pays )
   where
     hc = projl (irrel₁ crflᵀ (dfst (fund dc x₀ ρ)) (⊩₁U doneᵀ))
                (subTm σ c) (dsnd (fund dc x₀ ρ))
@@ -667,11 +948,27 @@ fund {Ξ = Ξ} {σ = σ} (⊢⌜Π⌝ {c = c} {d = e} dc de) x₀ ρ =
     body : (u : RTm Ξ) → ⊩c ⊩₀∋ u → Rel U (subTm (σ ,ₛ u) e)
     body u r = fund de x₀ (⊩ˢ-ext ρ (emb ⊩c) u (projl (emb-coh ⊩c) u r))
 
+    memb : (u : RTm Ξ) (r : ⊩c ⊩₀∋ u) → (⊩₁U doneᵀ) ⊩₁∋ subTm (σ ,ₛ u) e
+    memb u r = projl (irrel₁ crflᵀ (dfst (body u r)) (⊩₁U doneᵀ))
+                     (subTm (σ ,ₛ u) e) (dsnd (body u r))
+
     f : (u : RTm Ξ) → ⊩c ⊩₀∋ u → ⊩₀ (El (subTm (single u) (subTm (extS σ) e)))
     f u r = ⊩₀cast (cong El (sym (sub-single-Tm σ u e)))
-                   (sem-El doneᵀ
-                     (projl (irrel₁ crflᵀ (dfst (body u r)) (⊩₁U doneᵀ))
-                            (subTm (σ ,ₛ u) e) (dsnd (body u r))))
+                   (sem-El doneᵀ (memb u r))
+
+    -- W2b: the body code's SN and payload at each argument — straight
+    -- off `fund de`'s enriched U-membership (the environment case that
+    -- WALLED before the payload existed is now cargo).
+    pays : (u : RTm Ξ) (r : ⊩c ⊩₀∋ u) →
+           SN (subTm (single u) (subTm (extS σ) e))
+           × PayT (f u r) (subTm (single u) (subTm (extS σ) e))
+    pays u r =
+      ( subst SN (sym (sub-single-Tm σ u e)) (projl (memb u r))
+      , payT-cast (cong El (sym (sub-single-Tm σ u e)))
+                  (Σ.fst (projr (memb u r)))
+                  (payT-code (Σ.fst (projr (memb u r)))
+                             (sym (sub-single-Tm σ u e))
+                             (Σ.snd (projr (memb u r)))) )
 
     r₀ = CR3₀ ⊩c (sne-var x₀)
 
@@ -707,12 +1004,13 @@ fund {Ξ = Ξ} {σ = σ} (⊢⌜Σ⌝ {c = c} {d = e} dc de) x₀ ρ =
 -- W2 stage 1: the `⌜Hom⌝` code is semantic via `homSem₀` (through
 -- `sem-⌜Hom⌝`); its endpoints come down to level 0 through `emb-coh`.
 fund {σ = σ} (⊢⌜Hom⌝ {c = c} {a = a} {b = b} dc da db) x₀ ρ =
-  ( ⊩₁U doneᵀ , sem-⌜Hom⌝ doneᵀ snc sna snb ⊩c ha hb )
+  ( ⊩₁U doneᵀ , sem-⌜Hom⌝ doneᵀ snc sna snb ⊩c payc ha hb )
   where
     hc = projl (irrel₁ crflᵀ (dfst (fund dc x₀ ρ)) (⊩₁U doneᵀ))
                (subTm σ c) (dsnd (fund dc x₀ ρ))
     snc = projl hc
     ⊩c  = sem-El doneᵀ hc
+    payc = Σ.snd (projr hc)
 
     ha = projr (emb-coh ⊩c) (subTm σ a)
                (projl (irrel₁ crflᵀ (dfst (fund da x₀ ρ)) (emb ⊩c))
@@ -724,16 +1022,25 @@ fund {σ = σ} (⊢⌜Hom⌝ {c = c} {a = a} {b = b} dc da db) x₀ ρ =
     sna = CR1₀ ⊩c ha
     snb = CR1₀ ⊩c hb
 
--- W2 stage 1: `hrefl` is an inert neutral (its unfold family is deferred
--- with the canonicity package), so it inhabits the `Hom` at its own
--- endpoints by `CR3` — via `sem-hrefl`.
+-- ★★ W2b: `hrefl` computes now (`hrefl-pw`), so its semantic case
+-- reads the U-PAYLOAD: the membership is built by `semHreflPay` at the
+-- code's decoded interp and transferred to the ambient's interp by
+-- proof-irrelevance (both interpret the same `El`).
 fund {σ = σ} (⊢hrefl {c = c} {t = t} dc dt) x₀ ρ =
   ( homSem₁ (dfst Rt) (dsnd Rt) (dsnd Rt)
-  , sem-hrefl (dfst Rt) snc snt (dsnd Rt) )
+  , projl (irrel₁ crflᵀ (homSem₁ (emb R₀) htE htE)
+                        (homSem₁ (dfst Rt) (dsnd Rt) (dsnd Rt)))
+          (hrefl (subTm σ c) (subTm σ t))
+          (semHreflPay x₀ R₀ crflᵀ (projl hcode) (Σ.snd (projr hcode))
+                       snt htE) )
   where
     Rt = fund dt x₀ ρ
-    snc = CR1₁ (dfst (fund dc x₀ ρ)) (dsnd (fund dc x₀ ρ))
     snt = CR1₁ (dfst Rt) (dsnd Rt)
+    hcode = projl (irrel₁ crflᵀ (dfst (fund dc x₀ ρ)) (⊩₁U doneᵀ))
+                  (subTm σ c) (dsnd (fund dc x₀ ρ))
+    R₀ = Σ.fst (projr hcode)
+    htE = projl (irrel₁ crflᵀ (dfst Rt) (emb R₀))
+                (subTm σ t) (dsnd Rt)
 
 -- ★★ W2 stage 3 — `⊢trU`, the TAUTOLOGICAL motive: transport along a
 -- universe path IS application (directed univalence, semantically).
@@ -759,7 +1066,7 @@ fund {Ξ = Ξ} {σ = σ}
               (dsnd (fund du x₀ ρ))
 
   R_result : ⊩₁ (El uI)
-  R_result = emb (projr hUu)
+  R_result = emb (Σ.fst (projr hUu))
 
   R_e : ⊩₁ (El tI)
   R_e = dfst (fund de x₀ ρ)
@@ -774,7 +1081,7 @@ fund {Ξ = Ξ} {σ = σ}
   nkey (sne-app n s)      = sne→spine n
   nkey (sne-fst n)        = sne→spine n
   nkey (sne-snd n)        = sne→spine n
-  nkey (sne-hrefl _ _)    = refl
+  nkey (sne-hrefl _ _ kn) = kn
   nkey (sne-tr _ _ _ key) = key
 
   cr3 : {p' : RTm Ξ} → SN p' → trstk? (var (vz {Ξ})) p' ≡ true →
@@ -1000,7 +1307,8 @@ fund {Ξ = Ξ} {σ = σ}
   go  : {p' : RTm Ξ} → SN p' → R_H ⊩₁∋ p' →
         Σ (⊩₁ (El (subTm (single uI) dI)))
           (λ R → R ⊩₁∋ tr dI p' eI)
-  goh : {c' s' : RTm Ξ} → SN c' → SN s' → R_H ⊩₁∋ hrefl c' s' →
+  goh : {c' s' : RTm Ξ} → SN c' → SN s' → nopw? c' ≡ true →
+        R_H ⊩₁∋ hrefl c' s' →
         Σ (⊩₁ (El (subTm (single uI) dI)))
           (λ R → R ⊩₁∋ tr dI (hrefl c' s') eI)
 
@@ -1011,7 +1319,7 @@ fund {Ξ = Ξ} {σ = σ}
   go (sn-ne (sne-app n s)) hp'       = cr3 (sn-ne (sne-app n s)) (sne→spine n)
   go (sn-ne (sne-fst n)) hp'         = cr3 (sn-ne (sne-fst n)) (sne→spine n)
   go (sn-ne (sne-snd n)) hp'         = cr3 (sn-ne (sne-snd n)) (sne→spine n)
-  go (sn-ne (sne-hrefl snc sns)) hp' = goh snc sns hp'
+  go (sn-ne (sne-hrefl snc sns kn)) hp' = goh snc sns kn hp'
   go (sn-ne (sne-tr h₁ h₂ h₃ key)) hp' =
     cr3 (sn-ne (sne-tr h₁ h₂ h₃ key)) key
   go (sn-lam snf) hp'      = cr3 (sn-lam snf) refl
@@ -1021,23 +1329,48 @@ fund {Ξ = Ξ} {σ = σ}
   go (sn-cΣ h₁ h₂) hp'     = cr3 (sn-cΣ h₁ h₂) refl
   go (sn-cH h₁ h₂ h₃) hp'  = cr3 (sn-cH h₁ h₂ h₃) refl
 
-  goh sn-cb sns hp' =
+  -- the path's own head star, wrapped into the tr.
+  trP-star : {p₁ p₂ : RTm Ξ} → p₁ ⟶snr* p₂ →
+             tr dI p₁ eI ⟶snr* tr dI p₂ eI
+  trP-star snr-done       = snr-done
+  trP-star (snr-step r q) = snr-step (snr-trᵖ r) (trP-star q)
+
+  goh sn-cb sns kn hp' =
     ( R_result , exp₁ R_result (snr-J-base snD sns) heTgt )
-  goh (sn-cΣ h₁ h₂) sns hp' =
+  goh (sn-cΣ h₁ h₂) sns kn hp' =
     ( R_result , exp₁ R_result (snr-J-Σ snD h₁ h₂ sns) heTgt )
-  goh (sn-exp rc snc') sns hp' =
-    ( dfst z , exp₁ (dfst z) (snr-trᵖ (snr-hreflᶜ rc)) (dsnd z) )
-    where z = goh snc' sns (mem-whred₁ R_H (snr-hreflᶜ rc) hp')
-  goh (sn-ne nc) sns hp' =
-    cr3 (sn-ne (sne-hrefl (sn-ne nc) sns)) (sne→stablecd nc)
-  goh (sn-lam snb) sns hp' =
-    cr3 (sn-ne (sne-hrefl (sn-lam snb) sns)) refl
-  goh (sn-pair sa sb) sns hp' =
-    cr3 (sn-ne (sne-hrefl (sn-pair sa sb) sns)) refl
-  goh (sn-cΠ h₁ h₂) sns hp' =
-    cr3 (sn-ne (sne-hrefl (sn-cΠ h₁ h₂) sns)) refl
-  goh (sn-cH h₁ h₂ h₃) sns hp' =
-    cr3 (sn-ne (sne-hrefl (sn-cH h₁ h₂ h₃) sns)) refl
+  goh (sn-exp rc snc') sns kn hp' =
+    ( dfst z , exp₁ (dfst z) (snr-trᵖ (snr-hreflᶜ (csr-here rc))) (dsnd z) )
+    where z = goh snc' sns (nopw?-red (snr→⟶ rc) kn)
+                  (mem-whred₁ R_H (snr-hreflᶜ (csr-here rc)) hp')
+  goh (sn-ne nc) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-ne nc) sns (sne→nopw nc))) (sne→stablecd nc)
+  goh (sn-lam snb) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-lam snb) sns refl)) refl
+  goh (sn-pair sa sb) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-pair sa sb) sns refl)) refl
+  goh (sn-cΠ h₁ h₂) sns () hp'
+  -- ★ W2b: a ⌜Hom⌝-CODE path — normalize its spine (codeNorm); the
+  -- J-able leaf fires tr-J-Hom (endpoint transfer = the SAME heTgt as
+  -- J-base), the dead leaf is CR3; both memberships travel back along
+  -- the head star.
+  goh (sn-cH {c = C₂} {a = a₂} {b = b₂} h₁ h₂ h₃) sns kn hp'
+    with codeNorm h₁ kn
+  ... | C* , (csr , cf-stk k) =
+        ( R_result
+        , expStar₁ R_result
+            (trP-star (snrs-hreflᶜ (csrs-hom csr)))
+            (exp₁ R_result
+              (snr-J-Hom snD (sn-csrs h₁ csr) h₂ h₃ sns k) heTgt) )
+  ... | C* , (csr , cf-dead k) =
+        ( R_result
+        , expStar₁ R_result
+            (trP-star (snrs-hreflᶜ (csrs-hom csr)))
+            (CR3₁ R_result
+              (sne-tr snD
+                (sn-ne (sne-hrefl (sn-cH (sn-csrs h₁ csr) h₂ h₃) sns
+                                  (nopw?-csrs csr kn)))
+                snE k)) )
 
 -- ★ `⊢conv` — no validity premise, no `⊢ty` closed under conversion.  The
 -- relation is already closed under conversion; this is the whole of §4.0.
