@@ -73,8 +73,13 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom
         ; ⊢ctx_; c-◇; c-▹
         ; ⊢id; ⊢appex )
-open import poc.OCP0009.NbEPDirDBVar using ( 𝔹; true; false; occTm; subTm-occ )
+open import poc.OCP0009.NbEPDirDBVar
+  using ( 𝔹; true; false; occTm; subTm-occ
+        ; pw?; stkC?; pwBody; pwDom; pwShift
+        ; pw?-ren; stkC?-ren; pwBody-ren; wk-ren-tm; pw?-sub
+        ; stk⊥pw; pw⊥stk )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; sub-comm )
+open import poc.OCP0009.NbEPDirDBConf using ( pwShift-ren )
 open import poc.OCP0009.NbEPDirDBDec using ( Dec; dec-conv )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El
@@ -89,7 +94,9 @@ open import poc.OCP0009.NbEPDirDBLR
         ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-exp
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
         ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-taut; snr-trᵖ
-        ; trstk?-ren
+        ; trstk?-ren; nopw?-ren; trlam?-ren; nopw?; trlam?
+        ; nopw⊥pw; stk⊥dead; pw⊥dead; dead→nopw; snr-nonpw
+        ; snr-hrefl-pw; snr-J-Hom; snr-tr-pw; nopw?-red; nopw?-red*
         ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; _⊩₀∋_; bwd₀; exp₁
         ; mem-whred₁; homSem₀; homSem₀-mem-endpoints
         ; sne→spine; sne→stablecd; trstk?
@@ -234,8 +241,8 @@ sne-anti {t = var x}    _             = sne-var x
 sne-anti {t = app t u}  (sne-app n s) = sne-app (sne-anti n) (sn-anti s)
 sne-anti {t = fst p}    (sne-fst n)   = sne-fst (sne-anti n)
 sne-anti {t = snd p}    (sne-snd n)   = sne-snd (sne-anti n)
-sne-anti {t = hrefl c t} (sne-hrefl hc ht) =
-  sne-hrefl (sn-anti hc) (sn-anti ht)
+sne-anti {ρ = ρ} {t = hrefl c t} (sne-hrefl hc ht kn) =
+  sne-hrefl (sn-anti hc) (sn-anti ht) (trans (sym (nopw?-ren ρ c)) kn)
 sne-anti {ρ = ρ} {t = tr d p e} (sne-tr hd hp he key) =
   sne-tr (sn-anti hd) (sn-anti hp) (sn-anti he)
          (trans (sym (trstk?-ren ρ d p)) key)
@@ -290,25 +297,61 @@ snr-anti {t = snd (snd p)}      (snr-snd r) with snr-anti r
 ... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
 snr-anti {t = hrefl c s} (snr-hreflᶜ r) with snr-anti r
 ... | c' , (r' , refl) = hrefl c' s , (snr-hreflᶜ r' , refl)
+snr-anti {ρ = ρ} {t = hrefl c s} (snr-hrefl-pw kp) =
+  lam (hrefl (pwBody c) (app (renTm vs s) (var vz)))
+  , ( snr-hrefl-pw (trans (sym (pw?-ren ρ c)) kp)
+    , cong₂ (λ x y → lam (hrefl x (app y (var vz))))
+            (pwBody-ren ρ c (trans (sym (pw?-ren ρ c)) kp))
+            (sym (wk-ren-tm ρ s)) )
 snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl ⌜base⌝ s) e} (snr-J-base hd hs) =
   e , (snr-J-base (sn-anti hd) (sn-anti hs) , refl)
 snr-anti {t = tr d (hrefl ⌜base⌝ s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl ⌜base⌝ s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-J-Σ hd h₁ h₂ hs) =
   e , (snr-J-Σ (sn-anti hd) (sn-anti h₁) (sn-anti h₂) (sn-anti hs) , refl)
 snr-anti {t = tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr (var vz) (lam f) e} snr-taut =
   app (lam f) e , (snr-taut , refl)
+snr-anti {ρ = ρ} {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) e}
+         (snr-J-Hom hd h₁ h₂ h₃ hs kh) =
+  e , ( snr-J-Hom (sn-anti hd) (sn-anti h₁) (sn-anti h₂) (sn-anti h₃)
+                  (sn-anti hs) (trans (sym (stkC?-ren ρ c₁)) kh)
+      , refl )
+snr-anti {ρ = ρ} {t = tr (⌜Hom⌝ c a (var vz)) (lam f) e}
+         (snr-tr-pw hc ha kp) =
+  lam (tr (⌜Hom⌝ (renTm pwShift (pwBody c))
+                 (app (renTm vs a) (var (vs vz)))
+                 (var vz))
+          f (app (renTm vs e) (var vz)))
+  , ( snr-tr-pw (sn-anti hc) (sn-anti ha) kp'
+    , cong lam
+        (tr-cong₃
+          (⌜Hom⌝-cong₃
+            (trans (cong (renTm pwShift) (pwBody-ren (extR ρ) c kp'))
+                   (sym (pwShift-ren ρ (pwBody c))))
+            (cong (λ z → app z (var (vs vz))) (sym (wk-ren-tm (extR ρ) a)))
+            refl)
+          refl
+          (cong (λ z → app z (var vz)) (sym (wk-ren-tm ρ e)))) )
+  where
+  kp' = trans (sym (pw?-ren (extR _) c)) kp
 snr-anti {t = tr d (hrefl (var x) s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl (var x) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (lam g) s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl (lam g) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (app g w) s) e} (snr-trᵖ r) with snr-anti r
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (hrefl (pair g w) s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl (pair g w) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (fst g) s) e} (snr-trᵖ r) with snr-anti r
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (hrefl (snd g) s) e} (snr-trᵖ r) with snr-anti r
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
-snr-anti {t = tr d (hrefl (⌜Π⌝ g w) s) e} (snr-trᵖ (snr-hreflᶜ ()))
-snr-anti {t = tr d (hrefl (⌜Hom⌝ g w v) s) e} (snr-trᵖ (snr-hreflᶜ ()))
+snr-anti {t = tr d (hrefl (⌜Π⌝ g w) s) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (⌜Hom⌝ g w v) s) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (hrefl (hrefl g w) s) e} (snr-trᵖ r) with snr-anti r
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (hrefl (tr g w v) s) e} (snr-trᵖ r) with snr-anti r
