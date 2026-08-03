@@ -73,7 +73,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; ⌜Hom⌝; hrefl; tr; ⌜Hom⌝-cong₃; tr-cong₃
-        ; Ren; extR; renTy; renTm; Sub; extS; subTm )
+        ; Ren; extR; renTy; renTm; Sub; extS; subTm
+        ; renTm-renTm; subTm-renTm; renTm-subTm )
 
 private
   variable
@@ -461,3 +462,216 @@ posc-sub {σ = σ} (posc-Hom {c = c} {a = a} hc ha) =
   hs : ∀ y → eqv vz y ≡ false → occTm vz (extS σ y) ≡ false
   hs vz ()
   hs (vs y) _ = occ-ren-tm avoids-wk (σ y)
+
+------------------------------------------------------------------------
+-- ★ W2b (G1) — THE CANONICITY PACKAGE'S CLASSIFIERS, promoted from
+-- `SpikeCanon`: `Pw`/`StkC` as total Booleans, and the pointwise
+-- body/domain FUNCTIONS (the spine recursion happens at rule-firing
+-- time, not in the reduction relation — SpikeCanon finding 2).
+------------------------------------------------------------------------
+
+-- pw-able codes: decode to Π-unfoldable types (⌜Hom⌝-spines over ⌜Π⌝).
+pw? : RTm Γ → 𝔹
+pw? (⌜Π⌝ γ δ)     = true
+pw? (⌜Hom⌝ C a b) = pw? C
+pw? _             = false
+
+-- permanently stable codes: J-able, and NEVER ⌜Π⌝-able — not even
+-- under substitution (constructor-headed spines only).
+stkC? : RTm Γ → 𝔹
+stkC? ⌜base⌝        = true
+stkC? (⌜Σ⌝ c d)     = true
+stkC? (⌜Hom⌝ C a b) = stkC? C
+stkC? _             = false
+
+pwDom : RTm Γ → RTm Γ
+pwDom (⌜Π⌝ γ δ)     = γ
+pwDom (⌜Hom⌝ C a b) = pwDom C
+pwDom t             = t
+
+pwBody : RTm Γ → RTm (Γ ∙)
+pwBody (⌜Π⌝ γ δ)     = δ
+pwBody (⌜Hom⌝ C a b) = ⌜Hom⌝ (pwBody C)
+                             (app (renTm vs a) (var vz))
+                             (app (renTm vs b) (var vz))
+pwBody t             = renTm vs t
+
+-- (Γ, end, Πb) → (Γ, x, end′): the Π-binder becomes x, the old
+-- endpoint goes to junk (typed-dead — the motive's components are
+-- vz-free by `⊢tr`'s premises).
+pwShift : Ren ((Γ ∙) ∙) ((Γ ∙) ∙)
+pwShift vz     = vs vz
+pwShift (vs y) = vs y
+
+stk⊥pw : (C : RTm Γ) → stkC? C ≡ true → pw? C ≡ false
+stk⊥pw (var x) ()
+stk⊥pw (lam t) ()
+stk⊥pw (app t u) ()
+stk⊥pw (pair a b) ()
+stk⊥pw (fst t) ()
+stk⊥pw (snd t) ()
+stk⊥pw ⌜base⌝ h = refl
+stk⊥pw (⌜Π⌝ γ δ) ()
+stk⊥pw (⌜Σ⌝ c d) h = refl
+stk⊥pw (⌜Hom⌝ C a b) h = stk⊥pw C h
+stk⊥pw (hrefl c t) ()
+stk⊥pw (tr d p e) ()
+
+-- renaming EQUALITIES.
+pw?-ren : (ρ : Ren Γ Δ) (C : RTm Γ) → pw? (renTm ρ C) ≡ pw? C
+pw?-ren ρ (var x)       = refl
+pw?-ren ρ (lam t)       = refl
+pw?-ren ρ (app t u)     = refl
+pw?-ren ρ (pair a b)    = refl
+pw?-ren ρ (fst t)       = refl
+pw?-ren ρ (snd t)       = refl
+pw?-ren ρ ⌜base⌝        = refl
+pw?-ren ρ (⌜Π⌝ γ δ)     = refl
+pw?-ren ρ (⌜Σ⌝ c d)     = refl
+pw?-ren ρ (⌜Hom⌝ C a b) = pw?-ren ρ C
+pw?-ren ρ (hrefl c t)   = refl
+pw?-ren ρ (tr d p e)    = refl
+
+stkC?-ren : (ρ : Ren Γ Δ) (C : RTm Γ) → stkC? (renTm ρ C) ≡ stkC? C
+stkC?-ren ρ (var x)       = refl
+stkC?-ren ρ (lam t)       = refl
+stkC?-ren ρ (app t u)     = refl
+stkC?-ren ρ (pair a b)    = refl
+stkC?-ren ρ (fst t)       = refl
+stkC?-ren ρ (snd t)       = refl
+stkC?-ren ρ ⌜base⌝        = refl
+stkC?-ren ρ (⌜Π⌝ γ δ)     = refl
+stkC?-ren ρ (⌜Σ⌝ c d)     = refl
+stkC?-ren ρ (⌜Hom⌝ C a b) = stkC?-ren ρ C
+stkC?-ren ρ (hrefl c t)   = refl
+stkC?-ren ρ (tr d p e)    = refl
+
+-- weakening commutes with a renaming (both composites are
+-- definitionally `x ↦ vs (ρ x)`).
+wk-ren-tm : (ρ : Ren Γ Δ) (t : RTm Γ) →
+            renTm (extR ρ) (renTm vs t) ≡ renTm vs (renTm ρ t)
+wk-ren-tm ρ t = trans (renTm-renTm t) (sym (renTm-renTm t))
+
+pwDom-ren : (ρ : Ren Γ Δ) (C : RTm Γ) → pw? C ≡ true →
+            pwDom (renTm ρ C) ≡ renTm ρ (pwDom C)
+pwDom-ren ρ (var x) ()
+pwDom-ren ρ (lam t) ()
+pwDom-ren ρ (app t u) ()
+pwDom-ren ρ (pair a b) ()
+pwDom-ren ρ (fst t) ()
+pwDom-ren ρ (snd t) ()
+pwDom-ren ρ ⌜base⌝ ()
+pwDom-ren ρ (⌜Π⌝ γ δ) h = refl
+pwDom-ren ρ (⌜Σ⌝ c d) ()
+pwDom-ren ρ (⌜Hom⌝ C a b) h = pwDom-ren ρ C h
+pwDom-ren ρ (hrefl c t) ()
+pwDom-ren ρ (tr d p e) ()
+
+pwBody-ren : (ρ : Ren Γ Δ) (C : RTm Γ) → pw? C ≡ true →
+             pwBody (renTm ρ C) ≡ renTm (extR ρ) (pwBody C)
+pwBody-ren ρ (var x) ()
+pwBody-ren ρ (lam t) ()
+pwBody-ren ρ (app t u) ()
+pwBody-ren ρ (pair a b) ()
+pwBody-ren ρ (fst t) ()
+pwBody-ren ρ (snd t) ()
+pwBody-ren ρ ⌜base⌝ ()
+pwBody-ren ρ (⌜Π⌝ γ δ) h = refl
+pwBody-ren ρ (⌜Σ⌝ c d) ()
+pwBody-ren ρ (⌜Hom⌝ C a b) h =
+  ⌜Hom⌝-cong₃ (pwBody-ren ρ C h)
+              (cong (λ z → app z (var vz)) (sym (wk-ren-tm ρ a)))
+              (cong (λ z → app z (var vz)) (sym (wk-ren-tm ρ b)))
+pwBody-ren ρ (hrefl c t) ()
+pwBody-ren ρ (tr d p e) ()
+
+-- substitution PRESERVES the keys (one direction only — a substitution
+-- can CREATE pw-ability at a variable head, which is exactly why
+-- `stkC?` excludes neutrals) and commutes with body/domain.
+wk-sub-tm : (σ : Sub Γ Δ) (t : RTm Γ) →
+            subTm (extS σ) (renTm vs t) ≡ renTm vs (subTm σ t)
+wk-sub-tm σ t = trans (subTm-renTm t) (sym (renTm-subTm t))
+
+pw?-sub : (σ : Sub Γ Δ) (C : RTm Γ) → pw? C ≡ true →
+          pw? (subTm σ C) ≡ true
+pw?-sub σ (var x) ()
+pw?-sub σ (lam t) ()
+pw?-sub σ (app t u) ()
+pw?-sub σ (pair a b) ()
+pw?-sub σ (fst t) ()
+pw?-sub σ (snd t) ()
+pw?-sub σ ⌜base⌝ ()
+pw?-sub σ (⌜Π⌝ γ δ) h = refl
+pw?-sub σ (⌜Σ⌝ c d) ()
+pw?-sub σ (⌜Hom⌝ C a b) h = pw?-sub σ C h
+pw?-sub σ (hrefl c t) ()
+pw?-sub σ (tr d p e) ()
+
+stkC?-sub : (σ : Sub Γ Δ) (C : RTm Γ) → stkC? C ≡ true →
+            stkC? (subTm σ C) ≡ true
+stkC?-sub σ (var x) ()
+stkC?-sub σ (lam t) ()
+stkC?-sub σ (app t u) ()
+stkC?-sub σ (pair a b) ()
+stkC?-sub σ (fst t) ()
+stkC?-sub σ (snd t) ()
+stkC?-sub σ ⌜base⌝ h = refl
+stkC?-sub σ (⌜Π⌝ γ δ) ()
+stkC?-sub σ (⌜Σ⌝ c d) h = refl
+stkC?-sub σ (⌜Hom⌝ C a b) h = stkC?-sub σ C h
+stkC?-sub σ (hrefl c t) ()
+stkC?-sub σ (tr d p e) ()
+
+pwDom-sub : (σ : Sub Γ Δ) (C : RTm Γ) → pw? C ≡ true →
+            pwDom (subTm σ C) ≡ subTm σ (pwDom C)
+pwDom-sub σ (var x) ()
+pwDom-sub σ (lam t) ()
+pwDom-sub σ (app t u) ()
+pwDom-sub σ (pair a b) ()
+pwDom-sub σ (fst t) ()
+pwDom-sub σ (snd t) ()
+pwDom-sub σ ⌜base⌝ ()
+pwDom-sub σ (⌜Π⌝ γ δ) h = refl
+pwDom-sub σ (⌜Σ⌝ c d) ()
+pwDom-sub σ (⌜Hom⌝ C a b) h = pwDom-sub σ C h
+pwDom-sub σ (hrefl c t) ()
+pwDom-sub σ (tr d p e) ()
+
+pwBody-sub : (σ : Sub Γ Δ) (C : RTm Γ) → pw? C ≡ true →
+             pwBody (subTm σ C) ≡ subTm (extS σ) (pwBody C)
+pwBody-sub σ (var x) ()
+pwBody-sub σ (lam t) ()
+pwBody-sub σ (app t u) ()
+pwBody-sub σ (pair a b) ()
+pwBody-sub σ (fst t) ()
+pwBody-sub σ (snd t) ()
+pwBody-sub σ ⌜base⌝ ()
+pwBody-sub σ (⌜Π⌝ γ δ) h = refl
+pwBody-sub σ (⌜Σ⌝ c d) ()
+pwBody-sub σ (⌜Hom⌝ C a b) h =
+  ⌜Hom⌝-cong₃ (pwBody-sub σ C h)
+              (cong (λ z → app z (var vz)) (sym (wk-sub-tm σ a)))
+              (cong (λ z → app z (var vz)) (sym (wk-sub-tm σ b)))
+pwBody-sub σ (hrefl c t) ()
+pwBody-sub σ (tr d p e) ()
+
+-- `pwShift` never outputs `vz` — the inner motive `tr-pw` builds is
+-- vz-free STRUCTURALLY (what discharges `⊢tr`'s occurrence premises
+-- for the pointwise instance).
+avoids-pwShift : Avoids (pwShift {Γ}) vz
+avoids-pwShift vz     = refl
+avoids-pwShift (vs y) = refl
+
+pw⊥stk : (C : RTm Γ) → pw? C ≡ true → stkC? C ≡ false
+pw⊥stk (var x) ()
+pw⊥stk (lam t) ()
+pw⊥stk (app t u) ()
+pw⊥stk (pair a b) ()
+pw⊥stk (fst t) ()
+pw⊥stk (snd t) ()
+pw⊥stk ⌜base⌝ ()
+pw⊥stk (⌜Π⌝ γ δ) h = refl
+pw⊥stk (⌜Σ⌝ c d) ()
+pw⊥stk (⌜Hom⌝ C a b) h = pw⊥stk C h
+pw⊥stk (hrefl c t) ()
+pw⊥stk (tr d p e) ()

@@ -39,11 +39,14 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Ren; extR; Sub; subTy; subTm; extS; _∘ₛ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; renTm
         ; subTm-subTm; subTm-cong; subTm-renTm; subTm-id; renTm-subTm
         ; renTm-renTm; renTm-cong )
+open import poc.OCP0009.NbEPDirDBVar
+  using ( pw?; stkC?; pwBody; pwShift
+        ; pw?-sub; stkC?-sub; pwBody-sub )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; swp; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
         ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
-        ; tr-J-base; tr-J-Σ; tr-taut
+        ; tr-J-base; tr-J-Σ; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
@@ -113,6 +116,24 @@ swp-sub σ t =
                  (sym (trans (renTm-renTm (renTm vs (σ z)))
                              (renTm-renTm (σ z)))))
 
+-- ...and the same against `pwShift` (W2b's binder retarget: Πb ↦ x,
+-- end ↦ junk).  Both composites send Γ-variables through vs∘vs.
+pwShift-sub : (σ : Sub Γ Δ) (t : RTm ((Γ ∙) ∙)) →
+              subTm (extS (extS σ)) (renTm pwShift t) ≡
+              renTm pwShift (subTm (extS (extS σ)) t)
+pwShift-sub σ t =
+  trans (subTm-renTm t) (trans (subTm-cong ptw t) (sym (renTm-subTm t)))
+  where
+  ptw : ∀ x → (extS (extS σ) ₛ∘ᵣ pwShift) x ≡
+              (pwShift ᵣ∘ₛ extS (extS σ)) x
+  ptw vz          = refl
+  ptw (vs vz)     = refl
+  ptw (vs (vs z)) =
+    trans (renTm-renTm (σ z))
+          (trans (renTm-cong (λ _ → refl) (σ z))
+                 (sym (trans (renTm-renTm (renTm vs (σ z)))
+                             (renTm-renTm (σ z)))))
+
 ------------------------------------------------------------------------
 -- Reduction is substitution-stable — terms, then types.
 ------------------------------------------------------------------------
@@ -144,6 +165,29 @@ swp-sub σ t =
          (subTm σ c₁) (subTm (extS σ) c₂)
          (subTm σ s) (subTm σ e)
 ⟶-sub σ (tr-taut f e) = tr-taut (subTm (extS σ) f) (subTm σ e)
+⟶-sub σ (hrefl-pw C t key) =
+  subst (λ z → hrefl (subTm σ C) (subTm σ t) ⟶ z)
+        (cong₂ (λ x y → lam (hrefl x (app y (var vz))))
+               (pwBody-sub σ C key) (sym (wk-sub σ t)))
+        (hrefl-pw (subTm σ C) (subTm σ t) (pw?-sub σ C key))
+⟶-sub σ (tr-J-Hom c a m c₁ a₁ b₁ t e key) =
+  tr-J-Hom (subTm (extS σ) c) (subTm (extS σ) a) (subTm (extS σ) m)
+           (subTm σ c₁) (subTm σ a₁) (subTm σ b₁)
+           (subTm σ t) (subTm σ e) (stkC?-sub σ c₁ key)
+⟶-sub σ (tr-pw c a f e key) =
+  subst (λ z → tr (⌜Hom⌝ (subTm (extS σ) c) (subTm (extS σ) a) (var vz))
+                  (lam (subTm (extS σ) f)) (subTm σ e) ⟶ z)
+        (cong lam
+          (tr-cong₃
+            (⌜Hom⌝-cong₃
+              (trans (cong (renTm pwShift) (pwBody-sub (extS σ) c key))
+                     (sym (pwShift-sub σ (pwBody c))))
+              (cong (λ z → app z (var (vs vz))) (sym (wk-sub (extS σ) a)))
+              refl)
+            refl
+            (cong (λ z → app z (var vz)) (sym (wk-sub σ e)))))
+        (tr-pw (subTm (extS σ) c) (subTm (extS σ) a) (subTm (extS σ) f)
+               (subTm σ e) (pw?-sub (extS σ) c key))
 ⟶-sub σ (ξ-⌜Hom⌝ᶜ r) = ξ-⌜Hom⌝ᶜ (⟶-sub σ r)
 ⟶-sub σ (ξ-⌜Hom⌝ˡ r) = ξ-⌜Hom⌝ˡ (⟶-sub σ r)
 ⟶-sub σ (ξ-⌜Hom⌝ʳ r) = ξ-⌜Hom⌝ʳ (⟶-sub σ r)

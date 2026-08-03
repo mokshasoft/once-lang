@@ -39,7 +39,8 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr
         ; Ren; extR; Sub; subTy; subTm; renTy; renTm )
-open import poc.OCP0009.NbEPDirDBVar using ( 𝔹; true; false; occTm )
+open import poc.OCP0009.NbEPDirDBVar
+  using ( 𝔹; true; false; occTm; pw?; stkC?; pwBody; pwShift )
 
 private
   variable
@@ -122,6 +123,34 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   -- tautological motive along a (canonical) universe path is application
   tr-taut   : (f : RTm (Γ ∙)) (e : RTm Γ) →
               tr (var vz) (lam f) e ⟶ app (lam f) e
+  -- ★ W2b (G1, SpikeCanon): the CANONICITY PACKAGE.  Three rules, each
+  -- keyed by a Boolean classifier (`NbEPDirDBVar`) — the spine
+  -- recursion lives in the total function `pwBody`, never in the
+  -- relation (SpikeCanon finding 2: a code-level ⌜Hom⌝-Π would break
+  -- the pinned-motive architecture).
+  --
+  -- `hrefl` at a pw-able code unfolds POINTWISE (hrefl-Π is the ⌜Π⌝
+  -- instance; the whole ⌜Hom⌝ⁿ(⌜Π⌝…) family is this one rule):
+  hrefl-pw : (C s : RTm Γ) → pw? C ≡ true →
+             hrefl C s ⟶
+             lam (hrefl (pwBody C) (app (renTm vs s) (var vz)))
+  -- J at Hom-codes over PERMANENTLY-STABLE spines (`stkC?` excludes
+  -- ⌜Π⌝-able codes — those paths unfold to lambdas — and neutrals,
+  -- which substitution could make ⌜Π⌝-able):
+  tr-J-Hom : (c a m : RTm (Γ ∙)) (c₁ a₁ b₁ s e : RTm Γ) →
+             stkC? c₁ ≡ true →
+             tr (⌜Hom⌝ c a m) (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) e ⟶ e
+  -- POINTWISE TRANSPORT: the transported function's value at x is the
+  -- inner transport of `e·x` along the path's body `f`, at the
+  -- pointwise motive (keyed on the literal `var vz` endpoint, like
+  -- taut — every typed instance has it):
+  tr-pw    : (c a f : RTm (Γ ∙)) (e : RTm Γ) → pw? c ≡ true →
+             tr (⌜Hom⌝ c a (var vz)) (lam f) e ⟶
+             lam (tr (⌜Hom⌝ (renTm pwShift (pwBody c))
+                            (app (renTm vs a) (var (vs vz)))
+                            (var vz))
+                     f
+                     (app (renTm vs e) (var vz)))
   ξ-⌜Hom⌝ᶜ : {c c' a b : RTm Γ} → c ⟶ c' → ⌜Hom⌝ c a b ⟶ ⌜Hom⌝ c' a b
   ξ-⌜Hom⌝ˡ : {c a a' b : RTm Γ} → a ⟶ a' → ⌜Hom⌝ c a b ⟶ ⌜Hom⌝ c a' b
   ξ-⌜Hom⌝ʳ : {c a b b' : RTm Γ} → b ⟶ b' → ⌜Hom⌝ c a b ⟶ ⌜Hom⌝ c a b'
