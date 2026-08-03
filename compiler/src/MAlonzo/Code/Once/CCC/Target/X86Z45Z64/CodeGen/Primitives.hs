@@ -21,6 +21,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
 import qualified MAlonzo.Code.Once.CanonicalName
+import qualified MAlonzo.Code.Once.Semantics.FloatBits
 import qualified MAlonzo.Code.Once.Target.Symbol
 import qualified MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg
 import qualified MAlonzo.Code.Once.Type
@@ -76,22 +77,30 @@ du_compile'45'const_24 v0 v1
       MAlonzo.Code.Once.Type.C_fits'45'float_200
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_ud2_60)
+             (coe
+                MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30
+                (coe
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22
+                   (coe MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.C_rax_10))
+                (coe
+                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26
+                   (coe
+                      MAlonzo.Code.Once.Semantics.FloatBits.d_float'45'bits_6 (coe v1))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-const-size
-d_compile'45'const'45'size_30 ::
+d_compile'45'const'45'size_32 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_196 -> Integer
-d_compile'45'const'45'size_30 ~v0 v1
-  = du_compile'45'const'45'size_30 v1
-du_compile'45'const'45'size_30 ::
+d_compile'45'const'45'size_32 ~v0 v1
+  = du_compile'45'const'45'size_32 v1
+du_compile'45'const'45'size_32 ::
   MAlonzo.Code.Once.Type.T_FitsInReg_196 -> Integer
-du_compile'45'const'45'size_30 v0
+du_compile'45'const'45'size_32 v0
   = coe seq (coe v0) (coe (1 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-const-length
-d_compile'45'const'45'length_38 ::
+d_compile'45'const'45'length_40 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_196 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_compile'45'const'45'length_38 = erased
+d_compile'45'const'45'length_40 = erased

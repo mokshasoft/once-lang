@@ -288,12 +288,14 @@ library
       MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace
+      MAlonzo.Code.Once.CCC.Codegen.ShapeTable
       MAlonzo.Code.Once.CCC.Codegen.SlotBudget
       MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds
       MAlonzo.Code.Once.CCC.Machine.FlatRegTagWF
       MAlonzo.Code.Once.CCC.Machine.FlatStackPtr
       MAlonzo.Code.Once.CCC.Machine.FlatStackSlot
       MAlonzo.Code.Once.CCC.Machine.FrameFree
+      MAlonzo.Code.Once.CCC.Machine.ShapeAt
       MAlonzo.Code.Once.CCC.Machine.InstrSlot
       MAlonzo.Code.Once.CCC.Eval
       MAlonzo.Code.Once.CCC.FrameSemantics
@@ -301,6 +303,7 @@ library
       MAlonzo.Code.Once.IR.Size
       MAlonzo.Code.Once.IRTy
       MAlonzo.Code.Once.IRTy.WF
+      MAlonzo.Code.Once.Semantics.FloatBits
       MAlonzo.Code.Once.Semantics.ValueIR
       MAlonzo.Code.Once.Semantics.Functor.Laws
       MAlonzo.Code.Once.Adequacy.AnaErased

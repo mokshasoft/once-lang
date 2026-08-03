@@ -21,7 +21,6 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Float
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
-import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
@@ -153,16 +152,7 @@ d_transport'45'SumTag_510 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny -> AgdaAny
-d_transport'45'SumTag_510 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8
-  = du_transport'45'SumTag_510 v2
-du_transport'45'SumTag_510 ::
-  MAlonzo.Code.Once.IR.T_AllocMode_4 -> AgdaAny
-du_transport'45'SumTag_510 v0
-  = case coe v0 of
-      MAlonzo.Code.Once.IR.C_Stack_6
-        -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
-      MAlonzo.Code.Once.IR.C_Heap_8 -> erased
-      _ -> MAlonzo.RTE.mazUnreachableError
+d_transport'45'SumTag_510 = erased
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef.prim-sv
 d_prim'45'sv_522 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -208,12 +198,12 @@ data T_ValidAtWF_530
                                  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634
                                  T_ValidAtWF_530 T_BodyCorrect_756 |
     C_valid'45'inl'45'wf_842 MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-                             MAlonzo.Code.Once.IR.T_AllocMode_4 AgdaAny AgdaAny
+                             MAlonzo.Code.Once.IR.T_AllocMode_4 AgdaAny
                              MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634
                              MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634
                              T_ValidAtWF_530 |
     C_valid'45'inr'45'wf_862 MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-                             MAlonzo.Code.Once.IR.T_AllocMode_4 AgdaAny AgdaAny
+                             MAlonzo.Code.Once.IR.T_AllocMode_4 AgdaAny
                              MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634
                              MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634
                              T_ValidAtWF_530 |
@@ -1630,7 +1620,7 @@ du_decomposeInlWF_1954 ::
   AgdaAny -> T_ValidAtWF_530 -> T_InlValidWF_1832
 du_decomposeInlWF_1954 v0 v1
   = case coe v1 of
-      C_valid'45'inl'45'wf_842 v8 v10 v11 v12 v14 v15 v16
+      C_valid'45'inl'45'wf_842 v8 v10 v11 v14 v15 v16
         -> coe C_constructor_1878 v0 v10 v8 v14 v15 v16
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef.decomposeInrWF
@@ -1651,7 +1641,7 @@ du_decomposeInrWF_1990 ::
   AgdaAny -> T_ValidAtWF_530 -> T_InrValidWF_1892
 du_decomposeInrWF_1990 v0 v1
   = case coe v1 of
-      C_valid'45'inr'45'wf_862 v8 v10 v11 v12 v14 v15 v16
+      C_valid'45'inr'45'wf_862 v8 v10 v11 v14 v15 v16
         -> coe C_constructor_1938 v0 v10 v8 v14 v15 v16
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef.valid-to-validWF-unit
@@ -1682,124 +1672,119 @@ d_validityWF'45'mem'45'only_2036 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   T_ValidAtWF_530 -> T_ValidAtWF_530
-d_validityWF'45'mem'45'only_2036 v0 v1 v2 v3 v4 v5 ~v6 v7 v8 ~v9
+d_validityWF'45'mem'45'only_2036 v0 v1 ~v2 v3 v4 v5 ~v6 v7 v8 ~v9
                                  ~v10 v11
-  = du_validityWF'45'mem'45'only_2036 v0 v1 v2 v3 v4 v5 v7 v8 v11
+  = du_validityWF'45'mem'45'only_2036 v0 v1 v3 v4 v5 v7 v8 v11
 du_validityWF'45'mem'45'only_2036 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_626 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_540 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_540 ->
   T_ValidAtWF_530 -> T_ValidAtWF_530
-du_validityWF'45'mem'45'only_2036 v0 v1 v2 v3 v4 v5 v6 v7 v8
-  = case coe v4 of
+du_validityWF'45'mem'45'only_2036 v0 v1 v2 v3 v4 v5 v6 v7
+  = case coe v3 of
       MAlonzo.Code.Once.IRTy.C_Unit_16
         -> coe
-             seq (coe v5) (coe seq (coe v8) (coe C_valid'45'unit'45'wf_766))
-      MAlonzo.Code.Once.IRTy.C__'42'__20 v9 v10
-        -> case coe v5 of
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
-               -> case coe v8 of
-                    C_valid'45'pair'45'wf_792 v20 v21 v23 v24 v25 v28 v29 v30 v31 v32
+             seq (coe v4) (coe seq (coe v7) (coe C_valid'45'unit'45'wf_766))
+      MAlonzo.Code.Once.IRTy.C__'42'__20 v8 v9
+        -> case coe v4 of
+             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
+               -> case coe v7 of
+                    C_valid'45'pair'45'wf_792 v19 v20 v22 v23 v24 v27 v28 v29 v30 v31
                       -> coe
-                           C_valid'45'pair'45'wf_792 v20 v21 v23 v24 v25 v28 v29 v30
+                           C_valid'45'pair'45'wf_792 v19 v20 v22 v23 v24 v27 v28 v29
                            (coe
-                              du_fv''_2102 (coe v0) (coe v1) (coe v3) (coe v9) (coe v11) (coe v6)
-                              (coe v7) (coe v20) (coe v23) (coe v31))
+                              du_fv''_2102 (coe v0) (coe v1) (coe v2) (coe v8) (coe v10) (coe v5)
+                              (coe v6) (coe v19) (coe v22) (coe v30))
                            (coe
-                              du_sv''_2104 (coe v0) (coe v1) (coe v3) (coe v10) (coe v12)
-                              (coe v6) (coe v7) (coe v21) (coe v24) (coe v32))
+                              du_sv''_2104 (coe v0) (coe v1) (coe v2) (coe v9) (coe v11) (coe v5)
+                              (coe v6) (coe v20) (coe v23) (coe v31))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IRTy.C__'43'__22 v9 v10
-        -> case coe v8 of
-             C_valid'45'inl'45'wf_842 v17 v19 v20 v21 v23 v24 v25
-               -> case coe v5 of
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v26
+      MAlonzo.Code.Once.IRTy.C__'43'__22 v8 v9
+        -> case coe v7 of
+             C_valid'45'inl'45'wf_842 v16 v18 v19 v22 v23 v24
+               -> case coe v4 of
+                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v25
                       -> coe
-                           C_valid'45'inl'45'wf_842 v17 v19 v20 (coe du_tg''_2194 (coe v2))
-                           v23 v24
+                           C_valid'45'inl'45'wf_842 v16 v18 v19 v22 v23
                            (coe
-                              du_pv''_2198 (coe v0) (coe v1) (coe v3) (coe v9) (coe v6) (coe v7)
-                              (coe v26) (coe v17) (coe v19) (coe v25))
+                              du_pv''_2198 (coe v0) (coe v1) (coe v2) (coe v8) (coe v5) (coe v6)
+                              (coe v25) (coe v16) (coe v18) (coe v24))
                     _ -> MAlonzo.RTE.mazUnreachableError
-             C_valid'45'inr'45'wf_862 v17 v19 v20 v21 v23 v24 v25
-               -> case coe v5 of
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v26
+             C_valid'45'inr'45'wf_862 v16 v18 v19 v22 v23 v24
+               -> case coe v4 of
+                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v25
                       -> coe
-                           C_valid'45'inr'45'wf_862 v17 v19 v20 (coe du_tg''_2238 (coe v2))
-                           v23 v24
+                           C_valid'45'inr'45'wf_862 v16 v18 v19 v22 v23
                            (coe
-                              du_pv''_2242 (coe v0) (coe v1) (coe v3) (coe v10) (coe v6) (coe v7)
-                              (coe v26) (coe v17) (coe v19) (coe v25))
+                              du_pv''_2242 (coe v0) (coe v1) (coe v2) (coe v9) (coe v5) (coe v6)
+                              (coe v25) (coe v16) (coe v18) (coe v24))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IRTy.C__'8667'__24 v9 v10
-        -> case coe v8 of
-             C_valid'45'closure'45'wf_822 v12 v15 v16 v18 v20 v22 v23 v24 v27 v28 v29 v30
+      MAlonzo.Code.Once.IRTy.C__'8667'__24 v8 v9
+        -> case coe v7 of
+             C_valid'45'closure'45'wf_822 v11 v14 v15 v17 v19 v21 v22 v23 v26 v27 v28 v29
                -> coe
-                    C_valid'45'closure'45'wf_822 v12 v15 v16 v18 v20 v22 v23 v24 v27
-                    v28
+                    C_valid'45'closure'45'wf_822 v11 v14 v15 v17 v19 v21 v22 v23 v26
+                    v27
                     (coe
-                       du_ev''_2154 (coe v0) (coe v1) (coe v3) (coe v6) (coe v7) (coe v12)
-                       (coe v16) (coe v20) (coe v22) (coe v29))
-                    v30
+                       du_ev''_2154 (coe v0) (coe v1) (coe v2) (coe v5) (coe v6) (coe v11)
+                       (coe v15) (coe v19) (coe v21) (coe v28))
+                    v29
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v9
-        -> case coe v8 of
-             C_valid'45'μ'45'wf_878 v15 v17
+      MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v8
+        -> case coe v7 of
+             C_valid'45'μ'45'wf_878 v14 v16
                -> coe
-                    C_valid'45'μ'45'wf_878 v15
+                    C_valid'45'μ'45'wf_878 v14
                     (coe
                        du_validityWF'45'mem'45'only_2036 (coe v0) (coe v1) (coe v2)
-                       (coe v3)
                        (coe
-                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v4))
+                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v8) (coe v3))
                        (coe
-                          MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
+                          MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v3)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v4))
-                          (coe MAlonzo.Code.Once.IR.C_out'45'μ_100 v15) (coe v5))
-                       (coe v6) (coe v7) (coe v17))
+                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v8) (coe v3))
+                          (coe MAlonzo.Code.Once.IR.C_out'45'μ_100 v14) (coe v4))
+                       (coe v5) (coe v6) (coe v16))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v9
-        -> case coe v8 of
-             C_valid'45'ν'45'wf_894 v15 v17
+      MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v8
+        -> case coe v7 of
+             C_valid'45'ν'45'wf_894 v14 v16
                -> coe
-                    C_valid'45'ν'45'wf_894 v15
+                    C_valid'45'ν'45'wf_894 v14
                     (coe
                        du_validityWF'45'mem'45'only_2036 (coe v0) (coe v1) (coe v2)
-                       (coe v3)
                        (coe
-                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v4))
+                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v8) (coe v3))
                        (coe
-                          MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
+                          MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v3)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v4))
-                          (coe MAlonzo.Code.Once.IR.C_Out_116 v15) (coe v5))
-                       (coe v6) (coe v7) (coe v17))
+                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v8) (coe v3))
+                          (coe MAlonzo.Code.Once.IR.C_Out_116 v14) (coe v4))
+                       (coe v5) (coe v6) (coe v16))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_Int_30
-        -> case coe v8 of
-             C_valid'45'int'45'wf_906 v14 -> coe C_valid'45'int'45'wf_906 v14
+        -> case coe v7 of
+             C_valid'45'int'45'wf_906 v13 -> coe C_valid'45'int'45'wf_906 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_Float_32
-        -> case coe v8 of
-             C_valid'45'float'45'wf_918 v14
-               -> coe C_valid'45'float'45'wf_918 v14
+        -> case coe v7 of
+             C_valid'45'float'45'wf_918 v13
+               -> coe C_valid'45'float'45'wf_918 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_Str_34
-        -> case coe v8 of
-             C_valid'45'str'45'wf_930 v14 -> coe C_valid'45'str'45'wf_930 v14
+        -> case coe v7 of
+             C_valid'45'str'45'wf_930 v13 -> coe C_valid'45'str'45'wf_930 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_Buffer_36
-        -> case coe v8 of
-             C_valid'45'buffer'45'wf_942 v14
-               -> coe C_valid'45'buffer'45'wf_942 v14
+        -> case coe v7 of
+             C_valid'45'buffer'45'wf_942 v13
+               -> coe C_valid'45'buffer'45'wf_942 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.fp'
@@ -1900,8 +1885,8 @@ du_fv''_2102 ::
   T_ValidAtWF_530 -> T_ValidAtWF_530
 du_fv''_2102 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = coe
-      du_validityWF'45'mem'45'only_2036 (coe v0) (coe v1) (coe v8)
-      (coe v2) (coe v3) (coe v4) (coe v5) (coe v6) (coe v9)
+      du_validityWF'45'mem'45'only_2036 (coe v0) (coe v1) (coe v2)
+      (coe v3) (coe v4) (coe v5) (coe v6) (coe v9)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.sv'
 d_sv''_2104 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -1944,8 +1929,8 @@ du_sv''_2104 ::
   T_ValidAtWF_530 -> T_ValidAtWF_530
 du_sv''_2104 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = coe
-      du_validityWF'45'mem'45'only_2036 (coe v0) (coe v1) (coe v8)
-      (coe v2) (coe v3) (coe v4) (coe v5) (coe v6) (coe v9)
+      du_validityWF'45'mem'45'only_2036 (coe v0) (coe v1) (coe v2)
+      (coe v3) (coe v4) (coe v5) (coe v6) (coe v9)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.ep'
 d_ep''_2150 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -2046,8 +2031,8 @@ du_ev''_2154 ::
   T_ValidAtWF_530 -> T_ValidAtWF_530
 du_ev''_2154 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = coe
-      du_validityWF'45'mem'45'only_2036 (coe v0) (coe v1) (coe v8)
-      (coe v2) (coe v5) (coe v6) (coe v3) (coe v4) (coe v9)
+      du_validityWF'45'mem'45'only_2036 (coe v0) (coe v1) (coe v2)
+      (coe v5) (coe v6) (coe v3) (coe v4) (coe v9)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.tg'
 d_tg''_2194 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -2070,11 +2055,7 @@ d_tg''_2194 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   T_ValidAtWF_530 -> AgdaAny
-d_tg''_2194 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
-            ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19
-  = du_tg''_2194 v2
-du_tg''_2194 :: MAlonzo.Code.Once.IR.T_AllocMode_4 -> AgdaAny
-du_tg''_2194 v0 = coe du_transport'45'SumTag_510 (coe v0)
+d_tg''_2194 = erased
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.pp'
 d_pp''_2196 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -2136,8 +2117,8 @@ du_pv''_2198 ::
   T_ValidAtWF_530 -> T_ValidAtWF_530
 du_pv''_2198 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = coe
-      du_validityWF'45'mem'45'only_2036 (coe v0) (coe v1) (coe v8)
-      (coe v2) (coe v3) (coe v6) (coe v4) (coe v5) (coe v9)
+      du_validityWF'45'mem'45'only_2036 (coe v0) (coe v1) (coe v2)
+      (coe v3) (coe v6) (coe v4) (coe v5) (coe v9)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.tg'
 d_tg''_2238 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -2160,11 +2141,7 @@ d_tg''_2238 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   T_ValidAtWF_530 -> AgdaAny
-d_tg''_2238 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
-            ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19
-  = du_tg''_2238 v2
-du_tg''_2238 :: MAlonzo.Code.Once.IR.T_AllocMode_4 -> AgdaAny
-du_tg''_2238 v0 = coe du_transport'45'SumTag_510 (coe v0)
+d_tg''_2238 = erased
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.pp'
 d_pp''_2240 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -2226,8 +2203,8 @@ du_pv''_2242 ::
   T_ValidAtWF_530 -> T_ValidAtWF_530
 du_pv''_2242 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = coe
-      du_validityWF'45'mem'45'only_2036 (coe v0) (coe v1) (coe v8)
-      (coe v2) (coe v3) (coe v6) (coe v4) (coe v5) (coe v9)
+      du_validityWF'45'mem'45'only_2036 (coe v0) (coe v1) (coe v2)
+      (coe v3) (coe v6) (coe v4) (coe v5) (coe v9)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef.validityWF-write-at-frontier
 d_validityWF'45'write'45'at'45'frontier_2370 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -2241,14 +2218,13 @@ d_validityWF'45'write'45'at'45'frontier_2370 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   T_ValidAtWF_530 -> T_ValidAtWF_530
-d_validityWF'45'write'45'at'45'frontier_2370 v0 v1 v2 v3 v4 v5 ~v6
+d_validityWF'45'write'45'at'45'frontier_2370 v0 v1 ~v2 v3 v4 v5 ~v6
                                              v7 v8 ~v9 v10
   = du_validityWF'45'write'45'at'45'frontier_2370
-      v0 v1 v2 v3 v4 v5 v7 v8 v10
+      v0 v1 v3 v4 v5 v7 v8 v10
 du_validityWF'45'write'45'at'45'frontier_2370 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_626 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   AgdaAny ->
@@ -2256,110 +2232,108 @@ du_validityWF'45'write'45'at'45'frontier_2370 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_ValidAtWF_530 -> T_ValidAtWF_530
 du_validityWF'45'write'45'at'45'frontier_2370 v0 v1 v2 v3 v4 v5 v6
-                                              v7 v8
-  = case coe v4 of
+                                              v7
+  = case coe v3 of
       MAlonzo.Code.Once.IRTy.C_Unit_16
-        -> coe seq (coe v8) (coe C_valid'45'unit'45'wf_766)
-      MAlonzo.Code.Once.IRTy.C__'42'__20 v9 v10
-        -> case coe v5 of
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
-               -> case coe v8 of
-                    C_valid'45'pair'45'wf_792 v20 v21 v23 v24 v25 v28 v29 v30 v31 v32
+        -> coe seq (coe v7) (coe C_valid'45'unit'45'wf_766)
+      MAlonzo.Code.Once.IRTy.C__'42'__20 v8 v9
+        -> case coe v4 of
+             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
+               -> case coe v7 of
+                    C_valid'45'pair'45'wf_792 v19 v20 v22 v23 v24 v27 v28 v29 v30 v31
                       -> coe
-                           C_valid'45'pair'45'wf_792 v20 v21 v23 v24 v25 v28 v29 v30
+                           C_valid'45'pair'45'wf_792 v19 v20 v22 v23 v24 v27 v28 v29
                            (coe
-                              du_fv''_2432 (coe v0) (coe v1) (coe v3) (coe v9) (coe v11) (coe v6)
-                              (coe v7) (coe v20) (coe v23) (coe v28) (coe v31))
+                              du_fv''_2432 (coe v0) (coe v1) (coe v2) (coe v8) (coe v10) (coe v5)
+                              (coe v6) (coe v19) (coe v22) (coe v27) (coe v30))
                            (coe
-                              du_sv''_2434 (coe v0) (coe v1) (coe v3) (coe v10) (coe v12)
-                              (coe v6) (coe v7) (coe v21) (coe v24) (coe v29) (coe v32))
+                              du_sv''_2434 (coe v0) (coe v1) (coe v2) (coe v9) (coe v11) (coe v5)
+                              (coe v6) (coe v20) (coe v23) (coe v28) (coe v31))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IRTy.C__'43'__22 v9 v10
-        -> case coe v8 of
-             C_valid'45'inl'45'wf_842 v17 v19 v20 v21 v23 v24 v25
-               -> case coe v5 of
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v26
+      MAlonzo.Code.Once.IRTy.C__'43'__22 v8 v9
+        -> case coe v7 of
+             C_valid'45'inl'45'wf_842 v16 v18 v19 v22 v23 v24
+               -> case coe v4 of
+                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v25
                       -> coe
-                           C_valid'45'inl'45'wf_842 v17 v19 v20 (coe du_tg''_2520 (coe v2))
-                           v23 v24
+                           C_valid'45'inl'45'wf_842 v16 v18 v19 v22 v23
                            (coe
-                              du_pv''_2524 (coe v0) (coe v1) (coe v3) (coe v9) (coe v6) (coe v7)
-                              (coe v26) (coe v17) (coe v19) (coe v23) (coe v25))
+                              du_pv''_2524 (coe v0) (coe v1) (coe v2) (coe v8) (coe v5) (coe v6)
+                              (coe v25) (coe v16) (coe v18) (coe v22) (coe v24))
                     _ -> MAlonzo.RTE.mazUnreachableError
-             C_valid'45'inr'45'wf_862 v17 v19 v20 v21 v23 v24 v25
-               -> case coe v5 of
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v26
+             C_valid'45'inr'45'wf_862 v16 v18 v19 v22 v23 v24
+               -> case coe v4 of
+                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v25
                       -> coe
-                           C_valid'45'inr'45'wf_862 v17 v19 v20 (coe du_tg''_2562 (coe v2))
-                           v23 v24
+                           C_valid'45'inr'45'wf_862 v16 v18 v19 v22 v23
                            (coe
-                              du_pv''_2566 (coe v0) (coe v1) (coe v3) (coe v10) (coe v6) (coe v7)
-                              (coe v26) (coe v17) (coe v19) (coe v23) (coe v25))
+                              du_pv''_2566 (coe v0) (coe v1) (coe v2) (coe v9) (coe v5) (coe v6)
+                              (coe v25) (coe v16) (coe v18) (coe v22) (coe v24))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IRTy.C__'8667'__24 v9 v10
-        -> case coe v8 of
-             C_valid'45'closure'45'wf_822 v12 v15 v16 v18 v20 v22 v23 v24 v27 v28 v29 v30
+      MAlonzo.Code.Once.IRTy.C__'8667'__24 v8 v9
+        -> case coe v7 of
+             C_valid'45'closure'45'wf_822 v11 v14 v15 v17 v19 v21 v22 v23 v26 v27 v28 v29
                -> coe
-                    C_valid'45'closure'45'wf_822 v12 v15 v16 v18 v20 v22 v23 v24 v27
-                    v28
+                    C_valid'45'closure'45'wf_822 v11 v14 v15 v17 v19 v21 v22 v23 v26
+                    v27
                     (coe
-                       du_ev''_2482 (coe v0) (coe v1) (coe v3) (coe v6) (coe v7) (coe v12)
-                       (coe v16) (coe v20) (coe v22) (coe v27) (coe v29))
-                    v30
+                       du_ev''_2482 (coe v0) (coe v1) (coe v2) (coe v5) (coe v6) (coe v11)
+                       (coe v15) (coe v19) (coe v21) (coe v26) (coe v28))
+                    v29
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v9
-        -> case coe v8 of
-             C_valid'45'μ'45'wf_878 v15 v17
+      MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v8
+        -> case coe v7 of
+             C_valid'45'μ'45'wf_878 v14 v16
                -> coe
-                    C_valid'45'μ'45'wf_878 v15
+                    C_valid'45'μ'45'wf_878 v14
                     (coe
                        du_validityWF'45'write'45'at'45'frontier_2370 (coe v0) (coe v1)
-                       (coe v2) (coe v3)
+                       (coe v2)
                        (coe
-                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v4))
+                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v8) (coe v3))
                        (coe
-                          MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
+                          MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v3)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v4))
-                          (coe MAlonzo.Code.Once.IR.C_out'45'μ_100 v15) (coe v5))
-                       (coe v6) (coe v7) (coe v17))
+                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v8) (coe v3))
+                          (coe MAlonzo.Code.Once.IR.C_out'45'μ_100 v14) (coe v4))
+                       (coe v5) (coe v6) (coe v16))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v9
-        -> case coe v8 of
-             C_valid'45'ν'45'wf_894 v15 v17
+      MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v8
+        -> case coe v7 of
+             C_valid'45'ν'45'wf_894 v14 v16
                -> coe
-                    C_valid'45'ν'45'wf_894 v15
+                    C_valid'45'ν'45'wf_894 v14
                     (coe
                        du_validityWF'45'write'45'at'45'frontier_2370 (coe v0) (coe v1)
-                       (coe v2) (coe v3)
+                       (coe v2)
                        (coe
-                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v4))
+                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v8) (coe v3))
                        (coe
-                          MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
+                          MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v3)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v4))
-                          (coe MAlonzo.Code.Once.IR.C_Out_116 v15) (coe v5))
-                       (coe v6) (coe v7) (coe v17))
+                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v8) (coe v3))
+                          (coe MAlonzo.Code.Once.IR.C_Out_116 v14) (coe v4))
+                       (coe v5) (coe v6) (coe v16))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_Int_30
-        -> case coe v8 of
-             C_valid'45'int'45'wf_906 v14 -> coe C_valid'45'int'45'wf_906 v14
+        -> case coe v7 of
+             C_valid'45'int'45'wf_906 v13 -> coe C_valid'45'int'45'wf_906 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_Float_32
-        -> case coe v8 of
-             C_valid'45'float'45'wf_918 v14
-               -> coe C_valid'45'float'45'wf_918 v14
+        -> case coe v7 of
+             C_valid'45'float'45'wf_918 v13
+               -> coe C_valid'45'float'45'wf_918 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_Str_34
-        -> case coe v8 of
-             C_valid'45'str'45'wf_930 v14 -> coe C_valid'45'str'45'wf_930 v14
+        -> case coe v7 of
+             C_valid'45'str'45'wf_930 v13 -> coe C_valid'45'str'45'wf_930 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_Buffer_36
-        -> case coe v8 of
-             C_valid'45'buffer'45'wf_942 v14
-               -> coe C_valid'45'buffer'45'wf_942 v14
+        -> case coe v7 of
+             C_valid'45'buffer'45'wf_942 v13
+               -> coe C_valid'45'buffer'45'wf_942 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.fp'
@@ -2459,7 +2433,7 @@ du_fv''_2432 ::
 du_fv''_2432 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = coe
       du_validityWF'45'write'45'at'45'frontier_2370 (coe v0) (coe v1)
-      (coe v8) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6) (coe v10)
+      (coe v2) (coe v3) (coe v4) (coe v5) (coe v6) (coe v10)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.sv'
 d_sv''_2434 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -2503,7 +2477,7 @@ du_sv''_2434 ::
 du_sv''_2434 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = coe
       du_validityWF'45'write'45'at'45'frontier_2370 (coe v0) (coe v1)
-      (coe v8) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6) (coe v10)
+      (coe v2) (coe v3) (coe v4) (coe v5) (coe v6) (coe v10)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.ep'
 d_ep''_2478 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -2603,7 +2577,7 @@ du_ev''_2482 ::
 du_ev''_2482 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = coe
       du_validityWF'45'write'45'at'45'frontier_2370 (coe v0) (coe v1)
-      (coe v8) (coe v2) (coe v5) (coe v6) (coe v3) (coe v4) (coe v10)
+      (coe v2) (coe v5) (coe v6) (coe v3) (coe v4) (coe v10)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.tg'
 d_tg''_2520 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -2625,11 +2599,7 @@ d_tg''_2520 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   T_ValidAtWF_530 -> AgdaAny
-d_tg''_2520 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
-            ~v13 ~v14 ~v15 ~v16 ~v17 ~v18
-  = du_tg''_2520 v2
-du_tg''_2520 :: MAlonzo.Code.Once.IR.T_AllocMode_4 -> AgdaAny
-du_tg''_2520 v0 = coe du_transport'45'SumTag_510 (coe v0)
+d_tg''_2520 = erased
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.pp'
 d_pp''_2522 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -2691,7 +2661,7 @@ du_pv''_2524 ::
 du_pv''_2524 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = coe
       du_validityWF'45'write'45'at'45'frontier_2370 (coe v0) (coe v1)
-      (coe v8) (coe v2) (coe v3) (coe v6) (coe v4) (coe v5) (coe v10)
+      (coe v2) (coe v3) (coe v6) (coe v4) (coe v5) (coe v10)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.tg'
 d_tg''_2562 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -2713,11 +2683,7 @@ d_tg''_2562 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   T_ValidAtWF_530 -> AgdaAny
-d_tg''_2562 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
-            ~v13 ~v14 ~v15 ~v16 ~v17 ~v18
-  = du_tg''_2562 v2
-du_tg''_2562 :: MAlonzo.Code.Once.IR.T_AllocMode_4 -> AgdaAny
-du_tg''_2562 v0 = coe du_transport'45'SumTag_510 (coe v0)
+d_tg''_2562 = erased
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.pp'
 d_pp''_2564 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -2779,7 +2745,7 @@ du_pv''_2566 ::
 du_pv''_2566 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = coe
       du_validityWF'45'write'45'at'45'frontier_2370 (coe v0) (coe v1)
-      (coe v8) (coe v2) (coe v3) (coe v6) (coe v4) (coe v5) (coe v10)
+      (coe v2) (coe v3) (coe v6) (coe v4) (coe v5) (coe v10)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef.validityWF-write-at-suc-frontier
 d_validityWF'45'write'45'at'45'suc'45'frontier_2682 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -2793,14 +2759,13 @@ d_validityWF'45'write'45'at'45'suc'45'frontier_2682 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   T_ValidAtWF_530 -> T_ValidAtWF_530
-d_validityWF'45'write'45'at'45'suc'45'frontier_2682 v0 v1 v2 v3 v4
+d_validityWF'45'write'45'at'45'suc'45'frontier_2682 v0 v1 ~v2 v3 v4
                                                     v5 ~v6 v7 v8 ~v9 v10
   = du_validityWF'45'write'45'at'45'suc'45'frontier_2682
-      v0 v1 v2 v3 v4 v5 v7 v8 v10
+      v0 v1 v3 v4 v5 v7 v8 v10
 du_validityWF'45'write'45'at'45'suc'45'frontier_2682 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_626 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   AgdaAny ->
@@ -2808,110 +2773,108 @@ du_validityWF'45'write'45'at'45'suc'45'frontier_2682 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   T_ValidAtWF_530 -> T_ValidAtWF_530
 du_validityWF'45'write'45'at'45'suc'45'frontier_2682 v0 v1 v2 v3 v4
-                                                     v5 v6 v7 v8
-  = case coe v4 of
+                                                     v5 v6 v7
+  = case coe v3 of
       MAlonzo.Code.Once.IRTy.C_Unit_16
-        -> coe seq (coe v8) (coe C_valid'45'unit'45'wf_766)
-      MAlonzo.Code.Once.IRTy.C__'42'__20 v9 v10
-        -> case coe v5 of
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
-               -> case coe v8 of
-                    C_valid'45'pair'45'wf_792 v20 v21 v23 v24 v25 v28 v29 v30 v31 v32
+        -> coe seq (coe v7) (coe C_valid'45'unit'45'wf_766)
+      MAlonzo.Code.Once.IRTy.C__'42'__20 v8 v9
+        -> case coe v4 of
+             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
+               -> case coe v7 of
+                    C_valid'45'pair'45'wf_792 v19 v20 v22 v23 v24 v27 v28 v29 v30 v31
                       -> coe
-                           C_valid'45'pair'45'wf_792 v20 v21 v23 v24 v25 v28 v29 v30
+                           C_valid'45'pair'45'wf_792 v19 v20 v22 v23 v24 v27 v28 v29
                            (coe
-                              du_fv''_2744 (coe v0) (coe v1) (coe v3) (coe v9) (coe v11) (coe v6)
-                              (coe v7) (coe v20) (coe v23) (coe v28) (coe v31))
+                              du_fv''_2744 (coe v0) (coe v1) (coe v2) (coe v8) (coe v10) (coe v5)
+                              (coe v6) (coe v19) (coe v22) (coe v27) (coe v30))
                            (coe
-                              du_sv''_2746 (coe v0) (coe v1) (coe v3) (coe v10) (coe v12)
-                              (coe v6) (coe v7) (coe v21) (coe v24) (coe v29) (coe v32))
+                              du_sv''_2746 (coe v0) (coe v1) (coe v2) (coe v9) (coe v11) (coe v5)
+                              (coe v6) (coe v20) (coe v23) (coe v28) (coe v31))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IRTy.C__'43'__22 v9 v10
-        -> case coe v8 of
-             C_valid'45'inl'45'wf_842 v17 v19 v20 v21 v23 v24 v25
-               -> case coe v5 of
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v26
+      MAlonzo.Code.Once.IRTy.C__'43'__22 v8 v9
+        -> case coe v7 of
+             C_valid'45'inl'45'wf_842 v16 v18 v19 v22 v23 v24
+               -> case coe v4 of
+                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v25
                       -> coe
-                           C_valid'45'inl'45'wf_842 v17 v19 v20 (coe du_tg''_2832 (coe v2))
-                           v23 v24
+                           C_valid'45'inl'45'wf_842 v16 v18 v19 v22 v23
                            (coe
-                              du_pv''_2836 (coe v0) (coe v1) (coe v3) (coe v9) (coe v6) (coe v7)
-                              (coe v26) (coe v17) (coe v19) (coe v23) (coe v25))
+                              du_pv''_2836 (coe v0) (coe v1) (coe v2) (coe v8) (coe v5) (coe v6)
+                              (coe v25) (coe v16) (coe v18) (coe v22) (coe v24))
                     _ -> MAlonzo.RTE.mazUnreachableError
-             C_valid'45'inr'45'wf_862 v17 v19 v20 v21 v23 v24 v25
-               -> case coe v5 of
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v26
+             C_valid'45'inr'45'wf_862 v16 v18 v19 v22 v23 v24
+               -> case coe v4 of
+                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v25
                       -> coe
-                           C_valid'45'inr'45'wf_862 v17 v19 v20 (coe du_tg''_2874 (coe v2))
-                           v23 v24
+                           C_valid'45'inr'45'wf_862 v16 v18 v19 v22 v23
                            (coe
-                              du_pv''_2878 (coe v0) (coe v1) (coe v3) (coe v10) (coe v6) (coe v7)
-                              (coe v26) (coe v17) (coe v19) (coe v23) (coe v25))
+                              du_pv''_2878 (coe v0) (coe v1) (coe v2) (coe v9) (coe v5) (coe v6)
+                              (coe v25) (coe v16) (coe v18) (coe v22) (coe v24))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IRTy.C__'8667'__24 v9 v10
-        -> case coe v8 of
-             C_valid'45'closure'45'wf_822 v12 v15 v16 v18 v20 v22 v23 v24 v27 v28 v29 v30
+      MAlonzo.Code.Once.IRTy.C__'8667'__24 v8 v9
+        -> case coe v7 of
+             C_valid'45'closure'45'wf_822 v11 v14 v15 v17 v19 v21 v22 v23 v26 v27 v28 v29
                -> coe
-                    C_valid'45'closure'45'wf_822 v12 v15 v16 v18 v20 v22 v23 v24 v27
-                    v28
+                    C_valid'45'closure'45'wf_822 v11 v14 v15 v17 v19 v21 v22 v23 v26
+                    v27
                     (coe
-                       du_ev''_2794 (coe v0) (coe v1) (coe v3) (coe v6) (coe v7) (coe v12)
-                       (coe v16) (coe v20) (coe v22) (coe v27) (coe v29))
-                    v30
+                       du_ev''_2794 (coe v0) (coe v1) (coe v2) (coe v5) (coe v6) (coe v11)
+                       (coe v15) (coe v19) (coe v21) (coe v26) (coe v28))
+                    v29
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v9
-        -> case coe v8 of
-             C_valid'45'μ'45'wf_878 v15 v17
+      MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v8
+        -> case coe v7 of
+             C_valid'45'μ'45'wf_878 v14 v16
                -> coe
-                    C_valid'45'μ'45'wf_878 v15
+                    C_valid'45'μ'45'wf_878 v14
                     (coe
                        du_validityWF'45'write'45'at'45'suc'45'frontier_2682 (coe v0)
-                       (coe v1) (coe v2) (coe v3)
+                       (coe v1) (coe v2)
                        (coe
-                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v4))
+                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v8) (coe v3))
                        (coe
-                          MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
+                          MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v3)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v4))
-                          (coe MAlonzo.Code.Once.IR.C_out'45'μ_100 v15) (coe v5))
-                       (coe v6) (coe v7) (coe v17))
+                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v8) (coe v3))
+                          (coe MAlonzo.Code.Once.IR.C_out'45'μ_100 v14) (coe v4))
+                       (coe v5) (coe v6) (coe v16))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v9
-        -> case coe v8 of
-             C_valid'45'ν'45'wf_894 v15 v17
+      MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v8
+        -> case coe v7 of
+             C_valid'45'ν'45'wf_894 v14 v16
                -> coe
-                    C_valid'45'ν'45'wf_894 v15
+                    C_valid'45'ν'45'wf_894 v14
                     (coe
                        du_validityWF'45'write'45'at'45'suc'45'frontier_2682 (coe v0)
-                       (coe v1) (coe v2) (coe v3)
+                       (coe v1) (coe v2)
                        (coe
-                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v4))
+                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v8) (coe v3))
                        (coe
-                          MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
+                          MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v3)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v4))
-                          (coe MAlonzo.Code.Once.IR.C_Out_116 v15) (coe v5))
-                       (coe v6) (coe v7) (coe v17))
+                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v8) (coe v3))
+                          (coe MAlonzo.Code.Once.IR.C_Out_116 v14) (coe v4))
+                       (coe v5) (coe v6) (coe v16))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_Int_30
-        -> case coe v8 of
-             C_valid'45'int'45'wf_906 v14 -> coe C_valid'45'int'45'wf_906 v14
+        -> case coe v7 of
+             C_valid'45'int'45'wf_906 v13 -> coe C_valid'45'int'45'wf_906 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_Float_32
-        -> case coe v8 of
-             C_valid'45'float'45'wf_918 v14
-               -> coe C_valid'45'float'45'wf_918 v14
+        -> case coe v7 of
+             C_valid'45'float'45'wf_918 v13
+               -> coe C_valid'45'float'45'wf_918 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_Str_34
-        -> case coe v8 of
-             C_valid'45'str'45'wf_930 v14 -> coe C_valid'45'str'45'wf_930 v14
+        -> case coe v7 of
+             C_valid'45'str'45'wf_930 v13 -> coe C_valid'45'str'45'wf_930 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_Buffer_36
-        -> case coe v8 of
-             C_valid'45'buffer'45'wf_942 v14
-               -> coe C_valid'45'buffer'45'wf_942 v14
+        -> case coe v7 of
+             C_valid'45'buffer'45'wf_942 v13
+               -> coe C_valid'45'buffer'45'wf_942 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.fp'
@@ -3011,8 +2974,7 @@ du_fv''_2744 ::
 du_fv''_2744 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = coe
       du_validityWF'45'write'45'at'45'suc'45'frontier_2682 (coe v0)
-      (coe v1) (coe v8) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
-      (coe v10)
+      (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6) (coe v10)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.sv'
 d_sv''_2746 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -3056,8 +3018,7 @@ du_sv''_2746 ::
 du_sv''_2746 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = coe
       du_validityWF'45'write'45'at'45'suc'45'frontier_2682 (coe v0)
-      (coe v1) (coe v8) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
-      (coe v10)
+      (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6) (coe v10)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.ep'
 d_ep''_2790 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -3157,8 +3118,7 @@ du_ev''_2794 ::
 du_ev''_2794 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = coe
       du_validityWF'45'write'45'at'45'suc'45'frontier_2682 (coe v0)
-      (coe v1) (coe v8) (coe v2) (coe v5) (coe v6) (coe v3) (coe v4)
-      (coe v10)
+      (coe v1) (coe v2) (coe v5) (coe v6) (coe v3) (coe v4) (coe v10)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.tg'
 d_tg''_2832 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -3180,11 +3140,7 @@ d_tg''_2832 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   T_ValidAtWF_530 -> AgdaAny
-d_tg''_2832 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
-            ~v13 ~v14 ~v15 ~v16 ~v17 ~v18
-  = du_tg''_2832 v2
-du_tg''_2832 :: MAlonzo.Code.Once.IR.T_AllocMode_4 -> AgdaAny
-du_tg''_2832 v0 = coe du_transport'45'SumTag_510 (coe v0)
+d_tg''_2832 = erased
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.pp'
 d_pp''_2834 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -3246,8 +3202,7 @@ du_pv''_2836 ::
 du_pv''_2836 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = coe
       du_validityWF'45'write'45'at'45'suc'45'frontier_2682 (coe v0)
-      (coe v1) (coe v8) (coe v2) (coe v3) (coe v6) (coe v4) (coe v5)
-      (coe v10)
+      (coe v1) (coe v2) (coe v3) (coe v6) (coe v4) (coe v5) (coe v10)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.tg'
 d_tg''_2874 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -3269,11 +3224,7 @@ d_tg''_2874 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   T_ValidAtWF_530 -> AgdaAny
-d_tg''_2874 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
-            ~v13 ~v14 ~v15 ~v16 ~v17 ~v18
-  = du_tg''_2874 v2
-du_tg''_2874 :: MAlonzo.Code.Once.IR.T_AllocMode_4 -> AgdaAny
-du_tg''_2874 v0 = coe du_transport'45'SumTag_510 (coe v0)
+d_tg''_2874 = erased
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.pp'
 d_pp''_2876 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -3335,8 +3286,7 @@ du_pv''_2878 ::
 du_pv''_2878 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = coe
       du_validityWF'45'write'45'at'45'suc'45'frontier_2682 (coe v0)
-      (coe v1) (coe v8) (coe v2) (coe v3) (coe v6) (coe v4) (coe v5)
-      (coe v10)
+      (coe v1) (coe v2) (coe v3) (coe v6) (coe v4) (coe v5) (coe v10)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef.validityWF-alloc-advance
 d_validityWF'45'alloc'45'advance_2996 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -3385,22 +3335,22 @@ du_validityWF'45'alloc'45'advance_2996 v0 v1 v2 v3 v4 v5 v6 v7 v8
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C__'43'__22 v9 v10
         -> case coe v8 of
-             C_valid'45'inl'45'wf_842 v17 v19 v20 v21 v23 v24 v25
+             C_valid'45'inl'45'wf_842 v17 v19 v20 v23 v24 v25
                -> case coe v4 of
                     MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v26
                       -> coe
-                           C_valid'45'inl'45'wf_842 v17 v19 v20 v21
+                           C_valid'45'inl'45'wf_842 v17 v19 v20
                            (coe du_pb''_3140 (coe v2) (coe v17) (coe v23))
                            (coe du_slb''_3142 (coe v2) (coe v5) (coe v24))
                            (coe
                               du_pv''_3144 (coe v0) (coe v1) (coe v2) (coe v9) (coe v6) (coe v7)
                               (coe v26) (coe v17) (coe v19) (coe v25))
                     _ -> MAlonzo.RTE.mazUnreachableError
-             C_valid'45'inr'45'wf_862 v17 v19 v20 v21 v23 v24 v25
+             C_valid'45'inr'45'wf_862 v17 v19 v20 v23 v24 v25
                -> case coe v4 of
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v26
                       -> coe
-                           C_valid'45'inr'45'wf_862 v17 v19 v20 v21
+                           C_valid'45'inr'45'wf_862 v17 v19 v20
                            (coe du_pb''_3180 (coe v2) (coe v17) (coe v23))
                            (coe du_slb''_3182 (coe v2) (coe v5) (coe v24))
                            (coe
@@ -4078,22 +4028,22 @@ du_validityWF'45'frontier'45'advance_3288 v0 v1 v2 v3 v4 v5 v6 v7
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C__'43'__22 v11 v12
         -> case coe v10 of
-             C_valid'45'inl'45'wf_842 v19 v21 v22 v23 v25 v26 v27
+             C_valid'45'inl'45'wf_842 v19 v21 v22 v25 v26 v27
                -> case coe v5 of
                     MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v28
                       -> coe
-                           C_valid'45'inl'45'wf_842 v19 v21 v22 v23
+                           C_valid'45'inl'45'wf_842 v19 v21 v22
                            (coe du_pb''_3456 (coe v8) (coe v9) (coe v19) (coe v25))
                            (coe du_slb''_3458 (coe v6) (coe v8) (coe v9) (coe v26))
                            (coe
                               du_pv''_3460 (coe v0) (coe v1) (coe v2) (coe v3) (coe v11) (coe v7)
                               (coe v8) (coe v9) (coe v28) (coe v19) (coe v21) (coe v27))
                     _ -> MAlonzo.RTE.mazUnreachableError
-             C_valid'45'inr'45'wf_862 v19 v21 v22 v23 v25 v26 v27
+             C_valid'45'inr'45'wf_862 v19 v21 v22 v25 v26 v27
                -> case coe v5 of
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v28
                       -> coe
-                           C_valid'45'inr'45'wf_862 v19 v21 v22 v23
+                           C_valid'45'inr'45'wf_862 v19 v21 v22
                            (coe du_pb''_3502 (coe v8) (coe v9) (coe v19) (coe v25))
                            (coe du_slb''_3504 (coe v6) (coe v8) (coe v9) (coe v26))
                            (coe
@@ -4834,11 +4784,11 @@ du_validityWF'45'with'45'bf'45'transfer_3650 v0 v1 v2 v3 v4
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C__'43'__22 v5 v6
         -> case coe v4 of
-             C_valid'45'inl'45'wf_842 v13 v15 v16 v17 v19 v20 v21
+             C_valid'45'inl'45'wf_842 v13 v15 v16 v19 v20 v21
                -> case coe v1 of
                     MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v22
                       -> coe
-                           C_valid'45'inl'45'wf_842 v13 v15 v16 v17 (coe v3 v13 v19)
+                           C_valid'45'inl'45'wf_842 v13 v15 v16 (coe v3 v13 v19)
                            (coe
                               v3 (coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_84 (coe v2))
                               v20)
@@ -4846,11 +4796,11 @@ du_validityWF'45'with'45'bf'45'transfer_3650 v0 v1 v2 v3 v4
                               du_validityWF'45'with'45'bf'45'transfer_3650 (coe v5) (coe v22)
                               (coe v13) (coe v3) (coe v21))
                     _ -> MAlonzo.RTE.mazUnreachableError
-             C_valid'45'inr'45'wf_862 v13 v15 v16 v17 v19 v20 v21
+             C_valid'45'inr'45'wf_862 v13 v15 v16 v19 v20 v21
                -> case coe v1 of
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v22
                       -> coe
-                           C_valid'45'inr'45'wf_862 v13 v15 v16 v17 (coe v3 v13 v19)
+                           C_valid'45'inr'45'wf_862 v13 v15 v16 (coe v3 v13 v19)
                            (coe
                               v3 (coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_sucLoc_84 (coe v2))
                               v20)
@@ -4942,125 +4892,119 @@ d_validityWF'45'mem'45'preserved_3922 ::
    MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   T_ValidAtWF_530 -> T_ValidAtWF_530
-d_validityWF'45'mem'45'preserved_3922 v0 v1 v2 v3 v4 v5 ~v6 v7 v8
+d_validityWF'45'mem'45'preserved_3922 v0 v1 ~v2 v3 v4 v5 ~v6 v7 v8
                                       ~v9 ~v10 v11
-  = du_validityWF'45'mem'45'preserved_3922
-      v0 v1 v2 v3 v4 v5 v7 v8 v11
+  = du_validityWF'45'mem'45'preserved_3922 v0 v1 v3 v4 v5 v7 v8 v11
 du_validityWF'45'mem'45'preserved_3922 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_626 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_540 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_540 ->
   T_ValidAtWF_530 -> T_ValidAtWF_530
-du_validityWF'45'mem'45'preserved_3922 v0 v1 v2 v3 v4 v5 v6 v7 v8
-  = case coe v4 of
+du_validityWF'45'mem'45'preserved_3922 v0 v1 v2 v3 v4 v5 v6 v7
+  = case coe v3 of
       MAlonzo.Code.Once.IRTy.C_Unit_16
         -> coe
-             seq (coe v5) (coe seq (coe v8) (coe C_valid'45'unit'45'wf_766))
-      MAlonzo.Code.Once.IRTy.C__'42'__20 v9 v10
-        -> case coe v5 of
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
-               -> case coe v8 of
-                    C_valid'45'pair'45'wf_792 v20 v21 v23 v24 v25 v28 v29 v30 v31 v32
+             seq (coe v4) (coe seq (coe v7) (coe C_valid'45'unit'45'wf_766))
+      MAlonzo.Code.Once.IRTy.C__'42'__20 v8 v9
+        -> case coe v4 of
+             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
+               -> case coe v7 of
+                    C_valid'45'pair'45'wf_792 v19 v20 v22 v23 v24 v27 v28 v29 v30 v31
                       -> coe
-                           C_valid'45'pair'45'wf_792 v20 v21 v23 v24 v25 v28 v29 v30
+                           C_valid'45'pair'45'wf_792 v19 v20 v22 v23 v24 v27 v28 v29
                            (coe
-                              du_fv''_3988 (coe v0) (coe v1) (coe v3) (coe v9) (coe v11) (coe v6)
-                              (coe v7) (coe v20) (coe v23) (coe v28) (coe v31))
+                              du_fv''_3988 (coe v0) (coe v1) (coe v2) (coe v8) (coe v10) (coe v5)
+                              (coe v6) (coe v19) (coe v22) (coe v27) (coe v30))
                            (coe
-                              du_sv''_3990 (coe v0) (coe v1) (coe v3) (coe v10) (coe v12)
-                              (coe v6) (coe v7) (coe v21) (coe v24) (coe v29) (coe v32))
+                              du_sv''_3990 (coe v0) (coe v1) (coe v2) (coe v9) (coe v11) (coe v5)
+                              (coe v6) (coe v20) (coe v23) (coe v28) (coe v31))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IRTy.C__'43'__22 v9 v10
-        -> case coe v8 of
-             C_valid'45'inl'45'wf_842 v17 v19 v20 v21 v23 v24 v25
-               -> case coe v5 of
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v26
+      MAlonzo.Code.Once.IRTy.C__'43'__22 v8 v9
+        -> case coe v7 of
+             C_valid'45'inl'45'wf_842 v16 v18 v19 v22 v23 v24
+               -> case coe v4 of
+                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v25
                       -> coe
-                           C_valid'45'inl'45'wf_842 v17 v19 v20 (coe du_tg''_4080 (coe v2))
-                           v23 v24
+                           C_valid'45'inl'45'wf_842 v16 v18 v19 v22 v23
                            (coe
-                              du_pv''_4084 (coe v0) (coe v1) (coe v3) (coe v9) (coe v6) (coe v7)
-                              (coe v26) (coe v17) (coe v19) (coe v23) (coe v25))
+                              du_pv''_4084 (coe v0) (coe v1) (coe v2) (coe v8) (coe v5) (coe v6)
+                              (coe v25) (coe v16) (coe v18) (coe v22) (coe v24))
                     _ -> MAlonzo.RTE.mazUnreachableError
-             C_valid'45'inr'45'wf_862 v17 v19 v20 v21 v23 v24 v25
-               -> case coe v5 of
-                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v26
+             C_valid'45'inr'45'wf_862 v16 v18 v19 v22 v23 v24
+               -> case coe v4 of
+                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v25
                       -> coe
-                           C_valid'45'inr'45'wf_862 v17 v19 v20 (coe du_tg''_4124 (coe v2))
-                           v23 v24
+                           C_valid'45'inr'45'wf_862 v16 v18 v19 v22 v23
                            (coe
-                              du_pv''_4128 (coe v0) (coe v1) (coe v3) (coe v10) (coe v6) (coe v7)
-                              (coe v26) (coe v17) (coe v19) (coe v23) (coe v25))
+                              du_pv''_4128 (coe v0) (coe v1) (coe v2) (coe v9) (coe v5) (coe v6)
+                              (coe v25) (coe v16) (coe v18) (coe v22) (coe v24))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IRTy.C__'8667'__24 v9 v10
-        -> case coe v8 of
-             C_valid'45'closure'45'wf_822 v12 v15 v16 v18 v20 v22 v23 v24 v27 v28 v29 v30
+      MAlonzo.Code.Once.IRTy.C__'8667'__24 v8 v9
+        -> case coe v7 of
+             C_valid'45'closure'45'wf_822 v11 v14 v15 v17 v19 v21 v22 v23 v26 v27 v28 v29
                -> coe
-                    C_valid'45'closure'45'wf_822 v12 v15 v16 v18 v20 v22 v23 v24 v27
-                    v28
+                    C_valid'45'closure'45'wf_822 v11 v14 v15 v17 v19 v21 v22 v23 v26
+                    v27
                     (coe
-                       du_ev''_4040 (coe v0) (coe v1) (coe v3) (coe v6) (coe v7) (coe v12)
-                       (coe v16) (coe v20) (coe v22) (coe v27) (coe v29))
-                    v30
+                       du_ev''_4040 (coe v0) (coe v1) (coe v2) (coe v5) (coe v6) (coe v11)
+                       (coe v15) (coe v19) (coe v21) (coe v26) (coe v28))
+                    v29
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v9
-        -> case coe v8 of
-             C_valid'45'μ'45'wf_878 v15 v17
+      MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v8
+        -> case coe v7 of
+             C_valid'45'μ'45'wf_878 v14 v16
                -> coe
-                    C_valid'45'μ'45'wf_878 v15
+                    C_valid'45'μ'45'wf_878 v14
                     (coe
                        du_validityWF'45'mem'45'preserved_3922 (coe v0) (coe v1) (coe v2)
-                       (coe v3)
                        (coe
-                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v4))
+                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v8) (coe v3))
                        (coe
-                          MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
+                          MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v3)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v4))
-                          (coe MAlonzo.Code.Once.IR.C_out'45'μ_100 v15) (coe v5))
-                       (coe v6) (coe v7) (coe v17))
+                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v8) (coe v3))
+                          (coe MAlonzo.Code.Once.IR.C_out'45'μ_100 v14) (coe v4))
+                       (coe v5) (coe v6) (coe v16))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v9
-        -> case coe v8 of
-             C_valid'45'ν'45'wf_894 v15 v17
+      MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v8
+        -> case coe v7 of
+             C_valid'45'ν'45'wf_894 v14 v16
                -> coe
-                    C_valid'45'ν'45'wf_894 v15
+                    C_valid'45'ν'45'wf_894 v14
                     (coe
                        du_validityWF'45'mem'45'preserved_3922 (coe v0) (coe v1) (coe v2)
-                       (coe v3)
                        (coe
-                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v4))
+                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v8) (coe v3))
                        (coe
-                          MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v4)
+                          MAlonzo.Code.Once.CCC.Eval.d_eval_10 (coe v3)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v4))
-                          (coe MAlonzo.Code.Once.IR.C_Out_116 v15) (coe v5))
-                       (coe v6) (coe v7) (coe v17))
+                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v8) (coe v3))
+                          (coe MAlonzo.Code.Once.IR.C_Out_116 v14) (coe v4))
+                       (coe v5) (coe v6) (coe v16))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_Int_30
-        -> case coe v8 of
-             C_valid'45'int'45'wf_906 v14 -> coe C_valid'45'int'45'wf_906 v14
+        -> case coe v7 of
+             C_valid'45'int'45'wf_906 v13 -> coe C_valid'45'int'45'wf_906 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_Float_32
-        -> case coe v8 of
-             C_valid'45'float'45'wf_918 v14
-               -> coe C_valid'45'float'45'wf_918 v14
+        -> case coe v7 of
+             C_valid'45'float'45'wf_918 v13
+               -> coe C_valid'45'float'45'wf_918 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_Str_34
-        -> case coe v8 of
-             C_valid'45'str'45'wf_930 v14 -> coe C_valid'45'str'45'wf_930 v14
+        -> case coe v7 of
+             C_valid'45'str'45'wf_930 v13 -> coe C_valid'45'str'45'wf_930 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IRTy.C_Buffer_36
-        -> case coe v8 of
-             C_valid'45'buffer'45'wf_942 v14
-               -> coe C_valid'45'buffer'45'wf_942 v14
+        -> case coe v7 of
+             C_valid'45'buffer'45'wf_942 v13
+               -> coe C_valid'45'buffer'45'wf_942 v13
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.fp'
@@ -5168,8 +5112,8 @@ du_fv''_3988 ::
   T_ValidAtWF_530 -> T_ValidAtWF_530
 du_fv''_3988 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = coe
-      du_validityWF'45'mem'45'preserved_3922 (coe v0) (coe v1) (coe v8)
-      (coe v2) (coe v3) (coe v4) (coe v5) (coe v6) (coe v10)
+      du_validityWF'45'mem'45'preserved_3922 (coe v0) (coe v1) (coe v2)
+      (coe v3) (coe v4) (coe v5) (coe v6) (coe v10)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.sv'
 d_sv''_3990 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -5215,8 +5159,8 @@ du_sv''_3990 ::
   T_ValidAtWF_530 -> T_ValidAtWF_530
 du_sv''_3990 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = coe
-      du_validityWF'45'mem'45'preserved_3922 (coe v0) (coe v1) (coe v8)
-      (coe v2) (coe v3) (coe v4) (coe v5) (coe v6) (coe v10)
+      du_validityWF'45'mem'45'preserved_3922 (coe v0) (coe v1) (coe v2)
+      (coe v3) (coe v4) (coe v5) (coe v6) (coe v10)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.ep'
 d_ep''_4036 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -5324,8 +5268,8 @@ du_ev''_4040 ::
   T_ValidAtWF_530 -> T_ValidAtWF_530
 du_ev''_4040 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = coe
-      du_validityWF'45'mem'45'preserved_3922 (coe v0) (coe v1) (coe v8)
-      (coe v2) (coe v5) (coe v6) (coe v3) (coe v4) (coe v10)
+      du_validityWF'45'mem'45'preserved_3922 (coe v0) (coe v1) (coe v2)
+      (coe v5) (coe v6) (coe v3) (coe v4) (coe v10)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.tg'
 d_tg''_4080 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -5350,11 +5294,7 @@ d_tg''_4080 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   T_ValidAtWF_530 -> AgdaAny
-d_tg''_4080 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
-            ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19
-  = du_tg''_4080 v2
-du_tg''_4080 :: MAlonzo.Code.Once.IR.T_AllocMode_4 -> AgdaAny
-du_tg''_4080 v0 = coe du_transport'45'SumTag_510 (coe v0)
+d_tg''_4080 = erased
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.pp'
 d_pp''_4082 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -5421,8 +5361,8 @@ du_pv''_4084 ::
   T_ValidAtWF_530 -> T_ValidAtWF_530
 du_pv''_4084 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = coe
-      du_validityWF'45'mem'45'preserved_3922 (coe v0) (coe v1) (coe v8)
-      (coe v2) (coe v3) (coe v6) (coe v4) (coe v5) (coe v10)
+      du_validityWF'45'mem'45'preserved_3922 (coe v0) (coe v1) (coe v2)
+      (coe v3) (coe v6) (coe v4) (coe v5) (coe v10)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.tg'
 d_tg''_4124 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -5447,11 +5387,7 @@ d_tg''_4124 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   T_ValidAtWF_530 -> AgdaAny
-d_tg''_4124 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
-            ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19
-  = du_tg''_4124 v2
-du_tg''_4124 :: MAlonzo.Code.Once.IR.T_AllocMode_4 -> AgdaAny
-du_tg''_4124 v0 = coe du_transport'45'SumTag_510 (coe v0)
+d_tg''_4124 = erased
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.pp'
 d_pp''_4126 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -5518,8 +5454,8 @@ du_pv''_4128 ::
   T_ValidAtWF_530 -> T_ValidAtWF_530
 du_pv''_4128 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
   = coe
-      du_validityWF'45'mem'45'preserved_3922 (coe v0) (coe v1) (coe v8)
-      (coe v2) (coe v3) (coe v6) (coe v4) (coe v5) (coe v10)
+      du_validityWF'45'mem'45'preserved_3922 (coe v0) (coe v1) (coe v2)
+      (coe v3) (coe v6) (coe v4) (coe v5) (coe v10)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef.validityWF-mem-preserved-excluding
 d_validityWF'45'mem'45'preserved'45'excluding_4266 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -5710,7 +5646,7 @@ du_validityWF'45'mem'45'preserved'45'in'45'regions'45'strong_4612 v0
                            v34
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      C_valid'45'inl'45'wf_842 v21 v23 v24 v25 v27 v28 v29
+      C_valid'45'inl'45'wf_842 v21 v23 v24 v27 v28 v29
         -> case coe v3 of
              MAlonzo.Code.Once.IRTy.C__'43'__22 v30 v31
                -> case coe v5 of
@@ -5720,8 +5656,7 @@ du_validityWF'45'mem'45'preserved'45'in'45'regions'45'strong_4612 v0
                              -> case coe v34 of
                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v35 v36
                                     -> coe
-                                         C_valid'45'inl'45'wf_842 v21 v23 v24
-                                         (coe du_tg''_4826 (coe v2)) v27 v28
+                                         C_valid'45'inl'45'wf_842 v21 v23 v24 v27 v28
                                          (coe
                                             du_pv''_4832 (coe v0) (coe v1) (coe v4) (coe v7)
                                             (coe v8) (coe v9) (coe v10) (coe v11) (coe v12)
@@ -5731,7 +5666,7 @@ du_validityWF'45'mem'45'preserved'45'in'45'regions'45'strong_4612 v0
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      C_valid'45'inr'45'wf_862 v21 v23 v24 v25 v27 v28 v29
+      C_valid'45'inr'45'wf_862 v21 v23 v24 v27 v28 v29
         -> case coe v3 of
              MAlonzo.Code.Once.IRTy.C__'43'__22 v30 v31
                -> case coe v5 of
@@ -5741,8 +5676,7 @@ du_validityWF'45'mem'45'preserved'45'in'45'regions'45'strong_4612 v0
                              -> case coe v34 of
                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v35 v36
                                     -> coe
-                                         C_valid'45'inr'45'wf_862 v21 v23 v24
-                                         (coe du_tg''_4886 (coe v2)) v27 v28
+                                         C_valid'45'inr'45'wf_862 v21 v23 v24 v27 v28
                                          (coe
                                             du_pv''_4892 (coe v0) (coe v1) (coe v4) (coe v7)
                                             (coe v8) (coe v9) (coe v10) (coe v11) (coe v12)
@@ -6400,12 +6334,7 @@ d_tg''_4826 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   T_ValidAtWF_530 ->
   T_LocInRegions_4274 -> T_LocInRegions_4274 -> AgdaAny -> AgdaAny
-d_tg''_4826 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
-            ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19 ~v20 ~v21 ~v22 ~v23 ~v24 ~v25
-            ~v26 ~v27 ~v28 ~v29
-  = du_tg''_4826 v2
-du_tg''_4826 :: MAlonzo.Code.Once.IR.T_AllocMode_4 -> AgdaAny
-du_tg''_4826 v0 = coe du_transport'45'SumTag_510 (coe v0)
+d_tg''_4826 = erased
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.sl-eq
 d_sl'45'eq_4828 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -6591,12 +6520,7 @@ d_tg''_4886 ::
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   T_ValidAtWF_530 ->
   T_LocInRegions_4274 -> T_LocInRegions_4274 -> AgdaAny -> AgdaAny
-d_tg''_4886 ~v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
-            ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19 ~v20 ~v21 ~v22 ~v23 ~v24 ~v25
-            ~v26 ~v27 ~v28 ~v29
-  = du_tg''_4886 v2
-du_tg''_4886 :: MAlonzo.Code.Once.IR.T_AllocMode_4 -> AgdaAny
-du_tg''_4886 v0 = coe du_transport'45'SumTag_510 (coe v0)
+d_tg''_4886 = erased
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef._.sl-eq
 d_sl'45'eq_4888 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -7016,30 +6940,28 @@ d_validityWF'45'trace'45'preserves_5294 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_540 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_634 ->
   T_ValidAtWF_530 -> AgdaAny -> AgdaAny -> T_ValidAtWF_530
-d_validityWF'45'trace'45'preserves_5294 v0 v1 v2 v3 v4 v5 v6 ~v7 v8
-                                        ~v9 v10 ~v11 ~v12
-  = du_validityWF'45'trace'45'preserves_5294
-      v0 v1 v2 v3 v4 v5 v6 v8 v10
+d_validityWF'45'trace'45'preserves_5294 v0 v1 ~v2 v3 v4 v5 v6 ~v7
+                                        v8 ~v9 v10 ~v11 ~v12
+  = du_validityWF'45'trace'45'preserves_5294 v0 v1 v3 v4 v5 v6 v8 v10
 du_validityWF'45'trace'45'preserves_5294 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_626 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2238] ->
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_540 ->
   T_ValidAtWF_530 -> T_ValidAtWF_530
-du_validityWF'45'trace'45'preserves_5294 v0 v1 v2 v3 v4 v5 v6 v7 v8
+du_validityWF'45'trace'45'preserves_5294 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      du_validityWF'45'mem'45'preserved_3922 (coe v0) (coe v1) (coe v2)
-      (coe v4) (coe v3) (coe v6) (coe v7)
+      du_validityWF'45'mem'45'preserved_3922 (coe v0) (coe v1) (coe v3)
+      (coe v2) (coe v5) (coe v6)
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
          (coe
             MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'trace_2818 (coe v0)
-            (coe v5) (coe v7) (coe v4)))
-      (coe v8)
+            (coe v4) (coe v6) (coe v3)))
+      (coe v7)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef.irresult-mem-preserved
 d_irresult'45'mem'45'preserved_5332 ::
   T_IRResultAWF_686 ->
