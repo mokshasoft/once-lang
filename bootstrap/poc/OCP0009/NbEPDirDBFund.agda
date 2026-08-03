@@ -96,7 +96,9 @@ open import poc.OCP0009.NbEPDirDBLR
         ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-taut; snr-trᵖ
         ; trstk?-ren; nopw?-ren; trlam?-ren; nopw?; trlam?
         ; nopw⊥pw; stk⊥dead; pw⊥dead; dead→nopw; snr-nonpw
-        ; snr-hrefl-pw; snr-J-Hom; snr-tr-pw; nopw?-red; nopw?-red*
+        ; snr-hrefl-pw; snr-J-Hom; snr-tr-pw; snr-tr-mot
+        ; deadmot?; deadmot?-red; deadmot?-ren; deadmot→nopw; stk→deadmot
+        ; trlam?; nopw?-red; nopw?-red*
         ; CSR; csr-here; csr-hom; csr→⟶; csr-nonpw; csr-stk⊥; sn-csr
         ; _⟶csr*_; csr-done; csr-step; csrs-hom
         ; PayT; payChain; payT-exp; payT-whred; payT-irrel
@@ -327,6 +329,10 @@ snr-anti {ρ = ρ} {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Hom⌝ c₁ a₁ b₁) s
                   (sn-anti hs) (trans (sym (stkC?-ren ρ c₁)) kh)
       , refl )
 snr-anti {ρ = ρ} {t = tr (⌜Hom⌝ c a (var vz)) (lam f) e}
+         (snr-tr-mot σ) with csr-anti σ
+... | c' , (σ' , refl) =
+      tr (⌜Hom⌝ c' a (var vz)) (lam f) e , (snr-tr-mot σ' , refl)
+snr-anti {ρ = ρ} {t = tr (⌜Hom⌝ c a (var vz)) (lam f) e}
          (snr-tr-pw hc ha kp) =
   lam (tr (⌜Hom⌝ (renTm pwShift (pwBody c))
                  (app (renTm vs a) (var (vs vz)))
@@ -431,6 +437,84 @@ csr-anti {t = tr _ _ _} (csr-here r) with snr-anti r
 csr-anti {t = ⌜Hom⌝ c a b} (csr-here ())
 csr-anti {t = ⌜Hom⌝ c a b} (csr-hom σ) with csr-anti σ
 ... | c' , (σ' , refl) = ⌜Hom⌝ c' a b , (csr-hom σ' , refl)
+
+------------------------------------------------------------------------
+-- ★ W2b final frontier — FORWARD renaming for the SN family (the
+-- mirror of the anti-family above; the one renaming action never
+-- needed until `semTrPw` had to push a payload's spine-chains from
+-- the instance level onto the binder-form motive).
+------------------------------------------------------------------------
+
+sne-ren : {ρ : Ren Θ Ξ} {t : RTm Θ} → SNe t → SNe (renTm ρ t)
+sn-ren  : {ρ : Ren Θ Ξ} {t : RTm Θ} → SN t → SN (renTm ρ t)
+snr-ren : {ρ : Ren Θ Ξ} {t t' : RTm Θ} → SNRed t t' →
+          SNRed (renTm ρ t) (renTm ρ t')
+csr-ren : {ρ : Ren Θ Ξ} {t t' : RTm Θ} → CSR t t' →
+          CSR (renTm ρ t) (renTm ρ t')
+
+sne-ren {ρ = ρ} (sne-var x)   = sne-var (ρ x)
+sne-ren (sne-app n s)         = sne-app (sne-ren n) (sn-ren s)
+sne-ren (sne-fst n)           = sne-fst (sne-ren n)
+sne-ren (sne-snd n)           = sne-snd (sne-ren n)
+sne-ren {ρ = ρ} (sne-hrefl {c = c} hc ht kn) =
+  sne-hrefl (sn-ren hc) (sn-ren ht) (trans (nopw?-ren ρ c) kn)
+sne-ren {ρ = ρ} (sne-tr {d = d} {p = p} hd hp he key) =
+  sne-tr (sn-ren hd) (sn-ren hp) (sn-ren he)
+         (trans (trstk?-ren ρ d p) key)
+
+sn-ren (sn-ne n)        = sn-ne (sne-ren n)
+sn-ren (sn-lam h)       = sn-lam (sn-ren h)
+sn-ren (sn-pair ha hb)  = sn-pair (sn-ren ha) (sn-ren hb)
+sn-ren sn-cb            = sn-cb
+sn-ren (sn-cΠ h₁ h₂)    = sn-cΠ (sn-ren h₁) (sn-ren h₂)
+sn-ren (sn-cΣ h₁ h₂)    = sn-cΣ (sn-ren h₁) (sn-ren h₂)
+sn-ren (sn-cH h₁ h₂ h₃) = sn-cH (sn-ren h₁) (sn-ren h₂) (sn-ren h₃)
+sn-ren (sn-exp r h)     = sn-exp (snr-ren r) (sn-ren h)
+
+snr-ren {ρ = ρ} (snr-β {s = s} {u = u} hu) =
+  subst (λ z → SNRed (app (lam (renTm (extR ρ) s)) (renTm ρ u)) z)
+        (ren-single ρ u s)
+        (snr-β (sn-ren hu))
+snr-ren (snr-βfst hb) = snr-βfst (sn-ren hb)
+snr-ren (snr-βsnd ha) = snr-βsnd (sn-ren ha)
+snr-ren (snr-app r)   = snr-app (snr-ren r)
+snr-ren (snr-fst r)   = snr-fst (snr-ren r)
+snr-ren (snr-snd r)   = snr-snd (snr-ren r)
+snr-ren (snr-hreflᶜ σ) = snr-hreflᶜ (csr-ren σ)
+snr-ren {ρ = ρ} (snr-hrefl-pw {C = C} {t = t} kp) =
+  subst (λ z → SNRed (hrefl (renTm ρ C) (renTm ρ t)) z)
+        (cong₂ (λ x y → lam (hrefl x (app y (var vz))))
+               (pwBody-ren ρ C kp)
+               (sym (wk-ren-tm ρ t)))
+        (snr-hrefl-pw (trans (pw?-ren ρ C) kp))
+snr-ren (snr-J-base hd hs) = snr-J-base (sn-ren hd) (sn-ren hs)
+snr-ren (snr-J-Σ hd h₁ h₂ hs) =
+  snr-J-Σ (sn-ren hd) (sn-ren h₁) (sn-ren h₂) (sn-ren hs)
+snr-ren {ρ = ρ} (snr-J-Hom {c₁ = c₁} hd h₁ h₂ h₃ hs ks) =
+  snr-J-Hom (sn-ren hd) (sn-ren h₁) (sn-ren h₂) (sn-ren h₃) (sn-ren hs)
+            (trans (stkC?-ren ρ c₁) ks)
+snr-ren snr-taut = snr-taut
+snr-ren {ρ = ρ} (snr-trᵖ r) = snr-trᵖ (snr-ren r)
+snr-ren {ρ = ρ} (snr-tr-mot σ) = snr-tr-mot (csr-ren σ)
+snr-ren {ρ = ρ} (snr-tr-pw {c = c} {a = a} {f = f} {e = e} hc ha kp) =
+  subst (λ z → SNRed (tr (⌜Hom⌝ (renTm (extR ρ) c) (renTm (extR ρ) a)
+                                (var vz))
+                         (lam (renTm (extR ρ) f)) (renTm ρ e)) z)
+        (cong lam
+          (tr-cong₃
+            (⌜Hom⌝-cong₃
+              (trans (cong (renTm pwShift) (pwBody-ren (extR ρ) c kp))
+                     (sym (pwShift-ren ρ (pwBody c))))
+              (cong (λ z → app z (var (vs vz)))
+                    (sym (wk-ren-tm (extR ρ) a)))
+              refl)
+            refl
+            (cong (λ z → app z (var vz)) (sym (wk-ren-tm ρ e)))))
+        (snr-tr-pw (sn-ren hc) (sn-ren ha) (trans (pw?-ren (extR ρ) c) kp))
+
+csr-ren (csr-here r) = csr-here (snr-ren r)
+csr-ren (csr-hom σ)  = csr-hom (csr-ren σ)
+
 
 -- ★ the corollary actually used: instantiating a body at a VARIABLE is a
 -- renaming, so `SN` comes back out of it.
