@@ -819,7 +819,6 @@ snr-det (snr-J-Σ _ _ _ _) (snr-trᵖ (snr-hrefl-pw ()))
 snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Σ _ _ _ _)
 snr-det (snr-tr-pw _ _ _) (snr-tr-pw _ _ _) = refl
 snr-det (snr-tr-pw _ _ _) (snr-trᵖ ())
-snr-det (snr-trᵖ ()) (snr-tr-pw _ _ _)
 
 csr-det (csr-here r) (csr-here r') = snr-det r r'
 csr-det (csr-here ()) (csr-hom σ')
