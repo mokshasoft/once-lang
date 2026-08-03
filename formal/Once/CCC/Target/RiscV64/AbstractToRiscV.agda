@@ -304,8 +304,9 @@ compile-abstract (instr-ctrl (c-jmp n))                 = j n ∷ []
 -- Plan 0.63: closure-body entry / return. As on x86-32, this target's
 -- labels are bare ℕ; step 2 reconciles the body-entry name with
 -- `.L_thunk_<n>` when `c-thunk` gains a producer.
-compile-abstract (instr-ctrl (c-thunk n))               = label n ∷ []
-compile-abstract (instr-ctrl c-ret)                     = ret ∷ []
+compile-abstract (instr-ctrl (c-thunk n b))             = label n ∷ addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ []
+  where import Data.Integer
+compile-abstract (instr-ctrl (c-ret b))                 = addi sp sp (+ (slots b)) ∷ ret ∷ []
 compile-abstract (instr-ctrl (c-branch-scratch-zero n)) = beq s3 zero n ∷ []
 compile-abstract (instr-ctrl (c-branch-tag-zero n))     = ld t1 t0 0 ∷ beq t1 zero n ∷ []
 

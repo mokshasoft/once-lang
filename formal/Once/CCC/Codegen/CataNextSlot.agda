@@ -182,13 +182,15 @@ module CataNextSlot {FS : FrameSemantics} where
     → SlotStable i
     → next-slot (falloc (flat-exec-instr i prog fs)) ≡ next-slot (falloc fs)
   flat-keeps-next-slot prog fs (instr-ctrl (c-label _)) _ = refl
-  -- Plan 0.63: a body-entry marker only bumps `fpc`; a return moves
-  -- `fpc`/`fret` or halts. Neither touches the allocator.
-  flat-keeps-next-slot prog fs (instr-ctrl (c-thunk _)) _ = refl
-  flat-keeps-next-slot prog fs (instr-ctrl c-ret) _
+  -- Plan 0.63: the closure markers MOVE THE FRAME, but a frame move touches
+  -- only `current-frame`/`saved-frames` — `next-slot` rides through it
+  -- (0.61's `leave-frame-next-slot`; `enter-frame` is a plain record
+  -- update, so its side is `refl`).
+  flat-keeps-next-slot prog fs (instr-ctrl (c-thunk _ b)) _ = refl
+  flat-keeps-next-slot prog fs (instr-ctrl (c-ret b)) _
     with fret fs
-  ... | []     = refl
-  ... | _ ∷ _  = refl
+  ... | []     = leave-frame-next-slot (falloc fs)
+  ... | _ ∷ _  = leave-frame-next-slot (falloc fs)
   flat-keeps-next-slot prog fs (instr-ctrl (c-jmp n)) _
     with find-label prog n
   ... | just _  = refl

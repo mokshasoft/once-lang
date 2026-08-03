@@ -1270,16 +1270,19 @@ mutual
   events-running-fetch {hv} n ev env prog fs s (instr-reclaim-to k) cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-reclaim-to k) (block-step-reclaim-to prog fs s k cc h ftq) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (instr-load-tag-lit k) cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-load-tag-lit k) (block-step-load-tag-lit prog fs s k cc h ftq) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-label m)) cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-ctrl (c-label m)) (block-step-c-label prog fs s m cc h ftq) wf ftq h refl h
-  -- Plan 0.63: a body-entry marker is a pc bump on both sides — the same
-  -- correspondence as `c-label`, with the label in the `thunk` provenance.
-  -- Permanent: it does not rely on `c-thunk` being unemitted.
-  events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-thunk m)) cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-ctrl (c-thunk m)) (block-step-c-thunk prog fs s m cc h ftq) wf ftq h refl h
-  -- Plan 0.63: `c-ret` has NO PRODUCER yet (`ir-to-trace` is main-only, so
-  -- no emitted trace contains a return) — the route is absurd, via the same
-  -- `Emitted`/`FrameFreeI` fence as the fossils. Step 2 emits the bodies and
-  -- replaces this with a real block-step against the concrete `ret`.
-  events-running-fetch {hv} n ev env prog fs s (instr-ctrl c-ret) cc wf h ftq =
-    ⊥-elim (frame-op-absurd prog fs (instr-ctrl c-ret) (run-emitted (inv-run wf)) ftq)
+  -- Plan 0.63 step 2a: NEITHER CLOSURE MARKER HAS A PRODUCER yet
+  -- (`ir-to-trace` is main-only), and both now MOVE THE FRAME — the body's
+  -- `subq`/`addq` reservation rides on them. So both route absurdly, via
+  -- the same `Emitted`/`FrameFreeI` fence as the frame ops themselves.
+  -- What replaces these when the bodies land (2b-2d): `c-thunk` composes a
+  -- `step-label` fetch with `block-step-alloc-stack` (its freshness premises
+  -- coming from `untouched` + the high-water mark, plus the honest
+  -- `stack-room`); `c-ret` additionally needs the `FlatCorr` component
+  -- relating the ghost `fret` to the machine stack.
+  events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-thunk m b)) cc wf h ftq =
+    ⊥-elim (frame-op-absurd prog fs (instr-ctrl (c-thunk m b)) (run-emitted (inv-run wf)) ftq)
+  events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-ret b)) cc wf h ftq =
+    ⊥-elim (frame-op-absurd prog fs (instr-ctrl (c-ret b)) (run-emitted (inv-run wf)) ftq)
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-jmp m)) cc wf h ftq = cjmp-step n ev env prog fs s m cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-branch-scratch-zero m)) cc wf h ftq = branch-step n ev env prog fs s m cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m)) cc wf h ftq = tag-branch-step n ev env prog fs s m cc wf h ftq

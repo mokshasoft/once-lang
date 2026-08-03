@@ -36,7 +36,8 @@ import Once.CCC.Target.X86-64.Semantics as X
 open import Once.CCC.Target.X86-64.Syntax
   using ( Instr; Program
         ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
-        ; ret; push; pop; nop; ud2; syscall; label)
+        ; ret; push; pop; nop; ud2; syscall; label
+        ; Operand; reg; imm; rsp; slots)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-abstract; compile-trace)
 
 ------------------------------------------------------------------------
@@ -142,15 +143,19 @@ data HeadView (i : AbstractInstr) : Set where
   hv-plain : has-label (compile-abstract i) ≡ false
     → (∀ rest tgt acc → fl-go (i ∷ rest) tgt acc ≡ fl-go rest tgt (suc acc))
     → HeadView i
-  -- Plan 0.63 (D082): a FOREIGN-PROVENANCE label. `c-thunk` fits neither
-  -- case above — it IS a label instruction (so it occupies an index on
-  -- BOTH sides, which `hv-plain` would deny) but it is not a `once` label
-  -- (so `hv-clabel`'s matching scan must not fire). Both scans therefore
-  -- step over it at a cost of exactly one index each. The middle premise
-  -- is `refl` at every producer precisely because provenances are
-  -- definitionally disjoint — the property D082 bought.
-  hv-otherlabel : (ℓ : Label)
-    → compile-abstract i ≡ label ℓ ∷ []
+  -- Plan 0.63 (D082): a block that OPENS WITH A FOREIGN-PROVENANCE LABEL.
+  -- `c-thunk` fits neither case above — it IS a label instruction (so it
+  -- occupies an index on both sides, which `hv-plain` would deny) but it is
+  -- not a `once` label (so `hv-clabel`'s matching scan must not fire).
+  -- Both scans therefore step over the whole block. Step 2a made the block
+  -- LONGER than one instruction (the label is followed by the body's frame
+  -- reservation), so the tail is carried explicitly and only has to be
+  -- label-free — `hv-clabel`'s single-instruction shape would not do.
+  -- The provenance premise is `refl` at every producer precisely because
+  -- provenances are definitionally disjoint — what D082 bought.
+  hv-otherlabel : (ℓ : Label) (tail : Program)
+    → compile-abstract i ≡ label ℓ ∷ tail
+    → has-label tail ≡ false
     → (∀ tgt → (ℓ ≡ᵇᴸ once tgt) ≡ false)
     → (∀ rest tgt acc → fl-go (i ∷ rest) tgt acc ≡ fl-go rest tgt (suc acc))
     → HeadView i
@@ -201,8 +206,9 @@ headView (instr-load-const p v) = hv-plain (const-no-label p v) (λ _ _ _ → re
 headView (instr-case-on-tag f g) = hv-plain refl (λ _ _ _ → refl)
 headView (instr-reg-op op) = hv-plain (reg-op-no-label op) (λ _ _ _ → refl)
 headView (instr-ctrl (c-label m)) = hv-clabel m refl (λ _ _ _ → refl)
-headView (instr-ctrl (c-thunk m)) = hv-otherlabel (thunk m) refl (λ _ → refl) (λ _ _ _ → refl)
-headView (instr-ctrl c-ret) = hv-plain refl (λ _ _ _ → refl)
+headView (instr-ctrl (c-thunk m b)) =
+  hv-otherlabel (thunk m) (sub (reg rsp) (imm (slots b)) ∷ []) refl refl (λ _ → refl) (λ _ _ _ → refl)
+headView (instr-ctrl (c-ret b)) = hv-plain refl (λ _ _ _ → refl)
 headView (instr-ctrl (c-jmp m)) = hv-plain refl (λ _ _ _ → refl)
 headView (instr-ctrl (c-branch-scratch-zero m)) = hv-plain refl (λ _ _ _ → refl)
 headView (instr-ctrl (c-branch-tag-zero m)) = hv-plain refl (λ _ _ _ → refl)
@@ -231,16 +237,18 @@ find-label-pres (i ∷ rest) target acc xi j (hv-plain hl fl-p ∷ all-rest) fl-
    , trans (proj₁ (proj₂ ih)) (sym (+-suc acc d'))
    , trans (find-label-go-skip (once target) (compile-abstract i) (compile-trace rest) xi hl)
            (trans (proj₂ (proj₂ ih)) (cong just (+-assoc xi (x86-len i) (x86-off rest d'))))
-find-label-pres (i ∷ rest) target acc xi j (hv-otherlabel ℓ ca-eq ne fl-p ∷ all-rest) fl-eq
+find-label-pres (i ∷ rest) target acc xi j (hv-otherlabel ℓ tl ca-eq nl ne fl-p ∷ all-rest) fl-eq
   rewrite ca-eq | ne target =
-  let ih = find-label-pres rest target (suc acc) (suc xi) j all-rest
+  let ih = find-label-pres rest target (suc acc) (suc xi + length tl) j all-rest
              (trans (sym (fl-p rest target acc)) fl-eq)
       d' = proj₁ ih
   in suc d'
    , trans (proj₁ (proj₂ ih)) (sym (+-suc acc d'))
-   , trans (proj₂ (proj₂ ih))
-           (cong just (trans (sym (+-suc xi (x86-off rest d')))
-                             (cong (λ L → xi + (L + x86-off rest d')) (sym (cong length ca-eq)))))
+   , trans (find-label-go-skip (once target) tl (compile-trace rest) (suc xi) nl)
+           (trans (proj₂ (proj₂ ih))
+                  (cong just (trans (trans (cong suc (+-assoc xi (length tl) (x86-off rest d')))
+                                           (sym (+-suc xi (length tl + x86-off rest d'))))
+                                    (cong (λ L → xi + (L + x86-off rest d')) (sym (cong length ca-eq))))))
 find-label-pres (i ∷ rest) target acc xi j (hv-clabel m ca-eq fl-c ∷ all-rest) fl-eq
   with m ≡ᵇ target in meq
 ... | true rewrite ca-eq | meq = 0 , comp1 , cong just (sym (+-identityʳ xi))
@@ -436,10 +444,11 @@ find-label-none-go (i ∷ rest) target acc xi (hv-plain nl fl-p ∷ all-rest) fl
                             all-rest (trans (sym (fl-p rest target acc)) fl-eq))
 -- Plan 0.63: a foreign-provenance label never matches a `once` target, so
 -- the compiled scan just steps past it — one index, like the flat scan.
-find-label-none-go (i ∷ rest) target acc xi (hv-otherlabel ℓ ca-eq ne fl-p ∷ all-rest) fl-eq
+find-label-none-go (i ∷ rest) target acc xi (hv-otherlabel ℓ tl ca-eq nl ne fl-p ∷ all-rest) fl-eq
   rewrite ca-eq | ne target =
-  find-label-none-go rest target (suc acc) (suc xi) all-rest
-                     (trans (sym (fl-p rest target acc)) fl-eq)
+  trans (find-label-go-skip (once target) tl (compile-trace rest) (suc xi) nl)
+        (find-label-none-go rest target (suc acc) (suc xi + length tl) all-rest
+                            (trans (sym (fl-p rest target acc)) fl-eq))
 find-label-none-go (i ∷ rest) target acc xi (hv-clabel m ca-eq fl-c ∷ all-rest) fl-eq
   with m ≡ᵇ target in meq
 -- a MATCH contradicts the flat scan's `nothing`

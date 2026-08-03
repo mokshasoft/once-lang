@@ -44,7 +44,7 @@ open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace;
    instr-alloc-stack; instr-dealloc-stack; instr-push-frame; instr-pop-frame;
    instr-case-on-tag; instr-loop; lea-indexed;
-   instr-ctrl; c-ret)
+   instr-ctrl; c-thunk; c-ret)
 
 -- No mutual needed since Plan 0.54 item 6: with `instr-case-on-tag` in the ⊥
 -- set there is NO nested trace anywhere — the predicate is shallow.
@@ -67,17 +67,21 @@ FrameFreeI (instr-loop t)            = ⊥
 -- deletes the `lea-indexed-wf` cursor-discipline residual with its site, and
 -- the pointer-bounds invariant needs no cursor case at all.
 FrameFreeI (lea-indexed _)           = ⊥
--- `c-ret` is NOT a fossil — it is the opposite, scaffolding ahead of its
--- producer (Plan 0.63 step 1 adds the constructor; step 2 puts closure
--- BODIES into `ir-to-trace`, which is what will emit it). Until then no
--- emitted trace contains a return, and this is the honest way to say so:
--- the concrete `ret` pops the machine stack while the flat `do-ret` pops
--- the ghost `fret`, and relating the two is exactly what step 2/3's new
--- `FlatCorr` field is for. Step 2 REMOVES this clause and replaces the
--- absurd route in `events-running-fetch` with a real block-step.
--- (`c-thunk` needs no such clause: its correspondence is already a
--- theorem — `block-step-c-thunk`, a pure pc bump on both sides.)
-FrameFreeI (instr-ctrl c-ret)        = ⊥
+-- The two closure markers are NOT fossils — they are the opposite,
+-- scaffolding ahead of their producer (Plan 0.63 step 1 added the
+-- constructors; step 2b puts closure BODIES into `ir-to-trace`, which is
+-- what will emit them). Until then no emitted trace contains either, and
+-- this is the honest way to say so.
+--
+-- BOTH now MOVE THE FRAME (step 2a: the body's `subq`/`addq` reservation
+-- rides on the marker), so they belong here for a second reason too — this
+-- is the frame fence, and they are frame ops. What step 2 owes them is a
+-- real correspondence: `c-thunk`'s is `block-step-alloc-stack`'s premise
+-- set (freshness of the callee frame, from `untouched` + the high-water
+-- mark, plus the honest `stack-room`), and `c-ret`'s additionally needs
+-- the `FlatCorr` field relating the ghost `fret` to the machine stack.
+FrameFreeI (instr-ctrl (c-thunk _ _)) = ⊥
+FrameFreeI (instr-ctrl (c-ret _))     = ⊥
 {-# CATCHALL #-}
 FrameFreeI _                         = ⊤
 

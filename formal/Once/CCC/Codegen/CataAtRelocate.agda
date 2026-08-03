@@ -93,19 +93,21 @@ module CataAtRelocate {FS : FrameSemantics} where
         ≡ shift-pc k (flat-exec-instr (instr-ctrl (c-label n)) seg fs)
   flat-relocate-label prog seg k fs n = refl
 
-  -- Plan 0.63: a body-entry marker relocates like a label (pc bump,
-  -- `prog`-independent), and a RETURN relocates because `shift-pc` shifts
-  -- the pending return addresses too — popping the shifted stack lands at
-  -- `p + k`, exactly where shifting the standalone result lands.
-  flat-relocate-thunk : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (n : ℕ)
-    → flat-exec-instr (instr-ctrl (c-thunk n)) prog (shift-pc k fs)
-        ≡ shift-pc k (flat-exec-instr (instr-ctrl (c-thunk n)) seg fs)
-  flat-relocate-thunk prog seg k fs n = refl
+  -- Plan 0.63: a body-entry marker relocates like a label — it reserves the
+  -- body's frame and bumps the pc, neither of which consults `prog` — and a
+  -- RETURN relocates because `shift-pc` shifts the pending return addresses
+  -- too (D083): popping the shifted stack lands at `p + k`, exactly where
+  -- shifting the standalone result lands. The frame move is `prog`-blind on
+  -- both sides.
+  flat-relocate-thunk : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (n b : ℕ)
+    → flat-exec-instr (instr-ctrl (c-thunk n b)) prog (shift-pc k fs)
+        ≡ shift-pc k (flat-exec-instr (instr-ctrl (c-thunk n b)) seg fs)
+  flat-relocate-thunk prog seg k fs n b = refl
 
-  flat-relocate-ret : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState)
-    → flat-exec-instr (instr-ctrl c-ret) prog (shift-pc k fs)
-        ≡ shift-pc k (flat-exec-instr (instr-ctrl c-ret) seg fs)
-  flat-relocate-ret prog seg k fs with fret fs
+  flat-relocate-ret : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (b : ℕ)
+    → flat-exec-instr (instr-ctrl (c-ret b)) prog (shift-pc k fs)
+        ≡ shift-pc k (flat-exec-instr (instr-ctrl (c-ret b)) seg fs)
+  flat-relocate-ret prog seg k fs b with fret fs
   ... | []     = refl
   ... | p ∷ ps = refl
 
@@ -155,8 +157,8 @@ module CataAtRelocate {FS : FrameSemantics} where
               → flat-exec-instr i prog (shift-pc k fs) ≡ shift-pc k (flat-exec-instr i seg fs)
   -- control forms → the per-class relocation lemmas
   instr-reloc prog seg k fs (instr-ctrl (c-label n))               lr = flat-relocate-label          prog seg k fs n
-  instr-reloc prog seg k fs (instr-ctrl (c-thunk n))               lr = flat-relocate-thunk          prog seg k fs n
-  instr-reloc prog seg k fs (instr-ctrl c-ret)                     lr = flat-relocate-ret            prog seg k fs
+  instr-reloc prog seg k fs (instr-ctrl (c-thunk n b))             lr = flat-relocate-thunk          prog seg k fs n b
+  instr-reloc prog seg k fs (instr-ctrl (c-ret b))                 lr = flat-relocate-ret            prog seg k fs b
   instr-reloc prog seg k fs (instr-ctrl (c-jmp n))                 lr = flat-relocate-jmp            prog seg k fs n (lr n)
   instr-reloc prog seg k fs (instr-ctrl (c-branch-scratch-zero n)) lr = flat-relocate-branch-scratch prog seg k fs n (lr n)
   instr-reloc prog seg k fs (instr-ctrl (c-branch-tag-zero n))     lr = flat-relocate-branch-tag     prog seg k fs n (lr n)

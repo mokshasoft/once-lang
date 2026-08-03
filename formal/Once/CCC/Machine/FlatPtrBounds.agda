@@ -454,12 +454,19 @@ pb-jump : ∀ (mpc : Maybe ℕ) (fs : FlatState)
 pb-jump (just pc') fs wf = wf
 pb-jump nothing    fs wf = pb-halt _ (floc fs) true wf
 
--- Plan 0.63: a return moves `fpc`/`fret` or halts — no pointer moves, so
--- this is `wf` directly or its halt transport.
+-- Plan 0.63: a return releases the body's frame and pops the return stack
+-- (or halts). `PtrBoundsWF` is indexed by the heap's `block-size`, which a
+-- frame move leaves alone (0.61's `leave-frame-block-size`), and no
+-- POINTER moves — so this is `wf` or its halt transport, modulo that one
+-- transport. Stated (rather than routed through `()`) because it is true
+-- independently of the producer question, so step 2c inherits it.
 pb-ret : ∀ (r : List ℕ) (fs : FlatState)
        → PtrBoundsWF fs → PtrBoundsWF (do-ret r fs)
-pb-ret []           fs wf = pb-halt _ (floc fs) true wf
-pb-ret (pc' ∷ rest) fs wf = wf
+pb-ret []           fs wf =
+  subst (λ bs → PBInv bs (record (floc fs) { halted = true }))
+        (sym (leave-frame-block-size (falloc fs))) (pb-halt _ (floc fs) true wf)
+pb-ret (pc' ∷ rest) fs wf =
+  subst (λ bs → PBInv bs (floc fs)) (sym (leave-frame-block-size (falloc fs))) wf
 
 pb-branch : ∀ (b : Bool) (m : ℕ) (prog : AbstractTrace) (fs : FlatState)
           → PtrBoundsWF fs → PtrBoundsWF (do-branch b m prog fs)
@@ -472,8 +479,8 @@ flat-ptr-bounds : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState
                 → StoreWF (next-heap-ref (falloc fs)) (floc fs)
                 → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)
 flat-ptr-bounds (instr-ctrl (c-label m))               prog fs ff am wfS wf = wf
-flat-ptr-bounds (instr-ctrl (c-thunk m))               prog fs ff am wfS wf = wf
-flat-ptr-bounds (instr-ctrl c-ret)                     prog fs ff am wfS wf =
+flat-ptr-bounds (instr-ctrl (c-thunk m b))             prog fs ff am wfS wf = wf
+flat-ptr-bounds (instr-ctrl (c-ret b))                 prog fs ff am wfS wf =
   pb-ret (fret fs) fs wf
 flat-ptr-bounds (instr-ctrl (c-jmp m))                 prog fs ff am wfS wf =
   pb-jump (find-label prog m) fs wf

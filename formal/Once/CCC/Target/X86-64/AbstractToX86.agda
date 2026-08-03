@@ -281,11 +281,13 @@ compile-abstract (instr-reg-op count-inc)          = add (reg r14) (imm 1) ∷ [
 -- of flattening — abstract jump ↔ target jump, no structured expansion).
 compile-abstract (instr-ctrl (c-label n))          = label (once n) ∷ []
 compile-abstract (instr-ctrl (c-jmp n))            = jmp (once n) ∷ []
--- Plan 0.63 (D082): a closure-body entry is a label in the `thunk`
--- provenance — same emitted text (`.L_thunk_<n>:`), disjoint from every
--- jump target by `_≡ᵇᴸ_`'s catch-all. A return is the plain `ret`.
-compile-abstract (instr-ctrl (c-thunk n))          = label (thunk n) ∷ []
-compile-abstract (instr-ctrl c-ret)                = ret ∷ []
+-- Plan 0.63 (D082 + step 2a): a closure-body entry is a label in the
+-- `thunk` provenance — same emitted text (`.L_thunk_<n>:`), disjoint from
+-- every jump target by `_≡ᵇᴸ_`'s catch-all — FOLLOWED BY the body's frame
+-- reservation, and a return RELEASES that frame before returning. Both
+-- blocks are byte-for-byte what `emit-thunk-body` emits as text today.
+compile-abstract (instr-ctrl (c-thunk n b))        = label (thunk n) ∷ sub (reg rsp) (imm (slots b)) ∷ []
+compile-abstract (instr-ctrl (c-ret b))            = add (reg rsp) (imm (slots b)) ∷ ret ∷ []
 -- Plan 0.34: a conditional branch lowers to cmp+je (2 instrs). On a
 -- flag-less target (RISC-V) this would be a single compare-and-branch.
 compile-abstract (instr-ctrl (c-branch-scratch-zero n)) =

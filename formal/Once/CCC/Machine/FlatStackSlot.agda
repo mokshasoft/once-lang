@@ -123,8 +123,11 @@ ss-branch : ∀ (b : Bool) (m : ℕ) (prog : AbstractTrace) (fs : FlatState)
 ss-branch true  m prog fs = ss-jump (find-label prog m) fs
 ss-branch false m prog fs = refl
 
--- Plan 0.63: a return moves `fpc`/`fret` or halts — the register file, and
--- with it the stack-slot window, is untouched either way.
+-- Plan 0.63 step 2a: THE POINT OF PUTTING THE FRAME ON THE MARKER. A
+-- return releases the body's frame via `leave-frame`, which is an
+-- AllocState-only update — the REGISTER FILE, and with it `stackSlot`, is
+-- untouched. Had the reservation been a resurrected `instr-dealloc-stack`,
+-- `exec-abstract`'s `decrStackSlot` would have broken this invariant.
 ss-ret : ∀ (r : List ℕ) (fs : FlatState)
        → stackSlot (regs (floc (do-ret r fs))) ≡ stackSlot (regs (floc fs))
 ss-ret []           fs = refl
@@ -269,8 +272,8 @@ flat-stack-slot : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState
                 → stackSlot (regs (floc (flat-exec-instr i prog fs)))
                     ≡ stackSlot (regs (floc fs))
 flat-stack-slot (instr-ctrl (c-label m))               prog fs ff = refl
-flat-stack-slot (instr-ctrl (c-thunk m))               prog fs ff = refl
-flat-stack-slot (instr-ctrl c-ret)                     prog fs ff = ss-ret (fret fs) fs
+flat-stack-slot (instr-ctrl (c-thunk m b))             prog fs ff = refl
+flat-stack-slot (instr-ctrl (c-ret b))                 prog fs ff = ss-ret (fret fs) fs
 flat-stack-slot (instr-ctrl (c-jmp m))                 prog fs ff = ss-jump (find-label prog m) fs
 flat-stack-slot (instr-ctrl (c-branch-scratch-zero m)) prog fs ff =
   ss-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) m prog fs

@@ -259,8 +259,8 @@ compile-abstract (instr-ctrl (c-jmp n))                 = jmp-l n ∷ []
 -- bare ℕ (no provenance), so the body-entry marker lands in the same label
 -- space; step 2 (which gives `c-thunk` its producer) must reconcile that
 -- with `.L_thunk_<n>` — today nothing emits it.
-compile-abstract (instr-ctrl (c-thunk n))               = label n ∷ []
-compile-abstract (instr-ctrl c-ret)                     = ret ∷ []
+compile-abstract (instr-ctrl (c-thunk n b))             = label n ∷ sub (reg esp) (imm (slots b)) ∷ []
+compile-abstract (instr-ctrl (c-ret b))                 = add (reg esp) (imm (slots b)) ∷ ret ∷ []
 compile-abstract (instr-ctrl (c-branch-scratch-zero n)) = cmp (reg edx) (imm 0) ∷ je n ∷ []
 compile-abstract (instr-ctrl (c-branch-tag-zero n))     = cmp (mem (base ecx)) (imm 0) ∷ je n ∷ []
 

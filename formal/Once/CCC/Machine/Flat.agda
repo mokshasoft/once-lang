@@ -114,7 +114,7 @@ module FlatMachine {FS : FrameSemantics} where
   -- (`c-thunk`) and a jump target (`c-label`) are different provenances —
   -- a call can never land on a jump label, definitionally.
   thunk-of? : AbstractInstr → Maybe ℕ
-  thunk-of? (instr-ctrl (c-thunk m)) = just m
+  thunk-of? (instr-ctrl (c-thunk m _)) = just m
   thunk-of? _                        = nothing
 
   ft-go    : AbstractTrace → ℕ → ℕ → Maybe ℕ
@@ -217,18 +217,30 @@ module FlatMachine {FS : FrameSemantics} where
               ; falloc = g (proj₂ (exec-abstract i (floc fs) (falloc fs)))
               ; fpc    = suc (fpc fs) }
 
-  -- Plan 0.63: RETURN. Pop the return-pc stack and continue there; an
-  -- empty stack halts (returning from the outermost frame). Aux-style on
-  -- the list so downstream proofs rewrite with the pop equation.
+  -- Plan 0.63: RETURN. Release the body's frame, then pop the return-pc
+  -- stack and continue there; an empty stack halts (returning from the
+  -- outermost frame). Aux-style on the list so downstream proofs rewrite
+  -- with the pop equation. `leave-frame` is applied FIRST and
+  -- unconditionally, mirroring the concrete `addq $b*8,%rsp ; ret`: the
+  -- reservation is released whether or not there is a caller to return to.
   do-ret : List ℕ → FlatState → FlatState
-  do-ret []           fs = record fs { floc = record (floc fs) { halted = true } }
-  do-ret (pc' ∷ rest) fs = record fs { fpc = pc' ; fret = rest }
+  do-ret []           fs = record fs { falloc = leave-frame (falloc fs)
+                                     ; floc   = record (floc fs) { halted = true } }
+  do-ret (pc' ∷ rest) fs = record fs { falloc = leave-frame (falloc fs)
+                                     ; fpc = pc' ; fret = rest }
+
+  -- …and ENTRY: the body-start marker reserves the body's frame. Only the
+  -- AllocState moves (`enter-frame` shifts `current-frame` and remembers
+  -- the caller's), so the register file — and with it `stackSlot` — is
+  -- untouched.
+  do-thunk : ℕ → FlatState → FlatState
+  do-thunk b fs = record fs { falloc = enter-frame b (falloc fs)
+                            ; fpc    = suc (fpc fs) }
 
   flat-exec-instr : AbstractInstr → AbstractTrace → FlatState → FlatState
   flat-exec-instr (instr-ctrl (c-label _))               _    fs = record fs { fpc = suc (fpc fs) }
-  -- a body-entry marker is a passthrough, exactly like `c-label`
-  flat-exec-instr (instr-ctrl (c-thunk _))               _    fs = record fs { fpc = suc (fpc fs) }
-  flat-exec-instr (instr-ctrl c-ret)                     _    fs = do-ret (fret fs) fs
+  flat-exec-instr (instr-ctrl (c-thunk _ b))             _    fs = do-thunk b fs
+  flat-exec-instr (instr-ctrl (c-ret b))                 _    fs = do-ret (fret fs) fs
   flat-exec-instr (instr-ctrl (c-jmp n))                 prog fs = do-jump (find-label prog n) fs
   flat-exec-instr (instr-ctrl (c-branch-scratch-zero n)) prog fs =
     do-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) n prog fs

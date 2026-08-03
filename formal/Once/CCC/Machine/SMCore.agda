@@ -1027,8 +1027,18 @@ data FlatCtrl : Set where
   -- is a label like `c-label`, but in the `thunk` provenance (D082), so a
   -- jump can never land on a body entry and a call can never land on a
   -- jump label — definitionally, not by counter accident.
-  c-thunk               : ℕ → FlatCtrl -- closure-body entry marker
-  c-ret                 : FlatCtrl     -- return to the caller's pc
+  -- Plan 0.63 step 2a: the markers CARRY THE BODY'S SLOT BUDGET, because
+  -- the per-body frame is part of them. The concrete body is
+  -- `.L_thunk_n: subq $b*8,%rsp ; … ; addq $b*8,%rsp ; ret` — and that
+  -- `subq` is LOAD-BEARING: `call` pushes a return address, so a frameless
+  -- body's slot k would sit at `caller_base − 8 + 8k` and clobber the
+  -- caller's slots from k = 1 on. Keeping the reservation ON THE MARKER
+  -- (rather than giving `instr-alloc-stack` a producer again) means the
+  -- frame moves at exactly the two instructions that also move the pc, and
+  -- it moves via `enter-frame`/`leave-frame` — an AllocState-only update,
+  -- so the register file's `stackSlot` is untouched.
+  c-thunk               : ℕ → ℕ → FlatCtrl -- closure-body entry: label, budget
+  c-ret                 : ℕ → FlatCtrl     -- return: budget to release
 
 data AbstractInstr : Set where
   -- Register operations

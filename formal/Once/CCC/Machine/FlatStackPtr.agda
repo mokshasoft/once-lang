@@ -516,21 +516,21 @@ sp-branch : ∀ (b : Bool) (m : ℕ) (prog : AbstractTrace) (fs : FlatState)
 sp-branch true  m prog fs wf = sp-jump (find-label prog m) fs wf
 sp-branch false m prog fs wf = wf
 
--- Plan 0.63: a return moves `fpc`/`fret` or halts — no pointer moves, so
--- this is `wf` directly or its halt transport.
-sp-ret : ∀ (r : List ℕ) (fs : FlatState)
-       → StackPtrWF fs → StackPtrWF (do-ret r fs)
-sp-ret []           fs wf = sp-halt _ (floc fs) true wf
-sp-ret (pc' ∷ rest) fs wf = wf
-
 flat-stack-ptr : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
                → FrameFreeI i
                → (∀ k → i ≡ lea-slot k → suc k < stackSlot (regs (floc fs)))
                → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
 flat-stack-ptr (instr-ctrl (c-label m))               prog fs ff leap wf = wf
-flat-stack-ptr (instr-ctrl (c-thunk m))               prog fs ff leap wf = wf
-flat-stack-ptr (instr-ctrl c-ret)                     prog fs ff leap wf =
-  sp-ret (fret fs) fs wf
+-- Plan 0.63 step 2a: THE ONE INVARIANT THE FRAME MOVE ACTUALLY BREAKS.
+-- `SPInv` anchors every stack pointer to the CURRENT frame, and a caller's
+-- pointers survive into the callee — so `c-thunk`/`c-ret` need the
+-- multi-frame generalization ("some LIVE frame", with the frame stack as
+-- the witness), which is plan 0.63 step 2c. Until their producer lands
+-- they are in `FrameFreeI`'s ⊥ set, so the routes are absurd. (Worth
+-- checking first when 2c starts: `apply` has been heap-only since 0.53, so
+-- it may be that no stack pointer is live across a call in emitted code.)
+flat-stack-ptr (instr-ctrl (c-thunk m b))             prog fs () leap wf
+flat-stack-ptr (instr-ctrl (c-ret b))                 prog fs () leap wf
 flat-stack-ptr (instr-ctrl (c-jmp m))                 prog fs ff leap wf =
   sp-jump (find-label prog m) fs wf
 flat-stack-ptr (instr-ctrl (c-branch-scratch-zero m)) prog fs ff leap wf =
