@@ -561,11 +561,20 @@ wf-branch : ∀ (b : Bool) (m : ℕ) (prog : AbstractTrace) (fs : FlatState)
 wf-branch true  m prog fs wf = wf-jump (find-label prog m) fs wf
 wf-branch false m prog fs wf = wf
 
+-- Plan 0.63: a RETURN moves the pc and pops the ghost return stack, or
+-- halts on an empty one — neither touches the store, so this is `wf`
+-- directly or its halt transport (the same shape as `wf-jump`).
+wf-ret : ∀ (r : List ℕ) (fs : FlatState) → FlatWF fs → FlatWF (do-ret r fs)
+wf-ret []           fs wf = wf-halt wf
+wf-ret (pc' ∷ rest) fs wf = wf
+
 -- ONE flat step preserves store well-formedness. Control flow only moves the
 -- pc (or halts); everything else is `exec-abstract`, i.e. `wf-abstract`.
 flat-wf-step : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
              → FlatWF fs → FlatWF (flat-exec-instr i prog fs)
 flat-wf-step (instr-ctrl (c-label m))               prog fs wf = wf
+flat-wf-step (instr-ctrl (c-thunk m))               prog fs wf = wf
+flat-wf-step (instr-ctrl c-ret)                     prog fs wf = wf-ret (fret fs) fs wf
 flat-wf-step (instr-ctrl (c-jmp m))                 prog fs wf = wf-jump (find-label prog m) fs wf
 flat-wf-step (instr-ctrl (c-branch-scratch-zero m)) prog fs wf =
   wf-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) m prog fs wf

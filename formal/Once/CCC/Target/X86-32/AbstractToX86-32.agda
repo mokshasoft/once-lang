@@ -57,7 +57,7 @@ open import Once.CCC.Machine.SMCore
          instr-load-tag-lit; instr-case-on-tag; instr-loop; instr-reg-op; instr-ctrl;
          -- Plan 0.53: RegOp + FlatCtrl constructors for reg-op / flat-control lowering
          scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc;
-         c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero)
+         c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-thunk; c-ret)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -255,6 +255,12 @@ compile-abstract (instr-reg-op count-inc)         = add (reg edi) (imm 1) ∷ []
 -- 0(ecx)); Scratch = edx.
 compile-abstract (instr-ctrl (c-label n))               = label n ∷ []
 compile-abstract (instr-ctrl (c-jmp n))                 = jmp-l n ∷ []
+-- Plan 0.63: closure-body entry / return. This target's `Instr` labels are
+-- bare ℕ (no provenance), so the body-entry marker lands in the same label
+-- space; step 2 (which gives `c-thunk` its producer) must reconcile that
+-- with `.L_thunk_<n>` — today nothing emits it.
+compile-abstract (instr-ctrl (c-thunk n))               = label n ∷ []
+compile-abstract (instr-ctrl c-ret)                     = ret ∷ []
 compile-abstract (instr-ctrl (c-branch-scratch-zero n)) = cmp (reg edx) (imm 0) ∷ je n ∷ []
 compile-abstract (instr-ctrl (c-branch-tag-zero n))     = cmp (mem (base ecx)) (imm 0) ∷ je n ∷ []
 

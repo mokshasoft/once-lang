@@ -62,7 +62,7 @@ open import Relation.Binary.PropositionalEquality using (refl)
 import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FC
 module C = FC FS word-eq   -- HeapView / enc-sv / FlatCorr data fields
 open C using (HeapView; haddr; HDom; hfront)
-open import Once.CCC.Label using (once)
+open import Once.CCC.Label using (once; thunk)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
   using (x86-off; x86-len; x86-off-suc; fetch-block-head; find-label-corr; fetch-block-2nd; fetch-block-3rd; fetch-block-4th; fetch-block-5th; fetch-block-6th)
 open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-add-rr; step-sub-ri; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-push; step-pop; step-lea)
@@ -284,6 +284,38 @@ block-step-c-label {hv} prog fs s n cc h ft = post , exec-eq , record
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-ctrl (c-label n)) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-ctrl (c-label n)) ft))
+
+-- Plan 0.63: c-thunk — a closure-body entry marker. Identical to `c-label`
+-- in every respect except the label's PROVENANCE (`thunk n`, D082): the x86
+-- `label` is still a 1-instr no-op and the flat step still only bumps fpc,
+-- so the whole correspondence transports unchanged. This block-step is
+-- permanent — it does not depend on `c-thunk` being unemitted, so step 2
+-- (which gives it a producer) inherits it as is.
+block-step-c-thunk : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk n)) → BlockStep hv prog fs s (instr-ctrl (c-thunk n))
+block-step-c-thunk {hv} prog fs s n cc h ft = post , exec-eq , record
+  { dataCorr = record { rdi-eq = C.rdi-eq (dataCorr cc) ; rsi-eq = C.rsi-eq (dataCorr cc)
+                      ; rax-eq = C.rax-eq (dataCorr cc) ; rbx-eq = C.rbx-eq (dataCorr cc) ; r14-eq = C.r14-eq (dataCorr cc)
+                      ; halt-eq = C.halt-eq (dataCorr cc) ; heap-eq = C.heap-eq (dataCorr cc)
+                      ; rsp-eq = C.rsp-eq (dataCorr cc)
+                      ; rsp-eq = C.rsp-eq (dataCorr cc) ; r15-eq = C.r15-eq (dataCorr cc) ; dom-fresh = C.dom-fresh (dataCorr cc) ; dom-written = C.dom-written (dataCorr cc) ; dom-sized = C.dom-sized (dataCorr cc)
+                      ; lo-le = C.lo-le (dataCorr cc) ; untouched = C.untouched (dataCorr cc) ; stack-eq = C.stack-eq (dataCorr cc) }
+  ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (label (thunk n))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-thunk n)) ft)
+    post : X.State
+    post = record s { pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-label {compile-trace prog} {s} {thunk n} fetch-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-ctrl (c-thunk n)) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-ctrl (c-thunk n)) ft))
 
 -- worklist-init / worklist-check: pure cata bookkeeping — compile to [] (x86-len 0),
 -- flat step is identity (exec-abstract = s,alloc) mod fpc, x86 does nothing. FlatCorr

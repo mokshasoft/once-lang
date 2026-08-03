@@ -1020,6 +1020,15 @@ data FlatCtrl : Set where
   -- and consumed inside this single step.
   c-branch-scratch-zero : ℕ → FlatCtrl -- if Scratch ≟ SV-Tag 0, jump to label
   c-branch-tag-zero     : ℕ → FlatCtrl -- if *Input1 tag ≟ SV-Tag 0, jump
+  -- Plan 0.63: the call/return half of flat control. A RETURN is pure
+  -- control flow, so it belongs here rather than as a top-level
+  -- AbstractInstr (which would force a clause at the 13 sites that treat
+  -- `instr-ctrl c` opaquely). `c-thunk` marks a closure body's entry: it
+  -- is a label like `c-label`, but in the `thunk` provenance (D082), so a
+  -- jump can never land on a body entry and a call can never land on a
+  -- jump label — definitionally, not by counter accident.
+  c-thunk               : ℕ → FlatCtrl -- closure-body entry marker
+  c-ret                 : FlatCtrl     -- return to the caller's pc
 
 data AbstractInstr : Set where
   -- Register operations

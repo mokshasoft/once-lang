@@ -123,6 +123,13 @@ ss-branch : ∀ (b : Bool) (m : ℕ) (prog : AbstractTrace) (fs : FlatState)
 ss-branch true  m prog fs = ss-jump (find-label prog m) fs
 ss-branch false m prog fs = refl
 
+-- Plan 0.63: a return moves `fpc`/`fret` or halts — the register file, and
+-- with it the stack-slot window, is untouched either way.
+ss-ret : ∀ (r : List ℕ) (fs : FlatState)
+       → stackSlot (regs (floc (do-ret r fs))) ≡ stackSlot (regs (floc fs))
+ss-ret []           fs = refl
+ss-ret (pc' ∷ rest) fs = refl
+
 ss-lea-indexed : ∀ (ls : LocState FS) (ml : Maybe (ValueLocation FS)) (idx : ℕ)
                → SameSlot (exec-lea-indexed-via ml idx ls) ls
 ss-lea-indexed ls nothing    idx = refl
@@ -262,6 +269,8 @@ flat-stack-slot : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState
                 → stackSlot (regs (floc (flat-exec-instr i prog fs)))
                     ≡ stackSlot (regs (floc fs))
 flat-stack-slot (instr-ctrl (c-label m))               prog fs ff = refl
+flat-stack-slot (instr-ctrl (c-thunk m))               prog fs ff = refl
+flat-stack-slot (instr-ctrl c-ret)                     prog fs ff = ss-ret (fret fs) fs
 flat-stack-slot (instr-ctrl (c-jmp m))                 prog fs ff = ss-jump (find-label prog m) fs
 flat-stack-slot (instr-ctrl (c-branch-scratch-zero m)) prog fs ff =
   ss-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) m prog fs

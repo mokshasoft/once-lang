@@ -41,7 +41,7 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.FrameFree using (FrameFreeI)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Once.SigOp.Info using (SigOpInfo)
-open import Once.CCC.Label using (Label; once)
+open import Once.CCC.Label using (Label; once; thunk)
   using (AbstractInstr; AbstractTrace; Slot;
          mov-to-output; mov-to-input;
          mov-output-to-input2; mov-input2-to-output;
@@ -281,6 +281,11 @@ compile-abstract (instr-reg-op count-inc)          = add (reg r14) (imm 1) ∷ [
 -- of flattening — abstract jump ↔ target jump, no structured expansion).
 compile-abstract (instr-ctrl (c-label n))          = label (once n) ∷ []
 compile-abstract (instr-ctrl (c-jmp n))            = jmp (once n) ∷ []
+-- Plan 0.63 (D082): a closure-body entry is a label in the `thunk`
+-- provenance — same emitted text (`.L_thunk_<n>:`), disjoint from every
+-- jump target by `_≡ᵇᴸ_`'s catch-all. A return is the plain `ret`.
+compile-abstract (instr-ctrl (c-thunk n))          = label (thunk n) ∷ []
+compile-abstract (instr-ctrl c-ret)                = ret ∷ []
 -- Plan 0.34: a conditional branch lowers to cmp+je (2 instrs). On a
 -- flag-less target (RISC-V) this would be a single compare-and-branch.
 compile-abstract (instr-ctrl (c-branch-scratch-zero n)) =

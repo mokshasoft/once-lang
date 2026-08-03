@@ -28,7 +28,7 @@ open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Label using (Label; once)
+open import Once.CCC.Label using (Label; once; thunk; _≡ᵇᴸ_)
 open import Once.Type using (FitsInReg; fits-int; fits-float)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
@@ -118,6 +118,15 @@ find-label-go-skip target (syscall ∷ bs) rest xi nl =
   trans (find-label-go-skip target bs rest (suc xi) nl)
         (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
 
+-- Plan 0.63 (D082): a block that IS a single label, but in a FOREIGN
+-- provenance. The scan does not match it and steps past it, costing one
+-- index — the whole content of the premise is that `_≡ᵇᴸ_` says `false`,
+-- which for a `thunk` label against a `once` target is its catch-all.
+find-label-go-skip-other : ∀ (target ℓ : Label) (rest : Program) (xi : ℕ)
+  → (ℓ ≡ᵇᴸ target) ≡ false
+  → X.find-label-go target (label ℓ ∷ rest) xi ≡ X.find-label-go target rest (suc xi)
+find-label-go-skip-other target ℓ rest xi ne rewrite ne = refl
+
 ------------------------------------------------------------------------
 -- HeadView: per-instruction evidence that confines the constructor
 -- enumeration to `headView`, so `find-label-pres` stays structural.
@@ -131,6 +140,18 @@ data HeadView (i : AbstractInstr) : Set where
     → (∀ rest tgt acc → fl-go (i ∷ rest) tgt acc ≡ fl-label-match (m ≡ᵇ tgt) rest tgt acc)
     → HeadView i
   hv-plain : has-label (compile-abstract i) ≡ false
+    → (∀ rest tgt acc → fl-go (i ∷ rest) tgt acc ≡ fl-go rest tgt (suc acc))
+    → HeadView i
+  -- Plan 0.63 (D082): a FOREIGN-PROVENANCE label. `c-thunk` fits neither
+  -- case above — it IS a label instruction (so it occupies an index on
+  -- BOTH sides, which `hv-plain` would deny) but it is not a `once` label
+  -- (so `hv-clabel`'s matching scan must not fire). Both scans therefore
+  -- step over it at a cost of exactly one index each. The middle premise
+  -- is `refl` at every producer precisely because provenances are
+  -- definitionally disjoint — the property D082 bought.
+  hv-otherlabel : (ℓ : Label)
+    → compile-abstract i ≡ label ℓ ∷ []
+    → (∀ tgt → (ℓ ≡ᵇᴸ once tgt) ≡ false)
     → (∀ rest tgt acc → fl-go (i ∷ rest) tgt acc ≡ fl-go rest tgt (suc acc))
     → HeadView i
 
@@ -180,6 +201,8 @@ headView (instr-load-const p v) = hv-plain (const-no-label p v) (λ _ _ _ → re
 headView (instr-case-on-tag f g) = hv-plain refl (λ _ _ _ → refl)
 headView (instr-reg-op op) = hv-plain (reg-op-no-label op) (λ _ _ _ → refl)
 headView (instr-ctrl (c-label m)) = hv-clabel m refl (λ _ _ _ → refl)
+headView (instr-ctrl (c-thunk m)) = hv-otherlabel (thunk m) refl (λ _ → refl) (λ _ _ _ → refl)
+headView (instr-ctrl c-ret) = hv-plain refl (λ _ _ _ → refl)
 headView (instr-ctrl (c-jmp m)) = hv-plain refl (λ _ _ _ → refl)
 headView (instr-ctrl (c-branch-scratch-zero m)) = hv-plain refl (λ _ _ _ → refl)
 headView (instr-ctrl (c-branch-tag-zero m)) = hv-plain refl (λ _ _ _ → refl)
@@ -208,6 +231,16 @@ find-label-pres (i ∷ rest) target acc xi j (hv-plain hl fl-p ∷ all-rest) fl-
    , trans (proj₁ (proj₂ ih)) (sym (+-suc acc d'))
    , trans (find-label-go-skip (once target) (compile-abstract i) (compile-trace rest) xi hl)
            (trans (proj₂ (proj₂ ih)) (cong just (+-assoc xi (x86-len i) (x86-off rest d'))))
+find-label-pres (i ∷ rest) target acc xi j (hv-otherlabel ℓ ca-eq ne fl-p ∷ all-rest) fl-eq
+  rewrite ca-eq | ne target =
+  let ih = find-label-pres rest target (suc acc) (suc xi) j all-rest
+             (trans (sym (fl-p rest target acc)) fl-eq)
+      d' = proj₁ ih
+  in suc d'
+   , trans (proj₁ (proj₂ ih)) (sym (+-suc acc d'))
+   , trans (proj₂ (proj₂ ih))
+           (cong just (trans (sym (+-suc xi (x86-off rest d')))
+                             (cong (λ L → xi + (L + x86-off rest d')) (sym (cong length ca-eq)))))
 find-label-pres (i ∷ rest) target acc xi j (hv-clabel m ca-eq fl-c ∷ all-rest) fl-eq
   with m ≡ᵇ target in meq
 ... | true rewrite ca-eq | meq = 0 , comp1 , cong just (sym (+-identityʳ xi))
@@ -228,8 +261,9 @@ find-label-pres (i ∷ rest) target acc xi j (hv-clabel m ca-eq fl-c ∷ all-res
            (cong just (trans (sym (+-suc xi (x86-off rest d')))
                              (cong (λ L → xi + (L + x86-off rest d')) (sym (cong length ca-eq)))))
 
--- headView is total (every current instruction is either a c-label or a
--- label-free block — `compile-sigOp` = call-sym, no labels), so the
+-- headView is total (every current instruction is a c-label, a
+-- foreign-provenance label — `c-thunk` — or a label-free block;
+-- `compile-sigOp` = call-sym, no labels), so the
 -- All-HeadView side-condition is always dischargeable. (Plan 0.33 S2 will
 -- generalize the hv-plain evidence to `no once-label` so this stays total
 -- when label-using SigOps are inlined; today it holds outright.)
@@ -400,6 +434,12 @@ find-label-none-go (i ∷ rest) target acc xi (hv-plain nl fl-p ∷ all-rest) fl
                             (compile-trace rest) xi nl)
         (find-label-none-go rest target (suc acc) (xi + length (compile-abstract i))
                             all-rest (trans (sym (fl-p rest target acc)) fl-eq))
+-- Plan 0.63: a foreign-provenance label never matches a `once` target, so
+-- the compiled scan just steps past it — one index, like the flat scan.
+find-label-none-go (i ∷ rest) target acc xi (hv-otherlabel ℓ ca-eq ne fl-p ∷ all-rest) fl-eq
+  rewrite ca-eq | ne target =
+  find-label-none-go rest target (suc acc) (suc xi) all-rest
+                     (trans (sym (fl-p rest target acc)) fl-eq)
 find-label-none-go (i ∷ rest) target acc xi (hv-clabel m ca-eq fl-c ∷ all-rest) fl-eq
   with m ≡ᵇ target in meq
 -- a MATCH contradicts the flat scan's `nothing`

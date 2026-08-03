@@ -48,6 +48,7 @@ open import Data.Nat.Properties using (≤-trans; n≤1+n; <⇒≢)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.List using (List; []; _∷_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -453,6 +454,13 @@ pb-jump : ∀ (mpc : Maybe ℕ) (fs : FlatState)
 pb-jump (just pc') fs wf = wf
 pb-jump nothing    fs wf = pb-halt _ (floc fs) true wf
 
+-- Plan 0.63: a return moves `fpc`/`fret` or halts — no pointer moves, so
+-- this is `wf` directly or its halt transport.
+pb-ret : ∀ (r : List ℕ) (fs : FlatState)
+       → PtrBoundsWF fs → PtrBoundsWF (do-ret r fs)
+pb-ret []           fs wf = pb-halt _ (floc fs) true wf
+pb-ret (pc' ∷ rest) fs wf = wf
+
 pb-branch : ∀ (b : Bool) (m : ℕ) (prog : AbstractTrace) (fs : FlatState)
           → PtrBoundsWF fs → PtrBoundsWF (do-branch b m prog fs)
 pb-branch true  m prog fs wf = pb-jump (find-label prog m) fs wf
@@ -464,6 +472,9 @@ flat-ptr-bounds : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState
                 → StoreWF (next-heap-ref (falloc fs)) (floc fs)
                 → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)
 flat-ptr-bounds (instr-ctrl (c-label m))               prog fs ff am wfS wf = wf
+flat-ptr-bounds (instr-ctrl (c-thunk m))               prog fs ff am wfS wf = wf
+flat-ptr-bounds (instr-ctrl c-ret)                     prog fs ff am wfS wf =
+  pb-ret (fret fs) fs wf
 flat-ptr-bounds (instr-ctrl (c-jmp m))                 prog fs ff am wfS wf =
   pb-jump (find-label prog m) fs wf
 flat-ptr-bounds (instr-ctrl (c-branch-scratch-zero m)) prog fs ff am wfS wf =

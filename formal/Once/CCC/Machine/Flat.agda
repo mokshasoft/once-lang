@@ -41,12 +41,30 @@ module FlatMachine {FS : FrameSemantics} where
   -- Plan 0.34: no zero-flag — a conditional branch is one unit that
   -- computes its condition inline, so there is no persisting flag.
   record FlatState : Set where
-    constructor mkFlat
+    constructor mkFlatFull
     field
       floc   : LocState FS
       falloc : AllocState {FS}
       fpc    : ℕ
+      -- Plan 0.63: the call/return state.
+      -- `fret` is the return-pc stack — a GHOST list, because the abstract
+      -- memory is frame/slot-keyed and has no byte-addressed pushdown; the
+      -- addresses the concrete machine pushes below %rsp are modelled here
+      -- and related by the correspondence.
+      -- `fclosure` mirrors the per-arch closure register (%r12), which the
+      -- concrete call dereferences (`call *0x8(%r12)`); `exec-abstract`
+      -- treats `instr-save-closure-reg` as the identity precisely because
+      -- that register lives at the FLAT level.
+      fret     : List ℕ
+      fclosure : StoredValue FS
   open FlatState public
+
+  -- The 3-field constructor every existing site uses: no pending returns,
+  -- filler closure register (D074's tag filler). Keeping it means the two
+  -- new fields cost no edit at the ~37 construction sites, all of which
+  -- build exactly such a state.
+  mkFlat : LocState FS → AllocState {FS} → ℕ → FlatState
+  mkFlat loc alloc pc = mkFlatFull loc alloc pc [] (SV-Tag 0)
 
   ----------------------------------------------------------------------
   -- `with`-free decision helpers
@@ -91,6 +109,25 @@ module FlatMachine {FS : FrameSemantics} where
 
   find-label : AbstractTrace → ℕ → Maybe ℕ
   find-label prog target = fl-go prog target 0
+
+  -- D082: the CALL's scan. Separate from `find-label` because a body entry
+  -- (`c-thunk`) and a jump target (`c-label`) are different provenances —
+  -- a call can never land on a jump label, definitionally.
+  thunk-of? : AbstractInstr → Maybe ℕ
+  thunk-of? (instr-ctrl (c-thunk m)) = just m
+  thunk-of? _                        = nothing
+
+  ft-go    : AbstractTrace → ℕ → ℕ → Maybe ℕ
+  ft-match : Bool → AbstractTrace → ℕ → ℕ → Maybe ℕ
+  ft-go []       _      _ = nothing
+  ft-go (x ∷ is) target i with thunk-of? x
+  ... | just m  = ft-match (m ≡ᵇ target) is target i
+  ... | nothing = ft-go is target (suc i)
+  ft-match true  _  _      i = just i
+  ft-match false is target i = ft-go is target (suc i)
+
+  find-thunk : AbstractTrace → ℕ → Maybe ℕ
+  find-thunk prog target = ft-go prog target 0
 
   fetch : AbstractTrace → ℕ → Maybe AbstractInstr
   fetch []       _       = nothing
@@ -180,8 +217,18 @@ module FlatMachine {FS : FrameSemantics} where
               ; falloc = g (proj₂ (exec-abstract i (floc fs) (falloc fs)))
               ; fpc    = suc (fpc fs) }
 
+  -- Plan 0.63: RETURN. Pop the return-pc stack and continue there; an
+  -- empty stack halts (returning from the outermost frame). Aux-style on
+  -- the list so downstream proofs rewrite with the pop equation.
+  do-ret : List ℕ → FlatState → FlatState
+  do-ret []           fs = record fs { floc = record (floc fs) { halted = true } }
+  do-ret (pc' ∷ rest) fs = record fs { fpc = pc' ; fret = rest }
+
   flat-exec-instr : AbstractInstr → AbstractTrace → FlatState → FlatState
   flat-exec-instr (instr-ctrl (c-label _))               _    fs = record fs { fpc = suc (fpc fs) }
+  -- a body-entry marker is a passthrough, exactly like `c-label`
+  flat-exec-instr (instr-ctrl (c-thunk _))               _    fs = record fs { fpc = suc (fpc fs) }
+  flat-exec-instr (instr-ctrl c-ret)                     _    fs = do-ret (fret fs) fs
   flat-exec-instr (instr-ctrl (c-jmp n))                 prog fs = do-jump (find-label prog n) fs
   flat-exec-instr (instr-ctrl (c-branch-scratch-zero n)) prog fs =
     do-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) n prog fs

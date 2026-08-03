@@ -44,6 +44,7 @@ open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Scratch; AtStack; AbstractInstr; AbstractTrace; LocState; StoredValue;
          SV-Tag; SV-Ptr; SV-Lit; SV-Code;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
+         c-thunk; c-ret;
          load-from-slot; restore-input; instr-alloc-stack; instr-reclaim-to; instr-loop;
          instr-case-on-tag;
          mov-to-output; mov-to-input; mov-output-to-input2; mov-input2-to-output;
@@ -181,6 +182,13 @@ module CataNextSlot {FS : FrameSemantics} where
     → SlotStable i
     → next-slot (falloc (flat-exec-instr i prog fs)) ≡ next-slot (falloc fs)
   flat-keeps-next-slot prog fs (instr-ctrl (c-label _)) _ = refl
+  -- Plan 0.63: a body-entry marker only bumps `fpc`; a return moves
+  -- `fpc`/`fret` or halts. Neither touches the allocator.
+  flat-keeps-next-slot prog fs (instr-ctrl (c-thunk _)) _ = refl
+  flat-keeps-next-slot prog fs (instr-ctrl c-ret) _
+    with fret fs
+  ... | []     = refl
+  ... | _ ∷ _  = refl
   flat-keeps-next-slot prog fs (instr-ctrl (c-jmp n)) _
     with find-label prog n
   ... | just _  = refl

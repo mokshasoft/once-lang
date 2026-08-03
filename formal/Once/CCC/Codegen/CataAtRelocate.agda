@@ -31,7 +31,7 @@ open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Bool using (true; false)
 open import Data.Maybe using (map; just; nothing)
 open import Data.Product using (_,_)
-open import Data.List using (List; _++_)
+open import Data.List using (List; []; _∷_; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Denotation.Trace using (SigOpEvent)
@@ -42,6 +42,7 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Scratch; AbstractInstr; AbstractTrace;
          instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
+         c-thunk; c-ret;
          -- the non-ctrl constructors (each relocates by `refl` via the
          -- `flat-step-straight` catch-all) — enumerated for `instr-reloc`.
          mov-to-output; mov-to-input; mov-output-to-input2; mov-input2-to-output;
@@ -59,9 +60,17 @@ module CataAtRelocate {FS : FrameSemantics} where
   open FlatStepsAPI {FS}
   open FlatEventTrace {FS}
 
-  -- The relocation invariant: same state, pc shifted RIGHT by `k`.
+  -- Plan 0.63: a PENDING RETURN ADDRESS IS A CODE ADDRESS, so it relocates
+  -- exactly like the pc. Written as an explicit recursion (not `map`) so it
+  -- reduces on the cons pattern and `flat-relocate-ret` stays `refl`.
+  shift-rets : ℕ → List ℕ → List ℕ
+  shift-rets k []       = []
+  shift-rets k (p ∷ ps) = (p + k) ∷ shift-rets k ps
+
+  -- The relocation invariant: same state, pc — and every pending return
+  -- address — shifted RIGHT by `k`.
   shift-pc : ℕ → FlatState → FlatState
-  shift-pc k fs = record fs { fpc = fpc fs + k }
+  shift-pc k fs = record fs { fpc = fpc fs + k ; fret = shift-rets k (fret fs) }
 
   -- Straight step relocates: it ignores `prog` (no `find-label`) and only
   -- bumps the pc, so running in `prog` from the shifted pc = shifting the
@@ -83,6 +92,22 @@ module CataAtRelocate {FS : FrameSemantics} where
     → flat-exec-instr (instr-ctrl (c-label n)) prog (shift-pc k fs)
         ≡ shift-pc k (flat-exec-instr (instr-ctrl (c-label n)) seg fs)
   flat-relocate-label prog seg k fs n = refl
+
+  -- Plan 0.63: a body-entry marker relocates like a label (pc bump,
+  -- `prog`-independent), and a RETURN relocates because `shift-pc` shifts
+  -- the pending return addresses too — popping the shifted stack lands at
+  -- `p + k`, exactly where shifting the standalone result lands.
+  flat-relocate-thunk : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (n : ℕ)
+    → flat-exec-instr (instr-ctrl (c-thunk n)) prog (shift-pc k fs)
+        ≡ shift-pc k (flat-exec-instr (instr-ctrl (c-thunk n)) seg fs)
+  flat-relocate-thunk prog seg k fs n = refl
+
+  flat-relocate-ret : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState)
+    → flat-exec-instr (instr-ctrl c-ret) prog (shift-pc k fs)
+        ≡ shift-pc k (flat-exec-instr (instr-ctrl c-ret) seg fs)
+  flat-relocate-ret prog seg k fs with fret fs
+  ... | []     = refl
+  ... | p ∷ ps = refl
 
   -- Jump relocates given the target's relocation fact: `find-label prog n
   -- = (find-label seg n) + k`. `just q → q + k` matches `shift-pc`'s
@@ -130,6 +155,8 @@ module CataAtRelocate {FS : FrameSemantics} where
               → flat-exec-instr i prog (shift-pc k fs) ≡ shift-pc k (flat-exec-instr i seg fs)
   -- control forms → the per-class relocation lemmas
   instr-reloc prog seg k fs (instr-ctrl (c-label n))               lr = flat-relocate-label          prog seg k fs n
+  instr-reloc prog seg k fs (instr-ctrl (c-thunk n))               lr = flat-relocate-thunk          prog seg k fs n
+  instr-reloc prog seg k fs (instr-ctrl c-ret)                     lr = flat-relocate-ret            prog seg k fs
   instr-reloc prog seg k fs (instr-ctrl (c-jmp n))                 lr = flat-relocate-jmp            prog seg k fs n (lr n)
   instr-reloc prog seg k fs (instr-ctrl (c-branch-scratch-zero n)) lr = flat-relocate-branch-scratch prog seg k fs n (lr n)
   instr-reloc prog seg k fs (instr-ctrl (c-branch-tag-zero n))     lr = flat-relocate-branch-tag     prog seg k fs n (lr n)

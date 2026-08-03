@@ -18,7 +18,7 @@ open import Data.List using (List; []; _∷_; foldr)
 
 -- Import X86-64 syntax
 open import Once.CCC.Target.X86-64.Syntax
-open import Once.CCC.Label using (Label; once; sigop)
+open import Once.CCC.Label using (Label; once; sigop; thunk)
 
 ------------------------------------------------------------------------
 -- Register names
@@ -55,6 +55,10 @@ showOperand (imm n) = "$" ++ showNat n
 showLabel : Label → String
 showLabel (once n)       = "once_" ++ showNat n
 showLabel (sigop nm k)   = "sigops_" ++ nm ++ "_" ++ showNat k
+-- Plan 0.63 (D082): a closure-body entry. The ".L" prefix is added by the
+-- call sites, so this renders exactly the `.L_thunk_<n>` that
+-- `emit-thunk-body` and the `rip+label` operand already use.
+showLabel (thunk n)      = "_thunk_" ++ showNat n
 
 showInstr : Instr → String
 showInstr (mov dst src) =

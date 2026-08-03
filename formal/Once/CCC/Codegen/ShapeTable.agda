@@ -59,7 +59,7 @@ open import Once.CCC.Machine.SMCore using
    instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg;
    instr-load-tag-lit; instr-alloc-heap; instr-loop; instr-case-on-tag;
    instr-reg-op; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero;
-   c-branch-tag-zero)
+   c-branch-tag-zero; c-thunk; c-ret)
 
 ------------------------------------------------------------------------
 -- The expectation language.
@@ -316,6 +316,16 @@ step-expect env st (instr-reg-op op) = st
 -- transfers nowhere (the next pc is unreachable from here; its entry comes
 -- from its own label/fall-in). Branches refine the scrutinee.
 step-expect env st (instr-ctrl (c-label m)) = env m
+-- Plan 0.63. A closure-body entry is reached from a CALL, which this layer
+-- does not model yet (`ir-to-trace` is main-only, so `c-thunk` has no
+-- producer). Claim NOTHING there rather than adopting a jump label's entry
+-- from a namespace it does not belong to: the empty expectation is met by
+-- every state, so the walk stays sound. Step 2, which emits the bodies,
+-- owns giving body entries a real per-body entry claim (and `c-ret` a real
+-- obligation against the caller's continuation).
+step-expect env st (instr-ctrl (c-thunk m)) = mkExpect e-any e-any e-any []
+-- after a return the fall-through is dead, exactly as after `c-jmp`
+step-expect env st (instr-ctrl c-ret) = mkExpect e-any e-any e-any []
 step-expect env st (instr-ctrl (c-jmp m)) =
   -- fall-through after an unconditional jump is dead until the next label;
   -- no claim
@@ -376,6 +386,12 @@ ctrl-ok env st (instr-ctrl (c-branch-tag-zero m)) with e-in1 st
 ...   | nothing      = false
 -- a label is a join point: the FALL-IN state must entail the adopted entry
 ctrl-ok env st (instr-ctrl (c-label m)) = sub-expect st (env m)
+-- Plan 0.63: a body entry claims nothing (see `step-expect`) so falling in
+-- entails it trivially; a return transfers to a pc this layer does not
+-- track. Both are vacuous while `c-thunk`/`c-ret` have no producer — step 2
+-- replaces them with the per-body entry/return obligations.
+ctrl-ok env st (instr-ctrl (c-thunk m)) = true
+ctrl-ok env st (instr-ctrl c-ret) = true
 ctrl-ok env st _ = true
 
 check-shapes : LabelEnv → Expect → AbstractTrace → Bool

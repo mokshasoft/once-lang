@@ -66,7 +66,7 @@ open import Once.CCC.Machine.SMCore
          -- RegOp constructors (Plan 0.53 reg-op lowering)
          scratch-one; scratch-zero; scratch-dec; scratch-load-count; count-zero; count-inc;
          -- FlatCtrl constructors (Plan 0.53 flat-control lowering)
-         c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero)
+         c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero; c-thunk; c-ret)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -301,6 +301,11 @@ compile-abstract (instr-reg-op count-inc)         = addi s4 s4 (+ 1) ∷ []
 -- compare-and-branch (no flags on RISC-V). Input1 pointer = t0; Scratch = s3.
 compile-abstract (instr-ctrl (c-label n))               = label n ∷ []
 compile-abstract (instr-ctrl (c-jmp n))                 = j n ∷ []
+-- Plan 0.63: closure-body entry / return. As on x86-32, this target's
+-- labels are bare ℕ; step 2 reconciles the body-entry name with
+-- `.L_thunk_<n>` when `c-thunk` gains a producer.
+compile-abstract (instr-ctrl (c-thunk n))               = label n ∷ []
+compile-abstract (instr-ctrl c-ret)                     = ret ∷ []
 compile-abstract (instr-ctrl (c-branch-scratch-zero n)) = beq s3 zero n ∷ []
 compile-abstract (instr-ctrl (c-branch-tag-zero n))     = ld t1 t0 0 ∷ beq t1 zero n ∷ []
 

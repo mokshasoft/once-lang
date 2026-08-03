@@ -418,6 +418,12 @@ regtag-branch : ∀ (b : Bool) (m : ℕ) (prog : AbstractTrace) (fs : FlatState)
 regtag-branch true  m prog fs wf = regtag-jump (find-label prog m) fs wf
 regtag-branch false m prog fs wf = wf
 
+-- Plan 0.63: a return moves `fpc`/`fret`, or halts on an empty return
+-- stack — the registers are untouched either way.
+regtag-ret : ∀ (r : List ℕ) (fs : FlatState) → FlatRegTag fs → FlatRegTag (do-ret r fs)
+regtag-ret []           fs wf = regtag-halt wf
+regtag-ret (pc' ∷ rest) fs wf = wf
+
 -- ONE flat step preserves the counter-tag invariant. The straight-line cases
 -- are ENUMERATED (a catch-all would not reduce `flat-exec-instr`'s own
 -- catch-all in the case tree); each is `regtag-abstract`. The four frame-moving
@@ -427,6 +433,8 @@ regtag-branch false m prog fs wf = wf
 flat-regtag-step : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
                  → FlatRegTag fs → FlatRegTag (flat-exec-instr i prog fs)
 flat-regtag-step (instr-ctrl (c-label m))               prog fs wf = wf
+flat-regtag-step (instr-ctrl (c-thunk m))               prog fs wf = wf
+flat-regtag-step (instr-ctrl c-ret)                     prog fs wf = regtag-ret (fret fs) fs wf
 flat-regtag-step (instr-ctrl (c-jmp m))                 prog fs wf = regtag-jump (find-label prog m) fs wf
 flat-regtag-step (instr-ctrl (c-branch-scratch-zero m)) prog fs wf =
   regtag-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) m prog fs wf

@@ -5847,3 +5847,62 @@ boundary.
   bodies into `ir-to-trace`.
 - No emitted instruction or label name changes, so existing binaries and
   the exit-test suite are unaffected by the model work.
+
+## D083: A Pending Return Address Is a Code Address — It Relocates With the pc
+
+**Date**: 2026-08-03
+**Status**: Accepted (landed with Plan 0.63 step 1)
+**Relates**: D081 (a code address is where the label is), D082 (`thunk`
+provenance), Plan 0.63 step 1
+
+### Context
+
+Plan 0.63 step 1 gives `FlatState` a ghost return-pc stack (`fret`) and
+`FlatCtrl` a `c-ret` that pops it. `CataAtRelocate` states the flat
+machine's RELOCATION invariant: running an instruction in a big program
+`prog` from a pc shifted by `k` equals running it standalone in the
+segment `seg` and shifting the result — the bridge that splices a cata
+algebra's standalone run into the embedded cata loop. The invariant was
+`shift-pc k fs = record fs { fpc = fpc fs + k }`.
+
+Adding `c-ret` breaks it as stated: a return jumps to an ABSOLUTE pc taken
+off `fret`, and an unrelocated address does not move when the code does.
+
+### Decision
+
+`shift-pc` shifts the pending return addresses too:
+
+    shift-pc k fs = record fs { fpc = fpc fs + k ; fret = shift-rets k (fret fs) }
+
+with `shift-rets` an explicit recursion (not `map`) so it reduces on the
+cons pattern and `flat-relocate-ret` stays `refl`.
+
+### Why
+
+A return address IS a code address, and relocating a program relocates
+every code address in its state — that is what a linker does. The
+alternative was to CONDITION `instr-reloc`/`relocate-steps` on the segment
+being return-free, which would have (a) rippled a new premise through
+`at-relocated-emits` and the cata assembly, and (b) been merely true-today
+rather than true: step 2 puts closure bodies in the program, and a
+relocated body's pending returns must land in the relocated copy.
+
+`shift-pc` is local to `CataAtRelocate` (verified: no other module names
+it), so the strengthening costs nothing downstream — every existing case
+stays `refl`.
+
+### Consequence: `c-ret` is scaffolding, not a fossil
+
+`c-ret` joins `FrameFreeI`'s `⊥` set for now, with `instr-loop` /
+`lea-indexed` / `instr-case-on-tag`. The set's meaning is "no emitted
+trace contains this", which is TRUE of `c-ret` until step 2 emits the
+bodies — but the reason is the opposite of a fossil's, and the clause
+carries that comment. It is what routes `events-running-fetch`'s `c-ret`
+case absurdly instead of adding a residual: the concrete `ret` pops the
+machine stack while `do-ret` pops the ghost `fret`, and relating the two
+is precisely step 2/3's new `FlatCorr` field. Step 2 deletes the clause
+and supplies the real block-step.
+
+`c-thunk` needs no such treatment — `block-step-c-thunk` is a pure pc bump
+on both sides, a permanent theorem that does not depend on the
+constructor being unemitted.
