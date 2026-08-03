@@ -40,6 +40,7 @@ open import poc.OCP0009.NbEPDirDBConf
   using ( _⟹_; pvar; plam; papp; pβ; ppair; pfst; psnd; pβfst; pβsnd
         ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝; p⌜Hom⌝; phrefl
         ; ptr; ptr-J-base; ptr-J-Σ; ptr-taut
+        ; phrefl-pw; ptr-J-Hom; ptr-pw
         ; _⁺; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟶*-trans
         ; ⟹-ren; ⟶*-ren; ⟶*-appˡ )
 
@@ -232,6 +233,9 @@ Hom (Hom A a b) t u ⁺ᵀ = Hom ((Hom A a b) ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl w@(ptr-J-base _))    = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(ptr-J-Σ _))       = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(ptr-taut _ _))    = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(phrefl-pw _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(ptr-J-Hom _ _))   = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(ptr-pw _ _ _ _ _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pΠ p q)       = pΠ (⟹ᵀ-⁺ p) (⟹ᵀ-⁺ q)
 ⟹ᵀ-⁺ (pΣ p q)       = pΣ (⟹ᵀ-⁺ p) (⟹ᵀ-⁺ q)
 ⟹ᵀ-⁺ pEl-⌜base⌝     = pbase

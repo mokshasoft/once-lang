@@ -34,11 +34,14 @@ open import poc.OCP0009.NbEPDirDBPi
         ; _∘ᵣ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_
         ; subTy-renTy; renTy-subTy; subTy-subTy; renTy-renTy
         ; subTy-cong; renTy-cong; subTy-id; subTm-renTm; subTm-id; subTm-cong
-        ; renTm-renTm )
+        ; renTm-renTm; renTm-subTm; ⌜Hom⌝-cong₃ )
 open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false; _∨_; occTm; ∨-false; ∨-false₁; ∨-false₂
-        ; occ-ren-eq; occ-sub; eqv
-        ; PosC; posc-var; posc-Hom; posc-ren; posc-sub )
+        ; occ-ren-eq; occ-sub; eqv; Avoids; occ-ren-tm; avoids-wk
+        ; PosC; posc-var; posc-Hom; posc-ren; posc-sub
+        ; pw?; stkC?; pwDom; pwBody; pwShift
+        ; pw?-sub; stkC?-sub; pwBody-sub; pwDom-sub
+        ; pwBody-occ; ren-as-sub; avoids-pwShift; subTm-occ )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
         ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
@@ -46,7 +49,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
         ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
-        ; tr-J-base; tr-J-Σ; tr-taut
+        ; tr-J-base; tr-J-Σ; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
         ; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
@@ -57,7 +60,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢ctx_; c-◇; c-▹ )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; ⟶-sub )
 open import poc.OCP0009.NbEPDirDBConf
-  using ( ⟶-ren; ⟶*-ren; ren-comm; subTm-monoˢ; extS-mono; single-mono )
+  using ( ⟶-ren; ⟶*-ren; ren-comm; subTm-monoˢ; extS-mono; single-mono
+        ; stkC?-red )
 open import poc.OCP0009.NbEPDirDBSR using ( sub-comm )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El
@@ -231,6 +235,31 @@ occ-red {x = x} (tr-J-Σ c a m c₁ c₂ s e₀) e =
   ∨-false₂ (occTm x (hrefl (⌜Σ⌝ c₁ c₂) s))
            (∨-false₂ (occTm (vs x) (⌜Hom⌝ c a m)) e)
 occ-red (tr-taut f e₀) e = e
+occ-red {x = x} (hrefl-pw C s key) e =
+  ∨-false (pwBody-occ C key (∨-false₁ (occTm x C) e))
+          (∨-false (trans (occ-ren-eq (λ y → refl) s)
+                          (∨-false₂ (occTm x C) e))
+                   refl)
+occ-red {x = x} (tr-J-Hom c a m c₁ a₁ b₁ s e₀ key) e =
+  ∨-false₂ (occTm x (hrefl (⌜Hom⌝ c₁ a₁ b₁) s))
+           (∨-false₂ (occTm (vs x) (⌜Hom⌝ c a m)) e)
+occ-red {x = x} (tr-pw c a f e₀ key) e =
+  ∨-false
+    (∨-false part-code (∨-false (∨-false part-a refl) refl))
+    (∨-false h-f (∨-false part-e refl))
+  where
+  h-mot  = ∨-false₁ (occTm (vs x) (⌜Hom⌝ c a (var vz))) e
+  h-rest = ∨-false₂ (occTm (vs x) (⌜Hom⌝ c a (var vz))) e
+  h-f    = ∨-false₁ (occTm (vs x) f) h-rest
+  h-e0   = ∨-false₂ (occTm (vs x) f) h-rest
+  h-c    = ∨-false₁ (occTm (vs x) c) h-mot
+  h-a    = ∨-false₁ (occTm (vs x) a) (∨-false₂ (occTm (vs x) c) h-mot)
+  pwsh-eq : ∀ y → eqv (vs (vs x)) (pwShift y) ≡ eqv (vs (vs x)) y
+  pwsh-eq vz     = refl
+  pwsh-eq (vs y) = refl
+  part-code = trans (occ-ren-eq pwsh-eq (pwBody c)) (pwBody-occ c key h-c)
+  part-a    = trans (occ-ren-eq (λ y → refl) a) h-a
+  part-e    = trans (occ-ren-eq (λ y → refl) e₀) h-e0
 occ-red {x = x} (ξ-⌜Hom⌝ᶜ {c = c} r) e =
   ∨-false (occ-red r (∨-false₁ (occTm x c) e)) (∨-false₂ (occTm x c) e)
 occ-red {x = x} (ξ-⌜Hom⌝ˡ {c = c} {a = a} r) e =
@@ -630,6 +659,172 @@ gen-hrefl (⊢hrefl dc dt) = dc , (dt , crflᵀ)
 gen-hrefl (⊢conv d c) with gen-hrefl d
 ... | (dc , (dt , c')) = dc , (dt , ctrnᵀ (csymᵀ c) c')
 
+
+------------------------------------------------------------------------
+-- ★ W2b (G1) — the pw DECODE JOINS (promoted from SpikeCanon), the
+-- stable-code ambient analysis, and the typing lemmas the three new
+-- rules' subject-reduction cases assemble from.
+------------------------------------------------------------------------
+
+-- `Hom` over a pw-able code's decoding reduces to a Π whose body is
+-- ALSO reached from the pointwise-body code's decoding (a JOIN — on
+-- deeper spines the left side unfolds one `El-⌜Hom⌝` step further).
+pw-Hom-decode :
+  (C : RTm Γ) → pw? C ≡ true → (x y : RTm Γ) →
+  Σ (RTy (Γ ∙)) (λ Body →
+    (Hom (El C) x y ⟶ᵀ* Π (El (pwDom C)) Body)
+    × (Hom (El (pwBody C)) (app (renTm vs x) (var vz))
+                           (app (renTm vs y) (var vz)) ⟶ᵀ* Body))
+pw-Hom-decode (var v) () x y
+pw-Hom-decode (lam t) () x y
+pw-Hom-decode (app t u) () x y
+pw-Hom-decode (pair a b) () x y
+pw-Hom-decode (fst t) () x y
+pw-Hom-decode (snd t) () x y
+pw-Hom-decode ⌜base⌝ () x y
+pw-Hom-decode (⌜Π⌝ γ δ) h x y =
+  ( Hom (El δ) (app (renTm vs x) (var vz)) (app (renTm vs y) (var vz))
+  , ( stepᵀ (ξ-Homᵀ (El-⌜Π⌝ γ δ))
+      (stepᵀ (Hom-Π (El γ) (El δ) x y) doneᵀ)
+    , doneᵀ ) )
+pw-Hom-decode (⌜Σ⌝ c d) () x y
+pw-Hom-decode (⌜Hom⌝ C a b) h x y with pw-Hom-decode C h a b
+... | Body' , (c₁ , c₂) =
+  ( Hom Body' (app (renTm vs x) (var vz)) (app (renTm vs y) (var vz))
+  , ( stepᵀ (ξ-Homᵀ (El-⌜Hom⌝ C a b))
+      (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ c₁)
+        (stepᵀ (Hom-Π (El (pwDom C)) Body' x y) doneᵀ))
+    , stepᵀ (ξ-Homᵀ (El-⌜Hom⌝ (pwBody C)
+                              (app (renTm vs a) (var vz))
+                              (app (renTm vs b) (var vz))))
+            (⟶ᵀ*-Homᵀ c₂) ) )
+pw-Hom-decode (hrefl c t) () x y
+pw-Hom-decode (tr d p e) () x y
+
+-- ...and the same join for the bare decoding.
+pw-El-decode :
+  (C : RTm Γ) → pw? C ≡ true →
+  Σ (RTy (Γ ∙)) (λ Body →
+    (El C ⟶ᵀ* Π (El (pwDom C)) Body) × (El (pwBody C) ⟶ᵀ* Body))
+pw-El-decode (var v) ()
+pw-El-decode (lam t) ()
+pw-El-decode (app t u) ()
+pw-El-decode (pair a b) ()
+pw-El-decode (fst t) ()
+pw-El-decode (snd t) ()
+pw-El-decode ⌜base⌝ ()
+pw-El-decode (⌜Π⌝ γ δ) h =
+  ( El δ , ( stepᵀ (El-⌜Π⌝ γ δ) doneᵀ , doneᵀ ) )
+pw-El-decode (⌜Σ⌝ c d) ()
+pw-El-decode (⌜Hom⌝ C a b) h with pw-Hom-decode C h a b
+... | Body' , (c₁ , c₂) =
+  ( Body'
+  , ( stepᵀ (El-⌜Hom⌝ C a b) c₁
+    , stepᵀ (El-⌜Hom⌝ (pwBody C)
+                      (app (renTm vs a) (var vz))
+                      (app (renTm vs b) (var vz))) c₂ ) )
+pw-El-decode (hrefl c t) ()
+pw-El-decode (tr d p e) ()
+
+-- STABLE-CODE AMBIENTS (the `BaseAmb`/`ΣAmb` pattern, powered by
+-- `stkC?-red`): the decoded type of a `stkC?` code never reaches `U`
+-- or `Π` — what `tr-J-Hom`'s sr feeds `homred-inv`.
+data StkAmb {Γ : Cx} : RTy Γ → Set where
+  st-el   : {c : RTm Γ} → stkC? c ≡ true → StkAmb (El c)
+  st-base : StkAmb base
+  st-Σ    : {A : RTy Γ} {B : RTy (Γ ∙)} → StkAmb (Σ' A B)
+  st-hom  : {H : RTy Γ} {a b : RTm Γ} → StkAmb H → StkAmb (Hom H a b)
+
+stamb-red : {A A' : RTy Γ} → StkAmb A → A ⟶ᵀ A' → StkAmb A'
+stamb-red (st-el {c = ⌜base⌝} k) El-⌜base⌝ = st-base
+stamb-red (st-el {c = ⌜Σ⌝ c d} k) (El-⌜Σ⌝ _ _) = st-Σ
+stamb-red (st-el {c = ⌜Π⌝ c d} ()) (El-⌜Π⌝ _ _)
+stamb-red (st-el {c = ⌜Hom⌝ c a b} k) (El-⌜Hom⌝ _ _ _) =
+  st-hom (st-el k)
+stamb-red (st-el k) (ξ-El r) = st-el (stkC?-red r k)
+stamb-red st-Σ (ξ-Σˡ r) = st-Σ
+stamb-red st-Σ (ξ-Σʳ r) = st-Σ
+stamb-red (st-hom sh) (ξ-Homᵀ r) = st-hom (stamb-red sh r)
+stamb-red (st-hom sh) (ξ-Homˡ r) = st-hom sh
+stamb-red (st-hom sh) (ξ-Homʳ r) = st-hom sh
+stamb-red (st-hom ()) (Hom-U _ _)
+stamb-red (st-hom ()) (Hom-Π _ _ _ _)
+
+stamb-noU : StkAmb (U {Γ}) → ⊥
+stamb-noU ()
+
+stamb-noΠ : {F : RTy Γ} {G : RTy (Γ ∙)} → StkAmb (Π F G) → ⊥
+stamb-noΠ ()
+
+-- conversion is a congruence at the `Hom` ambient.
+≅ᵀ-Homᵀ : {A B : RTy Γ} {t u : RTm Γ} →
+          A ≅ᵀ B → Hom A t u ≅ᵀ Hom B t u
+≅ᵀ-Homᵀ (credᵀ r)   = credᵀ (ξ-Homᵀ r)
+≅ᵀ-Homᵀ crflᵀ       = crflᵀ
+≅ᵀ-Homᵀ (csymᵀ c)   = csymᵀ (≅ᵀ-Homᵀ c)
+≅ᵀ-Homᵀ (ctrnᵀ c d) = ctrnᵀ (≅ᵀ-Homᵀ c) (≅ᵀ-Homᵀ d)
+
+-- instantiating a weakened TYPE at the fresh variable is the identity
+-- (the `wk-inst` pattern, at `RTy`).
+wk-inst-ty : (B : RTy (Γ ∙)) →
+             subTy (single (var vz)) (renTy (extR vs) B) ≡ B
+wk-inst-ty B =
+  trans (subTy-renTy B) (trans (subTy-cong bridge B) (subTy-id B))
+  where
+  bridge : ∀ x → (single (var vz) ₛ∘ᵣ extR vs) x ≡ var x
+  bridge vz     = refl
+  bridge (vs x) = refl
+
+-- CONTEXT CONVERSION at the top entry — payable through `sub-lemma`
+-- with the identity substitution (the derivation's var-here uses the
+-- conversion; everything else is untouched).
+ctx-conv : {Γ : Ctx} {A A' : RTy ⌊ Γ ⌋} {t : RTm (⌊ Γ ⌋ ∙)}
+           {D : RTy (⌊ Γ ⌋ ∙)} →
+           (Γ ▹ A) ⊢ t ∷ D → A' ≅ᵀ A → (Γ ▹ A') ⊢ t ∷ D
+ctx-conv {Γ = Γ} {A = A} {A' = A'} {t = t} {D = D} d cA =
+  subst₂-⊢ (subTm-id t) (subTy-id D) (sub-lemma d idσ⊢)
+  where
+  subst₂-⊢ : {Δ : Ctx} {t₁ t₂ : RTm ⌊ Δ ⌋} {D₁ D₂ : RTy ⌊ Δ ⌋} →
+             t₁ ≡ t₂ → D₁ ≡ D₂ → Δ ⊢ t₁ ∷ D₁ → Δ ⊢ t₂ ∷ D₂
+  subst₂-⊢ refl refl d₀ = d₀
+  idσ⊢ : Sub⊢ (Γ ▹ A) (Γ ▹ A') idₛ
+  idσ⊢ here = ⊢-cast (sym (subTy-id _))
+                     (⊢conv (⊢var here) (≅ᵀ-ren vs cA))
+  idσ⊢ (there v) = ⊢-cast (sym (subTy-id _)) (⊢var (there v))
+
+-- ★ the WORKHORSE: a member of a pw-able decoded type, weakened and
+-- applied at the fresh domain variable, lands in the pointwise body.
+pw-app : {Γ : Ctx} {C : RTm ⌊ Γ ⌋} {w : RTm ⌊ Γ ⌋} →
+         Γ ⊢ w ∷ El C → (key : pw? C ≡ true) →
+         (Γ ▹ El (pwDom C)) ⊢ app (renTm vs w) (var vz) ∷ El (pwBody C)
+pw-app {Γ = Γ} {C = C} {w = w} dw key with pw-El-decode C key
+... | Body , (ch₁ , ch₂) =
+  ⊢conv
+    (⊢-cast (wk-inst-ty Body)
+      (⊢app (⊢conv (⊢wk dw) (red→≅ᵀ (⟶ᵀ*-ren vs ch₁))) (⊢var here)))
+    (csymᵀ (red→≅ᵀ ch₂))
+
+-- typing of the pointwise dom/body codes, by spine induction.
+pw-gen : {Γ : Ctx} {C : RTm ⌊ Γ ⌋} →
+         Γ ⊢ C ∷ U → (key : pw? C ≡ true) →
+         (Γ ⊢ pwDom C ∷ U) × ((Γ ▹ El (pwDom C)) ⊢ pwBody C ∷ U)
+pw-gen {C = var v} d ()
+pw-gen {C = lam t} d ()
+pw-gen {C = app t u} d ()
+pw-gen {C = pair a b} d ()
+pw-gen {C = fst t} d ()
+pw-gen {C = snd t} d ()
+pw-gen {C = ⌜base⌝} d ()
+pw-gen {C = ⌜Π⌝ γ δ} d key with gen-⌜Π⌝ d
+... | (dγ , (dδ , _)) = dγ , dδ
+pw-gen {C = ⌜Σ⌝ c d₁} d ()
+pw-gen {C = ⌜Hom⌝ C a b} d key with gen-⌜Hom⌝ d
+... | (dC , (da , (db , _))) with pw-gen dC key
+...   | (dDom , dBody) =
+      dDom , ⊢⌜Hom⌝ dBody (pw-app da key) (pw-app db key)
+pw-gen {C = hrefl c t} d ()
+pw-gen {C = tr d₁ p e} d ()
+
 -- Inversion for `⊢tr` (stage 2: the composition motive, pinned in the
 -- rule).  `deq` records that ANY typeable `tr`-motive has that shape.
 record TrInv (Γ : Ctx) (d₀ : RTm (⌊ Γ ⌋ ∙)) (p e : RTm ⌊ Γ ⌋)
@@ -775,6 +970,232 @@ sr d (tr-J-Σ cm am mm c₁ c₂ s e₀) with gen-tr d
 -- ★ the TAUT redex — REAL in the base judgment now (`⊢trU`).  The
 -- pinned `U` ambient makes the `via-Π` arm a one-line `U-reduct` clash
 -- (the staged proof needed a `gen-var` renaming dance here).
+-- ★ W2b: `hrefl` at a pw-able code unfolds pointwise — the LHS/RHS
+-- types convert through the `pw-Hom-decode` join.
+sr d (hrefl-pw C s key) with gen-hrefl d
+... | (dc , (ds , cH)) with pw-gen dc key | pw-Hom-decode C key s s
+...   | (dDom , dBody) | Body , (ch₁ , ch₂) =
+      ⊢conv (⊢lam (ty-El dDom) (⊢hrefl dBody (pw-app ds key)))
+            (ctrnᵀ (red→≅ᵀ (⟶ᵀ*-Πʳ ch₂))
+                   (csymᵀ (ctrnᵀ cH (red→≅ᵀ ch₁))))
+-- ★ W2b: J at stable ⌜Hom⌝ codes — the endpoint conversion extracted
+-- via confluence against the `StkAmb` analysis (stable-code decodings
+-- never unfold to Π/U, so reducts decompose componentwise).
+sr d (tr-J-Hom cm am mm c₁ a₁ b₁ s e₀ key) with gen-tr d
+... | tgU (mkTrInvU () t u dt du dp de cC)
+... | tgC (mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC)
+      with gen-hrefl dp
+...   | (dc , (ds , cH)) with church-rosserᵀ cH
+...     | W , (rL , rR)
+          with homred-inv stamb-red (λ ()) (λ ())
+                          (st-el {c = ⌜Hom⌝ c₁ a₁ b₁} key) rR
+...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
+            with Hom-to-Hom (subst (Hom A t u ⟶ᵀ*_) eqW rL)
+...         | mkHomRed rA rt ru =
+              ⊢conv de
+                (ctrnᵀ (ctrnᵀ (mono-El[] (⌜Hom⌝ cm am mm) rt)
+                         (ctrnᵀ (csymᵀ (mono-El[] (⌜Hom⌝ cm am mm) rs₁))
+                           (ctrnᵀ (mono-El[] (⌜Hom⌝ cm am mm) rs₂)
+                             (csymᵀ (mono-El[] (⌜Hom⌝ cm am mm) ru)))))
+                       (csymᵀ cC))
+-- ★★ W2b: POINTWISE TRANSPORT preserves typing.  The rebuilt term is a
+-- lambda whose body is ANOTHER composition-motive `⊢tr` instance at the
+-- pointwise body code — assembled from `pw-app`/`pw-gen`, the decode
+-- joins, and raw↔typed bridges (the rule's `pwShift`-renamed motive
+-- equals the weakened pointwise body of the SUBSTITUTED code, because
+-- the motive's components are vz-free).
+sr {Γ = Γ} d (tr-pw c a f e₀ key) with gen-tr d
+... | tgU (mkTrInvU () t u dt du dp de cC)
+... | tgC (mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC)
+      with gen-var dvM
+...   | _ , (here , cv) =
+      ⊢conv
+        (⊢-cast
+          (cong (Π (El (pwDom C₀)))
+                (cong El (⌜Hom⌝-cong₃ (inst-c u') (inst-a u') refl)))
+          (⊢lam (ty-El dDom) inner))
+        (ctrnᵀ (red→≅ᵀ (⟶ᵀ*-Πʳ (stepᵀ (El-⌜Hom⌝ (pwBody C₀) W u') chU₂)))
+               (csymᵀ (ctrnᵀ cC'
+                         (ctrnᵀ (credᵀ (El-⌜Hom⌝ C₀ A₀ u))
+                                (red→≅ᵀ chU₁)))))
+  where
+  C₀ A₀ : RTm ⌊ Γ ⌋
+  C₀ = subTm (single t) c
+  A₀ = subTm (single t) a
+  keyT : pw? C₀ ≡ true
+  keyT = pw?-sub (single t) c key
+
+  cA : A ≅ᵀ El C₀
+  cA = csymᵀ (subst (λ z → El C₀ ≅ᵀ z) (wk-cancel t A)
+                    (≅ᵀ-sub (single t) cv))
+
+  dC₀ : Γ ⊢ C₀ ∷ U
+  dC₀ = ⊢[] dcM dt
+  dA₀ : Γ ⊢ A₀ ∷ El C₀
+  dA₀ = ⊢[] daM dt
+
+  D : RTy ⌊ Γ ⌋
+  D = El (pwDom C₀)
+  ΓD : Ctx
+  ΓD = Γ ▹ D
+  A″ : RTy (⌊ Γ ⌋ ∙)
+  A″ = El (pwBody C₀)
+  ΓDA : Ctx
+  ΓDA = ΓD ▹ A″
+
+  genC = pw-gen dC₀ keyT
+  dDom : Γ ⊢ pwDom C₀ ∷ U
+  dDom = Σ.fst genC
+  dBody : ΓD ⊢ pwBody C₀ ∷ U
+  dBody = Σ.snd genC
+
+  -- raw-rule ↔ typed-form bridges
+  eq-c-in : renTm pwShift (pwBody c) ≡ renTm vs (pwBody C₀)
+  eq-c-in =
+    trans (ren-as-sub pwShift (pwBody c))
+      (trans (subTm-occ (pwBody c) agree)
+        (trans (sym (renTm-subTm (pwBody c)))
+               (cong (renTm vs) (sym (pwBody-sub (single t) c key)))))
+    where
+    dead : occTm (vs vz) (pwBody c) ≡ false
+    dead = pwBody-occ c key hcM
+    agree : ∀ y → occTm y (pwBody c) ≡ true →
+            var (pwShift y) ≡ (vs ᵣ∘ₛ extS (single t)) y
+    agree vz o = refl
+    agree (vs vz) o with trans (sym o) dead
+    ... | ()
+    agree (vs (vs i)) o = refl
+
+  a-comp : renTm vs a ≡ renTm vs (renTm vs A₀)
+  a-comp = trans (ren-as-sub vs a)
+             (trans (subTm-occ a agree)
+               (sym (trans (renTm-renTm A₀) (renTm-subTm a))))
+    where
+    agree : ∀ y → occTm y a ≡ true →
+            var (vs y) ≡ ((vs ∘ᵣ vs) ᵣ∘ₛ single t) y
+    agree vz o with trans (sym o) haM
+    ... | ()
+    agree (vs i) o = refl
+
+  eq-a-in : app (renTm vs a) (var (vs vz))
+            ≡ renTm vs (app (renTm vs A₀) (var vz))
+  eq-a-in = cong (λ z → app z (var (vs vz))) a-comp
+
+  -- endpoint agreement (the motive's components are endpoint-blind)
+  eq-cu : subTm (single u) c ≡ C₀
+  eq-cu = subTm-occ c agree
+    where
+    agree : ∀ y → occTm y c ≡ true → single u y ≡ single t y
+    agree vz o with trans (sym o) hcM
+    ... | ()
+    agree (vs i) o = refl
+  eq-au : subTm (single u) a ≡ A₀
+  eq-au = subTm-occ a agree
+    where
+    agree : ∀ y → occTm y a ≡ true → single u y ≡ single t y
+    agree vz o with trans (sym o) haM
+    ... | ()
+    agree (vs i) o = refl
+
+  W t' u' : RTm (⌊ Γ ⌋ ∙)
+  W  = app (renTm vs A₀) (var vz)
+  t' = app (renTm vs t) (var vz)
+  u' = app (renTm vs u) (var vz)
+
+  cdU = pw-Hom-decode C₀ keyT A₀ u
+  BodyU : RTy (⌊ Γ ⌋ ∙)
+  BodyU = Σ.fst cdU
+  chU₁ : Hom (El C₀) A₀ u ⟶ᵀ* Π (El (pwDom C₀)) BodyU
+  chU₁ = Σ.fst (Σ.snd cdU)
+  chU₂ : Hom (El (pwBody C₀)) W u' ⟶ᵀ* BodyU
+  chU₂ = Σ.snd (Σ.snd cdU)
+
+  cdP = pw-Hom-decode C₀ keyT t u
+  BodyP : RTy (⌊ Γ ⌋ ∙)
+  BodyP = Σ.fst cdP
+  chP₁ : Hom (El C₀) t u ⟶ᵀ* Π (El (pwDom C₀)) BodyP
+  chP₁ = Σ.fst (Σ.snd cdP)
+  chP₂ : Hom (El (pwBody C₀)) t' u' ⟶ᵀ* BodyP
+  chP₂ = Σ.snd (Σ.snd cdP)
+
+  inst-c : (w : RTm (⌊ Γ ⌋ ∙)) →
+           subTm (single w) (renTm pwShift (pwBody c)) ≡ pwBody C₀
+  inst-c w = trans (cong (subTm (single w)) eq-c-in)
+                   (wk-cancel-tm w (pwBody C₀))
+  inst-a : (w : RTm (⌊ Γ ⌋ ∙)) →
+           subTm (single w) (app (renTm vs a) (var (vs vz))) ≡ W
+  inst-a w =
+    cong (λ z → app z (var vz))
+         (trans (cong (subTm (single w)) a-comp)
+                (wk-cancel-tm w (renTm vs A₀)))
+
+  dc-in : ΓDA ⊢ renTm pwShift (pwBody c) ∷ U
+  dc-in = subst (λ z → ΓDA ⊢ z ∷ U) (sym eq-c-in)
+                (⊢wk {Γ = ΓD} {B = A″} dBody)
+
+  da-in : ΓDA ⊢ app (renTm vs a) (var (vs vz))
+              ∷ El (renTm pwShift (pwBody c))
+  da-in = ⊢-cast (cong El (sym eq-c-in))
+            (subst (λ z → ΓDA ⊢ z ∷ El (renTm vs (pwBody C₀)))
+                   (sym eq-a-in)
+                   (⊢wk {Γ = ΓD} {B = A″} (pw-app dA₀ keyT)))
+
+  dv-in : ΓDA ⊢ var vz ∷ El (renTm pwShift (pwBody c))
+  dv-in = ⊢-cast (cong El (sym eq-c-in)) (⊢var here)
+
+  hc-in : occTm vz (renTm pwShift (pwBody c)) ≡ false
+  hc-in = occ-ren-tm avoids-pwShift (pwBody c)
+
+  ha-in : occTm vz (app (renTm vs a) (var (vs vz))) ≡ false
+  ha-in = ∨-false (occ-ren-tm avoids-wk a) refl
+
+  dt-in : ΓD ⊢ t' ∷ A″
+  dt-in = pw-app (⊢conv dt cA) keyT
+  du-in : ΓD ⊢ u' ∷ A″
+  du-in = pw-app (⊢conv du cA) keyT
+
+  glam = gen-lam dp
+  A₁ : RTy ⌊ Γ ⌋
+  A₁ = Σ.fst glam
+  B₁ : RTy (⌊ Γ ⌋ ∙)
+  B₁ = Σ.fst (Σ.snd glam)
+  cΠ : Hom A t u ≅ᵀ Π A₁ B₁
+  cΠ = Σ.fst (Σ.snd (Σ.snd glam))
+  tyA₁ : Γ ⊢ty A₁
+  tyA₁ = Σ.fst (Σ.snd (Σ.snd (Σ.snd glam)))
+  d-f : (Γ ▹ A₁) ⊢ f ∷ B₁
+  d-f = Σ.snd (Σ.snd (Σ.snd (Σ.snd glam)))
+
+  cΠ' : Π A₁ B₁ ≅ᵀ Π (El (pwDom C₀)) BodyP
+  cΠ' = ctrnᵀ (csymᵀ cΠ) (ctrnᵀ (≅ᵀ-Homᵀ cA) (red→≅ᵀ chP₁))
+
+  dp-in : ΓD ⊢ f ∷ Hom A″ t' u'
+  dp-in = ⊢conv (ctx-conv d-f (csymᵀ (Σ.fst (Π-inj cΠ'))))
+                (ctrnᵀ (Σ.snd (Π-inj cΠ')) (csymᵀ (red→≅ᵀ chP₂)))
+
+  de-in : ΓD ⊢ app (renTm vs e₀) (var vz)
+             ∷ El (subTm (single t')
+                     (⌜Hom⌝ (renTm pwShift (pwBody c))
+                            (app (renTm vs a) (var (vs vz)))
+                            (var vz)))
+  de-in = ⊢-cast
+            (cong El (sym (⌜Hom⌝-cong₃ (inst-c t') (inst-a t') refl)))
+            (pw-app de keyT)
+
+  inner : ΓD ⊢ tr (⌜Hom⌝ (renTm pwShift (pwBody c))
+                         (app (renTm vs a) (var (vs vz)))
+                         (var vz))
+                  f (app (renTm vs e₀) (var vz))
+             ∷ El (subTm (single u')
+                     (⌜Hom⌝ (renTm pwShift (pwBody c))
+                            (app (renTm vs a) (var (vs vz)))
+                            (var vz)))
+  inner = ⊢tr dc-in da-in dv-in hc-in ha-in dt-in du-in dp-in de-in
+
+  eq→≅ᵀ : {X Y : RTy ⌊ Γ ⌋} → X ≡ Y → X ≅ᵀ Y
+  eq→≅ᵀ refl = crflᵀ
+
+  cC' = ctrnᵀ cC (eq→≅ᵀ (cong El (⌜Hom⌝-cong₃ eq-cu eq-au refl)))
 sr d (tr-taut f e₀) with gen-tr d
 ... | tgC (mkTrInv cM aM () A t u dcM daM dvM hcM haM dt du dp de cC)
 ... | tgU (mkTrInvU refl t u dt du dp de cC) with gen-lam dp
