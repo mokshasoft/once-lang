@@ -5640,3 +5640,81 @@ the immediate, and `load-const-float` is DELETED.
   machine and the denotation diverge instead), i.e. floats would have to
   be rejected at the frontend. That is a language-level amputation where
   a 3-line encoder suffices.
+
+## D080: The D061 SigOp Contracts Are Larger Than Their Reason — Split Them
+
+**Date**: 2026-08-03
+**Status**: Analysis accepted; the split is planned work (not yet done)
+**Relates**: D061 (contracts come from interpretations), D071 (SigOp is
+FFI-only), D058 (event-indexed correctness)
+
+### The question
+
+Why do `arith-sigop-contract` and `external-sigop-contract` need to be
+postulates at all?
+
+### The finding
+
+They are postulates mostly because **the functions they constrain are
+themselves postulated**. `Once.Adequacy.CPU.X86-64` declares
+
+    postulate
+      step-budget-x86-64 : ℕ → ℕ
+      ev-x86-64          : RT.EvExtractor val-x86-64
+      arith-env-x86-64   : X64S.Program → RT.ArithEnv val-x86-64
+
+so every claim about `ev`/`env` is a constraint on an unknown function —
+unprovable by construction, whatever its content. That is a very different
+situation from an honest external axiom, and it currently hides three
+distinct things behind one word ("contract"):
+
+1. **`arith-env-x86-64` — purely INTERNAL, a wiring gap.** This is the
+   table mapping `once_arith.block.<digest>` labels to the blocks THE
+   COMPILER ITSELF EMITTED. It is derivable from `prog` by construction
+   (the module's own comment says as much: "step 4: derive from `prog`'s
+   emitted blocks"). Once defined, both env conjuncts —
+   `env sym ≡ just pl` for an arith SigOp and `env sym ≡ nothing` for an
+   external one — are facts about our own construction, hence provable.
+   Nothing here is external to the program.
+2. **The VALUE half of `ev-x86-64`** — "the emitted event carries the
+   argument the ABI register holds". This is about our own calling
+   convention and is relatable to the abstract `event-of` through the
+   correspondence's `rdi-eq`. Definable and provable.
+3. **The IDENTITY half of `ev`, and the post-call state** — "the symbol
+   `once_linux_exit` denotes the SigOp named `linux.exit`; invoking it
+   performs that effect; the callee respects the ABI (callee-saved
+   registers, our heap) and returns". THIS is the irreducible part: it is
+   a claim about code we do not compile and cannot see. It is closable
+   only by verifying the callee (e.g. a syscall against a verified kernel),
+   which is D061's TrustedBase and the same boundary CompCert keeps for
+   external functions.
+
+The `arith` contract additionally rests on results that ALREADY EXIST and
+are postulate-free on three arches (`arith-block-correct`,
+`dispatch-arith-preserves`); what is missing is the bridge from their
+interface (ArithSimCore's read-back form) to `CompiledCorr`.
+
+### Decision
+
+Do not treat the two contracts as a single honest axiom. The planned split:
+
+- DEFINE `arith-env-x86-64` from the emitted program; prove both env
+  conjuncts. (Removes the env content of both contracts.)
+- DEFINE the mechanical part of `ev-x86-64` (argument read + event
+  construction), leaving the symbol↦SigOp denotation as data supplied per
+  interpretation.
+- DISCHARGE `arith-sigop-contract` from the existing arith results through
+  that bridge — it is internal, so it should be a theorem.
+- KEEP, as the honest per-(SigOp × target) TrustedBase, only: the foreign
+  callee performs the effect its symbol denotes, respects the ABI, and
+  returns.
+
+### Consequences
+
+- Expected outcome: `arith-sigop-contract` becomes a theorem;
+  `external-sigop-contract` shrinks to the FFI core and should be renamed
+  to say what it actually assumes (`foreign-call-abi` + `foreign-call-emits`).
+- `step-budget-x86-64` is a separate, already-named honest gap (D5 fuel
+  adequacy) and is NOT part of this split.
+- Until the split lands, the census should describe these two as "one
+  wiring gap + one FFI axiom", not as two axioms.
