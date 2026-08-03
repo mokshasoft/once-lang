@@ -74,6 +74,9 @@ open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-comm; ∸-+-asso
 open import Data.Product using (Σ; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
+open import Once.Semantics.FloatBits using (float-bits)
+open import Once.Type using (fits-float)
+open import Data.Float using () renaming (Float to AgdaFloat)
 
 ------------------------------------------------------------------------
 -- The compiled correspondence = the DATA correspondence (FlatCorr, now
@@ -714,6 +717,30 @@ block-step-load-const {hv} prog fs s v cc h ft =
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-load-const fits-int v) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-load-const fits-int v) ft))
+
+-- …and the FLOAT constant (D079): the same one-step immediate load, with
+-- the IEEE-754 bit pattern. Was a divergence (`ud2` vs. a running abstract
+-- machine); now the two machines agree instruction for instruction.
+block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : AgdaFloat) → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
+  → BlockStep hv prog fs s (instr-load-const fits-float v)
+block-step-load-const-float {hv} prog fs s v cc h ft =
+  post , exec-eq , record { dataCorr = C.sim-load-const-float v fs s dc ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (imm (float-bits v)))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-load-const fits-float v) ft)
+    post : X.State
+    post = record s { regs = xwriteReg (xregs s) rax (float-bits v) ; pc = pc s + 1 }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-mov-ri {compile-trace prog} {s} {rax} {float-bits v} fetch-x86
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-load-const fits-float v) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-load-const fits-float v) ft))
 
 -- load-code-addr: Output := SV-Code n ↔ `lea rax, [rip+label n]` (1 step). The
 -- effective address of a label is n, and enc-sv(SV-Code n)=n ⇒ rax-eq = refl.

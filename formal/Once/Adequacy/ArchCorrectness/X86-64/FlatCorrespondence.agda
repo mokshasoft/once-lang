@@ -24,6 +24,8 @@ open import Once.CCC.Target.X86-64.Syntax using (slot-size)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.Word using (Carrier)
 open import Once.Type using (Int; Float; fits-int; fits-float)
+open import Once.Semantics.FloatBits using (float-bits)
+open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -172,7 +174,7 @@ enc-sv-at am (SV-Ptr (AtStack f k))    = slot-addr f k
 -- case-tree translation, so `enc-sv-at am (SV-Lit fits-float v)` would not reduce
 -- and the extension-stability lemma below could not be stated by `refl`.
 enc-sv-at am (SV-Lit fits-int v)       = lit-word v
-enc-sv-at am (SV-Lit fits-float v)     = 0
+enc-sv-at am (SV-Lit fits-float v)     = float-bits v
 enc-sv-at am (SV-Code n)               = n
 
 enc-maybe-at : AddrMap → Maybe (StoredValue FS) → Maybe X.Word
@@ -1019,6 +1021,16 @@ sim-load-const : {hv : HeapView} (v : Carrier) (fs : FlatState) (s : X.State) �
   → FlatCorr hv (flat-exec-instr (instr-load-const fits-int v) [] fs)
              (mkstate (xwriteReg (xregs s) rax (lit-word v)) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-load-const {hv} v fs s corr = record
+  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr ; r14-eq = r14-eq corr
+  ; halt-eq = halt-eq corr ; rsp-eq = rsp-eq corr ; r15-eq = r15-eq corr ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = heap-eq corr ; lo-le = lo-le corr ; untouched = untouched corr ; stack-eq = stack-eq corr }
+
+-- …and the FLOAT constant (D079): identical, with the IEEE-754 pattern as
+-- the immediate — `enc-sv (SV-Lit fits-float v)` IS `float-bits v`, so
+-- `rax-eq` is `refl` exactly as in the int case.
+sim-load-const-float : {hv : HeapView} (v : AgdaFloat) (fs : FlatState) (s : X.State) → FlatCorr hv fs s
+  → FlatCorr hv (flat-exec-instr (instr-load-const fits-float v) [] fs)
+             (mkstate (xwriteReg (xregs s) rax (float-bits v)) (memory s) (flags s) (pc s + 1) (xhalted s))
+sim-load-const-float {hv} v fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr ; r14-eq = r14-eq corr
   ; halt-eq = halt-eq corr ; rsp-eq = rsp-eq corr ; r15-eq = r15-eq corr ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = heap-eq corr ; lo-le = lo-le corr ; untouched = untouched corr ; stack-eq = stack-eq corr }
 

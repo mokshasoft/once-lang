@@ -645,15 +645,10 @@ postulate
   -- family — `dealloc-stack-restores`, `pop-frame-restores`, `dealloc-stack-full`,
   -- `pop-frame-empty`, `pop-frame-saved`. Each was a pairing property of emitted
   -- code at a frame-op site, and emitted code contains no frame op.
-  -- load-const of a FLOAT: `compile-const fits-float` traps to ud2 (float loads are
-  -- unimplemented, D054), so the x86 halts while the abstract runs — an honest gap,
-  -- the target-side float-literal boundary (not a codegen bug).
-  load-const-float : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                       prog fs s {v} → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
-                   → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
-                   → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                         ≡ event-of (instr-load-const fits-float v) fs
-                           ++ flat-events n prog (flat-exec-instr (instr-load-const fits-float v) prog fs))
+  -- `load-const-float` RETIRED 2026-08-03 (D079): a float CONSTANT is a
+  -- 64-bit pattern, so codegen emits it as an ordinary immediate instead of
+  -- `ud2` — both machines now load the same word and continue. (Float
+  -- ARITHMETIC remains unsupported; that is a separate, unemitted path.)
 
   -- ARITH SIGOP interpretation contract (D061): the internal-producer obligation,
   -- discharged OFFLINE from the arith proofs (dispatch-arith-preserves + arith-block-
@@ -1254,7 +1249,8 @@ mutual
     ccc-step-bs {hv} n ev env prog fs s (instr-load-const fits-int v)
       (block-step-load-const prog fs s v cc h ftq) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-float v) cc wf h ftq =
-    load-const-float n ev env prog fs s cc wf h ftq
+    ccc-step-bs {hv} n ev env prog fs s (instr-load-const fits-float v)
+      (block-step-load-const-float prog fs s v cc h ftq) wf ftq h refl h
   -- plan 0.61: with stack addresses, the indexed cursor computes a real address.
   -- `lea-indexed` joined the unemittable set 2026-08-01 (heap-linked stacks,
   -- no indexed cursor) — the route is absurd, like the frame ops and the loop.

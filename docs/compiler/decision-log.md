@@ -5588,3 +5588,55 @@ and gate G1's `tag-of` strengthen in lockstep (the projection stays 1:1).
   known-broken-off-path until the legacy layer is revived or deleted.
 - The value layer is now FAITHFUL to the emitted representation for sums —
   the `obs-correct-rest` discharge will need exactly this field.
+
+## D079: Float CONSTANTS Are Bit Patterns — Emit the Immediate, Not `ud2`
+
+**Date**: 2026-08-03
+**Status**: Accepted (implemented same day; `load-const-float` retired)
+**Relates**: D054 (`Int` is a full machine word — same immediate path),
+the flat↔x86-64 halt-correspondence family
+
+### Context
+
+`compile-const fits-float` emitted `ud2` ("float load not yet
+implemented; trap to keep the gap visible"), while the abstract machine
+loaded `SV-Lit fits-float v` into `Output` and CONTINUED. The two machines
+therefore disagreed on this route, and the disagreement was carried by the
+postulate `load-const-float` — which is not merely unproven but FALSE for
+any program that loads a float constant and then emits an observable (the
+concrete trace stops, the abstract one does not). A false axiom in the
+correspondence cone is a soundness hole, not a gap.
+
+### Decision
+
+Emit the constant. `⟦ Float ⟧` is Agda's builtin double and a double IS a
+64-bit word, so a float CONSTANT needs no floating-point unit:
+
+- `Once.Semantics.FloatBits.float-bits : Float → ℕ` — the IEEE-754 pattern
+  via `Data.Float.toWord` (NaN ↦ 0, since Agda declines to pick a NaN
+  representation);
+- `compile-const fits-float v = mov (reg rax) (imm (float-bits v))` —
+  one instruction, so `compile-const-size` is unchanged; gas promotes
+  `movq $<64-bit>` to `movabs` (verified against the assembler);
+- `enc-sv-at am (SV-Lit fits-float v) = float-bits v` (was `0`), so the
+  correspondence's `rax-eq` is `refl` exactly as in the int case.
+
+Both machines now load the same word and continue;
+`block-step-load-const-float` is the int block-step with the pattern as
+the immediate, and `load-const-float` is DELETED.
+
+### Consequences
+
+- Float ARITHMETIC remains unsupported — no FPU instruction is ever
+  emitted, and no arith SigOp is classified float. This decision is about
+  constants only; a float that is computed on still has no lowering.
+- `float-bits` is not injective (NaN), and nothing needs it to be: the
+  encoding is only read forwards (abstract value ↦ concrete word), and
+  both sides are literally this function.
+- CODEGEN CHANGED ⇒ extraction gate applies (malonzo + cabal + exit tests
+  ×3) before merge.
+- The alternative — making the abstract machine halt to match `ud2` —
+  was rejected: it would need the DENOTATION to halt too (else the flat
+  machine and the denotation diverge instead), i.e. floats would have to
+  be rejected at the frontend. That is a language-level amputation where
+  a 3-line encoder suffices.

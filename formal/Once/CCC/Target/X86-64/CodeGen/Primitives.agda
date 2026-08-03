@@ -24,6 +24,7 @@ open import Once.CCC.Target.X86-64.Syntax
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Type using (FitsInReg; fits-int; fits-float)
+open import Once.Semantics.FloatBits using (float-bits)
 import Once.Semantics.Value as SC
 open import Once.Word using (Carrier)
 
@@ -45,7 +46,10 @@ compile-sigOp-length _ = refl
 ------------------------------------------------------------------------
 compile-const : ∀ {A} → FitsInReg A → SC.⟦_⟧ Carrier A → Program
 compile-const fits-int   n = mov (reg rax) (imm n) ∷ []
-compile-const fits-float _ = ud2 ∷ []  -- float load not yet implemented; trap to keep the gap visible
+-- D079 (2026-08-03): a float CONSTANT is a 64-bit pattern, so it loads as
+-- an ordinary immediate (gas promotes `movq $big` to `movabs`) — no FPU
+-- needed. Was `ud2`, which made the machines diverge on this route.
+compile-const fits-float v = mov (reg rax) (imm (float-bits v)) ∷ []
 
 compile-const-size : ∀ {A} → FitsInReg A → ℕ
 compile-const-size fits-int   = 1
