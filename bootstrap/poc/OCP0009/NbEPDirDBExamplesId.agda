@@ -31,7 +31,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom; Id
         ; RTm; var; lam; app; ⌜base⌝; ⌜Hom⌝; ⌜Id⌝; hrefl; idrefl; jsub
-        ; renTm; renTy; subTm; ⌜Id⌝-cong₃ )
+        ; renTm; renTy; subTm; ⌜Id⌝-cong₃; ⌜Hom⌝-cong₃ )
 open import poc.OCP0009.NbEPDirDBVar
   using ( occ-ren-tm; avoids-wk )
 open import poc.OCP0009.NbEPDirDBType
@@ -42,7 +42,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; Ctx; ◇; _▹_; ⌊_⌋; here
         ; _⊢_∷_; ⊢var; ⊢⌜base⌝; ⊢⌜Id⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢idrefl; ⊢jsub; ⊢conv )
 open import poc.OCP0009.NbEPDirDBSubj
-  using ( ⊢wk; wk-cancel-tm )
+  using ( ⊢wk; wk-cancel-tm; ⊢-cast; ⊢[] )
 
 ------------------------------------------------------------------------
 -- 1. ★ SUBST / REWRITE — the workhorse, verbatim: `jsub` IS `subst`.
@@ -77,13 +77,21 @@ symTm c t p = jsub (⌜Id⌝ (renTm vs c) (var vz) (renTm vs t)) p (idrefl c t)
        Γ ⊢ symTm c t p ∷ Id (El c) u t
 ⊢sym {c = c} {t = t} {u = u} {p = p} dc dt du dp =
   ⊢conv
-    (⊢jsub (⊢⌜Id⌝ (⊢wk dc) (⊢var here) (⊢wk dt))
-           dt du dp
-           -- seed: `idrefl c t ∷ Id (El c) t t`, converted to the
-           -- motive instance at `t` (wk-cancel arithmetic + El-⌜Id⌝;
-           -- exact cast lands with the greening walk)
-           (⊢conv (⊢idrefl dc dt) (csymᵀ (credᵀ (El-⌜Id⌝ c t t)))))
+    (⊢-cast (cong El (⌜Id⌝-cong₃ (wk-cancel-tm u c) refl (wk-cancel-tm u t)))
+      (⊢jsub (⊢⌜Id⌝ (⊢wk dc) (⊢var here) (⊢wk dt))
+             dt du dp
+             (⊢-cast (cong El (sym (⌜Id⌝-cong₃ (wk-cancel-tm t c) refl
+                                               (wk-cancel-tm t t))))
+                     (⊢conv (⊢idrefl dc dt)
+                            (csymᵀ (credᵀ (El-⌜Id⌝ c t t)))))))
     (credᵀ (El-⌜Id⌝ c u t))
+
+-- ...and `sym` at a reflexivity computes back to a reflexivity — the
+-- J-rule fires on the DERIVED operation in one step:
+sym-computes : {Γ : Cx} (c t c₂ s : RTm Γ) →
+               symTm c t (idrefl c₂ s) ⟶ idrefl c t
+sym-computes c t c₂ s =
+  jsub-refl (⌜Id⌝ (renTm vs c) (var vz) (renTm vs t)) c₂ s (idrefl c t)
 
 ------------------------------------------------------------------------
 -- 3. ★ TRANS — derived: the family `λy. Id a y` (the composition
@@ -101,9 +109,12 @@ transTm c a q p = jsub (⌜Id⌝ (renTm vs c) (renTm vs a) (var vz)) q p
            Γ ⊢ transTm c a q p ∷ Id (El c) a u
 ⊢transId {c = c} {a = a} {t = t} {u = u} dc da dt du dp dq =
   ⊢conv
-    (⊢jsub (⊢⌜Id⌝ (⊢wk dc) (⊢wk da) (⊢var here))
-           dt du dq
-           (⊢conv dp (csymᵀ (credᵀ (El-⌜Id⌝ c a t)))))
+    (⊢-cast (cong El (⌜Id⌝-cong₃ (wk-cancel-tm u c) (wk-cancel-tm u a) refl))
+      (⊢jsub (⊢⌜Id⌝ (⊢wk dc) (⊢wk da) (⊢var here))
+             dt du dq
+             (⊢-cast (cong El (sym (⌜Id⌝-cong₃ (wk-cancel-tm t c)
+                                               (wk-cancel-tm t a) refl)))
+                     (⊢conv dp (csymᵀ (credᵀ (El-⌜Id⌝ c a t)))))))
     (credᵀ (El-⌜Id⌝ c a u))
 
 ------------------------------------------------------------------------
@@ -129,17 +140,20 @@ congTm cB b cA t p =
             ∷ Id (El cB) (subTm (single t) b) (subTm (single u) b)
 ⊢congId {cA = cA} {cB = cB} {b = b} {t = t} {u = u} dcA dcB db dt du dp =
   ⊢conv
-    (⊢jsub (⊢⌜Id⌝ (⊢wk dcB) (⊢wk-tm-b-instance) db)
-           dt du dp
-           (⊢conv (⊢idrefl dcB (⊢b-at-t)) (csymᵀ (credᵀ (El-⌜Id⌝ cB _ _)))))
-    (credᵀ (El-⌜Id⌝ cB _ _))
+    (⊢-cast (cong El (⌜Id⌝-cong₃ (wk-cancel-tm u cB)
+                                 (wk-cancel-tm u (subTm (single t) b)) refl))
+      (⊢jsub (⊢⌜Id⌝ (⊢wk dcB) (⊢wk dbt) db)
+             dt du dp
+             (⊢-cast (cong El (sym (⌜Id⌝-cong₃ (wk-cancel-tm t cB)
+                                               (wk-cancel-tm t (subTm (single t) b))
+                                               refl)))
+                     (⊢conv (⊢idrefl dcB dbt)
+                            (csymᵀ (credᵀ (El-⌜Id⌝ cB (subTm (single t) b)
+                                                      (subTm (single t) b))))))))
+    (credᵀ (El-⌜Id⌝ cB (subTm (single t) b) (subTm (single u) b)))
   where
-  -- the two obligations the greening walk discharges with the
-  -- ⊢[]-instance and wk-cancel arithmetic (Subj machinery):
-  ⊢wk-tm-b-instance = ⊢wk (⊢[]-b-at dt)  -- b[t], weakened
-  ⊢b-at-t           = ⊢[]-b-at dt        -- Γ ⊢ b[t] ∷ El cB
-  ⊢[]-b-at : _ → _                       -- placeholder shape; greening fills
-  ⊢[]-b-at = λ d → d
+  dbt : _ ⊢ subTm (single t) b ∷ El cB
+  dbt = ⊢-cast (cong El (wk-cancel-tm t cB)) (⊢[] db dt)
 
 ------------------------------------------------------------------------
 -- 5. ★ THE REFLECTION — every identification yields a hom; the two
@@ -155,9 +169,13 @@ idtohomTm c t p = jsub (⌜Hom⌝ (renTm vs c) (renTm vs t) (var vz)) p (hrefl c
            Γ ⊢ idtohomTm c t p ∷ Hom (El c) t u
 ⊢idtohom {c = c} {t = t} {u = u} dc dt du dp =
   ⊢conv
-    (⊢jsub (⊢⌜Hom⌝ (⊢wk dc) (⊢wk dt) (⊢var here))
-           dt du dp
-           (⊢conv (⊢hrefl dc dt) (csymᵀ (credᵀ (El-⌜Hom⌝ c t t)))))
+    (⊢-cast (cong El (⌜Hom⌝-cong₃ (wk-cancel-tm u c) (wk-cancel-tm u t) refl))
+      (⊢jsub (⊢⌜Hom⌝ (⊢wk dc) (⊢wk dt) (⊢var here))
+             dt du dp
+             (⊢-cast (cong El (sym (⌜Hom⌝-cong₃ (wk-cancel-tm t c)
+                                                (wk-cancel-tm t t) refl)))
+                     (⊢conv (⊢hrefl dc dt)
+                            (csymᵀ (credᵀ (El-⌜Hom⌝ c t t)))))))
     (credᵀ (El-⌜Hom⌝ c t u))
 
 -- ...and reflecting a reflexivity computes to the directed reflexivity:
