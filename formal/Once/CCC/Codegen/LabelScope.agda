@@ -38,6 +38,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
+open import Data.List.Properties using (++-assoc)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; subst₂; cong)
 
@@ -853,3 +854,28 @@ pieces-agree at a b c d t ps natl saAt lsAt disj p q m st mq lq =
                         (trans (sym (cong mention-of fp)) mq)
                         (trans (sym fq) lq))
                       (sym sp))
+
+-- The skeletons nest their splices as `(at ++ X) ++ Y` rather than associating
+-- to the right, so a witness needs one transport per nested copy. `Pieces` is
+-- a datatype, so this is `refl`-matching.
+pieces-≡ : ∀ {at : AbstractTrace} {a b : ℕ} {t t' : AbstractTrace}
+         → t ≡ t' → Pieces at a b t → Pieces at a b t'
+pieces-≡ refl ps = ps
+
+-- WHY THE CATA WITNESSES ARE NOT HERE (2026-08-04, measured by attempting
+-- them): a `Pieces` witness has to name the skeleton fragments, and in
+-- `cata-trace-nat` / `-linear` / `-branching` they are `let`-bound INSIDE the
+-- function (`descend-flat`, `build-layer`, `ascend-body`, `ascend-flat`, …) —
+-- none is exported, so the witness would have to transcribe ~28 + ~15 + 3
+-- instructions for the nat skeleton alone, and again for the other two. That
+-- is duplication of the emitter's own definition, and it would rot silently
+-- the moment the codegen is touched.
+--
+-- THE FIX IS IN `IRToTrace`, not here: lift those `let`s to top level, so
+-- `cata-trace-nat n1 l1 at` reads `I₁ n1 l1 ++ at ++ (I₂ n1 l1 ++ at ++ I₃ l1)`
+-- definitionally. Then every witness is `pcons refl … (pcons refl … (pnil …))`
+-- with no transcription and no `++-assoc` transport. The emitted trace is
+-- unchanged by construction, but the RIPPLE is real and worth budgeting: every
+-- proof that pattern-matches the current shape moves with it —
+-- `SlotBudget.cata-nat-below`, `FrameFreeTrace.cata-nat-ff`, `AllocMin`,
+-- `CataIRSlotStable`, and `cata-nat-ls` above.
