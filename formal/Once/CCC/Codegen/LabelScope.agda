@@ -631,3 +631,78 @@ segagree-++ t1 t2 lo mid hi ls1 ls2 sa1 sa2 p q m st mq lq =
     go (inj₂ (pk , peq)) (inj₁ ql) =
       ⊥-elim (<-asym (inʟ q ql (def→men t1 q (defines₁ q ql lq)))
                      (inʀ pk (mentions₂ pk (subst (λ z → mention-at (t1 ++ t2) z ≡ just m) peq mq))))
+
+-- THE COMPOSITION, GENERALIZED (needed by the cata skeletons). Along a trace
+-- the label windows are NOT in increasing order: `cata-trace-nat` emits its
+-- own `descend` labels `[l1, l1+6)` BEFORE splicing the algebra, whose labels
+-- are `[l, l1)` — below, not above. So the two parts only have to be
+-- DISJOINT, in either order.
+segagree-++' : ∀ (t1 t2 : AbstractTrace) (a b c d : ℕ)
+             → LabelsIn a b t1 → LabelsIn c d t2
+             → (b ≤ c) ⊎ (d ≤ a)
+             → SegAgree t1 → SegAgree t2
+             → SegAgree (t1 ++ t2)
+segagree-++' t1 t2 a b c d ls1 ls2 disj sa1 sa2 p q m st mq lq =
+  go (split-pos t1 p) (split-pos t1 q)
+  where
+    mentions₁ : ∀ (r : ℕ) → r < length t1 → mention-at (t1 ++ t2) r ≡ just m → mention-at t1 r ≡ just m
+    mentions₁ r lt e rewrite fetch-++ˡ t1 t2 r lt = e
+    mentions₂ : ∀ (k : ℕ) → mention-at (t1 ++ t2) (length t1 + k) ≡ just m → mention-at t2 k ≡ just m
+    mentions₂ k e rewrite fetch-++ʳ t1 t2 k = e
+    defines₁ : ∀ (r : ℕ) → r < length t1
+             → fetch-at (t1 ++ t2) r ≡ just (instr-ctrl (c-label m))
+             → fetch-at t1 r ≡ just (instr-ctrl (c-label m))
+    defines₁ r lt e = trans (sym (fetch-++ˡ t1 t2 r lt)) e
+    defines₂ : ∀ (k : ℕ) → fetch-at (t1 ++ t2) (length t1 + k) ≡ just (instr-ctrl (c-label m))
+             → fetch-at t2 k ≡ just (instr-ctrl (c-label m))
+    defines₂ k e = trans (sym (fetch-++ʳ t1 t2 k)) e
+    win : ∀ (t : AbstractTrace) (lo hi r : ℕ) → LabelsIn lo hi t
+        → mention-at t r ≡ just m → (lo ≤ m) × (m < hi)
+    win []       lo hi _        _        ()
+    win (i ∷ is) lo hi zero     (x ∷ _)  e = in-range x m e
+    win (i ∷ is) lo hi (suc r') (_ ∷ xs) e = win is lo hi r' xs e
+    def→men : ∀ (t : AbstractTrace) (r : ℕ)
+            → fetch-at t r ≡ just (instr-ctrl (c-label m)) → mention-at t r ≡ just m
+    def→men t r e rewrite e = refl
+    -- `m` in both windows is impossible, whichever way round they sit
+    clash : (a ≤ m) × (m < b) → (c ≤ m) × (m < d) → ⊥
+    clash (a≤ , <b) (c≤ , <d) = dis disj
+      where dis : (b ≤ c) ⊎ (d ≤ a) → ⊥
+            dis (inj₁ b≤c) = <-asym <b (≤-trans b≤c c≤)
+            dis (inj₂ d≤a) = <-asym <d (≤-trans d≤a a≤)
+    go : (p < length t1) ⊎ (Σ ℕ (λ k → p ≡ length t1 + k))
+       → (q < length t1) ⊎ (Σ ℕ (λ k → q ≡ length t1 + k))
+       → seg-at (t1 ++ t2) q st ≡ seg-at (t1 ++ t2) p st
+    go (inj₁ pl) (inj₁ ql) =
+      trans (seg-at-++ˡ t1 t2 q st ql)
+            (trans (sa1 p q m st (mentions₁ p pl mq) (defines₁ q ql lq))
+                   (sym (seg-at-++ˡ t1 t2 p st pl)))
+    go (inj₂ (pk , peq)) (inj₂ (qk , qeq)) =
+      subst₂ (λ x y → seg-at (t1 ++ t2) y st ≡ seg-at (t1 ++ t2) x st) (sym peq) (sym qeq)
+        (trans (seg-at-++ʳ t1 t2 qk st)
+               (trans (sa2 pk qk m (seg-fold t1 st)
+                           (mentions₂ pk (subst (λ z → mention-at (t1 ++ t2) z ≡ just m) peq mq))
+                           (defines₂ qk (subst (λ z → fetch-at (t1 ++ t2) z ≡ just (instr-ctrl (c-label m))) qeq lq)))
+                      (sym (seg-at-++ʳ t1 t2 pk st))))
+    go (inj₁ pl) (inj₂ (qk , qeq)) =
+      ⊥-elim (clash (win t1 a b p ls1 (mentions₁ p pl mq))
+                    (win t2 c d qk ls2 (def→men t2 qk
+                      (defines₂ qk (subst (λ z → fetch-at (t1 ++ t2) z ≡ just (instr-ctrl (c-label m))) qeq lq)))))
+    go (inj₂ (pk , peq)) (inj₁ ql) =
+      ⊥-elim (clash (win t1 a b q ls1 (def→men t1 q (defines₁ q ql lq)))
+                    (win t2 c d pk ls2 (mentions₂ pk (subst (λ z → mention-at (t1 ++ t2) z ≡ just m) peq mq))))
+
+-- …and the no-label discharge, for fragments that mention nothing at all
+-- regardless of how wide their range is (every closure clause, `apply`, the
+-- four injections). `segagree-empty` covers only the empty-range case.
+NoLab : AbstractTrace → Set
+NoLab = All (λ i → once-label-of i ≡ nothing)
+
+segagree-nolab : ∀ (t : AbstractTrace) → NoLab t → SegAgree t
+segagree-nolab t nl p q m st mq _ = ⊥-elim (go t p nl mq)
+  where go : ∀ (t' : AbstractTrace) (r : ℕ) → NoLab t' → mention-at t' r ≡ just m → ⊥
+        go []       r       _        ()
+        go (i ∷ is) zero    (e ∷ _)  eq rewrite e = absurd eq
+          where absurd : ∀ {A : Set} → nothing ≡ just m → A
+                absurd ()
+        go (i ∷ is) (suc r) (_ ∷ xs) eq = go is r xs eq
