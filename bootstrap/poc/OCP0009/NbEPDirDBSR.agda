@@ -36,10 +36,12 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; subst; cong
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; ⌜Π⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub
+        ; nzero; nsuc; natrec; natrec-cong₃
         ; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
         ; Ren; extR; Sub; subTy; subTm; extS; _∘ₛ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; renTm
         ; subTm-subTm; subTm-cong; subTm-renTm; subTm-id; renTm-subTm
         ; renTm-renTm; renTm-cong )
+open import poc.OCP0009.NbEPDirDBVar using ( ren-as-sub )
 open import poc.OCP0009.NbEPDirDBVar
   using ( pw?; stkC?; pwBody; pwShift
         ; pw?-sub; stkC?-sub; pwBody-sub )
@@ -52,6 +54,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
         ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
+        ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
@@ -90,6 +93,26 @@ sub-comm {Γ} σ t u =
 wk-sub : (σ : Sub Γ Δ) (t : RTm Γ) →
          subTm (extS σ) (renTm vs t) ≡ renTm vs (subTm σ t)
 wk-sub σ t = trans (subTm-renTm t) (sym (renTm-subTm t))
+
+-- ★ WF stage A: `sub-comm` one binder down — commuting a substitution
+-- past the recursor's outer-binder instantiation (the number), keeping
+-- the inner (IH) binder.
+sub-comm-ext : (σ : Sub Γ Δ) (s : RTm ((Γ ∙) ∙)) (n : RTm Γ) →
+               subTm (extS σ) (subTm (extS (single n)) s) ≡
+               subTm (extS (single (subTm σ n))) (subTm (extS (extS σ)) s)
+sub-comm-ext {Γ} σ s n =
+  trans (subTm-subTm {τ = extS σ} {σ = extS (single n)} s)
+        (trans (subTm-cong bridge s)
+               (sym (subTm-subTm {τ = extS (single (subTm σ n))} {σ = extS (extS σ)} s)))
+  where
+  bridge : ∀ (x : Var ((Γ ∙) ∙)) →
+           subTm (extS σ) (extS (single n) x) ≡
+           subTm (extS (single (subTm σ n))) (extS (extS σ) x)
+  bridge vz          = refl
+  bridge (vs vz)     = wk-sub σ n
+  bridge (vs (vs w)) =
+    sym (trans (cong (subTm (extS (single (subTm σ n)))) (renTm-renTm (σ w)))
+               (trans (subTm-renTm (σ w)) (sym (ren-as-sub vs (σ w)))))
 
 -- the same commutation one binder down: `extR vs` against `extS (extS σ)`
 wk₁-sub : (σ : Sub Γ Δ) (t : RTm (Γ ∙)) →
@@ -224,6 +247,21 @@ pwShift-sub σ t =
 ⟶-sub σ (ξ-⌜Id⌝ʳ r) = ξ-⌜Id⌝ʳ (⟶-sub σ r)
 ⟶-sub σ (ξ-idreflᶜ r) = ξ-idreflᶜ (⟶-sub σ r)
 ⟶-sub σ (ξ-idreflᵃ r) = ξ-idreflᵃ (⟶-sub σ r)
+⟶-sub σ (natrec-zero z s) =
+  natrec-zero (subTm σ z) (subTm (extS (extS σ)) s)
+⟶-sub σ (natrec-suc z s n) =
+  subst (λ w → natrec (subTm σ z) (subTm (extS (extS σ)) s)
+                      (nsuc (subTm σ n)) ⟶ w)
+        (sym (trans (sub-comm σ (subTm (extS (single n)) s) (natrec z s n))
+                    (cong (subTm (single (natrec (subTm σ z)
+                                                 (subTm (extS (extS σ)) s)
+                                                 (subTm σ n))))
+                          (sub-comm-ext σ s n))))
+        (natrec-suc (subTm σ z) (subTm (extS (extS σ)) s) (subTm σ n))
+⟶-sub σ (ξ-nsuc r)    = ξ-nsuc (⟶-sub σ r)
+⟶-sub σ (ξ-natrecᶻ r) = ξ-natrecᶻ (⟶-sub σ r)
+⟶-sub σ (ξ-natrecˢ r) = ξ-natrecˢ (⟶-sub (extS (extS σ)) r)
+⟶-sub σ (ξ-natrecⁿ r) = ξ-natrecⁿ (⟶-sub σ r)
 ⟶-sub σ (ξ-jsubᵈ r) = ξ-jsubᵈ (⟶-sub (extS σ) r)
 ⟶-sub σ (ξ-jsubᵖ r) = ξ-jsubᵖ (⟶-sub σ r)
 ⟶-sub σ (ξ-jsubᵉ r) = ξ-jsubᵉ (⟶-sub σ r)
