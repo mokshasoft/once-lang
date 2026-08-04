@@ -29,7 +29,7 @@ open import Once.CCC.Target.X86-64.Syntax using (slot-size)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (_*_)
-open import Data.Nat.Properties using (+-comm; ≤-refl)
+open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive)
 open import Once.Adequacy.CPU.X86-64 using (ev-x86-64; arith-env-x86-64; step-budget-x86-64; val-x86-64)
 import Once.Arith.Backend.X86-64.RunTrace as RTx
 import Once.CCC.Target.X86-64.Semantics as X
@@ -191,7 +191,11 @@ entry-corr ir = record
       -- THE RESERVED FRAME AGREES, and this is now real content rather than a
       -- vacuous bound: the prologue's `slots` cells are UNWRITTEN on both sides —
       -- `emptyMemory` concretely, `λ _ _ → nothing` abstractly.
-      ; stack-eq = λ _ _ → refl
+      -- Plan 0.63 (D085): the frame LIST at entry is one frame long
+      -- (`entry-alloc`'s `saved-frames` is `[]`), so the tail is `tt` and the
+      -- floor bound is `entry-frame-base` — the loader's `%rsp` IS the entry
+      -- frame's base, so the mark sits exactly at it.
+      ; stack-eq = ≤-reflexive (sym entry-frame-base) , (λ _ _ → refl) , tt
       }
   ; pc-off = refl
   }

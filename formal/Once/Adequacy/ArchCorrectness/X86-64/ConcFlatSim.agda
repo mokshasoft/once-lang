@@ -317,11 +317,10 @@ slot-heap-disj {hv} fs s corr k =
   above-frontier-disj {hv} (X.readReg (X.State.regs s) rsp + slot-to-disp k)
     (≤-trans (C.sep corr) (m≤m+n (X.readReg (X.State.regs s) rsp) (slot-to-disp k)))
 
--- the same fact with the argument order the store-through-a-pointer block-steps want
-ptr-heap-disj : ∀ {hv : HeapView} (fs : FlatState) (s : X.State) → C.FlatCorr hv fs s
-              → (hl : HeapLocation) → HDom hv hl
-              → ∀ k → (X.readReg (X.State.regs s) rsp + slot-to-disp k ≡ haddr hv hl) → ⊥
-ptr-heap-disj fs s corr hl live k eq = slot-heap-disj fs s corr k hl live eq
+-- (`ptr-heap-disj` — the same fact with the heap stores' argument order —
+-- DELETED with Plan 0.63's D085: a heap store no longer takes stack
+-- disjointness as a premise, it derives it for EVERY live frame from the frame
+-- list's floor (`C.windows-heap-store`).)
 
 
 -- WITNESS-FREE block chaining: if `X.exec L` reaches a NON-halted `s'`, then every
@@ -484,7 +483,7 @@ slot-empty-stop {hv} n ev env prog fs s slot dst i cc h ftq ca slot<ss empty hpo
                              (cong (λ b → X.fetch (b ++ compile-trace (drop (suc (fpc fs)) prog)) 0) ca))
     -- the concrete cell is unmapped: `stack-eq` at an EMPTY in-frame slot
     rd : X.readMem (X.State.memory s) (X.effectiveAddr s (base+disp rsp (slot-to-disp slot))) ≡ nothing
-    rd = trans (C.stack-eq dc slot slot<ss) (cong (C.enc-maybe hv) empty)
+    rd = trans (C.stack-eq-cur dc slot slot<ss) (cong (C.enc-maybe hv) empty)
     stuck : X.execInstr (compile-trace prog) s
               (mov (reg dst) (mem (base+disp rsp (slot-to-disp slot)))) ≡ nothing
     stuck rewrite rd = refl
@@ -1210,11 +1209,15 @@ mutual
   events-running-fetch {hv} n ev env prog fs s (load-from-slot slot) cc wf h ftq = load-from-slot-step n ev env prog fs s slot cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (store-at-slot slot) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (store-at-slot slot)
-      (block-step-store-at-slot prog fs s slot cc h ftq (slot-heap-disj {hv} fs s (dataCorr cc) slot)) wf ftq h refl h
+      (block-step-store-at-slot prog fs s slot cc h ftq
+         (slot-read-in-frame prog fs slot (store-at-slot slot) (inv-run wf) ftq refl)
+         (slot-heap-disj {hv} fs s (dataCorr cc) slot)) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (restore-input slot) cc wf h ftq = restore-input-step n ev env prog fs s slot cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (worklist-push slot) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (worklist-push slot)
-      (block-step-worklist-push prog fs s slot cc h ftq (slot-heap-disj {hv} fs s (dataCorr cc) slot)) wf ftq h refl h
+      (block-step-worklist-push prog fs s slot cc h ftq
+         (slot-read-in-frame prog fs slot (worklist-push slot) (inv-run wf) ftq refl)
+         (slot-heap-disj {hv} fs s (dataCorr cc) slot)) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (worklist-pop slot) cc wf h ftq = worklist-pop-step n ev env prog fs s slot cc wf h ftq
   -- THE FOUR FRAME OPS ARE UNREACHABLE (plan 0.54 rung D, item 2): `ir-to-trace`
   -- emits none of them, and `FlatInv` carries `Emitted prog`. See `FrameFree`.
@@ -1225,7 +1228,7 @@ mutual
       (block-step-alloc-heap prog fs s k cc h ftq
          (wf-regs (inv-wf wf) Input1) (wf-regs (inv-wf wf) Input2)
          (wf-regs (inv-wf wf) Scratch) (wf-regs (inv-wf wf) Count)
-         (λ hl _ → wf-heap (inv-wf wf) hl) (λ k' _ → wf-stack (inv-wf wf) (current-frame (falloc fs)) k')
+         (λ hl _ → wf-heap (inv-wf wf) hl) (wf-stack (inv-wf wf))
          (λ hl eq → wf-fresh (inv-wf wf) hl (≤-reflexive (sym eq)))
          (heap-room prog fs s k (inv-run wf) cc ftq)) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc wf h ftq =
@@ -1584,7 +1587,7 @@ mutual
                            (cong₂ (λ b w' → b + k' * w') (sym (C.rsp-eq dc)) word-eq)))))
           rd-stack : X.readMem (X.State.memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just k
           rd-stack = trans (cong (X.readMem (X.State.memory s)) rdi-val)
-                           (trans (C.stack-eq dc k' (proj₂ spc)) (cong (C.enc-maybe hv) st-cf))
+                           (trans (C.stack-eq-cur dc k' (proj₂ spc)) (cong (C.enc-maybe hv) st-cf))
 
   -- REG-OP scratch-dec: case the Scratch value (J-bridge, no with). A tag ⇒ the PROVEN
   -- block-step-scratch-dec applies (reg-op preserves halted: hpost=h) ⇒ ccc-step-bs.
@@ -1858,8 +1861,7 @@ mutual
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq =
             ccc-step-bs {hv} n ev env prog fs s store-indirect
               (block-step-store-indirect prog fs s hl cc h ftq i-eq
-                 (C.dom-sized (dataCorr cc) hl (store-indirect-inbounds prog fs hl (inv-run wf) ftq i-eq)) (store-guard fs hl)
-                 (ptr-heap-disj {hv} fs s (dataCorr cc) hl (C.dom-sized (dataCorr cc) hl (store-indirect-inbounds prog fs hl (inv-run wf) ftq i-eq))))
+                 (C.dom-sized (dataCorr cc) hl (store-indirect-inbounds prog fs hl (inv-run wf) ftq i-eq)) (store-guard fs hl))
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)) h
@@ -1870,6 +1872,7 @@ mutual
             ccc-step-bs {hv} n ev env prog fs s store-indirect
               (block-step-store-indirect-stack prog fs s f k cc h ftq i-eq
                  (proj₁ (stack-ptr-current prog fs f k (inv-run wf) i-eq))
+                 (proj₂ (stack-ptr-current prog fs f k (inv-run wf) i-eq))
                  (slot-heap-disj {hv} fs s (dataCorr cc) k))
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect prog fs)) ≡ false
@@ -1894,8 +1897,7 @@ mutual
           go-ptr (SV-Ptr (AtDynamic hl)) i-eq =
             ccc-step-bs {hv} n ev env prog fs s store-indirect-suc
               (block-step-store-indirect-suc prog fs s hl cc h ftq i-eq
-                 (C.dom-sized (dataCorr cc) (sucHL hl) (store-indirect-suc-inbounds prog fs hl (inv-run wf) ftq i-eq)) (store-guard fs (sucHL hl))
-                 (ptr-heap-disj {hv} fs s (dataCorr cc) (sucHL hl) (C.dom-sized (dataCorr cc) (sucHL hl) (store-indirect-suc-inbounds prog fs hl (inv-run wf) ftq i-eq))))
+                 (C.dom-sized (dataCorr cc) (sucHL hl) (store-indirect-suc-inbounds prog fs hl (inv-run wf) ftq i-eq)) (store-guard fs (sucHL hl)))
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq = trans (writeLoc-halted (floc fs) (AtDynamic (sucHL hl)) (readReg (regs (floc fs)) Output)) h
@@ -1905,6 +1907,7 @@ mutual
             ccc-step-bs {hv} n ev env prog fs s store-indirect-suc
               (block-step-store-indirect-suc-stack prog fs s f k cc h ftq i-eq
                  (proj₁ (stack-ptr-current prog fs f k (inv-run wf) i-eq))
+                 (proj₂ (stack-ptr-current-suc prog fs f k (inv-run wf) i-eq))
                  (slot-heap-disj {hv} fs s (dataCorr cc) (suc k)))
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr store-indirect-suc prog fs)) ≡ false

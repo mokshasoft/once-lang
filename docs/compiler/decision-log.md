@@ -5977,3 +5977,98 @@ That is now an explicit `caller-window` premise with a note, not a vacuity.
 frame** — the clearest remaining obligation for the closure call. The
 premises that stopped doing work (`entry`, `full`) were removed rather than
 left for call sites to supply.
+
+---
+
+## D085: The Stack Correspondence Is Scoped Over Every Live Frame, With a Floor
+
+**Date**: 2026-08-04
+**Status**: TAKEN (landed — Plan 0.63, the obligation D084 exposed)
+
+### The problem
+
+`FlatCorr.stack-eq` described ONE frame, addressed off `%rsp`:
+
+    stack-eq : ∀ k → k < frame-slots (falloc fs) →
+      readMem (memory s) (readReg (regs s) rsp + slot-to-disp k)
+        ≡ enc-maybe hv (stackMem (floc fs) (current-frame (falloc fs)) k)
+
+That is exactly enough for straight-line code and not enough for a RETURN:
+the epilogue restores the caller's frame, so the post-state must describe a
+window the pre-state never mentioned. D084 turned that from a vacuity into an
+explicit `caller-window` premise on `sim-dealloc-stack`; this closes it.
+
+### Decision
+
+`stack-eq` is scoped over the whole live frame stack —
+
+    frames-of alloc = (current-frame alloc , frame-slots alloc) ∷ saved-frames alloc
+
+— with each frame addressed by ITS OWN base rather than by `%rsp` (which
+names only one), and the list carrying a FLOOR that is threaded along it:
+
+    StackWindows am mem stk fl []             = ⊤
+    StackWindows am mem stk fl ((f , b) ∷ fr) =
+      (fl ≤ frame-base f) × Window am mem stk f b
+        × StackWindows am mem stk (frame-base f + slots b) fr
+
+with the initial floor the view's high-water mark `lo`. The current frame's
+window is the head, recovered in the old `%rsp`-addressed form through
+`rsp-eq` by the derived `stack-eq-cur` — so every straight-line consumer
+(load/store-at-slot, restore-input, worklist-*, the tag-branch's stack route)
+is a one-word change.
+
+### Why a threaded floor, and not `All`
+
+The plan's sketch was `All` over `frames-of`. Building it showed that a
+per-frame predicate is NOT ENOUGH, and the missing content is frame
+SEPARATION:
+
+- a STACK store must leave the older frames' windows alone. With only a
+  per-frame predicate nothing says the caller's cells are elsewhere, so the
+  step is unprovable — and worse, for `slot ≥ frame-slots` the claim is
+  FALSE: a store past its own reservation IS a store into the caller's
+  window.
+- a HEAP store must miss every live frame. The plan expected this from
+  `sep`/`untouched`; those give "below `%rsp`", i.e. below the CURRENT
+  frame's base only. Nothing in the correspondence said an older frame's
+  base was also above `lo`.
+
+The floor supplies both. Every frame's base is at or above the floor, and
+the next (older) frame's floor is this frame's window END. Then:
+heap writes are below `lo` ≤ every base (`dom-below` then `front-lo`), and a
+stack write at `slot < b` is strictly below `frame-base f + slots b`, the
+caller's floor. Both are theorems over the list, by the same transport
+(`windows-above`).
+
+### Consequences
+
+- `sim-dealloc-stack`'s `caller-window` premise is a THEOREM
+  (`windows-leave`: the epilogue drops the head, the caller's window is the
+  tail) and is deleted from the signature, not left for call sites.
+- The heap stores' `disj` premise stops doing work and is DELETED
+  (`sim-store-indirect{,-suc}`, their block-steps, and `ptr-heap-disj` with
+  them) — the disjointness is now derived, and for every frame rather than
+  the top one.
+- Three sites GAIN the frame discipline as a premise, because without it the
+  statement is false: `sim-store-at-slot` (`slot < frame-slots`) and the two
+  stack-pointer stores. Emitted code satisfies it already — the call sites
+  supply `slot-read-in-frame` / `stack-ptr-current{,-suc}`, both existing
+  theorems.
+- `sim-alloc-stack` gains `slots n ≤ %rsp` — THE FRAME FITS. With truncated
+  `∸`, `frame-base (shift cf n) + slots n` is `max (frame-base cf) (slots n)`,
+  so without it the callee's window is not provably below the caller's and
+  the list does not compose. The honest sibling of `heap-room` (stack
+  overflow); it will be spent by `stack-room` when `c-thunk` gets its real
+  block-step.
+- `sim-alloc-heap`'s stack store-WF premise widened from the current frame to
+  all frames — which is the form `FlatWF.wf-stack` already had, so the call
+  site got SHORTER.
+- No new postulate; ConcFlatSim census unchanged at 6.
+
+### What it unlocks
+
+`enter-frame` conses and `leave-frame` drops the head, so the frame moves are
+now list operations on the evidence. That is precisely what `c-thunk`'s and
+`c-ret`'s block-steps need, and it is why the closure call's correspondence
+can be stated at all.
