@@ -35,7 +35,8 @@ module poc.OCP0009.NbEPDirDBSR where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; subst; cong; cong₂ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
-        ; ⌜Π⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃
+        ; ⌜Π⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub
+        ; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
         ; Ren; extR; Sub; subTy; subTm; extS; _∘ₛ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; renTm
         ; subTm-subTm; subTm-cong; subTm-renTm; subTm-id; renTm-subTm
         ; renTm-renTm; renTm-cong )
@@ -49,6 +50,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; tr-J-base; tr-J-Σ; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
         ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
+        ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
+        ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
@@ -207,6 +210,19 @@ pwShift-sub σ t =
 ⟶-sub σ (ξ-apᶜ r) = ξ-apᶜ (⟶-sub σ r)
 ⟶-sub σ (ξ-apᵇ r) = ξ-apᵇ (⟶-sub (extS σ) r)
 ⟶-sub σ (ξ-apᵖ r) = ξ-apᵖ (⟶-sub σ r)
+⟶-sub σ (jsub-refl d c s e) =
+  subst (λ z → jsub (subTm (extS σ) d)
+                    (idrefl (subTm σ c) (subTm σ s)) (subTm σ e) ⟶ z)
+        refl
+        (jsub-refl (subTm (extS σ) d) (subTm σ c) (subTm σ s) (subTm σ e))
+⟶-sub σ (ξ-⌜Id⌝ᶜ r) = ξ-⌜Id⌝ᶜ (⟶-sub σ r)
+⟶-sub σ (ξ-⌜Id⌝ˡ r) = ξ-⌜Id⌝ˡ (⟶-sub σ r)
+⟶-sub σ (ξ-⌜Id⌝ʳ r) = ξ-⌜Id⌝ʳ (⟶-sub σ r)
+⟶-sub σ (ξ-idreflᶜ r) = ξ-idreflᶜ (⟶-sub σ r)
+⟶-sub σ (ξ-idreflᵃ r) = ξ-idreflᵃ (⟶-sub σ r)
+⟶-sub σ (ξ-jsubᵈ r) = ξ-jsubᵈ (⟶-sub (extS σ) r)
+⟶-sub σ (ξ-jsubᵖ r) = ξ-jsubᵖ (⟶-sub σ r)
+⟶-sub σ (ξ-jsubᵉ r) = ξ-jsubᵉ (⟶-sub σ r)
 
 ⟶ᵀ-sub : (σ : Sub Γ Δ) {A B : RTy Γ} → A ⟶ᵀ B → subTy σ A ⟶ᵀ subTy σ B
 ⟶ᵀ-sub σ (El-⌜base⌝)  = El-⌜base⌝
@@ -231,6 +247,10 @@ pwShift-sub σ t =
 ⟶ᵀ-sub σ (ξ-Homᵀ r) = ξ-Homᵀ (⟶ᵀ-sub σ r)
 ⟶ᵀ-sub σ (ξ-Homˡ r) = ξ-Homˡ (⟶-sub σ r)
 ⟶ᵀ-sub σ (ξ-Homʳ r) = ξ-Homʳ (⟶-sub σ r)
+⟶ᵀ-sub σ (El-⌜Id⌝ c a b) = El-⌜Id⌝ (subTm σ c) (subTm σ a) (subTm σ b)
+⟶ᵀ-sub σ (ξ-Idᵀ r) = ξ-Idᵀ (⟶ᵀ-sub σ r)
+⟶ᵀ-sub σ (ξ-Idˡ r) = ξ-Idˡ (⟶-sub σ r)
+⟶ᵀ-sub σ (ξ-Idʳ r) = ξ-Idʳ (⟶-sub σ r)
 
 ------------------------------------------------------------------------
 -- Hence conversion is substitution-stable — the `⊢conv`-case ingredient.
