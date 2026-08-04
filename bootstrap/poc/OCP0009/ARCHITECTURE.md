@@ -555,7 +555,50 @@ does NOT need it (β-only MLTT is standard).  Plan: grow `NbEPDirDBEta`
 with Σ-η as propositional/postprocessing results when convenient; the
 fat core is re-evaluated at the welding (G7) as its own project.
 
-### THE AXES LEDGER (2026-08-04 discussion — candidates for after the
+### THE AXES LEDGER (2026-08-04, updated after the two-former landing;
+### judge each by the ap-landing test)
+
+**STATUS:** the two-former kernel is COMPLETE (Id + Hom, full
+metatheory).  ★ NEXT TASK (decided with the user): **the WF-axis**
+(sized induction) — the highest-frequency everyday pain (guard-
+condition boilerplate: fuel, Acc-plumbing, TERMINATING pragmas).
+Spike first (SPIKE-WF, next session): decide (a) judgmental size
+inference (checker-internal, erasable, consistency by refinement) vs
+(b) the Hom-INSTANCE realization — land ℕ as the first ORDERED
+inductive where `Hom ℕ m n` COMPUTES to `m ≤ n` (the order IS the
+directed structure), WF-induction as a new UNRESTRICTED eliminator
+(well-foundedness makes induction total the way symmetry makes J
+total), and size-coercion as `tr` at `Pos` motives.  Note the
+prerequisite fold-in: the kernel has no recursive data (that is what
+makes consistency trivial to state), so the WF spike doubles as the
+DATATYPE story's opening — sized-ℕ is where the termination pain
+actually lives.  Composition is pre-analyzed: WF composes with Id for
+free (unrestricted eliminators compose with everything), with Hom by
+construction under (b), and with the kernel by the union metatheory.
+
+**The with-abstraction pain (2026-08-04 analysis):** decomposes as
+(1) lost equations + (3) abstraction failure — ELABORATION-layer, not
+kernel: Once's surface case-construct must compile to
+EQUATION-CARRYING case trees (every branch gets `Id _ scrutinee
+pattern` in scope; `jsub` consumes it at arbitrary families — the
+two-former kernel is exactly the machine for this).  Recorded as a
+SURFACE-LANGUAGE decision, zero kernel cost.  (2) opacity/definitional
+propagation = the **smart-case axis** (local definitional equations in
+conversion): known-dangerous (congruence closure in the checker
+threatens decidability); candidate fragment: equations between a
+neutral scrutinee and a constructor form only.  DEFERRED until the
+propositional solution proves insufficient in practice — Lean lives
+fine with exactly the propositional design.
+
+**The rest of the inventory** (weekly-frequency ranked): setoid
+rewriting ✅ (Hom); quotients/setoid-hell-2 → the OBSERVATIONAL axis —
+uniquely matched to this codebase: it is "give Id the computing rules
+Hom already has" (Id-Π pointwise, Id-Σ componentwise, Id-at-quotient =
+the relation; risky point: funext + proof irrelevance); erasure ✅ in
+flight (graded/QTT, once-lang's direction); untyped meta-layers → the
+modal/staging axis (lower frequency).
+
+### (superseded header) THE AXES LEDGER (2026-08-04 discussion — candidates for after the
 ### two-former kernel; judge each by the ap-landing test)
 
 Axes split into FORMERS (new type formers: Id, Hom, modal □/◇) and
