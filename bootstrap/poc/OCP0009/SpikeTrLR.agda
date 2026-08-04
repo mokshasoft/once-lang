@@ -97,7 +97,7 @@ open import poc.OCP0009.NbEPDirDBType
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ )
 open import poc.OCP0009.NbEPDirDBLR
-  using ( ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; _⊩₀∋_
+  using ( ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; ⊩₀Id; _⊩₀∋_
         ; homSem₀; wk-single; projl; projr )
 
 private
@@ -155,6 +155,7 @@ homSem₀-mem-endpoints (⊩₀base p)    ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀ne p n)    ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀Σ p ⊩F ⊩G) ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀Hom p s)   ha hb ha' hb' h = h
+homSem₀-mem-endpoints (⊩₀Id p) ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀Π {F = F} {G = G} p ⊩F ⊩G)
                       {a} {b} {a'} {b'} ha hb ha' hb' {t} h =
   ( projl h

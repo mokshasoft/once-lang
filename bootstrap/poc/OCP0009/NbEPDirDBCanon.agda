@@ -38,6 +38,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd
         ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
+        ; Id; ⌜Id⌝; idrefl; jsub
         ; Ren; renTm; renTy; Sub; subTm; subTy
         ; renTm-subTm; subTm-id
         ; subTy-renTy; subTy-cong; subTy-id )
@@ -50,6 +51,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; ξ-hreflᶜ; ξ-trᵈ; ξ-trᵖ; ξ-⌜Hom⌝ᶜ
         ; hrefl-pw; tr-J-base; tr-J-Σ; tr-J-Hom; tr-taut; tr-pw
         ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
+        ; tr-J-Id; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
+        ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ
@@ -61,9 +64,10 @@ open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ
         ; church-rosserᵀ; red→≅ᵀ
-        ; Π-reduct; ΠRed; mkΠRed; Σ-reduct; ΣRed; mkΣRed )
+        ; Π-reduct; ΠRed; mkΠRed; Σ-reduct; ΣRed; mkΣRed; Id-reduct )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( gen-lam; gen-app; gen-pair; gen-fst; gen-snd; gen-ap
+        ; gen-⌜Id⌝; gen-idrefl; gen-jsub
         ; gen-var; gen-hrefl; gen-⌜Π⌝; gen-⌜Σ⌝; gen-⌜Hom⌝
         ; gen-tr; TrGen; tgC; tgU; TrInv; mkTrInv; TrInvU; mkTrInvU
         ; StkAmb; st-el; st-hom; stamb-red; homred-inv
@@ -91,6 +95,8 @@ elnotU (stepᵀ (El-⌜Σ⌝ _ _) rest) with Σ-reduct rest
 ... | mkΣRed _ _ () _ _
 elnotU (stepᵀ (El-⌜Hom⌝ _ _ _) rest) with hom-shape rest
 ... | ()
+elnotU (stepᵀ (El-⌜Id⌝ _ _ _) rest) with Id-reduct rest
+... | _ , (_ , (_ , ((), _)))
 elnotU (stepᵀ (ξ-El r) rest) = elnotU rest
 
 ------------------------------------------------------------------------
@@ -154,6 +160,47 @@ Hombase-clash cv with church-rosserᵀ cv
 ... | E , (hE , bE) with base-nf bE
 ...   | refl with hom-shape hE
 ...     | ()
+
+-- ★ the two-former kernel: `Id` against every former — Id is INERT,
+-- so each clash is `Id-reduct` against the other side's shape.
+IdU-clash : {Γ : Cx} {A : RTy Γ} {t u : RTm Γ} → Id A t u ≅ᵀ U → ⊥
+IdU-clash cv with church-rosserᵀ cv
+... | E , (iE , uE) with U-nf uE
+...   | refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+
+IdΠ-clash : {Γ : Cx} {A : RTy Γ} {t u : RTm Γ}
+            {F : RTy Γ} {G : RTy (Γ ∙)} → Id A t u ≅ᵀ Π F G → ⊥
+IdΠ-clash cv with church-rosserᵀ cv
+... | E , (iE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+
+IdΣ-clash : {Γ : Cx} {A : RTy Γ} {t u : RTm Γ}
+            {F : RTy Γ} {G : RTy (Γ ∙)} → Id A t u ≅ᵀ Σ' F G → ⊥
+IdΣ-clash cv with church-rosserᵀ cv
+... | E , (iE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+
+IdHom-clash : {Γ : Cx} {A A' : RTy Γ} {t u t' u' : RTm Γ} →
+              Id A t u ≅ᵀ Hom A' t' u' → ⊥
+IdHom-clash cv with church-rosserᵀ cv
+... | E , (iE , hE) with hom-shape hE
+...   | hsH with Id-reduct iE
+...     | _ , (_ , (_ , (eq , _))) = homid⊥ hsH eq
+  where
+  homid⊥ : {Γ : Cx} {E : RTy Γ} {A₃ : RTy Γ} {t₃ u₃ : RTm Γ} →
+           HomΠShape E → E ≡ Id A₃ t₃ u₃ → ⊥
+  homid⊥ () refl
+IdHom-clash cv | E , (iE , hE) | hsΠ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+
+Idbase-clash : {Γ : Cx} {A : RTy Γ} {t u : RTm Γ} → Id A t u ≅ᵀ base → ⊥
+Idbase-clash cv with church-rosserᵀ cv
+... | E , (iE , bE) with base-nf bE
+...   | refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
 
 -- StkAmb transported along a chain — the one tool behind the
 -- stable-vs-unfolding clashes.
@@ -249,6 +296,9 @@ szb (⌜Hom⌝ c a b)  = sz c + sz a + sz b
 szb (hrefl c t)    = sz c + sz t
 szb (tr d p e)     = sz d + sz p + sz e
 szb (ap c b p)     = sz c + sz b + sz p
+szb (⌜Id⌝ c a b)   = sz c + sz a + sz b
+szb (idrefl c t)   = sz c + sz t
+szb (jsub d p e)   = sz d + sz p + sz e
 
 szb-ren : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : RTm Γ) → szb (renTm ρ t) ≡ szb t
 sz-ren  : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : RTm Γ) → sz (renTm ρ t) ≡ sz t
@@ -269,6 +319,11 @@ szb-ren ρ (tr d p e)    =
   cong₂ _+_ (cong₂ _+_ (sz-ren _ d) (sz-ren ρ p)) (sz-ren ρ e)
 szb-ren ρ (ap c b p)    =
   cong₂ _+_ (cong₂ _+_ (sz-ren ρ c) (sz-ren _ b)) (sz-ren ρ p)
+szb-ren ρ (⌜Id⌝ c a b)  =
+  cong₂ _+_ (cong₂ _+_ (sz-ren ρ c) (sz-ren ρ a)) (sz-ren ρ b)
+szb-ren ρ (idrefl c t)  = cong₂ _+_ (sz-ren ρ c) (sz-ren ρ t)
+szb-ren ρ (jsub d p e)  =
+  cong₂ _+_ (cong₂ _+_ (sz-ren _ d) (sz-ren ρ p)) (sz-ren ρ e)
 
 ------------------------------------------------------------------------
 -- 3. CANONICAL SHAPES and the progress verdicts.  There is NO `tr`
@@ -284,6 +339,8 @@ data Canon {Γ : Cx} : RTm Γ → Set where
   can-cΣ    : (c : RTm Γ) (d : RTm (Γ ∙)) → Canon (⌜Σ⌝ c d)
   can-cH    : (c a b : RTm Γ)            → Canon (⌜Hom⌝ c a b)
   can-hrefl : (c s : RTm Γ)              → Canon (hrefl c s)
+  can-cId   : (c a b : RTm Γ)            → Canon (⌜Id⌝ c a b)
+  can-idrefl : (c s : RTm Γ)             → Canon (idrefl c s)
 
 data Prog (t : RTm ε) : Set where
   prog-can  : Canon t → Prog t
@@ -308,6 +365,7 @@ jfire : {Γ : Cx} (cM aM : RTm (Γ ∙)) (c₁ s e : RTm Γ) →
 jfire cM aM ⌜base⌝        s e k = tr-J-base cM aM (var vz) s e
 jfire cM aM (⌜Σ⌝ x y)     s e k = tr-J-Σ cM aM (var vz) x y s e
 jfire cM aM (⌜Hom⌝ x y z) s e k = tr-J-Hom cM aM (var vz) x y z s e k
+jfire cM aM (⌜Id⌝ x y z)  s e k = tr-J-Id cM aM (var vz) x y z s e
 jfire cM aM (var _)       s e ()
 jfire cM aM (lam _)       s e ()
 jfire cM aM (app _ _)     s e ()
@@ -317,6 +375,8 @@ jfire cM aM (snd _)       s e ()
 jfire cM aM (⌜Π⌝ _ _)     s e ()
 jfire cM aM (hrefl _ _)   s e ()
 jfire cM aM (tr _ _ _)    s e ()
+jfire cM aM (idrefl _ _)  s e ()
+jfire cM aM (jsub _ _ _)  s e ()
 
 ------------------------------------------------------------------------
 -- 4. Non-recursive head analyses: canonical Σ'-inhabitants project,
@@ -337,6 +397,10 @@ canΣfst dp (can-cH x y z) with gen-⌜Hom⌝ dp
 ... | _ , (_ , (_ , cv)) = ⊥-elim (ΣU-clash cv)
 canΣfst dp (can-hrefl c s) with gen-hrefl dp
 ... | _ , (_ , cv) = ⊥-elim (HomΣ-clash (csymᵀ cv))
+canΣfst dp (can-cId x y z) with gen-⌜Id⌝ dp
+... | _ , (_ , (_ , cv)) = ⊥-elim (ΣU-clash cv)
+canΣfst dp (can-idrefl c s) with gen-idrefl dp
+... | _ , (_ , cv) = ⊥-elim (IdΣ-clash (csymᵀ cv))
 
 canΣsnd : {p : RTm ε} {A : RTy ε} {B : RTy (ε ∙)} →
           ◇ ⊢ p ∷ Σ' A B → Canon p → Σ (RTm ε) (λ u → snd p ⟶ u)
@@ -352,6 +416,10 @@ canΣsnd dp (can-cH x y z) with gen-⌜Hom⌝ dp
 ... | _ , (_ , (_ , cv)) = ⊥-elim (ΣU-clash cv)
 canΣsnd dp (can-hrefl c s) with gen-hrefl dp
 ... | _ , (_ , cv) = ⊥-elim (HomΣ-clash (csymᵀ cv))
+canΣsnd dp (can-cId x y z) with gen-⌜Id⌝ dp
+... | _ , (_ , (_ , cv)) = ⊥-elim (ΣU-clash cv)
+canΣsnd dp (can-idrefl c s) with gen-idrefl dp
+... | _ , (_ , cv) = ⊥-elim (IdΣ-clash (csymᵀ cv))
 
 ------------------------------------------------------------------------
 -- 5. The POINTWISE dispatch (non-recursive: takes the strengthened
@@ -408,6 +476,10 @@ mutual
   prog (suc m) {t = ⌜Σ⌝ c cd}    d le = prog-can (can-cΣ c cd)
   prog (suc m) {t = ⌜Hom⌝ c a b} d le = prog-can (can-cH c a b)
   prog (suc m) {t = hrefl c s}   d le = prog-can (can-hrefl c s)
+  prog (suc m) {t = ⌜Id⌝ c a b}  d le = prog-can (can-cId c a b)
+  prog (suc m) {t = idrefl c s}  d le = prog-can (can-idrefl c s)
+  prog (suc m) {t = jsub dM p e} d le with jsubS m d (un≤ le)
+  ... | _ , r = prog-step r
   prog (suc m) {t = app f a}     d le with appS m d (un≤ le)
   ... | _ , r = prog-step r
   prog (suc m) {t = fst p}       d le with fstS m d (un≤ le)
@@ -451,6 +523,11 @@ mutual
   ... | _ , r = u-step r
   usplit (suc m) {c = ap cB b p} d le with apS m d (un≤ le)
   ... | _ , r = u-step r
+  usplit (suc m) {c = ⌜Id⌝ x a b} d le = u-stk refl
+  usplit (suc m) {c = idrefl x s} d le with gen-idrefl d
+  ... | _ , (_ , cv) = ⊥-elim (IdU-clash (csymᵀ cv))
+  usplit (suc m) {c = jsub dM p e} d le with jsubS m d (un≤ le)
+  ... | _ , r = u-step r
 
   appS : (m : Nat) {f a : RTm ε} {T : RTy ε} → ◇ ⊢ app f a ∷ T →
          sz f + sz a ≤ m → Σ (RTm ε) (λ u → app f a ⟶ u)
@@ -474,6 +551,10 @@ mutual
   ... | _ , (_ , cv) = ⊥-elim (ΠU-clash cv)
   canΠ m df (can-cH x y z) le a with gen-⌜Hom⌝ df
   ... | _ , (_ , (_ , cv)) = ⊥-elim (ΠU-clash cv)
+  canΠ m df (can-cId x y z) le a with gen-⌜Id⌝ df
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (ΠU-clash cv)
+  canΠ m df (can-idrefl c s) le a with gen-idrefl df
+  ... | _ , (_ , cv) = ⊥-elim (IdΠ-clash (csymᵀ cv))
   canΠ m df (can-hrefl c₁ s) le a with gen-hrefl df
   ... | dc₁ , (ds , cvh)
         with usplit m dc₁ (≤-trans (≤-suc (≤+ˡ (sz c₁) (sz s))) le)
@@ -538,6 +619,14 @@ mutual
       | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
       | prog-can (can-cH x y z) with gen-⌜Hom⌝ dp
   ... | _ , (_ , (_ , cv)) = ⊥-elim (HomU-clash cv)
+  apS m dv q
+      | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
+      | prog-can (can-cId x y z) with gen-⌜Id⌝ dp
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (HomU-clash cv)
+  apS m dv q
+      | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
+      | prog-can (can-idrefl c s) with gen-idrefl dp
+  ... | _ , (_ , cv) = ⊥-elim (IdHom-clash (csymᵀ cv))
 
   -- ★ CLOSED `tr`s ALWAYS STEP.  The dispatch: path steps → ξ; path
   -- canonical → per the motive.
@@ -557,6 +646,49 @@ mutual
                                    (≤+ˡ (sz cM + sz aM) (suc zero))))
                    (≤-trans (≤-trans (≤+ˡ (sz dM) (sz p))
                                      (≤+ˡ (sz dM + sz p) (sz e))) q))
+
+  -- ★ closed `jsub`s ALWAYS step: the path steps or is a canonical
+  -- idrefl (J fires, unkeyed); every other canonical shape clashes
+  -- against the inert `Id`.
+  jsubS : (m : Nat) {dM : RTm (ε ∙)} {p e : RTm ε} {T : RTy ε} →
+          ◇ ⊢ jsub dM p e ∷ T → sz dM + sz p + sz e ≤ m →
+          Σ (RTm ε) (λ w → jsub dM p e ⟶ w)
+  jsubS m {dM} {p} {e} dv q with gen-jsub dv
+  ... | A , (t , (u , (dd , (dt , (du , (dp , (de , cC)))))))
+        with prog m dp
+               (≤-trans (≤-trans (≤+ʳ (sz dM) (sz p))
+                                 (≤+ˡ (sz dM + sz p) (sz e))) q)
+  ...   | prog-step r = _ , ξ-jsubᵖ r
+  ...   | prog-can (can-idrefl c s) = _ , jsub-refl dM c s e
+  ...   | prog-can (can-lam f) with gen-lam dp
+  ...     | _ , (_ , (cv , _)) = ⊥-elim (IdΠ-clash cv)
+  jsubS m dv q
+      | A , (t , (u , (dd , (dt , (du , (dp , (de , cC)))))))
+      | prog-can (can-pair a₂ b₂) with gen-pair dp
+  ... | _ , (_ , (cv , _)) = ⊥-elim (IdΣ-clash cv)
+  jsubS m dv q
+      | A , (t , (u , (dd , (dt , (du , (dp , (de , cC)))))))
+      | prog-can can-cb = ⊥-elim (IdU-clash (gen-⌜base⌝ dp))
+  jsubS m dv q
+      | A , (t , (u , (dd , (dt , (du , (dp , (de , cC)))))))
+      | prog-can (can-cΠ x y) with gen-⌜Π⌝ dp
+  ... | _ , (_ , cv) = ⊥-elim (IdU-clash cv)
+  jsubS m dv q
+      | A , (t , (u , (dd , (dt , (du , (dp , (de , cC)))))))
+      | prog-can (can-cΣ x y) with gen-⌜Σ⌝ dp
+  ... | _ , (_ , cv) = ⊥-elim (IdU-clash cv)
+  jsubS m dv q
+      | A , (t , (u , (dd , (dt , (du , (dp , (de , cC)))))))
+      | prog-can (can-cH x y z) with gen-⌜Hom⌝ dp
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (IdU-clash cv)
+  jsubS m dv q
+      | A , (t , (u , (dd , (dt , (du , (dp , (de , cC)))))))
+      | prog-can (can-cId x y z) with gen-⌜Id⌝ dp
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (IdU-clash cv)
+  jsubS m dv q
+      | A , (t , (u , (dd , (dt , (du , (dp , (de , cC)))))))
+      | prog-can (can-hrefl c s) with gen-hrefl dp
+  ... | _ , (_ , cv) = ⊥-elim (IdHom-clash cv)
 
   -- the TAUT motive (`var vz`, ambient `U`).
   trUS : (m : Nat) {dM : RTm (ε ∙)} {p e : RTm ε} {T : RTy ε} →
@@ -586,6 +718,12 @@ mutual
   trUS m (mkTrInvU refl tI uI dt du dp de cC) lep
     | prog-can (can-cH x y z) with gen-⌜Hom⌝ dp
   ... | _ , (_ , (_ , cv)) = ⊥-elim (HomU-clash cv)
+  trUS m (mkTrInvU refl tI uI dt du dp de cC) lep
+    | prog-can (can-cId x y z) with gen-⌜Id⌝ dp
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (HomU-clash cv)
+  trUS m (mkTrInvU refl tI uI dt du dp de cC) lep
+    | prog-can (can-idrefl c s) with gen-idrefl dp
+  ... | _ , (_ , cv) = ⊥-elim (IdHom-clash (csymᵀ cv))
 
   -- the CODE motive (`⌜Hom⌝ cM aM (var vz)`).
   trCS : (m : Nat) (cM aM : RTm (ε ∙)) (e : RTm ε)
@@ -618,6 +756,12 @@ mutual
   trCS m cM aM e dcM hcM dt dvM dp lep lecM
     | prog-can (can-cH x y z) with gen-⌜Hom⌝ dp
   ... | _ , (_ , (_ , cv)) = ⊥-elim (HomU-clash cv)
+  trCS m cM aM e dcM hcM dt dvM dp lep lecM
+    | prog-can (can-cId x y z) with gen-⌜Id⌝ dp
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (HomU-clash cv)
+  trCS m cM aM e dcM hcM dt dvM dp lep lecM
+    | prog-can (can-idrefl c s) with gen-idrefl dp
+  ... | _ , (_ , cv) = ⊥-elim (IdHom-clash (csymᵀ cv))
 
   -- ★★ THE POINTWISE CASE: strengthen the motive-code, run the split
   -- on the CLOSED instance, dispatch.  (`sz` is renaming-invariant, so
@@ -687,6 +831,10 @@ pathCanon d nrm | prog-can (can-cΣ x y) with gen-⌜Σ⌝ d
 ... | _ , (_ , cv) = ⊥-elim (HomU-clash cv)
 pathCanon d nrm | prog-can (can-cH x y z) with gen-⌜Hom⌝ d
 ... | _ , (_ , (_ , cv)) = ⊥-elim (HomU-clash cv)
+pathCanon d nrm | prog-can (can-cId x y z) with gen-⌜Id⌝ d
+... | _ , (_ , (_ , cv)) = ⊥-elim (HomU-clash cv)
+pathCanon d nrm | prog-can (can-idrefl c s) with gen-idrefl d
+... | _ , (_ , cv) = ⊥-elim (IdHom-clash (csymᵀ cv))
 
 -- ★ TR-PROGRESS (item 3): a closed well-typed `tr` ALWAYS steps —
 -- transport never sticks on closed terms.
@@ -709,6 +857,10 @@ canBase⊥ d (can-cH x y z) with gen-⌜Hom⌝ d
 ... | _ , (_ , (_ , cv)) = Ubase-clash (csymᵀ cv)
 canBase⊥ d (can-hrefl c s) with gen-hrefl d
 ... | _ , (_ , cv) = Hombase-clash (csymᵀ cv)
+canBase⊥ d (can-cId x y z) with gen-⌜Id⌝ d
+... | _ , (_ , (_ , cv)) = Ubase-clash (csymᵀ cv)
+canBase⊥ d (can-idrefl c s) with gen-idrefl d
+... | _ , (_ , cv) = Idbase-clash (csymᵀ cv)
 
 -- ★★ CONSISTENCY of the full W2/W2b kernel: `base` has no closed
 -- inhabitant.  Normalize (`wnorm`, the fundamental theorem), preserve

@@ -79,7 +79,7 @@ open import poc.OCP0009.NbEPDirDBType
 open import poc.OCP0009.NbEPDirDBInj using ( _⟶ᵀ*_ )
 open import poc.OCP0009.NbEPDirDBLR
   using ( SN; SNRed; snr-β; snr-app; snr-hrefl-pw
-        ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; _⊩₀∋_
+        ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; ⊩₀Id; _⊩₀∋_
         ; wk-single; projl; projr )
 
 private
@@ -104,6 +104,7 @@ PayT (⊩₀base _)  c = ⊤
 PayT (⊩₀ne _ _)  c = ⊤
 PayT (⊩₀Σ _ _ _) c = ⊤
 PayT (⊩₀Hom _ _) c = ⊤
+PayT (⊩₀Id _)    c = ⊤
 PayT {Γ = Γ} (⊩₀Π _ ⊩F ⊩G) c =
   (v : RTm Γ) (r : ⊩F ⊩₀∋ v) →
   Σ (RTm Γ) (λ c′ →
