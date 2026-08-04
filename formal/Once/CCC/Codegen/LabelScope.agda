@@ -30,14 +30,16 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
 open import Data.Nat.Properties using
   (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-monoˡ-≤
   ; +-comm; +-assoc; +-identityʳ; ≤-step; m<n⇒m<1+n; <-transˡ; <-transʳ; +-suc)
+open import Data.Bool using (Bool; true; false)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; subst₂; cong)
 
 open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
@@ -52,6 +54,9 @@ open import Once.CCC.Codegen.IRToTrace using
   ; strat-branching; cata-strategy; cata-dispatch; lsize
   ; push2; pop2; wrap-sum; visit-walk; rebuild-walk)
 open import Once.CCC.Codegen.LabelRange using (label-of; cata-label-of; label-mono; cata-label-mono)
+open import Once.CCC.Codegen.SlotBudget using
+  (fetch-at; seg-at; SegState; seg-idle?; idle-seg-at
+  ; seg-at-++ˡ; seg-at-++ʳ; fetch-++ˡ; fetch-++ʳ; split-pos; seg-fold)
 
 ------------------------------------------------------------------------
 -- The `once`-namespace label an instruction mentions.
@@ -508,3 +513,121 @@ labels-in (free-heap _)  n l = li-none refl ∷ []
 labels-in (SigOp _)      n l = li-none refl ∷ []
 labels-in (const fits-int _)   n l = li-none refl ∷ []
 labels-in (const fits-float _) n l = li-none refl ∷ []
+
+------------------------------------------------------------------------
+-- THE SEGMENT LEMMA (Plan 0.63, obligation (iii) — the assembly).
+--
+-- "A jump and its target sit in the same segment." Stated over POSITIONS
+-- rather than over label ranges, because that is what the runtime invariant
+-- consumes and it is insensitive to how labels are allocated:
+--
+--   p mentions m, q defines m  ⟹  seg-at t q st ≡ seg-at t p st
+--
+-- Note it quantifies over ALL positions `q` holding `c-label m`, not "the"
+-- one — which is what makes label UNIQUENESS unnecessary. `find-label-lands`
+-- delivers some such `q`, and any of them will do.
+------------------------------------------------------------------------
+mention-at : AbstractTrace → ℕ → Maybe ℕ
+mention-at t p with fetch-at t p
+... | just i  = once-label-of i
+... | nothing = nothing
+
+SegAgree : AbstractTrace → Set
+SegAgree t = ∀ (p q m : ℕ) (st : SegState)
+           → mention-at t p ≡ just m
+           → fetch-at t q ≡ just (instr-ctrl (c-label m))
+           → seg-at t q st ≡ seg-at t p st
+
+-- AN EMPTY RANGE MEANS NO LABELS, so the property is vacuous. This is the
+-- workhorse: `label-mono` gives `l ≤ l'`, and for every leaf clause of
+-- `ir-to-trace'` the counter does not move at all, so `labels-in` hands back a
+-- window `[l, l)` that nothing can inhabit.
+segagree-empty : ∀ (lo : ℕ) (t : AbstractTrace) → LabelsIn lo lo t → SegAgree t
+segagree-empty lo t ls p q m st mq _ = ⊥-elim (no-mention p mq)
+  where
+    no-mention : ∀ (p' : ℕ) → mention-at t p' ≡ just m → ⊥
+    no-mention p' eq = go t p' ls eq
+      where
+        go : ∀ (t' : AbstractTrace) (r : ℕ) → LabelsIn lo lo t' → mention-at t' r ≡ just m → ⊥
+        go []       r       _         ()
+        go (i ∷ is) zero    (x ∷ _)  e = absurd (in-range x m e)
+          where absurd : (lo ≤ m) × (m < lo) → ⊥
+                absurd (le , lt) = <-irrefl-aux (≤-trans lt le)
+                  where <-irrefl-aux : ∀ {a} → suc a ≤ a → ⊥
+                        <-irrefl-aux {suc a} (s≤s p) = <-irrefl-aux p
+        go (i ∷ is) (suc r) (_ ∷ xs) e = go is r xs e
+
+-- AN IDLE TRACE has a constant fold, so any two positions agree outright.
+segagree-idle : ∀ (t : AbstractTrace) → seg-idle? t ≡ true → SegAgree t
+segagree-idle t idle p q m st _ _ =
+  trans (idle-seg-at t idle q st) (sym (idle-seg-at t idle p st))
+
+-- THE COMPOSITION, and the only place containment is actually spent: a jump
+-- in one part and a label in the other would put the SAME `m` in two DISJOINT
+-- windows. Everything else is the two splice lemmas plus the induction
+-- hypotheses.
+<-asym : ∀ {a b : ℕ} → a < b → b ≤ a → ⊥
+<-asym {suc a} {suc b} (s≤s p) (s≤s q) = <-asym p q
+
+segagree-++ : ∀ (t1 t2 : AbstractTrace) (lo mid hi : ℕ)
+            → LabelsIn lo mid t1 → LabelsIn mid hi t2
+            → SegAgree t1 → SegAgree t2
+            → SegAgree (t1 ++ t2)
+segagree-++ t1 t2 lo mid hi ls1 ls2 sa1 sa2 p q m st mq lq =
+  go (split-pos t1 p) (split-pos t1 q)
+  where
+    -- read a mention/definition back on whichever side it landed
+    mentions₁ : ∀ (r : ℕ) → r < length t1 → mention-at (t1 ++ t2) r ≡ just m → mention-at t1 r ≡ just m
+    mentions₁ r lt e rewrite fetch-++ˡ t1 t2 r lt = e
+    mentions₂ : ∀ (k : ℕ) → mention-at (t1 ++ t2) (length t1 + k) ≡ just m → mention-at t2 k ≡ just m
+    mentions₂ k e rewrite fetch-++ʳ t1 t2 k = e
+    defines₁ : ∀ (r : ℕ) → r < length t1
+             → fetch-at (t1 ++ t2) r ≡ just (instr-ctrl (c-label m))
+             → fetch-at t1 r ≡ just (instr-ctrl (c-label m))
+    defines₁ r lt e = trans (sym (fetch-++ˡ t1 t2 r lt)) e
+    defines₂ : ∀ (k : ℕ) → fetch-at (t1 ++ t2) (length t1 + k) ≡ just (instr-ctrl (c-label m))
+             → fetch-at t2 k ≡ just (instr-ctrl (c-label m))
+    defines₂ k e = trans (sym (fetch-++ʳ t1 t2 k)) e
+    -- a mention in `t1` puts `m` below `mid`; a definition in `t2` puts it at
+    -- or above `mid`. That is the contradiction.
+    inʟ : ∀ (r : ℕ) → r < length t1 → mention-at t1 r ≡ just m → m < mid
+    inʟ r lt e = proj₂ (walk t1 r ls1 e)
+      where walk : ∀ (t : AbstractTrace) (r' : ℕ) → LabelsIn lo mid t
+                 → mention-at t r' ≡ just m → (lo ≤ m) × (m < mid)
+            walk []       _       _        ()
+            walk (i ∷ is) zero    (x ∷ _)  e' = in-range x m e'
+            walk (i ∷ is) (suc r') (_ ∷ xs) e' = walk is r' xs e'
+    inʀ : ∀ (k : ℕ) → mention-at t2 k ≡ just m → mid ≤ m
+    inʀ k e = proj₁ (walk t2 k ls2 e)
+      where walk : ∀ (t : AbstractTrace) (k' : ℕ) → LabelsIn mid hi t
+                 → mention-at t k' ≡ just m → (mid ≤ m) × (m < hi)
+            walk []       _        _        ()
+            walk (i ∷ is) zero     (x ∷ _)  e' = in-range x m e'
+            walk (i ∷ is) (suc k') (_ ∷ xs) e' = walk is k' xs e'
+    -- a DEFINITION is also a mention (`c-label m` has `once-label-of ≡ just m`)
+    def→men : ∀ (t : AbstractTrace) (r : ℕ)
+            → fetch-at t r ≡ just (instr-ctrl (c-label m)) → mention-at t r ≡ just m
+    def→men t r e rewrite e = refl
+    go : (p < length t1) ⊎ (Σ ℕ (λ k → p ≡ length t1 + k))
+       → (q < length t1) ⊎ (Σ ℕ (λ k → q ≡ length t1 + k))
+       → seg-at (t1 ++ t2) q st ≡ seg-at (t1 ++ t2) p st
+    go (inj₁ pl) (inj₁ ql) =
+      trans (seg-at-++ˡ t1 t2 q st ql)
+            (trans (sa1 p q m st (mentions₁ p pl mq) (defines₁ q ql lq))
+                   (sym (seg-at-++ˡ t1 t2 p st pl)))
+    -- (no `rewrite`: it would move the GOAL off `p`/`q` while `mq`/`lq` still
+    -- mention them. Both sides are transported explicitly instead.)
+    go (inj₂ (pk , peq)) (inj₂ (qk , qeq)) =
+      subst₂ (λ a b → seg-at (t1 ++ t2) b st ≡ seg-at (t1 ++ t2) a st) (sym peq) (sym qeq)
+        (trans (seg-at-++ʳ t1 t2 qk st)
+               (trans (sa2 pk qk m (seg-fold t1 st)
+                           (mentions₂ pk (subst (λ z → mention-at (t1 ++ t2) z ≡ just m) peq mq))
+                           (defines₂ qk (subst (λ z → fetch-at (t1 ++ t2) z ≡ just (instr-ctrl (c-label m))) qeq lq)))
+                      (sym (seg-at-++ʳ t1 t2 pk st))))
+    go (inj₁ pl) (inj₂ (qk , qeq)) =
+      ⊥-elim (<-asym (inʟ p pl (mentions₁ p pl mq))
+                     (inʀ qk (def→men t2 qk
+                       (defines₂ qk (subst (λ z → fetch-at (t1 ++ t2) z ≡ just (instr-ctrl (c-label m))) qeq lq)))))
+    go (inj₂ (pk , peq)) (inj₁ ql) =
+      ⊥-elim (<-asym (inʟ q ql (def→men t1 q (defines₁ q ql lq)))
+                     (inʀ pk (mentions₂ pk (subst (λ z → mention-at (t1 ++ t2) z ≡ just m) peq mq))))

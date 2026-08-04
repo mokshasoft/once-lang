@@ -35,8 +35,9 @@ open import Data.Nat.Properties using
 open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Product using (_×_; _,_)
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.Product using (_×_; _,_; Σ)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -908,6 +909,10 @@ trace-lookup []       _       = nothing
 trace-lookup (i ∷ _)  zero    = just i
 trace-lookup (_ ∷ is) (suc n) = trace-lookup is n
 
+-- (shorter name for the splice lemmas below)
+fetch-at : AbstractTrace → ℕ → Maybe AbstractInstr
+fetch-at = trace-lookup
+
 -- (split on the POSITION first, so `seg-at t zero st` reduces for a stuck
 -- trace too — `seg-at-suc`'s base case needs it)
 seg-at : AbstractTrace → ℕ → SegState → SegState
@@ -924,6 +929,54 @@ seg-at-suc : ∀ (t : AbstractTrace) (pc : ℕ) {i : AbstractInstr} (st : SegSta
 seg-at-suc []       pc       st ()
 seg-at-suc (x ∷ xs) zero     st refl = refl
 seg-at-suc (x ∷ xs) (suc pc) st eq   = seg-at-suc xs pc (seg-step x st) eq
+
+-- an idle trace's fold is the identity at EVERY position
+idle-seg-at : ∀ (t : AbstractTrace) → seg-idle? t ≡ true
+            → ∀ (k : ℕ) (st : SegState) → seg-at t k st ≡ st
+idle-seg-at []       _  zero    st = refl
+idle-seg-at []       _  (suc k) st = refl
+idle-seg-at (i ∷ is) eq zero    st = refl
+idle-seg-at (i ∷ is) eq (suc k) st =
+  trans (cong (seg-at is k) (idle-step i (idle-head i is eq) st))
+        (idle-seg-at is (idle-tail i is eq) k st)
+
+------------------------------------------------------------------------
+-- SPLICE LEMMAS (Plan 0.63, obligation (iii) assembly). Positions in
+-- `t1 ++ t2` split at `length t1`, on both the fold and the fetch. These are
+-- what let the segment lemma be proved fragment by fragment: a jump and its
+-- target either sit in the same part — induction hypothesis — or in different
+-- parts, which `LabelScope.labels-in` makes impossible.
+------------------------------------------------------------------------
+seg-at-++ˡ : ∀ (t1 t2 : AbstractTrace) (p : ℕ) (st : SegState) → p < length t1
+           → seg-at (t1 ++ t2) p st ≡ seg-at t1 p st
+seg-at-++ˡ []       t2 p       st ()
+seg-at-++ˡ (i ∷ is) t2 zero    st _         = refl
+seg-at-++ˡ (i ∷ is) t2 (suc p) st (s≤s p<n) = seg-at-++ˡ is t2 p (seg-step i st) p<n
+
+seg-at-++ʳ : ∀ (t1 t2 : AbstractTrace) (k : ℕ) (st : SegState)
+           → seg-at (t1 ++ t2) (length t1 + k) st ≡ seg-at t2 k (seg-fold t1 st)
+seg-at-++ʳ []       t2 k st = refl
+seg-at-++ʳ (i ∷ is) t2 k st = seg-at-++ʳ is t2 k (seg-step i st)
+
+fetch-++ˡ : ∀ (t1 t2 : AbstractTrace) (p : ℕ) → p < length t1
+          → fetch-at (t1 ++ t2) p ≡ fetch-at t1 p
+fetch-++ˡ []       t2 p       ()
+fetch-++ˡ (i ∷ is) t2 zero    _         = refl
+fetch-++ˡ (i ∷ is) t2 (suc p) (s≤s p<n) = fetch-++ˡ is t2 p p<n
+
+fetch-++ʳ : ∀ (t1 t2 : AbstractTrace) (k : ℕ)
+          → fetch-at (t1 ++ t2) (length t1 + k) ≡ fetch-at t2 k
+fetch-++ʳ []       t2 k = refl
+fetch-++ʳ (i ∷ is) t2 k = fetch-++ʳ is t2 k
+
+-- every position is on one side or the other
+split-pos : ∀ (t1 : AbstractTrace) (p : ℕ)
+          → (p < length t1) ⊎ (Σ ℕ (λ k → p ≡ length t1 + k))
+split-pos []       p       = inj₂ (p , refl)
+split-pos (i ∷ is) zero    = inj₁ (s≤s z≤n)
+split-pos (i ∷ is) (suc p) with split-pos is p
+... | inj₁ lt        = inj₁ (s≤s lt)
+... | inj₂ (k , eq)  = inj₂ (k , cong suc eq)
 
 allseg-at : ∀ {st : SegState} (t : AbstractTrace) (pc : ℕ) {i : AbstractInstr}
           → AllSeg st t → trace-lookup t pc ≡ just i
