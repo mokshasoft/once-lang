@@ -120,6 +120,9 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
               tr (⌜Hom⌝ c a m) (hrefl ⌜base⌝ s) e ⟶ e
   tr-J-Σ    : (c a m : RTm (Γ ∙)) (c₁ : RTm Γ) (c₂ : RTm (Γ ∙)) (s e : RTm Γ) →
               tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e ⟶ e
+  -- ★ the two-former kernel: `⌜Id⌝` is a stable J-able shape.
+  tr-J-Id   : (c a m : RTm (Γ ∙)) (c₁ a₁ b₁ : RTm Γ) (s e : RTm Γ) →
+              tr (⌜Hom⌝ c a m) (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e ⟶ e
   -- directed univalence computing a third time: transport at the
   -- tautological motive along a (canonical) universe path is application
   tr-taut   : (f : RTm (Γ ∙)) (e : RTm Γ) →

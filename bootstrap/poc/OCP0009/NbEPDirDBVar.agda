@@ -540,6 +540,9 @@ pw? _             = false
 stkC? : RTm Γ → 𝔹
 stkC? ⌜base⌝        = true
 stkC? (⌜Σ⌝ c d)     = true
+-- ★ the two-former kernel: ⌜Id⌝ joins the STABLE J-able shapes — its
+-- decode is inert (never Π), so paths at Id-coded types are J-only.
+stkC? (⌜Id⌝ c a b)  = true
 stkC? (⌜Hom⌝ C a b) = stkC? C
 stkC? _             = false
 
@@ -573,7 +576,7 @@ stk⊥pw ⌜base⌝ h = refl
 stk⊥pw (⌜Π⌝ γ δ) ()
 stk⊥pw (⌜Σ⌝ c d) h = refl
 stk⊥pw (⌜Hom⌝ C a b) h = stk⊥pw C h
-stk⊥pw (⌜Id⌝ C a b) ()
+stk⊥pw (⌜Id⌝ C a b) h = refl
 stk⊥pw (hrefl c t) ()
 stk⊥pw (idrefl c t) ()
 stk⊥pw (tr d p e) ()
@@ -750,7 +753,7 @@ stkC?-sub σ ⌜base⌝ h = refl
 stkC?-sub σ (⌜Π⌝ γ δ) ()
 stkC?-sub σ (⌜Σ⌝ c d) h = refl
 stkC?-sub σ (⌜Hom⌝ C a b) h = stkC?-sub σ C h
-stkC?-sub σ (⌜Id⌝ C a b) ()
+stkC?-sub σ (⌜Id⌝ C a b) h = refl
 stkC?-sub σ (hrefl c t) ()
 stkC?-sub σ (idrefl c t) ()
 stkC?-sub σ (tr d p e) ()
@@ -835,7 +838,7 @@ pw⊥stk ⌜base⌝ ()
 pw⊥stk (⌜Π⌝ γ δ) h = refl
 pw⊥stk (⌜Σ⌝ c d) ()
 pw⊥stk (⌜Hom⌝ C a b) h = pw⊥stk C h
-pw⊥stk (⌜Id⌝ C a b) h = refl
+pw⊥stk (⌜Id⌝ C a b) ()
 pw⊥stk (hrefl c t) ()
 pw⊥stk (idrefl c t) ()
 pw⊥stk (tr d p e) ()

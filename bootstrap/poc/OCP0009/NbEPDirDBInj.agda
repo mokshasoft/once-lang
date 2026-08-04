@@ -43,6 +43,7 @@ open import poc.OCP0009.NbEPDirDBConf
         ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝; p⌜Hom⌝; phrefl
         ; ptr; ptr-J-base; ptr-J-Σ; ptr-taut
         ; phrefl-pw; ptr-J-Hom; ptr-pw; pap; pap-J; p⌜Id⌝; pidrefl; pjsub; pjsub-refl
+        ; ptr-J-Id
         ; _⁺; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟶*-trans
         ; ⟹-ren; ⟶*-ren; ⟶*-appˡ )
 
@@ -294,6 +295,7 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl w@(phrefl-pw _ _ _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(ptr-J-Hom _ _))   = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(ptr-pw _ _ _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(ptr-J-Id _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pap _ _ _))        = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pap-J _ _ _ _))    = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pidrefl _ _))      = pEl (⟹-⁺ w)

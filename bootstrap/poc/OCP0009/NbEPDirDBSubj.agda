@@ -51,7 +51,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
         ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
-        ; tr-J-base; tr-J-Σ; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
+        ; tr-J-base; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
         ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
         ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
@@ -247,6 +247,9 @@ occ-red {x = x} (tr-J-base c a m s e₀) e =
            (∨-false₂ (occTm (vs x) (⌜Hom⌝ c a m)) e)
 occ-red {x = x} (tr-J-Σ c a m c₁ c₂ s e₀) e =
   ∨-false₂ (occTm x (hrefl (⌜Σ⌝ c₁ c₂) s))
+           (∨-false₂ (occTm (vs x) (⌜Hom⌝ c a m)) e)
+occ-red {x = x} (tr-J-Id c a m c₁ a₁ b₁ s e₀) e =
+  ∨-false₂ (occTm x (hrefl (⌜Id⌝ c₁ a₁ b₁) s))
            (∨-false₂ (occTm (vs x) (⌜Hom⌝ c a m)) e)
 occ-red (tr-taut f e₀) e = e
 occ-red {x = x} (hrefl-pw C s key) e =
@@ -869,10 +872,15 @@ data StkAmb {Γ : Cx} : RTy Γ → Set where
   st-base : StkAmb base
   st-Σ    : {A : RTy Γ} {B : RTy (Γ ∙)} → StkAmb (Σ' A B)
   st-hom  : {H : RTy Γ} {a b : RTm Γ} → StkAmb H → StkAmb (Hom H a b)
+  st-Id   : {A : RTy Γ} {t u : RTm Γ} → StkAmb (Id A t u)
 
 stamb-red : {A A' : RTy Γ} → StkAmb A → A ⟶ᵀ A' → StkAmb A'
 stamb-red (st-el {c = ⌜base⌝} k) El-⌜base⌝ = st-base
 stamb-red (st-el {c = ⌜Σ⌝ c d} k) (El-⌜Σ⌝ _ _) = st-Σ
+stamb-red (st-el {c = ⌜Id⌝ c a b} k) (El-⌜Id⌝ _ _ _) = st-Id
+stamb-red st-Id (ξ-Idᵀ r) = st-Id
+stamb-red st-Id (ξ-Idˡ r) = st-Id
+stamb-red st-Id (ξ-Idʳ r) = st-Id
 stamb-red (st-el {c = ⌜Π⌝ c d} ()) (El-⌜Π⌝ _ _)
 stamb-red (st-el {c = ⌜Hom⌝ c a b} k) (El-⌜Hom⌝ _ _ _) =
   st-hom (st-el k)
@@ -1116,6 +1124,23 @@ sr d (hrefl-pw C s key) with gen-hrefl d
 -- ★ W2b: J at stable ⌜Hom⌝ codes — the endpoint conversion extracted
 -- via confluence against the `StkAmb` analysis (stable-code decodings
 -- never unfold to Π/U, so reducts decompose componentwise).
+sr d (tr-J-Id cm am mm c₁ a₁ b₁ s e₀) with gen-tr d
+... | tgU (mkTrInvU () t u dt du dp de cC)
+... | tgC (mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC)
+      with gen-hrefl dp
+...   | (dc , (ds , cH)) with church-rosserᵀ cH
+...     | W , (rL , rR)
+          with homred-inv stamb-red (λ ()) (λ ())
+                          (st-el {c = ⌜Id⌝ c₁ a₁ b₁} refl) rR
+...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
+            with Hom-to-Hom (subst (Hom A t u ⟶ᵀ*_) eqW rL)
+...         | mkHomRed rA rt ru =
+              ⊢conv de
+                (ctrnᵀ (ctrnᵀ (mono-El[] (⌜Hom⌝ cm am mm) rt)
+                         (ctrnᵀ (csymᵀ (mono-El[] (⌜Hom⌝ cm am mm) rs₁))
+                           (ctrnᵀ (mono-El[] (⌜Hom⌝ cm am mm) rs₂)
+                             (csymᵀ (mono-El[] (⌜Hom⌝ cm am mm) ru)))))
+                       (csymᵀ cC))
 sr d (tr-J-Hom cm am mm c₁ a₁ b₁ s e₀ key) with gen-tr d
 ... | tgU (mkTrInvU () t u dt du dp de cC)
 ... | tgC (mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC)

@@ -47,7 +47,7 @@ open import poc.OCP0009.NbEPDirDBType
   using ( single; swp; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
         ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
-        ; tr-J-base; tr-J-Σ; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
+        ; tr-J-base; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
         ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
         ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
@@ -168,6 +168,10 @@ pwShift-sub σ t =
   tr-J-Σ (subTm (extS σ) c) (subTm (extS σ) a) (subTm (extS σ) m)
          (subTm σ c₁) (subTm (extS σ) c₂)
          (subTm σ s) (subTm σ e)
+⟶-sub σ (tr-J-Id c a m c₁ a₁ b₁ s e) =
+  tr-J-Id (subTm (extS σ) c) (subTm (extS σ) a) (subTm (extS σ) m)
+          (subTm σ c₁) (subTm σ a₁) (subTm σ b₁)
+          (subTm σ s) (subTm σ e)
 ⟶-sub σ (tr-taut f e) = tr-taut (subTm (extS σ) f) (subTm σ e)
 ⟶-sub σ (hrefl-pw C t key) =
   subst (λ z → hrefl (subTm σ C) (subTm σ t) ⟶ z)
