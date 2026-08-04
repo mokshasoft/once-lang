@@ -43,7 +43,7 @@ open import Data.Maybe using (Maybe; just; nothing; maybe′)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Nat using (zero; suc)
-open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst; subst₂)
 
 open import Once.CCC.Machine.SMCore
 open MemOps {FS} using (writeLoc; writeLocToHeap; writeLoc-halted; readLoc)
@@ -67,7 +67,7 @@ open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Machine.FrameFree using (FrameFreeI; FrameFreeT)
 open import Data.List.Relation.Unary.All using () renaming (All to AllL; [] to allL-[]; _∷_ to _allL∷_)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
-open import Once.CCC.Machine.FlatStackSlot FS using (flat-stack-slot)
+open import Once.CCC.Machine.FlatStackSlot FS using (flat-same-frames; sf-slots; sf-saved; sf-ret)
 open import Once.CCC.Machine.FlatStackPtr FS using
   (StackPtrWF; StackPtrOK; StackPtrOK?; stack-ptr-frame; stack-ptr-live; stack-ptr-suc-live
   ; flat-stack-ptr)
@@ -180,6 +180,12 @@ EntryLike fs = (fpc fs ≡ 0)
              × (halted (floc fs) ≡ false)
              × (next-slot (falloc fs) ≡ 0)
              × (saved-frames (falloc fs) ≡ [])
+             -- …and the GHOST RETURN STACK is empty too (Plan 0.63). Without
+             -- this a "start" state could arrive already owing a return, and
+             -- the frame stack and the return stack — which `c-thunk`/`c-ret`
+             -- push and pop TOGETHER — would not be relatable. True of the
+             -- apex's entry state by construction (`mkFlat` defaults it).
+             × (fret fs ≡ [])
              × (∀ hl → heapMem (floc fs) hl ≡ nothing)
              × (∀ f k → stackMem (floc fs) f k ≡ nothing)
              × (∀ r → block-size (falloc fs) r ≡ 0)
@@ -785,21 +791,82 @@ emitted-seg-const : ∀ (ir : IR Unit Unit) → HeapModed ir → ∀ (k : ℕ) (
                   → seg-at (ir-to-trace ir) k st ≡ st
 emitted-seg-const ir hm = idle-seg-at (ir-to-trace ir) (ff→idle (ir-to-trace ir) (ir-to-trace-frame-free ir hm))
 
--- The live stack window is the reservation IN FORCE at the current pc. Today
--- that is constant (see `emitted-seg-const`); with closure bodies it is the
--- current frame's, which is what makes this the per-frame statement.
--- Induction on `Reachable`; each step is frame-free because the program is
--- emitted (`frame-op-absurd`).
+------------------------------------------------------------------------
+-- THE FRAME STACK AND THE RETURN STACK ARE ONE STACK (Plan 0.63).
+--
+-- `c-thunk` pushes the caller's frame while `instr-call-closure` pushes the
+-- return pc; `c-ret` pops both. So they have the same length, and — the part
+-- that makes the SEGMENTED budget survive a return — each saved frame's
+-- reservation is the segment in force at the pc it will return to. Without
+-- that second half, `c-ret` restores a slot count from `saved-frames` and
+-- lands the pc at a return address with NOTHING relating the two, and
+-- `run-stack-slot` below cannot be re-established.
+--
+-- A DATATYPE (not a `with`-free function on two lists) so the cons/nil cases
+-- compose at the pushes and pops the markers produce.
+------------------------------------------------------------------------
+data RetMatch (prog : AbstractTrace) (B : ℕ) : List (Frame × ℕ) → List ℕ → Set where
+  rm-[]  : RetMatch prog B [] []
+  rm-∷   : ∀ {f b rpc frs rs}
+         → b ≡ cur (seg-at prog rpc (mkSeg B []))
+         → RetMatch prog B frs rs
+         → RetMatch prog B ((f , b) ∷ frs) (rpc ∷ rs)
+
+-- THE RUN INVARIANT, per frame. `seg-cur` is what `slot-read-in-frame`
+-- consumes; `seg-stack` is what a return will consume. One induction.
+record SegWF (prog : AbstractTrace) (B : ℕ) (fs : FlatState) : Set where
+  constructor mkSegWF
+  field
+    seg-cur   : frame-slots (falloc fs) ≡ cur (seg-at prog (fpc fs) (mkSeg B []))
+    seg-stack : RetMatch prog B (saved-frames (falloc fs)) (fret fs)
+open SegWF public
+
+-- The live stack window is the reservation IN FORCE at the current pc — the
+-- CURRENT FRAME's, once frames move. Induction on `Reachable`; each step is
+-- frame-free because the program is emitted (`frame-op-absurd`), so it moves
+-- neither the frame stack nor the return stack (`flat-same-frames`).
+--
+-- THE ONE PLACE THE FLIP LANDS: the step case needs the segment in force to be
+-- the same at the post-pc as at the pre-pc. Today that is `emitted-seg-const`
+-- (no emitted trace holds a marker, so `seg-at` is the identity). With bodies
+-- inlined it becomes two obligations — the marker steps, which move the
+-- segment exactly as they move the frame, and LABEL SCOPING for the jumps.
+run-seg-wf : ∀ prog (fs : FlatState) (r : RunAt prog fs)
+           → SegWF prog (ir-stack-budget (run-ir r)) fs
+run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
+  where
+    const-seg : ∀ (k : ℕ) → seg-at prog k (mkSeg (ir-stack-budget ir) [])
+                          ≡ mkSeg (ir-stack-budget ir) []
+    const-seg k = subst (λ p → seg-at p k (mkSeg (ir-stack-budget ir) []) ≡ mkSeg (ir-stack-budget ir) [])
+                        (sym eq) (emitted-seg-const ir hm k (mkSeg (ir-stack-budget ir) []))
+    go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs'
+       → SegWF prog (ir-stack-budget ir) fs'
+    go fs' (reach-start .fs' el eqB) =
+      mkSegWF (trans eqB (sym (cong cur (const-seg (fpc fs')))))
+              (subst₂ (RetMatch prog (ir-stack-budget ir))
+                      (sym (proj₁ (proj₂ (proj₂ (proj₂ el)))))
+                      (sym (proj₁ (proj₂ (proj₂ (proj₂ (proj₂ el))))))
+                      rm-[])
+    go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
+      mkSegWF
+        (trans (sf-slots same)
+        (trans (seg-cur (go fs'' r'))
+        (trans (cong cur (const-seg (fpc fs'')))
+               (sym (cong cur (const-seg (fpc (flat-exec-instr i prog fs''))))))))
+        (subst₂ (RetMatch prog (ir-stack-budget ir))
+                (sym (sf-saved same)) (sym (sf-ret same)) (seg-stack (go fs'' r')))
+      where same = flat-same-frames i prog fs'' (frame-op-absurd prog fs'' i (ir , eq) hm ftq)
+
+-- the projection the slot cluster consumes
 run-stack-slot : ∀ prog (fs : FlatState) (r : RunAt prog fs)
                → frame-slots (falloc fs) ≡ ir-stack-budget (run-ir r)
-run-stack-slot prog fs (mkRunAt ir eq hm reach) = go fs reach
-  where go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs'
-           → frame-slots (falloc fs') ≡ ir-stack-budget ir
-        go fs' (reach-start .fs' _ eqB)       = eqB
-        go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
-          trans (flat-stack-slot i prog fs''
-                   (frame-op-absurd prog fs'' i (ir , eq) hm ftq))
-                (go fs'' r')
+run-stack-slot prog fs r =
+  trans (seg-cur (run-seg-wf prog fs r))
+        (cong cur (subst (λ p → seg-at p (fpc fs) (mkSeg (ir-stack-budget (run-ir r)) [])
+                              ≡ mkSeg (ir-stack-budget (run-ir r)) [])
+                         (sym (run-emit r))
+                         (emitted-seg-const (run-ir r) (run-heap r) (fpc fs)
+                            (mkSeg (ir-stack-budget (run-ir r)) []))))
 
 -- ONE FRAME-FREE STEP PRESERVES THE INVARIANT — a THEOREM for EVERY
 -- constructor. Plan 0.63 step 2b SIMPLIFIED this: `lea-slot` joined
@@ -872,7 +939,7 @@ stack-ptr-step (instr-ctrl c) prog fs r ftq ff wf =
 -- A start state satisfies the invariant vacuously: both memories are empty and
 -- no register holds a pointer.
 entry-stack-ptr : ∀ (fs : FlatState) → EntryLike fs → StackPtrWF fs
-entry-stack-ptr fs (_ , _ , _ , _ , hemp , semp , _ , noptr) = record
+entry-stack-ptr fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr) = record
   { sp-regs  = λ r → go r (readReg (regs (floc fs)) r) refl
   ; sp-heap  = λ hl → subst StackPtrOK? (sym (hemp hl)) tt
   ; sp-stack = λ f k → subst StackPtrOK? (sym (semp f k)) tt }
@@ -886,7 +953,7 @@ entry-stack-ptr fs (_ , _ , _ , _ , hemp , semp , _ , noptr) = record
 -- …and the pointer-bounds and store-WF invariants likewise (D074: the entry
 -- registers are all tags, both memories empty).
 entry-ptr-bounds : ∀ (fs : FlatState) → EntryLike fs → PtrBoundsWF fs
-entry-ptr-bounds fs (_ , _ , _ , _ , hemp , semp , _ , noptr) = record
+entry-ptr-bounds fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr) = record
   { pb-regs  = λ r → go r (readReg (regs (floc fs)) r) refl
   ; pb-heap  = λ hl → subst (PtrB? _) (sym (hemp hl)) tt
   ; pb-stack = λ f k → subst (PtrB? _) (sym (semp f k)) tt }
@@ -898,7 +965,7 @@ entry-ptr-bounds fs (_ , _ , _ , _ , hemp , semp , _ , noptr) = record
         go r (SV-Code c)   eq rewrite eq = tt
 
 entry-flat-wf : ∀ (fs : FlatState) → EntryLike fs → FlatWF fs
-entry-flat-wf fs (_ , _ , _ , _ , hemp , semp , _ , noptr) = record
+entry-flat-wf fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr) = record
   { wf-regs  = λ r → go r (readReg (regs (floc fs)) r) refl
   ; wf-heap  = λ hl → subst (svm-below _) (sym (hemp hl)) tt
   ; wf-stack = λ f k → subst (svm-below _) (sym (semp f k)) tt

@@ -241,7 +241,7 @@ entry-regtag B = record { scratch-tag = 0 , refl ; count-tag = 0 , refl }
 -- prologue already reserved (`ir-stack-budget`), which is exactly what makes the
 -- slot residuals dischargeable instead of false. See the note in `FlatFromObs`.
 entry-like : ∀ (B : ℕ) → EntryLike (mkFlat FFOx.entry-s (FFOx.entry-alloc B) 0)
-entry-like B = refl , refl , refl , refl
+entry-like B = refl , refl , refl , refl , refl
              , (λ _ → refl) , (λ _ _ → refl) , (λ _ → refl)
              -- no register holds ANY pointer: every entry register is the
              -- tag filler `SV-Tag 0` (D074)
