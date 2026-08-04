@@ -237,12 +237,34 @@ module FlatMachine {FS : FrameSemantics} where
   do-ret (pc' ∷ rest) fs = record fs { falloc = leave-frame (falloc fs)
                                      ; fpc = pc' ; fret = rest }
 
-  -- …and ENTRY: the body-start marker reserves the body's frame. Only the
-  -- AllocState moves (`enter-frame` shifts `current-frame` and remembers
-  -- the caller's), so the register file — and with it `frame-slots` — is
-  -- untouched.
+  -- THE BODY'S RESERVATION GROWS THE FRAME THE CALL ALREADY ENTERED
+  -- (Plan 0.63, D086) — it does NOT push one.
+  --
+  -- The concrete `call` decrements %rsp by one slot and stores the return
+  -- address there (`execInstr … (call …)`: `newSp = sp ∸ slot-size`); only
+  -- THEN does the body's `sub rsp, 8b` run. So a body's frame sits `b + 1`
+  -- slots below its caller's, not `b`, and step 2a's `enter-frame b` was off
+  -- by exactly the return-address slot — which is not a slot the abstract
+  -- machine can address at all: it holds a code address, and those live in
+  -- the ghost `fret`.
+  --
+  -- Hence the split. The CALL enters the frame (shifting by the one slot its
+  -- own %rsp arithmetic consumes, reserving nothing) and pushes the return pc;
+  -- this marker only DEEPENS that frame. One push per call is also what keeps
+  -- `saved-frames` and `fret` the same length, which is the invariant a return
+  -- needs (`ConcFlatSim.RetMatch`) — the alternative, pushing the frame here,
+  -- makes the two stacks differ in length between a call and its body.
+  --
+  -- The return-address cell then lies in the gap between the callee's window
+  -- END and the caller's BASE, inside no window at all. That gap is exactly
+  -- the slack D085's floor leaves (it is a `≤`, not an equality).
+  grow-frame : ℕ → AllocState {FS} → AllocState {FS}
+  grow-frame n alloc =
+    record alloc { current-frame = shift-frame (current-frame alloc) n
+                 ; frame-slots   = n }
+
   do-thunk : ℕ → FlatState → FlatState
-  do-thunk b fs = record fs { falloc = enter-frame b (falloc fs)
+  do-thunk b fs = record fs { falloc = grow-frame b (falloc fs)
                             ; fpc    = suc (fpc fs) }
 
   flat-exec-instr : AbstractInstr → AbstractTrace → FlatState → FlatState

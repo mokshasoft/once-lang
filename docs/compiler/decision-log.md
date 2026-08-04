@@ -6072,3 +6072,65 @@ caller's floor. Both are theorems over the list, by the same transport
 now list operations on the evidence. That is precisely what `c-thunk`'s and
 `c-ret`'s block-steps need, and it is why the closure call's correspondence
 can be stated at all.
+
+---
+
+## D086: The Call Owns the Return-Address Slot — the Body's Marker Only Deepens the Frame
+
+**Date**: 2026-08-04
+**Status**: TAKEN (landed — Plan 0.63; corrects step 2a)
+
+### The defect
+
+Step 2a gave `c-thunk b` the flat semantics `enter-frame b`: shift the frame
+`b` slots and push the caller's onto `saved-frames`. Checked against the
+modelled ISA while sizing `block-step-c-thunk`, that is **off by one slot**.
+
+`execInstr prog s (call target)` computes `newSp = sp ∸ slot-size` and stores
+the return address there — the model is faithful to the hardware here — and
+only THEN does the body's `sub rsp, 8b` run. So at the body's first
+instruction the concrete `%rsp` is `base_caller − 8 − 8b`, while
+`frame-base (shift-frame caller b)` is `base_caller − 8b`. `FlatCorr.rsp-eq`
+(`%rsp ≡ frame-base (current-frame …)`) would have been unprovable at exactly
+the step the closure call exists to justify.
+
+Invisible today only because the markers have no producer.
+
+### Decision
+
+Split the frame move between the two instructions that actually move `%rsp`:
+
+- the **CALL** enters the frame — shifting by the one slot its own push
+  consumes, reserving NOTHING — and pushes the return pc onto `fret`;
+- `c-thunk b` **GROWS** that frame (`grow-frame`: shift by `b`, reserve `b`,
+  no push), mirroring `sub rsp, 8b`;
+- `c-ret b` is unchanged: `leave-frame` restores the caller's frame wholesale,
+  which is where `add rsp, 8b` followed by `ret`'s pop lands.
+
+Each instruction's frame move now matches its own `%rsp` arithmetic.
+
+### Why the push belongs at the call, not at the marker
+
+Forced by an invariant already landed. `ConcFlatSim.RetMatch` requires
+`saved-frames` and `fret` to have the SAME LENGTH — that is what lets a return
+restore a slot count and a pc that belong together. The call pushes the return
+pc; if the FRAME were pushed at the marker instead, the two stacks would differ
+in length for every state between a call and its body, and the invariant would
+be false there. One push per call, at the call, is the only consistent choice.
+
+### The return-address cell belongs to no window
+
+It sits between the callee's window END (`frame-base callee + 8b`) and the
+caller's BASE, one slot wide. `stack-eq`'s frame list never claims it, because
+D085 threads the next frame's floor as `≤`, not as an equality — the slack was
+put there for the general case and this is what fills it. Nothing needed to
+change in D085 to accommodate the call, which is the check that the two
+decisions agree.
+
+### Consequences
+
+- `grow-frame` added beside `enter-frame`/`leave-frame`; `do-thunk` uses it.
+  `enter-frame` keeps its `instr-alloc-stack` / `instr-push-frame` users.
+- No behaviour change and no binary change (still no producer); census 6.
+- The call's own half (`call-frame` + the `fret` push) lands with the wiring,
+  where the target resolution (`fclosure` → `find-thunk`) is decided.
