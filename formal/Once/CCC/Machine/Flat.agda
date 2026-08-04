@@ -22,7 +22,7 @@
 
 module Once.CCC.Machine.Flat where
 
-open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_)
+open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_; _+_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length)
@@ -307,6 +307,8 @@ module FlatMachine {FS : FrameSemantics} where
   -- stated for an arbitrary `fs`, never a concrete construction.
   ----------------------------------------------------------------------
   open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+  open import Data.Nat.Properties using (+-suc; +-identityʳ)
+  open import Data.Product using (Σ; _×_; _,_)
   open import Data.List.Relation.Unary.All using (All; []; _∷_)
 
   -- A halted state is a fixpoint of exec-flat.
@@ -324,6 +326,62 @@ module FlatMachine {FS : FrameSemantics} where
     → fetch prog (fpc fs) ≡ just i
     → exec-flat (suc n) prog fs ≡ exec-flat n prog (flat-exec-instr i prog fs)
   exec-flat-step n prog fs i h-eq f-eq rewrite h-eq | f-eq = refl
+
+  ----------------------------------------------------------------------
+  -- WHERE THE SCAN LANDS (Plan 0.63, obligation (iii)).
+  --
+  -- `find-label prog m ≡ just j` puts a `c-label m` AT j. Obvious, and the
+  -- reason it is worth stating: it is what lets label scoping be proved
+  -- WITHOUT label uniqueness. The segment lemma then only has to say "every
+  -- position holding `c-label m` has segment X" — a property of all of them —
+  -- instead of "the unique such position does", which would need the emitter
+  -- to never reuse a label number.
+  --
+  -- `acc` is an offset, so the induction states the position as a delta.
+  ----------------------------------------------------------------------
+  -- `(m ≡ᵇ n) ≡ true` gives `m ≡ n` (the stdlib's `≡ᵇ⇒≡` wants `T`, and the
+  -- scan hands us the Bool equation).
+  ≡ᵇ-true : ∀ (m n : ℕ) → (m ≡ᵇ n) ≡ true → m ≡ n
+  ≡ᵇ-true zero    zero    _  = refl
+  ≡ᵇ-true (suc m) (suc n) eq = cong suc (≡ᵇ-true m n eq)
+
+  -- `label-of? x ≡ just m` pins the instruction: only `c-label` produces one.
+  -- Enumerated, because the catch-all does not invert.
+  lab-eq : ∀ (x : AbstractInstr) (m : ℕ) → label-of? x ≡ just m → x ≡ instr-ctrl (c-label m)
+  lab-eq (instr-ctrl (c-label m')) m eq = cong (λ z → instr-ctrl (c-label z)) (just-inj eq)
+    where just-inj : ∀ {a b : ℕ} → just a ≡ just b → a ≡ b
+          just-inj refl = refl
+
+  fl-go-lands : ∀ (t : AbstractTrace) (target acc j : ℕ)
+              → fl-go t target acc ≡ just j
+              → Σ ℕ (λ d → (j ≡ acc + d)
+                    × (fetch t d ≡ just (instr-ctrl (c-label target))))
+  fl-go-lands [] target acc j ()
+  fl-go-lands (x ∷ is) target acc j eq = go (label-of? x) refl eq
+    where
+      step : ∀ (j' : ℕ) → fl-go is target (suc acc) ≡ just j'
+           → Σ ℕ (λ d → (j' ≡ acc + d) × (fetch (x ∷ is) d ≡ just (instr-ctrl (c-label target))))
+      step j' e with fl-go-lands is target (suc acc) j' e
+      ... | d , j'≡ , ft = suc d , trans j'≡ (sym (+-suc acc d)) , ft
+      go : ∀ (mlab : Maybe ℕ) → label-of? x ≡ mlab → fl-go (x ∷ is) target acc ≡ just j
+         → Σ ℕ (λ d → (j ≡ acc + d) × (fetch (x ∷ is) d ≡ just (instr-ctrl (c-label target))))
+      go nothing  le e rewrite le = step j e
+      go (just m) le e rewrite le = match (m ≡ᵇ target) refl e
+        where
+          match : ∀ (b : Bool) → (m ≡ᵇ target) ≡ b → fl-label-match (m ≡ᵇ target) is target acc ≡ just j
+                → Σ ℕ (λ d → (j ≡ acc + d) × (fetch (x ∷ is) d ≡ just (instr-ctrl (c-label target))))
+          match true  beq e' rewrite beq =
+            0 , trans (sym (just-inj e')) (sym (+-identityʳ acc))
+              , cong just (trans (lab-eq x m le) (cong (λ z → instr-ctrl (c-label z)) (≡ᵇ-true m target beq)))
+            where just-inj : ∀ {a b : ℕ} → just a ≡ just b → a ≡ b
+                  just-inj refl = refl
+          match false beq e' rewrite beq = step j e'
+
+  find-label-lands : ∀ (prog : AbstractTrace) (target j : ℕ)
+                   → find-label prog target ≡ just j
+                   → fetch prog j ≡ just (instr-ctrl (c-label target))
+  find-label-lands prog target j eq with fl-go-lands prog target 0 j eq
+  ... | d , j≡0+d , ft rewrite j≡0+d = ft
 
   -- pc past the end halts.
   exec-flat-offend : ∀ (n : ℕ) (prog : AbstractTrace) (fs : FlatState)
