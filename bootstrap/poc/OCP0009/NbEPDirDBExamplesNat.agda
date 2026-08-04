@@ -1,0 +1,54 @@
+------------------------------------------------------------------------
+-- OCP-0009 — EXAMPLES, WF-AXIS STAGE A: the datatype core.  THE
+-- ACCEPTANCE TEST (SPIKE-WF §7): written FIRST, the kernel is landed
+-- under it until it greens.
+--
+--   ★ numerals; `⊢plus` by `natrec`; `plus-computes : 2+1 ⟶* 3`.
+--   ★ `⊢idplus` — Id-REWRITING ON NUMBERS arrives with the former:
+--     `jsub` at a Nat-family, seeded by an idrefl on a numeral.
+--   ★ `⊢unit'` — the unit former types.
+--   (Stage B adds: le-computes / lt-empty / the order demos.)
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module poc.OCP0009.NbEPDirDBExamplesNat where
+
+open import normalizer.Syntax.Types using ( _≡_; refl )
+open import poc.OCP0009.NbEPDirDBPi
+  using ( Cx; ε; _∙; Var; vz; vs
+        ; RTy; base; U; El; Id; Unit; Nat
+        ; RTm; var; unit; nzero; nsuc; natrec; idrefl; jsub
+        ; subTm )
+open import poc.OCP0009.NbEPDirDBType
+  using ( single; _⟶_; _⟶*_; done; step
+        ; natrec-zero; natrec-suc; ξ-nsuc
+        ; Ctx; ◇; ⌊_⌋
+        ; _⊢_∷_; ⊢var; here; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; _⊢ty_; ty-Nat; ty-Unit )
+
+n1 n2 n3 : {Γ : Cx} → RTm Γ
+n1 = nsuc nzero
+n2 = nsuc (nsuc nzero)
+n3 = nsuc (nsuc (nsuc nzero))
+
+-- ★ DESIGN POINT (settled writing this file): `natrec` is
+-- TYPE-motived — the motive lives in the DERIVATION only (the ⊢lam
+-- pattern), because code motives would need ⌜Nat⌝ ∈ U (stage C).
+-- Term: natrec z s n; s has TWO binders (the number, then the IH).
+plusTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+plusTm m n = natrec n (nsuc (var vz)) m
+
+-- the CONSTANT-Nat motive makes every obligation definitional:
+⊢plus : {Γ : Ctx} {m n : RTm ⌊ Γ ⌋} →
+        Γ ⊢ m ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ plusTm m n ∷ Nat
+⊢plus dm dn = ⊢natrec ty-Nat dn (⊢nsuc (⊢var here)) dm
+
+plus-computes : {Γ : Cx} → plusTm {Γ} n2 n1 ⟶* n3
+plus-computes =
+  step (natrec-suc _ _ _)
+    (step (ξ-nsuc (natrec-suc _ _ _))
+      (step (ξ-nsuc (ξ-nsuc (natrec-zero _ _)))
+        done))
+
+⊢unit' : {Γ : Ctx} → Γ ⊢ unit ∷ Unit
+⊢unit' = ⊢unit
