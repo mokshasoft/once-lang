@@ -75,6 +75,9 @@ data RTy where
   -- W2's eliminator introduces; deferred, not dropped), and at `Hom` (higher
   -- paths, unscoped).
   Hom  : ∀ {Γ} → RTy Γ → RTm Γ → RTm Γ → RTy Γ
+  -- ★ the TWO-FORMER kernel (SPIKE-TWOFORMER): the SYMMETRIC identity
+  -- type, INERT — no type-level computation, ξ-congruences only.
+  Id   : ∀ {Γ} → RTy Γ → RTm Γ → RTm Γ → RTy Γ
 
 data RTm where
   var  : ∀ {Γ} → Var Γ → RTm Γ
@@ -99,6 +102,11 @@ data RTm where
   -- body (vz free), `p` the path.  Typing restricts the SOURCE ambient
   -- to stable codes; `ap-J` is the one computation rule.
   ap     : ∀ {Γ} → RTm Γ → RTm (Γ ∙) → RTm Γ → RTm Γ
+  -- ★ the two-former kernel: the Id code, the (code-annotated)
+  -- reflexivity, and subst-style J at an UNRESTRICTED code family.
+  ⌜Id⌝   : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  idrefl : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ
+  jsub   : ∀ {Γ} → RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
 
 private
   variable
@@ -123,6 +131,7 @@ renTy ρ (Π A B)  = Π (renTy ρ A) (renTy (extR ρ) B)
 renTy ρ (Σ' A B) = Σ' (renTy ρ A) (renTy (extR ρ) B)
 renTy ρ (El t)   = El (renTm ρ t)
 renTy ρ (Hom A t u) = Hom (renTy ρ A) (renTm ρ t) (renTm ρ u)
+renTy ρ (Id A t u) = Id (renTy ρ A) (renTm ρ t) (renTm ρ u)
 renTm ρ (var x)   = var (ρ x)
 renTm ρ (lam t)   = lam (renTm (extR ρ) t)
 renTm ρ (app t u)  = app (renTm ρ t) (renTm ρ u)
@@ -133,8 +142,11 @@ renTm ρ ⌜base⌝     = ⌜base⌝
 renTm ρ (⌜Π⌝ c d)  = ⌜Π⌝ (renTm ρ c) (renTm (extR ρ) d)
 renTm ρ (⌜Σ⌝ c d)  = ⌜Σ⌝ (renTm ρ c) (renTm (extR ρ) d)
 renTm ρ (⌜Hom⌝ c a b) = ⌜Hom⌝ (renTm ρ c) (renTm ρ a) (renTm ρ b)
+renTm ρ (⌜Id⌝ c a b) = ⌜Id⌝ (renTm ρ c) (renTm ρ a) (renTm ρ b)
 renTm ρ (hrefl c t)   = hrefl (renTm ρ c) (renTm ρ t)
+renTm ρ (idrefl c t)   = idrefl (renTm ρ c) (renTm ρ t)
 renTm ρ (tr d p e)    = tr (renTm (extR ρ) d) (renTm ρ p) (renTm ρ e)
+renTm ρ (jsub d p e)    = jsub (renTm (extR ρ) d) (renTm ρ p) (renTm ρ e)
 renTm ρ (ap c b p)    = ap (renTm ρ c) (renTm (extR ρ) b) (renTm ρ p)
 
 ------------------------------------------------------------------------
@@ -156,6 +168,7 @@ subTy σ (Π A B)  = Π (subTy σ A) (subTy (extS σ) B)
 subTy σ (Σ' A B) = Σ' (subTy σ A) (subTy (extS σ) B)
 subTy σ (El t)   = El (subTm σ t)
 subTy σ (Hom A t u) = Hom (subTy σ A) (subTm σ t) (subTm σ u)
+subTy σ (Id A t u) = Id (subTy σ A) (subTm σ t) (subTm σ u)
 subTm σ (var x)   = σ x
 subTm σ (lam t)   = lam (subTm (extS σ) t)
 subTm σ (app t u)  = app (subTm σ t) (subTm σ u)
@@ -166,8 +179,11 @@ subTm σ ⌜base⌝     = ⌜base⌝
 subTm σ (⌜Π⌝ c d)  = ⌜Π⌝ (subTm σ c) (subTm (extS σ) d)
 subTm σ (⌜Σ⌝ c d)  = ⌜Σ⌝ (subTm σ c) (subTm (extS σ) d)
 subTm σ (⌜Hom⌝ c a b) = ⌜Hom⌝ (subTm σ c) (subTm σ a) (subTm σ b)
+subTm σ (⌜Id⌝ c a b) = ⌜Id⌝ (subTm σ c) (subTm σ a) (subTm σ b)
 subTm σ (hrefl c t)   = hrefl (subTm σ c) (subTm σ t)
+subTm σ (idrefl c t)   = idrefl (subTm σ c) (subTm σ t)
 subTm σ (tr d p e)    = tr (subTm (extS σ) d) (subTm σ p) (subTm σ e)
+subTm σ (jsub d p e)    = jsub (subTm (extS σ) d) (subTm σ p) (subTm σ e)
 subTm σ (ap c b p)    = ap (subTm σ c) (subTm (extS σ) b) (subTm σ p)
 
 -- Identity and the four composition operators (explicit-index, genuine
@@ -217,6 +233,10 @@ Hom-cong₃ : {A A' : RTy Γ} {t t' u u' : RTm Γ} →
             A ≡ A' → t ≡ t' → u ≡ u' → Hom A t u ≡ Hom A' t' u'
 Hom-cong₃ refl refl refl = refl
 
+Id-cong₃ : {A A' : RTy Γ} {t t' u u' : RTm Γ} →
+           A ≡ A' → t ≡ t' → u ≡ u' → Id A t u ≡ Id A' t' u'
+Id-cong₃ refl refl refl = refl
+
 -- …and its term-level mirrors for the three W2 formers
 ⌜Hom⌝-cong₃ : {c c' a a' b b' : RTm Γ} →
               c ≡ c' → a ≡ a' → b ≡ b' → ⌜Hom⌝ c a b ≡ ⌜Hom⌝ c' a' b'
@@ -229,6 +249,14 @@ tr-cong₃ refl refl refl = refl
 ap-cong₃ : {c c' : RTm Γ} {b b' : RTm (Γ ∙)} {p p' : RTm Γ} →
            c ≡ c' → b ≡ b' → p ≡ p' → ap c b p ≡ ap c' b' p'
 ap-cong₃ refl refl refl = refl
+
+⌜Id⌝-cong₃ : {c c' a a' b b' : RTm Γ} →
+             c ≡ c' → a ≡ a' → b ≡ b' → ⌜Id⌝ c a b ≡ ⌜Id⌝ c' a' b'
+⌜Id⌝-cong₃ refl refl refl = refl
+
+jsub-cong₃ : {d d' : RTm (Γ ∙)} {p p' e e' : RTm Γ} →
+             d ≡ d' → p ≡ p' → e ≡ e' → jsub d p e ≡ jsub d' p' e'
+jsub-cong₃ refl refl refl = refl
 
 -- A concrete dependent type and its substitution: `(x : base) → El x`.
 Πdep : RTy Γ
@@ -258,6 +286,8 @@ renTy-cong h (Σ' A B) = cong₂ Σ' (renTy-cong h A) (renTy-cong (extR-cong h) 
 renTy-cong h (El t)   = cong El (renTm-cong h t)
 renTy-cong h (Hom A t u) =
   Hom-cong₃ (renTy-cong h A) (renTm-cong h t) (renTm-cong h u)
+renTy-cong h (Id A t u) =
+  Id-cong₃ (renTy-cong h A) (renTm-cong h t) (renTm-cong h u)
 renTm-cong h (var x)   = cong var (h x)
 renTm-cong h (lam t)   = cong lam (renTm-cong (extR-cong h) t)
 renTm-cong h (app t u)  = cong₂ app (renTm-cong h t) (renTm-cong h u)
@@ -269,9 +299,14 @@ renTm-cong h (⌜Π⌝ c d)  = cong₂ ⌜Π⌝ (renTm-cong h c) (renTm-cong (ex
 renTm-cong h (⌜Σ⌝ c d)  = cong₂ ⌜Σ⌝ (renTm-cong h c) (renTm-cong (extR-cong h) d)
 renTm-cong h (⌜Hom⌝ c a b) =
   ⌜Hom⌝-cong₃ (renTm-cong h c) (renTm-cong h a) (renTm-cong h b)
+renTm-cong h (⌜Id⌝ c a b) =
+  ⌜Id⌝-cong₃ (renTm-cong h c) (renTm-cong h a) (renTm-cong h b)
 renTm-cong h (hrefl c t)   = cong₂ hrefl (renTm-cong h c) (renTm-cong h t)
+renTm-cong h (idrefl c t)   = cong₂ idrefl (renTm-cong h c) (renTm-cong h t)
 renTm-cong h (tr d p e)    =
   tr-cong₃ (renTm-cong (extR-cong h) d) (renTm-cong h p) (renTm-cong h e)
+renTm-cong h (jsub d p e)    =
+  jsub-cong₃ (renTm-cong (extR-cong h) d) (renTm-cong h p) (renTm-cong h e)
 renTm-cong h (ap c b p)    =
   ap-cong₃ (renTm-cong h c) (renTm-cong (extR-cong h) b) (renTm-cong h p)
 
@@ -291,6 +326,8 @@ subTy-cong h (Σ' A B) = cong₂ Σ' (subTy-cong h A) (subTy-cong (extS-cong h) 
 subTy-cong h (El t)   = cong El (subTm-cong h t)
 subTy-cong h (Hom A t u) =
   Hom-cong₃ (subTy-cong h A) (subTm-cong h t) (subTm-cong h u)
+subTy-cong h (Id A t u) =
+  Id-cong₃ (subTy-cong h A) (subTm-cong h t) (subTm-cong h u)
 subTm-cong h (var x)   = h x
 subTm-cong h (lam t)   = cong lam (subTm-cong (extS-cong h) t)
 subTm-cong h (app t u)  = cong₂ app (subTm-cong h t) (subTm-cong h u)
@@ -302,9 +339,14 @@ subTm-cong h (⌜Π⌝ c d)  = cong₂ ⌜Π⌝ (subTm-cong h c) (subTm-cong (ex
 subTm-cong h (⌜Σ⌝ c d)  = cong₂ ⌜Σ⌝ (subTm-cong h c) (subTm-cong (extS-cong h) d)
 subTm-cong h (⌜Hom⌝ c a b) =
   ⌜Hom⌝-cong₃ (subTm-cong h c) (subTm-cong h a) (subTm-cong h b)
+subTm-cong h (⌜Id⌝ c a b) =
+  ⌜Id⌝-cong₃ (subTm-cong h c) (subTm-cong h a) (subTm-cong h b)
 subTm-cong h (hrefl c t)   = cong₂ hrefl (subTm-cong h c) (subTm-cong h t)
+subTm-cong h (idrefl c t)   = cong₂ idrefl (subTm-cong h c) (subTm-cong h t)
 subTm-cong h (tr d p e)    =
   tr-cong₃ (subTm-cong (extS-cong h) d) (subTm-cong h p) (subTm-cong h e)
+subTm-cong h (jsub d p e)    =
+  jsub-cong₃ (subTm-cong (extS-cong h) d) (subTm-cong h p) (subTm-cong h e)
 subTm-cong h (ap c b p)    =
   ap-cong₃ (subTm-cong h c) (subTm-cong (extS-cong h) b) (subTm-cong h p)
 
@@ -332,6 +374,8 @@ renTy-renTy {ρ' = ρ'} {ρ} (Σ' A B) =
 renTy-renTy (El t)   = cong El (renTm-renTm t)
 renTy-renTy (Hom A t u) =
   Hom-cong₃ (renTy-renTy A) (renTm-renTm t) (renTm-renTm u)
+renTy-renTy (Id A t u) =
+  Id-cong₃ (renTy-renTy A) (renTm-renTm t) (renTm-renTm u)
 renTm-renTm (var x)   = refl
 renTm-renTm {ρ' = ρ'} {ρ} (lam t) =
   cong lam (trans (renTm-renTm t) (renTm-cong (extr-extr ρ' ρ) t))
@@ -346,9 +390,15 @@ renTm-renTm {ρ' = ρ'} {ρ} (⌜Σ⌝ c d) =
   cong₂ ⌜Σ⌝ (renTm-renTm c) (trans (renTm-renTm d) (renTm-cong (extr-extr ρ' ρ) d))
 renTm-renTm (⌜Hom⌝ c a b) =
   ⌜Hom⌝-cong₃ (renTm-renTm c) (renTm-renTm a) (renTm-renTm b)
+renTm-renTm (⌜Id⌝ c a b) =
+  ⌜Id⌝-cong₃ (renTm-renTm c) (renTm-renTm a) (renTm-renTm b)
 renTm-renTm (hrefl c t)   = cong₂ hrefl (renTm-renTm c) (renTm-renTm t)
+renTm-renTm (idrefl c t)   = cong₂ idrefl (renTm-renTm c) (renTm-renTm t)
 renTm-renTm {ρ' = ρ'} {ρ} (tr d p e) =
   tr-cong₃ (trans (renTm-renTm d) (renTm-cong (extr-extr ρ' ρ) d))
+           (renTm-renTm p) (renTm-renTm e)
+renTm-renTm {ρ' = ρ'} {ρ} (jsub d p e) =
+  jsub-cong₃ (trans (renTm-renTm d) (renTm-cong (extr-extr ρ' ρ) d))
            (renTm-renTm p) (renTm-renTm e)
 renTm-renTm {ρ' = ρ'} {ρ} (ap c b p) =
   ap-cong₃ (renTm-renTm c)
@@ -374,6 +424,8 @@ subTy-renTy {σ = σ} {ρ} (Σ' A B) =
 subTy-renTy (El t)   = cong El (subTm-renTm t)
 subTy-renTy (Hom A t u) =
   Hom-cong₃ (subTy-renTy A) (subTm-renTm t) (subTm-renTm u)
+subTy-renTy (Id A t u) =
+  Id-cong₃ (subTy-renTy A) (subTm-renTm t) (subTm-renTm u)
 subTm-renTm (var x)   = refl
 subTm-renTm {σ = σ} {ρ} (lam t) =
   cong lam (trans (subTm-renTm t) (subTm-cong (exts-extr σ ρ) t))
@@ -388,9 +440,15 @@ subTm-renTm {σ = σ} {ρ} (⌜Σ⌝ c d) =
   cong₂ ⌜Σ⌝ (subTm-renTm c) (trans (subTm-renTm d) (subTm-cong (exts-extr σ ρ) d))
 subTm-renTm (⌜Hom⌝ c a b) =
   ⌜Hom⌝-cong₃ (subTm-renTm c) (subTm-renTm a) (subTm-renTm b)
+subTm-renTm (⌜Id⌝ c a b) =
+  ⌜Id⌝-cong₃ (subTm-renTm c) (subTm-renTm a) (subTm-renTm b)
 subTm-renTm (hrefl c t)   = cong₂ hrefl (subTm-renTm c) (subTm-renTm t)
+subTm-renTm (idrefl c t)   = cong₂ idrefl (subTm-renTm c) (subTm-renTm t)
 subTm-renTm {σ = σ} {ρ} (tr d p e) =
   tr-cong₃ (trans (subTm-renTm d) (subTm-cong (exts-extr σ ρ) d))
+           (subTm-renTm p) (subTm-renTm e)
+subTm-renTm {σ = σ} {ρ} (jsub d p e) =
+  jsub-cong₃ (trans (subTm-renTm d) (subTm-cong (exts-extr σ ρ) d))
            (subTm-renTm p) (subTm-renTm e)
 subTm-renTm {σ = σ} {ρ} (ap c b p) =
   ap-cong₃ (subTm-renTm c)
@@ -416,6 +474,8 @@ renTy-subTy {ρ = ρ} {σ} (Σ' A B) =
 renTy-subTy (El t)   = cong El (renTm-subTm t)
 renTy-subTy (Hom A t u) =
   Hom-cong₃ (renTy-subTy A) (renTm-subTm t) (renTm-subTm u)
+renTy-subTy (Id A t u) =
+  Id-cong₃ (renTy-subTy A) (renTm-subTm t) (renTm-subTm u)
 renTm-subTm (var x)   = refl
 renTm-subTm {ρ = ρ} {σ} (lam t) =
   cong lam (trans (renTm-subTm t) (subTm-cong (extr-exts ρ σ) t))
@@ -430,9 +490,15 @@ renTm-subTm {ρ = ρ} {σ} (⌜Σ⌝ c d) =
   cong₂ ⌜Σ⌝ (renTm-subTm c) (trans (renTm-subTm d) (subTm-cong (extr-exts ρ σ) d))
 renTm-subTm (⌜Hom⌝ c a b) =
   ⌜Hom⌝-cong₃ (renTm-subTm c) (renTm-subTm a) (renTm-subTm b)
+renTm-subTm (⌜Id⌝ c a b) =
+  ⌜Id⌝-cong₃ (renTm-subTm c) (renTm-subTm a) (renTm-subTm b)
 renTm-subTm (hrefl c t)   = cong₂ hrefl (renTm-subTm c) (renTm-subTm t)
+renTm-subTm (idrefl c t)   = cong₂ idrefl (renTm-subTm c) (renTm-subTm t)
 renTm-subTm {ρ = ρ} {σ} (tr d p e) =
   tr-cong₃ (trans (renTm-subTm d) (subTm-cong (extr-exts ρ σ) d))
+           (renTm-subTm p) (renTm-subTm e)
+renTm-subTm {ρ = ρ} {σ} (jsub d p e) =
+  jsub-cong₃ (trans (renTm-subTm d) (subTm-cong (extr-exts ρ σ) d))
            (renTm-subTm p) (renTm-subTm e)
 renTm-subTm {ρ = ρ} {σ} (ap c b p) =
   ap-cong₃ (renTm-subTm c)
@@ -458,6 +524,8 @@ subTy-subTy {τ = τ} {σ} (Σ' A B) =
 subTy-subTy (El t)   = cong El (subTm-subTm t)
 subTy-subTy (Hom A t u) =
   Hom-cong₃ (subTy-subTy A) (subTm-subTm t) (subTm-subTm u)
+subTy-subTy (Id A t u) =
+  Id-cong₃ (subTy-subTy A) (subTm-subTm t) (subTm-subTm u)
 subTm-subTm (var x)   = refl
 subTm-subTm {τ = τ} {σ} (lam t) =
   cong lam (trans (subTm-subTm t) (subTm-cong (exts-exts τ σ) t))
@@ -472,9 +540,15 @@ subTm-subTm {τ = τ} {σ} (⌜Σ⌝ c d) =
   cong₂ ⌜Σ⌝ (subTm-subTm c) (trans (subTm-subTm d) (subTm-cong (exts-exts τ σ) d))
 subTm-subTm (⌜Hom⌝ c a b) =
   ⌜Hom⌝-cong₃ (subTm-subTm c) (subTm-subTm a) (subTm-subTm b)
+subTm-subTm (⌜Id⌝ c a b) =
+  ⌜Id⌝-cong₃ (subTm-subTm c) (subTm-subTm a) (subTm-subTm b)
 subTm-subTm (hrefl c t)   = cong₂ hrefl (subTm-subTm c) (subTm-subTm t)
+subTm-subTm (idrefl c t)   = cong₂ idrefl (subTm-subTm c) (subTm-subTm t)
 subTm-subTm {τ = τ} {σ} (tr d p e) =
   tr-cong₃ (trans (subTm-subTm d) (subTm-cong (exts-exts τ σ) d))
+           (subTm-subTm p) (subTm-subTm e)
+subTm-subTm {τ = τ} {σ} (jsub d p e) =
+  jsub-cong₃ (trans (subTm-subTm d) (subTm-cong (exts-exts τ σ) d))
            (subTm-subTm p) (subTm-subTm e)
 subTm-subTm {τ = τ} {σ} (ap c b p) =
   ap-cong₃ (subTm-subTm c)
@@ -494,6 +568,7 @@ subTy-id (Π A B)  = cong₂ Π (subTy-id A) (trans (subTy-cong exts-id B) (subT
 subTy-id (Σ' A B) = cong₂ Σ' (subTy-id A) (trans (subTy-cong exts-id B) (subTy-id B))
 subTy-id (El t)   = cong El (subTm-id t)
 subTy-id (Hom A t u) = Hom-cong₃ (subTy-id A) (subTm-id t) (subTm-id u)
+subTy-id (Id A t u) = Id-cong₃ (subTy-id A) (subTm-id t) (subTm-id u)
 subTm-id (var x)   = refl
 subTm-id (lam t)   = cong lam (trans (subTm-cong exts-id t) (subTm-id t))
 subTm-id (app t u)  = cong₂ app (subTm-id t) (subTm-id u)
@@ -504,9 +579,13 @@ subTm-id ⌜base⌝     = refl
 subTm-id (⌜Π⌝ c d)  = cong₂ ⌜Π⌝ (subTm-id c) (trans (subTm-cong exts-id d) (subTm-id d))
 subTm-id (⌜Σ⌝ c d)  = cong₂ ⌜Σ⌝ (subTm-id c) (trans (subTm-cong exts-id d) (subTm-id d))
 subTm-id (⌜Hom⌝ c a b) = ⌜Hom⌝-cong₃ (subTm-id c) (subTm-id a) (subTm-id b)
+subTm-id (⌜Id⌝ c a b) = ⌜Id⌝-cong₃ (subTm-id c) (subTm-id a) (subTm-id b)
 subTm-id (hrefl c t)   = cong₂ hrefl (subTm-id c) (subTm-id t)
+subTm-id (idrefl c t)   = cong₂ idrefl (subTm-id c) (subTm-id t)
 subTm-id (tr d p e)    =
   tr-cong₃ (trans (subTm-cong exts-id d) (subTm-id d)) (subTm-id p) (subTm-id e)
+subTm-id (jsub d p e)    =
+  jsub-cong₃ (trans (subTm-cong exts-id d) (subTm-id d)) (subTm-id p) (subTm-id e)
 subTm-id (ap c b p)    =
   ap-cong₃ (subTm-id c) (trans (subTm-cong exts-id b) (subTm-id b)) (subTm-id p)
 
