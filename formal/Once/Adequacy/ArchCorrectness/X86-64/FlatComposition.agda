@@ -135,13 +135,21 @@ find-label-go-skip-other target ℓ rest xi ne rewrite ne = refl
 -- `label (once m)`) or its x86 block is label-free; in both cases we
 -- record how flat `fl-go` reduces on the head.
 ------------------------------------------------------------------------
+-- Plan 0.63: each constructor now records how BOTH scans reduce on the head —
+-- the `once` scan (`fl-go`, jumps) and the `thunk` scan (`ft-go`, calls). One
+-- enumeration serves both; a parallel `headView` would duplicate 40 clauses to
+-- say the mirror-image thing.
 data HeadView (i : AbstractInstr) : Set where
   hv-clabel : (m : ℕ)
     → compile-abstract i ≡ label (once m) ∷ []
     → (∀ rest tgt acc → fl-go (i ∷ rest) tgt acc ≡ fl-label-match (m ≡ᵇ tgt) rest tgt acc)
+    -- a `once` label is INVISIBLE to the call scan: `thunk-of?` misses it, and
+    -- concretely `once m ≡ᵇᴸ thunk tgt` is the catch-all `false` (D082).
+    → (∀ rest tgt acc → ft-go (i ∷ rest) tgt acc ≡ ft-go rest tgt (suc acc))
     → HeadView i
   hv-plain : has-label (compile-abstract i) ≡ false
     → (∀ rest tgt acc → fl-go (i ∷ rest) tgt acc ≡ fl-go rest tgt (suc acc))
+    → (∀ rest tgt acc → ft-go (i ∷ rest) tgt acc ≡ ft-go rest tgt (suc acc))
     → HeadView i
   -- Plan 0.63 (D082): a block that OPENS WITH A FOREIGN-PROVENANCE LABEL.
   -- `c-thunk` fits neither case above — it IS a label instruction (so it
@@ -153,11 +161,14 @@ data HeadView (i : AbstractInstr) : Set where
   -- label-free — `hv-clabel`'s single-instruction shape would not do.
   -- The provenance premise is `refl` at every producer precisely because
   -- provenances are definitionally disjoint — what D082 bought.
-  hv-otherlabel : (ℓ : Label) (tail : Program)
-    → compile-abstract i ≡ label ℓ ∷ tail
+  -- …and it is the THUNK label specifically (the only producer is `c-thunk`),
+  -- which is what lets the same view drive the call scan: there this head is
+  -- the MATCH decision, exactly as `hv-clabel` is for the jump scan.
+  hv-otherlabel : (m : ℕ) (tail : Program)
+    → compile-abstract i ≡ label (thunk m) ∷ tail
     → has-label tail ≡ false
-    → (∀ tgt → (ℓ ≡ᵇᴸ once tgt) ≡ false)
     → (∀ rest tgt acc → fl-go (i ∷ rest) tgt acc ≡ fl-go rest tgt (suc acc))
+    → (∀ rest tgt acc → ft-go (i ∷ rest) tgt acc ≡ ft-match (m ≡ᵇ tgt) rest tgt acc)
     → HeadView i
 
 reg-op-no-label : ∀ (op : RegOp) → has-label (compile-abstract (instr-reg-op op)) ≡ false
@@ -173,45 +184,110 @@ const-no-label fits-int   v = refl
 const-no-label fits-float v = refl
 
 headView : ∀ (i : AbstractInstr) → HeadView i
-headView mov-to-output = hv-plain refl (λ _ _ _ → refl)
-headView mov-to-input = hv-plain refl (λ _ _ _ → refl)
-headView mov-output-to-input2 = hv-plain refl (λ _ _ _ → refl)
-headView mov-input2-to-output = hv-plain refl (λ _ _ _ → refl)
-headView load-indirect = hv-plain refl (λ _ _ _ → refl)
-headView load-indirect-suc = hv-plain refl (λ _ _ _ → refl)
-headView store-indirect = hv-plain refl (λ _ _ _ → refl)
-headView store-indirect-suc = hv-plain refl (λ _ _ _ → refl)
-headView instr-pop-frame = hv-plain refl (λ _ _ _ → refl)
-headView instr-call-closure = hv-plain refl (λ _ _ _ → refl)
-headView instr-save-closure-reg = hv-plain refl (λ _ _ _ → refl)
-headView (load-from-slot _) = hv-plain refl (λ _ _ _ → refl)
-headView (store-at-slot _) = hv-plain refl (λ _ _ _ → refl)
-headView (lea-slot _) = hv-plain refl (λ _ _ _ → refl)
-headView (lea-indexed _) = hv-plain refl (λ _ _ _ → refl)
-headView (restore-input _) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-alloc-stack _) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-dealloc-stack _) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-reclaim-to _) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-push-frame _) = hv-plain refl (λ _ _ _ → refl)
-headView (worklist-init _) = hv-plain refl (λ _ _ _ → refl)
-headView (worklist-push _) = hv-plain refl (λ _ _ _ → refl)
-headView (worklist-pop _) = hv-plain refl (λ _ _ _ → refl)
-headView (worklist-check _) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-load-code-addr _) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-load-tag-lit _) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-alloc-heap _) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-loop _) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-sigop si) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-load-const p v) = hv-plain (const-no-label p v) (λ _ _ _ → refl)
-headView (instr-case-on-tag f g) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-reg-op op) = hv-plain (reg-op-no-label op) (λ _ _ _ → refl)
-headView (instr-ctrl (c-label m)) = hv-clabel m refl (λ _ _ _ → refl)
+headView mov-to-output = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView mov-to-input = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView mov-output-to-input2 = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView mov-input2-to-output = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView load-indirect = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView load-indirect-suc = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView store-indirect = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView store-indirect-suc = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView instr-pop-frame = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView instr-call-closure = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView instr-save-closure-reg = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (load-from-slot _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (store-at-slot _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (lea-slot _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (lea-indexed _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (restore-input _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-alloc-stack _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-dealloc-stack _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-reclaim-to _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-push-frame _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (worklist-init _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (worklist-push _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (worklist-pop _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (worklist-check _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-load-code-addr _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-load-tag-lit _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-alloc-heap _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-loop _) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-sigop si) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-load-const p v) = hv-plain (const-no-label p v) (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-case-on-tag f g) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-reg-op op) = hv-plain (reg-op-no-label op) (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-ctrl (c-label m)) = hv-clabel m refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-thunk m b)) =
-  hv-otherlabel (thunk m) (sub (reg rsp) (imm (slots b)) ∷ []) refl refl (λ _ → refl) (λ _ _ _ → refl)
-headView (instr-ctrl (c-ret b)) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-ctrl (c-jmp m)) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-ctrl (c-branch-scratch-zero m)) = hv-plain refl (λ _ _ _ → refl)
-headView (instr-ctrl (c-branch-tag-zero m)) = hv-plain refl (λ _ _ _ → refl)
+  hv-otherlabel m (sub (reg rsp) (imm (slots b)) ∷ []) refl refl
+                (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-ctrl (c-ret b)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-ctrl (c-jmp m)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-ctrl (c-branch-scratch-zero m)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+headView (instr-ctrl (c-branch-tag-zero m)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
+
+------------------------------------------------------------------------
+-- THE CALL SCAN (Plan 0.63). `find-thunk` is `find-label`'s mirror over the
+-- OTHER provenance: a closure call resolves its body by scanning for
+-- `c-thunk n`, and the emitted `call` resolves `.L_thunk_n` — which after
+-- D081 is `X.find-label … (thunk n)`. The two agree modulo `x86-off`, by the
+-- same structural induction over `All HeadView`, with the roles of the two
+-- label cases EXCHANGED: `hv-clabel` steps past (a jump label is invisible to
+-- the call scan) and `hv-otherlabel` is the match.
+--
+-- That exchange is exactly what D082 bought. Both "steps past" premises are
+-- the catch-all of `_≡ᵇᴸ_` on mismatched provenances, so they are `refl` at
+-- every producer — no label-uniqueness argument anywhere.
+------------------------------------------------------------------------
+find-thunk-pres : ∀ (prog : AbstractTrace) (target acc xi j : ℕ)
+  → All HeadView prog
+  → ft-go prog target acc ≡ just j
+  → Σ ℕ (λ d → (j ≡ acc + d)
+        × (X.find-label-go (thunk target) (compile-trace prog) xi ≡ just (xi + x86-off prog d)))
+find-thunk-pres [] target acc xi j _ ()
+find-thunk-pres (i ∷ rest) target acc xi j (hv-plain hl _ ft-p ∷ all-rest) ft-eq =
+  let ih = find-thunk-pres rest target (suc acc) (xi + x86-len i) j all-rest
+             (trans (sym (ft-p rest target acc)) ft-eq)
+      d' = proj₁ ih
+  in suc d'
+   , trans (proj₁ (proj₂ ih)) (sym (+-suc acc d'))
+   , trans (find-label-go-skip (thunk target) (compile-abstract i) (compile-trace rest) xi hl)
+           (trans (proj₂ (proj₂ ih)) (cong just (+-assoc xi (x86-len i) (x86-off rest d'))))
+-- a JUMP label: the call scan misses it, and so does the compiled scan
+-- (`once m ≡ᵇᴸ thunk target` is the catch-all).
+find-thunk-pres (i ∷ rest) target acc xi j (hv-clabel m ca-eq _ ft-p ∷ all-rest) ft-eq
+  rewrite ca-eq =
+  let ih = find-thunk-pres rest target (suc acc) (suc xi) j all-rest
+             (trans (sym (ft-p rest target acc)) ft-eq)
+      d' = proj₁ ih
+  in suc d'
+   , trans (proj₁ (proj₂ ih)) (sym (+-suc acc d'))
+   , trans (proj₂ (proj₂ ih))
+           (cong just (trans (sym (+-suc xi (x86-off rest d')))
+                             (cong (λ L → xi + (L + x86-off rest d')) (sym (cong length ca-eq)))))
+-- THE MATCH CASE: a `c-thunk m` block. Both scans decide on `m ≡ᵇ target`.
+find-thunk-pres (i ∷ rest) target acc xi j (hv-otherlabel m tl ca-eq nl _ ft-m ∷ all-rest) ft-eq
+  with m ≡ᵇ target in meq
+... | true rewrite ca-eq | meq = 0 , comp1 , cong just (sym (+-identityʳ xi))
+  where
+    jinj : ∀ {a b : ℕ} → (just a) ≡ (just b) → a ≡ b
+    jinj refl = refl
+    acc≡j : acc ≡ j
+    acc≡j = jinj (trans (sym (cong (λ b → ft-match b rest target acc) meq))
+                        (trans (sym (ft-m rest target acc)) ft-eq))
+    comp1 : j ≡ acc + 0
+    comp1 = trans (sym acc≡j) (sym (+-identityʳ acc))
+... | false rewrite ca-eq | meq =
+  let ih = find-thunk-pres rest target (suc acc) (suc xi + length tl) j all-rest
+             (trans (sym (cong (λ b → ft-match b rest target acc) meq))
+                    (trans (sym (ft-m rest target acc)) ft-eq))
+      d' = proj₁ ih
+  in suc d'
+   , trans (proj₁ (proj₂ ih)) (sym (+-suc acc d'))
+   , trans (find-label-go-skip (thunk target) tl (compile-trace rest) (suc xi) nl)
+           (trans (proj₂ (proj₂ ih))
+                  (cong just (trans (trans (cong suc (+-assoc xi (length tl) (x86-off rest d')))
+                                           (sym (+-suc xi (length tl + x86-off rest d'))))
+                                    (cong (λ L → xi + (L + x86-off rest d')) (sym (cong length ca-eq))))))
 
 ------------------------------------------------------------------------
 -- find-label preservation: a flat jump landing at flat index j lands at
@@ -229,7 +305,7 @@ find-label-pres : ∀ (prog : AbstractTrace) (target acc xi j : ℕ)
   → Σ ℕ (λ d → (j ≡ acc + d)
         × (X.find-label-go (once target) (compile-trace prog) xi ≡ just (xi + x86-off prog d)))
 find-label-pres [] target acc xi j _ ()
-find-label-pres (i ∷ rest) target acc xi j (hv-plain hl fl-p ∷ all-rest) fl-eq =
+find-label-pres (i ∷ rest) target acc xi j (hv-plain hl fl-p _ ∷ all-rest) fl-eq =
   let ih = find-label-pres rest target (suc acc) (xi + x86-len i) j all-rest
              (trans (sym (fl-p rest target acc)) fl-eq)
       d' = proj₁ ih
@@ -237,8 +313,8 @@ find-label-pres (i ∷ rest) target acc xi j (hv-plain hl fl-p ∷ all-rest) fl-
    , trans (proj₁ (proj₂ ih)) (sym (+-suc acc d'))
    , trans (find-label-go-skip (once target) (compile-abstract i) (compile-trace rest) xi hl)
            (trans (proj₂ (proj₂ ih)) (cong just (+-assoc xi (x86-len i) (x86-off rest d'))))
-find-label-pres (i ∷ rest) target acc xi j (hv-otherlabel ℓ tl ca-eq nl ne fl-p ∷ all-rest) fl-eq
-  rewrite ca-eq | ne target =
+find-label-pres (i ∷ rest) target acc xi j (hv-otherlabel m tl ca-eq nl fl-p _ ∷ all-rest) fl-eq
+  rewrite ca-eq =
   let ih = find-label-pres rest target (suc acc) (suc xi + length tl) j all-rest
              (trans (sym (fl-p rest target acc)) fl-eq)
       d' = proj₁ ih
@@ -249,7 +325,7 @@ find-label-pres (i ∷ rest) target acc xi j (hv-otherlabel ℓ tl ca-eq nl ne f
                   (cong just (trans (trans (cong suc (+-assoc xi (length tl) (x86-off rest d')))
                                            (sym (+-suc xi (length tl + x86-off rest d'))))
                                     (cong (λ L → xi + (L + x86-off rest d')) (sym (cong length ca-eq))))))
-find-label-pres (i ∷ rest) target acc xi j (hv-clabel m ca-eq fl-c ∷ all-rest) fl-eq
+find-label-pres (i ∷ rest) target acc xi j (hv-clabel m ca-eq fl-c _ ∷ all-rest) fl-eq
   with m ≡ᵇ target in meq
 ... | true rewrite ca-eq | meq = 0 , comp1 , cong just (sym (+-identityʳ xi))
   where
@@ -285,6 +361,15 @@ find-label-corr : ∀ (prog : AbstractTrace) (target xi j : ℕ)
   → fl-go prog target 0 ≡ just j
   → X.find-label-go (once target) (compile-trace prog) xi ≡ just (xi + x86-off prog j)
 find-label-corr prog target xi j fl-eq with find-label-pres prog target 0 xi j (all-headView prog) fl-eq
+... | (d , j≡0+d , x86-eq) rewrite j≡0+d = x86-eq
+
+-- …and the CALL's, the same statement over the `thunk` provenance: the flat
+-- machine's `find-thunk` and the emitted `call`'s label resolution land on the
+-- same block. This is what `instr-call-closure`'s block-step will consume.
+find-thunk-corr : ∀ (prog : AbstractTrace) (target xi j : ℕ)
+  → ft-go prog target 0 ≡ just j
+  → X.find-label-go (thunk target) (compile-trace prog) xi ≡ just (xi + x86-off prog j)
+find-thunk-corr prog target xi j ft-eq with find-thunk-pres prog target 0 xi j (all-headView prog) ft-eq
 ... | (d , j≡0+d , x86-eq) rewrite j≡0+d = x86-eq
 
 ------------------------------------------------------------------------
@@ -437,19 +522,19 @@ find-label-none-go : ∀ (prog : AbstractTrace) (target acc xi : ℕ)
   → fl-go prog target acc ≡ nothing
   → X.find-label-go (once target) (compile-trace prog) xi ≡ nothing
 find-label-none-go [] target acc xi _ _ = refl
-find-label-none-go (i ∷ rest) target acc xi (hv-plain nl fl-p ∷ all-rest) fl-eq =
+find-label-none-go (i ∷ rest) target acc xi (hv-plain nl fl-p _ ∷ all-rest) fl-eq =
   trans (find-label-go-skip (once target) (compile-abstract i)
                             (compile-trace rest) xi nl)
         (find-label-none-go rest target (suc acc) (xi + length (compile-abstract i))
                             all-rest (trans (sym (fl-p rest target acc)) fl-eq))
 -- Plan 0.63: a foreign-provenance label never matches a `once` target, so
 -- the compiled scan just steps past it — one index, like the flat scan.
-find-label-none-go (i ∷ rest) target acc xi (hv-otherlabel ℓ tl ca-eq nl ne fl-p ∷ all-rest) fl-eq
-  rewrite ca-eq | ne target =
+find-label-none-go (i ∷ rest) target acc xi (hv-otherlabel m tl ca-eq nl fl-p _ ∷ all-rest) fl-eq
+  rewrite ca-eq =
   trans (find-label-go-skip (once target) tl (compile-trace rest) (suc xi) nl)
         (find-label-none-go rest target (suc acc) (suc xi + length tl) all-rest
                             (trans (sym (fl-p rest target acc)) fl-eq))
-find-label-none-go (i ∷ rest) target acc xi (hv-clabel m ca-eq fl-c ∷ all-rest) fl-eq
+find-label-none-go (i ∷ rest) target acc xi (hv-clabel m ca-eq fl-c _ ∷ all-rest) fl-eq
   with m ≡ᵇ target in meq
 -- a MATCH contradicts the flat scan's `nothing`
 ... | true  = absurd (trans (sym fl-eq)
