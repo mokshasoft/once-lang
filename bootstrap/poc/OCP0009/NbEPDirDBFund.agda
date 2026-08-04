@@ -50,8 +50,9 @@ open import normalizer.Syntax.Types
 
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; base; U; Π; Σ'; El; Hom; Hom-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃
+        ; RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
+        ; ⌜Id⌝; idrefl; jsub
         ; Ren; extR; renTy; renTm
         ; Sub; subTy; subTm; extS; idₛ
         ; _∘ᵣ_
@@ -73,10 +74,12 @@ open import poc.OCP0009.NbEPDirDBType
         ; Ctx; ◇; _▹_; ⌊_⌋
         ; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd
-        ; El-⌜Hom⌝; ξ-El; El-⌜Π⌝; _⟶ᵀ_; El-⌜base⌝; El-⌜Σ⌝
+        ; El-⌜Hom⌝; ξ-El; El-⌜Π⌝; _⟶ᵀ_; El-⌜base⌝; El-⌜Σ⌝; El-⌜Id⌝
+        ; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢trU; ⊢ap; ⊢conv
-        ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom
+        ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub
+        ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id
         ; ⊢ctx_; c-◇; c-▹
         ; ⊢id; ⊢appex )
 open import poc.OCP0009.NbEPDirDBVar
@@ -86,23 +89,26 @@ open import poc.OCP0009.NbEPDirDBVar
         ; wk-sub-tm; stk⊥pw; pw⊥stk; flat?; flat→stk; flat?-sub
         ; eqv; occ-sub; occ-ren-tm; avoids-wk )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; sub-comm )
-open import poc.OCP0009.NbEPDirDBConf using ( pwShift-ren; stkC?-red )
+open import poc.OCP0009.NbEPDirDBConf using ( pwShift-ren; stkC?-red; subTm-monoˢ; single-mono; ⟶*-trans )
 open import poc.OCP0009.NbEPDirDBDec using ( Dec; dec-conv )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; confluentᵀ; church-rosserᵀ; Π-inj
-        ; red→≅ᵀ; Π-reduct; Σ-reduct; mkΠRed; mkΣRed )
+        ; red→≅ᵀ; Π-reduct; Σ-reduct; mkΠRed; mkΣRed 
+        ; Id-reduct )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( HomΠShape; hsΠ; hsH; hom-shape; pw-El-decode
         ; HomRed; mkHomRed; Hom-to-Hom
         ; HomToΠ; via-U; via-Π; hom-to-Π
         ; U-reduct; wk-cancel-tm; ≅ᵀ-Homᵀ; gen-var )
 open import poc.OCP0009.NbEPDirDBLR
-  using ( SNe; sne-var; sne-app; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap
-        ; Ne; ne-var; ne-app; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; homSem₁
-        ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-exp
+  using ( SNe; sne-var; sne-app; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap; sne-jsub
+        ; Ne; ne-var; ne-app; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁
+        ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-cId; sn-idrefl; sn-exp
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
-        ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-taut; snr-trᵖ; snr-ap-J; snr-apᵖ
-        ; trstk?-ren; apstk?-ren; nopw?-ren; trlam?-ren
+        ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-J-Id; snr-taut; snr-trᵖ; snr-ap-J; snr-apᵖ
+        ; snr-jsub-refl; snr-jsubᵖ
+        ; trstk?-ren; apstk?-ren; idstk?-ren; nopw?-ren; trlam?-ren
+        ; idstk?-red; ⊩₀Id; ⊩₁Id; IdPay; idpay-transfer; idpay-peel; sne-nopay
         ; nopw⊥pw; stk⊥dead; pw⊥dead; dead→nopw; snr-nonpw
         ; snr-hrefl-pw; snr-J-Hom; snr-tr-pw; snr-tr-mot
         ; deadmot?; deadmot?-red; deadmot?-ren; deadmot→nopw; stk→deadmot
@@ -114,7 +120,7 @@ open import poc.OCP0009.NbEPDirDBLR
         ; payT-cast; payT-code; payHomT; _⟶snr*_; snr-done; snr-step
         ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; _⊩₀∋_; bwd₀; exp₁
         ; base-nf; El-ne-reduct; mkElNe; Hom-stk-reduct; mkHomStk
-        ; nopw?; trlam?; stablecd?; sne→spine; wk-single; snr→⟶
+        ; nopw?; trlam?; stablecd?; idstk?; sne→spine; wk-single; snr→⟶
         ; exp₀; f≢t
         ; mem-whred₁; homSem₀; homSem₀-mem-endpoints
         ; sne→stablecd; trstk?
@@ -170,6 +176,8 @@ subTy-var ρ (Σ' A B) =
 subTy-var ρ (El t)   = cong El (subTm-var ρ t)
 subTy-var ρ (Hom A t u) =
   Hom-cong₃ (subTy-var ρ A) (subTm-var ρ t) (subTm-var ρ u)
+subTy-var ρ (Id A t u) =
+  Id-cong₃ (subTy-var ρ A) (subTm-var ρ t) (subTm-var ρ u)
 subTm-var ρ (var x)   = refl
 subTm-var ρ (lam t)   =
   cong lam (trans (subTm-cong (exts-var ρ) t) (subTm-var (extR ρ) t))
@@ -194,6 +202,12 @@ subTm-var ρ (ap c b p)  =
   ap-cong₃ (subTm-var ρ c)
            (trans (subTm-cong (exts-var ρ) b) (subTm-var (extR ρ) b))
            (subTm-var ρ p)
+subTm-var ρ (⌜Id⌝ c a b) =
+  ⌜Id⌝-cong₃ (subTm-var ρ c) (subTm-var ρ a) (subTm-var ρ b)
+subTm-var ρ (idrefl c t) = cong₂ idrefl (subTm-var ρ c) (subTm-var ρ t)
+subTm-var ρ (jsub d p e) =
+  jsub-cong₃ (trans (subTm-cong (exts-var ρ) d) (subTm-var (extR ρ) d))
+             (subTm-var ρ p) (subTm-var ρ e)
 
 -- (1b) single substitution commutes with renaming — what `snr-β` needs when
 -- reflected through a renaming (§2).
@@ -273,6 +287,9 @@ sne-anti {ρ = ρ} {t = tr d p e} (sne-tr hd hp he key) =
 sne-anti {ρ = ρ} {t = ap c b p} (sne-ap hc hb hp key) =
   sne-ap (sn-anti hc) (sn-anti hb) (sn-anti hp)
          (trans (sym (apstk?-ren ρ p)) key)
+sne-anti {ρ = ρ} {t = jsub d p e} (sne-jsub hd hp he key) =
+  sne-jsub (sn-anti hd) (sn-anti hp) (sn-anti he)
+           (trans (sym (idstk?-ren ρ p)) key)
 
 sn-anti {t = var x}    _              = sn-ne (sne-var x)
 sn-anti {t = lam s}    (sn-lam h)     = sn-lam (sn-anti h)
@@ -290,6 +307,13 @@ sn-anti {t = tr d p e}  (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = ap c b p}  (sn-ne n)     = sn-ne (sne-anti n)
 sn-anti {t = ap c b p}  (sn-exp r h) with snr-anti r
+... | t' , (r' , refl) = sn-exp r' (sn-anti h)
+sn-anti {t = ⌜Id⌝ c a b} (sn-cId hc ha hb) =
+  sn-cId (sn-anti hc) (sn-anti ha) (sn-anti hb)
+sn-anti {t = idrefl c t} (sn-idrefl hc ht) =
+  sn-idrefl (sn-anti hc) (sn-anti ht)
+sn-anti {t = jsub d p e}  (sn-ne n)     = sn-ne (sne-anti n)
+sn-anti {t = jsub d p e}  (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = app t u}  (sn-ne n)      = sn-ne (sne-anti n)
 sn-anti {t = fst p}    (sn-ne n)      = sn-ne (sne-anti n)
@@ -447,6 +471,38 @@ snr-anti {t = fst (ap c b p)}   (snr-fst r) with snr-anti r
 ... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
 snr-anti {t = snd (ap c b p)}   (snr-snd r) with snr-anti r
 ... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
+snr-anti {t = app (⌜Id⌝ c a b) u} (snr-app ())
+snr-anti {t = app (idrefl c t) u} (snr-app ())
+snr-anti {t = app (jsub d p e) u} (snr-app r) with snr-anti r
+... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
+snr-anti {t = fst (⌜Id⌝ c a b)} (snr-fst ())
+snr-anti {t = fst (idrefl c t)} (snr-fst ())
+snr-anti {t = fst (jsub d p e)} (snr-fst r) with snr-anti r
+... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
+snr-anti {t = snd (⌜Id⌝ c a b)} (snr-snd ())
+snr-anti {t = snd (idrefl c t)} (snr-snd ())
+snr-anti {t = snd (jsub d p e)} (snr-snd r) with snr-anti r
+... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
+-- the two-former kernel: jsub root steps + the tr-with-Id-family paths
+snr-anti {ρ = ρ} {t = jsub d (idrefl c s) e} (snr-jsub-refl hd hc hs) =
+  e , (snr-jsub-refl (sn-anti hd) (sn-anti hc) (sn-anti hs) , refl)
+snr-anti {t = jsub d p e} (snr-jsubᵖ r) with snr-anti r
+... | p' , (r' , refl) = jsub d p' e , (snr-jsubᵖ r' , refl)
+snr-anti {ρ = ρ} {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e}
+         (snr-J-Id hd h₁ h₂ h₃ hs) =
+  e , ( snr-J-Id (sn-anti hd) (sn-anti h₁) (sn-anti h₂) (sn-anti h₃)
+                 (sn-anti hs)
+      , refl )
+snr-anti {t = tr d (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e} (snr-trᵖ (snr-hrefl-pw ()))
+snr-anti {t = tr d (hrefl (idrefl c₁ s₁) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl (idrefl c₁ s₁) s) e} (snr-trᵖ (snr-hrefl-pw ()))
+snr-anti {t = tr d (hrefl (jsub d₁ p₁ e₁) s) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (⌜Id⌝ c a b) e} (snr-trᵖ ())
+snr-anti {t = tr d (idrefl c s) e} (snr-trᵖ ())
+snr-anti {t = tr d (jsub d₁ p₁ e₁) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
 snr-anti {ρ = ρ} {t = ap c b (hrefl c₁ s)} (snr-ap-J h₁ kh) =
   hrefl c (subTm (single s) b)
   , ( snr-ap-J (sn-anti h₁) (trans (sym (stkC?-ren ρ c₁)) kh)
@@ -467,6 +523,10 @@ csr-anti {t = fst q} (csr-here r) with snr-anti r
 csr-anti {t = snd q} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = ap c b p} (csr-here r) with snr-anti r
+... | t' , (r' , refl) = t' , (csr-here r' , refl)
+csr-anti {t = ⌜Id⌝ c a b} (csr-here ())
+csr-anti {t = idrefl c t} (csr-here ())
+csr-anti {t = jsub d p e} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = hrefl _ _} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
@@ -502,6 +562,9 @@ sne-ren {ρ = ρ} (sne-tr {d = d} {p = p} hd hp he key) =
 sne-ren {ρ = ρ} (sne-ap {p = p} hc hb hp key) =
   sne-ap (sn-ren hc) (sn-ren hb) (sn-ren hp)
          (trans (apstk?-ren ρ p) key)
+sne-ren {ρ = ρ} (sne-jsub {p = p} hd hp he key) =
+  sne-jsub (sn-ren hd) (sn-ren hp) (sn-ren he)
+           (trans (idstk?-ren ρ p) key)
 
 sn-ren (sn-ne n)        = sn-ne (sne-ren n)
 sn-ren (sn-lam h)       = sn-lam (sn-ren h)
@@ -510,6 +573,8 @@ sn-ren sn-cb            = sn-cb
 sn-ren (sn-cΠ h₁ h₂)    = sn-cΠ (sn-ren h₁) (sn-ren h₂)
 sn-ren (sn-cΣ h₁ h₂)    = sn-cΣ (sn-ren h₁) (sn-ren h₂)
 sn-ren (sn-cH h₁ h₂ h₃) = sn-cH (sn-ren h₁) (sn-ren h₂) (sn-ren h₃)
+sn-ren (sn-cId h₁ h₂ h₃) = sn-cId (sn-ren h₁) (sn-ren h₂) (sn-ren h₃)
+sn-ren (sn-idrefl h₁ h₂) = sn-idrefl (sn-ren h₁) (sn-ren h₂)
 sn-ren (sn-exp r h)     = sn-exp (snr-ren r) (sn-ren h)
 
 snr-ren {ρ = ρ} (snr-β {s = s} {u = u} hu) =
@@ -540,6 +605,11 @@ snr-ren {ρ = ρ} (snr-ap-J {cB = cB} {b = b} {c₁ = c₁} {s = t} h₁ ks) =
         (cong (hrefl (renTm ρ cB)) (ren-single ρ t b))
         (snr-ap-J (sn-ren h₁) (trans (stkC?-ren ρ c₁) ks))
 snr-ren (snr-apᵖ r) = snr-apᵖ (snr-ren r)
+snr-ren (snr-jsub-refl hd hc hs) =
+  snr-jsub-refl (sn-ren hd) (sn-ren hc) (sn-ren hs)
+snr-ren (snr-jsubᵖ r) = snr-jsubᵖ (snr-ren r)
+snr-ren (snr-J-Id hd h₁ h₂ h₃ hs) =
+  snr-J-Id (sn-ren hd) (sn-ren h₁) (sn-ren h₂) (sn-ren h₃) (sn-ren hs)
 snr-ren snr-taut = snr-taut
 snr-ren {ρ = ρ} (snr-trᵖ r) = snr-trᵖ (snr-ren r)
 snr-ren {ρ = ρ} (snr-tr-mot σ) = snr-tr-mot (csr-ren σ)
@@ -651,6 +721,8 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 ... | mkΠRed _ _ () _ _
 ⊩₁-app (⊩₁Hom p _) S h k with Π-reduct p
 ... | mkΠRed _ _ () _ _
+⊩₁-app (⊩₁Id p) S h k with Π-reduct p
+... | mkΠRed _ _ () _ _
 ⊩₁-app (⊩₁Π p ⊩F ⊩G) S {v = v} h k with Π-reduct p
 ... | mkΠRed _ _ refl rF rG =
       ( bwd₁ q (⊩G v r)
@@ -671,6 +743,8 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 ... | mkΣRed _ _ () _ _
 ⊩₁-fstm (⊩₁Hom p _) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
+⊩₁-fstm (⊩₁Id p) h with Σ-reduct p
+... | mkΣRed _ _ () _ _
 ⊩₁-fstm (⊩₁Σ p ⊩F ⊩G) h with Σ-reduct p
 ... | mkΣRed _ _ refl rF rG =
       ( bwd₁ rF ⊩F
@@ -687,6 +761,8 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 ⊩₁-sndm (⊩₁Π p _ _) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
 ⊩₁-sndm (⊩₁Hom p _) h with Σ-reduct p
+... | mkΣRed _ _ () _ _
+⊩₁-sndm (⊩₁Id p) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
 ⊩₁-sndm (⊩₁Σ p ⊩F ⊩G) {w = w} h with Σ-reduct p
 ... | mkΣRed _ _ refl rF rG =
@@ -731,6 +807,7 @@ sne→nopw (sne-snd n)        = sne→spine n
 sne→nopw (sne-hrefl _ _ _)  = refl
 sne→nopw (sne-tr _ _ _ key) = key
 sne→nopw (sne-ap _ _ _ key) = refl
+sne→nopw (sne-jsub _ _ _ key) = key
 
 -- star-folds for the head strategy.
 snrs-hreflᶜ : {c c* t : RTm Ξ} → c ⟶csr* c* → hrefl c t ⟶snr* hrefl c* t
@@ -798,6 +875,10 @@ snHH sp sn-cb snt noPiT =
   sn-ne (sne-hrefl (snPlug sp sn-cb) snt (nopw-plug sp refl))
 snHH sp (sn-cΣ h₁ h₂) snt noPiT =
   sn-ne (sne-hrefl (snPlug sp (sn-cΣ h₁ h₂)) snt (nopw-plug sp refl))
+snHH sp (sn-cId h₁ h₂ h₃) snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-cId h₁ h₂ h₃)) snt (nopw-plug sp refl))
+snHH sp (sn-idrefl h₁ h₂) snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-idrefl h₁ h₂)) snt (nopw-plug sp refl))
 snHH sp (sn-cΠ {c = γ} {d = δ} h₁ h₂) snt noPiT =
   ⊥-elim (noPiT (Σ.fst (Σ.snd (pw-El-decode (plug sp (⌜Π⌝ γ δ))
                                             (pw-plug sp refl)))))
@@ -853,6 +934,15 @@ semHreflPay x₀ (⊩₀Hom p sh) lk snc pay snt ht =
   ... | E , (hE , πE) with Hom-stk-reduct sh hE
   ...   | mkHomStk _ _ _ _ refl with Π-reduct πE
   ...     | mkΠRed _ _ () _ _
+semHreflPay x₀ (⊩₀Id p) lk snc pay snt ht =
+  snHH sp-nil snc snt noPiT
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (iE , πE) with Π-reduct πE
+  ...   | mkΠRed _ _ refl _ _ with Id-reduct iE
+  ...     | _ , (_ , (_ , ((), _)))
 semHreflPay x₀ {c = c} {t = t} (⊩₀Π {G = G} p ⊩F ⊩G) lk snc pay snt ht =
   ( snWhole , closure )
   where
@@ -939,6 +1029,8 @@ codeNorm (sn-lam h) kn = _ , (csr-done , cf-dead refl)
 codeNorm (sn-pair ha hb) kn = _ , (csr-done , cf-dead refl)
 codeNorm sn-cb kn = _ , (csr-done , cf-stk refl)
 codeNorm (sn-cΣ h₁ h₂) kn = _ , (csr-done , cf-stk refl)
+codeNorm (sn-cId h₁ h₂ h₃) kn = _ , (csr-done , cf-stk refl)
+codeNorm (sn-idrefl h₁ h₂) kn = _ , (csr-done , cf-dead refl)
 codeNorm (sn-cΠ h₁ h₂) ()
 codeNorm (sn-cH {a = a₂} {b = b₂} hC ha hb) kn with codeNorm hC kn
 ... | C* , (csr , cf-stk k)  =
@@ -1072,11 +1164,14 @@ motFate (sn-ne (sne-hrefl {c = c₂} {t = t₂} snc snt kn)) with motFate snc
   hrmap (csr-step σ w) = csr-step (csr-here (snr-hreflᶜ σ)) (hrmap w)
 motFate (sn-ne (sne-tr h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-ne (sne-ap h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
+motFate (sn-ne (sne-jsub h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-lam h) = _ , (csr-done , mf-dead refl)
 motFate (sn-pair a b) = _ , (csr-done , mf-dead refl)
 motFate sn-cb = _ , (csr-done , mf-dead refl)
 motFate (sn-cΠ h₁ h₂) = _ , (csr-done , mf-pw refl)
 motFate (sn-cΣ h₁ h₂) = _ , (csr-done , mf-dead refl)
+motFate (sn-cId h₁ h₂ h₃) = _ , (csr-done , mf-dead refl)
+motFate (sn-idrefl h₁ h₂) = _ , (csr-done , mf-dead refl)
 motFate (sn-cH {c = C₂} {a = a₂} {b = b₂} hC ha hb) with motFate hC
 ... | C* , (csr , mf-pw k)   = ⌜Hom⌝ C* a₂ b₂ , (csrs-hom csr , mf-pw k)
 ... | C* , (csr , mf-dead k) = ⌜Hom⌝ C* a₂ b₂ , (csrs-hom csr , mf-dead k)
@@ -1123,6 +1218,8 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
     sn-ne (sne-tr snM (sn-ne (sne-tr h₁ h₂ h₃ key)) snE key)
   go' (sn-ne (sne-ap h₁ h₂ h₃ key)) =
     sn-ne (sne-tr snM (sn-ne (sne-ap h₁ h₂ h₃ key)) snE key)
+  go' (sn-ne (sne-jsub h₁ h₂ h₃ key)) =
+    sn-ne (sne-tr snM (sn-ne (sne-jsub h₁ h₂ h₃ key)) snE key)
   go' (sn-lam snf) with motFate snCT
   ... | CT* , (csr , mf-pw k) =
         ⊥-elim (noPiT (⟶ᵀ*-trans (⟶ᵀ*-El (csrs→⟶* csr))
@@ -1138,9 +1235,14 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
   go' (sn-cΠ h₁ h₂)    = sn-ne (sne-tr snM (sn-cΠ h₁ h₂) snE refl)
   go' (sn-cΣ h₁ h₂)    = sn-ne (sne-tr snM (sn-cΣ h₁ h₂) snE refl)
   go' (sn-cH h₁ h₂ h₃) = sn-ne (sne-tr snM (sn-cH h₁ h₂ h₃) snE refl)
+  go' (sn-cId h₁ h₂ h₃) = sn-ne (sne-tr snM (sn-cId h₁ h₂ h₃) snE refl)
+  go' (sn-idrefl h₁ h₂) = sn-ne (sne-tr snM (sn-idrefl h₁ h₂) snE refl)
 
   goH sn-cb sns kn = sn-exp (snr-J-base snM sns) snE
   goH (sn-cΣ h₁ h₂) sns kn = sn-exp (snr-J-Σ snM h₁ h₂ sns) snE
+  goH (sn-cId h₁ h₂ h₃) sns kn = sn-exp (snr-J-Id snM h₁ h₂ h₃ sns) snE
+  goH (sn-idrefl h₁ h₂) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-idrefl h₁ h₂) sns refl)) snE refl)
   goH (sn-exp rc snc') sns kn =
     sn-exp (snr-trᵖ (snr-hreflᶜ (csr-here rc)))
            (goH snc' sns (nopw?-red (snr→⟶ rc) kn))
@@ -1203,6 +1305,16 @@ semTr x₀ (⊩₀Hom p sh) lk snCT payR hA hT hU snp hTe hUe hp hE =
   ... | E , (hE₂ , πE) with Hom-stk-reduct sh hE₂
   ...   | mkHomStk _ _ _ _ refl with Π-reduct πE
   ...     | mkΠRed _ _ () _ _
+semTr x₀ (⊩₀Id p) lk snCT payR hA hT hU snp hTe hUe hp hE =
+  snTrGo noPiT snCT (CR1₀ (⊩₀Id p) hA)
+         (CR1₀ (homSem₀ (⊩₀Id p) hA hT) hE) snp
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (iE₂ , πE) with Π-reduct πE
+  ...   | mkΠRed _ _ refl _ _ with Id-reduct iE₂
+  ...     | _ , (_ , (_ , ((), _)))
 semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
       {aP} {tP} {uP} hA hT hU {p'} snp hTe hUe hp {eP} hE = go₀ snp hp
   where
@@ -1251,15 +1363,22 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-tr h₁ h₂ h₃ key)) snE' key)
   go₀ (sn-ne (sne-ap h₁ h₂ h₃ key)) hpʹ =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-ap h₁ h₂ h₃ key)) snE' key)
+  go₀ (sn-ne (sne-jsub h₁ h₂ h₃ key)) hpʹ =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-jsub h₁ h₂ h₃ key)) snE' key)
   go₀ (sn-lam snf) hpʹ = pwC snf hpʹ
   go₀ (sn-pair a b) hpʹ    = CR3₀ RH0 (sne-tr snM (sn-pair a b) snE' refl)
   go₀ sn-cb hpʹ            = CR3₀ RH0 (sne-tr snM sn-cb snE' refl)
   go₀ (sn-cΠ h₁ h₂) hpʹ    = CR3₀ RH0 (sne-tr snM (sn-cΠ h₁ h₂) snE' refl)
   go₀ (sn-cΣ h₁ h₂) hpʹ    = CR3₀ RH0 (sne-tr snM (sn-cΣ h₁ h₂) snE' refl)
   go₀ (sn-cH h₁ h₂ h₃) hpʹ = CR3₀ RH0 (sne-tr snM (sn-cH h₁ h₂ h₃) snE' refl)
+  go₀ (sn-cId h₁ h₂ h₃) hpʹ = CR3₀ RH0 (sne-tr snM (sn-cId h₁ h₂ h₃) snE' refl)
+  go₀ (sn-idrefl h₁ h₂) hpʹ = CR3₀ RH0 (sne-tr snM (sn-idrefl h₁ h₂) snE' refl)
 
   goH₀ sn-cb sns kn = exp₀ RH0 (snr-J-base snM sns) heU
   goH₀ (sn-cΣ h₁ h₂) sns kn = exp₀ RH0 (snr-J-Σ snM h₁ h₂ sns) heU
+  goH₀ (sn-cId h₁ h₂ h₃) sns kn = exp₀ RH0 (snr-J-Id snM h₁ h₂ h₃ sns) heU
+  goH₀ (sn-idrefl h₁ h₂) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-idrefl h₁ h₂) sns refl)) snE' refl)
   goH₀ (sn-exp rc snc') sns kn =
     exp₀ RH0 (snr-trᵖ (snr-hreflᶜ (csr-here rc)))
          (goH₀ snc' sns (nopw?-red (snr→⟶ rc) kn))
@@ -1425,6 +1544,8 @@ fund-ty {σ = σ} (ty-El {c = c} dc) x₀ ρ = emb (sem-El doneᵀ hc)
 -- plumbing is moving each endpoint's membership onto the IH's derivation of
 -- `⊩₁ A[σ]` (the `ty-El` idiom: `irrel₁` at `crflᵀ`).  `Hom` is
 -- substitution-stable definitionally, so the goal needs no cast.
+-- `ty-Id` — Id is INERT: the interp is immediate, no semantic action.
+fund-ty (ty-Id tyA dt du) x₀ ρ = ⊩₁Id doneᵀ
 fund-ty {σ = σ} (ty-Hom {t = t} {u = u} tyA dt du) x₀ ρ = homSem₁ R ht hu
   where
     R  = fund-ty tyA x₀ ρ
@@ -1684,6 +1805,7 @@ fund {Ξ = Ξ} {σ = σ}
     se-base : StkEl base
     se-Σ    : {A : RTy Ξ} {B : RTy (Ξ ∙)} → StkEl (Σ' A B)
     se-hom  : {H : RTy Ξ} {a b₂ : RTm Ξ} → StkEl H → StkEl (Hom H a b₂)
+    se-Id   : {A₂ : RTy Ξ} {t₂ u₂ : RTm Ξ} → StkEl (Id A₂ t₂ u₂)
 
   stkel-red : {A A' : RTy Ξ} → StkEl A → A ⟶ᵀ A' → StkEl A'
   stkel-red (se-el {c = ⌜base⌝} k) El-⌜base⌝ = se-base
@@ -1691,6 +1813,10 @@ fund {Ξ = Ξ} {σ = σ}
   stkel-red (se-el {c = ⌜Hom⌝ c' a' b'} k) (El-⌜Hom⌝ _ _ _) =
     se-hom (se-el k)
   stkel-red (se-el {c = ⌜Π⌝ _ _} ()) (El-⌜Π⌝ _ _)
+  stkel-red (se-el {c = ⌜Id⌝ c' a' b'} k) (El-⌜Id⌝ _ _ _) = se-Id
+  stkel-red se-Id (ξ-Idᵀ r) = se-Id
+  stkel-red se-Id (ξ-Idˡ r) = se-Id
+  stkel-red se-Id (ξ-Idʳ r) = se-Id
   stkel-red (se-el k) (ξ-El r) = se-el (stkC?-red r k)
   stkel-red se-Σ (ξ-Σˡ r) = se-Σ
   stkel-red se-Σ (ξ-Σʳ r) = se-Σ
@@ -1732,6 +1858,7 @@ fund {Ξ = Ξ} {σ = σ}
   ne-nostk (ne-hrefl _) = refl
   ne-nostk (ne-tr _)    = refl
   ne-nostk (ne-ap _)    = refl
+  ne-nostk (ne-jsub _)  = refl
 
   kflat : flat? cAI ≡ true
   kflat = flat?-sub σ cA key
@@ -1744,6 +1871,8 @@ fund {Ξ = Ξ} {σ = σ}
   flatMem (⊩₁Π p _ _) sns with ett-star (et-el kflat) p
   ... | ()
   flatMem (⊩₁Σ p _ _) sns with ett-star (et-el kflat) p
+  ... | ()
+  flatMem (⊩₁Id p) sns with ett-star (et-el kflat) p
   ... | ()
   flatMem (⊩₁ne {n = n} p ne) sns with ett-star (et-el kflat) p
   ... | et-el {c = n₂} k' =
@@ -1847,12 +1976,161 @@ fund {Ξ = Ξ} {σ = σ}
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-tr h₁ h₂ h₃ k)) k)
   goP (sn-ne (sne-ap h₁ h₂ h₃ k)) =
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-ap h₁ h₂ h₃ k)) k)
+  goP (sn-ne (sne-jsub h₁ h₂ h₃ k)) =
+    CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-jsub h₁ h₂ h₃ k)) k)
   goP (sn-lam h)       = CR3₀ R_H (sne-ap snCB snBB (sn-lam h) refl)
   goP (sn-pair ha hb)  = CR3₀ R_H (sne-ap snCB snBB (sn-pair ha hb) refl)
   goP sn-cb            = CR3₀ R_H (sne-ap snCB snBB sn-cb refl)
   goP (sn-cΠ h₁ h₂)    = CR3₀ R_H (sne-ap snCB snBB (sn-cΠ h₁ h₂) refl)
   goP (sn-cΣ h₁ h₂)    = CR3₀ R_H (sne-ap snCB snBB (sn-cΣ h₁ h₂) refl)
   goP (sn-cH h₁ h₂ h₃) = CR3₀ R_H (sne-ap snCB snBB (sn-cH h₁ h₂ h₃) refl)
+  goP (sn-cId h₁ h₂ h₃) = CR3₀ R_H (sne-ap snCB snBB (sn-cId h₁ h₂ h₃) refl)
+  goP (sn-idrefl h₁ h₂) = CR3₀ R_H (sne-ap snCB snBB (sn-idrefl h₁ h₂) refl)
+
+-- ★ the two-former kernel: the three symmetric cases.
+fund {σ = σ} (⊢⌜Id⌝ {c = c} {a = a} {b = b} dc da db) x₀ ρ =
+  ( ⊩₁U doneᵀ
+  , ( sn-cId snc sna snb
+    , ( bwd₀ (stepᵀ (El-⌜Id⌝ _ _ _) doneᵀ) (⊩₀Id doneᵀ) , _ ) ) )
+  where
+    hc = projl (irrel₁ crflᵀ (dfst (fund dc x₀ ρ)) (⊩₁U doneᵀ))
+               (subTm σ c) (dsnd (fund dc x₀ ρ))
+    snc = projl hc
+    ⊩c  = Σ.fst (projr hc)
+    sna = CR1₁ (dfst (fund da x₀ ρ)) (dsnd (fund da x₀ ρ))
+    snb = CR1₁ (dfst (fund db x₀ ρ)) (dsnd (fund db x₀ ρ))
+
+-- `⊢idrefl` — the payload is trivial: both endpoints are the SAME
+-- substituted term, so every reaching chain joins at it by `done`.
+fund {σ = σ} (⊢idrefl {c = c} {t = t} dc dt) x₀ ρ =
+  ( ⊩₁Id doneᵀ
+  , ( sn-idrefl snc snt , (λ _ → subTm σ t , (done , done)) ) )
+  where
+    snc = projl (projl (irrel₁ crflᵀ (dfst (fund dc x₀ ρ)) (⊩₁U doneᵀ))
+                       (subTm σ c) (dsnd (fund dc x₀ ρ)))
+    snt = CR1₁ (dfst (fund dt x₀ ρ)) (dsnd (fund dt x₀ ρ))
+
+-- ★★ `⊢jsub` — SUBST AT AN ARBITRARY FAMILY, semantically.  The path's
+-- endpoint-join payload makes the `El (d[t]) → El (d[u])` transfer
+-- CONVERSION-BASED (`irrel₁` over the join's `mono-El[]` chains), so
+-- no motive restriction is needed anywhere — the spike's claim, cashed.
+fund {Ξ = Ξ} {σ = σ}
+  (⊢jsub {A = A} {d = d} {t = t₀} {u = u₀} {p = p₀} {e = e₀}
+         dd dt du dp de) x₀ ρ =
+  relCast (cong El (sym (sub-comm σ d u₀))) refl
+          (emb R₀u , projP)
+  where
+  dI : RTm (Ξ ∙)
+  dI = subTm (extS σ) d
+  tI uI pI eI : RTm Ξ
+  tI = subTm σ t₀
+  uI = subTm σ u₀
+  pI = subTm σ p₀
+  eI = subTm σ e₀
+
+  RA = dfst (fund dt x₀ ρ)
+  ht = dsnd (fund dt x₀ ρ)
+  hu = projl (irrel₁ crflᵀ (dfst (fund du x₀ ρ)) RA) uI
+             (dsnd (fund du x₀ ρ))
+
+  -- the family instances (the ⊢lam pattern)
+  bodyD : (v : RTm Ξ) (r : RA ⊩₁∋ v) →
+          Rel (subTy (single v) (subTy (extS σ) U)) (subTm (single v) dI)
+  bodyD v r = relCast (sym (sub-single-Ty σ v U)) (sym (sub-single-Tm σ v d))
+                      (fund dd x₀ (⊩ˢ-ext ρ RA v r))
+
+  dmem : (v : RTm Ξ) (r : RA ⊩₁∋ v) → (⊩₁U doneᵀ) ⊩₁∋ subTm (single v) dI
+  dmem v r = projl (irrel₁ crflᵀ (dfst (bodyD v r)) (⊩₁U doneᵀ))
+                   (subTm (single v) dI) (dsnd (bodyD v r))
+
+  R₀t : ⊩₀ (El (subTm (single tI) dI))
+  R₀t = Σ.fst (projr (dmem tI ht))
+  R₀u : ⊩₀ (El (subTm (single uI) dI))
+  R₀u = Σ.fst (projr (dmem uI hu))
+
+  snDI : SN dI
+  snDI = sn-body x₀
+           (projl (dmem (var x₀) (CR3₁ RA (sne-var x₀))))
+
+  -- the path's SN + payload, by ROOT-analysis of its interp (only
+  -- `⊩₁Id` interps an Id-form type — Id is inert, every other root's
+  -- chain clashes by `Id-reduct`).
+  idMemGet : (R : ⊩₁ (Id (subTy σ A) tI uI)) → R ⊩₁∋ pI →
+             SN pI × IdPay tI uI pI
+  idMemGet (⊩₁Id {a = a₂} {b = b₂} ch) h with Id-reduct ch
+  ... | _ , (a₃ , (b₃ , (refl , (rH , (rt , ru))))) =
+        ( projl h
+        , (λ c₂ → let j = projr h c₂
+                  in Σ.fst j
+                     , ( ⟶*-trans rt (Σ.fst (Σ.snd j))
+                       , ⟶*-trans ru (Σ.snd (Σ.snd j)) )) )
+  idMemGet (⊩₁base ch) h with Id-reduct ch
+  ... | _ , (_ , (_ , ((), _)))
+  idMemGet (⊩₁U ch) h with Id-reduct ch
+  ... | _ , (_ , (_ , ((), _)))
+  idMemGet (⊩₁ne ch n) h with Id-reduct ch
+  ... | _ , (_ , (_ , ((), _)))
+  idMemGet (⊩₁Π ch _ _) h with Id-reduct ch
+  ... | _ , (_ , (_ , ((), _)))
+  idMemGet (⊩₁Σ ch _ _) h with Id-reduct ch
+  ... | _ , (_ , (_ , ((), _)))
+  idMemGet (⊩₁Hom ch _) h with Id-reduct ch
+  ... | _ , (_ , (_ , ((), _)))
+
+  hpP = idMemGet (dfst (fund dp x₀ ρ)) (dsnd (fund dp x₀ ρ))
+
+  -- e's membership at the t-instance
+  hEt : (emb R₀t) ⊩₁∋ eI
+  hEt = projl (irrel₁ crflᵀ
+                 (dfst (relCast (cong El (sub-comm σ d t₀)) refl
+                                (fund de x₀ ρ)))
+                 (emb R₀t))
+              eI
+              (dsnd (relCast (cong El (sub-comm σ d t₀)) refl
+                             (fund de x₀ ρ)))
+
+  -- the path analysis
+  nkeyJ : {p' : RTm Ξ} → SNe p' → idstk? p' ≡ true
+  nkeyJ (sne-var x)        = refl
+  nkeyJ (sne-app n _)      = sne→spine n
+  nkeyJ (sne-fst n)        = sne→spine n
+  nkeyJ (sne-snd n)        = sne→spine n
+  nkeyJ (sne-hrefl _ _ _)  = refl
+  nkeyJ (sne-tr _ _ _ key) = key
+  nkeyJ (sne-ap _ _ _ key) = key
+  nkeyJ (sne-jsub _ _ _ key) = key
+
+  goP : {p' : RTm Ξ} → SN p' → IdPay tI uI p' →
+        (emb R₀u) ⊩₁∋ jsub dI p' eI
+  goP (sn-exp r h) pay =
+    exp₁ (emb R₀u) (snr-jsubᵖ r) (goP h (λ ch → pay (snr-step r ch)))
+  goP (sn-ne n) pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI (sn-ne n) (CR1₁ (emb R₀t) hEt) (nkeyJ n))
+  goP (sn-idrefl hc hs) pay with pay snr-done
+  ... | w , (twI , uwI) =
+        exp₁ (emb R₀u) (snr-jsub-refl snDI hc hs)
+          (projl (irrel₁ cvj (emb R₀t) (emb R₀u)) eI hEt)
+    where
+    cvj : El (subTm (single tI) dI) ≅ᵀ El (subTm (single uI) dI)
+    cvj = ctrnᵀ (red→≅ᵀ (⟶ᵀ*-El (subTm-monoˢ (single-mono twI) dI)))
+                (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (subTm-monoˢ (single-mono uwI) dI))))
+  goP (sn-lam h) pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI (sn-lam h) (CR1₁ (emb R₀t) hEt) refl)
+  goP (sn-pair a b) pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI (sn-pair a b) (CR1₁ (emb R₀t) hEt) refl)
+  goP sn-cb pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI sn-cb (CR1₁ (emb R₀t) hEt) refl)
+  goP (sn-cΠ h₁ h₂) pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI (sn-cΠ h₁ h₂) (CR1₁ (emb R₀t) hEt) refl)
+  goP (sn-cΣ h₁ h₂) pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI (sn-cΣ h₁ h₂) (CR1₁ (emb R₀t) hEt) refl)
+  goP (sn-cH h₁ h₂ h₃) pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI (sn-cH h₁ h₂ h₃) (CR1₁ (emb R₀t) hEt) refl)
+  goP (sn-cId h₁ h₂ h₃) pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI (sn-cId h₁ h₂ h₃) (CR1₁ (emb R₀t) hEt) refl)
+
+  projP : (emb R₀u) ⊩₁∋ jsub dI pI eI
+  projP = goP (projl hpP) (projr hpP)
 
 fund {Ξ = Ξ} {σ = σ}
   (⊢trU {p = p₀} {e = e₀} {t = t₀} {u = u₀} dt du dp de) x₀ ρ =
@@ -1887,6 +2165,7 @@ fund {Ξ = Ξ} {σ = σ}
   nkey (sne-hrefl _ _ kn) = kn
   nkey (sne-tr _ _ _ key) = key
   nkey (sne-ap _ _ _ key) = key
+  nkey (sne-jsub _ _ _ key) = key
 
   cr3 : {p' : RTm Ξ} → SN p' → trstk? (var (vz {Ξ})) p' ≡ true →
         Σ (⊩₁ (El uI)) (λ R → R ⊩₁∋ tr (var vz) p' eI)
@@ -1924,6 +2203,8 @@ fund {Ξ = Ξ} {σ = σ}
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-cΠ h₁ h₂) hp'   = cr3 (sn-cΠ h₁ h₂) refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-cΣ h₁ h₂) hp'   = cr3 (sn-cΣ h₁ h₂) refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-cH h₁ h₂ h₃) hp' = cr3 (sn-cH h₁ h₂ h₃) refl
+  piCase q ⊩F ⊩G rt ru rEt rEu (sn-cId h₁ h₂ h₃) hp' = cr3 (sn-cId h₁ h₂ h₃) refl
+  piCase q ⊩F ⊩G rt ru rEt rEu (sn-idrefl h₁ h₂) hp' = cr3 (sn-idrefl h₁ h₂) refl
 
   main : (R : ⊩₁ (Hom U tI uI)) → R ⊩₁∋ pI →
          Σ (⊩₁ (El uI)) (λ R' → R' ⊩₁∋ tr (var vz) pI eI)
@@ -1934,6 +2215,8 @@ fund {Ξ = Ξ} {σ = σ}
   main (⊩₁ne q n) hp with hom-shape q
   ... | ()
   main (⊩₁Σ q ⊩F ⊩G) hp with hom-shape q
+  ... | ()
+  main (⊩₁Id q) hp with hom-shape q
   ... | ()
   main (⊩₁Hom q sh) hp with Hom-to-Hom q
   ... | mkHomRed rA rt ru with U-reduct rA
@@ -2082,6 +2365,7 @@ fund {Ξ = Ξ} {σ = σ}
   mem-bwd₀ q (⊩₀Π _ _ _) h = h
   mem-bwd₀ q (⊩₀Σ _ _ _) h = h
   mem-bwd₀ q (⊩₀Hom _ _) h = h
+  mem-bwd₀ q (⊩₀Id _) h = h
 
   mem-bwd₀⁻ : {X Y : RTy Ξ} (q : X ⟶ᵀ* Y) (R : ⊩₀ Y) {w : RTm Ξ} →
               (bwd₀ q R) ⊩₀∋ w → R ⊩₀∋ w
@@ -2090,6 +2374,7 @@ fund {Ξ = Ξ} {σ = σ}
   mem-bwd₀⁻ q (⊩₀Π _ _ _) h = h
   mem-bwd₀⁻ q (⊩₀Σ _ _ _) h = h
   mem-bwd₀⁻ q (⊩₀Hom _ _) h = h
+  mem-bwd₀⁻ q (⊩₀Id _) h = h
 
   heTgt : R_result ⊩₁∋ eI
   heTgt =
@@ -2200,12 +2485,16 @@ fund {Ξ = Ξ} {σ = σ}
     cr3 (sn-ne (sne-tr h₁ h₂ h₃ key)) key
   go (sn-ne (sne-ap h₁ h₂ h₃ key)) hp' =
     cr3 (sn-ne (sne-ap h₁ h₂ h₃ key)) key
+  go (sn-ne (sne-jsub h₁ h₂ h₃ key)) hp' =
+    cr3 (sn-ne (sne-jsub h₁ h₂ h₃ key)) key
   go (sn-lam snf) hp'      = goLam snf hp'
   go (sn-pair sa sb) hp'   = cr3 (sn-pair sa sb) refl
   go sn-cb hp'             = cr3 sn-cb refl
   go (sn-cΠ h₁ h₂) hp'     = cr3 (sn-cΠ h₁ h₂) refl
   go (sn-cΣ h₁ h₂) hp'     = cr3 (sn-cΣ h₁ h₂) refl
   go (sn-cH h₁ h₂ h₃) hp'  = cr3 (sn-cH h₁ h₂ h₃) refl
+  go (sn-cId h₁ h₂ h₃) hp' = cr3 (sn-cId h₁ h₂ h₃) refl
+  go (sn-idrefl h₁ h₂) hp' = cr3 (sn-idrefl h₁ h₂) refl
 
   -- the path's own head star, wrapped into the tr.
   trP-star : {p₁ p₂ : RTm Ξ} → p₁ ⟶snr* p₂ →
@@ -2217,6 +2506,10 @@ fund {Ξ = Ξ} {σ = σ}
     ( R_result , exp₁ R_result (snr-J-base snD sns) heTgt )
   goh (sn-cΣ h₁ h₂) sns kn hp' =
     ( R_result , exp₁ R_result (snr-J-Σ snD h₁ h₂ sns) heTgt )
+  goh (sn-cId h₁ h₂ h₃) sns kn hp' =
+    ( R_result , exp₁ R_result (snr-J-Id snD h₁ h₂ h₃ sns) heTgt )
+  goh (sn-idrefl h₁ h₂) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-idrefl h₁ h₂) sns refl)) refl
   goh (sn-exp rc snc') sns kn hp' =
     ( dfst z , exp₁ (dfst z) (snr-trᵖ (snr-hreflᶜ (csr-here rc))) (dsnd z) )
     where z = goh snc' sns (nopw?-red (snr→⟶ rc) kn)
