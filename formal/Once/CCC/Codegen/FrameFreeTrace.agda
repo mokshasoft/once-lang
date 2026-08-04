@@ -57,6 +57,7 @@ open import Once.CCC.Machine.SMCore using
 open import Once.CCC.Machine.FrameFree using
   (FrameFreeI; FrameFreeT; frame-free-nest)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.CCC.Codegen.ShapeTable using (HeapModed; IsHeap)
 open import Once.CCC.Codegen.IRToTrace using
   (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
@@ -189,78 +190,82 @@ cata-dispatch-ff (strat-branching F) n1 l1 at ff = cata-branching-ff F n1 l1 at 
 ------------------------------------------------------------------------
 -- THE THEOREM, over arbitrary frontier `n` / label counter `l`.
 ------------------------------------------------------------------------
-frame-free-trace' : ∀ {A B} (ir : IR A B) (n l : ℕ)
+-- Plan 0.63 step 2b: CONDITIONAL ON `HeapModed`. `lea-slot` joined
+-- `FrameFreeI`'s ⊥ set (it is the sole creator of a stack pointer), and it
+-- IS emitted — by the four STACK-mode clauses below, whose `IsHeap Stack`
+-- premise is `⊥`. So the theorem is exactly as strong as it can be: a
+-- heap-moded trace contains no frame op and no `lea-slot`.
+frame-free-trace' : ∀ {A B} (ir : IR A B) (hm : HeapModed ir) (n l : ℕ)
                   → FrameFreeTrace (trace-of (ir-to-trace' n l ir))
-frame-free-trace' id       n l = tt ∷ []
-frame-free-trace' fst      n l = tt ∷ []
-frame-free-trace' snd      n l = tt ∷ []
-frame-free-trace' terminal n l = []
-frame-free-trace' initial  n l = tt ∷ []
-frame-free-trace' (g ∘ f)  n l =
-  ++⁺ (frame-free-trace' f _ _) (tt ∷ frame-free-trace' g _ _)
-frame-free-trace' (⟨ f , g ⟩ Stack) n l =
+frame-free-trace' id       hm n l = tt ∷ []
+frame-free-trace' fst      hm n l = tt ∷ []
+frame-free-trace' snd      hm n l = tt ∷ []
+frame-free-trace' terminal hm n l = []
+frame-free-trace' initial  hm n l = tt ∷ []
+frame-free-trace' (g ∘ f)  (hf , hg) n l =
+  ++⁺ (frame-free-trace' f hf _ _) (tt ∷ frame-free-trace' g hg _ _)
+frame-free-trace' (⟨ f , g ⟩ Stack) (() , _) n l
+frame-free-trace' (⟨ f , g ⟩ Heap) (_ , hf , hg) n l =
   tt ∷ tt ∷
-  ++⁺ (frame-free-trace' f _ _)
-      (tt ∷ tt ∷ ++⁺ (frame-free-trace' g _ _) (tt ∷ tt ∷ []))
-frame-free-trace' (⟨ f , g ⟩ Heap) n l =
-  tt ∷ tt ∷
-  ++⁺ (frame-free-trace' f _ _)
+  ++⁺ (frame-free-trace' f hf _ _)
       (tt ∷ tt ∷
-       ++⁺ (frame-free-trace' g _ _)
+       ++⁺ (frame-free-trace' g hg _ _)
            (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []))
-frame-free-trace' (curry b Stack) n l = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-frame-free-trace' (curry b Heap)  n l =
+frame-free-trace' (curry b Stack) (() , _) n l
+frame-free-trace' (curry b Heap)  hm n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-frame-free-trace' apply n l =
+frame-free-trace' apply hm n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-frame-free-trace' (inl Stack) n l = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-frame-free-trace' (inr Stack) n l = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-frame-free-trace' (inl Heap)  n l =
+frame-free-trace' (inl Stack) () n l
+frame-free-trace' (inr Stack) () n l
+frame-free-trace' (inl Heap)  hm n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-frame-free-trace' (inr Heap)  n l =
+frame-free-trace' (inr Heap)  hm n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 -- case is FLAT CONTROL since item 6 — plain splices, no depth obligation.
-frame-free-trace' (case f g) n l =
+frame-free-trace' (case f g) (hf , hg) n l =
   ++⁺ (tt ∷ tt ∷ tt ∷ [])
-      (++⁺ (frame-free-trace' g _ _)
+      (++⁺ (frame-free-trace' g hg _ _)
            (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
-                (++⁺ (frame-free-trace' f _ _) (tt ∷ []))))
-frame-free-trace' (In _ _)  n l = tt ∷ []
-frame-free-trace' (out-μ _) n l = tt ∷ []
-frame-free-trace' (Cata {F} _ alg) n l =
-  cata-dispatch-ff (cata-strategy ⌈ F ⌉F) _ _ _ (frame-free-trace' alg n l)
-frame-free-trace' (Para _ _)     n l = []
-frame-free-trace' (Out _)        n l = tt ∷ []
-frame-free-trace' (in-ν _ _)     n l = []
-frame-free-trace' (Ana _ _)      n l = []
-frame-free-trace' (Hylo _ _ _ _) n l = []
-frame-free-trace' (Fuse _ _ _ _) n l = []
-frame-free-trace' (free-heap _)  n l = tt ∷ []
-frame-free-trace' (SigOp _)      n l = tt ∷ []
-frame-free-trace' (const fits-int _)   n l = tt ∷ []
-frame-free-trace' (const fits-float _) n l = tt ∷ []
+                (++⁺ (frame-free-trace' f hf _ _) (tt ∷ []))))
+frame-free-trace' (In _ _)  hm n l = tt ∷ []
+frame-free-trace' (out-μ _) hm n l = tt ∷ []
+frame-free-trace' (Cata {F} _ alg) hm n l =
+  cata-dispatch-ff (cata-strategy ⌈ F ⌉F) _ _ _ (frame-free-trace' alg hm n l)
+frame-free-trace' (Para _ _)     hm n l = []
+frame-free-trace' (Out _)        hm n l = tt ∷ []
+frame-free-trace' (in-ν _ _)     hm n l = []
+frame-free-trace' (Ana _ _)      hm n l = []
+frame-free-trace' (Hylo _ _ _ _) hm n l = []
+frame-free-trace' (Fuse _ _ _ _) hm n l = []
+frame-free-trace' (free-heap _)  hm n l = tt ∷ []
+frame-free-trace' (SigOp _)      hm n l = tt ∷ []
+frame-free-trace' (const fits-int _)   hm n l = tt ∷ []
+frame-free-trace' (const fits-float _) hm n l = tt ∷ []
 
 ------------------------------------------------------------------------
 -- Corollaries over the public entry points, and the form the flat↔x86-64
 -- correspondence consumes: a FETCH into an emitted program never yields a
 -- frame op.
 ------------------------------------------------------------------------
-frame-free-at-frontier : ∀ {A B} (ir : IR A B) (n : ℕ)
+frame-free-at-frontier : ∀ {A B} (ir : IR A B) (hm : HeapModed ir) (n : ℕ)
                        → FrameFreeTrace (ir-to-trace-at-frontier n ir)
-frame-free-at-frontier ir n with ir-to-trace' n 0 ir | frame-free-trace' ir n 0
+frame-free-at-frontier ir hm n with ir-to-trace' n 0 ir | frame-free-trace' ir hm n 0
 ... | _ , _ , _ , _ | ff = ff
 
-ir-to-trace-frame-free : ∀ {A B} (ir : IR A B) → FrameFreeTrace (ir-to-trace ir)
-ir-to-trace-frame-free ir = frame-free-at-frontier ir 0
+ir-to-trace-frame-free : ∀ {A B} (ir : IR A B) (hm : HeapModed ir)
+                       → FrameFreeTrace (ir-to-trace ir)
+ir-to-trace-frame-free ir hm = frame-free-at-frontier ir hm 0
 
 -- …and as the DEEP trace predicate, for the nested obligations downstream.
-ir-to-trace-frame-free-deep : ∀ {A B} (ir : IR A B) → FrameFreeT (ir-to-trace ir)
-ir-to-trace-frame-free-deep ir = frame-free-nest (ir-to-trace-frame-free ir)
+ir-to-trace-frame-free-deep : ∀ {A B} (ir : IR A B) (hm : HeapModed ir)
+                            → FrameFreeT (ir-to-trace ir)
+ir-to-trace-frame-free-deep ir hm = frame-free-nest (ir-to-trace-frame-free ir hm)
 
 module _ {FS : FrameSemantics} where
   open FlatMachine {FS}
 
-  fetch-frame-free : ∀ {A B} (ir : IR A B) {k i}
+  fetch-frame-free : ∀ {A B} (ir : IR A B) (hm : HeapModed ir) {k i}
                    → fetch (ir-to-trace ir) k ≡ just i → FrameFreeI i
-  fetch-frame-free ir = fetch-All (ir-to-trace-frame-free ir)
+  fetch-frame-free ir hm = fetch-All (ir-to-trace-frame-free ir hm)

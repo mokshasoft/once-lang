@@ -43,7 +43,7 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace;
    instr-alloc-stack; instr-dealloc-stack; instr-push-frame; instr-pop-frame;
-   instr-case-on-tag; instr-loop; lea-indexed;
+   instr-case-on-tag; instr-loop; lea-indexed; lea-slot;
    instr-ctrl; c-thunk; c-ret)
 
 -- No mutual needed since Plan 0.54 item 6: with `instr-case-on-tag` in the ⊥
@@ -67,6 +67,16 @@ FrameFreeI (instr-loop t)            = ⊥
 -- deletes the `lea-indexed-wf` cursor-discipline residual with its site, and
 -- the pointer-bounds invariant needs no cursor case at all.
 FrameFreeI (lea-indexed _)           = ⊥
+-- `lea-slot` is the ONE INSTRUCTION THAT CREATES A STACK POINTER
+-- (`exec-abstract (lea-slot slot)` writes `SV-Ptr (AtStack …)`; nothing else
+-- in the machine does). Plan 0.63 step 2b: it is emitted only by the four
+-- STACK-MODE clauses of `ir-to-trace'` (`⟨_,_⟩ Stack`, `curry _ Stack`,
+-- `inl/inr Stack`), so a HEAP-MODED trace contains none — which is why the
+-- walk below (`FrameFreeTrace`) is now conditional on `HeapModed`, and why
+-- `FlatStackPtr`'s invariant could be simplified to "there is no stack
+-- pointer". Not a fossil: it is live codegen, just not on the heap-moded
+-- path the flat↔x86-64 correspondence runs over.
+FrameFreeI (lea-slot _)              = ⊥
 -- The two closure markers are NOT fossils — they are the opposite,
 -- scaffolding ahead of their producer (Plan 0.63 step 1 added the
 -- constructors; step 2b puts closure BODIES into `ir-to-trace`, which is

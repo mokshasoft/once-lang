@@ -269,9 +269,13 @@ open FlatInv public
 -- (`Once.CCC.Codegen.FrameFreeTrace`) — this is a fact about `ir-to-trace`, not
 -- about the machine. Here it is only APPLIED, at the `Emitted` witness the run
 -- context already carries.
-frame-op-absurd : ∀ prog (fs : FlatState) (i : AbstractInstr) → Emitted prog
+-- Plan 0.63 step 2b: also needs HEAP MODE, because `lea-slot` joined the ⊥
+-- set — it is emitted, but only by the four Stack-mode clauses. `RunAt`
+-- carries `run-heap`, so every call site already has the evidence.
+frame-op-absurd : ∀ prog (fs : FlatState) (i : AbstractInstr) (em : Emitted prog)
+                → HeapModed (proj₁ em)
                 → fetch prog (fpc fs) ≡ just i → FrameFreeI i
-frame-op-absurd .(ir-to-trace ir) fs i (ir , refl) ftq = fetch-frame-free {FS} ir ftq
+frame-op-absurd .(ir-to-trace ir) fs i (ir , refl) hm ftq = fetch-frame-free {FS} ir hm ftq
 
 flat-inv-step : ∀ {ev env} (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
               → fetch prog (fpc fs) ≡ just i → halted (floc fs) ≡ false
@@ -713,36 +717,19 @@ run-stack-slot prog fs (mkRunAt ir eq hm reach) = go fs reach
         go fs' (reach-start .fs' _ eqB)       = eqB
         go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
           trans (flat-stack-slot i prog fs''
-                   (frame-op-absurd prog fs'' i (ir , eq) ftq))
+                   (frame-op-absurd prog fs'' i (ir , eq) hm ftq))
                 (go fs'' r')
 
--- THE EMITTER HALF of `stack-ptr-step`'s premise: a `lea-slot` addresses the
--- first of TWO adjacent slots the same prologue reserved — the pair `⟨_,_⟩
--- Stack`, the closure record `curry _ Stack`, the sum payload `inl`/`inr Stack`.
--- Carried by `SlotBudget`'s induction alongside the single-slot bound.
-emitted-lea-slot-pair : ∀ (ir : IR Unit Unit) (k : ℕ) (slot : Slot)
-                      → fetch (ir-to-trace ir) k ≡ just (lea-slot slot)
-                      → suc slot < ir-stack-budget ir
-emitted-lea-slot-pair ir k slot ftq =
-  pair-below (fetch-All (ir-slots-below-budget ir) ftq) slot refl
-
 -- ONE FRAME-FREE STEP PRESERVES THE INVARIANT — a THEOREM for EVERY
--- constructor (item 6 made the case absurd too). The dispatch feeds
--- `FlatStackPtr.flat-stack-ptr` its one producer premise from the run
--- context: the `lea-slot` pair bound from the emitter
--- (`emitted-lea-slot-pair`, transported along `run-stack-slot`).
--- Enumerated: the vacuous premises (`λ ()`) need `i` concrete.
+-- constructor. Plan 0.63 step 2b SIMPLIFIED this: `lea-slot` joined
+-- `FrameFreeI`'s ⊥ set (a heap-moded trace emits none), so its route is now
+-- absurd like the fossils' and the whole pair-bound plumbing it used to need
+-- — `emitted-lea-slot-pair`, `SlotBudget.SlotBelow`'s second field, and the
+-- `run-stack-slot` transport — is gone with it.
 stack-ptr-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog fs
                → fetch prog (fpc fs) ≡ just i → FrameFreeI i
                → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
-stack-ptr-step (lea-slot slot) prog fs r ftq ff wf =
-  flat-stack-ptr (lea-slot slot) prog fs ff
-    (λ { k refl → bound }) wf
-  where bound : suc slot < stackSlot (regs (floc fs))
-        bound = subst (λ z → suc slot < z) (sym (run-stack-slot prog fs r))
-                  (emitted-lea-slot-pair (run-ir r) (fpc fs) slot
-                    (subst (λ p → fetch p (fpc fs) ≡ just (lea-slot slot))
-                           (run-emit r) ftq))
+stack-ptr-step (lea-slot slot) prog fs r ftq () wf
 stack-ptr-step (lea-indexed slot) prog fs r ftq () wf
 stack-ptr-step (instr-case-on-tag f g) prog fs r ftq () wf
 stack-ptr-step (instr-alloc-stack n)   prog fs r ftq () wf
@@ -751,66 +738,65 @@ stack-ptr-step (instr-push-frame cap)  prog fs r ftq () wf
 stack-ptr-step instr-pop-frame         prog fs r ftq () wf
 stack-ptr-step (instr-loop body)       prog fs r ftq () wf
 stack-ptr-step mov-to-output prog fs r ftq ff wf =
-  flat-stack-ptr mov-to-output prog fs ff (λ { _ () }) wf
+  flat-stack-ptr mov-to-output prog fs ff wf
 stack-ptr-step mov-to-input prog fs r ftq ff wf =
-  flat-stack-ptr mov-to-input prog fs ff (λ { _ () }) wf
+  flat-stack-ptr mov-to-input prog fs ff wf
 stack-ptr-step mov-output-to-input2 prog fs r ftq ff wf =
-  flat-stack-ptr mov-output-to-input2 prog fs ff (λ { _ () }) wf
+  flat-stack-ptr mov-output-to-input2 prog fs ff wf
 stack-ptr-step mov-input2-to-output prog fs r ftq ff wf =
-  flat-stack-ptr mov-input2-to-output prog fs ff (λ { _ () }) wf
+  flat-stack-ptr mov-input2-to-output prog fs ff wf
 stack-ptr-step load-indirect prog fs r ftq ff wf =
-  flat-stack-ptr load-indirect prog fs ff (λ { _ () }) wf
+  flat-stack-ptr load-indirect prog fs ff wf
 stack-ptr-step load-indirect-suc prog fs r ftq ff wf =
-  flat-stack-ptr load-indirect-suc prog fs ff (λ { _ () }) wf
+  flat-stack-ptr load-indirect-suc prog fs ff wf
 stack-ptr-step (load-from-slot k) prog fs r ftq ff wf =
-  flat-stack-ptr (load-from-slot k) prog fs ff (λ { _ () }) wf
+  flat-stack-ptr (load-from-slot k) prog fs ff wf
 stack-ptr-step (store-at-slot k) prog fs r ftq ff wf =
-  flat-stack-ptr (store-at-slot k) prog fs ff (λ { _ () }) wf
+  flat-stack-ptr (store-at-slot k) prog fs ff wf
 stack-ptr-step store-indirect prog fs r ftq ff wf =
-  flat-stack-ptr store-indirect prog fs ff (λ { _ () }) wf
+  flat-stack-ptr store-indirect prog fs ff wf
 stack-ptr-step store-indirect-suc prog fs r ftq ff wf =
-  flat-stack-ptr store-indirect-suc prog fs ff (λ { _ () }) wf
+  flat-stack-ptr store-indirect-suc prog fs ff wf
 stack-ptr-step (restore-input k) prog fs r ftq ff wf =
-  flat-stack-ptr (restore-input k) prog fs ff (λ { _ () }) wf
+  flat-stack-ptr (restore-input k) prog fs ff wf
 stack-ptr-step (instr-reclaim-to k) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-reclaim-to k) prog fs ff (λ { _ () }) wf
+  flat-stack-ptr (instr-reclaim-to k) prog fs ff wf
 stack-ptr-step instr-call-closure prog fs r ftq ff wf =
-  flat-stack-ptr instr-call-closure prog fs ff (λ { _ () }) wf
+  flat-stack-ptr instr-call-closure prog fs ff wf
 stack-ptr-step (worklist-init k) prog fs r ftq ff wf =
-  flat-stack-ptr (worklist-init k) prog fs ff (λ { _ () }) wf
+  flat-stack-ptr (worklist-init k) prog fs ff wf
 stack-ptr-step (worklist-push k) prog fs r ftq ff wf =
-  flat-stack-ptr (worklist-push k) prog fs ff (λ { _ () }) wf
+  flat-stack-ptr (worklist-push k) prog fs ff wf
 stack-ptr-step (worklist-pop k) prog fs r ftq ff wf =
-  flat-stack-ptr (worklist-pop k) prog fs ff (λ { _ () }) wf
+  flat-stack-ptr (worklist-pop k) prog fs ff wf
 stack-ptr-step (worklist-check k) prog fs r ftq ff wf =
-  flat-stack-ptr (worklist-check k) prog fs ff (λ { _ () }) wf
+  flat-stack-ptr (worklist-check k) prog fs ff wf
 stack-ptr-step (instr-sigop si) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-sigop si) prog fs ff (λ { _ () }) wf
+  flat-stack-ptr (instr-sigop si) prog fs ff wf
 stack-ptr-step (instr-load-const p v) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-load-const p v) prog fs ff (λ { _ () }) wf
+  flat-stack-ptr (instr-load-const p v) prog fs ff wf
 stack-ptr-step (instr-load-code-addr k) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-load-code-addr k) prog fs ff (λ { _ () }) wf
+  flat-stack-ptr (instr-load-code-addr k) prog fs ff wf
 stack-ptr-step instr-save-closure-reg prog fs r ftq ff wf =
-  flat-stack-ptr instr-save-closure-reg prog fs ff (λ { _ () }) wf
+  flat-stack-ptr instr-save-closure-reg prog fs ff wf
 stack-ptr-step (instr-load-tag-lit k) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-load-tag-lit k) prog fs ff (λ { _ () }) wf
+  flat-stack-ptr (instr-load-tag-lit k) prog fs ff wf
 stack-ptr-step (instr-alloc-heap k) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-alloc-heap k) prog fs ff (λ { _ () }) wf
+  flat-stack-ptr (instr-alloc-heap k) prog fs ff wf
 stack-ptr-step (instr-reg-op op) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-reg-op op) prog fs ff (λ { _ () }) wf
+  flat-stack-ptr (instr-reg-op op) prog fs ff wf
 stack-ptr-step (instr-ctrl c) prog fs r ftq ff wf =
-  flat-stack-ptr (instr-ctrl c) prog fs ff (λ { _ () }) wf
+  flat-stack-ptr (instr-ctrl c) prog fs ff wf
 
 -- A start state satisfies the invariant vacuously: both memories are empty and
 -- no register holds a pointer.
 entry-stack-ptr : ∀ (fs : FlatState) → EntryLike fs → StackPtrWF fs
 entry-stack-ptr fs (_ , _ , _ , _ , hemp , semp , _ , noptr) = record
   { sp-regs  = λ r → go r (readReg (regs (floc fs)) r) refl
-  ; sp-heap  = λ hl → subst (StackPtrOK? _ _) (sym (hemp hl)) tt
-  ; sp-stack = λ f k → subst (StackPtrOK? _ _) (sym (semp f k)) tt }
+  ; sp-heap  = λ hl → subst StackPtrOK? (sym (hemp hl)) tt
+  ; sp-stack = λ f k → subst StackPtrOK? (sym (semp f k)) tt }
   where go : ∀ (r : AbstractReg) (v : StoredValue FS) → readReg (regs (floc fs)) r ≡ v
-           → StackPtrOK (current-frame (falloc fs)) (stackSlot (regs (floc fs)))
-                        (readReg (regs (floc fs)) r)
+           → StackPtrOK (readReg (regs (floc fs)) r)
         go r (SV-Ptr loc)  eq = ⊥-elim (noptr r loc eq)
         go r (SV-Tag t)    eq rewrite eq = tt
         go r (SV-Lit p v)  eq rewrite eq = tt
@@ -854,7 +840,7 @@ run-stack-ptr prog fs (mkRunAt ir eq hm reach) = go fs reach
         go fs' (reach-start .fs' el _) = entry-stack-ptr fs' el
         go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
           stack-ptr-step i prog fs'' (mkRunAt ir eq hm r') ftq
-            (frame-op-absurd prog fs'' i (ir , eq) ftq)
+            (frame-op-absurd prog fs'' i (ir , eq) hm ftq)
             (go fs'' r')
 
 -- the two forms the block-steps ask for, now READ OFF the invariant
@@ -984,7 +970,7 @@ run-wf-ptr-bounds prog fs (mkRunAt ir eq hm reach) = go fs reach
           let ih = go fs'' r' in
           flat-wf-step i prog fs'' (proj₁ ih) ,
           ptr-bounds-step i prog fs'' (mkRunAt ir eq hm r') ftq
-            (frame-op-absurd prog fs'' i (ir , eq) ftq)
+            (frame-op-absurd prog fs'' i (ir , eq) hm ftq)
             (proj₁ ih) (proj₂ ih)
 
 run-ptr-bounds : ∀ prog (fs : FlatState) (r : RunAt prog fs) → PtrBoundsWF fs
@@ -1230,7 +1216,7 @@ mutual
   -- THE FOUR FRAME OPS ARE UNREACHABLE (plan 0.54 rung D, item 2): `ir-to-trace`
   -- emits none of them, and `FlatInv` carries `Emitted prog`. See `FrameFree`.
   events-running-fetch {hv} n ev env prog fs s (instr-alloc-stack k) cc wf h ftq =
-    ⊥-elim (frame-op-absurd prog fs (instr-alloc-stack k) (run-emitted (inv-run wf)) ftq)
+    ⊥-elim (frame-op-absurd prog fs (instr-alloc-stack k) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
   events-running-fetch {hv} n ev env prog fs s (instr-alloc-heap k) cc wf h ftq =
     ccc-step-bs n ev env prog fs s (instr-alloc-heap k)
       (block-step-alloc-heap prog fs s k cc h ftq
@@ -1240,11 +1226,11 @@ mutual
          (λ hl eq → wf-fresh (inv-wf wf) hl (≤-reflexive (sym eq)))
          (heap-room prog fs s k (inv-run wf) cc ftq)) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc wf h ftq =
-    ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (run-emitted (inv-run wf)) ftq)
+    ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
   events-running-fetch {hv} n ev env prog fs s (instr-push-frame k) cc wf h ftq =
-    ⊥-elim (frame-op-absurd prog fs (instr-push-frame k) (run-emitted (inv-run wf)) ftq)
+    ⊥-elim (frame-op-absurd prog fs (instr-push-frame k) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
   events-running-fetch {hv} n ev env prog fs s instr-pop-frame cc wf h ftq =
-    ⊥-elim (frame-op-absurd prog fs instr-pop-frame (run-emitted (inv-run wf)) ftq)
+    ⊥-elim (frame-op-absurd prog fs instr-pop-frame (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
   events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-int v) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-load-const fits-int v)
       (block-step-load-const prog fs s v cc h ftq) wf ftq h refl h
@@ -1255,7 +1241,7 @@ mutual
   -- `lea-indexed` joined the unemittable set 2026-08-01 (heap-linked stacks,
   -- no indexed cursor) — the route is absurd, like the frame ops and the loop.
   events-running-fetch {hv} n ev env prog fs s (lea-indexed slot) cc wf h ftq =
-    ⊥-elim (frame-op-absurd prog fs (lea-indexed slot) (run-emitted (inv-run wf)) ftq)
+    ⊥-elim (frame-op-absurd prog fs (lea-indexed slot) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
   -- plan 0.61: a stack POINTER now has an address, so lea-slot routes.
   events-running-fetch {hv} n ev env prog fs s (lea-slot slot) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (lea-slot slot)
@@ -1280,9 +1266,9 @@ mutual
   -- `stack-room`); `c-ret` additionally needs the `FlatCorr` component
   -- relating the ghost `fret` to the machine stack.
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-thunk m b)) cc wf h ftq =
-    ⊥-elim (frame-op-absurd prog fs (instr-ctrl (c-thunk m b)) (run-emitted (inv-run wf)) ftq)
+    ⊥-elim (frame-op-absurd prog fs (instr-ctrl (c-thunk m b)) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-ret b)) cc wf h ftq =
-    ⊥-elim (frame-op-absurd prog fs (instr-ctrl (c-ret b)) (run-emitted (inv-run wf)) ftq)
+    ⊥-elim (frame-op-absurd prog fs (instr-ctrl (c-ret b)) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-jmp m)) cc wf h ftq = cjmp-step n ev env prog fs s m cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-branch-scratch-zero m)) cc wf h ftq = branch-step n ev env prog fs s m cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m)) cc wf h ftq = tag-branch-step n ev env prog fs s m cc wf h ftq
@@ -1295,7 +1281,7 @@ mutual
   -- (`c-label`/`c-jmp`/`c-branch-*`), so `ir-to-trace` never emits it and the
   -- route is UNREACHABLE, exactly like the four frame ops.
   events-running-fetch {hv} n ev env prog fs s (instr-loop body) cc wf h ftq =
-    ⊥-elim (frame-op-absurd prog fs (instr-loop body) (run-emitted (inv-run wf)) ftq)
+    ⊥-elim (frame-op-absurd prog fs (instr-loop body) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
   -- `instr-case-on-tag` — GENUINELY EMITTED (`case f g`, and the Tier-2 functor
   -- walks). One flat step runs a whole nested trace through `exec-case-dispatch`
   -- → `exec-trace`, while the x86 side is a `cmp`/`je`/branch-block: this needs a
@@ -1304,7 +1290,7 @@ mutual
   -- item 6: `case` compiles to flat control — `instr-case-on-tag` has no
   -- producer, so the route is absurd like the frame ops and the loop.
   events-running-fetch {hv} n ev env prog fs s (instr-case-on-tag f g) cc wf h ftq =
-    ⊥-elim (frame-op-absurd prog fs (instr-case-on-tag f g) (run-emitted (inv-run wf)) ftq)
+    ⊥-elim (frame-op-absurd prog fs (instr-case-on-tag f g) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
   -- `instr-call-closure` — GENUINELY EMITTED (`apply`), and a MODEL gap rather
   -- than a proof gap: the abstract semantics is the IDENTITY while the concrete
   -- `call *0x8(%r12)` transfers control. Closing it needs the abstract machine to

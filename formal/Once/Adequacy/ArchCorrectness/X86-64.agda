@@ -306,7 +306,7 @@ conc-flat-sim-just :
   conc-trace (just ir) n ≡ FFOx.flat-trace-of ir-obs-correct (just ir) n
 conc-flat-sim-just ir n
   rewrite compile-trace-cnt-agrees 0 (ir-to-trace ir)
-            (no-nested-of-all (ir-to-trace ir) (ir-to-trace-frame-free ir)) =
+            (no-nested-of-all (ir-to-trace ir) (ir-to-trace-frame-free ir (main-heap-moded ir))) =
   trans (conc-fuel ir n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
   where
     agree = events-agree (Nof ir n)
