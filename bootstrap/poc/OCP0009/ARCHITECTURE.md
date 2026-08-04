@@ -541,7 +541,41 @@ then the known cascade.  ⚠ G1's `stkC?` counts `⌜Σ⌝` as stable; G3
 moves `⌜Σ⌝` to a `pw?`-like unfoldable class — land G1 first, then flip
 the classifier ONCE, or the same key gets paid twice.
 
-### G4 — η IN THE KERNEL JUDGMENT                       decision + work
+### G4 — η IN THE KERNEL JUDGMENT          ✅ DECIDED (2026-08-04): satellite-only
+
+The decision, with the user: the kernel stays β-only.  TWO independent
+walls make kernel-η a re-foundation, not an extension: (1) the recorded
+Kripke trap — η-long NFs force a renaming action on `⊩₁`, which the
+no-Kripke design cannot absorb (~1000-line LR redesign); (2) the
+understated one — η-rules are TYPE-DIRECTED, and untyped β + surjective
+pairing is non-confluent (Klop), so kernel-η means a typed conversion
+judgment, discarding the church-rosser architecture the tower sits on.
+η buys definitional (not propositional) equality; the two-former kernel
+does NOT need it (β-only MLTT is standard).  Plan: grow `NbEPDirDBEta`
+with Σ-η as propositional/postprocessing results when convenient; the
+fat core is re-evaluated at the welding (G7) as its own project.
+
+### THE AXES LEDGER (2026-08-04 discussion — candidates for after the
+### two-former kernel; judge each by the ap-landing test)
+
+Axes split into FORMERS (new type formers: Id, Hom, modal □/◇) and
+JUDGMENTS (annotations on typing: QTT grades, variance, sizes).
+
+**Sizedness** (discussed 2026-08-04): the mathematics of size-based
+termination (Abel) is SOUND; Agda's troubles are design choices —
+first-class `Size`, the `∞ ≤ ∞` fixed point, relevance leaks — plus
+the inherent infection cost of explicit indices.  As an axis here:
+* as FORMERS (Agda-style): ruled out — re-imports the landmines;
+* as a JUDGMENT (checker-internal size inference replacing the guard,
+  no user-facing sizes): consistency preserved by erasure/refinement;
+  the obligation is SN of the sized system — Canon-harness territory;
+* ★ the twist: size order is a DIRECTED relation, sized inductives are
+  covariant in their index, and size coercion is covariant transport —
+  sizedness may land as a WELL-FOUNDED INSTANCE of the Hom axis
+  (where more computes, because the order supports induction).
+  Spike this framing when the axes work opens.
+
+### (superseded) G4 — η IN THE KERNEL JUDGMENT         decision + work
 
 The committed `⊢conv`/`dec-conv` are β-only; η lives in the satellite
 `NbEPDirDBEta` (Π-η only, and written before `pair`/`fst`/`snd` existed —
