@@ -28,19 +28,21 @@ open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; base; U; Π; Σ'; El; Hom; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
-        ; ⌜Hom⌝; hrefl; tr; ap
+        ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
         ; var; lam; app; pair; fst; snd; vz; vs; renTm )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
         ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
+        ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ
+        ; ξ-idreflᶜ; ξ-idreflᵃ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ
         ; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ )
 open import poc.OCP0009.NbEPDirDBConf
   using ( _⟹_; pvar; plam; papp; pβ; ppair; pfst; psnd; pβfst; pβsnd
         ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝; p⌜Hom⌝; phrefl
         ; ptr; ptr-J-base; ptr-J-Σ; ptr-taut
-        ; phrefl-pw; ptr-J-Hom; ptr-pw; pap; pap-J
+        ; phrefl-pw; ptr-J-Hom; ptr-pw; pap; pap-J; p⌜Id⌝; pidrefl; pjsub; pjsub-refl
         ; _⁺; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟶*-trans
         ; ⟹-ren; ⟶*-ren; ⟶*-appˡ )
 
@@ -93,6 +95,18 @@ data _⟶ᵀ*_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟶ᵀ*-Homʳ done       = doneᵀ
 ⟶ᵀ*-Homʳ (step r p) = stepᵀ (ξ-Homʳ r) (⟶ᵀ*-Homʳ p)
 
+⟶ᵀ*-Idᵀ : {A A' : RTy Γ} {t u : RTm Γ} → A ⟶ᵀ* A' → Id A t u ⟶ᵀ* Id A' t u
+⟶ᵀ*-Idᵀ doneᵀ       = doneᵀ
+⟶ᵀ*-Idᵀ (stepᵀ r p) = stepᵀ (ξ-Idᵀ r) (⟶ᵀ*-Idᵀ p)
+
+⟶ᵀ*-Idˡ : {A : RTy Γ} {t t' u : RTm Γ} → t ⟶* t' → Id A t u ⟶ᵀ* Id A t' u
+⟶ᵀ*-Idˡ done       = doneᵀ
+⟶ᵀ*-Idˡ (step r p) = stepᵀ (ξ-Idˡ r) (⟶ᵀ*-Idˡ p)
+
+⟶ᵀ*-Idʳ : {A : RTy Γ} {t u u' : RTm Γ} → u ⟶* u' → Id A t u ⟶ᵀ* Id A t u'
+⟶ᵀ*-Idʳ done       = doneᵀ
+⟶ᵀ*-Idʳ (step r p) = stepᵀ (ξ-Idʳ r) (⟶ᵀ*-Idʳ p)
+
 ------------------------------------------------------------------------
 -- Parallel type reduction; reuses the TERM triangle at `El` leaves.
 ------------------------------------------------------------------------
@@ -121,12 +135,19 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
            A ⟹ᵀ A' → B ⟹ᵀ B' → f ⟹ f' → g ⟹ g' →
            Hom (Π A B) f g ⟹ᵀ
            Π A' (Hom B' (app (renTm vs f') (var vz)) (app (renTm vs g') (var vz)))
+  -- the two-former kernel: `Id` is INERT — congruence + decode only.
+  pId : {A A' : RTy Γ} {t t' u u' : RTm Γ} →
+        A ⟹ᵀ A' → t ⟹ t' → u ⟹ u' → Id A t u ⟹ᵀ Id A' t' u'
+  pEl-⌜Id⌝ : {c c' a a' b b' : RTm Γ} →
+             c ⟹ c' → a ⟹ a' → b ⟹ b' →
+             El (⌜Id⌝ c a b) ⟹ᵀ Id (El c') a' b'
 
 ⟹ᵀ-refl : (A : RTy Γ) → A ⟹ᵀ A
 ⟹ᵀ-refl base     = pbase
 ⟹ᵀ-refl (El t)   = pEl (⟹-refl t)
 ⟹ᵀ-refl U        = pU
 ⟹ᵀ-refl (Π A B)  = pΠ (⟹ᵀ-refl A) (⟹ᵀ-refl B)
+⟹ᵀ-refl (Id A t u) = pId (⟹ᵀ-refl A) (⟹-refl t) (⟹-refl u)
 ⟹ᵀ-refl (Σ' A B) = pΣ (⟹ᵀ-refl A) (⟹ᵀ-refl B)
 ⟹ᵀ-refl (Hom A t u) = pHom (⟹ᵀ-refl A) (⟹-refl t) (⟹-refl u)
 
@@ -146,6 +167,10 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟶ᵀ→⟹ᵀ (ξ-Homᵀ r) = pHom (⟶ᵀ→⟹ᵀ r) (⟹-refl _) (⟹-refl _)
 ⟶ᵀ→⟹ᵀ (ξ-Homˡ r) = pHom (⟹ᵀ-refl _) (⟶→⟹ r) (⟹-refl _)
 ⟶ᵀ→⟹ᵀ (ξ-Homʳ r) = pHom (⟹ᵀ-refl _) (⟹-refl _) (⟶→⟹ r)
+⟶ᵀ→⟹ᵀ (El-⌜Id⌝ c a b) = pEl-⌜Id⌝ (⟹-refl c) (⟹-refl a) (⟹-refl b)
+⟶ᵀ→⟹ᵀ (ξ-Idᵀ r) = pId (⟶ᵀ→⟹ᵀ r) (⟹-refl _) (⟹-refl _)
+⟶ᵀ→⟹ᵀ (ξ-Idˡ r) = pId (⟹ᵀ-refl _) (⟶→⟹ r) (⟹-refl _)
+⟶ᵀ→⟹ᵀ (ξ-Idʳ r) = pId (⟹ᵀ-refl _) (⟹-refl _) (⟶→⟹ r)
 
 ⟹ᵀ→⟶ᵀ* : {A B : RTy Γ} → A ⟹ᵀ B → A ⟶ᵀ* B
 ⟹ᵀ→⟶ᵀ* pbase    = doneᵀ
@@ -164,6 +189,13 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   stepᵀ (El-⌜Hom⌝ c a b)
     (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ (⟶ᵀ*-El (⟹→⟶* p)))
                (⟶ᵀ*-trans (⟶ᵀ*-Homˡ (⟹→⟶* q)) (⟶ᵀ*-Homʳ (⟹→⟶* r))))
+⟹ᵀ→⟶ᵀ* (pEl-⌜Id⌝ {c = c} {c'} {a} {a'} {b} {b'} p q r) =
+  stepᵀ (El-⌜Id⌝ c a b)
+    (⟶ᵀ*-trans (⟶ᵀ*-Idᵀ (⟶ᵀ*-El (⟹→⟶* p)))
+               (⟶ᵀ*-trans (⟶ᵀ*-Idˡ (⟹→⟶* q)) (⟶ᵀ*-Idʳ (⟹→⟶* r))))
+⟹ᵀ→⟶ᵀ* (pId p q r) =
+  ⟶ᵀ*-trans (⟶ᵀ*-Idᵀ (⟹ᵀ→⟶ᵀ* p))
+    (⟶ᵀ*-trans (⟶ᵀ*-Idˡ (⟹→⟶* q)) (⟶ᵀ*-Idʳ (⟹→⟶* r)))
 ⟹ᵀ→⟶ᵀ* (pHom p q r) =
   ⟶ᵀ*-trans (⟶ᵀ*-Homᵀ (⟹ᵀ→⟶ᵀ* p))
     (⟶ᵀ*-trans (⟶ᵀ*-Homˡ (⟹→⟶* q)) (⟶ᵀ*-Homʳ (⟹→⟶* r)))
@@ -195,6 +227,9 @@ El ⌜base⌝ ⁺ᵀ    = base
 El (⌜Π⌝ c d) ⁺ᵀ = Π (El (c ⁺)) (El (d ⁺))
 El (⌜Σ⌝ c d) ⁺ᵀ = Σ' (El (c ⁺)) (El (d ⁺))
 El (⌜Hom⌝ c a b) ⁺ᵀ = Hom (El (c ⁺)) (a ⁺) (b ⁺)
+El (⌜Id⌝ c a b) ⁺ᵀ  = Id (El (c ⁺)) (a ⁺) (b ⁺)
+El (idrefl c t) ⁺ᵀ  = El (idrefl c t ⁺)
+El (jsub d p e) ⁺ᵀ  = El (jsub d p e ⁺)
 El (hrefl c t) ⁺ᵀ   = El (hrefl c t ⁺)
 El (tr d p e) ⁺ᵀ    = El (tr d p e ⁺)
 El (ap c b p) ⁺ᵀ    = El (ap c b p ⁺)
@@ -212,6 +247,10 @@ Hom (Π A B) f g ⁺ᵀ     =
 Hom (Σ' A B) t u ⁺ᵀ    = Hom (Σ' (A ⁺ᵀ) (B ⁺ᵀ)) (t ⁺) (u ⁺)
 Hom (El e) t u ⁺ᵀ      = Hom ((El e) ⁺ᵀ) (t ⁺) (u ⁺)
 Hom (Hom A a b) t u ⁺ᵀ = Hom ((Hom A a b) ⁺ᵀ) (t ⁺) (u ⁺)
+Hom (Id A a b) t u ⁺ᵀ  = Hom ((Id A a b) ⁺ᵀ) (t ⁺) (u ⁺)
+-- the two-former kernel: `Id` is INERT — a UNIFORM development row, no
+-- head dispatch at all.
+Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 
 ⟹ᵀ-⁺ : {A B : RTy Γ} → A ⟹ᵀ B → B ⟹ᵀ A ⁺ᵀ
 ⟹ᵀ-⁺ pbase          = pbase
@@ -229,6 +268,7 @@ Hom (Hom A a b) t u ⁺ᵀ = Hom ((Hom A a b) ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl (p⌜Π⌝ p q)) = pEl-⌜Π⌝ (⟹-⁺ p) (⟹-⁺ q)
 ⟹ᵀ-⁺ (pEl (p⌜Σ⌝ p q)) = pEl-⌜Σ⌝ (⟹-⁺ p) (⟹-⁺ q)
 ⟹ᵀ-⁺ (pEl (p⌜Hom⌝ p q r)) = pEl-⌜Hom⌝ (⟹-⁺ p) (⟹-⁺ q) (⟹-⁺ r)
+⟹ᵀ-⁺ (pEl (p⌜Id⌝ p q r)) = pEl-⌜Id⌝ (⟹-⁺ p) (⟹-⁺ q) (⟹-⁺ r)
 ⟹ᵀ-⁺ (pEl w@(phrefl _ _))      = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(ptr _ _ _))       = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(ptr-J-base _))    = pEl (⟹-⁺ w)
@@ -239,6 +279,9 @@ Hom (Hom A a b) t u ⁺ᵀ = Hom ((Hom A a b) ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl w@(ptr-pw _ _ _ _ _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pap _ _ _))        = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pap-J _ _ _ _))    = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pidrefl _ _))      = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pjsub _ _ _))      = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pjsub-refl _))     = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pΠ p q)       = pΠ (⟹ᵀ-⁺ p) (⟹ᵀ-⁺ q)
 ⟹ᵀ-⁺ (pΣ p q)       = pΣ (⟹ᵀ-⁺ p) (⟹ᵀ-⁺ q)
 ⟹ᵀ-⁺ pEl-⌜base⌝     = pbase
@@ -268,6 +311,12 @@ Hom (Hom A a b) t u ⁺ᵀ = Hom ((Hom A a b) ⁺ᵀ) (t ⁺) (u ⁺)
   pHom (⟹ᵀ-⁺ (pHom-U p q)) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom (pHom-Π pA pB pf pg) pt pu) =
   pHom (⟹ᵀ-⁺ (pHom-Π pA pB pf pg)) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom (pId pA pa pb) pt pu) =
+  pHom (⟹ᵀ-⁺ (pId pA pa pb)) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom (pEl-⌜Id⌝ p q r) pt pu) =
+  pHom (⟹ᵀ-⁺ (pEl-⌜Id⌝ p q r)) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pId pA pt pu) = pId (⟹ᵀ-⁺ pA) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pEl-⌜Id⌝ p q r) = pId (pEl (⟹-⁺ p)) (⟹-⁺ q) (⟹-⁺ r)
 ⟹ᵀ-⁺ (pEl-⌜Hom⌝ p q r) = pHom (pEl (⟹-⁺ p)) (⟹-⁺ q) (⟹-⁺ r)
 ⟹ᵀ-⁺ (pHom-U p q) = pΠ (pEl (⟹-⁺ p)) (pEl (⟹-ren vs (⟹-⁺ q)))
 ⟹ᵀ-⁺ (pHom-Π pA pB pf pg) =
