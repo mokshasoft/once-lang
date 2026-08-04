@@ -95,7 +95,26 @@ fired on a numeral; `Id`-rewriting at ℕ (`jsub` on a numeral
 equation); consistency corollary: `¬ (◇ ⊢ p ∷ Hom Nat 1 0)` via the
 base-collapse.
 
-## 7. Mechanized-half order (the ap-landing template)
+## 7. THE STAGING (refined with the user, 2026-08-04)
+
+  **Stage A — the datatype core** (land first, bank the checkpoint):
+  `Unit`/`unit` + `Nat`/`nzero`/`nsuc`/`natrec`, full metatheory.
+  Independently valuable: arithmetic, `Id`-rewriting on numbers,
+  numeral canonicity, consistency intact.  NO order rules yet.
+
+  **Stage B — the computing order**: the three `Hom Nat` rules on top
+  (the §2 payoff).  Small delta over A: type-level rules riding the
+  Hom-Π pattern (Type/SR/Conf-type-level/Inj/Subj + StkHd/stuck-Hom
+  rows in the LR).
+
+  **Stage C — N-in** (separate spike later): `⌜Nat⌝ ∈ U`, `tr-J-Nat`,
+  the tt-path rules (§3 risky point 2), `cong`-at-ℕ, sized-family
+  coercion via `PosC` growth, and `tr`-as-≤-transitivity (NOTE: the
+  composition motive needs the coded ambient, so the general
+  open-endpoint ≤-trans is C-territory; at canonical numbers it is
+  trivial — both sides compute to `Unit`).
+
+## 8. Mechanized-half order (the ap-landing template)
 
 ⊤/Nat/indℕ + the three Hom-Nat rules through Pi → Var → Type → SR →
 Conf (endpoint-keyed Takahashi rows mirror Hom-Π's) → Inj (Nat/⊤
