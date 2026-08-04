@@ -40,7 +40,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Ren; extR; Sub; subTy; subTm; renTy; renTm )
 open import poc.OCP0009.NbEPDirDBVar
-  using ( 𝔹; true; false; occTm; pw?; stkC?; pwBody; pwShift )
+  using ( 𝔹; true; false; occTm; pw?; stkC?; flat?; pwBody; pwShift )
 
 private
   variable
@@ -346,7 +346,7 @@ data _⊢_∷_ where
   -- keystone); the TARGET code `cB` annotates the result reflexivity.
   -- Endpoint premises follow the `⊢lam` option-A pattern.
   ⊢ap   : ∀ {Γ cA cB b p t u} →
-          Γ ⊢ cA ∷ U → stkC? cA ≡ true →
+          Γ ⊢ cA ∷ U → flat? cA ≡ true →
           Γ ⊢ cB ∷ U →
           (Γ ▹ El cA) ⊢ b ∷ El (renTm vs cB) →
           Γ ⊢ t ∷ El cA → Γ ⊢ u ∷ El cA →

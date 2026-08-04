@@ -22,9 +22,9 @@
 --
 --   ✗ `sym`   : unwritable — its motive is `Neg`, not `Pos`
 --     (`NbEPDirDBVar`'s negative control); no derivation exists.
---   ✗ `cong`  : unwritable — there is NO former for a function's action
---     on a hom, and `tr`'s motives cannot have `f (var vz)` targets
---     (the directed-`ap` gap; see the two-former plan).
+--   ★ `⊢cong`, `cong-computes` — CLOSED (the directed-`ap` landing):
+--     a body's action on a hom is a former, and J computes at
+--     reflexivities.
 --   ✗ `subst` : `tr` is licensed at `PosC` motives only — transport at
 --     an arbitrary family is exactly what directedness forbids.
 --
@@ -39,17 +39,17 @@ open import normalizer.Syntax.Types
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom
-        ; RTm; var; lam; app; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr
+        ; RTm; var; lam; app; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; renTm; renTy; subTm; ⌜Hom⌝-cong₃ )
 open import poc.OCP0009.NbEPDirDBVar
   using ( occ-ren-tm; avoids-wk )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶_; _⟶*_; done; step
-        ; β; tr-taut; tr-J-base; hrefl-pw
+        ; β; tr-taut; tr-J-base; hrefl-pw; ap-J
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Hom⌝; Hom-U
         ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; here
-        ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢hrefl; ⊢tr; ⊢conv
+        ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢hrefl; ⊢tr; ⊢ap; ⊢conv
         ; _⊢ty_; ty-base; ty-El )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
@@ -145,20 +145,42 @@ base-empty : {t : RTm ε} → ◇ ⊢ t ∷ base → ⊥
 base-empty = consistency
 
 ------------------------------------------------------------------------
--- 6. ✗ THE GAPS, demonstrated by absence (the roadmap's forcing
---    functions — see memory `two-former-kernel-direction`):
+-- 6. ★ `cong` — CLOSED by the directed-`ap` landing (2026-08-04).
+--    A body's action on a hom, as a typed kernel term: the source
+--    ambient is FLAT (`base` here — the ℕ-analogue), the target code
+--    annotates the result, and J computes at reflexivities.
+------------------------------------------------------------------------
+
+⊢cong : {Γ : Ctx} {cB : RTm ⌊ Γ ⌋} {b : RTm (⌊ Γ ⌋ ∙)} {t u p : RTm ⌊ Γ ⌋} →
+        Γ ⊢ cB ∷ U →
+        (Γ ▹ El ⌜base⌝) ⊢ b ∷ El (renTm vs cB) →
+        Γ ⊢ t ∷ El ⌜base⌝ → Γ ⊢ u ∷ El ⌜base⌝ →
+        Γ ⊢ p ∷ Hom (El ⌜base⌝) t u →
+        Γ ⊢ ap cB b p
+          ∷ Hom (El cB) (subTm (single t) b) (subTm (single u) b)
+⊢cong dcB db dt du dp = ⊢ap ⊢⌜base⌝ refl dcB db dt du dp
+
+-- ...and `cong` at a reflexivity COMPUTES — J fires in one step:
+cong-computes : {Γ : Cx} (cB : RTm Γ) (b : RTm (Γ ∙)) (s : RTm Γ) →
+                ap cB b (hrefl ⌜base⌝ s) ⟶ hrefl cB (subTm (single s) b)
+cong-computes cB b s = ap-J cB b ⌜base⌝ s refl
+
+------------------------------------------------------------------------
+-- 7. ✗ THE REMAINING GAPS, demonstrated by absence (the roadmap's
+--    forcing functions — see memory `two-former-kernel-direction`):
 --
 --    `sym p` for `p : Hom (El c) t u`: there is no term to write.  The
 --    only transport motives are `PosC`'s (`var vz`, `⌜Hom⌝ c a (var vz)`)
 --    and sym's motive `Hom _ (var vz) b` is `Neg` — NbEPDirDBVar's
 --    negative control proves no `Pos` derivation exists.
 --
---    `cong f p : Hom _ (f t) (f u)`: no former acts on homs; a motive
---    `⌜Hom⌝ c a (app f (var vz))` is outside `PosC` (the target must be
---    the bare variable).  This is the directed-`ap` gap: even the
---    `⊢trans` chains above cannot be built UNDER a constructor.
---
 --    `subst P eq`: transport at an arbitrary family — forbidden by
 --    directedness itself (arbitrary families have no variance), fixed
 --    only by the two-former kernel (`Id` + J alongside `Hom`).
+--
+--    `ap` at Σ-typed and function-typed SOURCES: deliberately deferred
+--    (the flat-source key) — Σ-memberships carry componentwise
+--    structure the path argument cannot supply, and lam-path `ap` is
+--    higher-order cong (whiskering); both join the G3 Σ-frontier
+--    ledger.
 ------------------------------------------------------------------------

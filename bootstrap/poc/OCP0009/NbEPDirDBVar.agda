@@ -565,6 +565,48 @@ stkC?-ren ρ (hrefl c t)   = refl
 stkC?-ren ρ (tr d p e)    = refl
 stkC?-ren ρ (ap c b p)    = refl
 
+-- ★ directed `ap` (SpikeAp, refined at the fund landing): the SOURCE
+-- ambient key.  `flat?` codes decode to SN-only-membership interps
+-- (base, stuck Hom) — exactly what the semantic ap case can feed its
+-- body instances with.  `⌜Σ⌝` is EXCLUDED: Σ-memberships carry
+-- componentwise structure the path argument cannot supply; ap at
+-- Σ-typed sources joins the G3 Σ-frontier ledger.
+flat? : RTm Γ → 𝔹
+flat? ⌜base⌝        = true
+flat? (⌜Hom⌝ c a b) = stkC? c
+flat? _             = false
+
+flat→stk : (c : RTm Γ) → flat? c ≡ true → stkC? c ≡ true
+flat→stk ⌜base⌝        h = refl
+flat→stk (⌜Hom⌝ c a b) h = h
+flat→stk (var _) ()
+flat→stk (lam _) ()
+flat→stk (app _ _) ()
+flat→stk (pair _ _) ()
+flat→stk (fst _) ()
+flat→stk (snd _) ()
+flat→stk (⌜Π⌝ _ _) ()
+flat→stk (⌜Σ⌝ _ _) ()
+flat→stk (hrefl _ _) ()
+flat→stk (tr _ _ _) ()
+flat→stk (ap _ _ _) ()
+
+flat?-ren : (ρ : Ren Γ Δ) (C : RTm Γ) → flat? (renTm ρ C) ≡ flat? C
+flat?-ren ρ (var x)        = refl
+flat?-ren ρ (lam t)        = refl
+flat?-ren ρ (app t u)      = refl
+flat?-ren ρ (pair a b)     = refl
+flat?-ren ρ (fst t)        = refl
+flat?-ren ρ (snd t)        = refl
+flat?-ren ρ ⌜base⌝         = refl
+flat?-ren ρ (⌜Π⌝ c d)      = refl
+flat?-ren ρ (⌜Σ⌝ c d)      = refl
+flat?-ren ρ (⌜Hom⌝ c a b)  = stkC?-ren ρ c
+flat?-ren ρ (hrefl c t)    = refl
+flat?-ren ρ (tr d p e)     = refl
+flat?-ren ρ (ap c b p)     = refl
+
+
 -- weakening commutes with a renaming (both composites are
 -- definitionally `x ↦ vs (ρ x)`).
 wk-ren-tm : (ρ : Ren Γ Δ) (t : RTm Γ) →
@@ -644,6 +686,22 @@ stkC?-sub σ (⌜Hom⌝ C a b) h = stkC?-sub σ C h
 stkC?-sub σ (hrefl c t) ()
 stkC?-sub σ (tr d p e) ()
 stkC?-sub σ (ap c b p) ()
+
+flat?-sub : (σ : Sub Γ Δ) (C : RTm Γ) → flat? C ≡ true →
+            flat? (subTm σ C) ≡ true
+flat?-sub σ ⌜base⌝        h = refl
+flat?-sub σ (⌜Hom⌝ c a b) h = stkC?-sub σ c h
+flat?-sub σ (var _) ()
+flat?-sub σ (lam _) ()
+flat?-sub σ (app _ _) ()
+flat?-sub σ (pair _ _) ()
+flat?-sub σ (fst _) ()
+flat?-sub σ (snd _) ()
+flat?-sub σ (⌜Π⌝ _ _) ()
+flat?-sub σ (⌜Σ⌝ _ _) ()
+flat?-sub σ (hrefl _ _) ()
+flat?-sub σ (tr _ _ _) ()
+flat?-sub σ (ap _ _ _) ()
 
 pwDom-sub : (σ : Sub Γ Δ) (C : RTm Γ) → pw? C ≡ true →
             pwDom (subTm σ C) ≡ subTm σ (pwDom C)

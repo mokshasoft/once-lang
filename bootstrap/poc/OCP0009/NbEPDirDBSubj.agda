@@ -42,7 +42,7 @@ open import poc.OCP0009.NbEPDirDBVar
         ; pw?; stkC?; pwDom; pwBody; pwShift
         ; pw?-sub; stkC?-sub; pwBody-sub; pwDom-sub
         ; pwBody-occ; ren-as-sub; avoids-pwShift; subTm-occ
-        ; stkC?-ren; wk-ren-tm; wk-sub-tm )
+        ; stkC?-ren; wk-ren-tm; wk-sub-tm; flat?; flat→stk; flat?-ren; flat?-sub )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
         ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
@@ -513,7 +513,7 @@ ren-lemma {ρ = ρ} (⊢tr {c = cM} {a = aM} {t = t} {u = u} dc da dv hc ha dt d
 ren-lemma {ρ = ρ} (⊢ap {cA = cA} {cB = cB} {b = b} {t = t} {u = u}
                        dcA key dcB db dt du dp) h =
   ⊢-cast (Hom-cong₃ refl (sym (ren-comm ρ b t)) (sym (ren-comm ρ b u)))
-    (⊢ap (ren-lemma dcA h) (trans (stkC?-ren ρ cA) key)
+    (⊢ap (ren-lemma dcA h) (trans (flat?-ren ρ cA) key)
          (ren-lemma dcB h)
          (⊢-cast (cong El (wk-ren-tm ρ cB)) (ren-lemma db (Ren⊢-ext h)))
          (ren-lemma dt h) (ren-lemma du h) (ren-lemma dp h))
@@ -582,7 +582,7 @@ sub-lemma {σ = σ} (⊢tr {c = cM} {a = aM} {t = t} {u = u} dc da dv hc ha dt d
 sub-lemma {σ = σ} (⊢ap {cA = cA} {cB = cB} {b = b} {t = t} {u = u}
                        dcA key dcB db dt du dp) h =
   ⊢-cast (Hom-cong₃ refl (sym (sub-comm σ b t)) (sym (sub-comm σ b u)))
-    (⊢ap (sub-lemma dcA h) (stkC?-sub σ cA key)
+    (⊢ap (sub-lemma dcA h) (flat?-sub σ cA key)
          (sub-lemma dcB h)
          (⊢-cast (cong El (wk-sub-tm σ cB)) (sub-lemma db (Sub⊢-ext h)))
          (sub-lemma dt h) (sub-lemma du h) (sub-lemma dp h))
@@ -696,7 +696,7 @@ gen-hrefl (⊢conv d c) with gen-hrefl d
 gen-ap : {Γ : Ctx} {cB : RTm ⌊ Γ ⌋} {b : RTm (⌊ Γ ⌋ ∙)} {p : RTm ⌊ Γ ⌋}
          {C : RTy ⌊ Γ ⌋} → Γ ⊢ ap cB b p ∷ C →
          Σ (RTm ⌊ Γ ⌋) (λ cA → Σ (RTm ⌊ Γ ⌋) (λ t → Σ (RTm ⌊ Γ ⌋) (λ u →
-           (Γ ⊢ cA ∷ U) × ((stkC? cA ≡ true) × ((Γ ⊢ cB ∷ U) ×
+           (Γ ⊢ cA ∷ U) × ((flat? cA ≡ true) × ((Γ ⊢ cB ∷ U) ×
            (((Γ ▹ El cA) ⊢ b ∷ El (renTm vs cB)) ×
            ((Γ ⊢ t ∷ El cA) × ((Γ ⊢ u ∷ El cA) ×
            ((Γ ⊢ p ∷ Hom (El cA) t u) ×
@@ -1322,7 +1322,7 @@ sr d (ap-J cB b c₁ s key) with gen-ap d
       with gen-hrefl dp
 ...   | (dc₁ , (ds , cH)) with church-rosserᵀ cH
 ...     | W , (rL , rR)
-          with homred-inv stamb-red (λ ()) (λ ()) (st-el {c = cA} keyA) rL
+          with homred-inv stamb-red (λ ()) (λ ()) (st-el {c = cA} (flat→stk cA keyA)) rL
 ...       | A₂ , (t₁ , (u₁ , (eqW , (rt , ru))))
             with Hom-to-Hom (subst (Hom (El cA) t u ⟶ᵀ*_) eqW rL)
               |  Hom-to-Hom (subst (Hom (El _) s s ⟶ᵀ*_) eqW rR)
