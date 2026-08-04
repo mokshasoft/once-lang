@@ -38,6 +38,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
+        ; Id; ⌜Id⌝; idrefl; jsub
         ; Ren; extR; Sub; subTy; subTm; renTy; renTm )
 open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false; occTm; pw?; stkC?; flat?; pwBody; pwShift )
@@ -170,6 +171,18 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
              b ⟶ b' → ap c b p ⟶ ap c b' p
   ξ-apᵖ    : {c : RTm Γ} {b : RTm (Γ ∙)} {p p' : RTm Γ} →
              p ⟶ p' → ap c b p ⟶ ap c b p'
+  -- ★ the two-former kernel (SPIKE-TWOFORMER): subst-style J at an
+  -- UNRESTRICTED family — UNKEYED, safe because `idrefl` is inert.
+  jsub-refl : (d : RTm (Γ ∙)) (c s e : RTm Γ) →
+              jsub d (idrefl c s) e ⟶ e
+  ξ-⌜Id⌝ᶜ  : {c c' a b : RTm Γ} → c ⟶ c' → ⌜Id⌝ c a b ⟶ ⌜Id⌝ c' a b
+  ξ-⌜Id⌝ˡ  : {c a a' b : RTm Γ} → a ⟶ a' → ⌜Id⌝ c a b ⟶ ⌜Id⌝ c a' b
+  ξ-⌜Id⌝ʳ  : {c a b b' : RTm Γ} → b ⟶ b' → ⌜Id⌝ c a b ⟶ ⌜Id⌝ c a b'
+  ξ-idreflᶜ : {c c' t : RTm Γ} → c ⟶ c' → idrefl c t ⟶ idrefl c' t
+  ξ-idreflᵃ : {c t t' : RTm Γ} → t ⟶ t' → idrefl c t ⟶ idrefl c t'
+  ξ-jsubᵈ  : {d d' : RTm (Γ ∙)} {p e : RTm Γ} → d ⟶ d' → jsub d p e ⟶ jsub d' p e
+  ξ-jsubᵖ  : {d : RTm (Γ ∙)} {p p' e : RTm Γ} → p ⟶ p' → jsub d p e ⟶ jsub d p' e
+  ξ-jsubᵉ  : {d : RTm (Γ ∙)} {p e e' : RTm Γ} → e ⟶ e' → jsub d p e ⟶ jsub d p e'
 
 data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   El-⌜base⌝ : El (⌜base⌝ {Γ}) ⟶ᵀ base
@@ -178,6 +191,7 @@ data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   -- W2 eliminator: the `⌜Hom⌝` code decodes to the `Hom` former
   -- (hom-sets of small types are small; still no code for `U`)
   El-⌜Hom⌝  : (c a b : RTm Γ) → El (⌜Hom⌝ c a b) ⟶ᵀ Hom (El c) a b
+  El-⌜Id⌝   : (c a b : RTm Γ) → El (⌜Id⌝ c a b) ⟶ᵀ Id (El c) a b
   ξ-El : {t t' : RTm Γ} → t ⟶ t' → El t ⟶ᵀ El t'
   ξ-Πˡ : {A A' : RTy Γ} {B : RTy (Γ ∙)} → A ⟶ᵀ A' → Π A B ⟶ᵀ Π A' B
   ξ-Πʳ : {A : RTy Γ} {B B' : RTy (Γ ∙)} → B ⟶ᵀ B' → Π A B ⟶ᵀ Π A B'
@@ -197,6 +211,9 @@ data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   ξ-Homᵀ : {A A' : RTy Γ} {t u : RTm Γ} → A ⟶ᵀ A' → Hom A t u ⟶ᵀ Hom A' t u
   ξ-Homˡ : {A : RTy Γ} {t t' u : RTm Γ} → t ⟶ t' → Hom A t u ⟶ᵀ Hom A t' u
   ξ-Homʳ : {A : RTy Γ} {t u u' : RTm Γ} → u ⟶ u' → Hom A t u ⟶ᵀ Hom A t u'
+  ξ-Idᵀ  : {A A' : RTy Γ} {t u : RTm Γ} → A ⟶ᵀ A' → Id A t u ⟶ᵀ Id A' t u
+  ξ-Idˡ  : {A : RTy Γ} {t t' u : RTm Γ} → t ⟶ t' → Id A t u ⟶ᵀ Id A t' u
+  ξ-Idʳ  : {A : RTy Γ} {t u u' : RTm Γ} → u ⟶ u' → Id A t u ⟶ᵀ Id A t u'
 
 infix 3 _⟶*_
 data _⟶*_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
@@ -352,6 +369,16 @@ data _⊢_∷_ where
           Γ ⊢ t ∷ El cA → Γ ⊢ u ∷ El cA →
           Γ ⊢ p ∷ Hom (El cA) t u →
           Γ ⊢ ap cB b p ∷ Hom (El cB) (subTm (single t) b) (subTm (single u) b)
+  ⊢⌜Id⌝ : ∀ {Γ c a b}   → Γ ⊢ c ∷ U → Γ ⊢ a ∷ El c → Γ ⊢ b ∷ El c →
+                          Γ ⊢ ⌜Id⌝ c a b ∷ U
+  ⊢idrefl : ∀ {Γ c t}   → Γ ⊢ c ∷ U → Γ ⊢ t ∷ El c →
+                          Γ ⊢ idrefl c t ∷ Id (El c) t t
+  ⊢jsub : ∀ {Γ A d t u p e} →
+          (Γ ▹ A) ⊢ d ∷ U →
+          Γ ⊢ t ∷ A → Γ ⊢ u ∷ A →
+          Γ ⊢ p ∷ Id A t u →
+          Γ ⊢ e ∷ El (subTm (single t) d) →
+          Γ ⊢ jsub d p e ∷ El (subTm (single u) d)
   ⊢conv : ∀ {Γ t A B}   → Γ ⊢ t ∷ A → A ≅ᵀ B → Γ ⊢ t ∷ B
 
 data _⊢ty_ where
@@ -360,6 +387,7 @@ data _⊢ty_ where
   ty-Π    : ∀ {Γ A B} → Γ ⊢ty A → (Γ ▹ A) ⊢ty B → Γ ⊢ty Π A B
   ty-Σ    : ∀ {Γ A B} → Γ ⊢ty A → (Γ ▹ A) ⊢ty B → Γ ⊢ty Σ' A B
   ty-El   : ∀ {Γ c}   → Γ ⊢ c ∷ U → Γ ⊢ty El c
+  ty-Id   : ∀ {Γ A t u} → Γ ⊢ty A → Γ ⊢ t ∷ A → Γ ⊢ u ∷ A → Γ ⊢ty Id A t u
   -- W2: `Hom` FORMATION — both endpoints at the same (well-formed) type.
   ty-Hom  : ∀ {Γ A t u} → Γ ⊢ty A → Γ ⊢ t ∷ A → Γ ⊢ u ∷ A → Γ ⊢ty Hom A t u
 
