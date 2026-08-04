@@ -75,6 +75,9 @@ data RTy where
   -- W2's eliminator introduces; deferred, not dropped), and at `Hom` (higher
   -- paths, unscoped).
   Hom  : ∀ {Γ} → RTy Γ → RTm Γ → RTm Γ → RTy Γ
+  -- ★ WF-axis stage A (SPIKE-WF): the datatype core's type formers.
+  Unit : ∀ {Γ} → RTy Γ
+  Nat  : ∀ {Γ} → RTy Γ
   -- ★ the TWO-FORMER kernel (SPIKE-TWOFORMER): the SYMMETRIC identity
   -- type, INERT — no type-level computation, ξ-congruences only.
   Id   : ∀ {Γ} → RTy Γ → RTm Γ → RTm Γ → RTy Γ
@@ -107,6 +110,13 @@ data RTm where
   ⌜Id⌝   : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
   idrefl : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ
   jsub   : ∀ {Γ} → RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
+  -- ★ WF-axis stage A: unit, numerals, and the TYPE-motived recursor
+  -- (motive in the derivation only, the ⊢lam pattern; `s` binds the
+  -- number then the IH).
+  unit   : ∀ {Γ} → RTm Γ
+  nzero  : ∀ {Γ} → RTm Γ
+  nsuc   : ∀ {Γ} → RTm Γ → RTm Γ
+  natrec : ∀ {Γ} → RTm Γ → RTm ((Γ ∙) ∙) → RTm Γ → RTm Γ
 
 private
   variable
@@ -125,6 +135,8 @@ extR ρ (vs x) = vs (ρ x)
 
 renTy : Ren Γ Δ → RTy Γ → RTy Δ
 renTm : Ren Γ Δ → RTm Γ → RTm Δ
+renTy ρ Unit       = Unit
+renTy ρ Nat        = Nat
 renTy ρ base     = base
 renTy ρ U        = U
 renTy ρ (Π A B)  = Π (renTy ρ A) (renTy (extR ρ) B)
@@ -148,6 +160,11 @@ renTm ρ (idrefl c t)   = idrefl (renTm ρ c) (renTm ρ t)
 renTm ρ (tr d p e)    = tr (renTm (extR ρ) d) (renTm ρ p) (renTm ρ e)
 renTm ρ (jsub d p e)    = jsub (renTm (extR ρ) d) (renTm ρ p) (renTm ρ e)
 renTm ρ (ap c b p)    = ap (renTm ρ c) (renTm (extR ρ) b) (renTm ρ p)
+renTm ρ unit          = unit
+renTm ρ nzero         = nzero
+renTm ρ (nsuc n)      = nsuc (renTm ρ n)
+renTm ρ (natrec z s n) =
+  natrec (renTm ρ z) (renTm (extR (extR ρ)) s) (renTm ρ n)
 
 ------------------------------------------------------------------------
 -- Parallel substitutions (variable-for-term) and their action.
@@ -162,6 +179,8 @@ extS σ (vs x) = renTm vs (σ x)
 
 subTy : Sub Γ Δ → RTy Γ → RTy Δ
 subTm : Sub Γ Δ → RTm Γ → RTm Δ
+subTy σ Unit       = Unit
+subTy σ Nat        = Nat
 subTy σ base     = base
 subTy σ U        = U
 subTy σ (Π A B)  = Π (subTy σ A) (subTy (extS σ) B)
@@ -185,6 +204,11 @@ subTm σ (idrefl c t)   = idrefl (subTm σ c) (subTm σ t)
 subTm σ (tr d p e)    = tr (subTm (extS σ) d) (subTm σ p) (subTm σ e)
 subTm σ (jsub d p e)    = jsub (subTm (extS σ) d) (subTm σ p) (subTm σ e)
 subTm σ (ap c b p)    = ap (subTm σ c) (subTm (extS σ) b) (subTm σ p)
+subTm σ unit          = unit
+subTm σ nzero         = nzero
+subTm σ (nsuc n)      = nsuc (subTm σ n)
+subTm σ (natrec z s n) =
+  natrec (subTm σ z) (subTm (extS (extS σ)) s) (subTm σ n)
 
 -- Identity and the four composition operators (explicit-index, genuine
 -- Ren/Sub — same shape as NbEPDirDB).
@@ -258,6 +282,10 @@ jsub-cong₃ : {d d' : RTm (Γ ∙)} {p p' e e' : RTm Γ} →
              d ≡ d' → p ≡ p' → e ≡ e' → jsub d p e ≡ jsub d' p' e'
 jsub-cong₃ refl refl refl = refl
 
+natrec-cong₃ : {z z' : RTm Γ} {s s' : RTm ((Γ ∙) ∙)} {n n' : RTm Γ} →
+               z ≡ z' → s ≡ s' → n ≡ n' → natrec z s n ≡ natrec z' s' n'
+natrec-cong₃ refl refl refl = refl
+
 -- A concrete dependent type and its substitution: `(x : base) → El x`.
 Πdep : RTy Γ
 Πdep = Π base (El (var vz))
@@ -280,6 +308,8 @@ renTy-cong : {ρ ρ' : Ren Γ Δ} → (∀ (x : Var Γ) → ρ x ≡ ρ' x) →
 renTm-cong : {ρ ρ' : Ren Γ Δ} → (∀ (x : Var Γ) → ρ x ≡ ρ' x) →
              (t : RTm Γ) → renTm ρ t ≡ renTm ρ' t
 renTy-cong h base     = refl
+renTy-cong h Unit     = refl
+renTy-cong h Nat      = refl
 renTy-cong h U        = refl
 renTy-cong h (Π A B)  = cong₂ Π (renTy-cong h A) (renTy-cong (extR-cong h) B)
 renTy-cong h (Σ' A B) = cong₂ Σ' (renTy-cong h A) (renTy-cong (extR-cong h) B)
@@ -295,6 +325,11 @@ renTm-cong h (pair a b) = cong₂ pair (renTm-cong h a) (renTm-cong h b)
 renTm-cong h (fst p)    = cong fst (renTm-cong h p)
 renTm-cong h (snd p)    = cong snd (renTm-cong h p)
 renTm-cong h ⌜base⌝     = refl
+renTm-cong h unit      = refl
+renTm-cong h nzero     = refl
+renTm-cong h (nsuc n)  = cong nsuc (renTm-cong h n)
+renTm-cong h (natrec z s₂ n) =
+  natrec-cong₃ (renTm-cong h z) (renTm-cong (extR-cong (extR-cong h)) s₂) (renTm-cong h n)
 renTm-cong h (⌜Π⌝ c d)  = cong₂ ⌜Π⌝ (renTm-cong h c) (renTm-cong (extR-cong h) d)
 renTm-cong h (⌜Σ⌝ c d)  = cong₂ ⌜Σ⌝ (renTm-cong h c) (renTm-cong (extR-cong h) d)
 renTm-cong h (⌜Hom⌝ c a b) =
@@ -320,6 +355,8 @@ subTy-cong : {σ σ' : Sub Γ Δ} → (∀ (x : Var Γ) → σ x ≡ σ' x) →
 subTm-cong : {σ σ' : Sub Γ Δ} → (∀ (x : Var Γ) → σ x ≡ σ' x) →
              (t : RTm Γ) → subTm σ t ≡ subTm σ' t
 subTy-cong h base     = refl
+subTy-cong h Unit     = refl
+subTy-cong h Nat      = refl
 subTy-cong h U        = refl
 subTy-cong h (Π A B)  = cong₂ Π (subTy-cong h A) (subTy-cong (extS-cong h) B)
 subTy-cong h (Σ' A B) = cong₂ Σ' (subTy-cong h A) (subTy-cong (extS-cong h) B)
@@ -335,6 +372,11 @@ subTm-cong h (pair a b) = cong₂ pair (subTm-cong h a) (subTm-cong h b)
 subTm-cong h (fst p)    = cong fst (subTm-cong h p)
 subTm-cong h (snd p)    = cong snd (subTm-cong h p)
 subTm-cong h ⌜base⌝     = refl
+subTm-cong h unit      = refl
+subTm-cong h nzero     = refl
+subTm-cong h (nsuc n)  = cong nsuc (subTm-cong h n)
+subTm-cong h (natrec z s₂ n) =
+  natrec-cong₃ (subTm-cong h z) (subTm-cong (extS-cong (extS-cong h)) s₂) (subTm-cong h n)
 subTm-cong h (⌜Π⌝ c d)  = cong₂ ⌜Π⌝ (subTm-cong h c) (subTm-cong (extS-cong h) d)
 subTm-cong h (⌜Σ⌝ c d)  = cong₂ ⌜Σ⌝ (subTm-cong h c) (subTm-cong (extS-cong h) d)
 subTm-cong h (⌜Hom⌝ c a b) =
@@ -366,6 +408,8 @@ renTy-renTy : {ρ' : Ren Δ Θ} {ρ : Ren Γ Δ} (A : RTy Γ) →
 renTm-renTm : {ρ' : Ren Δ Θ} {ρ : Ren Γ Δ} (t : RTm Γ) →
               renTm ρ' (renTm ρ t) ≡ renTm (ρ' ∘ᵣ ρ) t
 renTy-renTy base     = refl
+renTy-renTy Unit     = refl
+renTy-renTy Nat      = refl
 renTy-renTy U        = refl
 renTy-renTy {ρ' = ρ'} {ρ} (Π A B) =
   cong₂ Π (renTy-renTy A) (trans (renTy-renTy B) (renTy-cong (extr-extr ρ' ρ) B))
@@ -384,6 +428,14 @@ renTm-renTm (pair a b) = cong₂ pair (renTm-renTm a) (renTm-renTm b)
 renTm-renTm (fst p)    = cong fst (renTm-renTm p)
 renTm-renTm (snd p)    = cong snd (renTm-renTm p)
 renTm-renTm ⌜base⌝     = refl
+renTm-renTm unit       = refl
+renTm-renTm nzero      = refl
+renTm-renTm (nsuc n)   = cong nsuc (renTm-renTm n)
+renTm-renTm {ρ' = ρ'} {ρ} (natrec z s n) =
+  natrec-cong₃ (renTm-renTm z)
+    (trans (renTm-renTm s)
+           (renTm-cong (λ x → trans (extr-extr (extR ρ') (extR ρ) x) (extR-cong (extr-extr ρ' ρ) x)) s))
+    (renTm-renTm n)
 renTm-renTm {ρ' = ρ'} {ρ} (⌜Π⌝ c d) =
   cong₂ ⌜Π⌝ (renTm-renTm c) (trans (renTm-renTm d) (renTm-cong (extr-extr ρ' ρ) d))
 renTm-renTm {ρ' = ρ'} {ρ} (⌜Σ⌝ c d) =
@@ -416,6 +468,8 @@ subTy-renTy : {σ : Sub Δ Θ} {ρ : Ren Γ Δ} (A : RTy Γ) →
 subTm-renTm : {σ : Sub Δ Θ} {ρ : Ren Γ Δ} (t : RTm Γ) →
               subTm σ (renTm ρ t) ≡ subTm (σ ₛ∘ᵣ ρ) t
 subTy-renTy base     = refl
+subTy-renTy Unit     = refl
+subTy-renTy Nat      = refl
 subTy-renTy U        = refl
 subTy-renTy {σ = σ} {ρ} (Π A B) =
   cong₂ Π (subTy-renTy A) (trans (subTy-renTy B) (subTy-cong (exts-extr σ ρ) B))
@@ -434,6 +488,14 @@ subTm-renTm (pair a b) = cong₂ pair (subTm-renTm a) (subTm-renTm b)
 subTm-renTm (fst p)    = cong fst (subTm-renTm p)
 subTm-renTm (snd p)    = cong snd (subTm-renTm p)
 subTm-renTm ⌜base⌝     = refl
+subTm-renTm unit       = refl
+subTm-renTm nzero      = refl
+subTm-renTm (nsuc n)   = cong nsuc (subTm-renTm n)
+subTm-renTm {σ = σ} {ρ} (natrec z s n) =
+  natrec-cong₃ (subTm-renTm z)
+    (trans (subTm-renTm s)
+           (subTm-cong (λ x → trans (exts-extr (extS σ) (extR ρ) x) (extS-cong (exts-extr σ ρ) x)) s))
+    (subTm-renTm n)
 subTm-renTm {σ = σ} {ρ} (⌜Π⌝ c d) =
   cong₂ ⌜Π⌝ (subTm-renTm c) (trans (subTm-renTm d) (subTm-cong (exts-extr σ ρ) d))
 subTm-renTm {σ = σ} {ρ} (⌜Σ⌝ c d) =
@@ -466,6 +528,8 @@ renTy-subTy : {ρ : Ren Δ Θ} {σ : Sub Γ Δ} (A : RTy Γ) →
 renTm-subTm : {ρ : Ren Δ Θ} {σ : Sub Γ Δ} (t : RTm Γ) →
               renTm ρ (subTm σ t) ≡ subTm (ρ ᵣ∘ₛ σ) t
 renTy-subTy base     = refl
+renTy-subTy Unit     = refl
+renTy-subTy Nat      = refl
 renTy-subTy U        = refl
 renTy-subTy {ρ = ρ} {σ} (Π A B) =
   cong₂ Π (renTy-subTy A) (trans (renTy-subTy B) (subTy-cong (extr-exts ρ σ) B))
@@ -484,6 +548,14 @@ renTm-subTm (pair a b) = cong₂ pair (renTm-subTm a) (renTm-subTm b)
 renTm-subTm (fst p)    = cong fst (renTm-subTm p)
 renTm-subTm (snd p)    = cong snd (renTm-subTm p)
 renTm-subTm ⌜base⌝     = refl
+renTm-subTm unit       = refl
+renTm-subTm nzero      = refl
+renTm-subTm (nsuc n)   = cong nsuc (renTm-subTm n)
+renTm-subTm {ρ = ρ} {σ} (natrec z s n) =
+  natrec-cong₃ (renTm-subTm z)
+    (trans (renTm-subTm s)
+           (subTm-cong (λ x → trans (extr-exts (extR ρ) (extS σ) x) (extS-cong (extr-exts ρ σ) x)) s))
+    (renTm-subTm n)
 renTm-subTm {ρ = ρ} {σ} (⌜Π⌝ c d) =
   cong₂ ⌜Π⌝ (renTm-subTm c) (trans (renTm-subTm d) (subTm-cong (extr-exts ρ σ) d))
 renTm-subTm {ρ = ρ} {σ} (⌜Σ⌝ c d) =
@@ -516,6 +588,8 @@ subTy-subTy : {τ : Sub Δ Θ} {σ : Sub Γ Δ} (A : RTy Γ) →
 subTm-subTm : {τ : Sub Δ Θ} {σ : Sub Γ Δ} (t : RTm Γ) →
               subTm τ (subTm σ t) ≡ subTm (τ ∘ₛ σ) t
 subTy-subTy base     = refl
+subTy-subTy Unit     = refl
+subTy-subTy Nat      = refl
 subTy-subTy U        = refl
 subTy-subTy {τ = τ} {σ} (Π A B) =
   cong₂ Π (subTy-subTy A) (trans (subTy-subTy B) (subTy-cong (exts-exts τ σ) B))
@@ -534,6 +608,14 @@ subTm-subTm (pair a b) = cong₂ pair (subTm-subTm a) (subTm-subTm b)
 subTm-subTm (fst p)    = cong fst (subTm-subTm p)
 subTm-subTm (snd p)    = cong snd (subTm-subTm p)
 subTm-subTm ⌜base⌝     = refl
+subTm-subTm unit       = refl
+subTm-subTm nzero      = refl
+subTm-subTm (nsuc n)   = cong nsuc (subTm-subTm n)
+subTm-subTm {τ = τ} {σ} (natrec z s n) =
+  natrec-cong₃ (subTm-subTm z)
+    (trans (subTm-subTm s)
+           (subTm-cong (λ x → trans (exts-exts (extS τ) (extS σ) x) (extS-cong (exts-exts τ σ) x)) s))
+    (subTm-subTm n)
 subTm-subTm {τ = τ} {σ} (⌜Π⌝ c d) =
   cong₂ ⌜Π⌝ (subTm-subTm c) (trans (subTm-subTm d) (subTm-cong (exts-exts τ σ) d))
 subTm-subTm {τ = τ} {σ} (⌜Σ⌝ c d) =
@@ -563,6 +645,8 @@ exts-id (vs x) = refl
 subTy-id : (A : RTy Γ) → subTy idₛ A ≡ A
 subTm-id : (t : RTm Γ) → subTm idₛ t ≡ t
 subTy-id base     = refl
+subTy-id Unit     = refl
+subTy-id Nat      = refl
 subTy-id U        = refl
 subTy-id (Π A B)  = cong₂ Π (subTy-id A) (trans (subTy-cong exts-id B) (subTy-id B))
 subTy-id (Σ' A B) = cong₂ Σ' (subTy-id A) (trans (subTy-cong exts-id B) (subTy-id B))
@@ -576,6 +660,14 @@ subTm-id (pair a b) = cong₂ pair (subTm-id a) (subTm-id b)
 subTm-id (fst p)    = cong fst (subTm-id p)
 subTm-id (snd p)    = cong snd (subTm-id p)
 subTm-id ⌜base⌝     = refl
+subTm-id unit       = refl
+subTm-id nzero      = refl
+subTm-id (nsuc n)   = cong nsuc (subTm-id n)
+subTm-id (natrec z s n) =
+  natrec-cong₃ (subTm-id z)
+    (trans (subTm-cong (λ x → trans (extS-cong exts-id x) (exts-id x)) s)
+           (subTm-id s))
+    (subTm-id n)
 subTm-id (⌜Π⌝ c d)  = cong₂ ⌜Π⌝ (subTm-id c) (trans (subTm-cong exts-id d) (subTm-id d))
 subTm-id (⌜Σ⌝ c d)  = cong₂ ⌜Σ⌝ (subTm-id c) (trans (subTm-cong exts-id d) (subTm-id d))
 subTm-id (⌜Hom⌝ c a b) = ⌜Hom⌝-cong₃ (subTm-id c) (subTm-id a) (subTm-id b)

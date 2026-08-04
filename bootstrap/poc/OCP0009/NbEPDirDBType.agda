@@ -39,6 +39,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Id; ⌜Id⌝; idrefl; jsub
+        ; Unit; Nat; unit; nzero; nsuc; natrec; extS
         ; Ren; extR; Sub; subTy; subTm; renTy; renTm )
 open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false; occTm; pw?; stkC?; flat?; pwBody; pwShift )
@@ -54,6 +55,13 @@ private
 single : RTm Γ → Sub (Γ ∙) Γ
 single u vz     = u
 single u (vs x) = var x
+
+-- ★ WF-axis stage A: the successor-instance substitution — reads the
+-- motive M (over Γ, number) at `nsuc` of the number, in the recursor's
+-- step context (Γ, number, IH).
+nrs : Sub (Γ ∙) ((Γ ∙) ∙)
+nrs vz     = nsuc (var (vs vz))
+nrs (vs x) = var (vs (vs x))
 
 -- The top-two-variable SWAP renaming — what `tr-pw` uses to move the
 -- `⌜Π⌝`-codomain code under the new lambda: the Π-binder becomes the new
@@ -186,6 +194,21 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   ξ-jsubᵈ  : {d d' : RTm (Γ ∙)} {p e : RTm Γ} → d ⟶ d' → jsub d p e ⟶ jsub d' p e
   ξ-jsubᵖ  : {d : RTm (Γ ∙)} {p p' e : RTm Γ} → p ⟶ p' → jsub d p e ⟶ jsub d p' e
   ξ-jsubᵉ  : {d : RTm (Γ ∙)} {p e e' : RTm Γ} → e ⟶ e' → jsub d p e ⟶ jsub d p e'
+  -- ★ WF-axis stage A (SPIKE-WF): Nat's recursor, keyed on the
+  -- CANONICAL HEAD of the scrutinee — terminating because the
+  -- recursive call is at the numeral's predecessor.
+  natrec-zero : (z : RTm Γ) (s : RTm ((Γ ∙) ∙)) →
+                natrec z s nzero ⟶ z
+  natrec-suc  : (z : RTm Γ) (s : RTm ((Γ ∙) ∙)) (n : RTm Γ) →
+                natrec z s (nsuc n) ⟶
+                subTm (single (natrec z s n)) (subTm (extS (single n)) s)
+  ξ-nsuc    : {n n' : RTm Γ} → n ⟶ n' → nsuc n ⟶ nsuc n'
+  ξ-natrecᶻ : {z z' : RTm Γ} {s : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
+              z ⟶ z' → natrec z s n ⟶ natrec z' s n
+  ξ-natrecˢ : {z : RTm Γ} {s s' : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
+              s ⟶ s' → natrec z s n ⟶ natrec z s' n
+  ξ-natrecⁿ : {z : RTm Γ} {s : RTm ((Γ ∙) ∙)} {n n' : RTm Γ} →
+              n ⟶ n' → natrec z s n ⟶ natrec z s n'
 
 data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   El-⌜base⌝ : El (⌜base⌝ {Γ}) ⟶ᵀ base
@@ -382,6 +405,18 @@ data _⊢_∷_ where
           Γ ⊢ p ∷ Id A t u →
           Γ ⊢ e ∷ El (subTm (single t) d) →
           Γ ⊢ jsub d p e ∷ El (subTm (single u) d)
+  -- ★ WF-axis stage A: unit, numerals, and the TYPE-motived recursor.
+  -- The motive lives in the DERIVATION only (the ⊢lam pattern) — code
+  -- motives would need ⌜Nat⌝ ∈ U, which is stage C.
+  ⊢unit   : ∀ {Γ}     → Γ ⊢ unit ∷ Unit
+  ⊢nzero  : ∀ {Γ}     → Γ ⊢ nzero ∷ Nat
+  ⊢nsuc   : ∀ {Γ n}   → Γ ⊢ n ∷ Nat → Γ ⊢ nsuc n ∷ Nat
+  ⊢natrec : ∀ {Γ M z s n} →
+            (Γ ▹ Nat) ⊢ty M →
+            Γ ⊢ z ∷ subTy (single nzero) M →
+            ((Γ ▹ Nat) ▹ M) ⊢ s ∷ subTy nrs M →
+            Γ ⊢ n ∷ Nat →
+            Γ ⊢ natrec z s n ∷ subTy (single n) M
   ⊢conv : ∀ {Γ t A B}   → Γ ⊢ t ∷ A → A ≅ᵀ B → Γ ⊢ t ∷ B
 
 data _⊢ty_ where
@@ -391,6 +426,8 @@ data _⊢ty_ where
   ty-Σ    : ∀ {Γ A B} → Γ ⊢ty A → (Γ ▹ A) ⊢ty B → Γ ⊢ty Σ' A B
   ty-El   : ∀ {Γ c}   → Γ ⊢ c ∷ U → Γ ⊢ty El c
   ty-Id   : ∀ {Γ A t u} → Γ ⊢ty A → Γ ⊢ t ∷ A → Γ ⊢ u ∷ A → Γ ⊢ty Id A t u
+  ty-Unit : ∀ {Γ}     → Γ ⊢ty Unit
+  ty-Nat  : ∀ {Γ}     → Γ ⊢ty Nat
   -- W2: `Hom` FORMATION — both endpoints at the same (well-formed) type.
   ty-Hom  : ∀ {Γ A t u} → Γ ⊢ty A → Γ ⊢ t ∷ A → Γ ⊢ u ∷ A → Γ ⊢ty Hom A t u
 

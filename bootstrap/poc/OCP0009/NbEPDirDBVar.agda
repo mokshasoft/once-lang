@@ -73,6 +73,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
+        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃
         ; ⌜Hom⌝-cong₃; tr-cong₃; ⌜Id⌝-cong₃; jsub-cong₃; Id-cong₃
         ; Ren; extR; renTy; renTm; Sub; extS; subTm
         ; renTm-renTm; subTm-renTm; renTm-subTm; subTm-cong )
@@ -109,6 +110,8 @@ occTy x (Σ' A B)    = occTy x A ∨ occTy (vs x) B
 occTy x (El t)      = occTm x t
 occTy x (Hom A t u) = occTy x A ∨ occTm x t ∨ occTm x u
 occTy x (Id A t u) = occTy x A ∨ occTm x t ∨ occTm x u
+occTy x Unit        = false
+occTy x Nat         = false
 
 occTm x (var y)    = eqv x y
 occTm x (lam t)    = occTm (vs x) t
@@ -126,6 +129,10 @@ occTm x (idrefl c t)   = occTm x c ∨ occTm x t
 occTm x (tr d p e)    = occTm (vs x) d ∨ occTm x p ∨ occTm x e
 occTm x (jsub d p e)    = occTm (vs x) d ∨ occTm x p ∨ occTm x e
 occTm x (ap c b p)    = occTm x c ∨ occTm (vs x) b ∨ occTm x p
+occTm x unit          = false
+occTm x nzero         = false
+occTm x (nsuc n)      = occTm x n
+occTm x (natrec z s n) = occTm x z ∨ occTm (vs (vs x)) s ∨ occTm x n
 
 ------------------------------------------------------------------------
 -- 2. ★ THE POLARITY JUDGMENT.
@@ -185,6 +192,8 @@ occ-ren-tm : {ρ : Ren Γ Δ} {x : Var Δ} →
              Avoids ρ x → (t : RTm Γ) → occTm x (renTm ρ t) ≡ false
 
 occ-ren-ty h base     = refl
+occ-ren-ty h Unit     = refl
+occ-ren-ty h Nat      = refl
 occ-ren-ty h U        = refl
 occ-ren-ty h (Π A B)  =
   ∨-false (occ-ren-ty h A) (occ-ren-ty (avoids-ext h) B)
@@ -213,6 +222,12 @@ occ-ren-tm h (⌜Id⌝ c a b) =
   ∨-false (occ-ren-tm h c) (∨-false (occ-ren-tm h a) (occ-ren-tm h b))
 occ-ren-tm h (hrefl c t)   = ∨-false (occ-ren-tm h c) (occ-ren-tm h t)
 occ-ren-tm h (idrefl c t)   = ∨-false (occ-ren-tm h c) (occ-ren-tm h t)
+occ-ren-tm h unit       = refl
+occ-ren-tm h nzero      = refl
+occ-ren-tm h (nsuc n)   = occ-ren-tm h n
+occ-ren-tm h (natrec z s n) =
+  ∨-false (occ-ren-tm h z)
+          (∨-false (occ-ren-tm (avoids-ext (avoids-ext h)) s) (occ-ren-tm h n))
 occ-ren-tm h (tr d p e)    =
   ∨-false (occ-ren-tm (avoids-ext h) d)
           (∨-false (occ-ren-tm h p) (occ-ren-tm h e))
@@ -370,6 +385,12 @@ occ-ren-eq h (⌜Id⌝ c a b) =
   cong₂ _∨_ (occ-ren-eq h c) (cong₂ _∨_ (occ-ren-eq h a) (occ-ren-eq h b))
 occ-ren-eq h (hrefl c t)   = cong₂ _∨_ (occ-ren-eq h c) (occ-ren-eq h t)
 occ-ren-eq h (idrefl c t)   = cong₂ _∨_ (occ-ren-eq h c) (occ-ren-eq h t)
+occ-ren-eq h unit       = refl
+occ-ren-eq h nzero      = refl
+occ-ren-eq h (nsuc n)   = occ-ren-eq h n
+occ-ren-eq h (natrec z s n) =
+  cong₂ _∨_ (occ-ren-eq h z)
+            (cong₂ _∨_ (occ-ren-eq (ext-eq (ext-eq h)) s) (occ-ren-eq h n))
 occ-ren-eq h (tr d p e)    =
   cong₂ _∨_ (occ-ren-eq (ext-eq h) d)
             (cong₂ _∨_ (occ-ren-eq h p) (occ-ren-eq h e))
@@ -393,6 +414,15 @@ ext-occ {σ = σ} h (vs y) e =
 occ-sub : {σ : Sub Γ Δ} {x : Var Γ} {x' : Var Δ} →
           (∀ y → eqv x y ≡ false → occTm x' (σ y) ≡ false) →
           (t : RTm Γ) → occTm x t ≡ false → occTm x' (subTm σ t) ≡ false
+occ-sub h unit       e = refl
+occ-sub h nzero      e = refl
+occ-sub h (nsuc n)   e = occ-sub h n e
+occ-sub {x = x} h (natrec z s n) e =
+  ∨-false (occ-sub h z (∨-false₁ (occTm x z) e))
+          (∨-false (occ-sub (ext-occ (ext-occ h)) s
+                     (∨-false₁ (occTm (vs (vs x)) s) (∨-false₂ (occTm x z) e)))
+                   (occ-sub h n
+                     (∨-false₂ (occTm (vs (vs x)) s) (∨-false₂ (occTm x z) e))))
 occ-sub h (var y)    e = h y e
 occ-sub h (lam t)    e = occ-sub (ext-occ h) t e
 occ-sub {x = x} h (app t u) e =
@@ -449,6 +479,16 @@ ext-agree f g (vs y) o = cong (renTm vs) (g y o)
 subTm-occ : {σ τ : Sub Γ Δ} (m : RTm Γ) →
             ((x : Var Γ) → occTm x m ≡ true → σ x ≡ τ x) →
             subTm σ m ≡ subTm τ m
+subTm-occ unit       h = refl
+subTm-occ nzero      h = refl
+subTm-occ (nsuc n)   h = cong nsuc (subTm-occ n h)
+subTm-occ (natrec z s n) h =
+  natrec-cong₃
+    (subTm-occ z (λ x o → h x (∨-inl o)))
+    (subTm-occ s (ext-agree (λ x → occTm x s)
+       (ext-agree (λ x → occTm (vs x) s)
+         (λ y o → h y (∨-inr (occTm y z) (∨-inl o))))))
+    (subTm-occ n (λ x o → h x (∨-inr (occTm x z) (∨-inr (occTm (vs (vs x)) s) o))))
 subTm-occ (var y)    h = h y (eqv-refl y)
 subTm-occ (lam m)    h = cong lam (subTm-occ m (ext-agree (λ x → occTm x m) h))
 subTm-occ (app m k)  h = cong₂ app
@@ -592,6 +632,10 @@ pw?-ren ρ (pair a b)    = refl
 pw?-ren ρ (fst t)       = refl
 pw?-ren ρ (snd t)       = refl
 pw?-ren ρ ⌜base⌝        = refl
+pw?-ren ρ unit          = refl
+pw?-ren ρ nzero         = refl
+pw?-ren ρ (nsuc n)      = refl
+pw?-ren ρ (natrec z s n) = refl
 pw?-ren ρ (⌜Π⌝ γ δ)     = refl
 pw?-ren ρ (⌜Σ⌝ c d)     = refl
 pw?-ren ρ (⌜Hom⌝ C a b) = pw?-ren ρ C
@@ -610,6 +654,10 @@ stkC?-ren ρ (pair a b)    = refl
 stkC?-ren ρ (fst t)       = refl
 stkC?-ren ρ (snd t)       = refl
 stkC?-ren ρ ⌜base⌝        = refl
+stkC?-ren ρ unit          = refl
+stkC?-ren ρ nzero         = refl
+stkC?-ren ρ (nsuc n)      = refl
+stkC?-ren ρ (natrec z s n) = refl
 stkC?-ren ρ (⌜Π⌝ γ δ)     = refl
 stkC?-ren ρ (⌜Σ⌝ c d)     = refl
 stkC?-ren ρ (⌜Hom⌝ C a b) = stkC?-ren ρ C
@@ -657,6 +705,10 @@ flat?-ren ρ (pair a b)     = refl
 flat?-ren ρ (fst t)        = refl
 flat?-ren ρ (snd t)        = refl
 flat?-ren ρ ⌜base⌝         = refl
+flat?-ren ρ unit           = refl
+flat?-ren ρ nzero          = refl
+flat?-ren ρ (nsuc n)       = refl
+flat?-ren ρ (natrec z s n) = refl
 flat?-ren ρ (⌜Π⌝ c d)      = refl
 flat?-ren ρ (⌜Σ⌝ c d)      = refl
 flat?-ren ρ (⌜Hom⌝ c a b)  = stkC?-ren ρ c
@@ -898,6 +950,18 @@ ren-as-sub ρ (jsub d p e) =
   ptw : ∀ x → var (extR ρ x) ≡ extS (λ y → var (ρ y)) x
   ptw vz     = refl
   ptw (vs x) = refl
+ren-as-sub ρ unit  = refl
+ren-as-sub ρ nzero = refl
+ren-as-sub ρ (nsuc n) = cong nsuc (ren-as-sub ρ n)
+ren-as-sub ρ (natrec z s n) =
+  natrec-cong₃ (ren-as-sub ρ z)
+    (trans (ren-as-sub (extR (extR ρ)) s) (subTm-cong ptw2 s))
+    (ren-as-sub ρ n)
+  where
+  ptw2 : ∀ x → var (extR (extR ρ) x) ≡ extS (extS (λ y → var (ρ y))) x
+  ptw2 vz          = refl
+  ptw2 (vs vz)     = refl
+  ptw2 (vs (vs x)) = refl
 ren-as-sub ρ (ap c b p) =
   ap-cong₃ (ren-as-sub ρ c)
            (trans (ren-as-sub (extR ρ) b) (subTm-cong ptw b))
