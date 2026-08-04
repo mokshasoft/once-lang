@@ -37,18 +37,19 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd
-        ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr
+        ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Ren; renTm; renTy; Sub; subTm; subTy
         ; renTm-subTm; subTm-id
         ; subTy-renTy; subTy-cong; subTy-id )
 open import poc.OCP0009.NbEPDirDBVar
-  using ( 𝔹; true; false; pw?; stkC?; pw?-ren; occTm; subTm-occ
+  using ( 𝔹; true; false; pw?; stkC?; flat→stk; pw?-ren; occTm; subTm-occ
         ; eqv; occ-sub; occ-ren-tm; avoids-wk )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶_; _⟶*_; done; step
         ; β; βfst; βsnd; ξ-appˡ; ξ-fst; ξ-snd
         ; ξ-hreflᶜ; ξ-trᵈ; ξ-trᵖ; ξ-⌜Hom⌝ᶜ
         ; hrefl-pw; tr-J-base; tr-J-Σ; tr-J-Hom; tr-taut; tr-pw
+        ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ
@@ -62,7 +63,7 @@ open import poc.OCP0009.NbEPDirDBInj
         ; church-rosserᵀ; red→≅ᵀ
         ; Π-reduct; ΠRed; mkΠRed; Σ-reduct; ΣRed; mkΣRed )
 open import poc.OCP0009.NbEPDirDBSubj
-  using ( gen-lam; gen-app; gen-pair; gen-fst; gen-snd
+  using ( gen-lam; gen-app; gen-pair; gen-fst; gen-snd; gen-ap
         ; gen-var; gen-hrefl; gen-⌜Π⌝; gen-⌜Σ⌝; gen-⌜Hom⌝
         ; gen-tr; TrGen; tgC; tgU; TrInv; mkTrInv; TrInvU; mkTrInvU
         ; StkAmb; st-el; st-hom; stamb-red; homred-inv
@@ -247,6 +248,7 @@ szb (⌜Σ⌝ c d)      = sz c + sz d
 szb (⌜Hom⌝ c a b)  = sz c + sz a + sz b
 szb (hrefl c t)    = sz c + sz t
 szb (tr d p e)     = sz d + sz p + sz e
+szb (ap c b p)     = sz c + sz b + sz p
 
 szb-ren : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : RTm Γ) → szb (renTm ρ t) ≡ szb t
 sz-ren  : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : RTm Γ) → sz (renTm ρ t) ≡ sz t
@@ -265,6 +267,8 @@ szb-ren ρ (⌜Hom⌝ c a b) =
 szb-ren ρ (hrefl c t)   = cong₂ _+_ (sz-ren ρ c) (sz-ren ρ t)
 szb-ren ρ (tr d p e)    =
   cong₂ _+_ (cong₂ _+_ (sz-ren _ d) (sz-ren ρ p)) (sz-ren ρ e)
+szb-ren ρ (ap c b p)    =
+  cong₂ _+_ (cong₂ _+_ (sz-ren ρ c) (sz-ren _ b)) (sz-ren ρ p)
 
 ------------------------------------------------------------------------
 -- 3. CANONICAL SHAPES and the progress verdicts.  There is NO `tr`
@@ -412,6 +416,8 @@ mutual
   ... | _ , r = prog-step r
   prog (suc m) {t = tr dM p e}   d le with trS m d (un≤ le)
   ... | _ , r = prog-step r
+  prog (suc m) {t = ap cB b p}   d le with apS m d (un≤ le)
+  ... | _ , r = prog-step r
 
   -- ★ CODE CANONICITY, progress form.
   usplit : (n : Nat) {c : RTm ε} → ◇ ⊢ c ∷ U → sz c ≤ n → UProg c
@@ -442,6 +448,8 @@ mutual
   usplit (suc m) {c = snd p} d le with sndS m d (un≤ le)
   ... | _ , r = u-step r
   usplit (suc m) {c = tr dM p e} d le with trS m d (un≤ le)
+  ... | _ , r = u-step r
+  usplit (suc m) {c = ap cB b p} d le with apS m d (un≤ le)
   ... | _ , r = u-step r
 
   appS : (m : Nat) {f a : RTm ε} {T : RTy ε} → ◇ ⊢ app f a ∷ T →
@@ -486,6 +494,50 @@ mutual
   ... | A , (B , (dp , cA)) with prog m dp q
   ...   | prog-step r = _ , ξ-snd r
   ...   | prog-can cn = canΣsnd dp cn
+
+  -- ★ closed `ap`s ALWAYS step: the path steps, unfolds pointwise, or
+  -- is a canonical hrefl (J fires — the code is stable or steps); a
+  -- lam path is UNTYPEABLE at the flat source ambient.
+  apS : (m : Nat) {cB : RTm ε} {b : RTm (ε ∙)} {p : RTm ε} {T : RTy ε} →
+        ◇ ⊢ ap cB b p ∷ T → sz cB + sz b + sz p ≤ m →
+        Σ (RTm ε) (λ w → ap cB b p ⟶ w)
+  apS m {cB} {b} {p} dv q with gen-ap dv
+  ... | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
+        with prog m dp
+               (≤-trans (≤+ʳ (sz cB + sz b) (sz p)) q)
+  ...   | prog-step r = _ , ξ-apᵖ r
+  ...   | prog-can (can-lam f) with gen-lam dp
+  ...     | _ , (_ , (cv , _)) =
+            ⊥-elim (HomStkΠ-clash (flat→stk cA keyA) cv)
+  apS m {cB} {b} dv q
+      | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
+      | prog-can (can-hrefl c₁ s) with gen-hrefl dp
+  ... | dc₁ , (ds , cvh)
+        with usplit m dc₁
+               (≤-trans (≤-suc (≤+ˡ (sz c₁) (sz s)))
+                        (≤-trans (≤+ʳ (sz cB + sz b) (sz (hrefl c₁ s))) q))
+  ...   | u-pw k   = _ , ξ-apᵖ (hrefl-pw c₁ s k)
+  ...   | u-step r = _ , ξ-apᵖ (ξ-hreflᶜ r)
+  ...   | u-stk k  = _ , ap-J cB b c₁ s k
+  apS m dv q
+      | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
+      | prog-can (can-pair a₂ b₂) with gen-pair dp
+  ... | _ , (_ , (cv , _)) = ⊥-elim (HomΣ-clash cv)
+  apS m dv q
+      | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
+      | prog-can can-cb = ⊥-elim (HomU-clash (gen-⌜base⌝ dp))
+  apS m dv q
+      | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
+      | prog-can (can-cΠ x y) with gen-⌜Π⌝ dp
+  ... | _ , (_ , cv) = ⊥-elim (HomU-clash cv)
+  apS m dv q
+      | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
+      | prog-can (can-cΣ x y) with gen-⌜Σ⌝ dp
+  ... | _ , (_ , cv) = ⊥-elim (HomU-clash cv)
+  apS m dv q
+      | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
+      | prog-can (can-cH x y z) with gen-⌜Hom⌝ dp
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (HomU-clash cv)
 
   -- ★ CLOSED `tr`s ALWAYS STEP.  The dispatch: path steps → ξ; path
   -- canonical → per the motive.

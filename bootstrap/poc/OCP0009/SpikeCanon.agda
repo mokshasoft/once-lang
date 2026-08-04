@@ -132,7 +132,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd
-        ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr
+        ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; ⌜Hom⌝-cong₃
         ; Ren; extR; renTm; Sub; extS; subTm; renTm-renTm )
 open import poc.OCP0009.NbEPDirDBVar using ( 𝔹; true; false )
@@ -351,6 +351,7 @@ pw?-ren ρ (⌜Σ⌝ c d)     = refl
 pw?-ren ρ (⌜Hom⌝ C a b) = pw?-ren ρ C
 pw?-ren ρ (hrefl c t)   = refl
 pw?-ren ρ (tr d p e)    = refl
+pw?-ren ρ (ap c b p)    = refl
 
 stkC?-ren : (ρ : Ren Γ Δ) (C : RTm Γ) → stkC? (renTm ρ C) ≡ stkC? C
 stkC?-ren ρ (var x)       = refl
@@ -365,6 +366,7 @@ stkC?-ren ρ (⌜Σ⌝ c d)     = refl
 stkC?-ren ρ (⌜Hom⌝ C a b) = stkC?-ren ρ C
 stkC?-ren ρ (hrefl c t)   = refl
 stkC?-ren ρ (tr d p e)    = refl
+stkC?-ren ρ (ap c b p)    = refl
 
 -- weakening commutes with a renaming (local copy of Subj's `wk-ren` —
 -- both composites are definitionally `x ↦ vs (ρ x)`).
