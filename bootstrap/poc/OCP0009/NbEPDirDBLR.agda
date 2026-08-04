@@ -72,7 +72,7 @@ open import poc.OCP0009.NbEPDirDBVar
         ; stk⊥pw; pw⊥stk )
 open import poc.OCP0009.NbEPDirDBSR using ( ⟶ᵀ-sub; ≅ᵀ-sub )
 open import poc.OCP0009.NbEPDirDBSubj using ( subTy-monoˢ )
-open import poc.OCP0009.NbEPDirDBConf using ( single-mono )
+open import poc.OCP0009.NbEPDirDBConf using ( single-mono; confluent )
 open import poc.OCP0009.NbEPDirDBConf
   using ( ⟶*-trans; ⟶*-lam; ⟶*-appˡ; ⟶*-appʳ
         ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-fst; ⟶*-snd
@@ -81,7 +81,7 @@ open import poc.OCP0009.NbEPDirDBConf
         ; ⟶*-trᵈ; ⟶*-trᵖ; ⟶*-trᵉ; ⟶*-apᶜ; ⟶*-apᵇ; ⟶*-apᵖ )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Homᵀ
-        ; confluentᵀ; church-rosserᵀ
+        ; confluentᵀ; church-rosserᵀ; Id-reduct
         ; ΠRed; mkΠRed; Π-reduct; Πinj≡
         ; ΣRed; mkΣRed; Σ-reduct; Σinj≡; red→≅ᵀ )
 
@@ -1087,6 +1087,11 @@ data CSR {Γ} where
   csr-hom  : {c c' a b : RTm Γ} → CSR c c' →
              CSR (⌜Hom⌝ c a b) (⌜Hom⌝ c' a b)
 
+infix 3 _⟶snr*_
+data _⟶snr*_ {Γ} : RTm Γ → RTm Γ → Set where
+  snr-done : {t : RTm Γ} → t ⟶snr* t
+  snr-step : {t u v : RTm Γ} → SNRed t u → u ⟶snr* v → t ⟶snr* v
+
 csr→⟶ : {t t' : RTm Γ} → CSR t t' → t ⟶ t'
 snr→⟶ : {t t' : RTm Γ} → SNRed t t' → t ⟶ t'
 csr→⟶ (csr-here r) = snr→⟶ r
@@ -1240,6 +1245,17 @@ csr-det (csr-hom σ) (csr-here ())
 csr-det (csr-hom {a = a} {b = b} σ) (csr-hom σ') =
   cong (λ z → ⌜Hom⌝ z a b) (csr-det σ σ')
 
+-- `idrefl` has no head step, so a head step factors PAST any chain
+-- reaching one — by determinism.
+noSnrIdrefl : {Γ : Cx} {c s u : RTm Γ} → SNRed (idrefl c s) u → ⊥
+noSnrIdrefl ()
+
+idpay-peel : {Γ : Cx} {t t' : RTm Γ} {c s : RTm Γ} →
+             SNRed t t' → t ⟶snr* idrefl c s → t' ⟶snr* idrefl c s
+idpay-peel r snr-done        = ⊥-elim (noSnrIdrefl r)
+idpay-peel r (snr-step r₀ q) with snr-det r₀ r
+... | refl = q
+
 sne-whred : {t t' : RTm Γ} → SNe t → SNRed t t' → SNe t'
 sn-whred  : {t t' : RTm Γ} → SN t → SNRed t t' → SN t'
 -- SN moves along a spine step (⌜Hom⌝-headed SN is `sn-cH` only).
@@ -1274,6 +1290,18 @@ sne-whred (sne-ap snc snb snp key) (snr-ap-J {c₁ = c₁} _ ks)
 ... | ()
 sne-whred (sne-ap snc snb snp key) (snr-apᵖ r) =
   sne-ap snc snb (sn-whred snp r) (apstk?-red (snr→⟶ r) key)
+
+-- ★ the two-former kernel: neutrals never reach a reflexivity (the
+-- head strategy preserves strict neutrality; `idrefl` is not SNe), so
+-- CR3's Id-payload is vacuous — and the exp/whred transports prefix or
+-- peel the head step by determinism.
+sneIdrefl⊥ : {Γ : Cx} {c s : RTm Γ} → SNe (idrefl c s) → ⊥
+sneIdrefl⊥ ()
+
+sne-nopay : {Γ : Cx} {p : RTm Γ} {c s : RTm Γ} →
+            SNe p → p ⟶snr* idrefl c s → ⊥
+sne-nopay n snr-done      = sneIdrefl⊥ n
+sne-nopay n (snr-step r q) = sne-nopay (sne-whred n r) q
 
 sn-whred (sn-ne n)      r = sn-ne (sne-whred n r)
 sn-whred (sn-exp r₀ h) r with snr-det r₀ r
@@ -1624,12 +1652,16 @@ data StkHd {Γ} : RTy Γ → Set where
   sh-ne   : {n : RTm Γ} → Ne n → StkHd (El n)
   sh-Σ    : {A : RTy Γ} {B : RTy (Γ ∙)} → StkHd (Σ' A B)
   sh-Hom  : {H : RTy Γ} {a b : RTm Γ} → StkHd H → StkHd (Hom H a b)
+  sh-Id   : {A : RTy Γ} {t u : RTm Γ} → StkHd (Id A t u)
 
 stkhd-red : {H H' : RTy Γ} → StkHd H → H ⟶ᵀ H' → StkHd H'
 stkhd-red (sh-ne ()) El-⌜base⌝
 stkhd-red (sh-ne ()) (El-⌜Π⌝ _ _)
 stkhd-red (sh-ne ()) (El-⌜Σ⌝ _ _)
 stkhd-red (sh-ne n)  (ξ-El r)    = sh-ne (ne-red n r)
+stkhd-red sh-Id (ξ-Idᵀ r) = sh-Id
+stkhd-red sh-Id (ξ-Idˡ r) = sh-Id
+stkhd-red sh-Id (ξ-Idʳ r) = sh-Id
 stkhd-red sh-Σ       (ξ-Σˡ r)    = sh-Σ
 stkhd-red sh-Σ       (ξ-Σʳ r)    = sh-Σ
 stkhd-red (sh-Hom ()) (Hom-U _ _)
@@ -1678,6 +1710,27 @@ infix 4 _⊩₀∋_
 data ⊩₀_ {Γ} : RTy Γ → Set
 _⊩₀∋_ : {Γ : Cx} {A : RTy Γ} → ⊩₀ A → RTm Γ → Set
 
+-- the endpoint-join payload: reaching an `idrefl` yields a confluence
+-- join of the Id-type's endpoints.
+IdPay : (a b p : RTm Γ) → Set
+IdPay {Γ} a b p =
+  {c s : RTm Γ} → p ⟶snr* idrefl c s →
+  Σ (RTm Γ) (λ w → (a ⟶* w) × (b ⟶* w))
+
+-- re-base a payload across component joins (TERM confluence zig-zag) —
+-- what irrel's Id-Id transfer rides.
+idpay-transfer :
+  {a b a' b' : RTm Γ} →
+  Σ (RTm Γ) (λ v → (a ⟶* v) × (a' ⟶* v)) →
+  Σ (RTm Γ) (λ v → (b ⟶* v) × (b' ⟶* v)) →
+  {p : RTm Γ} → IdPay a b p → IdPay a' b' p
+idpay-transfer (v , (av , a'v)) (v₂ , (bv₂ , b'v₂)) pay ch with pay ch
+... | w , (aw , bw) with confluent aw av
+...   | z , (wz , vzc) with confluent (⟶*-trans bw wz) bv₂
+...     | z₃ , (zz₃ , v₂z₃) =
+        z₃ , ( ⟶*-trans a'v (⟶*-trans vzc zz₃)
+             , ⟶*-trans b'v₂ v₂z₃ )
+
 data ⊩₀_ {Γ} where
   ⊩₀base : {A : RTy Γ} → A ⟶ᵀ* base → ⊩₀ A
   ⊩₀ne   : {A : RTy Γ} {n : RTm Γ} → A ⟶ᵀ* El n → Ne n → ⊩₀ A
@@ -1697,6 +1750,13 @@ data ⊩₀_ {Γ} where
   -- `SN`, like `base`.
   ⊩₀Hom  : {A H : RTy Γ} {a b : RTm Γ}
          → A ⟶ᵀ* Hom H a b → StkHd H → ⊩₀ A
+  -- ★ the two-former kernel: `Id` at level 0 (`⌜Id⌝` decodes).  The
+  -- MEMBERSHIP carries the ENDPOINT-JOIN PAYLOAD (SPIKE-TWOFORMER §4):
+  -- reaching a reflexivity witnesses the endpoints' confluence join —
+  -- what makes fund's `jsub` transfer conversion-based at ARBITRARY
+  -- motives.
+  ⊩₀Id   : {A H : RTy Γ} {a b : RTm Γ}
+         → A ⟶ᵀ* Id H a b → ⊩₀ A
 
 ⊩₀base _     ⊩₀∋ t = SN t
 ⊩₀ne _ _     ⊩₀∋ t = SN t
@@ -1705,6 +1765,7 @@ data ⊩₀_ {Γ} where
 ⊩₀Σ _ ⊩F ⊩G  ⊩₀∋ t =
   SN t × Σ (⊩F ⊩₀∋ fst t) (λ r → (⊩G (fst t) r) ⊩₀∋ snd t)
 ⊩₀Hom _ _    ⊩₀∋ t = SN t
+⊩₀Id {a = a} {b = b} _ ⊩₀∋ t = SN t × IdPay a b t
 
 bwd₀ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₀ B → ⊩₀ A
 bwd₀ p (⊩₀base q)    = ⊩₀base (⟶ᵀ*-trans p q)
@@ -1712,6 +1773,7 @@ bwd₀ p (⊩₀ne q n)    = ⊩₀ne   (⟶ᵀ*-trans p q) n
 bwd₀ p (⊩₀Π q ⊩F ⊩G) = ⊩₀Π    (⟶ᵀ*-trans p q) ⊩F ⊩G
 bwd₀ p (⊩₀Σ q ⊩F ⊩G) = ⊩₀Σ    (⟶ᵀ*-trans p q) ⊩F ⊩G
 bwd₀ p (⊩₀Hom q s)   = ⊩₀Hom  (⟶ᵀ*-trans p q) s
+bwd₀ p (⊩₀Id q)      = ⊩₀Id   (⟶ᵀ*-trans p q)
 
 ------------------------------------------------------------------------
 -- 3a. IRRELEVANCE UP TO CONVERSION, at level 0.
@@ -1780,6 +1842,62 @@ irrel₀ c (⊩₀Σ p _ _) (⊩₀Π q _ _) with joinW c p q
 -- W2 stage 1: stuck-`Hom` identity, and its refutations against the
 -- other heads (`Hom-stk-reduct` pins the head, the other side's shape
 -- lemma pins a different one).
+-- ★ `Id` against everything: the clashes ride `Id-reduct` (Id is
+-- inert); Id-Id is the REAL transfer — component joins re-base the
+-- endpoint payload (`idpay-transfer`).
+irrel₀ c (⊩₀Id p) (⊩₀base q) with joinW c p q
+... | E , (iE , bE) with base-nf bE
+...   | refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀ c (⊩₀base p) (⊩₀Id q) with joinW c p q
+... | E , (bE , iE) with base-nf bE
+...   | refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀ c (⊩₀Id p) (⊩₀ne q n) with joinW c p q
+... | E , (iE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀ c (⊩₀ne p n) (⊩₀Id q) with joinW c p q
+... | E , (eE , iE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀ c (⊩₀Id p) (⊩₀Π q _ _) with joinW c p q
+... | E , (iE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀ c (⊩₀Π p _ _) (⊩₀Id q) with joinW c p q
+... | E , (πE , iE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀ c (⊩₀Id p) (⊩₀Σ q _ _) with joinW c p q
+... | E , (iE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀ c (⊩₀Σ p _ _) (⊩₀Id q) with joinW c p q
+... | E , (σE , iE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀ c (⊩₀Id p) (⊩₀Hom q sh) with joinW c p q
+... | E , (iE , hE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀ c (⊩₀Hom p sh) (⊩₀Id q) with joinW c p q
+... | E , (hE , iE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₀ c (⊩₀Id {a = a} {b = b} p) (⊩₀Id {a = a'} {b = b'} q)
+  with joinW c p q
+... | E , (iE , iE') with Id-reduct iE | Id-reduct iE'
+...   | H₁ , (a₁ , (b₁ , (eq₁ , (rH₁ , (ra₁ , rb₁)))))
+      | H₂ , (a₂ , (b₂ , (eq₂ , (rH₂ , (ra₂ , rb₂)))))
+      with trans (sym eq₁) eq₂
+...     | refl =
+        ( (λ t h → ( projl h
+                   , idpay-transfer (a₁ , (ra₁ , ra₂)) (b₁ , (rb₁ , rb₂))
+                                    (projr h) ))
+        , (λ t h → ( projl h
+                   , idpay-transfer (a₁ , (ra₂ , ra₁)) (b₁ , (rb₂ , rb₁))
+                                    (projr h) )) )
 irrel₀ c (⊩₀Hom _ _) (⊩₀Hom _ _) = (λ _ h → h) , (λ _ h → h)
 irrel₀ c (⊩₀base p) (⊩₀Hom q s) with joinW c p q
 ... | E , (bE , hE) with base-nf bE
@@ -1907,6 +2025,9 @@ fwd₀ p (⊩₀Σ q ⊩F ⊩G) with confluentᵀ p q
 fwd₀ p (⊩₀Hom q s) with confluentᵀ p q
 ... | E , (bE , hE) with Hom-stk-reduct s hE
 ...   | mkHomStk _ _ _ s' refl = ⊩₀Hom bE s'
+fwd₀ p (⊩₀Id q) with confluentᵀ p q
+... | E , (bE , iE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) = ⊩₀Id bE
 
 conv₀ : {A B : RTy Γ} → A ≅ᵀ B → ⊩₀ A → ⊩₀ B
 conv₀ c R with church-rosserᵀ c
@@ -1922,10 +2043,12 @@ CR1₀ (⊩₀ne _ _)  h = h
 CR1₀ (⊩₀Π _ _ _) h = projl h
 CR1₀ (⊩₀Σ _ _ _) h = projl h
 CR1₀ (⊩₀Hom _ _) h = h
+CR1₀ (⊩₀Id _)    h = projl h
 
 CR3₀ : {A : RTy Γ} (R : ⊩₀ A) {t : RTm Γ} → SNe t → R ⊩₀∋ t
 CR3₀ (⊩₀base _)    nt = sn-ne nt
 CR3₀ (⊩₀Hom _ _)   nt = sn-ne nt
+CR3₀ (⊩₀Id _)      nt = (sn-ne nt , λ ch → ⊥-elim (sne-nopay nt ch))
 CR3₀ (⊩₀ne _ _)    nt = sn-ne nt
 CR3₀ (⊩₀Π _ ⊩F ⊩G) nt =
   (sn-ne nt , λ u ru → CR3₀ (⊩G u ru) (sne-app nt (CR1₀ ⊩F ru)))
@@ -1936,6 +2059,9 @@ CR3₀ (⊩₀Σ _ ⊩F ⊩G) {t} nt =
 exp₀ : {A : RTy Γ} (R : ⊩₀ A) {t t' : RTm Γ} → SNRed t t' → R ⊩₀∋ t' → R ⊩₀∋ t
 exp₀ (⊩₀base _)    r h = sn-exp r h
 exp₀ (⊩₀Hom _ _)   r h = sn-exp r h
+exp₀ (⊩₀Id _) r h =
+  ( sn-exp r (projl h)
+  , λ ch → projr h (idpay-peel r ch) )
 exp₀ (⊩₀ne _ _)    r h = sn-exp r h
 exp₀ (⊩₀Π _ ⊩F ⊩G) r h =
   (sn-exp r (projl h) , λ v rv → exp₀ (⊩G v rv) (snr-app r) (projr h v rv))
@@ -1989,6 +2115,7 @@ PayT (⊩₀base _)  c = ⊤
 PayT (⊩₀ne _ _)  c = ⊤
 PayT (⊩₀Σ _ _ _) c = ⊤
 PayT (⊩₀Hom _ _) c = ⊤
+PayT (⊩₀Id _)    c = ⊤
 PayT {Γ = Γ} (⊩₀Π _ ⊩F ⊩G) c =
   (v : RTm Γ) (r : ⊩F ⊩₀∋ v) →
   Σ (RTm Γ) (λ c* →
@@ -1997,10 +2124,7 @@ PayT {Γ = Γ} (⊩₀Π _ ⊩F ⊩G) c =
     × ((SN (subTm (single v) (pwBody c*)))
     × PayT (⊩G v r) (subTm (single v) (pwBody c*)))))
 
-infix 3 _⟶snr*_
-data _⟶snr*_ {Γ} : RTm Γ → RTm Γ → Set where
-  snr-done : {t : RTm Γ} → t ⟶snr* t
-  snr-step : {t u v : RTm Γ} → SNRed t u → u ⟶snr* v → t ⟶snr* v
+
 
 -- the derived wire: spine-normalize, unfold pointwise, β.
 payChain : {c c* : RTm Γ} → c ⟶csr* c* → pw? c* ≡ true →
@@ -2024,6 +2148,7 @@ payT-exp r q (⊩₀base _)  pay = _
 payT-exp r q (⊩₀ne _ _)  pay = _
 payT-exp r q (⊩₀Σ _ _ _) pay = _
 payT-exp r q (⊩₀Hom _ _) pay = _
+payT-exp r q (⊩₀Id _) pay = _
 payT-exp r q (⊩₀Π _ ⊩F ⊩G) pay v rv with pay v rv
 ... | c* , (csr , rest) = c* , (csr-step (csr-here r) csr , rest)
 
@@ -2043,6 +2168,7 @@ payT-whred r (⊩₀base _)  pay = _
 payT-whred r (⊩₀ne _ _)  pay = _
 payT-whred r (⊩₀Σ _ _ _) pay = _
 payT-whred r (⊩₀Hom _ _) pay = _
+payT-whred r (⊩₀Id _) pay = _
 payT-whred r (⊩₀Π _ ⊩F ⊩G) pay v rv with pay v rv
 ... | c* , (csr , (key , rest)) =
       c* , (payT-whred-node r csr key , (key , rest))
@@ -2055,6 +2181,7 @@ payT-irrel cv R (⊩₀base _)  pay = _
 payT-irrel cv R (⊩₀ne _ _)  pay = _
 payT-irrel cv R (⊩₀Σ _ _ _) pay = _
 payT-irrel cv R (⊩₀Hom _ _) pay = _
+payT-irrel cv R (⊩₀Id _) pay = _
 payT-irrel cv (⊩₀base p) (⊩₀Π q _ _) pay with joinW cv p q
 ... | E , (bE , πE) with base-nf bE
 ...   | refl with Π-reduct πE
@@ -2071,6 +2198,10 @@ payT-irrel cv (⊩₀Hom p s) (⊩₀Π q _ _) pay with joinW cv p q
 ... | E , (hE , πE) with Hom-stk-reduct s hE
 ...   | mkHomStk _ _ _ _ refl with Π-reduct πE
 ...     | mkΠRed _ _ () _ _
+payT-irrel cv (⊩₀Id p) (⊩₀Π q _ _) pay v r' with joinW cv p q
+... | E , (iE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
 payT-irrel cv (⊩₀Π p ⊩F ⊩G) (⊩₀Π q ⊩F' ⊩G') pay v r'
   with joinW cv p q
 ... | E , (πE₁ , πE₂) with Π-reduct πE₁ | Π-reduct πE₂
@@ -2115,6 +2246,8 @@ data ⊩₁_ {Γ} where
   -- to a `Hom`.  The predicative cut does structural work again.
   ⊩₁Hom  : {A H : RTy Γ} {a b : RTm Γ}
          → A ⟶ᵀ* Hom H a b → StkHd H → ⊩₁ A
+  ⊩₁Id   : {A H : RTy Γ} {a b : RTm Γ}
+         → A ⟶ᵀ* Id H a b → ⊩₁ A
 
 ⊩₁base _     ⊩₁∋ t = SN t
 ⊩₁U _        ⊩₁∋ t = SN t × Σ (⊩₀ (El t)) (λ R → PayT R t)
@@ -2123,6 +2256,7 @@ data ⊩₁_ {Γ} where
 ⊩₁Σ _ ⊩F ⊩G  ⊩₁∋ t =
   SN t × Σ (⊩F ⊩₁∋ fst t) (λ r → (⊩G (fst t) r) ⊩₁∋ snd t)
 ⊩₁Hom _ _    ⊩₁∋ t = SN t
+⊩₁Id {a = a} {b = b} _ ⊩₁∋ t = SN t × IdPay a b t
 
 bwd₁ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₁ B → ⊩₁ A
 bwd₁ p (⊩₁base q)    = ⊩₁base (⟶ᵀ*-trans p q)
@@ -2131,6 +2265,7 @@ bwd₁ p (⊩₁ne q n)    = ⊩₁ne   (⟶ᵀ*-trans p q) n
 bwd₁ p (⊩₁Π q ⊩F ⊩G) = ⊩₁Π    (⟶ᵀ*-trans p q) ⊩F ⊩G
 bwd₁ p (⊩₁Σ q ⊩F ⊩G) = ⊩₁Σ    (⟶ᵀ*-trans p q) ⊩F ⊩G
 bwd₁ p (⊩₁Hom q s)   = ⊩₁Hom  (⟶ᵀ*-trans p q) s
+bwd₁ p (⊩₁Id q)      = ⊩₁Id   (⟶ᵀ*-trans p q)
 
 ------------------------------------------------------------------------
 -- 4a. IRRELEVANCE at level 1.
@@ -2150,6 +2285,67 @@ irrel₁ c (⊩₁base _) (⊩₁ne _ _) = (λ _ h → h) , (λ _ h → h)
 irrel₁ c (⊩₁ne _ _) (⊩₁base _) = (λ _ h → h) , (λ _ h → h)
 irrel₁ c (⊩₁ne _ _) (⊩₁ne _ _) = (λ _ h → h) , (λ _ h → h)
 irrel₁ c (⊩₁U _)    (⊩₁U _)    = (λ _ h → h) , (λ _ h → h)
+irrel₁ c (⊩₁Id p) (⊩₁base q) with joinW c p q
+... | E , (iE , bE) with base-nf bE
+...   | refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁ c (⊩₁base p) (⊩₁Id q) with joinW c p q
+... | E , (bE , iE) with base-nf bE
+...   | refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁ c (⊩₁Id p) (⊩₁U q) with joinW c p q
+... | E , (iE , uE) with U-nf uE
+...   | refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁ c (⊩₁U p) (⊩₁Id q) with joinW c p q
+... | E , (uE , iE) with U-nf uE
+...   | refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁ c (⊩₁Id p) (⊩₁ne q n) with joinW c p q
+... | E , (iE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁ c (⊩₁ne p n) (⊩₁Id q) with joinW c p q
+... | E , (eE , iE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁ c (⊩₁Id p) (⊩₁Π q _ _) with joinW c p q
+... | E , (iE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁ c (⊩₁Π p _ _) (⊩₁Id q) with joinW c p q
+... | E , (πE , iE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁ c (⊩₁Id p) (⊩₁Σ q _ _) with joinW c p q
+... | E , (iE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁ c (⊩₁Σ p _ _) (⊩₁Id q) with joinW c p q
+... | E , (σE , iE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁ c (⊩₁Id p) (⊩₁Hom q sh) with joinW c p q
+... | E , (iE , hE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁ c (⊩₁Hom p sh) (⊩₁Id q) with joinW c p q
+... | E , (hE , iE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+irrel₁ c (⊩₁Id {a = a} {b = b} p) (⊩₁Id {a = a'} {b = b'} q)
+  with joinW c p q
+... | E , (iE , iE') with Id-reduct iE | Id-reduct iE'
+...   | H₁ , (a₁ , (b₁ , (eq₁ , (rH₁ , (ra₁ , rb₁)))))
+      | H₂ , (a₂ , (b₂ , (eq₂ , (rH₂ , (ra₂ , rb₂)))))
+      with trans (sym eq₁) eq₂
+...     | refl =
+        ( (λ t h → ( projl h
+                   , idpay-transfer (a₁ , (ra₁ , ra₂)) (b₁ , (rb₁ , rb₂))
+                                    (projr h) ))
+        , (λ t h → ( projl h
+                   , idpay-transfer (a₁ , (ra₂ , ra₁)) (b₁ , (rb₂ , rb₁))
+                                    (projr h) )) )
 irrel₁ c (⊩₁Hom _ _) (⊩₁Hom _ _) = (λ _ h → h) , (λ _ h → h)
 
 -- W2 `Hom` (stuck) against everything else, both ways: impossible — reducts
@@ -2368,6 +2564,9 @@ fwd₁ p (⊩₁Σ q ⊩F ⊩G) with confluentᵀ p q
 fwd₁ p (⊩₁Hom q s) with confluentᵀ p q
 ... | E , (bE , hE) with Hom-stk-reduct s hE
 ...   | mkHomStk _ _ _ s' refl = ⊩₁Hom bE s'
+fwd₁ p (⊩₁Id q) with confluentᵀ p q
+... | E , (bE , iE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) = ⊩₁Id bE
 
 -- ★ the shape `⊢conv` needs.
 conv₁ : {A B : RTy Γ} → A ≅ᵀ B → ⊩₁ A → ⊩₁ B
@@ -2389,12 +2588,14 @@ CR1₁ (⊩₁ne _ _)  h = h
 CR1₁ (⊩₁Π _ _ _) h = projl h
 CR1₁ (⊩₁Σ _ _ _) h = projl h
 CR1₁ (⊩₁Hom _ _) h = h
+CR1₁ (⊩₁Id _)    h = projl h
 
 CR3₁ : {A : RTy Γ} (R : ⊩₁ A) {t : RTm Γ} → SNe t → R ⊩₁∋ t
 CR3₁ (⊩₁base _)    nt = sn-ne nt
 CR3₁ (⊩₁U _)       nt = (sn-ne nt , (⊩₀ne doneᵀ (sne→ne nt) , _))
 CR3₁ (⊩₁ne _ _)    nt = sn-ne nt
 CR3₁ (⊩₁Hom _ _)   nt = sn-ne nt
+CR3₁ (⊩₁Id _)      nt = (sn-ne nt , λ ch → ⊥-elim (sne-nopay nt ch))
 CR3₁ (⊩₁Π _ ⊩F ⊩G) nt =
   (sn-ne nt , λ u ru → CR3₁ (⊩G u ru) (sne-app nt (CR1₁ ⊩F ru)))
 CR3₁ (⊩₁Σ _ ⊩F ⊩G) {t} nt =
@@ -2405,6 +2606,8 @@ exp₁ : {A : RTy Γ} (R : ⊩₁ A) {t t' : RTm Γ} → SNRed t t' → R ⊩₁
 exp₁ (⊩₁base _)    r h = sn-exp r h
 exp₁ (⊩₁ne _ _)    r h = sn-exp r h
 exp₁ (⊩₁Hom _ _)   r h = sn-exp r h
+exp₁ (⊩₁Id _) r h =
+  ( sn-exp r (projl h) , λ ch → projr h (idpay-peel r ch) )
 exp₁ (⊩₁U _)       r h =
   ( sn-exp r (projl h)
   , ( bwd₀ (⟶ᵀ*-El (step (snr→⟶ r) done)) (Σ.fst (projr h))
@@ -2434,6 +2637,8 @@ mem-whred₁ : {A : RTy Γ} (R : ⊩₁ A) {t t' : RTm Γ} →
 mem-whred₁ (⊩₁base _)  r h = sn-whred h r
 mem-whred₁ (⊩₁ne _ _)  r h = sn-whred h r
 mem-whred₁ (⊩₁Hom _ _) r h = sn-whred h r
+mem-whred₁ (⊩₁Id _) r h =
+  ( sn-whred (projl h) r , λ ch → projr h (snr-step r ch) )
 mem-whred₁ (⊩₁U _)     r h =
   ( sn-whred (projl h) r
   , ( fwd₀ (⟶ᵀ*-El (step (snr→⟶ r) done)) (Σ.fst (projr h))
@@ -2471,6 +2676,7 @@ emb-coh : {A : RTy Γ} (R : ⊩₀ A) →
 
 emb (⊩₀base p)    = ⊩₁base p
 emb (⊩₀Hom p s)   = ⊩₁Hom p s
+emb (⊩₀Id p)      = ⊩₁Id p
 emb (⊩₀ne p n)    = ⊩₁ne p n
 emb (⊩₀Π p ⊩F ⊩G) =
   ⊩₁Π p (emb ⊩F) (λ u r → emb (⊩G u (projr (emb-coh ⊩F) u r)))
@@ -2479,6 +2685,7 @@ emb (⊩₀Σ p ⊩F ⊩G) =
 
 emb-coh (⊩₀base _) = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Hom _ _) = (λ _ h → h) , (λ _ h → h)
+emb-coh (⊩₀Id _)    = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀ne _ _) = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Σ _ ⊩F ⊩G) =
     (λ t h → (projl h
@@ -2655,6 +2862,7 @@ homSem₁ (⊩₁base p)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) sh-base
 homSem₁ (⊩₁ne p n)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-ne n)
 homSem₁ (⊩₁Σ p ⊩F ⊩G) ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) sh-Σ
 homSem₁ (⊩₁Hom p s)   ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom s)
+homSem₁ (⊩₁Id p)      ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) sh-Id
 homSem₁ (⊩₁U p) {c} {d} hc hd =
   ⊩₁Π (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ p) (stepᵀ (Hom-U c d) doneᵀ))
       (emb (Σ.fst (projr hc)))
@@ -2681,6 +2889,7 @@ homSem₀ (⊩₀base p)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) sh-base
 homSem₀ (⊩₀ne p n)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-ne n)
 homSem₀ (⊩₀Σ p ⊩F ⊩G) ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) sh-Σ
 homSem₀ (⊩₀Hom p s)   ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom s)
+homSem₀ (⊩₀Id p)      ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) sh-Id
 homSem₀ (⊩₀Π {F = F} {G = G} p ⊩F ⊩G) {a} {b} ha hb =
   ⊩₀Π (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ p) (stepᵀ (Hom-Π F G a b) doneᵀ))
       ⊩F
@@ -2714,6 +2923,7 @@ homSem₀-mem-endpoints (⊩₀base p)    ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀ne p n)    ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀Σ p ⊩F ⊩G) ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀Hom p s)   ha hb ha' hb' h = h
+homSem₀-mem-endpoints (⊩₀Id p) ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀Π {F = F} {G = G} p ⊩F ⊩G)
                       {a} {b} {a'} {b'} ha hb ha' hb' {t} h =
   ( projl h
@@ -2760,6 +2970,7 @@ payHomT (⊩₀base _)  payC ha hb = _
 payHomT (⊩₀ne _ _)  payC ha hb = _
 payHomT (⊩₀Σ _ _ _) payC ha hb = _
 payHomT (⊩₀Hom _ _) payC ha hb = _
+payHomT (⊩₀Id p) payC ha hb = _
 payHomT (⊩₀Π {F = F} {G = G} q ⊩F ⊩G) {C} {a} {b} payC ha hb v r
   with payC v r
 ... | C* , (csr , (key , (snb' , pb))) =
@@ -2803,6 +3014,7 @@ sem-⌜Hom⌝ p snc sna snb ⊩c payc ha hb =
   payT-bwd₀ q (⊩₀ne _ _)  pay = _
   payT-bwd₀ q (⊩₀Σ _ _ _) pay = _
   payT-bwd₀ q (⊩₀Hom _ _) pay = _
+  payT-bwd₀ q (⊩₀Id _) pay = _
   payT-bwd₀ q (⊩₀Π _ _ _) pay = pay
 
 -- ★ `sem-hrefl`: at a pw-IMMUNE code, `hrefl` is a neutral, and
