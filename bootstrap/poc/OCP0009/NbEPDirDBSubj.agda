@@ -31,6 +31,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Id; ⌜Id⌝; idrefl; jsub; Id-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
+        ; Unit; Nat; unit; nzero; nsuc; natrec
         ; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ
         ; _∘ᵣ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_
         ; subTy-renTy; renTy-subTy; subTy-subTy; renTy-renTy
@@ -45,7 +46,7 @@ open import poc.OCP0009.NbEPDirDBVar
         ; pwBody-occ; ren-as-sub; avoids-pwShift; subTm-occ
         ; stkC?-ren; wk-ren-tm; wk-sub-tm; flat?; flat→stk; flat?-ren; flat?-sub )
 open import poc.OCP0009.NbEPDirDBType
-  using ( single; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
+  using ( single; nrs; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
         ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
@@ -56,13 +57,14 @@ open import poc.OCP0009.NbEPDirDBType
         ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
         ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
+        ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
         ; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢trU
         ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢ap; ⊢conv
-        ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub
-        ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id
+        ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
         ; ⊢ctx_; c-◇; c-▹ )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; ⟶-sub )
 open import poc.OCP0009.NbEPDirDBConf
@@ -177,6 +179,8 @@ wk-ren ρ t = trans (renTm-renTm t) (sym (renTm-renTm t))
 subTy-monoˢ : {σ σ' : Sub Γ Δ} → (∀ x → σ x ⟶* σ' x) →
               (A : RTy Γ) → subTy σ A ⟶ᵀ* subTy σ' A
 subTy-monoˢ h base     = doneᵀ
+subTy-monoˢ h Unit     = doneᵀ
+subTy-monoˢ h Nat      = doneᵀ
 subTy-monoˢ h U        = doneᵀ
 subTy-monoˢ h (El t)   = ⟶ᵀ*-El (subTm-monoˢ h t)
 subTy-monoˢ h (Π A B)  =
@@ -196,9 +200,52 @@ subTy-monoˢ h (Id A t u) =
 -- survives `ξ-trᵈ`), and the reduct analyses `sr`'s new root cases need.
 ------------------------------------------------------------------------
 
+-- ★ WF stage A: the recursor's step-motive substitution `nrs` commutes
+-- with renaming and substitution (all bridges definitional but for the
+-- weakening of the substituted term), and — the payload lemma — the
+-- TWO-LEVEL instantiation of the step motive collapses to `single (nsuc n)`.
+nrs-ren : (ρ : Ren Γ Δ) (M : RTy (Γ ∙)) →
+          renTy (extR (extR ρ)) (subTy nrs M) ≡ subTy nrs (renTy (extR ρ) M)
+nrs-ren {Γ} ρ M =
+  trans (renTy-subTy M) (trans (subTy-cong bridge M) (sym (subTy-renTy M)))
+  where
+  bridge : ∀ (x : Var (Γ ∙)) →
+           renTm (extR (extR ρ)) (nrs x) ≡ nrs (extR ρ x)
+  bridge vz     = refl
+  bridge (vs x) = refl
+
 wk-cancel-tm : (a t : RTm Γ) → subTm (single a) (renTm vs t) ≡ t
 wk-cancel-tm a t =
   trans (subTm-renTm t) (trans (subTm-cong (λ _ → refl) t) (subTm-id t))
+
+nrs-sub : (σ : Sub Γ Δ) (M : RTy (Γ ∙)) →
+          subTy (extS (extS σ)) (subTy nrs M) ≡ subTy nrs (subTy (extS σ) M)
+nrs-sub {Γ} σ M =
+  trans (subTy-subTy M) (trans (subTy-cong bridge M) (sym (subTy-subTy M)))
+  where
+  bridge : ∀ (x : Var (Γ ∙)) →
+           subTm (extS (extS σ)) (nrs x) ≡ subTm nrs (extS σ x)
+  bridge vz     = refl
+  bridge (vs y) =
+    trans (renTm-renTm (σ y))
+      (trans (ren-as-sub (vs ∘ᵣ vs) (σ y))
+             (trans (subTm-cong (λ _ → refl) (σ y))
+                    (sym (subTm-renTm (σ y)))))
+
+-- the payload: instantiating the step motive at the number then at the
+-- IH is exactly the motive at the SUCCESSOR — which is what makes
+-- `natrec-suc` type-preserving.
+natrec-step-ty : (M : RTy (Γ ∙)) (r n : RTm Γ) →
+                 subTy (single r) (subTy (extS (single n)) (subTy nrs M)) ≡
+                 subTy (single (nsuc n)) M
+natrec-step-ty {Γ} M r n =
+  trans (subTy-subTy (subTy nrs M))
+        (trans (subTy-subTy M) (subTy-cong bridge M))
+  where
+  bridge : ∀ (x : Var (Γ ∙)) →
+           subTm (single r ∘ₛ extS (single n)) (nrs x) ≡ single (nsuc n) x
+  bridge vz     = cong nsuc (wk-cancel-tm r n)
+  bridge (vs y) = refl
 
 wk-inst : (d : RTm (Γ ∙)) → subTm (single (var vz)) (renTm (extR vs) d) ≡ d
 wk-inst d =
@@ -223,6 +270,31 @@ occ-red {x = x} (β t u) e = occ-sub h t (∨-false₁ (occTm (vs x) t) e)
   h (vs z) q = q
 occ-red {x = x} (βfst a b) e = ∨-false₁ (occTm x a) e
 occ-red {x = x} (βsnd a b) e = ∨-false₂ (occTm x a) e
+occ-red (ξ-nsuc r) e = occ-red r e
+occ-red {x = x} (ξ-natrecᶻ {z = z} {s = s₀} r) e =
+  ∨-false (occ-red r (∨-false₁ (occTm x z) e)) (∨-false₂ (occTm x z) e)
+occ-red {x = x} (ξ-natrecˢ {z = z} {s = s₀} r) e =
+  ∨-false (∨-false₁ (occTm x z) e)
+    (∨-false (occ-red r (∨-false₁ (occTm (vs (vs x)) s₀) (∨-false₂ (occTm x z) e)))
+             (∨-false₂ (occTm (vs (vs x)) s₀) (∨-false₂ (occTm x z) e)))
+occ-red {x = x} (ξ-natrecⁿ {z = z} {s = s₀} r) e =
+  ∨-false (∨-false₁ (occTm x z) e)
+    (∨-false (∨-false₁ (occTm (vs (vs x)) s₀) (∨-false₂ (occTm x z) e))
+             (occ-red r (∨-false₂ (occTm (vs (vs x)) s₀) (∨-false₂ (occTm x z) e))))
+occ-red {x = x} (natrec-zero z s₀) e = ∨-false₁ (occTm x z) e
+occ-red {x = x} (natrec-suc z s₀ n) e =
+  occ-sub h₁ (subTm (extS (single n)) s₀) (occ-sub h₂ s₀ eS)
+  where
+  eZ = ∨-false₁ (occTm x z) e
+  eS = ∨-false₁ (occTm (vs (vs x)) s₀) (∨-false₂ (occTm x z) e)
+  eN = ∨-false₂ (occTm (vs (vs x)) s₀) (∨-false₂ (occTm x z) e)
+  h₂ : ∀ y → eqv (vs (vs x)) y ≡ false → occTm (vs x) (extS (single n) y) ≡ false
+  h₂ vz          _ = refl
+  h₂ (vs vz)     _ = trans (occ-ren-eq (λ _ → refl) n) eN
+  h₂ (vs (vs y)) q = q
+  h₁ : ∀ y → eqv (vs x) y ≡ false → occTm x (single (natrec z s₀ n) y) ≡ false
+  h₁ vz     _ = ∨-false eZ (∨-false eS eN)
+  h₁ (vs y) q = q
 occ-red (ξ-lam r) e = occ-red r e
 occ-red {x = x} (ξ-appˡ {t = t} r) e =
   ∨-false (occ-red r (∨-false₁ (occTm x t) e)) (∨-false₂ (occTm x t) e)
@@ -515,6 +587,8 @@ ren-ty : {Γ Δ : Ctx} {ρ : Ren ⌊ Γ ⌋ ⌊ Δ ⌋} {A : RTy ⌊ Γ ⌋} →
          Γ ⊢ty A → Ren⊢ Γ Δ ρ → Δ ⊢ty renTy ρ A
 
 ren-ty ty-base       h = ty-base
+ren-ty ty-Unit       h = ty-Unit
+ren-ty ty-Nat        h = ty-Nat
 ren-ty ty-U          h = ty-U
 ren-ty (ty-Π dA dB)  h = ty-Π (ren-ty dA h) (ren-ty dB (Ren⊢-ext h))
 ren-ty (ty-Σ dA dB)  h = ty-Σ (ren-ty dA h) (ren-ty dB (Ren⊢-ext h))
@@ -524,6 +598,15 @@ ren-ty (ty-Hom dA dt du) h =
 ren-ty (ty-Id dA dt du) h =
   ty-Id (ren-ty dA h) (ren-lemma dt h) (ren-lemma du h)
 
+ren-lemma ⊢unit  h = ⊢unit
+ren-lemma ⊢nzero h = ⊢nzero
+ren-lemma (⊢nsuc dn) h = ⊢nsuc (ren-lemma dn h)
+ren-lemma {ρ = ρ} (⊢natrec {M = M} {n = n} dM dz ds dn) h =
+  ⊢-cast (sym (ren-comm-ty ρ M n))
+    (⊢natrec (ren-ty dM (Ren⊢-ext h))
+             (⊢-cast (ren-comm-ty ρ M nzero) (ren-lemma dz h))
+             (⊢-cast (nrs-ren ρ M) (ren-lemma ds (Ren⊢-ext (Ren⊢-ext h))))
+             (ren-lemma dn h))
 ren-lemma (⊢var v) h = ⊢var (h v)
 ren-lemma (⊢lam dA d) h = ⊢lam (ren-ty dA h) (ren-lemma d (Ren⊢-ext h))
 ren-lemma {ρ = ρ} (⊢app {B = D} {u = u} d₁ d₂) h =
@@ -596,6 +679,8 @@ sub-ty : {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {A : RTy ⌊ Γ ⌋} →
          Γ ⊢ty A → Sub⊢ Γ Δ σ → Δ ⊢ty subTy σ A
 
 sub-ty ty-base      h = ty-base
+sub-ty ty-Unit      h = ty-Unit
+sub-ty ty-Nat       h = ty-Nat
 sub-ty ty-U         h = ty-U
 sub-ty (ty-Π dA dB) h = ty-Π (sub-ty dA h) (sub-ty dB (Sub⊢-ext h))
 sub-ty (ty-Σ dA dB) h = ty-Σ (sub-ty dA h) (sub-ty dB (Sub⊢-ext h))
@@ -605,6 +690,15 @@ sub-ty (ty-Id dA dt du) h =
 sub-ty (ty-Hom dA dt du) h =
   ty-Hom (sub-ty dA h) (sub-lemma dt h) (sub-lemma du h)
 
+sub-lemma ⊢unit  h = ⊢unit
+sub-lemma ⊢nzero h = ⊢nzero
+sub-lemma (⊢nsuc dn) h = ⊢nsuc (sub-lemma dn h)
+sub-lemma {σ = σ} (⊢natrec {M = M} {n = n} dM dz ds dn) h =
+  ⊢-cast (sym (subTy-comm σ M n))
+    (⊢natrec (sub-ty dM (Sub⊢-ext h))
+             (⊢-cast (subTy-comm σ M nzero) (sub-lemma dz h))
+             (⊢-cast (nrs-sub σ M) (sub-lemma ds (Sub⊢-ext (Sub⊢-ext h))))
+             (sub-lemma dn h))
 sub-lemma (⊢var v) h = h v
 sub-lemma (⊢lam dA d) h = ⊢lam (sub-ty dA h) (sub-lemma d (Sub⊢-ext h))
 sub-lemma {σ = σ} (⊢app {B = D} {u = u} d₁ d₂) h =
@@ -651,14 +745,18 @@ sub-lemma (⊢trU dt du dp de) h =
   ⊢trU (sub-lemma dt h) (sub-lemma du h) (sub-lemma dp h) (sub-lemma de h)
 sub-lemma {σ = σ} (⊢conv d c) h = ⊢conv (sub-lemma d h) (≅ᵀ-sub σ c)
 
+-- the single substitution AS a typed substitution — `⊢[]` is its
+-- instantiation, and `sr`'s `natrec-suc` case needs it standalone (to
+-- substitute the recursor's OUTER binder, under the IH binder).
+⊢single : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {a : RTm ⌊ Γ ⌋} →
+          Γ ⊢ a ∷ A → Sub⊢ (Γ ▹ A) Γ (single a)
+⊢single {A = A} {a = a} da here = ⊢-cast (sym (wk-cancel a A)) da
+⊢single {a = a} da (there {A = A₀} v) = ⊢-cast (sym (wk-cancel a A₀)) (⊢var v)
+
 ⊢[] : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {t : RTm (⌊ Γ ⌋ ∙)} {B : RTy (⌊ Γ ⌋ ∙)}
       {a : RTm ⌊ Γ ⌋} →
       (Γ ▹ A) ⊢ t ∷ B → Γ ⊢ a ∷ A → Γ ⊢ subTm (single a) t ∷ subTy (single a) B
-⊢[] {A = A} {a = a} dt da = sub-lemma dt single⊢
-  where
-  single⊢ : Sub⊢ _ _ (single a)
-  single⊢ here          = ⊢-cast (sym (wk-cancel a A)) da
-  single⊢ (there {A = A₀} v) = ⊢-cast (sym (wk-cancel a A₀)) (⊢var v)
+⊢[] dt da = sub-lemma dt (⊢single da)
 
 -- Context conversion: converting the LAST context entry along `≅ᵀ`. Derived
 -- from the substitution lemma (identity substitution, with `⊢conv` at `vz`),
@@ -760,6 +858,26 @@ gen-⌜Id⌝ : {Γ : Ctx} {c a b : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
 gen-⌜Id⌝ (⊢⌜Id⌝ dc da db) = dc , (da , (db , crflᵀ))
 gen-⌜Id⌝ (⊢conv d c) with gen-⌜Id⌝ d
 ... | (dc , (da , (db , c'))) = dc , (da , (db , ctrnᵀ (csymᵀ c) c'))
+
+-- ★ WF stage A generation lemmas.
+gen-nsuc : {Γ : Ctx} {n : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+           Γ ⊢ nsuc n ∷ C → (Γ ⊢ n ∷ Nat) × (C ≅ᵀ Nat)
+gen-nsuc (⊢nsuc dn)  = dn , crflᵀ
+gen-nsuc (⊢conv d c) with gen-nsuc d
+... | (dn , c') = dn , ctrnᵀ (csymᵀ c) c'
+
+gen-natrec : {Γ : Ctx} {z : RTm ⌊ Γ ⌋} {s₀ : RTm ((⌊ Γ ⌋ ∙) ∙)}
+             {n : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+             Γ ⊢ natrec z s₀ n ∷ C →
+             Σ (RTy (⌊ Γ ⌋ ∙)) (λ M →
+               ((Γ ▹ Nat) ⊢ty M) ×
+               ((Γ ⊢ z ∷ subTy (single nzero) M) ×
+               ((((Γ ▹ Nat) ▹ M) ⊢ s₀ ∷ subTy nrs M) ×
+               ((Γ ⊢ n ∷ Nat) × (C ≅ᵀ subTy (single n) M)))))
+gen-natrec (⊢natrec dM dz ds dn) = _ , (dM , (dz , (ds , (dn , crflᵀ))))
+gen-natrec (⊢conv d c) with gen-natrec d
+... | M , (dM , (dz , (ds , (dn , c')))) =
+      M , (dM , (dz , (ds , (dn , ctrnᵀ (csymᵀ c) c'))))
 
 gen-idrefl : {Γ : Ctx} {c t₀ : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
              Γ ⊢ idrefl c t₀ ∷ C →
@@ -1024,6 +1142,27 @@ gen-tr (⊢conv d c) with gen-tr d
 ------------------------------------------------------------------------
 
 sr : {Γ : Ctx} {t u : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} → Γ ⊢ t ∷ A → t ⟶ u → Γ ⊢ u ∷ A
+sr d (ξ-nsuc r) with gen-nsuc d
+... | (dn , cC) = ⊢conv (⊢nsuc (sr dn r)) (csymᵀ cC)
+sr d (natrec-zero z s₀) with gen-natrec d
+... | M , (dM , (dz , (ds , (dn , cC)))) = ⊢conv dz (csymᵀ cC)
+sr d (natrec-suc z s₀ n) with gen-natrec d
+... | M , (dM , (dz , (ds , (dn , cC)))) with gen-nsuc dn
+...   | (dn' , _) =
+      ⊢conv (⊢-cast (natrec-step-ty M (natrec z s₀ n) n)
+              (⊢[] (sub-lemma ds (Sub⊢-ext (⊢single dn')))
+                   (⊢natrec dM dz ds dn')))
+            (csymᵀ cC)
+sr d (ξ-natrecᶻ r) with gen-natrec d
+... | M , (dM , (dz , (ds , (dn , cC)))) =
+      ⊢conv (⊢natrec dM (sr dz r) ds dn) (csymᵀ cC)
+sr d (ξ-natrecˢ r) with gen-natrec d
+... | M , (dM , (dz , (ds , (dn , cC)))) =
+      ⊢conv (⊢natrec dM dz (sr ds r) dn) (csymᵀ cC)
+sr d (ξ-natrecⁿ r) with gen-natrec d
+... | M , (dM , (dz , (ds , (dn , cC)))) =
+      ⊢conv (⊢natrec dM dz ds (sr dn r))
+            (csymᵀ (ctrnᵀ cC (red→≅ᵀ (subTy-monoˢ (single-mono (step r done)) M))))
 sr d (β s a) with gen-app d
 ... | A₀ , (B₀ , (d-lam , (d-a , cC))) with gen-lam d-lam
 ...   | A₁ , (B₁ , (cΠ , (tyA₁ , d-s))) with Π-inj cΠ

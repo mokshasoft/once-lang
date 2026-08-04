@@ -29,7 +29,8 @@ open import normalizer.Syntax.Types
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; base; U; Π; Σ'; El; Hom; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
-        ; var; lam; app; pair; fst; snd; vz; vs; renTm )
+        ; var; lam; app; pair; fst; snd; vz; vs; renTm
+        ; Unit; Nat; unit; nzero; nsuc; natrec )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
         ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
@@ -43,7 +44,7 @@ open import poc.OCP0009.NbEPDirDBConf
         ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝; p⌜Hom⌝; phrefl
         ; ptr; ptr-J-base; ptr-J-Σ; ptr-taut
         ; phrefl-pw; ptr-J-Hom; ptr-pw; pap; pap-J; p⌜Id⌝; pidrefl; pjsub; pjsub-refl
-        ; ptr-J-Id
+        ; ptr-J-Id; punit; pnzero; pnsuc; pnatrec; pnatrec-zero; pnatrec-suc
         ; _⁺; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟶*-trans
         ; ⟹-ren; ⟶*-ren; ⟶*-appˡ )
 
@@ -133,6 +134,9 @@ infix 3 _⟹ᵀ_
 data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   pbase : base {Γ} ⟹ᵀ base
   pU    : U {Γ} ⟹ᵀ U
+  -- ★ WF stage A: Unit/Nat are INERT type formers — nullary congruences.
+  pUnit : Unit {Γ} ⟹ᵀ Unit
+  pNat  : Nat {Γ} ⟹ᵀ Nat
   pEl   : {t t' : RTm Γ} → t ⟹ t' → El t ⟹ᵀ El t'
   pΠ    : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} → A ⟹ᵀ A' → B ⟹ᵀ B' → Π A B ⟹ᵀ Π A' B'
   pΣ    : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} → A ⟹ᵀ A' → B ⟹ᵀ B' → Σ' A B ⟹ᵀ Σ' A' B'
@@ -162,6 +166,8 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 
 ⟹ᵀ-refl : (A : RTy Γ) → A ⟹ᵀ A
 ⟹ᵀ-refl base     = pbase
+⟹ᵀ-refl Unit     = pUnit
+⟹ᵀ-refl Nat      = pNat
 ⟹ᵀ-refl (El t)   = pEl (⟹-refl t)
 ⟹ᵀ-refl U        = pU
 ⟹ᵀ-refl (Π A B)  = pΠ (⟹ᵀ-refl A) (⟹ᵀ-refl B)
@@ -192,6 +198,8 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 
 ⟹ᵀ→⟶ᵀ* : {A B : RTy Γ} → A ⟹ᵀ B → A ⟶ᵀ* B
 ⟹ᵀ→⟶ᵀ* pbase    = doneᵀ
+⟹ᵀ→⟶ᵀ* pUnit    = doneᵀ
+⟹ᵀ→⟶ᵀ* pNat     = doneᵀ
 ⟹ᵀ→⟶ᵀ* pU       = doneᵀ
 ⟹ᵀ→⟶ᵀ* (pEl p)  = ⟶ᵀ*-El (⟹→⟶* p)
 ⟹ᵀ→⟶ᵀ* (pΠ p q) = ⟶ᵀ*-trans (⟶ᵀ*-Πˡ (⟹ᵀ→⟶ᵀ* p)) (⟶ᵀ*-Πʳ (⟹ᵀ→⟶ᵀ* q))
@@ -234,6 +242,8 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 
 _⁺ᵀ : RTy Γ → RTy Γ
 base ⁺ᵀ         = base
+Unit ⁺ᵀ         = Unit
+Nat ⁺ᵀ          = Nat
 U ⁺ᵀ            = U
 El (var x) ⁺ᵀ   = El (var x ⁺)
 El (lam t) ⁺ᵀ   = El (lam t ⁺)
@@ -246,6 +256,10 @@ El (⌜Π⌝ c d) ⁺ᵀ = Π (El (c ⁺)) (El (d ⁺))
 El (⌜Σ⌝ c d) ⁺ᵀ = Σ' (El (c ⁺)) (El (d ⁺))
 El (⌜Hom⌝ c a b) ⁺ᵀ = Hom (El (c ⁺)) (a ⁺) (b ⁺)
 El (⌜Id⌝ c a b) ⁺ᵀ  = Id (El (c ⁺)) (a ⁺) (b ⁺)
+El unit ⁺ᵀ          = El (unit ⁺)
+El nzero ⁺ᵀ         = El (nzero ⁺)
+El (nsuc n) ⁺ᵀ      = El (nsuc n ⁺)
+El (natrec z s n) ⁺ᵀ = El (natrec z s n ⁺)
 El (idrefl c t) ⁺ᵀ  = El (idrefl c t ⁺)
 El (jsub d p e) ⁺ᵀ  = El (jsub d p e ⁺)
 El (hrefl c t) ⁺ᵀ   = El (hrefl c t ⁺)
@@ -258,6 +272,8 @@ El (ap c b p) ⁺ᵀ    = El (ap c b p ⁺)
 -- is an `El` code the development DECODES ONLY — one parallel step cannot
 -- both decode and unfold, the same one-step-behind pattern `El` itself uses.
 Hom base t u ⁺ᵀ        = Hom base (t ⁺) (u ⁺)
+Hom Unit t u ⁺ᵀ        = Hom Unit (t ⁺) (u ⁺)
+Hom Nat t u ⁺ᵀ         = Hom Nat (t ⁺) (u ⁺)
 Hom U c d ⁺ᵀ           = Π (El (c ⁺)) (El (renTm vs (d ⁺)))
 Hom (Π A B) f g ⁺ᵀ     =
   Π (A ⁺ᵀ) (Hom (B ⁺ᵀ) (app (renTm vs (f ⁺)) (var vz))
@@ -273,6 +289,14 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ : {A B : RTy Γ} → A ⟹ᵀ B → B ⟹ᵀ A ⁺ᵀ
 ⟹ᵀ-⁺ pbase          = pbase
 ⟹ᵀ-⁺ pU             = pU
+⟹ᵀ-⁺ pUnit          = pUnit
+⟹ᵀ-⁺ pNat           = pNat
+⟹ᵀ-⁺ (pEl w@punit)  = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@pnzero) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pnsuc _))  = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pnatrec _ _ _))      = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pnatrec-zero _ _))   = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pnatrec-suc _ _ _))  = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl (pvar x)) = pEl (⟹-⁺ (pvar x))
 ⟹ᵀ-⁺ (pEl (plam p)) = pEl (⟹-⁺ (plam p))
 ⟹ᵀ-⁺ (pEl (papp p q)) = pEl (⟹-⁺ (papp p q))
@@ -312,6 +336,8 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pHom (pΠ pA pB) pt pu) =
   pHom-Π (⟹ᵀ-⁺ pA) (⟹ᵀ-⁺ pB) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pbase pt pu)      = pHom pbase (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pUnit pt pu)      = pHom pUnit (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt pu)       = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom (pΣ pA pB) pt pu) =
   pHom (pΣ (⟹ᵀ-⁺ pA) (⟹ᵀ-⁺ pB)) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom (pEl pe) pt pu)   =
