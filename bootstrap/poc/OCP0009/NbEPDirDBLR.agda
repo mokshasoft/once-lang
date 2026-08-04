@@ -78,7 +78,9 @@ open import poc.OCP0009.NbEPDirDBConf
         ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-fst; ⟶*-snd
         ; ⟶*-⌜Π⌝ˡ; ⟶*-⌜Π⌝ʳ; ⟶*-⌜Σ⌝ˡ; ⟶*-⌜Σ⌝ʳ
         ; ⟶*-⌜Hom⌝ᶜ; ⟶*-⌜Hom⌝ˡ; ⟶*-⌜Hom⌝ʳ; ⟶*-hreflᶜ; ⟶*-hreflᵃ
-        ; ⟶*-trᵈ; ⟶*-trᵖ; ⟶*-trᵉ; ⟶*-apᶜ; ⟶*-apᵇ; ⟶*-apᵖ )
+        ; ⟶*-trᵈ; ⟶*-trᵖ; ⟶*-trᵉ; ⟶*-apᶜ; ⟶*-apᵇ; ⟶*-apᵖ
+        ; ⟶*-jsubᵈ; ⟶*-jsubᵖ; ⟶*-jsubᵉ; ⟶*-⌜Id⌝ᶜ; ⟶*-⌜Id⌝ˡ; ⟶*-⌜Id⌝ʳ
+        ; ⟶*-idreflᶜ; ⟶*-idreflᵃ )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Homᵀ
         ; confluentᵀ; church-rosserᵀ; Id-reduct
@@ -972,6 +974,10 @@ apstk?-red* : {t t' : RTm Γ} → t ⟶* t' → apstk? t ≡ true → apstk? t' 
 apstk?-red* done h       = h
 apstk?-red* (step r q) h = apstk?-red* q (apstk?-red r h)
 
+idstk?-red* : {t t' : RTm Γ} → t ⟶* t' → idstk? t ≡ true → idstk? t' ≡ true
+idstk?-red* done h       = h
+idstk?-red* (step r q) h = idstk?-red* q (idstk?-red r h)
+
 trstk?-red-d* : {d d' : RTm (Γ ∙)} {p : RTm Γ} → d ⟶* d' →
                 trstk? d p ≡ true → trstk? d' p ≡ true
 trstk?-red-d* {p = p} done       h = h
@@ -1014,6 +1020,9 @@ data SNe {Γ} where
   -- lam path, or an hrefl at a DEAD code) is neutral.
   sne-ap : {cB : RTm Γ} {b : RTm (Γ ∙)} {p : RTm Γ} →
            SN cB → SN b → SN p → apstk? p ≡ true → SNe (ap cB b p)
+  -- ★ the two-former kernel: a PERMANENTLY STUCK `jsub` is neutral.
+  sne-jsub : {d : RTm (Γ ∙)} {p e : RTm Γ} →
+             SN d → SN p → SN e → idstk? p ≡ true → SNe (jsub d p e)
 
 data SN {Γ} where
   sn-ne   : {t : RTm Γ} → SNe t → SN t
@@ -1023,6 +1032,8 @@ data SN {Γ} where
   sn-cΠ   : {c : RTm Γ} {d : RTm (Γ ∙)} → SN c → SN d → SN (⌜Π⌝ c d)
   sn-cΣ   : {c : RTm Γ} {d : RTm (Γ ∙)} → SN c → SN d → SN (⌜Σ⌝ c d)
   sn-cH   : {c a b : RTm Γ} → SN c → SN a → SN b → SN (⌜Hom⌝ c a b)
+  sn-cId  : {c a b : RTm Γ} → SN c → SN a → SN b → SN (⌜Id⌝ c a b)
+  sn-idrefl : {c t : RTm Γ} → SN c → SN t → SN (idrefl c t)
   sn-exp  : {t t' : RTm Γ} → SNRed t t' → SN t' → SN t
 
 data SNRed {Γ} where
@@ -1061,6 +1072,17 @@ data SNRed {Γ} where
                SNRed (ap cB b (hrefl c₁ s)) (hrefl cB (subTm (single s) b))
   snr-apᵖ    : {cB : RTm Γ} {b : RTm (Γ ∙)} {p p' : RTm Γ} → SNRed p p' →
                SNRed (ap cB b p) (ap cB b p')
+  -- ★ the two-former kernel: `jsub` eliminates the path; the unkeyed J
+  -- discards the motive and the reflexivity's pieces (carried as SN).
+  snr-jsub-refl : {d : RTm (Γ ∙)} {c s e : RTm Γ} →
+                  SN d → SN c → SN s →
+                  SNRed (jsub d (idrefl c s) e) e
+  snr-jsubᵖ  : {d : RTm (Γ ∙)} {p p' e : RTm Γ} → SNRed p p' →
+               SNRed (jsub d p e) (jsub d p' e)
+  -- J at `⌜Id⌝`-coded hrefl paths (the stable-shape completion).
+  snr-J-Id   : {c a m : RTm (Γ ∙)} {c₁ a₁ b₁ s e : RTm Γ} →
+               SN (⌜Hom⌝ c a m) → SN c₁ → SN a₁ → SN b₁ → SN s →
+               SNRed (tr (⌜Hom⌝ c a m) (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e) e
   -- W2b: J at stable ⌜Hom⌝ codes and pointwise transport (discarded
   -- material carried as SN, the snr-β pattern; tr-pw's SN c covers the
   -- ⌜Π⌝-domain that pwBody drops).
@@ -1113,6 +1135,9 @@ snr→⟶ (snr-tr-pw _ _ key)  = tr-pw _ _ _ _ key
 snr→⟶ (snr-tr-mot σ)       = ξ-trᵈ (ξ-⌜Hom⌝ᶜ (csr→⟶ σ))
 snr→⟶ (snr-ap-J _ key)     = ap-J _ _ _ _ key
 snr→⟶ (snr-apᵖ r)          = ξ-apᵖ (snr→⟶ r)
+snr→⟶ (snr-jsub-refl _ _ _) = jsub-refl _ _ _ _
+snr→⟶ (snr-jsubᵖ r)        = ξ-jsubᵖ (snr→⟶ r)
+snr→⟶ (snr-J-Id _ _ _ _ _) = tr-J-Id _ _ _ _ _ _ _ _
 
 -- a head-reducible term is never a pw-able code (all SNRed subjects
 -- are app/fst/snd/hrefl/tr-headed).
@@ -1134,6 +1159,9 @@ snr-nonpw (snr-tr-pw _ _ _) = refl
 snr-nonpw (snr-tr-mot _)    = refl
 snr-nonpw (snr-ap-J _ _)    = refl
 snr-nonpw (snr-apᵖ _)       = refl
+snr-nonpw (snr-jsub-refl _ _ _) = refl
+snr-nonpw (snr-jsubᵖ _)     = refl
+snr-nonpw (snr-J-Id _ _ _ _ _) = refl
 
 csr-nonpw : {t t' : RTm Γ} → CSR t t' → pw? t ≡ false
 csr-nonpw (csr-here r) = snr-nonpw r
@@ -1161,6 +1189,11 @@ csr-stk⊥ {t = tr _ _ _} () _
 -- MEMBERSHIP move FORWARD along it (`sn-whred`/`mem-whred₁` below) —
 -- the transfer `fund`'s `tr` case runs its path analysis on.
 ------------------------------------------------------------------------
+
+-- `idrefl` has no head step, so a head step factors PAST any chain
+-- reaching one — by determinism.
+noSnrIdrefl : {Γ : Cx} {c s u : RTm Γ} → SNRed (idrefl c s) u → ⊥
+noSnrIdrefl ()
 
 snr-det : {t u u' : RTm Γ} → SNRed t u → SNRed t u' → u ≡ u'
 csr-det : {t u u' : RTm Γ} → CSR t u → CSR t u' → u ≡ u'
@@ -1238,17 +1271,22 @@ snr-det (snr-apᵖ (snr-hrefl-pw kp)) (snr-ap-J {c₁ = c₁} _ ks)
 ... | ()
 snr-det (snr-apᵖ r) (snr-apᵖ r') with snr-det r r'
 ... | refl = refl
+snr-det (snr-jsub-refl _ _ _) (snr-jsub-refl _ _ _) = refl
+snr-det (snr-jsub-refl _ _ _) (snr-jsubᵖ r) = ⊥-elim (noSnrIdrefl r)
+snr-det (snr-jsubᵖ r) (snr-jsub-refl _ _ _) = ⊥-elim (noSnrIdrefl r)
+snr-det (snr-jsubᵖ r) (snr-jsubᵖ r') with snr-det r r'
+... | refl = refl
+snr-det (snr-J-Id _ _ _ _ _) (snr-J-Id _ _ _ _ _) = refl
+snr-det (snr-J-Id _ _ _ _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-Id _ _ _ _ _)
+snr-det (snr-J-Id _ _ _ _ _) (snr-trᵖ (snr-hrefl-pw ()))
+snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Id _ _ _ _ _)
 
 csr-det (csr-here r) (csr-here r') = snr-det r r'
 csr-det (csr-here ()) (csr-hom σ')
 csr-det (csr-hom σ) (csr-here ())
 csr-det (csr-hom {a = a} {b = b} σ) (csr-hom σ') =
   cong (λ z → ⌜Hom⌝ z a b) (csr-det σ σ')
-
--- `idrefl` has no head step, so a head step factors PAST any chain
--- reaching one — by determinism.
-noSnrIdrefl : {Γ : Cx} {c s u : RTm Γ} → SNRed (idrefl c s) u → ⊥
-noSnrIdrefl ()
 
 idpay-peel : {Γ : Cx} {t t' : RTm Γ} {c s : RTm Γ} →
              SNRed t t' → t ⟶snr* idrefl c s → t' ⟶snr* idrefl c s
@@ -1290,6 +1328,10 @@ sne-whred (sne-ap snc snb snp key) (snr-ap-J {c₁ = c₁} _ ks)
 ... | ()
 sne-whred (sne-ap snc snb snp key) (snr-apᵖ r) =
   sne-ap snc snb (sn-whred snp r) (apstk?-red (snr→⟶ r) key)
+sne-whred (sne-tr snd₀ snp sne₀ ()) (snr-J-Id _ _ _ _ _)
+sne-whred (sne-jsub snd₀ snp sne₀ ()) (snr-jsub-refl _ _ _)
+sne-whred (sne-jsub snd₀ snp sne₀ key) (snr-jsubᵖ r) =
+  sne-jsub snd₀ (sn-whred snp r) sne₀ (idstk?-red (snr→⟶ r) key)
 
 -- ★ the two-former kernel: neutrals never reach a reflexivity (the
 -- head strategy preserves strict neutrality; `idrefl` is not SNe), so
@@ -1344,6 +1386,8 @@ data Ne {Γ} : RTm Γ → Set where
           trstk? d p ≡ true → Ne (tr d p e)
   ne-ap : {cB : RTm Γ} {b : RTm (Γ ∙)} {p : RTm Γ} →
           apstk? p ≡ true → Ne (ap cB b p)
+  ne-jsub : {d : RTm (Γ ∙)} {p e : RTm Γ} →
+            idstk? p ≡ true → Ne (jsub d p e)
 
 ne-red : {t t' : RTm Γ} → Ne t → t ⟶ t' → Ne t'
 ne-red (ne-var x) ()
@@ -1370,6 +1414,11 @@ ne-red (ne-ap key) (ap-J _ _ c₁ _ kh) =
 ne-red (ne-ap key) (ξ-apᶜ r) = ne-ap key
 ne-red (ne-ap key) (ξ-apᵇ r) = ne-ap key
 ne-red (ne-ap key) (ξ-apᵖ r) = ne-ap (apstk?-red r key)
+ne-red (ne-jsub key) (jsub-refl _ c₁ _ _) =
+  ⊥-elim (f≢t key)
+ne-red (ne-jsub key) (ξ-jsubᵈ r) = ne-jsub key
+ne-red (ne-jsub key) (ξ-jsubᵖ r) = ne-jsub (idstk?-red r key)
+ne-red (ne-jsub key) (ξ-jsubᵉ r) = ne-jsub key
 
 sne→ne : {t : RTm Γ} → SNe t → Ne t
 sne→ne (sne-var x)   = ne-var x
@@ -1379,6 +1428,7 @@ sne→ne (sne-snd n)   = ne-snd (sne→ne n)
 sne→ne (sne-hrefl _ _ kn) = ne-hrefl kn
 sne→ne (sne-tr _ _ _ key) = ne-tr key
 sne→ne (sne-ap _ _ _ key) = ne-ap key
+sne→ne (sne-jsub _ _ _ key) = ne-jsub key
 
 -- extractors for `fund`'s path analysis: strict neutrals are safe spine
 -- heads and stable codes.
@@ -1390,6 +1440,7 @@ sne→spine (sne-snd n)        = sne→spine n
 sne→spine (sne-hrefl _ _ kn) = kn
 sne→spine (sne-tr _ _ _ key) = key
 sne→spine (sne-ap _ _ _ key) = key
+sne→spine (sne-jsub _ _ _ key) = key
 
 sne→stablecd : {t : RTm Γ} → SNe t → stablecd? t ≡ true
 sne→stablecd (sne-var x)        = refl
@@ -1399,6 +1450,7 @@ sne→stablecd (sne-snd n)        = sne→spine n
 sne→stablecd (sne-hrefl _ _ _)    = refl
 sne→stablecd (sne-tr _ _ _ key) = key
 sne→stablecd (sne-ap _ _ _ key) = key
+sne→stablecd (sne-jsub _ _ _ key) = key
 
 -- renaming preserves every classifier ON THE NOSE — the entire
 -- anti-renaming bill for the shape layer.
@@ -3120,6 +3172,21 @@ wne (sne-ap {b = b} c₀ b₀ p₀ key) with wn c₀ | wn b₀ | wn p₀
     nrm' (ξ-apᶜ q) = nm₁ q
     nrm' (ξ-apᵇ q) = nm₂ q
     nrm' (ξ-apᵖ q) = nm₃ q
+wne (sne-jsub {d = d} {p = p} d₀ p₀ e₀ key) with wn d₀ | wn p₀ | wn e₀
+... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃ =
+      mkWNe (jsub n₁ n₂ n₃)
+            (⟶*-trans (⟶*-jsubᵈ r₁)
+                      (⟶*-trans (⟶*-jsubᵖ r₂) (⟶*-jsubᵉ r₃)))
+            nrm' (sne-jsub sn₁ sn₂ sn₃ key')
+  where
+    key' : idstk? n₂ ≡ true
+    key' = idstk?-red* r₂ key
+
+    nrm' : IsNormal (jsub n₁ n₂ n₃)
+    nrm' (jsub-refl _ _ _ _) = f≢t key'
+    nrm' (ξ-jsubᵈ q) = nm₁ q
+    nrm' (ξ-jsubᵖ q) = nm₂ q
+    nrm' (ξ-jsubᵉ q) = nm₃ q
 wn (sn-ne n) with wne n
 ... | mkWNe n₁ r₁ nm₁ ne₁ = mkWN n₁ r₁ nm₁ (sn-ne ne₁)
 wn (sn-lam s) with wn s
@@ -3150,6 +3217,25 @@ wn (sn-cΣ c d) with wn c | wn d
     nrm' : IsNormal (⌜Σ⌝ n₁ n₂)
     nrm' (ξ-⌜Σ⌝ˡ q) = nm₁ q
     nrm' (ξ-⌜Σ⌝ʳ q) = nm₂ q
+wn (sn-cId c a b) with wn c | wn a | wn b
+... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃ =
+      mkWN (⌜Id⌝ n₁ n₂ n₃)
+           (⟶*-trans (⟶*-⌜Id⌝ᶜ r₁) (⟶*-trans (⟶*-⌜Id⌝ˡ r₂) (⟶*-⌜Id⌝ʳ r₃)))
+           nrm' (sn-cId sn₁ sn₂ sn₃)
+  where
+    nrm' : IsNormal (⌜Id⌝ n₁ n₂ n₃)
+    nrm' (ξ-⌜Id⌝ᶜ q) = nm₁ q
+    nrm' (ξ-⌜Id⌝ˡ q) = nm₂ q
+    nrm' (ξ-⌜Id⌝ʳ q) = nm₃ q
+wn (sn-idrefl c t) with wn c | wn t
+... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ =
+      mkWN (idrefl n₁ n₂)
+           (⟶*-trans (⟶*-idreflᶜ r₁) (⟶*-idreflᵃ r₂))
+           nrm' (sn-idrefl sn₁ sn₂)
+  where
+    nrm' : IsNormal (idrefl n₁ n₂)
+    nrm' (ξ-idreflᶜ q) = nm₁ q
+    nrm' (ξ-idreflᵃ q) = nm₂ q
 wn (sn-cH c a b) with wn c | wn a | wn b
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃ =
       mkWN (⌜Hom⌝ n₁ n₂ n₃)
