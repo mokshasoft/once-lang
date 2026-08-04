@@ -72,7 +72,8 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; ap-cong₃
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
-        ; ⌜Hom⌝; hrefl; tr; ap; ⌜Hom⌝-cong₃; tr-cong₃
+        ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
+        ; ⌜Hom⌝-cong₃; tr-cong₃; ⌜Id⌝-cong₃; jsub-cong₃; Id-cong₃
         ; Ren; extR; renTy; renTm; Sub; extS; subTm
         ; renTm-renTm; subTm-renTm; renTm-subTm; subTm-cong )
 
@@ -107,6 +108,7 @@ occTy x (Π A B)     = occTy x A ∨ occTy (vs x) B
 occTy x (Σ' A B)    = occTy x A ∨ occTy (vs x) B
 occTy x (El t)      = occTm x t
 occTy x (Hom A t u) = occTy x A ∨ occTm x t ∨ occTm x u
+occTy x (Id A t u) = occTy x A ∨ occTm x t ∨ occTm x u
 
 occTm x (var y)    = eqv x y
 occTm x (lam t)    = occTm (vs x) t
@@ -118,8 +120,11 @@ occTm x ⌜base⌝     = false
 occTm x (⌜Π⌝ c d)  = occTm x c ∨ occTm (vs x) d
 occTm x (⌜Σ⌝ c d)  = occTm x c ∨ occTm (vs x) d
 occTm x (⌜Hom⌝ c a b) = occTm x c ∨ occTm x a ∨ occTm x b
+occTm x (⌜Id⌝ c a b) = occTm x c ∨ occTm x a ∨ occTm x b
 occTm x (hrefl c t)   = occTm x c ∨ occTm x t
+occTm x (idrefl c t)   = occTm x c ∨ occTm x t
 occTm x (tr d p e)    = occTm (vs x) d ∨ occTm x p ∨ occTm x e
+occTm x (jsub d p e)    = occTm (vs x) d ∨ occTm x p ∨ occTm x e
 occTm x (ap c b p)    = occTm x c ∨ occTm (vs x) b ∨ occTm x p
 
 ------------------------------------------------------------------------
@@ -188,6 +193,8 @@ occ-ren-ty h (Σ' A B) =
 occ-ren-ty h (El t)   = occ-ren-tm h t
 occ-ren-ty h (Hom A t u) =
   ∨-false (occ-ren-ty h A) (∨-false (occ-ren-tm h t) (occ-ren-tm h u))
+occ-ren-ty h (Id A t u) =
+  ∨-false (occ-ren-ty h A) (∨-false (occ-ren-tm h t) (occ-ren-tm h u))
 
 occ-ren-tm h (var y)    = h y
 occ-ren-tm h (lam t)    = occ-ren-tm (avoids-ext h) t
@@ -202,8 +209,14 @@ occ-ren-tm h (⌜Σ⌝ c d)  =
   ∨-false (occ-ren-tm h c) (occ-ren-tm (avoids-ext h) d)
 occ-ren-tm h (⌜Hom⌝ c a b) =
   ∨-false (occ-ren-tm h c) (∨-false (occ-ren-tm h a) (occ-ren-tm h b))
+occ-ren-tm h (⌜Id⌝ c a b) =
+  ∨-false (occ-ren-tm h c) (∨-false (occ-ren-tm h a) (occ-ren-tm h b))
 occ-ren-tm h (hrefl c t)   = ∨-false (occ-ren-tm h c) (occ-ren-tm h t)
+occ-ren-tm h (idrefl c t)   = ∨-false (occ-ren-tm h c) (occ-ren-tm h t)
 occ-ren-tm h (tr d p e)    =
+  ∨-false (occ-ren-tm (avoids-ext h) d)
+          (∨-false (occ-ren-tm h p) (occ-ren-tm h e))
+occ-ren-tm h (jsub d p e)    =
   ∨-false (occ-ren-tm (avoids-ext h) d)
           (∨-false (occ-ren-tm h p) (occ-ren-tm h e))
 occ-ren-tm h (ap c b p)    =
@@ -353,8 +366,14 @@ occ-ren-eq h (⌜Σ⌝ c d)  =
   cong₂ _∨_ (occ-ren-eq h c) (occ-ren-eq (ext-eq h) d)
 occ-ren-eq h (⌜Hom⌝ c a b) =
   cong₂ _∨_ (occ-ren-eq h c) (cong₂ _∨_ (occ-ren-eq h a) (occ-ren-eq h b))
+occ-ren-eq h (⌜Id⌝ c a b) =
+  cong₂ _∨_ (occ-ren-eq h c) (cong₂ _∨_ (occ-ren-eq h a) (occ-ren-eq h b))
 occ-ren-eq h (hrefl c t)   = cong₂ _∨_ (occ-ren-eq h c) (occ-ren-eq h t)
+occ-ren-eq h (idrefl c t)   = cong₂ _∨_ (occ-ren-eq h c) (occ-ren-eq h t)
 occ-ren-eq h (tr d p e)    =
+  cong₂ _∨_ (occ-ren-eq (ext-eq h) d)
+            (cong₂ _∨_ (occ-ren-eq h p) (occ-ren-eq h e))
+occ-ren-eq h (jsub d p e)    =
   cong₂ _∨_ (occ-ren-eq (ext-eq h) d)
             (cong₂ _∨_ (occ-ren-eq h p) (occ-ren-eq h e))
 occ-ren-eq h (ap c b p)    =
@@ -395,10 +414,21 @@ occ-sub {x = x} h (⌜Hom⌝ c a b) e =
   ∨-false (occ-sub h c (∨-false₁ (occTm x c) e))
           (∨-false (occ-sub h a (∨-false₁ (occTm x a) (∨-false₂ (occTm x c) e)))
                    (occ-sub h b (∨-false₂ (occTm x a) (∨-false₂ (occTm x c) e))))
+occ-sub {x = x} h (⌜Id⌝ c a b) e =
+  ∨-false (occ-sub h c (∨-false₁ (occTm x c) e))
+          (∨-false (occ-sub h a (∨-false₁ (occTm x a) (∨-false₂ (occTm x c) e)))
+                   (occ-sub h b (∨-false₂ (occTm x a) (∨-false₂ (occTm x c) e))))
 occ-sub {x = x} h (hrefl c t) e =
   ∨-false (occ-sub h c (∨-false₁ (occTm x c) e))
           (occ-sub h t (∨-false₂ (occTm x c) e))
+occ-sub {x = x} h (idrefl c t) e =
+  ∨-false (occ-sub h c (∨-false₁ (occTm x c) e))
+          (occ-sub h t (∨-false₂ (occTm x c) e))
 occ-sub {x = x} h (tr d p q) e =
+  ∨-false (occ-sub (ext-occ h) d (∨-false₁ (occTm (vs x) d) e))
+          (∨-false (occ-sub h p (∨-false₁ (occTm x p) (∨-false₂ (occTm (vs x) d) e)))
+                   (occ-sub h q (∨-false₂ (occTm x p) (∨-false₂ (occTm (vs x) d) e))))
+occ-sub {x = x} h (jsub d p q) e =
   ∨-false (occ-sub (ext-occ h) d (∨-false₁ (occTm (vs x) d) e))
           (∨-false (occ-sub h p (∨-false₁ (occTm x p) (∨-false₂ (occTm (vs x) d) e)))
                    (occ-sub h q (∨-false₂ (occTm x p) (∨-false₂ (occTm (vs x) d) e))))
@@ -441,11 +471,24 @@ subTm-occ (⌜Hom⌝ m k l) h =
     (subTm-occ m (λ x o → h x (∨-inl o)))
     (subTm-occ k (λ x o → h x (∨-inr (occTm x m) (∨-inl o))))
     (subTm-occ l (λ x o → h x (∨-inr (occTm x m) (∨-inr (occTm x k) o))))
+subTm-occ (⌜Id⌝ m k l) h =
+  ⌜Id⌝-cong₃
+    (subTm-occ m (λ x o → h x (∨-inl o)))
+    (subTm-occ k (λ x o → h x (∨-inr (occTm x m) (∨-inl o))))
+    (subTm-occ l (λ x o → h x (∨-inr (occTm x m) (∨-inr (occTm x k) o))))
 subTm-occ (hrefl m k) h = cong₂ hrefl
+  (subTm-occ m (λ x o → h x (∨-inl o)))
+  (subTm-occ k (λ x o → h x (∨-inr (occTm x m) o)))
+subTm-occ (idrefl m k) h = cong₂ idrefl
   (subTm-occ m (λ x o → h x (∨-inl o)))
   (subTm-occ k (λ x o → h x (∨-inr (occTm x m) o)))
 subTm-occ (tr m k l) h =
   tr-cong₃
+    (subTm-occ m (ext-agree (λ x → occTm x m) (λ y o → h y (∨-inl o))))
+    (subTm-occ k (λ x o → h x (∨-inr (occTm (vs x) m) (∨-inl o))))
+    (subTm-occ l (λ x o → h x (∨-inr (occTm (vs x) m) (∨-inr (occTm x k) o))))
+subTm-occ (jsub m k l) h =
+  jsub-cong₃
     (subTm-occ m (ext-agree (λ x → occTm x m) (λ y o → h y (∨-inl o))))
     (subTm-occ k (λ x o → h x (∨-inr (occTm (vs x) m) (∨-inl o))))
     (subTm-occ l (λ x o → h x (∨-inr (occTm (vs x) m) (∨-inr (occTm x k) o))))
@@ -530,8 +573,11 @@ stk⊥pw ⌜base⌝ h = refl
 stk⊥pw (⌜Π⌝ γ δ) ()
 stk⊥pw (⌜Σ⌝ c d) h = refl
 stk⊥pw (⌜Hom⌝ C a b) h = stk⊥pw C h
+stk⊥pw (⌜Id⌝ C a b) ()
 stk⊥pw (hrefl c t) ()
+stk⊥pw (idrefl c t) ()
 stk⊥pw (tr d p e) ()
+stk⊥pw (jsub d p e) ()
 stk⊥pw (ap c b p) ()
 
 -- renaming EQUALITIES.
@@ -546,8 +592,11 @@ pw?-ren ρ ⌜base⌝        = refl
 pw?-ren ρ (⌜Π⌝ γ δ)     = refl
 pw?-ren ρ (⌜Σ⌝ c d)     = refl
 pw?-ren ρ (⌜Hom⌝ C a b) = pw?-ren ρ C
+pw?-ren ρ (⌜Id⌝ C a b) = refl
 pw?-ren ρ (hrefl c t)   = refl
+pw?-ren ρ (idrefl c t)   = refl
 pw?-ren ρ (tr d p e)    = refl
+pw?-ren ρ (jsub d p e)    = refl
 pw?-ren ρ (ap c b p)    = refl
 
 stkC?-ren : (ρ : Ren Γ Δ) (C : RTm Γ) → stkC? (renTm ρ C) ≡ stkC? C
@@ -561,8 +610,11 @@ stkC?-ren ρ ⌜base⌝        = refl
 stkC?-ren ρ (⌜Π⌝ γ δ)     = refl
 stkC?-ren ρ (⌜Σ⌝ c d)     = refl
 stkC?-ren ρ (⌜Hom⌝ C a b) = stkC?-ren ρ C
+stkC?-ren ρ (⌜Id⌝ C a b) = refl
 stkC?-ren ρ (hrefl c t)   = refl
+stkC?-ren ρ (idrefl c t)   = refl
 stkC?-ren ρ (tr d p e)    = refl
+stkC?-ren ρ (jsub d p e)    = refl
 stkC?-ren ρ (ap c b p)    = refl
 
 -- ★ directed `ap` (SpikeAp, refined at the fund landing): the SOURCE
@@ -579,6 +631,7 @@ flat? _             = false
 flat→stk : (c : RTm Γ) → flat? c ≡ true → stkC? c ≡ true
 flat→stk ⌜base⌝        h = refl
 flat→stk (⌜Hom⌝ c a b) h = h
+flat→stk (⌜Id⌝ c a b) ()
 flat→stk (var _) ()
 flat→stk (lam _) ()
 flat→stk (app _ _) ()
@@ -588,7 +641,9 @@ flat→stk (snd _) ()
 flat→stk (⌜Π⌝ _ _) ()
 flat→stk (⌜Σ⌝ _ _) ()
 flat→stk (hrefl _ _) ()
+flat→stk (idrefl _ _) ()
 flat→stk (tr _ _ _) ()
+flat→stk (jsub _ _ _) ()
 flat→stk (ap _ _ _) ()
 
 flat?-ren : (ρ : Ren Γ Δ) (C : RTm Γ) → flat? (renTm ρ C) ≡ flat? C
@@ -602,8 +657,11 @@ flat?-ren ρ ⌜base⌝         = refl
 flat?-ren ρ (⌜Π⌝ c d)      = refl
 flat?-ren ρ (⌜Σ⌝ c d)      = refl
 flat?-ren ρ (⌜Hom⌝ c a b)  = stkC?-ren ρ c
+flat?-ren ρ (⌜Id⌝ c a b)  = refl
 flat?-ren ρ (hrefl c t)    = refl
+flat?-ren ρ (idrefl c t)    = refl
 flat?-ren ρ (tr d p e)     = refl
+flat?-ren ρ (jsub d p e)     = refl
 flat?-ren ρ (ap c b p)     = refl
 
 
@@ -625,8 +683,11 @@ pwDom-ren ρ ⌜base⌝ ()
 pwDom-ren ρ (⌜Π⌝ γ δ) h = refl
 pwDom-ren ρ (⌜Σ⌝ c d) ()
 pwDom-ren ρ (⌜Hom⌝ C a b) h = pwDom-ren ρ C h
+pwDom-ren ρ (⌜Id⌝ C a b) ()
 pwDom-ren ρ (hrefl c t) ()
+pwDom-ren ρ (idrefl c t) ()
 pwDom-ren ρ (tr d p e) ()
+pwDom-ren ρ (jsub d p e) ()
 pwDom-ren ρ (ap c b p) ()
 
 pwBody-ren : (ρ : Ren Γ Δ) (C : RTm Γ) → pw? C ≡ true →
@@ -644,8 +705,11 @@ pwBody-ren ρ (⌜Hom⌝ C a b) h =
   ⌜Hom⌝-cong₃ (pwBody-ren ρ C h)
               (cong (λ z → app z (var vz)) (sym (wk-ren-tm ρ a)))
               (cong (λ z → app z (var vz)) (sym (wk-ren-tm ρ b)))
+pwBody-ren ρ (⌜Id⌝ C a b) ()
 pwBody-ren ρ (hrefl c t) ()
+pwBody-ren ρ (idrefl c t) ()
 pwBody-ren ρ (tr d p e) ()
+pwBody-ren ρ (jsub d p e) ()
 pwBody-ren ρ (ap c b p) ()
 
 -- substitution PRESERVES the keys (one direction only — a substitution
@@ -667,8 +731,11 @@ pw?-sub σ ⌜base⌝ ()
 pw?-sub σ (⌜Π⌝ γ δ) h = refl
 pw?-sub σ (⌜Σ⌝ c d) ()
 pw?-sub σ (⌜Hom⌝ C a b) h = pw?-sub σ C h
+pw?-sub σ (⌜Id⌝ C a b) ()
 pw?-sub σ (hrefl c t) ()
+pw?-sub σ (idrefl c t) ()
 pw?-sub σ (tr d p e) ()
+pw?-sub σ (jsub d p e) ()
 pw?-sub σ (ap c b p) ()
 
 stkC?-sub : (σ : Sub Γ Δ) (C : RTm Γ) → stkC? C ≡ true →
@@ -683,14 +750,18 @@ stkC?-sub σ ⌜base⌝ h = refl
 stkC?-sub σ (⌜Π⌝ γ δ) ()
 stkC?-sub σ (⌜Σ⌝ c d) h = refl
 stkC?-sub σ (⌜Hom⌝ C a b) h = stkC?-sub σ C h
+stkC?-sub σ (⌜Id⌝ C a b) ()
 stkC?-sub σ (hrefl c t) ()
+stkC?-sub σ (idrefl c t) ()
 stkC?-sub σ (tr d p e) ()
+stkC?-sub σ (jsub d p e) ()
 stkC?-sub σ (ap c b p) ()
 
 flat?-sub : (σ : Sub Γ Δ) (C : RTm Γ) → flat? C ≡ true →
             flat? (subTm σ C) ≡ true
 flat?-sub σ ⌜base⌝        h = refl
 flat?-sub σ (⌜Hom⌝ c a b) h = stkC?-sub σ c h
+flat?-sub σ (⌜Id⌝ c a b) ()
 flat?-sub σ (var _) ()
 flat?-sub σ (lam _) ()
 flat?-sub σ (app _ _) ()
@@ -700,7 +771,9 @@ flat?-sub σ (snd _) ()
 flat?-sub σ (⌜Π⌝ _ _) ()
 flat?-sub σ (⌜Σ⌝ _ _) ()
 flat?-sub σ (hrefl _ _) ()
+flat?-sub σ (idrefl _ _) ()
 flat?-sub σ (tr _ _ _) ()
+flat?-sub σ (jsub _ _ _) ()
 flat?-sub σ (ap _ _ _) ()
 
 pwDom-sub : (σ : Sub Γ Δ) (C : RTm Γ) → pw? C ≡ true →
@@ -715,8 +788,11 @@ pwDom-sub σ ⌜base⌝ ()
 pwDom-sub σ (⌜Π⌝ γ δ) h = refl
 pwDom-sub σ (⌜Σ⌝ c d) ()
 pwDom-sub σ (⌜Hom⌝ C a b) h = pwDom-sub σ C h
+pwDom-sub σ (⌜Id⌝ C a b) ()
 pwDom-sub σ (hrefl c t) ()
+pwDom-sub σ (idrefl c t) ()
 pwDom-sub σ (tr d p e) ()
+pwDom-sub σ (jsub d p e) ()
 pwDom-sub σ (ap c b p) ()
 
 pwBody-sub : (σ : Sub Γ Δ) (C : RTm Γ) → pw? C ≡ true →
@@ -734,8 +810,11 @@ pwBody-sub σ (⌜Hom⌝ C a b) h =
   ⌜Hom⌝-cong₃ (pwBody-sub σ C h)
               (cong (λ z → app z (var vz)) (sym (wk-sub-tm σ a)))
               (cong (λ z → app z (var vz)) (sym (wk-sub-tm σ b)))
+pwBody-sub σ (⌜Id⌝ C a b) ()
 pwBody-sub σ (hrefl c t) ()
+pwBody-sub σ (idrefl c t) ()
 pwBody-sub σ (tr d p e) ()
+pwBody-sub σ (jsub d p e) ()
 pwBody-sub σ (ap c b p) ()
 
 -- `pwShift` never outputs `vz` — the inner motive `tr-pw` builds is
@@ -756,8 +835,11 @@ pw⊥stk ⌜base⌝ ()
 pw⊥stk (⌜Π⌝ γ δ) h = refl
 pw⊥stk (⌜Σ⌝ c d) ()
 pw⊥stk (⌜Hom⌝ C a b) h = pw⊥stk C h
+pw⊥stk (⌜Id⌝ C a b) h = refl
 pw⊥stk (hrefl c t) ()
+pw⊥stk (idrefl c t) ()
 pw⊥stk (tr d p e) ()
+pw⊥stk (jsub d p e) ()
 pw⊥stk (ap c b p) ()
 
 -- a renaming IS a variable-image substitution — lets `subTm-occ`'s
@@ -793,10 +875,21 @@ ren-as-sub ρ (⌜Σ⌝ c d)  =
   ptw (vs x) = refl
 ren-as-sub ρ (⌜Hom⌝ c a b) =
   ⌜Hom⌝-cong₃ (ren-as-sub ρ c) (ren-as-sub ρ a) (ren-as-sub ρ b)
+ren-as-sub ρ (⌜Id⌝ c a b) =
+  ⌜Id⌝-cong₃ (ren-as-sub ρ c) (ren-as-sub ρ a) (ren-as-sub ρ b)
 ren-as-sub ρ (hrefl c t) =
   cong₂ hrefl (ren-as-sub ρ c) (ren-as-sub ρ t)
+ren-as-sub ρ (idrefl c t) =
+  cong₂ idrefl (ren-as-sub ρ c) (ren-as-sub ρ t)
 ren-as-sub ρ (tr d p e) =
   tr-cong₃ (trans (ren-as-sub (extR ρ) d) (subTm-cong ptw d))
+           (ren-as-sub ρ p) (ren-as-sub ρ e)
+  where
+  ptw : ∀ x → var (extR ρ x) ≡ extS (λ y → var (ρ y)) x
+  ptw vz     = refl
+  ptw (vs x) = refl
+ren-as-sub ρ (jsub d p e) =
+  jsub-cong₃ (trans (ren-as-sub (extR ρ) d) (subTm-cong ptw d))
            (ren-as-sub ρ p) (ren-as-sub ρ e)
   where
   ptw : ∀ x → var (extR ρ x) ≡ extS (λ y → var (ρ y)) x
@@ -836,5 +929,8 @@ pwBody-occ {x = x} (⌜Hom⌝ C a b) h o =
   occ-shift {x = x} t o' =
     trans (occ-ren-eq (λ y → refl) t) o'
 pwBody-occ (hrefl c t) () o
+pwBody-occ (idrefl c t) () o
 pwBody-occ (tr d p e) () o
+pwBody-occ (⌜Id⌝ c a b) () o
+pwBody-occ (jsub d p e) () o
 pwBody-occ (ap c b p) () o
