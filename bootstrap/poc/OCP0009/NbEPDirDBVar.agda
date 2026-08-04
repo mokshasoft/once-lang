@@ -69,10 +69,10 @@ module poc.OCP0009.NbEPDirDBVar where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; ε; _∙; Var; vz; vs
+  using ( Cx; ε; _∙; Var; vz; vs; ap-cong₃
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
-        ; ⌜Hom⌝; hrefl; tr; ⌜Hom⌝-cong₃; tr-cong₃
+        ; ⌜Hom⌝; hrefl; tr; ap; ⌜Hom⌝-cong₃; tr-cong₃
         ; Ren; extR; renTy; renTm; Sub; extS; subTm
         ; renTm-renTm; subTm-renTm; renTm-subTm; subTm-cong )
 
@@ -120,6 +120,7 @@ occTm x (⌜Σ⌝ c d)  = occTm x c ∨ occTm (vs x) d
 occTm x (⌜Hom⌝ c a b) = occTm x c ∨ occTm x a ∨ occTm x b
 occTm x (hrefl c t)   = occTm x c ∨ occTm x t
 occTm x (tr d p e)    = occTm (vs x) d ∨ occTm x p ∨ occTm x e
+occTm x (ap c b p)    = occTm x c ∨ occTm (vs x) b ∨ occTm x p
 
 ------------------------------------------------------------------------
 -- 2. ★ THE POLARITY JUDGMENT.
@@ -205,6 +206,9 @@ occ-ren-tm h (hrefl c t)   = ∨-false (occ-ren-tm h c) (occ-ren-tm h t)
 occ-ren-tm h (tr d p e)    =
   ∨-false (occ-ren-tm (avoids-ext h) d)
           (∨-false (occ-ren-tm h p) (occ-ren-tm h e))
+occ-ren-tm h (ap c b p)    =
+  ∨-false (occ-ren-tm h c)
+          (∨-false (occ-ren-tm (avoids-ext h) b) (occ-ren-tm h p))
 
 avoids-wk : Avoids (vs {Γ}) vz
 avoids-wk y = refl
@@ -353,6 +357,9 @@ occ-ren-eq h (hrefl c t)   = cong₂ _∨_ (occ-ren-eq h c) (occ-ren-eq h t)
 occ-ren-eq h (tr d p e)    =
   cong₂ _∨_ (occ-ren-eq (ext-eq h) d)
             (cong₂ _∨_ (occ-ren-eq h p) (occ-ren-eq h e))
+occ-ren-eq h (ap c b p)    =
+  cong₂ _∨_ (occ-ren-eq h c)
+            (cong₂ _∨_ (occ-ren-eq (ext-eq h) b) (occ-ren-eq h p))
 
 -- Substitution KILLS occurrence: if the substitution's images avoid the
 -- tracked target variable on every source variable the term can mention,
@@ -395,6 +402,10 @@ occ-sub {x = x} h (tr d p q) e =
   ∨-false (occ-sub (ext-occ h) d (∨-false₁ (occTm (vs x) d) e))
           (∨-false (occ-sub h p (∨-false₁ (occTm x p) (∨-false₂ (occTm (vs x) d) e)))
                    (occ-sub h q (∨-false₂ (occTm x p) (∨-false₂ (occTm (vs x) d) e))))
+occ-sub {x = x} h (ap c b p) e =
+  ∨-false (occ-sub h c (∨-false₁ (occTm x c) e))
+          (∨-false (occ-sub (ext-occ h) b (∨-false₁ (occTm (vs x) b) (∨-false₂ (occTm x c) e)))
+                   (occ-sub h p (∨-false₂ (occTm (vs x) b) (∨-false₂ (occTm x c) e))))
 
 -- Two substitutions agreeing on every OCCURRING variable act equally
 -- (SpikeTr §9, promoted) — how `sr`'s `tr-pw` case bridges the swap
@@ -438,6 +449,11 @@ subTm-occ (tr m k l) h =
     (subTm-occ m (ext-agree (λ x → occTm x m) (λ y o → h y (∨-inl o))))
     (subTm-occ k (λ x o → h x (∨-inr (occTm (vs x) m) (∨-inl o))))
     (subTm-occ l (λ x o → h x (∨-inr (occTm (vs x) m) (∨-inr (occTm x k) o))))
+subTm-occ (ap m k l) h =
+  ap-cong₃
+    (subTm-occ m (λ x o → h x (∨-inl o)))
+    (subTm-occ k (ext-agree (λ x → occTm x k) (λ y o → h y (∨-inr (occTm y m) (∨-inl o)))))
+    (subTm-occ l (λ x o → h x (∨-inr (occTm x m) (∨-inr (occTm (vs x) k) o))))
 
 ------------------------------------------------------------------------
 -- 7. `PosC` survives renaming and substitution — `⊢tr` moves under both.
@@ -516,6 +532,7 @@ stk⊥pw (⌜Σ⌝ c d) h = refl
 stk⊥pw (⌜Hom⌝ C a b) h = stk⊥pw C h
 stk⊥pw (hrefl c t) ()
 stk⊥pw (tr d p e) ()
+stk⊥pw (ap c b p) ()
 
 -- renaming EQUALITIES.
 pw?-ren : (ρ : Ren Γ Δ) (C : RTm Γ) → pw? (renTm ρ C) ≡ pw? C
@@ -531,6 +548,7 @@ pw?-ren ρ (⌜Σ⌝ c d)     = refl
 pw?-ren ρ (⌜Hom⌝ C a b) = pw?-ren ρ C
 pw?-ren ρ (hrefl c t)   = refl
 pw?-ren ρ (tr d p e)    = refl
+pw?-ren ρ (ap c b p)    = refl
 
 stkC?-ren : (ρ : Ren Γ Δ) (C : RTm Γ) → stkC? (renTm ρ C) ≡ stkC? C
 stkC?-ren ρ (var x)       = refl
@@ -545,6 +563,7 @@ stkC?-ren ρ (⌜Σ⌝ c d)     = refl
 stkC?-ren ρ (⌜Hom⌝ C a b) = stkC?-ren ρ C
 stkC?-ren ρ (hrefl c t)   = refl
 stkC?-ren ρ (tr d p e)    = refl
+stkC?-ren ρ (ap c b p)    = refl
 
 -- weakening commutes with a renaming (both composites are
 -- definitionally `x ↦ vs (ρ x)`).
@@ -566,6 +585,7 @@ pwDom-ren ρ (⌜Σ⌝ c d) ()
 pwDom-ren ρ (⌜Hom⌝ C a b) h = pwDom-ren ρ C h
 pwDom-ren ρ (hrefl c t) ()
 pwDom-ren ρ (tr d p e) ()
+pwDom-ren ρ (ap c b p) ()
 
 pwBody-ren : (ρ : Ren Γ Δ) (C : RTm Γ) → pw? C ≡ true →
              pwBody (renTm ρ C) ≡ renTm (extR ρ) (pwBody C)
@@ -584,6 +604,7 @@ pwBody-ren ρ (⌜Hom⌝ C a b) h =
               (cong (λ z → app z (var vz)) (sym (wk-ren-tm ρ b)))
 pwBody-ren ρ (hrefl c t) ()
 pwBody-ren ρ (tr d p e) ()
+pwBody-ren ρ (ap c b p) ()
 
 -- substitution PRESERVES the keys (one direction only — a substitution
 -- can CREATE pw-ability at a variable head, which is exactly why
@@ -606,6 +627,7 @@ pw?-sub σ (⌜Σ⌝ c d) ()
 pw?-sub σ (⌜Hom⌝ C a b) h = pw?-sub σ C h
 pw?-sub σ (hrefl c t) ()
 pw?-sub σ (tr d p e) ()
+pw?-sub σ (ap c b p) ()
 
 stkC?-sub : (σ : Sub Γ Δ) (C : RTm Γ) → stkC? C ≡ true →
             stkC? (subTm σ C) ≡ true
@@ -621,6 +643,7 @@ stkC?-sub σ (⌜Σ⌝ c d) h = refl
 stkC?-sub σ (⌜Hom⌝ C a b) h = stkC?-sub σ C h
 stkC?-sub σ (hrefl c t) ()
 stkC?-sub σ (tr d p e) ()
+stkC?-sub σ (ap c b p) ()
 
 pwDom-sub : (σ : Sub Γ Δ) (C : RTm Γ) → pw? C ≡ true →
             pwDom (subTm σ C) ≡ subTm σ (pwDom C)
@@ -636,6 +659,7 @@ pwDom-sub σ (⌜Σ⌝ c d) ()
 pwDom-sub σ (⌜Hom⌝ C a b) h = pwDom-sub σ C h
 pwDom-sub σ (hrefl c t) ()
 pwDom-sub σ (tr d p e) ()
+pwDom-sub σ (ap c b p) ()
 
 pwBody-sub : (σ : Sub Γ Δ) (C : RTm Γ) → pw? C ≡ true →
              pwBody (subTm σ C) ≡ subTm (extS σ) (pwBody C)
@@ -654,6 +678,7 @@ pwBody-sub σ (⌜Hom⌝ C a b) h =
               (cong (λ z → app z (var vz)) (sym (wk-sub-tm σ b)))
 pwBody-sub σ (hrefl c t) ()
 pwBody-sub σ (tr d p e) ()
+pwBody-sub σ (ap c b p) ()
 
 -- `pwShift` never outputs `vz` — the inner motive `tr-pw` builds is
 -- vz-free STRUCTURALLY (what discharges `⊢tr`'s occurrence premises
@@ -675,6 +700,7 @@ pw⊥stk (⌜Σ⌝ c d) ()
 pw⊥stk (⌜Hom⌝ C a b) h = pw⊥stk C h
 pw⊥stk (hrefl c t) ()
 pw⊥stk (tr d p e) ()
+pw⊥stk (ap c b p) ()
 
 -- a renaming IS a variable-image substitution — lets `subTm-occ`'s
 -- occurrence-agreement machinery reach mixed ren/sub equations.
@@ -718,6 +744,14 @@ ren-as-sub ρ (tr d p e) =
   ptw : ∀ x → var (extR ρ x) ≡ extS (λ y → var (ρ y)) x
   ptw vz     = refl
   ptw (vs x) = refl
+ren-as-sub ρ (ap c b p) =
+  ap-cong₃ (ren-as-sub ρ c)
+           (trans (ren-as-sub (extR ρ) b) (subTm-cong ptw b))
+           (ren-as-sub ρ p)
+  where
+  ptw : ∀ x → var (extR ρ x) ≡ extS (λ y → var (ρ y)) x
+  ptw vz     = refl
+  ptw (vs x) = refl
 
 -- the pointwise body preserves NON-occurrence (one binder deeper).
 pwBody-occ : {x : Var Γ} (C : RTm Γ) → pw? C ≡ true →
@@ -745,3 +779,4 @@ pwBody-occ {x = x} (⌜Hom⌝ C a b) h o =
     trans (occ-ren-eq (λ y → refl) t) o'
 pwBody-occ (hrefl c t) () o
 pwBody-occ (tr d p e) () o
+pwBody-occ (ap c b p) () o

@@ -37,7 +37,7 @@ module poc.OCP0009.NbEPDirDBType where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
-        ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr
+        ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Ren; extR; Sub; subTy; subTm; renTy; renTm )
 open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false; occTm; pw?; stkC?; pwBody; pwShift )
@@ -159,6 +159,17 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   ξ-trᵈ    : {d d' : RTm (Γ ∙)} {p e : RTm Γ} → d ⟶ d' → tr d p e ⟶ tr d' p e
   ξ-trᵖ    : {d : RTm (Γ ∙)} {p p' e : RTm Γ} → p ⟶ p' → tr d p e ⟶ tr d p' e
   ξ-trᵉ    : {d : RTm (Γ ∙)} {p e e' : RTm Γ} → e ⟶ e' → tr d p e ⟶ tr d p e'
+  -- ★ directed `ap` (SpikeAp): J at stable path-codes — the SAME key as
+  -- `tr-J-Hom`, so the raw overlap with `hrefl-pw` is empty (`stk⊥pw`).
+  ap-J     : (cB : RTm Γ) (b : RTm (Γ ∙)) (c₁ s : RTm Γ) →
+             stkC? c₁ ≡ true →
+             ap cB b (hrefl c₁ s) ⟶ hrefl cB (subTm (single s) b)
+  ξ-apᶜ    : {c c' : RTm Γ} {b : RTm (Γ ∙)} {p : RTm Γ} →
+             c ⟶ c' → ap c b p ⟶ ap c' b p
+  ξ-apᵇ    : {c : RTm Γ} {b b' : RTm (Γ ∙)} {p : RTm Γ} →
+             b ⟶ b' → ap c b p ⟶ ap c b' p
+  ξ-apᵖ    : {c : RTm Γ} {b : RTm (Γ ∙)} {p p' : RTm Γ} →
+             p ⟶ p' → ap c b p ⟶ ap c b p'
 
 data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   El-⌜base⌝ : El (⌜base⌝ {Γ}) ⟶ᵀ base
@@ -329,6 +340,18 @@ data _⊢_∷_ where
           Γ ⊢ e ∷ El (subTm (single t) (⌜Hom⌝ c a (var vz))) →
           Γ ⊢ tr (⌜Hom⌝ c a (var vz)) p e
             ∷ El (subTm (single u) (⌜Hom⌝ c a (var vz)))
+  -- ★ directed `ap` (SpikeAp): a term's action on a hom.  The SOURCE
+  -- ambient is pinned to a STABLE code (`stkC?`, substitution-stable),
+  -- which makes `ap-J` complete for closed canonicity (SpikeAp's
+  -- keystone); the TARGET code `cB` annotates the result reflexivity.
+  -- Endpoint premises follow the `⊢lam` option-A pattern.
+  ⊢ap   : ∀ {Γ cA cB b p t u} →
+          Γ ⊢ cA ∷ U → stkC? cA ≡ true →
+          Γ ⊢ cB ∷ U →
+          (Γ ▹ El cA) ⊢ b ∷ El (renTm vs cB) →
+          Γ ⊢ t ∷ El cA → Γ ⊢ u ∷ El cA →
+          Γ ⊢ p ∷ Hom (El cA) t u →
+          Γ ⊢ ap cB b p ∷ Hom (El cB) (subTm (single t) b) (subTm (single u) b)
   ⊢conv : ∀ {Γ t A B}   → Γ ⊢ t ∷ A → A ≅ᵀ B → Γ ⊢ t ∷ B
 
 data _⊢ty_ where

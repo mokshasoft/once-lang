@@ -94,6 +94,11 @@ data RTm where
   ⌜Hom⌝  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
   hrefl  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ
   tr     : ∀ {Γ} → RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
+  -- ★ directed `ap` (SpikeAp): a term's action on a hom.  `ap cB b p` —
+  -- `cB` the TARGET code (the result reflexivity's annotation), `b` the
+  -- body (vz free), `p` the path.  Typing restricts the SOURCE ambient
+  -- to stable codes; `ap-J` is the one computation rule.
+  ap     : ∀ {Γ} → RTm Γ → RTm (Γ ∙) → RTm Γ → RTm Γ
 
 private
   variable
@@ -130,6 +135,7 @@ renTm ρ (⌜Σ⌝ c d)  = ⌜Σ⌝ (renTm ρ c) (renTm (extR ρ) d)
 renTm ρ (⌜Hom⌝ c a b) = ⌜Hom⌝ (renTm ρ c) (renTm ρ a) (renTm ρ b)
 renTm ρ (hrefl c t)   = hrefl (renTm ρ c) (renTm ρ t)
 renTm ρ (tr d p e)    = tr (renTm (extR ρ) d) (renTm ρ p) (renTm ρ e)
+renTm ρ (ap c b p)    = ap (renTm ρ c) (renTm (extR ρ) b) (renTm ρ p)
 
 ------------------------------------------------------------------------
 -- Parallel substitutions (variable-for-term) and their action.
@@ -162,6 +168,7 @@ subTm σ (⌜Σ⌝ c d)  = ⌜Σ⌝ (subTm σ c) (subTm (extS σ) d)
 subTm σ (⌜Hom⌝ c a b) = ⌜Hom⌝ (subTm σ c) (subTm σ a) (subTm σ b)
 subTm σ (hrefl c t)   = hrefl (subTm σ c) (subTm σ t)
 subTm σ (tr d p e)    = tr (subTm (extS σ) d) (subTm σ p) (subTm σ e)
+subTm σ (ap c b p)    = ap (subTm σ c) (subTm (extS σ) b) (subTm σ p)
 
 -- Identity and the four composition operators (explicit-index, genuine
 -- Ren/Sub — same shape as NbEPDirDB).
@@ -219,6 +226,10 @@ tr-cong₃ : {d d' : RTm (Γ ∙)} {p p' e e' : RTm Γ} →
            d ≡ d' → p ≡ p' → e ≡ e' → tr d p e ≡ tr d' p' e'
 tr-cong₃ refl refl refl = refl
 
+ap-cong₃ : {c c' : RTm Γ} {b b' : RTm (Γ ∙)} {p p' : RTm Γ} →
+           c ≡ c' → b ≡ b' → p ≡ p' → ap c b p ≡ ap c' b' p'
+ap-cong₃ refl refl refl = refl
+
 -- A concrete dependent type and its substitution: `(x : base) → El x`.
 Πdep : RTy Γ
 Πdep = Π base (El (var vz))
@@ -261,6 +272,8 @@ renTm-cong h (⌜Hom⌝ c a b) =
 renTm-cong h (hrefl c t)   = cong₂ hrefl (renTm-cong h c) (renTm-cong h t)
 renTm-cong h (tr d p e)    =
   tr-cong₃ (renTm-cong (extR-cong h) d) (renTm-cong h p) (renTm-cong h e)
+renTm-cong h (ap c b p)    =
+  ap-cong₃ (renTm-cong h c) (renTm-cong (extR-cong h) b) (renTm-cong h p)
 
 extS-cong : {σ σ' : Sub Γ Δ} → (∀ (x : Var Γ) → σ x ≡ σ' x) →
             ∀ (x : Var (Γ ∙)) → extS σ x ≡ extS σ' x
@@ -292,6 +305,8 @@ subTm-cong h (⌜Hom⌝ c a b) =
 subTm-cong h (hrefl c t)   = cong₂ hrefl (subTm-cong h c) (subTm-cong h t)
 subTm-cong h (tr d p e)    =
   tr-cong₃ (subTm-cong (extS-cong h) d) (subTm-cong h p) (subTm-cong h e)
+subTm-cong h (ap c b p)    =
+  ap-cong₃ (subTm-cong h c) (subTm-cong (extS-cong h) b) (subTm-cong h p)
 
 ------------------------------------------------------------------------
 -- The four mutual fusion lemmas (each a type/term pair). Binder cases bridge
@@ -335,6 +350,10 @@ renTm-renTm (hrefl c t)   = cong₂ hrefl (renTm-renTm c) (renTm-renTm t)
 renTm-renTm {ρ' = ρ'} {ρ} (tr d p e) =
   tr-cong₃ (trans (renTm-renTm d) (renTm-cong (extr-extr ρ' ρ) d))
            (renTm-renTm p) (renTm-renTm e)
+renTm-renTm {ρ' = ρ'} {ρ} (ap c b p) =
+  ap-cong₃ (renTm-renTm c)
+           (trans (renTm-renTm b) (renTm-cong (extr-extr ρ' ρ) b))
+           (renTm-renTm p)
 
 -- sub ∘ ren.
 exts-extr : (σ : Sub Δ Θ) (ρ : Ren Γ Δ) (x : Var (Γ ∙)) →
@@ -373,6 +392,10 @@ subTm-renTm (hrefl c t)   = cong₂ hrefl (subTm-renTm c) (subTm-renTm t)
 subTm-renTm {σ = σ} {ρ} (tr d p e) =
   tr-cong₃ (trans (subTm-renTm d) (subTm-cong (exts-extr σ ρ) d))
            (subTm-renTm p) (subTm-renTm e)
+subTm-renTm {σ = σ} {ρ} (ap c b p) =
+  ap-cong₃ (subTm-renTm c)
+           (trans (subTm-renTm b) (subTm-cong (exts-extr σ ρ) b))
+           (subTm-renTm p)
 
 -- ren ∘ sub.
 extr-exts : (ρ : Ren Δ Θ) (σ : Sub Γ Δ) (x : Var (Γ ∙)) →
@@ -411,6 +434,10 @@ renTm-subTm (hrefl c t)   = cong₂ hrefl (renTm-subTm c) (renTm-subTm t)
 renTm-subTm {ρ = ρ} {σ} (tr d p e) =
   tr-cong₃ (trans (renTm-subTm d) (subTm-cong (extr-exts ρ σ) d))
            (renTm-subTm p) (renTm-subTm e)
+renTm-subTm {ρ = ρ} {σ} (ap c b p) =
+  ap-cong₃ (renTm-subTm c)
+           (trans (renTm-subTm b) (subTm-cong (extr-exts ρ σ) b))
+           (renTm-subTm p)
 
 -- sub ∘ sub.
 exts-exts : (τ : Sub Δ Θ) (σ : Sub Γ Δ) (x : Var (Γ ∙)) →
@@ -449,6 +476,10 @@ subTm-subTm (hrefl c t)   = cong₂ hrefl (subTm-subTm c) (subTm-subTm t)
 subTm-subTm {τ = τ} {σ} (tr d p e) =
   tr-cong₃ (trans (subTm-subTm d) (subTm-cong (exts-exts τ σ) d))
            (subTm-subTm p) (subTm-subTm e)
+subTm-subTm {τ = τ} {σ} (ap c b p) =
+  ap-cong₃ (subTm-subTm c)
+           (trans (subTm-subTm b) (subTm-cong (exts-exts τ σ) b))
+           (subTm-subTm p)
 
 -- Identity: `exts` preserves `idₛ`, hence `subTy idₛ = id`.
 exts-id : (x : Var (Γ ∙)) → extS idₛ x ≡ idₛ x
@@ -476,6 +507,8 @@ subTm-id (⌜Hom⌝ c a b) = ⌜Hom⌝-cong₃ (subTm-id c) (subTm-id a) (subTm-
 subTm-id (hrefl c t)   = cong₂ hrefl (subTm-id c) (subTm-id t)
 subTm-id (tr d p e)    =
   tr-cong₃ (trans (subTm-cong exts-id d) (subTm-id d)) (subTm-id p) (subTm-id e)
+subTm-id (ap c b p)    =
+  ap-cong₃ (subTm-id c) (trans (subTm-cong exts-id b) (subTm-id b)) (subTm-id p)
 
 ------------------------------------------------------------------------
 -- ★ THE CATEGORY-OF-CONTEXTS LAWS ON TYPES — the coherence that makes the

@@ -35,7 +35,7 @@ module poc.OCP0009.NbEPDirDBSR where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; subst; cong; cong₂ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
-        ; ⌜Π⌝; ⌜Hom⌝; hrefl; tr; ⌜Hom⌝-cong₃; tr-cong₃
+        ; ⌜Π⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃
         ; Ren; extR; Sub; subTy; subTm; extS; _∘ₛ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; renTm
         ; subTm-subTm; subTm-cong; subTm-renTm; subTm-id; renTm-subTm
         ; renTm-renTm; renTm-cong )
@@ -48,6 +48,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
         ; tr-J-base; tr-J-Σ; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
+        ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
@@ -196,6 +197,16 @@ pwShift-sub σ t =
 ⟶-sub σ (ξ-trᵈ r)    = ξ-trᵈ (⟶-sub (extS σ) r)
 ⟶-sub σ (ξ-trᵖ r)    = ξ-trᵖ (⟶-sub σ r)
 ⟶-sub σ (ξ-trᵉ r)    = ξ-trᵉ (⟶-sub σ r)
+⟶-sub σ (ap-J cB b c₁ s key) =
+  subst (λ z → ap (subTm σ cB) (subTm (extS σ) b)
+                  (hrefl (subTm σ c₁) (subTm σ s))
+               ⟶ hrefl (subTm σ cB) z)
+        (sym (sub-comm σ b s))
+        (ap-J (subTm σ cB) (subTm (extS σ) b) (subTm σ c₁) (subTm σ s)
+              (stkC?-sub σ c₁ key))
+⟶-sub σ (ξ-apᶜ r) = ξ-apᶜ (⟶-sub σ r)
+⟶-sub σ (ξ-apᵇ r) = ξ-apᵇ (⟶-sub (extS σ) r)
+⟶-sub σ (ξ-apᵖ r) = ξ-apᵖ (⟶-sub σ r)
 
 ⟶ᵀ-sub : (σ : Sub Γ Δ) {A B : RTy Γ} → A ⟶ᵀ B → subTy σ A ⟶ᵀ subTy σ B
 ⟶ᵀ-sub σ (El-⌜base⌝)  = El-⌜base⌝

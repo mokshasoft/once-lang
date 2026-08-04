@@ -29,19 +29,20 @@ open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ ; ⊥ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
-        ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr
+        ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ
         ; _∘ᵣ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_
         ; subTy-renTy; renTy-subTy; subTy-subTy; renTy-renTy
         ; subTy-cong; renTy-cong; subTy-id; subTm-renTm; subTm-id; subTm-cong
-        ; renTm-renTm; renTm-subTm; ⌜Hom⌝-cong₃ )
+        ; renTm-renTm; renTm-subTm; ⌜Hom⌝-cong₃; Hom-cong₃ )
 open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false; _∨_; occTm; ∨-false; ∨-false₁; ∨-false₂
         ; occ-ren-eq; occ-sub; eqv; Avoids; occ-ren-tm; avoids-wk
         ; PosC; posc-var; posc-Hom; posc-ren; posc-sub
         ; pw?; stkC?; pwDom; pwBody; pwShift
         ; pw?-sub; stkC?-sub; pwBody-sub; pwDom-sub
-        ; pwBody-occ; ren-as-sub; avoids-pwShift; subTm-occ )
+        ; pwBody-occ; ren-as-sub; avoids-pwShift; subTm-occ
+        ; stkC?-ren; wk-ren-tm; wk-sub-tm )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
         ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
@@ -51,11 +52,12 @@ open import poc.OCP0009.NbEPDirDBType
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
         ; tr-J-base; tr-J-Σ; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
+        ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
         ; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢trU
-        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢conv
+        ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢ap; ⊢conv
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom
         ; ⊢ctx_; c-◇; c-▹ )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; ⟶-sub )
@@ -284,6 +286,24 @@ occ-red {x = x} (ξ-trᵉ {d = d} {p = p} r) e =
   ∨-false (∨-false₁ (occTm (vs x) d) e)
           (∨-false (∨-false₁ (occTm x p) (∨-false₂ (occTm (vs x) d) e))
                    (occ-red r (∨-false₂ (occTm x p) (∨-false₂ (occTm (vs x) d) e))))
+occ-red {x = x} (ap-J cB b c₁ s key) e =
+  ∨-false (∨-false₁ (occTm x cB) e)
+          (occ-sub h b (∨-false₁ (occTm (vs x) b) (∨-false₂ (occTm x cB) e)))
+  where
+  h : ∀ y → eqv (vs x) y ≡ false → occTm x (single s y) ≡ false
+  h vz     _ = ∨-false₂ (occTm x c₁)
+                 (∨-false₂ (occTm (vs x) b) (∨-false₂ (occTm x cB) e))
+  h (vs z) q = q
+occ-red {x = x} (ξ-apᶜ {c = c} r) e =
+  ∨-false (occ-red r (∨-false₁ (occTm x c) e)) (∨-false₂ (occTm x c) e)
+occ-red {x = x} (ξ-apᵇ {c = c} {b = b} r) e =
+  ∨-false (∨-false₁ (occTm x c) e)
+          (∨-false (occ-red r (∨-false₁ (occTm (vs x) b) (∨-false₂ (occTm x c) e)))
+                   (∨-false₂ (occTm (vs x) b) (∨-false₂ (occTm x c) e)))
+occ-red {x = x} (ξ-apᵖ {c = c} {b = b} r) e =
+  ∨-false (∨-false₁ (occTm x c) e)
+          (∨-false (∨-false₁ (occTm (vs x) b) (∨-false₂ (occTm x c) e))
+                   (occ-red r (∨-false₂ (occTm (vs x) b) (∨-false₂ (occTm x c) e))))
 
 posc-red : {d d' : RTm (Γ ∙)} → PosC vz d → d ⟶ d' → PosC vz d'
 posc-red posc-var ()
@@ -490,6 +510,13 @@ ren-lemma {ρ = ρ} (⊢tr {c = cM} {a = aM} {t = t} {u = u} dc da dv hc ha dt d
                      (ren-lemma de h)))
 -- `⊢trU` — everything is DEFINITIONAL under renaming (the pinned `U`
 -- ambient and `var vz` motive are renaming-invariant).
+ren-lemma {ρ = ρ} (⊢ap {cA = cA} {cB = cB} {b = b} {t = t} {u = u}
+                       dcA key dcB db dt du dp) h =
+  ⊢-cast (Hom-cong₃ refl (sym (ren-comm ρ b t)) (sym (ren-comm ρ b u)))
+    (⊢ap (ren-lemma dcA h) (trans (stkC?-ren ρ cA) key)
+         (ren-lemma dcB h)
+         (⊢-cast (cong El (wk-ren-tm ρ cB)) (ren-lemma db (Ren⊢-ext h)))
+         (ren-lemma dt h) (ren-lemma du h) (ren-lemma dp h))
 ren-lemma (⊢trU dt du dp de) h =
   ⊢trU (ren-lemma dt h) (ren-lemma du h) (ren-lemma dp h) (ren-lemma de h)
 ren-lemma {ρ = ρ} (⊢conv d c) h = ⊢conv (ren-lemma d h) (≅ᵀ-ren ρ c)
@@ -552,6 +579,13 @@ sub-lemma {σ = σ} (⊢tr {c = cM} {a = aM} {t = t} {u = u} dc da dv hc ha dt d
              (sub-lemma dt h) (sub-lemma du h) (sub-lemma dp h)
              (⊢-cast (cong El (sub-comm σ (⌜Hom⌝ cM aM (var vz)) t))
                      (sub-lemma de h)))
+sub-lemma {σ = σ} (⊢ap {cA = cA} {cB = cB} {b = b} {t = t} {u = u}
+                       dcA key dcB db dt du dp) h =
+  ⊢-cast (Hom-cong₃ refl (sym (sub-comm σ b t)) (sym (sub-comm σ b u)))
+    (⊢ap (sub-lemma dcA h) (stkC?-sub σ cA key)
+         (sub-lemma dcB h)
+         (⊢-cast (cong El (wk-sub-tm σ cB)) (sub-lemma db (Sub⊢-ext h)))
+         (sub-lemma dt h) (sub-lemma du h) (sub-lemma dp h))
 sub-lemma (⊢trU dt du dp de) h =
   ⊢trU (sub-lemma dt h) (sub-lemma du h) (sub-lemma dp h) (sub-lemma de h)
 sub-lemma {σ = σ} (⊢conv d c) h = ⊢conv (sub-lemma d h) (≅ᵀ-sub σ c)
@@ -658,6 +692,21 @@ gen-hrefl : {Γ : Ctx} {c t₀ : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
 gen-hrefl (⊢hrefl dc dt) = dc , (dt , crflᵀ)
 gen-hrefl (⊢conv d c) with gen-hrefl d
 ... | (dc , (dt , c')) = dc , (dt , ctrnᵀ (csymᵀ c) c')
+
+gen-ap : {Γ : Ctx} {cB : RTm ⌊ Γ ⌋} {b : RTm (⌊ Γ ⌋ ∙)} {p : RTm ⌊ Γ ⌋}
+         {C : RTy ⌊ Γ ⌋} → Γ ⊢ ap cB b p ∷ C →
+         Σ (RTm ⌊ Γ ⌋) (λ cA → Σ (RTm ⌊ Γ ⌋) (λ t → Σ (RTm ⌊ Γ ⌋) (λ u →
+           (Γ ⊢ cA ∷ U) × ((stkC? cA ≡ true) × ((Γ ⊢ cB ∷ U) ×
+           (((Γ ▹ El cA) ⊢ b ∷ El (renTm vs cB)) ×
+           ((Γ ⊢ t ∷ El cA) × ((Γ ⊢ u ∷ El cA) ×
+           ((Γ ⊢ p ∷ Hom (El cA) t u) ×
+           (C ≅ᵀ Hom (El cB) (subTm (single t) b) (subTm (single u) b)))))))))))
+gen-ap (⊢ap dcA key dcB db dt du dp) =
+  _ , (_ , (_ , (dcA , (key , (dcB , (db , (dt , (du , (dp , crflᵀ)))))))))
+gen-ap (⊢conv d c) with gen-ap d
+... | cA , (t , (u , (dcA , (key , (dcB , (db , (dt , (du , (dp , c'))))))))) =
+      cA , (t , (u , (dcA , (key , (dcB , (db ,
+        (dt , (du , (dp , ctrnᵀ (csymᵀ c) c')))))))))
 
 
 ------------------------------------------------------------------------
@@ -1264,6 +1313,49 @@ sr d (ξ-trᵉ r) with gen-tr d
       ⊢conv (⊢tr dcM daM dvM hcM haM dt du dp (sr de r)) (csymᵀ cC)
 ... | tgU (mkTrInvU refl t u dt du dp de cC) =
       ⊢conv (⊢trU dt du dp (sr de r)) (csymᵀ cC)
+-- ★ directed `ap` (SpikeAp).  The J case extracts the endpoint
+-- conversions via confluence against the STABLE source ambient (the
+-- typing key): both sides decompose componentwise, and the body's
+-- substitution instances ride the endpoint chains.
+sr d (ap-J cB b c₁ s key) with gen-ap d
+... | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
+      with gen-hrefl dp
+...   | (dc₁ , (ds , cH)) with church-rosserᵀ cH
+...     | W , (rL , rR)
+          with homred-inv stamb-red (λ ()) (λ ()) (st-el {c = cA} keyA) rL
+...       | A₂ , (t₁ , (u₁ , (eqW , (rt , ru))))
+            with Hom-to-Hom (subst (Hom (El cA) t u ⟶ᵀ*_) eqW rL)
+              |  Hom-to-Hom (subst (Hom (El _) s s ⟶ᵀ*_) eqW rR)
+...         | mkHomRed rAL rt' ru' | mkHomRed rAR rs₁ rs₂ =
+              ⊢conv
+                (⊢hrefl dcB
+                  (⊢-cast (cong El (wk-cancel-tm s cB))
+                    (⊢[] db
+                      (⊢conv ds (ctrnᵀ (red→≅ᵀ rAR)
+                                       (csymᵀ (red→≅ᵀ rAL)))))))
+                (ctrnᵀ
+                  (ctrnᵀ (red→≅ᵀ (⟶ᵀ*-Homˡ (subTm-monoˢ (single-mono rs₁) b)))
+                    (ctrnᵀ (red→≅ᵀ (⟶ᵀ*-Homʳ (subTm-monoˢ (single-mono rs₂) b)))
+                      (ctrnᵀ (csymᵀ (red→≅ᵀ (⟶ᵀ*-Homʳ (subTm-monoˢ (single-mono ru) b))))
+                             (csymᵀ (red→≅ᵀ (⟶ᵀ*-Homˡ (subTm-monoˢ (single-mono rt) b)))))))
+                  (csymᵀ cC))
+sr d (ξ-apᶜ r) with gen-ap d
+... | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC))))))))) =
+      ⊢conv (⊢ap dcA keyA (sr dcB r)
+                 (⊢conv db (credᵀ (ξ-El (⟶-ren vs r))))
+                 dt du dp)
+            (ctrnᵀ (csymᵀ (credᵀ (ξ-Homᵀ (ξ-El r)))) (csymᵀ cC))
+sr d (ξ-apᵇ {b = b} {b' = b'} r) with gen-ap d
+... | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC))))))))) =
+      ⊢conv (⊢ap dcA keyA dcB (sr db r) dt du dp)
+            (ctrnᵀ
+              (csymᵀ (red→≅ᵀ
+                (⟶ᵀ*-trans (⟶ᵀ*-Homˡ (step (⟶-sub (single t) r) done))
+                           (⟶ᵀ*-Homʳ (step (⟶-sub (single u) r) done)))))
+              (csymᵀ cC))
+sr d (ξ-apᵖ r) with gen-ap d
+... | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC))))))))) =
+      ⊢conv (⊢ap dcA keyA dcB db dt du (sr dp r)) (csymᵀ cC)
 
 ------------------------------------------------------------------------
 -- Type preservation for MULTI-step reduction — the immediate corollary.
