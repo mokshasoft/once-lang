@@ -95,6 +95,23 @@ data _⟶ᵀ*_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟶ᵀ*-Homʳ done       = doneᵀ
 ⟶ᵀ*-Homʳ (step r p) = stepᵀ (ξ-Homʳ r) (⟶ᵀ*-Homʳ p)
 
+-- the two-former kernel: reducts of `Id` are `Id`-forms, componentwise
+-- (Id is INERT — only the three ξ-rules exist).
+Id-reduct : {A : RTy Γ} {t u : RTm Γ} {C : RTy Γ} → Id A t u ⟶ᵀ* C →
+            Σ (RTy Γ) (λ A' → Σ (RTm Γ) (λ t' → Σ (RTm Γ) (λ u' →
+              (C ≡ Id A' t' u') ×
+              ((A ⟶ᵀ* A') × ((t ⟶* t') × (u ⟶* u'))))))
+Id-reduct doneᵀ = _ , (_ , (_ , (refl , (doneᵀ , (done , done)))))
+Id-reduct (stepᵀ (ξ-Idᵀ r) rest) with Id-reduct rest
+... | A' , (t' , (u' , (eq , (rA , (rt , ru))))) =
+      A' , (t' , (u' , (eq , (stepᵀ r rA , (rt , ru)))))
+Id-reduct (stepᵀ (ξ-Idˡ r) rest) with Id-reduct rest
+... | A' , (t' , (u' , (eq , (rA , (rt , ru))))) =
+      A' , (t' , (u' , (eq , (rA , (step r rt , ru)))))
+Id-reduct (stepᵀ (ξ-Idʳ r) rest) with Id-reduct rest
+... | A' , (t' , (u' , (eq , (rA , (rt , ru))))) =
+      A' , (t' , (u' , (eq , (rA , (rt , step r ru)))))
+
 ⟶ᵀ*-Idᵀ : {A A' : RTy Γ} {t u : RTm Γ} → A ⟶ᵀ* A' → Id A t u ⟶ᵀ* Id A' t u
 ⟶ᵀ*-Idᵀ doneᵀ       = doneᵀ
 ⟶ᵀ*-Idᵀ (stepᵀ r p) = stepᵀ (ξ-Idᵀ r) (⟶ᵀ*-Idᵀ p)
