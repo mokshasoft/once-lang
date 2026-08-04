@@ -512,15 +512,20 @@ unconditionally inert — `sne-hrefl` gets keyed, `pathstk?`'s hrefl clause
 narrows to neutral spines, `trstk?`'s lam clause gains `not ∘ pw?`.
 Estimated 2–3 sessions at stage-2/3 velocity.
 
-### G2 — the W2b done-when: CODE CANONICITY            after G1, small
+### G2 — the W2b done-when: CODE CANONICITY            ✅ DONE (2026-08-04)
 
-Closed normal codes of type `U` split as `pw? ∨ stkC?`; hence closed
-normal paths at decoded types are `hrefl`s or lambdas; hence closed `tr`s
-always step.  A typed closed-normal-form analysis (generation + progress
-flavor) — the extended kernel's substitute for a consistency theorem
-(there is no empty type in this syntax; the directed-content guarantees
-are `no-sym` + canonicity).  New machinery: none expected beyond
-generation lemmas that already exist.
+`NbEPDirDBCanon.agda` — one size-bounded closed-progress induction
+(`prog`/`usplit` + eliminator workers, recursion on a `sz`-bound because
+the tr-case analyzes the STRENGTHENED motive-code, size-equal but not
+structural) delivers all three done-when items and more:
+`codeCanon` (closed normal `U`-codes split `pw? ∨ stkC?`), `pathCanon`
+(closed normal Hom-paths are hrefls or lambdas), `trProgress` (closed
+`tr`s ALWAYS step), and ★★ `consistency : ◇ ⊢ t ∷ base → ⊥` — `base`
+has no intro rule, `wnorm` + `sr*` land a closed normal inhabitant, and
+every canonical shape's type clashes with `base` by confluence.  The
+prediction held: no new machinery beyond existing generation lemmas —
+the one new tool is `stamb-star` (StkAmb transported along chains),
+which turns every stable-vs-unfolding clash into a two-liner.
 
 ### G3 — `Hom` at `Σ'` ambients (the last silent type)  unblocked by W2
 
