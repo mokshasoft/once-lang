@@ -28,7 +28,7 @@ open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; base; U; Π; Σ'; El; Hom; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
-        ; ⌜Hom⌝; hrefl; tr
+        ; ⌜Hom⌝; hrefl; tr; ap
         ; var; lam; app; pair; fst; snd; vz; vs; renTm )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
@@ -40,7 +40,7 @@ open import poc.OCP0009.NbEPDirDBConf
   using ( _⟹_; pvar; plam; papp; pβ; ppair; pfst; psnd; pβfst; pβsnd
         ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝; p⌜Hom⌝; phrefl
         ; ptr; ptr-J-base; ptr-J-Σ; ptr-taut
-        ; phrefl-pw; ptr-J-Hom; ptr-pw
+        ; phrefl-pw; ptr-J-Hom; ptr-pw; pap; pap-J
         ; _⁺; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟶*-trans
         ; ⟹-ren; ⟶*-ren; ⟶*-appˡ )
 
@@ -197,6 +197,7 @@ El (⌜Σ⌝ c d) ⁺ᵀ = Σ' (El (c ⁺)) (El (d ⁺))
 El (⌜Hom⌝ c a b) ⁺ᵀ = Hom (El (c ⁺)) (a ⁺) (b ⁺)
 El (hrefl c t) ⁺ᵀ   = El (hrefl c t ⁺)
 El (tr d p e) ⁺ᵀ    = El (tr d p e ⁺)
+El (ap c b p) ⁺ᵀ    = El (ap c b p ⁺)
 Π A B ⁺ᵀ        = Π (A ⁺ᵀ) (B ⁺ᵀ)
 Σ' A B ⁺ᵀ       = Σ' (A ⁺ᵀ) (B ⁺ᵀ)
 -- W2: `Hom` develops by the head of its TYPE argument.  Where the head is
@@ -236,6 +237,8 @@ Hom (Hom A a b) t u ⁺ᵀ = Hom ((Hom A a b) ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl w@(phrefl-pw _ _ _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(ptr-J-Hom _ _))   = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(ptr-pw _ _ _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pap _ _ _))        = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pap-J _ _ _ _))    = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pΠ p q)       = pΠ (⟹ᵀ-⁺ p) (⟹ᵀ-⁺ q)
 ⟹ᵀ-⁺ (pΣ p q)       = pΣ (⟹ᵀ-⁺ p) (⟹ᵀ-⁺ q)
 ⟹ᵀ-⁺ pEl-⌜base⌝     = pbase

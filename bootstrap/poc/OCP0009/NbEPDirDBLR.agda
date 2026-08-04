@@ -47,7 +47,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
-        ; ⌜Hom⌝; hrefl; tr
+        ; ⌜Hom⌝; hrefl; tr; ap
         ; Ren; extR; Sub; subTy; subTm; extS; renTm
         ; subTm-renTm; subTm-id; Hom-cong₃; ⌜Hom⌝-cong₃ )
 open import poc.OCP0009.NbEPDirDBType
@@ -132,7 +132,7 @@ homheaded? : RTm Γ → 𝔹
 homheaded? (⌜Hom⌝ _ _ _) = true
 homheaded? _             = false
 
-spine? stablecd? pathstk? nopw? deadmot? : RTm Γ → 𝔹
+spine? stablecd? pathstk? nopw? deadmot? apstk? : RTm Γ → 𝔹
 trstk? : RTm (Γ ∙) → RTm Γ → 𝔹
 trlam? : RTm (Γ ∙) → 𝔹
 
@@ -174,6 +174,25 @@ pathstk? (⌜Σ⌝ c d)      = true
 pathstk? (⌜Hom⌝ c a b)  = true
 pathstk? (hrefl c t)    = stablecd? c
 pathstk? (tr d p e)     = trstk? d p
+pathstk? (ap c b p)     = apstk? p
+
+-- ★ directed `ap` (SpikeAp): `ap` is stuck forever iff its PATH never
+-- becomes a canonical hrefl the J rule fires on: lam paths have NO ap
+-- rule (permanently stuck), hrefl paths are stuck iff their code is
+-- DEAD (`stablecd?` — never `stkC?`-true, never pw-able).
+apstk? (var x)        = true
+apstk? (lam t)        = true
+apstk? (app t u)      = spine? t
+apstk? (pair a b)     = true
+apstk? (fst t)        = spine? t
+apstk? (snd t)        = spine? t
+apstk? ⌜base⌝         = true
+apstk? (⌜Π⌝ c d)      = true
+apstk? (⌜Σ⌝ c d)      = true
+apstk? (⌜Hom⌝ c a b)  = true
+apstk? (hrefl c t)    = stablecd? c
+apstk? (tr d p e)     = trstk? d p
+apstk? (ap c b p)     = apstk? p
 
 -- W2b: a lam path fires tr-pw at a pw-able-⌜Hom⌝ motive with the
 -- LITERAL `var vz` endpoint — stuck only when the code can never
@@ -210,6 +229,7 @@ deadmot? (⌜Σ⌝ c d)      = true
 deadmot? (⌜Hom⌝ c a b)  = deadmot? c
 deadmot? (hrefl c t)    = deadmot? c
 deadmot? (tr d p e)     = trstk? d p
+deadmot? (ap c b p)     = apstk? p
 
 nopw? (var x)        = true
 nopw? (lam t)        = true
@@ -223,6 +243,7 @@ nopw? (⌜Σ⌝ c d)      = true
 nopw? (⌜Hom⌝ c a b)  = nopw? c
 nopw? (hrefl c t)    = true
 nopw? (tr d p e)     = trstk? d p
+nopw? (ap c b p)     = true
 
 f≢t : false ≡ true → ⊥
 f≢t ()
