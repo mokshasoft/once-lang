@@ -32,6 +32,7 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
 open import Data.Nat.Properties using
   (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-comm; +-assoc;
    *-suc; *-monoʳ-≤; ≤-step)
+open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_)
@@ -51,12 +52,13 @@ open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace; Slot; lea-slot;
    mov-to-output; mov-to-input; store-at-slot; load-from-slot;
-   store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit)
+   store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit;
+   instr-ctrl; c-thunk; c-ret)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Codegen.IRToTrace using
   (ir-to-trace'; ir-to-trace; ir-stack-budget;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
-   cata-strategy; cata-dispatch; fsize;
+   cata-strategy; cata-dispatch; fsize; lsize;
    push2; pop2; wrap-sum; visit-walk; rebuild-walk)
 
 -- the two projections of `ir-to-trace'`'s 4-tuple this module reads (record
@@ -120,6 +122,236 @@ sb-weaken le (px ∷ pxs) =
   mkSlotBelow (λ slot eq → ≤-trans (below px slot eq) le)
               (λ slot eq → ≤-trans (pair-below px slot eq) le)
   ∷ sb-weaken le pxs
+
+sb-le : ∀ {b b'} {i} → b ≤ b' → SlotBelow b i → SlotBelow b' i
+sb-le le px = mkSlotBelow (λ slot eq → ≤-trans (below px slot eq) le)
+                          (λ slot eq → ≤-trans (pair-below px slot eq) le)
+
+------------------------------------------------------------------------
+-- THE SEGMENTED BUDGET (Plan 0.63, step 2b).
+--
+-- With closure bodies inlined into `ir-to-trace`, ONE budget per trace is
+-- FALSE: a body's slots are bounded by ITS OWN reservation — the one the
+-- `c-thunk` marker carries and `c-ret` releases — which may exceed the
+-- parent's. (Making the parent reserve the max would make the `All` form TRUE
+-- and USELESS: inside a body `frame-slots` IS the body's budget, so a bound
+-- against the parent's proves nothing where `slot-read-in-frame` consumes it.)
+--
+-- So the bound is a FOLD over the trace, and the walk is `AllSeg` — `All` with
+-- the bound stepped at each instruction. The segments NEST (a curry inside a
+-- body inlines inside that body's region), so the state is a stack.
+--
+-- THE DISPATCH IS REIFIED (`SegAction`). `seg-step` could pattern-match the
+-- ~30 instruction constructors directly, but then every transport lemma would
+-- need ~30 clauses; through the classifier each needs THREE. `seg-step` still
+-- REDUCES on a concrete instruction (classify, then apply), which is what
+-- keeps this module's long explicit leaf lists `All`-based and untouched.
+------------------------------------------------------------------------
+record SegState : Set where
+  constructor mkSeg
+  field
+    cur   : ℕ         -- the reservation in force here
+    saved : List ℕ    -- the enclosing frames' reservations, innermost first
+open SegState public
+
+data SegAction : Set where
+  seg-id   : SegAction
+  seg-push : ℕ → SegAction
+  seg-pop  : SegAction
+
+seg-action : AbstractInstr → SegAction
+seg-action (instr-ctrl (c-thunk _ b)) = seg-push b
+seg-action (instr-ctrl (c-ret _))     = seg-pop
+{-# CATCHALL #-}
+seg-action _                          = seg-id
+
+-- popping an EMPTY stack is the identity: a malformed epilogue. Neutrality
+-- (`ok-neu`) is what says emitted code never does it.
+pop-with : List ℕ → SegState → SegState
+pop-with []       st = st
+pop-with (b ∷ bs) _  = mkSeg b bs
+
+seg-apply : SegAction → SegState → SegState
+seg-apply seg-id       st = st
+seg-apply (seg-push b) st = mkSeg b (cur st ∷ saved st)
+seg-apply seg-pop      st = pop-with (saved st) st
+
+seg-step : AbstractInstr → SegState → SegState
+seg-step i st = seg-apply (seg-action i) st
+
+seg-fold : AbstractTrace → SegState → SegState
+seg-fold []       st = st
+seg-fold (i ∷ is) st = seg-fold is (seg-step i st)
+
+seg-fold-++ : ∀ (t1 t2 : AbstractTrace) (st : SegState)
+            → seg-fold (t1 ++ t2) st ≡ seg-fold t2 (seg-fold t1 st)
+seg-fold-++ []       t2 st = refl
+seg-fold-++ (i ∷ is) t2 st = seg-fold-++ is t2 (seg-step i st)
+
+-- `All (SlotBelow b)` with the bound STEPPED. A datatype, so it keeps `All`'s
+-- `∷`/`[]` shape.
+data AllSeg : SegState → AbstractTrace → Set where
+  []  : ∀ {st} → AllSeg st []
+  _∷_ : ∀ {st i is} → SlotBelow (cur st) i → AllSeg (seg-step i st) is
+      → AllSeg st (i ∷ is)
+
+allseg-++ : ∀ {st : SegState} {t1 t2 : AbstractTrace}
+          → AllSeg st t1 → AllSeg (seg-fold t1 st) t2 → AllSeg st (t1 ++ t2)
+allseg-++ []       q = q
+allseg-++ (p ∷ ps) q = p ∷ allseg-++ ps q
+
+allseg-++bal : ∀ {st : SegState} {t1 t2 : AbstractTrace}
+             → seg-fold t1 st ≡ st
+             → AllSeg st t1 → AllSeg st t2 → AllSeg st (t1 ++ t2)
+allseg-++bal bal p q = allseg-++ p (subst (λ z → AllSeg z _) (sym bal) q)
+
+------------------------------------------------------------------------
+-- WEAKENING, segment-wise. `sb-weaken`'s analogue: widening the bound must
+-- NOT reach into a nested body's segment (that is precisely what the
+-- segmentation exists to keep), and it doesn't — the pushed budget comes from
+-- the marker, not from the state.
+------------------------------------------------------------------------
+data SavedLE : List ℕ → List ℕ → Set where
+  []  : SavedLE [] []
+  _∷_ : ∀ {a b as bs} → a ≤ b → SavedLE as bs → SavedLE (a ∷ as) (b ∷ bs)
+
+record SegLE (st st' : SegState) : Set where
+  constructor mkSegLE
+  field
+    cur-le   : cur st ≤ cur st'
+    saved-le : SavedLE (saved st) (saved st')
+open SegLE public
+
+saved-le-refl : ∀ (bs : List ℕ) → SavedLE bs bs
+saved-le-refl []       = []
+saved-le-refl (b ∷ bs) = ≤-refl ∷ saved-le-refl bs
+
+pop-mono : ∀ {st st'} (bs bs' : List ℕ) → SavedLE bs bs' → SegLE st st'
+         → SegLE (pop-with bs st) (pop-with bs' st')
+pop-mono []       []       _           le = le
+pop-mono (a ∷ as) (b ∷ bs) (ab ∷ asbs) _  = mkSegLE ab asbs
+
+seg-apply-mono : ∀ (a : SegAction) {st st'} → SegLE st st'
+               → SegLE (seg-apply a st) (seg-apply a st')
+seg-apply-mono seg-id       le = le
+seg-apply-mono (seg-push b) le = mkSegLE ≤-refl (cur-le le ∷ saved-le le)
+seg-apply-mono seg-pop {st} {st'} le = pop-mono (saved st) (saved st') (saved-le le) le
+
+seg-weaken : ∀ {st st' : SegState} {t : AbstractTrace}
+           → SegLE st st' → AllSeg st t → AllSeg st' t
+seg-weaken le []                = []
+seg-weaken le (_∷_ {i = i} p ps) =
+  sb-le (cur-le le) p ∷ seg-weaken (seg-apply-mono (seg-action i) le) ps
+
+seg-weaken-cur : ∀ {b b' : ℕ} {sv : List ℕ} {t : AbstractTrace}
+               → b ≤ b' → AllSeg (mkSeg b sv) t → AllSeg (mkSeg b' sv) t
+seg-weaken-cur {sv = sv} le = seg-weaken (mkSegLE le (saved-le-refl sv))
+
+------------------------------------------------------------------------
+-- IDLE FRAGMENTS. Most of what the emitter produces is a CONCRETE list with
+-- no marker in it, and for those the segmentation is invisible: the existing
+-- `All (SlotBelow b)` proofs are already the whole story. `seg-idle?` decides
+-- it by computation, so a fragment discharges its side of the bridge with a
+-- single `refl` instead of one witness per instruction — which is what keeps
+-- this module's cata skeletons (`push2`, `pop2`, `wrap-sum`, the ⊗/⊕ walks)
+-- `All`-based and UNCHANGED.
+------------------------------------------------------------------------
+is-id? : SegAction → Bool
+is-id? seg-id       = true
+is-id? (seg-push _) = false
+is-id? seg-pop      = false
+
+seg-idle? : AbstractTrace → Bool
+seg-idle? []       = true
+seg-idle? (i ∷ is) = is-id? (seg-action i) ∧ seg-idle? is
+
+-- an idle instruction does not move the state
+idle-step : ∀ (i : AbstractInstr) → is-id? (seg-action i) ≡ true
+          → ∀ (st : SegState) → seg-step i st ≡ st
+idle-step i eq st = go (seg-action i) eq
+  where go : ∀ (a : SegAction) → is-id? a ≡ true → seg-apply a st ≡ st
+        go seg-id       _  = refl
+        go (seg-push _) ()
+        go seg-pop      ()
+
+idle-head : ∀ (i : AbstractInstr) (is : AbstractTrace)
+          → seg-idle? (i ∷ is) ≡ true → is-id? (seg-action i) ≡ true
+idle-head i is eq = ∧-fst (is-id? (seg-action i)) (seg-idle? is) eq
+  where ∧-fst : ∀ (x y : Bool) → x ∧ y ≡ true → x ≡ true
+        ∧-fst true  y _ = refl
+        ∧-fst false y ()
+
+idle-tail : ∀ (i : AbstractInstr) (is : AbstractTrace)
+          → seg-idle? (i ∷ is) ≡ true → seg-idle? is ≡ true
+idle-tail i is eq = ∧-snd (is-id? (seg-action i)) (seg-idle? is) eq
+  where ∧-snd : ∀ (x y : Bool) → x ∧ y ≡ true → y ≡ true
+        ∧-snd true  y eq = eq
+        ∧-snd false y ()
+
+idle-++ : ∀ (t1 t2 : AbstractTrace) → seg-idle? t1 ≡ true → seg-idle? t2 ≡ true
+        → seg-idle? (t1 ++ t2) ≡ true
+idle-++ []       t2 _  q = q
+idle-++ (i ∷ is) t2 eq q rewrite idle-head i is eq = idle-++ is t2 (idle-tail i is eq) q
+
+idle-neutral : ∀ (t : AbstractTrace) → seg-idle? t ≡ true
+             → ∀ (st : SegState) → seg-fold t st ≡ st
+idle-neutral []       _  st = refl
+idle-neutral (i ∷ is) eq st =
+  trans (cong (seg-fold is) (idle-step i (idle-head i is eq) st))
+        (idle-neutral is (idle-tail i is eq) st)
+
+------------------------------------------------------------------------
+-- WHAT THE WALK CARRIES. Two facts about one trace, proved by ONE induction:
+-- the slot bound at every position, and SEGMENT-NEUTRALITY — the trace leaves
+-- the segment stack where it found it.
+--
+-- Neutrality is not bookkeeping. Every splice (`∘`, `case`, the cata
+-- skeletons) needs to know the LEFT part put the state back before the right
+-- part's bound means anything, and post-flip it is the real content: a
+-- `curry` fragment pushes at its `c-thunk` and pops at its `c-ret`, so it is
+-- neutral exactly when the body's prologue and epilogue are matched.
+--
+-- Uniform in the enclosing stack `sv` (the bound only reads `cur`), which is
+-- what lets a sub-walk be spliced at any depth.
+------------------------------------------------------------------------
+record SegOK (b : ℕ) (t : AbstractTrace) : Set where
+  constructor mkSegOK
+  field
+    ok-all : ∀ {sv : List ℕ} → AllSeg (mkSeg b sv) t
+    ok-neu : ∀ (st : SegState) → seg-fold t st ≡ st
+open SegOK public
+
+-- THE BRIDGE: an idle fragment's existing `All` proof IS its `SegOK`.
+segok-idle : ∀ {b : ℕ} (t : AbstractTrace) → seg-idle? t ≡ true
+           → All (SlotBelow b) t → SegOK b t
+segok-idle t idle all = mkSegOK (go t idle all) (idle-neutral t idle)
+  where go : ∀ {sv : List ℕ} (t' : AbstractTrace) → seg-idle? t' ≡ true
+           → All (SlotBelow _) t' → AllSeg (mkSeg _ sv) t'
+        go []       _  []         = []
+        go {sv} (i ∷ is) eq (p ∷ ps) =
+          p ∷ subst (λ z → AllSeg z is) (sym (idle-step i (idle-head i is eq) (mkSeg _ sv)))
+                    (go is (idle-tail i is eq) ps)
+
+-- `++⁺`'s analogue — and the reason `ok-neu` is carried alongside.
+segok-++ : ∀ {b : ℕ} {t1 t2 : AbstractTrace} → SegOK b t1 → SegOK b t2 → SegOK b (t1 ++ t2)
+segok-++ {b} {t1} {t2} p q =
+  mkSegOK (allseg-++bal (ok-neu p _) (ok-all p) (ok-all q)) neu
+  where neu : ∀ (st : SegState) → seg-fold (t1 ++ t2) st ≡ st
+        neu st = trans (seg-fold-++ t1 t2 st)
+                       (trans (cong (seg-fold t2) (ok-neu p st)) (ok-neu q st))
+
+-- `sb-weaken`'s analogue: widen the CURRENT segment; a nested body's bound
+-- comes from its marker and is untouched.
+segok-weaken : ∀ {b b' : ℕ} {t : AbstractTrace} → b ≤ b' → SegOK b t → SegOK b' t
+segok-weaken le p = mkSegOK (seg-weaken-cur le (ok-all p)) (ok-neu p)
+
+-- a concrete PREFIX in front of a segmented tail. `i ∷ j ∷ rest` and
+-- `(i ∷ j ∷ []) ++ rest` are definitionally equal, so this is how the walk's
+-- cons-chains keep their shape without a SegOK-level cons (which would need
+-- the head's idleness as an argument at every link).
+segok-pre : ∀ {b : ℕ} (pre : AbstractTrace) {t : AbstractTrace} → seg-idle? pre ≡ true
+          → All (SlotBelow b) pre → SegOK b t → SegOK b (pre ++ t)
+segok-pre pre idle all ok = segok-++ (segok-idle pre idle all) ok
 
 ------------------------------------------------------------------------
 -- THE FRONTIER NEVER RETREATS.
@@ -205,27 +437,29 @@ cata-nat-layer n1 tag b p<b s<b =
 -- STRATEGY `strat-nat` DISCHARGED: the Nat-shaped cata reserves exactly two
 -- slots above the algebra's frontier, and every other instruction of the
 -- skeleton is slot-free (loop labels, jumps, reg-ops, the two `at` splices).
-cata-nat-below : ∀ (n1 l1 : ℕ) (at : AbstractTrace) → All (SlotBelow n1) at
-               → All (SlotBelow (cata-budget-of (cata-dispatch strat-nat n1 l1 at)))
-                     (cata-trace-of (cata-dispatch strat-nat n1 l1 at))
+cata-nat-below : ∀ (n1 l1 : ℕ) (at : AbstractTrace) → SegOK n1 at
+               → SegOK (cata-budget-of (cata-dispatch strat-nat n1 l1 at))
+                       (cata-trace-of (cata-dispatch strat-nat n1 l1 at))
 cata-nat-below n1 l1 at ff =
-  sb-none refl ∷ sb-none refl ∷
-  ++⁺ descend
-      (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-       ++⁺ (cata-nat-layer n1 0 _ p<b s<b)
-           (sb-none refl ∷
-            ++⁺ at'
-                (sb-none refl ∷ sb-none refl ∷
-                 ++⁺ (sb-none refl ∷
-                      ++⁺ (cata-nat-layer n1 1 _ p<b s<b)
-                          (sb-none refl ∷ ++⁺ at' (sb-none refl ∷ [])))
-                     (sb-none refl ∷ sb-none refl ∷ []))))
+  segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ [])
+   (segok-++ (segok-idle _ refl descend)
+    (segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
+     (segok-++ (segok-idle _ refl (cata-nat-layer n1 0 _ p<b s<b))
+      (segok-pre _ refl (sb-none refl ∷ [])
+       (segok-++ at'
+        (segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ [])
+         (segok-++
+          (segok-pre _ refl (sb-none refl ∷ [])
+           (segok-++ (segok-idle _ refl (cata-nat-layer n1 1 _ p<b s<b))
+            (segok-pre _ refl (sb-none refl ∷ [])
+             (segok-++ at' (segok-idle _ refl (sb-none refl ∷ []))))))
+          (segok-idle _ refl (sb-none refl ∷ sb-none refl ∷ [])))))))))
   where
     p<b : n1 < suc (suc n1)
     p<b = ≤-step ≤-refl
     s<b : suc n1 < suc (suc n1)
     s<b = ≤-refl
-    at' = sb-weaken {b' = suc (suc n1)} (≤-step (≤-step ≤-refl)) ff
+    at' = segok-weaken {b' = suc (suc n1)} (≤-step (≤-step ≤-refl)) ff
     descend : All (SlotBelow (suc (suc n1))) _
     descend = sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
               sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
@@ -237,11 +471,12 @@ cata-nat-below n1 l1 at ff =
 -- other instruction of the skeleton is slot-free (loop labels, branches,
 -- reg-ops, the heap-linked payload-stack loads/stores, the two `at` splices).
 -- Same shape as `cata-nat-below`, just longer.
-cata-linear-below : ∀ (n1 l1 : ℕ) (at : AbstractTrace) → All (SlotBelow n1) at
-                  → All (SlotBelow (cata-budget-of (cata-dispatch strat-linear n1 l1 at)))
-                        (cata-trace-of (cata-dispatch strat-linear n1 l1 at))
+cata-linear-below : ∀ (n1 l1 : ℕ) (at : AbstractTrace) → SegOK n1 at
+                  → SegOK (cata-budget-of (cata-dispatch strat-linear n1 l1 at))
+                          (cata-trace-of (cata-dispatch strat-linear n1 l1 at))
 cata-linear-below n1 l1 at ff =
-  ++⁺ descend (sb-none refl ∷ ++⁺ at' ascend)
+  segok-++ (segok-idle _ refl descend)
+    (segok-pre _ refl (sb-none refl ∷ []) (segok-++ at' ascend))
   where
     b = suc (suc (suc (suc (suc (suc n1)))))
     p0 : n1 < b
@@ -256,8 +491,8 @@ cata-linear-below n1 l1 at ff =
     p4 = ≤-step ≤-refl
     p5 : suc (suc (suc (suc (suc n1)))) < b
     p5 = ≤-refl
-    at' : All (SlotBelow b) at
-    at' = sb-weaken {b' = b}
+    at' : SegOK b at
+    at' = segok-weaken {b' = b}
             (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))) ff
     descend : All (SlotBelow b) _
     descend =
@@ -272,9 +507,9 @@ cata-linear-below n1 l1 at ff =
       sb-slot refl p1 (λ _ ()) ∷ sb-slot refl p3 (λ _ ()) ∷
       sb-slot refl p2 (λ _ ()) ∷ sb-none refl ∷
       sb-none refl ∷ sb-none refl ∷ []
-    ascend : All (SlotBelow b) _
-    ascend =
-      sb-none refl ∷ sb-none refl ∷
+    ascend : SegOK b _
+    ascend = segok-pre _ refl
+      (sb-none refl ∷ sb-none refl ∷
       sb-slot refl p4 (λ _ ()) ∷
       sb-slot refl p3 (λ _ ()) ∷ sb-none refl ∷
       sb-none refl ∷ sb-slot refl p5 (λ _ ()) ∷
@@ -285,8 +520,8 @@ cata-linear-below n1 l1 at ff =
       sb-none refl ∷ sb-slot refl p0 (λ _ ()) ∷ sb-none refl ∷
       sb-none refl ∷ sb-none refl ∷
       sb-slot refl p1 (λ _ ()) ∷ sb-none refl ∷
-      sb-slot refl p0 (λ _ ()) ∷ sb-none refl ∷
-      ++⁺ at' (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
+      sb-slot refl p0 (λ _ ()) ∷ sb-none refl ∷ [])
+      (segok-++ at' (segok-idle _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])))
 
 ------------------------------------------------------------------------
 -- STRATEGY `strat-branching` DISCHARGED (2026-08-01) — the last one.
@@ -440,12 +675,48 @@ rebuild-below (F ⊗ G) val tv tb s lb b pt h =
            (≤-trans (+-monoʳ-≤ s (+-monoʳ-≤ 4 (*-monoʳ-≤ 4 (m≤n+m (fsize G) (fsize F)))))
            (≤-trans (≤-reflexive (cong (s +_) (sym (*-suc 4 (fsize F + fsize G))))) h))
 
+-- THE COMPILE-TIME WALKS EMIT NO MARKER. `seg-idle?` cannot reduce on a stuck
+-- functor (unlike the fixed skeletons, where it is `refl`), so both walks need
+-- their own induction on `F`.
+visit-idle : ∀ (F : Functor) (todo tv tb s lb : ℕ)
+           → seg-idle? (visit-walk todo tv tb F s lb) ≡ true
+visit-idle (K _)   todo tv tb s lb = refl
+visit-idle Id      todo tv tb s lb = refl
+visit-idle (F ⊕ G) todo tv tb s lb =
+  idle-++ (visit-walk todo tv tb G (s + 4) (suc (suc lb) + lsize F)) _
+    (visit-idle G todo tv tb (s + 4) (suc (suc lb) + lsize F))
+    (idle-++ (visit-walk todo tv tb F (s + 4) (suc (suc lb))) _
+      (visit-idle F todo tv tb (s + 4) (suc (suc lb))) refl)
+visit-idle (F ⊗ G) todo tv tb s lb =
+  idle-++ (visit-walk todo tv tb G (s + 4) (lb + lsize F)) _
+    (visit-idle G todo tv tb (s + 4) (lb + lsize F))
+    (visit-idle F todo tv tb (s + 4) lb)
+
+rebuild-idle : ∀ (F : Functor) (val tv tb s lb : ℕ)
+             → seg-idle? (rebuild-walk val tv tb F s lb) ≡ true
+rebuild-idle (K _)   val tv tb s lb = refl
+rebuild-idle Id      val tv tb s lb = refl
+rebuild-idle (F ⊕ G) val tv tb s lb =
+  idle-++ (rebuild-walk val tv tb G (s + 4) (suc (suc lb) + lsize F)) _
+    (rebuild-idle G val tv tb (s + 4) (suc (suc lb) + lsize F))
+    (idle-++ (rebuild-walk val tv tb F (s + 4) (suc (suc lb))) _
+      (rebuild-idle F val tv tb (s + 4) (suc (suc lb))) refl)
+rebuild-idle (F ⊗ G) val tv tb s lb =
+  idle-++ (rebuild-walk val tv tb F (s + 4) lb) _
+    (rebuild-idle F val tv tb (s + 4) lb)
+    (idle-++ (rebuild-walk val tv tb G (s + 4) (lb + lsize F)) _
+      (rebuild-idle G val tv tb (s + 4) (lb + lsize F)) refl)
+
 cata-branching-below : ∀ (F : Functor) (n1 l1 : ℕ) (at : AbstractTrace)
-                     → All (SlotBelow n1) at
-                     → All (SlotBelow (cata-budget-of (cata-dispatch (strat-branching F) n1 l1 at)))
-                           (cata-trace-of (cata-dispatch (strat-branching F) n1 l1 at))
+                     → SegOK n1 at
+                     → SegOK (cata-budget-of (cata-dispatch (strat-branching F) n1 l1 at))
+                             (cata-trace-of (cata-dispatch (strat-branching F) n1 l1 at))
 cata-branching-below F n1 l1 at ff =
-  ++⁺ init-all (++⁺ flatten-all (++⁺ fold-all final-all))
+  segok-++ (segok-idle _ refl init-all)
+    (segok-++ (segok-idle _ (idle-++ (visit-walk n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4)) _
+                               (visit-idle F n1 (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4)) refl)
+                 flatten-all)
+      (segok-++ fold-all (segok-idle _ refl final-all)))
   where
     b = n1 + 7 + 4 * fsize F + 4
     fixed7 : n1 + 7 ≤ b
@@ -471,8 +742,8 @@ cata-branching-below F n1 l1 at ff =
     q6 = ≤-trans (subst (λ z → suc z ≤ 7 + n1) (+-comm 6 n1) ≤-refl) fixed7'
     walk-room : n1 + 7 + 4 * fsize F ≤ b
     walk-room = m≤m+n (n1 + 7 + 4 * fsize F) 4
-    at' : All (SlotBelow b) at
-    at' = sb-weaken {b' = b} (≤-trans (m≤m+n n1 7) fixed7) ff
+    at' : SegOK b at
+    at' = segok-weaken {b' = b} (≤-trans (m≤m+n n1 7) fixed7) ff
     init-all : All (SlotBelow b) _
     init-all =
       ++⁺ (sb-none refl ∷ sb-slot refl q3 (λ _ ()) ∷
@@ -493,24 +764,26 @@ cata-branching-below F n1 l1 at ff =
                (++⁺ (sb-slot refl q3 (λ _ ()) ∷ sb-none refl ∷ [])
                     (++⁺ (visit-below F n1 (n1 + 4) (n1 + 5) (n1 + 7) _ b q0 q4 q5 walk-room)
                          (sb-none refl ∷ sb-none refl ∷ []))))
-    fold-all : All (SlotBelow b) _
+    fold-all : SegOK b _
     fold-all =
-      ++⁺ (sb-none refl ∷ sb-slot refl q1 (λ _ ()) ∷ sb-none refl ∷
+      segok-pre _ refl
+          (sb-none refl ∷ sb-slot refl q1 (λ _ ()) ∷ sb-none refl ∷
            sb-none refl ∷ sb-none refl ∷ sb-slot refl q1 (λ _ ()) ∷
            sb-none refl ∷ sb-none refl ∷ [])
-          (++⁺ (rebuild-below F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) _ b q2 walk-room)
-               (++⁺ (sb-none refl ∷ [])
-                    (++⁺ at'
-                         (++⁺ (push2-below (n1 + 2) (n1 + 4) (n1 + 5) b q2 q4 q5)
-                              (sb-none refl ∷ sb-none refl ∷ [])))))
+          (segok-++ (segok-idle _ (rebuild-idle F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) _)
+                       (rebuild-below F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) _ b q2 walk-room))
+               (segok-pre _ refl (sb-none refl ∷ [])
+                    (segok-++ at'
+                         (segok-++ (segok-idle _ refl (push2-below (n1 + 2) (n1 + 4) (n1 + 5) b q2 q4 q5))
+                              (segok-idle _ refl (sb-none refl ∷ sb-none refl ∷ []))))))
     final-all : All (SlotBelow b) _
     final-all = sb-slot refl q2 (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ []
 
 -- `strat-const` needs no skeleton at all — the cata IS its algebra there.
 cata-slots-below : ∀ (st : CataStrategy) (n1 l1 : ℕ) (at : AbstractTrace)
-                 → All (SlotBelow n1) at
-                 → All (SlotBelow (cata-budget-of (cata-dispatch st n1 l1 at)))
-                       (cata-trace-of (cata-dispatch st n1 l1 at))
+                 → SegOK n1 at
+                 → SegOK (cata-budget-of (cata-dispatch st n1 l1 at))
+                         (cata-trace-of (cata-dispatch st n1 l1 at))
 cata-slots-below strat-const         n1 l1 at ff = ff
 cata-slots-below strat-nat           n1 l1 at ff = cata-nat-below n1 l1 at ff
 cata-slots-below strat-linear        n1 l1 at ff = cata-linear-below n1 l1 at ff
@@ -522,34 +795,40 @@ cata-slots-below (strat-branching F) n1 l1 at ff = cata-branching-below F n1 l1 
 -- sub-IR's bound through `frontier-mono`.
 ------------------------------------------------------------------------
 slots-below : ∀ {A B} (ir : IR A B) (n l : ℕ)
-            → All (SlotBelow (budget-of (ir-to-trace' n l ir))) (trace-of (ir-to-trace' n l ir))
-slots-below id       n l = sb-none refl ∷ []
-slots-below fst      n l = sb-none refl ∷ []
-slots-below snd      n l = sb-none refl ∷ []
-slots-below terminal n l = []
-slots-below initial  n l = sb-none refl ∷ []
+            → SegOK (budget-of (ir-to-trace' n l ir)) (trace-of (ir-to-trace' n l ir))
+slots-below id       n l = segok-idle _ refl (sb-none refl ∷ [])
+slots-below fst      n l = segok-idle _ refl (sb-none refl ∷ [])
+slots-below snd      n l = segok-idle _ refl (sb-none refl ∷ [])
+slots-below terminal n l = segok-idle _ refl []
+slots-below initial  n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (g ∘ f)  n l =
-  ++⁺ (sb-weaken (frontier-mono g _ _) (slots-below f n l))
-      (sb-none refl ∷ slots-below g _ _)
+  segok-++ (segok-weaken (frontier-mono g _ _) (slots-below f n l))
+      (segok-pre _ refl (sb-none refl ∷ []) (slots-below g _ _))
 slots-below (⟨ f , g ⟩ Stack) n l =
-  sb-none refl ∷ sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) (λ _ ()) ∷
-  ++⁺ (sb-weaken (frontier-mono g _ _) (slots-below f _ l))
-      (sb-slot refl (≤-trans (≤-step ≤-refl) h) (λ _ ()) ∷
-       sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) (λ _ ()) ∷
-       ++⁺ (slots-below g _ _)
-           (sb-slot refl h (λ _ ()) ∷
+  segok-pre _ refl
+    (sb-none refl ∷ sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) (λ _ ()) ∷ [])
+  (segok-++ (segok-weaken (frontier-mono g _ _) (slots-below f _ l))
+      (segok-pre _ refl
+        (sb-slot refl (≤-trans (≤-step ≤-refl) h) (λ _ ()) ∷
+         sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) (λ _ ()) ∷ [])
+       (segok-++ (slots-below g _ _)
+           (segok-idle _ refl
+            (sb-slot refl h (λ _ ()) ∷
             -- `lea-slot fst-slot`: fst = `suc n`, and `snd = suc (suc n)` is the
             -- slot the SAME clause reserved — that is exactly `h`.
-            sb-slot refl (≤-trans (≤-step ≤-refl) h) (λ { _ refl → h }) ∷ []))
+            sb-slot refl (≤-trans (≤-step ≤-refl) h) (λ { _ refl → h }) ∷ [])))))
   where h : suc (suc (suc n)) ≤ budget-of (ir-to-trace' n l (⟨ f , g ⟩ Stack))
         h = ≤-trans (frontier-mono f _ l) (frontier-mono g _ _)
 slots-below (⟨ f , g ⟩ Heap) n l =
-  sb-none refl ∷ sb-slot refl (≤-trans (≤-step (≤-step (≤-step ≤-refl))) h) (λ _ ()) ∷
-  ++⁺ (sb-weaken (frontier-mono g _ _) (slots-below f _ l))
-      (sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) (λ _ ()) ∷
-       sb-slot refl (≤-trans (≤-step (≤-step (≤-step ≤-refl))) h) (λ _ ()) ∷
-       ++⁺ (slots-below g _ _)
-           (sb-slot refl (≤-trans (≤-step ≤-refl) h) (λ _ ()) ∷
+  segok-pre _ refl
+    (sb-none refl ∷ sb-slot refl (≤-trans (≤-step (≤-step (≤-step ≤-refl))) h) (λ _ ()) ∷ [])
+  (segok-++ (segok-weaken (frontier-mono g _ _) (slots-below f _ l))
+      (segok-pre _ refl
+        (sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) (λ _ ()) ∷
+         sb-slot refl (≤-trans (≤-step (≤-step (≤-step ≤-refl))) h) (λ _ ()) ∷ [])
+       (segok-++ (slots-below g _ _)
+           (segok-idle _ refl
+            (sb-slot refl (≤-trans (≤-step ≤-refl) h) (λ _ ()) ∷
             sb-none refl ∷
             sb-slot refl h (λ _ ()) ∷
             sb-none refl ∷
@@ -557,70 +836,102 @@ slots-below (⟨ f , g ⟩ Heap) n l =
             sb-none refl ∷
             sb-slot refl (≤-trans (≤-step ≤-refl) h) (λ _ ()) ∷
             sb-none refl ∷
-            sb-slot refl h (λ _ ()) ∷ []))
+            sb-slot refl h (λ _ ()) ∷ [])))))
   where h : suc (suc (suc (suc n))) ≤ budget-of (ir-to-trace' n l (⟨ f , g ⟩ Heap))
         h = ≤-trans (frontier-mono f _ l) (frontier-mono g _ _)
-slots-below (curry b Stack) n l =
-  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+slots-below (curry b Stack) n l = segok-idle _ refl
+  (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl ≤-refl (λ _ ()) ∷
   -- the record/pair base: `lea-slot n`, with `suc n` reserved beside it
-  sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷ []
-slots-below (curry b Heap) n l =
-  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷ [])
+slots-below (curry b Heap) n l = segok-idle _ refl
+  (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
-  sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ []
-slots-below apply n l =
-  sb-none refl ∷ sb-slot refl (≤-step (≤-step ≤-refl)) (λ _ ()) ∷ sb-none refl ∷
+  sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
+slots-below apply n l = segok-idle _ refl
+  (sb-none refl ∷ sb-slot refl (≤-step (≤-step ≤-refl)) (λ _ ()) ∷ sb-none refl ∷
   sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
   sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷
   sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl (≤-step (≤-step ≤-refl)) (λ _ ()) ∷ sb-none refl ∷
-  sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ []
-slots-below (inl Stack) n l =
-  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
+slots-below (inl Stack) n l = segok-idle _ refl
+  (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl ≤-refl (λ _ ()) ∷
-  -- the record/pair base: `lea-slot n`, with `suc n` reserved beside it
-  sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷ []
-slots-below (inr Stack) n l =
-  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷ [])
+slots-below (inr Stack) n l = segok-idle _ refl
+  (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl ≤-refl (λ _ ()) ∷
-  -- the record/pair base: `lea-slot n`, with `suc n` reserved beside it
-  sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷ []
-slots-below (inl Heap) n l =
-  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷ [])
+slots-below (inl Heap) n l = segok-idle _ refl
+  (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-  sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ []
-slots-below (inr Heap) n l =
-  sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+  sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
+slots-below (inr Heap) n l = segok-idle _ refl
+  (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-  sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ []
+  sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
 -- item 6: case is FLAT CONTROL — the branches are main-trace splices, bounded
 -- by their own inductions (f weakened through g's frontier, like `∘`).
 slots-below (case f g) n l =
-  ++⁺ (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
-      (++⁺ (slots-below g _ _)
-           (++⁺ (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
-                (++⁺ (sb-weaken (frontier-mono g _ _) (slots-below f n (suc (suc l))))
-                     (sb-none refl ∷ []))))
-slots-below (In _ _)   n l = sb-none refl ∷ []
-slots-below (out-μ _)  n l = sb-none refl ∷ []
+  segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
+      (segok-++ (slots-below g _ _)
+           (segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
+                (segok-++ (segok-weaken (frontier-mono g _ _) (slots-below f n (suc (suc l))))
+                     (segok-idle _ refl (sb-none refl ∷ [])))))
+slots-below (In _ _)   n l = segok-idle _ refl (sb-none refl ∷ [])
+slots-below (out-μ _)  n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (Cata {F} _ alg) n l =
   cata-slots-below (cata-strategy ⌈ F ⌉F) _ _ _ (slots-below alg n l)
-slots-below (Para _ _)     n l = []
-slots-below (Out _)        n l = sb-none refl ∷ []
-slots-below (in-ν _ _)     n l = []
-slots-below (Ana _ _)      n l = []
-slots-below (Hylo _ _ _ _) n l = []
-slots-below (Fuse _ _ _ _) n l = []
-slots-below (free-heap _)  n l = sb-none refl ∷ []
-slots-below (SigOp _)      n l = sb-none refl ∷ []
-slots-below (const fits-int _)   n l = sb-none refl ∷ []
-slots-below (const fits-float _) n l = sb-none refl ∷ []
+slots-below (Para _ _)     n l = segok-idle _ refl []
+slots-below (Out _)        n l = segok-idle _ refl (sb-none refl ∷ [])
+slots-below (in-ν _ _)     n l = segok-idle _ refl []
+slots-below (Ana _ _)      n l = segok-idle _ refl []
+slots-below (Hylo _ _ _ _) n l = segok-idle _ refl []
+slots-below (Fuse _ _ _ _) n l = segok-idle _ refl []
+slots-below (free-heap _)  n l = segok-idle _ refl (sb-none refl ∷ [])
+slots-below (SigOp _)      n l = segok-idle _ refl (sb-none refl ∷ [])
+slots-below (const fits-int _)   n l = segok-idle _ refl (sb-none refl ∷ [])
+slots-below (const fits-float _) n l = segok-idle _ refl (sb-none refl ∷ [])
 
 ------------------------------------------------------------------------
 -- …and the form the correspondence consumes.
 ------------------------------------------------------------------------
-ir-slots-below-budget : ∀ {A B} (ir : IR A B)
-                      → All (SlotBelow (ir-stack-budget ir)) (ir-to-trace ir)
-ir-slots-below-budget ir with ir-to-trace' 0 0 ir | slots-below ir 0 0
+-- POSITIONAL READ-OFF. With one budget per trace the correspondence could take
+-- the bound off the `All` and be done; with the budget SEGMENTED it has to ask
+-- for the one in force AT the fetched instruction's position, which is what
+-- `seg-at` computes. (`trace-lookup` is `FlatMachine.fetch`'s recursion,
+-- re-given here because that one is frame-semantics-parameterised; the
+-- correspondence bridges them with a one-line induction.)
+trace-lookup : AbstractTrace → ℕ → Maybe AbstractInstr
+trace-lookup []       _       = nothing
+trace-lookup (i ∷ _)  zero    = just i
+trace-lookup (_ ∷ is) (suc n) = trace-lookup is n
+
+seg-at : AbstractTrace → ℕ → SegState → SegState
+seg-at []       _       st = st
+seg-at (_ ∷ _)  zero    st = st
+seg-at (i ∷ is) (suc n) st = seg-at is n (seg-step i st)
+
+allseg-at : ∀ {st : SegState} (t : AbstractTrace) (pc : ℕ) {i : AbstractInstr}
+          → AllSeg st t → trace-lookup t pc ≡ just i
+          → SlotBelow (cur (seg-at t pc st)) i
+allseg-at []       pc       []       ()
+allseg-at (x ∷ xs) zero     (p ∷ ps) refl = p
+allseg-at (x ∷ xs) (suc pc) (p ∷ ps) eq   = allseg-at xs pc ps eq
+
+------------------------------------------------------------------------
+-- …and the form the correspondence consumes: at the top the enclosing stack is
+-- empty and the segment in force is the emitter's own budget — which is what
+-- the per-arch backend turns into `subq $budget*8, %rsp`.
+------------------------------------------------------------------------
+ir-slots-below-seg : ∀ {A B} (ir : IR A B)
+                   → SegOK (ir-stack-budget ir) (ir-to-trace ir)
+ir-slots-below-seg ir with ir-to-trace' 0 0 ir | slots-below ir 0 0
 ... | _ , _ , _ , _ | sb = sb
+
+emitted-slot-seg : ∀ {A B} (ir : IR A B) (pc : ℕ) (i : AbstractInstr) (slot : Slot)
+                 → trace-lookup (ir-to-trace ir) pc ≡ just i → slot-of i ≡ just slot
+                 → slot < cur (seg-at (ir-to-trace ir) pc (mkSeg (ir-stack-budget ir) []))
+emitted-slot-seg ir pc i slot ftq soq =
+  below (allseg-at (ir-to-trace ir) pc (ok-all (ir-slots-below-seg ir)) ftq) slot soq

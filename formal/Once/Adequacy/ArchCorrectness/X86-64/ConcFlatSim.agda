@@ -64,7 +64,8 @@ open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
         ; find-label-none-corr; fetch-block-2nd)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-stack-budget)
-open import Once.CCC.Machine.FrameFree using (FrameFreeI)
+open import Once.CCC.Machine.FrameFree using (FrameFreeI; FrameFreeT)
+open import Data.List.Relation.Unary.All using () renaming (All to AllL; [] to allL-[]; _∷_ to _allL∷_)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Machine.FlatStackSlot FS using (flat-stack-slot)
 open import Once.CCC.Machine.FlatStackPtr FS using
@@ -73,13 +74,15 @@ open import Once.CCC.Machine.FlatStackPtr FS using
 open import Once.CCC.Machine.FlatPtrBounds FS using
   (PtrBoundsWF; PtrB; PtrB?; ptr-bounds-cell; ptr-bounds-suc; flat-ptr-bounds
   ; mkPtrBounds; pb-regs; pb-heap; pb-stack)
-open import Once.CCC.Codegen.FrameFreeTrace using (fetch-frame-free)
+open import Once.CCC.Codegen.FrameFreeTrace using (fetch-frame-free; ir-to-trace-frame-free)
 open import Once.CCC.Codegen.AllocMin using (AllocMinI; fetch-alloc-min)
 open import Once.CCC.Codegen.ShapeTable as ST using
   (LabelEnv; Expect; entry-expect; check-shapes; state-at; check-at; at-pc;
    HeapModed; e-in1)
 open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; site-store-ptr; fetch-at-pc)
-open import Once.CCC.Codegen.SlotBudget using (ir-slots-below-budget; below; pair-below)
+open import Once.CCC.Codegen.SlotBudget using
+  (emitted-slot-seg; below; pair-below; trace-lookup; seg-at; SegState; mkSeg; cur
+  ; seg-action; is-id?; seg-idle?; idle-step; idle-head; idle-tail)
 open import Once.IR using (IR; Unit)
 open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
 
@@ -697,17 +700,96 @@ postulate
 ------------------------------------------------------------------------
 
 -- THE EMITTER HALF: every slot an emitted instruction addresses is below the
--- static budget the prologue reserved for that trace (`ir-to-trace'` threads the
--- frontier and hands it back as `ir-stack-budget`). Proved in the codegen layer.
+-- reservation IN FORCE AT ITS POSITION (`ir-to-trace'` threads the frontier and
+-- hands it back as `ir-stack-budget`; a `c-thunk` inside the trace switches to
+-- the body's). Proved in the codegen layer — see `SlotBudget.SegOK`.
+--
+-- Plan 0.63 (2b): the bound is POSITIONAL now, because with closure bodies
+-- inlined a single budget per trace is false. `fetch` is the frame-semantics-
+-- parameterised copy of the codegen layer's `trace-lookup`, so they bridge by
+-- an induction on the trace.
+fetch≡lookup : ∀ (t : AbstractTrace) (k : ℕ) → fetch t k ≡ trace-lookup t k
+fetch≡lookup []       _       = refl
+fetch≡lookup (i ∷ is) zero    = refl
+fetch≡lookup (i ∷ is) (suc k) = fetch≡lookup is k
+
 emitted-slot-below-budget : ∀ (ir : IR Unit Unit) (k : ℕ) (i : AbstractInstr) (slot : Slot)
                           → fetch (ir-to-trace ir) k ≡ just i → slot-of i ≡ just slot
-                          → slot < ir-stack-budget ir
+                          → slot < cur (seg-at (ir-to-trace ir) k (mkSeg (ir-stack-budget ir) []))
 emitted-slot-below-budget ir k i slot ftq soq =
-  below (fetch-All (ir-slots-below-budget ir) ftq) slot soq
+  emitted-slot-seg ir k i slot (trans (sym (fetch≡lookup (ir-to-trace ir) k)) ftq) soq
 
--- The live stack window is CONSTANT along a run of an emitted program: it is the
--- budget the prologue reserved. Induction on `Reachable`; each step is frame-free
--- because the program is emitted (`frame-op-absurd`).
+-- THE SEGMENTATION IS STILL CONSTANT — for exactly as long as no emitted trace
+-- contains a marker. `FrameFreeI` puts `c-thunk`/`c-ret` in its ⊥ set (they
+-- MOVE THE FRAME), and `ir-to-trace-frame-free` says a heap-moded emitted trace
+-- has none, so `seg-at` is the identity and the positional bound collapses to
+-- the flat one. THIS IS THE BRIDGE THE FLIP REPLACES: once bodies are inlined
+-- the fold genuinely varies, and what takes its place is the per-pc invariant
+-- plus label scoping (a jump inside a body lands inside that body's segment).
+-- ENUMERATED, like `stack-ptr-step`: a catchall would leave `seg-action i`
+-- stuck on the variable, and neither classifier can be read off the other
+-- without the split.
+ff→seg-id : ∀ (i : AbstractInstr) → FrameFreeI i → is-id? (seg-action i) ≡ true
+ff→seg-id (instr-ctrl (c-thunk _ _))          ()
+ff→seg-id (instr-ctrl (c-ret _))              ()
+ff→seg-id (instr-ctrl (c-label _))            _ = refl
+ff→seg-id (instr-ctrl (c-jmp _))              _ = refl
+ff→seg-id (instr-ctrl (c-branch-scratch-zero _)) _ = refl
+ff→seg-id (instr-ctrl (c-branch-tag-zero _))  _ = refl
+ff→seg-id mov-to-output                       _ = refl
+ff→seg-id mov-to-input                        _ = refl
+ff→seg-id mov-output-to-input2                _ = refl
+ff→seg-id mov-input2-to-output                _ = refl
+ff→seg-id load-indirect                       _ = refl
+ff→seg-id load-indirect-suc                   _ = refl
+ff→seg-id (load-from-slot _)                  _ = refl
+ff→seg-id (store-at-slot _)                   _ = refl
+ff→seg-id store-indirect                      _ = refl
+ff→seg-id store-indirect-suc                  _ = refl
+ff→seg-id (lea-slot _)                        _ = refl
+ff→seg-id (lea-indexed _)                     _ = refl
+ff→seg-id (restore-input _)                   _ = refl
+ff→seg-id (instr-alloc-stack _)               _ = refl
+ff→seg-id (instr-dealloc-stack _)             _ = refl
+ff→seg-id (instr-reclaim-to _)                _ = refl
+ff→seg-id (instr-push-frame _)                _ = refl
+ff→seg-id instr-pop-frame                     _ = refl
+ff→seg-id instr-call-closure                  _ = refl
+ff→seg-id (worklist-init _)                   _ = refl
+ff→seg-id (worklist-push _)                   _ = refl
+ff→seg-id (worklist-pop _)                    _ = refl
+ff→seg-id (worklist-check _)                  _ = refl
+ff→seg-id (instr-sigop _)                     _ = refl
+ff→seg-id (instr-load-const _ _)              _ = refl
+ff→seg-id (instr-load-code-addr _)            _ = refl
+ff→seg-id instr-save-closure-reg              _ = refl
+ff→seg-id (instr-load-tag-lit _)              _ = refl
+ff→seg-id (instr-case-on-tag _ _)             _ = refl
+ff→seg-id (instr-alloc-heap _)                _ = refl
+ff→seg-id (instr-loop _)                      _ = refl
+ff→seg-id (instr-reg-op _)                    _ = refl
+
+ff→idle : ∀ (t : AbstractTrace) → AllL FrameFreeI t → seg-idle? t ≡ true
+ff→idle []       _        = refl
+ff→idle (i ∷ is) (ff allL∷ r) rewrite ff→seg-id i ff = ff→idle is r
+
+idle-seg-at : ∀ (t : AbstractTrace) → seg-idle? t ≡ true
+            → ∀ (k : ℕ) (st : SegState) → seg-at t k st ≡ st
+idle-seg-at []       _  _       st = refl
+idle-seg-at (i ∷ is) eq zero    st = refl
+idle-seg-at (i ∷ is) eq (suc k) st =
+  trans (cong (seg-at is k) (idle-step i (idle-head i is eq) st))
+        (idle-seg-at is (idle-tail i is eq) k st)
+
+emitted-seg-const : ∀ (ir : IR Unit Unit) → HeapModed ir → ∀ (k : ℕ) (st : SegState)
+                  → seg-at (ir-to-trace ir) k st ≡ st
+emitted-seg-const ir hm = idle-seg-at (ir-to-trace ir) (ff→idle (ir-to-trace ir) (ir-to-trace-frame-free ir hm))
+
+-- The live stack window is the reservation IN FORCE at the current pc. Today
+-- that is constant (see `emitted-seg-const`); with closure bodies it is the
+-- current frame's, which is what makes this the per-frame statement.
+-- Induction on `Reachable`; each step is frame-free because the program is
+-- emitted (`frame-op-absurd`).
 run-stack-slot : ∀ prog (fs : FlatState) (r : RunAt prog fs)
                → frame-slots (falloc fs) ≡ ir-stack-budget (run-ir r)
 run-stack-slot prog fs (mkRunAt ir eq hm reach) = go fs reach
@@ -863,10 +945,16 @@ stack-ptr-current-suc prog fs f k r eq =
 slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunAt prog fs
                    → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot
                    → slot < frame-slots (falloc fs)
+-- the positional bound, then the two equations that place it: the segment in
+-- force at this pc (constant today — `emitted-seg-const`) and the machine's own
+-- window (`run-stack-slot`).
 slot-read-in-frame prog fs slot i r ftq soq =
   subst (slot <_) (sym (run-stack-slot prog fs r))
-    (emitted-slot-below-budget (run-ir r) (fpc fs) i slot
-      (subst (λ p → fetch p (fpc fs) ≡ just i) (run-emit r) ftq) soq)
+    (subst (slot <_)
+           (cong cur (emitted-seg-const (run-ir r) (run-heap r) (fpc fs)
+                        (mkSeg (ir-stack-budget (run-ir r)) [])))
+      (emitted-slot-below-budget (run-ir r) (fpc fs) i slot
+        (subst (λ p → fetch p (fpc fs) ≡ just i) (run-emit r) ftq) soq))
 
 ------------------------------------------------------------------------
 -- THE POINTER-BOUNDS INVARIANT IS A THEOREM (plan 0.54 rung D, item 5).
