@@ -103,11 +103,14 @@ postulate
 
 -- A fresh frame: nothing on the stack (`next-slot ≡ 0`), one heap ref reserved
 -- for the (erased) `Unit` argument cell so it is `BeforeFrontier`.
-entry-alloc : AllocState {FS}
+-- Plan 0.63: the entry allocator is now indexed by the frame the prologue
+-- reserved, because the reserved slot count lives WITH the frame
+-- (`frame-slots`) instead of in the register file.
+entry-alloc : ℕ → AllocState {FS}
 -- the entry allocator: one ref reserved for the erased Unit cell, and NO block
 -- has a size yet (the entry heap is empty, so `block-size ≡ λ _ → 0` — which makes
 -- the correspondence's in-bounds coverage vacuously true at entry)
-entry-alloc = mkAllocState entry-frame [] 0 1 (λ _ → 0)
+entry-alloc slots = mkAllocState entry-frame [] slots 0 1 (λ _ → 0)
 
 entry-loc : ValueLocation FS
 entry-loc = AtDynamic (heap-loc (mkHeapRef 0) 0)
@@ -120,19 +123,16 @@ entry-loc = AtDynamic (heap-loc (mkHeapRef 0) 0)
 -- with no pointer anywhere in the entry state the in-bounds invariant holds
 -- vacuously at the start of the run. (Plan 0.54 D item 4 made `Scratch` and
 -- `Count` tags for `FlatRegTagWF`'s entry case; this finishes the move.)
--- `slots` = the frame the prologue reserved (`ir-stack-budget`), i.e. the
--- initial `stackSlot`.
-entry-regs : ℕ → Registers FS
-entry-regs slots = mkRegs (SV-Tag 0) (SV-Tag 0) (SV-Tag 0)
-                          slots (SV-Tag 0) (SV-Tag 0)
+entry-regs : Registers FS
+entry-regs = mkRegs (SV-Tag 0) (SV-Tag 0) (SV-Tag 0) (SV-Tag 0) (SV-Tag 0)
 
 -- THE ENTRY STATE IS INDEXED BY THE FRAME THE PROLOGUE RESERVED (2026-07-30).
 --
--- `stackSlot` — the runtime slot counter the correspondence uses to bound the live
+-- `frame-slots` — the runtime slot counter the correspondence uses to bound the live
 -- stack window — is moved ONLY by `instr-alloc-stack` / `-dealloc-stack` /
 -- `-push-frame`, and `ir-to-trace` emits NONE of them: the frame reservation is the
 -- `subq $budget*8, %rsp` bracket the per-arch emitter wraps around the trace. So
--- with `stackSlot ≡ 0` at entry it is 0 for the WHOLE run, the correspondence's
+-- with `frame-slots ≡ 0` at entry it is 0 for the WHOLE run, the correspondence's
 -- `stack-eq` says nothing about any slot, and "the slot this instruction reads is
 -- in frame" (`slot-read-in-frame`) is FALSE for every emitted program that touches
 -- a slot — an assumption that cannot be discharged, only refuted.
@@ -140,27 +140,28 @@ entry-regs slots = mkRegs (SV-Tag 0) (SV-Tag 0) (SV-Tag 0)
 -- Entering with the reservation already made is both faithful (the machine really
 -- starts inside its frame) and what makes that residual DISCHARGEABLE: it becomes
 -- `slot < ir-stack-budget ir`, which is the emitter's own static invariant.
-entry-s : ℕ → LocState FS
-entry-s slots = mkLocState (entry-regs slots) (λ _ _ → nothing) (λ _ → nothing) false
+entry-s : LocState FS
+entry-s = mkLocState entry-regs (λ _ _ → nothing) (λ _ → nothing) false
 
 -- All four preconditions now hold BY CONSTRUCTION.
-entry-ns : next-slot entry-alloc ≡ 0
-entry-ns = refl
+entry-ns : ∀ (slots : ℕ) → next-slot (entry-alloc slots) ≡ 0
+entry-ns _ = refl
 
-entry-bf : BeforeFrontier entry-alloc entry-loc
-entry-bf = heap-before (s≤s z≤n)
+entry-bf : ∀ (slots : ℕ) → BeforeFrontier (entry-alloc slots) entry-loc
+entry-bf _ = heap-before (s≤s z≤n)
 
-entry-nh : ∀ (slots : ℕ) → halted (entry-s slots) ≡ false
-entry-nh _ = refl
+entry-nh : halted entry-s ≡ false
+entry-nh = refl
 
 -- `main`'s machine-refinement witness at the entry state. The `Unit` input's
 -- validity is `valid-unit-wf`, and its residence is `in-unit` (D074: a unit
 -- input needs none — the tag filler in `Input1` is never read).
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
-              → MachineRefinesObsF ir tt (entry-s (ir-stack-budget ir)) entry-alloc
+              → MachineRefinesObsF ir tt entry-s (entry-alloc (ir-stack-budget ir))
 entry-witness ir ioc =
-  ioc (entry-size ir) Stack tt entry-loc (entry-s (ir-stack-budget ir)) entry-alloc
-      entry-ns valid-unit-wf entry-bf (entry-nh (ir-stack-budget ir))
+  ioc (entry-size ir) Stack tt entry-loc entry-s (entry-alloc (ir-stack-budget ir))
+      (entry-ns (ir-stack-budget ir)) valid-unit-wf
+      (entry-bf (ir-stack-budget ir)) entry-nh
             (in-unit refl)
 
 ------------------------------------------------------------------------
@@ -172,7 +173,7 @@ flat-trace-of : (∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
 flat-trace-of ioc nothing   _ = []
 flat-trace-of ioc (just ir) n =
   take n (flat-events (proj₁ (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir)) n))
-                      (ir-to-trace ir) (mkFlat (entry-s (ir-stack-budget ir)) entry-alloc 0))
+                      (ir-to-trace ir) (mkFlat entry-s (entry-alloc (ir-stack-budget ir)) 0))
 
 ------------------------------------------------------------------------
 -- The concrete↔abstract seam (Plan 0.54 rung B). At THIS module the machine

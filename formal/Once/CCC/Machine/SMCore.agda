@@ -308,7 +308,6 @@ record Registers (FS : FrameSemantics) : Set where
   constructor mkRegs
   field
     input1 input2 output : StoredValue FS
-    stackSlot : ℕ  -- current stack slot index (like rsp, but as slot count)
     scratch : StoredValue FS  -- Plan 0.29: loop-private (rbx); see AbstractReg.Scratch
     count : StoredValue FS    -- Plan 0.54 D item 4: descend tally; see AbstractReg.Count
 
@@ -328,17 +327,6 @@ writeReg r Output v = record r { output = v }
 writeReg r Scratch v = record r { scratch = v }
 writeReg r Count v = record r { count = v }
 
--- | Update stackSlot
-writeStackSlot : ∀ {FS} → Registers FS → ℕ → Registers FS
-writeStackSlot r n = record r { stackSlot = n }
-
--- | Increment stackSlot (for allocation)
-incrStackSlot : ∀ {FS} → Registers FS → ℕ → Registers FS
-incrStackSlot r n = record r { stackSlot = stackSlot r + n }
-
--- | Decrement stackSlot (for deallocation/reclamation)
-decrStackSlot : ∀ {FS} → Registers FS → ℕ → Registers FS
-decrStackSlot r n = record r { stackSlot = stackSlot r ∸ n }
   where open import Data.Nat using (_∸_)
 
 -- Key lemma: writing to one register preserves others
@@ -385,14 +373,6 @@ writeReg-same regs Output v = refl
 writeReg-same regs Scratch v = refl
 writeReg-same regs Count v = refl
 
--- Key lemma: writeReg preserves stackSlot
-writeReg-preserves-stackSlot : ∀ {FS} (regs : Registers FS) dst v →
-  stackSlot (writeReg regs dst v) ≡ stackSlot regs
-writeReg-preserves-stackSlot regs Input1 v = refl
-writeReg-preserves-stackSlot regs Input2 v = refl
-writeReg-preserves-stackSlot regs Output v = refl
-writeReg-preserves-stackSlot regs Scratch v = refl
-writeReg-preserves-stackSlot regs Count v = refl
 
 -- Key lemma: writing twice to same register is same as writing once
 writeReg-overwrite : ∀ {FS} (regs : Registers FS) dst x y →
@@ -483,13 +463,15 @@ data AllocMode : Set where
 --   - next-slot: next available stack slot (for BeforeFrontier validity)
 --   - next-heap-ref: next available heap block ID
 --
--- Design note: Both AllocState.next-slot and Registers.stackSlot track
--- stack position, but serve different purposes:
+-- Design note (Plan 0.63): there used to be TWO representations of the stack
+-- pointer — `next-slot` (the compile-time frontier) and a `stackSlot` field in
+-- the REGISTER FILE, documented as "mirrors rsp". The mirror is gone: the
+-- current frame's slot count lives with the frame stack below, as
+-- `frame-slots`, so a call updates ONE thing and the per-frame statement is
+-- automatic rather than an extra invariant reconciling two.
 --   - next-slot: Compile-time validity frontier (Dispatcher's view)
---   - stackSlot: Runtime simulation state (mirrors rsp in exec-abstract)
---
--- The Dispatcher updates next-slot when constructing traces.
--- exec-abstract updates stackSlot when executing alloc/dealloc instructions.
+--   - frame-slots: the CURRENT frame's reserved slot count (what the
+--     correspondence's `stack-eq` coverage is bounded by)
 --
 -- NOTE: frame-capacity was removed in Phase 3 refactoring. Capacity bounds
 -- are now enforced per-IR via the scratch-bounded invariant, eliminating
@@ -523,7 +505,12 @@ record AllocState {FS : FrameSemantics} : Set where
     -- IR well-formedness modules — not on the apex path) keeps the degenerate
     -- model where the frame never moves; plan 0.61 stage 3 re-truths it when
     -- that layer is retired.
-    saved-frames : List Frame
+    -- Plan 0.63: each saved frame carries the slot count it reserved, so a
+    -- return restores the caller's coverage bound along with its frame.
+    saved-frames : List (Frame × ℕ)
+    -- the CURRENT frame's reserved slot count (the old `Registers.stackSlot`,
+    -- moved to where the frame actually lives)
+    frame-slots : ℕ
     next-slot : ℕ
     next-heap-ref : ℕ
     -- THE BLOCK SIZES (2026-07-30 vacuity fix): how many slots each allocated
@@ -1036,7 +1023,7 @@ data FlatCtrl : Set where
   -- (rather than giving `instr-alloc-stack` a producer again) means the
   -- frame moves at exactly the two instructions that also move the pc, and
   -- it moves via `enter-frame`/`leave-frame` — an AllocState-only update,
-  -- so the register file's `stackSlot` is untouched.
+  -- so the register file is untouched.
   c-thunk               : ℕ → ℕ → FlatCtrl -- closure-body entry: label, budget
   c-ret                 : ℕ → FlatCtrl     -- return: budget to release
 
@@ -1416,7 +1403,7 @@ module AbstractExec {FS : FrameSemantics} where
   --
   -- The relaxed CCC discipline contract continues to hold
   -- *definitionally* for `instr-sigop si`: frame, alloc, memory,
-  -- Input1 register, and stackSlot are all unchanged.
+  -- Input1 register are unchanged.
   ------------------------------------------------------------------------
 
   -- | A "unit-shaped" StoredValue for Halts/Emits SigOps whose
@@ -1687,16 +1674,17 @@ module AbstractExec {FS : FrameSemantics} where
     exec-lea-indexed-via (slot-base (readLoc s (AtStack (current-frame alloc) slot)))
                          (sv-tag-val (readReg (regs s) Scratch)) s , alloc
 
-  -- instr-alloc-stack: advance stackSlot by n AND advance next-slot frontier
-  -- Capacity was verified by Dispatcher when constructing the trace
-  -- Note: next-slot tracks compile-time allocation frontier (monotonically increasing)
+  -- instr-alloc-stack: advance the compile-time frontier by n.
+  -- Capacity was verified by Dispatcher when constructing the trace.
+  -- Plan 0.63: the LocState is now UNTOUCHED — the runtime `stackSlot` mirror
+  -- is gone, and the FLAT machine (which is the semantics of record) moves the
+  -- frame instead. This clause is the structured layer's degenerate model.
   exec-abstract (instr-alloc-stack n) s alloc =
-    record s { regs = incrStackSlot (regs s) n } ,
-    record alloc { next-slot = next-slot alloc + n }
+    s , record alloc { next-slot = next-slot alloc + n }
 
-  -- instr-dealloc-stack: reclaim n slots (decrement stackSlot)
-  exec-abstract (instr-dealloc-stack n) s alloc =
-    record s { regs = decrStackSlot (regs s) n } , alloc
+  -- instr-dealloc-stack: the structured layer's degenerate model — nothing to
+  -- do now that the runtime mirror is gone.
+  exec-abstract (instr-dealloc-stack n) s alloc = s , alloc
 
   -- instr-reclaim-to: set next-slot to given value (actual reclamation)
   -- OCP-0003: Used by Sum wrapper allocation to place wrapper at child's reclaimable-slot.
@@ -1704,16 +1692,10 @@ module AbstractExec {FS : FrameSemantics} where
   exec-abstract (instr-reclaim-to n) s alloc =
     s , record alloc { next-slot = n }
 
-  -- instr-push-frame: create new frame with given capacity
-  -- Resets stackSlot to 0 for the new frame
-  -- Note: Frame identity is managed by AllocState.current-frame
-  -- Note: capacity parameter retained for API compatibility but not stored
-  exec-abstract (instr-push-frame cap) s alloc =
-    record s { regs = writeStackSlot (regs s) 0 } ,
-    alloc  -- the STRUCTURED layer keeps the degenerate frame model (see below)
+  -- instr-push-frame / instr-pop-frame: the STRUCTURED layer keeps the
+  -- degenerate frame model (the flat machine owns the real one).
+  exec-abstract (instr-push-frame cap) s alloc = s , alloc
 
-  -- instr-pop-frame: the STRUCTURED layer keeps the degenerate frame model.
-  -- Note: stackSlot restoration handled by caller (who saved it)
   exec-abstract instr-pop-frame s alloc = s , alloc
 
   -- instr-call-closure: transfer control to closure code
@@ -1756,7 +1738,7 @@ module AbstractExec {FS : FrameSemantics} where
   -- The abstract semantics of `instr-sigop si` is **structured**: it
   -- may write a new value-location to Output and may halt the
   -- machine, but it leaves everything else (frame, alloc, memory,
-  -- Input1 register, stackSlot) unchanged. The two postulates below
+  -- Input1 register) unchanged. The two postulates below
   -- (`exec-sigop-output` and `exec-sigop-halts`) are the trusted-
   -- base axioms describing what a SigOp does at the abstract level.
   -- Per-name discharge of these axioms (e.g. the exit syscall halts;

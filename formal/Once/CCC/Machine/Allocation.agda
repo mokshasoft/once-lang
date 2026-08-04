@@ -469,10 +469,12 @@ module FrameOps {FS : FrameSemantics} where
              → (child-frame : Frame)
              → (child-capacity : ℕ)
              → AllocState {FS}
-  push-frame parent cf _ = record
+  push-frame parent cf cap = record
     { current-frame = cf
     -- Plan 0.61: the caller's frame is remembered so the epilogue can restore it.
-    ; saved-frames = current-frame parent ∷ saved-frames parent
+    -- Plan 0.63: …together with the slot count it reserved.
+    ; saved-frames = (current-frame parent , frame-slots parent) ∷ saved-frames parent
+    ; frame-slots = cap
     ; next-slot = 0
     ; next-heap-ref = next-heap-ref parent  -- Heap shared
     ; block-size = block-size parent        -- …and so are the block sizes

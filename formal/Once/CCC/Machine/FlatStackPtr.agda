@@ -6,7 +6,7 @@
 --
 -- EVERY STACK POINTER IN THE STATE ADDRESSES A LIVE PAIR OF THE CURRENT FRAME:
 -- its frame IS `current-frame`, and BOTH its slot and the next one are inside
--- the live window (`suc k < stackSlot`).
+-- the live window (`suc k < frame-slots`).
 --
 -- This is the state invariant behind the flat↔x86-64 residuals
 -- `stack-ptr-current` and `stack-ptr-current-suc` — "a pointer in `Input1`
@@ -15,7 +15,7 @@
 -- step (an older frame's slots would need `stack-eq` to reach beyond the
 -- current frame, and there is no address for them).
 --
--- WHY THE PAIR FORM (`suc k < stackSlot`, not `k < stackSlot`): every producer
+-- WHY THE PAIR FORM (`suc k < frame-slots`, not `k < frame-slots`): every producer
 -- of a stack pointer is a `lea-slot k` addressing the FIRST of two adjacent
 -- slots the same prologue reserved — the pair `⟨_,_⟩ Stack` (fst/snd), the
 -- closure record `curry _ Stack` (env/code), and the sum payload `inl`/`inr`
@@ -23,7 +23,7 @@
 -- pair, and it yields the single-slot form for free.
 --
 -- WHY IT IS AN INVARIANT AT ALL (and was not, before today): the frame ops are
--- the only instructions that move `current-frame` or `stackSlot`, and
+-- the only instructions that move `current-frame` or `frame-slots`, and
 -- `ir-to-trace` emits none of them (`Once.CCC.Codegen.FrameFreeTrace`), so both
 -- anchors are FIXED for the whole run. Under a moving frame this predicate
 -- would be destroyed by every call.
@@ -141,7 +141,7 @@ stack-ptr-frame fs r f k wf eq =
 stack-ptr-suc-live : ∀ (fs : FlatState) (r : AbstractReg) (f : Frame) (k : Slot)
                    → StackPtrWF fs
                    → readReg (regs (floc fs)) r ≡ SV-Ptr (AtStack f k)
-                   → suc k < stackSlot (regs (floc fs))
+                   → ⊥
 stack-ptr-suc-live fs r f k wf eq =
   ⊥-elim (subst (StackPtrOK) eq (sp-regs wf r))
 
@@ -149,15 +149,14 @@ stack-ptr-suc-live fs r f k wf eq =
 stack-ptr-live : ∀ (fs : FlatState) (r : AbstractReg) (f : Frame) (k : Slot)
                → StackPtrWF fs
                → readReg (regs (floc fs)) r ≡ SV-Ptr (AtStack f k)
-               → k < stackSlot (regs (floc fs))
-stack-ptr-live fs r f k wf eq =
-  ≤-trans (n≤1+n (suc k)) (stack-ptr-suc-live fs r f k wf eq)
+               → ⊥
+stack-ptr-live fs r f k wf eq = stack-ptr-suc-live fs r f k wf eq
 
 ------------------------------------------------------------------------
 -- BRICKS FOR THE PRESERVATION PROOF.
 --
 -- The step lemma is a per-instruction induction, but every case has the same
--- two moves: the ANCHORS (`current-frame`, `stackSlot`) do not move — a
+-- two moves: the ANCHORS (`current-frame`, `frame-slots`) do not move — a
 -- frame-free instruction cannot touch either — and the VALUE written is one the
 -- invariant already covers (read out of a register or a cell) or a freshly
 -- built non-stack-pointer. These bricks are those two moves, stated once.
@@ -200,32 +199,26 @@ sp-halt : ∀ (cf : Frame) (ls : LocState FS) (b : Bool)
 sp-halt cf ls b wf = record
   { sp-regs = sp-regs wf ; sp-heap = sp-heap wf ; sp-stack = sp-stack wf }
 
--- A register write of an OK value preserves the invariant. `writeReg` leaves
--- both anchors alone (`writeReg-preserves-stackSlot`; the frame lives in the
--- AllocState, which a register write does not touch), so the goal's anchors are
--- the same ones the hypothesis speaks about.
+-- A register write of an OK value preserves the invariant. Since Plan 0.63
+-- the predicate has no anchors at all — no frame, no slot count — so the
+-- memory halves transport by `refl` and only the written register needs a
+-- case.
 sp-write-reg : ∀ (cf : Frame) (ls : LocState FS) (x : AbstractReg) (v : StoredValue FS)
              → StackPtrOK v
              → SPInv ls
              → SPInv (record ls { regs = writeReg (regs ls) x v })
 sp-write-reg cf ls x v ok wf = record
   { sp-regs  = λ r → go r (readReg-write (regs ls) x r v)
-  ; sp-heap  = λ hl → subst (λ n → StackPtrOK? (heapMem ls hl))
-                            (sym (writeReg-preserves-stackSlot (regs ls) x v))
-                            (sp-heap wf hl)
-  ; sp-stack = λ f k → subst (λ n → StackPtrOK? (stackMem ls f k))
-                             (sym (writeReg-preserves-stackSlot (regs ls) x v))
-                             (sp-stack wf f k) }
+  ; sp-heap  = λ hl → sp-heap wf hl
+  ; sp-stack = λ f k → sp-stack wf f k }
   where
-    anchor : stackSlot (writeReg (regs ls) x v) ≡ stackSlot (regs ls)
-    anchor = writeReg-preserves-stackSlot (regs ls) x v
     go : ∀ (r : AbstractReg)
        → (readReg (writeReg (regs ls) x v) r ≡ v)
        ⊎ (readReg (writeReg (regs ls) x v) r ≡ readReg (regs ls) r)
        → StackPtrOK
                     (readReg (writeReg (regs ls) x v) r)
-    go r (inj₁ eq) rewrite anchor | eq = ok
-    go r (inj₂ eq) rewrite anchor | eq = sp-regs wf r
+    go r (inj₁ eq) rewrite eq = ok
+    go r (inj₂ eq) rewrite eq = sp-regs wf r
 
 -- …and the SigOp shape: the same write with the halt flag set in the same
 -- record update.

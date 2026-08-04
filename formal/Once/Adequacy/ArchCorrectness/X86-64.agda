@@ -152,7 +152,7 @@ postulate
   -- the SAME address — the layout was degenerate, so every heap/stack
   -- disjointness assumption below it was false.
   entry-frame-base : frame-base x86-64-frame-semantics
-                       (current-frame FFOx.entry-alloc) ≡ X.stack-top
+                       (current-frame (FFOx.entry-alloc 0)) ≡ X.stack-top
 
 -- Initial-state correspondence, PROVEN: the concrete `initState` (all registers 0,
 -- empty memory, pc 0, running) relates to the flat entry state `mkFlat entry-s
@@ -160,7 +160,7 @@ postulate
 -- loc) ≡ 0` (the `enc-hl-entry` leaf); halt/pc are refl; heap-eq is vacuous
 -- (`nothing ≡ nothing`, the entry heap is empty). No longer a postulate.
 entry-corr : ∀ (ir : IR Unit Unit)
-           → CompiledCorr entry-view (ir-to-trace ir) (mkFlat (FFOx.entry-s (ir-stack-budget ir)) FFOx.entry-alloc 0)
+           → CompiledCorr entry-view (ir-to-trace ir) (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0)
                           (ArchSemantics.initialState as64)
 entry-corr ir = record
   { dataCorr = record
@@ -201,11 +201,11 @@ entry-corr ir = record
 -- constraint on a non-pointer, so every case is `tt`. Everything downstream is
 -- the flat-machine theorem (`FlatStoreWF.flat-wf-step`), applied once per step
 -- inside `ccc-step-bs` — no per-instruction obligation here.
-entry-wf : ∀ (B : ℕ) → FlatWF (mkFlat (FFOx.entry-s B) FFOx.entry-alloc 0)
+entry-wf : ∀ (B : ℕ) → FlatWF (mkFlat FFOx.entry-s (FFOx.entry-alloc B) 0)
 entry-wf B = record
   { wf-regs = reg-below ; wf-heap = λ _ → tt ; wf-stack = λ _ _ → tt ; wf-fresh = λ _ _ → refl }
   where
-    reg-below : ∀ (r : AbstractReg) → sv-below 1 (readReg (regs (FFOx.entry-s B)) r)
+    reg-below : ∀ (r : AbstractReg) → sv-below 1 (readReg (regs FFOx.entry-s) r)
     reg-below Input1  = tt
     reg-below Input2  = tt
     reg-below Output  = tt
@@ -218,7 +218,7 @@ entry-wf B = record
 -- construction. Downstream it is the flat-machine theorem
 -- (`FlatRegTagWF.flat-regtag-step`), applied once per step inside
 -- `ccc-step-bs` alongside the store-WF one.
-entry-regtag : ∀ (B : ℕ) → FlatRegTag (mkFlat (FFOx.entry-s B) FFOx.entry-alloc 0)
+entry-regtag : ∀ (B : ℕ) → FlatRegTag (mkFlat FFOx.entry-s (FFOx.entry-alloc B) 0)
 entry-regtag B = record { scratch-tag = 0 , refl ; count-tag = 0 , refl }
 
 ------------------------------------------------------------------------
@@ -233,17 +233,17 @@ entry-regtag B = record { scratch-tag = 0 , refl ; count-tag = 0 , refl }
 
 -- the loader's state is a legitimate starting state: first instruction, running,
 -- nothing allocated on stack or heap, no block sized yet
--- NB `stackSlot ≡ 0` is GONE from `EntryLike`: the loader hands `main` a frame the
+-- NB `frame-slots ≡ 0` is GONE from `EntryLike`: the loader hands `main` a frame the
 -- prologue already reserved (`ir-stack-budget`), which is exactly what makes the
 -- slot residuals dischargeable instead of false. See the note in `FlatFromObs`.
-entry-like : ∀ (B : ℕ) → EntryLike (mkFlat (FFOx.entry-s B) FFOx.entry-alloc 0)
+entry-like : ∀ (B : ℕ) → EntryLike (mkFlat FFOx.entry-s (FFOx.entry-alloc B) 0)
 entry-like B = refl , refl , refl , refl
              , (λ _ → refl) , (λ _ _ → refl) , (λ _ → refl)
              -- no register holds ANY pointer: every entry register is the
              -- tag filler `SV-Tag 0` (D074)
              , no-ptr
   where no-ptr : ∀ (r : AbstractReg) loc
-               → readReg (regs (FFOx.entry-s B)) r ≡ SV-Ptr loc → ⊥
+               → readReg (regs FFOx.entry-s) r ≡ SV-Ptr loc → ⊥
         no-ptr Input1  loc ()
         no-ptr Input2  loc ()
         no-ptr Output  loc ()
@@ -252,17 +252,17 @@ entry-like B = refl , refl , refl , refl
 
 entry-inv : ∀ (ir : IR Unit Unit)
           → FlatInv ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
-                    (ir-to-trace ir) (mkFlat (FFOx.entry-s (ir-stack-budget ir)) FFOx.entry-alloc 0)
+                    (ir-to-trace ir) (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0)
 entry-inv ir = record
   { inv-wf      = entry-wf (ir-stack-budget ir)
   ; inv-regtag  = entry-regtag (ir-stack-budget ir)
   ; inv-ev      = refl        -- the apex runs the REAL extractor
   ; inv-env     = refl        -- …and the REAL arith env
   -- the program is this IR's emitted trace, and the loader's state starts the run
-  -- INSIDE the frame the prologue reserved: `stackSlot ≡ ir-stack-budget ir`,
+  -- INSIDE the frame the prologue reserved: `frame-slots ≡ ir-stack-budget ir`,
   -- which is what makes the slot cluster a theorem rather than an assumption.
   ; inv-run     = mkRunAt ir refl (main-heap-moded ir)
-                    (reach-start (mkFlat (FFOx.entry-s (ir-stack-budget ir)) FFOx.entry-alloc 0)
+                    (reach-start (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0)
                                  (entry-like (ir-stack-budget ir)) refl)
   }
 
@@ -291,7 +291,7 @@ postulate
   conc-fuel : ∀ (ir : IR Unit Unit) (n M : ℕ) →
       RTx.run-events val-x86-64 ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
         M (compile-trace (ir-to-trace ir)) (ArchSemantics.initialState as64)
-      ≡ flat-events (Nof ir n) (ir-to-trace ir) (mkFlat (FFOx.entry-s (ir-stack-budget ir)) FFOx.entry-alloc 0) →
+      ≡ flat-events (Nof ir n) (ir-to-trace ir) (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0) →
       take n (RTx.run-events val-x86-64 ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
                 (step-budget-x86-64 n) (compile-trace (ir-to-trace ir)) (ArchSemantics.initialState as64))
     ≡ take n (RTx.run-events val-x86-64 ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
@@ -311,7 +311,7 @@ conc-flat-sim-just ir n
   where
     agree = events-agree (Nof ir n)
               ev-x86-64 (arith-env-x86-64 (compile-trace (ir-to-trace ir)))
-              (ir-to-trace ir) (mkFlat (FFOx.entry-s (ir-stack-budget ir)) FFOx.entry-alloc 0)
+              (ir-to-trace ir) (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0)
               (ArchSemantics.initialState as64) (entry-corr ir) (entry-inv ir)
 
 -- conc-flat-sim, top-down: `nothing` proven (both traces `[]`); `just` delegates

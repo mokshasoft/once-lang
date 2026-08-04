@@ -226,7 +226,7 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- All three setup instructions preserve Input1:
       --   mov-to-output writes Output, store-at-slot writes stack mem,
-      --   instr-alloc-stack bumps stackSlot (in regs) but not Input1.
+      --   instr-alloc-stack touches nothing in the LocState (0.63).
       rdi-eq-after-setup : readReg (regs s-after-setup) Input1 ≡ SV-Ptr input-loc
       rdi-eq-after-setup =
         let s₁      = proj₁ (exec-abstract mov-to-output s alloc)
@@ -240,7 +240,7 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
             store-preserves = exec-abstract-store-at-slot-preserves-input backup-slot s₁ alloc₁
             not-halted₂ = exec-abstract-preserves-halted (store-at-slot backup-slot) s₁ alloc₁ not-halted₁ iph-store-at-slot
             s₃      = proj₁ (exec-abstract (instr-alloc-stack pair-heap-overhead) s₂ alloc₂)
-            -- instr-alloc-stack only changes regs.stackSlot, leaving
+            -- instr-alloc-stack changes nothing in the LocState, leaving
             -- input1 / input2 / output untouched (definitional).
             alloc-stack-preserves : readReg (regs s₃) Input1 ≡ readReg (regs s₂) Input1
             alloc-stack-preserves = refl
@@ -277,7 +277,7 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- setup-trace stack writes: backup-slot = next-slot alloc.
       -- BeforeFrontier locations are below backup-slot, so the store
-      -- doesn't touch them. instr-alloc-stack bumps regs.stackSlot
+      -- doesn't touch them. instr-alloc-stack touches no LocState field
       -- and alloc.next-slot but doesn't touch stack memory.
       mem-preserved-through-setup :
         ∀ loc → BeforeFrontier alloc loc → readLoc s-after-setup loc ≡ readLoc s loc
@@ -297,8 +297,8 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
             store-mem : readLoc s₂ loc ≡ readLoc s₁ loc
             store-mem = exec-abstract-store-at-slot-preserves-loc backup-slot s₁ alloc₁ loc loc≢slot
             not-halted₂ = exec-abstract-preserves-halted (store-at-slot backup-slot) s₁ alloc₁ not-halted₁ iph-store-at-slot
-            -- instr-alloc-stack only changes regs.stackSlot, so stack/heap
-            -- memory is preserved; readLoc reads memory, not stackSlot.
+            -- instr-alloc-stack changes no LocState field, so stack/heap
+            -- memory is preserved.
             s₃      = proj₁ (exec-abstract (instr-alloc-stack pair-heap-overhead) s₂ alloc₂)
             alloc-stack-mem : readLoc s₃ loc ≡ readLoc s₂ loc
             alloc-stack-mem = ExecLemmas.readLoc-stackMem-eq s₃ s₂ loc refl refl

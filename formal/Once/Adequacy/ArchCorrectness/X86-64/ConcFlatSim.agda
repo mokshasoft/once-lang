@@ -166,12 +166,12 @@ open import Data.List using ([])   -- for `EntryLike`'s empty frame stack
 
 -- A state a program can START in: at the first instruction, running, with nothing
 -- allocated on either side. (The apex's entry state is one — see `entry-run`.)
--- NB: NOT `stackSlot ≡ 0`. The loader hands `main` a frame the per-arch prologue
+-- NB: NOT `frame-slots ≡ 0`. The loader hands `main` a frame the per-arch prologue
 -- has already reserved (`subq $budget*8, %rsp`), and `ir-to-trace` emits no frame
--- op that could reserve one later — so a start state whose `stackSlot` is 0 would
+-- op that could reserve one later — so a start state whose `frame-slots` is 0 would
 -- make the live stack window empty FOR THE WHOLE RUN, and every "the slot this
 -- instruction reads is in frame" residual false. `FlatFromObs.entry-s` therefore
--- starts at `ir-stack-budget`, and this predicate leaves `stackSlot` free.
+-- starts at `ir-stack-budget`, and this predicate leaves `frame-slots` free.
 EntryLike : FlatState → Set
 EntryLike fs = (fpc fs ≡ 0)
              × (halted (floc fs) ≡ false)
@@ -192,14 +192,14 @@ EntryLike fs = (fpc fs ≡ 0)
                 → readReg (regs (floc fs)) r ≡ SV-Ptr loc → ⊥)
 
 -- …indexed by the STATIC SLOT BUDGET `B` the prologue reserved. The entry state
--- pins `stackSlot` to it (`reach-start`), and no reachable step can move it —
+-- pins `frame-slots` to it (`reach-start`), and no reachable step can move it —
 -- `ir-to-trace` emits no frame op, and the frame ops are the only writers of
--- `stackSlot`. That is what turns "the slot this instruction addresses is in
+-- `frame-slots`. That is what turns "the slot this instruction addresses is in
 -- frame" from an assumption about arbitrary states into arithmetic about the
 -- emitter's own frontier (`run-stack-slot` + `emitted-slot-below-budget` below).
 data Reachable (prog : AbstractTrace) (B : ℕ) : FlatState → Set where
   reach-start : ∀ (fs : FlatState) → EntryLike fs
-              → stackSlot (regs (floc fs)) ≡ B
+              → frame-slots (falloc fs) ≡ B
               → Reachable prog B fs
   reach-step  : ∀ (i : AbstractInstr) (fs : FlatState)
               → Reachable prog B fs
@@ -465,7 +465,7 @@ slot-empty-stop : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env :
                 → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
                 → fetch prog (fpc fs) ≡ just i
                 → compile-abstract i ≡ mov (reg dst) (mem (base+disp rsp (slot-to-disp slot))) ∷ []
-                → slot < stackSlot (regs (floc fs))
+                → slot < frame-slots (falloc fs)
                 → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ nothing
                 → halted (floc (flat-exec-instr i prog fs)) ≡ true
                 → event-of i fs ≡ []
@@ -602,15 +602,15 @@ postulate
   -- shape checker's store-site discipline (`is-fresh`) makes it absurd.
   -- See `store-indirect{,-suc}-target-ptr` below.
 
-  -- A slot the emitted code READS is frame-live (`slot < stackSlot`): reads stay
+  -- A slot the emitted code READS is frame-live (`slot < frame-slots`): reads stay
   -- inside the frame the prologue reserved. Conditioned on the SITE (a property of
   -- emitted programs, not of arbitrary states) and covering the empty case too —
   -- which is what lets the empty-slot reads be PROVED rather than postulated
   -- (`slot-empty-stop`), retiring `load-from-slot-empty`, `restore-input-empty`
   -- and `worklist-pop-empty`. The slot MUST be the fetched instruction's own
   -- (`slot-of i ≡ just slot`): quantified over an unrelated `slot` this claims
-  -- `slot < stackSlot` for every slot, which is inconsistent (take `slot ≡
-  -- stackSlot`) — it would prove the whole correspondence vacuously.
+  -- `slot < frame-slots` for every slot, which is inconsistent (take `slot ≡
+  -- frame-slots`) — it would prove the whole correspondence vacuously.
   -- MEMORY EXHAUSTION (plan 0.54 rung D) — the price of "the two regions grow
   -- towards each other", and the ONLY thing the layout separation assumes. The
   -- ONE allocating instruction the emitter produces has room between the heap
@@ -710,10 +710,10 @@ emitted-slot-below-budget ir k i slot ftq soq =
 -- budget the prologue reserved. Induction on `Reachable`; each step is frame-free
 -- because the program is emitted (`frame-op-absurd`).
 run-stack-slot : ∀ prog (fs : FlatState) (r : RunAt prog fs)
-               → stackSlot (regs (floc fs)) ≡ ir-stack-budget (run-ir r)
+               → frame-slots (falloc fs) ≡ ir-stack-budget (run-ir r)
 run-stack-slot prog fs (mkRunAt ir eq hm reach) = go fs reach
   where go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs'
-           → stackSlot (regs (floc fs')) ≡ ir-stack-budget ir
+           → frame-slots (falloc fs') ≡ ir-stack-budget ir
         go fs' (reach-start .fs' _ eqB)       = eqB
         go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
           trans (flat-stack-slot i prog fs''
@@ -843,24 +843,27 @@ run-stack-ptr prog fs (mkRunAt ir eq hm reach) = go fs reach
             (frame-op-absurd prog fs'' i (ir , eq) hm ftq)
             (go fs'' r')
 
--- the two forms the block-steps ask for, now READ OFF the invariant
+-- The two forms the block-steps ask for. Since Plan 0.63's `StackPtrWF`
+-- became "there is no stack pointer", holding one in `Input1` is refuted
+-- outright — these keep their signatures so nothing downstream changes, but
+-- both components are now `⊥-elim`.
 stack-ptr-current : ∀ prog (fs : FlatState) (f : Frame) (k : Slot) → RunAt prog fs
                   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                  → (f ≡ current-frame (falloc fs)) × (k < stackSlot (regs (floc fs)))
+                  → (f ≡ current-frame (falloc fs)) × (k < frame-slots (falloc fs))
 stack-ptr-current prog fs f k r eq =
   stack-ptr-frame fs Input1 f k (run-stack-ptr prog fs r) eq
-  , stack-ptr-live fs Input1 f k (run-stack-ptr prog fs r) eq
+  , ⊥-elim (stack-ptr-live fs Input1 f k (run-stack-ptr prog fs r) eq)
 
 stack-ptr-current-suc : ∀ prog (fs : FlatState) (f : Frame) (k : Slot) → RunAt prog fs
                       → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                      → (f ≡ current-frame (falloc fs)) × (suc k < stackSlot (regs (floc fs)))
+                      → (f ≡ current-frame (falloc fs)) × (suc k < frame-slots (falloc fs))
 stack-ptr-current-suc prog fs f k r eq =
   stack-ptr-frame fs Input1 f k (run-stack-ptr prog fs r) eq
-  , stack-ptr-suc-live fs Input1 f k (run-stack-ptr prog fs r) eq
+  , ⊥-elim (stack-ptr-suc-live fs Input1 f k (run-stack-ptr prog fs r) eq)
 
 slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunAt prog fs
                    → fetch prog (fpc fs) ≡ just i → slot-of i ≡ just slot
-                   → slot < stackSlot (regs (floc fs))
+                   → slot < frame-slots (falloc fs)
 slot-read-in-frame prog fs slot i r ftq soq =
   subst (slot <_) (sym (run-stack-slot prog fs r))
     (emitted-slot-below-budget (run-ir r) (fpc fs) i slot
@@ -1666,7 +1669,7 @@ mutual
                                     (mov (reg rax) (mem (base rdi))) halt-s (proj₁ stuckp) refl (proj₂ stuckp))
                                  (sym (flat-events-halted n prog (flat-exec-instr load-indirect prog fs) hpost))
           go-stack : ∀ f k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                   → (f ≡ current-frame (falloc fs)) × (k < stackSlot (regs (floc fs)))
+                   → (f ≡ current-frame (falloc fs)) × (k < frame-slots (falloc fs))
                    → ∀ (mw : Maybe (StoredValue FS))
                    → stackMem (floc fs) (current-frame (falloc fs)) k ≡ mw
                    → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
@@ -1737,7 +1740,7 @@ mutual
                                  (sym (flat-events-halted n prog (flat-exec-instr load-indirect-suc prog fs) hpost))
           -- SECOND cell of a stack pair: `[rdi+8]` is slot `suc k` of the same frame.
           go-stack : ∀ f k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-                   → (f ≡ current-frame (falloc fs)) × (suc k < stackSlot (regs (floc fs)))
+                   → (f ≡ current-frame (falloc fs)) × (suc k < frame-slots (falloc fs))
                    → ∀ (mw : Maybe (StoredValue FS))
                    → stackMem (floc fs) (current-frame (falloc fs)) (suc k) ≡ mw
                    → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s

@@ -17,7 +17,7 @@
 --
 -- The four abstract frame instructions — `instr-alloc-stack`,
 -- `instr-dealloc-stack`, `instr-push-frame`, `instr-pop-frame` — are the ONLY
--- writers of `Registers.stackSlot` in `exec-abstract` (SMCore: `incrStackSlot`,
+-- writers of `Registers.frame-slots` in `exec-abstract` (SMCore: `incrStackSlot`,
 -- `decrStackSlot`, `writeStackSlot`, at exactly those three sites). So this
 -- predicate is what makes the live stack window CONSTANT along a run, which is
 -- what the flat↔x86-64 slot residuals rest on.

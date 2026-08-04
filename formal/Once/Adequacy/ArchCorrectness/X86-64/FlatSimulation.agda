@@ -331,7 +331,7 @@ block-step-reclaim-to {hv} prog fs s n cc h ft = s , refl , record
   { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
                       ; rbx-eq = C.rbx-eq dc ; r14-eq = C.r14-eq dc ; halt-eq = C.halt-eq dc ; rsp-eq = C.rsp-eq dc ; r15-eq = C.r15-eq dc ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc
                       ; heap-eq = C.heap-eq dc
-                      ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }   -- reclaim-to changes next-slot, not stackSlot ⇒ bound stable
+                      ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }   -- reclaim-to changes next-slot, not frame-slots ⇒ bound stable
   ; pc-off = trans (pc-off cc)
              (sym (trans (x86-off-suc prog (fpc fs) (instr-reclaim-to n) ft) (+-identityʳ _))) }
   where dc = dataCorr cc
@@ -438,7 +438,7 @@ block-step-load-indirect-suc {hv} prog fs s hl w cc h ft i-eq live-shl h-eq =
 -- FIRST consumer of stack-eq: deleting the field breaks `rd`.
 block-step-load-from-slot : ∀ {hv : HeapView} prog fs s slot w → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (load-from-slot slot)
-  → slot < stackSlot (regs (floc fs))   -- the read slot is within the runtime frame (WF)
+  → slot < frame-slots (falloc fs)   -- the read slot is within the runtime frame (WF)
   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
   → BlockStep hv prog fs s (load-from-slot slot)
 block-step-load-from-slot {hv} prog fs s slot w cc h ft slot<ns st-eq =
@@ -466,7 +466,7 @@ block-step-load-from-slot {hv} prog fs s slot w cc h ft slot<ns st-eq =
 -- Identical to load-from-slot but the destination register is rdi (Input1).
 block-step-restore-input : ∀ {hv : HeapView} prog fs s slot w → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (restore-input slot)
-  → slot < stackSlot (regs (floc fs))   -- the read slot is within the runtime frame (WF)
+  → slot < frame-slots (falloc fs)   -- the read slot is within the runtime frame (WF)
   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
   → BlockStep hv prog fs s (restore-input slot)
 block-step-restore-input {hv} prog fs s slot w cc h ft slot<ns st-eq =
@@ -496,7 +496,6 @@ block-step-restore-input {hv} prog fs s slot w cc h ft slot<ns st-eq =
 -- the carried view, so the old `liveinv` premise is gone.
 block-step-alloc-stack : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-alloc-stack n)
-  → stackSlot (regs (floc fs)) ≡ 0
   -- Plan 0.61: the reservation MOVES into the callee frame, so the freshness is
   -- about the SHIFTED frame (a weaker premise than the caller-frame one).
   → (∀ k → k < n → stackMem (floc fs) (shift-frame FS (current-frame (falloc fs)) n) k ≡ nothing)
@@ -507,7 +506,7 @@ block-step-alloc-stack : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv pro
   → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
   → lo' ≤ X.readReg (xregs s) rsp ∸ slots n
   → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-alloc-stack n)
-block-step-alloc-stack {hv} prog fs s n cc h ft entry fresh-abs fresh-x86 lo' lo'≤lo front-lo' lo'≤rsp =
+block-step-alloc-stack {hv} prog fs s n cc h ft fresh-abs fresh-x86 lo' lo'≤lo front-lo' lo'≤rsp =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -527,21 +526,27 @@ block-step-alloc-stack {hv} prog fs s n cc h ft entry fresh-abs fresh-x86 lo' lo
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
                           (flat-exec-instr (instr-alloc-stack n) prog fs) post
-    dataPost = C.sim-alloc-stack n newFlags fs s dc entry fresh-abs fresh-x86
+    dataPost = C.sim-alloc-stack n newFlags fs s dc fresh-abs fresh-x86
                                  lo' lo'≤lo front-lo' lo'≤rsp
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-alloc-stack n) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-alloc-stack n) ft))
 
 -- dealloc-stack: free n slots ↔ `add rsp, n*8`. At a full-frame exit
--- (stackSlot ≡ n), sim-dealloc-stack's post bound is vacuous. Uses step-add-ri.
+-- (frame-slots ≡ n), sim-dealloc-stack's post bound is vacuous. Uses step-add-ri.
 block-step-dealloc-stack : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-dealloc-stack n)
-  → stackSlot (regs (floc fs)) ≡ n
   -- matched pairing: the restored (caller) frame's base is where %rsp lands
   → X.readReg (xregs s) rsp + slots n
       ≡ frame-base FS (current-frame (leave-frame (falloc fs)))
+  -- Plan 0.63: the restored CALLER's window (see `C.sim-dealloc-stack`'s note —
+  -- `FlatCorr.stack-eq` describes ONE frame, so a return has to be handed the
+  -- window it returns to; a whole-stack `stack-eq` would give this for free)
+  → (∀ (k : Slot) → k < frame-slots (leave-frame (falloc fs)) →
+       X.readMem (memory s) ((X.readReg (xregs s) rsp + slots n) + slot-to-disp k)
+         ≡ C.enc-maybe hv (stackMem (floc fs)
+             (current-frame (leave-frame (falloc fs))) k))
   → BlockStep hv prog fs s (instr-dealloc-stack n)
-block-step-dealloc-stack {hv} prog fs s n cc h ft full restores =
+block-step-dealloc-stack {hv} prog fs s n cc h ft restores caller-window =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -560,152 +565,16 @@ block-step-dealloc-stack {hv} prog fs s n cc h ft full restores =
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     dataPost : C.FlatCorr hv (flat-exec-instr (instr-dealloc-stack n) prog fs) post
-    dataPost = C.sim-dealloc-stack n newFlags fs s dc full restores
+    dataPost = C.sim-dealloc-stack n newFlags fs s dc restores caller-window
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-dealloc-stack n) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-dealloc-stack n) ft))
 
--- push-frame: `push rbp; mov rbp,rsp; sub rsp,cap*8` (3 steps). The abstract
--- resets the runtime depth (stackSlot:=0) ⇒ vacuous stack-eq (sim-push-frame). The
--- prologue touches only rbp/rsp (4 tracked regs preserved: refl) and writes ONE
--- cell (saved rbp at [rsp−8]); heap-eq is preserved by a disjointness residual.
-block-step-push-frame : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just (instr-push-frame n)
-  → (∀ hl → HDom hv hl → (X.readReg (xregs s) rsp ∸ slot-size ≡ haddr hv hl) → ⊥)
-  -- THE DESCENT (plan 0.54 rung D step 3): the prologue lowers %rsp onto the callee
-  -- base, so the view's high-water mark descends there too — and it is that descent
-  -- that legitimises the prologue's own write below the old %rsp (the saved %rbp
-  -- lands at or above `lo'`, outside the virgin region). ROOM (stack overflow) is
-  -- what the dispatcher spends on `front-lo'`.
-  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
-  → lo' ≤ (X.readReg (xregs s) rsp ∸ slot-size) ∸ slots n
-  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-push-frame n)
-block-step-push-frame {hv} prog fs s n cc h ft disj lo' lo'≤lo front-lo' lo'≤rsp =
-  post-sub , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
-  where
-    dc = dataCorr cc ; po = pc-off cc
-    halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
-    fetch-push : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (push (reg rbp))
-    fetch-push = trans (cong (X.fetch (compile-trace prog)) po)
-                       (fetch-block-head prog (fpc fs) (instr-push-frame n) ft)
-    post-push : X.State
-    post-push = record s { regs = xwriteReg (xregs s) rsp (xreadReg (xregs s) rsp ∸ slot-size)
-                         ; memory = writeMem (memory s) (xreadReg (xregs s) rsp ∸ slot-size) (xreadReg (xregs s) rbp)
-                         ; pc = pc s + 1 }
-    step1 : X.step-not-halted (compile-trace prog) s ≡ just post-push
-    step1 = step-push {compile-trace prog} {s} {rbp} fetch-push
-    fetch-mov : X.fetch (compile-trace prog) (X.State.pc post-push) ≡ just (mov (reg rbp) (reg rsp))
-    fetch-mov = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) po)
-                      (fetch-block-2nd prog (fpc fs) (instr-push-frame n) ft)
-    post-mov : X.State
-    post-mov = record post-push { regs = xwriteReg (xregs post-push) rbp (xreadReg (xregs post-push) rsp)
-                                ; pc = pc post-push + 1 }
-    step2 : X.step-not-halted (compile-trace prog) post-push ≡ just post-mov
-    step2 = step-mov-rr {compile-trace prog} {post-push} {rbp} {rsp} fetch-mov
-    fetch-sub : X.fetch (compile-trace prog) (X.State.pc post-mov) ≡ just (sub (reg rsp) (imm (slots n)))
-    fetch-sub = trans (cong (λ p → X.fetch (compile-trace prog) ((p + 1) + 1)) po)
-                (trans (cong (X.fetch (compile-trace prog)) (+-assoc (x86-off prog (fpc fs)) 1 1))
-                       (fetch-block-3rd prog (fpc fs) (instr-push-frame n) ft))
-    post-sub : X.State
-    post-sub = record post-mov { regs = xwriteReg (xregs post-mov) rsp (xreadReg (xregs post-mov) rsp ∸ slots n)
-                               ; flags = updateFlags (xreadReg (xregs post-mov) rsp ∸ slots n) (xreadReg (xregs post-mov) rsp)
-                               ; pc = pc post-mov + 1 }
-    step3 : X.step-not-halted (compile-trace prog) post-mov ≡ just post-sub
-    step3 = step-sub-ri {compile-trace prog} {post-mov} {rsp} {slots n} fetch-sub
-    exec-eq : X.exec 3 (compile-trace prog) s ≡ just post-sub
-    exec-eq = trans (exec-1 {compile-trace prog} {2} {s} {post-push} halt-s step1 halt-s)
-              (trans (exec-1 {compile-trace prog} {1} {post-push} {post-mov} halt-s step2 halt-s)
-                     (exec-1 {compile-trace prog} {0} {post-mov} {post-sub} halt-s step3 halt-s))
-    heap-p : ∀ hl → HDom hv hl
-           → X.readMem (X.State.memory post-sub) (haddr hv hl) ≡ X.readMem (X.State.memory s) (haddr hv hl)
-    heap-p hl live rewrite C.≢→≡ᵇfalse {haddr hv hl} {xreadReg (xregs s) rsp ∸ slot-size}
-                             (λ eq → disj hl live (sym eq)) = refl
-    -- the prologue lands %rsp on the CALLEE frame's base: `push rbp` takes one
-    -- slot, `sub rsp, n·8` the rest — exactly `shift-frame cf (suc n)`.
-    rsp-p : xreadReg (xregs post-sub) rsp
-          ≡ frame-base FS (shift-frame FS (current-frame (falloc fs)) (suc n))
-    rsp-p = trans (cong (λ b → (b ∸ slot-size) ∸ slots n) (C.rsp-eq dc))
-            (trans (∸-+-assoc (frame-base FS (current-frame (falloc fs))) slot-size (slots n))
-            (trans (cong (λ w → frame-base FS (current-frame (falloc fs)) ∸ (w + n * w)) (sym word-eq))
-                   (sym (shift-base FS (current-frame (falloc fs)) (suc n)))))
-    -- the prologue's ONE write (the saved %rbp at [rsp−8]) is at or above the new
-    -- high-water mark, so it misses the virgin region entirely
-    virgin-p : ∀ (a : ℕ) → C.hfront hv ≤ a → a < lo'
-             → X.readMem (X.State.memory post-sub) a ≡ X.readMem (X.State.memory s) a
-    virgin-p a _ a<lo'
-      rewrite C.≢→≡ᵇfalse {a} {xreadReg (xregs s) rsp ∸ slot-size}
-                (<⇒≢ (<-transˡ a<lo' (≤-trans lo'≤rsp
-                        (m∸n≤m (xreadReg (xregs s) rsp ∸ slot-size) (slots n))))) = refl
-    dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
-                          (flat-exec-instr (instr-push-frame n) prog fs) post-sub
-    -- 7 refls: rdi/rsi/rax/rbx/r14/halt/r15 — the prologue (`push rbp; mov rbp,rsp;
-    -- sub rsp,n·8`) touches only rbp and rsp, so the tally survives the call.
-    dataPost = C.sim-push-frame n fs s post-sub dc refl refl refl refl refl refl refl rsp-p
-                                lo' lo'≤lo front-lo' lo'≤rsp virgin-p heap-p
-    pco' : X.State.pc post-sub ≡ x86-off prog (fpc (flat-exec-instr (instr-push-frame n) prog fs))
-    pco' = trans (trans (cong (λ p → ((p + 1) + 1) + 1) po) assoc)
-                 (sym (x86-off-suc prog (fpc fs) (instr-push-frame n) ft))
-      where m = x86-off prog (fpc fs)
-            assoc : ((m + 1) + 1) + 1 ≡ m + 3
-            assoc = trans (cong (_+ 1) (+-assoc m 1 1)) (+-assoc m 2 1)
-
--- pop-frame: `mov rsp,rbp; pop rbp` (2 steps). Abstract identity; at a frame
--- teardown stackSlot ≡ 0 ⇒ vacuous stack-eq (sim-pop-frame). mov/pop touch only
--- rsp/rbp (4 tracked regs preserved: refl) and pop only READS memory (heap-eq =
--- refl). `v` + `saved` witness the saved-rbp cell for pop to succeed.
-block-step-pop-frame : ∀ {hv : HeapView} prog fs s (v : X.Word) → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just instr-pop-frame
-  → stackSlot (regs (floc fs)) ≡ 0
-  → X.readMem (memory s) (xreadReg (xregs s) rbp) ≡ just v
-  -- matched pairing: `mov rsp,rbp; pop rbp` lands %rsp on the caller frame's base
-  → xreadReg (xregs s) rbp + slot-size
-      ≡ frame-base FS (current-frame (leave-frame (falloc fs)))
-  -- ROOM: the saved-rbp cell — and hence the restored caller frame above it — is
-  -- at or above the HIGH-WATER MARK (which does not rise with the epilogue: the
-  -- callee's cells keep their contents). Stated at `%rbp` so that the cell `pop`
-  -- reads is provably OUTSIDE the virgin region.
-  → C.lo hv ≤ xreadReg (xregs s) rbp
-  → BlockStep hv prog fs s instr-pop-frame
-block-step-pop-frame {hv} prog fs s v cc h ft ss0 saved restores room =
-  post-pop , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
-  where
-    dc = dataCorr cc ; po = pc-off cc
-    halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
-    fetch-mov : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rsp) (reg rbp))
-    fetch-mov = trans (cong (X.fetch (compile-trace prog)) po)
-                      (fetch-block-head prog (fpc fs) instr-pop-frame ft)
-    post-mov : X.State
-    post-mov = record s { regs = xwriteReg (xregs s) rsp (xreadReg (xregs s) rbp) ; pc = pc s + 1 }
-    step1 : X.step-not-halted (compile-trace prog) s ≡ just post-mov
-    step1 = step-mov-rr {compile-trace prog} {s} {rsp} {rbp} fetch-mov
-    fetch-pop : X.fetch (compile-trace prog) (X.State.pc post-mov) ≡ just (pop rbp)
-    fetch-pop = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) po)
-                      (fetch-block-2nd prog (fpc fs) instr-pop-frame ft)
-    rd : X.readMem (memory post-mov) (xreadReg (xregs post-mov) rsp) ≡ just v
-    rd = saved
-    post-pop : X.State
-    post-pop = record post-mov { regs = xwriteReg (xwriteReg (xregs post-mov) rbp v) rsp
-                                          (xreadReg (xregs post-mov) rsp + slot-size)
-                               ; pc = pc post-mov + 1 }
-    step2 : X.step-not-halted (compile-trace prog) post-mov ≡ just post-pop
-    step2 = step-pop {compile-trace prog} {post-mov} {rbp} {v} fetch-pop rd
-    exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-pop
-    exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-mov} halt-s step1 halt-s)
-                    (exec-1 {compile-trace prog} {0} {post-mov} {post-pop} halt-s step2 halt-s)
-    heap-p : ∀ hl → HDom hv hl
-           → X.readMem (X.State.memory post-pop) (haddr hv hl) ≡ X.readMem (X.State.memory s) (haddr hv hl)
-    heap-p hl live = refl
-    dataPost : C.FlatCorr hv (flat-exec-instr instr-pop-frame prog fs) post-pop
-    -- 7 refls: rdi/rsi/rax/rbx/r14/halt/r15 — the epilogue (`mov rsp,rbp; pop rbp`)
-    -- touches only rbp/rsp, so the tally survives the return.
-    -- `pop` only READS memory, so the virgin region is untouched by construction.
-    dataPost = C.sim-pop-frame fs s post-pop dc ss0 refl refl refl refl refl refl refl restores
-                               (≤-trans room (m≤m+n (xreadReg (xregs s) rbp) slot-size))
-                               (λ _ _ _ → refl) heap-p
-    pco' : X.State.pc post-pop ≡ x86-off prog (fpc (flat-exec-instr instr-pop-frame prog fs))
-    pco' = trans (trans (cong (λ p → (p + 1) + 1) po) (+-assoc (x86-off prog (fpc fs)) 1 1))
-                 (sym (x86-off-suc prog (fpc fs) instr-pop-frame ft))
+-- push-frame / pop-frame: THE `%rbp` FRAME MODEL IS A FOSSIL. Their
+-- `block-step-*` pair was deleted 2026-08-04 — flagged deletable on
+-- 2026-07-31 ("now DEAD, nothing references them") and confirmed again here.
+-- The live model is frameless and `%rsp`-relative, and Plan 0.63's closure
+-- frames ride on `alloc-stack`/`dealloc-stack`, whose block-steps are kept
+-- above precisely because `c-thunk`/`c-ret` compose from them.
 
 -- load-const (int): Output := SV-Lit fits-int v ↔ `mov rax, imm v` (1 step).
 -- With the enc-sv fix the immediate matches exactly (sim-load-const's rax-eq = refl).
@@ -841,7 +710,7 @@ block-step-worklist-push {hv} prog fs s slot cc h ft disj =
 
 block-step-worklist-pop : ∀ {hv : HeapView} prog fs s slot w → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (worklist-pop slot)
-  → slot < stackSlot (regs (floc fs))   -- the read slot is within the runtime frame (WF)
+  → slot < frame-slots (falloc fs)   -- the read slot is within the runtime frame (WF)
   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
   → BlockStep hv prog fs s (worklist-pop slot)
 block-step-worklist-pop {hv} prog fs s slot w cc h ft slot<ns st-eq =
@@ -1234,7 +1103,7 @@ load-indirect-stack-empty-stuck : ∀ {hv : HeapView} prog fs s f k → Compiled
   → fetch prog (fpc fs) ≡ just load-indirect
   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
   → f ≡ current-frame (falloc fs)
-  → k < stackSlot (regs (floc fs))
+  → k < frame-slots (falloc fs)
   → stackMem (floc fs) (current-frame (falloc fs)) k ≡ nothing
   → (X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base rdi))))
     × (X.execInstr (compile-trace prog) s (mov (reg rax) (mem (base rdi))) ≡ nothing)
@@ -1283,7 +1152,7 @@ load-indirect-suc-stack-empty-stuck : ∀ {hv : HeapView} prog fs s f k → Comp
   → fetch prog (fpc fs) ≡ just load-indirect-suc
   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
   → f ≡ current-frame (falloc fs)
-  → suc k < stackSlot (regs (floc fs))
+  → suc k < frame-slots (falloc fs)
   → stackMem (floc fs) (current-frame (falloc fs)) (suc k) ≡ nothing
   → (X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base+disp rdi slot-size))))
     × (X.execInstr (compile-trace prog) s (mov (reg rax) (mem (base+disp rdi slot-size))) ≡ nothing)
@@ -1367,7 +1236,7 @@ block-step-alloc-heap : ∀ {hv : HeapView} prog fs s n → (cc : CompiledCorr h
   → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Scratch)
   → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Count)
   → (∀ hl → HDom hv hl → svm-below (next-heap-ref (falloc fs)) (heapMem (floc fs) hl))
-  → (∀ k → k < stackSlot (regs (floc fs))
+  → (∀ k → k < frame-slots (falloc fs)
          → svm-below (next-heap-ref (falloc fs)) (stackMem (floc fs) (current-frame (falloc fs)) k))
   → (∀ hl → ref-id (heap-ref hl) ≡ next-heap-ref (falloc fs) → heapMem (floc fs) hl ≡ nothing)
   -- ROOM: the bump stays below the stack's HIGH-WATER MARK (heap exhaustion). Plan
@@ -1495,7 +1364,7 @@ block-step-load-indirect-stack : ∀ {hv : HeapView} prog fs s f k w → Compile
   → fetch prog (fpc fs) ≡ just load-indirect
   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
   → f ≡ current-frame (falloc fs)
-  → k < stackSlot (regs (floc fs))
+  → k < frame-slots (falloc fs)
   → stackMem (floc fs) (current-frame (falloc fs)) k ≡ just w
   → BlockStep hv prog fs s load-indirect
 block-step-load-indirect-stack {hv} prog fs s f k w cc h ft i-eq f-eq k<ss st-eq =
@@ -1537,7 +1406,7 @@ block-step-load-indirect-suc-stack : ∀ {hv : HeapView} prog fs s f k w → Com
   → fetch prog (fpc fs) ≡ just load-indirect-suc
   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
   → f ≡ current-frame (falloc fs)
-  → suc k < stackSlot (regs (floc fs))
+  → suc k < frame-slots (falloc fs)
   → stackMem (floc fs) (current-frame (falloc fs)) (suc k) ≡ just w
   → BlockStep hv prog fs s load-indirect-suc
 block-step-load-indirect-suc-stack {hv} prog fs s f k w cc h ft i-eq f-eq sk<ss st-eq =
@@ -1585,7 +1454,7 @@ block-step-store-indirect-stack : ∀ {hv : HeapView} prog fs s f k → Compiled
   → fetch prog (fpc fs) ≡ just store-indirect
   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
   → f ≡ current-frame (falloc fs)
-  -- NB: no `k < stackSlot` — unlike the load side, a store needs no read-back
+  -- NB: no `k < frame-slots` — unlike the load side, a store needs no read-back
   -- witness; `store-slot-stack-eq` is generic in the written slot.
   → (∀ hl' → HDom hv hl' → (X.readReg (xregs s) rsp + slot-to-disp k ≡ haddr hv hl') → ⊥)
   → BlockStep hv prog fs s store-indirect

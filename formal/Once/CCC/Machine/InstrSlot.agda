@@ -8,7 +8,7 @@
 --
 -- This is what ties a slot-liveness fact to the instruction actually fetched:
 -- a claim stated for an *arbitrary* slot at a site is not a weaker assumption,
--- it is an inconsistent one (`slot ≔ stackSlot` refutes it). It lives here, in
+-- it is an inconsistent one (`slot ≔ frame-slots` refutes it). It lives here, in
 -- the machine layer, because BOTH sides of the slot argument need it: the
 -- flat↔x86-64 correspondence (`ConcFlatSim.slot-read-in-frame`) and the emitter
 -- (`Once.CCC.Codegen.SlotBudget`, which bounds it by the static budget).

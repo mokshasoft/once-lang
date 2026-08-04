@@ -21,7 +21,7 @@
 -- `frame-room`, `pop-frame-{empty,saved,restores}`, `pop-room`).
 --
 -- DEPTH: the predicate (`Once.CCC.Machine.FrameFree`) is deep, because one flat
--- step at an `instr-case-on-tag` runs a whole NESTED trace — and the stackSlot
+-- step at an `instr-case-on-tag` runs a whole NESTED trace — and the frame-slots
 -- invariance the slot residuals need must survive that step. `curry` bodies are
 -- a separate matter: they land in the bodies list, not in this trace, so the
 -- `curry` clauses stay one-liners.

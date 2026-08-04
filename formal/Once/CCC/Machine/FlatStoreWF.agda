@@ -194,22 +194,6 @@ wf-write-reg-halt {n} {ls} x v b wf bv = record
   { wf-regs  = λ y → rw-below (n) (regs ls) x y v bv (wf-regs wf y)
   ; wf-heap  = wf-heap wf ; wf-stack = wf-stack wf ; wf-fresh = wf-fresh wf }
 
--- the stack-slot counter is not a stored value: any `stackSlot`-only update
--- leaves every register's CONTENT alone.
-regs-ss : ∀ (n : ℕ) (rf : Registers FS) (m : ℕ) (y : AbstractReg)
-        → sv-below n (readReg rf y) → sv-below n (readReg (record rf { stackSlot = m }) y)
-regs-ss n rf m Input1  b = b
-regs-ss n rf m Input2  b = b
-regs-ss n rf m Output  b = b
-regs-ss n rf m Scratch b = b
-regs-ss n rf m Count   b = b
-
-wf-stack-slot : ∀ {n ls} (m : ℕ) → StoreWF n ls
-              → StoreWF n (record ls { regs = record (regs ls) { stackSlot = m } })
-wf-stack-slot {n} {ls} m wf = record
-  { wf-regs = λ y → regs-ss (n) (regs ls) m y (wf-regs wf y)
-  ; wf-heap = wf-heap wf ; wf-stack = wf-stack wf ; wf-fresh = wf-fresh wf }
-
 -- STACK write: only the written slot changes, and it gets a below value.
 wsm-below : ∀ (n : ℕ) {f f' : Frame} {k k' : Slot}
             (df : Dec (f ≡ f')) (dk : Dec (k ≡ k'))
@@ -473,12 +457,12 @@ mutual
       (sv-tag-val (readReg (regs ls) Scratch)) wf
       (slot-base-below (next-heap-ref alloc) (readLoc ls (AtStack (current-frame alloc) slot))
         (readLoc-below (AtStack (current-frame alloc) slot) wf)) , ≤-refl
-  wf-abstract (instr-alloc-stack n) ls alloc wf =
-    wf-stack-slot (stackSlot (regs ls) + n) wf , ≤-refl
-  wf-abstract (instr-dealloc-stack n) ls alloc wf =
-    wf-stack-slot (stackSlot (regs ls) ∸ n) wf , ≤-refl
+  -- Plan 0.63: the frame ops no longer touch the LocState at all (the
+  -- `stackSlot` mirror is gone), so these are the identity on the store.
+  wf-abstract (instr-alloc-stack n) ls alloc wf = wf , ≤-refl
+  wf-abstract (instr-dealloc-stack n) ls alloc wf = wf , ≤-refl
   wf-abstract (instr-reclaim-to n) ls alloc wf = wf , ≤-refl
-  wf-abstract (instr-push-frame cap) ls alloc wf = wf-stack-slot 0 wf , ≤-refl
+  wf-abstract (instr-push-frame cap) ls alloc wf = wf , ≤-refl
   wf-abstract instr-pop-frame ls alloc wf = wf , ≤-refl
   wf-abstract instr-call-closure ls alloc wf = wf , ≤-refl
   wf-abstract (worklist-init slot) ls alloc wf = wf , ≤-refl

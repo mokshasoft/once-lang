@@ -443,7 +443,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- instr-alloc-stack preserves regs.Input1 and memory definitionally,
       -- so rdi-eq + arg-ptr at the original state lift to the post-state.
       not-halted-s1 : halted s1 ≡ false
-      -- instr-alloc-stack only touches regs.stackSlot, so it preserves
+      -- instr-alloc-stack touches nothing in the LocState (0.63), so it preserves
       -- readReg Input1 (definitionally, via record-update projection)
       -- and stackMem / heapMem (so readLoc lifts via readLoc-stackMem-eq).
       not-halted-s1 =
@@ -584,7 +584,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Plan 0.16 Rec 5 follow-up: chained Input1 preservation through
       -- prefix12 = instr-alloc-stack ∷ load-indirect-suc ∷ store-at-slot.
       --   * instr-alloc-stack: regs.Input1 unchanged (record update touches
-      --     only stackSlot) — refl through writeReg-preserves not needed.
+      --     nothing in the LocState) — refl through writeReg-preserves not needed.
       --   * load-indirect-suc: writes Output, preserves Input1 — via
       --     exec-abstract-load-indirect-suc-preserves-input.
       --   * store-at-slot: writes memory, preserves regs — via

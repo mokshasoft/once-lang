@@ -5906,3 +5906,74 @@ and supplies the real block-step.
 `c-thunk` needs no such treatment — `block-step-c-thunk` is a pure pc bump
 on both sides, a permanent theorem that does not depend on the
 constructor being unemitted.
+
+## D084: The Stack Pointer Is Represented Once — on the Frame, Not in the Registers
+
+**Date**: 2026-08-04
+**Status**: Accepted (landed)
+**Relates**: D061 (0.61, frames are real), D083, Plan 0.63
+
+### Context
+
+The abstract machine carried the stack position THREE ways: `next-slot`
+(compile-time frontier), `AllocState.current-frame`/`saved-frames` (0.61's
+real frame stack), and `Registers.stackSlot` — a field whose own comment
+read *"like rsp, but as slot count"* and whose design note called it
+*"Runtime simulation state (mirrors rsp)"*.
+
+The correspondence pinned each differently: `rsp-eq` tied `%rsp` to
+`frame-base (current-frame …)`, `stack-eq`'s coverage bound read
+`stackSlot`, and `run-stack-slot` existed only to prove the mirror equalled
+the emitter's static budget. Making the window per-frame — which the closure
+call forces — meant reconciling three facts about one physical register.
+
+### Decision
+
+Delete the mirror. The current frame's reserved slot count lives with the
+frame stack, as `AllocState.frame-slots`, and `saved-frames` carries each
+caller's beside its frame (`List (Frame × ℕ)`). `enter-frame`/`leave-frame`
+update both together; nothing else can touch either.
+
+### Why (this is a layering fix, not a rename)
+
+Frames are a CODEGEN concept — the backend's `subq $budget*8` bracket. The
+IR layer is frameless and reclaims slots by moving `next-slot`, and that is
+right. The mistake was mirroring the codegen concept back INTO the abstract
+machine's register file. 0.61 introduced the honest representation and left
+the mirror beside it; this removes the redundancy.
+
+Confirmed disjoint from slot reclamation before starting: `stackSlot`
+appeared in the IR-WF layer only in COMMENTS, and `instr-reclaim-to` is
+`s , record alloc { next-slot = n }` — the LocState passes through, so
+reclamation could not touch the mirror by construction.
+
+### Consequences
+
+- **−421 lines net**, no new postulate, ConcFlatSim census unchanged at 6.
+- `FlatStackSlot` 313 → 135 lines: proving a REGISTER field constant needed
+  an induction over `exec-abstract` mutual with the nested walks; `frame-slots`
+  is unreachable from `exec-abstract`, so every straight-line case is `refl`.
+- `exec-abstract`'s frame ops became identity on the LocState, which makes
+  the IR-WF layer's "alloc-stack only touches stackSlot" comments strictly
+  more true. That layer needed no proof changes.
+- `sim-push-frame`/`sim-pop-frame` and their block-steps DELETED — the `%rbp`
+  frame model is a fossil, flagged deletable 2026-07-31. Removing the mirror
+  broke their vacuity proofs, and writing fresh premises for dead code was
+  the wrong alternative. `alloc-stack`/`dealloc-stack` are kept: `c-thunk`/
+  `c-ret` compose from them.
+- `Allocation.push-frame`'s `cap` argument, previously "retained for API
+  compatibility but not stored", is now the frame's slot count.
+
+### The gap it exposed — `stack-eq` covers ONE frame
+
+`sim-dealloc-stack`'s post-bound used to be `stackSlot ∸ n`, which a
+full-frame exit made `0`, so the obligation was VACUOUS. With the bound now
+the restored frame's own `frame-slots`, the post genuinely has to describe
+the CALLER's window — and the pre-state cannot supply it, because
+`FlatCorr.stack-eq` only ever describes the current frame.
+
+That is now an explicit `caller-window` premise with a note, not a vacuity.
+**A real return correspondence needs `stack-eq` generalized to every LIVE
+frame** — the clearest remaining obligation for the closure call. The
+premises that stopped doing work (`entry`, `full`) were removed rather than
+left for call sites to supply.

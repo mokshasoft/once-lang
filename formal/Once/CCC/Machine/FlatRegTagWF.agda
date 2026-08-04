@@ -183,14 +183,6 @@ regtag-set-count : ∀ {ls} (v : StoredValue FS) → IsTag v → RegTagWF ls
 regtag-set-count {ls} v tv wf = record { scratch-tag = scratch-tag wf ; count-tag = tv }
 
 ------------------------------------------------------------------------
--- The stack-slot counter is not a stored value: a `stackSlot`-only register
--- update leaves every register's CONTENT alone.
-------------------------------------------------------------------------
-regtag-stack-slot : ∀ {ls} (m : ℕ) → RegTagWF ls
-                  → RegTagWF (record ls { regs = record (regs ls) { stackSlot = m } })
-regtag-stack-slot {ls} m wf = regtag-transport ls refl refl wf
-
-------------------------------------------------------------------------
 -- Memory writes: `writeLoc` never touches `regs` (enumerated, because the
 -- function itself dispatches on the location AND the value).
 ------------------------------------------------------------------------
@@ -326,10 +318,11 @@ mutual
   regtag-abstract (lea-indexed slot) ls alloc wf =
     regtag-lea-indexed (slot-base (readLoc ls (AtStack (current-frame alloc) slot)))
       (sv-tag-val (readReg (regs ls) Scratch)) wf
-  regtag-abstract (instr-alloc-stack n) ls alloc wf = regtag-stack-slot _ wf
-  regtag-abstract (instr-dealloc-stack n) ls alloc wf = regtag-stack-slot _ wf
+  -- Plan 0.63: the frame ops leave the LocState alone now.
+  regtag-abstract (instr-alloc-stack n) ls alloc wf = wf
+  regtag-abstract (instr-dealloc-stack n) ls alloc wf = wf
   regtag-abstract (instr-reclaim-to n) ls alloc wf = wf
-  regtag-abstract (instr-push-frame cap) ls alloc wf = regtag-stack-slot 0 wf
+  regtag-abstract (instr-push-frame cap) ls alloc wf = wf
   regtag-abstract instr-pop-frame ls alloc wf = wf
   regtag-abstract instr-call-closure ls alloc wf = wf
   regtag-abstract (worklist-init slot) ls alloc wf = wf

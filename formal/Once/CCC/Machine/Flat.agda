@@ -172,14 +172,22 @@ module FlatMachine {FS : FrameSemantics} where
   enter-frame : ℕ → AllocState {FS} → AllocState {FS}
   enter-frame n alloc =
     record alloc { current-frame = shift-frame (current-frame alloc) n
-                 ; saved-frames  = current-frame alloc ∷ saved-frames alloc }
+                 -- Plan 0.63: the callee's reserved slot count travels WITH the
+                 -- frame, and the caller's is remembered beside its frame. This
+                 -- is the whole of the old `Registers.frame-slots` mirror: one
+                 -- mechanism, so a call updates the coverage bound and the
+                 -- frame in a single step.
+                 ; frame-slots   = n
+                 ; saved-frames  = (current-frame alloc , frame-slots alloc)
+                                     ∷ saved-frames alloc }
 
   -- Pop the frame stack (identity when empty — a malformed epilogue; the
   -- well-formedness premises pair every prologue with its epilogue).
   -- Aux-style on the frame stack so downstream proofs can reduce it.
-  leave-frame-aux : List Frame → AllocState {FS} → AllocState {FS}
-  leave-frame-aux []       alloc = alloc
-  leave-frame-aux (f ∷ fs) alloc = record alloc { current-frame = f ; saved-frames = fs }
+  leave-frame-aux : List (Frame × ℕ) → AllocState {FS} → AllocState {FS}
+  leave-frame-aux []             alloc = alloc
+  leave-frame-aux ((f , b) ∷ fs) alloc =
+    record alloc { current-frame = f ; frame-slots = b ; saved-frames = fs }
 
   leave-frame : AllocState {FS} → AllocState {FS}
   leave-frame alloc = leave-frame-aux (saved-frames alloc) alloc
@@ -188,16 +196,16 @@ module FlatMachine {FS : FrameSemantics} where
   leave-frame-next-slot : ∀ (alloc : AllocState {FS})
                         → next-slot (leave-frame alloc) ≡ next-slot alloc
   leave-frame-next-slot alloc = go (saved-frames alloc)
-    where go : ∀ (fl : List Frame) → next-slot (leave-frame-aux fl alloc) ≡ next-slot alloc
-          go []       = refl
-          go (f ∷ fs) = refl
+    where go : ∀ (fl : List (Frame × ℕ)) → next-slot (leave-frame-aux fl alloc) ≡ next-slot alloc
+          go []             = refl
+          go ((f , b) ∷ fs) = refl
 
   leave-frame-heap-ref : ∀ (alloc : AllocState {FS})
                        → next-heap-ref (leave-frame alloc) ≡ next-heap-ref alloc
   leave-frame-heap-ref alloc = go (saved-frames alloc)
-    where go : ∀ (fl : List Frame) → next-heap-ref (leave-frame-aux fl alloc) ≡ next-heap-ref alloc
-          go []       = refl
-          go (f ∷ fs) = refl
+    where go : ∀ (fl : List (Frame × ℕ)) → next-heap-ref (leave-frame-aux fl alloc) ≡ next-heap-ref alloc
+          go []             = refl
+          go ((f , b) ∷ fs) = refl
 
   -- …and the BLOCK SIZES survive a frame move too (the heap is shared across
   -- frames): the sibling of `leave-frame-heap-ref`, needed by the correspondence's
@@ -205,9 +213,9 @@ module FlatMachine {FS : FrameSemantics} where
   leave-frame-block-size : ∀ (alloc : AllocState {FS})
                          → block-size (leave-frame alloc) ≡ block-size alloc
   leave-frame-block-size alloc = go (saved-frames alloc)
-    where go : ∀ (fl : List Frame) → block-size (leave-frame-aux fl alloc) ≡ block-size alloc
-          go []       = refl
-          go (f ∷ fs) = refl
+    where go : ∀ (fl : List (Frame × ℕ)) → block-size (leave-frame-aux fl alloc) ≡ block-size alloc
+          go []             = refl
+          go ((f , b) ∷ fs) = refl
 
   -- straight-line step whose AllocState is post-processed by the frame move.
   flat-step-frame : AbstractInstr → (AllocState {FS} → AllocState {FS})
@@ -231,7 +239,7 @@ module FlatMachine {FS : FrameSemantics} where
 
   -- …and ENTRY: the body-start marker reserves the body's frame. Only the
   -- AllocState moves (`enter-frame` shifts `current-frame` and remembers
-  -- the caller's), so the register file — and with it `stackSlot` — is
+  -- the caller's), so the register file — and with it `frame-slots` — is
   -- untouched.
   do-thunk : ℕ → FlatState → FlatState
   do-thunk b fs = record fs { falloc = enter-frame b (falloc fs)

@@ -254,11 +254,12 @@ record FlatCorr (hv : HeapView) (fs : FlatState) (s : X.State) : Set where
               → HDom hv hl
     heap-eq : ∀ (hl : HeapLocation) → HDom hv hl →
               X.readMem (X.State.memory s) (haddr hv hl) ≡ enc-maybe hv (heapMem (floc fs) hl)
-    -- BOUNDED to the current frame's live RUNTIME slots (k < stackSlot). An
+    -- BOUNDED to the current frame's reserved slots (k < frame-slots). An
     -- UNBOUNDED ∀ k would be unsatisfiable (it would claim the CALLER's slots,
     -- above rsp, holding live data, ≡ the abstract `nothing`). The bound is the
-    -- RUNTIME slot counter `stackSlot` (the "like rsp, as slot count" register
-    -- that tracks rsp: rsp = INIT − stackSlot·8), NOT the compile-time frontier
+    -- current frame's reserved slot count `frame-slots` (Plan 0.63: it lives
+    -- with the frame stack, in the AllocState — there used to be a mirror of
+    -- it in the register file), NOT the compile-time frontier
     -- next-slot — so frame ops that move rsp (alloc/dealloc-stack) shrink/grow
     -- the bound in lockstep with rsp, and reclaim-to (next-slot only) leaves it
     -- stable. Mirrors heap-eq's LiveIn bound.
@@ -288,7 +289,7 @@ record FlatCorr (hv : HeapView) (fs : FlatState) (s : X.State) : Set where
     -- `%rsp` lower `lo` with it (`descend-view`) BEFORE writing.
     untouched : ∀ (a : ℕ) → hfront hv ≤ a → a < lo hv
               → X.readMem (X.State.memory s) a ≡ nothing
-    stack-eq : ∀ (k : Slot) → k < stackSlot (regs (floc fs)) →
+    stack-eq : ∀ (k : Slot) → k < frame-slots (falloc fs) →
               X.readMem (X.State.memory s) (X.readReg (X.State.regs s) rsp + slot-to-disp k)
               ≡ enc-maybe hv (stackMem (floc fs) (current-frame (falloc fs)) k)
 open FlatCorr public
@@ -669,7 +670,7 @@ sim-store-indirect {hv} hl fs s corr i-eq live-hl guard disj =
       ; lo-le = lo-le corr
       ; untouched = untouched-heap-store hl (enc-sv hv v) live-hl corr
       ; stack-eq = store-stack-eq (haddr hv hl) (enc-sv hv v) s
-                     (stackMem (floc fs) (current-frame (falloc fs))) (stackSlot (regs (floc fs))) (stack-eq corr) disj }
+                     (stackMem (floc fs) (current-frame (falloc fs))) (frame-slots (falloc fs)) (stack-eq corr) disj }
 
 -- store-indirect-suc: *(sucLoc Input1) := Output ↔ `mov [rdi+slot], rax`.
 sim-store-indirect-suc : {hv : HeapView} (hl : HeapLocation) (fs : FlatState) (s : X.State) → FlatCorr hv fs s
@@ -706,7 +707,7 @@ sim-store-indirect-suc {hv} hl fs s corr i-eq live-shl guard disj =
       ; lo-le = lo-le corr
       ; untouched = untouched-heap-store (sucHL hl) (enc-sv hv v) live-shl corr
       ; stack-eq = store-stack-eq (haddr hv (sucHL hl)) (enc-sv hv v) s
-                     (stackMem (floc fs) (current-frame (falloc fs))) (stackSlot (regs (floc fs))) (stack-eq corr) disj }
+                     (stackMem (floc fs) (current-frame (falloc fs))) (frame-slots (falloc fs)) (stack-eq corr) disj }
 
 ------------------------------------------------------------------------
 -- STACK RESTORE: `restore-input slot` (Input1 := stack[current-frame, slot]) ↔
@@ -812,11 +813,11 @@ sim-store-at-slot {hv} slot fs s corr disj = corr-clean
       ; lo-le = lo-le corr
       ; untouched = untouched-stack-store (base + slot-to-disp slot) (enc-sv hv Out)
                       (≤-trans (lo-le corr) (m≤m+n base (slot-to-disp slot))) corr
-      ; stack-eq = store-slot-stack-eq base slot Out s (floc fs) cf (stackSlot (regs (floc fs))) (stack-eq corr) }
+      ; stack-eq = store-slot-stack-eq base slot Out s (floc fs) cf (frame-slots (falloc fs)) (stack-eq corr) }
 
 ------------------------------------------------------------------------
 -- STACK ALLOCATION: `instr-alloc-stack n` (reserve n slots) ↔ `sub rsp, n*8`.
--- The abstract advances the slot frontier (next-slot += n) and the stackSlot
+-- The abstract advances the slot frontier (next-slot += n) and the frame-slots
 -- counter; the x86 lowers rsp by n*8. Because alloc-stack sits at a FRAME
 -- ENTRY (`next-slot ≡ 0`, WF), the bounded stack-eq covers ONLY the fresh new
 -- slots k < n — no existing slots to re-anchor across the rsp shift. Those
@@ -827,7 +828,6 @@ sim-store-at-slot {hv} slot fs s corr disj = corr-clean
 -- clobbered by `sub` but FlatCorr is flag-free, so the post is flag-parametric.
 ------------------------------------------------------------------------
 sim-alloc-stack : {hv : HeapView} (n : ℕ) (newFlags : X.Flags) (fs : FlatState) (s : X.State) → FlatCorr hv fs s
-  → stackSlot (regs (floc fs)) ≡ 0                  -- WF: alloc-stack at frame entry (runtime depth 0)
   -- fresh (abstract): the CALLEE frame the reservation moves into is unwritten.
   -- Plan 0.61: the flat machine shifts `current-frame` here, so this is about
   -- the SHIFTED frame — a strictly weaker (and more obviously true) premise
@@ -846,7 +846,7 @@ sim-alloc-stack : {hv : HeapView} (n : ℕ) (newFlags : X.Flags) (fs : FlatState
              (flat-exec-instr (instr-alloc-stack n) [] fs)
              (mkstate (xwriteReg (xregs s) rsp (X.readReg (xregs s) rsp ∸ slots n))
                       (memory s) newFlags (pc s + 1) (xhalted s))
-sim-alloc-stack {hv} n newFlags fs s corr entry fresh-abs fresh-x86 lo' lo'≤lo front-lo' lo'≤rsp = record
+sim-alloc-stack {hv} n newFlags fs s corr fresh-abs fresh-x86 lo' lo'≤lo front-lo' lo'≤rsp = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
   ; r14-eq = r14-eq corr
   ; halt-eq = halt-eq corr
@@ -858,7 +858,13 @@ sim-alloc-stack {hv} n newFlags fs s corr entry fresh-abs fresh-x86 lo' lo'≤lo
   ; heap-eq = heap-eq corr
   ; lo-le = lo'≤rsp
   ; untouched = untouched-descend lo' lo'≤lo front-lo' corr
-  ; stack-eq = λ k k<ns → stk k (subst (k <_) (cong (_+ n) entry) k<ns) }
+  -- Plan 0.63: the post's coverage bound is now the CALLEE frame's own
+  -- reservation — `enter-frame n` sets `frame-slots := n` — so the bound is
+  -- `k < n` outright. The old bound was `frame-slots + n` and needed a
+  -- "frame is empty at entry" premise to collapse; with the count living on
+  -- the frame that premise DID NO WORK any more, so it is gone from the
+  -- signature rather than left for call sites to supply.
+  ; stack-eq = λ k k<ns → stk k k<ns }
   where
     stk : ∀ k → k < n → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k)
             ≡ enc-maybe hv (stackMem (floc fs) (shift-frame (current-frame (falloc fs)) n) k)
@@ -866,22 +872,40 @@ sim-alloc-stack {hv} n newFlags fs s corr entry fresh-abs fresh-x86 lo' lo'≤lo
 
 ------------------------------------------------------------------------
 -- STACK DEALLOCATION: `instr-dealloc-stack n` (free n slots) ↔ `add rsp, n*8`.
--- The abstract lowers the runtime depth (stackSlot −= n); the x86 raises rsp by
--- n*8. At a FULL-frame exit (stackSlot ≡ n ⇒ post stackSlot = n∸n = 0), the
--- bounded stack-eq post is VACUOUS (k < 0), so it holds trivially — no need to
--- re-anchor the freed slots across the rsp shift. The 4 tracked regs / halt /
--- heap are untouched (dealloc changes neither falloc nor stackMem). Flag-parametric.
+-- The epilogue restores the CALLER's frame and, with it, the caller's coverage
+-- window.
+--
+-- PLAN 0.63 FINDING — `stack-eq` COVERS ONLY ONE FRAME. Before the
+-- `frame-slots` mirror was removed, the post-state's bound was `frame-slots ∸ n`,
+-- which a full-frame exit made `0`, so this obligation was VACUOUS and the
+-- question never came up. With the bound now the restored frame's own
+-- `frame-slots`, the post genuinely has to say something about the CALLER's
+-- window — and the pre-state cannot supply it, because `FlatCorr.stack-eq`
+-- only ever describes the CURRENT frame. A real return correspondence
+-- therefore needs `stack-eq` generalized to every LIVE frame (the frame stack),
+-- not just the top one. That is a `FlatCorr` change, and it belongs with the
+-- closure-call work; until `instr-dealloc-stack` (or `c-ret`) has a producer
+-- this lemma takes the caller's window as a premise, which names the gap
+-- instead of hiding it behind a vacuity.
+--
+-- The 4 tracked regs / halt / heap are untouched (dealloc changes neither
+-- falloc's heap fields nor stackMem). Flag-parametric.
 ------------------------------------------------------------------------
 sim-dealloc-stack : {hv : HeapView} (n : ℕ) (newFlags : X.Flags) (fs : FlatState) (s : X.State) → FlatCorr hv fs s
-  → stackSlot (regs (floc fs)) ≡ n                  -- WF: full-frame exit (runtime depth n → 0)
   -- MATCHED PAIRING (plan 0.61): the frame this epilogue restores is the one the
   -- entry `alloc-stack n` shifted away from, so its base is where %rsp lands.
   → X.readReg (xregs s) rsp + slots n
       ≡ frame-base (current-frame (leave-frame (falloc fs)))
+  -- the caller's window still corresponds (see the note above: this is what
+  -- a whole-stack `stack-eq` would give for free)
+  → (∀ (k : Slot) → k < frame-slots (leave-frame (falloc fs)) →
+       X.readMem (memory s) ((X.readReg (xregs s) rsp + slots n) + slot-to-disp k)
+         ≡ enc-maybe hv (stackMem (floc fs)
+             (current-frame (leave-frame (falloc fs))) k))
   → FlatCorr hv (flat-exec-instr (instr-dealloc-stack n) [] fs)
              (mkstate (xwriteReg (xregs s) rsp (X.readReg (xregs s) rsp + slots n))
                       (memory s) newFlags (pc s + 1) (xhalted s))
-sim-dealloc-stack {hv} n newFlags fs s corr full restores = record
+sim-dealloc-stack {hv} n newFlags fs s corr restores caller-window = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr ; r14-eq = r14-eq corr
   ; halt-eq = halt-eq corr ; rsp-eq = restores ; r15-eq = r15-eq corr
   -- the epilogue RAISES %rsp, so the high-water mark stays below it — and the mark
@@ -898,118 +922,14 @@ sim-dealloc-stack {hv} n newFlags fs s corr full restores = record
                   (subst (λ szs → heap-offset hl < szs (ref-id (heap-ref hl)))
                          (leave-frame-block-size (falloc fs)) lt)
   ; heap-eq = heap-eq corr
-  ; stack-eq = λ k k<ss → ⊥-elim (bad k k<ss) }
-  where
-    ss≡0 : stackSlot (regs (floc fs)) ∸ n ≡ 0
-    ss≡0 = trans (cong (_∸ n) full) (n∸n≡0 n)
-    bad : ∀ k → k < stackSlot (regs (floc fs)) ∸ n → ⊥
-    bad k k<ss with subst (k <_) ss≡0 k<ss
-    ... | ()
+  ; stack-eq = caller-window }
 
 ------------------------------------------------------------------------
--- FRAME PUSH: `instr-push-frame cap` ↔ `push rbp; mov rbp,rsp; sub rsp,cap*8`.
--- The abstract RESETS the runtime depth (writeStackSlot 0) — a fresh frame — so
--- the bounded stack-eq post is VACUOUS (stackSlot ≡ 0 ⇒ k < 0), holding trivially.
--- The x86 3-instruction prologue touches only rbp/rsp (the 4 tracked registers,
--- rdi/rsi/rax/rbx, are preserved) and writes ONE cell (the saved rbp at [rsp−8]).
--- So the sim is parametric over the post state `xp` + the preservation facts the
--- block-step establishes (4 regs unchanged; halt unchanged; heap unchanged at every
--- LIVE cell — the block-step discharges that via a heap/stack disjointness for the
--- push write). Only the vacuous stack-eq is proved here.
+-- FRAME PUSH / POP: the `%rbp` frame model is a FOSSIL — `sim-push-frame`
+-- and `sim-pop-frame` were deleted 2026-08-04 together with their
+-- block-steps. The live model is frameless and `%rsp`-relative; Plan 0.63's
+-- closure frames ride on `sim-alloc-stack`/`sim-dealloc-stack` above.
 ------------------------------------------------------------------------
-sim-push-frame : {hv : HeapView} (n : ℕ) (fs : FlatState) (s xp : X.State) → FlatCorr hv fs s
-  → X.readReg (X.State.regs xp) rdi ≡ X.readReg (X.State.regs s) rdi
-  → X.readReg (X.State.regs xp) rsi ≡ X.readReg (X.State.regs s) rsi
-  → X.readReg (X.State.regs xp) rax ≡ X.readReg (X.State.regs s) rax
-  → X.readReg (X.State.regs xp) rbx ≡ X.readReg (X.State.regs s) rbx
-  -- plan 0.54 D item 4: the prologue must not clobber the TALLY either. A real
-  -- obligation on the caller, not a formality — %r14 is callee-saved precisely so
-  -- a call can cross a loop body.
-  → X.readReg (X.State.regs xp) r14 ≡ X.readReg (X.State.regs s) r14
-  → X.State.halted xp ≡ X.State.halted s
-  → X.readReg (X.State.regs xp) r15 ≡ X.readReg (X.State.regs s) r15
-  -- plan 0.61: the prologue lands %rsp on the CALLEE frame's base
-  → X.readReg (X.State.regs xp) rsp
-      ≡ frame-base (shift-frame (current-frame (falloc fs)) (suc n))
-  -- THE DESCENT (plan 0.54 rung D step 3), on the POST state like the other
-  -- prologue facts: the new frame's base is the new high-water mark. ROOM (stack
-  -- overflow — `frame-room`) is spent proving `hfront hv ≤ lo'`, so it is no
-  -- longer a separate premise. The prologue WRITES below the old %rsp (the saved
-  -- %rbp), which is legitimate precisely because the mark descends first: the
-  -- write lands at or above `lo'`, outside the virgin region.
-  → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
-  → lo' ≤ X.readReg (X.State.regs xp) rsp
-  → (∀ (a : ℕ) → hfront hv ≤ a → a < lo'
-       → X.readMem (X.State.memory xp) a ≡ X.readMem (X.State.memory s) a)
-  → (∀ hl → HDom hv hl → X.readMem (X.State.memory xp) (haddr hv hl)
-                                  ≡ X.readMem (X.State.memory s) (haddr hv hl))
-  → FlatCorr (descend-view hv lo' lo'≤lo front-lo')
-             (flat-exec-instr (instr-push-frame n) [] fs) xp
-sim-push-frame {hv} n fs s xp corr rdi-p rsi-p rax-p rbx-p r14-p halt-p r15-p rsp-p
-               lo' lo'≤lo front-lo' lo'≤rsp virgin-p heap-p = record
-  { rdi-eq = trans rdi-p (rdi-eq corr) ; rsi-eq = trans rsi-p (rsi-eq corr)
-  ; rax-eq = trans rax-p (rax-eq corr) ; rbx-eq = trans rbx-p (rbx-eq corr)
-  ; r14-eq = trans r14-p (r14-eq corr)
-  ; halt-eq = trans halt-p (halt-eq corr) ; rsp-eq = rsp-p
-  ; r15-eq = trans r15-p (r15-eq corr) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr
-  ; heap-eq = λ hl live → trans (heap-p hl live) (heap-eq corr hl live)
-  ; lo-le = lo'≤rsp
-  ; untouched = λ a fa a<lo' → trans (virgin-p a fa a<lo')
-                                     (untouched corr a fa (<-transˡ a<lo' lo'≤lo))
-  ; stack-eq = λ _ () }   -- writeStackSlot 0 ⇒ post stackSlot ≡ 0 ⇒ k < 0 absurd
-
-------------------------------------------------------------------------
--- FRAME POP: `instr-pop-frame` ↔ `mov rsp,rbp; pop rbp`. The abstract is IDENTITY
--- ("frame restoration is external"). At a well-formed frame teardown the callee's
--- slots are already freed (stackSlot ≡ 0), so the bounded stack-eq post is VACUOUS
--- — no callee slots to re-anchor across the rsp restore. `pop` only READS memory,
--- so heap-eq copies through with NO disjointness. The 4 tracked regs (rdi/rsi/rax/
--- rbx) are untouched (mov/pop hit only rsp/rbp). Parametric over the post + facts,
--- exactly like sim-push-frame; only the vacuous stack-eq is proved here.
-------------------------------------------------------------------------
-sim-pop-frame : {hv : HeapView} (fs : FlatState) (s xp : X.State) → FlatCorr hv fs s
-  → stackSlot (regs (floc fs)) ≡ 0                 -- WF: frame emptied before pop
-  → X.readReg (X.State.regs xp) rdi ≡ X.readReg (X.State.regs s) rdi
-  → X.readReg (X.State.regs xp) rsi ≡ X.readReg (X.State.regs s) rsi
-  → X.readReg (X.State.regs xp) rax ≡ X.readReg (X.State.regs s) rax
-  → X.readReg (X.State.regs xp) rbx ≡ X.readReg (X.State.regs s) rbx
-  → X.readReg (X.State.regs xp) r14 ≡ X.readReg (X.State.regs s) r14
-  → X.State.halted xp ≡ X.State.halted s
-  → X.readReg (X.State.regs xp) r15 ≡ X.readReg (X.State.regs s) r15
-  -- MATCHED PAIRING (plan 0.61): the epilogue lands %rsp on the caller frame's base
-  → X.readReg (X.State.regs xp) rsp ≡ frame-base (current-frame (leave-frame (falloc fs)))
-  -- the restored CALLER frame is still above the HIGH-WATER MARK (it is above the
-  -- callee's base, which `lo-le` already put above the mark — but no tracked
-  -- register relates the two numerically, so it is a premise on the post state).
-  -- The mark does NOT rise with the epilogue: the callee's cells stay written, and
-  -- remembering that is the whole point of the mark.
-  → lo hv ≤ X.readReg (X.State.regs xp) rsp
-  → (∀ (a : ℕ) → hfront hv ≤ a → a < lo hv
-       → X.readMem (X.State.memory xp) a ≡ X.readMem (X.State.memory s) a)
-  → (∀ hl → HDom hv hl → X.readMem (X.State.memory xp) (haddr hv hl)
-                                  ≡ X.readMem (X.State.memory s) (haddr hv hl))
-  → FlatCorr hv (flat-exec-instr instr-pop-frame [] fs) xp
-sim-pop-frame {hv} fs s xp corr ss0 rdi-p rsi-p rax-p rbx-p r14-p halt-p r15-p rsp-p room virgin-p heap-p = record
-  { rdi-eq = trans rdi-p (rdi-eq corr) ; rsi-eq = trans rsi-p (rsi-eq corr)
-  ; rax-eq = trans rax-p (rax-eq corr) ; rbx-eq = trans rbx-p (rbx-eq corr)
-  ; r14-eq = trans r14-p (r14-eq corr)
-  ; halt-eq = trans halt-p (halt-eq corr) ; rsp-eq = rsp-p
-  ; r15-eq = trans r15-p (r15-eq corr)
-  -- Plan 0.61: the epilogue restores the caller's frame (frontier untouched).
-  ; dom-fresh = λ {hl} d → subst (λ m → ref-id (heap-ref hl) < m)
-                                 (sym (leave-frame-heap-ref (falloc fs))) (dom-fresh corr d)
-  ; dom-written = dom-written corr
-  ; dom-sized = λ hl lt → dom-sized corr hl
-                  (subst (λ szs → heap-offset hl < szs (ref-id (heap-ref hl)))
-                         (leave-frame-block-size (falloc fs)) lt)
-  ; heap-eq = λ hl live → trans (heap-p hl live) (heap-eq corr hl live)
-  ; lo-le = room
-  ; untouched = λ a fa a<lo → trans (virgin-p a fa a<lo) (untouched corr a fa a<lo)
-  ; stack-eq = λ k k<ss → ⊥-elim (bad k k<ss) }
-  where
-    bad : ∀ k → k < stackSlot (regs (floc fs)) → ⊥
-    bad k k<ss with subst (k <_) ss0 k<ss
-    ... | ()
 
 ------------------------------------------------------------------------
 -- LOAD CONST (int): `instr-load-const fits-int v` (Output := SV-Lit fits-int v)
@@ -1263,7 +1183,7 @@ sim-alloc-heap : ∀ {hv : HeapView} (n : ℕ) (newFlags : X.Flags) (newPc : ℕ
   → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Scratch)
   → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Count)
   → (∀ hl → HDom hv hl → svm-below (next-heap-ref (falloc fs)) (heapMem (floc fs) hl))
-  → (∀ k → k < stackSlot (regs (floc fs))
+  → (∀ k → k < frame-slots (falloc fs)
          → svm-below (next-heap-ref (falloc fs)) (stackMem (floc fs) (current-frame (falloc fs)) k))
   → (∀ hl → ref-id (heap-ref hl) ≡ next-heap-ref (falloc fs) → heapMem (floc fs) hl ≡ nothing)
   -- ROOM (plan 0.54 rung D): the bump does not run the heap up into the stack —
@@ -1465,7 +1385,7 @@ sim-store-indirect-stack {hv} k fs s corr i-eq disj =
       ; lo-le = lo-le corr
       ; untouched = untouched-stack-store (base + slot-to-disp k) (enc-sv hv Out)
                       (≤-trans (lo-le corr) (m≤m+n base (slot-to-disp k))) corr
-      ; stack-eq = store-slot-stack-eq base k Out s (floc fs) cf (stackSlot (regs (floc fs)))
+      ; stack-eq = store-slot-stack-eq base k Out s (floc fs) cf (frame-slots (falloc fs))
                      (stack-eq corr) }
 
 -- …and the SECOND cell. `sucLoc (AtStack cf k) = AtStack cf (suc k)` reduces, so
@@ -1507,5 +1427,5 @@ sim-store-indirect-suc-stack {hv} k fs s corr i-eq disj =
       ; lo-le = lo-le corr
       ; untouched = untouched-stack-store (base + slot-to-disp (suc k)) (enc-sv hv Out)
                       (≤-trans (lo-le corr) (m≤m+n base (slot-to-disp (suc k)))) corr
-      ; stack-eq = store-slot-stack-eq base (suc k) Out s (floc fs) cf (stackSlot (regs (floc fs)))
+      ; stack-eq = store-slot-stack-eq base (suc k) Out s (floc fs) cf (frame-slots (falloc fs))
                      (stack-eq corr) }

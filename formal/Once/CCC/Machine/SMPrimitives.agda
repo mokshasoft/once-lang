@@ -1197,7 +1197,7 @@ module InstrPrimitives {FS : FrameSemantics} where
     with readLoc s (AtStack (current-frame alloc) k)
   ... | just _  = refl
   ... | nothing = refl
-  -- Alloc-stack: state updates only regs.stackSlot, ignores alloc.
+  -- Alloc-stack: since 0.63 the LocState is untouched; only next-slot moves.
   exec-abstract-state-next-slot-invariant (instr-alloc-stack _)   s _ _ = refl
   exec-abstract-state-next-slot-invariant (instr-dealloc-stack _) s _ _ = refl
   exec-abstract-state-next-slot-invariant (instr-reclaim-to _)    s _ _ = refl
@@ -2616,7 +2616,7 @@ module TracePrimitives {FS : FrameSemantics} where
 
   -- exec-abstract's *state* output (proj₁) depends only on (s,
   -- current-frame alloc, instr) — never on next-slot. (instr-alloc-stack
-  -- modifies stackSlot via incrStackSlot which only reads the
+  -- (0.63: the stackSlot mirror is gone; this reads only the
   -- register, not alloc.) The *alloc* output (proj₂) may differ in
   -- next-slot between alloc and alloc', but current-frame is
   -- preserved by every instruction.
@@ -3719,7 +3719,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
         alloc₁ = proj₂ (exec-abstract (instr-alloc-stack 1) s alloc)
         h₁ = exec-abstract-preserves-halted (instr-alloc-stack 1) s alloc not-halted iph-alloc-stack
         alloc-step-mem : readLoc s₁ (AtStack f k) ≡ readLoc s (AtStack f k)
-        alloc-step-mem = refl  -- instr-alloc-stack only changes regs.stackSlot
+        alloc-step-mem = refl  -- instr-alloc-stack no longer touches the LocState at all (0.63)
         f≢cf₁ : f ≢ current-frame alloc₁
         f≢cf₁ = f≢cf  -- current-frame alloc₁ = current-frame alloc (definitional)
         tail-result = rec-scheme-preserves-ancestor-3 n s₁ alloc₁ f k h₁ f≢cf₁
