@@ -50,8 +50,8 @@ open import normalizer.Syntax.Types
 
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
-        ; RTy; base; U; Π; Σ'; El; Hom; Hom-cong₃; ⌜Hom⌝-cong₃; tr-cong₃
-        ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr
+        ; RTy; base; U; Π; Σ'; El; Hom; Hom-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃
+        ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Ren; extR; renTy; renTm
         ; Sub; subTy; subTm; extS; idₛ
         ; _∘ᵣ_
@@ -91,11 +91,11 @@ open import poc.OCP0009.NbEPDirDBSubj
         ; HomToΠ; via-U; via-Π; hom-to-Π
         ; U-reduct; wk-cancel-tm; ≅ᵀ-Homᵀ; gen-var )
 open import poc.OCP0009.NbEPDirDBLR
-  using ( SNe; sne-var; sne-app; sne-fst; sne-snd; sne-hrefl; sne-tr
+  using ( SNe; sne-var; sne-app; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap
         ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-exp
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
-        ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-taut; snr-trᵖ
-        ; trstk?-ren; nopw?-ren; trlam?-ren
+        ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-taut; snr-trᵖ; snr-ap-J; snr-apᵖ
+        ; trstk?-ren; apstk?-ren; nopw?-ren; trlam?-ren
         ; nopw⊥pw; stk⊥dead; pw⊥dead; dead→nopw; snr-nonpw
         ; snr-hrefl-pw; snr-J-Hom; snr-tr-pw; snr-tr-mot
         ; deadmot?; deadmot?-red; deadmot?-ren; deadmot→nopw; stk→deadmot
@@ -183,6 +183,10 @@ subTm-var ρ (hrefl c t) = cong₂ hrefl (subTm-var ρ c) (subTm-var ρ t)
 subTm-var ρ (tr d p e)  =
   tr-cong₃ (trans (subTm-cong (exts-var ρ) d) (subTm-var (extR ρ) d))
            (subTm-var ρ p) (subTm-var ρ e)
+subTm-var ρ (ap c b p)  =
+  ap-cong₃ (subTm-var ρ c)
+           (trans (subTm-cong (exts-var ρ) b) (subTm-var (extR ρ) b))
+           (subTm-var ρ p)
 
 -- (1b) single substitution commutes with renaming — what `snr-β` needs when
 -- reflected through a renaming (§2).
@@ -259,6 +263,9 @@ sne-anti {ρ = ρ} {t = hrefl c t} (sne-hrefl hc ht kn) =
 sne-anti {ρ = ρ} {t = tr d p e} (sne-tr hd hp he key) =
   sne-tr (sn-anti hd) (sn-anti hp) (sn-anti he)
          (trans (sym (trstk?-ren ρ d p)) key)
+sne-anti {ρ = ρ} {t = ap c b p} (sne-ap hc hb hp key) =
+  sne-ap (sn-anti hc) (sn-anti hb) (sn-anti hp)
+         (trans (sym (apstk?-ren ρ p)) key)
 
 sn-anti {t = var x}    _              = sn-ne (sne-var x)
 sn-anti {t = lam s}    (sn-lam h)     = sn-lam (sn-anti h)
@@ -273,6 +280,9 @@ sn-anti {t = hrefl c t} (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = tr d p e}  (sn-ne n)     = sn-ne (sne-anti n)
 sn-anti {t = tr d p e}  (sn-exp r h) with snr-anti r
+... | t' , (r' , refl) = sn-exp r' (sn-anti h)
+sn-anti {t = ap c b p}  (sn-ne n)     = sn-ne (sne-anti n)
+sn-anti {t = ap c b p}  (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = app t u}  (sn-ne n)      = sn-ne (sne-anti n)
 sn-anti {t = fst p}    (sn-ne n)      = sn-ne (sne-anti n)
@@ -373,6 +383,8 @@ snr-anti {t = tr d (hrefl (hrefl g w) s) e} (snr-trᵖ r) with snr-anti r
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (hrefl (tr g w v) s) e} (snr-trᵖ r) with snr-anti r
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (ap g w v) s) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (var x) e} (snr-trᵖ ())
 snr-anti {t = tr d (lam g) e} (snr-trᵖ ())
 snr-anti {t = tr d (app g w) e} (snr-trᵖ r) with snr-anti r
@@ -381,6 +393,8 @@ snr-anti {t = tr d (pair g w) e} (snr-trᵖ ())
 snr-anti {t = tr d (fst g) e} (snr-trᵖ r) with snr-anti r
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (snd g) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (ap g w v) e} (snr-trᵖ r) with snr-anti r
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d ⌜base⌝ e} (snr-trᵖ ())
 snr-anti {t = tr d (⌜Π⌝ g w) e} (snr-trᵖ ())
@@ -420,6 +434,18 @@ snr-anti {t = snd (lam s)}      (snr-snd ())
 snr-anti {t = snd ⌜base⌝}       (snr-snd ())
 snr-anti {t = snd (⌜Π⌝ c d)}    (snr-snd ())
 snr-anti {t = snd (⌜Σ⌝ c d)}    (snr-snd ())
+snr-anti {t = app (ap c b p) u} (snr-app r) with snr-anti r
+... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
+snr-anti {t = fst (ap c b p)}   (snr-fst r) with snr-anti r
+... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
+snr-anti {t = snd (ap c b p)}   (snr-snd r) with snr-anti r
+... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
+snr-anti {ρ = ρ} {t = ap c b (hrefl c₁ s)} (snr-ap-J h₁ kh) =
+  hrefl c (subTm (single s) b)
+  , ( snr-ap-J (sn-anti h₁) (trans (sym (stkC?-ren ρ c₁)) kh)
+    , cong (hrefl (renTm ρ c)) (ren-single ρ s b) )
+snr-anti {t = ap c b p} (snr-apᵖ r) with snr-anti r
+... | p' , (r' , refl) = ap c b p' , (snr-apᵖ r' , refl)
 
 csr-anti {t = var x} (csr-here ())
 csr-anti {t = lam _} (csr-here ())
@@ -432,6 +458,8 @@ csr-anti {t = app f u} (csr-here r) with snr-anti r
 csr-anti {t = fst q} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = snd q} (csr-here r) with snr-anti r
+... | t' , (r' , refl) = t' , (csr-here r' , refl)
+csr-anti {t = ap c b p} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = hrefl _ _} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
@@ -464,6 +492,9 @@ sne-ren {ρ = ρ} (sne-hrefl {c = c} hc ht kn) =
 sne-ren {ρ = ρ} (sne-tr {d = d} {p = p} hd hp he key) =
   sne-tr (sn-ren hd) (sn-ren hp) (sn-ren he)
          (trans (trstk?-ren ρ d p) key)
+sne-ren {ρ = ρ} (sne-ap {p = p} hc hb hp key) =
+  sne-ap (sn-ren hc) (sn-ren hb) (sn-ren hp)
+         (trans (apstk?-ren ρ p) key)
 
 sn-ren (sn-ne n)        = sn-ne (sne-ren n)
 sn-ren (sn-lam h)       = sn-lam (sn-ren h)
@@ -496,6 +527,12 @@ snr-ren (snr-J-Σ hd h₁ h₂ hs) =
 snr-ren {ρ = ρ} (snr-J-Hom {c₁ = c₁} hd h₁ h₂ h₃ hs ks) =
   snr-J-Hom (sn-ren hd) (sn-ren h₁) (sn-ren h₂) (sn-ren h₃) (sn-ren hs)
             (trans (stkC?-ren ρ c₁) ks)
+snr-ren {ρ = ρ} (snr-ap-J {cB = cB} {b = b} {c₁ = c₁} {s = t} h₁ ks) =
+  subst (λ z → SNRed (ap (renTm ρ cB) (renTm (extR ρ) b)
+                         (hrefl (renTm ρ c₁) (renTm ρ t))) z)
+        (cong (hrefl (renTm ρ cB)) (ren-single ρ t b))
+        (snr-ap-J (sn-ren h₁) (trans (stkC?-ren ρ c₁) ks))
+snr-ren (snr-apᵖ r) = snr-apᵖ (snr-ren r)
 snr-ren snr-taut = snr-taut
 snr-ren {ρ = ρ} (snr-trᵖ r) = snr-trᵖ (snr-ren r)
 snr-ren {ρ = ρ} (snr-tr-mot σ) = snr-tr-mot (csr-ren σ)
@@ -686,6 +723,7 @@ sne→nopw (sne-fst n)        = sne→spine n
 sne→nopw (sne-snd n)        = sne→spine n
 sne→nopw (sne-hrefl _ _ _)  = refl
 sne→nopw (sne-tr _ _ _ key) = key
+sne→nopw (sne-ap _ _ _ key) = refl
 
 -- star-folds for the head strategy.
 snrs-hreflᶜ : {c c* t : RTm Ξ} → c ⟶csr* c* → hrefl c t ⟶snr* hrefl c* t
