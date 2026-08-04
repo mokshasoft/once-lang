@@ -82,7 +82,7 @@ open import Once.CCC.Codegen.ShapeTable as ST using
 open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; site-store-ptr; fetch-at-pc)
 open import Once.CCC.Codegen.SlotBudget using
   (emitted-slot-seg; below; pair-below; trace-lookup; seg-at; SegState; mkSeg; cur
-  ; seg-action; is-id?; seg-idle?; idle-step; idle-head; idle-tail)
+  ; seg-action; is-id?; seg-idle?; idle-step; idle-head; idle-tail; seg-at-suc)
 open import Once.IR using (IR; Unit)
 open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
 
@@ -781,7 +781,8 @@ ff→idle (i ∷ is) (ff allL∷ r) rewrite ff→seg-id i ff = ff→idle is r
 
 idle-seg-at : ∀ (t : AbstractTrace) → seg-idle? t ≡ true
             → ∀ (k : ℕ) (st : SegState) → seg-at t k st ≡ st
-idle-seg-at []       _  _       st = refl
+idle-seg-at []       _  zero    st = refl
+idle-seg-at []       _  (suc k) st = refl
 idle-seg-at (i ∷ is) eq zero    st = refl
 idle-seg-at (i ∷ is) eq (suc k) st =
   trans (cong (seg-at is k) (idle-step i (idle-head i is eq) st))
@@ -821,6 +822,57 @@ record SegWF (prog : AbstractTrace) (B : ℕ) (fs : FlatState) : Set where
     seg-stack : RetMatch prog B (saved-frames (falloc fs)) (fret fs)
 open SegWF public
 
+------------------------------------------------------------------------
+-- HOW THE PC MOVES, per instruction. Everything a frame-free step can be
+-- either FALLS THROUGH (`flat-step-straight`, and `c-label`) or is one of the
+-- three JUMPS. That split is what confines the label-scoping obligation:
+-- a fall-through's segment fact is the fold's own recursion (`seg-at-suc`),
+-- with nothing assumed about emitted code.
+------------------------------------------------------------------------
+data PcView (i : AbstractInstr) : Set where
+  pv-suc  : (∀ prog fs → fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)) → PcView i
+  pv-jump : PcView i
+
+pcView : ∀ (i : AbstractInstr) → FrameFreeI i → PcView i
+pcView (instr-ctrl (c-label _))               _ = pv-suc (λ _ _ → refl)
+pcView (instr-ctrl (c-jmp _))                 _ = pv-jump
+pcView (instr-ctrl (c-branch-scratch-zero _)) _ = pv-jump
+pcView (instr-ctrl (c-branch-tag-zero _))     _ = pv-jump
+pcView (instr-ctrl (c-thunk _ _))             ()
+pcView (instr-ctrl (c-ret _))                 ()
+pcView (instr-alloc-stack _)                  ()
+pcView (instr-dealloc-stack _)                ()
+pcView (instr-push-frame _)                   ()
+pcView instr-pop-frame                        ()
+pcView (instr-case-on-tag _ _)                ()
+pcView (instr-loop _)                         ()
+pcView (lea-slot _)                           ()
+pcView (lea-indexed _)                        ()
+pcView mov-to-output                          _ = pv-suc (λ _ _ → refl)
+pcView mov-to-input                           _ = pv-suc (λ _ _ → refl)
+pcView mov-output-to-input2                   _ = pv-suc (λ _ _ → refl)
+pcView mov-input2-to-output                   _ = pv-suc (λ _ _ → refl)
+pcView load-indirect                          _ = pv-suc (λ _ _ → refl)
+pcView load-indirect-suc                      _ = pv-suc (λ _ _ → refl)
+pcView (load-from-slot _)                     _ = pv-suc (λ _ _ → refl)
+pcView (store-at-slot _)                      _ = pv-suc (λ _ _ → refl)
+pcView store-indirect                         _ = pv-suc (λ _ _ → refl)
+pcView store-indirect-suc                     _ = pv-suc (λ _ _ → refl)
+pcView (restore-input _)                      _ = pv-suc (λ _ _ → refl)
+pcView (instr-reclaim-to _)                   _ = pv-suc (λ _ _ → refl)
+pcView instr-call-closure                     _ = pv-suc (λ _ _ → refl)
+pcView (worklist-init _)                      _ = pv-suc (λ _ _ → refl)
+pcView (worklist-push _)                      _ = pv-suc (λ _ _ → refl)
+pcView (worklist-pop _)                       _ = pv-suc (λ _ _ → refl)
+pcView (worklist-check _)                     _ = pv-suc (λ _ _ → refl)
+pcView (instr-sigop _)                        _ = pv-suc (λ _ _ → refl)
+pcView (instr-load-const _ _)                 _ = pv-suc (λ _ _ → refl)
+pcView (instr-load-code-addr _)               _ = pv-suc (λ _ _ → refl)
+pcView instr-save-closure-reg                 _ = pv-suc (λ _ _ → refl)
+pcView (instr-load-tag-lit _)                 _ = pv-suc (λ _ _ → refl)
+pcView (instr-alloc-heap _)                   _ = pv-suc (λ _ _ → refl)
+pcView (instr-reg-op _)                       _ = pv-suc (λ _ _ → refl)
+
 -- The live stack window is the reservation IN FORCE at the current pc — the
 -- CURRENT FRAME's, once frames move. Induction on `Reachable`; each step is
 -- frame-free because the program is emitted (`frame-op-absurd`), so it moves
@@ -849,13 +901,38 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
                       rm-[])
     go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
       mkSegWF
-        (trans (sf-slots same)
-        (trans (seg-cur (go fs'' r'))
-        (trans (cong cur (const-seg (fpc fs'')))
-               (sym (cong cur (const-seg (fpc (flat-exec-instr i prog fs''))))))))
+        (trans (sf-slots same) (trans (seg-cur (go fs'' r')) (sym stable)))
         (subst₂ (RetMatch prog (ir-stack-budget ir))
                 (sym (sf-saved same)) (sym (sf-ret same)) (seg-stack (go fs'' r')))
-      where same = flat-same-frames i prog fs'' (frame-op-absurd prog fs'' i (ir , eq) hm ftq)
+      where
+        ff    = frame-op-absurd prog fs'' i (ir , eq) hm ftq
+        same  = flat-same-frames i prog fs'' ff
+        B₀    = mkSeg (ir-stack-budget ir) []
+        -- THE SEGMENT AT THE POST-PC. A fall-through gets it from the fold's
+        -- own recursion — `seg-at-suc` steps by the fetched instruction, and a
+        -- frame-free instruction does not move the segment (`ff→seg-id`). No
+        -- assumption about emitted code enters here.
+        stable : cur (seg-at prog (fpc (flat-exec-instr i prog fs'')) B₀)
+               ≡ cur (seg-at prog (fpc fs'') B₀)
+        stable = go-pc (pcView i ff)
+          where
+            lk : trace-lookup prog (fpc fs'') ≡ just i
+            lk = trans (sym (fetch≡lookup prog (fpc fs''))) ftq
+            go-pc : PcView i → cur (seg-at prog (fpc (flat-exec-instr i prog fs'')) B₀)
+                             ≡ cur (seg-at prog (fpc fs'') B₀)
+            go-pc (pv-suc adv) =
+              cong cur (trans (cong (λ p → seg-at prog p B₀) (adv prog fs''))
+                       (trans (seg-at-suc prog (fpc fs'') B₀ lk)
+                              (idle-step i (ff→seg-id i ff) (seg-at prog (fpc fs'') B₀))))
+            -- …and a JUMP is the one case that needs LABEL SCOPING: the target
+            -- must lie in the segment the jump left. True by construction (a
+            -- body's labels come from its own counter range) but the static
+            -- argument does not exist yet — grep finds no label-range lemma —
+            -- so today it rides `emitted-seg-const`, which is the LAST use of
+            -- that bridge and dies with the flip.
+            go-pc pv-jump =
+              cong cur (trans (const-seg (fpc (flat-exec-instr i prog fs'')))
+                              (sym (const-seg (fpc fs''))))
 
 -- the projection the slot cluster consumes
 run-stack-slot : ∀ prog (fs : FlatState) (r : RunAt prog fs)

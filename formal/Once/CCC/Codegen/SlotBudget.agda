@@ -908,10 +908,22 @@ trace-lookup []       _       = nothing
 trace-lookup (i ∷ _)  zero    = just i
 trace-lookup (_ ∷ is) (suc n) = trace-lookup is n
 
+-- (split on the POSITION first, so `seg-at t zero st` reduces for a stuck
+-- trace too — `seg-at-suc`'s base case needs it)
 seg-at : AbstractTrace → ℕ → SegState → SegState
-seg-at []       _       st = st
-seg-at (_ ∷ _)  zero    st = st
+seg-at _        zero    st = st
+seg-at []       (suc _) st = st
 seg-at (i ∷ is) (suc n) st = seg-at is n (seg-step i st)
+
+-- THE BRICK the run invariant steps with: the segment one position along is
+-- the segment here, stepped by the instruction here. Nothing about emitted
+-- code — it is the fold's own recursion, read positionally.
+seg-at-suc : ∀ (t : AbstractTrace) (pc : ℕ) {i : AbstractInstr} (st : SegState)
+           → trace-lookup t pc ≡ just i
+           → seg-at t (suc pc) st ≡ seg-step i (seg-at t pc st)
+seg-at-suc []       pc       st ()
+seg-at-suc (x ∷ xs) zero     st refl = refl
+seg-at-suc (x ∷ xs) (suc pc) st eq   = seg-at-suc xs pc (seg-step x st) eq
 
 allseg-at : ∀ {st : SegState} (t : AbstractTrace) (pc : ℕ) {i : AbstractInstr}
           → AllSeg st t → trace-lookup t pc ≡ just i
