@@ -30,6 +30,7 @@ open import normalizer.Syntax.Types
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
+        ; Id; ⌜Id⌝; idrefl; jsub; Id-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
         ; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ
         ; _∘ᵣ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_
         ; subTy-renTy; renTy-subTy; subTy-subTy; renTy-renTy
@@ -53,12 +54,15 @@ open import poc.OCP0009.NbEPDirDBType
         ; tr-J-base; tr-J-Σ; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
         ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
+        ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
+        ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢trU
         ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢ap; ⊢conv
-        ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom
+        ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub
+        ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id
         ; ⊢ctx_; c-◇; c-▹ )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; ⟶-sub )
 open import poc.OCP0009.NbEPDirDBConf
@@ -69,6 +73,7 @@ open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El
         ; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ
         ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ; red→≅ᵀ; Π-inj; Σ-inj
+        ; ⟶ᵀ*-Idᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; Id-reduct
         ; church-rosserᵀ; Π-reduct; ΠRed; mkΠRed )
 
 private
@@ -158,6 +163,10 @@ wk-ren ρ t = trans (renTm-renTm t) (sym (renTm-renTm t))
 ⟶ᵀ-ren ρ (ξ-Homᵀ r) = ξ-Homᵀ (⟶ᵀ-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-Homˡ r) = ξ-Homˡ (⟶-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-Homʳ r) = ξ-Homʳ (⟶-ren ρ r)
+⟶ᵀ-ren ρ (El-⌜Id⌝ c a b) = El-⌜Id⌝ (renTm ρ c) (renTm ρ a) (renTm ρ b)
+⟶ᵀ-ren ρ (ξ-Idᵀ r) = ξ-Idᵀ (⟶ᵀ-ren ρ r)
+⟶ᵀ-ren ρ (ξ-Idˡ r) = ξ-Idˡ (⟶-ren ρ r)
+⟶ᵀ-ren ρ (ξ-Idʳ r) = ξ-Idʳ (⟶-ren ρ r)
 
 ≅ᵀ-ren : (ρ : Ren Γ Δ) {A B : RTy Γ} → A ≅ᵀ B → renTy ρ A ≅ᵀ renTy ρ B
 ≅ᵀ-ren ρ (credᵀ r)   = credᵀ (⟶ᵀ-ren ρ r)
@@ -177,6 +186,9 @@ subTy-monoˢ h (Σ' A B) =
 subTy-monoˢ h (Hom A t u) =
   ⟶ᵀ*-trans (⟶ᵀ*-Homᵀ (subTy-monoˢ h A))
     (⟶ᵀ*-trans (⟶ᵀ*-Homˡ (subTm-monoˢ h t)) (⟶ᵀ*-Homʳ (subTm-monoˢ h u)))
+subTy-monoˢ h (Id A t u) =
+  ⟶ᵀ*-trans (⟶ᵀ*-Idᵀ (subTy-monoˢ h A))
+    (⟶ᵀ*-trans (⟶ᵀ*-Idˡ (subTm-monoˢ h t)) (⟶ᵀ*-Idʳ (subTm-monoˢ h u)))
 
 ------------------------------------------------------------------------
 -- W2 eliminator support: term-level cancels, type reduction under
@@ -304,6 +316,32 @@ occ-red {x = x} (ξ-apᵖ {c = c} {b = b} r) e =
   ∨-false (∨-false₁ (occTm x c) e)
           (∨-false (∨-false₁ (occTm (vs x) b) (∨-false₂ (occTm x c) e))
                    (occ-red r (∨-false₂ (occTm (vs x) b) (∨-false₂ (occTm x c) e))))
+occ-red {x = x} (jsub-refl d c s e₀) e =
+  ∨-false₂ (occTm x c ∨ occTm x s) (∨-false₂ (occTm (vs x) d) e)
+occ-red {x = x} (ξ-⌜Id⌝ᶜ {c = c} r) e =
+  ∨-false (occ-red r (∨-false₁ (occTm x c) e)) (∨-false₂ (occTm x c) e)
+occ-red {x = x} (ξ-⌜Id⌝ˡ {c = c} {a = a} r) e =
+  ∨-false (∨-false₁ (occTm x c) e)
+          (∨-false (occ-red r (∨-false₁ (occTm x a) (∨-false₂ (occTm x c) e)))
+                   (∨-false₂ (occTm x a) (∨-false₂ (occTm x c) e)))
+occ-red {x = x} (ξ-⌜Id⌝ʳ {c = c} {a = a} r) e =
+  ∨-false (∨-false₁ (occTm x c) e)
+          (∨-false (∨-false₁ (occTm x a) (∨-false₂ (occTm x c) e))
+                   (occ-red r (∨-false₂ (occTm x a) (∨-false₂ (occTm x c) e))))
+occ-red {x = x} (ξ-idreflᶜ {c = c} r) e =
+  ∨-false (occ-red r (∨-false₁ (occTm x c) e)) (∨-false₂ (occTm x c) e)
+occ-red {x = x} (ξ-idreflᵃ {c = c} r) e =
+  ∨-false (∨-false₁ (occTm x c) e) (occ-red r (∨-false₂ (occTm x c) e))
+occ-red {x = x} (ξ-jsubᵈ {d = d} r) e =
+  ∨-false (occ-red r (∨-false₁ (occTm (vs x) d) e)) (∨-false₂ (occTm (vs x) d) e)
+occ-red {x = x} (ξ-jsubᵖ {d = d} {p = p} r) e =
+  ∨-false (∨-false₁ (occTm (vs x) d) e)
+          (∨-false (occ-red r (∨-false₁ (occTm x p) (∨-false₂ (occTm (vs x) d) e)))
+                   (∨-false₂ (occTm x p) (∨-false₂ (occTm (vs x) d) e)))
+occ-red {x = x} (ξ-jsubᵉ {d = d} {p = p} r) e =
+  ∨-false (∨-false₁ (occTm (vs x) d) e)
+          (∨-false (∨-false₁ (occTm x p) (∨-false₂ (occTm (vs x) d) e))
+                   (occ-red r (∨-false₂ (occTm x p) (∨-false₂ (occTm (vs x) d) e))))
 
 posc-red : {d d' : RTm (Γ ∙)} → PosC vz d → d ⟶ d' → PosC vz d'
 posc-red posc-var ()
@@ -480,6 +518,8 @@ ren-ty (ty-Σ dA dB)  h = ty-Σ (ren-ty dA h) (ren-ty dB (Ren⊢-ext h))
 ren-ty (ty-El dc)    h = ty-El (ren-lemma dc h)
 ren-ty (ty-Hom dA dt du) h =
   ty-Hom (ren-ty dA h) (ren-lemma dt h) (ren-lemma du h)
+ren-ty (ty-Id dA dt du) h =
+  ty-Id (ren-ty dA h) (ren-lemma dt h) (ren-lemma du h)
 
 ren-lemma (⊢var v) h = ⊢var (h v)
 ren-lemma (⊢lam dA d) h = ⊢lam (ren-ty dA h) (ren-lemma d (Ren⊢-ext h))
@@ -497,6 +537,14 @@ ren-lemma (⊢⌜Σ⌝ dc dd) h = ⊢⌜Σ⌝ (ren-lemma dc h) (ren-lemma dd (Re
 ren-lemma (⊢⌜Hom⌝ dc da db) h =
   ⊢⌜Hom⌝ (ren-lemma dc h) (ren-lemma da h) (ren-lemma db h)
 ren-lemma (⊢hrefl dc dt) h = ⊢hrefl (ren-lemma dc h) (ren-lemma dt h)
+ren-lemma (⊢⌜Id⌝ dc da db) h =
+  ⊢⌜Id⌝ (ren-lemma dc h) (ren-lemma da h) (ren-lemma db h)
+ren-lemma (⊢idrefl dc dt) h = ⊢idrefl (ren-lemma dc h) (ren-lemma dt h)
+ren-lemma {ρ = ρ} (⊢jsub {d = d} {t = t} {u = u} dd dt du dp de) h =
+  ⊢-cast (cong El (sym (ren-comm ρ d u)))
+    (⊢jsub (ren-lemma dd (Ren⊢-ext h))
+           (ren-lemma dt h) (ren-lemma du h) (ren-lemma dp h)
+           (⊢-cast (cong El (ren-comm ρ d t)) (ren-lemma de h)))
 ren-lemma {ρ = ρ} (⊢tr {c = cM} {a = aM} {t = t} {u = u} dc da dv hc ha dt du dp de) h
   with posc-ren {ρ = ρ} (posc-Hom {c = cM} {a = aM} hc ha)
 ... | posc-Hom hc' ha' =
@@ -549,6 +597,8 @@ sub-ty ty-U         h = ty-U
 sub-ty (ty-Π dA dB) h = ty-Π (sub-ty dA h) (sub-ty dB (Sub⊢-ext h))
 sub-ty (ty-Σ dA dB) h = ty-Σ (sub-ty dA h) (sub-ty dB (Sub⊢-ext h))
 sub-ty (ty-El dc)   h = ty-El (sub-lemma dc h)
+sub-ty (ty-Id dA dt du) h =
+  ty-Id (sub-ty dA h) (sub-lemma dt h) (sub-lemma du h)
 sub-ty (ty-Hom dA dt du) h =
   ty-Hom (sub-ty dA h) (sub-lemma dt h) (sub-lemma du h)
 
@@ -568,6 +618,14 @@ sub-lemma (⊢⌜Σ⌝ dc dd) h = ⊢⌜Σ⌝ (sub-lemma dc h) (sub-lemma dd (Su
 sub-lemma (⊢⌜Hom⌝ dc da db) h =
   ⊢⌜Hom⌝ (sub-lemma dc h) (sub-lemma da h) (sub-lemma db h)
 sub-lemma (⊢hrefl dc dt) h = ⊢hrefl (sub-lemma dc h) (sub-lemma dt h)
+sub-lemma (⊢⌜Id⌝ dc da db) h =
+  ⊢⌜Id⌝ (sub-lemma dc h) (sub-lemma da h) (sub-lemma db h)
+sub-lemma (⊢idrefl dc dt) h = ⊢idrefl (sub-lemma dc h) (sub-lemma dt h)
+sub-lemma {σ = σ} (⊢jsub {d = d} {t = t} {u = u} dd dt du dp de) h =
+  ⊢-cast (cong El (sym (sub-comm σ d u)))
+    (⊢jsub (sub-lemma dd (Sub⊢-ext h))
+           (sub-lemma dt h) (sub-lemma du h) (sub-lemma dp h)
+           (⊢-cast (cong El (sub-comm σ d t)) (sub-lemma de h)))
 sub-lemma {σ = σ} (⊢tr {c = cM} {a = aM} {t = t} {u = u} dc da dv hc ha dt du dp de) h
   with posc-sub {σ = σ} (posc-Hom {c = cM} {a = aM} hc ha)
 ... | posc-Hom hc' ha' =
@@ -692,6 +750,34 @@ gen-hrefl : {Γ : Ctx} {c t₀ : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
 gen-hrefl (⊢hrefl dc dt) = dc , (dt , crflᵀ)
 gen-hrefl (⊢conv d c) with gen-hrefl d
 ... | (dc , (dt , c')) = dc , (dt , ctrnᵀ (csymᵀ c) c')
+
+gen-⌜Id⌝ : {Γ : Ctx} {c a b : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+           Γ ⊢ ⌜Id⌝ c a b ∷ C →
+           (Γ ⊢ c ∷ U) × ((Γ ⊢ a ∷ El c) × ((Γ ⊢ b ∷ El c) × (C ≅ᵀ U)))
+gen-⌜Id⌝ (⊢⌜Id⌝ dc da db) = dc , (da , (db , crflᵀ))
+gen-⌜Id⌝ (⊢conv d c) with gen-⌜Id⌝ d
+... | (dc , (da , (db , c'))) = dc , (da , (db , ctrnᵀ (csymᵀ c) c'))
+
+gen-idrefl : {Γ : Ctx} {c t₀ : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+             Γ ⊢ idrefl c t₀ ∷ C →
+             (Γ ⊢ c ∷ U) × ((Γ ⊢ t₀ ∷ El c) × (C ≅ᵀ Id (El c) t₀ t₀))
+gen-idrefl (⊢idrefl dc dt) = dc , (dt , crflᵀ)
+gen-idrefl (⊢conv d c) with gen-idrefl d
+... | (dc , (dt , c')) = dc , (dt , ctrnᵀ (csymᵀ c) c')
+
+gen-jsub : {Γ : Ctx} {d₀ : RTm (⌊ Γ ⌋ ∙)} {p e : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+           Γ ⊢ jsub d₀ p e ∷ C →
+           Σ (RTy ⌊ Γ ⌋) (λ A → Σ (RTm ⌊ Γ ⌋) (λ t → Σ (RTm ⌊ Γ ⌋) (λ u →
+             (((Γ ▹ A) ⊢ d₀ ∷ U) ×
+             ((Γ ⊢ t ∷ A) × ((Γ ⊢ u ∷ A) ×
+             ((Γ ⊢ p ∷ Id A t u) ×
+             ((Γ ⊢ e ∷ El (subTm (single t) d₀)) ×
+              (C ≅ᵀ El (subTm (single u) d₀))))))))))
+gen-jsub (⊢jsub dd dt du dp de) =
+  _ , (_ , (_ , (dd , (dt , (du , (dp , (de , crflᵀ)))))))
+gen-jsub (⊢conv d c) with gen-jsub d
+... | A , (t , (u , (dd , (dt , (du , (dp , (de , c'))))))) =
+      A , (t , (u , (dd , (dt , (du , (dp , (de , ctrnᵀ (csymᵀ c) c')))))))
 
 gen-ap : {Γ : Ctx} {cB : RTm ⌊ Γ ⌋} {b : RTm (⌊ Γ ⌋ ∙)} {p : RTm ⌊ Γ ⌋}
          {C : RTy ⌊ Γ ⌋} → Γ ⊢ ap cB b p ∷ C →
@@ -1356,6 +1442,51 @@ sr d (ξ-apᵇ {b = b} {b' = b'} r) with gen-ap d
 sr d (ξ-apᵖ r) with gen-ap d
 ... | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC))))))))) =
       ⊢conv (⊢ap dcA keyA dcB db dt du (sr dp r)) (csymᵀ cC)
+-- ★ the two-former kernel.  `jsub-refl`'s endpoint conversion is the
+-- `tr-J-base` pattern with the EASIER decomposition (`Id-reduct`:
+-- Id is inert, both church-rosser arms split componentwise).
+sr d (jsub-refl dM c₁ s e₀) with gen-jsub d
+... | A , (t , (u , (dd , (dt , (du , (dp , (de , cC))))))) with gen-idrefl dp
+...   | (dc , (ds , cH)) with church-rosserᵀ cH
+...     | W , (rL , rR) with Id-reduct rL | Id-reduct rR
+...       | A₁ , (t₁ , (u₁ , (eqW , (rA , (rt , ru)))))
+          | A₂ , (s₁ , (s₂ , (eqW' , (rA' , (rs₁ , rs₂)))))
+            with trans (sym eqW) eqW'
+...         | refl =
+              ⊢conv de
+                (ctrnᵀ (ctrnᵀ (mono-El[] dM rt)
+                         (ctrnᵀ (csymᵀ (mono-El[] dM rs₁))
+                           (ctrnᵀ (mono-El[] dM rs₂)
+                             (csymᵀ (mono-El[] dM ru)))))
+                       (csymᵀ cC))
+sr d (ξ-jsubᵈ r) with gen-jsub d
+... | A , (t , (u , (dd , (dt , (du , (dp , (de , cC))))))) =
+      ⊢conv (⊢jsub (sr dd r) dt du dp
+                   (⊢conv de (credᵀ (ξ-El (⟶-sub (single t) r)))))
+            (ctrnᵀ (csymᵀ (credᵀ (ξ-El (⟶-sub (single u) r)))) (csymᵀ cC))
+sr d (ξ-jsubᵖ r) with gen-jsub d
+... | A , (t , (u , (dd , (dt , (du , (dp , (de , cC))))))) =
+      ⊢conv (⊢jsub dd dt du (sr dp r) de) (csymᵀ cC)
+sr d (ξ-jsubᵉ r) with gen-jsub d
+... | A , (t , (u , (dd , (dt , (du , (dp , (de , cC))))))) =
+      ⊢conv (⊢jsub dd dt du dp (sr de r)) (csymᵀ cC)
+sr d (ξ-⌜Id⌝ᶜ r) with gen-⌜Id⌝ d
+... | (dc , (da , (db , cU))) =
+      ⊢conv (⊢⌜Id⌝ (sr dc r) (⊢conv da (credᵀ (ξ-El r)))
+                   (⊢conv db (credᵀ (ξ-El r))))
+            (csymᵀ cU)
+sr d (ξ-⌜Id⌝ˡ r) with gen-⌜Id⌝ d
+... | (dc , (da , (db , cU))) = ⊢conv (⊢⌜Id⌝ dc (sr da r) db) (csymᵀ cU)
+sr d (ξ-⌜Id⌝ʳ r) with gen-⌜Id⌝ d
+... | (dc , (da , (db , cU))) = ⊢conv (⊢⌜Id⌝ dc da (sr db r)) (csymᵀ cU)
+sr d (ξ-idreflᶜ r) with gen-idrefl d
+... | (dc , (dt , cH)) =
+      ⊢conv (⊢idrefl (sr dc r) (⊢conv dt (credᵀ (ξ-El r))))
+            (csymᵀ (ctrnᵀ cH (credᵀ (ξ-Idᵀ (ξ-El r)))))
+sr d (ξ-idreflᵃ r) with gen-idrefl d
+... | (dc , (dt , cH)) =
+      ⊢conv (⊢idrefl dc (sr dt r))
+            (csymᵀ (ctrnᵀ cH (ctrnᵀ (credᵀ (ξ-Idˡ r)) (credᵀ (ξ-Idʳ r)))))
 
 ------------------------------------------------------------------------
 -- Type preservation for MULTI-step reduction — the immediate corollary.
