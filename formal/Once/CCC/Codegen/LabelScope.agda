@@ -56,7 +56,8 @@ open import Once.CCC.Codegen.IRToTrace using
 open import Once.CCC.Codegen.LabelRange using (label-of; cata-label-of; label-mono; cata-label-mono)
 open import Once.CCC.Codegen.SlotBudget using
   (fetch-at; seg-at; SegState; seg-idle?; idle-seg-at
-  ; seg-at-++ˡ; seg-at-++ʳ; fetch-++ˡ; fetch-++ʳ; split-pos; seg-fold)
+  ; seg-at-++ˡ; seg-at-++ʳ; fetch-++ˡ; fetch-++ʳ; split-pos; seg-fold
+  ; idle-neutral; seg-fold-++)
 
 ------------------------------------------------------------------------
 -- The `once`-namespace label an instruction mentions.
@@ -527,10 +528,15 @@ labels-in (const fits-float _) n l = li-none refl ∷ []
 -- one — which is what makes label UNIQUENESS unnecessary. `find-label-lands`
 -- delivers some such `q`, and any of them will do.
 ------------------------------------------------------------------------
+-- Factored through the fetch (NOT a `with`): the `Pieces` development below
+-- transports a position between a trace and an embedded copy by an equation
+-- on `fetch-at`, and `cong` needs mention to be a function of it.
+mention-of : Maybe AbstractInstr → Maybe ℕ
+mention-of (just i) = once-label-of i
+mention-of nothing  = nothing
+
 mention-at : AbstractTrace → ℕ → Maybe ℕ
-mention-at t p with fetch-at t p
-... | just i  = once-label-of i
-... | nothing = nothing
+mention-at t p = mention-of (fetch-at t p)
 
 SegAgree : AbstractTrace → Set
 SegAgree t = ∀ (p q m : ℕ) (st : SegState)
@@ -706,3 +712,144 @@ segagree-nolab t nl p q m st mq _ = ⊥-elim (go t p nl mq)
           where absurd : ∀ {A : Set} → nothing ≡ just m → A
                 absurd ()
         go (i ∷ is) (suc r) (_ ∷ xs) eq = go is r xs eq
+
+------------------------------------------------------------------------
+-- PIECES: a skeleton with embedded copies of ONE sub-trace.
+--
+-- Every cata skeleton has this shape — an alternation of idle skeleton
+-- fragments and copies of the ALGEBRA trace — and the copy count differs per
+-- strategy: `strat-const` 0 (the trace IS the algebra), `strat-branching` 1,
+-- and **`strat-nat` and `strat-linear` 2** (base path plus the ascend body).
+-- So Nat is not a bystander here: it is one of the two cases that `Pieces`
+-- exists for. The `pnil`/`pcons` structure covers 0, 1, 2, … uniformly, so all
+-- four strategies land on the same lemma.
+--
+-- Why a datatype rather than repeated `segagree-++'`: two copies of the SAME
+-- trace carry the SAME label window, so the disjointness premise is
+-- unsatisfiable against itself — a jump in one copy and its label in the other
+-- mention the same `m` LEGITIMATELY. What closes that case is not disjointness
+-- but the fact that both copies START FROM THE SAME STATE, which is what this
+-- induction makes available.
+------------------------------------------------------------------------
+data Pieces (at : AbstractTrace) (a b : ℕ) : AbstractTrace → Set where
+  pnil  : ∀ {I} → seg-idle? I ≡ true → LabelsIn a b I → Pieces at a b I
+  pcons : ∀ {I t} → seg-idle? I ≡ true → LabelsIn a b I → Pieces at a b t
+        → Pieces at a b (I ++ at ++ t)
+
+-- THE WHOLE IS NEUTRAL: idle pieces are, and the algebra is (`SegOK.ok-neu`).
+-- This is what makes every copy start where the last one left off, i.e. at
+-- `st`.
+pieces-neutral : ∀ (at : AbstractTrace) (a b : ℕ) (t : AbstractTrace) → Pieces at a b t
+               → (∀ st → seg-fold at st ≡ st)
+               → ∀ (st : SegState) → seg-fold t st ≡ st
+pieces-neutral at a b .I (pnil {I} idle _) natl st = idle-neutral I idle st
+pieces-neutral at a b .(I ++ at ++ t) (pcons {I} {t} idle _ ps) natl st =
+  trans (seg-fold-++ I (at ++ t) st)
+        (trans (cong (seg-fold (at ++ t)) (idle-neutral I idle st))
+               (trans (seg-fold-++ at t st)
+                      (trans (cong (seg-fold t) (natl st))
+                             (pieces-neutral at a b t ps natl st))))
+
+-- EVERY POSITION IS ONE OF TWO KINDS: a skeleton position, whose segment is
+-- the starting state and whose mention (if any) is in the skeleton window; or
+-- a position INSIDE some copy, which fetches exactly what the algebra fetches
+-- at the corresponding offset and has the algebra's segment there.
+data PosView (at : AbstractTrace) (a b : ℕ) (t : AbstractTrace)
+             (st : SegState) (p : ℕ) : Set where
+  pv-skel : seg-at t p st ≡ st
+          → (∀ (m : ℕ) → mention-at t p ≡ just m → (a ≤ m) × (m < b))
+          → PosView at a b t st p
+  pv-at   : ∀ (k : ℕ) → seg-at t p st ≡ seg-at at k st
+          → fetch-at t p ≡ fetch-at at k
+          → PosView at a b t st p
+
+-- the skeleton window fact, read off a `LabelsIn` at a position
+win-at : ∀ (a b : ℕ) (t : AbstractTrace) → LabelsIn a b t
+       → ∀ (p m : ℕ) → mention-at t p ≡ just m → (a ≤ m) × (m < b)
+win-at a b []       _        p       m ()
+win-at a b (i ∷ is) (x ∷ _)  zero    m e = in-range x m e
+win-at a b (i ∷ is) (_ ∷ xs) (suc p) m e = win-at a b is xs p m e
+
+pieces-pos : ∀ (at : AbstractTrace) (a b : ℕ) (t : AbstractTrace) → Pieces at a b t
+           → (∀ st → seg-fold at st ≡ st)
+           → ∀ (p : ℕ) (st : SegState) → PosView at a b t st p
+pieces-pos at a b .I (pnil {I} idle ls) natl p st =
+  pv-skel (idle-seg-at I idle p st) (win-at a b I ls p)
+pieces-pos at a b .(I ++ at ++ t) (pcons {I} {t} idle ls ps) natl p st =
+  go (split-pos I p)
+  where
+    go : (p < length I) ⊎ (Σ ℕ (λ k → p ≡ length I + k))
+       → PosView at a b (I ++ at ++ t) st p
+    -- inside the skeleton piece
+    go (inj₁ lt) =
+      pv-skel (trans (seg-at-++ˡ I (at ++ t) p st lt) (idle-seg-at I idle p st))
+              (λ m e → win-at a b I ls p m (trans (sym (cong mention-of (fetch-++ˡ I (at ++ t) p lt))) e))
+    go (inj₂ (k , peq)) = go2 (split-pos at k)
+      where
+        -- the piece is idle, so the copy starts exactly at `st`
+        at-st : seg-at (I ++ at ++ t) p st ≡ seg-at (at ++ t) k st
+        at-st = trans (cong (λ z → seg-at (I ++ at ++ t) z st) peq)
+                      (trans (seg-at-++ʳ I (at ++ t) k st)
+                             (cong (seg-at (at ++ t) k) (idle-neutral I idle st)))
+        ft-eq : fetch-at (I ++ at ++ t) p ≡ fetch-at (at ++ t) k
+        ft-eq = trans (cong (fetch-at (I ++ at ++ t)) peq) (fetch-++ʳ I (at ++ t) k)
+        go2 : (k < length at) ⊎ (Σ ℕ (λ j → k ≡ length at + j))
+            → PosView at a b (I ++ at ++ t) st p
+        -- inside THIS copy of the algebra
+        go2 (inj₁ klt) =
+          pv-at k (trans at-st (seg-at-++ˡ at t k st klt))
+                  (trans ft-eq (fetch-++ˡ at t k klt))
+        -- past it: recurse, and lift whichever kind the tail reports
+        go2 (inj₂ (j , keq)) = lift (pieces-pos at a b t ps natl j st)
+          where
+            tail-st : seg-at (I ++ at ++ t) p st ≡ seg-at t j st
+            tail-st = trans at-st
+                        (trans (cong (λ z → seg-at (at ++ t) z st) keq)
+                               (trans (seg-at-++ʳ at t j st)
+                                      (cong (seg-at t j) (natl st))))
+            tail-ft : fetch-at (I ++ at ++ t) p ≡ fetch-at t j
+            tail-ft = trans ft-eq (trans (cong (fetch-at (at ++ t)) keq) (fetch-++ʳ at t j))
+            lift : PosView at a b t st j → PosView at a b (I ++ at ++ t) st p
+            lift (pv-skel seq wf) =
+              pv-skel (trans tail-st seq)
+                      (λ m e → wf m (trans (sym (cong mention-of tail-ft)) e))
+            lift (pv-at k' seq feq) =
+              pv-at k' (trans tail-st seq) (trans tail-ft feq)
+
+-- THE PAYOFF. Four cases, and the one that defeated `segagree-++'` — a
+-- mention in one copy with its label in ANOTHER copy — is now closed by
+-- `SegAgree at` applied at the two offsets, because both copies fetch from the
+-- same trace at the same starting state.
+pieces-agree : ∀ (at : AbstractTrace) (a b c d : ℕ) (t : AbstractTrace)
+             → Pieces at a b t
+             → (∀ st → seg-fold at st ≡ st)
+             → SegAgree at → LabelsIn c d at
+             → (b ≤ c) ⊎ (d ≤ a)
+             → SegAgree t
+pieces-agree at a b c d t ps natl saAt lsAt disj p q m st mq lq =
+  go (pieces-pos at a b t ps natl p st) (pieces-pos at a b t ps natl q st)
+  where
+    lq-men : mention-at t q ≡ just m
+    lq-men rewrite lq = refl
+    clash : (a ≤ m) × (m < b) → (c ≤ m) × (m < d) → ⊥
+    clash (a≤ , <b) (c≤ , <d) = dis disj
+      where dis : (b ≤ c) ⊎ (d ≤ a) → ⊥
+            dis (inj₁ b≤c) = <-asym <b (≤-trans b≤c c≤)
+            dis (inj₂ d≤a) = <-asym <d (≤-trans d≤a a≤)
+    go : PosView at a b t st p → PosView at a b t st q → seg-at t q st ≡ seg-at t p st
+    -- both on the skeleton: both segments are the starting state
+    go (pv-skel sp _) (pv-skel sq _) = trans sq (sym sp)
+    -- one on the skeleton, one inside a copy: the same `m` would have to sit
+    -- in both windows
+    go (pv-skel _ wp) (pv-at kq _ fq) =
+      ⊥-elim (clash (wp m mq)
+                    (win-at c d at lsAt kq m (trans (sym (cong mention-of fq)) lq-men)))
+    go (pv-at kp _ fp) (pv-skel _ wq) =
+      ⊥-elim (clash (wq m lq-men)
+                    (win-at c d at lsAt kp m (trans (sym (cong mention-of fp)) mq)))
+    -- BOTH INSIDE COPIES (possibly different ones): reduce to the algebra
+    go (pv-at kp sp fp) (pv-at kq sq fq) =
+      trans sq (trans (saAt kp kq m st
+                        (trans (sym (cong mention-of fp)) mq)
+                        (trans (sym fq) lq))
+                      (sym sp))
