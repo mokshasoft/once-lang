@@ -47,7 +47,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
-        ; ⌜Hom⌝; hrefl; tr; ap
+        ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
         ; Ren; extR; Sub; subTy; subTm; extS; renTm
         ; subTm-renTm; subTm-id; Hom-cong₃; ⌜Hom⌝-cong₃ )
 open import poc.OCP0009.NbEPDirDBType
@@ -57,7 +57,9 @@ open import poc.OCP0009.NbEPDirDBType
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ
         ; tr-J-base; tr-J-Σ; tr-taut; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
-        ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ; ⊢ap
+        ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
+        ; tr-J-Id; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
+        ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; ⊢ap
         ; hrefl-pw; tr-J-Hom; tr-pw
         ; _⟶*_; done; step
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
@@ -133,7 +135,7 @@ homheaded? : RTm Γ → 𝔹
 homheaded? (⌜Hom⌝ _ _ _) = true
 homheaded? _             = false
 
-spine? stablecd? pathstk? nopw? deadmot? apstk? : RTm Γ → 𝔹
+spine? stablecd? pathstk? nopw? deadmot? apstk? idstk? : RTm Γ → 𝔹
 trstk? : RTm (Γ ∙) → RTm Γ → 𝔹
 trlam? : RTm (Γ ∙) → 𝔹
 
@@ -148,6 +150,9 @@ spine? (⌜Hom⌝ c a b)  = true
 spine? (hrefl c t)    = nopw? c
 spine? (tr d p e)     = trstk? d p
 spine? (ap c b p)     = apstk? p
+spine? (⌜Id⌝ c a b)   = true
+spine? (idrefl c t)   = true
+spine? (jsub d p e)   = idstk? p
 spine? _              = false
 
 -- W2b: `stablecd?` is now DEAD-CODE-ness — the code can never fire a
@@ -162,6 +167,8 @@ stablecd? (snd t)       = spine? t
 stablecd? (⌜Hom⌝ c a b) = stablecd? c
 stablecd? (hrefl c t)   = true
 stablecd? (ap c b p)    = apstk? p
+stablecd? (idrefl c t)  = true
+stablecd? (jsub d p e)  = idstk? p
 stablecd? (tr d p e)    = trstk? d p
 stablecd? _             = false
 
@@ -178,6 +185,30 @@ pathstk? (⌜Hom⌝ c a b)  = true
 pathstk? (hrefl c t)    = stablecd? c
 pathstk? (tr d p e)     = trstk? d p
 pathstk? (ap c b p)     = apstk? p
+pathstk? (⌜Id⌝ c a b)   = true
+pathstk? (idrefl c t)   = true
+pathstk? (jsub d p e)   = idstk? p
+
+-- ★ the two-former kernel: `jsub` is stuck forever iff its PATH never
+-- becomes an `idrefl`: everything except idrefl itself is junk-stuck
+-- (idrefl is inert, hrefl-paths only ever unfold to lams — still
+-- stuck), and the eliminators recurse.
+idstk? (var x)        = true
+idstk? (lam t)        = true
+idstk? (app t u)      = spine? t
+idstk? (pair a b)     = true
+idstk? (fst t)        = spine? t
+idstk? (snd t)        = spine? t
+idstk? ⌜base⌝         = true
+idstk? (⌜Π⌝ c d)      = true
+idstk? (⌜Σ⌝ c d)      = true
+idstk? (⌜Hom⌝ c a b)  = true
+idstk? (⌜Id⌝ c a b)   = true
+idstk? (hrefl c t)    = true
+idstk? (idrefl c t)   = false
+idstk? (tr d p e)     = trstk? d p
+idstk? (ap c b p)     = apstk? p
+idstk? (jsub d p e)   = idstk? p
 
 -- ★ directed `ap` (SpikeAp): `ap` is stuck forever iff its PATH never
 -- becomes a canonical hrefl the J rule fires on: lam paths have NO ap
@@ -196,6 +227,9 @@ apstk? (⌜Hom⌝ c a b)  = true
 apstk? (hrefl c t)    = stablecd? c
 apstk? (tr d p e)     = trstk? d p
 apstk? (ap c b p)     = apstk? p
+apstk? (⌜Id⌝ c a b)   = true
+apstk? (idrefl c t)   = true
+apstk? (jsub d p e)   = idstk? p
 
 -- W2b: a lam path fires tr-pw at a pw-able-⌜Hom⌝ motive with the
 -- LITERAL `var vz` endpoint — stuck only when the code can never
@@ -233,6 +267,9 @@ deadmot? (⌜Hom⌝ c a b)  = deadmot? c
 deadmot? (hrefl c t)    = deadmot? c
 deadmot? (tr d p e)     = trstk? d p
 deadmot? (ap c b p)     = apstk? p
+deadmot? (⌜Id⌝ c a b)   = true
+deadmot? (idrefl c t)   = true
+deadmot? (jsub d p e)   = idstk? p
 
 nopw? (var x)        = true
 nopw? (lam t)        = true
@@ -247,6 +284,9 @@ nopw? (⌜Hom⌝ c a b)  = nopw? c
 nopw? (hrefl c t)    = true
 nopw? (tr d p e)     = trstk? d p
 nopw? (ap c b p)     = true
+nopw? (⌜Id⌝ c a b)   = true
+nopw? (idrefl c t)   = true
+nopw? (jsub d p e)   = idstk? p
 
 f≢t : false ≡ true → ⊥
 f≢t ()
@@ -286,6 +326,9 @@ nopw⊥pw (⌜Hom⌝ C a b) h = nopw⊥pw C h
 nopw⊥pw (hrefl c t) h = refl
 nopw⊥pw (tr d p e) h = refl
 nopw⊥pw (ap c b p) h = refl
+nopw⊥pw (⌜Id⌝ c a b) h = refl
+nopw⊥pw (idrefl c t) h = refl
+nopw⊥pw (jsub d p e) h = refl
 
 deadmot→nopw : (C : RTm Γ) → deadmot? C ≡ true → nopw? C ≡ true
 deadmot→nopw (var x) h = refl
@@ -301,6 +344,9 @@ deadmot→nopw (⌜Hom⌝ C a b) h = deadmot→nopw C h
 deadmot→nopw (hrefl c t) h = refl
 deadmot→nopw (tr d p e) h = h
 deadmot→nopw (ap c b p) h = refl
+deadmot→nopw (⌜Id⌝ c a b) h = refl
+deadmot→nopw (idrefl c t) h = refl
+deadmot→nopw (jsub d p e) h = h
 
 stk→deadmot : (C : RTm Γ) → stkC? C ≡ true → deadmot? C ≡ true
 stk→deadmot (var x) ()
@@ -312,6 +358,7 @@ stk→deadmot (snd t) ()
 stk→deadmot ⌜base⌝ h = refl
 stk→deadmot (⌜Π⌝ c d) ()
 stk→deadmot (⌜Σ⌝ c d) h = refl
+stk→deadmot (⌜Id⌝ c a b) h = refl
 stk→deadmot (⌜Hom⌝ C a b) h = stk→deadmot C h
 stk→deadmot (hrefl c t) ()
 stk→deadmot (tr d p e) ()
@@ -326,6 +373,7 @@ stk⊥dead (snd t) ()
 stk⊥dead ⌜base⌝ h = refl
 stk⊥dead (⌜Π⌝ c d) ()
 stk⊥dead (⌜Σ⌝ c d) h = refl
+stk⊥dead (⌜Id⌝ c a b) h = refl
 stk⊥dead (⌜Hom⌝ C a b) h = stk⊥dead C h
 stk⊥dead (hrefl c t) ()
 stk⊥dead (tr d p e) ()
@@ -343,6 +391,7 @@ pathstk?-red  : {t t' : RTm Γ} → t ⟶ t' →
                 pathstk? t ≡ true → pathstk? t' ≡ true
 nopw?-red     : {t t' : RTm Γ} → t ⟶ t' → nopw? t ≡ true → nopw? t' ≡ true
 apstk?-red    : {t t' : RTm Γ} → t ⟶ t' → apstk? t ≡ true → apstk? t' ≡ true
+idstk?-red    : {t t' : RTm Γ} → t ⟶ t' → idstk? t ≡ true → idstk? t' ≡ true
 deadmot?-red  : {t t' : RTm Γ} → t ⟶ t' →
                 deadmot? t ≡ true → deadmot? t' ≡ true
 trstk?-red-d  : {d d' : RTm (Γ ∙)} {p : RTm Γ} → d ⟶ d' →
@@ -412,6 +461,16 @@ spine?-red (ap-J _ _ c₁ _ key) h =
 spine?-red (ξ-apᶜ r) h = h
 spine?-red (ξ-apᵇ r) h = h
 spine?-red (ξ-apᵖ r) h = apstk?-red r h
+spine?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
+spine?-red (jsub-refl _ _ _ _) ()
+spine?-red (ξ-⌜Id⌝ᶜ r) h = h
+spine?-red (ξ-⌜Id⌝ˡ r) h = h
+spine?-red (ξ-⌜Id⌝ʳ r) h = h
+spine?-red (ξ-idreflᶜ r) h = h
+spine?-red (ξ-idreflᵃ r) h = h
+spine?-red (ξ-jsubᵈ r) h = h
+spine?-red (ξ-jsubᵖ r) h = idstk?-red r h
+spine?-red (ξ-jsubᵉ r) h = h
 
 stablecd?-red (β _ _) ()
 stablecd?-red (βfst _ _) ()
@@ -446,6 +505,16 @@ stablecd?-red (ap-J _ _ c₁ _ key) h =
 stablecd?-red (ξ-apᶜ r) h = h
 stablecd?-red (ξ-apᵇ r) h = h
 stablecd?-red (ξ-apᵖ r) h = apstk?-red r h
+stablecd?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
+stablecd?-red (jsub-refl _ _ _ _) ()
+stablecd?-red (ξ-⌜Id⌝ᶜ r) ()
+stablecd?-red (ξ-⌜Id⌝ˡ r) ()
+stablecd?-red (ξ-⌜Id⌝ʳ r) ()
+stablecd?-red (ξ-idreflᶜ r) h = h
+stablecd?-red (ξ-idreflᵃ r) h = h
+stablecd?-red (ξ-jsubᵈ r) h = h
+stablecd?-red (ξ-jsubᵖ r) h = idstk?-red r h
+stablecd?-red (ξ-jsubᵉ r) h = h
 
 pathstk?-red (β _ _) ()
 pathstk?-red (βfst _ _) ()
@@ -480,6 +549,16 @@ pathstk?-red (ap-J _ _ c₁ _ key) h =
 pathstk?-red (ξ-apᶜ r) h = h
 pathstk?-red (ξ-apᵇ r) h = h
 pathstk?-red (ξ-apᵖ r) h = apstk?-red r h
+pathstk?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
+pathstk?-red (jsub-refl _ _ _ _) ()
+pathstk?-red (ξ-⌜Id⌝ᶜ r) h = h
+pathstk?-red (ξ-⌜Id⌝ˡ r) h = h
+pathstk?-red (ξ-⌜Id⌝ʳ r) h = h
+pathstk?-red (ξ-idreflᶜ r) h = h
+pathstk?-red (ξ-idreflᵃ r) h = h
+pathstk?-red (ξ-jsubᵈ r) h = h
+pathstk?-red (ξ-jsubᵖ r) h = idstk?-red r h
+pathstk?-red (ξ-jsubᵉ r) h = h
 
 -- ★ `ap`-stuckness is closed under reduction: the J key clashes with
 -- the dead-code key; the pw/taut unfoldings land on LAM paths, which
@@ -518,6 +597,62 @@ apstk?-red (ap-J _ _ c₁ _ key) h =
 apstk?-red (ξ-apᶜ r) h = h
 apstk?-red (ξ-apᵇ r) h = h
 apstk?-red (ξ-apᵖ r) h = apstk?-red r h
+apstk?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
+apstk?-red (jsub-refl _ _ _ _) ()
+apstk?-red (ξ-⌜Id⌝ᶜ r) h = h
+apstk?-red (ξ-⌜Id⌝ˡ r) h = h
+apstk?-red (ξ-⌜Id⌝ʳ r) h = h
+apstk?-red (ξ-idreflᶜ r) h = h
+apstk?-red (ξ-idreflᵃ r) h = h
+apstk?-red (ξ-jsubᵈ r) h = h
+apstk?-red (ξ-jsubᵖ r) h = idstk?-red r h
+apstk?-red (ξ-jsubᵉ r) h = h
+
+-- ★ jsub-stuckness is closed under reduction (the idstk? mirror).
+idstk?-red (β _ _) ()
+idstk?-red (βfst _ _) ()
+idstk?-red (βsnd _ _) ()
+idstk?-red (ξ-lam r) h = h
+idstk?-red (ξ-appˡ r) h = spine?-red r h
+idstk?-red (ξ-appʳ r) h = h
+idstk?-red (ξ-pairˡ r) h = h
+idstk?-red (ξ-pairʳ r) h = h
+idstk?-red (ξ-fst r) h = spine?-red r h
+idstk?-red (ξ-snd r) h = spine?-red r h
+idstk?-red (ξ-⌜Π⌝ˡ r) h = h
+idstk?-red (ξ-⌜Π⌝ʳ r) h = h
+idstk?-red (ξ-⌜Σ⌝ˡ r) h = h
+idstk?-red (ξ-⌜Σ⌝ʳ r) h = h
+idstk?-red (ξ-⌜Hom⌝ᶜ r) h = h
+idstk?-red (ξ-⌜Hom⌝ˡ r) h = h
+idstk?-red (ξ-⌜Hom⌝ʳ r) h = h
+idstk?-red (ξ-hreflᶜ r) h = h
+idstk?-red (ξ-hreflᵃ r) h = h
+idstk?-red (hrefl-pw C₀ s₀ kp) h = refl
+idstk?-red (tr-J-base _ _ _ _ _) ()
+idstk?-red (tr-J-Σ _ _ _ _ _ _ _) ()
+idstk?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ kh)) h))
+idstk?-red (tr-taut _ _) ()
+idstk?-red (tr-pw _ _ _ _ _) h = refl
+idstk?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
+idstk?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
+idstk?-red (ξ-trᵉ r) h = h
+idstk?-red (ap-J _ _ c₁ _ key) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
+idstk?-red (ξ-apᶜ r) h = h
+idstk?-red (ξ-apᵇ r) h = h
+idstk?-red (ξ-apᵖ r) h = apstk?-red r h
+idstk?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
+idstk?-red (jsub-refl _ _ _ _) ()
+idstk?-red (ξ-⌜Id⌝ᶜ r) h = h
+idstk?-red (ξ-⌜Id⌝ˡ r) h = h
+idstk?-red (ξ-⌜Id⌝ʳ r) h = h
+idstk?-red (ξ-idreflᶜ r) h = h
+idstk?-red (ξ-idreflᵃ r) h = h
+idstk?-red (ξ-jsubᵈ r) h = h
+idstk?-red (ξ-jsubᵖ r) h = idstk?-red r h
+idstk?-red (ξ-jsubᵉ r) h = h
 
 nopw?-red (β _ _) ()
 nopw?-red (βfst _ _) ()
@@ -551,6 +686,16 @@ nopw?-red (ap-J _ _ _ _ _) h = refl
 nopw?-red (ξ-apᶜ r) h = h
 nopw?-red (ξ-apᵇ r) h = h
 nopw?-red (ξ-apᵖ r) h = h
+nopw?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
+nopw?-red (jsub-refl _ _ _ _) ()
+nopw?-red (ξ-⌜Id⌝ᶜ r) h = h
+nopw?-red (ξ-⌜Id⌝ˡ r) h = h
+nopw?-red (ξ-⌜Id⌝ʳ r) h = h
+nopw?-red (ξ-idreflᶜ r) h = h
+nopw?-red (ξ-idreflᵃ r) h = h
+nopw?-red (ξ-jsubᵈ r) h = h
+nopw?-red (ξ-jsubᵖ r) h = idstk?-red r h
+nopw?-red (ξ-jsubᵉ r) h = h
 
 deadmot?-red (β _ _) ()
 deadmot?-red (βfst _ _) ()
@@ -588,6 +733,16 @@ deadmot?-red (ap-J _ _ c₁ _ key) h =
 deadmot?-red (ξ-apᶜ r) h = h
 deadmot?-red (ξ-apᵇ r) h = h
 deadmot?-red (ξ-apᵖ r) h = apstk?-red r h
+deadmot?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
+deadmot?-red (jsub-refl _ _ _ _) ()
+deadmot?-red (ξ-⌜Id⌝ᶜ r) h = h
+deadmot?-red (ξ-⌜Id⌝ˡ r) h = h
+deadmot?-red (ξ-⌜Id⌝ʳ r) h = h
+deadmot?-red (ξ-idreflᶜ r) h = h
+deadmot?-red (ξ-idreflᵃ r) h = h
+deadmot?-red (ξ-jsubᵈ r) h = h
+deadmot?-red (ξ-jsubᵖ r) h = idstk?-red r h
+deadmot?-red (ξ-jsubᵉ r) h = h
 
 -- dead codes are pw-immune (deadness subsumes the weaker key).
 dead→nopw : (C : RTm Γ) → stablecd? C ≡ true → nopw? C ≡ true
@@ -604,6 +759,8 @@ dead→nopw (⌜Hom⌝ C a b) h = dead→nopw C h
 dead→nopw (hrefl c t) h = refl
 dead→nopw (tr d p e) h = h
 dead→nopw (ap c b p) h = refl
+dead→nopw (idrefl c t) h = refl
+dead→nopw (jsub d p e) h = h
 
 
 -- an hrefl path at a DEAD code is tr-stuck under EVERY motive shape.
@@ -622,6 +779,9 @@ trstk-hrefl-any (⌜Hom⌝ c₂ a₂ b₂) h = h
 trstk-hrefl-any (hrefl c₂ t₂) h = h
 trstk-hrefl-any (tr d₂ p₂ e₂) h = h
 trstk-hrefl-any (ap c b p) h = h
+trstk-hrefl-any (⌜Id⌝ c a b) h = h
+trstk-hrefl-any (idrefl c t) h = h
+trstk-hrefl-any (jsub d p e) h = h
 
 -- motive steps.  Only lam- and hrefl-paths inspect the motive; the
 -- rest are motive-independent (the catchall clause on both sides).
@@ -702,6 +862,9 @@ trstk?-red-d {d = (⌜Hom⌝ c₂ a₂ b₂)} {d' = d'} {p = hrefl c s} r h = tr
 trstk?-red-d {d = (hrefl c₂ t₂)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {d = (tr d₂ p₂ e₂)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {d = (ap dz₁ dz₂ dz₃)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (⌜Id⌝ dz₁ dz₂ dz₃)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (idrefl dz₁ dz₂)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
+trstk?-red-d {d = (jsub dz₁ dz₂ dz₃)} {d' = d'} {p = hrefl c s} r h = trstk-hrefl-any d' h
 trstk?-red-d {p = (var y)} r h = h
 trstk?-red-d {p = (app t₁ u₁)} r h = h
 trstk?-red-d {p = (pair a₁ b₁)} r h = h
@@ -713,6 +876,9 @@ trstk?-red-d {p = (⌜Σ⌝ c₁ d₁)} r h = h
 trstk?-red-d {p = (⌜Hom⌝ c₁ a₁ b₁)} r h = h
 trstk?-red-d {p = (tr d₁ p₁ e₁)} r h = h
 trstk?-red-d {p = ap _ _ _} r h = h
+trstk?-red-d {p = ⌜Id⌝ _ _ _} r h = h
+trstk?-red-d {p = idrefl _ _} r h = h
+trstk?-red-d {p = jsub _ _ _} r h = h
 trstk?-red-p {d = (var x)} (ξ-hreflᶜ rc) h = nopw?-red rc h
 trstk?-red-p {d = (lam t)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (app t u)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
@@ -726,6 +892,9 @@ trstk?-red-p {d = (⌜Hom⌝ c₂ a₂ b₂)} (ξ-hreflᶜ rc) h = stablecd?-red
 trstk?-red-p {d = (hrefl c₂ t₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (tr d₂ p₂ e₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (ap dz₁ dz₂ dz₃)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (⌜Id⌝ dz₁ dz₂ dz₃)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (idrefl dz₁ dz₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (jsub dz₁ dz₂ dz₃)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (var x)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (lam t)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (app t u)} (ξ-hreflᵃ ra) h = h
@@ -739,6 +908,9 @@ trstk?-red-p {d = (⌜Hom⌝ c₂ a₂ b₂)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (hrefl c₂ t₂)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (tr d₂ p₂ e₂)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (ap dz₁ dz₂ dz₃)} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = (⌜Id⌝ dz₁ dz₂ dz₃)} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = (idrefl dz₁ dz₂)} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = (jsub dz₁ dz₂ dz₃)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = var x} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw C₀ h)) kp))
 trstk?-red-p {d = (lam t)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (app t u)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
@@ -752,6 +924,9 @@ trstk?-red-p {d = (⌜Hom⌝ c₂ a₂ b₂)} (hrefl-pw C₀ s₀ kp) h = ⊥-el
 trstk?-red-p {d = (hrefl c₂ t₂)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (tr d₂ p₂ e₂)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (ap dz₁ dz₂ dz₃)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (⌜Id⌝ dz₁ dz₂ dz₃)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (idrefl dz₁ dz₂)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (jsub dz₁ dz₂ dz₃)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p (β _ _) ()
 trstk?-red-p (βfst _ _) ()
 trstk?-red-p (βsnd _ _) ()
@@ -782,6 +957,16 @@ trstk?-red-p (ap-J _ _ c₁ _ key) h =
 trstk?-red-p (ξ-apᶜ r) h = h
 trstk?-red-p (ξ-apᵇ r) h = h
 trstk?-red-p (ξ-apᵖ r) h = apstk?-red r h
+trstk?-red-p (tr-J-Id _ _ _ _ _ _ _ _) ()
+trstk?-red-p (jsub-refl _ _ _ _) ()
+trstk?-red-p (ξ-⌜Id⌝ᶜ r) h = h
+trstk?-red-p (ξ-⌜Id⌝ˡ r) h = h
+trstk?-red-p (ξ-⌜Id⌝ʳ r) h = h
+trstk?-red-p (ξ-idreflᶜ r) h = h
+trstk?-red-p (ξ-idreflᵃ r) h = h
+trstk?-red-p (ξ-jsubᵈ r) h = h
+trstk?-red-p (ξ-jsubᵖ r) h = idstk?-red r h
+trstk?-red-p (ξ-jsubᵉ r) h = h
 
 apstk?-red* : {t t' : RTm Γ} → t ⟶* t' → apstk? t ≡ true → apstk? t' ≡ true
 apstk?-red* done h       = h
@@ -1204,12 +1389,17 @@ homheaded?-ren ρ (⌜Hom⌝ c a b) = refl
 homheaded?-ren ρ (hrefl c t)   = refl
 homheaded?-ren ρ (tr d p e)    = refl
 homheaded?-ren ρ (ap c b p)  = refl
+homheaded?-ren ρ (⌜Id⌝ c a b) = refl
+homheaded?-ren ρ (idrefl c t) = refl
+homheaded?-ren ρ (jsub d p e) = refl
 
 spine?-ren    : (ρ : Ren Γ Δ) (t : RTm Γ) → spine? (renTm ρ t) ≡ spine? t
 stablecd?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) →
                 stablecd? (renTm ρ t) ≡ stablecd? t
 apstk?-ren    : (ρ : Ren Γ Δ) (t : RTm Γ) →
                 apstk? (renTm ρ t) ≡ apstk? t
+idstk?-ren    : (ρ : Ren Γ Δ) (t : RTm Γ) →
+                idstk? (renTm ρ t) ≡ idstk? t
 pathstk?-ren  : (ρ : Ren Γ Δ) (t : RTm Γ) →
                 pathstk? (renTm ρ t) ≡ pathstk? t
 trstk?-ren    : (ρ : Ren Γ Δ) (d : RTm (Γ ∙)) (p : RTm Γ) →
@@ -1233,6 +1423,9 @@ spine?-ren ρ (⌜Hom⌝ c a b) = refl
 spine?-ren ρ (hrefl c t)   = nopw?-ren ρ c
 spine?-ren ρ (tr d p e)    = trstk?-ren ρ d p
 spine?-ren ρ (ap c b p)    = apstk?-ren ρ p
+spine?-ren ρ (⌜Id⌝ c a b)  = refl
+spine?-ren ρ (idrefl c t)  = refl
+spine?-ren ρ (jsub d p e)  = idstk?-ren ρ p
 
 stablecd?-ren ρ (var x)       = refl
 stablecd?-ren ρ (lam t)       = refl
@@ -1247,6 +1440,9 @@ stablecd?-ren ρ (⌜Hom⌝ c a b) = stablecd?-ren ρ c
 stablecd?-ren ρ (hrefl c t)   = refl
 stablecd?-ren ρ (tr d p e)    = trstk?-ren ρ d p
 stablecd?-ren ρ (ap c b p)    = apstk?-ren ρ p
+stablecd?-ren ρ (⌜Id⌝ c a b)  = refl
+stablecd?-ren ρ (idrefl c t)  = refl
+stablecd?-ren ρ (jsub d p e)  = idstk?-ren ρ p
 
 pathstk?-ren ρ (var x)       = refl
 pathstk?-ren ρ (lam t)       = refl
@@ -1261,6 +1457,9 @@ pathstk?-ren ρ (⌜Hom⌝ c a b) = refl
 pathstk?-ren ρ (hrefl c t)   = stablecd?-ren ρ c
 pathstk?-ren ρ (tr d p e)    = trstk?-ren ρ d p
 pathstk?-ren ρ (ap c b p)    = apstk?-ren ρ p
+pathstk?-ren ρ (⌜Id⌝ c a b)  = refl
+pathstk?-ren ρ (idrefl c t)  = refl
+pathstk?-ren ρ (jsub d p e)  = idstk?-ren ρ p
 
 apstk?-ren ρ (var x)       = refl
 apstk?-ren ρ (lam t)       = refl
@@ -1275,6 +1474,26 @@ apstk?-ren ρ (⌜Hom⌝ c a b) = refl
 apstk?-ren ρ (hrefl c t)   = stablecd?-ren ρ c
 apstk?-ren ρ (tr d p e)    = trstk?-ren ρ d p
 apstk?-ren ρ (ap c b p)    = apstk?-ren ρ p
+apstk?-ren ρ (⌜Id⌝ c a b)  = refl
+apstk?-ren ρ (idrefl c t)  = refl
+apstk?-ren ρ (jsub d p e)  = idstk?-ren ρ p
+
+idstk?-ren ρ (var x)       = refl
+idstk?-ren ρ (lam t)       = refl
+idstk?-ren ρ (app t u)     = spine?-ren ρ t
+idstk?-ren ρ (pair a b)    = refl
+idstk?-ren ρ (fst t)       = spine?-ren ρ t
+idstk?-ren ρ (snd t)       = spine?-ren ρ t
+idstk?-ren ρ ⌜base⌝        = refl
+idstk?-ren ρ (⌜Π⌝ c d)     = refl
+idstk?-ren ρ (⌜Σ⌝ c d)     = refl
+idstk?-ren ρ (⌜Hom⌝ c a b) = refl
+idstk?-ren ρ (⌜Id⌝ c a b)  = refl
+idstk?-ren ρ (hrefl c t)   = refl
+idstk?-ren ρ (idrefl c t)  = refl
+idstk?-ren ρ (tr d p e)    = trstk?-ren ρ d p
+idstk?-ren ρ (ap c b p)    = apstk?-ren ρ p
+idstk?-ren ρ (jsub d p e)  = idstk?-ren ρ p
 
 trstk?-ren ρ d (var x)       = refl
 trstk?-ren ρ d (lam f)       = trlam?-ren ρ d
@@ -1299,8 +1518,14 @@ trstk?-ren ρ (⌜Hom⌝ c₁ a₁ b₁) (hrefl c t) = stablecd?-ren ρ c
 trstk?-ren ρ (hrefl c₁ t₁) (hrefl c t)    = stablecd?-ren ρ c
 trstk?-ren ρ (tr d₁ p₁ e₁) (hrefl c t)    = stablecd?-ren ρ c
 trstk?-ren ρ (ap c₁ b₁ p₁) (hrefl c t)    = stablecd?-ren ρ c
+trstk?-ren ρ (⌜Id⌝ c₁ a₁ b₁) (hrefl c t)  = stablecd?-ren ρ c
+trstk?-ren ρ (idrefl c₁ t₁) (hrefl c t)   = stablecd?-ren ρ c
+trstk?-ren ρ (jsub d₁ p₁ e₁) (hrefl c t)  = stablecd?-ren ρ c
 trstk?-ren ρ d (tr e q w)    = trstk?-ren ρ e q
 trstk?-ren ρ d (ap c b p)    = apstk?-ren ρ p
+trstk?-ren ρ d (⌜Id⌝ c a b)  = refl
+trstk?-ren ρ d (idrefl c t)  = refl
+trstk?-ren ρ d (jsub d₁ p e) = idstk?-ren ρ p
 
 nopw?-ren ρ (var x)       = refl
 nopw?-ren ρ (lam t)       = refl
@@ -1315,6 +1540,9 @@ nopw?-ren ρ (⌜Hom⌝ c a b) = nopw?-ren ρ c
 nopw?-ren ρ (hrefl c t)   = refl
 nopw?-ren ρ (tr d p e)    = trstk?-ren ρ d p
 nopw?-ren ρ (ap c b p)    = refl
+nopw?-ren ρ (⌜Id⌝ c a b)  = refl
+nopw?-ren ρ (idrefl c t)  = refl
+nopw?-ren ρ (jsub d p e)  = idstk?-ren ρ p
 
 deadmot?-ren ρ (var x)       = refl
 deadmot?-ren ρ (lam t)       = refl
@@ -1329,6 +1557,9 @@ deadmot?-ren ρ (⌜Hom⌝ c a b) = deadmot?-ren ρ c
 deadmot?-ren ρ (hrefl c t)   = deadmot?-ren ρ c
 deadmot?-ren ρ (tr d p e)    = trstk?-ren ρ d p
 deadmot?-ren ρ (ap c b p)    = apstk?-ren ρ p
+deadmot?-ren ρ (⌜Id⌝ c a b)  = refl
+deadmot?-ren ρ (idrefl c t)  = refl
+deadmot?-ren ρ (jsub d p e)  = idstk?-ren ρ p
 
 trlam?-ren ρ (var vz)     = refl
 trlam?-ren ρ (var (vs x)) = refl
@@ -1354,9 +1585,15 @@ trlam?-ren ρ (⌜Hom⌝ c a (⌜Hom⌝ m₁ m₂ m₃)) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (hrefl m₁ m₂))    = refl
 trlam?-ren ρ (⌜Hom⌝ c a (tr m₁ m₂ m₃))    = refl
 trlam?-ren ρ (⌜Hom⌝ c a (ap m₁ m₂ m₃))    = refl
+trlam?-ren ρ (⌜Hom⌝ c a (⌜Id⌝ m₁ m₂ m₃))  = refl
+trlam?-ren ρ (⌜Hom⌝ c a (idrefl m₁ m₂))   = refl
+trlam?-ren ρ (⌜Hom⌝ c a (jsub m₁ m₂ m₃))  = refl
 trlam?-ren ρ (hrefl c t)  = refl
 trlam?-ren ρ (tr d p e)   = refl
 trlam?-ren ρ (ap c b p)   = refl
+trlam?-ren ρ (⌜Id⌝ c a b) = refl
+trlam?-ren ρ (idrefl c t) = refl
+trlam?-ren ρ (jsub d p e) = refl
 
 
 record ElNe {Γ} (A : RTy Γ) : Set where
@@ -2648,6 +2885,7 @@ wne (sne-tr {d = d} {p = p} d₀ p₀ e₀ key) with wn d₀ | wn p₀ | wn e₀
     nrm' : IsNormal (tr n₁ n₂ n₃)
     nrm' (tr-J-base _ _ _ _ _)  = ⊥-elim (f≢t key')
     nrm' (tr-J-Σ _ _ _ _ _ _ _) = ⊥-elim (f≢t key')
+    nrm' (tr-J-Id _ _ _ _ _ _ _ _) = ⊥-elim (f≢t key')
     nrm' (tr-taut _ _)      = ⊥-elim (f≢t key')
     nrm' (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) =
       f≢t (trans (sym (stk⊥dead c₁ kh)) key')
