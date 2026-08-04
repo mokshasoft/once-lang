@@ -60,7 +60,7 @@ open import Once.CCC.Codegen.IRToTrace using
   (ir-to-trace'; ir-to-trace; ir-stack-budget;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; fsize; lsize;
-   push2; pop2; wrap-sum; visit-walk; rebuild-walk)
+   push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-nat-layer)
 
 -- the two projections of `ir-to-trace'`'s 4-tuple this module reads (record
 -- patterns, so they reduce under eta — IRToTrace's own are private)
@@ -424,13 +424,13 @@ lt-refl = ≤-refl
 
 -- `build-layer tag` (inside `cata-trace-nat`): the two stash slots are `n1` and
 -- `suc n1`, both below that strategy's frontier `suc (suc n1)`.
-cata-nat-layer : ∀ (n1 tag b : ℕ) → n1 < b → suc n1 < b
+cata-nat-layer-below : ∀ (n1 tag b : ℕ) → n1 < b → suc n1 < b
                → All (SlotBelow b)
                    (mov-to-output ∷ store-at-slot n1 ∷ instr-alloc-heap 2 ∷
                     store-at-slot (suc n1) ∷ mov-to-input ∷ instr-load-tag-lit tag ∷
                     store-indirect ∷ load-from-slot n1 ∷ store-indirect-suc ∷
                     load-from-slot (suc n1) ∷ [])
-cata-nat-layer n1 tag b p<b s<b =
+cata-nat-layer-below n1 tag b p<b s<b =
   sb-none refl ∷ sb-slot refl p<b (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
   sb-slot refl p<b (λ _ ()) ∷ sb-none refl ∷ sb-slot refl s<b (λ _ ()) ∷ []
@@ -442,19 +442,18 @@ cata-nat-below : ∀ (n1 l1 : ℕ) (at : AbstractTrace) → SegOK n1 at
                → SegOK (cata-budget-of (cata-dispatch strat-nat n1 l1 at))
                        (cata-trace-of (cata-dispatch strat-nat n1 l1 at))
 cata-nat-below n1 l1 at ff =
+  -- Plan 0.63 (iii): `I₁ ++ at ++ (I₂ ++ at ++ I₃)`.
   segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ [])
    (segok-++ (segok-idle _ refl descend)
     (segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
-     (segok-++ (segok-idle _ refl (cata-nat-layer n1 0 _ p<b s<b))
+     (segok-++ (segok-idle _ refl (layer 0))
       (segok-pre _ refl (sb-none refl ∷ [])
        (segok-++ at'
-        (segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ [])
-         (segok-++
+        (segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
+         (segok-++ (segok-idle _ refl (layer 1))
           (segok-pre _ refl (sb-none refl ∷ [])
-           (segok-++ (segok-idle _ refl (cata-nat-layer n1 1 _ p<b s<b))
-            (segok-pre _ refl (sb-none refl ∷ [])
-             (segok-++ at' (segok-idle _ refl (sb-none refl ∷ []))))))
-          (segok-idle _ refl (sb-none refl ∷ sb-none refl ∷ [])))))))))
+           (segok-++ at'
+             (segok-idle _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])))))))))))
   where
     p<b : n1 < suc (suc n1)
     p<b = ≤-step ≤-refl
@@ -465,6 +464,12 @@ cata-nat-below n1 l1 at ff =
     descend = sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
               sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
               sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ []
+    -- indexed by the tag: the skeleton uses the layer at both 0 and 1
+    layer : ∀ (tag : ℕ) → All (SlotBelow (suc (suc n1))) (cata-nat-layer n1 tag)
+    layer tag = sb-none refl ∷ sb-slot refl p<b (λ _ ()) ∷ sb-none refl ∷
+                sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
+                sb-none refl ∷ sb-slot refl p<b (λ _ ()) ∷ sb-none refl ∷
+                sb-slot refl s<b (λ _ ()) ∷ []
 
 -- STRATEGY `strat-linear` DISCHARGED (2026-08-01): the Tier-1 linear cata
 -- reserves exactly SIX slots above the algebra's frontier — `pstash` (n1),

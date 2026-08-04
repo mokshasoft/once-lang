@@ -135,17 +135,17 @@ rebuild-walk-ff valSlot tv tb (F ⊗ G) s lb =
 ------------------------------------------------------------------------
 cata-nat-ff : ∀ n1 l1 at → FrameFreeTrace at
             → FrameFreeTrace (cata-trace-of (cata-trace-nat n1 l1 at))
+-- Plan 0.63 (iii): the skeleton is `I₁ ++ at ++ (I₂ ++ at ++ I₃)` now, so the
+-- walk follows that alternation directly.
 cata-nat-ff n1 l1 at ff =
   tt ∷ tt ∷
-  ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])  -- descend-flat
+  ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])  -- descend
       (tt ∷ tt ∷ tt ∷
-       ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])       -- build-layer 0
-           (tt ∷ ++⁺ ff
-             -- ascend-flat: two loop instrs, ascend-body, then jmp/label
-             (tt ∷ tt ∷
-              ++⁺ (tt ∷ ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-                            (tt ∷ ++⁺ ff (tt ∷ [])))
-                  (tt ∷ tt ∷ []))))
+       ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])       -- layer 0
+           (tt ∷ ++⁺ ff                                                  -- at (1st)
+             (tt ∷ tt ∷ tt ∷
+              ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) -- layer 1
+                  (tt ∷ ++⁺ ff (tt ∷ tt ∷ tt ∷ [])))))                   -- at (2nd) ++ I₃
 
 cata-linear-ff : ∀ n1 l1 at → FrameFreeTrace at
                → FrameFreeTrace (cata-trace-of (cata-trace-linear n1 l1 at))

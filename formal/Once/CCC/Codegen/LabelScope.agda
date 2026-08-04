@@ -53,7 +53,8 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Codegen.IRToTrace using
   (ir-to-trace'; ir-to-trace; CataStrategy; strat-const; strat-nat; strat-linear
   ; strat-branching; cata-strategy; cata-dispatch; lsize
-  ; push2; pop2; wrap-sum; visit-walk; rebuild-walk)
+  ; push2; pop2; wrap-sum; visit-walk; rebuild-walk
+  ; cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-nat-layer; cata-nat-descend)
 open import Once.CCC.Codegen.LabelRange using (label-of; cata-label-of; label-mono; cata-label-mono)
 open import Once.CCC.Codegen.SlotBudget using
   (fetch-at; seg-at; SegState; seg-idle?; idle-seg-at
@@ -245,11 +246,16 @@ cata-nat-ls : ∀ (lo n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → Labels
             → LabelsIn lo (cata-label-of (cata-dispatch strat-nat n1 l1 at))
                        (cata-trace-of (cata-dispatch strat-nat n1 l1 at))
 cata-nat-ls lo n1 l1 at lo≤l1 atls =
+  -- Plan 0.63 (iii): `I₁ ++ at ++ (I₂ ++ at ++ I₃)`
   li-none refl ∷ li-none refl ∷
   ++⁺ descend
       (li-none refl ∷ li-none refl ∷ li-none refl ∷
        ++⁺ (layer 0)
-           (li-none refl ∷ ++⁺ at' ascend))
+           (li-none refl ∷ ++⁺ at'
+             (li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ li-none refl ∷
+              ++⁺ (layer 1)
+                  (li-none refl ∷ ++⁺ at'
+                    (li-none refl ∷ li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ [])))))
   where
     hi = suc (suc (suc (suc (suc (suc l1)))))
     L0 : lo ≤ l1
@@ -296,11 +302,7 @@ cata-nat-ls lo n1 l1 at lo≤l1 atls =
       li-lab refl L2 H2 ∷ li-none refl ∷
       li-lab refl L3 H3 ∷ li-lab refl L0 H0 ∷
       li-lab refl L1 H1 ∷ []
-    ascend : LabelsIn lo hi _
-    ascend =
-      li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷
-      ++⁺ (li-none refl ∷ ++⁺ (layer 1) (li-none refl ∷ ++⁺ at' (li-none refl ∷ [])))
-          (li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ [])
+
 
 -- The Tier-1 LINEAR skeleton: four labels above `l1` (`ld-top`, `ld-end`,
 -- `la-top`, `la-end`), the algebra spliced twice.
@@ -862,7 +864,63 @@ pieces-≡ : ∀ {at : AbstractTrace} {a b : ℕ} {t t' : AbstractTrace}
          → t ≡ t' → Pieces at a b t → Pieces at a b t'
 pieces-≡ refl ps = ps
 
--- WHY THE CATA WITNESSES ARE NOT HERE (2026-08-04, measured by attempting
+------------------------------------------------------------------------
+-- THE `cata-nat` WITNESS. This is what the `IRToTrace` refactor bought: the
+-- skeleton decomposes DEFINITIONALLY, so the witness is two `pcons` and a
+-- `pnil` with no transcription and no `++-assoc` transport.
+------------------------------------------------------------------------
+cata-nat-pieces : ∀ (n1 l1 : ℕ) (at : AbstractTrace)
+                → Pieces at l1 (suc (suc (suc (suc (suc (suc l1))))))
+                         (cata-trace-of (cata-dispatch strat-nat n1 l1 at))
+cata-nat-pieces n1 l1 at =
+  pcons refl I₁-ls (pcons refl I₂-ls (pnil refl I₃-ls))
+  where
+    hi = suc (suc (suc (suc (suc (suc l1)))))
+    L0 : l1 ≤ l1
+    L0 = ≤-refl
+    L1 : l1 ≤ suc l1
+    L1 = ≤-step L0
+    L2 : l1 ≤ suc (suc l1)
+    L2 = ≤-step L1
+    L3 : l1 ≤ suc (suc (suc l1))
+    L3 = ≤-step L2
+    L4 : l1 ≤ suc (suc (suc (suc l1)))
+    L4 = ≤-step L3
+    L5 : l1 ≤ suc (suc (suc (suc (suc l1))))
+    L5 = ≤-step L4
+    H0 : l1 < hi
+    H0 = ≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))
+    H1 : suc l1 < hi
+    H1 = ≤-step (≤-step (≤-step (≤-step ≤-refl)))
+    H2 : suc (suc l1) < hi
+    H2 = ≤-step (≤-step (≤-step ≤-refl))
+    H3 : suc (suc (suc l1)) < hi
+    H3 = ≤-step (≤-step ≤-refl)
+    H4 : suc (suc (suc (suc l1))) < hi
+    H4 = ≤-step ≤-refl
+    H5 : suc (suc (suc (suc (suc l1)))) < hi
+    H5 = ≤-refl
+    I₁-ls : LabelsIn l1 hi (cata-nat-I₁ n1 l1)
+    I₁-ls =
+      li-none refl ∷ li-none refl ∷
+      li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷ li-lab refl L2 H2 ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-lab refl L3 H3 ∷ li-lab refl L2 H2 ∷ li-none refl ∷
+      li-lab refl L3 H3 ∷ li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ []
+    I₂-ls : LabelsIn l1 hi (cata-nat-I₂ n1 l1)
+    I₂-ls =
+      li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ []
+    I₃-ls : LabelsIn l1 hi (cata-nat-I₃ l1)
+    I₃-ls = li-none refl ∷ li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ []
+
+-- (superseded note) WHY THE CATA WITNESSES WERE NOT HERE (2026-08-04, measured by attempting
 -- them): a `Pieces` witness has to name the skeleton fragments, and in
 -- `cata-trace-nat` / `-linear` / `-branching` they are `let`-bound INSIDE the
 -- function (`descend-flat`, `build-layer`, `ascend-body`, `ascend-flat`, …) —

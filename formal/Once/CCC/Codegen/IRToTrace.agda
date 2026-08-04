@@ -166,42 +166,57 @@ cata-strategy F with rec-count F
 -- The current (Nat-shaped) codegen body, extracted so the dispatch can
 -- pick it. Takes the post-`alg` frontier/label counters + alg's main
 -- trace `at`; returns (frontier-after , label-after , main-trace).
+-- Plan 0.63 (iii): THE SKELETON PIECES ARE TOP-LEVEL, and the trace is their
+-- ALTERNATION with the algebra:
+--
+--     cata-nat-I₁ ++ at ++ (cata-nat-I₂ ++ at ++ cata-nat-I₃)
+--
+-- Same list as before — only the bracketing of the `++`s changed (the ascend
+-- arm used to nest as `(at ++ X) ++ Y`). The point is that the decomposition
+-- is now DEFINITIONAL, so a proof about "idle skeleton with embedded copies of
+-- the algebra" (`LabelScope.Pieces`) can be given without transcribing 28
+-- instructions into the proof and letting them rot.
+cata-nat-layer : ℕ → ℕ → AbstractTrace
+cata-nat-layer n1 tag =
+  mov-to-output ∷ store-at-slot n1 ∷ instr-alloc-heap 2 ∷
+  store-at-slot (suc n1) ∷ mov-to-input ∷ instr-load-tag-lit tag ∷
+  store-indirect ∷ load-from-slot n1 ∷ store-indirect-suc ∷
+  load-from-slot (suc n1) ∷ []
+
+cata-nat-descend : ℕ → AbstractTrace
+cata-nat-descend l1 =
+  instr-ctrl (c-label l1) ∷
+  instr-ctrl (c-branch-scratch-zero (suc l1)) ∷
+  instr-ctrl (c-branch-tag-zero (suc (suc l1))) ∷
+  instr-reg-op count-inc ∷ load-indirect-suc ∷ mov-to-input ∷
+  instr-ctrl (c-jmp (suc (suc (suc l1)))) ∷
+  instr-ctrl (c-label (suc (suc l1))) ∷ instr-reg-op scratch-zero ∷
+  instr-ctrl (c-label (suc (suc (suc l1)))) ∷ instr-ctrl (c-jmp l1) ∷
+  instr-ctrl (c-label (suc l1)) ∷ []
+
+cata-nat-I₁ : ℕ → ℕ → AbstractTrace
+cata-nat-I₁ n1 l1 =
+  instr-reg-op scratch-one ∷ instr-reg-op count-zero ∷
+  (cata-nat-descend l1 ++
+   (instr-reg-op scratch-load-count ∷ instr-load-tag-lit 0 ∷ mov-to-input ∷
+    (cata-nat-layer n1 0 ++ (mov-to-input ∷ []))))
+
+cata-nat-I₂ : ℕ → ℕ → AbstractTrace
+cata-nat-I₂ n1 l1 =
+  instr-ctrl (c-label (suc (suc (suc (suc l1))))) ∷
+  instr-ctrl (c-branch-scratch-zero (suc (suc (suc (suc (suc l1)))))) ∷
+  mov-to-input ∷ (cata-nat-layer n1 1 ++ (mov-to-input ∷ []))
+
+cata-nat-I₃ : ℕ → AbstractTrace
+cata-nat-I₃ l1 =
+  instr-reg-op scratch-dec ∷
+  instr-ctrl (c-jmp (suc (suc (suc (suc l1))))) ∷
+  instr-ctrl (c-label (suc (suc (suc (suc (suc l1)))))) ∷ []
+
 cata-trace-nat : ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-trace-nat n1 l1 at =
-  let pstash = n1
-      sstash = suc n1
-      next   = suc (suc n1)
-      ld-top = l1 ; ld-end = suc l1 ; ld-inl = suc (suc l1) ; ld-de = suc (suc (suc l1))
-      la-top = suc (suc (suc (suc l1))) ; la-end = suc (suc (suc (suc (suc l1))))
-      l2 = suc (suc (suc (suc (suc (suc l1)))))
-      build-layer : ℕ → AbstractTrace
-      build-layer tag =
-        mov-to-output ∷ store-at-slot pstash ∷ instr-alloc-heap 2 ∷
-        store-at-slot sstash ∷ mov-to-input ∷ instr-load-tag-lit tag ∷
-        store-indirect ∷ load-from-slot pstash ∷ store-indirect-suc ∷
-        load-from-slot sstash ∷ []
-      descend-flat =
-        instr-ctrl (c-label ld-top) ∷
-        instr-ctrl (c-branch-scratch-zero ld-end) ∷
-        instr-ctrl (c-branch-tag-zero ld-inl) ∷
-        instr-reg-op count-inc ∷ load-indirect-suc ∷ mov-to-input ∷
-        instr-ctrl (c-jmp ld-de) ∷
-        instr-ctrl (c-label ld-inl) ∷ instr-reg-op scratch-zero ∷
-        instr-ctrl (c-label ld-de) ∷ instr-ctrl (c-jmp ld-top) ∷
-        instr-ctrl (c-label ld-end) ∷ []
-      ascend-body =
-        mov-to-input ∷ (build-layer 1 ++ (mov-to-input ∷ at ++ (instr-reg-op scratch-dec ∷ [])))
-      ascend-flat =
-        instr-ctrl (c-label la-top) ∷
-        instr-ctrl (c-branch-scratch-zero la-end) ∷
-        (ascend-body ++ (instr-ctrl (c-jmp la-top) ∷ instr-ctrl (c-label la-end) ∷ []))
-      trace =
-        instr-reg-op scratch-one ∷ instr-reg-op count-zero ∷
-        (descend-flat ++
-         (instr-reg-op scratch-load-count ∷
-          instr-load-tag-lit 0 ∷ mov-to-input ∷
-          (build-layer 0 ++ (mov-to-input ∷ at ++ ascend-flat))))
-  in next , l2 , trace
+  suc (suc n1) , suc (suc (suc (suc (suc (suc l1))))) ,
+  (cata-nat-I₁ n1 l1 ++ at ++ (cata-nat-I₂ n1 l1 ++ at ++ cata-nat-I₃ l1))
 
 -- Plan 0.36 Phase 2b Tier 1: functor-general LINEAR (single recursive
 -- position, with payload) cata codegen via a SIMPLE 2-cell linked payload

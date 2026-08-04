@@ -252,12 +252,12 @@ module CataIRSlotStable {FS : FrameSemantics} where
     tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ                                                          -- scratch-load-count, load-tag, mov
     tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ                -- build-layer 0 (10)
     tt ∷ᴬ                                                                       -- mov
+    -- Plan 0.63 (iii): `I₁ ++ at ++ (I₂ ++ at ++ I₃)`
     ++⁺ sat                                                                     -- at (base)
       (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ                                                        -- la-top, la-end, mov
        tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ              -- build-layer 1 (10)
        tt ∷ᴬ                                                                    -- mov
-       ++⁺ (++⁺ sat (tt ∷ᴬ []ᴬ))                                                -- at ++ [scratch-dec]
-         (all-stable?-sound _ refl))                                            -- [jmp, label]
+       ++⁺ sat (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ []ᴬ))                                         -- at ++ I₃
 
   -- Tier-1 linear: descend(25) ∷ scratch-load-count ∷ (at ++ ascend);
   -- ascend = (25 concrete) ∷ (at ++ [scratch-dec, jmp, label]).

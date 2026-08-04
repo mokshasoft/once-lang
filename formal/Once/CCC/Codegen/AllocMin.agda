@@ -120,11 +120,11 @@ cata-nat-am n1 l1 at am =
   ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])  -- descend-flat
       (tt ∷ tt ∷ tt ∷
        ++⁺ (tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])       -- build-layer 0
+           -- Plan 0.63 (iii): `I₁ ++ at ++ (I₂ ++ at ++ I₃)`
            (tt ∷ ++⁺ am
-             (tt ∷ tt ∷
-              ++⁺ (tt ∷ ++⁺ (tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-                            (tt ∷ ++⁺ am (tt ∷ [])))
-                  (tt ∷ tt ∷ []))))
+             (tt ∷ tt ∷ tt ∷
+              ++⁺ (tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+                  (tt ∷ ++⁺ am (tt ∷ tt ∷ tt ∷ [])))))
 
 cata-linear-am : ∀ n1 l1 at → AllocMinTrace at
                → AllocMinTrace (cata-trace-of (cata-trace-linear n1 l1 at))
