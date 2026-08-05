@@ -53,7 +53,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; ⌜Id⌝; idrefl; jsub
-        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃
+        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; extR; renTy; renTm
         ; Sub; subTy; subTm; extS; idₛ
         ; _∘ᵣ_
@@ -76,9 +76,12 @@ open import poc.OCP0009.NbEPDirDBType
         ; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd
         ; El-⌜Hom⌝; ξ-El; El-⌜Π⌝; _⟶ᵀ_; El-⌜base⌝; El-⌜Σ⌝; El-⌜Id⌝
+        ; El-⌜Nat⌝; El-⌜Unit⌝
         ; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
+        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
         ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢trU; ⊢ap; ⊢conv
+        ; ⊢⌜Nat⌝; ⊢⌜Unit⌝
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
         ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec
@@ -95,24 +98,26 @@ open import poc.OCP0009.NbEPDirDBConf using ( pwShift-ren; stkC?-red; subTm-mono
 open import poc.OCP0009.NbEPDirDBDec using ( Dec; dec-conv )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; confluentᵀ; church-rosserᵀ; Π-inj
-        ; red→≅ᵀ; Π-reduct; Σ-reduct; mkΠRed; mkΣRed 
-        ; Id-reduct )
+        ; red→≅ᵀ; Π-reduct; Σ-reduct; mkΠRed; mkΣRed
+        ; Id-reduct; ⟶ᵀ*-Homᵀ )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( HomΠShape; hsΠ; hsH; hom-shape; hom-shapeN; nn-U; NoNat; pw-El-decode
-        ; HomRed; mkHomRed; Hom-to-Hom
+        ; HomRed; mkHomRed; Hom-to-Hom; homAmb→
         ; HomToΠ; via-U; via-Π; hom-to-Π
         ; U-reduct; wk-cancel-tm; ≅ᵀ-Homᵀ; gen-var; subTy-comm; subTy-monoˢ )
 open import poc.OCP0009.NbEPDirDBLR
   using ( SNe; sne-var; sne-app; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap; sne-jsub
         ; Ne; ne-var; ne-app; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁
         ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-cId; sn-idrefl; sn-exp
+        ; sn-cNat; sn-cUnit
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
-        ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-J-Id; snr-taut; snr-trᵖ; snr-ap-J; snr-apᵖ
+        ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-J-Id; snr-J-Unit; snr-taut; snr-trᵖ; snr-ap-J; snr-apᵖ
         ; snr-jsub-refl; snr-jsubᵖ
         ; snr-natrec-zero; snr-natrec-suc; snr-natrecⁿ
         ; sne-natrec; ne-natrec; sn-unit; sn-nzero; sn-nsuc
         ; NatMem; nm-ne; nm-zero; nm-suc; nm-exp; natmem-whred
         ; ⊩₁Unit; ⊩₁Nat; natstk?; natstk?-ren; natstk?-red; sne→natstk; sn-whred
+        ; homNatSem; homNatSem₀; hns₀-in; bwd₀-mem⁻
         ; StkHd; sh-Hom; sh-NatH; homnat?
         ; trstk?-ren; apstk?-ren; idstk?-ren; nopw?-ren; trlam?-ren
         ; idstk?-red; ⊩₀Id; ⊩₁Id; IdPay; idpay-transfer; idpay-peel; sne-nopay
@@ -126,7 +131,8 @@ open import poc.OCP0009.NbEPDirDBLR
         ; PayT; payChain; payT-exp; payT-whred; payT-irrel
         ; payT-cast; payT-code; payHomT; _⟶snr*_; snr-done; snr-step
         ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; _⊩₀∋_; bwd₀; exp₁
-        ; base-nf; El-ne-reduct; mkElNe; Hom-stk-reduct; mkHomStk
+        ; ⊩₀Unit; ⊩₀Nat
+        ; base-nf; Unit-nf; Nat-nf; El-ne-reduct; mkElNe; Hom-stk-reduct; mkHomStk
         ; nopw?; trlam?; stablecd?; idstk?; sne→spine; wk-single; snr→⟶
         ; exp₀; f≢t
         ; mem-whred₁; homSem₀; homSem₀-mem-endpoints
@@ -201,6 +207,8 @@ subTm-var ρ (pair a b) = cong₂ pair (subTm-var ρ a) (subTm-var ρ b)
 subTm-var ρ (fst p)    = cong fst (subTm-var ρ p)
 subTm-var ρ (snd p)    = cong snd (subTm-var ρ p)
 subTm-var ρ ⌜base⌝     = refl
+subTm-var ρ ⌜Nat⌝      = refl
+subTm-var ρ ⌜Unit⌝     = refl
 subTm-var ρ unit       = refl
 subTm-var ρ nzero      = refl
 subTm-var ρ (nsuc n)   = cong nsuc (subTm-var ρ n)
@@ -358,6 +366,8 @@ sn-anti {t = natrec z w n} (sn-exp r h) with snr-anti r
 sn-anti {t = lam s}    (sn-lam h)     = sn-lam (sn-anti h)
 sn-anti {t = pair a b} (sn-pair ha hb) = sn-pair (sn-anti ha) (sn-anti hb)
 sn-anti {t = ⌜base⌝}   _              = sn-cb
+sn-anti {t = ⌜Nat⌝}    _              = sn-cNat
+sn-anti {t = ⌜Unit⌝}   _              = sn-cUnit
 sn-anti {t = ⌜Π⌝ c d}  (sn-cΠ hc hd)  = sn-cΠ (sn-anti hc) (sn-anti hd)
 sn-anti {t = ⌜Σ⌝ c d}  (sn-cΣ hc hd)  = sn-cΣ (sn-anti hc) (sn-anti hd)
 sn-anti {t = ⌜Hom⌝ c a b} (sn-cH hc ha hb) =
@@ -451,6 +461,17 @@ snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl ⌜base⌝ s) e} (snr-J-base hd hs) =
   e , (snr-J-base (sn-anti hd) (sn-anti hs) , refl)
 snr-anti {t = tr d (hrefl ⌜base⌝ s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl ⌜base⌝ s) e} (snr-trᵖ (snr-hrefl-pw ()))
+snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl ⌜Unit⌝ s) e} (snr-J-Unit hd hs) =
+  e , (snr-J-Unit (sn-anti hd) (sn-anti hs) , refl)
+snr-anti {t = tr d (hrefl ⌜Unit⌝ s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl ⌜Unit⌝ s) e} (snr-trᵖ (snr-hrefl-pw ()))
+-- ⌜Nat⌝ has NO J root — a `hrefl ⌜Nat⌝` path is neutral — so the only
+-- shapes here are the (absurd) code reductions.
+snr-anti {t = tr d (hrefl ⌜Nat⌝ s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl ⌜Nat⌝ s) e} (snr-trᵖ (snr-hrefl-pw ()))
+-- a bare datatype CODE as a path is permanently stuck: no root fires.
+snr-anti {t = tr (⌜Hom⌝ c a m) ⌜Nat⌝ e} (snr-trᵖ ())
+snr-anti {t = tr (⌜Hom⌝ c a m) ⌜Unit⌝ e} (snr-trᵖ ())
 snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-J-Σ hd h₁ h₂ hs) =
   e , (snr-J-Σ (sn-anti hd) (sn-anti h₁) (sn-anti h₂) (sn-anti hs) , refl)
 snr-anti {t = tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
@@ -528,11 +549,15 @@ snr-anti {t = tr d (tr g w v) e} (snr-trᵖ r) with snr-anti r
 snr-anti {t = app (var x) u}    (snr-app ())
 snr-anti {t = app (pair a b) u} (snr-app ())
 snr-anti {t = app ⌜base⌝ u}     (snr-app ())
+snr-anti {t = app ⌜Nat⌝ u}      (snr-app ())
+snr-anti {t = app ⌜Unit⌝ u}     (snr-app ())
 snr-anti {t = app (⌜Π⌝ c d) u}  (snr-app ())
 snr-anti {t = app (⌜Σ⌝ c d) u}  (snr-app ())
 snr-anti {t = fst (var x)}      (snr-fst ())
 snr-anti {t = fst (lam s)}      (snr-fst ())
 snr-anti {t = fst ⌜base⌝}       (snr-fst ())
+snr-anti {t = fst ⌜Nat⌝}        (snr-fst ())
+snr-anti {t = fst ⌜Unit⌝}       (snr-fst ())
 snr-anti {t = fst (⌜Π⌝ c d)}    (snr-fst ())
 snr-anti {t = fst (⌜Σ⌝ c d)}    (snr-fst ())
 snr-anti {t = app (⌜Hom⌝ c a b) u} (snr-app ())
@@ -553,6 +578,8 @@ snr-anti {t = snd (tr d p e)}      (snr-snd r) with snr-anti r
 snr-anti {t = snd (var x)}      (snr-snd ())
 snr-anti {t = snd (lam s)}      (snr-snd ())
 snr-anti {t = snd ⌜base⌝}       (snr-snd ())
+snr-anti {t = snd ⌜Nat⌝}        (snr-snd ())
+snr-anti {t = snd ⌜Unit⌝}       (snr-snd ())
 snr-anti {t = snd (⌜Π⌝ c d)}    (snr-snd ())
 snr-anti {t = snd (⌜Σ⌝ c d)}    (snr-snd ())
 snr-anti {t = app (ap c b p) u} (snr-app r) with snr-anti r
@@ -622,6 +649,8 @@ csr-anti {t = natrec z w n} (csr-here r) with snr-anti r
 csr-anti {t = lam _} (csr-here ())
 csr-anti {t = pair _ _} (csr-here ())
 csr-anti {t = ⌜base⌝} (csr-here ())
+csr-anti {t = ⌜Nat⌝ } (csr-here ())
+csr-anti {t = ⌜Unit⌝ } (csr-here ())
 csr-anti {t = ⌜Π⌝ _ _} (csr-here ())
 csr-anti {t = ⌜Σ⌝ _ _} (csr-here ())
 csr-anti {t = app f u} (csr-here r) with snr-anti r
@@ -681,6 +710,8 @@ sn-ren (sn-ne n)        = sn-ne (sne-ren n)
 sn-ren (sn-lam h)       = sn-lam (sn-ren h)
 sn-ren (sn-pair ha hb)  = sn-pair (sn-ren ha) (sn-ren hb)
 sn-ren sn-cb            = sn-cb
+sn-ren sn-cNat          = sn-cNat
+sn-ren sn-cUnit         = sn-cUnit
 sn-ren (sn-cΠ h₁ h₂)    = sn-cΠ (sn-ren h₁) (sn-ren h₂)
 sn-ren (sn-cΣ h₁ h₂)    = sn-cΣ (sn-ren h₁) (sn-ren h₂)
 sn-ren (sn-cH h₁ h₂ h₃) = sn-cH (sn-ren h₁) (sn-ren h₂) (sn-ren h₃)
@@ -719,6 +750,7 @@ snr-ren {ρ = ρ} (snr-hrefl-pw {C = C} {t = t} kp) =
                (sym (wk-ren-tm ρ t)))
         (snr-hrefl-pw (trans (pw?-ren ρ C) kp))
 snr-ren (snr-J-base hd hs) = snr-J-base (sn-ren hd) (sn-ren hs)
+snr-ren (snr-J-Unit hd hs) = snr-J-Unit (sn-ren hd) (sn-ren hs)
 snr-ren (snr-J-Σ hd h₁ h₂ hs) =
   snr-J-Σ (sn-ren hd) (sn-ren h₁) (sn-ren h₂) (sn-ren hs)
 snr-ren {ρ = ρ} (snr-J-Hom {c₁ = c₁} hd h₁ h₂ h₃ hs ks) =
@@ -1032,6 +1064,10 @@ snHH sp (sn-pair ha hb) snt noPiT =
   sn-ne (sne-hrefl (snPlug sp (sn-pair ha hb)) snt (nopw-plug sp refl))
 snHH sp sn-cb snt noPiT =
   sn-ne (sne-hrefl (snPlug sp sn-cb) snt (nopw-plug sp refl))
+snHH sp sn-cNat snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp sn-cNat) snt (nopw-plug sp refl))
+snHH sp sn-cUnit snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp sn-cUnit) snt (nopw-plug sp refl))
 snHH sp (sn-cΣ h₁ h₂) snt noPiT =
   sn-ne (sne-hrefl (snPlug sp (sn-cΣ h₁ h₂)) snt (nopw-plug sp refl))
 snHH sp (sn-cId h₁ h₂ h₃) snt noPiT =
@@ -1058,6 +1094,55 @@ csrs→⟶* : {c c* : RTm Ξ} → c ⟶csr* c* → c ⟶* c*
 csrs→⟶* csr-done       = done
 csrs→⟶* (csr-step σ q) = step (csr→⟶ σ) (csrs→⟶* q)
 
+-- ★★ WF stage C: at a `Nat` ambient the hom interp is `homNatSem`, the
+-- double meta-induction — NOT a stuck `⊩₁Hom`.  But EVERY one of its
+-- leaves is SN-only membership: the stuck order-hom (`⊩₁Hom`), the
+-- holding inequality (`⊩₁Unit`), and the failing one (`⊩₁base`) all
+-- read `SN t`, and `bwd₁` is constructor-preserving.  So SN-ness alone
+-- discharges the whole tree, whatever the endpoints do.
+--
+-- ⚠ the `sa`/`sb` arguments must be handed on EXACTLY as `homNatSem`
+-- does them (`sn-whred`, and the `sn-nsuc` match standing in for its
+-- local `snsuc-inv`) or the two indices stop being definitionally
+-- equal and the recursion no longer typechecks.
+-- `bwd₁` only ever retargets the reduction chain, never the shape, so
+-- membership is carried across unchanged — but the equation is stuck
+-- until the interp's constructor is known, hence this dispatch.
+mem-bwd₁ : {Γ : Cx} {X Y : RTy Γ} (q : X ⟶ᵀ* Y) (R : ⊩₁ Y) {w : RTm Γ} →
+           R ⊩₁∋ w → (bwd₁ q R) ⊩₁∋ w
+mem-bwd₁ q (⊩₁base _)  h = h
+mem-bwd₁ q (⊩₁U _)     h = h
+mem-bwd₁ q (⊩₁ne _ _)  h = h
+mem-bwd₁ q (⊩₁Π _ _ _) h = h
+mem-bwd₁ q (⊩₁Σ _ _ _) h = h
+mem-bwd₁ q (⊩₁Hom _ _) h = h
+mem-bwd₁ q (⊩₁Unit _)  h = h
+mem-bwd₁ q (⊩₁Nat _)   h = h
+mem-bwd₁ q (⊩₁Id _)    h = h
+
+natHreflMem : {Γ : Cx} (a b : RTm Γ) (sa : SN a) (ma : NatMem a)
+              (sb : SN b) (mb : NatMem b) {w : RTm Γ} → SN w →
+              (homNatSem a b sa ma sb mb) ⊩₁∋ w
+natHreflMem a b sa (nm-ne nt) sb mb h = h
+natHreflMem a b sa (nm-exp {t' = a'} r ma) sb mb h =
+  mem-bwd₁ (stepᵀ (ξ-Homˡ (snr→⟶ r)) doneᵀ)
+           (homNatSem a' b (sn-whred sa r) ma sb mb)
+           (natHreflMem a' b (sn-whred sa r) ma sb mb h)
+natHreflMem .nzero b sa nm-zero sb mb h =
+  mem-bwd₁ (stepᵀ (Hom-Nat-z b) doneᵀ) (⊩₁Unit doneᵀ) h
+natHreflMem .(nsuc _) b sa (nm-suc ma) sb (nm-ne nt) h = h
+natHreflMem .(nsuc _) b sa (nm-suc {n = m} ma) sb (nm-exp {t' = b'} r mb) h =
+  mem-bwd₁ (stepᵀ (ξ-Homʳ (snr→⟶ r)) doneᵀ)
+           (homNatSem (nsuc m) b' sa (nm-suc ma) (sn-whred sb r) mb)
+           (natHreflMem (nsuc m) b' sa (nm-suc ma) (sn-whred sb r) mb h)
+natHreflMem .(nsuc _) .nzero sa (nm-suc {n = m} ma) sb nm-zero h =
+  mem-bwd₁ (stepᵀ (Hom-Nat-sz m) doneᵀ) (⊩₁base doneᵀ) h
+natHreflMem .(nsuc _) .(nsuc _) (sn-nsuc sa) (nm-suc {n = m} ma)
+                                (sn-nsuc sb) (nm-suc {n = n} mb) h =
+  mem-bwd₁ (stepᵀ (Hom-Nat-ss m n) doneᵀ)
+           (homNatSem m n sa ma sb mb)
+           (natHreflMem m n sa ma sb mb h)
+
 semHreflPay :
   (x₀ : Var Ξ) {A : RTy Ξ} {c t : RTm Ξ} (R₀ : ⊩₀ A)
   (lk : A ≅ᵀ El c) → SN c → PayT R₀ c →
@@ -1070,6 +1155,30 @@ semHreflPay x₀ (⊩₀base p) lk snc pay snt ht =
   noPiT ch with church-rosserᵀ
                  (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
   ... | E , (bE , πE) with base-nf bE
+  ...   | refl with Π-reduct πE
+  ...     | mkΠRed _ _ () _ _
+-- ★ WF stage C: `Unit`/`Nat` are INERT types, so the "the decode never
+-- unfolds to Π" obligation is discharged by their own normal forms —
+-- the same two-liner as ⌜base⌝.
+semHreflPay x₀ (⊩₀Unit p) lk snc pay snt ht =
+  snHH sp-nil snc snt noPiT
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (uE , πE) with Unit-nf uE
+  ...   | refl with Π-reduct πE
+  ...     | mkΠRed _ _ () _ _
+semHreflPay x₀ {t = t} (⊩₀Nat p) lk snc pay snt ht =
+  mem-bwd₁ (⟶ᵀ*-Homᵀ p)
+           (homNatSem t t (projl ht) (projr ht) (projl ht) (projr ht))
+           (natHreflMem t t (projl ht) (projr ht) (projl ht) (projr ht)
+                        (snHH sp-nil snc snt noPiT))
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (nE , πE) with Nat-nf nE
   ...   | refl with Π-reduct πE
   ...     | mkΠRed _ _ () _ _
 semHreflPay x₀ (⊩₀ne p n) lk snc pay snt ht =
@@ -1193,6 +1302,11 @@ codeNorm (sn-ne n) kn = _ , (csr-done , cf-dead (sne→stablecd n))
 codeNorm (sn-lam h) kn = _ , (csr-done , cf-dead refl)
 codeNorm (sn-pair ha hb) kn = _ , (csr-done , cf-dead refl)
 codeNorm sn-cb kn = _ , (csr-done , cf-stk refl)
+codeNorm sn-cUnit kn = _ , (csr-done , cf-stk refl)
+-- ★★ the THIRD code kind: ⌜Nat⌝ is neither `pw?` nor `stkC?`.  It is
+-- however DEAD (nothing fires on a `hrefl ⌜Nat⌝` path since the
+-- retraction), so it lands in `cf-dead` and `CodeFate` stays two-way.
+codeNorm sn-cNat kn = _ , (csr-done , cf-dead refl)
 codeNorm (sn-cΣ h₁ h₂) kn = _ , (csr-done , cf-stk refl)
 codeNorm (sn-cId h₁ h₂ h₃) kn = _ , (csr-done , cf-stk refl)
 codeNorm (sn-idrefl h₁ h₂) kn = _ , (csr-done , cf-dead refl)
@@ -1337,6 +1451,8 @@ motFate (sn-ne (sne-natrec h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-lam h) = _ , (csr-done , mf-dead refl)
 motFate (sn-pair a b) = _ , (csr-done , mf-dead refl)
 motFate sn-cb = _ , (csr-done , mf-dead refl)
+motFate sn-cNat = _ , (csr-done , mf-dead refl)
+motFate sn-cUnit = _ , (csr-done , mf-dead refl)
 motFate (sn-cΠ h₁ h₂) = _ , (csr-done , mf-pw refl)
 motFate (sn-cΣ h₁ h₂) = _ , (csr-done , mf-dead refl)
 motFate (sn-cId h₁ h₂ h₃) = _ , (csr-done , mf-dead refl)
@@ -1406,6 +1522,8 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
                          (trans (deadmot?-ren vs CT*) k)))
   go' (sn-pair a b)    = sn-ne (sne-tr snM (sn-pair a b) snE refl)
   go' sn-cb            = sn-ne (sne-tr snM sn-cb snE refl)
+  go' sn-cNat            = sn-ne (sne-tr snM sn-cNat snE refl)
+  go' sn-cUnit            = sn-ne (sne-tr snM sn-cUnit snE refl)
   go' (sn-cΠ h₁ h₂)    = sn-ne (sne-tr snM (sn-cΠ h₁ h₂) snE refl)
   go' (sn-cΣ h₁ h₂)    = sn-ne (sne-tr snM (sn-cΣ h₁ h₂) snE refl)
   go' (sn-cH h₁ h₂ h₃) = sn-ne (sne-tr snM (sn-cH h₁ h₂ h₃) snE refl)
@@ -1416,6 +1534,12 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
   go' (sn-nsuc h)       = sn-ne (sne-tr snM (sn-nsuc h) snE refl)
 
   goH sn-cb sns kn = sn-exp (snr-J-base snM sns) snE
+  goH sn-cUnit sns kn = sn-exp (snr-J-Unit snM sns) snE
+  -- ★★ J is OFF at ⌜Nat⌝, so this configuration is permanently stuck —
+  -- i.e. NEUTRAL.  `stablecd? ⌜Nat⌝ = true` is exactly the key that
+  -- lets `sne-tr` accept it.
+  goH sn-cNat sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-cNat sns refl)) snE refl)
   goH (sn-cΣ h₁ h₂) sns kn = sn-exp (snr-J-Σ snM h₁ h₂ sns) snE
   goH (sn-cId h₁ h₂ h₃) sns kn = sn-exp (snr-J-Id snM h₁ h₂ h₃ sns) snE
   goH (sn-idrefl h₁ h₂) sns kn =
@@ -1456,6 +1580,33 @@ semTr x₀ (⊩₀base p) lk snCT payR hA hT hU snp hTe hUe hp hE =
   noPiT ch with church-rosserᵀ
                  (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
   ... | E , (bE , πE) with base-nf bE
+  ...   | refl with Π-reduct πE
+  ...     | mkΠRed _ _ () _ _
+semTr x₀ (⊩₀Unit p) lk snCT payR hA hT hU snp hTe hUe hp hE =
+  snTrGo noPiT snCT (CR1₀ (⊩₀Unit p) hA)
+         (CR1₀ (homSem₀ (⊩₀Unit p) hA hT) hE) snp
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (uE , πE) with Unit-nf uE
+  ...   | refl with Π-reduct πE
+  ...     | mkΠRed _ _ () _ _
+-- ★★ at a `Nat` ambient `homSem₀` is `homNatSem₀`, whose membership is
+-- ENDPOINT-BLIND (`hns₀-in`) — SN-ness is the whole obligation, so the
+-- generic `snTrGo` still does all the work; it just has to be threaded
+-- through the order-hom wrapper instead of landing on a `⊩₀Hom`.
+semTr x₀ (⊩₀Nat p) lk snCT payR {aP} {tP} {uP} hA hT hU snp hTe hUe hp hE =
+  bwd₀-mem⁻ (⟶ᵀ*-Homᵀ p)
+    (homNatSem₀ aP uP (projl hA) (projr hA) (projl hU) (projr hU))
+    (hns₀-in aP uP (projl hA) (projr hA) (projl hU) (projr hU)
+       (snTrGo noPiT snCT (CR1₀ (⊩₀Nat p) hA)
+               (CR1₀ (homSem₀ (⊩₀Nat p) hA hT) hE) snp))
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (nE , πE) with Nat-nf nE
   ...   | refl with Π-reduct πE
   ...     | mkΠRed _ _ () _ _
 semTr x₀ (⊩₀ne p n) lk snCT payR hA hT hU snp hTe hUe hp hE =
@@ -1553,6 +1704,8 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
   go₀ (sn-lam snf) hpʹ = pwC snf hpʹ
   go₀ (sn-pair a b) hpʹ    = CR3₀ RH0 (sne-tr snM (sn-pair a b) snE' refl)
   go₀ sn-cb hpʹ            = CR3₀ RH0 (sne-tr snM sn-cb snE' refl)
+  go₀ sn-cNat hpʹ            = CR3₀ RH0 (sne-tr snM sn-cNat snE' refl)
+  go₀ sn-cUnit hpʹ            = CR3₀ RH0 (sne-tr snM sn-cUnit snE' refl)
   go₀ (sn-cΠ h₁ h₂) hpʹ    = CR3₀ RH0 (sne-tr snM (sn-cΠ h₁ h₂) snE' refl)
   go₀ (sn-cΣ h₁ h₂) hpʹ    = CR3₀ RH0 (sne-tr snM (sn-cΣ h₁ h₂) snE' refl)
   go₀ (sn-cH h₁ h₂ h₃) hpʹ = CR3₀ RH0 (sne-tr snM (sn-cH h₁ h₂ h₃) snE' refl)
@@ -1563,6 +1716,9 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
   go₀ (sn-nsuc h) hpʹ  = CR3₀ RH0 (sne-tr snM (sn-nsuc h) snE' refl)
 
   goH₀ sn-cb sns kn = exp₀ RH0 (snr-J-base snM sns) heU
+  goH₀ sn-cUnit sns kn = exp₀ RH0 (snr-J-Unit snM sns) heU
+  goH₀ sn-cNat sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat sns refl)) snE' refl)
   goH₀ (sn-cΣ h₁ h₂) sns kn = exp₀ RH0 (snr-J-Σ snM h₁ h₂ sns) heU
   goH₀ (sn-cId h₁ h₂ h₃) sns kn = exp₀ RH0 (snr-J-Id snM h₁ h₂ h₃ sns) heU
   goH₀ (sn-idrefl h₁ h₂) sns kn =
@@ -1934,6 +2090,16 @@ fund {σ = σ} (⊢snd {B = B} {p = p} d) x₀ ρ =
 
 fund ⊢⌜base⌝ x₀ ρ = ( ⊩₁U doneᵀ , sem-⌜base⌝ doneᵀ )
 
+-- ★ WF stage C: the datatype codes are semantically as cheap as
+-- ⌜base⌝ — the decode is an INERT type, so the level-0 interp is the
+-- one-step decode chain and the code payload is trivial (`PayT` is ⊤
+-- off ⌜Π⌝).  ⌜Nat⌝'s membership component comes with the interp, not
+-- with the code.
+fund ⊢⌜Nat⌝ x₀ ρ =
+  ( ⊩₁U doneᵀ , (sn-cNat , (⊩₀Nat (stepᵀ El-⌜Nat⌝ doneᵀ) , _)) )
+fund ⊢⌜Unit⌝ x₀ ρ =
+  ( ⊩₁U doneᵀ , (sn-cUnit , (⊩₀Unit (stepᵀ El-⌜Unit⌝ doneᵀ) , _)) )
+
 fund {Ξ = Ξ} {σ = σ} (⊢⌜Π⌝ {c = c} {d = e} dc de) x₀ ρ =
   ( ⊩₁U doneᵀ , sem-⌜Π⌝ doneᵀ snc sne ⊩c f pays )
   where
@@ -2124,6 +2290,9 @@ fund {Ξ = Ξ} {σ = σ}
     se-Σ    : {A : RTy Ξ} {B : RTy (Ξ ∙)} → StkEl (Σ' A B)
     se-hom  : {H : RTy Ξ} {a b₂ : RTm Ξ} → StkEl H → StkEl (Hom H a b₂)
     se-Id   : {A₂ : RTy Ξ} {t₂ u₂ : RTm Ξ} → StkEl (Id A₂ t₂ u₂)
+    -- ★ WF stage C: ⌜Unit⌝ is stable, so its decode joins.  No `Nat`
+    -- arm — ⌜Nat⌝ is not `stkC?`, so `El-⌜Nat⌝` is refuted on the key.
+    se-Unit : StkEl (Unit {Ξ})
 
   stkel-red : {A A' : RTy Ξ} → StkEl A → A ⟶ᵀ A' → StkEl A'
   stkel-red (se-el {c = ⌜base⌝} k) El-⌜base⌝ = se-base
@@ -2132,6 +2301,9 @@ fund {Ξ = Ξ} {σ = σ}
     se-hom (se-el k)
   stkel-red (se-el {c = ⌜Π⌝ _ _} ()) (El-⌜Π⌝ _ _)
   stkel-red (se-el {c = ⌜Id⌝ c' a' b'} k) (El-⌜Id⌝ _ _ _) = se-Id
+  stkel-red (se-el {c = ⌜Unit⌝} k) El-⌜Unit⌝ = se-Unit
+  stkel-red (se-el {c = ⌜Nat⌝} ()) El-⌜Nat⌝
+  stkel-red se-Unit ()
   stkel-red se-Id (ξ-Idᵀ r) = se-Id
   stkel-red se-Id (ξ-Idˡ r) = se-Id
   stkel-red se-Id (ξ-Idʳ r) = se-Id
@@ -2306,6 +2478,8 @@ fund {Ξ = Ξ} {σ = σ}
   goP (sn-lam h)       = CR3₀ R_H (sne-ap snCB snBB (sn-lam h) refl)
   goP (sn-pair ha hb)  = CR3₀ R_H (sne-ap snCB snBB (sn-pair ha hb) refl)
   goP sn-cb            = CR3₀ R_H (sne-ap snCB snBB sn-cb refl)
+  goP sn-cNat            = CR3₀ R_H (sne-ap snCB snBB sn-cNat refl)
+  goP sn-cUnit            = CR3₀ R_H (sne-ap snCB snBB sn-cUnit refl)
   goP (sn-cΠ h₁ h₂)    = CR3₀ R_H (sne-ap snCB snBB (sn-cΠ h₁ h₂) refl)
   goP (sn-cΣ h₁ h₂)    = CR3₀ R_H (sne-ap snCB snBB (sn-cΣ h₁ h₂) refl)
   goP (sn-cH h₁ h₂ h₃) = CR3₀ R_H (sne-ap snCB snBB (sn-cH h₁ h₂ h₃) refl)
@@ -2453,6 +2627,10 @@ fund {Ξ = Ξ} {σ = σ}
     CR3₁ (emb R₀u) (sne-jsub snDI (sn-pair a b) (CR1₁ (emb R₀t) hEt) refl)
   goP sn-cb pay =
     CR3₁ (emb R₀u) (sne-jsub snDI sn-cb (CR1₁ (emb R₀t) hEt) refl)
+  goP sn-cNat pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI sn-cNat (CR1₁ (emb R₀t) hEt) refl)
+  goP sn-cUnit pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI sn-cUnit (CR1₁ (emb R₀t) hEt) refl)
   goP (sn-cΠ h₁ h₂) pay =
     CR3₁ (emb R₀u) (sne-jsub snDI (sn-cΠ h₁ h₂) (CR1₁ (emb R₀t) hEt) refl)
   goP (sn-cΣ h₁ h₂) pay =
@@ -2540,6 +2718,8 @@ fund {Ξ = Ξ} {σ = σ}
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-ne n) hp'      = cr3 (sn-ne n) (nkey n)
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-pair sa sb) hp' = cr3 (sn-pair sa sb) refl
   piCase q ⊩F ⊩G rt ru rEt rEu sn-cb hp'           = cr3 sn-cb refl
+  piCase q ⊩F ⊩G rt ru rEt rEu sn-cNat hp'         = cr3 sn-cNat refl
+  piCase q ⊩F ⊩G rt ru rEt rEu sn-cUnit hp'        = cr3 sn-cUnit refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-cΠ h₁ h₂) hp'   = cr3 (sn-cΠ h₁ h₂) refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-cΣ h₁ h₂) hp'   = cr3 (sn-cΣ h₁ h₂) refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-cH h₁ h₂ h₃) hp' = cr3 (sn-cH h₁ h₂ h₃) refl
@@ -2565,7 +2745,9 @@ fund {Ξ = Ξ} {σ = σ}
   ... | ()
   main (⊩₁Nat q) hp with hom-shapeN nn-U q
   ... | ()
-  main (⊩₁Hom q sh) hp with Hom-to-Hom nn-U q
+  -- ★ stage C: `Hom-to-Hom` is keyed on the TARGET ambient now, so the
+  -- source witness `nn-U` is pushed forward along `q` first.
+  main (⊩₁Hom q sh) hp with Hom-to-Hom (homAmb→ q nn-U) q
   ... | mkHomRed rA rt ru with U-reduct rA
   ...   | refl with sh
   ...     | sh-Hom ()
@@ -2587,7 +2769,7 @@ fund {Ξ = Ξ} {σ = σ}
 -- switch with `homSem₀-mem-endpoints`.
 fund {Ξ = Ξ} {σ = σ}
   (⊢tr {A = A} {c = c₀} {a = a₀} {p = p₀} {e = e₀} {t = t₀} {u = u₀}
-       dc' da' dv hc ha dt du dp de) x₀ ρ =
+       dc' da' dv nc hc ha dt du dp de) x₀ ρ =
   relTy (cong El (sym (sub-comm σ (⌜Hom⌝ c₀ a₀ (var vz)) u₀)))
         (go (CR1₁ (dfst (fund dp x₀ ρ)) (dsnd (fund dp x₀ ρ)))
             (dsnd (fund dp x₀ ρ)))
@@ -2713,6 +2895,8 @@ fund {Ξ = Ξ} {σ = σ}
   mem-bwd₀ q (⊩₀Σ _ _ _) h = h
   mem-bwd₀ q (⊩₀Hom _ _) h = h
   mem-bwd₀ q (⊩₀Id _) h = h
+  mem-bwd₀ q (⊩₀Unit _) h = h
+  mem-bwd₀ q (⊩₀Nat _) h = h
 
   mem-bwd₀⁻ : {X Y : RTy Ξ} (q : X ⟶ᵀ* Y) (R : ⊩₀ Y) {w : RTm Ξ} →
               (bwd₀ q R) ⊩₀∋ w → R ⊩₀∋ w
@@ -2722,6 +2906,8 @@ fund {Ξ = Ξ} {σ = σ}
   mem-bwd₀⁻ q (⊩₀Σ _ _ _) h = h
   mem-bwd₀⁻ q (⊩₀Hom _ _) h = h
   mem-bwd₀⁻ q (⊩₀Id _) h = h
+  mem-bwd₀⁻ q (⊩₀Unit _) h = h
+  mem-bwd₀⁻ q (⊩₀Nat _) h = h
 
   heTgt : R_result ⊩₁∋ eI
   heTgt =
@@ -2839,6 +3025,8 @@ fund {Ξ = Ξ} {σ = σ}
   go (sn-lam snf) hp'      = goLam snf hp'
   go (sn-pair sa sb) hp'   = cr3 (sn-pair sa sb) refl
   go sn-cb hp'             = cr3 sn-cb refl
+  go sn-cNat hp'           = cr3 sn-cNat refl
+  go sn-cUnit hp'          = cr3 sn-cUnit refl
   go (sn-cΠ h₁ h₂) hp'     = cr3 (sn-cΠ h₁ h₂) refl
   go (sn-cΣ h₁ h₂) hp'     = cr3 (sn-cΣ h₁ h₂) refl
   go (sn-cH h₁ h₂ h₃) hp'  = cr3 (sn-cH h₁ h₂ h₃) refl
@@ -2856,6 +3044,13 @@ fund {Ξ = Ξ} {σ = σ}
 
   goh sn-cb sns kn hp' =
     ( R_result , exp₁ R_result (snr-J-base snD sns) heTgt )
+  -- ⌜Unit⌝ is `stkC?`, so J FIRES — same endpoint transfer as ⌜base⌝.
+  goh sn-cUnit sns kn hp' =
+    ( R_result , exp₁ R_result (snr-J-Unit snD sns) heTgt )
+  -- ⌜Nat⌝ is not: J is off there (the step-0 retraction), so the whole
+  -- `tr` is permanently NEUTRAL and CR3 carries it.
+  goh sn-cNat sns kn hp' =
+    cr3 (sn-ne (sne-hrefl sn-cNat sns refl)) refl
   goh (sn-cΣ h₁ h₂) sns kn hp' =
     ( R_result , exp₁ R_result (snr-J-Σ snD h₁ h₂ sns) heTgt )
   goh (sn-cId h₁ h₂ h₃) sns kn hp' =
