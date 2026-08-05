@@ -129,10 +129,14 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   tr-J-Σ    : (c a m : RTm (Γ ∙)) (c₁ : RTm Γ) (c₂ : RTm (Γ ∙)) (s e : RTm Γ) →
               tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e ⟶ e
   -- ★ the two-former kernel: `⌜Id⌝` is a stable J-able shape.
-  -- ★ stage C: J fires at the datatype codes too — they are stable
-  -- shapes, so this is the `tr-J-base` pattern verbatim.
-  tr-J-Nat  : (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
-              tr (⌜Hom⌝ c a m) (hrefl ⌜Nat⌝ s) e ⟶ e
+  -- ★ stage C: J fires at `⌜Unit⌝` — a stable shape, so this is the
+  -- `tr-J-base` pattern verbatim.  ⚠ THERE IS DELIBERATELY NO
+  -- `tr-J-Nat`: `Hom Nat` COMPUTES (`Hom-Nat-z` below discards the
+  -- right endpoint), so a `hrefl ⌜Nat⌝ s` does not pin its endpoints
+  -- and J at ⌜Nat⌝ breaks subject reduction — see `stkC?`'s note in
+  -- NbEPDirDBVar and the counterexample in SPIKE-WF.md §7.  Ordered
+  -- types are not J-able; transport along an order path is the tt-path
+  -- (≤-coercion) rule instead.
   tr-J-Unit : (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
               tr (⌜Hom⌝ c a m) (hrefl ⌜Unit⌝ s) e ⟶ e
   tr-J-Id   : (c a m : RTm (Γ ∙)) (c₁ a₁ b₁ : RTm Γ) (s e : RTm Γ) →

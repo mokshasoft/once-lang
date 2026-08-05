@@ -593,11 +593,24 @@ stkC? (⌜Σ⌝ c d)     = true
 -- ★ the two-former kernel: ⌜Id⌝ joins the STABLE J-able shapes — its
 -- decode is inert (never Π), so paths at Id-coded types are J-only.
 stkC? (⌜Id⌝ c a b)  = true
--- ★ stage C: the datatype codes are STABLE J-able shapes — inert
--- decodes, never ⌜Π⌝-able, so paths at them are J-only (exactly the
--- ⌜base⌝/⌜Σ⌝/⌜Id⌝ verdict).
-stkC? ⌜Nat⌝         = true
+-- ★ stage C: ⌜Unit⌝ is a STABLE J-able shape — inert decode, never
+-- ⌜Π⌝-able, so paths at it are J-only (exactly the ⌜base⌝/⌜Σ⌝/⌜Id⌝
+-- verdict).
 stkC? ⌜Unit⌝        = true
+-- ★★ ⌜Nat⌝ is NOT J-able, and this is the axis's one real cost.
+-- `stkC?` is the J-ABILITY key (it is what `tr-J-Hom` and `ap-J` test),
+-- and `tr-J-Nat` BREAKS SUBJECT REDUCTION: `Hom-Nat-z` reads
+-- `Hom Nat nzero n ⟶ Unit` for ANY `n`, so `Hom Nat nzero nzero` and
+-- `Hom Nat nzero (nsuc j)` are convertible, and a `hrefl ⌜Nat⌝ nzero`
+-- NO LONGER PINS ITS ENDPOINTS — which is exactly what J assumes.  The
+-- counterexample is written out in SPIKE-WF.md §7.  The sharp statement
+-- is not "datatype codes are exotic" but **ORDERED types cannot be
+-- J-able, because their path space is proof-irrelevant**: only `Nat` is
+-- poisoned, and precisely because only `Nat` has the collapsing `Hom`.
+-- So ⌜Nat⌝ is neither `pw?` nor `stkC?` — the THIRD code kind (see
+-- `codeCanon`'s three-way split in NbEPDirDBCanon).  Transport along an
+-- order path is recovered by the tt-path rule (≤-coercion), not by J.
+stkC? ⌜Nat⌝         = false
 stkC? (⌜Hom⌝ C a b) = stkC? C
 stkC? _             = false
 
@@ -632,7 +645,7 @@ stk⊥pw (⌜Π⌝ γ δ) ()
 stk⊥pw (⌜Σ⌝ c d) h = refl
 stk⊥pw (⌜Hom⌝ C a b) h = stk⊥pw C h
 stk⊥pw (⌜Id⌝ C a b) h = refl
-stk⊥pw ⌜Nat⌝ h = refl
+stk⊥pw ⌜Nat⌝ ()
 stk⊥pw ⌜Unit⌝ h = refl
 stk⊥pw (hrefl c t) ()
 stk⊥pw (idrefl c t) ()
@@ -829,7 +842,7 @@ stkC?-sub σ (⌜Π⌝ γ δ) ()
 stkC?-sub σ (⌜Σ⌝ c d) h = refl
 stkC?-sub σ (⌜Hom⌝ C a b) h = stkC?-sub σ C h
 stkC?-sub σ (⌜Id⌝ C a b) h = refl
-stkC?-sub σ ⌜Nat⌝ h = refl
+stkC?-sub σ ⌜Nat⌝ ()
 stkC?-sub σ ⌜Unit⌝ h = refl
 stkC?-sub σ (hrefl c t) ()
 stkC?-sub σ (idrefl c t) ()

@@ -56,7 +56,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
-        ; El-⌜Nat⌝; El-⌜Unit⌝; tr-J-Nat; tr-J-Unit
+        ; El-⌜Nat⌝; El-⌜Unit⌝; tr-J-Unit
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
@@ -186,9 +186,6 @@ pwShift-sub σ t =
 ⟶-sub σ (ξ-⌜Σ⌝ˡ r) = ξ-⌜Σ⌝ˡ (⟶-sub σ r)
 ⟶-sub σ (ξ-⌜Σ⌝ʳ r) = ξ-⌜Σ⌝ʳ (⟶-sub (extS σ) r)
 -- W2 eliminator: the two J rules and `tr-taut` are direct.
-⟶-sub σ (tr-J-Nat c a m s e) =
-  tr-J-Nat (subTm (extS σ) c) (subTm (extS σ) a) (subTm (extS σ) m)
-           (subTm σ s) (subTm σ e)
 ⟶-sub σ (tr-J-Unit c a m s e) =
   tr-J-Unit (subTm (extS σ) c) (subTm (extS σ) a) (subTm (extS σ) m)
             (subTm σ s) (subTm σ e)
