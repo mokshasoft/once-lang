@@ -97,8 +97,35 @@ open FlatMachine {x86-64-frame-semantics} using (mkFlat)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {x86-64-frame-semantics} using (flat-events)
 
+-- THE MEMORY BOUND, now supplied HERE rather than postulated inside the
+-- correspondence (2026-08-05). It is the same class as `conc-fuel` below — a
+-- statement that a finite resource does not run out — so it belongs with it,
+-- and moving it means the correspondence carries NO resource postulate at all.
+-- The unapplied imports let the statement be written before `ConcFlatSim` is
+-- instantiated (it is one of its arguments).
+import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FCx
+import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation as FSimx
+import Once.Adequacy.ArchCorrectness.X86-64.RunContext as RCx
+open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-alloc-heap)
+open import Once.CCC.Target.X86-64.Syntax using (slots)
+open import Data.Nat using (_≤_)
+
+postulate
+  -- HEAP EXHAUSTION: at an emitted `instr-alloc-heap n` the bump does not run
+  -- the heap frontier up into the stack's high-water mark. Conditioned on the
+  -- run context and the correspondence — unconditioned it is refutable.
+  x86-64-heap-room :
+    ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
+      (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
+      (s : X.State) (n : ℕ)
+    → RCx.RunAt x86-64-frame-semantics refl prog fs
+    → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+    → FlatMachine.fetch {x86-64-frame-semantics} prog
+        (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-alloc-heap n)
+    → FCx.hfront hv + slots n ≤ FCx.lo hv
+
 open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
-  x86-64-frame-semantics refl
+  x86-64-frame-semantics refl x86-64-heap-room
   using (events-agree; CompiledCorr; HeapView
         ; FlatInv; EntryLike; Reachable; reach-start
         ; inv-wf; inv-regtag; inv-ev; inv-env; inv-run; mkRunAt)

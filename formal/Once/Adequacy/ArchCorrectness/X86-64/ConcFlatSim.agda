@@ -26,17 +26,49 @@ open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; hea
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Label using (once)
 open import Once.CCC.Target.X86-64.Syntax using
-  ( slot-size; Program; Instr; Reg; Operand; reg; imm; mem; base; base+disp; rsp; rbp; rax; rdi; rbx
+  ( slot-size; slots; Program; Instr; Reg; Operand; reg; imm; mem; base; base+disp; rsp; rbp; rax; rdi; rbx
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
   ; ret; push; pop; nop; ud2; syscall; label )
 open import Data.Nat using (ℕ; _+_; _*_; _<_; _≤_; _∸_; _≡ᵇ_; _⊓_)
 open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-transˡ; <-irrefl; m≤m+n; m∸n≤m
                                       ; ⊓-glb; m⊓n≤m; m⊓n≤n; m+n≤o⇒m≤o∸n; +-identityʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
+-- …and the pieces the RESOURCE parameter's type needs. Imported UNAPPLIED, so
+-- the module's own `FS`/`word-eq` can be threaded into them by Agda's
+-- telescoping (`RC.RunAt FS word-eq …`) — a parameter's type is elaborated
+-- before the body, where the applied `open import … FS word-eq` has not run.
+open import Data.Maybe using (just)
+open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-alloc-heap)
+open import Once.CCC.Machine.Flat using (module FlatMachine)
+import Once.CCC.Target.X86-64.Semantics as X
+import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FC
+import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation as FSim
+import Once.Adequacy.ArchCorrectness.X86-64.RunContext as RC
 
 module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
   (FS : FrameSemantics)
   (word-eq : frame-word FS ≡ slot-size)
+  -- MEMORY EXHAUSTION, as a PARAMETER rather than a postulate (2026-08-05).
+  -- The honest runtime bound: at an emitted `instr-alloc-heap n` the bump does
+  -- not run the heap up into the stack's high-water mark. Same class as the
+  -- apex's `conc-fuel`, and now stated in the same place — which is what lets
+  -- the correspondence carry NO resource postulate at all, and what `--safe`
+  -- requires (it rejects every postulate outright).
+  --
+  -- Conditioned on `RunAt` and `CompiledCorr`: without them it is REFUTABLE
+  -- (a view with `lo ≡ hfront` kills it), which is the 2026-07-30 vacuity
+  -- lesson. That conditioning is why `RunAt` had to move to `RunContext`.
+  (heap-room : ∀ {hv : FC.HeapView FS word-eq}
+                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
+                 (s : X.State) (n : ℕ)
+             → RC.RunAt FS word-eq prog fs
+             → FSim.CompiledCorr FS word-eq hv prog fs s
+             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
+               ≡ just (instr-alloc-heap n)
+             -- (record projections INFER the module params from the record's own
+             -- type, so these take `hv` directly — unlike `RunAt`/`CompiledCorr`,
+             -- which telescope them explicitly)
+             → FC.hfront hv + slots n ≤ FC.lo hv)
   where
 
 open import Data.Maybe using (Maybe; just; nothing; maybe′)
@@ -564,9 +596,9 @@ postulate
   -- visited keeps its (dead) contents, so only the VIRGIN part of the gap is
   -- available. That is also what discharges the fresh block's freshness on the
   -- concrete side, which is why `alloc-heap-fresh-x86` is gone.
-  heap-room : ∀ {hv : HeapView} prog (fs : FlatState) (s : X.State) (n : ℕ) → RunAt prog fs
-            → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-alloc-heap n)
-            → hfront hv + slots n ≤ lo hv
+  -- (`heap-room` is a MODULE PARAMETER now — see the header. It was the one
+  -- resource bound stated inside the correspondence rather than at the apex
+  -- beside `conc-fuel`.)
   -- RETIRED 2026-07-31 (plan 0.54 rung D, item 2): `stack-room` / `frame-room` /
   -- `pop-room`, and the alloc-stack FRESH-FRAME pair `alloc-stack-fresh-{abs,x86}`
   -- together with `alloc-stack-entry`, all conditioned a frame-op site — and an

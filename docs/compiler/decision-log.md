@@ -6134,3 +6134,53 @@ decisions agree.
 - No behaviour change and no binary change (still no producer); census 6.
 - The call's own half (`call-frame` + the `fret` push) lands with the wiring,
   where the target resolution (`fclosure` → `find-thunk`) is decided.
+
+---
+
+## D087: Resource Bounds Are Parameters, Not Postulates — the `--safe` Endgame
+
+**Date**: 2026-08-05
+**Status**: TAKEN (landed — `heap-room` done; `stack-room` will follow the same way)
+
+### The fact that decides it
+
+**`agda --safe` rejects EVERY postulate** (`SafeFlagPostulate`). Verified with a
+one-line probe rather than assumed — the note at the Makefile's
+`denot-safe-strict` target already said so, and the opposite belief had crept
+into this work.
+
+So the endgame for the correctness cone is not "fewer postulates" but ZERO,
+with every honest assumption a MODULE PARAMETER — visible in the apex theorem's
+type instead of invisible until someone audits.
+
+### Decision
+
+`heap-room` (and, when it arrives, `stack-room`) become PARAMETERS of
+`ConcFlatSim`, supplied at the apex beside `conc-fuel`.
+
+They are the same class as `conc-fuel`: a statement that a finite resource does
+not run out. `conc-fuel` already lived at the apex; `heap-room` sitting inside
+the correspondence was the outlier. After this the correspondence carries NO
+resource postulate at all.
+
+### What it forced
+
+- **`RunContext` extracted** (`EntryLike`, `Reachable`, `Emitted`, `RunAt`). A
+  module parameter's type is elaborated BEFORE the body, and the bound must
+  stay conditioned on `RunAt` — unconditioned it is REFUTABLE (a view with
+  `lo ≡ hfront` kills it), which is the 2026-07-30 vacuity lesson. So `RunAt`
+  had to live one layer down.
+- **Two different qualification forms in one type**, worth knowing before
+  writing the next one: a parameterised module's ordinary names TELESCOPE its
+  parameters (`RC.RunAt FS word-eq prog fs`), while its RECORD PROJECTIONS
+  infer them from the record's own type (`FC.hfront hv`, not
+  `FC.hfront FS word-eq hv`).
+
+### Consequences
+
+- ConcFlatSim census **6 → 5**. The apex gains `x86-64-heap-room`, so the total
+  is flat — but the correspondence is now resource-postulate-free and the
+  trusted base reads as one list in one place.
+- `stack-room`, which Plan 0.63's closure frames need, NEVER ENTERS the census:
+  it joins the same parameter. The earlier projection that 0.63 would end 6 → 6
+  is superseded; it now ends at 4.
