@@ -1191,3 +1191,141 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
                     (homSem₀ (Gc v r) (projr hA v r) (projr hU v r))
              (exp₀ _ (snr-β (CR1₀ Fc r))
                (memTm _ (sym (bodyEq v)) (inner v r)))) )
+
+------------------------------------------------------------------------
+-- ★★ THE FLAT-AMBIENT SUB-THEORY (lifted out of `fund`'s ⊢ap clause).
+--
+-- PERFORMANCE, measured: inside that `where` block these were
+-- re-elaborated against the clause's ~22-binder telescope, and
+-- `--profile=definitions` put `flatred` at 19.3s, `ett-red` at 4.6s and
+-- `stkel-red` at 3.7s — 74% of ALL attributed definition time in
+-- NbEPDirDBFund, for lemmas that mention nothing from the clause.
+--
+-- `StkEl` is the local mirror of Subj's `StkAmb` ("never Π/U", NOT
+-- "stuck" — LR's `StkHd` is that one), so its key is `stkA?` and the
+-- order rules are absorbed rather than refuted.  `ElStkT` is the
+-- reachability invariant for `El`-of-FLAT codes: `base`, a stuck `Hom`,
+-- or `Unit` (an order-hom LEAVES for `Unit` when the inequality holds).
+-- `Nat` is deliberately absent — a `flat?` code decodes to `base` or a
+-- `Hom`, neither of which ever becomes `Nat`, which is what keeps
+-- `flatMem`'s ⊩₁Nat row absurd.
+------------------------------------------------------------------------
+
+flatred : {c c' : RTm Ξ} → c ⟶ c' → flat? c ≡ true → flat? c' ≡ true
+flatred (β _ _) ()
+flatred (βfst _ _) ()
+flatred (βsnd _ _) ()
+flatred (ξ-lam _) ()
+flatred (ξ-appˡ _) ()
+flatred (ξ-appʳ _) ()
+flatred (ξ-pairˡ _) ()
+flatred (ξ-pairʳ _) ()
+flatred (ξ-fst _) ()
+flatred (ξ-snd _) ()
+flatred (ξ-⌜Π⌝ˡ _) ()
+flatred (ξ-⌜Π⌝ʳ _) ()
+flatred (ξ-⌜Σ⌝ˡ _) ()
+flatred (ξ-⌜Σ⌝ʳ _) ()
+flatred (ξ-⌜Hom⌝ᶜ r) k = stkC?-red r k
+flatred (ξ-⌜Hom⌝ˡ r) k = k
+flatred (ξ-⌜Hom⌝ʳ r) k = k
+flatred (ξ-hreflᶜ _) ()
+flatred (ξ-hreflᵃ _) ()
+flatred (hrefl-pw _ _ _) ()
+flatred (tr-J-base _ _ _ _ _) ()
+flatred (tr-J-Σ _ _ _ _ _ _ _) ()
+flatred (tr-J-Hom _ _ _ _ _ _ _ _ _) ()
+flatred (tr-taut _ _) ()
+flatred (tr-pw _ _ _ _ _) ()
+flatred (ξ-trᵈ _) ()
+flatred (ξ-trᵖ _) ()
+flatred (ξ-trᵉ _) ()
+flatred (ap-J _ _ _ _ _) ()
+flatred (ξ-apᶜ _) ()
+flatred (ξ-apᵇ _) ()
+flatred (ξ-apᵖ _) ()
+
+-- the INNER invariant: reducts of `El`-of-STABLE codes never reach
+-- `U` nor a literal `Π` (so nested `Hom`s never unfold).
+data StkEl {Ξ : Cx} : RTy Ξ → Set where
+  se-el   : {c : RTm Ξ} → stkA? c ≡ true → StkEl (El c)
+  se-base : StkEl base
+  se-Σ    : {A : RTy Ξ} {B : RTy (Ξ ∙)} → StkEl (Σ' A B)
+  se-hom  : {H : RTy Ξ} {a b₂ : RTm Ξ} → StkEl H → StkEl (Hom H a b₂)
+  se-Id   : {A₂ : RTy Ξ} {t₂ u₂ : RTm Ξ} → StkEl (Id A₂ t₂ u₂)
+  -- ★ WF stage C: ⌜Unit⌝ is stable, so its decode joins.
+  se-Unit : StkEl (Unit {Ξ})
+  -- ★★ SpikeNatJ: and so does `Nat` — `StkEl` is the local mirror of
+  -- Subj's `StkAmb` ("never Π/U"), so its key is `stkA?` and the
+  -- order rules are ABSORBED below, not refuted.
+  se-Nat  : StkEl (Nat {Ξ})
+
+stkel-red : {A A' : RTy Ξ} → StkEl A → A ⟶ᵀ A' → StkEl A'
+stkel-red (se-el {c = ⌜base⌝} k) El-⌜base⌝ = se-base
+stkel-red (se-el {c = ⌜Σ⌝ _ _} k) (El-⌜Σ⌝ _ _) = se-Σ
+stkel-red (se-el {c = ⌜Hom⌝ c' a' b'} k) (El-⌜Hom⌝ _ _ _) =
+  se-hom (se-el k)
+stkel-red (se-el {c = ⌜Π⌝ _ _} ()) (El-⌜Π⌝ _ _)
+stkel-red (se-el {c = ⌜Id⌝ c' a' b'} k) (El-⌜Id⌝ _ _ _) = se-Id
+stkel-red (se-el {c = ⌜Unit⌝} k) El-⌜Unit⌝ = se-Unit
+stkel-red (se-el {c = ⌜Nat⌝} k) El-⌜Nat⌝ = se-Nat
+stkel-red se-Unit ()
+stkel-red se-Nat ()
+stkel-red se-Id (ξ-Idᵀ r) = se-Id
+stkel-red se-Id (ξ-Idˡ r) = se-Id
+stkel-red se-Id (ξ-Idʳ r) = se-Id
+stkel-red (se-el k) (ξ-El r) = se-el (stkA?-red r k)
+stkel-red se-Σ (ξ-Σˡ r) = se-Σ
+stkel-red se-Σ (ξ-Σʳ r) = se-Σ
+stkel-red (se-hom ()) (Hom-U _ _)
+stkel-red (se-hom ()) (Hom-Π _ _ _ _)
+stkel-red (se-hom h) (ξ-Homᵀ r) = se-hom (stkel-red h r)
+stkel-red (se-hom h) (ξ-Homˡ r) = se-hom h
+stkel-red (se-hom h) (ξ-Homʳ r) = se-hom h
+stkel-red (se-hom se-Nat) (Hom-Nat-z _)    = se-Unit
+stkel-red (se-hom se-Nat) (Hom-Nat-sz _)   = se-base
+stkel-red (se-hom se-Nat) (Hom-Nat-ss _ _) = se-hom se-Nat
+
+-- the TOP invariant: reducts of `El`-of-FLAT codes are flat decodes,
+-- `base`, or stuck `Hom`s — never `U`/`Π`/`Σ'`/neutral `El`.
+data ElStkT {Ξ : Cx} : RTy Ξ → Set where
+  et-el   : {c : RTm Ξ} → flat? c ≡ true → ElStkT (El c)
+  et-base : ElStkT base
+  et-hom  : {H : RTy Ξ} {a b₂ : RTm Ξ} → StkEl H → ElStkT (Hom H a b₂)
+  -- ★★ SpikeNatJ: an order-hom LEAVES for `Unit` when the inequality
+  -- holds, so `Unit` joins.  `Nat` deliberately does NOT — a `flat?`
+  -- code decodes to `base` or a `Hom`, and neither ever becomes `Nat`,
+  -- which is what keeps `flatMem`'s ⊩₁Nat row absurd.
+  et-Unit : ElStkT (Unit {Ξ})
+
+ett-red : {A A' : RTy Ξ} → ElStkT A → A ⟶ᵀ A' → ElStkT A'
+ett-red (et-el {c = ⌜base⌝} k) El-⌜base⌝ = et-base
+ett-red (et-el {c = ⌜Hom⌝ c' a' b'} k) (El-⌜Hom⌝ _ _ _) =
+  et-hom (se-el (stkC?→stkA? c' k))
+ett-red (et-el {c = ⌜Π⌝ _ _} ()) (El-⌜Π⌝ _ _)
+ett-red (et-el {c = ⌜Σ⌝ _ _} ()) (El-⌜Σ⌝ _ _)
+ett-red (et-el k) (ξ-El r) = et-el (flatred r k)
+ett-red (et-hom ()) (Hom-U _ _)
+ett-red (et-hom ()) (Hom-Π _ _ _ _)
+ett-red (et-hom h) (ξ-Homᵀ r) = et-hom (stkel-red h r)
+ett-red (et-hom h) (ξ-Homˡ r) = et-hom h
+ett-red (et-hom h) (ξ-Homʳ r) = et-hom h
+ett-red (et-hom se-Nat) (Hom-Nat-z _)    = et-Unit
+ett-red (et-hom se-Nat) (Hom-Nat-sz _)   = et-base
+ett-red (et-hom se-Nat) (Hom-Nat-ss _ _) = et-hom se-Nat
+ett-red et-Unit ()
+
+ett-star : {A A' : RTy Ξ} → ElStkT A → A ⟶ᵀ* A' → ElStkT A'
+ett-star h doneᵀ       = h
+ett-star h (stepᵀ r q) = ett-star (ett-red h r) q
+
+ne-nostk : {n : RTm Ξ} → Ne n → stkC? n ≡ false
+ne-nostk (ne-var _)   = refl
+ne-nostk (ne-app _)   = refl
+ne-nostk (ne-fst _)   = refl
+ne-nostk (ne-snd _)   = refl
+ne-nostk (ne-hrefl _) = refl
+ne-nostk (ne-tr _)    = refl
+ne-nostk (ne-ap _)    = refl
+ne-nostk (ne-jsub _)  = refl
+ne-nostk (ne-natrec _) = refl
