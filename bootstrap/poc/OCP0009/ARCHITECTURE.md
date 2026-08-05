@@ -676,13 +676,31 @@ when `t = nsuc t'`:
     ordtr (nsuc a') nzero     d p e ⟶ e / p   -- splits on t
     ordtr (nsuc a') (nsuc u') d p e ⟶ ordtr a' u' … -- peel, as Hom-Nat-ss
 
-**★ The one trap, and its resolution.**  Two branches are absurd but
-not syntactically refutable (`a = nsuc a'`, `t = nzero` gives
-`e : base`).  It is tempting to add an ex-falso eliminator at `base`.
-**Do NOT.**  `base` has only `ty-base` — no introduction and no
-elimination — and that is exactly what `consistency` rests on.  Leave
-those branches STUCK and let CLOSED progress refute them via
-`consistency`, precisely as `Hombase-clash` already does.
+**★ The one trap — and the warning here was WRONG.**  Two branches are
+absurd but not syntactically refutable (`a = nsuc a'`, `t = nzero`
+gives `e : base`).  This entry used to say: "It is tempting to add an
+ex-falso eliminator at `base`.  **Do NOT.**  `base` has only `ty-base`
+— no introduction and no elimination — and that is exactly what
+`consistency` rests on."
+
+★★ RETRACTED 2026-08-05, with machine-checked evidence.  That
+conflated NO INTRODUCTION — which `consistency` really does rest on —
+with NO ELIMINATION, which it does not.  An eliminator does not create
+an inhabitant of `base`; it only lets you USE one, and `canBase⊥` is
+untouched because `absurd c e` is not canonical.  WF stage D added
+
+    ⊢absurd : Γ ⊢ c ∷ U → Γ ⊢ e ∷ base → Γ ⊢ absurd c e ∷ El c
+
+and the whole tower — `consistency` included, in statement AND proof —
+is green.  `progress`'s clause is the argument in one line: recurse on
+the scrutinee; if it steps so does the term, and if it is CANONICAL
+`canBase⊥` refutes it.  So ex falso's progress rests on exactly one
+fact, that `base` is empty, and nothing more.
+
+So `ordtr`'s absurd branches should USE `absurd`, not be left stuck.
+That is also what makes strong induction's base case writable: under a
+`natrec` motive `λ m → Hom Nat m nzero → P m`, the successor branch's
+hypothesis has type `Hom Nat (nsuc m') nzero`, which REDUCES to `base`.
 
 **Residual risk**: not the syntax — the LR stuckness key for the new
 former.  That key is `natstk?`-shaped, so stage A's pattern applies.
