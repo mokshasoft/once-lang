@@ -58,6 +58,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
+        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
         ; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
@@ -152,6 +153,9 @@ wk-ren ρ t = trans (renTm-renTm t) (sym (renTm-renTm t))
 ⟶ᵀ-ren ρ (ξ-Πʳ r) = ξ-Πʳ (⟶ᵀ-ren (extR ρ) r)
 ⟶ᵀ-ren ρ (ξ-Σˡ r) = ξ-Σˡ (⟶ᵀ-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-Σʳ r) = ξ-Σʳ (⟶ᵀ-ren (extR ρ) r)
+⟶ᵀ-ren ρ (Hom-Nat-z n)    = Hom-Nat-z (renTm ρ n)
+⟶ᵀ-ren ρ (Hom-Nat-sz m)   = Hom-Nat-sz (renTm ρ m)
+⟶ᵀ-ren ρ (Hom-Nat-ss m n) = Hom-Nat-ss (renTm ρ m) (renTm ρ n)
 ⟶ᵀ-ren ρ (Hom-U c d) =
   subst (λ z → Hom U (renTm ρ c) (renTm ρ d) ⟶ᵀ Π (El (renTm ρ c)) (El z))
         (sym (wk-ren ρ d))
@@ -431,6 +435,115 @@ posc-red (posc-Hom hc ha) (ξ-⌜Hom⌝ʳ ())
 -- to a `Π` did unfold exactly once, via `Hom-U` or `Hom-Π`.
 ------------------------------------------------------------------------
 
+-- ★★ WF stage B: the ambient guard.  The order rules fire ONLY at a
+-- `Nat` ambient, so every ambient-generic Hom-inversion lemma below
+-- needs to know its ambient is not `Nat`.  Nothing ever REDUCES to
+-- `Nat` (it is an inert former with no introduction rule at the type
+-- level), so `NoNat` is preserved for free — and, critically, `El c`
+-- is `NoNat` for every code, which is why the whole `El`-ambient
+-- theory of stages 1–A is untouched.  (That changes at stage C, when
+-- ⌜Nat⌝ joins `U`.)
+data NoNat {Γ} : RTy Γ → Set where
+  nn-base : NoNat (base {Γ})
+  nn-U    : NoNat (U {Γ})
+  nn-Unit : NoNat (Unit {Γ})
+  nn-El   : {c : RTm Γ} → NoNat (El c)
+  nn-Π    : {F : RTy Γ} {G : RTy (Γ ∙)} → NoNat (Π F G)
+  nn-Σ    : {F : RTy Γ} {G : RTy (Γ ∙)} → NoNat (Σ' F G)
+  nn-Hom  : {H : RTy Γ} {a b : RTm Γ} → NoNat (Hom H a b)
+  nn-Id   : {A : RTy Γ} {t u : RTm Γ} → NoNat (Id A t u)
+
+nonat-red : {A A' : RTy Γ} → NoNat A → A ⟶ᵀ A' → NoNat A'
+nonat-red nn-base ()
+nonat-red nn-U ()
+nonat-red nn-Unit ()
+nonat-red nn-El El-⌜base⌝        = nn-base
+nonat-red nn-El (El-⌜Π⌝ _ _)     = nn-Π
+nonat-red nn-El (El-⌜Σ⌝ _ _)     = nn-Σ
+nonat-red nn-El (El-⌜Hom⌝ _ _ _) = nn-Hom
+nonat-red nn-El (El-⌜Id⌝ _ _ _)  = nn-Id
+nonat-red nn-El (ξ-El _)         = nn-El
+nonat-red nn-Π (ξ-Πˡ _) = nn-Π
+nonat-red nn-Π (ξ-Πʳ _) = nn-Π
+nonat-red nn-Σ (ξ-Σˡ _) = nn-Σ
+nonat-red nn-Σ (ξ-Σʳ _) = nn-Σ
+nonat-red nn-Hom (Hom-U _ _)      = nn-Π
+nonat-red nn-Hom (Hom-Π _ _ _ _)  = nn-Π
+nonat-red nn-Hom (Hom-Nat-z _)    = nn-Unit
+nonat-red nn-Hom (Hom-Nat-sz _)   = nn-base
+nonat-red nn-Hom (Hom-Nat-ss _ _) = nn-Hom
+nonat-red nn-Hom (ξ-Homᵀ _) = nn-Hom
+nonat-red nn-Hom (ξ-Homˡ _) = nn-Hom
+nonat-red nn-Hom (ξ-Homʳ _) = nn-Hom
+nonat-red nn-Id (ξ-Idᵀ _) = nn-Id
+nonat-red nn-Id (ξ-Idˡ _) = nn-Id
+nonat-red nn-Id (ξ-Idʳ _) = nn-Id
+
+Hom-nf-Unit : {A : RTy Γ} {t u : RTm Γ} → Unit {Γ} ⟶ᵀ* Hom A t u → ⊥
+Hom-nf-Unit (stepᵀ () _)
+
+Hom-nf-base : {A : RTy Γ} {t u : RTm Γ} → base {Γ} ⟶ᵀ* Hom A t u → ⊥
+Hom-nf-base (stepᵀ () _)
+
+-- a type that STEPS is never `Nat` (`Nat` is an inert former).
+red→nonat : {A A' : RTy Γ} → A ⟶ᵀ A' → NoNat A
+red→nonat El-⌜base⌝        = nn-El
+red→nonat (El-⌜Π⌝ _ _)     = nn-El
+red→nonat (El-⌜Σ⌝ _ _)     = nn-El
+red→nonat (El-⌜Hom⌝ _ _ _) = nn-El
+red→nonat (El-⌜Id⌝ _ _ _)  = nn-El
+red→nonat (ξ-El _)         = nn-El
+red→nonat (ξ-Πˡ _) = nn-Π
+red→nonat (ξ-Πʳ _) = nn-Π
+red→nonat (ξ-Σˡ _) = nn-Σ
+red→nonat (ξ-Σʳ _) = nn-Σ
+red→nonat (Hom-U _ _)      = nn-Hom
+red→nonat (Hom-Π _ _ _ _)  = nn-Hom
+red→nonat (Hom-Nat-z _)    = nn-Hom
+red→nonat (Hom-Nat-sz _)   = nn-Hom
+red→nonat (Hom-Nat-ss _ _) = nn-Hom
+red→nonat (ξ-Homᵀ _) = nn-Hom
+red→nonat (ξ-Homˡ _) = nn-Hom
+red→nonat (ξ-Homʳ _) = nn-Hom
+red→nonat (ξ-Idᵀ _) = nn-Id
+red→nonat (ξ-Idˡ _) = nn-Id
+red→nonat (ξ-Idʳ _) = nn-Id
+
+-- ★ a `Hom`-to-`Hom` reduction transports `NoNat` on the AMBIENT, in
+-- both directions.  Forward: the ambient only ever reduces.  Backward:
+-- a `Nat` ambient stays `Nat` (the order rules that keep it a `Hom`
+-- are exactly `Hom-Nat-ss`), so a non-`Nat` target forces a non-`Nat`
+-- source.  Together they let the `tr` cases below — whose ambient is
+-- existentially bound — recover the guard `Hom-to-Hom` now needs.
+homAmb→ : {A A' : RTy Γ} {t u t' u' : RTm Γ} →
+          Hom A t u ⟶ᵀ* Hom A' t' u' → NoNat A → NoNat A'
+homAmb→ doneᵀ nn = nn
+homAmb→ (stepᵀ (ξ-Homᵀ r) rest) nn = homAmb→ rest (nonat-red nn r)
+homAmb→ (stepᵀ (ξ-Homˡ r) rest) nn = homAmb→ rest nn
+homAmb→ (stepᵀ (ξ-Homʳ r) rest) nn = homAmb→ rest nn
+homAmb→ (stepᵀ (Hom-U _ _) rest) nn with Π-reduct rest
+... | mkΠRed _ _ () _ _
+homAmb→ (stepᵀ (Hom-Π _ _ _ _) rest) nn with Π-reduct rest
+... | mkΠRed _ _ () _ _
+homAmb→ (stepᵀ (Hom-Nat-z _) rest) ()
+homAmb→ (stepᵀ (Hom-Nat-sz _) rest) ()
+homAmb→ (stepᵀ (Hom-Nat-ss _ _) rest) ()
+
+homAmb← : {A A' : RTy Γ} {t u t' u' : RTm Γ} →
+          Hom A t u ⟶ᵀ* Hom A' t' u' → NoNat A' → NoNat A
+homAmb← doneᵀ nn = nn
+homAmb← (stepᵀ (ξ-Homᵀ r) rest) nn = red→nonat r
+homAmb← (stepᵀ (ξ-Homˡ r) rest) nn = homAmb← rest nn
+homAmb← (stepᵀ (ξ-Homʳ r) rest) nn = homAmb← rest nn
+homAmb← (stepᵀ (Hom-U _ _) rest) nn = nn-U
+homAmb← (stepᵀ (Hom-Π _ _ _ _) rest) nn = nn-Π
+homAmb← (stepᵀ (Hom-Nat-z _) rest) nn with Hom-nf-Unit rest
+... | ()
+homAmb← (stepᵀ (Hom-Nat-sz _) rest) nn with Hom-nf-base rest
+... | ()
+homAmb← (stepᵀ (Hom-Nat-ss _ _) rest) nn with homAmb← rest nn
+... | ()
+
 record HomRed {Γ} (A : RTy Γ) (t u : RTm Γ)
               (A' : RTy Γ) (t' u' : RTm Γ) : Set where
   constructor mkHomRed
@@ -439,19 +552,22 @@ record HomRed {Γ} (A : RTy Γ) (t u : RTm Γ)
     rt : t ⟶* t'
     ru : u ⟶* u'
 
-Hom-to-Hom : {A A' : RTy Γ} {t u t' u' : RTm Γ} →
+Hom-to-Hom : {A A' : RTy Γ} {t u t' u' : RTm Γ} → NoNat A →
              Hom A t u ⟶ᵀ* Hom A' t' u' → HomRed A t u A' t' u'
-Hom-to-Hom doneᵀ = mkHomRed doneᵀ done done
-Hom-to-Hom (stepᵀ (ξ-Homᵀ r) rest) with Hom-to-Hom rest
+Hom-to-Hom nn doneᵀ = mkHomRed doneᵀ done done
+Hom-to-Hom nn (stepᵀ (ξ-Homᵀ r) rest) with Hom-to-Hom (nonat-red nn r) rest
 ... | mkHomRed rA rt ru = mkHomRed (stepᵀ r rA) rt ru
-Hom-to-Hom (stepᵀ (ξ-Homˡ r) rest) with Hom-to-Hom rest
+Hom-to-Hom nn (stepᵀ (ξ-Homˡ r) rest) with Hom-to-Hom nn rest
 ... | mkHomRed rA rt ru = mkHomRed rA (step r rt) ru
-Hom-to-Hom (stepᵀ (ξ-Homʳ r) rest) with Hom-to-Hom rest
+Hom-to-Hom nn (stepᵀ (ξ-Homʳ r) rest) with Hom-to-Hom nn rest
 ... | mkHomRed rA rt ru = mkHomRed rA rt (step r ru)
-Hom-to-Hom (stepᵀ (Hom-U c d) rest) with Π-reduct rest
+Hom-to-Hom nn (stepᵀ (Hom-U c d) rest) with Π-reduct rest
 ... | mkΠRed _ _ () _ _
-Hom-to-Hom (stepᵀ (Hom-Π A B f g) rest) with Π-reduct rest
+Hom-to-Hom nn (stepᵀ (Hom-Π A B f g) rest) with Π-reduct rest
 ... | mkΠRed _ _ () _ _
+Hom-to-Hom () (stepᵀ (Hom-Nat-z _) rest)
+Hom-to-Hom () (stepᵀ (Hom-Nat-sz _) rest)
+Hom-to-Hom () (stepᵀ (Hom-Nat-ss _ _) rest)
 
 -- reducts of a `Hom` type are `Hom`- or `Π`-headed (promoted from
 -- `SpikeTrLR`): what refutes the base/U/ne/Σ' interps of a path's type
@@ -459,6 +575,14 @@ Hom-to-Hom (stepᵀ (Hom-Π A B f g) rest) with Π-reduct rest
 data HomΠShape {Γ : Cx} : RTy Γ → Set where
   hsΠ : {F : RTy Γ} {G : RTy (Γ ∙)} → HomΠShape (Π F G)
   hsH : {H : RTy Γ} {a b : RTm Γ} → HomΠShape (Hom H a b)
+  -- ★ WF stage B: the order rules add two more possible shapes.  Every
+  -- CONSUMER is a refutation at a specific shape (`U`, `Σ'`, `Id`, …),
+  -- and `Unit`/`base` match none of those — so the extra arms cost the
+  -- consumers nothing.  The one real casualty is `Hombase-clash`,
+  -- which is now FALSE in general and correctly so (`Hom Nat 2 1`
+  -- REDUCES to `base`); it is refined to an `El` ambient below.
+  hsUnit : HomΠShape (Unit {Γ})
+  hsBase : HomΠShape (base {Γ})
 
 Π-shape : {Γ : Cx} {F : RTy Γ} {G : RTy (Γ ∙)} {C : RTy Γ} →
           Π F G ⟶ᵀ* C → HomΠShape C
@@ -474,30 +598,43 @@ hom-shape (stepᵀ (ξ-Homˡ r) rest)  = hom-shape rest
 hom-shape (stepᵀ (ξ-Homʳ r) rest)  = hom-shape rest
 hom-shape (stepᵀ (Hom-U c d) rest)     = Π-shape rest
 hom-shape (stepᵀ (Hom-Π A B f g) rest) = Π-shape rest
+hom-shape (stepᵀ (Hom-Nat-z n) doneᵀ)        = hsUnit
+hom-shape (stepᵀ (Hom-Nat-z n) (stepᵀ () _))
+hom-shape (stepᵀ (Hom-Nat-sz m) doneᵀ)       = hsBase
+hom-shape (stepᵀ (Hom-Nat-sz m) (stepᵀ () _))
+hom-shape (stepᵀ (Hom-Nat-ss m n) rest)      = hom-shape rest
 
 
 homred-inv : {P : RTy Γ → Set} →
              (∀ {X Y : RTy Γ} → P X → X ⟶ᵀ Y → P Y) →
              (P U → ⊥) →
              (∀ {F : RTy Γ} {G : RTy (Γ ∙)} → P (Π F G) → ⊥) →
+             {- ★ WF stage B: …and the ambient is not `Nat`. -}
+             (P (Nat {Γ}) → ⊥) →
              {A : RTy Γ} {t u : RTm Γ} {C : RTy Γ} →
              P A → Hom A t u ⟶ᵀ* C →
              Σ (RTy Γ) (λ A' → Σ (RTm Γ) (λ t' → Σ (RTm Γ) (λ u' →
                (C ≡ Hom A' t' u') × ((t ⟶* t') × (u ⟶* u')))))
-homred-inv pres noU noΠ pA doneᵀ = _ , (_ , (_ , (refl , (done , done))))
-homred-inv pres noU noΠ pA (stepᵀ (ξ-Homᵀ r) rest) =
-  homred-inv pres noU noΠ (pres pA r) rest
-homred-inv pres noU noΠ pA (stepᵀ (ξ-Homˡ r) rest)
-  with homred-inv pres noU noΠ pA rest
+homred-inv pres noU noΠ noN pA doneᵀ = _ , (_ , (_ , (refl , (done , done))))
+homred-inv pres noU noΠ noN pA (stepᵀ (ξ-Homᵀ r) rest) =
+  homred-inv pres noU noΠ noN (pres pA r) rest
+homred-inv pres noU noΠ noN pA (stepᵀ (ξ-Homˡ r) rest)
+  with homred-inv pres noU noΠ noN pA rest
 ... | A' , (t' , (u' , (eq , (rt , ru)))) =
       A' , (t' , (u' , (eq , (step r rt , ru))))
-homred-inv pres noU noΠ pA (stepᵀ (ξ-Homʳ r) rest)
-  with homred-inv pres noU noΠ pA rest
+homred-inv pres noU noΠ noN pA (stepᵀ (ξ-Homʳ r) rest)
+  with homred-inv pres noU noΠ noN pA rest
 ... | A' , (t' , (u' , (eq , (rt , ru)))) =
       A' , (t' , (u' , (eq , (rt , step r ru))))
-homred-inv pres noU noΠ pA (stepᵀ (Hom-U c d) rest) with noU pA
+homred-inv pres noU noΠ noN pA (stepᵀ (Hom-U c d) rest) with noU pA
 ... | ()
-homred-inv pres noU noΠ pA (stepᵀ (Hom-Π A B f g) rest) with noΠ pA
+homred-inv pres noU noΠ noN pA (stepᵀ (Hom-Π A B f g) rest) with noΠ pA
+... | ()
+homred-inv pres noU noΠ noN pA (stepᵀ (Hom-Nat-z _) rest) with noN pA
+... | ()
+homred-inv pres noU noΠ noN pA (stepᵀ (Hom-Nat-sz _) rest) with noN pA
+... | ()
+homred-inv pres noU noΠ noN pA (stepᵀ (Hom-Nat-ss _ _) rest) with noN pA
 ... | ()
 
 data BaseAmb {Γ} : RTy Γ → Set where
@@ -534,20 +671,23 @@ data HomToΠ {Γ} (A : RTy Γ) (t u : RTm Γ)
           A ⟶ᵀ* Π F G →
           HomToΠ A t u P Q
 
-hom-to-Π : {A : RTy Γ} {t u : RTm Γ} {P : RTy Γ} {Q : RTy (Γ ∙)} →
+hom-to-Π : {A : RTy Γ} {t u : RTm Γ} {P : RTy Γ} {Q : RTy (Γ ∙)} → NoNat A →
            Hom A t u ⟶ᵀ* Π P Q → HomToΠ A t u P Q
-hom-to-Π (stepᵀ (ξ-Homᵀ r) rest) with hom-to-Π rest
+hom-to-Π nn (stepᵀ (ξ-Homᵀ r) rest) with hom-to-Π (nonat-red nn r) rest
 ... | via-U rA rt ru rP rQ = via-U (stepᵀ r rA) rt ru rP rQ
 ... | via-Π rA             = via-Π (stepᵀ r rA)
-hom-to-Π (stepᵀ (ξ-Homˡ r) rest) with hom-to-Π rest
+hom-to-Π nn (stepᵀ (ξ-Homˡ r) rest) with hom-to-Π nn rest
 ... | via-U rA rt ru rP rQ = via-U rA (step r rt) ru rP rQ
 ... | via-Π rA             = via-Π rA
-hom-to-Π (stepᵀ (ξ-Homʳ r) rest) with hom-to-Π rest
+hom-to-Π nn (stepᵀ (ξ-Homʳ r) rest) with hom-to-Π nn rest
 ... | via-U rA rt ru rP rQ = via-U rA rt (step r ru) rP rQ
 ... | via-Π rA             = via-Π rA
-hom-to-Π (stepᵀ (Hom-U c d) rest) with Π-reduct rest
+hom-to-Π nn (stepᵀ (Hom-U c d) rest) with Π-reduct rest
 ... | mkΠRed _ _ refl rP rQ = via-U doneᵀ done done rP rQ
-hom-to-Π (stepᵀ (Hom-Π A B f g) rest) = via-Π doneᵀ
+hom-to-Π nn (stepᵀ (Hom-Π A B f g) rest) = via-Π doneᵀ
+hom-to-Π () (stepᵀ (Hom-Nat-z _) rest)
+hom-to-Π () (stepᵀ (Hom-Nat-sz _) rest)
+hom-to-Π () (stepᵀ (Hom-Nat-ss _ _) rest)
 
 -- transporting the payload's type across convertible endpoints
 mono-El[] : (d₀ : RTm (Γ ∙)) {t w : RTm Γ} → t ⟶* w →
@@ -1224,9 +1364,12 @@ sr d (tr-J-base cm am mm s e₀) with gen-tr d
 ... | tgC (mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC)
       with gen-hrefl dp
 ...   | (dc , (ds , cH)) with church-rosserᵀ cH
-...     | W , (rL , rR) with homred-inv baseamb-red (λ ()) (λ ()) ba-el rR
+...     | W , (rL , rR) with homred-inv baseamb-red (λ ()) (λ ()) (λ ()) ba-el rR
 ...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
-            with Hom-to-Hom (subst (Hom A t u ⟶ᵀ*_) eqW rL)
+            with Hom-to-Hom
+                   (homAmb← (subst (Hom A t u ⟶ᵀ*_) eqW rL)
+                            (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) nn-El))
+                   (subst (Hom A t u ⟶ᵀ*_) eqW rL)
 ...         | mkHomRed rA rt ru =
               ⊢conv de
                 (ctrnᵀ (ctrnᵀ (mono-El[] (⌜Hom⌝ cm am mm) rt)
@@ -1239,9 +1382,12 @@ sr d (tr-J-Σ cm am mm c₁ c₂ s e₀) with gen-tr d
 ... | tgC (mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC)
       with gen-hrefl dp
 ...   | (dc , (ds , cH)) with church-rosserᵀ cH
-...     | W , (rL , rR) with homred-inv σamb-red (λ ()) (λ ()) sa-el rR
+...     | W , (rL , rR) with homred-inv σamb-red (λ ()) (λ ()) (λ ()) sa-el rR
 ...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
-            with Hom-to-Hom (subst (Hom A t u ⟶ᵀ*_) eqW rL)
+            with Hom-to-Hom
+                   (homAmb← (subst (Hom A t u ⟶ᵀ*_) eqW rL)
+                            (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) nn-El))
+                   (subst (Hom A t u ⟶ᵀ*_) eqW rL)
 ...         | mkHomRed rA rt ru =
               ⊢conv de
                 (ctrnᵀ (ctrnᵀ (mono-El[] (⌜Hom⌝ cm am mm) rt)
@@ -1269,10 +1415,13 @@ sr d (tr-J-Id cm am mm c₁ a₁ b₁ s e₀) with gen-tr d
       with gen-hrefl dp
 ...   | (dc , (ds , cH)) with church-rosserᵀ cH
 ...     | W , (rL , rR)
-          with homred-inv stamb-red (λ ()) (λ ())
+          with homred-inv stamb-red (λ ()) (λ ()) (λ ())
                           (st-el {c = ⌜Id⌝ c₁ a₁ b₁} refl) rR
 ...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
-            with Hom-to-Hom (subst (Hom A t u ⟶ᵀ*_) eqW rL)
+            with Hom-to-Hom
+                   (homAmb← (subst (Hom A t u ⟶ᵀ*_) eqW rL)
+                            (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) nn-El))
+                   (subst (Hom A t u ⟶ᵀ*_) eqW rL)
 ...         | mkHomRed rA rt ru =
               ⊢conv de
                 (ctrnᵀ (ctrnᵀ (mono-El[] (⌜Hom⌝ cm am mm) rt)
@@ -1286,10 +1435,13 @@ sr d (tr-J-Hom cm am mm c₁ a₁ b₁ s e₀ key) with gen-tr d
       with gen-hrefl dp
 ...   | (dc , (ds , cH)) with church-rosserᵀ cH
 ...     | W , (rL , rR)
-          with homred-inv stamb-red (λ ()) (λ ())
+          with homred-inv stamb-red (λ ()) (λ ()) (λ ())
                           (st-el {c = ⌜Hom⌝ c₁ a₁ b₁} key) rR
 ...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
-            with Hom-to-Hom (subst (Hom A t u ⟶ᵀ*_) eqW rL)
+            with Hom-to-Hom
+                   (homAmb← (subst (Hom A t u ⟶ᵀ*_) eqW rL)
+                            (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) nn-El))
+                   (subst (Hom A t u ⟶ᵀ*_) eqW rL)
 ...         | mkHomRed rA rt ru =
               ⊢conv de
                 (ctrnᵀ (ctrnᵀ (mono-El[] (⌜Hom⌝ cm am mm) rt)
@@ -1501,7 +1653,7 @@ sr d (tr-taut f e₀) with gen-tr d
 ...   | A₁ , (B₁ , (cΠ , (tyA₁ , d-f))) with church-rosserᵀ cΠ
 ...     | W , (rL , rR) with Π-reduct rR
 ...       | mkΠRed P₂ Q₂ eqW rP rQ
-            with hom-to-Π (subst (Hom U t u ⟶ᵀ*_) eqW rL)
+            with hom-to-Π nn-U (subst (Hom U t u ⟶ᵀ*_) eqW rL)
 ...         | via-Π rA with U-reduct rA
 ...           | ()
 sr d (tr-taut f e₀) | tgU (mkTrInvU refl t u dt du dp de cC)
@@ -1572,10 +1724,10 @@ sr d (ap-J cB b c₁ s key) with gen-ap d
       with gen-hrefl dp
 ...   | (dc₁ , (ds , cH)) with church-rosserᵀ cH
 ...     | W , (rL , rR)
-          with homred-inv stamb-red (λ ()) (λ ()) (st-el {c = cA} (flat→stk cA keyA)) rL
+          with homred-inv stamb-red (λ ()) (λ ()) (λ ()) (st-el {c = cA} (flat→stk cA keyA)) rL
 ...       | A₂ , (t₁ , (u₁ , (eqW , (rt , ru))))
-            with Hom-to-Hom (subst (Hom (El cA) t u ⟶ᵀ*_) eqW rL)
-              |  Hom-to-Hom (subst (Hom (El _) s s ⟶ᵀ*_) eqW rR)
+            with Hom-to-Hom nn-El (subst (Hom (El cA) t u ⟶ᵀ*_) eqW rL)
+              |  Hom-to-Hom nn-El (subst (Hom (El _) s s ⟶ᵀ*_) eqW rR)
 ...         | mkHomRed rAL rt' ru' | mkHomRed rAR rs₁ rs₂ =
               ⊢conv
                 (⊢hrefl dcB
