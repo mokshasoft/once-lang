@@ -18,7 +18,13 @@
 open import Data.Nat using (ℕ)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 
-module Once.CCC.Machine.ReadTypedAdequate
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Machine.ReadTypedAdequate (o : CanonicalName)
   {FS : FrameSemantics} (program-bound : ℕ) where
 
 open import Data.Maybe using (Maybe; just; nothing)
@@ -33,7 +39,7 @@ open import Once.Semantics.Machine using (⟦_⟧; ⟦_⟧ᴵ; coh)
 open import Once.CCC.Machine.SMCore
 open AbstractExec {FS}
 open MemOps {FS}
-open import Once.CCC.Machine.ClosureWellFormed
+open import Once.CCC.Machine.ClosureWellFormed o
 open ClosureWellFormedDef {FS} program-bound
   using (ValidAtWF; valid-unit-wf; valid-int-wf; valid-pair-wf; prim-sv)
 

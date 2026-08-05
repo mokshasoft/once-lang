@@ -20,7 +20,14 @@
 -- (`All P` over `trace-of (ir-to-trace' n l ir)`, `++⁺` at every splice).
 ------------------------------------------------------------------------
 
-module Once.CCC.Codegen.AllocMin where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys
+-- its labels. `o` is constant for a whole definition, so it belongs on the
+-- module rather than on every lemma — which is exactly what keeps the
+-- statements below UNCHANGED under D089: `IRToTrace` is imported APPLIED,
+-- so each `ir-to-trace' n l ir` reads as it always did.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Codegen.AllocMin (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc; _+_; _≤_; s≤s; z≤n)
 open import Data.Unit using (⊤; tt)
@@ -41,12 +48,12 @@ open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-alloc-heap)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Codegen.IRToTrace using
+open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
    cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize)
-open import Once.CCC.Codegen.FrameFreeTrace using (trace-of; cata-trace-of)
+open import Once.CCC.Codegen.FrameFreeTrace o using (trace-of; cata-trace-of)
 
 -- The per-instruction fact, reducing on every constructor (CATCHALL): only an
 -- allocation is constrained.

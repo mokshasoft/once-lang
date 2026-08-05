@@ -33,7 +33,14 @@
 -- `rebuild-walk` — so this theorem is unconditional in `ir`.
 ------------------------------------------------------------------------
 
-module Once.CCC.Codegen.FrameFreeTrace where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys
+-- its labels. `o` is constant for a whole definition, so it belongs on the
+-- module rather than on every lemma — which is exactly what keeps the
+-- statements below UNCHANGED under D089: `IRToTrace` is imported APPLIED,
+-- so each `ir-to-trace' n l ir` reads as it always did.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Codegen.FrameFreeTrace (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Unit using (⊤; tt)
@@ -58,7 +65,7 @@ open import Once.CCC.Machine.FrameFree using
   (FrameFreeI; FrameFreeT; frame-free-nest; EmittableI)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.ShapeTable using (HeapModed; IsHeap)
-open import Once.CCC.Codegen.IRToTrace using
+open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;

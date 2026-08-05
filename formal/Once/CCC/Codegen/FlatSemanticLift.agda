@@ -19,7 +19,13 @@
 --   * ValidAtWFHalted.validAtWF-set-halted — ValidAtWF ignores `halted`
 ------------------------------------------------------------------------
 
-module Once.CCC.Codegen.FlatSemanticLift where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Codegen.FlatSemanticLift (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc)
 open import Data.Bool using (true)
@@ -31,8 +37,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractTrace; LocState; AllocState; module AbstractExec)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.Type using (Type)
-open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
-open import Once.CCC.Machine.ValidAtWFHalted using (validAtWF-set-halted)
+open import Once.CCC.Machine.ClosureWellFormed o using (module ClosureWellFormedDef)
+open import Once.CCC.Machine.ValidAtWFHalted o using (validAtWF-set-halted)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 
 module _ {FS : FrameSemantics} (program-bound : ℕ) where

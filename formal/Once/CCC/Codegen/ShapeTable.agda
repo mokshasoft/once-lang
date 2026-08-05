@@ -60,6 +60,7 @@ open import Once.CCC.Machine.SMCore using
    instr-load-tag-lit; instr-alloc-heap; instr-loop; instr-case-on-tag;
    instr-reg-op; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero;
    c-branch-tag-zero; c-thunk; c-ret)
+open import Once.CCC.Label using (LabelId)
 
 ------------------------------------------------------------------------
 -- The expectation language.
@@ -105,7 +106,7 @@ slot-put es k e = (k , e) ∷ es
 -- The label environment: the invariant the program claims at each label.
 -- Supplied by the emitter walk (the G2 loop invariants live here).
 LabelEnv : Set
-LabelEnv = ℕ → Expect
+LabelEnv = LabelId → Expect
 
 ------------------------------------------------------------------------
 -- Decidable syntactic equality of IRTy (structural; needed by the

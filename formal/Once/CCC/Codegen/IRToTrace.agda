@@ -54,7 +54,16 @@
 -- See `plans/0.10-verification-gap-closure.md`.
 ------------------------------------------------------------------------
 
-module Once.CCC.Codegen.IRToTrace where
+-- Plan 0.63 (D089): a label's identity is `(owner, path, idx)`, and `owner` is
+-- a MODULE PARAMETER rather than an argument on every emitter. It is constant
+-- for a whole definition, so this is where it belongs — and it is what keeps
+-- the downstream proof modules unchanged: they parameterise the same way and
+-- import this module APPLIED, so every `ir-to-trace' n l ir` call site reads
+-- exactly as it did before. Supplied at `Compile.compileFunWithTarget` from
+-- `cfName cf`, the same identity the function symbol is mangled from.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Codegen.IRToTrace (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; zero; suc; _⊔_; _*_) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (Bool; true; false; if_then_else_; _∨_)
@@ -62,6 +71,7 @@ open import Data.Product using (_×_; _,_; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
 
 open import Once.SigOp.Info using (SigOpInfo)
+open import Once.CCC.Label using (LabelId; mkLabelId; ℓ)
 open SigOpInfo using (name)
 
 open import Once.IR using (IR; AllocMode; Stack; Heap;
@@ -185,14 +195,14 @@ cata-nat-layer n1 tag =
 
 cata-nat-descend : ℕ → AbstractTrace
 cata-nat-descend l1 =
-  instr-ctrl (c-label l1) ∷
-  instr-ctrl (c-branch-scratch-zero (suc l1)) ∷
-  instr-ctrl (c-branch-tag-zero (suc (suc l1))) ∷
+  instr-ctrl (c-label (ℓ o l1)) ∷
+  instr-ctrl (c-branch-scratch-zero (ℓ o (suc l1))) ∷
+  instr-ctrl (c-branch-tag-zero (ℓ o (suc (suc l1)))) ∷
   instr-reg-op count-inc ∷ load-indirect-suc ∷ mov-to-input ∷
-  instr-ctrl (c-jmp (suc (suc (suc l1)))) ∷
-  instr-ctrl (c-label (suc (suc l1))) ∷ instr-reg-op scratch-zero ∷
-  instr-ctrl (c-label (suc (suc (suc l1)))) ∷ instr-ctrl (c-jmp l1) ∷
-  instr-ctrl (c-label (suc l1)) ∷ []
+  instr-ctrl (c-jmp (ℓ o (suc (suc (suc l1))))) ∷
+  instr-ctrl (c-label (ℓ o (suc (suc l1)))) ∷ instr-reg-op scratch-zero ∷
+  instr-ctrl (c-label (ℓ o (suc (suc (suc l1))))) ∷ instr-ctrl (c-jmp (ℓ o l1)) ∷
+  instr-ctrl (c-label (ℓ o (suc l1))) ∷ []
 
 cata-nat-I₁ : ℕ → ℕ → AbstractTrace
 cata-nat-I₁ n1 l1 =
@@ -203,15 +213,15 @@ cata-nat-I₁ n1 l1 =
 
 cata-nat-I₂ : ℕ → ℕ → AbstractTrace
 cata-nat-I₂ n1 l1 =
-  instr-ctrl (c-label (suc (suc (suc (suc l1))))) ∷
-  instr-ctrl (c-branch-scratch-zero (suc (suc (suc (suc (suc l1)))))) ∷
+  instr-ctrl (c-label (ℓ o (suc (suc (suc (suc l1)))))) ∷
+  instr-ctrl (c-branch-scratch-zero (ℓ o (suc (suc (suc (suc (suc l1))))))) ∷
   mov-to-input ∷ (cata-nat-layer n1 1 ++ (mov-to-input ∷ []))
 
 cata-nat-I₃ : ℕ → AbstractTrace
 cata-nat-I₃ l1 =
   instr-reg-op scratch-dec ∷
-  instr-ctrl (c-jmp (suc (suc (suc (suc l1))))) ∷
-  instr-ctrl (c-label (suc (suc (suc (suc (suc l1)))))) ∷ []
+  instr-ctrl (c-jmp (ℓ o (suc (suc (suc (suc l1)))))) ∷
+  instr-ctrl (c-label (ℓ o (suc (suc (suc (suc (suc l1))))))) ∷ []
 
 cata-trace-nat : ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-trace-nat n1 l1 at =
@@ -242,8 +252,8 @@ cata-lin-I₁ : ℕ → ℕ → AbstractTrace
 cata-lin-I₁ n1 l1 =
   instr-reg-op count-zero ∷
   instr-load-tag-lit 0 ∷ store-at-slot (suc (suc (suc n1))) ∷
-  instr-ctrl (c-label l1) ∷
-  instr-ctrl (c-branch-tag-zero (suc l1)) ∷
+  instr-ctrl (c-label (ℓ o l1)) ∷
+  instr-ctrl (c-branch-tag-zero (ℓ o (suc l1))) ∷
   instr-reg-op count-inc ∷
   load-indirect-suc ∷ mov-to-input ∷
   load-indirect ∷ store-at-slot (suc (suc (suc (suc (suc n1))))) ∷
@@ -253,14 +263,14 @@ cata-lin-I₁ n1 l1 =
   load-from-slot (suc (suc (suc n1))) ∷ store-indirect-suc ∷
   load-from-slot (suc n1) ∷ store-at-slot (suc (suc (suc n1))) ∷
   load-from-slot (suc (suc n1)) ∷ mov-to-input ∷
-  instr-ctrl (c-jmp l1) ∷
-  instr-ctrl (c-label (suc l1)) ∷
+  instr-ctrl (c-jmp (ℓ o l1)) ∷
+  instr-ctrl (c-label (ℓ o (suc l1))) ∷
   instr-reg-op scratch-load-count ∷ []
 
 cata-lin-I₂ : ℕ → ℕ → AbstractTrace
 cata-lin-I₂ n1 l1 =
-  instr-ctrl (c-label (suc (suc l1))) ∷
-  instr-ctrl (c-branch-scratch-zero (suc (suc (suc l1)))) ∷
+  instr-ctrl (c-label (ℓ o (suc (suc l1)))) ∷
+  instr-ctrl (c-branch-scratch-zero (ℓ o (suc (suc (suc l1))))) ∷
   store-at-slot (suc (suc (suc (suc n1)))) ∷
   load-from-slot (suc (suc (suc n1))) ∷ mov-to-input ∷
   load-indirect ∷ store-at-slot (suc (suc (suc (suc (suc n1))))) ∷
@@ -276,8 +286,8 @@ cata-lin-I₂ n1 l1 =
 cata-lin-I₃ : ℕ → AbstractTrace
 cata-lin-I₃ l1 =
   instr-reg-op scratch-dec ∷
-  instr-ctrl (c-jmp (suc (suc l1))) ∷
-  instr-ctrl (c-label (suc (suc (suc l1)))) ∷ []
+  instr-ctrl (c-jmp (ℓ o (suc (suc l1)))) ∷
+  instr-ctrl (c-label (ℓ o (suc (suc (suc l1))))) ∷ []
 
 cata-trace-linear : ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-trace-linear n1 l1 at =
@@ -362,12 +372,12 @@ visit-walk : (todoSlot tv tb : ℕ) → Functor → (s lb : ℕ) → AbstractTra
 visit-walk todoSlot tv tb (K _) s lb = []
 visit-walk todoSlot tv tb Id    s lb = mov-to-output ∷ push2 todoSlot tv tb
 visit-walk todoSlot tv tb (F ⊕ G) s lb =
-  (instr-ctrl (c-branch-tag-zero lb) ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
+  (instr-ctrl (c-branch-tag-zero (ℓ o lb)) ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
   visit-walk todoSlot tv tb G (s +ℕ 4) (suc (suc lb) +ℕ lsize F) ++
-  (instr-ctrl (c-jmp (suc lb)) ∷ instr-ctrl (c-label lb) ∷
+  (instr-ctrl (c-jmp (ℓ o (suc lb))) ∷ instr-ctrl (c-label (ℓ o lb)) ∷
    load-indirect-suc ∷ mov-to-input ∷ []) ++
   visit-walk todoSlot tv tb F (s +ℕ 4) (suc (suc lb)) ++
-  (instr-ctrl (c-label (suc lb)) ∷ [])
+  (instr-ctrl (c-label (ℓ o (suc lb))) ∷ [])
 visit-walk todoSlot tv tb (F ⊗ G) s lb =
   (mov-to-output ∷ store-at-slot s ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
   visit-walk todoSlot tv tb G (s +ℕ 4) (lb +ℕ lsize F) ++
@@ -380,12 +390,12 @@ rebuild-walk : (valSlot tv tb : ℕ) → Functor → (s lb : ℕ) → AbstractTr
 rebuild-walk valSlot tv tb (K _) s lb = mov-to-output ∷ []
 rebuild-walk valSlot tv tb Id    s lb = pop2 valSlot
 rebuild-walk valSlot tv tb (F ⊕ G) s lb =
-  (instr-ctrl (c-branch-tag-zero lb) ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
+  (instr-ctrl (c-branch-tag-zero (ℓ o lb)) ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
   rebuild-walk valSlot tv tb G (s +ℕ 4) (suc (suc lb) +ℕ lsize F) ++ wrap-sum 1 s ++
-  (instr-ctrl (c-jmp (suc lb)) ∷ instr-ctrl (c-label lb) ∷
+  (instr-ctrl (c-jmp (ℓ o (suc lb))) ∷ instr-ctrl (c-label (ℓ o lb)) ∷
    load-indirect-suc ∷ mov-to-input ∷ []) ++
   rebuild-walk valSlot tv tb F (s +ℕ 4) (suc (suc lb)) ++ wrap-sum 0 s ++
-  (instr-ctrl (c-label (suc lb)) ∷ [])
+  (instr-ctrl (c-label (ℓ o (suc lb))) ∷ [])
 rebuild-walk valSlot tv tb (F ⊗ G) s lb =
   (mov-to-output ∷ store-at-slot s ∷ load-indirect ∷ mov-to-input ∷ []) ++
   rebuild-walk valSlot tv tb F (s +ℕ 4) lb ++
@@ -412,19 +422,19 @@ cata-br-I₁ F n1 l1 =
    load-from-slot (n1 +ℕ 6) ∷ store-at-slot n1 ∷
    load-from-slot (n1 +ℕ 3) ∷ []) ++ push2 n1 (n1 +ℕ 4) (n1 +ℕ 5) ++
   -- flatten
-  (instr-ctrl (c-label l1) ∷
+  (instr-ctrl (c-label (ℓ o l1)) ∷
    load-from-slot n1 ∷ mov-to-input ∷
-   instr-ctrl (c-branch-tag-zero (suc l1)) ∷
+   instr-ctrl (c-branch-tag-zero (ℓ o (suc l1))) ∷
    load-indirect-suc ∷ store-at-slot n1 ∷
    load-indirect ∷ mov-to-input ∷ store-at-slot (n1 +ℕ 3) ∷
    load-from-slot (n1 +ℕ 3) ∷ []) ++ push2 (suc n1) (n1 +ℕ 4) (n1 +ℕ 5) ++
   (load-from-slot (n1 +ℕ 3) ∷ mov-to-input ∷ []) ++
   visit-walk n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4) ++
-  (instr-ctrl (c-jmp l1) ∷ instr-ctrl (c-label (suc l1)) ∷ []) ++
+  (instr-ctrl (c-jmp (ℓ o l1)) ∷ instr-ctrl (c-label (ℓ o (suc l1))) ∷ []) ++
   -- the fold's prefix, up to the algebra splice
-  (instr-ctrl (c-label (l1 +ℕ 2)) ∷
+  (instr-ctrl (c-label (ℓ o (l1 +ℕ 2))) ∷
    load-from-slot (suc n1) ∷ mov-to-input ∷
-   instr-ctrl (c-branch-tag-zero (l1 +ℕ 3)) ∷
+   instr-ctrl (c-branch-tag-zero (ℓ o (l1 +ℕ 3))) ∷
    load-indirect-suc ∷ store-at-slot (suc n1) ∷
    load-indirect ∷ mov-to-input ∷ []) ++
   rebuild-walk (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4 +ℕ lsize F) ++
@@ -433,7 +443,7 @@ cata-br-I₁ F n1 l1 =
 cata-br-I₂ : ℕ → ℕ → AbstractTrace
 cata-br-I₂ n1 l1 =
   push2 (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) ++
-  (instr-ctrl (c-jmp (l1 +ℕ 2)) ∷ instr-ctrl (c-label (l1 +ℕ 3)) ∷ []) ++
+  (instr-ctrl (c-jmp (ℓ o (l1 +ℕ 2))) ∷ instr-ctrl (c-label (ℓ o (l1 +ℕ 3))) ∷ []) ++
   -- final-read
   (load-from-slot (n1 +ℕ 2) ∷ mov-to-input ∷ load-indirect ∷ [])
 
@@ -602,14 +612,14 @@ ir-to-trace' n l (curry body Stack) =
       (body-budget , l2 , body-trace , body-bodies) = ir-to-trace' 0 l1 body
       this-trace  = (mov-to-output ∷
                      store-at-slot closure-slot ∷
-                     instr-load-code-addr this-label ∷
+                     instr-load-code-addr (ℓ o this-label) ∷
                      store-at-slot (suc closure-slot) ∷
                      lea-slot closure-slot ∷
-                     instr-ctrl (c-jmp end-label) ∷
-                     instr-ctrl (c-thunk this-label body-budget) ∷ []) ++
+                     instr-ctrl (c-jmp (ℓ o end-label)) ∷
+                     instr-ctrl (c-thunk (ℓ o this-label) body-budget) ∷ []) ++
                     body-trace ++
                     (instr-ctrl (c-ret body-budget) ∷
-                     instr-ctrl (c-label end-label) ∷ [])
+                     instr-ctrl (c-label (ℓ o end-label)) ∷ [])
       all-bodies  = body-bodies
   in next , l2 , this-trace , all-bodies
 
@@ -632,14 +642,14 @@ ir-to-trace' n l (curry body Heap) =
                      mov-to-input ∷
                      load-from-slot env-stash ∷
                      store-indirect ∷
-                     instr-load-code-addr this-label ∷
+                     instr-load-code-addr (ℓ o this-label) ∷
                      store-indirect-suc ∷
                      load-from-slot closure-stash ∷
-                     instr-ctrl (c-jmp end-label) ∷
-                     instr-ctrl (c-thunk this-label body-budget) ∷ []) ++
+                     instr-ctrl (c-jmp (ℓ o end-label)) ∷
+                     instr-ctrl (c-thunk (ℓ o this-label) body-budget) ∷ []) ++
                     body-trace ++
                     (instr-ctrl (c-ret body-budget) ∷
-                     instr-ctrl (c-label end-label) ∷ [])
+                     instr-ctrl (c-label (ℓ o end-label)) ∷ [])
       all-bodies  = body-bodies
   in next , l2 , this-trace , all-bodies
 
@@ -800,13 +810,13 @@ ir-to-trace' n l (case f g) =
       (n1 , l1 , ft , fb) = ir-to-trace' n  (suc (suc l)) f
       (n2 , l2 , gt , gb) = ir-to-trace' n1 l1 g
   in n2 , l2 ,
-     (instr-ctrl (c-branch-tag-zero l-inl) ∷
+     (instr-ctrl (c-branch-tag-zero (ℓ o l-inl)) ∷
       load-indirect-suc ∷ mov-to-input ∷ []) ++
      gt ++
-     (instr-ctrl (c-jmp l-end) ∷ instr-ctrl (c-label l-inl) ∷
+     (instr-ctrl (c-jmp (ℓ o l-end)) ∷ instr-ctrl (c-label (ℓ o l-inl)) ∷
       load-indirect-suc ∷ mov-to-input ∷ []) ++
      ft ++
-     (instr-ctrl (c-label l-end) ∷ []) ,
+     (instr-ctrl (c-label (ℓ o l-end)) ∷ []) ,
      (fb ++ gb)
 
 -- In: μ Lambek constructor. Heap-identity — the F-layer node IS the

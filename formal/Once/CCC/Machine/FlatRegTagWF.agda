@@ -38,6 +38,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 module Once.CCC.Machine.FlatRegTagWF (FS : FrameSemantics) where
 
+open import Once.CCC.Label using (LabelId)
+
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥)
@@ -406,7 +408,7 @@ regtag-jump : ∀ (mpc : Maybe ℕ) (fs : FlatState) → FlatRegTag fs → FlatR
 regtag-jump (just pc') fs wf = wf
 regtag-jump nothing    fs wf = regtag-halt wf
 
-regtag-branch : ∀ (b : Bool) (m : ℕ) (prog : AbstractTrace) (fs : FlatState)
+regtag-branch : ∀ (b : Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
               → FlatRegTag fs → FlatRegTag (do-branch b m prog fs)
 regtag-branch true  m prog fs wf = regtag-jump (find-label prog m) fs wf
 regtag-branch false m prog fs wf = wf

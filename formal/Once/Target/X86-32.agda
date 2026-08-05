@@ -26,8 +26,10 @@ open import Once.Target.Symbol using (once-symbol-own; once-symbol-path)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.IR using (IR)
 
-open import Once.CCC.Codegen.IRToTrace
-  using (ir-to-trace-from; ir-to-bodies-from; ir-stack-budget-from)
+-- Plan 0.63 (D089): IRToTrace is parameterised by the DEFINITION'S identity,
+-- and `irToAsm` takes that identity as an argument (it differs per function),
+-- so this importer telescopes it at each use rather than applying the module.
+import Once.CCC.Codegen.IRToTrace as IRT
 open import Once.CCC.Machine.SMCore using (AbstractTrace)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace-cnt)
 open import Once.CCC.Target.X86-32.Emit using (programToText)
@@ -76,13 +78,13 @@ x86-32-functionEpilogue = "    ret\n\n"
 -- Plan 0.53: each compiled IR function sets up a standard i386 ebp frame
 -- (push ebp; mov ebp,esp; sub esp,budget*4) and tears it down before ret.
 -- Slots are ebp-relative; the return address is on the stack (x86 call/ret),
--- so nested closure calls need no extra save. compile-trace-cnt expands
+-- so nested closure calls need no extra save. compile-trace-cnt o expands
 -- structured case-on-tag / loop nodes.
-x86-32-irToAsm : ℕ → ∀ {A B} → IR A B → ℕ × String
-x86-32-irToAsm l ir =
-  let budget       = ir-stack-budget-from l ir
-      (l' , trace) = ir-to-trace-from l ir
-      (l'' , prog) = compile-trace-cnt l' trace
+x86-32-irToAsm : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
+x86-32-irToAsm o l ir =
+  let budget       = IRT.ir-stack-budget-from o l ir
+      (l' , trace) = IRT.ir-to-trace-from o l ir
+      (l'' , prog) = compile-trace-cnt o l' trace
       frame        = budget * 4
   -- ebp is the frame BOTTOM: reserve, then `mov ebp,esp`, so the codegen's
   -- positive `slot*4(%ebp)` offsets index UP into the reserved region
@@ -96,14 +98,14 @@ x86-32-irToAsm l ir =
 
 -- Plan 0.53: closure-body (thunk) emission. Each `.L_thunk_<n>` body gets its
 -- own ebp frame + ret; reachable via `movl $.L_thunk_<n>, reg`.
-x86-32-irToBodies : ℕ → ∀ {A B} → IR A B → ℕ × String
-x86-32-irToBodies l ir =
-  let (l' , bodies) = ir-to-bodies-from l ir
+x86-32-irToBodies : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
+x86-32-irToBodies o l ir =
+  let (l' , bodies) = IRT.ir-to-bodies-from o l ir
   in emit-bodies l' bodies
   where
     emit-thunk-body : ℕ → (ℕ × ℕ × AbstractTrace) → ℕ × String
     emit-thunk-body cl (lbl , budget , body-trace) =
-      let (cl' , prog) = compile-trace-cnt cl body-trace
+      let (cl' , prog) = compile-trace-cnt o cl body-trace
       in cl' , (".L_thunk_" ++ showNat lbl ++ ":\n" ++
                 "    pushl %ebp\n" ++
                 "    subl $" ++ showNat (budget * 4) ++ ", %esp\n" ++

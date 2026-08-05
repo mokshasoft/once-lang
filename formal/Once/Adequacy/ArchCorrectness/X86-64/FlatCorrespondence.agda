@@ -27,6 +27,7 @@ open import Once.Type using (Int; Float; fits-int; fits-float)
 open import Once.Semantics.FloatBits using (float-bits)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.CCC.Machine.SMCore using (AllocState)
+open import Once.CCC.Label using (LabelId; idx)
 open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
@@ -175,7 +176,12 @@ enc-sv-at am (SV-Ptr (AtStack f k))    = slot-addr f k
 -- and the extension-stability lemma below could not be stated by `refl`.
 enc-sv-at am (SV-Lit fits-int v)       = lit-word v
 enc-sv-at am (SV-Lit fits-float v)     = float-bits v
-enc-sv-at am (SV-Code n)               = n
+-- Plan 0.63 (D089): `SV-Code` now carries the label's IDENTITY, so its
+-- encoding is `idx` — numerically exactly what this yielded before, when the
+-- payload was the bare counter. The same FICTION `effectiveAddr (rip+label _)`
+-- records (a label number is not an instruction index): D081's open question,
+-- owned by `events-running-call`. D089 neither fixes nor worsens it.
+enc-sv-at am (SV-Code n)               = idx n
 
 enc-maybe-at : AddrMap → Maybe (StoredValue FS) → Maybe X.Word
 enc-maybe-at am (just v) = just (enc-sv-at am v)
@@ -1173,12 +1179,13 @@ sim-load-const-float {hv} v fs s corr = record
 
 ------------------------------------------------------------------------
 -- LOAD CODE ADDR: `instr-load-code-addr n` (Output := SV-Code n) ↔ `lea rax,
--- [rip+label n]`. The x86 effective address of a label is `n` (linker-resolved,
--- abstract), and enc-sv(SV-Code n) = n, so rax := n matches — rax-eq is refl.
+-- [rip+label n]`. Plan 0.63 (D089): `n` is now a label IDENTITY. The x86
+-- effective address of a label is `idx n` (linker-resolved, abstract), and
+-- enc-sv (SV-Code n) = idx n, so rax := idx n matches — rax-eq is still refl.
 ------------------------------------------------------------------------
-sim-load-code-addr : {hv : HeapView} (n : ℕ) (fs : FlatState) (s : X.State) → FlatCorr hv fs s
+sim-load-code-addr : {hv : HeapView} (n : LabelId) (fs : FlatState) (s : X.State) → FlatCorr hv fs s
   → FlatCorr hv (flat-exec-instr (instr-load-code-addr n) [] fs)
-             (mkstate (xwriteReg (xregs s) rax n) (memory s) (flags s) (pc s + 1) (xhalted s))
+             (mkstate (xwriteReg (xregs s) rax (idx n)) (memory s) (flags s) (pc s + 1) (xhalted s))
 sim-load-code-addr {hv} n fs s corr = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr ; r14-eq = r14-eq corr
   ; halt-eq = halt-eq corr ; rsp-eq = rsp-eq corr ; r15-eq = r15-eq corr ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = heap-eq corr ; lo-le = lo-le corr ; untouched = untouched corr ; stack-eq = stack-eq corr }

@@ -27,6 +27,7 @@
 
 module Once.CCC.Codegen.CataAtRelocate where
 
+open import Once.CCC.Label using (LabelId)
 open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Bool using (true; false)
 open import Data.Maybe using (map; just; nothing)
@@ -88,7 +89,7 @@ module CataAtRelocate {FS : FrameSemantics} where
     rewrite ss prog (shift-pc k fs) | ss seg fs = refl
 
   -- Label relocates trivially (pc bump, `prog`-independent).
-  flat-relocate-label : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (n : ℕ)
+  flat-relocate-label : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (n : LabelId)
     → flat-exec-instr (instr-ctrl (c-label n)) prog (shift-pc k fs)
         ≡ shift-pc k (flat-exec-instr (instr-ctrl (c-label n)) seg fs)
   flat-relocate-label prog seg k fs n = refl
@@ -99,7 +100,7 @@ module CataAtRelocate {FS : FrameSemantics} where
   -- too (D083): popping the shifted stack lands at `p + k`, exactly where
   -- shifting the standalone result lands. The frame move is `prog`-blind on
   -- both sides.
-  flat-relocate-thunk : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (n b : ℕ)
+  flat-relocate-thunk : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (n : LabelId) (b : ℕ)
     → flat-exec-instr (instr-ctrl (c-thunk n b)) prog (shift-pc k fs)
         ≡ shift-pc k (flat-exec-instr (instr-ctrl (c-thunk n b)) seg fs)
   flat-relocate-thunk prog seg k fs n b = refl
@@ -114,7 +115,7 @@ module CataAtRelocate {FS : FrameSemantics} where
   -- Jump relocates given the target's relocation fact: `find-label prog n
   -- = (find-label seg n) + k`. `just q → q + k` matches `shift-pc`'s
   -- right-add (refl); `nothing → halt` on both sides (refl).
-  flat-relocate-jmp : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (n : ℕ)
+  flat-relocate-jmp : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (n : LabelId)
     → find-label prog n ≡ map (_+ k) (find-label seg n)
     → flat-exec-instr (instr-ctrl (c-jmp n)) prog (shift-pc k fs)
         ≡ shift-pc k (flat-exec-instr (instr-ctrl (c-jmp n)) seg fs)
@@ -126,7 +127,7 @@ module CataAtRelocate {FS : FrameSemantics} where
   -- flat-exec-instr (c-jmp …)`; the not-taken case is a straight pc bump.
   -- The condition reads `floc (shift-pc k fs) = floc fs`, so it matches the
   -- standalone condition.
-  flat-relocate-branch-scratch : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (n : ℕ)
+  flat-relocate-branch-scratch : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (n : LabelId)
     → find-label prog n ≡ map (_+ k) (find-label seg n)
     → flat-exec-instr (instr-ctrl (c-branch-scratch-zero n)) prog (shift-pc k fs)
         ≡ shift-pc k (flat-exec-instr (instr-ctrl (c-branch-scratch-zero n)) seg fs)
@@ -135,7 +136,7 @@ module CataAtRelocate {FS : FrameSemantics} where
   ... | true  = flat-relocate-jmp prog seg k fs n lr
   ... | false = refl
 
-  flat-relocate-branch-tag : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (n : ℕ)
+  flat-relocate-branch-tag : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (n : LabelId)
     → find-label prog n ≡ map (_+ k) (find-label seg n)
     → flat-exec-instr (instr-ctrl (c-branch-tag-zero n)) prog (shift-pc k fs)
         ≡ shift-pc k (flat-exec-instr (instr-ctrl (c-branch-tag-zero n)) seg fs)

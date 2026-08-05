@@ -18,7 +18,13 @@
 -- `WellFormedF`). So Nat here is the first instance, not a rewrite.
 ------------------------------------------------------------------------
 
-module Once.CCC.Codegen.CataNatSeam where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Codegen.CataNatSeam (o : CanonicalName) where
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (just)
@@ -34,8 +40,8 @@ open import Once.Functor.Translate using (WellFormedF; WellFormedF-irrelevant)
 open import Once.CCC.Machine.Allocation using (AllocState)
 open import Once.CCC.Machine.SMCore
   using (LocState; ValueLocation; SV-Tag; SV-Ptr; sucLoc; module MemOps)
-open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
-open import Once.CCC.Codegen.CataNatHeapExtract using (module CataNatHeapExtract)
+open import Once.CCC.Machine.ClosureWellFormed o using (module ClosureWellFormedDef)
+open import Once.CCC.Codegen.CataNatHeapExtract o using (module CataNatHeapExtract)
 
 -- Generalised to any strat-nat functor `F = G ⊕ Id` (binary sum, base
 -- branch `G` with no Id, bare Id cons). Nat is the instance `G = K Unit`.

@@ -25,6 +25,7 @@ import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.CCC.FrameSemantics
+import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
@@ -326,7 +327,7 @@ d_FlatState_166 a0 = ()
 d_do'45'branch_174 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Bool ->
-  Integer ->
+  MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_62 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_62
@@ -1357,7 +1358,7 @@ du_sp'45'jump_1502 v0 v1 = coe seq (coe v0) (coe v1)
 d_sp'45'branch_1522 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Bool ->
-  Integer ->
+  MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_62 ->
   T_SPInv_320 -> T_SPInv_320
@@ -1366,7 +1367,7 @@ d_sp'45'branch_1522 v0 v1 v2 v3 ~v4 v5
 du_sp'45'branch_1522 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Bool ->
-  Integer ->
+  MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188] ->
   T_SPInv_320 -> T_SPInv_320
 du_sp'45'branch_1522 v0 v1 v2 v3 v4

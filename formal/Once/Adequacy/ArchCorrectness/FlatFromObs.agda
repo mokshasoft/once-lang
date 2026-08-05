@@ -36,7 +36,13 @@ open import Data.Nat using (ℕ; _<_)
 open import Once.Adequacy.CPU.Interface using (Arch; ArchSemantics)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 
-module Once.Adequacy.ArchCorrectness.FlatFromObs
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.Adequacy.ArchCorrectness.FlatFromObs (o : CanonicalName)
   (arch          : Arch)
   (FS            : FrameSemantics)
   (as            : ArchSemantics)
@@ -56,8 +62,8 @@ open import Once.IR.Size using (ir-size)
 open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
-open import Once.CCC.Codegen.IRObsCorrectFlat using (module IRObsCorrectFlatness)
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-stack-budget)
+open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
+open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Machine.SMCore
   using (LocState; mkLocState; Registers; mkRegs; ValueLocation; AtDynamic; SV-Tag;
          halted)
@@ -67,7 +73,7 @@ open import Once.CCC.Machine.Allocation
   using (AllocState; mkAllocState; next-slot; module FrontierInvariant)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
-open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
+open import Once.CCC.Machine.ClosureWellFormed o using (module ClosureWellFormedDef)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 

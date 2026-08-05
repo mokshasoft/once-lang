@@ -24,7 +24,13 @@
 -- printer). `cata-correct` is load-bearing for the apex on every target.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.ArchCorrectness where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.Adequacy.ArchCorrectness (o : CanonicalName) where
 
 open import Once.Adequacy.CPU using (Arch; x86-64; x86-32; riscv64; arch-semantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
@@ -33,9 +39,9 @@ open import Once.Adequacy.Compile using (ArchCorrect)
 -- (`ir-obs-correct` → `cata-correct`) — see `…ArchCorrectness.{X86-64,X86-32,RiscV64}`.
 -- So `cata-correct` is load-bearing for the apex on every target; each carries
 -- only its single named `<arch>-flat-from-obs` FS-plumbing residual (Plan 0.53).
-open import Once.Adequacy.ArchCorrectness.X86-64  using (x86-64-correct)
-open import Once.Adequacy.ArchCorrectness.X86-32  using (x86-32-correct)
-open import Once.Adequacy.ArchCorrectness.RiscV64 using (riscv64-correct)
+open import Once.Adequacy.ArchCorrectness.X86-64 o  using (x86-64-correct)
+open import Once.Adequacy.ArchCorrectness.X86-32 o  using (x86-32-correct)
+open import Once.Adequacy.ArchCorrectness.RiscV64 o using (riscv64-correct)
 
 -- Total over `Arch` ⇒ adding a target forces a new witness here.
 arch-correctness : ∀ (arch : Arch) → ArchCorrect arch (arch-semantics arch)

@@ -43,6 +43,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 module Once.CCC.Machine.FlatPtrBounds (FS : FrameSemantics) where
 
+open import Once.CCC.Label using (LabelId)
+
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≟_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-trans; n≤1+n; <⇒≢)
 open import Data.Bool using (Bool; true; false)
@@ -468,7 +470,7 @@ pb-ret []           fs wf =
 pb-ret (pc' ∷ rest) fs wf =
   subst (λ bs → PBInv bs (floc fs)) (sym (leave-frame-block-size (falloc fs))) wf
 
-pb-branch : ∀ (b : Bool) (m : ℕ) (prog : AbstractTrace) (fs : FlatState)
+pb-branch : ∀ (b : Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
           → PtrBoundsWF fs → PtrBoundsWF (do-branch b m prog fs)
 pb-branch true  m prog fs wf = pb-jump (find-label prog m) fs wf
 pb-branch false m prog fs wf = wf

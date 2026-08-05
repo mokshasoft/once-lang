@@ -32,7 +32,8 @@ record Target : Set₁ where
     -- returns the next-available counter so that thunk labels stay
     -- globally unique across multiple top-level functions in the
     -- same module. `compileAllWithTarget` left-folds the counter.
-    irToAsm : ℕ → ∀ {A B} → IR A B → ℕ × String
+    -- Plan 0.63 (D089): the DEFINITION'S identity, so its labels carry it.
+    irToAsm : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
     -- | Plan 0.2.4.2 Phase B: assembly text for closure-body labels
     -- (`.L_thunk_<n>:` blocks) emitted AFTER the parent's `ret`.
     -- Empty string for IRs containing no `curry` (most non-effectful
@@ -40,7 +41,7 @@ record Target : Set₁ where
     -- parent's ret comes between them. Plan 0.12 Layer 1: takes the
     -- same starting label counter `irToAsm` was called with, so that
     -- the body-emission's labels match the trace's call sites.
-    irToBodies : ℕ → ∀ {A B} → IR A B → ℕ × String
+    irToBodies : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
     -- | Assembly file header (e.g., ".section .text")
     asmHeader : String
     -- | Generate function prologue (label, .globl directive).

@@ -16,7 +16,7 @@ open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_; _*_ to _*�
 open import Data.Fin using (Fin)
 open import Data.List using (List; []; _∷_; foldr)
 open import Data.String using (String)
-open import Once.CCC.Label using (Label)
+open import Once.CCC.Label using (LabelId; Label)
 
 ------------------------------------------------------------------------
 -- Registers
@@ -58,7 +58,7 @@ data Mem : Set where
   rip+disp : ℕ → Mem
   -- [rip + .L_thunk_<n>]: RIP-relative addressing of a closure-body
   -- label. Plan 0.2.4.2 D7. Emitted as `.L_thunk_<n>(%rip)`.
-  rip+label : ℕ → Mem
+  rip+label : LabelId → Mem
 
 ------------------------------------------------------------------------
 -- Operands

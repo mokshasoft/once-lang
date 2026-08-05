@@ -39,6 +39,8 @@ open import Once.CCC.Target.X86-32.Syntax
          mov-code; jmp-l;
          Label; once; thunk;
          Program; slot-size; slots)
+open import Once.CanonicalName using (CanonicalName)
+open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (fits-int; fits-float)
 
@@ -279,37 +281,37 @@ compile-abstract (instr-ctrl (c-branch-tag-zero n))     = cmp (mem (base ecx)) (
 -- compile-trace-cnt). Structured case-on-tag / loop nodes carry sub-traces
 -- the plain compile-trace foldr would DROP; expand them with fresh labels +
 -- branches. Input1 ptr = ecx (tag at 0(ecx)); loop counter = edx.
-compile-trace-cnt : ℕ → AbstractTrace → ℕ × Program
-compile-trace-cnt n [] = n , []
-compile-trace-cnt n (instr-loop body ∷ rest) =
+compile-trace-cnt : CanonicalName → ℕ → AbstractTrace → ℕ × Program
+compile-trace-cnt o n [] = n , []
+compile-trace-cnt o n (instr-loop body ∷ rest) =
   let l-top = n
       l-end = suc n
-      (n1 , pbody) = compile-trace-cnt (suc (suc n)) body
-      (n2 , pr)    = compile-trace-cnt n1 rest
-      loop = label (once l-top) ∷
+      (n1 , pbody) = compile-trace-cnt o (suc (suc n)) body
+      (n2 , pr)    = compile-trace-cnt o n1 rest
+      loop = label (once (ℓ o l-top)) ∷
              cmp (reg edx) (imm 0) ∷
-             je (once l-end) ∷
+             je (once (ℓ o l-end)) ∷
              pbody ++
-             (jmp-l (once l-top) ∷
-              label (once l-end) ∷ [])
+             (jmp-l (once (ℓ o l-top)) ∷
+              label (once (ℓ o l-end)) ∷ [])
   in n2 , loop ++ pr
-compile-trace-cnt n (instr-case-on-tag f g ∷ rest) =
+compile-trace-cnt o n (instr-case-on-tag f g ∷ rest) =
   let lbl-inl = n
       lbl-end = suc n
-      (n1 , pf) = compile-trace-cnt (suc (suc n)) f
-      (n2 , pg) = compile-trace-cnt n1 g
-      (n3 , pr) = compile-trace-cnt n2 rest
+      (n1 , pf) = compile-trace-cnt o (suc (suc n)) f
+      (n2 , pg) = compile-trace-cnt o n1 g
+      (n3 , pr) = compile-trace-cnt o n2 rest
       -- tag at 0(ecx); tag ≡ 0 ⇒ inl (f), else inr (g). Fall-through is g.
       dispatch  = cmp (mem (base ecx)) (imm 0) ∷
-                  je (once lbl-inl) ∷
+                  je (once (ℓ o lbl-inl)) ∷
                   pg ++
-                  (jmp-l (once lbl-end) ∷
-                   label (once lbl-inl) ∷ []) ++
+                  (jmp-l (once (ℓ o lbl-end)) ∷
+                   label (once (ℓ o lbl-inl)) ∷ []) ++
                   pf ++
-                  (label (once lbl-end) ∷ [])
+                  (label (once (ℓ o lbl-end)) ∷ [])
   in n3 , dispatch ++ pr
-compile-trace-cnt n (i ∷ rest) =
-  let (n1 , pr) = compile-trace-cnt n rest
+compile-trace-cnt o n (i ∷ rest) =
+  let (n1 , pr) = compile-trace-cnt o n rest
   in n1 , compile-abstract i ++ pr
 
 compile-trace : AbstractTrace → Program

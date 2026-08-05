@@ -28,7 +28,13 @@
 -- pointer at sucLoc sum-loc.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.SumInrAllocWF where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Machine.IR.SumInrAllocWF (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (false)
@@ -47,7 +53,7 @@ open import Once.IR
 open import Once.CCC.Eval using (eval)
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
-open import Once.CCC.Machine.ClosureWellFormed
+open import Once.CCC.Machine.ClosureWellFormed o
 open import Once.CCC.Machine.TraceEvaluator
 
 import Once.CCC.Machine.SMPrimitives as SMP

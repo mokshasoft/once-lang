@@ -26,7 +26,14 @@
 -- import it without dragging the slot development along.
 ------------------------------------------------------------------------
 
-module Once.CCC.Codegen.LabelRange where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys
+-- its labels. `o` is constant for a whole definition, so it belongs on the
+-- module rather than on every lemma — which is exactly what keeps the
+-- statements below UNCHANGED under D089: `IRToTrace` is imported APPLIED,
+-- so each `ir-to-trace' n l ir` reads as it always did.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Codegen.LabelRange (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
 open import Data.Nat.Properties using
@@ -42,7 +49,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace)
-open import Once.CCC.Codegen.IRToTrace using
+open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; lsize)
 

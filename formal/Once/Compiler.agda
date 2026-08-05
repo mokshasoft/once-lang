@@ -16,7 +16,13 @@
 -- (modulo the postulates listed in the participating modules).
 ------------------------------------------------------------------------
 
-module Once.Compiler where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.Compiler (o : CanonicalName) where
 
 open import Data.List using (List)
 open import Data.Nat using (ℕ)
@@ -31,7 +37,7 @@ open import Once.Adequacy.SourceTrace using (⟦_⟧)
 -- this assembly point. `Once.Adequacy.Compile.WithCPU` itself stays
 -- free of those imports.
 open import Once.Adequacy.CPU      using (Arch; Byte; arch-semantics)
-open import Once.Adequacy.ArchCorrectness using (arch-correctness)
+open import Once.Adequacy.ArchCorrectness o using (arch-correctness)
 import Once.Adequacy.Compile as VCompile
 
 -- Instantiate the verified pipeline with the concrete per-arch

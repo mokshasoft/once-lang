@@ -13,7 +13,13 @@
 -- `HeapNatChain`, which `descend-chain-runs` then descends.
 ------------------------------------------------------------------------
 
-module Once.CCC.Codegen.CataNatDescendComplete where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Codegen.CataNatDescendComplete (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; _+_; _*_)
 open import Data.Product using (∃-syntax; Σ-syntax; _×_; _,_)
@@ -31,9 +37,9 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Allocation using (next-slot)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
-open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
+open import Once.CCC.Machine.ClosureWellFormed o using (module ClosureWellFormedDef)
 open import Once.CCC.Codegen.CataNatDescendRun using (module CataNatDescendRun)
-open import Once.CCC.Codegen.CataNatProducer using (module CataNatProducer)
+open import Once.CCC.Codegen.CataNatProducer o using (module CataNatProducer)
 
 module CataNatDescendComplete {FS : FrameSemantics} (program-bound : ℕ) (G : Functor) where
   open FlatMachine {FS}

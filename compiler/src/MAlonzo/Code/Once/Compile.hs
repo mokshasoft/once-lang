@@ -856,11 +856,11 @@ d_archTarget_642 ::
 d_archTarget_642 v0
   = case coe v0 of
       MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8
-        -> coe MAlonzo.Code.Once.Target.X86Z45Z64.d_x86'45'64_84
+        -> coe MAlonzo.Code.Once.Target.X86Z45Z64.d_x86'45'64_90
       MAlonzo.Code.Once.Target.Arch.C_x86'45'32_10
-        -> coe MAlonzo.Code.Once.Target.X86Z45Z32.d_x86'45'32_86
+        -> coe MAlonzo.Code.Once.Target.X86Z45Z32.d_x86'45'32_90
       MAlonzo.Code.Once.Target.Arch.C_riscv64_12
-        -> coe MAlonzo.Code.Once.Target.RiscV64.d_riscv64_88
+        -> coe MAlonzo.Code.Once.Target.RiscV64.d_riscv64_92
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.compileFunWithTarget
 d_compileFunWithTarget_644 ::
@@ -884,7 +884,7 @@ d_compileFunWithTarget_644 v0 v1 v2
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                       (coe
-                         MAlonzo.Code.Once.Target.d_irToAsm_32 v0 v1
+                         MAlonzo.Code.Once.Target.d_irToAsm_32 v0 (d_cfName_240 (coe v2)) v1
                          (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
                             (coe
                                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -928,7 +928,8 @@ d_compileFunWithTarget_644 v0 v1 v2
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                       (coe
-                         MAlonzo.Code.Once.Target.d_irToBodies_38 v0 v1
+                         MAlonzo.Code.Once.Target.d_irToBodies_38 v0 (d_cfName_240 (coe v2))
+                         v1
                          (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
                             (coe
                                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -980,7 +981,7 @@ d_compileFunWithTarget_644 v0 v1 v2
                          MAlonzo.Code.Data.String.Base.d__'43''43'__20
                          (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                             (coe
-                               MAlonzo.Code.Once.Target.d_irToAsm_32 v0 v1
+                               MAlonzo.Code.Once.Target.d_irToAsm_32 v0 (d_cfName_240 (coe v2)) v1
                                (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -1026,7 +1027,8 @@ d_compileFunWithTarget_644 v0 v1 v2
                             (MAlonzo.Code.Once.Target.d_functionEpilogue_44 (coe v0))
                             (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                (coe
-                                  MAlonzo.Code.Once.Target.d_irToBodies_38 v0 v1
+                                  MAlonzo.Code.Once.Target.d_irToBodies_38 v0
+                                  (d_cfName_240 (coe v2)) v1
                                   (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
                                      (coe
                                         MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28

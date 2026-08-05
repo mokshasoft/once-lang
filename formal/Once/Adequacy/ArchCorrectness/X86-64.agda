@@ -11,7 +11,13 @@
 -- honest external axiom + a provable simulation — see below.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.ArchCorrectness.X86-64 where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.Adequacy.ArchCorrectness.X86-64 (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; _+_; s≤s; z≤n)
 open import Data.Unit using (tt)
@@ -40,12 +46,12 @@ open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.Adequacy.SourceTrace using (moduleToIR)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (x86-64-frame-semantics)
-open import Once.CCC.Codegen.IRObsCorrectFlat using (module IRObsCorrectFlatness)
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-stack-budget)
+open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
+open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Codegen.ShapeTable using (HeapModed)
 open import Once.CCC.Target.X86-64.AbstractToX86
   using (compile-trace; compile-trace-cnt; compile-trace-cnt-agrees; no-nested-of-all)
-open import Once.CCC.Codegen.FrameFreeTrace using (ir-to-trace-frame-free)
+open import Once.CCC.Codegen.FrameFreeTrace o using (ir-to-trace-frame-free)
 open import Data.Empty using (⊥)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
@@ -57,7 +63,7 @@ postulate
 open IRObsCorrectFlatness {x86-64-frame-semantics} program-bound using (ir-obs-correct; MachineRefinesObsF)
 
 -- The FlatFromObs bundle at the x86-64 params (concrete machine now VISIBLE).
-module FFOx = FFO x86-64 x86-64-frame-semantics (arch-semantics x86-64) program-bound
+module FFOx = FFO o x86-64 x86-64-frame-semantics (arch-semantics x86-64) program-bound
 as64 = arch-semantics x86-64
 
 ------------------------------------------------------------------------
@@ -75,7 +81,7 @@ conc-trace nothing   _ = []
 conc-trace (just ir) =
   -- THE REAL EMITTER: `Once.Target.X86-64` lowers via `compile-trace-cnt`
   -- (which threads the label counter through case/loop), not the plain fold.
-  ArchSemantics.run-trace as64 (proj₂ (compile-trace-cnt 0 (ir-to-trace ir)))
+  ArchSemantics.run-trace as64 (proj₂ (compile-trace-cnt o 0 (ir-to-trace ir)))
                           (ArchSemantics.initialState as64)
 
 postulate
@@ -118,13 +124,13 @@ postulate
     ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
       (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
       (s : X.State) (n : ℕ)
-    → RCx.RunAt x86-64-frame-semantics refl prog fs
+    → RCx.RunAt o x86-64-frame-semantics refl prog fs
     → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
     → FlatMachine.fetch {x86-64-frame-semantics} prog
         (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-alloc-heap n)
     → FCx.hfront hv + slots n ≤ FCx.lo hv
 
-open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
+open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
   x86-64-frame-semantics refl x86-64-heap-room
   using (events-agree; CompiledCorr; HeapView
         ; FlatInv; EntryLike; Reachable; reach-start
@@ -336,7 +342,7 @@ conc-flat-sim-just :
   ∀ (ir : IR Unit Unit) (n : ℕ) →
   conc-trace (just ir) n ≡ FFOx.flat-trace-of ir-obs-correct (just ir) n
 conc-flat-sim-just ir n
-  rewrite compile-trace-cnt-agrees 0 (ir-to-trace ir)
+  rewrite compile-trace-cnt-agrees o 0 (ir-to-trace ir)
             (no-nested-of-all (ir-to-trace ir) (ir-to-trace-frame-free ir (main-heap-moded ir))) =
   trans (conc-fuel ir n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
   where
@@ -363,5 +369,5 @@ asm-trace-correct-x86-64 m asm eq n =
 
 x86-64-correct : ArchCorrect x86-64 (arch-semantics x86-64)
 x86-64-correct =
-  FFO.flat-from-obs x86-64 x86-64-frame-semantics (arch-semantics x86-64)
+  FFO.flat-from-obs o x86-64 x86-64-frame-semantics (arch-semantics x86-64)
     program-bound ir-obs-correct asm-trace-correct-x86-64

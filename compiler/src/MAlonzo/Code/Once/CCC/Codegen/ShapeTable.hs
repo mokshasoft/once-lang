@@ -30,6 +30,7 @@ import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Once.CCC.FrameSemantics
+import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.Allocation
 import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
@@ -500,7 +501,7 @@ d_load'45'snd_300 v0
          _ -> coe v1)
 -- Once.CCC.Codegen.ShapeTable.step-expect
 d_step'45'expect_318 ::
-  (Integer -> T_Expect_24) ->
+  (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Expect_24) ->
   T_Expect_24 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188 ->
   T_Expect_24
@@ -711,7 +712,7 @@ d_step'45'expect_318 v0 v1 v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.ShapeTable._.scrub
 d_scrub_510 ::
-  (Integer -> T_Expect_24) ->
+  (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Expect_24) ->
   T_Expect_24 -> Integer -> T_RegExpect_8 -> T_RegExpect_8
 d_scrub_510 ~v0 ~v1 ~v2 v3 = du_scrub_510 v3
 du_scrub_510 :: T_RegExpect_8 -> T_RegExpect_8
@@ -721,7 +722,7 @@ du_scrub_510 v0
       _ -> coe v0
 -- Once.CCC.Codegen.ShapeTable._.scrub-slots
 d_scrub'45'slots_514 ::
-  (Integer -> T_Expect_24) ->
+  (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Expect_24) ->
   T_Expect_24 ->
   Integer ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -746,7 +747,7 @@ du_scrub'45'slots_514 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.ShapeTable._.scrub-expect
 d_scrub'45'expect_522 ::
-  (Integer -> T_Expect_24) ->
+  (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Expect_24) ->
   T_Expect_24 -> Integer -> T_Expect_24 -> T_Expect_24
 d_scrub'45'expect_522 ~v0 ~v1 ~v2 v3 = du_scrub'45'expect_522 v3
 du_scrub'45'expect_522 :: T_Expect_24 -> T_Expect_24
@@ -816,7 +817,7 @@ d_site'45'ok_644 v0 v1
          _ -> coe v2)
 -- Once.CCC.Codegen.ShapeTable.ctrl-ok
 d_ctrl'45'ok_660 ::
-  (Integer -> T_Expect_24) ->
+  (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Expect_24) ->
   T_Expect_24 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188 -> Bool
 d_ctrl'45'ok_660 v0 v1 v2
@@ -875,7 +876,7 @@ d_ctrl'45'ok_660 v0 v1 v2
          _ -> coe v3)
 -- Once.CCC.Codegen.ShapeTable.check-shapes
 d_check'45'shapes_768 ::
-  (Integer -> T_Expect_24) ->
+  (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Expect_24) ->
   T_Expect_24 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188] -> Bool
 d_check'45'shapes_768 v0 v1 v2
@@ -894,7 +895,7 @@ d_check'45'shapes_768 v0 v1 v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.ShapeTable.scan-expect
 d_scan'45'expect_782 ::
-  (Integer -> T_Expect_24) ->
+  (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Expect_24) ->
   T_Expect_24 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188] ->
   [T_Expect_24]
@@ -910,14 +911,14 @@ d_scan'45'expect_782 v0 v1 v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.ShapeTable.scan-length
 d_scan'45'length_802 ::
-  (Integer -> T_Expect_24) ->
+  (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Expect_24) ->
   T_Expect_24 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_scan'45'length_802 = erased
 -- Once.CCC.Codegen.ShapeTable.post-expect
 d_post'45'expect_820 ::
-  (Integer -> T_Expect_24) ->
+  (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Expect_24) ->
   T_Expect_24 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188] ->
   T_Expect_24
@@ -931,7 +932,7 @@ d_post'45'expect_820 v0 v1 v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.ShapeTable.check-++
 d_check'45''43''43'_842 ::
-  (Integer -> T_Expect_24) ->
+  (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Expect_24) ->
   T_Expect_24 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188] ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188] ->
@@ -939,7 +940,7 @@ d_check'45''43''43'_842 ::
 d_check'45''43''43'_842 = erased
 -- Once.CCC.Codegen.ShapeTable._.∧-assoc₂
 d_'8743''45'assoc'8322'_872 ::
-  (Integer -> T_Expect_24) ->
+  (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Expect_24) ->
   T_Expect_24 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188] ->
@@ -950,7 +951,7 @@ d_'8743''45'assoc'8322'_872 ::
 d_'8743''45'assoc'8322'_872 = erased
 -- Once.CCC.Codegen.ShapeTable.post-++
 d_post'45''43''43'_900 ::
-  (Integer -> T_Expect_24) ->
+  (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Expect_24) ->
   T_Expect_24 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188] ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188] ->
@@ -989,7 +990,7 @@ d_at'45'pc_966 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.ShapeTable.state-at
 d_state'45'at_980 ::
-  (Integer -> T_Expect_24) ->
+  (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Expect_24) ->
   T_Expect_24 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188] ->
   Integer -> T_Expect_24
@@ -1023,7 +1024,7 @@ du_'8743''45'split_1010 v0 v1
          (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased erased))
 -- Once.CCC.Codegen.ShapeTable.check-at
 d_check'45'at_1024 ::
-  (Integer -> T_Expect_24) ->
+  (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Expect_24) ->
   T_Expect_24 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188] ->
   Integer ->
@@ -1034,7 +1035,7 @@ d_check'45'at_1024 ::
 d_check'45'at_1024 v0 v1 v2 v3 ~v4 ~v5 ~v6
   = du_check'45'at_1024 v0 v1 v2 v3
 du_check'45'at_1024 ::
-  (Integer -> T_Expect_24) ->
+  (MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> T_Expect_24) ->
   T_Expect_24 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2188] ->
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14

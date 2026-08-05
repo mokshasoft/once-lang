@@ -19,7 +19,13 @@
 -- postulate is retired.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.ArchCorrectness.RiscV64 where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) where
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -35,8 +41,8 @@ open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.Adequacy.SourceTrace using (moduleToIR)
 open import Once.CCC.Target.RiscV64.FrameInstantiation using (rv64-frame-semantics)
-open import Once.CCC.Codegen.IRObsCorrectFlat using (module IRObsCorrectFlatness)
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
+open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
+open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace-cnt)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
@@ -47,7 +53,7 @@ postulate
 
 open IRObsCorrectFlatness {rv64-frame-semantics} program-bound using (ir-obs-correct)
 
-module FFOr = FFO riscv64 rv64-frame-semantics (arch-semantics riscv64) program-bound
+module FFOr = FFO o riscv64 rv64-frame-semantics (arch-semantics riscv64) program-bound
 asR = arch-semantics riscv64
 
 -- The concrete machine's SigOp trace of a compiled IR (see X86-64 for the full
@@ -56,7 +62,7 @@ asR = arch-semantics riscv64
 conc-trace : Maybe (IR Unit Unit) → Behavior
 conc-trace nothing   _ = []
 conc-trace (just ir) =
-  ArchSemantics.run-trace asR (proj₂ (compile-trace-cnt 0 (ir-to-trace ir)))
+  ArchSemantics.run-trace asR (proj₂ (compile-trace-cnt o 0 (ir-to-trace ir)))
                           (ArchSemantics.initialState asR)
 
 postulate
@@ -80,5 +86,5 @@ asm-trace-correct-riscv64 m asm eq n =
 
 riscv64-correct : ArchCorrect riscv64 (arch-semantics riscv64)
 riscv64-correct =
-  FFO.flat-from-obs riscv64 rv64-frame-semantics (arch-semantics riscv64)
+  FFO.flat-from-obs o riscv64 rv64-frame-semantics (arch-semantics riscv64)
     program-bound ir-obs-correct asm-trace-correct-riscv64

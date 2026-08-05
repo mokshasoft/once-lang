@@ -20,7 +20,13 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.CCC.Target.X86-64.Syntax using (slot-size)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-module Once.Adequacy.ArchCorrectness.X86-64.RunContext
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.Adequacy.ArchCorrectness.X86-64.RunContext (o : CanonicalName)
   (FS : FrameSemantics)
   (word-eq : frame-word FS ≡ slot-size)
   where
@@ -37,7 +43,7 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 open import Once.IR using (IR; Unit)
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-stack-budget)
+open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Codegen.ShapeTable using (HeapModed)
 
 -- A state a program can START in: at the first instruction, running, with nothing

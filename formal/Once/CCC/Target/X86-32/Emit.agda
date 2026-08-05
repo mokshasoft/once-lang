@@ -16,6 +16,7 @@ open import Data.Nat.Show using () renaming (show to showNat)
 open import Data.String using (String; _++_)
 open import Data.List using (List; []; _∷_; foldr)
 
+open import Once.CCC.Label using (showLabelId)
 open import Once.CCC.Target.X86-32.Syntax
 
 ------------------------------------------------------------------------
@@ -52,9 +53,9 @@ showOperand (imm n) = "$" ++ showNat n
 ------------------------------------------------------------------------
 
 showLabel : Label → String
-showLabel (once n)     = "once_" ++ showNat n
+showLabel (once n)     = "once_" ++ showLabelId n
 showLabel (sigop nm k) = "sigops_" ++ nm ++ "_" ++ showNat k
-showLabel (thunk n)    = "_thunk_" ++ showNat n
+showLabel (thunk n)    = "_thunk_" ++ showLabelId n
 
 ------------------------------------------------------------------------
 -- Instructions (AT&T syntax: src, dst order; `l` = 32-bit operand size)
@@ -84,7 +85,7 @@ showInstr (pop r)        = "    popl "  ++ showReg r
 showInstr nop            = "    nop"
 showInstr ud2            = "    ud2"
 showInstr (label n)      = ".L" ++ showLabel n ++ ":"
-showInstr (mov-code r n) = "    movl $.L_thunk_" ++ showNat n ++ ", " ++ showReg r
+showInstr (mov-code r n) = "    movl $.L_thunk_" ++ showLabelId n ++ ", " ++ showReg r
 showInstr (jmp-l n)      = "    jmp .L" ++ showLabel n
 
 ------------------------------------------------------------------------

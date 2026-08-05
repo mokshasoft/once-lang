@@ -23,6 +23,8 @@
 module Once.CCC.Machine.Flat where
 
 open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_; _+_)
+-- Plan 0.63 (D089): the scans key on the STRUCTURED identity.
+open import Once.CCC.Label using (LabelId; _≡ᵇᴵ_; ≡ᵇᴵ-true)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length)
@@ -94,39 +96,39 @@ module FlatMachine {FS : FrameSemantics} where
   -- ascend phase) case on `label-of? x`'s 2-valued result, not
   -- `AbstractInstr`'s ~30 constructors. Behavior-preserving: `label-of?`
   -- is `just m` exactly on `instr-ctrl (c-label m)`, `nothing` elsewhere.
-  label-of? : AbstractInstr → Maybe ℕ
+  label-of? : AbstractInstr → Maybe LabelId
   label-of? (instr-ctrl (c-label m)) = just m
   label-of? _                        = nothing
 
-  fl-go          : AbstractTrace → ℕ → ℕ → Maybe ℕ
-  fl-label-match : Bool → AbstractTrace → ℕ → ℕ → Maybe ℕ
+  fl-go          : AbstractTrace → LabelId → ℕ → Maybe ℕ
+  fl-label-match : Bool → AbstractTrace → LabelId → ℕ → Maybe ℕ
   fl-go []       _      _ = nothing
   fl-go (x ∷ is) target i with label-of? x
-  ... | just m  = fl-label-match (m ≡ᵇ target) is target i
+  ... | just m  = fl-label-match (m ≡ᵇᴵ target) is target i
   ... | nothing = fl-go is target (suc i)
   fl-label-match true  _  _      i = just i
   fl-label-match false is target i = fl-go is target (suc i)
 
-  find-label : AbstractTrace → ℕ → Maybe ℕ
+  find-label : AbstractTrace → LabelId → Maybe ℕ
   find-label prog target = fl-go prog target 0
 
   -- D082: the CALL's scan. Separate from `find-label` because a body entry
   -- (`c-thunk`) and a jump target (`c-label`) are different provenances —
   -- a call can never land on a jump label, definitionally.
-  thunk-of? : AbstractInstr → Maybe ℕ
+  thunk-of? : AbstractInstr → Maybe LabelId
   thunk-of? (instr-ctrl (c-thunk m _)) = just m
   thunk-of? _                        = nothing
 
-  ft-go    : AbstractTrace → ℕ → ℕ → Maybe ℕ
-  ft-match : Bool → AbstractTrace → ℕ → ℕ → Maybe ℕ
+  ft-go    : AbstractTrace → LabelId → ℕ → Maybe ℕ
+  ft-match : Bool → AbstractTrace → LabelId → ℕ → Maybe ℕ
   ft-go []       _      _ = nothing
   ft-go (x ∷ is) target i with thunk-of? x
-  ... | just m  = ft-match (m ≡ᵇ target) is target i
+  ... | just m  = ft-match (m ≡ᵇᴵ target) is target i
   ... | nothing = ft-go is target (suc i)
   ft-match true  _  _      i = just i
   ft-match false is target i = ft-go is target (suc i)
 
-  find-thunk : AbstractTrace → ℕ → Maybe ℕ
+  find-thunk : AbstractTrace → LabelId → Maybe ℕ
   find-thunk prog target = ft-go prog target 0
 
   fetch : AbstractTrace → ℕ → Maybe AbstractInstr
@@ -144,7 +146,7 @@ module FlatMachine {FS : FrameSemantics} where
 
   -- Conditional branch (Plan 0.34): if the (inline-computed) condition
   -- holds, jump to the target label; else fall through. No flag state.
-  do-branch : Bool → ℕ → AbstractTrace → FlatState → FlatState
+  do-branch : Bool → LabelId → AbstractTrace → FlatState → FlatState
   do-branch true  target prog fs = do-jump (find-label prog target) fs
   do-branch false _      _    fs = record fs { fpc = suc (fpc fs) }
 
@@ -410,12 +412,12 @@ module FlatMachine {FS : FrameSemantics} where
 
   -- `label-of? x ≡ just m` pins the instruction: only `c-label` produces one.
   -- Enumerated, because the catch-all does not invert.
-  lab-eq : ∀ (x : AbstractInstr) (m : ℕ) → label-of? x ≡ just m → x ≡ instr-ctrl (c-label m)
+  lab-eq : ∀ (x : AbstractInstr) (m : LabelId) → label-of? x ≡ just m → x ≡ instr-ctrl (c-label m)
   lab-eq (instr-ctrl (c-label m')) m eq = cong (λ z → instr-ctrl (c-label z)) (just-inj eq)
-    where just-inj : ∀ {a b : ℕ} → just a ≡ just b → a ≡ b
+    where just-inj : ∀ {a b : LabelId} → just a ≡ just b → a ≡ b
           just-inj refl = refl
 
-  fl-go-lands : ∀ (t : AbstractTrace) (target acc j : ℕ)
+  fl-go-lands : ∀ (t : AbstractTrace) (target : LabelId) (acc j : ℕ)
               → fl-go t target acc ≡ just j
               → Σ ℕ (λ d → (j ≡ acc + d)
                     × (fetch t d ≡ just (instr-ctrl (c-label target))))
@@ -426,21 +428,21 @@ module FlatMachine {FS : FrameSemantics} where
            → Σ ℕ (λ d → (j' ≡ acc + d) × (fetch (x ∷ is) d ≡ just (instr-ctrl (c-label target))))
       step j' e with fl-go-lands is target (suc acc) j' e
       ... | d , j'≡ , ft = suc d , trans j'≡ (sym (+-suc acc d)) , ft
-      go : ∀ (mlab : Maybe ℕ) → label-of? x ≡ mlab → fl-go (x ∷ is) target acc ≡ just j
+      go : ∀ (mlab : Maybe LabelId) → label-of? x ≡ mlab → fl-go (x ∷ is) target acc ≡ just j
          → Σ ℕ (λ d → (j ≡ acc + d) × (fetch (x ∷ is) d ≡ just (instr-ctrl (c-label target))))
       go nothing  le e rewrite le = step j e
-      go (just m) le e rewrite le = match (m ≡ᵇ target) refl e
+      go (just m) le e rewrite le = match (m ≡ᵇᴵ target) refl e
         where
-          match : ∀ (b : Bool) → (m ≡ᵇ target) ≡ b → fl-label-match (m ≡ᵇ target) is target acc ≡ just j
+          match : ∀ (b : Bool) → (m ≡ᵇᴵ target) ≡ b → fl-label-match (m ≡ᵇᴵ target) is target acc ≡ just j
                 → Σ ℕ (λ d → (j ≡ acc + d) × (fetch (x ∷ is) d ≡ just (instr-ctrl (c-label target))))
           match true  beq e' rewrite beq =
             0 , trans (sym (just-inj e')) (sym (+-identityʳ acc))
-              , cong just (trans (lab-eq x m le) (cong (λ z → instr-ctrl (c-label z)) (≡ᵇ-true m target beq)))
+              , cong just (trans (lab-eq x m le) (cong (λ z → instr-ctrl (c-label z)) (≡ᵇᴵ-true m target beq)))
             where just-inj : ∀ {a b : ℕ} → just a ≡ just b → a ≡ b
                   just-inj refl = refl
           match false beq e' rewrite beq = step j e'
 
-  find-label-lands : ∀ (prog : AbstractTrace) (target j : ℕ)
+  find-label-lands : ∀ (prog : AbstractTrace) (target : LabelId) (j : ℕ)
                    → find-label prog target ≡ just j
                    → fetch prog j ≡ just (instr-ctrl (c-label target))
   find-label-lands prog target j eq with fl-go-lands prog target 0 j eq

@@ -19,6 +19,8 @@
 
 module Once.CCC.Codegen.CataNatTraceSilent where
 
+open import Once.CCC.Label using (LabelId)
+
 open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
@@ -66,7 +68,7 @@ module CataNatTraceSilent {FS : FrameSemantics} where
 
   -- The descend PRE-control phase is silent: its three links are control
   -- instructions (label, two branch-not), each emitting nothing.
-  descend-pre-silent : ∀ (prog : AbstractTrace) (fs : FlatState) (ld-top ld-end ld-base : ℕ)
+  descend-pre-silent : ∀ (prog : AbstractTrace) (fs : FlatState) (ld-top ld-end ld-base : LabelId)
                          (hf : halted (floc fs) ≡ false)
                          (scond : sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false)
                          (tcond : tag-zf (flat-read-tag (floc fs)) ≡ false)
@@ -89,7 +91,7 @@ module CataNatTraceSilent {FS : FrameSemantics} where
       B2 = flat-step1 {prog = prog} hf fB2 eqB2
 
   -- The descend POST-control phase is silent: jmp / label / jmp.
-  descend-post-silent : ∀ (prog : AbstractTrace) (fs : FlatState) (ld-de ld-top q-de q-top : ℕ)
+  descend-post-silent : ∀ (prog : AbstractTrace) (fs : FlatState) (ld-de ld-top : LabelId) (q-de q-top : ℕ)
                           (hf : halted (floc fs) ≡ false)
                           (fJ1 : fetch prog (fpc fs)      ≡ just (instr-ctrl (c-jmp ld-de)))
                           (de-res : find-label prog ld-de ≡ just q-de)
@@ -118,7 +120,7 @@ module CataNatTraceSilent {FS : FrameSemantics} where
   -- `descend-iter-flat` to `flat-events-steps`; `chain-events` of that
   -- silent chain reduces to `[]`, so the prepended events vanish.
   descend-iter-silent : ∀ (prog : AbstractTrace) (fs : FlatState)
-                          (ld-top ld-end ld-inl ld-de q-de q-top : ℕ)
+                          (ld-top ld-end ld-inl ld-de : LabelId) (q-de q-top : ℕ)
                           (loc : ValueLocation FS) (v : StoredValue FS)
     → halted (floc fs) ≡ false
     → sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false

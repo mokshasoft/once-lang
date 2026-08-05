@@ -18,6 +18,7 @@ open import Data.Integer.Show using () renaming (show to showInt)
 open import Data.String using (String; _++_)
 open import Data.List using (List; []; _∷_; foldr)
 
+open import Once.CCC.Label using (showLabelId)
 open import Once.CCC.Target.RiscV64.Syntax
 
 ------------------------------------------------------------------------
@@ -35,9 +36,9 @@ open import Once.Target.RiscV64.PhysReg using (showReg)
 ------------------------------------------------------------------------
 
 showLabel : Label → String
-showLabel (once n)     = "once_" ++ showNat n
+showLabel (once n)     = "once_" ++ showLabelId n
 showLabel (sigop nm k) = "sigops_" ++ nm ++ "_" ++ showNat k
-showLabel (thunk n)    = "_thunk_" ++ showNat n
+showLabel (thunk n)    = "_thunk_" ++ showLabelId n
 
 ------------------------------------------------------------------------
 -- Instructions
@@ -51,7 +52,7 @@ showInstr (sub  rd rs1 rs2)   = "    sub "   ++ showReg rd ++ ", " ++ showReg rs
 showInstr (addi rd rs i)      = "    addi "  ++ showReg rd ++ ", " ++ showReg rs  ++ ", " ++ showInt i
 showInstr (li   rd i)         = "    li "    ++ showReg rd ++ ", " ++ showInt i
 showInstr (auipc rd i)        = "    auipc " ++ showReg rd ++ ", " ++ showNat i
-showInstr (lla  rd n)         = "    lla "   ++ showReg rd ++ ", .L_thunk_" ++ showNat n
+showInstr (lla  rd n)         = "    lla "   ++ showReg rd ++ ", .L_thunk_" ++ showLabelId n
 showInstr (mv   rd rs)        = "    mv "    ++ showReg rd ++ ", " ++ showReg rs
 showInstr (beq  rs1 rs2 o)    = "    beq "   ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", .L" ++ showLabel o
 showInstr (bne  rs1 rs2 o)    = "    bne "   ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", .L" ++ showLabel o

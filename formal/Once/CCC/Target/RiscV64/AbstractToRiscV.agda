@@ -47,6 +47,8 @@ open import Once.CCC.Target.RiscV64.Syntax
          beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; label;
          Label; once; thunk;
          Program; slot-size; slots)
+open import Once.CanonicalName using (CanonicalName)
+open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (fits-int; fits-float)
 
@@ -329,35 +331,35 @@ compile-abstract (instr-ctrl (c-branch-tag-zero n))     = ld t1 t0 0 ∷ beq t1 
 -- maps compile-abstract, which sees only the sentinel). Each case/loop
 -- consumes 2 fresh labels; the counter threads through so nested structures
 -- get unique labels. Input1 pointer = t0 (tag at 0(t0)); loop counter = s3.
-compile-trace-cnt : ℕ → AbstractTrace → ℕ × Program
-compile-trace-cnt n [] = n , []
-compile-trace-cnt n (instr-loop body ∷ rest) =
+compile-trace-cnt : CanonicalName → ℕ → AbstractTrace → ℕ × Program
+compile-trace-cnt o n [] = n , []
+compile-trace-cnt o n (instr-loop body ∷ rest) =
   let l-top = n
       l-end = suc n
-      (n1 , pbody) = compile-trace-cnt (suc (suc n)) body
-      (n2 , pr)    = compile-trace-cnt n1 rest
+      (n1 , pbody) = compile-trace-cnt o (suc (suc n)) body
+      (n2 , pr)    = compile-trace-cnt o n1 rest
       -- Scratch (s3) is the loop counter; break when it hits 0.
-      loop = label (once l-top) ∷
-             beq s3 zero (once l-end) ∷
+      loop = label (once (ℓ o l-top)) ∷
+             beq s3 zero (once (ℓ o l-end)) ∷
              pbody ++
-             (j (once l-top) ∷
-              label (once l-end) ∷ [])
+             (j (once (ℓ o l-top)) ∷
+              label (once (ℓ o l-end)) ∷ [])
   in n2 , loop ++ pr
-compile-trace-cnt n (instr-case-on-tag f g ∷ rest) =
+compile-trace-cnt o n (instr-case-on-tag f g ∷ rest) =
   let lbl-inl = n
       lbl-end = suc n
-      (n1 , pf) = compile-trace-cnt (suc (suc n)) f
-      (n2 , pg) = compile-trace-cnt n1 g
-      (n3 , pr) = compile-trace-cnt n2 rest
+      (n1 , pf) = compile-trace-cnt o (suc (suc n)) f
+      (n2 , pg) = compile-trace-cnt o n1 g
+      (n3 , pr) = compile-trace-cnt o n2 rest
       -- tag at 0(t0); tag ≡ 0 ⇒ inl (f), else inr (g). Fall-through is g.
       dispatch  = ld t1 t0 0 ∷
-                  beq t1 zero (once lbl-inl) ∷
+                  beq t1 zero (once (ℓ o lbl-inl)) ∷
                   pg ++
-                  (j (once lbl-end) ∷
-                   label (once lbl-inl) ∷ []) ++
+                  (j (once (ℓ o lbl-end)) ∷
+                   label (once (ℓ o lbl-inl)) ∷ []) ++
                   pf ++
-                  (label (once lbl-end) ∷ [])
+                  (label (once (ℓ o lbl-end)) ∷ [])
   in n3 , dispatch ++ pr
-compile-trace-cnt n (i ∷ rest) =
-  let (n1 , pr) = compile-trace-cnt n rest
+compile-trace-cnt o n (i ∷ rest) =
+  let (n1 , pr) = compile-trace-cnt o n rest
   in n1 , compile-abstract i ++ pr

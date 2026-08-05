@@ -19,7 +19,14 @@
 -- it just uses the stored proof.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.ClosureWellFormed where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: `IRToTrace` is imported APPLIED, so `ir-to-trace-at-frontier`
+-- reads as it always did.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Machine.ClosureWellFormed (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; _<_; _≤_; _≥_; suc; zero) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-antisym; ≤-trans; +-identityʳ; m≤n+m; +-monoʳ-≤; +-comm)
@@ -49,7 +56,7 @@ open import Once.CCC.Machine.Allocation hiding (AllocMode)
 -- references `ir-to-trace-at-frontier` to force each producer's trace
 -- to equal what IRToTrace emits at the alloc's frontier. The previously-
 -- free `trace` field becomes structurally constrained.
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace-at-frontier)
+open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace-at-frontier)
 
 -- Plan 0.52 M2: μ-type/ν-type/WellFormedFI/⟦_⟧TI now come from Once.IR (IRTy tier)
 -- via its public re-export of Once.IRTy — no surface Once.Type import needed.
@@ -190,7 +197,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         (body<bound : ir-size body < program-bound) →
         {closure-loc env-loc : ValueLocation FS} {s : LocState FS}
         {mEnv : AllocMode}
-        {body-label : ℕ} →
+        {body-label : LabelId} →
         LocMatchesMode m closure-loc →
         readLoc s closure-loc ≡ just (SV-Ptr env-loc) →
         readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label) →
@@ -837,7 +844,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       env : ⟦ EnvType ⟧
       body<bound : ir-size body < program-bound
       env-loc : ValueLocation FS
-      body-label : ℕ
+      body-label : LabelId
       mEnv : AllocMode  -- Mode of env
       env-ptr : readLoc s closure-loc ≡ just (SV-Ptr env-loc)
       code-ptr : readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label)

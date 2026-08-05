@@ -29,12 +29,18 @@
 -- in its own layer, conjoined here, never folded into `correct`.
 ------------------------------------------------------------------------
 
-module Once.Certified where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.Certified (o : CanonicalName) where
 
 -- P5 (OCP-0006): the correctness criterion is consumed THROUGH the spec
 -- door — `Once.Spec` is on the certified path, not an island.
 open import Once.Spec using (CorrectCompiler)
-open import Once.Compiler using (once-compiler)
+open import Once.Compiler o using (once-compiler)
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
 
 record CertifiedBuild : Set₁ where

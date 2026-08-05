@@ -20,6 +20,8 @@
 
 module Once.CCC.Codegen.CataNatDescendRun where
 
+open import Once.CCC.Label using (LabelId)
+
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_)
 open import Data.Product using (Σ-syntax; _×_; _,_; proj₁; proj₂)
 open import Data.Maybe using (just)
@@ -51,7 +53,7 @@ module CataNatDescendRun {FS : FrameSemantics} where
   -- at the loop head `q-top`. Shared across iterations (the loop head pc
   -- is constant).
   record DescendCode (prog : AbstractTrace)
-                     (ld-top ld-end ld-inl ld-de q-top q-de q-inl q-end : ℕ) : Set where
+                     (ld-top ld-end ld-inl ld-de : LabelId) (q-top q-de q-inl q-end : ℕ) : Set where
     field
       cL   : fetch prog q-top                               ≡ just (instr-ctrl (c-label ld-top))
       cBs  : fetch prog (suc q-top)                         ≡ just (instr-ctrl (c-branch-scratch-zero ld-end))
@@ -74,7 +76,7 @@ module CataNatDescendRun {FS : FrameSemantics} where
   -- The descend loop runs to completion on a depth-`m` chain: `m*9+9`
   -- steps from the loop head to SOME descend-done state. Induction on `m`.
   descend-chain-runs : ∀ (prog : AbstractTrace)
-                         (ld-top ld-end ld-inl ld-de q-top q-de q-inl q-end : ℕ)
+                         (ld-top ld-end ld-inl ld-de : LabelId) (q-top q-de q-inl q-end : ℕ)
                          (code : DescendCode prog ld-top ld-end ld-inl ld-de q-top q-de q-inl q-end)
                          (m : ℕ) (ls : LocState FS) (alloc : AllocState {FS})
                          (loc : ValueLocation FS)

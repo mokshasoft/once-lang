@@ -61,7 +61,7 @@ d_showMem_10 v0
              (".L_thunk_" :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v1)
+                (MAlonzo.Code.Once.CCC.Label.d_showLabelId_248 (coe v1))
                 ("(%rip)" :: Data.Text.Text))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Emit.showOperand
@@ -83,16 +83,16 @@ d_showOperand_22 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Emit.showLabel
 d_showLabel_30 ::
-  MAlonzo.Code.Once.CCC.Label.T_Label_6 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_showLabel_30 v0
   = case coe v0 of
-      MAlonzo.Code.Once.CCC.Label.C_once_8 v1
+      MAlonzo.Code.Once.CCC.Label.C_once_24 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("once_" :: Data.Text.Text)
-             (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v1)
-      MAlonzo.Code.Once.CCC.Label.C_sigop_10 v1 v2
+             (MAlonzo.Code.Once.CCC.Label.d_showLabelId_248 (coe v1))
+      MAlonzo.Code.Once.CCC.Label.C_sigop_26 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("sigops_" :: Data.Text.Text)
@@ -102,11 +102,11 @@ d_showLabel_30 v0
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    ("_" :: Data.Text.Text)
                    (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v2)))
-      MAlonzo.Code.Once.CCC.Label.C_thunk_12 v1
+      MAlonzo.Code.Once.CCC.Label.C_thunk_28 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("_thunk_" :: Data.Text.Text)
-             (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v1)
+             (MAlonzo.Code.Once.CCC.Label.d_showLabelId_248 (coe v1))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Emit.showInstr
 d_showInstr_40 ::

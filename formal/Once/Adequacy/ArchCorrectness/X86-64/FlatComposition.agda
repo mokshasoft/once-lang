@@ -28,7 +28,7 @@ open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Label using (Label; once; thunk; _≡ᵇᴸ_)
+open import Once.CCC.Label using (Label; once; thunk; _≡ᵇᴸ_; LabelId; _≡ᵇᴵ_; ≡ᵇᴵ-true; ≢⇒≡ᵇᴵfalse)
 open import Once.Type using (FitsInReg; fits-int; fits-float)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
@@ -140,9 +140,9 @@ find-label-go-skip-other target ℓ rest xi ne rewrite ne = refl
 -- enumeration serves both; a parallel `headView` would duplicate 40 clauses to
 -- say the mirror-image thing.
 data HeadView (i : AbstractInstr) : Set where
-  hv-clabel : (m : ℕ)
+  hv-clabel : (m : LabelId)
     → compile-abstract i ≡ label (once m) ∷ []
-    → (∀ rest tgt acc → fl-go (i ∷ rest) tgt acc ≡ fl-label-match (m ≡ᵇ tgt) rest tgt acc)
+    → (∀ rest tgt acc → fl-go (i ∷ rest) tgt acc ≡ fl-label-match (m ≡ᵇᴵ tgt) rest tgt acc)
     -- a `once` label is INVISIBLE to the call scan: `thunk-of?` misses it, and
     -- concretely `once m ≡ᵇᴸ thunk tgt` is the catch-all `false` (D082).
     → (∀ rest tgt acc → ft-go (i ∷ rest) tgt acc ≡ ft-go rest tgt (suc acc))
@@ -164,11 +164,11 @@ data HeadView (i : AbstractInstr) : Set where
   -- …and it is the THUNK label specifically (the only producer is `c-thunk`),
   -- which is what lets the same view drive the call scan: there this head is
   -- the MATCH decision, exactly as `hv-clabel` is for the jump scan.
-  hv-otherlabel : (m : ℕ) (tail : Program)
+  hv-otherlabel : (m : LabelId) (tail : Program)
     → compile-abstract i ≡ label (thunk m) ∷ tail
     → has-label tail ≡ false
     → (∀ rest tgt acc → fl-go (i ∷ rest) tgt acc ≡ fl-go rest tgt (suc acc))
-    → (∀ rest tgt acc → ft-go (i ∷ rest) tgt acc ≡ ft-match (m ≡ᵇ tgt) rest tgt acc)
+    → (∀ rest tgt acc → ft-go (i ∷ rest) tgt acc ≡ ft-match (m ≡ᵇᴵ tgt) rest tgt acc)
     → HeadView i
 
 reg-op-no-label : ∀ (op : RegOp) → has-label (compile-abstract (instr-reg-op op)) ≡ false
@@ -238,7 +238,7 @@ headView (instr-ctrl (c-branch-tag-zero m)) = hv-plain refl (λ _ _ _ → refl) 
 -- the catch-all of `_≡ᵇᴸ_` on mismatched provenances, so they are `refl` at
 -- every producer — no label-uniqueness argument anywhere.
 ------------------------------------------------------------------------
-find-thunk-pres : ∀ (prog : AbstractTrace) (target acc xi j : ℕ)
+find-thunk-pres : ∀ (prog : AbstractTrace) (target : LabelId) (acc xi j : ℕ)
   → All HeadView prog
   → ft-go prog target acc ≡ just j
   → Σ ℕ (λ d → (j ≡ acc + d)
@@ -266,7 +266,7 @@ find-thunk-pres (i ∷ rest) target acc xi j (hv-clabel m ca-eq _ ft-p ∷ all-r
                              (cong (λ L → xi + (L + x86-off rest d')) (sym (cong length ca-eq)))))
 -- THE MATCH CASE: a `c-thunk m` block. Both scans decide on `m ≡ᵇ target`.
 find-thunk-pres (i ∷ rest) target acc xi j (hv-otherlabel m tl ca-eq nl _ ft-m ∷ all-rest) ft-eq
-  with m ≡ᵇ target in meq
+  with m ≡ᵇᴵ target in meq
 ... | true rewrite ca-eq | meq = 0 , comp1 , cong just (sym (+-identityʳ xi))
   where
     jinj : ∀ {a b : ℕ} → (just a) ≡ (just b) → a ≡ b
@@ -299,7 +299,7 @@ find-thunk-pres (i ∷ rest) target acc xi j (hv-otherlabel m tl ca-eq nl _ ft-m
 just-inj : ∀ {a b : ℕ} → (just a) ≡ (just b) → a ≡ b
 just-inj refl = refl
 
-find-label-pres : ∀ (prog : AbstractTrace) (target acc xi j : ℕ)
+find-label-pres : ∀ (prog : AbstractTrace) (target : LabelId) (acc xi j : ℕ)
   → All HeadView prog
   → fl-go prog target acc ≡ just j
   → Σ ℕ (λ d → (j ≡ acc + d)
@@ -326,7 +326,7 @@ find-label-pres (i ∷ rest) target acc xi j (hv-otherlabel m tl ca-eq nl fl-p _
                                            (sym (+-suc xi (length tl + x86-off rest d'))))
                                     (cong (λ L → xi + (L + x86-off rest d')) (sym (cong length ca-eq))))))
 find-label-pres (i ∷ rest) target acc xi j (hv-clabel m ca-eq fl-c _ ∷ all-rest) fl-eq
-  with m ≡ᵇ target in meq
+  with m ≡ᵇᴵ target in meq
 ... | true rewrite ca-eq | meq = 0 , comp1 , cong just (sym (+-identityʳ xi))
   where
     acc≡j : acc ≡ j
@@ -357,7 +357,7 @@ all-headView (i ∷ rest) = headView i ∷ all-headView rest
 
 -- find-label preservation, side-condition discharged: a flat jump to flat
 -- index j corresponds to the x86 jump to block-offset index x86-off prog j.
-find-label-corr : ∀ (prog : AbstractTrace) (target xi j : ℕ)
+find-label-corr : ∀ (prog : AbstractTrace) (target : LabelId) (xi j : ℕ)
   → fl-go prog target 0 ≡ just j
   → X.find-label-go (once target) (compile-trace prog) xi ≡ just (xi + x86-off prog j)
 find-label-corr prog target xi j fl-eq with find-label-pres prog target 0 xi j (all-headView prog) fl-eq
@@ -366,7 +366,7 @@ find-label-corr prog target xi j fl-eq with find-label-pres prog target 0 xi j (
 -- …and the CALL's, the same statement over the `thunk` provenance: the flat
 -- machine's `find-thunk` and the emitted `call`'s label resolution land on the
 -- same block. This is what `instr-call-closure`'s block-step will consume.
-find-thunk-corr : ∀ (prog : AbstractTrace) (target xi j : ℕ)
+find-thunk-corr : ∀ (prog : AbstractTrace) (target : LabelId) (xi j : ℕ)
   → ft-go prog target 0 ≡ just j
   → X.find-label-go (thunk target) (compile-trace prog) xi ≡ just (xi + x86-off prog j)
 find-thunk-corr prog target xi j ft-eq with find-thunk-pres prog target 0 xi j (all-headView prog) ft-eq
@@ -517,7 +517,7 @@ fetch-block-6th prog k i ft =
 -- `hv-plain`'s `has-label ≡ false`). Label UNIQUENESS is never needed: both
 -- scanners return their first match, so duplicates align rather than conflict.
 ------------------------------------------------------------------------
-find-label-none-go : ∀ (prog : AbstractTrace) (target acc xi : ℕ)
+find-label-none-go : ∀ (prog : AbstractTrace) (target : LabelId) (acc xi : ℕ)
   → All HeadView prog
   → fl-go prog target acc ≡ nothing
   → X.find-label-go (once target) (compile-trace prog) xi ≡ nothing
@@ -535,7 +535,7 @@ find-label-none-go (i ∷ rest) target acc xi (hv-otherlabel m tl ca-eq nl fl-p 
         (find-label-none-go rest target (suc acc) (suc xi + length tl) all-rest
                             (trans (sym (fl-p rest target acc)) fl-eq))
 find-label-none-go (i ∷ rest) target acc xi (hv-clabel m ca-eq fl-c _ ∷ all-rest) fl-eq
-  with m ≡ᵇ target in meq
+  with m ≡ᵇᴵ target in meq
 -- a MATCH contradicts the flat scan's `nothing`
 ... | true  = absurd (trans (sym fl-eq)
                 (trans (fl-c rest target acc)
@@ -548,7 +548,7 @@ find-label-none-go (i ∷ rest) target acc xi (hv-clabel m ca-eq fl-c _ ∷ all-
     (trans (sym (cong (λ b → fl-label-match b rest target acc) meq))
            (trans (sym (fl-c rest target acc)) fl-eq))
 
-find-label-none-corr : ∀ (prog : AbstractTrace) (target : ℕ)
+find-label-none-corr : ∀ (prog : AbstractTrace) (target : LabelId)
   → fl-go prog target 0 ≡ nothing
   → X.find-label (compile-trace prog) (once target) ≡ nothing
 find-label-none-corr prog target fl-eq =

@@ -24,7 +24,7 @@
 open import Once.CCC.FrameSemantics using (FrameSemantics; shift-frame; frame-word; frame-base; slot-addr; slot-addr-linear)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; heap-ref; ref-id)
 open import Once.CCC.Machine.SMCore using (AllocState)
-open import Once.CCC.Label using (once)
+open import Once.CCC.Label using (once; LabelId)
 open import Once.CCC.Target.X86-64.Syntax using
   ( slot-size; slots; Program; Instr; Reg; Operand; reg; imm; mem; base; base+disp; rsp; rbp; rax; rdi; rbx
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
@@ -35,7 +35,7 @@ open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-transˡ; <-ir
 open import Relation.Binary.PropositionalEquality using (_≡_)
 -- …and the pieces the RESOURCE parameter's type needs. Imported UNAPPLIED, so
 -- the module's own `FS`/`word-eq` can be threaded into them by Agda's
--- telescoping (`RC.RunAt FS word-eq …`) — a parameter's type is elaborated
+-- telescoping (`RC.RunAt o FS word-eq …`) — a parameter's type is elaborated
 -- before the body, where the applied `open import … FS word-eq` has not run.
 open import Data.Maybe using (just)
 open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-alloc-heap)
@@ -45,7 +45,13 @@ import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FC
 import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation as FSim
 import Once.Adequacy.ArchCorrectness.X86-64.RunContext as RC
 
-module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
   (FS : FrameSemantics)
   (word-eq : frame-word FS ≡ slot-size)
   -- MEMORY EXHAUSTION, as a PARAMETER rather than a postulate (2026-08-05).
@@ -61,7 +67,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim
   (heap-room : ∀ {hv : FC.HeapView FS word-eq}
                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                  (s : X.State) (n : ℕ)
-             → RC.RunAt FS word-eq prog fs
+             → RC.RunAt o FS word-eq prog fs
              → FSim.CompiledCorr FS word-eq hv prog fs s
              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                ≡ just (instr-alloc-heap n)
@@ -95,7 +101,7 @@ open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
   using (x86-len; x86-off; drop-compile; fetch-drop; drop-[]; fetch-block-head
         ; find-label-none-corr; fetch-block-2nd)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-stack-budget)
+open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Machine.FrameFree using (FrameFreeI; FrameFreeT; EmittableI; frame-free-emittable)
 open import Data.List.Relation.Unary.All using () renaming (All to AllL; [] to allL-[]; _∷_ to _allL∷_)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
@@ -106,15 +112,15 @@ open import Once.CCC.Machine.FlatStackPtr FS using
 open import Once.CCC.Machine.FlatPtrBounds FS using
   (PtrBoundsWF; PtrB; PtrB?; ptr-bounds-cell; ptr-bounds-suc; flat-ptr-bounds
   ; mkPtrBounds; pb-regs; pb-heap; pb-stack)
-open import Once.CCC.Codegen.FrameFreeTrace using (fetch-frame-free; ir-to-trace-frame-free)
-open import Once.CCC.Codegen.AllocMin using (AllocMinI; fetch-alloc-min)
+open import Once.CCC.Codegen.FrameFreeTrace o using (fetch-frame-free; ir-to-trace-frame-free)
+open import Once.CCC.Codegen.AllocMin o using (AllocMinI; fetch-alloc-min)
 open import Once.CCC.Codegen.ShapeTable as ST using
   (LabelEnv; Expect; entry-expect; check-shapes; state-at; check-at; at-pc;
    HeapModed; e-in1)
 open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; site-store-ptr; fetch-at-pc)
-open import Once.CCC.Codegen.LabelScope using (emitted-jump-in-segment; mention-at; mention-of; once-label-of)
+open import Once.CCC.Codegen.LabelScope o using (emitted-jump-in-segment; mention-at; mention-of; once-label-of)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Once.CCC.Codegen.SlotBudget using
+open import Once.CCC.Codegen.SlotBudget o using
   (emitted-slot-seg; below; pair-below; trace-lookup; seg-at; SegState; mkSeg; cur
   ; seg-action; is-id?; seg-idle?; idle-step; idle-head; idle-tail; seg-at-suc
   ; seg-step; saved)
@@ -205,7 +211,7 @@ open import Data.List using ([])   -- for `EntryLike`'s empty frame stack
 -- (The run context — `EntryLike`, `Reachable`, `Emitted`, `RunAt` — now
 -- lives in `…X86-64.RunContext`, one layer down, so that the resource bounds
 -- can be MODULE PARAMETERS here rather than postulates. See that module.)
-open import Once.Adequacy.ArchCorrectness.X86-64.RunContext FS word-eq public
+open import Once.Adequacy.ArchCorrectness.X86-64.RunContext o FS word-eq public
 
 
 -- The bundle threaded through `events-agree`: the two proved state invariants
@@ -542,7 +548,7 @@ postulate
   -- which, per D087, enters as a PARAMETER, not a postulate. `c-ret` needs the
   -- `FlatCorr` component relating the ghost `fret` to the machine stack.
   events-running-thunk : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                           prog fs s (m b : ℕ) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
+                           prog fs s (m : LabelId) (b : ℕ) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
                        → halted (floc fs) ≡ false
                        → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk m b))
                        → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
@@ -837,7 +843,7 @@ dj-aux nothing  fs = inj₁ refl
 -- what makes `do-branch b` reduce on the split — abstracting the scrutinee at
 -- the use site does not work, because its normal form is spelled differently
 -- from the source term (`readReg … Scratch` vs the field accessor).
-db-aux : ∀ (b : Bool) (m : ℕ) (prog : AbstractTrace) (fs : FlatState)
+db-aux : ∀ (b : Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
        → (fpc (do-branch b m prog fs) ≡ suc (fpc fs))
          ⊎ ((fpc (do-branch b m prog fs) ≡ fpc fs)
             ⊎ (Σ ℕ (λ q → (find-label prog m ≡ just q)
@@ -845,7 +851,7 @@ db-aux : ∀ (b : Bool) (m : ℕ) (prog : AbstractTrace) (fs : FlatState)
 db-aux false m prog fs = inj₁ refl
 db-aux true  m prog fs = inj₂ (dj-aux (find-label prog m) fs)
 
-data JumpPost (i : AbstractInstr) (m : ℕ) (prog : AbstractTrace) (fs : FlatState) : Set where
+data JumpPost (i : AbstractInstr) (m : LabelId) (prog : AbstractTrace) (fs : FlatState) : Set where
   jp-suc  : fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs) → JumpPost i m prog fs
   jp-halt : fpc (flat-exec-instr i prog fs) ≡ fpc fs → JumpPost i m prog fs
   jp-to   : ∀ (q : ℕ) → find-label prog m ≡ just q
@@ -859,9 +865,9 @@ data JumpPost (i : AbstractInstr) (m : ℕ) (prog : AbstractTrace) (fs : FlatSta
 data PcView (i : AbstractInstr) : Set where
   pv-suc   : FrameFreeI i
            → (∀ prog fs → fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)) → PcView i
-  pv-jump  : FrameFreeI i → ∀ (m : ℕ) → once-label-of i ≡ just m
+  pv-jump  : FrameFreeI i → ∀ (m : LabelId) → once-label-of i ≡ just m
            → (∀ prog fs → JumpPost i m prog fs) → PcView i
-  pv-thunk : ∀ (ℓ bb : ℕ) → i ≡ instr-ctrl (c-thunk ℓ bb) → PcView i
+  pv-thunk : ∀ (ℓ : LabelId) (bb : ℕ) → i ≡ instr-ctrl (c-thunk ℓ bb) → PcView i
   pv-ret   : ∀ (bb : ℕ) → i ≡ instr-ctrl (c-ret bb) → PcView i
 
 pcView : ∀ (i : AbstractInstr) → EmittableI i → PcView i
@@ -1446,7 +1452,7 @@ store-suc-nonptr-absurd prog fs r ftq i-eq nptr =
   nptr (proj₁ wits) (trans (sym i-eq) (proj₂ wits))
   where wits = store-indirect-suc-target-ptr prog fs r ftq
 
-branch-tag-scrutinee-wf : ∀ prog (fs : FlatState) (m : ℕ) → RunAt prog fs
+branch-tag-scrutinee-wf : ∀ prog (fs : FlatState) (m : LabelId) → RunAt prog fs
                         → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
                         → Σ (ValueLocation FS) (λ loc → Σ ℕ (λ k →
                             (readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc)

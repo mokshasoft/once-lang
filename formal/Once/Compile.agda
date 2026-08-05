@@ -511,8 +511,9 @@ compileFunWithTarget target l cf with cfIsPrimitive cf
       (_ , _ , dcIR) = directCallIR (cfType cf) (cfIR cf)
       -- Plan 0.20 Phase G: arith-block recognition pass before codegen.
       (ir' , blks)  = rewrite-ir dcIR
-      (l₁ , asm)    = irToAsm    target l ir'
-      (l₂ , bodies) = irToBodies target l ir'
+      -- Plan 0.63 (D089): the definition's own identity keys its labels.
+      (l₁ , asm)    = irToAsm    target (cfName cf) l ir'
+      (l₂ , bodies) = irToBodies target (cfName cf) l ir'
   in (l₁ ⊔ l₂) , (functionPrologue target (cfName cf) ++
            asm ++
            functionEpilogue target ++

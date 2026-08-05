@@ -6285,8 +6285,11 @@ property of `ir-to-trace'` alone.
 ## D089: A Label Is a Structured Identity, Not a Counter Value
 
 **Date**: 2026-08-05
-**Status**: TAKEN (design settled and its first three modules validated; the
-sweep is not yet landed — see plan 0.63)
+**Status**: TAKEN. Sub-step A LANDED 2026-08-05: the payload is `LabelId`
+across the abstract machine, all three targets and every proof that names a
+label, `owner` threaded from `cfName cf`, `path` still empty. Sub-steps B (the
+splice paths — the actual duplication fix) and C (per-definition `idx` reset)
+are not started; see plan 0.63.
 
 ### What broke
 

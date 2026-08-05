@@ -28,9 +28,10 @@ open import Once.IR using (IR)
 -- `Once.CCC.Target.X86-64.CompileCorrect.compile-correct`; the old
 -- compile-ir is retained for now as a reference but no longer
 -- extracted.
-open import Once.CCC.Codegen.IRToTrace
-  using (ir-to-trace; ir-to-bodies; ir-stack-budget;
-         ir-to-trace-from; ir-to-bodies-from; ir-stack-budget-from)
+-- Plan 0.63 (D089): IRToTrace is parameterised by the DEFINITION'S identity,
+-- and `irToAsm` takes that identity as an argument (it differs per function),
+-- so this importer telescopes it at each use rather than applying the module.
+import Once.CCC.Codegen.IRToTrace as IRT
 open import Once.Arith.Backend.X86-64.Emit using (emit-arith-blocks)
 open import Data.Nat using (ℕ)
 open import Data.Product using (_×_; _,_)
@@ -107,14 +108,14 @@ x86-64-functionEpilogue = "    ret\n\n"
 -- returns the next-available counter alongside the assembly text.
 -- The label counter is threaded by `Once.Compile.compileAllWithTarget`
 -- so thunks emitted by separate top-level functions don't collide.
-x86-64-irToAsm : ℕ → ∀ {A B} → IR A B → ℕ × String
-x86-64-irToAsm l ir =
-  let budget = ir-stack-budget-from l ir
-      (l' , trace) = ir-to-trace-from l ir
+x86-64-irToAsm : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
+x86-64-irToAsm o l ir =
+  let budget = IRT.ir-stack-budget-from o l ir
+      (l' , trace) = IRT.ir-to-trace-from o l ir
       -- Plan 0.13.1 Phase 5: thread the label counter through
-      -- compile-trace-cnt so case-on-tag dispatch gets fresh
+      -- compile-trace-cnt o so case-on-tag dispatch gets fresh
       -- (globally-unique) labels per function.
-      (l'' , prog) = compile-trace-cnt l' trace
+      (l'' , prog) = compile-trace-cnt o l' trace
   in l'' , ("    subq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
             programToText prog ++
             "    addq $" ++ showNat (budget * 8) ++ ", %rsp\n")
@@ -137,11 +138,11 @@ x86-64-irToAsm l ir =
 -- %rsp position). When body returns, %rsp snaps back; body's data
 -- is gone. No %rbp is touched anywhere — this is the unified
 -- frameless model where every IR function is %rsp-relative.
--- Plan 0.13.1 Phase 5: emit-thunk-body now threads a label counter
+-- Plan 0.13.1 Phase 5: emit-thunk-body o now threads a label counter
 -- for case-on-tag dispatch in the body.
-emit-thunk-body : ℕ → (ℕ × ℕ × AbstractTrace) → ℕ × String
-emit-thunk-body cl (lbl , budget , body-trace) =
-  let (cl' , prog) = compile-trace-cnt cl body-trace
+emit-thunk-body : CanonicalName → ℕ → (ℕ × ℕ × AbstractTrace) → ℕ × String
+emit-thunk-body o cl (lbl , budget , body-trace) =
+  let (cl' , prog) = compile-trace-cnt o cl body-trace
   in cl' , (".L_thunk_" ++ showNat lbl ++ ":\n" ++
             "    subq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
             programToText prog ++
@@ -153,18 +154,18 @@ emit-thunk-body cl (lbl , budget , body-trace) =
 -- emitted trace.
 -- Plan 0.13.1 Phase 5: also threads case-label counter through the
 -- bodies' compile-trace expansions.
-x86-64-irToBodies : ℕ → ∀ {A B} → IR A B → ℕ × String
-x86-64-irToBodies l ir =
-  let (l' , bodies) = ir-to-bodies-from l ir
+x86-64-irToBodies : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
+x86-64-irToBodies o l ir =
+  let (l' , bodies) = IRT.ir-to-bodies-from o l ir
   in emit-bodies l' bodies
   where
-    -- Threading: each emit-thunk-body consumes & produces a fresh
+    -- Threading: each emit-thunk-body o consumes & produces a fresh
     -- case-label counter so nested cases inside thunk bodies get
     -- globally-unique labels.
     emit-bodies : ℕ → List (ℕ × ℕ × AbstractTrace) → ℕ × String
     emit-bodies cl []       = cl , ""
     emit-bodies cl (b ∷ bs) =
-      let (cl1 , txt1) = emit-thunk-body cl b
+      let (cl1 , txt1) = emit-thunk-body o cl b
           (cl2 , txt2) = emit-bodies cl1 bs
       in cl2 , (txt1 ++ txt2)
 

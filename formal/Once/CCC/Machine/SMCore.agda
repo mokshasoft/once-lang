@@ -38,6 +38,10 @@ open import Relation.Nullary using (Dec; yes; no)
 
 -- Import FrameSemantics for Frame type
 open import Once.CCC.FrameSemantics using (FrameSemantics)
+-- Plan 0.63 (D089): the structured label identity. Re-exported, so every
+-- importer of the abstract instruction set sees `LabelId` without a second
+-- import — the same courtesy `Locations`/`HeapAddress` already get below.
+open import Once.CCC.Label public using (LabelId; mkLabelId; owner; path; idx)
 
 -- Import SigOpInfo so `instr-sigop` carries its full self-describing
 -- info (name + semI + semM), not just the name. This unlocks per-name
@@ -187,7 +191,11 @@ data StoredValue (FS : FrameSemantics) : Set where
   SV-Ptr  : ValueLocation FS → StoredValue FS
   SV-Tag  : ℕ → StoredValue FS
   SV-Lit  : ∀ {A} → FitsInReg A → ⟦ A ⟧ → StoredValue FS
-  SV-Code : ℕ → StoredValue FS
+  -- Plan 0.63 (D089): a code address NAMES A LABEL, so it carries the label's
+  -- identity rather than a raw counter value. The encoding to a machine word is
+  -- unchanged (`idx`, the same number as before) — what a code address encodes
+  -- to is D081's open question, not this one's.
+  SV-Code : LabelId → StoredValue FS
 
 -- Plan 0.2.4.5 D1 (Unit erasure) note: there is intentionally no
 -- `Erased` sentinel here. The earlier Erased constructor encoded
@@ -998,15 +1006,21 @@ module ExecLemmas {FS : FrameSemantics} where
 -- (a FlatState carries the pc + zero-flag); the legacy structured
 -- `exec-trace`/`exec-abstract` (no pc) simply HALT on these — they are
 -- never emitted into a structured trace, only into a flat program.
+-- Plan 0.63 (D089): the label ARGUMENTS are `LabelId`, not `ℕ`. Provenance
+-- stays where it already was — in WHICH CONSTRUCTOR (`c-label` vs `c-thunk`)
+-- and WHICH LOOKUP (`find-label` vs `find-thunk`) — so this layer needs no
+-- provenance field; only the identity becomes structured. See D089 for why a
+-- bare counter cannot be unique: `cata-dispatch` emits its algebra's trace
+-- twice, and a counter distinguishes occurrences only under a linear walk.
 data FlatCtrl : Set where
-  c-label              : ℕ → FlatCtrl  -- label marker (pc passes through)
-  c-jmp                : ℕ → FlatCtrl  -- unconditional jump to label
+  c-label              : LabelId → FlatCtrl  -- label marker (pc passes through)
+  c-jmp                : LabelId → FlatCtrl  -- unconditional jump to label
   -- Plan 0.34: a conditional branch is ONE portable unit (condition +
   -- target), lowered per target (x86: cmp+je = 2 instrs; RISC-V: beqz = 1).
   -- No flags register in the abstract machine — the condition is computed
   -- and consumed inside this single step.
-  c-branch-scratch-zero : ℕ → FlatCtrl -- if Scratch ≟ SV-Tag 0, jump to label
-  c-branch-tag-zero     : ℕ → FlatCtrl -- if *Input1 tag ≟ SV-Tag 0, jump
+  c-branch-scratch-zero : LabelId → FlatCtrl -- if Scratch ≟ SV-Tag 0, jump to label
+  c-branch-tag-zero     : LabelId → FlatCtrl -- if *Input1 tag ≟ SV-Tag 0, jump
   -- Plan 0.63: the call/return half of flat control. A RETURN is pure
   -- control flow, so it belongs here rather than as a top-level
   -- AbstractInstr (which would force a clause at the 13 sites that treat
@@ -1024,7 +1038,7 @@ data FlatCtrl : Set where
   -- frame moves at exactly the two instructions that also move the pc, and
   -- it moves via `enter-frame`/`leave-frame` — an AllocState-only update,
   -- so the register file is untouched.
-  c-thunk               : ℕ → ℕ → FlatCtrl -- closure-body entry: label, budget
+  c-thunk               : LabelId → ℕ → FlatCtrl -- closure-body entry: label, budget
   c-ret                 : ℕ → FlatCtrl     -- return: budget to release
 
 data AbstractInstr : Set where
@@ -1130,7 +1144,7 @@ data AbstractInstr : Set where
   -- per-arch calling-convention concern.
   -- Used by `curry`'s codegen to set up the closure record's
   -- code-pointer slot.
-  instr-load-code-addr : ℕ → AbstractInstr
+  instr-load-code-addr : LabelId → AbstractInstr
   instr-save-closure-reg : AbstractInstr
 
   -- Plan 0.13.1 Phase 1 — sum tag handling (tag-aware abstract layer).

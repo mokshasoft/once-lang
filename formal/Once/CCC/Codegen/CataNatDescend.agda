@@ -19,6 +19,8 @@
 
 module Once.CCC.Codegen.CataNatDescend where
 
+open import Once.CCC.Label using (LabelId)
+
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_)
 open import Data.Bool using (false; true)
 open import Data.Maybe using (just)
@@ -237,7 +239,7 @@ module CataNatDescend {FS : FrameSemantics} where
   -- `FlatStepsAPI` control-flow lemma (`flat-step1`) — no per-site
   -- `rewrite`/`subst` fights with the stuck `do-branch` reductions.
   descend-pre-flat : ∀ (prog : AbstractTrace) (fs : FlatState)
-                       (ld-top ld-end ld-base : ℕ)
+                       (ld-top ld-end ld-base : LabelId)
     → halted (floc fs) ≡ false
     → sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false
     → tag-zf (flat-read-tag (floc fs)) ≡ false
@@ -262,7 +264,7 @@ module CataNatDescend {FS : FrameSemantics} where
   -- iteration returns to where it began (the fixpoint the μ-induction
   -- folds over). State stays `fs` (jumps/labels touch only `fpc`).
   descend-post-flat : ∀ (prog : AbstractTrace) (fs : FlatState)
-                        (ld-de ld-top q-de q-top : ℕ)
+                        (ld-de ld-top : LabelId) (q-de q-top : ℕ)
     → halted (floc fs) ≡ false
     → fetch prog (fpc fs)        ≡ just (instr-ctrl (c-jmp ld-de))
     → find-label prog ld-de      ≡ just q-de
@@ -289,7 +291,7 @@ module CataNatDescend {FS : FrameSemantics} where
   -- {fpc = q-top}` is the next iteration's input — the fixpoint the
   -- μ-induction over the cons-depth folds across.
   descend-iter-flat : ∀ (prog : AbstractTrace) (fs : FlatState)
-                        (ld-top ld-end ld-inl ld-de q-de q-top : ℕ)
+                        (ld-top ld-end ld-inl ld-de : LabelId) (q-de q-top : ℕ)
                         (loc : ValueLocation FS) (v : StoredValue FS)
     → halted (floc fs) ≡ false
     → sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false
@@ -331,7 +333,7 @@ module CataNatDescend {FS : FrameSemantics} where
   -- `scratch-zero` definitionally (`exec-reg-op` touches only `regs`). The
   -- post-`scratch-zero` Scratch = 0 fact drives the exit branch.
   descend-base-flat : ∀ (prog : AbstractTrace) (fs : FlatState)
-                        (ld-top ld-end ld-inl ld-de q-inl q-top q-end : ℕ)
+                        (ld-top ld-end ld-inl ld-de : LabelId) (q-inl q-top q-end : ℕ)
     → halted (floc fs) ≡ false
     → sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false
     → tag-zf (flat-read-tag (floc fs)) ≡ true
@@ -433,7 +435,7 @@ module CataNatDescend {FS : FrameSemantics} where
   descend-body-silent prog fs loc v hf ptr child f0 f1 f2 = refl
 
   -- The descend PRE-control (label + two not-taken branches) is silent.
-  descend-pre-silent : ∀ (prog : AbstractTrace) (fs : FlatState) (ld-top ld-end ld-base : ℕ)
+  descend-pre-silent : ∀ (prog : AbstractTrace) (fs : FlatState) (ld-top ld-end ld-base : LabelId)
     → (hf : halted (floc fs) ≡ false)
     → (scond : sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false)
     → (tcond : tag-zf (flat-read-tag (floc fs)) ≡ false)
@@ -458,7 +460,7 @@ module CataNatDescend {FS : FrameSemantics} where
       S23 = FlatSteps-++ S2 S3
 
   -- The descend POST-control (jmp ld-de → label ld-de → jmp ld-top) is silent.
-  descend-post-silent : ∀ (prog : AbstractTrace) (fs : FlatState) (ld-de ld-top q-de q-top : ℕ)
+  descend-post-silent : ∀ (prog : AbstractTrace) (fs : FlatState) (ld-de ld-top : LabelId) (q-de q-top : ℕ)
     → (hf : halted (floc fs) ≡ false)
     → (fJ1 : fetch prog (fpc fs)        ≡ just (instr-ctrl (c-jmp ld-de)))
     → (de-res : find-label prog ld-de   ≡ just q-de)
@@ -485,7 +487,7 @@ module CataNatDescend {FS : FrameSemantics} where
 
   -- ONE continue descend iteration (pre ++ body ++ post) is silent.
   descend-iter-silent : ∀ (prog : AbstractTrace) (fs : FlatState)
-                          (ld-top ld-end ld-inl ld-de q-de q-top : ℕ)
+                          (ld-top ld-end ld-inl ld-de : LabelId) (q-de q-top : ℕ)
                           (loc : ValueLocation FS) (v : StoredValue FS)
     → (hf : halted (floc fs) ≡ false)
     → (scond : sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false)

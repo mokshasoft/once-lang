@@ -25,7 +25,14 @@
 --                        `rec-scheme-semantic` value half).
 ------------------------------------------------------------------------
 
-module Once.CCC.Codegen.IRObsCorrectFlat where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys
+-- its labels. `o` is constant for a whole definition, so it belongs on the
+-- module rather than on every lemma — which is exactly what keeps the
+-- statements below UNCHANGED under D089: `IRToTrace` is imported APPLIED,
+-- so each `ir-to-trace' n l ir` reads as it always did.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Codegen.IRObsCorrectFlat (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; zero; suc; _<_)
 open import Data.Bool using (false; true)
@@ -61,10 +68,10 @@ open import Once.CCC.Machine.SMCore
          instr-sigop; module AbstractExec)
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; module FrontierInvariant)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
+open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace)
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
-open import Once.CCC.Codegen.CataIRSlotStable using (module CataIRSlotStable)
-open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
+open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable)
+open import Once.CCC.Machine.ClosureWellFormed o using (module ClosureWellFormedDef)
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.DenotTrace using (evalᴰ; inject)
@@ -78,7 +85,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result; prim-sv)
   open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[])
-  open RTA {FS} program-bound using (Readable; r-unit; r-int; r-pair; readable?; readTyped-adequate)
+  open RTA o {FS} program-bound using (Readable; r-unit; r-int; r-pair; readable?; readTyped-adequate)
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot)
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
 

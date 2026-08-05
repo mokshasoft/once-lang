@@ -16,7 +16,13 @@
 -- (the child's validity becomes Heap, so its tag is readable).
 ------------------------------------------------------------------------
 
-module Once.CCC.Codegen.CataNatProducer where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Codegen.CataNatProducer (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (Σ-syntax; _×_; _,_; ∃-syntax)
@@ -31,7 +37,7 @@ open import Once.IR using (AllocMode; Heap)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.CCC.Machine.Allocation using (AllocState)
 open import Once.CCC.Machine.SMCore using (LocState; ValueLocation; SV-Tag; SV-Ptr; module MemOps)
-open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
+open import Once.CCC.Machine.ClosureWellFormed o using (module ClosureWellFormedDef)
 open import Once.CCC.Codegen.CataNatChain using (module CataNatChain)
 
 module CataNatProducer {FS : FrameSemantics} (program-bound : ℕ) (G : Functor) where

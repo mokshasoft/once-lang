@@ -25,7 +25,7 @@ open import Data.String using (String)
 -- is the point: the correspondence proofs that today exist only for x86-64 are
 -- meant to be generalised over the target, and a bare-ℕ label space here would
 -- be the one place they could not be.
-open import Once.CCC.Label public using (Label; once; sigop; thunk)
+open import Once.CCC.Label public using (LabelId; Label; once; sigop; thunk)
 
 ------------------------------------------------------------------------
 -- Registers
@@ -131,7 +131,7 @@ data Instr : Set where
   -- RENDERING, exactly as x86-64's `rip+label : ℕ → Mem` does: the operand
   -- can only ever name a closure body, so the provenance is a property of the
   -- constructor rather than of its argument.
-  mov-code : Reg → ℕ → Instr          -- movl $.L_thunk_<n>, reg
+  mov-code : Reg → LabelId → Instr    -- movl $.L_thunk_<n>, reg
   jmp-l    : Label → Instr            -- jmp .L<provenance>
 
 ------------------------------------------------------------------------

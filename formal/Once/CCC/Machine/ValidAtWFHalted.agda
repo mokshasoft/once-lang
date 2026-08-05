@@ -19,7 +19,13 @@
 -- unchanged; only nested `ValidAtWF` recurse.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.ValidAtWFHalted where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Machine.ValidAtWFHalted (o : CanonicalName) where
 
 open import Data.Nat using (ℕ)
 open import Data.Bool using (Bool)
@@ -28,7 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (LocState; halted; ValueLocation; sucLoc; module MemOps)
 open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
-open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
+open import Once.CCC.Machine.ClosureWellFormed o using (module ClosureWellFormedDef)
 open import Once.CCC.Machine.Validity using (module ValidityDef)
 
 module _ {FS : FrameSemantics} (program-bound : ℕ) where

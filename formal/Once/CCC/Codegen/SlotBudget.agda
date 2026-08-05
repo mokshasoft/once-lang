@@ -26,7 +26,15 @@
 --     the flat machine's `fpc` never indexes into them.)
 ------------------------------------------------------------------------
 
-module Once.CCC.Codegen.SlotBudget where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys
+-- its labels. `o` is constant for a whole definition, so it belongs on the
+-- module rather than on every lemma — which is exactly what keeps the
+-- statements below UNCHANGED under D089: `IRToTrace` is imported APPLIED,
+-- so each `ir-to-trace' n l ir` reads as it always did.
+open import Once.CanonicalName using (CanonicalName)
+open import Once.CCC.Label using (LabelId; ℓ)
+
+module Once.CCC.Codegen.SlotBudget (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
 open import Data.Nat.Properties using
@@ -56,7 +64,7 @@ open import Once.CCC.Machine.SMCore using
    store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit;
    instr-ctrl; c-thunk; c-ret; c-label)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
-open import Once.CCC.Codegen.IRToTrace using
+open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; ir-to-trace; ir-stack-budget;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; fsize; lsize;
@@ -370,7 +378,7 @@ segok-pre pre idle all ok = segok-++ (segok-idle pre idle all) ok
 -- — `ok-all`'s `sv` is quantified, which is what lets a fragment be spliced at
 -- any depth and is why closures nest without any extra lemma.
 ------------------------------------------------------------------------
-segok-thunk : ∀ {B : ℕ} (ℓ bb e : ℕ) (body : AbstractTrace) → SegOK bb body
+segok-thunk : ∀ {B : ℕ} (ℓ : LabelId) (bb : ℕ) (e : LabelId) (body : AbstractTrace) → SegOK bb body
             → SegOK B (instr-ctrl (c-thunk ℓ bb) ∷
                        body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ [])
 segok-thunk {B} ℓ bb e body bok = mkSegOK inner neu
@@ -894,14 +902,14 @@ slots-below (curry b Stack) n l =
      -- the record/pair base: `lea-slot n`, with `suc n` reserved beside it
      sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷
      sb-none refl ∷ [])
-    (segok-thunk l _ (suc l) _ (slots-below b 0 (suc (suc l))))
+    (segok-thunk (ℓ o l) _ (ℓ o (suc l)) _ (slots-below b 0 (suc (suc l))))
 slots-below (curry b Heap) n l =
   segok-pre _ refl
     (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
      sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
      sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷
      sb-none refl ∷ [])
-    (segok-thunk l _ (suc l) _ (slots-below b 0 (suc (suc l))))
+    (segok-thunk (ℓ o l) _ (ℓ o (suc l)) _ (slots-below b 0 (suc (suc l))))
 slots-below apply n l = segok-idle _ refl
   (sb-none refl ∷ sb-slot refl (≤-step (≤-step ≤-refl)) (λ _ ()) ∷ sb-none refl ∷
   sb-none refl ∷ sb-none refl ∷ sb-none refl ∷

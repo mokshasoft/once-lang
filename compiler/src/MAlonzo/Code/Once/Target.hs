@@ -28,12 +28,14 @@ import qualified MAlonzo.Code.Once.Target.RegConvention
 -- Once.Target.Target
 d_Target_4 = ()
 data T_Target_4
-  = C_constructor_50 (Integer ->
+  = C_constructor_50 (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+                      Integer ->
                       MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
                       MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
                       MAlonzo.Code.Once.IR.T_IR_16 ->
                       MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
-                     (Integer ->
+                     (MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+                      Integer ->
                       MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
                       MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
                       MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -48,6 +50,7 @@ data T_Target_4
 -- Once.Target.Target.irToAsm
 d_irToAsm_32 ::
   T_Target_4 ->
+  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   Integer ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -60,6 +63,7 @@ d_irToAsm_32 v0
 -- Once.Target.Target.irToBodies
 d_irToBodies_38 ::
   T_Target_4 ->
+  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   Integer ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->

@@ -22,6 +22,8 @@
 
 module Once.CCC.Codegen.FlatStepLemmas where
 
+open import Once.CCC.Label using (LabelId; ≢⇒≡ᵇᴵfalse; _≡ᵇᴵ_)
+
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _≡ᵇ_)
 open import Data.Nat.Properties using (+-suc; +-identityʳ)
 open import Data.Bool using (Bool; false; true)
@@ -96,40 +98,40 @@ module FlatStepsAPI {FS : FrameSemantics} where
   ----------------------------------------------------------------------
 
   -- label: pc passes through.
-  flat-label : ∀ (prog : AbstractTrace) (fs : FlatState) (n : ℕ)
+  flat-label : ∀ (prog : AbstractTrace) (fs : FlatState) (n : LabelId)
              → flat-exec-instr (instr-ctrl (c-label n)) prog fs
                  ≡ record fs { fpc = suc (fpc fs) }
   flat-label prog fs n = refl
 
   -- unconditional jump: pc ← find-label target.
-  flat-jmp : ∀ (prog : AbstractTrace) (fs : FlatState) (n : ℕ)
+  flat-jmp : ∀ (prog : AbstractTrace) (fs : FlatState) (n : LabelId)
            → flat-exec-instr (instr-ctrl (c-jmp n)) prog fs
                ≡ do-jump (find-label prog n) fs
   flat-jmp prog fs n = refl
 
   -- scratch-branch NOT taken (Scratch ≠ 0, the descend-continue path): fall through.
-  flat-scratch-branch-not : ∀ (prog : AbstractTrace) (fs : FlatState) (n : ℕ)
+  flat-scratch-branch-not : ∀ (prog : AbstractTrace) (fs : FlatState) (n : LabelId)
     → sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ false
     → flat-exec-instr (instr-ctrl (c-branch-scratch-zero n)) prog fs
         ≡ record fs { fpc = suc (fpc fs) }
   flat-scratch-branch-not prog fs n cond rewrite cond = refl
 
   -- scratch-branch taken (Scratch = 0, exit): pc ← find-label target.
-  flat-scratch-branch-yes : ∀ (prog : AbstractTrace) (fs : FlatState) (n : ℕ)
+  flat-scratch-branch-yes : ∀ (prog : AbstractTrace) (fs : FlatState) (n : LabelId)
     → sv-is-zero (readReg (regs (floc fs)) Scratch) ≡ true
     → flat-exec-instr (instr-ctrl (c-branch-scratch-zero n)) prog fs
         ≡ do-jump (find-label prog n) fs
   flat-scratch-branch-yes prog fs n cond rewrite cond = refl
 
   -- tag-branch NOT taken (tag ≠ 0, the inr/cons path): fall through.
-  flat-tag-branch-not : ∀ (prog : AbstractTrace) (fs : FlatState) (n : ℕ)
+  flat-tag-branch-not : ∀ (prog : AbstractTrace) (fs : FlatState) (n : LabelId)
     → tag-zf (flat-read-tag (floc fs)) ≡ false
     → flat-exec-instr (instr-ctrl (c-branch-tag-zero n)) prog fs
         ≡ record fs { fpc = suc (fpc fs) }
   flat-tag-branch-not prog fs n cond rewrite cond = refl
 
   -- tag-branch taken (tag = 0, the inl/base path): pc ← find-label target.
-  flat-tag-branch-yes : ∀ (prog : AbstractTrace) (fs : FlatState) (n : ℕ)
+  flat-tag-branch-yes : ∀ (prog : AbstractTrace) (fs : FlatState) (n : LabelId)
     → tag-zf (flat-read-tag (floc fs)) ≡ true
     → flat-exec-instr (instr-ctrl (c-branch-tag-zero n)) prog fs
         ≡ do-jump (find-label prog n) fs
@@ -165,13 +167,13 @@ module FlatStepsAPI {FS : FrameSemantics} where
   -- uniformly. (Hypothesis: every element's label, if any, differs from
   -- the target — `All`.)
   ----------------------------------------------------------------------
-  fl-go-skip : ∀ (xs ys : AbstractTrace) (target i : ℕ)
+  fl-go-skip : ∀ (xs ys : AbstractTrace) (target : LabelId) (i : ℕ)
              → All (λ x → ¬ (label-of? x ≡ just target)) xs
              → fl-go (xs ++ ys) target i ≡ fl-go ys target (i + length xs)
   fl-go-skip []        ys target i []          =
           cong (fl-go ys target) (sym (+-identityʳ i))
   fl-go-skip (x ∷ xs') ys target i (px ∷ pxs) with label-of? x
-  ... | just m  rewrite ≢⇒≡ᵇfalse m target (λ m≡t → px (cong just m≡t)) =
+  ... | just m  rewrite ≢⇒≡ᵇᴵfalse m target (λ m≡t → px (cong just m≡t)) =
           trans (fl-go-skip xs' ys target (suc i) pxs)
                 (cong (fl-go ys target) (sym (+-suc i (length xs'))))
   ... | nothing =
@@ -189,13 +191,13 @@ module FlatStepsAPI {FS : FrameSemantics} where
   -- needed — the recursion uses `suc (b + a) = suc b + a` definitionally
   -- and the match case is `refl` (`b + a` on both sides).
   ----------------------------------------------------------------------
-  fl-go-shift : ∀ (xs : AbstractTrace) (target a b : ℕ)
+  fl-go-shift : ∀ (xs : AbstractTrace) (target : LabelId) (a b : ℕ)
               → fl-go xs target (b + a) ≡ map (_+ a) (fl-go xs target b)
-  flm-shift   : ∀ (cmp : Bool) (xs : AbstractTrace) (target a b : ℕ)
+  flm-shift   : ∀ (cmp : Bool) (xs : AbstractTrace) (target : LabelId) (a b : ℕ)
               → fl-label-match cmp xs target (b + a) ≡ map (_+ a) (fl-label-match cmp xs target b)
   fl-go-shift []       target a b = refl
   fl-go-shift (x ∷ xs) target a b with label-of? x
-  ... | just m  = flm-shift (m ≡ᵇ target) xs target a b
+  ... | just m  = flm-shift (m ≡ᵇᴵ target) xs target a b
   ... | nothing = fl-go-shift xs target a (suc b)
   flm-shift true  xs target a b = refl
   flm-shift false xs target a b = fl-go-shift xs target a (suc b)
@@ -203,13 +205,13 @@ module FlatStepsAPI {FS : FrameSemantics} where
   -- A label found in a prefix segment is found at the same index in the
   -- segment extended by any suffix (the scan stops before reaching it).
   -- The dual fact the relocation needs alongside `fl-go-shift`/`fl-go-skip`.
-  fl-go-prefix : ∀ (seg post : AbstractTrace) (target i p : ℕ)
+  fl-go-prefix : ∀ (seg post : AbstractTrace) (target : LabelId) (i p : ℕ)
                → fl-go seg target i ≡ just p → fl-go (seg ++ post) target i ≡ just p
-  flm-prefix   : ∀ (cmp : Bool) (seg post : AbstractTrace) (target i p : ℕ)
+  flm-prefix   : ∀ (cmp : Bool) (seg post : AbstractTrace) (target : LabelId) (i p : ℕ)
                → fl-label-match cmp seg target i ≡ just p → fl-label-match cmp (seg ++ post) target i ≡ just p
   fl-go-prefix []        post target i p ()
   fl-go-prefix (x ∷ seg) post target i p h with label-of? x
-  ... | just m  = flm-prefix (m ≡ᵇ target) seg post target i p h
+  ... | just m  = flm-prefix (m ≡ᵇᴵ target) seg post target i p h
   ... | nothing = fl-go-prefix seg post target (suc i) p h
   flm-prefix true  seg post target i p h = h
   flm-prefix false seg post target i p h = fl-go-prefix seg post target (suc i) p h
@@ -221,7 +223,7 @@ module FlatStepsAPI {FS : FrameSemantics} where
   -- targets when `at` is embedded in the cata program: skip past `pre`
   -- (`fl-go-skip`), the accumulator becomes the offset (`fl-go-shift`), and
   -- the suffix is unreached (`fl-go-prefix`).
-  find-label-distrib : ∀ (pre seg post : AbstractTrace) (target p : ℕ)
+  find-label-distrib : ∀ (pre seg post : AbstractTrace) (target : LabelId) (p : ℕ)
                      → All (λ x → ¬ (label-of? x ≡ just target)) pre
                      → fl-go seg target 0 ≡ just p
                      → find-label (pre ++ seg ++ post) target ≡ just (p + length pre)

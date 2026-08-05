@@ -28,6 +28,7 @@ import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Function.Base
 import qualified MAlonzo.Code.Once.CCC.FrameSemantics
+import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
@@ -476,7 +477,8 @@ du_enc'45'sv'45'at_276 v0 v1 v2
                -> coe
                     MAlonzo.Code.Once.Semantics.FloatBits.d_float'45'bits_6 (coe v5)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Code_80 v3 -> coe v3
+      MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Code_80 v3
+        -> coe MAlonzo.Code.Once.CCC.Label.d_idx_18 (coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence.enc-maybe-at
 d_enc'45'maybe'45'at_304 ::
@@ -3081,7 +3083,7 @@ d_sim'45'load'45'code'45'addr_2056 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   T_HeapView_218 ->
-  Integer ->
+  MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_62 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.T_State_214 ->
   T_FlatCorr_368 -> T_FlatCorr_368

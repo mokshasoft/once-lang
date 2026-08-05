@@ -54,7 +54,13 @@
 --   codegen concern that will be addressed in Phase D.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.CurryAllocWF where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Machine.IR.CurryAllocWF (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n; _⊔_) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (false)
@@ -74,7 +80,7 @@ open import Once.CCC.Eval using (eval)
 open import Once.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
-open import Once.CCC.Machine.ClosureWellFormed
+open import Once.CCC.Machine.ClosureWellFormed o
 open import Once.CCC.Machine.TraceEvaluator
 
 import Once.CCC.Machine.SMPrimitives as SMP

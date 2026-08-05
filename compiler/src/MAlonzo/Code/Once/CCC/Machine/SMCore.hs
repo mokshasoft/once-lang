@@ -30,6 +30,7 @@ import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Allocator.AbstractInstance
 import qualified MAlonzo.Code.Once.CCC.FrameSemantics
+import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.SigOp.Info
@@ -80,7 +81,7 @@ data T_StoredValue_68
     C_SV'45'Tag_74 Integer |
     C_SV'45'Lit_78 MAlonzo.Code.Once.Type.T_Type_112
                    MAlonzo.Code.Once.Type.T_FitsInReg_196 AgdaAny |
-    C_SV'45'Code_80 Integer
+    C_SV'45'Code_80 MAlonzo.Code.Once.CCC.Label.T_LabelId_6
 -- Once.CCC.Machine.SMCore.sucLoc
 d_sucLoc_84 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -1749,10 +1750,12 @@ d_readLoc'45'stackMem'45'eq_2146 = erased
 -- Once.CCC.Machine.SMCore.FlatCtrl
 d_FlatCtrl_2174 = ()
 data T_FlatCtrl_2174
-  = C_c'45'label_2176 Integer | C_c'45'jmp_2178 Integer |
-    C_c'45'branch'45'scratch'45'zero_2180 Integer |
-    C_c'45'branch'45'tag'45'zero_2182 Integer |
-    C_c'45'thunk_2184 Integer Integer | C_c'45'ret_2186 Integer
+  = C_c'45'label_2176 MAlonzo.Code.Once.CCC.Label.T_LabelId_6 |
+    C_c'45'jmp_2178 MAlonzo.Code.Once.CCC.Label.T_LabelId_6 |
+    C_c'45'branch'45'scratch'45'zero_2180 MAlonzo.Code.Once.CCC.Label.T_LabelId_6 |
+    C_c'45'branch'45'tag'45'zero_2182 MAlonzo.Code.Once.CCC.Label.T_LabelId_6 |
+    C_c'45'thunk_2184 MAlonzo.Code.Once.CCC.Label.T_LabelId_6 Integer |
+    C_c'45'ret_2186 Integer
 -- Once.CCC.Machine.SMCore.AbstractInstr
 d_AbstractInstr_2188 = ()
 data T_AbstractInstr_2188
@@ -1776,7 +1779,7 @@ data T_AbstractInstr_2188
                           MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 |
     C_instr'45'load'45'const_2242 MAlonzo.Code.Once.Type.T_Type_112
                                   MAlonzo.Code.Once.Type.T_FitsInReg_196 AgdaAny |
-    C_instr'45'load'45'code'45'addr_2244 Integer |
+    C_instr'45'load'45'code'45'addr_2244 MAlonzo.Code.Once.CCC.Label.T_LabelId_6 |
     C_instr'45'save'45'closure'45'reg_2246 |
     C_instr'45'load'45'tag'45'lit_2248 Integer |
     C_instr'45'case'45'on'45'tag_2250 [T_AbstractInstr_2188]

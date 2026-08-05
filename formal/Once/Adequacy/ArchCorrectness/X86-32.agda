@@ -19,7 +19,13 @@
 -- postulate is retired.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.ArchCorrectness.X86-32 where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
+-- labels. `o` is constant for a whole definition, so it belongs on the module
+-- rather than on every lemma — which is what keeps the statements below
+-- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.Adequacy.ArchCorrectness.X86-32 (o : CanonicalName) where
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -34,8 +40,8 @@ open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.Adequacy.SourceTrace using (moduleToIR)
 open import Once.CCC.Target.X86-32.FrameInstantiation using (x86-32-frame-semantics)
-open import Once.CCC.Codegen.IRObsCorrectFlat using (module IRObsCorrectFlatness)
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace)
+open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
+open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
@@ -53,7 +59,7 @@ open IRObsCorrectFlatness {x86-32-frame-semantics} program-bound using (ir-obs-c
 -- `dispatch-arith-preserves`; the non-arith remainder is the explicit ISA /
 -- printer / loader trust (GNU `as` class). Stated against the DEFINED
 -- `flat-trace` via `FFO.AsmTraceCorrect`.
-module FFOc = FFO x86-32 x86-32-frame-semantics (arch-semantics x86-32) program-bound
+module FFOc = FFO o x86-32 x86-32-frame-semantics (arch-semantics x86-32) program-bound
 asC = arch-semantics x86-32
 
 -- The concrete machine's SigOp trace of a compiled IR (see X86-64 for rationale):
@@ -86,5 +92,5 @@ asm-trace-correct-x86-32 m asm eq n =
 
 x86-32-correct : ArchCorrect x86-32 (arch-semantics x86-32)
 x86-32-correct =
-  FFO.flat-from-obs x86-32 x86-32-frame-semantics (arch-semantics x86-32)
+  FFO.flat-from-obs o x86-32 x86-32-frame-semantics (arch-semantics x86-32)
     program-bound ir-obs-correct asm-trace-correct-x86-32

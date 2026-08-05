@@ -45,6 +45,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 module Once.CCC.Machine.FlatStackPtr (FS : FrameSemantics) where
 
+open import Once.CCC.Label using (LabelId)
+
 open import Data.Nat using (ℕ; zero; suc; _<_; _≟_)
 open import Data.Nat.Properties using (≤-trans; n≤1+n)
 open import Data.Bool using (Bool; true; false)
@@ -516,7 +518,7 @@ sp-jump : ∀ (mpc : Maybe ℕ) (fs : FlatState)
 sp-jump (just pc') fs wf = wf
 sp-jump nothing    fs wf = sp-halt (current-frame (falloc fs)) (floc fs) true wf
 
-sp-branch : ∀ (b : Bool) (m : ℕ) (prog : AbstractTrace) (fs : FlatState)
+sp-branch : ∀ (b : Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
           → StackPtrWF fs → StackPtrWF (do-branch b m prog fs)
 sp-branch true  m prog fs wf = sp-jump (find-label prog m) fs wf
 sp-branch false m prog fs wf = wf

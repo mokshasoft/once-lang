@@ -37,6 +37,7 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
+open import Once.CCC.Label using (LabelId)
 open import Once.Memory.HeapAddress using (HeapLocation; heap-loc; mkHeapRef; heap-ref; ref-id; sucHL)
 open import Once.SigOp.Info using (SigOpInfo; effect; EffectShape; Pure; Emits; Halts)
 open import Once.Type using (Type; FitsInReg; fits-in-reg?)
@@ -540,7 +541,7 @@ wf-jump : ∀ (mpc : Maybe ℕ) (fs : FlatState) → FlatWF fs → FlatWF (do-ju
 wf-jump (just pc') fs wf = wf
 wf-jump nothing    fs wf = wf-halt wf
 
-wf-branch : ∀ (b : Bool) (m : ℕ) (prog : AbstractTrace) (fs : FlatState)
+wf-branch : ∀ (b : Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
           → FlatWF fs → FlatWF (do-branch b m prog fs)
 wf-branch true  m prog fs wf = wf-jump (find-label prog m) fs wf
 wf-branch false m prog fs wf = wf

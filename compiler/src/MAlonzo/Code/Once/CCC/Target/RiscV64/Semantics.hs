@@ -666,7 +666,7 @@ d_fetch_330 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.RiscV64.Semantics.find-label-go
 d_find'45'label'45'go_338 ::
-  MAlonzo.Code.Once.CCC.Label.T_Label_6 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
   Integer -> Maybe Integer
 d_find'45'label'45'go_338 v0 v1 v2
@@ -682,7 +682,7 @@ d_find'45'label'45'go_338 v0 v1 v2
                   -> coe
                        MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
                        (coe
-                          MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7480'__14 (coe v6)
+                          MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7480'__224 (coe v6)
                           (coe v0))
                        (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2))
                        (coe
@@ -693,7 +693,7 @@ d_find'45'label'45'go_338 v0 v1 v2
 -- Once.CCC.Target.RiscV64.Semantics.find-label
 d_find'45'label_356 ::
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_6 -> Maybe Integer
+  MAlonzo.Code.Once.CCC.Label.T_Label_22 -> Maybe Integer
 d_find'45'label_356 v0 v1
   = coe
       d_find'45'label'45'go_338 (coe v1) (coe v0) (coe (0 :: Integer))
@@ -701,7 +701,7 @@ d_find'45'label_356 v0 v1
 d_jump'45'to_362 ::
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
   T_State_252 ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_6 -> Maybe T_State_252
+  MAlonzo.Code.Once.CCC.Label.T_Label_22 -> Maybe T_State_252
 d_jump'45'to_362 v0 v1 v2
   = let v3
           = d_find'45'label'45'go_338

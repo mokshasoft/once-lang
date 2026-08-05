@@ -30,8 +30,10 @@ open import Once.Target.Symbol using (once-symbol-own; once-symbol-path)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.IR using (IR)
 
-open import Once.CCC.Codegen.IRToTrace
-  using (ir-to-trace-from; ir-to-bodies-from; ir-stack-budget-from)
+-- Plan 0.63 (D089): IRToTrace is parameterised by the DEFINITION'S identity,
+-- and `irToAsm` takes that identity as an argument (it differs per function),
+-- so this importer telescopes it at each use rather than applying the module.
+import Once.CCC.Codegen.IRToTrace as IRT
 open import Once.CCC.Machine.SMCore using (AbstractTrace)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace-cnt)
 open import Once.CCC.Target.RiscV64.Emit using (programToText)
@@ -91,13 +93,13 @@ riscv64-functionEpilogue = "    ret\n\n"
 -- restores `ra` (one extra slot at offset budget*8), the standard RV64
 -- calling convention — without it, any function that returns after making a
 -- closure call would jump through a stale `ra` and loop.
-riscv64-irToAsm : ℕ → ∀ {A B} → IR A B → ℕ × String
-riscv64-irToAsm l ir =
-  let budget        = ir-stack-budget-from l ir
-      (l' , trace)  = ir-to-trace-from l ir
-      -- Plan 0.53: compile-trace-cnt (not compile-trace) so structured
+riscv64-irToAsm : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
+riscv64-irToAsm o l ir =
+  let budget        = IRT.ir-stack-budget-from o l ir
+      (l' , trace)  = IRT.ir-to-trace-from o l ir
+      -- Plan 0.53: compile-trace-cnt o (not compile-trace) so structured
       -- case-on-tag / loop nodes expand with fresh labels; thread the counter.
-      (l'' , prog)  = compile-trace-cnt l' trace
+      (l'' , prog)  = compile-trace-cnt o l' trace
       raOff         = budget * 8
       frame         = raOff + 8   -- +8 for the saved ra
   in l'' , ("    addi sp, sp, -" ++ showNat frame ++ "\n" ++
@@ -118,16 +120,16 @@ riscv64-irToAsm l ir =
 -- Bodies come AFTER the parent's ret; reachable via `lla a0, .L_thunk_<n>`
 -- (instr-load-code-addr) from the parent's curry trace. Each body's slot
 -- range is private, physically disjoint from the caller's frame.
-riscv64-irToBodies : ℕ → ∀ {A B} → IR A B → ℕ × String
-riscv64-irToBodies l ir =
-  let (l' , bodies) = ir-to-bodies-from l ir
+riscv64-irToBodies : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
+riscv64-irToBodies o l ir =
+  let (l' , bodies) = IRT.ir-to-bodies-from o l ir
   in emit-bodies l' bodies
   where
     -- Thread the case/loop label counter through each body's
-    -- compile-trace-cnt so nested cases inside thunk bodies get unique labels.
+    -- compile-trace-cnt o so nested cases inside thunk bodies get unique labels.
     emit-thunk-body : ℕ → (ℕ × ℕ × AbstractTrace) → ℕ × String
     emit-thunk-body cl (lbl , budget , body-trace) =
-      let (cl' , prog) = compile-trace-cnt cl body-trace
+      let (cl' , prog) = compile-trace-cnt o cl body-trace
       in cl' , (".L_thunk_" ++ showNat lbl ++ ":\n" ++
                 "    addi sp, sp, -" ++ showNat (budget * 8 + 8) ++ "\n" ++
                 "    sd ra, " ++ showNat (budget * 8) ++ "(sp)\n" ++

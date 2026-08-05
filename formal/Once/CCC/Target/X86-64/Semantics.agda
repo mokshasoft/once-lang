@@ -23,7 +23,7 @@
 module Once.CCC.Target.X86-64.Semantics where
 
 open import Once.CCC.Target.X86-64.Syntax
-open import Once.CCC.Label using (Label; _≡ᵇᴸ_)
+open import Once.CCC.Label using (Label; _≡ᵇᴸ_; idx)
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _≟_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
@@ -177,7 +177,13 @@ effectiveAddr : State → Mem → Word
 effectiveAddr s (base r)         = readReg (regs s) r
 effectiveAddr s (base+disp r d)  = readReg (regs s) r + d
 effectiveAddr s (rip+disp d)     = pc s + d
-effectiveAddr s (rip+label n)    = n  -- label resolved by linker; abstract
+-- Plan 0.63 (D089): the operand now carries the label's IDENTITY, so the
+-- address it yields is `idx` — numerically the same value this returned
+-- before, when the payload was the bare counter. That this is a FICTION (a
+-- label number is not an instruction index) is D081's open question, recorded
+-- in plan 0.63's FINDING and owned by `events-running-call`; D089 neither
+-- fixes nor worsens it.
+effectiveAddr s (rip+label n)    = idx n  -- label resolved by linker; abstract
 
 readOperand : State → Operand → Maybe Word
 readOperand s (reg r) = just (readReg (regs s) r)

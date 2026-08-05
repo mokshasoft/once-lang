@@ -41,6 +41,8 @@ open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
   hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
+open import Once.CCC.Label using (LabelId)
+open import Once.CanonicalName using (CanonicalName)
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 open import Once.IR using (AllocMode; Stack; Heap)
 open MemOps {FS} using (readLoc)
@@ -87,7 +89,7 @@ data ShapeAt : AllocMode → AllocState {FS} →
     {alloc : AllocState {FS}}
     {closure-loc env-loc : ValueLocation FS} {s : LocState FS}
     {mEnv : AllocMode}
-    {body-label : ℕ} →
+    {body-label : LabelId} →
     LocMatchesMode m closure-loc →
     readLoc s closure-loc ≡ just (SV-Ptr env-loc) →
     readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label) →
@@ -168,10 +170,10 @@ data ShapeAt : AllocMode → AllocState {FS} →
 -- body-size bound. If this ever stops being a plain structural map, the
 -- shape domain has drifted from the value layer and must be re-aligned.
 ------------------------------------------------------------------------
-module Project (program-bound : ℕ) where
+module Project (o : CanonicalName) (program-bound : ℕ) where
   open import Data.Nat using (ℕ)
   open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
-  open ClosureWellFormedDef {FS} program-bound
+  open ClosureWellFormedDef o {FS} program-bound
     using (ValidAtWF; valid-unit-wf; valid-pair-wf; valid-closure-wf;
            valid-inl-wf; valid-inr-wf; valid-μ-wf; valid-ν-wf;
            valid-int-wf; valid-float-wf; valid-str-wf; valid-buffer-wf;

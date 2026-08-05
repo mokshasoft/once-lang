@@ -40,24 +40,25 @@ data T_Instr_10
     C_li_22 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 Integer |
     C_auipc_24 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
                Integer |
-    C_lla_26 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 Integer |
+    C_lla_26 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+             MAlonzo.Code.Once.CCC.Label.T_LabelId_6 |
     C_mv_28 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
             MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 |
     C_beq_30 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
              MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
-             MAlonzo.Code.Once.CCC.Label.T_Label_6 |
+             MAlonzo.Code.Once.CCC.Label.T_Label_22 |
     C_bne_32 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
              MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
-             MAlonzo.Code.Once.CCC.Label.T_Label_6 |
+             MAlonzo.Code.Once.CCC.Label.T_Label_22 |
     C_jal_34 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
-             MAlonzo.Code.Once.CCC.Label.T_Label_6 |
+             MAlonzo.Code.Once.CCC.Label.T_Label_22 |
     C_jalr_36 MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
               MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 Integer |
-    C_j_38 MAlonzo.Code.Once.CCC.Label.T_Label_6 | C_ret_40 |
+    C_j_38 MAlonzo.Code.Once.CCC.Label.T_Label_22 | C_ret_40 |
     C_call_42 Integer |
     C_call'45'sym_44 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_nop_46 | C_unimp_48 |
-    C_label_50 MAlonzo.Code.Once.CCC.Label.T_Label_6
+    C_label_50 MAlonzo.Code.Once.CCC.Label.T_Label_22
 -- Once.CCC.Target.RiscV64.Syntax.Program
 d_Program_52 :: ()
 d_Program_52 = erased

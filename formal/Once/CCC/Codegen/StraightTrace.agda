@@ -25,7 +25,14 @@
 -- bridge.
 ------------------------------------------------------------------------
 
-module Once.CCC.Codegen.StraightTrace where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys
+-- its labels. `o` is constant for a whole definition, so it belongs on the
+-- module rather than on every lemma — which is exactly what keeps the
+-- statements below UNCHANGED under D089: `IRToTrace` is imported APPLIED,
+-- so each `ir-to-trace' n l ir` reads as it always did.
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Codegen.StraightTrace (o : CanonicalName) where
 
 open import Data.Nat using (ℕ)
 open import Data.Unit using (⊤; tt)
@@ -44,7 +51,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
 open import Once.IRTy using (fits-int; fits-float)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace)
-open import Once.CCC.Codegen.IRToTrace using (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier)
+open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 
 ------------------------------------------------------------------------

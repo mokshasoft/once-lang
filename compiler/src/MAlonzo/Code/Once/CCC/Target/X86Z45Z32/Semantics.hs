@@ -364,7 +364,7 @@ d__'60''7495'__218 v0 v1
                      coe (coe d__'60''7495'__218 (coe v2) (coe v3)))
 -- Once.CCC.Target.X86-32.Semantics.find-label-go
 d_find'45'label'45'go_224 ::
-  MAlonzo.Code.Once.CCC.Label.T_Label_6 ->
+  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_26] ->
   Integer -> Maybe Integer
 d_find'45'label'45'go_224 v0 v1 v2
@@ -380,7 +380,7 @@ d_find'45'label'45'go_224 v0 v1 v2
                   -> coe
                        MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
                        (coe
-                          MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7480'__14 (coe v6)
+                          MAlonzo.Code.Once.CCC.Label.d__'8801''7495''7480'__224 (coe v6)
                           (coe v0))
                        (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2))
                        (coe
@@ -391,7 +391,7 @@ d_find'45'label'45'go_224 v0 v1 v2
 -- Once.CCC.Target.X86-32.Semantics.find-label
 d_find'45'label_242 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Syntax.T_Instr_26] ->
-  MAlonzo.Code.Once.CCC.Label.T_Label_6 -> Maybe Integer
+  MAlonzo.Code.Once.CCC.Label.T_Label_22 -> Maybe Integer
 d_find'45'label_242 v0 v1
   = coe
       d_find'45'label'45'go_224 (coe v1) (coe v0) (coe (0 :: Integer))

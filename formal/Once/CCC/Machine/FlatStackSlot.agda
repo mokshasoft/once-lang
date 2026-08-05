@@ -28,6 +28,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 module Once.CCC.Machine.FlatStackSlot (FS : FrameSemantics) where
 
+open import Once.CCC.Label using (LabelId)
+
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -71,7 +73,7 @@ sf-jump : ∀ (mpc : Maybe ℕ) (fs : FlatState) → SameFrames (do-jump mpc fs)
 sf-jump (just pc') fs = mkSameFrames refl refl refl
 sf-jump nothing    fs = mkSameFrames refl refl refl
 
-sf-branch : ∀ (b : Bool) (m : ℕ) (prog : AbstractTrace) (fs : FlatState)
+sf-branch : ∀ (b : Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
           → SameFrames (do-branch b m prog fs) fs
 sf-branch true  m prog fs = sf-jump (find-label prog m) fs
 sf-branch false m prog fs = mkSameFrames refl refl refl

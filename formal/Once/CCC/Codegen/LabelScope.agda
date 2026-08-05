@@ -24,8 +24,16 @@
 -- the target of a `find-label` scan and cannot break a jump's segment.
 ------------------------------------------------------------------------
 
-module Once.CCC.Codegen.LabelScope where
+-- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys
+-- its labels. `o` is constant for a whole definition, so it belongs on the
+-- module rather than on every lemma — which is exactly what keeps the
+-- statements below UNCHANGED under D089: `IRToTrace` is imported APPLIED,
+-- so each `ir-to-trace' n l ir` reads as it always did.
+open import Once.CanonicalName using (CanonicalName)
 
+module Once.CCC.Codegen.LabelScope (o : CanonicalName) where
+
+open import Once.CCC.Label using (LabelId; idx; ℓ)
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
 open import Data.Nat.Properties using
   (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-monoˡ-≤
@@ -52,14 +60,14 @@ open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open import Once.CCC.Codegen.IRToTrace using
+open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; ir-to-trace; CataStrategy; strat-const; strat-nat; strat-linear
   ; strat-branching; cata-strategy; cata-dispatch; lsize
   ; push2; pop2; wrap-sum; visit-walk; rebuild-walk
   ; cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-nat-layer; cata-nat-descend
   ; cata-br-I₁; cata-br-I₂; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃)
-open import Once.CCC.Codegen.LabelRange using (label-of; cata-label-of; label-mono; cata-label-mono)
-open import Once.CCC.Codegen.SlotBudget using
+open import Once.CCC.Codegen.LabelRange o using (label-of; cata-label-of; label-mono; cata-label-mono)
+open import Once.CCC.Codegen.SlotBudget o using
   (fetch-at; seg-at; SegState; seg-idle?; idle-seg-at
   ; seg-at-++ˡ; seg-at-++ʳ; fetch-++ˡ; fetch-++ʳ; split-pos; seg-fold
   ; idle-neutral; seg-fold-++; idle-++; visit-idle; rebuild-idle
@@ -68,7 +76,7 @@ open import Once.CCC.Codegen.SlotBudget using
 ------------------------------------------------------------------------
 -- The `once`-namespace label an instruction mentions.
 ------------------------------------------------------------------------
-once-label-of : AbstractInstr → Maybe ℕ
+once-label-of : AbstractInstr → Maybe LabelId
 once-label-of (instr-ctrl (c-label m))               = just m
 once-label-of (instr-ctrl (c-jmp m))                 = just m
 once-label-of (instr-ctrl (c-branch-scratch-zero m)) = just m
@@ -80,7 +88,7 @@ once-label-of _                                      = nothing
 -- INSTRUCTION rigid, which a reducing function would not.
 record LabelIn (lo hi : ℕ) (i : AbstractInstr) : Set where
   constructor mkLabelIn
-  field in-range : ∀ (m : ℕ) → once-label-of i ≡ just m → (lo ≤ m) × (m < hi)
+  field in-range : ∀ (m : LabelId) → once-label-of i ≡ just m → (lo ≤ idx m) × (idx m < hi)
 open LabelIn public
 
 cata-trace-of : ℕ × ℕ × AbstractTrace → AbstractTrace
@@ -94,14 +102,14 @@ LabelsIn lo hi = All (LabelIn lo hi)
 
 li-none : ∀ {lo hi} {i} → once-label-of i ≡ nothing → LabelIn lo hi i
 li-none eq = mkLabelIn (λ m eq' → go (trans (sym eq) eq'))
-  where go : ∀ {A : Set} {m : ℕ} → nothing ≡ just m → A
+  where go : ∀ {A : Set} {m : LabelId} → nothing ≡ just m → A
         go ()
 
-li-lab : ∀ {lo hi} {k} {i} → once-label-of i ≡ just k → lo ≤ k → k < hi → LabelIn lo hi i
+li-lab : ∀ {lo hi} {k} {i} → once-label-of i ≡ just k → lo ≤ idx k → idx k < hi → LabelIn lo hi i
 li-lab {lo} {hi} eq lo≤ <hi =
   mkLabelIn (λ m eq' → let p = just-inj (trans (sym eq) eq')
-                       in subst (lo ≤_) p lo≤ , subst (_< hi) p <hi)
-  where just-inj : ∀ {a b : ℕ} → just a ≡ just b → a ≡ b
+                       in subst (λ z → lo ≤ idx z) p lo≤ , subst (λ z → idx z < hi) p <hi)
+  where just-inj : ∀ {a b : LabelId} → just a ≡ just b → a ≡ b
         just-inj refl = refl
 
 -- widening the window preserves membership
@@ -536,15 +544,15 @@ labels-in (const fits-float _) n l = li-none refl ∷ []
 -- Factored through the fetch (NOT a `with`): the `Pieces` development below
 -- transports a position between a trace and an embedded copy by an equation
 -- on `fetch-at`, and `cong` needs mention to be a function of it.
-mention-of : Maybe AbstractInstr → Maybe ℕ
+mention-of : Maybe AbstractInstr → Maybe LabelId
 mention-of (just i) = once-label-of i
 mention-of nothing  = nothing
 
-mention-at : AbstractTrace → ℕ → Maybe ℕ
+mention-at : AbstractTrace → ℕ → Maybe LabelId
 mention-at t p = mention-of (fetch-at t p)
 
 SegAgree : AbstractTrace → Set
-SegAgree t = ∀ (p q m : ℕ) (st : SegState)
+SegAgree t = ∀ (p q : ℕ) (m : LabelId) (st : SegState)
            → mention-at t p ≡ just m
            → fetch-at t q ≡ just (instr-ctrl (c-label m))
            → seg-at t q st ≡ seg-at t p st
@@ -562,7 +570,7 @@ segagree-empty lo t ls p q m st mq _ = ⊥-elim (no-mention p mq)
         go : ∀ (t' : AbstractTrace) (r : ℕ) → LabelsIn lo lo t' → mention-at t' r ≡ just m → ⊥
         go []       r       _         ()
         go (i ∷ is) zero    (x ∷ _)  e = absurd (in-range x m e)
-          where absurd : (lo ≤ m) × (m < lo) → ⊥
+          where absurd : (lo ≤ idx m) × (idx m < lo) → ⊥
                 absurd (le , lt) = <-irrefl-aux (≤-trans lt le)
                   where <-irrefl-aux : ∀ {a} → suc a ≤ a → ⊥
                         <-irrefl-aux {suc a} (s≤s p) = <-irrefl-aux p
@@ -601,17 +609,17 @@ segagree-++ t1 t2 lo mid hi ls1 ls2 sa1 sa2 p q m st mq lq =
     defines₂ k e = trans (sym (fetch-++ʳ t1 t2 k)) e
     -- a mention in `t1` puts `m` below `mid`; a definition in `t2` puts it at
     -- or above `mid`. That is the contradiction.
-    inʟ : ∀ (r : ℕ) → r < length t1 → mention-at t1 r ≡ just m → m < mid
+    inʟ : ∀ (r : ℕ) → r < length t1 → mention-at t1 r ≡ just m → idx m < mid
     inʟ r lt e = proj₂ (walk t1 r ls1 e)
       where walk : ∀ (t : AbstractTrace) (r' : ℕ) → LabelsIn lo mid t
-                 → mention-at t r' ≡ just m → (lo ≤ m) × (m < mid)
+                 → mention-at t r' ≡ just m → (lo ≤ idx m) × (idx m < mid)
             walk []       _       _        ()
             walk (i ∷ is) zero    (x ∷ _)  e' = in-range x m e'
             walk (i ∷ is) (suc r') (_ ∷ xs) e' = walk is r' xs e'
-    inʀ : ∀ (k : ℕ) → mention-at t2 k ≡ just m → mid ≤ m
+    inʀ : ∀ (k : ℕ) → mention-at t2 k ≡ just m → mid ≤ idx m
     inʀ k e = proj₁ (walk t2 k ls2 e)
       where walk : ∀ (t : AbstractTrace) (k' : ℕ) → LabelsIn mid hi t
-                 → mention-at t k' ≡ just m → (mid ≤ m) × (m < hi)
+                 → mention-at t k' ≡ just m → (mid ≤ idx m) × (idx m < hi)
             walk []       _        _        ()
             walk (i ∷ is) zero     (x ∷ _)  e' = in-range x m e'
             walk (i ∷ is) (suc k') (_ ∷ xs) e' = walk is k' xs e'
@@ -668,7 +676,7 @@ segagree-++' t1 t2 a b c d ls1 ls2 disj sa1 sa2 p q m st mq lq =
              → fetch-at t2 k ≡ just (instr-ctrl (c-label m))
     defines₂ k e = trans (sym (fetch-++ʳ t1 t2 k)) e
     win : ∀ (t : AbstractTrace) (lo hi r : ℕ) → LabelsIn lo hi t
-        → mention-at t r ≡ just m → (lo ≤ m) × (m < hi)
+        → mention-at t r ≡ just m → (lo ≤ idx m) × (idx m < hi)
     win []       lo hi _        _        ()
     win (i ∷ is) lo hi zero     (x ∷ _)  e = in-range x m e
     win (i ∷ is) lo hi (suc r') (_ ∷ xs) e = win is lo hi r' xs e
@@ -676,7 +684,7 @@ segagree-++' t1 t2 a b c d ls1 ls2 disj sa1 sa2 p q m st mq lq =
             → fetch-at t r ≡ just (instr-ctrl (c-label m)) → mention-at t r ≡ just m
     def→men t r e rewrite e = refl
     -- `m` in both windows is impossible, whichever way round they sit
-    clash : (a ≤ m) × (m < b) → (c ≤ m) × (m < d) → ⊥
+    clash : (a ≤ idx m) × (idx m < b) → (c ≤ idx m) × (idx m < d) → ⊥
     clash (a≤ , <b) (c≤ , <d) = dis disj
       where dis : (b ≤ c) ⊎ (d ≤ a) → ⊥
             dis (inj₁ b≤c) = <-asym <b (≤-trans b≤c c≤)
@@ -762,7 +770,7 @@ pieces-neutral at a b .(I ++ at ++ t) (pcons {I} {t} idle _ ps) natl st =
 data PosView (at : AbstractTrace) (a b : ℕ) (t : AbstractTrace)
              (st : SegState) (p : ℕ) : Set where
   pv-skel : seg-at t p st ≡ st
-          → (∀ (m : ℕ) → mention-at t p ≡ just m → (a ≤ m) × (m < b))
+          → (∀ (m : LabelId) → mention-at t p ≡ just m → (a ≤ idx m) × (idx m < b))
           → PosView at a b t st p
   pv-at   : ∀ (k : ℕ) → seg-at t p st ≡ seg-at at k st
           → fetch-at t p ≡ fetch-at at k
@@ -770,7 +778,7 @@ data PosView (at : AbstractTrace) (a b : ℕ) (t : AbstractTrace)
 
 -- the skeleton window fact, read off a `LabelsIn` at a position
 win-at : ∀ (a b : ℕ) (t : AbstractTrace) → LabelsIn a b t
-       → ∀ (p m : ℕ) → mention-at t p ≡ just m → (a ≤ m) × (m < b)
+       → ∀ (p : ℕ) (m : LabelId) → mention-at t p ≡ just m → (a ≤ idx m) × (idx m < b)
 win-at a b []       _        p       m ()
 win-at a b (i ∷ is) (x ∷ _)  zero    m e = in-range x m e
 win-at a b (i ∷ is) (_ ∷ xs) (suc p) m e = win-at a b is xs p m e
@@ -836,7 +844,7 @@ pieces-agree at a b c d t ps natl saAt lsAt disj p q m st mq lq =
   where
     lq-men : mention-at t q ≡ just m
     lq-men rewrite lq = refl
-    clash : (a ≤ m) × (m < b) → (c ≤ m) × (m < d) → ⊥
+    clash : (a ≤ idx m) × (idx m < b) → (c ≤ idx m) × (idx m < d) → ⊥
     clash (a≤ , <b) (c≤ , <d) = dis disj
       where dis : (b ≤ c) ⊎ (d ≤ a) → ⊥
             dis (inj₁ b≤c) = <-asym <b (≤-trans b≤c c≤)
@@ -1136,20 +1144,20 @@ pieces2-neutral a b hi .(I ++ at ++ t) (p2cons {I = I} {at = at} {t = t} c d idl
 -- EVERY MENTION is either the skeleton's (window `[a,b)`) or an embedded
 -- trace's (below `hi`). This is what the cross cases consume.
 pieces2-mentions : ∀ (a b hi : ℕ) (t : AbstractTrace) → Pieces2 a b hi t
-                 → ∀ (p m : ℕ) → mention-at t p ≡ just m
-                 → ((a ≤ m) × (m < b)) ⊎ (m < hi)
+                 → ∀ (p : ℕ) (m : LabelId) → mention-at t p ≡ just m
+                 → ((a ≤ idx m) × (idx m < b)) ⊎ (idx m < hi)
 pieces2-mentions a b hi .I (p2nil {I = I} _ ls) p m e = inj₁ (win-at a b I ls p m e)
 pieces2-mentions a b hi .(I ++ at ++ t) (p2cons {I = I} {at = at} {t = t} c d idle ls natl _ lsAt b≤c c≤d d≤hi ps) p m e =
   go (split-pos I p)
   where
-    go : (p < length I) ⊎ (Σ ℕ (λ k → p ≡ length I + k)) → ((a ≤ m) × (m < b)) ⊎ (m < hi)
+    go : (p < length I) ⊎ (Σ ℕ (λ k → p ≡ length I + k)) → ((a ≤ idx m) × (idx m < b)) ⊎ (idx m < hi)
     go (inj₁ lt) = inj₁ (win-at a b I ls p m (trans (sym (cong mention-of (fetch-++ˡ I (at ++ t) p lt))) e))
     go (inj₂ (k , peq)) = go2 (split-pos at k)
       where
         e' : mention-at (at ++ t) k ≡ just m
         e' = trans (sym (cong mention-of (fetch-++ʳ I (at ++ t) k)))
                    (subst (λ z → mention-at (I ++ at ++ t) z ≡ just m) peq e)
-        go2 : (k < length at) ⊎ (Σ ℕ (λ j → k ≡ length at + j)) → ((a ≤ m) × (m < b)) ⊎ (m < hi)
+        go2 : (k < length at) ⊎ (Σ ℕ (λ j → k ≡ length at + j)) → ((a ≤ idx m) × (idx m < b)) ⊎ (idx m < hi)
         go2 (inj₁ klt) =
           inj₂ (<-transˡ (proj₂ (win-at c d at lsAt k m
                                    (trans (sym (cong mention-of (fetch-++ˡ at t k klt))) e'))) d≤hi)
@@ -1177,16 +1185,16 @@ pieces2-mentions a b hi .(I ++ at ++ t) (p2cons {I = I} {at = at} {t = t} c d id
 -- on WHERE `m` LIES rather than on where `p` and `q` do — and `m`'s window
 -- then forces both positions into the same region, which is what makes the
 -- depth index unnecessary.
-data PieceLoc (a b c d : ℕ) (I at t : AbstractTrace) (st : SegState) (p m : ℕ) : Set where
+data PieceLoc (a b c d : ℕ) (I at t : AbstractTrace) (st : SegState) (p : ℕ) (m : LabelId) : Set where
   loc-I  : seg-at (I ++ at ++ t) p st ≡ st
-         → (a ≤ m) × (m < b) → PieceLoc a b c d I at t st p m
+         → (a ≤ idx m) × (idx m < b) → PieceLoc a b c d I at t st p m
   loc-at : ∀ (k : ℕ) → seg-at (I ++ at ++ t) p st ≡ seg-at at k st
          → fetch-at (I ++ at ++ t) p ≡ fetch-at at k
-         → (c ≤ m) × (m < d) → PieceLoc a b c d I at t st p m
+         → (c ≤ idx m) × (idx m < d) → PieceLoc a b c d I at t st p m
   loc-t  : ∀ (j : ℕ) → seg-at (I ++ at ++ t) p st ≡ seg-at t j st
          → fetch-at (I ++ at ++ t) p ≡ fetch-at t j → PieceLoc a b c d I at t st p m
 
-locate : ∀ (a b c d : ℕ) (I at t : AbstractTrace) (st : SegState) (p m : ℕ)
+locate : ∀ (a b c d : ℕ) (I at t : AbstractTrace) (st : SegState) (p : ℕ) (m : LabelId)
        → seg-idle? I ≡ true → LabelsIn a b I → LabelsIn c d at
        → (∀ s → seg-fold at s ≡ s)
        → mention-at (I ++ at ++ t) p ≡ just m
@@ -1223,8 +1231,8 @@ locate a b c d I at t st p m idle ls lsAt natl e = go (split-pos I p)
 -- embedded trace (those windows start at or above `b`), so its segment is the
 -- starting state.
 pieces2-skel : ∀ (a b hi : ℕ) (t : AbstractTrace) → Pieces2 a b hi t
-             → ∀ (p m : ℕ) (st : SegState) → mention-at t p ≡ just m
-             → (a ≤ m) × (m < b) → seg-at t p st ≡ st
+             → ∀ (p : ℕ) (m : LabelId) (st : SegState) → mention-at t p ≡ just m
+             → (a ≤ idx m) × (idx m < b) → seg-at t p st ≡ st
 pieces2-skel a b hi .I (p2nil {I = I} idle _) p m st _ _ = idle-seg-at I idle p st
 pieces2-skel a b hi .(I ++ at ++ t)
   (p2cons {I = I} {at = at} {t = t} c d idle ls natl _ lsAt b≤c c≤d d≤hi ps) p m st e w =
@@ -1250,13 +1258,13 @@ pieces2-agree a b hi .(I ++ at ++ t)
     lq-men : mention-at (I ++ at ++ t) q ≡ just m
     lq-men rewrite lq = refl
     -- skeleton window vs embedded window
-    clash₁ : (a ≤ m) × (m < b) → (c ≤ m) × (m < d) → ⊥
+    clash₁ : (a ≤ idx m) × (idx m < b) → (c ≤ idx m) × (idx m < d) → ⊥
     clash₁ wI wA = <-asym (proj₂ wI) (≤-trans b≤c (proj₁ wA))
     -- embedded window vs anything the TAIL can mention (`pieces2-mentions`:
     -- the skeleton's window, or strictly below this window's start)
-    clash₂ : ∀ (r : ℕ) → (c ≤ m) × (m < d) → mention-at t r ≡ just m → ⊥
+    clash₂ : ∀ (r : ℕ) → (c ≤ idx m) × (idx m < d) → mention-at t r ≡ just m → ⊥
     clash₂ r wA e = side (pieces2-mentions a b c t ps r m e)
-      where side : ((a ≤ m) × (m < b)) ⊎ (m < c) → ⊥
+      where side : ((a ≤ idx m) × (idx m < b)) ⊎ (idx m < c) → ⊥
             side (inj₁ wI)  = clash₁ wI wA
             side (inj₂ m<c) = <-asym m<c (proj₁ wA)
     go : PieceLoc a b c d I at t st p m → PieceLoc a b c d I at t st q m
@@ -1303,12 +1311,12 @@ pieces2-agree a b hi .(I ++ at ++ t)
 -- `p` or `q`; and the join label `e` is mentioned only OUTSIDE the bracket
 -- (the jump before it and the `c-label` after), where the segment is `st`.
 ------------------------------------------------------------------------
-data CurryLoc (H body : AbstractTrace) (ℓ bb e a b' : ℕ) (st : SegState) (p : ℕ) : Set where
+data CurryLoc (H body : AbstractTrace) (ℓ : LabelId) (bb : ℕ) (e : LabelId) (a b' : ℕ) (st : SegState) (p : ℕ) : Set where
   cl-out  : seg-at (H ++ instr-ctrl (c-thunk ℓ bb) ∷
                     (body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ [])) p st ≡ st
-          → (∀ (m : ℕ) → mention-at (H ++ instr-ctrl (c-thunk ℓ bb) ∷
+          → (∀ (m : LabelId) → mention-at (H ++ instr-ctrl (c-thunk ℓ bb) ∷
                           (body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ [])) p
-                         ≡ just m → (a ≤ m) × (m < b'))
+                         ≡ just m → (a ≤ idx m) × (idx m < b'))
           → CurryLoc H body ℓ bb e a b' st p
   cl-body : ∀ (k : ℕ)
           → seg-at (H ++ instr-ctrl (c-thunk ℓ bb) ∷
@@ -1323,10 +1331,10 @@ data CurryLoc (H body : AbstractTrace) (ℓ bb e a b' : ℕ) (st : SegState) (p 
             ≡ nothing
           → CurryLoc H body ℓ bb e a b' st p
 
-curry-locate : ∀ (H body : AbstractTrace) (ℓ bb e a b' : ℕ) (st : SegState) (p : ℕ)
+curry-locate : ∀ (H body : AbstractTrace) (ℓ : LabelId) (bb : ℕ) (e : LabelId) (a b' : ℕ) (st : SegState) (p : ℕ)
              → seg-idle? H ≡ true → LabelsIn a b' H
              → (∀ s → seg-fold body s ≡ s)
-             → (a ≤ e) × (e < b')
+             → (a ≤ idx e) × (idx e < b')
              → CurryLoc H body ℓ bb e a b' st p
 curry-locate H body ℓ bb e a b' st p idle ls natl we = go (split-pos H p)
   where
@@ -1368,30 +1376,30 @@ curry-locate H body ℓ bb e a b' st p idle ls natl we = go (split-pos H p)
                    (trans (cong (λ z → seg-at (body ++ tail) z pushed) keq)
                           (trans (seg-at-++ʳ body tail 1 pushed)
                                  (trans (cong (seg-at tail 1) (natl pushed)) pop-eq))))
-                 (λ m eq → subst (λ z → (a ≤ z) × (z < b')) (lab-inj m eq) we)
+                 (λ m eq → subst (λ z → (a ≤ idx z) × (idx z < b')) (lab-inj m eq) we)
           where
                 -- the `c-ret` pops the marker's push, so the join label sits
                 -- back at the starting state (record eta on `SegState`)
                 pop-eq : seg-at (instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ []) 1 pushed ≡ st
                 pop-eq = refl
-                lab-inj : ∀ (m : ℕ) → mention-at T p ≡ just m → e ≡ m
+                lab-inj : ∀ (m : LabelId) → mention-at T p ≡ just m → e ≡ m
                 lab-inj m eq = just-inj-ℕ (trans (sym men-e) eq)
                   where men-e : mention-at T p ≡ just e
                         men-e = trans (cong mention-of ft-eq)
                                       (cong mention-of
                                         (trans (cong (fetch-at (body ++ tail)) keq)
                                                (fetch-++ʳ body tail 1)))
-                        just-inj-ℕ : ∀ {x y : ℕ} → just x ≡ just y → x ≡ y
+                        just-inj-ℕ : ∀ {x y : LabelId} → just x ≡ just y → x ≡ y
                         just-inj-ℕ refl = refl
         go2 (inj₂ (suc (suc j) , keq)) =
           cl-mark (trans (cong mention-of ft-eq)
                          (cong mention-of (trans (cong (fetch-at (body ++ tail)) keq)
                                                  (fetch-++ʳ body tail (suc (suc j))))))
 
-segagree-curry : ∀ (H body : AbstractTrace) (ℓ bb e a b' c d : ℕ)
+segagree-curry : ∀ (H body : AbstractTrace) (ℓ : LabelId) (bb : ℕ) (e : LabelId) (a b' c d : ℕ)
                → seg-idle? H ≡ true → LabelsIn a b' H
                → (∀ s → seg-fold body s ≡ s) → SegAgree body → LabelsIn c d body
-               → (a ≤ e) × (e < b') → b' ≤ c
+               → (a ≤ idx e) × (idx e < b') → b' ≤ c
                → SegAgree (H ++ instr-ctrl (c-thunk ℓ bb) ∷
                            (body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ []))
 segagree-curry H body ℓ bb e a b' c d idle ls natl saB lsB we b'≤c p q m st mq lq =
@@ -1403,7 +1411,7 @@ segagree-curry H body ℓ bb e a b' c d idle ls natl saB lsB we b'≤c p q m st 
     lq-men rewrite lq = refl
     none-absurd : ∀ {A : Set} → nothing ≡ just m → A
     none-absurd ()
-    clash : (a ≤ m) × (m < b') → (c ≤ m) × (m < d) → ⊥
+    clash : (a ≤ idx m) × (idx m < b') → (c ≤ idx m) × (idx m < d) → ⊥
     clash wO wB = <-asym (proj₂ wO) (≤-trans b'≤c (proj₁ wB))
     go : CurryLoc H body ℓ bb e a b' st p → CurryLoc H body ℓ bb e a b' st q → _
     go (cl-mark nq) _ = none-absurd (trans (sym nq) mq)
@@ -1460,14 +1468,14 @@ seg-agree (const fits-float v) n l = segagree-nolab _ (refl ∷ [])
 -- `segagree-curry` — the construction plus the jump-over is the (idle) outer
 -- piece, and the join label `suc l` sits below the body's range.
 seg-agree (curry bd Stack) n l =
-  segagree-curry _ _ l _ (suc l) l (suc (suc l)) (suc (suc l)) _
+  segagree-curry _ _ (ℓ o l) _ (ℓ o (suc l)) l (suc (suc l)) (suc (suc l)) _
     refl (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
           li-lab refl (n≤1+n l) ≤-refl ∷ [])
     (λ s → ok-neu (slots-below bd 0 (suc (suc l))) s)
     (seg-agree bd 0 (suc (suc l))) (labels-in bd 0 (suc (suc l)))
     (n≤1+n l , ≤-refl) ≤-refl
 seg-agree (curry bd Heap)  n l =
-  segagree-curry _ _ l _ (suc l) l (suc (suc l)) (suc (suc l)) _
+  segagree-curry _ _ (ℓ o l) _ (ℓ o (suc l)) l (suc (suc l)) (suc (suc l)) _
     refl (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
           li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
           li-lab refl (n≤1+n l) ≤-refl ∷ [])
@@ -1592,7 +1600,7 @@ module _ {FS : FrameSemantics} where
   fetch≡at (i ∷ is) zero    = refl
   fetch≡at (i ∷ is) (suc k) = fetch≡at is k
 
-  emitted-jump-in-segment : ∀ {A B} (ir : IR A B) (p q m : ℕ) (st : SegState)
+  emitted-jump-in-segment : ∀ {A B} (ir : IR A B) (p q : ℕ) (m : LabelId) (st : SegState)
                           → mention-at (ir-to-trace ir) p ≡ just m
                           → find-label (ir-to-trace ir) m ≡ just q
                           → seg-at (ir-to-trace ir) q st ≡ seg-at (ir-to-trace ir) p st
@@ -1600,7 +1608,7 @@ module _ {FS : FrameSemantics} where
     at-top ir p q m st mq (trans (sym (fetch≡at (ir-to-trace ir) q))
                                  (find-label-lands (ir-to-trace ir) m q fl))
     where
-      at-top : ∀ {A B} (ir' : IR A B) (p' q' m' : ℕ) (st' : SegState)
+      at-top : ∀ {A B} (ir' : IR A B) (p' q' : ℕ) (m' : LabelId) (st' : SegState)
              → mention-at (ir-to-trace ir') p' ≡ just m'
              → fetch-at (ir-to-trace ir') q' ≡ just (instr-ctrl (c-label m'))
              → seg-at (ir-to-trace ir') q' st' ≡ seg-at (ir-to-trace ir') p' st'

@@ -29,7 +29,8 @@ data T_Mem_10
   = C_base_12 MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.T_Reg_8 |
     C_base'43'disp_14 MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.T_Reg_8
                       Integer |
-    C_rip'43'disp_16 Integer | C_rip'43'label_18 Integer
+    C_rip'43'disp_16 Integer |
+    C_rip'43'label_18 MAlonzo.Code.Once.CCC.Label.T_LabelId_6
 -- Once.CCC.Target.X86-64.Syntax.Operand
 d_Operand_20 = ()
 data T_Operand_20
@@ -45,15 +46,15 @@ data T_Instr_28
     C_sub_36 T_Operand_20 T_Operand_20 |
     C_cmp_38 T_Operand_20 T_Operand_20 |
     C_test_40 T_Operand_20 T_Operand_20 |
-    C_jmp_42 MAlonzo.Code.Once.CCC.Label.T_Label_6 |
-    C_je_44 MAlonzo.Code.Once.CCC.Label.T_Label_6 |
-    C_jne_46 MAlonzo.Code.Once.CCC.Label.T_Label_6 |
+    C_jmp_42 MAlonzo.Code.Once.CCC.Label.T_Label_22 |
+    C_je_44 MAlonzo.Code.Once.CCC.Label.T_Label_22 |
+    C_jne_46 MAlonzo.Code.Once.CCC.Label.T_Label_22 |
     C_call_48 T_Operand_20 |
     C_call'45'sym_50 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_ret_52 | C_push_54 T_Operand_20 |
     C_pop_56 MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg.T_Reg_8 |
     C_nop_58 | C_ud2_60 | C_syscall_62 |
-    C_label_64 MAlonzo.Code.Once.CCC.Label.T_Label_6
+    C_label_64 MAlonzo.Code.Once.CCC.Label.T_Label_22
 -- Once.CCC.Target.X86-64.Syntax.Program
 d_Program_66 :: ()
 d_Program_66 = erased

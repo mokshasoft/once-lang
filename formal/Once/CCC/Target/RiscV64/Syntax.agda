@@ -22,7 +22,7 @@ open import Data.String using (String)
 -- Plan 0.63: label PROVENANCE, shared with x86-64 (D082). `Once.CCC.Label` is
 -- arch-agnostic; naming code addresses the same way on every target is what
 -- lets the correspondence proofs (today x86-64-only) be generalised over it.
-open import Once.CCC.Label public using (Label; once; sigop; thunk)
+open import Once.CCC.Label public using (LabelId; Label; once; sigop; thunk)
 
 ------------------------------------------------------------------------
 -- Registers
@@ -92,7 +92,7 @@ data Instr : Set where
 
   -- Address computation
   auipc  : Reg → ℕ → Instr            -- auipc rd, imm : rd = PC + (imm << 12)
-  lla    : Reg → ℕ → Instr            -- lla rd, .L_thunk_n : load local (code label) address (Plan 0.53)
+  lla    : Reg → LabelId → Instr      -- lla rd, .L_thunk_n : load local (code label) address (Plan 0.53)
 
   -- Move (pseudo-instruction: addi rd, rs, 0)
   mv     : Reg → Reg → Instr          -- mv rd, rs
