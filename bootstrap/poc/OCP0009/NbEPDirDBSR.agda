@@ -36,7 +36,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; subst; cong
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; ⌜Π⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub
-        ; nzero; nsuc; natrec; natrec-cong₃
+        ; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
         ; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
         ; Ren; extR; Sub; subTy; subTm; extS; _∘ₛ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; renTm
         ; subTm-subTm; subTm-cong; subTm-renTm; subTm-id; renTm-subTm
@@ -56,6 +56,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
+        ; El-⌜Nat⌝; El-⌜Unit⌝; tr-J-Nat; tr-J-Unit
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
@@ -185,6 +186,12 @@ pwShift-sub σ t =
 ⟶-sub σ (ξ-⌜Σ⌝ˡ r) = ξ-⌜Σ⌝ˡ (⟶-sub σ r)
 ⟶-sub σ (ξ-⌜Σ⌝ʳ r) = ξ-⌜Σ⌝ʳ (⟶-sub (extS σ) r)
 -- W2 eliminator: the two J rules and `tr-taut` are direct.
+⟶-sub σ (tr-J-Nat c a m s e) =
+  tr-J-Nat (subTm (extS σ) c) (subTm (extS σ) a) (subTm (extS σ) m)
+           (subTm σ s) (subTm σ e)
+⟶-sub σ (tr-J-Unit c a m s e) =
+  tr-J-Unit (subTm (extS σ) c) (subTm (extS σ) a) (subTm (extS σ) m)
+            (subTm σ s) (subTm σ e)
 ⟶-sub σ (tr-J-base c a m s e) =
   tr-J-base (subTm (extS σ) c) (subTm (extS σ) a) (subTm (extS σ) m)
             (subTm σ s) (subTm σ e)
@@ -277,6 +284,8 @@ pwShift-sub σ t =
 ⟶ᵀ-sub σ (ξ-Πʳ r) = ξ-Πʳ (⟶ᵀ-sub (extS σ) r)
 ⟶ᵀ-sub σ (ξ-Σˡ r) = ξ-Σˡ (⟶ᵀ-sub σ r)
 ⟶ᵀ-sub σ (ξ-Σʳ r) = ξ-Σʳ (⟶ᵀ-sub (extS σ) r)
+⟶ᵀ-sub σ El-⌜Nat⌝         = El-⌜Nat⌝
+⟶ᵀ-sub σ El-⌜Unit⌝        = El-⌜Unit⌝
 ⟶ᵀ-sub σ (Hom-Nat-z n)    = Hom-Nat-z (subTm σ n)
 ⟶ᵀ-sub σ (Hom-Nat-sz m)   = Hom-Nat-sz (subTm σ m)
 ⟶ᵀ-sub σ (Hom-Nat-ss m n) = Hom-Nat-ss (subTm σ m) (subTm σ n)
