@@ -66,6 +66,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; hrefl-pw; tr-J-Hom; tr-pw
         ; _⟶*_; done; step
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
+        ; El-⌜Nat⌝; El-⌜Unit⌝
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ )
 open import poc.OCP0009.NbEPDirDBVar
@@ -183,6 +184,16 @@ stablecd? unit           = true
 stablecd? nzero          = true
 stablecd? (nsuc n)       = true
 stablecd? (natrec z s n) = natstk? n
+-- ★★ WF stage C: ⌜Nat⌝ is DEAD.  Since the retraction of `tr-J-Nat`
+-- (`stkC? ⌜Nat⌝ = false`) NO rule fires on a `hrefl ⌜Nat⌝ s` path —
+-- not J, not `ap-J`, not `tr-pw`/`tr-taut` (those need a lam path) —
+-- so the eliminators over it are stuck forever.  ⌜Unit⌝ is NOT dead:
+-- it is `stkC?`, so J and `ap-J` do fire (`stk⊥dead ⌜Unit⌝` needs
+-- exactly `false` there, which the catch-all supplies).
+-- This row is what lets `codeNorm` stay TWO-way: ⌜Nat⌝ — neither `pw?`
+-- nor `stkC?`, the third code kind — is a DEAD code, so it lands in
+-- `cf-dead` rather than needing a third `CodeFate` arm.
+stablecd? ⌜Nat⌝         = true
 stablecd? _             = false
 
 pathstk? (var x)        = true
@@ -931,6 +942,7 @@ dead→nopw (pair a b) h = refl
 dead→nopw (fst t) h = h
 dead→nopw (snd t) h = h
 dead→nopw ⌜base⌝ ()
+dead→nopw ⌜Nat⌝ h = refl
 dead→nopw (⌜Π⌝ c d) ()
 dead→nopw (⌜Σ⌝ c d) ()
 dead→nopw (⌜Hom⌝ C a b) h = dead→nopw C h
@@ -1352,6 +1364,10 @@ data SN {Γ} where
   sn-cId  : {c a b : RTm Γ} → SN c → SN a → SN b → SN (⌜Id⌝ c a b)
   sn-idrefl : {c t : RTm Γ} → SN c → SN t → SN (idrefl c t)
   -- ★ WF stage A: the datatype constructors are SN-inert.
+  -- ★ WF stage C: so are the datatype CODES — inert canonical codes,
+  -- exactly like `⌜base⌝`.
+  sn-cNat   : SN (⌜Nat⌝ {Γ})
+  sn-cUnit  : SN (⌜Unit⌝ {Γ})
   sn-unit   : SN (unit {Γ})
   sn-nzero  : SN (nzero {Γ})
   sn-nsuc   : {n : RTm Γ} → SN n → SN (nsuc n)
@@ -1382,6 +1398,12 @@ data SNRed {Γ} where
   snr-J-Σ    : {c a m : RTm (Γ ∙)} {c₁ : RTm Γ} {c₂ : RTm (Γ ∙)} {s e : RTm Γ} →
                SN (⌜Hom⌝ c a m) → SN c₁ → SN c₂ → SN s →
                SNRed (tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e) e
+  -- ★ WF stage C: J at ⌜Unit⌝, the `snr-J-base` shape verbatim.  ⚠ there
+  -- is deliberately no ⌜Nat⌝ peer — J is off there, so a `hrefl ⌜Nat⌝`
+  -- path is NEUTRAL, not a redex (`stablecd? ⌜Nat⌝ = true`).
+  snr-J-Unit : {c a m : RTm (Γ ∙)} {s e : RTm Γ} →
+               SN (⌜Hom⌝ c a m) → SN s →
+               SNRed (tr (⌜Hom⌝ c a m) (hrefl ⌜Unit⌝ s) e) e
   snr-taut   : {f : RTm (Γ ∙)} {e : RTm Γ} →
                SNRed (tr (var vz) (lam f) e) (app (lam f) e)
   snr-trᵖ    : {d : RTm (Γ ∙)} {p p' e : RTm Γ} → SNRed p p' →
@@ -1458,6 +1480,7 @@ snr→⟶ (snr-fst r)          = ξ-fst (snr→⟶ r)
 snr→⟶ (snr-snd r)          = ξ-snd (snr→⟶ r)
 snr→⟶ (snr-hreflᶜ σ)       = ξ-hreflᶜ (csr→⟶ σ)
 snr→⟶ (snr-J-base _ _)     = tr-J-base _ _ _ _ _
+snr→⟶ (snr-J-Unit _ _)     = tr-J-Unit _ _ _ _ _
 snr→⟶ (snr-J-Σ _ _ _ _)    = tr-J-Σ _ _ _ _ _ _ _
 snr→⟶ snr-taut             = tr-taut _ _
 snr→⟶ (snr-trᵖ r)          = ξ-trᵖ (snr→⟶ r)
@@ -1486,6 +1509,7 @@ snr-nonpw (snr-snd _)    = refl
 snr-nonpw (snr-hreflᶜ _) = refl
 snr-nonpw (snr-hrefl-pw _) = refl
 snr-nonpw (snr-J-base _ _)  = refl
+snr-nonpw (snr-J-Unit _ _)  = refl
 snr-nonpw (snr-J-Σ _ _ _ _) = refl
 snr-nonpw (snr-J-Hom _ _ _ _ _ _) = refl
 snr-nonpw snr-taut       = refl
@@ -1553,6 +1577,9 @@ snr-det (snr-hreflᶜ {t = t} σ) (snr-hreflᶜ σ') =
 snr-det (snr-J-base _ _) (snr-J-base _ _) = refl
 snr-det (snr-J-base _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-base _ _)
+snr-det (snr-J-Unit _ _) (snr-J-Unit _ _) = refl
+snr-det (snr-J-Unit _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-Unit _ _)
 snr-det (snr-J-Σ _ _ _ _) (snr-J-Σ _ _ _ _) = refl
 snr-det (snr-J-Σ _ _ _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-Σ _ _ _ _)
@@ -1583,6 +1610,8 @@ snr-det (snr-trᵖ (snr-hrefl-pw kp)) (snr-J-Hom {c₁ = c₁} _ _ _ _ _ ks)
 ... | ()
 snr-det (snr-J-base _ _) (snr-trᵖ (snr-hrefl-pw ()))
 snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-base _ _)
+snr-det (snr-J-Unit _ _) (snr-trᵖ (snr-hrefl-pw ()))
+snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Unit _ _)
 snr-det (snr-J-Σ _ _ _ _) (snr-trᵖ (snr-hrefl-pw ()))
 snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Σ _ _ _ _)
 snr-det (snr-tr-pw _ _ _) (snr-tr-pw _ _ _) = refl
@@ -1657,6 +1686,7 @@ sne-whred (sne-hrefl {c = c} snc snt kn) (snr-hrefl-pw kp)
   with trans (sym (nopw⊥pw c kn)) kp
 ... | ()
 sne-whred (sne-tr snd₀ snp sne₀ ()) (snr-J-base _ _)
+sne-whred (sne-tr snd₀ snp sne₀ ()) (snr-J-Unit _ _)
 sne-whred (sne-tr snd₀ snp sne₀ ()) (snr-J-Σ _ _ _ _)
 sne-whred (sne-tr snd₀ snp sne₀ ()) snr-taut
 sne-whred (sne-tr snd₀ snp sne₀ key) (snr-J-Hom {c₁ = c₁} _ _ _ _ _ ks)
@@ -2277,6 +2307,25 @@ joinW c p q with church-rosserᵀ c
 
 infix 4 _⊩₀∋_
 
+-- ★★ WF stage A — the THIRD payload flavor.  A semantic natural
+-- number is one that REACHES a numeral (or is stuck neutral): exactly
+-- the induction principle `fund`'s `⊢natrec` recurses on, and the
+-- reason `natrec` computes on every closed member.  The shape mirrors
+-- `SN` (neutral / constructor / head-expansion), so every transport is
+-- the SN transport.
+data NatMem {Γ} : RTm Γ → Set where
+  nm-ne   : {t : RTm Γ} → SNe t → NatMem t
+  nm-zero : NatMem (nzero {Γ})
+  nm-suc  : {n : RTm Γ} → NatMem n → NatMem (nsuc n)
+  nm-exp  : {t t' : RTm Γ} → SNRed t t' → NatMem t' → NatMem t
+
+-- forward closure along the head strategy — `sn-whred`'s proof, by
+-- determinism of `SNRed`.
+natmem-whred : {t t' : RTm Γ} → NatMem t → SNRed t t' → NatMem t'
+natmem-whred (nm-ne n)   r = nm-ne (sne-whred n r)
+natmem-whred (nm-exp r₀ h) r with snr-det r₀ r
+... | refl = h
+
 data ⊩₀_ {Γ} : RTy Γ → Set
 _⊩₀∋_ : {Γ : Cx} {A : RTy Γ} → ⊩₀ A → RTm Γ → Set
 
@@ -2327,6 +2376,14 @@ data ⊩₀_ {Γ} where
   -- motives.
   ⊩₀Id   : {A H : RTy Γ} {a b : RTm Γ}
          → A ⟶ᵀ* Id H a b → ⊩₀ A
+  -- ★★ WF stage C: the datatypes reach LEVEL 0 for the first time.
+  -- Stage A could skip them — no code decoded to `Unit`/`Nat`, so the
+  -- SMALL types never saw them.  ⌜Nat⌝ ∈ U changes that twice over:
+  -- `El ⌜Nat⌝ ⟶ᵀ Nat` directly, and `El (⌜Hom⌝ ⌜Nat⌝ a b) ⟶ᵀ*` the
+  -- ORDER type, which computes to `Unit` (or `base`).  Membership
+  -- mirrors level 1 exactly, `NatMem` payload included.
+  ⊩₀Unit : {A : RTy Γ} → A ⟶ᵀ* Unit → ⊩₀ A
+  ⊩₀Nat  : {A : RTy Γ} → A ⟶ᵀ* Nat → ⊩₀ A
 
 ⊩₀base _     ⊩₀∋ t = SN t
 ⊩₀ne _ _     ⊩₀∋ t = SN t
@@ -2336,6 +2393,8 @@ data ⊩₀_ {Γ} where
   SN t × Σ (⊩F ⊩₀∋ fst t) (λ r → (⊩G (fst t) r) ⊩₀∋ snd t)
 ⊩₀Hom _ _    ⊩₀∋ t = SN t
 ⊩₀Id {a = a} {b = b} _ ⊩₀∋ t = SN t × IdPay a b t
+⊩₀Unit _     ⊩₀∋ t = SN t
+⊩₀Nat _      ⊩₀∋ t = SN t × NatMem t
 
 bwd₀ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₀ B → ⊩₀ A
 bwd₀ p (⊩₀base q)    = ⊩₀base (⟶ᵀ*-trans p q)
@@ -2344,6 +2403,34 @@ bwd₀ p (⊩₀Π q ⊩F ⊩G) = ⊩₀Π    (⟶ᵀ*-trans p q) ⊩F ⊩G
 bwd₀ p (⊩₀Σ q ⊩F ⊩G) = ⊩₀Σ    (⟶ᵀ*-trans p q) ⊩F ⊩G
 bwd₀ p (⊩₀Hom q s)   = ⊩₀Hom  (⟶ᵀ*-trans p q) s
 bwd₀ p (⊩₀Id q)      = ⊩₀Id   (⟶ᵀ*-trans p q)
+bwd₀ p (⊩₀Unit q)    = ⊩₀Unit (⟶ᵀ*-trans p q)
+bwd₀ p (⊩₀Nat q)     = ⊩₀Nat  (⟶ᵀ*-trans p q)
+
+-- `bwd₀` only rewrites the REDUCTION WITNESS, never the membership — so
+-- both directions are the identity once the interp's head is exposed.
+-- (Needed wherever an interp is built by a recursion that wraps each
+-- step in `bwd₀`, as `homNatSem₀` does.)
+bwd₀-mem : {A B : RTy Γ} (q : A ⟶ᵀ* B) (R : ⊩₀ B) {t : RTm Γ} →
+           (bwd₀ q R) ⊩₀∋ t → R ⊩₀∋ t
+bwd₀-mem q (⊩₀base _)  h = h
+bwd₀-mem q (⊩₀ne _ _)  h = h
+bwd₀-mem q (⊩₀Π _ _ _) h = h
+bwd₀-mem q (⊩₀Σ _ _ _) h = h
+bwd₀-mem q (⊩₀Hom _ _) h = h
+bwd₀-mem q (⊩₀Id _)    h = h
+bwd₀-mem q (⊩₀Unit _)  h = h
+bwd₀-mem q (⊩₀Nat _)   h = h
+
+bwd₀-mem⁻ : {A B : RTy Γ} (q : A ⟶ᵀ* B) (R : ⊩₀ B) {t : RTm Γ} →
+            R ⊩₀∋ t → (bwd₀ q R) ⊩₀∋ t
+bwd₀-mem⁻ q (⊩₀base _)  h = h
+bwd₀-mem⁻ q (⊩₀ne _ _)  h = h
+bwd₀-mem⁻ q (⊩₀Π _ _ _) h = h
+bwd₀-mem⁻ q (⊩₀Σ _ _ _) h = h
+bwd₀-mem⁻ q (⊩₀Hom _ _) h = h
+bwd₀-mem⁻ q (⊩₀Id _)    h = h
+bwd₀-mem⁻ q (⊩₀Unit _)  h = h
+bwd₀-mem⁻ q (⊩₀Nat _)   h = h
 
 ------------------------------------------------------------------------
 -- 3a. IRRELEVANCE UP TO CONVERSION, at level 0.
@@ -2564,6 +2651,117 @@ irrel₀ c (⊩₀Σ p ⊩F ⊩G) (⊩₀Σ q ⊩F' ⊩G') with joinW c p q
                                  (⊩G' (fst t) (dfst (projr h))))
                          (snd t) (dsnd (projr h)) )))
 
+
+-- ★ WF stage C: the datatype rows of the level-0 clash matrix (the
+-- ~28 the level-1 matrix already carries, minus the `U` column that
+-- level 0 does not have).
+irrel₀ c (⊩₀Unit p) (⊩₀base q) with joinW c p q
+... | E , (mE , bE) with base-nf bE
+...   | refl with Unit-nf mE
+...     | ()
+irrel₀ c (⊩₀base p) (⊩₀Unit q) with joinW c p q
+... | E , (bE , mE) with base-nf bE
+...   | refl with Unit-nf mE
+...     | ()
+irrel₀ c (⊩₀Unit p) (⊩₀ne q n) with joinW c p q
+... | E , (mE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Unit-nf mE
+...     | ()
+irrel₀ c (⊩₀ne p n) (⊩₀Unit q) with joinW c p q
+... | E , (eE , mE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Unit-nf mE
+...     | ()
+irrel₀ c (⊩₀Unit p) (⊩₀Π q _ _) with joinW c p q
+... | E , (mE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+irrel₀ c (⊩₀Π p _ _) (⊩₀Unit q) with joinW c p q
+... | E , (πE , mE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+irrel₀ c (⊩₀Unit p) (⊩₀Σ q _ _) with joinW c p q
+... | E , (mE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+irrel₀ c (⊩₀Σ p _ _) (⊩₀Unit q) with joinW c p q
+... | E , (σE , mE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+irrel₀ c (⊩₀Unit p) (⊩₀Hom q sh) with joinW c p q
+... | E , (mE , hE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Unit-nf mE
+...     | ()
+irrel₀ c (⊩₀Hom p sh) (⊩₀Unit q) with joinW c p q
+... | E , (hE , mE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Unit-nf mE
+...     | ()
+irrel₀ c (⊩₀Unit p) (⊩₀Id q) with joinW c p q
+... | E , (mE , iE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Unit-nf mE
+...     | ()
+irrel₀ c (⊩₀Id p) (⊩₀Unit q) with joinW c p q
+... | E , (iE , mE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Unit-nf mE
+...     | ()
+irrel₀ c (⊩₀Nat p) (⊩₀base q) with joinW c p q
+... | E , (mE , bE) with base-nf bE
+...   | refl with Nat-nf mE
+...     | ()
+irrel₀ c (⊩₀base p) (⊩₀Nat q) with joinW c p q
+... | E , (bE , mE) with base-nf bE
+...   | refl with Nat-nf mE
+...     | ()
+irrel₀ c (⊩₀Nat p) (⊩₀ne q n) with joinW c p q
+... | E , (mE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Nat-nf mE
+...     | ()
+irrel₀ c (⊩₀ne p n) (⊩₀Nat q) with joinW c p q
+... | E , (eE , mE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Nat-nf mE
+...     | ()
+irrel₀ c (⊩₀Nat p) (⊩₀Π q _ _) with joinW c p q
+... | E , (mE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Nat-nf mE
+...     | ()
+irrel₀ c (⊩₀Π p _ _) (⊩₀Nat q) with joinW c p q
+... | E , (πE , mE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Nat-nf mE
+...     | ()
+irrel₀ c (⊩₀Nat p) (⊩₀Σ q _ _) with joinW c p q
+... | E , (mE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Nat-nf mE
+...     | ()
+irrel₀ c (⊩₀Σ p _ _) (⊩₀Nat q) with joinW c p q
+... | E , (σE , mE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Nat-nf mE
+...     | ()
+irrel₀ c (⊩₀Nat p) (⊩₀Hom q sh) with joinW c p q
+... | E , (mE , hE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Nat-nf mE
+...     | ()
+irrel₀ c (⊩₀Hom p sh) (⊩₀Nat q) with joinW c p q
+... | E , (hE , mE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Nat-nf mE
+...     | ()
+irrel₀ c (⊩₀Nat p) (⊩₀Id q) with joinW c p q
+... | E , (mE , iE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Nat-nf mE
+...     | ()
+irrel₀ c (⊩₀Id p) (⊩₀Nat q) with joinW c p q
+... | E , (iE , mE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Nat-nf mE
+...     | ()
+irrel₀ c (⊩₀Unit p) (⊩₀Nat q) with joinW c p q
+... | E , (uE , nE) with Nat-nf nE
+...   | refl with Unit-nf uE
+...     | ()
+irrel₀ c (⊩₀Nat p) (⊩₀Unit q) with joinW c p q
+... | E , (nE , uE) with Nat-nf nE
+...   | refl with Unit-nf uE
+...     | ()
+irrel₀ c (⊩₀Unit _) (⊩₀Unit _) = (λ _ h → h) , (λ _ h → h)
+irrel₀ c (⊩₀Nat _)  (⊩₀Nat _)  = (λ _ h → h) , (λ _ h → h)
+
 ------------------------------------------------------------------------
 -- 3b. FORWARD TRANSFER at level 0, and hence transfer along CONVERSION.
 ------------------------------------------------------------------------
@@ -2599,6 +2797,14 @@ fwd₀ p (⊩₀Id q) with confluentᵀ p q
 ... | E , (bE , iE) with Id-reduct iE
 ...   | _ , (_ , (_ , (refl , _))) = ⊩₀Id bE
 
+fwd₀ p (⊩₀Unit q) with confluentᵀ p q
+... | E , (bE , uE) with Unit-nf uE
+...   | refl = ⊩₀Unit bE
+
+fwd₀ p (⊩₀Nat q) with confluentᵀ p q
+... | E , (bE , nE) with Nat-nf nE
+...   | refl = ⊩₀Nat bE
+
 conv₀ : {A B : RTy Γ} → A ≅ᵀ B → ⊩₀ A → ⊩₀ B
 conv₀ c R with church-rosserᵀ c
 ... | C , (aC , bC) = bwd₀ bC (fwd₀ aC R)
@@ -2614,12 +2820,16 @@ CR1₀ (⊩₀Π _ _ _) h = projl h
 CR1₀ (⊩₀Σ _ _ _) h = projl h
 CR1₀ (⊩₀Hom _ _) h = h
 CR1₀ (⊩₀Id _)    h = projl h
+CR1₀ (⊩₀Unit _)  h = h
+CR1₀ (⊩₀Nat _)   h = projl h
 
 CR3₀ : {A : RTy Γ} (R : ⊩₀ A) {t : RTm Γ} → SNe t → R ⊩₀∋ t
 CR3₀ (⊩₀base _)    nt = sn-ne nt
 CR3₀ (⊩₀Hom _ _)   nt = sn-ne nt
 CR3₀ (⊩₀Id _)      nt = (sn-ne nt , λ ch → ⊥-elim (sne-nopay nt ch))
 CR3₀ (⊩₀ne _ _)    nt = sn-ne nt
+CR3₀ (⊩₀Unit _)    nt = sn-ne nt
+CR3₀ (⊩₀Nat _)     nt = (sn-ne nt , nm-ne nt)
 CR3₀ (⊩₀Π _ ⊩F ⊩G) nt =
   (sn-ne nt , λ u ru → CR3₀ (⊩G u ru) (sne-app nt (CR1₀ ⊩F ru)))
 CR3₀ (⊩₀Σ _ ⊩F ⊩G) {t} nt =
@@ -2633,6 +2843,8 @@ exp₀ (⊩₀Id _) r h =
   ( sn-exp r (projl h)
   , λ ch → projr h (idpay-peel r ch) )
 exp₀ (⊩₀ne _ _)    r h = sn-exp r h
+exp₀ (⊩₀Unit _)    r h = sn-exp r h
+exp₀ (⊩₀Nat _)     r h = (sn-exp r (projl h) , nm-exp r (projr h))
 exp₀ (⊩₀Π _ ⊩F ⊩G) r h =
   (sn-exp r (projl h) , λ v rv → exp₀ (⊩G v rv) (snr-app r) (projr h v rv))
 -- ★ the `Σ'` case needs a CONVERSION, not just a congruence: expanding `t` to
@@ -2686,6 +2898,8 @@ PayT (⊩₀ne _ _)  c = ⊤
 PayT (⊩₀Σ _ _ _) c = ⊤
 PayT (⊩₀Hom _ _) c = ⊤
 PayT (⊩₀Id _)    c = ⊤
+PayT (⊩₀Unit _)  c = ⊤
+PayT (⊩₀Nat _)   c = ⊤
 PayT {Γ = Γ} (⊩₀Π _ ⊩F ⊩G) c =
   (v : RTm Γ) (r : ⊩F ⊩₀∋ v) →
   Σ (RTm Γ) (λ c* →
@@ -2719,6 +2933,8 @@ payT-exp r q (⊩₀ne _ _)  pay = _
 payT-exp r q (⊩₀Σ _ _ _) pay = _
 payT-exp r q (⊩₀Hom _ _) pay = _
 payT-exp r q (⊩₀Id _) pay = _
+payT-exp r q (⊩₀Unit _) pay = _
+payT-exp r q (⊩₀Nat _) pay = _
 payT-exp r q (⊩₀Π _ ⊩F ⊩G) pay v rv with pay v rv
 ... | c* , (csr , rest) = c* , (csr-step (csr-here r) csr , rest)
 
@@ -2739,6 +2955,8 @@ payT-whred r (⊩₀ne _ _)  pay = _
 payT-whred r (⊩₀Σ _ _ _) pay = _
 payT-whred r (⊩₀Hom _ _) pay = _
 payT-whred r (⊩₀Id _) pay = _
+payT-whred r (⊩₀Unit _) pay = _
+payT-whred r (⊩₀Nat _) pay = _
 payT-whred r (⊩₀Π _ ⊩F ⊩G) pay v rv with pay v rv
 ... | c* , (csr , (key , rest)) =
       c* , (payT-whred-node r csr key , (key , rest))
@@ -2752,6 +2970,8 @@ payT-irrel cv R (⊩₀ne _ _)  pay = _
 payT-irrel cv R (⊩₀Σ _ _ _) pay = _
 payT-irrel cv R (⊩₀Hom _ _) pay = _
 payT-irrel cv R (⊩₀Id _) pay = _
+payT-irrel cv R (⊩₀Unit _) pay = _
+payT-irrel cv R (⊩₀Nat _) pay = _
 payT-irrel cv (⊩₀base p) (⊩₀Π q _ _) pay with joinW cv p q
 ... | E , (bE , πE) with base-nf bE
 ...   | refl with Π-reduct πE
@@ -2772,6 +2992,14 @@ payT-irrel cv (⊩₀Id p) (⊩₀Π q _ _) pay v r' with joinW cv p q
 ... | E , (iE , πE) with Π-reduct πE
 ...   | mkΠRed _ _ refl _ _ with Id-reduct iE
 ...     | _ , (_ , (_ , ((), _)))
+payT-irrel cv (⊩₀Unit p) (⊩₀Π q _ _) pay with joinW cv p q
+... | E , (mE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+payT-irrel cv (⊩₀Nat p) (⊩₀Π q _ _) pay with joinW cv p q
+... | E , (mE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Nat-nf mE
+...     | ()
 payT-irrel cv (⊩₀Π p ⊩F ⊩G) (⊩₀Π q ⊩F' ⊩G') pay v r'
   with joinW cv p q
 ... | E , (πE₁ , πE₂) with Π-reduct πE₁ | Π-reduct πE₂
@@ -2791,25 +3019,6 @@ payT-irrel cv (⊩₀Π p ⊩F ⊩G) (⊩₀Π q ⊩F' ⊩G') pay v r'
                          (⊩G' v r') pb)))
 
 infix 4 _⊩₁∋_
-
--- ★★ WF stage A — the THIRD payload flavor.  A semantic natural
--- number is one that REACHES a numeral (or is stuck neutral): exactly
--- the induction principle `fund`'s `⊢natrec` recurses on, and the
--- reason `natrec` computes on every closed member.  The shape mirrors
--- `SN` (neutral / constructor / head-expansion), so every transport is
--- the SN transport.
-data NatMem {Γ} : RTm Γ → Set where
-  nm-ne   : {t : RTm Γ} → SNe t → NatMem t
-  nm-zero : NatMem (nzero {Γ})
-  nm-suc  : {n : RTm Γ} → NatMem n → NatMem (nsuc n)
-  nm-exp  : {t t' : RTm Γ} → SNRed t t' → NatMem t' → NatMem t
-
--- forward closure along the head strategy — `sn-whred`'s proof, by
--- determinism of `SNRed`.
-natmem-whred : {t t' : RTm Γ} → NatMem t → SNRed t t' → NatMem t'
-natmem-whred (nm-ne n)   r = nm-ne (sne-whred n r)
-natmem-whred (nm-exp r₀ h) r with snr-det r₀ r
-... | refl = h
 
 data ⊩₁_ {Γ} : RTy Γ → Set
 _⊩₁∋_ : {Γ : Cx} {A : RTy Γ} → ⊩₁ A → RTm Γ → Set
@@ -3410,6 +3619,8 @@ emb-coh : {A : RTy Γ} (R : ⊩₀ A) →
 emb (⊩₀base p)    = ⊩₁base p
 emb (⊩₀Hom p s)   = ⊩₁Hom p s
 emb (⊩₀Id p)      = ⊩₁Id p
+emb (⊩₀Unit p)    = ⊩₁Unit p
+emb (⊩₀Nat p)     = ⊩₁Nat p
 emb (⊩₀ne p n)    = ⊩₁ne p n
 emb (⊩₀Π p ⊩F ⊩G) =
   ⊩₁Π p (emb ⊩F) (λ u r → emb (⊩G u (projr (emb-coh ⊩F) u r)))
@@ -3419,6 +3630,8 @@ emb (⊩₀Σ p ⊩F ⊩G) =
 emb-coh (⊩₀base _) = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Hom _ _) = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Id _)    = (λ _ h → h) , (λ _ h → h)
+emb-coh (⊩₀Unit _)  = (λ _ h → h) , (λ _ h → h)
+emb-coh (⊩₀Nat _)   = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀ne _ _) = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Σ _ ⊩F ⊩G) =
     (λ t h → (projl h
@@ -3541,6 +3754,14 @@ sem-El p h = Σ.fst (projr h)
 sem-⌜base⌝ : {A : RTy Γ} (p : A ⟶ᵀ* U) → (⊩₁U p) ⊩₁∋ ⌜base⌝
 sem-⌜base⌝ p = (sn-cb , (⊩₀base (stepᵀ El-⌜base⌝ doneᵀ) , _))
 
+-- ★ WF stage C: the datatype codes are U-members, decoding to the
+-- level-0 datatype interps that just arrived above.
+sem-⌜Nat⌝ : {A : RTy Γ} (p : A ⟶ᵀ* U) → (⊩₁U p) ⊩₁∋ ⌜Nat⌝
+sem-⌜Nat⌝ p = (sn-cNat , (⊩₀Nat (stepᵀ El-⌜Nat⌝ doneᵀ) , _))
+
+sem-⌜Unit⌝ : {A : RTy Γ} (p : A ⟶ᵀ* U) → (⊩₁U p) ⊩₁∋ ⌜Unit⌝
+sem-⌜Unit⌝ p = (sn-cUnit , (⊩₀Unit (stepᵀ El-⌜Unit⌝ doneᵀ) , _))
+
 -- ★ where PREDICATIVITY does structural work: the decoding of a compound code
 -- is a level-0 `Π` built from the decodings of its STRICTLY SMALLER components.
 -- W2b: a ⌜Π⌝-code's U-membership now carries its payload node — the
@@ -3653,12 +3874,126 @@ homSem₁ (⊩₁Π {F = F} {G = G} p ⊩F ⊩G) {a} {b} ha hb =
 -- `Hom` clause").  STRICTLY SIMPLER than `homSem₁`: level 0 has no `U`
 -- clause, so directed univalence never fires here — four stuck heads and
 -- the pointwise `Π` recursion.
+-- ★★ WF stage C: the LEVEL-0 mirror of stage B's keystone.  `⌜Nat⌝ ∈ U`
+-- means small types now reach the ORDER type, so level 0 needs its own
+-- double meta-induction on both endpoints' `NatMem`.  It is `homNatSem`
+-- clause for clause — every leaf it lands on (`⊩₁Unit`/`⊩₁base`/the
+-- endpoint-keyed stuck `⊩₁Hom`) has a level-0 counterpart, and level 0
+-- never had the `U` clause that was the only thing missing.
+homNatSem₀ : {Γ : Cx} (a b : RTm Γ) →
+             SN a → NatMem a → SN b → NatMem b → ⊩₀ (Hom (Nat {Γ}) a b)
+homNatSem₀ a b sa (nm-ne nt) sb mb =
+  ⊩₀Hom doneᵀ (sh-NatH (natstk→homnat a b (sne→natstk nt)))
+homNatSem₀ a b sa (nm-exp {t' = a'} r ma) sb mb =
+  bwd₀ (stepᵀ (ξ-Homˡ (snr→⟶ r)) doneᵀ)
+       (homNatSem₀ a' b (sn-whred sa r) ma sb mb)
+homNatSem₀ .nzero b sa nm-zero sb mb =
+  bwd₀ (stepᵀ (Hom-Nat-z b) doneᵀ) (⊩₀Unit doneᵀ)
+homNatSem₀ .(nsuc _) b sa (nm-suc {n = m} ma) sb (nm-ne nt) =
+  ⊩₀Hom doneᵀ (sh-NatH (sne→natstk nt))
+homNatSem₀ .(nsuc _) b sa (nm-suc {n = m} ma) sb (nm-exp {t' = b'} r mb) =
+  bwd₀ (stepᵀ (ξ-Homʳ (snr→⟶ r)) doneᵀ)
+       (homNatSem₀ (nsuc m) b' sa (nm-suc ma) (sn-whred sb r) mb)
+homNatSem₀ .(nsuc _) .nzero sa (nm-suc {n = m} ma) sb nm-zero =
+  bwd₀ (stepᵀ (Hom-Nat-sz m) doneᵀ) (⊩₀base doneᵀ)
+homNatSem₀ .(nsuc _) .(nsuc _) sa (nm-suc {n = m} ma) sb (nm-suc {n = n} mb) =
+  bwd₀ (stepᵀ (Hom-Nat-ss m n) doneᵀ)
+       (homNatSem₀ m n (snsuc-inv₀ sa) ma (snsuc-inv₀ sb) mb)
+  where
+  snsuc-inv₀ : {k : RTm _} → SN (nsuc k) → SN k
+  snsuc-inv₀ (sn-nsuc h) = h
+
+-- ★ every leaf of `homNatSem₀` has membership `SN t` — `⊩₀Unit`,
+-- `⊩₀base` and the stuck `⊩₀Hom` all do, and `bwd₀` never changes a
+-- membership.  So order-hom membership is ENDPOINT-BLIND, which is what
+-- `homSem₀-mem-endpoints` needs at the `⊩₀Nat` arm.  Both directions by
+-- the same induction as `homNatSem₀` itself.
+hns₀-out : {Γ : Cx} (a b : RTm Γ) (sa : SN a) (ma : NatMem a)
+           (sb : SN b) (mb : NatMem b) {t : RTm Γ} →
+           (homNatSem₀ a b sa ma sb mb) ⊩₀∋ t → SN t
+hns₀-out a b sa (nm-ne nt) sb mb h = h
+hns₀-out a b sa (nm-exp {t' = a'} r ma) sb mb h =
+  hns₀-out a' b (sn-whred sa r) ma sb mb
+    (bwd₀-mem _ (homNatSem₀ a' b (sn-whred sa r) ma sb mb) h)
+hns₀-out .nzero b sa nm-zero sb mb h = h
+hns₀-out .(nsuc _) b sa (nm-suc ma) sb (nm-ne nt) h = h
+hns₀-out .(nsuc _) b sa (nm-suc {n = m} ma) sb (nm-exp {t' = b'} r mb) h =
+  hns₀-out (nsuc m) b' sa (nm-suc ma) (sn-whred sb r) mb
+    (bwd₀-mem _ (homNatSem₀ (nsuc m) b' sa (nm-suc ma) (sn-whred sb r) mb) h)
+hns₀-out .(nsuc _) .nzero sa (nm-suc ma) sb nm-zero h = h
+hns₀-out .(nsuc _) .(nsuc _) sa (nm-suc {n = m} ma) sb (nm-suc {n = n} mb) h =
+  hns₀-out m n (snsuc-inv₀ sa) ma (snsuc-inv₀ sb) mb
+    (bwd₀-mem _ (homNatSem₀ m n (snsuc-inv₀ sa) ma (snsuc-inv₀ sb) mb) h)
+  where
+  snsuc-inv₀ : {k : RTm _} → SN (nsuc k) → SN k
+  snsuc-inv₀ (sn-nsuc w) = w
+
+hns₀-in : {Γ : Cx} (a b : RTm Γ) (sa : SN a) (ma : NatMem a)
+          (sb : SN b) (mb : NatMem b) {t : RTm Γ} →
+          SN t → (homNatSem₀ a b sa ma sb mb) ⊩₀∋ t
+hns₀-in a b sa (nm-ne nt) sb mb h = h
+hns₀-in a b sa (nm-exp {t' = a'} r ma) sb mb h =
+  bwd₀-mem⁻ _ (homNatSem₀ a' b (sn-whred sa r) ma sb mb)
+    (hns₀-in a' b (sn-whred sa r) ma sb mb h)
+hns₀-in .nzero b sa nm-zero sb mb h = h
+hns₀-in .(nsuc _) b sa (nm-suc ma) sb (nm-ne nt) h = h
+hns₀-in .(nsuc _) b sa (nm-suc {n = m} ma) sb (nm-exp {t' = b'} r mb) h =
+  bwd₀-mem⁻ _ (homNatSem₀ (nsuc m) b' sa (nm-suc ma) (sn-whred sb r) mb)
+    (hns₀-in (nsuc m) b' sa (nm-suc ma) (sn-whred sb r) mb h)
+hns₀-in .(nsuc _) .nzero sa (nm-suc ma) sb nm-zero h = h
+hns₀-in .(nsuc _) .(nsuc _) sa (nm-suc {n = m} ma) sb (nm-suc {n = n} mb) h =
+  bwd₀-mem⁻ _ (homNatSem₀ m n (snsuc-inv₀ sa) ma (snsuc-inv₀ sb) mb)
+    (hns₀-in m n (snsuc-inv₀ sa) ma (snsuc-inv₀ sb) mb h)
+  where
+  snsuc-inv₀ : {k : RTm _} → SN (nsuc k) → SN k
+  snsuc-inv₀ (sn-nsuc w) = w
+
+-- the `PayT` mirror of `bwd₀-mem⁻`: only the ⌜Π⌝ arm carries a payload,
+-- and `bwd₀` leaves it untouched.
+payT-bwd₀' : {A B : RTy Γ} (q : A ⟶ᵀ* B) (R : ⊩₀ B) {c : RTm Γ} →
+             PayT R c → PayT (bwd₀ q R) c
+payT-bwd₀' q (⊩₀base _)  pay = _
+payT-bwd₀' q (⊩₀ne _ _)  pay = _
+payT-bwd₀' q (⊩₀Σ _ _ _) pay = _
+payT-bwd₀' q (⊩₀Hom _ _) pay = _
+payT-bwd₀' q (⊩₀Id _)    pay = _
+payT-bwd₀' q (⊩₀Unit _)  pay = _
+payT-bwd₀' q (⊩₀Nat _)   pay = _
+payT-bwd₀' q (⊩₀Π _ _ _) pay = pay
+
+-- ★ and the payload is trivial at every leaf too — none of `⊩₀Unit`,
+-- `⊩₀base` or the stuck `⊩₀Hom` is the ⌜Π⌝ arm, the only one that
+-- carries a `PayT`.  Same induction once more.
+hns₀-pay : {Γ : Cx} (a b : RTm Γ) (sa : SN a) (ma : NatMem a)
+           (sb : SN b) (mb : NatMem b) {c : RTm Γ} →
+           PayT (homNatSem₀ a b sa ma sb mb) c
+hns₀-pay a b sa (nm-ne nt) sb mb = _
+hns₀-pay a b sa (nm-exp {t' = a'} r ma) sb mb =
+  payT-bwd₀' _ (homNatSem₀ a' b (sn-whred sa r) ma sb mb)
+    (hns₀-pay a' b (sn-whred sa r) ma sb mb)
+hns₀-pay .nzero b sa nm-zero sb mb = _
+hns₀-pay .(nsuc _) b sa (nm-suc ma) sb (nm-ne nt) = _
+hns₀-pay .(nsuc _) b sa (nm-suc {n = m} ma) sb (nm-exp {t' = b'} r mb) =
+  payT-bwd₀' _ (homNatSem₀ (nsuc m) b' sa (nm-suc ma) (sn-whred sb r) mb)
+    (hns₀-pay (nsuc m) b' sa (nm-suc ma) (sn-whred sb r) mb)
+hns₀-pay .(nsuc _) .nzero sa (nm-suc ma) sb nm-zero = _
+hns₀-pay .(nsuc _) .(nsuc _) sa (nm-suc {n = m} ma) sb (nm-suc {n = n} mb) =
+  payT-bwd₀' _ (homNatSem₀ m n (snsuc-inv₀ sa) ma (snsuc-inv₀ sb) mb)
+    (hns₀-pay m n (snsuc-inv₀ sa) ma (snsuc-inv₀ sb) mb)
+  where
+  snsuc-inv₀ : {k : RTm _} → SN (nsuc k) → SN k
+  snsuc-inv₀ (sn-nsuc w) = w
+
 homSem₀ : {A : RTy Γ} (R : ⊩₀ A) {a b : RTm Γ} →
           R ⊩₀∋ a → R ⊩₀∋ b → ⊩₀ (Hom A a b)
 homSem₀ (⊩₀base p)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-base)
 homSem₀ (⊩₀ne p n)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom (sh-ne n))
 homSem₀ (⊩₀Σ p ⊩F ⊩G) ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Σ)
 homSem₀ (⊩₀Hom p s)   ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom s)
+homSem₀ (⊩₀Unit p)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Unit)
+homSem₀ (⊩₀Nat p) {a} {b} ha hb =
+  bwd₀ (⟶ᵀ*-Homᵀ p)
+       (homNatSem₀ a b (projl ha) (projr ha) (projl hb) (projr hb))
 homSem₀ (⊩₀Id p)      ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Id)
 homSem₀ (⊩₀Π {F = F} {G = G} p ⊩F ⊩G) {a} {b} ha hb =
   ⊩₀Π (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ p) (stepᵀ (Hom-Π F G a b) doneᵀ))
@@ -3694,6 +4029,17 @@ homSem₀-mem-endpoints (⊩₀ne p n)    ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀Σ p ⊩F ⊩G) ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀Hom p s)   ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀Id p) ha hb ha' hb' h = h
+homSem₀-mem-endpoints (⊩₀Unit p) ha hb ha' hb' h = h
+-- ★ the ORDER hom: membership is `SN` at every leaf, so the endpoint
+-- switch is `out` then `in` through the two transparency lemmas.
+homSem₀-mem-endpoints (⊩₀Nat p) {a} {b} {a'} {b'} ha hb ha' hb' h =
+  bwd₀-mem⁻ (⟶ᵀ*-Homᵀ p)
+    (homNatSem₀ a' b' (projl ha') (projr ha') (projl hb') (projr hb'))
+    (hns₀-in a' b' (projl ha') (projr ha') (projl hb') (projr hb')
+      (hns₀-out a b (projl ha) (projr ha) (projl hb) (projr hb)
+        (bwd₀-mem (⟶ᵀ*-Homᵀ p)
+          (homNatSem₀ a b (projl ha) (projr ha) (projl hb) (projr hb))
+          h)))
 homSem₀-mem-endpoints (⊩₀Π {F = F} {G = G} p ⊩F ⊩G)
                       {a} {b} {a'} {b'} ha hb ha' hb' {t} h =
   ( projl h
@@ -3741,6 +4087,11 @@ payHomT (⊩₀ne _ _)  payC ha hb = _
 payHomT (⊩₀Σ _ _ _) payC ha hb = _
 payHomT (⊩₀Hom _ _) payC ha hb = _
 payHomT (⊩₀Id p) payC ha hb = _
+payHomT (⊩₀Unit p) payC ha hb = _
+payHomT (⊩₀Nat p) {C} {a} {b} payC ha hb =
+  payT-bwd₀' (⟶ᵀ*-Homᵀ p)
+    (homNatSem₀ a b (projl ha) (projr ha) (projl hb) (projr hb))
+    (hns₀-pay a b (projl ha) (projr ha) (projl hb) (projr hb))
 payHomT (⊩₀Π {F = F} {G = G} q ⊩F ⊩G) {C} {a} {b} payC ha hb v r
   with payC v r
 ... | C* , (csr , (key , (snb' , pb))) =
@@ -3785,6 +4136,8 @@ sem-⌜Hom⌝ p snc sna snb ⊩c payc ha hb =
   payT-bwd₀ q (⊩₀Σ _ _ _) pay = _
   payT-bwd₀ q (⊩₀Hom _ _) pay = _
   payT-bwd₀ q (⊩₀Id _) pay = _
+  payT-bwd₀ q (⊩₀Unit _) pay = _
+  payT-bwd₀ q (⊩₀Nat _) pay = _
   payT-bwd₀ q (⊩₀Π _ _ _) pay = pay
 
 -- ★ `sem-hrefl`: at a pw-IMMUNE code, `hrefl` is a neutral, and
@@ -3940,6 +4293,8 @@ wn (sn-pair a b) with wn a | wn b
     nrm' (ξ-pairˡ q) = nm₁ q
     nrm' (ξ-pairʳ q) = nm₂ q
 wn sn-cb = mkWN ⌜base⌝ done (λ ()) sn-cb
+wn sn-cNat = mkWN ⌜Nat⌝ done (λ ()) sn-cNat
+wn sn-cUnit = mkWN ⌜Unit⌝ done (λ ()) sn-cUnit
 wn (sn-cΠ c d) with wn c | wn d
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ =
       mkWN (⌜Π⌝ n₁ n₂) (⟶*-trans (⟶*-⌜Π⌝ˡ r₁) (⟶*-⌜Π⌝ʳ r₂)) nrm' (sn-cΠ sn₁ sn₂)

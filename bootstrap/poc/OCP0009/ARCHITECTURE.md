@@ -636,6 +636,58 @@ the inherent infection cost of explicit indices.  As an axis here:
   (where more computes, because the order supports induction).
   Spike this framing when the axes work opens.
 
+### ★ ORDER TRANSPORT (`ordtr`) — a WF-axis follow-on   decided 2026-08-05
+
+Opened by stage C of the WF axis, and DEFERRED to its own item with a
+worked case tree.  Read this before spiking it; it starts from a
+finding, not a blank page.
+
+**Why it exists.** `⌜Nat⌝ ∈ U` makes transport along an ORDER path
+formable, and nothing fires on it.  The obvious repair — a tt-path
+rule on `tr` — **cannot be written**:
+
+* `⊢tr` pins the motive to `⌜Hom⌝ c a (var vz)`, so the fibre over `x`
+  is `Hom (El c) a x` and transport along `p : Hom A t u` carries
+  `e : Hom (El c) a t` to `Hom (El c) a u`.  `tr` IS hom-composition,
+  i.e. ≤-transitivity.
+* At `A = Nat` the correct result depends on `t` and `u`, and **`t`/`u`
+  do not occur in the term `tr d p e`** — they live only in the typing
+  derivation.  No reduction rule can case on them.
+* Every endpoint-blind rule dies to the SAME counterexample that killed
+  `tr-J-Nat` (SPIKE-WF.md §7): `⟶ e` would need
+  `Hom Nat a t ≅ᵀ Hom Nat a u`; `⟶ unit` would need
+  `Hom Nat a u ≅ᵀ Unit`.  Neither holds open.
+
+So stage C took the other exit: **`⊢tr` is RESTRICTED** to non-⌜Nat⌝
+motive codes.  That premise is not a stopgap — it repairs two lemmas at
+once (`trProgress`'s ⌜Nat⌝ case is refuted on it, and `tr-amb-nonat`,
+whose `elNat⊥` proof stage C made false, gets its `{A = Nat}` case from
+it), and it STAYS after `ordtr` lands.  `tr` is J-shaped — path-keyed
+and endpoint-blind — so a ⌜Nat⌝ motive is something it structurally
+cannot serve.  `ordtr` is a SEPARATE former that regains the power
+alongside it; landing it undoes nothing.
+
+**The worked case tree.**  `ordtr` must carry THREE endpoints — `a`
+(already in the motive) plus `t` and `u` — because at
+`a = nsuc a', u = nzero` the answer is `e` when `t = nzero` and `p`
+when `t = nsuc t'`:
+
+    ordtr nzero      u        d p e ⟶ unit    -- Hom-Nat-z discards u
+    ordtr (nsuc a') nzero     d p e ⟶ e / p   -- splits on t
+    ordtr (nsuc a') (nsuc u') d p e ⟶ ordtr a' u' … -- peel, as Hom-Nat-ss
+
+**★ The one trap, and its resolution.**  Two branches are absurd but
+not syntactically refutable (`a = nsuc a'`, `t = nzero` gives
+`e : base`).  It is tempting to add an ex-falso eliminator at `base`.
+**Do NOT.**  `base` has only `ty-base` — no introduction and no
+elimination — and that is exactly what `consistency` rests on.  Leave
+those branches STUCK and let CLOSED progress refute them via
+`consistency`, precisely as `Hombase-clash` already does.
+
+**Residual risk**: not the syntax — the LR stuckness key for the new
+former.  That key is `natstk?`-shaped, so stage A's pattern applies.
+**Estimate**: stage-A-sized.
+
 ### (superseded) G4 — η IN THE KERNEL JUDGMENT         decision + work
 
 The committed `⊢conv`/`dec-conv` are β-only; η lives in the satellite
