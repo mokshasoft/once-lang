@@ -117,7 +117,7 @@ occTm x (var y)    = eqv x y
 occTm x (lam t)    = occTm (vs x) t
 occTm x (app t u)  = occTm x t ∨ occTm x u
 occTm x (pair a b) = occTm x a ∨ occTm x b
-occTm x (absurd p)    = occTm x p
+occTm x (absurd c₁ p) = occTm x c₁ ∨ occTm x p
 occTm x (fst p)    = occTm x p
 occTm x (snd p)    = occTm x p
 occTm x ⌜base⌝     = false
@@ -212,7 +212,7 @@ occ-ren-tm h (var y)    = h y
 occ-ren-tm h (lam t)    = occ-ren-tm (avoids-ext h) t
 occ-ren-tm h (app t u)  = ∨-false (occ-ren-tm h t) (occ-ren-tm h u)
 occ-ren-tm h (pair a b) = ∨-false (occ-ren-tm h a) (occ-ren-tm h b)
-occ-ren-tm h (absurd p)    = occ-ren-tm h p
+occ-ren-tm h (absurd c₁ p) = cong₂ _∨_ (occ-ren-tm h c₁) (occ-ren-tm h p)
 occ-ren-tm h (fst p)    = occ-ren-tm h p
 occ-ren-tm h (snd p)    = occ-ren-tm h p
 occ-ren-tm h ⌜base⌝     = refl
@@ -378,7 +378,7 @@ occ-ren-eq h (var y)    = h y
 occ-ren-eq h (lam t)    = occ-ren-eq (ext-eq h) t
 occ-ren-eq h (app t u)  = cong₂ _∨_ (occ-ren-eq h t) (occ-ren-eq h u)
 occ-ren-eq h (pair a b) = cong₂ _∨_ (occ-ren-eq h a) (occ-ren-eq h b)
-occ-ren-eq h (absurd p)    = occ-ren-eq h p
+occ-ren-eq h (absurd c₁ p) = cong₂ _∨_ (occ-ren-eq h c₁) (occ-ren-eq h p)
 occ-ren-eq h (fst p)    = occ-ren-eq h p
 occ-ren-eq h (snd p)    = occ-ren-eq h p
 occ-ren-eq h ⌜base⌝     = refl
@@ -442,7 +442,9 @@ occ-sub {x = x} h (app t u) e =
 occ-sub {x = x} h (pair a b) e =
   ∨-false (occ-sub h a (∨-false₁ (occTm x a) e))
           (occ-sub h b (∨-false₂ (occTm x a) e))
-occ-sub h (absurd p)    e = occ-sub h p e
+occ-sub {x = x} h (absurd c₁ p) e =
+  ∨-false (occ-sub h c₁ (∨-false₁ (occTm x c₁) e))
+          (occ-sub h p (∨-false₂ (occTm x c₁) e))
 occ-sub h (fst p)    e = occ-sub h p e
 occ-sub h (snd p)    e = occ-sub h p e
 occ-sub h ⌜base⌝     e = refl
@@ -511,7 +513,9 @@ subTm-occ (app m k)  h = cong₂ app
 subTm-occ (pair m k) h = cong₂ pair
   (subTm-occ m (λ x o → h x (∨-inl o)))
   (subTm-occ k (λ x o → h x (∨-inr (occTm x m) o)))
-subTm-occ (absurd m)    h = cong absurd (subTm-occ m h)
+subTm-occ (absurd c₁ m) h = cong₂ absurd
+  (subTm-occ c₁ (λ x o → h x (∨-inl o)))
+  (subTm-occ m (λ x o → h x (∨-inr (occTm x c₁) o)))
 subTm-occ (fst m)    h = cong fst (subTm-occ m h)
 subTm-occ (snd m)    h = cong snd (subTm-occ m h)
 subTm-occ ⌜base⌝     h = refl
@@ -787,7 +791,7 @@ stkA?-ren ρ (var x)       = refl
 stkA?-ren ρ (lam t)       = refl
 stkA?-ren ρ (app t u)     = refl
 stkA?-ren ρ (pair a b)    = refl
-stkA?-ren ρ (absurd t)       = refl
+stkA?-ren ρ (absurd c t)       = refl
 stkA?-ren ρ (fst t)       = refl
 stkA?-ren ρ (snd t)       = refl
 stkA?-ren ρ ⌜base⌝        = refl
@@ -890,7 +894,7 @@ pw?-ren ρ (var x)       = refl
 pw?-ren ρ (lam t)       = refl
 pw?-ren ρ (app t u)     = refl
 pw?-ren ρ (pair a b)    = refl
-pw?-ren ρ (absurd t)       = refl
+pw?-ren ρ (absurd c t)       = refl
 pw?-ren ρ (fst t)       = refl
 pw?-ren ρ (snd t)       = refl
 pw?-ren ρ ⌜base⌝        = refl
@@ -915,7 +919,7 @@ stkC?-ren ρ (var x)       = refl
 stkC?-ren ρ (lam t)       = refl
 stkC?-ren ρ (app t u)     = refl
 stkC?-ren ρ (pair a b)    = refl
-stkC?-ren ρ (absurd t)       = refl
+stkC?-ren ρ (absurd c t)       = refl
 stkC?-ren ρ (fst t)       = refl
 stkC?-ren ρ (snd t)       = refl
 stkC?-ren ρ ⌜base⌝        = refl
@@ -969,7 +973,7 @@ flat?-ren ρ (var x)        = refl
 flat?-ren ρ (lam t)        = refl
 flat?-ren ρ (app t u)      = refl
 flat?-ren ρ (pair a b)     = refl
-flat?-ren ρ (absurd t)        = refl
+flat?-ren ρ (absurd c t)        = refl
 flat?-ren ρ (fst t)        = refl
 flat?-ren ρ (snd t)        = refl
 flat?-ren ρ ⌜base⌝         = refl
@@ -1226,7 +1230,7 @@ ren-as-sub ρ (lam t)    =
   ptw (vs x) = refl
 ren-as-sub ρ (app t u)  = cong₂ app (ren-as-sub ρ t) (ren-as-sub ρ u)
 ren-as-sub ρ (pair a b) = cong₂ pair (ren-as-sub ρ a) (ren-as-sub ρ b)
-ren-as-sub ρ (absurd t)    = cong absurd (ren-as-sub ρ t)
+ren-as-sub ρ (absurd c₁ t) = cong₂ absurd (ren-as-sub ρ c₁) (ren-as-sub ρ t)
 ren-as-sub ρ (fst t)    = cong fst (ren-as-sub ρ t)
 ren-as-sub ρ (snd t)    = cong snd (ren-as-sub ρ t)
 ren-as-sub ρ ⌜base⌝     = refl

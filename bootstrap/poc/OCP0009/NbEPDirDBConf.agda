@@ -42,7 +42,7 @@ open import poc.OCP0009.NbEPDirDBVar
         ; stkC?→stkA? )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; swp; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
-        ; ξ-pairˡ; ξ-pairʳ; ξ-absurd; ξ-fst; ξ-snd
+        ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
         ; tr-J-base; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
@@ -90,7 +90,7 @@ private
 
 ⟶*-absurd : {e e' : RTm Γ} → e ⟶* e' → absurd e ⟶* absurd e'
 ⟶*-absurd done       = done
-⟶*-absurd (step r q) = step (ξ-absurd r) (⟶*-absurd q)
+⟶*-absurd (step r q) = step (ξ-absurdᵉ r) (⟶*-absurd q)
 
 ⟶*-fst : {p p' : RTm Γ} → p ⟶* p' → fst p ⟶* fst p'
 ⟶*-fst done       = done
@@ -298,7 +298,7 @@ pwShift-ren ρ t =
 ⟶-ren ρ (ξ-appʳ r)  = ξ-appʳ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-pairˡ r) = ξ-pairˡ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-pairʳ r) = ξ-pairʳ (⟶-ren ρ r)
-⟶-ren ρ (ξ-absurd r)   = ξ-absurd (⟶-ren ρ r)
+⟶-ren ρ (ξ-absurdᵉ r)   = ξ-absurdᵉ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-fst r)   = ξ-fst (⟶-ren ρ r)
 ⟶-ren ρ (ξ-snd r)   = ξ-snd (⟶-ren ρ r)
 ⟶-ren ρ (natrec-zero z s) =
@@ -547,7 +547,7 @@ subTm-monoˢ h (app t u) =
   ⟶*-trans (⟶*-appˡ (subTm-monoˢ h t)) (⟶*-appʳ (subTm-monoˢ h u))
 subTm-monoˢ h (pair a b) =
   ⟶*-trans (⟶*-pairˡ (subTm-monoˢ h a)) (⟶*-pairʳ (subTm-monoˢ h b))
-subTm-monoˢ h (absurd p) = ⟶*-absurd (subTm-monoˢ h p)
+subTm-monoˢ h (absurd c p) = ⟶*-absurd (subTm-monoˢ h p)
 subTm-monoˢ h (fst p) = ⟶*-fst (subTm-monoˢ h p)
 subTm-monoˢ h (snd p) = ⟶*-snd (subTm-monoˢ h p)
 subTm-monoˢ h ⌜base⌝  = done
@@ -693,7 +693,7 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟹-refl (lam t)    = plam (⟹-refl t)
 ⟹-refl (app t u)  = papp (⟹-refl t) (⟹-refl u)
 ⟹-refl (pair a b) = ppair (⟹-refl a) (⟹-refl b)
-⟹-refl (absurd e) = pabsurd (⟹-refl e)
+⟹-refl (absurd c e) = pabsurd (⟹-refl e)
 ⟹-refl (fst p)    = pfst (⟹-refl p)
 ⟹-refl (snd p)    = psnd (⟹-refl p)
 ⟹-refl ⌜base⌝     = p⌜base⌝
@@ -848,7 +848,7 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
 ⟶→⟹ (ξ-appʳ r)  = papp (⟹-refl _) (⟶→⟹ r)
 ⟶→⟹ (ξ-pairˡ r) = ppair (⟶→⟹ r) (⟹-refl _)
 ⟶→⟹ (ξ-pairʳ r) = ppair (⟹-refl _) (⟶→⟹ r)
-⟶→⟹ (ξ-absurd r) = pabsurd (⟶→⟹ r)
+⟶→⟹ (ξ-absurdᵉ r) = pabsurd (⟶→⟹ r)
 ⟶→⟹ (ξ-fst r)   = pfst (⟶→⟹ r)
 ⟶→⟹ (ξ-snd r)   = psnd (⟶→⟹ r)
 ⟶→⟹ (ξ-⌜Π⌝ˡ r) = p⌜Π⌝ (⟶→⟹ r) (⟹-refl _)
