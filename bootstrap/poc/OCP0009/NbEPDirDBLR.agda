@@ -1527,7 +1527,7 @@ data SNe {Γ} where
   -- rule can ever fire.  This is what puts `absurd c e` in EVERY type's
   -- interpretation via CR3, which is exactly the semantics ex falso
   -- should have.
-  sne-absurd : {c e : RTm Γ} → SN c → SNe e → SNe (absurd c e)
+  sne-absurd : {c e : RTm Γ} → SN c → SN e → SNe (absurd c e)
   sne-fst : {p : RTm Γ} → SNe p → SNe (fst p)
   sne-snd : {p : RTm Γ} → SNe p → SNe (snd p)
   -- W2: `hrefl` is OPERATIONALLY INERT while its unfold family is
@@ -1989,7 +1989,7 @@ Nat-nf (stepᵀ () _)
 data Ne {Γ} : RTm Γ → Set where
   ne-var : (x : Var Γ) → Ne (var x)
   ne-app : {t u : RTm Γ} → Ne t → Ne (app t u)
-  ne-absurd : {c e : RTm Γ} → Ne e → Ne (absurd c e)
+  ne-absurd : {c e : RTm Γ} → Ne (absurd c e)
   ne-fst : {p : RTm Γ} → Ne p → Ne (fst p)
   ne-snd : {p : RTm Γ} → Ne p → Ne (snd p)
   ne-hrefl : {c t : RTm Γ} → nopw? c ≡ true → Ne (hrefl c t)
@@ -2006,8 +2006,8 @@ ne-red : {t t' : RTm Γ} → Ne t → t ⟶ t' → Ne t'
 ne-red (ne-var x) ()
 ne-red (ne-app n) (ξ-appˡ r) = ne-app (ne-red n r)
 ne-red (ne-app n) (ξ-appʳ r) = ne-app n
-ne-red (ne-absurd n) (ξ-absurdᶜ r) = ne-absurd n
-ne-red (ne-absurd n) (ξ-absurdᵉ r) = ne-absurd (ne-red n r)
+ne-red ne-absurd (ξ-absurdᶜ r) = ne-absurd
+ne-red ne-absurd (ξ-absurdᵉ r) = ne-absurd
 ne-red (ne-fst n) (ξ-fst r)  = ne-fst (ne-red n r)
 ne-red (ne-snd n) (ξ-snd r)  = ne-snd (ne-red n r)
 ne-red (ne-hrefl kn) (ξ-hreflᶜ r) = ne-hrefl (nopw?-red r kn)
@@ -2043,7 +2043,7 @@ ne-red (ne-natrec key) (ξ-natrecⁿ r) = ne-natrec (natstk?-red r key)
 sne→ne : {t : RTm Γ} → SNe t → Ne t
 sne→ne (sne-var x)   = ne-var x
 sne→ne (sne-app n _) = ne-app (sne→ne n)
-sne→ne (sne-absurd _ n) = ne-absurd (sne→ne n)
+sne→ne (sne-absurd _ _) = ne-absurd
 sne→ne (sne-fst n)   = ne-fst (sne→ne n)
 sne→ne (sne-snd n)   = ne-snd (sne→ne n)
 sne→ne (sne-hrefl _ _ kn) = ne-hrefl kn
@@ -4465,11 +4465,11 @@ wne (sne-app n u) with wne n | wn u
     nrm' : IsNormal (app n₁ n₂)
     nrm' (ξ-appˡ q) = nm₁ q
     nrm' (ξ-appʳ q) = nm₂ q
-wne (sne-absurd snc n) with wn snc | wne n
-... | mkWN c₁ rc nmc snc₁ | mkWNe n₁ r₁ nm₁ ne₁ =
+wne (sne-absurd snc sne₀) with wn snc | wn sne₀
+... | mkWN c₁ rc nmc snc₁ | mkWN n₁ r₁ nm₁ sn₁ =
       mkWNe (absurd c₁ n₁)
             (⟶*-trans (⟶*-absurdᶜ rc) (⟶*-absurdᵉ r₁))
-            nrm' (sne-absurd snc₁ ne₁)
+            nrm' (sne-absurd snc₁ sn₁)
   where
     nrm' : IsNormal (absurd c₁ n₁)
     nrm' (ξ-absurdᶜ q) = nmc q

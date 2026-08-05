@@ -73,8 +73,8 @@ open import poc.OCP0009.NbEPDirDBSubj
         ; HomToΠ; via-U; via-Π; hom-to-Π
         ; U-reduct; wk-cancel-tm; ≅ᵀ-Homᵀ; gen-var; subTy-comm; subTy-monoˢ )
 open import poc.OCP0009.NbEPDirDBLR
-  using ( SNe; sne-var; sne-app; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap; sne-jsub
-        ; Ne; ne-var; ne-app; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁
+  using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap; sne-jsub
+        ; Ne; ne-var; ne-app; ne-absurd; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁
         ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-cId; sn-idrefl; sn-exp
         ; sn-cNat; sn-cUnit
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
@@ -172,6 +172,7 @@ subTm-var ρ (lam t)   =
   cong lam (trans (subTm-cong (exts-var ρ) t) (subTm-var (extR ρ) t))
 subTm-var ρ (app t u)  = cong₂ app (subTm-var ρ t) (subTm-var ρ u)
 subTm-var ρ (pair a b) = cong₂ pair (subTm-var ρ a) (subTm-var ρ b)
+subTm-var ρ (absurd c e) = cong₂ absurd (subTm-var ρ c) (subTm-var ρ e)
 subTm-var ρ (fst p)    = cong fst (subTm-var ρ p)
 subTm-var ρ (snd p)    = cong snd (subTm-var ρ p)
 subTm-var ρ ⌜base⌝     = refl
@@ -310,6 +311,7 @@ sne-anti {ρ = ρ} {t = natrec z w n} (sne-natrec hz hw hn key) =
   sne-natrec (sn-anti hz) (sn-anti hw) (sn-anti hn)
              (trans (sym (natstk?-ren ρ n)) key)
 sne-anti {t = app t u}  (sne-app n s) = sne-app (sne-anti n) (sn-anti s)
+sne-anti {t = absurd c e} (sne-absurd sc sn₀) = sne-absurd (sn-anti sc) (sn-anti sn₀)
 sne-anti {t = fst p}    (sne-fst n)   = sne-fst (sne-anti n)
 sne-anti {t = snd p}    (sne-snd n)   = sne-snd (sne-anti n)
 sne-anti {ρ = ρ} {t = hrefl c t} (sne-hrefl hc ht kn) =
@@ -357,10 +359,14 @@ sn-anti {t = jsub d p e}  (sn-ne n)     = sn-ne (sne-anti n)
 sn-anti {t = jsub d p e}  (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = app t u}  (sn-ne n)      = sn-ne (sne-anti n)
+sn-anti {t = absurd c e} (sn-ne n)     = sn-ne (sne-anti n)
 sn-anti {t = fst p}    (sn-ne n)      = sn-ne (sne-anti n)
 sn-anti {t = snd p}    (sn-ne n)      = sn-ne (sne-anti n)
 sn-anti {t = app t u}  (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
+-- ★ ex falso never head-reduces — it is a permanent neutral — so the
+-- head-expansion case is vacuous.
+sn-anti {t = absurd c e} (sn-exp () h)
 sn-anti {t = fst p}    (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = snd p}    (sn-exp r h) with snr-anti r
@@ -391,6 +397,12 @@ snr-anti {t = app nzero u}      (snr-app ())
 snr-anti {t = app (nsuc k) u}   (snr-app ())
 snr-anti {t = app (natrec z w n) u} (snr-app r) with snr-anti r
 ... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
+snr-anti {t = absurd c e} ()
+-- ex falso is a permanent neutral, so as a SCRUTINEE it never lets an
+-- eliminator fire — every one of these is `()` on the inner step.
+snr-anti {t = fst (absurd c e)}     (snr-fst ())
+snr-anti {t = snd (absurd c e)}     (snr-snd ())
+snr-anti {t = app (absurd c e) u}   (snr-app ())
 snr-anti {t = fst unit}         (snr-fst ())
 snr-anti {t = fst nzero}        (snr-fst ())
 snr-anti {t = fst (nsuc k)}     (snr-fst ())
@@ -435,9 +447,14 @@ snr-anti {t = tr d (hrefl ⌜Unit⌝ s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ()
 snr-anti {t = tr d (hrefl ⌜Unit⌝ s) e} (snr-trᵖ (snr-hrefl-pw ()))
 -- ⌜Nat⌝ has NO J root — a `hrefl ⌜Nat⌝` path is neutral — so the only
 -- shapes here are the (absurd) code reductions.
+-- an `absurd` path CODE is neither `pw?` nor `stkC?`, and it has no
+-- spine step of its own.
+snr-anti {t = tr d (hrefl (absurd c₉ e₉) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl (absurd c₉ e₉) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl ⌜Nat⌝ s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl ⌜Nat⌝ s) e} (snr-trᵖ (snr-hrefl-pw ()))
 -- a bare datatype CODE as a path is permanently stuck: no root fires.
+snr-anti {t = tr (⌜Hom⌝ c a m) (absurd c₉ e₉) e} (snr-trᵖ ())
 snr-anti {t = tr (⌜Hom⌝ c a m) ⌜Nat⌝ e} (snr-trᵖ ())
 snr-anti {t = tr (⌜Hom⌝ c a m) ⌜Unit⌝ e} (snr-trᵖ ())
 snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-J-Σ hd h₁ h₂ hs) =
@@ -617,6 +634,7 @@ csr-anti {t = natrec z w n} (csr-here r) with snr-anti r
 csr-anti {t = lam _} (csr-here ())
 csr-anti {t = pair _ _} (csr-here ())
 csr-anti {t = ⌜base⌝} (csr-here ())
+csr-anti {t = absurd c e} (csr-here ())
 csr-anti {t = ⌜Nat⌝ } (csr-here ())
 csr-anti {t = ⌜Unit⌝ } (csr-here ())
 csr-anti {t = ⌜Π⌝ _ _} (csr-here ())
@@ -660,6 +678,7 @@ sne-ren {ρ = ρ} (sne-natrec {n = n} hz hw hn key) =
   sne-natrec (sn-ren hz) (sn-ren hw) (sn-ren hn)
              (trans (natstk?-ren ρ n) key)
 sne-ren (sne-app n s)         = sne-app (sne-ren n) (sn-ren s)
+sne-ren (sne-absurd sc sn₀)   = sne-absurd (sn-ren sc) (sn-ren sn₀)
 sne-ren (sne-fst n)           = sne-fst (sne-ren n)
 sne-ren (sne-snd n)           = sne-snd (sne-ren n)
 sne-ren {ρ = ρ} (sne-hrefl {c = c} hc ht kn) =
