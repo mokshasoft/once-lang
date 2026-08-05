@@ -1,4 +1,24 @@
 ------------------------------------------------------------------------
+-- ⚠⚠ FROZEN AT STAGE B — THIS MODULE IS NOT EXPECTED TO COMPILE. ⚠⚠
+--
+-- This is a DESIGN RECORD, not a test.  Its conclusion is already
+-- absorbed into the main tower; what it preserves is WHY that path was
+-- taken.  It carries its own COPY of `subTm-occ` and pattern-matches
+-- exhaustively on `RTm`/`⊩₀`, so stage A/C's `⌜Nat⌝`/`⌜Unit⌝` RTm constructors broke it — in the WF-axis work,
+-- not in anything since.
+--
+-- Do NOT "fix" it as part of a tower sweep: chasing every new
+-- constructor through a dead copy costs maintenance and yields no
+-- signal.  Re-derive it against the live modules if the design
+-- question ever reopens.
+--
+-- ★ The counterexample: SpikeAp is the spike that DOES stay green,
+--   because it imports Canon's real `codeCanon`/`pathCanon` instead of
+--   copying them — which is exactly why it caught a genuine weakening
+--   when `stkA?`/`stkC?` split.
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
 -- OCP-0009 · W2 eliminator, spike 3 — `tr`'s REDUCTION RULES.
 --
 -- The question this spike was scoped to close (HANDOFF-2026-07-31 §4.3
