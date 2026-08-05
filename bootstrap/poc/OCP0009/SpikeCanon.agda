@@ -151,7 +151,7 @@ open import normalizer.Syntax.Types
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom
-        ; RTm; var; lam; app; pair; fst; snd
+        ; RTm; var; lam; app; pair; fst; snd; absurd
         ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub
         ; ⌜Hom⌝-cong₃
         ; Ren; extR; renTm; Sub; extS; subTm; renTm-renTm 

@@ -28,7 +28,7 @@ module poc.OCP0009.NbEPDirDBConf where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ )
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app; pair; fst; snd
+  using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app; pair; fst; snd; absurd
         ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub
         ; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; subTm-subTm
         ; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
@@ -42,7 +42,7 @@ open import poc.OCP0009.NbEPDirDBVar
         ; stkC?→stkA? )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; swp; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
-        ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
+        ; ξ-pairˡ; ξ-pairʳ; ξ-absurd; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
         ; tr-J-base; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
@@ -87,6 +87,10 @@ private
 ⟶*-pairʳ : {a b b' : RTm Γ} → b ⟶* b' → pair a b ⟶* pair a b'
 ⟶*-pairʳ done       = done
 ⟶*-pairʳ (step r p) = step (ξ-pairʳ r) (⟶*-pairʳ p)
+
+⟶*-absurd : {e e' : RTm Γ} → e ⟶* e' → absurd e ⟶* absurd e'
+⟶*-absurd done       = done
+⟶*-absurd (step r q) = step (ξ-absurd r) (⟶*-absurd q)
 
 ⟶*-fst : {p p' : RTm Γ} → p ⟶* p' → fst p ⟶* fst p'
 ⟶*-fst done       = done
@@ -294,6 +298,7 @@ pwShift-ren ρ t =
 ⟶-ren ρ (ξ-appʳ r)  = ξ-appʳ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-pairˡ r) = ξ-pairˡ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-pairʳ r) = ξ-pairʳ (⟶-ren ρ r)
+⟶-ren ρ (ξ-absurd r)   = ξ-absurd (⟶-ren ρ r)
 ⟶-ren ρ (ξ-fst r)   = ξ-fst (⟶-ren ρ r)
 ⟶-ren ρ (ξ-snd r)   = ξ-snd (⟶-ren ρ r)
 ⟶-ren ρ (natrec-zero z s) =
@@ -542,6 +547,7 @@ subTm-monoˢ h (app t u) =
   ⟶*-trans (⟶*-appˡ (subTm-monoˢ h t)) (⟶*-appʳ (subTm-monoˢ h u))
 subTm-monoˢ h (pair a b) =
   ⟶*-trans (⟶*-pairˡ (subTm-monoˢ h a)) (⟶*-pairʳ (subTm-monoˢ h b))
+subTm-monoˢ h (absurd p) = ⟶*-absurd (subTm-monoˢ h p)
 subTm-monoˢ h (fst p) = ⟶*-fst (subTm-monoˢ h p)
 subTm-monoˢ h (snd p) = ⟶*-snd (subTm-monoˢ h p)
 subTm-monoˢ h ⌜base⌝  = done
@@ -599,6 +605,8 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   pβ    : {t t' : RTm (Γ ∙)} {u u' : RTm Γ} →
           t ⟹ t' → u ⟹ u' → app (lam t) u ⟹ subTm (single u') t'
   ppair : {a a' b b' : RTm Γ} → a ⟹ a' → b ⟹ b' → pair a b ⟹ pair a' b'
+  -- ★ stage D: ex falso has no root rule, so it is pure congruence.
+  pabsurd : {e e' : RTm Γ} → e ⟹ e' → absurd e ⟹ absurd e'
   pfst  : {p p' : RTm Γ} → p ⟹ p' → fst p ⟹ fst p'
   psnd  : {p p' : RTm Γ} → p ⟹ p' → snd p ⟹ snd p'
   pβfst : {a a' b b' : RTm Γ} → a ⟹ a' → b ⟹ b' → fst (pair a b) ⟹ a'
@@ -685,6 +693,7 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟹-refl (lam t)    = plam (⟹-refl t)
 ⟹-refl (app t u)  = papp (⟹-refl t) (⟹-refl u)
 ⟹-refl (pair a b) = ppair (⟹-refl a) (⟹-refl b)
+⟹-refl (absurd e) = pabsurd (⟹-refl e)
 ⟹-refl (fst p)    = pfst (⟹-refl p)
 ⟹-refl (snd p)    = psnd (⟹-refl p)
 ⟹-refl ⌜base⌝     = p⌜base⌝
@@ -706,6 +715,7 @@ pw?-⟹ (plam _) ()
 pw?-⟹ (papp _ _) ()
 pw?-⟹ (pβ _ _) ()
 pw?-⟹ (ppair _ _) ()
+pw?-⟹ (pabsurd _) ()
 pw?-⟹ (pfst _) ()
 pw?-⟹ (psnd _) ()
 pw?-⟹ (pβfst _ _) ()
@@ -746,6 +756,7 @@ stkA?-⟹ (plam _) ()
 stkA?-⟹ (papp _ _) ()
 stkA?-⟹ (pβ _ _) ()
 stkA?-⟹ (ppair _ _) ()
+stkA?-⟹ (pabsurd _) ()
 stkA?-⟹ (pfst _) ()
 stkA?-⟹ (psnd _) ()
 stkA?-⟹ (pβfst _ _) ()
@@ -785,6 +796,7 @@ stkC?-⟹ (plam _) ()
 stkC?-⟹ (papp _ _) ()
 stkC?-⟹ (pβ _ _) ()
 stkC?-⟹ (ppair _ _) ()
+stkC?-⟹ (pabsurd _) ()
 stkC?-⟹ (pfst _) ()
 stkC?-⟹ (psnd _) ()
 stkC?-⟹ (pβfst _ _) ()
@@ -836,6 +848,7 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
 ⟶→⟹ (ξ-appʳ r)  = papp (⟹-refl _) (⟶→⟹ r)
 ⟶→⟹ (ξ-pairˡ r) = ppair (⟶→⟹ r) (⟹-refl _)
 ⟶→⟹ (ξ-pairʳ r) = ppair (⟹-refl _) (⟶→⟹ r)
+⟶→⟹ (ξ-absurd r) = pabsurd (⟶→⟹ r)
 ⟶→⟹ (ξ-fst r)   = pfst (⟶→⟹ r)
 ⟶→⟹ (ξ-snd r)   = psnd (⟶→⟹ r)
 ⟶→⟹ (ξ-⌜Π⌝ˡ r) = p⌜Π⌝ (⟶→⟹ r) (⟹-refl _)
@@ -904,6 +917,7 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
                  (subTm-monoˢ (single-mono (⟹→⟶* q)) t'))
 ⟹→⟶* (ppair p q) =
   ⟶*-trans (⟶*-pairˡ (⟹→⟶* p)) (⟶*-pairʳ (⟹→⟶* q))
+⟹→⟶* (pabsurd p) = ⟶*-absurd (⟹→⟶* p)
 ⟹→⟶* (pfst p) = ⟶*-fst (⟹→⟶* p)
 ⟹→⟶* (psnd p) = ⟶*-snd (⟹→⟶* p)
 ⟹→⟶* (pβfst {a = a} {b = b} p q) = step (βfst a b) (⟹→⟶* p)
@@ -1001,6 +1015,7 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
                           (ren-comm-ext ρ s' n'))))
         (pnatrec-suc (⟹-ren ρ pz) (⟹-ren (extR (extR ρ)) ps) (⟹-ren ρ pn))
 ⟹-ren ρ (ppair p q) = ppair (⟹-ren ρ p) (⟹-ren ρ q)
+⟹-ren ρ (pabsurd p) = pabsurd (⟹-ren ρ p)
 ⟹-ren ρ (pfst p)    = pfst (⟹-ren ρ p)
 ⟹-ren ρ (psnd p)    = psnd (⟹-ren ρ p)
 ⟹-ren ρ (pβfst p q) = pβfst (⟹-ren ρ p) (⟹-ren ρ q)
@@ -1057,6 +1072,7 @@ pwBody-⟹ (plam _) ()
 pwBody-⟹ (papp _ _) ()
 pwBody-⟹ (pβ _ _) ()
 pwBody-⟹ (ppair _ _) ()
+pwBody-⟹ (pabsurd _) ()
 pwBody-⟹ (pfst _) ()
 pwBody-⟹ (psnd _) ()
 pwBody-⟹ (pβfst _ _) ()
@@ -1126,6 +1142,7 @@ pwBody-⟹ (pnatrec-suc _ _ _) ()
                           (sub-comm-ext σ' s' n'))))
         (pnatrec-suc (⟹-sub h pz) (⟹-sub (⟹-exts (⟹-exts h)) ps) (⟹-sub h pn))
 ⟹-sub h (ppair p q) = ppair (⟹-sub h p) (⟹-sub h q)
+⟹-sub h (pabsurd p) = pabsurd (⟹-sub h p)
 ⟹-sub h (pfst p)    = pfst (⟹-sub h p)
 ⟹-sub h (psnd p)    = psnd (⟹-sub h p)
 ⟹-sub h (pβfst p q) = pβfst (⟹-sub h p) (⟹-sub h q)
@@ -1207,6 +1224,7 @@ pair a b ⁺         = pair (a ⁺) (b ⁺)
 app (lam t) u ⁺    = subTm (single (u ⁺)) (t ⁺)
 app (var x) u ⁺    = app (var x ⁺) (u ⁺)
 app (app f a) u ⁺  = app (app f a ⁺) (u ⁺)
+app (absurd f) u ⁺ = app (absurd (f ⁺)) (u ⁺)
 app (pair a b) u ⁺ = app (pair a b ⁺) (u ⁺)
 app (fst p) u ⁺    = app (fst p ⁺) (u ⁺)
 app (snd p) u ⁺    = app (snd p ⁺) (u ⁺)
@@ -1238,6 +1256,7 @@ fst ⌜base⌝ ⁺       = fst (⌜base⌝ ⁺)
 fst unit ⁺         = fst (unit ⁺)
 fst nzero ⁺        = fst (nzero ⁺)
 fst (nsuc n) ⁺     = fst (nsuc n ⁺)
+fst (absurd f) ⁺ = fst (absurd (f ⁺))
 fst (natrec z s n) ⁺ = fst (natrec z s n ⁺)
 fst (⌜Π⌝ c d) ⁺    = fst (⌜Π⌝ c d ⁺)
 fst (⌜Σ⌝ c d) ⁺    = fst (⌜Σ⌝ c d ⁺)
@@ -1260,6 +1279,7 @@ snd ⌜base⌝ ⁺       = snd (⌜base⌝ ⁺)
 snd unit ⁺         = snd (unit ⁺)
 snd nzero ⁺        = snd (nzero ⁺)
 snd (nsuc n) ⁺     = snd (nsuc n ⁺)
+snd (absurd f) ⁺ = snd (absurd (f ⁺))
 snd (natrec z s n) ⁺ = snd (natrec z s n ⁺)
 snd (⌜Π⌝ c d) ⁺    = snd (⌜Π⌝ c d ⁺)
 snd (⌜Σ⌝ c d) ⁺    = snd (⌜Σ⌝ c d ⁺)
@@ -1304,6 +1324,7 @@ ap cB b (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) ⁺ = apH⁺ (stkA? c₁) cB b c₁
 ap cB b p ⁺ = ap (cB ⁺) (b ⁺) (p ⁺)
 -- the two-former kernel: Id is inert (congruences), and jsub's J is
 -- UNKEYED — the refl-path row fires unconditionally.
+absurd e ⁺ = absurd (e ⁺)
 ⌜Id⌝ c a b ⁺ = ⌜Id⌝ (c ⁺) (a ⁺) (b ⁺)
 idrefl c t ⁺ = idrefl (c ⁺) (t ⁺)
 jsub d (idrefl c s) e ⁺ = e ⁺
@@ -1412,6 +1433,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (papp p⌜base⌝ q)       = papp (⟹-⁺ p⌜base⌝) (⟹-⁺ q)
 ⟹-⁺ (papp (p⌜Π⌝ p₁ p₂) q)  = papp (⟹-⁺ (p⌜Π⌝ p₁ p₂)) (⟹-⁺ q)
 ⟹-⁺ (papp (p⌜Σ⌝ p₁ p₂) q)  = papp (⟹-⁺ (p⌜Σ⌝ p₁ p₂)) (⟹-⁺ q)
+⟹-⁺ (pabsurd p)            = pabsurd (⟹-⁺ p)
+⟹-⁺ (papp (pabsurd p) q)   = papp (⟹-⁺ (pabsurd p)) (⟹-⁺ q)
+⟹-⁺ (pfst (pabsurd p))     = pfst (⟹-⁺ (pabsurd p))
+⟹-⁺ (psnd (pabsurd p))     = psnd (⟹-⁺ (pabsurd p))
 ⟹-⁺ (pfst (pvar x))        = pfst (pvar x)
 ⟹-⁺ (pfst (plam p))        = pfst (⟹-⁺ (plam p))
 ⟹-⁺ (pfst (papp p₁ p₂))    = pfst (⟹-⁺ (papp p₁ p₂))
@@ -1796,6 +1821,27 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr u@(pap-J _ _ _ _) (phrefl (p⌜Hom⌝ pc₁ pa₁ pb₁) ps) pe) = ptr (⟹-⁺ u) (hr-tri _ (pw?-⟹ pc₁) (p⌜Hom⌝ (⟹-⁺ pc₁) (⟹-⁺ pa₁) (⟹-⁺ pb₁)) (⟹-⁺ ps)) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(phrefl (p⌜Π⌝ _ _) _) pe) =
   ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+-- ★ stage D: nothing fires around ex falso.  As a MOTIVE it is neither
+-- `var vz` (taut) nor a pw-able ⌜Hom⌝; as a PATH it is neither `lam`
+-- nor `hrefl`; as a path CODE it is neither `pw?` nor `stkC?`.  All
+-- four configurations are pure congruence.
+⟹-⁺ (ptr w@(pabsurd _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+-- the other eliminators, likewise: `absurd` is not a canonical
+-- scrutinee for any of them.
+⟹-⁺ (pap pcB pb w@(pabsurd _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (pap pcB pb w@(phrefl (pabsurd _) _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (pjsub pd w@(pabsurd _) pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (pnatrec pz pw w@(pabsurd _)) = pnatrec (⟹-⁺ pz) (⟹-⁺ pw) (⟹-⁺ w)
+-- …and with a J-able path code: the J rules all require a ⌜Hom⌝ MOTIVE,
+-- which `absurd` is not, so these are congruence too.
+⟹-⁺ (ptr w@(pabsurd _) v@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pabsurd _) v@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pabsurd _) v@(phrefl (p⌜Σ⌝ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pabsurd _) v@(phrefl (p⌜Id⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pabsurd _) v@(phrefl (p⌜Hom⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ _ _ (pabsurd _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(pabsurd _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (pabsurd _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(phrefl (pvar _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(phrefl (plam _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(phrefl (papp _ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
@@ -1851,6 +1897,7 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr u@(ptr _ _ _) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-base _) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Nat⌝) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pabsurd _) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Unit⌝) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Unit _) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Σ _) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)

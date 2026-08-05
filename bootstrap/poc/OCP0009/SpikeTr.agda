@@ -146,7 +146,7 @@ module poc.OCP0009.SpikeTr where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; Var; vz; vs
-        ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
+        ; RTm; var; lam; app; pair; fst; snd; absurd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; ⌜Hom⌝; ⌜Hom⌝-cong₃; tr-cong₃ 
         ; unit; nzero; nsuc; natrec; natrec-cong₃ )
 open import poc.OCP0009.NbEPDirDBPi
