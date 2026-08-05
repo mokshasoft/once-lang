@@ -197,14 +197,67 @@ base-collapse.
   `⊢⌜Nat⌝`/`⊢⌜Unit⌝`, and `tr-J-Nat`/`tr-J-Unit`, through Pi, Var,
   Type, SR, Conf and Inj.
 
-  ★ RISKY POINT 1 IS SETTLED, and the answer is the CHEAP one.  The
-  spike feared `⌜Nat⌝` would be "a third code kind, neither `pw?` nor
-  `stkC?`".  It is not: `stkC? ⌜Nat⌝ = true`.  The datatype codes are
-  ordinary STABLE J-able shapes — inert decodes, never `⌜Π⌝`-able — so
-  `tr-J-Nat`/`tr-J-Unit` ride the `tr-J-base` pattern verbatim and G2's
-  `pw? ∨ stkC?` code-canonicity split is undisturbed.  The endpoint
-  computation lives in `Hom`, not in the code, which is why the code
-  layer never noticed.
+  ★★ RISKY POINT 1 IS **REAL**, and the spike was right.  An earlier
+  note in this file called it "settled cheaply" on the grounds that
+  `stkC? ⌜Nat⌝ = true` typechecks.  **That claim was premature and is
+  RETRACTED.**  Typechecking the classifier is not the same as the J
+  rule it licenses being sound, and it is not.
+
+  **`tr-J-Nat` BREAKS SUBJECT REDUCTION.**  Counterexample, in a
+  context `Γ` holding `k j : Nat` and `x : base`:
+
+  * `Hom-Nat-z` reads `Hom Nat nzero n ⟶ Unit` for **any** `n` — the
+    right endpoint is discarded.  So `Hom Nat nzero nzero` and
+    `Hom Nat nzero (nsuc j)` share the reduct `Unit` and are therefore
+    CONVERTIBLE.
+  * Hence `hrefl ⌜Nat⌝ nzero`, whose own type is
+    `Hom (El ⌜Nat⌝) nzero nzero`, is typeable by `⊢conv` at
+    `Hom Nat nzero (nsuc j)`.  **A reflexivity no longer pins its
+    endpoints**, because the order type it lives in is collapsing.
+  * Feed that as `⊢tr`'s path with `t = nzero`, `u = nsuc j`, motive
+    code `c = ⌜Nat⌝` (forced: the premise `(Γ ▹ A) ⊢ var vz ∷ El c`
+    with `A = Nat` gives `El c ⟶ᵀ* Nat`, so `c ⟶* ⌜Nat⌝`), and
+    `a = nsuc k`.  Then `e`'s type is `Hom Nat (nsuc k) nzero ⟶ base`,
+    inhabited by `x`; the conclusion's type is
+    `Hom Nat (nsuc k) (nsuc j) ⟶ Hom Nat k j`, which is STUCK.
+  * `tr-J-Nat` reduces the term to `e`.  Subject reduction would need
+    `base ≅ᵀ Hom Nat k j`.  Both are normal and distinct. ✗
+
+  **DECISION (2026-08-05, made with the counterexample in hand):**
+
+  1. **DELETE `tr-J-Nat`**, and set **`stkC? ⌜Nat⌝ = false`**.  `stkC?`
+     IS the J-ability key (it is what `tr-J-Hom` and `ap-J` test), so
+     the classifier must not claim what the rule cannot deliver.
+  2. `⌜Unit⌝` is **NOT** affected — keep `stkC? ⌜Unit⌝ = true` and
+     `tr-J-Unit`.  `Hom Unit t u` has no computation rule, so a
+     `hrefl ⌜Unit⌝ s` pins its endpoints normally.  **Only `Nat` is
+     poisoned, and precisely because only `Nat` has the collapsing
+     Hom.**  This is the sharp statement of the risky point: it is not
+     "datatype codes are exotic", it is "ORDERED types cannot be
+     J-able, because their path space is proof-irrelevant".
+  3. So `⌜Nat⌝` is neither `pw?` nor `stkC?` — **the third code kind
+     the spike predicted.**  G2's `codeCanon` (closed normal U-codes
+     split `pw? ∨ stkC?`) must become a THREE-way split.  Budget for
+     that: it is a real theorem change in `NbEPDirDBCanon`, not a row.
+  4. Consequently the **tt-path rule is not optional and not a
+     nice-to-have** — it is what RESTORES `trProgress`.  With J
+     disabled at `⌜Nat⌝`, a closed `tr` at a `hrefl ⌜Nat⌝ s` path has
+     no rule to fire, so `trProgress` is false until order-transport
+     exists.  Design it as ≤-coercion: transport along `Hom Nat m n`
+     carries a proof at `m` to one at `n`, and its computation must
+     follow the SAME endpoint case tree as the order rules.
+
+  ⚠ The front-half commits (`stage C (WIP)`) currently contain
+  `tr-J-Nat` and `stkC? ⌜Nat⌝ = true`.  **Undo those two before
+  building further**; the rest of the front half (codes, decodes,
+  `⊢⌜Nat⌝`, `tr-J-Unit`, and all the Conf/Inj plumbing) stands.
+
+  ★ METHOD NOTE, for this file's own §"lessons": the retracted claim
+  was made because a module typechecked, not because the property was
+  argued.  `FINDINGS`/`HANDOFF` already carry "match a claim's strength
+  to the decision it licenses — this repo has been burned once by a
+  claim outrunning its evidence (`subTI`, actually false while
+  asserted)".  Same failure mode, caught one session later this time.
 
   ★ THE REAL WORK LEFT is the one stage B predicted, and it has taken
   a precise shape.  `El c` can now reduce to `Nat`, so stage B's
