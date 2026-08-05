@@ -559,22 +559,40 @@ fat core is re-evaluated at the welding (G7) as its own project.
 ### judge each by the ap-landing test)
 
 **STATUS:** the two-former kernel is COMPLETE (Id + Hom, full
-metatheory).  ★ NEXT TASK (decided with the user): **the WF-axis**
-(sized induction) — the highest-frequency everyday pain (guard-
-condition boilerplate: fuel, Acc-plumbing, TERMINATING pragmas).
-Spike first (SPIKE-WF, next session): decide (a) judgmental size
-inference (checker-internal, erasable, consistency by refinement) vs
-(b) the Hom-INSTANCE realization — land ℕ as the first ORDERED
-inductive where `Hom ℕ m n` COMPUTES to `m ≤ n` (the order IS the
-directed structure), WF-induction as a new UNRESTRICTED eliminator
-(well-foundedness makes induction total the way symmetry makes J
-total), and size-coercion as `tr` at `Pos` motives.  Note the
-prerequisite fold-in: the kernel has no recursive data (that is what
-makes consistency trivial to state), so the WF spike doubles as the
-DATATYPE story's opening — sized-ℕ is where the termination pain
-actually lives.  Composition is pre-analyzed: WF composes with Id for
-free (unrestricted eliminators compose with everything), with Hom by
-construction under (b), and with the kernel by the union metatheory.
+metatheory), and the **WF-axis STAGE A is LANDED** (2026-08-05, one
+session): `Unit`/`Nat`/`natrec` through the whole tower, canonicity and
+consistency intact, acceptance file `NbEPDirDBExamplesNat` green.
+
+The WF-axis is the highest-frequency everyday pain (guard-condition
+boilerplate: fuel, Acc-plumbing, TERMINATING pragmas).  The spike
+(SPIKE-WF) chose option (b), the **Hom-INSTANCE realization** — ℕ as
+the first ORDERED inductive where `Hom ℕ m n` COMPUTES to `m ≤ n` (the
+order IS the directed structure), and staged it A/B/C.
+
+  * **Stage A ✅ DONE** — the datatype core.  The whole cost was one
+    syntactic lemma (`natrec-step-ty`: the step motive at the number
+    then at the IH IS the motive at the successor) plus one new LR
+    payload (`NatMem`, the reaches-numeral predicate) and one new
+    stuckness classifier (`natstk?`).  `fund`'s `⊢natrec` recurses on
+    `NatMem` and nothing else — **no fuel, no `Acc`, no measure, no
+    size**.  That is the axis's thesis, mechanized.  `natrecS` keeps
+    closed progress, so the WF axis COMPUTES.
+  * **Stage B — NEXT**: the three `Hom Nat` order rules.  First move is
+    already known: stage A registered `sh-Nat : StkHd`, so `Hom Nat a
+    b` is currently a stuck hom; the order rules make it compute, so
+    `sh-Nat` goes and `homSem₁` at `⊩₁Nat` is re-derived.
+  * **Stage C** — N-in (`⌜Nat⌝ ∈ U`, `tr-J-Nat`, tt-path rules,
+    cong-at-ℕ, open-endpoint ≤-trans).  Note stage A's visible
+    boundary: `jsub` needs a CODE family, so Id-rewriting AT `Nat` is
+    not expressible until C.
+
+Composition is pre-analyzed and held up: WF composes with Id for free
+(unrestricted eliminators compose with everything), with Hom by
+construction under (b), and with the kernel by the union metatheory —
+stage A touched no existing rule, only added rows.  Note the
+prerequisite fold-in that also held: the kernel had no recursive data
+(that is what makes consistency trivial to state), so the WF work
+doubles as the DATATYPE story's opening.
 
 **The with-abstraction pain (2026-08-04 analysis):** decomposes as
 (1) lost equations + (3) abstraction failure — ELABORATION-layer, not
