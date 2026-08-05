@@ -81,7 +81,7 @@ open import poc.OCP0009.NbEPDirDBLR
         ; sne-natrec; ne-natrec; sn-unit; sn-nzero; sn-nsuc
         ; NatMem; nm-ne; nm-zero; nm-suc; nm-exp; natmem-whred
         ; ⊩₁Unit; ⊩₁Nat; natstk?; natstk?-ren; natstk?-red; sne→natstk; sn-whred
-        ; homNatSem; homNatSem₀; hns₀-in; bwd₀-mem⁻
+        ; homNatSem; homNatSem₀; hns₀-in; bwd₀-mem⁻; bwd₀-mem
         ; StkHd; sh-Hom; sh-NatH; homnat?
         ; trstk?-ren; apstk?-ren; idstk?-ren; nopw?-ren; trlam?-ren
         ; idstk?-red; ⊩₀Id; ⊩₁Id; IdPay; idpay-transfer; idpay-peel; sne-nopay
@@ -1037,44 +1037,15 @@ fund {Ξ = Ξ} {σ = σ}
   R_result : ⊩₁ (El (subTm (single uI) dI))
   R_result = emb R₀u
 
-  mem₀-castF : {X Y : RTy Ξ} (eq : X ≡ Y) (R : ⊩₀ X) {w : RTm Ξ} →
-               R ⊩₀∋ w → (⊩₀cast eq R) ⊩₀∋ w
-  mem₀-castF refl R h = h
-
-  mem₀-castF⁻ : {X Y : RTy Ξ} (eq : X ≡ Y) (R : ⊩₀ X) {w : RTm Ξ} →
-                (⊩₀cast eq R) ⊩₀∋ w → R ⊩₀∋ w
-  mem₀-castF⁻ refl R h = h
-
-  mem-bwd₀ : {X Y : RTy Ξ} (q : X ⟶ᵀ* Y) (R : ⊩₀ Y) {w : RTm Ξ} →
-             R ⊩₀∋ w → (bwd₀ q R) ⊩₀∋ w
-  mem-bwd₀ q (⊩₀base _)  h = h
-  mem-bwd₀ q (⊩₀ne _ _)  h = h
-  mem-bwd₀ q (⊩₀Π _ _ _) h = h
-  mem-bwd₀ q (⊩₀Σ _ _ _) h = h
-  mem-bwd₀ q (⊩₀Hom _ _) h = h
-  mem-bwd₀ q (⊩₀Id _) h = h
-  mem-bwd₀ q (⊩₀Unit _) h = h
-  mem-bwd₀ q (⊩₀Nat _) h = h
-
-  mem-bwd₀⁻ : {X Y : RTy Ξ} (q : X ⟶ᵀ* Y) (R : ⊩₀ Y) {w : RTm Ξ} →
-              (bwd₀ q R) ⊩₀∋ w → R ⊩₀∋ w
-  mem-bwd₀⁻ q (⊩₀base _)  h = h
-  mem-bwd₀⁻ q (⊩₀ne _ _)  h = h
-  mem-bwd₀⁻ q (⊩₀Π _ _ _) h = h
-  mem-bwd₀⁻ q (⊩₀Σ _ _ _) h = h
-  mem-bwd₀⁻ q (⊩₀Hom _ _) h = h
-  mem-bwd₀⁻ q (⊩₀Id _) h = h
-  mem-bwd₀⁻ q (⊩₀Unit _) h = h
-  mem-bwd₀⁻ q (⊩₀Nat _) h = h
 
   heTgt : R_result ⊩₁∋ eI
   heTgt =
     projl (emb-coh R₀u) eI
-      (mem₀-castF eqTgt tgtBase
-        (mem-bwd₀ (stepᵀ (El-⌜Hom⌝ cT aT uI) doneᵀ) (homSem₀ Rc haT huT)
+      (mem₀cast eqTgt tgtBase
+        (bwd₀-mem⁻ (stepᵀ (El-⌜Hom⌝ cT aT uI) doneᵀ) (homSem₀ Rc haT huT)
           (homSem₀-mem-endpoints Rc haT htT haT huT
-            (mem-bwd₀⁻ (stepᵀ (El-⌜Hom⌝ cT aT tI) doneᵀ) (homSem₀ Rc haT htT)
-              (mem₀-castF⁻ eqSrc srcBase
+            (bwd₀-mem (stepᵀ (El-⌜Hom⌝ cT aT tI) doneᵀ) (homSem₀ Rc haT htT)
+              (mem₀cast⁻ eqSrc srcBase
                 (projr (emb-coh R₀t) eI
                   (projl (irrel₁ crflᵀ R_e (emb R₀t)) eI he)))))))
 
@@ -1095,8 +1066,8 @@ fund {Ξ = Ξ} {σ = σ}
   ... | _ , (here , cv) =
     ( R_result
     , projl (emb-coh R₀u) (tr dI (lam f) eI)
-        (mem₀-castF eqTgt tgtBase
-          (mem-bwd₀ (stepᵀ (El-⌜Hom⌝ cT aT uI) doneᵀ) (homSem₀ Rc haT huT)
+        (mem₀cast eqTgt tgtBase
+          (bwd₀-mem⁻ (stepᵀ (El-⌜Hom⌝ cT aT uI) doneᵀ) (homSem₀ Rc haT huT)
             (memTm (homSem₀ Rc haT huT) trEq
               (semTr x₀ Rc crflᵀ (projl hcT) (Σ.snd (projr hcT))
                      haT htT huT (sn-lam snf) hTe hUe hpX hEX)))) )
@@ -1115,8 +1086,8 @@ fund {Ξ = Ξ} {σ = σ}
                 (lam f) hp'
 
     hEX : (homSem₀ Rc haT htT) ⊩₀∋ eI
-    hEX = mem-bwd₀⁻ (stepᵀ (El-⌜Hom⌝ cT aT tI) doneᵀ) (homSem₀ Rc haT htT)
-            (mem₀-castF⁻ eqSrc srcBase
+    hEX = bwd₀-mem (stepᵀ (El-⌜Hom⌝ cT aT tI) doneᵀ) (homSem₀ Rc haT htT)
+            (mem₀cast⁻ eqSrc srcBase
               (projr (emb-coh R₀t) eI
                 (projl (irrel₁ crflᵀ R_e (emb R₀t)) eI he)))
 
