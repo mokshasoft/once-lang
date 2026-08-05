@@ -60,7 +60,8 @@ open import Once.CCC.Codegen.IRToTrace using
   (ir-to-trace'; ir-to-trace; ir-stack-budget;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; fsize; lsize;
-   push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-nat-layer)
+   push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-nat-layer
+   ; cata-br-I₁; cata-br-I₂)
 
 -- the two projections of `ir-to-trace'`'s 4-tuple this module reads (record
 -- patterns, so they reduce under eta — IRToTrace's own are private)
@@ -717,12 +718,11 @@ cata-branching-below : ∀ (F : Functor) (n1 l1 : ℕ) (at : AbstractTrace)
                      → SegOK n1 at
                      → SegOK (cata-budget-of (cata-dispatch (strat-branching F) n1 l1 at))
                              (cata-trace-of (cata-dispatch (strat-branching F) n1 l1 at))
+-- Plan 0.63 (iii): `I₁ ++ at ++ I₂`. I₁ absorbs init, flatten and the fold's
+-- prefix (so it carries BOTH functor walks); I₂ is the fold's tail plus the
+-- final read.
 cata-branching-below F n1 l1 at ff =
-  segok-++ (segok-idle _ refl init-all)
-    (segok-++ (segok-idle _ (idle-++ (visit-walk n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4)) _
-                               (visit-idle F n1 (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4)) refl)
-                 flatten-all)
-      (segok-++ fold-all (segok-idle _ refl final-all)))
+  segok-++ (segok-idle _ I₁-idle I₁-all) (segok-++ at' (segok-idle _ refl I₂-all))
   where
     b = n1 + 7 + 4 * fsize F + 4
     fixed7 : n1 + 7 ≤ b
@@ -750,8 +750,13 @@ cata-branching-below F n1 l1 at ff =
     walk-room = m≤m+n (n1 + 7 + 4 * fsize F) 4
     at' : SegOK b at
     at' = segok-weaken {b' = b} (≤-trans (m≤m+n n1 7) fixed7) ff
-    init-all : All (SlotBelow b) _
-    init-all =
+    I₁-idle : seg-idle? (cata-br-I₁ F n1 l1) ≡ true
+    I₁-idle = idle-++ (visit-walk n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4)) _
+                (visit-idle F n1 (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4))
+                (idle-++ (rebuild-walk (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4 + lsize F)) _
+                  (rebuild-idle F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4 + lsize F)) refl)
+    I₁-all : All (SlotBelow b) (cata-br-I₁ F n1 l1)
+    I₁-all =
       ++⁺ (sb-none refl ∷ sb-slot refl q3 (λ _ ()) ∷
            sb-none refl ∷ sb-slot refl q6 (λ _ ()) ∷ sb-none refl ∷
            sb-none refl ∷ sb-none refl ∷
@@ -759,31 +764,26 @@ cata-branching-below F n1 l1 at ff =
            sb-slot refl q6 (λ _ ()) ∷ sb-slot refl q2 (λ _ ()) ∷
            sb-slot refl q6 (λ _ ()) ∷ sb-slot refl q0 (λ _ ()) ∷
            sb-slot refl q3 (λ _ ()) ∷ [])
-          (push2-below n1 (n1 + 4) (n1 + 5) b q0 q4 q5)
-    flatten-all : All (SlotBelow b) _
-    flatten-all =
-      ++⁺ (sb-none refl ∷ sb-slot refl q0 (λ _ ()) ∷ sb-none refl ∷
-           sb-none refl ∷ sb-none refl ∷ sb-slot refl q0 (λ _ ()) ∷
-           sb-none refl ∷ sb-none refl ∷ sb-slot refl q3 (λ _ ()) ∷
-           sb-slot refl q3 (λ _ ()) ∷ [])
-          (++⁺ (push2-below (suc n1) (n1 + 4) (n1 + 5) b q1 q4 q5)
-               (++⁺ (sb-slot refl q3 (λ _ ()) ∷ sb-none refl ∷ [])
-                    (++⁺ (visit-below F n1 (n1 + 4) (n1 + 5) (n1 + 7) _ b q0 q4 q5 walk-room)
-                         (sb-none refl ∷ sb-none refl ∷ []))))
-    fold-all : SegOK b _
-    fold-all =
-      segok-pre _ refl
-          (sb-none refl ∷ sb-slot refl q1 (λ _ ()) ∷ sb-none refl ∷
-           sb-none refl ∷ sb-none refl ∷ sb-slot refl q1 (λ _ ()) ∷
-           sb-none refl ∷ sb-none refl ∷ [])
-          (segok-++ (segok-idle _ (rebuild-idle F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) _)
-                       (rebuild-below F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) _ b q2 walk-room))
-               (segok-pre _ refl (sb-none refl ∷ [])
-                    (segok-++ at'
-                         (segok-++ (segok-idle _ refl (push2-below (n1 + 2) (n1 + 4) (n1 + 5) b q2 q4 q5))
-                              (segok-idle _ refl (sb-none refl ∷ sb-none refl ∷ []))))))
-    final-all : All (SlotBelow b) _
-    final-all = sb-slot refl q2 (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ []
+      (++⁺ (push2-below n1 (n1 + 4) (n1 + 5) b q0 q4 q5)
+      (++⁺ (sb-none refl ∷ sb-slot refl q0 (λ _ ()) ∷ sb-none refl ∷
+            sb-none refl ∷ sb-none refl ∷ sb-slot refl q0 (λ _ ()) ∷
+            sb-none refl ∷ sb-none refl ∷ sb-slot refl q3 (λ _ ()) ∷
+            sb-slot refl q3 (λ _ ()) ∷ [])
+      (++⁺ (push2-below (suc n1) (n1 + 4) (n1 + 5) b q1 q4 q5)
+      (++⁺ (sb-slot refl q3 (λ _ ()) ∷ sb-none refl ∷ [])
+      (++⁺ (visit-below F n1 (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4) b q0 q4 q5 walk-room)
+      (++⁺ (sb-none refl ∷ sb-none refl ∷ [])
+      (++⁺ (sb-none refl ∷ sb-slot refl q1 (λ _ ()) ∷ sb-none refl ∷
+            sb-none refl ∷ sb-none refl ∷ sb-slot refl q1 (λ _ ()) ∷
+            sb-none refl ∷ sb-none refl ∷ [])
+      (++⁺ (rebuild-below F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4 + lsize F) b q2 walk-room)
+           (sb-none refl ∷ [])))))))))
+    I₂-all : All (SlotBelow b) (cata-br-I₂ n1 l1)
+    I₂-all = ++⁺ (push2-below (n1 + 2) (n1 + 4) (n1 + 5) b q2 q4 q5)
+                 (sb-none refl ∷ sb-none refl ∷
+                  sb-slot refl q2 (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
+
+
 
 -- `strat-const` needs no skeleton at all — the cata IS its algebra there.
 cata-slots-below : ∀ (st : CataStrategy) (n1 l1 : ℕ) (at : AbstractTrace)

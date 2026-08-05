@@ -161,24 +161,25 @@ cata-linear-ff n1 l1 at ff = ++⁺ descend (tt ∷ ++⁺ ff ascend)
 
 cata-branching-ff : ∀ F n1 l1 at → FrameFreeTrace at
                   → FrameFreeTrace (cata-trace-of (cata-trace-branching F n1 l1 at))
+-- Plan 0.63 (iii): `I₁ ++ at ++ I₂` — I₁ absorbs init, flatten and the fold's
+-- prefix; I₂ is the fold's tail plus the final read.
 cata-branching-ff F n1 l1 at ff =
-  ++⁺ init (++⁺ flatten (++⁺ fold (tt ∷ tt ∷ tt ∷ [])))
+  ++⁺ I₁ (++⁺ ff I₂)
   where
-    init : FrameFreeTrace _
-    init = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-               (push2-ff n1 (n1 + 4) (n1 + 5))
-    flatten : FrameFreeTrace _
-    flatten = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-                  (++⁺ (push2-ff (suc n1) (n1 + 4) (n1 + 5))
-                       (++⁺ (tt ∷ tt ∷ [])
-                            (++⁺ (visit-walk-ff n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4))
-                                 (tt ∷ tt ∷ []))))
-    fold : FrameFreeTrace _
-    fold = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-               (++⁺ (rebuild-walk-ff (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) ((l1 + 4) + lsize F))
-                    (++⁺ (tt ∷ [])
-                         (++⁺ ff (++⁺ (push2-ff (n1 + 2) (n1 + 4) (n1 + 5))
-                                      (tt ∷ tt ∷ [])))))
+    I₁ : FrameFreeTrace _
+    I₁ = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+             (++⁺ (push2-ff n1 (n1 + 4) (n1 + 5))
+             (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+             (++⁺ (push2-ff (suc n1) (n1 + 4) (n1 + 5))
+             (++⁺ (tt ∷ tt ∷ [])
+             (++⁺ (visit-walk-ff n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4))
+             (++⁺ (tt ∷ tt ∷ [])
+             (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+             (++⁺ (rebuild-walk-ff (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) ((l1 + 4) + lsize F))
+                  (tt ∷ [])))))))))
+    I₂ : FrameFreeTrace _
+    I₂ = ++⁺ (push2-ff (n1 + 2) (n1 + 4) (n1 + 5))
+             (++⁺ (tt ∷ tt ∷ []) (tt ∷ tt ∷ tt ∷ []))
 
 cata-dispatch-ff : ∀ st n1 l1 at → FrameFreeTrace at
                  → FrameFreeTrace (cata-trace-of (cata-dispatch st n1 l1 at))

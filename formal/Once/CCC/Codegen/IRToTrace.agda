@@ -236,57 +236,53 @@ cata-trace-nat n1 l1 at =
 --   ASCEND+POP: while Scratch ≠ 0, pop x (top := top[1]), build pair `[x,acc]`,
 --     build layer `[1, pair]`, run `alg` → acc'; Scratch--. LIFO pop gives
 --     reverse (innermost-first = foldr) order. Output = final fold result.
+-- Plan 0.63 (iii): same top-level decomposition as the Nat skeleton —
+-- `I₁ ++ at ++ (I₂ ++ at ++ I₃)`, same list, only the `++` bracketing moved.
+cata-lin-I₁ : ℕ → ℕ → AbstractTrace
+cata-lin-I₁ n1 l1 =
+  instr-reg-op count-zero ∷
+  instr-load-tag-lit 0 ∷ store-at-slot (suc (suc (suc n1))) ∷
+  instr-ctrl (c-label l1) ∷
+  instr-ctrl (c-branch-tag-zero (suc l1)) ∷
+  instr-reg-op count-inc ∷
+  load-indirect-suc ∷ mov-to-input ∷
+  load-indirect ∷ store-at-slot (suc (suc (suc (suc (suc n1))))) ∷
+  load-indirect-suc ∷ store-at-slot (suc (suc n1)) ∷
+  instr-alloc-heap 2 ∷ store-at-slot (suc n1) ∷ mov-to-input ∷
+  load-from-slot (suc (suc (suc (suc (suc n1))))) ∷ store-indirect ∷
+  load-from-slot (suc (suc (suc n1))) ∷ store-indirect-suc ∷
+  load-from-slot (suc n1) ∷ store-at-slot (suc (suc (suc n1))) ∷
+  load-from-slot (suc (suc n1)) ∷ mov-to-input ∷
+  instr-ctrl (c-jmp l1) ∷
+  instr-ctrl (c-label (suc l1)) ∷
+  instr-reg-op scratch-load-count ∷ []
+
+cata-lin-I₂ : ℕ → ℕ → AbstractTrace
+cata-lin-I₂ n1 l1 =
+  instr-ctrl (c-label (suc (suc l1))) ∷
+  instr-ctrl (c-branch-scratch-zero (suc (suc (suc l1)))) ∷
+  store-at-slot (suc (suc (suc (suc n1)))) ∷
+  load-from-slot (suc (suc (suc n1))) ∷ mov-to-input ∷
+  load-indirect ∷ store-at-slot (suc (suc (suc (suc (suc n1))))) ∷
+  load-indirect-suc ∷ store-at-slot (suc (suc (suc n1))) ∷
+  instr-alloc-heap 2 ∷ store-at-slot (suc n1) ∷ mov-to-input ∷
+  load-from-slot (suc (suc (suc (suc (suc n1))))) ∷ store-indirect ∷
+  load-from-slot (suc (suc (suc (suc n1)))) ∷ store-indirect-suc ∷
+  instr-alloc-heap 2 ∷ store-at-slot n1 ∷ mov-to-input ∷
+  instr-load-tag-lit 1 ∷ store-indirect ∷
+  load-from-slot (suc n1) ∷ store-indirect-suc ∷
+  load-from-slot n1 ∷ mov-to-input ∷ []
+
+cata-lin-I₃ : ℕ → AbstractTrace
+cata-lin-I₃ l1 =
+  instr-reg-op scratch-dec ∷
+  instr-ctrl (c-jmp (suc (suc l1))) ∷
+  instr-ctrl (c-label (suc (suc (suc l1)))) ∷ []
+
 cata-trace-linear : ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-trace-linear n1 l1 at =
-  let pstash    = n1                                      -- node temp (build layer)
-      sstash    = suc n1                                  -- block temp
-      node-cur  = suc (suc n1)                            -- descend child cursor
-      stack-top = suc (suc (suc n1))                      -- payload-stack top ptr
-      acc-slot  = suc (suc (suc (suc n1)))                -- acc across pop work
-      xstash    = suc (suc (suc (suc (suc n1))))          -- popped/read payload
-      next      = suc (suc (suc (suc (suc (suc n1)))))    -- n1 + 6
-      ld-top = l1 ; ld-end = suc l1
-      la-top = suc (suc l1) ; la-end = suc (suc (suc l1))
-      l2     = suc (suc (suc (suc l1)))                   -- l1 + 4
-      descend =
-        instr-reg-op count-zero ∷
-        instr-load-tag-lit 0 ∷ store-at-slot stack-top ∷
-        instr-ctrl (c-label ld-top) ∷
-        instr-ctrl (c-branch-tag-zero ld-end) ∷
-        instr-reg-op count-inc ∷
-        load-indirect-suc ∷ mov-to-input ∷                -- Input1 := pair
-        load-indirect ∷ store-at-slot xstash ∷            -- xstash := x = pair[0]
-        load-indirect-suc ∷ store-at-slot node-cur ∷      -- node-cur := child = pair[1]
-        instr-alloc-heap 2 ∷ store-at-slot sstash ∷ mov-to-input ∷
-        load-from-slot xstash ∷ store-indirect ∷          -- block[0] := x
-        load-from-slot stack-top ∷ store-indirect-suc ∷   -- block[1] := old top
-        load-from-slot sstash ∷ store-at-slot stack-top ∷ -- top := block
-        load-from-slot node-cur ∷ mov-to-input ∷          -- Input1 := child
-        instr-ctrl (c-jmp ld-top) ∷
-        instr-ctrl (c-label ld-end) ∷ []
-      ascend =
-        instr-ctrl (c-label la-top) ∷
-        instr-ctrl (c-branch-scratch-zero la-end) ∷
-        store-at-slot acc-slot ∷                          -- acc-slot := acc
-        load-from-slot stack-top ∷ mov-to-input ∷         -- Input1 := stack node
-        load-indirect ∷ store-at-slot xstash ∷            -- xstash := x = node[0]
-        load-indirect-suc ∷ store-at-slot stack-top ∷     -- top := node[1] = prev
-        instr-alloc-heap 2 ∷ store-at-slot sstash ∷ mov-to-input ∷
-        load-from-slot xstash ∷ store-indirect ∷          -- pair[0] := x
-        load-from-slot acc-slot ∷ store-indirect-suc ∷    -- pair[1] := acc
-        instr-alloc-heap 2 ∷ store-at-slot pstash ∷ mov-to-input ∷
-        instr-load-tag-lit 1 ∷ store-indirect ∷           -- layer[0] := 1
-        load-from-slot sstash ∷ store-indirect-suc ∷      -- layer[1] := pair
-        load-from-slot pstash ∷ mov-to-input ∷            -- Input1 := layer
-        (at ++
-         (instr-reg-op scratch-dec ∷
-          instr-ctrl (c-jmp la-top) ∷
-          instr-ctrl (c-label la-end) ∷ []))
-      trace =
-        descend ++
-        (instr-reg-op scratch-load-count ∷
-         (at ++ ascend))                                  -- base alg on Input1=base node
-  in next , l2 , trace
+  suc (suc (suc (suc (suc (suc n1))))) , suc (suc (suc (suc l1))) ,
+  (cata-lin-I₁ n1 l1 ++ at ++ (cata-lin-I₂ n1 l1 ++ at ++ cata-lin-I₃ l1))
 
 -- ────────────────────────────────────────────────────────────────────
 -- Plan 0.36 Phase 2b Tier 2: functor-general BRANCHING cata codegen
@@ -402,46 +398,49 @@ rebuild-walk valSlot tv tb (F ⊗ G) s lb =
 
 -- The branching codegen. Precondition: Input1 = root μ-value; `at` = alg
 -- trace (Input1 = ⟦F⟧A layer → Output = A). Output := root fold.
+-- Plan 0.63 (iii): the branching skeleton splices the algebra ONCE, so its
+-- decomposition is `I₁ ++ at ++ I₂`. Same list as before; the old form nested
+-- as `(… ++ at ++ B) ++ final-read`.
+cata-br-I₁ : Functor → ℕ → ℕ → AbstractTrace
+cata-br-I₁ F n1 l1 =
+  -- init
+  (mov-to-output ∷ store-at-slot (n1 +ℕ 3) ∷
+   instr-alloc-heap 2 ∷ store-at-slot (n1 +ℕ 6) ∷ mov-to-input ∷
+   instr-load-tag-lit 0 ∷ store-indirect ∷
+   load-from-slot (n1 +ℕ 6) ∷ store-at-slot (suc n1) ∷
+   load-from-slot (n1 +ℕ 6) ∷ store-at-slot (n1 +ℕ 2) ∷
+   load-from-slot (n1 +ℕ 6) ∷ store-at-slot n1 ∷
+   load-from-slot (n1 +ℕ 3) ∷ []) ++ push2 n1 (n1 +ℕ 4) (n1 +ℕ 5) ++
+  -- flatten
+  (instr-ctrl (c-label l1) ∷
+   load-from-slot n1 ∷ mov-to-input ∷
+   instr-ctrl (c-branch-tag-zero (suc l1)) ∷
+   load-indirect-suc ∷ store-at-slot n1 ∷
+   load-indirect ∷ mov-to-input ∷ store-at-slot (n1 +ℕ 3) ∷
+   load-from-slot (n1 +ℕ 3) ∷ []) ++ push2 (suc n1) (n1 +ℕ 4) (n1 +ℕ 5) ++
+  (load-from-slot (n1 +ℕ 3) ∷ mov-to-input ∷ []) ++
+  visit-walk n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4) ++
+  (instr-ctrl (c-jmp l1) ∷ instr-ctrl (c-label (suc l1)) ∷ []) ++
+  -- the fold's prefix, up to the algebra splice
+  (instr-ctrl (c-label (l1 +ℕ 2)) ∷
+   load-from-slot (suc n1) ∷ mov-to-input ∷
+   instr-ctrl (c-branch-tag-zero (l1 +ℕ 3)) ∷
+   load-indirect-suc ∷ store-at-slot (suc n1) ∷
+   load-indirect ∷ mov-to-input ∷ []) ++
+  rebuild-walk (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4 +ℕ lsize F) ++
+  (mov-to-input ∷ [])
+
+cata-br-I₂ : ℕ → ℕ → AbstractTrace
+cata-br-I₂ n1 l1 =
+  push2 (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) ++
+  (instr-ctrl (c-jmp (l1 +ℕ 2)) ∷ instr-ctrl (c-label (l1 +ℕ 3)) ∷ []) ++
+  -- final-read
+  (load-from-slot (n1 +ℕ 2) ∷ mov-to-input ∷ load-indirect ∷ [])
+
 cata-trace-branching : Functor → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-trace-branching F n1 l1 at =
-  let s-todo = n1 ; s-eval = suc n1 ; s-val = n1 +ℕ 2 ; s-node = n1 +ℕ 3
-      t0 = n1 +ℕ 4 ; t1 = n1 +ℕ 5 ; t2 = n1 +ℕ 6
-      wb   = n1 +ℕ 7
-      next = wb +ℕ (4 * fsize F) +ℕ 4
-      f-top = l1 ; f-end = suc l1 ; g-top = l1 +ℕ 2 ; g-end = l1 +ℕ 3
-      -- item 6: the two functor walks own DISJOINT label ranges after the
-      -- loop's own four (visit at `lv`, rebuild at `lr` — sharing a base
-      -- would emit duplicate `c-label`s and cross-wire the joins).
-      lv    = l1 +ℕ 4
-      lr    = lv +ℕ lsize F
-      l2    = lr +ℕ lsize F
-      init =
-        (mov-to-output ∷ store-at-slot s-node ∷
-         instr-alloc-heap 2 ∷ store-at-slot t2 ∷ mov-to-input ∷
-         instr-load-tag-lit 0 ∷ store-indirect ∷
-         load-from-slot t2 ∷ store-at-slot s-eval ∷
-         load-from-slot t2 ∷ store-at-slot s-val ∷
-         load-from-slot t2 ∷ store-at-slot s-todo ∷
-         load-from-slot s-node ∷ []) ++ push2 s-todo t0 t1
-      flatten =
-        (instr-ctrl (c-label f-top) ∷
-         load-from-slot s-todo ∷ mov-to-input ∷
-         instr-ctrl (c-branch-tag-zero f-end) ∷
-         load-indirect-suc ∷ store-at-slot s-todo ∷
-         load-indirect ∷ mov-to-input ∷ store-at-slot s-node ∷
-         load-from-slot s-node ∷ []) ++ push2 s-eval t0 t1 ++
-        (load-from-slot s-node ∷ mov-to-input ∷ []) ++ visit-walk s-todo t0 t1 F wb lv ++
-        (instr-ctrl (c-jmp f-top) ∷ instr-ctrl (c-label f-end) ∷ [])
-      fold =
-        (instr-ctrl (c-label g-top) ∷
-         load-from-slot s-eval ∷ mov-to-input ∷
-         instr-ctrl (c-branch-tag-zero g-end) ∷
-         load-indirect-suc ∷ store-at-slot s-eval ∷
-         load-indirect ∷ mov-to-input ∷ []) ++ rebuild-walk s-val t0 t1 F wb lr ++
-        (mov-to-input ∷ []) ++ at ++ push2 s-val t0 t1 ++
-        (instr-ctrl (c-jmp g-top) ∷ instr-ctrl (c-label g-end) ∷ [])
-      final-read = load-from-slot s-val ∷ mov-to-input ∷ load-indirect ∷ []
-  in next , l2 , (init ++ flatten ++ fold ++ final-read)
+  n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4 , l1 +ℕ 4 +ℕ lsize F +ℕ lsize F ,
+  (cata-br-I₁ F n1 l1 ++ at ++ cata-br-I₂ n1 l1)
 
 -- Dispatch the strategy. Nat / branching still route to the Nat codegen
 -- (branching = Tier 2, still segfaults); linear gets the Tier-1 codegen.

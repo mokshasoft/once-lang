@@ -51,7 +51,7 @@ open import Once.CCC.Codegen.IRToTrace
   using (ir-to-trace; ir-to-trace'; cata-strategy; cata-dispatch;
          CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
          cata-trace-nat; cata-trace-linear; cata-trace-branching;
-         visit-walk; rebuild-walk; lsize)
+         visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂)
 
 module CataIRSlotStable {FS : FrameSemantics} where
   open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
@@ -280,21 +280,26 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- and `all-stable?-complete` / the `at` hypothesis discharge them.
   branching-true : ∀ F n1 l1 at → all-stable? at ≡ true
                  → all-stable? (proj₂ (proj₂ (cata-trace-branching F n1 l1 at))) ≡ true
+  -- Plan 0.63 (iii): the trace is `I₁ ++ at ++ I₂`, and I₁ itself splices the
+  -- two functor walks — so peel I₁'s two neutrals, then `at`, then I₂ computes.
+  -- Plan 0.63 (iii): the trace is `I₁ ++ at ++ I₂`. The concrete parts compute
+  -- away, so only the three stuck splices need peeling: the two functor walks
+  -- (both inside I₁) and the algebra.
+  -- Plan 0.63 (iii): the trace is `I₁ ++ at ++ I₂`. Split THERE first — a peel
+  -- inside I₁ would have to cross the outer `++ at`, which needs assoc and is
+  -- not definitional. After the top split, I₁'s own splices peel normally.
   branching-true F n1 l1 at sa =
-    trans (all-stable?-++ (visit-walk n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4) ++ _) _)
-      (∧-intro
-        -- all-stable? (visit-walk F ++ [jmp,label])  (the [jmp,label] reduces to true)
-        (trans (all-stable?-++ (visit-walk n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4)) _)
-          (∧-intro (all-stable?-complete _ (visit-walk-stable n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4))) refl))
-        -- all-stable? (fold ++ final-read)  (fold head reduces; final-read reduces to true)
-        (trans (all-stable?-++ (rebuild-walk (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) ((l1 +ℕ 4) +ℕ lsize F) ++ _) _)
-          (∧-intro
-            -- all-stable? (rebuild-walk F ++ Rest)
-            (trans (all-stable?-++ (rebuild-walk (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) ((l1 +ℕ 4) +ℕ lsize F)) _)
-              (∧-intro (all-stable?-complete _ (rebuild-walk-stable (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) ((l1 +ℕ 4) +ℕ lsize F)))
-                -- all-stable? (mov ∷ (at ++ push2 ++ [jmp,label]))  → all-stable? (at ++ …)
-                (trans (all-stable?-++ at _) (∧-intro sa refl))))
-            refl)))
+    trans (all-stable?-++ (cata-br-I₁ F n1 l1) (at ++ cata-br-I₂ n1 l1))
+      (∧-intro I₁-true
+        (trans (all-stable?-++ at (cata-br-I₂ n1 l1)) (∧-intro sa refl)))
+    where
+      I₁-true : all-stable? (cata-br-I₁ F n1 l1) ≡ true
+      I₁-true =
+        trans (all-stable?-++ (visit-walk n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4)) _)
+          (∧-intro (all-stable?-complete _ (visit-walk-stable n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4)))
+            (trans (all-stable?-++ (rebuild-walk (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4 +ℕ lsize F)) _)
+              (∧-intro (all-stable?-complete _ (rebuild-walk-stable (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4 +ℕ lsize F)))
+                       refl)))
 
   cata-trace-branching-stable : ∀ F n1 l1 at → AllSlotStable at
                               → AllSlotStable (proj₂ (proj₂ (cata-trace-branching F n1 l1 at)))

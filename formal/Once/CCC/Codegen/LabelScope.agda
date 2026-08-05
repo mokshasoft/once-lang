@@ -54,12 +54,13 @@ open import Once.CCC.Codegen.IRToTrace using
   (ir-to-trace'; ir-to-trace; CataStrategy; strat-const; strat-nat; strat-linear
   ; strat-branching; cata-strategy; cata-dispatch; lsize
   ; push2; pop2; wrap-sum; visit-walk; rebuild-walk
-  ; cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-nat-layer; cata-nat-descend)
+  ; cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-nat-layer; cata-nat-descend
+  ; cata-br-I₁; cata-br-I₂; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃)
 open import Once.CCC.Codegen.LabelRange using (label-of; cata-label-of; label-mono; cata-label-mono)
 open import Once.CCC.Codegen.SlotBudget using
   (fetch-at; seg-at; SegState; seg-idle?; idle-seg-at
   ; seg-at-++ˡ; seg-at-++ʳ; fetch-++ˡ; fetch-++ʳ; split-pos; seg-fold
-  ; idle-neutral; seg-fold-++)
+  ; idle-neutral; seg-fold-++; idle-++; visit-idle; rebuild-idle)
 
 ------------------------------------------------------------------------
 -- The `once`-namespace label an instruction mentions.
@@ -357,14 +358,17 @@ cata-linear-ls lo n1 l1 at lo≤l1 atls =
 cata-branching-ls : ∀ (F : Functor) (lo n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
                   → LabelsIn lo (cata-label-of (cata-dispatch (strat-branching F) n1 l1 at))
                              (cata-trace-of (cata-dispatch (strat-branching F) n1 l1 at))
+-- Plan 0.63 (iii): `I₁ ++ at ++ I₂`.
 cata-branching-ls F lo n1 l1 at lo≤l1 atls =
-  ++⁺ init (++⁺ flatten (++⁺ fold final))
+  ++⁺ I₁-ls (++⁺ at' I₂-ls)
   where
     lv = l1 + 4
     lr = lv + lsize F
     hi = lr + lsize F
     lv≤lr : lv ≤ lr
     lv≤lr = m≤m+n lv (lsize F)
+    top : lv ≤ hi
+    top = ≤-trans lv≤lr (m≤m+n lr (lsize F))
     L0 : lo ≤ l1
     L0 = lo≤l1
     L1 : lo ≤ suc l1
@@ -373,57 +377,41 @@ cata-branching-ls F lo n1 l1 at lo≤l1 atls =
     L2 = ≤-trans L0 (m≤m+n l1 2)
     L3 : lo ≤ l1 + 3
     L3 = ≤-trans L0 (m≤m+n l1 3)
-    l1≤hi : l1 ≤ hi
-    l1≤hi = ≤-trans (m≤m+n l1 4) (≤-trans lv≤lr (m≤m+n lr (lsize F)))
     H0 : l1 < hi
-    H0 = <-transˡ (a<a+suc l1 3) (≤-trans lv≤lr (m≤m+n lr (lsize F)))
+    H0 = <-transˡ (a<a+suc l1 3) top
     H1 : suc l1 < hi
-    H1 = <-transˡ (sa<a+ss l1 2) (≤-trans lv≤lr (m≤m+n lr (lsize F)))
+    H1 = <-transˡ (sa<a+ss l1 2) top
     H2 : l1 + 2 < hi
-    H2 = <-transˡ (+lt l1 2 4 (s≤s (s≤s (s≤s z≤n))))
-                  (≤-trans lv≤lr (m≤m+n lr (lsize F)))
+    H2 = <-transˡ (+lt l1 2 4 (s≤s (s≤s (s≤s z≤n)))) top
     H3 : l1 + 3 < hi
-    H3 = <-transˡ (+lt l1 3 4 (s≤s (s≤s (s≤s (s≤s z≤n)))))
-                  (≤-trans lv≤lr (m≤m+n lr (lsize F)))
+    H3 = <-transˡ (+lt l1 3 4 (s≤s (s≤s (s≤s (s≤s z≤n))))) top
     at' : LabelsIn lo hi at
-    at' = ls-weaken ≤-refl (≤-trans lo≤l1' l1≤hi) atls
-      where lo≤l1' : l1 ≤ l1
-            lo≤l1' = ≤-refl
-    -- the VISIT walk's window `[lv, lv + lsize F)` sits below the rebuild's
-    visit' : LabelsIn lo hi (visit-walk n1 (n1 + 4) (n1 + 5) F (n1 + 7) lv)
-    visit' = ls-weaken (≤-trans L0 (m≤m+n l1 4)) (m≤m+n lr (lsize F))
-                       (visit-ls F n1 (n1 + 4) (n1 + 5) (n1 + 7) lv)
-    -- …and the REBUILD walk's is `[lr, lr + lsize F) = [lr, hi)`
-    rebuild' : LabelsIn lo hi (rebuild-walk (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) lr)
-    rebuild' = ls-weaken (≤-trans L0 (≤-trans (m≤m+n l1 4) lv≤lr)) ≤-refl
-                         (rebuild-ls F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) lr)
-    init : LabelsIn lo hi _
-    init =
+    at' = ls-weaken ≤-refl (≤-trans (m≤m+n l1 4) top) atls
+    I₁-ls : LabelsIn lo hi (cata-br-I₁ F n1 l1)
+    I₁-ls =
       ++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
-          (push2-ls lo hi n1 (n1 + 4) (n1 + 5))
-    flatten : LabelsIn lo hi _
-    flatten =
-      ++⁺ (li-lab refl L0 H0 ∷ li-none refl ∷ li-none refl ∷
-           li-lab refl L1 H1 ∷ li-none refl ∷ li-none refl ∷
-           li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
-          (++⁺ (push2-ls lo hi (suc n1) (n1 + 4) (n1 + 5))
-               (++⁺ (li-none refl ∷ li-none refl ∷ [])
-                    (++⁺ visit'
-                         (li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷ []))))
-    fold : LabelsIn lo hi _
-    fold =
-      ++⁺ (li-lab refl L2 H2 ∷ li-none refl ∷ li-none refl ∷
-           li-lab refl L3 H3 ∷ li-none refl ∷ li-none refl ∷
-           li-none refl ∷ li-none refl ∷ [])
-          (++⁺ rebuild'
-               (++⁺ (li-none refl ∷ [])
-                    (++⁺ at'
-                         (++⁺ (push2-ls lo hi (n1 + 2) (n1 + 4) (n1 + 5))
-                              (li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷ [])))))
-    final : LabelsIn lo hi _
-    final = li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+      (++⁺ (push2-ls lo hi n1 (n1 + 4) (n1 + 5))
+      (++⁺ (li-lab refl L0 H0 ∷ li-none refl ∷ li-none refl ∷
+            li-lab refl L1 H1 ∷ li-none refl ∷ li-none refl ∷
+            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (push2-ls lo hi (suc n1) (n1 + 4) (n1 + 5))
+      (++⁺ (li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (ls-weaken (≤-trans L0 (m≤m+n l1 4)) (m≤m+n lr (lsize F))
+                      (visit-ls F n1 (n1 + 4) (n1 + 5) (n1 + 7) lv))
+      (++⁺ (li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷ [])
+      (++⁺ (li-lab refl L2 H2 ∷ li-none refl ∷ li-none refl ∷
+            li-lab refl L3 H3 ∷ li-none refl ∷ li-none refl ∷
+            li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (ls-weaken (≤-trans L0 (≤-trans (m≤m+n l1 4) lv≤lr)) ≤-refl
+                      (rebuild-ls F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) lr))
+           (li-none refl ∷ [])))))))))
+    I₂-ls : LabelsIn lo hi (cata-br-I₂ n1 l1)
+    I₂-ls =
+      ++⁺ (push2-ls lo hi (n1 + 2) (n1 + 4) (n1 + 5))
+          (li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷
+           li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
 
 cata-ls : ∀ (st : CataStrategy) (lo n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
         → LabelsIn lo (cata-label-of (cata-dispatch st n1 l1 at))
@@ -919,6 +907,110 @@ cata-nat-pieces n1 l1 at =
       li-none refl ∷ []
     I₃-ls : LabelsIn l1 hi (cata-nat-I₃ l1)
     I₃-ls = li-none refl ∷ li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ []
+
+-- …and the other two skeletons. `linear` has two copies like `nat`;
+-- `branching` has ONE, so its witness is a single `pcons`.
+cata-lin-pieces : ∀ (n1 l1 : ℕ) (at : AbstractTrace)
+                → Pieces at l1 (suc (suc (suc (suc l1))))
+                         (cata-trace-of (cata-dispatch strat-linear n1 l1 at))
+cata-lin-pieces n1 l1 at =
+  pcons refl I₁-ls (pcons refl I₂-ls (pnil refl I₃-ls))
+  where
+    hi = suc (suc (suc (suc l1)))
+    L0 : l1 ≤ l1
+    L0 = ≤-refl
+    L1 : l1 ≤ suc l1
+    L1 = ≤-step L0
+    L2 : l1 ≤ suc (suc l1)
+    L2 = ≤-step L1
+    L3 : l1 ≤ suc (suc (suc l1))
+    L3 = ≤-step L2
+    H0 : l1 < hi
+    H0 = ≤-step (≤-step (≤-step ≤-refl))
+    H1 : suc l1 < hi
+    H1 = ≤-step (≤-step ≤-refl)
+    H2 : suc (suc l1) < hi
+    H2 = ≤-step ≤-refl
+    H3 : suc (suc (suc l1)) < hi
+    H3 = ≤-refl
+    I₁-ls : LabelsIn l1 hi (cata-lin-I₁ n1 l1)
+    I₁-ls =
+      li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷ li-none refl ∷ []
+    I₂-ls : LabelsIn l1 hi (cata-lin-I₂ n1 l1)
+    I₂-ls =
+      li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+    I₃-ls : LabelsIn l1 hi (cata-lin-I₃ l1)
+    I₃-ls = li-none refl ∷ li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷ []
+
+cata-br-pieces : ∀ (F : Functor) (n1 l1 : ℕ) (at : AbstractTrace)
+               → Pieces at l1 (l1 + 4 + lsize F + lsize F)
+                        (cata-trace-of (cata-dispatch (strat-branching F) n1 l1 at))
+cata-br-pieces F n1 l1 at = pcons I₁-idle I₁-ls (pnil refl I₂-ls)
+  where
+    lv = l1 + 4
+    lr = lv + lsize F
+    hi = lr + lsize F
+    lv≤lr : lv ≤ lr
+    lv≤lr = m≤m+n lv (lsize F)
+    top : lv ≤ hi
+    top = ≤-trans lv≤lr (m≤m+n lr (lsize F))
+    L0 : l1 ≤ l1
+    L0 = ≤-refl
+    L1 : l1 ≤ suc l1
+    L1 = ≤-step L0
+    L2 : l1 ≤ l1 + 2
+    L2 = m≤m+n l1 2
+    L3 : l1 ≤ l1 + 3
+    L3 = m≤m+n l1 3
+    H0 : l1 < hi
+    H0 = <-transˡ (a<a+suc l1 3) top
+    H1 : suc l1 < hi
+    H1 = <-transˡ (sa<a+ss l1 2) top
+    H2 : l1 + 2 < hi
+    H2 = <-transˡ (+lt l1 2 4 (s≤s (s≤s (s≤s z≤n)))) top
+    H3 : l1 + 3 < hi
+    H3 = <-transˡ (+lt l1 3 4 (s≤s (s≤s (s≤s (s≤s z≤n))))) top
+    I₁-idle : seg-idle? (cata-br-I₁ F n1 l1) ≡ true
+    I₁-idle = idle-++ (visit-walk n1 (n1 + 4) (n1 + 5) F (n1 + 7) lv) _
+                (visit-idle F n1 (n1 + 4) (n1 + 5) (n1 + 7) lv)
+                (idle-++ (rebuild-walk (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) lr) _
+                  (rebuild-idle F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) lr) refl)
+    I₁-ls : LabelsIn l1 hi (cata-br-I₁ F n1 l1)
+    I₁-ls =
+      ++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+           li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+           li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (push2-ls l1 hi n1 (n1 + 4) (n1 + 5))
+      (++⁺ (li-lab refl L0 H0 ∷ li-none refl ∷ li-none refl ∷
+            li-lab refl L1 H1 ∷ li-none refl ∷ li-none refl ∷
+            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (push2-ls l1 hi (suc n1) (n1 + 4) (n1 + 5))
+      (++⁺ (li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (ls-weaken (m≤m+n l1 4) (m≤m+n lr (lsize F))
+                      (visit-ls F n1 (n1 + 4) (n1 + 5) (n1 + 7) lv))
+      (++⁺ (li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷ [])
+      (++⁺ (li-lab refl L2 H2 ∷ li-none refl ∷ li-none refl ∷
+            li-lab refl L3 H3 ∷ li-none refl ∷ li-none refl ∷
+            li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (ls-weaken (≤-trans (m≤m+n l1 4) lv≤lr) ≤-refl
+                      (rebuild-ls F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) lr))
+           (li-none refl ∷ [])))))))))
+    I₂-ls : LabelsIn l1 hi (cata-br-I₂ n1 l1)
+    I₂-ls =
+      ++⁺ (push2-ls l1 hi (n1 + 2) (n1 + 4) (n1 + 5))
+          (li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷
+           li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
 
 -- (superseded note) WHY THE CATA WITNESSES WERE NOT HERE (2026-08-04, measured by attempting
 -- them): a `Pieces` witness has to name the skeleton fragments, and in

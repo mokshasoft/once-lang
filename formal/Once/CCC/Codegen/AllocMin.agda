@@ -140,24 +140,24 @@ cata-linear-am n1 l1 at am = ++⁺ descend (tt ∷ ++⁺ am ascend)
 
 cata-branching-am : ∀ F n1 l1 at → AllocMinTrace at
                   → AllocMinTrace (cata-trace-of (cata-trace-branching F n1 l1 at))
+-- Plan 0.63 (iii): `I₁ ++ at ++ I₂`.
 cata-branching-am F n1 l1 at am =
-  ++⁺ init (++⁺ flatten (++⁺ fold (tt ∷ tt ∷ tt ∷ [])))
+  ++⁺ I₁ (++⁺ am I₂)
   where
-    init : AllocMinTrace _
-    init = ++⁺ (tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-               (push2-am n1 (n1 + 4) (n1 + 5))
-    flatten : AllocMinTrace _
-    flatten = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-                  (++⁺ (push2-am (suc n1) (n1 + 4) (n1 + 5))
-                       (++⁺ (tt ∷ tt ∷ [])
-                            (++⁺ (visit-walk-am n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4))
-                                 (tt ∷ tt ∷ []))))
-    fold : AllocMinTrace _
-    fold = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-               (++⁺ (rebuild-walk-am (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) ((l1 + 4) + lsize F))
-                    (++⁺ (tt ∷ [])
-                         (++⁺ am (++⁺ (push2-am (n1 + 2) (n1 + 4) (n1 + 5))
-                                      (tt ∷ tt ∷ [])))))
+    I₁ : AllocMinTrace _
+    I₁ = ++⁺ (tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+             (++⁺ (push2-am n1 (n1 + 4) (n1 + 5))
+             (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+             (++⁺ (push2-am (suc n1) (n1 + 4) (n1 + 5))
+             (++⁺ (tt ∷ tt ∷ [])
+             (++⁺ (visit-walk-am n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4))
+             (++⁺ (tt ∷ tt ∷ [])
+             (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+             (++⁺ (rebuild-walk-am (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) ((l1 + 4) + lsize F))
+                  (tt ∷ [])))))))))
+    I₂ : AllocMinTrace _
+    I₂ = ++⁺ (push2-am (n1 + 2) (n1 + 4) (n1 + 5))
+             (++⁺ (tt ∷ tt ∷ []) (tt ∷ tt ∷ tt ∷ []))
 
 cata-dispatch-am : ∀ st n1 l1 at → AllocMinTrace at
                  → AllocMinTrace (cata-trace-of (cata-dispatch st n1 l1 at))
