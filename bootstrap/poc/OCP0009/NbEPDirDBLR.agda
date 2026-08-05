@@ -1606,6 +1606,16 @@ U-nf : {A : RTy Γ} → U {Γ} ⟶ᵀ* A → A ≡ U
 U-nf doneᵀ        = refl
 U-nf (stepᵀ () _)
 
+-- ★ WF stage A: `Unit`/`Nat` are INERT type formers — no ⟶ᵀ rule has
+-- them as a source, so their reduct is themselves.
+Unit-nf : {A : RTy Γ} → Unit {Γ} ⟶ᵀ* A → A ≡ Unit
+Unit-nf doneᵀ        = refl
+Unit-nf (stepᵀ () _)
+
+Nat-nf : {A : RTy Γ} → Nat {Γ} ⟶ᵀ* A → A ≡ Nat
+Nat-nf doneᵀ        = refl
+Nat-nf (stepᵀ () _)
+
 -- ⚠ The TYPE-level neutrality payload is a PLAIN syntactic `Ne`, not `SNe`.
 -- `El-ne-reduct` needs neutrality preserved under reduction, and for `SNe` that
 -- would need `SN` closed under reduction — a real lemma in the JM presentation
@@ -2021,6 +2031,8 @@ data StkHd {Γ} : RTy Γ → Set where
   sh-Σ    : {A : RTy Γ} {B : RTy (Γ ∙)} → StkHd (Σ' A B)
   sh-Hom  : {H : RTy Γ} {a b : RTm Γ} → StkHd H → StkHd (Hom H a b)
   sh-Id   : {A : RTy Γ} {t u : RTm Γ} → StkHd (Id A t u)
+  sh-Unit : StkHd (Unit {Γ})
+  sh-Nat  : StkHd (Nat {Γ})
 
 stkhd-red : {H H' : RTy Γ} → StkHd H → H ⟶ᵀ H' → StkHd H'
 stkhd-red (sh-ne ()) El-⌜base⌝
@@ -2030,6 +2042,8 @@ stkhd-red (sh-ne n)  (ξ-El r)    = sh-ne (ne-red n r)
 stkhd-red sh-Id (ξ-Idᵀ r) = sh-Id
 stkhd-red sh-Id (ξ-Idˡ r) = sh-Id
 stkhd-red sh-Id (ξ-Idʳ r) = sh-Id
+stkhd-red sh-Unit ()
+stkhd-red sh-Nat  ()
 stkhd-red sh-Σ       (ξ-Σˡ r)    = sh-Σ
 stkhd-red sh-Σ       (ξ-Σʳ r)    = sh-Σ
 stkhd-red (sh-Hom ()) (Hom-U _ _)
@@ -2590,6 +2604,25 @@ payT-irrel cv (⊩₀Π p ⊩F ⊩G) (⊩₀Π q ⊩F' ⊩G') pay v r'
 
 infix 4 _⊩₁∋_
 
+-- ★★ WF stage A — the THIRD payload flavor.  A semantic natural
+-- number is one that REACHES a numeral (or is stuck neutral): exactly
+-- the induction principle `fund`'s `⊢natrec` recurses on, and the
+-- reason `natrec` computes on every closed member.  The shape mirrors
+-- `SN` (neutral / constructor / head-expansion), so every transport is
+-- the SN transport.
+data NatMem {Γ} : RTm Γ → Set where
+  nm-ne   : {t : RTm Γ} → SNe t → NatMem t
+  nm-zero : NatMem (nzero {Γ})
+  nm-suc  : {n : RTm Γ} → NatMem n → NatMem (nsuc n)
+  nm-exp  : {t t' : RTm Γ} → SNRed t t' → NatMem t' → NatMem t
+
+-- forward closure along the head strategy — `sn-whred`'s proof, by
+-- determinism of `SNRed`.
+natmem-whred : {t t' : RTm Γ} → NatMem t → SNRed t t' → NatMem t'
+natmem-whred (nm-ne n)   r = nm-ne (sne-whred n r)
+natmem-whred (nm-exp r₀ h) r with snr-det r₀ r
+... | refl = h
+
 data ⊩₁_ {Γ} : RTy Γ → Set
 _⊩₁∋_ : {Γ : Cx} {A : RTy Γ} → ⊩₁ A → RTm Γ → Set
 
@@ -2614,6 +2647,10 @@ data ⊩₁_ {Γ} where
   -- to a `Hom`.  The predicative cut does structural work again.
   ⊩₁Hom  : {A H : RTy Γ} {a b : RTm Γ}
          → A ⟶ᵀ* Hom H a b → StkHd H → ⊩₁ A
+  -- ★ WF stage A: the datatype core's two type formers.  `Unit` is
+  -- SN-only (like `base`); `Nat` carries the reaches-numeral payload.
+  ⊩₁Unit : {A : RTy Γ} → A ⟶ᵀ* Unit → ⊩₁ A
+  ⊩₁Nat  : {A : RTy Γ} → A ⟶ᵀ* Nat → ⊩₁ A
   ⊩₁Id   : {A H : RTy Γ} {a b : RTm Γ}
          → A ⟶ᵀ* Id H a b → ⊩₁ A
 
@@ -2624,6 +2661,8 @@ data ⊩₁_ {Γ} where
 ⊩₁Σ _ ⊩F ⊩G  ⊩₁∋ t =
   SN t × Σ (⊩F ⊩₁∋ fst t) (λ r → (⊩G (fst t) r) ⊩₁∋ snd t)
 ⊩₁Hom _ _    ⊩₁∋ t = SN t
+⊩₁Unit _     ⊩₁∋ t = SN t
+⊩₁Nat _      ⊩₁∋ t = SN t × NatMem t
 ⊩₁Id {a = a} {b = b} _ ⊩₁∋ t = SN t × IdPay a b t
 
 bwd₁ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₁ B → ⊩₁ A
@@ -2633,6 +2672,8 @@ bwd₁ p (⊩₁ne q n)    = ⊩₁ne   (⟶ᵀ*-trans p q) n
 bwd₁ p (⊩₁Π q ⊩F ⊩G) = ⊩₁Π    (⟶ᵀ*-trans p q) ⊩F ⊩G
 bwd₁ p (⊩₁Σ q ⊩F ⊩G) = ⊩₁Σ    (⟶ᵀ*-trans p q) ⊩F ⊩G
 bwd₁ p (⊩₁Hom q s)   = ⊩₁Hom  (⟶ᵀ*-trans p q) s
+bwd₁ p (⊩₁Unit q)    = ⊩₁Unit (⟶ᵀ*-trans p q)
+bwd₁ p (⊩₁Nat q)     = ⊩₁Nat  (⟶ᵀ*-trans p q)
 bwd₁ p (⊩₁Id q)      = ⊩₁Id   (⟶ᵀ*-trans p q)
 
 ------------------------------------------------------------------------
@@ -2648,6 +2689,128 @@ irrel₁ : {A B : RTy Γ} → A ≅ᵀ B → (R : ⊩₁ A) (S : ⊩₁ B) →
          ((t : RTm Γ) → R ⊩₁∋ t → S ⊩₁∋ t) × ((t : RTm Γ) → S ⊩₁∋ t → R ⊩₁∋ t)
 
 -- identities: both sides `SN`-valued, or both `U`.
+irrel₁ c (⊩₁Unit p) (⊩₁base q) with joinW c p q
+... | E , (mE , bE) with base-nf bE
+...   | refl with Unit-nf mE
+...     | ()
+irrel₁ c (⊩₁base p) (⊩₁Unit q) with joinW c p q
+... | E , (bE , mE) with base-nf bE
+...   | refl with Unit-nf mE
+...     | ()
+irrel₁ c (⊩₁Unit p) (⊩₁U q) with joinW c p q
+... | E , (mE , uE2) with U-nf uE2
+...   | refl with Unit-nf mE
+...     | ()
+irrel₁ c (⊩₁U p) (⊩₁Unit q) with joinW c p q
+... | E , (uE2 , mE) with U-nf uE2
+...   | refl with Unit-nf mE
+...     | ()
+irrel₁ c (⊩₁Unit p) (⊩₁ne q n) with joinW c p q
+... | E , (mE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Unit-nf mE
+...     | ()
+irrel₁ c (⊩₁ne p n) (⊩₁Unit q) with joinW c p q
+... | E , (eE , mE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Unit-nf mE
+...     | ()
+irrel₁ c (⊩₁Unit p) (⊩₁Π q _ _) with joinW c p q
+... | E , (mE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+irrel₁ c (⊩₁Π p _ _) (⊩₁Unit q) with joinW c p q
+... | E , (πE , mE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+irrel₁ c (⊩₁Unit p) (⊩₁Σ q _ _) with joinW c p q
+... | E , (mE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+irrel₁ c (⊩₁Σ p _ _) (⊩₁Unit q) with joinW c p q
+... | E , (σE , mE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Unit-nf mE
+...     | ()
+irrel₁ c (⊩₁Unit p) (⊩₁Hom q sh) with joinW c p q
+... | E , (mE , hE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Unit-nf mE
+...     | ()
+irrel₁ c (⊩₁Hom p sh) (⊩₁Unit q) with joinW c p q
+... | E , (hE , mE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Unit-nf mE
+...     | ()
+irrel₁ c (⊩₁Unit p) (⊩₁Id q) with joinW c p q
+... | E , (mE , iE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Unit-nf mE
+...     | ()
+irrel₁ c (⊩₁Id p) (⊩₁Unit q) with joinW c p q
+... | E , (iE , mE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Unit-nf mE
+...     | ()
+irrel₁ c (⊩₁Nat p) (⊩₁base q) with joinW c p q
+... | E , (mE , bE) with base-nf bE
+...   | refl with Nat-nf mE
+...     | ()
+irrel₁ c (⊩₁base p) (⊩₁Nat q) with joinW c p q
+... | E , (bE , mE) with base-nf bE
+...   | refl with Nat-nf mE
+...     | ()
+irrel₁ c (⊩₁Nat p) (⊩₁U q) with joinW c p q
+... | E , (mE , uE2) with U-nf uE2
+...   | refl with Nat-nf mE
+...     | ()
+irrel₁ c (⊩₁U p) (⊩₁Nat q) with joinW c p q
+... | E , (uE2 , mE) with U-nf uE2
+...   | refl with Nat-nf mE
+...     | ()
+irrel₁ c (⊩₁Nat p) (⊩₁ne q n) with joinW c p q
+... | E , (mE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Nat-nf mE
+...     | ()
+irrel₁ c (⊩₁ne p n) (⊩₁Nat q) with joinW c p q
+... | E , (eE , mE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Nat-nf mE
+...     | ()
+irrel₁ c (⊩₁Nat p) (⊩₁Π q _ _) with joinW c p q
+... | E , (mE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Nat-nf mE
+...     | ()
+irrel₁ c (⊩₁Π p _ _) (⊩₁Nat q) with joinW c p q
+... | E , (πE , mE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Nat-nf mE
+...     | ()
+irrel₁ c (⊩₁Nat p) (⊩₁Σ q _ _) with joinW c p q
+... | E , (mE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Nat-nf mE
+...     | ()
+irrel₁ c (⊩₁Σ p _ _) (⊩₁Nat q) with joinW c p q
+... | E , (σE , mE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Nat-nf mE
+...     | ()
+irrel₁ c (⊩₁Nat p) (⊩₁Hom q sh) with joinW c p q
+... | E , (mE , hE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Nat-nf mE
+...     | ()
+irrel₁ c (⊩₁Hom p sh) (⊩₁Nat q) with joinW c p q
+... | E , (hE , mE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Nat-nf mE
+...     | ()
+irrel₁ c (⊩₁Nat p) (⊩₁Id q) with joinW c p q
+... | E , (mE , iE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Nat-nf mE
+...     | ()
+irrel₁ c (⊩₁Id p) (⊩₁Nat q) with joinW c p q
+... | E , (iE , mE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Nat-nf mE
+...     | ()
+irrel₁ c (⊩₁Unit p) (⊩₁Nat q) with joinW c p q
+... | E , (uE , nE) with Nat-nf nE
+...   | refl with Unit-nf uE
+...     | ()
+irrel₁ c (⊩₁Nat p) (⊩₁Unit q) with joinW c p q
+... | E , (nE , uE) with Nat-nf nE
+...   | refl with Unit-nf uE
+...     | ()
+irrel₁ c (⊩₁Unit _) (⊩₁Unit _) = (λ _ h → h) , (λ _ h → h)
+irrel₁ c (⊩₁Nat _)  (⊩₁Nat _)  = (λ _ h → h) , (λ _ h → h)
 irrel₁ c (⊩₁base _) (⊩₁base _) = (λ _ h → h) , (λ _ h → h)
 irrel₁ c (⊩₁base _) (⊩₁ne _ _) = (λ _ h → h) , (λ _ h → h)
 irrel₁ c (⊩₁ne _ _) (⊩₁base _) = (λ _ h → h) , (λ _ h → h)
@@ -2932,6 +3095,12 @@ fwd₁ p (⊩₁Σ q ⊩F ⊩G) with confluentᵀ p q
 fwd₁ p (⊩₁Hom q s) with confluentᵀ p q
 ... | E , (bE , hE) with Hom-stk-reduct s hE
 ...   | mkHomStk _ _ _ s' refl = ⊩₁Hom bE s'
+fwd₁ p (⊩₁Unit q) with confluentᵀ p q
+... | E , (bE , uE) with Unit-nf uE
+...   | refl = ⊩₁Unit bE
+fwd₁ p (⊩₁Nat q) with confluentᵀ p q
+... | E , (bE , nE) with Nat-nf nE
+...   | refl = ⊩₁Nat bE
 fwd₁ p (⊩₁Id q) with confluentᵀ p q
 ... | E , (bE , iE) with Id-reduct iE
 ...   | _ , (_ , (_ , (refl , _))) = ⊩₁Id bE
@@ -2956,6 +3125,8 @@ CR1₁ (⊩₁ne _ _)  h = h
 CR1₁ (⊩₁Π _ _ _) h = projl h
 CR1₁ (⊩₁Σ _ _ _) h = projl h
 CR1₁ (⊩₁Hom _ _) h = h
+CR1₁ (⊩₁Unit _) h = h
+CR1₁ (⊩₁Nat _)  h = projl h
 CR1₁ (⊩₁Id _)    h = projl h
 
 CR3₁ : {A : RTy Γ} (R : ⊩₁ A) {t : RTm Γ} → SNe t → R ⊩₁∋ t
@@ -2963,6 +3134,8 @@ CR3₁ (⊩₁base _)    nt = sn-ne nt
 CR3₁ (⊩₁U _)       nt = (sn-ne nt , (⊩₀ne doneᵀ (sne→ne nt) , _))
 CR3₁ (⊩₁ne _ _)    nt = sn-ne nt
 CR3₁ (⊩₁Hom _ _)   nt = sn-ne nt
+CR3₁ (⊩₁Unit _)    nt = sn-ne nt
+CR3₁ (⊩₁Nat _)     nt = (sn-ne nt , nm-ne nt)
 CR3₁ (⊩₁Id _)      nt = (sn-ne nt , λ ch → ⊥-elim (sne-nopay nt ch))
 CR3₁ (⊩₁Π _ ⊩F ⊩G) nt =
   (sn-ne nt , λ u ru → CR3₁ (⊩G u ru) (sne-app nt (CR1₁ ⊩F ru)))
@@ -2974,6 +3147,8 @@ exp₁ : {A : RTy Γ} (R : ⊩₁ A) {t t' : RTm Γ} → SNRed t t' → R ⊩₁
 exp₁ (⊩₁base _)    r h = sn-exp r h
 exp₁ (⊩₁ne _ _)    r h = sn-exp r h
 exp₁ (⊩₁Hom _ _)   r h = sn-exp r h
+exp₁ (⊩₁Unit _)    r h = sn-exp r h
+exp₁ (⊩₁Nat _)     r h = (sn-exp r (projl h) , nm-exp r (projr h))
 exp₁ (⊩₁Id _) r h =
   ( sn-exp r (projl h) , λ ch → projr h (idpay-peel r ch) )
 exp₁ (⊩₁U _)       r h =
@@ -3005,6 +3180,8 @@ mem-whred₁ : {A : RTy Γ} (R : ⊩₁ A) {t t' : RTm Γ} →
 mem-whred₁ (⊩₁base _)  r h = sn-whred h r
 mem-whred₁ (⊩₁ne _ _)  r h = sn-whred h r
 mem-whred₁ (⊩₁Hom _ _) r h = sn-whred h r
+mem-whred₁ (⊩₁Unit _) r h = sn-whred h r
+mem-whred₁ (⊩₁Nat _)  r h = (sn-whred (projl h) r , natmem-whred (projr h) r)
 mem-whred₁ (⊩₁Id _) r h =
   ( sn-whred (projl h) r , λ ch → projr h (snr-step r ch) )
 mem-whred₁ (⊩₁U _)     r h =
@@ -3230,6 +3407,8 @@ homSem₁ (⊩₁base p)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) sh-base
 homSem₁ (⊩₁ne p n)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-ne n)
 homSem₁ (⊩₁Σ p ⊩F ⊩G) ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) sh-Σ
 homSem₁ (⊩₁Hom p s)   ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom s)
+homSem₁ (⊩₁Unit p)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) sh-Unit
+homSem₁ (⊩₁Nat p)     ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) sh-Nat
 homSem₁ (⊩₁Id p)      ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) sh-Id
 homSem₁ (⊩₁U p) {c} {d} hc hd =
   ⊩₁Π (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ p) (stepᵀ (Hom-U c d) doneᵀ))
