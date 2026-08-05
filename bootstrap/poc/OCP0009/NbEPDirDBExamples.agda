@@ -42,7 +42,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTm; var; lam; app; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; renTm; renTy; subTm; ⌜Hom⌝-cong₃ )
 open import poc.OCP0009.NbEPDirDBVar
-  using ( occ-ren-tm; avoids-wk )
+  using ( occ-ren-tm; avoids-wk; NoNatC; nonatc-ren; nnc-base )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶_; _⟶*_; done; step
         ; β; tr-taut; tr-J-base; hrefl-pw; ap-J
@@ -67,15 +67,19 @@ open import poc.OCP0009.NbEPDirDBCanon using ( consistency )
 comp : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
 comp c a q p = tr (⌜Hom⌝ (renTm vs c) (renTm vs a) (var vz)) q p
 
+-- ★ WF stage C: composition inherits `⊢tr`'s restriction — the ambient
+-- code must not be ⌜Nat⌝-headed.  At an ORDERED ambient composition is
+-- ≤-transitivity, which needs the endpoints in the term; that is the
+-- separate `ordtr` former (ARCHITECTURE.md).
 ⊢trans : {Γ : Ctx} {c a t u p q : RTm ⌊ Γ ⌋} →
-         Γ ⊢ c ∷ U → Γ ⊢ a ∷ El c →
+         Γ ⊢ c ∷ U → Γ ⊢ a ∷ El c → NoNatC c →
          Γ ⊢ t ∷ El c → Γ ⊢ u ∷ El c →
          Γ ⊢ p ∷ Hom (El c) a t →
          Γ ⊢ q ∷ Hom (El c) t u →
          Γ ⊢ comp c a q p ∷ Hom (El c) a u
-⊢trans {c = c} {a} {t} {u} {p} {q} dc da dt du dp dq =
+⊢trans {c = c} {a} {t} {u} {p} {q} dc da nc dt du dp dq =
   ⊢conv
-    (⊢tr (⊢wk dc) (⊢wk da) (⊢var here)
+    (⊢tr (⊢wk dc) (⊢wk da) (⊢var here) (nonatc-ren vs nc)
          (occ-ren-tm avoids-wk c) (occ-ren-tm avoids-wk a)
          dt du dq
          (subst (λ z → _ ⊢ p ∷ El z) (sym (motive-at t))
@@ -104,7 +108,7 @@ runit a t p = tr-J-base _ _ _ t p
          Γ ⊢ a ∷ El ⌜base⌝ → Γ ⊢ t ∷ El ⌜base⌝ →
          Γ ⊢ p ∷ Hom (El ⌜base⌝) a t →
          Γ ⊢ comp ⌜base⌝ a (hrefl ⌜base⌝ t) p ∷ Hom (El ⌜base⌝) a t
-⊢runit da dt dp = ⊢trans ⊢⌜base⌝ da dt dt dp (⊢hrefl ⊢⌜base⌝ dt)
+⊢runit da dt dp = ⊢trans ⊢⌜base⌝ da nnc-base dt dt dp (⊢hrefl ⊢⌜base⌝ dt)
 
 ------------------------------------------------------------------------
 -- 3. ★ DIRECTED UNIVALENCE COMPUTES.  A λ-term IS a universe path
