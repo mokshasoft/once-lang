@@ -702,9 +702,46 @@ That is also what makes strong induction's base case writable: under a
 `natrec` motive `λ m → Hom Nat m nzero → P m`, the successor branch's
 hypothesis has type `Hom Nat (nsuc m') nzero`, which REDUCES to `base`.
 
+**★★ THE CONCRETE RULES** (worked 2026-08-05, subject reduction checked
+by hand for each; the case tree above is refined into these).
+
+    ordtr : RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ   -- a t u p q
+
+    ⊢ordtr : Γ ⊢ a ∷ Nat → Γ ⊢ t ∷ Nat → Γ ⊢ u ∷ Nat →
+             Γ ⊢ p ∷ Hom Nat a t → Γ ⊢ q ∷ Hom Nat t u →
+             Γ ⊢ ordtr a t u p q ∷ Hom Nat a u
+
+Five root rules, splitting on `a`, then `u`, then `t`:
+
+    ordtr nzero      t          u          p q ⟶ unit
+    ordtr (nsuc a')  nzero      nzero      p q ⟶ p
+    ordtr (nsuc a')  (nsuc t')  nzero      p q ⟶ q
+    ordtr (nsuc a')  nzero      (nsuc u')  p q ⟶ absurd (⌜Hom⌝ ⌜Nat⌝ a' u') p
+    ordtr (nsuc a')  (nsuc t')  (nsuc u')  p q ⟶ ordtr a' t' u' p q
+
+Why each is type-correct:
+
+1. `Hom Nat nzero u ⟶ᵀ Unit`, and `unit : Unit`.
+2. result and `p` share the type `Hom Nat (nsuc a') nzero`.
+3. result `⟶ᵀ base`; `q : Hom Nat (nsuc t') nzero ⟶ᵀ base` — same type.
+4. ★ THE BRANCH THE OLD RECORD LEFT STUCK.  Result is
+   `Hom Nat (nsuc a') (nsuc u') ⟶ᵀ Hom Nat a' u'`, while
+   `p : Hom Nat (nsuc a') nzero ⟶ᵀ base`.  So `p` is AT `base` and ex
+   falso applies — and the code works out exactly:
+   `absurd (⌜Hom⌝ ⌜Nat⌝ a' u') p : El (⌜Hom⌝ ⌜Nat⌝ a' u')`, which
+   reduces `⟶ᵀ Hom (El ⌜Nat⌝) a' u' ⟶ᵀ Hom Nat a' u'`.  This is the
+   first real customer for stage D.
+5. `Hom-Nat-ss` peels all three: result, `p` and `q` each lose a
+   successor, so the recursive call is at exactly the peeled types.
+
 **Residual risk**: not the syntax — the LR stuckness key for the new
 former.  That key is `natstk?`-shaped, so stage A's pattern applies.
-**Estimate**: stage-A-sized.
+
+**⚠ Revised estimate**: NOT stage-A-sized.  Stage D (`absurd`) was
+tractable because it has NO root rule — every confluence row was pure
+congruence.  `ordtr` has FIVE root rules over three scrutinees, so
+Conf's `_⁺` development must dispatch on three argument shapes and the
+critical pairs are real.  Budget stage-D-sized or larger.
 
 ### (superseded) G4 — η IN THE KERNEL JUDGMENT         decision + work
 
