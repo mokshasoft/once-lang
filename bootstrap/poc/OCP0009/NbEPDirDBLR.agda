@@ -82,7 +82,8 @@ open import poc.OCP0009.NbEPDirDBConf
         ; ⟶*-⌜Hom⌝ᶜ; ⟶*-⌜Hom⌝ˡ; ⟶*-⌜Hom⌝ʳ; ⟶*-hreflᶜ; ⟶*-hreflᵃ
         ; ⟶*-trᵈ; ⟶*-trᵖ; ⟶*-trᵉ; ⟶*-apᶜ; ⟶*-apᵇ; ⟶*-apᵖ
         ; ⟶*-jsubᵈ; ⟶*-jsubᵖ; ⟶*-jsubᵉ; ⟶*-⌜Id⌝ᶜ; ⟶*-⌜Id⌝ˡ; ⟶*-⌜Id⌝ʳ
-        ; ⟶*-idreflᶜ; ⟶*-idreflᵃ )
+        ; ⟶*-idreflᶜ; ⟶*-idreflᵃ
+        ; ⟶*-nsuc; ⟶*-natrecᶻ; ⟶*-natrecˢ; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Homᵀ
         ; confluentᵀ; church-rosserᵀ; Id-reduct
@@ -1164,6 +1165,10 @@ apstk?-red* : {t t' : RTm Γ} → t ⟶* t' → apstk? t ≡ true → apstk? t' 
 apstk?-red* done h       = h
 apstk?-red* (step r q) h = apstk?-red* q (apstk?-red r h)
 
+natstk?-red* : {t t' : RTm Γ} → t ⟶* t' → natstk? t ≡ true → natstk? t' ≡ true
+natstk?-red* done h       = h
+natstk?-red* (step r q) h = natstk?-red* q (natstk?-red r h)
+
 idstk?-red* : {t t' : RTm Γ} → t ⟶* t' → idstk? t ≡ true → idstk? t' ≡ true
 idstk?-red* done h       = h
 idstk?-red* (step r q) h = idstk?-red* q (idstk?-red r h)
@@ -1213,6 +1218,11 @@ data SNe {Γ} where
   -- ★ the two-former kernel: a PERMANENTLY STUCK `jsub` is neutral.
   sne-jsub : {d : RTm (Γ ∙)} {p e : RTm Γ} →
              SN d → SN p → SN e → idstk? p ≡ true → SNe (jsub d p e)
+  -- ★ WF stage A: a `natrec` whose SCRUTINEE never becomes a numeral
+  -- is neutral — the same shape as the other eliminators' keys.
+  sne-natrec : {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
+               SN z → SN w → SN n → natstk? n ≡ true →
+               SNe (natrec z w n)
 
 data SN {Γ} where
   sn-ne   : {t : RTm Γ} → SNe t → SN t
@@ -1224,6 +1234,10 @@ data SN {Γ} where
   sn-cH   : {c a b : RTm Γ} → SN c → SN a → SN b → SN (⌜Hom⌝ c a b)
   sn-cId  : {c a b : RTm Γ} → SN c → SN a → SN b → SN (⌜Id⌝ c a b)
   sn-idrefl : {c t : RTm Γ} → SN c → SN t → SN (idrefl c t)
+  -- ★ WF stage A: the datatype constructors are SN-inert.
+  sn-unit   : SN (unit {Γ})
+  sn-nzero  : SN (nzero {Γ})
+  sn-nsuc   : {n : RTm Γ} → SN n → SN (nsuc n)
   sn-exp  : {t t' : RTm Γ} → SNRed t t' → SN t' → SN t
 
 data SNRed {Γ} where
@@ -1269,6 +1283,17 @@ data SNRed {Γ} where
                   SNRed (jsub d (idrefl c s) e) e
   snr-jsubᵖ  : {d : RTm (Γ ∙)} {p p' e : RTm Γ} → SNRed p p' →
                SNRed (jsub d p e) (jsub d p' e)
+  -- ★ WF stage A: the recursor eliminates its SCRUTINEE; the numeral
+  -- rules discard the unused branch (carried as SN, the snr-β pattern).
+  snr-natrec-zero : {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} →
+                    SN w → SNRed (natrec z w nzero) z
+  snr-natrec-suc  : {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
+                    SN z → SN w → SN n →
+                    SNRed (natrec z w (nsuc n))
+                          (subTm (single (natrec z w n))
+                                 (subTm (extS (single n)) w))
+  snr-natrecⁿ : {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} {n n' : RTm Γ} →
+                SNRed n n' → SNRed (natrec z w n) (natrec z w n')
   -- J at `⌜Id⌝`-coded hrefl paths (the stable-shape completion).
   snr-J-Id   : {c a m : RTm (Γ ∙)} {c₁ a₁ b₁ s e : RTm Γ} →
                SN (⌜Hom⌝ c a m) → SN c₁ → SN a₁ → SN b₁ → SN s →
@@ -1328,6 +1353,9 @@ snr→⟶ (snr-apᵖ r)          = ξ-apᵖ (snr→⟶ r)
 snr→⟶ (snr-jsub-refl _ _ _) = jsub-refl _ _ _ _
 snr→⟶ (snr-jsubᵖ r)        = ξ-jsubᵖ (snr→⟶ r)
 snr→⟶ (snr-J-Id _ _ _ _ _) = tr-J-Id _ _ _ _ _ _ _ _
+snr→⟶ (snr-natrec-zero _)      = natrec-zero _ _
+snr→⟶ (snr-natrec-suc _ _ _)   = natrec-suc _ _ _
+snr→⟶ (snr-natrecⁿ r)          = ξ-natrecⁿ (snr→⟶ r)
 
 -- a head-reducible term is never a pw-able code (all SNRed subjects
 -- are app/fst/snd/hrefl/tr-headed).
@@ -1352,6 +1380,9 @@ snr-nonpw (snr-apᵖ _)       = refl
 snr-nonpw (snr-jsub-refl _ _ _) = refl
 snr-nonpw (snr-jsubᵖ _)     = refl
 snr-nonpw (snr-J-Id _ _ _ _ _) = refl
+snr-nonpw (snr-natrec-zero _)     = refl
+snr-nonpw (snr-natrec-suc _ _ _)  = refl
+snr-nonpw (snr-natrecⁿ _)         = refl
 
 csr-nonpw : {t t' : RTm Γ} → CSR t t' → pw? t ≡ false
 csr-nonpw (csr-here r) = snr-nonpw r
@@ -1471,6 +1502,17 @@ snr-det (snr-J-Id _ _ _ _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-Id _ _ _ _ _)
 snr-det (snr-J-Id _ _ _ _ _) (snr-trᵖ (snr-hrefl-pw ()))
 snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Id _ _ _ _ _)
+-- ★ WF stage A: the recursor's rules are keyed on the numeral head, so
+-- a firing rule and a scrutinee step can never overlap (`nzero`/`nsuc`
+-- have no head step).
+snr-det (snr-natrec-zero _) (snr-natrec-zero _)      = refl
+snr-det (snr-natrec-zero _) (snr-natrecⁿ ())
+snr-det (snr-natrecⁿ ()) (snr-natrec-zero _)
+snr-det (snr-natrec-suc _ _ _) (snr-natrec-suc _ _ _) = refl
+snr-det (snr-natrec-suc _ _ _) (snr-natrecⁿ ())
+snr-det (snr-natrecⁿ ()) (snr-natrec-suc _ _ _)
+snr-det (snr-natrecⁿ {z = z} {w = w} r) (snr-natrecⁿ r') =
+  cong (λ q → natrec z w q) (snr-det r r')
 
 csr-det (csr-here r) (csr-here r') = snr-det r r'
 csr-det (csr-here ()) (csr-hom σ')
@@ -1522,6 +1564,10 @@ sne-whred (sne-tr snd₀ snp sne₀ ()) (snr-J-Id _ _ _ _ _)
 sne-whred (sne-jsub snd₀ snp sne₀ ()) (snr-jsub-refl _ _ _)
 sne-whred (sne-jsub snd₀ snp sne₀ key) (snr-jsubᵖ r) =
   sne-jsub snd₀ (sn-whred snp r) sne₀ (idstk?-red (snr→⟶ r) key)
+sne-whred (sne-natrec snz snw snn ()) (snr-natrec-zero _)
+sne-whred (sne-natrec snz snw snn ()) (snr-natrec-suc _ _ _)
+sne-whred (sne-natrec snz snw snn key) (snr-natrecⁿ r) =
+  sne-natrec snz snw (sn-whred snn r) (natstk?-red (snr→⟶ r) key)
 
 -- ★ the two-former kernel: neutrals never reach a reflexivity (the
 -- head strategy preserves strict neutrality; `idrefl` is not SNe), so
@@ -1576,6 +1622,8 @@ data Ne {Γ} : RTm Γ → Set where
           trstk? d p ≡ true → Ne (tr d p e)
   ne-ap : {cB : RTm Γ} {b : RTm (Γ ∙)} {p : RTm Γ} →
           apstk? p ≡ true → Ne (ap cB b p)
+  ne-natrec : {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
+              natstk? n ≡ true → Ne (natrec z w n)
   ne-jsub : {d : RTm (Γ ∙)} {p e : RTm Γ} →
             idstk? p ≡ true → Ne (jsub d p e)
 
@@ -1609,6 +1657,11 @@ ne-red (ne-jsub key) (jsub-refl _ c₁ _ _) =
 ne-red (ne-jsub key) (ξ-jsubᵈ r) = ne-jsub key
 ne-red (ne-jsub key) (ξ-jsubᵖ r) = ne-jsub (idstk?-red r key)
 ne-red (ne-jsub key) (ξ-jsubᵉ r) = ne-jsub key
+ne-red (ne-natrec ()) (natrec-zero _ _)
+ne-red (ne-natrec ()) (natrec-suc _ _ _)
+ne-red (ne-natrec key) (ξ-natrecᶻ r) = ne-natrec key
+ne-red (ne-natrec key) (ξ-natrecˢ r) = ne-natrec key
+ne-red (ne-natrec key) (ξ-natrecⁿ r) = ne-natrec (natstk?-red r key)
 
 sne→ne : {t : RTm Γ} → SNe t → Ne t
 sne→ne (sne-var x)   = ne-var x
@@ -1619,6 +1672,7 @@ sne→ne (sne-hrefl _ _ kn) = ne-hrefl kn
 sne→ne (sne-tr _ _ _ key) = ne-tr key
 sne→ne (sne-ap _ _ _ key) = ne-ap key
 sne→ne (sne-jsub _ _ _ key) = ne-jsub key
+sne→ne (sne-natrec _ _ _ key) = ne-natrec key
 
 -- extractors for `fund`'s path analysis: strict neutrals are safe spine
 -- heads and stable codes.
@@ -1631,6 +1685,7 @@ sne→spine (sne-hrefl _ _ kn) = kn
 sne→spine (sne-tr _ _ _ key) = key
 sne→spine (sne-ap _ _ _ key) = key
 sne→spine (sne-jsub _ _ _ key) = key
+sne→spine (sne-natrec _ _ _ key) = key
 
 sne→stablecd : {t : RTm Γ} → SNe t → stablecd? t ≡ true
 sne→stablecd (sne-var x)        = refl
@@ -1641,6 +1696,7 @@ sne→stablecd (sne-hrefl _ _ _)    = refl
 sne→stablecd (sne-tr _ _ _ key) = key
 sne→stablecd (sne-ap _ _ _ key) = key
 sne→stablecd (sne-jsub _ _ _ key) = key
+sne→stablecd (sne-natrec _ _ _ key) = key
 
 -- renaming preserves every classifier ON THE NOSE — the entire
 -- anti-renaming bill for the shape layer.
@@ -3447,6 +3503,24 @@ wne (sne-jsub {d = d} {p = p} d₀ p₀ e₀ key) with wn d₀ | wn p₀ | wn e�
     nrm' (ξ-jsubᵈ q) = nm₁ q
     nrm' (ξ-jsubᵖ q) = nm₂ q
     nrm' (ξ-jsubᵉ q) = nm₃ q
+wne (sne-natrec {z = z} {w = w} {n = n} z₀ w₀ n₀ key)
+  with wn z₀ | wn w₀ | wn n₀
+... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃ =
+      mkWNe (natrec n₁ n₂ n₃)
+            (⟶*-trans (⟶*-natrecᶻ r₁)
+                      (⟶*-trans (⟶*-natrecˢ r₂) (⟶*-natrecⁿ r₃)))
+            nrm' (sne-natrec sn₁ sn₂ sn₃ key')
+  where
+    key' : natstk? n₃ ≡ true
+    key' = natstk?-red* r₃ key
+
+    nrm' : IsNormal (natrec n₁ n₂ n₃)
+    nrm' (natrec-zero _ _)    = f≢t key'
+    nrm' (natrec-suc _ _ _)   = f≢t key'
+    nrm' (ξ-natrecᶻ q) = nm₁ q
+    nrm' (ξ-natrecˢ q) = nm₂ q
+    nrm' (ξ-natrecⁿ q) = nm₃ q
+
 wn (sn-ne n) with wne n
 ... | mkWNe n₁ r₁ nm₁ ne₁ = mkWN n₁ r₁ nm₁ (sn-ne ne₁)
 wn (sn-lam s) with wn s
@@ -3506,6 +3580,13 @@ wn (sn-cH c a b) with wn c | wn a | wn b
     nrm' (ξ-⌜Hom⌝ᶜ q) = nm₁ q
     nrm' (ξ-⌜Hom⌝ˡ q) = nm₂ q
     nrm' (ξ-⌜Hom⌝ʳ q) = nm₃ q
+wn sn-unit  = mkWN unit done (λ ()) sn-unit
+wn sn-nzero = mkWN nzero done (λ ()) sn-nzero
+wn (sn-nsuc h) with wn h
+... | mkWN n₁ r₁ nm₁ sn₁ = mkWN (nsuc n₁) (⟶*-nsuc r₁) nrm' (sn-nsuc sn₁)
+  where
+    nrm' : IsNormal (nsuc n₁)
+    nrm' (ξ-nsuc q) = nm₁ q
 wn (sn-exp r h) with wn h
 ... | mkWN n₁ r₁ nm₁ sn₁ = mkWN n₁ (step (snr→⟶ r) r₁) nm₁ sn₁
 
