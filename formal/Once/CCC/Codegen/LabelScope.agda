@@ -1085,3 +1085,76 @@ segagree-pre pre {t} a c d nl lst le sat =
 --
 -- Everything below the induction is landed and green and is needed either way.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- PIECES2: a skeleton with embedded copies of DIFFERENT traces.
+--
+-- `Pieces` embeds ONE trace repeatedly (the cata skeletons splice the algebra
+-- twice) and closes its cross case by the same-trace argument. `case` is the
+-- other shape: two DIFFERENT branch traces, whose windows are disjoint, so its
+-- cross case closes by a window clash instead.
+--
+-- The disjointness is threaded rather than stated pairwise: the index `hi`
+-- bounds every embedded window in the REST of the structure, and each cons
+-- recurses at its own window START. So windows DESCEND along the trace — which
+-- is exactly how `case` emits them (`gt` at `[lf, lg)` comes first, `ft` at
+-- `[l+2, lf)` after), and transitivity gives every pair.
+------------------------------------------------------------------------
+data Pieces2 (a b : ℕ) : ℕ → AbstractTrace → Set where
+  p2nil  : ∀ {hi I} → seg-idle? I ≡ true → LabelsIn a b I → Pieces2 a b hi I
+  p2cons : ∀ {hi I at t} (c d : ℕ)
+         → seg-idle? I ≡ true → LabelsIn a b I
+         → (∀ st → seg-fold at st ≡ st) → SegAgree at → LabelsIn c d at
+         -- the embedded window sits above the skeleton's, is well-formed, and
+         -- lies below everything the tail may still mention
+         → b ≤ c → c ≤ d → d ≤ hi
+         → Pieces2 a b c t → Pieces2 a b hi (I ++ at ++ t)
+
+pieces2-neutral : ∀ (a b hi : ℕ) (t : AbstractTrace) → Pieces2 a b hi t
+                → ∀ (st : SegState) → seg-fold t st ≡ st
+pieces2-neutral a b hi .I (p2nil {I = I} idle _) st = idle-neutral I idle st
+pieces2-neutral a b hi .(I ++ at ++ t) (p2cons {I = I} {at = at} {t = t} c d idle _ natl _ _ _ _ _ ps) st =
+  trans (seg-fold-++ I (at ++ t) st)
+        (trans (cong (seg-fold (at ++ t)) (idle-neutral I idle st))
+               (trans (seg-fold-++ at t st)
+                      (trans (cong (seg-fold t) (natl st))
+                             (pieces2-neutral a b c t ps st))))
+
+-- EVERY MENTION is either the skeleton's (window `[a,b)`) or an embedded
+-- trace's (below `hi`). This is what the cross cases consume.
+pieces2-mentions : ∀ (a b hi : ℕ) (t : AbstractTrace) → Pieces2 a b hi t
+                 → ∀ (p m : ℕ) → mention-at t p ≡ just m
+                 → ((a ≤ m) × (m < b)) ⊎ (m < hi)
+pieces2-mentions a b hi .I (p2nil {I = I} _ ls) p m e = inj₁ (win-at a b I ls p m e)
+pieces2-mentions a b hi .(I ++ at ++ t) (p2cons {I = I} {at = at} {t = t} c d idle ls natl _ lsAt b≤c c≤d d≤hi ps) p m e =
+  go (split-pos I p)
+  where
+    go : (p < length I) ⊎ (Σ ℕ (λ k → p ≡ length I + k)) → ((a ≤ m) × (m < b)) ⊎ (m < hi)
+    go (inj₁ lt) = inj₁ (win-at a b I ls p m (trans (sym (cong mention-of (fetch-++ˡ I (at ++ t) p lt))) e))
+    go (inj₂ (k , peq)) = go2 (split-pos at k)
+      where
+        e' : mention-at (at ++ t) k ≡ just m
+        e' = trans (sym (cong mention-of (fetch-++ʳ I (at ++ t) k)))
+                   (subst (λ z → mention-at (I ++ at ++ t) z ≡ just m) peq e)
+        go2 : (k < length at) ⊎ (Σ ℕ (λ j → k ≡ length at + j)) → ((a ≤ m) × (m < b)) ⊎ (m < hi)
+        go2 (inj₁ klt) =
+          inj₂ (<-transˡ (proj₂ (win-at c d at lsAt k m
+                                   (trans (sym (cong mention-of (fetch-++ˡ at t k klt))) e'))) d≤hi)
+        go2 (inj₂ (j , keq)) with pieces2-mentions a b c t ps j m
+                                   (trans (sym (cong mention-of (fetch-++ʳ at t j)))
+                                          (subst (λ z → mention-at (at ++ t) z ≡ just m) keq e'))
+        ... | inj₁ w   = inj₁ w
+        ... | inj₂ m<c = inj₂ (<-transˡ m<c (≤-trans c≤d d≤hi))
+
+-- WHAT `pieces2-agree` STILL NEEDS (2026-08-05, found by attempting it): a
+-- classification like `pieces-pos` is not enough on its own. Two positions
+-- inside embedded traces must be told APART — same trace (use its `SegAgree`)
+-- versus different traces (clash on windows) — and a per-position view cannot
+-- say which, since Agda cannot compare traces.
+--
+-- THE FIX, and it is small: index the embedded case by its DEPTH in the
+-- `Pieces2` structure. Different depths have disjoint windows by the threading
+-- already in the datatype (`d ≤ hi`, recursing at `c`), and depths are ℕ so
+-- they compare. `pieces-agree`'s single-trace version needs none of this,
+-- which is why it was cheap; the price here is exactly the price of allowing
+-- different traces.
