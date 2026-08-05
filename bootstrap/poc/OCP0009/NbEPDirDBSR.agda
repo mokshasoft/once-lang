@@ -179,6 +179,7 @@ pwShift-sub σ t =
 ⟶-sub σ (ξ-appʳ r)  = ξ-appʳ (⟶-sub σ r)
 ⟶-sub σ (ξ-pairˡ r) = ξ-pairˡ (⟶-sub σ r)
 ⟶-sub σ (ξ-pairʳ r) = ξ-pairʳ (⟶-sub σ r)
+⟶-sub σ (ξ-absurdᶜ r)   = ξ-absurdᶜ (⟶-sub σ r)
 ⟶-sub σ (ξ-absurdᵉ r)   = ξ-absurdᵉ (⟶-sub σ r)
 ⟶-sub σ (ξ-fst r)   = ξ-fst (⟶-sub σ r)
 ⟶-sub σ (ξ-snd r)   = ξ-snd (⟶-sub σ r)
