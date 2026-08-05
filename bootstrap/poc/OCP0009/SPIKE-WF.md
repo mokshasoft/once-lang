@@ -192,7 +192,51 @@ base-collapse.
   rule (transport along `≤` = the coercion / ≤-transitivity story).
   Stage C must land that rule together with ⌜Nat⌝, not after it.
 
-  **Stage C — N-in** (separate spike later): `⌜Nat⌝ ∈ U`, `tr-J-Nat`,
+  **Stage C — N-in** (IN PROGRESS, 2026-08-05).  SYNTACTIC FRONT HALF
+  ✅ GREEN: `⌜Nat⌝`/`⌜Unit⌝` codes, `El-⌜Nat⌝`/`El-⌜Unit⌝` decodes,
+  `⊢⌜Nat⌝`/`⊢⌜Unit⌝`, and `tr-J-Nat`/`tr-J-Unit`, through Pi, Var,
+  Type, SR, Conf and Inj.
+
+  ★ RISKY POINT 1 IS SETTLED, and the answer is the CHEAP one.  The
+  spike feared `⌜Nat⌝` would be "a third code kind, neither `pw?` nor
+  `stkC?`".  It is not: `stkC? ⌜Nat⌝ = true`.  The datatype codes are
+  ordinary STABLE J-able shapes — inert decodes, never `⌜Π⌝`-able — so
+  `tr-J-Nat`/`tr-J-Unit` ride the `tr-J-base` pattern verbatim and G2's
+  `pw? ∨ stkC?` code-canonicity split is undisturbed.  The endpoint
+  computation lives in `Hom`, not in the code, which is why the code
+  layer never noticed.
+
+  ★ THE REAL WORK LEFT is the one stage B predicted, and it has taken
+  a precise shape.  `El c` can now reduce to `Nat`, so stage B's
+  `NoNat` guard in `Subj` is DEAD: `nonat-red nn-El El-⌜Nat⌝` is an
+  unfillable hole (`NoNat` is no longer preserved by `⟶ᵀ`), and
+  `stamb-red` wants `StkAmb Nat`/`StkAmb Unit` arms for the same
+  reason.  The fix is a CONVERGENCE, not a new idea: stage B
+  introduced two guards for the same phenomenon — `NoNat` (ambient) in
+  `Subj` and `homnat?`/`sh-NatH` (endpoints) in `LR` — and stage C
+  forces them to merge.  `Subj`'s Hom-inversion lemmas must be re-keyed
+  off the ENDPOINTS (`homnat?`), exactly as `⊩₁Hom`'s witness already
+  is.  Once that lands, `tr-amb-nonat` in `Canon` (which proved the
+  `tr` ambient is never `Nat`) becomes FALSE and must be replaced by
+  the tt-path rule:
+
+  ★ RISKY POINT 2, now unavoidable and correctly scheduled here: with
+  a `Nat` code, `tr` at an ORDER path IS formable, and no rule fires on
+  a `unit` path.  The tt-path rule must land in this stage.  Note the
+  shape it wants: transport along `Hom Nat m n` is exactly `≤`-
+  coercion, so the rule is the ≤-transitivity/coercion story the
+  staging always said stage C owned.
+
+  Also still ahead: `⊩₀Unit`/`⊩₀Nat` (level 0 gains the datatype
+  interps — `El (⌜Hom⌝ ⌜Nat⌝ a b)` now decodes to `Unit`, so the SMALL
+  types include them for the first time), the level-0 clash matrix
+  rows, `Fund`, `Canon`, and the stage C acceptance file.
+
+  Remaining module status at the checkpoint: Pi/Var/Type/SR/Conf/Inj
+  GREEN; Subj 8 coverage holes (one of them the `NoNat` collapse
+  above); LR 8; Fund/Canon unmeasured behind them.
+
+  **Stage C — N-in** (original scoping): `⌜Nat⌝ ∈ U`, `tr-J-Nat`,
   the tt-path rules (§3 risky point 2), `cong`-at-ℕ, sized-family
   coercion via `PosC` growth, and `tr`-as-≤-transitivity (NOTE: the
   composition motive needs the coded ambient, so the general
