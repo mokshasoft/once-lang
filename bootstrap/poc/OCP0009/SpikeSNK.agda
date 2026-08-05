@@ -73,7 +73,7 @@ open import normalizer.Syntax.Types
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El
-        ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
+        ; RTm; var; lam; app; pair; fst; snd; absurd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; Sub; subTy; subTm; extS )
 open import poc.OCP0009.NbEPDirDBType
   using ( single

@@ -20,7 +20,7 @@ open import normalizer.Syntax.Types
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
-        ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
+        ; RTm; var; lam; app; pair; fst; snd; absurd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; ⌜Id⌝; idrefl; jsub
         ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; extR; renTy; renTm
@@ -34,7 +34,7 @@ open import poc.OCP0009.NbEPDirDBPi
 open import poc.OCP0009.NbEPDirDBType
   using ( single; nrs
         ; _⟶_; _⟶*_; done; step
-        ; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
+        ; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ; ξ-absurd; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ
         ; ξ-hreflᶜ; ξ-hreflᵃ; hrefl-pw; tr-J-base; tr-J-Σ; tr-J-Hom; tr-taut
         ; tr-pw; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ

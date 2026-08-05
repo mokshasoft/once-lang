@@ -29,7 +29,7 @@ open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ ; ⊥ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
-        ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
+        ; pair; fst; snd; absurd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Id; ⌜Id⌝; idrefl; jsub; Id-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
         ; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ
@@ -55,7 +55,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
-        ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
+        ; ξ-pairˡ; ξ-pairʳ; ξ-absurd; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
         ; tr-J-base; tr-J-Σ; tr-J-Id; tr-J-Unit; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; El-⌜Nat⌝; El-⌜Unit⌝

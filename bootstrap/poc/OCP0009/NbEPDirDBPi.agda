@@ -87,6 +87,16 @@ data RTm where
   lam  : ∀ {Γ} → RTm (Γ ∙) → RTm Γ
   app  : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ
   pair : ∀ {Γ} → RTm Γ → RTm Γ → RTm Γ    -- Σ introduction
+  -- ★★ WF-axis stage D: EX FALSO.  `base` had formation only — no
+  -- intro, no elim — so a false inequality COMPUTED to the empty type
+  -- but could not be USED: the impossible branch was refutable only
+  -- meta-theoretically, via `consistency`.  This is the eliminator that
+  -- turns that metatheorem into a programming technique, and it is what
+  -- strong induction needs at `Hom Nat (nsuc k) nzero ⟶ᵀ base`.
+  --
+  -- The result type lives in the DERIVATION only (the `⊢lam`/`⊢natrec`
+  -- motive pattern), so the syntax stays unary.
+  absurd : ∀ {Γ} → RTm Γ → RTm Γ
   fst  : ∀ {Γ} → RTm Γ → RTm Γ            -- Σ elimination
   snd  : ∀ {Γ} → RTm Γ → RTm Γ
   ⌜base⌝ : ∀ {Γ} → RTm Γ                  -- code for `base`
@@ -154,6 +164,7 @@ renTm ρ (var x)   = var (ρ x)
 renTm ρ (lam t)   = lam (renTm (extR ρ) t)
 renTm ρ (app t u)  = app (renTm ρ t) (renTm ρ u)
 renTm ρ (pair a b) = pair (renTm ρ a) (renTm ρ b)
+renTm ρ (absurd e) = absurd (renTm ρ e)
 renTm ρ (fst p)    = fst (renTm ρ p)
 renTm ρ (snd p)    = snd (renTm ρ p)
 renTm ρ ⌜base⌝     = ⌜base⌝
@@ -200,6 +211,7 @@ subTm σ (var x)   = σ x
 subTm σ (lam t)   = lam (subTm (extS σ) t)
 subTm σ (app t u)  = app (subTm σ t) (subTm σ u)
 subTm σ (pair a b) = pair (subTm σ a) (subTm σ b)
+subTm σ (absurd e) = absurd (subTm σ e)
 subTm σ (fst p)    = fst (subTm σ p)
 subTm σ (snd p)    = snd (subTm σ p)
 subTm σ ⌜base⌝     = ⌜base⌝
@@ -332,6 +344,7 @@ renTm-cong h (var x)   = cong var (h x)
 renTm-cong h (lam t)   = cong lam (renTm-cong (extR-cong h) t)
 renTm-cong h (app t u)  = cong₂ app (renTm-cong h t) (renTm-cong h u)
 renTm-cong h (pair a b) = cong₂ pair (renTm-cong h a) (renTm-cong h b)
+renTm-cong h (absurd e)    = cong absurd (renTm-cong h e)
 renTm-cong h (fst p)    = cong fst (renTm-cong h p)
 renTm-cong h (snd p)    = cong snd (renTm-cong h p)
 renTm-cong h ⌜base⌝     = refl
@@ -381,6 +394,7 @@ subTm-cong h (var x)   = h x
 subTm-cong h (lam t)   = cong lam (subTm-cong (extS-cong h) t)
 subTm-cong h (app t u)  = cong₂ app (subTm-cong h t) (subTm-cong h u)
 subTm-cong h (pair a b) = cong₂ pair (subTm-cong h a) (subTm-cong h b)
+subTm-cong h (absurd e)    = cong absurd (subTm-cong h e)
 subTm-cong h (fst p)    = cong fst (subTm-cong h p)
 subTm-cong h (snd p)    = cong snd (subTm-cong h p)
 subTm-cong h ⌜base⌝     = refl
@@ -439,6 +453,7 @@ renTm-renTm {ρ' = ρ'} {ρ} (lam t) =
   cong lam (trans (renTm-renTm t) (renTm-cong (extr-extr ρ' ρ) t))
 renTm-renTm (app t u)  = cong₂ app (renTm-renTm t) (renTm-renTm u)
 renTm-renTm (pair a b) = cong₂ pair (renTm-renTm a) (renTm-renTm b)
+renTm-renTm (absurd e)    = cong absurd (renTm-renTm e)
 renTm-renTm (fst p)    = cong fst (renTm-renTm p)
 renTm-renTm (snd p)    = cong snd (renTm-renTm p)
 renTm-renTm ⌜base⌝     = refl
@@ -501,6 +516,7 @@ subTm-renTm {σ = σ} {ρ} (lam t) =
   cong lam (trans (subTm-renTm t) (subTm-cong (exts-extr σ ρ) t))
 subTm-renTm (app t u)  = cong₂ app (subTm-renTm t) (subTm-renTm u)
 subTm-renTm (pair a b) = cong₂ pair (subTm-renTm a) (subTm-renTm b)
+subTm-renTm (absurd e)    = cong absurd (subTm-renTm e)
 subTm-renTm (fst p)    = cong fst (subTm-renTm p)
 subTm-renTm (snd p)    = cong snd (subTm-renTm p)
 subTm-renTm ⌜base⌝     = refl
@@ -563,6 +579,7 @@ renTm-subTm {ρ = ρ} {σ} (lam t) =
   cong lam (trans (renTm-subTm t) (subTm-cong (extr-exts ρ σ) t))
 renTm-subTm (app t u)  = cong₂ app (renTm-subTm t) (renTm-subTm u)
 renTm-subTm (pair a b) = cong₂ pair (renTm-subTm a) (renTm-subTm b)
+renTm-subTm (absurd e) = cong absurd (renTm-subTm e)
 renTm-subTm (fst p)    = cong fst (renTm-subTm p)
 renTm-subTm (snd p)    = cong snd (renTm-subTm p)
 renTm-subTm ⌜base⌝     = refl
@@ -625,6 +642,7 @@ subTm-subTm {τ = τ} {σ} (lam t) =
   cong lam (trans (subTm-subTm t) (subTm-cong (exts-exts τ σ) t))
 subTm-subTm (app t u)  = cong₂ app (subTm-subTm t) (subTm-subTm u)
 subTm-subTm (pair a b) = cong₂ pair (subTm-subTm a) (subTm-subTm b)
+subTm-subTm (absurd e)    = cong absurd (subTm-subTm e)
 subTm-subTm (fst p)    = cong fst (subTm-subTm p)
 subTm-subTm (snd p)    = cong snd (subTm-subTm p)
 subTm-subTm ⌜base⌝     = refl
@@ -679,6 +697,7 @@ subTm-id (var x)   = refl
 subTm-id (lam t)   = cong lam (trans (subTm-cong exts-id t) (subTm-id t))
 subTm-id (app t u)  = cong₂ app (subTm-id t) (subTm-id u)
 subTm-id (pair a b) = cong₂ pair (subTm-id a) (subTm-id b)
+subTm-id (absurd e)    = cong absurd (subTm-id e)
 subTm-id (fst p)    = cong fst (subTm-id p)
 subTm-id (snd p)    = cong snd (subTm-id p)
 subTm-id ⌜base⌝     = refl

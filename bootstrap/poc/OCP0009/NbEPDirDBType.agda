@@ -37,7 +37,7 @@ module poc.OCP0009.NbEPDirDBType where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
-        ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
+        ; pair; fst; snd; absurd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Id; ⌜Id⌝; idrefl; jsub
         ; Unit; Nat; unit; nzero; nsuc; natrec; extS; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; extR; Sub; subTy; subTm; renTy; renTm )
@@ -88,6 +88,10 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   ξ-appʳ  : {t u u' : RTm Γ} → u ⟶ u' → app t u ⟶ app t u'
   ξ-pairˡ : {a a' b : RTm Γ} → a ⟶ a' → pair a b ⟶ pair a' b
   ξ-pairʳ : {a b b' : RTm Γ} → b ⟶ b' → pair a b ⟶ pair a b'
+  -- ★★ WF-axis stage D: EX FALSO has NO root rule.  Its scrutinee can
+  -- never become canonical (that is `consistency`), so `absurd e` is
+  -- permanently NEUTRAL and only its scrutinee develops.
+  ξ-absurd : {e e' : RTm Γ} → e ⟶ e' → absurd e ⟶ absurd e'
   ξ-fst   : {p p' : RTm Γ} → p ⟶ p' → fst p ⟶ fst p'
   ξ-snd   : {p p' : RTm Γ} → p ⟶ p' → snd p ⟶ snd p'
   ξ-⌜Π⌝ˡ  : {c c' : RTm Γ} {d : RTm (Γ ∙)} → c ⟶ c' → ⌜Π⌝ c d ⟶ ⌜Π⌝ c' d
@@ -380,6 +384,17 @@ data _⊢_∷_ where
   ⊢pair : ∀ {Γ A B a b} → (Γ ▹ A) ⊢ty B →
                           Γ ⊢ a ∷ A → Γ ⊢ b ∷ subTy (single a) B →
                           Γ ⊢ pair a b ∷ Σ' A B
+  -- ★★ WF-axis stage D: `base` finally gets an ELIMINATOR.  It had
+  -- formation only, so a false inequality COMPUTED to the empty type
+  -- (`Hom Nat (nsuc m) nzero ⟶ᵀ base`) but the impossible branch could
+  -- be discharged only meta-theoretically.  This is what strong
+  -- induction needs to be written INSIDE the language.
+  --
+  -- The result type lives in the derivation (the `⊢lam`/`⊢natrec`
+  -- motive pattern), so `absurd e` inhabits every well-formed type.
+  -- Consistency is untouched: `base` still has no closed inhabitant, so
+  -- no CLOSED `absurd e` exists either.
+  ⊢absurd : ∀ {Γ e C} → Γ ⊢ e ∷ base → Γ ⊢ty C → Γ ⊢ absurd e ∷ C
   ⊢fst  : ∀ {Γ A B p}   → Γ ⊢ p ∷ Σ' A B → Γ ⊢ fst p ∷ A
   ⊢snd  : ∀ {Γ A B p}   → Γ ⊢ p ∷ Σ' A B →
                           Γ ⊢ snd p ∷ subTy (single (fst p)) B

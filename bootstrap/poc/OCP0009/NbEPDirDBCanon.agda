@@ -36,7 +36,7 @@ open import normalizer.Syntax.Types
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom
-        ; RTm; var; lam; app; pair; fst; snd
+        ; RTm; var; lam; app; pair; fst; snd; absurd
         ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Id; ⌜Id⌝; idrefl; jsub
         ; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝
@@ -49,7 +49,7 @@ open import poc.OCP0009.NbEPDirDBVar
         ; eqv; occ-sub; occ-ren-tm; avoids-wk )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶_; _⟶*_; done; step
-        ; β; βfst; βsnd; ξ-appˡ; ξ-fst; ξ-snd; ξ-nsuc
+        ; β; βfst; βsnd; ξ-appˡ; ξ-absurd; ξ-fst; ξ-snd; ξ-nsuc
         ; ξ-hreflᶜ; ξ-trᵈ; ξ-trᵖ; ξ-⌜Hom⌝ᶜ
         ; hrefl-pw; tr-J-base; tr-J-Σ; tr-J-Hom; tr-J-Unit; tr-taut; tr-pw
         ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
