@@ -47,6 +47,7 @@ open import poc.OCP0009.NbEPDirDBConf
         ; phrefl-pw; ptr-J-Hom; ptr-pw; pap; pap-J; p⌜Id⌝; pidrefl; pjsub; pjsub-refl
         ; ptr-J-Id; punit; pnzero; pnsuc; pnatrec; pnatrec-zero; pnatrec-suc
         ; p⌜Nat⌝; p⌜Unit⌝; ptr-J-Unit
+        ; pordtr; pordtr-z; pordtr-szz; pordtr-ssz; pordtr-szs; pordtr-sss
         ; ⟶*-nsuc
         ; _⁺; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟶*-trans
         ; ⟹-ren; ⟶*-ren; ⟶*-appˡ )
@@ -274,6 +275,7 @@ El (lam t) ⁺ᵀ   = El (lam t ⁺)
 El (app f a) ⁺ᵀ = El (app f a ⁺)
 El (pair a b) ⁺ᵀ = El (pair a b ⁺)
 El (absurd c e) ⁺ᵀ = El (absurd c e ⁺)
+El (ordtr a t u p q) ⁺ᵀ = El (ordtr a t u p q ⁺)
 El (fst p) ⁺ᵀ   = El (fst p ⁺)
 El (snd p) ⁺ᵀ   = El (snd p ⁺)
 El ⌜Nat⌝ ⁺ᵀ     = Nat
@@ -339,6 +341,12 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl (pβ p q))  = pEl (⟹-⁺ (pβ p q))
 ⟹ᵀ-⁺ (pEl (ppair p q)) = pEl (⟹-⁺ (ppair p q))
 ⟹ᵀ-⁺ (pEl w@(pabsurd _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pordtr _ _ _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@pordtr-z) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pordtr-szz _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pordtr-ssz _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pordtr-szs _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pordtr-sss _ _ _ _ _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl (pfst p))  = pEl (⟹-⁺ (pfst p))
 ⟹ᵀ-⁺ (pEl (psnd p))  = pEl (⟹-⁺ (psnd p))
 ⟹ᵀ-⁺ (pEl (pβfst p q)) = pEl (⟹-⁺ (pβfst p q))
@@ -387,7 +395,19 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 -- ★ stage D: `absurd` is not a numeral, so no order rule fires and the
 -- order-hom stays put.
 ⟹ᵀ-⁺ (pHom pNat pt@(pabsurd _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pordtr _ _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@pordtr-z pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pordtr-szz _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pordtr-ssz _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pordtr-szs _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(pordtr-sss _ _ _ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pabsurd _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pordtr _ _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@pordtr-z) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pordtr-szz _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pordtr-ssz _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pordtr-szs _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pordtr-sss _ _ _ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pvar _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(plam _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(papp _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)

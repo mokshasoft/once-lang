@@ -504,7 +504,7 @@ fund {σ = σ} (⊢hrefl {c = c} {t = t} dc dt) x₀ ρ =
 fund {Ξ = Ξ} {σ = σ}
   (⊢ap {cA = cA} {cB = cB} {b = b} {p = p₀} {t = t₀} {u = u₀}
        dcA key dcB db dt du dp) x₀ ρ =
-  relCast (Hom-cong₃; ordtr-cong₅ refl (sym (sub-comm σ b t₀)) (sym (sub-comm σ b u₀)))
+  relCast (Hom-cong₃ refl (sym (sub-comm σ b t₀)) (sym (sub-comm σ b u₀)))
           refl
           (emb R_H , projl (emb-coh R_H) _ (goP snpI))
   where

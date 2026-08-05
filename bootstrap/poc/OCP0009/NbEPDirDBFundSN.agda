@@ -165,7 +165,7 @@ subTy-var ρ (Σ' A B) =
            (trans (subTy-cong (exts-var ρ) B) (subTy-var (extR ρ) B))
 subTy-var ρ (El t)   = cong El (subTm-var ρ t)
 subTy-var ρ (Hom A t u) =
-  Hom-cong₃; ordtr-cong₅ (subTy-var ρ A) (subTm-var ρ t) (subTm-var ρ u)
+  Hom-cong₃ (subTy-var ρ A) (subTm-var ρ t) (subTm-var ρ u)
 subTy-var ρ (Id A t u) =
   Id-cong₃ (subTy-var ρ A) (subTm-var ρ t) (subTm-var ρ u)
 subTm-var ρ (var x)   = refl

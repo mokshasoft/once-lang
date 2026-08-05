@@ -145,12 +145,15 @@ homheaded? (⌜Hom⌝ _ _ _) = true
 homheaded? _             = false
 
 spine? stablecd? stableA? pathstk? nopw? deadmot? apstk? idstk? natstk? : RTm Γ → 𝔹
+ordstk? : RTm Γ → RTm Γ → RTm Γ → 𝔹
+ordS? : 𝔹 → RTm Γ → 𝔹
 trstk? : RTm (Γ ∙) → RTm Γ → 𝔹
 trlam? : RTm (Γ ∙) → 𝔹
 
 spine? (var x)        = true
 spine? (app t u)      = spine? t
 spine? (absurd c e)        = true
+spine? (ordtr a t u p q)        = ordstk? a t u
 spine? (fst t)        = spine? t
 spine? (snd t)        = spine? t
 spine? (⌜Π⌝ c d)      = true
@@ -184,6 +187,7 @@ stablecd? (lam t)       = true
 stablecd? (app t u)     = spine? t
 stablecd? (pair a b)    = true
 stablecd? (absurd c e)       = true
+stablecd? (ordtr a t u p q)       = ordstk? a t u
 stablecd? (fst t)       = spine? t
 stablecd? (snd t)       = spine? t
 stablecd? (⌜Hom⌝ c a b) = stableA? c
@@ -213,6 +217,7 @@ pathstk? (lam t)        = false
 pathstk? (app t u)      = spine? t
 pathstk? (pair a b)     = true
 pathstk? (absurd c e)        = true
+pathstk? (ordtr a t u p q)        = ordstk? a t u
 pathstk? (fst t)        = spine? t
 pathstk? (snd t)        = spine? t
 pathstk? ⌜base⌝         = true
@@ -241,6 +246,7 @@ idstk? (lam t)        = true
 idstk? (app t u)      = spine? t
 idstk? (pair a b)     = true
 idstk? (absurd c e)        = true
+idstk? (ordtr a t u p q)        = ordstk? a t u
 idstk? (fst t)        = spine? t
 idstk? (snd t)        = spine? t
 idstk? ⌜base⌝         = true
@@ -269,6 +275,7 @@ apstk? (lam t)        = true
 apstk? (app t u)      = spine? t
 apstk? (pair a b)     = true
 apstk? (absurd c e)        = true
+apstk? (ordtr a t u p q)        = ordstk? a t u
 apstk? (fst t)        = spine? t
 apstk? (snd t)        = spine? t
 apstk? ⌜base⌝         = true
@@ -316,6 +323,7 @@ deadmot? (lam t)        = true
 deadmot? (app t u)      = spine? t
 deadmot? (pair a b)     = true
 deadmot? (absurd c e)        = true
+deadmot? (ordtr a t u p q)        = ordstk? a t u
 deadmot? (fst t)        = spine? t
 deadmot? (snd t)        = spine? t
 deadmot? ⌜base⌝         = true
@@ -340,6 +348,7 @@ nopw? (lam t)        = true
 nopw? (app t u)      = spine? t
 nopw? (pair a b)     = true
 nopw? (absurd c e)        = true
+nopw? (ordtr a t u p q)        = ordstk? a t u
 nopw? (fst t)        = spine? t
 nopw? (snd t)        = spine? t
 nopw? ⌜base⌝         = true
@@ -368,6 +377,7 @@ natstk? (lam t)        = true
 natstk? (app t u)      = spine? t
 natstk? (pair a b)     = true
 natstk? (absurd c e)        = true
+natstk? (ordtr a t u p q)        = ordstk? a t u
 natstk? (fst t)        = spine? t
 natstk? (snd t)        = spine? t
 natstk? ⌜base⌝         = true
@@ -387,8 +397,48 @@ natstk? nzero          = false
 natstk? (nsuc n)       = false
 natstk? (natrec z s n) = natstk? n
 
+-- ★ THE ORDER'S STUCKNESS, and it must mirror `_⁺`'s dispatch EXACTLY:
+-- `a`, then `u`, then `t`.  `ordtr` is NOT like `absurd` — `absurd` has
+-- no root rule and is unconditionally neutral, whereas `ordtr` fires as
+-- soon as its bounds are numerals, so a blanket `true` here would make
+-- `spine?-red (ordtr-z …)` demand `false ≡ true`.
+--
+-- Every one of the five root rules is then refuted DEFINITIONALLY: each
+-- fires only on numeral bounds, and `natstk?` of a numeral is `false`.
+ordstk? nzero t u    = false
+ordstk? (nsuc a) t u = ordS? (natstk? t) u
+ordstk? a t u        = natstk? a
+
+-- ★ under a `nsuc` bound the order fires exactly when BOTH remaining
+-- bounds are literal, i.e. when neither is `natstk?` — so this is just a
+-- disjunction, keyed on `natstk? t` to keep it inside the mutual block
+-- without pulling `_∨_` into scope.
+--
+-- ⚠ keeping the dispatch OUT of `ordstk?`'s `nsuc` clause is what makes
+-- `ordstk?-redᵃ`'s `ξ-nsuc` row just `h`: `ordstk? (nsuc a) t u` and
+-- `ordstk? (nsuc a') t u` are then SYNTACTICALLY the same term.
+ordS? true  u = true
+ordS? false u = natstk? u
+
 f≢t : false ≡ true → ⊥
 f≢t ()
+
+-- ★ `ordS?` is monotone in both slots, and BOTH proofs are pure Boolean
+-- algebra — no term induction.  This is the whole reason the order's
+-- `-red` lemmas stay short: the only genuine term recursion left is
+-- `natstk?-red`, which already exists.
+ordS?-monoᵇ : (b b' : 𝔹) → (b ≡ true → b' ≡ true) → (u : RTm Γ) →
+              ordS? b u ≡ true → ordS? b' u ≡ true
+ordS?-monoᵇ true  true  f u h = refl
+ordS?-monoᵇ true  false f u h with f refl
+... | ()
+ordS?-monoᵇ false true  f u h = refl
+ordS?-monoᵇ false false f u h = h
+
+ordS?-monoᵘ : (b : 𝔹) {u u' : RTm Γ} → (natstk? u ≡ true → natstk? u' ≡ true) →
+              ordS? b u ≡ true → ordS? b u' ≡ true
+ordS?-monoᵘ true  f h = refl
+ordS?-monoᵘ false f h = f h
 
 -- each classifier is closed under reduction (`true` is preserved; the
 -- root rules that would break a shape are refuted definitionally or
@@ -432,6 +482,7 @@ nopw⊥pw (lam t) h = refl
 nopw⊥pw (app t u) h = refl
 nopw⊥pw (pair a b) h = refl
 nopw⊥pw (absurd c e) h = refl
+nopw⊥pw (ordtr a t u p q) h = refl
 nopw⊥pw (fst t) h = refl
 nopw⊥pw (snd t) h = refl
 nopw⊥pw ⌜base⌝ h = refl
@@ -457,6 +508,7 @@ deadmot→nopw (lam t) h = refl
 deadmot→nopw (app t u) h = h
 deadmot→nopw (pair a b) h = refl
 deadmot→nopw (absurd c e) h = refl
+deadmot→nopw (ordtr a t u p q) h = h
 deadmot→nopw (fst t) h = h
 deadmot→nopw (snd t) h = h
 deadmot→nopw ⌜base⌝ h = refl
@@ -555,6 +607,14 @@ stk⊥dead (tr d p e) ()
 homheaded?-red : {t t' : RTm Γ} → t ⟶ t' →
                  homheaded? t ≡ true → homheaded? t' ≡ true
 spine?-red    : {t t' : RTm Γ} → t ⟶ t' → spine? t ≡ true → spine? t' ≡ true
+-- the order's three, one per bound it can get stuck on.  `ᵖ`/`q` need
+-- none: `ordstk?` does not mention the proofs.
+ordstk?-redᵃ  : {a a' t u : RTm Γ} → a ⟶ a' →
+                ordstk? a t u ≡ true → ordstk? a' t u ≡ true
+ordstk?-redᵗ  : {a t t' u : RTm Γ} → t ⟶ t' →
+                ordstk? a t u ≡ true → ordstk? a t' u ≡ true
+ordstk?-redᵘ  : {a t u u' : RTm Γ} → u ⟶ u' →
+                ordstk? a t u ≡ true → ordstk? a t u' ≡ true
 stableA?-red  : {t t' : RTm Γ} → t ⟶ t' →
                 stableA? t ≡ true → stableA? t' ≡ true
 stablecd?-red : {t t' : RTm Γ} → t ⟶ t' →
@@ -652,6 +712,16 @@ spine?-red (ξ-nsuc r) ()
 spine?-red (ξ-natrecᶻ r) h = h
 spine?-red (ξ-natrecˢ r) h = h
 spine?-red (ξ-natrecⁿ r) h = natstk?-red r h
+spine?-red (ordtr-z _ _ _ _) ()
+spine?-red (ordtr-szz _ _ _) ()
+spine?-red (ordtr-ssz _ _ _ _) ()
+spine?-red (ordtr-szs _ _ _ _) ()
+spine?-red (ordtr-sss _ _ _ _ _) ()
+spine?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
+spine?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
+spine?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
+spine?-red (ξ-ordtrᵖ r) h = h
+spine?-red (ξ-ordtrq r) h = h
 
 -- ★ the `stableA?` peer of `stablecd?-red`: identical except that the
 -- ⌜Hom⌝-code congruence recurses into ITSELF, so ⌜Nat⌝ under a ⌜Hom⌝
@@ -707,6 +777,16 @@ stableA?-red (ξ-nsuc r) h = refl
 stableA?-red (ξ-natrecᶻ r) h = h
 stableA?-red (ξ-natrecˢ r) h = h
 stableA?-red (ξ-natrecⁿ r) h = natstk?-red r h
+stableA?-red (ordtr-z _ _ _ _) ()
+stableA?-red (ordtr-szz _ _ _) ()
+stableA?-red (ordtr-ssz _ _ _ _) ()
+stableA?-red (ordtr-szs _ _ _ _) ()
+stableA?-red (ordtr-sss _ _ _ _ _) ()
+stableA?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
+stableA?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
+stableA?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
+stableA?-red (ξ-ordtrᵖ r) h = h
+stableA?-red (ξ-ordtrq r) h = h
 
 stablecd?-red (β _ _) ()
 stablecd?-red (βfst _ _) ()
@@ -759,6 +839,16 @@ stablecd?-red (ξ-nsuc r) h = refl
 stablecd?-red (ξ-natrecᶻ r) h = h
 stablecd?-red (ξ-natrecˢ r) h = h
 stablecd?-red (ξ-natrecⁿ r) h = natstk?-red r h
+stablecd?-red (ordtr-z _ _ _ _) ()
+stablecd?-red (ordtr-szz _ _ _) ()
+stablecd?-red (ordtr-ssz _ _ _ _) ()
+stablecd?-red (ordtr-szs _ _ _ _) ()
+stablecd?-red (ordtr-sss _ _ _ _ _) ()
+stablecd?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
+stablecd?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
+stablecd?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
+stablecd?-red (ξ-ordtrᵖ r) h = h
+stablecd?-red (ξ-ordtrq r) h = h
 
 pathstk?-red (β _ _) ()
 pathstk?-red (βfst _ _) ()
@@ -811,6 +901,16 @@ pathstk?-red (ξ-nsuc r) h = refl
 pathstk?-red (ξ-natrecᶻ r) h = h
 pathstk?-red (ξ-natrecˢ r) h = h
 pathstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
+pathstk?-red (ordtr-z _ _ _ _) ()
+pathstk?-red (ordtr-szz _ _ _) ()
+pathstk?-red (ordtr-ssz _ _ _ _) ()
+pathstk?-red (ordtr-szs _ _ _ _) ()
+pathstk?-red (ordtr-sss _ _ _ _ _) ()
+pathstk?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
+pathstk?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
+pathstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
+pathstk?-red (ξ-ordtrᵖ r) h = h
+pathstk?-red (ξ-ordtrq r) h = h
 
 -- ★ `ap`-stuckness is closed under reduction: the J key clashes with
 -- the dead-code key; the pw/taut unfoldings land on LAM paths, which
@@ -867,6 +967,16 @@ apstk?-red (ξ-nsuc r) h = refl
 apstk?-red (ξ-natrecᶻ r) h = h
 apstk?-red (ξ-natrecˢ r) h = h
 apstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
+apstk?-red (ordtr-z _ _ _ _) ()
+apstk?-red (ordtr-szz _ _ _) ()
+apstk?-red (ordtr-ssz _ _ _ _) ()
+apstk?-red (ordtr-szs _ _ _ _) ()
+apstk?-red (ordtr-sss _ _ _ _ _) ()
+apstk?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
+apstk?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
+apstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
+apstk?-red (ξ-ordtrᵖ r) h = h
+apstk?-red (ξ-ordtrq r) h = h
 
 -- ★ jsub-stuckness is closed under reduction (the idstk? mirror).
 idstk?-red (β _ _) ()
@@ -921,6 +1031,16 @@ idstk?-red (ξ-nsuc r) h = refl
 idstk?-red (ξ-natrecᶻ r) h = h
 idstk?-red (ξ-natrecˢ r) h = h
 idstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
+idstk?-red (ordtr-z _ _ _ _) ()
+idstk?-red (ordtr-szz _ _ _) ()
+idstk?-red (ordtr-ssz _ _ _ _) ()
+idstk?-red (ordtr-szs _ _ _ _) ()
+idstk?-red (ordtr-sss _ _ _ _ _) ()
+idstk?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
+idstk?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
+idstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
+idstk?-red (ξ-ordtrᵖ r) h = h
+idstk?-red (ξ-ordtrq r) h = h
 
 natstk?-red (β _ _) ()
 natstk?-red (βfst _ _) ()
@@ -974,6 +1094,139 @@ natstk?-red (ξ-nsuc r) ()
 natstk?-red (ξ-natrecᶻ r) h = h
 natstk?-red (ξ-natrecˢ r) h = h
 natstk?-red (ξ-natrecⁿ r) h = natstk?-red r h
+natstk?-red (ordtr-z _ _ _ _) ()
+natstk?-red (ordtr-szz _ _ _) ()
+natstk?-red (ordtr-ssz _ _ _ _) ()
+natstk?-red (ordtr-szs _ _ _ _) ()
+natstk?-red (ordtr-sss _ _ _ _ _) ()
+natstk?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
+natstk?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
+natstk?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
+natstk?-red (ξ-ordtrᵖ r) h = h
+natstk?-red (ξ-ordtrq r) h = h
+
+ordstk?-redᵃ (β _ _) ()
+ordstk?-redᵃ (βfst _ _) ()
+ordstk?-redᵃ (βsnd _ _) ()
+ordstk?-redᵃ (ξ-lam r) h = h
+ordstk?-redᵃ (ξ-appˡ r) h = spine?-red r h
+ordstk?-redᵃ (ξ-appʳ r) h = h
+ordstk?-redᵃ (ξ-pairˡ r) h = h
+ordstk?-redᵃ (ξ-pairʳ r) h = h
+ordstk?-redᵃ (ξ-absurdᶜ _) h = refl
+ordstk?-redᵃ (ξ-absurdᵉ _) h = refl
+ordstk?-redᵃ (ξ-fst r) h = spine?-red r h
+ordstk?-redᵃ (ξ-snd r) h = spine?-red r h
+ordstk?-redᵃ (ξ-⌜Π⌝ˡ r) h = h
+ordstk?-redᵃ (ξ-⌜Π⌝ʳ r) h = h
+ordstk?-redᵃ (ξ-⌜Σ⌝ˡ r) h = h
+ordstk?-redᵃ (ξ-⌜Σ⌝ʳ r) h = h
+ordstk?-redᵃ (ξ-⌜Hom⌝ᶜ r) h = h
+ordstk?-redᵃ (ξ-⌜Hom⌝ˡ r) h = h
+ordstk?-redᵃ (ξ-⌜Hom⌝ʳ r) h = h
+ordstk?-redᵃ (ξ-hreflᶜ r) h = h
+ordstk?-redᵃ (ξ-hreflᵃ r) h = h
+ordstk?-redᵃ (hrefl-pw C₀ s₀ kp) h = refl
+ordstk?-redᵃ (tr-J-base _ _ _ _ _) ()
+ordstk?-redᵃ (tr-J-Σ _ _ _ _ _ _ _) ()
+ordstk?-redᵃ (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h =
+  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
+ordstk?-redᵃ (tr-taut _ _) ()
+ordstk?-redᵃ (tr-pw _ _ _ _ _) h = refl
+ordstk?-redᵃ (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
+ordstk?-redᵃ (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
+ordstk?-redᵃ (ξ-trᵉ r) h = h
+ordstk?-redᵃ (ap-J _ _ c₁ _ key) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
+ordstk?-redᵃ (ξ-apᶜ r) h = h
+ordstk?-redᵃ (ξ-apᵇ r) h = h
+ordstk?-redᵃ (ξ-apᵖ r) h = apstk?-red r h
+ordstk?-redᵃ (tr-J-Id _ _ _ _ _ _ _ _) ()
+ordstk?-redᵃ (jsub-refl _ _ _ _) ()
+ordstk?-redᵃ (ξ-⌜Id⌝ᶜ r) h = h
+ordstk?-redᵃ (ξ-⌜Id⌝ˡ r) h = h
+ordstk?-redᵃ (ξ-⌜Id⌝ʳ r) h = h
+ordstk?-redᵃ (ξ-idreflᶜ r) h = refl
+ordstk?-redᵃ (ξ-idreflᵃ r) h = refl
+ordstk?-redᵃ (ξ-jsubᵈ r) h = h
+ordstk?-redᵃ (ξ-jsubᵖ r) h = idstk?-red r h
+ordstk?-redᵃ (ξ-jsubᵉ r) h = h
+ordstk?-redᵃ (natrec-zero _ _) ()
+ordstk?-redᵃ (natrec-suc _ _ _) ()
+-- ★ THE ONE ROW THAT DIFFERS FROM `natstk?-red`.  There this is `()`
+-- because `natstk? (nsuc n)` is `false`; here `ordstk? (nsuc n) t u`
+-- is `ordS? (natstk? t) u`, which does not mention the bound at all —
+-- so both sides are the SAME TERM and the row is just `h`.
+ordstk?-redᵃ (ξ-nsuc r) h = h
+ordstk?-redᵃ (ξ-natrecᶻ r) h = h
+ordstk?-redᵃ (ξ-natrecˢ r) h = h
+ordstk?-redᵃ (ξ-natrecⁿ r) h = natstk?-red r h
+ordstk?-redᵃ (ordtr-z _ _ _ _) ()
+ordstk?-redᵃ (ordtr-szz _ _ _) ()
+ordstk?-redᵃ (ordtr-ssz _ _ _ _) ()
+ordstk?-redᵃ (ordtr-szs _ _ _ _) ()
+ordstk?-redᵃ (ordtr-sss _ _ _ _ _) ()
+ordstk?-redᵃ (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
+ordstk?-redᵃ (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
+ordstk?-redᵃ (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
+ordstk?-redᵃ (ξ-ordtrᵖ r) h = h
+ordstk?-redᵃ (ξ-ordtrq r) h = h
+
+-- `t` and `u` are inert under a reduction of the other, so these two
+-- must case on `a` — its head is what selects `ordstk?`'s clause, and a
+-- reduction of `t`/`u` cannot reveal it.  Every non-numeral head lands
+-- in `ordstk?`'s catch-all, where the value is `natstk? a` and the row
+-- is `h`; only `nzero` (refuted) and `nsuc` (the Boolean lemmas) differ.
+ordstk?-redᵗ {a = nzero} r ()
+ordstk?-redᵗ {a = nsuc a₀} {t = t} {t' = t'} r h =
+  ordS?-monoᵇ (natstk? t) (natstk? t') (natstk?-red r) _ h
+ordstk?-redᵗ {a = var x₂} r h = h
+ordstk?-redᵗ {a = lam a} r h = h
+ordstk?-redᵗ {a = app a a₁} r h = h
+ordstk?-redᵗ {a = pair a a₁} r h = h
+ordstk?-redᵗ {a = absurd a a₁} r h = h
+ordstk?-redᵗ {a = ordtr a a₁ a₂ a₃ a₄} r h = h
+ordstk?-redᵗ {a = fst a} r h = h
+ordstk?-redᵗ {a = snd a} r h = h
+ordstk?-redᵗ {a = ⌜base⌝} r h = h
+ordstk?-redᵗ {a = ⌜Π⌝ a a₁} r h = h
+ordstk?-redᵗ {a = ⌜Σ⌝ a a₁} r h = h
+ordstk?-redᵗ {a = ⌜Hom⌝ a a₁ a₂} r h = h
+ordstk?-redᵗ {a = hrefl a a₁} r h = h
+ordstk?-redᵗ {a = tr a a₁ a₂} r h = h
+ordstk?-redᵗ {a = ap a a₁ a₂} r h = h
+ordstk?-redᵗ {a = ⌜Id⌝ a a₁ a₂} r h = h
+ordstk?-redᵗ {a = idrefl a a₁} r h = h
+ordstk?-redᵗ {a = jsub a a₁ a₂} r h = h
+ordstk?-redᵗ {a = unit} r h = h
+ordstk?-redᵗ {a = natrec a a₁ a₂} r h = h
+ordstk?-redᵗ {a = ⌜Nat⌝} r h = h
+ordstk?-redᵗ {a = ⌜Unit⌝} r h = h
+ordstk?-redᵘ {a = nzero} r ()
+ordstk?-redᵘ {a = nsuc a₀} {t = t} r h =
+  ordS?-monoᵘ (natstk? t) (natstk?-red r) h
+ordstk?-redᵘ {a = var x₂} r h = h
+ordstk?-redᵘ {a = lam a} r h = h
+ordstk?-redᵘ {a = app a a₁} r h = h
+ordstk?-redᵘ {a = pair a a₁} r h = h
+ordstk?-redᵘ {a = absurd a a₁} r h = h
+ordstk?-redᵘ {a = ordtr a a₁ a₂ a₃ a₄} r h = h
+ordstk?-redᵘ {a = fst a} r h = h
+ordstk?-redᵘ {a = snd a} r h = h
+ordstk?-redᵘ {a = ⌜base⌝} r h = h
+ordstk?-redᵘ {a = ⌜Π⌝ a a₁} r h = h
+ordstk?-redᵘ {a = ⌜Σ⌝ a a₁} r h = h
+ordstk?-redᵘ {a = ⌜Hom⌝ a a₁ a₂} r h = h
+ordstk?-redᵘ {a = hrefl a a₁} r h = h
+ordstk?-redᵘ {a = tr a a₁ a₂} r h = h
+ordstk?-redᵘ {a = ap a a₁ a₂} r h = h
+ordstk?-redᵘ {a = ⌜Id⌝ a a₁ a₂} r h = h
+ordstk?-redᵘ {a = idrefl a a₁} r h = h
+ordstk?-redᵘ {a = jsub a a₁ a₂} r h = h
+ordstk?-redᵘ {a = unit} r h = h
+ordstk?-redᵘ {a = natrec a a₁ a₂} r h = h
+ordstk?-redᵘ {a = ⌜Nat⌝} r h = h
+ordstk?-redᵘ {a = ⌜Unit⌝} r h = h
 
 nopw?-red (β _ _) ()
 nopw?-red (βfst _ _) ()
@@ -1025,6 +1278,16 @@ nopw?-red (ξ-nsuc r) h = refl
 nopw?-red (ξ-natrecᶻ r) h = h
 nopw?-red (ξ-natrecˢ r) h = h
 nopw?-red (ξ-natrecⁿ r) h = natstk?-red r h
+nopw?-red (ordtr-z _ _ _ _) ()
+nopw?-red (ordtr-szz _ _ _) ()
+nopw?-red (ordtr-ssz _ _ _ _) ()
+nopw?-red (ordtr-szs _ _ _ _) ()
+nopw?-red (ordtr-sss _ _ _ _ _) ()
+nopw?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
+nopw?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
+nopw?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
+nopw?-red (ξ-ordtrᵖ r) h = h
+nopw?-red (ξ-ordtrq r) h = h
 
 deadmot?-red (β _ _) ()
 deadmot?-red (βfst _ _) ()
@@ -1080,6 +1343,16 @@ deadmot?-red (ξ-nsuc r) h = refl
 deadmot?-red (ξ-natrecᶻ r) h = h
 deadmot?-red (ξ-natrecˢ r) h = h
 deadmot?-red (ξ-natrecⁿ r) h = natstk?-red r h
+deadmot?-red (ordtr-z _ _ _ _) ()
+deadmot?-red (ordtr-szz _ _ _) ()
+deadmot?-red (ordtr-ssz _ _ _ _) ()
+deadmot?-red (ordtr-szs _ _ _ _) ()
+deadmot?-red (ordtr-sss _ _ _ _ _) ()
+deadmot?-red (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
+deadmot?-red (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
+deadmot?-red (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
+deadmot?-red (ξ-ordtrᵖ r) h = h
+deadmot?-red (ξ-ordtrq r) h = h
 
 -- dead codes are pw-immune (deadness subsumes the weaker key).
 -- ★ the `stableA?` peer.  ⌜Nat⌝ is ABSURD here — `stableA? ⌜Nat⌝`
@@ -1090,6 +1363,7 @@ deadA→nopw (lam t) h = refl
 deadA→nopw (app t u) h = h
 deadA→nopw (pair a b) h = refl
 deadA→nopw (absurd c e) h = h
+deadA→nopw (ordtr a t u p q) h = h
 deadA→nopw (fst t) h = h
 deadA→nopw (snd t) h = h
 deadA→nopw ⌜base⌝ ()
@@ -1113,6 +1387,7 @@ dead→nopw (lam t) h = refl
 dead→nopw (app t u) h = h
 dead→nopw (pair a b) h = refl
 dead→nopw (absurd c e) h = h
+dead→nopw (ordtr a t u p q) h = h
 dead→nopw (fst t) h = h
 dead→nopw (snd t) h = h
 dead→nopw ⌜base⌝ ()
@@ -1139,6 +1414,7 @@ trstk-hrefl-any (lam t) h = h
 trstk-hrefl-any (app t u) h = h
 trstk-hrefl-any (pair a b) h = h
 trstk-hrefl-any (absurd c e) h = h
+trstk-hrefl-any (ordtr a t u p q) h = h
 trstk-hrefl-any (fst t) h = h
 trstk-hrefl-any (snd t) h = h
 trstk-hrefl-any ⌜base⌝ h = h
@@ -1164,6 +1440,24 @@ trstk-hrefl-any (natrec z s n) h = h
 -- verdict is `pathstk? (absurd _ _) = true` no matter what the motive
 -- does.
 trstk?-red-d {p = absurd p₂ e₂} r h = refl
+-- an `ordtr` PATH is neither `lam` nor `hrefl`, so `trstk?` falls to
+-- `pathstk?` and a reduction of the MOTIVE cannot touch it.
+trstk?-red-d {p = ordtr a₂ t₂ u₂ p₂ q₂} r h = h
+-- …and an `ordtr` MOTIVE is not a `var`, so the same catch-all applies
+-- however the motive steps.
+trstk?-red-d {p = hrefl c₂ s₂} (ordtr-z t₂ u₂ p₂ q₂) h = h
+-- ⚠ these two reduce the MOTIVE to an arbitrary subterm, which may
+-- well be a `var` — so the catch-all no longer applies and the row
+-- needs `trstk-hrefl-any`, which covers every motive at once.
+trstk?-red-d {p = hrefl c₂ s₂} (ordtr-szz a₂ p₂ q₂) h = trstk-hrefl-any p₂ h
+trstk?-red-d {p = hrefl c₂ s₂} (ordtr-ssz a₂ t₂ p₂ q₂) h = trstk-hrefl-any q₂ h
+trstk?-red-d {p = hrefl c₂ s₂} (ordtr-szs a₂ u₂ p₂ q₂) h = h
+trstk?-red-d {p = hrefl c₂ s₂} (ordtr-sss a₂ t₂ u₂ p₂ q₂) h = h
+trstk?-red-d {p = hrefl c₂ s₂} (ξ-ordtrᵃ r) h = h
+trstk?-red-d {p = hrefl c₂ s₂} (ξ-ordtrᵗ r) h = h
+trstk?-red-d {p = hrefl c₂ s₂} (ξ-ordtrᵘ r) h = h
+trstk?-red-d {p = hrefl c₂ s₂} (ξ-ordtrᵖ r) h = h
+trstk?-red-d {p = hrefl c₂ s₂} (ξ-ordtrq r) h = h
 trstk?-red-d {d = absurd d₂ f₂} {p = hrefl p₂ s₂} (ξ-absurdᶜ _) h = h
 trstk?-red-d {d = absurd d₂ f₂} {p = hrefl p₂ s₂} (ξ-absurdᵉ _) h = h
 trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = var vz} rc) h = deadmot?-red rc h
@@ -1345,6 +1639,7 @@ trstk?-red-p {d = unit} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym 
 trstk?-red-p {d = nzero} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (nsuc dz)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (natrec dz₁ dz₂ dz₃)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (ordtr dz₁ dz₂ dz₃ dz₄ dz₅)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p (β _ _) ()
 trstk?-red-p (βfst _ _) ()
 trstk?-red-p (βsnd _ _) ()
@@ -1354,6 +1649,18 @@ trstk?-red-p (ξ-appʳ r) h = h
 trstk?-red-p (ξ-pairˡ r) h = h
 trstk?-red-p (ξ-pairʳ r) h = h
 trstk?-red-p (ξ-absurdᶜ _) h = refl
+-- the path is an `ordtr`, so `trstk?` is `pathstk?` — i.e. `ordstk?` —
+-- and the order's own `-red` lemmas discharge every congruence.
+trstk?-red-p (ordtr-z _ _ _ _) ()
+trstk?-red-p (ordtr-szz _ _ _) ()
+trstk?-red-p (ordtr-ssz _ _ _ _) ()
+trstk?-red-p (ordtr-szs _ _ _ _) ()
+trstk?-red-p (ordtr-sss _ _ _ _ _) ()
+trstk?-red-p (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) h = ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r h
+trstk?-red-p (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) h = ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r h
+trstk?-red-p (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) h = ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r h
+trstk?-red-p (ξ-ordtrᵖ r) h = h
+trstk?-red-p (ξ-ordtrq r) h = h
 trstk?-red-p (ξ-absurdᵉ _) h = refl
 trstk?-red-p (ξ-fst r) h = spine?-red r h
 trstk?-red-p (ξ-snd r) h = spine?-red r h
@@ -2117,6 +2424,7 @@ homheaded?-ren ρ (lam t)       = refl
 homheaded?-ren ρ (app t u)     = refl
 homheaded?-ren ρ (pair a b)    = refl
 homheaded?-ren ρ (absurd c e)       = refl
+homheaded?-ren ρ (ordtr a t u p q) = refl
 homheaded?-ren ρ (fst t)       = refl
 homheaded?-ren ρ (snd t)       = refl
 homheaded?-ren ρ ⌜base⌝        = refl
@@ -2137,6 +2445,11 @@ homheaded?-ren ρ (nsuc n)      = refl
 homheaded?-ren ρ (natrec z s n) = refl
 
 spine?-ren    : (ρ : Ren Γ Δ) (t : RTm Γ) → spine? (renTm ρ t) ≡ spine? t
+-- the order's renaming stability, shared by all nine classifiers.
+ordstk?-ren   : (ρ : Ren Γ Δ) (a t u : RTm Γ) →
+                ordstk? (renTm ρ a) (renTm ρ t) (renTm ρ u) ≡ ordstk? a t u
+ordS?-ren     : (b : 𝔹) (ρ : Ren Γ Δ) (u : RTm Γ) →
+                ordS? b (renTm ρ u) ≡ ordS? b u
 stableA?-ren  : (ρ : Ren Γ Δ) (t : RTm Γ) →
                 stableA? (renTm ρ t) ≡ stableA? t
 stablecd?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) →
@@ -2161,6 +2474,7 @@ spine?-ren ρ (lam t)       = refl
 spine?-ren ρ (app t u)     = spine?-ren ρ t
 spine?-ren ρ (pair a b)    = refl
 spine?-ren ρ (absurd c e)       = refl
+spine?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
 spine?-ren ρ (fst t)       = spine?-ren ρ t
 spine?-ren ρ (snd t)       = spine?-ren ρ t
 spine?-ren ρ ⌜base⌝        = refl
@@ -2180,12 +2494,21 @@ spine?-ren ρ nzero         = refl
 spine?-ren ρ (nsuc n)      = refl
 spine?-ren ρ (natrec z s n) = natstk?-ren ρ n
 
+ordS?-ren true  ρ u = refl
+ordS?-ren false ρ u = natstk?-ren ρ u
+
+ordstk?-ren ρ nzero t u = refl
+ordstk?-ren ρ (nsuc a₀) t u =
+  trans (cong (λ b → ordS? b (renTm ρ u)) (natstk?-ren ρ t))
+        (ordS?-ren (natstk? t) ρ u)
+
 -- ★ the `stableA?` peer of `stablecd?-ren`.
 stableA?-ren ρ (var x)       = refl
 stableA?-ren ρ (lam t)       = refl
 stableA?-ren ρ (app t u)     = spine?-ren ρ t
 stableA?-ren ρ (pair a b)    = refl
 stableA?-ren ρ (absurd c e)       = refl
+stableA?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
 stableA?-ren ρ (fst t)       = spine?-ren ρ t
 stableA?-ren ρ (snd t)       = spine?-ren ρ t
 stableA?-ren ρ ⌜base⌝        = refl
@@ -2210,6 +2533,7 @@ stablecd?-ren ρ (lam t)       = refl
 stablecd?-ren ρ (app t u)     = spine?-ren ρ t
 stablecd?-ren ρ (pair a b)    = refl
 stablecd?-ren ρ (absurd c e)       = refl
+stablecd?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
 stablecd?-ren ρ (fst t)       = spine?-ren ρ t
 stablecd?-ren ρ (snd t)       = spine?-ren ρ t
 stablecd?-ren ρ ⌜base⌝        = refl
@@ -2234,6 +2558,7 @@ pathstk?-ren ρ (lam t)       = refl
 pathstk?-ren ρ (app t u)     = spine?-ren ρ t
 pathstk?-ren ρ (pair a b)    = refl
 pathstk?-ren ρ (absurd c e)       = refl
+pathstk?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
 pathstk?-ren ρ (fst t)       = spine?-ren ρ t
 pathstk?-ren ρ (snd t)       = spine?-ren ρ t
 pathstk?-ren ρ ⌜base⌝        = refl
@@ -2258,6 +2583,7 @@ apstk?-ren ρ (lam t)       = refl
 apstk?-ren ρ (app t u)     = spine?-ren ρ t
 apstk?-ren ρ (pair a b)    = refl
 apstk?-ren ρ (absurd c e)       = refl
+apstk?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
 apstk?-ren ρ (fst t)       = spine?-ren ρ t
 apstk?-ren ρ (snd t)       = spine?-ren ρ t
 apstk?-ren ρ ⌜base⌝        = refl
@@ -2282,6 +2608,7 @@ idstk?-ren ρ (lam t)       = refl
 idstk?-ren ρ (app t u)     = spine?-ren ρ t
 idstk?-ren ρ (pair a b)    = refl
 idstk?-ren ρ (absurd c e)       = refl
+idstk?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
 idstk?-ren ρ (fst t)       = spine?-ren ρ t
 idstk?-ren ρ (snd t)       = spine?-ren ρ t
 idstk?-ren ρ ⌜base⌝        = refl
@@ -2306,6 +2633,7 @@ natstk?-ren ρ (lam t)       = refl
 natstk?-ren ρ (app t u)     = spine?-ren ρ t
 natstk?-ren ρ (pair a b)    = refl
 natstk?-ren ρ (absurd c e)       = refl
+natstk?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
 natstk?-ren ρ (fst t)       = spine?-ren ρ t
 natstk?-ren ρ (snd t)       = spine?-ren ρ t
 natstk?-ren ρ ⌜base⌝        = refl
@@ -2376,6 +2704,7 @@ nopw?-ren ρ (lam t)       = refl
 nopw?-ren ρ (app t u)     = spine?-ren ρ t
 nopw?-ren ρ (pair a b)    = refl
 nopw?-ren ρ (absurd c e)       = refl
+nopw?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
 nopw?-ren ρ (fst t)       = spine?-ren ρ t
 nopw?-ren ρ (snd t)       = spine?-ren ρ t
 nopw?-ren ρ ⌜base⌝        = refl
@@ -2400,6 +2729,7 @@ deadmot?-ren ρ (lam t)       = refl
 deadmot?-ren ρ (app t u)     = spine?-ren ρ t
 deadmot?-ren ρ (pair a b)    = refl
 deadmot?-ren ρ (absurd c e)       = refl
+deadmot?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
 deadmot?-ren ρ (fst t)       = spine?-ren ρ t
 deadmot?-ren ρ (snd t)       = spine?-ren ρ t
 deadmot?-ren ρ ⌜base⌝        = refl
@@ -2425,6 +2755,7 @@ trlam?-ren ρ (lam t)      = refl
 trlam?-ren ρ (app t u)    = refl
 trlam?-ren ρ (pair a b)   = refl
 trlam?-ren ρ (absurd c e)      = refl
+trlam?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
 trlam?-ren ρ (fst t)      = refl
 trlam?-ren ρ (snd t)      = refl
 trlam?-ren ρ ⌜base⌝       = refl
@@ -4144,7 +4475,7 @@ homSem₁ (⊩₁Π {F = F} {G = G} p ⊩F ⊩G) {a} {b} ha hb =
       ⊩F
       (λ v r →
         subst ⊩₁_
-              (sym (Hom-cong₃; ordtr-cong₅ refl
+              (sym (Hom-cong₃ refl
                      (cong₂ app (wk-single a) refl)
                      (cong₂ app (wk-single b) refl)))
               (homSem₁ (⊩G v r) (projr ha v r) (projr hb v r)))
