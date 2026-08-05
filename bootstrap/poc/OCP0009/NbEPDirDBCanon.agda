@@ -49,7 +49,7 @@ open import poc.OCP0009.NbEPDirDBVar
         ; eqv; occ-sub; occ-ren-tm; avoids-wk )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶_; _⟶*_; done; step
-        ; β; βfst; βsnd; ξ-appˡ; ξ-fst; ξ-snd
+        ; β; βfst; βsnd; ξ-appˡ; ξ-fst; ξ-snd; ξ-nsuc
         ; ξ-hreflᶜ; ξ-trᵈ; ξ-trᵖ; ξ-⌜Hom⌝ᶜ
         ; hrefl-pw; tr-J-base; tr-J-Σ; tr-J-Hom; tr-J-Unit; tr-taut; tr-pw
         ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
@@ -64,7 +64,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⊢_∷_; ⊢conv; ⊢⌜base⌝; ⊢unit; ⊢nzero; ⊢⌜Nat⌝; ⊢⌜Unit⌝
         ; natrec-zero; natrec-suc; ξ-natrecⁿ
         ; ⊢ctx_; c-◇ )
-open import poc.OCP0009.NbEPDirDBConf using ( ⟶-ren )
+open import poc.OCP0009.NbEPDirDBConf using ( ⟶-ren; confluent; ⟶*-trans )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ
@@ -476,6 +476,79 @@ HomNatNoNat-clash nn cv with church-rosserᵀ cv
 ...   | nhs-el   with homAmb→ aE nn
 ...     | nn-El ()
 HomNatNoNat-clash nn cv | E , (nE , aE) | nhs-hom with homAmb→ aE nn
+... | ()
+
+
+------------------------------------------------------------------------
+-- ★★ A DIAGONAL HOM NEVER REACHES `base`.
+--
+-- `base` is produced by EXACTLY ONE rule — `Hom-Nat-sz`, at
+-- `Hom Nat (nsuc m) nzero` — so reaching it forces the two endpoints to
+-- be joinable with `nsuc m` and `nzero` respectively.  For a DIAGONAL
+-- hom `Hom X s s` the endpoints start joinable (`s` with itself), and
+-- the invariant survives every step: the congruences extend the join by
+-- confluence, and `Hom-Nat-ss` peels both successors off a common
+-- reduct.  At `Hom-Nat-sz` it collapses: one term cannot reduce to both
+-- `nsuc m` and `nzero`.
+--
+-- This is what `canBase⊥`'s `can-hrefl` case needs.  `Hombase-clash`
+-- cannot serve it: that wants `NoNat A`, and the hrefl's own code is
+-- ARBITRARY — `El c` for a `c` we know nothing about.  The diagonality
+-- is the fact that was there all along.
+------------------------------------------------------------------------
+
+nsuc-inj : {Γ : Cx} {a b : RTm Γ} → nsuc a ≡ nsuc b → a ≡ b
+nsuc-inj refl = refl
+
+nzero-nf : {Γ : Cx} {w : RTm Γ} → nzero {Γ} ⟶* w → w ≡ nzero
+nzero-nf done       = refl
+nzero-nf (step () _)
+
+nsuc-red* : {Γ : Cx} {m w : RTm Γ} → nsuc m ⟶* w →
+            Σ (RTm Γ) (λ m' → (w ≡ nsuc m') × (m ⟶* m'))
+nsuc-red* {m = m} done = m , (refl , done)
+nsuc-red* (step (ξ-nsuc r) rest) with nsuc-red* rest
+... | m' , (eq , rm) = m' , (eq , step r rm)
+
+Join : {Γ : Cx} → RTm Γ → RTm Γ → Set
+Join {Γ} t u = Σ (RTm Γ) (λ w → (t ⟶* w) × (u ⟶* w))
+
+diagbase⊥ : {Γ : Cx} {X : RTy Γ} {t u : RTm Γ} →
+            Join t u → Hom X t u ⟶ᵀ* base → ⊥
+diagbase⊥ j (stepᵀ (ξ-Homᵀ r) rest) = diagbase⊥ j rest
+diagbase⊥ (w , (rt , ru)) (stepᵀ (ξ-Homˡ r) rest)
+  with confluent (step r done) rt
+... | w' , (rw , rt') = diagbase⊥ (w' , (rw , ⟶*-trans ru rt')) rest
+diagbase⊥ (w , (rt , ru)) (stepᵀ (ξ-Homʳ r) rest)
+  with confluent (step r done) ru
+... | w' , (rw , ru') = diagbase⊥ (w' , (⟶*-trans rt ru' , rw)) rest
+diagbase⊥ j (stepᵀ (Hom-U _ _) rest) with Π-reduct rest
+... | mkΠRed _ _ () _ _
+diagbase⊥ j (stepᵀ (Hom-Π _ _ _ _) rest) with Π-reduct rest
+... | mkΠRed _ _ () _ _
+diagbase⊥ j (stepᵀ (Hom-Nat-z _) rest) with Unit-nf rest
+... | ()
+-- ★ THE COLLAPSE: `nsuc m` and `nzero` are joinable — impossible.
+diagbase⊥ (w , (rt , ru)) (stepᵀ (Hom-Nat-sz m) rest) with nzero-nf ru
+... | refl with nsuc-red* rt
+...   | _ , (() , _)
+-- ★ the peel: a common reduct of `nsuc m` and `nsuc n` is `nsuc k`,
+-- so the peeled endpoints are joinable at `k`.
+diagbase⊥ (w , (rt , ru)) (stepᵀ (Hom-Nat-ss m n) rest)
+  with nsuc-red* rt | nsuc-red* ru
+... | k , (refl , rm) | k' , (eq , rn) with nsuc-inj eq
+...   | refl = diagbase⊥ (k , (rm , rn)) rest
+
+-- …nor a `Hom U`-form: `U` is neither `El ⌜Nat⌝` nor `Nat`, so no
+-- reduct of an order-hom is one.
+HomNatU-clash : {Γ : Cx} {s₀ s₁ tU uU : RTm Γ} →
+                Hom U tU uU ≅ᵀ Hom (El (⌜Nat⌝ {Γ})) s₀ s₁ → ⊥
+HomNatU-clash cv with church-rosserᵀ cv
+... | E , (uL , sR) with homU-inv uL
+... | inj₁ (t' , (u' , refl)) with nathom-star nhs-el sR
+...   | ()
+HomNatU-clash cv | E , (uL , sR) | inj₂ (P , (Q , refl))
+  with nathom-star nhs-el sR
 ... | ()
 
 ------------------------------------------------------------------------
@@ -949,6 +1022,12 @@ mutual
       | prog-can can-cb = ⊥-elim (HomU-clash (gen-⌜base⌝ dp))
   apS m dv q
       | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
+      | prog-can can-cNat = ⊥-elim (HomU-clash (gen-⌜Nat⌝ dp))
+  apS m dv q
+      | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
+      | prog-can can-cUnit = ⊥-elim (HomU-clash (gen-⌜Unit⌝ dp))
+  apS m dv q
+      | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
       | prog-can (can-cΠ x y) with gen-⌜Π⌝ dp
   ... | _ , (_ , cv) = ⊥-elim (HomU-clash cv)
   apS m dv q
@@ -1023,6 +1102,12 @@ mutual
       | prog-can can-cb = ⊥-elim (IdU-clash (gen-⌜base⌝ dp))
   jsubS m dv q
       | A , (t , (u , (dd , (dt , (du , (dp , (de , cC)))))))
+      | prog-can can-cNat = ⊥-elim (IdU-clash (gen-⌜Nat⌝ dp))
+  jsubS m dv q
+      | A , (t , (u , (dd , (dt , (du , (dp , (de , cC)))))))
+      | prog-can can-cUnit = ⊥-elim (IdU-clash (gen-⌜Unit⌝ dp))
+  jsubS m dv q
+      | A , (t , (u , (dd , (dt , (du , (dp , (de , cC)))))))
       | prog-can (can-cΠ x y) with gen-⌜Π⌝ dp
   ... | _ , (_ , cv) = ⊥-elim (IdU-clash cv)
   jsubS m dv q
@@ -1074,6 +1159,10 @@ mutual
   natrecS m dv q | M , (tyM , (dz , (dw , (dn , cC))))
       | prog-can can-cb = ⊥-elim (NatU-clash (gen-⌜base⌝ dn))
   natrecS m dv q | M , (tyM , (dz , (dw , (dn , cC))))
+      | prog-can can-cNat = ⊥-elim (NatU-clash (gen-⌜Nat⌝ dn))
+  natrecS m dv q | M , (tyM , (dz , (dw , (dn , cC))))
+      | prog-can can-cUnit = ⊥-elim (NatU-clash (gen-⌜Unit⌝ dn))
+  natrecS m dv q | M , (tyM , (dz , (dw , (dn , cC))))
       | prog-can (can-cΠ x y) with gen-⌜Π⌝ dn
   ... | _ , (_ , cv) = ⊥-elim (NatU-clash cv)
   natrecS m dv q | M , (tyM , (dz , (dw , (dn , cC))))
@@ -1108,11 +1197,16 @@ mutual
   ...     | u-pw k   = _ , ξ-trᵖ (hrefl-pw c₁ s k)
   ...     | u-step r = _ , ξ-trᵖ (ξ-hreflᶜ r)
   ...     | u-stk k  = ⊥-elim (HomStkU-clash k cvh)
+  ...     | u-nat refl = ⊥-elim (HomNatU-clash cvh)
   trUS m {p = p} {e = e} (mkTrInvU refl tI uI dt du dp de cC) lep
     | prog-can (can-pair a b) with gen-pair dp
   ... | _ , (_ , (cv , _)) = ⊥-elim (HomΣ-clash cv)
   trUS m (mkTrInvU refl tI uI dt du dp de cC) lep
     | prog-can can-cb = ⊥-elim (HomU-clash (gen-⌜base⌝ dp))
+  trUS m (mkTrInvU refl tI uI dt du dp de cC) lep
+    | prog-can can-cNat = ⊥-elim (HomU-clash (gen-⌜Nat⌝ dp))
+  trUS m (mkTrInvU refl tI uI dt du dp de cC) lep
+    | prog-can can-cUnit = ⊥-elim (HomU-clash (gen-⌜Unit⌝ dp))
   trUS m (mkTrInvU refl tI uI dt du dp de cC) lep
     | prog-can (can-cΠ x y) with gen-⌜Π⌝ dp
   ... | _ , (_ , cv) = ⊥-elim (HomU-clash cv)
@@ -1146,7 +1240,7 @@ mutual
          (◇ ⊢ p ∷ Hom A tI uI) →
          sz p ≤ m → sz cM ≤ m →
          Σ (RTm ε) (λ u → tr (⌜Hom⌝ cM aM (var vz)) p e ⟶ u)
-  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM with prog m dp lep
+  trCS m cM aM e {tI = tI} dcM hcM ncM dt dvM dp lep lecM with prog m dp lep
   ... | prog-step r = _ , ξ-trᵖ r
   ... | prog-can (can-lam f) = trPw m cM aM f e dcM hcM ncM dt dvM dp lecM
   ... | prog-can (can-hrefl c₁ s) with gen-hrefl dp
@@ -1155,11 +1249,23 @@ mutual
   ...     | u-pw k   = _ , ξ-trᵖ (hrefl-pw c₁ s k)
   ...     | u-step r = _ , ξ-trᵖ (ξ-hreflᶜ r)
   ...     | u-stk k  = _ , jfire cM aM c₁ s e k
+  -- ★★ the ORDERED path code: the `tr` ambient is convertible to a
+  -- Nat-FREE decode (`⊢tr`'s `NoNatC` premise), and an order-hom joins
+  -- only `Unit`, `base`, or another `Nat`-ambient hom — all three of
+  -- which `NoNat` refutes.
+  ...     | u-nat refl with tr-amb-conv tI ncM dvM
+  ...       | c₉ , (hd₉ , cvA₉) =
+              ⊥-elim (HomNatNoNat-clash (nn-El hd₉)
+                        (ctrnᵀ (csymᵀ cvh) (≅ᵀ-Homᵀ (csymᵀ cvA₉))))
   trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
     | prog-can (can-pair a b) with gen-pair dp
   ... | _ , (_ , (cv , _)) = ⊥-elim (HomΣ-clash cv)
   trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
     | prog-can can-cb = ⊥-elim (HomU-clash (gen-⌜base⌝ dp))
+  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
+    | prog-can can-cNat = ⊥-elim (HomU-clash (gen-⌜Nat⌝ dp))
+  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
+    | prog-can can-cUnit = ⊥-elim (HomU-clash (gen-⌜Unit⌝ dp))
   trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
     | prog-can (can-cΠ x y) with gen-⌜Π⌝ dp
   ... | _ , (_ , cv) = ⊥-elim (HomU-clash cv)
@@ -1175,9 +1281,9 @@ mutual
   trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
     | prog-can (can-idrefl c s) with gen-idrefl dp
   ... | _ , (_ , cv) = ⊥-elim (IdHom-clash (csymᵀ cv))
-  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
+  trCS m cM aM e {tI = tI} dcM hcM ncM dt dvM dp lep lecM
     | prog-can can-unit with gen-unit dp
-  ... | cv with tr-amb-conv _ ncM dvM
+  ... | cv with tr-amb-conv tI ncM dvM
   ...   | c₉ , (hd₉ , cvA₉) =
           ⊥-elim (HomUnit-clash (nn-El hd₉) (ctrnᵀ (≅ᵀ-Homᵀ cvA₉) cv))
   trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
@@ -1291,6 +1397,8 @@ canBase⊥ d (can-lam s) with gen-lam d
 canBase⊥ d (can-pair a b) with gen-pair d
 ... | _ , (_ , (cv , _)) = Σbase-clash (csymᵀ cv)
 canBase⊥ d can-cb = Ubase-clash (csymᵀ (gen-⌜base⌝ d))
+canBase⊥ d can-cNat = Ubase-clash (csymᵀ (gen-⌜Nat⌝ d))
+canBase⊥ d can-cUnit = Ubase-clash (csymᵀ (gen-⌜Unit⌝ d))
 canBase⊥ d (can-cΠ x y) with gen-⌜Π⌝ d
 ... | _ , (_ , cv) = Ubase-clash (csymᵀ cv)
 canBase⊥ d (can-cΣ x y) with gen-⌜Σ⌝ d
@@ -1298,7 +1406,9 @@ canBase⊥ d (can-cΣ x y) with gen-⌜Σ⌝ d
 canBase⊥ d (can-cH x y z) with gen-⌜Hom⌝ d
 ... | _ , (_ , (_ , cv)) = Ubase-clash (csymᵀ cv)
 canBase⊥ d (can-hrefl c s) with gen-hrefl d
-... | _ , (_ , cv) = Hombase-clash nn-El (csymᵀ cv)
+... | _ , (_ , cv) with church-rosserᵀ (csymᵀ cv)
+...   | E , (hE , bE) with base-nf bE
+...     | refl = diagbase⊥ (s , (done , done)) hE
 canBase⊥ d (can-cId x y z) with gen-⌜Id⌝ d
 ... | _ , (_ , (_ , cv)) = Ubase-clash (csymᵀ cv)
 canBase⊥ d (can-idrefl c s) with gen-idrefl d
