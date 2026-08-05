@@ -39,26 +39,29 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTm; var; lam; app; pair; fst; snd
         ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Id; ⌜Id⌝; idrefl; jsub
-        ; Unit; Nat; unit; nzero; nsuc; natrec
+        ; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; renTm; renTy; Sub; subTm; subTy
         ; renTm-subTm; subTm-id
         ; subTy-renTy; subTy-cong; subTy-id )
 open import poc.OCP0009.NbEPDirDBVar
-  using ( 𝔹; true; false; pw?; stkC?; flat→stk; pw?-ren; occTm; subTm-occ
+  using ( 𝔹; true; false; pw?; stkC?; stkA?; flat→stk; pw?-ren; occTm; subTm-occ
+        ; NoNatC; NoNatHd; nonatc→hd; nonatc-sub; stkC?→stkA?; stkC?→hd
         ; eqv; occ-sub; occ-ren-tm; avoids-wk )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶_; _⟶*_; done; step
         ; β; βfst; βsnd; ξ-appˡ; ξ-fst; ξ-snd
         ; ξ-hreflᶜ; ξ-trᵈ; ξ-trᵖ; ξ-⌜Hom⌝ᶜ
-        ; hrefl-pw; tr-J-base; tr-J-Σ; tr-J-Hom; tr-taut; tr-pw
+        ; hrefl-pw; tr-J-base; tr-J-Σ; tr-J-Hom; tr-J-Unit; tr-taut; tr-pw
         ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
         ; tr-J-Id; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El
+        ; El-⌜Nat⌝; El-⌜Unit⌝
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
+        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
         ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here
-        ; _⊢_∷_; ⊢conv; ⊢⌜base⌝; ⊢unit; ⊢nzero
+        ; _⊢_∷_; ⊢conv; ⊢⌜base⌝; ⊢unit; ⊢nzero; ⊢⌜Nat⌝; ⊢⌜Unit⌝
         ; natrec-zero; natrec-suc; ξ-natrecⁿ
         ; ⊢ctx_; c-◇ )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶-ren )
@@ -75,8 +78,9 @@ open import poc.OCP0009.NbEPDirDBSubj
         ; StkAmb; st-el; st-hom; stamb-red; homred-inv
         ; HomΠShape; hsΠ; hsH; hsUnit; hsBase; hom-shape; hom-shapeN
         ; NoNat; nn-base; nn-U; nn-Unit; nn-El; nn-Π; nn-Σ; nn-Hom; nn-Id
-        ; Hom-to-Hom; hom-to-Π
-        ; ≅ᵀ-Homᵀ; ⊢[]; sr*; ⊢wk )
+        ; Hom-to-Hom; hom-to-Π; homAmb→
+        ; ≅ᵀ-Homᵀ; ⊢[]; sr*; ⊢wk; nonathd-red
+        ; nn-El )
 open import poc.OCP0009.NbEPDirDBLR
   using ( base-nf; U-nf; Unit-nf; Nat-nf; IsNormal; WN; mkWN )
 open import poc.OCP0009.NbEPDirDBFund using ( wnorm )
@@ -95,42 +99,60 @@ noVar ()
 -- recover `NoNat` on an ambient that is otherwise unconstrained: the
 -- `⊢tr` premise `(Γ ▹ A) ⊢ var vz ∷ El c` already forces the ambient to
 -- be convertible to an `El`-type.
-elnotNat : {Γ : Cx} {t : RTm Γ} → El t ⟶ᵀ* Nat → ⊥
-elnotNat (stepᵀ El-⌜base⌝ rest) with base-nf rest
+-- ★★ SpikeNatJ: `El c` reaches `Nat` for exactly one code — ⌜Nat⌝ —
+-- so this is now INDEXED by the shallow head predicate.  `NoNatHd` is
+-- the right strength here: it is preserved by code reduction
+-- (`nonathd-red`), which is all the `ξ-El` case needs, and unlike
+-- `NoNatC` it admits `⌜Hom⌝ ⌜Nat⌝ a b` — whose decode is a `Hom`, not
+-- `Nat`.
+elnotNat : {Γ : Cx} {t : RTm Γ} → NoNatHd t → El t ⟶ᵀ* Nat → ⊥
+elnotNat _ (stepᵀ El-⌜base⌝ rest) with base-nf rest
 ... | ()
-elnotNat (stepᵀ (El-⌜Π⌝ _ _) rest) with Π-reduct rest
+elnotNat _ (stepᵀ (El-⌜Π⌝ _ _) rest) with Π-reduct rest
 ... | mkΠRed _ _ () _ _
-elnotNat (stepᵀ (El-⌜Σ⌝ _ _) rest) with Σ-reduct rest
+elnotNat _ (stepᵀ (El-⌜Σ⌝ _ _) rest) with Σ-reduct rest
 ... | mkΣRed _ _ () _ _
-elnotNat (stepᵀ (El-⌜Hom⌝ _ _ _) rest) with hom-shape rest
+elnotNat _ (stepᵀ (El-⌜Hom⌝ _ _ _) rest) with hom-shape rest
 ... | ()
-elnotNat (stepᵀ (El-⌜Id⌝ _ _ _) rest) with Id-reduct rest
+elnotNat _ (stepᵀ (El-⌜Id⌝ _ _ _) rest) with Id-reduct rest
 ... | _ , (_ , (_ , ((), _)))
-elnotNat (stepᵀ (ξ-El r) rest) = elnotNat rest
+-- `Unit` is inert, so it is its own only reduct.
+elnotNat _ (stepᵀ El-⌜Unit⌝ rest) with Unit-nf rest
+... | ()
+-- ★ THE excluded case, and the only one.
+elnotNat () (stepᵀ El-⌜Nat⌝ rest)
+elnotNat nc (stepᵀ (ξ-El r) rest) = elnotNat (nonathd-red nc r) rest
 
-elNat⊥ : {Γ : Cx} {c : RTm Γ} → El c ≅ᵀ Nat → ⊥
-elNat⊥ cv with church-rosserᵀ cv
+elNat⊥ : {Γ : Cx} {c : RTm Γ} → NoNatHd c → El c ≅ᵀ Nat → ⊥
+elNat⊥ nc cv with church-rosserᵀ cv
 ... | E , (eE , nE) with Nat-nf nE
-...   | refl = elnotNat eE
+...   | refl = elnotNat nc eE
 
--- …hence the ambient of a well-typed `tr` is never `Nat`: the rule's
--- premise `(Γ ▹ A) ⊢ var vz ∷ El c` types the SAME variable at both
--- `A` (by lookup) and `El c`, and `El c ≅ᵀ Nat` is impossible.
--- Stage B therefore needs NO new restriction on `⊢tr` — transport
--- along an ORDER path simply cannot be formed yet, which is exactly
--- the boundary the staging drew.
-tr-amb-nonat : {A : RTy ⌊ ◇ ⌋} {cM : RTm (⌊ ◇ ⌋ ∙)} →
-               (◇ ▹ A) ⊢ var vz ∷ El cM → NoNat A
-tr-amb-nonat {A = base} _      = nn-base
-tr-amb-nonat {A = U} _         = nn-U
-tr-amb-nonat {A = Unit} _      = nn-Unit
-tr-amb-nonat {A = El _} _      = nn-El
-tr-amb-nonat {A = Π _ _} _     = nn-Π
-tr-amb-nonat {A = Σ' _ _} _    = nn-Σ
-tr-amb-nonat {A = Hom _ _ _} _ = nn-Hom
-tr-amb-nonat {A = Id _ _ _} _  = nn-Id
-tr-amb-nonat {A = Nat} d with gen-var d
-... | _ , (here , cv) = ⊥-elim (elNat⊥ cv)
+-- …hence a well-typed `tr`'s ambient is convertible to a Nat-FREE
+-- decode.  ⚠ It is NOT `NoNat A` any more: `A` itself may be `El c` for
+-- a code we know nothing about (only that it CONVERTS to the motive
+-- code), and `NoNat`'s `nn-El` needs a syntactic head.  What survives —
+-- and what the one consumer actually uses — is the conversion plus the
+-- head fact about the STRENGTHENED motive code, which `⊢tr`'s `NoNatC`
+-- premise supplies.
+tr-amb-conv : {A : RTy ⌊ ◇ ⌋} {cM : RTm (⌊ ◇ ⌋ ∙)} (tI : RTm ε) →
+              NoNatC cM → ((◇ ▹ A) ⊢ var vz ∷ El cM) →
+              Σ (RTm ε) (λ c → (NoNatHd c) × (El c ≅ᵀ A))
+tr-amb-conv {A = A} {cM = cM} tI ncM dvM =
+  subTm (single tI) cM
+  , ( nonatc→hd (nonatc-sub (single tI) ncM)
+    , cvA )
+  where
+  bridge : Σ (RTy (ε ∙)) (λ A' → ((◇ ▹ A) ∋ vz ∷ A') × (El cM ≅ᵀ A')) →
+           El cM ≅ᵀ renTy vs A
+  bridge (_ , (here , cv)) = cv
+
+  eqA : subTy (single tI) (renTy vs A) ≡ A
+  eqA = trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
+
+  cvA : El (subTm (single tI) cM) ≅ᵀ A
+  cvA = subst (λ z → El (subTm (single tI) cM) ≅ᵀ z) eqA
+              (≅ᵀ-sub (single tI) (bridge (gen-var dvM)))
 
 elnotU : {Γ : Cx} {t : RTm Γ} → El t ⟶ᵀ* U → ⊥
 elnotU (stepᵀ El-⌜base⌝ rest) with base-nf rest
@@ -143,6 +165,12 @@ elnotU (stepᵀ (El-⌜Hom⌝ _ _ _) rest) with hom-shape rest
 ... | ()
 elnotU (stepᵀ (El-⌜Id⌝ _ _ _) rest) with Id-reduct rest
 ... | _ , (_ , (_ , ((), _)))
+-- ★ stage C: the datatype decodes are INERT, so each is its own only
+-- reduct and `U` is not among them.
+elnotU (stepᵀ El-⌜Nat⌝ rest) with Nat-nf rest
+... | ()
+elnotU (stepᵀ El-⌜Unit⌝ rest) with Unit-nf rest
+... | ()
 elnotU (stepᵀ (ξ-El r) rest) = elnotU rest
 
 ------------------------------------------------------------------------
@@ -363,7 +391,7 @@ HomStkΠ-clash : {Γ : Cx} {c t u : RTm Γ} {F : RTy Γ} {G : RTy (Γ ∙)} →
 HomStkΠ-clash {c = c} k cv with church-rosserᵀ cv
 ... | E , (hE , πE) with Π-reduct πE
 ...   | mkΠRed _ _ refl _ _
-        with stamb-star (st-hom (st-el {c = c} k)) hE
+        with stamb-star (st-hom (st-el {c = c} (stkC?→stkA? c k))) hE
 ...     | ()
 
 -- ...nor a `Hom U`-form (`U` is not a stable ambient).
@@ -382,10 +410,72 @@ HomStkU-clash : {Γ : Cx} {c s₀ s₁ tU uU : RTm Γ} →
                 Hom U tU uU ≅ᵀ Hom (El c) s₀ s₁ → ⊥
 HomStkU-clash {c = c} k cv with church-rosserᵀ cv
 ... | E , (uL , sR) with homU-inv uL
-... | inj₁ (t' , (u' , refl)) with stamb-star (st-hom (st-el {c = c} k)) sR
+... | inj₁ (t' , (u' , refl)) with stamb-star (st-hom (st-el {c = c} (stkC?→stkA? c k))) sR
 ...   | st-hom ()
 HomStkU-clash {c = c} k cv | E , (uL , sR) | inj₂ (P , (Q , refl))
-  with stamb-star (st-hom (st-el {c = c} k)) sR
+  with stamb-star (st-hom (st-el {c = c} (stkC?→stkA? c k))) sR
+... | ()
+
+
+------------------------------------------------------------------------
+-- ★★ SpikeNatJ: the reducts of a hom over the ORDERED type.
+--
+-- After the `stkA?` split the only code that is neither `pw?` nor
+-- `stkC?` is the LITERAL ⌜Nat⌝ (a ⌜Hom⌝ over it is J-able), so every
+-- `u-nat` consumer faces exactly `Hom (El ⌜Nat⌝) s s`.  Its ambient
+-- decodes to the INERT `Nat`, whence the order rules take the whole
+-- type to `Unit` or `base` (both inert) or peel it back to another
+-- `Nat`-ambient hom.  The ambient is never `U` or `Π`, so `Hom-U` and
+-- `Hom-Π` never fire — Π is UNREACHABLE, which is what refutes J at a
+-- bare ⌜Nat⌝ everywhere.
+------------------------------------------------------------------------
+
+data NatHomShape {Γ : Cx} : RTy Γ → Set where
+  nhs-el   : {a b : RTm Γ} → NatHomShape (Hom (El (⌜Nat⌝ {Γ})) a b)
+  nhs-hom  : {a b : RTm Γ} → NatHomShape (Hom (Nat {Γ}) a b)
+  nhs-Unit : NatHomShape (Unit {Γ})
+  nhs-base : NatHomShape (base {Γ})
+
+nathom-red : {Γ : Cx} {A A' : RTy Γ} → NatHomShape A → A ⟶ᵀ A' → NatHomShape A'
+nathom-red nhs-el (ξ-Homᵀ El-⌜Nat⌝) = nhs-hom
+nathom-red nhs-el (ξ-Homᵀ (ξ-El ()))
+nathom-red nhs-el (ξ-Homˡ _) = nhs-el
+nathom-red nhs-el (ξ-Homʳ _) = nhs-el
+nathom-red nhs-hom (ξ-Homᵀ ())
+nathom-red nhs-hom (ξ-Homˡ _) = nhs-hom
+nathom-red nhs-hom (ξ-Homʳ _) = nhs-hom
+nathom-red nhs-hom (Hom-Nat-z _)    = nhs-Unit
+nathom-red nhs-hom (Hom-Nat-sz _)   = nhs-base
+nathom-red nhs-hom (Hom-Nat-ss _ _) = nhs-hom
+nathom-red nhs-Unit ()
+nathom-red nhs-base ()
+
+nathom-star : {Γ : Cx} {A A' : RTy Γ} → NatHomShape A → A ⟶ᵀ* A' → NatHomShape A'
+nathom-star h doneᵀ       = h
+nathom-star h (stepᵀ r q) = nathom-star (nathom-red h r) q
+
+-- …so an order-hom never joins a Π-form.
+HomNatΠ-clash : {Γ : Cx} {t u : RTm Γ} {F : RTy Γ} {G : RTy (Γ ∙)} →
+                Hom (El (⌜Nat⌝ {Γ})) t u ≅ᵀ Π F G → ⊥
+HomNatΠ-clash cv with church-rosserᵀ cv
+... | E , (hE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with nathom-star nhs-el hE
+...     | ()
+
+-- …and its ambient is never a `NoNat` decode: the joins are `Unit`,
+-- `base`, or a `Nat`-ambient hom, and `NoNat` refutes the last while
+-- the clashes refute the first two.
+HomNatNoNat-clash : {Γ : Cx} {A : RTy Γ} {s t u : RTm Γ} → NoNat A →
+                    Hom (El (⌜Nat⌝ {Γ})) s s ≅ᵀ Hom A t u → ⊥
+HomNatNoNat-clash nn cv with church-rosserᵀ cv
+... | E , (nE , aE) with nathom-star nhs-el nE
+...   | nhs-Unit = HomUnit-clash nn (red→≅ᵀ aE)
+...   | nhs-base = Hombase-clash nn (red→≅ᵀ aE)
+-- the join is still an `El ⌜Nat⌝`-ambient hom: `NoNat` pushed forward
+-- would need `NoNatHd ⌜Nat⌝`, which is empty.
+...   | nhs-el   with homAmb→ aE nn
+...     | nn-El ()
+HomNatNoNat-clash nn cv | E , (nE , aE) | nhs-hom with homAmb→ aE nn
 ... | ()
 
 ------------------------------------------------------------------------
@@ -441,6 +531,8 @@ szb (pair a b)     = sz a + sz b
 szb (fst p)        = sz p
 szb (snd p)        = sz p
 szb ⌜base⌝         = zero
+szb ⌜Nat⌝          = zero
+szb ⌜Unit⌝         = zero
 szb (⌜Π⌝ c d)      = sz c + sz d
 szb (⌜Σ⌝ c d)      = sz c + sz d
 szb (⌜Hom⌝ c a b)  = sz c + sz a + sz b
@@ -458,6 +550,8 @@ szb (natrec z w n) = sz z + sz w + sz n
 szb-ren : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : RTm Γ) → szb (renTm ρ t) ≡ szb t
 sz-ren  : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : RTm Γ) → sz (renTm ρ t) ≡ sz t
 sz-ren ρ t = cong suc (szb-ren ρ t)
+szb-ren ρ ⌜Nat⌝         = refl
+szb-ren ρ ⌜Unit⌝        = refl
 szb-ren ρ (var x)       = refl
 szb-ren ρ (lam t)       = sz-ren _ t
 szb-ren ρ (app f a)     = cong₂ _+_ (sz-ren ρ f) (sz-ren ρ a)
@@ -502,6 +596,9 @@ data Canon {Γ : Cx} : RTm Γ → Set where
   can-cId   : (c a b : RTm Γ)            → Canon (⌜Id⌝ c a b)
   can-idrefl : (c s : RTm Γ)             → Canon (idrefl c s)
   -- ★ WF stage A: the datatype core's introduction forms.
+  -- ★ WF stage C: the datatype CODES are canonical too.
+  can-cNat  :                              Canon (⌜Nat⌝ {Γ})
+  can-cUnit :                              Canon (⌜Unit⌝ {Γ})
   can-unit  :                              Canon (unit {Γ})
   can-nzero :                              Canon (nzero {Γ})
   can-nsuc  : (n : RTm Γ)                → Canon (nsuc n)
@@ -510,10 +607,18 @@ data Prog (t : RTm ε) : Set where
   prog-can  : Canon t → Prog t
   prog-step : {u : RTm ε} → t ⟶ u → Prog t
 
--- ★ the CODE verdict: pw-able, PERMANENTLY stable, or steps.
+-- ★ the CODE verdict: pw-able, PERMANENTLY stable, ORDERED, or steps.
+--
+-- ★★ SpikeNatJ: the fourth arm covers exactly the LITERAL ⌜Nat⌝ — the
+-- one closed normal code that is neither `pw?` nor `stkC?`.  Before the
+-- `stkA?` split the whole ⌜Hom⌝-over-⌜Nat⌝ family landed here too; now
+-- `stkC? (⌜Hom⌝ ⌜Nat⌝ a b) = true`, so they are `u-stk` and this arm
+-- stays a single code.  That is what makes the consumers refutable in
+-- one line each: `El ⌜Nat⌝ ⟶ᵀ Nat` and `Nat` is inert.
 data UProg (c : RTm ε) : Set where
   u-pw   : pw? c ≡ true   → UProg c
   u-stk  : stkC? c ≡ true → UProg c
+  u-nat  : c ≡ ⌜Nat⌝      → UProg c
   u-step : {c' : RTm ε} → c ⟶ c' → UProg c
 
 -- (Subj has no `gen-⌜base⌝`; local.)
@@ -531,12 +636,23 @@ gen-⌜base⌝ : {Γ : Ctx} {C : RTy ⌊ Γ ⌋} → Γ ⊢ ⌜base⌝ ∷ C →
 gen-⌜base⌝ ⊢⌜base⌝      = crflᵀ
 gen-⌜base⌝ (⊢conv d c) = ctrnᵀ (csymᵀ c) (gen-⌜base⌝ d)
 
+-- ★ stage C: the datatype codes, same shape.
+gen-⌜Nat⌝ : {Γ : Ctx} {C : RTy ⌊ Γ ⌋} → Γ ⊢ ⌜Nat⌝ ∷ C → C ≅ᵀ U
+gen-⌜Nat⌝ ⊢⌜Nat⌝       = crflᵀ
+gen-⌜Nat⌝ (⊢conv d c) = ctrnᵀ (csymᵀ c) (gen-⌜Nat⌝ d)
+
+gen-⌜Unit⌝ : {Γ : Ctx} {C : RTy ⌊ Γ ⌋} → Γ ⊢ ⌜Unit⌝ ∷ C → C ≅ᵀ U
+gen-⌜Unit⌝ ⊢⌜Unit⌝      = crflᵀ
+gen-⌜Unit⌝ (⊢conv d c) = ctrnᵀ (csymᵀ c) (gen-⌜Unit⌝ d)
+
 -- the J-rules, dispatched by the stable code's SHAPE (the Boolean
 -- refutes every other constructor).
 jfire : {Γ : Cx} (cM aM : RTm (Γ ∙)) (c₁ s e : RTm Γ) →
         stkC? c₁ ≡ true →
         tr (⌜Hom⌝ cM aM (var vz)) (hrefl c₁ s) e ⟶ e
 jfire cM aM ⌜base⌝        s e k = tr-J-base cM aM (var vz) s e
+-- ★ stage C: ⌜Unit⌝ is a stable J-able shape.
+jfire cM aM ⌜Unit⌝        s e k = tr-J-Unit cM aM (var vz) s e
 jfire cM aM (⌜Σ⌝ x y)     s e k = tr-J-Σ cM aM (var vz) x y s e
 jfire cM aM (⌜Hom⌝ x y z) s e k = tr-J-Hom cM aM (var vz) x y z s e k
 jfire cM aM (⌜Id⌝ x y z)  s e k = tr-J-Id cM aM (var vz) x y z s e
@@ -563,6 +679,8 @@ canΣfst dp (can-pair a b) = _ , βfst a b
 canΣfst dp (can-lam s) with gen-lam dp
 ... | _ , (_ , (cv , _)) = ⊥-elim (ΣΠ-clash cv)
 canΣfst dp can-cb = ⊥-elim (ΣU-clash (gen-⌜base⌝ dp))
+canΣfst dp can-cNat = ⊥-elim (ΣU-clash (gen-⌜Nat⌝ dp))
+canΣfst dp can-cUnit = ⊥-elim (ΣU-clash (gen-⌜Unit⌝ dp))
 canΣfst dp (can-cΠ x y) with gen-⌜Π⌝ dp
 ... | _ , (_ , cv) = ⊥-elim (ΣU-clash cv)
 canΣfst dp (can-cΣ x y) with gen-⌜Σ⌝ dp
@@ -586,6 +704,8 @@ canΣsnd dp (can-pair a b) = _ , βsnd a b
 canΣsnd dp (can-lam s) with gen-lam dp
 ... | _ , (_ , (cv , _)) = ⊥-elim (ΣΠ-clash cv)
 canΣsnd dp can-cb = ⊥-elim (ΣU-clash (gen-⌜base⌝ dp))
+canΣsnd dp can-cNat = ⊥-elim (ΣU-clash (gen-⌜Nat⌝ dp))
+canΣsnd dp can-cUnit = ⊥-elim (ΣU-clash (gen-⌜Unit⌝ dp))
 canΣsnd dp (can-cΠ x y) with gen-⌜Π⌝ dp
 ... | _ , (_ , cv) = ⊥-elim (ΣU-clash cv)
 canΣsnd dp (can-cΣ x y) with gen-⌜Σ⌝ dp
@@ -617,15 +737,24 @@ trPwGo : (cM aM f : RTm (ε ∙)) (e : RTm ε)
          ((◇ ▹ A) ⊢ var vz ∷ El cM) →
          ◇ ⊢ lam f ∷ Hom A tI uI →
          renTm vs (subTm (single tI) cM) ≡ cM →
+         NoNatC cM →
          UProg (subTm (single tI) cM) →
          Σ (RTm ε) (λ u → tr (⌜Hom⌝ cM aM (var vz)) (lam f) e ⟶ u)
-trPwGo cM aM f e {tI = tI} dvM dp sEq (u-pw k) =
+trPwGo cM aM f e {tI = tI} dvM dp sEq ncM (u-pw k) =
   _ , tr-pw cM aM f e
         (trans (cong pw? (sym sEq))
                (trans (pw?-ren vs (subTm (single tI) cM)) k))
-trPwGo cM aM f e {tI = tI} dvM dp sEq (u-step {c' = c'} r) =
+trPwGo cM aM f e {tI = tI} dvM dp sEq ncM (u-step {c' = c'} r) =
   _ , ξ-trᵈ (ξ-⌜Hom⌝ᶜ (subst (λ z → z ⟶ renTm vs c') sEq (⟶-ren vs r)))
-trPwGo cM aM f e {A} {tI} dvM dp sEq (u-stk k) with gen-lam dp
+-- ★★ the ORDERED motive code is excluded by `⊢tr`'s own premise:
+-- `NoNatC` is stable under substitution, so the strengthened code is
+-- ⌜Nat⌝-free and this arm cannot arise.
+trPwGo cM aM f e {A} {tI} dvM dp sEq ncM (u-nat eqN) =
+  ⊥-elim (nonatc-nat⊥ (subst NoNatC eqN (nonatc-sub (single tI) ncM)))
+  where
+  nonatc-nat⊥ : NoNatC (⌜Nat⌝ {ε}) → ⊥
+  nonatc-nat⊥ ()
+trPwGo cM aM f e {A} {tI} dvM dp sEq ncM (u-stk k) with gen-lam dp
 ... | A₁ , (B₁ , (cvΠ , _)) =
       ⊥-elim (HomStkΠ-clash k (ctrnᵀ (≅ᵀ-Homᵀ cvA) cvΠ))
   where
@@ -654,6 +783,8 @@ mutual
   prog (suc m) {t = lam s}       d le = prog-can (can-lam s)
   prog (suc m) {t = pair a b}    d le = prog-can (can-pair a b)
   prog (suc m) {t = ⌜base⌝}      d le = prog-can can-cb
+  prog (suc m) {t = ⌜Nat⌝}       d le = prog-can can-cNat
+  prog (suc m) {t = ⌜Unit⌝}      d le = prog-can can-cUnit
   prog (suc m) {t = ⌜Π⌝ c cd}    d le = prog-can (can-cΠ c cd)
   prog (suc m) {t = ⌜Σ⌝ c cd}    d le = prog-can (can-cΣ c cd)
   prog (suc m) {t = ⌜Hom⌝ c a b} d le = prog-can (can-cH c a b)
@@ -683,6 +814,8 @@ mutual
   usplit zero    d ()
   usplit (suc m) {c = var x}   d le = ⊥-elim (noVar x)
   usplit (suc m) {c = ⌜base⌝}  d le = u-stk refl
+  usplit (suc m) {c = ⌜Nat⌝}   d le = u-nat refl
+  usplit (suc m) {c = ⌜Unit⌝}  d le = u-stk refl
   usplit (suc m) {c = ⌜Π⌝ x y} d le = u-pw refl
   usplit (suc m) {c = ⌜Σ⌝ x y} d le = u-stk refl
   usplit (suc m) {c = ⌜Hom⌝ x a b} d le with gen-⌜Hom⌝ d
@@ -692,7 +825,9 @@ mutual
                                  (≤+ˡ (sz x + sz a) (sz b)))
                         (un≤ le))
   ...   | u-pw k   = u-pw k
-  ...   | u-stk k  = u-stk k
+  ...   | u-stk k  = u-stk (stkC?→stkA? x k)
+  -- ★★ THE PAYOFF: a ⌜Nat⌝ INSIDE a ⌜Hom⌝ makes the wrapper J-able.
+  ...   | u-nat refl = u-stk refl
   ...   | u-step r = u-step (ξ-⌜Hom⌝ᶜ r)
   usplit (suc m) {c = lam s} d le with gen-lam d
   ... | _ , (_ , (cv , _)) = ⊥-elim (ΠU-clash (csymᵀ cv))
@@ -738,6 +873,8 @@ mutual
   canΠ m df (can-pair x y) le a with gen-pair df
   ... | _ , (_ , (cv , _)) = ⊥-elim (ΣΠ-clash (csymᵀ cv))
   canΠ m df can-cb le a = ⊥-elim (ΠU-clash (gen-⌜base⌝ df))
+  canΠ m df can-cNat le a = ⊥-elim (ΠU-clash (gen-⌜Nat⌝ df))
+  canΠ m df can-cUnit le a = ⊥-elim (ΠU-clash (gen-⌜Unit⌝ df))
   canΠ m df (can-cΠ x y) le a with gen-⌜Π⌝ df
   ... | _ , (_ , cv) = ⊥-elim (ΠU-clash cv)
   canΠ m df (can-cΣ x y) le a with gen-⌜Σ⌝ df
@@ -758,6 +895,7 @@ mutual
   ...   | u-pw k   = _ , ξ-appˡ (hrefl-pw c₁ s k)
   ...   | u-step r = _ , ξ-appˡ (ξ-hreflᶜ r)
   ...   | u-stk k  = ⊥-elim (HomStkΠ-clash k (csymᵀ cvh))
+  ...   | u-nat refl = ⊥-elim (HomNatΠ-clash (csymᵀ cvh))
 
   fstS : (m : ℕ) {p : RTm ε} {T : RTy ε} → ◇ ⊢ fst p ∷ T →
          sz p ≤ m → Σ (RTm ε) (λ u → fst p ⟶ u)
@@ -797,6 +935,11 @@ mutual
   ...   | u-pw k   = _ , ξ-apᵖ (hrefl-pw c₁ s k)
   ...   | u-step r = _ , ξ-apᵖ (ξ-hreflᶜ r)
   ...   | u-stk k  = _ , ap-J cB b c₁ s k
+  -- ★★ untypeable: `El ⌜Nat⌝ ⟶ᵀ Nat`, but a `flat?` source ambient
+  -- decodes to `base` or a `Hom` and never reaches `Nat`.
+  ...   | u-nat refl =
+          ⊥-elim (HomNatNoNat-clash (nn-El (stkC?→hd cA (flat→stk cA keyA)))
+                                    (csymᵀ cvh))
   apS m dv q
       | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
       | prog-can (can-pair a₂ b₂) with gen-pair dp
@@ -827,7 +970,7 @@ mutual
   apS m dv q
       | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
       | prog-can can-unit with gen-unit dp
-  ... | cv = ⊥-elim (HomUnit-clash nn-El cv)
+  ... | cv = ⊥-elim (HomUnit-clash (nn-El (stkC?→hd cA (flat→stk cA keyA))) cv)
   apS m dv q
       | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
       | prog-can can-nzero with gen-nzero dp
@@ -847,8 +990,8 @@ mutual
         trUS m inv
           (≤-trans (≤-trans (≤+ʳ (sz dM) (sz p))
                             (≤+ˡ (sz dM + sz p) (sz e))) q)
-  ... | tgC (mkTrInv cM aM refl A tI uI dcM daM dvM hcM haM dt du dp de cC) =
-        trCS m cM aM e dcM hcM dt dvM dp
+  ... | tgC (mkTrInv cM aM refl A tI uI dcM daM dvM ncM hcM haM dt du dp de cC) =
+        trCS m cM aM e dcM hcM ncM dt dvM dp
           (≤-trans (≤-trans (≤+ʳ (sz dM) (sz p))
                             (≤+ˡ (sz dM + sz p) (sz e))) q)
           (≤-trans (≤-suc (≤-trans (≤+ˡ (sz cM) (sz aM))
@@ -998,47 +1141,49 @@ mutual
   -- the CODE motive (`⌜Hom⌝ cM aM (var vz)`).
   trCS : (m : ℕ) (cM aM : RTm (ε ∙)) (e : RTm ε)
          {A : RTy ε} {tI uI : RTm ε} {p : RTm ε} →
-         ((◇ ▹ A) ⊢ cM ∷ U) → occTm vz cM ≡ false →
+         ((◇ ▹ A) ⊢ cM ∷ U) → occTm vz cM ≡ false → NoNatC cM →
          (◇ ⊢ tI ∷ A) → ((◇ ▹ A) ⊢ var vz ∷ El cM) →
          (◇ ⊢ p ∷ Hom A tI uI) →
          sz p ≤ m → sz cM ≤ m →
          Σ (RTm ε) (λ u → tr (⌜Hom⌝ cM aM (var vz)) p e ⟶ u)
-  trCS m cM aM e dcM hcM dt dvM dp lep lecM with prog m dp lep
+  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM with prog m dp lep
   ... | prog-step r = _ , ξ-trᵖ r
-  ... | prog-can (can-lam f) = trPw m cM aM f e dcM hcM dt dvM dp lecM
+  ... | prog-can (can-lam f) = trPw m cM aM f e dcM hcM ncM dt dvM dp lecM
   ... | prog-can (can-hrefl c₁ s) with gen-hrefl dp
   ...   | dc₁ , (ds , cvh)
           with usplit m dc₁ (≤-trans (≤-suc (≤+ˡ (sz c₁) (sz s))) lep)
   ...     | u-pw k   = _ , ξ-trᵖ (hrefl-pw c₁ s k)
   ...     | u-step r = _ , ξ-trᵖ (ξ-hreflᶜ r)
   ...     | u-stk k  = _ , jfire cM aM c₁ s e k
-  trCS m cM aM e dcM hcM dt dvM dp lep lecM
+  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
     | prog-can (can-pair a b) with gen-pair dp
   ... | _ , (_ , (cv , _)) = ⊥-elim (HomΣ-clash cv)
-  trCS m cM aM e dcM hcM dt dvM dp lep lecM
+  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
     | prog-can can-cb = ⊥-elim (HomU-clash (gen-⌜base⌝ dp))
-  trCS m cM aM e dcM hcM dt dvM dp lep lecM
+  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
     | prog-can (can-cΠ x y) with gen-⌜Π⌝ dp
   ... | _ , (_ , cv) = ⊥-elim (HomU-clash cv)
-  trCS m cM aM e dcM hcM dt dvM dp lep lecM
+  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
     | prog-can (can-cΣ x y) with gen-⌜Σ⌝ dp
   ... | _ , (_ , cv) = ⊥-elim (HomU-clash cv)
-  trCS m cM aM e dcM hcM dt dvM dp lep lecM
+  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
     | prog-can (can-cH x y z) with gen-⌜Hom⌝ dp
   ... | _ , (_ , (_ , cv)) = ⊥-elim (HomU-clash cv)
-  trCS m cM aM e dcM hcM dt dvM dp lep lecM
+  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
     | prog-can (can-cId x y z) with gen-⌜Id⌝ dp
   ... | _ , (_ , (_ , cv)) = ⊥-elim (HomU-clash cv)
-  trCS m cM aM e dcM hcM dt dvM dp lep lecM
+  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
     | prog-can (can-idrefl c s) with gen-idrefl dp
   ... | _ , (_ , cv) = ⊥-elim (IdHom-clash (csymᵀ cv))
-  trCS m cM aM e dcM hcM dt dvM dp lep lecM
+  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
     | prog-can can-unit with gen-unit dp
-  ... | cv = ⊥-elim (HomUnit-clash (tr-amb-nonat dvM) cv)
-  trCS m cM aM e dcM hcM dt dvM dp lep lecM
+  ... | cv with tr-amb-conv _ ncM dvM
+  ...   | c₉ , (hd₉ , cvA₉) =
+          ⊥-elim (HomUnit-clash (nn-El hd₉) (ctrnᵀ (≅ᵀ-Homᵀ cvA₉) cv))
+  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
     | prog-can can-nzero with gen-nzero dp
   ... | cv = ⊥-elim (HomNat-clash cv)
-  trCS m cM aM e dcM hcM dt dvM dp lep lecM
+  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
     | prog-can (can-nsuc n₉) with gen-nsuc dp
   ... | _ , cv = ⊥-elim (HomNat-clash cv)
 
@@ -1048,13 +1193,13 @@ mutual
   -- induction is size-based.)
   trPw : (m : ℕ) (cM aM f : RTm (ε ∙)) (e : RTm ε)
          {A : RTy ε} {tI uI : RTm ε} →
-         ((◇ ▹ A) ⊢ cM ∷ U) → occTm vz cM ≡ false →
+         ((◇ ▹ A) ⊢ cM ∷ U) → occTm vz cM ≡ false → NoNatC cM →
          (◇ ⊢ tI ∷ A) → ((◇ ▹ A) ⊢ var vz ∷ El cM) →
          (◇ ⊢ lam f ∷ Hom A tI uI) →
          sz cM ≤ m →
          Σ (RTm ε) (λ u → tr (⌜Hom⌝ cM aM (var vz)) (lam f) e ⟶ u)
-  trPw m cM aM f e {tI = tI} dcM hcM dt dvM dp lecM =
-    trPwGo cM aM f e dvM dp strengthEq
+  trPw m cM aM f e {tI = tI} dcM hcM ncM dt dvM dp lecM =
+    trPwGo cM aM f e dvM dp strengthEq ncM
       (usplit m (⊢[] dcM dt)
          (subst (λ z → z ≤ m)
                 (trans (cong sz (sym strengthEq))
@@ -1083,12 +1228,18 @@ codeSplit : {c : RTm ε} → ◇ ⊢ c ∷ U → UProg c
 codeSplit {c = c} d = usplit (sz c) d ≤-refl
 
 -- ★ CODE CANONICITY (the W2b done-when, item 1): a closed NORMAL code
--- of type `U` is pointwise-able or permanently stable.
+-- of type `U` is pointwise-able, permanently stable, or ORDERED.
+--
+-- ★★ SpikeNatJ: THE THREE-WAY SPLIT THE SPIKE PREDICTED, and it is
+-- exactly one code wide.  ⌜Nat⌝ is neither `pw?` nor `stkC?`; after the
+-- `stkA?` split every ⌜Hom⌝ OVER it is `stkC?`, so the third arm does
+-- not spread up the spine.
 codeCanon : {c : RTm ε} → ◇ ⊢ c ∷ U → IsNormal c →
-            (pw? c ≡ true) ⊎ (stkC? c ≡ true)
+            (pw? c ≡ true) ⊎ ((stkC? c ≡ true) ⊎ (c ≡ ⌜Nat⌝))
 codeCanon d nrm with codeSplit d
 ... | u-pw k   = inj₁ k
-... | u-stk k  = inj₂ k
+... | u-stk k  = inj₂ (inj₁ k)
+... | u-nat eq = inj₂ (inj₂ eq)
 ... | u-step r = ⊥-elim (nrm r)
 
 -- ★ PATH CANONICITY (item 2): a closed normal path at a `Hom` type is
@@ -1108,6 +1259,8 @@ pathCanon nn d nrm with progress d
 ... | prog-can (can-pair a b) with gen-pair d
 ...   | _ , (_ , (cv , _)) = ⊥-elim (HomΣ-clash cv)
 pathCanon nn d nrm | prog-can can-cb = ⊥-elim (HomU-clash (gen-⌜base⌝ d))
+pathCanon nn d nrm | prog-can can-cNat = ⊥-elim (HomU-clash (gen-⌜Nat⌝ d))
+pathCanon nn d nrm | prog-can can-cUnit = ⊥-elim (HomU-clash (gen-⌜Unit⌝ d))
 pathCanon nn d nrm | prog-can (can-cΠ x y) with gen-⌜Π⌝ d
 ... | _ , (_ , cv) = ⊥-elim (HomU-clash cv)
 pathCanon nn d nrm | prog-can (can-cΣ x y) with gen-⌜Σ⌝ d
