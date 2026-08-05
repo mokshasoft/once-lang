@@ -90,10 +90,12 @@ open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; cong₂; subst; Σ; _,_; _×_ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom
-        ; RTm; var; lam; app; ⌜base⌝; ⌜Hom⌝; hrefl; tr; Hom-cong₃ )
+        ; RTm; var; lam; app; ⌜base⌝; ⌜Hom⌝; hrefl; tr; Hom-cong₃ 
+        ; Unit; Nat; nzero; nsuc )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶ᵀ_; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ; Hom-U; Hom-Π
-        ; ξ-Πˡ; ξ-Πʳ )
+        ; ξ-Πˡ; ξ-Πʳ 
+        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ )
 open import poc.OCP0009.NbEPDirDBLR
@@ -113,6 +115,10 @@ private
 data HomΠShape {Γ} : RTy Γ → Set where
   hsΠ : {F : RTy Γ} {G : RTy (Γ ∙)} → HomΠShape (Π F G)
   hsH : {H : RTy Γ} {a b : RTm Γ} → HomΠShape (Hom H a b)
+  -- ★ WF stage B: the order rules add two reduct shapes (this spike
+  -- keeps its own copy of the shape family; see NbEPDirDBSubj).
+  hsUnit : HomΠShape (Unit {Γ})
+  hsBase : HomΠShape (base {Γ})
 
 Π-shape : {F : RTy Γ} {G : RTy (Γ ∙)} {C : RTy Γ} →
           Π F G ⟶ᵀ* C → HomΠShape C
@@ -128,6 +134,11 @@ hom-shape (stepᵀ (ξ-Homˡ r) rest) = hom-shape rest
 hom-shape (stepᵀ (ξ-Homʳ r) rest) = hom-shape rest
 hom-shape (stepᵀ (Hom-U c d) rest)    = Π-shape rest
 hom-shape (stepᵀ (Hom-Π A B f g) rest) = Π-shape rest
+hom-shape (stepᵀ (Hom-Nat-z n) doneᵀ)        = hsUnit
+hom-shape (stepᵀ (Hom-Nat-z n) (stepᵀ () _))
+hom-shape (stepᵀ (Hom-Nat-sz m) doneᵀ)       = hsBase
+hom-shape (stepᵀ (Hom-Nat-sz m) (stepᵀ () _))
+hom-shape (stepᵀ (Hom-Nat-ss m n) rest)      = hom-shape rest
 
 ------------------------------------------------------------------------
 -- 2. ★★ `homSem₀-mem-endpoints` — memberships at a `homSem₀`-interp do

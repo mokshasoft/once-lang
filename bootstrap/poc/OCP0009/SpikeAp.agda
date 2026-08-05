@@ -55,6 +55,7 @@ open import poc.OCP0009.NbEPDirDBLR using ( IsNormal )
 open import poc.OCP0009.NbEPDirDBSubj using ( gen-lam; gen-hrefl )
 open import poc.OCP0009.NbEPDirDBCanon
   using ( pathCanon; codeCanon; HomStkΠ-clash )
+open import poc.OCP0009.NbEPDirDBSubj using ( nn-El )
 
 ------------------------------------------------------------------------
 -- 1. Closed normal paths at STABLE-coded ambients are exactly hrefls.
@@ -64,7 +65,7 @@ stable-path-is-hrefl :
   {p : RTm ε} {c t u : RTm ε} →
   ◇ ⊢ p ∷ Hom (El c) t u → stkC? c ≡ true → IsNormal p →
   Σ (RTm ε) (λ c₁ → Σ (RTm ε) (λ s → p ≡ hrefl c₁ s))
-stable-path-is-hrefl d k nrm with pathCanon d nrm
+stable-path-is-hrefl d k nrm with pathCanon nn-El d nrm
 ... | inj₁ hs = hs
 ... | inj₂ (f , refl) with gen-lam d
 ...   | _ , (_ , (cv , _)) = ⊥-elim (HomStkΠ-clash k cv)
