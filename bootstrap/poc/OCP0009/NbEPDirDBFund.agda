@@ -98,7 +98,7 @@ open import poc.OCP0009.NbEPDirDBInj
         ; red→≅ᵀ; Π-reduct; Σ-reduct; mkΠRed; mkΣRed 
         ; Id-reduct )
 open import poc.OCP0009.NbEPDirDBSubj
-  using ( HomΠShape; hsΠ; hsH; hom-shape; pw-El-decode
+  using ( HomΠShape; hsΠ; hsH; hom-shape; hom-shapeN; nn-U; NoNat; pw-El-decode
         ; HomRed; mkHomRed; Hom-to-Hom
         ; HomToΠ; via-U; via-Π; hom-to-Π
         ; U-reduct; wk-cancel-tm; ≅ᵀ-Homᵀ; gen-var; subTy-comm; subTy-monoˢ )
@@ -113,6 +113,7 @@ open import poc.OCP0009.NbEPDirDBLR
         ; sne-natrec; ne-natrec; sn-unit; sn-nzero; sn-nsuc
         ; NatMem; nm-ne; nm-zero; nm-suc; nm-exp; natmem-whred
         ; ⊩₁Unit; ⊩₁Nat; natstk?; natstk?-ren; natstk?-red; sne→natstk; sn-whred
+        ; StkHd; sh-Hom; sh-NatH; homnat?
         ; trstk?-ren; apstk?-ren; idstk?-ren; nopw?-ren; trlam?-ren
         ; idstk?-red; ⊩₀Id; ⊩₁Id; IdPay; idpay-transfer; idpay-peel; sne-nopay
         ; nopw⊥pw; stk⊥dead; pw⊥dead; dead→nopw; snr-nonpw
@@ -2550,25 +2551,25 @@ fund {Ξ = Ξ} {σ = σ}
 
   main : (R : ⊩₁ (Hom U tI uI)) → R ⊩₁∋ pI →
          Σ (⊩₁ (El uI)) (λ R' → R' ⊩₁∋ tr (var vz) pI eI)
-  main (⊩₁base q) hp with hom-shape q
+  main (⊩₁base q) hp with hom-shapeN nn-U q
   ... | ()
-  main (⊩₁U q) hp with hom-shape q
+  main (⊩₁U q) hp with hom-shapeN nn-U q
   ... | ()
-  main (⊩₁ne q n) hp with hom-shape q
+  main (⊩₁ne q n) hp with hom-shapeN nn-U q
   ... | ()
-  main (⊩₁Σ q ⊩F ⊩G) hp with hom-shape q
+  main (⊩₁Σ q ⊩F ⊩G) hp with hom-shapeN nn-U q
   ... | ()
-  main (⊩₁Id q) hp with hom-shape q
+  main (⊩₁Id q) hp with hom-shapeN nn-U q
   ... | ()
-  main (⊩₁Unit q) hp with hom-shape q
+  main (⊩₁Unit q) hp with hom-shapeN nn-U q
   ... | ()
-  main (⊩₁Nat q) hp with hom-shape q
+  main (⊩₁Nat q) hp with hom-shapeN nn-U q
   ... | ()
-  main (⊩₁Hom q sh) hp with Hom-to-Hom q
+  main (⊩₁Hom q sh) hp with Hom-to-Hom nn-U q
   ... | mkHomRed rA rt ru with U-reduct rA
   ...   | refl with sh
-  ...     | ()
-  main (⊩₁Π q ⊩F ⊩G) hp with hom-to-Π q
+  ...     | sh-Hom ()
+  main (⊩₁Π q ⊩F ⊩G) hp with hom-to-Π nn-U q
   ... | via-Π rA with U-reduct rA
   ...   | ()
   main (⊩₁Π q ⊩F ⊩G) hp | via-U rA rt ru rEt rEu =
