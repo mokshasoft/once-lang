@@ -44,7 +44,9 @@ open import poc.OCP0009.NbEPDirDBVar
         ; pw?; stkC?; pwDom; pwBody; pwShift
         ; pw?-sub; stkC?-sub; pwBody-sub; pwDom-sub
         ; pwBody-occ; ren-as-sub; avoids-pwShift; subTm-occ
-        ; stkC?-ren; wk-ren-tm; wk-sub-tm; flat?; flat→stk; flat?-ren; flat?-sub )
+        ; stkC?-ren; wk-ren-tm; wk-sub-tm; flat?; flat→stk; flat?-ren; flat?-sub
+        ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id
+        ; nonatc-ren; nonatc-sub; nonatc-pwBody; stkC?→NoNatC )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; nrs; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
         ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
@@ -461,14 +463,25 @@ posc-red (posc-Hom hc ha) (ξ-⌜Hom⌝ʳ ())
 -- again, and only a ⌜Nat⌝-headed ambient is excluded, which is the
 -- true statement.  Every consumer already knows its code head
 -- concretely (the `tr-J-base`/`-Σ`/`-Id`/`-Hom`/`-Unit` cases of `sr`),
--- or knows `stkC? c ≡ true`, which implies it (`stkC?→NoNatC`).
-data NoNatC {Γ} : RTm Γ → Set where
-  nnc-base : NoNatC (⌜base⌝ {Γ})
-  nnc-Unit : NoNatC (⌜Unit⌝ {Γ})
-  nnc-Π    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatC (⌜Π⌝ c d)
-  nnc-Σ    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatC (⌜Σ⌝ c d)
-  nnc-Hom  : {c a b : RTm Γ} → NoNatC (⌜Hom⌝ c a b)
-  nnc-Id   : {c a b : RTm Γ} → NoNatC (⌜Id⌝ c a b)
+-- or knows `stkC? c ≡ true`, which implies it (`stkC?→NoNatC`, in
+-- NbEPDirDBVar alongside the datatype itself).
+--
+-- constructor-headed codes stay constructor-headed: the only rules
+-- with a ⌜Π⌝/⌜Σ⌝/⌜Hom⌝/⌜Id⌝ redex are that former's own congruences,
+-- and ⌜base⌝/⌜Unit⌝ are normal.
+nonatc-red : {c c' : RTm Γ} → NoNatC c → c ⟶ c' → NoNatC c'
+nonatc-red nnc-base ()
+nonatc-red nnc-Unit ()
+nonatc-red nnc-Σ (ξ-⌜Σ⌝ˡ _) = nnc-Σ
+nonatc-red nnc-Σ (ξ-⌜Σ⌝ʳ _) = nnc-Σ
+nonatc-red nnc-Id (ξ-⌜Id⌝ᶜ _) = nnc-Id
+nonatc-red nnc-Id (ξ-⌜Id⌝ˡ _) = nnc-Id
+nonatc-red nnc-Id (ξ-⌜Id⌝ʳ _) = nnc-Id
+nonatc-red (nnc-Π nd) (ξ-⌜Π⌝ˡ _) = nnc-Π nd
+nonatc-red (nnc-Π nd) (ξ-⌜Π⌝ʳ r) = nnc-Π (nonatc-red nd r)
+nonatc-red (nnc-Hom nc) (ξ-⌜Hom⌝ᶜ r) = nnc-Hom (nonatc-red nc r)
+nonatc-red (nnc-Hom nc) (ξ-⌜Hom⌝ˡ _) = nnc-Hom nc
+nonatc-red (nnc-Hom nc) (ξ-⌜Hom⌝ʳ _) = nnc-Hom nc
 
 data NoNat {Γ} : RTy Γ → Set where
   nn-base : NoNat (base {Γ})
@@ -479,50 +492,6 @@ data NoNat {Γ} : RTy Γ → Set where
   nn-Σ    : {F : RTy Γ} {G : RTy (Γ ∙)} → NoNat (Σ' F G)
   nn-Hom  : {H : RTy Γ} {a b : RTm Γ} → NoNat (Hom H a b)
   nn-Id   : {A : RTy Γ} {t u : RTm Γ} → NoNat (Id A t u)
-
--- constructor-headed codes stay constructor-headed: the only rules
--- with a ⌜Π⌝/⌜Σ⌝/⌜Hom⌝/⌜Id⌝ redex are that former's own congruences,
--- and ⌜base⌝/⌜Unit⌝ are normal.
-nonatc-red : {c c' : RTm Γ} → NoNatC c → c ⟶ c' → NoNatC c'
-nonatc-red nnc-base ()
-nonatc-red nnc-Unit ()
-nonatc-red nnc-Π (ξ-⌜Π⌝ˡ _) = nnc-Π
-nonatc-red nnc-Π (ξ-⌜Π⌝ʳ _) = nnc-Π
-nonatc-red nnc-Σ (ξ-⌜Σ⌝ˡ _) = nnc-Σ
-nonatc-red nnc-Σ (ξ-⌜Σ⌝ʳ _) = nnc-Σ
-nonatc-red nnc-Hom (ξ-⌜Hom⌝ᶜ _) = nnc-Hom
-nonatc-red nnc-Hom (ξ-⌜Hom⌝ˡ _) = nnc-Hom
-nonatc-red nnc-Hom (ξ-⌜Hom⌝ʳ _) = nnc-Hom
-nonatc-red nnc-Id (ξ-⌜Id⌝ᶜ _) = nnc-Id
-nonatc-red nnc-Id (ξ-⌜Id⌝ˡ _) = nnc-Id
-nonatc-red nnc-Id (ξ-⌜Id⌝ʳ _) = nnc-Id
-
--- `stkC?` implies it: the stable codes are exactly the
--- constructor-headed ones minus ⌜Π⌝ — and, since the retraction,
--- minus ⌜Nat⌝.
-stkC?→NoNatC : (c : RTm Γ) → stkC? c ≡ true → NoNatC c
-stkC?→NoNatC (var _) ()
-stkC?→NoNatC (lam _) ()
-stkC?→NoNatC (app _ _) ()
-stkC?→NoNatC (pair _ _) ()
-stkC?→NoNatC (fst _) ()
-stkC?→NoNatC (snd _) ()
-stkC?→NoNatC ⌜base⌝ h = nnc-base
-stkC?→NoNatC ⌜Unit⌝ h = nnc-Unit
-stkC?→NoNatC ⌜Nat⌝ ()
-stkC?→NoNatC (⌜Π⌝ _ _) ()
-stkC?→NoNatC (⌜Σ⌝ _ _) h = nnc-Σ
-stkC?→NoNatC (⌜Hom⌝ _ _ _) h = nnc-Hom
-stkC?→NoNatC (⌜Id⌝ _ _ _) h = nnc-Id
-stkC?→NoNatC (hrefl _ _) ()
-stkC?→NoNatC (idrefl _ _) ()
-stkC?→NoNatC (tr _ _ _) ()
-stkC?→NoNatC (jsub _ _ _) ()
-stkC?→NoNatC (ap _ _ _) ()
-stkC?→NoNatC unit ()
-stkC?→NoNatC nzero ()
-stkC?→NoNatC (nsuc _) ()
-stkC?→NoNatC (natrec _ _ _) ()
 
 nonat-red : {A A' : RTy Γ} → NoNat A → A ⟶ᵀ A' → NoNat A'
 nonat-red nn-base ()
@@ -859,14 +828,14 @@ ren-lemma {ρ = ρ} (⊢jsub {d = d} {t = t} {u = u} dd dt du dp de) h =
     (⊢jsub (ren-lemma dd (Ren⊢-ext h))
            (ren-lemma dt h) (ren-lemma du h) (ren-lemma dp h)
            (⊢-cast (cong El (ren-comm ρ d t)) (ren-lemma de h)))
-ren-lemma {ρ = ρ} (⊢tr {c = cM} {a = aM} {t = t} {u = u} dc da dv hc ha dt du dp de) h
+ren-lemma {ρ = ρ} (⊢tr {c = cM} {a = aM} {t = t} {u = u} dc da dv nc hc ha dt du dp de) h
   with posc-ren {ρ = ρ} (posc-Hom {c = cM} {a = aM} hc ha)
 ... | posc-Hom hc' ha' =
       ⊢-cast (cong El (sym (ren-comm ρ (⌜Hom⌝ cM aM (var vz)) u)))
         (⊢tr {c = renTm (extR ρ) cM} {a = renTm (extR ρ) aM}
              {t = renTm ρ t} {u = renTm ρ u}
              (ren-lemma dc (Ren⊢-ext h)) (ren-lemma da (Ren⊢-ext h))
-             (ren-lemma dv (Ren⊢-ext h)) hc' ha'
+             (ren-lemma dv (Ren⊢-ext h)) (nonatc-ren (extR ρ) nc) hc' ha'
              (ren-lemma dt h) (ren-lemma du h) (ren-lemma dp h)
              (⊢-cast (cong El (ren-comm ρ (⌜Hom⌝ cM aM (var vz)) t))
                      (ren-lemma de h)))
@@ -953,14 +922,14 @@ sub-lemma {σ = σ} (⊢jsub {d = d} {t = t} {u = u} dd dt du dp de) h =
     (⊢jsub (sub-lemma dd (Sub⊢-ext h))
            (sub-lemma dt h) (sub-lemma du h) (sub-lemma dp h)
            (⊢-cast (cong El (sub-comm σ d t)) (sub-lemma de h)))
-sub-lemma {σ = σ} (⊢tr {c = cM} {a = aM} {t = t} {u = u} dc da dv hc ha dt du dp de) h
+sub-lemma {σ = σ} (⊢tr {c = cM} {a = aM} {t = t} {u = u} dc da dv nc hc ha dt du dp de) h
   with posc-sub {σ = σ} (posc-Hom {c = cM} {a = aM} hc ha)
 ... | posc-Hom hc' ha' =
       ⊢-cast (cong El (sym (sub-comm σ (⌜Hom⌝ cM aM (var vz)) u)))
         (⊢tr {c = subTm (extS σ) cM} {a = subTm (extS σ) aM}
              {t = subTm σ t} {u = subTm σ u}
              (sub-lemma dc (Sub⊢-ext h)) (sub-lemma da (Sub⊢-ext h))
-             (sub-lemma dv (Sub⊢-ext h)) hc' ha'
+             (sub-lemma dv (Sub⊢-ext h)) (nonatc-sub (extS σ) nc) hc' ha'
              (sub-lemma dt h) (sub-lemma du h) (sub-lemma dp h)
              (⊢-cast (cong El (sub-comm σ (⌜Hom⌝ cM aM (var vz)) t))
                      (sub-lemma de h)))
@@ -1336,6 +1305,7 @@ record TrInv (Γ : Ctx) (d₀ : RTm (⌊ Γ ⌋ ∙)) (p e : RTm ⌊ Γ ⌋)
     dcM  : (Γ ▹ A) ⊢ cM ∷ U
     daM  : (Γ ▹ A) ⊢ aM ∷ El cM
     dvM  : (Γ ▹ A) ⊢ var vz ∷ El cM
+    ncM  : NoNatC cM
     hcM  : occTm vz cM ≡ false
     haM  : occTm vz aM ≡ false
     dt   : Γ ⊢ t ∷ A
@@ -1364,12 +1334,12 @@ data TrGen (Γ : Ctx) (d₀ : RTm (⌊ Γ ⌋ ∙)) (p e : RTm ⌊ Γ ⌋)
 
 gen-tr : {Γ : Ctx} {d₀ : RTm (⌊ Γ ⌋ ∙)} {p e : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
          Γ ⊢ tr d₀ p e ∷ C → TrGen Γ d₀ p e C
-gen-tr (⊢tr dc da dv hc ha dt du dp de) =
-  tgC (mkTrInv _ _ refl _ _ _ dc da dv hc ha dt du dp de crflᵀ)
+gen-tr (⊢tr dc da dv nc hc ha dt du dp de) =
+  tgC (mkTrInv _ _ refl _ _ _ dc da dv nc hc ha dt du dp de crflᵀ)
 gen-tr (⊢trU dt du dp de) = tgU (mkTrInvU refl _ _ dt du dp de crflᵀ)
 gen-tr (⊢conv d c) with gen-tr d
-... | tgC (mkTrInv cM aM deq A t u dc da dv hc ha dt du dp de cC) =
-      tgC (mkTrInv cM aM deq A t u dc da dv hc ha dt du dp de
+... | tgC (mkTrInv cM aM deq A t u dc da dv nc hc ha dt du dp de cC) =
+      tgC (mkTrInv cM aM deq A t u dc da dv nc hc ha dt du dp de
                    (ctrnᵀ (csymᵀ c) cC))
 ... | tgU (mkTrInvU deq t u dt du dp de cC) =
       tgU (mkTrInvU deq t u dt du dp de (ctrnᵀ (csymᵀ c) cC))
@@ -1458,7 +1428,7 @@ sr d (ξ-⌜Σ⌝ʳ r) with gen-⌜Σ⌝ d
 -- rule pins the motive to a `⌜Hom⌝`, never `var vz`.
 sr d (tr-J-base cm am mm s e₀) with gen-tr d
 ... | tgU (mkTrInvU () t u dt du dp de cC)
-... | tgC (mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC)
+... | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du dp de cC)
       with gen-hrefl dp
 ...   | (dc , (ds , cH)) with church-rosserᵀ cH
 ...     | W , (rL , rR) with homred-inv baseamb-red (λ ()) (λ ()) (λ ()) ba-el rR
@@ -1475,7 +1445,7 @@ sr d (tr-J-base cm am mm s e₀) with gen-tr d
                        (csymᵀ cC))
 sr d (tr-J-Σ cm am mm c₁ c₂ s e₀) with gen-tr d
 ... | tgU (mkTrInvU () t u dt du dp de cC)
-... | tgC (mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC)
+... | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du dp de cC)
       with gen-hrefl dp
 ...   | (dc , (ds , cH)) with church-rosserᵀ cH
 ...     | W , (rL , rR) with homred-inv σamb-red (λ ()) (λ ()) (λ ()) sa-el rR
@@ -1506,7 +1476,7 @@ sr d (hrefl-pw C s key) with gen-hrefl d
 -- never unfold to Π/U, so reducts decompose componentwise).
 sr d (tr-J-Id cm am mm c₁ a₁ b₁ s e₀) with gen-tr d
 ... | tgU (mkTrInvU () t u dt du dp de cC)
-... | tgC (mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC)
+... | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du dp de cC)
       with gen-hrefl dp
 ...   | (dc , (ds , cH)) with church-rosserᵀ cH
 ...     | W , (rL , rR)
@@ -1529,7 +1499,7 @@ sr d (tr-J-Id cm am mm c₁ a₁ b₁ s e₀) with gen-tr d
 -- `stkC?` in NbEPDirDBVar.)
 sr d (tr-J-Unit cm am mm s e₀) with gen-tr d
 ... | tgU (mkTrInvU () t u dt du dp de cC)
-... | tgC (mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC)
+... | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du dp de cC)
       with gen-hrefl dp
 ...   | (dc , (ds , cH)) with church-rosserᵀ cH
 ...     | W , (rL , rR)
@@ -1548,7 +1518,7 @@ sr d (tr-J-Unit cm am mm s e₀) with gen-tr d
                        (csymᵀ cC))
 sr d (tr-J-Hom cm am mm c₁ a₁ b₁ s e₀ key) with gen-tr d
 ... | tgU (mkTrInvU () t u dt du dp de cC)
-... | tgC (mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC)
+... | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du dp de cC)
       with gen-hrefl dp
 ...   | (dc , (ds , cH)) with church-rosserᵀ cH
 ...     | W , (rL , rR)
@@ -1556,7 +1526,8 @@ sr d (tr-J-Hom cm am mm c₁ a₁ b₁ s e₀ key) with gen-tr d
                           (st-el {c = ⌜Hom⌝ c₁ a₁ b₁} key) rR
 ...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
             with Hom-to-Hom
-                   (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) (nn-El nnc-Hom))
+                   (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR)
+                            (nn-El (stkC?→NoNatC (⌜Hom⌝ c₁ a₁ b₁) key)))
                    (subst (Hom A t u ⟶ᵀ*_) eqW rL)
 ...         | mkHomRed rA rt ru =
               ⊢conv de
@@ -1573,7 +1544,7 @@ sr d (tr-J-Hom cm am mm c₁ a₁ b₁ s e₀ key) with gen-tr d
 -- the motive's components are vz-free).
 sr {Γ = Γ} d (tr-pw c a f e₀ key) with gen-tr d
 ... | tgU (mkTrInvU () t u dt du dp de cC)
-... | tgC (mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC)
+... | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du dp de cC)
       with gen-var dvM
 ...   | _ , (here , cv) =
       ⊢conv
@@ -1757,14 +1728,19 @@ sr {Γ = Γ} d (tr-pw c a f e₀ key) with gen-tr d
                      (⌜Hom⌝ (renTm pwShift (pwBody c))
                             (app (renTm vs a) (var (vs vz)))
                             (var vz)))
-  inner = ⊢tr dc-in da-in dv-in hc-in ha-in dt-in du-in dp-in de-in
+  -- ★ the hereditary premise earns its keep here: `tr-pw` rewrites the
+  -- motive code to `pwBody c`, and `nonatc-pwBody` is exactly what says
+  -- that stays Nat-free.
+  inner = ⊢tr dc-in da-in dv-in
+              (nonatc-ren pwShift (nonatc-pwBody c ncM key))
+              hc-in ha-in dt-in du-in dp-in de-in
 
   eq→≅ᵀ : {X Y : RTy ⌊ Γ ⌋} → X ≡ Y → X ≅ᵀ Y
   eq→≅ᵀ refl = crflᵀ
 
   cC' = ctrnᵀ cC (eq→≅ᵀ (cong El (⌜Hom⌝-cong₃ eq-cu eq-au refl)))
 sr d (tr-taut f e₀) with gen-tr d
-... | tgC (mkTrInv cM aM () A t u dcM daM dvM hcM haM dt du dp de cC)
+... | tgC (mkTrInv cM aM () A t u dcM daM dvM ncM hcM haM dt du dp de cC)
 ... | tgU (mkTrInvU refl t u dt du dp de cC) with gen-lam dp
 ...   | A₁ , (B₁ , (cΠ , (tyA₁ , d-f))) with church-rosserᵀ cΠ
 ...     | W , (rL , rR) with Π-reduct rR
@@ -1808,27 +1784,27 @@ sr d (ξ-hreflᵃ r) with gen-hrefl d
 sr d (ξ-trᵈ r) with gen-tr d
 ... | tgU (mkTrInvU refl t u dt du dp de cC) with r
 ...   | ()
-sr d (ξ-trᵈ r) | tgC (mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC)
+sr d (ξ-trᵈ r) | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du dp de cC)
   with hom-step r
 ...   | hsᶜ rc =
         ⊢conv (⊢tr (sr dcM rc) (⊢conv daM (credᵀ (ξ-El rc)))
                    (⊢conv dvM (credᵀ (ξ-El rc)))
-                   (occ-red rc hcM) haM dt du dp
+                   (nonatc-red ncM rc) (occ-red rc hcM) haM dt du dp
                    (⊢conv de (credᵀ (ξ-El (⟶-sub (single t) r)))))
               (csymᵀ (ctrnᵀ cC (credᵀ (ξ-El (⟶-sub (single u) r)))))
 ...   | hsˡ ra =
-        ⊢conv (⊢tr dcM (sr daM ra) dvM hcM (occ-red ra haM) dt du dp
+        ⊢conv (⊢tr dcM (sr daM ra) dvM ncM hcM (occ-red ra haM) dt du dp
                    (⊢conv de (credᵀ (ξ-El (⟶-sub (single t) r)))))
               (csymᵀ (ctrnᵀ cC (credᵀ (ξ-El (⟶-sub (single u) r)))))
 ...   | hsʳ ()
 sr d (ξ-trᵖ r) with gen-tr d
-... | tgC (mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC) =
-      ⊢conv (⊢tr dcM daM dvM hcM haM dt du (sr dp r) de) (csymᵀ cC)
+... | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du dp de cC) =
+      ⊢conv (⊢tr dcM daM dvM ncM hcM haM dt du (sr dp r) de) (csymᵀ cC)
 ... | tgU (mkTrInvU refl t u dt du dp de cC) =
       ⊢conv (⊢trU dt du (sr dp r) de) (csymᵀ cC)
 sr d (ξ-trᵉ r) with gen-tr d
-... | tgC (mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC) =
-      ⊢conv (⊢tr dcM daM dvM hcM haM dt du dp (sr de r)) (csymᵀ cC)
+... | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du dp de cC) =
+      ⊢conv (⊢tr dcM daM dvM ncM hcM haM dt du dp (sr de r)) (csymᵀ cC)
 ... | tgU (mkTrInvU refl t u dt du dp de cC) =
       ⊢conv (⊢trU dt du dp (sr de r)) (csymᵀ cC)
 -- ★ directed `ap` (SpikeAp).  The J case extracts the endpoint

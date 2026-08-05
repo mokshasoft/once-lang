@@ -42,7 +42,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Unit; Nat; unit; nzero; nsuc; natrec; extS; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; extR; Sub; subTy; subTm; renTy; renTm )
 open import poc.OCP0009.NbEPDirDBVar
-  using ( 𝔹; true; false; occTm; pw?; stkC?; flat?; pwBody; pwShift )
+  using ( 𝔹; true; false; occTm; pw?; stkC?; flat?; pwBody; pwShift
+        ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id )
 
 private
   variable
@@ -399,9 +400,25 @@ data _⊢_∷_ where
           Γ ⊢ t ∷ U → Γ ⊢ u ∷ U →
           Γ ⊢ p ∷ Hom U t u → Γ ⊢ e ∷ El t →
           Γ ⊢ tr (var vz) p e ∷ El u
+  -- ★★ WF stage C: the motive code is RESTRICTED to non-⌜Nat⌝ heads.
+  -- `tr` is hom-composition — the fibre over `x` is `Hom (El c) a x`,
+  -- so transport along `p : Hom A t u` is ≤-transitivity at a `Nat`
+  -- ambient.  The right answer there depends on the path's ENDPOINTS
+  -- `t`/`u`, which never occur in the term `tr d p e` (only in this
+  -- derivation), so no reduction rule can case on them; and every
+  -- endpoint-blind rule dies to the same counterexample that killed
+  -- `tr-J-Nat` (SPIKE-WF.md §7).  `tr` is J-shaped — path-keyed and
+  -- endpoint-blind — so an ordered ambient is something it structurally
+  -- cannot serve.  Order transport is the separate `ordtr` former; see
+  -- ARCHITECTURE.md's ORDER TRANSPORT entry for its worked case tree.
+  -- ★ The premise PAYS FOR ITSELF twice in `NbEPDirDBCanon`:
+  -- `trProgress`'s ⌜Nat⌝ case is refuted on it, and `tr-amb-nonat` —
+  -- whose old `elNat⊥` proof stage C made FALSE — gets its `{A = Nat}`
+  -- case from it.
   ⊢tr   : ∀ {Γ A c a p e t u} →
           (Γ ▹ A) ⊢ c ∷ U → (Γ ▹ A) ⊢ a ∷ El c →
           (Γ ▹ A) ⊢ var vz ∷ El c →
+          NoNatC c →
           occTm vz c ≡ false → occTm vz a ≡ false →
           Γ ⊢ t ∷ A → Γ ⊢ u ∷ A →
           Γ ⊢ p ∷ Hom A t u →
