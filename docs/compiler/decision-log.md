@@ -6279,3 +6279,112 @@ property of `ir-to-trace'` alone.
 - The exit tests become a per-commit gate for anything touching the emitted
   trace, not a pre-merge one. Four green Agda clusters and a linking binary did
   not catch this; running it did.
+
+---
+
+## D089: A Label Is a Structured Identity, Not a Counter Value
+
+**Date**: 2026-08-05
+**Status**: TAKEN (design settled and its first three modules validated; the
+sweep is not yet landed — see plan 0.63)
+
+### What broke
+
+D088 recorded that `cata` splices its algebra's trace two or three times, so a
+label DEFINITION inside it is emitted more than once, and concluded that
+hoisting closure bodies would fix it. **That conclusion was wrong**, and the
+probe that showed it is worth keeping:
+
+    isEven = cata (case inl (case inr inl))          -- layer5-iseven.once
+
+fails to assemble with `.Lonce_15/16/17/18/19` already defined, under BOTH
+`--optimize` and `--no-optimize`, with **no closure involved at all**. Here the
+algebra compiles to a direct `case` IR node, so `at` carries the `c-label`
+definitions `IRToTrace:797–809` emits, and nat strategy splices it twice.
+
+`git show 24b162e4` touched only the two `curry` clauses and one import line —
+the `case` clause and `cata-dispatch` are untouched — so **this predates the
+flip**. It has been latent since the cata codegen landed, hidden because
+`layer5-iseven.once` has never carried an `-- Expected: exit N` line (checked
+every revision back to Plan 0.28), so the exit-test runner silently skips it,
+and because every COVERED cata test uses named user functions as algebras,
+which closurise and so kept `at` label-free until the flip.
+
+### The real defect
+
+Uniqueness of labels was an artifact of a LINEAR TRAVERSAL: distinct
+occurrences got distinct labels because a single monotone counter was consulted
+in sequence. The cata emitter is not a linear traversal — it compiles the
+algebra ONCE and emits the result TWICE. Both copies satisfy
+`LabelScope.labels-in` (same range, same labels), because range containment is
+closed under duplication.
+
+So the missing invariant is not merely unstated: it is FALSE, and no
+strengthening of the counter development recovers it while a subtree is emitted
+more than once.
+
+### Decision
+
+The label payload becomes a structured identity:
+
+    record LabelId : Set where
+      field owner : CanonicalName   -- WHICH definition
+            path  : List ℕ          -- WHERE inside it (splice-aware)
+            idx   : ℕ               -- local counter within one context
+
+    data Label : Set where
+      once  : LabelId → Label
+      sigop : String → ℕ → Label     -- unchanged
+      thunk : LabelId → Label
+
+Each component kills one collision source, and none depends on traversal
+order. `owner` is the same `CanonicalName` the function symbol is mangled from,
+so a label and its function agree by construction. `path` is extended at each
+splice site, so `cata-dispatch` emitting its algebra twice yields two DIFFERENT
+labels by construction. `idx` is the ordinary local counter.
+
+The one structural consequence: **`at` becomes `List ℕ → AbstractTrace`** so
+cata applies it at two distinct paths —
+`I₁ ++ at (0 ∷ p) ++ (I₂ ++ at (1 ∷ p) ++ I₃)`. Every walk that proves `P at`
+proves `∀ p → P (at p)` instead.
+
+### What is NOT changed, and why
+
+- **The provenance split stays** (D033, D082). `FlatComposition.find-thunk-pres`
+  inducts over `HeadView`, where `hv-clabel` and `hv-otherlabel` exchange roles
+  between the jump scan and the call scan, and its "can never match a `once`
+  target" premise is `refl` because `_≡ᵇᴸ_` is `false` across CONSTRUCTORS.
+  Folding provenance into `path` would turn those `refl`s into decisions over
+  path contents for no gain. Only the payload becomes structured.
+- **`sigop` stays**, unapplied though it currently is (SigOps lower to
+  `call-sym`, and `ArithEnv = String → …` is symbol-keyed). It is load-bearing
+  as a case in `FlatComposition`, it documents a namespace boundary that goes
+  live the moment an arith block is addressed by label, and — the telling part
+  — `sigop : String → ℕ → Label` was ALREADY identity-keyed. It was the
+  counter-based `once`/`thunk` pair that was the outlier; `LabelId` makes the
+  three uniform.
+- **The abstract layer needs no provenance field.** Provenance already lives in
+  WHICH constructor (`c-label` vs `c-thunk`) and WHICH lookup (`find-label` vs
+  `find-thunk`); only `FlatCtrl`'s payload changes `ℕ → LabelId`.
+
+### Equality
+
+`_≡ᵇᴵ_` is `⌊ _≟ᴵ_ ⌋`, with `_≟ᴵ_` built from `_≟ᶜ_` (the equality the compiler
+already trusts for definition identity), `≡-dec _≟_` and `_≟_`. Deriving it
+from the decidable equality rather than hand-rolling a Bool recursion makes the
+soundness the scans need (`≡ᵇᴵ-true`, consumed by `Flat.lab-eq`/`fl-go-lands`)
+`toWitness` instead of fifteen lines of String/List boolean reflection.
+
+### Consequences
+
+- **D088 is re-graded**: hoisting closure bodies is NOT a correctness fix and is
+  off the critical path. It remains available as a code-size optimisation (nat
+  and linear would otherwise emit each closure body twice). The
+  `LabelScope.segagree-curry` / walk-strengthening re-base D088 costed is not
+  owed.
+- `Compile.compileFunWithTarget`'s `l₁ ⊔ l₂` reconciliation (the comment at
+  `Compile.agda:514–518` explaining why one counter must be shared between
+  `irToAsm` and `irToBodies`) disappears: `owner` separates the definitions, so
+  the counter can be local and reset per definition.
+- `layer5-iseven.once` must gain its missing `-- Expected: exit N` line. It goes
+  red until this lands, which is the honest state.
