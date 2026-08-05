@@ -47,7 +47,7 @@ open import poc.OCP0009.NbEPDirDBVar
         ; pw?-sub; stkC?-sub; stkA?-sub; pwBody-sub )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; swp; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
-        ; ξ-pairˡ; ξ-pairʳ; ξ-absurd; ξ-fst; ξ-snd
+        ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
         ; tr-J-base; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
@@ -179,7 +179,7 @@ pwShift-sub σ t =
 ⟶-sub σ (ξ-appʳ r)  = ξ-appʳ (⟶-sub σ r)
 ⟶-sub σ (ξ-pairˡ r) = ξ-pairˡ (⟶-sub σ r)
 ⟶-sub σ (ξ-pairʳ r) = ξ-pairʳ (⟶-sub σ r)
-⟶-sub σ (ξ-absurd r)   = ξ-absurd (⟶-sub σ r)
+⟶-sub σ (ξ-absurdᵉ r)   = ξ-absurdᵉ (⟶-sub σ r)
 ⟶-sub σ (ξ-fst r)   = ξ-fst (⟶-sub σ r)
 ⟶-sub σ (ξ-snd r)   = ξ-snd (⟶-sub σ r)
 ⟶-sub σ (ξ-⌜Π⌝ˡ r) = ξ-⌜Π⌝ˡ (⟶-sub σ r)

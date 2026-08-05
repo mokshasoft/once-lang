@@ -91,7 +91,8 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   -- ★★ WF-axis stage D: EX FALSO has NO root rule.  Its scrutinee can
   -- never become canonical (that is `consistency`), so `absurd e` is
   -- permanently NEUTRAL and only its scrutinee develops.
-  ξ-absurd : {e e' : RTm Γ} → e ⟶ e' → absurd e ⟶ absurd e'
+  ξ-absurdᶜ : {c c' e : RTm Γ} → c ⟶ c' → absurd c e ⟶ absurd c' e
+  ξ-absurdᵉ : {c e e' : RTm Γ} → e ⟶ e' → absurd c e ⟶ absurd c e'
   ξ-fst   : {p p' : RTm Γ} → p ⟶ p' → fst p ⟶ fst p'
   ξ-snd   : {p p' : RTm Γ} → p ⟶ p' → snd p ⟶ snd p'
   ξ-⌜Π⌝ˡ  : {c c' : RTm Γ} {d : RTm (Γ ∙)} → c ⟶ c' → ⌜Π⌝ c d ⟶ ⌜Π⌝ c' d
@@ -394,7 +395,12 @@ data _⊢_∷_ where
   -- motive pattern), so `absurd e` inhabits every well-formed type.
   -- Consistency is untouched: `base` still has no closed inhabitant, so
   -- no CLOSED `absurd e` exists either.
-  ⊢absurd : ∀ {Γ e C} → Γ ⊢ e ∷ base → Γ ⊢ty C → Γ ⊢ absurd e ∷ C
+  -- The result type is carried as a CODE, exactly as `⊢hrefl`/`⊢ap` do:
+  -- that makes the type DETERMINED (`El c`) and the inversion
+  -- `gen-absurd` straightforward.  A `⊢ty C` premise cannot work here —
+  -- it is about the RESULT type, which `⊢conv` changes, so the
+  -- inversion could never rebuild it.
+  ⊢absurd : ∀ {Γ c e} → Γ ⊢ c ∷ U → Γ ⊢ e ∷ base → Γ ⊢ absurd c e ∷ El c
   ⊢fst  : ∀ {Γ A B p}   → Γ ⊢ p ∷ Σ' A B → Γ ⊢ fst p ∷ A
   ⊢snd  : ∀ {Γ A B p}   → Γ ⊢ p ∷ Σ' A B →
                           Γ ⊢ snd p ∷ subTy (single (fst p)) B

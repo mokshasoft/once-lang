@@ -41,7 +41,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ )
 open import poc.OCP0009.NbEPDirDBConf
-  using ( _⟹_; pvar; plam; papp; pβ; ppair; pfst; psnd; pβfst; pβsnd
+  using ( _⟹_; pvar; plam; papp; pβ; ppair; pabsurd; pfst; psnd; pβfst; pβsnd
         ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝; p⌜Hom⌝; phrefl
         ; ptr; ptr-J-base; ptr-J-Σ; ptr-taut
         ; phrefl-pw; ptr-J-Hom; ptr-pw; pap; pap-J; p⌜Id⌝; pidrefl; pjsub; pjsub-refl
@@ -273,6 +273,7 @@ El (var x) ⁺ᵀ   = El (var x ⁺)
 El (lam t) ⁺ᵀ   = El (lam t ⁺)
 El (app f a) ⁺ᵀ = El (app f a ⁺)
 El (pair a b) ⁺ᵀ = El (pair a b ⁺)
+El (absurd c e) ⁺ᵀ = El (absurd e ⁺)
 El (fst p) ⁺ᵀ   = El (fst p ⁺)
 El (snd p) ⁺ᵀ   = El (snd p ⁺)
 El ⌜Nat⌝ ⁺ᵀ     = Nat
@@ -337,6 +338,7 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl (papp p q)) = pEl (⟹-⁺ (papp p q))
 ⟹ᵀ-⁺ (pEl (pβ p q))  = pEl (⟹-⁺ (pβ p q))
 ⟹ᵀ-⁺ (pEl (ppair p q)) = pEl (⟹-⁺ (ppair p q))
+⟹ᵀ-⁺ (pEl (pabsurd p)) = pEl (⟹-⁺ (pabsurd p))
 ⟹ᵀ-⁺ (pEl (pfst p))  = pEl (⟹-⁺ (pfst p))
 ⟹ᵀ-⁺ (pEl (psnd p))  = pEl (⟹-⁺ (psnd p))
 ⟹ᵀ-⁺ (pEl (pβfst p q)) = pEl (⟹-⁺ (pβfst p q))
@@ -382,6 +384,10 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pHom pNat pnzero pu) = pHom-Nat-z (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pnzero) = pHom-Nat-sz (⟹-⁺ pm)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) (pnsuc pn)) = pHom-Nat-ss (⟹-⁺ pm) (⟹-⁺ pn)
+-- ★ stage D: `absurd` is not a numeral, so no order rule fires and the
+-- order-hom stays put.
+⟹ᵀ-⁺ (pHom pNat pt@(pabsurd _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pabsurd _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pvar _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(plam _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(papp _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)

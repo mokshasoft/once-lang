@@ -55,7 +55,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
-        ; ξ-pairˡ; ξ-pairʳ; ξ-absurd; ξ-fst; ξ-snd
+        ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
         ; tr-J-base; tr-J-Σ; tr-J-Id; tr-J-Unit; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; El-⌜Nat⌝; El-⌜Unit⌝
@@ -68,7 +68,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
-        ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢trU
+        ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢absurd; ⊢trU
         ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢ap; ⊢conv
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢⌜Nat⌝; ⊢⌜Unit⌝
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
@@ -318,6 +318,7 @@ occ-red {x = x} (ξ-pairˡ {a = a} r) e =
   ∨-false (occ-red r (∨-false₁ (occTm x a) e)) (∨-false₂ (occTm x a) e)
 occ-red {x = x} (ξ-pairʳ {a = a} r) e =
   ∨-false (∨-false₁ (occTm x a) e) (occ-red r (∨-false₂ (occTm x a) e))
+occ-red (ξ-absurdᵉ r) e = occ-red r e
 occ-red (ξ-fst r) e = occ-red r e
 occ-red (ξ-snd r) e = occ-red r e
 occ-red {x = x} (ξ-⌜Π⌝ˡ {c = c} r) e =
@@ -830,6 +831,7 @@ ren-lemma {ρ = ρ} (⊢app {B = D} {u = u} d₁ d₂) h =
 ren-lemma {ρ = ρ} (⊢pair {B = B} {a = a} dB d₁ d₂) h =
   ⊢pair (ren-ty dB (Ren⊢-ext h))
         (ren-lemma d₁ h) (⊢-cast (ren-comm-ty ρ B a) (ren-lemma d₂ h))
+ren-lemma (⊢absurd d tyC) h = ⊢absurd (ren-lemma d h) (ren-ty tyC h)
 ren-lemma (⊢fst d) h = ⊢fst (ren-lemma d h)
 ren-lemma {ρ = ρ} (⊢snd {B = B} {p = p} d) h =
   ⊢-cast (sym (ren-comm-ty ρ B (fst p))) (⊢snd (ren-lemma d h))
@@ -924,6 +926,7 @@ sub-lemma {σ = σ} (⊢app {B = D} {u = u} d₁ d₂) h =
 sub-lemma {σ = σ} (⊢pair {B = B} {a = a} dB d₁ d₂) h =
   ⊢pair (sub-ty dB (Sub⊢-ext h))
         (sub-lemma d₁ h) (⊢-cast (subTy-comm σ B a) (sub-lemma d₂ h))
+sub-lemma (⊢absurd d tyC) h = ⊢absurd (sub-lemma d h) (sub-ty tyC h)
 sub-lemma (⊢fst d) h = ⊢fst (sub-lemma d h)
 sub-lemma {σ = σ} (⊢snd {B = B} {p = p} d) h =
   ⊢-cast (sym (subTy-comm σ B (fst p))) (⊢snd (sub-lemma d h))
