@@ -127,7 +127,8 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; Var; vz; vs
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
-        ; ⌜Hom⌝; ⌜Hom⌝-cong₃; tr-cong₃ )
+        ; ⌜Hom⌝; ⌜Hom⌝-cong₃; tr-cong₃ 
+        ; unit; nzero; nsuc; natrec; natrec-cong₃ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Sub; extS; subTm; renTm )
 open import poc.OCP0009.NbEPDirDBPi using ( hrefl; tr; ap; ap-cong₃; ⌜Id⌝; idrefl; jsub; ⌜Id⌝-cong₃; jsub-cong₃ )
@@ -481,6 +482,16 @@ ext-agree f g (vs y) o = cong (renTm vs) (g y o)
 subTm-occ : {σ τ : Sub Γ Δ} (m : RTm Γ)
           → ((x : Var Γ) → occTm x m ≡ true → σ x ≡ τ x)
           → subTm σ m ≡ subTm τ m
+subTm-occ unit       h = refl
+subTm-occ nzero      h = refl
+subTm-occ (nsuc n)   h = cong nsuc (subTm-occ n h)
+subTm-occ (natrec z w n) h =
+  natrec-cong₃
+    (subTm-occ z (λ x o → h x (∨-inl o)))
+    (subTm-occ w (ext-agree (λ x → occTm x w)
+       (ext-agree (λ x → occTm (vs x) w)
+         (λ y o → h y (∨-inr (occTm y z) (∨-inl o))))))
+    (subTm-occ n (λ x o → h x (∨-inr (occTm x z) (∨-inr (occTm (vs (vs x)) w) o))))
 subTm-occ (var y)    h = h y (eqv-refl y)
 subTm-occ (lam m)    h = cong lam (subTm-occ m (ext-agree (λ x → occTm x m) h))
 subTm-occ (app m k)  h = cong₂ app

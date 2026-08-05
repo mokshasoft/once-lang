@@ -134,7 +134,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTm; var; lam; app; pair; fst; snd
         ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub
         ; ⌜Hom⌝-cong₃
-        ; Ren; extR; renTm; Sub; extS; subTm; renTm-renTm )
+        ; Ren; extR; renTm; Sub; extS; subTm; renTm-renTm 
+        ; unit; nzero; nsuc; natrec )
 open import poc.OCP0009.NbEPDirDBVar using ( 𝔹; true; false )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶_; _⟶*_; done; step
@@ -346,6 +347,10 @@ pw?-ren ρ (pair a b)    = refl
 pw?-ren ρ (fst t)       = refl
 pw?-ren ρ (snd t)       = refl
 pw?-ren ρ ⌜base⌝        = refl
+pw?-ren ρ unit          = refl
+pw?-ren ρ nzero         = refl
+pw?-ren ρ (nsuc n)      = refl
+pw?-ren ρ (natrec z w n) = refl
 pw?-ren ρ (⌜Π⌝ γ δ)     = refl
 pw?-ren ρ (⌜Σ⌝ c d)     = refl
 pw?-ren ρ (⌜Hom⌝ C a b) = pw?-ren ρ C
@@ -364,6 +369,10 @@ stkC?-ren ρ (pair a b)    = refl
 stkC?-ren ρ (fst t)       = refl
 stkC?-ren ρ (snd t)       = refl
 stkC?-ren ρ ⌜base⌝        = refl
+stkC?-ren ρ unit          = refl
+stkC?-ren ρ nzero         = refl
+stkC?-ren ρ (nsuc n)      = refl
+stkC?-ren ρ (natrec z w n) = refl
 stkC?-ren ρ (⌜Π⌝ γ δ)     = refl
 stkC?-ren ρ (⌜Σ⌝ c d)     = refl
 stkC?-ren ρ (⌜Hom⌝ C a b) = stkC?-ren ρ C
