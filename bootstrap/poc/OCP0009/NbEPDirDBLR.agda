@@ -2004,6 +2004,20 @@ sne→spine (sne-ap _ _ _ key) = key
 sne→spine (sne-jsub _ _ _ key) = key
 sne→spine (sne-natrec _ _ _ key) = key
 
+-- ★ the `stableA?` peer.  A strict neutral is never ⌜Nat⌝- or
+-- ⌜Hom⌝-headed, so `stableA?` and `stablecd?` agree once the head is
+-- exposed — every row is the same term.
+sne→stableA : {t : RTm Γ} → SNe t → stableA? t ≡ true
+sne→stableA (sne-var x)        = refl
+sne→stableA (sne-app n _)      = sne→spine n
+sne→stableA (sne-fst n)        = sne→spine n
+sne→stableA (sne-snd n)        = sne→spine n
+sne→stableA (sne-hrefl _ _ _)    = refl
+sne→stableA (sne-tr _ _ _ key) = key
+sne→stableA (sne-ap _ _ _ key) = key
+sne→stableA (sne-jsub _ _ _ key) = key
+sne→stableA (sne-natrec _ _ _ key) = key
+
 sne→stablecd : {t : RTm Γ} → SNe t → stablecd? t ≡ true
 sne→stablecd (sne-var x)        = refl
 sne→stablecd (sne-app n _)      = sne→spine n

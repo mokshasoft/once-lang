@@ -89,12 +89,13 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢id; ⊢appex )
 open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false; occTm; subTm-occ
-        ; pw?; stkC?; pwBody; pwDom; pwShift
-        ; pw?-ren; stkC?-ren; pwBody-ren; wk-ren-tm; pw?-sub
+        ; pw?; stkC?; stkA?; pwBody; pwDom; pwShift
+        ; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren; wk-ren-tm; pw?-sub
+        ; stkC?→stkA?
         ; wk-sub-tm; stk⊥pw; pw⊥stk; flat?; flat→stk; flat?-sub
         ; eqv; occ-sub; occ-ren-tm; avoids-wk )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; sub-comm; wk-sub )
-open import poc.OCP0009.NbEPDirDBConf using ( pwShift-ren; stkC?-red; subTm-monoˢ; single-mono; ⟶*-trans; ren-comm; ren-comm-ext )
+open import poc.OCP0009.NbEPDirDBConf using ( pwShift-ren; stkC?-red; stkA?-red; subTm-monoˢ; single-mono; ⟶*-trans; ren-comm; ren-comm-ext )
 open import poc.OCP0009.NbEPDirDBDec using ( Dec; dec-conv )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; confluentᵀ; church-rosserᵀ; Π-inj
@@ -133,10 +134,10 @@ open import poc.OCP0009.NbEPDirDBLR
         ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; _⊩₀∋_; bwd₀; exp₁
         ; ⊩₀Unit; ⊩₀Nat
         ; base-nf; Unit-nf; Nat-nf; El-ne-reduct; mkElNe; Hom-stk-reduct; mkHomStk
-        ; nopw?; trlam?; stablecd?; idstk?; sne→spine; wk-single; snr→⟶
+        ; nopw?; trlam?; stablecd?; stableA?; idstk?; sne→spine; wk-single; snr→⟶
         ; exp₀; f≢t
         ; mem-whred₁; homSem₀; homSem₀-mem-endpoints
-        ; sne→stablecd; trstk?
+        ; sne→stablecd; sne→stableA; trstk?
         ; ⊩₁_; ⊩₁base; ⊩₁U; ⊩₁ne; ⊩₁Π; ⊩₁Σ; ⊩₁Hom; _⊩₁∋_
         ; bwd₁; irrel₁; conv₁; CR1₀; CR1₁; CR3₀; CR3₁
         ; emb; emb-coh
@@ -481,7 +482,7 @@ snr-anti {t = tr (var vz) (lam f) e} snr-taut =
 snr-anti {ρ = ρ} {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) e}
          (snr-J-Hom hd h₁ h₂ h₃ hs kh) =
   e , ( snr-J-Hom (sn-anti hd) (sn-anti h₁) (sn-anti h₂) (sn-anti h₃)
-                  (sn-anti hs) (trans (sym (stkC?-ren ρ c₁)) kh)
+                  (sn-anti hs) (trans (sym (stkA?-ren ρ c₁)) kh)
       , refl )
 snr-anti {ρ = ρ} {t = tr (⌜Hom⌝ c a (var vz)) (lam f) e}
          (snr-tr-mot σ) with csr-anti σ
@@ -755,7 +756,7 @@ snr-ren (snr-J-Σ hd h₁ h₂ hs) =
   snr-J-Σ (sn-ren hd) (sn-ren h₁) (sn-ren h₂) (sn-ren hs)
 snr-ren {ρ = ρ} (snr-J-Hom {c₁ = c₁} hd h₁ h₂ h₃ hs ks) =
   snr-J-Hom (sn-ren hd) (sn-ren h₁) (sn-ren h₂) (sn-ren h₃) (sn-ren hs)
-            (trans (stkC?-ren ρ c₁) ks)
+            (trans (stkA?-ren ρ c₁) ks)
 snr-ren {ρ = ρ} (snr-ap-J {cB = cB} {b = b} {c₁ = c₁} {s = t} h₁ ks) =
   subst (λ z → SNRed (ap (renTm ρ cB) (renTm (extR ρ) b)
                          (hrefl (renTm ρ c₁) (renTm ρ t))) z)
@@ -1294,6 +1295,51 @@ data CodeFate {Ξ : Cx} (c* : RTm Ξ) : Set where
   cf-stk  : stkC? c* ≡ true → CodeFate c*
   cf-dead : stablecd? c* ≡ true → CodeFate c*
 
+
+-- ★★ SpikeNatJ: the WRAPPED fate.  `codeNorm`'s ⌜Hom⌝ case builds the
+-- verdict for `⌜Hom⌝ C* a b`, whose keys are `stkA? C*` / `stableA? C*`
+-- — NOT `stkC? C*` / `stablecd? C*`.  The two differ at exactly one
+-- code: ⌜Nat⌝ is DEAD bare (nothing fires on a `hrefl ⌜Nat⌝ s` path)
+-- and ALIVE wrapped (`⌜Hom⌝ ⌜Nat⌝ a b` IS J-able).  That one row is the
+-- whole reason this second fate exists.
+data CodeFateA {Ξ : Cx} (c* : RTm Ξ) : Set where
+  cfa-stk  : stkA? c* ≡ true → CodeFateA c*
+  cfa-dead : stableA? c* ≡ true → CodeFateA c*
+
+codeNormA : {c' : RTm Ξ} → SN c' → nopw? c' ≡ true →
+            Σ (RTm Ξ) (λ c* → (c' ⟶csr* c*) × CodeFateA c*)
+codeNormA (sn-exp r h) kn with codeNormA h (nopw?-red (snr→⟶ r) kn)
+... | c* , (csr , fate) = c* , (csr-step (csr-here r) csr , fate)
+codeNormA (sn-ne n) kn = _ , (csr-done , cfa-dead (sne→stableA n))
+codeNormA (sn-lam h) kn = _ , (csr-done , cfa-dead refl)
+codeNormA (sn-pair ha hb) kn = _ , (csr-done , cfa-dead refl)
+codeNormA sn-cb kn = _ , (csr-done , cfa-stk refl)
+codeNormA sn-cUnit kn = _ , (csr-done , cfa-stk refl)
+-- ★ THE row.  `codeNorm` sends this one to `cf-dead`.
+codeNormA sn-cNat kn = _ , (csr-done , cfa-stk refl)
+codeNormA (sn-cΣ h₁ h₂) kn = _ , (csr-done , cfa-stk refl)
+codeNormA (sn-cId h₁ h₂ h₃) kn = _ , (csr-done , cfa-stk refl)
+codeNormA (sn-idrefl h₁ h₂) kn = _ , (csr-done , cfa-dead refl)
+codeNormA sn-unit kn      = _ , (csr-done , cfa-dead refl)
+codeNormA sn-nzero kn     = _ , (csr-done , cfa-dead refl)
+codeNormA (sn-nsuc h) kn  = _ , (csr-done , cfa-dead refl)
+codeNormA (sn-cΠ h₁ h₂) ()
+codeNormA (sn-cH {a = a₂} {b = b₂} hC ha hb) kn with codeNormA hC kn
+... | C* , (csr , cfa-stk k)  =
+      ⌜Hom⌝ C* a₂ b₂ , (csrs-homA csr , cfa-stk k)
+  where
+  csrs-homA : {x y : RTm _} → x ⟶csr* y →
+              ⌜Hom⌝ x a₂ b₂ ⟶csr* ⌜Hom⌝ y a₂ b₂
+  csrs-homA csr-done       = csr-done
+  csrs-homA (csr-step σ q) = csr-step (csr-hom σ) (csrs-homA q)
+... | C* , (csr , cfa-dead k) =
+      ⌜Hom⌝ C* a₂ b₂ , (csrs-homA csr , cfa-dead k)
+  where
+  csrs-homA : {x y : RTm _} → x ⟶csr* y →
+              ⌜Hom⌝ x a₂ b₂ ⟶csr* ⌜Hom⌝ y a₂ b₂
+  csrs-homA csr-done       = csr-done
+  csrs-homA (csr-step σ q) = csr-step (csr-hom σ) (csrs-homA q)
+
 codeNorm : {c' : RTm Ξ} → SN c' → nopw? c' ≡ true →
            Σ (RTm Ξ) (λ c* → (c' ⟶csr* c*) × CodeFate c*)
 codeNorm (sn-exp r h) kn with codeNorm h (nopw?-red (snr→⟶ r) kn)
@@ -1314,15 +1360,15 @@ codeNorm sn-unit kn      = _ , (csr-done , cf-dead refl)
 codeNorm sn-nzero kn     = _ , (csr-done , cf-dead refl)
 codeNorm (sn-nsuc h) kn  = _ , (csr-done , cf-dead refl)
 codeNorm (sn-cΠ h₁ h₂) ()
-codeNorm (sn-cH {a = a₂} {b = b₂} hC ha hb) kn with codeNorm hC kn
-... | C* , (csr , cf-stk k)  =
+codeNorm (sn-cH {a = a₂} {b = b₂} hC ha hb) kn with codeNormA hC kn
+... | C* , (csr , cfa-stk k)  =
       ⌜Hom⌝ C* a₂ b₂ , (csrs-hom' csr , cf-stk k)
   where
   csrs-hom' : {x y : RTm _} → x ⟶csr* y →
               ⌜Hom⌝ x a₂ b₂ ⟶csr* ⌜Hom⌝ y a₂ b₂
   csrs-hom' csr-done       = csr-done
   csrs-hom' (csr-step σ q) = csr-step (csr-hom σ) (csrs-hom' q)
-... | C* , (csr , cf-dead k) =
+... | C* , (csr , cfa-dead k) =
       ⌜Hom⌝ C* a₂ b₂ , (csrs-hom' csr , cf-dead k)
   where
   csrs-hom' : {x y : RTm _} → x ⟶csr* y →
@@ -1561,11 +1607,11 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
   goH (sn-nsuc h) sns kn =
     sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-nsuc h) sns refl)) snE refl)
   goH (sn-cΠ h₁ h₂) sns ()
-  goH (sn-cH hC h₂ h₃) sns kn with codeNorm hC kn
-  ... | C*c , (csr , cf-stk k) =
+  goH (sn-cH hC h₂ h₃) sns kn with codeNormA hC kn
+  ... | C*c , (csr , cfa-stk k) =
         snExpStar (tstar (snrs-hreflᶜ (csrs-hom csr)))
           (sn-exp (snr-J-Hom snM (sn-csrs hC csr) h₂ h₃ sns k) snE)
-  ... | C*c , (csr , cf-dead k) =
+  ... | C*c , (csr , cfa-dead k) =
         snExpStar (tstar (snrs-hreflᶜ (csrs-hom csr)))
           (sn-ne (sne-tr snM
                    (sn-ne (sne-hrefl (sn-cH (sn-csrs hC csr) h₂ h₃) sns
@@ -1740,11 +1786,11 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
   goH₀ (sn-nsuc h) sns kn =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-nsuc h) sns refl)) snE' refl)
   goH₀ (sn-cΠ h₁ h₂) sns ()
-  goH₀ (sn-cH hC h₂ h₃) sns kn with codeNorm hC kn
-  ... | C*c , (csr , cf-stk k) =
+  goH₀ (sn-cH hC h₂ h₃) sns kn with codeNormA hC kn
+  ... | C*c , (csr , cfa-stk k) =
         expStar₀ RH0 (tstar (snrs-hreflᶜ (csrs-hom csr)))
           (exp₀ RH0 (snr-J-Hom snM (sn-csrs hC csr) h₂ h₃ sns k) heU)
-  ... | C*c , (csr , cf-dead k) =
+  ... | C*c , (csr , cfa-dead k) =
         expStar₀ RH0 (tstar (snrs-hreflᶜ (csrs-hom csr)))
           (CR3₀ RH0 (sne-tr snM
                       (sn-ne (sne-hrefl (sn-cH (sn-csrs hC csr) h₂ h₃) sns
@@ -2285,14 +2331,17 @@ fund {Ξ = Ξ} {σ = σ}
   -- the INNER invariant: reducts of `El`-of-STABLE codes never reach
   -- `U` nor a literal `Π` (so nested `Hom`s never unfold).
   data StkEl : RTy Ξ → Set where
-    se-el   : {c : RTm Ξ} → stkC? c ≡ true → StkEl (El c)
+    se-el   : {c : RTm Ξ} → stkA? c ≡ true → StkEl (El c)
     se-base : StkEl base
     se-Σ    : {A : RTy Ξ} {B : RTy (Ξ ∙)} → StkEl (Σ' A B)
     se-hom  : {H : RTy Ξ} {a b₂ : RTm Ξ} → StkEl H → StkEl (Hom H a b₂)
     se-Id   : {A₂ : RTy Ξ} {t₂ u₂ : RTm Ξ} → StkEl (Id A₂ t₂ u₂)
-    -- ★ WF stage C: ⌜Unit⌝ is stable, so its decode joins.  No `Nat`
-    -- arm — ⌜Nat⌝ is not `stkC?`, so `El-⌜Nat⌝` is refuted on the key.
+    -- ★ WF stage C: ⌜Unit⌝ is stable, so its decode joins.
     se-Unit : StkEl (Unit {Ξ})
+    -- ★★ SpikeNatJ: and so does `Nat` — `StkEl` is the local mirror of
+    -- Subj's `StkAmb` ("never Π/U"), so its key is `stkA?` and the
+    -- order rules are ABSORBED below, not refuted.
+    se-Nat  : StkEl (Nat {Ξ})
 
   stkel-red : {A A' : RTy Ξ} → StkEl A → A ⟶ᵀ A' → StkEl A'
   stkel-red (se-el {c = ⌜base⌝} k) El-⌜base⌝ = se-base
@@ -2302,12 +2351,13 @@ fund {Ξ = Ξ} {σ = σ}
   stkel-red (se-el {c = ⌜Π⌝ _ _} ()) (El-⌜Π⌝ _ _)
   stkel-red (se-el {c = ⌜Id⌝ c' a' b'} k) (El-⌜Id⌝ _ _ _) = se-Id
   stkel-red (se-el {c = ⌜Unit⌝} k) El-⌜Unit⌝ = se-Unit
-  stkel-red (se-el {c = ⌜Nat⌝} ()) El-⌜Nat⌝
+  stkel-red (se-el {c = ⌜Nat⌝} k) El-⌜Nat⌝ = se-Nat
   stkel-red se-Unit ()
+  stkel-red se-Nat ()
   stkel-red se-Id (ξ-Idᵀ r) = se-Id
   stkel-red se-Id (ξ-Idˡ r) = se-Id
   stkel-red se-Id (ξ-Idʳ r) = se-Id
-  stkel-red (se-el k) (ξ-El r) = se-el (stkC?-red r k)
+  stkel-red (se-el k) (ξ-El r) = se-el (stkA?-red r k)
   stkel-red se-Σ (ξ-Σˡ r) = se-Σ
   stkel-red se-Σ (ξ-Σʳ r) = se-Σ
   stkel-red (se-hom ()) (Hom-U _ _)
@@ -2315,6 +2365,9 @@ fund {Ξ = Ξ} {σ = σ}
   stkel-red (se-hom h) (ξ-Homᵀ r) = se-hom (stkel-red h r)
   stkel-red (se-hom h) (ξ-Homˡ r) = se-hom h
   stkel-red (se-hom h) (ξ-Homʳ r) = se-hom h
+  stkel-red (se-hom se-Nat) (Hom-Nat-z _)    = se-Unit
+  stkel-red (se-hom se-Nat) (Hom-Nat-sz _)   = se-base
+  stkel-red (se-hom se-Nat) (Hom-Nat-ss _ _) = se-hom se-Nat
 
   -- the TOP invariant: reducts of `El`-of-FLAT codes are flat decodes,
   -- `base`, or stuck `Hom`s — never `U`/`Π`/`Σ'`/neutral `El`.
@@ -2322,11 +2375,16 @@ fund {Ξ = Ξ} {σ = σ}
     et-el   : {c : RTm Ξ} → flat? c ≡ true → ElStkT (El c)
     et-base : ElStkT base
     et-hom  : {H : RTy Ξ} {a b₂ : RTm Ξ} → StkEl H → ElStkT (Hom H a b₂)
+    -- ★★ SpikeNatJ: an order-hom LEAVES for `Unit` when the inequality
+    -- holds, so `Unit` joins.  `Nat` deliberately does NOT — a `flat?`
+    -- code decodes to `base` or a `Hom`, and neither ever becomes `Nat`,
+    -- which is what keeps `flatMem`'s ⊩₁Nat row absurd.
+    et-Unit : ElStkT (Unit {Ξ})
 
   ett-red : {A A' : RTy Ξ} → ElStkT A → A ⟶ᵀ A' → ElStkT A'
   ett-red (et-el {c = ⌜base⌝} k) El-⌜base⌝ = et-base
   ett-red (et-el {c = ⌜Hom⌝ c' a' b'} k) (El-⌜Hom⌝ _ _ _) =
-    et-hom (se-el k)
+    et-hom (se-el (stkC?→stkA? c' k))
   ett-red (et-el {c = ⌜Π⌝ _ _} ()) (El-⌜Π⌝ _ _)
   ett-red (et-el {c = ⌜Σ⌝ _ _} ()) (El-⌜Σ⌝ _ _)
   ett-red (et-el k) (ξ-El r) = et-el (flatred r k)
@@ -2335,6 +2393,10 @@ fund {Ξ = Ξ} {σ = σ}
   ett-red (et-hom h) (ξ-Homᵀ r) = et-hom (stkel-red h r)
   ett-red (et-hom h) (ξ-Homˡ r) = et-hom h
   ett-red (et-hom h) (ξ-Homʳ r) = et-hom h
+  ett-red (et-hom se-Nat) (Hom-Nat-z _)    = et-Unit
+  ett-red (et-hom se-Nat) (Hom-Nat-sz _)   = et-base
+  ett-red (et-hom se-Nat) (Hom-Nat-ss _ _) = et-hom se-Nat
+  ett-red et-Unit ()
 
   ett-star : {A A' : RTy Ξ} → ElStkT A → A ⟶ᵀ* A' → ElStkT A'
   ett-star h doneᵀ       = h
@@ -2365,8 +2427,9 @@ fund {Ξ = Ξ} {σ = σ}
   ... | ()
   flatMem (⊩₁Id p) sns with ett-star (et-el kflat) p
   ... | ()
-  flatMem (⊩₁Unit p) sns with ett-star (et-el kflat) p
-  ... | ()
+  -- ★ reachable now: `El (⌜Hom⌝ ⌜Nat⌝ 1 2) ⟶ᵀ* Unit`.  Membership at
+  -- ⊩₁Unit is SN-only, so it is the same answer as ⊩₁base.
+  flatMem (⊩₁Unit p) sns = sns
   flatMem (⊩₁Nat p) sns with ett-star (et-el kflat) p
   ... | ()
   flatMem (⊩₁ne {n = n} p ne) sns with ett-star (et-el kflat) p
@@ -3079,14 +3142,14 @@ fund {Ξ = Ξ} {σ = σ}
   -- J-base), the dead leaf is CR3; both memberships travel back along
   -- the head star.
   goh (sn-cH {c = C₂} {a = a₂} {b = b₂} h₁ h₂ h₃) sns kn hp'
-    with codeNorm h₁ kn
-  ... | C* , (csr , cf-stk k) =
+    with codeNormA h₁ kn
+  ... | C* , (csr , cfa-stk k) =
         ( R_result
         , expStar₁ R_result
             (trP-star (snrs-hreflᶜ (csrs-hom csr)))
             (exp₁ R_result
               (snr-J-Hom snD (sn-csrs h₁ csr) h₂ h₃ sns k) heTgt) )
-  ... | C* , (csr , cf-dead k) =
+  ... | C* , (csr , cfa-dead k) =
         ( R_result
         , expStar₁ R_result
             (trP-star (snrs-hreflᶜ (csrs-hom csr)))
