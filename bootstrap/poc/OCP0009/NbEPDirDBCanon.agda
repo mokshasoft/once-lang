@@ -73,7 +73,9 @@ open import poc.OCP0009.NbEPDirDBSubj
         ; gen-var; gen-hrefl; gen-⌜Π⌝; gen-⌜Σ⌝; gen-⌜Hom⌝
         ; gen-tr; TrGen; tgC; tgU; TrInv; mkTrInv; TrInvU; mkTrInvU
         ; StkAmb; st-el; st-hom; stamb-red; homred-inv
-        ; HomΠShape; hsΠ; hsH; hom-shape
+        ; HomΠShape; hsΠ; hsH; hsUnit; hsBase; hom-shape; hom-shapeN
+        ; NoNat; nn-base; nn-U; nn-Unit; nn-El; nn-Π; nn-Σ; nn-Hom; nn-Id
+        ; Hom-to-Hom; hom-to-Π
         ; ≅ᵀ-Homᵀ; ⊢[]; sr*; ⊢wk )
 open import poc.OCP0009.NbEPDirDBLR
   using ( base-nf; U-nf; Unit-nf; Nat-nf; IsNormal; WN; mkWN )
@@ -88,6 +90,48 @@ noVar ()
 
 -- reducts of `Π`/`Σ'`/`Hom`-forms never reach `U`; `El`-chains reach
 -- `U` through nothing (each decode-step lands in one of those shapes).
+-- ★ WF stage B: `El c` never reaches `Nat` either — there is no ⌜Nat⌝
+-- code until stage C.  This is what lets the `tr` workers below
+-- recover `NoNat` on an ambient that is otherwise unconstrained: the
+-- `⊢tr` premise `(Γ ▹ A) ⊢ var vz ∷ El c` already forces the ambient to
+-- be convertible to an `El`-type.
+elnotNat : {Γ : Cx} {t : RTm Γ} → El t ⟶ᵀ* Nat → ⊥
+elnotNat (stepᵀ El-⌜base⌝ rest) with base-nf rest
+... | ()
+elnotNat (stepᵀ (El-⌜Π⌝ _ _) rest) with Π-reduct rest
+... | mkΠRed _ _ () _ _
+elnotNat (stepᵀ (El-⌜Σ⌝ _ _) rest) with Σ-reduct rest
+... | mkΣRed _ _ () _ _
+elnotNat (stepᵀ (El-⌜Hom⌝ _ _ _) rest) with hom-shape rest
+... | ()
+elnotNat (stepᵀ (El-⌜Id⌝ _ _ _) rest) with Id-reduct rest
+... | _ , (_ , (_ , ((), _)))
+elnotNat (stepᵀ (ξ-El r) rest) = elnotNat rest
+
+elNat⊥ : {Γ : Cx} {c : RTm Γ} → El c ≅ᵀ Nat → ⊥
+elNat⊥ cv with church-rosserᵀ cv
+... | E , (eE , nE) with Nat-nf nE
+...   | refl = elnotNat eE
+
+-- …hence the ambient of a well-typed `tr` is never `Nat`: the rule's
+-- premise `(Γ ▹ A) ⊢ var vz ∷ El c` types the SAME variable at both
+-- `A` (by lookup) and `El c`, and `El c ≅ᵀ Nat` is impossible.
+-- Stage B therefore needs NO new restriction on `⊢tr` — transport
+-- along an ORDER path simply cannot be formed yet, which is exactly
+-- the boundary the staging drew.
+tr-amb-nonat : {A : RTy ⌊ ◇ ⌋} {cM : RTm (⌊ ◇ ⌋ ∙)} →
+               (◇ ▹ A) ⊢ var vz ∷ El cM → NoNat A
+tr-amb-nonat {A = base} _      = nn-base
+tr-amb-nonat {A = U} _         = nn-U
+tr-amb-nonat {A = Unit} _      = nn-Unit
+tr-amb-nonat {A = El _} _      = nn-El
+tr-amb-nonat {A = Π _ _} _     = nn-Π
+tr-amb-nonat {A = Σ' _ _} _    = nn-Σ
+tr-amb-nonat {A = Hom _ _ _} _ = nn-Hom
+tr-amb-nonat {A = Id _ _ _} _  = nn-Id
+tr-amb-nonat {A = Nat} d with gen-var d
+... | _ , (here , cv) = ⊥-elim (elNat⊥ cv)
+
 elnotU : {Γ : Cx} {t : RTm Γ} → El t ⟶ᵀ* U → ⊥
 elnotU (stepᵀ El-⌜base⌝ rest) with base-nf rest
 ... | ()
@@ -156,11 +200,17 @@ Ubase-clash cv with church-rosserᵀ cv
 ...   | refl with U-nf uE
 ...     | ()
 
+-- ★ WF stage B: this clash is now AMBIENT-SENSITIVE and rightly so —
+-- `Hom Nat 2 1` REDUCES to `base`, which is the whole point of the
+-- computing order.  What survives, and is all its consumer needs, is
+-- the non-`Nat`-ambient version: `gen-hrefl` always hands back an
+-- `El`-ambient hom, and `El c` can never become `Nat` (no ⌜Nat⌝ code
+-- until stage C).
 Hombase-clash : {Γ : Cx} {A : RTy Γ} {t u : RTm Γ} →
-                Hom A t u ≅ᵀ base → ⊥
-Hombase-clash cv with church-rosserᵀ cv
+                NoNat A → Hom A t u ≅ᵀ base → ⊥
+Hombase-clash nn cv with church-rosserᵀ cv
 ... | E , (hE , bE) with base-nf bE
-...   | refl with hom-shape hE
+...   | refl with hom-shapeN nn hE
 ...     | ()
 
 -- ★ the two-former kernel: `Id` against every former — Id is INERT,
@@ -188,15 +238,14 @@ IdΣ-clash cv with church-rosserᵀ cv
 IdHom-clash : {Γ : Cx} {A A' : RTy Γ} {t u t' u' : RTm Γ} →
               Id A t u ≅ᵀ Hom A' t' u' → ⊥
 IdHom-clash cv with church-rosserᵀ cv
-... | E , (iE , hE) with hom-shape hE
-...   | hsH with Id-reduct iE
-...     | _ , (_ , (_ , (eq , _))) = homid⊥ hsH eq
+... | E , (iE , hE) with Id-reduct iE
+...   | _ , (_ , (_ , (eq , _))) = homid⊥ eq (hom-shape hE)
   where
+  -- the join is an `Id` (Id is inert), and NO `Hom`-reduct shape is an
+  -- `Id` — including stage B's two new ones.
   homid⊥ : {Γ : Cx} {E : RTy Γ} {A₃ : RTy Γ} {t₃ u₃ : RTm Γ} →
-           HomΠShape E → E ≡ Id A₃ t₃ u₃ → ⊥
-  homid⊥ () refl
-IdHom-clash cv | E , (iE , hE) | hsΠ with Id-reduct iE
-...     | _ , (_ , (_ , ((), _)))
+           E ≡ Id A₃ t₃ u₃ → HomΠShape E → ⊥
+  homid⊥ refl ()
 
 Idbase-clash : {Γ : Cx} {A : RTy Γ} {t u : RTm Γ} → Id A t u ≅ᵀ base → ⊥
 Idbase-clash cv with church-rosserᵀ cv
@@ -237,10 +286,13 @@ UnitNat-clash cv with church-rosserᵀ cv
 ...   | refl with Unit-nf uE
 ...     | ()
 
-HomUnit-clash : {Γ : Cx} {A : RTy Γ} {t u : RTm Γ} → Hom A t u ≅ᵀ Unit → ⊥
-HomUnit-clash cv with church-rosserᵀ cv
+-- ★ WF stage B: like `Hombase-clash`, now ambient-sensitive — a
+-- `Nat`-ambient hom reduces to `Unit` when the inequality HOLDS.
+HomUnit-clash : {Γ : Cx} {A : RTy Γ} {t u : RTm Γ} →
+                NoNat A → Hom A t u ≅ᵀ Unit → ⊥
+HomUnit-clash nn cv with church-rosserᵀ cv
 ... | E , (hE , uE) with Unit-nf uE
-...   | refl with hom-shape hE
+...   | refl with hom-shapeN nn hE
 ...     | ()
 
 HomNat-clash : {Γ : Cx} {A : RTy Γ} {t u : RTm Γ} → Hom A t u ≅ᵀ Nat → ⊥
@@ -775,7 +827,7 @@ mutual
   apS m dv q
       | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
       | prog-can can-unit with gen-unit dp
-  ... | cv = ⊥-elim (HomUnit-clash cv)
+  ... | cv = ⊥-elim (HomUnit-clash nn-El cv)
   apS m dv q
       | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
       | prog-can can-nzero with gen-nzero dp
@@ -935,7 +987,7 @@ mutual
   ... | _ , (_ , cv) = ⊥-elim (IdHom-clash (csymᵀ cv))
   trUS m (mkTrInvU refl tI uI dt du dp de cC) lep
     | prog-can can-unit with gen-unit dp
-  ... | cv = ⊥-elim (HomUnit-clash cv)
+  ... | cv = ⊥-elim (HomUnit-clash nn-U cv)
   trUS m (mkTrInvU refl tI uI dt du dp de cC) lep
     | prog-can can-nzero with gen-nzero dp
   ... | cv = ⊥-elim (HomNat-clash cv)
@@ -982,7 +1034,7 @@ mutual
   ... | _ , (_ , cv) = ⊥-elim (IdHom-clash (csymᵀ cv))
   trCS m cM aM e dcM hcM dt dvM dp lep lecM
     | prog-can can-unit with gen-unit dp
-  ... | cv = ⊥-elim (HomUnit-clash cv)
+  ... | cv = ⊥-elim (HomUnit-clash (tr-amb-nonat dvM) cv)
   trCS m cM aM e dcM hcM dt dvM dp lep lecM
     | prog-can can-nzero with gen-nzero dp
   ... | cv = ⊥-elim (HomNat-clash cv)
@@ -1041,32 +1093,36 @@ codeCanon d nrm with codeSplit d
 
 -- ★ PATH CANONICITY (item 2): a closed normal path at a `Hom` type is
 -- an `hrefl` or a lambda.
-pathCanon : {p : RTm ε} {A : RTy ε} {t u : RTm ε} →
+-- ★ WF stage B: `pathCanon` needs the ambient guard.  At a `Nat`
+-- ambient a closed normal path can be `unit` — that IS the computing
+-- order's payoff — so the two-shape conclusion holds exactly off
+-- `Nat`.  Every consumer has an `El` ambient.
+pathCanon : {p : RTm ε} {A : RTy ε} {t u : RTm ε} → NoNat A →
             ◇ ⊢ p ∷ Hom A t u → IsNormal p →
             (Σ (RTm ε) (λ c → Σ (RTm ε) (λ s → p ≡ hrefl c s)))
             ⊎ (Σ (RTm (ε ∙)) (λ f → p ≡ lam f))
-pathCanon d nrm with progress d
+pathCanon nn d nrm with progress d
 ... | prog-step r = ⊥-elim (nrm r)
 ... | prog-can (can-hrefl c s) = inj₁ (c , (s , refl))
 ... | prog-can (can-lam f)     = inj₂ (f , refl)
 ... | prog-can (can-pair a b) with gen-pair d
 ...   | _ , (_ , (cv , _)) = ⊥-elim (HomΣ-clash cv)
-pathCanon d nrm | prog-can can-cb = ⊥-elim (HomU-clash (gen-⌜base⌝ d))
-pathCanon d nrm | prog-can (can-cΠ x y) with gen-⌜Π⌝ d
+pathCanon nn d nrm | prog-can can-cb = ⊥-elim (HomU-clash (gen-⌜base⌝ d))
+pathCanon nn d nrm | prog-can (can-cΠ x y) with gen-⌜Π⌝ d
 ... | _ , (_ , cv) = ⊥-elim (HomU-clash cv)
-pathCanon d nrm | prog-can (can-cΣ x y) with gen-⌜Σ⌝ d
+pathCanon nn d nrm | prog-can (can-cΣ x y) with gen-⌜Σ⌝ d
 ... | _ , (_ , cv) = ⊥-elim (HomU-clash cv)
-pathCanon d nrm | prog-can (can-cH x y z) with gen-⌜Hom⌝ d
+pathCanon nn d nrm | prog-can (can-cH x y z) with gen-⌜Hom⌝ d
 ... | _ , (_ , (_ , cv)) = ⊥-elim (HomU-clash cv)
-pathCanon d nrm | prog-can (can-cId x y z) with gen-⌜Id⌝ d
+pathCanon nn d nrm | prog-can (can-cId x y z) with gen-⌜Id⌝ d
 ... | _ , (_ , (_ , cv)) = ⊥-elim (HomU-clash cv)
-pathCanon d nrm | prog-can (can-idrefl c s) with gen-idrefl d
+pathCanon nn d nrm | prog-can (can-idrefl c s) with gen-idrefl d
 ... | _ , (_ , cv) = ⊥-elim (IdHom-clash (csymᵀ cv))
-pathCanon d nrm | prog-can can-unit with gen-unit d
-... | cv = ⊥-elim (HomUnit-clash cv)
-pathCanon d nrm | prog-can can-nzero with gen-nzero d
+pathCanon nn d nrm | prog-can can-unit with gen-unit d
+... | cv = ⊥-elim (HomUnit-clash nn cv)
+pathCanon nn d nrm | prog-can can-nzero with gen-nzero d
 ... | cv = ⊥-elim (HomNat-clash cv)
-pathCanon d nrm | prog-can (can-nsuc n₉) with gen-nsuc d
+pathCanon nn d nrm | prog-can (can-nsuc n₉) with gen-nsuc d
 ... | _ , cv = ⊥-elim (HomNat-clash cv)
 
 -- ★ TR-PROGRESS (item 3): a closed well-typed `tr` ALWAYS steps —
@@ -1089,7 +1145,7 @@ canBase⊥ d (can-cΣ x y) with gen-⌜Σ⌝ d
 canBase⊥ d (can-cH x y z) with gen-⌜Hom⌝ d
 ... | _ , (_ , (_ , cv)) = Ubase-clash (csymᵀ cv)
 canBase⊥ d (can-hrefl c s) with gen-hrefl d
-... | _ , (_ , cv) = Hombase-clash (csymᵀ cv)
+... | _ , (_ , cv) = Hombase-clash nn-El (csymᵀ cv)
 canBase⊥ d (can-cId x y z) with gen-⌜Id⌝ d
 ... | _ , (_ , (_ , cv)) = Ubase-clash (csymᵀ cv)
 canBase⊥ d (can-idrefl c s) with gen-idrefl d

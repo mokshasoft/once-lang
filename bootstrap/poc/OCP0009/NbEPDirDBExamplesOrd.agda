@@ -26,12 +26,12 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; RTy; base; Hom; Unit; Nat
         ; RTm; unit; nzero; nsuc )
 open import poc.OCP0009.NbEPDirDBType
-  using ( _⟶ᵀ_; _⟶ᵀ*_; doneᵀ; stepᵀ
+  using ( _⟶ᵀ_
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
         ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; ⌊_⌋
         ; _⊢_∷_; ⊢unit; ⊢conv )
-open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ )
+open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
 open import poc.OCP0009.NbEPDirDBCanon using ( consistency )
 
 n1 n2 : {Γ : Cx} → RTm Γ
