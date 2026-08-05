@@ -71,7 +71,7 @@ open import poc.OCP0009.NbEPDirDBInj
         ; church-rosserᵀ; red→≅ᵀ
         ; Π-reduct; ΠRed; mkΠRed; Σ-reduct; ΣRed; mkΣRed; Id-reduct )
 open import poc.OCP0009.NbEPDirDBSubj
-  using ( gen-lam; gen-app; gen-pair; gen-fst; gen-snd; gen-ap
+  using ( gen-lam; gen-app; gen-absurd; gen-pair; gen-fst; gen-snd; gen-ap
         ; gen-⌜Id⌝; gen-idrefl; gen-jsub; gen-nsuc; gen-natrec
         ; gen-var; gen-hrefl; gen-⌜Π⌝; gen-⌜Σ⌝; gen-⌜Hom⌝
         ; gen-tr; TrGen; tgC; tgU; TrInv; mkTrInv; TrInvU; mkTrInvU
@@ -599,6 +599,7 @@ sz  : {Γ : Cx} → RTm Γ → ℕ
 sz t = suc (szb t)
 szb (var x)        = zero
 szb (lam t)        = sz t
+szb (absurd c e)   = sz c + sz e
 szb (app f a)      = sz f + sz a
 szb (pair a b)     = sz a + sz b
 szb (fst p)        = sz p
@@ -627,6 +628,7 @@ szb-ren ρ ⌜Nat⌝         = refl
 szb-ren ρ ⌜Unit⌝        = refl
 szb-ren ρ (var x)       = refl
 szb-ren ρ (lam t)       = sz-ren _ t
+szb-ren ρ (absurd c e)  = cong₂ _+_ (sz-ren ρ c) (sz-ren ρ e)
 szb-ren ρ (app f a)     = cong₂ _+_ (sz-ren ρ f) (sz-ren ρ a)
 szb-ren ρ (pair a b)    = cong₂ _+_ (sz-ren ρ a) (sz-ren ρ b)
 szb-ren ρ (fst p)       = sz-ren ρ p
@@ -842,6 +844,34 @@ trPwGo cM aM f e {A} {tI} dvM dp sEq ncM (u-stk k) with gen-lam dp
   cvA = subst (λ z → El (subTm (single tI) cM) ≅ᵀ z) eqA
               (≅ᵀ-sub (single tI) (bridge (gen-var dvM)))
 
+-- no canonical shape types at `base`.
+canBase⊥ : {t : RTm ε} → ◇ ⊢ t ∷ base → Canon t → ⊥
+canBase⊥ d (can-lam s) with gen-lam d
+... | _ , (_ , (cv , _)) = Πbase-clash (csymᵀ cv)
+canBase⊥ d (can-pair a b) with gen-pair d
+... | _ , (_ , (cv , _)) = Σbase-clash (csymᵀ cv)
+canBase⊥ d can-cb = Ubase-clash (csymᵀ (gen-⌜base⌝ d))
+canBase⊥ d can-cNat = Ubase-clash (csymᵀ (gen-⌜Nat⌝ d))
+canBase⊥ d can-cUnit = Ubase-clash (csymᵀ (gen-⌜Unit⌝ d))
+canBase⊥ d (can-cΠ x y) with gen-⌜Π⌝ d
+... | _ , (_ , cv) = Ubase-clash (csymᵀ cv)
+canBase⊥ d (can-cΣ x y) with gen-⌜Σ⌝ d
+... | _ , (_ , cv) = Ubase-clash (csymᵀ cv)
+canBase⊥ d (can-cH x y z) with gen-⌜Hom⌝ d
+... | _ , (_ , (_ , cv)) = Ubase-clash (csymᵀ cv)
+canBase⊥ d (can-hrefl c s) with gen-hrefl d
+... | _ , (_ , cv) with church-rosserᵀ (csymᵀ cv)
+...   | E , (hE , bE) with base-nf bE
+...     | refl = diagbase⊥ (s , (done , done)) hE
+canBase⊥ d (can-cId x y z) with gen-⌜Id⌝ d
+... | _ , (_ , (_ , cv)) = Ubase-clash (csymᵀ cv)
+canBase⊥ d (can-idrefl c s) with gen-idrefl d
+... | _ , (_ , cv) = Idbase-clash (csymᵀ cv)
+canBase⊥ d can-unit  = Unitbase-clash (csymᵀ (gen-unit d))
+canBase⊥ d can-nzero = Natbase-clash (csymᵀ (gen-nzero d))
+canBase⊥ d (can-nsuc n) with gen-nsuc d
+... | _ , cv = Natbase-clash (csymᵀ cv)
+
 ------------------------------------------------------------------------
 -- 6. ★★ THE MUTUAL PROGRESS INDUCTION — bounded by term size,
 --    structural on the bound.  `prog`: canonical or steps.  `usplit`:
@@ -871,6 +901,17 @@ mutual
   ... | _ , r = prog-step r
   prog (suc m) {t = jsub dM p e} d le with jsubS m d (un≤ le)
   ... | _ , r = prog-step r
+  -- ★★★ WF-axis stage D, AND THE WHOLE POINT: a closed `absurd` ALWAYS
+  -- STEPS.  Recurse on the scrutinee — if it steps, so does the whole
+  -- term; and if it is CANONICAL, `canBase⊥` refutes it.  So the only
+  -- thing standing between ex falso and progress is `consistency`
+  -- itself, which is exactly the right dependency: `absurd` lets the
+  -- LANGUAGE use the fact that `base` is empty, and progress pays for
+  -- it with the metatheorem that says so.
+  prog (suc m) {t = absurd c e}  d le with gen-absurd d
+  ... | dc , (de , _) with prog m de (≤-trans (≤+ʳ (sz c) (sz e)) (un≤ le))
+  ...   | prog-step r = prog-step (ξ-absurdᵉ r)
+  ...   | prog-can cn = ⊥-elim (canBase⊥ de cn)
   prog (suc m) {t = app f a}     d le with appS m d (un≤ le)
   ... | _ , r = prog-step r
   prog (suc m) {t = fst p}       d le with fstS m d (un≤ le)
@@ -908,6 +949,12 @@ mutual
   ... | _ , (_ , (cv , _)) = ⊥-elim (ΣU-clash (csymᵀ cv))
   usplit (suc m) {c = hrefl x s} d le with gen-hrefl d
   ... | _ , (_ , cv) = ⊥-elim (HomU-clash (csymᵀ cv))
+  -- same argument, at `U`: the scrutinee is at `base`, so it steps or
+  -- `canBase⊥` refutes it.
+  usplit (suc m) {c = absurd c₁ e} d le with gen-absurd d
+  ... | dc , (de , _) with prog m de (≤-trans (≤+ʳ (sz c₁) (sz e)) (un≤ le))
+  ...   | prog-step r = u-step (ξ-absurdᵉ r)
+  ...   | prog-can cn = ⊥-elim (canBase⊥ de cn)
   usplit (suc m) {c = app f a} d le with appS m d (un≤ le)
   ... | _ , r = u-step r
   usplit (suc m) {c = fst p} d le with fstS m d (un≤ le)
@@ -1390,33 +1437,6 @@ trProgress : {dM : RTm (ε ∙)} {p e : RTm ε} {T : RTy ε} →
              ◇ ⊢ tr dM p e ∷ T → Σ (RTm ε) (λ u → tr dM p e ⟶ u)
 trProgress {dM} {p} {e} d = trS (sz dM + sz p + sz e) d ≤-refl
 
--- no canonical shape types at `base`.
-canBase⊥ : {t : RTm ε} → ◇ ⊢ t ∷ base → Canon t → ⊥
-canBase⊥ d (can-lam s) with gen-lam d
-... | _ , (_ , (cv , _)) = Πbase-clash (csymᵀ cv)
-canBase⊥ d (can-pair a b) with gen-pair d
-... | _ , (_ , (cv , _)) = Σbase-clash (csymᵀ cv)
-canBase⊥ d can-cb = Ubase-clash (csymᵀ (gen-⌜base⌝ d))
-canBase⊥ d can-cNat = Ubase-clash (csymᵀ (gen-⌜Nat⌝ d))
-canBase⊥ d can-cUnit = Ubase-clash (csymᵀ (gen-⌜Unit⌝ d))
-canBase⊥ d (can-cΠ x y) with gen-⌜Π⌝ d
-... | _ , (_ , cv) = Ubase-clash (csymᵀ cv)
-canBase⊥ d (can-cΣ x y) with gen-⌜Σ⌝ d
-... | _ , (_ , cv) = Ubase-clash (csymᵀ cv)
-canBase⊥ d (can-cH x y z) with gen-⌜Hom⌝ d
-... | _ , (_ , (_ , cv)) = Ubase-clash (csymᵀ cv)
-canBase⊥ d (can-hrefl c s) with gen-hrefl d
-... | _ , (_ , cv) with church-rosserᵀ (csymᵀ cv)
-...   | E , (hE , bE) with base-nf bE
-...     | refl = diagbase⊥ (s , (done , done)) hE
-canBase⊥ d (can-cId x y z) with gen-⌜Id⌝ d
-... | _ , (_ , (_ , cv)) = Ubase-clash (csymᵀ cv)
-canBase⊥ d (can-idrefl c s) with gen-idrefl d
-... | _ , (_ , cv) = Idbase-clash (csymᵀ cv)
-canBase⊥ d can-unit  = Unitbase-clash (csymᵀ (gen-unit d))
-canBase⊥ d can-nzero = Natbase-clash (csymᵀ (gen-nzero d))
-canBase⊥ d (can-nsuc n) with gen-nsuc d
-... | _ , cv = Natbase-clash (csymᵀ cv)
 
 -- ★★ CONSISTENCY of the full W2/W2b kernel: `base` has no closed
 -- inhabitant.  Normalize (`wnorm`, the fundamental theorem), preserve
