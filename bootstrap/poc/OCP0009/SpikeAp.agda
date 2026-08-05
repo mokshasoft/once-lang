@@ -45,16 +45,16 @@ module poc.OCP0009.SpikeAp where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; trans; sym; Σ; _,_; ⊥; ⊥-elim; _⊎_; inj₁; inj₂ )
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; ε; _∙; RTy; El; Hom; RTm; lam; hrefl )
+  using ( Cx; ε; _∙; RTy; El; Hom; RTm; lam; hrefl; ⌜Nat⌝ )
 open import poc.OCP0009.NbEPDirDBVar
-  using ( 𝔹; true; pw?; stkC?; stk⊥pw )
+  using ( 𝔹; true; pw?; stkC?; stk⊥pw; stkC?→hd )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶_; hrefl-pw; ξ-hreflᶜ
-        ; _≅ᵀ_; Ctx; ◇; ⌊_⌋; _⊢_∷_ )
+        ; _≅ᵀ_; csymᵀ; Ctx; ◇; ⌊_⌋; _⊢_∷_ )
 open import poc.OCP0009.NbEPDirDBLR using ( IsNormal )
 open import poc.OCP0009.NbEPDirDBSubj using ( gen-lam; gen-hrefl )
 open import poc.OCP0009.NbEPDirDBCanon
-  using ( pathCanon; codeCanon; HomStkΠ-clash )
+  using ( pathCanon; codeCanon; HomStkΠ-clash; HomNatNoNat-clash )
 open import poc.OCP0009.NbEPDirDBSubj using ( nn-El )
 
 ------------------------------------------------------------------------
@@ -65,7 +65,8 @@ stable-path-is-hrefl :
   {p : RTm ε} {c t u : RTm ε} →
   ◇ ⊢ p ∷ Hom (El c) t u → stkC? c ≡ true → IsNormal p →
   Σ (RTm ε) (λ c₁ → Σ (RTm ε) (λ s → p ≡ hrefl c₁ s))
-stable-path-is-hrefl d k nrm with pathCanon nn-El d nrm
+stable-path-is-hrefl {c = c} d k nrm
+  with pathCanon (nn-El (stkC?→hd c k)) d nrm
 ... | inj₁ hs = hs
 ... | inj₂ (f , refl) with gen-lam d
 ...   | _ , (_ , (cv , _)) = ⊥-elim (HomStkΠ-clash k cv)
@@ -74,13 +75,19 @@ stable-path-is-hrefl d k nrm with pathCanon nn-El d nrm
 -- 2. A closed normal hrefl's code passes `stkC?` — the ap-J key.
 ------------------------------------------------------------------------
 
+-- ⚠ SpikeNatJ: the conclusion is WEAKER than it was.  `hrefl ⌜Nat⌝ n`
+-- is closed, normal and well-typed, and `stkC? ⌜Nat⌝ = false` — the
+-- ORDERED code is the one J-less closed normal path code.  What pins it
+-- down is the AMBIENT, which `apJ-complete` has and this lemma does not.
 normal-hrefl-code-stable :
   {c₁ s : RTm ε} {T : RTy ε} →
-  ◇ ⊢ hrefl c₁ s ∷ T → IsNormal (hrefl c₁ s) → stkC? c₁ ≡ true
+  ◇ ⊢ hrefl c₁ s ∷ T → IsNormal (hrefl c₁ s) →
+  (stkC? c₁ ≡ true) ⊎ (c₁ ≡ ⌜Nat⌝)
 normal-hrefl-code-stable {c₁} {s} d nrm with gen-hrefl d
 ... | dc₁ , _ with codeCanon dc₁ (λ r → nrm (ξ-hreflᶜ r))
-...   | inj₁ pw = ⊥-elim (nrm (hrefl-pw c₁ s pw))
-...   | inj₂ k  = k
+...   | inj₁ pw        = ⊥-elim (nrm (hrefl-pw c₁ s pw))
+...   | inj₂ (inj₁ k)  = inj₁ k
+...   | inj₂ (inj₂ eq) = inj₂ eq
 
 ------------------------------------------------------------------------
 -- 3. ★★ THE KEYSTONE: on closed normal instances the J-rule ALWAYS has
@@ -92,9 +99,15 @@ apJ-complete :
   ◇ ⊢ p ∷ Hom (El c) t u → stkC? c ≡ true → IsNormal p →
   Σ (RTm ε) (λ c₁ → Σ (RTm ε) (λ s →
     Σ (p ≡ hrefl c₁ s) (λ _ → stkC? c₁ ≡ true)))
-apJ-complete d k nrm with stable-path-is-hrefl d k nrm
-... | c₁ , (s , refl) =
-      c₁ , (s , (refl , normal-hrefl-code-stable d nrm))
+-- ★ the keystone SURVIVES: the source ambient's own stability rules the
+-- ORDERED code out.  `El ⌜Nat⌝ ⟶ᵀ Nat`, and a `stkC?` code's decode is
+-- Nat-free — so the ⌜Nat⌝ escape hatch above is unreachable HERE.
+apJ-complete {c = c} d k nrm with stable-path-is-hrefl d k nrm
+... | c₁ , (s , refl) with normal-hrefl-code-stable d nrm
+...   | inj₁ ks = c₁ , (s , (refl , ks))
+...   | inj₂ refl with gen-hrefl d
+...     | _ , (_ , cvh) =
+          ⊥-elim (HomNatNoNat-clash (nn-El (stkC?→hd c k)) (csymᵀ cvh))
 
 ------------------------------------------------------------------------
 -- 4. The raw critical pair with `hrefl-pw` is EMPTY: the two keys are

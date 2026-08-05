@@ -44,7 +44,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTm; var; lam; app; ⌜base⌝; ⌜Hom⌝; hrefl; tr
         ; subTm )
 open import poc.OCP0009.NbEPDirDBVar
-  using ( PosC; sym-code; sym-code-not-posc )
+  using ( PosC; sym-code; sym-code-not-posc; nnc-base )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶_; β
         ; tr-J-base; tr-taut
@@ -84,7 +84,7 @@ trans-tr = tr compM (hrefl ⌜base⌝ x₁) (hrefl ⌜base⌝ x₁)
 
 ⊢trans-base : Γ₁ ⊢ trans-tr ∷ El (subTm (single x₁) compM)
 ⊢trans-base =
-  ⊢tr ⊢⌜base⌝ (⊢var (there here)) (⊢var here) refl refl
+  ⊢tr ⊢⌜base⌝ (⊢var (there here)) (⊢var here) nnc-base refl refl
       ⊢x₁ ⊢x₁ ⊢idpath
       (⊢conv (⊢hrefl ⊢⌜base⌝ ⊢x₁)
              (csymᵀ (credᵀ (El-⌜Hom⌝ ⌜base⌝ x₁ x₁))))
