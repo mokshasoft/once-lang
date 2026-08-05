@@ -71,8 +71,9 @@ open import poc.OCP0009.NbEPDirDBType
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ )
 open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false
-        ; pw?; stkC?; pwDom; pwBody; pwShift
-        ; pw?-ren; stkC?-ren; pwBody-ren; pwDom-ren
+        ; pw?; stkC?; stkA?; pwDom; pwBody; pwShift
+        ; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren; pwDom-ren
+        ; stkC?→stkA?; stkA?⊥pw
         ; stk⊥pw; pw⊥stk )
 open import poc.OCP0009.NbEPDirDBSR using ( ⟶ᵀ-sub; ≅ᵀ-sub )
 open import poc.OCP0009.NbEPDirDBSubj using ( subTy-monoˢ )
@@ -142,7 +143,7 @@ homheaded? : RTm Γ → 𝔹
 homheaded? (⌜Hom⌝ _ _ _) = true
 homheaded? _             = false
 
-spine? stablecd? pathstk? nopw? deadmot? apstk? idstk? natstk? : RTm Γ → 𝔹
+spine? stablecd? stableA? pathstk? nopw? deadmot? apstk? idstk? natstk? : RTm Γ → 𝔹
 trstk? : RTm (Γ ∙) → RTm Γ → 𝔹
 trlam? : RTm (Γ ∙) → 𝔹
 
@@ -168,13 +169,21 @@ spine? _              = false
 -- W2b: `stablecd?` is now DEAD-CODE-ness — the code can never fire a
 -- J rule (⌜base⌝/⌜Σ⌝/stk-⌜Hom⌝ excluded, as before) NOR the pointwise
 -- unfold (⌜Π⌝ and pw-⌜Hom⌝ excluded, NEW).
+-- ★★ SpikeNatJ: the ⌜Hom⌝-WRAPPED deadness.  `stablecd? (⌜Hom⌝ c a b)`
+-- asks whether the WRAPPER fires, and the wrapper's J key is `stkA? c`
+-- (see `tr-J-Hom`) — so ⌜Nat⌝ under a ⌜Hom⌝ is ALIVE even though a bare
+-- ⌜Nat⌝ is dead.  Everything else delegates.
+stableA? ⌜Nat⌝          = false
+stableA? (⌜Hom⌝ c a b)  = stableA? c
+stableA? t              = stablecd? t
+
 stablecd? (var x)       = true
 stablecd? (lam t)       = true
 stablecd? (app t u)     = spine? t
 stablecd? (pair a b)    = true
 stablecd? (fst t)       = spine? t
 stablecd? (snd t)       = spine? t
-stablecd? (⌜Hom⌝ c a b) = stablecd? c
+stablecd? (⌜Hom⌝ c a b) = stableA? c
 stablecd? (hrefl c t)   = true
 stablecd? (ap c b p)    = apstk? p
 stablecd? (idrefl c t)  = true
@@ -379,6 +388,21 @@ f≢t ()
 -- key disjointness (W2b): a pw-able code is never dead, never
 -- pw-immune; a stable (J-able) code is never dead; and a head-redex is
 -- never a pw code — the facts the keyed dispatches turn on.
+-- ★ the `stableA?` peer, for the ⌜Hom⌝-wrapped verdict.
+pw⊥deadA : (C : RTm Γ) → pw? C ≡ true → stableA? C ≡ false
+pw⊥deadA (var x) ()
+pw⊥deadA (lam t) ()
+pw⊥deadA (app t u) ()
+pw⊥deadA (pair a b) ()
+pw⊥deadA (fst t) ()
+pw⊥deadA (snd t) ()
+pw⊥deadA ⌜base⌝ ()
+pw⊥deadA (⌜Π⌝ c d) h = refl
+pw⊥deadA (⌜Σ⌝ c d) ()
+pw⊥deadA (⌜Hom⌝ C a b) h = pw⊥deadA C h
+pw⊥deadA (hrefl c t) ()
+pw⊥deadA (tr d p e) ()
+
 pw⊥dead : (C : RTm Γ) → pw? C ≡ true → stablecd? C ≡ false
 pw⊥dead (var x) ()
 pw⊥dead (lam t) ()
@@ -389,7 +413,7 @@ pw⊥dead (snd t) ()
 pw⊥dead ⌜base⌝ ()
 pw⊥dead (⌜Π⌝ c d) h = refl
 pw⊥dead (⌜Σ⌝ c d) ()
-pw⊥dead (⌜Hom⌝ C a b) h = pw⊥dead C h
+pw⊥dead (⌜Hom⌝ C a b) h = pw⊥deadA C h
 pw⊥dead (hrefl c t) ()
 pw⊥dead (tr d p e) ()
 
@@ -441,6 +465,26 @@ deadmot→nopw nzero h = refl
 deadmot→nopw (nsuc n) h = refl
 deadmot→nopw (natrec z s n) h = h
 
+-- ★ the `stkA?` peer.  ⌜Nat⌝ IS a dead motive (nothing fires on
+-- `tr ⌜Nat⌝ p e`) even though it is a live PATH code, so this goes
+-- through where `stkA?→hd` cannot.
+stkA?→deadmot : (C : RTm Γ) → stkA? C ≡ true → deadmot? C ≡ true
+stkA?→deadmot (var x) ()
+stkA?→deadmot (lam t) ()
+stkA?→deadmot (app t u) ()
+stkA?→deadmot (pair a b) ()
+stkA?→deadmot (fst t) ()
+stkA?→deadmot (snd t) ()
+stkA?→deadmot ⌜base⌝ h = refl
+stkA?→deadmot ⌜Nat⌝ h = refl
+stkA?→deadmot ⌜Unit⌝ h = refl
+stkA?→deadmot (⌜Π⌝ c d) ()
+stkA?→deadmot (⌜Σ⌝ c d) h = refl
+stkA?→deadmot (⌜Id⌝ c a b) h = refl
+stkA?→deadmot (⌜Hom⌝ C a b) h = stkA?→deadmot C h
+stkA?→deadmot (hrefl c t) ()
+stkA?→deadmot (tr d p e) ()
+
 stk→deadmot : (C : RTm Γ) → stkC? C ≡ true → deadmot? C ≡ true
 stk→deadmot (var x) ()
 stk→deadmot (lam t) ()
@@ -453,9 +497,29 @@ stk→deadmot ⌜Unit⌝ h = refl
 stk→deadmot (⌜Π⌝ c d) ()
 stk→deadmot (⌜Σ⌝ c d) h = refl
 stk→deadmot (⌜Id⌝ c a b) h = refl
-stk→deadmot (⌜Hom⌝ C a b) h = stk→deadmot C h
+stk→deadmot (⌜Hom⌝ C a b) h = stkA?→deadmot C h
 stk→deadmot (hrefl c t) ()
 stk→deadmot (tr d p e) ()
+
+-- ★ the `stkA?` peer: a stable-ambient code is never a dead WRAPPER
+-- code.  ⌜Nat⌝ is the interesting row — `stableA? ⌜Nat⌝ = false` is
+-- exactly the fact that `⌜Hom⌝ ⌜Nat⌝ a b` fires J.
+stkA?⊥dead : (C : RTm Γ) → stkA? C ≡ true → stableA? C ≡ false
+stkA?⊥dead (var x) ()
+stkA?⊥dead (lam t) ()
+stkA?⊥dead (app t u) ()
+stkA?⊥dead (pair a b) ()
+stkA?⊥dead (fst t) ()
+stkA?⊥dead (snd t) ()
+stkA?⊥dead ⌜base⌝ h = refl
+stkA?⊥dead ⌜Nat⌝ h = refl
+stkA?⊥dead ⌜Unit⌝ h = refl
+stkA?⊥dead (⌜Π⌝ c d) ()
+stkA?⊥dead (⌜Σ⌝ c d) h = refl
+stkA?⊥dead (⌜Id⌝ c a b) h = refl
+stkA?⊥dead (⌜Hom⌝ C a b) h = stkA?⊥dead C h
+stkA?⊥dead (hrefl c t) ()
+stkA?⊥dead (tr d p e) ()
 
 stk⊥dead : (C : RTm Γ) → stkC? C ≡ true → stablecd? C ≡ false
 stk⊥dead (var x) ()
@@ -469,7 +533,7 @@ stk⊥dead ⌜Unit⌝ h = refl
 stk⊥dead (⌜Π⌝ c d) ()
 stk⊥dead (⌜Σ⌝ c d) h = refl
 stk⊥dead (⌜Id⌝ c a b) h = refl
-stk⊥dead (⌜Hom⌝ C a b) h = stk⊥dead C h
+stk⊥dead (⌜Hom⌝ C a b) h = stkA?⊥dead C h
 stk⊥dead (hrefl c t) ()
 stk⊥dead (tr d p e) ()
 
@@ -480,6 +544,8 @@ stk⊥dead (tr d p e) ()
 homheaded?-red : {t t' : RTm Γ} → t ⟶ t' →
                  homheaded? t ≡ true → homheaded? t' ≡ true
 spine?-red    : {t t' : RTm Γ} → t ⟶ t' → spine? t ≡ true → spine? t' ≡ true
+stableA?-red  : {t t' : RTm Γ} → t ⟶ t' →
+                stableA? t ≡ true → stableA? t' ≡ true
 stablecd?-red : {t t' : RTm Γ} → t ⟶ t' →
                 stablecd? t ≡ true → stablecd? t' ≡ true
 pathstk?-red  : {t t' : RTm Γ} → t ⟶ t' →
@@ -546,7 +612,7 @@ spine?-red (ξ-hreflᵃ r) h = h
 spine?-red (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw C₀ h)) kp))
 spine?-red (tr-J-base _ _ _ _ _) ()
 spine?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-spine?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ kh)) h))
+spine?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
 spine?-red (tr-taut _ _) ()
 spine?-red (tr-pw c₁ _ _ _ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ h))) kp))
 spine?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
@@ -574,6 +640,59 @@ spine?-red (ξ-natrecᶻ r) h = h
 spine?-red (ξ-natrecˢ r) h = h
 spine?-red (ξ-natrecⁿ r) h = natstk?-red r h
 
+-- ★ the `stableA?` peer of `stablecd?-red`: identical except that the
+-- ⌜Hom⌝-code congruence recurses into ITSELF, so ⌜Nat⌝ under a ⌜Hom⌝
+-- keeps its `false` verdict.  Every other row delegates definitionally.
+stableA?-red (β _ _) ()
+stableA?-red (βfst _ _) ()
+stableA?-red (βsnd _ _) ()
+stableA?-red (ξ-lam r) h = h
+stableA?-red (ξ-appˡ r) h = spine?-red r h
+stableA?-red (ξ-appʳ r) h = h
+stableA?-red (ξ-pairˡ r) h = h
+stableA?-red (ξ-pairʳ r) h = h
+stableA?-red (ξ-fst r) h = spine?-red r h
+stableA?-red (ξ-snd r) h = spine?-red r h
+stableA?-red (ξ-⌜Π⌝ˡ _) ()
+stableA?-red (ξ-⌜Π⌝ʳ _) ()
+stableA?-red (ξ-⌜Σ⌝ˡ _) ()
+stableA?-red (ξ-⌜Σ⌝ʳ _) ()
+stableA?-red (ξ-⌜Hom⌝ᶜ r) h = stableA?-red r h
+stableA?-red (ξ-⌜Hom⌝ˡ r) h = h
+stableA?-red (ξ-⌜Hom⌝ʳ r) h = h
+stableA?-red (ξ-hreflᶜ r) h = h
+stableA?-red (ξ-hreflᵃ r) h = h
+stableA?-red (hrefl-pw C₀ s₀ kp) h = refl
+stableA?-red (tr-J-base _ _ _ _ _) ()
+stableA?-red (tr-J-Σ _ _ _ _ _ _ _) ()
+stableA?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
+stableA?-red (tr-taut _ _) ()
+stableA?-red (tr-pw c₁ _ _ _ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ h))) kp))
+stableA?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
+stableA?-red (ξ-trᵖ {d = d₀} r) h = trstk?-red-p {d = d₀} r h
+stableA?-red (ξ-trᵉ r) h = h
+stableA?-red (ap-J _ _ c₁ _ key) h =
+  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ key)) h))
+stableA?-red (ξ-apᶜ r) h = h
+stableA?-red (ξ-apᵇ r) h = h
+stableA?-red (ξ-apᵖ r) h = apstk?-red r h
+stableA?-red (tr-J-Id _ _ _ _ _ _ _ _) ()
+stableA?-red (jsub-refl _ _ _ _) ()
+stableA?-red (ξ-⌜Id⌝ᶜ r) ()
+stableA?-red (ξ-⌜Id⌝ˡ r) ()
+stableA?-red (ξ-⌜Id⌝ʳ r) ()
+stableA?-red (ξ-idreflᶜ r) h = h
+stableA?-red (ξ-idreflᵃ r) h = h
+stableA?-red (ξ-jsubᵈ r) h = h
+stableA?-red (ξ-jsubᵖ r) h = idstk?-red r h
+stableA?-red (ξ-jsubᵉ r) h = h
+stableA?-red (natrec-zero _ _) ()
+stableA?-red (natrec-suc _ _ _) ()
+stableA?-red (ξ-nsuc r) h = refl
+stableA?-red (ξ-natrecᶻ r) h = h
+stableA?-red (ξ-natrecˢ r) h = h
+stableA?-red (ξ-natrecⁿ r) h = natstk?-red r h
+
 stablecd?-red (β _ _) ()
 stablecd?-red (βfst _ _) ()
 stablecd?-red (βsnd _ _) ()
@@ -588,7 +707,7 @@ stablecd?-red (ξ-⌜Π⌝ˡ _) ()
 stablecd?-red (ξ-⌜Π⌝ʳ _) ()
 stablecd?-red (ξ-⌜Σ⌝ˡ _) ()
 stablecd?-red (ξ-⌜Σ⌝ʳ _) ()
-stablecd?-red (ξ-⌜Hom⌝ᶜ r) h = stablecd?-red r h
+stablecd?-red (ξ-⌜Hom⌝ᶜ r) h = stableA?-red r h
 stablecd?-red (ξ-⌜Hom⌝ˡ r) h = h
 stablecd?-red (ξ-⌜Hom⌝ʳ r) h = h
 stablecd?-red (ξ-hreflᶜ r) h = h
@@ -596,7 +715,7 @@ stablecd?-red (ξ-hreflᵃ r) h = h
 stablecd?-red (hrefl-pw C₀ s₀ kp) h = refl
 stablecd?-red (tr-J-base _ _ _ _ _) ()
 stablecd?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-stablecd?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ kh)) h))
+stablecd?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
 stablecd?-red (tr-taut _ _) ()
 stablecd?-red (tr-pw c₁ _ _ _ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ h))) kp))
 stablecd?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
@@ -646,7 +765,7 @@ pathstk?-red (ξ-hreflᵃ r) h = h
 pathstk?-red (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 pathstk?-red (tr-J-base _ _ _ _ _) ()
 pathstk?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-pathstk?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ kh)) h))
+pathstk?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
 pathstk?-red (tr-taut _ _) ()
 pathstk?-red (tr-pw c₁ _ _ _ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ h))) kp))
 pathstk?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
@@ -700,7 +819,7 @@ apstk?-red (hrefl-pw C₀ s₀ kp) h = refl
 apstk?-red (tr-J-base _ _ _ _ _) ()
 apstk?-red (tr-J-Σ _ _ _ _ _ _ _) ()
 apstk?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ kh)) h))
+  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
 apstk?-red (tr-taut _ _) ()
 apstk?-red (tr-pw _ _ _ _ _) h = refl
 apstk?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
@@ -752,7 +871,7 @@ idstk?-red (hrefl-pw C₀ s₀ kp) h = refl
 idstk?-red (tr-J-base _ _ _ _ _) ()
 idstk?-red (tr-J-Σ _ _ _ _ _ _ _) ()
 idstk?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ kh)) h))
+  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
 idstk?-red (tr-taut _ _) ()
 idstk?-red (tr-pw _ _ _ _ _) h = refl
 idstk?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
@@ -803,7 +922,7 @@ natstk?-red (hrefl-pw C₀ s₀ kp) h = refl
 natstk?-red (tr-J-base _ _ _ _ _) ()
 natstk?-red (tr-J-Σ _ _ _ _ _ _ _) ()
 natstk?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ kh)) h))
+  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
 natstk?-red (tr-taut _ _) ()
 natstk?-red (tr-pw _ _ _ _ _) h = refl
 natstk?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
@@ -853,7 +972,7 @@ nopw?-red (ξ-hreflᵃ r) h = h
 nopw?-red (hrefl-pw C₀ s₀ kp) h = refl
 nopw?-red (tr-J-base _ _ _ _ _) ()
 nopw?-red (tr-J-Σ _ _ _ _ _ _ _) ()
-nopw?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ kh)) h))
+nopw?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
 nopw?-red (tr-taut _ _) ()
 nopw?-red (tr-pw c₁ _ _ _ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ h))) kp))
 nopw?-red (ξ-trᵈ {p = p₀} r) h = trstk?-red-d {p = p₀} r h
@@ -904,7 +1023,7 @@ deadmot?-red (hrefl-pw C₀ s₀ kp) h =
 deadmot?-red (tr-J-base _ _ _ _ _) ()
 deadmot?-red (tr-J-Σ _ _ _ _ _ _ _) ()
 deadmot?-red (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ kh)) h))
+  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
 deadmot?-red (tr-taut _ _) ()
 deadmot?-red (tr-pw c₁ _ _ _ kp) h =
   ⊥-elim (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ h))) kp))
@@ -934,6 +1053,30 @@ deadmot?-red (ξ-natrecˢ r) h = h
 deadmot?-red (ξ-natrecⁿ r) h = natstk?-red r h
 
 -- dead codes are pw-immune (deadness subsumes the weaker key).
+-- ★ the `stableA?` peer.  ⌜Nat⌝ is ABSURD here — `stableA? ⌜Nat⌝`
+-- is `false`, which is exactly the split.
+deadA→nopw : (C : RTm Γ) → stableA? C ≡ true → nopw? C ≡ true
+deadA→nopw (var x) h = refl
+deadA→nopw (lam t) h = refl
+deadA→nopw (app t u) h = h
+deadA→nopw (pair a b) h = refl
+deadA→nopw (fst t) h = h
+deadA→nopw (snd t) h = h
+deadA→nopw ⌜base⌝ ()
+deadA→nopw ⌜Nat⌝ ()
+deadA→nopw (⌜Π⌝ c d) ()
+deadA→nopw (⌜Σ⌝ c d) ()
+deadA→nopw (⌜Hom⌝ C a b) h = deadA→nopw C h
+deadA→nopw (hrefl c t) h = refl
+deadA→nopw (tr d p e) h = h
+deadA→nopw (ap c b p) h = refl
+deadA→nopw (idrefl c t) h = refl
+deadA→nopw (jsub d p e) h = h
+deadA→nopw unit h = refl
+deadA→nopw nzero h = refl
+deadA→nopw (nsuc n) h = refl
+deadA→nopw (natrec z s n) h = h
+
 dead→nopw : (C : RTm Γ) → stablecd? C ≡ true → nopw? C ≡ true
 dead→nopw (var x) h = refl
 dead→nopw (lam t) h = refl
@@ -945,7 +1088,7 @@ dead→nopw ⌜base⌝ ()
 dead→nopw ⌜Nat⌝ h = refl
 dead→nopw (⌜Π⌝ c d) ()
 dead→nopw (⌜Σ⌝ c d) ()
-dead→nopw (⌜Hom⌝ C a b) h = dead→nopw C h
+dead→nopw (⌜Hom⌝ C a b) h = deadA→nopw C h
 dead→nopw (hrefl c t) h = refl
 dead→nopw (tr d p e) h = h
 dead→nopw (ap c b p) h = refl
@@ -1174,7 +1317,7 @@ trstk?-red-p (ξ-⌜Hom⌝ˡ r) h = h
 trstk?-red-p (ξ-⌜Hom⌝ʳ r) h = h
 trstk?-red-p (tr-J-base _ _ _ _ _) ()
 trstk?-red-p (tr-J-Σ _ _ _ _ _ _ _) ()
-trstk?-red-p (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ kh)) h))
+trstk?-red-p (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) h = ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) h))
 trstk?-red-p (tr-taut _ _) ()
 trstk?-red-p (tr-pw c₁ _ _ _ kp) h = ⊥-elim (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ h))) kp))
 trstk?-red-p (ξ-trᵈ {p = p₁} r) h = trstk?-red-d {p = p₁} r h
@@ -1442,7 +1585,7 @@ data SNRed {Γ} where
   -- ⌜Π⌝-domain that pwBody drops).
   snr-J-Hom  : {c a m : RTm (Γ ∙)} {c₁ a₁ b₁ s e : RTm Γ} →
                SN (⌜Hom⌝ c a m) → SN c₁ → SN a₁ → SN b₁ → SN s →
-               stkC? c₁ ≡ true →
+               stkA? c₁ ≡ true →
                SNRed (tr (⌜Hom⌝ c a m) (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) e) e
   -- W2b final frontier: the motive-side spine normalization — a lam
   -- path exposes the motive's code as the next scrutinee.
@@ -1530,11 +1673,28 @@ csr-nonpw (csr-here r) = snr-nonpw r
 csr-nonpw (csr-hom σ)  = csr-nonpw σ
 
 -- a permanently-stable code has no spine step.
+csr-stkA⊥ : {t t' : RTm Γ} → stkA? t ≡ true → CSR t t' → ⊥
+csr-stkA⊥ {t = ⌜base⌝} k (csr-here ())
+csr-stkA⊥ {t = ⌜Nat⌝} k (csr-here ())
+csr-stkA⊥ {t = ⌜Unit⌝} k (csr-here ())
+csr-stkA⊥ {t = ⌜Σ⌝ c d} k (csr-here ())
+csr-stkA⊥ {t = ⌜Id⌝ c a b} k (csr-here ())
+csr-stkA⊥ {t = ⌜Hom⌝ c a b} k (csr-here ())
+csr-stkA⊥ {t = ⌜Hom⌝ c a b} k (csr-hom σ) = csr-stkA⊥ k σ
+csr-stkA⊥ {t = var x} () _
+csr-stkA⊥ {t = lam _} () _
+csr-stkA⊥ {t = app _ _} () _
+csr-stkA⊥ {t = pair _ _} () _
+csr-stkA⊥ {t = fst _} () _
+csr-stkA⊥ {t = snd _} () _
+csr-stkA⊥ {t = ⌜Π⌝ _ _} () _
+csr-stkA⊥ {t = hrefl _ _} () _
+
 csr-stk⊥ : {t t' : RTm Γ} → stkC? t ≡ true → CSR t t' → ⊥
 csr-stk⊥ {t = ⌜base⌝} k (csr-here ())
 csr-stk⊥ {t = ⌜Σ⌝ c d} k (csr-here ())
 csr-stk⊥ {t = ⌜Hom⌝ c a b} k (csr-here ())
-csr-stk⊥ {t = ⌜Hom⌝ c a b} k (csr-hom σ) = csr-stk⊥ k σ
+csr-stk⊥ {t = ⌜Hom⌝ c a b} k (csr-hom σ) = csr-stkA⊥ k σ
 csr-stk⊥ {t = var x} () _
 csr-stk⊥ {t = lam _} () _
 csr-stk⊥ {t = app _ _} () _
@@ -1599,14 +1759,14 @@ snr-det (snr-hreflᶜ σ) (snr-hrefl-pw kp)
 ... | ()
 snr-det (snr-J-Hom _ _ _ _ _ _) (snr-J-Hom _ _ _ _ _ _) = refl
 snr-det (snr-J-Hom {c₁ = c₁} _ _ _ _ _ ks) (snr-trᵖ (snr-hreflᶜ σ)) =
-  ⊥-elim (csr-stk⊥ ks σ)
+  ⊥-elim (csr-stkA⊥ ks σ)
 snr-det (snr-trᵖ (snr-hreflᶜ σ)) (snr-J-Hom {c₁ = c₁} _ _ _ _ _ ks) =
-  ⊥-elim (csr-stk⊥ ks σ)
+  ⊥-elim (csr-stkA⊥ ks σ)
 snr-det (snr-J-Hom {c₁ = c₁} _ _ _ _ _ ks) (snr-trᵖ (snr-hrefl-pw kp))
-  with trans (sym (stk⊥pw c₁ ks)) kp
+  with trans (sym (stkA?⊥pw c₁ ks)) kp
 ... | ()
 snr-det (snr-trᵖ (snr-hrefl-pw kp)) (snr-J-Hom {c₁ = c₁} _ _ _ _ _ ks)
-  with trans (sym (stk⊥pw c₁ ks)) kp
+  with trans (sym (stkA?⊥pw c₁ ks)) kp
 ... | ()
 snr-det (snr-J-base _ _) (snr-trᵖ (snr-hrefl-pw ()))
 snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-base _ _)
@@ -1690,7 +1850,7 @@ sne-whred (sne-tr snd₀ snp sne₀ ()) (snr-J-Unit _ _)
 sne-whred (sne-tr snd₀ snp sne₀ ()) (snr-J-Σ _ _ _ _)
 sne-whred (sne-tr snd₀ snp sne₀ ()) snr-taut
 sne-whred (sne-tr snd₀ snp sne₀ key) (snr-J-Hom {c₁ = c₁} _ _ _ _ _ ks)
-  with trans (sym (stk⊥dead c₁ ks)) key
+  with trans (sym (stkA?⊥dead c₁ ks)) key
 ... | ()
 sne-whred (sne-tr {d = ⌜Hom⌝ c _ (var vz)} snd₀ snp sne₀ key)
           (snr-tr-pw _ _ kp)
@@ -1798,7 +1958,7 @@ ne-red (ne-tr ()) (tr-J-base _ _ _ _ _)
 ne-red (ne-tr ()) (tr-J-Σ _ _ _ _ _ _ _)
 ne-red (ne-tr ()) (tr-taut _ _)
 ne-red (ne-tr key) (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) =
-  ⊥-elim (f≢t (trans (sym (stk⊥dead c₁ kh)) key))
+  ⊥-elim (f≢t (trans (sym (stkA?⊥dead c₁ kh)) key))
 ne-red (ne-tr key) (tr-pw c₁ _ _ _ kp) =
   ⊥-elim (f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ key))) kp))
 ne-red (ne-tr key) (ξ-trᵈ {p = p} r) = ne-tr (trstk?-red-d {p = p} r key)
@@ -1896,6 +2056,8 @@ homheaded?-ren ρ (nsuc n)      = refl
 homheaded?-ren ρ (natrec z s n) = refl
 
 spine?-ren    : (ρ : Ren Γ Δ) (t : RTm Γ) → spine? (renTm ρ t) ≡ spine? t
+stableA?-ren  : (ρ : Ren Γ Δ) (t : RTm Γ) →
+                stableA? (renTm ρ t) ≡ stableA? t
 stablecd?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) →
                 stablecd? (renTm ρ t) ≡ stablecd? t
 apstk?-ren    : (ρ : Ren Γ Δ) (t : RTm Γ) →
@@ -1936,6 +2098,30 @@ spine?-ren ρ nzero         = refl
 spine?-ren ρ (nsuc n)      = refl
 spine?-ren ρ (natrec z s n) = natstk?-ren ρ n
 
+-- ★ the `stableA?` peer of `stablecd?-ren`.
+stableA?-ren ρ (var x)       = refl
+stableA?-ren ρ (lam t)       = refl
+stableA?-ren ρ (app t u)     = spine?-ren ρ t
+stableA?-ren ρ (pair a b)    = refl
+stableA?-ren ρ (fst t)       = spine?-ren ρ t
+stableA?-ren ρ (snd t)       = spine?-ren ρ t
+stableA?-ren ρ ⌜base⌝        = refl
+stableA?-ren ρ ⌜Nat⌝ = refl
+stableA?-ren ρ ⌜Unit⌝ = refl
+stableA?-ren ρ (⌜Π⌝ c d)     = refl
+stableA?-ren ρ (⌜Σ⌝ c d)     = refl
+stableA?-ren ρ (⌜Hom⌝ c a b) = stableA?-ren ρ c
+stableA?-ren ρ (hrefl c t)   = refl
+stableA?-ren ρ (tr d p e)    = trstk?-ren ρ d p
+stableA?-ren ρ (ap c b p)    = apstk?-ren ρ p
+stableA?-ren ρ (⌜Id⌝ c a b)  = refl
+stableA?-ren ρ (idrefl c t)  = refl
+stableA?-ren ρ (jsub d p e)  = idstk?-ren ρ p
+stableA?-ren ρ unit          = refl
+stableA?-ren ρ nzero         = refl
+stableA?-ren ρ (nsuc n)      = refl
+stableA?-ren ρ (natrec z s n) = natstk?-ren ρ n
+
 stablecd?-ren ρ (var x)       = refl
 stablecd?-ren ρ (lam t)       = refl
 stablecd?-ren ρ (app t u)     = spine?-ren ρ t
@@ -1947,7 +2133,7 @@ stablecd?-ren ρ ⌜Nat⌝ = refl
 stablecd?-ren ρ ⌜Unit⌝ = refl
 stablecd?-ren ρ (⌜Π⌝ c d)     = refl
 stablecd?-ren ρ (⌜Σ⌝ c d)     = refl
-stablecd?-ren ρ (⌜Hom⌝ c a b) = stablecd?-ren ρ c
+stablecd?-ren ρ (⌜Hom⌝ c a b) = stableA?-ren ρ c
 stablecd?-ren ρ (hrefl c t)   = refl
 stablecd?-ren ρ (tr d p e)    = trstk?-ren ρ d p
 stablecd?-ren ρ (ap c b p)    = apstk?-ren ρ p
@@ -4224,7 +4410,7 @@ wne (sne-tr {d = d} {p = p} d₀ p₀ e₀ key) with wn d₀ | wn p₀ | wn e₀
     nrm' (tr-J-Unit _ _ _ _ _) = ⊥-elim (f≢t key')
     nrm' (tr-taut _ _)      = ⊥-elim (f≢t key')
     nrm' (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) =
-      f≢t (trans (sym (stk⊥dead c₁ kh)) key')
+      f≢t (trans (sym (stkA?⊥dead c₁ kh)) key')
     nrm' (tr-pw c₁ _ _ _ kp) =
       f≢t (trans (sym (nopw⊥pw c₁ (deadmot→nopw c₁ key'))) kp)
     nrm' (ξ-trᵈ q) = nm₁ q
