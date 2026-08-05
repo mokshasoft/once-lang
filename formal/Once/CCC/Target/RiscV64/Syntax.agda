@@ -19,6 +19,10 @@ open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_; _*_ to _*�
 open import Data.Integer using (ℤ)
 open import Data.List using (List; []; _∷_; foldr)
 open import Data.String using (String)
+-- Plan 0.63: label PROVENANCE, shared with x86-64 (D082). `Once.CCC.Label` is
+-- arch-agnostic; naming code addresses the same way on every target is what
+-- lets the correspondence proofs (today x86-64-only) be generalised over it.
+open import Once.CCC.Label public using (Label; once; sigop; thunk)
 
 ------------------------------------------------------------------------
 -- Registers
@@ -93,16 +97,17 @@ data Instr : Set where
   -- Move (pseudo-instruction: addi rd, rs, 0)
   mv     : Reg → Reg → Instr          -- mv rd, rs
 
-  -- Branches
-  beq    : Reg → Reg → ℕ → Instr      -- beq rs1, rs2, offset
-  bne    : Reg → Reg → ℕ → Instr      -- bne rs1, rs2, offset
+  -- Branches (Plan 0.63: the operand is a LABEL, resolved by `find-label`,
+  -- not a relative offset — mirrors x86-64's `je`/`jne`)
+  beq    : Reg → Reg → Label → Instr  -- beq rs1, rs2, label
+  bne    : Reg → Reg → Label → Instr  -- bne rs1, rs2, label
 
   -- Jumps
-  jal    : Reg → ℕ → Instr            -- jal rd, offset (rd = PC+4, jump)
+  jal    : Reg → Label → Instr        -- jal rd, label (rd = PC+4, jump)
   jalr   : Reg → Reg → ℕ → Instr      -- jalr rd, rs, offset (indirect)
 
   -- Pseudo-instructions
-  j      : ℕ → Instr                  -- j offset (jal zero, offset)
+  j      : Label → Instr              -- j label (jal zero, label)
   ret    : Instr                      -- ret (jalr zero, ra, 0)
   call   : ℕ → Instr                  -- call offset (auipc + jalr)
   -- Plan 0.11: SigOp call by symbolic name. Linker resolves the name.
@@ -112,8 +117,11 @@ data Instr : Set where
   nop    : Instr                      -- nop (addi zero, zero, 0)
   unimp  : Instr                      -- unimp (trap for unreachable)
 
-  -- Label (pseudo-instruction for assembly)
-  label  : ℕ → Instr
+  -- Label (pseudo-instruction for assembly). Plan 0.63: PROVENANCE-typed,
+  -- shared with x86-64 (D082) — `once` for compiler jumps, `thunk` for a
+  -- closure-body entry, `sigop` for a SigOp symbol. Rendering and resolution
+  -- are then the same development on both targets.
+  label  : Label → Instr
 
 ------------------------------------------------------------------------
 -- Programs

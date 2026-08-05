@@ -98,41 +98,29 @@ d_step'45'instr_26 ::
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_252 ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10 ->
   Maybe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_252
-d_step'45'instr_26 v0 v1 ~v2 v3 v4
-  = du_step'45'instr_26 v0 v1 v3 v4
-du_step'45'instr_26 ::
-  (MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
-   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_252 ->
-   MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 -> Integer) ->
-  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_252 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10 ->
-  Maybe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_252
-du_step'45'instr_26 v0 v1 v2 v3
-  = let v4
-          = coe
-              MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.du_execInstr_338
-              (coe v2) (coe v3) in
+d_step'45'instr_26 v0 v1 v2 v3 v4
+  = let v5
+          = MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_388
+              (coe v2) (coe v3) (coe v4) in
     coe
-      (case coe v3 of
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_call'45'sym_44 v5
-           -> let v6 = coe v1 v5 in
+      (case coe v4 of
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_call'45'sym_44 v6
+           -> let v7 = coe v1 v6 in
               coe
-                (case coe v6 of
-                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
-                     -> case coe v7 of
-                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v8 v9
+                (case coe v7 of
+                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v8
+                     -> case coe v8 of
+                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v9 v10
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                 (coe du_dispatch'45'arith_18 (coe v0) (coe v8) (coe v2))
+                                 (coe du_dispatch'45'arith_18 (coe v0) (coe v9) (coe v3))
                           _ -> MAlonzo.RTE.mazUnreachableError
                    MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                      -> coe
-                          MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.du_execInstr_338
-                          (coe v2) (coe v3)
+                          MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_388
+                          (coe v2) (coe v3) (coe v4)
                    _ -> MAlonzo.RTE.mazUnreachableError)
-         _ -> coe v4)
+         _ -> coe v5)
 -- Once.Arith.Backend.RiscV64.Dispatch._.step-wp
 d_step'45'wp_68 ::
   (MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
@@ -153,7 +141,8 @@ d_step'45'wp_68 v0 v1 v2 v3
     coe
       (case coe v4 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
-           -> coe du_step'45'instr_26 (coe v0) (coe v1) (coe v3) (coe v5)
+           -> coe
+                d_step'45'instr_26 (coe v0) (coe v1) (coe v2) (coe v3) (coe v5)
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16

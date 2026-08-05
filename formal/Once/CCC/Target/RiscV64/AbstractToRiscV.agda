@@ -45,6 +45,7 @@ open import Once.CCC.Target.RiscV64.Syntax
          s1; s2; s3; s4; t0; t1; t2; t3; t4;
          Instr; ld; sd; add; sub; addi; li; auipc; lla; mv;
          beq; bne; jal; jalr; j; ret; call; call-sym; nop; unimp; label;
+         Label; once; thunk;
          Program; slot-size; slots)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (fits-int; fits-float)
@@ -297,18 +298,25 @@ compile-abstract (instr-reg-op scratch-load-count) = mv s3 s4 ∷ []
 compile-abstract (instr-reg-op count-zero)        = li s4 (+ 0) ∷ []
 compile-abstract (instr-reg-op count-inc)         = addi s4 s4 (+ 1) ∷ []
 -- Plan 0.53 (mirror x86-64 M3/0.34): flat control lowers 1-to-1. Labels/jumps
--- reuse RV64's `.L<n>` label space; the conditional branches are single
--- compare-and-branch (no flags on RISC-V). Input1 pointer = t0; Scratch = s3.
-compile-abstract (instr-ctrl (c-label n))               = label n ∷ []
-compile-abstract (instr-ctrl (c-jmp n))                 = j n ∷ []
--- Plan 0.63: closure-body entry / return. As on x86-32, this target's
--- labels are bare ℕ; step 2 reconciles the body-entry name with
--- `.L_thunk_<n>` when `c-thunk` gains a producer.
-compile-abstract (instr-ctrl (c-thunk n b))             = label n ∷ addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ []
+-- use the SHARED provenance-typed label space (Plan 0.63, D082 — `once` for a
+-- compiler jump); the conditional branches are single compare-and-branch (no
+-- flags on RISC-V). Input1 pointer = t0; Scratch = s3.
+compile-abstract (instr-ctrl (c-label n))               = label (once n) ∷ []
+compile-abstract (instr-ctrl (c-jmp n))                 = j (once n) ∷ []
+-- Plan 0.63: closure-body entry / return, and the provenance that makes the
+-- entry NAMEABLE. `instr-load-code-addr n` lowers to `lla rd, .L_thunk_<n>`,
+-- so the body's entry marker must emit that symbol — hence `thunk`, the same
+-- choice x86-64 makes, for the same definitional-disjointness reason.
+--
+-- Until the flip (2026-08-05) this emitted a bare `label n` while
+-- `emit-thunk-body` defined `.L_thunk_<n>` as separate TEXT. With the bodies
+-- inline that text is gone, so the `lla` referenced an undefined symbol — a
+-- link failure caught by the exit tests and invisible to the proofs.
+compile-abstract (instr-ctrl (c-thunk n b))             = label (thunk n) ∷ addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ []
   where import Data.Integer
 compile-abstract (instr-ctrl (c-ret b))                 = addi sp sp (+ (slots b)) ∷ ret ∷ []
-compile-abstract (instr-ctrl (c-branch-scratch-zero n)) = beq s3 zero n ∷ []
-compile-abstract (instr-ctrl (c-branch-tag-zero n))     = ld t1 t0 0 ∷ beq t1 zero n ∷ []
+compile-abstract (instr-ctrl (c-branch-scratch-zero n)) = beq s3 zero (once n) ∷ []
+compile-abstract (instr-ctrl (c-branch-tag-zero n))     = ld t1 t0 0 ∷ beq t1 zero (once n) ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to RISC-V
@@ -329,11 +337,11 @@ compile-trace-cnt n (instr-loop body ∷ rest) =
       (n1 , pbody) = compile-trace-cnt (suc (suc n)) body
       (n2 , pr)    = compile-trace-cnt n1 rest
       -- Scratch (s3) is the loop counter; break when it hits 0.
-      loop = label l-top ∷
-             beq s3 zero l-end ∷
+      loop = label (once l-top) ∷
+             beq s3 zero (once l-end) ∷
              pbody ++
-             (j l-top ∷
-              label l-end ∷ [])
+             (j (once l-top) ∷
+              label (once l-end) ∷ [])
   in n2 , loop ++ pr
 compile-trace-cnt n (instr-case-on-tag f g ∷ rest) =
   let lbl-inl = n
@@ -343,12 +351,12 @@ compile-trace-cnt n (instr-case-on-tag f g ∷ rest) =
       (n3 , pr) = compile-trace-cnt n2 rest
       -- tag at 0(t0); tag ≡ 0 ⇒ inl (f), else inr (g). Fall-through is g.
       dispatch  = ld t1 t0 0 ∷
-                  beq t1 zero lbl-inl ∷
+                  beq t1 zero (once lbl-inl) ∷
                   pg ++
-                  (j lbl-end ∷
-                   label lbl-inl ∷ []) ++
+                  (j (once lbl-end) ∷
+                   label (once lbl-inl) ∷ []) ++
                   pf ++
-                  (label lbl-end ∷ [])
+                  (label (once lbl-end) ∷ [])
   in n3 , dispatch ++ pr
 compile-trace-cnt n (i ∷ rest) =
   let (n1 , pr) = compile-trace-cnt n rest

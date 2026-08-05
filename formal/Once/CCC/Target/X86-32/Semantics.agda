@@ -23,6 +23,9 @@ open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
 open import Function using (case_of_)
+-- Plan 0.63: provenance-typed labels, shared with x86-64 (`Label` comes in
+-- re-exported from `Syntax`; the scan needs its boolean equality).
+open import Once.CCC.Label using (_≡ᵇᴸ_)
 
 ------------------------------------------------------------------------
 -- Machine State
@@ -140,6 +143,27 @@ suc _ <ᵇ zero  = false
 suc m <ᵇ suc n = m <ᵇ n
 
 ------------------------------------------------------------------------
+-- Label resolution (Plan 0.63) — the x86-64 development, ported verbatim.
+--
+-- `find-label prog ℓ` scans for `label ℓ` and returns its absolute pc, so a
+-- jump can target a label appearing EARLIER in the program (a loop back-edge)
+-- as well as later. Cross-provenance never matches (`_≡ᵇᴸ_`'s catch-all), so a
+-- `c-jmp` cannot land on a closure-body entry and a call cannot land on a jump
+-- label — definitionally, not by the accident of a shared counter (D082).
+--
+-- `find-label-go` is top-level (not a `where`) for the same reason it is on
+-- x86-64: the abstract↔concrete correspondence proofs induct on it.
+------------------------------------------------------------------------
+
+find-label-go : Label → Program → ℕ → Maybe ℕ
+find-label-go target []             _ = nothing
+find-label-go target (label m ∷ is) i = if m ≡ᵇᴸ target then just i else find-label-go target is (suc i)
+find-label-go target (_       ∷ is) i = find-label-go target is (suc i)
+
+find-label : Program → Label → Maybe ℕ
+find-label prog target = find-label-go target prog 0
+
+------------------------------------------------------------------------
 -- Instruction semantics
 ------------------------------------------------------------------------
 
@@ -215,11 +239,22 @@ execInstr prog s (jmp target) =
     nothing     → nothing
     (just addr) → just (record s { pc = addr })
 
-execInstr prog s (je target) =
-  just (record s { pc = if zf (flags s) then pc s + 1 + target else pc s + 1 })
+-- Plan 0.63: the conditional branches RESOLVE THEIR LABEL, exactly as x86-64
+-- does (`find-label` below), instead of adding a relative offset to the pc.
+-- The old form could not model a BACK-edge (the loop the cata worklist needs)
+-- and, now that `c-thunk`/`c-label` share one provenance-typed label space,
+-- it could not name a target at all. Missing label ⇒ halt, as on x86-64.
+execInstr prog s (je target) with zf (flags s)
+... | true  = case find-label prog target of λ where
+                (just pc') → just (record s { pc = pc' })
+                nothing    → just (record s { halted = true })
+... | false = just (record s { pc = pc s + 1 })
 
-execInstr prog s (jne target) =
-  just (record s { pc = if zf (flags s) then pc s + 1 else pc s + 1 + target })
+execInstr prog s (jne target) with zf (flags s)
+... | true  = just (record s { pc = pc s + 1 })
+... | false = case find-label prog target of λ where
+                (just pc') → just (record s { pc = pc' })
+                nothing    → just (record s { halted = true })
 
 execInstr prog s (call target) =
   case readOperand s target of λ where
@@ -254,12 +289,16 @@ execInstr prog s ud2 =
 execInstr prog s (label _) =
   just (record s { pc = pc s + 1 })
 
--- Plan 0.53: pseudo-instructions used only for runtime emission; the
--- abstract model isn't exercised here (the apex is FS-generic).
+-- Plan 0.53: `mov-code` loads a link-time code address; the abstract model
+-- does not track those, so it advances the pc and leaves the register opaque
+-- (mirrors x86-64's `lea` of a `rip+label`).
 execInstr prog s (mov-code _ _) =
   just (record s { pc = pc s + 1 })
-execInstr prog s (jmp-l _) =
-  just (record s { pc = pc s + 1 })
+-- Plan 0.63: `jmp-l` is the LABEL jump and now resolves like x86-64's `jmp`.
+execInstr prog s (jmp-l target) =
+  case find-label prog target of λ where
+    (just pc') → just (record s { pc = pc' })
+    nothing    → just (record s { halted = true })
 
 ------------------------------------------------------------------------
 -- Program execution

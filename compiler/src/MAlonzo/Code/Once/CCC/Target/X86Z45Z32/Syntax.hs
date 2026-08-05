@@ -18,6 +18,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.String
+import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg
 
 -- Once.CCC.Target.X86-32.Syntax.Mem
@@ -44,12 +45,15 @@ data T_Instr_26
     C_sub_38 T_Operand_18 T_Operand_18 |
     C_cmp_40 T_Operand_18 T_Operand_18 |
     C_test_42 T_Operand_18 T_Operand_18 | C_jmp_44 T_Operand_18 |
-    C_jne_46 Integer | C_je_48 Integer | C_call_50 T_Operand_18 |
+    C_jne_46 MAlonzo.Code.Once.CCC.Label.T_Label_6 |
+    C_je_48 MAlonzo.Code.Once.CCC.Label.T_Label_6 |
+    C_call_50 T_Operand_18 |
     C_call'45'sym_52 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_ret_54 | C_nop_56 | C_ud2_58 | C_label_60 Integer |
+    C_ret_54 | C_nop_56 | C_ud2_58 |
+    C_label_60 MAlonzo.Code.Once.CCC.Label.T_Label_6 |
     C_mov'45'code_62 MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8
                      Integer |
-    C_jmp'45'l_64 Integer
+    C_jmp'45'l_64 MAlonzo.Code.Once.CCC.Label.T_Label_6
 -- Once.CCC.Target.X86-32.Syntax.Program
 d_Program_66 :: ()
 d_Program_66 = erased

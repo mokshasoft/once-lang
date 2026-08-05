@@ -20,6 +20,12 @@ open import Data.Nat using (ℕ; _+_; _*_)
 open import Data.Integer using (ℤ)
 open import Data.List using (List)
 open import Data.String using (String)
+-- Plan 0.63: label PROVENANCE, shared with x86-64 (D082). `Once.CCC.Label` is
+-- arch-agnostic, so the two targets name code addresses the same way — which
+-- is the point: the correspondence proofs that today exist only for x86-64 are
+-- meant to be generalised over the target, and a bare-ℕ label space here would
+-- be the one place they could not be.
+open import Once.CCC.Label public using (Label; once; sigop; thunk)
 
 ------------------------------------------------------------------------
 -- Registers
@@ -103,8 +109,8 @@ data Instr : Set where
 
   -- Control flow
   jmp   : Operand → Instr             -- jmp target
-  jne   : ℕ → Instr                   -- jne offset
-  je    : ℕ → Instr                   -- je offset
+  jne   : Label → Instr               -- jne label
+  je    : Label → Instr               -- je label
   call  : Operand → Instr             -- call target
   -- Plan 0.11: SigOp call by symbolic name. Linker resolves the name.
   call-sym : String → Instr
@@ -115,13 +121,18 @@ data Instr : Set where
   ud2   : Instr                       -- ud2 (undefined instruction, trap)
 
   -- Assembly pseudo-instructions
-  label : ℕ → Instr                   -- .L<n>:
+  label : Label → Instr               -- .L<provenance>:
   -- Plan 0.53: load a code-label (thunk body) address into a register —
   -- `movl $.L_thunk_<n>, <reg>` (absolute; non-PIE static exe). And an
-  -- unconditional jump to a `.L<n>` label (the plain `jmp (imm n)` prints a
-  -- bare number, not a label).
+  -- unconditional jump to a label (the plain `jmp (imm n)` prints a bare
+  -- number, not a label).
+  --
+  -- `mov-code` takes a bare ℕ and pins the `thunk` provenance in its
+  -- RENDERING, exactly as x86-64's `rip+label : ℕ → Mem` does: the operand
+  -- can only ever name a closure body, so the provenance is a property of the
+  -- constructor rather than of its argument.
   mov-code : Reg → ℕ → Instr          -- movl $.L_thunk_<n>, reg
-  jmp-l    : ℕ → Instr                -- jmp .L<n>
+  jmp-l    : Label → Instr            -- jmp .L<provenance>
 
 ------------------------------------------------------------------------
 -- Programs

@@ -28,6 +28,9 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Function using (_∘_)
 open import Relation.Nullary using (yes; no)
+-- Plan 0.63: provenance-typed labels, shared with x86-64 (`Label` arrives
+-- re-exported from `Syntax`; the scan needs its boolean equality).
+open import Once.CCC.Label using (_≡ᵇᴸ_)
 
 ------------------------------------------------------------------------
 -- Machine State
@@ -210,6 +213,36 @@ fetch (_ ∷ is) (suc n) = fetch is n
 
 -- | Execute a single instruction
 -- Returns the new state, or nothing if execution cannot proceed
+------------------------------------------------------------------------
+-- Label resolution (Plan 0.63) — the x86-64 development, ported verbatim.
+--
+-- `find-label prog ℓ` scans for `label ℓ` and returns its absolute pc, so a
+-- branch can target a label appearing EARLIER in the program (a loop
+-- back-edge) as well as later. Cross-provenance never matches (`_≡ᵇᴸ_`'s
+-- catch-all), so a `c-jmp` cannot land on a closure-body entry and a call
+-- cannot land on a jump label — definitionally, not by the accident of a
+-- shared counter (D082).
+--
+-- `find-label-go` is top-level (not a `where`) for the same reason as on
+-- x86-64: the abstract↔concrete correspondence proofs induct on it.
+------------------------------------------------------------------------
+
+find-label-go : Label → Program → ℕ → Maybe ℕ
+find-label-go target []             _ = nothing
+find-label-go target (label m ∷ is) i = if m ≡ᵇᴸ target then just i else find-label-go target is (suc i)
+find-label-go target (_       ∷ is) i = find-label-go target is (suc i)
+
+find-label : Program → Label → Maybe ℕ
+find-label prog target = find-label-go target prog 0
+
+-- The shared "transfer control to a label" move: land at the resolved index,
+-- or halt when the label is absent (x86-64's `jmp`/`je` do exactly this
+-- inline; RV64 has four such instructions, so it is named).
+jump-to : Program → State → Label → Maybe State
+jump-to prog s target with find-label prog target
+... | just pc' = just (record s { pc = pc' })
+... | nothing  = just (record s { halted = true })
+
 execInstr : Program → State → Instr → Maybe State
 
 ------------------------------------------------------------------------
@@ -295,24 +328,34 @@ execInstr prog s (mv rd rs) =
 -- Branch Instructions
 ------------------------------------------------------------------------
 
-execInstr prog s (beq rs1 rs2 offset) =
+-- Plan 0.63: the branches RESOLVE THEIR LABEL (`find-label`), exactly as
+-- x86-64's `je`/`jne` do, instead of adding a relative offset to the pc. The
+-- old form could not model a BACK-edge (the loop the cata worklist needs) and,
+-- with the label space now provenance-typed, could not name a target at all.
+-- Missing label ⇒ halt, as on x86-64.
+execInstr prog s (beq rs1 rs2 target) =
   let v1 = readReg (regs s) rs1
       v2 = readReg (regs s) rs2
-  in just (record s { pc = if v1 ≡ᵇ v2 then pc s + offset else pc s + 1 })
+  in if v1 ≡ᵇ v2
+     then jump-to prog s target
+     else just (record s { pc = pc s + 1 })
 
-execInstr prog s (bne rs1 rs2 offset) =
+execInstr prog s (bne rs1 rs2 target) =
   let v1 = readReg (regs s) rs1
       v2 = readReg (regs s) rs2
-  in just (record s { pc = if v1 ≡ᵇ v2 then pc s + 1 else pc s + offset })
+  in if v1 ≡ᵇ v2
+     then just (record s { pc = pc s + 1 })
+     else jump-to prog s target
 
 ------------------------------------------------------------------------
 -- Jump Instructions
 ------------------------------------------------------------------------
 
--- jal: Jump and Link (direct jump)
-execInstr prog s (jal rd offset) =
-  just (record s { regs = writeReg (regs s) rd (pc s + 1)
-                 ; pc = pc s + offset })
+-- jal: Jump and Link (direct jump). Plan 0.63: label-resolved. The link
+-- register is written whether or not the target resolves — the hardware
+-- writes it before the transfer.
+execInstr prog s (jal rd target) =
+  jump-to prog (record s { regs = writeReg (regs s) rd (pc s + 1) }) target
 
 -- jalr: Jump and Link Register (indirect jump)
 execInstr prog s (jalr rd rs offset) =
@@ -324,9 +367,9 @@ execInstr prog s (jalr rd rs offset) =
 -- Pseudo-Instructions
 ------------------------------------------------------------------------
 
--- j: Unconditional Jump
-execInstr prog s (j offset) =
-  just (record s { pc = pc s + offset })
+-- j: Unconditional Jump. Plan 0.63: label-resolved (x86-64's `jmp`).
+execInstr prog s (j target) =
+  jump-to prog s target
 
 -- ret: Return
 execInstr prog s ret =

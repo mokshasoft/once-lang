@@ -26,10 +26,11 @@ import qualified MAlonzo.Code.Data.String.Properties
 d_Label_6 = ()
 data T_Label_6
   = C_once_8 Integer |
-    C_sigop_10 MAlonzo.Code.Agda.Builtin.String.T_String_6 Integer
+    C_sigop_10 MAlonzo.Code.Agda.Builtin.String.T_String_6 Integer |
+    C_thunk_12 Integer
 -- Once.CCC.Label._≡ᵇᴸ_
-d__'8801''7495''7480'__12 :: T_Label_6 -> T_Label_6 -> Bool
-d__'8801''7495''7480'__12 v0 v1
+d__'8801''7495''7480'__14 :: T_Label_6 -> T_Label_6 -> Bool
+d__'8801''7495''7480'__14 v0 v1
   = let v2 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
     coe
       (case coe v0 of
@@ -46,5 +47,9 @@ d__'8801''7495''7480'__12 v0 v1
                           MAlonzo.Code.Data.String.Properties.d__'61''61'__86 (coe v3)
                           (coe v5))
                        (coe eqInt (coe v4) (coe v6))
+                _ -> coe v2
+         C_thunk_12 v3
+           -> case coe v1 of
+                C_thunk_12 v4 -> coe eqInt (coe v3) (coe v4)
                 _ -> coe v2
          _ -> MAlonzo.RTE.mazUnreachableError)

@@ -37,6 +37,7 @@ open import Once.CCC.Target.X86-32.Syntax
          Operand; reg; mem; imm;
          Instr; mov; lea; add; sub; cmp; test; push; pop; call; call-sym; ret; jmp; jne; je; nop; ud2; label;
          mov-code; jmp-l;
+         Label; once; thunk;
          Program; slot-size; slots)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (fits-int; fits-float)
@@ -253,16 +254,22 @@ compile-abstract (instr-reg-op count-zero)        = mov (reg edi) (imm 0) ∷ []
 compile-abstract (instr-reg-op count-inc)         = add (reg edi) (imm 1) ∷ []
 -- Plan 0.53 (mirror x86-64 M3/0.34): flat control. Input1 ptr = ecx (tag at
 -- 0(ecx)); Scratch = edx.
-compile-abstract (instr-ctrl (c-label n))               = label n ∷ []
-compile-abstract (instr-ctrl (c-jmp n))                 = jmp-l n ∷ []
--- Plan 0.63: closure-body entry / return. This target's `Instr` labels are
--- bare ℕ (no provenance), so the body-entry marker lands in the same label
--- space; step 2 (which gives `c-thunk` its producer) must reconcile that
--- with `.L_thunk_<n>` — today nothing emits it.
-compile-abstract (instr-ctrl (c-thunk n b))             = label n ∷ sub (reg esp) (imm (slots b)) ∷ []
+compile-abstract (instr-ctrl (c-label n))               = label (once n) ∷ []
+compile-abstract (instr-ctrl (c-jmp n))                 = jmp-l (once n) ∷ []
+-- Plan 0.63: closure-body entry / return, and the label provenance that makes
+-- the entry NAMEABLE. `instr-load-code-addr n` renders `.L_thunk_<n>`; the
+-- body's entry marker must emit exactly that symbol, so it carries the `thunk`
+-- provenance — the same choice x86-64 makes (D082), for the same reason: a
+-- `c-jmp` can never land on a body entry, definitionally.
+--
+-- Until the flip (2026-08-05) this emitted a bare `label n` while
+-- `emit-thunk-body` defined `.L_thunk_<n>` as separate TEXT. With the bodies
+-- inline that text is gone, so the reference had no definition — an undefined
+-- symbol at link, caught by the exit tests, invisible to the proofs.
+compile-abstract (instr-ctrl (c-thunk n b))             = label (thunk n) ∷ sub (reg esp) (imm (slots b)) ∷ []
 compile-abstract (instr-ctrl (c-ret b))                 = add (reg esp) (imm (slots b)) ∷ ret ∷ []
-compile-abstract (instr-ctrl (c-branch-scratch-zero n)) = cmp (reg edx) (imm 0) ∷ je n ∷ []
-compile-abstract (instr-ctrl (c-branch-tag-zero n))     = cmp (mem (base ecx)) (imm 0) ∷ je n ∷ []
+compile-abstract (instr-ctrl (c-branch-scratch-zero n)) = cmp (reg edx) (imm 0) ∷ je (once n) ∷ []
+compile-abstract (instr-ctrl (c-branch-tag-zero n))     = cmp (mem (base ecx)) (imm 0) ∷ je (once n) ∷ []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86-32
@@ -279,12 +286,12 @@ compile-trace-cnt n (instr-loop body ∷ rest) =
       l-end = suc n
       (n1 , pbody) = compile-trace-cnt (suc (suc n)) body
       (n2 , pr)    = compile-trace-cnt n1 rest
-      loop = label l-top ∷
+      loop = label (once l-top) ∷
              cmp (reg edx) (imm 0) ∷
-             je l-end ∷
+             je (once l-end) ∷
              pbody ++
-             (jmp-l l-top ∷
-              label l-end ∷ [])
+             (jmp-l (once l-top) ∷
+              label (once l-end) ∷ [])
   in n2 , loop ++ pr
 compile-trace-cnt n (instr-case-on-tag f g ∷ rest) =
   let lbl-inl = n
@@ -294,12 +301,12 @@ compile-trace-cnt n (instr-case-on-tag f g ∷ rest) =
       (n3 , pr) = compile-trace-cnt n2 rest
       -- tag at 0(ecx); tag ≡ 0 ⇒ inl (f), else inr (g). Fall-through is g.
       dispatch  = cmp (mem (base ecx)) (imm 0) ∷
-                  je lbl-inl ∷
+                  je (once lbl-inl) ∷
                   pg ++
-                  (jmp-l lbl-end ∷
-                   label lbl-inl ∷ []) ++
+                  (jmp-l (once lbl-end) ∷
+                   label (once lbl-inl) ∷ []) ++
                   pf ++
-                  (label lbl-end ∷ [])
+                  (label (once lbl-end) ∷ [])
   in n3 , dispatch ++ pr
 compile-trace-cnt n (i ∷ rest) =
   let (n1 , pr) = compile-trace-cnt n rest

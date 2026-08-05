@@ -44,6 +44,19 @@ showOperand (mem m) = showMem m
 showOperand (imm n) = "$" ++ showNat n
 
 ------------------------------------------------------------------------
+-- Labels (Plan 0.63) — BYTE-IDENTICAL to Once.CCC.Target.X86-64.Emit's
+-- `showLabel`. Provenance is what keeps a compiler jump, a SigOp symbol and
+-- a closure-body entry in separate namespaces (D033, D082); rendering them
+-- the same way on both targets is what lets the naming be reasoned about
+-- once rather than per arch.
+------------------------------------------------------------------------
+
+showLabel : Label → String
+showLabel (once n)     = "once_" ++ showNat n
+showLabel (sigop nm k) = "sigops_" ++ nm ++ "_" ++ showNat k
+showLabel (thunk n)    = "_thunk_" ++ showNat n
+
+------------------------------------------------------------------------
 -- Instructions (AT&T syntax: src, dst order; `l` = 32-bit operand size)
 ------------------------------------------------------------------------
 
@@ -57,8 +70,8 @@ showInstr (test op1 op2) = "    testl " ++ showOperand op2 ++ ", " ++ showOperan
 showInstr (jmp (reg r))  = "    jmp *" ++ showReg r
 showInstr (jmp (mem m))  = "    jmp *" ++ showMem m
 showInstr (jmp (imm n))  = "    jmp " ++ showNat n
-showInstr (jne n)        = "    jne .L" ++ showNat n
-showInstr (je n)         = "    je .L"  ++ showNat n
+showInstr (jne n)        = "    jne .L" ++ showLabel n
+showInstr (je n)         = "    je .L"  ++ showLabel n
 showInstr (call (reg r)) = "    call *" ++ showReg r
 showInstr (call (mem m)) = "    call *" ++ showMem m
 showInstr (call (imm n)) = "    call "  ++ showNat n
@@ -70,9 +83,9 @@ showInstr (push (imm n)) = "    pushl $" ++ showNat n
 showInstr (pop r)        = "    popl "  ++ showReg r
 showInstr nop            = "    nop"
 showInstr ud2            = "    ud2"
-showInstr (label n)      = ".L" ++ showNat n ++ ":"
+showInstr (label n)      = ".L" ++ showLabel n ++ ":"
 showInstr (mov-code r n) = "    movl $.L_thunk_" ++ showNat n ++ ", " ++ showReg r
-showInstr (jmp-l n)      = "    jmp .L" ++ showNat n
+showInstr (jmp-l n)      = "    jmp .L" ++ showLabel n
 
 ------------------------------------------------------------------------
 -- Program emission

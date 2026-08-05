@@ -28,6 +28,18 @@ open import Once.CCC.Target.RiscV64.Syntax
 open import Once.Target.RiscV64.PhysReg using (showReg)
 
 ------------------------------------------------------------------------
+-- Labels (Plan 0.63) — BYTE-IDENTICAL to the x86-64 / x86-32 `showLabel`.
+-- Provenance keeps compiler jumps, SigOp symbols and closure-body entries in
+-- separate namespaces (D033, D082); rendering them identically on every target
+-- is what lets the naming be reasoned about once rather than per arch.
+------------------------------------------------------------------------
+
+showLabel : Label → String
+showLabel (once n)     = "once_" ++ showNat n
+showLabel (sigop nm k) = "sigops_" ++ nm ++ "_" ++ showNat k
+showLabel (thunk n)    = "_thunk_" ++ showNat n
+
+------------------------------------------------------------------------
 -- Instructions
 ------------------------------------------------------------------------
 
@@ -41,17 +53,17 @@ showInstr (li   rd i)         = "    li "    ++ showReg rd ++ ", " ++ showInt i
 showInstr (auipc rd i)        = "    auipc " ++ showReg rd ++ ", " ++ showNat i
 showInstr (lla  rd n)         = "    lla "   ++ showReg rd ++ ", .L_thunk_" ++ showNat n
 showInstr (mv   rd rs)        = "    mv "    ++ showReg rd ++ ", " ++ showReg rs
-showInstr (beq  rs1 rs2 o)    = "    beq "   ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", .L" ++ showNat o
-showInstr (bne  rs1 rs2 o)    = "    bne "   ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", .L" ++ showNat o
-showInstr (jal  rd o)         = "    jal "   ++ showReg rd ++ ", .L" ++ showNat o
+showInstr (beq  rs1 rs2 o)    = "    beq "   ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", .L" ++ showLabel o
+showInstr (bne  rs1 rs2 o)    = "    bne "   ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", .L" ++ showLabel o
+showInstr (jal  rd o)         = "    jal "   ++ showReg rd ++ ", .L" ++ showLabel o
 showInstr (jalr rd rs o)      = "    jalr "  ++ showReg rd ++ ", " ++ showReg rs ++ ", " ++ showNat o
-showInstr (j    o)            = "    j .L"   ++ showNat o
+showInstr (j    o)            = "    j .L"   ++ showLabel o
 showInstr ret                 = "    ret"
 showInstr (call o)            = "    call "  ++ showNat o
 showInstr (call-sym name)     = "    call "  ++ name
 showInstr nop                 = "    nop"
 showInstr unimp               = "    unimp"
-showInstr (label n)           = ".L" ++ showNat n ++ ":"
+showInstr (label n)           = ".L" ++ showLabel n ++ ":"
 
 ------------------------------------------------------------------------
 -- Program emission
