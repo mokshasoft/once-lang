@@ -6184,3 +6184,98 @@ resource postulate at all.
 - `stack-room`, which Plan 0.63's closure frames need, NEVER ENTERS the census:
   it joins the same parameter. The earlier projection that 0.63 would end 6 → 6
   is superseded; it now ends at 4.
+
+---
+
+## D088: A Closure Body Must Be Emitted ONCE — the Inline Layout Is Unsound Under Cata
+
+**Date**: 2026-08-05
+**Status**: TAKEN (the finding is measured; the layout change itself is not yet
+built — see plan 0.63)
+
+### What the extraction gate found
+
+The flip (`24b162e4`) moved closure bodies INTO the modelled program: the
+`curry` clause of `ir-to-trace'` now emits
+
+    <closure construction> ++ c-jmp end ∷ c-thunk this b ∷
+    body-trace ++ c-ret b ∷ c-label end ∷ []
+
+and `ir-to-bodies` returns `[]`. The Agda is green and every walk was
+re-proved. The BINARY, run for the first time since, fails to assemble on all
+three targets for four programs:
+
+    layer5-cata-nat.s:332: Error: symbol `.L_thunk_10' is already defined
+    layer5-cata-nat.s:342: Error: symbol `.Lonce_12'  is already defined
+
+Read off the emitted assembly: lines 247–268 and 328–349 are the SAME closure
+block — construction, `jmp .Lonce_11`, `.L_thunk_10:`, the body, `.Lonce_11:` —
+emitted twice, verbatim.
+
+### Why
+
+`cata` SPLICES ITS ALGEBRA'S TRACE MORE THAN ONCE. `cata-trace-nat n l at` is,
+definitionally,
+
+    cata-nat-I₁ n l ++ at ++ (cata-nat-I₂ n l ++ at ++ cata-nat-I₃ l)
+
+— `at` twice for nat, and the linear/branching strategies splice similarly. That
+was harmless before the flip because the `curry` clause emitted NO LABEL AT ALL:
+its trace was five construction instructions, of which `instr-load-code-addr
+this-label` is a mere REFERENCE to the body. Duplicating a reference is fine.
+The body — the DEFINITION — was emitted once, by `ir-to-bodies`, which walks the
+IR and therefore visits each `curry` node once no matter how many times the
+trace containing it is spliced.
+
+The flip put four label-bearing instructions and the whole body inside `at`.
+Splicing then duplicates DEFINITIONS, and duplicate labels are not assemblable.
+
+**This is a property of the layout, not of any target.** It is invisible to the
+proofs because nothing states that a compiled trace's label definitions are
+unique — `LabelScope`/`LabelRange` bound where labels are MENTIONED and prove
+jumps stay in segment; neither says a definition occurs once. (That gap is
+worth closing on its own: it is exactly the invariant whose violation this is.)
+
+### Decision
+
+**The body is emitted once, hoisted out of the spliced region.** The layout
+becomes the whole-program one:
+
+    ir-to-trace ir = main-trace ++ c-jmp END ∷ all-bodies ++ c-label END ∷ []
+
+with `ir-to-bodies` restored as the (IR-walking, hence once-per-`curry`)
+producer of `all-bodies`, and the `curry` clause reverted to emitting only the
+construction. Bodies stay in the MODELLED program — which is the whole point of
+the flip, and what `events-running-call` needs — while their definitions are
+placed by an IR walk rather than by trace splicing.
+
+The handoff called this layout "an emitter-only alternative, traded away for
+proof simplicity — revisitable". It is not an alternative: it is the only
+layout in which the number of times a body is emitted is independent of how
+many times its constructor's trace is spliced.
+
+### The rejected alternative
+
+**α-rename the labels in each cata copy.** Sound in principle, and there is
+adjacent machinery (`CataAtRelocate`'s `instr-reloc`/`shift-pc` already
+relocates pcs and, per D083, pending return addresses). Rejected on three
+counts: it needs a label substitution over traces plus a preservation proof for
+every walk that mentions labels; it multiplies emitted code by the splice count
+(two or three copies of every closure body inside a cata); and it makes the
+label counter's monotonicity — which `LabelRange` rests on — no longer a
+property of `ir-to-trace'` alone.
+
+### Consequences
+
+- Plan 0.63's step 2b/2c/2d unit must be rebuilt on the hoisted layout. The
+  four walk strengthenings, `SlotBudget`'s segmentation and `LabelScope`'s
+  `segagree-curry` were all written against the inline layout; `segagree-curry`
+  in particular exists BECAUSE the body sat inside a `c-thunk`/`c-ret` bracket
+  in the middle of the parent's trace, and the hoisted layout removes that
+  shape.
+- `main` stays FIRST, so entry pc 0 / `EntryLike` / `pc-off` are untouched, and
+  main's prologue bracket stays absorbed text (the parked `budget*8` item stays
+  parked).
+- The exit tests become a per-commit gate for anything touching the emitted
+  trace, not a pre-merge one. Four green Agda clusters and a linking binary did
+  not catch this; running it did.
