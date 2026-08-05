@@ -14,7 +14,7 @@ open import normalizer.Syntax.Types
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
-        ; RTm; var; lam; app; pair; fst; snd; absurd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
+        ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; ⌜Id⌝; idrefl; jsub
         ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; extR; renTy; renTm
@@ -503,7 +503,7 @@ fund {σ = σ} (⊢hrefl {c = c} {t = t} dc dt) x₀ ρ =
 fund {Ξ = Ξ} {σ = σ}
   (⊢ap {cA = cA} {cB = cB} {b = b} {p = p₀} {t = t₀} {u = u₀}
        dcA key dcB db dt du dp) x₀ ρ =
-  relCast (Hom-cong₃ refl (sym (sub-comm σ b t₀)) (sym (sub-comm σ b u₀)))
+  relCast (Hom-cong₃; ordtr-cong₅ refl (sym (sub-comm σ b t₀)) (sym (sub-comm σ b u₀)))
           refl
           (emb R_H , projl (emb-coh R_H) _ (goP snpI))
   where
