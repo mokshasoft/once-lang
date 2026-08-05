@@ -97,15 +97,48 @@ base-collapse.
 
 ## 7. THE STAGING (refined with the user, 2026-08-04)
 
-  **Stage A — the datatype core** (land first, bank the checkpoint):
-  `Unit`/`unit` + `Nat`/`nzero`/`nsuc`/`natrec`, full metatheory.
-  Independently valuable: arithmetic, `Id`-rewriting on numbers,
-  numeral canonicity, consistency intact.  NO order rules yet.
+  **Stage A — the datatype core** — ✅ **LANDED 2026-08-05, ONE
+  SESSION** (the spike priced 2).  `Unit`/`unit` +
+  `Nat`/`nzero`/`nsuc`/`natrec` through the whole tower: Pi → Var →
+  Type → SR → Conf → Inj → Subj → LR → Fund → Canon → the acceptance
+  file `NbEPDirDBExamplesNat.agda` (`⊢plus` by `natrec`,
+  `plus-computes : 2+1 ⟶* 3`).  All 24 modules `--safe`, zero
+  postulates, zero holes, zero TERMINATING pragmas.
 
-  **Stage B — the computing order**: the three `Hom Nat` rules on top
-  (the §2 payoff).  Small delta over A: type-level rules riding the
-  Hom-Π pattern (Type/SR/Conf-type-level/Inj/Subj + StkHd/stuck-Hom
-  rows in the LR).
+  What the landing actually cost, and what it bought:
+
+  * `natrec` is TYPE-motived (motive in the derivation only, the
+    `⊢lam` pattern) — code motives need `⌜Nat⌝ ∈ U`, which is stage C.
+    The step branch binds TWO variables (the number, then the IH).
+  * The one genuinely new syntactic lemma is **`natrec-step-ty`**:
+    instantiating the step motive at the number and then at the IH
+    collapses to the motive at the SUCCESSOR.  That single equation is
+    what makes `natrec-suc` type-preserving; `sub-comm-ext` /
+    `ren-comm-ext` are its substitution/renaming twins.
+  * The LR gains **`natstk?`** (the scrutinee never becomes a numeral)
+    as a peer of `idstk?`/`apstk?` in the mutual stuckness block, and
+    **`NatMem`** — the third payload flavor, shaped exactly like `SN`
+    (neutral / constructor / head-expansion), so every transport is the
+    SN transport.
+  * `fund`'s `⊢natrec` recurses on `NatMem` and **nothing else**.  No
+    fuel, no `Acc`, no measure, no size — the induction is on the
+    semantic number itself.  That IS the WF axis's thesis, mechanized.
+  * `natrecS` in Canon: a closed well-typed `natrec` always steps, so
+    canonicity and consistency survive unchanged.
+
+  ★ DESIGN CONSEQUENCE ALREADY VISIBLE FOR STAGE B: stage A registered
+  `sh-Unit`/`sh-Nat : StkHd` — i.e. `Hom Nat a b` is currently a STUCK
+  hom.  Stage B's rules make it compute, so `sh-Nat` must GO and
+  `homSem₁ (⊩₁Nat …)` must be re-derived.  That is the first move of
+  stage B, not a surprise to discover mid-walk.
+
+  **Stage B — the computing order** (NEXT): the three `Hom Nat` rules
+  on top (the §2 payoff).  Type-level rules riding the Hom-Π pattern
+  (Type/SR/Conf-type-level/Inj/Subj + StkHd/stuck-Hom rows in the LR).
+  Delta over A, now that A is banked: drop `sh-Nat`, re-derive
+  `homSem₁` at `⊩₁Nat` (the interp must FOLLOW the endpoints), add the
+  endpoint-keyed type-level Takahashi rows, and extend `hom-shape` /
+  `Hom-to-Hom` / `HomStk` with the three Nat arms.
 
   **Stage C — N-in** (separate spike later): `⌜Nat⌝ ∈ U`, `tr-J-Nat`,
   the tt-path rules (§3 risky point 2), `cong`-at-ℕ, sized-family
