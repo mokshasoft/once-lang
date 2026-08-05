@@ -38,7 +38,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
-open import Data.List.Properties using (++-assoc)
+open import Data.List.Properties using (++-assoc; ++-identityʳ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst; subst₂; cong)
 
@@ -60,7 +60,8 @@ open import Once.CCC.Codegen.LabelRange using (label-of; cata-label-of; label-mo
 open import Once.CCC.Codegen.SlotBudget using
   (fetch-at; seg-at; SegState; seg-idle?; idle-seg-at
   ; seg-at-++ˡ; seg-at-++ʳ; fetch-++ˡ; fetch-++ʳ; split-pos; seg-fold
-  ; idle-neutral; seg-fold-++; idle-++; visit-idle; rebuild-idle)
+  ; idle-neutral; seg-fold-++; idle-++; visit-idle; rebuild-idle
+  ; ok-neu; slots-below; budget-of)
 
 ------------------------------------------------------------------------
 -- The `once`-namespace label an instruction mentions.
@@ -1029,3 +1030,58 @@ cata-br-pieces F n1 l1 at = pcons I₁-idle I₁-ls (pnil refl I₂-ls)
 -- proof that pattern-matches the current shape moves with it —
 -- `SlotBudget.cata-nat-below`, `FrameFreeTrace.cata-nat-ff`, `AllocMin`,
 -- `CataIRSlotStable`, and `cata-nat-ls` above.
+
+-- the strategy dispatch for the three witnesses. `strat-const`'s trace IS the
+-- algebra, so it is `pnil`-free: one copy with empty skeleton either side.
+cata-pieces : ∀ (st : CataStrategy) (n1 l1 : ℕ) (at : AbstractTrace)
+            → Pieces at l1 (cata-label-of (cata-dispatch st n1 l1 at))
+                     (cata-trace-of (cata-dispatch st n1 l1 at))
+-- `strat-const`'s trace IS the algebra, so this is one copy with empty
+-- skeleton on both sides — modulo `xs ++ [] ≡ xs`.
+cata-pieces strat-const         n1 l1 at =
+  pieces-≡ (++-identityʳ at) (pcons refl [] (pnil refl []))
+cata-pieces strat-nat           n1 l1 at = cata-nat-pieces n1 l1 at
+cata-pieces strat-linear        n1 l1 at = cata-lin-pieces n1 l1 at
+cata-pieces (strat-branching F) n1 l1 at = cata-br-pieces F n1 l1 at
+
+-- a label-free prefix in front of a fragment: the prefix's window is EMPTY,
+-- so it is trivially disjoint from whatever follows.
+nolab-any : ∀ (a : ℕ) (t : AbstractTrace) → NoLab t → LabelsIn a a t
+nolab-any a []       []       = []
+nolab-any a (i ∷ is) (e ∷ es) = li-none e ∷ nolab-any a is es
+
+segagree-pre : ∀ (pre : AbstractTrace) {t : AbstractTrace} (a c d : ℕ)
+             → NoLab pre → LabelsIn c d t → a ≤ c
+             → SegAgree t → SegAgree (pre ++ t)
+segagree-pre pre {t} a c d nl lst le sat =
+  segagree-++' pre t a a c d (nolab-any a pre nl) lst (inj₁ le)
+               (segagree-nolab pre nl) sat
+
+------------------------------------------------------------------------
+-- THE INDUCTION — MEASURED, NOT LANDED (2026-08-05). Attempting it settled
+-- the shape, which is the point of closing the island top-down.
+--
+-- WHAT COMPOSES with what is above: the leaves (`segagree-empty` — an empty
+-- range means no labels), the closure clauses / `apply` / the four injections
+-- (`segagree-nolab`), `∘` and both pair clauses (`segagree-++'` with
+-- `segagree-pre` for the concrete brackets), and **`Cata` — via
+-- `pieces-agree` with `cata-pieces`**, the skeleton window `[l1, l2)` sitting
+-- ABOVE the algebra's `[l, l1)` so the disjointness is the right disjunct.
+--
+-- WHAT DOES NOT, and it is `case`. Its skeleton labels `l` (the inl entry) and
+-- `suc l` (the join) appear BOTH before `gt` and in the bracket between `gt`
+-- and `ft` — so the skeleton window is INTERLEAVED with the branch windows,
+-- exactly as in the cata skeletons. A left-to-right `segagree-++'` chain
+-- cannot express that: whichever way the split is drawn, both sides mention
+-- skeleton labels.
+--
+-- SO `case` NEEDS A `Pieces` VARIANT, and a small one: unlike the cata
+-- skeletons, its two embedded traces are DIFFERENT (`ft` and `gt`) and their
+-- windows are DISJOINT, so the cross case closes by a window clash rather than
+-- by the same-trace argument. Concretely, a `Pieces` whose `pcons` carries the
+-- embedded trace together with its own neutrality, `SegAgree`, and window —
+-- roughly 100 lines mirroring `pieces-pos`/`pieces-agree`, with the extra
+-- premise that distinct embedded windows are disjoint.
+--
+-- Everything below the induction is landed and green and is needed either way.
+------------------------------------------------------------------------
