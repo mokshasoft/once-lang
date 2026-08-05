@@ -42,7 +42,8 @@ open import poc.OCP0009.NbEPDirDBVar
         ; stkC?→stkA? )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; swp; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
-        ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ξ-fst; ξ-snd
+        ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs; ordtr-sss
+        ; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
         ; tr-J-base; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
@@ -87,6 +88,22 @@ private
 ⟶*-pairʳ : {a b b' : RTm Γ} → b ⟶* b' → pair a b ⟶* pair a b'
 ⟶*-pairʳ done       = done
 ⟶*-pairʳ (step r p) = step (ξ-pairʳ r) (⟶*-pairʳ p)
+
+⟶*-ordtrᵃ : {a a' t u p q : RTm Γ} → a ⟶* a' → ordtr a t u p q ⟶* ordtr a' t u p q
+⟶*-ordtrᵃ done       = done
+⟶*-ordtrᵃ (step r q) = step (ξ-ordtrᵃ r) (⟶*-ordtrᵃ q)
+⟶*-ordtrᵗ : {a t t' u p q : RTm Γ} → t ⟶* t' → ordtr a t u p q ⟶* ordtr a t' u p q
+⟶*-ordtrᵗ done       = done
+⟶*-ordtrᵗ (step r q) = step (ξ-ordtrᵗ r) (⟶*-ordtrᵗ q)
+⟶*-ordtrᵘ : {a t u u' p q : RTm Γ} → u ⟶* u' → ordtr a t u p q ⟶* ordtr a t u' p q
+⟶*-ordtrᵘ done       = done
+⟶*-ordtrᵘ (step r q) = step (ξ-ordtrᵘ r) (⟶*-ordtrᵘ q)
+⟶*-ordtrᵖ : {a t u p p' q : RTm Γ} → p ⟶* p' → ordtr a t u p q ⟶* ordtr a t u p' q
+⟶*-ordtrᵖ done       = done
+⟶*-ordtrᵖ (step r q) = step (ξ-ordtrᵖ r) (⟶*-ordtrᵖ q)
+⟶*-ordtrq : {a t u p q q' : RTm Γ} → q ⟶* q' → ordtr a t u p q ⟶* ordtr a t u p q'
+⟶*-ordtrq done       = done
+⟶*-ordtrq (step r w) = step (ξ-ordtrq r) (⟶*-ordtrq w)
 
 ⟶*-absurdᶜ : {c c' e : RTm Γ} → c ⟶* c' → absurd c e ⟶* absurd c' e
 ⟶*-absurdᶜ done       = done
@@ -304,6 +321,16 @@ pwShift-ren ρ t =
 ⟶-ren ρ (ξ-pairʳ r) = ξ-pairʳ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-absurdᶜ r)   = ξ-absurdᶜ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-absurdᵉ r)   = ξ-absurdᵉ (⟶-ren ρ r)
+⟶-ren ρ (ordtr-z t u p q) = ordtr-z _ _ _ _
+⟶-ren ρ (ordtr-szz a p q) = ordtr-szz _ _ _
+⟶-ren ρ (ordtr-ssz a t p q) = ordtr-ssz _ _ _ _
+⟶-ren ρ (ordtr-szs a u p q) = ordtr-szs _ _ _ _
+⟶-ren ρ (ordtr-sss a t u p q) = ordtr-sss _ _ _ _ _
+⟶-ren ρ (ξ-ordtrᵃ r) = ξ-ordtrᵃ (⟶-ren ρ r)
+⟶-ren ρ (ξ-ordtrᵗ r) = ξ-ordtrᵗ (⟶-ren ρ r)
+⟶-ren ρ (ξ-ordtrᵘ r) = ξ-ordtrᵘ (⟶-ren ρ r)
+⟶-ren ρ (ξ-ordtrᵖ r) = ξ-ordtrᵖ (⟶-ren ρ r)
+⟶-ren ρ (ξ-ordtrq r) = ξ-ordtrq (⟶-ren ρ r)
 ⟶-ren ρ (ξ-fst r)   = ξ-fst (⟶-ren ρ r)
 ⟶-ren ρ (ξ-snd r)   = ξ-snd (⟶-ren ρ r)
 ⟶-ren ρ (natrec-zero z s) =
@@ -552,6 +579,11 @@ subTm-monoˢ h (app t u) =
   ⟶*-trans (⟶*-appˡ (subTm-monoˢ h t)) (⟶*-appʳ (subTm-monoˢ h u))
 subTm-monoˢ h (pair a b) =
   ⟶*-trans (⟶*-pairˡ (subTm-monoˢ h a)) (⟶*-pairʳ (subTm-monoˢ h b))
+subTm-monoˢ h (ordtr a t u p q) =
+  ⟶*-trans (⟶*-ordtrᵃ (subTm-monoˢ h a))
+   (⟶*-trans (⟶*-ordtrᵗ (subTm-monoˢ h t))
+    (⟶*-trans (⟶*-ordtrᵘ (subTm-monoˢ h u))
+     (⟶*-trans (⟶*-ordtrᵖ (subTm-monoˢ h p)) (⟶*-ordtrq (subTm-monoˢ h q)))))
 subTm-monoˢ h (absurd c₁ p) =
   ⟶*-trans (⟶*-absurdᶜ (subTm-monoˢ h c₁)) (⟶*-absurdᵉ (subTm-monoˢ h p))
 subTm-monoˢ h (fst p) = ⟶*-fst (subTm-monoˢ h p)
@@ -613,6 +645,20 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   ppair : {a a' b b' : RTm Γ} → a ⟹ a' → b ⟹ b' → pair a b ⟹ pair a' b'
   -- ★ stage D: ex falso has no root rule, so it is pure congruence.
   pabsurd : {c c' e e' : RTm Γ} → c ⟹ c' → e ⟹ e' → absurd c e ⟹ absurd c' e'
+  -- ★★ ORDER TRANSPORT: congruence plus the five roots.
+  pordtr : {a a' t t' u u' p p' q q' : RTm Γ} →
+           a ⟹ a' → t ⟹ t' → u ⟹ u' → p ⟹ p' → q ⟹ q' →
+           ordtr a t u p q ⟹ ordtr a' t' u' p' q'
+  pordtr-z   : {t u p q : RTm Γ} → ordtr nzero t u p q ⟹ unit
+  pordtr-szz : {a p p' q : RTm Γ} → p ⟹ p' →
+               ordtr (nsuc a) nzero nzero p q ⟹ p'
+  pordtr-ssz : {a t p q q' : RTm Γ} → q ⟹ q' →
+               ordtr (nsuc a) (nsuc t) nzero p q ⟹ q'
+  pordtr-szs : {a a' u u' p p' q : RTm Γ} → a ⟹ a' → u ⟹ u' → p ⟹ p' →
+               ordtr (nsuc a) nzero (nsuc u) p q ⟹ absurd (⌜Hom⌝ ⌜Nat⌝ a' u') p'
+  pordtr-sss : {a a' t t' u u' p p' q q' : RTm Γ} →
+               a ⟹ a' → t ⟹ t' → u ⟹ u' → p ⟹ p' → q ⟹ q' →
+               ordtr (nsuc a) (nsuc t) (nsuc u) p q ⟹ ordtr a' t' u' p' q'
   pfst  : {p p' : RTm Γ} → p ⟹ p' → fst p ⟹ fst p'
   psnd  : {p p' : RTm Γ} → p ⟹ p' → snd p ⟹ snd p'
   pβfst : {a a' b b' : RTm Γ} → a ⟹ a' → b ⟹ b' → fst (pair a b) ⟹ a'
@@ -700,6 +746,8 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟹-refl (app t u)  = papp (⟹-refl t) (⟹-refl u)
 ⟹-refl (pair a b) = ppair (⟹-refl a) (⟹-refl b)
 ⟹-refl (absurd c e) = pabsurd (⟹-refl c) (⟹-refl e)
+⟹-refl (ordtr a t u p q) =
+  pordtr (⟹-refl a) (⟹-refl t) (⟹-refl u) (⟹-refl p) (⟹-refl q)
 ⟹-refl (fst p)    = pfst (⟹-refl p)
 ⟹-refl (snd p)    = psnd (⟹-refl p)
 ⟹-refl ⌜base⌝     = p⌜base⌝
@@ -854,6 +902,17 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
 ⟶→⟹ (ξ-appʳ r)  = papp (⟹-refl _) (⟶→⟹ r)
 ⟶→⟹ (ξ-pairˡ r) = ppair (⟶→⟹ r) (⟹-refl _)
 ⟶→⟹ (ξ-pairʳ r) = ppair (⟹-refl _) (⟶→⟹ r)
+⟶→⟹ (ordtr-z t u p q)     = pordtr-z
+⟶→⟹ (ordtr-szz a p q)     = pordtr-szz (⟹-refl _)
+⟶→⟹ (ordtr-ssz a t p q)   = pordtr-ssz (⟹-refl _)
+⟶→⟹ (ordtr-szs a u p q)   = pordtr-szs (⟹-refl _) (⟹-refl _) (⟹-refl _)
+⟶→⟹ (ordtr-sss a t u p q) =
+  pordtr-sss (⟹-refl _) (⟹-refl _) (⟹-refl _) (⟹-refl _) (⟹-refl _)
+⟶→⟹ (ξ-ordtrᵃ r) = pordtr (⟶→⟹ r) (⟹-refl _) (⟹-refl _) (⟹-refl _) (⟹-refl _)
+⟶→⟹ (ξ-ordtrᵗ r) = pordtr (⟹-refl _) (⟶→⟹ r) (⟹-refl _) (⟹-refl _) (⟹-refl _)
+⟶→⟹ (ξ-ordtrᵘ r) = pordtr (⟹-refl _) (⟹-refl _) (⟶→⟹ r) (⟹-refl _) (⟹-refl _)
+⟶→⟹ (ξ-ordtrᵖ r) = pordtr (⟹-refl _) (⟹-refl _) (⟹-refl _) (⟶→⟹ r) (⟹-refl _)
+⟶→⟹ (ξ-ordtrq r) = pordtr (⟹-refl _) (⟹-refl _) (⟹-refl _) (⟹-refl _) (⟶→⟹ r)
 ⟶→⟹ (ξ-absurdᶜ r) = pabsurd (⟶→⟹ r) (⟹-refl _)
 ⟶→⟹ (ξ-absurdᵉ r) = pabsurd (⟹-refl _) (⟶→⟹ r)
 ⟶→⟹ (ξ-fst r)   = pfst (⟶→⟹ r)
@@ -924,6 +983,24 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
                  (subTm-monoˢ (single-mono (⟹→⟶* q)) t'))
 ⟹→⟶* (ppair p q) =
   ⟶*-trans (⟶*-pairˡ (⟹→⟶* p)) (⟶*-pairʳ (⟹→⟶* q))
+⟹→⟶* (pordtr pa pt pu pp pq) =
+  ⟶*-trans (⟶*-ordtrᵃ (⟹→⟶* pa))
+   (⟶*-trans (⟶*-ordtrᵗ (⟹→⟶* pt))
+    (⟶*-trans (⟶*-ordtrᵘ (⟹→⟶* pu))
+     (⟶*-trans (⟶*-ordtrᵖ (⟹→⟶* pp)) (⟶*-ordtrq (⟹→⟶* pq)))))
+⟹→⟶* pordtr-z = step (ordtr-z _ _ _ _) done
+⟹→⟶* (pordtr-szz pp) = step (ordtr-szz _ _ _) (⟹→⟶* pp)
+⟹→⟶* (pordtr-ssz pq) = step (ordtr-ssz _ _ _ _) (⟹→⟶* pq)
+⟹→⟶* (pordtr-szs pa pu pp) =
+  step (ordtr-szs _ _ _ _)
+    (⟶*-trans (⟶*-absurdᶜ (⟶*-⌜Hom⌝ˡ (⟹→⟶* pa)))
+     (⟶*-trans (⟶*-absurdᶜ (⟶*-⌜Hom⌝ʳ (⟹→⟶* pu))) (⟶*-absurdᵉ (⟹→⟶* pp))))
+⟹→⟶* (pordtr-sss pa pt pu pp pq) =
+  step (ordtr-sss _ _ _ _ _)
+    (⟶*-trans (⟶*-ordtrᵃ (⟹→⟶* pa))
+     (⟶*-trans (⟶*-ordtrᵗ (⟹→⟶* pt))
+      (⟶*-trans (⟶*-ordtrᵘ (⟹→⟶* pu))
+       (⟶*-trans (⟶*-ordtrᵖ (⟹→⟶* pp)) (⟶*-ordtrq (⟹→⟶* pq))))))
 ⟹→⟶* (pabsurd pc pe) =
   ⟶*-trans (⟶*-absurdᶜ (⟹→⟶* pc)) (⟶*-absurdᵉ (⟹→⟶* pe))
 ⟹→⟶* (pfst p) = ⟶*-fst (⟹→⟶* p)
@@ -1023,6 +1100,14 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
                           (ren-comm-ext ρ s' n'))))
         (pnatrec-suc (⟹-ren ρ pz) (⟹-ren (extR (extR ρ)) ps) (⟹-ren ρ pn))
 ⟹-ren ρ (ppair p q) = ppair (⟹-ren ρ p) (⟹-ren ρ q)
+⟹-ren ρ (pordtr pa pt pu pp pq) =
+  pordtr (⟹-ren ρ pa) (⟹-ren ρ pt) (⟹-ren ρ pu) (⟹-ren ρ pp) (⟹-ren ρ pq)
+⟹-ren ρ pordtr-z = pordtr-z
+⟹-ren ρ (pordtr-szz pp) = pordtr-szz (⟹-ren ρ pp)
+⟹-ren ρ (pordtr-ssz pq) = pordtr-ssz (⟹-ren ρ pq)
+⟹-ren ρ (pordtr-szs pa pu pp) = pordtr-szs (⟹-ren ρ pa) (⟹-ren ρ pu) (⟹-ren ρ pp)
+⟹-ren ρ (pordtr-sss pa pt pu pp pq) =
+  pordtr-sss (⟹-ren ρ pa) (⟹-ren ρ pt) (⟹-ren ρ pu) (⟹-ren ρ pp) (⟹-ren ρ pq)
 ⟹-ren ρ (pabsurd pc pe) = pabsurd (⟹-ren ρ pc) (⟹-ren ρ pe)
 ⟹-ren ρ (pfst p)    = pfst (⟹-ren ρ p)
 ⟹-ren ρ (psnd p)    = psnd (⟹-ren ρ p)
@@ -1150,6 +1235,14 @@ pwBody-⟹ (pnatrec-suc _ _ _) ()
                           (sub-comm-ext σ' s' n'))))
         (pnatrec-suc (⟹-sub h pz) (⟹-sub (⟹-exts (⟹-exts h)) ps) (⟹-sub h pn))
 ⟹-sub h (ppair p q) = ppair (⟹-sub h p) (⟹-sub h q)
+⟹-sub h (pordtr pa pt pu pp pq) =
+  pordtr (⟹-sub h pa) (⟹-sub h pt) (⟹-sub h pu) (⟹-sub h pp) (⟹-sub h pq)
+⟹-sub h pordtr-z = pordtr-z
+⟹-sub h (pordtr-szz pp) = pordtr-szz (⟹-sub h pp)
+⟹-sub h (pordtr-ssz pq) = pordtr-ssz (⟹-sub h pq)
+⟹-sub h (pordtr-szs pa pu pp) = pordtr-szs (⟹-sub h pa) (⟹-sub h pu) (⟹-sub h pp)
+⟹-sub h (pordtr-sss pa pt pu pp pq) =
+  pordtr-sss (⟹-sub h pa) (⟹-sub h pt) (⟹-sub h pu) (⟹-sub h pp) (⟹-sub h pq)
 ⟹-sub h (pabsurd pc pe) = pabsurd (⟹-sub h pc) (⟹-sub h pe)
 ⟹-sub h (pfst p)    = pfst (⟹-sub h p)
 ⟹-sub h (psnd p)    = psnd (⟹-sub h p)
@@ -1232,6 +1325,7 @@ pair a b ⁺         = pair (a ⁺) (b ⁺)
 app (lam t) u ⁺    = subTm (single (u ⁺)) (t ⁺)
 app (var x) u ⁺    = app (var x ⁺) (u ⁺)
 app (app f a) u ⁺  = app (app f a ⁺) (u ⁺)
+app (ordtr a t u p q) w ⁺ = app (ordtr a t u p q ⁺) (w ⁺)
 app (absurd c f) u ⁺ = app (absurd (c ⁺) (f ⁺)) (u ⁺)
 app (pair a b) u ⁺ = app (pair a b ⁺) (u ⁺)
 app (fst p) u ⁺    = app (fst p ⁺) (u ⁺)
@@ -1264,6 +1358,7 @@ fst ⌜base⌝ ⁺       = fst (⌜base⌝ ⁺)
 fst unit ⁺         = fst (unit ⁺)
 fst nzero ⁺        = fst (nzero ⁺)
 fst (nsuc n) ⁺     = fst (nsuc n ⁺)
+fst (ordtr a t u p q) ⁺ = fst (ordtr a t u p q ⁺)
 fst (absurd c f) ⁺ = fst (absurd (c ⁺) (f ⁺))
 fst (natrec z s n) ⁺ = fst (natrec z s n ⁺)
 fst (⌜Π⌝ c d) ⁺    = fst (⌜Π⌝ c d ⁺)
@@ -1287,6 +1382,7 @@ snd ⌜base⌝ ⁺       = snd (⌜base⌝ ⁺)
 snd unit ⁺         = snd (unit ⁺)
 snd nzero ⁺        = snd (nzero ⁺)
 snd (nsuc n) ⁺     = snd (nsuc n ⁺)
+snd (ordtr a t u p q) ⁺ = snd (ordtr a t u p q ⁺)
 snd (absurd c f) ⁺ = snd (absurd (c ⁺) (f ⁺))
 snd (natrec z s n) ⁺ = snd (natrec z s n ⁺)
 snd (⌜Π⌝ c d) ⁺    = snd (⌜Π⌝ c d ⁺)
@@ -1332,6 +1428,15 @@ ap cB b (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) ⁺ = apH⁺ (stkA? c₁) cB b c₁
 ap cB b p ⁺ = ap (cB ⁺) (b ⁺) (p ⁺)
 -- the two-former kernel: Id is inert (congruences), and jsub's J is
 -- UNKEYED — the refl-path row fires unconditionally.
+ordtr nzero t u p q ⁺ = unit
+ordtr (nsuc a) nzero nzero p q ⁺ = p ⁺
+ordtr (nsuc a) (nsuc t) nzero p q ⁺ = q ⁺
+ordtr (nsuc a) nzero (nsuc u) p q ⁺ = absurd (⌜Hom⌝ ⌜Nat⌝ (a ⁺) (u ⁺)) (p ⁺)
+-- ⚠ peel ONCE.  Takahashi's development fires the redexes present in
+-- the ORIGINAL term; the `ordtr a t u p q` this exposes is a NEW redex
+-- created by the step, and re-firing it here breaks the triangle.
+ordtr (nsuc a) (nsuc t) (nsuc u) p q ⁺ = ordtr (a ⁺) (t ⁺) (u ⁺) (p ⁺) (q ⁺)
+ordtr a t u p q ⁺ = ordtr (a ⁺) (t ⁺) (u ⁺) (p ⁺) (q ⁺)
 absurd c e ⁺ = absurd (c ⁺) (e ⁺)
 ⌜Id⌝ c a b ⁺ = ⌜Id⌝ (c ⁺) (a ⁺) (b ⁺)
 idrefl c t ⁺ = idrefl (c ⁺) (t ⁺)
@@ -1441,6 +1546,300 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (papp p⌜base⌝ q)       = papp (⟹-⁺ p⌜base⌝) (⟹-⁺ q)
 ⟹-⁺ (papp (p⌜Π⌝ p₁ p₂) q)  = papp (⟹-⁺ (p⌜Π⌝ p₁ p₂)) (⟹-⁺ q)
 ⟹-⁺ (papp (p⌜Σ⌝ p₁ p₂) q)  = papp (⟹-⁺ (p⌜Σ⌝ p₁ p₂)) (⟹-⁺ q)
+-- ★★ ORDER TRANSPORT.  The five roots fire when the SOURCE endpoints
+-- are numerals; `nzero`/`nsuc` sources admit only `pnzero`/`pnsuc`, so
+-- matching the derivation shallowly pins the targets too.
+-- ★ ordtr as a SCRUTINEE: nothing fires, so every wrapper is
+-- congruence.
+⟹-⁺ (papp w@(pordtr _ _ _ _ _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
+⟹-⁺ (papp w@pordtr-z q) = papp (⟹-⁺ w) (⟹-⁺ q)
+⟹-⁺ (papp w@(pordtr-szz _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
+⟹-⁺ (papp w@(pordtr-ssz _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
+⟹-⁺ (papp w@(pordtr-szs _ _ _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
+⟹-⁺ (papp w@(pordtr-sss _ _ _ _ _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
+⟹-⁺ (pfst w@(pordtr _ _ _ _ _)) = pfst (⟹-⁺ w)
+⟹-⁺ (pfst w@pordtr-z) = pfst (⟹-⁺ w)
+⟹-⁺ (pfst w@(pordtr-szz _)) = pfst (⟹-⁺ w)
+⟹-⁺ (pfst w@(pordtr-ssz _)) = pfst (⟹-⁺ w)
+⟹-⁺ (pfst w@(pordtr-szs _ _ _)) = pfst (⟹-⁺ w)
+⟹-⁺ (pfst w@(pordtr-sss _ _ _ _ _)) = pfst (⟹-⁺ w)
+⟹-⁺ (psnd w@(pordtr _ _ _ _ _)) = psnd (⟹-⁺ w)
+⟹-⁺ (psnd w@pordtr-z) = psnd (⟹-⁺ w)
+⟹-⁺ (psnd w@(pordtr-szz _)) = psnd (⟹-⁺ w)
+⟹-⁺ (psnd w@(pordtr-ssz _)) = psnd (⟹-⁺ w)
+⟹-⁺ (psnd w@(pordtr-szs _ _ _)) = psnd (⟹-⁺ w)
+⟹-⁺ (psnd w@(pordtr-sss _ _ _ _ _)) = psnd (⟹-⁺ w)
+⟹-⁺ (ptr pd w@(pordtr _ _ _ _ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@pordtr-z pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(pordtr-szz _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(pordtr-ssz _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(pordtr-szs _ _ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(pordtr-sss _ _ _ _ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (pap pcB pb w@(pordtr _ _ _ _ _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (pap pcB pb w@pordtr-z) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (pap pcB pb w@(pordtr-szz _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (pap pcB pb w@(pordtr-ssz _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (pap pcB pb w@(pordtr-szs _ _ _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (pap pcB pb w@(pordtr-sss _ _ _ _ _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (pjsub pd w@(pordtr _ _ _ _ _) pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (pjsub pd w@pordtr-z pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (pjsub pd w@(pordtr-szz _) pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (pjsub pd w@(pordtr-ssz _) pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (pjsub pd w@(pordtr-szs _ _ _) pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (pjsub pd w@(pordtr-sss _ _ _ _ _) pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (pnatrec pz pw w@(pordtr _ _ _ _ _)) = pnatrec (⟹-⁺ pz) (⟹-⁺ pw) (⟹-⁺ w)
+⟹-⁺ (pnatrec pz pw w@pordtr-z) = pnatrec (⟹-⁺ pz) (⟹-⁺ pw) (⟹-⁺ w)
+⟹-⁺ (pnatrec pz pw w@(pordtr-szz _)) = pnatrec (⟹-⁺ pz) (⟹-⁺ pw) (⟹-⁺ w)
+⟹-⁺ (pnatrec pz pw w@(pordtr-ssz _)) = pnatrec (⟹-⁺ pz) (⟹-⁺ pw) (⟹-⁺ w)
+⟹-⁺ (pnatrec pz pw w@(pordtr-szs _ _ _)) = pnatrec (⟹-⁺ pz) (⟹-⁺ pw) (⟹-⁺ w)
+⟹-⁺ (pnatrec pz pw w@(pordtr-sss _ _ _ _ _)) = pnatrec (⟹-⁺ pz) (⟹-⁺ pw) (⟹-⁺ w)
+-- an `ordtr` MOTIVE is neither `var vz` (taut) nor a pw-able ⌜Hom⌝,
+-- so every path shape is congruence.
+⟹-⁺ (ptr w@(pordtr _ _ _ _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr _ _ _ _ _) v@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr _ _ _ _ _) v@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr _ _ _ _ _) v@(phrefl (p⌜Σ⌝ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr _ _ _ _ _) v@(phrefl (p⌜Id⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr _ _ _ _ _) v@(phrefl (p⌜Hom⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr _ _ _ _ _) v@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@pordtr-z v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@pordtr-z v@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@pordtr-z v@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@pordtr-z v@(phrefl (p⌜Σ⌝ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@pordtr-z v@(phrefl (p⌜Id⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@pordtr-z v@(phrefl (p⌜Hom⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@pordtr-z v@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-szz _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-szz _) v@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-szz _) v@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-szz _) v@(phrefl (p⌜Σ⌝ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-szz _) v@(phrefl (p⌜Id⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-szz _) v@(phrefl (p⌜Hom⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-szz _) v@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-ssz _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-ssz _) v@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-ssz _) v@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-ssz _) v@(phrefl (p⌜Σ⌝ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-ssz _) v@(phrefl (p⌜Id⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-ssz _) v@(phrefl (p⌜Hom⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-ssz _) v@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-szs _ _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-szs _ _ _) v@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-szs _ _ _) v@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-szs _ _ _) v@(phrefl (p⌜Σ⌝ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-szs _ _ _) v@(phrefl (p⌜Id⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-szs _ _ _) v@(phrefl (p⌜Hom⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-szs _ _ _) v@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-sss _ _ _ _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-sss _ _ _ _ _) v@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-sss _ _ _ _ _) v@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-sss _ _ _ _ _) v@(phrefl (p⌜Σ⌝ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-sss _ _ _ _ _) v@(phrefl (p⌜Id⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-sss _ _ _ _ _) v@(phrefl (p⌜Hom⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-sss _ _ _ _ _) v@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (pordtr z0@(pvar x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(plam x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(papp x x₁) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pβ x x₁) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(ppair x x₁) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pabsurd x x₁) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pordtr x x₁ x₂ x₃ x₄) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@pordtr-z z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pordtr-szz x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pordtr-ssz x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pordtr-szs x x₁ x₂) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pordtr-sss x x₁ x₂ x₃ x₄) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pfst x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(psnd x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pβfst x x₁) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pβsnd x x₁) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@p⌜base⌝ z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@p⌜Nat⌝ z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@p⌜Unit⌝ z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@punit z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(p⌜Π⌝ x x₁) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(p⌜Σ⌝ x x₁) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(p⌜Hom⌝ x x₁ x₂) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(phrefl x x₁) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(ptr x x₁ x₂) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(ptr-J-base x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(ptr-J-Unit x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(ptr-J-Σ x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(ptr-J-Id x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(ptr-taut x x₁) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(phrefl-pw x x₁ x₂) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(ptr-J-Hom x x₁) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(ptr-pw x x₁ x₂ x₃ x₄) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pap x x₁ x₂) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pap-J x x₁ x₂ x₃) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(p⌜Id⌝ x x₁ x₂) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pidrefl x x₁) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pjsub x x₁ x₂) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pjsub-refl x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pvar x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(plam x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(papp x₂ x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pβ x₂ x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(ppair x₂ x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pabsurd x₂ x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pordtr x₂ x₃ x₄ x₅ x₆) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pordtr-szz x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pordtr-ssz x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pordtr-szs x₂ x₃ x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pordtr-sss x₂ x₃ x₄ x₅ x₆) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pfst x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(psnd x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pβfst x₂ x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pβsnd x₂ x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(p⌜Π⌝ x₂ x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(p⌜Σ⌝ x₂ x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(p⌜Hom⌝ x₂ x₃ x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(phrefl x₂ x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(ptr x₂ x₃ x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(ptr-J-base x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(ptr-J-Unit x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(ptr-J-Σ x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(ptr-J-Id x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(ptr-taut x₂ x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(phrefl-pw x₂ x₃ x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(ptr-J-Hom x₂ x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(ptr-pw x₂ x₃ x₄ x₅ x₆) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pap x₂ x₃ x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pap-J x₂ x₃ x₄ x₅) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(p⌜Id⌝ x₂ x₃ x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pidrefl x₂ x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pjsub x₂ x₃ x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pjsub-refl x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pvar x₁) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(plam x₁) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(papp x₁ x₂) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pβ x₁ x₂) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ppair x₁ x₂) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pabsurd x₁ x₂) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pordtr x₁ x₂ x₃ x₄ x₅) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pordtr-szz x₁) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pordtr-ssz x₁) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pordtr-szs x₁ x₂ x₃) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pordtr-sss x₁ x₂ x₃ x₄ x₅) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pfst x₁) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(psnd x₁) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pβfst x₁ x₂) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pβsnd x₁ x₂) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(p⌜Π⌝ x₁ x₂) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(p⌜Σ⌝ x₁ x₂) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(p⌜Hom⌝ x₁ x₂ x₃) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(phrefl x₁ x₂) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr x₁ x₂ x₃) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-base x₁) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-Unit x₁) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-Σ x₁) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-Id x₁) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-taut x₁ x₂) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(phrefl-pw x₁ x₂ x₃) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-Hom x₁ x₂) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-pw x₁ x₂ x₃ x₄ x₅) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pap x₁ x₂ x₃) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pap-J x₁ x₂ x₃ x₄) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(p⌜Id⌝ x₁ x₂ x₃) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pidrefl x₁ x₂) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pjsub x₁ x₂ x₃) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pjsub-refl x₁) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pnatrec x₁ x₂ x₃) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pnatrec-zero x₁ x₂) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pnatrec-suc x₁ x₂ x₃) z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pvar x₁) z2@(pnsuc x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(plam x₁) z2@(pnsuc x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(papp x₁ x₂) z2@(pnsuc x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pβ x₁ x₂) z2@(pnsuc x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ppair x₁ x₂) z2@(pnsuc x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pabsurd x₁ x₂) z2@(pnsuc x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pordtr x₁ x₂ x₃ x₄ x₅) z2@(pnsuc x₆) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pnsuc x₁) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pordtr-szz x₁) z2@(pnsuc x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pordtr-ssz x₁) z2@(pnsuc x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pordtr-szs x₁ x₂ x₃) z2@(pnsuc x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pordtr-sss x₁ x₂ x₃ x₄ x₅) z2@(pnsuc x₆) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pfst x₁) z2@(pnsuc x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(psnd x₁) z2@(pnsuc x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pβfst x₁ x₂) z2@(pnsuc x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pβsnd x₁ x₂) z2@(pnsuc x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pnsuc x₁) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(p⌜Π⌝ x₁ x₂) z2@(pnsuc x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(p⌜Σ⌝ x₁ x₂) z2@(pnsuc x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(p⌜Hom⌝ x₁ x₂ x₃) z2@(pnsuc x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(phrefl x₁ x₂) z2@(pnsuc x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr x₁ x₂ x₃) z2@(pnsuc x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-base x₁) z2@(pnsuc x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pnsuc x₁) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pnsuc x₁) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-Unit x₁) z2@(pnsuc x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-Σ x₁) z2@(pnsuc x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-Id x₁) z2@(pnsuc x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-taut x₁ x₂) z2@(pnsuc x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(phrefl-pw x₁ x₂ x₃) z2@(pnsuc x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-Hom x₁ x₂) z2@(pnsuc x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-pw x₁ x₂ x₃ x₄ x₅) z2@(pnsuc x₆) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pap x₁ x₂ x₃) z2@(pnsuc x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pap-J x₁ x₂ x₃ x₄) z2@(pnsuc x₅) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(p⌜Id⌝ x₁ x₂ x₃) z2@(pnsuc x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pidrefl x₁ x₂) z2@(pnsuc x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pjsub x₁ x₂ x₃) z2@(pnsuc x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pjsub-refl x₁) z2@(pnsuc x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pnsuc x₁) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pnatrec x₁ x₂ x₃) z2@(pnsuc x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pnatrec-zero x₁ x₂) z2@(pnsuc x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(pnatrec-suc x₁ x₂ x₃) z2@(pnsuc x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pnatrec x₂ x₃ x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pnatrec-zero x₂ x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(pnatrec-suc x₂ x₃ x₄) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnatrec x x₁ x₂) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnatrec-zero x x₁) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnatrec-suc x x₁ x₂) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+-- an `ordtr` as a path CODE is neither `pw?` nor `stkC?`, and as the
+-- endpoint of a pw motive it is not `var vz` — congruence throughout.
+⟹-⁺ (ptr pd w@(phrefl (pordtr _ _ _ _ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ _ _ (pordtr _ _ _ _ _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (pap pcB pb w@(phrefl (pordtr _ _ _ _ _) _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (ptr pd w@(phrefl pordtr-z _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ _ _ pordtr-z) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (pap pcB pb w@(phrefl pordtr-z _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (ptr pd w@(phrefl (pordtr-szz _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ _ _ (pordtr-szz _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (pap pcB pb w@(phrefl (pordtr-szz _) _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (ptr pd w@(phrefl (pordtr-ssz _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ _ _ (pordtr-ssz _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (pap pcB pb w@(phrefl (pordtr-ssz _) _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (ptr pd w@(phrefl (pordtr-szs _ _ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ _ _ (pordtr-szs _ _ _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (pap pcB pb w@(phrefl (pordtr-szs _ _ _) _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (ptr pd w@(phrefl (pordtr-sss _ _ _ _ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(p⌜Hom⌝ _ _ (pordtr-sss _ _ _ _ _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (pap pcB pb w@(phrefl (pordtr-sss _ _ _ _ _) _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (pordtr pnzero pt pu pp pq) = pordtr-z
+⟹-⁺ (pordtr (pnsuc pa) pnzero pnzero pp pq) = pordtr-szz (⟹-⁺ pp)
+⟹-⁺ (pordtr (pnsuc pa) (pnsuc pt) pnzero pp pq) = pordtr-ssz (⟹-⁺ pq)
+⟹-⁺ (pordtr (pnsuc pa) pnzero (pnsuc pu) pp pq) =
+  pordtr-szs (⟹-⁺ pa) (⟹-⁺ pu) (⟹-⁺ pp)
+-- the peel is a RECURSIVE development: `_⁺` fires again on the peeled
+-- endpoints, so the triangle is the same lemma one layer down.
+⟹-⁺ (pordtr (pnsuc pa) (pnsuc pt) (pnsuc pu) pp pq) =
+  pordtr-sss (⟹-⁺ pa) (⟹-⁺ pt) (⟹-⁺ pu) (⟹-⁺ pp) (⟹-⁺ pq)
+⟹-⁺ pordtr-z = ⟹-refl _
+⟹-⁺ (pordtr-szz pp) = ⟹-⁺ pp
+⟹-⁺ (pordtr-ssz pq) = ⟹-⁺ pq
+⟹-⁺ (pordtr-szs pa pu pp) = pabsurd (p⌜Hom⌝ p⌜Nat⌝ (⟹-⁺ pa) (⟹-⁺ pu)) (⟹-⁺ pp)
+⟹-⁺ (pordtr-sss pa pt pu pp pq) =
+  pordtr (⟹-⁺ pa) (⟹-⁺ pt) (⟹-⁺ pu) (⟹-⁺ pp) (⟹-⁺ pq)
 ⟹-⁺ (pabsurd pc pe)        = pabsurd (⟹-⁺ pc) (⟹-⁺ pe)
 ⟹-⁺ (papp w@(pabsurd _ _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
 ⟹-⁺ (pfst w@(pabsurd _ _))   = pfst (⟹-⁺ w)

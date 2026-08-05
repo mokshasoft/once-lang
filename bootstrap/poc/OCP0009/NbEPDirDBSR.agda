@@ -47,7 +47,8 @@ open import poc.OCP0009.NbEPDirDBVar
         ; pw?-sub; stkC?-sub; stkA?-sub; pwBody-sub )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; swp; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
-        ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ξ-fst; ξ-snd
+        ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs; ordtr-sss
+        ; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
         ; tr-J-base; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
@@ -181,6 +182,16 @@ pwShift-sub σ t =
 ⟶-sub σ (ξ-pairʳ r) = ξ-pairʳ (⟶-sub σ r)
 ⟶-sub σ (ξ-absurdᶜ r)   = ξ-absurdᶜ (⟶-sub σ r)
 ⟶-sub σ (ξ-absurdᵉ r)   = ξ-absurdᵉ (⟶-sub σ r)
+⟶-sub σ (ordtr-z t u p q) = ordtr-z _ _ _ _
+⟶-sub σ (ordtr-szz a p q) = ordtr-szz _ _ _
+⟶-sub σ (ordtr-ssz a t p q) = ordtr-ssz _ _ _ _
+⟶-sub σ (ordtr-szs a u p q) = ordtr-szs _ _ _ _
+⟶-sub σ (ordtr-sss a t u p q) = ordtr-sss _ _ _ _ _
+⟶-sub σ (ξ-ordtrᵃ r) = ξ-ordtrᵃ (⟶-sub σ r)
+⟶-sub σ (ξ-ordtrᵗ r) = ξ-ordtrᵗ (⟶-sub σ r)
+⟶-sub σ (ξ-ordtrᵘ r) = ξ-ordtrᵘ (⟶-sub σ r)
+⟶-sub σ (ξ-ordtrᵖ r) = ξ-ordtrᵖ (⟶-sub σ r)
+⟶-sub σ (ξ-ordtrq r) = ξ-ordtrq (⟶-sub σ r)
 ⟶-sub σ (ξ-fst r)   = ξ-fst (⟶-sub σ r)
 ⟶-sub σ (ξ-snd r)   = ξ-snd (⟶-sub σ r)
 ⟶-sub σ (ξ-⌜Π⌝ˡ r) = ξ-⌜Π⌝ˡ (⟶-sub σ r)
