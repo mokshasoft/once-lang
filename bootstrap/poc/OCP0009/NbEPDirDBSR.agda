@@ -55,6 +55,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
+        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
@@ -276,6 +277,9 @@ pwShift-sub σ t =
 ⟶ᵀ-sub σ (ξ-Πʳ r) = ξ-Πʳ (⟶ᵀ-sub (extS σ) r)
 ⟶ᵀ-sub σ (ξ-Σˡ r) = ξ-Σˡ (⟶ᵀ-sub σ r)
 ⟶ᵀ-sub σ (ξ-Σʳ r) = ξ-Σʳ (⟶ᵀ-sub (extS σ) r)
+⟶ᵀ-sub σ (Hom-Nat-z n)    = Hom-Nat-z (subTm σ n)
+⟶ᵀ-sub σ (Hom-Nat-sz m)   = Hom-Nat-sz (subTm σ m)
+⟶ᵀ-sub σ (Hom-Nat-ss m n) = Hom-Nat-ss (subTm σ m) (subTm σ n)
 ⟶ᵀ-sub σ (Hom-U c d) =
   subst (λ z → Hom U (subTm σ c) (subTm σ d) ⟶ᵀ Π (El (subTm σ c)) (El z))
         (sym (wk-sub σ d))

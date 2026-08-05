@@ -230,6 +230,18 @@ data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   -- deliberately NO rule at `base` (discrete by generation, item 4), none at
   -- `Σ'` (its unfolding needs transport, a term former W2's eliminator will
   -- introduce — deferred, not dropped), none at a stuck `El`, none at `Hom`.
+  -- ★★ WF-axis stage B (SPIKE-WF §2): THE COMPUTING ORDER.  On `Nat`
+  -- the DIRECTED structure IS the order — `Hom Nat m n` does not
+  -- represent `m ≤ n`, it COMPUTES to it.  The rules are keyed on the
+  -- ENDPOINTS' constructor heads (not on the ambient, as `Hom-U` and
+  -- `Hom-Π` are), which is what makes `Nat` an ORDERED inductive.
+  --
+  -- `base` is the empty type here: it has no closed inhabitants
+  -- (`consistency`, NbEPDirDBCanon), so a false inequality is
+  -- refuted by the kernel's own consistency theorem.
+  Hom-Nat-z  : (n : RTm Γ) → Hom Nat nzero n ⟶ᵀ Unit
+  Hom-Nat-sz : (m : RTm Γ) → Hom Nat (nsuc m) nzero ⟶ᵀ base
+  Hom-Nat-ss : (m n : RTm Γ) → Hom Nat (nsuc m) (nsuc n) ⟶ᵀ Hom Nat m n
   Hom-U : (c d : RTm Γ) → Hom U c d ⟶ᵀ Π (El c) (El (renTm vs d))
   Hom-Π : (A : RTy Γ) (B : RTy (Γ ∙)) (f g : RTm Γ) →
           Hom (Π A B) f g ⟶ᵀ
