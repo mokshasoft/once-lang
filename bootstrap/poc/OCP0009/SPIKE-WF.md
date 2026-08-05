@@ -158,41 +158,39 @@ base-collapse.
     CODE until stage C, `El c` can never reduce to `Nat`, so the entire
     `El`-ambient theory of stages 1–A is untouched.
 
-  ★ REMAINING (the semantic half, next session).  The wall is where
-  the analysis predicted, at `StkHd`:
+  SEMANTIC HALF ✅ DONE AND GREEN (same session).  What it took:
 
-  1. **DELETE `sh-Nat`.**  It claims `Hom Nat a b` is a stuck hom,
-     which the order rules now falsify.  `stkhd-red` and
-     `Hom-stk-reduct` then close by absurdity on the three new rules.
-  2. **`Hom Nat a b` IS still stuck when its endpoints are** — so the
-     stuckness key is NOT `StkHd` (a property of the ambient) but a
-     property of the ENDPOINTS.  The key is already designed and its
-     ingredients already exist:
+  1. `sh-Nat : StkHd Nat` DELETED; `⊩₀Hom`/`⊩₁Hom`'s witness moved from
+     `StkHd H` to `StkHd (Hom H a b)`, and the new arm is
+     `sh-NatH : homnat? a b ≡ true → StkHd (Hom Nat a b)`.
+  2. `homnat?` is THREE LINES, because stage A's `natstk?` already says
+     the hard part: a `nzero` left endpoint always fires, a `nsuc` left
+     endpoint defers to the right one, any other decides alone.
+  3. **`homNatSem`** is the theorem: a DOUBLE meta-induction on both
+     endpoints' `NatMem`.  Zero on the left → `⊩₁Unit`; successor over
+     zero → `⊩₁base`; successor over successor → peel and recurse; a
+     stuck endpoint → the endpoint-keyed stuck order-hom.  Exact mirror
+     of stage A's `fund` worker, which is why `NatMem` mirrors `SN`.
+  4. `hom-shape` gained `hsUnit`/`hsBase` at no cost to its refutation
+     consumers; `hom-shapeN` (guarded) keeps the sharp two-shape
+     conclusion where the ambient is pinned (`fund`'s `⊢trU`).
+  5. `Hombase-clash` and `HomUnit-clash` became AMBIENT-SENSITIVE — and
+     correctly so: `Hom Nat 2 1` really does reduce to `base`.  Both
+     are refined with the `NoNat` guard.
 
-         homnat? nzero u            = false
-         homnat? (nsuc m) nzero     = false
-         homnat? (nsuc m) (nsuc n)  = false
-         homnat? (nsuc m) u         = natstk? u
-         homnat? t u                = natstk? t
-
-     i.e. stage A's `natstk?` does double duty.  It needs the usual
-     `-red`/`-red*`/`-ren` closure family (mechanical, mirrors
-     `natstk?`'s own).
-  3. **`⊩₁Hom`'s witness must generalize** from `StkHd H` to a
-     predicate on the whole `Hom H a b` (`StkHd` renamed/extended, with
-     an `hs-Nat : homnat? a b ≡ true` arm).  Blast radius measured:
-     `StkHd` has 18 references in `LR` and 1 outside it.
-  4. **`homSem₁` at `⊩₁Nat` is the real theorem**: both endpoints carry
-     `NatMem`, so the interp is a DOUBLE meta-induction — reaches-zero
-     gives `⊩₁Unit`, suc/zero gives `⊩₁base`, suc/suc recurses, and a
-     stuck endpoint gives the stuck order-hom of (3).  This is the
-     mirror of stage A's `go`, and it is why `NatMem` was built to
-     mirror `SN`.
-  5. `Fund`/`Canon` then follow mechanically; the acceptance file
-     `NbEPDirDBExamplesOrd.agda` (already WRITTEN, currently red by
-     design) greens.
-
-
+  ★ THE ONE REAL SCARE, and why it was already handled.  A closed
+  normal path at a `Nat` ambient can now be `unit`, and NO `tr` rule
+  fires on a `unit` path — so `trProgress`/`pathCanon` look broken.
+  They are not: `⊢tr`'s premise `(Γ ▹ A) ⊢ var vz ∷ El c` types the
+  SAME variable at both `A` and `El c`, and `El c ≅ᵀ Nat` is
+  impossible (no ⌜Nat⌝ code until stage C).  So the ambient of a
+  well-typed `tr` is PROVABLY never `Nat` (`tr-amb-nonat`), and
+  transport along an order path simply cannot be FORMED yet.  Stage B
+  needed no new restriction on `⊢tr`.  ★ This is precisely the
+  "tt-path rules" item the spike scheduled for stage C: when ⌜Nat⌝
+  joins `U`, `tr` at an order path becomes formable and WILL need a
+  rule (transport along `≤` = the coercion / ≤-transitivity story).
+  Stage C must land that rule together with ⌜Nat⌝, not after it.
 
   **Stage C — N-in** (separate spike later): `⌜Nat⌝ ∈ U`, `tr-J-Nat`,
   the tt-path rules (§3 risky point 2), `cong`-at-ℕ, sized-family
