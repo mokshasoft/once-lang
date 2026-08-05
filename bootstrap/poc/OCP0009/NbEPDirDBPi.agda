@@ -117,6 +117,12 @@ data RTm where
   nzero  : ∀ {Γ} → RTm Γ
   nsuc   : ∀ {Γ} → RTm Γ → RTm Γ
   natrec : ∀ {Γ} → RTm Γ → RTm ((Γ ∙) ∙) → RTm Γ → RTm Γ
+  -- ★ WF-axis stage C (N-in): `Nat` becomes SMALL — it gets a code, so
+  -- it can appear in `U`-families.  That is what unlocks Id-rewriting
+  -- AT `Nat` (`jsub` needs a code family), cong-at-ℕ, and ≤ as a
+  -- transportable relation.
+  ⌜Nat⌝  : ∀ {Γ} → RTm Γ
+  ⌜Unit⌝ : ∀ {Γ} → RTm Γ
 
 private
   variable
@@ -160,6 +166,8 @@ renTm ρ (idrefl c t)   = idrefl (renTm ρ c) (renTm ρ t)
 renTm ρ (tr d p e)    = tr (renTm (extR ρ) d) (renTm ρ p) (renTm ρ e)
 renTm ρ (jsub d p e)    = jsub (renTm (extR ρ) d) (renTm ρ p) (renTm ρ e)
 renTm ρ (ap c b p)    = ap (renTm ρ c) (renTm (extR ρ) b) (renTm ρ p)
+renTm ρ ⌜Nat⌝         = ⌜Nat⌝
+renTm ρ ⌜Unit⌝        = ⌜Unit⌝
 renTm ρ unit          = unit
 renTm ρ nzero         = nzero
 renTm ρ (nsuc n)      = nsuc (renTm ρ n)
@@ -204,6 +212,8 @@ subTm σ (idrefl c t)   = idrefl (subTm σ c) (subTm σ t)
 subTm σ (tr d p e)    = tr (subTm (extS σ) d) (subTm σ p) (subTm σ e)
 subTm σ (jsub d p e)    = jsub (subTm (extS σ) d) (subTm σ p) (subTm σ e)
 subTm σ (ap c b p)    = ap (subTm σ c) (subTm (extS σ) b) (subTm σ p)
+subTm σ ⌜Nat⌝         = ⌜Nat⌝
+subTm σ ⌜Unit⌝        = ⌜Unit⌝
 subTm σ unit          = unit
 subTm σ nzero         = nzero
 subTm σ (nsuc n)      = nsuc (subTm σ n)
@@ -325,6 +335,8 @@ renTm-cong h (pair a b) = cong₂ pair (renTm-cong h a) (renTm-cong h b)
 renTm-cong h (fst p)    = cong fst (renTm-cong h p)
 renTm-cong h (snd p)    = cong snd (renTm-cong h p)
 renTm-cong h ⌜base⌝     = refl
+renTm-cong h ⌜Nat⌝      = refl
+renTm-cong h ⌜Unit⌝     = refl
 renTm-cong h unit      = refl
 renTm-cong h nzero     = refl
 renTm-cong h (nsuc n)  = cong nsuc (renTm-cong h n)
@@ -372,6 +384,8 @@ subTm-cong h (pair a b) = cong₂ pair (subTm-cong h a) (subTm-cong h b)
 subTm-cong h (fst p)    = cong fst (subTm-cong h p)
 subTm-cong h (snd p)    = cong snd (subTm-cong h p)
 subTm-cong h ⌜base⌝     = refl
+subTm-cong h ⌜Nat⌝      = refl
+subTm-cong h ⌜Unit⌝     = refl
 subTm-cong h unit      = refl
 subTm-cong h nzero     = refl
 subTm-cong h (nsuc n)  = cong nsuc (subTm-cong h n)
@@ -428,6 +442,8 @@ renTm-renTm (pair a b) = cong₂ pair (renTm-renTm a) (renTm-renTm b)
 renTm-renTm (fst p)    = cong fst (renTm-renTm p)
 renTm-renTm (snd p)    = cong snd (renTm-renTm p)
 renTm-renTm ⌜base⌝     = refl
+renTm-renTm ⌜Nat⌝      = refl
+renTm-renTm ⌜Unit⌝     = refl
 renTm-renTm unit       = refl
 renTm-renTm nzero      = refl
 renTm-renTm (nsuc n)   = cong nsuc (renTm-renTm n)
@@ -488,6 +504,8 @@ subTm-renTm (pair a b) = cong₂ pair (subTm-renTm a) (subTm-renTm b)
 subTm-renTm (fst p)    = cong fst (subTm-renTm p)
 subTm-renTm (snd p)    = cong snd (subTm-renTm p)
 subTm-renTm ⌜base⌝     = refl
+subTm-renTm ⌜Nat⌝      = refl
+subTm-renTm ⌜Unit⌝     = refl
 subTm-renTm unit       = refl
 subTm-renTm nzero      = refl
 subTm-renTm (nsuc n)   = cong nsuc (subTm-renTm n)
@@ -548,6 +566,8 @@ renTm-subTm (pair a b) = cong₂ pair (renTm-subTm a) (renTm-subTm b)
 renTm-subTm (fst p)    = cong fst (renTm-subTm p)
 renTm-subTm (snd p)    = cong snd (renTm-subTm p)
 renTm-subTm ⌜base⌝     = refl
+renTm-subTm ⌜Nat⌝      = refl
+renTm-subTm ⌜Unit⌝     = refl
 renTm-subTm unit       = refl
 renTm-subTm nzero      = refl
 renTm-subTm (nsuc n)   = cong nsuc (renTm-subTm n)
@@ -608,6 +628,8 @@ subTm-subTm (pair a b) = cong₂ pair (subTm-subTm a) (subTm-subTm b)
 subTm-subTm (fst p)    = cong fst (subTm-subTm p)
 subTm-subTm (snd p)    = cong snd (subTm-subTm p)
 subTm-subTm ⌜base⌝     = refl
+subTm-subTm ⌜Nat⌝      = refl
+subTm-subTm ⌜Unit⌝     = refl
 subTm-subTm unit       = refl
 subTm-subTm nzero      = refl
 subTm-subTm (nsuc n)   = cong nsuc (subTm-subTm n)
@@ -660,6 +682,8 @@ subTm-id (pair a b) = cong₂ pair (subTm-id a) (subTm-id b)
 subTm-id (fst p)    = cong fst (subTm-id p)
 subTm-id (snd p)    = cong snd (subTm-id p)
 subTm-id ⌜base⌝     = refl
+subTm-id ⌜Nat⌝      = refl
+subTm-id ⌜Unit⌝     = refl
 subTm-id unit       = refl
 subTm-id nzero      = refl
 subTm-id (nsuc n)   = cong nsuc (subTm-id n)

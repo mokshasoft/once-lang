@@ -39,7 +39,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Id; ⌜Id⌝; idrefl; jsub
-        ; Unit; Nat; unit; nzero; nsuc; natrec; extS
+        ; Unit; Nat; unit; nzero; nsuc; natrec; extS; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; extR; Sub; subTy; subTm; renTy; renTm )
 open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false; occTm; pw?; stkC?; flat?; pwBody; pwShift )
@@ -129,6 +129,12 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   tr-J-Σ    : (c a m : RTm (Γ ∙)) (c₁ : RTm Γ) (c₂ : RTm (Γ ∙)) (s e : RTm Γ) →
               tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e ⟶ e
   -- ★ the two-former kernel: `⌜Id⌝` is a stable J-able shape.
+  -- ★ stage C: J fires at the datatype codes too — they are stable
+  -- shapes, so this is the `tr-J-base` pattern verbatim.
+  tr-J-Nat  : (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
+              tr (⌜Hom⌝ c a m) (hrefl ⌜Nat⌝ s) e ⟶ e
+  tr-J-Unit : (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
+              tr (⌜Hom⌝ c a m) (hrefl ⌜Unit⌝ s) e ⟶ e
   tr-J-Id   : (c a m : RTm (Γ ∙)) (c₁ a₁ b₁ : RTm Γ) (s e : RTm Γ) →
               tr (⌜Hom⌝ c a m) (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e ⟶ e
   -- directed univalence computing a third time: transport at the
@@ -218,6 +224,9 @@ data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   -- (hom-sets of small types are small; still no code for `U`)
   El-⌜Hom⌝  : (c a b : RTm Γ) → El (⌜Hom⌝ c a b) ⟶ᵀ Hom (El c) a b
   El-⌜Id⌝   : (c a b : RTm Γ) → El (⌜Id⌝ c a b) ⟶ᵀ Id (El c) a b
+  -- ★ stage C (N-in): the datatype codes decode.
+  El-⌜Nat⌝  : El (⌜Nat⌝ {Γ}) ⟶ᵀ Nat
+  El-⌜Unit⌝ : El (⌜Unit⌝ {Γ}) ⟶ᵀ Unit
   ξ-El : {t t' : RTm Γ} → t ⟶ t' → El t ⟶ᵀ El t'
   ξ-Πˡ : {A A' : RTy Γ} {B : RTy (Γ ∙)} → A ⟶ᵀ A' → Π A B ⟶ᵀ Π A' B
   ξ-Πʳ : {A : RTy Γ} {B B' : RTy (Γ ∙)} → B ⟶ᵀ B' → Π A B ⟶ᵀ Π A B'
@@ -409,6 +418,9 @@ data _⊢_∷_ where
           Γ ⊢ ap cB b p ∷ Hom (El cB) (subTm (single t) b) (subTm (single u) b)
   ⊢⌜Id⌝ : ∀ {Γ c a b}   → Γ ⊢ c ∷ U → Γ ⊢ a ∷ El c → Γ ⊢ b ∷ El c →
                           Γ ⊢ ⌜Id⌝ c a b ∷ U
+  -- ★ stage C: `Nat` and `Unit` are SMALL.
+  ⊢⌜Nat⌝  : ∀ {Γ} → Γ ⊢ ⌜Nat⌝ {⌊ Γ ⌋} ∷ U
+  ⊢⌜Unit⌝ : ∀ {Γ} → Γ ⊢ ⌜Unit⌝ {⌊ Γ ⌋} ∷ U
   ⊢idrefl : ∀ {Γ c t}   → Γ ⊢ c ∷ U → Γ ⊢ t ∷ El c →
                           Γ ⊢ idrefl c t ∷ Id (El c) t t
   ⊢jsub : ∀ {Γ A d t u p e} →
