@@ -1158,3 +1158,124 @@ pieces2-mentions a b hi .(I ++ at ++ t) (p2cons {I = I} {at = at} {t = t} c d id
 -- they compare. `pieces-agree`'s single-trace version needs none of this,
 -- which is why it was cheap; the price here is exactly the price of allowing
 -- different traces.
+
+-- WHERE A POSITION SITS, in one cons of the structure. Note the mention's
+-- window comes WITH the location: that is what lets the agreement proof case
+-- on WHERE `m` LIES rather than on where `p` and `q` do — and `m`'s window
+-- then forces both positions into the same region, which is what makes the
+-- depth index unnecessary.
+data PieceLoc (a b c d : ℕ) (I at t : AbstractTrace) (st : SegState) (p m : ℕ) : Set where
+  loc-I  : seg-at (I ++ at ++ t) p st ≡ st
+         → (a ≤ m) × (m < b) → PieceLoc a b c d I at t st p m
+  loc-at : ∀ (k : ℕ) → seg-at (I ++ at ++ t) p st ≡ seg-at at k st
+         → fetch-at (I ++ at ++ t) p ≡ fetch-at at k
+         → (c ≤ m) × (m < d) → PieceLoc a b c d I at t st p m
+  loc-t  : ∀ (j : ℕ) → seg-at (I ++ at ++ t) p st ≡ seg-at t j st
+         → fetch-at (I ++ at ++ t) p ≡ fetch-at t j → PieceLoc a b c d I at t st p m
+
+locate : ∀ (a b c d : ℕ) (I at t : AbstractTrace) (st : SegState) (p m : ℕ)
+       → seg-idle? I ≡ true → LabelsIn a b I → LabelsIn c d at
+       → (∀ s → seg-fold at s ≡ s)
+       → mention-at (I ++ at ++ t) p ≡ just m
+       → PieceLoc a b c d I at t st p m
+locate a b c d I at t st p m idle ls lsAt natl e = go (split-pos I p)
+  where
+    go : (p < length I) ⊎ (Σ ℕ (λ k → p ≡ length I + k)) → PieceLoc a b c d I at t st p m
+    go (inj₁ lt) =
+      loc-I (trans (seg-at-++ˡ I (at ++ t) p st lt) (idle-seg-at I idle p st))
+            (win-at a b I ls p m (trans (sym (cong mention-of (fetch-++ˡ I (at ++ t) p lt))) e))
+    go (inj₂ (k , peq)) = go2 (split-pos at k)
+      where
+        -- the skeleton piece is idle, so the copy starts at `st`
+        at-st : seg-at (I ++ at ++ t) p st ≡ seg-at (at ++ t) k st
+        at-st = trans (cong (λ z → seg-at (I ++ at ++ t) z st) peq)
+                      (trans (seg-at-++ʳ I (at ++ t) k st)
+                             (cong (seg-at (at ++ t) k) (idle-neutral I idle st)))
+        ft-eq : fetch-at (I ++ at ++ t) p ≡ fetch-at (at ++ t) k
+        ft-eq = trans (cong (fetch-at (I ++ at ++ t)) peq) (fetch-++ʳ I (at ++ t) k)
+        e' : mention-at (at ++ t) k ≡ just m
+        e' = trans (sym (cong mention-of ft-eq)) e
+        go2 : (k < length at) ⊎ (Σ ℕ (λ j → k ≡ length at + j)) → PieceLoc a b c d I at t st p m
+        go2 (inj₁ klt) =
+          loc-at k (trans at-st (seg-at-++ˡ at t k st klt))
+                   (trans ft-eq (fetch-++ˡ at t k klt))
+                   (win-at c d at lsAt k m (trans (sym (cong mention-of (fetch-++ˡ at t k klt))) e'))
+        go2 (inj₂ (j , keq)) =
+          loc-t j (trans at-st (trans (cong (λ z → seg-at (at ++ t) z st) keq)
+                                      (trans (seg-at-++ʳ at t j st)
+                                             (cong (seg-at t j) (natl st)))))
+                  (trans ft-eq (trans (cong (fetch-at (at ++ t)) keq) (fetch-++ʳ at t j)))
+
+-- A position whose mention lies in the SKELETON window cannot be inside an
+-- embedded trace (those windows start at or above `b`), so its segment is the
+-- starting state.
+pieces2-skel : ∀ (a b hi : ℕ) (t : AbstractTrace) → Pieces2 a b hi t
+             → ∀ (p m : ℕ) (st : SegState) → mention-at t p ≡ just m
+             → (a ≤ m) × (m < b) → seg-at t p st ≡ st
+pieces2-skel a b hi .I (p2nil {I = I} idle _) p m st _ _ = idle-seg-at I idle p st
+pieces2-skel a b hi .(I ++ at ++ t)
+  (p2cons {I = I} {at = at} {t = t} c d idle ls natl _ lsAt b≤c c≤d d≤hi ps) p m st e w =
+  go (locate a b c d I at t st p m idle ls lsAt natl e)
+  where
+    go : PieceLoc a b c d I at t st p m → seg-at (I ++ at ++ t) p st ≡ st
+    go (loc-I seq _)        = seq
+    go (loc-at k _ _ wAt)   = ⊥-elim (<-asym (proj₂ w) (≤-trans b≤c (proj₁ wAt)))
+    go (loc-t j seq feq)    =
+      trans seq (pieces2-skel a b c t ps j m st (trans (sym (cong mention-of feq)) e) w)
+
+-- THE AGREEMENT. Nine location pairs, and every mixed one is killed by a
+-- window clash on the SHARED `m` — which is why no depth index is needed:
+-- `m`'s window already forces both positions into the same region.
+pieces2-agree : ∀ (a b hi : ℕ) (t : AbstractTrace) → Pieces2 a b hi t → SegAgree t
+pieces2-agree a b hi .I (p2nil {I = I} idle _) = segagree-idle I idle
+pieces2-agree a b hi .(I ++ at ++ t)
+  (p2cons {I = I} {at = at} {t = t} c d idle ls natl saAt lsAt b≤c c≤d d≤hi ps)
+  p q m st mq lq =
+  go (locate a b c d I at t st p m idle ls lsAt natl mq)
+     (locate a b c d I at t st q m idle ls lsAt natl lq-men)
+  where
+    lq-men : mention-at (I ++ at ++ t) q ≡ just m
+    lq-men rewrite lq = refl
+    -- skeleton window vs embedded window
+    clash₁ : (a ≤ m) × (m < b) → (c ≤ m) × (m < d) → ⊥
+    clash₁ wI wA = <-asym (proj₂ wI) (≤-trans b≤c (proj₁ wA))
+    -- embedded window vs anything the TAIL can mention (`pieces2-mentions`:
+    -- the skeleton's window, or strictly below this window's start)
+    clash₂ : ∀ (r : ℕ) → (c ≤ m) × (m < d) → mention-at t r ≡ just m → ⊥
+    clash₂ r wA e = side (pieces2-mentions a b c t ps r m e)
+      where side : ((a ≤ m) × (m < b)) ⊎ (m < c) → ⊥
+            side (inj₁ wI)  = clash₁ wI wA
+            side (inj₂ m<c) = <-asym m<c (proj₁ wA)
+    go : PieceLoc a b c d I at t st p m → PieceLoc a b c d I at t st q m
+       → seg-at (I ++ at ++ t) q st ≡ seg-at (I ++ at ++ t) p st
+    -- both on the skeleton piece: both segments are the starting state
+    go (loc-I sp _) (loc-I sq _) = trans sq (sym sp)
+    -- skeleton / embedded: the shared `m` cannot be in both windows
+    go (loc-I _ wI)      (loc-at _ _ _ wA) = ⊥-elim (clash₁ wI wA)
+    go (loc-at _ _ _ wA) (loc-I _ wI)      = ⊥-elim (clash₁ wI wA)
+    -- skeleton / tail: `m` lies in the skeleton window, so the tail position
+    -- is skeletal too and both segments are `st`
+    go (loc-I sp wI) (loc-t j sq fq) =
+      trans (trans sq (pieces2-skel a b c t ps j m st
+                        (trans (sym (cong mention-of fq)) lq-men) wI))
+            (sym sp)
+    go (loc-t j sp fp) (loc-I sq wI) =
+      trans sq (sym (trans sp (pieces2-skel a b c t ps j m st
+                                (trans (sym (cong mention-of fp)) mq) wI)))
+    -- BOTH INSIDE THIS COPY: the embedded trace's own agreement
+    go (loc-at kp sp fp _) (loc-at kq sq fq _) =
+      trans sq (trans (saAt kp kq m st (trans (sym (cong mention-of fp)) mq)
+                                       (trans (sym fq) lq))
+                      (sym sp))
+    -- embedded / tail: the tail can only mention the skeleton's window or
+    -- something strictly below this one's start — both clash with `[c,d)`
+    go (loc-at _ _ _ wA) (loc-t j _ fq) =
+      ⊥-elim (clash₂ j wA (trans (sym (cong mention-of fq)) lq-men))
+    go (loc-t j _ fp) (loc-at _ _ _ wA) =
+      ⊥-elim (clash₂ j wA (trans (sym (cong mention-of fp)) mq))
+    -- both further along: the induction hypothesis
+    go (loc-t jp sp fp) (loc-t jq sq fq) =
+      trans sq (trans (pieces2-agree a b c t ps jp jq m st
+                        (trans (sym (cong mention-of fp)) mq)
+                        (trans (sym fq) lq))
+                      (sym sp))
