@@ -31,7 +31,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Id; ⌜Id⌝; idrefl; jsub; Id-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
-        ; Unit; Nat; unit; nzero; nsuc; natrec
+        ; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ
         ; _∘ᵣ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_
         ; subTy-renTy; renTy-subTy; subTy-subTy; renTy-renTy
@@ -52,7 +52,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
         ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
-        ; tr-J-base; tr-J-Σ; tr-J-Id; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
+        ; tr-J-base; tr-J-Σ; tr-J-Id; tr-J-Unit; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
+        ; El-⌜Nat⌝; El-⌜Unit⌝
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
         ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
         ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
@@ -64,7 +65,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢trU
         ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢ap; ⊢conv
-        ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢⌜Nat⌝; ⊢⌜Unit⌝
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
         ; ⊢ctx_; c-◇; c-▹ )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; ⟶-sub )
@@ -148,6 +149,10 @@ wk-ren ρ t = trans (renTm-renTm t) (sym (renTm-renTm t))
 ⟶ᵀ-ren ρ (El-⌜Π⌝ c d) = El-⌜Π⌝ (renTm ρ c) (renTm (extR ρ) d)
 ⟶ᵀ-ren ρ (El-⌜Σ⌝ c d) = El-⌜Σ⌝ (renTm ρ c) (renTm (extR ρ) d)
 ⟶ᵀ-ren ρ (El-⌜Hom⌝ c a b) = El-⌜Hom⌝ (renTm ρ c) (renTm ρ a) (renTm ρ b)
+-- ★ WF stage C: the datatype decodes.  Both targets are closed formers,
+-- so renaming is the identity on them.
+⟶ᵀ-ren ρ El-⌜Nat⌝  = El-⌜Nat⌝
+⟶ᵀ-ren ρ El-⌜Unit⌝ = El-⌜Unit⌝
 ⟶ᵀ-ren ρ (ξ-El r) = ξ-El (⟶-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-Πˡ r) = ξ-Πˡ (⟶ᵀ-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-Πʳ r) = ξ-Πʳ (⟶ᵀ-ren (extR ρ) r)
@@ -327,6 +332,9 @@ occ-red {x = x} (tr-J-Σ c a m c₁ c₂ s e₀) e =
 occ-red {x = x} (tr-J-Id c a m c₁ a₁ b₁ s e₀) e =
   ∨-false₂ (occTm x (hrefl (⌜Id⌝ c₁ a₁ b₁) s))
            (∨-false₂ (occTm (vs x) (⌜Hom⌝ c a m)) e)
+occ-red {x = x} (tr-J-Unit c a m s e₀) e =
+  ∨-false₂ (occTm x (hrefl ⌜Unit⌝ s))
+           (∨-false₂ (occTm (vs x) (⌜Hom⌝ c a m)) e)
 occ-red (tr-taut f e₀) e = e
 occ-red {x = x} (hrefl-pw C s key) e =
   ∨-false (pwBody-occ C key (∨-false₁ (occTm x C) e))
@@ -437,32 +445,98 @@ posc-red (posc-Hom hc ha) (ξ-⌜Hom⌝ʳ ())
 
 -- ★★ WF stage B: the ambient guard.  The order rules fire ONLY at a
 -- `Nat` ambient, so every ambient-generic Hom-inversion lemma below
--- needs to know its ambient is not `Nat`.  Nothing ever REDUCES to
--- `Nat` (it is an inert former with no introduction rule at the type
--- level), so `NoNat` is preserved for free — and, critically, `El c`
--- is `NoNat` for every code, which is why the whole `El`-ambient
--- theory of stages 1–A is untouched.  (That changes at stage C, when
--- ⌜Nat⌝ joins `U`.)
+-- needs to know its ambient will never BECOME `Nat`.
+--
+-- ★★ WF stage C, THE CONVERGENCE.  Stage B could write the blanket
+-- `nn-El : NoNat (El c)` — no code decoded to `Nat`, so the whole
+-- `El`-ambient theory of stages 1–A was untouched.  `⌜Nat⌝ ∈ U` kills
+-- that: `El ⌜Nat⌝ ⟶ᵀ Nat`, so `nonat-red nn-El El-⌜Nat⌝` is an
+-- unfillable hole and `NoNat` is no longer preserved by `⟶ᵀ`.
+--
+-- The repair is to say what is TRUE rather than what was convenient:
+-- an `El` ambient is Nat-free exactly when its CODE is
+-- constructor-headed at something other than ⌜Nat⌝.  That property
+-- (`NoNatC`) IS reduction-closed — constructor-headed codes only ever
+-- develop under their own congruences — so `nonat-red` goes through
+-- again, and only a ⌜Nat⌝-headed ambient is excluded, which is the
+-- true statement.  Every consumer already knows its code head
+-- concretely (the `tr-J-base`/`-Σ`/`-Id`/`-Hom`/`-Unit` cases of `sr`),
+-- or knows `stkC? c ≡ true`, which implies it (`stkC?→NoNatC`).
+data NoNatC {Γ} : RTm Γ → Set where
+  nnc-base : NoNatC (⌜base⌝ {Γ})
+  nnc-Unit : NoNatC (⌜Unit⌝ {Γ})
+  nnc-Π    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatC (⌜Π⌝ c d)
+  nnc-Σ    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatC (⌜Σ⌝ c d)
+  nnc-Hom  : {c a b : RTm Γ} → NoNatC (⌜Hom⌝ c a b)
+  nnc-Id   : {c a b : RTm Γ} → NoNatC (⌜Id⌝ c a b)
+
 data NoNat {Γ} : RTy Γ → Set where
   nn-base : NoNat (base {Γ})
   nn-U    : NoNat (U {Γ})
   nn-Unit : NoNat (Unit {Γ})
-  nn-El   : {c : RTm Γ} → NoNat (El c)
+  nn-El   : {c : RTm Γ} → NoNatC c → NoNat (El c)
   nn-Π    : {F : RTy Γ} {G : RTy (Γ ∙)} → NoNat (Π F G)
   nn-Σ    : {F : RTy Γ} {G : RTy (Γ ∙)} → NoNat (Σ' F G)
   nn-Hom  : {H : RTy Γ} {a b : RTm Γ} → NoNat (Hom H a b)
   nn-Id   : {A : RTy Γ} {t u : RTm Γ} → NoNat (Id A t u)
 
+-- constructor-headed codes stay constructor-headed: the only rules
+-- with a ⌜Π⌝/⌜Σ⌝/⌜Hom⌝/⌜Id⌝ redex are that former's own congruences,
+-- and ⌜base⌝/⌜Unit⌝ are normal.
+nonatc-red : {c c' : RTm Γ} → NoNatC c → c ⟶ c' → NoNatC c'
+nonatc-red nnc-base ()
+nonatc-red nnc-Unit ()
+nonatc-red nnc-Π (ξ-⌜Π⌝ˡ _) = nnc-Π
+nonatc-red nnc-Π (ξ-⌜Π⌝ʳ _) = nnc-Π
+nonatc-red nnc-Σ (ξ-⌜Σ⌝ˡ _) = nnc-Σ
+nonatc-red nnc-Σ (ξ-⌜Σ⌝ʳ _) = nnc-Σ
+nonatc-red nnc-Hom (ξ-⌜Hom⌝ᶜ _) = nnc-Hom
+nonatc-red nnc-Hom (ξ-⌜Hom⌝ˡ _) = nnc-Hom
+nonatc-red nnc-Hom (ξ-⌜Hom⌝ʳ _) = nnc-Hom
+nonatc-red nnc-Id (ξ-⌜Id⌝ᶜ _) = nnc-Id
+nonatc-red nnc-Id (ξ-⌜Id⌝ˡ _) = nnc-Id
+nonatc-red nnc-Id (ξ-⌜Id⌝ʳ _) = nnc-Id
+
+-- `stkC?` implies it: the stable codes are exactly the
+-- constructor-headed ones minus ⌜Π⌝ — and, since the retraction,
+-- minus ⌜Nat⌝.
+stkC?→NoNatC : (c : RTm Γ) → stkC? c ≡ true → NoNatC c
+stkC?→NoNatC (var _) ()
+stkC?→NoNatC (lam _) ()
+stkC?→NoNatC (app _ _) ()
+stkC?→NoNatC (pair _ _) ()
+stkC?→NoNatC (fst _) ()
+stkC?→NoNatC (snd _) ()
+stkC?→NoNatC ⌜base⌝ h = nnc-base
+stkC?→NoNatC ⌜Unit⌝ h = nnc-Unit
+stkC?→NoNatC ⌜Nat⌝ ()
+stkC?→NoNatC (⌜Π⌝ _ _) ()
+stkC?→NoNatC (⌜Σ⌝ _ _) h = nnc-Σ
+stkC?→NoNatC (⌜Hom⌝ _ _ _) h = nnc-Hom
+stkC?→NoNatC (⌜Id⌝ _ _ _) h = nnc-Id
+stkC?→NoNatC (hrefl _ _) ()
+stkC?→NoNatC (idrefl _ _) ()
+stkC?→NoNatC (tr _ _ _) ()
+stkC?→NoNatC (jsub _ _ _) ()
+stkC?→NoNatC (ap _ _ _) ()
+stkC?→NoNatC unit ()
+stkC?→NoNatC nzero ()
+stkC?→NoNatC (nsuc _) ()
+stkC?→NoNatC (natrec _ _ _) ()
+
 nonat-red : {A A' : RTy Γ} → NoNat A → A ⟶ᵀ A' → NoNat A'
 nonat-red nn-base ()
 nonat-red nn-U ()
 nonat-red nn-Unit ()
-nonat-red nn-El El-⌜base⌝        = nn-base
-nonat-red nn-El (El-⌜Π⌝ _ _)     = nn-Π
-nonat-red nn-El (El-⌜Σ⌝ _ _)     = nn-Σ
-nonat-red nn-El (El-⌜Hom⌝ _ _ _) = nn-Hom
-nonat-red nn-El (El-⌜Id⌝ _ _ _)  = nn-Id
-nonat-red nn-El (ξ-El _)         = nn-El
+nonat-red (nn-El _)  El-⌜base⌝        = nn-base
+nonat-red (nn-El _)  (El-⌜Π⌝ _ _)     = nn-Π
+nonat-red (nn-El _)  (El-⌜Σ⌝ _ _)     = nn-Σ
+nonat-red (nn-El _)  (El-⌜Hom⌝ _ _ _) = nn-Hom
+nonat-red (nn-El _)  (El-⌜Id⌝ _ _ _)  = nn-Id
+nonat-red (nn-El _)  El-⌜Unit⌝        = nn-Unit
+-- ★★ THE excluded case, and the only one: a ⌜Nat⌝-headed ambient.
+nonat-red (nn-El ()) El-⌜Nat⌝
+nonat-red (nn-El nc) (ξ-El r)        = nn-El (nonatc-red nc r)
 nonat-red nn-Π (ξ-Πˡ _) = nn-Π
 nonat-red nn-Π (ξ-Πʳ _) = nn-Π
 nonat-red nn-Σ (ξ-Σˡ _) = nn-Σ
@@ -485,36 +559,14 @@ Hom-nf-Unit (stepᵀ () _)
 Hom-nf-base : {A : RTy Γ} {t u : RTm Γ} → base {Γ} ⟶ᵀ* Hom A t u → ⊥
 Hom-nf-base (stepᵀ () _)
 
--- a type that STEPS is never `Nat` (`Nat` is an inert former).
-red→nonat : {A A' : RTy Γ} → A ⟶ᵀ A' → NoNat A
-red→nonat El-⌜base⌝        = nn-El
-red→nonat (El-⌜Π⌝ _ _)     = nn-El
-red→nonat (El-⌜Σ⌝ _ _)     = nn-El
-red→nonat (El-⌜Hom⌝ _ _ _) = nn-El
-red→nonat (El-⌜Id⌝ _ _ _)  = nn-El
-red→nonat (ξ-El _)         = nn-El
-red→nonat (ξ-Πˡ _) = nn-Π
-red→nonat (ξ-Πʳ _) = nn-Π
-red→nonat (ξ-Σˡ _) = nn-Σ
-red→nonat (ξ-Σʳ _) = nn-Σ
-red→nonat (Hom-U _ _)      = nn-Hom
-red→nonat (Hom-Π _ _ _ _)  = nn-Hom
-red→nonat (Hom-Nat-z _)    = nn-Hom
-red→nonat (Hom-Nat-sz _)   = nn-Hom
-red→nonat (Hom-Nat-ss _ _) = nn-Hom
-red→nonat (ξ-Homᵀ _) = nn-Hom
-red→nonat (ξ-Homˡ _) = nn-Hom
-red→nonat (ξ-Homʳ _) = nn-Hom
-red→nonat (ξ-Idᵀ _) = nn-Id
-red→nonat (ξ-Idˡ _) = nn-Id
-red→nonat (ξ-Idʳ _) = nn-Id
+-- ★ WF stage C: `Nat` is inert, so it is its own only reduct.
+Nat-reduct : {C : RTy Γ} → Nat {Γ} ⟶ᵀ* C → C ≡ Nat
+Nat-reduct doneᵀ = refl
+Nat-reduct (stepᵀ () _)
 
--- ★ a `Hom`-to-`Hom` reduction transports `NoNat` on the AMBIENT, in
--- both directions.  Forward: the ambient only ever reduces.  Backward:
--- a `Nat` ambient stays `Nat` (the order rules that keep it a `Hom`
--- are exactly `Hom-Nat-ss`), so a non-`Nat` target forces a non-`Nat`
--- source.  Together they let the `tr` cases below — whose ambient is
--- existentially bound — recover the guard `Hom-to-Hom` now needs.
+-- ★ a `Hom`-to-`Hom` reduction transports `NoNat` FORWARD along the
+-- ambient: it is `nonat-red` iterated, with the order rules refuted at
+-- the source (they need a `Nat` ambient, which `NoNat` denies).
 homAmb→ : {A A' : RTy Γ} {t u t' u' : RTm Γ} →
           Hom A t u ⟶ᵀ* Hom A' t' u' → NoNat A → NoNat A'
 homAmb→ doneᵀ nn = nn
@@ -529,21 +581,15 @@ homAmb→ (stepᵀ (Hom-Nat-z _) rest) ()
 homAmb→ (stepᵀ (Hom-Nat-sz _) rest) ()
 homAmb→ (stepᵀ (Hom-Nat-ss _ _) rest) ()
 
-homAmb← : {A A' : RTy Γ} {t u t' u' : RTm Γ} →
-          Hom A t u ⟶ᵀ* Hom A' t' u' → NoNat A' → NoNat A
-homAmb← doneᵀ nn = nn
-homAmb← (stepᵀ (ξ-Homᵀ r) rest) nn = red→nonat r
-homAmb← (stepᵀ (ξ-Homˡ r) rest) nn = homAmb← rest nn
-homAmb← (stepᵀ (ξ-Homʳ r) rest) nn = homAmb← rest nn
-homAmb← (stepᵀ (Hom-U _ _) rest) nn = nn-U
-homAmb← (stepᵀ (Hom-Π _ _ _ _) rest) nn = nn-Π
-homAmb← (stepᵀ (Hom-Nat-z _) rest) nn with Hom-nf-Unit rest
-... | ()
-homAmb← (stepᵀ (Hom-Nat-sz _) rest) nn with Hom-nf-base rest
-... | ()
-homAmb← (stepᵀ (Hom-Nat-ss _ _) rest) nn with homAmb← rest nn
-... | ()
-
+-- ⚠ WF stage C: there is deliberately NO backward `homAmb←`, and no
+-- `red→nonat`.  Stage B could pull `NoNat` back along a reduction
+-- because "the type steps, therefore it is not `Nat`" was as strong as
+-- `NoNat` itself; with the code-head index that shortcut is FALSE
+-- (`El ⌜Nat⌝` steps, and is not Nat-free), and a general backward
+-- transport is false too — a redex can reduce to a constructor-headed
+-- code, so `NoNat (El c')` says nothing about `El c`.  Backward is not
+-- needed: keying the inversion below on the TARGET ambient is what the
+-- consumers actually have.
 record HomRed {Γ} (A : RTy Γ) (t u : RTm Γ)
               (A' : RTy Γ) (t' u' : RTm Γ) : Set where
   constructor mkHomRed
@@ -552,10 +598,17 @@ record HomRed {Γ} (A : RTy Γ) (t u : RTm Γ)
     rt : t ⟶* t'
     ru : u ⟶* u'
 
-Hom-to-Hom : {A A' : RTy Γ} {t u t' u' : RTm Γ} → NoNat A →
+-- ★★ WF stage C: keyed on the TARGET ambient.  Stage B keyed it on the
+-- source, which needed `NoNat` pulled backward along the church-rosser
+-- leg — no longer available (see above), and no longer necessary: if an
+-- order rule ever fires, `Hom-Nat-z`/`-sz` leave the `Hom` for good
+-- (`Unit`/`base` are inert) and `Hom-Nat-ss` pins the ambient at `Nat`,
+-- so landing on a Nat-FREE ambient already testifies that none fired.
+-- The `ξ-Homᵀ` case now carries no guard at all.
+Hom-to-Hom : {A A' : RTy Γ} {t u t' u' : RTm Γ} → NoNat A' →
              Hom A t u ⟶ᵀ* Hom A' t' u' → HomRed A t u A' t' u'
 Hom-to-Hom nn doneᵀ = mkHomRed doneᵀ done done
-Hom-to-Hom nn (stepᵀ (ξ-Homᵀ r) rest) with Hom-to-Hom (nonat-red nn r) rest
+Hom-to-Hom nn (stepᵀ (ξ-Homᵀ r) rest) with Hom-to-Hom nn rest
 ... | mkHomRed rA rt ru = mkHomRed (stepᵀ r rA) rt ru
 Hom-to-Hom nn (stepᵀ (ξ-Homˡ r) rest) with Hom-to-Hom nn rest
 ... | mkHomRed rA rt ru = mkHomRed rA (step r rt) ru
@@ -565,9 +618,15 @@ Hom-to-Hom nn (stepᵀ (Hom-U c d) rest) with Π-reduct rest
 ... | mkΠRed _ _ () _ _
 Hom-to-Hom nn (stepᵀ (Hom-Π A B f g) rest) with Π-reduct rest
 ... | mkΠRed _ _ () _ _
-Hom-to-Hom () (stepᵀ (Hom-Nat-z _) rest)
-Hom-to-Hom () (stepᵀ (Hom-Nat-sz _) rest)
-Hom-to-Hom () (stepᵀ (Hom-Nat-ss _ _) rest)
+Hom-to-Hom nn (stepᵀ (Hom-Nat-z _) rest) with Hom-nf-Unit rest
+... | ()
+Hom-to-Hom nn (stepᵀ (Hom-Nat-sz _) rest) with Hom-nf-base rest
+... | ()
+-- the peeling rule keeps the ambient at `Nat`, and `Nat` is inert — so
+-- the target ambient IS `Nat`, which `NoNat` refutes.
+Hom-to-Hom nn (stepᵀ (Hom-Nat-ss _ _) rest) with Hom-to-Hom nn rest
+... | mkHomRed rA rt ru with Nat-reduct rA
+Hom-to-Hom () (stepᵀ (Hom-Nat-ss _ _) rest) | mkHomRed rA rt ru | refl
 
 -- reducts of a `Hom` type are `Hom`- or `Π`-headed (promoted from
 -- `SpikeTrLR`): what refutes the base/U/ne/Σ' interps of a path's type
@@ -785,6 +844,8 @@ ren-lemma (⊢fst d) h = ⊢fst (ren-lemma d h)
 ren-lemma {ρ = ρ} (⊢snd {B = B} {p = p} d) h =
   ⊢-cast (sym (ren-comm-ty ρ B (fst p))) (⊢snd (ren-lemma d h))
 ren-lemma ⊢⌜base⌝ h = ⊢⌜base⌝
+ren-lemma ⊢⌜Nat⌝ h = ⊢⌜Nat⌝
+ren-lemma ⊢⌜Unit⌝ h = ⊢⌜Unit⌝
 ren-lemma (⊢⌜Π⌝ dc dd) h = ⊢⌜Π⌝ (ren-lemma dc h) (ren-lemma dd (Ren⊢-ext h))
 ren-lemma (⊢⌜Σ⌝ dc dd) h = ⊢⌜Σ⌝ (ren-lemma dc h) (ren-lemma dd (Ren⊢-ext h))
 ren-lemma (⊢⌜Hom⌝ dc da db) h =
@@ -877,6 +938,8 @@ sub-lemma (⊢fst d) h = ⊢fst (sub-lemma d h)
 sub-lemma {σ = σ} (⊢snd {B = B} {p = p} d) h =
   ⊢-cast (sym (subTy-comm σ B (fst p))) (⊢snd (sub-lemma d h))
 sub-lemma ⊢⌜base⌝ h = ⊢⌜base⌝
+sub-lemma ⊢⌜Nat⌝ h = ⊢⌜Nat⌝
+sub-lemma ⊢⌜Unit⌝ h = ⊢⌜Unit⌝
 sub-lemma (⊢⌜Π⌝ dc dd) h = ⊢⌜Π⌝ (sub-lemma dc h) (sub-lemma dd (Sub⊢-ext h))
 sub-lemma (⊢⌜Σ⌝ dc dd) h = ⊢⌜Σ⌝ (sub-lemma dc h) (sub-lemma dd (Sub⊢-ext h))
 sub-lemma (⊢⌜Hom⌝ dc da db) h =
@@ -1158,11 +1221,18 @@ data StkAmb {Γ : Cx} : RTy Γ → Set where
   st-Σ    : {A : RTy Γ} {B : RTy (Γ ∙)} → StkAmb (Σ' A B)
   st-hom  : {H : RTy Γ} {a b : RTm Γ} → StkAmb H → StkAmb (Hom H a b)
   st-Id   : {A : RTy Γ} {t u : RTm Γ} → StkAmb (Id A t u)
+  -- ★ WF stage C: `⌜Unit⌝` IS a stable code, so its decode joins the
+  -- stable ambients.  There is deliberately no `Nat` arm — `⌜Nat⌝` is
+  -- not `stkC?` (it is not J-able), so `El-⌜Nat⌝` is refuted on the key.
+  st-Unit : StkAmb (Unit {Γ})
 
 stamb-red : {A A' : RTy Γ} → StkAmb A → A ⟶ᵀ A' → StkAmb A'
 stamb-red (st-el {c = ⌜base⌝} k) El-⌜base⌝ = st-base
 stamb-red (st-el {c = ⌜Σ⌝ c d} k) (El-⌜Σ⌝ _ _) = st-Σ
 stamb-red (st-el {c = ⌜Id⌝ c a b} k) (El-⌜Id⌝ _ _ _) = st-Id
+stamb-red (st-el {c = ⌜Unit⌝} k) El-⌜Unit⌝ = st-Unit
+stamb-red (st-el {c = ⌜Nat⌝} ()) El-⌜Nat⌝
+stamb-red st-Unit ()
 stamb-red st-Id (ξ-Idᵀ r) = st-Id
 stamb-red st-Id (ξ-Idˡ r) = st-Id
 stamb-red st-Id (ξ-Idʳ r) = st-Id
@@ -1394,8 +1464,7 @@ sr d (tr-J-base cm am mm s e₀) with gen-tr d
 ...     | W , (rL , rR) with homred-inv baseamb-red (λ ()) (λ ()) (λ ()) ba-el rR
 ...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
             with Hom-to-Hom
-                   (homAmb← (subst (Hom A t u ⟶ᵀ*_) eqW rL)
-                            (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) nn-El))
+                   (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) (nn-El nnc-base))
                    (subst (Hom A t u ⟶ᵀ*_) eqW rL)
 ...         | mkHomRed rA rt ru =
               ⊢conv de
@@ -1412,8 +1481,7 @@ sr d (tr-J-Σ cm am mm c₁ c₂ s e₀) with gen-tr d
 ...     | W , (rL , rR) with homred-inv σamb-red (λ ()) (λ ()) (λ ()) sa-el rR
 ...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
             with Hom-to-Hom
-                   (homAmb← (subst (Hom A t u ⟶ᵀ*_) eqW rL)
-                            (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) nn-El))
+                   (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) (nn-El nnc-Σ))
                    (subst (Hom A t u ⟶ᵀ*_) eqW rL)
 ...         | mkHomRed rA rt ru =
               ⊢conv de
@@ -1446,8 +1514,30 @@ sr d (tr-J-Id cm am mm c₁ a₁ b₁ s e₀) with gen-tr d
                           (st-el {c = ⌜Id⌝ c₁ a₁ b₁} refl) rR
 ...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
             with Hom-to-Hom
-                   (homAmb← (subst (Hom A t u ⟶ᵀ*_) eqW rL)
-                            (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) nn-El))
+                   (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) (nn-El nnc-Id))
+                   (subst (Hom A t u ⟶ᵀ*_) eqW rL)
+...         | mkHomRed rA rt ru =
+              ⊢conv de
+                (ctrnᵀ (ctrnᵀ (mono-El[] (⌜Hom⌝ cm am mm) rt)
+                         (ctrnᵀ (csymᵀ (mono-El[] (⌜Hom⌝ cm am mm) rs₁))
+                           (ctrnᵀ (mono-El[] (⌜Hom⌝ cm am mm) rs₂)
+                             (csymᵀ (mono-El[] (⌜Hom⌝ cm am mm) ru)))))
+                       (csymᵀ cC))
+-- ★ WF stage C: J at ⌜Unit⌝ — the `tr-J-Id` case verbatim, at the other
+-- stable datatype code.  (There is NO `tr-J-Nat` peer: `⌜Nat⌝` is not
+-- `stkC?`, and `Hom Nat` computes, so J there is unsound — see
+-- `stkC?` in NbEPDirDBVar.)
+sr d (tr-J-Unit cm am mm s e₀) with gen-tr d
+... | tgU (mkTrInvU () t u dt du dp de cC)
+... | tgC (mkTrInv cM aM refl A t u dcM daM dvM hcM haM dt du dp de cC)
+      with gen-hrefl dp
+...   | (dc , (ds , cH)) with church-rosserᵀ cH
+...     | W , (rL , rR)
+          with homred-inv stamb-red (λ ()) (λ ()) (λ ())
+                          (st-el {c = ⌜Unit⌝} refl) rR
+...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
+            with Hom-to-Hom
+                   (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) (nn-El nnc-Unit))
                    (subst (Hom A t u ⟶ᵀ*_) eqW rL)
 ...         | mkHomRed rA rt ru =
               ⊢conv de
@@ -1466,8 +1556,7 @@ sr d (tr-J-Hom cm am mm c₁ a₁ b₁ s e₀ key) with gen-tr d
                           (st-el {c = ⌜Hom⌝ c₁ a₁ b₁} key) rR
 ...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
             with Hom-to-Hom
-                   (homAmb← (subst (Hom A t u ⟶ᵀ*_) eqW rL)
-                            (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) nn-El))
+                   (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) (nn-El nnc-Hom))
                    (subst (Hom A t u ⟶ᵀ*_) eqW rL)
 ...         | mkHomRed rA rt ru =
               ⊢conv de
@@ -1753,8 +1842,14 @@ sr d (ap-J cB b c₁ s key) with gen-ap d
 ...     | W , (rL , rR)
           with homred-inv stamb-red (λ ()) (λ ()) (λ ()) (st-el {c = cA} (flat→stk cA keyA)) rL
 ...       | A₂ , (t₁ , (u₁ , (eqW , (rt , ru))))
-            with Hom-to-Hom nn-El (subst (Hom (El cA) t u ⟶ᵀ*_) eqW rL)
-              |  Hom-to-Hom nn-El (subst (Hom (El _) s s ⟶ᵀ*_) eqW rR)
+            with Hom-to-Hom
+                   (homAmb→ (subst (Hom (El cA) t u ⟶ᵀ*_) eqW rL)
+                            (nn-El (stkC?→NoNatC cA (flat→stk cA keyA))))
+                   (subst (Hom (El cA) t u ⟶ᵀ*_) eqW rL)
+              |  Hom-to-Hom
+                   (homAmb→ (subst (Hom (El cA) t u ⟶ᵀ*_) eqW rL)
+                            (nn-El (stkC?→NoNatC cA (flat→stk cA keyA))))
+                   (subst (Hom (El _) s s ⟶ᵀ*_) eqW rR)
 ...         | mkHomRed rAL rt' ru' | mkHomRed rAR rs₁ rs₂ =
               ⊢conv
                 (⊢hrefl dcB
