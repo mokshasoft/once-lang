@@ -29,7 +29,7 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.SpikeNatJ where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; ⊥ )
+open import normalizer.Syntax.Types using ( _≡_; refl; ⊥; Σ; _,_ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; El; Hom; Unit; Nat
@@ -148,3 +148,23 @@ stuck-nf (ξ-trᵖ (ξ-hreflᶜ (ξ-⌜Hom⌝ʳ (ξ-nsuc (ξ-nsuc ())))))
 stuck-nf (ξ-trᵖ (ξ-hreflᵃ ()))
 stuck-nf (ξ-trᵉ (ξ-hreflᶜ ()))
 stuck-nf (ξ-trᵉ (ξ-hreflᵃ ()))
+
+------------------------------------------------------------------------
+-- 5. ★★★★ THE REFUTATION, stated against the THEOREM STATEMENTS rather
+--    than against `NbEPDirDBCanon` itself — so it is checkable NOW,
+--    with no dependency on that module compiling.  Feed either theorem
+--    its own statement and you get `⊥`.
+--
+--    `Canon`'s `trProgress` is verbatim:
+--        {dM : RTm (ε ∙)} {p e : RTm ε} {T : RTy ε} →
+--        ◇ ⊢ tr dM p e ∷ T → Σ (RTm ε) (λ u → tr dM p e ⟶ u)
+--    and `progress` is `◇ ⊢ t ∷ T → Prog t`, where `Prog` is
+--    canonical-or-steps.  `Canon` has no `tr` arm, so the `tr` case of
+--    `progress` must produce a step too.
+------------------------------------------------------------------------
+
+trProgress-refuted :
+  ({dM : RTm (ε ∙)} {p e : RTm ε} {T : RTy ε} →
+   ◇ ⊢ tr dM p e ∷ T → Σ (RTm ε) (λ u → tr dM p e ⟶ u)) → ⊥
+trProgress-refuted tp with tp ⊢stuck
+... | _ , r = stuck-nf r
