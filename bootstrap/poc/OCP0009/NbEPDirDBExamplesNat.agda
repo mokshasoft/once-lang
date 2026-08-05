@@ -4,10 +4,13 @@
 -- under it until it greens.
 --
 --   ★ numerals; `⊢plus` by `natrec`; `plus-computes : 2+1 ⟶* 3`.
---   ★ `⊢idplus` — Id-REWRITING ON NUMBERS arrives with the former:
---     `jsub` at a Nat-family, seeded by an idrefl on a numeral.
 --   ★ `⊢unit'` — the unit former types.
---   (Stage B adds: le-computes / lt-empty / the order demos.)
+--
+-- NOT here, and NOT an oversight: Id-rewriting ON NUMBERS.  `jsub`
+-- takes a CODE family (`(Γ ▹ A) ⊢ d ∷ U`), and `Nat` has no code until
+-- ⌜Nat⌝ ∈ U — that is stage C (N-in).  Stage A's `Nat` is a type-level
+-- former only, so Id-at-Nat is reachable but its motive is not.
+-- (Stage B adds: le-computes / lt-empty / the order demos.)
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
