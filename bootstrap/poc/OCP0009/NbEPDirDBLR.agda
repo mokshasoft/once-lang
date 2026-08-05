@@ -61,7 +61,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
         ; tr-J-Id; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ
-        ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; ⊢ap
+        ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
+        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; ⊢ap
         ; hrefl-pw; tr-J-Hom; tr-pw
         ; _⟶*_; done; step
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
@@ -1169,6 +1170,90 @@ natstk?-red* : {t t' : RTm Γ} → t ⟶* t' → natstk? t ≡ true → natstk? 
 natstk?-red* done h       = h
 natstk?-red* (step r q) h = natstk?-red* q (natstk?-red r h)
 
+------------------------------------------------------------------------
+-- ★★ WF stage B: the ORDER-HOM stuckness key.  `Hom Nat a b` fires a
+-- root rule exactly when its endpoints expose numeral heads, so it is
+-- PERMANENTLY stuck exactly when they never will — and stage A's
+-- `natstk?` already says that.  The key is therefore three lines: a
+-- `nzero` left endpoint always fires, a `nsuc` left endpoint defers to
+-- the right one, and any other left endpoint decides it alone.
+------------------------------------------------------------------------
+
+homnat? : RTm Γ → RTm Γ → 𝔹
+homnat? nzero    u = false
+homnat? (nsuc m) u = natstk? u
+homnat? t        u = natstk? t
+
+-- a term that never becomes a numeral is never a numeral, so it makes
+-- the order-hom stuck on its own.
+natstk→homnat : (t u : RTm Γ) → natstk? t ≡ true → homnat? t u ≡ true
+natstk→homnat (var x) u h        = h
+natstk→homnat (lam t) u h        = h
+natstk→homnat (app t₁ t₂) u h    = h
+natstk→homnat (pair a b) u h     = h
+natstk→homnat (fst t) u h        = h
+natstk→homnat (snd t) u h        = h
+natstk→homnat ⌜base⌝ u h         = h
+natstk→homnat (⌜Π⌝ c d) u h      = h
+natstk→homnat (⌜Σ⌝ c d) u h      = h
+natstk→homnat (⌜Hom⌝ c a b) u h  = h
+natstk→homnat (⌜Id⌝ c a b) u h   = h
+natstk→homnat (hrefl c t) u h    = h
+natstk→homnat (idrefl c t) u h   = h
+natstk→homnat (tr d p e) u h     = h
+natstk→homnat (ap c b p) u h     = h
+natstk→homnat (jsub d p e) u h   = h
+natstk→homnat unit u h           = h
+natstk→homnat nzero u ()
+natstk→homnat (nsuc n) u ()
+natstk→homnat (natrec z w n) u h = h
+
+homnat?-redˡ : {t t' u : RTm Γ} → t ⟶ t' →
+               homnat? t u ≡ true → homnat? t' u ≡ true
+homnat?-redˡ {t = nzero} r ()
+homnat?-redˡ {t = nsuc m} (ξ-nsuc r) h = h
+homnat?-redˡ {t = var x} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = lam t} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = app t₁ t₂} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = pair a b} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = fst t} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = snd t} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = ⌜base⌝} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = ⌜Π⌝ c d} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = ⌜Σ⌝ c d} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = ⌜Hom⌝ c a b} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = ⌜Id⌝ c a b} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = hrefl c t} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = idrefl c t} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = tr d p e} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = ap c b p} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = jsub d p e} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = unit} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = natrec z w n} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+
+homnat?-redʳ : {t u u' : RTm Γ} → u ⟶ u' →
+               homnat? t u ≡ true → homnat? t u' ≡ true
+homnat?-redʳ {t = nzero} r ()
+homnat?-redʳ {t = nsuc m} r h       = natstk?-red r h
+homnat?-redʳ {t = var x} r h        = h
+homnat?-redʳ {t = lam t} r h        = h
+homnat?-redʳ {t = app t₁ t₂} r h    = h
+homnat?-redʳ {t = pair a b} r h     = h
+homnat?-redʳ {t = fst t} r h        = h
+homnat?-redʳ {t = snd t} r h        = h
+homnat?-redʳ {t = ⌜base⌝} r h       = h
+homnat?-redʳ {t = ⌜Π⌝ c d} r h      = h
+homnat?-redʳ {t = ⌜Σ⌝ c d} r h      = h
+homnat?-redʳ {t = ⌜Hom⌝ c a b} r h  = h
+homnat?-redʳ {t = ⌜Id⌝ c a b} r h   = h
+homnat?-redʳ {t = hrefl c t} r h    = h
+homnat?-redʳ {t = idrefl c t} r h   = h
+homnat?-redʳ {t = tr d p e} r h     = h
+homnat?-redʳ {t = ap c b p} r h     = h
+homnat?-redʳ {t = jsub d p e} r h   = h
+homnat?-redʳ {t = unit} r h         = h
+homnat?-redʳ {t = natrec z w n} r h = h
+
 idstk?-red* : {t t' : RTm Γ} → t ⟶* t' → idstk? t ≡ true → idstk? t' ≡ true
 idstk?-red* done h       = h
 idstk?-red* (step r q) h = idstk?-red* q (idstk?-red r h)
@@ -2045,7 +2130,13 @@ data StkHd {Γ} : RTy Γ → Set where
   sh-Hom  : {H : RTy Γ} {a b : RTm Γ} → StkHd H → StkHd (Hom H a b)
   sh-Id   : {A : RTy Γ} {t u : RTm Γ} → StkHd (Id A t u)
   sh-Unit : StkHd (Unit {Γ})
-  sh-Nat  : StkHd (Nat {Γ})
+  -- ★★ WF stage B: `sh-Nat : StkHd Nat` is GONE — the order rules make
+  -- `Hom Nat a b` compute, so a `Nat` ambient is NOT a stuck head.
+  -- What survives is the ENDPOINT-keyed stuck order-hom: `Hom Nat a b`
+  -- is inert exactly when its endpoints never expose numeral heads.
+  -- Note this arm produces `StkHd` of the whole `Hom`, which is why
+  -- `⊩₀Hom`/`⊩₁Hom` now take `StkHd (Hom H a b)` rather than `StkHd H`.
+  sh-NatH : {a b : RTm Γ} → homnat? a b ≡ true → StkHd (Hom Nat a b)
 
 stkhd-red : {H H' : RTy Γ} → StkHd H → H ⟶ᵀ H' → StkHd H'
 stkhd-red (sh-ne ()) El-⌜base⌝
@@ -2056,7 +2147,6 @@ stkhd-red sh-Id (ξ-Idᵀ r) = sh-Id
 stkhd-red sh-Id (ξ-Idˡ r) = sh-Id
 stkhd-red sh-Id (ξ-Idʳ r) = sh-Id
 stkhd-red sh-Unit ()
-stkhd-red sh-Nat  ()
 stkhd-red sh-Σ       (ξ-Σˡ r)    = sh-Σ
 stkhd-red sh-Σ       (ξ-Σʳ r)    = sh-Σ
 stkhd-red (sh-Hom ()) (Hom-U _ _)
@@ -2064,25 +2154,52 @@ stkhd-red (sh-Hom ()) (Hom-Π _ _ _ _)
 stkhd-red (sh-Hom s) (ξ-Homᵀ r) = sh-Hom (stkhd-red s r)
 stkhd-red (sh-Hom s) (ξ-Homˡ r) = sh-Hom s
 stkhd-red (sh-Hom s) (ξ-Homʳ r) = sh-Hom s
+stkhd-red (sh-Hom ()) (Hom-Nat-z _)
+stkhd-red (sh-Hom ()) (Hom-Nat-sz _)
+stkhd-red (sh-Hom ()) (Hom-Nat-ss _ _)
+stkhd-red (sh-NatH ()) (Hom-Nat-z _)
+stkhd-red (sh-NatH ()) (Hom-Nat-sz _)
+stkhd-red (sh-NatH ()) (Hom-Nat-ss _ _)
+stkhd-red (sh-NatH k) (ξ-Homᵀ ())
+stkhd-red (sh-NatH {a = a} {b = b} k) (ξ-Homˡ r) =
+  sh-NatH (homnat?-redˡ {u = b} r k)
+stkhd-red (sh-NatH {a = a} {b = b} k) (ξ-Homʳ r) =
+  sh-NatH (homnat?-redʳ {t = a} r k)
 
 record HomStk {Γ} (C : RTy Γ) : Set where
   constructor mkHomStk
   field
     hH    : RTy Γ
     ha hb : RTm Γ
-    hstk  : StkHd hH
+    hstk  : StkHd (Hom hH ha hb)
     heq   : C ≡ Hom hH ha hb
 
 -- reducts of a stuck `Hom` are stuck `Hom`s — the shape lemma the transfer
 -- layer consumes, exactly `El-ne-reduct`'s pattern.
 Hom-stk-reduct : {H : RTy Γ} {a b : RTm Γ} {C : RTy Γ} →
-                 StkHd H → Hom H a b ⟶ᵀ* C → HomStk C
-Hom-stk-reduct s doneᵀ                    = mkHomStk _ _ _ s refl
-Hom-stk-reduct () (stepᵀ (Hom-U _ _) p)
-Hom-stk-reduct () (stepᵀ (Hom-Π _ _ _ _) p)
-Hom-stk-reduct s (stepᵀ (ξ-Homᵀ r) p) = Hom-stk-reduct (stkhd-red s r) p
-Hom-stk-reduct s (stepᵀ (ξ-Homˡ r) p) = Hom-stk-reduct s p
-Hom-stk-reduct s (stepᵀ (ξ-Homʳ r) p) = Hom-stk-reduct s p
+                 StkHd (Hom H a b) → Hom H a b ⟶ᵀ* C → HomStk C
+-- ★ WF stage B: with the witness on the WHOLE `Hom`, a stuck order-hom
+-- provably stays `Hom`-headed — the three order rules are refuted by
+-- the endpoint key (`sh-NatH`) or by `StkHd Nat` being uninhabited
+-- (`sh-Hom`), so the recursion never leaves the shape.
+Hom-stk-reduct s doneᵀ = mkHomStk _ _ _ s refl
+Hom-stk-reduct (sh-Hom ()) (stepᵀ (Hom-U _ _) p)
+Hom-stk-reduct (sh-Hom ()) (stepᵀ (Hom-Π _ _ _ _) p)
+Hom-stk-reduct (sh-Hom ()) (stepᵀ (Hom-Nat-z _) p)
+Hom-stk-reduct (sh-Hom ()) (stepᵀ (Hom-Nat-sz _) p)
+Hom-stk-reduct (sh-Hom ()) (stepᵀ (Hom-Nat-ss _ _) p)
+Hom-stk-reduct (sh-Hom s) (stepᵀ (ξ-Homᵀ r) p) =
+  Hom-stk-reduct (sh-Hom (stkhd-red s r)) p
+Hom-stk-reduct (sh-Hom s) (stepᵀ (ξ-Homˡ r) p) = Hom-stk-reduct (sh-Hom s) p
+Hom-stk-reduct (sh-Hom s) (stepᵀ (ξ-Homʳ r) p) = Hom-stk-reduct (sh-Hom s) p
+Hom-stk-reduct (sh-NatH ()) (stepᵀ (Hom-Nat-z _) p)
+Hom-stk-reduct (sh-NatH ()) (stepᵀ (Hom-Nat-sz _) p)
+Hom-stk-reduct (sh-NatH ()) (stepᵀ (Hom-Nat-ss _ _) p)
+Hom-stk-reduct (sh-NatH k) (stepᵀ (ξ-Homᵀ ()) p)
+Hom-stk-reduct (sh-NatH {a = a} {b = b} k) (stepᵀ (ξ-Homˡ r) p) =
+  Hom-stk-reduct (sh-NatH (homnat?-redˡ {u = b} r k)) p
+Hom-stk-reduct (sh-NatH {a = a} {b = b} k) (stepᵀ (ξ-Homʳ r) p) =
+  Hom-stk-reduct (sh-NatH (homnat?-redʳ {t = a} r k)) p
 
 ⟶ᵀ*-sub : (σ : Sub Γ Δ) {A B : RTy Γ} → A ⟶ᵀ* B → subTy σ A ⟶ᵀ* subTy σ B
 ⟶ᵀ*-sub σ doneᵀ       = doneᵀ
@@ -2144,7 +2261,7 @@ data ⊩₀_ {Γ} where
   -- stuck `Hom`s (`El (⌜Hom⌝ c a b) ⟶ᵀ Hom (El c) a b`).  Membership is
   -- `SN`, like `base`.
   ⊩₀Hom  : {A H : RTy Γ} {a b : RTm Γ}
-         → A ⟶ᵀ* Hom H a b → StkHd H → ⊩₀ A
+         → A ⟶ᵀ* Hom H a b → StkHd (Hom H a b) → ⊩₀ A
   -- ★ the two-former kernel: `Id` at level 0 (`⌜Id⌝` decodes).  The
   -- MEMBERSHIP carries the ENDPOINT-JOIN PAYLOAD (SPIKE-TWOFORMER §4):
   -- reaching a reflexivity witnesses the endpoints' confluence join —
@@ -2659,7 +2776,7 @@ data ⊩₁_ {Γ} where
   -- of codes, and there is no `⌜Hom⌝` code, so no level-0 type ever reduces
   -- to a `Hom`.  The predicative cut does structural work again.
   ⊩₁Hom  : {A H : RTy Γ} {a b : RTm Γ}
-         → A ⟶ᵀ* Hom H a b → StkHd H → ⊩₁ A
+         → A ⟶ᵀ* Hom H a b → StkHd (Hom H a b) → ⊩₁ A
   -- ★ WF stage A: the datatype core's two type formers.  `Unit` is
   -- SN-only (like `base`); `Nat` carries the reaches-numeral payload.
   ⊩₁Unit : {A : RTy Γ} → A ⟶ᵀ* Unit → ⊩₁ A
@@ -3414,15 +3531,50 @@ sem-⌜Σ⌝ p snc snD ⊩c f =
 
 -- (`wk-single` moved up, before the PayT block)
 
+-- ★★ WF stage B — THE ORDER, SEMANTICALLY.  `Hom Nat a b` is the one
+-- hom whose interp must FOLLOW its endpoints, and it can: both
+-- endpoints' memberships at `Nat` carry `NatMem`, so the interp is a
+-- DOUBLE meta-induction on the reaches-numeral payloads.  Zero on the
+-- left gives `Unit` (the inequality HOLDS, trivially); successor over
+-- zero gives `base` (it FAILS, and `base` has no closed inhabitants);
+-- successor over successor peels and recurses; a stuck endpoint gives
+-- the endpoint-keyed stuck order-hom.  This is the exact mirror of
+-- stage A's `fund`-worker, which is why `NatMem` was built to mirror
+-- `SN` in the first place.
+homNatSem : {Γ : Cx} (a b : RTm Γ) →
+            SN a → NatMem a → SN b → NatMem b → ⊩₁ (Hom (Nat {Γ}) a b)
+homNatSem a b sa (nm-ne nt) sb mb =
+  ⊩₁Hom doneᵀ (sh-NatH (natstk→homnat a b (sne→natstk nt)))
+homNatSem a b sa (nm-exp {t' = a'} r ma) sb mb =
+  bwd₁ (stepᵀ (ξ-Homˡ (snr→⟶ r)) doneᵀ)
+       (homNatSem a' b (sn-whred sa r) ma sb mb)
+homNatSem .nzero b sa nm-zero sb mb =
+  bwd₁ (stepᵀ (Hom-Nat-z b) doneᵀ) (⊩₁Unit doneᵀ)
+homNatSem .(nsuc _) b sa (nm-suc {n = m} ma) sb (nm-ne nt) =
+  ⊩₁Hom doneᵀ (sh-NatH (sne→natstk nt))
+homNatSem .(nsuc _) b sa (nm-suc {n = m} ma) sb (nm-exp {t' = b'} r mb) =
+  bwd₁ (stepᵀ (ξ-Homʳ (snr→⟶ r)) doneᵀ)
+       (homNatSem (nsuc m) b' sa (nm-suc ma) (sn-whred sb r) mb)
+homNatSem .(nsuc _) .nzero sa (nm-suc {n = m} ma) sb nm-zero =
+  bwd₁ (stepᵀ (Hom-Nat-sz m) doneᵀ) (⊩₁base doneᵀ)
+homNatSem .(nsuc _) .(nsuc _) sa (nm-suc {n = m} ma) sb (nm-suc {n = n} mb) =
+  bwd₁ (stepᵀ (Hom-Nat-ss m n) doneᵀ)
+       (homNatSem m n (snsuc-inv sa) ma (snsuc-inv sb) mb)
+  where
+  snsuc-inv : {k : RTm _} → SN (nsuc k) → SN k
+  snsuc-inv (sn-nsuc h) = h
+
 homSem₁ : {A : RTy Γ} (R : ⊩₁ A) {a b : RTm Γ} →
           R ⊩₁∋ a → R ⊩₁∋ b → ⊩₁ (Hom A a b)
-homSem₁ (⊩₁base p)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) sh-base
-homSem₁ (⊩₁ne p n)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-ne n)
-homSem₁ (⊩₁Σ p ⊩F ⊩G) ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) sh-Σ
+homSem₁ (⊩₁base p)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-base)
+homSem₁ (⊩₁ne p n)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom (sh-ne n))
+homSem₁ (⊩₁Σ p ⊩F ⊩G) ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Σ)
 homSem₁ (⊩₁Hom p s)   ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom s)
-homSem₁ (⊩₁Unit p)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) sh-Unit
-homSem₁ (⊩₁Nat p)     ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) sh-Nat
-homSem₁ (⊩₁Id p)      ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) sh-Id
+homSem₁ (⊩₁Unit p)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Unit)
+homSem₁ (⊩₁Nat p) {a} {b} ha hb =
+  bwd₁ (⟶ᵀ*-Homᵀ p)
+       (homNatSem a b (projl ha) (projr ha) (projl hb) (projr hb))
+homSem₁ (⊩₁Id p)      ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Id)
 homSem₁ (⊩₁U p) {c} {d} hc hd =
   ⊩₁Π (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ p) (stepᵀ (Hom-U c d) doneᵀ))
       (emb (Σ.fst (projr hc)))
@@ -3445,11 +3597,11 @@ homSem₁ (⊩₁Π {F = F} {G = G} p ⊩F ⊩G) {a} {b} ha hb =
 -- the pointwise `Π` recursion.
 homSem₀ : {A : RTy Γ} (R : ⊩₀ A) {a b : RTm Γ} →
           R ⊩₀∋ a → R ⊩₀∋ b → ⊩₀ (Hom A a b)
-homSem₀ (⊩₀base p)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) sh-base
-homSem₀ (⊩₀ne p n)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-ne n)
-homSem₀ (⊩₀Σ p ⊩F ⊩G) ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) sh-Σ
+homSem₀ (⊩₀base p)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-base)
+homSem₀ (⊩₀ne p n)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom (sh-ne n))
+homSem₀ (⊩₀Σ p ⊩F ⊩G) ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Σ)
 homSem₀ (⊩₀Hom p s)   ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom s)
-homSem₀ (⊩₀Id p)      ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) sh-Id
+homSem₀ (⊩₀Id p)      ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Id)
 homSem₀ (⊩₀Π {F = F} {G = G} p ⊩F ⊩G) {a} {b} ha hb =
   ⊩₀Π (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ p) (stepᵀ (Hom-Π F G a b) doneᵀ))
       ⊩F
