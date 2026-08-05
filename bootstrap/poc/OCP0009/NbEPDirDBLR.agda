@@ -48,7 +48,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
-        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃
+        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; extR; Sub; subTy; subTm; extS; renTm
         ; subTm-renTm; subTm-id; Hom-cong₃; ⌜Hom⌝-cong₃ )
 open import poc.OCP0009.NbEPDirDBType
@@ -57,7 +57,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ
-        ; tr-J-base; tr-J-Σ; tr-taut; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
+        ; tr-J-base; tr-J-Σ; tr-J-Unit; tr-taut; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
         ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
         ; tr-J-Id; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ
@@ -192,6 +192,8 @@ pathstk? (pair a b)     = true
 pathstk? (fst t)        = spine? t
 pathstk? (snd t)        = spine? t
 pathstk? ⌜base⌝         = true
+pathstk? ⌜Nat⌝ = true
+pathstk? ⌜Unit⌝ = true
 pathstk? (⌜Π⌝ c d)      = true
 pathstk? (⌜Σ⌝ c d)      = true
 pathstk? (⌜Hom⌝ c a b)  = true
@@ -217,6 +219,8 @@ idstk? (pair a b)     = true
 idstk? (fst t)        = spine? t
 idstk? (snd t)        = spine? t
 idstk? ⌜base⌝         = true
+idstk? ⌜Nat⌝ = true
+idstk? ⌜Unit⌝ = true
 idstk? (⌜Π⌝ c d)      = true
 idstk? (⌜Σ⌝ c d)      = true
 idstk? (⌜Hom⌝ c a b)  = true
@@ -242,6 +246,8 @@ apstk? (pair a b)     = true
 apstk? (fst t)        = spine? t
 apstk? (snd t)        = spine? t
 apstk? ⌜base⌝         = true
+apstk? ⌜Nat⌝ = true
+apstk? ⌜Unit⌝ = true
 apstk? (⌜Π⌝ c d)      = true
 apstk? (⌜Σ⌝ c d)      = true
 apstk? (⌜Hom⌝ c a b)  = true
@@ -286,6 +292,8 @@ deadmot? (pair a b)     = true
 deadmot? (fst t)        = spine? t
 deadmot? (snd t)        = spine? t
 deadmot? ⌜base⌝         = true
+deadmot? ⌜Nat⌝ = true
+deadmot? ⌜Unit⌝ = true
 deadmot? (⌜Π⌝ c d)      = false
 deadmot? (⌜Σ⌝ c d)      = true
 deadmot? (⌜Hom⌝ c a b)  = deadmot? c
@@ -307,6 +315,8 @@ nopw? (pair a b)     = true
 nopw? (fst t)        = spine? t
 nopw? (snd t)        = spine? t
 nopw? ⌜base⌝         = true
+nopw? ⌜Nat⌝ = true
+nopw? ⌜Unit⌝ = true
 nopw? (⌜Π⌝ c d)      = false
 nopw? (⌜Σ⌝ c d)      = true
 nopw? (⌜Hom⌝ c a b)  = nopw? c
@@ -332,6 +342,8 @@ natstk? (pair a b)     = true
 natstk? (fst t)        = spine? t
 natstk? (snd t)        = spine? t
 natstk? ⌜base⌝         = true
+natstk? ⌜Nat⌝ = true
+natstk? ⌜Unit⌝ = true
 natstk? (⌜Π⌝ c d)      = true
 natstk? (⌜Σ⌝ c d)      = true
 natstk? (⌜Hom⌝ c a b)  = true
@@ -378,6 +390,8 @@ nopw⊥pw (pair a b) h = refl
 nopw⊥pw (fst t) h = refl
 nopw⊥pw (snd t) h = refl
 nopw⊥pw ⌜base⌝ h = refl
+nopw⊥pw ⌜Nat⌝ h = refl
+nopw⊥pw ⌜Unit⌝ h = refl
 nopw⊥pw (⌜Π⌝ c d) ()
 nopw⊥pw (⌜Σ⌝ c d) h = refl
 nopw⊥pw (⌜Hom⌝ C a b) h = nopw⊥pw C h
@@ -400,6 +414,8 @@ deadmot→nopw (pair a b) h = refl
 deadmot→nopw (fst t) h = h
 deadmot→nopw (snd t) h = h
 deadmot→nopw ⌜base⌝ h = refl
+deadmot→nopw ⌜Nat⌝ h = refl
+deadmot→nopw ⌜Unit⌝ h = refl
 deadmot→nopw (⌜Π⌝ c d) ()
 deadmot→nopw (⌜Σ⌝ c d) h = refl
 deadmot→nopw (⌜Hom⌝ C a b) h = deadmot→nopw C h
@@ -422,6 +438,7 @@ stk→deadmot (pair a b) ()
 stk→deadmot (fst t) ()
 stk→deadmot (snd t) ()
 stk→deadmot ⌜base⌝ h = refl
+stk→deadmot ⌜Unit⌝ h = refl
 stk→deadmot (⌜Π⌝ c d) ()
 stk→deadmot (⌜Σ⌝ c d) h = refl
 stk→deadmot (⌜Id⌝ c a b) h = refl
@@ -437,6 +454,7 @@ stk⊥dead (pair a b) ()
 stk⊥dead (fst t) ()
 stk⊥dead (snd t) ()
 stk⊥dead ⌜base⌝ h = refl
+stk⊥dead ⌜Unit⌝ h = refl
 stk⊥dead (⌜Π⌝ c d) ()
 stk⊥dead (⌜Σ⌝ c d) h = refl
 stk⊥dead (⌜Id⌝ c a b) h = refl
@@ -937,6 +955,8 @@ trstk-hrefl-any (pair a b) h = h
 trstk-hrefl-any (fst t) h = h
 trstk-hrefl-any (snd t) h = h
 trstk-hrefl-any ⌜base⌝ h = h
+trstk-hrefl-any ⌜Nat⌝ h = h
+trstk-hrefl-any ⌜Unit⌝ h = h
 trstk-hrefl-any (⌜Π⌝ c₂ d₂) h = h
 trstk-hrefl-any (⌜Σ⌝ c₂ d₂) h = h
 trstk-hrefl-any (⌜Hom⌝ c₂ a₂ b₂) h = h
@@ -1043,6 +1063,8 @@ trstk?-red-d {p = (pair a₁ b₁)} r h = h
 trstk?-red-d {p = (fst q)} r h = h
 trstk?-red-d {p = (snd q)} r h = h
 trstk?-red-d {p = ⌜base⌝} r h = h
+trstk?-red-d {p = ⌜Nat⌝} r h = h
+trstk?-red-d {p = ⌜Unit⌝} r h = h
 trstk?-red-d {p = (⌜Π⌝ c₁ d₁)} r h = h
 trstk?-red-d {p = (⌜Σ⌝ c₁ d₁)} r h = h
 trstk?-red-d {p = (⌜Hom⌝ c₁ a₁ b₁)} r h = h
@@ -1062,6 +1084,8 @@ trstk?-red-p {d = (pair a b)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (fst t)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (snd t)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = ⌜base⌝} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = ⌜Nat⌝} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = ⌜Unit⌝} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (⌜Π⌝ c₂ d₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (⌜Σ⌝ c₂ d₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (⌜Hom⌝ c₂ a₂ b₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
@@ -1082,6 +1106,8 @@ trstk?-red-p {d = (pair a b)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (fst t)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (snd t)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = ⌜base⌝} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = ⌜Nat⌝} (ξ-hreflᵃ ra) h = h
+trstk?-red-p {d = ⌜Unit⌝} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (⌜Π⌝ c₂ d₂)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (⌜Σ⌝ c₂ d₂)} (ξ-hreflᵃ ra) h = h
 trstk?-red-p {d = (⌜Hom⌝ c₂ a₂ b₂)} (ξ-hreflᵃ ra) h = h
@@ -1102,6 +1128,8 @@ trstk?-red-p {d = (pair a b)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans
 trstk?-red-p {d = (fst t)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (snd t)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = ⌜base⌝} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = ⌜Nat⌝} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = ⌜Unit⌝} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (⌜Π⌝ c₂ d₂)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (⌜Σ⌝ c₂ d₂)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (⌜Hom⌝ c₂ a₂ b₂)} (hrefl-pw C₀ s₀ kp) h = ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
@@ -1194,6 +1222,8 @@ natstk→homnat (pair a b) u h     = h
 natstk→homnat (fst t) u h        = h
 natstk→homnat (snd t) u h        = h
 natstk→homnat ⌜base⌝ u h         = h
+natstk→homnat ⌜Nat⌝ u h = h
+natstk→homnat ⌜Unit⌝ u h = h
 natstk→homnat (⌜Π⌝ c d) u h      = h
 natstk→homnat (⌜Σ⌝ c d) u h      = h
 natstk→homnat (⌜Hom⌝ c a b) u h  = h
@@ -1242,6 +1272,8 @@ homnat?-redʳ {t = pair a b} r h     = h
 homnat?-redʳ {t = fst t} r h        = h
 homnat?-redʳ {t = snd t} r h        = h
 homnat?-redʳ {t = ⌜base⌝} r h       = h
+homnat?-redʳ {t = ⌜Nat⌝} r h        = h
+homnat?-redʳ {t = ⌜Unit⌝} r h       = h
 homnat?-redʳ {t = ⌜Π⌝ c d} r h      = h
 homnat?-redʳ {t = ⌜Σ⌝ c d} r h      = h
 homnat?-redʳ {t = ⌜Hom⌝ c a b} r h  = h
@@ -1817,6 +1849,8 @@ homheaded?-ren ρ (pair a b)    = refl
 homheaded?-ren ρ (fst t)       = refl
 homheaded?-ren ρ (snd t)       = refl
 homheaded?-ren ρ ⌜base⌝        = refl
+homheaded?-ren ρ ⌜Nat⌝ = refl
+homheaded?-ren ρ ⌜Unit⌝ = refl
 homheaded?-ren ρ (⌜Π⌝ c d)     = refl
 homheaded?-ren ρ (⌜Σ⌝ c d)     = refl
 homheaded?-ren ρ (⌜Hom⌝ c a b) = refl
@@ -1856,6 +1890,8 @@ spine?-ren ρ (pair a b)    = refl
 spine?-ren ρ (fst t)       = spine?-ren ρ t
 spine?-ren ρ (snd t)       = spine?-ren ρ t
 spine?-ren ρ ⌜base⌝        = refl
+spine?-ren ρ ⌜Nat⌝ = refl
+spine?-ren ρ ⌜Unit⌝ = refl
 spine?-ren ρ (⌜Π⌝ c d)     = refl
 spine?-ren ρ (⌜Σ⌝ c d)     = refl
 spine?-ren ρ (⌜Hom⌝ c a b) = refl
@@ -1877,6 +1913,8 @@ stablecd?-ren ρ (pair a b)    = refl
 stablecd?-ren ρ (fst t)       = spine?-ren ρ t
 stablecd?-ren ρ (snd t)       = spine?-ren ρ t
 stablecd?-ren ρ ⌜base⌝        = refl
+stablecd?-ren ρ ⌜Nat⌝ = refl
+stablecd?-ren ρ ⌜Unit⌝ = refl
 stablecd?-ren ρ (⌜Π⌝ c d)     = refl
 stablecd?-ren ρ (⌜Σ⌝ c d)     = refl
 stablecd?-ren ρ (⌜Hom⌝ c a b) = stablecd?-ren ρ c
@@ -1898,6 +1936,8 @@ pathstk?-ren ρ (pair a b)    = refl
 pathstk?-ren ρ (fst t)       = spine?-ren ρ t
 pathstk?-ren ρ (snd t)       = spine?-ren ρ t
 pathstk?-ren ρ ⌜base⌝        = refl
+pathstk?-ren ρ ⌜Nat⌝ = refl
+pathstk?-ren ρ ⌜Unit⌝ = refl
 pathstk?-ren ρ (⌜Π⌝ c d)     = refl
 pathstk?-ren ρ (⌜Σ⌝ c d)     = refl
 pathstk?-ren ρ (⌜Hom⌝ c a b) = refl
@@ -1919,6 +1959,8 @@ apstk?-ren ρ (pair a b)    = refl
 apstk?-ren ρ (fst t)       = spine?-ren ρ t
 apstk?-ren ρ (snd t)       = spine?-ren ρ t
 apstk?-ren ρ ⌜base⌝        = refl
+apstk?-ren ρ ⌜Nat⌝ = refl
+apstk?-ren ρ ⌜Unit⌝ = refl
 apstk?-ren ρ (⌜Π⌝ c d)     = refl
 apstk?-ren ρ (⌜Σ⌝ c d)     = refl
 apstk?-ren ρ (⌜Hom⌝ c a b) = refl
@@ -1940,6 +1982,8 @@ idstk?-ren ρ (pair a b)    = refl
 idstk?-ren ρ (fst t)       = spine?-ren ρ t
 idstk?-ren ρ (snd t)       = spine?-ren ρ t
 idstk?-ren ρ ⌜base⌝        = refl
+idstk?-ren ρ ⌜Nat⌝ = refl
+idstk?-ren ρ ⌜Unit⌝ = refl
 idstk?-ren ρ (⌜Π⌝ c d)     = refl
 idstk?-ren ρ (⌜Σ⌝ c d)     = refl
 idstk?-ren ρ (⌜Hom⌝ c a b) = refl
@@ -1961,6 +2005,8 @@ natstk?-ren ρ (pair a b)    = refl
 natstk?-ren ρ (fst t)       = spine?-ren ρ t
 natstk?-ren ρ (snd t)       = spine?-ren ρ t
 natstk?-ren ρ ⌜base⌝        = refl
+natstk?-ren ρ ⌜Nat⌝ = refl
+natstk?-ren ρ ⌜Unit⌝ = refl
 natstk?-ren ρ (⌜Π⌝ c d)     = refl
 natstk?-ren ρ (⌜Σ⌝ c d)     = refl
 natstk?-ren ρ (⌜Hom⌝ c a b) = refl
@@ -1982,6 +2028,8 @@ trstk?-ren ρ d (pair a b)    = refl
 trstk?-ren ρ d (fst t)       = spine?-ren ρ t
 trstk?-ren ρ d (snd t)       = spine?-ren ρ t
 trstk?-ren ρ d ⌜base⌝        = refl
+trstk?-ren ρ d ⌜Nat⌝ = refl
+trstk?-ren ρ d ⌜Unit⌝ = refl
 trstk?-ren ρ d (⌜Π⌝ c e)     = refl
 trstk?-ren ρ d (⌜Σ⌝ c e)     = refl
 trstk?-ren ρ d (⌜Hom⌝ c a b) = refl
@@ -1992,6 +2040,8 @@ trstk?-ren ρ (pair a b) (hrefl c t)       = stablecd?-ren ρ c
 trstk?-ren ρ (fst q) (hrefl c t)          = stablecd?-ren ρ c
 trstk?-ren ρ (snd q) (hrefl c t)          = stablecd?-ren ρ c
 trstk?-ren ρ ⌜base⌝ (hrefl c t)           = stablecd?-ren ρ c
+trstk?-ren ρ ⌜Nat⌝ (hrefl c t)            = stablecd?-ren ρ c
+trstk?-ren ρ ⌜Unit⌝ (hrefl c t)           = stablecd?-ren ρ c
 trstk?-ren ρ (⌜Π⌝ c₁ d₁) (hrefl c t)      = stablecd?-ren ρ c
 trstk?-ren ρ (⌜Σ⌝ c₁ d₁) (hrefl c t)      = stablecd?-ren ρ c
 trstk?-ren ρ (⌜Hom⌝ c₁ a₁ b₁) (hrefl c t) = stablecd?-ren ρ c
@@ -2022,6 +2072,8 @@ nopw?-ren ρ (pair a b)    = refl
 nopw?-ren ρ (fst t)       = spine?-ren ρ t
 nopw?-ren ρ (snd t)       = spine?-ren ρ t
 nopw?-ren ρ ⌜base⌝        = refl
+nopw?-ren ρ ⌜Nat⌝ = refl
+nopw?-ren ρ ⌜Unit⌝ = refl
 nopw?-ren ρ (⌜Π⌝ c d)     = refl
 nopw?-ren ρ (⌜Σ⌝ c d)     = refl
 nopw?-ren ρ (⌜Hom⌝ c a b) = nopw?-ren ρ c
@@ -2043,6 +2095,8 @@ deadmot?-ren ρ (pair a b)    = refl
 deadmot?-ren ρ (fst t)       = spine?-ren ρ t
 deadmot?-ren ρ (snd t)       = spine?-ren ρ t
 deadmot?-ren ρ ⌜base⌝        = refl
+deadmot?-ren ρ ⌜Nat⌝ = refl
+deadmot?-ren ρ ⌜Unit⌝ = refl
 deadmot?-ren ρ (⌜Π⌝ c d)     = refl
 deadmot?-ren ρ (⌜Σ⌝ c d)     = refl
 deadmot?-ren ρ (⌜Hom⌝ c a b) = deadmot?-ren ρ c
@@ -2065,6 +2119,8 @@ trlam?-ren ρ (pair a b)   = refl
 trlam?-ren ρ (fst t)      = refl
 trlam?-ren ρ (snd t)      = refl
 trlam?-ren ρ ⌜base⌝       = refl
+trlam?-ren ρ ⌜Nat⌝        = refl
+trlam?-ren ρ ⌜Unit⌝       = refl
 trlam?-ren ρ (⌜Π⌝ c d)    = refl
 trlam?-ren ρ (⌜Σ⌝ c d)    = refl
 trlam?-ren ρ (⌜Hom⌝ c a (var vz))     = deadmot?-ren (extR ρ) c
@@ -2075,6 +2131,8 @@ trlam?-ren ρ (⌜Hom⌝ c a (pair m₁ m₂)) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (fst m))      = refl
 trlam?-ren ρ (⌜Hom⌝ c a (snd m))      = refl
 trlam?-ren ρ (⌜Hom⌝ c a ⌜base⌝)       = refl
+trlam?-ren ρ (⌜Hom⌝ c a ⌜Nat⌝)        = refl
+trlam?-ren ρ (⌜Hom⌝ c a ⌜Unit⌝)       = refl
 trlam?-ren ρ (⌜Hom⌝ c a (⌜Π⌝ m₁ m₂))  = refl
 trlam?-ren ρ (⌜Hom⌝ c a (⌜Σ⌝ m₁ m₂))  = refl
 trlam?-ren ρ (⌜Hom⌝ c a (⌜Hom⌝ m₁ m₂ m₃)) = refl
@@ -3810,6 +3868,7 @@ wne (sne-tr {d = d} {p = p} d₀ p₀ e₀ key) with wn d₀ | wn p₀ | wn e₀
     nrm' (tr-J-base _ _ _ _ _)  = ⊥-elim (f≢t key')
     nrm' (tr-J-Σ _ _ _ _ _ _ _) = ⊥-elim (f≢t key')
     nrm' (tr-J-Id _ _ _ _ _ _ _ _) = ⊥-elim (f≢t key')
+    nrm' (tr-J-Unit _ _ _ _ _) = ⊥-elim (f≢t key')
     nrm' (tr-taut _ _)      = ⊥-elim (f≢t key')
     nrm' (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) =
       f≢t (trans (sym (stk⊥dead c₁ kh)) key')
