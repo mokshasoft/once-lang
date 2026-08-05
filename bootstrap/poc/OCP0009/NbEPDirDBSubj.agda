@@ -605,6 +605,33 @@ hom-shape (stepᵀ (Hom-Nat-sz m) (stepᵀ () _))
 hom-shape (stepᵀ (Hom-Nat-ss m n) rest)      = hom-shape rest
 
 
+-- ★ WF stage B: the SHARP shape lemma.  `hom-shape` had to gain
+-- `Unit`/`base` arms because a `Nat`-ambient hom really does reduce to
+-- them; at every ambient that is not `Nat` the old two-shape
+-- conclusion still holds, and `fund`'s `⊢trU` case (ambient pinned to
+-- `U`) needs exactly that.
+data HomΠShapeN {Γ : Cx} : RTy Γ → Set where
+  hsnΠ : {F : RTy Γ} {G : RTy (Γ ∙)} → HomΠShapeN (Π F G)
+  hsnH : {H : RTy Γ} {a b : RTm Γ} → HomΠShapeN (Hom H a b)
+
+Π-shapeN : {Γ : Cx} {F : RTy Γ} {G : RTy (Γ ∙)} {C : RTy Γ} →
+           Π F G ⟶ᵀ* C → HomΠShapeN C
+Π-shapeN doneᵀ                 = hsnΠ
+Π-shapeN (stepᵀ (ξ-Πˡ r) rest) = Π-shapeN rest
+Π-shapeN (stepᵀ (ξ-Πʳ r) rest) = Π-shapeN rest
+
+hom-shapeN : {Γ : Cx} {A : RTy Γ} {t u : RTm Γ} {C : RTy Γ} →
+             NoNat A → Hom A t u ⟶ᵀ* C → HomΠShapeN C
+hom-shapeN nn doneᵀ                    = hsnH
+hom-shapeN nn (stepᵀ (ξ-Homᵀ r) rest)  = hom-shapeN (nonat-red nn r) rest
+hom-shapeN nn (stepᵀ (ξ-Homˡ r) rest)  = hom-shapeN nn rest
+hom-shapeN nn (stepᵀ (ξ-Homʳ r) rest)  = hom-shapeN nn rest
+hom-shapeN nn (stepᵀ (Hom-U c d) rest)     = Π-shapeN rest
+hom-shapeN nn (stepᵀ (Hom-Π A B f g) rest) = Π-shapeN rest
+hom-shapeN () (stepᵀ (Hom-Nat-z _) rest)
+hom-shapeN () (stepᵀ (Hom-Nat-sz _) rest)
+hom-shapeN () (stepᵀ (Hom-Nat-ss _ _) rest)
+
 homred-inv : {P : RTy Γ → Set} →
              (∀ {X Y : RTy Γ} → P X → X ⟶ᵀ Y → P Y) →
              (P U → ⊥) →
