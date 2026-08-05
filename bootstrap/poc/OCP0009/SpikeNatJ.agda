@@ -1,10 +1,10 @@
 ------------------------------------------------------------------------
 -- OCP-0009 — SPIKE: THE ⌜Hom⌝-OVER-⌜Nat⌝ STUCK TRANSPORT.
 --
--- ★★ A COUNTEREXAMPLE PROBE, not a feature.  It exhibits a CLOSED,
--- WELL-TYPED `tr` that is NORMAL — which refutes `trProgress` (Canon's
--- G2 "closed well-typed `tr`s always step") as the kernel stands after
--- WF stage C step 2.
+-- ★★ ORIGINALLY A COUNTEREXAMPLE, NOW A REGRESSION TEST.  It exhibits
+-- a CLOSED, WELL-TYPED `tr` which — before the `stkA?`/`stkC?` split —
+-- was NORMAL, refuting `trProgress` (Canon's G2, "closed well-typed
+-- `tr`s always step").  Since the fix it steps; §4 has the history.
 --
 -- The mechanism.  Step 0 set `stkC? ⌜Nat⌝ = false` — correctly: J at an
 -- ORDERED type is unsound, because `Hom Nat nzero n ⟶ᵀ Unit` discards
@@ -17,13 +17,14 @@
 -- become `Unit`/`base`/`Hom Nat _ _` — never `Nat`, so no order rule
 -- can fire at that level and the endpoints ARE pinned.
 --
--- Consequence: `tr` at such a path has nothing to fire and no premise
--- excludes it, so it is stuck.  The propagation is the bug; the
--- retraction is not.
+-- Consequence: `tr` at such a path had nothing to fire and no premise
+-- excluded it, so it was stuck.  The propagation was the bug; the
+-- retraction was not.
 --
---   ★ `p-nat`     — the path, well-typed and NORMAL
---   ★ `⊢stuck`    — the whole `tr`, closed and well-typed
---   ★ `stuck-nf`  — …and it does not reduce.
+--   ★ `p-nat`       — the path, well-typed and normal
+--   ★ `⊢stuck`      — the whole `tr`, closed and well-typed
+--   ★ `stuck-steps` — …and, SINCE THE FIX, it reduces.  This file is
+--                     now a regression test; see §4 for the history.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -41,7 +42,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Hom⌝; ξ-Homᵀ
         ; Hom-Nat-z; Hom-Nat-ss
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ
-        ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ; ξ-nsuc
+        ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ; ξ-nsuc; tr-J-Hom
         ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here
         ; _⊢_∷_; ⊢var; ⊢conv; ⊢unit; ⊢nzero; ⊢nsuc
@@ -129,42 +130,25 @@ stuck = tr (⌜Hom⌝ ⌜Unit⌝ unit (var vz)) p-nat (hrefl ⌜Unit⌝ unit)
       ⊢e
 
 ------------------------------------------------------------------------
--- 4. ★★★ …AND IT DOES NOT STEP.  Every root rule is keyed off the
---    path's code head: `tr-J-base`/`-Σ`/`-Unit`/`-Id` want a different
---    constructor, `tr-J-Hom` wants `stkC? (⌜Hom⌝ ⌜Nat⌝ 1 2) ≡ true` —
---    which is `stkC? ⌜Nat⌝`, i.e. `false` — and `tr-taut`/`tr-pw` want
---    a `lam` path.  The congruences all hit normal subterms.
-------------------------------------------------------------------------
-
-stuck-nf : {Γ : Cx} {u : RTm Γ} → stuck ⟶ u → ⊥
--- the J family: only the ⌜Hom⌝ arm matches the shape, and its key is
--- `stkC? ⌜Nat⌝ ≡ true`.
-stuck-nf (ξ-trᵈ (ξ-⌜Hom⌝ᶜ ()))
-stuck-nf (ξ-trᵈ (ξ-⌜Hom⌝ˡ ()))
-stuck-nf (ξ-trᵈ (ξ-⌜Hom⌝ʳ ()))
-stuck-nf (ξ-trᵖ (ξ-hreflᶜ (ξ-⌜Hom⌝ᶜ ())))
-stuck-nf (ξ-trᵖ (ξ-hreflᶜ (ξ-⌜Hom⌝ˡ (ξ-nsuc ()))))
-stuck-nf (ξ-trᵖ (ξ-hreflᶜ (ξ-⌜Hom⌝ʳ (ξ-nsuc (ξ-nsuc ())))))
-stuck-nf (ξ-trᵖ (ξ-hreflᵃ ()))
-stuck-nf (ξ-trᵉ (ξ-hreflᶜ ()))
-stuck-nf (ξ-trᵉ (ξ-hreflᵃ ()))
-
-------------------------------------------------------------------------
--- 5. ★★★★ THE REFUTATION, stated against the THEOREM STATEMENTS rather
---    than against `NbEPDirDBCanon` itself — so it is checkable NOW,
---    with no dependency on that module compiling.  Feed either theorem
---    its own statement and you get `⊥`.
+-- 4. ★★★★ …AND IT STEPS.  THE REGRESSION TEST.
 --
---    `Canon`'s `trProgress` is verbatim:
---        {dM : RTm (ε ∙)} {p e : RTm ε} {T : RTy ε} →
---        ◇ ⊢ tr dM p e ∷ T → Σ (RTm ε) (λ u → tr dM p e ⟶ u)
---    and `progress` is `◇ ⊢ t ∷ T → Prog t`, where `Prog` is
---    canonical-or-steps.  `Canon` has no `tr` arm, so the `tr` case of
---    `progress` must produce a step too.
+-- WHEN THIS FILE WAS WRITTEN the term above was NORMAL, and this
+-- module carried `stuck-nf` (a total refutation of every reduction)
+-- plus `trProgress-refuted` (feed `trProgress` its own statement, get
+-- `⊥`).  That was the bug report.
+--
+-- THE FIX was to split `stkC?` in two — `stkA?` ("the decode is a
+-- stable ambient", TRUE at ⌜Nat⌝) and `stkC?` ("J-able", false at
+-- ⌜Nat⌝) — and to key `tr-J-Hom` on `stkA? c₁`, i.e. on the J-ability
+-- of the WHOLE path code `⌜Hom⌝ c₁ a₁ b₁` rather than of its inner
+-- code.  See `stkA?`'s note in NbEPDirDBVar.
+--
+-- So the ⌜Nat⌝ exception no longer propagates outward, J fires here,
+-- and the transport discards the path.  Keeping the term and its
+-- typing derivation makes this a REGRESSION TEST: if the key is ever
+-- re-keyed to `stkC? c₁`, `stuck-steps` stops typechecking.
 ------------------------------------------------------------------------
 
-trProgress-refuted :
-  ({dM : RTm (ε ∙)} {p e : RTm ε} {T : RTy ε} →
-   ◇ ⊢ tr dM p e ∷ T → Σ (RTm ε) (λ u → tr dM p e ⟶ u)) → ⊥
-trProgress-refuted tp with tp ⊢stuck
-... | _ , r = stuck-nf r
+stuck-steps : {Γ : Cx} → stuck {Γ} ⟶ hrefl ⌜Unit⌝ unit
+stuck-steps =
+  tr-J-Hom ⌜Unit⌝ unit (var vz) ⌜Nat⌝ n1 n2 unit (hrefl ⌜Unit⌝ unit) refl
