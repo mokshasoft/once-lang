@@ -63,7 +63,7 @@ open import Once.CCC.Codegen.SlotBudget using
   (fetch-at; seg-at; SegState; seg-idle?; idle-seg-at
   ; seg-at-++ˡ; seg-at-++ʳ; fetch-++ˡ; fetch-++ʳ; split-pos; seg-fold
   ; idle-neutral; seg-fold-++; idle-++; visit-idle; rebuild-idle
-  ; ok-neu; slots-below; budget-of)
+  ; ok-neu; slots-below; budget-of; mkSeg; cur; saved; seg-step)
 
 ------------------------------------------------------------------------
 -- The `once`-namespace label an instruction mentions.
@@ -453,14 +453,25 @@ labels-in (⟨ f , g ⟩ Heap) n l =
            (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
             li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
             li-none refl ∷ []))
--- the closure clauses mention no ONCE label (the body marker and the code
--- address are `thunk`-provenance — D082 — and the body's own trace is
--- reachable only through `ir-to-bodies` until the flip)
+-- POST-FLIP the closure clauses DO mention a once label: the jump over the
+-- inlined body and its landing `c-label`, both `suc l`. The body marker and
+-- the code address stay invisible here — `thunk` provenance (D082) — and the
+-- body's own labels start at `suc (suc l)`, above the join.
 labels-in (curry b Stack) n l =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-lab refl (n≤1+n l) join<hi ∷ li-none refl ∷
+  ++⁺ (ls-weaken (≤-trans (n≤1+n l) (n≤1+n (suc l))) ≤-refl (labels-in b 0 (suc (suc l))))
+      (li-none refl ∷ li-lab refl (n≤1+n l) join<hi ∷ [])
+  where join<hi : suc l < label-of (ir-to-trace' n l (curry b Stack))
+        join<hi = label-mono b 0 (suc (suc l))
 labels-in (curry b Heap) n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-lab refl (n≤1+n l) join<hi ∷ li-none refl ∷
+  ++⁺ (ls-weaken (≤-trans (n≤1+n l) (n≤1+n (suc l))) ≤-refl (labels-in b 0 (suc (suc l))))
+      (li-none refl ∷ li-lab refl (n≤1+n l) join<hi ∷ [])
+  where join<hi : suc l < label-of (ir-to-trace' n l (curry b Heap))
+        join<hi = label-mono b 0 (suc (suc l))
 labels-in apply n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
@@ -1283,6 +1294,134 @@ pieces2-agree a b hi .(I ++ at ++ t)
                       (sym sp))
 
 ------------------------------------------------------------------------
+-- THE CLOSURE FRAGMENT (post-flip). `Pieces`/`Pieces2` both require their
+-- skeleton pieces to be seg-IDLE, and here they are not: the body sits inside
+-- a `c-thunk`/`c-ret` BRACKET, so positions between the markers see the pushed
+-- segment. Hence its own classification.
+--
+-- The saving grace is that the two markers MENTION NOTHING, so neither can be
+-- `p` or `q`; and the join label `e` is mentioned only OUTSIDE the bracket
+-- (the jump before it and the `c-label` after), where the segment is `st`.
+------------------------------------------------------------------------
+data CurryLoc (H body : AbstractTrace) (ℓ bb e a b' : ℕ) (st : SegState) (p : ℕ) : Set where
+  cl-out  : seg-at (H ++ instr-ctrl (c-thunk ℓ bb) ∷
+                    (body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ [])) p st ≡ st
+          → (∀ (m : ℕ) → mention-at (H ++ instr-ctrl (c-thunk ℓ bb) ∷
+                          (body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ [])) p
+                         ≡ just m → (a ≤ m) × (m < b'))
+          → CurryLoc H body ℓ bb e a b' st p
+  cl-body : ∀ (k : ℕ)
+          → seg-at (H ++ instr-ctrl (c-thunk ℓ bb) ∷
+                    (body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ [])) p st
+            ≡ seg-at body k (mkSeg bb (cur st ∷ saved st))
+          → fetch-at (H ++ instr-ctrl (c-thunk ℓ bb) ∷
+                      (body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ [])) p
+            ≡ fetch-at body k
+          → CurryLoc H body ℓ bb e a b' st p
+  cl-mark : mention-at (H ++ instr-ctrl (c-thunk ℓ bb) ∷
+                        (body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ [])) p
+            ≡ nothing
+          → CurryLoc H body ℓ bb e a b' st p
+
+curry-locate : ∀ (H body : AbstractTrace) (ℓ bb e a b' : ℕ) (st : SegState) (p : ℕ)
+             → seg-idle? H ≡ true → LabelsIn a b' H
+             → (∀ s → seg-fold body s ≡ s)
+             → (a ≤ e) × (e < b')
+             → CurryLoc H body ℓ bb e a b' st p
+curry-locate H body ℓ bb e a b' st p idle ls natl we = go (split-pos H p)
+  where
+    T = H ++ instr-ctrl (c-thunk ℓ bb) ∷
+        (body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ [])
+    R = instr-ctrl (c-thunk ℓ bb) ∷
+        (body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ [])
+    pushed = mkSeg bb (cur st ∷ saved st)
+    go : (p < length H) ⊎ (Σ ℕ (λ k → p ≡ length H + k)) → CurryLoc H body ℓ bb e a b' st p
+    go (inj₁ lt) =
+      cl-out (trans (seg-at-++ˡ H R p st lt) (idle-seg-at H idle p st))
+             (λ m eq → win-at a b' H ls p m (trans (sym (cong mention-of (fetch-++ˡ H R p lt))) eq))
+    go (inj₂ (zero , peq)) =
+      cl-mark (trans (cong (λ z → mention-at T z) peq)
+                     (cong mention-of (fetch-++ʳ H R 0)))
+    go (inj₂ (suc k , peq)) = go2 (split-pos body k)
+      where
+        tail = instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ []
+        -- past the marker the segment is PUSHED (`H` is idle, so the marker
+        -- steps from `st` itself)
+        at-push : seg-at T p st ≡ seg-at (body ++ tail) k pushed
+        at-push = trans (cong (λ z → seg-at T z st) peq)
+                        (trans (seg-at-++ʳ H R (suc k) st)
+                               (cong (λ z → seg-at R (suc k) z) (idle-neutral H idle st)))
+        ft-eq : fetch-at T p ≡ fetch-at (body ++ tail) k
+        ft-eq = trans (cong (fetch-at T) peq) (fetch-++ʳ H R (suc k))
+        go2 : (k < length body) ⊎ (Σ ℕ (λ j → k ≡ length body + j))
+            → CurryLoc H body ℓ bb e a b' st p
+        go2 (inj₁ klt) =
+          cl-body k (trans at-push (seg-at-++ˡ body tail k pushed klt))
+                    (trans ft-eq (fetch-++ˡ body tail k klt))
+        -- the `c-ret` mentions nothing; the `c-label e` is back at `st`
+        go2 (inj₂ (zero , keq)) =
+          cl-mark (trans (cong mention-of ft-eq)
+                         (cong mention-of (trans (cong (fetch-at (body ++ tail)) keq)
+                                                 (fetch-++ʳ body tail 0))))
+        go2 (inj₂ (suc zero , keq)) =
+          cl-out (trans at-push
+                   (trans (cong (λ z → seg-at (body ++ tail) z pushed) keq)
+                          (trans (seg-at-++ʳ body tail 1 pushed)
+                                 (trans (cong (seg-at tail 1) (natl pushed)) pop-eq))))
+                 (λ m eq → subst (λ z → (a ≤ z) × (z < b')) (lab-inj m eq) we)
+          where
+                -- the `c-ret` pops the marker's push, so the join label sits
+                -- back at the starting state (record eta on `SegState`)
+                pop-eq : seg-at (instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ []) 1 pushed ≡ st
+                pop-eq = refl
+                lab-inj : ∀ (m : ℕ) → mention-at T p ≡ just m → e ≡ m
+                lab-inj m eq = just-inj-ℕ (trans (sym men-e) eq)
+                  where men-e : mention-at T p ≡ just e
+                        men-e = trans (cong mention-of ft-eq)
+                                      (cong mention-of
+                                        (trans (cong (fetch-at (body ++ tail)) keq)
+                                               (fetch-++ʳ body tail 1)))
+                        just-inj-ℕ : ∀ {x y : ℕ} → just x ≡ just y → x ≡ y
+                        just-inj-ℕ refl = refl
+        go2 (inj₂ (suc (suc j) , keq)) =
+          cl-mark (trans (cong mention-of ft-eq)
+                         (cong mention-of (trans (cong (fetch-at (body ++ tail)) keq)
+                                                 (fetch-++ʳ body tail (suc (suc j))))))
+
+segagree-curry : ∀ (H body : AbstractTrace) (ℓ bb e a b' c d : ℕ)
+               → seg-idle? H ≡ true → LabelsIn a b' H
+               → (∀ s → seg-fold body s ≡ s) → SegAgree body → LabelsIn c d body
+               → (a ≤ e) × (e < b') → b' ≤ c
+               → SegAgree (H ++ instr-ctrl (c-thunk ℓ bb) ∷
+                           (body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ []))
+segagree-curry H body ℓ bb e a b' c d idle ls natl saB lsB we b'≤c p q m st mq lq =
+  go (curry-locate H body ℓ bb e a b' st p idle ls natl we)
+     (curry-locate H body ℓ bb e a b' st q idle ls natl we)
+  where
+    lq-men : mention-at (H ++ instr-ctrl (c-thunk ℓ bb) ∷
+                         (body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ [])) q ≡ just m
+    lq-men rewrite lq = refl
+    none-absurd : ∀ {A : Set} → nothing ≡ just m → A
+    none-absurd ()
+    clash : (a ≤ m) × (m < b') → (c ≤ m) × (m < d) → ⊥
+    clash wO wB = <-asym (proj₂ wO) (≤-trans b'≤c (proj₁ wB))
+    go : CurryLoc H body ℓ bb e a b' st p → CurryLoc H body ℓ bb e a b' st q → _
+    go (cl-mark nq) _ = none-absurd (trans (sym nq) mq)
+    go _ (cl-mark nq) = none-absurd (trans (sym nq) lq-men)
+    go (cl-out sp _) (cl-out sq _) = trans sq (sym sp)
+    go (cl-out _ wp) (cl-body k _ fq) =
+      ⊥-elim (clash (wp m mq)
+               (win-at c d body lsB k m (trans (sym (cong mention-of fq)) lq-men)))
+    go (cl-body k _ fp) (cl-out _ wq) =
+      ⊥-elim (clash (wq m lq-men)
+               (win-at c d body lsB k m (trans (sym (cong mention-of fp)) mq)))
+    go (cl-body kp sp fp) (cl-body kq sq fq) =
+      trans sq (trans (saB kp kq m (mkSeg bb (cur st ∷ saved st))
+                        (trans (sym (cong mention-of fp)) mq)
+                        (trans (sym fq) lq))
+                      (sym sp))
+
+------------------------------------------------------------------------
 -- THE INDUCTION. Every clause has its tool: leaves have an EMPTY label range,
 -- the closure/`apply`/injection clauses emit no `once` label at all, the
 -- splicing clauses compose, `Cata` goes through `Pieces` (one repeated trace)
@@ -1317,10 +1456,24 @@ seg-agree (free-heap w) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (SigOp w) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (const fits-int v) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (const fits-float v) n l = segagree-nolab _ (refl ∷ [])
+-- POST-FLIP: the body is inline inside a `c-thunk`/`c-ret` bracket, so this is
+-- `segagree-curry` — the construction plus the jump-over is the (idle) outer
+-- piece, and the join label `suc l` sits below the body's range.
 seg-agree (curry bd Stack) n l =
-  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+  segagree-curry _ _ l _ (suc l) l (suc (suc l)) (suc (suc l)) _
+    refl (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+          li-lab refl (n≤1+n l) ≤-refl ∷ [])
+    (λ s → ok-neu (slots-below bd 0 (suc (suc l))) s)
+    (seg-agree bd 0 (suc (suc l))) (labels-in bd 0 (suc (suc l)))
+    (n≤1+n l , ≤-refl) ≤-refl
 seg-agree (curry bd Heap)  n l =
-  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+  segagree-curry _ _ l _ (suc l) l (suc (suc l)) (suc (suc l)) _
+    refl (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+          li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+          li-lab refl (n≤1+n l) ≤-refl ∷ [])
+    (λ s → ok-neu (slots-below bd 0 (suc (suc l))) s)
+    (seg-agree bd 0 (suc (suc l))) (labels-in bd 0 (suc (suc l)))
+    (n≤1+n l , ≤-refl) ≤-refl
 seg-agree apply n l =
   segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
      refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])

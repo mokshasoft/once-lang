@@ -86,7 +86,7 @@ open import Once.CCC.Machine.SMCore
          instr-save-closure-reg;
          instr-load-tag-lit; instr-case-on-tag;
          instr-loop; instr-reg-op;
-         instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
+         instr-ctrl; c-label; c-jmp; c-thunk; c-ret; c-branch-scratch-zero; c-branch-tag-zero;
          scratch-one; scratch-zero; scratch-dec; scratch-load-count;
          count-zero; count-inc)
 
@@ -583,18 +583,34 @@ ir-to-trace' n l (⟨ f , g ⟩ Heap) =
 -- Heap diverge only at the record-allocation step, which is still
 -- "use parent's slots" for both. Phase D adds the divergence.
 -- Stack mode: closure record at slots [closure-slot, closure-slot+1].
+-- Plan 0.63 (2b): THE BODY IS INLINE, at its own `curry` clause. Layout:
+--
+--     <closure construction> ++ c-jmp end ∷ c-thunk this b ∷
+--     body-trace ++ c-ret b ∷ c-label end ∷ []
+--
+-- The jump is what stops the parent FALLING INTO the body (the emitter used
+-- to place bodies after main's `ret` TEXT, which the modelled program did not
+-- see at all). Inlining HERE rather than in the public `ir-to-trace` wrapper
+-- is what keeps every emitter walk a one-line change: they already recurse
+-- into `body` at this clause.
 ir-to-trace' n l (curry body Stack) =
   let this-label = l
-      l1         = suc l
+      end-label  = suc l
+      l1         = suc (suc l)
       closure-slot = n
       next        = suc (suc closure-slot)
       (body-budget , l2 , body-trace , body-bodies) = ir-to-trace' 0 l1 body
-      this-trace  = mov-to-output ∷
-                    store-at-slot closure-slot ∷
-                    instr-load-code-addr this-label ∷
-                    store-at-slot (suc closure-slot) ∷
-                    lea-slot closure-slot ∷ []
-      all-bodies  = (this-label , body-budget , body-trace) ∷ body-bodies
+      this-trace  = (mov-to-output ∷
+                     store-at-slot closure-slot ∷
+                     instr-load-code-addr this-label ∷
+                     store-at-slot (suc closure-slot) ∷
+                     lea-slot closure-slot ∷
+                     instr-ctrl (c-jmp end-label) ∷
+                     instr-ctrl (c-thunk this-label body-budget) ∷ []) ++
+                    body-trace ++
+                    (instr-ctrl (c-ret body-budget) ∷
+                     instr-ctrl (c-label end-label) ∷ [])
+      all-bodies  = body-bodies
   in next , l2 , this-trace , all-bodies
 
 -- Heap mode: closure record bump-allocated on the heap (2 cells:
@@ -603,22 +619,28 @@ ir-to-trace' n l (curry body Stack) =
 -- (env-stash, closure-stash).
 ir-to-trace' n l (curry body Heap) =
   let this-label    = l
-      l1            = suc l
+      end-label     = suc l
+      l1            = suc (suc l)
       env-stash     = n
       closure-stash = suc env-stash
       next          = suc closure-stash
       (body-budget , l2 , body-trace , body-bodies) = ir-to-trace' 0 l1 body
-      this-trace  = mov-to-output ∷
-                    store-at-slot env-stash ∷
-                    instr-alloc-heap 2 ∷
-                    store-at-slot closure-stash ∷
-                    mov-to-input ∷
-                    load-from-slot env-stash ∷
-                    store-indirect ∷
-                    instr-load-code-addr this-label ∷
-                    store-indirect-suc ∷
-                    load-from-slot closure-stash ∷ []
-      all-bodies  = (this-label , body-budget , body-trace) ∷ body-bodies
+      this-trace  = (mov-to-output ∷
+                     store-at-slot env-stash ∷
+                     instr-alloc-heap 2 ∷
+                     store-at-slot closure-stash ∷
+                     mov-to-input ∷
+                     load-from-slot env-stash ∷
+                     store-indirect ∷
+                     instr-load-code-addr this-label ∷
+                     store-indirect-suc ∷
+                     load-from-slot closure-stash ∷
+                     instr-ctrl (c-jmp end-label) ∷
+                     instr-ctrl (c-thunk this-label body-budget) ∷ []) ++
+                    body-trace ++
+                    (instr-ctrl (c-ret body-budget) ∷
+                     instr-ctrl (c-label end-label) ∷ [])
+      all-bodies  = body-bodies
   in next , l2 , this-trace , all-bodies
 
 -- ────────────────────────────────────────────────────────────────────

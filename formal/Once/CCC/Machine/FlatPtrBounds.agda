@@ -65,7 +65,7 @@ open FrameSemantics FS using (Frame; _≟F_)
 open MemOps {FS}
 open ExecFinal {FS}
 open AbstractExec {FS}
-open import Once.CCC.Machine.FrameFree using (FrameFreeI)
+open import Once.CCC.Machine.FrameFree using (FrameFreeI; EmittableI)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 -- the shared bricks: the register read-after-write enumeration and the
@@ -354,7 +354,7 @@ sigop-output-pb bs {A} {B} si ls = go (effect si)
 -- `size-with` only writes the frontier's ref.
 ------------------------------------------------------------------------
 pb-abstract : ∀ (i : AbstractInstr) (ls : LocState FS) (alloc : AllocState {FS})
-            → FrameFreeI i
+            → EmittableI i
             → (∀ n → i ≡ instr-alloc-heap n → 2 ≤ n)
             → StoreWF (next-heap-ref alloc) ls
             → PBInv (block-size alloc) ls
@@ -474,7 +474,7 @@ pb-branch true  m prog fs wf = pb-jump (find-label prog m) fs wf
 pb-branch false m prog fs wf = wf
 
 flat-ptr-bounds : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
-                → FrameFreeI i
+                → EmittableI i
                 → (∀ n → i ≡ instr-alloc-heap n → 2 ≤ n)
                 → StoreWF (next-heap-ref (falloc fs)) (floc fs)
                 → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)

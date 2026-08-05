@@ -188,9 +188,13 @@ alloc-min-trace' (⟨ f , g ⟩ Heap) n l =
       (tt ∷ tt ∷
        ++⁺ (alloc-min-trace' g _ _)
            (tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []))
-alloc-min-trace' (curry b Stack) n l = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+-- the flip: the body is inline here, so the walk recurses into it (one line)
+alloc-min-trace' (curry b Stack) n l =
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
+  ++⁺ (alloc-min-trace' b _ _) (tt ∷ tt ∷ [])
 alloc-min-trace' (curry b Heap)  n l =
-  tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+  tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
+  ++⁺ (alloc-min-trace' b _ _) (tt ∷ tt ∷ [])
 alloc-min-trace' apply n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []

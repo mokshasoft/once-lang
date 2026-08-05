@@ -96,7 +96,7 @@ open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
         ; find-label-none-corr; fetch-block-2nd)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Once.CCC.Codegen.IRToTrace using (ir-to-trace; ir-stack-budget)
-open import Once.CCC.Machine.FrameFree using (FrameFreeI; FrameFreeT)
+open import Once.CCC.Machine.FrameFree using (FrameFreeI; FrameFreeT; EmittableI; frame-free-emittable)
 open import Data.List.Relation.Unary.All using () renaming (All to AllL; [] to allL-[]; _∷_ to _allL∷_)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Machine.FlatStackSlot FS using (flat-same-frames; sf-slots; sf-saved; sf-ret)
@@ -116,7 +116,8 @@ open import Once.CCC.Codegen.LabelScope using (emitted-jump-in-segment; mention-
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.CCC.Codegen.SlotBudget using
   (emitted-slot-seg; below; pair-below; trace-lookup; seg-at; SegState; mkSeg; cur
-  ; seg-action; is-id?; seg-idle?; idle-step; idle-head; idle-tail; seg-at-suc)
+  ; seg-action; is-id?; seg-idle?; idle-step; idle-head; idle-tail; seg-at-suc
+  ; seg-step; saved)
 open import Once.IR using (IR; Unit)
 open import Once.CCC.Target.X86-64.Syntax using (slots; r15)
 
@@ -246,9 +247,14 @@ open FlatInv public
 -- Plan 0.63 step 2b: also needs HEAP MODE, because `lea-slot` joined the ⊥
 -- set — it is emitted, but only by the four Stack-mode clauses. `RunAt`
 -- carries `run-heap`, so every call site already has the evidence.
+-- Plan 0.63 (the flip): this now yields the EMITTER FENCE (`EmittableI`), not
+-- semantic frame-freeness — an emitted trace really does contain the two
+-- closure markers, and they really do move the frame. The fossils are
+-- unchanged, so every ⊥-route below still closes; what changed is that the
+-- markers now need REAL clauses instead of `⊥-elim`.
 frame-op-absurd : ∀ prog (fs : FlatState) (i : AbstractInstr) (em : Emitted prog)
                 → HeapModed (proj₁ em)
-                → fetch prog (fpc fs) ≡ just i → FrameFreeI i
+                → fetch prog (fpc fs) ≡ just i → EmittableI i
 frame-op-absurd .(ir-to-trace ir) fs i (ir , refl) hm ftq = fetch-frame-free {FS} ir hm ftq
 
 flat-inv-step : ∀ {ev env} (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
@@ -524,6 +530,33 @@ postulate
                             ≡ event-of instr-call-closure fs
                               ++ flat-events n prog (flat-exec-instr instr-call-closure prog fs))
 
+  -- THE TWO CLOSURE MARKERS (Plan 0.63, 2b–2d). Both now have a PRODUCER —
+  -- closure bodies are inline — so they can no longer route absurdly. Stated
+  -- at the same granularity as `events-running-call` deliberately: all three
+  -- retire together when the call correspondence lands, and until then the
+  -- tree stays green and WIRED rather than red or islanded.
+  --
+  -- What discharges them: `c-thunk` composes a `step-label` fetch with
+  -- `block-step-alloc-stack`, whose freshness premises come from `untouched` +
+  -- the high-water mark and whose room premise is the honest `stack-room` —
+  -- which, per D087, enters as a PARAMETER, not a postulate. `c-ret` needs the
+  -- `FlatCorr` component relating the ghost `fret` to the machine stack.
+  events-running-thunk : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                           prog fs s (m b : ℕ) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
+                       → halted (floc fs) ≡ false
+                       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk m b))
+                       → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                             ≡ event-of (instr-ctrl (c-thunk m b)) fs
+                               ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-thunk m b)) prog fs))
+
+  events-running-ret : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                         prog fs s (b : ℕ) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
+                     → halted (floc fs) ≡ false
+                     → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+                     → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                           ≡ event-of (instr-ctrl (c-ret b)) fs
+                             ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
+
   -- THE BRANCH SCRUTINEE DISCIPLINE (D073, replaces `branch-tag-badptr` +
   -- `branch-tag-bad`): at an emitted `c-branch-tag-zero` site the scrutinee
   -- register holds a live heap pointer to a WRITTEN TAG cell — codegen only
@@ -740,22 +773,17 @@ ff→seg-id (instr-alloc-heap _)                _ = refl
 ff→seg-id (instr-loop _)                      _ = refl
 ff→seg-id (instr-reg-op _)                    _ = refl
 
-ff→idle : ∀ (t : AbstractTrace) → AllL FrameFreeI t → seg-idle? t ≡ true
-ff→idle []       _        = refl
-ff→idle (i ∷ is) (ff allL∷ r) rewrite ff→seg-id i ff = ff→idle is r
+-- (`ff→idle` / `idle-seg-at` / `emitted-seg-const` are GONE with the flip.
+-- They said "an emitted trace never moves the segment", which is exactly what
+-- stopped being true: closure bodies are inline, so an emitted trace contains
+-- the two markers and the segmentation genuinely varies along it. Everything
+-- that leant on them is now proved per-instruction below — the last of them,
+-- the JUMP case, is the label-scoping obligation.)
 
-idle-seg-at : ∀ (t : AbstractTrace) → seg-idle? t ≡ true
-            → ∀ (k : ℕ) (st : SegState) → seg-at t k st ≡ st
-idle-seg-at []       _  zero    st = refl
-idle-seg-at []       _  (suc k) st = refl
-idle-seg-at (i ∷ is) eq zero    st = refl
-idle-seg-at (i ∷ is) eq (suc k) st =
-  trans (cong (seg-at is k) (idle-step i (idle-head i is eq) st))
-        (idle-seg-at is (idle-tail i is eq) k st)
-
-emitted-seg-const : ∀ (ir : IR Unit Unit) → HeapModed ir → ∀ (k : ℕ) (st : SegState)
-                  → seg-at (ir-to-trace ir) k st ≡ st
-emitted-seg-const ir hm = idle-seg-at (ir-to-trace ir) (ff→idle (ir-to-trace ir) (ir-to-trace-frame-free ir hm))
+-- (An `emitted-jump-in-segment` POSTULATE stood here while the flip was being
+-- measured. It is now the PROVED `LabelScope.emitted-jump-in-segment`, wired
+-- into the jump clause below — so the scaffolding is deleted rather than left
+-- beside its theorem.)
 
 ------------------------------------------------------------------------
 -- THE FRAME STACK AND THE RETURN STACK ARE ONE STACK (Plan 0.63).
@@ -823,14 +851,22 @@ data JumpPost (i : AbstractInstr) (m : ℕ) (prog : AbstractTrace) (fs : FlatSta
   jp-to   : ∀ (q : ℕ) → find-label prog m ≡ just q
           → fpc (flat-exec-instr i prog fs) ≡ q → JumpPost i m prog fs
 
+-- Plan 0.63 (post-flip): an EMITTED instruction is one of four kinds, and the
+-- markers are now among them. `pv-suc`/`pv-jump` are the frame-free ones (they
+-- carry `FrameFreeI`, which is what `flat-same-frames` and the invariant
+-- inductions consume); `pv-thunk`/`pv-ret` are the two that MOVE THE FRAME and
+-- carry their reservation instead.
 data PcView (i : AbstractInstr) : Set where
-  pv-suc  : (∀ prog fs → fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)) → PcView i
-  pv-jump : ∀ (m : ℕ) → once-label-of i ≡ just m
-          → (∀ prog fs → JumpPost i m prog fs) → PcView i
+  pv-suc   : FrameFreeI i
+           → (∀ prog fs → fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)) → PcView i
+  pv-jump  : FrameFreeI i → ∀ (m : ℕ) → once-label-of i ≡ just m
+           → (∀ prog fs → JumpPost i m prog fs) → PcView i
+  pv-thunk : ∀ (ℓ bb : ℕ) → i ≡ instr-ctrl (c-thunk ℓ bb) → PcView i
+  pv-ret   : ∀ (bb : ℕ) → i ≡ instr-ctrl (c-ret bb) → PcView i
 
-pcView : ∀ (i : AbstractInstr) → FrameFreeI i → PcView i
-pcView (instr-ctrl (c-label _))               _ = pv-suc (λ _ _ → refl)
-pcView (instr-ctrl (c-jmp m))                 _ = pv-jump m refl go
+pcView : ∀ (i : AbstractInstr) → EmittableI i → PcView i
+pcView (instr-ctrl (c-label _))               _ = pv-suc tt (λ _ _ → refl)
+pcView (instr-ctrl (c-jmp m))                 _ = pv-jump tt m refl go
   where go : ∀ prog fs → JumpPost (instr-ctrl (c-jmp m)) m prog fs
         go prog fs = mk (dj-aux (find-label prog m) fs)
           where mk : (fpc (do-jump (find-label prog m) fs) ≡ fpc fs)
@@ -841,7 +877,7 @@ pcView (instr-ctrl (c-jmp m))                 _ = pv-jump m refl go
                 mk (inj₂ (q , fq , e)) = jp-to q fq e
 -- the branches abstract their scrutinee WITH an equation (J-style), so the
 -- goal's `do-branch <cond>` reduces on the taken/not-taken split
-pcView (instr-ctrl (c-branch-scratch-zero m))     _ = pv-jump m refl go
+pcView (instr-ctrl (c-branch-scratch-zero m))     _ = pv-jump tt m refl go
   where
     go : ∀ prog fs → JumpPost (instr-ctrl (c-branch-scratch-zero m)) m prog fs
     go prog fs = mk (db-aux (sv-is-zero (readReg (regs (floc fs)) Scratch)) m prog fs)
@@ -849,7 +885,7 @@ pcView (instr-ctrl (c-branch-scratch-zero m))     _ = pv-jump m refl go
             mk (inj₁ e)                     = jp-suc e
             mk (inj₂ (inj₁ e))              = jp-halt e
             mk (inj₂ (inj₂ (q , fq , e)))   = jp-to q fq e
-pcView (instr-ctrl (c-branch-tag-zero m))     _ = pv-jump m refl go
+pcView (instr-ctrl (c-branch-tag-zero m))     _ = pv-jump tt m refl go
   where
     go : ∀ prog fs → JumpPost (instr-ctrl (c-branch-tag-zero m)) m prog fs
     go prog fs = mk (db-aux (tag-zf (flat-read-tag (floc fs))) m prog fs)
@@ -857,8 +893,8 @@ pcView (instr-ctrl (c-branch-tag-zero m))     _ = pv-jump m refl go
             mk (inj₁ e)                     = jp-suc e
             mk (inj₂ (inj₁ e))              = jp-halt e
             mk (inj₂ (inj₂ (q , fq , e)))   = jp-to q fq e
-pcView (instr-ctrl (c-thunk _ _))             ()
-pcView (instr-ctrl (c-ret _))                 ()
+pcView (instr-ctrl (c-thunk ℓ bb))            _ = pv-thunk ℓ bb refl
+pcView (instr-ctrl (c-ret bb))                _ = pv-ret bb refl
 pcView (instr-alloc-stack _)                  ()
 pcView (instr-dealloc-stack _)                ()
 pcView (instr-push-frame _)                   ()
@@ -867,30 +903,30 @@ pcView (instr-case-on-tag _ _)                ()
 pcView (instr-loop _)                         ()
 pcView (lea-slot _)                           ()
 pcView (lea-indexed _)                        ()
-pcView mov-to-output                          _ = pv-suc (λ _ _ → refl)
-pcView mov-to-input                           _ = pv-suc (λ _ _ → refl)
-pcView mov-output-to-input2                   _ = pv-suc (λ _ _ → refl)
-pcView mov-input2-to-output                   _ = pv-suc (λ _ _ → refl)
-pcView load-indirect                          _ = pv-suc (λ _ _ → refl)
-pcView load-indirect-suc                      _ = pv-suc (λ _ _ → refl)
-pcView (load-from-slot _)                     _ = pv-suc (λ _ _ → refl)
-pcView (store-at-slot _)                      _ = pv-suc (λ _ _ → refl)
-pcView store-indirect                         _ = pv-suc (λ _ _ → refl)
-pcView store-indirect-suc                     _ = pv-suc (λ _ _ → refl)
-pcView (restore-input _)                      _ = pv-suc (λ _ _ → refl)
-pcView (instr-reclaim-to _)                   _ = pv-suc (λ _ _ → refl)
-pcView instr-call-closure                     _ = pv-suc (λ _ _ → refl)
-pcView (worklist-init _)                      _ = pv-suc (λ _ _ → refl)
-pcView (worklist-push _)                      _ = pv-suc (λ _ _ → refl)
-pcView (worklist-pop _)                       _ = pv-suc (λ _ _ → refl)
-pcView (worklist-check _)                     _ = pv-suc (λ _ _ → refl)
-pcView (instr-sigop _)                        _ = pv-suc (λ _ _ → refl)
-pcView (instr-load-const _ _)                 _ = pv-suc (λ _ _ → refl)
-pcView (instr-load-code-addr _)               _ = pv-suc (λ _ _ → refl)
-pcView instr-save-closure-reg                 _ = pv-suc (λ _ _ → refl)
-pcView (instr-load-tag-lit _)                 _ = pv-suc (λ _ _ → refl)
-pcView (instr-alloc-heap _)                   _ = pv-suc (λ _ _ → refl)
-pcView (instr-reg-op _)                       _ = pv-suc (λ _ _ → refl)
+pcView mov-to-output                          _ = pv-suc tt (λ _ _ → refl)
+pcView mov-to-input                           _ = pv-suc tt (λ _ _ → refl)
+pcView mov-output-to-input2                   _ = pv-suc tt (λ _ _ → refl)
+pcView mov-input2-to-output                   _ = pv-suc tt (λ _ _ → refl)
+pcView load-indirect                          _ = pv-suc tt (λ _ _ → refl)
+pcView load-indirect-suc                      _ = pv-suc tt (λ _ _ → refl)
+pcView (load-from-slot _)                     _ = pv-suc tt (λ _ _ → refl)
+pcView (store-at-slot _)                      _ = pv-suc tt (λ _ _ → refl)
+pcView store-indirect                         _ = pv-suc tt (λ _ _ → refl)
+pcView store-indirect-suc                     _ = pv-suc tt (λ _ _ → refl)
+pcView (restore-input _)                      _ = pv-suc tt (λ _ _ → refl)
+pcView (instr-reclaim-to _)                   _ = pv-suc tt (λ _ _ → refl)
+pcView instr-call-closure                     _ = pv-suc tt (λ _ _ → refl)
+pcView (worklist-init _)                      _ = pv-suc tt (λ _ _ → refl)
+pcView (worklist-push _)                      _ = pv-suc tt (λ _ _ → refl)
+pcView (worklist-pop _)                       _ = pv-suc tt (λ _ _ → refl)
+pcView (worklist-check _)                     _ = pv-suc tt (λ _ _ → refl)
+pcView (instr-sigop _)                        _ = pv-suc tt (λ _ _ → refl)
+pcView (instr-load-const _ _)                 _ = pv-suc tt (λ _ _ → refl)
+pcView (instr-load-code-addr _)               _ = pv-suc tt (λ _ _ → refl)
+pcView instr-save-closure-reg                 _ = pv-suc tt (λ _ _ → refl)
+pcView (instr-load-tag-lit _)                 _ = pv-suc tt (λ _ _ → refl)
+pcView (instr-alloc-heap _)                   _ = pv-suc tt (λ _ _ → refl)
+pcView (instr-reg-op _)                       _ = pv-suc tt (λ _ _ → refl)
 
 -- The live stack window is the reservation IN FORCE at the current pc — the
 -- CURRENT FRAME's, once frames move. Induction on `Reachable`; each step is
@@ -906,91 +942,134 @@ run-seg-wf : ∀ prog (fs : FlatState) (r : RunAt prog fs)
            → SegWF prog (ir-stack-budget (run-ir r)) fs
 run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
   where
-    const-seg : ∀ (k : ℕ) → seg-at prog k (mkSeg (ir-stack-budget ir) [])
-                          ≡ mkSeg (ir-stack-budget ir) []
-    const-seg k = subst (λ p → seg-at p k (mkSeg (ir-stack-budget ir) []) ≡ mkSeg (ir-stack-budget ir) [])
-                        (sym eq) (emitted-seg-const ir hm k (mkSeg (ir-stack-budget ir) []))
+    B₀ = mkSeg (ir-stack-budget ir) []
     go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs'
        → SegWF prog (ir-stack-budget ir) fs'
+    -- AT ENTRY the pc is 0 and `seg-at _ zero` is the starting state outright.
     go fs' (reach-start .fs' el eqB) =
-      mkSegWF (trans eqB (sym (cong cur (const-seg (fpc fs')))))
+      mkSegWF (subst (λ z → frame-slots (falloc fs') ≡ cur (seg-at prog z B₀))
+                     (sym (proj₁ el)) eqB)
               (subst₂ (RetMatch prog (ir-stack-budget ir))
                       (sym (proj₁ (proj₂ (proj₂ (proj₂ el)))))
                       (sym (proj₁ (proj₂ (proj₂ (proj₂ (proj₂ el))))))
                       rm-[])
     go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
-      mkSegWF
-        (trans (sf-slots same) (trans (seg-cur (go fs'' r')) (sym stable)))
-        (subst₂ (RetMatch prog (ir-stack-budget ir))
-                (sym (sf-saved same)) (sym (sf-ret same)) (seg-stack (go fs'' r')))
+      step (pcView i em)
       where
-        ff    = frame-op-absurd prog fs'' i (ir , eq) hm ftq
-        same  = flat-same-frames i prog fs'' ff
-        B₀    = mkSeg (ir-stack-budget ir) []
-        -- THE SEGMENT AT THE POST-PC. A fall-through gets it from the fold's
-        -- own recursion — `seg-at-suc` steps by the fetched instruction, and a
-        -- frame-free instruction does not move the segment (`ff→seg-id`). No
-        -- assumption about emitted code enters here.
-        stable : cur (seg-at prog (fpc (flat-exec-instr i prog fs'')) B₀)
-               ≡ cur (seg-at prog (fpc fs'') B₀)
-        stable = go-pc (pcView i ff)
+        em  = frame-op-absurd prog fs'' i (ir , eq) hm ftq
+        ih  = go fs'' r'
+        lk : trace-lookup prog (fpc fs'') ≡ just i
+        lk = trans (sym (fetch≡lookup prog (fpc fs''))) ftq
+        -- the segment one position along, stepped by the fetched instruction
+        seg-suc : seg-at prog (suc (fpc fs'')) B₀ ≡ seg-step i (seg-at prog (fpc fs'') B₀)
+        seg-suc = seg-at-suc prog (fpc fs'') B₀ lk
+        step : PcView i → SegWF prog (ir-stack-budget ir) (flat-exec-instr i prog fs'')
+        -- FRAME-FREE, FALLING THROUGH: frames untouched, segment unmoved.
+        step (pv-suc ff adv) =
+          mkSegWF
+            (trans (sf-slots same) (trans (seg-cur ih) (sym stable)))
+            (subst₂ (RetMatch prog (ir-stack-budget ir))
+                    (sym (sf-saved same)) (sym (sf-ret same)) (seg-stack ih))
           where
-            lk : trace-lookup prog (fpc fs'') ≡ just i
-            lk = trans (sym (fetch≡lookup prog (fpc fs''))) ftq
-            go-pc : PcView i → cur (seg-at prog (fpc (flat-exec-instr i prog fs'')) B₀)
-                             ≡ cur (seg-at prog (fpc fs'') B₀)
-            go-pc (pv-suc adv) =
-              cong cur (trans (cong (λ p → seg-at prog p B₀) (adv prog fs''))
-                       (trans (seg-at-suc prog (fpc fs'') B₀ lk)
-                              (idle-step i (ff→seg-id i ff) (seg-at prog (fpc fs'') B₀))))
-            -- …and a JUMP is the LABEL-SCOPING case: the target lies in the
-            -- segment the jump left. That is now a THEOREM
-            -- (`LabelScope.emitted-jump-in-segment`) rather than a ride on
-            -- `emitted-seg-const` — which is what closes the LabelScope island
-            -- and is what survives the flip. Today `seg-at` happens to be
-            -- constant too, so either route proves it; the point is that the
-            -- one that stays true is the one now wired.
-            -- THE LABEL-SCOPING CASE, and it is wired to the theorem now.
-            -- Fall-through and the label-not-found halt move the pc in ways the
-            -- fold handles directly; a REAL jump lands wherever `find-label`
-            -- resolves, and that is `emitted-jump-in-segment`.
-            go-pc (pv-jump m mlab jp) = jgo (jp prog (fs''))
+            same = flat-same-frames i prog fs'' ff
+            stable : cur (seg-at prog (fpc (flat-exec-instr i prog fs'')) B₀)
+                   ≡ cur (seg-at prog (fpc fs'') B₀)
+            stable = cong cur (trans (cong (λ z → seg-at prog z B₀) (adv prog fs''))
+                              (trans seg-suc
+                                     (idle-step i (ff→seg-id i ff) (seg-at prog (fpc fs'') B₀))))
+        -- FRAME-FREE JUMP: frames untouched; the segment survives by LABEL
+        -- SCOPING (`LabelScope.emitted-jump-in-segment`).
+        step (pv-jump ff m mlab jp) =
+          mkSegWF
+            (trans (sf-slots same) (trans (seg-cur ih) (sym (jgo (jp prog fs'')))))
+            (subst₂ (RetMatch prog (ir-stack-budget ir))
+                    (sym (sf-saved same)) (sym (sf-ret same)) (seg-stack ih))
+          where
+            same = flat-same-frames i prog fs'' ff
+            lkm : mention-at prog (fpc fs'') ≡ just m
+            lkm = trans (cong mention-of lk) mlab
+            jgo : JumpPost i m prog fs''
+                → cur (seg-at prog (fpc (flat-exec-instr i prog fs'')) B₀)
+                ≡ cur (seg-at prog (fpc fs'') B₀)
+            jgo (jp-suc adv) =
+              cong cur (trans (cong (λ z → seg-at prog z B₀) adv)
+                       (trans seg-suc (idle-step i (ff→seg-id i ff) (seg-at prog (fpc fs'') B₀))))
+            jgo (jp-halt e) = cong cur (cong (λ z → seg-at prog z B₀) e)
+            jgo (jp-to q fq e) =
+              cong cur (trans (cong (λ z → seg-at prog z B₀) e)
+                        (subst (λ pr → seg-at pr q B₀ ≡ seg-at pr (fpc fs'') B₀) (sym eq)
+                          (emitted-jump-in-segment {FS} ir (fpc fs'') q m B₀
+                            (subst (λ pr → mention-at pr (fpc fs'') ≡ just m) eq lkm)
+                            (subst (λ pr → find-label pr m ≡ just q) eq fq))))
+        -- THE BODY MARKER: `grow-frame bb` sets `frame-slots := bb` and the
+        -- static `seg-push bb` sets `cur := bb` — they agree by construction,
+        -- which is the whole point of D086 putting the PUSH at the call and
+        -- only the reservation here. `saved-frames`/`fret` are untouched, so
+        -- `RetMatch` rides through.
+        step (pv-thunk ℓ bb ieq) =
+          mkSegWF (trans (cong (λ z → frame-slots (falloc (flat-exec-instr z prog fs''))) ieq)
+                         (sym (cong cur (trans (cong (λ z → seg-at prog z B₀) (pc-eq ieq))
+                                               (trans seg-suc (step-eq ieq))))))
+                  (subst₂ (RetMatch prog (ir-stack-budget ir))
+                          (sym (cong (λ z → saved-frames (falloc (flat-exec-instr z prog fs''))) ieq))
+                          (sym (cong (λ z → fret (flat-exec-instr z prog fs'')) ieq))
+                          (seg-stack ih))
+          where
+            pc-eq : i ≡ instr-ctrl (c-thunk ℓ bb)
+                  → fpc (flat-exec-instr i prog fs'') ≡ suc (fpc fs'')
+            pc-eq refl = refl
+            step-eq : i ≡ instr-ctrl (c-thunk ℓ bb)
+                    → seg-step i (seg-at prog (fpc fs'') B₀)
+                      ≡ mkSeg bb (cur (seg-at prog (fpc fs'') B₀) ∷ saved (seg-at prog (fpc fs'') B₀))
+            step-eq refl = refl
+        -- THE RETURN: `leave-frame` restores the caller's count and the pc goes
+        -- to the popped return address. That those two BELONG TOGETHER is
+        -- exactly `RetMatch`, which is what it was built for.
+        step (pv-ret bb ieq) = ret-step ieq
+          where
+            ret-step : i ≡ instr-ctrl (c-ret bb)
+                     → SegWF prog (ir-stack-budget ir) (flat-exec-instr i prog fs'')
+            ret-step refl = go-rm (fret fs'') (saved-frames (falloc fs'')) refl refl (seg-stack ih)
               where
-                lkm : mention-at prog (fpc fs'') ≡ just m
-                lkm = trans (cong mention-of lk) mlab
-                jgo : JumpPost i m prog fs''
-                    → cur (seg-at prog (fpc (flat-exec-instr i prog fs'')) B₀)
-                    ≡ cur (seg-at prog (fpc fs'') B₀)
-                jgo (jp-suc adv) =
-                  cong cur (trans (cong (λ z → seg-at prog z B₀) adv)
-                           (trans (seg-at-suc prog (fpc fs'') B₀ lk)
-                                  (idle-step i (ff→seg-id i ff) (seg-at prog (fpc fs'') B₀))))
-                jgo (jp-halt e) = cong cur (cong (λ z → seg-at prog z B₀) e)
-                jgo (jp-to q fq e) =
-                  cong cur (trans (cong (λ z → seg-at prog z B₀) e)
-                                  (jump-seg q fq))
-                  where
-                    jump-seg : ∀ (q' : ℕ) → find-label prog m ≡ just q'
-                             → seg-at prog q' B₀ ≡ seg-at prog (fpc fs'') B₀
-                    jump-seg q' fq' =
-                      subst (λ pr → seg-at pr q' B₀ ≡ seg-at pr (fpc fs'') B₀)
-                            (sym eq)
-                            (emitted-jump-in-segment {FS} ir (fpc fs'') q' m B₀
-                              (subst (λ pr → mention-at pr (fpc fs'') ≡ just m) eq lkm)
-                              (subst (λ pr → find-label pr m ≡ just q') eq fq'))
+                -- J-style on BOTH stacks at once: `RetMatch` pairs them, so
+                -- the length-mismatch rows are absurd and the cons row hands
+                -- back exactly the two facts the post-state needs — the
+                -- caller's reservation (`beq`) and the tail pairing.
+                go-rm : ∀ (rs : List ℕ) (frs : List (Frame × ℕ))
+                      → fret fs'' ≡ rs → saved-frames (falloc fs'') ≡ frs
+                      → RetMatch prog (ir-stack-budget ir) frs rs
+                      → SegWF prog (ir-stack-budget ir)
+                              (flat-exec-instr (instr-ctrl (c-ret bb)) prog fs'')
+                -- an empty return stack HALTS with the pc unmoved, so the
+                -- caller's window is this frame's and the pairing stays empty
+                go-rm [] [] req feq rm-[] =
+                  mkSegWF (trans (cong frame-slots (do-ret-alloc fs''))
+                          (trans (leave-frame-slots-[] (falloc fs'') feq)
+                          (trans (seg-cur ih)
+                                 (cong (λ z → cur (seg-at prog z B₀))
+                                       (sym (do-ret-pc-[] fs'' req))))))
+                          (subst₂ (RetMatch prog (ir-stack-budget ir))
+                                  (sym (trans (cong saved-frames (do-ret-alloc fs''))
+                                              (leave-frame-saved-[] (falloc fs'') feq)))
+                                  (sym (do-ret-fret-[] fs'' req)) rm-[])
+                -- …and a real return takes the caller's reservation `b` and
+                -- lands at `rpc`; `RetMatch` says those two belong together
+                go-rm (rpc ∷ rs) ((f , b) ∷ frs) req feq (rm-∷ beq rest) =
+                  mkSegWF (trans (cong frame-slots (do-ret-alloc fs''))
+                          (trans (leave-frame-slots-∷ (falloc fs'') f b frs feq)
+                          (trans beq (cong (λ z → cur (seg-at prog z B₀))
+                                           (sym (do-ret-pc-∷ fs'' rpc rs req))))))
+                          (subst₂ (RetMatch prog (ir-stack-budget ir))
+                                  (sym (trans (cong saved-frames (do-ret-alloc fs''))
+                                              (leave-frame-saved-∷ (falloc fs'') f b frs feq)))
+                                  (sym (do-ret-fret-∷ fs'' rpc rs req)) rest)
+                go-rm [] ((f , b) ∷ frs) req feq ()
+                go-rm (rpc ∷ rs) [] req feq ()
 
-
-
--- the projection the slot cluster consumes
-run-stack-slot : ∀ prog (fs : FlatState) (r : RunAt prog fs)
-               → frame-slots (falloc fs) ≡ ir-stack-budget (run-ir r)
-run-stack-slot prog fs r =
-  trans (seg-cur (run-seg-wf prog fs r))
-        (cong cur (subst (λ p → seg-at p (fpc fs) (mkSeg (ir-stack-budget (run-ir r)) [])
-                              ≡ mkSeg (ir-stack-budget (run-ir r)) [])
-                         (sym (run-emit r))
-                         (emitted-seg-const (run-ir r) (run-heap r) (fpc fs)
-                            (mkSeg (ir-stack-budget (run-ir r)) []))))
+-- (`run-stack-slot` — "the window is the whole trace's budget" — is GONE with
+-- the flip. It is FALSE inside a closure body, whose window is the body's own
+-- reservation. Its consumer wants the POSITIONAL form, which `SegWF.seg-cur`
+-- already is, so the two now compose with no intermediate at all.)
 
 -- ONE FRAME-FREE STEP PRESERVES THE INVARIANT — a THEOREM for EVERY
 -- constructor. Plan 0.63 step 2b SIMPLIFIED this: `lea-slot` joined
@@ -999,7 +1078,7 @@ run-stack-slot prog fs r =
 -- — `emitted-lea-slot-pair`, `SlotBudget.SlotBelow`'s second field, and the
 -- `run-stack-slot` transport — is gone with it.
 stack-ptr-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog fs
-               → fetch prog (fpc fs) ≡ just i → FrameFreeI i
+               → fetch prog (fpc fs) ≡ just i → EmittableI i
                → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
 stack-ptr-step (lea-slot slot) prog fs r ftq () wf
 stack-ptr-step (lea-indexed slot) prog fs r ftq () wf
@@ -1140,12 +1219,12 @@ slot-read-in-frame : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr)
 -- force at this pc (constant today — `emitted-seg-const`) and the machine's own
 -- window (`run-stack-slot`).
 slot-read-in-frame prog fs slot i r ftq soq =
-  subst (slot <_) (sym (run-stack-slot prog fs r))
-    (subst (slot <_)
-           (cong cur (emitted-seg-const (run-ir r) (run-heap r) (fpc fs)
-                        (mkSeg (ir-stack-budget (run-ir r)) [])))
-      (emitted-slot-below-budget (run-ir r) (fpc fs) i slot
-        (subst (λ p → fetch p (fpc fs) ≡ just i) (run-emit r) ftq) soq))
+  -- the emitter's positional bound, at the machine's positional window
+  subst (slot <_) (sym (seg-cur (run-seg-wf prog fs r)))
+    (subst (λ pr → slot < cur (seg-at pr (fpc fs) (mkSeg (ir-stack-budget (run-ir r)) [])))
+           (sym (run-emit r))
+           (emitted-slot-below-budget (run-ir r) (fpc fs) i slot
+             (subst (λ p → fetch p (fpc fs) ≡ just i) (run-emit r) ftq) soq))
 
 ------------------------------------------------------------------------
 -- THE POINTER-BOUNDS INVARIANT IS A THEOREM (plan 0.54 rung D, item 5).
@@ -1171,7 +1250,7 @@ emitted-alloc-min .(ir-to-trace ir) fs i (ir , refl) ftq = fetch-alloc-min {FS} 
 -- ONE FRAME-FREE STEP PRESERVES THE INVARIANT — enumerated like
 -- `stack-ptr-step` (the vacuous alloc premises need `i` concrete).
 ptr-bounds-step : ∀ (i : AbstractInstr) prog (fs : FlatState) → RunAt prog fs
-                → fetch prog (fpc fs) ≡ just i → FrameFreeI i
+                → fetch prog (fpc fs) ≡ just i → EmittableI i
                 → FlatWF fs
                 → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)
 ptr-bounds-step (instr-case-on-tag f g) prog fs r ftq () wfS wf
@@ -1551,9 +1630,9 @@ mutual
   -- `stack-room`); `c-ret` additionally needs the `FlatCorr` component
   -- relating the ghost `fret` to the machine stack.
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-thunk m b)) cc wf h ftq =
-    ⊥-elim (frame-op-absurd prog fs (instr-ctrl (c-thunk m b)) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
+    events-running-thunk n ev env prog fs s m b cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-ret b)) cc wf h ftq =
-    ⊥-elim (frame-op-absurd prog fs (instr-ctrl (c-ret b)) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
+    events-running-ret n ev env prog fs s b cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-jmp m)) cc wf h ftq = cjmp-step n ev env prog fs s m cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-branch-scratch-zero m)) cc wf h ftq = branch-step n ev env prog fs s m cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m)) cc wf h ftq = tag-branch-step n ev env prog fs s m cc wf h ftq

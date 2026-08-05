@@ -34,7 +34,7 @@ open import Once.CCC.Machine.SMCore
 module FlatMachine {FS : FrameSemantics} where
   open MemOps {FS}
   open FrameSemantics FS using (Frame; shift-frame)
-  open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
   open AbstractExec {FS} using (exec-abstract; exec-trace; exec-trace-cons)
 
   -- Flat machine state: the typed LocState + allocator + pc.
@@ -192,6 +192,34 @@ module FlatMachine {FS : FrameSemantics} where
   leave-frame : AllocState {FS} → AllocState {FS}
   leave-frame alloc = leave-frame-aux (saved-frames alloc) alloc
 
+  -- Plan 0.63: READ-BACK for the epilogue, per shape of the frame stack. These
+  -- exist because `rewrite` on `saved-frames alloc ≡ …` does not reach the
+  -- occurrence buried in `leave-frame`'s unfolding at a use site — the
+  -- equation has to be consumed where `leave-frame-aux` is still exposed.
+  leave-frame-slots-[] : ∀ (alloc : AllocState {FS}) → saved-frames alloc ≡ []
+                       → frame-slots (leave-frame alloc) ≡ frame-slots alloc
+  leave-frame-slots-[] alloc e rewrite e = refl
+
+  leave-frame-slots-∷ : ∀ (alloc : AllocState {FS}) (f : Frame) (b : ℕ) (frs : List (Frame × ℕ))
+                      → saved-frames alloc ≡ (f , b) ∷ frs
+                      → frame-slots (leave-frame alloc) ≡ b
+  leave-frame-slots-∷ alloc f b frs e rewrite e = refl
+
+  leave-frame-saved-[] : ∀ (alloc : AllocState {FS}) → saved-frames alloc ≡ []
+                       → saved-frames (leave-frame alloc) ≡ []
+  leave-frame-saved-[] alloc e = go (saved-frames alloc) refl
+    where go : ∀ (fl : List (Frame × ℕ)) → saved-frames alloc ≡ fl
+             → saved-frames (leave-frame-aux fl alloc) ≡ []
+          go []             _  = e
+          go ((f , b) ∷ fs) eq = absurd (trans (sym e) eq)
+            where absurd : ∀ {A : Set} → [] ≡ (f , b) ∷ fs → A
+                  absurd ()
+
+  leave-frame-saved-∷ : ∀ (alloc : AllocState {FS}) (f : Frame) (b : ℕ) (frs : List (Frame × ℕ))
+                      → saved-frames alloc ≡ (f , b) ∷ frs
+                      → saved-frames (leave-frame alloc) ≡ frs
+  leave-frame-saved-∷ alloc f b frs e rewrite e = refl
+
   -- The frame move touches ONLY the frame fields.
   leave-frame-next-slot : ∀ (alloc : AllocState {FS})
                         → next-slot (leave-frame alloc) ≡ next-slot alloc
@@ -258,6 +286,41 @@ module FlatMachine {FS : FrameSemantics} where
   -- The return-address cell then lies in the gap between the callee's window
   -- END and the caller's BASE, inside no window at all. That gap is exactly
   -- the slack D085's floor leaves (it is a `≤`, not an equality).
+  -- …and the same read-backs for the RETURN itself. `do-ret` matches on the
+  -- return stack, so a use site has to consume the shape equation here rather
+  -- than rewrite through it.
+  do-ret-pc-[] : ∀ (fs : FlatState) → fret fs ≡ []
+               → fpc (do-ret (fret fs) fs) ≡ fpc fs
+  do-ret-pc-[] fs e = go (fret fs) refl
+    where go : ∀ (rl : List ℕ) → fret fs ≡ rl → fpc (do-ret rl fs) ≡ fpc fs
+          go []       _  = refl
+          go (x ∷ xs) eq = absurd (trans (sym e) eq)
+            where absurd : ∀ {A : Set} → [] ≡ x ∷ xs → A
+                  absurd ()
+
+  do-ret-pc-∷ : ∀ (fs : FlatState) (rpc : ℕ) (rs : List ℕ) → fret fs ≡ rpc ∷ rs
+              → fpc (do-ret (fret fs) fs) ≡ rpc
+  do-ret-pc-∷ fs rpc rs e rewrite e = refl
+
+  do-ret-fret-[] : ∀ (fs : FlatState) → fret fs ≡ []
+                 → fret (do-ret (fret fs) fs) ≡ []
+  do-ret-fret-[] fs e = go (fret fs) refl
+    where go : ∀ (rl : List ℕ) → fret fs ≡ rl → fret (do-ret rl fs) ≡ []
+          go []       _  = e
+          go (x ∷ xs) eq = absurd (trans (sym e) eq)
+            where absurd : ∀ {A : Set} → [] ≡ x ∷ xs → A
+                  absurd ()
+
+  do-ret-fret-∷ : ∀ (fs : FlatState) (rpc : ℕ) (rs : List ℕ) → fret fs ≡ rpc ∷ rs
+                → fret (do-ret (fret fs) fs) ≡ rs
+  do-ret-fret-∷ fs rpc rs e rewrite e = refl
+
+  do-ret-alloc : ∀ (fs : FlatState) → falloc (do-ret (fret fs) fs) ≡ leave-frame (falloc fs)
+  do-ret-alloc fs = go (fret fs)
+    where go : ∀ (rl : List ℕ) → falloc (do-ret rl fs) ≡ leave-frame (falloc fs)
+          go []       = refl
+          go (x ∷ xs) = refl
+
   grow-frame : ℕ → AllocState {FS} → AllocState {FS}
   grow-frame n alloc =
     record alloc { current-frame = shift-frame (current-frame alloc) n

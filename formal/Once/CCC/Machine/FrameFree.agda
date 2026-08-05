@@ -40,11 +40,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 
-open import Once.CCC.Machine.SMCore using
-  (AbstractInstr; AbstractTrace;
-   instr-alloc-stack; instr-dealloc-stack; instr-push-frame; instr-pop-frame;
-   instr-case-on-tag; instr-loop; lea-indexed; lea-slot;
-   instr-ctrl; c-thunk; c-ret)
+open import Once.CCC.Machine.SMCore
 
 -- No mutual needed since Plan 0.54 item 6: with `instr-case-on-tag` in the ⊥
 -- set there is NO nested trace anywhere — the predicate is shallow.
@@ -94,6 +90,80 @@ FrameFreeI (instr-ctrl (c-thunk _ _)) = ⊥
 FrameFreeI (instr-ctrl (c-ret _))     = ⊥
 {-# CATCHALL #-}
 FrameFreeI _                         = ⊤
+
+------------------------------------------------------------------------
+-- THE EMITTER FENCE, SPLIT OFF (Plan 0.63, 2b).
+--
+-- `FrameFreeI` was carrying two jobs at once: a SEMANTIC one ("this
+-- instruction does not move the frame" — what `flat-same-frames`, the
+-- stack-pointer and pointer-bounds inductions consume) and an EMITTER one
+-- ("`ir-to-trace` never produces this" — what the correspondence's dispatch
+-- consumes). While the closure markers had no producer the two sets
+-- coincided, so one predicate served both.
+--
+-- The flip separates them, and only for the markers: `c-thunk`/`c-ret` are
+-- now EMITTED (so they must leave the fence) but they still MOVE THE FRAME
+-- (so they must stay ⊥ above — that statement is what makes the frame
+-- invariants true). Everything else — the four frame ops, the two fossils,
+-- `lea-slot` on the heap-moded path — is unchanged and in both.
+--
+-- Keeping `FrameFreeI` honest rather than widening it is the whole point: a
+-- widened version would claim a marker leaves `frame-slots` alone, which is
+-- exactly false.
+EmittableI : AbstractInstr → Set
+EmittableI (instr-alloc-stack _)     = ⊥
+EmittableI (instr-dealloc-stack _)   = ⊥
+EmittableI (instr-push-frame _)      = ⊥
+EmittableI instr-pop-frame           = ⊥
+EmittableI (instr-case-on-tag t₁ t₂) = ⊥
+EmittableI (instr-loop t)            = ⊥
+EmittableI (lea-indexed _)           = ⊥
+EmittableI (lea-slot _)              = ⊥
+{-# CATCHALL #-}
+EmittableI _                         = ⊤
+
+-- …and the fence is WEAKER, so every consumer that only needs "no fossil"
+-- can still be fed a frame-free witness. ENUMERATED on the ⊥ set (the
+-- catch-alls do not reduce on a variable).
+frame-free-emittable : ∀ (i : AbstractInstr) → FrameFreeI i → EmittableI i
+frame-free-emittable (instr-alloc-stack _)     ()
+frame-free-emittable (instr-dealloc-stack _)   ()
+frame-free-emittable (instr-push-frame _)      ()
+frame-free-emittable instr-pop-frame           ()
+frame-free-emittable (instr-case-on-tag _ _)   ()
+frame-free-emittable (instr-loop _)            ()
+frame-free-emittable (lea-indexed _)           ()
+frame-free-emittable (lea-slot _)              ()
+frame-free-emittable (instr-ctrl (c-thunk _ _)) ()
+frame-free-emittable (instr-ctrl (c-ret _))     ()
+frame-free-emittable (instr-ctrl (c-label _))            _ = tt
+frame-free-emittable (instr-ctrl (c-jmp _))              _ = tt
+frame-free-emittable (instr-ctrl (c-branch-scratch-zero _)) _ = tt
+frame-free-emittable (instr-ctrl (c-branch-tag-zero _))  _ = tt
+frame-free-emittable mov-to-output             _ = tt
+frame-free-emittable mov-to-input              _ = tt
+frame-free-emittable mov-output-to-input2      _ = tt
+frame-free-emittable mov-input2-to-output      _ = tt
+frame-free-emittable load-indirect             _ = tt
+frame-free-emittable load-indirect-suc         _ = tt
+frame-free-emittable (load-from-slot _)        _ = tt
+frame-free-emittable (store-at-slot _)         _ = tt
+frame-free-emittable store-indirect            _ = tt
+frame-free-emittable store-indirect-suc        _ = tt
+frame-free-emittable (restore-input _)         _ = tt
+frame-free-emittable (instr-reclaim-to _)      _ = tt
+frame-free-emittable instr-call-closure        _ = tt
+frame-free-emittable (worklist-init _)         _ = tt
+frame-free-emittable (worklist-push _)         _ = tt
+frame-free-emittable (worklist-pop _)          _ = tt
+frame-free-emittable (worklist-check _)        _ = tt
+frame-free-emittable (instr-sigop _)           _ = tt
+frame-free-emittable (instr-load-const _ _)    _ = tt
+frame-free-emittable (instr-load-code-addr _)  _ = tt
+frame-free-emittable instr-save-closure-reg    _ = tt
+frame-free-emittable (instr-load-tag-lit _)    _ = tt
+frame-free-emittable (instr-alloc-heap _)      _ = tt
+frame-free-emittable (instr-reg-op _)          _ = tt
 
 FrameFreeT : AbstractTrace → Set
 FrameFreeT []       = ⊤

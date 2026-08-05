@@ -55,7 +55,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace; load-indirect-suc; mov-to-input)
 open import Once.CCC.Machine.FrameFree using
-  (FrameFreeI; FrameFreeT; frame-free-nest)
+  (FrameFreeI; FrameFreeT; frame-free-nest; EmittableI)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.ShapeTable using (HeapModed; IsHeap)
 open import Once.CCC.Codegen.IRToTrace using
@@ -77,8 +77,13 @@ cata-trace-of (_ , _ , t) = t
 -- every splice `t₁ ++ t₂` (the equivalent `FrameFreeT` is a recursive product,
 -- under which a spliced goal has already lost its `++` structure).
 -- `frame-free-nest` converts, at the nested-branch obligations only.
+-- Plan 0.63 (2b): the walk proves the EMITTER FENCE (`EmittableI`), not the
+-- semantic frame-freeness — closure bodies are inline now, so an emitted trace
+-- genuinely DOES contain the two frame-moving markers. Every leaf below is
+-- still `tt`: the fence and the old predicate differ only at those two
+-- constructors.
 FrameFreeTrace : AbstractTrace → Set
-FrameFreeTrace = All FrameFreeI
+FrameFreeTrace = All EmittableI
 
 ------------------------------------------------------------------------
 -- The heap-linked-stack bricks the cata codegen is built from.
@@ -213,8 +218,14 @@ frame-free-trace' (⟨ f , g ⟩ Heap) (_ , hf , hg) n l =
        ++⁺ (frame-free-trace' g hg _ _)
            (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []))
 frame-free-trace' (curry b Stack) (() , _) n l
-frame-free-trace' (curry b Heap)  hm n l =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+-- THE BODY IS INLINE (the flip): the walk recurses into it right here, which
+-- is the one-line change inlining AT THE CLAUSE buys — a strengthened "main
+-- AND every body" induction would have been the alternative. The markers are
+-- `tt` because the fence admits them; the body's own instructions come from
+-- the same recursive `ir-to-trace'`.
+frame-free-trace' (curry b Heap)  (_ , hb) n l =
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
+  ++⁺ (frame-free-trace' b hb _ _) (tt ∷ tt ∷ [])
 frame-free-trace' apply hm n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
@@ -259,14 +270,14 @@ ir-to-trace-frame-free : ∀ {A B} (ir : IR A B) (hm : HeapModed ir)
                        → FrameFreeTrace (ir-to-trace ir)
 ir-to-trace-frame-free ir hm = frame-free-at-frontier ir hm 0
 
--- …and as the DEEP trace predicate, for the nested obligations downstream.
-ir-to-trace-frame-free-deep : ∀ {A B} (ir : IR A B) (hm : HeapModed ir)
-                            → FrameFreeT (ir-to-trace ir)
-ir-to-trace-frame-free-deep ir hm = frame-free-nest (ir-to-trace-frame-free ir hm)
+-- (`ir-to-trace-frame-free-deep` is GONE with the flip: `FrameFreeT` is the
+-- SEMANTIC predicate and an emitted trace no longer satisfies it — the markers
+-- move the frame. Its one consumer, `no-nested-of-all`, needs only the fence,
+-- and takes it directly.)
 
 module _ {FS : FrameSemantics} where
   open FlatMachine {FS}
 
   fetch-frame-free : ∀ {A B} (ir : IR A B) (hm : HeapModed ir) {k i}
-                   → fetch (ir-to-trace ir) k ≡ just i → FrameFreeI i
+                   → fetch (ir-to-trace ir) k ≡ just i → EmittableI i
   fetch-frame-free ir hm = fetch-All (ir-to-trace-frame-free ir hm)

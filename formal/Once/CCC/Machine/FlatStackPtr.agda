@@ -67,7 +67,7 @@ open FrameSemantics FS using (Frame; _≟F_)
 open MemOps {FS}
 open ExecFinal {FS}
 open AbstractExec {FS}
-open import Once.CCC.Machine.FrameFree using (FrameFreeI)
+open import Once.CCC.Machine.FrameFree using (FrameFreeI; EmittableI)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 
@@ -434,7 +434,7 @@ sigop-output-ok {A} {B} si ls = go (effect si)
 -- `current-frame`), which is what lets the flat lift consume it directly.
 ------------------------------------------------------------------------
 sp-abstract : ∀ (i : AbstractInstr) (ls : LocState FS) (alloc : AllocState {FS})
-            → FrameFreeI i
+            → EmittableI i
             → SPInv ls
             → SPInv (proj₁ (exec-abstract i ls alloc))
 sp-abstract mov-to-output ls alloc ff wf =
@@ -529,7 +529,7 @@ sp-ret []           fs wf = sp-halt (current-frame (falloc fs)) (floc fs) true w
 sp-ret (pc' ∷ rest) fs wf = wf
 
 flat-stack-ptr : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
-               → FrameFreeI i
+               → EmittableI i
                → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
 flat-stack-ptr (instr-ctrl (c-label m))               prog fs ff wf = wf
 -- Plan 0.63 step 2b: THE CLOSURE MARKERS MOVE THE FRAME, AND IT NO LONGER

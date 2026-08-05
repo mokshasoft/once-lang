@@ -93,12 +93,14 @@ label-mono initial  n l = ≤-refl
 label-mono (g ∘ f)  n l = ≤-trans (label-mono f n l) (label-mono g _ _)
 label-mono (⟨ f , g ⟩ Stack) n l = ≤-trans (label-mono f _ l) (label-mono g _ _)
 label-mono (⟨ f , g ⟩ Heap)  n l = ≤-trans (label-mono f _ l) (label-mono g _ _)
--- The closure clauses take the body marker `l` and then hand the body its own
--- range. (The FLIP adds a second label here — the end-of-body join `suc l` —
--- so this becomes `suc (suc l)`; the shape of the proof is unchanged, which is
--- part of why this brick is worth landing before the flip rather than with it.)
-label-mono (curry b Stack) n l = ≤-trans (n≤1+n l) (label-mono b 0 (suc l))
-label-mono (curry b Heap)  n l = ≤-trans (n≤1+n l) (label-mono b 0 (suc l))
+-- The closure clauses take TWO labels of their own — the body marker `l` and
+-- the end-of-body join `suc l` — and then hand the body its own range starting
+-- at `suc (suc l)`. (Pre-flip this was one label; the proof shape is unchanged,
+-- which is why this brick was worth landing ahead of the flip.)
+label-mono (curry b Stack) n l =
+  ≤-trans (n≤1+n l) (≤-trans (n≤1+n (suc l)) (label-mono b 0 (suc (suc l))))
+label-mono (curry b Heap)  n l =
+  ≤-trans (n≤1+n l) (≤-trans (n≤1+n (suc l)) (label-mono b 0 (suc (suc l))))
 label-mono apply n l = ≤-refl
 label-mono (inl Stack) n l = ≤-refl
 label-mono (inr Stack) n l = ≤-refl

@@ -38,7 +38,7 @@ open import Once.CCC.Target.X86-64.Syntax
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Machine.FrameFree using (FrameFreeI)
+open import Once.CCC.Machine.FrameFree using (FrameFreeI; EmittableI)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.CCC.Label using (Label; once; thunk)
@@ -370,7 +370,9 @@ NoNested (i ∷ is) = NoNestedI i × NoNested is
 -- `compile-trace-cnt` and the plain `compile-trace` coincide on every emitted
 -- program (`compile-trace-cnt-agrees` applies unconditionally at the apex,
 -- retiring the `conc-flat-sim-nested` split).
-no-nested-of-frame-free : ∀ (i : AbstractInstr) → FrameFreeI i → NoNestedI i
+-- Plan 0.63: the EMITTER FENCE suffices — the closure markers carry no
+-- nested trace either, so widening from `FrameFreeI` costs nothing here.
+no-nested-of-frame-free : ∀ (i : AbstractInstr) → EmittableI i → NoNestedI i
 no-nested-of-frame-free mov-to-output           _ = tt
 no-nested-of-frame-free mov-to-input            _ = tt
 no-nested-of-frame-free mov-output-to-input2    _ = tt
@@ -405,7 +407,7 @@ no-nested-of-frame-free (instr-alloc-heap _)    _ = tt
 no-nested-of-frame-free (instr-reg-op _)        _ = tt
 no-nested-of-frame-free (instr-ctrl _)          _ = tt
 
-no-nested-of-all : ∀ (t : AbstractTrace) → All FrameFreeI t → NoNested t
+no-nested-of-all : ∀ (t : AbstractTrace) → All EmittableI t → NoNested t
 no-nested-of-all []       _          = tt
 no-nested-of-all (i ∷ is) (fi ∷ fis) =
   no-nested-of-frame-free i fi , no-nested-of-all is fis

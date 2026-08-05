@@ -327,8 +327,14 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-stable terminal        n l = all-stable?-sound _ refl
   ir-stable initial         n l = all-stable?-sound _ refl
   ir-stable apply           n l = all-stable?-sound _ refl
-  ir-stable (curry _ Stack) n l = all-stable?-sound _ refl
-  ir-stable (curry _ Heap)  n l = all-stable?-sound _ refl
+  -- the flip: the body is inline, so the decider cannot settle the whole
+  -- fragment by itself — the prefix/suffix compute, the body recurses.
+  ir-stable (curry b Stack) n l =
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+    ++⁺ (ir-stable b _ _) (tt ∷ᴬ tt ∷ᴬ []ᴬ)
+  ir-stable (curry b Heap)  n l =
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+    ++⁺ (ir-stable b _ _) (tt ∷ᴬ tt ∷ᴬ []ᴬ)
   ir-stable (SigOp _)       n l = all-stable?-sound _ refl
   ir-stable (const fits-int _)   n l = all-stable?-sound _ refl
   ir-stable (const fits-float _) n l = all-stable?-sound _ refl

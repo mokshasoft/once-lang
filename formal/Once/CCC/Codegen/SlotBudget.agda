@@ -54,7 +54,7 @@ open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace; Slot; lea-slot;
    mov-to-output; mov-to-input; store-at-slot; load-from-slot;
    store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit;
-   instr-ctrl; c-thunk; c-ret)
+   instr-ctrl; c-thunk; c-ret; c-label)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Codegen.IRToTrace using
   (ir-to-trace'; ir-to-trace; ir-stack-budget;
@@ -354,6 +354,47 @@ segok-weaken le p = mkSegOK (seg-weaken-cur le (ok-all p)) (ok-neu p)
 segok-pre : ∀ {b : ℕ} (pre : AbstractTrace) {t : AbstractTrace} → seg-idle? pre ≡ true
           → All (SlotBelow b) pre → SegOK b t → SegOK b (pre ++ t)
 segok-pre pre idle all ok = segok-++ (segok-idle pre idle all) ok
+
+------------------------------------------------------------------------
+-- THE CLOSURE-BODY FRAGMENT (Plan 0.63, the flip). This is what the whole
+-- segmentation was built for:
+--
+--     c-thunk ℓ bb ∷ body ++ c-ret bb ∷ c-label e ∷ []
+--
+-- The marker PUSHES the body's own reservation, the body is bounded by THAT
+-- (not by the parent's — the point), and `c-ret` pops back. Neutrality is the
+-- push and the pop cancelling, which needs the body to be neutral itself:
+-- exactly `SegOK`'s second field, and exactly why the two facts are bundled.
+--
+-- Note the body's `SegOK bb` is used at the enclosing stack `cur st ∷ saved st`
+-- — `ok-all`'s `sv` is quantified, which is what lets a fragment be spliced at
+-- any depth and is why closures nest without any extra lemma.
+------------------------------------------------------------------------
+segok-thunk : ∀ {B : ℕ} (ℓ bb e : ℕ) (body : AbstractTrace) → SegOK bb body
+            → SegOK B (instr-ctrl (c-thunk ℓ bb) ∷
+                       body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ [])
+segok-thunk {B} ℓ bb e body bok = mkSegOK inner neu
+  where
+    inner : ∀ {sv : List ℕ}
+          → AllSeg (mkSeg B sv) (instr-ctrl (c-thunk ℓ bb) ∷
+                                 body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ [])
+    inner {sv} =
+      sb-none refl
+      ∷ allseg-++ (ok-all bok)
+          (subst (λ z → AllSeg z (instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ []))
+                 (sym (ok-neu bok (mkSeg bb (B ∷ sv))))
+                 (sb-none refl ∷ sb-none refl ∷ []))
+    neu : ∀ (st : SegState) → seg-fold (instr-ctrl (c-thunk ℓ bb) ∷
+                                        body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ []) st
+                            ≡ st
+    neu st =
+      trans (seg-fold-++ body (instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ [])
+                         (mkSeg bb (cur st ∷ saved st)))
+            (trans (cong (seg-fold (instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ []))
+                         (ok-neu bok (mkSeg bb (cur st ∷ saved st))))
+                   -- the pop restores `mkSeg (cur st) (saved st)`, which IS `st`
+                   -- (record eta) — so the marker pair cancels exactly.
+                   refl)
 
 ------------------------------------------------------------------------
 -- THE FRONTIER NEVER RETREATS.
@@ -845,15 +886,22 @@ slots-below (⟨ f , g ⟩ Heap) n l =
             sb-slot refl h (λ _ ()) ∷ [])))))
   where h : suc (suc (suc (suc n))) ≤ budget-of (ir-to-trace' n l (⟨ f , g ⟩ Heap))
         h = ≤-trans (frontier-mono f _ l) (frontier-mono g _ _)
-slots-below (curry b Stack) n l = segok-idle _ refl
-  (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
-  sb-slot refl ≤-refl (λ _ ()) ∷
-  -- the record/pair base: `lea-slot n`, with `suc n` reserved beside it
-  sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷ [])
-slots-below (curry b Heap) n l = segok-idle _ refl
-  (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
-  sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
-  sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
+-- THE FLIP: the closure construction, then the body's own segment.
+slots-below (curry b Stack) n l =
+  segok-pre _ refl
+    (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+     sb-slot refl ≤-refl (λ _ ()) ∷
+     -- the record/pair base: `lea-slot n`, with `suc n` reserved beside it
+     sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷
+     sb-none refl ∷ [])
+    (segok-thunk l _ (suc l) _ (slots-below b 0 (suc (suc l))))
+slots-below (curry b Heap) n l =
+  segok-pre _ refl
+    (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+     sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
+     sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷
+     sb-none refl ∷ [])
+    (segok-thunk l _ (suc l) _ (slots-below b 0 (suc (suc l))))
 slots-below apply n l = segok-idle _ refl
   (sb-none refl ∷ sb-slot refl (≤-step (≤-step ≤-refl)) (λ _ ()) ∷ sb-none refl ∷
   sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
