@@ -76,8 +76,8 @@ open import poc.OCP0009.NbEPDirDBSubj
         ; HomToΠ; via-U; via-Π; hom-to-Π
         ; U-reduct; wk-cancel-tm; ≅ᵀ-Homᵀ; gen-var; subTy-comm; subTy-monoˢ )
 open import poc.OCP0009.NbEPDirDBLR
-  using ( SNe; sne-var; sne-app; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap; sne-jsub
-        ; Ne; ne-var; ne-app; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁
+  using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap; sne-jsub
+        ; Ne; ne-var; ne-app; ne-absurd; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁
         ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-cId; sn-idrefl; sn-exp
         ; sn-cNat; sn-cUnit
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
@@ -278,6 +278,7 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 sne→nopw : {t : RTm Ξ} → SNe t → nopw? t ≡ true
 sne→nopw (sne-var x)        = refl
 sne→nopw (sne-app n _)      = sne→spine n
+sne→nopw (sne-absurd _ _)   = refl
 sne→nopw (sne-fst n)        = sne→spine n
 sne→nopw (sne-snd n)        = sne→spine n
 sne→nopw (sne-hrefl _ _ _)  = refl
@@ -757,6 +758,7 @@ motFate (sn-exp r h) with motFate h
 ... | c* , (csr , fate) = c* , (csr-step (csr-here r) csr , fate)
 motFate (sn-ne (sne-var x)) = _ , (csr-done , mf-dead refl)
 motFate (sn-ne (sne-app n s)) = _ , (csr-done , mf-dead (sne→spine n))
+motFate (sn-ne (sne-absurd _ _)) = _ , (csr-done , mf-dead refl)
 motFate (sn-ne (sne-fst n)) = _ , (csr-done , mf-dead (sne→spine n))
 motFate (sn-ne (sne-snd n)) = _ , (csr-done , mf-dead (sne→spine n))
 motFate (sn-ne (sne-hrefl {c = c₂} {t = t₂} snc snt kn)) with motFate snc
@@ -828,6 +830,8 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
     sn-ne (sne-tr snM (sn-ne (sne-var x)) snE refl)
   go' (sn-ne (sne-app n s)) =
     sn-ne (sne-tr snM (sn-ne (sne-app n s)) snE (sne→spine n))
+  go' (sn-ne w@(sne-absurd _ _)) =
+    sn-ne (sne-tr snM (sn-ne w) snE refl)
   go' (sn-ne (sne-fst n)) =
     sn-ne (sne-tr snM (sn-ne (sne-fst n)) snE (sne→spine n))
   go' (sn-ne (sne-snd n)) =
@@ -1019,6 +1023,8 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-var x)) snE' refl)
   go₀ (sn-ne (sne-app n s)) hpʹ =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-app n s)) snE' (sne→spine n))
+  go₀ (sn-ne w@(sne-absurd _ _)) hpʹ =
+    CR3₀ RH0 (sne-tr snM (sn-ne w) snE' refl)
   go₀ (sn-ne (sne-fst n)) hpʹ =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-fst n)) snE' (sne→spine n))
   go₀ (sn-ne (sne-snd n)) hpʹ =
@@ -1322,6 +1328,7 @@ ett-star h (stepᵀ r q) = ett-star (ett-red h r) q
 ne-nostk : {n : RTm Ξ} → Ne n → stkC? n ≡ false
 ne-nostk (ne-var _)   = refl
 ne-nostk (ne-app _)   = refl
+ne-nostk ne-absurd = refl
 ne-nostk (ne-fst _)   = refl
 ne-nostk (ne-snd _)   = refl
 ne-nostk (ne-hrefl _) = refl

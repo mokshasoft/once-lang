@@ -70,8 +70,8 @@ open import poc.OCP0009.NbEPDirDBSubj
         ; HomToΠ; via-U; via-Π; hom-to-Π
         ; U-reduct; wk-cancel-tm; ≅ᵀ-Homᵀ; gen-var; subTy-comm; subTy-monoˢ )
 open import poc.OCP0009.NbEPDirDBLR
-  using ( SNe; sne-var; sne-app; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap; sne-jsub
-        ; Ne; ne-var; ne-app; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁
+  using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap; sne-jsub
+        ; Ne; ne-var; ne-app; ne-absurd; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁
         ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-cId; sn-idrefl; sn-exp
         ; sn-cNat; sn-cUnit
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
@@ -340,6 +340,21 @@ fund {Ξ = Ξ} {σ = σ} (⊢pair {B = B} {a = a} {b = b} tyB d₁ d₂) x₀ ρ
     snb = CR1₁ (dfst Sb) (dsnd Sb)
     rb  = projl (irrel₁ crflᵀ (dfst Sb) (⊩G (subTm σ a) ra))
                 (subTm σ b) (dsnd Sb)
+
+-- ★★★ WF-axis stage D: EX FALSO'S SEMANTICS.  `absurd c e` is a
+-- PERMANENT NEUTRAL — no rule fires on it, whatever the scrutinee does
+-- — so CR3 puts it in the interpretation of EVERY type.  That is
+-- exactly what "from falsehood, anything" means semantically, and it is
+-- why no new clause is needed anywhere in the model: the neutral case
+-- was always there.
+fund {σ = σ} (⊢absurd {c = c} dc de) x₀ ρ =
+  ( emb R₀ , CR3₁ (emb R₀) (sne-absurd snc sne₀) )
+  where
+    hc  = projl (irrel₁ crflᵀ (dfst (fund dc x₀ ρ)) (⊩₁U doneᵀ))
+                (subTm σ c) (dsnd (fund dc x₀ ρ))
+    snc = projl hc
+    R₀  = sem-El doneᵀ hc
+    sne₀ = CR1₁ (dfst (fund de x₀ ρ)) (dsnd (fund de x₀ ρ))
 
 fund (⊢fst d) x₀ ρ = ⊩₁-fstm (dfst (fund d x₀ ρ)) (dsnd (fund d x₀ ρ))
 
@@ -620,6 +635,8 @@ fund {Ξ = Ξ} {σ = σ}
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-var x)) refl)
   goP (sn-ne (sne-app n sarg)) =
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-app n sarg)) (sne→spine n))
+  goP (sn-ne w@(sne-absurd _ _)) =
+    CR3₀ R_H (sne-ap snCB snBB (sn-ne w) refl)
   goP (sn-ne (sne-fst n)) =
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-fst n)) (sne→spine n))
   goP (sn-ne (sne-snd n)) =
@@ -757,6 +774,7 @@ fund {Ξ = Ξ} {σ = σ}
   nkeyJ : {p' : RTm Ξ} → SNe p' → idstk? p' ≡ true
   nkeyJ (sne-var x)        = refl
   nkeyJ (sne-app n _)      = sne→spine n
+  nkeyJ (sne-absurd _ _)   = refl
   nkeyJ (sne-fst n)        = sne→spine n
   nkeyJ (sne-snd n)        = sne→spine n
   nkeyJ (sne-hrefl _ _ _)  = refl
@@ -835,6 +853,7 @@ fund {Ξ = Ξ} {σ = σ}
   nkey : {p' : RTm Ξ} → SNe p' → trstk? (var (vz {Ξ})) p' ≡ true
   nkey (sne-var x)        = refl
   nkey (sne-app n s)      = sne→spine n
+  nkey (sne-absurd _ _)   = refl
   nkey (sne-fst n)        = sne→spine n
   nkey (sne-snd n)        = sne→spine n
   nkey (sne-hrefl _ _ kn) = kn
@@ -1140,6 +1159,7 @@ fund {Ξ = Ξ} {σ = σ}
     where z = go snp' (mem-whred₁ R_H r hp')
   go (sn-ne (sne-var x)) hp'         = cr3 (sn-ne (sne-var x)) refl
   go (sn-ne (sne-app n s)) hp'       = cr3 (sn-ne (sne-app n s)) (sne→spine n)
+  go (sn-ne w@(sne-absurd _ _)) hp'  = cr3 (sn-ne w) refl
   go (sn-ne (sne-fst n)) hp'         = cr3 (sn-ne (sne-fst n)) (sne→spine n)
   go (sn-ne (sne-snd n)) hp'         = cr3 (sn-ne (sne-snd n)) (sne→spine n)
   go (sn-ne (sne-hrefl snc sns kn)) hp' = goh snc sns kn hp'
