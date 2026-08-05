@@ -50,6 +50,8 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.IRToTrace using
   (ir-to-trace'; ir-to-trace; CataStrategy; strat-const; strat-nat; strat-linear
   ; strat-branching; cata-strategy; cata-dispatch; lsize
@@ -1279,3 +1281,175 @@ pieces2-agree a b hi .(I ++ at ++ t)
                         (trans (sym (cong mention-of fp)) mq)
                         (trans (sym fq) lq))
                       (sym sp))
+
+------------------------------------------------------------------------
+-- THE INDUCTION. Every clause has its tool: leaves have an EMPTY label range,
+-- the closure/`apply`/injection clauses emit no `once` label at all, the
+-- splicing clauses compose, `Cata` goes through `Pieces` (one repeated trace)
+-- and `case` through `Pieces2` (two different ones, descending windows).
+------------------------------------------------------------------------
+seg-agree   : ∀ {A B} (ir : IR A B) (n l : ℕ) → SegAgree (trace-of (ir-to-trace' n l ir))
+pair-agree  : ∀ {A B C} (f : IR A B) (g : IR A C) (n l : ℕ)
+            → SegAgree (trace-of (ir-to-trace' n l (⟨ f , g ⟩ Stack)))
+pair-agree-heap : ∀ {A B C} (f : IR A B) (g : IR A C) (n l : ℕ)
+            → SegAgree (trace-of (ir-to-trace' n l (⟨ f , g ⟩ Heap)))
+case-pieces : ∀ {A B C} (f : IR A C) (g : IR B C) (n l : ℕ)
+            → Pieces2 l (suc (suc l))
+                      (label-of (ir-to-trace' (budget-of (ir-to-trace' n (suc (suc l)) f))
+                                              (label-of (ir-to-trace' n (suc (suc l)) f)) g))
+                      (trace-of (ir-to-trace' n l (case f g)))
+
+
+seg-agree id n l = segagree-nolab _ (refl ∷ [])
+seg-agree fst n l = segagree-nolab _ (refl ∷ [])
+seg-agree snd n l = segagree-nolab _ (refl ∷ [])
+seg-agree terminal n l = segagree-nolab _ []
+seg-agree initial n l = segagree-nolab _ (refl ∷ [])
+seg-agree (In w x) n l = segagree-nolab _ (refl ∷ [])
+seg-agree (out-μ w) n l = segagree-nolab _ (refl ∷ [])
+seg-agree (Para w x) n l = segagree-nolab _ []
+seg-agree (Out w) n l = segagree-nolab _ (refl ∷ [])
+seg-agree (in-ν w x) n l = segagree-nolab _ []
+seg-agree (Ana w x) n l = segagree-nolab _ []
+seg-agree (Hylo w x y z) n l = segagree-nolab _ []
+seg-agree (Fuse w x y z) n l = segagree-nolab _ []
+seg-agree (free-heap w) n l = segagree-nolab _ (refl ∷ [])
+seg-agree (SigOp w) n l = segagree-nolab _ (refl ∷ [])
+seg-agree (const fits-int v) n l = segagree-nolab _ (refl ∷ [])
+seg-agree (const fits-float v) n l = segagree-nolab _ (refl ∷ [])
+seg-agree (curry bd Stack) n l =
+  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+seg-agree (curry bd Heap)  n l =
+  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+seg-agree apply n l =
+  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+     refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+seg-agree (inl Stack) n l =
+  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+seg-agree (inr Stack) n l =
+  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+seg-agree (inl Heap)  n l =
+  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+seg-agree (inr Heap)  n l =
+  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+seg-agree (g ∘ f) n l =
+  segagree-++' _ _ l (label-of (ir-to-trace' n l f)) (label-of (ir-to-trace' n l f)) _
+    (labels-in f n l) (li-none refl ∷ labels-in g _ _)
+    (inj₁ ≤-refl) (seg-agree f n l)
+    (segagree-pre (mov-to-input ∷ []) _ _ _ (refl ∷ []) (labels-in g _ _) ≤-refl
+                  (seg-agree g _ _))
+seg-agree (Cata {F} _ alg) n l =
+  pieces-agree _ (label-of (ir-to-trace' n l alg)) _ l (label-of (ir-to-trace' n l alg)) _
+    (cata-pieces (cata-strategy ⌈ F ⌉F) _ _ _)
+    (λ st → ok-neu (slots-below alg n l) st)
+    (seg-agree alg n l) (labels-in alg n l) (inj₂ ≤-refl)
+seg-agree (⟨ f , g ⟩ Stack) n l = pair-agree f g n l
+seg-agree (⟨ f , g ⟩ Heap)  n l = pair-agree-heap f g n l
+-- `case`: the skeleton's labels `l`/`suc l` are INTERLEAVED with the two
+-- branches, so no left-to-right split works — `Pieces2` is exactly this shape,
+-- with `gt`'s window above `ft`'s (windows descend along the trace).
+seg-agree (case f g) n l = pieces2-agree l (suc (suc l)) _ _ (case-pieces f g n l)
+
+case-pieces f g n l =
+  p2cons lf lg refl hdL (λ st → ok-neu (slots-below g nf lf) st) (seg-agree g nf lf)
+         (labels-in g nf lf) (label-mono f n (suc (suc l))) (label-mono g nf lf) ≤-refl
+    (p2cons (suc (suc l)) lf refl midL
+            (λ st → ok-neu (slots-below f n (suc (suc l))) st)
+            (seg-agree f n (suc (suc l))) (labels-in f n (suc (suc l)))
+            ≤-refl (label-mono f n (suc (suc l))) ≤-refl
+      (p2nil refl tailL))
+  where
+    nf = budget-of (ir-to-trace' n (suc (suc l)) f)
+    lf = label-of (ir-to-trace' n (suc (suc l)) f)
+    lg = label-of (ir-to-trace' nf lf g)
+    hdL : LabelsIn l (suc (suc l)) _
+    hdL = li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ li-none refl ∷ li-none refl ∷ []
+    midL : LabelsIn l (suc (suc l)) _
+    midL = li-lab refl (n≤1+n l) ≤-refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷
+           li-none refl ∷ li-none refl ∷ []
+    tailL : LabelsIn l (suc (suc l)) _
+    tailL = li-lab refl (n≤1+n l) ≤-refl ∷ []
+
+pair-agree f g n l =
+  segagree-pre (mov-to-output ∷ store-at-slot n ∷ []) l l lg (refl ∷ refl ∷ [])
+    (++⁺ (ls-weaken ≤-refl (label-mono g nf lf) (labels-in f (suc (suc (suc n))) l))
+         (ls-weaken (label-mono f (suc (suc (suc n))) l) ≤-refl restL)) ≤-refl
+    (segagree-++' _ _ l lf lf lg
+       (labels-in f (suc (suc (suc n))) l) restL (inj₁ ≤-refl)
+       (seg-agree f (suc (suc (suc n))) l)
+       (segagree-pre (_ ∷ _ ∷ []) lf lf lg (refl ∷ refl ∷ [])
+          (++⁺ (labels-in g nf lf) (ls-weaken (label-mono g nf lf) ≤-refl tailS)) ≤-refl
+          (segagree-++' _ _ lf lg lg lg (labels-in g nf lf) tailS (inj₁ ≤-refl)
+             (seg-agree g nf lf)
+             (segagree-nolab _ (refl ∷ refl ∷ [])))))
+  where
+    nf = budget-of (ir-to-trace' (suc (suc (suc n))) l f)
+    lf = label-of (ir-to-trace' (suc (suc (suc n))) l f)
+    lg = label-of (ir-to-trace' nf lf g)
+    tailS : LabelsIn lg lg _
+    tailS = li-none refl ∷ li-none refl ∷ []
+    restL : LabelsIn lf lg _
+    restL = li-none refl ∷ li-none refl ∷
+            ++⁺ (labels-in g nf lf) (ls-weaken (label-mono g nf lf) ≤-refl tailS)
+
+pair-agree-heap f g n l =
+  segagree-pre (mov-to-output ∷ store-at-slot n ∷ []) l l lg (refl ∷ refl ∷ [])
+    (++⁺ (ls-weaken ≤-refl (label-mono g nf lf) (labels-in f (suc (suc (suc (suc n)))) l))
+         (ls-weaken (label-mono f (suc (suc (suc (suc n)))) l) ≤-refl restH)) ≤-refl
+    (segagree-++' _ _ l lf lf lg
+       (labels-in f (suc (suc (suc (suc n)))) l) restH (inj₁ ≤-refl)
+       (seg-agree f (suc (suc (suc (suc n)))) l)
+       (segagree-pre (_ ∷ _ ∷ []) lf lf lg (refl ∷ refl ∷ [])
+          (++⁺ (labels-in g nf lf) (ls-weaken (label-mono g nf lf) ≤-refl tailH)) ≤-refl
+          (segagree-++' _ _ lf lg lg lg (labels-in g nf lf) tailH (inj₁ ≤-refl)
+             (seg-agree g nf lf)
+             (segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+                                refl ∷ refl ∷ refl ∷ refl ∷ [])))))
+  where
+    nf = budget-of (ir-to-trace' (suc (suc (suc (suc n)))) l f)
+    lf = label-of (ir-to-trace' (suc (suc (suc (suc n)))) l f)
+    lg = label-of (ir-to-trace' nf lf g)
+    tailH : LabelsIn lg lg _
+    tailH = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+            li-none refl ∷ []
+    restH : LabelsIn lf lg _
+    restH = li-none refl ∷ li-none refl ∷
+            ++⁺ (labels-in g nf lf) (ls-weaken (label-mono g nf lf) ≤-refl tailH)
+
+------------------------------------------------------------------------
+-- THE TOP-LEVEL STATEMENT (Plan 0.63, obligation (iii)).
+--
+-- A jump lands in the segment it left. `FS`-parameterised because
+-- `find-label` lives in `FlatMachine {FS}` — the same shape
+-- `FrameFreeTrace.fetch-frame-free` uses.
+--
+-- The proof is the composition the whole development was aimed at:
+-- `find-label-lands` puts a `c-label m` AT the target, and `seg-agree` says
+-- any position defining `m` agrees with any position mentioning it. Note it
+-- needs no uniqueness — the target is SOME `c-label m`, and all of them agree.
+------------------------------------------------------------------------
+module _ {FS : FrameSemantics} where
+  open FlatMachine {FS} using (find-label; find-label-lands; fetch)
+
+  -- `FlatMachine.fetch` and this module's `fetch-at` are the same recursion
+  -- under different names (the former is frame-semantics-parameterised).
+  fetch≡at : ∀ (t : AbstractTrace) (k : ℕ) → fetch t k ≡ fetch-at t k
+  fetch≡at []       _       = refl
+  fetch≡at (i ∷ is) zero    = refl
+  fetch≡at (i ∷ is) (suc k) = fetch≡at is k
+
+  emitted-jump-in-segment : ∀ {A B} (ir : IR A B) (p q m : ℕ) (st : SegState)
+                          → mention-at (ir-to-trace ir) p ≡ just m
+                          → find-label (ir-to-trace ir) m ≡ just q
+                          → seg-at (ir-to-trace ir) q st ≡ seg-at (ir-to-trace ir) p st
+  emitted-jump-in-segment ir p q m st mq fl =
+    at-top ir p q m st mq (trans (sym (fetch≡at (ir-to-trace ir) q))
+                                 (find-label-lands (ir-to-trace ir) m q fl))
+    where
+      at-top : ∀ {A B} (ir' : IR A B) (p' q' m' : ℕ) (st' : SegState)
+             → mention-at (ir-to-trace ir') p' ≡ just m'
+             → fetch-at (ir-to-trace ir') q' ≡ just (instr-ctrl (c-label m'))
+             → seg-at (ir-to-trace ir') q' st' ≡ seg-at (ir-to-trace ir') p' st'
+      at-top ir' p' q' m' st' a b with ir-to-trace' 0 0 ir' | seg-agree ir' 0 0
+      ... | _ , _ , _ , _ | sa = sa p' q' m' st' a b

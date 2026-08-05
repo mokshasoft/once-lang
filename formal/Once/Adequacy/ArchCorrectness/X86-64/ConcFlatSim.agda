@@ -80,6 +80,8 @@ open import Once.CCC.Codegen.ShapeTable as ST using
   (LabelEnv; Expect; entry-expect; check-shapes; state-at; check-at; at-pc;
    HeapModed; e-in1)
 open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; site-store-ptr; fetch-at-pc)
+open import Once.CCC.Codegen.LabelScope using (emitted-jump-in-segment; mention-at; mention-of; once-label-of)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.CCC.Codegen.SlotBudget using
   (emitted-slot-seg; below; pair-below; trace-lookup; seg-at; SegState; mkSeg; cur
   ; seg-action; is-id?; seg-idle?; idle-step; idle-head; idle-tail; seg-at-suc)
@@ -829,15 +831,69 @@ open SegWF public
 -- a fall-through's segment fact is the fold's own recursion (`seg-at-suc`),
 -- with nothing assumed about emitted code.
 ------------------------------------------------------------------------
+-- where a jump can land: fall through, halt with the pc unmoved (the label
+-- was not found), or at the label's resolved index. The last is the only case
+-- that needs LABEL SCOPING, and carrying the target `m` here is what lets it
+-- consume `emitted-jump-in-segment`.
+-- the three post-pc shapes, read off `do-jump` / `do-branch`
+dj-aux : ∀ (mj : Maybe ℕ) (fs : FlatState)
+       → (fpc (do-jump mj fs) ≡ fpc fs)
+         ⊎ (Σ ℕ (λ q → (mj ≡ just q) × (fpc (do-jump mj fs) ≡ q)))
+dj-aux (just q) fs = inj₂ (q , refl , refl)
+dj-aux nothing  fs = inj₁ refl
+
+-- …and the branch, over a VARIABLE condition. Taking `b` as an argument is
+-- what makes `do-branch b` reduce on the split — abstracting the scrutinee at
+-- the use site does not work, because its normal form is spelled differently
+-- from the source term (`readReg … Scratch` vs the field accessor).
+db-aux : ∀ (b : Bool) (m : ℕ) (prog : AbstractTrace) (fs : FlatState)
+       → (fpc (do-branch b m prog fs) ≡ suc (fpc fs))
+         ⊎ ((fpc (do-branch b m prog fs) ≡ fpc fs)
+            ⊎ (Σ ℕ (λ q → (find-label prog m ≡ just q)
+                        × (fpc (do-branch b m prog fs) ≡ q))))
+db-aux false m prog fs = inj₁ refl
+db-aux true  m prog fs = inj₂ (dj-aux (find-label prog m) fs)
+
+data JumpPost (i : AbstractInstr) (m : ℕ) (prog : AbstractTrace) (fs : FlatState) : Set where
+  jp-suc  : fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs) → JumpPost i m prog fs
+  jp-halt : fpc (flat-exec-instr i prog fs) ≡ fpc fs → JumpPost i m prog fs
+  jp-to   : ∀ (q : ℕ) → find-label prog m ≡ just q
+          → fpc (flat-exec-instr i prog fs) ≡ q → JumpPost i m prog fs
+
 data PcView (i : AbstractInstr) : Set where
   pv-suc  : (∀ prog fs → fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)) → PcView i
-  pv-jump : PcView i
+  pv-jump : ∀ (m : ℕ) → once-label-of i ≡ just m
+          → (∀ prog fs → JumpPost i m prog fs) → PcView i
 
 pcView : ∀ (i : AbstractInstr) → FrameFreeI i → PcView i
 pcView (instr-ctrl (c-label _))               _ = pv-suc (λ _ _ → refl)
-pcView (instr-ctrl (c-jmp _))                 _ = pv-jump
-pcView (instr-ctrl (c-branch-scratch-zero _)) _ = pv-jump
-pcView (instr-ctrl (c-branch-tag-zero _))     _ = pv-jump
+pcView (instr-ctrl (c-jmp m))                 _ = pv-jump m refl go
+  where go : ∀ prog fs → JumpPost (instr-ctrl (c-jmp m)) m prog fs
+        go prog fs = mk (dj-aux (find-label prog m) fs)
+          where mk : (fpc (do-jump (find-label prog m) fs) ≡ fpc fs)
+                     ⊎ (Σ ℕ (λ q → (find-label prog m ≡ just q)
+                                 × (fpc (do-jump (find-label prog m) fs) ≡ q)))
+                   → JumpPost (instr-ctrl (c-jmp m)) m prog fs
+                mk (inj₁ e)            = jp-halt e
+                mk (inj₂ (q , fq , e)) = jp-to q fq e
+-- the branches abstract their scrutinee WITH an equation (J-style), so the
+-- goal's `do-branch <cond>` reduces on the taken/not-taken split
+pcView (instr-ctrl (c-branch-scratch-zero m))     _ = pv-jump m refl go
+  where
+    go : ∀ prog fs → JumpPost (instr-ctrl (c-branch-scratch-zero m)) m prog fs
+    go prog fs = mk (db-aux (sv-is-zero (readReg (regs (floc fs)) Scratch)) m prog fs)
+      where mk : _ → JumpPost (instr-ctrl (c-branch-scratch-zero m)) m prog fs
+            mk (inj₁ e)                     = jp-suc e
+            mk (inj₂ (inj₁ e))              = jp-halt e
+            mk (inj₂ (inj₂ (q , fq , e)))   = jp-to q fq e
+pcView (instr-ctrl (c-branch-tag-zero m))     _ = pv-jump m refl go
+  where
+    go : ∀ prog fs → JumpPost (instr-ctrl (c-branch-tag-zero m)) m prog fs
+    go prog fs = mk (db-aux (tag-zf (flat-read-tag (floc fs))) m prog fs)
+      where mk : _ → JumpPost (instr-ctrl (c-branch-tag-zero m)) m prog fs
+            mk (inj₁ e)                     = jp-suc e
+            mk (inj₂ (inj₁ e))              = jp-halt e
+            mk (inj₂ (inj₂ (q , fq , e)))   = jp-to q fq e
 pcView (instr-ctrl (c-thunk _ _))             ()
 pcView (instr-ctrl (c-ret _))                 ()
 pcView (instr-alloc-stack _)                  ()
@@ -924,15 +980,43 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
               cong cur (trans (cong (λ p → seg-at prog p B₀) (adv prog fs''))
                        (trans (seg-at-suc prog (fpc fs'') B₀ lk)
                               (idle-step i (ff→seg-id i ff) (seg-at prog (fpc fs'') B₀))))
-            -- …and a JUMP is the one case that needs LABEL SCOPING: the target
-            -- must lie in the segment the jump left. True by construction (a
-            -- body's labels come from its own counter range) but the static
-            -- argument does not exist yet — grep finds no label-range lemma —
-            -- so today it rides `emitted-seg-const`, which is the LAST use of
-            -- that bridge and dies with the flip.
-            go-pc pv-jump =
-              cong cur (trans (const-seg (fpc (flat-exec-instr i prog fs'')))
-                              (sym (const-seg (fpc fs''))))
+            -- …and a JUMP is the LABEL-SCOPING case: the target lies in the
+            -- segment the jump left. That is now a THEOREM
+            -- (`LabelScope.emitted-jump-in-segment`) rather than a ride on
+            -- `emitted-seg-const` — which is what closes the LabelScope island
+            -- and is what survives the flip. Today `seg-at` happens to be
+            -- constant too, so either route proves it; the point is that the
+            -- one that stays true is the one now wired.
+            -- THE LABEL-SCOPING CASE, and it is wired to the theorem now.
+            -- Fall-through and the label-not-found halt move the pc in ways the
+            -- fold handles directly; a REAL jump lands wherever `find-label`
+            -- resolves, and that is `emitted-jump-in-segment`.
+            go-pc (pv-jump m mlab jp) = jgo (jp prog (fs''))
+              where
+                lkm : mention-at prog (fpc fs'') ≡ just m
+                lkm = trans (cong mention-of lk) mlab
+                jgo : JumpPost i m prog fs''
+                    → cur (seg-at prog (fpc (flat-exec-instr i prog fs'')) B₀)
+                    ≡ cur (seg-at prog (fpc fs'') B₀)
+                jgo (jp-suc adv) =
+                  cong cur (trans (cong (λ z → seg-at prog z B₀) adv)
+                           (trans (seg-at-suc prog (fpc fs'') B₀ lk)
+                                  (idle-step i (ff→seg-id i ff) (seg-at prog (fpc fs'') B₀))))
+                jgo (jp-halt e) = cong cur (cong (λ z → seg-at prog z B₀) e)
+                jgo (jp-to q fq e) =
+                  cong cur (trans (cong (λ z → seg-at prog z B₀) e)
+                                  (jump-seg q fq))
+                  where
+                    jump-seg : ∀ (q' : ℕ) → find-label prog m ≡ just q'
+                             → seg-at prog q' B₀ ≡ seg-at prog (fpc fs'') B₀
+                    jump-seg q' fq' =
+                      subst (λ pr → seg-at pr q' B₀ ≡ seg-at pr (fpc fs'') B₀)
+                            (sym eq)
+                            (emitted-jump-in-segment {FS} ir (fpc fs'') q' m B₀
+                              (subst (λ pr → mention-at pr (fpc fs'') ≡ just m) eq lkm)
+                              (subst (λ pr → find-label pr m ≡ just q') eq fq'))
+
+
 
 -- the projection the slot cluster consumes
 run-stack-slot : ∀ prog (fs : FlatState) (r : RunAt prog fs)
