@@ -318,7 +318,10 @@ occ-red {x = x} (ξ-pairˡ {a = a} r) e =
   ∨-false (occ-red r (∨-false₁ (occTm x a) e)) (∨-false₂ (occTm x a) e)
 occ-red {x = x} (ξ-pairʳ {a = a} r) e =
   ∨-false (∨-false₁ (occTm x a) e) (occ-red r (∨-false₂ (occTm x a) e))
-occ-red (ξ-absurdᵉ r) e = occ-red r e
+occ-red {x = x} (ξ-absurdᶜ {e = e₉} r) e =
+  ∨-false (occ-red r (∨-false₁ _ e)) (∨-false₂ _ e)
+occ-red {x = x} (ξ-absurdᵉ {c = c₉} r) e =
+  ∨-false (∨-false₁ _ e) (occ-red r (∨-false₂ (occTm x c₉) e))
 occ-red (ξ-fst r) e = occ-red r e
 occ-red (ξ-snd r) e = occ-red r e
 occ-red {x = x} (ξ-⌜Π⌝ˡ {c = c} r) e =
@@ -831,7 +834,7 @@ ren-lemma {ρ = ρ} (⊢app {B = D} {u = u} d₁ d₂) h =
 ren-lemma {ρ = ρ} (⊢pair {B = B} {a = a} dB d₁ d₂) h =
   ⊢pair (ren-ty dB (Ren⊢-ext h))
         (ren-lemma d₁ h) (⊢-cast (ren-comm-ty ρ B a) (ren-lemma d₂ h))
-ren-lemma (⊢absurd d tyC) h = ⊢absurd (ren-lemma d h) (ren-ty tyC h)
+ren-lemma (⊢absurd dc de) h = ⊢absurd (ren-lemma dc h) (ren-lemma de h)
 ren-lemma (⊢fst d) h = ⊢fst (ren-lemma d h)
 ren-lemma {ρ = ρ} (⊢snd {B = B} {p = p} d) h =
   ⊢-cast (sym (ren-comm-ty ρ B (fst p))) (⊢snd (ren-lemma d h))
@@ -926,7 +929,7 @@ sub-lemma {σ = σ} (⊢app {B = D} {u = u} d₁ d₂) h =
 sub-lemma {σ = σ} (⊢pair {B = B} {a = a} dB d₁ d₂) h =
   ⊢pair (sub-ty dB (Sub⊢-ext h))
         (sub-lemma d₁ h) (⊢-cast (subTy-comm σ B a) (sub-lemma d₂ h))
-sub-lemma (⊢absurd d tyC) h = ⊢absurd (sub-lemma d h) (sub-ty tyC h)
+sub-lemma (⊢absurd dc de) h = ⊢absurd (sub-lemma dc h) (sub-lemma de h)
 sub-lemma (⊢fst d) h = ⊢fst (sub-lemma d h)
 sub-lemma {σ = σ} (⊢snd {B = B} {p = p} d) h =
   ⊢-cast (sym (subTy-comm σ B (fst p))) (⊢snd (sub-lemma d h))
@@ -1067,6 +1070,15 @@ gen-⌜Hom⌝ : {Γ : Ctx} {c a b : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
 gen-⌜Hom⌝ (⊢⌜Hom⌝ dc da db) = dc , (da , (db , crflᵀ))
 gen-⌜Hom⌝ (⊢conv d c) with gen-⌜Hom⌝ d
 ... | (dc , (da , (db , c'))) = dc , (da , (db , ctrnᵀ (csymᵀ c) c'))
+
+-- ★ stage D: ex falso inverts like `hrefl` — the code determines the
+-- type, so the conversion is the only thing `⊢conv` can have added.
+gen-absurd : {Γ : Ctx} {c e₀ : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+             Γ ⊢ absurd c e₀ ∷ C →
+             (Γ ⊢ c ∷ U) × ((Γ ⊢ e₀ ∷ base) × (C ≅ᵀ El c))
+gen-absurd (⊢absurd dc de) = dc , (de , crflᵀ)
+gen-absurd (⊢conv d c) with gen-absurd d
+... | (dc , (de , c')) = dc , (de , ctrnᵀ (csymᵀ c) c')
 
 gen-hrefl : {Γ : Ctx} {c t₀ : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
             Γ ⊢ hrefl c t₀ ∷ C →
@@ -1428,6 +1440,15 @@ sr d (ξ-natrecⁿ r) with gen-natrec d
 ... | M , (dM , (dz , (ds , (dn , cC)))) =
       ⊢conv (⊢natrec dM dz ds (sr dn r))
             (csymᵀ (ctrnᵀ cC (red→≅ᵀ (subTy-monoˢ (single-mono (step r done)) M))))
+-- ★★ stage D: ex falso preserves typing under both congruences.  The
+-- code determines the result type, so the scrutinee case is a plain
+-- rebuild and the code case rides `ξ-El`.
+sr d (ξ-absurdᶜ r) with gen-absurd d
+... | dc , (de , cv) =
+      ⊢conv (⊢absurd (sr dc r) de)
+            (ctrnᵀ (csymᵀ (credᵀ (ξ-El r))) (csymᵀ cv))
+sr d (ξ-absurdᵉ r) with gen-absurd d
+... | dc , (de , cv) = ⊢conv (⊢absurd dc (sr de r)) (csymᵀ cv)
 sr d (β s a) with gen-app d
 ... | A₀ , (B₀ , (d-lam , (d-a , cC))) with gen-lam d-lam
 ...   | A₁ , (B₁ , (cΠ , (tyA₁ , d-s))) with Π-inj cΠ
