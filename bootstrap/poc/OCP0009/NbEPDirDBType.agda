@@ -91,6 +91,24 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   -- ★★ WF-axis stage D: EX FALSO has NO root rule.  Its scrutinee can
   -- never become canonical (that is `consistency`), so `absurd e` is
   -- permanently NEUTRAL and only its scrutinee develops.
+  -- ★★ WF-axis: ORDER TRANSPORT — ≤-transitivity at OPEN naturals.
+  -- Five root rules, splitting on `a`, then `u`, then `t`.  Rule 4 is
+  -- stage D's first real customer: there `p : Hom Nat (nsuc a') nzero`
+  -- has ALREADY computed to `base`, so ex falso applies and the code
+  -- works out exactly — `El (⌜Hom⌝ ⌜Nat⌝ a' u')` reduces to the result
+  -- type `Hom Nat a' u'`.
+  ordtr-z   : (t u p q : RTm Γ) → ordtr nzero t u p q ⟶ unit
+  ordtr-szz : (a p q : RTm Γ) → ordtr (nsuc a) nzero nzero p q ⟶ p
+  ordtr-ssz : (a t p q : RTm Γ) → ordtr (nsuc a) (nsuc t) nzero p q ⟶ q
+  ordtr-szs : (a u p q : RTm Γ) →
+              ordtr (nsuc a) nzero (nsuc u) p q ⟶ absurd (⌜Hom⌝ ⌜Nat⌝ a u) p
+  ordtr-sss : (a t u p q : RTm Γ) →
+              ordtr (nsuc a) (nsuc t) (nsuc u) p q ⟶ ordtr a t u p q
+  ξ-ordtrᵃ : {a a' t u p q : RTm Γ} → a ⟶ a' → ordtr a t u p q ⟶ ordtr a' t u p q
+  ξ-ordtrᵗ : {a t t' u p q : RTm Γ} → t ⟶ t' → ordtr a t u p q ⟶ ordtr a t' u p q
+  ξ-ordtrᵘ : {a t u u' p q : RTm Γ} → u ⟶ u' → ordtr a t u p q ⟶ ordtr a t u' p q
+  ξ-ordtrᵖ : {a t u p p' q : RTm Γ} → p ⟶ p' → ordtr a t u p q ⟶ ordtr a t u p' q
+  ξ-ordtrq : {a t u p q q' : RTm Γ} → q ⟶ q' → ordtr a t u p q ⟶ ordtr a t u p q'
   ξ-absurdᶜ : {c c' e : RTm Γ} → c ⟶ c' → absurd c e ⟶ absurd c' e
   ξ-absurdᵉ : {c e e' : RTm Γ} → e ⟶ e' → absurd c e ⟶ absurd c e'
   ξ-fst   : {p p' : RTm Γ} → p ⟶ p' → fst p ⟶ fst p'
@@ -401,6 +419,11 @@ data _⊢_∷_ where
   -- it is about the RESULT type, which `⊢conv` changes, so the
   -- inversion could never rebuild it.
   ⊢absurd : ∀ {Γ c e} → Γ ⊢ c ∷ U → Γ ⊢ e ∷ base → Γ ⊢ absurd c e ∷ El c
+  -- ★★ ORDER TRANSPORT: composition of order proofs, i.e. ≤-transitivity.
+  ⊢ordtr : ∀ {Γ a t u p q} →
+           Γ ⊢ a ∷ Nat → Γ ⊢ t ∷ Nat → Γ ⊢ u ∷ Nat →
+           Γ ⊢ p ∷ Hom Nat a t → Γ ⊢ q ∷ Hom Nat t u →
+           Γ ⊢ ordtr a t u p q ∷ Hom Nat a u
   ⊢fst  : ∀ {Γ A B p}   → Γ ⊢ p ∷ Σ' A B → Γ ⊢ fst p ∷ A
   ⊢snd  : ∀ {Γ A B p}   → Γ ⊢ p ∷ Σ' A B →
                           Γ ⊢ snd p ∷ subTy (single (fst p)) B
