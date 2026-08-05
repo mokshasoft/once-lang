@@ -1708,6 +1708,19 @@ sne→stablecd (sne-ap _ _ _ key) = key
 sne→stablecd (sne-jsub _ _ _ key) = key
 sne→stablecd (sne-natrec _ _ _ key) = key
 
+-- ★ WF stage A: a strict neutral is never a numeral — the extractor
+-- `fund`'s `⊢natrec` neutral branch needs.
+sne→natstk : {t : RTm Γ} → SNe t → natstk? t ≡ true
+sne→natstk (sne-var x)          = refl
+sne→natstk (sne-app n _)        = sne→spine n
+sne→natstk (sne-fst n)          = sne→spine n
+sne→natstk (sne-snd n)          = sne→spine n
+sne→natstk (sne-hrefl _ _ _)    = refl
+sne→natstk (sne-tr _ _ _ key)   = key
+sne→natstk (sne-ap _ _ _ key)   = key
+sne→natstk (sne-jsub _ _ _ key) = key
+sne→natstk (sne-natrec _ _ _ key) = key
+
 -- renaming preserves every classifier ON THE NOSE — the entire
 -- anti-renaming bill for the shape layer.
 homheaded?-ren : (ρ : Ren Γ Δ) (t : RTm Γ) →
