@@ -132,13 +132,67 @@ base-collapse.
   `homSem₁ (⊩₁Nat …)` must be re-derived.  That is the first move of
   stage B, not a surprise to discover mid-walk.
 
-  **Stage B — the computing order** (NEXT): the three `Hom Nat` rules
-  on top (the §2 payoff).  Type-level rules riding the Hom-Π pattern
-  (Type/SR/Conf-type-level/Inj/Subj + StkHd/stuck-Hom rows in the LR).
-  Delta over A, now that A is banked: drop `sh-Nat`, re-derive
-  `homSem₁` at `⊩₁Nat` (the interp must FOLLOW the endpoints), add the
-  endpoint-keyed type-level Takahashi rows, and extend `hom-shape` /
-  `Hom-to-Hom` / `HomStk` with the three Nat arms.
+  **Stage B — the computing order** (IN PROGRESS, 2026-08-05).
+  SYNTACTIC HALF ✅ DONE AND GREEN: the three rules are in `Type`, and
+  `SR`, `Conf`, `Inj`, `Subj` all absorb them.
+
+  What the syntactic half actually cost:
+
+  * `Inj`: `Hom` at `Nat` is the ONLY `_⁺ᵀ` clause that develops by the
+    ENDPOINTS rather than the ambient.  `pHom-Nat-z/-sz/-ss` join the
+    type-level parallel relation and the endpoint case tree is
+    generated (left `pnzero` is decisive; a `pnsuc` left endpoint then
+    splits the right one).
+  * `Subj`: the ambient-generic Hom-inversion lemmas (`Hom-to-Hom`,
+    `hom-to-Π`, `homred-inv`) are no longer true at a `Nat` ambient —
+    `Hom-Nat-ss` keeps the type a `Hom` while CHANGING both endpoints,
+    which is exactly what those lemmas denied.  Fixed with a `NoNat`
+    guard.  The four `tr` sites have an existentially-bound ambient, so
+    the guard is RECOVERED there by two transport lemmas: `homAmb→`
+    (the ambient only reduces) and `homAmb←` (a `Nat` ambient stays
+    `Nat`, so a non-`Nat` target forces a non-`Nat` source).
+  * `hom-shape` gained `hsUnit`/`hsBase` arms at NO cost to its
+    consumers — every consumer is a refutation at a specific shape
+    (`U`, `Σ'`, `Id`, …) that `Unit`/`base` do not match.
+  * ★ The staging paid off exactly as designed: because `Nat` has NO
+    CODE until stage C, `El c` can never reduce to `Nat`, so the entire
+    `El`-ambient theory of stages 1–A is untouched.
+
+  ★ REMAINING (the semantic half, next session).  The wall is where
+  the analysis predicted, at `StkHd`:
+
+  1. **DELETE `sh-Nat`.**  It claims `Hom Nat a b` is a stuck hom,
+     which the order rules now falsify.  `stkhd-red` and
+     `Hom-stk-reduct` then close by absurdity on the three new rules.
+  2. **`Hom Nat a b` IS still stuck when its endpoints are** — so the
+     stuckness key is NOT `StkHd` (a property of the ambient) but a
+     property of the ENDPOINTS.  The key is already designed and its
+     ingredients already exist:
+
+         homnat? nzero u            = false
+         homnat? (nsuc m) nzero     = false
+         homnat? (nsuc m) (nsuc n)  = false
+         homnat? (nsuc m) u         = natstk? u
+         homnat? t u                = natstk? t
+
+     i.e. stage A's `natstk?` does double duty.  It needs the usual
+     `-red`/`-red*`/`-ren` closure family (mechanical, mirrors
+     `natstk?`'s own).
+  3. **`⊩₁Hom`'s witness must generalize** from `StkHd H` to a
+     predicate on the whole `Hom H a b` (`StkHd` renamed/extended, with
+     an `hs-Nat : homnat? a b ≡ true` arm).  Blast radius measured:
+     `StkHd` has 18 references in `LR` and 1 outside it.
+  4. **`homSem₁` at `⊩₁Nat` is the real theorem**: both endpoints carry
+     `NatMem`, so the interp is a DOUBLE meta-induction — reaches-zero
+     gives `⊩₁Unit`, suc/zero gives `⊩₁base`, suc/suc recurses, and a
+     stuck endpoint gives the stuck order-hom of (3).  This is the
+     mirror of stage A's `go`, and it is why `NatMem` was built to
+     mirror `SN`.
+  5. `Fund`/`Canon` then follow mechanically; the acceptance file
+     `NbEPDirDBExamplesOrd.agda` (already WRITTEN, currently red by
+     design) greens.
+
+
 
   **Stage C — N-in** (separate spike later): `⌜Nat⌝ ∈ U`, `tr-J-Nat`,
   the tt-path rules (§3 risky point 2), `cong`-at-ℕ, sized-family
