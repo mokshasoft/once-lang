@@ -77,7 +77,7 @@ open import poc.OCP0009.NbEPDirDBVar
         ; stk⊥pw; pw⊥stk )
 open import poc.OCP0009.NbEPDirDBSR using ( ⟶ᵀ-sub; ≅ᵀ-sub )
 open import poc.OCP0009.NbEPDirDBSubj using ( subTy-monoˢ )
-open import poc.OCP0009.NbEPDirDBConf using ( single-mono; confluent )
+open import poc.OCP0009.NbEPDirDBConf using ( single-mono; confluent; ⟶*-absurdᶜ; ⟶*-absurdᵉ )
 open import poc.OCP0009.NbEPDirDBConf
   using ( ⟶*-trans; ⟶*-lam; ⟶*-appˡ; ⟶*-appʳ
         ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-fst; ⟶*-snd
@@ -86,7 +86,7 @@ open import poc.OCP0009.NbEPDirDBConf
         ; ⟶*-trᵈ; ⟶*-trᵖ; ⟶*-trᵉ; ⟶*-apᶜ; ⟶*-apᵇ; ⟶*-apᵖ
         ; ⟶*-jsubᵈ; ⟶*-jsubᵖ; ⟶*-jsubᵉ; ⟶*-⌜Id⌝ᶜ; ⟶*-⌜Id⌝ˡ; ⟶*-⌜Id⌝ʳ
         ; ⟶*-idreflᶜ; ⟶*-idreflᵃ
-        ; ⟶*-nsuc; ⟶*-natrecᶻ; ⟶*-natrecˢ; ⟶*-natrecⁿ )
+        ; ⟶*-nsuc; ⟶*-natrecᶻ; ⟶*-natrecˢ; ⟶*-natrecⁿ ; ⟶*-absurdᶜ; ⟶*-absurdᵉ )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Homᵀ
         ; confluentᵀ; church-rosserᵀ; Id-reduct
@@ -149,6 +149,7 @@ trlam? : RTm (Γ ∙) → 𝔹
 
 spine? (var x)        = true
 spine? (app t u)      = spine? t
+spine? (absurd c e)        = true
 spine? (fst t)        = spine? t
 spine? (snd t)        = spine? t
 spine? (⌜Π⌝ c d)      = true
@@ -181,6 +182,7 @@ stablecd? (var x)       = true
 stablecd? (lam t)       = true
 stablecd? (app t u)     = spine? t
 stablecd? (pair a b)    = true
+stablecd? (absurd c e)       = true
 stablecd? (fst t)       = spine? t
 stablecd? (snd t)       = spine? t
 stablecd? (⌜Hom⌝ c a b) = stableA? c
@@ -209,6 +211,7 @@ pathstk? (var x)        = true
 pathstk? (lam t)        = false
 pathstk? (app t u)      = spine? t
 pathstk? (pair a b)     = true
+pathstk? (absurd c e)        = true
 pathstk? (fst t)        = spine? t
 pathstk? (snd t)        = spine? t
 pathstk? ⌜base⌝         = true
@@ -236,6 +239,7 @@ idstk? (var x)        = true
 idstk? (lam t)        = true
 idstk? (app t u)      = spine? t
 idstk? (pair a b)     = true
+idstk? (absurd c e)        = true
 idstk? (fst t)        = spine? t
 idstk? (snd t)        = spine? t
 idstk? ⌜base⌝         = true
@@ -263,6 +267,7 @@ apstk? (var x)        = true
 apstk? (lam t)        = true
 apstk? (app t u)      = spine? t
 apstk? (pair a b)     = true
+apstk? (absurd c e)        = true
 apstk? (fst t)        = spine? t
 apstk? (snd t)        = spine? t
 apstk? ⌜base⌝         = true
@@ -309,6 +314,7 @@ deadmot? (var x)        = true
 deadmot? (lam t)        = true
 deadmot? (app t u)      = spine? t
 deadmot? (pair a b)     = true
+deadmot? (absurd c e)        = true
 deadmot? (fst t)        = spine? t
 deadmot? (snd t)        = spine? t
 deadmot? ⌜base⌝         = true
@@ -332,6 +338,7 @@ nopw? (var x)        = true
 nopw? (lam t)        = true
 nopw? (app t u)      = spine? t
 nopw? (pair a b)     = true
+nopw? (absurd c e)        = true
 nopw? (fst t)        = spine? t
 nopw? (snd t)        = spine? t
 nopw? ⌜base⌝         = true
@@ -359,6 +366,7 @@ natstk? (var x)        = true
 natstk? (lam t)        = true
 natstk? (app t u)      = spine? t
 natstk? (pair a b)     = true
+natstk? (absurd c e)        = true
 natstk? (fst t)        = spine? t
 natstk? (snd t)        = spine? t
 natstk? ⌜base⌝         = true
@@ -422,6 +430,7 @@ nopw⊥pw (var x) h = refl
 nopw⊥pw (lam t) h = refl
 nopw⊥pw (app t u) h = refl
 nopw⊥pw (pair a b) h = refl
+nopw⊥pw (absurd c e) h = refl
 nopw⊥pw (fst t) h = refl
 nopw⊥pw (snd t) h = refl
 nopw⊥pw ⌜base⌝ h = refl
@@ -446,6 +455,7 @@ deadmot→nopw (var x) h = refl
 deadmot→nopw (lam t) h = refl
 deadmot→nopw (app t u) h = h
 deadmot→nopw (pair a b) h = refl
+deadmot→nopw (absurd c e) h = refl
 deadmot→nopw (fst t) h = h
 deadmot→nopw (snd t) h = h
 deadmot→nopw ⌜base⌝ h = refl
@@ -598,6 +608,8 @@ spine?-red (ξ-appˡ r) h = spine?-red r h
 spine?-red (ξ-appʳ r) h = h
 spine?-red (ξ-pairˡ _) ()
 spine?-red (ξ-pairʳ _) ()
+spine?-red (ξ-absurdᶜ _) h = refl
+spine?-red (ξ-absurdᵉ _) h = refl
 spine?-red (ξ-fst r) h = spine?-red r h
 spine?-red (ξ-snd r) h = spine?-red r h
 spine?-red (ξ-⌜Π⌝ˡ r) h = h
@@ -651,6 +663,8 @@ stableA?-red (ξ-appˡ r) h = spine?-red r h
 stableA?-red (ξ-appʳ r) h = h
 stableA?-red (ξ-pairˡ r) h = h
 stableA?-red (ξ-pairʳ r) h = h
+stableA?-red (ξ-absurdᶜ _) h = refl
+stableA?-red (ξ-absurdᵉ _) h = refl
 stableA?-red (ξ-fst r) h = spine?-red r h
 stableA?-red (ξ-snd r) h = spine?-red r h
 stableA?-red (ξ-⌜Π⌝ˡ _) ()
@@ -701,6 +715,8 @@ stablecd?-red (ξ-appˡ r) h = spine?-red r h
 stablecd?-red (ξ-appʳ r) h = h
 stablecd?-red (ξ-pairˡ r) h = h
 stablecd?-red (ξ-pairʳ r) h = h
+stablecd?-red (ξ-absurdᶜ _) h = refl
+stablecd?-red (ξ-absurdᵉ _) h = refl
 stablecd?-red (ξ-fst r) h = spine?-red r h
 stablecd?-red (ξ-snd r) h = spine?-red r h
 stablecd?-red (ξ-⌜Π⌝ˡ _) ()
@@ -751,6 +767,8 @@ pathstk?-red (ξ-appˡ r) h = spine?-red r h
 pathstk?-red (ξ-appʳ r) h = h
 pathstk?-red (ξ-pairˡ r) h = h
 pathstk?-red (ξ-pairʳ r) h = h
+pathstk?-red (ξ-absurdᶜ _) h = refl
+pathstk?-red (ξ-absurdᵉ _) h = refl
 pathstk?-red (ξ-fst r) h = spine?-red r h
 pathstk?-red (ξ-snd r) h = spine?-red r h
 pathstk?-red (ξ-⌜Π⌝ˡ r) h = h
@@ -804,6 +822,8 @@ apstk?-red (ξ-appˡ r) h = spine?-red r h
 apstk?-red (ξ-appʳ r) h = h
 apstk?-red (ξ-pairˡ r) h = h
 apstk?-red (ξ-pairʳ r) h = h
+apstk?-red (ξ-absurdᶜ _) h = refl
+apstk?-red (ξ-absurdᵉ _) h = refl
 apstk?-red (ξ-fst r) h = spine?-red r h
 apstk?-red (ξ-snd r) h = spine?-red r h
 apstk?-red (ξ-⌜Π⌝ˡ r) h = h
@@ -856,6 +876,8 @@ idstk?-red (ξ-appˡ r) h = spine?-red r h
 idstk?-red (ξ-appʳ r) h = h
 idstk?-red (ξ-pairˡ r) h = h
 idstk?-red (ξ-pairʳ r) h = h
+idstk?-red (ξ-absurdᶜ _) h = refl
+idstk?-red (ξ-absurdᵉ _) h = refl
 idstk?-red (ξ-fst r) h = spine?-red r h
 idstk?-red (ξ-snd r) h = spine?-red r h
 idstk?-red (ξ-⌜Π⌝ˡ r) h = h
@@ -907,6 +929,8 @@ natstk?-red (ξ-appˡ r) h = spine?-red r h
 natstk?-red (ξ-appʳ r) h = h
 natstk?-red (ξ-pairˡ r) h = h
 natstk?-red (ξ-pairʳ r) h = h
+natstk?-red (ξ-absurdᶜ _) h = refl
+natstk?-red (ξ-absurdᵉ _) h = refl
 natstk?-red (ξ-fst r) h = spine?-red r h
 natstk?-red (ξ-snd r) h = spine?-red r h
 natstk?-red (ξ-⌜Π⌝ˡ r) h = h
@@ -958,6 +982,8 @@ nopw?-red (ξ-appˡ r) h = spine?-red r h
 nopw?-red (ξ-appʳ r) h = h
 nopw?-red (ξ-pairˡ r) h = h
 nopw?-red (ξ-pairʳ r) h = h
+nopw?-red (ξ-absurdᶜ _) h = refl
+nopw?-red (ξ-absurdᵉ _) h = refl
 nopw?-red (ξ-fst r) h = spine?-red r h
 nopw?-red (ξ-snd r) h = spine?-red r h
 nopw?-red (ξ-⌜Π⌝ˡ _) ()
@@ -1007,6 +1033,8 @@ deadmot?-red (ξ-appˡ r) h = spine?-red r h
 deadmot?-red (ξ-appʳ r) h = h
 deadmot?-red (ξ-pairˡ r) h = h
 deadmot?-red (ξ-pairʳ r) h = h
+deadmot?-red (ξ-absurdᶜ _) h = refl
+deadmot?-red (ξ-absurdᵉ _) h = refl
 deadmot?-red (ξ-fst r) h = spine?-red r h
 deadmot?-red (ξ-snd r) h = spine?-red r h
 deadmot?-red (ξ-⌜Π⌝ˡ _) ()
@@ -1060,6 +1088,7 @@ deadA→nopw (var x) h = refl
 deadA→nopw (lam t) h = refl
 deadA→nopw (app t u) h = h
 deadA→nopw (pair a b) h = refl
+deadA→nopw (absurd c e) h = h
 deadA→nopw (fst t) h = h
 deadA→nopw (snd t) h = h
 deadA→nopw ⌜base⌝ ()
@@ -1082,6 +1111,7 @@ dead→nopw (var x) h = refl
 dead→nopw (lam t) h = refl
 dead→nopw (app t u) h = h
 dead→nopw (pair a b) h = refl
+dead→nopw (absurd c e) h = h
 dead→nopw (fst t) h = h
 dead→nopw (snd t) h = h
 dead→nopw ⌜base⌝ ()
@@ -1107,6 +1137,7 @@ trstk-hrefl-any (var x) {c = c} h = dead→nopw c h
 trstk-hrefl-any (lam t) h = h
 trstk-hrefl-any (app t u) h = h
 trstk-hrefl-any (pair a b) h = h
+trstk-hrefl-any (absurd c e) h = h
 trstk-hrefl-any (fst t) h = h
 trstk-hrefl-any (snd t) h = h
 trstk-hrefl-any ⌜base⌝ h = h
@@ -1128,6 +1159,12 @@ trstk-hrefl-any (natrec z s n) h = h
 
 -- motive steps.  Only lam- and hrefl-paths inspect the motive; the
 -- rest are motive-independent (the catchall clause on both sides).
+-- ★ stage D: an `absurd` PATH is neither `lam` nor `hrefl`, so the
+-- verdict is `pathstk? (absurd _ _) = true` no matter what the motive
+-- does.
+trstk?-red-d {p = absurd p₂ e₂} r h = refl
+trstk?-red-d {d = absurd d₂ f₂} {p = hrefl p₂ s₂} (ξ-absurdᶜ _) h = h
+trstk?-red-d {d = absurd d₂ f₂} {p = hrefl p₂ s₂} (ξ-absurdᵉ _) h = h
 trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = var vz} rc) h = deadmot?-red rc h
 trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = var (vs x)} rc) h = h
 trstk?-red-d {p = lam f} (ξ-⌜Hom⌝ᶜ {b = (lam w)} rc) ()
@@ -1238,6 +1275,15 @@ trstk?-red-p {d = (app t u)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (pair a b)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (fst t)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (snd t)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+-- ★ stage D: an `absurd` MOTIVE is not `var vz`, so `trstk?` falls to
+-- `pathstk?` on the path — the same as every other non-var motive.
+trstk?-red-p {d = (absurd d₂ e₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+-- an `hrefl` path can only become a `lam` by `hrefl-pw`, which needs a
+-- pw-able code — and `pathstk?` already said the code is DEAD.  The two
+-- keys are disjoint, so the case is absurd.
+trstk?-red-p {d = (absurd d₂ e₂)} {hrefl _ _} {lam _} (hrefl-pw C₀ s₀ kp) h =
+  ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
+trstk?-red-p {d = (absurd d₂ e₂)} {hrefl _ _} {hrefl _ _} (ξ-hreflᵃ _) h = h
 trstk?-red-p {d = ⌜base⌝} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = ⌜Nat⌝} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = ⌜Unit⌝} (ξ-hreflᶜ rc) h = stablecd?-red rc h
@@ -1306,6 +1352,8 @@ trstk?-red-p (ξ-appˡ r) h = spine?-red r h
 trstk?-red-p (ξ-appʳ r) h = h
 trstk?-red-p (ξ-pairˡ r) h = h
 trstk?-red-p (ξ-pairʳ r) h = h
+trstk?-red-p (ξ-absurdᶜ _) h = refl
+trstk?-red-p (ξ-absurdᵉ _) h = refl
 trstk?-red-p (ξ-fst r) h = spine?-red r h
 trstk?-red-p (ξ-snd r) h = spine?-red r h
 trstk?-red-p (ξ-⌜Π⌝ˡ r) h = h
@@ -1374,6 +1422,7 @@ natstk→homnat (var x) u h        = h
 natstk→homnat (lam t) u h        = h
 natstk→homnat (app t₁ t₂) u h    = h
 natstk→homnat (pair a b) u h     = h
+natstk→homnat (absurd c t) u h        = h
 natstk→homnat (fst t) u h        = h
 natstk→homnat (snd t) u h        = h
 natstk→homnat ⌜base⌝ u h         = h
@@ -1401,6 +1450,7 @@ homnat?-redˡ {t = var x} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-
 homnat?-redˡ {t = lam t} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = app t₁ t₂} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = pair a b} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = absurd c t} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = fst t} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = snd t} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = ⌜base⌝} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
@@ -1424,6 +1474,7 @@ homnat?-redʳ {t = var x} r h        = h
 homnat?-redʳ {t = lam t} r h        = h
 homnat?-redʳ {t = app t₁ t₂} r h    = h
 homnat?-redʳ {t = pair a b} r h     = h
+homnat?-redʳ {t = absurd c t} r h        = h
 homnat?-redʳ {t = fst t} r h        = h
 homnat?-redʳ {t = snd t} r h        = h
 homnat?-redʳ {t = ⌜base⌝} r h       = h
@@ -1471,6 +1522,12 @@ data CSR {Γ} : RTm Γ → RTm Γ → Set
 data SNe {Γ} where
   sne-var : (x : Var Γ) → SNe (var x)
   sne-app : {t u : RTm Γ} → SNe t → SN u → SNe (app t u)
+  -- ★★ WF-axis stage D: EX FALSO IS A NEUTRAL, and permanently so —
+  -- its scrutinee lives at `base`, which has no canonical forms, so no
+  -- rule can ever fire.  This is what puts `absurd c e` in EVERY type's
+  -- interpretation via CR3, which is exactly the semantics ex falso
+  -- should have.
+  sne-absurd : {c e : RTm Γ} → SN c → SNe e → SNe (absurd c e)
   sne-fst : {p : RTm Γ} → SNe p → SNe (fst p)
   sne-snd : {p : RTm Γ} → SNe p → SNe (snd p)
   -- W2: `hrefl` is OPERATIONALLY INERT while its unfold family is
@@ -1932,6 +1989,7 @@ Nat-nf (stepᵀ () _)
 data Ne {Γ} : RTm Γ → Set where
   ne-var : (x : Var Γ) → Ne (var x)
   ne-app : {t u : RTm Γ} → Ne t → Ne (app t u)
+  ne-absurd : {c e : RTm Γ} → Ne e → Ne (absurd c e)
   ne-fst : {p : RTm Γ} → Ne p → Ne (fst p)
   ne-snd : {p : RTm Γ} → Ne p → Ne (snd p)
   ne-hrefl : {c t : RTm Γ} → nopw? c ≡ true → Ne (hrefl c t)
@@ -1948,6 +2006,8 @@ ne-red : {t t' : RTm Γ} → Ne t → t ⟶ t' → Ne t'
 ne-red (ne-var x) ()
 ne-red (ne-app n) (ξ-appˡ r) = ne-app (ne-red n r)
 ne-red (ne-app n) (ξ-appʳ r) = ne-app n
+ne-red (ne-absurd n) (ξ-absurdᶜ r) = ne-absurd n
+ne-red (ne-absurd n) (ξ-absurdᵉ r) = ne-absurd (ne-red n r)
 ne-red (ne-fst n) (ξ-fst r)  = ne-fst (ne-red n r)
 ne-red (ne-snd n) (ξ-snd r)  = ne-snd (ne-red n r)
 ne-red (ne-hrefl kn) (ξ-hreflᶜ r) = ne-hrefl (nopw?-red r kn)
@@ -1983,6 +2043,7 @@ ne-red (ne-natrec key) (ξ-natrecⁿ r) = ne-natrec (natstk?-red r key)
 sne→ne : {t : RTm Γ} → SNe t → Ne t
 sne→ne (sne-var x)   = ne-var x
 sne→ne (sne-app n _) = ne-app (sne→ne n)
+sne→ne (sne-absurd _ n) = ne-absurd (sne→ne n)
 sne→ne (sne-fst n)   = ne-fst (sne→ne n)
 sne→ne (sne-snd n)   = ne-snd (sne→ne n)
 sne→ne (sne-hrefl _ _ kn) = ne-hrefl kn
@@ -1996,6 +2057,7 @@ sne→ne (sne-natrec _ _ _ key) = ne-natrec key
 sne→spine : {t : RTm Γ} → SNe t → spine? t ≡ true
 sne→spine (sne-var x)        = refl
 sne→spine (sne-app n _)      = sne→spine n
+sne→spine (sne-absurd _ _)     = refl
 sne→spine (sne-fst n)        = sne→spine n
 sne→spine (sne-snd n)        = sne→spine n
 sne→spine (sne-hrefl _ _ kn) = kn
@@ -2010,6 +2072,7 @@ sne→spine (sne-natrec _ _ _ key) = key
 sne→stableA : {t : RTm Γ} → SNe t → stableA? t ≡ true
 sne→stableA (sne-var x)        = refl
 sne→stableA (sne-app n _)      = sne→spine n
+sne→stableA (sne-absurd _ _)     = refl
 sne→stableA (sne-fst n)        = sne→spine n
 sne→stableA (sne-snd n)        = sne→spine n
 sne→stableA (sne-hrefl _ _ _)    = refl
@@ -2021,6 +2084,7 @@ sne→stableA (sne-natrec _ _ _ key) = key
 sne→stablecd : {t : RTm Γ} → SNe t → stablecd? t ≡ true
 sne→stablecd (sne-var x)        = refl
 sne→stablecd (sne-app n _)      = sne→spine n
+sne→stablecd (sne-absurd _ _)     = refl
 sne→stablecd (sne-fst n)        = sne→spine n
 sne→stablecd (sne-snd n)        = sne→spine n
 sne→stablecd (sne-hrefl _ _ _)    = refl
@@ -2034,6 +2098,7 @@ sne→stablecd (sne-natrec _ _ _ key) = key
 sne→natstk : {t : RTm Γ} → SNe t → natstk? t ≡ true
 sne→natstk (sne-var x)          = refl
 sne→natstk (sne-app n _)        = sne→spine n
+sne→natstk (sne-absurd _ _)       = refl
 sne→natstk (sne-fst n)          = sne→spine n
 sne→natstk (sne-snd n)          = sne→spine n
 sne→natstk (sne-hrefl _ _ _)    = refl
@@ -2050,6 +2115,7 @@ homheaded?-ren ρ (var x)       = refl
 homheaded?-ren ρ (lam t)       = refl
 homheaded?-ren ρ (app t u)     = refl
 homheaded?-ren ρ (pair a b)    = refl
+homheaded?-ren ρ (absurd c e)       = refl
 homheaded?-ren ρ (fst t)       = refl
 homheaded?-ren ρ (snd t)       = refl
 homheaded?-ren ρ ⌜base⌝        = refl
@@ -2093,6 +2159,7 @@ spine?-ren ρ (var x)       = refl
 spine?-ren ρ (lam t)       = refl
 spine?-ren ρ (app t u)     = spine?-ren ρ t
 spine?-ren ρ (pair a b)    = refl
+spine?-ren ρ (absurd c e)       = refl
 spine?-ren ρ (fst t)       = spine?-ren ρ t
 spine?-ren ρ (snd t)       = spine?-ren ρ t
 spine?-ren ρ ⌜base⌝        = refl
@@ -2117,6 +2184,7 @@ stableA?-ren ρ (var x)       = refl
 stableA?-ren ρ (lam t)       = refl
 stableA?-ren ρ (app t u)     = spine?-ren ρ t
 stableA?-ren ρ (pair a b)    = refl
+stableA?-ren ρ (absurd c e)       = refl
 stableA?-ren ρ (fst t)       = spine?-ren ρ t
 stableA?-ren ρ (snd t)       = spine?-ren ρ t
 stableA?-ren ρ ⌜base⌝        = refl
@@ -2140,6 +2208,7 @@ stablecd?-ren ρ (var x)       = refl
 stablecd?-ren ρ (lam t)       = refl
 stablecd?-ren ρ (app t u)     = spine?-ren ρ t
 stablecd?-ren ρ (pair a b)    = refl
+stablecd?-ren ρ (absurd c e)       = refl
 stablecd?-ren ρ (fst t)       = spine?-ren ρ t
 stablecd?-ren ρ (snd t)       = spine?-ren ρ t
 stablecd?-ren ρ ⌜base⌝        = refl
@@ -2163,6 +2232,7 @@ pathstk?-ren ρ (var x)       = refl
 pathstk?-ren ρ (lam t)       = refl
 pathstk?-ren ρ (app t u)     = spine?-ren ρ t
 pathstk?-ren ρ (pair a b)    = refl
+pathstk?-ren ρ (absurd c e)       = refl
 pathstk?-ren ρ (fst t)       = spine?-ren ρ t
 pathstk?-ren ρ (snd t)       = spine?-ren ρ t
 pathstk?-ren ρ ⌜base⌝        = refl
@@ -2186,6 +2256,7 @@ apstk?-ren ρ (var x)       = refl
 apstk?-ren ρ (lam t)       = refl
 apstk?-ren ρ (app t u)     = spine?-ren ρ t
 apstk?-ren ρ (pair a b)    = refl
+apstk?-ren ρ (absurd c e)       = refl
 apstk?-ren ρ (fst t)       = spine?-ren ρ t
 apstk?-ren ρ (snd t)       = spine?-ren ρ t
 apstk?-ren ρ ⌜base⌝        = refl
@@ -2209,6 +2280,7 @@ idstk?-ren ρ (var x)       = refl
 idstk?-ren ρ (lam t)       = refl
 idstk?-ren ρ (app t u)     = spine?-ren ρ t
 idstk?-ren ρ (pair a b)    = refl
+idstk?-ren ρ (absurd c e)       = refl
 idstk?-ren ρ (fst t)       = spine?-ren ρ t
 idstk?-ren ρ (snd t)       = spine?-ren ρ t
 idstk?-ren ρ ⌜base⌝        = refl
@@ -2232,6 +2304,7 @@ natstk?-ren ρ (var x)       = refl
 natstk?-ren ρ (lam t)       = refl
 natstk?-ren ρ (app t u)     = spine?-ren ρ t
 natstk?-ren ρ (pair a b)    = refl
+natstk?-ren ρ (absurd c e)       = refl
 natstk?-ren ρ (fst t)       = spine?-ren ρ t
 natstk?-ren ρ (snd t)       = spine?-ren ρ t
 natstk?-ren ρ ⌜base⌝        = refl
@@ -2255,6 +2328,7 @@ trstk?-ren ρ d (var x)       = refl
 trstk?-ren ρ d (lam f)       = trlam?-ren ρ d
 trstk?-ren ρ d (app t u)     = spine?-ren ρ t
 trstk?-ren ρ d (pair a b)    = refl
+trstk?-ren ρ d (absurd c e)       = refl
 trstk?-ren ρ d (fst t)       = spine?-ren ρ t
 trstk?-ren ρ d (snd t)       = spine?-ren ρ t
 trstk?-ren ρ d ⌜base⌝        = refl
@@ -2263,6 +2337,7 @@ trstk?-ren ρ d ⌜Unit⌝ = refl
 trstk?-ren ρ d (⌜Π⌝ c e)     = refl
 trstk?-ren ρ d (⌜Σ⌝ c e)     = refl
 trstk?-ren ρ d (⌜Hom⌝ c a b) = refl
+trstk?-ren ρ (absurd d₂ e₂) (hrefl c t)   = stablecd?-ren ρ c
 trstk?-ren ρ (var x) (hrefl c t)          = nopw?-ren ρ c
 trstk?-ren ρ (lam b) (hrefl c t)          = stablecd?-ren ρ c
 trstk?-ren ρ (app f u) (hrefl c t)        = stablecd?-ren ρ c
@@ -2299,6 +2374,7 @@ nopw?-ren ρ (var x)       = refl
 nopw?-ren ρ (lam t)       = refl
 nopw?-ren ρ (app t u)     = spine?-ren ρ t
 nopw?-ren ρ (pair a b)    = refl
+nopw?-ren ρ (absurd c e)       = refl
 nopw?-ren ρ (fst t)       = spine?-ren ρ t
 nopw?-ren ρ (snd t)       = spine?-ren ρ t
 nopw?-ren ρ ⌜base⌝        = refl
@@ -2322,6 +2398,7 @@ deadmot?-ren ρ (var x)       = refl
 deadmot?-ren ρ (lam t)       = refl
 deadmot?-ren ρ (app t u)     = spine?-ren ρ t
 deadmot?-ren ρ (pair a b)    = refl
+deadmot?-ren ρ (absurd c e)       = refl
 deadmot?-ren ρ (fst t)       = spine?-ren ρ t
 deadmot?-ren ρ (snd t)       = spine?-ren ρ t
 deadmot?-ren ρ ⌜base⌝        = refl
@@ -2346,6 +2423,7 @@ trlam?-ren ρ (var (vs x)) = refl
 trlam?-ren ρ (lam t)      = refl
 trlam?-ren ρ (app t u)    = refl
 trlam?-ren ρ (pair a b)   = refl
+trlam?-ren ρ (absurd c e)      = refl
 trlam?-ren ρ (fst t)      = refl
 trlam?-ren ρ (snd t)      = refl
 trlam?-ren ρ ⌜base⌝       = refl
@@ -2358,6 +2436,7 @@ trlam?-ren ρ (⌜Hom⌝ c a (var (vs x))) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (lam m))      = refl
 trlam?-ren ρ (⌜Hom⌝ c a (app m₁ m₂))  = refl
 trlam?-ren ρ (⌜Hom⌝ c a (pair m₁ m₂)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a (absurd m₁ m₂)) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (fst m))      = refl
 trlam?-ren ρ (⌜Hom⌝ c a (snd m))      = refl
 trlam?-ren ρ (⌜Hom⌝ c a ⌜base⌝)       = refl
@@ -4386,6 +4465,15 @@ wne (sne-app n u) with wne n | wn u
     nrm' : IsNormal (app n₁ n₂)
     nrm' (ξ-appˡ q) = nm₁ q
     nrm' (ξ-appʳ q) = nm₂ q
+wne (sne-absurd snc n) with wn snc | wne n
+... | mkWN c₁ rc nmc snc₁ | mkWNe n₁ r₁ nm₁ ne₁ =
+      mkWNe (absurd c₁ n₁)
+            (⟶*-trans (⟶*-absurdᶜ rc) (⟶*-absurdᵉ r₁))
+            nrm' (sne-absurd snc₁ ne₁)
+  where
+    nrm' : IsNormal (absurd c₁ n₁)
+    nrm' (ξ-absurdᶜ q) = nmc q
+    nrm' (ξ-absurdᵉ q) = nm₁ q
 wne (sne-fst n) with wne n
 ... | mkWNe n₁ r₁ nm₁ ne₁ = mkWNe (fst n₁) (⟶*-fst r₁) nrm' (sne-fst ne₁)
   where
