@@ -71,10 +71,10 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; ap-cong₃
         ; RTy; base; U; Π; Σ'; El; Hom
-        ; RTm; var; lam; app; pair; fst; snd; absurd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
+        ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
         ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
-        ; ⌜Hom⌝-cong₃; tr-cong₃; ⌜Id⌝-cong₃; jsub-cong₃; Id-cong₃
+        ; ⌜Hom⌝-cong₃; tr-cong₃; ordtr-cong₅; ⌜Id⌝-cong₃; jsub-cong₃; Id-cong₃
         ; Ren; extR; renTy; renTm; Sub; extS; subTm
         ; renTm-renTm; subTm-renTm; renTm-subTm; subTm-cong )
 
@@ -118,6 +118,8 @@ occTm x (lam t)    = occTm (vs x) t
 occTm x (app t u)  = occTm x t ∨ occTm x u
 occTm x (pair a b) = occTm x a ∨ occTm x b
 occTm x (absurd c₁ p) = occTm x c₁ ∨ occTm x p
+occTm x (ordtr a t u p q) =
+  occTm x a ∨ (occTm x t ∨ (occTm x u ∨ (occTm x p ∨ occTm x q)))
 occTm x (fst p)    = occTm x p
 occTm x (snd p)    = occTm x p
 occTm x ⌜base⌝     = false
@@ -213,6 +215,9 @@ occ-ren-tm h (lam t)    = occ-ren-tm (avoids-ext h) t
 occ-ren-tm h (app t u)  = ∨-false (occ-ren-tm h t) (occ-ren-tm h u)
 occ-ren-tm h (pair a b) = ∨-false (occ-ren-tm h a) (occ-ren-tm h b)
 occ-ren-tm h (absurd c₁ p) = cong₂ _∨_ (occ-ren-tm h c₁) (occ-ren-tm h p)
+occ-ren-tm h (ordtr a t u p q) =
+  cong₂ _∨_ (occ-ren-tm h a) (cong₂ _∨_ (occ-ren-tm h t)
+    (cong₂ _∨_ (occ-ren-tm h u) (cong₂ _∨_ (occ-ren-tm h p) (occ-ren-tm h q))))
 occ-ren-tm h (fst p)    = occ-ren-tm h p
 occ-ren-tm h (snd p)    = occ-ren-tm h p
 occ-ren-tm h ⌜base⌝     = refl
@@ -379,6 +384,9 @@ occ-ren-eq h (lam t)    = occ-ren-eq (ext-eq h) t
 occ-ren-eq h (app t u)  = cong₂ _∨_ (occ-ren-eq h t) (occ-ren-eq h u)
 occ-ren-eq h (pair a b) = cong₂ _∨_ (occ-ren-eq h a) (occ-ren-eq h b)
 occ-ren-eq h (absurd c₁ p) = cong₂ _∨_ (occ-ren-eq h c₁) (occ-ren-eq h p)
+occ-ren-eq h (ordtr a t u p q) =
+  cong₂ _∨_ (occ-ren-eq h a) (cong₂ _∨_ (occ-ren-eq h t)
+    (cong₂ _∨_ (occ-ren-eq h u) (cong₂ _∨_ (occ-ren-eq h p) (occ-ren-eq h q))))
 occ-ren-eq h (fst p)    = occ-ren-eq h p
 occ-ren-eq h (snd p)    = occ-ren-eq h p
 occ-ren-eq h ⌜base⌝     = refl
@@ -445,6 +453,12 @@ occ-sub {x = x} h (pair a b) e =
 occ-sub {x = x} h (absurd c₁ p) e =
   ∨-false (occ-sub h c₁ (∨-false₁ (occTm x c₁) e))
           (occ-sub h p (∨-false₂ (occTm x c₁) e))
+occ-sub {x = x} h (ordtr a t u p q) e =
+  ∨-false (occ-sub h a (∨-false₁ (occTm x a) e))
+   (∨-false (occ-sub h t (∨-false₁ (occTm x t) (∨-false₂ (occTm x a) e)))
+    (∨-false (occ-sub h u (∨-false₁ (occTm x u) (∨-false₂ (occTm x t) (∨-false₂ (occTm x a) e))))
+     (∨-false (occ-sub h p (∨-false₁ (occTm x p) (∨-false₂ (occTm x u) (∨-false₂ (occTm x t) (∨-false₂ (occTm x a) e)))))
+              (occ-sub h q (∨-false₂ (occTm x p) (∨-false₂ (occTm x u) (∨-false₂ (occTm x t) (∨-false₂ (occTm x a) e))))))))
 occ-sub h (fst p)    e = occ-sub h p e
 occ-sub h (snd p)    e = occ-sub h p e
 occ-sub h ⌜base⌝     e = refl
@@ -516,6 +530,12 @@ subTm-occ (pair m k) h = cong₂ pair
 subTm-occ (absurd c₁ m) h = cong₂ absurd
   (subTm-occ c₁ (λ x o → h x (∨-inl o)))
   (subTm-occ m (λ x o → h x (∨-inr (occTm x c₁) o)))
+subTm-occ (ordtr a t u p q) h = ordtr-cong₅
+  (subTm-occ a (λ x o → h x (∨-inl o)))
+  (subTm-occ t (λ x o → h x (∨-inr (occTm x a) (∨-inl o))))
+  (subTm-occ u (λ x o → h x (∨-inr (occTm x a) (∨-inr (occTm x t) (∨-inl o)))))
+  (subTm-occ p (λ x o → h x (∨-inr (occTm x a) (∨-inr (occTm x t) (∨-inr (occTm x u) (∨-inl o))))))
+  (subTm-occ q (λ x o → h x (∨-inr (occTm x a) (∨-inr (occTm x t) (∨-inr (occTm x u) (∨-inr (occTm x p) o))))))
 subTm-occ (fst m)    h = cong fst (subTm-occ m h)
 subTm-occ (snd m)    h = cong snd (subTm-occ m h)
 subTm-occ ⌜base⌝     h = refl
@@ -792,6 +812,7 @@ stkA?-ren ρ (lam t)       = refl
 stkA?-ren ρ (app t u)     = refl
 stkA?-ren ρ (pair a b)    = refl
 stkA?-ren ρ (absurd c t)       = refl
+stkA?-ren ρ (ordtr a t u p q) = refl
 stkA?-ren ρ (fst t)       = refl
 stkA?-ren ρ (snd t)       = refl
 stkA?-ren ρ ⌜base⌝        = refl
@@ -895,6 +916,7 @@ pw?-ren ρ (lam t)       = refl
 pw?-ren ρ (app t u)     = refl
 pw?-ren ρ (pair a b)    = refl
 pw?-ren ρ (absurd c t)       = refl
+pw?-ren ρ (ordtr a t u p q) = refl
 pw?-ren ρ (fst t)       = refl
 pw?-ren ρ (snd t)       = refl
 pw?-ren ρ ⌜base⌝        = refl
@@ -920,6 +942,7 @@ stkC?-ren ρ (lam t)       = refl
 stkC?-ren ρ (app t u)     = refl
 stkC?-ren ρ (pair a b)    = refl
 stkC?-ren ρ (absurd c t)       = refl
+stkC?-ren ρ (ordtr a t u p q) = refl
 stkC?-ren ρ (fst t)       = refl
 stkC?-ren ρ (snd t)       = refl
 stkC?-ren ρ ⌜base⌝        = refl
@@ -974,6 +997,7 @@ flat?-ren ρ (lam t)        = refl
 flat?-ren ρ (app t u)      = refl
 flat?-ren ρ (pair a b)     = refl
 flat?-ren ρ (absurd c t)        = refl
+flat?-ren ρ (ordtr a t u p q) = refl
 flat?-ren ρ (fst t)        = refl
 flat?-ren ρ (snd t)        = refl
 flat?-ren ρ ⌜base⌝         = refl
@@ -1231,6 +1255,8 @@ ren-as-sub ρ (lam t)    =
 ren-as-sub ρ (app t u)  = cong₂ app (ren-as-sub ρ t) (ren-as-sub ρ u)
 ren-as-sub ρ (pair a b) = cong₂ pair (ren-as-sub ρ a) (ren-as-sub ρ b)
 ren-as-sub ρ (absurd c₁ t) = cong₂ absurd (ren-as-sub ρ c₁) (ren-as-sub ρ t)
+ren-as-sub ρ (ordtr a t u p q) = ordtr-cong₅
+  (ren-as-sub ρ a) (ren-as-sub ρ t) (ren-as-sub ρ u) (ren-as-sub ρ p) (ren-as-sub ρ q)
 ren-as-sub ρ (fst t)    = cong fst (ren-as-sub ρ t)
 ren-as-sub ρ (snd t)    = cong snd (ren-as-sub ρ t)
 ren-as-sub ρ ⌜base⌝     = refl

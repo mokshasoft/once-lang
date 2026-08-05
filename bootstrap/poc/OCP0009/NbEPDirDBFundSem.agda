@@ -20,7 +20,7 @@ open import normalizer.Syntax.Types
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
-        ; RTm; var; lam; app; pair; fst; snd; absurd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
+        ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; ⌜Id⌝; idrefl; jsub
         ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; extR; renTy; renTm
@@ -557,7 +557,7 @@ semHreflPay x₀ {c = c} {t = t} (⊩₀Π {G = G} p ⊩F ⊩G) lk snc pay snt h
   closure : (v : RTm _) (r' : (emb ⊩F) ⊩₁∋ v) → _
   closure v r' =
     mem₁-cast
-      (sym (Hom-cong₃ refl
+      (sym (Hom-cong₃; ordtr-cong₅ refl
              (cong₂ app (wk-single t) refl)
              (cong₂ app (wk-single t) refl)))
       (homSem₁ (emb (⊩G v (projr (emb-coh ⊩F) v r')))

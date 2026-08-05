@@ -46,7 +46,7 @@ open import normalizer.Syntax.Types
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom
-        ; RTm; var; lam; app; pair; fst; snd; absurd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
+        ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
         ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; extR; Sub; subTy; subTm; extS; renTm
@@ -4143,7 +4143,7 @@ homSem₁ (⊩₁Π {F = F} {G = G} p ⊩F ⊩G) {a} {b} ha hb =
       ⊩F
       (λ v r →
         subst ⊩₁_
-              (sym (Hom-cong₃ refl
+              (sym (Hom-cong₃; ordtr-cong₅ refl
                      (cong₂ app (wk-single a) refl)
                      (cong₂ app (wk-single b) refl)))
               (homSem₁ (⊩G v r) (projr ha v r) (projr hb v r)))
