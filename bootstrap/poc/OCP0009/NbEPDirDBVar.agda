@@ -628,6 +628,41 @@ nonatc-sub σ nnc-Id   = nnc-Id
 nonatc-sub σ (nnc-Π nd)  = nnc-Π (nonatc-sub (extS σ) nd)
 nonatc-sub σ (nnc-Hom nc) = nnc-Hom (nonatc-sub σ nc)
 
+-- ★★ WF stage C, THE KEY SPLIT (SpikeNatJ).  Two notions were
+-- conflated in one Boolean, and the ⌜Nat⌝ retraction made the
+-- difference observable:
+--
+--   `stkA?` — "the DECODE IS A STABLE AMBIENT": `El c` never becomes
+--     `U` or `Π`, so a `Hom` over it never fires `Hom-U`/`Hom-Π` and
+--     never unfolds to a lambda.  ⌜Nat⌝ QUALIFIES: `El ⌜Nat⌝ ⟶ Nat`,
+--     and `Nat` is inert.
+--
+--   `stkC?` — "J-ABLE": what `tr-J-Hom` and `ap-J` test.  This is
+--     `stkA?` MINUS the literal ⌜Nat⌝, because `Hom Nat a b` COMPUTES
+--     (`Hom-Nat-z` discards the right endpoint), so a `hrefl ⌜Nat⌝ s`
+--     does not pin its endpoints and J at it breaks subject reduction.
+--
+-- The two agree everywhere except at ⌜Nat⌝ itself.  ⚠ THE ⌜Hom⌝ ROW IS
+-- THE POINT: `stkC? (⌜Hom⌝ C a b) = stkA? C`, NOT `stkC? C`.  Keying it
+-- on `stkC?` propagated the ⌜Nat⌝ exception OUTWARD to every code built
+-- over ⌜Nat⌝ — but `⌜Hom⌝ ⌜Nat⌝ a b` decodes to `Hom Nat a b`, whose
+-- own `Hom`s have a `Hom` ambient, never `Nat`, so no order rule can
+-- fire at that level and J there is SOUND.  Before the split,
+-- `tr (⌜Hom⌝ ⌜Unit⌝ unit (var vz)) (hrefl (⌜Hom⌝ ⌜Nat⌝ 1 2) unit) …`
+-- was a closed well-typed NORMAL `tr`, refuting `trProgress`; the
+-- witness is `SpikeNatJ.agda`.
+--
+-- The sharp statement: **ORDERED types are not J-able; homs OVER them
+-- are.**
+stkA? : RTm Γ → 𝔹
+stkA? ⌜base⌝        = true
+stkA? (⌜Σ⌝ c d)     = true
+stkA? (⌜Id⌝ c a b)  = true
+stkA? ⌜Unit⌝        = true
+stkA? ⌜Nat⌝         = true
+stkA? (⌜Hom⌝ C a b) = stkA? C
+stkA? _             = false
+
 -- permanently stable codes: J-able, and NEVER ⌜Π⌝-able — not even
 -- under substitution (constructor-headed spines only).
 stkC? : RTm Γ → 𝔹
@@ -653,9 +688,118 @@ stkC? ⌜Unit⌝        = true
 -- So ⌜Nat⌝ is neither `pw?` nor `stkC?` — the THIRD code kind (see
 -- `codeCanon`'s three-way split in NbEPDirDBCanon).  Transport along an
 -- order path is recovered by the tt-path rule (≤-coercion), not by J.
+--
+-- ⚠ The exception is EXACTLY the literal ⌜Nat⌝ — it does NOT propagate
+-- along the ⌜Hom⌝ spine.  See `stkA?` above.
 stkC? ⌜Nat⌝         = false
-stkC? (⌜Hom⌝ C a b) = stkC? C
+stkC? (⌜Hom⌝ C a b) = stkA? C
 stkC? _             = false
+
+-- J-ability is the stronger notion: the two differ only at ⌜Nat⌝.
+stkC?→stkA? : (c : RTm Γ) → stkC? c ≡ true → stkA? c ≡ true
+stkC?→stkA? (var _) ()
+stkC?→stkA? (lam _) ()
+stkC?→stkA? (app _ _) ()
+stkC?→stkA? (pair _ _) ()
+stkC?→stkA? (fst _) ()
+stkC?→stkA? (snd _) ()
+stkC?→stkA? ⌜base⌝ h = refl
+stkC?→stkA? ⌜Unit⌝ h = refl
+stkC?→stkA? ⌜Nat⌝ ()
+stkC?→stkA? (⌜Π⌝ _ _) ()
+stkC?→stkA? (⌜Σ⌝ _ _) h = refl
+stkC?→stkA? (⌜Hom⌝ C _ _) h = h
+stkC?→stkA? (⌜Id⌝ _ _ _) h = refl
+stkC?→stkA? (hrefl _ _) ()
+stkC?→stkA? (idrefl _ _) ()
+stkC?→stkA? (tr _ _ _) ()
+stkC?→stkA? (jsub _ _ _) ()
+stkC?→stkA? (ap _ _ _) ()
+stkC?→stkA? unit ()
+stkC?→stkA? nzero ()
+stkC?→stkA? (nsuc _) ()
+stkC?→stkA? (natrec _ _ _) ()
+
+------------------------------------------------------------------------
+-- ★ WF stage C: the SHALLOW Nat-freeness.  `NoNatC` (above) is
+-- HEREDITARY along the pw-spine because `⊢tr`'s premise has to survive
+-- `tr-pw`, which rewrites the motive to `pwBody c`.  But `NoNat`'s
+-- `nn-El` needs far less: only that `El c` does not step to `Nat`,
+-- i.e. that the code's HEAD is a constructor other than ⌜Nat⌝.  After
+-- the `stkA?` split the distinction bites — `⌜Hom⌝ ⌜Nat⌝ a b` is
+-- J-able and its decode is emphatically not `Nat` (it is a `Hom`), yet
+-- it is not `NoNatC`.
+------------------------------------------------------------------------
+
+data NoNatHd {Γ} : RTm Γ → Set where
+  nnh-base : NoNatHd (⌜base⌝ {Γ})
+  nnh-Unit : NoNatHd (⌜Unit⌝ {Γ})
+  nnh-Σ    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatHd (⌜Σ⌝ c d)
+  nnh-Id   : {c a b : RTm Γ} → NoNatHd (⌜Id⌝ c a b)
+  nnh-Π    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatHd (⌜Π⌝ c d)
+  nnh-Hom  : {c a b : RTm Γ} → NoNatHd (⌜Hom⌝ c a b)
+
+nonatc→hd : {c : RTm Γ} → NoNatC c → NoNatHd c
+nonatc→hd nnc-base = nnh-base
+nonatc→hd nnc-Unit = nnh-Unit
+nonatc→hd nnc-Σ    = nnh-Σ
+nonatc→hd nnc-Id   = nnh-Id
+nonatc→hd (nnc-Π _)   = nnh-Π
+nonatc→hd (nnc-Hom _) = nnh-Hom
+
+-- …and every STABLE-AMBIENT code has a non-⌜Nat⌝ head except ⌜Nat⌝
+-- itself, which `stkC?` is exactly what excludes.
+stkC?→hd : (c : RTm Γ) → stkC? c ≡ true → NoNatHd c
+stkC?→hd (var _) ()
+stkC?→hd (lam _) ()
+stkC?→hd (app _ _) ()
+stkC?→hd (pair _ _) ()
+stkC?→hd (fst _) ()
+stkC?→hd (snd _) ()
+stkC?→hd ⌜base⌝ h = nnh-base
+stkC?→hd ⌜Unit⌝ h = nnh-Unit
+stkC?→hd ⌜Nat⌝ ()
+stkC?→hd (⌜Π⌝ _ _) ()
+stkC?→hd (⌜Σ⌝ _ _) h = nnh-Σ
+stkC?→hd (⌜Hom⌝ _ _ _) h = nnh-Hom
+stkC?→hd (⌜Id⌝ _ _ _) h = nnh-Id
+stkC?→hd (hrefl _ _) ()
+stkC?→hd (idrefl _ _) ()
+stkC?→hd (tr _ _ _) ()
+stkC?→hd (jsub _ _ _) ()
+stkC?→hd (ap _ _ _) ()
+stkC?→hd unit ()
+stkC?→hd nzero ()
+stkC?→hd (nsuc _) ()
+stkC?→hd (natrec _ _ _) ()
+
+-- ⚠ there is deliberately NO `stkA?→hd`: `stkA? ⌜Nat⌝ = true`, so a
+-- stable-ambient code CAN be ⌜Nat⌝ — that is the whole content of the
+-- split.  `stkC?` is what excludes it.
+
+stkA?-ren : (ρ : Ren Γ Δ) (C : RTm Γ) → stkA? (renTm ρ C) ≡ stkA? C
+stkA?-ren ρ (var x)       = refl
+stkA?-ren ρ (lam t)       = refl
+stkA?-ren ρ (app t u)     = refl
+stkA?-ren ρ (pair a b)    = refl
+stkA?-ren ρ (fst t)       = refl
+stkA?-ren ρ (snd t)       = refl
+stkA?-ren ρ ⌜base⌝        = refl
+stkA?-ren ρ ⌜Nat⌝         = refl
+stkA?-ren ρ ⌜Unit⌝        = refl
+stkA?-ren ρ unit          = refl
+stkA?-ren ρ nzero         = refl
+stkA?-ren ρ (nsuc n)      = refl
+stkA?-ren ρ (natrec z s n) = refl
+stkA?-ren ρ (⌜Π⌝ γ δ)     = refl
+stkA?-ren ρ (⌜Σ⌝ c d)     = refl
+stkA?-ren ρ (⌜Hom⌝ C a b) = stkA?-ren ρ C
+stkA?-ren ρ (⌜Id⌝ C a b)  = refl
+stkA?-ren ρ (hrefl c t)   = refl
+stkA?-ren ρ (idrefl c t)  = refl
+stkA?-ren ρ (tr d p e)    = refl
+stkA?-ren ρ (jsub d p e)  = refl
+stkA?-ren ρ (ap c b p)    = refl
 
 pwDom : RTm Γ → RTm Γ
 pwDom (⌜Π⌝ γ δ)     = γ
@@ -686,32 +830,33 @@ nonatc-pwBody ⌜Unit⌝ nnc-Unit ()
 nonatc-pwBody (⌜Σ⌝ c d) nnc-Σ ()
 nonatc-pwBody (⌜Id⌝ c a b) nnc-Id ()
 
--- ★ and `stkC?` implies it: the stable codes are constructor-headed,
--- ⌜Π⌝-free all the way down the spine, and (since the retraction)
--- ⌜Nat⌝-free.
-stkC?→NoNatC : (c : RTm Γ) → stkC? c ≡ true → NoNatC c
-stkC?→NoNatC (var _) ()
-stkC?→NoNatC (lam _) ()
-stkC?→NoNatC (app _ _) ()
-stkC?→NoNatC (pair _ _) ()
-stkC?→NoNatC (fst _) ()
-stkC?→NoNatC (snd _) ()
-stkC?→NoNatC ⌜base⌝ h = nnc-base
-stkC?→NoNatC ⌜Unit⌝ h = nnc-Unit
-stkC?→NoNatC ⌜Nat⌝ ()
-stkC?→NoNatC (⌜Π⌝ _ _) ()
-stkC?→NoNatC (⌜Σ⌝ _ _) h = nnc-Σ
-stkC?→NoNatC (⌜Hom⌝ C _ _) h = nnc-Hom (stkC?→NoNatC C h)
-stkC?→NoNatC (⌜Id⌝ _ _ _) h = nnc-Id
-stkC?→NoNatC (hrefl _ _) ()
-stkC?→NoNatC (idrefl _ _) ()
-stkC?→NoNatC (tr _ _ _) ()
-stkC?→NoNatC (jsub _ _ _) ()
-stkC?→NoNatC (ap _ _ _) ()
-stkC?→NoNatC unit ()
-stkC?→NoNatC nzero ()
-stkC?→NoNatC (nsuc _) ()
-stkC?→NoNatC (natrec _ _ _) ()
+-- ⚠ `stkC?→NoNatC` USED TO LIVE HERE and is now FALSE: after the
+-- `stkA?` split a J-able code may be Nat-ful (`⌜Hom⌝ ⌜Nat⌝ a b`).  Its
+-- consumers wanted only the SHALLOW head fact, which `stkC?→hd` gives.
+
+stkA?⊥pw : (C : RTm Γ) → stkA? C ≡ true → pw? C ≡ false
+stkA?⊥pw (var x) ()
+stkA?⊥pw (lam t) ()
+stkA?⊥pw (app t u) ()
+stkA?⊥pw (pair a b) ()
+stkA?⊥pw (fst t) ()
+stkA?⊥pw (snd t) ()
+stkA?⊥pw ⌜base⌝ h = refl
+stkA?⊥pw (⌜Π⌝ γ δ) ()
+stkA?⊥pw (⌜Σ⌝ c d) h = refl
+stkA?⊥pw (⌜Hom⌝ C a b) h = stkA?⊥pw C h
+stkA?⊥pw (⌜Id⌝ C a b) h = refl
+stkA?⊥pw ⌜Nat⌝ h = refl
+stkA?⊥pw ⌜Unit⌝ h = refl
+stkA?⊥pw (hrefl c t) ()
+stkA?⊥pw (idrefl c t) ()
+stkA?⊥pw (tr d p e) ()
+stkA?⊥pw (jsub d p e) ()
+stkA?⊥pw (ap c b p) ()
+stkA?⊥pw unit ()
+stkA?⊥pw nzero ()
+stkA?⊥pw (nsuc n) ()
+stkA?⊥pw (natrec z s n) ()
 
 stk⊥pw : (C : RTm Γ) → stkC? C ≡ true → pw? C ≡ false
 stk⊥pw (var x) ()
@@ -723,7 +868,7 @@ stk⊥pw (snd t) ()
 stk⊥pw ⌜base⌝ h = refl
 stk⊥pw (⌜Π⌝ γ δ) ()
 stk⊥pw (⌜Σ⌝ c d) h = refl
-stk⊥pw (⌜Hom⌝ C a b) h = stk⊥pw C h
+stk⊥pw (⌜Hom⌝ C a b) h = stkA?⊥pw C h
 stk⊥pw (⌜Id⌝ C a b) h = refl
 stk⊥pw ⌜Nat⌝ ()
 stk⊥pw ⌜Unit⌝ h = refl
@@ -774,7 +919,7 @@ stkC?-ren ρ (nsuc n)      = refl
 stkC?-ren ρ (natrec z s n) = refl
 stkC?-ren ρ (⌜Π⌝ γ δ)     = refl
 stkC?-ren ρ (⌜Σ⌝ c d)     = refl
-stkC?-ren ρ (⌜Hom⌝ C a b) = stkC?-ren ρ C
+stkC?-ren ρ (⌜Hom⌝ C a b) = stkA?-ren ρ C
 stkC?-ren ρ (⌜Id⌝ C a b) = refl
 stkC?-ren ρ (hrefl c t)   = refl
 stkC?-ren ρ (idrefl c t)   = refl
@@ -795,7 +940,7 @@ flat? _             = false
 
 flat→stk : (c : RTm Γ) → flat? c ≡ true → stkC? c ≡ true
 flat→stk ⌜base⌝        h = refl
-flat→stk (⌜Hom⌝ c a b) h = h
+flat→stk (⌜Hom⌝ c a b) h = stkC?→stkA? c h
 flat→stk (⌜Id⌝ c a b) ()
 flat→stk (var _) ()
 flat→stk (lam _) ()
@@ -909,6 +1054,31 @@ pw?-sub σ (tr d p e) ()
 pw?-sub σ (jsub d p e) ()
 pw?-sub σ (ap c b p) ()
 
+stkA?-sub : (σ : Sub Γ Δ) (C : RTm Γ) → stkA? C ≡ true →
+            stkA? (subTm σ C) ≡ true
+stkA?-sub σ (var x) ()
+stkA?-sub σ (lam t) ()
+stkA?-sub σ (app t u) ()
+stkA?-sub σ (pair a b) ()
+stkA?-sub σ (fst t) ()
+stkA?-sub σ (snd t) ()
+stkA?-sub σ ⌜base⌝ h = refl
+stkA?-sub σ (⌜Π⌝ γ δ) ()
+stkA?-sub σ (⌜Σ⌝ c d) h = refl
+stkA?-sub σ (⌜Hom⌝ C a b) h = stkA?-sub σ C h
+stkA?-sub σ (⌜Id⌝ C a b) h = refl
+stkA?-sub σ ⌜Nat⌝ h = refl
+stkA?-sub σ ⌜Unit⌝ h = refl
+stkA?-sub σ (hrefl c t) ()
+stkA?-sub σ (idrefl c t) ()
+stkA?-sub σ (tr d p e) ()
+stkA?-sub σ (jsub d p e) ()
+stkA?-sub σ (ap c b p) ()
+stkA?-sub σ unit ()
+stkA?-sub σ nzero ()
+stkA?-sub σ (nsuc n) ()
+stkA?-sub σ (natrec z s n) ()
+
 stkC?-sub : (σ : Sub Γ Δ) (C : RTm Γ) → stkC? C ≡ true →
             stkC? (subTm σ C) ≡ true
 stkC?-sub σ (var x) ()
@@ -920,7 +1090,7 @@ stkC?-sub σ (snd t) ()
 stkC?-sub σ ⌜base⌝ h = refl
 stkC?-sub σ (⌜Π⌝ γ δ) ()
 stkC?-sub σ (⌜Σ⌝ c d) h = refl
-stkC?-sub σ (⌜Hom⌝ C a b) h = stkC?-sub σ C h
+stkC?-sub σ (⌜Hom⌝ C a b) h = stkA?-sub σ C h
 stkC?-sub σ (⌜Id⌝ C a b) h = refl
 stkC?-sub σ ⌜Nat⌝ ()
 stkC?-sub σ ⌜Unit⌝ h = refl
@@ -997,6 +1167,24 @@ avoids-pwShift : Avoids (pwShift {Γ}) vz
 avoids-pwShift vz     = refl
 avoids-pwShift (vs y) = refl
 
+pw⊥stkA : (C : RTm Γ) → pw? C ≡ true → stkA? C ≡ false
+pw⊥stkA (var x) ()
+pw⊥stkA (lam t) ()
+pw⊥stkA (app t u) ()
+pw⊥stkA (pair a b) ()
+pw⊥stkA (fst t) ()
+pw⊥stkA (snd t) ()
+pw⊥stkA ⌜base⌝ ()
+pw⊥stkA (⌜Π⌝ γ δ) h = refl
+pw⊥stkA (⌜Σ⌝ c d) ()
+pw⊥stkA (⌜Hom⌝ C a b) h = pw⊥stkA C h
+pw⊥stkA (⌜Id⌝ C a b) ()
+pw⊥stkA (hrefl c t) ()
+pw⊥stkA (idrefl c t) ()
+pw⊥stkA (tr d p e) ()
+pw⊥stkA (jsub d p e) ()
+pw⊥stkA (ap c b p) ()
+
 pw⊥stk : (C : RTm Γ) → pw? C ≡ true → stkC? C ≡ false
 pw⊥stk (var x) ()
 pw⊥stk (lam t) ()
@@ -1007,7 +1195,7 @@ pw⊥stk (snd t) ()
 pw⊥stk ⌜base⌝ ()
 pw⊥stk (⌜Π⌝ γ δ) h = refl
 pw⊥stk (⌜Σ⌝ c d) ()
-pw⊥stk (⌜Hom⌝ C a b) h = pw⊥stk C h
+pw⊥stk (⌜Hom⌝ C a b) h = pw⊥stkA C h
 pw⊥stk (⌜Id⌝ C a b) ()
 pw⊥stk (hrefl c t) ()
 pw⊥stk (idrefl c t) ()

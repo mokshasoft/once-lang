@@ -43,8 +43,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; renTm-renTm; renTm-cong )
 open import poc.OCP0009.NbEPDirDBVar using ( ren-as-sub )
 open import poc.OCP0009.NbEPDirDBVar
-  using ( pw?; stkC?; pwBody; pwShift
-        ; pw?-sub; stkC?-sub; pwBody-sub )
+  using ( pw?; stkC?; stkA?; pwBody; pwShift
+        ; pw?-sub; stkC?-sub; stkA?-sub; pwBody-sub )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; swp; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
         ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
@@ -209,7 +209,7 @@ pwShift-sub σ t =
 ⟶-sub σ (tr-J-Hom c a m c₁ a₁ b₁ t e key) =
   tr-J-Hom (subTm (extS σ) c) (subTm (extS σ) a) (subTm (extS σ) m)
            (subTm σ c₁) (subTm σ a₁) (subTm σ b₁)
-           (subTm σ t) (subTm σ e) (stkC?-sub σ c₁ key)
+           (subTm σ t) (subTm σ e) (stkA?-sub σ c₁ key)
 ⟶-sub σ (tr-pw c a f e key) =
   subst (λ z → tr (⌜Hom⌝ (subTm (extS σ) c) (subTm (extS σ) a) (var vz))
                   (lam (subTm (extS σ) f)) (subTm σ e) ⟶ z)

@@ -42,7 +42,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Unit; Nat; unit; nzero; nsuc; natrec; extS; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; extR; Sub; subTy; subTm; renTy; renTm )
 open import poc.OCP0009.NbEPDirDBVar
-  using ( 𝔹; true; false; occTm; pw?; stkC?; flat?; pwBody; pwShift
+  using ( 𝔹; true; false; occTm; pw?; stkC?; stkA?; flat?; pwBody; pwShift
         ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id )
 
 private
@@ -157,11 +157,20 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   hrefl-pw : (C s : RTm Γ) → pw? C ≡ true →
              hrefl C s ⟶
              lam (hrefl (pwBody C) (app (renTm vs s) (var vz)))
-  -- J at Hom-codes over PERMANENTLY-STABLE spines (`stkC?` excludes
-  -- ⌜Π⌝-able codes — those paths unfold to lambdas — and neutrals,
-  -- which substitution could make ⌜Π⌝-able):
+  -- J at Hom-codes over PERMANENTLY-STABLE spines (excludes ⌜Π⌝-able
+  -- codes — those paths unfold to lambdas — and neutrals, which
+  -- substitution could make ⌜Π⌝-able).
+  --
+  -- ★★ THE KEY IS `stkA?`, NOT `stkC?` (SpikeNatJ).  This rule
+  -- DECOMPOSES the path's code as `⌜Hom⌝ c₁ a₁ b₁`, so its key is the
+  -- J-ability of the WHOLE code — which is `stkC? (⌜Hom⌝ c₁ a₁ b₁)`,
+  -- i.e. `stkA? c₁`.  Testing `stkC? c₁` instead propagated the ⌜Nat⌝
+  -- exception outward and left `tr` STUCK on a `hrefl (⌜Hom⌝ ⌜Nat⌝ a b)`
+  -- path: the decode there is `Hom Nat a b`, whose own homs have a
+  -- `Hom` ambient and so can never fire an order rule.  Ordered types
+  -- are not J-able; homs OVER them are.
   tr-J-Hom : (c a m : RTm (Γ ∙)) (c₁ a₁ b₁ s e : RTm Γ) →
-             stkC? c₁ ≡ true →
+             stkA? c₁ ≡ true →
              tr (⌜Hom⌝ c a m) (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) e ⟶ e
   -- POINTWISE TRANSPORT: the transported function's value at x is the
   -- inner transport of `e·x` along the path's body `f`, at the

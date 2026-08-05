@@ -36,9 +36,10 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Sub; extS; subTm; renTm-subTm; subTm-renTm; subTm-cong
         ; _ᵣ∘ₛ_; _ₛ∘ᵣ_; _∘ᵣ_ )
 open import poc.OCP0009.NbEPDirDBVar
-  using ( 𝔹; true; false; pw?; stkC?; pwBody; pwShift
-        ; pw?-ren; stkC?-ren; pwBody-ren
-        ; pw?-sub; stkC?-sub; pwBody-sub; pw⊥stk )
+  using ( 𝔹; true; false; pw?; stkC?; stkA?; pwBody; pwShift
+        ; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren
+        ; pw?-sub; stkC?-sub; stkA?-sub; pwBody-sub; pw⊥stk; pw⊥stkA
+        ; stkC?→stkA? )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; swp; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
         ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
@@ -334,7 +335,7 @@ pwShift-ren ρ t =
 ⟶-ren ρ (tr-J-Hom c a m c₁ a₁ b₁ t e key) =
   tr-J-Hom (renTm (extR ρ) c) (renTm (extR ρ) a) (renTm (extR ρ) m)
            (renTm ρ c₁) (renTm ρ a₁) (renTm ρ b₁)
-           (renTm ρ t) (renTm ρ e) (trans (stkC?-ren ρ c₁) key)
+           (renTm ρ t) (renTm ρ e) (trans (stkA?-ren ρ c₁) key)
 ⟶-ren ρ (tr-pw c a f e key) =
   subst (λ z → tr (⌜Hom⌝ (renTm (extR ρ) c) (renTm (extR ρ) a) (var vz))
                   (lam (renTm (extR ρ) f)) (renTm ρ e) ⟶ z)
@@ -418,6 +419,41 @@ pw?-red (ξ-trᵈ _) ()
 pw?-red (ξ-trᵖ _) ()
 pw?-red (ξ-trᵉ _) ()
 
+-- ★ the `stkA?` peer (SpikeNatJ split).  Same shape: no stable code
+-- is a redex, so every arm is absurd or a component congruence.
+stkA?-red : {C C' : RTm Γ} → C ⟶ C' → stkA? C ≡ true → stkA? C' ≡ true
+stkA?-red (β _ _) ()
+stkA?-red (βfst _ _) ()
+stkA?-red (βsnd _ _) ()
+stkA?-red (ξ-lam _) ()
+stkA?-red (ξ-appˡ _) ()
+stkA?-red (ξ-appʳ _) ()
+stkA?-red (ξ-pairˡ _) ()
+stkA?-red (ξ-pairʳ _) ()
+stkA?-red (ξ-fst _) ()
+stkA?-red (ξ-snd _) ()
+stkA?-red (ξ-⌜Π⌝ˡ _) ()
+stkA?-red (ξ-⌜Π⌝ʳ _) ()
+stkA?-red (ξ-⌜Σ⌝ˡ r) h = refl
+stkA?-red (ξ-⌜Σ⌝ʳ r) h = refl
+stkA?-red (ξ-⌜Hom⌝ᶜ r) h = stkA?-red r h
+stkA?-red (ξ-⌜Id⌝ᶜ r) h = refl
+stkA?-red (ξ-⌜Id⌝ˡ r) h = refl
+stkA?-red (ξ-⌜Id⌝ʳ r) h = refl
+stkA?-red (ξ-⌜Hom⌝ˡ r) h = h
+stkA?-red (ξ-⌜Hom⌝ʳ r) h = h
+stkA?-red (ξ-hreflᶜ _) ()
+stkA?-red (ξ-hreflᵃ _) ()
+stkA?-red (hrefl-pw _ _ _) ()
+stkA?-red (tr-J-base _ _ _ _ _) ()
+stkA?-red (tr-J-Σ _ _ _ _ _ _ _) ()
+stkA?-red (tr-J-Hom _ _ _ _ _ _ _ _ _) ()
+stkA?-red (tr-taut _ _) ()
+stkA?-red (tr-pw _ _ _ _ _) ()
+stkA?-red (ξ-trᵈ _) ()
+stkA?-red (ξ-trᵖ _) ()
+stkA?-red (ξ-trᵉ _) ()
+
 stkC?-red : {C C' : RTm Γ} → C ⟶ C' → stkC? C ≡ true → stkC? C' ≡ true
 stkC?-red (β _ _) ()
 stkC?-red (βfst _ _) ()
@@ -433,7 +469,7 @@ stkC?-red (ξ-⌜Π⌝ˡ _) ()
 stkC?-red (ξ-⌜Π⌝ʳ _) ()
 stkC?-red (ξ-⌜Σ⌝ˡ r) h = refl
 stkC?-red (ξ-⌜Σ⌝ʳ r) h = refl
-stkC?-red (ξ-⌜Hom⌝ᶜ r) h = stkC?-red r h
+stkC?-red (ξ-⌜Hom⌝ᶜ r) h = stkA?-red r h
 stkC?-red (ξ-⌜Id⌝ᶜ r) h = refl
 stkC?-red (ξ-⌜Id⌝ˡ r) h = refl
 stkC?-red (ξ-⌜Id⌝ʳ r) h = refl
@@ -595,8 +631,9 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   phrefl-pw : {C C' s s' : RTm Γ} → pw? C ≡ true → C ⟹ C' → s ⟹ s' →
               hrefl C s ⟹
               lam (hrefl (pwBody C') (app (renTm vs s') (var vz)))
+  -- ★★ key is `stkA?`, mirroring `tr-J-Hom` (SpikeNatJ split).
   ptr-J-Hom : {c a m : RTm (Γ ∙)} {c₁ a₁ b₁ s e e' : RTm Γ} →
-              stkC? c₁ ≡ true → e ⟹ e' →
+              stkA? c₁ ≡ true → e ⟹ e' →
               tr (⌜Hom⌝ c a m) (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) e ⟹ e'
   ptr-pw    : {c c' a a' f f' : RTm (Γ ∙)} {e e' : RTm Γ} →
               pw? c ≡ true → c ⟹ c' → a ⟹ a' → f ⟹ f' → e ⟹ e' →
@@ -702,6 +739,46 @@ pw?-⟹ (pnatrec _ _ _) ()
 pw?-⟹ (pnatrec-zero _ _) ()
 pw?-⟹ (pnatrec-suc _ _ _) ()
 
+-- ★ the `stkA?` peer for parallel reduction (SpikeNatJ split).
+stkA?-⟹ : {C C' : RTm Γ} → C ⟹ C' → stkA? C ≡ true → stkA? C' ≡ true
+stkA?-⟹ (pvar _) ()
+stkA?-⟹ (plam _) ()
+stkA?-⟹ (papp _ _) ()
+stkA?-⟹ (pβ _ _) ()
+stkA?-⟹ (ppair _ _) ()
+stkA?-⟹ (pfst _) ()
+stkA?-⟹ (psnd _) ()
+stkA?-⟹ (pβfst _ _) ()
+stkA?-⟹ (pβsnd _ _) ()
+stkA?-⟹ p⌜base⌝ h = refl
+stkA?-⟹ (p⌜Π⌝ _ _) ()
+stkA?-⟹ (p⌜Σ⌝ _ _) h = refl
+stkA?-⟹ (p⌜Hom⌝ pc _ _) h = stkA?-⟹ pc h
+stkA?-⟹ (phrefl _ _) ()
+stkA?-⟹ (phrefl-pw _ _ _) ()
+stkA?-⟹ (ptr _ _ _) ()
+stkA?-⟹ (ptr-J-base _) ()
+stkA?-⟹ (p⌜Nat⌝) h = refl
+stkA?-⟹ (p⌜Unit⌝) h = refl
+stkA?-⟹ (ptr-J-Unit _) ()
+stkA?-⟹ (ptr-J-Σ _) ()
+stkA?-⟹ (ptr-J-Hom _ _) ()
+stkA?-⟹ (pap _ _ _) ()
+stkA?-⟹ (pap-J _ _ _ _) ()
+stkA?-⟹ (p⌜Id⌝ _ _ _) h = refl
+stkA?-⟹ (pidrefl _ _) ()
+stkA?-⟹ (pjsub _ _ _) ()
+stkA?-⟹ (pjsub-refl _) ()
+stkA?-⟹ (ptr-J-Id _) ()
+stkA?-⟹ (ptr-taut _ _) ()
+stkA?-⟹ (ptr-pw _ _ _ _ _) ()
+stkA?-⟹ (punit) ()
+stkA?-⟹ (pnzero) ()
+stkA?-⟹ (pnsuc _) ()
+stkA?-⟹ (pnatrec _ _ _) ()
+stkA?-⟹ (pnatrec-zero _ _) ()
+stkA?-⟹ (pnatrec-suc _ _ _) ()
+
 stkC?-⟹ : {C C' : RTm Γ} → C ⟹ C' → stkC? C ≡ true → stkC? C' ≡ true
 stkC?-⟹ (pvar _) ()
 stkC?-⟹ (plam _) ()
@@ -715,7 +792,7 @@ stkC?-⟹ (pβsnd _ _) ()
 stkC?-⟹ p⌜base⌝ h = refl
 stkC?-⟹ (p⌜Π⌝ _ _) ()
 stkC?-⟹ (p⌜Σ⌝ _ _) h = refl
-stkC?-⟹ (p⌜Hom⌝ pc _ _) h = stkC?-⟹ pc h
+stkC?-⟹ (p⌜Hom⌝ pc _ _) h = stkA?-⟹ pc h
 stkC?-⟹ (phrefl _ _) ()
 stkC?-⟹ (phrefl-pw _ _ _) ()
 stkC?-⟹ (ptr _ _ _) ()
@@ -945,7 +1022,7 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
         (phrefl-pw (trans (pw?-ren ρ C) key)
                    (⟹-ren ρ pC) (⟹-ren ρ pt))
 ⟹-ren ρ (ptr-J-Hom {c₁ = c₁} key pe) =
-  ptr-J-Hom (trans (stkC?-ren ρ c₁) key) (⟹-ren ρ pe)
+  ptr-J-Hom (trans (stkA?-ren ρ c₁) key) (⟹-ren ρ pe)
 ⟹-ren ρ (ptr-pw {c = c} {c'} {a} {a'} {f} {f'} {e} {e'} key pc pa pf pe) =
   subst (λ z → tr (⌜Hom⌝ (renTm (extR ρ) c) (renTm (extR ρ) a) (var vz))
                   (lam (renTm (extR ρ) f)) (renTm ρ e) ⟹ z)
@@ -1070,7 +1147,7 @@ pwBody-⟹ (pnatrec-suc _ _ _) ()
                (sym (wk-sub σ' t')))
         (phrefl-pw (pw?-sub σ C key) (⟹-sub h pC) (⟹-sub h pt))
 ⟹-sub {σ = σ} {σ'} h (ptr-J-Hom {c₁ = c₁} key pe) =
-  ptr-J-Hom (stkC?-sub σ c₁ key) (⟹-sub h pe)
+  ptr-J-Hom (stkA?-sub σ c₁ key) (⟹-sub h pe)
 ⟹-sub {σ = σ} {σ'} h (ptr-pw {c = c} {c'} {a} {a'} {f} {f'} {e} {e'} key pc pa pf pe) =
   subst (λ z → tr (⌜Hom⌝ (subTm (extS σ) c) (subTm (extS σ) a) (var vz))
                   (lam (subTm (extS σ) f)) (subTm σ e) ⟹ z)
@@ -1223,7 +1300,7 @@ ap cB b (hrefl ⌜Unit⌝ s) ⁺        = hrefl (cB ⁺) (subTm (single (s ⁺))
 ap cB b (hrefl ⌜base⌝ s) ⁺        = hrefl (cB ⁺) (subTm (single (s ⁺)) (b ⁺))
 ap cB b (hrefl (⌜Σ⌝ c₁ c₂) s) ⁺   = hrefl (cB ⁺) (subTm (single (s ⁺)) (b ⁺))
 ap cB b (hrefl (⌜Id⌝ c₁ a₁ b₁) s) ⁺ = hrefl (cB ⁺) (subTm (single (s ⁺)) (b ⁺))
-ap cB b (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) ⁺ = apH⁺ (stkC? c₁) cB b c₁ a₁ b₁ s
+ap cB b (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) ⁺ = apH⁺ (stkA? c₁) cB b c₁ a₁ b₁ s
 ap cB b p ⁺ = ap (cB ⁺) (b ⁺) (p ⁺)
 -- the two-former kernel: Id is inert (congruences), and jsub's J is
 -- UNKEYED — the refl-path row fires unconditionally.
@@ -1256,7 +1333,7 @@ trI⁺ d c₁ a₁ b₁ s e = tr (d ⁺) (hrefl (⌜Id⌝ (c₁ ⁺) (a₁ ⁺) 
 hr⁺ true  C T = lam (hrefl (pwBody C) (app (renTm vs T) (var vz)))
 hr⁺ false C T = hrefl C T
 
-trH⁺ (⌜Hom⌝ c a m) c₁ a₁ b₁ s e = trHK⁺ (stkC? c₁) c a m c₁ a₁ b₁ s e
+trH⁺ (⌜Hom⌝ c a m) c₁ a₁ b₁ s e = trHK⁺ (stkA? c₁) c a m c₁ a₁ b₁ s e
 trH⁺ d c₁ a₁ b₁ s e =
   tr (d ⁺) (hr⁺ (pw? c₁) (⌜Hom⌝ (c₁ ⁺) (a₁ ⁺) (b₁ ⁺)) (s ⁺)) (e ⁺)
 
@@ -1289,7 +1366,7 @@ hr-tri false kf px py = phrefl px py
 
 trHK-tri : {c c' a a' m m' : RTm (Γ ∙)}
            {c₁ c₁' a₁ a₁' b₁ b₁' s s' e e' : RTm Γ}
-           (b : 𝔹) → (b ≡ true → stkC? c₁' ≡ true) →
+           (b : 𝔹) → (b ≡ true → stkA? c₁' ≡ true) →
            (pw? c₁ ≡ true → pw? c₁' ≡ true) →
            c' ⟹ (c ⁺) → a' ⟹ (a ⁺) → m' ⟹ (m ⁺) →
            c₁' ⟹ (c₁ ⁺) → a₁' ⟹ (a₁ ⁺) → b₁' ⟹ (b₁ ⁺) →
@@ -1310,7 +1387,7 @@ trPK-tri false kf pc pa pf pe = ptr (p⌜Hom⌝ pc pa (pvar vz)) (plam pf) pe
 
 apH-tri : {cB cB' : RTm Γ} {b b' : RTm (Γ ∙)}
           {c₁ c₁' a₁ a₁' b₁ b₁' s s' : RTm Γ}
-          (k : 𝔹) → (k ≡ true → stkC? c₁' ≡ true) →
+          (k : 𝔹) → (k ≡ true → stkA? c₁' ≡ true) →
           (pw? c₁ ≡ true → pw? c₁' ≡ true) →
           cB' ⟹ (cB ⁺) → b' ⟹ (b ⁺) →
           c₁' ⟹ (c₁ ⁺) → a₁' ⟹ (a₁ ⁺) → b₁' ⟹ (b₁ ⁺) → s' ⟹ (s ⁺) →
@@ -1678,7 +1755,7 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 -- on `stkC?`), congruence elsewhere (the path piece re-dispatches on
 -- the inner code's pw-key via `hr-tri`).
 ⟹-⁺ (ptr (p⌜Hom⌝ pc pa pm) (phrefl (p⌜Hom⌝ pc₁ pa₁ pb₁) ps) pe) =
-  trHK-tri _ (stkC?-⟹ pc₁) (pw?-⟹ pc₁)
+  trHK-tri _ (stkA?-⟹ pc₁) (pw?-⟹ pc₁)
            (⟹-⁺ pc) (⟹-⁺ pa) (⟹-⁺ pm)
            (⟹-⁺ pc₁) (⟹-⁺ pa₁) (⟹-⁺ pb₁) (⟹-⁺ ps) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pvar _) (phrefl (p⌜Hom⌝ pc₁ pa₁ pb₁) ps) pe) = ptr (⟹-⁺ u) (hr-tri _ (pw?-⟹ pc₁) (p⌜Hom⌝ (⟹-⁺ pc₁) (⟹-⁺ pa₁) (⟹-⁺ pb₁)) (⟹-⁺ ps)) (⟹-⁺ pe)
@@ -1755,7 +1832,7 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 -- needs the key rewritten by `pw⊥stk` (a pw code is never stk).
 ⟹-⁺ (ptr pd w@(phrefl-pw {C = ⌜Π⌝ _ _} _ _ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr (p⌜Hom⌝ pc pa pm) w@(phrefl-pw {C = ⌜Hom⌝ c₁ a₁ b₁} key _ _) pe) =
-  subst (λ b → _ ⟹ trHK⁺ b _ _ _ c₁ a₁ b₁ _ _) (sym (pw⊥stk c₁ key))
+  subst (λ b → _ ⟹ trHK⁺ b _ _ _ c₁ a₁ b₁ _ _) (sym (pw⊥stkA c₁ key))
         (ptr (p⌜Hom⌝ (⟹-⁺ pc) (⟹-⁺ pa) (⟹-⁺ pm)) (⟹-⁺ w) (⟹-⁺ pe))
 ⟹-⁺ (ptr u@(pvar _) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(plam _) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
@@ -1996,7 +2073,7 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (pap pcB pb (phrefl (p⌜Id⌝ _ _ _) ps)) =
   pap-J refl (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ ps)
 ⟹-⁺ (pap pcB pb (phrefl (p⌜Hom⌝ pc pa pz) ps)) =
-  apH-tri _ (stkC?-⟹ pc) (pw?-⟹ pc)
+  apH-tri _ (stkA?-⟹ pc) (pw?-⟹ pc)
           (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ pc) (⟹-⁺ pa) (⟹-⁺ pz) (⟹-⁺ ps)
 ⟹-⁺ (pap pcB pb w@(phrefl (pvar _) _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
 ⟹-⁺ (pap pcB pb w@(phrefl (plam _) _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
@@ -2034,7 +2111,7 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (pap pcB pb w@(phrefl-pw {C = ⌜Π⌝ _ _} _ _ _)) =
   pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
 ⟹-⁺ (pap pcB pb w@(phrefl-pw {C = ⌜Hom⌝ c₁ a₁ b₁} key _ _)) =
-  subst (λ k → _ ⟹ apH⁺ k _ _ c₁ a₁ b₁ _) (sym (pw⊥stk c₁ key))
+  subst (λ k → _ ⟹ apH⁺ k _ _ c₁ a₁ b₁ _) (sym (pw⊥stkA c₁ key))
         (pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w))
 -- `jsub` — the UNKEYED J: idrefl-sourced paths fire unconditionally,
 -- everything else is congruence.
