@@ -585,6 +585,49 @@ pw? (⌜Π⌝ γ δ)     = true
 pw? (⌜Hom⌝ C a b) = pw? C
 pw? _             = false
 
+-- ★★ WF stage C: codes whose decode never REACHES `Nat` — i.e.
+-- constructor-headed at something other than ⌜Nat⌝.  Lives here rather
+-- than with the `NoNat` machinery in NbEPDirDBSubj because `⊢tr` needs
+-- it as a PREMISE (NbEPDirDBType): `tr` is hom-composition, so at a
+-- ⌜Nat⌝ ambient the right answer depends on the path's ENDPOINTS —
+-- which never occur in the term `tr d p e`, only in the derivation.
+-- No reduction rule can case on them, and every endpoint-blind rule
+-- dies to the `tr-J-Nat` counterexample.  So `tr` is restricted, and
+-- order transport becomes the separate `ordtr` former (ARCHITECTURE.md).
+-- The property is closed under reduction AND substitution: a
+-- constructor-headed code only ever develops under its own
+-- congruences.
+data NoNatC {Γ} : RTm Γ → Set where
+  nnc-base : NoNatC (⌜base⌝ {Γ})
+  nnc-Unit : NoNatC (⌜Unit⌝ {Γ})
+  nnc-Σ    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatC (⌜Σ⌝ c d)
+  nnc-Id   : {c a b : RTm Γ} → NoNatC (⌜Id⌝ c a b)
+  -- ★★ HEREDITARY along the pw-spine, and this is not decoration:
+  -- `tr-pw` rewrites a `tr` at motive code `c` into one at
+  -- `pwBody c`, so a premise that only pinned the HEAD would not be
+  -- preserved by reduction — `⌜Π⌝ γ ⌜Nat⌝` is non-⌜Nat⌝-headed but
+  -- unfolds to a ⌜Nat⌝ motive.  Found by mechanizing `sr`'s `tr-pw`
+  -- case; `nonatc-pwBody` below is the property that makes it go
+  -- through.
+  nnc-Π    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatC d → NoNatC (⌜Π⌝ c d)
+  nnc-Hom  : {c a b : RTm Γ} → NoNatC c → NoNatC (⌜Hom⌝ c a b)
+
+nonatc-ren : (ρ : Ren Γ Δ) {c : RTm Γ} → NoNatC c → NoNatC (renTm ρ c)
+nonatc-ren ρ nnc-base = nnc-base
+nonatc-ren ρ nnc-Unit = nnc-Unit
+nonatc-ren ρ nnc-Σ    = nnc-Σ
+nonatc-ren ρ nnc-Id   = nnc-Id
+nonatc-ren ρ (nnc-Π nd)  = nnc-Π (nonatc-ren (extR ρ) nd)
+nonatc-ren ρ (nnc-Hom nc) = nnc-Hom (nonatc-ren ρ nc)
+
+nonatc-sub : (σ : Sub Γ Δ) {c : RTm Γ} → NoNatC c → NoNatC (subTm σ c)
+nonatc-sub σ nnc-base = nnc-base
+nonatc-sub σ nnc-Unit = nnc-Unit
+nonatc-sub σ nnc-Σ    = nnc-Σ
+nonatc-sub σ nnc-Id   = nnc-Id
+nonatc-sub σ (nnc-Π nd)  = nnc-Π (nonatc-sub (extS σ) nd)
+nonatc-sub σ (nnc-Hom nc) = nnc-Hom (nonatc-sub σ nc)
+
 -- permanently stable codes: J-able, and NEVER ⌜Π⌝-able — not even
 -- under substitution (constructor-headed spines only).
 stkC? : RTm Γ → 𝔹
@@ -632,6 +675,43 @@ pwBody t             = renTm vs t
 pwShift : Ren ((Γ ∙) ∙) ((Γ ∙) ∙)
 pwShift vz     = vs vz
 pwShift (vs y) = vs y
+
+-- ★ the closure property `tr-pw` needs: unfolding a pw-able code to its
+-- pointwise BODY preserves Nat-freeness.
+nonatc-pwBody : (c : RTm Γ) → NoNatC c → pw? c ≡ true → NoNatC (pwBody c)
+nonatc-pwBody (⌜Π⌝ γ δ) (nnc-Π nd) h = nd
+nonatc-pwBody (⌜Hom⌝ C a b) (nnc-Hom nc) h = nnc-Hom (nonatc-pwBody C nc h)
+nonatc-pwBody ⌜base⌝ nnc-base ()
+nonatc-pwBody ⌜Unit⌝ nnc-Unit ()
+nonatc-pwBody (⌜Σ⌝ c d) nnc-Σ ()
+nonatc-pwBody (⌜Id⌝ c a b) nnc-Id ()
+
+-- ★ and `stkC?` implies it: the stable codes are constructor-headed,
+-- ⌜Π⌝-free all the way down the spine, and (since the retraction)
+-- ⌜Nat⌝-free.
+stkC?→NoNatC : (c : RTm Γ) → stkC? c ≡ true → NoNatC c
+stkC?→NoNatC (var _) ()
+stkC?→NoNatC (lam _) ()
+stkC?→NoNatC (app _ _) ()
+stkC?→NoNatC (pair _ _) ()
+stkC?→NoNatC (fst _) ()
+stkC?→NoNatC (snd _) ()
+stkC?→NoNatC ⌜base⌝ h = nnc-base
+stkC?→NoNatC ⌜Unit⌝ h = nnc-Unit
+stkC?→NoNatC ⌜Nat⌝ ()
+stkC?→NoNatC (⌜Π⌝ _ _) ()
+stkC?→NoNatC (⌜Σ⌝ _ _) h = nnc-Σ
+stkC?→NoNatC (⌜Hom⌝ C _ _) h = nnc-Hom (stkC?→NoNatC C h)
+stkC?→NoNatC (⌜Id⌝ _ _ _) h = nnc-Id
+stkC?→NoNatC (hrefl _ _) ()
+stkC?→NoNatC (idrefl _ _) ()
+stkC?→NoNatC (tr _ _ _) ()
+stkC?→NoNatC (jsub _ _ _) ()
+stkC?→NoNatC (ap _ _ _) ()
+stkC?→NoNatC unit ()
+stkC?→NoNatC nzero ()
+stkC?→NoNatC (nsuc _) ()
+stkC?→NoNatC (natrec _ _ _) ()
 
 stk⊥pw : (C : RTm Γ) → stkC? C ≡ true → pw? C ≡ false
 stk⊥pw (var x) ()
