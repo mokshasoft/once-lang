@@ -69,7 +69,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
-        ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢absurd; ⊢trU
+        ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢absurd; ⊢ordtr; ⊢trU
         ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢ap; ⊢conv
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢⌜Nat⌝; ⊢⌜Unit⌝
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
@@ -323,6 +323,63 @@ occ-red {x = x} (ξ-absurdᶜ {e = e₉} r) e =
   ∨-false (occ-red r (∨-false₁ _ e)) (∨-false₂ _ e)
 occ-red {x = x} (ξ-absurdᵉ {c = c₉} r) e =
   ∨-false (∨-false₁ _ e) (occ-red r (∨-false₂ (occTm x c₉) e))
+-- the order's rules.  `occTm` of `ordtr` is a right-nested five-way ∨,
+-- and `occTm x (nsuc n) = occTm x n`, so `ordtr-sss` — which peels a
+-- `nsuc` off all three bounds — returns the occurrence proof VERBATIM.
+--
+-- ⚠ every `∨-false₁`/`∨-false₂` summand is written OUT.  Passing `_`
+-- leaves the 𝔹 unsolved and the metas escape the clause — the same
+-- trap as the arithmetic summands in the bound lemmas.
+occ-red (ordtr-z t u p q) e = refl
+occ-red {x = x} (ordtr-szz a p q) e =
+  ∨-false₁ (occTm x p)
+    (∨-false₂ false (∨-false₂ false (∨-false₂ (occTm x a) e)))
+occ-red {x = x} (ordtr-ssz a t p q) e =
+  ∨-false₂ (occTm x p)
+    (∨-false₂ false (∨-false₂ (occTm x t) (∨-false₂ (occTm x a) e)))
+occ-red {x = x} (ordtr-szs a u p q) e =
+  ∨-false (∨-false (∨-false₁ (occTm x a) e)
+                   (∨-false₁ (occTm x u)
+                     (∨-false₂ false (∨-false₂ (occTm x a) e))))
+          (∨-false₁ (occTm x p)
+            (∨-false₂ (occTm x u)
+              (∨-false₂ false (∨-false₂ (occTm x a) e))))
+occ-red (ordtr-sss a t u p q) e = e
+occ-red {x = x} (ξ-ordtrᵃ {a = a} r) e =
+  ∨-false (occ-red r (∨-false₁ (occTm x a) e)) (∨-false₂ (occTm x a) e)
+occ-red {x = x} (ξ-ordtrᵗ {a = a} {t = t} r) e =
+  ∨-false (∨-false₁ (occTm x a) e)
+    (∨-false (occ-red r (∨-false₁ (occTm x t) (∨-false₂ (occTm x a) e)))
+             (∨-false₂ (occTm x t) (∨-false₂ (occTm x a) e)))
+occ-red {x = x} (ξ-ordtrᵘ {a = a} {t = t} {u = u} r) e =
+  ∨-false (∨-false₁ (occTm x a) e)
+    (∨-false (∨-false₁ (occTm x t) (∨-false₂ (occTm x a) e))
+      (∨-false (occ-red r (∨-false₁ (occTm x u)
+                            (∨-false₂ (occTm x t) (∨-false₂ (occTm x a) e))))
+               (∨-false₂ (occTm x u)
+                 (∨-false₂ (occTm x t) (∨-false₂ (occTm x a) e)))))
+occ-red {x = x} (ξ-ordtrᵖ {a = a} {t = t} {u = u} {p = p} r) e =
+  ∨-false (∨-false₁ (occTm x a) e)
+    (∨-false (∨-false₁ (occTm x t) (∨-false₂ (occTm x a) e))
+      (∨-false (∨-false₁ (occTm x u)
+                 (∨-false₂ (occTm x t) (∨-false₂ (occTm x a) e)))
+        (∨-false (occ-red r (∨-false₁ (occTm x p)
+                              (∨-false₂ (occTm x u)
+                                (∨-false₂ (occTm x t) (∨-false₂ (occTm x a) e)))))
+                 (∨-false₂ (occTm x p)
+                   (∨-false₂ (occTm x u)
+                     (∨-false₂ (occTm x t) (∨-false₂ (occTm x a) e)))))))
+occ-red {x = x} (ξ-ordtrq {a = a} {t = t} {u = u} {p = p} r) e =
+  ∨-false (∨-false₁ (occTm x a) e)
+    (∨-false (∨-false₁ (occTm x t) (∨-false₂ (occTm x a) e))
+      (∨-false (∨-false₁ (occTm x u)
+                 (∨-false₂ (occTm x t) (∨-false₂ (occTm x a) e)))
+        (∨-false (∨-false₁ (occTm x p)
+                   (∨-false₂ (occTm x u)
+                     (∨-false₂ (occTm x t) (∨-false₂ (occTm x a) e))))
+                 (occ-red r (∨-false₂ (occTm x p)
+                              (∨-false₂ (occTm x u)
+                                (∨-false₂ (occTm x t) (∨-false₂ (occTm x a) e))))))))
 occ-red (ξ-fst r) e = occ-red r e
 occ-red (ξ-snd r) e = occ-red r e
 occ-red {x = x} (ξ-⌜Π⌝ˡ {c = c} r) e =
@@ -836,6 +893,9 @@ ren-lemma {ρ = ρ} (⊢pair {B = B} {a = a} dB d₁ d₂) h =
   ⊢pair (ren-ty dB (Ren⊢-ext h))
         (ren-lemma d₁ h) (⊢-cast (ren-comm-ty ρ B a) (ren-lemma d₂ h))
 ren-lemma (⊢absurd dc de) h = ⊢absurd (ren-lemma dc h) (ren-lemma de h)
+ren-lemma (⊢ordtr da dt du dp dq) h =
+  ⊢ordtr (ren-lemma da h) (ren-lemma dt h) (ren-lemma du h)
+         (ren-lemma dp h) (ren-lemma dq h)
 ren-lemma (⊢fst d) h = ⊢fst (ren-lemma d h)
 ren-lemma {ρ = ρ} (⊢snd {B = B} {p = p} d) h =
   ⊢-cast (sym (ren-comm-ty ρ B (fst p))) (⊢snd (ren-lemma d h))
@@ -931,6 +991,9 @@ sub-lemma {σ = σ} (⊢pair {B = B} {a = a} dB d₁ d₂) h =
   ⊢pair (sub-ty dB (Sub⊢-ext h))
         (sub-lemma d₁ h) (⊢-cast (subTy-comm σ B a) (sub-lemma d₂ h))
 sub-lemma (⊢absurd dc de) h = ⊢absurd (sub-lemma dc h) (sub-lemma de h)
+sub-lemma (⊢ordtr da dt du dp dq) h =
+  ⊢ordtr (sub-lemma da h) (sub-lemma dt h) (sub-lemma du h)
+         (sub-lemma dp h) (sub-lemma dq h)
 sub-lemma (⊢fst d) h = ⊢fst (sub-lemma d h)
 sub-lemma {σ = σ} (⊢snd {B = B} {p = p} d) h =
   ⊢-cast (sym (subTy-comm σ B (fst p))) (⊢snd (sub-lemma d h))
@@ -1080,6 +1143,20 @@ gen-absurd : {Γ : Ctx} {c e₀ : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
 gen-absurd (⊢absurd dc de) = dc , (de , crflᵀ)
 gen-absurd (⊢conv d c) with gen-absurd d
 ... | (dc , (de , c')) = dc , (de , ctrnᵀ (csymᵀ c) c')
+
+-- ★ the order's inversion.  `⊢ordtr`'s result type `Hom Nat a u` is
+-- FIXED by the rule (no motive to guess), so unlike `gen-natrec` there
+-- is nothing existential to recover — five premises and a conversion.
+gen-ordtr : {Γ : Ctx} {a t u p q : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+            Γ ⊢ ordtr a t u p q ∷ C →
+            (Γ ⊢ a ∷ Nat) × ((Γ ⊢ t ∷ Nat) × ((Γ ⊢ u ∷ Nat) ×
+            ((Γ ⊢ p ∷ Hom Nat a t) × ((Γ ⊢ q ∷ Hom Nat t u) ×
+             (C ≅ᵀ Hom Nat a u)))))
+gen-ordtr (⊢ordtr da dt du dp dq) =
+  da , (dt , (du , (dp , (dq , crflᵀ))))
+gen-ordtr (⊢conv d c) with gen-ordtr d
+... | da , (dt , (du , (dp , (dq , c')))) =
+      da , (dt , (du , (dp , (dq , ctrnᵀ (csymᵀ c) c'))))
 
 gen-hrefl : {Γ : Ctx} {c t₀ : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
             Γ ⊢ hrefl c t₀ ∷ C →
@@ -1450,6 +1527,65 @@ sr d (ξ-absurdᶜ r) with gen-absurd d
             (ctrnᵀ (csymᵀ (credᵀ (ξ-El r))) (csymᵀ cv))
 sr d (ξ-absurdᵉ r) with gen-absurd d
 ... | dc , (de , cv) = ⊢conv (⊢absurd dc (sr de r)) (csymᵀ cv)
+-- ★ SUBJECT REDUCTION FOR THE ORDER.  Four of the five rules change
+-- the result type, and each is repaired by the SAME computing order
+-- that fired the rule — this is the payoff of `Hom Nat` computing.
+--
+--   ordtr-z   ↦ `Hom Nat nzero u` IS `Unit`, so `unit` fits.
+--   ordtr-szz ↦ `p` already has the goal type verbatim.
+--   ordtr-ssz ↦ ⚠ `q : Hom Nat (nsuc t) nzero` but the goal is
+--               `Hom Nat (nsuc a) nzero` — DIFFERENT terms.  The rule
+--               is sound only because BOTH collapse to `base` under
+--               `Hom-Nat-sz`; that is the whole justification.
+--   ordtr-szs ↦ ex falso, at the code whose `El` is the goal.
+--   ordtr-sss ↦ peel `nsuc` off all three bounds via `Hom-Nat-ss`.
+sr d (ordtr-z t u p q) with gen-ordtr d
+... | da , (dt , (du , (dp , (dq , cv)))) =
+      ⊢conv ⊢unit (csymᵀ (ctrnᵀ cv (credᵀ (Hom-Nat-z u))))
+sr d (ordtr-szz a p q) with gen-ordtr d
+... | da , (dt , (du , (dp , (dq , cv)))) = ⊢conv dp (csymᵀ cv)
+sr d (ordtr-ssz a t p q) with gen-ordtr d
+... | da , (dt , (du , (dp , (dq , cv)))) =
+      ⊢conv dq (ctrnᵀ (credᵀ (Hom-Nat-sz t))
+                      (ctrnᵀ (csymᵀ (credᵀ (Hom-Nat-sz a))) (csymᵀ cv)))
+sr d (ordtr-szs a u p q) with gen-ordtr d
+... | da , (dt , (du , (dp , (dq , cv)))) with gen-nsuc da | gen-nsuc du
+...   | da' , _ | du' , _ =
+        ⊢conv (⊢absurd (⊢⌜Hom⌝ ⊢⌜Nat⌝
+                          (⊢conv da' (csymᵀ (credᵀ El-⌜Nat⌝)))
+                          (⊢conv du' (csymᵀ (credᵀ El-⌜Nat⌝))))
+                       (⊢conv dp (credᵀ (Hom-Nat-sz a))))
+              (ctrnᵀ (credᵀ (El-⌜Hom⌝ _ _ _))
+                (ctrnᵀ (credᵀ (ξ-Homᵀ El-⌜Nat⌝))
+                  (ctrnᵀ (csymᵀ (credᵀ (Hom-Nat-ss a u))) (csymᵀ cv))))
+sr d (ordtr-sss a t u p q) with gen-ordtr d
+... | da , (dt , (du , (dp , (dq , cv)))) with gen-nsuc da | gen-nsuc dt | gen-nsuc du
+...   | da' , _ | dt' , _ | du' , _ =
+        ⊢conv (⊢ordtr da' dt' du'
+                 (⊢conv dp (credᵀ (Hom-Nat-ss a t)))
+                 (⊢conv dq (credᵀ (Hom-Nat-ss t u))))
+              (ctrnᵀ (csymᵀ (credᵀ (Hom-Nat-ss a u))) (csymᵀ cv))
+-- the congruences.  Only ᵃ and ᵘ move the result type (they are its
+-- endpoints); ᵗ, ᵖ and q leave it alone.
+sr d (ξ-ordtrᵃ r) with gen-ordtr d
+... | da , (dt , (du , (dp , (dq , cv)))) =
+      ⊢conv (⊢ordtr (sr da r) dt du (⊢conv dp (credᵀ (ξ-Homˡ r))) dq)
+            (csymᵀ (ctrnᵀ cv (credᵀ (ξ-Homˡ r))))
+sr d (ξ-ordtrᵗ r) with gen-ordtr d
+... | da , (dt , (du , (dp , (dq , cv)))) =
+      ⊢conv (⊢ordtr da (sr dt r) du
+               (⊢conv dp (credᵀ (ξ-Homʳ r))) (⊢conv dq (credᵀ (ξ-Homˡ r))))
+            (csymᵀ cv)
+sr d (ξ-ordtrᵘ r) with gen-ordtr d
+... | da , (dt , (du , (dp , (dq , cv)))) =
+      ⊢conv (⊢ordtr da dt (sr du r) dp (⊢conv dq (credᵀ (ξ-Homʳ r))))
+            (csymᵀ (ctrnᵀ cv (credᵀ (ξ-Homʳ r))))
+sr d (ξ-ordtrᵖ r) with gen-ordtr d
+... | da , (dt , (du , (dp , (dq , cv)))) =
+      ⊢conv (⊢ordtr da dt du (sr dp r) dq) (csymᵀ cv)
+sr d (ξ-ordtrq r) with gen-ordtr d
+... | da , (dt , (du , (dp , (dq , cv)))) =
+      ⊢conv (⊢ordtr da dt du dp (sr dq r)) (csymᵀ cv)
 sr d (β s a) with gen-app d
 ... | A₀ , (B₀ , (d-lam , (d-a , cC))) with gen-lam d-lam
 ...   | A₁ , (B₁ , (cΠ , (tyA₁ , d-s))) with Π-inj cΠ

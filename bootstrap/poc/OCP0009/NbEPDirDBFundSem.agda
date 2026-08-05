@@ -558,7 +558,7 @@ semHreflPay x₀ {c = c} {t = t} (⊩₀Π {G = G} p ⊩F ⊩G) lk snc pay snt h
   closure : (v : RTm _) (r' : (emb ⊩F) ⊩₁∋ v) → _
   closure v r' =
     mem₁-cast
-      (sym (Hom-cong₃; ordtr-cong₅ refl
+      (sym (Hom-cong₃ refl
              (cong₂ app (wk-single t) refl)
              (cong₂ app (wk-single t) refl)))
       (homSem₁ (emb (⊩G v (projr (emb-coh ⊩F) v r')))
