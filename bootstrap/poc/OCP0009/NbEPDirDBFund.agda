@@ -53,6 +53,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
         ; RTm; var; lam; app; pair; fst; snd; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; ⌜Id⌝; idrefl; jsub
+        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃
         ; Ren; extR; renTy; renTm
         ; Sub; subTy; subTm; extS; idₛ
         ; _∘ᵣ_
@@ -62,7 +63,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; subTy-subTy; subTm-subTm
         ; subTy-id; subTm-id; renTm-renTm; renTm-cong )
 open import poc.OCP0009.NbEPDirDBType
-  using ( single
+  using ( single; nrs
         ; _⟶_; _⟶*_; done; step
         ; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ; ξ-pairˡ; ξ-pairʳ; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ
@@ -79,7 +80,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢trU; ⊢ap; ⊢conv
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub
-        ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id
+        ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
+        ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢ctx_; c-◇; c-▹
         ; ⊢id; ⊢appex )
 open import poc.OCP0009.NbEPDirDBVar
@@ -88,8 +90,8 @@ open import poc.OCP0009.NbEPDirDBVar
         ; pw?-ren; stkC?-ren; pwBody-ren; wk-ren-tm; pw?-sub
         ; wk-sub-tm; stk⊥pw; pw⊥stk; flat?; flat→stk; flat?-sub
         ; eqv; occ-sub; occ-ren-tm; avoids-wk )
-open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; sub-comm )
-open import poc.OCP0009.NbEPDirDBConf using ( pwShift-ren; stkC?-red; subTm-monoˢ; single-mono; ⟶*-trans )
+open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; sub-comm; wk-sub )
+open import poc.OCP0009.NbEPDirDBConf using ( pwShift-ren; stkC?-red; subTm-monoˢ; single-mono; ⟶*-trans; ren-comm; ren-comm-ext )
 open import poc.OCP0009.NbEPDirDBDec using ( Dec; dec-conv )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; confluentᵀ; church-rosserᵀ; Π-inj
@@ -99,7 +101,7 @@ open import poc.OCP0009.NbEPDirDBSubj
   using ( HomΠShape; hsΠ; hsH; hom-shape; pw-El-decode
         ; HomRed; mkHomRed; Hom-to-Hom
         ; HomToΠ; via-U; via-Π; hom-to-Π
-        ; U-reduct; wk-cancel-tm; ≅ᵀ-Homᵀ; gen-var )
+        ; U-reduct; wk-cancel-tm; ≅ᵀ-Homᵀ; gen-var; subTy-comm; subTy-monoˢ )
 open import poc.OCP0009.NbEPDirDBLR
   using ( SNe; sne-var; sne-app; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap; sne-jsub
         ; Ne; ne-var; ne-app; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁
@@ -107,6 +109,10 @@ open import poc.OCP0009.NbEPDirDBLR
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
         ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-J-Id; snr-taut; snr-trᵖ; snr-ap-J; snr-apᵖ
         ; snr-jsub-refl; snr-jsubᵖ
+        ; snr-natrec-zero; snr-natrec-suc; snr-natrecⁿ
+        ; sne-natrec; ne-natrec; sn-unit; sn-nzero; sn-nsuc
+        ; NatMem; nm-ne; nm-zero; nm-suc; nm-exp; natmem-whred
+        ; ⊩₁Unit; ⊩₁Nat; natstk?; natstk?-ren; natstk?-red; sne→natstk; sn-whred
         ; trstk?-ren; apstk?-ren; idstk?-ren; nopw?-ren; trlam?-ren
         ; idstk?-red; ⊩₀Id; ⊩₁Id; IdPay; idpay-transfer; idpay-peel; sne-nopay
         ; nopw⊥pw; stk⊥dead; pw⊥dead; dead→nopw; snr-nonpw
@@ -162,10 +168,18 @@ exts-var : (ρ : Ren Θ Ξ) (x : Var (Θ ∙)) → extS ⟨ ρ ⟩ᵣ x ≡ ⟨ 
 exts-var ρ vz     = refl
 exts-var ρ (vs x) = refl
 
+exts2-var : (ρ : Ren Θ Ξ) (x : Var ((Θ ∙) ∙)) →
+            extS (extS ⟨ ρ ⟩ᵣ) x ≡ ⟨ extR (extR ρ) ⟩ᵣ x
+exts2-var ρ vz          = refl
+exts2-var ρ (vs vz)     = refl
+exts2-var ρ (vs (vs x)) = refl
+
 -- (1a) substituting a renaming IS renaming.
 subTy-var : (ρ : Ren Θ Ξ) (A : RTy Θ) → subTy ⟨ ρ ⟩ᵣ A ≡ renTy ρ A
 subTm-var : (ρ : Ren Θ Ξ) (t : RTm Θ) → subTm ⟨ ρ ⟩ᵣ t ≡ renTm ρ t
 subTy-var ρ base     = refl
+subTy-var ρ Unit     = refl
+subTy-var ρ Nat      = refl
 subTy-var ρ U        = refl
 subTy-var ρ (Π A B)  =
   cong₂ Π (subTy-var ρ A)
@@ -186,6 +200,13 @@ subTm-var ρ (pair a b) = cong₂ pair (subTm-var ρ a) (subTm-var ρ b)
 subTm-var ρ (fst p)    = cong fst (subTm-var ρ p)
 subTm-var ρ (snd p)    = cong snd (subTm-var ρ p)
 subTm-var ρ ⌜base⌝     = refl
+subTm-var ρ unit       = refl
+subTm-var ρ nzero      = refl
+subTm-var ρ (nsuc n)   = cong nsuc (subTm-var ρ n)
+subTm-var ρ (natrec z w n) =
+  natrec-cong₃ (subTm-var ρ z)
+    (trans (subTm-cong (exts2-var ρ) w) (subTm-var (extR (extR ρ)) w))
+    (subTm-var ρ n)
 subTm-var ρ (⌜Π⌝ c d)  =
   cong₂ ⌜Π⌝ (subTm-var ρ c)
             (trans (subTm-cong (exts-var ρ) d) (subTm-var (extR ρ) d))
@@ -241,6 +262,38 @@ single-exts σ u (vs x) =
         (trans (subTm-cong (λ _ → refl) (σ x)) (subTm-id (σ x)))
 
 sub-single-Ty σ u B = trans (subTy-subTy B) (subTy-cong (single-exts σ u) B)
+
+-- ★ WF stage A.  Instantiating the recursor's STEP motive at the number
+-- then at the IH is the motive at the SUCCESSOR — the semantic twin of
+-- `natrec-step-ty`, phrased on the cons-substitutions `fund` builds.
+nrs-cons-Ty : (σ : Sub Θ Ξ) (m r : RTm Ξ) (M : RTy (Θ ∙)) →
+              subTy ((σ ,ₛ m) ,ₛ r) (subTy nrs M) ≡ subTy (σ ,ₛ nsuc m) M
+nrs-cons-Ty {Θ} σ m r M = trans (subTy-subTy M) (subTy-cong bridge M)
+  where
+  bridge : (x : Var (Θ ∙)) →
+           subTm ((σ ,ₛ m) ,ₛ r) (nrs x) ≡ (σ ,ₛ nsuc m) x
+  bridge vz     = refl
+  bridge (vs y) = refl
+
+-- …and the same on the step TERM: the two nested single-substitutions
+-- the reduction performs ARE the cons-substitution `fund` recurses with.
+nrs-cons-Tm : (σ : Sub Θ Ξ) (m r : RTm Ξ) (w : RTm ((Θ ∙) ∙)) →
+              subTm (single r) (subTm (extS (single m)) (subTm (extS (extS σ)) w))
+              ≡ subTm ((σ ,ₛ m) ,ₛ r) w
+nrs-cons-Tm {Θ} σ m r w =
+  trans (cong (subTm (single r)) inner)
+        (sub-single-Tm (σ ,ₛ m) r w)
+  where
+  inner : subTm (extS (single m)) (subTm (extS (extS σ)) w)
+          ≡ subTm (extS (σ ,ₛ m)) w
+  inner = trans (subTm-subTm w) (subTm-cong bridge w)
+    where
+    bridge : (x : Var ((Θ ∙) ∙)) →
+             subTm (extS (single m)) (extS (extS σ) x) ≡ extS (σ ,ₛ m) x
+    bridge vz     = refl
+    bridge (vs y) =
+      trans (wk-sub (single m) (extS σ y))
+            (cong (renTm vs) (single-exts σ m y))
 sub-single-Tm σ u t = trans (subTm-subTm t) (subTm-cong (single-exts σ u) t)
 
 -- (1e) pushing a substitution through a single one — `⊢app`/`⊢snd`'s codomain.
@@ -276,6 +329,9 @@ csr-anti : {ρ : Ren Θ Ξ} {t : RTm Θ} {v : RTm Ξ} → CSR (renTm ρ t) v →
            Σ (RTm Θ) (λ t' → CSR t t' × (v ≡ renTm ρ t'))
 
 sne-anti {t = var x}    _             = sne-var x
+sne-anti {ρ = ρ} {t = natrec z w n} (sne-natrec hz hw hn key) =
+  sne-natrec (sn-anti hz) (sn-anti hw) (sn-anti hn)
+             (trans (sym (natstk?-ren ρ n)) key)
 sne-anti {t = app t u}  (sne-app n s) = sne-app (sne-anti n) (sn-anti s)
 sne-anti {t = fst p}    (sne-fst n)   = sne-fst (sne-anti n)
 sne-anti {t = snd p}    (sne-snd n)   = sne-snd (sne-anti n)
@@ -292,6 +348,12 @@ sne-anti {ρ = ρ} {t = jsub d p e} (sne-jsub hd hp he key) =
            (trans (sym (idstk?-ren ρ p)) key)
 
 sn-anti {t = var x}    _              = sn-ne (sne-var x)
+sn-anti {t = unit}     _              = sn-unit
+sn-anti {t = nzero}    _              = sn-nzero
+sn-anti {t = nsuc n}   (sn-nsuc h)    = sn-nsuc (sn-anti h)
+sn-anti {t = natrec z w n} (sn-ne nt) = sn-ne (sne-anti nt)
+sn-anti {t = natrec z w n} (sn-exp r h) with snr-anti r
+... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = lam s}    (sn-lam h)     = sn-lam (sn-anti h)
 sn-anti {t = pair a b} (sn-pair ha hb) = sn-pair (sn-anti ha) (sn-anti hb)
 sn-anti {t = ⌜base⌝}   _              = sn-cb
@@ -325,6 +387,18 @@ sn-anti {t = fst p}    (sn-exp r h) with snr-anti r
 sn-anti {t = snd p}    (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 
+snr-anti {t = natrec z w nzero} (snr-natrec-zero hw) =
+  z , (snr-natrec-zero (sn-anti hw) , refl)
+snr-anti {ρ = ρ} {t = natrec z w (nsuc m)} (snr-natrec-suc hz hw hn) =
+  subTm (single (natrec z w m)) (subTm (extS (single m)) w)
+  , ( snr-natrec-suc (sn-anti hz) (sn-anti hw) (sn-anti hn)
+    , sym (trans (ren-comm ρ (subTm (extS (single m)) w) (natrec z w m))
+                 (cong (λ q → subTm (single (natrec (renTm ρ z)
+                                                    (renTm (extR (extR ρ)) w)
+                                                    (renTm ρ m))) q)
+                       (ren-comm-ext ρ w m))) )
+snr-anti {t = natrec z w n} (snr-natrecⁿ r) with snr-anti r
+... | n' , (r' , refl) = natrec z w n' , (snr-natrecⁿ r' , refl)
 snr-anti {ρ = ρ} {t = app (lam s) u} (snr-β h) =
   subTm (single u) s , (snr-β (sn-anti h) , ren-single ρ u s)
 snr-anti {t = app (app a b) u}  (snr-app r) with snr-anti r
@@ -333,6 +407,21 @@ snr-anti {t = app (fst p) u}    (snr-app r) with snr-anti r
 ... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
 snr-anti {t = app (snd p) u}    (snr-app r) with snr-anti r
 ... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
+snr-anti {t = app unit u}       (snr-app ())
+snr-anti {t = app nzero u}      (snr-app ())
+snr-anti {t = app (nsuc k) u}   (snr-app ())
+snr-anti {t = app (natrec z w n) u} (snr-app r) with snr-anti r
+... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
+snr-anti {t = fst unit}         (snr-fst ())
+snr-anti {t = fst nzero}        (snr-fst ())
+snr-anti {t = fst (nsuc k)}     (snr-fst ())
+snr-anti {t = fst (natrec z w n)} (snr-fst r) with snr-anti r
+... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
+snr-anti {t = snd unit}         (snr-snd ())
+snr-anti {t = snd nzero}        (snr-snd ())
+snr-anti {t = snd (nsuc k)}     (snr-snd ())
+snr-anti {t = snd (natrec z w n)} (snr-snd r) with snr-anti r
+... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
 snr-anti {t = fst (pair a b)}   (snr-βfst h) =
   a , (snr-βfst (sn-anti h) , refl)
 snr-anti {t = fst (app a b)}    (snr-fst r) with snr-anti r
@@ -501,6 +590,19 @@ snr-anti {t = tr d (hrefl (jsub d₁ p₁ e₁) s) e} (snr-trᵖ r) with snr-ant
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (⌜Id⌝ c a b) e} (snr-trᵖ ())
 snr-anti {t = tr d (idrefl c s) e} (snr-trᵖ ())
+snr-anti {t = tr d (hrefl unit s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl unit s) e} (snr-trᵖ (snr-hrefl-pw ()))
+snr-anti {t = tr d (hrefl nzero s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl nzero s) e} (snr-trᵖ (snr-hrefl-pw ()))
+snr-anti {t = tr d (hrefl (nsuc k) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl (nsuc k) s) e} (snr-trᵖ (snr-hrefl-pw ()))
+snr-anti {t = tr d (hrefl (natrec z w n) s) e} (snr-trᵖ r) with snr-anti r
+... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d unit e} (snr-trᵖ ())
+snr-anti {t = tr d nzero e} (snr-trᵖ ())
+snr-anti {t = tr d (nsuc k) e} (snr-trᵖ ())
+snr-anti {t = tr d (natrec z w n) e} (snr-trᵖ r) with snr-anti r
+... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (jsub d₁ p₁ e₁) e} (snr-trᵖ r) with snr-anti r
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
 snr-anti {ρ = ρ} {t = ap c b (hrefl c₁ s)} (snr-ap-J h₁ kh) =
@@ -511,6 +613,11 @@ snr-anti {t = ap c b p} (snr-apᵖ r) with snr-anti r
 ... | p' , (r' , refl) = ap c b p' , (snr-apᵖ r' , refl)
 
 csr-anti {t = var x} (csr-here ())
+csr-anti {t = unit} (csr-here ())
+csr-anti {t = nzero} (csr-here ())
+csr-anti {t = nsuc _} (csr-here ())
+csr-anti {t = natrec z w n} (csr-here r) with snr-anti r
+... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = lam _} (csr-here ())
 csr-anti {t = pair _ _} (csr-here ())
 csr-anti {t = ⌜base⌝} (csr-here ())
@@ -551,6 +658,9 @@ csr-ren : {ρ : Ren Θ Ξ} {t t' : RTm Θ} → CSR t t' →
           CSR (renTm ρ t) (renTm ρ t')
 
 sne-ren {ρ = ρ} (sne-var x)   = sne-var (ρ x)
+sne-ren {ρ = ρ} (sne-natrec {n = n} hz hw hn key) =
+  sne-natrec (sn-ren hz) (sn-ren hw) (sn-ren hn)
+             (trans (natstk?-ren ρ n) key)
 sne-ren (sne-app n s)         = sne-app (sne-ren n) (sn-ren s)
 sne-ren (sne-fst n)           = sne-fst (sne-ren n)
 sne-ren (sne-snd n)           = sne-snd (sne-ren n)
@@ -575,12 +685,26 @@ sn-ren (sn-cΣ h₁ h₂)    = sn-cΣ (sn-ren h₁) (sn-ren h₂)
 sn-ren (sn-cH h₁ h₂ h₃) = sn-cH (sn-ren h₁) (sn-ren h₂) (sn-ren h₃)
 sn-ren (sn-cId h₁ h₂ h₃) = sn-cId (sn-ren h₁) (sn-ren h₂) (sn-ren h₃)
 sn-ren (sn-idrefl h₁ h₂) = sn-idrefl (sn-ren h₁) (sn-ren h₂)
+sn-ren sn-unit          = sn-unit
+sn-ren sn-nzero         = sn-nzero
+sn-ren (sn-nsuc h)      = sn-nsuc (sn-ren h)
 sn-ren (sn-exp r h)     = sn-exp (snr-ren r) (sn-ren h)
 
 snr-ren {ρ = ρ} (snr-β {s = s} {u = u} hu) =
   subst (λ z → SNRed (app (lam (renTm (extR ρ) s)) (renTm ρ u)) z)
         (ren-single ρ u s)
         (snr-β (sn-ren hu))
+snr-ren (snr-natrec-zero hw) = snr-natrec-zero (sn-ren hw)
+snr-ren {ρ = ρ} (snr-natrec-suc {z = z} {w = w} {n = m} hz hw hn) =
+  subst (λ q → SNRed (natrec (renTm ρ z) (renTm (extR (extR ρ)) w)
+                             (nsuc (renTm ρ m))) q)
+        (sym (trans (ren-comm ρ (subTm (extS (single m)) w) (natrec z w m))
+                    (cong (λ q → subTm (single (natrec (renTm ρ z)
+                                                       (renTm (extR (extR ρ)) w)
+                                                       (renTm ρ m))) q)
+                          (ren-comm-ext ρ w m))))
+        (snr-natrec-suc (sn-ren hz) (sn-ren hw) (sn-ren hn))
+snr-ren (snr-natrecⁿ r) = snr-natrecⁿ (snr-ren r)
 snr-ren (snr-βfst hb) = snr-βfst (sn-ren hb)
 snr-ren (snr-βsnd ha) = snr-βsnd (sn-ren ha)
 snr-ren (snr-app r)   = snr-app (snr-ren r)
@@ -648,6 +772,27 @@ sn-body {Ξ = Ξ} x₀ {s} h = sn-anti (subst SN eq h)
 
     eq : subTm (single (var x₀)) s ≡ renTm ρ₀ s
     eq = trans (subTm-cong pw s) (subTm-var ρ₀ s)
+
+-- ★ WF stage A: the same trick one binder deeper — the recursor's step
+-- body lives under TWO binders, so its SN premise peels two variable
+-- instantiations (both are renaming-substitutions, so `sn-anti` twice).
+sn-body₂ : (x₀ : Var Ξ) {w : RTm ((Ξ ∙) ∙)} →
+           SN (subTm (single (var x₀)) (subTm (extS (single (var x₀))) w)) →
+           SN w
+sn-body₂ {Ξ = Ξ} x₀ {w} h = sn-anti (subst SN eq (sn-body x₀ h))
+  where
+    ρ₁ : Ren ((Ξ ∙) ∙) (Ξ ∙)
+    ρ₁ vz          = vz
+    ρ₁ (vs vz)     = vs x₀
+    ρ₁ (vs (vs y)) = vs y
+
+    pw : (x : Var ((Ξ ∙) ∙)) → extS (single (var x₀)) x ≡ ⟨ ρ₁ ⟩ᵣ x
+    pw vz          = refl
+    pw (vs vz)     = refl
+    pw (vs (vs y)) = refl
+
+    eq : subTm (extS (single (var x₀))) w ≡ renTm ρ₁ w
+    eq = trans (subTm-cong pw w) (subTm-var ρ₁ w)
 
 ------------------------------------------------------------------------
 -- 3. THE EXISTENTIAL PAYLOAD, and its two casts.
@@ -721,6 +866,10 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 ... | mkΠRed _ _ () _ _
 ⊩₁-app (⊩₁Hom p _) S h k with Π-reduct p
 ... | mkΠRed _ _ () _ _
+⊩₁-app (⊩₁Unit p) S h k with Π-reduct p
+... | mkΠRed _ _ () _ _
+⊩₁-app (⊩₁Nat p) S h k with Π-reduct p
+... | mkΠRed _ _ () _ _
 ⊩₁-app (⊩₁Id p) S h k with Π-reduct p
 ... | mkΠRed _ _ () _ _
 ⊩₁-app (⊩₁Π p ⊩F ⊩G) S {v = v} h k with Π-reduct p
@@ -743,6 +892,10 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 ... | mkΣRed _ _ () _ _
 ⊩₁-fstm (⊩₁Hom p _) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
+⊩₁-fstm (⊩₁Unit p) h with Σ-reduct p
+... | mkΣRed _ _ () _ _
+⊩₁-fstm (⊩₁Nat p) h with Σ-reduct p
+... | mkΣRed _ _ () _ _
 ⊩₁-fstm (⊩₁Id p) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
 ⊩₁-fstm (⊩₁Σ p ⊩F ⊩G) h with Σ-reduct p
@@ -761,6 +914,10 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 ⊩₁-sndm (⊩₁Π p _ _) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
 ⊩₁-sndm (⊩₁Hom p _) h with Σ-reduct p
+... | mkΣRed _ _ () _ _
+⊩₁-sndm (⊩₁Unit p) h with Σ-reduct p
+... | mkΣRed _ _ () _ _
+⊩₁-sndm (⊩₁Nat p) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
 ⊩₁-sndm (⊩₁Id p) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
@@ -808,6 +965,7 @@ sne→nopw (sne-hrefl _ _ _)  = refl
 sne→nopw (sne-tr _ _ _ key) = key
 sne→nopw (sne-ap _ _ _ key) = refl
 sne→nopw (sne-jsub _ _ _ key) = key
+sne→nopw (sne-natrec _ _ _ key) = key
 
 -- star-folds for the head strategy.
 snrs-hreflᶜ : {c c* t : RTm Ξ} → c ⟶csr* c* → hrefl c t ⟶snr* hrefl c* t
@@ -879,6 +1037,12 @@ snHH sp (sn-cId h₁ h₂ h₃) snt noPiT =
   sn-ne (sne-hrefl (snPlug sp (sn-cId h₁ h₂ h₃)) snt (nopw-plug sp refl))
 snHH sp (sn-idrefl h₁ h₂) snt noPiT =
   sn-ne (sne-hrefl (snPlug sp (sn-idrefl h₁ h₂)) snt (nopw-plug sp refl))
+snHH sp sn-unit snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp sn-unit) snt (nopw-plug sp refl))
+snHH sp sn-nzero snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp sn-nzero) snt (nopw-plug sp refl))
+snHH sp (sn-nsuc h) snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-nsuc h)) snt (nopw-plug sp refl))
 snHH sp (sn-cΠ {c = γ} {d = δ} h₁ h₂) snt noPiT =
   ⊥-elim (noPiT (Σ.fst (Σ.snd (pw-El-decode (plug sp (⌜Π⌝ γ δ))
                                             (pw-plug sp refl)))))
@@ -1031,6 +1195,9 @@ codeNorm sn-cb kn = _ , (csr-done , cf-stk refl)
 codeNorm (sn-cΣ h₁ h₂) kn = _ , (csr-done , cf-stk refl)
 codeNorm (sn-cId h₁ h₂ h₃) kn = _ , (csr-done , cf-stk refl)
 codeNorm (sn-idrefl h₁ h₂) kn = _ , (csr-done , cf-dead refl)
+codeNorm sn-unit kn      = _ , (csr-done , cf-dead refl)
+codeNorm sn-nzero kn     = _ , (csr-done , cf-dead refl)
+codeNorm (sn-nsuc h) kn  = _ , (csr-done , cf-dead refl)
 codeNorm (sn-cΠ h₁ h₂) ()
 codeNorm (sn-cH {a = a₂} {b = b₂} hC ha hb) kn with codeNorm hC kn
 ... | C* , (csr , cf-stk k)  =
@@ -1165,6 +1332,7 @@ motFate (sn-ne (sne-hrefl {c = c₂} {t = t₂} snc snt kn)) with motFate snc
 motFate (sn-ne (sne-tr h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-ne (sne-ap h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-ne (sne-jsub h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
+motFate (sn-ne (sne-natrec h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-lam h) = _ , (csr-done , mf-dead refl)
 motFate (sn-pair a b) = _ , (csr-done , mf-dead refl)
 motFate sn-cb = _ , (csr-done , mf-dead refl)
@@ -1172,6 +1340,9 @@ motFate (sn-cΠ h₁ h₂) = _ , (csr-done , mf-pw refl)
 motFate (sn-cΣ h₁ h₂) = _ , (csr-done , mf-dead refl)
 motFate (sn-cId h₁ h₂ h₃) = _ , (csr-done , mf-dead refl)
 motFate (sn-idrefl h₁ h₂) = _ , (csr-done , mf-dead refl)
+motFate sn-unit     = _ , (csr-done , mf-dead refl)
+motFate sn-nzero    = _ , (csr-done , mf-dead refl)
+motFate (sn-nsuc h) = _ , (csr-done , mf-dead refl)
 motFate (sn-cH {c = C₂} {a = a₂} {b = b₂} hC ha hb) with motFate hC
 ... | C* , (csr , mf-pw k)   = ⌜Hom⌝ C* a₂ b₂ , (csrs-hom csr , mf-pw k)
 ... | C* , (csr , mf-dead k) = ⌜Hom⌝ C* a₂ b₂ , (csrs-hom csr , mf-dead k)
@@ -1220,6 +1391,8 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
     sn-ne (sne-tr snM (sn-ne (sne-ap h₁ h₂ h₃ key)) snE key)
   go' (sn-ne (sne-jsub h₁ h₂ h₃ key)) =
     sn-ne (sne-tr snM (sn-ne (sne-jsub h₁ h₂ h₃ key)) snE key)
+  go' (sn-ne (sne-natrec h₁ h₂ h₃ key)) =
+    sn-ne (sne-tr snM (sn-ne (sne-natrec h₁ h₂ h₃ key)) snE key)
   go' (sn-lam snf) with motFate snCT
   ... | CT* , (csr , mf-pw k) =
         ⊥-elim (noPiT (⟶ᵀ*-trans (⟶ᵀ*-El (csrs→⟶* csr))
@@ -1237,6 +1410,9 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
   go' (sn-cH h₁ h₂ h₃) = sn-ne (sne-tr snM (sn-cH h₁ h₂ h₃) snE refl)
   go' (sn-cId h₁ h₂ h₃) = sn-ne (sne-tr snM (sn-cId h₁ h₂ h₃) snE refl)
   go' (sn-idrefl h₁ h₂) = sn-ne (sne-tr snM (sn-idrefl h₁ h₂) snE refl)
+  go' sn-unit           = sn-ne (sne-tr snM sn-unit snE refl)
+  go' sn-nzero          = sn-ne (sne-tr snM sn-nzero snE refl)
+  go' (sn-nsuc h)       = sn-ne (sne-tr snM (sn-nsuc h) snE refl)
 
   goH sn-cb sns kn = sn-exp (snr-J-base snM sns) snE
   goH (sn-cΣ h₁ h₂) sns kn = sn-exp (snr-J-Σ snM h₁ h₂ sns) snE
@@ -1253,6 +1429,12 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
     sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-lam h) sns refl)) snE refl)
   goH (sn-pair a b) sns kn =
     sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-pair a b) sns refl)) snE refl)
+  goH sn-unit sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-unit sns refl)) snE refl)
+  goH sn-nzero sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-nzero sns refl)) snE refl)
+  goH (sn-nsuc h) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-nsuc h) sns refl)) snE refl)
   goH (sn-cΠ h₁ h₂) sns ()
   goH (sn-cH hC h₂ h₃) sns kn with codeNorm hC kn
   ... | C*c , (csr , cf-stk k) =
@@ -1365,6 +1547,8 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-ap h₁ h₂ h₃ key)) snE' key)
   go₀ (sn-ne (sne-jsub h₁ h₂ h₃ key)) hpʹ =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-jsub h₁ h₂ h₃ key)) snE' key)
+  go₀ (sn-ne (sne-natrec h₁ h₂ h₃ key)) hpʹ =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-natrec h₁ h₂ h₃ key)) snE' key)
   go₀ (sn-lam snf) hpʹ = pwC snf hpʹ
   go₀ (sn-pair a b) hpʹ    = CR3₀ RH0 (sne-tr snM (sn-pair a b) snE' refl)
   go₀ sn-cb hpʹ            = CR3₀ RH0 (sne-tr snM sn-cb snE' refl)
@@ -1373,6 +1557,9 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
   go₀ (sn-cH h₁ h₂ h₃) hpʹ = CR3₀ RH0 (sne-tr snM (sn-cH h₁ h₂ h₃) snE' refl)
   go₀ (sn-cId h₁ h₂ h₃) hpʹ = CR3₀ RH0 (sne-tr snM (sn-cId h₁ h₂ h₃) snE' refl)
   go₀ (sn-idrefl h₁ h₂) hpʹ = CR3₀ RH0 (sne-tr snM (sn-idrefl h₁ h₂) snE' refl)
+  go₀ sn-unit hpʹ      = CR3₀ RH0 (sne-tr snM sn-unit snE' refl)
+  go₀ sn-nzero hpʹ     = CR3₀ RH0 (sne-tr snM sn-nzero snE' refl)
+  go₀ (sn-nsuc h) hpʹ  = CR3₀ RH0 (sne-tr snM (sn-nsuc h) snE' refl)
 
   goH₀ sn-cb sns kn = exp₀ RH0 (snr-J-base snM sns) heU
   goH₀ (sn-cΣ h₁ h₂) sns kn = exp₀ RH0 (snr-J-Σ snM h₁ h₂ sns) heU
@@ -1389,6 +1576,12 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-lam h) sns refl)) snE' refl)
   goH₀ (sn-pair a b) sns kn =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-pair a b) sns refl)) snE' refl)
+  goH₀ sn-unit sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-unit sns refl)) snE' refl)
+  goH₀ sn-nzero sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-nzero sns refl)) snE' refl)
+  goH₀ (sn-nsuc h) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-nsuc h) sns refl)) snE' refl)
   goH₀ (sn-cΠ h₁ h₂) sns ()
   goH₀ (sn-cH hC h₂ h₃) sns kn with codeNorm hC kn
   ... | C*c , (csr , cf-stk k) =
@@ -1546,6 +1739,10 @@ fund-ty {σ = σ} (ty-El {c = c} dc) x₀ ρ = emb (sem-El doneᵀ hc)
 -- substitution-stable definitionally, so the goal needs no cast.
 -- `ty-Id` — Id is INERT: the interp is immediate, no semantic action.
 fund-ty (ty-Id tyA dt du) x₀ ρ = ⊩₁Id doneᵀ
+-- ★ WF stage A: the datatype core's formers are substitution-stable and
+-- INERT, so their interps are immediate.
+fund-ty ty-Unit x₀ ρ = ⊩₁Unit doneᵀ
+fund-ty ty-Nat  x₀ ρ = ⊩₁Nat  doneᵀ
 fund-ty {σ = σ} (ty-Hom {t = t} {u = u} tyA dt du) x₀ ρ = homSem₁ R ht hu
   where
     R  = fund-ty tyA x₀ ρ
@@ -1556,6 +1753,126 @@ fund-ty {σ = σ} (ty-Hom {t = t} {u = u} tyA dt du) x₀ ρ = homSem₁ R ht hu
 
 -- TERMS.
 fund (⊢var d) x₀ ρ = ρ d
+
+-- ★★ WF stage A — the recursor's SEMANTIC validation.
+--
+-- The scrutinee's membership at `Nat` carries `NatMem` (the
+-- reaches-numeral payload), and THAT is what the worker recurses on:
+-- a numeral scrutinee makes the recursor fire (backward closure moves
+-- the branch's membership onto the redex), a stuck scrutinee makes it
+-- neutral (CR3, with `sne→natstk` supplying the key).  The step case
+-- feeds the IH into the environment as the second extension — the two
+-- cons-substitutions `nrs-cons-Ty`/`nrs-cons-Tm` collapse to the
+-- successor instance, which is exactly why `natrec` is type-correct.
+--
+-- No fuel, no accessibility argument, no measure: the induction is on
+-- the semantic number itself.
+fund {Ξ = Ξ} {σ = σ} (⊢natrec {M = M} {z = z} {s = w} {n = n}
+                              tyM dz dw dn) x₀ ρ =
+  relTy (sym (trans (subTy-comm σ M n) (sub-single-Ty σ nI M)))
+        (MotC nI hnI , go nI (projl hnI) (projr hnI) hnI)
+  where
+    zI = subTm σ z
+    wI = subTm (extS (extS σ)) w
+    nI = subTm σ n
+
+    ⊩N : ⊩₁ (Nat {Ξ})
+    ⊩N = ⊩₁Nat doneᵀ
+
+    -- the scrutinee, moved onto the canonical `Nat` interp
+    hnI : ⊩N ⊩₁∋ nI
+    hnI = projl (irrel₁ crflᵀ (dfst (fund dn x₀ ρ)) ⊩N)
+                nI (dsnd (fund dn x₀ ρ))
+
+    -- the motive at a semantic number, in CONS form — exactly the shape
+    -- `⊩ˢ-ext` produces, so no cast travels through the recursion.
+    MotC : (u : RTm Ξ) → ⊩N ⊩₁∋ u → ⊩₁ (subTy (σ ,ₛ u) M)
+    MotC u r = fund-ty tyM x₀ (⊩ˢ-ext ρ ⊩N u r)
+
+    snW : SN wI
+    snW = sn-body₂ x₀
+            (subst SN (sym (nrs-cons-Tm σ (var x₀) (var x₀) w))
+                   (CR1₁ (dfst body₀) (dsnd body₀)))
+      where
+      r₀ = CR3₁ ⊩N (sne-var x₀)
+      r₁ = CR3₁ (MotC (var x₀) r₀) (sne-var x₀)
+      body₀ = fund dw x₀ (⊩ˢ-ext (⊩ˢ-ext ρ ⊩N (var x₀) r₀)
+                                 (MotC (var x₀) r₀) (var x₀) r₁)
+
+    hZ0 : ⊩N ⊩₁∋ nzero
+    hZ0 = (sn-nzero , nm-zero)
+
+    -- the zero branch, at the motive's zero instance
+    hZ : (MotC nzero hZ0) ⊩₁∋ zI
+    hZ = projl (irrel₁ crflᵀ (dfst bz) (MotC nzero hZ0)) zI (dsnd bz)
+      where
+      bz = relTy (trans (subTy-comm σ M nzero) (sub-single-Ty σ nzero M))
+                 (fund dz x₀ ρ)
+
+    snZ : SN zI
+    snZ = CR1₁ (MotC nzero hZ0) hZ
+
+    -- ★ the worker: meta-induction on the reaches-numeral payload.
+    -- The `NatMem` argument is the ONLY decreasing one — that is the
+    -- whole point of the WF axis: no fuel, no `Acc`, no measure.
+    go : (u : RTm Ξ) (snu : SN u) (mm : NatMem u) (r : ⊩N ⊩₁∋ u) →
+         (MotC u r) ⊩₁∋ natrec zI wI u
+
+    go u snu (nm-ne nt) r =
+      CR3₁ (MotC u r) (sne-natrec snZ snW snu (sne→natstk nt))
+
+    go u snu (nm-exp {t' = u'} rr mm) r =
+      exp₁ (MotC u r) (snr-natrecⁿ rr)
+        (projl (irrel₁ (csymᵀ conv) (MotC u' r') (MotC u r))
+               (natrec zI wI u') (go u' (sn-whred snu rr) mm r'))
+      where
+        r' : ⊩N ⊩₁∋ u'
+        r' = (sn-whred snu rr , mm)
+
+        cons-mono : (x : Var _) → (σ ,ₛ u) x ⟶* (σ ,ₛ u') x
+        cons-mono vz     = step (snr→⟶ rr) done
+        cons-mono (vs y) = done
+
+        conv : subTy (σ ,ₛ u) M ≅ᵀ subTy (σ ,ₛ u') M
+        conv = red→≅ᵀ (subTy-monoˢ cons-mono M)
+
+    go .nzero snu nm-zero r =
+      exp₁ (MotC nzero r) (snr-natrec-zero snW)
+        (projl (irrel₁ crflᵀ (MotC nzero hZ0) (MotC nzero r)) zI hZ)
+
+    go .(nsuc _) snu (nm-suc {n = m} mm) r =
+      exp₁ (MotC (nsuc m) r) (snr-natrec-suc snZ snW snm) stepM
+      where
+        snm : SN m
+        snm = snsuc-inv snu
+          where
+          snsuc-inv : SN (nsuc m) → SN m
+          snsuc-inv (sn-nsuc h) = h
+
+        rm : ⊩N ⊩₁∋ m
+        rm = (snm , mm)
+
+        recTm = natrec zI wI m
+
+        bodyS = relTy (nrs-cons-Ty σ m recTm M)
+                  (fund dw x₀ (⊩ˢ-ext (⊩ˢ-ext ρ ⊩N m rm)
+                                      (MotC m rm) recTm (go m snm mm rm)))
+
+        stepM : (MotC (nsuc m) r) ⊩₁∋
+                subTm (single recTm) (subTm (extS (single m)) wI)
+        stepM =
+          subst (λ q → (MotC (nsuc m) r) ⊩₁∋ q)
+                (sym (nrs-cons-Tm σ m recTm w))
+                (projl (irrel₁ crflᵀ (dfst bodyS) (MotC (nsuc m) r))
+                       (subTm ((σ ,ₛ m) ,ₛ recTm) w) (dsnd bodyS))
+
+fund ⊢unit  x₀ ρ = ( ⊩₁Unit doneᵀ , sn-unit )
+fund ⊢nzero x₀ ρ = ( ⊩₁Nat doneᵀ , (sn-nzero , nm-zero) )
+fund {σ = σ} (⊢nsuc {n = n} dn) x₀ ρ =
+  ( ⊩₁Nat doneᵀ , (sn-nsuc (projl hn) , nm-suc (projr hn)) )
+  where
+    hn = projl (irrel₁ crflᵀ (dfst (fund dn x₀ ρ)) (⊩₁Nat doneᵀ))
+               (subTm σ n) (dsnd (fund dn x₀ ρ))
 
 fund {Ξ = Ξ} {σ = σ} (⊢lam {B = B} {t = s} tyA d) x₀ ρ =
   ( ⊩₁Π doneᵀ ⊩F ⊩G , sem-lam doneᵀ ⊩F ⊩G sns f )
@@ -1859,6 +2176,7 @@ fund {Ξ = Ξ} {σ = σ}
   ne-nostk (ne-tr _)    = refl
   ne-nostk (ne-ap _)    = refl
   ne-nostk (ne-jsub _)  = refl
+  ne-nostk (ne-natrec _) = refl
 
   kflat : flat? cAI ≡ true
   kflat = flat?-sub σ cA key
@@ -1873,6 +2191,10 @@ fund {Ξ = Ξ} {σ = σ}
   flatMem (⊩₁Σ p _ _) sns with ett-star (et-el kflat) p
   ... | ()
   flatMem (⊩₁Id p) sns with ett-star (et-el kflat) p
+  ... | ()
+  flatMem (⊩₁Unit p) sns with ett-star (et-el kflat) p
+  ... | ()
+  flatMem (⊩₁Nat p) sns with ett-star (et-el kflat) p
   ... | ()
   flatMem (⊩₁ne {n = n} p ne) sns with ett-star (et-el kflat) p
   ... | et-el {c = n₂} k' =
@@ -1978,6 +2300,8 @@ fund {Ξ = Ξ} {σ = σ}
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-ap h₁ h₂ h₃ k)) k)
   goP (sn-ne (sne-jsub h₁ h₂ h₃ k)) =
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-jsub h₁ h₂ h₃ k)) k)
+  goP (sn-ne (sne-natrec h₁ h₂ h₃ k)) =
+    CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-natrec h₁ h₂ h₃ k)) k)
   goP (sn-lam h)       = CR3₀ R_H (sne-ap snCB snBB (sn-lam h) refl)
   goP (sn-pair ha hb)  = CR3₀ R_H (sne-ap snCB snBB (sn-pair ha hb) refl)
   goP sn-cb            = CR3₀ R_H (sne-ap snCB snBB sn-cb refl)
@@ -1986,6 +2310,9 @@ fund {Ξ = Ξ} {σ = σ}
   goP (sn-cH h₁ h₂ h₃) = CR3₀ R_H (sne-ap snCB snBB (sn-cH h₁ h₂ h₃) refl)
   goP (sn-cId h₁ h₂ h₃) = CR3₀ R_H (sne-ap snCB snBB (sn-cId h₁ h₂ h₃) refl)
   goP (sn-idrefl h₁ h₂) = CR3₀ R_H (sne-ap snCB snBB (sn-idrefl h₁ h₂) refl)
+  goP sn-unit           = CR3₀ R_H (sne-ap snCB snBB sn-unit refl)
+  goP sn-nzero          = CR3₀ R_H (sne-ap snCB snBB sn-nzero refl)
+  goP (sn-nsuc h)       = CR3₀ R_H (sne-ap snCB snBB (sn-nsuc h) refl)
 
 -- ★ the two-former kernel: the three symmetric cases.
 fund {σ = σ} (⊢⌜Id⌝ {c = c} {a = a} {b = b} dc da db) x₀ ρ =
@@ -2076,6 +2403,10 @@ fund {Ξ = Ξ} {σ = σ}
   ... | _ , (_ , (_ , ((), _)))
   idMemGet (⊩₁Hom ch _) h with Id-reduct ch
   ... | _ , (_ , (_ , ((), _)))
+  idMemGet (⊩₁Unit ch) h with Id-reduct ch
+  ... | _ , (_ , (_ , ((), _)))
+  idMemGet (⊩₁Nat ch) h with Id-reduct ch
+  ... | _ , (_ , (_ , ((), _)))
 
   hpP = idMemGet (dfst (fund dp x₀ ρ)) (dsnd (fund dp x₀ ρ))
 
@@ -2099,6 +2430,7 @@ fund {Ξ = Ξ} {σ = σ}
   nkeyJ (sne-tr _ _ _ key) = key
   nkeyJ (sne-ap _ _ _ key) = key
   nkeyJ (sne-jsub _ _ _ key) = key
+  nkeyJ (sne-natrec _ _ _ key) = key
 
   goP : {p' : RTm Ξ} → SN p' → IdPay tI uI p' →
         (emb R₀u) ⊩₁∋ jsub dI p' eI
@@ -2128,6 +2460,12 @@ fund {Ξ = Ξ} {σ = σ}
     CR3₁ (emb R₀u) (sne-jsub snDI (sn-cH h₁ h₂ h₃) (CR1₁ (emb R₀t) hEt) refl)
   goP (sn-cId h₁ h₂ h₃) pay =
     CR3₁ (emb R₀u) (sne-jsub snDI (sn-cId h₁ h₂ h₃) (CR1₁ (emb R₀t) hEt) refl)
+  goP sn-unit pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI sn-unit (CR1₁ (emb R₀t) hEt) refl)
+  goP sn-nzero pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI sn-nzero (CR1₁ (emb R₀t) hEt) refl)
+  goP (sn-nsuc h) pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI (sn-nsuc h) (CR1₁ (emb R₀t) hEt) refl)
 
   projP : (emb R₀u) ⊩₁∋ jsub dI pI eI
   projP = goP (projl hpP) (projr hpP)
@@ -2166,6 +2504,7 @@ fund {Ξ = Ξ} {σ = σ}
   nkey (sne-tr _ _ _ key) = key
   nkey (sne-ap _ _ _ key) = key
   nkey (sne-jsub _ _ _ key) = key
+  nkey (sne-natrec _ _ _ key) = key
 
   cr3 : {p' : RTm Ξ} → SN p' → trstk? (var (vz {Ξ})) p' ≡ true →
         Σ (⊩₁ (El uI)) (λ R → R ⊩₁∋ tr (var vz) p' eI)
@@ -2205,6 +2544,9 @@ fund {Ξ = Ξ} {σ = σ}
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-cH h₁ h₂ h₃) hp' = cr3 (sn-cH h₁ h₂ h₃) refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-cId h₁ h₂ h₃) hp' = cr3 (sn-cId h₁ h₂ h₃) refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-idrefl h₁ h₂) hp' = cr3 (sn-idrefl h₁ h₂) refl
+  piCase q ⊩F ⊩G rt ru rEt rEu sn-unit hp'  = cr3 sn-unit refl
+  piCase q ⊩F ⊩G rt ru rEt rEu sn-nzero hp' = cr3 sn-nzero refl
+  piCase q ⊩F ⊩G rt ru rEt rEu (sn-nsuc h) hp' = cr3 (sn-nsuc h) refl
 
   main : (R : ⊩₁ (Hom U tI uI)) → R ⊩₁∋ pI →
          Σ (⊩₁ (El uI)) (λ R' → R' ⊩₁∋ tr (var vz) pI eI)
@@ -2217,6 +2559,10 @@ fund {Ξ = Ξ} {σ = σ}
   main (⊩₁Σ q ⊩F ⊩G) hp with hom-shape q
   ... | ()
   main (⊩₁Id q) hp with hom-shape q
+  ... | ()
+  main (⊩₁Unit q) hp with hom-shape q
+  ... | ()
+  main (⊩₁Nat q) hp with hom-shape q
   ... | ()
   main (⊩₁Hom q sh) hp with Hom-to-Hom q
   ... | mkHomRed rA rt ru with U-reduct rA
@@ -2487,6 +2833,8 @@ fund {Ξ = Ξ} {σ = σ}
     cr3 (sn-ne (sne-ap h₁ h₂ h₃ key)) key
   go (sn-ne (sne-jsub h₁ h₂ h₃ key)) hp' =
     cr3 (sn-ne (sne-jsub h₁ h₂ h₃ key)) key
+  go (sn-ne (sne-natrec h₁ h₂ h₃ key)) hp' =
+    cr3 (sn-ne (sne-natrec h₁ h₂ h₃ key)) key
   go (sn-lam snf) hp'      = goLam snf hp'
   go (sn-pair sa sb) hp'   = cr3 (sn-pair sa sb) refl
   go sn-cb hp'             = cr3 sn-cb refl
@@ -2495,6 +2843,9 @@ fund {Ξ = Ξ} {σ = σ}
   go (sn-cH h₁ h₂ h₃) hp'  = cr3 (sn-cH h₁ h₂ h₃) refl
   go (sn-cId h₁ h₂ h₃) hp' = cr3 (sn-cId h₁ h₂ h₃) refl
   go (sn-idrefl h₁ h₂) hp' = cr3 (sn-idrefl h₁ h₂) refl
+  go sn-unit hp'           = cr3 sn-unit refl
+  go sn-nzero hp'          = cr3 sn-nzero refl
+  go (sn-nsuc h) hp'       = cr3 (sn-nsuc h) refl
 
   -- the path's own head star, wrapped into the tr.
   trP-star : {p₁ p₂ : RTm Ξ} → p₁ ⟶snr* p₂ →
@@ -2520,6 +2871,12 @@ fund {Ξ = Ξ} {σ = σ}
     cr3 (sn-ne (sne-hrefl (sn-lam snb) sns refl)) refl
   goh (sn-pair sa sb) sns kn hp' =
     cr3 (sn-ne (sne-hrefl (sn-pair sa sb) sns refl)) refl
+  goh sn-unit sns kn hp' =
+    cr3 (sn-ne (sne-hrefl sn-unit sns refl)) refl
+  goh sn-nzero sns kn hp' =
+    cr3 (sn-ne (sne-hrefl sn-nzero sns refl)) refl
+  goh (sn-nsuc h) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-nsuc h) sns refl)) refl
   goh (sn-cΠ h₁ h₂) sns () hp'
   -- ★ W2b: a ⌜Hom⌝-CODE path — normalize its spine (codeNorm); the
   -- J-able leaf fires tr-J-Hom (endpoint transfer = the SAME heTgt as
