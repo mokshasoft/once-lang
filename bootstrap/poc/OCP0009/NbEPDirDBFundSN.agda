@@ -20,6 +20,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; ⌜Id⌝; idrefl; jsub
         ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
+        ; ordtr-cong₅
         ; Ren; extR; renTy; renTm
         ; Sub; subTy; subTm; extS; idₛ
         ; _∘ᵣ_
@@ -83,6 +84,10 @@ open import poc.OCP0009.NbEPDirDBLR
         ; snr-jsub-refl; snr-jsubᵖ
         ; snr-natrec-zero; snr-natrec-suc; snr-natrecⁿ
         ; sne-natrec; ne-natrec; sn-unit; sn-nzero; sn-nsuc
+        ; sne-ordtr; ne-ordtr; ordstk?; ordstk?-ren
+        ; ordstk?-redᵃ; ordstk?-redᵗ; ordstk?-redᵘ
+        ; snr-ordtr-z; snr-ordtr-szz; snr-ordtr-ssz; snr-ordtr-szs; snr-ordtr-sss
+        ; snr-ordtrᵃ; snr-ordtrᵗ; snr-ordtrᵘᶻ; snr-ordtrᵘˢ
         ; NatMem; nm-ne; nm-zero; nm-suc; nm-exp; natmem-whred
         ; ⊩₁Unit; ⊩₁Nat; natstk?; natstk?-ren; natstk?-red; sne→natstk; sn-whred
         ; homNatSem; homNatSem₀; hns₀-in; bwd₀-mem⁻
@@ -174,6 +179,9 @@ subTm-var ρ (lam t)   =
 subTm-var ρ (app t u)  = cong₂ app (subTm-var ρ t) (subTm-var ρ u)
 subTm-var ρ (pair a b) = cong₂ pair (subTm-var ρ a) (subTm-var ρ b)
 subTm-var ρ (absurd c e) = cong₂ absurd (subTm-var ρ c) (subTm-var ρ e)
+subTm-var ρ (ordtr a t u p q) =
+  ordtr-cong₅ (subTm-var ρ a) (subTm-var ρ t) (subTm-var ρ u)
+              (subTm-var ρ p) (subTm-var ρ q)
 subTm-var ρ (fst p)    = cong fst (subTm-var ρ p)
 subTm-var ρ (snd p)    = cong snd (subTm-var ρ p)
 subTm-var ρ ⌜base⌝     = refl
@@ -313,6 +321,11 @@ sne-anti {ρ = ρ} {t = natrec z w n} (sne-natrec hz hw hn key) =
              (trans (sym (natstk?-ren ρ n)) key)
 sne-anti {t = app t u}  (sne-app n s) = sne-app (sne-anti n) (sn-anti s)
 sne-anti {t = absurd c e} (sne-absurd sc sn₀) = sne-absurd (sn-anti sc) (sn-anti sn₀)
+-- ★★ WF stage E: three bounds, so the key transports through
+-- `ordstk?-ren` rather than a single classifier.
+sne-anti {ρ = ρ} {t = ordtr a t u p q} (sne-ordtr ha ht hu hp hq key) =
+  sne-ordtr (sn-anti ha) (sn-anti ht) (sn-anti hu) (sn-anti hp) (sn-anti hq)
+            (trans (sym (ordstk?-ren ρ a t u)) key)
 sne-anti {t = fst p}    (sne-fst n)   = sne-fst (sne-anti n)
 sne-anti {t = snd p}    (sne-snd n)   = sne-snd (sne-anti n)
 sne-anti {ρ = ρ} {t = hrefl c t} (sne-hrefl hc ht kn) =
@@ -361,6 +374,9 @@ sn-anti {t = jsub d p e}  (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = app t u}  (sn-ne n)      = sn-ne (sne-anti n)
 sn-anti {t = absurd c e} (sn-ne n)     = sn-ne (sne-anti n)
+sn-anti {t = ordtr a t u p q} (sn-ne n) = sn-ne (sne-anti n)
+sn-anti {t = ordtr a t u p q} (sn-exp r h) with snr-anti r
+... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = fst p}    (sn-ne n)      = sn-ne (sne-anti n)
 sn-anti {t = snd p}    (sn-ne n)      = sn-ne (sne-anti n)
 sn-anti {t = app t u}  (sn-exp r h) with snr-anti r
@@ -385,6 +401,28 @@ snr-anti {ρ = ρ} {t = natrec z w (nsuc m)} (snr-natrec-suc hz hw hn) =
                        (ren-comm-ext ρ w m))) )
 snr-anti {t = natrec z w n} (snr-natrecⁿ r) with snr-anti r
 ... | n' , (r' , refl) = natrec z w n' , (snr-natrecⁿ r' , refl)
+-- ★★ WF stage E: the bounds must be matched SHAPED, or `renTm ρ a` does
+-- not reduce and the index unification gets stuck (the `snr-βfst`
+-- SplitError is the same disease).  The serialized xi's each carry the
+-- shape their premise already fixed.
+snr-anti {t = ordtr nzero t u p q} (snr-ordtr-z ht hu hp hq) =
+  unit , (snr-ordtr-z (sn-anti ht) (sn-anti hu) (sn-anti hp) (sn-anti hq) , refl)
+snr-anti {t = ordtr (nsuc a) nzero nzero p q} (snr-ordtr-szz ha hq) =
+  p , (snr-ordtr-szz (sn-anti ha) (sn-anti hq) , refl)
+snr-anti {t = ordtr (nsuc a) (nsuc t) nzero p q} (snr-ordtr-ssz ha ht hp) =
+  q , (snr-ordtr-ssz (sn-anti ha) (sn-anti ht) (sn-anti hp) , refl)
+snr-anti {t = ordtr (nsuc a) nzero (nsuc u) p q} (snr-ordtr-szs hq) =
+  absurd (⌜Hom⌝ ⌜Nat⌝ a u) p , (snr-ordtr-szs (sn-anti hq) , refl)
+snr-anti {t = ordtr (nsuc a) (nsuc t) (nsuc u) p q} snr-ordtr-sss =
+  ordtr a t u p q , (snr-ordtr-sss , refl)
+snr-anti {t = ordtr a t u p q} (snr-ordtrᵃ r) with snr-anti r
+... | a' , (r' , refl) = ordtr a' t u p q , (snr-ordtrᵃ r' , refl)
+snr-anti {t = ordtr (nsuc a) t u p q} (snr-ordtrᵗ r) with snr-anti r
+... | t' , (r' , refl) = ordtr (nsuc a) t' u p q , (snr-ordtrᵗ r' , refl)
+snr-anti {t = ordtr (nsuc a) nzero u p q} (snr-ordtrᵘᶻ r) with snr-anti r
+... | u' , (r' , refl) = ordtr (nsuc a) nzero u' p q , (snr-ordtrᵘᶻ r' , refl)
+snr-anti {t = ordtr (nsuc a) (nsuc t) u p q} (snr-ordtrᵘˢ r) with snr-anti r
+... | u' , (r' , refl) = ordtr (nsuc a) (nsuc t) u' p q , (snr-ordtrᵘˢ r' , refl)
 snr-anti {ρ = ρ} {t = app (lam s) u} (snr-β h) =
   subTm (single u) s , (snr-β (sn-anti h) , ren-single ρ u s)
 snr-anti {t = app (app a b) u}  (snr-app r) with snr-anti r
@@ -404,6 +442,15 @@ snr-anti {t = absurd c e} ()
 snr-anti {t = fst (absurd c e)}     (snr-fst ())
 snr-anti {t = snd (absurd c e)}     (snr-snd ())
 snr-anti {t = app (absurd c e) u}   (snr-app ())
+-- ⚠ NOT the `absurd` shape: ex falso never steps, so its rows are `()`,
+-- whereas an `ordtr` SCRUTINEE does step and each row must recurse —
+-- the `natrec` shape.
+snr-anti {t = fst (ordtr a t u p q)} (snr-fst r) with snr-anti r
+... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
+snr-anti {t = snd (ordtr a t u p q)} (snr-snd r) with snr-anti r
+... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
+snr-anti {t = app (ordtr a t u p q) w} (snr-app r) with snr-anti r
+... | t' , (r' , refl) = app t' w , (snr-app r' , refl)
 snr-anti {t = fst unit}         (snr-fst ())
 snr-anti {t = fst nzero}        (snr-fst ())
 snr-anti {t = fst (nsuc k)}     (snr-fst ())
@@ -513,6 +560,8 @@ snr-anti {t = tr d (hrefl (tr g w v) s) e} (snr-trᵖ r) with snr-anti r
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (hrefl (ap g w v) s) e} (snr-trᵖ r) with snr-anti r
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (ordtr a₉ t₉ u₉ p₉ q₉) s) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (var x) e} (snr-trᵖ ())
 snr-anti {t = tr d (lam g) e} (snr-trᵖ ())
 snr-anti {t = tr d (app g w) e} (snr-trᵖ r) with snr-anti r
@@ -529,6 +578,10 @@ snr-anti {t = tr d (⌜Π⌝ g w) e} (snr-trᵖ ())
 snr-anti {t = tr d (⌜Σ⌝ g w) e} (snr-trᵖ ())
 snr-anti {t = tr d (⌜Hom⌝ g w v) e} (snr-trᵖ ())
 snr-anti {t = tr d (tr g w v) e} (snr-trᵖ r) with snr-anti r
+... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
+-- an `ordtr` PATH steps, so the row recurses (the `app`/`fst` shape),
+-- not `()` (the `pair`/`lam` shape).
+snr-anti {t = tr d (ordtr a₉ t₉ u₉ p₉ q₉) e} (snr-trᵖ r) with snr-anti r
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
 
 -- the heads that reduce to nothing: a renaming cannot turn them into redexes.
@@ -632,6 +685,8 @@ csr-anti {t = nzero} (csr-here ())
 csr-anti {t = nsuc _} (csr-here ())
 csr-anti {t = natrec z w n} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
+csr-anti {t = ordtr a t u p q} (csr-here r) with snr-anti r
+... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = lam _} (csr-here ())
 csr-anti {t = pair _ _} (csr-here ())
 csr-anti {t = ⌜base⌝} (csr-here ())
@@ -693,6 +748,9 @@ sne-ren {ρ = ρ} (sne-ap {p = p} hc hb hp key) =
 sne-ren {ρ = ρ} (sne-jsub {p = p} hd hp he key) =
   sne-jsub (sn-ren hd) (sn-ren hp) (sn-ren he)
            (trans (idstk?-ren ρ p) key)
+sne-ren {ρ = ρ} (sne-ordtr {a = a} {t = t} {u = u} ha ht hu hp hq key) =
+  sne-ordtr (sn-ren ha) (sn-ren ht) (sn-ren hu) (sn-ren hp) (sn-ren hq)
+            (trans (ordstk?-ren ρ a t u) key)
 
 sn-ren (sn-ne n)        = sn-ne (sne-ren n)
 sn-ren (sn-lam h)       = sn-lam (sn-ren h)
@@ -725,6 +783,16 @@ snr-ren {ρ = ρ} (snr-natrec-suc {z = z} {w = w} {n = m} hz hw hn) =
                           (ren-comm-ext ρ w m))))
         (snr-natrec-suc (sn-ren hz) (sn-ren hw) (sn-ren hn))
 snr-ren (snr-natrecⁿ r) = snr-natrecⁿ (snr-ren r)
+snr-ren (snr-ordtr-z ht hu hp hq) =
+  snr-ordtr-z (sn-ren ht) (sn-ren hu) (sn-ren hp) (sn-ren hq)
+snr-ren (snr-ordtr-szz ha hq)    = snr-ordtr-szz (sn-ren ha) (sn-ren hq)
+snr-ren (snr-ordtr-ssz ha ht hp) = snr-ordtr-ssz (sn-ren ha) (sn-ren ht) (sn-ren hp)
+snr-ren (snr-ordtr-szs hq)       = snr-ordtr-szs (sn-ren hq)
+snr-ren snr-ordtr-sss            = snr-ordtr-sss
+snr-ren (snr-ordtrᵃ r)  = snr-ordtrᵃ (snr-ren r)
+snr-ren (snr-ordtrᵗ r)  = snr-ordtrᵗ (snr-ren r)
+snr-ren (snr-ordtrᵘᶻ r) = snr-ordtrᵘᶻ (snr-ren r)
+snr-ren (snr-ordtrᵘˢ r) = snr-ordtrᵘˢ (snr-ren r)
 snr-ren (snr-βfst hb) = snr-βfst (sn-ren hb)
 snr-ren (snr-βsnd ha) = snr-βsnd (sn-ren ha)
 snr-ren (snr-app r)   = snr-app (snr-ren r)

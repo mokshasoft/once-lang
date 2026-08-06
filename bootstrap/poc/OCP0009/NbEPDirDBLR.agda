@@ -87,7 +87,8 @@ open import poc.OCP0009.NbEPDirDBConf
         ; ⟶*-trᵈ; ⟶*-trᵖ; ⟶*-trᵉ; ⟶*-apᶜ; ⟶*-apᵇ; ⟶*-apᵖ
         ; ⟶*-jsubᵈ; ⟶*-jsubᵖ; ⟶*-jsubᵉ; ⟶*-⌜Id⌝ᶜ; ⟶*-⌜Id⌝ˡ; ⟶*-⌜Id⌝ʳ
         ; ⟶*-idreflᶜ; ⟶*-idreflᵃ
-        ; ⟶*-nsuc; ⟶*-natrecᶻ; ⟶*-natrecˢ; ⟶*-natrecⁿ ; ⟶*-absurdᶜ; ⟶*-absurdᵉ )
+        ; ⟶*-nsuc; ⟶*-natrecᶻ; ⟶*-natrecˢ; ⟶*-natrecⁿ ; ⟶*-absurdᶜ; ⟶*-absurdᵉ
+        ; ⟶*-ordtrᵃ; ⟶*-ordtrᵗ; ⟶*-ordtrᵘ; ⟶*-ordtrᵖ; ⟶*-ordtrq )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Homᵀ
         ; confluentᵀ; church-rosserᵀ; Id-reduct
@@ -1579,6 +1580,10 @@ trstk?-red-p {d = (absurd d₂ e₂)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = (absurd d₂ e₂)} {hrefl _ _} {lam _} (hrefl-pw C₀ s₀ kp) h =
   ⊥-elim (f≢t (trans (sym (pw⊥dead C₀ kp)) h))
 trstk?-red-p {d = (absurd d₂ e₂)} {hrefl _ _} {hrefl _ _} (ξ-hreflᵃ _) h = h
+-- an `ordtr` MOTIVE behaves exactly like an `absurd` one: it is not
+-- `var vz`, so `trstk?` falls through to `pathstk?` on the path.
+trstk?-red-p {d = (ordtr dz₁ dz₂ dz₃ dz₄ dz₅)} (ξ-hreflᶜ rc) h = stablecd?-red rc h
+trstk?-red-p {d = (ordtr dz₁ dz₂ dz₃ dz₄ dz₅)} {hrefl _ _} {hrefl _ _} (ξ-hreflᵃ _) h = h
 trstk?-red-p {d = ⌜base⌝} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = ⌜Nat⌝} (ξ-hreflᶜ rc) h = stablecd?-red rc h
 trstk?-red-p {d = ⌜Unit⌝} (ξ-hreflᶜ rc) h = stablecd?-red rc h
@@ -1709,6 +1714,31 @@ natstk?-red* : {t t' : RTm Γ} → t ⟶* t' → natstk? t ≡ true → natstk? 
 natstk?-red* done h       = h
 natstk?-red* (step r q) h = natstk?-red* q (natstk?-red r h)
 
+-- ★★ WF stage E: the multi-step closures, one per BOUND.  `wne` needs
+-- all three, composed in `ordstk?`'s own dispatch order.
+-- ⚠ every implicit is bound at the recursive call, per the standing
+-- meta-leak rule for the `ordstk?` family.
+ordstk?-red*ᵃ : {a a' t u : RTm Γ} → a ⟶* a' →
+                ordstk? a t u ≡ true → ordstk? a' t u ≡ true
+ordstk?-red*ᵃ {t = t} {u = u} done       h = h
+ordstk?-red*ᵃ {a = a} {t = t} {u = u} (step {u = b} r w) h =
+  ordstk?-red*ᵃ {a = b} {t = t} {u = u} w
+    (ordstk?-redᵃ {a = a} {a' = b} {t = t} {u = u} r h)
+
+ordstk?-red*ᵗ : {a t t' u : RTm Γ} → t ⟶* t' →
+                ordstk? a t u ≡ true → ordstk? a t' u ≡ true
+ordstk?-red*ᵗ {a = a} {u = u} done       h = h
+ordstk?-red*ᵗ {a = a} {t = t} {u = u} (step {u = b} r w) h =
+  ordstk?-red*ᵗ {a = a} {t = b} {u = u} w
+    (ordstk?-redᵗ {a = a} {t = t} {t' = b} {u = u} r h)
+
+ordstk?-red*ᵘ : {a t u u' : RTm Γ} → u ⟶* u' →
+                ordstk? a t u ≡ true → ordstk? a t u' ≡ true
+ordstk?-red*ᵘ {a = a} {t = t} done       h = h
+ordstk?-red*ᵘ {a = a} {t = t} {u = u} (step {u = b} r w) h =
+  ordstk?-red*ᵘ {a = a} {t = t} {u = b} w
+    (ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = b} r h)
+
 ------------------------------------------------------------------------
 -- ★★ WF stage B: the ORDER-HOM stuckness key.  `Hom Nat a b` fires a
 -- root rule exactly when its endpoints expose numeral heads, so it is
@@ -1731,6 +1761,7 @@ natstk→homnat (lam t) u h        = h
 natstk→homnat (app t₁ t₂) u h    = h
 natstk→homnat (pair a b) u h     = h
 natstk→homnat (absurd c t) u h        = h
+natstk→homnat (ordtr a₀ t₀ u₀ p₀ q₀) u h = h
 natstk→homnat (fst t) u h        = h
 natstk→homnat (snd t) u h        = h
 natstk→homnat ⌜base⌝ u h         = h
@@ -1759,6 +1790,7 @@ homnat?-redˡ {t = lam t} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-
 homnat?-redˡ {t = app t₁ t₂} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = pair a b} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = absurd c t} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
+homnat?-redˡ {t = ordtr a₀ t₀ u₀ p₀ q₀} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = fst t} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = snd t} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
 homnat?-redˡ {t = ⌜base⌝} {t' = t'} {u = u} r h = natstk→homnat t' u (natstk?-red r h)
@@ -1783,6 +1815,7 @@ homnat?-redʳ {t = lam t} r h        = h
 homnat?-redʳ {t = app t₁ t₂} r h    = h
 homnat?-redʳ {t = pair a b} r h     = h
 homnat?-redʳ {t = absurd c t} r h        = h
+homnat?-redʳ {t = ordtr a₀ t₀ u₀ p₀ q₀} r h = h
 homnat?-redʳ {t = fst t} r h        = h
 homnat?-redʳ {t = snd t} r h        = h
 homnat?-redʳ {t = ⌜base⌝} r h       = h
@@ -1860,6 +1893,15 @@ data SNe {Γ} where
   sne-natrec : {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} {n : RTm Γ} →
                SN z → SN w → SN n → natstk? n ≡ true →
                SNe (natrec z w n)
+  -- ★★ WF stage E: `ordtr` eliminates its three BOUNDS, so it is neutral
+  -- exactly when `ordstk?` says they can never all become numerals.
+  -- ⚠ it is NOT `sne-absurd`: ex falso has no root rule and so needs no
+  -- key, whereas `ordtr` FIRES, and a keyless constructor would let a
+  -- redex claim to be neutral.  The proofs are the payload, not the
+  -- scrutinee, so they only ride along as `SN`.
+  sne-ordtr : {a t u p q : RTm Γ} →
+              SN a → SN t → SN u → SN p → SN q → ordstk? a t u ≡ true →
+              SNe (ordtr a t u p q)
 
 data SN {Γ} where
   sn-ne   : {t : RTm Γ} → SNe t → SN t
@@ -1941,6 +1983,40 @@ data SNRed {Γ} where
                                  (subTm (extS (single n)) w))
   snr-natrecⁿ : {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} {n n' : RTm Γ} →
                 SNRed n n' → SNRed (natrec z w n) (natrec z w n')
+  -- ★★ WF stage E: the order's five root rules, each discarding the
+  -- material it drops as `SN` (the `snr-β` pattern), plus one ξ per
+  -- BOUND.  Three scrutinees, so three ξ's — `p`/`q` are payload and
+  -- never step here, exactly as `snr-app` leaves its argument alone.
+  snr-ordtr-z   : {t u p q : RTm Γ} → SN t → SN u → SN p → SN q →
+                  SNRed (ordtr nzero t u p q) unit
+  snr-ordtr-szz : {a p q : RTm Γ} → SN a → SN q →
+                  SNRed (ordtr (nsuc a) nzero nzero p q) p
+  snr-ordtr-ssz : {a t p q : RTm Γ} → SN a → SN t → SN p →
+                  SNRed (ordtr (nsuc a) (nsuc t) nzero p q) q
+  -- ★ stage D's first real customer: `nzero ≤ nsuc u` under a `nsuc`
+  -- bound is impossible, and `absurd` at the ⌜Hom⌝ code discharges it.
+  snr-ordtr-szs : {a u p q : RTm Γ} → SN q →
+                  SNRed (ordtr (nsuc a) nzero (nsuc u) p q)
+                        (absurd (⌜Hom⌝ ⌜Nat⌝ a u) p)
+  snr-ordtr-sss : {a t u p q : RTm Γ} →
+                  SNRed (ordtr (nsuc a) (nsuc t) (nsuc u) p q)
+                        (ordtr a t u p q)
+  -- ⚠⚠ the ξ's must be SERIALIZED, or `snr-det` is FALSE: with three
+  -- scrutinees, `ordtr (app (lam s) v) (app (lam s') v') u p q` would
+  -- head-step two ways.  So each ξ demands that the bounds BEFORE it
+  -- already expose a numeral head — and `nzero`/`nsuc` have no `SNRed`
+  -- step, which is exactly what makes the cases pairwise absurd.
+  -- The order is `ordstk?`'s own dispatch order: `a`, then `t`, then `u`.
+  snr-ordtrᵃ : {a a' t u p q : RTm Γ} → SNRed a a' →
+               SNRed (ordtr a t u p q) (ordtr a' t u p q)
+  snr-ordtrᵗ : {a t t' u p q : RTm Γ} → SNRed t t' →
+               SNRed (ordtr (nsuc a) t u p q) (ordtr (nsuc a) t' u p q)
+  snr-ordtrᵘᶻ : {a u u' p q : RTm Γ} → SNRed u u' →
+                SNRed (ordtr (nsuc a) nzero u p q)
+                      (ordtr (nsuc a) nzero u' p q)
+  snr-ordtrᵘˢ : {a t u u' p q : RTm Γ} → SNRed u u' →
+                SNRed (ordtr (nsuc a) (nsuc t) u p q)
+                      (ordtr (nsuc a) (nsuc t) u' p q)
   -- J at `⌜Id⌝`-coded hrefl paths (the stable-shape completion).
   snr-J-Id   : {c a m : RTm (Γ ∙)} {c₁ a₁ b₁ s e : RTm Γ} →
                SN (⌜Hom⌝ c a m) → SN c₁ → SN a₁ → SN b₁ → SN s →
@@ -2004,6 +2080,15 @@ snr→⟶ (snr-J-Id _ _ _ _ _) = tr-J-Id _ _ _ _ _ _ _ _
 snr→⟶ (snr-natrec-zero _)      = natrec-zero _ _
 snr→⟶ (snr-natrec-suc _ _ _)   = natrec-suc _ _ _
 snr→⟶ (snr-natrecⁿ r)          = ξ-natrecⁿ (snr→⟶ r)
+snr→⟶ (snr-ordtr-z _ _ _ _)    = ordtr-z _ _ _ _
+snr→⟶ (snr-ordtr-szz _ _)      = ordtr-szz _ _ _
+snr→⟶ (snr-ordtr-ssz _ _ _)    = ordtr-ssz _ _ _ _
+snr→⟶ (snr-ordtr-szs _)        = ordtr-szs _ _ _ _
+snr→⟶ snr-ordtr-sss            = ordtr-sss _ _ _ _ _
+snr→⟶ (snr-ordtrᵃ r)           = ξ-ordtrᵃ (snr→⟶ r)
+snr→⟶ (snr-ordtrᵗ r)           = ξ-ordtrᵗ (snr→⟶ r)
+snr→⟶ (snr-ordtrᵘᶻ r)          = ξ-ordtrᵘ (snr→⟶ r)
+snr→⟶ (snr-ordtrᵘˢ r)          = ξ-ordtrᵘ (snr→⟶ r)
 
 -- a head-reducible term is never a pw-able code (all SNRed subjects
 -- are app/fst/snd/hrefl/tr-headed).
@@ -2032,6 +2117,15 @@ snr-nonpw (snr-J-Id _ _ _ _ _) = refl
 snr-nonpw (snr-natrec-zero _)     = refl
 snr-nonpw (snr-natrec-suc _ _ _)  = refl
 snr-nonpw (snr-natrecⁿ _)         = refl
+snr-nonpw (snr-ordtr-z _ _ _ _)   = refl
+snr-nonpw (snr-ordtr-szz _ _)     = refl
+snr-nonpw (snr-ordtr-ssz _ _ _)   = refl
+snr-nonpw (snr-ordtr-szs _)       = refl
+snr-nonpw snr-ordtr-sss           = refl
+snr-nonpw (snr-ordtrᵃ _)          = refl
+snr-nonpw (snr-ordtrᵗ _)          = refl
+snr-nonpw (snr-ordtrᵘᶻ _)         = refl
+snr-nonpw (snr-ordtrᵘˢ _)         = refl
 
 csr-nonpw : {t t' : RTm Γ} → CSR t t' → pw? t ≡ false
 csr-nonpw (csr-here r) = snr-nonpw r
@@ -2184,6 +2278,59 @@ snr-det (snr-natrec-suc _ _ _) (snr-natrecⁿ ())
 snr-det (snr-natrecⁿ ()) (snr-natrec-suc _ _ _)
 snr-det (snr-natrecⁿ {z = z} {w = w} r) (snr-natrecⁿ r') =
   cong (λ q → natrec z w q) (snr-det r r')
+-- ★★ WF stage E: `natrec`'s argument three times over.  Every cross
+-- pair is refuted by an ABSURD `SNRed` out of a numeral — that is the
+-- whole payoff of serializing the ξ's on the bound order, and the pairs
+-- Agda does not even ask about are the ones `nzero`/`nsuc` separate.
+snr-det (snr-ordtr-z _ _ _ _) (snr-ordtr-z _ _ _ _) = refl
+snr-det (snr-ordtr-z _ _ _ _) (snr-ordtrᵃ ())
+snr-det (snr-ordtrᵃ ()) (snr-ordtr-z _ _ _ _)
+snr-det (snr-ordtr-szz _ _) (snr-ordtr-szz _ _) = refl
+snr-det (snr-ordtr-szz _ _) (snr-ordtrᵃ ())
+snr-det (snr-ordtr-szz _ _) (snr-ordtrᵗ ())
+snr-det (snr-ordtr-szz _ _) (snr-ordtrᵘᶻ ())
+snr-det (snr-ordtrᵃ ()) (snr-ordtr-szz _ _)
+snr-det (snr-ordtrᵗ ()) (snr-ordtr-szz _ _)
+snr-det (snr-ordtrᵘᶻ ()) (snr-ordtr-szz _ _)
+snr-det (snr-ordtr-ssz _ _ _) (snr-ordtr-ssz _ _ _) = refl
+snr-det (snr-ordtr-ssz _ _ _) (snr-ordtrᵃ ())
+snr-det (snr-ordtr-ssz _ _ _) (snr-ordtrᵗ ())
+snr-det (snr-ordtr-ssz _ _ _) (snr-ordtrᵘˢ ())
+snr-det (snr-ordtrᵃ ()) (snr-ordtr-ssz _ _ _)
+snr-det (snr-ordtrᵗ ()) (snr-ordtr-ssz _ _ _)
+snr-det (snr-ordtrᵘˢ ()) (snr-ordtr-ssz _ _ _)
+snr-det (snr-ordtr-szs _) (snr-ordtr-szs _) = refl
+snr-det (snr-ordtr-szs _) (snr-ordtrᵃ ())
+snr-det (snr-ordtr-szs _) (snr-ordtrᵗ ())
+snr-det (snr-ordtr-szs _) (snr-ordtrᵘᶻ ())
+snr-det (snr-ordtrᵃ ()) (snr-ordtr-szs _)
+snr-det (snr-ordtrᵗ ()) (snr-ordtr-szs _)
+snr-det (snr-ordtrᵘᶻ ()) (snr-ordtr-szs _)
+snr-det snr-ordtr-sss snr-ordtr-sss = refl
+snr-det snr-ordtr-sss (snr-ordtrᵃ ())
+snr-det snr-ordtr-sss (snr-ordtrᵗ ())
+snr-det snr-ordtr-sss (snr-ordtrᵘˢ ())
+snr-det (snr-ordtrᵃ ()) snr-ordtr-sss
+snr-det (snr-ordtrᵗ ()) snr-ordtr-sss
+snr-det (snr-ordtrᵘˢ ()) snr-ordtr-sss
+snr-det (snr-ordtrᵃ {t = t} {u = u} {p = p} {q = q} r) (snr-ordtrᵃ r') =
+  cong (λ z → ordtr z t u p q) (snr-det r r')
+snr-det (snr-ordtrᵃ ()) (snr-ordtrᵗ _)
+snr-det (snr-ordtrᵗ _) (snr-ordtrᵃ ())
+snr-det (snr-ordtrᵃ ()) (snr-ordtrᵘᶻ _)
+snr-det (snr-ordtrᵘᶻ _) (snr-ordtrᵃ ())
+snr-det (snr-ordtrᵃ ()) (snr-ordtrᵘˢ _)
+snr-det (snr-ordtrᵘˢ _) (snr-ordtrᵃ ())
+snr-det (snr-ordtrᵗ {a = a} {u = u} {p = p} {q = q} r) (snr-ordtrᵗ r') =
+  cong (λ z → ordtr (nsuc a) z u p q) (snr-det r r')
+snr-det (snr-ordtrᵗ ()) (snr-ordtrᵘᶻ _)
+snr-det (snr-ordtrᵘᶻ _) (snr-ordtrᵗ ())
+snr-det (snr-ordtrᵗ ()) (snr-ordtrᵘˢ _)
+snr-det (snr-ordtrᵘˢ _) (snr-ordtrᵗ ())
+snr-det (snr-ordtrᵘᶻ {a = a} {p = p} {q = q} r) (snr-ordtrᵘᶻ r') =
+  cong (λ z → ordtr (nsuc a) nzero z p q) (snr-det r r')
+snr-det (snr-ordtrᵘˢ {a = a} {t = t} {p = p} {q = q} r) (snr-ordtrᵘˢ r') =
+  cong (λ z → ordtr (nsuc a) (nsuc t) z p q) (snr-det r r')
 
 csr-det (csr-here r) (csr-here r') = snr-det r r'
 csr-det (csr-here ()) (csr-hom σ')
@@ -2240,6 +2387,31 @@ sne-whred (sne-natrec snz snw snn ()) (snr-natrec-zero _)
 sne-whred (sne-natrec snz snw snn ()) (snr-natrec-suc _ _ _)
 sne-whred (sne-natrec snz snw snn key) (snr-natrecⁿ r) =
   sne-natrec snz snw (sn-whred snn r) (natstk?-red (snr→⟶ r) key)
+-- ★★ WF stage E: every root rule is refuted DEFINITIONALLY — each one
+-- fires only on numeral bounds, and `natstk?` of a numeral is `false`,
+-- so `ordstk?` computes to `false` and the key is `()`.
+sne-whred (sne-ordtr _ _ _ _ _ ()) (snr-ordtr-z _ _ _ _)
+sne-whred (sne-ordtr _ _ _ _ _ ()) (snr-ordtr-szz _ _)
+sne-whred (sne-ordtr _ _ _ _ _ ()) (snr-ordtr-ssz _ _ _)
+sne-whred (sne-ordtr _ _ _ _ _ ()) (snr-ordtr-szs _)
+sne-whred (sne-ordtr _ _ _ _ _ ()) snr-ordtr-sss
+-- ⚠ bind the implicits: bare `ordstk?-red*` leaks metas out of the row.
+sne-whred (sne-ordtr {a = a} {t = t} {u = u} sna snt snu snp snq key)
+          (snr-ordtrᵃ {a' = a'} r) =
+  sne-ordtr (sn-whred sna r) snt snu snp snq
+            (ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} (snr→⟶ r) key)
+sne-whred (sne-ordtr {a = a} {t = t} {u = u} sna snt snu snp snq key)
+          (snr-ordtrᵗ {t' = t'} r) =
+  sne-ordtr sna (sn-whred snt r) snu snp snq
+            (ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} (snr→⟶ r) key)
+sne-whred (sne-ordtr {a = a} {t = t} {u = u} sna snt snu snp snq key)
+          (snr-ordtrᵘᶻ {u' = u'} r) =
+  sne-ordtr sna snt (sn-whred snu r) snp snq
+            (ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} (snr→⟶ r) key)
+sne-whred (sne-ordtr {a = a} {t = t} {u = u} sna snt snu snp snq key)
+          (snr-ordtrᵘˢ {u' = u'} r) =
+  sne-ordtr sna snt (sn-whred snu r) snp snq
+            (ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} (snr→⟶ r) key)
 
 -- ★ the two-former kernel: neutrals never reach a reflexivity (the
 -- head strategy preserves strict neutrality; `idrefl` is not SNe), so
@@ -2309,6 +2481,10 @@ data Ne {Γ} : RTm Γ → Set where
               natstk? n ≡ true → Ne (natrec z w n)
   ne-jsub : {d : RTm (Γ ∙)} {p e : RTm Γ} →
             idstk? p ≡ true → Ne (jsub d p e)
+  -- ★★ WF stage E: the `Ne` peer of `sne-ordtr` — same key, and like
+  -- every other eliminator it carries only the stuckness, not the SN.
+  ne-ordtr : {a t u p q : RTm Γ} →
+             ordstk? a t u ≡ true → Ne (ordtr a t u p q)
 
 ne-red : {t t' : RTm Γ} → Ne t → t ⟶ t' → Ne t'
 ne-red (ne-var x) ()
@@ -2347,6 +2523,22 @@ ne-red (ne-natrec ()) (natrec-suc _ _ _)
 ne-red (ne-natrec key) (ξ-natrecᶻ r) = ne-natrec key
 ne-red (ne-natrec key) (ξ-natrecˢ r) = ne-natrec key
 ne-red (ne-natrec key) (ξ-natrecⁿ r) = ne-natrec (natstk?-red r key)
+-- ★★ WF stage E: the five root rules are refuted by the key, the three
+-- bound congruences move it, and the two PROOF congruences leave it
+-- alone — `ordstk?` does not mention `p`/`q`.
+ne-red (ne-ordtr ()) (ordtr-z _ _ _ _)
+ne-red (ne-ordtr ()) (ordtr-szz _ _ _)
+ne-red (ne-ordtr ()) (ordtr-ssz _ _ _ _)
+ne-red (ne-ordtr ()) (ordtr-szs _ _ _ _)
+ne-red (ne-ordtr ()) (ordtr-sss _ _ _ _ _)
+ne-red (ne-ordtr key) (ξ-ordtrᵃ {a = a} {a' = a'} {t = t} {u = u} r) =
+  ne-ordtr (ordstk?-redᵃ {a = a} {a' = a'} {t = t} {u = u} r key)
+ne-red (ne-ordtr key) (ξ-ordtrᵗ {a = a} {t = t} {t' = t'} {u = u} r) =
+  ne-ordtr (ordstk?-redᵗ {a = a} {t = t} {t' = t'} {u = u} r key)
+ne-red (ne-ordtr key) (ξ-ordtrᵘ {a = a} {t = t} {u = u} {u' = u'} r) =
+  ne-ordtr (ordstk?-redᵘ {a = a} {t = t} {u = u} {u' = u'} r key)
+ne-red (ne-ordtr key) (ξ-ordtrᵖ r) = ne-ordtr key
+ne-red (ne-ordtr key) (ξ-ordtrq r) = ne-ordtr key
 
 sne→ne : {t : RTm Γ} → SNe t → Ne t
 sne→ne (sne-var x)   = ne-var x
@@ -2359,6 +2551,7 @@ sne→ne (sne-tr _ _ _ key) = ne-tr key
 sne→ne (sne-ap _ _ _ key) = ne-ap key
 sne→ne (sne-jsub _ _ _ key) = ne-jsub key
 sne→ne (sne-natrec _ _ _ key) = ne-natrec key
+sne→ne (sne-ordtr _ _ _ _ _ key) = ne-ordtr key
 
 -- extractors for `fund`'s path analysis: strict neutrals are safe spine
 -- heads and stable codes.
@@ -2373,6 +2566,7 @@ sne→spine (sne-tr _ _ _ key) = key
 sne→spine (sne-ap _ _ _ key) = key
 sne→spine (sne-jsub _ _ _ key) = key
 sne→spine (sne-natrec _ _ _ key) = key
+sne→spine (sne-ordtr _ _ _ _ _ key) = key
 
 -- ★ the `stableA?` peer.  A strict neutral is never ⌜Nat⌝- or
 -- ⌜Hom⌝-headed, so `stableA?` and `stablecd?` agree once the head is
@@ -2388,6 +2582,7 @@ sne→stableA (sne-tr _ _ _ key) = key
 sne→stableA (sne-ap _ _ _ key) = key
 sne→stableA (sne-jsub _ _ _ key) = key
 sne→stableA (sne-natrec _ _ _ key) = key
+sne→stableA (sne-ordtr _ _ _ _ _ key) = key
 
 sne→stablecd : {t : RTm Γ} → SNe t → stablecd? t ≡ true
 sne→stablecd (sne-var x)        = refl
@@ -2400,6 +2595,7 @@ sne→stablecd (sne-tr _ _ _ key) = key
 sne→stablecd (sne-ap _ _ _ key) = key
 sne→stablecd (sne-jsub _ _ _ key) = key
 sne→stablecd (sne-natrec _ _ _ key) = key
+sne→stablecd (sne-ordtr _ _ _ _ _ key) = key
 
 -- ★ WF stage A: a strict neutral is never a numeral — the extractor
 -- `fund`'s `⊢natrec` neutral branch needs.
@@ -2414,6 +2610,7 @@ sne→natstk (sne-tr _ _ _ key)   = key
 sne→natstk (sne-ap _ _ _ key)   = key
 sne→natstk (sne-jsub _ _ _ key) = key
 sne→natstk (sne-natrec _ _ _ key) = key
+sne→natstk (sne-ordtr _ _ _ _ _ key) = key
 
 -- renaming preserves every classifier ON THE NOSE — the entire
 -- anti-renaming bill for the shape layer.
@@ -2501,6 +2698,34 @@ ordstk?-ren ρ nzero t u = refl
 ordstk?-ren ρ (nsuc a₀) t u =
   trans (cong (λ b → ordS? b (renTm ρ u)) (natstk?-ren ρ t))
         (ordS?-ren (natstk? t) ρ u)
+-- every other head of the bound falls to `ordstk?`'s catch-all
+-- `natstk? a`, so each row is `natstk?-ren ρ a` — the enumeration is
+-- irreducible (nothing pins `a`'s head) but every row is mechanical.
+-- ★ the `ordtr` row recurses into `ordstk?-ren` DIRECTLY rather than
+-- bouncing through `natstk?-ren` — same term, but structurally
+-- decreasing, which keeps the mutual block's termination graph trivial.
+ordstk?-ren ρ (var x) t u          = refl
+ordstk?-ren ρ (lam a₀) t u         = refl
+ordstk?-ren ρ (app a₀ a₁) t u      = spine?-ren ρ a₀
+ordstk?-ren ρ (pair a₀ a₁) t u     = refl
+ordstk?-ren ρ (absurd a₀ a₁) t u   = refl
+ordstk?-ren ρ (ordtr a₀ t₀ u₀ p₀ q₀) t u = ordstk?-ren ρ a₀ t₀ u₀
+ordstk?-ren ρ (fst a₀) t u         = spine?-ren ρ a₀
+ordstk?-ren ρ (snd a₀) t u         = spine?-ren ρ a₀
+ordstk?-ren ρ ⌜base⌝ t u           = refl
+ordstk?-ren ρ ⌜Nat⌝ t u            = refl
+ordstk?-ren ρ ⌜Unit⌝ t u           = refl
+ordstk?-ren ρ (⌜Π⌝ a₀ a₁) t u      = refl
+ordstk?-ren ρ (⌜Σ⌝ a₀ a₁) t u      = refl
+ordstk?-ren ρ (⌜Hom⌝ a₀ a₁ a₂) t u = refl
+ordstk?-ren ρ (hrefl a₀ a₁) t u    = refl
+ordstk?-ren ρ (tr a₀ a₁ a₂) t u    = trstk?-ren ρ a₀ a₁
+ordstk?-ren ρ (ap a₀ a₁ a₂) t u    = apstk?-ren ρ a₂
+ordstk?-ren ρ (⌜Id⌝ a₀ a₁ a₂) t u  = refl
+ordstk?-ren ρ (idrefl a₀ a₁) t u   = refl
+ordstk?-ren ρ (jsub a₀ a₁ a₂) t u  = idstk?-ren ρ a₁
+ordstk?-ren ρ unit t u             = refl
+ordstk?-ren ρ (natrec a₀ a₁ a₂) t u = natstk?-ren ρ a₂
 
 -- ★ the `stableA?` peer of `stablecd?-ren`.
 stableA?-ren ρ (var x)       = refl
@@ -2658,6 +2883,7 @@ trstk?-ren ρ d (lam f)       = trlam?-ren ρ d
 trstk?-ren ρ d (app t u)     = spine?-ren ρ t
 trstk?-ren ρ d (pair a b)    = refl
 trstk?-ren ρ d (absurd c e)       = refl
+trstk?-ren ρ d (ordtr a t u p q)  = ordstk?-ren ρ a t u
 trstk?-ren ρ d (fst t)       = spine?-ren ρ t
 trstk?-ren ρ d (snd t)       = spine?-ren ρ t
 trstk?-ren ρ d ⌜base⌝        = refl
@@ -2667,6 +2893,7 @@ trstk?-ren ρ d (⌜Π⌝ c e)     = refl
 trstk?-ren ρ d (⌜Σ⌝ c e)     = refl
 trstk?-ren ρ d (⌜Hom⌝ c a b) = refl
 trstk?-ren ρ (absurd d₂ e₂) (hrefl c t)   = stablecd?-ren ρ c
+trstk?-ren ρ (ordtr d₁ d₂ d₃ d₄ d₅) (hrefl c t) = stablecd?-ren ρ c
 trstk?-ren ρ (var x) (hrefl c t)          = nopw?-ren ρ c
 trstk?-ren ρ (lam b) (hrefl c t)          = stablecd?-ren ρ c
 trstk?-ren ρ (app f u) (hrefl c t)        = stablecd?-ren ρ c
@@ -2755,7 +2982,10 @@ trlam?-ren ρ (lam t)      = refl
 trlam?-ren ρ (app t u)    = refl
 trlam?-ren ρ (pair a b)   = refl
 trlam?-ren ρ (absurd c e)      = refl
-trlam?-ren ρ (ordtr a t u p q) = ordstk?-ren ρ a t u
+-- ⚠ NOT a delegation to `ordstk?-ren`: `trlam?` has no `ordtr` row at
+-- all — it is `false` by catch-all — and the argument lives in `Γ ∙`,
+-- so the delegation would not even typecheck.  Same as `absurd`.
+trlam?-ren ρ (ordtr a t u p q) = refl
 trlam?-ren ρ (fst t)      = refl
 trlam?-ren ρ (snd t)      = refl
 trlam?-ren ρ ⌜base⌝       = refl
@@ -2769,6 +2999,7 @@ trlam?-ren ρ (⌜Hom⌝ c a (lam m))      = refl
 trlam?-ren ρ (⌜Hom⌝ c a (app m₁ m₂))  = refl
 trlam?-ren ρ (⌜Hom⌝ c a (pair m₁ m₂)) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (absurd m₁ m₂)) = refl
+trlam?-ren ρ (⌜Hom⌝ c a (ordtr m₁ m₂ m₃ m₄ m₅)) = refl
 trlam?-ren ρ (⌜Hom⌝ c a (fst m))      = refl
 trlam?-ren ρ (⌜Hom⌝ c a (snd m))      = refl
 trlam?-ren ρ (⌜Hom⌝ c a ⌜base⌝)       = refl
@@ -4896,6 +5127,37 @@ wne (sne-natrec {z = z} {w = w} {n = n} z₀ w₀ n₀ key)
     nrm' (ξ-natrecᶻ q) = nm₁ q
     nrm' (ξ-natrecˢ q) = nm₂ q
     nrm' (ξ-natrecⁿ q) = nm₃ q
+-- ★★ WF stage E: five subterms to normalize, but only the three BOUNDS
+-- carry the key — and once they are normal, all five root rules are
+-- refuted by `key'` computing to `false ≡ true`, exactly as `natrec`'s
+-- two are.
+wne (sne-ordtr {a = a} {t = t} {u = u} a₀ t₀ u₀ p₀ q₀ key)
+  with wn a₀ | wn t₀ | wn u₀ | wn p₀ | wn q₀
+... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃
+    | mkWN n₄ r₄ nm₄ sn₄ | mkWN n₅ r₅ nm₅ sn₅ =
+      mkWNe (ordtr n₁ n₂ n₃ n₄ n₅)
+            (⟶*-trans (⟶*-ordtrᵃ r₁)
+             (⟶*-trans (⟶*-ordtrᵗ r₂)
+              (⟶*-trans (⟶*-ordtrᵘ r₃)
+               (⟶*-trans (⟶*-ordtrᵖ r₄) (⟶*-ordtrq r₅)))))
+            nrm' (sne-ordtr sn₁ sn₂ sn₃ sn₄ sn₅ key')
+  where
+    key' : ordstk? n₁ n₂ n₃ ≡ true
+    key' = ordstk?-red*ᵘ {a = n₁} {t = n₂} {u = u} r₃
+             (ordstk?-red*ᵗ {a = n₁} {t = t} {u = u} r₂
+               (ordstk?-red*ᵃ {a = a} {t = t} {u = u} r₁ key))
+
+    nrm' : IsNormal (ordtr n₁ n₂ n₃ n₄ n₅)
+    nrm' (ordtr-z _ _ _ _)     = f≢t key'
+    nrm' (ordtr-szz _ _ _)     = f≢t key'
+    nrm' (ordtr-ssz _ _ _ _)   = f≢t key'
+    nrm' (ordtr-szs _ _ _ _)   = f≢t key'
+    nrm' (ordtr-sss _ _ _ _ _) = f≢t key'
+    nrm' (ξ-ordtrᵃ q) = nm₁ q
+    nrm' (ξ-ordtrᵗ q) = nm₂ q
+    nrm' (ξ-ordtrᵘ q) = nm₃ q
+    nrm' (ξ-ordtrᵖ q) = nm₄ q
+    nrm' (ξ-ordtrq q) = nm₅ q
 
 wn (sn-ne n) with wne n
 ... | mkWNe n₁ r₁ nm₁ ne₁ = mkWN n₁ r₁ nm₁ (sn-ne ne₁)
