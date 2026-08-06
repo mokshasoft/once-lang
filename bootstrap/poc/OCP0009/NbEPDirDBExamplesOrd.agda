@@ -32,7 +32,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; Ctx; ◇; ⌊_⌋
         ; _⟶_; _⟶*_; done; step
         ; ordtr-z; ordtr-sss
-        ; _⊢_∷_; ⊢unit; ⊢conv; ⊢nsuc; ⊢absurd; ⊢ordtr )
+        ; _⊢_∷_; ⊢unit; ⊢conv; ⊢nsuc; ⊢nzero; ⊢absurd; ⊢ordtr )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
 open import poc.OCP0009.NbEPDirDBCanon using ( consistency )
 
@@ -147,3 +147,31 @@ trans-computes =
 --   on `n` carries the whole strong induction.  No fuel, no `Acc`, no
 --   `TERMINATING` — the measure never appears because the ORDER is the
 --   thing that reduces.
+
+-- ★★ …and the GENERAL base case needs `ordtr` TOO.
+--
+-- ⚠ CORRECTION to the older handoffs' §4, which said the `n = 0` half
+--   "needs only stage D and already works".  That is true only when the
+--   bound is LITERALLY `nzero`.  In the real strong induction the
+--   recursor hands you `k < m` and `m ≤ 0` for an OPEN `m`, and getting
+--   from those to `k < 0` is a composition — so stage E gates BOTH
+--   halves, not just the step.  `Hom Nat (nsuc k) nzero` then computes
+--   to `base` and ex falso finishes it.
+⊢strong-base' : {Γ : Ctx} {C k m lt le : RTm ⌊ Γ ⌋} →
+                Γ ⊢ C ∷ U → Γ ⊢ k ∷ Nat → Γ ⊢ m ∷ Nat →
+                Γ ⊢ lt ∷ Hom Nat (nsuc k) m →     -- k < m
+                Γ ⊢ le ∷ Hom Nat m nzero →        -- m ≤ 0
+                Γ ⊢ absurd C (ordtr (nsuc k) m nzero lt le) ∷ El C
+⊢strong-base' {k = k} dC dk dm dlt dle =
+  ⊢absurd dC (⊢conv (⊢ordtr (⊢nsuc dk) dm ⊢nzero dlt dle)
+                    (red→≅ᵀ (stepᵀ (Hom-Nat-sz k) doneᵀ)))
+
+-- ★★ the step case in the form the recursor actually hands you: `k < m`
+--    and `m ≤ suc n` give `k ≤ n`, i.e. the IH applies at the SMALLER
+--    bound.  (`⊢strong-step` above, with the first bound a successor.)
+⊢strong-descend : {Γ : Ctx} {k m n lt le : RTm ⌊ Γ ⌋} →
+                  Γ ⊢ k ∷ Nat → Γ ⊢ m ∷ Nat → Γ ⊢ n ∷ Nat →
+                  Γ ⊢ lt ∷ Hom Nat (nsuc k) m →   -- k < m
+                  Γ ⊢ le ∷ Hom Nat m (nsuc n) →   -- m ≤ suc n
+                  Γ ⊢ ordtr (nsuc k) m (nsuc n) lt le ∷ Hom Nat k n
+⊢strong-descend = ⊢strong-step
