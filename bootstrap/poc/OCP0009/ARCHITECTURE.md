@@ -672,58 +672,103 @@ and it does not scale: one former per datatype, versus one `μ` for all.
 
 3. **Ordinals / transfinite** — much larger, no current demand.
 
-### ★★ BEFORE ADDING INDUCTIVE TYPES — the decisions, 2026-08-06
+### ★★ THE DT FRAMING FOR ONCE — 2026-08-06
 
-Once's surface story is STRUCTURED RECURSION (`Fix`/`cata`/`ana`/`hylo`,
-`docs/design/recursion-schemes.md`).  That IS this item, seen from the
-surface.  It composes with the WF axis rather than overlapping it:
-`cata` covers recursion on direct substructures, the WF axis covers the
-rest (`div`, `gcd`, quicksort).  Seven decisions, D1 first because it
-silently determines whether today's showcase survives.
+*Grounded in the DECISION LOG (`docs/compiler/decision-log.md`), not in
+`docs/design`.  Constraints taken as given: Once wants BOTH proofs and
+programs; the first target is dependent types with NO RUNTIME STATE
+(proofs are in that class); programs are limited to STRUCTURED RECURSION
+with no general fixpoint; the type level should be TOTAL, not
+total+productive.*
 
-**D1. DEPENDENT ELIMINATOR, or fold only?  ⚠ DECIDE FIRST.**
-`cata : (F A → A) → μF → A` is NON-dependent, and `NbEPLinRec`'s
-`lcata` is too.  But `natrec` in this kernel is the DEPENDENT
-eliminator (the motive lives in the derivation), and the entire WF
-showcase uses that dependence: `⊢aux`'s motive is
-`λ n. (m : Nat) → m ≤ n → P m`, and `div`'s case split rides on
-`λ m. (m ≤ suc n) → Nat`.  **With a fold-only `μ F` none of
-`⊢sind`/`⊢amrec`/`⊢div` can be written, and induction is lost.**  If
-Once wants proofs and not just programs, `μ F` needs the dependent
-eliminator and `cata` becomes its non-dependent specialisation.
+**★ D062 already specified this axis, and OCP-0009 built its kernel half
+ahead of schedule.**  D062 makes TP a type-level invariant and defines
+`hylo`'s certificate as *"a measure into a well-founded order + a
+per-recursive-position descent proof (or the `Acc` form)"*, deferring
+measured `hyloW` to Phase 2.  `⊢amrec` IS that certificate, at an
+arbitrary carrier `A : U` with `μ : A → Nat`; `⊢div` and `⊢gcd-descend`
+sit on it.
 
-**D2. Positivity: codes, or a checker?**  `NbEPLinRec` already chose
-codes — `⟦ F ⟧F A`, so strict positivity holds BY CONSTRUCTION and never
-enters the TCB.  Prefer that over a syntactic positivity judgment.
+  ⇒ **proposed refinement to D062: drop "or the `Acc` form".**  On ℕ the
+  order COMPUTES, so the descent is discharged by CONVERSION in one
+  reduction step.  The `Acc` form is strictly worse.
 
-**D3. Small or large?**  Stage C's lesson: `⌜Nat⌝ ∈ U` is what made the
-order type small enough to be a `natrec` MOTIVE, and the whole showcase
-rests on it.  So datatypes need CODES (`⌜μF⌝ ∈ U`) or they cannot be
-motives — which makes the functor codes' smallness a predicativity
-question to settle up front, not later.
+  ⇒ **D062 Phase 2 is now mostly an ELABORATOR task**, not a theory one:
+  synthesise `μ` and the descent.
 
-**D4. What does `Hom (μ F) s t` compute to?**  Every new type former
-needs a row in `stkA?`/`stkC?`/`StkHd`.  Recommendation: datatypes are
-Hom-INERT (stuck, like `base`), with **ℕ the sole exception** — see the
-WF analysis above for why per-datatype orders do not scale.  Decide it
-explicitly; the default is not free, it is a commitment that `tr` will
-not compute at datatypes.
+**★ D037's `ind` is REQUIRED, not optional.**  The WF combinators need
+DEPENDENT motives — `⊢aux`'s is `λ n. (m : Nat) → m ≤ n → P m`, and
+`div`'s case split rides on `λ m. (m ≤ suc n) → Nat`.  A fold-only `μ F`
+expresses neither, and loses induction with them.  This also dissolves
+the apparent tension with "structured recursion only":
+**the dependent eliminator IS structured recursion, taken dependently** —
+`cata` is its non-dependent instance, not a rival principle.
 
-**D5. Indexed families, or only parameterised ADTs?**  This POC's own
-`_⊢_∷_`, `Canon` and `Prog` are INDEXED.  Simple ADTs will not
-self-host, so this decision directly bounds how far dogfooding can go.
-Indexed families are a real jump (eliminator-level unification).
+**★ THE TYPE LEVEL IS INDUCTIVE-ONLY — and the cost is smaller than it
+sounds.**  Be precise about what is banned:
 
-**D6. Before or after the linear core?**  The linear core is the decided
-direction, and datatypes in a graded setting need the comonoid story
-(`NbEPLinRec`'s `dup`/`drop`, `DupFree`).  Retrofitting grades onto
-datatypes is harder than designing them graded.
+  * `ν F` as a type FORMER — **allowed**.  It is a finite code; types
+    still normalise.  Codata and its terms survive (D062's reactive
+    loop, D058's traces).
+  * TYPE-LEVEL CORECURSION — types or type FAMILIES defined as greatest
+    fixed points — **banned**.  This is the thing that would make
+    conversion a BISIMULATION rather than a normalisation, and
+    OCP-0009's decidable conversion, canonicity and normalisation all
+    rest on `⟶ᵀ*` terminating.
 
-**D7. GENERIC `μ F`, not one former per datatype.**  ★ this session
-measured the price of a single term former: `ordtr` was a nine-module
-cascade, and its SN-layer omission was INVISIBLE to Agda (see
-`check-formers.sh`).  A generic `μ F` + eliminator pays that bill ONCE;
-`Nat`, `List`, `Tree`, … as separate formers pay it per datatype.
+  So the only real casualty is **coinductive PREDICATES** (bisimilarity
+  as a primitive relation).  ★ For D037's functor universe that is NOT a
+  loss of expressive power: `K`/`Id`/`⊕`/`⊗` are FINITARY, so the final
+  coalgebra is the limit of the ω-chain and `∀ n. BisimN n s t` is
+  EQUIVALENT to coinductive bisimilarity.  D058 already reaches for
+  exactly this encoding (event-COUNT indexing, chosen as
+  productivity-avoidance).  What is lost is ERGONOMIC — you reason by
+  induction on the index instead of by coinduction/up-to.
+  ⚠ **the equivalence depends on FINITARITY**: if the functor universe
+  ever gains infinite products, ω-approximation stops being enough.
+  Keep `⟦_⟧F` finitary, or revisit this.
+
+**★ "No runtime state" = grade-0 dependency (D066/D068), so BE LIBERAL
+in the type layer.**  Erased indices have no runtime representation, so
+there is no codegen argument for restricting it.  The binding constraint
+is DECIDABILITY OF CONVERSION, nothing else.
+
+#### The remaining WF-axis induction forms are DERIVABLE, not new formers
+
+  * **course-of-values** — `⊢sind`. ✅ done.
+  * **measure into ℕ, any carrier** — `⊢amrec`. ✅ done.
+  * **LEXICOGRAPHIC / mutual** — derivable by NESTING `⊢amrec`, with the
+    inner motive carrying the outer recursor (the `div` trick).  ★ two
+    points make this cheap: state the descent with `<` and `≤` (both
+    computing `Hom Nat`) so **no equality on ℕ is needed**, and pass TWO
+    recursor arguments rather than a disjunction so **no coproduct is
+    needed** — the kernel has none:
+
+        lexrec : ((x) → ((y) → μ₁ y < μ₁ x → P y)
+                      → ((y) → μ₁ y ≤ μ₁ x → μ₂ y < μ₂ x → P y)
+                      → P x)
+               → (x) → P x
+
+  * **transfinite beyond ω^k** — genuinely NOT derivable; needs ordinals.
+    No current demand.
+
+⇒ **Nothing further is needed from the WF axis.**  What dogfooding still
+wants is not a WF feature at all: it is `μ F` + `ind` + INDEXED families,
+so that `RTm`/`_⊢_∷_` are kernel types and `sz` is definable.  `⊢amrec`
+then applies verbatim.
+
+#### The decisions that remain genuinely open
+
+1. **Indexed containers, or plain `μ F`?**  Proofs want indexing
+   (OCP-0009's own `_⊢_∷_`/`Canon`/`Prog` are indexed).  This is the real
+   scope question and it bounds self-hosting.
+2. **Generic `μ F`, never one former per datatype.**  Measured price of a
+   single former here: a NINE-MODULE cascade whose SN-layer omission was
+   INVISIBLE to Agda's coverage checker (hence `check-formers.sh`).
+3. **`Hom` at `μ F` should be INERT**, ℕ the sole exception — ℕ is
+   privileged as the CODOMAIN OF EVERY MEASURE.
+4. **Does the container route force funext** for fold reasoning?
+   OCP-0009 is deliberately funext-free; check before committing.
 
 **The rest of the inventory** (weekly-frequency ranked): setoid
 rewriting ✅ (Hom); quotients/setoid-hell-2 → the OBSERVATIONAL axis —
