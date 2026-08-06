@@ -39,7 +39,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 -- before the body, where the applied `open import … FS word-eq` has not run.
 open import Data.Maybe using (just)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; instr-call-closure)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 import Once.CCC.Target.X86-64.Semantics as X
 import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FC
@@ -88,6 +88,15 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                 ≡ just (instr-ctrl (c-thunk m b))
               → FC.hfront hv + slots b ≤ X.readReg (X.State.regs s) rsp)
+  -- CALL DEPTH (D098), the third of the family and the smallest: room for the
+  -- ONE slot a call spends on the return address. See `ResourceBounds.CallRoom`.
+  (call-room : ∀ {hv : FC.HeapView FS word-eq}
+                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS}) (s : X.State)
+             → RC.RunAt o FS word-eq prog fs
+             → FSim.CompiledCorr FS word-eq hv prog fs s
+             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
+               ≡ just instr-call-closure
+             → FC.hfront hv + slot-size ≤ X.readReg (X.State.regs s) rsp)
   where
 
 open import Data.Maybe using (Maybe; just; nothing; maybe′)
@@ -515,18 +524,27 @@ postulate
   -- compiles to FLAT control, `instr-case-on-tag` has no producer, and the
   -- nested-trace correspondence it demanded is not needed at all — the
   -- dispatch clause is `⊥`-elim like the frame ops.
-  -- THE CLOSURE CALL. No longer a MODEL gap — D092 modelled it, so both sides
-  -- now describe the same transition and `FlatComposition.find-thunk-pres`
-  -- already proves the concrete half of the transfer. What is left is D081: a
-  -- code address encodes as `idx ℓ` (the LABEL NUMBER) while the concrete
-  -- `call` jumps to the compiled address, so the two agree only once the
-  -- encoding resolves the label. See D095's closing note.
-  events-running-call : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                          prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
-                      → fetch prog (fpc fs) ≡ just instr-call-closure
-                      → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                            ≡ event-of instr-call-closure fs
-                              ++ flat-events n prog (flat-exec-instr instr-call-closure prog fs))
+  -- THE CALL SITE'S SHAPE (D098). `events-running-call` is GONE — the
+  -- correspondence for the call is the theorem `call-step` below, over the
+  -- proven `block-step-call`. What is left is the DATAFLOW at the site, in the
+  -- `branch-tag-zero`/D073 mould: at an emitted `instr-call-closure` the
+  -- closure register holds a live heap pointer whose SECOND cell holds a code
+  -- address naming a body that exists.
+  --
+  -- Every conjunct is what the emitter arranges: `apply`'s trace loads the
+  -- closure pointer into `%r12` (`instr-save-closure-reg`) after the `curry`
+  -- clause built the record with `instr-alloc-heap 2` and wrote
+  -- `instr-load-code-addr (ℓ o this)` into its second cell — and emitted the
+  -- matching `c-thunk (ℓ o this)`. No `X.State` in the type: this is a fact
+  -- about the ABSTRACT machine, and its discharge is the typed shape checker
+  -- (the same route the other dataflow disciplines take) plus the
+  -- `emitted-thunk-guarded` induction for the body's existence.
+  call-site-shape : ∀ prog (fs : FlatState) → RunAt prog fs
+                  → fetch prog (fpc fs) ≡ just instr-call-closure
+                  → Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
+                      (fclosure fs ≡ SV-Ptr (AtDynamic hl))
+                      × (heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ))
+                      × (find-thunk prog ℓ ≡ just j))))
 
   -- (`events-running-thunk` LIVED HERE. It is now a THEOREM — `thunk-step`
   -- below.)
@@ -1990,7 +2008,7 @@ mutual
   -- `call *0x8(%r12)` transfers control. Closing it needs the abstract machine to
   -- model the call, not more proof effort here.
   events-running-fetch {hv} n ev env prog fs s instr-call-closure cc wf h ftq =
-    events-running-call n ev env prog fs s cc wf h ftq
+    call-step n ev env prog fs s cc wf h ftq
 
   -- The reusable CCC engine, GENERALISED to take an explicit BlockStep: one abstract
   -- step `i` (event-of i fs = [], flat step leaves the machine running: hpost) ↦ its
@@ -2116,6 +2134,67 @@ mutual
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) ≡ false
                   hpost rewrite req = h
+
+  -- THE CALL — A THEOREM (D098), and the last of them.
+  --
+  -- `block-step-call` does the machine work; this supplies the two things only
+  -- the RUN knows: the site's dataflow shape (`call-site-shape`) and the room
+  -- for the slot the call spends (`call-room`, a resource PARAMETER per D087).
+  -- The heap cell's liveness comes from the correspondence itself —
+  -- `dom-written` turns "the abstract machine wrote it" into "the view maps
+  -- it", which is exactly the vacuity fix of 2026-07-30 paying off.
+  --
+  -- `lo'` is the meet, as at `c-thunk`: the high-water mark must not RISE and
+  -- must not exceed the new `%rsp`.
+  call-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs
+            → halted (floc fs) ≡ false
+            → fetch prog (fpc fs) ≡ just instr-call-closure
+            → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                  ≡ event-of instr-call-closure fs
+                    ++ flat-events n prog (flat-exec-instr instr-call-closure prog fs))
+  call-step {hv} n ev env prog fs s cc wf h ftq =
+    go (call-site-shape prog fs (inv-run wf) ftq)
+    where
+      go : Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
+             (fclosure fs ≡ SV-Ptr (AtDynamic hl))
+             × (heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ))
+             × (find-thunk prog ℓ ≡ just j))))
+         → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+               ≡ event-of instr-call-closure fs
+                 ++ flat-events n prog (flat-exec-instr instr-call-closure prog fs))
+      go (hl , ℓ , j , ceq , heq , fteq) =
+        ccc-step-bs n ev env prog fs s instr-call-closure
+          (block-step-call prog fs s hl ℓ j cc h ftq ceq heq
+             (C.dom-written (dataCorr cc) (sucHL hl) heq)
+             fteq lo' lo'≤lo front-lo' lo'≤rsp fits)
+          wf ftq h refl hpost
+        where
+          room : C.hfront hv + slot-size ≤ X.readReg (X.State.regs s) rsp
+          room = call-room prog fs s (inv-run wf) cc ftq
+          fits : slot-size ≤ X.readReg (X.State.regs s) rsp
+          fits = ≤-trans (m≤n+m slot-size (C.hfront hv)) room
+          front-rsp : C.hfront hv ≤ X.readReg (X.State.regs s) rsp ∸ slot-size
+          front-rsp = m+n≤o⇒m≤o∸n (C.hfront hv) room
+          lo' : ℕ
+          lo' = C.lo hv ⊓ (X.readReg (X.State.regs s) rsp ∸ slot-size)
+          lo'≤lo : lo' ≤ C.lo hv
+          lo'≤lo = m⊓n≤m (C.lo hv) (X.readReg (X.State.regs s) rsp ∸ slot-size)
+          lo'≤rsp : lo' ≤ X.readReg (X.State.regs s) rsp ∸ slot-size
+          lo'≤rsp = m⊓n≤n (C.lo hv) (X.readReg (X.State.regs s) rsp ∸ slot-size)
+          front-lo' : C.hfront hv ≤ lo'
+          front-lo' = ⊓-glb (C.front-lo hv) front-rsp
+          -- the site's shape says the call ENTERS (it does not halt), so the
+          -- post-state's halt flag is the pre-state's
+          step-eq : flat-exec-instr instr-call-closure prog fs
+                  ≡ record fs { falloc = enter-call (falloc fs)
+                              ; fret   = suc (fpc fs) ∷ fret fs
+                              ; fpc    = j }
+          step-eq = trans (cong (λ z → do-call-sv prog z fs) ceq)
+                   (trans (cong (λ z → do-call-code prog z fs) heq)
+                          (cong (λ z → do-call-at z fs) fteq))
+          hpost : halted (floc (flat-exec-instr instr-call-closure prog fs)) ≡ false
+          hpost rewrite step-eq = h
 
   -- CONTROL c-jmp: case the found label (J-bridge on find-label, no with). Found ⇒
   -- do-jump just bumps fpc (halted preserved: hpost=h) and the PROVEN block-step-c-jmp

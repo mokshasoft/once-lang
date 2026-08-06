@@ -36,7 +36,7 @@ open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Target.X86-64.Syntax using (slot-size)
 open import Once.Type using (fits-int)
 open import Once.Word using (Carrier)
-open import Data.Nat using (ℕ; _+_; _∸_; _*_; _≡ᵇ_; _<_; _≤_)
+open import Data.Nat using (ℕ; _+_; _∸_; _*_; _≡ᵇ_; _<_; _≤_; s≤s; z≤n)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 module Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation
@@ -53,7 +53,7 @@ open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem; updateFlags)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax
-  using (rax; rbx; rsi; rdi; rsp; rbp; r14; r15; rcx; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; push; pop; lea; rip+label; r12; base; base+disp; slots; slot-size; ret)
+  using (rax; rbx; rsi; rdi; rsp; rbp; r14; r15; rcx; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; push; pop; lea; rip+label; r12; base; base+disp; slots; slot-size; ret; call)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (true; false)
 open import Data.List using (_∷_; []; _++_; drop; length)
@@ -64,14 +64,15 @@ module C = FC FS word-eq   -- HeapView / enc-sv / FlatCorr data fields
 open C using (HeapView; haddr; HDom; hfront)
 open import Once.CCC.Label using (once; thunk; LabelId)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
-  using (x86-off; x86-len; x86-off-suc; fetch-block-head; find-label-corr; fetch-block-2nd; fetch-block-3rd; fetch-block-4th; fetch-block-5th; fetch-block-6th)
-open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-add-rr; step-sub-ri; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-push; step-pop; step-lea; step-lea-label; step-ret)
+  using (x86-off; x86-len; x86-off-suc; fetch-block-head; find-label-corr; find-thunk-corr; fetch-block-2nd; fetch-block-3rd; fetch-block-4th; fetch-block-5th; fetch-block-6th)
+open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-add-rr; step-sub-ri; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-push; step-pop; step-lea; step-lea-label; step-ret; step-call)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (zero; suc)
 open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-comm; ∸-+-assoc; *-suc; *-identityʳ; *-assoc
                                       ; +-monoʳ-<; *-monoˡ-<
-                                      ; <⇒≢; <-transˡ; ≤-trans; m∸n≤m; m≤m+n; m∸n+n≡m)
+                                      ; <⇒≢; <-transˡ; ≤-trans; m∸n≤m; m≤m+n; m∸n+n≡m
+                                      ; m<m+n; ≤-refl)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst; subst₂)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
@@ -755,6 +756,133 @@ block-step-c-thunk {hv} prog fs s n b cc h ft lo' lo'≤lo front-lo' lo'≤rsp f
                          (frame-slots (falloc fs)) b
                          (saved-frames (falloc fs)) (fret fs)
                          addr-eq (ret-eq cc)
+
+------------------------------------------------------------------------
+-- THE CALL (D098): `instr-call-closure` ↔ `call *0x8(%r12)`.
+--
+-- The last correspondence step, and it consumes every piece the previous four
+-- decisions put in place:
+--
+--   `%r12` mirrors `fclosure`            (D097) — so the target is reachable;
+--   a code address is an ADDRESS         (D096) — so the value found there is
+--                                                 the body's index, not a label
+--                                                 number;
+--   `RetAddrs` + `GapNext`               (D093/D095) — so the pushed cell is
+--                                                 described, and the frame it
+--                                                 enters sits one slot under;
+--   the machine performs the transfer    (D092) — so there is something to
+--                                                 correspond to at all.
+--
+-- The two scans agree by `find-thunk-corr`; the pushed return address is
+-- `x86-off prog (suc (fpc fs))` on both sides by `x86-off-suc`, since the
+-- call's block is one instruction.
+------------------------------------------------------------------------
+block-step-call : ∀ {hv : HeapView} prog fs s hl ℓ j → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just instr-call-closure
+  → fclosure fs ≡ SV-Ptr (AtDynamic hl)
+  → heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ)
+  → HDom hv (sucHL hl)                       -- the code cell is live
+  → find-thunk prog ℓ ≡ just j               -- …and names a body
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
+  → lo' ≤ X.readReg (xregs s) rsp ∸ slot-size
+  → slot-size ≤ X.readReg (xregs s) rsp      -- room for the return address
+  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s instr-call-closure
+block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo front-lo' lo'≤rsp fits =
+  post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = retPost
+                          ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
+              ≡ just (call (mem (base+disp r12 slot-size)))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) instr-call-closure ft)
+    -- THE TARGET: `%r12` is the closure pointer, its second cell is the code
+    -- address, and that address is the body's index.
+    r12-val : X.readReg (xregs s) r12 ≡ haddr hv hl
+    r12-val = trans (C.r12-eq dc) (cong (C.enc-sv hv) ceq)
+    cell-addr : X.readReg (xregs s) r12 + slot-size ≡ haddr hv (sucHL hl)
+    cell-addr = trans (cong (_+ slot-size) r12-val) (sym (C.haddr-suc hv hl))
+    conc-res : X.find-label (compile-trace prog) (thunk ℓ) ≡ just (x86-off prog j)
+    conc-res = find-thunk-corr prog ℓ 0 j fteq
+    rd : X.readMem (X.State.memory s) (X.effectiveAddr s (base+disp r12 slot-size))
+       ≡ just (x86-off prog j)
+    rd = trans (cong (X.readMem (X.State.memory s)) cell-addr)
+        (trans (C.heap-eq dc (sucHL hl) live)
+        (trans (cong (C.enc-maybe hv) heq)
+               (cong just (code-eq cc ℓ (x86-off prog j) conc-res))))
+    retAddr : ℕ
+    retAddr = X.State.pc s + 1
+    post : X.State
+    post = record s { regs   = xwriteReg (xregs s) rsp (X.readReg (xregs s) rsp ∸ slot-size)
+                    ; memory = writeMem (memory s) (X.readReg (xregs s) rsp ∸ slot-size) retAddr
+                    ; pc     = x86-off prog j }
+    snh : X.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-call {compile-trace prog} {s} {base+disp r12 slot-size} {x86-off prog j} fetch-x86 rd
+    exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    -- the abstract post-state, in the shape `callView` hands back
+    absPost : FlatState
+    absPost = record fs { falloc = enter-call (falloc fs)
+                        ; fret   = suc (fpc fs) ∷ fret fs
+                        ; fpc    = j }
+    step-eq : flat-exec-instr instr-call-closure prog fs ≡ absPost
+    step-eq = trans (cong (λ z → do-call-sv prog z fs) ceq)
+             (trans (cong (λ z → do-call-code prog z fs) heq)
+                    (cong (λ z → do-call-at z fs) fteq))
+    dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
+                          (flat-exec-instr instr-call-closure prog fs) post
+    dataPost = subst (λ z → C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo') z post)
+                     (sym step-eq)
+                     (C.sim-call j (x86-off prog j) retAddr fs s dc lo' lo'≤lo front-lo' lo'≤rsp fits)
+    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr instr-call-closure prog fs))
+    pco' = cong (λ z → x86-off prog (fpc z)) (sym step-eq)
+    -- THE PUSHED CELL, described: the entered frame reserves nothing, so its
+    -- window END is its own base — the very cell the call wrote.
+    newbase : X.readReg (xregs s) rsp ∸ slot-size
+            ≡ frame-base FS (shift-frame FS (current-frame (falloc fs)) 1)
+    newbase = trans (cong (_∸ slot-size) (C.rsp-eq dc))
+                    (trans (cong (λ w → frame-base FS (current-frame (falloc fs)) ∸ 1 * w)
+                                 (sym word-eq))
+                           (sym (shift-base FS (current-frame (falloc fs)) 1)))
+    ret-val : retAddr ≡ x86-off prog (suc (fpc fs))
+    ret-val = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) instr-call-closure ft))
+    w<base : X.readReg (xregs s) rsp ∸ slot-size < frame-base FS (current-frame (falloc fs))
+    w<base = subst (X.readReg (xregs s) rsp ∸ slot-size <_) (C.rsp-eq dc)
+                   (subst (suc (X.readReg (xregs s) rsp ∸ slot-size) ≤_) (m∸n+n≡m fits)
+                          (m<m+n (X.readReg (xregs s) rsp ∸ slot-size) (s≤s z≤n)))
+    retPost : C.RetAddrs (x86-off prog) (X.State.memory post)
+                         (C.frames-of (falloc (flat-exec-instr instr-call-closure prog fs)))
+                         (fret (flat-exec-instr instr-call-closure prog fs))
+    retPost = subst (λ z → C.RetAddrs (x86-off prog) (X.State.memory post)
+                             (C.frames-of (falloc z)) (fret z))
+                    (sym step-eq)
+                    ( head-cell , gap , tail )
+      where
+        waddr = X.readReg (xregs s) rsp ∸ slot-size
+        head-cell : X.readMem (X.State.memory post)
+                      (frame-base FS (shift-frame FS (current-frame (falloc fs)) 1) + slots 0)
+                    ≡ just (x86-off prog (suc (fpc fs)))
+        head-cell = trans (cong (λ a → X.readMem (X.State.memory post) a)
+                               (trans (+-identityʳ _) (sym newbase)))
+                          (trans (C.read-write-hit (memory s) waddr retAddr) (cong just ret-val))
+        gap : C.GapNext (frame-base FS (shift-frame FS (current-frame (falloc fs)) 1) + slots 0)
+                        (C.frames-of (falloc fs))
+        gap = trans (cong (_+ slot-size) (trans (+-identityʳ _) (sym newbase)))
+                    (trans (m∸n+n≡m fits) (C.rsp-eq dc))
+        tail : C.RetAddrs (x86-off prog) (X.State.memory post)
+                          (C.frames-of (falloc fs)) (fret fs)
+        tail = C.ret-agree-above (x86-off prog) (memory s) (X.State.memory post)
+                 (stackMem (floc fs)) (frame-base FS (current-frame (falloc fs)))
+                 (C.frames-of (falloc fs)) (fret fs)
+                 (λ a le → C.read-write-miss (memory s) waddr retAddr a
+                             (λ eq → <⇒≢ (<-transˡ w<base le) (sym eq)))
+                 (C.windows-reanchor (C.lo hv) (frame-base FS (current-frame (falloc fs)))
+                    (current-frame (falloc fs)) (frame-slots (falloc fs))
+                    (saved-frames (falloc fs)) ≤-refl (C.stack-eq dc))
+                 (ret-eq cc)
 
 ------------------------------------------------------------------------
 -- THE RETURN (D095): `c-ret b` ↔ `add rsp, 8b ; ret`.

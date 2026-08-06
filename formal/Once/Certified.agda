@@ -41,12 +41,13 @@ import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 
 module Once.Certified
   (o : CanonicalName) (program-bound : ℕ)
-  (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o) where
+  (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o)
+  (x86-64-call-room : RB.CallRoom o) where
 
 -- P5 (OCP-0006): the correctness criterion is consumed THROUGH the spec
 -- door — `Once.Spec` is on the certified path, not an island.
 open import Once.Spec using (CorrectCompiler)
-open import Once.Compiler o program-bound x86-64-heap-room x86-64-stack-room using (once-compiler)
+open import Once.Compiler o program-bound x86-64-heap-room x86-64-stack-room x86-64-call-room using (once-compiler)
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
 
 record CertifiedBuild : Set₁ where

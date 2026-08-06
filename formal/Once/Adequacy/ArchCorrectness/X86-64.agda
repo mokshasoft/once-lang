@@ -23,7 +23,8 @@ import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 
 module Once.Adequacy.ArchCorrectness.X86-64
   (o : CanonicalName) (program-bound : ℕ)
-  (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o) where
+  (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o)
+  (x86-64-call-room : RB.CallRoom o) where
 
 open import Data.Nat using (ℕ; _+_; s≤s; z≤n)
 open import Data.Unit using (tt)
@@ -165,7 +166,7 @@ open import Data.Nat using (_≤_)
 -- `…X86-64.ResourceBounds.HeapRoom`, D087: resource bounds are parameters.)
 
 open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
-  x86-64-frame-semantics refl x86-64-heap-room x86-64-stack-room
+  x86-64-frame-semantics refl x86-64-heap-room x86-64-stack-room x86-64-call-room
   using (events-agree; CompiledCorr; HeapView
         ; FlatInv; EntryLike; Reachable; reach-start
         ; inv-wf; inv-regtag; inv-ev; inv-env; inv-run; mkRunAt)

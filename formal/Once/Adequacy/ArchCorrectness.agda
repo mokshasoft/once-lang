@@ -36,7 +36,8 @@ import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 
 module Once.Adequacy.ArchCorrectness
   (o : CanonicalName) (program-bound : ℕ)
-  (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o) where
+  (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o)
+  (x86-64-call-room : RB.CallRoom o) where
 
 open import Once.Adequacy.CPU using (Arch; x86-64; x86-32; riscv64; arch-semantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
@@ -45,7 +46,7 @@ open import Once.Adequacy.Compile using (ArchCorrect)
 -- (`ir-obs-correct` → `cata-correct`) — see `…ArchCorrectness.{X86-64,X86-32,RiscV64}`.
 -- So `cata-correct` is load-bearing for the apex on every target; each carries
 -- only its single named `<arch>-flat-from-obs` FS-plumbing residual (Plan 0.53).
-open import Once.Adequacy.ArchCorrectness.X86-64 o  program-bound x86-64-heap-room x86-64-stack-room using (x86-64-correct)
+open import Once.Adequacy.ArchCorrectness.X86-64 o  program-bound x86-64-heap-room x86-64-stack-room x86-64-call-room using (x86-64-correct)
 open import Once.Adequacy.ArchCorrectness.X86-32 o  program-bound using (x86-32-correct)
 open import Once.Adequacy.ArchCorrectness.RiscV64 o program-bound using (riscv64-correct)
 

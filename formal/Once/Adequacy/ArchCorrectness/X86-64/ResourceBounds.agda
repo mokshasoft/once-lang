@@ -37,9 +37,9 @@ import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation as FSimx
 import Once.Adequacy.ArchCorrectness.X86-64.RunContext as RCx
 import Once.CCC.Target.X86-64.Semantics as X
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; instr-call-closure)
 open import Once.CCC.Label using (LabelId)
-open import Once.CCC.Target.X86-64.Syntax using (slots; reg; rsp)
+open import Once.CCC.Target.X86-64.Syntax using (slots; slot-size; reg; rsp)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (x86-64-frame-semantics)
 
@@ -97,3 +97,28 @@ StackRoom =
   → FlatMachine.fetch {x86-64-frame-semantics} prog
       (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-ctrl (c-thunk m b))
   → FCx.hfront hv + slots b ≤ X.readReg (X.State.regs s) rsp
+
+------------------------------------------------------------------------
+-- CALL DEPTH: at an emitted `instr-call-closure` there is room for the ONE
+-- slot the call spends on the return address.
+--
+-- The third of the same family, and the smallest: ONE slot, the one a call
+-- spends on the return address (D086 — the body's `c-thunk` reserves the
+-- rest). So this is stack exhaustion measured per CALL rather than per frame.
+-- Same conditioning, same class, same reason it is a parameter (D087).
+--
+-- ADDITIVE, for `StackRoom`'s reason: the block-step needs both `slot-size ≤
+-- %rsp` (the push does not underflow) and `hfront ≤ %rsp ∸ slot-size` (the
+-- pushed cell stays above the heap), and truncated subtraction makes the
+-- second not imply the first.
+------------------------------------------------------------------------
+CallRoom : Set₁
+CallRoom =
+  ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
+    (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
+    (s : X.State)
+  → RCx.RunAt o x86-64-frame-semantics refl prog fs
+  → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+  → FlatMachine.fetch {x86-64-frame-semantics} prog
+      (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just instr-call-closure
+  → FCx.hfront hv + slot-size ≤ X.readReg (X.State.regs s) rsp

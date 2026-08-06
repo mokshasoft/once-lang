@@ -200,6 +200,19 @@ step-cmp-mi : ∀ {prog s m n v}
               ≡ just (record s { flags = mkflags (v ≡ᵇ n) (v <ᵇ n) false ; pc = pc s + 1 })
 step-cmp-mi ft rd rewrite ft | rd = refl
 
+-- THE CALL (D098): read the target through the closure register, push the
+-- return address one slot down, and transfer control. A fetch and a READ, like
+-- `step-mov-rm` — the read being the closure record's code cell.
+step-call : ∀ {prog s m v}
+          → fetch prog (pc s) ≡ just (call (mem m))
+          → readMem (memory s) (effectiveAddr s m) ≡ just v
+          → step-not-halted prog s
+            ≡ just (record s { regs   = writeReg (regs s) rsp (readReg (regs s) rsp ∸ slot-size)
+                             ; memory = writeMem (memory s) (readReg (regs s) rsp ∸ slot-size)
+                                                 (pc s + 1)
+                             ; pc     = v })
+step-call ft rd rewrite ft | rd = refl
+
 -- THE RETURN (D095): pop the address at `[%rsp]`, raise `%rsp` by a slot and
 -- jump there. Same shape as `step-mov-rm` — a fetch and a READ — which is why
 -- the correspondence needs the pending-return component before it can use

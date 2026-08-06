@@ -43,7 +43,8 @@ open import Data.Nat using (zero; suc; _+_; _∸_; _*_; _≡ᵇ_; _≟_; _<_; _�
 open import Data.Nat.Properties using (+-comm; +-assoc; +-cancelˡ-≡; *-cancelʳ-≡; n∸n≡0
                                       ; m≤m+n; <-irrefl; <-trans; <-transʳ; <-transˡ
                                       ; +-monoʳ-<; *-monoˡ-<; ≤-refl; ≤-trans; m<n⇒m<1+n
-                                      ; m+n≤o⇒m≤o∸n; <⇒≢; m∸n+n≡m; ≤-reflexive; m<m+n)
+                                      ; m+n≤o⇒m≤o∸n; <⇒≢; m∸n+n≡m; ≤-reflexive; m<m+n
+                                      ; +-monoʳ-≤; s≤s; z≤n; +-identityʳ; m∸n≤m)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)
@@ -823,6 +824,12 @@ store-dom-written hv hl v ls live pre hl' eq with hl ≟HL hl'
 ------------------------------------------------------------------------
 
 -- A write that misses `a` leaves the read at `a` alone.
+-- …and the cell the write DID land on (D098: the call reads back what it just
+-- pushed, one step later, on the return).
+read-write-hit : ∀ (mem : X.Memory) (waddr : ℕ) (v' : X.Word)
+               → X.readMem (writeMem mem waddr v') waddr ≡ just v'
+read-write-hit mem waddr v' rewrite ≡ᵇ-refl waddr = refl
+
 read-write-miss : ∀ (mem : X.Memory) (waddr : ℕ) (v' : X.Word) (a : ℕ) → (a ≡ waddr → ⊥)
                 → X.readMem (writeMem mem waddr v') a ≡ X.readMem mem a
 read-write-miss mem waddr v' a ne rewrite ≢→≡ᵇfalse {a} {waddr} ne = refl
@@ -1335,6 +1342,91 @@ sim-thunk {hv} b newFlags newPc fs s corr lo' lo'≤lo front-lo' lo'≤rsp fits 
     tail-le : frame-base (shift-frame cf b) + slots b ≤ frame-base cf
     tail-le = ≤-reflexive (trans (cong (_+ slots b) (sym newbase))
                                  (trans (m∸n+n≡m fits) (rsp-eq corr)))
+
+------------------------------------------------------------------------
+-- THE CALL (D098): `instr-call-closure` ↔ `call *0x8(%r12)`.
+--
+-- The concrete call does three things at once — lower `%rsp` by a slot, STORE
+-- the return address in it, and transfer control — and the abstract
+-- `enter-call` mirrors the first (D086: a frame one slot down, reserving
+-- nothing) while the ghost `fret` takes the third's residue. This lemma is the
+-- data half; the pc is `CompiledCorr`'s business, so the target enters as `j`.
+--
+-- The written cell is BELOW every live frame's base, so nothing already
+-- corresponded to it: the head window of the entered frame is vacuous (0
+-- slots), and the caller's windows are untouched by a write under them. That is
+-- the same separation `ret-write-in-frame` uses, read from the other side.
+------------------------------------------------------------------------
+-- `jₐ` is the ABSTRACT pc the call lands on and `newPc` the concrete one; they
+-- are different numbers (`x86-off` apart) and `FlatCorr` constrains neither —
+-- relating them is `CompiledCorr.pc-off`'s job.
+sim-call : {hv : HeapView} (jₐ newPc retAddr : ℕ) (fs : FlatState) (s : X.State) → FlatCorr hv fs s
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
+  → lo' ≤ X.readReg (xregs s) rsp ∸ slot-size
+  -- ROOM FOR THE RETURN ADDRESS: the one slot the call spends. Same class as
+  -- `StackRoom` (D087) and supplied the same way.
+  → slot-size ≤ X.readReg (xregs s) rsp
+  → FlatCorr (descend-view hv lo' lo'≤lo front-lo')
+             (record fs { falloc = enter-call (falloc fs)
+                        ; fret   = suc (fpc fs) ∷ fret fs
+                        ; fpc    = jₐ })
+             (mkstate (xwriteReg (xregs s) rsp (X.readReg (xregs s) rsp ∸ slot-size))
+                      (writeMem (memory s) (X.readReg (xregs s) rsp ∸ slot-size) retAddr)
+                      (flags s) newPc (xhalted s))
+sim-call {hv} jₐ newPc retAddr fs s corr lo' lo'≤lo front-lo' lo'≤rsp fits = record
+  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
+  ; r14-eq = r14-eq corr ; r12-eq = r12-eq corr ; halt-eq = halt-eq corr
+  ; rsp-eq = newbase
+  ; r15-eq = r15-eq corr ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr
+  ; dom-sized = dom-sized corr
+  -- the heap is under the frontier, the write is at or above the descended
+  -- mark, and the mark is above the frontier — so the store misses every cell
+  ; heap-eq = λ hl d → trans (read-write-miss (memory s) waddr retAddr (haddr hv hl)
+                               (λ eq → <⇒≢ (<-transˡ (dom-below hv d)
+                                              (≤-trans front-lo' lo'≤rsp)) eq))
+                             (heap-eq corr hl d)
+  ; lo-le = lo'≤rsp
+  ; untouched = λ a fa a<lo' → trans (read-write-miss (memory s) waddr retAddr a
+                                       (λ eq → <⇒≢ (<-transˡ a<lo' lo'≤rsp) eq))
+                                     (untouched-descend lo' lo'≤lo front-lo' corr a fa a<lo')
+  ; stack-eq = subst (lo' ≤_) newbase lo'≤rsp
+             , (λ k ())
+             , windows-reanchor (frame-base cf) (frame-base (shift-frame cf 1) + slots 0)
+                 cf (frame-slots (falloc fs)) (saved-frames (falloc fs))
+                 tail-floor
+                 (windows-above (memory s) (writeMem (memory s) waddr retAddr)
+                    (stackMem (floc fs)) (stackMem (floc fs))
+                    (frame-base cf) ((cf , frame-slots (falloc fs)) ∷ saved-frames (falloc fs))
+                    (λ a le → read-write-miss (memory s) waddr retAddr a
+                                (λ eq → <⇒≢ (<-transˡ w<base le) (sym eq)))
+                    (λ _ _ _ → refl)
+                    (windows-reanchor (lo hv) (frame-base cf) cf (frame-slots (falloc fs))
+                       (saved-frames (falloc fs)) ≤-refl (stack-eq corr))) }
+  where
+    cf    = current-frame (falloc fs)
+    waddr = X.readReg (xregs s) rsp ∸ slot-size
+    newbase : X.readReg (xregs s) rsp ∸ slot-size ≡ frame-base (shift-frame cf 1)
+    newbase = trans (cong (_∸ slot-size) (rsp-eq corr))
+                    (trans (cong (λ w → frame-base cf ∸ 1 * w) (sym word-eq))
+                           (sym (shift-base cf 1)))
+    -- the tail's floor is the entered frame's window END, and that frame
+    -- reserves NOTHING — so the floor is its own base, one slot under the
+    -- caller's, which is the gap the return address occupies (D086)
+    tail-floor : frame-base (shift-frame cf 1) + slots 0 ≤ frame-base cf
+    tail-floor =
+      ≤-trans (≤-reflexive (trans (+-identityʳ (frame-base (shift-frame cf 1))) (sym newbase)))
+              (≤-trans (m∸n≤m (X.readReg (xregs s) rsp) slot-size)
+                       (≤-reflexive (rsp-eq corr)))
+    -- the write lands strictly below the caller's base — that is the slot the
+    -- call spends, and `fits` is what says it exists
+    w<base : X.readReg (xregs s) rsp ∸ slot-size < frame-base cf
+    w<base = subst (X.readReg (xregs s) rsp ∸ slot-size <_) (rsp-eq corr)
+                   (m∸n<m′ fits)
+      where m∸n<m′ : slot-size ≤ X.readReg (xregs s) rsp
+                   → X.readReg (xregs s) rsp ∸ slot-size < X.readReg (xregs s) rsp
+            m∸n<m′ le = subst (suc (X.readReg (xregs s) rsp ∸ slot-size) ≤_)
+                              (m∸n+n≡m le)
+                              (m<m+n (X.readReg (xregs s) rsp ∸ slot-size) (s≤s z≤n))
 
 ------------------------------------------------------------------------
 -- STACK DEALLOCATION: `instr-dealloc-stack n` (free n slots) ↔ `add rsp, n*8`.
