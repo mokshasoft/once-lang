@@ -559,9 +559,24 @@ fat core is re-evaluated at the welding (G7) as its own project.
 ### judge each by the ap-landing test)
 
 **STATUS:** the two-former kernel is COMPLETE (Id + Hom, full
-metatheory), and the **WF-axis STAGE A is LANDED** (2026-08-05, one
-session): `Unit`/`Nat`/`natrec` through the whole tower, canonicity and
-consistency intact, acceptance file `NbEPDirDBExamplesNat` green.
+metatheory), and the **WF-axis is COMPLETE for ℕ — stages A THROUGH E
+are LANDED** (2026-08-06).  The whole tower is green, canonicity and
+consistency intact and unchanged, zero postulates, zero holes, no
+`TERMINATING`, no sized types.
+
+★ **THE SHOWCASE IS DELIVERED**, all as object-language terms
+type-checked by the kernel (not meta-level Agda proofs about it):
+
+  * `⊢sind` — course-of-values induction, DERIVED from `natrec`
+    (`NbEPDirDBExamplesStrong`).
+  * `⊢mrec` — recursion along an arbitrary MEASURE, the combinator that
+    replaces this POC's own `(n : ℕ) → … → sz t ≤ n` plumbing
+    (`NbEPDirDBExamplesDogfood`).
+  * `⊢div` — a closed, well-typed DIVISION; and `⊢gcd-descend`, which is
+    literally `⊢div-descend` (`NbEPDirDBExamplesDiv`).
+
+  **No `Acc`, no fuel, no `TERMINATING`, and no measure in any
+  user-facing signature.**
 
 The WF-axis is the highest-frequency everyday pain (guard-condition
 boilerplate: fuel, Acc-plumbing, TERMINATING pragmas).  The spike
@@ -577,14 +592,18 @@ order IS the directed structure), and staged it A/B/C.
     `NatMem` and nothing else — **no fuel, no `Acc`, no measure, no
     size**.  That is the axis's thesis, mechanized.  `natrecS` keeps
     closed progress, so the WF axis COMPUTES.
-  * **Stage B — NEXT**: the three `Hom Nat` order rules.  First move is
-    already known: stage A registered `sh-Nat : StkHd`, so `Hom Nat a
-    b` is currently a stuck hom; the order rules make it compute, so
-    `sh-Nat` goes and `homSem₁` at `⊩₁Nat` is re-derived.
-  * **Stage C** — N-in (`⌜Nat⌝ ∈ U`, `tr-J-Nat`, tt-path rules,
-    cong-at-ℕ, open-endpoint ≤-trans).  Note stage A's visible
-    boundary: `jsub` needs a CODE family, so Id-rewriting AT `Nat` is
-    not expressible until C.
+  * **Stage B ✅ DONE** — the three `Hom Nat` order rules.  `sh-Nat` is
+    gone and `homSem₁` at `⊩₁Nat` goes through `homNatSem`.
+  * **Stage C ✅ DONE** — N-in (`⌜Nat⌝ ∈ U`).  ★ this is what makes the
+    order type SMALL, hence usable as a `natrec` MOTIVE — which is what
+    the whole showcase rests on.
+  * **Stage D ✅ DONE** — `absurd`: `base` gets an ELIMINATOR.  ⚠ the
+    old warning "do NOT add an ex-falso eliminator at `base`" was
+    RETRACTED with machine-checked evidence; it conflated NO
+    INTRODUCTION (which `consistency` rests on) with NO ELIMINATION
+    (which it does not).
+  * **Stage E ✅ DONE** — `ordtr`, ≤-transitivity at OPEN naturals.  See
+    the ORDER TRANSPORT section below, now marked LANDED.
 
 Composition is pre-analyzed and held up: WF composes with Id for free
 (unrestricted eliminators compose with everything), with Hom by
@@ -607,6 +626,17 @@ threatens decidability); candidate fragment: equations between a
 neutral scrutinee and a constructor form only.  DEFERRED until the
 propositional solution proves insufficient in practice — Lean lives
 fine with exactly the propositional design.
+
+⚠⚠ **EVIDENCE AGAINST NEEDING IT, 2026-08-06.**  Assembling `⊢div`
+looked like the canonical smart-case customer: the dividend must be
+destructured to `suc m''` while the proof `le : m ≤ suc n` — which
+MENTIONS `m` — stays alive across the split.  It did NOT need
+smart-case.  The ORDINARY `natrec` motive `λ m. (m ≤ suc n) → Nat`
+carries the proof through as its own argument, and the result is applied
+to `le`.  **A dependent motive already does what smart-case was wanted
+for, whenever the equation's consumer can be moved into the motive.**
+Before spending on this axis, check whether the motive can absorb the
+obligation — in the one real case tried so far, it could.
 
 **The rest of the inventory** (weekly-frequency ranked): setoid
 rewriting ✅ (Hom); quotients/setoid-hell-2 → the OBSERVATIONAL axis —
@@ -742,6 +772,31 @@ tractable because it has NO root rule — every confluence row was pure
 congruence.  `ordtr` has FIVE root rules over three scrutinees, so
 Conf's `_⁺` development must dispatch on three argument shapes and the
 critical pairs are real.  Budget stage-D-sized or larger.
+
+### ✅ LANDED 2026-08-06 — what the design above got right, and missed
+
+The five rules shipped EXACTLY as designed; the SR analysis above held
+row for row, including rule 4 being stage D's first real customer.
+Four things the design did not anticipate, all recorded in
+`HANDOFF-2026-08-06.md`:
+
+1. **The SN-layer omission is INVISIBLE to Agda.**  `ordtr` had no row
+   in `SNe`/`SN`/`SNRed`/`Ne` and LR compiled GREEN — coverage checks
+   FUNCTIONS, not DATATYPES.  `check-formers.sh` (committed) is the
+   tripwire, verified to fail on the bug it was written for.
+2. **The ξ rules must be SERIALIZED, or `snr-det` is FALSE.**  Three
+   scrutinees head-step two ways otherwise.  Each ξ demands that the
+   bounds before it already expose a numeral head, in `ordstk?`'s own
+   dispatch order.
+3. **`fund`'s `⊢ordtr` case needs NO conversion plumbing** — level-1
+   membership ignores the reduction chain, so the whole obligation is
+   `SN (ordtr …)`.  But that identification is DEFINITIONALLY
+   unavailable in two places, costing `homNatSem-mem` and `bwd₁-mem⁻`.
+4. ★ **`div`'s assembly did NOT need smart-case.**  Destructuring the
+   dividend while keeping the proof `m ≤ suc n` alive is handled by the
+   ORDINARY `natrec` motive `λ m. (m ≤ suc n) → Nat`, applied to the
+   proof.  See the smart-case entry below — this materially weakens the
+   case for that axis.
 
 ### (superseded) G4 — η IN THE KERNEL JUDGMENT         decision + work
 
