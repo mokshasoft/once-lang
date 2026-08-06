@@ -672,6 +672,59 @@ and it does not scale: one former per datatype, versus one `μ` for all.
 
 3. **Ordinals / transfinite** — much larger, no current demand.
 
+### ★★ BEFORE ADDING INDUCTIVE TYPES — the decisions, 2026-08-06
+
+Once's surface story is STRUCTURED RECURSION (`Fix`/`cata`/`ana`/`hylo`,
+`docs/design/recursion-schemes.md`).  That IS this item, seen from the
+surface.  It composes with the WF axis rather than overlapping it:
+`cata` covers recursion on direct substructures, the WF axis covers the
+rest (`div`, `gcd`, quicksort).  Seven decisions, D1 first because it
+silently determines whether today's showcase survives.
+
+**D1. DEPENDENT ELIMINATOR, or fold only?  ⚠ DECIDE FIRST.**
+`cata : (F A → A) → μF → A` is NON-dependent, and `NbEPLinRec`'s
+`lcata` is too.  But `natrec` in this kernel is the DEPENDENT
+eliminator (the motive lives in the derivation), and the entire WF
+showcase uses that dependence: `⊢aux`'s motive is
+`λ n. (m : Nat) → m ≤ n → P m`, and `div`'s case split rides on
+`λ m. (m ≤ suc n) → Nat`.  **With a fold-only `μ F` none of
+`⊢sind`/`⊢amrec`/`⊢div` can be written, and induction is lost.**  If
+Once wants proofs and not just programs, `μ F` needs the dependent
+eliminator and `cata` becomes its non-dependent specialisation.
+
+**D2. Positivity: codes, or a checker?**  `NbEPLinRec` already chose
+codes — `⟦ F ⟧F A`, so strict positivity holds BY CONSTRUCTION and never
+enters the TCB.  Prefer that over a syntactic positivity judgment.
+
+**D3. Small or large?**  Stage C's lesson: `⌜Nat⌝ ∈ U` is what made the
+order type small enough to be a `natrec` MOTIVE, and the whole showcase
+rests on it.  So datatypes need CODES (`⌜μF⌝ ∈ U`) or they cannot be
+motives — which makes the functor codes' smallness a predicativity
+question to settle up front, not later.
+
+**D4. What does `Hom (μ F) s t` compute to?**  Every new type former
+needs a row in `stkA?`/`stkC?`/`StkHd`.  Recommendation: datatypes are
+Hom-INERT (stuck, like `base`), with **ℕ the sole exception** — see the
+WF analysis above for why per-datatype orders do not scale.  Decide it
+explicitly; the default is not free, it is a commitment that `tr` will
+not compute at datatypes.
+
+**D5. Indexed families, or only parameterised ADTs?**  This POC's own
+`_⊢_∷_`, `Canon` and `Prog` are INDEXED.  Simple ADTs will not
+self-host, so this decision directly bounds how far dogfooding can go.
+Indexed families are a real jump (eliminator-level unification).
+
+**D6. Before or after the linear core?**  The linear core is the decided
+direction, and datatypes in a graded setting need the comonoid story
+(`NbEPLinRec`'s `dup`/`drop`, `DupFree`).  Retrofitting grades onto
+datatypes is harder than designing them graded.
+
+**D7. GENERIC `μ F`, not one former per datatype.**  ★ this session
+measured the price of a single term former: `ordtr` was a nine-module
+cascade, and its SN-layer omission was INVISIBLE to Agda (see
+`check-formers.sh`).  A generic `μ F` + eliminator pays that bill ONCE;
+`Nat`, `List`, `Tree`, … as separate formers pay it per datatype.
+
 **The rest of the inventory** (weekly-frequency ranked): setoid
 rewriting ✅ (Hom); quotients/setoid-hell-2 → the OBSERVATIONAL axis —
 uniquely matched to this codebase: it is "give Id the computing rules
