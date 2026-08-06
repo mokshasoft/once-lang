@@ -547,6 +547,16 @@ sp-thunk b fs wf = mkStackPtrWF (sp-regs wf) (sp-heap wf) cleared
     ... | yes _ | no  _ = sp-stack wf f k
     ... | no  _ | _     = sp-stack wf f k
 
+-- D092: THE CALL. Like the return, and for the same reason: `SPInv` reads only
+-- the `LocState`, and a call touches only the AllocState, the return stack and
+-- the pc. Halting rows go through the halt transport.
+sp-call : ∀ (prog : AbstractTrace) (fs : FlatState)
+        → StackPtrWF fs → StackPtrWF (do-call prog fs)
+sp-call prog fs wf = go (callView prog fs)
+  where go : CallPost prog fs → StackPtrWF (do-call prog fs)
+        go (cp-halt    e) rewrite e = sp-halt (current-frame (falloc fs)) (floc fs) true wf
+        go (cp-enter ℓ j fq e) rewrite e = wf
+
 flat-stack-ptr : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
                → EmittableI i
                → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
@@ -603,8 +613,7 @@ flat-stack-ptr (restore-input k)        prog fs ff wf =
 flat-stack-ptr (lea-indexed k)          prog fs () wf
 flat-stack-ptr (instr-reclaim-to k)     prog fs ff wf =
   sp-abstract (instr-reclaim-to k) (floc fs) (falloc fs) ff wf
-flat-stack-ptr instr-call-closure       prog fs ff wf =
-  sp-abstract instr-call-closure (floc fs) (falloc fs) ff wf
+flat-stack-ptr instr-call-closure       prog fs ff wf = sp-call prog fs wf
 flat-stack-ptr (worklist-init k)        prog fs ff wf =
   sp-abstract (worklist-init k) (floc fs) (falloc fs) ff wf
 flat-stack-ptr (worklist-push k)        prog fs ff wf =

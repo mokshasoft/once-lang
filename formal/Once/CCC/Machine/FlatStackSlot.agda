@@ -147,7 +147,9 @@ flat-same-frames (restore-input k)        prog fs ff =
                refl
 flat-same-frames (lea-indexed k)          prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (instr-reclaim-to k)     prog fs ff = mkSameFrames refl refl refl
-flat-same-frames instr-call-closure       prog fs ff = mkSameFrames refl refl refl
+-- D092: the call MOVES the frame stack (it pushes the caller's frame and the
+-- return pc), so it left `FrameFreeI` — the route is absurd like the markers'.
+flat-same-frames instr-call-closure       prog fs ()
 flat-same-frames (worklist-init k)        prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (worklist-push k)        prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (worklist-pop k)         prog fs ff =

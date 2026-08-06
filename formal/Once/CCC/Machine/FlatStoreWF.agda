@@ -579,6 +579,17 @@ wf-thunk b fs wf = record
     ... | yes _ | no  _ = wf-stack wf f k
     ... | no  _ | _     = wf-stack wf f k
 
+-- D092: THE CALL. It writes NO store — the return address goes on the ghost
+-- `fret`, and `enter-call` is a record update on the frame fields, so the
+-- allocation frontier `StoreWF` is indexed by is unchanged definitionally. The
+-- malformed rows halt. Both outcomes come from the machine's own read-back
+-- (`callView`), so the twelve-row dispatch is not repeated here.
+wf-call : ∀ (prog : AbstractTrace) (fs : FlatState) → FlatWF fs → FlatWF (do-call prog fs)
+wf-call prog fs wf = go (callView prog fs)
+  where go : CallPost prog fs → FlatWF (do-call prog fs)
+        go (cp-halt    e) rewrite e = wf-halt wf
+        go (cp-enter ℓ j fq e) rewrite e = wf
+
 -- ONE flat step preserves store well-formedness. Control flow only moves the
 -- pc (or halts); everything else is `exec-abstract`, i.e. `wf-abstract`.
 flat-wf-step : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
@@ -622,7 +633,7 @@ flat-wf-step instr-pop-frame          prog fs wf =
   subst (λ n → StoreWF n (proj₁ (exec-abstract instr-pop-frame (floc fs) (falloc fs))))
         (sym (leave-frame-heap-ref (proj₂ (exec-abstract instr-pop-frame (floc fs) (falloc fs)))))
         (proj₁ (wf-abstract instr-pop-frame (floc fs) (falloc fs) wf))
-flat-wf-step instr-call-closure       prog fs wf = proj₁ (wf-abstract instr-call-closure (floc fs) (falloc fs) wf)
+flat-wf-step instr-call-closure       prog fs wf = wf-call prog fs wf
 flat-wf-step (worklist-init k)        prog fs wf = proj₁ (wf-abstract (worklist-init k) (floc fs) (falloc fs) wf)
 flat-wf-step (worklist-push k)        prog fs wf = proj₁ (wf-abstract (worklist-push k) (floc fs) (falloc fs) wf)
 flat-wf-step (worklist-pop k)         prog fs wf = proj₁ (wf-abstract (worklist-pop k) (floc fs) (falloc fs) wf)

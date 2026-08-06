@@ -422,6 +422,16 @@ regtag-ret : ∀ (r : List ℕ) (fs : FlatState) → FlatRegTag fs → FlatRegTa
 regtag-ret []           fs wf = regtag-halt wf
 regtag-ret (pc' ∷ rest) fs wf = wf
 
+-- D092: THE CALL, and for the same reason as the return — `FlatRegTag` is a
+-- claim about the REGISTER FILE, so the frame push, the return push and the pc
+-- transfer are all invisible to it. Only the halting rows do anything.
+regtag-call : ∀ (prog : AbstractTrace) (fs : FlatState)
+            → FlatRegTag fs → FlatRegTag (do-call prog fs)
+regtag-call prog fs wf = go (callView prog fs)
+  where go : CallPost prog fs → FlatRegTag (do-call prog fs)
+        go (cp-halt    e) rewrite e = regtag-halt wf
+        go (cp-enter ℓ j fq e) rewrite e = wf
+
 -- ONE flat step preserves the counter-tag invariant. The straight-line cases
 -- are ENUMERATED (a catch-all would not reduce `flat-exec-instr`'s own
 -- catch-all in the case tree); each is `regtag-abstract`. The four frame-moving
@@ -460,7 +470,7 @@ flat-regtag-step (instr-dealloc-stack k)  prog fs wf = regtag-abstract (instr-de
 flat-regtag-step (instr-reclaim-to k)     prog fs wf = regtag-abstract (instr-reclaim-to k) (floc fs) (falloc fs) wf
 flat-regtag-step (instr-push-frame k)     prog fs wf = regtag-abstract (instr-push-frame k) (floc fs) (falloc fs) wf
 flat-regtag-step instr-pop-frame          prog fs wf = regtag-abstract instr-pop-frame (floc fs) (falloc fs) wf
-flat-regtag-step instr-call-closure       prog fs wf = regtag-abstract instr-call-closure (floc fs) (falloc fs) wf
+flat-regtag-step instr-call-closure       prog fs wf = regtag-call prog fs wf
 flat-regtag-step (worklist-init k)        prog fs wf = regtag-abstract (worklist-init k) (floc fs) (falloc fs) wf
 flat-regtag-step (worklist-push k)        prog fs wf = regtag-abstract (worklist-push k) (floc fs) (falloc fs) wf
 flat-regtag-step (worklist-pop k)         prog fs wf = regtag-abstract (worklist-pop k) (floc fs) (falloc fs) wf

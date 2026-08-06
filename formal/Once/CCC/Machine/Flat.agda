@@ -23,20 +23,22 @@
 module Once.CCC.Machine.Flat where
 
 open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_; _+_)
+open import Data.Nat.Properties using (+-identityʳ; +-suc)
 -- Plan 0.63 (D089): the scans key on the STRUCTURED identity.
 open import Once.CCC.Label using (LabelId; _≡ᵇᴵ_; ≡ᵇᴵ-true)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.Memory.HeapAddress using (sucHL)
 open import Once.CCC.Machine.SMCore
 
 module FlatMachine {FS : FrameSemantics} where
   open MemOps {FS}
   open FrameSemantics FS using (Frame; shift-frame)
-  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
   open AbstractExec {FS} using (exec-abstract; exec-trace; exec-trace-cons)
 
   -- Flat machine state: the typed LocState + allocator + pc.
@@ -119,12 +121,16 @@ module FlatMachine {FS : FrameSemantics} where
   thunk-of? (instr-ctrl (c-thunk m _)) = just m
   thunk-of? _                        = nothing
 
+  -- WITH-FREE since D092 (the module's own design rule, and now load-bearing:
+  -- `ft-go-sound` below has to reduce under a hypothesis about the head).
+  -- Behaviour is unchanged — `ft-at` is the old `with` branch, named.
   ft-go    : AbstractTrace → LabelId → ℕ → Maybe ℕ
+  ft-at    : Maybe LabelId → AbstractTrace → LabelId → ℕ → Maybe ℕ
   ft-match : Bool → AbstractTrace → LabelId → ℕ → Maybe ℕ
   ft-go []       _      _ = nothing
-  ft-go (x ∷ is) target i with thunk-of? x
-  ... | just m  = ft-match (m ≡ᵇᴵ target) is target i
-  ... | nothing = ft-go is target (suc i)
+  ft-go (x ∷ is) target i = ft-at (thunk-of? x) is target i
+  ft-at (just m) is target i = ft-match (m ≡ᵇᴵ target) is target i
+  ft-at nothing  is target i = ft-go is target (suc i)
   ft-match true  _  _      i = just i
   ft-match false is target i = ft-go is target (suc i)
 
@@ -135,6 +141,120 @@ module FlatMachine {FS : FrameSemantics} where
   fetch []       _       = nothing
   fetch (i ∷ _)  zero    = just i
   fetch (_ ∷ is) (suc n) = fetch is n
+
+  ------------------------------------------------------------------------
+  -- THE CALL SCAN IS SOUND: what it finds IS a body entry for that label.
+  --
+  -- D092 needs this to say what a call LANDS ON. `find-thunk` returns an index
+  -- and nothing else, so without this lemma the post-call pc is an opaque
+  -- number — and the segmented-budget invariant (`ConcFlatSim.SegWF`) has to
+  -- name that position exactly, because it is the ONE position where the
+  -- reservation in force is not yet the static segment.
+  ------------------------------------------------------------------------
+  just-injℕ : ∀ {a b : ℕ} → (just a) ≡ (just b) → a ≡ b
+  just-injℕ refl = refl
+
+  thunk-of?-sound : ∀ (x : AbstractInstr) (m : LabelId) → thunk-of? x ≡ just m
+                  → Σ ℕ (λ b → x ≡ instr-ctrl (c-thunk m b))
+  thunk-of?-sound (instr-ctrl (c-thunk m' b)) m refl = b , refl
+  thunk-of?-sound (instr-ctrl (c-label _))               _ ()
+  thunk-of?-sound (instr-ctrl (c-jmp _))                 _ ()
+  thunk-of?-sound (instr-ctrl (c-branch-scratch-zero _)) _ ()
+  thunk-of?-sound (instr-ctrl (c-branch-tag-zero _))     _ ()
+  thunk-of?-sound (instr-ctrl (c-ret _))                 _ ()
+  thunk-of?-sound (instr-alloc-stack _)                  _ ()
+  thunk-of?-sound (instr-dealloc-stack _)                _ ()
+  thunk-of?-sound (instr-push-frame _)                   _ ()
+  thunk-of?-sound instr-pop-frame                        _ ()
+  thunk-of?-sound (instr-case-on-tag _ _)                _ ()
+  thunk-of?-sound (instr-loop _)                         _ ()
+  thunk-of?-sound (lea-slot _)                           _ ()
+  thunk-of?-sound (lea-indexed _)                        _ ()
+  thunk-of?-sound mov-to-output                          _ ()
+  thunk-of?-sound mov-to-input                           _ ()
+  thunk-of?-sound mov-output-to-input2                   _ ()
+  thunk-of?-sound mov-input2-to-output                   _ ()
+  thunk-of?-sound load-indirect                          _ ()
+  thunk-of?-sound load-indirect-suc                      _ ()
+  thunk-of?-sound (load-from-slot _)                     _ ()
+  thunk-of?-sound (store-at-slot _)                      _ ()
+  thunk-of?-sound store-indirect                         _ ()
+  thunk-of?-sound store-indirect-suc                     _ ()
+  thunk-of?-sound (restore-input _)                      _ ()
+  thunk-of?-sound (instr-reclaim-to _)                   _ ()
+  thunk-of?-sound instr-call-closure                     _ ()
+  thunk-of?-sound (worklist-init _)                      _ ()
+  thunk-of?-sound (worklist-push _)                      _ ()
+  thunk-of?-sound (worklist-pop _)                       _ ()
+  thunk-of?-sound (worklist-check _)                     _ ()
+  thunk-of?-sound (instr-sigop _)                        _ ()
+  thunk-of?-sound (instr-load-const _ _)                 _ ()
+  thunk-of?-sound (instr-load-code-addr _)               _ ()
+  thunk-of?-sound instr-save-closure-reg                 _ ()
+  thunk-of?-sound (instr-load-tag-lit _)                 _ ()
+  thunk-of?-sound (instr-alloc-heap _)                   _ ()
+  thunk-of?-sound (instr-reg-op _)                       _ ()
+
+  ft-go-sound : ∀ (prog : AbstractTrace) (target : LabelId) (acc j : ℕ)
+              → ft-go prog target acc ≡ just j
+              → Σ ℕ (λ d → (j ≡ acc + d)
+                    × Σ ℕ (λ b → fetch prog d ≡ just (instr-ctrl (c-thunk target b))))
+  ft-go-sound []       target acc j ()
+  ft-go-sound (x ∷ is) target acc j eq = go (thunk-of? x) refl
+    where
+      go : ∀ (mt : Maybe LabelId) → thunk-of? x ≡ mt
+         → Σ ℕ (λ d → (j ≡ acc + d)
+               × Σ ℕ (λ b → fetch (x ∷ is) d ≡ just (instr-ctrl (c-thunk target b))))
+      go-m : ∀ (m : LabelId) (bb : Bool) → thunk-of? x ≡ just m → (m ≡ᵇᴵ target) ≡ bb
+           → Σ ℕ (λ d → (j ≡ acc + d)
+                 × Σ ℕ (λ b → fetch (x ∷ is) d ≡ just (instr-ctrl (c-thunk target b))))
+      -- MATCHED: the head IS the body entry, at offset 0.
+      go-m m true teq beq = 0 , j≡ , proj₁ ts , fe
+        where
+          ts = thunk-of?-sound x m teq
+          acc≡j : acc ≡ j
+          acc≡j = just-injℕ
+                    (trans (sym (trans (cong (λ z → ft-at z is target acc) teq)
+                                       (cong (λ z → ft-match z is target acc) beq)))
+                           eq)
+          j≡ : j ≡ acc + 0
+          j≡ = trans (sym acc≡j) (sym (+-identityʳ acc))
+          fe : fetch (x ∷ is) 0 ≡ just (instr-ctrl (c-thunk target (proj₁ ts)))
+          fe = cong just (trans (proj₂ ts)
+                                (cong (λ z → instr-ctrl (c-thunk z (proj₁ ts)))
+                                      (≡ᵇᴵ-true m target beq)))
+      -- a DIFFERENT body entry: step past it, one position along.
+      go-m m false teq beq =
+        let ih = ft-go-sound is target (suc acc) j
+                   (trans (sym (trans (cong (λ z → ft-at z is target acc) teq)
+                                      (cong (λ z → ft-match z is target acc) beq))) eq)
+        in suc (proj₁ ih)
+         , trans (proj₁ (proj₂ ih)) (sym (+-suc acc (proj₁ ih)))
+         , proj₂ (proj₂ ih)
+      go (just m) teq = go-m m (m ≡ᵇᴵ target) teq refl
+      -- not a body entry at all: step past.
+      go nothing  teq =
+        let ih = ft-go-sound is target (suc acc) j
+                   (trans (sym (cong (λ z → ft-at z is target acc) teq)) eq)
+        in suc (proj₁ ih)
+         , trans (proj₁ (proj₂ ih)) (sym (+-suc acc (proj₁ ih)))
+         , proj₂ (proj₂ ih)
+
+  find-thunk-sound : ∀ (prog : AbstractTrace) (target : LabelId) (j : ℕ)
+                   → find-thunk prog target ≡ just j
+                   → Σ ℕ (λ b → fetch prog j ≡ just (instr-ctrl (c-thunk target b)))
+  find-thunk-sound prog target j eq =
+    b , subst (λ z → fetch prog z ≡ just (instr-ctrl (c-thunk target b))) (sym j≡d) fe
+    where
+      r    = ft-go-sound prog target 0 j eq
+      d    = proj₁ r
+      j≡d  : j ≡ d
+      j≡d  = proj₁ (proj₂ r)
+      b    = proj₁ (proj₂ (proj₂ r))
+      fe   : fetch prog d ≡ just (instr-ctrl (c-thunk target b))
+      fe   = proj₂ (proj₂ (proj₂ r))
+
+
 
   ----------------------------------------------------------------------
   -- Per-instruction effect. `with`-free; control routes through the
@@ -180,6 +300,24 @@ module FlatMachine {FS : FrameSemantics} where
                  -- mechanism, so a call updates the coverage bound and the
                  -- frame in a single step.
                  ; frame-slots   = n
+                 ; saved-frames  = (current-frame alloc , frame-slots alloc)
+                                     ∷ saved-frames alloc }
+
+  -- THE FRAME A CALL ENTERS (Plan 0.54 rung D / D092, the call model).
+  --
+  -- The concrete `call` decrements `%rsp` by ONE slot and stores the return
+  -- address there. So it enters a frame shifted by one slot that RESERVES
+  -- NOTHING: the cell it consumed holds a code address, which is not a slot the
+  -- abstract machine can address at all (it lives in the ghost `fret`), and the
+  -- body's own `c-thunk` marker deepens this frame afterwards. That is D086
+  -- exactly, and it is why this is not `enter-frame 1` — that would claim the
+  -- return-address cell as slot 0 of the callee, putting a code address inside
+  -- the callee's window and breaking the floor thread the moment the caller
+  -- reserved two slots or more.
+  enter-call : AllocState {FS} → AllocState {FS}
+  enter-call alloc =
+    record alloc { current-frame = shift-frame (current-frame alloc) 1
+                 ; frame-slots   = 0
                  ; saved-frames  = (current-frame alloc , frame-slots alloc)
                                      ∷ saved-frames alloc }
 
@@ -348,6 +486,131 @@ module FlatMachine {FS : FrameSemantics} where
     ; falloc = grow-frame b (falloc fs)
     ; fpc    = suc (fpc fs) }
 
+  ----------------------------------------------------------------------
+  -- THE CALL (Plan 0.54 rung D, D092) — modelled at last.
+  --
+  -- `exec-abstract instr-call-closure` is the IDENTITY, and it stays that way:
+  -- the structured layer has no pc to transfer. Control transfer is the FLAT
+  -- machine's business, exactly as jumps and returns are, so the call is
+  -- modelled HERE — which is also where `fclosure` (the abstract mirror of the
+  -- per-arch closure register `%r12`) lives.
+  --
+  -- Concretely `call *0x8(%r12)`: the closure record's SECOND cell holds the
+  -- body's code address, and the call pushes the return address and jumps
+  -- there. So, abstractly:
+  --
+  --   * the code address is `heapMem (sucHL hl)` for the closure pointer `hl`
+  --     — a `SV-Code ℓ`, the label `instr-load-code-addr` wrote when the
+  --     closure was built;
+  --   * the body's entry is `find-thunk prog ℓ` — the CALL's scan (D082), not
+  --     `find-label`: a body entry and a jump target are different provenances;
+  --   * the return pc `suc (fpc fs)` is pushed on the ghost `fret`, and the
+  --     caller's frame on `saved-frames` — ONE push each, which is the
+  --     invariant a return needs (`ConcFlatSim.RetMatch`);
+  --   * the frame entered is `enter-call`'s: one slot down, reserving nothing
+  --     (D086).
+  --
+  -- Anything malformed — a closure register that is not a heap pointer, a
+  -- second cell that is not a code address, a label with no body — HALTS,
+  -- exactly as `do-jump nothing` does for an unresolvable jump. `with`-free and
+  -- ENUMERATED (no catch-all) so a proof that has pinned the register's shape
+  -- reduces here instead of getting stuck on the dispatch.
+  ----------------------------------------------------------------------
+  flat-halt : FlatState → FlatState
+  flat-halt fs = record fs { floc = record (floc fs) { halted = true } }
+
+  do-call-at : Maybe ℕ → FlatState → FlatState
+  do-call-at (just j) fs = record fs { falloc = enter-call (falloc fs)
+                                     ; fret   = suc (fpc fs) ∷ fret fs
+                                     ; fpc    = j }
+  do-call-at nothing  fs = flat-halt fs
+
+  do-call-code : AbstractTrace → Maybe (StoredValue FS) → FlatState → FlatState
+  do-call-code prog (just (SV-Code ℓ))  fs = do-call-at (find-thunk prog ℓ) fs
+  do-call-code prog (just (SV-Tag _))   fs = flat-halt fs
+  do-call-code prog (just (SV-Lit _ _)) fs = flat-halt fs
+  do-call-code prog (just (SV-Ptr _))   fs = flat-halt fs
+  do-call-code prog nothing             fs = flat-halt fs
+
+  do-call-sv : AbstractTrace → StoredValue FS → FlatState → FlatState
+  do-call-sv prog (SV-Ptr (AtDynamic hl)) fs =
+    do-call-code prog (heapMem (floc fs) (sucHL hl)) fs
+  do-call-sv prog (SV-Ptr (AtStack _ _))  fs = flat-halt fs
+  do-call-sv prog (SV-Tag _)              fs = flat-halt fs
+  do-call-sv prog (SV-Lit _ _)            fs = flat-halt fs
+  do-call-sv prog (SV-Code _)             fs = flat-halt fs
+
+  do-call : AbstractTrace → FlatState → FlatState
+  do-call prog fs = do-call-sv prog (fclosure fs) fs
+
+  -- THE CALL'S READ-BACK — two outcomes, and every consumer wants only these.
+  --
+  -- `do-call` dispatches through three levels (the closure register's shape,
+  -- the cell it points at, the label scan), which is twelve rows. Every
+  -- invariant downstream would otherwise repeat that enumeration to learn the
+  -- one thing it needs: a call either HALTS or ENTERS. So the enumeration is
+  -- done ONCE, here, and handed back as an equation the consumer rewrites with
+  -- — the same shape as the `do-ret-*` read-backs above.
+  data CallPost (prog : AbstractTrace) (fs : FlatState) : Set where
+    cp-halt  : do-call prog fs ≡ flat-halt fs → CallPost prog fs
+    -- …carrying WHICH body it entered: the label it resolved and the scan
+    -- equation. Without those the post-call pc is an opaque number, and the
+    -- consumer cannot say what instruction the callee is about to run
+    -- (`find-thunk-sound` turns them into exactly that).
+    cp-enter : ∀ (ℓ : LabelId) (j : ℕ)
+             → find-thunk prog ℓ ≡ just j
+             → do-call prog fs ≡ record fs { falloc = enter-call (falloc fs)
+                                           ; fret   = suc (fpc fs) ∷ fret fs
+                                           ; fpc    = j }
+             → CallPost prog fs
+
+  callView : ∀ (prog : AbstractTrace) (fs : FlatState) → CallPost prog fs
+  callView prog fs = go-sv (fclosure fs) refl
+    where
+      go-at : ∀ (mj : Maybe ℕ) (hl : HeapLocation) (ℓ : LabelId)
+            → fclosure fs ≡ SV-Ptr (AtDynamic hl)
+            → heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ)
+            → find-thunk prog ℓ ≡ mj → CallPost prog fs
+      go-at (just j) hl ℓ ceq heq feq =
+        cp-enter ℓ j feq (trans (cong (λ z → do-call-sv prog z fs) ceq)
+                   (trans (cong (λ z → do-call-code prog z fs) heq)
+                          (cong (λ z → do-call-at z fs) feq)))
+      go-at nothing hl ℓ ceq heq feq =
+        cp-halt (trans (cong (λ z → do-call-sv prog z fs) ceq)
+                (trans (cong (λ z → do-call-code prog z fs) heq)
+                       (cong (λ z → do-call-at z fs) feq)))
+      go-code : ∀ (mv : Maybe (StoredValue FS)) (hl : HeapLocation)
+              → fclosure fs ≡ SV-Ptr (AtDynamic hl)
+              → heapMem (floc fs) (sucHL hl) ≡ mv → CallPost prog fs
+      go-code (just (SV-Code ℓ))  hl ceq heq = go-at (find-thunk prog ℓ) hl ℓ ceq heq refl
+      go-code (just (SV-Tag _))   hl ceq heq =
+        cp-halt (trans (cong (λ z → do-call-sv prog z fs) ceq)
+                       (cong (λ z → do-call-code prog z fs) heq))
+      go-code (just (SV-Lit _ _)) hl ceq heq =
+        cp-halt (trans (cong (λ z → do-call-sv prog z fs) ceq)
+                       (cong (λ z → do-call-code prog z fs) heq))
+      go-code (just (SV-Ptr _))   hl ceq heq =
+        cp-halt (trans (cong (λ z → do-call-sv prog z fs) ceq)
+                       (cong (λ z → do-call-code prog z fs) heq))
+      go-code nothing             hl ceq heq =
+        cp-halt (trans (cong (λ z → do-call-sv prog z fs) ceq)
+                       (cong (λ z → do-call-code prog z fs) heq))
+      go-sv : ∀ (v : StoredValue FS) → fclosure fs ≡ v → CallPost prog fs
+      go-sv (SV-Ptr (AtDynamic hl)) ceq =
+        go-code (heapMem (floc fs) (sucHL hl)) hl ceq refl
+      go-sv (SV-Ptr (AtStack _ _))  ceq = cp-halt (cong (λ z → do-call-sv prog z fs) ceq)
+      go-sv (SV-Tag _)              ceq = cp-halt (cong (λ z → do-call-sv prog z fs) ceq)
+      go-sv (SV-Lit _ _)            ceq = cp-halt (cong (λ z → do-call-sv prog z fs) ceq)
+      go-sv (SV-Code _)             ceq = cp-halt (cong (λ z → do-call-sv prog z fs) ceq)
+
+  -- …and the register it reads. `mov %r12, %rdi` at the flat level: the
+  -- closure register is a FlatState field (`exec-abstract` treats the
+  -- instruction as the identity precisely because of that), so until now
+  -- NOTHING ever wrote it and every call would have found the entry filler.
+  do-save-closure : FlatState → FlatState
+  do-save-closure fs = record fs { fclosure = readReg (regs (floc fs)) Input1
+                                 ; fpc      = suc (fpc fs) }
+
   flat-exec-instr : AbstractInstr → AbstractTrace → FlatState → FlatState
   flat-exec-instr (instr-ctrl (c-label _))               _    fs = record fs { fpc = suc (fpc fs) }
   flat-exec-instr (instr-ctrl (c-thunk _ b))             _    fs = do-thunk b fs
@@ -357,6 +620,9 @@ module FlatMachine {FS : FrameSemantics} where
     do-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) n prog fs
   flat-exec-instr (instr-ctrl (c-branch-tag-zero n))     prog fs =
     do-branch (tag-zf (flat-read-tag (floc fs))) n prog fs
+  -- the CALL transfers control (D092) and the closure register is flat state
+  flat-exec-instr instr-call-closure                     prog fs = do-call prog fs
+  flat-exec-instr instr-save-closure-reg                 _    fs = do-save-closure fs
   -- the four %rsp-moving instructions also MOVE THE FRAME
   flat-exec-instr (instr-alloc-stack n)   _ fs = flat-step-frame (instr-alloc-stack n)   (enter-frame n)         fs
   flat-exec-instr (instr-dealloc-stack n) _ fs = flat-step-frame (instr-dealloc-stack n) leave-frame             fs

@@ -492,6 +492,16 @@ pb-branch : ∀ (b : Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
 pb-branch true  m prog fs wf = pb-jump (find-label prog m) fs wf
 pb-branch false m prog fs wf = wf
 
+-- D092: THE CALL. `enter-call` is a record update on the frame fields alone,
+-- so `block-size` is unchanged DEFINITIONALLY and no transport is needed
+-- (contrast `pb-ret`, which goes through `leave-frame`). No pointer moves.
+pb-call : ∀ (prog : AbstractTrace) (fs : FlatState)
+        → PtrBoundsWF fs → PtrBoundsWF (do-call prog fs)
+pb-call prog fs wf = go (callView prog fs)
+  where go : CallPost prog fs → PtrBoundsWF (do-call prog fs)
+        go (cp-halt    e) rewrite e = pb-halt _ (floc fs) true wf
+        go (cp-enter ℓ j fq e) rewrite e = wf
+
 flat-ptr-bounds : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
                 → EmittableI i
                 → (∀ n → i ≡ instr-alloc-heap n → 2 ≤ n)
@@ -541,8 +551,7 @@ flat-ptr-bounds (restore-input k)        prog fs ff am wfS wf =
   pb-abstract (restore-input k) (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds (instr-reclaim-to k)     prog fs ff am wfS wf =
   pb-abstract (instr-reclaim-to k) (floc fs) (falloc fs) ff am wfS wf
-flat-ptr-bounds instr-call-closure       prog fs ff am wfS wf =
-  pb-abstract instr-call-closure (floc fs) (falloc fs) ff am wfS wf
+flat-ptr-bounds instr-call-closure       prog fs ff am wfS wf = pb-call prog fs wf
 flat-ptr-bounds (worklist-init k)        prog fs ff am wfS wf =
   pb-abstract (worklist-init k) (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds (worklist-push k)        prog fs ff am wfS wf =

@@ -88,6 +88,11 @@ FrameFreeI (lea-slot _)              = ⊥
 -- the `FlatCorr` field relating the ghost `fret` to the machine stack.
 FrameFreeI (instr-ctrl (c-thunk _ _)) = ⊥
 FrameFreeI (instr-ctrl (c-ret _))     = ⊥
+-- …and THE CALL joins them (D092): now that it is modelled, it pushes the
+-- caller's frame and enters one a slot down (`enter-call`), so it moves the
+-- frame stack, the return stack and the pc. Emitted, like the markers — so it
+-- leaves this SEMANTIC fence while staying in `EmittableI` below.
+FrameFreeI instr-call-closure         = ⊥
 {-# CATCHALL #-}
 FrameFreeI _                         = ⊤
 

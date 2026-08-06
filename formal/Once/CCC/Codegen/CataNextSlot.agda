@@ -244,7 +244,14 @@ module CataNextSlot {FS : FrameSemantics} where
   flat-keeps-next-slot prog fs (instr-dealloc-stack n) _ = leave-frame-next-slot (falloc fs)
   flat-keeps-next-slot prog fs (instr-push-frame c)    _ = refl
   flat-keeps-next-slot prog fs instr-pop-frame         _ = leave-frame-next-slot (falloc fs)
-  flat-keeps-next-slot prog fs instr-call-closure      _ = refl
+  -- D092: the call moves the frame too, and `enter-call` is likewise a plain
+  -- record update on the frame fields — so `next-slot` rides through both of
+  -- its outcomes (a halt moves nothing at all).
+  flat-keeps-next-slot prog fs instr-call-closure      _ = call-go (callView prog fs)
+    where call-go : CallPost prog fs
+                  → next-slot (falloc (do-call prog fs)) ≡ next-slot (falloc fs)
+          call-go (cp-halt    e) rewrite e = refl
+          call-go (cp-enter ℓ j fq e) rewrite e = refl
   flat-keeps-next-slot prog fs (worklist-init k)       _ = refl
   flat-keeps-next-slot prog fs (worklist-push k)       _ = refl
   flat-keeps-next-slot prog fs (worklist-check k)      _ = refl

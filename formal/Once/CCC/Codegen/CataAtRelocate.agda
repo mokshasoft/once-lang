@@ -30,7 +30,7 @@ module Once.CCC.Codegen.CataAtRelocate where
 open import Once.CCC.Label using (LabelId)
 open import Data.Nat using (ℕ; suc; _+_)
 open import Data.Bool using (true; false)
-open import Data.Maybe using (map; just; nothing)
+open import Data.Maybe using (Maybe; map; just; nothing)
 open import Data.Product using (_,_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
@@ -53,7 +53,11 @@ open import Once.CCC.Machine.SMCore
          instr-pop-frame; instr-call-closure; worklist-init; worklist-push;
          worklist-pop; worklist-check; instr-sigop; instr-load-const;
          instr-load-code-addr; instr-save-closure-reg; instr-load-tag-lit;
-         instr-case-on-tag; instr-alloc-heap; instr-loop; instr-reg-op; lea-indexed)
+         instr-case-on-tag; instr-alloc-heap; instr-loop; instr-reg-op; lea-indexed;
+         -- D092: the call reads the closure register and the heap cell it
+         -- points at, so its relocation lemma has to case on both.
+         StoredValue; SV-Tag; SV-Lit; SV-Code; SV-Ptr; AtDynamic; AtStack; heapMem)
+open import Once.Memory.HeapAddress using (sucHL)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 
 module CataAtRelocate {FS : FrameSemantics} where
@@ -145,6 +149,47 @@ module CataAtRelocate {FS : FrameSemantics} where
   ... | true  = flat-relocate-jmp prog seg k fs n lr
   ... | false = refl
 
+  -- THE CALL RELOCATES TOO (D092) — and it is the reason this module now
+  -- needs a SECOND embedding fact. Until the call was modelled it was a no-op,
+  -- program-independent, and relocated by `refl` with the rest. It now RESOLVES
+  -- A LABEL, through the call scan rather than the jump scan (D082), so it
+  -- relocates exactly when `find-thunk` does — the mirror of `lr` for `ft-go`.
+  --
+  -- The `fret` push lines up with no arithmetic: the pushed pc is
+  -- `suc (fpc fs) + k` on the relocated side and `shift-rets k` applied to
+  -- `suc (fpc fs)` on the other, and `suc n + k` IS `suc (n + k)`.
+  reloc-call-at : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (mj : Maybe ℕ)
+                → do-call-at (map (_+ k) mj) (shift-pc k fs) ≡ shift-pc k (do-call-at mj fs)
+  reloc-call-at prog seg k fs (just q) = refl
+  reloc-call-at prog seg k fs nothing  = refl
+
+  reloc-call-code : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState)
+                      (mv : Maybe (StoredValue FS))
+                  → (∀ n → find-thunk prog n ≡ map (_+ k) (find-thunk seg n))
+                  → do-call-code prog mv (shift-pc k fs) ≡ shift-pc k (do-call-code seg mv fs)
+  reloc-call-code prog seg k fs (just (SV-Code ℓ)) tr
+    rewrite tr ℓ = reloc-call-at prog seg k fs (find-thunk seg ℓ)
+  reloc-call-code prog seg k fs (just (SV-Tag _))   tr = refl
+  reloc-call-code prog seg k fs (just (SV-Lit _ _)) tr = refl
+  reloc-call-code prog seg k fs (just (SV-Ptr _))   tr = refl
+  reloc-call-code prog seg k fs nothing             tr = refl
+
+  reloc-call-sv : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (v : StoredValue FS)
+                → (∀ n → find-thunk prog n ≡ map (_+ k) (find-thunk seg n))
+                → do-call-sv prog v (shift-pc k fs) ≡ shift-pc k (do-call-sv seg v fs)
+  reloc-call-sv prog seg k fs (SV-Ptr (AtDynamic hl)) tr =
+    reloc-call-code prog seg k fs (heapMem (floc fs) (sucHL hl)) tr
+  reloc-call-sv prog seg k fs (SV-Ptr (AtStack _ _)) tr = refl
+  reloc-call-sv prog seg k fs (SV-Tag _)             tr = refl
+  reloc-call-sv prog seg k fs (SV-Lit _ _)           tr = refl
+  reloc-call-sv prog seg k fs (SV-Code _)            tr = refl
+
+  flat-relocate-call : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState)
+    → (∀ n → find-thunk prog n ≡ map (_+ k) (find-thunk seg n))
+    → flat-exec-instr instr-call-closure prog (shift-pc k fs)
+        ≡ shift-pc k (flat-exec-instr instr-call-closure seg fs)
+  flat-relocate-call prog seg k fs tr = reloc-call-sv prog seg k fs (fclosure fs) tr
+
   -- Relocation for an ARBITRARY instruction: dispatch the 4 control forms
   -- to the per-class lemmas (carrying the target's relocation fact `lr n`),
   -- and every non-ctrl instruction to `refl` (`flat-exec-instr` falls
@@ -155,47 +200,48 @@ module CataAtRelocate {FS : FrameSemantics} where
   -- the concrete-program assembly via `find-label-distrib`.
   instr-reloc : ∀ (prog seg : AbstractTrace) (k : ℕ) (fs : FlatState) (i : AbstractInstr)
               → (∀ n → find-label prog n ≡ map (_+ k) (find-label seg n))
+              → (∀ n → find-thunk prog n ≡ map (_+ k) (find-thunk seg n))
               → flat-exec-instr i prog (shift-pc k fs) ≡ shift-pc k (flat-exec-instr i seg fs)
   -- control forms → the per-class relocation lemmas
-  instr-reloc prog seg k fs (instr-ctrl (c-label n))               lr = flat-relocate-label          prog seg k fs n
-  instr-reloc prog seg k fs (instr-ctrl (c-thunk n b))             lr = flat-relocate-thunk          prog seg k fs n b
-  instr-reloc prog seg k fs (instr-ctrl (c-ret b))                 lr = flat-relocate-ret            prog seg k fs b
-  instr-reloc prog seg k fs (instr-ctrl (c-jmp n))                 lr = flat-relocate-jmp            prog seg k fs n (lr n)
-  instr-reloc prog seg k fs (instr-ctrl (c-branch-scratch-zero n)) lr = flat-relocate-branch-scratch prog seg k fs n (lr n)
-  instr-reloc prog seg k fs (instr-ctrl (c-branch-tag-zero n))     lr = flat-relocate-branch-tag     prog seg k fs n (lr n)
+  instr-reloc prog seg k fs (instr-ctrl (c-label n))               lr tr = flat-relocate-label          prog seg k fs n
+  instr-reloc prog seg k fs (instr-ctrl (c-thunk n b))             lr tr = flat-relocate-thunk          prog seg k fs n b
+  instr-reloc prog seg k fs (instr-ctrl (c-ret b))                 lr tr = flat-relocate-ret            prog seg k fs b
+  instr-reloc prog seg k fs (instr-ctrl (c-jmp n))                 lr tr = flat-relocate-jmp            prog seg k fs n (lr n)
+  instr-reloc prog seg k fs (instr-ctrl (c-branch-scratch-zero n)) lr tr = flat-relocate-branch-scratch prog seg k fs n (lr n)
+  instr-reloc prog seg k fs (instr-ctrl (c-branch-tag-zero n))     lr tr = flat-relocate-branch-tag     prog seg k fs n (lr n)
   -- every non-ctrl instruction relocates by `refl`
-  instr-reloc prog seg k fs mov-to-output           lr = refl
-  instr-reloc prog seg k fs mov-to-input            lr = refl
-  instr-reloc prog seg k fs mov-output-to-input2    lr = refl
-  instr-reloc prog seg k fs mov-input2-to-output    lr = refl
-  instr-reloc prog seg k fs load-indirect           lr = refl
-  instr-reloc prog seg k fs load-indirect-suc       lr = refl
-  instr-reloc prog seg k fs (load-from-slot _)      lr = refl
-  instr-reloc prog seg k fs (store-at-slot _)       lr = refl
-  instr-reloc prog seg k fs store-indirect          lr = refl
-  instr-reloc prog seg k fs store-indirect-suc      lr = refl
-  instr-reloc prog seg k fs (lea-slot _)            lr = refl
-  instr-reloc prog seg k fs (restore-input _)       lr = refl
-  instr-reloc prog seg k fs (instr-alloc-stack _)   lr = refl
-  instr-reloc prog seg k fs (instr-dealloc-stack _) lr = refl
-  instr-reloc prog seg k fs (instr-reclaim-to _)    lr = refl
-  instr-reloc prog seg k fs (instr-push-frame _)    lr = refl
-  instr-reloc prog seg k fs instr-pop-frame         lr = refl
-  instr-reloc prog seg k fs instr-call-closure      lr = refl
-  instr-reloc prog seg k fs (worklist-init _)       lr = refl
-  instr-reloc prog seg k fs (worklist-push _)       lr = refl
-  instr-reloc prog seg k fs (worklist-pop _)        lr = refl
-  instr-reloc prog seg k fs (worklist-check _)      lr = refl
-  instr-reloc prog seg k fs (instr-sigop _)         lr = refl
-  instr-reloc prog seg k fs (instr-load-const _ _)  lr = refl
-  instr-reloc prog seg k fs (instr-load-code-addr _) lr = refl
-  instr-reloc prog seg k fs instr-save-closure-reg  lr = refl
-  instr-reloc prog seg k fs (instr-load-tag-lit _)  lr = refl
-  instr-reloc prog seg k fs (instr-case-on-tag _ _) lr = refl
-  instr-reloc prog seg k fs (instr-alloc-heap _)    lr = refl
-  instr-reloc prog seg k fs (instr-loop _)          lr = refl
-  instr-reloc prog seg k fs (instr-reg-op _)        lr = refl
-  instr-reloc prog seg k fs (lea-indexed _)         lr = refl
+  instr-reloc prog seg k fs mov-to-output           lr tr = refl
+  instr-reloc prog seg k fs mov-to-input            lr tr = refl
+  instr-reloc prog seg k fs mov-output-to-input2    lr tr = refl
+  instr-reloc prog seg k fs mov-input2-to-output    lr tr = refl
+  instr-reloc prog seg k fs load-indirect           lr tr = refl
+  instr-reloc prog seg k fs load-indirect-suc       lr tr = refl
+  instr-reloc prog seg k fs (load-from-slot _)      lr tr = refl
+  instr-reloc prog seg k fs (store-at-slot _)       lr tr = refl
+  instr-reloc prog seg k fs store-indirect          lr tr = refl
+  instr-reloc prog seg k fs store-indirect-suc      lr tr = refl
+  instr-reloc prog seg k fs (lea-slot _)            lr tr = refl
+  instr-reloc prog seg k fs (restore-input _)       lr tr = refl
+  instr-reloc prog seg k fs (instr-alloc-stack _)   lr tr = refl
+  instr-reloc prog seg k fs (instr-dealloc-stack _) lr tr = refl
+  instr-reloc prog seg k fs (instr-reclaim-to _)    lr tr = refl
+  instr-reloc prog seg k fs (instr-push-frame _)    lr tr = refl
+  instr-reloc prog seg k fs instr-pop-frame         lr tr = refl
+  instr-reloc prog seg k fs instr-call-closure      lr tr = flat-relocate-call prog seg k fs tr
+  instr-reloc prog seg k fs (worklist-init _)       lr tr = refl
+  instr-reloc prog seg k fs (worklist-push _)       lr tr = refl
+  instr-reloc prog seg k fs (worklist-pop _)        lr tr = refl
+  instr-reloc prog seg k fs (worklist-check _)      lr tr = refl
+  instr-reloc prog seg k fs (instr-sigop _)         lr tr = refl
+  instr-reloc prog seg k fs (instr-load-const _ _)  lr tr = refl
+  instr-reloc prog seg k fs (instr-load-code-addr _) lr tr = refl
+  instr-reloc prog seg k fs instr-save-closure-reg  lr tr = refl
+  instr-reloc prog seg k fs (instr-load-tag-lit _)  lr tr = refl
+  instr-reloc prog seg k fs (instr-case-on-tag _ _) lr tr = refl
+  instr-reloc prog seg k fs (instr-alloc-heap _)    lr tr = refl
+  instr-reloc prog seg k fs (instr-loop _)          lr tr = refl
+  instr-reloc prog seg k fs (instr-reg-op _)        lr tr = refl
+  instr-reloc prog seg k fs (lea-indexed _)         lr tr = refl
 
   -- RELOCATE A WHOLE STEP-CHAIN: a standalone run of `seg` (a `FlatSteps`
   -- chain from `fs₀` to `fs₁`) lifts to a run of the big program `prog`
@@ -208,15 +254,16 @@ module CataAtRelocate {FS : FrameSemantics} where
   -- `fetch` via `fe` (`fpc (shift-pc k fs₀) = fpc fs₀ + k`).
   relocate-steps : ∀ {N : ℕ} {fs₀ fs₁ : FlatState} (prog seg : AbstractTrace) (k : ℕ)
                  → (∀ n → find-label prog n ≡ map (_+ k) (find-label seg n))
+                 → (∀ n → find-thunk prog n ≡ map (_+ k) (find-thunk seg n))
                  → (∀ pc i → fetch seg pc ≡ just i → fetch prog (pc + k) ≡ just i)
                  → FlatSteps seg N fs₀ fs₁
                  → FlatSteps prog N (shift-pc k fs₀) (shift-pc k fs₁)
-  relocate-steps prog seg k lr fe []                                = []
-  relocate-steps prog seg k lr fe (_∷_ {fs = fs₀} {i = i} (h , f) rest) =
+  relocate-steps prog seg k lr tr fe []                                = []
+  relocate-steps prog seg k lr tr fe (_∷_ {fs = fs₀} {i = i} (h , f) rest) =
     (h , fe (fpc fs₀) i f)
       ∷ subst (λ s → FlatSteps prog _ s (shift-pc k _))
-              (sym (instr-reloc prog seg k fs₀ i lr))
-              (relocate-steps prog seg k lr fe rest)
+              (sym (instr-reloc prog seg k fs₀ i lr tr))
+              (relocate-steps prog seg k lr tr fe rest)
 
   -- The relocated chain emits exactly the same SigOp events as the
   -- standalone one: `event-of` reads the instruction + `Input1` (off
@@ -227,15 +274,16 @@ module CataAtRelocate {FS : FrameSemantics} where
   -- standalone into the embedded cata run.
   chain-events-relocate : ∀ {N : ℕ} {fs₀ fs₁ : FlatState} (prog seg : AbstractTrace) (k : ℕ)
                             (lr : ∀ n → find-label prog n ≡ map (_+ k) (find-label seg n))
+                            (tr : ∀ n → find-thunk prog n ≡ map (_+ k) (find-thunk seg n))
                             (fe : ∀ pc i → fetch seg pc ≡ just i → fetch prog (pc + k) ≡ just i)
                             (steps : FlatSteps seg N fs₀ fs₁)
-                        → chain-events (relocate-steps prog seg k lr fe steps) ≡ chain-events steps
-  chain-events-relocate prog seg k lr fe []                                = refl
-  chain-events-relocate prog seg k lr fe (_∷_ {fs = fs₀} {i = i} (h , f) rest) =
+                        → chain-events (relocate-steps prog seg k lr tr fe steps) ≡ chain-events steps
+  chain-events-relocate prog seg k lr tr fe []                                = refl
+  chain-events-relocate prog seg k lr tr fe (_∷_ {fs = fs₀} {i = i} (h , f) rest) =
     cong (event-of i (shift-pc k fs₀) ++_)
-         (trans (chain-events-subst-start (sym (instr-reloc prog seg k fs₀ i lr))
-                                          (relocate-steps prog seg k lr fe rest))
-                (chain-events-relocate prog seg k lr fe rest))
+         (trans (chain-events-subst-start (sym (instr-reloc prog seg k fs₀ i lr tr))
+                                          (relocate-steps prog seg k lr tr fe rest))
+                (chain-events-relocate prog seg k lr tr fe rest))
 
   -- CAPSTONE (trace side of the at-algebra correspondence): the relocated
   -- `at`-chain emits exactly `alg`'s source events `E`. Combines the whole
@@ -250,11 +298,12 @@ module CataAtRelocate {FS : FrameSemantics} where
                          (E : List SigOpEvent)
                          (at-halts : halted (floc (exec-flat F at init)) ≡ true)
                          (lr : ∀ n → find-label prog n ≡ map (_+ k) (find-label at n))
+                         (tr : ∀ n → find-thunk prog n ≡ map (_+ k) (find-thunk at n))
                          (fe : ∀ pc i → fetch at pc ≡ just i → fetch prog (pc + k) ≡ just i)
                      → flat-events F at init ≡ E
-                     → chain-events (relocate-steps prog at k lr fe
+                     → chain-events (relocate-steps prog at k lr tr fe
                                        (RunReified.chain (reify-run F at init at-halts)))
                          ≡ E
-  at-relocated-emits prog at k F init E at-halts lr fe at-traces =
-    trans (chain-events-relocate prog at k lr fe (RunReified.chain (reify-run F at init at-halts)))
+  at-relocated-emits prog at k F init E at-halts lr tr fe at-traces =
+    trans (chain-events-relocate prog at k lr tr fe (RunReified.chain (reify-run F at init at-halts)))
           (trans (sym (flat-events-reify F at init (reify-run F at init at-halts))) at-traces)

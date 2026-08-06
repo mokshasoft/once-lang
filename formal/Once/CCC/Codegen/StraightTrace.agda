@@ -77,6 +77,15 @@ StraightIR (⟨ f , g ⟩ m) = StraightIR f × StraightIR g
 StraightIR (Cata _ _)    = ⊥
 StraightIR (case _ _)    = ⊥
 StraightIR (curry _ _)   = ⊥
+-- …and `apply` JOINED THEM (D092), for the third instance of the same
+-- pattern: `instr-call-closure` used to be a no-op, so `apply`'s trace was
+-- straight by accident. Now that the call is MODELLED it transfers control —
+-- and `instr-save-closure-reg` writes the flat closure register — so neither
+-- is a `StraightStep` (which demands `flat-exec-instr ≡ flat-step-straight`)
+-- and `apply`'s clause below became unprovable. Silently sitting in the
+-- catch-all claiming `⊤` is exactly what this module was repaired for once
+-- already; the honest statement is that `apply` is not straight.
+StraightIR apply         = ⊥
 {-# CATCHALL #-}
 StraightIR _             = ⊤
 
@@ -133,11 +142,7 @@ module _ {FS : FrameSemantics} where
   straight-trace' initial     _ n l = (λ _ _ → refl) ∷ []
   straight-trace' (curry b Stack) () n l
   straight-trace' (curry b Heap)  () n l
-  straight-trace' apply       _ n l =
-    (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
-    (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
-    (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
-    (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
+  straight-trace' apply       () n l
   straight-trace' (In _ _)    _ n l = (λ _ _ → refl) ∷ []
   straight-trace' (out-μ _)   _ n l = (λ _ _ → refl) ∷ []
   straight-trace' (Cata _ _)  ()

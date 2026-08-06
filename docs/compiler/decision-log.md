@@ -6618,3 +6618,102 @@ Two discharge routes, both real:
 The agreed order (`ret` → `call` → merge) inverts: the call is the only genuine
 correspondence gap left, and it is what unblocks the return. Plans 0.65/0.66
 were already gated on both.
+
+## D092: The Call Is Modelled — Control Transfer Belongs to the Flat Machine
+
+**Date**: 2026-08-06 · **Plan**: 0.54 rung D · **Status**: landed (machine side)
+
+### The change
+
+`exec-abstract instr-call-closure s alloc = s , alloc` — the identity — was the
+last MODEL GAP in the correspondence cone (D091 showed it was also what blocked
+the return). It stays the identity: the structured layer has no pc to transfer.
+Control transfer is the FLAT machine's business, exactly as jumps and returns
+are, so `flat-exec-instr` now has real clauses for both closure instructions:
+
+    instr-save-closure-reg  ↦  do-save-closure  — `fclosure := Input1`
+    instr-call-closure      ↦  do-call          — the transfer
+
+`do-save-closure` is not cosmetic. `fclosure` (the abstract mirror of `%r12`,
+which the concrete `call *0x8(%r12)` dereferences) had NO writer at all, so
+without it every modelled call would have found the entry filler and halted —
+a call that never fires is not a model.
+
+`do-call` mirrors the hardware: the closure record's SECOND cell holds the code
+address (`heapMem (sucHL hl)`, a `SV-Code ℓ` written by `instr-load-code-addr`);
+the body's entry is `find-thunk prog ℓ` — the CALL's scan (D082), not
+`find-label`; the return pc `suc (fpc fs)` goes on the ghost `fret` and the
+caller's frame on `saved-frames`, ONE push each. Anything malformed HALTS, as
+`do-jump nothing` does. Enumerated, `with`-free.
+
+### `enter-call`, and why it is not `enter-frame 1`
+
+The concrete `call` decrements `%rsp` by one slot and stores the return address
+there. So the frame entered is shifted by one slot and RESERVES NOTHING:
+
+    enter-call alloc = record alloc { current-frame = shift-frame … 1
+                                    ; frame-slots   = 0
+                                    ; saved-frames  = (current-frame , frame-slots) ∷ … }
+
+`enter-frame 1` would claim the return-address cell as the callee's slot 0 —
+putting a code address inside the callee's window and breaking `StackWindows`'
+floor thread the moment the caller reserved two slots. This is D086 as code.
+
+It also fixes the cell the correspondence will need: the entered frame's window
+END (`frame-base + slots frame-slots`) IS the cell the call pushed, and
+`grow-frame` keeps it there because the entered frame reserves 0. That is
+precisely what was NOT true before (D091's second false premise) and is what
+makes the `fret`↔stack component preservable at last.
+
+### THE ONE EXCEPTION THE INVARIANT GREW
+
+`SegWF.seg-cur` said "the current frame's reservation IS the static segment at
+the pc". A call lands on a body entry with reservation 0 while the positional
+scan still reads the CALLER's segment — bodies are spliced inline, so the scan
+walks straight into them. So the invariant is now a DISJUNCTION (`SegCur`):
+either the equation, or "the pc holds a `c-thunk` and the reservation is 0".
+
+Two rejected alternatives, both instructive:
+
+- **Give the entered frame the scan's value.** Physically false, and it breaks
+  the window floor thread — the callee's window would overlap the caller's.
+- **Weaken to "…or the frame is empty".** True but USELESS: a consumer cannot
+  refute it. The exception must be stated so that its refutation is available
+  where the invariant is used, and every consumer is a slot read, so naming the
+  pc's instruction does exactly that (`slot-of (instr-ctrl _) = nothing`).
+
+This needed `Flat.find-thunk-sound` — what the call scan finds IS a body entry
+for that label — which the `events-running-call` proof will need anyway. `ft-go`
+became `with`-free to admit it (the module's own design rule).
+
+### The ripple, and what the backstop caught
+
+`instr-call-closure` left `FrameFreeI` (it moves the frame) while staying in
+`EmittableI` (it is emitted) — the same split the closure markers took in 0.63.
+Five flat-machine invariants gained a real case; each is two lines, because the
+call writes no store and `enter-call` is a record update on the frame fields.
+The twelve-row dispatch is enumerated ONCE, as `CallPost`/`callView`, and every
+consumer takes the read-back equation.
+
+The ISLAND BACKSTOP earned its keep again — two modules outside every cluster:
+
+- `StraightTrace` — `StraightIR apply` was silently `⊤` in the catch-all. Now
+  that the call transfers control, `apply` is not straight. Third instance of
+  the identical pattern (`case` and `curry` were the first two).
+- `CataAtRelocate` — relocation now needs a SECOND embedding fact: the call
+  resolves a label through the call scan, so `find-thunk` must relocate like
+  `find-label`. Was `refl` while the call was a no-op.
+
+### Where this leaves the residuals
+
+`events-running-ret` is BACK as a postulate (deleted 2026-08-06, restored the
+same day — see D091 for why the round trip is the point) and
+`events-running-call` remains one, but both changed CLASS: they are no longer
+model gaps. Both sides of each equation now describe the same transition, and
+`FlatComposition.find-thunk-pres` already supplies the concrete side of the
+transfer. What is left is the DATA — the `CompiledCorr` component relating the
+ghost `fret` to the pushed cells — plus its ~37-site ripple in `FlatSimulation`.
+
+`run-no-ret` is DELETED, as D092 predicted it would have to be: it said no state
+ever owes a return, and that was only true while the call did nothing. Its
+ceasing to typecheck is the check that the model really changed.
