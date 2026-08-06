@@ -234,7 +234,27 @@ monusStep =
         (csymᵀ (red→≅ᵀ (stepᵀ (Hom-Nat-ss _ _) doneᵀ)))
 
 ------------------------------------------------------------------------
--- 6. …and the arithmetic really runs.  `3 ∸ 1 ⟶* 2`.
+-- ★★ 6. gcd's DESCENT IS THE SAME CERTIFICATE.
+--
+--   Subtractive Euclid:  gcd (suc m) (suc k) = gcd (suc m ∸ suc k) (suc k)
+--                                            = gcd (m ∸ k) (suc k)
+--   measured by the first argument, so the obligation is
+--
+--     m ∸ k < suc m
+--
+--   — literally `⊢div-descend`.  `div` and `gcd`, the two textbook
+--   `Acc _<_` examples, share ONE termination certificate here, and it
+--   is `⊢monus-le` with a conversion.
+------------------------------------------------------------------------
+
+⊢gcd-descend : {Γ : Ctx} {k : RTm ⌊ Γ ▹ Nat ⌋} →
+               (Γ ▹ Nat) ⊢ k ∷ Nat →
+               (Γ ▹ Nat) ⊢ natrec (reflTm (var vz)) monusStep k
+                 ∷ Hom Nat (nsuc (monusTm (var vz) k)) (nsuc (var vz))
+⊢gcd-descend = ⊢div-descend
+
+------------------------------------------------------------------------
+-- 7. …and the arithmetic really runs.  `3 ∸ 1 ⟶* 2`.
 ------------------------------------------------------------------------
 
 n1 n2 n3 : {Γ : Cx} → RTm Γ
