@@ -48,7 +48,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢⌜Nat⌝; ⊢⌜Unit⌝
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
-        ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢ordtr
         ; ⊢ctx_; c-◇; c-▹
         ; ⊢id; ⊢appex )
 open import poc.OCP0009.NbEPDirDBVar
@@ -80,6 +80,7 @@ open import poc.OCP0009.NbEPDirDBLR
         ; snr-jsub-refl; snr-jsubᵖ
         ; snr-natrec-zero; snr-natrec-suc; snr-natrecⁿ
         ; sne-natrec; ne-natrec; sn-unit; sn-nzero; sn-nsuc
+        ; sne-ordtr; ne-ordtr; sn-ordtr; homNatSem-mem
         ; NatMem; nm-ne; nm-zero; nm-suc; nm-exp; natmem-whred
         ; ⊩₁Unit; ⊩₁Nat; natstk?; natstk?-ren; natstk?-red; sne→natstk; sn-whred
         ; homNatSem; homNatSem₀; hns₀-in; bwd₀-mem⁻; bwd₀-mem
@@ -356,6 +357,61 @@ fund {σ = σ} (⊢absurd {c = c} dc de) x₀ ρ =
     snc = projl hc
     R₀  = sem-El doneᵀ hc
     sne₀ = CR1₁ (dfst (fund de x₀ ρ)) (dsnd (fund de x₀ ρ))
+
+
+-- ★★★ WF-axis stage E: ORDER TRANSPORT'S SEMANTICS, and it is a
+-- ONE-LINER — which is the whole point of having built `homNatSem` and
+-- `ordstk?` to walk the bounds in the same order.
+--
+-- ★ WHY THERE IS NO CONVERSION PLUMBING HERE, unlike `⊢natrec`.
+-- Level-1 membership IGNORES the reduction chain: every leaf that
+-- `homNatSem` lands on (`⊩₁Hom`, `⊩₁Unit`, `⊩₁base`) has
+-- `_ ⊩₁∋ x = SN x`.  So the goal `homNatSem aI uI … ⊩₁∋ ordtr aI tI uI pI qI`
+-- IS `SN (ordtr aI tI uI pI qI)`, definitionally — no `irrel₁`, no
+-- `relTy`, no motive to re-instantiate.  All the content moved into
+-- `sn-ordtr` (NbEPDirDBLR), where it belongs: it is a fact about the
+-- head strategy, not about substitution.
+--
+-- The three bounds are moved onto the CANONICAL `Nat` interp first, so
+-- the `NatMem` payloads `sn-ordtr` inducts on come out directly.
+fund {Ξ = Ξ} {σ = σ} (⊢ordtr {a = a} {t = t} {u = u} {p = p} {q = q}
+                             da dt du dp dq) x₀ ρ =
+  ( homNatSem aI uI snA mA snU mU
+  , homNatSem-mem aI uI snA mA snU mU
+      (sn-ordtr aI tI uI pI qI snA mA snT mT snU mU snP snQ) )
+  where
+    aI = subTm σ a
+    tI = subTm σ t
+    uI = subTm σ u
+    pI = subTm σ p
+    qI = subTm σ q
+
+    ⊩N : ⊩₁ (Nat {Ξ})
+    ⊩N = ⊩₁Nat doneᵀ
+
+    hA : ⊩N ⊩₁∋ aI
+    hA = projl (irrel₁ crflᵀ (dfst (fund da x₀ ρ)) ⊩N)
+               aI (dsnd (fund da x₀ ρ))
+    hT : ⊩N ⊩₁∋ tI
+    hT = projl (irrel₁ crflᵀ (dfst (fund dt x₀ ρ)) ⊩N)
+               tI (dsnd (fund dt x₀ ρ))
+    hU : ⊩N ⊩₁∋ uI
+    hU = projl (irrel₁ crflᵀ (dfst (fund du x₀ ρ)) ⊩N)
+               uI (dsnd (fund du x₀ ρ))
+
+    snA = projl hA
+    mA  = projr hA
+    snT = projl hT
+    mT  = projr hT
+    snU = projl hU
+    mU  = projr hU
+
+    -- the proofs are PAYLOAD, not scrutinee: `ordtr` never inspects
+    -- them, so all the model needs from them is `SN`.
+    snP : SN pI
+    snP = CR1₁ (dfst (fund dp x₀ ρ)) (dsnd (fund dp x₀ ρ))
+    snQ : SN qI
+    snQ = CR1₁ (dfst (fund dq x₀ ρ)) (dsnd (fund dq x₀ ρ))
 
 fund (⊢fst d) x₀ ρ = ⊩₁-fstm (dfst (fund d x₀ ρ)) (dsnd (fund d x₀ ρ))
 
@@ -651,6 +707,8 @@ fund {Ξ = Ξ} {σ = σ}
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-jsub h₁ h₂ h₃ k)) k)
   goP (sn-ne (sne-natrec h₁ h₂ h₃ k)) =
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-natrec h₁ h₂ h₃ k)) k)
+  goP (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ k)) =
+    CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ k)) k)
   goP (sn-lam h)       = CR3₀ R_H (sne-ap snCB snBB (sn-lam h) refl)
   goP (sn-pair ha hb)  = CR3₀ R_H (sne-ap snCB snBB (sn-pair ha hb) refl)
   goP sn-cb            = CR3₀ R_H (sne-ap snCB snBB sn-cb refl)
@@ -783,6 +841,7 @@ fund {Ξ = Ξ} {σ = σ}
   nkeyJ (sne-ap _ _ _ key) = key
   nkeyJ (sne-jsub _ _ _ key) = key
   nkeyJ (sne-natrec _ _ _ key) = key
+  nkeyJ (sne-ordtr _ _ _ _ _ key) = key
 
   goP : {p' : RTm Ξ} → SN p' → IdPay tI uI p' →
         (emb R₀u) ⊩₁∋ jsub dI p' eI
@@ -862,6 +921,7 @@ fund {Ξ = Ξ} {σ = σ}
   nkey (sne-ap _ _ _ key) = key
   nkey (sne-jsub _ _ _ key) = key
   nkey (sne-natrec _ _ _ key) = key
+  nkey (sne-ordtr _ _ _ _ _ key) = key
 
   cr3 : {p' : RTm Ξ} → SN p' → trstk? (var (vz {Ξ})) p' ≡ true →
         Σ (⊩₁ (El uI)) (λ R → R ⊩₁∋ tr (var vz) p' eI)
@@ -1172,6 +1232,8 @@ fund {Ξ = Ξ} {σ = σ}
     cr3 (sn-ne (sne-jsub h₁ h₂ h₃ key)) key
   go (sn-ne (sne-natrec h₁ h₂ h₃ key)) hp' =
     cr3 (sn-ne (sne-natrec h₁ h₂ h₃ key)) key
+  go (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) hp' =
+    cr3 (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) key
   go (sn-lam snf) hp'      = goLam snf hp'
   go (sn-pair sa sb) hp'   = cr3 (sn-pair sa sb) refl
   go sn-cb hp'             = cr3 sn-cb refl

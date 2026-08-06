@@ -1781,6 +1781,36 @@ natstk→homnat nzero u ()
 natstk→homnat (nsuc n) u ()
 natstk→homnat (natrec z w n) u h = h
 
+-- ★★ WF stage E: the `natstk→homnat` peer.  A bound that never becomes a
+-- numeral makes the ORDER stuck on its own — and this is the lemma that
+-- lets `sn-ordtr` build `sne-ordtr`'s key from a NEUTRAL bound, where
+-- `ordstk?` is stuck and cannot be handed `natstk?`'s answer directly.
+natstk→ordstk : (a t u : RTm Γ) → natstk? a ≡ true → ordstk? a t u ≡ true
+natstk→ordstk (var x) t u h = h
+natstk→ordstk (lam t₀) t u h = h
+natstk→ordstk (app t₀ t₁) t u h = h
+natstk→ordstk (pair a₀ b₀) t u h = h
+natstk→ordstk (absurd c e) t u h = h
+natstk→ordstk (ordtr a₀ t₀ u₀ p₀ q₀) t u h = h
+natstk→ordstk (fst t₀) t u h = h
+natstk→ordstk (snd t₀) t u h = h
+natstk→ordstk ⌜base⌝ t u h = h
+natstk→ordstk ⌜Nat⌝ t u h = h
+natstk→ordstk ⌜Unit⌝ t u h = h
+natstk→ordstk (⌜Π⌝ c d) t u h = h
+natstk→ordstk (⌜Σ⌝ c d) t u h = h
+natstk→ordstk (⌜Hom⌝ c a₀ b₀) t u h = h
+natstk→ordstk (⌜Id⌝ c a₀ b₀) t u h = h
+natstk→ordstk (hrefl c t₀) t u h = h
+natstk→ordstk (idrefl c t₀) t u h = h
+natstk→ordstk (tr d p₀ e) t u h = h
+natstk→ordstk (ap c b₀ p₀) t u h = h
+natstk→ordstk (jsub d p₀ e) t u h = h
+natstk→ordstk unit t u h = h
+natstk→ordstk (natrec z w n) t u h = h
+natstk→ordstk nzero t u ()
+natstk→ordstk (nsuc n) t u ()
+
 homnat?-redˡ : {t t' u : RTm Γ} → t ⟶ t' →
                homnat? t u ≡ true → homnat? t' u ≡ true
 homnat?-redˡ {t = nzero} r ()
@@ -3168,6 +3198,87 @@ natmem-whred (nm-ne n)   r = nm-ne (sne-whred n r)
 natmem-whred (nm-exp r₀ h) r with snr-det r₀ r
 ... | refl = h
 
+------------------------------------------------------------------------
+-- ★★★ WF-axis stage E: `ordtr` IS STRONGLY NORMALIZING.
+--
+-- This is `ordtr`'s whole semantic content, and it is the exact mirror
+-- of `homNatSem`'s own recursion: both walk the SAME three `NatMem`
+-- payloads in the SAME order (`a`, then `t`, then `u`), because that
+-- order is `ordstk?`'s dispatch order, which is the serialization the
+-- `SNRed` xi's were built around.
+--
+-- ★ WHY THIS IS ALL `fund` NEEDS.  Membership at level 1 IGNORES the
+-- reduction chain — every leaf `homNatSem` lands on (`⊩₁Hom`, `⊩₁Unit`,
+-- `⊩₁base`) has `_ ⊩₁∋ t = SN t` — so `homNatSem a u … ⊩₁∋ x` is
+-- DEFINITIONALLY `SN x`.  The `⊢ordtr` case of `fund` carries no
+-- conversion plumbing at all; it is this lemma and nothing else.
+--
+-- The recursion is lexicographic on the three `NatMem`s: the `a`-steps
+-- shrink the first, the `t`-steps the second with the first fixed, the
+-- `u`-steps the third — and `ordtr-sss` shrinks all three at once.
+-- ★ NO fuel, NO `Acc`, NO measure: the numeral payloads ARE the
+-- induction, exactly as in stage A's `natrec` worker.
+------------------------------------------------------------------------
+sn-ordtr : {Γ : Cx} (a t u p q : RTm Γ) →
+           SN a → NatMem a → SN t → NatMem t → SN u → NatMem u →
+           SN p → SN q → SN (ordtr a t u p q)
+
+private
+  snsuc-inv⁰ : {Γ : Cx} {k : RTm Γ} → SN (nsuc k) → SN k
+  snsuc-inv⁰ (sn-nsuc h) = h
+
+-- a bound that never reaches a numeral makes the whole order neutral.
+sn-ordtr a t u p q sa (nm-ne nt) st mt su mu sp sq =
+  sn-ne (sne-ordtr sa st su sp sq (natstk→ordstk a t u (sne→natstk nt)))
+sn-ordtr a t u p q sa (nm-exp {t' = a'} r ma) st mt su mu sp sq =
+  sn-exp (snr-ordtrᵃ r)
+         (sn-ordtr a' t u p q (sn-whred sa r) ma st mt su mu sp sq)
+-- rule 1: a zero LOWER bound discharges the order outright.
+sn-ordtr .nzero t u p q sa nm-zero st mt su mu sp sq =
+  sn-exp (snr-ordtr-z st su sp sq) sn-unit
+-- under a `nsuc` bound the order fires exactly when BOTH remaining
+-- bounds are literal, so `t` is scrutinized next — and `ordstk?`'s
+-- `nsuc` clause is `ordS? (natstk? t) u`, which `ordS? true u = true`
+-- closes on the nose.
+sn-ordtr .(nsuc _) t u p q sa (nm-suc {n = a₀} ma) st (nm-ne nt) su mu sp sq =
+  sn-ne (sne-ordtr sa st su sp sq
+                   (cong (λ b → ordS? b u) (sne→natstk nt)))
+sn-ordtr .(nsuc _) t u p q sa (nm-suc {n = a₀} ma) st (nm-exp {t' = t'} r mt) su mu sp sq =
+  sn-exp (snr-ordtrᵗ r)
+         (sn-ordtr (nsuc a₀) t' u p q sa (nm-suc ma) (sn-whred st r) mt su mu sp sq)
+-- `t = nzero`: now `ordstk?` is `natstk? u`, so `u` decides alone.
+sn-ordtr .(nsuc _) .nzero u p q sa (nm-suc {n = a₀} ma) st nm-zero su (nm-ne nu) sp sq =
+  sn-ne (sne-ordtr sa st su sp sq (sne→natstk nu))
+sn-ordtr .(nsuc _) .nzero u p q sa (nm-suc {n = a₀} ma) st nm-zero su (nm-exp {t' = u'} r mu) sp sq =
+  sn-exp (snr-ordtrᵘᶻ r)
+         (sn-ordtr (nsuc a₀) nzero u' p q sa (nm-suc ma) st nm-zero (sn-whred su r) mu sp sq)
+-- rule 2: `0 ≤ 0` under a successor bound — the proof `p` survives.
+sn-ordtr .(nsuc _) .nzero .nzero p q sa (nm-suc {n = a₀} ma) st nm-zero su nm-zero sp sq =
+  sn-exp (snr-ordtr-szz (snsuc-inv⁰ sa) sq) sp
+-- ★ rule 4 — STAGE D'S FIRST REAL CUSTOMER.  `nzero ≤ nsuc u₀` is
+-- impossible under a `nsuc` bound, and `absurd` at the ⌜Hom⌝ code is
+-- what discharges it.  The code is SN because both endpoints are.
+sn-ordtr .(nsuc _) .nzero .(nsuc _) p q sa (nm-suc {n = a₀} ma) st nm-zero su (nm-suc {n = u₀} mu) sp sq =
+  sn-exp (snr-ordtr-szs sq)
+         (sn-ne (sne-absurd (sn-cH sn-cNat (snsuc-inv⁰ sa) (snsuc-inv⁰ su)) sp))
+-- `t = nsuc t₀`: `natstk? (nsuc t₀)` is `false`, so again `u` decides.
+sn-ordtr .(nsuc _) .(nsuc _) u p q sa (nm-suc {n = a₀} ma) st (nm-suc {n = t₀} mt) su (nm-ne nu) sp sq =
+  sn-ne (sne-ordtr sa st su sp sq (sne→natstk nu))
+sn-ordtr .(nsuc _) .(nsuc _) u p q sa (nm-suc {n = a₀} ma) st (nm-suc {n = t₀} mt) su (nm-exp {t' = u'} r mu) sp sq =
+  sn-exp (snr-ordtrᵘˢ r)
+         (sn-ordtr (nsuc a₀) (nsuc t₀) u' p q sa (nm-suc ma) st (nm-suc mt)
+                   (sn-whred su r) mu sp sq)
+-- rule 3: `t ≤ 0` forces the chain to collapse onto `q`.
+sn-ordtr .(nsuc _) .(nsuc _) .nzero p q sa (nm-suc {n = a₀} ma) st (nm-suc {n = t₀} mt) su nm-zero sp sq =
+  sn-exp (snr-ordtr-ssz (snsuc-inv⁰ sa) (snsuc-inv⁰ st) sp) sq
+-- ★ rule 5 — THE ONLY GENUINELY RECURSIVE ROW: peel one successor off
+-- all three bounds at once.  This is transitivity's actual content, and
+-- the three payloads shrink together.
+sn-ordtr .(nsuc _) .(nsuc _) .(nsuc _) p q sa (nm-suc {n = a₀} ma) st (nm-suc {n = t₀} mt) su (nm-suc {n = u₀} mu) sp sq =
+  sn-exp snr-ordtr-sss
+         (sn-ordtr a₀ t₀ u₀ p q (snsuc-inv⁰ sa) ma (snsuc-inv⁰ st) mt
+                   (snsuc-inv⁰ su) mu sp sq)
+
 data ⊩₀_ {Γ} : RTy Γ → Set
 _⊩₀∋_ : {Γ : Cx} {A : RTy Γ} → ⊩₀ A → RTm Γ → Set
 
@@ -3914,6 +4025,23 @@ bwd₁ p (⊩₁Hom q s)   = ⊩₁Hom  (⟶ᵀ*-trans p q) s
 bwd₁ p (⊩₁Unit q)    = ⊩₁Unit (⟶ᵀ*-trans p q)
 bwd₁ p (⊩₁Nat q)     = ⊩₁Nat  (⟶ᵀ*-trans p q)
 bwd₁ p (⊩₁Id q)      = ⊩₁Id   (⟶ᵀ*-trans p q)
+
+-- ★ the level-1 peer of `bwd₀-mem⁻`, never needed until stage E.
+-- Membership IGNORES the reduction chain, so every row is `h` — but the
+-- lemma is still load-bearing: when `R` is not in constructor form
+-- (`homNatSem` applied to an opaque `NatMem`), `bwd₁ q R ⊩₁∋ t` is
+-- STUCK and the identification is not available definitionally.
+bwd₁-mem⁻ : {A B : RTy Γ} (q : A ⟶ᵀ* B) (R : ⊩₁ B) {t : RTm Γ} →
+            R ⊩₁∋ t → (bwd₁ q R) ⊩₁∋ t
+bwd₁-mem⁻ q (⊩₁base _)  h = h
+bwd₁-mem⁻ q (⊩₁U _)     h = h
+bwd₁-mem⁻ q (⊩₁ne _ _)  h = h
+bwd₁-mem⁻ q (⊩₁Π _ _ _) h = h
+bwd₁-mem⁻ q (⊩₁Σ _ _ _) h = h
+bwd₁-mem⁻ q (⊩₁Hom _ _) h = h
+bwd₁-mem⁻ q (⊩₁Unit _)  h = h
+bwd₁-mem⁻ q (⊩₁Nat _)   h = h
+bwd₁-mem⁻ q (⊩₁Id _)    h = h
 
 ------------------------------------------------------------------------
 -- 4a. IRRELEVANCE at level 1.
@@ -4684,6 +4812,35 @@ homNatSem .(nsuc _) .(nsuc _) sa (nm-suc {n = m} ma) sb (nm-suc {n = n} mb) =
   where
   snsuc-inv : {k : RTm _} → SN (nsuc k) → SN k
   snsuc-inv (sn-nsuc h) = h
+
+-- ★★ WF stage E: SN IS MEMBERSHIP, but only once `homNatSem` has been
+-- UNSTUCK.  Every leaf it lands on (`⊩₁Hom`, `⊩₁Unit`, `⊩₁base`) has
+-- `_ ⊩₁∋ x = SN x`, and `bwd₁` does not touch membership — but
+-- `homNatSem` matches on the two `NatMem`s, so with those opaque the
+-- reduction is BLOCKED and the identification is not definitional.
+-- ⚠ this lemma is what `fund`'s `⊢ordtr` case actually needs; assuming
+-- the conversion holds on the nose does not typecheck.
+homNatSem-mem : {Γ : Cx} (a b : RTm Γ)
+                (sa : SN a) (ma : NatMem a) (sb : SN b) (mb : NatMem b)
+                {x : RTm Γ} → SN x → (homNatSem a b sa ma sb mb) ⊩₁∋ x
+homNatSem-mem a b sa (nm-ne nt) sb mb sx = sx
+homNatSem-mem a b sa (nm-exp {t' = a'} r ma) sb mb sx =
+  bwd₁-mem⁻ (stepᵀ (ξ-Homˡ (snr→⟶ r)) doneᵀ) (homNatSem a' b (sn-whred sa r) ma sb mb)
+            (homNatSem-mem a' b (sn-whred sa r) ma sb mb sx)
+homNatSem-mem .nzero b sa nm-zero sb mb sx = sx
+homNatSem-mem .(nsuc _) b sa (nm-suc {n = m} ma) sb (nm-ne nt) sx = sx
+homNatSem-mem .(nsuc _) b sa (nm-suc {n = m} ma) sb (nm-exp {t' = b'} r mb) sx =
+  bwd₁-mem⁻ (stepᵀ (ξ-Homʳ (snr→⟶ r)) doneᵀ)
+            (homNatSem (nsuc m) b' sa (nm-suc ma) (sn-whred sb r) mb)
+            (homNatSem-mem (nsuc m) b' sa (nm-suc ma) (sn-whred sb r) mb sx)
+homNatSem-mem .(nsuc _) .nzero sa (nm-suc {n = m} ma) sb nm-zero sx = sx
+homNatSem-mem .(nsuc _) .(nsuc _) sa (nm-suc {n = m} ma) sb (nm-suc {n = n} mb) sx =
+  bwd₁-mem⁻ (stepᵀ (Hom-Nat-ss m n) doneᵀ)
+            (homNatSem m n (snsuc-inv¹ sa) ma (snsuc-inv¹ sb) mb)
+            (homNatSem-mem m n (snsuc-inv¹ sa) ma (snsuc-inv¹ sb) mb sx)
+  where
+  snsuc-inv¹ : {k : RTm _} → SN (nsuc k) → SN k
+  snsuc-inv¹ (sn-nsuc h) = h
 
 homSem₁ : {A : RTy Γ} (R : ⊩₁ A) {a b : RTm Γ} →
           R ⊩₁∋ a → R ⊩₁∋ b → ⊩₁ (Hom A a b)
