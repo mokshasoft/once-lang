@@ -47,11 +47,12 @@ abstract one — read it off the signature: does it mention `X.State` /
       arith-sigop-contract, external-sigop-contract, conc-fuel
       (see THE CPU-MODEL ROOT below)
 
-    obligations the correspondence CONSUMES, owned by other layers (4):
+    obligations the correspondence CONSUMES, owned by other layers (5):
       emitted-shape-check   — codegen        (only `ir-to-trace`)
       run-meets             — abstract machine + shape table (no `X.State`)
       main-heap-moded       — frontend       (only `IR`)
       entry-size            — resource/frontend plumbing (only `ir-size`)
+      thunk-entry-empty     — abstract machine + emitter (no `X.State`)
 
     boundary axioms (2):
       stack-top-in-stack, x86-64-loader-faithful
@@ -95,8 +96,9 @@ deferred proofs sharing one missing piece: the return-address component.
 | 6 | `run-meets` | `ConcFlatSim` | deferred proof | induction on `Reachable`; entry via D074 all-tag state, step via per-instruction transfer soundness |
 | 7 | `main-heap-moded` | apex | deferred proof | induction over the elaborator: building with `C.Heap` yields only `Heap` modes |
 | — | `events-running-thunk` | (was `ConcFlatSim`) | — | **DONE, DISCHARGED 2026-08-06** — now the theorem `ConcFlatSim.thunk-step`. `block-step-c-thunk` (a theorem since D090) fed `lo' = lo hv ⊓ (%rsp ∸ 8b)`; its `front-lo'`/`fits` come from the new `x86-64-stack-room` PARAMETER (`ResourceBounds.StackRoom`), the exact mirror of `HeapRoom` |
-| 9 | `events-running-ret` | `ConcFlatSim` | deferred proof | ROUND TRIP: deleted 2026-08-06 (D091 — no reachable state fetched a `c-ret`, so its clause became `⊥` by collision with the theorem `run-no-ret`), restored the same day when D092 MODELLED THE CALL. `run-no-ret` is false and deleted, `ret-site-owes` is gone, and the route is live. No longer a model gap — what is missing is the `CompiledCorr` return-address component, preservable now that `enter-call` pins the entered frame's window END on the pushed cell |
+| 9 | `events-running-ret` | `ConcFlatSim` | deferred proof | THE COMPONENT LANDED (D093): `CompiledCorr.ret-eq` says every ghost `fret` entry is really in memory, at its frame's window end. Three inputs left, all designed in D093 — the exact one-slot gap (as a `GapNext` conjunct in `RetAddrs`), `C.sim-ret`, and the `c-thunk`/`c-ret` bracket fact. ROUND TRIP: deleted 2026-08-06 (D091 — no reachable state fetched a `c-ret`, so its clause became `⊥` by collision with the theorem `run-no-ret`), restored the same day when D092 MODELLED THE CALL. `run-no-ret` is false and deleted, `ret-site-owes` is gone, and the route is live. No longer a model gap — what is missing is the `CompiledCorr` return-address component, preservable now that `enter-call` pins the entered frame's window END on the pushed cell |
 | 10 | `events-running-call` | `ConcFlatSim` | deferred proof | WAS the model gap; CLOSED as such by D092 (2026-08-06). `flat-exec-instr instr-call-closure` now transfers control the way `call *0x8(%r12)` does — pushes `fret`/`saved-frames`, enters `enter-call`'s frame, resolves the body with `find-thunk`. The concrete side of the transfer is already proven (`FlatComposition.find-thunk-pres`); what remains is the same return-address component as #9 |
+| 13 | `thunk-entry-empty` | `ConcFlatSim` | deferred proof | NEW 2026-08-06 (D093), the input to the return-address component: a reachable body entry has an empty reservation, so `c-thunk` re-anchors the pending return's cell onto the frame's own base. No `X.State` in the type. Route: a `SegWF`-style induction over two emitter facts (`emitted-jump-in-segment` mould) — a body entry is neither a fall-through target (the `c-jmp end` guard) nor a jump target (`find-label` resolves `c-label`s, D082) — leaving the call, which sets `frame-slots := 0` |
 | 11 | `conc-fuel` | apex | **stub** | asserts adequacy of `step-budget-x86-64`, an UNDEFINED postulated `ℕ → ℕ` in `…CPU.X86-64` (siblings: `ev-x86-64`, `arith-env-x86-64`). Pin `step-budget` to a definition, then prove it. NOT a resource bound — do not launder it into a parameter |
 | 12 | `x86-64-loader-faithful` | apex | **axiom** | STAYS. Assembler + loader + printer + decoder round-trip; the boundary every verified compiler keeps |
 
