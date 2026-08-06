@@ -261,6 +261,50 @@ StackWindows am mem stk fl ((f , b) ∷ fr) =
     × StackWindows am mem stk (frame-base f + slots b) fr
 
 ------------------------------------------------------------------------
+-- THE PENDING RETURN ADDRESSES (D093).
+--
+-- One cell per pending return, and it is NOT in any window: it is the slot the
+-- CALL consumed, which sits exactly at the callee frame's window END — between
+-- the callee's last slot and the caller's base (D086: the call owns the
+-- return-address slot, the body's marker only deepens the frame below it).
+-- That gap is the slack `StackWindows`' floor leaves, and this is what finally
+-- says what lives in it.
+--
+-- Paired with `frames-of` — the CURRENT frame first — because the pending
+-- return at the head of `fret` is the one the CURRENT frame owes, and its cell
+-- is the current frame's own window end. That is also what makes a RETURN
+-- carry: after `leave-frame` the new head is the old second, whose cell the
+-- tail already describes, and `add rsp,8b ; ret` writes no memory at all.
+--
+-- `xoff` is the pc translation (`x86-off prog` at the use site) rather than the
+-- program itself, so this stays a statement about the machine, not the emitter.
+-- The length rows: `fret` longer than the live frames is impossible
+-- (`ConcFlatSim.RetMatch` pairs them), so that row is `⊥`; the outermost frame
+-- owes nothing, which is the `⊤` row.
+------------------------------------------------------------------------
+RetAddrs : (ℕ → ℕ) → X.Memory → List (Frame × ℕ) → List ℕ → Set
+RetAddrs xoff mem fr             []       = ⊤
+RetAddrs xoff mem ((f , b) ∷ fr) (r ∷ rs) =
+  (X.readMem mem (frame-base f + slots b) ≡ just (xoff r))
+  × RetAddrs xoff mem fr rs
+RetAddrs xoff mem []             (r ∷ rs) = ⊥
+
+-- RE-ANCHORING THE HEAD (D093). The pending return at the head of `fret` is
+-- addressed by the CURRENT frame's window END, and a body entry MOVES that
+-- frame — down by its reservation, while setting the reservation to it. The
+-- end therefore lands on the same cell (that is D086's whole point: the call's
+-- slot sits just above the body's frame), and this is the transport that says
+-- so. Everything below the head is untouched.
+ret-head : ∀ (xoff : ℕ → ℕ) (mem : X.Memory) (f f' : Frame) (b b' : ℕ)
+             (fr : List (Frame × ℕ)) (rs : List ℕ)
+         → frame-base f' + slots b' ≡ frame-base f + slots b
+         → RetAddrs xoff mem ((f , b) ∷ fr) rs
+         → RetAddrs xoff mem ((f' , b') ∷ fr) rs
+ret-head xoff mem f f' b b' fr []       eq r       = tt
+ret-head xoff mem f f' b b' fr (r ∷ rs) eq (h , t) =
+  subst (λ a → X.readMem mem a ≡ just (xoff r)) (sym eq) h , t
+
+------------------------------------------------------------------------
 -- The correspondence: a FlatState and an x86 State agree on the four
 -- abstract registers (under enc-sv), the pc, the zero-flag, the halt
 -- flag, the heap memory (under enc-hl + enc-sv), and the LIVE STACK
@@ -1831,3 +1875,42 @@ sim-store-indirect-suc-stack {hv} k fs s corr i-eq sk<b disj =
                          (sym (rsp-eq corr))
                          (windows-slot-store (memory s) (floc fs) cf (frame-slots (falloc fs))
                             (suc k) Out (lo hv) (saved-frames (falloc fs)) sk<b (stack-eq corr)) }
+
+-- THE PENDING RETURNS SURVIVE A WRITE THAT MISSES THEM (D093), in the two
+-- shapes the emitted code produces. Both mirror `windows-above` — a return
+-- cell is a frame's window END, hence at or above that frame's base, hence
+-- above the floor the frame list threads.
+--
+-- (1) A change confined BELOW the floor — every heap store, since a live heap
+-- cell is under `hfront ≤ lo ≤ %rsp`.
+ret-agree-above : ∀ (xoff : ℕ → ℕ) {am : AddrMap} (mem mem' : X.Memory) (stk : StackMem FS)
+                    (fl : ℕ) (fr : List (Frame × ℕ)) (rs : List ℕ)
+                → (∀ (a : ℕ) → fl ≤ a → X.readMem mem' a ≡ X.readMem mem a)
+                → StackWindows am mem stk fl fr
+                → RetAddrs xoff mem fr rs → RetAddrs xoff mem' fr rs
+ret-agree-above xoff mem mem' stk fl fr             []       ag sw r = tt
+ret-agree-above xoff mem mem' stk fl []             (x ∷ rs) ag sw ()
+ret-agree-above xoff mem mem' stk fl ((f , b) ∷ fr) (x ∷ rs) ag (bd , win , rest) (h , t) =
+  trans (ag (frame-base f + slots b) (≤-trans bd (m≤m+n (frame-base f) (slots b)))) h
+  , ret-agree-above xoff mem mem' stk (frame-base f + slots b) fr rs
+      (λ a le → ag a (≤-trans (≤-trans bd (m≤m+n (frame-base f) (slots b))) le))
+      rest t
+
+-- (2) A write INSIDE the current frame's window — every stack store, whose
+-- slot is below the reservation (`slot < b`, the emitted-code discipline). The
+-- head's own cell is the window END, strictly above the write; everything
+-- older is above that end by the floor thread. This is the D086 gap doing its
+-- job: the return address sits in it, and nothing the frame writes can reach.
+ret-write-in-frame : ∀ (xoff : ℕ → ℕ) {am : AddrMap} (mem : X.Memory) (stk : StackMem FS)
+                       (a : ℕ) (v : X.Word) (fl : ℕ) (f : Frame) (b : ℕ)
+                       (fr : List (Frame × ℕ)) (rs : List ℕ)
+                   → a < frame-base f + slots b
+                   → StackWindows am mem stk fl ((f , b) ∷ fr)
+                   → RetAddrs xoff mem ((f , b) ∷ fr) rs
+                   → RetAddrs xoff (writeMem mem a v) ((f , b) ∷ fr) rs
+ret-write-in-frame xoff mem stk a v fl f b fr []       lt sw r = tt
+ret-write-in-frame xoff {am} mem stk a v fl f b fr (x ∷ rs) lt (bd , win , rest) (h , t) =
+  trans (read-write-miss mem a v (frame-base f + slots b) (λ eq → <⇒≢ lt (sym eq))) h
+  , ret-agree-above xoff mem (writeMem mem a v) stk (frame-base f + slots b) fr rs
+      (λ c le → read-write-miss mem a v c (λ eq → <⇒≢ (<-transˡ lt le) (sym eq)))
+      rest t

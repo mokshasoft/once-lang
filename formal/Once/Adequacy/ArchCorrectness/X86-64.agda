@@ -266,6 +266,11 @@ entry-corr ir = record
       ; stack-eq = ≤-reflexive (sym entry-frame-base) , (λ _ _ _ ()) , tt
       }
   ; pc-off = refl
+  -- NOTHING IS OWED AT ENTRY (D093): `mkFlat` starts the ghost return stack
+  -- empty, so the pending-return component is trivially `tt`. Written out
+  -- rather than left to eta — a field Agda solves silently is a field nobody
+  -- notices going stale.
+  ; ret-eq = tt
   }
 
 -- The ENTRY store-WF: at the entry state the heap and stack are empty and every

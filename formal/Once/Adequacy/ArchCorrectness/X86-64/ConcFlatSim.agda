@@ -549,6 +549,31 @@ postulate
                            ≡ event-of (instr-ctrl (c-ret b)) fs
                              ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
 
+  -- A BODY ENTRY IS REACHED WITH AN EMPTY RESERVATION (D093).
+  --
+  -- The frame a `c-thunk` deepens is the one a CALL entered, and `enter-call`
+  -- reserves nothing (D086). So at a reachable body entry `frame-slots` is 0 —
+  -- which is what keeps the pending return's cell where the call put it
+  -- (`block-step-c-thunk`'s `empty-frame`): the marker moves the frame down by
+  -- its reservation and sets the reservation to it, so the window END lands
+  -- back on the frame's own base, but only if it started there.
+  --
+  -- NOT a correspondence gap — the type mentions no `X.State`. It is a fact
+  -- about the ABSTRACT machine running an EMITTED program, and its discharge is
+  -- a `SegWF`-style induction resting on two emitter facts of the
+  -- `LabelScope.emitted-jump-in-segment` mould:
+  --
+  --   * a body entry is never a FALL-THROUGH target — `ir-to-trace'` always
+  --     emits `c-jmp end` immediately before `c-thunk`, which is exactly what
+  --     stops the parent falling in;
+  --   * nor a JUMP target — `find-label` resolves `c-label`s, and a body entry
+  --     is a different provenance (D082).
+  --
+  -- Then the only way in is the call, which sets `frame-slots := 0`.
+  thunk-entry-empty : ∀ prog (fs : FlatState) (ℓ : LabelId) (bb : ℕ) → RunAt prog fs
+                    → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk ℓ bb))
+                    → frame-slots (falloc fs) ≡ 0
+
   -- THE BRANCH SCRUTINEE DISCIPLINE (D073, replaces `branch-tag-badptr` +
   -- `branch-tag-bad`): at an emitted `c-branch-tag-zero` site the scrutinee
   -- register holds a live heap pointer to a WRITTEN TAG cell — codegen only
@@ -1865,7 +1890,8 @@ mutual
     -- (the post view is the DESCENDED one, so `ccc-step-bs`'s `hv'` is left to
     -- inference — pinning it to `hv` here would demand `lo' ≡ lo hv`)
     ccc-step-bs n ev env prog fs s (instr-ctrl (c-thunk m b))
-      (block-step-c-thunk prog fs s m b cc h ftq lo' lo'≤lo front-lo' lo'≤rsp fits)
+      (block-step-c-thunk prog fs s m b cc h ftq lo' lo'≤lo front-lo' lo'≤rsp fits
+                          (thunk-entry-empty prog fs m b (inv-run wf) ftq))
       wf ftq h refl h
     where
       -- the site's resource fact: the reservation stays above the heap frontier
