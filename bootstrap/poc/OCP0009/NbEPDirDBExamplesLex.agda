@@ -46,6 +46,8 @@ open import poc.OCP0009.NbEPDirDBInj
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBExamplesStrong
   using ( El-homNat; ⊢le-refl; reflTm )
+open import poc.OCP0009.NbEPDirDBExamplesOrd
+  using ( ⊢strong-base'; ⊢strong-step )
 
 ------------------------------------------------------------------------
 -- 1. THE CONTEXT.  `cP : Nat → U` (motive), `μ₁ μ₂ : Nat → Nat` (the two
@@ -102,6 +104,42 @@ lexAuxMot =
           (El (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))
                    (var (vs (vs vz))))))))
 
+
+------------------------------------------------------------------------
+-- 3. THE FOUR BRANCHES, as raw terms.  Generated with a de Bruijn helper
+--    rather than hand-counted — at depth 14 hand-counting is the error.
+--    ★ every branch is `stp x rec₁ rec₂`; only how rec₁/rec₂ discharge
+--      their descent differs, and each is ONE of the two lemmas already
+--      machine-checked in ExamplesOrd (`⊢strong-base'` / `⊢strong-step`)
+--      or a plain `ordtr` composition of two ≤'s.
+------------------------------------------------------------------------
+
+lexZZ : RTm (ε ∙ ∙ ∙ ∙ ∙)
+lexZZ =
+  lam (lam (lam (app (app (app (var (vs (vs (vs (vs vz))))) (var (vs (vs vz)))) (lam (lam (absurd (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs vz)))))) nzero (var vz) (var (vs (vs (vs vz))))))))) (lam (lam (lam (absurd (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz)))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs vz))))))) nzero (var vz) (var (vs (vs (vs vz))))))))))))
+
+lexZS : RTm (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+lexZS =
+  lam (lam (lam (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs vz)))) (lam (lam (absurd (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs vz)))))) nzero (var vz) (var (vs (vs (vs vz))))))))) (lam (lam (lam (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs vz)))) (ordtr (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs (vs vz))))))) nzero (var (vs vz)) (var (vs (vs (vs (vs vz))))))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs (vs vz))))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz) (var (vs (vs (vs vz))))))))))))
+
+lexSZ : RTm (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+lexSZ =
+  lam (lam (lam (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs vz)))) (lam (lam (app (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz)))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs vz)))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz) (var (vs (vs (vs vz)))))) (natrec unit (var vz) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz)))))))) (lam (lam (lam (absurd (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs vz)))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs (vs vz))))))) nzero (var vz) (var (vs (vs (vs vz))))))))))))
+
+lexSS : RTm (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+lexSS =
+  lam (lam (lam (app (app (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs vz)))) (lam (lam (app (app (app (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz)))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs vz)))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var vz) (var (vs (vs (vs vz)))))) (natrec unit (var vz) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz)))))))) (lam (lam (lam (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs vz)))) (ordtr (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs (vs (vs (vs vz))))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz)) (var (vs (vs (vs (vs vz))))))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs (vs vz))))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz) (var (vs (vs (vs vz))))))))))))
+lexZBr : RTm (ε ∙ ∙ ∙ ∙)
+lexZBr = lam (natrec lexZZ lexZS (var vz))
+
+lexSBr : RTm (ε ∙ ∙ ∙ ∙ ∙ ∙)
+lexSBr = lam (natrec lexSZ lexSS (var vz))
+
+lexAuxTm : RTm (ε ∙ ∙ ∙ ∙) → RTm (ε ∙ ∙ ∙ ∙)
+lexAuxTm n = natrec lexZBr lexSBr n
+
+
+
 ------------------------------------------------------------------------
 -- ⚠⚠ CHECKPOINT — THE STATEMENT IS VERIFIED, THE DERIVATION IS NOT.
 --
@@ -110,8 +148,22 @@ lexAuxMot =
 -- wrong — that the lexicographic descent is EXPRESSIBLE in this kernel
 -- with no equality on ℕ and no coproduct.
 --
--- What remains is the derivation, and it is a LARGE mechanical build:
--- four branches at 10–14 de Bruijn levels.  Structure, fully worked out:
+-- ALSO VERIFIED (§3): all four branch TERMS typecheck as raw `RTm`s.
+-- So the shape of the construction is right; what is unfinished is the
+-- TYPING derivation for them.
+--
+-- ⚠ WHERE IT ACTUALLY STICKS — sharper than "it is a big build".  The
+--   descent logic is NOT the problem: each branch's obligations are one
+--   application of `⊢strong-base'`, `⊢strong-step` or plain `⊢ordtr`,
+--   and those were written out and are believed right.  The blocker is
+--   the WEAKENING ARITHMETIC of `stp`'s type: `stp` sits in the context
+--   as `renTy vs^k LStepT`, so after `⊢app stp x` the expected types of
+--   `rec₁`/`rec₂` are `REC1T`/`REC2T` under a `renTy (extR (extR vs))`
+--   chain, and those must line up with the `⊢lam` domains written at
+--   CURRENT context indices.  Getting that by hand-counting failed; it
+--   wants the expected types read off Agda rather than reconstructed.
+--
+-- Structure, fully worked out:
 --
 --   aux : (n₁ n₂ x : Nat) → μ₁ x ≤ n₁ → μ₂ x ≤ n₂ → P x
 --       = natrec on n₁, and INSIDE EACH BRANCH a natrec on n₂.
