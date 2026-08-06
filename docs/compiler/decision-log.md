@@ -6532,3 +6532,89 @@ ends of the same virgin region.
 tries: `BlockStepAt hv hv'` discards `hv` definitionally, so a view-CHANGING
 step already typechecks against `BlockStep hv'`. The only care needed at the
 call site is to leave `hv'` to inference rather than pinning it to the pre-view.
+
+## D091: The Return Correspondence Is Blocked BY the Call, Not Beside It
+
+**Date**: 2026-08-06 · **Plan**: 0.54 rung D · **Status**: landed
+
+### The claim
+
+`events-running-ret` cannot be discharged before `events-running-call`. It is
+not a second, independent correspondence gap that happens to sit next to the
+call gap — it is the SAME gap seen from the other end, and the previous plan for
+it (a `FlatCorr`/`CompiledCorr` component relating the ghost `fret` to the
+machine stack, plus a divergence argument for the empty case) rests on two
+premises that are both false in today's machine.
+
+### The theorem that shows it
+
+    ConcFlatSim.run-no-ret : ∀ prog fs → RunAt prog fs
+                           → (fret fs ≡ []) × (saved-frames (falloc fs) ≡ [])
+
+In EVERY reachable state of an emitted program, both the ghost return stack and
+the saved-frame stack are EMPTY. `instr-call-closure` is the only pusher and its
+abstract semantics is the identity (`exec-abstract instr-call-closure s alloc =
+s , alloc`); every other step either leaves both alone (`flat-same-frames` for
+the frame-free ones, `grow-frame` for `c-thunk` — D086 puts the push at the
+call, so the marker moves the CURRENT frame only) or pops them (`c-ret`).
+`EntryLike` starts both empty.
+
+So no reachable state owes a return, and no closure body is ever entered.
+
+### The two false premises this kills
+
+**"At the outermost return `fret` is genuinely empty, and that is the program
+exiting."** There is no outermost return. `ir-to-trace` emits `c-ret` in exactly
+one place — the `curry` clause's inline body, `c-jmp end ∷ c-thunk ℓ b ∷ body ++
+c-ret b ∷ c-label end ∷ []` — and main's own trace ends by running off the end
+(`events-running-end`), not by returning. Every `c-ret` in an emitted trace is a
+BODY's, reachable only through a call.
+
+**"The `fret`↔stack component is carried like `rsp-eq`."** It is not preserved
+by `c-thunk`. The cell holding the pending return address is the current frame's
+window END, `frame-base + slots frame-slots`; `grow-frame b` moves the base down
+by `slots b` and SETS `frame-slots := b`, so the end is preserved only when the
+pre-state reservation is 0 — true of a frame a CALL just entered (D086), false
+of the caller's frame the marker currently deepens. In today's machine that cell
+is the caller's slot 0, which the emitter writes (`store-at-slot closure-slot`)
+just before the marker. Nor can the empty case claim the cell is UNMAPPED, for
+the same reason. Assuming either would have been the `fresh-x86` mistake again:
+postulating something the machine makes false.
+
+### What landed instead
+
+`events-running-ret` is DELETED as a postulate. Its dispatch clause is the
+theorem `ConcFlatSim.ret-step`, which derives `⊥` from a collision:
+
+    ret-site-owes  (new residual) : a reachable `c-ret` site owes a return —
+                                    landing there means a call entered a body,
+                                    and a call pushes the return pc (D086)
+    run-no-ret     (theorem)      : nothing ever owes a return
+
+Note the new residual's TYPE mentions no `X.State`: by the ledger's own test it
+is an obligation about the ABSTRACT machine, not a correspondence gap. Genuine
+correspondence gaps: 2 → 1 (`events-running-call` alone).
+
+### The honest cost, stated plainly
+
+The pair is stronger than the postulate it replaces: it makes the cone
+INCONSISTENT if a `c-ret` site is ever reachable, where the old postulate would
+merely have been false there. That is a deliberate trade — it states the
+assumption sharply enough to be attacked — and it rests on the emitter's `c-jmp
+end` guard, which is what stops a parent falling into a body.
+
+Two discharge routes, both real:
+
+1. **CFG confinement** (today's machine): prove no reachable pc lies in a body
+   region — the `LabelScope.emitted-jump-in-segment` mould. That DELETES
+   `ret-site-owes` outright, replacing it with the `⊥` directly.
+2. **Model the call** (`events-running-call`): then `instr-call-closure` pushes
+   `fret`/`saved-frames`, `run-no-ret` STOPS TYPECHECKING — which is the check
+   that the model really changed — and `ret-site-owes` becomes provable from the
+   same push, with the return correspondence provable alongside it.
+
+### Consequence for the plan queue
+
+The agreed order (`ret` → `call` → merge) inverts: the call is the only genuine
+correspondence gap left, and it is what unblocks the return. Plans 0.65/0.66
+were already gated on both.

@@ -520,15 +520,41 @@ postulate
                               ++ flat-events n prog (flat-exec-instr instr-call-closure prog fs))
 
   -- (`events-running-thunk` LIVED HERE. It is now a THEOREM — `thunk-step`
-  -- below. `c-ret` still needs the `FlatCorr` component relating the ghost
-  -- `fret` to the machine stack, so it stays.)
-  events-running-ret : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                         prog fs s (b : ℕ) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
-                     → halted (floc fs) ≡ false
-                     → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
-                     → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                           ≡ event-of (instr-ctrl (c-ret b)) fs
-                             ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
+  -- below.)
+  --
+  -- …and `events-running-ret` is GONE TOO (2026-08-06), but for a different
+  -- reason: it is not provable BEFORE the call is modelled, and it is not the
+  -- right thing to assume either. What replaces it is this ONE invariant of the
+  -- ABSTRACT machine — note the type mentions no `X.State` at all, so by the
+  -- ledger's own test it is no longer a correspondence gap:
+  --
+  --   A REACHABLE RETURN OWES A RETURN. Landing on a `c-ret` means a call put
+  --   you inside a closure body, and a call pushes the return pc (D086: the
+  --   CALL owns the return-address slot). So `fret` is a cons there.
+  --
+  -- Composed with the THEOREM `run-no-ret` ("nothing ever owes a return",
+  -- because `instr-call-closure`'s abstract semantics is the identity) this
+  -- gives `⊥` — which is exactly right, and is the whole content of the model
+  -- gap: in today's machine a body is entered by NO ONE, so its return runs in
+  -- no reachable state. `ret-step` below is that composition, and it is a
+  -- theorem. See D091.
+  --
+  -- WHY NOT THE `FlatCorr` COMPONENT the old handoff designed (a field relating
+  -- the ghost `fret` to the cell at the frame's window end): that field is not
+  -- PRESERVED by `c-thunk` in today's machine. `grow-frame` keeps `frame-base +
+  -- slots frame-slots` fixed only when the pre-state reservation is 0 — true of
+  -- a frame a CALL just entered, false of the caller's frame the marker
+  -- currently deepens. Its cell is then the caller's slot 0, which the emitter
+  -- writes (`store-at-slot closure-slot`). So the field would have been assumed
+  -- false, in the `fresh-x86` mould.
+  --
+  -- DISCHARGE: model the call (`events-running-call`). Then `instr-call-closure`
+  -- pushes `fret`/`saved-frames`, `run-no-ret` STOPS being true (as it must),
+  -- and this invariant becomes the honest call/return discipline — provable from
+  -- the same push, and the return correspondence becomes provable with it.
+  ret-site-owes : ∀ prog (fs : FlatState) (b : ℕ) → RunAt prog fs
+                → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+                → Σ ℕ (λ pc' → Σ (List ℕ) (λ rest → fret fs ≡ pc' ∷ rest))
 
   -- THE BRANCH SCRUTINEE DISCIPLINE (D073, replaces `branch-tag-badptr` +
   -- `branch-tag-bad`): at an emitted `c-branch-tag-zero` site the scrutinee
@@ -1044,6 +1070,60 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
 -- the flip. It is FALSE inside a closure body, whose window is the body's own
 -- reservation. Its consumer wants the POSITIONAL form, which `SegWF.seg-cur`
 -- already is, so the two now compose with no intermediate at all.)
+
+------------------------------------------------------------------------
+-- NOTHING EVER OWES A RETURN — the call gap, as a THEOREM about the state
+-- (Plan 0.54 rung D, 2026-08-06).
+--
+-- `fret` and `saved-frames` are PUSHED by exactly one instruction,
+-- `instr-call-closure`, whose abstract semantics is the IDENTITY
+-- (`SMCore.exec-abstract instr-call-closure s alloc = s , alloc`). Every other
+-- step either leaves both alone (`flat-same-frames` for the frame-free ones,
+-- `grow-frame` for `c-thunk`, which moves the CURRENT frame only) or POPS them
+-- (`c-ret`). `EntryLike` starts both empty. So they are empty in EVERY
+-- reachable state — the model gap `events-running-call` names, measured at the
+-- state rather than at the event trace.
+--
+-- This is the theorem the RETURN correspondence collides with; see `ret-step`.
+------------------------------------------------------------------------
+run-no-ret : ∀ prog (fs : FlatState) → RunAt prog fs
+           → (fret fs ≡ []) × (saved-frames (falloc fs) ≡ [])
+run-no-ret prog fs (mkRunAt ir eq hm reach) = go fs reach
+  where
+    go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs'
+       → (fret fs' ≡ []) × (saved-frames (falloc fs') ≡ [])
+    go fs' (reach-start .fs' el _) =
+      proj₁ (proj₂ (proj₂ (proj₂ (proj₂ el)))) , proj₁ (proj₂ (proj₂ (proj₂ el)))
+    go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
+      step (pcView i (frame-op-absurd prog fs'' i (ir , eq) hm ftq))
+      where
+        ih = go fs'' r'
+        step : PcView i
+             → (fret (flat-exec-instr i prog fs'') ≡ [])
+             × (saved-frames (falloc (flat-exec-instr i prog fs'')) ≡ [])
+        -- FRAME-FREE (both the fall-throughs and the jumps): neither stack moves.
+        step (pv-suc ff _) =
+          trans (sf-ret same) (proj₁ ih) , trans (sf-saved same) (proj₂ ih)
+          where same = flat-same-frames i prog fs'' ff
+        step (pv-jump ff _ _ _) =
+          trans (sf-ret same) (proj₁ ih) , trans (sf-saved same) (proj₂ ih)
+          where same = flat-same-frames i prog fs'' ff
+        -- THE BODY MARKER: `grow-frame` deepens the CURRENT frame (D086 puts the
+        -- push at the call, not here), so it pushes neither stack.
+        step (pv-thunk ℓ bb ieq) = thunk-go ieq
+          where thunk-go : i ≡ instr-ctrl (c-thunk ℓ bb)
+                         → (fret (flat-exec-instr i prog fs'') ≡ [])
+                         × (saved-frames (falloc (flat-exec-instr i prog fs'')) ≡ [])
+                thunk-go refl = proj₁ ih , proj₂ ih
+        -- THE RETURN: pops both, and popping an empty stack leaves it empty.
+        step (pv-ret bb ieq) = ret-go ieq
+          where ret-go : i ≡ instr-ctrl (c-ret bb)
+                       → (fret (flat-exec-instr i prog fs'') ≡ [])
+                       × (saved-frames (falloc (flat-exec-instr i prog fs'')) ≡ [])
+                ret-go refl =
+                  do-ret-fret-[] fs'' (proj₁ ih)
+                  , trans (cong saved-frames (do-ret-alloc fs''))
+                          (leave-frame-saved-[] (falloc fs'') (proj₂ ih))
 
 -- ONE FRAME-FREE STEP PRESERVES THE INVARIANT — a THEOREM for EVERY
 -- constructor. Plan 0.63 step 2b SIMPLIFIED this: `lea-slot` joined
@@ -1640,7 +1720,7 @@ mutual
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-thunk m b)) cc wf h ftq =
     thunk-step n ev env prog fs s m b cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-ret b)) cc wf h ftq =
-    events-running-ret n ev env prog fs s b cc wf h ftq
+    ret-step n ev env prog fs s b cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-jmp m)) cc wf h ftq = cjmp-step n ev env prog fs s m cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-branch-scratch-zero m)) cc wf h ftq = branch-step n ev env prog fs s m cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m)) cc wf h ftq = tag-branch-step n ev env prog fs s m cc wf h ftq
@@ -1751,6 +1831,41 @@ mutual
       lo'≤rsp = m⊓n≤n (C.lo hv) (X.readReg (X.State.regs s) rsp ∸ slots b)
       front-lo' : C.hfront hv ≤ lo'
       front-lo' = ⊓-glb (C.front-lo hv) front-rsp
+
+  -- THE RETURN — a THEOREM, by collision (2026-08-06, D091).
+  --
+  -- Two facts about the ABSTRACT machine meet here and cannot both hold of one
+  -- state, so the route is `⊥`:
+  --
+  --   `ret-site-owes` — a reachable `c-ret` is inside a body some call entered,
+  --                     and that call pushed the return pc: `fret` is a cons;
+  --   `run-no-ret`    — a THEOREM: `fret` is `[]` in every reachable state,
+  --                     because `instr-call-closure` is the identity.
+  --
+  -- So this is NOT the frame-op `⊥-elim` pattern (an instruction with no
+  -- producer). `c-ret` IS emitted — `ir-to-trace'`'s `curry` clause emits
+  -- `c-jmp end ∷ c-thunk ℓ b ∷ body ++ c-ret b ∷ c-label end ∷ []`, and the
+  -- jump is exactly what stops the parent falling into the body. What is
+  -- missing is the ENTRY: nothing performs the call, so the body's return runs
+  -- in no reachable state, and the honest correspondence for it cannot be
+  -- written before the call is modelled. Closing `events-running-call` is what
+  -- makes this route live again — and then `run-no-ret` fails to typecheck,
+  -- which is the check that the model really changed.
+  ret-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+               prog fs s (b : ℕ) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
+           → halted (floc fs) ≡ false
+           → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+           → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                 ≡ event-of (instr-ctrl (c-ret b)) fs
+                   ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
+  ret-step {hv} n ev env prog fs s b cc wf h ftq =
+    ⊥-elim (clash (ret-site-owes prog fs b (inv-run wf) ftq)
+                  (proj₁ (run-no-ret prog fs (inv-run wf))))
+    where clash : Σ ℕ (λ pc' → Σ (List ℕ) (λ rest → fret fs ≡ pc' ∷ rest))
+                → fret fs ≡ [] → ⊥
+          clash (pc' , rest , owes) empty = nil≢cons (trans (sym empty) owes)
+            where nil≢cons : ∀ {A : Set} {x : ℕ} {xs : List ℕ} → [] ≡ x ∷ xs → A
+                  nil≢cons ()
 
   -- CONTROL c-jmp: case the found label (J-bridge on find-label, no with). Found ⇒
   -- do-jump just bumps fpc (halted preserved: hpost=h) and the PROVEN block-step-c-jmp
