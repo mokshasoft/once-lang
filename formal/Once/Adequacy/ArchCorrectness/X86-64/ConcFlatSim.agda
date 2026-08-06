@@ -508,10 +508,12 @@ postulate
   -- compiles to FLAT control, `instr-case-on-tag` has no producer, and the
   -- nested-trace correspondence it demanded is not needed at all — the
   -- dispatch clause is `⊥`-elim like the frame ops.
-  -- THE CLOSURE CALL — a MODEL gap: `exec-abstract instr-call-closure = s , alloc`
-  -- (identity) while the concrete `call *0x8(%r12)` transfers control to the
-  -- closure body. No proof can bridge that; the abstract machine has to model
-  -- the call (or codegen has to inline it) first.
+  -- THE CLOSURE CALL. No longer a MODEL gap — D092 modelled it, so both sides
+  -- now describe the same transition and `FlatComposition.find-thunk-pres`
+  -- already proves the concrete half of the transfer. What is left is D081: a
+  -- code address encodes as `idx ℓ` (the LABEL NUMBER) while the concrete
+  -- `call` jumps to the compiled address, so the two agree only once the
+  -- encoding resolves the label. See D095's closing note.
   events-running-call : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                           prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
                       → fetch prog (fpc fs) ≡ just instr-call-closure
@@ -522,52 +524,41 @@ postulate
   -- (`events-running-thunk` LIVED HERE. It is now a THEOREM — `thunk-step`
   -- below.)
   --
-  -- THE RETURN (D091 → D092). This postulate was deleted on 2026-08-06 and is
-  -- BACK, deliberately, and the round trip is the point:
+  -- THE RETURN'S TWO INPUTS (D095). `events-running-ret` is GONE — the
+  -- correspondence for `c-ret` is now the theorem `ret-step` below, built on
+  -- the proven `block-step-c-ret`. What is left are two facts about the
+  -- ABSTRACT machine running an EMITTED program; neither mentions `X.State`,
+  -- so neither is a correspondence gap.
   --
-  --   * D091 showed it was not provable and not honestly assumable — no
-  --     reachable state fetched a `c-ret`, because nothing performed a call.
-  --     Its clause became `⊥` by collision (`run-no-ret` × `ret-site-owes`).
-  --   * D092 MODELLED THE CALL. `run-no-ret` is now false and deleted, the
-  --     collision is gone, and a body's return runs in reachable states — so
-  --     the correspondence for it is a real, live obligation again.
-  --
-  -- It is no longer a MODEL GAP: `flat-exec-instr (instr-ctrl (c-ret b))` and
-  -- `add rsp, 8b ; ret` now describe the same transition, and both sides of
-  -- the equation are meaningful. What is missing is the DATA: a `CompiledCorr`
-  -- component relating the ghost `fret` to the cells the concrete `call`
-  -- wrote. That component is preservable NOW and was not before — `enter-call`
-  -- fixes the frame's window END (base + slots frame-slots) at the very cell
-  -- the call pushed, and `grow-frame` keeps it there because the entered frame
-  -- reserves 0 (D086). That is the next piece of work, with `find-thunk-pres`
-  -- (`FlatComposition`) already supplying the concrete side of the transfer.
-  events-running-ret : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                         prog fs s (b : ℕ) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
-                     → halted (floc fs) ≡ false
-                     → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
-                     → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                           ≡ event-of (instr-ctrl (c-ret b)) fs
-                             ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
+  -- (1) A REACHABLE RETURN OWES A RETURN. A `c-ret` sits inside a closure body,
+  -- and a body is entered only by a CALL, which pushes. (This is `ret-site-owes`
+  -- from D091 — the same statement, but now TRUE-and-provable rather than
+  -- colliding with `run-no-ret`: the call is modelled.) Route: the static
+  -- segment stack and the dynamic `fret` have the same depth (with the same
+  -- one-instant exception `SegCur` already names), and `SlotBudget`'s
+  -- neutrality says an emitted body is a matched `c-thunk`/`c-ret` bracket —
+  -- so at a `c-ret` the static stack is non-empty, hence so is `fret`.
+  ret-site-owes : ∀ prog (fs : FlatState) (b : ℕ) → RunAt prog fs
+                → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+                → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
 
-  -- THE EMITTER'S GUARD, as one fact (D094). `ir-to-trace'` emits a closure
-  -- body as
-  --
-  --     … ++ c-jmp end ∷ c-thunk ℓ bb ∷ body ++ c-ret bb ∷ c-label end ∷ []
-  --
-  -- and the JUMP is exactly what stops the parent falling into the body. So a
-  -- body entry is never at position 0 and always has a `c-jmp` immediately
-  -- before it. Stated as one Σ so both halves come from one witness: `p ≡ suc q`
-  -- rules out the entry pc, and the fetch at `q` rules out every fall-through.
-  --
-  -- CODEGEN-class (only `ir-to-trace` in the type — no `X.State`, no
-  -- `FlatState`). Discharge: the structural induction over `ir-to-trace'` in
-  -- the `FrameFreeTrace` / `LabelScope` mould, with a `++` lemma at each splice
-  -- and the observation that no clause's trace BEGINS with a body entry.
+  -- THE EMITTER'S GUARD (D094): in an emitted trace a `c-thunk` is at `suc q`
+  -- with a `c-jmp` at `q` — the jump that stops the parent falling into the
+  -- body. CODEGEN-class (only `ir-to-trace` in the type). Discharge: the
+  -- structural induction over `ir-to-trace'`, shape written up in D094.
   emitted-thunk-guarded : ∀ (ir : IR Unit Unit) (p : ℕ) (ℓ : LabelId) (bb : ℕ)
                         → fetch (ir-to-trace ir) p ≡ just (instr-ctrl (c-thunk ℓ bb))
                         → Σ ℕ (λ q → (p ≡ suc q)
                               × Σ LabelId (λ m → fetch (ir-to-trace ir) q
                                                    ≡ just (instr-ctrl (c-jmp m))))
+
+  -- (2) THE BRACKET: the budget a return RELEASES is the reservation in force.
+  -- `ir-to-trace'` emits `c-thunk ℓ bb … c-ret bb` — one `bb`, written twice —
+  -- so this is the emitter's own bracket, and it belongs with
+  -- `emitted-thunk-guarded` in the same induction over `ir-to-trace'`.
+  ret-budget-matches : ∀ prog (fs : FlatState) (b : ℕ) → RunAt prog fs
+                     → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+                     → b ≡ frame-slots (falloc fs)
 
   -- THE BRANCH SCRUTINEE DISCIPLINE (D073, replaces `branch-tag-badptr` +
   -- `branch-tag-bad`): at an emitted `c-branch-tag-zero` site the scrutinee
@@ -1930,7 +1921,7 @@ mutual
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-thunk m b)) cc wf h ftq =
     thunk-step n ev env prog fs s m b cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-ret b)) cc wf h ftq =
-    events-running-ret n ev env prog fs s b cc wf h ftq
+    ret-step n ev env prog fs s b cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-jmp m)) cc wf h ftq = cjmp-step n ev env prog fs s m cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-branch-scratch-zero m)) cc wf h ftq = branch-step n ev env prog fs s m cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-branch-tag-zero m)) cc wf h ftq = tag-branch-step n ev env prog fs s m cc wf h ftq
@@ -2042,6 +2033,48 @@ mutual
       lo'≤rsp = m⊓n≤n (C.lo hv) (X.readReg (X.State.regs s) rsp ∸ slots b)
       front-lo' : C.hfront hv ≤ lo'
       front-lo' = ⊓-glb (C.front-lo hv) front-rsp
+
+  -- THE RETURN — A THEOREM (D095). `block-step-c-ret` does the machine work
+  -- (the `add` lands `%rsp` on the pending return's cell, the `ret` pops it and
+  -- jumps to exactly the abstract `fpc`); what this adds is the two facts about
+  -- the ABSTRACT run that pick out the shapes it needs — the return stack is a
+  -- cons, and the released budget is the reservation in force. The frame stack
+  -- comes for free: `RetMatch` pairs it with `fret`, so a cons there IS a cons
+  -- here. That pairing is exactly what D086 put it there for.
+  ret-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+               prog fs s (b : ℕ) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
+           → halted (floc fs) ≡ false
+           → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+           → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                 ≡ event-of (instr-ctrl (c-ret b)) fs
+                   ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
+  ret-step {hv} n ev env prog fs s b cc wf h ftq = go (ret-site-owes prog fs b (inv-run wf) ftq)
+    where
+      -- `RetMatch` pairs the two stacks, so a cons `fret` forces a cons frame
+      -- stack — J-style, because the pairing is data.
+      saved-cons : ∀ {frs' rs'} → RetMatch prog (ir-stack-budget (run-ir (inv-run wf))) frs' rs'
+                 → ∀ rpc rest → rs' ≡ rpc ∷ rest
+                 → Σ Frame (λ f₀ → Σ ℕ (λ b₀ → Σ (List (Frame × ℕ)) (λ frs → frs' ≡ (f₀ , b₀) ∷ frs)))
+      saved-cons rm-[] rpc rest ()
+      saved-cons (rm-∷ {f} {b'} {rpc'} {frs} {rs} _ _ _) rpc rest e = f , b' , frs , refl
+      go : Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
+         → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+               ≡ event-of (instr-ctrl (c-ret b)) fs
+                 ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
+      go (rpc , rest , req) = go-sv (saved-cons (seg-stack (run-seg-wf prog fs (inv-run wf))) rpc rest req)
+        where
+          go-sv : Σ Frame (λ f₀ → Σ ℕ (λ b₀ → Σ (List (Frame × ℕ))
+                    (λ frs → saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs)))
+                → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                      ≡ event-of (instr-ctrl (c-ret b)) fs
+                        ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
+          go-sv (f₀ , b₀ , frs , feq) =
+            ccc-step-bs n ev env prog fs s (instr-ctrl (c-ret b))
+              (block-step-c-ret prog fs s b rpc rest f₀ b₀ frs cc h ftq req
+                 (ret-budget-matches prog fs b (inv-run wf) ftq) feq)
+              wf ftq h refl hpost
+            where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) ≡ false
+                  hpost rewrite req = h
 
   -- CONTROL c-jmp: case the found label (J-bridge on find-label, no with). Found ⇒
   -- do-jump just bumps fpc (halted preserved: hpost=h) and the PROVEN block-step-c-jmp

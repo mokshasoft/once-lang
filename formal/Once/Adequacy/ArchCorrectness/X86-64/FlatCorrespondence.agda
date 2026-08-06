@@ -282,10 +282,21 @@ StackWindows am mem stk fl ((f , b) ∷ fr) =
 -- (`ConcFlatSim.RetMatch` pairs them), so that row is `⊥`; the outermost frame
 -- owes nothing, which is the `⊤` row.
 ------------------------------------------------------------------------
+-- …and WHERE THE NEXT FRAME STARTS. The cell is not merely somewhere in the
+-- gap: it IS the gap. A call shifts by exactly one slot and stores the return
+-- address in it, so the caller's base is one slot above the callee's window
+-- END — an EQUALITY, where `StackWindows` threads only `≤`. The return needs
+-- exactly this (`%rsp` after `add rsp,8b ; ret` must land on the caller's
+-- base), and it belongs here because it is a fact about the same slot.
+GapNext : ℕ → List (Frame × ℕ) → Set
+GapNext e []              = ⊤
+GapNext e ((f' , b') ∷ _) = e + slot-size ≡ frame-base f'
+
 RetAddrs : (ℕ → ℕ) → X.Memory → List (Frame × ℕ) → List ℕ → Set
 RetAddrs xoff mem fr             []       = ⊤
 RetAddrs xoff mem ((f , b) ∷ fr) (r ∷ rs) =
   (X.readMem mem (frame-base f + slots b) ≡ just (xoff r))
+  × GapNext (frame-base f + slots b) fr
   × RetAddrs xoff mem fr rs
 RetAddrs xoff mem []             (r ∷ rs) = ⊥
 
@@ -300,9 +311,11 @@ ret-head : ∀ (xoff : ℕ → ℕ) (mem : X.Memory) (f f' : Frame) (b b' : ℕ)
          → frame-base f' + slots b' ≡ frame-base f + slots b
          → RetAddrs xoff mem ((f , b) ∷ fr) rs
          → RetAddrs xoff mem ((f' , b') ∷ fr) rs
-ret-head xoff mem f f' b b' fr []       eq r       = tt
-ret-head xoff mem f f' b b' fr (r ∷ rs) eq (h , t) =
-  subst (λ a → X.readMem mem a ≡ just (xoff r)) (sym eq) h , t
+ret-head xoff mem f f' b b' fr []       eq r           = tt
+ret-head xoff mem f f' b b' fr (r ∷ rs) eq (h , g , t) =
+  subst (λ a → X.readMem mem a ≡ just (xoff r)) (sym eq) h
+  , subst (λ e → GapNext e fr) (sym eq) g
+  , t
 
 ------------------------------------------------------------------------
 -- The correspondence: a FlatState and an x86 State agree on the four
@@ -1338,6 +1351,49 @@ sim-dealloc-stack {hv} n newFlags fs s corr restores = record
   ; stack-eq = windows-leave (falloc fs) (lo hv) (stack-eq corr) }
 
 ------------------------------------------------------------------------
+-- THE RETURN (D095): `c-ret b` ↔ `add rsp, 8b ; ret`.
+--
+-- Almost exactly `sim-dealloc-stack` — both release the current frame and land
+-- `%rsp` on the caller's base — with two differences that are the whole point
+-- of the return: `%rsp` rises by one slot MORE (the `ret` pops the address the
+-- call pushed), and the pc goes to that address rather than to the next
+-- instruction. The pc is `CompiledCorr`'s business, so it enters here only as
+-- the opaque `npc`.
+--
+-- `restores` is not a fresh assumption: it is `RetAddrs`' own `GapNext`, read
+-- through `rsp-eq`. That is why the gap lives in the component — the return is
+-- the one step that needs it as an EQUALITY.
+------------------------------------------------------------------------
+sim-ret : {hv : HeapView} (b rpc : ℕ) (rest : List ℕ) (newFlags : X.Flags) (npc : ℕ)
+          (fs : FlatState) (s : X.State) → FlatCorr hv fs s
+        → fret fs ≡ rpc ∷ rest
+        → X.readReg (xregs s) rsp + slots b + slot-size
+            ≡ frame-base (current-frame (leave-frame (falloc fs)))
+        → FlatCorr hv (do-ret (fret fs) fs)
+                   (mkstate (xwriteReg (xwriteReg (xregs s) rsp (X.readReg (xregs s) rsp + slots b))
+                                       rsp (X.readReg (xregs s) rsp + slots b + slot-size))
+                            (memory s) newFlags npc (xhalted s))
+sim-ret {hv} b rpc rest newFlags npc fs s corr req restores rewrite req = record
+  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr
+  ; rbx-eq = rbx-eq corr ; r14-eq = r14-eq corr
+  ; halt-eq = halt-eq corr ; rsp-eq = restores ; r15-eq = r15-eq corr
+  -- `%rsp` only RISES, so the high-water mark stays below it and the freed
+  -- cells keep their contents — the dead memory the mark exists to remember.
+  ; lo-le = ≤-trans (lo-le corr)
+              (≤-trans (m≤m+n (X.readReg (xregs s) rsp) (slots b))
+                       (m≤m+n (X.readReg (xregs s) rsp + slots b) slot-size))
+  ; untouched = untouched corr
+  ; dom-fresh = λ {hl} d → subst (λ m → ref-id (heap-ref hl) < m)
+                                 (sym (leave-frame-heap-ref (falloc fs))) (dom-fresh corr d)
+  ; dom-written = dom-written corr
+  ; dom-sized = λ hl lt → dom-sized corr hl
+                  (subst (λ szs → heap-offset hl < szs (ref-id (heap-ref hl)))
+                         (leave-frame-block-size (falloc fs)) lt)
+  ; heap-eq = heap-eq corr
+  -- drop the callee's frame and the caller's window is what is left
+  ; stack-eq = windows-leave (falloc fs) (lo hv) (stack-eq corr) }
+
+------------------------------------------------------------------------
 -- FRAME PUSH / POP: the `%rbp` frame model is a FOSSIL — `sim-push-frame`
 -- and `sim-pop-frame` were deleted 2026-08-04 together with their
 -- block-steps. The live model is frameless and `%rsp`-relative; Plan 0.63's
@@ -1890,8 +1946,9 @@ ret-agree-above : ∀ (xoff : ℕ → ℕ) {am : AddrMap} (mem mem' : X.Memory) 
                 → RetAddrs xoff mem fr rs → RetAddrs xoff mem' fr rs
 ret-agree-above xoff mem mem' stk fl fr             []       ag sw r = tt
 ret-agree-above xoff mem mem' stk fl []             (x ∷ rs) ag sw ()
-ret-agree-above xoff mem mem' stk fl ((f , b) ∷ fr) (x ∷ rs) ag (bd , win , rest) (h , t) =
+ret-agree-above xoff mem mem' stk fl ((f , b) ∷ fr) (x ∷ rs) ag (bd , win , rest) (h , g , t) =
   trans (ag (frame-base f + slots b) (≤-trans bd (m≤m+n (frame-base f) (slots b)))) h
+  , g
   , ret-agree-above xoff mem mem' stk (frame-base f + slots b) fr rs
       (λ a le → ag a (≤-trans (≤-trans bd (m≤m+n (frame-base f) (slots b))) le))
       rest t
@@ -1909,8 +1966,9 @@ ret-write-in-frame : ∀ (xoff : ℕ → ℕ) {am : AddrMap} (mem : X.Memory) (s
                    → RetAddrs xoff mem ((f , b) ∷ fr) rs
                    → RetAddrs xoff (writeMem mem a v) ((f , b) ∷ fr) rs
 ret-write-in-frame xoff mem stk a v fl f b fr []       lt sw r = tt
-ret-write-in-frame xoff {am} mem stk a v fl f b fr (x ∷ rs) lt (bd , win , rest) (h , t) =
+ret-write-in-frame xoff {am} mem stk a v fl f b fr (x ∷ rs) lt (bd , win , rest) (h , g , t) =
   trans (read-write-miss mem a v (frame-base f + slots b) (λ eq → <⇒≢ lt (sym eq))) h
+  , g
   , ret-agree-above xoff mem (writeMem mem a v) stk (frame-base f + slots b) fr rs
       (λ c le → read-write-miss mem a v c (λ eq → <⇒≢ (<-transˡ lt le) (sym eq)))
       rest t

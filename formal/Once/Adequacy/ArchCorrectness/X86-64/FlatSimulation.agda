@@ -53,7 +53,7 @@ open X using (mkstate; execInstr; mkflags; _<ᵇ_; writeMem; updateFlags)
   renaming (readReg to xreadReg; writeReg to xwriteReg; readMem to xreadMem)
 open X.State using (memory; flags; pc) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax
-  using (rax; rbx; rsi; rdi; rsp; rbp; r14; r15; rcx; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; push; pop; lea; rip+label; r12; base; base+disp; slots; slot-size)
+  using (rax; rbx; rsi; rdi; rsp; rbp; r14; r15; rcx; Reg; Operand; Program; reg; imm; mem; mov; add; sub; cmp; label; jmp; je; push; pop; lea; rip+label; r12; base; base+disp; slots; slot-size; ret)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (true; false)
 open import Data.List using (_∷_; []; _++_; drop; length)
@@ -65,7 +65,7 @@ open C using (HeapView; haddr; HDom; hfront)
 open import Once.CCC.Label using (once; thunk)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
   using (x86-off; x86-len; x86-off-suc; fetch-block-head; find-label-corr; fetch-block-2nd; fetch-block-3rd; fetch-block-4th; fetch-block-5th; fetch-block-6th)
-open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-add-rr; step-sub-ri; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-push; step-pop; step-lea)
+open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-add-rr; step-sub-ri; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-push; step-pop; step-lea; step-ret)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Data.Empty using (⊥)
 open import Data.Nat using (zero; suc)
@@ -73,7 +73,7 @@ open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-comm; ∸-+-asso
                                       ; +-monoʳ-<; *-monoˡ-<
                                       ; <⇒≢; <-transˡ; ≤-trans; m∸n≤m; m≤m+n; m∸n+n≡m)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst; subst₂)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open import Once.Semantics.FloatBits using (float-bits)
 open import Once.Type using (fits-float)
@@ -740,6 +740,106 @@ block-step-c-thunk {hv} prog fs s n b cc h ft lo' lo'≤lo front-lo' lo'≤rsp f
                          (frame-slots (falloc fs)) b
                          (saved-frames (falloc fs)) (fret fs)
                          addr-eq (ret-eq cc)
+
+------------------------------------------------------------------------
+-- THE RETURN (D095): `c-ret b` ↔ `add rsp, 8b ; ret`.
+--
+-- Two x86 instructions, one abstract step, and the FIRST step of the
+-- correspondence that reads the pending-return component: the `ret` pops
+-- exactly the cell `RetAddrs` describes, at exactly the address the `add`
+-- leaves `%rsp` on. Everything the proof needs comes from the component:
+--
+--   the ADDRESS  — `rsp-eq` puts `%rsp` at the frame's base, the bracket
+--                  premise `b ≡ frame-slots` makes `add rsp,8b` land on the
+--                  window END, which is where the call put the address;
+--   the VALUE    — `RetAddrs`' head says that cell holds `x86-off prog rpc`,
+--                  so the concrete pc lands where the abstract `fpc` does;
+--   the NEW %rsp — `GapNext` says the caller's base is one slot above that
+--                  cell, which is exactly where `ret` leaves `%rsp` (rsp-eq
+--                  for the post-state);
+--   the TAIL     — the post-state's component IS the pre-state's tail, since
+--                  `frames-of (leave-frame alloc)` is `saved-frames alloc`.
+------------------------------------------------------------------------
+block-step-c-ret : ∀ {hv : HeapView} prog fs s b rpc rest f₀ b₀ frs
+  → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+  → fret fs ≡ rpc ∷ rest
+  -- THE BRACKET (D095): the budget a return releases IS the reservation in
+  -- force — `ir-to-trace'` emits `c-thunk ℓ bb … c-ret bb`.
+  → b ≡ frame-slots (falloc fs)
+  -- …and the frame it returns INTO, from the same `RetMatch` pairing
+  → saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs
+  → BlockStep hv prog fs s (instr-ctrl (c-ret b))
+block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq =
+  post-ret , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = retPost }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    -- step 1: the frame release
+    fetch-add : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (add (reg rsp) (imm (slots b)))
+    fetch-add = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-ret b)) ft)
+    newFlags : X.Flags
+    newFlags = updateFlags (xreadReg (xregs s) rsp + slots b) (xreadReg (xregs s) rsp)
+    post-add : X.State
+    post-add = record s { regs = xwriteReg (xregs s) rsp (xreadReg (xregs s) rsp + slots b)
+                        ; flags = newFlags ; pc = pc s + 1 }
+    step-add : X.step-not-halted (compile-trace prog) s ≡ just post-add
+    step-add = step-add-ri {compile-trace prog} {s} {rsp} {slots b} fetch-add
+    -- THE COMPONENT, projected at the cons shape of `fret`
+    comp : C.RetAddrs (x86-off prog) (X.State.memory s)
+                      ((current-frame (falloc fs) , frame-slots (falloc fs)) ∷ saved-frames (falloc fs))
+                      (rpc ∷ rest)
+    comp = subst (λ rl → C.RetAddrs (x86-off prog) (X.State.memory s)
+                           (C.frames-of (falloc fs)) rl) req (ret-eq cc)
+    -- …and the address it speaks about IS where the `add` left `%rsp`
+    addr-eq : X.readReg (X.State.regs post-add) rsp
+            ≡ frame-base FS (current-frame (falloc fs)) + slots (frame-slots (falloc fs))
+    addr-eq = trans (cong (_+ slots b) (C.rsp-eq dc)) (cong (λ z → frame-base FS (current-frame (falloc fs)) + slots z) beq)
+    rd : X.readMem (X.State.memory post-add) (X.readReg (X.State.regs post-add) rsp)
+       ≡ just (x86-off prog rpc)
+    rd = trans (cong (X.readMem (X.State.memory s)) addr-eq) (proj₁ comp)
+    -- step 2: the pop-and-jump
+    fetch-ret : X.fetch (compile-trace prog) (X.State.pc post-add) ≡ just ret
+    fetch-ret = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) po)
+                      (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-ret b)) ft)
+    post-ret : X.State
+    post-ret = record post-add { regs = xwriteReg (X.State.regs post-add) rsp
+                                          (X.readReg (X.State.regs post-add) rsp + slot-size)
+                               ; pc = x86-off prog rpc }
+    step-r : X.step-not-halted (compile-trace prog) post-add ≡ just post-ret
+    step-r = step-ret {compile-trace prog} {post-add} {x86-off prog rpc} fetch-ret rd
+    exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-ret
+    exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-add} halt-s step-add halt-s)
+                    (exec-1 {compile-trace prog} {0} {post-add} {post-ret} halt-s step-r halt-s)
+    -- THE CALLER'S BASE is one slot above that cell — `GapNext`, read through
+    -- the frame list's shape.
+    gap : frame-base FS (current-frame (falloc fs)) + slots (frame-slots (falloc fs)) + slot-size
+        ≡ frame-base FS f₀
+    gap = subst (λ fr → C.GapNext (frame-base FS (current-frame (falloc fs))
+                                   + slots (frame-slots (falloc fs))) fr)
+                feq (proj₁ (proj₂ comp))
+    base-leave : saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs
+               → frame-base FS (current-frame (leave-frame (falloc fs))) ≡ frame-base FS f₀
+    base-leave e rewrite e = refl
+    restores : X.readReg (xregs s) rsp + slots b + slot-size
+             ≡ frame-base FS (current-frame (leave-frame (falloc fs)))
+    restores = trans (cong (_+ slot-size) addr-eq) (trans gap (sym (base-leave feq)))
+    dataPost : C.FlatCorr hv (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) post-ret
+    dataPost = C.sim-ret b rpc rest newFlags (x86-off prog rpc) fs s dc req restores
+    pco' : X.State.pc post-ret ≡ x86-off prog (fpc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
+    pco' = cong (x86-off prog) (sym (do-ret-pc-∷ fs rpc rest req))
+    retPost : C.RetAddrs (x86-off prog) (X.State.memory post-ret)
+                         (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)))
+                         (fret (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
+    retPost = subst₂ (C.RetAddrs (x86-off prog) (X.State.memory s))
+                     (sym (trans (cong C.frames-of (do-ret-alloc fs)) (frames-leave feq)))
+                     (sym (do-ret-fret-∷ fs rpc rest req))
+                     (proj₂ (proj₂ comp))
+      where frames-leave : saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs
+                         → C.frames-of (leave-frame (falloc fs)) ≡ saved-frames (falloc fs)
+            frames-leave e rewrite e = refl
 
 -- dealloc-stack: free n slots ↔ `add rsp, n*8`. At a full-frame exit
 -- (frame-slots ≡ n), sim-dealloc-stack's post bound is vacuous. Uses step-add-ri.

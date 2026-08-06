@@ -180,6 +180,18 @@ step-cmp-mi : ∀ {prog s m n v}
               ≡ just (record s { flags = mkflags (v ≡ᵇ n) (v <ᵇ n) false ; pc = pc s + 1 })
 step-cmp-mi ft rd rewrite ft | rd = refl
 
+-- THE RETURN (D095): pop the address at `[%rsp]`, raise `%rsp` by a slot and
+-- jump there. Same shape as `step-mov-rm` — a fetch and a READ — which is why
+-- the correspondence needs the pending-return component before it can use
+-- this: the read is exactly the cell `RetAddrs` describes.
+step-ret : ∀ {prog s v}
+         → fetch prog (pc s) ≡ just ret
+         → readMem (memory s) (readReg (regs s) rsp) ≡ just v
+         → step-not-halted prog s
+           ≡ just (record s { regs = writeReg (regs s) rsp (readReg (regs s) rsp + slot-size)
+                            ; pc = v })
+step-ret ft rd rewrite ft | rd = refl
+
 -- add reg, imm
 step-add-ri : ∀ {prog s r n}
             → fetch prog (pc s) ≡ just (add (reg r) (imm n))
