@@ -163,6 +163,27 @@ lexAuxTm n = natrec lexZBr lexSBr n
 --   CURRENT context indices.  Getting that by hand-counting failed; it
 --   wants the expected types read off Agda rather than reconstructed.
 --
+-- ★ THE PROBE TECHNIQUE THAT WORKS IN BATCH MODE (use this, it is the
+--   poor man's agda-mode goal display).  Put a deliberately wrong term
+--   where the derivation goes — `⊢nzero` does fine — and Agda's
+--   `UnequalTerms` error prints the EXPECTED type in full:
+--
+--     probe : (Γ₅ ▹ Nat) ⊢ lexZZ ∷ subTy (single nzero) M0lex
+--     probe = ⊢lam ty-Nat (⊢lam … (⊢lam … (⊢app (⊢app (⊢app stp x) ⊢nzero) …)))
+--                                                                 ↑ prints it
+--
+--   That told us the expected `rec₁` type is
+--     `subTy (single x) (renTy (extR vs)⁵ REC1T)`,
+--   which confirms the AMBIENT indices (μ₂/μ₁/cP at 5/6/7) are right.
+--   The residual mismatch is INSIDE `REC1T`/`LStepT`'s own indexing —
+--   Agda's expected result has `cP` one binder deeper than written.
+--
+-- ⚠ AND A CORRECTION worth keeping: "the statement typechecks" is much
+--   WEAKER evidence than it sounds.  `REC1T : RTy (ε ∙ ∙ ∙ ∙)` is
+--   well-formed for ANY well-scoped index assignment — it says the
+--   indices are in SCOPE, not that they denote μ₁/x/cP.  The types
+--   themselves are still a suspect, not just the derivation.
+--
 -- Structure, fully worked out:
 --
 --   aux : (n₁ n₂ x : Nat) → μ₁ x ≤ n₁ → μ₂ x ≤ n₂ → P x
