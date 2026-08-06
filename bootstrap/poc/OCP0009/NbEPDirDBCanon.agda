@@ -73,7 +73,7 @@ open import poc.OCP0009.NbEPDirDBInj
         ; Π-reduct; ΠRed; mkΠRed; Σ-reduct; ΣRed; mkΣRed; Id-reduct )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( gen-lam; gen-app; gen-absurd; gen-pair; gen-fst; gen-snd; gen-ap
-        ; gen-⌜Id⌝; gen-idrefl; gen-jsub; gen-nsuc; gen-natrec
+        ; gen-⌜Id⌝; gen-idrefl; gen-jsub; gen-nsuc; gen-natrec; gen-ordtr
         ; gen-var; gen-hrefl; gen-⌜Π⌝; gen-⌜Σ⌝; gen-⌜Hom⌝
         ; gen-tr; TrGen; tgC; tgU; TrInv; mkTrInv; TrInvU; mkTrInvU
         ; StkAmb; st-el; st-hom; stamb-red; homred-inv
@@ -620,6 +620,7 @@ szb (jsub d p e)   = sz d + sz p + sz e
 szb unit           = zero
 szb nzero          = zero
 szb (nsuc n)       = sz n
+szb (ordtr a t u p q) = sz a + sz t + sz u + sz p + sz q
 szb (natrec z w n) = sz z + sz w + sz n
 
 szb-ren : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : RTm Γ) → szb (renTm ρ t) ≡ szb t
@@ -654,6 +655,11 @@ szb-ren ρ nzero         = refl
 szb-ren ρ (nsuc n)      = sz-ren ρ n
 szb-ren ρ (natrec z w n) =
   cong₂ _+_ (cong₂ _+_ (sz-ren ρ z) (sz-ren _ w)) (sz-ren ρ n)
+szb-ren ρ (ordtr a t u p q) =
+  cong₂ _+_ (cong₂ _+_ (cong₂ _+_ (cong₂ _+_ (sz-ren ρ a) (sz-ren ρ t))
+                                  (sz-ren ρ u))
+                       (sz-ren ρ p))
+            (sz-ren ρ q)
 
 ------------------------------------------------------------------------
 -- 3. CANONICAL SHAPES and the progress verdicts.  There is NO `tr`
@@ -880,6 +886,64 @@ canBase⊥ d (can-nsuc n) with gen-nsuc d
 --    step outright (there IS no canonical eliminator form).
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- ★★ WF stage E: the CANONICAL FORMS OF `Nat`, factored out.
+--
+-- `natrecS` inlines this enumeration once; `ordtr` would need it THREE
+-- times (once per bound), so it becomes a lemma.  Every non-numeral
+-- canonical form is refuted by a type clash, exactly as there.
+------------------------------------------------------------------------
+data NatShape : RTm ε → Set where
+  ns-zero : NatShape nzero
+  ns-suc  : (k : RTm ε) → NatShape (nsuc k)
+
+canNat : {n : RTm ε} → ◇ ⊢ n ∷ Nat → Canon n → NatShape n
+canNat d can-nzero    = ns-zero
+canNat d (can-nsuc k) = ns-suc k
+canNat d (can-lam f) with gen-lam d
+... | _ , (_ , (cv , _)) = ⊥-elim (NatΠ-clash cv)
+canNat d (can-pair a b) with gen-pair d
+... | _ , (_ , (cv , _)) = ⊥-elim (NatΣ-clash cv)
+canNat d can-cb    = ⊥-elim (NatU-clash (gen-⌜base⌝ d))
+canNat d can-cNat  = ⊥-elim (NatU-clash (gen-⌜Nat⌝ d))
+canNat d can-cUnit = ⊥-elim (NatU-clash (gen-⌜Unit⌝ d))
+canNat d (can-cΠ x y) with gen-⌜Π⌝ d
+... | _ , (_ , cv) = ⊥-elim (NatU-clash cv)
+canNat d (can-cΣ x y) with gen-⌜Σ⌝ d
+... | _ , (_ , cv) = ⊥-elim (NatU-clash cv)
+canNat d (can-cH x y z) with gen-⌜Hom⌝ d
+... | _ , (_ , (_ , cv)) = ⊥-elim (NatU-clash cv)
+canNat d (can-cId x y z) with gen-⌜Id⌝ d
+... | _ , (_ , (_ , cv)) = ⊥-elim (NatU-clash cv)
+canNat d (can-hrefl c s) with gen-hrefl d
+... | _ , (_ , cv) = ⊥-elim (HomNat-clash (csymᵀ cv))
+canNat d (can-idrefl c s) with gen-idrefl d
+... | _ , (_ , cv) = ⊥-elim (IdNat-clash (csymᵀ cv))
+canNat d can-unit = ⊥-elim (UnitNat-clash (csymᵀ (gen-unit d)))
+
+-- ⚠ the five summands are EXPLICIT arguments on purpose: leaving them
+-- implicit makes `+`-inversion leak metas out of every use site (the
+-- trap already recorded for the other bound lemmas).
+ordtr-bᵃ : (a t u p q : ℕ) {m : ℕ} → a + t + u + p + q ≤ m → a ≤ m
+ordtr-bᵃ a t u p q le =
+  ≤-trans (≤+ˡ a t)
+    (≤-trans (≤+ˡ (a + t) u)
+      (≤-trans (≤+ˡ (a + t + u) p)
+        (≤-trans (≤+ˡ (a + t + u + p) q) le)))
+
+ordtr-bᵗ : (a t u p q : ℕ) {m : ℕ} → a + t + u + p + q ≤ m → t ≤ m
+ordtr-bᵗ a t u p q le =
+  ≤-trans (≤+ʳ a t)
+    (≤-trans (≤+ˡ (a + t) u)
+      (≤-trans (≤+ˡ (a + t + u) p)
+        (≤-trans (≤+ˡ (a + t + u + p) q) le)))
+
+ordtr-bᵘ : (a t u p q : ℕ) {m : ℕ} → a + t + u + p + q ≤ m → u ≤ m
+ordtr-bᵘ a t u p q le =
+  ≤-trans (≤+ʳ (a + t) u)
+    (≤-trans (≤+ˡ (a + t + u) p)
+      (≤-trans (≤+ˡ (a + t + u + p) q) le))
+
 mutual
   prog : (n : ℕ) {t : RTm ε} {T : RTy ε} → ◇ ⊢ t ∷ T → sz t ≤ n → Prog t
   prog zero    d ()
@@ -899,6 +963,11 @@ mutual
   prog (suc m) {t = nzero}       d le = prog-can can-nzero
   prog (suc m) {t = nsuc n}      d le = prog-can (can-nsuc n)
   prog (suc m) {t = natrec z w n} d le with natrecS m d (un≤ le)
+  ... | _ , r = prog-step r
+  -- ★★★ WF-axis stage E: a closed `ordtr` ALWAYS STEPS.  Every bound is
+  -- a closed `Nat`, so each is a numeral or steps — and all five root
+  -- rules together cover the numeral cases exhaustively.
+  prog (suc m) {t = ordtr a t u p q} d le with ordtrS m d (un≤ le)
   ... | _ , r = prog-step r
   prog (suc m) {t = jsub dM p e} d le with jsubS m d (un≤ le)
   ... | _ , r = prog-step r
@@ -976,6 +1045,8 @@ mutual
   usplit (suc m) {c = nsuc n} d le with gen-nsuc d
   ... | _ , cv = ⊥-elim (NatU-clash (csymᵀ cv))
   usplit (suc m) {c = natrec z w n} d le with natrecS m d (un≤ le)
+  ... | _ , r = u-step r
+  usplit (suc m) {c = ordtr a t u p q} d le with ordtrS m d (un≤ le)
   ... | _ , r = u-step r
 
   appS : (m : ℕ) {f a : RTm ε} {T : RTy ε} → ◇ ⊢ app f a ∷ T →
@@ -1230,6 +1301,42 @@ mutual
   ... | _ , (_ , cv) = ⊥-elim (IdNat-clash (csymᵀ cv))
   natrecS m dv q | M , (tyM , (dz , (dw , (dn , cC))))
       | prog-can can-unit = ⊥-elim (UnitNat-clash (csymᵀ (gen-unit dn)))
+
+  -- ★★★ WF-axis stage E: ORDER TRANSPORT STEPS.  The bounds are walked
+  -- in `ordstk?`'s dispatch order — `a`, then `t`, then `u` — which is
+  -- the same order `sn-ordtr` and `homNatSem` use, so the five root
+  -- rules line up with the five numeral leaves one-to-one.
+  ordtrS : (m : ℕ) {a t u p q : RTm ε} {T : RTy ε} →
+           ◇ ⊢ ordtr a t u p q ∷ T →
+           sz a + sz t + sz u + sz p + sz q ≤ m →
+           Σ (RTm ε) (λ v → ordtr a t u p q ⟶ v)
+  ordtrS m {a} {t} {u} {p} {q} dv le with gen-ordtr dv
+  ... | da , (dt , (du , (dp , (dq , cC))))
+        with prog m da (ordtr-bᵃ (sz a) (sz t) (sz u) (sz p) (sz q) le)
+  ...     | prog-step r = _ , ξ-ordtrᵃ r
+  ...     | prog-can cn with canNat da cn
+  -- rule 1: a zero lower bound discharges the order outright.
+  ...       | ns-zero = _ , ordtr-z t u p q
+  ...       | ns-suc a'
+              with prog m dt (ordtr-bᵗ (sz a) (sz t) (sz u) (sz p) (sz q) le)
+  ...         | prog-step r = _ , ξ-ordtrᵗ r
+  ...         | prog-can cn' with canNat dt cn'
+  ...           | ns-zero
+                  with prog m du (ordtr-bᵘ (sz a) (sz t) (sz u) (sz p) (sz q) le)
+  ...             | prog-step r = _ , ξ-ordtrᵘ r
+  ...             | prog-can cn'' with canNat du cn''
+  -- rule 2, then rule 4 — stage D's customer, at the top level this time.
+  ...               | ns-zero    = _ , ordtr-szz a' p q
+  ...               | ns-suc u'  = _ , ordtr-szs a' u' p q
+  ordtrS m {a} {t} {u} {p} {q} dv le
+      | da , (dt , (du , (dp , (dq , cC))))
+      | prog-can cn | ns-suc a' | prog-can cn' | ns-suc t'
+        with prog m du (ordtr-bᵘ (sz a) (sz t) (sz u) (sz p) (sz q) le)
+  ...   | prog-step r = _ , ξ-ordtrᵘ r
+  ...   | prog-can cn'' with canNat du cn''
+  -- rule 3, then rule 5 — transitivity's own recursive step.
+  ...     | ns-zero   = _ , ordtr-ssz a' t' p q
+  ...     | ns-suc u' = _ , ordtr-sss a' t' u' p q
 
   -- the TAUT motive (`var vz`, ambient `U`).
   trUS : (m : ℕ) {dM : RTm (ε ∙)} {p e : RTm ε} {T : RTy ε} →
