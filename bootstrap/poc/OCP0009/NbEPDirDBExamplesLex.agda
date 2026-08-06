@@ -335,3 +335,62 @@ M1lex =
   Π Nat (Π (Hom Nat (app (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var vz)) (nsuc (var (vs (vs (vs (vs vz)))))))
            (Π (Hom Nat (app (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs vz))) (var (vs (vs vz))))
               (El (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz)))))))
+
+------------------------------------------------------------------------
+-- ★ 6. MOTIVE WELL-FORMEDNESS — needed by `⊢natrec`, which demands
+--   `(Γ ▹ Nat) ⊢ty M`, and doubling as the meaning check §5 never gave
+--   these three.
+--
+-- ⚠ READ THE LIMIT HONESTLY — and this was MEASURED, not reasoned.
+--   A `⊢ty` derivation pins cP down, because `ty-El (⊢app dcP dy)`
+--   forces `dcP ∷ Π Nat U` and only cP inhabits that.  That is why §5
+--   caught the REC2T `cP` bug.  It does NOT pin down μ₁ vs μ₂: both are
+--   `Π Nat Nat`, so both readings are well-typed.
+--
+--   Two experiments, 2026-08-06:
+--     * motive buggy, derivation below CORRECT  ⇒ error (exit 42).
+--     * motive buggy AND derivation buggy the same way ⇒ GREEN (exit 0).
+--
+--   So `⊢lexAuxMot` is a CROSS-CHECK between two hand-written artifacts,
+--   not a meaning check.  It catches DISAGREEMENT, not MISCONCEPTION:
+--   make the same misreading twice and it passes.  ★ THE GENERAL LESSON,
+--   which applies to any Spec/Implementation split here: redundancy buys
+--   nothing unless the two artifacts are written from DIFFERENT
+--   information.  The branch derivations qualify — they are written from
+--   the ALGORITHM, not transcribed from the motive — which is exactly
+--   why `⊢lexSZ` caught the measure bug (its `⊢le-refl` at `μ₂ y` could
+--   not match an expected `μ₁ y`) and this file could not.
+--
+--   The check that WOULD be independent is a negative tripwire: assert
+--   that the μ₁/μ₂-swapped motive FAILS to typecheck.  Not written —
+--   each branch costs minutes — but it is the only mechanical check that
+--   can see a type-preserving confusion.  Cf. check-formers.sh.
+--
+-- ⚠ NOTE THE TRAP that made it easy: in `lexAuxMot` the μ₁ bound sits
+--   ONE BINDER SHALLOWER than the μ₂ bound, so BOTH are `vs⁵` in their
+--   own frames.  The correct index is the same numeral twice.
+------------------------------------------------------------------------
+
+-- ctx: vz=n₁', vs=stp, vs²=μ₂, vs³=μ₁, vs⁴=cP
+⊢lexAuxMot : (Γ₅ ▹ Nat) ⊢ty lexAuxMot
+⊢lexAuxMot =
+  ty-Π ty-Nat (ty-Π ty-Nat
+    (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there here)))))) (⊢var here)) (⊢var (there (there here))))
+       (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there here)))))) (⊢var (there here))) (⊢var (there (there here))))
+          (ty-El (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there (there here))))))))
+
+-- ctx: vz=m, vs=n₂, vs²=stp, vs³=μ₂, vs⁴=μ₁, vs⁵=cP
+⊢M0lex : ((Γ₅ ▹ Nat) ▹ Nat) ⊢ty M0lex
+⊢M0lex =
+  ty-Π ty-Nat
+    (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there here)))))) (⊢var here)) ⊢nzero)
+       (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there here)))))) (⊢var (there here))) (⊢var (there (there here))))
+          (ty-El (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there (there here)))))))
+
+-- ctx: vz=m, vs=n₂, vs²=IH₁, vs³=n₁', vs⁴=stp, vs⁵=μ₂, vs⁶=μ₁, vs⁷=cP
+⊢M1lex : ((((Γ₅ ▹ Nat) ▹ lexAuxMot) ▹ Nat) ▹ Nat) ⊢ty M1lex
+⊢M1lex =
+  ty-Π ty-Nat
+    (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var here)) (⊢nsuc (⊢var (there (there (there (there here)))))))
+       (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there here))) (⊢var (there (there here))))
+          (ty-El (⊢app (⊢var (there (there (there (there (there (there (there (there (there (there here))))))))))) (⊢var (there (there here)))))))
