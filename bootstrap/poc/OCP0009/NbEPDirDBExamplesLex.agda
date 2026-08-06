@@ -149,11 +149,25 @@ lexAuxTm n = natrec lexZBr lexSBr n
 
 
 ------------------------------------------------------------------------
--- ⚠⚠ CHECKPOINT — STATEMENT VERIFIED; DERIVATION 1 BRANCH OF 4.
+-- ⚠⚠ CHECKPOINT — ALL FOUR BRANCHES DERIVED; ASSEMBLY NOT.
 --
--- Branch (0,0) is DONE (§6/§7, `⊢lexZZ`).  Branches (0,S), (S,0), (S,S)
--- and the three assembly layers (`⊢lexZBr`, `⊢lexSBr`, `⊢lexAux`, then
--- `⊢lexrec` itself) are NOT written.  Do not read "lexrec" as verified.
+-- DONE, each in its own module (RAM, see below):
+--   (0,0) ⊢lexZZ  NbEPDirDBExamplesLexZZ      34.7s / 2.94 GB
+--   (0,S) ⊢lexZS  NbEPDirDBExamplesLexZS     131.6s / 5.05 GB
+--   (S,0) ⊢lexSZ  NbEPDirDBExamplesLexSZ      85.0s / 4.98 GB
+--   (S,S) ⊢lexSS  NbEPDirDBExamplesLexSS{Data,1,2}  — needs `+RTS -c`
+--
+-- ⚠ NOT WRITTEN, and so `lexrec` is NOT verified: the assembly layers
+--   `⊢lexZBr`, `⊢lexSBr` (the two inner `natrec`s), `⊢lexAux` (the outer
+--   one), and `⊢lexrec` itself — which applies `aux` at `μ₁ x`, `μ₂ x`
+--   with two `⊢le-refl`s.  Four branches is the hard part done, not the
+--   whole; do not read "branches derived" as "lexrec derived".
+--
+-- ★ WHAT THE BRANCHES ALREADY BOUGHT, beyond themselves: they are a
+--   MEANING CHECK on the statement.  Deriving them found the `lexAuxMot`
+--   measure bug (μ₁ where μ₂ was meant — see §2), which no amount of
+--   `RTy` well-formedness would ever have caught.  Expect the assembly
+--   layers to test `lexAuxMot` and `M0lex`/`M1lex` the same way.
 --
 -- Everything above TYPECHECKS: `REC1T`, `REC2T`, `LStepT`, `Γ₅` and
 -- `lexAuxMot` are well-formed, which settles the part most likely to be
