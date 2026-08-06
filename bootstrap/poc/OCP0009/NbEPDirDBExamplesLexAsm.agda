@@ -5,7 +5,8 @@
 --   ⊢lexZBr  inner natrec on n₂ at n₁ = 0        (lexZZ / lexZS)
 --   ⊢lexSBr  inner natrec on n₂ at n₁ = suc n₁'  (lexSZ / lexSS)
 --   ⊢lexAux  OUTER natrec on n₁                  (lexZBr / lexSBr)
---   ⊢lexrec  aux applied at μ₁ x, μ₂ x, x, and two ⊢le-refl's
+--   ⊢lexrec  aux applied at μ₁ x, μ₂ x, x, and two ⊢le-refl's — GENERIC
+--            in x, so it composes as a library lemma
 --
 -- ★ THIS IS WHERE THE MOTIVES GET TESTED AGAINST EACH OTHER.  `⊢natrec`
 --   demands that the base sit at `subTy (single nzero) M` and the step at
@@ -16,15 +17,18 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBExamplesLexAsm where
 
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; El; Hom; Nat
         ; RTm; var; nzero; nsuc; natrec; lam; app
-        ; Π; renTy; subTy )
+        ; Π; renTy; subTy; renTm; subTm; extS
+        ; subTm-renTm; subTm-subTm; subTm-id )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; ⊢var; here; there; ⊢natrec; ⊢lam; ⊢app; ⊢nzero
         ; ty-Nat )
+open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesLex
   using ( Γ₅; lexAuxMot; M0lex; M1lex; ⊢lexAuxMot; ⊢M0lex; ⊢M1lex
@@ -64,26 +68,9 @@ lexrecTm x =
            (reflTm (app (var (vs (vs vz))) x)))
       (reflTm (app (var (vs vz)) x))
 
--- ★★ THE PIPELINE COMPOSES, at a CONCRETE argument.
---
--- ⚠ WHY CONCRETE, AND WHAT IS AND IS NOT PROVED HERE.  `x` is the THIRD
---   argument, so its occurrences in the result type are weakened past the
---   two remaining Π's and substituted back by the last two `⊢app`s.  For
---   a CONCRETE x that all computes and the derivation goes through by
---   reduction alone — which is what this instance shows.  For an ABSTRACT
---   x it does not: Agda is left needing
---     subTm (single q) (subTm (extS (single p)) (renTm vs (renTm vs x))) ≡ x
---   and similar at each argument position.  Those equations are TRUE (the
---   composite substitution is pointwise the identity) and the machinery
---   exists — `wk-single`, `subTm-renTm`, `subTm-subTm`, `subTm-id` — but
---   each argument position needs a different composite, and getting them
---   by batch probing was not converging.  See the note below.
---
--- ★ WHAT THIS INSTANCE DOES ESTABLISH: every layer type-checks together —
---   four branches, two inner natrecs, the outer natrec, and the 5-fold
---   application at the measures — with `⊢le-refl` discharging both
---   bounds.  The mathematical content of `lexrec` is verified; what is
---   missing from the GENERIC statement is substitution bookkeeping.
+-- ★ A CONCRETE SANITY INSTANCE, kept because it is the cheapest possible
+--   regression test on the whole stack: if any layer breaks, this fails in
+--   seconds, whereas the generic `⊢lexrec` below drags in the transports.
 ⊢lexrec-nzero : Γ₅ ⊢ lexrecTm nzero ∷ El (app (var (vs (vs (vs vz)))) nzero)
 ⊢lexrec-nzero =
   ⊢app (⊢app (⊢app (⊢app (⊢lexAux (⊢app (⊢var (there (there here))) ⊢nzero))
@@ -93,22 +80,52 @@ lexrecTm x =
        (⊢le-refl (⊢app (⊢var (there here)) ⊢nzero))
 
 ------------------------------------------------------------------------
--- ⚠⚠ REMAINING GAP — the GENERIC statement:
+-- ★★ THE GENERIC `⊢lexrec`.
 --
---     ⊢lexrec : {x : RTm ⌊ Γ₅ ⌋} → Γ₅ ⊢ x ∷ Nat
---             → Γ₅ ⊢ lexrecTm x ∷ El (app cP x)
+-- ⚠ WHY TRANSPORT IS UNAVOIDABLE — it is NOT an argument-order artifact.
+--   `le` and `lt` both MENTION x, so x must be bound before them; and the
+--   conclusion `El (cP x)` mentions x too.  So in ANY ordering there are
+--   binders between x and its use, and applying the later arguments must
+--   substitute that weakening back.  For a concrete x it computes; for an
+--   abstract one it needs `cancel2`.
 --
---   NOT a mathematical gap — no new lemma about the ORDER is needed, and
---   nothing about the kernel is in doubt.  It is transport along
---   substitution-cancellation equations at three positions (the two
---   `⊢le-refl` arguments and the result type), each with a different
---   composite.  Do it with the interactive goal display, not batch
---   probing: the expected types run to a dozen lines and the truncated
---   `UnequalTerms` output is not enough to pick the right lemma instance.
---
---   ★ A CHEAPER ROUTE WORTH TRYING FIRST: build `lexAuxMot` so that `x`
---     is the LAST argument rather than the third.  Then nothing is
---     weakened past it and every cancellation disappears.  That is a
---     change to the STATEMENT, so it wants the motive combinator layer
---     (below) at the same time.
+--   The composite really is the identity: weakening by `vs` twice then
+--   substituting twice sends `y ↦ var (vs y) ↦ var y`.  Proved from
+--   `subTm-renTm` (fuse sub∘ren), `subTm-subTm` (fuse sub∘sub) and
+--   `subTm-id` — the fused substitution is `idₛ` DEFINITIONALLY, by eta.
 ------------------------------------------------------------------------
+
+cancel2 : (t : RTm ⌊ Γ₅ ⌋) {a b : RTm ⌊ Γ₅ ⌋} →
+          subTm (single b) (subTm (extS (single a)) (renTm vs (renTm vs t))) ≡ t
+cancel2 t =
+  trans (cong (subTm (single _))
+              (trans (subTm-renTm (renTm vs t)) (subTm-renTm t)))
+        (trans (subTm-subTm t) (subTm-id t))
+
+-- transport BOTH endpoints of a `Hom Nat` at once.  Needed because the two
+-- endpoints of one argument's expected type can carry DIFFERENT leftover
+-- substitutions: at `rec₂` below the source needs `wk-single` (one weakening
+-- survived) and the target needs `cancel2` (two did).
+⊢Hom₂ : {m t u t' u' : RTm ⌊ Γ₅ ⌋} → t ≡ t' → u ≡ u' →
+        Γ₅ ⊢ m ∷ Hom Nat t u → Γ₅ ⊢ m ∷ Hom Nat t' u'
+⊢Hom₂ refl refl d = d
+
+⊢lexrec : {x : RTm ⌊ Γ₅ ⌋} → Γ₅ ⊢ x ∷ Nat →
+          Γ₅ ⊢ lexrecTm x ∷ El (app (var (vs (vs (vs vz)))) x)
+⊢lexrec {x} dx =
+  subst (λ t → Γ₅ ⊢ lexrecTm x ∷ El (app (var (vs (vs (vs vz)))) t))
+        (cancel2 x {reflTm (app (var (vs (vs vz))) x)}
+                   {reflTm (app (var (vs vz)) x)})
+        (⊢app (⊢app (⊢app (⊢app (⊢lexAux (⊢app (⊢var (there (there here))) dx))
+                                (⊢app (⊢var (there here)) dx))
+                          dx)
+                    (subst (λ t → Γ₅ ⊢ reflTm (app (var (vs (vs vz))) x)
+                                     ∷ Hom Nat (app (var (vs (vs vz))) x)
+                                               (app (var (vs (vs vz))) t))
+                           (sym (cancel2 x {app (var (vs vz)) x} {x}))
+                           (⊢le-refl (⊢app (⊢var (there (there here))) dx))))
+              (⊢Hom₂ (cong (app (var (vs vz)))
+                            (sym (wk-single {v = reflTm (app (var (vs (vs vz))) x)} x)))
+                     (cong (app (var (vs vz)))
+                            (sym (cancel2 x {x} {reflTm (app (var (vs (vs vz))) x)})))
+                     (⊢le-refl (⊢app (⊢var (there here)) dx))))
