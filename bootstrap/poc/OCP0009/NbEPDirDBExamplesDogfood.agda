@@ -216,3 +216,152 @@ mrecTm x = app (app (mAuxTm (app (var (vs vz)) x)) x)
   where
     dμx : Γ₂ ⊢ app (var (vs vz)) x ∷ Nat
     dμx = ⊢app (⊢var (there here)) dx
+
+------------------------------------------------------------------------
+-- ★★★★★ 5. THE SAME COMBINATOR AT AN ARBITRARY CARRIER.
+--
+--   The question this answers: does dogfooding need general INDUCTIVE
+--   TYPES in the kernel?
+--
+--   For the COMBINATOR, no.  `mrec` never uses Nat-ness of the DOMAIN —
+--   only of the MEASURE'S CODOMAIN, because the order lives on ℕ.  So it
+--   generalises to any carrier `A : U` using nothing but Π:
+--
+--     mrec : ((x : A) → ((y : A) → μ y < μ x → P y) → P x)
+--          → (x : A) → P x            for  A : U,  μ : A → Nat
+--
+--   FOUR context variables now: `cA : U`, `cP : A → U`, `μ : A → Nat`,
+--   `stp`.  The proof is UNCHANGED — same `natrec` on the bound, same
+--   `ordtr` + `Hom-Nat-ss` descent — because the recursion was always on
+--   the MEASURE, never on the carrier.
+------------------------------------------------------------------------
+
+-- vz = y, vs = x, vs² = μ, vs³ = cP, vs⁴ = cA
+AIHT : RTy (ε ∙ ∙ ∙ ∙)
+AIHT =
+  Π (El (var (vs (vs (vs vz)))))
+    (Π (Hom Nat (nsuc (app (var (vs (vs vz))) (var vz)))
+                (app (var (vs (vs vz))) (var (vs vz))))
+       (El (app (var (vs (vs (vs (vs vz))))) (var (vs vz)))))
+
+-- vz = μ, vs = cP, vs² = cA
+AStepT : RTy (ε ∙ ∙ ∙)
+AStepT =
+  Π (El (var (vs (vs vz))))
+    (Π AIHT (El (app (var (vs (vs (vs vz)))) (var (vs vz)))))
+
+Γ₄ : Ctx
+Γ₄ = (((◇ ▹ U) ▹ Π (El (var vz)) U) ▹ Π (El (var (vs vz))) Nat) ▹ AStepT
+
+-- `(x : A) → μ x ≤ n → P x`, with vz = n, vs = stp, vs² = μ, vs³ = cP, vs⁴ = cA
+aAuxMot : RTy (ε ∙ ∙ ∙ ∙ ∙)
+aAuxMot =
+  Π (El (var (vs (vs (vs (vs vz))))))
+    (Π (Hom Nat (app (var (vs (vs (vs vz)))) (var vz)) (var (vs vz)))
+       (El (app (var (vs (vs (vs (vs (vs vz)))))) (var (vs vz)))))
+
+aZBr : RTm (ε ∙ ∙ ∙ ∙)
+aZBr =
+  lam (lam (app (app (var (vs (vs vz))) (var (vs vz)))
+                (lam (lam (absurd
+                  (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs vz)))
+                  (ordtr (nsuc (app (var (vs (vs (vs (vs (vs vz))))))
+                                    (var (vs vz))))
+                         (app (var (vs (vs (vs (vs (vs vz))))))
+                              (var (vs (vs (vs vz)))))
+                         nzero (var vz) (var (vs (vs vz)))))))))
+
+aSBr : RTm (ε ∙ ∙ ∙ ∙ ∙ ∙)
+aSBr =
+  lam (lam (app (app (var (vs (vs (vs (vs vz))))) (var (vs vz)))
+                (lam (lam (app
+                  (app (var (vs (vs (vs (vs vz))))) (var (vs vz)))
+                  (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs vz))))))))
+                                    (var (vs vz))))
+                         (app (var (vs (vs (vs (vs (vs (vs (vs vz))))))))
+                              (var (vs (vs (vs vz)))))
+                         (nsuc (var (vs (vs (vs (vs (vs vz)))))))
+                         (var vz) (var (vs (vs vz)))))))))
+
+aAuxTm : RTm ⌊ Γ₄ ⌋ → RTm ⌊ Γ₄ ⌋
+aAuxTm n = natrec aZBr aSBr n
+
+⊢aAuxMot : (Γ₄ ▹ Nat) ⊢ty aAuxMot
+⊢aAuxMot =
+  ty-Π (ty-El (⊢var (there (there (there (there here))))))
+    (ty-Π (ty-Hom ty-Nat
+             (⊢app (⊢var (there (there (there here)))) (⊢var here))
+             (⊢var (there here)))
+          (ty-El (⊢app (⊢var (there (there (there (there (there here))))))
+                       (⊢var (there here)))))
+
+⊢aZBr : Γ₄ ⊢ aZBr ∷ subTy (single nzero) aAuxMot
+⊢aZBr =
+  ⊢lam (ty-El (⊢var (there (there (there here)))))
+    (⊢lam (ty-Hom ty-Nat
+             (⊢app (⊢var (there (there here))) (⊢var here)) ⊢nzero)
+      (⊢app (⊢app (⊢var (there (there here))) (⊢var (there here)))
+            (⊢lam (ty-El (⊢var (there (there (there (there (there here)))))))
+              (⊢lam (ty-Hom ty-Nat
+                       (⊢nsuc (⊢app (⊢var (there (there (there (there here)))))
+                                    (⊢var here)))
+                       (⊢app (⊢var (there (there (there (there here)))))
+                             (⊢var (there (there here)))))
+                (⊢absurd
+                  (⊢app (⊢var (there (there (there (there (there (there here)))))))
+                        (⊢var (there here)))
+                  (⊢conv (⊢ordtr
+                           (⊢nsuc (⊢app (⊢var (there (there (there (there (there here))))))
+                                        (⊢var (there here))))
+                           (⊢app (⊢var (there (there (there (there (there here))))))
+                                 (⊢var (there (there (there here)))))
+                           ⊢nzero (⊢var here) (⊢var (there (there here))))
+                         (red→≅ᵀ (stepᵀ (Hom-Nat-sz _) doneᵀ))))))))
+
+⊢aSBr : ((Γ₄ ▹ Nat) ▹ aAuxMot) ⊢ aSBr ∷ subTy nrs aAuxMot
+⊢aSBr =
+  ⊢lam (ty-El (⊢var (there (there (there (there (there here)))))))
+    (⊢lam (ty-Hom ty-Nat
+             (⊢app (⊢var (there (there (there (there here))))) (⊢var here))
+             (⊢nsuc (⊢var (there (there here)))))
+      (⊢app (⊢app (⊢var (there (there (there (there here)))))
+                  (⊢var (there here)))
+            (⊢lam (ty-El (⊢var (there (there (there (there (there (there (there here)))))))))
+              (⊢lam (ty-Hom ty-Nat
+                       (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there here)))))))
+                                    (⊢var here)))
+                       (⊢app (⊢var (there (there (there (there (there (there here)))))))
+                             (⊢var (there (there here)))))
+                (⊢app (⊢app (⊢var (there (there (there (there here)))))
+                            (⊢var (there here)))
+                      (⊢conv (⊢ordtr
+                               (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there (there here))))))))
+                                            (⊢var (there here))))
+                               (⊢app (⊢var (there (there (there (there (there (there (there here))))))))
+                                     (⊢var (there (there (there here)))))
+                               (⊢nsuc (⊢var (there (there (there (there (there here)))))))
+                               (⊢var here) (⊢var (there (there here))))
+                             (red→≅ᵀ (stepᵀ (Hom-Nat-ss _ _) doneᵀ))))))))
+
+⊢aAux : {n : RTm ⌊ Γ₄ ⌋} → Γ₄ ⊢ n ∷ Nat →
+        Γ₄ ⊢ aAuxTm n ∷ subTy (single n) aAuxMot
+⊢aAux dn = ⊢natrec ⊢aAuxMot ⊢aZBr ⊢aSBr dn
+
+-- ★★★★★ MEASURE RECURSION AT AN ARBITRARY CARRIER `A : U`.
+amrecTm : RTm ⌊ Γ₄ ⌋ → RTm ⌊ Γ₄ ⌋
+amrecTm x = app (app (aAuxTm (app (var (vs vz)) x)) x)
+                (reflTm (app (var (vs vz)) x))
+
+⊢amrec : {x : RTm ⌊ Γ₄ ⌋} → Γ₄ ⊢ x ∷ El (var (vs (vs (vs vz)))) →
+         Γ₄ ⊢ amrecTm x ∷ El (app (var (vs (vs vz))) x)
+⊢amrec {x = x} dx =
+  subst (λ z → Γ₄ ⊢ amrecTm x ∷ El (app (var (vs (vs vz))) z))
+        (wk-single x)
+   (⊢app (⊢app (⊢aAux dμx) dx)
+         (subst (λ z → Γ₄ ⊢ reflTm (app (var (vs vz)) x)
+                         ∷ Hom Nat (app (var (vs vz)) x) z)
+                (sym (wk-single (app (var (vs vz)) x)))
+                (⊢le-refl dμx)))
+  where
+    dμx : Γ₄ ⊢ app (var (vs vz)) x ∷ Nat
+    dμx = ⊢app (⊢var (there here)) dx
