@@ -4978,3 +4978,106 @@ bracket abstraction:
   `⊢ᵍ`/`⊢ᵐ`/`⊢ᶜ`), D032 (compose/case/cata grade-poly), Curry–Howard–Lambek
   correspondence (CCC ≅ typed λ-calculus), Plan 0.52 M1 (`const-morph-strong`
   discharged; `cata-morph-strong` the remaining leaf this enables).
+
+---
+
+## D071: Adding Dependent Types — the WF Axis IS D062's Phase 2
+
+**Date**: 2026-08-06
+**Status**: **Proposed** (analysis from OCP-0009 POC-0; not yet a commitment)
+**Relates to**: D062 (total+productive, the recursive-coalgebra certificate),
+D037 (polynomial functors for recursive types), D058 (event-count indexing),
+D066/D068 (grade is a checked, erased refinement)
+**Triggered by**: OCP-0009's WF axis landing (stages A–E, 2026-08-06) — which
+turns out to have built D062's deferred Phase-2 certificate inside a dependent
+kernel, ahead of the elaborator side.
+
+### Context
+
+Once wants **both proofs and programs**, with the first target being dependent
+types that carry **no runtime state** (proofs are in that class). Programs are
+limited to **structured recursion, no general fixpoint** (D062). An open
+question: should `ana` be banned **at the type level**, so type computation is
+*total* rather than *total + productive*?
+
+D062 already fixed the shape of the answer for terms: TP is a type-level
+invariant carried by the combinators, and `hylo`'s certificate is *"a measure
+into a well-founded order + a per-recursive-position descent proof (or the
+`Acc` form)"*, with measured `hyloW` deferred to Phase 2.
+
+### Finding 1 — the KERNEL side of D062 Phase 2 is already built
+
+OCP-0009's `⊢amrec` is measure recursion at an **arbitrary carrier**
+`A : U` with `μ : A → Nat`. That is exactly D062's `Recursive c`. Assembled on
+top of it: `⊢div` (a closed, well-typed division) and `⊢gcd-descend`, which is
+*literally* `⊢div-descend` — the two textbook `Acc _<_` examples share one
+certificate.
+
+⇒ **Proposed refinement to D062**: drop *"or the `Acc` form"* from the
+certificate's definition. On ℕ the order **computes** (`Hom Nat m n` reduces to
+`m ≤ n`), so the descent obligation is discharged by *conversion*, in one
+reduction step, not by an `Acc` tree. The `Acc` form is strictly worse and
+should not be offered.
+
+### Finding 2 — D037's `ind` is required, not optional
+
+The WF combinators need **dependent motives**: `⊢aux`'s is
+`λ n. (m : Nat) → m ≤ n → P m`, and `div`'s case split rides on
+`λ m. (m ≤ suc n) → Nat`. **A fold-only `μ F` cannot express either**, and
+induction is lost with it. D037 already specifies `ind` alongside `cata` — keep
+it, with `cata` as its non-dependent instance.
+
+★ This also dissolves the apparent tension with "structured recursion only":
+**the dependent eliminator IS structured recursion, taken dependently.** There
+is no third principle to add.
+
+### Finding 3 — banning type-level `ana` is not optional; it is already load-bearing
+
+Stronger than "probably a good idea":
+
+* OCP-0009's decidable conversion, canonicity and normalization all rest on
+  `⟶ᵀ*` being a **terminating type-level reduction**. Type-level `ν` would make
+  conversion a **bisimulation** rather than a normalization, redesigning the
+  whole metatheory.
+* Once already avoids coinductive specification on purpose: **D058 chose
+  EVENT-COUNT indexing** (an inductive ℕ) over step-indexing, explicitly as
+  *productivity-avoidance*.
+
+⇒ **Proposed**: `ana`/`ν` at the **term** level only (D062's reactive loop); the
+**type** level is inductive-only, hence *total*, not *total + productive*.
+**Cost to accept knowingly**: no coinductive predicates — bisimilarity cannot be
+stated directly as a type. Mitigation is D058's own pattern (index the spec on a
+ℕ), which is the standard total encoding.
+
+### Finding 4 — "no runtime state" = grade-0 dependency, and it makes the DT layer cheap
+
+By D066/D068 grade is a checked, **erased** refinement. If the dependent layer
+sits at grade 0, indices have **no runtime representation**, so there is no
+codegen argument for restricting the type layer. **Be liberal there** (full
+`ind`, and indexed families if wanted); the binding constraint is *decidability
+of conversion*, not performance.
+
+### The decisions that remain genuinely open
+
+1. **Indexed containers, or plain `μ F`?** Proofs want indexed families
+   (OCP-0009's own `_⊢_∷_`/`Canon`/`Prog` are indexed). This bounds how far
+   self-hosting can go and is the real scope question.
+2. **Generic `μ F`, never one former per datatype.** Measured price of a single
+   term former in OCP-0009: a **nine-module cascade**, whose SN-layer omission
+   was **invisible to Agda's coverage checker** (hence `check-formers.sh`). Pay
+   that once, not per datatype.
+3. **`Hom` at `μ F` should be INERT**, with ℕ the sole exception. ℕ is
+   privileged because it is the **codomain of every measure** — one computing
+   order buys well-founded recursion at every carrier via `μ`. Per-datatype
+   orders do not scale.
+4. **Where does the measure come from?** The kernel piece is done; the
+   *elaborator* must synthesize `μ` and the descent for `hyloW`. That is the
+   remaining Phase-2 work, and it is elaboration, not kernel.
+5. **Does the container route force funext** for reasoning about folds? OCP-0009
+   is deliberately funext-free — check before committing.
+
+### Consequences
+
+- D062 Phase 2 becomes mostly an **elaborator** task rather than a theory task.
+- D037's `ind` is promoted from "provided" to **required**.
+- A new invariant to state explicitly: **the type level is inductive-only.**
