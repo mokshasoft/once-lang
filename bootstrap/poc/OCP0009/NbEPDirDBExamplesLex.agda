@@ -33,7 +33,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; El; Hom; Unit; Nat
         ; RTm; var; unit; nzero; nsuc; natrec; absurd; ordtr; ⌜Hom⌝; ⌜Nat⌝
-        ; Π; lam; app; renTy; subTy; extS; extR )
+        ; Π; lam; app; renTy; renTm; subTy; extS; extR )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶ᵀ_; Hom-Nat-sz; Hom-Nat-ss
         ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ
@@ -82,6 +82,35 @@ LStepT =
 Γ₅ = (((◇ ▹ Π Nat U) ▹ Π Nat Nat) ▹ Π Nat Nat) ▹ LStepT
 
 ------------------------------------------------------------------------
+-- ★★ 2a. THE MOTIVE COMBINATOR — one place where the measures are named.
+--
+-- ⚠ WHY THIS EXISTS.  `lexAuxMot`, `M0lex` and `M1lex` are the SAME
+--   invariant at three different bounds, but written as raw de Bruijn
+--   they were three independent hand-counts.  The measure bug (§2) was a
+--   `vs⁵` written as `vs⁶` in ONE of them — a slip no reviewer catches.
+--
+-- ★ THE FIX, AND ITS HONEST LIMIT.  A measure has a DIFFERENT INDEX in
+--   every context, so a combinator cannot refer to μ₂ by name; it must
+--   take the measures as ARGUMENTS.  That is the whole trick: the caller
+--   supplies `cP μ₁ μ₂` at its own scope, and ALL the binder weakening
+--   happens here, once.  Getting it wrong now means passing μ₁ where you
+--   meant μ₂ — a NAME slip at the call site, which review does catch —
+--   instead of a numeral slip buried in a `vs` tower, which it does not.
+--   ⚠ It is still NOT a type error: μ₁ and μ₂ are both `Π Nat Nat` and
+--     nothing in this kernel can separate them.  See §6.
+--
+--     auxBody cP μ₁ μ₂ b₁ b₂  =  (x : Nat) → μ₁ x ≤ b₁ → μ₂ x ≤ b₂ → P x
+------------------------------------------------------------------------
+
+auxBody : {Γ : Cx} (cP μ₁ μ₂ b₁ b₂ : RTm Γ) → RTy Γ
+auxBody cP μ₁ μ₂ b₁ b₂ =
+  Π Nat
+    (Π (Hom Nat (app (renTm vs μ₁) (var vz)) (renTm vs b₁))
+       (Π (Hom Nat (app (renTm vs (renTm vs μ₂)) (var (vs vz)))
+                   (renTm vs (renTm vs b₂)))
+          (El (app (renTm vs (renTm vs (renTm vs cP))) (var (vs (vs vz)))))))
+
+------------------------------------------------------------------------
 -- 2. THE DOUBLY-BOUNDED AUXILIARY.
 --
 --      aux : (n₁ : Nat) → (n₂ : Nat) → (x : Nat)
@@ -96,21 +125,11 @@ LStepT =
 
 lexAuxMot : RTy (ε ∙ ∙ ∙ ∙ ∙)
 lexAuxMot =
-  Π Nat (Π Nat
-    (Π (Hom Nat (app (var (vs (vs (vs (vs (vs vz)))))) (var vz))
-                (var (vs (vs vz))))
-       -- ★ MEASURE FIX (2026-08-06): this bound is on μ₂, not μ₁.  Under
-       --   the three binders (n₂', x', le) the frame is vz=le, vs=x',
-       --   vs²=n₂', vs³=n₁', vs⁴=stp, vs⁵=μ₂, vs⁶=μ₁, vs⁷=cP — so μ₂ is
-       --   vs⁵.  It read vs⁶, making the SECOND component of the
-       --   lexicographic pair bound by μ₁ as well, i.e. no second measure
-       --   at all.  Caught by ⊢lexSZ, whose `⊢le-refl` at `μ₂ y` then
-       --   could not match an expected `μ₁ y`.  Same class as the REC2T
-       --   `cP` bug: a well-scoped index that denotes the wrong thing.
-       (Π (Hom Nat (app (var (vs (vs (vs (vs (vs vz)))))) (var (vs vz)))
-                   (var (vs (vs vz))))
-          (El (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))
-                   (var (vs (vs vz))))))))
+  Π Nat (auxBody (var (vs (vs (vs (vs (vs vz))))))   -- cP
+                 (var (vs (vs (vs (vs vz)))))        -- μ₁
+                 (var (vs (vs (vs vz))))             -- μ₂
+                 (var (vs vz))                       -- b₁ = n₁
+                 (var vz))                           -- b₂ = n₂' (just bound)
 
 
 ------------------------------------------------------------------------
@@ -320,21 +339,22 @@ lexAuxTm n = natrec lexZBr lexSBr n
   ty-Π ty-Nat (ty-Π ⊢REC1T (ty-Π ⊢REC2T (ty-El (⊢app (⊢var (there (there (there (there (there here)))))) (⊢var (there (there here)))))))
 
 M0lex : RTy (ε ∙ ∙ ∙ ∙ ∙ ∙)
-M0lex =
-  Π Nat (Π (Hom Nat (app (var (vs (vs (vs (vs (vs vz)))))) (var vz)) nzero)
-           (Π (Hom Nat (app (var (vs (vs (vs (vs (vs vz)))))) (var (vs vz)))
-                       (var (vs (vs vz))))
-              (El (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs vz)))))))
+M0lex = auxBody (var (vs (vs (vs (vs (vs vz))))))   -- cP
+                (var (vs (vs (vs (vs vz)))))        -- μ₁
+                (var (vs (vs (vs vz))))             -- μ₂
+                nzero                               -- b₁ = 0   ← the n₁ = 0 branch
+                (var vz)                            -- b₂ = m
 
 -- ★ the motive of the INNER `natrec` in the n₁ = suc branch.  Same shape
 --   as `M0lex` but the μ₁ bound is `nsuc n₁'` instead of `nzero`, which is
 --   what makes `rec₁` live there and vacuous here.
 --   ctx: vz=m, vs=n₂, vs²=IH₁, vs³=n₁', vs⁴=stp, vs⁵=μ₂, vs⁶=μ₁, vs⁷=cP
 M1lex : RTy (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
-M1lex =
-  Π Nat (Π (Hom Nat (app (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var vz)) (nsuc (var (vs (vs (vs (vs vz)))))))
-           (Π (Hom Nat (app (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs vz))) (var (vs (vs vz))))
-              (El (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz)))))))
+M1lex = auxBody (var (vs (vs (vs (vs (vs (vs (vs vz))))))))  -- cP
+                (var (vs (vs (vs (vs (vs (vs vz)))))))       -- μ₁
+                (var (vs (vs (vs (vs (vs vz))))))            -- μ₂
+                (nsuc (var (vs (vs (vs vz)))))               -- b₁ = suc n₁' ← the n₁ = suc branch
+                (var vz)                                     -- b₂ = m
 
 ------------------------------------------------------------------------
 -- ★ 6. MOTIVE WELL-FORMEDNESS — needed by `⊢natrec`, which demands
