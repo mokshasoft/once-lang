@@ -14,7 +14,7 @@ blanket assumption with a real proof and a set of NAMED residuals. The content
 assumed shrank enormously while the count rose.
 
     master:  3   (one of them = the whole theorem)
-    branch: 13 → 11 and falling
+    branch: 13 → 11 → 10 and falling
 
 So **the count is not the metric** — this supersedes the older "only if the end
 count goes down" gate, which is the wrong test whenever one side of the
@@ -30,8 +30,9 @@ gap. The test is whether its STATEMENT relates the concrete machine to the
 abstract one — read it off the signature: does it mention `X.State` /
 `run-events` at all, or only `AbstractTrace` / `FlatState` / `IR`?
 
-    genuine correspondence gaps (3):
-      events-running-thunk, events-running-ret, events-running-call
+    genuine correspondence gaps (2):
+      events-running-ret, events-running-call
+      (events-running-thunk DISCHARGED 2026-08-06 — see #8)
 
     correspondence-located, CPU-MODEL caused (3):
       arith-sigop-contract, external-sigop-contract, conc-fuel
@@ -48,8 +49,9 @@ abstract one — read it off the signature: does it mention `X.State` /
 
 This matters for SCOPE. A branch whose subject is the correspondence is not
 finished by discharging the cheap rows — those are other layers' work that
-happens to be named here. It is finished by the three genuine gaps, which are
-also the hardest: two blocked on the layout/`Window` fix, one a model gap.
+happens to be named here. It is finished by the genuine gaps, which are also the
+hardest. One of the three (`events-running-thunk`) is now DONE; of the two left,
+`ret` is unblocked by the same layout fix and `call` is a model gap.
 
 ## Classes
 
@@ -80,14 +82,18 @@ also the hardest: two blocked on the layout/`Window` fix, one a model gap.
 | 5 | `emitted-shape-check` | `ConcFlatSim` | deferred proof | the `FrameFreeTrace`/`SlotBudget`-mold walk over `ir-to-trace'`, `check-++` at every splice, G2 invariants as the `LabelEnv` values |
 | 6 | `run-meets` | `ConcFlatSim` | deferred proof | induction on `Reachable`; entry via D074 all-tag state, step via per-instruction transfer soundness |
 | 7 | `main-heap-moded` | apex | deferred proof | induction over the elaborator: building with `C.Heap` yields only `Heap` modes |
-| 8 | `events-running-thunk` | `ConcFlatSim` | UNBLOCKED | the `Window` weakening AND `do-thunk`'s frame clear LANDED; `C.sim-thunk` and `block-step-c-thunk` are now THEOREMS taking NO freshness premise (`fresh-abs` is no longer an input — the clear makes it hold by COMPUTATION). ONE input still missing: a `stack-room` resource parameter (sibling of `heap-room`, for `front-lo'`), with `lo'` chosen at the dispatch site as `lo hv ⊓ (rsp ∸ slots b)` |
-| 9 | `events-running-ret` | `ConcFlatSim` | UNBLOCKED | same layout fix; still needs the `FlatCorr` component relating ghost `fret` to the machine stack |
+| — | `events-running-thunk` | (was `ConcFlatSim`) | — | **DONE, DISCHARGED 2026-08-06** — now the theorem `ConcFlatSim.thunk-step`. `block-step-c-thunk` (a theorem since D090) fed `lo' = lo hv ⊓ (%rsp ∸ 8b)`; its `front-lo'`/`fits` come from the new `x86-64-stack-room` PARAMETER (`ResourceBounds.StackRoom`), the exact mirror of `HeapRoom` |
+| 9 | `events-running-ret` | `ConcFlatSim` | UNBLOCKED | same layout fix; still needs the `FlatCorr` component relating ghost `fret` to the machine stack. `thunk-step` is the template for the assembly |
 | 10 | `events-running-call` | `ConcFlatSim` | **model gap** | `exec-abstract instr-call-closure` is the IDENTITY while `call *0x8(%r12)` transfers control. The abstract machine must model the call (or codegen must inline it) before any proof exists |
 | 11 | `conc-fuel` | apex | **stub** | asserts adequacy of `step-budget-x86-64`, an UNDEFINED postulated `ℕ → ℕ` in `…CPU.X86-64` (siblings: `ev-x86-64`, `arith-env-x86-64`). Pin `step-budget` to a definition, then prove it. NOT a resource bound — do not launder it into a parameter |
 | 12 | `x86-64-loader-faithful` | apex | **axiom** | STAYS. Assembler + loader + printer + decoder round-trip; the boundary every verified compiler keeps |
 
 Only #12 is permanent. #10 needs a semantics change; #11 lives in the CPU layer,
 not the correspondence.
+
+RESOURCE PARAMETERS now carried (not postulates, D087): `program-bound`,
+`x86-64-heap-room`, `x86-64-stack-room`, `entry-frame`. All four thread
+`Certified → Compiler → ArchCorrectness → the arches`.
 
 ## THE CPU-MODEL ROOT — three definitions unlock four residuals
 

@@ -30,7 +30,7 @@ open import Once.CCC.Target.X86-64.Syntax using
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
   ; ret; push; pop; nop; ud2; syscall; label )
 open import Data.Nat using (ℕ; _+_; _*_; _<_; _≤_; _∸_; _≡ᵇ_; _⊓_)
-open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-transˡ; <-irrefl; m≤m+n; m∸n≤m
+open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-transˡ; <-irrefl; m≤m+n; m≤n+m; m∸n≤m
                                       ; ⊓-glb; m⊓n≤m; m⊓n≤n; m+n≤o⇒m≤o∸n; +-identityʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 -- …and the pieces the RESOURCE parameter's type needs. Imported UNAPPLIED, so
@@ -38,7 +38,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 -- telescoping (`RC.RunAt o FS word-eq …`) — a parameter's type is elaborated
 -- before the body, where the applied `open import … FS word-eq` has not run.
 open import Data.Maybe using (just)
-open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-alloc-heap)
+open import Once.CCC.Machine.SMCore
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 import Once.CCC.Target.X86-64.Semantics as X
 import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FC
@@ -75,6 +76,18 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
              -- type, so these take `hv` directly — unlike `RunAt`/`CompiledCorr`,
              -- which telescope them explicitly)
              → FC.hfront hv + slots n ≤ FC.lo hv)
+  -- STACK EXHAUSTION, the exact mirror (2026-08-06). At an emitted `c-thunk`
+  -- the body's reservation does not run `%rsp` down into the heap frontier.
+  -- Same class, same conditioning, same reason it is a parameter — see
+  -- `…X86-64.ResourceBounds.StackRoom`, which is where the statement lives.
+  (stack-room : ∀ {hv : FC.HeapView FS word-eq}
+                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
+                  (s : X.State) (m : LabelId) (b : ℕ)
+              → RC.RunAt o FS word-eq prog fs
+              → FSim.CompiledCorr FS word-eq hv prog fs s
+              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
+                ≡ just (instr-ctrl (c-thunk m b))
+              → FC.hfront hv + slots b ≤ X.readReg (X.State.regs s) rsp)
   where
 
 open import Data.Maybe using (Maybe; just; nothing; maybe′)
@@ -506,25 +519,9 @@ postulate
                             ≡ event-of instr-call-closure fs
                               ++ flat-events n prog (flat-exec-instr instr-call-closure prog fs))
 
-  -- THE TWO CLOSURE MARKERS (Plan 0.63, 2b–2d). Both now have a PRODUCER —
-  -- closure bodies are inline — so they can no longer route absurdly. Stated
-  -- at the same granularity as `events-running-call` deliberately: all three
-  -- retire together when the call correspondence lands, and until then the
-  -- tree stays green and WIRED rather than red or islanded.
-  --
-  -- What discharges them: `c-thunk` composes a `step-label` fetch with
-  -- `block-step-alloc-stack`, whose freshness premises come from `untouched` +
-  -- the high-water mark and whose room premise is the honest `stack-room` —
-  -- which, per D087, enters as a PARAMETER, not a postulate. `c-ret` needs the
-  -- `FlatCorr` component relating the ghost `fret` to the machine stack.
-  events-running-thunk : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                           prog fs s (m : LabelId) (b : ℕ) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
-                       → halted (floc fs) ≡ false
-                       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk m b))
-                       → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                             ≡ event-of (instr-ctrl (c-thunk m b)) fs
-                               ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-thunk m b)) prog fs))
-
+  -- (`events-running-thunk` LIVED HERE. It is now a THEOREM — `thunk-step`
+  -- below. `c-ret` still needs the `FlatCorr` component relating the ghost
+  -- `fret` to the machine stack, so it stays.)
   events-running-ret : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                          prog fs s (b : ℕ) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
                      → halted (floc fs) ≡ false
@@ -1641,7 +1638,7 @@ mutual
   -- `stack-room`); `c-ret` additionally needs the `FlatCorr` component
   -- relating the ghost `fret` to the machine stack.
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-thunk m b)) cc wf h ftq =
-    events-running-thunk n ev env prog fs s m b cc wf h ftq
+    thunk-step n ev env prog fs s m b cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-ret b)) cc wf h ftq =
     events-running-ret n ev env prog fs s b cc wf h ftq
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-jmp m)) cc wf h ftq = cjmp-step n ev env prog fs s m cc wf h ftq
@@ -1679,6 +1676,11 @@ mutual
   -- (block-run-exec), then recurse via events-agree. Taking the BlockStep explicitly
   -- lets witnessed cases (c-jmp with its found-label, …) feed their PROVEN block-step
   -- lemma rather than routing through block-step-any's residual.
+  -- `hv'` is the POST view, and it is the only one that appears: `BlockStepAt
+  -- hv hv'` discards its first argument definitionally, so a step that LEAVES
+  -- the view it arrived at needs nothing special here. `instr-alloc-heap`
+  -- (extends the view) and `c-thunk` (DESCENDS it, `C.descend-view`) both feed
+  -- this unchanged.
   ccc-step-bs : ∀ {hv' : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
                   prog fs s i → BlockStep hv' prog fs s i → FlatInv ev env prog fs
               -- the SITE and the pre-state halt flag: what `flat-inv-step` needs to
@@ -1699,6 +1701,56 @@ mutual
             trans (block-run-exec ev env (x86-len i) (proj₁ rec) (compile-trace prog) s
                      (proj₁ (proj₂ bs)) (trans (C.halt-eq (dataCorr (proj₂ (proj₂ bs)))) hpost))
                   (proj₂ rec)
+
+  -- THE CLOSURE BODY ENTRY — `c-thunk m b` ↔ `label (thunk m) ; sub rsp, 8b`.
+  --
+  -- This was `events-running-thunk`, a POSTULATE, until the `Window` weakening
+  -- and `do-thunk`'s frame clear (D090) made `block-step-c-thunk` provable.
+  -- What is left to supply here is the LAYOUT: where the descended high-water
+  -- mark lands, and the one honest resource fact that it is legal.
+  --
+  -- `lo'` — THE NEW HIGH-WATER MARK — is `lo hv ⊓ (%rsp ∸ 8b)`. The meet, not
+  -- either side: `lo` must not RISE (it is the lowest `%rsp` EVER held, and
+  -- `untouched` about `[hfront, lo)` would be a claim about cells a deeper
+  -- earlier frame has written), and it must not exceed the new `%rsp` (or the
+  -- reserved frame would sit inside the region called virgin). Both bounds
+  -- (`lo'≤lo`, `lo'≤rsp`) are then the two meet projections.
+  --
+  -- `front-lo'` — that the descended mark stays above the heap — is the ONLY
+  -- part that is not free, and it is exactly `stack-room`: from
+  -- `hfront + 8b ≤ %rsp` truncated subtraction gives `hfront ≤ %rsp ∸ 8b`, and
+  -- `front-lo hv` gives the other half of the meet. The same premise also
+  -- yields `fits` (`8b ≤ %rsp`, the `sub` does not underflow) — which is why
+  -- the parameter is stated additively rather than as its two consequences.
+  thunk-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
+                 prog fs s (m : LabelId) (b : ℕ) → CompiledCorr hv prog fs s → FlatInv ev env prog fs
+             → halted (floc fs) ≡ false
+             → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk m b))
+             → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+                   ≡ event-of (instr-ctrl (c-thunk m b)) fs
+                     ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-thunk m b)) prog fs))
+  thunk-step {hv} n ev env prog fs s m b cc wf h ftq =
+    -- (the post view is the DESCENDED one, so `ccc-step-bs`'s `hv'` is left to
+    -- inference — pinning it to `hv` here would demand `lo' ≡ lo hv`)
+    ccc-step-bs n ev env prog fs s (instr-ctrl (c-thunk m b))
+      (block-step-c-thunk prog fs s m b cc h ftq lo' lo'≤lo front-lo' lo'≤rsp fits)
+      wf ftq h refl h
+    where
+      -- the site's resource fact: the reservation stays above the heap frontier
+      room : C.hfront hv + slots b ≤ X.readReg (X.State.regs s) rsp
+      room = stack-room prog fs s m b (inv-run wf) cc ftq
+      fits : slots b ≤ X.readReg (X.State.regs s) rsp
+      fits = ≤-trans (m≤n+m (slots b) (C.hfront hv)) room
+      front-rsp : C.hfront hv ≤ X.readReg (X.State.regs s) rsp ∸ slots b
+      front-rsp = m+n≤o⇒m≤o∸n (C.hfront hv) room
+      lo' : ℕ
+      lo' = C.lo hv ⊓ (X.readReg (X.State.regs s) rsp ∸ slots b)
+      lo'≤lo : lo' ≤ C.lo hv
+      lo'≤lo = m⊓n≤m (C.lo hv) (X.readReg (X.State.regs s) rsp ∸ slots b)
+      lo'≤rsp : lo' ≤ X.readReg (X.State.regs s) rsp ∸ slots b
+      lo'≤rsp = m⊓n≤n (C.lo hv) (X.readReg (X.State.regs s) rsp ∸ slots b)
+      front-lo' : C.hfront hv ≤ lo'
+      front-lo' = ⊓-glb (C.front-lo hv) front-rsp
 
   -- CONTROL c-jmp: case the found label (J-bridge on find-label, no with). Found ⇒
   -- do-jump just bumps fpc (halted preserved: hpost=h) and the PROVEN block-step-c-jmp

@@ -36,8 +36,10 @@ import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FCx
 import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation as FSimx
 import Once.Adequacy.ArchCorrectness.X86-64.RunContext as RCx
 import Once.CCC.Target.X86-64.Semantics as X
-open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-alloc-heap)
-open import Once.CCC.Target.X86-64.Syntax using (slots)
+open import Once.CCC.Machine.SMCore
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk)
+open import Once.CCC.Label using (LabelId)
+open import Once.CCC.Target.X86-64.Syntax using (slots; reg; rsp)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (x86-64-frame-semantics)
 
@@ -65,3 +67,33 @@ HeapRoom =
   → FlatMachine.fetch {x86-64-frame-semantics} prog
       (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-alloc-heap n)
   → FCx.hfront hv + slots n ≤ FCx.lo hv
+
+------------------------------------------------------------------------
+-- STACK EXHAUSTION: at an emitted `c-thunk m b` the body's reservation does
+-- not run `%rsp` down into the heap's allocation frontier.
+--
+-- THE EXACT MIRROR OF `HeapRoom`, and deliberately so — the two bounds say
+-- the same thing about the two ends of the same virgin region `[hfront, lo)`:
+-- an allocation must not consume it from below, a frame reservation must not
+-- consume it from above. Same conditioning (`RunAt` + `CompiledCorr` + the
+-- site), same class, same reason it is a PARAMETER and not a postulate
+-- (D087): a linker sizing pass discharges it, and a parameter is the hole
+-- that proof slots into.
+--
+-- WHY `hfront + slots b ≤ %rsp` AND NOT THE TWO CONSEQUENCES SEPARATELY. The
+-- `c-thunk` block-step needs `slots b ≤ %rsp` (the `sub` does not underflow)
+-- and `hfront ≤ %rsp ∸ slots b` (the reserved frame stays above the heap).
+-- Truncated subtraction makes the second NOT imply the first, so stating them
+-- apart would be two parameters where the additive form is one — and the
+-- additive form is also the one a sizing pass would actually establish.
+------------------------------------------------------------------------
+StackRoom : Set₁
+StackRoom =
+  ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
+    (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
+    (s : X.State) (m : LabelId) (b : ℕ)
+  → RCx.RunAt o x86-64-frame-semantics refl prog fs
+  → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+  → FlatMachine.fetch {x86-64-frame-semantics} prog
+      (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-ctrl (c-thunk m b))
+  → FCx.hfront hv + slots b ≤ X.readReg (X.State.regs s) rsp

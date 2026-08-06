@@ -6504,3 +6504,31 @@ the clear can only make these invariants easier.
 - `events-running-call` is untouched: it is a MODEL GAP (`exec-abstract
   instr-call-closure` is the identity while `call *0x8(%r12)` transfers
   control), not a layout problem.
+
+### FOLLOW-ON (2026-08-06): `events-running-thunk` DISCHARGED
+
+The first of the three genuine correspondence gaps is now a theorem
+(`ConcFlatSim.thunk-step`), which is what D090 was for. Two choices in the
+assembly are worth recording:
+
+**The new high-water mark is a MEET**: `lo' = lo hv ⊓ (%rsp ∸ 8b)`, not either
+side alone. `lo` must not RISE — it is the lowest `%rsp` ever held, and
+`untouched` over `[hfront, lo)` would otherwise claim a deeper earlier frame's
+written cells are unmapped. And it must not exceed the new `%rsp`, or the frame
+just reserved would sit inside the region called virgin. The two premises
+`lo'≤lo` and `lo'≤rsp` are then exactly the two meet projections, and
+`front-lo'` is `⊓-glb` of the view's own `front-lo` and the resource fact.
+
+**`StackRoom` is stated ADDITIVELY** — `hfront hv + slots b ≤ %rsp` — not as its
+two consequences. The block-step needs both `slots b ≤ %rsp` (the `sub` does not
+underflow) and `hfront ≤ %rsp ∸ slots b` (the frame stays above the heap), and
+truncated subtraction means the second does NOT imply the first. Stating them
+apart would be two parameters where the additive form is one — and the additive
+form is what a linker sizing pass would actually establish. It is the exact
+mirror of `HeapRoom`'s `hfront + slots n ≤ lo`: the two bounds guard the two
+ends of the same virgin region.
+
+`ccc-step-bs` needed NO generalisation, which is worth knowing before someone
+tries: `BlockStepAt hv hv'` discards `hv` definitionally, so a view-CHANGING
+step already typechecks against `BlockStep hv'`. The only care needed at the
+call site is to leave `hv'` to inference rather than pinning it to the pre-view.
