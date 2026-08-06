@@ -142,7 +142,7 @@ d_step'45'wp_68 ::
   Maybe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.T_State_214
 d_step'45'wp_68 v0 v1 v2 v3
   = let v4
-          = MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_fetch_556
+          = MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_fetch_568
               (coe v2)
               (coe
                  MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_pc_232
