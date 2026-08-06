@@ -73,9 +73,38 @@ LIBF="$(mktemp)"
 printf '%s\n' "$STDLIB" "$ROOT/formal/Once.agda-lib" "$ROOT/bootstrap/bootstrap.agda-lib" > "$LIBF"
 cd "$HERE"
 unset AGDA_DIR
+#-----------------------------------------------------------------------------
+# GHC RTS defaults
+#-----------------------------------------------------------------------------
+# MEASURED on poc/OCP0009/NbEPDirDBExamplesLex.agda (2026-08-06), half of the
+# ⊢lexZZ derivation:
+#
+#   default    14.5s / 1.92 GB      -A256m     12.3s / 1.84 GB
+#   -A64m      13.7s / 1.36 GB      -c         19.8s / 1.26 GB
+#
+# `-A64m` is strictly better than the default on BOTH axes: a bigger
+# allocation area means fewer minor GCs, and on this workload the baseline
+# spends ~46% of its runtime in GC (MUT 2.16s vs GC 1.83s on a trivial
+# module). So it is a free ~30% memory cut, not a time/space trade.
+#
+# ⚠ IT BUYS ONE NESTING LEVEL, NOT A FIX. The blow-up in these example
+# modules is SUPERLINEAR in derivation size (13.6s/1.34 GB for half a branch
+# vs >349s/4.69 GB for a whole one), so ~30% is noise against the real curve.
+# The actual lever is smaller ELABORATED TERMS — split derivations into
+# top-level lemmas whose implicits are `RTm`s and whose bodies sit behind a
+# `Def` (the `⊢strong-base'` pattern), so the term-traversal phases
+# (Positivity/Coverage/Termination/DeadCode/InterfaceInstantiateFull, ~45% of
+# runtime here) walk small terms. Do not read this flag as the answer.
+#
+# Prepended, so an explicit `+RTS ... -RTS` on the command line still wins
+# (later RTS flags override earlier ones). Override wholesale with AGDA_RTS.
+#-----------------------------------------------------------------------------
+AGDA_RTS="${AGDA_RTS:--A64m}"
+
 # Run agda WITHOUT `set -e` aborting us, so we always reach the kill check.
 rc=0
-agda --library-file="$LIBF" "$@" || rc=$?
+# shellcheck disable=SC2086
+agda +RTS $AGDA_RTS -RTS --library-file="$LIBF" "$@" || rc=$?
 rm -f "$LIBF"
 
 # OOM / kill detection. A process killed by a signal exits with 128+signo,
