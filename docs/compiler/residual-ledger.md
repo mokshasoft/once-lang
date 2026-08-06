@@ -33,22 +33,25 @@ gap. The test is whether its STATEMENT relates the concrete machine to the
 abstract one — read it off the signature: does it mention `X.State` /
 `run-events` at all, or only `AbstractTrace` / `FlatState` / `IR`?
 
-    genuine correspondence gaps (1):
-      events-running-call
+    genuine correspondence gaps (2), NEITHER a model gap since D092:
+      events-running-ret, events-running-call
       (events-running-thunk DISCHARGED 2026-08-06 — see #8)
-      (events-running-ret  DELETED    2026-08-06 — see #9 and D091: it was
-       never an independent gap, only the call gap seen from the other end)
+      Both were blocked on the abstract machine not modelling the call. It does
+      now (D092), so both sides of each equation describe the same transition
+      and what is left is a DEFERRED PROOF: the `CompiledCorr` component
+      relating the ghost `fret` to the cells the concrete `call` pushed, plus
+      its ~37-site ripple in `FlatSimulation`. The concrete half of the
+      transfer already exists (`FlatComposition.find-thunk-pres`).
 
     correspondence-located, CPU-MODEL caused (3):
       arith-sigop-contract, external-sigop-contract, conc-fuel
       (see THE CPU-MODEL ROOT below)
 
-    obligations the correspondence CONSUMES, owned by other layers (5):
+    obligations the correspondence CONSUMES, owned by other layers (4):
       emitted-shape-check   — codegen        (only `ir-to-trace`)
       run-meets             — abstract machine + shape table (no `X.State`)
       main-heap-moded       — frontend       (only `IR`)
       entry-size            — resource/frontend plumbing (only `ir-size`)
-      ret-site-owes         — abstract machine / call model (no `X.State`)
 
     boundary axioms (2):
       stack-top-in-stack, x86-64-loader-faithful
@@ -57,10 +60,10 @@ This matters for SCOPE. A branch whose subject is the correspondence is not
 finished by discharging the cheap rows — those are other layers' work that
 happens to be named here. It is finished by the genuine gaps, which are also the
 hardest. Of the original three: `events-running-thunk` is DISCHARGED (a
-theorem), `events-running-ret` turned out not to be an independent gap at all
-(D091 — it is blocked BY the call, and its clause is now a theorem resting on
-one abstract-machine invariant), and `events-running-call` — the model gap — is
-the only one left. It is also what unblocks the return.
+theorem); `events-running-ret` was never independent (D091 — it is blocked BY
+the call); and `events-running-call`, the model gap, is CLOSED AS A MODEL GAP
+by D092 — the machine performs the call now. Both survivors are ordinary
+deferred proofs sharing one missing piece: the return-address component.
 
 ## Classes
 
@@ -92,13 +95,13 @@ the only one left. It is also what unblocks the return.
 | 6 | `run-meets` | `ConcFlatSim` | deferred proof | induction on `Reachable`; entry via D074 all-tag state, step via per-instruction transfer soundness |
 | 7 | `main-heap-moded` | apex | deferred proof | induction over the elaborator: building with `C.Heap` yields only `Heap` modes |
 | — | `events-running-thunk` | (was `ConcFlatSim`) | — | **DONE, DISCHARGED 2026-08-06** — now the theorem `ConcFlatSim.thunk-step`. `block-step-c-thunk` (a theorem since D090) fed `lo' = lo hv ⊓ (%rsp ∸ 8b)`; its `front-lo'`/`fits` come from the new `x86-64-stack-room` PARAMETER (`ResourceBounds.StackRoom`), the exact mirror of `HeapRoom` |
-| 9 | `ret-site-owes` | `ConcFlatSim` | **model gap (call)** | REPLACED `events-running-ret` 2026-08-06 (D091). That postulate is DELETED: its clause is now the theorem `ret-step`, `⊥` by collision between this residual (a reachable `c-ret` owes a return — a call entered the body and pushed the pc, D086) and the THEOREM `run-no-ret` (`fret ≡ []` in every reachable state, because `instr-call-closure` is the identity). Two routes: (1) CFG confinement — prove no reachable pc lies in a body region, which deletes this row outright; (2) model the call, after which `run-no-ret` stops typechecking and this becomes provable from the push. NB the pair is INCONSISTENT if a `c-ret` site is ever reachable — deliberate, see D091 |
-| 10 | `events-running-call` | `ConcFlatSim` | **model gap** | `exec-abstract instr-call-closure` is the IDENTITY while `call *0x8(%r12)` transfers control. The abstract machine must model the call (or codegen must inline it) before any proof exists |
+| 9 | `events-running-ret` | `ConcFlatSim` | deferred proof | ROUND TRIP: deleted 2026-08-06 (D091 — no reachable state fetched a `c-ret`, so its clause became `⊥` by collision with the theorem `run-no-ret`), restored the same day when D092 MODELLED THE CALL. `run-no-ret` is false and deleted, `ret-site-owes` is gone, and the route is live. No longer a model gap — what is missing is the `CompiledCorr` return-address component, preservable now that `enter-call` pins the entered frame's window END on the pushed cell |
+| 10 | `events-running-call` | `ConcFlatSim` | deferred proof | WAS the model gap; CLOSED as such by D092 (2026-08-06). `flat-exec-instr instr-call-closure` now transfers control the way `call *0x8(%r12)` does — pushes `fret`/`saved-frames`, enters `enter-call`'s frame, resolves the body with `find-thunk`. The concrete side of the transfer is already proven (`FlatComposition.find-thunk-pres`); what remains is the same return-address component as #9 |
 | 11 | `conc-fuel` | apex | **stub** | asserts adequacy of `step-budget-x86-64`, an UNDEFINED postulated `ℕ → ℕ` in `…CPU.X86-64` (siblings: `ev-x86-64`, `arith-env-x86-64`). Pin `step-budget` to a definition, then prove it. NOT a resource bound — do not launder it into a parameter |
 | 12 | `x86-64-loader-faithful` | apex | **axiom** | STAYS. Assembler + loader + printer + decoder round-trip; the boundary every verified compiler keeps |
 
-Only #12 is permanent. #10 needs a semantics change; #11 lives in the CPU layer,
-not the correspondence.
+Only #12 is permanent. #11 lives in the CPU layer, not the correspondence.
+NOTHING in this cone is a model gap any more — D092 closed the last one.
 
 RESOURCE PARAMETERS now carried (not postulates, D087): `program-bound`,
 `x86-64-heap-room`, `x86-64-stack-room`, `entry-frame`. All four thread
