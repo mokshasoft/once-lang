@@ -564,6 +564,16 @@ are LANDED** (2026-08-06).  The whole tower is green, canonicity and
 consistency intact and unchanged, zero postulates, zero holes, no
 `TERMINATING`, no sized types.
 
+★ **And the DERIVED layer over it is now complete too**: `⊢sind`
+(course-of-values), `⊢amrec` (measure, any carrier), `⊢div`, and as of
+2026-08-06 `⊢lexrec` (LEXICOGRAPHIC, `NbEPDirDBExamplesLexAsm`) — all
+object-language definitions, nothing added to `RTm`/`RTy`/`_⊢_∷_`.
+Remaining on this axis, cheapest first: carrier-generic `⊢lexrec`
+(claimed to generalise like `⊢amrec`, UNTESTED); Ackermann as the
+demonstration lexrec was meant to unlock (unwritten); mutual recursion;
+multiset measures; ordinals.  None is a blocker — see the ranked list
+below, where the real blocker is INDUCTIVE TYPES, not this axis.
+
 ★ **THE SHOWCASE IS DELIVERED**, all as object-language terms
 type-checked by the kernel (not meta-level Agda proofs about it):
 
@@ -664,11 +674,31 @@ and it does not scale: one former per datatype, versus one `μ` for all.
    the NON-structural recursions (`div`, `gcd`, quicksort) where the
    recursive argument is not a subterm.
 
-2. **LEXICOGRAPHIC / multiset measures — a real gap in the current
-   combinator.** `μ : A → Nat` is a SINGLE ℕ, so Ackermann-style
-   terminations are out of reach. Needs either a computing order on
-   pairs or a derived lex combinator. Cheapest genuine extension of this
-   axis, and the only one that buys power `μ` cannot already express.
+2. **LEXICOGRAPHIC measures — ✅ CLOSED 2026-08-06, as a DERIVED
+   combinator.** Was: "`μ : A → Nat` is a SINGLE ℕ, so Ackermann-style
+   terminations are out of reach." Now `⊢lexrec`
+   (`NbEPDirDBExamplesLexAsm`) is machine-checked, generic in `x`:
+
+       ⊢lexrec : {x} → Γ₅ ⊢ x ∷ Nat → Γ₅ ⊢ lexrecTm x ∷ El (app cP x)
+
+   ★ NOT by the predicted route.  The prediction was "nest `⊢amrec`,
+   inner motive carrying the outer recursor (the `div` trick)".  What
+   works is a DOUBLY-BOUNDED auxiliary recursed by NESTED `natrec` —
+   `aux n₁ n₂ x : μ₁ x ≤ n₁ → μ₂ x ≤ n₂ → P x`, outer `natrec` on n₁,
+   inner on n₂.  The nesting IS the order: a `rec₁` call drops n₁ and
+   RESETS n₂ to `μ₂ y` (`⊢le-refl`); a `rec₂` call HOLDS n₁ and drops n₂
+   (`⊢strong-step`).  No new kernel former, no coproduct (two recursor
+   arguments instead of a disjunction), no equality on ℕ (`<`/`≤` are
+   both computing `Hom Nat`).
+
+   ⚠ STILL ℕ-CARRIER ONLY.  `⊢amrec` is carrier-generic (`A : U`,
+   `μ : A → Nat`); `⊢lexrec` is not, and the claim that its proof would
+   generalise unchanged is UNTESTED.  Cheapest remaining item on this
+   axis.  Multiset measures are also still open — no current demand.
+
+   ★ NOT YET DEMONSTRATED: Ackermann, the example this was supposed to
+   unlock, is not written.  Deriving it is the "use it" check — twice
+   today a spec bug was caught by USE and by nothing else.
 
 3. **Ordinals / transfinite** — much larger, no current demand.
 
@@ -737,7 +767,14 @@ is DECIDABILITY OF CONVERSION, nothing else.
 
   * **course-of-values** — `⊢sind`. ✅ done.
   * **measure into ℕ, any carrier** — `⊢amrec`. ✅ done.
-  * **LEXICOGRAPHIC / mutual** — derivable by NESTING `⊢amrec`, with the
+  * **LEXICOGRAPHIC** — ✅ done, `⊢lexrec` (`NbEPDirDBExamplesLexAsm`),
+    machine-checked 2026-08-06.  ⚠ the sketch below was the PREDICTION
+    and its route was wrong (see the ranked list above): not nested
+    `⊢amrec` but a doubly-bounded auxiliary by nested `natrec`.  The two
+    design points DID hold — `<`/`≤` as computing `Hom Nat` so no
+    equality on ℕ, and two recursor arguments so no coproduct.
+    **MUTUAL** is still unwritten.  Original sketch, kept for the shape:
+  * *(prediction, superseded)* derivable by NESTING `⊢amrec`, with the
     inner motive carrying the outer recursor (the `div` trick).  ★ two
     points make this cheap: state the descent with `<` and `≤` (both
     computing `Hom Nat`) so **no equality on ℕ is needed**, and pass TWO
