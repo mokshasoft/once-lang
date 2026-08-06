@@ -168,25 +168,29 @@ lexAuxTm n = natrec lexZBr lexSBr n
 
 
 ------------------------------------------------------------------------
--- ⚠⚠ CHECKPOINT — ALL FOUR BRANCHES DERIVED; ASSEMBLY NOT.
+-- ★★ DONE — `lexrec` IS DERIVED, END TO END.
 --
--- DONE, each in its own module (RAM, see below):
---   (0,0) ⊢lexZZ  NbEPDirDBExamplesLexZZ      34.7s / 2.94 GB
---   (0,S) ⊢lexZS  NbEPDirDBExamplesLexZS     131.6s / 5.05 GB
---   (S,0) ⊢lexSZ  NbEPDirDBExamplesLexSZ      85.0s / 4.98 GB
+-- Four branches, each in its own module (RAM, see below):
+--   (0,0) ⊢lexZZ  NbEPDirDBExamplesLexZZ       35.2s / 2.12 GB
+--   (0,S) ⊢lexZS  NbEPDirDBExamplesLexZS      100.1s / 4.74 GB
+--   (S,0) ⊢lexSZ  NbEPDirDBExamplesLexSZ       91.4s / 4.32 GB
 --   (S,S) ⊢lexSS  NbEPDirDBExamplesLexSS{Data,1,2}  — needs `+RTS -c`
+-- and the assembly in NbEPDirDBExamplesLexAsm:
+--   ⊢lexZBr / ⊢lexSBr  the two inner `natrec`s on n₂
+--   ⊢lexAux            the outer `natrec` on n₁
+--   ⊢lexrec            aux at μ₁ x, μ₂ x, x and two `⊢le-refl`s, GENERIC in x
 --
--- ⚠ NOT WRITTEN, and so `lexrec` is NOT verified: the assembly layers
---   `⊢lexZBr`, `⊢lexSBr` (the two inner `natrec`s), `⊢lexAux` (the outer
---   one), and `⊢lexrec` itself — which applies `aux` at `μ₁ x`, `μ₂ x`
---   with two `⊢le-refl`s.  Four branches is the hard part done, not the
---   whole; do not read "branches derived" as "lexrec derived".
+-- ★ SO THE ARCHITECTURE CLAIM HOLDS: the lexicographic recursor is an
+--   object-language DEFINITION over `natrec`/`ordtr`/`absurd`/Π.  Nothing
+--   was added to `RTm`/`RTy`/`_⊢_∷_`, so soundness is untouched — which is
+--   what this file was written to test.  No `Acc`, no fuel, no
+--   `TERMINATING`, no coproduct, and no equality on ℕ.
 --
--- ★ WHAT THE BRANCHES ALREADY BOUGHT, beyond themselves: they are a
---   MEANING CHECK on the statement.  Deriving them found the `lexAuxMot`
---   measure bug (μ₁ where μ₂ was meant — see §2), which no amount of
---   `RTy` well-formedness would ever have caught.  Expect the assembly
---   layers to test `lexAuxMot` and `M0lex`/`M1lex` the same way.
+-- ★ WHAT THE DERIVATION BOUGHT beyond itself: it is a MEANING CHECK on the
+--   statement.  Writing it found the `lexAuxMot` measure bug (μ₁ where μ₂
+--   was meant — see §2), which no amount of `RTy` well-formedness would
+--   have caught, and the assembly then forced `lexAuxMot`/`M0lex`/`M1lex`
+--   to agree with each other via `⊢natrec`'s motive discipline.
 --
 -- Everything above TYPECHECKS: `REC1T`, `REC2T`, `LStepT`, `Γ₅` and
 -- `lexAuxMot` are well-formed, which settles the part most likely to be
