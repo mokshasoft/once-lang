@@ -6934,3 +6934,74 @@ Cost, measured rather than guessed:
   parameter per D087);
 - `GapNext` for the new head is then `frame-base cur ∸ slot-size + slot-size ≡
   frame-base cur`, the same no-underflow fact that premise supplies.
+
+## D096–D098: The Correspondence Gaps Are Closed
+
+**Date**: 2026-08-06 · **Plan**: 0.54 rung D · **Status**: landed
+
+`events-running-{thunk,ret,call}` — the three genuine correspondence gaps this
+branch set out to attack — are now all THEOREMS. No `events-running-*` postulate
+remains in the cone.
+
+### D096: a code address is an ADDRESS
+
+    effectiveAddr s (rip+label n) = idx n     -- "resolved by linker"
+
+`idx` is a FIELD of `LabelId` (D089) — the label's identity, no position in
+anything. The machine is index-addressed (`pc` is a position, `find-label`
+returns one, `jmp`/`je`/`ret` move `pc` to one), and `Semantics.agda`'s header
+asks the reviewer to compare each clause against the Intel SDM, where `LEA`
+yields the referenced location's address. So this was a DEFECT, not an
+abstraction — and a consequential one: `call *0x8(%r12)` jumps to a value that
+came from this `lea`, so model and hardware parted company on any program that
+applies a closure, which made `x86-64-loader-faithful` false for those programs.
+The fiction was hiding inside the trusted axiom. It went unnoticed because until
+D092 the abstract call was the identity, so nothing used the value as an address.
+
+The repair follows the model's own convention (and CompCert's `Asm.v`, which
+the header names): `lea r (rip+label ℓ)` RESOLVES through `find-label prog
+(thunk ℓ)`, halting when absent, exactly as `jmp` does. `AddrMap` gained a code
+map so `SV-Code` can encode to a resolution at all; `CompiledCorr.code-eq` ties
+that map to the program.
+
+### D097: the correspondence tracks `%r12`
+
+`FlatCorr.r12-eq` — the concrete closure register mirrors the flat `fclosure`.
+It went untracked because nothing READ it; the call does. One consequence worth
+its own invariant: the register's ENCODING must survive an allocation extending
+the view, and `enc-ext` wants the value below the frontier — `fclosure` is a
+`FlatState` field, so `StoreWF` says nothing about it. Hence
+`FlatInv.inv-closure`, preserved by `FlatStoreWF.cl-step`.
+
+### D098: the call
+
+`C.sim-call` + `block-step-call` + `ConcFlatSim.call-step`. The written cell is
+below every live frame's base, so nothing already corresponded to it: the
+entered frame's head window is vacuous (it reserves nothing, D086) and the
+caller's windows are untouched by a write under them. The two label scans agree
+by `find-thunk-corr`; the pushed address is `x86-off prog (suc (fpc fs))` on
+both sides by `x86-off-suc`.
+
+### What the correspondence now rests on
+
+Nothing in the cone is a model gap. What is left, by class:
+
+- **abstract-machine / codegen** (no `X.State` in the type): `call-site-shape`,
+  `ret-site-owes`, `ret-budget-matches`, `emitted-thunk-guarded`,
+  `emitted-code-addr-has-body`, `emitted-shape-check`, `run-meets`. The first
+  five are one emitter induction over `ir-to-trace'` away — the shape is written
+  up in D094.
+- **CPU-model stubs**: `arith-sigop-contract`, `external-sigop-contract`,
+  `conc-fuel` — all three conditioned on the three UNDEFINED functions in
+  `Once.Adequacy.CPU.X86-64`. A DEFINITION task, not a proof task.
+- **resource parameters** (D087, not postulates): `program-bound`,
+  `x86-64-heap-room`, `x86-64-stack-room`, `x86-64-call-room`, `entry-frame`.
+- **boundary axioms**: `stack-top-in-stack`, `x86-64-loader-faithful`.
+- **frontend**: `main-heap-moded`.
+
+The pattern worth keeping from this rung: every one of the three gaps closed by
+fixing the MACHINE rather than by assuming harder — the call was modelled
+(D092), the window was made one-directional and the frame cleared (D090), the
+code address was made an address (D096). Each time the "unprovable" statement
+turned out to be a true statement about a machine that was not yet being
+modelled correctly.
