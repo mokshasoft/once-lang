@@ -6799,3 +6799,73 @@ Three things, and they are known:
 
 The concrete side is already in hand: `x86 ret` reads `[%rsp]`, and after the
 `add` that address is exactly the head cell this component describes.
+
+## D094: Every Way Into a Closure Body, Refuted — the Body-Entry Invariant
+
+**Date**: 2026-08-06 · **Plan**: 0.54 rung D · **Status**: landed
+
+`thunk-entry-empty` — a reachable body entry has an empty reservation, the
+input D093's return-address component needs — was a postulate for exactly one
+commit. It is now `SegWF.seg-entry`, a projection of the run invariant, proved
+by the same induction that carries the segmented budget.
+
+### The argument is exhaustive by construction
+
+A state whose pc holds a `c-thunk` got there somehow, and `Reachable` enumerates
+the ways. Each is refuted by a fact that already existed or is cheap:
+
+| arrival | refutation |
+|---|---|
+| ENTRY (pc 0) | a body entry is never at position 0 — a guard precedes it |
+| FALL-THROUGH | the emitter puts a `c-jmp` immediately before a body entry, and the instruction that fell through is not one |
+| JUMP | `find-label` resolves `c-label`s, so a jump lands on a `c-label` |
+| RETURN | its address is one past a CALL, and a call is not a `c-jmp` |
+| CALL | — this is the case that PROVES it: `enter-call` reserves nothing (D086) |
+
+### What each refutation cost
+
+**`NotJmpI`**, carried by exactly the two rows that fall through: `PcView.pv-suc`
+and `JumpPost.jp-suc`. Putting the witness on the CONSTRUCTOR rather than
+splitting `PcView` is what kept this small — a `c-jmp` never produces `jp-suc`
+(`dj-aux` has no fall-through row), so the branches carry `tt` and the jump
+needs no special case.
+
+**`Flat.find-label-sound`** — the mirror of D092's `find-thunk-sound`, and the
+same shape: `fl-go` became `with`-free so the proof reduces under a hypothesis
+about the head. This is D082's disjoint provenances paying off a second time:
+the two scans cannot land on each other's instructions, so "a jump never enters
+a closure body" is a THEOREM, not a codegen assumption.
+
+**`RetMatch`'s provenance witness** — `rm-∷` now records that a pending return
+address is `suc q` with a CALL at `q`. The call is the only pusher, so the
+witness is free at the push and rides everywhere else. It says a return lands
+after a call site rather than anywhere, which is what rules out landing on a
+body entry.
+
+### What is left, and why it is the right shape
+
+One codegen-class postulate:
+
+    emitted-thunk-guarded : fetch (ir-to-trace ir) p ≡ just (c-thunk ℓ bb)
+                          → Σ q → (p ≡ suc q) × Σ m → fetch … q ≡ just (c-jmp m)
+
+Only `ir-to-trace` appears in its type — no `X.State`, no `FlatState`. It is
+the emitter's own guard, stated: `ir-to-trace'` emits `… c-jmp end ∷ c-thunk ℓ
+bb ∷ body …`, and that jump is exactly what stops the parent falling into the
+body. Both halves come from one Σ: `p ≡ suc q` rules out the entry pc and the
+fetch at `q` rules out every fall-through.
+
+Its discharge is a structural induction over `ir-to-trace'`, and the shape that
+keeps it small is worth recording before someone starts:
+
+- carry the PREVIOUS instruction (`GuardedFrom prev t`), so the head's
+  obligation is local;
+- every clause's trace is prev-POLYMORPHIC, because no emitted trace BEGINS
+  with a body entry — that is what makes the `++` splice lemma compose;
+- a `NoThunks` decider collapses every clause that emits no body entry to
+  `refl`, which is most of them including the cata walks;
+- the one interesting adjacency lives inside a single literal list in each
+  `curry` clause, so it needs no boundary reasoning at all.
+
+Take the `c-ret` bracket fact (its budget IS the reservation in force) in the
+same module: one induction, two consumers.
