@@ -86,6 +86,7 @@ open import poc.OCP0009.NbEPDirDBLR
         ; snr-jsub-refl; snr-jsubᵖ
         ; snr-natrec-zero; snr-natrec-suc; snr-natrecⁿ
         ; sne-natrec; ne-natrec; sn-unit; sn-nzero; sn-nsuc
+        ; sne-ordtr; ne-ordtr; ordstk?
         ; NatMem; nm-ne; nm-zero; nm-suc; nm-exp; natmem-whred
         ; ⊩₁Unit; ⊩₁Nat; natstk?; natstk?-ren; natstk?-red; sne→natstk; sn-whred
         ; homNatSem; homNatSem₀; hns₀-in; bwd₀-mem⁻
@@ -287,6 +288,7 @@ sne→nopw (sne-tr _ _ _ key) = key
 sne→nopw (sne-ap _ _ _ key) = refl
 sne→nopw (sne-jsub _ _ _ key) = key
 sne→nopw (sne-natrec _ _ _ key) = key
+sne→nopw (sne-ordtr _ _ _ _ _ key) = key
 
 -- star-folds for the head strategy.
 snrs-hreflᶜ : {c c* t : RTm Ξ} → c ⟶csr* c* → hrefl c t ⟶snr* hrefl c* t
@@ -782,6 +784,7 @@ motFate (sn-ne (sne-tr h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-ne (sne-ap h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-ne (sne-jsub h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-ne (sne-natrec h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
+motFate (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-lam h) = _ , (csr-done , mf-dead refl)
 motFate (sn-pair a b) = _ , (csr-done , mf-dead refl)
 motFate sn-cb = _ , (csr-done , mf-dead refl)
@@ -846,6 +849,8 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
     sn-ne (sne-tr snM (sn-ne (sne-jsub h₁ h₂ h₃ key)) snE key)
   go' (sn-ne (sne-natrec h₁ h₂ h₃ key)) =
     sn-ne (sne-tr snM (sn-ne (sne-natrec h₁ h₂ h₃ key)) snE key)
+  go' (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) =
+    sn-ne (sne-tr snM (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) snE key)
   go' (sn-lam snf) with motFate snCT
   ... | CT* , (csr , mf-pw k) =
         ⊥-elim (noPiT (⟶ᵀ*-trans (⟶ᵀ*-El (csrs→⟶* csr))
@@ -1039,6 +1044,8 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-jsub h₁ h₂ h₃ key)) snE' key)
   go₀ (sn-ne (sne-natrec h₁ h₂ h₃ key)) hpʹ =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-natrec h₁ h₂ h₃ key)) snE' key)
+  go₀ (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) hpʹ =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) snE' key)
   go₀ (sn-lam snf) hpʹ = pwC snf hpʹ
   go₀ (sn-pair a b) hpʹ    = CR3₀ RH0 (sne-tr snM (sn-pair a b) snE' refl)
   go₀ sn-cb hpʹ            = CR3₀ RH0 (sne-tr snM sn-cb snE' refl)
@@ -1337,3 +1344,4 @@ ne-nostk (ne-tr _)    = refl
 ne-nostk (ne-ap _)    = refl
 ne-nostk (ne-jsub _)  = refl
 ne-nostk (ne-natrec _) = refl
+ne-nostk (ne-ordtr _) = refl
