@@ -181,3 +181,49 @@ Honest boundaries, so the findings aren't over-read:
   `NbEPDirDHoTT3` dHoTT-42), where semantic types make substitution and coherence
   free. So dHoTT-43's remaining rung is *faithfulness of the raw presentation*,
   not the consistency result.
+
+---
+
+## WF axis (stages A–E), 2026-08-06 — landed, with the showcase
+
+**The claim, mechanized.** On ℕ the directed structure IS the order:
+`Hom Nat m n` does not represent `m ≤ n`, it COMPUTES to it. Stages A–E
+are green through the whole tower; canonicity and consistency are
+unchanged and still proved; zero postulates, zero holes, no
+`TERMINATING`, no sized types.
+
+**Delivered as object-language terms** (kernel-checked, not meta-level
+Agda proofs about the kernel):
+
+- `⊢sind` — course-of-values induction, DERIVED from `natrec`.
+- `⊢mrec` — recursion along an arbitrary measure.
+- `⊢div` — a closed, well-typed division; `⊢gcd-descend` is literally
+  `⊢div-descend`, so the two textbook `Acc _<_` examples share ONE
+  termination certificate.
+
+**Findings worth carrying to other axes.**
+
+1. **Agda's coverage checker checks FUNCTIONS, not DATATYPES.** A term
+   former missing from every SN-layer datatype compiles GREEN and only
+   surfaces four modules downstream. `check-formers.sh` is the tripwire;
+   it was verified to FAIL on the bug it was written for. An unverified
+   tripwire is just another prediction.
+2. **A multi-scrutinee former's ξ rules must be SERIALIZED** or head
+   reduction stops being deterministic.
+3. **"Membership is just SN" is semantically right and definitionally
+   unavailable** wherever the interpretation matches on a payload —
+   costing `homNatSem-mem` and `bwd₁-mem⁻`.
+4. ★ **A dependent motive can absorb what "smart case" was wanted for.**
+   `div`'s assembly keeps a proof mentioning the scrutinee alive across
+   the split via the motive `λ m. (m ≤ suc n) → Nat`. See the
+   ARCHITECTURE.md smart-case entry.
+5. **Put hypotheses in the CONTEXT, not in Agda-level parameters.** As
+   context variables every substitution the kernel generates computes;
+   as parameters each use under a binder needs a renaming lemma. The
+   whole `⊢sind` construction then needs exactly ONE substitution lemma.
+
+**The honest limit.** `⊢mrec` is at `A = Nat` with `μ : Nat → Nat`. The
+POC's own `prog`/`usplit`/`trS`/`ordtrS` recurse over `RTm` with
+`μ = sz`. Literal self-hosting therefore waits on general inductive
+types in the kernel; what is demonstrated today is the PATTERN, not a
+drop-in replacement.
