@@ -549,30 +549,25 @@ postulate
                            ≡ event-of (instr-ctrl (c-ret b)) fs
                              ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
 
-  -- A BODY ENTRY IS REACHED WITH AN EMPTY RESERVATION (D093).
+  -- THE EMITTER'S GUARD, as one fact (D094). `ir-to-trace'` emits a closure
+  -- body as
   --
-  -- The frame a `c-thunk` deepens is the one a CALL entered, and `enter-call`
-  -- reserves nothing (D086). So at a reachable body entry `frame-slots` is 0 —
-  -- which is what keeps the pending return's cell where the call put it
-  -- (`block-step-c-thunk`'s `empty-frame`): the marker moves the frame down by
-  -- its reservation and sets the reservation to it, so the window END lands
-  -- back on the frame's own base, but only if it started there.
+  --     … ++ c-jmp end ∷ c-thunk ℓ bb ∷ body ++ c-ret bb ∷ c-label end ∷ []
   --
-  -- NOT a correspondence gap — the type mentions no `X.State`. It is a fact
-  -- about the ABSTRACT machine running an EMITTED program, and its discharge is
-  -- a `SegWF`-style induction resting on two emitter facts of the
-  -- `LabelScope.emitted-jump-in-segment` mould:
+  -- and the JUMP is exactly what stops the parent falling into the body. So a
+  -- body entry is never at position 0 and always has a `c-jmp` immediately
+  -- before it. Stated as one Σ so both halves come from one witness: `p ≡ suc q`
+  -- rules out the entry pc, and the fetch at `q` rules out every fall-through.
   --
-  --   * a body entry is never a FALL-THROUGH target — `ir-to-trace'` always
-  --     emits `c-jmp end` immediately before `c-thunk`, which is exactly what
-  --     stops the parent falling in;
-  --   * nor a JUMP target — `find-label` resolves `c-label`s, and a body entry
-  --     is a different provenance (D082).
-  --
-  -- Then the only way in is the call, which sets `frame-slots := 0`.
-  thunk-entry-empty : ∀ prog (fs : FlatState) (ℓ : LabelId) (bb : ℕ) → RunAt prog fs
-                    → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk ℓ bb))
-                    → frame-slots (falloc fs) ≡ 0
+  -- CODEGEN-class (only `ir-to-trace` in the type — no `X.State`, no
+  -- `FlatState`). Discharge: the structural induction over `ir-to-trace'` in
+  -- the `FrameFreeTrace` / `LabelScope` mould, with a `++` lemma at each splice
+  -- and the observation that no clause's trace BEGINS with a body entry.
+  emitted-thunk-guarded : ∀ (ir : IR Unit Unit) (p : ℕ) (ℓ : LabelId) (bb : ℕ)
+                        → fetch (ir-to-trace ir) p ≡ just (instr-ctrl (c-thunk ℓ bb))
+                        → Σ ℕ (λ q → (p ≡ suc q)
+                              × Σ LabelId (λ m → fetch (ir-to-trace ir) q
+                                                   ≡ just (instr-ctrl (c-jmp m))))
 
   -- THE BRANCH SCRUTINEE DISCIPLINE (D073, replaces `branch-tag-badptr` +
   -- `branch-tag-bad`): at an emitted `c-branch-tag-zero` site the scrutinee
@@ -829,6 +824,11 @@ data RetMatch (prog : AbstractTrace) (B : ℕ) : List (Frame × ℕ) → List �
   rm-[]  : RetMatch prog B [] []
   rm-∷   : ∀ {f b rpc frs rs}
          → b ≡ cur (seg-at prog rpc (mkSeg B []))
+         -- …and WHERE THE RETURN ADDRESS CAME FROM (D094): one past a CALL,
+         -- because the call is the only pusher. That is what says a return
+         -- lands after a call site rather than anywhere — in particular never
+         -- on a body entry, whose predecessor is a `c-jmp`.
+         → Σ ℕ (λ q → (rpc ≡ suc q) × (fetch prog q ≡ just instr-call-closure))
          → RetMatch prog B frs rs
          → RetMatch prog B ((f , b) ∷ frs) (rpc ∷ rs)
 
@@ -859,6 +859,17 @@ record SegWF (prog : AbstractTrace) (B : ℕ) (fs : FlatState) : Set where
   field
     seg-cur   : SegCur prog B fs
     seg-stack : RetMatch prog B (saved-frames (falloc fs)) (fret fs)
+    -- A BODY ENTRY IS REACHED WITH AN EMPTY RESERVATION (D094). The frame a
+    -- `c-thunk` deepens is the one a CALL entered, and `enter-call` reserves
+    -- nothing (D086). Every other way of arriving at a body entry is refuted:
+    -- a fall-through cannot, because the emitter puts a `c-jmp` there
+    -- (`emitted-thunk-guarded`); a jump cannot, because `find-label` resolves
+    -- `c-label`s (`find-label-sound`, D082's disjoint provenances); and a
+    -- return cannot, because its address is one past a CALL (`RetMatch`'s
+    -- provenance), which is not a `c-jmp`.
+    seg-entry : ∀ (ℓ : LabelId) (bb : ℕ)
+              → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk ℓ bb))
+              → frame-slots (falloc fs) ≡ 0
 open SegWF public
 
 ------------------------------------------------------------------------
@@ -891,8 +902,20 @@ db-aux : ∀ (b : Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
 db-aux false m prog fs = inj₁ refl
 db-aux true  m prog fs = inj₂ (dj-aux (find-label prog m) fs)
 
+-- "not the unconditional jump" (D094). The ONE instruction that can sit
+-- immediately before a body entry is `c-jmp` — that is the guard `ir-to-trace'`
+-- emits to stop the parent falling in. So every step that FALLS THROUGH has to
+-- be able to say it is not one, and this is the witness. Enumerated by
+-- catch-all, so it reduces to `⊤` at every concrete constructor.
+NotJmpI : AbstractInstr → Set
+NotJmpI (instr-ctrl (c-jmp _)) = ⊥
+{-# CATCHALL #-}
+NotJmpI _                      = ⊤
+
 data JumpPost (i : AbstractInstr) (m : LabelId) (prog : AbstractTrace) (fs : FlatState) : Set where
-  jp-suc  : fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs) → JumpPost i m prog fs
+  -- FALLING THROUGH carries `NotJmpI`: only a BRANCH falls through, and a
+  -- `c-jmp` never produces this row (`dj-aux` has no fall-through case).
+  jp-suc  : fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs) → NotJmpI i → JumpPost i m prog fs
   jp-halt : fpc (flat-exec-instr i prog fs) ≡ fpc fs → JumpPost i m prog fs
   jp-to   : ∀ (q : ℕ) → find-label prog m ≡ just q
           → fpc (flat-exec-instr i prog fs) ≡ q → JumpPost i m prog fs
@@ -903,7 +926,7 @@ data JumpPost (i : AbstractInstr) (m : LabelId) (prog : AbstractTrace) (fs : Fla
 -- inductions consume); `pv-thunk`/`pv-ret` are the two that MOVE THE FRAME and
 -- carry their reservation instead.
 data PcView (i : AbstractInstr) : Set where
-  pv-suc   : FrameFreeI i
+  pv-suc   : FrameFreeI i → NotJmpI i
            → (∀ prog fs → fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)) → PcView i
   pv-jump  : FrameFreeI i → ∀ (m : LabelId) → once-label-of i ≡ just m
            → (∀ prog fs → JumpPost i m prog fs) → PcView i
@@ -914,7 +937,7 @@ data PcView (i : AbstractInstr) : Set where
   pv-call  : i ≡ instr-call-closure → PcView i
 
 pcView : ∀ (i : AbstractInstr) → EmittableI i → PcView i
-pcView (instr-ctrl (c-label _))               _ = pv-suc tt (λ _ _ → refl)
+pcView (instr-ctrl (c-label _))               _ = pv-suc tt tt (λ _ _ → refl)
 pcView (instr-ctrl (c-jmp m))                 _ = pv-jump tt m refl go
   where go : ∀ prog fs → JumpPost (instr-ctrl (c-jmp m)) m prog fs
         go prog fs = mk (dj-aux (find-label prog m) fs)
@@ -931,7 +954,7 @@ pcView (instr-ctrl (c-branch-scratch-zero m))     _ = pv-jump tt m refl go
     go : ∀ prog fs → JumpPost (instr-ctrl (c-branch-scratch-zero m)) m prog fs
     go prog fs = mk (db-aux (sv-is-zero (readReg (regs (floc fs)) Scratch)) m prog fs)
       where mk : _ → JumpPost (instr-ctrl (c-branch-scratch-zero m)) m prog fs
-            mk (inj₁ e)                     = jp-suc e
+            mk (inj₁ e)                     = jp-suc e tt
             mk (inj₂ (inj₁ e))              = jp-halt e
             mk (inj₂ (inj₂ (q , fq , e)))   = jp-to q fq e
 pcView (instr-ctrl (c-branch-tag-zero m))     _ = pv-jump tt m refl go
@@ -939,7 +962,7 @@ pcView (instr-ctrl (c-branch-tag-zero m))     _ = pv-jump tt m refl go
     go : ∀ prog fs → JumpPost (instr-ctrl (c-branch-tag-zero m)) m prog fs
     go prog fs = mk (db-aux (tag-zf (flat-read-tag (floc fs))) m prog fs)
       where mk : _ → JumpPost (instr-ctrl (c-branch-tag-zero m)) m prog fs
-            mk (inj₁ e)                     = jp-suc e
+            mk (inj₁ e)                     = jp-suc e tt
             mk (inj₂ (inj₁ e))              = jp-halt e
             mk (inj₂ (inj₂ (q , fq , e)))   = jp-to q fq e
 pcView (instr-ctrl (c-thunk ℓ bb))            _ = pv-thunk ℓ bb refl
@@ -952,30 +975,30 @@ pcView (instr-case-on-tag _ _)                ()
 pcView (instr-loop _)                         ()
 pcView (lea-slot _)                           ()
 pcView (lea-indexed _)                        ()
-pcView mov-to-output                          _ = pv-suc tt (λ _ _ → refl)
-pcView mov-to-input                           _ = pv-suc tt (λ _ _ → refl)
-pcView mov-output-to-input2                   _ = pv-suc tt (λ _ _ → refl)
-pcView mov-input2-to-output                   _ = pv-suc tt (λ _ _ → refl)
-pcView load-indirect                          _ = pv-suc tt (λ _ _ → refl)
-pcView load-indirect-suc                      _ = pv-suc tt (λ _ _ → refl)
-pcView (load-from-slot _)                     _ = pv-suc tt (λ _ _ → refl)
-pcView (store-at-slot _)                      _ = pv-suc tt (λ _ _ → refl)
-pcView store-indirect                         _ = pv-suc tt (λ _ _ → refl)
-pcView store-indirect-suc                     _ = pv-suc tt (λ _ _ → refl)
-pcView (restore-input _)                      _ = pv-suc tt (λ _ _ → refl)
-pcView (instr-reclaim-to _)                   _ = pv-suc tt (λ _ _ → refl)
+pcView mov-to-output                          _ = pv-suc tt tt (λ _ _ → refl)
+pcView mov-to-input                           _ = pv-suc tt tt (λ _ _ → refl)
+pcView mov-output-to-input2                   _ = pv-suc tt tt (λ _ _ → refl)
+pcView mov-input2-to-output                   _ = pv-suc tt tt (λ _ _ → refl)
+pcView load-indirect                          _ = pv-suc tt tt (λ _ _ → refl)
+pcView load-indirect-suc                      _ = pv-suc tt tt (λ _ _ → refl)
+pcView (load-from-slot _)                     _ = pv-suc tt tt (λ _ _ → refl)
+pcView (store-at-slot _)                      _ = pv-suc tt tt (λ _ _ → refl)
+pcView store-indirect                         _ = pv-suc tt tt (λ _ _ → refl)
+pcView store-indirect-suc                     _ = pv-suc tt tt (λ _ _ → refl)
+pcView (restore-input _)                      _ = pv-suc tt tt (λ _ _ → refl)
+pcView (instr-reclaim-to _)                   _ = pv-suc tt tt (λ _ _ → refl)
 pcView instr-call-closure                     _ = pv-call refl
-pcView (worklist-init _)                      _ = pv-suc tt (λ _ _ → refl)
-pcView (worklist-push _)                      _ = pv-suc tt (λ _ _ → refl)
-pcView (worklist-pop _)                       _ = pv-suc tt (λ _ _ → refl)
-pcView (worklist-check _)                     _ = pv-suc tt (λ _ _ → refl)
-pcView (instr-sigop _)                        _ = pv-suc tt (λ _ _ → refl)
-pcView (instr-load-const _ _)                 _ = pv-suc tt (λ _ _ → refl)
-pcView (instr-load-code-addr _)               _ = pv-suc tt (λ _ _ → refl)
-pcView instr-save-closure-reg                 _ = pv-suc tt (λ _ _ → refl)
-pcView (instr-load-tag-lit _)                 _ = pv-suc tt (λ _ _ → refl)
-pcView (instr-alloc-heap _)                   _ = pv-suc tt (λ _ _ → refl)
-pcView (instr-reg-op _)                       _ = pv-suc tt (λ _ _ → refl)
+pcView (worklist-init _)                      _ = pv-suc tt tt (λ _ _ → refl)
+pcView (worklist-push _)                      _ = pv-suc tt tt (λ _ _ → refl)
+pcView (worklist-pop _)                       _ = pv-suc tt tt (λ _ _ → refl)
+pcView (worklist-check _)                     _ = pv-suc tt tt (λ _ _ → refl)
+pcView (instr-sigop _)                        _ = pv-suc tt tt (λ _ _ → refl)
+pcView (instr-load-const _ _)                 _ = pv-suc tt tt (λ _ _ → refl)
+pcView (instr-load-code-addr _)               _ = pv-suc tt tt (λ _ _ → refl)
+pcView instr-save-closure-reg                 _ = pv-suc tt tt (λ _ _ → refl)
+pcView (instr-load-tag-lit _)                 _ = pv-suc tt tt (λ _ _ → refl)
+pcView (instr-alloc-heap _)                   _ = pv-suc tt tt (λ _ _ → refl)
+pcView (instr-reg-op _)                       _ = pv-suc tt tt (λ _ _ → refl)
 
 -- The live stack window is the reservation IN FORCE at the current pc — the
 -- CURRENT FRAME's, once frames move. Induction on `Reachable`; each step is
@@ -992,6 +1015,23 @@ run-seg-wf : ∀ prog (fs : FlatState) (r : RunAt prog fs)
 run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
   where
     B₀ = mkSeg (ir-stack-budget ir) []
+    0≢suc : ∀ {n : ℕ} → 0 ≡ suc n → ⊥
+    0≢suc ()
+    suc-inj : ∀ {m n : ℕ} → suc m ≡ suc n → m ≡ n
+    suc-inj refl = refl
+    just-injI : ∀ {a b : AbstractInstr} → just a ≡ just b → a ≡ b
+    just-injI refl = refl
+    -- the emitter's guard, at THIS program
+    guard : ∀ (p : ℕ) (ℓ : LabelId) (bb : ℕ)
+          → fetch prog p ≡ just (instr-ctrl (c-thunk ℓ bb))
+          → Σ ℕ (λ q → (p ≡ suc q)
+                × Σ LabelId (λ m → fetch prog q ≡ just (instr-ctrl (c-jmp m))))
+    guard p ℓ bb H =
+      subst (λ pr → Σ ℕ (λ q → (p ≡ suc q)
+                    × Σ LabelId (λ m → fetch pr q ≡ just (instr-ctrl (c-jmp m)))))
+            (sym eq)
+            (emitted-thunk-guarded ir p ℓ bb
+              (subst (λ pr → fetch pr p ≡ just (instr-ctrl (c-thunk ℓ bb))) eq H))
     go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs'
        → SegWF prog (ir-stack-budget ir) fs'
     -- AT ENTRY the pc is 0 and `seg-at _ zero` is the starting state outright.
@@ -1002,6 +1042,11 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
                       (sym (proj₁ (proj₂ (proj₂ (proj₂ el)))))
                       (sym (proj₁ (proj₂ (proj₂ (proj₂ (proj₂ el))))))
                       rm-[])
+              -- AT ENTRY the pc is 0, and a body entry is never at position 0
+              -- (the emitter's guard sits before it).
+              (λ ℓ bb H → ⊥-elim (0≢suc (proj₁ (proj₂ (guard 0 ℓ bb
+                            (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-thunk ℓ bb)))
+                                   (proj₁ el) H))))))
     go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) =
       step (pcView i em)
       where
@@ -1015,8 +1060,6 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
         -- THE PRE-STATE'S EQUATION (D092). `SegCur` has an exception row — the
         -- pc holds a body entry — and every case below is at an instruction
         -- that is NOT one, so each discharges the row from `i`'s own shape.
-        just-injI : ∀ {a b : AbstractInstr} → just a ≡ just b → a ≡ b
-        just-injI refl = refl
         ih-eq : (∀ ℓ bb → i ≡ instr-ctrl (c-thunk ℓ bb) → ⊥)
               → frame-slots (falloc fs'') ≡ cur (seg-at prog (fpc fs'') B₀)
         ih-eq nt = go-eq (seg-cur ih)
@@ -1028,13 +1071,34 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
         -- …and the two ways a case knows it is not at a body entry
         ff-not-thunk : FrameFreeI i → ∀ ℓ bb → i ≡ instr-ctrl (c-thunk ℓ bb) → ⊥
         ff-not-thunk ff ℓ bb e = subst FrameFreeI e ff
+        -- D094: NO FALL-THROUGH LANDS ON A BODY ENTRY. The emitter's guard
+        -- puts a `c-jmp` immediately before one, and the instruction actually
+        -- fetched here is not a `c-jmp` — whoever calls this says so.
+        no-fallthrough : ∀ (p : ℕ) (ℓ : LabelId) (bb : ℕ) (i' : AbstractInstr)
+                       → NotJmpI i' → fetch prog p ≡ just i'
+                       → fetch prog (suc p) ≡ just (instr-ctrl (c-thunk ℓ bb)) → ⊥
+        no-fallthrough p ℓ bb i' nj ftq' H = clash (guard (suc p) ℓ bb H)
+          where clash : Σ ℕ (λ q → (suc p ≡ suc q)
+                              × Σ LabelId (λ m → fetch prog q ≡ just (instr-ctrl (c-jmp m))))
+                      → ⊥
+                clash (q , sq , m , fq) =
+                  subst NotJmpI
+                        (just-injI (trans (sym ftq')
+                                          (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-jmp m)))
+                                                 (sym (suc-inj sq)) fq)))
+                        nj
         step : PcView i → SegWF prog (ir-stack-budget ir) (flat-exec-instr i prog fs'')
         -- FRAME-FREE, FALLING THROUGH: frames untouched, segment unmoved.
-        step (pv-suc ff adv) =
+        step (pv-suc ff nj adv) =
           mkSegWF
             (inj₁ (trans (sf-slots same) (trans (ih-eq (ff-not-thunk ff)) (sym stable))))
             (subst₂ (RetMatch prog (ir-stack-budget ir))
                     (sym (sf-saved same)) (sym (sf-ret same)) (seg-stack ih))
+            -- a FALL-THROUGH cannot land on a body entry: the emitter put a
+            -- `c-jmp` there, and this instruction is not one.
+            (λ ℓ bb H → ⊥-elim (no-fallthrough (fpc fs'') ℓ bb i nj ftq
+                          (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-thunk ℓ bb)))
+                                 (adv prog fs'') H)))
           where
             same = flat-same-frames i prog fs'' ff
             stable : cur (seg-at prog (fpc (flat-exec-instr i prog fs'')) B₀)
@@ -1050,6 +1114,12 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
                          (trans (ih-eq (ff-not-thunk ff)) (sym (jgo (jp prog fs''))))))
             (subst₂ (RetMatch prog (ir-stack-budget ir))
                     (sym (sf-saved same)) (sym (sf-ret same)) (seg-stack ih))
+            -- THE THREE WAYS A JUMP CAN LAND, and none is a body entry: a
+            -- fall-through (branch not taken) is guarded as above; a HALT
+            -- leaves the pc on this very instruction, which `once-label-of`
+            -- says is not a `c-thunk`; and a resolved target holds a
+            -- `c-label` (`find-label-sound` — D082's disjoint provenances).
+            (λ ℓ bb H → ⊥-elim (ego (jp prog fs'') ℓ bb H))
           where
             same = flat-same-frames i prog fs'' ff
             lkm : mention-at prog (fpc fs'') ≡ just m
@@ -1057,7 +1127,7 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
             jgo : JumpPost i m prog fs''
                 → cur (seg-at prog (fpc (flat-exec-instr i prog fs'')) B₀)
                 ≡ cur (seg-at prog (fpc fs'') B₀)
-            jgo (jp-suc adv) =
+            jgo (jp-suc adv nj) =
               cong cur (trans (cong (λ z → seg-at prog z B₀) adv)
                        (trans seg-suc (idle-step i (ff→seg-id i ff) (seg-at prog (fpc fs'') B₀))))
             jgo (jp-halt e) = cong cur (cong (λ z → seg-at prog z B₀) e)
@@ -1067,6 +1137,27 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
                           (emitted-jump-in-segment {FS} ir (fpc fs'') q m B₀
                             (subst (λ pr → mention-at pr (fpc fs'') ≡ just m) eq lkm)
                             (subst (λ pr → find-label pr m ≡ just q) eq fq))))
+            -- …and the same three rows, for the body-entry claim
+            ego : JumpPost i m prog fs'' → ∀ ℓ bb
+                → fetch prog (fpc (flat-exec-instr i prog fs''))
+                    ≡ just (instr-ctrl (c-thunk ℓ bb)) → ⊥
+            ego (jp-suc adv nj) ℓ bb H =
+              no-fallthrough (fpc fs'') ℓ bb i nj ftq
+                (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-thunk ℓ bb))) adv H)
+            -- the pc did not move, so the instruction there is `i` itself —
+            -- and a `c-thunk` mentions no `once` label
+            ego (jp-halt e) ℓ bb H = no-once (trans (sym mlab) (cong once-label-of i≡thunk))
+              where i≡thunk : i ≡ instr-ctrl (c-thunk ℓ bb)
+                    i≡thunk = just-injI (trans (sym ftq)
+                                (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-thunk ℓ bb))) e H))
+                    no-once : ∀ {A : Set} → just m ≡ nothing → A
+                    no-once ()
+            -- a resolved jump target holds a `c-label`, never a body entry
+            ego (jp-to q fq e) ℓ bb H = clash (trans (sym (find-label-sound prog m q fq))
+                    (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-thunk ℓ bb))) e H))
+              where clash : ∀ {A : Set}
+                          → just (instr-ctrl (c-label m)) ≡ just (instr-ctrl (c-thunk ℓ bb)) → A
+                    clash ()
         -- THE BODY MARKER: `grow-frame bb` sets `frame-slots := bb` and the
         -- static `seg-push bb` sets `cur := bb` — they agree by construction,
         -- which is the whole point of D086 putting the PUSH at the call and
@@ -1080,6 +1171,12 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
                           (sym (cong (λ z → saved-frames (falloc (flat-exec-instr z prog fs''))) ieq))
                           (sym (cong (λ z → fret (flat-exec-instr z prog fs'')) ieq))
                           (seg-stack ih))
+                  -- the marker FALLS THROUGH, so the same guard applies: the
+                  -- position after a body entry is not another body entry.
+                  (λ ℓ' bb' H → ⊥-elim (no-fallthrough (fpc fs'') ℓ' bb' i
+                                  (subst NotJmpI (sym ieq) tt) ftq
+                                  (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-thunk ℓ' bb')))
+                                         (pc-eq ieq) H)))
           where
             pc-eq : i ≡ instr-ctrl (c-thunk ℓ bb)
                   → fpc (flat-exec-instr i prog fs'') ≡ suc (fpc fs'')
@@ -1093,6 +1190,12 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
         -- exactly `RetMatch`, which is what it was built for.
         step (pv-ret bb ieq) = ret-step ieq
           where
+            -- the pc has not moved, so the instruction is this `c-ret`
+            ret-clash : i ≡ instr-ctrl (c-ret bb) → ∀ ℓ bb'
+                      → fetch prog (fpc fs'') ≡ just (instr-ctrl (c-thunk ℓ bb')) → ⊥
+            ret-clash refl ℓ bb' H = go-c (just-injI (trans (sym ftq) H))
+              where go-c : instr-ctrl (c-ret bb) ≡ instr-ctrl (c-thunk ℓ bb') → ⊥
+                    go-c ()
             ret-step : i ≡ instr-ctrl (c-ret bb)
                      → SegWF prog (ir-stack-budget ir) (flat-exec-instr i prog fs'')
             ret-step refl = go-rm (fret fs'') (saved-frames (falloc fs'')) refl refl (seg-stack ih)
@@ -1118,9 +1221,14 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
                                   (sym (trans (cong saved-frames (do-ret-alloc fs''))
                                               (leave-frame-saved-[] (falloc fs'') feq)))
                                   (sym (do-ret-fret-[] fs'' req)) rm-[])
+                          -- an empty return stack HALTS with the pc unmoved,
+                          -- so the instruction there is still this `c-ret`
+                          (λ ℓ bb H → ⊥-elim (ret-clash ieq ℓ bb
+                                        (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-thunk ℓ bb)))
+                                               (do-ret-pc-[] fs'' req) H)))
                 -- …and a real return takes the caller's reservation `b` and
                 -- lands at `rpc`; `RetMatch` says those two belong together
-                go-rm (rpc ∷ rs) ((f , b) ∷ frs) req feq (rm-∷ beq rest) =
+                go-rm (rpc ∷ rs) ((f , b) ∷ frs) req feq (rm-∷ beq prov rest) =
                   mkSegWF (inj₁ (trans (cong frame-slots (do-ret-alloc fs''))
                           (trans (leave-frame-slots-∷ (falloc fs'') f b frs feq)
                           (trans beq (cong (λ z → cur (seg-at prog z B₀))
@@ -1129,6 +1237,15 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
                                   (sym (trans (cong saved-frames (do-ret-alloc fs''))
                                               (leave-frame-saved-∷ (falloc fs'') f b frs feq)))
                                   (sym (do-ret-fret-∷ fs'' rpc rs req)) rest)
+                          -- …and a REAL return lands one past a CALL
+                          -- (`RetMatch`'s provenance), which is not the `c-jmp`
+                          -- a body entry is preceded by.
+                          (λ ℓ bb H → ⊥-elim
+                            (no-fallthrough (proj₁ prov) ℓ bb instr-call-closure tt
+                              (proj₂ (proj₂ prov))
+                              (subst (λ z → fetch prog z ≡ just (instr-ctrl (c-thunk ℓ bb)))
+                                     (trans (do-ret-pc-∷ fs'' rpc rs req) (proj₁ (proj₂ prov)))
+                                     H)))
                 go-rm [] ((f , b) ∷ frs) req feq ()
                 go-rm (rpc ∷ rs) [] req feq ()
         -- THE CALL (D092): it PUSHES both stacks and lands on a body entry.
@@ -1149,6 +1266,8 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
                     → SegWF prog (ir-stack-budget ir) (flat-exec-instr i prog fs'')
             call-go refl = cgo (callView prog fs'')
               where
+                call-clash : ∀ {ℓ' bb'} → instr-call-closure ≡ instr-ctrl (c-thunk ℓ' bb') → ⊥
+                call-clash ()
                 -- the caller's reservation IS the segment at its return pc
                 beq : frame-slots (falloc fs'')
                     ≡ cur (seg-at prog (suc (fpc fs'')) B₀)
@@ -1159,11 +1278,25 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
                 cgo : CallPost prog fs''
                     → SegWF prog (ir-stack-budget ir) (do-call prog fs'')
                 -- a malformed call HALTS: no stack moves, so both fields ride
-                cgo (cp-halt e) rewrite e = mkSegWF (seg-cur ih) (seg-stack ih)
+                cgo (cp-halt e) rewrite e =
+                  mkSegWF (seg-cur ih) (seg-stack ih)
+                          -- the pc has not moved: this instruction is the call
+                          (λ ℓ bb H → ⊥-elim (call-clash (just-injI (trans (sym ftq) H))))
                 cgo (cp-enter ℓ j fteq e) rewrite e =
                   mkSegWF (inj₂ (ℓ , proj₁ landing , proj₂ landing , refl))
-                          (rm-∷ beq (seg-stack ih))
+                          (rm-∷ beq (fpc fs'' , refl , ftq) (seg-stack ih))
+                          -- …and THIS is the case the whole invariant is about:
+                          -- the frame a call enters reserves nothing (D086).
+                          (λ _ _ _ → refl)
                   where landing = find-thunk-sound prog ℓ j fteq
+
+-- …and the form the correspondence consumes (D093/D094). Was a POSTULATE for
+-- one commit; it is now a projection of the run invariant, which is where it
+-- always belonged — the emitter's guard is the only assumption left under it.
+thunk-entry-empty : ∀ prog (fs : FlatState) (ℓ : LabelId) (bb : ℕ) → RunAt prog fs
+                  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk ℓ bb))
+                  → frame-slots (falloc fs) ≡ 0
+thunk-entry-empty prog fs ℓ bb r ftq = seg-entry (run-seg-wf prog fs r) ℓ bb ftq
 
 -- (`run-stack-slot` — "the window is the whole trace's budget" — is GONE with
 -- the flip. It is FALSE inside a closure body, whose window is the body's own

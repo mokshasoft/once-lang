@@ -102,12 +102,15 @@ module FlatMachine {FS : FrameSemantics} where
   label-of? (instr-ctrl (c-label m)) = just m
   label-of? _                        = nothing
 
+  -- WITH-FREE since D094, for the same reason `ft-go` was (D092): the
+  -- soundness proof below has to reduce under a hypothesis about the head.
   fl-go          : AbstractTrace → LabelId → ℕ → Maybe ℕ
+  fl-at          : Maybe LabelId → AbstractTrace → LabelId → ℕ → Maybe ℕ
   fl-label-match : Bool → AbstractTrace → LabelId → ℕ → Maybe ℕ
   fl-go []       _      _ = nothing
-  fl-go (x ∷ is) target i with label-of? x
-  ... | just m  = fl-label-match (m ≡ᵇᴵ target) is target i
-  ... | nothing = fl-go is target (suc i)
+  fl-go (x ∷ is) target i = fl-at (label-of? x) is target i
+  fl-at (just m) is target i = fl-label-match (m ≡ᵇᴵ target) is target i
+  fl-at nothing  is target i = fl-go is target (suc i)
   fl-label-match true  _  _      i = just i
   fl-label-match false is target i = fl-go is target (suc i)
 
@@ -239,6 +242,109 @@ module FlatMachine {FS : FrameSemantics} where
         in suc (proj₁ ih)
          , trans (proj₁ (proj₂ ih)) (sym (+-suc acc (proj₁ ih)))
          , proj₂ (proj₂ ih)
+
+  ------------------------------------------------------------------------
+  -- …AND THE JUMP SCAN IS SOUND TOO (D094): what `find-label` finds is a
+  -- `c-label` for that label. The mirror of `find-thunk-sound`, and the reason
+  -- it is needed is the same — a run invariant has to say what the machine
+  -- LANDS ON, and a jump target is an opaque index without this. It is also
+  -- what makes "a jump never enters a closure body" a theorem rather than an
+  -- assumption: the two scans have disjoint provenances (D082), so a `c-thunk`
+  -- is simply not what this one returns.
+  ------------------------------------------------------------------------
+  label-of?-sound : ∀ (x : AbstractInstr) (m : LabelId) → label-of? x ≡ just m
+                  → x ≡ instr-ctrl (c-label m)
+  label-of?-sound (instr-ctrl (c-label m')) m refl = refl
+  label-of?-sound (instr-ctrl (c-thunk _ _))             _ ()
+  label-of?-sound (instr-ctrl (c-jmp _))                 _ ()
+  label-of?-sound (instr-ctrl (c-branch-scratch-zero _)) _ ()
+  label-of?-sound (instr-ctrl (c-branch-tag-zero _))     _ ()
+  label-of?-sound (instr-ctrl (c-ret _))                 _ ()
+  label-of?-sound (instr-alloc-stack _)                  _ ()
+  label-of?-sound (instr-dealloc-stack _)                _ ()
+  label-of?-sound (instr-push-frame _)                   _ ()
+  label-of?-sound instr-pop-frame                        _ ()
+  label-of?-sound (instr-case-on-tag _ _)                _ ()
+  label-of?-sound (instr-loop _)                         _ ()
+  label-of?-sound (lea-slot _)                           _ ()
+  label-of?-sound (lea-indexed _)                        _ ()
+  label-of?-sound mov-to-output                          _ ()
+  label-of?-sound mov-to-input                           _ ()
+  label-of?-sound mov-output-to-input2                   _ ()
+  label-of?-sound mov-input2-to-output                   _ ()
+  label-of?-sound load-indirect                          _ ()
+  label-of?-sound load-indirect-suc                      _ ()
+  label-of?-sound (load-from-slot _)                     _ ()
+  label-of?-sound (store-at-slot _)                      _ ()
+  label-of?-sound store-indirect                         _ ()
+  label-of?-sound store-indirect-suc                     _ ()
+  label-of?-sound (restore-input _)                      _ ()
+  label-of?-sound (instr-reclaim-to _)                   _ ()
+  label-of?-sound instr-call-closure                     _ ()
+  label-of?-sound (worklist-init _)                      _ ()
+  label-of?-sound (worklist-push _)                      _ ()
+  label-of?-sound (worklist-pop _)                       _ ()
+  label-of?-sound (worklist-check _)                     _ ()
+  label-of?-sound (instr-sigop _)                        _ ()
+  label-of?-sound (instr-load-const _ _)                 _ ()
+  label-of?-sound (instr-load-code-addr _)               _ ()
+  label-of?-sound instr-save-closure-reg                 _ ()
+  label-of?-sound (instr-load-tag-lit _)                 _ ()
+  label-of?-sound (instr-alloc-heap _)                   _ ()
+  label-of?-sound (instr-reg-op _)                       _ ()
+
+  fl-go-sound : ∀ (prog : AbstractTrace) (target : LabelId) (acc j : ℕ)
+              → fl-go prog target acc ≡ just j
+              → Σ ℕ (λ d → (j ≡ acc + d)
+                    × (fetch prog d ≡ just (instr-ctrl (c-label target))))
+  fl-go-sound []       target acc j ()
+  fl-go-sound (x ∷ is) target acc j eq = go (label-of? x) refl
+    where
+      go : ∀ (mt : Maybe LabelId) → label-of? x ≡ mt
+         → Σ ℕ (λ d → (j ≡ acc + d)
+               × (fetch (x ∷ is) d ≡ just (instr-ctrl (c-label target))))
+      go-m : ∀ (m : LabelId) (bb : Bool) → label-of? x ≡ just m → (m ≡ᵇᴵ target) ≡ bb
+           → Σ ℕ (λ d → (j ≡ acc + d)
+                 × (fetch (x ∷ is) d ≡ just (instr-ctrl (c-label target))))
+      go-m m true teq beq = 0 , j≡ , fe
+        where
+          acc≡j : acc ≡ j
+          acc≡j = just-injℕ
+                    (trans (sym (trans (cong (λ z → fl-at z is target acc) teq)
+                                       (cong (λ z → fl-label-match z is target acc) beq)))
+                           eq)
+          j≡ : j ≡ acc + 0
+          j≡ = trans (sym acc≡j) (sym (+-identityʳ acc))
+          fe : fetch (x ∷ is) 0 ≡ just (instr-ctrl (c-label target))
+          fe = cong just (trans (label-of?-sound x m teq)
+                                (cong (λ z → instr-ctrl (c-label z)) (≡ᵇᴵ-true m target beq)))
+      go-m m false teq beq =
+        let ih = fl-go-sound is target (suc acc) j
+                   (trans (sym (trans (cong (λ z → fl-at z is target acc) teq)
+                                      (cong (λ z → fl-label-match z is target acc) beq))) eq)
+        in suc (proj₁ ih)
+         , trans (proj₁ (proj₂ ih)) (sym (+-suc acc (proj₁ ih)))
+         , proj₂ (proj₂ ih)
+      go (just m) teq = go-m m (m ≡ᵇᴵ target) teq refl
+      go nothing  teq =
+        let ih = fl-go-sound is target (suc acc) j
+                   (trans (sym (cong (λ z → fl-at z is target acc) teq)) eq)
+        in suc (proj₁ ih)
+         , trans (proj₁ (proj₂ ih)) (sym (+-suc acc (proj₁ ih)))
+         , proj₂ (proj₂ ih)
+
+  find-label-sound : ∀ (prog : AbstractTrace) (target : LabelId) (j : ℕ)
+                   → find-label prog target ≡ just j
+                   → fetch prog j ≡ just (instr-ctrl (c-label target))
+  find-label-sound prog target j eq =
+    subst (λ z → fetch prog z ≡ just (instr-ctrl (c-label target))) (sym j≡d) fe
+    where
+      r    = fl-go-sound prog target 0 j eq
+      d    = proj₁ r
+      j≡d  : j ≡ d
+      j≡d  = proj₁ (proj₂ r)
+      fe   : fetch prog d ≡ just (instr-ctrl (c-label target))
+      fe   = proj₂ (proj₂ r)
 
   find-thunk-sound : ∀ (prog : AbstractTrace) (target : LabelId) (j : ℕ)
                    → find-thunk prog target ≡ just j
