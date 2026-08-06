@@ -23,7 +23,7 @@
 module Once.CCC.Target.X86-64.Semantics where
 
 open import Once.CCC.Target.X86-64.Syntax
-open import Once.CCC.Label using (Label; _≡ᵇᴸ_; idx)
+open import Once.CCC.Label using (Label; _≡ᵇᴸ_; idx; thunk)
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _≟_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
@@ -183,7 +183,13 @@ effectiveAddr s (rip+disp d)     = pc s + d
 -- label number is not an instruction index) is D081's open question, recorded
 -- in plan 0.63's FINDING and owned by `events-running-call`; D089 neither
 -- fixes nor worsens it.
-effectiveAddr s (rip+label n)    = idx n  -- label resolved by linker; abstract
+-- D096: this clause is now UNREACHABLE FROM EMITTED CODE. The only producer of
+-- a `rip+label` operand is `lea` (`AbstractToX86`: `lea rax (rip+label n)`),
+-- and `execInstr` resolves that one against the program rather than coming
+-- here. It survives only because `effectiveAddr` is total over `Mem`; a
+-- `rip+label` inside a `mem` operand is not something codegen emits, and if it
+-- ever is, it must resolve the same way — not through this line.
+effectiveAddr s (rip+label n)    = idx n
 
 readOperand : State → Operand → Maybe Word
 readOperand s (reg r) = just (readReg (regs s) r)
@@ -242,6 +248,27 @@ execInstr prog s (mov dst src) =
   case readOperand s src of λ where
     nothing  → nothing
     (just v) → just (record (writeOperand s dst v) { pc = pc s + 1 })
+
+-- THE CODE-ADDRESS DEFECT, FIXED (D096). `lea r, .L_thunk_ℓ(%rip)` used to
+-- yield `effectiveAddr … (rip+label ℓ) = idx ℓ` — the label's IDENTITY, D089's
+-- local counter — which is not a position in anything. This machine is
+-- INDEX-ADDRESSED: `pc` is a position in `prog`, `find-label` returns one, and
+-- `jmp`/`je`/`ret` all move `pc` to one. So the faithful value of a code
+-- address is the label's INDEX, and it is resolved here, exactly as `jmp`
+-- resolves its target — an absent label halts, as there too.
+--
+-- This was not a coarser view of the CPU, it was WRONG: real hardware yields
+-- the label's address, and a value produced here is later JUMPED TO by `call`
+-- (`call *0x8(%r12)`), so under the old clause the modelled machine and the
+-- real one part company on any program that applies a closure. That made
+-- `x86-64-loader-faithful` false for those programs — the fiction was hiding
+-- inside the trusted axiom. It went unnoticed because until D092 the abstract
+-- call was the identity, so nothing in the proof cone used the value as an
+-- address.
+execInstr prog s (lea r (rip+label ℓ)) =
+  case find-label prog (thunk ℓ) of λ where
+    (just j) → just (record s { regs = writeReg (regs s) r j ; pc = pc s + 1 })
+    nothing  → just (record s { halted = true })
 
 execInstr prog s (lea r m) =
   just (record s { regs = writeReg (regs s) r (effectiveAddr s m)

@@ -45,6 +45,8 @@ open import Data.Nat.Properties using (+-comm; ≤-refl; ≤-reflexive)
 open import Once.Adequacy.CPU.X86-64 using (ev-x86-64; arith-env-x86-64; step-budget-x86-64; val-x86-64)
 import Once.Arith.Backend.X86-64.RunTrace as RTx
 import Once.CCC.Target.X86-64.Semantics as X
+import Once.CCC.Target.X86-64.Syntax as XS
+open import Once.CCC.Label using (LabelId; thunk)
 open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
 open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.CPU using (x86-64; arch-semantics)
@@ -179,9 +181,21 @@ open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Input2; Output; 
 -- frontier is 0 (= the concrete `%r15` of `emptyRegFile`), and the placeholder
 -- address map only has to be slot-linear (`haddr-suc`) and put the erased Unit
 -- filler cell at 0 — which the x86 entry registers (all 0) match exactly.
-entry-view : HeapView
-entry-view = record
+-- D096: THE CODE MAP. A code address is the label's index in the compiled
+-- program, so the entry view is now indexed by the program — and the map is
+-- literally the scan the concrete `lea`/`call` perform, which is what makes
+-- `entry-corr`'s `code-eq` `refl` on the found case. `0` for an unresolvable
+-- label is a filler that no emitted program reaches (`emitted-code-addr-has-body`).
+code-map : XS.Program → LabelId → ℕ
+code-map prog ℓ = pick (X.find-label prog (thunk ℓ))
+  where pick : Maybe ℕ → ℕ
+        pick (just j) = j
+        pick nothing  = 0
+
+entry-view : XS.Program → HeapView
+entry-view cprog = record
   { haddr     = λ hl → slot-to-disp (heap-offset hl)
+  ; caddr     = code-map cprog
   ; HDom      = λ _ → ⊥
   ; hfront    = 0
   ; haddr-suc = suc-law
@@ -224,7 +238,8 @@ postulate
 -- loc) ≡ 0` (the `enc-hl-entry` leaf); halt/pc are refl; heap-eq is vacuous
 -- (`nothing ≡ nothing`, the entry heap is empty). No longer a postulate.
 entry-corr : ∀ (ir : IR Unit Unit)
-           → CompiledCorr entry-view (ir-to-trace ir) (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0)
+           → CompiledCorr (entry-view (compile-trace (ir-to-trace ir))) (ir-to-trace ir)
+                          (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0)
                           (ArchSemantics.initialState as64)
 entry-corr ir = record
   { dataCorr = record
@@ -271,7 +286,12 @@ entry-corr ir = record
   -- rather than left to eta — a field Agda solves silently is a field nobody
   -- notices going stale.
   ; ret-eq = tt
+  -- …and the code map IS the program's own scan, by construction
+  ; code-eq = λ ℓ j fl → cong-pick fl
   }
+  where cong-pick : ∀ {ℓ j} → X.find-label (compile-trace (ir-to-trace ir)) (thunk ℓ) ≡ just j
+                  → code-map (compile-trace (ir-to-trace ir)) ℓ ≡ j
+        cong-pick e rewrite e = refl
 
 -- The ENTRY store-WF: at the entry state the heap and stack are empty and every
 -- register holds the tag filler `SV-Tag 0` (D074) — `sv-below` puts no

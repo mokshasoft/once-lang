@@ -112,7 +112,7 @@ open C using (HeapView; haddr; HDom; hfront; lo) public
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
   using (x86-len; x86-off; drop-compile; fetch-drop; drop-[]; fetch-block-head
-        ; find-label-none-corr; fetch-block-2nd)
+        ; find-label-none-corr; fetch-block-2nd; find-thunk-corr)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Machine.FrameFree using (FrameFreeI; FrameFreeT; EmittableI; frame-free-emittable)
@@ -551,6 +551,14 @@ postulate
                         → Σ ℕ (λ q → (p ≡ suc q)
                               × Σ LabelId (λ m → fetch (ir-to-trace ir) q
                                                    ≡ just (instr-ctrl (c-jmp m))))
+
+  -- …and its sibling (D096): an emitted code address names a body that EXISTS.
+  -- `ir-to-trace'`'s `curry` clause emits `instr-load-code-addr (ℓ o this)` and
+  -- `c-thunk (ℓ o this)` together, so the scan cannot miss. CODEGEN-class, and
+  -- it belongs in the same induction as the two above.
+  emitted-code-addr-has-body : ∀ (ir : IR Unit Unit) (p : ℕ) (ℓ : LabelId)
+                             → fetch (ir-to-trace ir) p ≡ just (instr-load-code-addr ℓ)
+                             → Σ ℕ (λ j → find-thunk (ir-to-trace ir) ℓ ≡ just j)
 
   -- (2) THE BRACKET: the budget a return RELEASES is the reservation in force.
   -- `ir-to-trace'` emits `c-thunk ℓ bb … c-ret bb` — one `bb`, written twice —
@@ -1899,8 +1907,33 @@ mutual
   events-running-fetch {hv} n ev env prog fs s (lea-slot slot) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (lea-slot slot)
       (block-step-lea-slot prog fs s slot cc h ftq) wf ftq h refl h
+  -- D096: the code address is RESOLVED now, so this dispatches on the scan
+  -- exactly as `cjmp-step` does — and the two scans agree by `find-thunk-corr`,
+  -- which has been sitting in `FlatComposition` waiting for its consumer since
+  -- Plan 0.63. The missing-body route is ruled out by the emitter.
   events-running-fetch {hv} n ev env prog fs s (instr-load-code-addr k) cc wf h ftq =
-    ccc-step-bs {hv} n ev env prog fs s (instr-load-code-addr k) (block-step-load-code-addr prog fs s k cc h ftq) wf ftq h refl h
+    go (find-thunk prog k) refl
+    where
+      go : ∀ (mj : Maybe ℕ) → find-thunk prog k ≡ mj
+         → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
+               ≡ event-of (instr-load-code-addr k) fs
+                 ++ flat-events n prog (flat-exec-instr (instr-load-code-addr k) prog fs))
+      go (just j) fteq =
+        ccc-step-bs {hv} n ev env prog fs s (instr-load-code-addr k)
+          (block-step-load-code-addr prog fs s k (x86-off prog j) cc h ftq
+             (find-thunk-corr prog k 0 j fteq))
+          wf ftq h refl h
+      go nothing fteq = ⊥-elim (no-body (proj₂ (has-body)))
+        where
+          has-body : Σ ℕ (λ j → find-thunk prog k ≡ just j)
+          has-body = subst (λ pr → Σ ℕ (λ j → find-thunk pr k ≡ just j)) (sym (run-emit (inv-run wf)))
+                       (emitted-code-addr-has-body (run-ir (inv-run wf)) (fpc fs) k
+                         (subst (λ pr → fetch pr (fpc fs) ≡ just (instr-load-code-addr k))
+                                (run-emit (inv-run wf)) ftq))
+          no-body : ∀ {j : ℕ} → find-thunk prog k ≡ just j → ⊥
+          no-body e = nj (trans (sym fteq) e)
+            where nj : ∀ {A : Set} {j : ℕ} → nothing ≡ just j → A
+                  nj ()
   events-running-fetch {hv} n ev env prog fs s instr-save-closure-reg cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s instr-save-closure-reg (block-step-save-closure-reg prog fs s cc h ftq) wf ftq h refl h
   -- Trivial cata bookkeeping (x86-len 0, flat identity): proven block-step ⇒ ccc-step-bs.

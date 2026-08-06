@@ -102,6 +102,13 @@ record HeapView : Set₁ where
     HDom      : HeapLocation → Set
     -- The allocation frontier: the address the NEXT block will start at (= %r15).
     hfront    : ℕ
+    -- D096: WHERE THE CODE IS. A `SV-Code ℓ` encodes to the label's INDEX in
+    -- the compiled program — a real address in this index-addressed machine —
+    -- not to `idx ℓ`, which is the label's IDENTITY and no position at all.
+    -- The view carries it because the encoding must be a function of the map
+    -- alone (see `enc-sv-at`); `CompiledCorr.code-eq` is what ties it to the
+    -- program the concrete `lea` resolves against.
+    caddr     : LabelId → ℕ
     haddr-suc : ∀ (hl : HeapLocation) → haddr (sucHL hl) ≡ haddr hl + slot-size
     -- Injective ON THE DOMAIN — the allocator's `blocks-disjoint`, no more.
     haddr-inj : ∀ {a b : HeapLocation} → HDom a → HDom b → haddr a ≡ haddr b → a ≡ b
@@ -153,14 +160,28 @@ lit-word x = x
 -- `enc-sv hv' v` and `enc-sv hv v` non-convertible even when `haddr hv' ≡ haddr hv`
 -- BY DEFINITION, and every affected field of every affected `sim-*` needed a
 -- transport lemma. Through the wrapper both sides unfold to
--- `enc-sv-at (haddr hv) v` — the same term — so a view change the map survives is
+-- `enc-sv-at (amap hv) v` — the same term — so a view change the map survives is
 -- INVISIBLE, with no lemma and no per-field boilerplate.
-AddrMap : Set
-AddrMap = HeapLocation → ℕ
+-- D096: TWO maps, not one. A heap cell's address and a CODE address are both
+-- what a `StoredValue` can encode to, and a code address is the label's INDEX
+-- in the compiled program — which the old `enc-sv-at am (SV-Code n) = idx n`
+-- could not express, because `idx` is the label's IDENTITY (D089) and this
+-- record had nowhere to put a resolution. That was the defect the closure call
+-- ran into; see D096.
+--
+-- A record rather than an extra parameter everywhere: every signature that
+-- takes an `AddrMap` (`Window`, `StackWindows`, `RetAddrs`, every `sim-*`)
+-- keeps taking exactly one, so only the APPLICATIONS moved.
+record AddrMap : Set where
+  constructor mkAddrMap
+  field
+    hmap : HeapLocation → ℕ
+    cmap : LabelId → ℕ
+open AddrMap public
 
 enc-sv-at : AddrMap → StoredValue FS → X.Word
 enc-sv-at am (SV-Tag n)                = n
-enc-sv-at am (SV-Ptr (AtDynamic hl))   = am hl
+enc-sv-at am (SV-Ptr (AtDynamic hl))   = hmap am hl
 -- Plan 0.61: a stack pointer is the SLOT'S ADDRESS. This is only meaningful
 -- because frames now move with %rsp (`Machine.Flat`) — with the old model the
 -- callee's slot k and its caller's slot k were the same abstract cell, so no
@@ -181,7 +202,7 @@ enc-sv-at am (SV-Lit fits-float v)     = float-bits v
 -- payload was the bare counter. The same FICTION `effectiveAddr (rip+label _)`
 -- records (a label number is not an instruction index): D081's open question,
 -- owned by `events-running-call`. D089 neither fixes nor worsens it.
-enc-sv-at am (SV-Code n)               = idx n
+enc-sv-at am (SV-Code n)               = cmap am n
 
 enc-maybe-at : AddrMap → Maybe (StoredValue FS) → Maybe X.Word
 enc-maybe-at am (just v) = just (enc-sv-at am v)
@@ -189,11 +210,15 @@ enc-maybe-at am nothing  = nothing
 
 -- The view-level names every proof uses: one clause each, so they UNFOLD during
 -- conversion checking and the comparison lands on the address map.
+-- the view's two maps, bundled — this is what every `*-at` takes
+amap : HeapView → AddrMap
+amap hv = mkAddrMap (haddr hv) (caddr hv)
+
 enc-sv : HeapView → StoredValue FS → X.Word
-enc-sv hv = enc-sv-at (haddr hv)
+enc-sv hv = enc-sv-at (amap hv)
 
 enc-maybe : HeapView → Maybe (StoredValue FS) → Maybe X.Word
-enc-maybe hv = enc-maybe-at (haddr hv)
+enc-maybe hv = enc-maybe-at (amap hv)
 
 ------------------------------------------------------------------------
 -- THE LIVE FRAMES (Plan 0.63, D085).
@@ -419,7 +444,7 @@ record FlatCorr (hv : HeapView) (fs : FlatState) (s : X.State) : Set where
     -- remembered count for each saved caller): an unbounded ∀ k would be
     -- unsatisfiable (it would claim the cells beyond the outermost frame,
     -- which the loader owns, are the abstract `nothing`).
-    stack-eq : StackWindows (haddr hv) (X.State.memory s) (stackMem (floc fs))
+    stack-eq : StackWindows (amap hv) (X.State.memory s) (stackMem (floc fs))
                             (lo hv) (frames-of (falloc fs))
 open FlatCorr public
 
@@ -447,7 +472,7 @@ win-off am mem stk f b base eq w k k<b v ev rewrite eq = w k k<b v ev
 
 -- The current frame's window, as a `Window` (the head of the list).
 stack-eq-win : ∀ {hv : HeapView} {fs : FlatState} {s : X.State} → FlatCorr hv fs s
-             → Window (haddr hv) (X.State.memory s) (stackMem (floc fs))
+             → Window (amap hv) (X.State.memory s) (stackMem (floc fs))
                       (current-frame (falloc fs)) (frame-slots (falloc fs))
 stack-eq-win corr = proj₁ (proj₂ (stack-eq corr))
 
@@ -458,7 +483,7 @@ stack-eq-cur : ∀ {hv : HeapView} {fs : FlatState} {s : X.State} → FlatCorr h
              → X.readMem (X.State.memory s) (X.readReg (X.State.regs s) rsp + slot-to-disp k)
                ≡ just (enc-sv hv v)
 stack-eq-cur {hv} {fs} {s} corr =
-  win-off (haddr hv) (X.State.memory s) (stackMem (floc fs))
+  win-off (amap hv) (X.State.memory s) (stackMem (floc fs))
           (current-frame (falloc fs)) (frame-slots (falloc fs))
           (X.readReg (X.State.regs s) rsp) (rsp-eq corr) (stack-eq-win corr)
 
@@ -481,6 +506,7 @@ sep {hv} corr = ≤-trans (front-lo hv) (lo-le corr)
 descend-view : (hv : HeapView) (lo' : ℕ) → lo' ≤ lo hv → hfront hv ≤ lo' → HeapView
 descend-view hv lo' _ front-lo' = record
   { haddr     = haddr hv
+  ; caddr     = caddr hv
   ; HDom      = HDom hv
   ; hfront    = hfront hv
   ; haddr-suc = haddr-suc hv
@@ -492,7 +518,7 @@ descend-view hv lo' _ front-lo' = record
 
 -- (No encoding-transport lemma is needed across a descent: `descend-view` copies
 -- `haddr` verbatim, and the encoding is a function of the map alone — `enc-sv`
--- unfolds to `enc-sv-at (haddr hv)` on both sides. That is the whole reason the
+-- unfolds to `enc-sv-at (amap hv)` on both sides. That is the whole reason the
 -- wrapper above exists.)
 
 -- `untouched` at the descended view: the region only shrank.
@@ -895,7 +921,7 @@ windows-write-below {am} mem stk waddr v' fl fr lt =
 windows-heap-store : ∀ {hv : HeapView} {fs : FlatState} {s : X.State}
                        (hl : HeapLocation) (v' : X.Word) → HDom hv hl
                    → (corr : FlatCorr hv fs s)
-                   → StackWindows (haddr hv) (writeMem (memory s) (haddr hv hl) v')
+                   → StackWindows (amap hv) (writeMem (memory s) (haddr hv hl) v')
                                   (stackMem (floc fs)) (lo hv) (frames-of (falloc fs))
 windows-heap-store {hv} {fs} {s} hl v' d corr =
   windows-write-below (memory s) (stackMem (floc fs)) (haddr hv hl) v'
@@ -1137,7 +1163,7 @@ sim-store-at-slot {hv} slot fs s corr slot<b disj = corr-clean
                       (≤-trans (lo-le corr) (m≤m+n base (slot-to-disp slot))) corr
       -- the write is re-addressed off the frame BASE (`rsp-eq`), which is the
       -- form every window speaks; `windows-slot-store` does the rest.
-      ; stack-eq = subst (λ a → StackWindows (haddr hv)
+      ; stack-eq = subst (λ a → StackWindows (amap hv)
                                              (writeMem (memory s) (a + slot-to-disp slot) (enc-sv hv Out))
                                              (stackMem (writeLoc (floc fs) (AtStack cf slot) Out))
                                              (lo hv) (frames-of (falloc fs)))
@@ -1203,7 +1229,7 @@ sim-alloc-stack {hv} n newFlags fs s corr fresh-abs lo' lo'≤lo front-lo' lo'�
   -- callee's window END. That end IS the caller's base (`fits`), so the caller's
   -- window is carried across the call untouched rather than dropped.
   ; stack-eq = subst (lo' ≤_) newbase lo'≤rsp
-             , win-at (haddr hv) (memory s) (stackMem (floc fs)) (shift-frame cf n) n
+             , win-at (amap hv) (memory s) (stackMem (floc fs)) (shift-frame cf n) n
                        (X.readReg (xregs s) rsp ∸ slots n) newbase stk
              , windows-reanchor (lo hv) (frame-base (shift-frame cf n) + slots n)
                  cf (frame-slots (falloc fs)) (saved-frames (falloc fs)) tail-le (stack-eq corr) }
@@ -1219,7 +1245,7 @@ sim-alloc-stack {hv} n newFlags fs s corr fresh-abs lo' lo'≤lo front-lo' lo'�
     stk : ∀ k → k < n → ∀ (v : StoredValue FS)
         → stackMem (floc fs) (shift-frame cf n) k ≡ just v
         → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k)
-            ≡ just (enc-sv-at (haddr hv) v)
+            ≡ just (enc-sv-at (amap hv) v)
     stk k k<n v ev with trans (sym (fresh-abs k k<n)) ev
     ... | ()
     -- the callee's window ends exactly at the caller's base: `(rsp ∸ 8n) + 8n`
@@ -1290,7 +1316,7 @@ sim-thunk {hv} b newFlags newPc fs s corr lo' lo'≤lo front-lo' lo'≤rsp fits 
     head-window : ∀ (k : Slot) → k < b → ∀ (v : StoredValue FS)
                 → stackMem (floc (do-thunk b fs)) (shift-frame cf b) k ≡ just v
                 → X.readMem (memory s) (frame-base (shift-frame cf b) + slot-to-disp k)
-                    ≡ just (enc-sv-at (haddr (descend-view hv lo' lo'≤lo front-lo')) v)
+                    ≡ just (enc-sv-at (amap (descend-view hv lo' lo'≤lo front-lo')) v)
     head-window k k<b v ev with FrameSemantics._≟F_ FS (shift-frame cf b) (shift-frame cf b) | Data.Nat.Properties._<?_ k b
     ... | yes _ | yes _ = ⊥-elim (nothing≢just ev)
     ... | yes _ | no ¬p = ⊥-elim (¬p k<b)
@@ -1425,15 +1451,21 @@ sim-load-const-float {hv} v fs s corr = record
 
 ------------------------------------------------------------------------
 -- LOAD CODE ADDR: `instr-load-code-addr n` (Output := SV-Code n) ↔ `lea rax,
--- [rip+label n]`. Plan 0.63 (D089): `n` is now a label IDENTITY. The x86
--- effective address of a label is `idx n` (linker-resolved, abstract), and
--- enc-sv (SV-Code n) = idx n, so rax := idx n matches — rax-eq is still refl.
+-- .L_thunk_n(%rip)`.
+--
+-- D096: `rax-eq` used to be `refl` because BOTH sides said `idx n` — the
+-- label's IDENTITY. That agreement was the defect: the concrete `lea` now
+-- RESOLVES the label (as `jmp` does), so the value is the body's index, and the
+-- view's code map has to be that resolution. The lemma therefore takes the
+-- resolved value and the equation tying the map to it; the block-step supplies
+-- both, from the program it can see and `CompiledCorr.code-eq`.
 ------------------------------------------------------------------------
-sim-load-code-addr : {hv : HeapView} (n : LabelId) (fs : FlatState) (s : X.State) → FlatCorr hv fs s
+sim-load-code-addr : {hv : HeapView} (n : LabelId) (j : ℕ) (fs : FlatState) (s : X.State) → FlatCorr hv fs s
+  → caddr hv n ≡ j
   → FlatCorr hv (flat-exec-instr (instr-load-code-addr n) [] fs)
-             (mkstate (xwriteReg (xregs s) rax (idx n)) (memory s) (flags s) (pc s + 1) (xhalted s))
-sim-load-code-addr {hv} n fs s corr = record
-  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = refl ; rbx-eq = rbx-eq corr ; r14-eq = r14-eq corr
+             (mkstate (xwriteReg (xregs s) rax j) (memory s) (flags s) (pc s + 1) (xhalted s))
+sim-load-code-addr {hv} n j fs s corr ceq = record
+  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = sym ceq ; rbx-eq = rbx-eq corr ; r14-eq = r14-eq corr
   ; halt-eq = halt-eq corr ; rsp-eq = rsp-eq corr ; r15-eq = r15-eq corr ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = heap-eq corr ; lo-le = lo-le corr ; untouched = untouched corr ; stack-eq = stack-eq corr }
 
 ------------------------------------------------------------------------
@@ -1567,6 +1599,9 @@ extend-view : (hv : HeapView) (st n : ℕ)
             → HeapView
 extend-view hv st n fresh room = record
   { haddr     = ext-addr hv st
+  -- D096: an allocation extends the HEAP map; the code map is a property of
+  -- the PROGRAM, so it rides through untouched.
+  ; caddr     = caddr hv
   ; HDom      = ExtDom hv st n
   ; hfront    = hfront hv + slots n
   ; haddr-suc = ext-suc hv st
@@ -1647,8 +1682,8 @@ windows-enc-ext : ∀ (hv : HeapView) (st n : ℕ)
                     (rm : hfront hv + slots n ≤ lo hv)
                     (mem : X.Memory) (stk : StackMem FS) (fl : ℕ) (fr : List (Frame × ℕ))
                 → (∀ (f : Frame) (k : Slot) → svm-below st (stk f k))
-                → StackWindows (haddr hv) mem stk fl fr
-                → StackWindows (haddr (extend-view hv st n pf rm)) mem stk fl fr
+                → StackWindows (amap hv) mem stk fl fr
+                → StackWindows (amap (extend-view hv st n pf rm)) mem stk fl fr
 windows-enc-ext hv st n pf rm mem stk fl []             wf w = tt
 windows-enc-ext hv st n pf rm mem stk fl ((f , b) ∷ fr) wf (bd , win , rest) =
   bd
@@ -1875,7 +1910,7 @@ sim-store-indirect-stack {hv} k fs s corr i-eq k<b disj =
       ; lo-le = lo-le corr
       ; untouched = untouched-stack-store (base + slot-to-disp k) (enc-sv hv Out)
                       (≤-trans (lo-le corr) (m≤m+n base (slot-to-disp k))) corr
-      ; stack-eq = subst (λ a → StackWindows (haddr hv)
+      ; stack-eq = subst (λ a → StackWindows (amap hv)
                                              (writeMem (memory s) (a + slot-to-disp k) (enc-sv hv Out))
                                              (stackMem (writeLoc (floc fs) (AtStack cf k) Out))
                                              (lo hv) (frames-of (falloc fs)))
@@ -1924,7 +1959,7 @@ sim-store-indirect-suc-stack {hv} k fs s corr i-eq sk<b disj =
       ; lo-le = lo-le corr
       ; untouched = untouched-stack-store (base + slot-to-disp (suc k)) (enc-sv hv Out)
                       (≤-trans (lo-le corr) (m≤m+n base (slot-to-disp (suc k)))) corr
-      ; stack-eq = subst (λ a → StackWindows (haddr hv)
+      ; stack-eq = subst (λ a → StackWindows (amap hv)
                                              (writeMem (memory s) (a + slot-to-disp (suc k)) (enc-sv hv Out))
                                              (stackMem (writeLoc (floc fs) (AtStack cf (suc k)) Out))
                                              (lo hv) (frames-of (falloc fs)))

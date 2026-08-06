@@ -33,6 +33,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
+open import Once.CCC.Label using (thunk)
 open import Once.CCC.Target.X86-64.Syntax
 open import Once.CCC.Target.X86-64.Semantics
 
@@ -115,12 +116,31 @@ step-push : ∀ {prog s r}
                              ; pc     = pc s + 1 })
 step-push ft rewrite ft = refl
 
--- lea reg, mem: reg := effectiveAddr mem ; pc += 1
-step-lea : ∀ {prog s r m}
-         → fetch prog (pc s) ≡ just (lea r m)
+-- lea reg, mem: reg := effectiveAddr mem ; pc += 1.
+--
+-- D096 SPLIT THIS IN TWO. A `rip+label` operand no longer goes through
+-- `effectiveAddr` — `execInstr` RESOLVES it against the program — so the
+-- general form is stated for the addressing modes that do, and the code
+-- address gets its own lemma below. Stating one lemma over an arbitrary `m`
+-- would now be FALSE at `rip+label`, which is precisely the defect that was
+-- being papered over.
+step-lea : ∀ {prog s r b d}
+         → fetch prog (pc s) ≡ just (lea r (base+disp b d))
          → step-not-halted prog s
-           ≡ just (record s { regs = writeReg (regs s) r (effectiveAddr s m) ; pc = pc s + 1 })
+           ≡ just (record s { regs = writeReg (regs s) r (effectiveAddr s (base+disp b d))
+                            ; pc = pc s + 1 })
 step-lea ft rewrite ft = refl
+
+-- …and THE CODE ADDRESS (D096): `lea r, .L_thunk_ℓ(%rip)` puts the label's
+-- INDEX in `r`, resolved exactly as `jmp` resolves a target. This is the lemma
+-- that makes a code address a real address, which is what the closure call
+-- needs before it can jump to one.
+step-lea-label : ∀ {prog s r ℓ j}
+               → fetch prog (pc s) ≡ just (lea r (rip+label ℓ))
+               → find-label prog (thunk ℓ) ≡ just j
+               → step-not-halted prog s
+                 ≡ just (record s { regs = writeReg (regs s) r j ; pc = pc s + 1 })
+step-lea-label ft fl rewrite ft | fl = refl
 
 -- pop reg: reg := [rsp] ; rsp := rsp + 8 ; pc += 1  (needs [rsp] mapped)
 step-pop : ∀ {prog s r v}
