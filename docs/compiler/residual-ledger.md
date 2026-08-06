@@ -33,10 +33,14 @@ gap. The test is whether its STATEMENT relates the concrete machine to the
 abstract one — read it off the signature: does it mention `X.State` /
 `run-events` at all, or only `AbstractTrace` / `FlatState` / `IR`?
 
-    genuine correspondence gaps (1):
-      events-running-call
-      (events-running-thunk DISCHARGED 2026-08-06 — `thunk-step`)
-      (events-running-ret   DISCHARGED 2026-08-06 — `ret-step`, D095)
+    genuine correspondence gaps (0)  ← ALL THREE DISCHARGED 2026-08-06
+      events-running-thunk → `thunk-step`  (D090)
+      events-running-ret   → `ret-step`    (D095)
+      events-running-call  → `call-step`   (D098)
+    No `events-running-*` postulate remains, and nothing in the cone is a model
+    gap. Each closed by fixing the MACHINE rather than assuming harder: the call
+    was modelled (D092), the window made one-directional and the frame cleared
+    (D090), the code address made an address (D096).
       (events-running-thunk DISCHARGED 2026-08-06 — see #8)
       Both were blocked on the abstract machine not modelling the call. It does
       now (D092), so both sides of each equation describe the same transition
@@ -54,7 +58,11 @@ abstract one — read it off the signature: does it mention `X.State` /
       run-meets             — abstract machine + shape table (no `X.State`)
       main-heap-moded       — frontend       (only `IR`)
       entry-size            — resource/frontend plumbing (only `ir-size`)
-      emitted-thunk-guarded — codegen (only `ir-to-trace` in the type)
+      emitted-thunk-guarded      — codegen (only `ir-to-trace`)
+      emitted-code-addr-has-body — codegen (only `ir-to-trace`)
+      ret-site-owes              — abstract machine (no `X.State`)
+      ret-budget-matches         — emitter bracket (no `X.State`)
+      call-site-shape            — abstract machine (no `X.State`)
 
     boundary axioms (2):
       stack-top-in-stack, x86-64-loader-faithful
@@ -99,7 +107,7 @@ deferred proofs sharing one missing piece: the return-address component.
 | 7 | `main-heap-moded` | apex | deferred proof | induction over the elaborator: building with `C.Heap` yields only `Heap` modes |
 | — | `events-running-thunk` | (was `ConcFlatSim`) | — | **DONE, DISCHARGED 2026-08-06** — now the theorem `ConcFlatSim.thunk-step`. `block-step-c-thunk` (a theorem since D090) fed `lo' = lo hv ⊓ (%rsp ∸ 8b)`; its `front-lo'`/`fits` come from the new `x86-64-stack-room` PARAMETER (`ResourceBounds.StackRoom`), the exact mirror of `HeapRoom` |
 | 9 | `ret-site-owes` + `ret-budget-matches` | `ConcFlatSim` | deferred proof | REPLACED `events-running-ret` 2026-08-06 (D095), now the THEOREM `ret-step` over the proven `block-step-c-ret`. Neither mentions `X.State`. (1) a reachable `c-ret` owes a return — route: static segment depth = `fret` depth + `SlotBudget` bracket neutrality; (2) the released budget IS the reservation in force — the emitter writes one `bb` twice. Both belong in the `emitted-thunk-guarded` induction. HISTORY: THE COMPONENT LANDED (D093): `CompiledCorr.ret-eq` says every ghost `fret` entry is really in memory, at its frame's window end. Three inputs left, all designed in D093 — the exact one-slot gap (as a `GapNext` conjunct in `RetAddrs`), `C.sim-ret`, and the `c-thunk`/`c-ret` bracket fact. ROUND TRIP: deleted 2026-08-06 (D091 — no reachable state fetched a `c-ret`, so its clause became `⊥` by collision with the theorem `run-no-ret`), restored the same day when D092 MODELLED THE CALL. `run-no-ret` is false and deleted, `ret-site-owes` is gone, and the route is live. No longer a model gap — what is missing is the `CompiledCorr` return-address component, preservable now that `enter-call` pins the entered frame's window END on the pushed cell |
-| 10 | `events-running-call` | `ConcFlatSim` | deferred proof | THE LAST CORRESPONDENCE GAP. Blocker LOCATED (D095): `effectiveAddr s (rip+label n) ≡ idx n` is a FICTION — a code address encodes as the label NUMBER while the concrete `call` jumps to the compiled address, and `idx ℓ ≡ x86-off prog j` is false. Fix (more faithful, not less — a real linker resolves that operand): resolve `lea … (rip+label ℓ)` through `X.find-label prog (thunk ℓ)`, then `find-thunk-pres` bridges. Costs one Semantics clause, a code map through the encoding (~56 + ~37 mechanical sites), the call's block-step (it writes the pushed address, EXTENDING `RetAddrs`), and one `StackRoom`-class resource premise. WAS the model gap; CLOSED as such by D092 (2026-08-06). `flat-exec-instr instr-call-closure` now transfers control the way `call *0x8(%r12)` does — pushes `fret`/`saved-frames`, enters `enter-call`'s frame, resolves the body with `find-thunk`. The concrete side of the transfer is already proven (`FlatComposition.find-thunk-pres`); what remains is the same return-address component as #9 |
+| 10 | `call-site-shape` | `ConcFlatSim` | deferred proof | REPLACED `events-running-call` 2026-08-06 (D098), now the THEOREM `call-step`. At an emitted call the closure register holds a live heap pointer whose second cell holds a code address naming a body that exists — every conjunct is what `ir-to-trace'`'s `curry` clause arranges. No `X.State`; same class and route as the D073 dataflow disciplines. Its resource half is the `x86-64-call-room` PARAMETER. HISTORY: was THE LAST CORRESPONDENCE GAP. Blocker LOCATED (D095): `effectiveAddr s (rip+label n) ≡ idx n` is a FICTION — a code address encodes as the label NUMBER while the concrete `call` jumps to the compiled address, and `idx ℓ ≡ x86-off prog j` is false. Fix (more faithful, not less — a real linker resolves that operand): resolve `lea … (rip+label ℓ)` through `X.find-label prog (thunk ℓ)`, then `find-thunk-pres` bridges. Costs one Semantics clause, a code map through the encoding (~56 + ~37 mechanical sites), the call's block-step (it writes the pushed address, EXTENDING `RetAddrs`), and one `StackRoom`-class resource premise. WAS the model gap; CLOSED as such by D092 (2026-08-06). `flat-exec-instr instr-call-closure` now transfers control the way `call *0x8(%r12)` does — pushes `fret`/`saved-frames`, enters `enter-call`'s frame, resolves the body with `find-thunk`. The concrete side of the transfer is already proven (`FlatComposition.find-thunk-pres`); what remains is the same return-address component as #9 |
 | 13 | `emitted-thunk-guarded` | `ConcFlatSim` | deferred proof | REPLACED `thunk-entry-empty` 2026-08-06 (D094), which is now the THEOREM `SegWF.seg-entry` — every way of arriving at a body entry is refuted (fall-through by this guard, jump by `find-label-sound`, return by `RetMatch`'s new call provenance, entry by position 0), leaving the call, which reserves nothing. What is left is the emitter's own statement: in an emitted trace a `c-thunk` sits at `suc q` with a `c-jmp` at `q` — the guard `ir-to-trace'` emits to stop the parent falling into the body. CODEGEN-class: only `ir-to-trace` in the type. Route: the structural induction over `ir-to-trace'` (`FrameFreeTrace`/`LabelScope` mould) — a `NoThunks`-decides-it helper collapses the clauses that emit no body entry, an append lemma handles the splices, and the one interesting adjacency (`c-jmp end ∷ c-thunk`) is inside a single literal list in the `curry` clauses |
 | 11 | `conc-fuel` | apex | **stub** | asserts adequacy of `step-budget-x86-64`, an UNDEFINED postulated `ℕ → ℕ` in `…CPU.X86-64` (siblings: `ev-x86-64`, `arith-env-x86-64`). Pin `step-budget` to a definition, then prove it. NOT a resource bound — do not launder it into a parameter |
 | 12 | `x86-64-loader-faithful` | apex | **axiom** | STAYS. Assembler + loader + printer + decoder round-trip; the boundary every verified compiler keeps |
@@ -108,8 +116,8 @@ Only #12 is permanent. #11 lives in the CPU layer, not the correspondence.
 NOTHING in this cone is a model gap any more — D092 closed the last one.
 
 RESOURCE PARAMETERS now carried (not postulates, D087): `program-bound`,
-`x86-64-heap-room`, `x86-64-stack-room`, `entry-frame`. All four thread
-`Certified → Compiler → ArchCorrectness → the arches`.
+`x86-64-heap-room`, `x86-64-stack-room`, `x86-64-call-room`, `entry-frame`. All
+five thread `Certified → Compiler → ArchCorrectness → the arches`.
 
 ## THE CPU-MODEL ROOT — three definitions unlock four residuals
 
