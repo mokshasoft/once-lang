@@ -6717,3 +6717,85 @@ ghost `fret` to the pushed cells — plus its ~37-site ripple in `FlatSimulation
 `run-no-ret` is DELETED, as D092 predicted it would have to be: it said no state
 ever owes a return, and that was only true while the call did nothing. Its
 ceasing to typecheck is the check that the model really changed.
+
+## D093: The Return-Address Component — the Ghost Stack Is Really in Memory
+
+**Date**: 2026-08-06 · **Plan**: 0.54 rung D · **Status**: landed (the component)
+
+`CompiledCorr` gains one field:
+
+    ret-eq : RetAddrs (x86-off prog) (memory s) (frames-of (falloc fs)) (fret fs)
+
+`fret` is a GHOST list — the abstract memory is frame/slot-keyed and has no
+byte-addressed pushdown — and until now nothing related it to the machine. This
+field does, at the same block-offset translation the pc uses, and it is what
+turns a return from an assumption into a step.
+
+### Where the cells are, and why the pairing starts at the CURRENT frame
+
+One cell per pending return, none of them in any window: each is the slot the
+CALL consumed, sitting at the callee frame's window END — between the callee's
+last slot and the caller's base. That gap is the slack `StackWindows`' floor
+leaves (it is a `≤`, not an equality), and this component is what finally says
+what lives in it.
+
+Pairing `fret` with `frames-of` (current frame first) rather than with
+`saved-frames` is what makes a RETURN carry: after `leave-frame` the new head is
+the old second, whose cell the tail already describes, and `add rsp,8b ; ret`
+writes no memory at all. The alternative anchoring (each saved frame's base
+minus a slot) makes `c-thunk` free but costs an equality at the return — this
+way round, one site pays and the other is definitional.
+
+### D092 is what made it preservable
+
+The earlier attempt at this field would have assumed something FALSE (D091's
+second premise). `enter-call` fixes it: the frame a call enters reserves 0, so
+its window END is exactly the cell the call pushed, and `grow-frame` keeps it
+there. Hence the new `empty-frame` premise on `block-step-c-thunk` — the marker
+lands the end back on the frame's own base only if it started there.
+
+### The ripple, by kind (~37 sites)
+
+- **straight-line**: definitional, once the two generic helpers take `RetSame`.
+  They are polymorphic in the instruction, so they cannot see that a step moves
+  no frame — the same reason they already take `fpc-eq`.
+- **stack stores**: the write is inside the frame's window (`slot <
+  frame-slots`, the emitted-code discipline) and the head's cell is the window
+  END, one slot above the last slot it can reach (`ret-write-in-frame`).
+- **heap stores**: the whole heap is under `hfront ≤ lo ≤ %rsp`, hence under
+  every return cell (`ret-agree-above`, mirroring `windows-above`).
+- **`c-thunk`**: re-anchors the head (`ret-head`).
+- **the two unemittable frame ops**: take the post-state component as a premise.
+  They have no caller, and only a matched prologue/epilogue producer — which
+  `ir-to-trace` never emits — could discharge it.
+
+### The new residual, and its route
+
+`thunk-entry-empty` — a reachable body entry has an empty reservation. No
+`X.State` in the type, so it is an abstract-machine obligation, not a
+correspondence gap. Discharge: a `SegWF`-style induction over two emitter facts
+in the `emitted-jump-in-segment` mould — a body entry is never a FALL-THROUGH
+target (the emitter's `c-jmp end` guard is exactly what stops the parent falling
+in) nor a JUMP target (`find-label` resolves `c-label`s, a different provenance,
+D082). Then the only way in is the call, which sets `frame-slots := 0`.
+
+### WHAT THE RETURN PROOF STILL NEEDS (designed, not built)
+
+Three things, and they are known:
+
+1. **The exact gap, not just the floor.** `rsp-eq` at the post-state needs
+   `frame-base cur + slots frame-slots + slot-size ≡ frame-base f₀` — an
+   EQUALITY where `StackWindows` threads only `≤`. It is true by construction
+   (`enter-call` shifts by exactly one slot) and preserved by `c-thunk` under
+   the same `empty-frame` premise. Best home: a `GapNext` conjunct inside
+   `RetAddrs`' cons row — the gap and the return address are THE SAME SLOT, so
+   they should travel together, and the ~37 sites then carry both at once.
+2. **`C.sim-ret`** — the data correspondence for `add rsp,8b ; ret`: registers
+   untouched but `%rsp`, memory untouched, and the post-state's `stack-eq` is
+   the TAIL of the pre-state's, re-anchored (`windows-leave` already exists).
+3. **The bracket fact**: at a `c-ret b` site, `b` IS the reservation in force
+   (`ir-to-trace'` emits `c-thunk ℓ bb … c-ret bb`). Same emitter family as
+   `thunk-entry-empty`; both should be discharged together.
+
+The concrete side is already in hand: `x86 ret` reads `[%rsp]`, and after the
+`add` that address is exactly the head cell this component describes.
