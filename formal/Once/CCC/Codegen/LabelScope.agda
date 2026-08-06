@@ -254,10 +254,11 @@ rebuild-ls (F ⊗ G) val tv tb s lb =
 lo≤ : ∀ {lo l1 : ℕ} → lo ≤ l1 → lo ≤ l1
 lo≤ p = p
 
-cata-nat-ls : ∀ (lo n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
-            → LabelsIn lo (cata-label-of (cata-dispatch strat-nat n1 l1 at))
-                       (cata-trace-of (cata-dispatch strat-nat n1 l1 at))
-cata-nat-ls lo n1 l1 at lo≤l1 atls =
+cata-nat-ls : ∀ (lo n1 l1 : ℕ) (at₁ at₂ : AbstractTrace) → lo ≤ l1
+            → LabelsIn lo l1 at₁ → LabelsIn lo l1 at₂
+            → LabelsIn lo (cata-label-of (cata-dispatch strat-nat n1 l1 at₁ at₂))
+                       (cata-trace-of (cata-dispatch strat-nat n1 l1 at₁ at₂))
+cata-nat-ls lo n1 l1 at₁ at₂ lo≤l1 atls atls₂ =
   -- Plan 0.63 (iii): `I₁ ++ at ++ (I₂ ++ at ++ I₃)`
   li-none refl ∷ li-none refl ∷
   ++⁺ descend
@@ -266,7 +267,7 @@ cata-nat-ls lo n1 l1 at lo≤l1 atls =
            (li-none refl ∷ ++⁺ at'
              (li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ li-none refl ∷
               ++⁺ (layer 1)
-                  (li-none refl ∷ ++⁺ at'
+                  (li-none refl ∷ ++⁺ at₂'
                     (li-none refl ∷ li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ [])))))
   where
     hi = suc (suc (suc (suc (suc (suc l1)))))
@@ -294,8 +295,10 @@ cata-nat-ls lo n1 l1 at lo≤l1 atls =
     H4 = ≤-step ≤-refl
     H5 : suc (suc (suc (suc (suc l1)))) < hi
     H5 = ≤-refl
-    at' : LabelsIn lo hi at
+    at' : LabelsIn lo hi at₁
     at' = ls-weaken ≤-refl (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))) atls
+    at₂' : LabelsIn lo hi at₂
+    at₂' = ls-weaken ≤-refl (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))) atls₂
     -- `build-layer tag` is ten slot/heap instructions: no label anywhere.
     -- Indexed by the tag because the skeleton uses it at BOTH 0 and 1, and a
     -- `_`-inferred trace would unify with whichever came first.
@@ -318,10 +321,11 @@ cata-nat-ls lo n1 l1 at lo≤l1 atls =
 
 -- The Tier-1 LINEAR skeleton: four labels above `l1` (`ld-top`, `ld-end`,
 -- `la-top`, `la-end`), the algebra spliced twice.
-cata-linear-ls : ∀ (lo n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
-               → LabelsIn lo (cata-label-of (cata-dispatch strat-linear n1 l1 at))
-                          (cata-trace-of (cata-dispatch strat-linear n1 l1 at))
-cata-linear-ls lo n1 l1 at lo≤l1 atls =
+cata-linear-ls : ∀ (lo n1 l1 : ℕ) (at₁ at₂ : AbstractTrace) → lo ≤ l1
+               → LabelsIn lo l1 at₁ → LabelsIn lo l1 at₂
+               → LabelsIn lo (cata-label-of (cata-dispatch strat-linear n1 l1 at₁ at₂))
+                          (cata-trace-of (cata-dispatch strat-linear n1 l1 at₁ at₂))
+cata-linear-ls lo n1 l1 at₁ at₂ lo≤l1 atls atls₂ =
   ++⁺ descend (li-none refl ∷ ++⁺ at' ascend)
   where
     hi = suc (suc (suc (suc l1)))
@@ -341,8 +345,10 @@ cata-linear-ls lo n1 l1 at lo≤l1 atls =
     H2 = ≤-step ≤-refl
     H3 : suc (suc (suc l1)) < hi
     H3 = ≤-refl
-    at' : LabelsIn lo hi at
+    at' : LabelsIn lo hi at₁
     at' = ls-weaken ≤-refl (≤-step (≤-step (≤-step (≤-step ≤-refl)))) atls
+    at₂' : LabelsIn lo hi at₂
+    at₂' = ls-weaken ≤-refl (≤-step (≤-step (≤-step (≤-step ≤-refl)))) atls₂
     descend : LabelsIn lo hi _
     descend =
       li-none refl ∷ li-none refl ∷ li-none refl ∷
@@ -360,17 +366,18 @@ cata-linear-ls lo n1 l1 at lo≤l1 atls =
       li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
       li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
       li-none refl ∷ li-none refl ∷ li-none refl ∷
-      ++⁺ at' (li-none refl ∷ li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷ [])
+      ++⁺ at₂' (li-none refl ∷ li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷ [])
 
 -- The Tier-2 BRANCHING skeleton. Four loop labels at `l1..l1+3`, then the two
 -- functor walks in DISJOINT windows: visit at `lv = l1+4`, rebuild at
 -- `lr = lv + lsize F`, and `l2 = lr + lsize F`. That the windows are disjoint
 -- is exactly what the two `ls-weaken`s below check.
-cata-branching-ls : ∀ (F : Functor) (lo n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
-                  → LabelsIn lo (cata-label-of (cata-dispatch (strat-branching F) n1 l1 at))
-                             (cata-trace-of (cata-dispatch (strat-branching F) n1 l1 at))
+cata-branching-ls : ∀ (F : Functor) (lo n1 l1 : ℕ) (at₁ at₂ : AbstractTrace) → lo ≤ l1
+                  → LabelsIn lo l1 at₁ → LabelsIn lo l1 at₂
+                  → LabelsIn lo (cata-label-of (cata-dispatch (strat-branching F) n1 l1 at₁ at₂))
+                             (cata-trace-of (cata-dispatch (strat-branching F) n1 l1 at₁ at₂))
 -- Plan 0.63 (iii): `I₁ ++ at ++ I₂`.
-cata-branching-ls F lo n1 l1 at lo≤l1 atls =
+cata-branching-ls F lo n1 l1 at₁ at₂ lo≤l1 atls atls₂ =
   ++⁺ I₁-ls (++⁺ at' I₂-ls)
   where
     lv = l1 + 4
@@ -396,7 +403,7 @@ cata-branching-ls F lo n1 l1 at lo≤l1 atls =
     H2 = <-transˡ (+lt l1 2 4 (s≤s (s≤s (s≤s z≤n)))) top
     H3 : l1 + 3 < hi
     H3 = <-transˡ (+lt l1 3 4 (s≤s (s≤s (s≤s (s≤s z≤n))))) top
-    at' : LabelsIn lo hi at
+    at' : LabelsIn lo hi at₁
     at' = ls-weaken ≤-refl (≤-trans (m≤m+n l1 4) top) atls
     I₁-ls : LabelsIn lo hi (cata-br-I₁ F n1 l1)
     I₁-ls =
@@ -424,13 +431,14 @@ cata-branching-ls F lo n1 l1 at lo≤l1 atls =
           (li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷
            li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
 
-cata-ls : ∀ (st : CataStrategy) (lo n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
-        → LabelsIn lo (cata-label-of (cata-dispatch st n1 l1 at))
-                   (cata-trace-of (cata-dispatch st n1 l1 at))
-cata-ls strat-const         lo n1 l1 at le atls = atls
-cata-ls strat-nat           lo n1 l1 at le atls = cata-nat-ls lo n1 l1 at le atls
-cata-ls strat-linear        lo n1 l1 at le atls = cata-linear-ls lo n1 l1 at le atls
-cata-ls (strat-branching F) lo n1 l1 at le atls = cata-branching-ls F lo n1 l1 at le atls
+cata-ls : ∀ (st : CataStrategy) (lo n1 l1 : ℕ) (at₁ at₂ : AbstractTrace) → lo ≤ l1
+        → LabelsIn lo l1 at₁ → LabelsIn lo l1 at₂
+        → LabelsIn lo (cata-label-of (cata-dispatch st n1 l1 at₁ at₂))
+                   (cata-trace-of (cata-dispatch st n1 l1 at₁ at₂))
+cata-ls strat-const         lo n1 l1 at₁ at₂ le atls atls₂ = atls
+cata-ls strat-nat           lo n1 l1 at₁ at₂ le atls atls₂ = cata-nat-ls lo n1 l1 at₁ at₂ le atls atls₂
+cata-ls strat-linear        lo n1 l1 at₁ at₂ le atls atls₂ = cata-linear-ls lo n1 l1 at₁ at₂ le atls atls₂
+cata-ls (strat-branching F) lo n1 l1 at₁ at₂ le atls atls₂ = cata-branching-ls F lo n1 l1 at₁ at₂ le atls atls₂
 
 ------------------------------------------------------------------------
 -- THE INDUCTION: every label an emitted fragment mentions lies in the range
@@ -515,8 +523,16 @@ labels-in (case f g) n l =
     case-sl<hi = up
 labels-in (In _ _)   n l = li-none refl ∷ []
 labels-in (out-μ _)  n l = li-none refl ∷ []
+-- D099: both algebra copies' labels must lie in the window. The FIRST's
+-- window starts at `l`; the SECOND's starts where the first ended, so its
+-- `LabelsIn` is weakened down to the shared lower bound.
 labels-in (Cata {F} _ alg) n l =
-  cata-ls (cata-strategy ⌈ F ⌉F) l _ _ _ (label-mono alg n l) (labels-in alg n l)
+  cata-ls (cata-strategy ⌈ F ⌉F) l _ _ _ _
+    (≤-trans (label-mono alg n l) (label-mono alg _ _))
+    -- the FIRST copy's labels sit in [l, l1); widen the top to l2
+    (ls-weaken ≤-refl (label-mono alg _ _) (labels-in alg n l))
+    -- the SECOND's sit in [l1, l2); widen the bottom back down to l
+    (ls-weaken (label-mono alg n l) ≤-refl (labels-in alg _ _))
 labels-in (Para _ _)     n l = []
 labels-in (Out _)        n l = li-none refl ∷ []
 labels-in (in-ν _ _)     n l = []

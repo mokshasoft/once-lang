@@ -145,23 +145,23 @@ rebuild-walk-ff valSlot tv tb (F ⊗ G) s lb =
 -- The three cata strategies: each splices the algebra trace `at` (whose
 -- freeness is the caller's IH) into a fixed frame-op-free skeleton.
 ------------------------------------------------------------------------
-cata-nat-ff : ∀ n1 l1 at → FrameFreeTrace at
-            → FrameFreeTrace (cata-trace-of (cata-trace-nat n1 l1 at))
+cata-nat-ff : ∀ n1 l1 at₁ at₂ → FrameFreeTrace at₁ → FrameFreeTrace at₂
+            → FrameFreeTrace (cata-trace-of (cata-trace-nat n1 l1 at₁ at₂))
 -- Plan 0.63 (iii): the skeleton is `I₁ ++ at ++ (I₂ ++ at ++ I₃)` now, so the
 -- walk follows that alternation directly.
-cata-nat-ff n1 l1 at ff =
+cata-nat-ff n1 l1 at₁ at₂ ff ff₂ =
   tt ∷ tt ∷
   ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])  -- descend
       (tt ∷ tt ∷ tt ∷
        ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])       -- layer 0
-           (tt ∷ ++⁺ ff                                                  -- at (1st)
+           (tt ∷ ++⁺ ff                                                  -- at₁
              (tt ∷ tt ∷ tt ∷
               ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) -- layer 1
-                  (tt ∷ ++⁺ ff (tt ∷ tt ∷ tt ∷ [])))))                   -- at (2nd) ++ I₃
+                  (tt ∷ ++⁺ ff₂ (tt ∷ tt ∷ tt ∷ [])))))                  -- at₂ ++ I₃
 
-cata-linear-ff : ∀ n1 l1 at → FrameFreeTrace at
-               → FrameFreeTrace (cata-trace-of (cata-trace-linear n1 l1 at))
-cata-linear-ff n1 l1 at ff = ++⁺ descend (tt ∷ ++⁺ ff ascend)
+cata-linear-ff : ∀ n1 l1 at₁ at₂ → FrameFreeTrace at₁ → FrameFreeTrace at₂
+               → FrameFreeTrace (cata-trace-of (cata-trace-linear n1 l1 at₁ at₂))
+cata-linear-ff n1 l1 at₁ at₂ ff ff₂ = ++⁺ descend (tt ∷ ++⁺ ff ascend)
   where
     descend : FrameFreeTrace _
     descend = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
@@ -169,13 +169,13 @@ cata-linear-ff n1 l1 at ff = ++⁺ descend (tt ∷ ++⁺ ff ascend)
     ascend : FrameFreeTrace _
     ascend = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
              tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
-             ++⁺ ff (tt ∷ tt ∷ tt ∷ [])
+             ++⁺ ff₂ (tt ∷ tt ∷ tt ∷ [])
 
-cata-branching-ff : ∀ F n1 l1 at → FrameFreeTrace at
-                  → FrameFreeTrace (cata-trace-of (cata-trace-branching F n1 l1 at))
+cata-branching-ff : ∀ F n1 l1 at₁ at₂ → FrameFreeTrace at₁ → FrameFreeTrace at₂
+                  → FrameFreeTrace (cata-trace-of (cata-trace-branching F n1 l1 at₁ at₂))
 -- Plan 0.63 (iii): `I₁ ++ at ++ I₂` — I₁ absorbs init, flatten and the fold's
 -- prefix; I₂ is the fold's tail plus the final read.
-cata-branching-ff F n1 l1 at ff =
+cata-branching-ff F n1 l1 at₁ at₂ ff ff₂ =
   ++⁺ I₁ (++⁺ ff I₂)
   where
     I₁ : FrameFreeTrace _
@@ -193,12 +193,12 @@ cata-branching-ff F n1 l1 at ff =
     I₂ = ++⁺ (push2-ff (n1 + 2) (n1 + 4) (n1 + 5))
              (++⁺ (tt ∷ tt ∷ []) (tt ∷ tt ∷ tt ∷ []))
 
-cata-dispatch-ff : ∀ st n1 l1 at → FrameFreeTrace at
-                 → FrameFreeTrace (cata-trace-of (cata-dispatch st n1 l1 at))
-cata-dispatch-ff strat-const         n1 l1 at ff = ff
-cata-dispatch-ff strat-nat           n1 l1 at ff = cata-nat-ff n1 l1 at ff
-cata-dispatch-ff strat-linear        n1 l1 at ff = cata-linear-ff n1 l1 at ff
-cata-dispatch-ff (strat-branching F) n1 l1 at ff = cata-branching-ff F n1 l1 at ff
+cata-dispatch-ff : ∀ st n1 l1 at₁ at₂ → FrameFreeTrace at₁ → FrameFreeTrace at₂
+                 → FrameFreeTrace (cata-trace-of (cata-dispatch st n1 l1 at₁ at₂))
+cata-dispatch-ff strat-const         n1 l1 at₁ at₂ ff ff₂ = ff
+cata-dispatch-ff strat-nat           n1 l1 at₁ at₂ ff ff₂ = cata-nat-ff n1 l1 at₁ at₂ ff ff₂
+cata-dispatch-ff strat-linear        n1 l1 at₁ at₂ ff ff₂ = cata-linear-ff n1 l1 at₁ at₂ ff ff₂
+cata-dispatch-ff (strat-branching F) n1 l1 at₁ at₂ ff ff₂ = cata-branching-ff F n1 l1 at₁ at₂ ff ff₂
 
 ------------------------------------------------------------------------
 -- THE THEOREM, over arbitrary frontier `n` / label counter `l`.
@@ -250,8 +250,10 @@ frame-free-trace' (case f g) (hf , hg) n l =
                 (++⁺ (frame-free-trace' f hf _ _) (tt ∷ []))))
 frame-free-trace' (In _ _)  hm n l = tt ∷ []
 frame-free-trace' (out-μ _) hm n l = tt ∷ []
+-- D099: two independently-generated algebra copies ⇒ two recursions
 frame-free-trace' (Cata {F} _ alg) hm n l =
-  cata-dispatch-ff (cata-strategy ⌈ F ⌉F) _ _ _ (frame-free-trace' alg hm n l)
+  cata-dispatch-ff (cata-strategy ⌈ F ⌉F) _ _ _ _
+    (frame-free-trace' alg hm n l) (frame-free-trace' alg hm _ _)
 frame-free-trace' (Para _ _)     hm n l = []
 frame-free-trace' (Out _)        hm n l = tt ∷ []
 frame-free-trace' (in-ν _ _)     hm n l = []

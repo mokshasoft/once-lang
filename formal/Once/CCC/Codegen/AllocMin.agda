@@ -120,9 +120,9 @@ rebuild-walk-am valSlot tv tb (F ⊗ G) s lb =
 ------------------------------------------------------------------------
 -- The three cata strategies (the algebra trace `at` is the caller's IH).
 ------------------------------------------------------------------------
-cata-nat-am : ∀ n1 l1 at → AllocMinTrace at
-            → AllocMinTrace (cata-trace-of (cata-trace-nat n1 l1 at))
-cata-nat-am n1 l1 at am =
+cata-nat-am : ∀ n1 l1 at₁ at₂ → AllocMinTrace at₁ → AllocMinTrace at₂
+            → AllocMinTrace (cata-trace-of (cata-trace-nat n1 l1 at₁ at₂))
+cata-nat-am n1 l1 at₁ at₂ am am₂ =
   tt ∷ tt ∷
   ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])  -- descend-flat
       (tt ∷ tt ∷ tt ∷
@@ -131,11 +131,11 @@ cata-nat-am n1 l1 at am =
            (tt ∷ ++⁺ am
              (tt ∷ tt ∷ tt ∷
               ++⁺ (tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-                  (tt ∷ ++⁺ am (tt ∷ tt ∷ tt ∷ [])))))
+                  (tt ∷ ++⁺ am₂ (tt ∷ tt ∷ tt ∷ [])))))
 
-cata-linear-am : ∀ n1 l1 at → AllocMinTrace at
-               → AllocMinTrace (cata-trace-of (cata-trace-linear n1 l1 at))
-cata-linear-am n1 l1 at am = ++⁺ descend (tt ∷ ++⁺ am ascend)
+cata-linear-am : ∀ n1 l1 at₁ at₂ → AllocMinTrace at₁ → AllocMinTrace at₂
+               → AllocMinTrace (cata-trace-of (cata-trace-linear n1 l1 at₁ at₂))
+cata-linear-am n1 l1 at₁ at₂ am am₂ = ++⁺ descend (tt ∷ ++⁺ am ascend)
   where
     descend : AllocMinTrace _
     descend = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷
@@ -143,12 +143,12 @@ cata-linear-am n1 l1 at am = ++⁺ descend (tt ∷ ++⁺ am ascend)
     ascend : AllocMinTrace _
     ascend = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷
              tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
-             ++⁺ am (tt ∷ tt ∷ tt ∷ [])
+             ++⁺ am₂ (tt ∷ tt ∷ tt ∷ [])
 
-cata-branching-am : ∀ F n1 l1 at → AllocMinTrace at
-                  → AllocMinTrace (cata-trace-of (cata-trace-branching F n1 l1 at))
+cata-branching-am : ∀ F n1 l1 at₁ at₂ → AllocMinTrace at₁ → AllocMinTrace at₂
+                  → AllocMinTrace (cata-trace-of (cata-trace-branching F n1 l1 at₁ at₂))
 -- Plan 0.63 (iii): `I₁ ++ at ++ I₂`.
-cata-branching-am F n1 l1 at am =
+cata-branching-am F n1 l1 at₁ at₂ am am₂ =
   ++⁺ I₁ (++⁺ am I₂)
   where
     I₁ : AllocMinTrace _
@@ -166,12 +166,12 @@ cata-branching-am F n1 l1 at am =
     I₂ = ++⁺ (push2-am (n1 + 2) (n1 + 4) (n1 + 5))
              (++⁺ (tt ∷ tt ∷ []) (tt ∷ tt ∷ tt ∷ []))
 
-cata-dispatch-am : ∀ st n1 l1 at → AllocMinTrace at
-                 → AllocMinTrace (cata-trace-of (cata-dispatch st n1 l1 at))
-cata-dispatch-am strat-const         n1 l1 at am = am
-cata-dispatch-am strat-nat           n1 l1 at am = cata-nat-am n1 l1 at am
-cata-dispatch-am strat-linear        n1 l1 at am = cata-linear-am n1 l1 at am
-cata-dispatch-am (strat-branching F) n1 l1 at am = cata-branching-am F n1 l1 at am
+cata-dispatch-am : ∀ st n1 l1 at₁ at₂ → AllocMinTrace at₁ → AllocMinTrace at₂
+                 → AllocMinTrace (cata-trace-of (cata-dispatch st n1 l1 at₁ at₂))
+cata-dispatch-am strat-const         n1 l1 at₁ at₂ am am₂ = am
+cata-dispatch-am strat-nat           n1 l1 at₁ at₂ am am₂ = cata-nat-am n1 l1 at₁ at₂ am am₂
+cata-dispatch-am strat-linear        n1 l1 at₁ at₂ am am₂ = cata-linear-am n1 l1 at₁ at₂ am am₂
+cata-dispatch-am (strat-branching F) n1 l1 at₁ at₂ am am₂ = cata-branching-am F n1 l1 at₁ at₂ am am₂
 
 ------------------------------------------------------------------------
 -- THE THEOREM, over arbitrary frontier `n` / label counter `l`.
@@ -220,7 +220,8 @@ alloc-min-trace' (case f g) n l =
 alloc-min-trace' (In _ _)  n l = tt ∷ []
 alloc-min-trace' (out-μ _) n l = tt ∷ []
 alloc-min-trace' (Cata {F} _ alg) n l =
-  cata-dispatch-am (cata-strategy ⌈ F ⌉F) _ _ _ (alloc-min-trace' alg n l)
+  cata-dispatch-am (cata-strategy ⌈ F ⌉F) _ _ _ _
+    (alloc-min-trace' alg n l) (alloc-min-trace' alg _ _)
 alloc-min-trace' (Para _ _)     n l = []
 alloc-min-trace' (Out _)        n l = tt ∷ []
 alloc-min-trace' (in-ν _ _)     n l = []

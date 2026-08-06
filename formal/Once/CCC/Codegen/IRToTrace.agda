@@ -223,10 +223,17 @@ cata-nat-I₃ l1 =
   instr-ctrl (c-jmp (ℓ o (suc (suc (suc (suc l1)))))) ∷
   instr-ctrl (c-label (ℓ o (suc (suc (suc (suc (suc l1))))))) ∷ []
 
-cata-trace-nat : ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
-cata-trace-nat n1 l1 at =
+-- D099: TWO algebra traces, not one used twice. The loop applies the algebra
+-- in two places, so its code is emitted twice — that part is by design. What
+-- was NOT by design is that both copies carried the SAME labels, which the
+-- assembler rejects outright (`symbol .L… is already defined`). The two copies
+-- are now generated independently, at different label counters, so their
+-- labels are fresh by construction. Same instructions, same order, same
+-- behaviour; only the names differ.
+cata-trace-nat : ℕ → ℕ → AbstractTrace → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-trace-nat n1 l1 at₁ at₂ =
   suc (suc n1) , suc (suc (suc (suc (suc (suc l1))))) ,
-  (cata-nat-I₁ n1 l1 ++ at ++ (cata-nat-I₂ n1 l1 ++ at ++ cata-nat-I₃ l1))
+  (cata-nat-I₁ n1 l1 ++ at₁ ++ (cata-nat-I₂ n1 l1 ++ at₂ ++ cata-nat-I₃ l1))
 
 -- Plan 0.36 Phase 2b Tier 1: functor-general LINEAR (single recursive
 -- position, with payload) cata codegen via a SIMPLE 2-cell linked payload
@@ -289,10 +296,10 @@ cata-lin-I₃ l1 =
   instr-ctrl (c-jmp (ℓ o (suc (suc l1)))) ∷
   instr-ctrl (c-label (ℓ o (suc (suc (suc l1))))) ∷ []
 
-cata-trace-linear : ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
-cata-trace-linear n1 l1 at =
+cata-trace-linear : ℕ → ℕ → AbstractTrace → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-trace-linear n1 l1 at₁ at₂ =
   suc (suc (suc (suc (suc (suc n1))))) , suc (suc (suc (suc l1))) ,
-  (cata-lin-I₁ n1 l1 ++ at ++ (cata-lin-I₂ n1 l1 ++ at ++ cata-lin-I₃ l1))
+  (cata-lin-I₁ n1 l1 ++ at₁ ++ (cata-lin-I₂ n1 l1 ++ at₂ ++ cata-lin-I₃ l1))
 
 -- ────────────────────────────────────────────────────────────────────
 -- Plan 0.36 Phase 2b Tier 2: functor-general BRANCHING cata codegen
@@ -447,20 +454,20 @@ cata-br-I₂ n1 l1 =
   -- final-read
   (load-from-slot (n1 +ℕ 2) ∷ mov-to-input ∷ load-indirect ∷ [])
 
-cata-trace-branching : Functor → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
-cata-trace-branching F n1 l1 at =
+cata-trace-branching : Functor → ℕ → ℕ → AbstractTrace → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-trace-branching F n1 l1 at at₂ =
   n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4 , l1 +ℕ 4 +ℕ lsize F +ℕ lsize F ,
   (cata-br-I₁ F n1 l1 ++ at ++ cata-br-I₂ n1 l1)
 
 -- Dispatch the strategy. Nat / branching still route to the Nat codegen
 -- (branching = Tier 2, still segfaults); linear gets the Tier-1 codegen.
-cata-dispatch : CataStrategy → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-dispatch : CataStrategy → ℕ → ℕ → AbstractTrace → AbstractTrace → ℕ × ℕ × AbstractTrace
 -- 0 rec positions (`Mu (K _)`): `In` is heap-identity, so the μ-value IS the
 -- `⟦F⟧A` layer; `cata alg = alg` on it. No descend/ascend, no slots/labels.
-cata-dispatch strat-const     n1 l1 at = n1 , l1 , at
-cata-dispatch strat-nat            n1 l1 at = cata-trace-nat n1 l1 at
-cata-dispatch strat-linear         n1 l1 at = cata-trace-linear n1 l1 at
-cata-dispatch (strat-branching F)  n1 l1 at = cata-trace-branching F n1 l1 at
+cata-dispatch strat-const     n1 l1 at₁ at₂ = n1 , l1 , at₁
+cata-dispatch strat-nat            n1 l1 at₁ at₂ = cata-trace-nat n1 l1 at₁ at₂
+cata-dispatch strat-linear         n1 l1 at₁ at₂ = cata-trace-linear n1 l1 at₁ at₂
+cata-dispatch (strat-branching F)  n1 l1 at₁ at₂ = cata-trace-branching F n1 l1 at₁ at₂
 
 ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
               → ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace)
@@ -836,10 +843,15 @@ ir-to-trace' n l (out-μ _)      = n , l , (mov-to-output ∷ []) , []
 -- code never touches rbx). Layer builds mirror the inl/inr Heap codegen.
 -- Plan 0.36 Phase 2b: dispatch on the functor's strategy (compile-time).
 -- Today every strategy routes to `cata-trace-nat`; Tier 1/2 refine it.
+-- D099: the algebra is generated TWICE, at successive label counters, because
+-- the loop splices it into two positions and two copies must not share labels.
+-- The slot frontier threads through both (`n2`), so neither copy's scratch
+-- slots collide either.
 ir-to-trace' n l (Cata {F} _ alg) =
-  let (n1 , l1 , at , ab) = ir-to-trace' n l alg
-      (next , l2 , trace) = cata-dispatch (cata-strategy ⌈ F ⌉F) n1 l1 at
-  in next , l2 , trace , ab
+  let (n1 , l1 , at₁ , ab₁) = ir-to-trace' n  l  alg
+      (n2 , l2 , at₂ , ab₂) = ir-to-trace' n1 l1 alg
+      (next , l3 , trace)   = cata-dispatch (cata-strategy ⌈ F ⌉F) n2 l2 at₁ at₂
+  in next , l3 , trace , ab₁ ++ ab₂
 ir-to-trace' n l (Para _ _)     = n , l , [] , []
 ir-to-trace' n l (Out _)        = n , l , (mov-to-output ∷ []) , []
 ir-to-trace' n l (in-ν _ _)     = n , l , [] , []
