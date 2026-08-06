@@ -105,7 +105,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation FS word-eq public
 open import Once.CCC.Machine.FlatStoreWF FS using
-  (FlatWF; flat-wf-step; wf-regs; wf-heap; wf-stack; wf-fresh; sv-below; svm-below)
+  (FlatWF; flat-wf-step; cl-step; wf-regs; wf-heap; wf-stack; wf-fresh; sv-below; svm-below)
 open import Once.CCC.Machine.FlatRegTagWF FS using
   (FlatRegTag; flat-regtag-step; flat-scratch-is-tag; flat-count-is-tag; scratch-tag)
 open C using (HeapView; haddr; HDom; hfront; lo) public
@@ -237,6 +237,12 @@ record FlatInv (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
   constructor mkFlatInv
   field
     inv-wf      : FlatWF fs
+    -- D097: …and the CLOSURE REGISTER is below the frontier too. `FlatWF` is
+    -- indexed by the `LocState`, and `fclosure` is a `FlatState` field, so it
+    -- needs saying separately — which is only now load-bearing: the closure
+    -- register's ENCODING must survive an allocation extending the heap view,
+    -- and `enc-ext` asks for exactly this bound.
+    inv-closure : sv-below (next-heap-ref (falloc fs)) (fclosure fs)
     inv-regtag  : FlatRegTag fs
     inv-ev      : ev ≡ ev-x86-64
     inv-env     : env ≡ arith-env-x86-64 (compile-trace prog)
@@ -281,6 +287,7 @@ flat-inv-step : ∀ {ev env} (i : AbstractInstr) (prog : AbstractTrace) (fs : Fl
               → FlatInv ev env prog fs → FlatInv ev env prog (flat-exec-instr i prog fs)
 flat-inv-step i prog fs ftq h inv = record
   { inv-wf      = flat-wf-step i prog fs (inv-wf inv)
+  ; inv-closure = cl-step i prog fs (inv-wf inv) (inv-closure inv)
   ; inv-regtag  = flat-regtag-step i prog fs (inv-regtag inv)
   ; inv-ev      = inv-ev inv
   ; inv-env     = inv-env inv
@@ -1883,6 +1890,7 @@ mutual
       (block-step-alloc-heap prog fs s k cc h ftq
          (wf-regs (inv-wf wf) Input1) (wf-regs (inv-wf wf) Input2)
          (wf-regs (inv-wf wf) Scratch) (wf-regs (inv-wf wf) Count)
+         (inv-closure wf)
          (λ hl _ → wf-heap (inv-wf wf) hl) (wf-stack (inv-wf wf))
          (λ hl eq → wf-fresh (inv-wf wf) hl (≤-reflexive (sym eq)))
          (heap-room prog fs s k (inv-run wf) cc ftq)) wf ftq h refl h

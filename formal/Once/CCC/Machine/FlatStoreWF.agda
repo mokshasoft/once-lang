@@ -590,6 +590,96 @@ wf-call prog fs wf = go (callView prog fs)
         go (cp-halt    e) rewrite e = wf-halt wf
         go (cp-enter ℓ j fq e) rewrite e = wf
 
+-- D097: THE CLOSURE REGISTER STAYS BELOW THE FRONTIER. `fclosure` is a
+-- `FlatState` field, so `StoreWF` (indexed by the `LocState`) says nothing
+-- about it — and the correspondence now needs it: the register's ENCODING has
+-- to survive an allocation extending the heap view, and `enc-ext` asks exactly
+-- this. It changes at ONE instruction (`instr-save-closure-reg`, to `Input1`,
+-- which `wf-regs` covers) and the frontier only ever grows, so every other row
+-- is `sv-mono` over `wf-abstract`'s own monotonicity component.
+cl-jump : ∀ (mpc : Maybe ℕ) (fs : FlatState)
+        → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+        → sv-below (next-heap-ref (falloc (do-jump mpc fs))) (fclosure (do-jump mpc fs))
+cl-jump (just pc') fs b = b
+cl-jump nothing    fs b = b
+
+cl-branch : ∀ (c : Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
+          → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+          → sv-below (next-heap-ref (falloc (do-branch c m prog fs))) (fclosure (do-branch c m prog fs))
+cl-branch true  m prog fs b = cl-jump (find-label prog m) fs b
+cl-branch false m prog fs b = b
+
+cl-ret : ∀ (r : List ℕ) (fs : FlatState)
+       → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+       → sv-below (next-heap-ref (falloc (do-ret r fs))) (fclosure (do-ret r fs))
+cl-ret []           fs b = subst (λ n → sv-below n (fclosure fs))
+                                 (sym (leave-frame-heap-ref (falloc fs))) b
+cl-ret (pc' ∷ rest) fs b = subst (λ n → sv-below n (fclosure fs))
+                                 (sym (leave-frame-heap-ref (falloc fs))) b
+
+cl-call : ∀ (prog : AbstractTrace) (fs : FlatState)
+        → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+        → sv-below (next-heap-ref (falloc (do-call prog fs))) (fclosure (do-call prog fs))
+cl-call prog fs b = go (callView prog fs)
+  where go : CallPost prog fs
+           → sv-below (next-heap-ref (falloc (do-call prog fs))) (fclosure (do-call prog fs))
+        go (cp-halt    e) rewrite e = b
+        go (cp-enter ℓ j fq e) rewrite e = b
+
+cl-step : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState) → FlatWF fs
+        → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+        → sv-below (next-heap-ref (falloc (flat-exec-instr i prog fs)))
+                   (fclosure (flat-exec-instr i prog fs))
+cl-step (instr-ctrl (c-label m))               prog fs wf b = b
+cl-step (instr-ctrl (c-thunk m bb))            prog fs wf b = b
+cl-step (instr-ctrl (c-ret bb))                prog fs wf b = cl-ret (fret fs) fs b
+cl-step (instr-ctrl (c-jmp m))                 prog fs wf b = cl-jump (find-label prog m) fs b
+cl-step (instr-ctrl (c-branch-scratch-zero m)) prog fs wf b =
+  cl-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) m prog fs b
+cl-step (instr-ctrl (c-branch-tag-zero m))     prog fs wf b =
+  cl-branch (tag-zf (flat-read-tag (floc fs))) m prog fs b
+cl-step instr-call-closure                     prog fs wf b = cl-call prog fs b
+-- the ONE writer: the register takes `Input1`, whose bound is `wf-regs`
+cl-step instr-save-closure-reg                 prog fs wf b = wf-regs wf Input1
+cl-step (instr-alloc-stack n)                  prog fs wf b =
+  sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-alloc-stack n) (floc fs) (falloc fs) wf)) b
+cl-step (instr-dealloc-stack n)                prog fs wf b =
+  subst (λ n' → sv-below n' (fclosure fs))
+        (sym (leave-frame-heap-ref (proj₂ (exec-abstract (instr-dealloc-stack n) (floc fs) (falloc fs)))))
+        (sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-dealloc-stack n) (floc fs) (falloc fs) wf)) b)
+cl-step (instr-push-frame c)                   prog fs wf b =
+  sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-push-frame c) (floc fs) (falloc fs) wf)) b
+cl-step instr-pop-frame                        prog fs wf b =
+  subst (λ n' → sv-below n' (fclosure fs))
+        (sym (leave-frame-heap-ref (proj₂ (exec-abstract instr-pop-frame (floc fs) (falloc fs)))))
+        (sv-mono (fclosure fs) (proj₂ (wf-abstract instr-pop-frame (floc fs) (falloc fs) wf)) b)
+cl-step mov-to-output            prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract mov-to-output (floc fs) (falloc fs) wf)) b
+cl-step mov-to-input             prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract mov-to-input (floc fs) (falloc fs) wf)) b
+cl-step mov-output-to-input2     prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract mov-output-to-input2 (floc fs) (falloc fs) wf)) b
+cl-step mov-input2-to-output     prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract mov-input2-to-output (floc fs) (falloc fs) wf)) b
+cl-step load-indirect            prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract load-indirect (floc fs) (falloc fs) wf)) b
+cl-step load-indirect-suc        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract load-indirect-suc (floc fs) (falloc fs) wf)) b
+cl-step (load-from-slot k)       prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (load-from-slot k) (floc fs) (falloc fs) wf)) b
+cl-step (store-at-slot k)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (store-at-slot k) (floc fs) (falloc fs) wf)) b
+cl-step store-indirect           prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract store-indirect (floc fs) (falloc fs) wf)) b
+cl-step store-indirect-suc       prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract store-indirect-suc (floc fs) (falloc fs) wf)) b
+cl-step (lea-slot k)             prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (lea-slot k) (floc fs) (falloc fs) wf)) b
+cl-step (restore-input k)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (restore-input k) (floc fs) (falloc fs) wf)) b
+cl-step (lea-indexed k)          prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (lea-indexed k) (floc fs) (falloc fs) wf)) b
+cl-step (instr-reclaim-to k)     prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-reclaim-to k) (floc fs) (falloc fs) wf)) b
+cl-step (worklist-init k)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (worklist-init k) (floc fs) (falloc fs) wf)) b
+cl-step (worklist-push k)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (worklist-push k) (floc fs) (falloc fs) wf)) b
+cl-step (worklist-pop k)         prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (worklist-pop k) (floc fs) (falloc fs) wf)) b
+cl-step (worklist-check k)       prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (worklist-check k) (floc fs) (falloc fs) wf)) b
+cl-step (instr-sigop si)         prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-sigop si) (floc fs) (falloc fs) wf)) b
+cl-step (instr-load-const p v)   prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-load-const p v) (floc fs) (falloc fs) wf)) b
+cl-step (instr-load-code-addr k) prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-load-code-addr k) (floc fs) (falloc fs) wf)) b
+cl-step (instr-load-tag-lit k)   prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-load-tag-lit k) (floc fs) (falloc fs) wf)) b
+cl-step (instr-case-on-tag f g)  prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-case-on-tag f g) (floc fs) (falloc fs) wf)) b
+cl-step (instr-alloc-heap k)     prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-alloc-heap k) (floc fs) (falloc fs) wf)) b
+cl-step (instr-loop body)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-loop body) (floc fs) (falloc fs) wf)) b
+cl-step (instr-reg-op op)        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (instr-reg-op op) (floc fs) (falloc fs) wf)) b
+
 -- ONE flat step preserves store well-formedness. Control flow only moves the
 -- pc (or halts); everything else is `exec-abstract`, i.e. `wf-abstract`.
 flat-wf-step : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)

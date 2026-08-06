@@ -244,6 +244,9 @@ entry-corr : ∀ (ir : IR Unit Unit)
 entry-corr ir = record
   { dataCorr = record
       { rdi-eq  = refl
+      -- D097: the entry `%r12` is 0 and the entry `fclosure` is the D074 tag
+      -- filler, which encodes to 0 — the same match the other registers make.
+      ; r12-eq  = refl
       ; rsi-eq  = refl
       ; rax-eq  = refl
       ; rbx-eq  = refl
@@ -352,6 +355,9 @@ entry-inv : ∀ (ir : IR Unit Unit)
                     (ir-to-trace ir) (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0)
 entry-inv ir = record
   { inv-wf      = entry-wf (ir-stack-budget ir)
+  -- D097: `mkFlat`'s closure register is the D074 tag filler, and a tag
+  -- references no block at all — so the bound is `tt`.
+  ; inv-closure = tt
   ; inv-regtag  = entry-regtag (ir-stack-budget ir)
   ; inv-ev      = refl        -- the apex runs the REAL extractor
   ; inv-env     = refl        -- …and the REAL arith env
