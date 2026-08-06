@@ -638,6 +638,40 @@ for, whenever the equation's consumer can be moved into the motive.**
 Before spending on this axis, check whether the motive can absorb the
 obligation — in the one real case tried so far, it could.
 
+### ★ WHAT IS LEFT WITHIN THE WF AXIS — analysis, 2026-08-06
+
+**ℕ is privileged not because it is the only possible ORDERED
+INDUCTIVE, but because it is the CODOMAIN OF EVERY MEASURE.** `⊢amrec`
+(`NbEPDirDBExamplesDogfood`) is measure recursion at an ARBITRARY
+carrier `A : U` with `μ : A → Nat`; its proof is the ℕ one UNCHANGED,
+because the recursion was always on the measure, never on the carrier.
+Doing ℕ once therefore buys well-founded recursion at every carrier.
+
+**⇒ Do NOT add a per-datatype ordered inductive (`Hom Tree`, …).** It
+would give the subtree order definitionally instead of through `size`,
+but each one costs a full nine-module cascade (rules, classifier, SN
+layer, Conf development, `fund` case, Canon case — the `ordtr` bill),
+and it does not scale: one former per datatype, versus one `μ` for all.
+
+**Three genuinely different capabilities, ranked:**
+
+1. **INDUCTIVE TYPES + folds — the real blocker, and the highest value.**
+   `⊢amrec` applies to `prog`/`usplit`/`trS`/`ordtrS` VERBATIM the
+   moment `RTm` is a kernel type and `sz` is definable. Nothing further
+   is needed from the WF axis. Note also that anything expressible as a
+   CATA needs no well-founded order at all — the fold IS the eliminator
+   (cf. `NbEPLinRec`'s `lcata` in the linear core). The WF axis is for
+   the NON-structural recursions (`div`, `gcd`, quicksort) where the
+   recursive argument is not a subterm.
+
+2. **LEXICOGRAPHIC / multiset measures — a real gap in the current
+   combinator.** `μ : A → Nat` is a SINGLE ℕ, so Ackermann-style
+   terminations are out of reach. Needs either a computing order on
+   pairs or a derived lex combinator. Cheapest genuine extension of this
+   axis, and the only one that buys power `μ` cannot already express.
+
+3. **Ordinals / transfinite** — much larger, no current demand.
+
 **The rest of the inventory** (weekly-frequency ranked): setoid
 rewriting ✅ (Hom); quotients/setoid-hell-2 → the OBSERVATIONAL axis —
 uniquely matched to this codebase: it is "give Id the computing rules
