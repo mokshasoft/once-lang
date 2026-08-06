@@ -32,11 +32,12 @@ open import Data.Product using (∃-syntax; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.Type using (Type; Functor; _⊕_; Id; μ-type; ⟦_⟧T; _+_)
-open import Once.Semantics.Machine using (⟦_⟧; sem-inl; sem-inr)
+-- Plan 0.52 M2: machine values are IRTy values (⟦_⟧ᴵ), renamed to ⟦_⟧ locally.
+open import Once.IR using (IRTy; IRFunctor; _⊕_; Id; μ-type; ⟦_⟧TI; _+_; ⌈_⌉)
+open import Once.Semantics.Machine using (sem-inl; sem-inr) renaming (⟦_⟧ᴵ to ⟦_⟧)
 open import Once.CCC.Eval using (eval)
 open import Once.IR using (out-μ; Heap)
-open import Once.Functor.Translate using (WellFormedF; WellFormedF-irrelevant)
+open import Once.IR using (WellFormedFI; WellFormedFI-irrelevant)
 open import Once.CCC.Machine.Allocation using (AllocState)
 open import Once.CCC.Machine.SMCore
   using (LocState; ValueLocation; SV-Tag; SV-Ptr; sucLoc; module MemOps)
@@ -48,33 +49,33 @@ open import Once.CCC.Codegen.CataNatHeapExtract o using (module CataNatHeapExtra
 -- `⟦ G ⊕ Id ⟧T (μ F) = ⟦G⟧T(μ F) + μ F` still reduces (top-level ⊕), so
 -- the whole seam transfers with the inl-branch type `Unit` replaced by the
 -- base layer `⟦G⟧T(μ F)`. This is the functor generalisation of `peel-μ`.
-module CataNatSeam {FS : FrameSemantics} (program-bound : ℕ) (G : Functor) where
+module CataNatSeam {FS : FrameSemantics} (program-bound : ℕ) (G : IRFunctor) where
   open MemOps {FS} using (readLoc)
 
   -- the strat-nat functor and its base layer.
-  F : Functor
+  F : IRFunctor
   F = G ⊕ Id
 
-  B₀ : Type
-  B₀ = ⟦ G ⟧T (μ-type F)
+  B₀ : IRTy
+  B₀ = ⟦ G ⟧TI (μ-type F)
   open ClosureWellFormedDef {FS} program-bound using (ValidAtWF; valid-μ-wf; valid-inr-wf)
   open CataNatHeapExtract {FS} program-bound using (inr-tag; inl-tag)
 
   -- Peel `valid-μ-wf`: the μ-value's validity at `loc` IS its F-layer's
   -- validity at the same `loc`. (= `μ-layer-iso`, specialised to F.)
   peel-μ : ∀ {alloc} {x : ⟦ μ-type F ⟧} {loc : ValueLocation FS} {s : LocState FS}
-             (wf : WellFormedF F)
+             (wf : WellFormedFI F)
          → ValidAtWF Heap alloc {μ-type F} x loc s
-         → ValidAtWF Heap alloc {⟦ F ⟧T (μ-type F)} (eval (out-μ wf) x) loc s
-  peel-μ wf (valid-μ-wf wf′ x lv) rewrite WellFormedF-irrelevant wf wf′ = lv
+         → ValidAtWF Heap alloc {⟦ F ⟧TI (μ-type F)} (eval (out-μ wf) x) loc s
+  peel-μ wf (valid-μ-wf wf′ x lv) rewrite WellFormedFI-irrelevant wf wf′ = lv
 
   -- SEAM (cons): a Nat cons value's validity gives the cons tag. `⟦ F
   -- ⟧T (μ-type F) = Unit + μ-type F` (reduces), so the peeled layer
   -- is a sum; `subst` to the cons shape, then `inr-tag`.
   nat-cons-tag : ∀ {alloc} {x : ⟦ μ-type F ⟧} {child : ⟦ μ-type F ⟧}
                    {loc : ValueLocation FS} {s : LocState FS}
-                   (wf : WellFormedF F)
-               → eval (out-μ wf) x ≡ sem-inr {B₀} {μ-type F} child
+                   (wf : WellFormedFI F)
+               → eval (out-μ wf) x ≡ sem-inr {⌈ B₀ ⌉} {⌈ μ-type F ⌉} child
                → ValidAtWF Heap alloc {μ-type F} x loc s
                → readLoc s loc ≡ just (SV-Tag 1)
   nat-cons-tag {alloc} {x = x} {child} {loc} {s} wf cons-shape v =
@@ -83,8 +84,8 @@ module CataNatSeam {FS : FrameSemantics} (program-bound : ℕ) (G : Functor) whe
   -- SEAM (base): a Nat base value's validity gives the base tag.
   nat-base-tag : ∀ {alloc} {x : ⟦ μ-type F ⟧} {u : ⟦ B₀ ⟧}
                    {loc : ValueLocation FS} {s : LocState FS}
-                   (wf : WellFormedF F)
-               → eval (out-μ wf) x ≡ sem-inl {B₀} {μ-type F} u
+                   (wf : WellFormedFI F)
+               → eval (out-μ wf) x ≡ sem-inl {⌈ B₀ ⌉} {⌈ μ-type F ⌉} u
                → ValidAtWF Heap alloc {μ-type F} x loc s
                → readLoc s loc ≡ just (SV-Tag 0)
   nat-base-tag {alloc} {x = x} {u} {loc} {s} wf base-shape v =
@@ -95,8 +96,8 @@ module CataNatSeam {FS : FrameSemantics} (program-bound : ℕ) (G : Functor) whe
   -- then match `valid-inr-wf` and project its payload-pointer field.
   nat-cons-child : ∀ {alloc} {x : ⟦ μ-type F ⟧} {child : ⟦ μ-type F ⟧}
                      {loc : ValueLocation FS} {s : LocState FS}
-                     (wf : WellFormedF F)
-                 → eval (out-μ wf) x ≡ sem-inr {B₀} {μ-type F} child
+                     (wf : WellFormedFI F)
+                 → eval (out-μ wf) x ≡ sem-inr {⌈ B₀ ⌉} {⌈ μ-type F ⌉} child
                  → ValidAtWF Heap alloc {μ-type F} x loc s
                  → ∃[ child-loc ] (readLoc s (sucLoc loc) ≡ just (SV-Ptr child-loc))
   nat-cons-child {alloc} {x = x} {child} {loc} {s} wf cons-shape v

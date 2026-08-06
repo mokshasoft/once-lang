@@ -31,25 +31,25 @@ open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.Type using (Type; Functor; _⊕_; Id; μ-type; ⟦_⟧T; _+_)
-open import Once.Semantics.Machine using (⟦_⟧; sem-inl; sem-inr)
-open import Once.IR using (AllocMode; Heap)
-open import Once.Functor.Translate using (WellFormedF)
+-- Plan 0.52 M2: machine values are IRTy values (⟦_⟧ᴵ), renamed to ⟦_⟧ locally —
+-- the convention `ClosureWellFormed` uses, since `ValidAtWF` is indexed by IRTy.
+open import Once.IR using (IRTy; IRFunctor; _⊕_; Id; μ-type; ⟦_⟧TI; _+_; AllocMode; Heap)
+open import Once.Semantics.Machine using (sem-inl; sem-inr) renaming (⟦_⟧ᴵ to ⟦_⟧)
 open import Once.CCC.Machine.Allocation using (AllocState)
 open import Once.CCC.Machine.SMCore using (LocState; ValueLocation; SV-Tag; SV-Ptr; module MemOps)
 open import Once.CCC.Machine.ClosureWellFormed o using (module ClosureWellFormedDef)
 open import Once.CCC.Codegen.CataNatChain using (module CataNatChain)
 
-module CataNatProducer {FS : FrameSemantics} (program-bound : ℕ) (G : Functor) where
+module CataNatProducer {FS : FrameSemantics} (program-bound : ℕ) (G : IRFunctor) where
   open MemOps {FS} using (readLoc)
   open ClosureWellFormedDef {FS} program-bound using (ValidAtWF; valid-μ-wf; valid-inl-wf; valid-inr-wf)
   open CataNatChain {FS}
 
-  F : Functor
+  F : IRFunctor
   F = G ⊕ Id
 
-  B₀ : Type
-  B₀ = ⟦ G ⟧T (μ-type F)
+  B₀ : IRTy
+  B₀ = ⟦ G ⟧TI (μ-type F)
 
   -- Heap-uniformity of the value's cons-spine: mode-polymorphic so the
   -- recursion needs no `subst` (the cons child's validity is recursed on

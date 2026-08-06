@@ -32,9 +32,9 @@ open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.Type using (Type; _+_)
-open import Once.Semantics.Machine using (⟦_⟧; sem-inl; sem-inr)
-open import Once.IR using (AllocMode; Heap)
+-- Plan 0.52 M2: machine values are IRTy values (⟦_⟧ᴵ), renamed to ⟦_⟧ locally.
+open import Once.IR using (IRTy; _+_; AllocMode; Heap)
+open import Once.Semantics.Machine using (sem-inl; sem-inr) renaming (⟦_⟧ᴵ to ⟦_⟧)
 open import Once.CCC.Machine.Allocation using (AllocState)
 open import Once.CCC.Machine.SMCore
   using (LocState; ValueLocation; SV-Tag; module MemOps)

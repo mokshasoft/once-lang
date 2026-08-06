@@ -57,12 +57,26 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 ------------------------------------------------------------------------
 -- StraightIR: the main trace of `ir` contains no `instr-ctrl`.
 -- Recurse only where sub-traces are spliced into the MAIN trace
--- (`_∘_`, `⟨_,_⟩`); `Cata` is the sole obstruction.
+-- (`_∘_`, `⟨_,_⟩`).
+--
+-- TWO obstructions, not one. `Cata` was always here (its flat loop). `case`
+-- JOINED IT with the flip (plan 0.63 2b): its branch bodies used to be
+-- ARGUMENTS to `instr-case-on-tag` — off the main trace — and it now compiles
+-- to FLAT control, emitting `c-branch-tag-zero`/`c-jmp`/`c-label` into the
+-- main trace directly. `curry` joined for the same reason: the flip put the
+-- closure BODY inline, bracketed by `c-jmp`/`c-thunk` … `c-ret`/`c-label`,
+-- instead of in the separate bodies list.
+--
+-- Both became FALSE while sitting in the catch-all below silently claiming
+-- `⊤`; the `case`/`curry` clauses of `straight-trace'` could no longer be
+-- proven, which is how it surfaced. The catch-all is why it stayed quiet.
 ------------------------------------------------------------------------
 StraightIR : ∀ {A B} → IR A B → Set
 StraightIR (g ∘ f)       = StraightIR g × StraightIR f
 StraightIR (⟨ f , g ⟩ m) = StraightIR f × StraightIR g
 StraightIR (Cata _ _)    = ⊥
+StraightIR (case _ _)    = ⊥
+StraightIR (curry _ _)   = ⊥
 {-# CATCHALL #-}
 StraightIR _             = ⊤
 
@@ -114,14 +128,11 @@ module _ {FS : FrameSemantics} where
   straight-trace' (inr Heap)  _ n l =
     (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
     (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
-  straight-trace' (case f g)  _ n l = (λ _ _ → refl) ∷ []
+  straight-trace' (case f g)  () n l
   straight-trace' terminal    _ n l = []
   straight-trace' initial     _ n l = (λ _ _ → refl) ∷ []
-  straight-trace' (curry b Stack) _ n l =
-    (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
-  straight-trace' (curry b Heap)  _ n l =
-    (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
-    (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []
+  straight-trace' (curry b Stack) () n l
+  straight-trace' (curry b Heap)  () n l
   straight-trace' apply       _ n l =
     (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
     (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷ (λ _ _ → refl) ∷

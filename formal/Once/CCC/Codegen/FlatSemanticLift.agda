@@ -35,8 +35,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; sym; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractTrace; LocState; AllocState; module AbstractExec)
-open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.Type using (Type)
+-- Plan 0.52 M2: machine values are IRTy values (⟦_⟧ᴵ), renamed to ⟦_⟧ locally —
+-- the convention `ClosureWellFormed` uses, since `ValidAtWF` is indexed by IRTy.
+open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
+open import Once.IR using (IRTy)
 open import Once.CCC.Machine.ClosureWellFormed o using (module ClosureWellFormedDef)
 open import Once.CCC.Machine.ValidAtWFHalted o using (validAtWF-set-halted)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -50,7 +52,7 @@ module _ {FS : FrameSemantics} (program-bound : ℕ) where
   -- flat final state. The alloc swaps via `falloc ≡ proj₂ exec-trace`;
   -- the state via `forced (floc …) ≡ forced (proj₁ exec-trace)`, having
   -- first forced the exec-trace state's `halted` (validAtWF-set-halted).
-  lift-validAtWF-flat : ∀ {mOut A} {v : ⟦ A ⟧} {loc}
+  lift-validAtWF-flat : ∀ {mOut} {A : IRTy} {v : ⟦ A ⟧} {loc}
     (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
     → Straight trace
     → ValidAtWF mOut (proj₂ (exec-trace trace s alloc)) v loc

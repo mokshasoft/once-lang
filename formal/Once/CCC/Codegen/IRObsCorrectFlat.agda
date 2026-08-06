@@ -234,8 +234,16 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- IR constructor to be accounted for — a new constructor cannot slip
   -- through unproven.
   --
-  --   * `Cata` routes to `cata-correct` (the loop obligation, discharged by
-  --     the descend/base/ascend μ-induction — CataNat*).
+  --   * `Cata` routes to `cata-correct` (the loop obligation, whose intended
+  --     discharge is the descend/base/ascend μ-induction — `CataNat*`).
+  --     NOT WIREABLE AS IT STANDS, and the reason is worth recording: this
+  --     pointer was written 2026-06-13, and four days later `5088e571`
+  --     deleted `CataNatAscend`/`CataNatValue`/`CataNatTrace` as "dead …
+  --     no live importers". So of the three phases the induction composes,
+  --     only DESCEND survives (`CataNatDescend*`/`Chain`/`Heap*`/`Producer`/
+  --     `Seam` — kept, since they prove content this module only postulates).
+  --     Closing `cata-correct` means REBUILDING base and ascend, not wiring
+  --     up what is here.
   --   * everything else is `obs-correct-rest` — a NAMED scaffold bundling the
   --     straight constructors (id/∘/⟨,⟩/fst/snd/inl/inr/case/terminal/curry/
   --     apply/arr/SigOp — pure cases via `flat-events-[]`, SigOp via the
