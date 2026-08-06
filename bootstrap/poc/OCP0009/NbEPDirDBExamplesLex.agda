@@ -99,7 +99,15 @@ lexAuxMot =
   Π Nat (Π Nat
     (Π (Hom Nat (app (var (vs (vs (vs (vs (vs vz)))))) (var vz))
                 (var (vs (vs vz))))
-       (Π (Hom Nat (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs vz)))
+       -- ★ MEASURE FIX (2026-08-06): this bound is on μ₂, not μ₁.  Under
+       --   the three binders (n₂', x', le) the frame is vz=le, vs=x',
+       --   vs²=n₂', vs³=n₁', vs⁴=stp, vs⁵=μ₂, vs⁶=μ₁, vs⁷=cP — so μ₂ is
+       --   vs⁵.  It read vs⁶, making the SECOND component of the
+       --   lexicographic pair bound by μ₁ as well, i.e. no second measure
+       --   at all.  Caught by ⊢lexSZ, whose `⊢le-refl` at `μ₂ y` then
+       --   could not match an expected `μ₁ y`.  Same class as the REC2T
+       --   `cP` bug: a well-scoped index that denotes the wrong thing.
+       (Π (Hom Nat (app (var (vs (vs (vs (vs (vs vz)))))) (var (vs vz)))
                    (var (vs (vs vz))))
           (El (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))
                    (var (vs (vs vz))))))))
@@ -303,3 +311,13 @@ M0lex =
            (Π (Hom Nat (app (var (vs (vs (vs (vs (vs vz)))))) (var (vs vz)))
                        (var (vs (vs vz))))
               (El (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs vz)))))))
+
+-- ★ the motive of the INNER `natrec` in the n₁ = suc branch.  Same shape
+--   as `M0lex` but the μ₁ bound is `nsuc n₁'` instead of `nzero`, which is
+--   what makes `rec₁` live there and vacuous here.
+--   ctx: vz=m, vs=n₂, vs²=IH₁, vs³=n₁', vs⁴=stp, vs⁵=μ₂, vs⁶=μ₁, vs⁷=cP
+M1lex : RTy (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+M1lex =
+  Π Nat (Π (Hom Nat (app (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var vz)) (nsuc (var (vs (vs (vs (vs vz)))))))
+           (Π (Hom Nat (app (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs vz))) (var (vs (vs vz))))
+              (El (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz)))))))
