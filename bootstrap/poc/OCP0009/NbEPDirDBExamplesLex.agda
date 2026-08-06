@@ -33,7 +33,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; El; Hom; Unit; Nat
         ; RTm; var; unit; nzero; nsuc; natrec; absurd; ordtr; ⌜Hom⌝; ⌜Nat⌝
-        ; Π; lam; app; renTy; subTy )
+        ; Π; lam; app; renTy; subTy; extS; extR )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶ᵀ_; Hom-Nat-sz; Hom-Nat-ss
         ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ
@@ -141,7 +141,11 @@ lexAuxTm n = natrec lexZBr lexSBr n
 
 
 ------------------------------------------------------------------------
--- ⚠⚠ CHECKPOINT — THE STATEMENT IS VERIFIED, THE DERIVATION IS NOT.
+-- ⚠⚠ CHECKPOINT — STATEMENT VERIFIED; DERIVATION 1 BRANCH OF 4.
+--
+-- Branch (0,0) is DONE (§6/§7, `⊢lexZZ`).  Branches (0,S), (S,0), (S,S)
+-- and the three assembly layers (`⊢lexZBr`, `⊢lexSBr`, `⊢lexAux`, then
+-- `⊢lexrec` itself) are NOT written.  Do not read "lexrec" as verified.
 --
 -- Everything above TYPECHECKS: `REC1T`, `REC2T`, `LStepT`, `Γ₅` and
 -- `lexAuxMot` are well-formed, which settles the part most likely to be
@@ -189,8 +193,17 @@ lexAuxTm n = natrec lexZBr lexSBr n
 --   BUG doing it.  The types are no longer in doubt; the derivation is.
 --
 -- ⚠⚠ SECOND BLOCKER, MEASURED 2026-08-06: THE INLINE STYLE DOES NOT BUILD.
+--   ✔ RESOLVED for branch (0,0) — see §6/§7.  Split into Def-backed lemmas
+--     it checks in 37.6s / 3.01 GB, exit 0.  ★ AND THE VERDICT IS: the
+--     branch was CORRECT all along.  It had simply never fitted in memory,
+--     so "unfinished" had been hiding "unknown", not "wrong".
+--   ⚠ STILL OPEN for the other three branches and the three assembly
+--     layers.  At 3.01 GB for ONE branch they will not share a module on a
+--     7.5 GiB box — plan one module per branch, which the Def-backed split
+--     now makes possible (a branch exports as a name, not a term).
+--
 --   A first `⊢lexZZ` written as ONE nested term ran 349s to 4.69 GB and was
---   killed WITHOUT a verdict — so it is not known to be wrong OR right.
+--   killed WITHOUT a verdict — so it was not known to be wrong OR right.
 --   Half of it (one of the two `⊢lam`-nest arguments) does check, in
 --   13.6s / 1.34 GB.  Growth is SUPERLINEAR, and four branches plus three
 --   assembly layers are still to come.  Getting the indices right is
@@ -291,3 +304,77 @@ M0lex =
                        (var (vs (vs vz))))
               (El (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs vz)))))))
 
+
+------------------------------------------------------------------------
+-- 6. BRANCH (0,0), SPLIT INTO Def-BACKED LEMMAS.
+--
+-- ⚠ WHY SPLIT: written as ONE inline term this branch ran 349s to 4.69 GB
+--   without reaching a verdict (see the SECOND BLOCKER note above).  Each
+--   `⊢app`/`⊢lam` node stores its implicit types in full, so the cost is
+--   term SIZE.  Naming the two recursor arguments puts a `Def` at the
+--   assembly site instead of an expanded derivation.
+--
+-- ★ EVERY type below is READ OFF Agda by the goal-probe, not reconstructed
+--   by hand — that is the discipline the checkpoint note argues for, and
+--   the `renTy (extR vs)⁵ REC1T` shape is exactly what it predicted.
+------------------------------------------------------------------------
+
+-- the context after the three `⊢lam`s (x, le : μ₁ x ≤ 0, lt : μ₂ x ≤ n₂)
+ΓZZ : Ctx
+ΓZZ =
+  (((Γ₅ ▹ Nat) ▹ subTy (single nzero) Nat)
+     ▹ subTy (extS (single nzero))
+         (Hom Nat (app (var (vs (vs (vs (vs (vs vz)))))) (var vz)) nzero))
+     ▹ subTy (extS (extS (single nzero)))
+         (Hom Nat (app (var (vs (vs (vs (vs (vs vz)))))) (var (vs vz)))
+                  (var (vs (vs vz))))
+
+lexZZrec1 : RTm ⌊ ΓZZ ⌋
+lexZZrec1 =
+  lam (lam (absurd (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs vz)))))) nzero (var vz) (var (vs (vs (vs vz)))))))
+
+REC1TZZ : RTy ⌊ ΓZZ ⌋
+REC1TZZ =
+  subTy (single (var (vs (vs vz))))
+    (renTy (extR vs) (renTy (extR vs) (renTy (extR vs)
+      (renTy (extR vs) (renTy (extR vs) REC1T)))))
+
+⊢lexZZrec1 : ΓZZ ⊢ lexZZrec1 ∷ REC1TZZ
+⊢lexZZrec1 =
+  ⊢lam ty-Nat
+                (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (here)))) (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there (there (there here))))))
+                  (⊢strong-base' (⊢app (⊢var (there (there (there (there (there (there (there (there (there here)))))))))) (⊢var (there here))) (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there here))) (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there (there (there (there here)))))) (⊢var (here)) (⊢var (there (there (there here))))))
+
+lexZZrec2 : RTm ⌊ ΓZZ ⌋
+lexZZrec2 =
+  lam (lam (lam (absurd (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz)))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs vz))))))) nzero (var vz) (var (vs (vs (vs vz))))))))
+
+-- ★ note `single lexZZrec1`: the argument type of `rec₂` depends on the
+--   rec₁ TERM, so the split has to name the term as well as the derivation.
+REC2TZZ : RTy ⌊ ΓZZ ⌋
+REC2TZZ =
+  subTy (single lexZZrec1)
+    (subTy (extS (single (var (vs (vs vz)))))
+      (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs))
+        (renTy (extR (extR vs)) (renTy (extR (extR vs)) REC2T))))))
+
+⊢lexZZrec2 : ΓZZ ⊢ lexZZrec2 ∷ REC2TZZ
+⊢lexZZrec2 =
+  ⊢lam ty-Nat
+                (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (here))) (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there (there (there here))))))
+                  (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there here)))) (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there (there (there (there here)))))))
+                    (⊢strong-base' (⊢app (⊢var (there (there (there (there (there (there (there (there (there (there here))))))))))) (⊢var (there (there here)))) (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there (there here)))) (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there (there (there (there (there here))))))) (⊢var (here)) (⊢var (there (there (there here)))))))
+
+------------------------------------------------------------------------
+-- 7. BRANCH (0,0) ASSEMBLED.  Three `⊢lam`s and a three-fold `⊢app`
+--    spine; both recursor arguments are `Def`s, so this term is small.
+------------------------------------------------------------------------
+
+⊢lexZZ : (Γ₅ ▹ Nat) ⊢ lexZZ ∷ subTy (single nzero) M0lex
+⊢lexZZ =
+  ⊢lam ty-Nat
+    (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there here))))) (⊢var (here))) ⊢nzero)
+      (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there here))))) (⊢var (there here))) ⊢nzero)
+        (⊢app (⊢app (⊢app (⊢var (there (there (there (there here))))) (⊢var (there (there here))))
+              ⊢lexZZrec1)
+              ⊢lexZZrec2)))
