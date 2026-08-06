@@ -290,7 +290,7 @@ block-step-c-label {hv} prog fs s n cc h ft = post , exec-eq , record
 -- marker lowered to a bare `label`. It now lowers to `label ; subq $b*8,%rsp`
 -- and RESERVES THE BODY'S FRAME, so its correspondence is
 -- `block-step-alloc-stack`'s: the descending high-water view plus freshness
--- of the callee frame (`fresh-abs`/`fresh-x86`) and the honest `stack-room`.
+-- of the callee frame (`fresh-abs`) and the honest `stack-room`.
 -- Those premises cannot be supplied until the bodies are emitted and the
 -- per-frame story exists (plan 0.63 steps 2b/2c), so until then the marker
 -- has no producer and `events-running-fetch` routes it absurdly — the same
@@ -452,7 +452,7 @@ block-step-load-from-slot {hv} prog fs s slot w cc h ft slot<ns st-eq =
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (load-from-slot slot) ft)
     rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rsp (slot-to-disp slot))) ≡ just (C.enc-sv hv w)
-    rd = trans (C.stack-eq-cur dc slot slot<ns) (cong (C.enc-maybe hv) st-eq)
+    rd = C.stack-eq-cur dc slot slot<ns _ st-eq
     post : X.State
     post = record s { regs = xwriteReg (xregs s) rax (C.enc-sv hv w) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
@@ -480,7 +480,7 @@ block-step-restore-input {hv} prog fs s slot w cc h ft slot<ns st-eq =
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (restore-input slot) ft)
     rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rsp (slot-to-disp slot))) ≡ just (C.enc-sv hv w)
-    rd = trans (C.stack-eq-cur dc slot slot<ns) (cong (C.enc-maybe hv) st-eq)
+    rd = C.stack-eq-cur dc slot slot<ns _ st-eq
     post : X.State
     post = record s { regs = xwriteReg (xregs s) rdi (C.enc-sv hv w) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
@@ -492,14 +492,17 @@ block-step-restore-input {hv} prog fs s slot w cc h ft slot<ns st-eq =
 
 -- alloc-stack: reserve n slots ↔ `sub rsp, n*8`. Uses step-sub-ri; the flag
 -- clobber is invisible (FlatCorr flag-free). The 3 fresh-frame facts (entry,
--- fresh-abs, fresh-x86) are threaded to sim-alloc-stack; heap liveness now rides
+-- fresh-abs) are threaded to sim-alloc-stack; heap liveness now rides
 -- the carried view, so the old `liveinv` premise is gone.
 block-step-alloc-stack : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-alloc-stack n)
   -- Plan 0.61: the reservation MOVES into the callee frame, so the freshness is
   -- about the SHIFTED frame (a weaker premise than the caller-frame one).
   → (∀ k → k < n → stackMem (floc fs) (shift-frame FS (current-frame (falloc fs)) n) k ≡ nothing)
-  → (∀ k → k < n → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k) ≡ nothing)
+  -- `fresh-x86` GONE (Plan 0.54 rung D): with `C.Window` one-directional the
+  -- callee's window follows from `fresh-abs` alone. It was the FALSE premise —
+  -- on frame re-entry the concrete cells below `%rsp` hold the previous
+  -- incarnation's data — and it is what blocked `block-step-c-thunk`.
   -- THE DESCENT (plan 0.54 rung D step 3): %rsp drops, so the view's high-water
   -- mark drops with it and the step lands at the DESCENDED view. The ROOM premise
   -- (stack overflow) is what the dispatcher spends on `front-lo'`.
@@ -508,7 +511,7 @@ block-step-alloc-stack : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv pro
   -- THE FRAME FITS (Plan 0.63, D085) — see `C.sim-alloc-stack`.
   → slots n ≤ X.readReg (xregs s) rsp
   → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-alloc-stack n)
-block-step-alloc-stack {hv} prog fs s n cc h ft fresh-abs fresh-x86 lo' lo'≤lo front-lo' lo'≤rsp fits =
+block-step-alloc-stack {hv} prog fs s n cc h ft fresh-abs lo' lo'≤lo front-lo' lo'≤rsp fits =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -528,10 +531,73 @@ block-step-alloc-stack {hv} prog fs s n cc h ft fresh-abs fresh-x86 lo' lo'≤lo
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
                           (flat-exec-instr (instr-alloc-stack n) prog fs) post
-    dataPost = C.sim-alloc-stack n newFlags fs s dc fresh-abs fresh-x86
+    dataPost = C.sim-alloc-stack n newFlags fs s dc fresh-abs
                                  lo' lo'≤lo front-lo' lo'≤rsp fits
     pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-alloc-stack n) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-alloc-stack n) ft))
+
+------------------------------------------------------------------------
+-- THE CLOSURE BODY ENTRY: `c-thunk n b` ↔ `label (thunk n) ; sub rsp, 8b`.
+--
+-- TWO x86 instructions, one abstract step. The label is a pc-only no-op; the
+-- `sub` is the body's reservation, which `C.sim-thunk` matches with
+-- `grow-frame` (D086: the body GROWS the frame the call already entered — it
+-- does not push one, because the concrete `call` already spent a slot on the
+-- return address and that slot is not abstractly addressable).
+--
+-- THIS IS THE ONE THE HANDOFF SAID NOT TO BUILD, and it was right at the time:
+-- against the old bidirectional `C.Window` its premise was FALSE, because the
+-- callee window demanded unmapped concrete cells and a closure applied twice at
+-- one depth re-enters over its predecessor's live data. With `Window`
+-- one-directional the head window is vacuous from `fresh-abs` alone, so the
+-- block-step is a plain two-step composition.
+------------------------------------------------------------------------
+block-step-c-thunk : ∀ {hv : HeapView} prog fs s n b → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk n b))
+  -- NO freshness premise: `do-thunk` CLEARS the entered frame, so the callee
+  -- window holds by computation. Neither the abstract nor the concrete
+  -- freshness claim survives frame re-entry, and this is why neither is needed.
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
+  → lo' ≤ X.readReg (xregs s) rsp ∸ slots b
+  → slots b ≤ X.readReg (xregs s) rsp
+  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-thunk n b))
+block-step-c-thunk {hv} prog fs s n b cc h ft lo' lo'≤lo front-lo' lo'≤rsp fits =
+  post-sub , exec-eq , record { dataCorr = dataPost ; pc-off = pco' }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    -- step 1: the body-entry label (pc only)
+    fetch-lab : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (label (thunk n))
+    fetch-lab = trans (cong (X.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-thunk n b)) ft)
+    post-lab : X.State
+    post-lab = record s { pc = pc s + 1 }
+    step-lab : X.step-not-halted (compile-trace prog) s ≡ just post-lab
+    step-lab = step-label {compile-trace prog} {s} {thunk n} fetch-lab
+    -- step 2: the reservation
+    fetch-sub : X.fetch (compile-trace prog) (X.State.pc post-lab) ≡ just (sub (reg rsp) (imm (slots b)))
+    fetch-sub = trans (cong (λ q → X.fetch (compile-trace prog) (q + 1)) po)
+                      (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-thunk n b)) ft)
+    newFlags : X.Flags
+    newFlags = updateFlags (xreadReg (xregs s) rsp ∸ slots b) (xreadReg (xregs s) rsp)
+    post-sub : X.State
+    post-sub = record s { regs = xwriteReg (xregs s) rsp (xreadReg (xregs s) rsp ∸ slots b)
+                        ; flags = newFlags ; pc = pc s + 1 + 1 }
+    step-sub : X.step-not-halted (compile-trace prog) post-lab ≡ just post-sub
+    step-sub = step-sub-ri {compile-trace prog} {post-lab} {rsp} {slots b} fetch-sub
+    exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-sub
+    exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-lab} halt-s step-lab halt-s)
+                    (exec-1 {compile-trace prog} {0} {post-lab} {post-sub} halt-s step-sub halt-s)
+    dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
+                          (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs) post-sub
+    dataPost = C.sim-thunk b newFlags (pc s + 1 + 1) fs s dc
+                           lo' lo'≤lo front-lo' lo'≤rsp fits
+    pco' : X.State.pc post-sub
+         ≡ x86-off prog (fpc (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs))
+    pco' = trans (+-assoc (pc s) 1 1)
+                 (trans (cong (_+ 2) po)
+                        (sym (x86-off-suc prog (fpc fs) (instr-ctrl (c-thunk n b)) ft)))
 
 -- dealloc-stack: free n slots ↔ `add rsp, n*8`. At a full-frame exit
 -- (frame-slots ≡ n), sim-dealloc-stack's post bound is vacuous. Uses step-add-ri.
@@ -722,7 +788,7 @@ block-step-worklist-pop {hv} prog fs s slot w cc h ft slot<ns st-eq =
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (worklist-pop slot) ft)
     rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rsp (slot-to-disp slot))) ≡ just (C.enc-sv hv w)
-    rd = trans (C.stack-eq-cur dc slot slot<ns) (cong (C.enc-maybe hv) st-eq)
+    rd = C.stack-eq-cur dc slot slot<ns _ st-eq
     post : X.State
     post = record s { regs = xwriteReg (xregs s) rax (C.enc-sv hv w) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
@@ -1098,31 +1164,19 @@ load-indirect-heap-empty-stuck {hv} prog fs s hl cc ft i-eq dom h-eq = fetch-x86
     stuck : X.execInstr (compile-trace prog) s (mov (reg rax) (mem (base rdi))) ≡ nothing
     stuck rewrite rd = refl
 
-load-indirect-stack-empty-stuck : ∀ {hv : HeapView} prog fs s f k → CompiledCorr hv prog fs s
-  → fetch prog (fpc fs) ≡ just load-indirect
-  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-  → f ≡ current-frame (falloc fs)
-  → k < frame-slots (falloc fs)
-  → stackMem (floc fs) (current-frame (falloc fs)) k ≡ nothing
-  → (X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base rdi))))
-    × (X.execInstr (compile-trace prog) s (mov (reg rax) (mem (base rdi))) ≡ nothing)
-load-indirect-stack-empty-stuck {hv} prog fs s f k cc ft i-eq f-eq k<ss st-eq = fetch-x86 , stuck
-  where
-    dc = dataCorr cc ; po = pc-off cc
-    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base rdi)))
-    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
-                      (fetch-block-head prog (fpc fs) load-indirect ft)
-    rdi-val : xreadReg (xregs s) rdi ≡ xreadReg (xregs s) rsp + slot-to-disp k
-    rdi-val = trans (C.rdi-eq dc)
-              (trans (cong (C.enc-sv hv) i-eq)
-              (trans (cong (λ fr → slot-addr FS fr k) f-eq)
-              (trans (slot-addr-linear FS (current-frame (falloc fs)) k)
-                     (cong₂ (λ b w' → b + k * w') (sym (C.rsp-eq dc)) word-eq))))
-    rd : X.readMem (memory s) (X.effectiveAddr s (base rdi)) ≡ nothing
-    rd = trans (cong (X.readMem (memory s)) rdi-val)
-               (trans (C.stack-eq-cur dc k k<ss) (cong (C.enc-maybe hv) st-eq))
-    stuck : X.execInstr (compile-trace prog) s (mov (reg rax) (mem (base rdi))) ≡ nothing
-    stuck rewrite rd = refl
+-- `load-indirect-stack-empty-stuck` / `load-indirect-suc-stack-empty-stuck`
+-- DELETED (Plan 0.54 rung D). Each proved "the abstract slot is empty ⇒ the
+-- concrete machine is stuck", which needed the OLD bidirectional `C.Window` to
+-- assert the concrete cell was unmapped wherever the abstract one was. That
+-- assertion was FALSE on frame re-entry (the cells hold the previous
+-- incarnation's data) and is gone with the one-directional `Window`.
+--
+-- Their routes are UNREACHABLE anyway, which is the honest reason to delete
+-- rather than re-prove: under heap mode `StackPtrWF` says there is NO stack
+-- pointer, so `Input1` holding one is `⊥` (`stack-ptr-live` /
+-- `stack-ptr-suc-live`). `ConcFlatSim`'s `go-stack … nothing` branches now
+-- discharge by `⊥-elim` on exactly that.
+
 
 load-indirect-suc-heap-empty-stuck : ∀ {hv : HeapView} prog fs s hl → CompiledCorr hv prog fs s
   → fetch prog (fpc fs) ≡ just load-indirect-suc
@@ -1144,37 +1198,6 @@ load-indirect-suc-heap-empty-stuck {hv} prog fs s hl cc ft i-eq dom h-eq = fetch
     rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rdi slot-size)) ≡ nothing
     rd = trans (cong (X.readMem (memory s)) addr-eq)
                (trans (C.heap-eq dc (sucHL hl) dom) (cong (C.enc-maybe hv) h-eq))
-    stuck : X.execInstr (compile-trace prog) s (mov (reg rax) (mem (base+disp rdi slot-size))) ≡ nothing
-    stuck rewrite rd = refl
-
-load-indirect-suc-stack-empty-stuck : ∀ {hv : HeapView} prog fs s f k → CompiledCorr hv prog fs s
-  → fetch prog (fpc fs) ≡ just load-indirect-suc
-  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
-  → f ≡ current-frame (falloc fs)
-  → suc k < frame-slots (falloc fs)
-  → stackMem (floc fs) (current-frame (falloc fs)) (suc k) ≡ nothing
-  → (X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base+disp rdi slot-size))))
-    × (X.execInstr (compile-trace prog) s (mov (reg rax) (mem (base+disp rdi slot-size))) ≡ nothing)
-load-indirect-suc-stack-empty-stuck {hv} prog fs s f k cc ft i-eq f-eq sk<ss st-eq = fetch-x86 , stuck
-  where
-    dc = dataCorr cc ; po = pc-off cc
-    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (mem (base+disp rdi slot-size)))
-    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
-                      (fetch-block-head prog (fpc fs) load-indirect-suc ft)
-    addr-eq : X.effectiveAddr s (base+disp rdi slot-size)
-            ≡ xreadReg (xregs s) rsp + slot-to-disp (suc k)
-    addr-eq = trans (cong (_+ slot-size)
-                      (trans (C.rdi-eq dc)
-                      (trans (cong (C.enc-sv hv) i-eq)
-                      (trans (cong (λ fr → slot-addr FS fr k) f-eq)
-                      (trans (slot-addr-linear FS (current-frame (falloc fs)) k)
-                             (cong₂ (λ b w' → b + k * w') (sym (C.rsp-eq dc)) word-eq))))))
-                    (trans (+-assoc (xreadReg (xregs s) rsp) (k * slot-size) slot-size)
-                           (cong (xreadReg (xregs s) rsp +_)
-                                 (+-comm (k * slot-size) slot-size)))
-    rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rdi slot-size)) ≡ nothing
-    rd = trans (cong (X.readMem (memory s)) addr-eq)
-               (trans (C.stack-eq-cur dc (suc k) sk<ss) (cong (C.enc-maybe hv) st-eq))
     stuck : X.execInstr (compile-trace prog) s (mov (reg rax) (mem (base+disp rdi slot-size))) ≡ nothing
     stuck rewrite rd = refl
 
@@ -1384,7 +1407,7 @@ block-step-load-indirect-stack {hv} prog fs s f k w cc h ft i-eq f-eq k<ss st-eq
                      (cong₂ (λ b w' → b + k * w') (sym (C.rsp-eq dc)) word-eq))))
     rd : X.readMem (memory s) (X.effectiveAddr s (base rdi)) ≡ just (C.enc-sv hv w)
     rd = trans (cong (X.readMem (memory s)) rdi-val)
-               (trans (C.stack-eq-cur dc k k<ss) (cong (C.enc-maybe hv) st-eq))
+               (C.stack-eq-cur dc k k<ss _ st-eq)
     post : X.State
     post = record s { regs = xwriteReg (xregs s) rax (C.enc-sv hv w) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
@@ -1432,7 +1455,7 @@ block-step-load-indirect-suc-stack {hv} prog fs s f k w cc h ft i-eq f-eq sk<ss 
                                  (+-comm (k * slot-size) slot-size)))
     rd : X.readMem (memory s) (X.effectiveAddr s (base+disp rdi slot-size)) ≡ just (C.enc-sv hv w)
     rd = trans (cong (X.readMem (memory s)) addr-eq)
-               (trans (C.stack-eq-cur dc (suc k) sk<ss) (cong (C.enc-maybe hv) st-eq))
+               (C.stack-eq-cur dc (suc k) sk<ss _ st-eq)
     post : X.State
     post = record s { regs = xwriteReg (xregs s) rax (C.enc-sv hv w) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post

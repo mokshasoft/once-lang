@@ -559,11 +559,25 @@ wf-ret []           fs wf =
 wf-ret (pc' ∷ rest) fs wf =
   subst (λ n → StoreWF n (floc fs)) (sym (leave-frame-heap-ref (falloc fs))) wf
 
--- `enter-frame` is a plain record update on the frame fields, so the
--- frontier is unchanged definitionally and the body-entry marker needs no
--- transport at all.
+-- `grow-frame` is a plain record update on the frame fields, so the frontier is
+-- unchanged definitionally. Plan 0.54 rung D: `do-thunk` now also CLEARS the
+-- entered frame's slots, which the store invariant survives trivially — every
+-- field but `wf-stack` is untouched, and `wf-stack` is a BELOW-bound on each
+-- cell, which `nothing` satisfies vacuously (`svm-below _ nothing = ⊤`).
 wf-thunk : ∀ (b : ℕ) (fs : FlatState) → FlatWF fs → FlatWF (do-thunk b fs)
-wf-thunk b fs wf = wf
+wf-thunk b fs wf = record
+  { wf-regs  = wf-regs wf
+  ; wf-heap  = wf-heap wf
+  ; wf-stack = cleared
+  ; wf-fresh = wf-fresh wf }
+  where
+    cleared : ∀ (f : Frame) (k : Slot)
+            → svm-below (next-heap-ref (falloc fs))
+                (stackMem (floc (do-thunk b fs)) f k)
+    cleared f k with (FrameSemantics.shift-frame FS (current-frame (falloc fs)) b) ≟F f | Data.Nat.Properties._<?_ k b
+    ... | yes _ | yes _ = tt
+    ... | yes _ | no  _ = wf-stack wf f k
+    ... | no  _ | _     = wf-stack wf f k
 
 -- ONE flat step preserves store well-formedness. Control flow only moves the
 -- pc (or halts); everything else is `exec-abstract`, i.e. `wf-abstract`.

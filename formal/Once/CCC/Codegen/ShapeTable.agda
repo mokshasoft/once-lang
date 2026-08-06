@@ -362,9 +362,28 @@ tag-site-ok (e-fresh (just (e-tag t)) c₁) = true
 tag-site-ok (e-fresh _ _)                 = false
 tag-site-ok e₁                            = is-just (as-sum e₁)
 
+-- A SLOT READ REQUIRES A CLAIM (Plan 0.54 rung D). `MeetsSlot e-any … = ⊤`
+-- permits an UNWRITTEN slot, so without this a checked program could read a
+-- slot the abstract machine never wrote — where the abstract machine halts
+-- (`readLoc ≡ nothing`) and the concrete one reads whatever the previous frame
+-- left behind. That is a genuine DIVERGENCE, not merely an unprovable case, and
+-- it is what the old bidirectional `Window` was hiding: it asserted the concrete
+-- cell was unmapped too, so both sides "agreed" by getting stuck together.
+--
+-- With `Window` one-directional the divergence is visible, and the honest fix is
+-- for the emitter's own discipline to rule the read out. Every non-`e-any`
+-- claim makes `MeetsSlot … nothing` uninhabited, so this conjunct is exactly
+-- what refutes the empty-slot routes.
+not-any : RegExpect → Bool
+not-any e-any = false
+not-any _     = true
+
 site-ok : Expect → AbstractInstr → Bool
 site-ok st load-indirect     = is-ptr (e-in1 st)
 site-ok st load-indirect-suc = is-ptr (e-in1 st)
+site-ok st (load-from-slot k) = not-any (slot-get (e-slot st) k)
+site-ok st (restore-input k)  = not-any (slot-get (e-slot st) k)
+site-ok st (worklist-pop k)   = not-any (slot-get (e-slot st) k)
 -- heap stores go through the block under construction ONLY (init discipline)
 site-ok st store-indirect     = is-fresh (e-in1 st)
 site-ok st store-indirect-suc = is-fresh (e-in1 st)
@@ -860,6 +879,20 @@ module Sem (FS : FrameSemantics) where
   -- the discipline residuals claim — a pointer at a load site, a pointer
   -- to a written tag cell (either residence) at a branch site.
   ------------------------------------------------------------------------
+
+  -- A CLAIMED SLOT IS WRITTEN (Plan 0.54 rung D). `MeetsSlot` sends every
+  -- non-`e-any` claim at `nothing` to `⊥`, so a slot the checker claims cannot
+  -- be unwritten in a state that meets the expectation. This is the fact that
+  -- makes the empty-slot routes UNREACHABLE now that `Window` no longer asserts
+  -- the concrete cell is unmapped — see `not-any`/`site-ok` above.
+  site-slot-written : ∀ (e₁ : RegExpect) {alloc ls} → not-any e₁ ≡ true
+                    → MeetsSlot e₁ alloc nothing ls → ⊥
+  site-slot-written e-any           () _
+  site-slot-written (e-repr A)      _  ()
+  site-slot-written (e-inl A B)     _  ()
+  site-slot-written (e-inr A B)     _  ()
+  site-slot-written (e-tag t)       _  ()
+  site-slot-written (e-fresh c₀ c₁) _  ()
 
   site-load-ptr : ∀ (e₁ : RegExpect) {alloc v ls} → is-ptr e₁ ≡ true
                 → MeetsR e₁ alloc v ls

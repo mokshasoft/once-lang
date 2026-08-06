@@ -470,6 +470,23 @@ pb-ret []           fs wf =
 pb-ret (pc' ∷ rest) fs wf =
   subst (λ bs → PBInv bs (floc fs)) (sym (leave-frame-block-size (falloc fs))) wf
 
+-- Plan 0.54 rung D: a body ENTRY grows the frame — which `grow-frame` does by
+-- a record update on the frame fields alone, so `block-size` is unchanged
+-- DEFINITIONALLY and no transport is needed (contrast `pb-ret`) — and CLEARS
+-- the entered frame, which does move `stackMem`, so the record is REBUILT.
+-- The cleared cells are `nothing`, which `PtrB?` accepts outright.
+pb-thunk : ∀ (b : ℕ) (fs : FlatState)
+         → PtrBoundsWF fs → PtrBoundsWF (do-thunk b fs)
+pb-thunk b fs wf = mkPtrBounds (pb-regs wf) (pb-heap wf) cleared
+  where
+    cleared : ∀ (f : Frame) (k : Slot)
+            → PtrB? (block-size (falloc fs)) (stackMem (floc (do-thunk b fs)) f k)
+    cleared f k with (FrameSemantics.shift-frame FS (current-frame (falloc fs)) b) ≟F f
+                   | Data.Nat.Properties._<?_ k b
+    ... | yes _ | yes _ = tt
+    ... | yes _ | no  _ = pb-stack wf f k
+    ... | no  _ | _     = pb-stack wf f k
+
 pb-branch : ∀ (b : Bool) (m : LabelId) (prog : AbstractTrace) (fs : FlatState)
           → PtrBoundsWF fs → PtrBoundsWF (do-branch b m prog fs)
 pb-branch true  m prog fs wf = pb-jump (find-label prog m) fs wf
@@ -481,7 +498,8 @@ flat-ptr-bounds : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState
                 → StoreWF (next-heap-ref (falloc fs)) (floc fs)
                 → PtrBoundsWF fs → PtrBoundsWF (flat-exec-instr i prog fs)
 flat-ptr-bounds (instr-ctrl (c-label m))               prog fs ff am wfS wf = wf
-flat-ptr-bounds (instr-ctrl (c-thunk m b))             prog fs ff am wfS wf = wf
+flat-ptr-bounds (instr-ctrl (c-thunk m b))             prog fs ff am wfS wf =
+  pb-thunk b fs wf
 flat-ptr-bounds (instr-ctrl (c-ret b))                 prog fs ff am wfS wf =
   pb-ret (fret fs) fs wf
 flat-ptr-bounds (instr-ctrl (c-jmp m))                 prog fs ff am wfS wf =

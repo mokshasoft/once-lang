@@ -17,7 +17,12 @@
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.Adequacy.ArchCorrectness.X86-64 (o : CanonicalName) where
+open import Data.Nat using (ℕ)
+
+import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
+
+module Once.Adequacy.ArchCorrectness.X86-64
+  (o : CanonicalName) (program-bound : ℕ) (x86-64-heap-room : RB.HeapRoom o) where
 
 open import Data.Nat using (ℕ; _+_; s≤s; z≤n)
 open import Data.Unit using (tt)
@@ -45,6 +50,8 @@ open import Once.Adequacy.CPU using (x86-64; arch-semantics)
 open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.Adequacy.SourceTrace using (moduleToIR)
+open import Once.CCC.Target.X86-64.Layout using (InStack; stack-addr)
+open import Once.CCC.Target.X86-64.FrameInstantiation using (X86Frame)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (x86-64-frame-semantics)
 open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
@@ -57,13 +64,48 @@ import Once.Compile as C
 import Once.Parser.Module.Core as P
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
-postulate
-  program-bound : ℕ
-
+-- Plan 0.54 rung D / D087: `program-bound` is a RESOURCE BOUND, so it is a
+-- PARAMETER, not a postulate. It used to be postulated once per arch (three
+-- copies); threading it from the top means the top-level statement says
+-- "for any program bound" explicitly instead of assuming one into existence.
+-- (`--safe` rejects every postulate, so this is on the critical path too.)
 open IRObsCorrectFlatness {x86-64-frame-semantics} program-bound using (ir-obs-correct; MachineRefinesObsF)
 
 -- The FlatFromObs bundle at the x86-64 params (concrete machine now VISIBLE).
-module FFOx = FFO o x86-64 x86-64-frame-semantics (arch-semantics x86-64) program-bound
+------------------------------------------------------------------------
+-- THE ENTRY FRAME, CONSTRUCTED (Plan 0.54 rung D).
+--
+-- `FlatFromObs` used to postulate this as an opaque `Frame FS`. Opaque means
+-- nothing about it is provable — which is why the apex needed a SECOND
+-- postulate, `entry-frame-base`, just to say that its base is the `%rsp` the
+-- loader hands `main`. Two postulates to express one fact, and the second one
+-- unprovable BY CONSTRUCTION.
+--
+-- An x86-64 `Frame` is a `StackAddr`: an address plus a proof it lies in the
+-- stack region, with `frame-base = addr`. So the frame can simply BE the
+-- loader's `%rsp`, and `entry-frame-base` collapses to `refl` (see
+-- `entry-frame-base` below — a theorem now, not a postulate).
+--
+-- What survives is the one irreducible loader fact: that the `%rsp` we are
+-- handed is inside the stack region. `stack-top` itself is already postulated
+-- next door in `…X86-64.Semantics` as "the %rsp the loader hands main"; this
+-- says where it lives. It is the honest residue of the two it replaces.
+------------------------------------------------------------------------
+postulate
+  stack-top-in-stack : InStack X.stack-top
+
+entry-frame-x86-64 : X86Frame
+entry-frame-x86-64 = stack-addr X.stack-top stack-top-in-stack
+
+module FFOx = FFO o x86-64 x86-64-frame-semantics entry-frame-x86-64 (arch-semantics x86-64) program-bound
+
+-- A THEOREM now, not a postulate: the entry frame IS the loader's `%rsp`
+-- (`entry-frame-x86-64 = stack-addr stack-top _`) and `frame-base` on x86-64 is
+-- the `addr` projection, so this holds DEFINITIONALLY. Both `entry-corr`'s
+-- `rsp-eq` and the `stack-eq` floor bound consume it.
+entry-frame-base : frame-base x86-64-frame-semantics
+                     (current-frame (FFOx.entry-alloc 0)) ≡ X.stack-top
+entry-frame-base = refl
 as64 = arch-semantics x86-64
 
 ------------------------------------------------------------------------
@@ -116,19 +158,8 @@ open import Once.CCC.Machine.SMCore using (AbstractTrace; instr-alloc-heap)
 open import Once.CCC.Target.X86-64.Syntax using (slots)
 open import Data.Nat using (_≤_)
 
-postulate
-  -- HEAP EXHAUSTION: at an emitted `instr-alloc-heap n` the bump does not run
-  -- the heap frontier up into the stack's high-water mark. Conditioned on the
-  -- run context and the correspondence — unconditioned it is refutable.
-  x86-64-heap-room :
-    ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
-      (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
-      (s : X.State) (n : ℕ)
-    → RCx.RunAt o x86-64-frame-semantics refl prog fs
-    → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
-    → FlatMachine.fetch {x86-64-frame-semantics} prog
-        (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-alloc-heap n)
-    → FCx.hfront hv + slots n ≤ FCx.lo hv
+-- (`x86-64-heap-room` is now a module PARAMETER — see
+-- `…X86-64.ResourceBounds.HeapRoom`, D087: resource bounds are parameters.)
 
 open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
   x86-64-frame-semantics refl x86-64-heap-room
@@ -184,8 +215,7 @@ postulate
   -- heap base (also 0) made stack slot `k` and heap cell `(block 0, offset k)`
   -- the SAME address — the layout was degenerate, so every heap/stack
   -- disjointness assumption below it was false.
-  entry-frame-base : frame-base x86-64-frame-semantics
-                       (current-frame (FFOx.entry-alloc 0)) ≡ X.stack-top
+
 
 -- Initial-state correspondence, PROVEN: the concrete `initState` (all registers 0,
 -- empty memory, pc 0, running) relates to the flat entry state `mkFlat entry-s
@@ -221,14 +251,18 @@ entry-corr ir = record
       -- THE VIRGIN REGION at entry: `initState`'s memory is `emptyMemory`, so
       -- every address reads `nothing` — no address arithmetic needed.
       ; untouched = λ _ _ _ → refl
-      -- THE RESERVED FRAME AGREES, and this is now real content rather than a
-      -- vacuous bound: the prologue's `slots` cells are UNWRITTEN on both sides —
-      -- `emptyMemory` concretely, `λ _ _ → nothing` abstractly.
+      -- THE RESERVED FRAME AGREES — VACUOUSLY, now that `C.Window` is
+      -- one-directional (Plan 0.54 rung D): the entry frame is unwritten
+      -- abstractly (`λ _ _ → nothing`), and nothing is claimed about cells the
+      -- abstract side has not written. The old bidirectional statement ALSO had
+      -- to say the concrete cells were unmapped; that happened to be true here
+      -- (`emptyMemory`) but was false at every later frame entry, which is why
+      -- it had to go.
       -- Plan 0.63 (D085): the frame LIST at entry is one frame long
       -- (`entry-alloc`'s `saved-frames` is `[]`), so the tail is `tt` and the
       -- floor bound is `entry-frame-base` — the loader's `%rsp` IS the entry
       -- frame's base, so the mark sits exactly at it.
-      ; stack-eq = ≤-reflexive (sym entry-frame-base) , (λ _ _ → refl) , tt
+      ; stack-eq = ≤-reflexive (sym entry-frame-base) , (λ _ _ _ ()) , tt
       }
   ; pc-off = refl
   }
@@ -369,5 +403,5 @@ asm-trace-correct-x86-64 m asm eq n =
 
 x86-64-correct : ArchCorrect x86-64 (arch-semantics x86-64)
 x86-64-correct =
-  FFO.flat-from-obs o x86-64 x86-64-frame-semantics (arch-semantics x86-64)
+  FFO.flat-from-obs o x86-64 x86-64-frame-semantics entry-frame-x86-64 (arch-semantics x86-64)
     program-bound ir-obs-correct asm-trace-correct-x86-64

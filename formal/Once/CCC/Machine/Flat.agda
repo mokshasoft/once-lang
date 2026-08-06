@@ -328,9 +328,25 @@ module FlatMachine {FS : FrameSemantics} where
     record alloc { current-frame = shift-frame (current-frame alloc) n
                  ; frame-slots   = n }
 
+  -- ENTERING THE BODY CLEARS ITS FRAME (Plan 0.54 rung D).
+  --
+  -- Without the clear, "the callee frame is unwritten" is FALSE abstractly: a
+  -- closure applied twice at one depth grows into the SAME `shift-frame cf b`,
+  -- which still holds the previous incarnation's writes. That is the exact
+  -- mirror of the concrete `fresh-x86` problem, and postulating it would have
+  -- been assuming something untrue. Clearing makes it hold BY COMPUTATION.
+  --
+  -- The hardware clears nothing; soundness comes from `Window` being
+  -- one-directional (`FlatCorrespondence`), which claims a match only where the
+  -- ABSTRACT cell is written — so a cleared cell asserts nothing about the
+  -- stale concrete one. The weakening and the clear are a matched pair.
   do-thunk : ℕ → FlatState → FlatState
-  do-thunk b fs = record fs { falloc = grow-frame b (falloc fs)
-                            ; fpc    = suc (fpc fs) }
+  do-thunk b fs = record fs
+    { floc   = record (floc fs)
+                 { stackMem = clear-frame (stackMem (floc fs))
+                                (shift-frame (current-frame (falloc fs)) b) b }
+    ; falloc = grow-frame b (falloc fs)
+    ; fpc    = suc (fpc fs) }
 
   flat-exec-instr : AbstractInstr → AbstractTrace → FlatState → FlatState
   flat-exec-instr (instr-ctrl (c-label _))               _    fs = record fs { fpc = suc (fpc fs) }

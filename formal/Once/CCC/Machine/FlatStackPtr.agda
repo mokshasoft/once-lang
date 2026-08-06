@@ -530,6 +530,23 @@ sp-ret : ∀ (r : List ℕ) (fs : FlatState)
 sp-ret []           fs wf = sp-halt (current-frame (falloc fs)) (floc fs) true wf
 sp-ret (pc' ∷ rest) fs wf = wf
 
+-- Plan 0.54 rung D: a body ENTRY grows the frame (invisible to the invariant,
+-- which no longer reads the AllocState) and CLEARS it (visible: `stackMem`
+-- moves). Registers and the heap come straight over; the cleared slots are
+-- `nothing`, which `StackPtrOK?` accepts outright, and the untouched ones are
+-- the pre-state's.
+sp-thunk : ∀ (b : ℕ) (fs : FlatState)
+         → StackPtrWF fs → StackPtrWF (do-thunk b fs)
+sp-thunk b fs wf = mkStackPtrWF (sp-regs wf) (sp-heap wf) cleared
+  where
+    cleared : ∀ (f : Frame) (k : Slot)
+            → StackPtrOK? (stackMem (floc (do-thunk b fs)) f k)
+    cleared f k with (FrameSemantics.shift-frame FS (current-frame (falloc fs)) b) ≟F f
+                   | Data.Nat.Properties._<?_ k b
+    ... | yes _ | yes _ = tt
+    ... | yes _ | no  _ = sp-stack wf f k
+    ... | no  _ | _     = sp-stack wf f k
+
 flat-stack-ptr : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
                → EmittableI i
                → StackPtrWF fs → StackPtrWF (flat-exec-instr i prog fs)
@@ -539,7 +556,13 @@ flat-stack-ptr (instr-ctrl (c-label m))               prog fs ff wf = wf
 -- `enter-frame`/`leave-frame` touch only the AllocState. So a body entry is
 -- `wf` outright, and a return is `wf` or its halt transport, exactly like a
 -- jump. This is what the old current-frame anchor could never have given.
-flat-stack-ptr (instr-ctrl (c-thunk m b))             prog fs ff wf = wf
+--
+-- Plan 0.54 rung D: a body entry is no longer `wf` OUTRIGHT, because
+-- `do-thunk` now also CLEARS the entered frame — the `LocState` differs, so
+-- the record must be REBUILT. Only `sp-stack` sees the clear, and it survives
+-- it trivially: a cleared cell is `nothing`, and `StackPtrOK? nothing = ⊤`.
+flat-stack-ptr (instr-ctrl (c-thunk m b))             prog fs ff wf =
+  sp-thunk b fs wf
 flat-stack-ptr (instr-ctrl (c-ret b))                 prog fs ff wf =
   sp-ret (fret fs) fs wf
 flat-stack-ptr (instr-ctrl (c-jmp m))                 prog fs ff wf =

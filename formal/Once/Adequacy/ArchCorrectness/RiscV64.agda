@@ -23,9 +23,12 @@
 -- labels. `o` is constant for a whole definition, so it belongs on the module
 -- rather than on every lemma — which is what keeps the statements below
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) where
+open import Data.Nat using (ℕ)
+
+module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (program-bound : ℕ) where
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -48,12 +51,22 @@ import Once.Compile as C
 import Once.Parser.Module.Core as P
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
-postulate
-  program-bound : ℕ
-
+-- Plan 0.54 rung D / D087: `program-bound` is a RESOURCE BOUND and so is now a
+-- module PARAMETER threaded from the apex, not a postulate here.
 open IRObsCorrectFlatness {rv64-frame-semantics} program-bound using (ir-obs-correct)
 
-module FFOr = FFO o riscv64 rv64-frame-semantics (arch-semantics riscv64) program-bound
+------------------------------------------------------------------------
+-- THE ENTRY FRAME (Plan 0.54 rung D). `FlatFromObs` no longer postulates this
+-- — each arch owns its own loader frame, so the postulate lives where the arch
+-- does. x86-64 CONSTRUCTS its frame (it is the loader's `%rsp`, which makes
+-- `entry-frame-base` a theorem there); riscv64 has no correspondence yet
+-- (`riscv64-conc-flat-sim` below is still whole-cloth), so nothing constrains
+-- this frame and it stays opaque until that lands.
+------------------------------------------------------------------------
+postulate
+  entry-frame-riscv64 : FrameSemantics.Frame rv64-frame-semantics
+
+module FFOr = FFO o riscv64 rv64-frame-semantics entry-frame-riscv64 (arch-semantics riscv64) program-bound
 asR = arch-semantics riscv64
 
 -- The concrete machine's SigOp trace of a compiled IR (see X86-64 for the full
@@ -86,5 +99,5 @@ asm-trace-correct-riscv64 m asm eq n =
 
 riscv64-correct : ArchCorrect riscv64 (arch-semantics riscv64)
 riscv64-correct =
-  FFO.flat-from-obs o riscv64 rv64-frame-semantics (arch-semantics riscv64)
+  FFO.flat-from-obs o riscv64 rv64-frame-semantics entry-frame-riscv64 (arch-semantics riscv64)
     program-bound ir-obs-correct asm-trace-correct-riscv64

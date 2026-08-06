@@ -217,9 +217,27 @@ frames-of alloc = (current-frame alloc , frame-slots alloc) ∷ saved-frames all
 -- `LocState` — for the reason `enc-sv` takes an `AddrMap` (see above): a record
 -- update elsewhere in the state would otherwise leave the two sides
 -- non-convertible at every stuck occurrence.
+-- ONE DIRECTION ONLY (Plan 0.54 rung D): the concrete cell matches wherever the
+-- ABSTRACT cell is WRITTEN. Nothing is claimed about a slot the abstract side
+-- has not written.
+--
+-- WHY THE OTHER DIRECTION HAD TO GO. The equation `readMem … ≡ enc-maybe-at am
+-- (stk f k)` also constrained the EMPTY case: `enc-maybe-at am nothing ≡
+-- nothing`, so it demanded the concrete cell be UNMAPPED wherever the abstract
+-- one was unwritten. That is FALSE the moment a closure is applied twice at one
+-- depth: the second entry re-enters a frame at or ABOVE the stack high-water
+-- mark (`lo` only ever descends), where the concrete cells still hold the
+-- PREVIOUS incarnation's data while the abstract frame is fresh. The old
+-- `Window` was therefore unprovable at frame entry, which is what blocked
+-- `block-step-c-thunk` — and no amount of freshness side-conditions could fix
+-- it, because the concrete cells genuinely are dirty.
+--
+-- With the claim restricted to written cells, frame entry is VACUOUS (a fresh
+-- frame has written nothing), so `sim-grow-frame` needs no `fresh-abs`,
+-- `fresh-x86` or `fits` at all, and every other producer gets easier.
 Window : AddrMap → X.Memory → StackMem FS → Frame → ℕ → Set
-Window am mem stk f b = ∀ (k : Slot) → k < b →
-  X.readMem mem (frame-base f + slot-to-disp k) ≡ enc-maybe-at am (stk f k)
+Window am mem stk f b = ∀ (k : Slot) → k < b → ∀ (v : StoredValue FS) → stk f k ≡ just v →
+  X.readMem mem (frame-base f + slot-to-disp k) ≡ just (enc-sv-at am v)
 
 -- …and the whole live stack, THREADING A FLOOR: each frame's base is at or
 -- above the floor, and the next (older) frame's floor is this frame's window
@@ -359,14 +377,16 @@ open FlatCorr public
 -- would just block.)
 win-at : ∀ (am : AddrMap) (mem : X.Memory) (stk : StackMem FS) (f : Frame) (b : ℕ) (base : ℕ)
        → base ≡ frame-base f
-       → (∀ (k : Slot) → k < b → X.readMem mem (base + slot-to-disp k) ≡ enc-maybe-at am (stk f k))
+       → (∀ (k : Slot) → k < b → ∀ (v : StoredValue FS) → stk f k ≡ just v
+            → X.readMem mem (base + slot-to-disp k) ≡ just (enc-sv-at am v))
        → Window am mem stk f b
-win-at am mem stk f b base eq w k k<b rewrite sym eq = w k k<b
+win-at am mem stk f b base eq w k k<b v ev rewrite sym eq = w k k<b v ev
 
 win-off : ∀ (am : AddrMap) (mem : X.Memory) (stk : StackMem FS) (f : Frame) (b : ℕ) (base : ℕ)
         → base ≡ frame-base f → Window am mem stk f b
-        → ∀ (k : Slot) → k < b → X.readMem mem (base + slot-to-disp k) ≡ enc-maybe-at am (stk f k)
-win-off am mem stk f b base eq w k k<b rewrite eq = w k k<b
+        → ∀ (k : Slot) → k < b → ∀ (v : StoredValue FS) → stk f k ≡ just v
+        → X.readMem mem (base + slot-to-disp k) ≡ just (enc-sv-at am v)
+win-off am mem stk f b base eq w k k<b v ev rewrite eq = w k k<b v ev
 
 -- The current frame's window, as a `Window` (the head of the list).
 stack-eq-win : ∀ {hv : HeapView} {fs : FlatState} {s : X.State} → FlatCorr hv fs s
@@ -376,8 +396,10 @@ stack-eq-win corr = proj₁ (proj₂ (stack-eq corr))
 
 stack-eq-cur : ∀ {hv : HeapView} {fs : FlatState} {s : X.State} → FlatCorr hv fs s
              → ∀ (k : Slot) → k < frame-slots (falloc fs)
+             → ∀ (v : StoredValue FS)
+             → stackMem (floc fs) (current-frame (falloc fs)) k ≡ just v
              → X.readMem (X.State.memory s) (X.readReg (X.State.regs s) rsp + slot-to-disp k)
-               ≡ enc-maybe hv (stackMem (floc fs) (current-frame (falloc fs)) k)
+               ≡ just (enc-sv hv v)
 stack-eq-cur {hv} {fs} {s} corr =
   win-off (haddr hv) (X.State.memory s) (stackMem (floc fs))
           (current-frame (falloc fs)) (frame-slots (falloc fs))
@@ -725,6 +747,32 @@ windows-reanchor : ∀ {am : AddrMap} {mem : X.Memory} {stk : StackMem FS}
                  → StackWindows am mem stk fl' ((f , b) ∷ fr)
 windows-reanchor fl fl' f b fr le (_ , win , rest) = le , win , rest
 
+-- LOWER THE FLOOR of a whole frame list. The floor is only ever a LOWER bound
+-- (`fl ≤ frame-base f`), and each tail's floor is computed from its own head,
+-- so dropping the initial floor weakens the head's bound and touches nothing
+-- else. `c-thunk` needs it: growing a frame re-anchors the SAVED frames at the
+-- grown window's end, which sits at or below where they were anchored before.
+windows-lower : ∀ {am : AddrMap} {mem : X.Memory} {stk : StackMem FS}
+                  (fl fl' : ℕ) (fr : List (Frame × ℕ))
+              → fl' ≤ fl → StackWindows am mem stk fl fr → StackWindows am mem stk fl' fr
+windows-lower fl fl' []             le w                = tt
+windows-lower fl fl' ((f , b) ∷ fr) le (bd , win , rest) = ≤-trans le bd , win , rest
+
+-- A STORE THAT ONLY FORGETS preserves every window. Direct consequence of
+-- `Window` being one-directional: it constrains a cell only where the abstract
+-- side holds a value, so removing values can never invalidate it. `c-thunk`'s
+-- frame clear is the instance — the saved frames' windows ride across it
+-- without any frame-distinctness argument.
+windows-forget : ∀ {am : AddrMap} {mem : X.Memory} (stk stk' : StackMem FS)
+                   (fl : ℕ) (fr : List (Frame × ℕ))
+               → (∀ (f : Frame) (k : Slot) (v : StoredValue FS) → stk' f k ≡ just v → stk f k ≡ just v)
+               → StackWindows am mem stk fl fr → StackWindows am mem stk' fl fr
+windows-forget stk stk' fl []             kept w                 = tt
+windows-forget {am} {mem} stk stk' fl ((f , b) ∷ fr) kept (bd , win , rest) =
+  bd
+  , (λ k k<b v ev → win k k<b v (kept f k v ev))
+  , windows-forget {am} {mem} stk stk' (frame-base f + slots b) fr kept rest
+
 -- LEAVE: the epilogue DROPS THE HEAD, so the caller's window is the TAIL of
 -- the pre-state's evidence. This is the payoff of scoping `stack-eq` over the
 -- whole frame stack: `sim-dealloc-stack`'s `caller-window` premise — the
@@ -760,9 +808,9 @@ windows-above : ∀ {am : AddrMap} (mem mem' : X.Memory) (stk stk' : StackMem FS
 windows-above mem mem' stk stk' fl []             ag ab w = tt
 windows-above {am} mem mem' stk stk' fl ((f , b) ∷ fr) ag ab (bd , win , rest) =
   bd
-  , (λ k k<b → trans (ag (frame-base f + slot-to-disp k)
-                         (≤-trans bd (m≤m+n (frame-base f) (slot-to-disp k))))
-                     (trans (win k k<b) (cong (enc-maybe-at am) (sym (ab f bd k)))))
+  , (λ k k<b v ev → trans (ag (frame-base f + slot-to-disp k)
+                              (≤-trans bd (m≤m+n (frame-base f) (slot-to-disp k))))
+                          (win k k<b v (trans (sym (ab f bd k)) ev)))
   , windows-above {am} mem mem' stk stk' (frame-base f + slots b) fr
       (λ a le  → ag a  (≤-trans up le))
       (λ f' le → ab f' (≤-trans up le))
@@ -938,20 +986,32 @@ store-slot-heap-eq hv waddr v' s ls pre disj hl' live
 -- would abstract the scrutinee inside the abstract `writeStackMem-aux (… ≟F …) (slot ≟ k)`
 -- as `yes refl`, diverging from the read-back lemma's `slot ≟ slot` form. Feeding the
 -- Dec to `go` keeps the goal's readLoc/writeLoc intact so the lemmas apply.
+-- ONE-DIRECTION form (Plan 0.54 rung D): the hypothesis and the conclusion both
+-- speak only about WRITTEN cells. The `k ≡ slot` case no longer has to say the
+-- concrete cell was previously unmapped — it just reads back what was written,
+-- which is why this survives frame re-entry over dirty memory.
 store-slot-stack-eq : ∀ {am : AddrMap} (base : ℕ) (slot : Slot) (Out : StoredValue FS) (mem : X.Memory) (ls : LocState FS) (cf : Frame) (bound : ℕ)
-  → (∀ k → k < bound → X.readMem mem (base + slot-to-disp k) ≡ enc-maybe-at am (stackMem ls cf k))
-  → ∀ k → k < bound → X.readMem (writeMem mem (base + slot-to-disp slot) (enc-sv-at am Out)) (base + slot-to-disp k)
-          ≡ enc-maybe-at am (readLoc (writeLoc ls (AtStack cf slot) Out) (AtStack cf k))
-store-slot-stack-eq {am} base slot Out mem ls cf bound old k k<b = go (k ≟ slot)
-  where go : Dec (k ≡ slot)
-           → X.readMem (writeMem mem (base + slot-to-disp slot) (enc-sv-at am Out)) (base + slot-to-disp k)
-             ≡ enc-maybe-at am (readLoc (writeLoc ls (AtStack cf slot) Out) (AtStack cf k))
-        go (yes refl) rewrite ≡ᵇ-refl (base + slot-to-disp slot)
-                            | writeLoc-read-same-stack ls cf slot Out = refl
-        go (no  p)    rewrite ≢→≡ᵇfalse {base + slot-to-disp k} {base + slot-to-disp slot}
-                                (λ eq → p (slot-addr-inj base k slot eq))
-                            | writeLoc-preserves-other ls (AtStack cf slot) (AtStack cf k) Out
-                                (λ eq → p (sym (atstack-slot-inj cf eq))) = old k k<b
+  → (∀ k → k < bound → ∀ (v : StoredValue FS) → stackMem ls cf k ≡ just v
+       → X.readMem mem (base + slot-to-disp k) ≡ just (enc-sv-at am v))
+  → ∀ k → k < bound → ∀ (v : StoredValue FS)
+  → readLoc (writeLoc ls (AtStack cf slot) Out) (AtStack cf k) ≡ just v
+  → X.readMem (writeMem mem (base + slot-to-disp slot) (enc-sv-at am Out)) (base + slot-to-disp k)
+      ≡ just (enc-sv-at am v)
+store-slot-stack-eq {am} base slot Out mem ls cf bound old k k<b v ev = go (k ≟ slot) ev
+  where
+    just-inj : ∀ {x y : StoredValue FS} → just x ≡ just y → x ≡ y
+    just-inj refl = refl
+    go : Dec (k ≡ slot)
+       → readLoc (writeLoc ls (AtStack cf slot) Out) (AtStack cf k) ≡ just v
+       → X.readMem (writeMem mem (base + slot-to-disp slot) (enc-sv-at am Out)) (base + slot-to-disp k)
+           ≡ just (enc-sv-at am v)
+    go (yes refl) ev' rewrite ≡ᵇ-refl (base + slot-to-disp slot) =
+      cong (λ w → just (enc-sv-at am w))
+           (just-inj (trans (sym (writeLoc-read-same-stack ls cf slot Out)) ev'))
+    go (no  p)    ev' rewrite ≢→≡ᵇfalse {base + slot-to-disp k} {base + slot-to-disp slot}
+                                (λ eq → p (slot-addr-inj base k slot eq)) =
+      old k k<b v (trans (sym (writeLoc-preserves-other ls (AtStack cf slot) (AtStack cf k) Out
+                                 (λ eq → p (sym (atstack-slot-inj cf eq))))) ev')
 
 -- THE WHOLE FRAME LIST under a stack store at the CURRENT frame's slot. The
 -- head window is updated cell by cell (`store-slot-stack-eq`); every OLDER
@@ -1046,7 +1106,12 @@ sim-alloc-stack : {hv : HeapView} (n : ℕ) (newFlags : X.Flags) (fs : FlatState
   -- the SHIFTED frame — a strictly weaker (and more obviously true) premise
   -- than the old one about the caller's frame.
   → (∀ k → k < n → stackMem (floc fs) (shift-frame (current-frame (falloc fs)) n) k ≡ nothing)
-  → (∀ k → k < n → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k) ≡ nothing)  -- fresh (x86)
+  -- `fresh-x86` IS GONE (Plan 0.54 rung D). It used to demand the concrete cells
+  -- below `%rsp` be UNMAPPED, which is false on frame re-entry: `lo` only
+  -- descends, so a closure applied twice at one depth re-enters over its
+  -- predecessor's live data. With `Window` one-directional the callee's window
+  -- is discharged from `fresh-abs` ALONE — no claim is made about a cell the
+  -- abstract side has not written, so the dirty concrete cells are irrelevant.
   -- THE DESCENT (plan 0.54 rung D step 3): %rsp drops, so the high-water mark
   -- drops with it. `lo'` is chosen at the dispatch site as `lo hv ⊓ (rsp ∸ 8n)`,
   -- whose `hfront hv ≤ lo'` is where the ROOM premise (`stack-room` — STACK
@@ -1065,7 +1130,7 @@ sim-alloc-stack : {hv : HeapView} (n : ℕ) (newFlags : X.Flags) (fs : FlatState
              (flat-exec-instr (instr-alloc-stack n) [] fs)
              (mkstate (xwriteReg (xregs s) rsp (X.readReg (xregs s) rsp ∸ slots n))
                       (memory s) newFlags (pc s + 1) (xhalted s))
-sim-alloc-stack {hv} n newFlags fs s corr fresh-abs fresh-x86 lo' lo'≤lo front-lo' lo'≤rsp fits = record
+sim-alloc-stack {hv} n newFlags fs s corr fresh-abs lo' lo'≤lo front-lo' lo'≤rsp fits = record
   { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
   ; r14-eq = r14-eq corr
   ; halt-eq = halt-eq corr
@@ -1091,13 +1156,94 @@ sim-alloc-stack {hv} n newFlags fs s corr fresh-abs fresh-x86 lo' lo'≤lo front
     newbase = trans (cong (_∸ slots n) (rsp-eq corr))
                     (trans (cong (λ w → frame-base cf ∸ n * w) (sym word-eq))
                            (sym (shift-base cf n)))
-    stk : ∀ k → k < n → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k)
-            ≡ enc-maybe hv (stackMem (floc fs) (shift-frame cf n) k)
-    stk k k<n = trans (fresh-x86 k k<n) (sym (cong (enc-maybe hv) (fresh-abs k k<n)))
+    -- VACUOUS: the callee frame is unwritten (`fresh-abs`), and the one-directional
+    -- `Window` claims nothing about unwritten cells. The hypothesis `stackMem … ≡
+    -- just v` contradicts `fresh-abs` outright.
+    stk : ∀ k → k < n → ∀ (v : StoredValue FS)
+        → stackMem (floc fs) (shift-frame cf n) k ≡ just v
+        → X.readMem (memory s) ((X.readReg (xregs s) rsp ∸ slots n) + slot-to-disp k)
+            ≡ just (enc-sv-at (haddr hv) v)
+    stk k k<n v ev with trans (sym (fresh-abs k k<n)) ev
+    ... | ()
     -- the callee's window ends exactly at the caller's base: `(rsp ∸ 8n) + 8n`
     -- is `rsp` because the frame FITS, and `rsp` is the caller's base.
     tail-le : frame-base (shift-frame cf n) + slots n ≤ frame-base cf
     tail-le = ≤-reflexive (trans (cong (_+ slots n) (sym newbase))
+                                 (trans (m∸n+n≡m fits) (rsp-eq corr)))
+
+------------------------------------------------------------------------
+-- THE CLOSURE BODY'S RESERVATION: `c-thunk _ b` ↔ `label (thunk _) ; sub rsp, 8b`.
+--
+-- D086: this GROWS the frame the CALL already entered rather than pushing a new
+-- one — the concrete `call` already consumed one slot for the return address,
+-- and that slot is not abstractly addressable (it holds a code address, which
+-- lives in the ghost `fret`). So `grow-frame` shifts the current frame and
+-- resets its reservation, leaving `saved-frames` ALONE.
+--
+-- The window story differs from `sim-alloc-stack` accordingly: there is no new
+-- saved frame, the OLD current window is simply replaced, and the saved frames
+-- are re-anchored at the grown window's END — which `fits` places exactly at
+-- the old base, so `windows-lower` carries them across.
+--
+-- Unblocked by the one-directional `Window` (Plan 0.54 rung D): this used to be
+-- unprovable because the callee's window demanded UNMAPPED concrete cells, and
+-- a closure applied twice at one depth re-enters over its predecessor's data.
+-- The head window is now vacuous from `fresh-abs` alone.
+------------------------------------------------------------------------
+sim-thunk : {hv : HeapView} (b : ℕ) (newFlags : X.Flags) (newPc : ℕ)
+            (fs : FlatState) (s : X.State) → FlatCorr hv fs s
+  -- NO `fresh-abs` PREMISE (Plan 0.54 rung D): `do-thunk` CLEARS the entered
+  -- frame, so the callee window is vacuous by COMPUTATION rather than by
+  -- assumption. Postulating freshness here would have been assuming something
+  -- false — a re-entered frame keeps the previous incarnation's writes unless
+  -- the machine clears them, which is why the fix belongs in `do-thunk`.
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
+  → lo' ≤ X.readReg (xregs s) rsp ∸ slots b
+  → slots b ≤ X.readReg (xregs s) rsp
+  → FlatCorr (descend-view hv lo' lo'≤lo front-lo')
+             (do-thunk b fs)
+             (mkstate (xwriteReg (xregs s) rsp (X.readReg (xregs s) rsp ∸ slots b))
+                      (memory s) newFlags newPc (xhalted s))
+sim-thunk {hv} b newFlags newPc fs s corr lo' lo'≤lo front-lo' lo'≤rsp fits = record
+  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
+  ; r14-eq = r14-eq corr
+  ; halt-eq = halt-eq corr
+  ; rsp-eq = newbase
+  ; r15-eq = r15-eq corr ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr
+  ; dom-sized = dom-sized corr
+  ; heap-eq = heap-eq corr
+  ; lo-le = lo'≤rsp
+  ; untouched = untouched-descend lo' lo'≤lo front-lo' corr
+  ; stack-eq = subst (lo' ≤_) newbase lo'≤rsp
+             , head-window
+             , windows-forget (stackMem (floc fs)) (stackMem (floc (do-thunk b fs)))
+                 (frame-base (shift-frame cf b) + slots b) (saved-frames (falloc fs))
+                 (λ f' k' v' → MemOps.clear-frame-just (stackMem (floc fs))
+                                 (shift-frame cf b) b f' k' v')
+                 (windows-lower (frame-base cf + slots (frame-slots (falloc fs)))
+                    (frame-base (shift-frame cf b) + slots b)
+                    (saved-frames (falloc fs))
+                    (≤-trans tail-le (m≤m+n (frame-base cf) (slots (frame-slots (falloc fs)))))
+                    (proj₂ (proj₂ (stack-eq corr)))) }
+  where
+    cf = current-frame (falloc fs)
+    nothing≢just : ∀ {A : Set} {x : A} → nothing ≡ just x → ⊥
+    nothing≢just ()
+    -- the entered frame reads `nothing` below its reservation, by `clear-frame`
+    head-window : ∀ (k : Slot) → k < b → ∀ (v : StoredValue FS)
+                → stackMem (floc (do-thunk b fs)) (shift-frame cf b) k ≡ just v
+                → X.readMem (memory s) (frame-base (shift-frame cf b) + slot-to-disp k)
+                    ≡ just (enc-sv-at (haddr (descend-view hv lo' lo'≤lo front-lo')) v)
+    head-window k k<b v ev with FrameSemantics._≟F_ FS (shift-frame cf b) (shift-frame cf b) | Data.Nat.Properties._<?_ k b
+    ... | yes _ | yes _ = ⊥-elim (nothing≢just ev)
+    ... | yes _ | no ¬p = ⊥-elim (¬p k<b)
+    ... | no ¬q | _     = ⊥-elim (¬q refl)
+    newbase : X.readReg (xregs s) rsp ∸ slots b ≡ frame-base (shift-frame cf b)
+    newbase = trans (cong (_∸ slots b) (rsp-eq corr))
+                    (trans (cong (λ w → frame-base cf ∸ b * w) (sym word-eq))
+                           (sym (shift-base cf b)))
+    tail-le : frame-base (shift-frame cf b) + slots b ≤ frame-base cf
+    tail-le = ≤-reflexive (trans (cong (_+ slots b) (sym newbase))
                                  (trans (m∸n+n≡m fits) (rsp-eq corr)))
 
 ------------------------------------------------------------------------
@@ -1406,8 +1552,9 @@ windows-enc-ext : ∀ (hv : HeapView) (st n : ℕ)
 windows-enc-ext hv st n pf rm mem stk fl []             wf w = tt
 windows-enc-ext hv st n pf rm mem stk fl ((f , b) ∷ fr) wf (bd , win , rest) =
   bd
-  , (λ k k<b → trans (win k k<b)
-                     (sym (enc-ext-maybe hv st n pf rm (stk f k) (wf f k))))
+  , (λ k k<b v ev → trans (win k k<b v ev)
+                          (cong just (sym (enc-ext hv st n pf rm v
+                                             (subst (svm-below st) ev (wf f k))))))
   , windows-enc-ext hv st n pf rm mem stk (frame-base f + slots b) fr wf rest
 
 

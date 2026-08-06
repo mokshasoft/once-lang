@@ -117,7 +117,7 @@ open import Once.CCC.Codegen.AllocMin o using (AllocMinI; fetch-alloc-min)
 open import Once.CCC.Codegen.ShapeTable as ST using
   (LabelEnv; Expect; entry-expect; check-shapes; state-at; check-at; at-pc;
    HeapModed; e-in1)
-open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; site-store-ptr; fetch-at-pc)
+open ST.Sem FS using (Meets; site-load-ptr; site-branch-tag; site-store-ptr; fetch-at-pc; site-slot-written)
 open import Once.CCC.Codegen.LabelScope o using (emitted-jump-in-segment; mention-at; mention-of; once-label-of)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.CCC.Codegen.SlotBudget o using
@@ -439,47 +439,17 @@ store-guard fs hl = go (readReg (regs (floc fs)) Output) refl
         go (SV-Ptr (AtDynamic w)) o-eq rewrite o-eq = refl
         go (SV-Ptr (AtStack f k)) o-eq rewrite o-eq = refl
 
--- BOTH MACHINES STOP: the abstract state has halted and the x86 instruction is a
--- `mov dst, [rsp+8k]` from an UNMAPPED cell, so `execInstr` fails. Both traces
--- are `[]`. This is the shared brick for the empty-slot reads (load-from-slot,
--- restore-input, worklist-pop): `stack-eq` turns "the abstract slot is empty"
--- into "the concrete cell is unmapped", which is exactly the machine's stuck
--- condition — no postulate needed.
-slot-empty-stop : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                    prog fs s (slot : Slot) (dst : Reg) (i : AbstractInstr)
-                → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
-                → fetch prog (fpc fs) ≡ just i
-                → compile-abstract i ≡ mov (reg dst) (mem (base+disp rsp (slot-to-disp slot))) ∷ []
-                → slot < frame-slots (falloc fs)
-                → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ nothing
-                → halted (floc (flat-exec-instr i prog fs)) ≡ true
-                → event-of i fs ≡ []
-                → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
-                      ≡ event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs))
-slot-empty-stop {hv} n ev env prog fs s slot dst i cc h ftq ca slot<ss empty hpost ev[] =
-  1 , result
-  where
-    dc = dataCorr cc
-    halt-s : X.State.halted s ≡ false
-    halt-s = trans (C.halt-eq dc) h
-    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s)
-              ≡ just (mov (reg dst) (mem (base+disp rsp (slot-to-disp slot))))
-    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
-                      (trans (fetch-block-head prog (fpc fs) i ftq)
-                             (cong (λ b → X.fetch (b ++ compile-trace (drop (suc (fpc fs)) prog)) 0) ca))
-    -- the concrete cell is unmapped: `stack-eq` at an EMPTY in-frame slot
-    rd : X.readMem (X.State.memory s) (X.effectiveAddr s (base+disp rsp (slot-to-disp slot))) ≡ nothing
-    rd = trans (C.stack-eq-cur dc slot slot<ss) (cong (C.enc-maybe hv) empty)
-    stuck : X.execInstr (compile-trace prog) s
-              (mov (reg dst) (mem (base+disp rsp (slot-to-disp slot)))) ≡ nothing
-    stuck rewrite rd = refl
-    result : RTx.run-events val-x86-64 ev env 1 (compile-trace prog) s
-           ≡ event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs)
-    result rewrite ev[] =
-      trans (RTx.run-events-stuck val-x86-64 ev env 0 (compile-trace prog) s
-               (mov (reg dst) (mem (base+disp rsp (slot-to-disp slot)))) halt-s fetch-x86 refl stuck)
-            (sym (flat-events-halted n prog (flat-exec-instr i prog fs) hpost))
-
+-- `slot-empty-stop` DELETED (Plan 0.54 rung D). It read "the abstract slot is
+-- empty ⇒ the concrete cell is unmapped ⇒ both machines stop", and that middle
+-- step was exactly the direction of `C.Window` that had to go: on frame
+-- re-entry the concrete cell holds the previous incarnation's data, so the two
+-- machines would NOT stop together — a real divergence the old bidirectional
+-- statement concealed.
+--
+-- The three routes that used it (load-from-slot, restore-input, worklist-pop)
+-- are now UNREACHABLE instead: `site-ok` requires a non-`e-any` claim at every
+-- slot read, and `MeetsSlot` sends such a claim at `nothing` to `⊥`. See
+-- `slot-read-written` below.
 -- The run-events REDUCTION at an EXTERNAL (Emits/Halts) SigOp, PROVEN given the
 -- external-env contract (env maps the symbol to `nothing`): the compiled `call-sym`
 -- is fetched + matched, and run-events-external EMITS `ev lbl s` then continues past
@@ -617,9 +587,10 @@ postulate
   -- A slot the emitted code READS is frame-live (`slot < frame-slots`): reads stay
   -- inside the frame the prologue reserved. Conditioned on the SITE (a property of
   -- emitted programs, not of arbitrary states) and covering the empty case too —
-  -- which is what lets the empty-slot reads be PROVED rather than postulated
-  -- (`slot-empty-stop`), retiring `load-from-slot-empty`, `restore-input-empty`
-  -- and `worklist-pop-empty`. The slot MUST be the fetched instruction's own
+  -- which used to be what let the empty-slot reads be proved via
+  -- `slot-empty-stop`. That lemma is GONE (Plan 0.54 rung D): the empty case is
+  -- now UNREACHABLE instead, because `site-ok` requires a claim at every slot
+  -- read and `MeetsSlot` refutes a claim at an unwritten slot. The slot MUST be the fetched instruction's own
   -- (`slot-of i ≡ just slot`): quantified over an unrelated `slot` this claims
   -- `slot < frame-slots` for every slot, which is inconsistent (take `slot ≡
   -- frame-slots`) — it would prove the whole correspondence vacuously.
@@ -1365,6 +1336,40 @@ run-shape-check prog fs r =
         (sym (run-emit r)) (proj₂ chk)
   where chk = emitted-shape-check (run-ir r) (run-heap r)
 
+-- A SLOT READ NEVER FINDS AN UNWRITTEN SLOT (Plan 0.54 rung D).
+--
+-- This is what makes the `*-empty-*` routes UNREACHABLE. It replaces what the
+-- OLD bidirectional `Window` supplied for free: that assertion made the
+-- concrete cell unmapped wherever the abstract one was, so an empty-slot read
+-- "corresponded" by getting both machines stuck. That was false on frame
+-- re-entry, and with `Window` one-directional the read would be a genuine
+-- DIVERGENCE — abstract halts, concrete reads the previous frame's data.
+--
+-- So the emitter's discipline has to rule it out, and it does: `site-ok` now
+-- requires a non-`e-any` claim at every slot read, and `MeetsSlot` sends every
+-- such claim at `nothing` to `⊥`. Same shape as `slot-read-in-frame` — the
+-- checker's site fact, localized by `check-at`, met by `run-meets`.
+--
+-- `sok` is how the caller says which site this is; every call passes `λ _ → refl`.
+slot-read-written : ∀ prog (fs : FlatState) (slot : Slot) (i : AbstractInstr) → RunAt prog fs
+                  → fetch prog (fpc fs) ≡ just i
+                  → (∀ st → ST.site-ok st i ≡ ST.not-any (ST.slot-get (ST.e-slot st) slot))
+                  → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ nothing → ⊥
+slot-read-written prog fs slot i r ftq sok empty =
+  site-slot-written (ST.slot-get (ST.e-slot st) slot) claim met
+  where
+    sc  = run-shape-check prog fs r
+    env = proj₁ sc
+    chk = proj₂ sc
+    st  = state-at env (entry-expect Unit) prog (fpc fs)
+    claim : ST.not-any (ST.slot-get (ST.e-slot st) slot) ≡ true
+    claim = trans (sym (sok st))
+                  (proj₁ (check-at env (entry-expect Unit) prog (fpc fs) chk
+                            (trans (sym (fetch-at-pc prog (fpc fs))) ftq)))
+    met = subst (λ m → ST.Sem.MeetsSlot FS (ST.slot-get (ST.e-slot st) slot) (falloc fs) m (floc fs))
+                empty
+                (proj₂ (proj₂ (proj₂ (run-meets prog fs r env chk))) slot)
+
 load-indirect-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs
                          → fetch prog (fpc fs) ≡ just load-indirect
                          → Σ (ValueLocation FS) (λ loc →
@@ -1951,7 +1956,7 @@ mutual
                            (cong₂ (λ b w' → b + k' * w') (sym (C.rsp-eq dc)) word-eq)))))
           rd-stack : X.readMem (X.State.memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just k
           rd-stack = trans (cong (X.readMem (X.State.memory s)) rdi-val)
-                           (trans (C.stack-eq-cur dc k' (proj₂ spc)) (cong (C.enc-maybe hv) st-cf))
+                           (C.stack-eq-cur dc k' (proj₂ spc) _ st-cf)
 
   -- REG-OP scratch-dec: case the Scratch value (J-bridge, no with). A tag ⇒ the PROVEN
   -- block-step-scratch-dec applies (reg-op preserves halted: hpost=h) ⇒ ccc-step-bs.
@@ -2047,17 +2052,14 @@ mutual
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ false
                   hpost rewrite i-eq | f-eq | st-eq = h
-          go-stack f k i-eq (f-eq , k<ss) nothing st-eq = 1 , result
-            where stuckp = load-indirect-stack-empty-stuck prog fs s f k cc ftq i-eq f-eq k<ss st-eq
-                  halt-s : X.State.halted s ≡ false
-                  halt-s = trans (C.halt-eq (dataCorr cc)) h
-                  hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ true
-                  hpost rewrite i-eq | f-eq | st-eq = refl
-                  result : RTx.run-events val-x86-64 ev env 1 (compile-trace prog) s
-                         ≡ event-of load-indirect fs ++ flat-events n prog (flat-exec-instr load-indirect prog fs)
-                  result = trans (RTx.run-events-stuck val-x86-64 ev env 0 (compile-trace prog) s
-                                    (mov (reg rax) (mem (base rdi))) halt-s (proj₁ stuckp) refl (proj₂ stuckp))
-                                 (sym (flat-events-halted n prog (flat-exec-instr load-indirect prog fs) hpost))
+          -- UNREACHABLE (Plan 0.54 rung D): under heap mode `StackPtrWF` says there
+          -- is NO stack pointer, so `Input1` holding one is refuted outright —
+          -- the same `⊥` that `stack-ptr-current` already returns for `k<ss`.
+          -- This used to route through `load-indirect-stack-empty-stuck`, which
+          -- needed the old bidirectional `Window` to claim the concrete cell was
+          -- unmapped too. That claim is gone; the branch was impossible anyway.
+          go-stack f k i-eq (f-eq , k<ss) nothing st-eq =
+            ⊥-elim (stack-ptr-live fs Input1 f k (run-stack-ptr prog fs (inv-run wf)) i-eq)
           go-loc : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
                  → (∀ hl → loc ≡ AtDynamic hl
                     → heap-offset hl < block-size (falloc fs) (ref-id (heap-ref hl)))
@@ -2118,17 +2120,10 @@ mutual
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq | f-eq | st-eq = h
-          go-stack f k i-eq (f-eq , sk<ss) nothing st-eq = 1 , result
-            where stuckp = load-indirect-suc-stack-empty-stuck prog fs s f k cc ftq i-eq f-eq sk<ss st-eq
-                  halt-s : X.State.halted s ≡ false
-                  halt-s = trans (C.halt-eq (dataCorr cc)) h
-                  hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ true
-                  hpost rewrite i-eq | f-eq | st-eq = refl
-                  result : RTx.run-events val-x86-64 ev env 1 (compile-trace prog) s
-                         ≡ event-of load-indirect-suc fs ++ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)
-                  result = trans (RTx.run-events-stuck val-x86-64 ev env 0 (compile-trace prog) s
-                                    (mov (reg rax) (mem (base+disp rdi slot-size))) halt-s (proj₁ stuckp) refl (proj₂ stuckp))
-                                 (sym (flat-events-halted n prog (flat-exec-instr load-indirect-suc prog fs) hpost))
+          -- UNREACHABLE, same as the `load-indirect` case above: heap mode admits
+          -- no stack pointer at all, so `Input1` holding one is `⊥`.
+          go-stack f k i-eq (f-eq , sk<ss) nothing st-eq =
+            ⊥-elim (stack-ptr-suc-live fs Input1 f k (run-stack-ptr prog fs (inv-run wf)) i-eq)
           go-loc : ∀ (loc : ValueLocation FS) → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
                  → (∀ hl → loc ≡ AtDynamic hl
                     → heap-offset (sucHL hl) < block-size (falloc fs) (ref-id (heap-ref (sucHL hl))))
@@ -2159,10 +2154,12 @@ mutual
             where hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
           go-mem nothing st-eq =
-            slot-empty-stop {hv} n ev env prog fs s slot rax (load-from-slot slot) cc h ftq refl
-              (slot-read-in-frame prog fs slot (load-from-slot slot) (inv-run wf) ftq refl) st-eq hpost refl
-            where hpost : halted (floc (flat-exec-instr (load-from-slot slot) prog fs)) ≡ true
-                  hpost rewrite st-eq = refl
+            -- UNREACHABLE (Plan 0.54 rung D): `site-ok` requires a non-`e-any`
+            -- claim at every slot READ, and `MeetsSlot` sends such a claim at
+            -- `nothing` to `⊥`. So a checked program never reads an unwritten
+            -- slot — which is what the old bidirectional `Window` used to paper
+            -- over by declaring the concrete cell unmapped as well.
+            ⊥-elim (slot-read-written prog fs slot (load-from-slot slot) (inv-run wf) ftq (λ _ → refl) st-eq)
 
   -- STACK restore-input: identical to load-from-slot but writes Input1 (rdi).
   restore-input-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
@@ -2182,10 +2179,12 @@ mutual
             where hpost : halted (floc (flat-exec-instr (restore-input slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
           go-mem nothing st-eq =
-            slot-empty-stop {hv} n ev env prog fs s slot rdi (restore-input slot) cc h ftq refl
-              (slot-read-in-frame prog fs slot (restore-input slot) (inv-run wf) ftq refl) st-eq hpost refl
-            where hpost : halted (floc (flat-exec-instr (restore-input slot) prog fs)) ≡ true
-                  hpost rewrite st-eq = refl
+            -- UNREACHABLE (Plan 0.54 rung D): `site-ok` requires a non-`e-any`
+            -- claim at every slot READ, and `MeetsSlot` sends such a claim at
+            -- `nothing` to `⊥`. So a checked program never reads an unwritten
+            -- slot — which is what the old bidirectional `Window` used to paper
+            -- over by declaring the concrete cell unmapped as well.
+            ⊥-elim (slot-read-written prog fs slot (restore-input slot) (inv-run wf) ftq (λ _ → refl) st-eq)
 
   -- STACK worklist-pop: identical to load-from-slot (same abstract sem + lowering).
   worklist-pop-step : ∀ {hv : HeapView} n (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
@@ -2205,10 +2204,12 @@ mutual
             where hpost : halted (floc (flat-exec-instr (worklist-pop slot) prog fs)) ≡ false
                   hpost rewrite st-eq = h
           go-mem nothing st-eq =
-            slot-empty-stop {hv} n ev env prog fs s slot rax (worklist-pop slot) cc h ftq refl
-              (slot-read-in-frame prog fs slot (worklist-pop slot) (inv-run wf) ftq refl) st-eq hpost refl
-            where hpost : halted (floc (flat-exec-instr (worklist-pop slot) prog fs)) ≡ true
-                  hpost rewrite st-eq = refl
+            -- UNREACHABLE (Plan 0.54 rung D): `site-ok` requires a non-`e-any`
+            -- claim at every slot READ, and `MeetsSlot` sends such a claim at
+            -- `nothing` to `⊥`. So a checked program never reads an unwritten
+            -- slot — which is what the old bidirectional `Window` used to paper
+            -- over by declaring the concrete cell unmapped as well.
+            ⊥-elim (slot-read-written prog fs slot (worklist-pop slot) (inv-run wf) ftq (λ _ → refl) st-eq)
 
   -- MEMORY store-indirect: case the Output-target pointer. A live dynamic pointer ⇒ the
   -- PROVEN block-step-store-indirect (HDom from dom-sized ∘ store-indirect-inbounds; the writeLoc↔heap

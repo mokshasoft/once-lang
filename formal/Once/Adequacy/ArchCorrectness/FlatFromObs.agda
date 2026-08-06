@@ -45,6 +45,13 @@ open import Once.CanonicalName using (CanonicalName)
 module Once.Adequacy.ArchCorrectness.FlatFromObs (o : CanonicalName)
   (arch          : Arch)
   (FS            : FrameSemantics)
+  -- Plan 0.54 rung D: the loader's initial FRAME is supplied BY THE ARCH, not
+  -- postulated here. It used to be `postulate entry-frame : Frame FS` — opaque,
+  -- so nothing about it could ever be proven, which is exactly why the apex
+  -- needed a SECOND postulate (`entry-frame-base`) to say where its base was.
+  -- As a parameter the arch can hand over a CONSTRUCTED frame and that second
+  -- postulate becomes `refl` (x86-64 does; see `…ArchCorrectness.X86-64`).
+  (entry-frame   : FrameSemantics.Frame FS)
   (as            : ArchSemantics)
   (program-bound : ℕ)
   where
@@ -103,7 +110,6 @@ asm-sem asm = ArchSemantics.exec-bytes as (ArchSemantics.assemble as asm)
 -- be constructed here. Everything ELSE about the entry state is now CONSTRUCTED,
 -- and its preconditions are PROVED (was: 8 postulates, now 2).
 postulate
-  entry-frame : FrameSemantics.Frame FS
   -- the compiled `main` fits the (per-arch) program bound.
   entry-size  : ∀ (ir : IR Unit Unit) → ir-size ir < program-bound
 

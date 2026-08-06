@@ -23,9 +23,12 @@
 -- labels. `o` is constant for a whole definition, so it belongs on the module
 -- rather than on every lemma — which is what keeps the statements below
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
+open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.Adequacy.ArchCorrectness.X86-32 (o : CanonicalName) where
+open import Data.Nat using (ℕ)
+
+module Once.Adequacy.ArchCorrectness.X86-32 (o : CanonicalName) (program-bound : ℕ) where
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -47,9 +50,8 @@ import Once.Compile as C
 import Once.Parser.Module.Core as P
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
-postulate
-  program-bound : ℕ
-
+-- Plan 0.54 rung D / D087: `program-bound` is a RESOURCE BOUND and so is now a
+-- module PARAMETER threaded from the apex, not a postulate here.
 open IRObsCorrectFlatness {x86-32-frame-semantics} program-bound using (ir-obs-correct)
 
 -- x86-32's witness, CONSTRUCTED via the shared FlatFromObs (Phase B L1).
@@ -59,7 +61,18 @@ open IRObsCorrectFlatness {x86-32-frame-semantics} program-bound using (ir-obs-c
 -- `dispatch-arith-preserves`; the non-arith remainder is the explicit ISA /
 -- printer / loader trust (GNU `as` class). Stated against the DEFINED
 -- `flat-trace` via `FFO.AsmTraceCorrect`.
-module FFOc = FFO o x86-32 x86-32-frame-semantics (arch-semantics x86-32) program-bound
+------------------------------------------------------------------------
+-- THE ENTRY FRAME (Plan 0.54 rung D). `FlatFromObs` no longer postulates this
+-- — each arch owns its own loader frame, so the postulate lives where the arch
+-- does. x86-64 CONSTRUCTS its frame (it is the loader's `%rsp`, which makes
+-- `entry-frame-base` a theorem there); x86-32 has no correspondence yet
+-- (`x86-32-conc-flat-sim` below is still whole-cloth), so nothing constrains
+-- this frame and it stays opaque until that lands.
+------------------------------------------------------------------------
+postulate
+  entry-frame-x86-32 : FrameSemantics.Frame x86-32-frame-semantics
+
+module FFOc = FFO o x86-32 x86-32-frame-semantics entry-frame-x86-32 (arch-semantics x86-32) program-bound
 asC = arch-semantics x86-32
 
 -- The concrete machine's SigOp trace of a compiled IR (see X86-64 for rationale):
@@ -92,5 +105,5 @@ asm-trace-correct-x86-32 m asm eq n =
 
 x86-32-correct : ArchCorrect x86-32 (arch-semantics x86-32)
 x86-32-correct =
-  FFO.flat-from-obs o x86-32 x86-32-frame-semantics (arch-semantics x86-32)
+  FFO.flat-from-obs o x86-32 x86-32-frame-semantics entry-frame-x86-32 (arch-semantics x86-32)
     program-bound ir-obs-correct asm-trace-correct-x86-32

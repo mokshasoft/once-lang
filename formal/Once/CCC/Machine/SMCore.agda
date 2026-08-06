@@ -582,6 +582,45 @@ module MemOps {FS : FrameSemantics} where
   writeStackMem : StackMem FS → Frame → Slot → StoredValue FS → StackMem FS
   writeStackMem mem f k v f' k' = writeStackMem-aux (f ≟F f') (k ≟ k') (mem f' k') v
 
+  -- | CLEAR a frame's reserved slots (Plan 0.54 rung D).
+  --
+  -- A frame ENTERED is a frame whose slots hold nothing yet. Without this the
+  -- abstract machine keeps the PREVIOUS incarnation's writes at a re-entered
+  -- frame — a closure applied twice at one depth gets the SAME `shift-frame cf
+  -- b` — so "the callee frame is fresh" was simply FALSE abstractly, exactly as
+  -- its concrete twin was. Clearing here makes it true BY COMPUTATION instead
+  -- of by assumption, which is the whole reason it belongs in the machine and
+  -- not in a premise.
+  --
+  -- Sound against the hardware, which clears nothing: with `Window`
+  -- one-directional the correspondence claims a match only where the ABSTRACT
+  -- cell is written, so a cleared abstract cell asserts nothing about the stale
+  -- concrete one. The two halves are a pair — neither is sound alone.
+  --
+  -- Same aux idiom as `writeStackMem`: route on explicit `Dec`s so the
+  -- frame-mismatch branch reduces without splitting the slot decision.
+  clear-frame-aux : ∀ {f f' : Frame} {k' b : ℕ}
+                  → Dec (f ≡ f') → Dec (k' < b)
+                  → Maybe (StoredValue FS)
+                  → Maybe (StoredValue FS)
+  clear-frame-aux (no _)  _       old = old
+  clear-frame-aux (yes _) (yes _) _   = nothing
+  clear-frame-aux (yes _) (no _)  old = old
+
+  clear-frame : StackMem FS → Frame → ℕ → StackMem FS
+  clear-frame mem f b f' k' = clear-frame-aux (f ≟F f') (Data.Nat.Properties._<?_ k' b) (mem f' k')
+
+  -- CLEARING ONLY FORGETS: whatever the cleared map still holds, the original
+  -- held. This is all a one-directional `Window` needs to survive a frame
+  -- entry — it claims nothing about absent cells, so a store that only removes
+  -- values preserves every window, with no frame-distinctness reasoning.
+  clear-frame-just : ∀ (mem : StackMem FS) (f : Frame) (b : ℕ) (f' : Frame) (k' : Slot)
+                       (v : StoredValue FS)
+                   → clear-frame mem f b f' k' ≡ just v → mem f' k' ≡ just v
+  clear-frame-just mem f b f' k' v ev with f ≟F f' | Data.Nat.Properties._<?_ k' b
+  ... | no  _ | _     = ev
+  ... | yes _ | no  _ = ev
+
   -- | Write a StoredValue to heap memory.
   -- with-FREE (mirrors writeStackMem): route on the explicit ≟HL result
   -- through a helper instead of an internal `with`. Consequence: an

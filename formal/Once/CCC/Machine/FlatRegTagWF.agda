@@ -431,7 +431,11 @@ regtag-ret (pc' ∷ rest) fs wf = wf
 flat-regtag-step : ∀ (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
                  → FlatRegTag fs → FlatRegTag (flat-exec-instr i prog fs)
 flat-regtag-step (instr-ctrl (c-label m))               prog fs wf = wf
-flat-regtag-step (instr-ctrl (c-thunk m b))             prog fs wf = wf
+-- Plan 0.54 rung D: `do-thunk` CLEARS the entered frame, so its `LocState`
+-- differs from the pre-state's and the record must be REBUILT. Its fields only
+-- read `regs`, which a record update leaves alone, so both come straight over.
+flat-regtag-step (instr-ctrl (c-thunk m b))             prog fs wf =
+  mkRegTagWF (scratch-tag wf) (count-tag wf)
 flat-regtag-step (instr-ctrl (c-ret b))                 prog fs wf = regtag-ret (fret fs) fs wf
 flat-regtag-step (instr-ctrl (c-jmp m))                 prog fs wf = regtag-jump (find-label prog m) fs wf
 flat-regtag-step (instr-ctrl (c-branch-scratch-zero m)) prog fs wf =

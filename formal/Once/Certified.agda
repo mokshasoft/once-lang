@@ -35,12 +35,17 @@
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.Certified (o : CanonicalName) where
+open import Data.Nat using (ℕ)
+
+import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
+
+module Once.Certified
+  (o : CanonicalName) (program-bound : ℕ) (x86-64-heap-room : RB.HeapRoom o) where
 
 -- P5 (OCP-0006): the correctness criterion is consumed THROUGH the spec
 -- door — `Once.Spec` is on the certified path, not an island.
 open import Once.Spec using (CorrectCompiler)
-open import Once.Compiler o using (once-compiler)
+open import Once.Compiler o program-bound x86-64-heap-room using (once-compiler)
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
 
 record CertifiedBuild : Set₁ where

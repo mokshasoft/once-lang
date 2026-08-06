@@ -6391,3 +6391,116 @@ soundness the scans need (`≡ᵇᴵ-true`, consumed by `Flat.lab-eq`/`fl-go-lan
   the counter can be local and reset per definition.
 - `layer5-iseven.once` must gain its missing `-- Expected: exit N` line. It goes
   red until this lands, which is the honest state.
+
+## D090: The Stack Window Is One-Directional, and Frame Entry Clears the Frame
+
+**Date**: 2026-08-06
+**Status**: TAKEN and LANDED. `Window` weakened, `SMCore.clear-frame` added and
+wired into `do-thunk`, `fresh-x86` deleted, three "empty slot ⇒ concrete stuck"
+lemmas deleted, `C.sim-thunk` and `block-step-c-thunk` PROVEN. Apex and all
+three `ccc-*` clusters green; exit tests unchanged.
+
+### What was wrong
+
+`FlatCorrespondence.Window` was BIDIRECTIONAL:
+
+    Window am mem stk f b = ∀ k → k < b →
+      X.readMem mem (frame-base f + slot-to-disp k) ≡ enc-maybe-at am (stk f k)
+
+Because `enc-maybe-at am nothing ≡ nothing`, the equation also constrained the
+EMPTY case: it demanded the CONCRETE cell be unmapped wherever the abstract one
+was unwritten. That is false the moment a closure is applied twice at one depth.
+`lo` (the stack high-water mark) only ever DESCENDS, so the second entry
+re-enters a frame at or above the mark, over the previous incarnation's live
+data. The hardware clears nothing.
+
+So `Window` was unprovable at frame entry, which is precisely what blocked
+`block-step-c-thunk` — and no freshness side-condition could rescue it, because
+the concrete cells genuinely are dirty. The earlier handoff's "DO NOT build
+`block-step-c-thunk`, the premise is FALSE" was a correct reading of a wrong
+statement.
+
+### Decision, first half — claim only where the abstract side wrote
+
+    Window am mem stk f b = ∀ k → k < b → ∀ v → stk f k ≡ just v →
+      X.readMem mem (frame-base f + slot-to-disp k) ≡ just (enc-sv-at am v)
+
+A match is claimed only at WRITTEN abstract cells. Frame entry becomes VACUOUS
+(a fresh frame has written nothing), so `fresh-x86` — the false premise —
+disappears from `sim-alloc-stack` and `block-step-alloc-stack` outright.
+
+### Decision, second half — `do-thunk` CLEARS the entered frame
+
+Weakening alone is not enough: the callee window is vacuous only if the ABSTRACT
+frame is fresh, and `fresh-abs` fails for the mirror-image reason `fresh-x86`
+did. A re-entered `shift-frame cf b` keeps the previous incarnation's abstract
+writes too. Postulating it would have been assuming something FALSE.
+
+So the fix goes in the machine, not in a premise (`SMCore.clear-frame`, wired
+into `Flat.do-thunk`): entering a body clears its reserved slots, and freshness
+holds BY COMPUTATION. Both `sim-thunk` and `block-step-c-thunk` now take no
+freshness premise at all.
+
+**The two halves are a matched pair; neither is sound alone.** The clear is
+sound against hardware that clears nothing PRECISELY because `Window` is
+one-directional — a cleared abstract cell asserts nothing about the stale
+concrete one. Under the old bidirectional statement the clear would have been a
+lie about memory.
+
+### What the old statement was HIDING
+
+Three lemmas were DELETED rather than re-proved: `slot-empty-stop`,
+`load-indirect-stack-empty-stuck`, `load-indirect-suc-stack-empty-stuck`. Each
+said "abstract slot empty ⇒ concrete stuck". The bidirectional `Window` supplied
+that for free, and it is FALSE: the concrete machine reads whatever the previous
+frame left behind while the abstract machine halts. That is a genuine
+DIVERGENCE, not a proof gap — the old statement made both sides "agree" by
+getting stuck together.
+
+Their routes are made UNREACHABLE instead, by two arguments, NEITHER a
+postulate:
+
+- **slot reads** — `site-ok` now requires a non-`e-any` claim at every
+  `load-from-slot` / `restore-input` / `worklist-pop`, and `MeetsSlot` sends a
+  claim at an unwritten slot to `⊥` (`ShapeTable.not-any`,
+  `ShapeTable.Sem.site-slot-written`, `ConcFlatSim.slot-read-written`). The
+  emitter's own discipline rules the read out.
+- **pointer reads into stack slots** — heap mode admits no stack pointer at all
+  (`FlatStackPtr.stack-ptr-live` / `stack-ptr-suc-live`), which the code already
+  relied on for the sibling `k<ss` component.
+
+The postulate COUNT is unchanged at 11: `emitted-shape-check`'s CONTENT grew by
+the `site-ok` conjunct, which is exactly the shape the plan called for.
+
+### New lemmas, and why they are cheap
+
+- `SMCore.clear-frame-just` — "clearing only forgets".
+- `FlatCorrespondence.windows-forget` — a store that only forgets preserves
+  every window. A direct payoff of one-directionality (a constraint on written
+  cells cannot be invalidated by removing values), and it is why the saved
+  frames ride across a frame entry with NO frame-distinctness argument.
+- `FlatCorrespondence.windows-lower` — floor monotonicity, for re-anchoring the
+  saved frames below the grown window.
+
+### The ripple, and its shape
+
+`do-thunk` now moves the `LocState`, so every flat-machine invariant whose
+`c-thunk` clause was `= wf` must REBUILD its record — the record is indexed by
+the whole `LocState`, so `wf` no longer typechecks even where the fields read
+only `regs`. Four modules: `FlatStoreWF` (`wf-thunk`), `FlatRegTagWF`,
+`FlatStackPtr` (`sp-thunk`), `FlatPtrBounds` (`pb-thunk`). In each the cleared
+cells are discharged by the predicate's own `nothing` case being trivially true
+(`svm-below _ nothing = ⊤`, `StackPtrOK? nothing = ⊤`, `PtrB? _ nothing = ⊤`) —
+the clear can only make these invariants easier.
+
+### Consequences
+
+- `events-running-thunk` is UNBLOCKED (ledger #8). One input remains: a
+  `stack-room` resource PARAMETER (sibling of `heap-room`, supplying
+  `hfront hv ≤ lo'`), with `lo'` chosen at the dispatch site as
+  `lo hv ⊓ (rsp ∸ slots b)`.
+- `events-running-ret` is unblocked by the same fix but still needs the
+  `FlatCorr` component relating the ghost `fret` to the machine stack.
+- `events-running-call` is untouched: it is a MODEL GAP (`exec-abstract
+  instr-call-closure` is the identity while `call *0x8(%r12)` transfers
+  control), not a layout problem.
