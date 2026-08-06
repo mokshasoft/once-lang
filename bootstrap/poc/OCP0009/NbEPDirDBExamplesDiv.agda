@@ -28,7 +28,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; El; Hom; Unit; Nat
         ; RTm; var; unit; nzero; nsuc; natrec; ordtr; ⌜Hom⌝; ⌜Nat⌝
-        ; renTy; subTy )
+        ; renTy; subTy; Π; lam; app )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶_; _⟶*_; done; step; natrec-zero; natrec-suc; ξ-nsuc
         ; _⟶ᵀ_; El-⌜Hom⌝; El-⌜Nat⌝; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
@@ -37,11 +37,13 @@ open import poc.OCP0009.NbEPDirDBType
         ; Ctx; ◇; _▹_; ⌊_⌋; single
         ; _⊢_∷_; ⊢var; here; there; ⊢unit; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝
-        ; _⊢ty_; ty-El; ty-Nat )
+        ; _⊢ty_; ty-El; ty-Nat; ty-Π; ty-Hom
+        ; ⊢lam; ⊢app; nrs )
 open import poc.OCP0009.NbEPDirDBInj
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
+open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBExamplesStrong
   using ( El-homNat; natAsEl; ⊢le-refl; ⊢le-suc; reflTm )
 
@@ -150,51 +152,52 @@ predMot = El (⌜Hom⌝ ⌜Nat⌝ (predTm (var vz)) (var vz))
 --      the situation of use: `div`'s recursive call sits under binders.
 ------------------------------------------------------------------------
 
-monusMot : {Γ : Cx} → RTy (Γ ∙ ∙)
-monusMot = El (⌜Hom⌝ ⌜Nat⌝ (monusTm (var (vs vz)) (var vz)) (var (vs vz)))
+-- ★ PARAMETERISED BY A VARIABLE INDEX, not by an arbitrary term.
+--   `renTm vs (var i) = var (vs i)` and `subTm nrs (var (vs i)) =
+--   var (vs (vs i))` both COMPUTE, so every `natrec` obligation lands on
+--   the nose.  An arbitrary `m` would put `renTm vs m` in the motive —
+--   stuck — and each obligation would then need a renaming lemma.
+--   Any variable index works, which is what `div`'s assembly needs.
+monusMot : {Γ : Cx} → Var Γ → RTy (Γ ∙)
+monusMot i = El (⌜Hom⌝ ⌜Nat⌝ (monusTm (var (vs i)) (var vz)) (var (vs i)))
 
-⊢monusMot : {Γ : Ctx} → ((Γ ▹ Nat) ▹ Nat) ⊢ty monusMot
-⊢monusMot =
+⊢monusMot : {Γ : Ctx} {i : Var ⌊ Γ ⌋} →
+            Γ ⊢ var i ∷ Nat → (Γ ▹ Nat) ⊢ty monusMot i
+⊢monusMot {i = i} di =
   ty-El (⊢⌜Hom⌝ ⊢⌜Nat⌝
-          (natAsEl (⊢monus (⊢var (there here)) (⊢var here)))
-          (natAsEl (⊢var (there here))))
+          (natAsEl (⊢monus (⊢wk di) (⊢var here)))
+          (natAsEl (⊢wk di)))
 
--- the step's own term: `ordtr` applied to §3's proof and the IH.
-monusStep : {Γ : Cx} → RTm (Γ ∙ ∙ ∙)
-monusStep =
-  ordtr (predTm (monusTm (var (vs (vs vz))) (var (vs vz))))
-        (monusTm (var (vs (vs vz))) (var (vs vz)))
-        (var (vs (vs vz)))
+monusStep : {Γ : Cx} → Var Γ → RTm (Γ ∙ ∙)
+monusStep i =
+  ordtr (predTm (monusTm (var (vs (vs i))) (var (vs vz))))
+        (monusTm (var (vs (vs i))) (var (vs vz)))
+        (var (vs (vs i)))
         (natrec unit (reflTm (var (vs vz)))
-                (monusTm (var (vs (vs vz))) (var (vs vz))))
+                (monusTm (var (vs (vs i))) (var (vs vz))))
         (var vz)
 
-⊢monus-le : {Γ : Ctx} {n : RTm ⌊ Γ ▹ Nat ⌋} →
-            (Γ ▹ Nat) ⊢ n ∷ Nat →
-            (Γ ▹ Nat) ⊢ natrec (reflTm (var vz)) monusStep n
-              ∷ Hom Nat (monusTm (var vz) n) (var vz)
-⊢monus-le {n = n} dn =
-  ⊢conv (⊢natrec ⊢monusMot zB sB dn)
-        (red→≅ᵀ (El-homNat (monusTm (var vz) n) (var vz)))
+⊢monus-le : {Γ : Ctx} {i : Var ⌊ Γ ⌋} {n : RTm ⌊ Γ ⌋} →
+            Γ ⊢ var i ∷ Nat → Γ ⊢ n ∷ Nat →
+            Γ ⊢ natrec (reflTm (var i)) (monusStep i) n
+              ∷ Hom Nat (monusTm (var i) n) (var i)
+⊢monus-le {i = i} {n = n} di dn =
+  ⊢conv (⊢natrec (⊢monusMot di) zB sB dn)
+        (red→≅ᵀ (El-homNat (monusTm (var i) n) (var i)))
   where
-    zB : {Γ : Ctx} →
-         (Γ ▹ Nat) ⊢ reflTm (var vz)
-           ∷ El (⌜Hom⌝ ⌜Nat⌝ (monusTm (var vz) nzero) (var vz))
-    zB = ⊢conv (⊢le-refl (⊢var here))
+    zB : _ ⊢ reflTm (var i) ∷ El (⌜Hom⌝ ⌜Nat⌝ (monusTm (var i) nzero) (var i))
+    zB = ⊢conv (⊢le-refl di)
            (csymᵀ (red→≅ᵀ (⟶ᵀ*-trans
-             (El-homNat (monusTm (var vz) nzero) (var vz))
-             (homˡ* (monus-zero (var vz))))))
+             (El-homNat (monusTm (var i) nzero) (var i))
+             (homˡ* (monus-zero (var i))))))
 
-    sB : {Γ : Ctx} →
-         (((Γ ▹ Nat) ▹ Nat) ▹ monusMot) ⊢ monusStep
+    sB : _ ⊢ monusStep i
            ∷ El (⌜Hom⌝ ⌜Nat⌝
-                  (monusTm (var (vs (vs vz))) (nsuc (var (vs vz))))
-                  (var (vs (vs vz))))
+                  (monusTm (var (vs (vs i))) (nsuc (var (vs vz))))
+                  (var (vs (vs i))))
     sB =
       ⊢conv
-        (⊢ordtr (⊢pred (⊢monus mm kk))
-                (⊢monus mm kk)
-                mm
+        (⊢ordtr (⊢pred (⊢monus mm kk)) (⊢monus mm kk) mm
                 (⊢pred-le (⊢monus mm kk))
                 (⊢conv (⊢var here)
                        (red→≅ᵀ (El-homNat (monusTm MM KK) MM))))
@@ -202,9 +205,9 @@ monusStep =
           (El-homNat (monusTm MM (nsuc KK)) MM)
           (homˡ* (monus-suc MM KK)))))
       where
-        MM = var (vs (vs vz))
+        MM = var (vs (vs i))
         KK = var (vs vz)
-        mm = ⊢var (there (there here))
+        mm = ⊢wk (⊢wk di)
         kk = ⊢var (there here)
 
 ------------------------------------------------------------------------
@@ -225,12 +228,12 @@ monusStep =
 --     reduction step.
 ------------------------------------------------------------------------
 
-⊢div-descend : {Γ : Ctx} {k : RTm ⌊ Γ ▹ Nat ⌋} →
-               (Γ ▹ Nat) ⊢ k ∷ Nat →
-               (Γ ▹ Nat) ⊢ natrec (reflTm (var vz)) monusStep k
-                 ∷ Hom Nat (nsuc (monusTm (var vz) k)) (nsuc (var vz))
-⊢div-descend dk =
-  ⊢conv (⊢monus-le dk)
+⊢div-descend : {Γ : Ctx} {i : Var ⌊ Γ ⌋} {k : RTm ⌊ Γ ⌋} →
+               Γ ⊢ var i ∷ Nat → Γ ⊢ k ∷ Nat →
+               Γ ⊢ natrec (reflTm (var i)) (monusStep i) k
+                 ∷ Hom Nat (nsuc (monusTm (var i) k)) (nsuc (var i))
+⊢div-descend di dk =
+  ⊢conv (⊢monus-le di dk)
         (csymᵀ (red→≅ᵀ (stepᵀ (Hom-Nat-ss _ _) doneᵀ)))
 
 ------------------------------------------------------------------------
@@ -247,10 +250,10 @@ monusStep =
 --   is `⊢monus-le` with a conversion.
 ------------------------------------------------------------------------
 
-⊢gcd-descend : {Γ : Ctx} {k : RTm ⌊ Γ ▹ Nat ⌋} →
-               (Γ ▹ Nat) ⊢ k ∷ Nat →
-               (Γ ▹ Nat) ⊢ natrec (reflTm (var vz)) monusStep k
-                 ∷ Hom Nat (nsuc (monusTm (var vz) k)) (nsuc (var vz))
+⊢gcd-descend : {Γ : Ctx} {i : Var ⌊ Γ ⌋} {k : RTm ⌊ Γ ⌋} →
+               Γ ⊢ var i ∷ Nat → Γ ⊢ k ∷ Nat →
+               Γ ⊢ natrec (reflTm (var i)) (monusStep i) k
+                 ∷ Hom Nat (nsuc (monusTm (var i) k)) (nsuc (var i))
 ⊢gcd-descend = ⊢div-descend
 
 ------------------------------------------------------------------------
@@ -266,3 +269,137 @@ monus-computes : {Γ : Cx} → monusTm {Γ} n3 n1 ⟶* n2
 monus-computes =
   ⟶*-trans (monus-suc n3 nzero)
     (⟶*-trans (⟶*-natrecⁿ (monus-zero n3)) (pred-suc n2))
+
+------------------------------------------------------------------------
+-- ★★★★★ 8. `div` ITSELF, ASSEMBLED.
+--
+--     div m (suc k) = if m < suc k then 0
+--                     else suc (div (m ∸ suc k) (suc k))
+--
+--   via the bounded auxiliary  `(n : Nat) → (m : Nat) → m ≤ n → Nat`.
+--
+--   ★ HOW THE CASE SPLIT KEEPS THE INDUCTION HYPOTHESIS.  `m` must be
+--     destructured (to know `m = suc m''`, so the recursive argument is
+--     `m'' ∸ k` and `⊢div-descend` applies), but `le : m ≤ suc n`
+--     MENTIONS `m`.  So `m` is eliminated with the motive
+--
+--         λ m. (m ≤ suc n) → Nat
+--
+--     and the result is APPLIED to `le`.  The proof rides through the
+--     case split as the motive's argument.  No smart-case needed — the
+--     ordinary `natrec` motive is expressive enough.
+--
+--   ★ AND THE DESCENT IS `ordtr` AGAIN: from `m'' ∸ k ≤ m''` (§4) and
+--     `m'' ≤ n` (which is `le : suc m'' ≤ suc n` after ONE reduction)
+--     conclude `m'' ∸ k ≤ n`, which is what the IH wants.
+------------------------------------------------------------------------
+
+-- the divisor is `suc k`, with `k` the context variable.
+Γ₃ : Ctx
+Γ₃ = ◇ ▹ Nat
+
+-- `(m : Nat) → m ≤ n → Nat`, with vz = n, vs vz = k.
+divAuxMot : RTy (ε ∙ ∙)
+divAuxMot = Π Nat (Π (Hom Nat (var vz) (var (vs vz))) Nat)
+
+⊢divAuxMot : (Γ₃ ▹ Nat) ⊢ty divAuxMot
+⊢divAuxMot =
+  ty-Π ty-Nat (ty-Π (ty-Hom ty-Nat (⊢var here) (⊢var (there here))) ty-Nat)
+
+-- n = 0: `m ≤ 0` forces `m = 0`, and `0 div anything = 0`.
+divZBr : RTm (ε ∙)
+divZBr = lam (lam nzero)
+
+-- ★ the m-eliminator's motive: `λ m. (m ≤ suc n) → Nat`.
+--   vz = m'', vs = m, vs² = IH, vs³ = n, vs⁴ = k.
+divInnerMot : RTy (ε ∙ ∙ ∙ ∙ ∙)
+divInnerMot = Π (Hom Nat (var vz) (nsuc (var (vs (vs (vs vz)))))) Nat
+
+divInnerZ : RTm (ε ∙ ∙ ∙ ∙)
+divInnerZ = lam nzero
+
+-- vz = le, vs = IH2, vs² = j, vs³ = m, vs⁴ = IH, vs⁵ = n, vs⁶ = k
+-- (after the `lam` that binds `le`).
+divInnerS : RTm (ε ∙ ∙ ∙ ∙ ∙ ∙)
+divInnerS =
+  lam (natrec nzero
+        (nsuc (app (app (var (vs (vs (vs (vs (vs (vs vz)))))))
+                        (monusTm (var (vs (vs (vs (vs vz)))))
+                                 (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))
+                   (ordtr (monusTm (var (vs (vs (vs (vs vz)))))
+                                   (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))
+                          (var (vs (vs (vs (vs vz)))))
+                          (var (vs (vs (vs (vs (vs (vs (vs vz))))))))
+                          (natrec (reflTm (var (vs (vs (vs (vs vz))))))
+                                  (monusStep (vs (vs (vs (vs vz)))))
+                                  (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))
+                          (var (vs (vs vz))))))
+        (monusTm (nsuc (var (vs (vs vz)))) (var (vs (vs (vs (vs (vs (vs vz))))))))) 
+
+divSBr : RTm (ε ∙ ∙ ∙)
+divSBr = lam (natrec divInnerZ divInnerS (var vz))
+
+divAuxTm : RTm (ε ∙) → RTm (ε ∙)
+divAuxTm n = natrec divZBr divSBr n
+
+-- ── the derivations ──────────────────────────────────────────────────
+
+⊢divZBr : Γ₃ ⊢ divZBr ∷ subTy (single nzero) divAuxMot
+⊢divZBr = ⊢lam ty-Nat (⊢lam (ty-Hom ty-Nat (⊢var here) ⊢nzero) ⊢nzero)
+
+⊢divInnerMot : ((((Γ₃ ▹ Nat) ▹ divAuxMot) ▹ Nat) ▹ Nat) ⊢ty divInnerMot
+⊢divInnerMot =
+  ty-Π (ty-Hom ty-Nat (⊢var here)
+                      (⊢nsuc (⊢var (there (there (there here))))))
+       ty-Nat
+
+⊢divInnerZ : (((Γ₃ ▹ Nat) ▹ divAuxMot) ▹ Nat) ⊢ divInnerZ
+               ∷ subTy (single nzero) divInnerMot
+⊢divInnerZ =
+  ⊢lam (ty-Hom ty-Nat ⊢nzero (⊢nsuc (⊢var (there (there here))))) ⊢nzero
+
+-- ★ the heart: the recursive call, and its descent certificate.
+⊢divInnerS : (((((Γ₃ ▹ Nat) ▹ divAuxMot) ▹ Nat) ▹ Nat) ▹ divInnerMot)
+               ⊢ divInnerS ∷ subTy nrs divInnerMot
+⊢divInnerS =
+  ⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢var (there here)))
+                      (⊢nsuc (⊢var (there (there (there (there here)))))))
+    (⊢natrec ty-Nat ⊢nzero
+      (⊢nsuc (⊢app (⊢app iH dArg)
+                   -- ★★ THE DESCENT: `j ∸ k ≤ j` composed with `j ≤ n`
+                   --    (which is `le : suc j ≤ suc n` after ONE step).
+                   (⊢ordtr dArg dJ dN
+                           (⊢monus-le dJ dK)
+                           (⊢conv dLe (red→≅ᵀ (stepᵀ (Hom-Nat-ss _ _) doneᵀ))))))
+      (⊢monus (⊢nsuc (⊢var (there (there here))))
+              (⊢var (there (there (there (there (there (there here))))))))) 
+  where
+    iH   = ⊢var (there (there (there (there (there (there here))))))
+    dJ   = ⊢var (there (there (there (there here))))
+    dN   = ⊢var (there (there (there (there (there (there (there here)))))))
+    dK   = ⊢var (there (there (there (there (there (there (there (there here))))))))
+    dLe  = ⊢var (there (there here))
+    dArg = ⊢monus dJ dK
+
+⊢divSBr : ((Γ₃ ▹ Nat) ▹ divAuxMot) ⊢ divSBr ∷ subTy nrs divAuxMot
+⊢divSBr =
+  ⊢lam ty-Nat (⊢natrec ⊢divInnerMot ⊢divInnerZ ⊢divInnerS (⊢var here))
+
+-- ★★ the bounded auxiliary for `div`.
+⊢divAux : {n : RTm ⌊ Γ₃ ⌋} → Γ₃ ⊢ n ∷ Nat →
+          Γ₃ ⊢ divAuxTm n ∷ subTy (single n) divAuxMot
+⊢divAux dn = ⊢natrec ⊢divAuxMot ⊢divZBr ⊢divSBr dn
+
+------------------------------------------------------------------------
+-- ★★★★★ …AND `div` ITSELF: instantiate the bound at `m`, discharge
+--       `m ≤ m` with reflexivity.  A closed, well-typed division.
+------------------------------------------------------------------------
+
+divTm : RTm ⌊ Γ₃ ⌋ → RTm ⌊ Γ₃ ⌋
+divTm m = app (app (divAuxTm m) m) (reflTm m)
+
+⊢div : {m : RTm ⌊ Γ₃ ⌋} → Γ₃ ⊢ m ∷ Nat → Γ₃ ⊢ divTm m ∷ Nat
+⊢div {m = m} dm =
+  ⊢app (⊢app (⊢divAux dm) dm)
+       (subst (λ z → Γ₃ ⊢ reflTm m ∷ Hom Nat m z)
+              (sym (wk-single m)) (⊢le-refl dm))
