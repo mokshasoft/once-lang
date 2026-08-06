@@ -6869,3 +6869,68 @@ keeps it small is worth recording before someone starts:
 
 Take the `c-ret` bracket fact (its budget IS the reservation in force) in the
 same module: one induction, two consumers.
+
+## D095: The Return Correspondence, and What the Call Still Needs
+
+**Date**: 2026-08-06 · **Plan**: 0.54 rung D · **Status**: return LANDED
+
+`events-running-ret` is discharged. `c-ret b` ↔ `add rsp, 8b ; ret` is proved
+end to end (`ConcFlatSim.ret-step` over the new `block-step-c-ret`), and every
+piece comes from D093's component:
+
+| what the step needs | where it comes from |
+|---|---|
+| the ADDRESS the `ret` reads | `rsp-eq` + the bracket ⇒ `add rsp,8b` lands on the window END |
+| the VALUE there | `RetAddrs`' head: `x86-off prog rpc` |
+| `%rsp` after the pop | `GapNext`: the caller's base is one slot above that cell |
+| the post-state's component | the pre-state's TAIL — `frames-of (leave-frame alloc)` IS `saved-frames alloc` |
+
+### `GapNext` belongs in the component, not in `StackWindows`
+
+The return needs the one-slot separation as an EQUALITY; the floor thread gives
+only `≤`. Putting it in `RetAddrs`' cons row means it travels with the very slot
+it describes — the return address and the gap ARE the same slot — and the ~37
+carriers needed no change at all, only the three transports.
+
+### What replaced the gap
+
+Two facts about the ABSTRACT machine, neither mentioning `X.State`:
+`ret-site-owes` (a reachable `c-ret` owes a return — D091's statement, now
+true-and-provable because the call is modelled) and `ret-budget-matches` (the
+released budget IS the reservation in force — `ir-to-trace'` writes one `bb`
+twice). Both route through the same emitter induction as
+`emitted-thunk-guarded`.
+
+### THE CALL'S BLOCKER, located: D081 is a FICTION in the trusted semantics
+
+    Semantics.effectiveAddr s (rip+label n) = idx n   -- "resolved by linker"
+
+A code address encodes as the LABEL NUMBER. `instr-load-code-addr ℓ` writes
+`SV-Code ℓ`, `enc-sv-at am (SV-Code ℓ) = idx ℓ`, and the concrete `lea rax,
+.L_thunk_ℓ(%rip)` produces the same number — so those two agree today, which is
+exactly why the fiction has survived. But `call *0x8(%r12)` then JUMPS to that
+number, while the body sits at `x86-off prog j` for `find-thunk prog ℓ ≡ just j`.
+`idx ℓ ≡ x86-off prog j` is false, so no proof of `events-running-call` exists
+while the fiction stands. This is D081's open question, owned by this gap
+exactly as `FlatCorrespondence`'s comment says.
+
+**The fix makes the model MORE faithful, not less**: a real linker DOES resolve
+`.L_thunk_ℓ(%rip)` to the body's address, so `execInstr prog s (lea r (rip+label
+ℓ))` should resolve through `X.find-label prog (thunk ℓ)` — the program is
+already in scope there — and halt when absent, as `jmp` does. Then
+`FlatComposition.find-thunk-pres` (already proven) bridges the abstract scan to
+that resolution modulo `x86-off`, which is precisely the call's jump target.
+
+Cost, measured rather than guessed:
+
+- one clause in `…X86-64.Semantics` (the `lea` of a `rip+label`);
+- the ENCODING must carry a code map: `AddrMap` is `HeapLocation → ℕ` today and
+  `enc-sv-at am (SV-Code n) = idx n` cannot see one. ~56 `haddr hv _`
+  applications and ~37 `enc-*-at` sites — mechanical, but it is the encoding
+  layer of the whole correspondence;
+- the call's own block-step: it WRITES memory (the pushed return address, which
+  EXTENDS `RetAddrs` with a new head), pushes a frame, and needs one resource
+  premise (`slot-size ≤ %rsp` — room for the return address, a `StackRoom`-class
+  parameter per D087);
+- `GapNext` for the new head is then `frame-base cur ∸ slot-size + slot-size ≡
+  frame-base cur`, the same no-underflow fact that premise supplies.
