@@ -33,25 +33,26 @@ open import poc.OCP0009.NbEPDirDBExamplesLex
 
 ΓSS : Ctx
 ΓSS =
-  ((((((((Γ₅ ▹ Nat) ▹ lexAuxMot) ▹ Nat) ▹ Nat) ▹ M1lex) ▹ subTy nrs Nat)
+  ((((((((Γ₅ ▹ Nat) ▹ lexAuxMot) ▹ Nat) ▹ Nat) ▹ M1lex) ▹ subTy nrs (El (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))
       ▹ subTy (extS nrs)
-          (Hom Nat (app (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var vz))
+          (Hom Nat (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var vz))
                    (nsuc (var (vs (vs (vs (vs vz)))))))) 
       ▹ subTy (extS (extS nrs))
-          (Hom Nat (app (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs vz)))
+          (Hom Nat (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs vz)))
                    (var (vs (vs vz)))))
 
 lexSSrec1 : RTm ⌊ ΓSS ⌋
 lexSSrec1 =
-  lam (lam (app (app (app (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz)))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs vz)))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var vz) (var (vs (vs (vs vz)))))) (natrec unit (var vz) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz))))))
+  lam (lam (app (app (app (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs vz)))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs vz)))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var vz) (var (vs (vs (vs vz)))))) (natrec unit (var vz) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs vz))))))
 
 REC1TSS : RTy ⌊ ΓSS ⌋
-REC1TSS = subTy (single (var (vs (vs vz)))) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) REC1T)))))))))
+REC1TSS = subTy (single (var (vs (vs vz)))) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) REC1T))))))))
 
 lexSSrec2 : RTm ⌊ ΓSS ⌋
 lexSSrec2 =
-  lam (lam (lam (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs vz)))) (ordtr (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs (vs (vs (vs vz))))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz)) (var (vs (vs (vs (vs vz))))))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs (vs vz))))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz) (var (vs (vs (vs vz))))))))
+  lam (lam (lam (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs vz)))) (ordtr (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs (vs vz))))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz)) (var (vs (vs (vs (vs vz))))))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs (vs vz))))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz) (var (vs (vs (vs vz))))))))
 
 REC2TSS : RTy ⌊ ΓSS ⌋
 REC2TSS =
-  subTy (single lexSSrec1) (subTy (extS (single (var (vs (vs vz))))) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) REC2T))))))))))
+  subTy (single lexSSrec1) (subTy (extS (single (var (vs (vs vz)))))
+    (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) REC2T)))))))))

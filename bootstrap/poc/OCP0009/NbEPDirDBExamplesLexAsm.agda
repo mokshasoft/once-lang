@@ -31,7 +31,7 @@ open import poc.OCP0009.NbEPDirDBType
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesLex
-  using ( Γ₅; lexAuxMot; M0lex; M1lex; ⊢lexAuxMot; ⊢M0lex; ⊢M1lex
+  using ( Γ₅; LStepT; lexAuxMot; M0lex; M1lex; ⊢lexAuxMot; ⊢M0lex; ⊢M1lex
         ; lexZBr; lexSBr; lexAuxTm )
 open import poc.OCP0009.NbEPDirDBExamplesLexZZ using ( ⊢lexZZ )
 open import poc.OCP0009.NbEPDirDBExamplesLexZS using ( ⊢lexZS )
@@ -39,18 +39,24 @@ open import poc.OCP0009.NbEPDirDBExamplesLexSZ using ( ⊢lexSZ )
 open import poc.OCP0009.NbEPDirDBExamplesLexSS using ( ⊢lexSS )
 
 -- the n₁ = 0 branch of the OUTER recursion: bind n₂, recurse on it.
-⊢lexZBr : Γ₅ ⊢ lexZBr ∷ subTy (single nzero) lexAuxMot
-⊢lexZBr = ⊢lam ty-Nat (⊢natrec ⊢M0lex ⊢lexZZ ⊢lexZS (⊢var here))
+⊢lexZBr : (stpTm : RTm ⌊ Γ₅ ⌋) (dstp : Γ₅ ⊢ stpTm ∷ LStepT) →
+          Γ₅ ⊢ lexZBr stpTm ∷ subTy (single nzero) lexAuxMot
+⊢lexZBr stpTm dstp =
+  ⊢lam ty-Nat (⊢natrec ⊢M0lex (⊢lexZZ stpTm dstp) (⊢lexZS stpTm dstp) (⊢var here))
 
 -- the n₁ = suc branch: same shape, at the motive whose μ₁ bound is suc n₁'.
-⊢lexSBr : ((Γ₅ ▹ Nat) ▹ lexAuxMot) ⊢ lexSBr ∷ subTy nrs lexAuxMot
-⊢lexSBr = ⊢lam ty-Nat (⊢natrec ⊢M1lex ⊢lexSZ ⊢lexSS (⊢var here))
+⊢lexSBr : (stpTm : RTm ⌊ Γ₅ ⌋) (dstp : Γ₅ ⊢ stpTm ∷ LStepT) →
+          ((Γ₅ ▹ Nat) ▹ lexAuxMot) ⊢ lexSBr stpTm ∷ subTy nrs lexAuxMot
+⊢lexSBr stpTm dstp =
+  ⊢lam ty-Nat (⊢natrec ⊢M1lex (⊢lexSZ stpTm dstp) (⊢lexSS stpTm dstp) (⊢var here))
 
 -- ★ THE OUTER RECURSION.  Generic in the bound, as `⊢strong-base'` is —
 --   so `lexrec` can instantiate it at μ₁ x.
-⊢lexAux : {n : RTm ⌊ Γ₅ ⌋} → Γ₅ ⊢ n ∷ Nat →
-          Γ₅ ⊢ lexAuxTm n ∷ subTy (single n) lexAuxMot
-⊢lexAux dn = ⊢natrec ⊢lexAuxMot ⊢lexZBr ⊢lexSBr dn
+⊢lexAux : (stpTm : RTm ⌊ Γ₅ ⌋) (dstp : Γ₅ ⊢ stpTm ∷ LStepT) →
+          {n : RTm ⌊ Γ₅ ⌋} → Γ₅ ⊢ n ∷ Nat →
+          Γ₅ ⊢ lexAuxTm stpTm n ∷ subTy (single n) lexAuxMot
+⊢lexAux stpTm dstp dn =
+  ⊢natrec ⊢lexAuxMot (⊢lexZBr stpTm dstp) (⊢lexSBr stpTm dstp) dn
 
 ------------------------------------------------------------------------
 -- ★★ LEXREC ITSELF:  lexrec x = aux (μ₁ x) (μ₂ x) x (le-refl _) (le-refl _)
@@ -60,24 +66,16 @@ open import poc.OCP0009.NbEPDirDBExamplesLexSS using ( ⊢lexSS )
 --   needs nothing but `μ₁ x ≤ μ₁ x` and `μ₂ x ≤ μ₂ x`.
 ------------------------------------------------------------------------
 
-lexrecTm : RTm ⌊ Γ₅ ⌋ → RTm ⌊ Γ₅ ⌋
-lexrecTm x =
-  app (app (app (app (lexAuxTm (app (var (vs (vs vz))) x))
-                     (app (var (vs vz)) x))
-                x)
-           (reflTm (app (var (vs (vs vz))) x)))
-      (reflTm (app (var (vs vz)) x))
+lexrecTm : RTm ⌊ Γ₅ ⌋ → RTm ⌊ Γ₅ ⌋ → RTm ⌊ Γ₅ ⌋
+lexrecTm stpTm x =
+  app (app (app (app (lexAuxTm stpTm (app (var (vs vz)) x)) (app (var vz) x)) x) (reflTm (app (var (vs vz)) x))) (reflTm (app (var vz) x))
 
--- ★ A CONCRETE SANITY INSTANCE, kept because it is the cheapest possible
---   regression test on the whole stack: if any layer breaks, this fails in
---   seconds, whereas the generic `⊢lexrec` below drags in the transports.
-⊢lexrec-nzero : Γ₅ ⊢ lexrecTm nzero ∷ El (app (var (vs (vs (vs vz)))) nzero)
-⊢lexrec-nzero =
-  ⊢app (⊢app (⊢app (⊢app (⊢lexAux (⊢app (⊢var (there (there here))) ⊢nzero))
-                         (⊢app (⊢var (there here)) ⊢nzero))
-                   ⊢nzero)
-             (⊢le-refl (⊢app (⊢var (there (there here))) ⊢nzero)))
-       (⊢le-refl (⊢app (⊢var (there here)) ⊢nzero))
+-- ⚠ `⊢lexrec-nzero` IS GONE, and not because it broke — because at a
+--   GENERIC carrier it cannot be stated.  It instantiated x := nzero,
+--   which typechecked only while the carrier WAS `Nat`.  `El A` for a
+--   context variable `A : U` has no closed inhabitant, so the cheapest
+--   whole-stack instance is now an actual carrier: see the Ackermann
+--   file, which instantiates A := ⌜Σ⌝ ⌜Nat⌝ ⌜Nat⌝.
 
 ------------------------------------------------------------------------
 -- ★★ THE GENERIC `⊢lexrec`.
@@ -110,22 +108,8 @@ cancel2 t =
         Γ₅ ⊢ m ∷ Hom Nat t u → Γ₅ ⊢ m ∷ Hom Nat t' u'
 ⊢Hom₂ refl refl d = d
 
-⊢lexrec : {x : RTm ⌊ Γ₅ ⌋} → Γ₅ ⊢ x ∷ Nat →
-          Γ₅ ⊢ lexrecTm x ∷ El (app (var (vs (vs (vs vz)))) x)
-⊢lexrec {x} dx =
-  subst (λ t → Γ₅ ⊢ lexrecTm x ∷ El (app (var (vs (vs (vs vz)))) t))
-        (cancel2 x {reflTm (app (var (vs (vs vz))) x)}
-                   {reflTm (app (var (vs vz)) x)})
-        (⊢app (⊢app (⊢app (⊢app (⊢lexAux (⊢app (⊢var (there (there here))) dx))
-                                (⊢app (⊢var (there here)) dx))
-                          dx)
-                    (subst (λ t → Γ₅ ⊢ reflTm (app (var (vs (vs vz))) x)
-                                     ∷ Hom Nat (app (var (vs (vs vz))) x)
-                                               (app (var (vs (vs vz))) t))
-                           (sym (cancel2 x {app (var (vs vz)) x} {x}))
-                           (⊢le-refl (⊢app (⊢var (there (there here))) dx))))
-              (⊢Hom₂ (cong (app (var (vs vz)))
-                            (sym (wk-single {v = reflTm (app (var (vs (vs vz))) x)} x)))
-                     (cong (app (var (vs vz)))
-                            (sym (cancel2 x {x} {reflTm (app (var (vs (vs vz))) x)})))
-                     (⊢le-refl (⊢app (⊢var (there here)) dx))))
+⊢lexrec : (stpTm : RTm ⌊ Γ₅ ⌋) (dstp : Γ₅ ⊢ stpTm ∷ LStepT) →
+          {x : RTm ⌊ Γ₅ ⌋} → Γ₅ ⊢ x ∷ El (var (vs (vs (vs vz)))) →
+          Γ₅ ⊢ lexrecTm stpTm x ∷ El (app (var (vs (vs vz))) x)
+⊢lexrec stpTm dstp {x} dx =
+  subst (λ t → Γ₅ ⊢ lexrecTm stpTm x ∷ El (app (var (vs (vs vz))) t)) (cancel2 x {reflTm (app (var (vs vz)) x) } {reflTm (app (var vz) x) }) (⊢app (⊢app (⊢app (⊢app (⊢lexAux stpTm dstp (⊢app (⊢var (there here)) dx)) (⊢app (⊢var here) dx)) dx) (subst (λ t → Γ₅ ⊢ reflTm (app (var (vs vz)) x) ∷ Hom Nat (app (var (vs vz)) x) (app (var (vs vz)) t)) (sym (cancel2 x {app (var vz) x} {x})) (⊢le-refl (⊢app (⊢var (there here)) dx)))) (⊢Hom₂ (cong (app (var vz)) (sym (wk-single {v = reflTm (app (var (vs vz)) x) } x))) (cong (app (var vz)) (sym (cancel2 x {x} {reflTm (app (var (vs vz)) x) }))) (⊢le-refl (⊢app (⊢var here) dx))))
