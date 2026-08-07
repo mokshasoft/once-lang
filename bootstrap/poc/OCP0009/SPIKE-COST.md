@@ -214,3 +214,44 @@ is a claim about the STATEMENT, not something that has been cashed out.
   instantiation entirely. Duplicates the whole branch stack, but a CLOSED
   code is cheap (§2: `El ⌜Nat⌝` at 4 slots is 1.44 GB), so it would fit.
   Buys Ackermann, buys nothing about genericity.
+
+## 8. Option C, half-landed: the core is green, the transports are the bill
+
+`NbEPDirDBExamplesLexC` is option C's core, machine-checked at
+**3.95 s / 0.35 GB** (the shipped `Lex.agda`, option B, is 9.9 s / 1.11 GB):
+
+* the types as combinators over the data — `auxBody`, `rec1T`, `rec2T`,
+  `lStepT` — with every binder's weakening written out, since abstract
+  terms do not compute;
+* `module Lx (Δ : Ctx) (cA cP μ₁ μ₂ stp : RTm ⌊ Δ ⌋) (five derivations)`
+  holding the three motives, all four branch terms, the `natrec` layers
+  and the motive `⊢ty` derivations.
+
+⚠ **What S13 did not exercise, and what stops this being a drop-in.**
+`⊢natrec` instantiates a motive, i.e. applies `subTy (single v)` to it.
+With `Γ₅` that computed, because the data were context VARIABLES and
+`subTy` on a variable is a lookup. With abstract terms it does not:
+`subTy (single v)` has to push through `auxBody`'s own weakenings, and
+
+    subTm (single v) (renTm vs a) ≡ a
+
+is `wk-single` — **propositional, not definitional**. So every motive
+boundary needs a cast. There are about seven: `⊢lexZZ`/`⊢lexZS` against
+`M0lex`, `⊢lexSZ`/`⊢lexSS` against `M1lex`, `⊢lexZBr`/`⊢lexSBr` against
+`lexAuxMot`, and `⊢lexAux`.
+
+The kit needed is 3–4 naturality lemmas of the shape
+
+    subTm (extSᵏ (single v)) (renTm vsᵏ⁺¹ a) ≡ renTm vsᵏ a
+
+each a `trans` of `subTm-renTm` / `subTm-subTm` / `subTm-id` — exactly the
+shape of the existing `cancel2` in `LexAsm`, so the pattern is known and
+the machinery (`⊢-cast`, `wk-single`) is already there. It is bounded
+work, but it is a lemma-proving session, not a mechanical renumbering.
+
+**So the honest scorecard for C:** the leaf derivations get 2× cheaper and
+the instantiation blocker disappears, at the price of a transport layer at
+every motive boundary. The 2× is measured; the transport layer is
+specified but unwritten. ⚠ Do not quote the S13 number as the cost of C
+until the branches are through — S13 is a leaf, and leaves are where C
+looks best.
