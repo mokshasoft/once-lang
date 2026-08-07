@@ -1,6 +1,6 @@
 # OCP-0009 · Handoff — dependent types for Once (dHoTT path)
 
-> ℹ **Current status lives in `HANDOFF-2026-08-05.md`.** This document (the broad design
+> ℹ **Current status lives in `HANDOFF-2026-08-07.md`.** This document (the broad design
 > arc) is still accurate; read it for context, not for what to do next. §3's raw-M3c item
 > and §4's recommendation are unchanged and still correct — note especially that §3 already
 > says the raw-M3c rung is **faithfulness, not the consistency result**.
