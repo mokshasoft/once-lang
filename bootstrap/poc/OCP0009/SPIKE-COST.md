@@ -113,27 +113,56 @@ open context, and it is why the branch contexts — `Γ₅`'s 5 slots plus the
   so the probed types come out as
   `subTy (extSⁱ σ) (subTy (extSʲ σ') (renTy (extRᵏ vs)ⁿ REC_Tbodyᵐ))`.
 
-## 4. Candidate fixes, untested
+## 4. The fix, MEASURED: take `stp` out of the context
 
-Ranked by expected payoff. **None of these has been measured** — that is
-the next spike, and given §2b the one to try first is the one that removes
-context slots.
+`SpikeCostS12` — identical to S1 (generic carrier), except `Γ₅` has FOUR
+slots instead of five because `stp : LStepT` is gone. `⊢lexZZrec1` never
+references `stp`, so nothing else about the derivation changes; every
+index crossing `stp`'s old position drops by one.
 
-1. **Take `stp` out of the context.** It is only ever applied, never bound
-   over. If the branch lemmas take `Γ ⊢ stp ∷ LStepT` as an Agda-level
-   argument instead of reading a context variable, `Γ₅` loses a slot →
-   ~1.7×. `cP`/`μ₁`/`μ₂` cannot follow: they occur inside TYPES, so as
-   Agda-level `RTm`s they would need `renTm vs` weakening under every
-   binder, and those do not collapse definitionally — that is the
-   transport trap, and it is exactly why they are context variables.
-2. **Bundle `μ₁`/`μ₂` into one `Π (El A) (Σ' Nat Nat)` slot.** Another
-   slot gone, at the price of `fst`/`snd` noise at each use.
-3. **State the peeled types in REDUCED form** rather than as
-   `subTy`/`renTy` chains. Every `renTy`/`subTy` in a stored type is a
-   `Def` application carrying two `Cx` arguments, and `Cx` is UNARY — so
-   each one carries a numeral of size = context depth. This is the most
-   plausible concrete mechanism behind §2b and the cheapest to test.
-4. Non-unary `Cx`/`Var`. Deep kernel change; would invalidate a lot.
-   Note [[lkp-computed-lookup-is-slower]]: moving type information out of
-   the indices into a lookup FUNCTION was tried on 2026-08-06 and is
-   slower. This is a different change, but adjacent — be suspicious.
+| variant | Γ₅ slots | time | RSS |
+|---|---|---|---|
+| S1 | 5 (with `stp`), generic carrier | 42.5 s | 3.91 GB |
+| **S12** | **4 (no `stp`), generic carrier** | **8.4 s** | **0.88 GB** |
+| S3 | 4 + `stp`, ℕ carrier — the old baseline | 8.5 s | 0.86 GB |
+
+**5.1× time, 4.5× memory, from removing one slot** — and it lands exactly
+on the ℕ-carrier baseline. ★ **The generic carrier is then FREE.** All of
+its apparent cost was the interaction with depth: `El (var (vs^k vz))` is
+itself O(depth), it appears in every stored implicit, and adding a slot
+grows both the count and the size. That is why one slot is worth 1.73×
+with a CLOSED carrier (§2b) but 4.5× with a VARIABLE one.
+
+### Why this is available at all
+
+`stp` is only ever APPLIED, never bound over. So it need not be a context
+variable: the branch lemmas can take `Γ₅ ⊢ stpTm ∷ LStepT` as an ordinary
+Agda-level argument and weaken it with `⊢wk` (`NbEPDirDBSubj:942`,
+`Γ ⊢ t ∷ A → (Γ ▹ B) ⊢ renTm vs t ∷ renTy vs A`). The weakened *type*
+still computes, because `LStepT` is concrete; only the term becomes a
+stuck `renTm vs^k stpTm`, which is small and occurs once per assembly.
+
+`cP`/`μ₁`/`μ₂` CANNOT follow — they occur inside TYPES, so as Agda-level
+`RTm`s they would need `renTm vs` weakening under every binder, and those
+do not collapse definitionally. That is the transport trap, and it is
+exactly why they are context variables.
+
+## 5. Two things NOT to do
+
+* ⛔ **Do not state types in REDUCED form.** `SpikeCostS11` is S1 with
+  `ΓZZ`'s slots and `REC1TZZ` written as plain `Π`/`Hom`/`El` instead of
+  `subTy`/`renTy` chains. It **OOMs** where S1 finishes in 3.91 GB.
+  `SpikeCostEq` proves by `refl` that the hand-reduced forms really are
+  definitionally the chains, so this is a genuine cost inversion, not a
+  wrong type: Agda STORES the small unreduced chain and normalises on
+  demand, so writing the normal form makes every stored implicit big.
+  **Keep the chains.** (This was candidate #3 — it is backwards.)
+* ⛔ **Do not move type information out of the indices into a lookup
+  function.** Tried 2026-08-06, slower — see the `lkp` finding.
+
+## 6. Still open
+
+* **Bundle `μ₁`/`μ₂` into one `Π (El A) (Σ' Nat Nat)` slot** — another
+  slot, at the price of `fst`/`snd` noise per use. Unmeasured, and after
+  §4 there may be no need.
+* Non-unary `Cx`/`Var`. Deep kernel change; would invalidate a lot.
