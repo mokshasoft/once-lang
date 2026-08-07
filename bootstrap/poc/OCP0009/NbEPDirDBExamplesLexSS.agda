@@ -23,15 +23,12 @@ open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesOrd
   using ( ⊢strong-base'; ⊢strong-step )
 open import poc.OCP0009.NbEPDirDBExamplesLex
-  using ( Γ₅; M1lex; lexAuxMot; lexSS )
+  using ( Γ₅; M1lex; LStepT; lexAuxMot; lexSS )
+open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBExamplesLexSS1 using ( ⊢lexSSrec1 )
 open import poc.OCP0009.NbEPDirDBExamplesLexSS2 using ( ⊢lexSSrec2 )
 
-⊢lexSS : (((((Γ₅ ▹ Nat) ▹ lexAuxMot) ▹ Nat) ▹ Nat) ▹ M1lex) ⊢ lexSS ∷ subTy nrs M1lex
-⊢lexSS =
-  ⊢lam ty-Nat
-    (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var here)) (⊢nsuc (⊢var (there (there (there (there (there here))))))))
-      (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there here))) (⊢nsuc (⊢var (there (there (there here))))))
-        (⊢app (⊢app (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there (there here))))
-              ⊢lexSSrec1)
-              ⊢lexSSrec2)))
+⊢lexSS : (stpTm : RTm ⌊ Γ₅ ⌋) (dstp : Γ₅ ⊢ stpTm ∷ LStepT) →
+         (((((Γ₅ ▹ Nat) ▹ lexAuxMot) ▹ Nat) ▹ Nat) ▹ M1lex) ⊢ lexSS stpTm ∷ subTy nrs M1lex
+⊢lexSS stpTm dstp =
+  ⊢lam (ty-El (⊢var (there (there (there (there (there (there (there (there here)))))))))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var here)) (⊢nsuc (⊢var (there (there (there (there (there here)))))))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there here))) (⊢nsuc (⊢var (there (there (there here)))))) (⊢app (⊢app (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dstp))))))))) (⊢var (there (there here)))) ⊢lexSSrec1) ⊢lexSSrec2)))

@@ -26,7 +26,8 @@ open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesOrd
   using ( ⊢strong-base'; ⊢strong-step )
 open import poc.OCP0009.NbEPDirDBExamplesLex
-  using ( Γ₅; REC1T; REC2T; M1lex; lexAuxMot; lexSZ )
+  using ( Γ₅; REC1T; REC2T; LStepT; M1lex; lexAuxMot; lexSZ )
+open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 
 ------------------------------------------------------------------------
 -- ctx after the three ⊢lams: vz=lt, vs=le, vs²=x, vs³=n₂, vs⁴=IH₁,
@@ -35,12 +36,12 @@ open import poc.OCP0009.NbEPDirDBExamplesLex
 
 ΓSZ : Ctx
 ΓSZ =
-  ((((((Γ₅ ▹ Nat) ▹ lexAuxMot) ▹ Nat) ▹ subTy (single nzero) Nat)
+  ((((((Γ₅ ▹ Nat) ▹ lexAuxMot) ▹ Nat) ▹ subTy (single nzero) (El (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))
       ▹ subTy (extS (single nzero))
-          (Hom Nat (app (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var vz))
+          (Hom Nat (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var vz))
                    (nsuc (var (vs (vs (vs (vs vz)))))))) 
       ▹ subTy (extS (extS (single nzero)))
-          (Hom Nat (app (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs vz)))
+          (Hom Nat (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs vz)))
                    (var (vs (vs vz)))))
 
 -- ★ THE OTHER HALF OF THE LEXICOGRAPHIC ORDER.  `rec₁` calls the OUTER IH
@@ -49,47 +50,37 @@ open import poc.OCP0009.NbEPDirDBExamplesLex
 --   then μ₂ y ≤ μ₂ y by `⊢le-refl`.  Dropping n₁ buys an arbitrary n₂.
 lexSZrec1 : RTm ⌊ ΓSZ ⌋
 lexSZrec1 =
-  lam (lam (app (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz)))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs vz)))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz) (var (vs (vs (vs vz)))))) (natrec unit (var vz) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))))))
+  lam (lam (app (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz)))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs vz)))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz) (var (vs (vs (vs vz)))))) (natrec unit (var vz) (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz))))))
 
 REC1TSZ : RTy ⌊ ΓSZ ⌋
-REC1TSZ = subTy (single (var (vs (vs vz)))) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) REC1T)))))))
+REC1TSZ =
+  subTy (single (var (vs (vs vz))))
+    (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) (renTy (extR vs) REC1T))))))
 
 ⊢lexSZrec1 : ΓSZ ⊢ lexSZrec1 ∷ REC1TSZ
 ⊢lexSZrec1 =
-  ⊢lam ty-Nat
-    (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there (there (there (there here)))))))))) (⊢var here))) (⊢app (⊢var (there (there (there (there (there (there (there (there (there here)))))))))) (⊢var (there (there (there here))))))
-      (⊢app (⊢app (⊢app (⊢app (⊢var (there (there (there (there (there (there here))))))) (⊢app (⊢var (there (there (there (there (there (there (there (there (there here)))))))))) (⊢var (there here))))
-                        (⊢var (there here)))
-                  (⊢strong-step (⊢app (⊢var (there (there (there (there (there (there (there (there (there (there here))))))))))) (⊢var (there here))) (⊢app (⊢var (there (there (there (there (there (there (there (there (there (there here))))))))))) (⊢var (there (there (there (there here))))))
-                                (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var here) (⊢var (there (there (there here))))))
-            (⊢le-refl (⊢app (⊢var (there (there (there (there (there (there (there (there (there here)))))))))) (⊢var (there here))))))
+  ⊢lam (ty-El (⊢var (there (there (there (there (there (there (there (there (there here))))))))))) (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var here))) (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there (there (there here)))))) (⊢app (⊢app (⊢app (⊢app (⊢var (there (there (there (there (there (there here))))))) (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there here)))) (⊢var (there here))) (⊢strong-step (⊢app (⊢var (there (there (there (there (there (there (there (there (there here)))))))))) (⊢var (there here))) (⊢app (⊢var (there (there (there (there (there (there (there (there (there here)))))))))) (⊢var (there (there (there (there here)))))) (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var here) (⊢var (there (there (there here)))))) (⊢le-refl (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there here))))))
 
 -- `rec₂` is vacuous here: μ₂ y < μ₂ x ≤ 0.
 lexSZrec2 : RTm ⌊ ΓSZ ⌋
 lexSZrec2 =
-  lam (lam (lam (absurd (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs vz)))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs (vs vz))))))) nzero (var vz) (var (vs (vs (vs vz))))))))
+  lam (lam (lam (absurd (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs vz)))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs (vs vz))))))) nzero (var vz) (var (vs (vs (vs vz))))))))
 
 REC2TSZ : RTy ⌊ ΓSZ ⌋
 REC2TSZ =
-  subTy (single lexSZrec1) (subTy (extS (single (var (vs (vs vz))))) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) REC2T))))))))
+  subTy (single lexSZrec1)
+    (subTy (extS (single (var (vs (vs vz)))))
+      (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) (renTy (extR (extR vs)) REC2T)))))))
 
 ⊢lexSZrec2 : ΓSZ ⊢ lexSZrec2 ∷ REC2TSZ
 ⊢lexSZrec2 =
-  ⊢lam ty-Nat
-    (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (there (there (there here)))))))))) (⊢var here)) (⊢app (⊢var (there (there (there (there (there (there (there (there (there here)))))))))) (⊢var (there (there (there here))))))
-      (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there (there (there (there here)))))))))) (⊢var (there here)))) (⊢app (⊢var (there (there (there (there (there (there (there (there (there here)))))))))) (⊢var (there (there (there (there here)))))))
-        (⊢strong-base' (⊢app (⊢var (there (there (there (there (there (there (there (there (there (there (there (there here))))))))))))) (⊢var (there (there here)))) (⊢app (⊢var (there (there (there (there (there (there (there (there (there (there here))))))))))) (⊢var (there (there here))))
-                       (⊢app (⊢var (there (there (there (there (there (there (there (there (there (there here))))))))))) (⊢var (there (there (there (there (there here))))))) (⊢var here) (⊢var (there (there (there here)))))))
+  ⊢lam (ty-El (⊢var (there (there (there (there (there (there (there (there (there here))))))))))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var here)) (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there (there (there here)))))) (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there here)))) (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there (there (there (there here))))))) (⊢strong-base' (⊢app (⊢var (there (there (there (there (there (there (there (there (there (there (there here)))))))))))) (⊢var (there (there here)))) (⊢app (⊢var (there (there (there (there (there (there (there (there (there here)))))))))) (⊢var (there (there here)))) (⊢app (⊢var (there (there (there (there (there (there (there (there (there here)))))))))) (⊢var (there (there (there (there (there here))))))) (⊢var here) (⊢var (there (there (there here)))))))
 
 ------------------------------------------------------------------------
 -- BRANCH (S,0) ASSEMBLED.
 ------------------------------------------------------------------------
 
-⊢lexSZ : (((Γ₅ ▹ Nat) ▹ lexAuxMot) ▹ Nat) ⊢ lexSZ ∷ subTy (single nzero) M1lex
-⊢lexSZ =
-  ⊢lam ty-Nat
-    (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there here))))))) (⊢var here)) (⊢nsuc (⊢var (there (there (there here))))))
-      (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there here))))))) (⊢var (there here))) ⊢nzero)
-        (⊢app (⊢app (⊢app (⊢var (there (there (there (there (there (there here))))))) (⊢var (there (there here))))
-              ⊢lexSZrec1)
-              ⊢lexSZrec2)))
+⊢lexSZ : (stpTm : RTm ⌊ Γ₅ ⌋) (dstp : Γ₅ ⊢ stpTm ∷ LStepT) →
+         (((Γ₅ ▹ Nat) ▹ lexAuxMot) ▹ Nat) ⊢ lexSZ stpTm ∷ subTy (single nzero) M1lex
+⊢lexSZ stpTm dstp =
+  ⊢lam (ty-El (⊢var (there (there (there (there (there (there here)))))))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there here)))))) (⊢var here)) (⊢nsuc (⊢var (there (there (there here)))))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there here)))))) (⊢var (there here))) ⊢nzero) (⊢app (⊢app (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dstp))))))) (⊢var (there (there here)))) ⊢lexSZrec1) ⊢lexSZrec2)))
