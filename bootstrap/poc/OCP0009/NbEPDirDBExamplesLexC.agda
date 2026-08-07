@@ -100,6 +100,12 @@ cong₆ : {A B C D E F G : Set} (f : A → B → C → D → E → F → G)
         f a b c d e h ≡ f a' b' c' d' e' h'
 cong₆ f refl refl refl refl refl refl = refl
 
+cong₅ : {A B C D E F : Set} (f : A → B → C → D → E → F)
+        {a a' : A} {b b' : B} {c c' : C} {d d' : D} {e e' : E} →
+        a ≡ a' → b ≡ b' → c ≡ c' → d ≡ d' → e ≡ e' →
+        f a b c d e ≡ f a' b' c' d' e'
+cong₅ f refl refl refl refl refl = refl
+
 cong₄ : {A B C D E : Set} (f : A → B → C → D → E)
         {a a' : A} {b b' : B} {c c' : C} {d d' : D} →
         a ≡ a' → b ≡ b' → c ≡ c' → d ≡ d' → f a b c d ≡ f a' b' c' d'
@@ -232,12 +238,32 @@ rec2T-ren cA cP μ₁ μ₂ x =
   cong₆ rec2T' refl (ren-w μ₁) (ren-w x) (ren-w² μ₂) (ren-w² x) (ren-w³ cP)
 
 -- `(x : A) → rec₁ → rec₂ → P x`
+lStepT' : {Γ : Cx} (cA : RTm Γ) (r₁ : RTy (Γ ∙)) (r₂ : RTy ((Γ ∙) ∙))
+          (cp : RTm (((Γ ∙) ∙) ∙)) → RTy Γ
+lStepT' cA r₁ r₂ cp =
+  Π (El cA) (Π r₁ (Π r₂ (El (app cp (var (vs (vs vz)))))))
+
 lStepT : {Γ : Cx} (cA cP μ₁ μ₂ : RTm Γ) → RTy Γ
 lStepT cA cP μ₁ μ₂ =
-  Π (El cA)
-    (Π (rec1T (w cA) (w cP) (w μ₁) (var vz))
-       (Π (rec2T (w (w cA)) (w (w cP)) (w (w μ₁)) (w (w μ₂)) (var (vs vz)))
-          (El (app (w (w (w cP))) (var (vs (vs vz)))))))
+  lStepT' cA (rec1T (w cA) (w cP) (w μ₁) (var vz))
+             (rec2T (w (w cA)) (w (w cP)) (w (w μ₁)) (w (w μ₂)) (var (vs vz)))
+             (w (w (w cP)))
+
+-- ★ NEEDED BY EVERY BRANCH ASSEMBLY.  `⊢wk`ing the step gives
+--   `renTy vs (lStepT …)`, which Agda pushes INTO the Π-chain rather than
+--   reassociating; without this the motive arrives as
+--   `renTm (extR³ vs)ⁿ (w³ cP)` and the ⊢app spine's substitutions have
+--   nothing to cancel against.
+lStepT-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (cA cP μ₁ μ₂ : RTm Γ) →
+             renTy ρ (lStepT cA cP μ₁ μ₂)
+           ≡ lStepT (renTm ρ cA) (renTm ρ cP) (renTm ρ μ₁) (renTm ρ μ₂)
+lStepT-ren {ρ = ρ} cA cP μ₁ μ₂ =
+  cong₄ lStepT' refl
+    (trans (rec1T-ren (w cA) (w cP) (w μ₁) (var vz))
+           (cong₄ rec1T (ren-w cA) (ren-w cP) (ren-w μ₁) refl))
+    (trans (rec2T-ren (w (w cA)) (w (w cP)) (w (w μ₁)) (w (w μ₂)) (var (vs vz)))
+           (cong₅ rec2T (ren-w² cA) (ren-w² cP) (ren-w² μ₁) (ren-w² μ₂) refl))
+    (ren-w³ cP)
 
 ------------------------------------------------------------------------
 -- THE COMBINATOR, over an arbitrary ambient context.
