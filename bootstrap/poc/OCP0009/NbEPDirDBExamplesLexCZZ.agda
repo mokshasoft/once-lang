@@ -1,43 +1,37 @@
 ------------------------------------------------------------------------
--- ⚠⚠ WORK IN PROGRESS — THIS FILE DOES NOT COMPILE YET, DELIBERATELY.
---   It is `#10`'s first branch, checkpointed mid-flight because the shape
---   of the remaining work is now known exactly and is worth recording.
---   Everything ABOVE `⊢lexZZ` is green; only the assembly is open.
---   ⚠ Do not "fix" this in a sweep — see HANDOFF-2026-08-07 §5.
---
--- WHAT IS ALREADY WORKING HERE (each was an obstruction, each is closed):
---   * both recursor derivations, ported by `renum.py` in OPTION_C mode —
---     these are the EXPENSIVE ones and they needed NO transports at all,
---     exactly as SpikeCostS13 predicted;
---   * `M0lex-sub`, the motive boundary, via `auxBody-sub` + `wk-single`;
---   * `stp-w⁴`, reassociating `renTy vs⁴ (lStepT …)` into `lStepT (w⁴ …)`
---     via `lStepT-ren` — without it the motive arrives as
---     `renTm (extR³ vs)ⁿ (w³ cP)` and nothing cancels;
---   * `cPcancel`, the three ⊢app substitutions peeling w⁷ cP → w⁴ cP.
---
--- ★ WHAT IS LEFT: one FITTING LEMMA per ⊢app argument, because each
---   argument's expected type is the lStepT slot already substituted:
---
---     rec1-fit : subTy (single x) (rec1T (w⁵ cA) (w⁵ cP) (w⁵ μ₁) (var vz))
---              ≡ rec1T (w⁴ cA) (w⁴ cP) (w⁴ μ₁) x
---     rec1-fit = trans (rec1T-sub …)
---                      (cong₄ rec1T (wk-single (w⁴ cA)) (wk-single (w⁴ cP))
---                                   (wk-single (w⁴ μ₁)) refl)
---
---     rec2-fit : subTy (single rec₁) (subTy (extS (single x)) (rec2T (w⁶ …)))
---              ≡ rec2T (w⁴ cA) (w⁴ cP) (w⁴ μ₁) (w⁴ μ₂) x
---       — same shape, `rec2T-sub` twice: the inner substitution peels with
---         `sub-w` (it is under a binder), the outer with `wk-single`.
---
---   Then `⊢-cast (sym rec1-fit)` / `⊢-cast (sym rec2-fit)` at the two
---   argument positions and (0,0) closes.  The other three branches and
---   LexAsm are the same recipe with different weakening counts.
---
-------------------------------------------------------------------------
 -- OCP-0009 — LEXREC BRANCH (0,0) at an ABSTRACT AMBIENT CONTEXT.
 --
 -- Option C: there is no Γ₅.  `Δ`, the carrier, the motive, the measures
 -- and the step are all PARAMETERS.  See NbEPDirDBExamplesLexC.
+--
+-- ★ 9.5 s / 0.96 GB, against 20.7 s / 2.22 GB for the same branch under
+--   option B (NbEPDirDBExamplesLexZZ).  2.2× faster, 2.3× lighter, WITH
+--   the transports included — which is the number SPIKE-COST §8 warned was
+--   unmeasured, because SpikeCostS13 was a LEAF and never crossed a motive
+--   boundary.  It survives.
+--
+-- ★★ AND THE EXPENSIVE HALF IS FREE.  Both recursor derivations — the ones
+--   that cost 2–5 GB under Γ₅ — needed NO transports at all.  Every cast
+--   below is in the ASSEMBLY, which is the cheap module.  That is the right
+--   way round, and it is why option C is worth the plumbing.
+--
+-- THE FOUR CASTS, in the order the other branches will hit them:
+--   `M0lex-sub`  the motive boundary — `subTy (single nzero) M0lex` vs the
+--                `auxBody` form the ⊢lams build.  auxBody-sub + wk-single.
+--   `stp-w⁴`     Agda pushes `renTy vs⁴ (lStepT …)` INTO the Π-chain rather
+--                than reassociating it, so cP arrives as
+--                `renTm (extR³ vs)ⁿ (w³ cP)` and nothing cancels.  ⊢-cast
+--                through `lStepT-ren`, one level at a time.
+--   `rec1-fit` / `rec2-fit`   each ⊢app argument's expected type is the
+--                `lStepT` slot ALREADY SUBSTITUTED by the arguments before
+--                it.  rec₂'s inner substitution is UNDER A BINDER, so it
+--                peels with `sub-w`; the outer one with `wk-single`.
+--   `cPcancel`   the spine's three substitutions, w⁷ cP → w⁴ cP.
+--
+-- ⚠ PIN `wk-single`'s IMPLICIT `{v = …}`.  It is the term being
+--   substituted and it DIFFERS per step — x, then rec₁, then rec₂.  Agda
+--   cannot always infer it, and when it guesses wrong the error points at
+--   the lemma rather than at the guess.  This cost two rounds.
 --
 -- BOTH obligations are vacuous at (0,0): `rec₁` gets μ₁ y < μ₁ x ≤ 0 and
 -- `rec₂` gets μ₂ y < μ₂ x ≤ 0, so each is `ordtr` into `⊢strong-base'`.
@@ -133,12 +127,48 @@ module _ (Δ : Ctx) (cA cP μ₁ μ₂ stp : RTm ⌊ Δ ⌋)
            ≡ (w (w (w (w (cP)))))
   cPcancel =
     trans (cong (λ z → subTm (single lexZZrec2) (subTm (extS (single lexZZrec1)) z))
-                (trans (sub-w² (w (w (w (w (w (cP))))))) (cong (λ z → w (w z)) (wk-single (w (w (w (w (cP)))))))))
+                (trans (sub-w² {σ = single (var (vs (vs vz)))} (w (w (w (w (w (cP)))))))
+                       (cong (λ z → w (w z)) (wk-single {v = var (vs (vs vz))} (w (w (w (w (cP)))))))))
     (trans (cong (subTm (single lexZZrec2))
-                 (trans (sub-w (w (w (w (w (w (cP))))))) (cong w (wk-single (w (w (w (w (cP)))))))))
-           (wk-single (w (w (w (w (cP)))))))
+                 (trans (sub-w {σ = single lexZZrec1} (w (w (w (w (w (cP)))))))
+                        (cong w (wk-single {v = lexZZrec1} (w (w (w (w (cP)))))))))
+           (wk-single {v = lexZZrec2} (w (w (w (w (cP)))))))
+
+
+  ------------------------------------------------------------------------
+  -- ★ THE FITTING LEMMAS.  Each ⊢app argument's expected type is the
+  --   `lStepT` slot ALREADY SUBSTITUTED by the arguments before it, so the
+  --   recursor derivations — which are stated in the clean `w⁴` form —
+  --   have to be cast into it.  With Γ₅ this was definitional.
+  ------------------------------------------------------------------------
+
+  rec1-fit : subTy (single (var (vs (vs vz)))) (rec1T (w (w (w (w (w (cA)))))) (w (w (w (w (w (cP)))))) (w (w (w (w (w (μ₁)))))) (var vz))
+           ≡ rec1T (w (w (w (w (cA))))) (w (w (w (w (cP))))) (w (w (w (w (μ₁))))) (var (vs (vs vz)))
+  rec1-fit =
+    trans (rec1T-sub (w (w (w (w (w (cA)))))) (w (w (w (w (w (cP)))))) (w (w (w (w (w (μ₁)))))) (var vz))
+          (cong₄ rec1T (wk-single {v = (var (vs (vs vz)))} (w (w (w (w (cA)))))) (wk-single {v = (var (vs (vs vz)))} (w (w (w (w (cP))))))
+                       (wk-single {v = (var (vs (vs vz)))} (w (w (w (w (μ₁)))))) refl)
+
+  -- two substitutions this time: the inner one is UNDER A BINDER, so it
+  -- peels with `sub-w`; the outer one with `wk-single`.
+  rec2-fit : subTy (single lexZZrec1)
+               (subTy (extS (single (var (vs (vs vz)))))
+                 (rec2T (w (w (w (w (w (w (cA))))))) (w (w (w (w (w (w (cP))))))) (w (w (w (w (w (w (μ₁))))))) (w (w (w (w (w (w (μ₂))))))) (var (vs vz))))
+           ≡ rec2T (w (w (w (w (cA))))) (w (w (w (w (cP))))) (w (w (w (w (μ₁))))) (w (w (w (w (μ₂))))) (var (vs (vs vz)))
+  rec2-fit =
+    trans (cong (subTy (single lexZZrec1))
+            (trans (rec2T-sub (w (w (w (w (w (w (cA))))))) (w (w (w (w (w (w (cP))))))) (w (w (w (w (w (w (μ₁))))))) (w (w (w (w (w (w (μ₂))))))) (var (vs vz)))
+                   (cong₅ rec2T (trans (sub-w (w (w (w (w (w (cA))))))) (cong w (wk-single {v = (var (vs (vs vz)))} (w (w (w (w (cA))))))))
+                                (trans (sub-w (w (w (w (w (w (cP))))))) (cong w (wk-single {v = (var (vs (vs vz)))} (w (w (w (w (cP))))))))
+                                (trans (sub-w (w (w (w (w (w (μ₁))))))) (cong w (wk-single {v = (var (vs (vs vz)))} (w (w (w (w (μ₁))))))))
+                                (trans (sub-w (w (w (w (w (w (μ₂))))))) (cong w (wk-single {v = (var (vs (vs vz)))} (w (w (w (w (μ₂))))))))
+                                refl)))
+          (trans (rec2T-sub (w (w (w (w (w (cA)))))) (w (w (w (w (w (cP)))))) (w (w (w (w (w (μ₁)))))) (w (w (w (w (w (μ₂)))))) (w (var (vs (vs vz)))))
+                 (cong₅ rec2T (wk-single {v = lexZZrec1} (w (w (w (w (cA)))))) (wk-single {v = lexZZrec1} (w (w (w (w (cP))))))
+                              (wk-single {v = lexZZrec1} (w (w (w (w (μ₁)))))) (wk-single {v = lexZZrec1} (w (w (w (w (μ₂))))))
+                              (wk-single {v = lexZZrec1} (var (vs (vs vz))))))
 
   ⊢lexZZ : (Δ ▹ Nat) ⊢ lexZZ ∷ subTy (single nzero) M0lex
   ⊢lexZZ =
     ⊢-cast (sym M0lex-sub)
-      (⊢lam (ty-El (⊢wk (dcA))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (dμ₁))) (⊢var here)) ⊢nzero) (⊢lam (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (dμ₂)))) (⊢var (there here))) ⊢nzero) (⊢-cast (cong (λ z → El (app z (var (vs (vs vz))))) cPcancel) (⊢app (⊢app (⊢app (⊢-cast stp-w⁴ (⊢wk (⊢wk (⊢wk (⊢wk dstp))))) (⊢var (there (there here)))) ⊢lexZZrec1) ⊢lexZZrec2)))))
+      (⊢lam (ty-El (⊢wk (dcA))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (dμ₁))) (⊢var here)) ⊢nzero) (⊢lam (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (dμ₂)))) (⊢var (there here))) ⊢nzero) (⊢-cast (cong (λ z → El (app z (var (vs (vs vz))))) cPcancel) (⊢app (⊢app (⊢app (⊢-cast stp-w⁴ (⊢wk (⊢wk (⊢wk (⊢wk dstp))))) (⊢var (there (there here)))) (⊢-cast (sym rec1-fit) ⊢lexZZrec1)) (⊢-cast (sym rec2-fit) ⊢lexZZrec2))))))
