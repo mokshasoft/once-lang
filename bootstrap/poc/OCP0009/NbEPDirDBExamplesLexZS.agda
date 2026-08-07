@@ -10,7 +10,7 @@ open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢ordtr
         ; ⊢lam; ⊢app
-        ; ty-Nat; ty-Hom )
+        ; ty-Nat; ty-Hom; ty-El )
 open import poc.OCP0009.NbEPDirDBExamplesOrd
   using ( ⊢strong-base'; ⊢strong-step )
 open import poc.OCP0009.NbEPDirDBExamplesLex
