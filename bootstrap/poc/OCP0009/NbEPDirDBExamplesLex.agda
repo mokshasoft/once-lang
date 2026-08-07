@@ -44,6 +44,7 @@ open import poc.OCP0009.NbEPDirDBType
 open import poc.OCP0009.NbEPDirDBInj
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
+open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBExamplesStrong
   using ( El-homNat; ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesOrd
@@ -102,9 +103,13 @@ LStepT =
   Π (El (var (vs (vs (vs vz))))) (Π REC1T (Π REC2T
     (El (app (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs vz)))))))
 
+-- ★ NO `stp` SLOT.  `stp` is only ever APPLIED, never bound over, so it
+--   is an ARGUMENT (see SPIKE-COST.md §4): a context slot costs ~4.5× at
+--   this carrier, and removing this one puts the generic carrier back at
+--   the ℕ-carrier price.
 Γ₅ : Ctx
-Γ₅ = ((((◇ ▹ U) ▹ Π (El (var vz)) U) ▹ Π (El (var (vs vz))) Nat)
-        ▹ Π (El (var (vs (vs vz)))) Nat) ▹ LStepT
+Γ₅ = (((◇ ▹ U) ▹ Π (El (var vz)) U) ▹ Π (El (var (vs vz))) Nat)
+       ▹ Π (El (var (vs (vs vz)))) Nat
 
 ------------------------------------------------------------------------
 -- ★★ 2a. THE MOTIVE COMBINATOR — one place where the measures are named.
@@ -148,12 +153,12 @@ auxBody cA cP μ₁ μ₂ b₁ b₂ =
 --    vz = n₁, vs = stp, vs² = μ₂, vs³ = μ₁, vs⁴ = cP
 ------------------------------------------------------------------------
 
-lexAuxMot : RTy (ε ∙ ∙ ∙ ∙ ∙ ∙)
+lexAuxMot : RTy (ε ∙ ∙ ∙ ∙ ∙)
 lexAuxMot =
-  Π Nat (auxBody (var (vs (vs (vs (vs (vs (vs vz)))))))   -- cA
-                 (var (vs (vs (vs (vs (vs vz))))))   -- cP
-                 (var (vs (vs (vs (vs vz)))))        -- μ₁
-                 (var (vs (vs (vs vz))))             -- μ₂
+  Π Nat (auxBody (var (vs (vs (vs (vs (vs vz))))))   -- cA
+                 (var (vs (vs (vs (vs vz)))))        -- cP
+                 (var (vs (vs (vs vz))))             -- μ₁
+                 (var (vs (vs vz)))                  -- μ₂
                  (var (vs vz))                       -- b₁ = n₁
                  (var vz))                           -- b₂ = n₂' (just bound)
 
@@ -167,29 +172,29 @@ lexAuxMot =
 --      or a plain `ordtr` composition of two ≤'s.
 ------------------------------------------------------------------------
 
-lexZZ : RTm (ε ∙ ∙ ∙ ∙ ∙ ∙)
-lexZZ =
-  lam (lam (lam (app (app (app (var (vs (vs (vs (vs vz))))) (var (vs (vs vz)))) (lam (lam (absurd (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs vz)))))) nzero (var vz) (var (vs (vs (vs vz))))))))) (lam (lam (lam (absurd (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz)))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs vz))))))) nzero (var vz) (var (vs (vs (vs vz))))))))))))
+lexZZ : RTm (ε ∙ ∙ ∙ ∙) → RTm (ε ∙ ∙ ∙ ∙ ∙)
+lexZZ stpTm =
+  lam (lam (lam (app (app (app (renTm vs (renTm vs (renTm vs (renTm vs (stpTm))))) (var (vs (vs vz)))) (lam (lam (absurd (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs vz)))))) nzero (var vz) (var (vs (vs (vs vz))))))))) (lam (lam (lam (absurd (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs vz)))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz))))))) nzero (var vz) (var (vs (vs (vs vz))))))))))))
 
-lexZS : RTm (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
-lexZS =
-  lam (lam (lam (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs vz)))) (lam (lam (absurd (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs vz)))))) nzero (var vz) (var (vs (vs (vs vz))))))))) (lam (lam (lam (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs vz)))) (ordtr (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs (vs vz))))))) nzero (var (vs vz)) (var (vs (vs (vs (vs vz))))))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs (vs vz))))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz) (var (vs (vs (vs vz))))))))))))
+lexZS : RTm (ε ∙ ∙ ∙ ∙) → RTm (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+lexZS stpTm =
+  lam (lam (lam (app (app (app (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (stpTm))))))) (var (vs (vs vz)))) (lam (lam (absurd (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs vz)))))) nzero (var vz) (var (vs (vs (vs vz))))))))) (lam (lam (lam (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs vz)))) (ordtr (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs (vs vz))))))) nzero (var (vs vz)) (var (vs (vs (vs (vs vz))))))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs (vs vz))))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz) (var (vs (vs (vs vz))))))))))))
 
-lexSZ : RTm (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
-lexSZ =
-  lam (lam (lam (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs vz)))) (lam (lam (app (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz)))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs vz)))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz) (var (vs (vs (vs vz)))))) (natrec unit (var vz) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz)))))))) (lam (lam (lam (absurd (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs vz)))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs (vs vz))))))) nzero (var vz) (var (vs (vs (vs vz))))))))))))
+lexSZ : RTm (ε ∙ ∙ ∙ ∙) → RTm (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+lexSZ stpTm =
+  lam (lam (lam (app (app (app (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (stpTm))))))) (var (vs (vs vz)))) (lam (lam (app (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz)))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs vz)))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz) (var (vs (vs (vs vz)))))) (natrec unit (var vz) (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz)))))))) (lam (lam (lam (absurd (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs vz)))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs (vs vz))))))) nzero (var vz) (var (vs (vs (vs vz))))))))))))
 
-lexSS : RTm (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
-lexSS =
-  lam (lam (lam (app (app (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs vz)))) (lam (lam (app (app (app (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz)))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs vz)))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var vz) (var (vs (vs (vs vz)))))) (natrec unit (var vz) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz)))))))) (lam (lam (lam (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs vz)))) (ordtr (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs (vs (vs (vs vz))))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz)) (var (vs (vs (vs (vs vz))))))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs (vs vz))))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz) (var (vs (vs (vs vz))))))))))))
-lexZBr : RTm (ε ∙ ∙ ∙ ∙ ∙)
-lexZBr = lam (natrec lexZZ lexZS (var vz))
+lexSS : RTm (ε ∙ ∙ ∙ ∙) → RTm (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+lexSS stpTm =
+  lam (lam (lam (app (app (app (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (stpTm))))))))) (var (vs (vs vz)))) (lam (lam (app (app (app (app (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs vz)))) (var (vs vz))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs vz)))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var vz) (var (vs (vs (vs vz)))))) (natrec unit (var vz) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs vz)))))))) (lam (lam (lam (app (app (app (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs vz)))) (ordtr (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs vz)))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs (vs vz))))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz)) (var (vs (vs (vs (vs vz))))))) (ordtr (nsuc (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs vz))))) (app (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs (vs vz))))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz) (var (vs (vs (vs vz))))))))))))
+lexZBr : RTm (ε ∙ ∙ ∙ ∙) → RTm (ε ∙ ∙ ∙ ∙)
+lexZBr stpTm = lam (natrec (lexZZ stpTm) (lexZS stpTm) (var vz))
 
-lexSBr : RTm (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙)
-lexSBr = lam (natrec lexSZ lexSS (var vz))
+lexSBr : RTm (ε ∙ ∙ ∙ ∙) → RTm (ε ∙ ∙ ∙ ∙ ∙ ∙)
+lexSBr stpTm = lam (natrec (lexSZ stpTm) (lexSS stpTm) (var vz))
 
-lexAuxTm : RTm (ε ∙ ∙ ∙ ∙ ∙) → RTm (ε ∙ ∙ ∙ ∙ ∙)
-lexAuxTm n = natrec lexZBr lexSBr n
+lexAuxTm : RTm (ε ∙ ∙ ∙ ∙) → RTm (ε ∙ ∙ ∙ ∙) → RTm (ε ∙ ∙ ∙ ∙)
+lexAuxTm stpTm n = natrec (lexZBr stpTm) (lexSBr stpTm) n
 
 
 
@@ -345,9 +350,9 @@ lexAuxTm n = natrec lexZBr lexSBr n
 --   `ty-Hom ty-Nat da db` forces both endpoints to be at `Nat`.
 ------------------------------------------------------------------------
 
+-- ★ now the SAME context as Γ₅ — the `stp` slot is gone from both.
 Γ₅₀ : Ctx
-Γ₅₀ = (((◇ ▹ U) ▹ Π (El (var vz)) U) ▹ Π (El (var (vs vz))) Nat)
-        ▹ Π (El (var (vs (vs vz)))) Nat
+Γ₅₀ = Γ₅
 
 -- ctx: x=0, μ₂=1, μ₁=2, cP=3   (+y ⇒ +1, +lt ⇒ +2)
 ⊢REC1T : (Γ₅₀ ▹ El (var (vs (vs (vs vz))))) ⊢ty REC1T
@@ -369,11 +374,11 @@ lexAuxTm n = natrec lexZBr lexSBr n
 ⊢LStepT =
   ty-Π (ty-El (⊢var (there (there (there here))))) (ty-Π ⊢REC1T (ty-Π ⊢REC2T (ty-El (⊢app (⊢var (there (there (there (there (there here)))))) (⊢var (there (there here)))))))
 
-M0lex : RTy (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙)
-M0lex = auxBody (var (vs (vs (vs (vs (vs (vs vz)))))))   -- cA
-                (var (vs (vs (vs (vs (vs vz))))))   -- cP
-                (var (vs (vs (vs (vs vz)))))        -- μ₁
-                (var (vs (vs (vs vz))))             -- μ₂
+M0lex : RTy (ε ∙ ∙ ∙ ∙ ∙ ∙)
+M0lex = auxBody (var (vs (vs (vs (vs (vs vz))))))   -- cA
+                (var (vs (vs (vs (vs vz)))))   -- cP
+                (var (vs (vs (vs vz))))        -- μ₁
+                (var (vs (vs vz)))             -- μ₂
                 nzero                               -- b₁ = 0   ← the n₁ = 0 branch
                 (var vz)                            -- b₂ = m
 
@@ -381,11 +386,11 @@ M0lex = auxBody (var (vs (vs (vs (vs (vs (vs vz)))))))   -- cA
 --   as `M0lex` but the μ₁ bound is `nsuc n₁'` instead of `nzero`, which is
 --   what makes `rec₁` live there and vacuous here.
 --   ctx: vz=m, vs=n₂, vs²=IH₁, vs³=n₁', vs⁴=stp, vs⁵=μ₂, vs⁶=μ₁, vs⁷=cP
-M1lex : RTy (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
-M1lex = auxBody (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))            -- cA
-                (var (vs (vs (vs (vs (vs (vs (vs vz))))))))  -- cP
-                (var (vs (vs (vs (vs (vs (vs vz)))))))       -- μ₁
-                (var (vs (vs (vs (vs (vs vz))))))            -- μ₂
+M1lex : RTy (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+M1lex = auxBody (var (vs (vs (vs (vs (vs (vs (vs vz))))))))            -- cA
+                (var (vs (vs (vs (vs (vs (vs vz)))))))  -- cP
+                (var (vs (vs (vs (vs (vs vz))))))       -- μ₁
+                (var (vs (vs (vs (vs vz)))))            -- μ₂
                 (nsuc (var (vs (vs (vs vz)))))               -- b₁ = suc n₁' ← the n₁ = suc branch
                 (var vz)                                     -- b₂ = m
 
@@ -427,23 +432,14 @@ M1lex = auxBody (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))            -- c
 -- ctx: vz=n₁', vs=stp, vs²=μ₂, vs³=μ₁, vs⁴=cP
 ⊢lexAuxMot : (Γ₅ ▹ Nat) ⊢ty lexAuxMot
 ⊢lexAuxMot =
-  ty-Π ty-Nat (ty-Π (ty-El (⊢var (there (there (there (there (there (there here))))))))
-    (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there here)))))) (⊢var here)) (⊢var (there (there here))))
-       (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there here)))))) (⊢var (there here))) (⊢var (there (there here))))
-          (ty-El (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there (there here))))))))
+  ty-Π ty-Nat (ty-Π (ty-El (⊢var (there (there (there (there (there here))))))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there here))))) (⊢var here)) (⊢var (there (there here)))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there here))))) (⊢var (there here))) (⊢var (there (there here)))) (ty-El (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there (there here))))))))
 
 -- ctx: vz=m, vs=n₂, vs²=stp, vs³=μ₂, vs⁴=μ₁, vs⁵=cP
 ⊢M0lex : ((Γ₅ ▹ Nat) ▹ Nat) ⊢ty M0lex
 ⊢M0lex =
-  ty-Π (ty-El (⊢var (there (there (there (there (there (there here))))))))
-    (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there here)))))) (⊢var here)) ⊢nzero)
-       (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there here)))))) (⊢var (there here))) (⊢var (there (there here))))
-          (ty-El (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there (there here)))))))
+  ty-Π (ty-El (⊢var (there (there (there (there (there here))))))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there here))))) (⊢var here)) ⊢nzero) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there here))))) (⊢var (there here))) (⊢var (there (there here)))) (ty-El (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there (there here)))))))
 
 -- ctx: vz=m, vs=n₂, vs²=IH₁, vs³=n₁', vs⁴=stp, vs⁵=μ₂, vs⁶=μ₁, vs⁷=cP
 ⊢M1lex : ((((Γ₅ ▹ Nat) ▹ lexAuxMot) ▹ Nat) ▹ Nat) ⊢ty M1lex
 ⊢M1lex =
-  ty-Π (ty-El (⊢var (there (there (there (there (there (there (there (there here))))))))))
-    (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var here)) (⊢nsuc (⊢var (there (there (there (there here)))))))
-       (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there here))) (⊢var (there (there here))))
-          (ty-El (⊢app (⊢var (there (there (there (there (there (there (there (there (there (there here))))))))))) (⊢var (there (there here)))))))
+  ty-Π (ty-El (⊢var (there (there (there (there (there (there (there here))))))))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there here))))))) (⊢var here)) (⊢nsuc (⊢var (there (there (there (there here))))))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there here))))))) (⊢var (there here))) (⊢var (there (there here)))) (ty-El (⊢app (⊢var (there (there (there (there (there (there (there (there (there here)))))))))) (⊢var (there (there here)))))))
