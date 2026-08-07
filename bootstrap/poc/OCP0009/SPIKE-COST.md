@@ -166,3 +166,51 @@ exactly why they are context variables.
   slot, at the price of `fst`/`snd` noise per use. Unmeasured, and after
   §4 there may be no need.
 * Non-unary `Cx`/`Var`. Deep kernel change; would invalidate a lot.
+
+## 7. ⚠ THE TENSION THE FIX INTRODUCED (found 2026-08-07, trying to derive Ackermann)
+
+`stp`-as-an-argument is what made the generic carrier free (§4). It also
+makes `⊢lexrec` **uninstantiable at a concrete carrier**, and that is not
+a detail — it is the whole point of carrier-genericity.
+
+The argument, in three steps:
+
+1. To use `⊢lexrec` at a concrete carrier you substitute `Γ₅`'s slots with
+   `sub-lemma` (`NbEPDirDBSubj:960`), `σ : Sub ⌊Γ₅⌋ ⌊Δ⌋`.
+2. `⊢lexrec` also demands `dstp : Γ₅ ⊢ stpTm ∷ LStepT` — at `Γ₅`, where the
+   carrier is still the *variable* `A`. Ackermann's step must build pairs
+   (`⊢pair`), which needs a `Σ'`, which an abstract `El A` is not. So
+   `dstp` can never be discharged for Ackermann.
+3. σ cannot rescue it: σ maps `Γ₅`'s four variables to the Ackermann data,
+   and there is no fifth variable for it to map to the step.
+
+★ So the step has to be a CONTEXT SLOT at the point where lexrec is stated
+for instantiation — which is exactly what costs 4.5×. Note that
+`⊢amrec`'s `Γ₄` (`NbEPDirDBExamplesDogfood:254`) does keep `AStepT` as a
+slot: that is the shape designed for instantiation.
+
+⚠ AND A FACT THAT SHOULD HAVE BEEN NOTICED EARLIER: **`sub-lemma` is not
+called anywhere in the Examples**. Instantiation of `⊢amrec`/`⊢lexrec` at
+a concrete carrier has NEVER been exercised. The carrier-genericity claim
+is a claim about the STATEMENT, not something that has been cashed out.
+
+### Options, none measured
+
+- **A. Split the contexts.** Recursor derivations (the expensive ones,
+  4.4–5.2 GB) never mention `stp`, so leave them at the 4-slot `Γ₅`; state
+  only the four assemblies and `LexAsm` (all ≤0.6 GB) at
+  `Γ₅⁺ = Γ₅ ▹ LStepT`. Cost should be negligible. ⚠ The catch: `ΓZZ` etc.
+  extend `Γ₅`, so moving a recursor derivation to a context extending
+  `Γ₅⁺` inserts a slot in the MIDDLE — a typed renaming via `ren-lemma`,
+  mechanical but real work, and `LStepT` must sit above `A/cP/μ₁/μ₂`
+  because it mentions them, so bottom-insertion is not available.
+- **B. Put `stp` back as `Γ₅`'s fifth slot** and pay 4.5× — where we were:
+  five modules for (0,0), SZ and SS2 over the cap. Only viable combined
+  with removing a different slot (bundling `μ₁`/`μ₂` into one
+  `Π (El A) (Σ' Nat Nat)`), which is itself unmeasured.
+- **C. Abstract the ambient context** — state the branch lemmas relative
+  to an arbitrary `Δ` and `σ`. Most general, biggest rewrite.
+- **D. Re-derive the four branches at a concrete pair carrier.** Skips
+  instantiation entirely. Duplicates the whole branch stack, but a CLOSED
+  code is cheap (§2: `El ⌜Nat⌝` at 4 slots is 1.44 GB), so it would fit.
+  Buys Ackermann, buys nothing about genericity.
