@@ -223,10 +223,71 @@ cata-nat-I₃ l1 =
   instr-ctrl (c-jmp (ℓ o (suc (suc (suc (suc l1)))))) ∷
   instr-ctrl (c-label (ℓ o (suc (suc (suc (suc (suc l1))))))) ∷ []
 
-cata-trace-nat : ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
-cata-trace-nat n1 l1 at =
-  suc (suc n1) , suc (suc (suc (suc (suc (suc l1))))) ,
-  (cata-nat-I₁ n1 l1 ++ at ++ (cata-nat-I₂ n1 l1 ++ at ++ cata-nat-I₃ l1))
+------------------------------------------------------------------------
+-- D099 / C1: THE ALGEBRA IS EMITTED ONCE, AND CALLED.
+--
+-- It used to be SPLICED at both application sites (`I₁ ++ at ++ (I₂ ++ at ++
+-- I₃)`), which is what shipped a binary the assembler refused: both copies
+-- carried the same labels. Re-generating the second copy at a fresh counter
+-- would have fixed the names, but an algebra containing a `Cata` duplicates ITS
+-- algebra too, so nesting depth `d` costs `2^d` copies. So: one copy, called.
+--
+-- The idiom is `curry`'s, which is already the post-0.63 shape (body inline in
+-- the trace, parent jumps over it) — so this does NOT re-open the flip that
+-- inlined bodies. NO NEW INSTRUCTION: `instr-call-closure` transfers control
+-- using whatever code address sits in `fclosure`'s record cell (D092/D098); the
+-- (env, arg) pair-packing is `apply`'s TRACE, not the instruction, so the
+-- algebra keeps its own direct convention (layer in `Input1`).
+--
+-- Second win: the algebra's slots move INTO ITS OWN FRAME (the body carries its
+-- budget `bb`, generated at frontier 0 as `curry`'s body is), so the cata's
+-- frontier is its own scratch only.
+------------------------------------------------------------------------
+
+-- The body block: jumped over, entered only by the call.
+cata-body : ℕ → ℕ → ℕ → AbstractTrace → AbstractTrace
+cata-body body-label end-label bb at =
+  instr-ctrl (c-jmp (ℓ o end-label)) ∷
+  instr-ctrl (c-thunk (ℓ o body-label) bb) ∷
+  (at ++ (instr-ctrl (c-ret bb) ∷
+          instr-ctrl (c-label (ℓ o end-label)) ∷ []))
+
+-- The closure record for the algebra, built ONCE before the loop: cell 0 the
+-- (unused) environment, cell 1 the body's code address — the cell `do-call`
+-- reads.
+cata-call-setup : ℕ → ℕ → AbstractTrace
+cata-call-setup cl body-label =
+  instr-alloc-heap 2 ∷
+  store-at-slot cl ∷
+  mov-to-input ∷
+  instr-load-tag-lit 0 ∷
+  store-indirect ∷
+  instr-load-code-addr (ℓ o body-label) ∷
+  store-indirect-suc ∷ []
+
+-- One application of the algebra. On entry `Input1` holds the layer; on return
+-- `Output` holds the algebra's result — the same contract the spliced copy had.
+cata-call : ℕ → ℕ → AbstractTrace
+cata-call cl k =
+  mov-to-output ∷ store-at-slot k ∷
+  load-from-slot cl ∷ mov-to-input ∷
+  instr-save-closure-reg ∷
+  load-from-slot k ∷ mov-to-input ∷
+  instr-call-closure ∷ []
+
+-- `bb` is the algebra body's own stack budget (it runs in its own frame).
+-- Slots: `n1`/`suc n1` are the layer builder's, `cl`/`k` the call's.
+-- Labels: `l1 … l1+5` the loop's, `l1+6` the body, `l1+7` the jump-over join.
+cata-trace-nat : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-trace-nat bb n1 l1 at =
+  suc (suc (suc (suc n1))) , suc (suc (suc (suc (suc (suc (suc (suc l1))))))) ,
+  (cata-body (suc (suc (suc (suc (suc (suc l1))))))
+             (suc (suc (suc (suc (suc (suc (suc l1))))))) bb at ++
+   (cata-call-setup (suc (suc n1)) (suc (suc (suc (suc (suc (suc l1)))))) ++
+    (cata-nat-I₁ n1 l1 ++
+     (cata-call (suc (suc n1)) (suc (suc (suc n1))) ++
+      (cata-nat-I₂ n1 l1 ++
+       (cata-call (suc (suc n1)) (suc (suc (suc n1))) ++ cata-nat-I₃ l1))))))
 
 -- Plan 0.36 Phase 2b Tier 1: functor-general LINEAR (single recursive
 -- position, with payload) cata codegen via a SIMPLE 2-cell linked payload
@@ -289,10 +350,18 @@ cata-lin-I₃ l1 =
   instr-ctrl (c-jmp (ℓ o (suc (suc l1)))) ∷
   instr-ctrl (c-label (ℓ o (suc (suc (suc l1))))) ∷ []
 
-cata-trace-linear : ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
-cata-trace-linear n1 l1 at =
-  suc (suc (suc (suc (suc (suc n1))))) , suc (suc (suc (suc l1))) ,
-  (cata-lin-I₁ n1 l1 ++ at ++ (cata-lin-I₂ n1 l1 ++ at ++ cata-lin-I₃ l1))
+-- Same C1 shape as `cata-trace-nat`: one body, two calls.
+-- Slots `n1 … n1+5` are the layer builder's, `n1+6`/`n1+7` the call's.
+-- Labels `l1 … l1+3` the loop's, `l1+4` the body, `l1+5` the join.
+cata-trace-linear : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-trace-linear bb n1 l1 at =
+  n1 +ℕ 8 , l1 +ℕ 6 ,
+  (cata-body (l1 +ℕ 4) (l1 +ℕ 5) bb at ++
+   (cata-call-setup (n1 +ℕ 6) (l1 +ℕ 4) ++
+    (cata-lin-I₁ n1 l1 ++
+     (cata-call (n1 +ℕ 6) (n1 +ℕ 7) ++
+      (cata-lin-I₂ n1 l1 ++
+       (cata-call (n1 +ℕ 6) (n1 +ℕ 7) ++ cata-lin-I₃ l1))))))
 
 -- ────────────────────────────────────────────────────────────────────
 -- Plan 0.36 Phase 2b Tier 2: functor-general BRANCHING cata codegen
@@ -447,20 +516,38 @@ cata-br-I₂ n1 l1 =
   -- final-read
   (load-from-slot (n1 +ℕ 2) ∷ mov-to-input ∷ load-indirect ∷ [])
 
-cata-trace-branching : Functor → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
-cata-trace-branching F n1 l1 at =
-  n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4 , l1 +ℕ 4 +ℕ lsize F +ℕ lsize F ,
-  (cata-br-I₁ F n1 l1 ++ at ++ cata-br-I₂ n1 l1)
+-- Tier 2 splices the algebra ONCE, so C1 costs it one call site, not two.
+-- The body/join labels and the call's two slots go above the existing ranges.
+cata-trace-branching : Functor → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-trace-branching F bb n1 l1 at =
+  (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 2 , (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) +ℕ 2 ,
+  (cata-body (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F)
+             ((l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) +ℕ 1) bb at ++
+   (cata-call-setup (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4)
+                    (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) ++
+    (cata-br-I₁ F n1 l1 ++
+     (cata-call (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4)
+                ((n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 1) ++ cata-br-I₂ n1 l1))))
 
 -- Dispatch the strategy. Nat / branching still route to the Nat codegen
 -- (branching = Tier 2, still segfaults); linear gets the Tier-1 codegen.
-cata-dispatch : CataStrategy → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 -- 0 rec positions (`Mu (K _)`): `In` is heap-identity, so the μ-value IS the
--- `⟦F⟧A` layer; `cata alg = alg` on it. No descend/ascend, no slots/labels.
-cata-dispatch strat-const     n1 l1 at = n1 , l1 , at
-cata-dispatch strat-nat            n1 l1 at = cata-trace-nat n1 l1 at
-cata-dispatch strat-linear         n1 l1 at = cata-trace-linear n1 l1 at
-cata-dispatch (strat-branching F)  n1 l1 at = cata-trace-branching F n1 l1 at
+-- `⟦F⟧A` layer and `cata alg = alg` on it — no descend, no ascend, no loop.
+-- It goes through the SAME call as the others rather than splicing inline:
+-- uniformity is what lets the algebra always be generated at frontier 0 (its
+-- own frame). An inline `strat-const` would need it at the CALLER's frontier,
+-- i.e. two different generations of the same term.
+cata-trace-const : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-trace-const bb n1 l1 at =
+  n1 +ℕ 2 , l1 +ℕ 2 ,
+  (cata-body l1 (l1 +ℕ 1) bb at ++
+   (cata-call-setup n1 l1 ++ cata-call n1 (n1 +ℕ 1)))
+
+cata-dispatch : CataStrategy → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+cata-dispatch strat-const         bb n1 l1 at = cata-trace-const bb n1 l1 at
+cata-dispatch strat-nat           bb n1 l1 at = cata-trace-nat bb n1 l1 at
+cata-dispatch strat-linear        bb n1 l1 at = cata-trace-linear bb n1 l1 at
+cata-dispatch (strat-branching F) bb n1 l1 at = cata-trace-branching F bb n1 l1 at
 
 ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
               → ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace)
@@ -836,9 +923,12 @@ ir-to-trace' n l (out-μ _)      = n , l , (mov-to-output ∷ []) , []
 -- code never touches rbx). Layer builds mirror the inl/inr Heap codegen.
 -- Plan 0.36 Phase 2b: dispatch on the functor's strategy (compile-time).
 -- Today every strategy routes to `cata-trace-nat`; Tier 1/2 refine it.
+-- D099 / C1: the algebra is generated ONCE, at frontier 0 — it runs in its OWN
+-- frame as a called body (exactly as `curry`'s body is generated), so its slots
+-- no longer extend the cata's frame and its budget `bb` becomes the body's.
 ir-to-trace' n l (Cata {F} _ alg) =
-  let (n1 , l1 , at , ab) = ir-to-trace' n l alg
-      (next , l2 , trace) = cata-dispatch (cata-strategy ⌈ F ⌉F) n1 l1 at
+  let (bb , l1 , at , ab) = ir-to-trace' 0 l alg
+      (next , l2 , trace) = cata-dispatch (cata-strategy ⌈ F ⌉F) bb n l1 at
   in next , l2 , trace , ab
 ir-to-trace' n l (Para _ _)     = n , l , [] , []
 ir-to-trace' n l (Out _)        = n , l , (mov-to-output ∷ []) , []
