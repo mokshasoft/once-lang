@@ -49,7 +49,15 @@ open import Once.Type using (Type; FitsInReg; fits-in-reg?)
 open import Once.IRTy using (WellFormedFI-irrelevant)
 open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
 open import Once.IR using (IR; IRTy; Unit; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ; _∘_;
-  μ-type; ⟦_⟧TI; WellFormedFI; FitsInRegI; fits-int; fits-float; ⌊_⌋)
+  μ-type; ⟦_⟧TI; WellFormedFI; FitsInRegI; fits-int; fits-float; ⌊_⌋;
+  -- Plan 0.68 step 0: the enumeration needs EVERY constructor in scope, not
+  -- just the ones with a clause of their own before it.
+  id; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply;
+  In; Para; Out; in-ν; Ana; Hylo; Fuse; free-heap; const;
+  NatTr; ν-type; _*_)
+open import Once.IRTy using (⟦_⟧-baseI)
+open import Once.Memory.HeapAddress using (HeapRef)
+open import Once.Word using (Carrier)
 open import Data.Unit using (tt)
 
 -- Surface `FitsInReg B` ⇒ erased `FitsInRegI ⌊B⌋`: `⌊Int⌋=Int`, `⌊Float⌋=Float`
@@ -244,15 +252,100 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   --     `Seam` — kept, since they prove content this module only postulates).
   --     Closing `cata-correct` means REBUILDING base and ascend, not wiring
   --     up what is here.
-  --   * everything else is `obs-correct-rest` — a NAMED scaffold bundling the
-  --     straight constructors (id/∘/⟨,⟩/fst/snd/inl/inr/case/terminal/curry/
-  --     apply/arr/SigOp — pure cases via `flat-events-[]`, SigOp via the
-  --     per-SigOp value correspondence) AND the other recursion schemes
-  --     (Para/Hylo/Fuse folds, Ana/Out/in-ν unfolds). To be split per
-  --     constructor and discharged; deferred as one obligation for now.
+  --   * everything else USED to be `obs-correct-rest`, one catch-all clause
+  --     routing every remaining constructor to a single postulate. Plan 0.68
+  --     STEP 0 ENUMERATED it — see below for why that was not cosmetic.
+  -- ════════════════════════════════════════════════════════════════════
+
+  -- ════════════════════════════════════════════════════════════════════
+  -- THE ENUMERATION (Plan 0.68 STEP 0). One named obligation per IR
+  -- constructor, replacing the `obs-correct-rest` catch-all.
+  --
+  -- WHY. A catch-all routing every case to one postulate hides two different
+  -- kinds of falsity, and this one was hiding both:
+  --
+  --   * LABELS. `curry`/`case` emit `c-jmp`/`c-thunk`/`c-label`, and the flat
+  --     machine resolves by a FIRST-MATCH scan over the whole trace. If two
+  --     definitions share a label the jump lands on the wrong one, so the
+  --     machine's events diverge from `evalᴰ` — the obligation is FALSE, not
+  --     merely unproved. That is D099's defect, and `cata-correct` (next door)
+  --     is where it actually bites: `cata-dispatch` splices the algebra trace
+  --     TWICE at one label range. `as` was the only component in the stack that
+  --     noticed, seven weeks later, for an unrelated reason.
+  --   * UNIMPLEMENTED CODEGEN. `Para`, `Ana`, `Hylo`, `Fuse` and `in-ν` compile
+  --     to the EMPTY TRACE (`ir-to-trace' n l (Para _ _) = n , l , [] , []`).
+  --     For any argument whose denotation emits an event, `traces-agree`
+  --     compares `[]` against a non-empty prefix. Refutable, for a reason that
+  --     has nothing to do with labels — and no proof discharges it, because
+  --     what is missing is the emitter.
+  --
+  -- Enumerated, each is independently attackable and a false one is isolated
+  -- instead of laundered through its neighbours. The count rising from one to
+  -- twenty is correct: the content assumed is unchanged and now it is NAMED.
+  --
+  -- IHs are NOT threaded here. `comp-obs-correct` shows the target shape (take
+  -- the sub-witnesses, so sub-term proofs stay load-bearing), but each needs its
+  -- own `ir-size` bound lemma, and those belong with the DISCHARGE of the
+  -- constructor that consumes them, not with the bookkeeping. Plan 0.68 steps
+  -- 1-4 add them one at a time.
+  --
+  -- ORDER = `Once.IR`'s own constructor order, so a retired constructor shows
+  -- up as a missing clause rather than as a silent variable catch-all.
   -- ════════════════════════════════════════════════════════════════════
   postulate
-    obs-correct-rest : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
+    -- CLASS A — straight, no control flow. Plan 0.68 step 1; the cheap half.
+    obs-correct-id        : ∀ {A} → IRObsCorrectF (id {A})
+    obs-correct-fst       : ∀ {A B} → IRObsCorrectF (fst {A} {B})
+    obs-correct-snd       : ∀ {A B} → IRObsCorrectF (snd {A} {B})
+    obs-correct-terminal  : ∀ {A} → IRObsCorrectF (terminal {A})
+    obs-correct-initial   : ∀ {A} → IRObsCorrectF (initial {A})
+    obs-correct-const     : ∀ {A} (fit : FitsInRegI A) (v : ⟦ Carrier ⟧-baseI A)
+                          → IRObsCorrectF (const fit v)
+    obs-correct-free-heap : ∀ (r : HeapRef) → IRObsCorrectF (free-heap r)
+    obs-correct-In        : ∀ {F} (wf : WellFormedFI F) (m : AllocMode)
+                          → IRObsCorrectF (In wf m)
+    obs-correct-out-μ     : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (out-μ wf)
+    obs-correct-Out       : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (Out wf)
+
+    -- CLASS B — allocating, no control flow. Step 1; adds the frontier thread.
+    obs-correct-pair : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode)
+                     → IRObsCorrectF (⟨ f , g ⟩ m)
+    obs-correct-inl  : ∀ {A B} (m : AllocMode) → IRObsCorrectF (inl {A} {B} m)
+    obs-correct-inr  : ∀ {A B} (m : AllocMode) → IRObsCorrectF (inr {A} {B} m)
+
+    -- CLASS D — LABEL-BEARING. Step 2/3: these are the obligations that force
+    -- the label discipline. `curry` emits `c-jmp end ∷ c-thunk this bb ∷ body
+    -- ++ c-ret bb ∷ c-label end ∷ []` in one literal list, so matching
+    -- `⟦curry⟧` requires that the parent's jump lands on THIS clause's
+    -- `c-label end` — which needs the CONVERSE of `find-label-sound`, false
+    -- without label uniqueness. `EmittedWF.labels-unique`'s real consumer.
+    obs-correct-curry : ∀ {A B C} (body : IR (A * B) C) (m : AllocMode)
+                      → IRObsCorrectF (curry body m)
+    obs-correct-case  : ∀ {A B C} (f : IR A C) (g : IR B C)
+                      → IRObsCorrectF (case f g)
+
+    -- CLASS E — resolution-consuming. `instr-call-closure` jumps to the code
+    -- address a `curry` put in the closure record, so it needs the same
+    -- discipline from the other side (`find-thunk`, D082's provenance).
+    obs-correct-apply : ∀ {A B} → IRObsCorrectF (apply {A} {B})
+
+    -- CLASS G — THE EMITTER IS MISSING. Each of these compiles to `[]`, so the
+    -- obligation is refutable whenever the denotation emits an event. NOT a
+    -- proof task: implement the codegen, restrict the IR so they cannot be
+    -- built, or condition the obligation to exclude them (Plan 0.68 step 5, and
+    -- it needs a decision-log entry either way). Named so the choice is forced.
+    obs-correct-Para : ∀ {F} (wf : WellFormedFI F) {A} (f : IR (⟦ F ⟧TI (μ-type F * A)) A)
+                     → IRObsCorrectF (Para wf f)
+    obs-correct-in-ν : ∀ {F} (wf : WellFormedFI F) (m : AllocMode)
+                     → IRObsCorrectF (in-ν wf m)
+    obs-correct-Ana  : ∀ {F} (wf : WellFormedFI F) {A} (f : IR A (⟦ F ⟧TI A))
+                     → IRObsCorrectF (Ana wf f)
+    obs-correct-Hylo : ∀ {F G} (wfF : WellFormedFI F) (wfG : WellFormedFI G) {B}
+                       (alg : IR (⟦ F ⟧TI B) B) (nt : NatTr G F)
+                     → IRObsCorrectF (Hylo wfF wfG alg nt)
+    obs-correct-Fuse : ∀ {F G} (wfF : WellFormedFI F) (wfG : WellFormedFI G) {B}
+                       (alg : IR (⟦ F ⟧TI B) B) (nt : NatTr G F)
+                     → IRObsCorrectF (Fuse wfF wfG alg nt)
 
   -- ════════════════════════════════════════════════════════════════════
   -- `obs-correct-sigop` — the `SigOp` case carved OUT of `obs-correct-rest`
@@ -449,18 +542,26 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       before : BeforeFrontier (falloc (flat-run 2 (SigOp si) s alloc)) input-loc
       before rewrite keeps-alloc = input-before
 
+  -- The SigOp cases the Pure discharge does NOT cover, named separately (Plan
+  -- 0.68 step 0). They used to fall back into the whole-IR `obs-correct-rest`,
+  -- which meant an EFFECTFUL SigOp — the only kind that puts anything in the
+  -- observable trace at all — was assumed by the same postulate as `Para`'s
+  -- missing codegen. Split out so the effectful case has its own row.
+  postulate
+    obs-correct-sigop-rest : ∀ {A B} (si : SigOpInfo A B) → IRObsCorrectF (SigOp si)
+
   obs-correct-sigop : ∀ {A B} (si : SigOpInfo A B) → IRObsCorrectF (SigOp si)
   -- Route on BOTH the codomain (register-resident result) and the domain
   -- (readable input ⇒ the machine can materialise it and apply `semM`). A Pure
   -- SigOp over a non-readable input keeps the sentinel, so it makes no value
-  -- claim and falls back to `obs-correct-rest`. Arith is always readable.
+  -- claim and falls back to `obs-correct-sigop-rest`. Arith is always readable.
   obs-correct-sigop {A} {B} si with fits-in-reg? B | readable? A
-  ... | nothing      | _       = obs-correct-rest (SigOp si)
-  ... | just fitness | nothing = obs-correct-rest (SigOp si)
+  ... | nothing      | _       = obs-correct-sigop-rest si
+  ... | just fitness | nothing = obs-correct-sigop-rest si
   ... | just fitness | just rA with effect si in pure-eq
   ...   | Pure    = pure-obs-correct-sigop si fitness rA pure-eq
-  ...   | Emits _ = obs-correct-rest (SigOp si)
-  ...   | Halts _ = obs-correct-rest (SigOp si)
+  ...   | Emits _ = obs-correct-sigop-rest si
+  ...   | Halts _ = obs-correct-sigop-rest si
 
   -- ════════════════════════════════════════════════════════════════════
   -- `comp-obs-correct` — the COMPOSITION case, CARVED from `obs-correct-rest`
@@ -532,8 +633,39 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     comp-step (comp-size-g {g = g} {f} sz) ihg
       (ihf (comp-size-f {g = g} {f} sz) mIn x il s alloc ns valid before nh rdi)
 
+  -- TOTAL, and now with NO CATCH-ALL (Plan 0.68 step 0). Every constructor has
+  -- its own clause and its own named obligation, in `Once.IR`'s order — so a
+  -- constructor that is added, removed or renamed is a TYPE ERROR here rather
+  -- than a silent variable pattern absorbing it (the retired-ctor trap).
   ir-obs-correct : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir
-  ir-obs-correct (Cata wf alg) = cata-correct wf alg (ir-obs-correct alg)
-  ir-obs-correct (SigOp si)    = obs-correct-sigop si
-  ir-obs-correct (g ∘ f)       = comp-obs-correct (ir-obs-correct g) (ir-obs-correct f)
-  ir-obs-correct ir            = obs-correct-rest ir
+  -- category structure
+  ir-obs-correct id                  = obs-correct-id
+  ir-obs-correct (g ∘ f)             = comp-obs-correct (ir-obs-correct g) (ir-obs-correct f)
+  -- products
+  ir-obs-correct (⟨ f , g ⟩ m)       = obs-correct-pair f g m
+  ir-obs-correct fst                 = obs-correct-fst
+  ir-obs-correct snd                 = obs-correct-snd
+  -- sums
+  ir-obs-correct (inl m)             = obs-correct-inl m
+  ir-obs-correct (inr m)             = obs-correct-inr m
+  ir-obs-correct (case f g)          = obs-correct-case f g
+  -- terminal / initial
+  ir-obs-correct terminal            = obs-correct-terminal
+  ir-obs-correct initial             = obs-correct-initial
+  -- exponentials — THE LABEL-BEARING PAIR
+  ir-obs-correct (curry body m)      = obs-correct-curry body m
+  ir-obs-correct apply               = obs-correct-apply
+  -- μ / ν structure
+  ir-obs-correct (In wf m)           = obs-correct-In wf m
+  ir-obs-correct (out-μ wf)          = obs-correct-out-μ wf
+  ir-obs-correct (Cata wf alg)       = cata-correct wf alg (ir-obs-correct alg)
+  ir-obs-correct (Para wf f)         = obs-correct-Para wf f
+  ir-obs-correct (Out wf)            = obs-correct-Out wf
+  ir-obs-correct (in-ν wf m)         = obs-correct-in-ν wf m
+  ir-obs-correct (Ana wf f)          = obs-correct-Ana wf f
+  ir-obs-correct (Hylo wfF wfG a nt) = obs-correct-Hylo wfF wfG a nt
+  ir-obs-correct (Fuse wfF wfG a nt) = obs-correct-Fuse wfF wfG a nt
+  -- misc
+  ir-obs-correct (free-heap r)       = obs-correct-free-heap r
+  ir-obs-correct (const fit v)       = obs-correct-const fit v
+  ir-obs-correct (SigOp si)          = obs-correct-sigop si

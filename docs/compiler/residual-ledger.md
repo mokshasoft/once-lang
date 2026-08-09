@@ -160,11 +160,30 @@ toolchain-boundary work (Intel SDM byte encoding), not a correspondence gap.
 - `x86-32` / `riscv64` each still postulate their whole `conc-flat-sim` plus a
   loader axiom and an opaque `entry-frame`. x86-64 is the only arch with a real
   correspondence; the other two assume it.
-- `cata-correct` (`IRObsCorrectFlat`) — the cata loop obligation. Its intended
-  discharge (`CataNat*`) is AMPUTATED: `5088e571` deleted the ascend/value/trace
-  thirds 2026-06-17, leaving only descend. Rebuilding base+ascend is a project.
-- `obs-correct-rest` (`IRObsCorrectFlat`) — the non-cata IR constructors,
-  deferred as one bundle.
+- `cata-correct` (`IRObsCorrectFlat`) — **FALSE AS STATED**, reclassified
+  2026-08-09 (Plan 0.68 step 0). Not a deferred proof: `cata-dispatch` splices
+  the algebra trace TWICE at ONE label range (`I₁ ++ at ++ (I₂ ++ at ++ I₃)`),
+  and the flat machine resolves labels by a first-match scan over the whole
+  trace — so the second copy's `c-jmp end` lands in the FIRST copy and the
+  machine's events diverge from `evalᴰ`. This is D099's defect, and this row is
+  where it actually lives; the assembler premise (D100, residual #14) is the
+  downstream symptom. Refutable until the cata fork lands. Its intended
+  discharge is ALSO amputated: `5088e571` deleted the ascend/value/trace thirds
+  2026-06-17, leaving only descend. Rebuilding base+ascend is a project.
+- `obs-correct-rest` (`IRObsCorrectFlat`) — **DELETED 2026-08-09** (Plan 0.68
+  step 0). The catch-all is enumerated: 22 named obligations, one per IR
+  constructor, no catch-all clause, apex green. It was hiding two independent
+  kinds of falsity, neither of them visible while one postulate covered
+  everything:
+  * **labels** — `curry`/`case` emit control, so their obligations are false
+    under a duplicate label, for the same reason `cata-correct` is;
+  * **unimplemented codegen** — `Para`, `Ana`, `Hylo`, `Fuse`, `in-ν` compile to
+    the EMPTY TRACE, so their obligations are refutable whenever the denotation
+    emits an event. Not a proof task at all: the emitter is missing.
+  A third split fell out: the effectful SigOp (`obs-correct-sigop-rest`), the
+  only construct that puts anything in the observable trace, used to be assumed
+  by the same postulate as `Para`'s missing codegen. See
+  `plans/0.68-discharge-ir-obs-correct.md` for the scoreboard.
 
 ## THE `Window` WEAKENING (landed)
 
