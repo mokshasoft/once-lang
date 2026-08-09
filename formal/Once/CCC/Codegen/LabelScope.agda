@@ -1137,14 +1137,30 @@ segagree-pre pre {t} a c d nl lst le sat =
 -- is exactly how `case` emits them (`gt` at `[lf, lg)` comes first, `ft` at
 -- `[l+2, lf)` after), and transitivity gives every pair.
 ------------------------------------------------------------------------
+-- Disjoint windows share no index, whichever way round they are.
+disj-clash : ∀ {a b c d : ℕ} {i : ℕ}
+           → (b ≤ c) ⊎ (d ≤ a) → (a ≤ i) × (i < b) → (c ≤ i) × (i < d) → ⊥
+disj-clash (inj₁ b≤c) wI wA = <-asym (proj₂ wI) (≤-trans b≤c (proj₁ wA))
+disj-clash (inj₂ d≤a) wI wA = <-asym (proj₂ wA) (≤-trans d≤a (proj₁ wI))
+
+-- D099 (2026-08-09): the skeleton relation was `b ≤ c` — "every embedded window
+-- sits ABOVE the skeleton's". True for `case` (the join labels are allocated
+-- first, the branches after) and FALSE for `cata`, which allocates its algebra
+-- copies FIRST and its own six labels last. The datatype only ever needs the
+-- two windows to be DISJOINT, so that is what it now asks for. `case` passes
+-- `inj₁`, `cata` passes `inj₂`; both clash arguments below split on it.
+--
+-- The DESCENT along the trace (`d ≤ hi`, recursing at `c`) is unchanged — that
+-- is what gives pairwise disjointness between embedded windows, and both
+-- shapes satisfy it (for cata, by splicing the higher-numbered copy first).
 data Pieces2 (a b : ℕ) : ℕ → AbstractTrace → Set where
   p2nil  : ∀ {hi I} → seg-idle? I ≡ true → LabelsIn a b I → Pieces2 a b hi I
   p2cons : ∀ {hi I at t} (c d : ℕ)
          → seg-idle? I ≡ true → LabelsIn a b I
          → (∀ st → seg-fold at st ≡ st) → SegAgree at → LabelsIn c d at
-         -- the embedded window sits above the skeleton's, is well-formed, and
-         -- lies below everything the tail may still mention
-         → b ≤ c → c ≤ d → d ≤ hi
+         -- the embedded window is DISJOINT from the skeleton's, well-formed,
+         -- and lies below everything the tail may still mention
+         → (b ≤ c) ⊎ (d ≤ a) → c ≤ d → d ≤ hi
          → Pieces2 a b c t → Pieces2 a b hi (I ++ at ++ t)
 
 pieces2-neutral : ∀ (a b hi : ℕ) (t : AbstractTrace) → Pieces2 a b hi t
@@ -1256,7 +1272,7 @@ pieces2-skel a b hi .(I ++ at ++ t)
   where
     go : PieceLoc a b c d I at t st p m → seg-at (I ++ at ++ t) p st ≡ st
     go (loc-I seq _)        = seq
-    go (loc-at k _ _ wAt)   = ⊥-elim (<-asym (proj₂ w) (≤-trans b≤c (proj₁ wAt)))
+    go (loc-at k _ _ wAt)   = ⊥-elim (disj-clash b≤c w wAt)
     go (loc-t j seq feq)    =
       trans seq (pieces2-skel a b c t ps j m st (trans (sym (cong mention-of feq)) e) w)
 
@@ -1275,7 +1291,7 @@ pieces2-agree a b hi .(I ++ at ++ t)
     lq-men rewrite lq = refl
     -- skeleton window vs embedded window
     clash₁ : (a ≤ idx m) × (idx m < b) → (c ≤ idx m) × (idx m < d) → ⊥
-    clash₁ wI wA = <-asym (proj₂ wI) (≤-trans b≤c (proj₁ wA))
+    clash₁ wI wA = disj-clash b≤c wI wA
     -- embedded window vs anything the TAIL can mention (`pieces2-mentions`:
     -- the skeleton's window, or strictly below this window's start)
     clash₂ : ∀ (r : ℕ) → (c ≤ idx m) × (idx m < d) → mention-at t r ≡ just m → ⊥
@@ -1529,11 +1545,11 @@ seg-agree (case f g) n l = pieces2-agree l (suc (suc l)) _ _ (case-pieces f g n 
 
 case-pieces f g n l =
   p2cons lf lg refl hdL (λ st → ok-neu (slots-below g nf lf) st) (seg-agree g nf lf)
-         (labels-in g nf lf) (label-mono f n (suc (suc l))) (label-mono g nf lf) ≤-refl
+         (labels-in g nf lf) (inj₁ (label-mono f n (suc (suc l)))) (label-mono g nf lf) ≤-refl
     (p2cons (suc (suc l)) lf refl midL
             (λ st → ok-neu (slots-below f n (suc (suc l))) st)
             (seg-agree f n (suc (suc l))) (labels-in f n (suc (suc l)))
-            ≤-refl (label-mono f n (suc (suc l))) ≤-refl
+            (inj₁ ≤-refl) (label-mono f n (suc (suc l))) ≤-refl
       (p2nil refl tailL))
   where
     nf = budget-of (ir-to-trace' n (suc (suc l)) f)

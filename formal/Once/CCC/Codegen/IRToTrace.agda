@@ -848,10 +848,14 @@ ir-to-trace' n l (out-μ _)      = n , l , (mov-to-output ∷ []) , []
 -- The slot frontier threads through both (`n2`), so neither copy's scratch
 -- slots collide either.
 ir-to-trace' n l (Cata {F} _ alg) =
-  let (n1 , l1 , at₁ , ab₁) = ir-to-trace' n  l  alg
-      (n2 , l2 , at₂ , ab₂) = ir-to-trace' n1 l1 alg
-      (next , l3 , trace)   = cata-dispatch (cata-strategy ⌈ F ⌉F) n2 l2 at₁ at₂
-  in next , l3 , trace , ab₁ ++ ab₂
+  -- The copy spliced FIRST gets the HIGHER label window, so the windows
+  -- DESCEND along the emitted trace. That is not cosmetic: it is the shape
+  -- `LabelScope.Pieces2` needs (each cons bounds the tail by its own window
+  -- start), and it is how `case` already emits its two branches.
+  let (n1 , l1 , at-late , ab-late) = ir-to-trace' n  l  alg
+      (n2 , l2 , at-early , ab-early) = ir-to-trace' n1 l1 alg
+      (next , l3 , trace) = cata-dispatch (cata-strategy ⌈ F ⌉F) n2 l2 at-early at-late
+  in next , l3 , trace , ab-early ++ ab-late
 ir-to-trace' n l (Para _ _)     = n , l , [] , []
 ir-to-trace' n l (Out _)        = n , l , (mov-to-output ∷ []) , []
 ir-to-trace' n l (in-ν _ _)     = n , l , [] , []
