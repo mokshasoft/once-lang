@@ -42,7 +42,7 @@ open import Once.CanonicalName using (CanonicalName)
 
 module Once.CCC.Codegen.FrameFreeTrace (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; suc; _+_)
+open import Data.Nat using (ℕ; suc; _+_; _*_)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_)
 open import Data.List using (List; []; _∷_; _++_)
@@ -69,7 +69,10 @@ open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
-   cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize)
+   cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize;
+   -- D099 / C1: the three shared blocks of the called-algebra shape.
+   cata-body; cata-call-setup; cata-call; cata-trace-const;
+   cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; fsize)
 
 -- third projection of `ir-to-trace'`'s 4-tuple / of `cata-dispatch`'s 3-tuple
 -- (record patterns, so they reduce under eta — unlike IRToTrace's own
@@ -145,39 +148,90 @@ rebuild-walk-ff valSlot tv tb (F ⊗ G) s lb =
 -- The three cata strategies: each splices the algebra trace `at` (whose
 -- freeness is the caller's IH) into a fixed frame-op-free skeleton.
 ------------------------------------------------------------------------
-cata-nat-ff : ∀ n1 l1 at → FrameFreeTrace at
-            → FrameFreeTrace (cata-trace-of (cata-trace-nat n1 l1 at))
--- Plan 0.63 (iii): the skeleton is `I₁ ++ at ++ (I₂ ++ at ++ I₃)` now, so the
--- walk follows that alternation directly.
-cata-nat-ff n1 l1 at ff =
+-- D099 / C1: three SHARED block witnesses, because the algebra is now emitted
+-- once as a called body and every strategy uses the same three pieces. All of
+-- `c-jmp`/`c-thunk`/`c-ret`/`c-label`/`instr-call-closure`/`instr-alloc-heap`/
+-- `instr-load-code-addr`/`instr-save-closure-reg` are EMITTABLE (the fence this
+-- walk enforces is the emitter one, not the semantic `FrameFreeI` — the call
+-- and the markers DO move the frame, which is exactly why they are ⊥ there and
+-- ⊤ here). `curry` already relies on the same split.
+cata-body-ff : ∀ b e bb at → FrameFreeTrace at → FrameFreeTrace (cata-body b e bb at)
+cata-body-ff b e bb at ff = tt ∷ tt ∷ ++⁺ ff (tt ∷ tt ∷ [])
+
+cata-setup-ff : ∀ cl bl → FrameFreeTrace (cata-call-setup cl bl)
+cata-setup-ff cl bl = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+
+cata-call-ff : ∀ cl k → FrameFreeTrace (cata-call cl k)
+cata-call-ff cl k = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+
+-- The nat skeleton's three pieces, unchanged by C1 — named so the strategy
+-- witnesses below are a composition rather than one long count.
+nat-I₁-ff : ∀ n1 l1 → FrameFreeTrace (cata-nat-I₁ n1 l1)
+nat-I₁-ff n1 l1 =
   tt ∷ tt ∷
-  ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])  -- descend
+  ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
       (tt ∷ tt ∷ tt ∷
-       ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])       -- layer 0
-           (tt ∷ ++⁺ ff                                                  -- at (1st)
-             (tt ∷ tt ∷ tt ∷
-              ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) -- layer 1
-                  (tt ∷ ++⁺ ff (tt ∷ tt ∷ tt ∷ [])))))                   -- at (2nd) ++ I₃
+       ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) (tt ∷ []))
 
-cata-linear-ff : ∀ n1 l1 at → FrameFreeTrace at
-               → FrameFreeTrace (cata-trace-of (cata-trace-linear n1 l1 at))
-cata-linear-ff n1 l1 at ff = ++⁺ descend (tt ∷ ++⁺ ff ascend)
-  where
-    descend : FrameFreeTrace _
-    descend = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
-              tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-    ascend : FrameFreeTrace _
-    ascend = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
-             tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
-             ++⁺ ff (tt ∷ tt ∷ tt ∷ [])
+nat-I₂-ff : ∀ n1 l1 → FrameFreeTrace (cata-nat-I₂ n1 l1)
+nat-I₂-ff n1 l1 =
+  tt ∷ tt ∷ tt ∷ ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) (tt ∷ [])
 
-cata-branching-ff : ∀ F n1 l1 at → FrameFreeTrace at
-                  → FrameFreeTrace (cata-trace-of (cata-trace-branching F n1 l1 at))
--- Plan 0.63 (iii): `I₁ ++ at ++ I₂` — I₁ absorbs init, flatten and the fold's
--- prefix; I₂ is the fold's tail plus the final read.
-cata-branching-ff F n1 l1 at ff =
-  ++⁺ I₁ (++⁺ ff I₂)
+nat-I₃-ff : ∀ l1 → FrameFreeTrace (cata-nat-I₃ l1)
+nat-I₃-ff l1 = tt ∷ tt ∷ tt ∷ []
+
+cata-nat-ff : ∀ bb n1 l1 at → FrameFreeTrace at
+            → FrameFreeTrace (cata-trace-of (cata-trace-nat bb n1 l1 at))
+-- Arguments spelled out rather than `_`: the composition has to pin where each
+-- block ends, and `at` is a variable, so the splits cannot be inferred.
+cata-nat-ff bb n1 l1 at ff =
+  ++⁺ (cata-body-ff bodyL endL bb at ff)
+      (++⁺ (cata-setup-ff cl bodyL)
+           (++⁺ (nat-I₁-ff n1 l1)
+                (++⁺ (cata-call-ff cl k)
+                     (++⁺ (nat-I₂-ff n1 l1)
+                          (++⁺ (cata-call-ff cl k) (nat-I₃-ff l1))))))
   where
+    bodyL = suc (suc (suc (suc (suc (suc l1)))))
+    endL  = suc (suc (suc (suc (suc (suc (suc l1))))))
+    cl    = suc (suc n1)
+    k     = suc (suc (suc n1))
+
+cata-const-ff : ∀ bb n1 l1 at → FrameFreeTrace at
+              → FrameFreeTrace (cata-trace-of (cata-trace-const bb n1 l1 at))
+cata-const-ff bb n1 l1 at ff =
+  ++⁺ (cata-body-ff l1 (l1 + 1) bb at ff)
+      (++⁺ (cata-setup-ff n1 l1) (cata-call-ff n1 (n1 + 1)))
+
+cata-linear-ff : ∀ bb n1 l1 at → FrameFreeTrace at
+               → FrameFreeTrace (cata-trace-of (cata-trace-linear bb n1 l1 at))
+cata-linear-ff bb n1 l1 at ff =
+  ++⁺ (cata-body-ff (l1 + 4) (l1 + 5) bb at ff)
+      (++⁺ (cata-setup-ff (n1 + 6) (l1 + 4))
+           (++⁺ lin-I₁
+                (++⁺ (cata-call-ff (n1 + 6) (n1 + 7))
+                     (++⁺ lin-I₂ (++⁺ (cata-call-ff (n1 + 6) (n1 + 7)) lin-I₃)))))
+  where
+    -- 26: the old witness split as `++⁺ (25 tt) (tt ∷ …)` right before `at`.
+    lin-I₁ : FrameFreeTrace _
+    lin-I₁ = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
+             tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+    lin-I₂ : FrameFreeTrace _
+    lin-I₂ = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
+             tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+    lin-I₃ : FrameFreeTrace _
+    lin-I₃ = tt ∷ tt ∷ tt ∷ []
+
+cata-branching-ff : ∀ F bb n1 l1 at → FrameFreeTrace at
+                  → FrameFreeTrace (cata-trace-of (cata-trace-branching F bb n1 l1 at))
+-- Tier 2 splices once, so it has ONE call site.
+cata-branching-ff F bb n1 l1 at ff =
+  ++⁺ (cata-body-ff bodyL (bodyL + 1) bb at ff)
+      (++⁺ (cata-setup-ff cl bodyL)
+           (++⁺ I₁ (++⁺ (cata-call-ff cl (cl + 1)) I₂)))
+  where
+    bodyL = l1 + 4 + lsize F + lsize F
+    cl    = n1 + 7 + (4 * fsize F) + 4
     I₁ : FrameFreeTrace _
     I₁ = ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
              (++⁺ (push2-ff n1 (n1 + 4) (n1 + 5))
@@ -193,12 +247,12 @@ cata-branching-ff F n1 l1 at ff =
     I₂ = ++⁺ (push2-ff (n1 + 2) (n1 + 4) (n1 + 5))
              (++⁺ (tt ∷ tt ∷ []) (tt ∷ tt ∷ tt ∷ []))
 
-cata-dispatch-ff : ∀ st n1 l1 at → FrameFreeTrace at
-                 → FrameFreeTrace (cata-trace-of (cata-dispatch st n1 l1 at))
-cata-dispatch-ff strat-const         n1 l1 at ff = ff
-cata-dispatch-ff strat-nat           n1 l1 at ff = cata-nat-ff n1 l1 at ff
-cata-dispatch-ff strat-linear        n1 l1 at ff = cata-linear-ff n1 l1 at ff
-cata-dispatch-ff (strat-branching F) n1 l1 at ff = cata-branching-ff F n1 l1 at ff
+cata-dispatch-ff : ∀ st bb n1 l1 at → FrameFreeTrace at
+                 → FrameFreeTrace (cata-trace-of (cata-dispatch st bb n1 l1 at))
+cata-dispatch-ff strat-const         bb n1 l1 at ff = cata-const-ff bb n1 l1 at ff
+cata-dispatch-ff strat-nat           bb n1 l1 at ff = cata-nat-ff bb n1 l1 at ff
+cata-dispatch-ff strat-linear        bb n1 l1 at ff = cata-linear-ff bb n1 l1 at ff
+cata-dispatch-ff (strat-branching F) bb n1 l1 at ff = cata-branching-ff F bb n1 l1 at ff
 
 ------------------------------------------------------------------------
 -- THE THEOREM, over arbitrary frontier `n` / label counter `l`.
@@ -250,8 +304,10 @@ frame-free-trace' (case f g) (hf , hg) n l =
                 (++⁺ (frame-free-trace' f hf _ _) (tt ∷ []))))
 frame-free-trace' (In _ _)  hm n l = tt ∷ []
 frame-free-trace' (out-μ _) hm n l = tt ∷ []
+-- C1: the algebra is generated at frontier 0 (its own frame), so its IH is
+-- taken there rather than at the caller's `n`.
 frame-free-trace' (Cata {F} _ alg) hm n l =
-  cata-dispatch-ff (cata-strategy ⌈ F ⌉F) _ _ _ (frame-free-trace' alg hm n l)
+  cata-dispatch-ff (cata-strategy ⌈ F ⌉F) _ _ _ _ (frame-free-trace' alg hm 0 l)
 frame-free-trace' (Para _ _)     hm n l = []
 frame-free-trace' (Out _)        hm n l = tt ∷ []
 frame-free-trace' (in-ν _ _)     hm n l = []
