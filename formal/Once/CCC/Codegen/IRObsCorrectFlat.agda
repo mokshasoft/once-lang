@@ -423,14 +423,56 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       place (in-reg fit eq)  = at-reg input-loc fit before' (out-lit fit eq) before'
       place (in-unit refl)   = unit-result
 
+  -- ── `terminal` — DISCHARGED. The emitter emits NOTHING for it
+  -- (`ir-to-trace terminal = []`), which is right: the codomain is `Unit`, the
+  -- erased type, so there is no value to place and no event to emit. `fetch []`
+  -- is `nothing` at every pc, so both `ev-[]` clauses are absurd, and the
+  -- result place is `unit-result` — which asserts nothing about the state,
+  -- exactly because a unit result has no residence (D074).
+  obs-correct-terminal : ∀ {A} → IRObsCorrectF (terminal {A})
+  obs-correct-terminal {A} _ mIn x input-loc s alloc _ valid input-before nh rdi-eq =
+    record
+      { traces-agree = λ k → 1 , cong (take k) (mach-[] 1)
+      ; value-realized = 1 , mIn , falloc (flat-run 1 (terminal {A}) s alloc) , unit-result
+      }
+    where
+      ev-[] : ∀ pc i → fetch (ir-to-trace (terminal {A})) pc ≡ just i → ∀ fs → event-of i fs ≡ []
+      ev-[] zero    i () fs
+      ev-[] (suc n) i () fs
+
+      mach-[] : ∀ f → flat-events f (ir-to-trace (terminal {A})) (mkFlat s alloc 0) ≡ []
+      mach-[] f = flat-events-[] (ir-to-trace (terminal {A})) ev-[] f (mkFlat s alloc 0)
+
+  -- ── `initial` — DISCHARGED, VACUOUSLY, and that is the honest reading.
+  -- `initial : IR Void A` and `⟦ Void ⟧ᴵ` is `⊥`, so there is no input to run
+  -- on. The denotation agrees: `evalᴰ initial ()` is itself defined by an
+  -- absurd pattern. The emitter's `mov-to-output` is never reached because the
+  -- state it would run from cannot exist.
+  obs-correct-initial : ∀ {A} → IRObsCorrectF (initial {A})
+  obs-correct-initial _ mIn ()
+
+  -- ── `free-heap` — DISCHARGED. `IR Unit Unit`, a semantic no-op that still
+  -- compiles to `mov-to-output ∷ []` (copy through, so the register discipline
+  -- holds). Unit codomain ⇒ `unit-result`; no event on either side.
+  obs-correct-free-heap : ∀ (r : HeapRef) → IRObsCorrectF (free-heap r)
+  obs-correct-free-heap r _ mIn x input-loc s alloc _ valid input-before nh rdi-eq =
+    record
+      { traces-agree = λ k → 2 , cong (take k) (mach-[] 2)
+      ; value-realized = 2 , mIn , falloc (flat-run 2 (free-heap r) s alloc) , unit-result
+      }
+    where
+      ev-[] : ∀ pc i → fetch (ir-to-trace (free-heap r)) pc ≡ just i → ∀ fs → event-of i fs ≡ []
+      ev-[] zero    .mov-to-output refl fs = refl
+      ev-[] (suc n) i              ()   fs
+
+      mach-[] : ∀ f → flat-events f (ir-to-trace (free-heap r)) (mkFlat s alloc 0) ≡ []
+      mach-[] f = flat-events-[] (ir-to-trace (free-heap r)) ev-[] f (mkFlat s alloc 0)
+
   postulate
     obs-correct-fst       : ∀ {A B} → IRObsCorrectF (fst {A} {B})
     obs-correct-snd       : ∀ {A B} → IRObsCorrectF (snd {A} {B})
-    obs-correct-terminal  : ∀ {A} → IRObsCorrectF (terminal {A})
-    obs-correct-initial   : ∀ {A} → IRObsCorrectF (initial {A})
     obs-correct-const     : ∀ {A} (fit : FitsInRegI A) (v : ⟦ Carrier ⟧-baseI A)
                           → IRObsCorrectF (const fit v)
-    obs-correct-free-heap : ∀ (r : HeapRef) → IRObsCorrectF (free-heap r)
     obs-correct-In        : ∀ {F} (wf : WellFormedFI F) (m : AllocMode)
                           → IRObsCorrectF (In wf m)
     obs-correct-out-μ     : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (out-μ wf)
