@@ -407,20 +407,22 @@ segok-thunk {B} ℓ bb e body bok = mkSegOK inner neu
 ------------------------------------------------------------------------
 -- THE FRONTIER NEVER RETREATS.
 ------------------------------------------------------------------------
-cata-mono : ∀ (st : CataStrategy) (n1 l1 : ℕ) (at : AbstractTrace)
-          → n1 ≤ cata-budget-of (cata-dispatch st n1 l1 at)
-cata-mono strat-const         n1 l1 at = ≤-refl
-cata-mono strat-nat           n1 l1 at = ≤-trans (n≤1+n n1) (n≤1+n (suc n1))
-cata-mono strat-linear        n1 l1 at =
+-- D099 / C1: every strategy now also reserves the call's two slots (`cl`, `k`),
+-- and `strat-const` — which used to splice the algebra inline and reserve
+-- nothing — goes through the same call, so it reserves two as well.
+cata-mono : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
+          → n1 ≤ cata-budget-of (cata-dispatch st bb n1 l1 at)
+cata-mono strat-const         bb n1 l1 at = m≤m+n n1 2
+cata-mono strat-nat           bb n1 l1 at =
   ≤-trans (n≤1+n n1)
     (≤-trans (n≤1+n (suc n1))
-      (≤-trans (n≤1+n (suc (suc n1)))
-        (≤-trans (n≤1+n (suc (suc (suc n1))))
-          (≤-trans (n≤1+n (suc (suc (suc (suc n1)))))
-                   (n≤1+n (suc (suc (suc (suc (suc n1))))))))))
-cata-mono (strat-branching F) n1 l1 at =
+      (≤-trans (n≤1+n (suc (suc n1))) (n≤1+n (suc (suc (suc n1))))))
+cata-mono strat-linear        bb n1 l1 at = m≤m+n n1 8
+cata-mono (strat-branching F) bb n1 l1 at =
   ≤-trans (m≤m+n n1 7)
-    (≤-trans (m≤m+n (n1 + 7) (4 * fsize F)) (m≤m+n ((n1 + 7) + 4 * fsize F) 4))
+    (≤-trans (m≤m+n (n1 + 7) (4 * fsize F))
+      (≤-trans (m≤m+n ((n1 + 7) + 4 * fsize F) 4)
+               (m≤m+n (((n1 + 7) + 4 * fsize F) + 4) 2)))
 
 frontier-mono : ∀ {A B} (ir : IR A B) (n l : ℕ) → n ≤ budget-of (ir-to-trace' n l ir)
 frontier-mono id       n l = ≤-refl
@@ -448,8 +450,10 @@ frontier-mono (case f g)  n l =
   ≤-trans (frontier-mono f n (suc (suc l))) (frontier-mono g _ _)
 frontier-mono (In _ _)    n l = ≤-refl
 frontier-mono (out-μ _)   n l = ≤-refl
-frontier-mono (Cata {F} _ alg) n l =
-  ≤-trans (frontier-mono alg n l) (cata-mono (cata-strategy ⌈ F ⌉F) _ _ _)
+-- C1: the algebra runs in its OWN frame (generated at frontier 0), so the
+-- caller's frontier is not advanced by it at all — the dispatch takes `n`
+-- directly and only the cata's own scratch is added.
+frontier-mono (Cata {F} _ alg) n l = cata-mono (cata-strategy ⌈ F ⌉F) _ _ _ _
 frontier-mono (Para _ _)     n l = ≤-refl
 frontier-mono (Out _)        n l = ≤-refl
 frontier-mono (in-ν _ _)     n l = ≤-refl

@@ -69,24 +69,27 @@ cata-label-of (_ , l , _) = l
 -- window for each of the two compile-time walks (`lv` then `lr`, which is why
 -- `lsize F` appears twice — sharing a base would duplicate labels).
 ------------------------------------------------------------------------
-cata-label-mono : ∀ (st : CataStrategy) (n1 l1 : ℕ) (at : AbstractTrace)
-                → l1 ≤ cata-label-of (cata-dispatch st n1 l1 at)
-cata-label-mono strat-const         n1 l1 at = ≤-refl
-cata-label-mono strat-nat           n1 l1 at =
+-- D099 / C1: every strategy also takes the body label and its jump-over join,
+-- so each window grows by two — `strat-const` included, since it now emits a
+-- called body rather than splicing the algebra inline.
+cata-label-mono : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
+                → l1 ≤ cata-label-of (cata-dispatch st bb n1 l1 at)
+cata-label-mono strat-const         bb n1 l1 at = m≤m+n l1 2
+cata-label-mono strat-nat           bb n1 l1 at =
   ≤-trans (n≤1+n l1)
     (≤-trans (n≤1+n (suc l1))
       (≤-trans (n≤1+n (suc (suc l1)))
         (≤-trans (n≤1+n (suc (suc (suc l1))))
           (≤-trans (n≤1+n (suc (suc (suc (suc l1)))))
-                   (n≤1+n (suc (suc (suc (suc (suc l1))))))))))
--- linear takes FOUR (`ld-top`, `ld-end`, `la-top`, `la-end`)
-cata-label-mono strat-linear        n1 l1 at =
-  ≤-trans (n≤1+n l1)
-    (≤-trans (n≤1+n (suc l1))
-      (≤-trans (n≤1+n (suc (suc l1))) (n≤1+n (suc (suc (suc l1))))))
-cata-label-mono (strat-branching F) n1 l1 at =
+            (≤-trans (n≤1+n (suc (suc (suc (suc (suc l1))))))
+              (≤-trans (n≤1+n (suc (suc (suc (suc (suc (suc l1)))))))
+                       (n≤1+n (suc (suc (suc (suc (suc (suc (suc l1))))))))))))))
+cata-label-mono strat-linear        bb n1 l1 at = m≤m+n l1 6
+cata-label-mono (strat-branching F) bb n1 l1 at =
   ≤-trans (m≤m+n l1 4)
-    (≤-trans (m≤m+n (l1 + 4) (lsize F)) (m≤m+n ((l1 + 4) + lsize F) (lsize F)))
+    (≤-trans (m≤m+n (l1 + 4) (lsize F))
+      (≤-trans (m≤m+n ((l1 + 4) + lsize F) (lsize F))
+               (m≤m+n (((l1 + 4) + lsize F) + lsize F) 2)))
 
 ------------------------------------------------------------------------
 -- THE COUNTER NEVER RETREATS.
@@ -120,8 +123,10 @@ label-mono (case f g)  n l =
       (≤-trans (label-mono f n (suc (suc l))) (label-mono g _ _)))
 label-mono (In _ _)    n l = ≤-refl
 label-mono (out-μ _)   n l = ≤-refl
+-- C1: the algebra is generated at frontier 0, so its own label advance is
+-- taken there; the skeleton then advances further from `l1`.
 label-mono (Cata {F} _ alg) n l =
-  ≤-trans (label-mono alg n l) (cata-label-mono (cata-strategy ⌈ F ⌉F) _ _ _)
+  ≤-trans (label-mono alg 0 l) (cata-label-mono (cata-strategy ⌈ F ⌉F) _ _ _ _)
 label-mono (Para _ _)     n l = ≤-refl
 label-mono (Out _)        n l = ≤-refl
 label-mono (in-ν _ _)     n l = ≤-refl
