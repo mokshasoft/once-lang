@@ -73,7 +73,7 @@ open import Function using (case_of_)
 open import Once.CCC.Eval using (eval)
 open import Once.CCC.Machine.SMCore
   using (LocState; ValueLocation; SV-Ptr; sv-as-loc; halted; regs; readReg; Input1; Output;
-         instr-sigop; mov-to-output; writeReg; writeReg-same; AbstractTrace; module AbstractExec; module MemOps)
+         instr-sigop; mov-to-output; instr-load-const; SV-Lit; writeReg; writeReg-same; AbstractTrace; module AbstractExec; module MemOps)
 open import Once.CCC.Machine.Validity using (module ValidityDef)
 open import Once.CCC.Machine.ValidAtWFHalted o using (validAtWF-set-halted)
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; module FrontierInvariant)
@@ -93,7 +93,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open AbstractExec {FS} using (exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed)
   open FrontierInvariant {FS} using (BeforeFrontier)
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result; prim-sv
+    using (ValidAtWF; valid-μ-wf; valid-ν-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result; prim-sv
           -- Plan 0.68 step 1: the class-A discharges move the value witness
           -- across a REGISTER write. `ValueLocation` is `AtStack`/`AtDynamic`
           -- only — there is no register location — so `readLoc` cannot see a
@@ -118,6 +118,16 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
               → ValidAtWF m alloc {μ-type F} x loc s
               → ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (eval (out-μ wf) x) loc s
   μ-layer-iso wf x (valid-μ-wf wf′ .x layer-v)
+    rewrite WellFormedFI-irrelevant wf wf′ = layer-v
+
+  -- The ν analogue, for `Out` (Plan 0.68 step 1). Same one-line inversion:
+  -- `valid-ν-wf` carries the layer's own `ValidAtWF`, so destructing it yields
+  -- the layer validity `Out`'s result needs.
+  ν-layer-iso : ∀ {m F} (wf : WellFormedFI F) (x : ⟦ ν-type F ⟧)
+                {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
+              → ValidAtWF m alloc {ν-type F} x loc s
+              → ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (eval (Out wf) x) loc s
+  ν-layer-iso wf x (valid-ν-wf wf′ .x layer-v)
     rewrite WellFormedFI-irrelevant wf wf′ = layer-v
 
   -- The flat run of `ir` from `s`/`alloc` at a given fuel (frontier 0).
@@ -468,15 +478,232 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       mach-[] : ∀ f → flat-events f (ir-to-trace (free-heap r)) (mkFlat s alloc 0) ≡ []
       mach-[] f = flat-events-[] (ir-to-trace (free-heap r)) ev-[] f (mkFlat s alloc 0)
 
+  -- ── `out-μ` / `Out` — DISCHARGED. Both are Lambek inverses compiling to the
+  -- same `mov-to-output ∷ []` as `id`, and both are DOMAIN-RESTRICTED in a way
+  -- that kills two of the three input residences outright:
+  --   * `in-reg` carries `FitsInRegI (μ-type F)`, and `FitsInRegI` has only
+  --     `fits-int`/`fits-float` — absurd;
+  --   * `in-unit` claims `μ-type F ≡ Unit` — absurd by constructor disjointness.
+  -- So only the pointer residence survives, and the value witness is exactly
+  -- the layer iso: `valid-μ-wf`/`valid-ν-wf` CARRY the layer's own `ValidAtWF`
+  -- (Plan 0.27 Option 3), so destructing one yields what `at-loc` wants.
+  obs-correct-out-μ : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (out-μ wf)
+  obs-correct-out-μ {F} wf _ mIn x input-loc s alloc _ valid input-before nh rdi-eq =
+    record
+      { traces-agree = λ k → 2 , cong (take k) (mach-[] 2)
+      ; value-realized =
+          2 , mIn , falloc (flat-run 2 (out-μ wf) s alloc) , place rdi-eq
+      }
+    where
+      regs' = writeReg (regs s) Output (readReg (regs s) Input1)
+      fs₁   = flat-exec-instr mov-to-output (ir-to-trace (out-μ wf)) (mkFlat s alloc 0)
+
+      run-eq : flat-run 2 (out-μ wf) s alloc
+             ≡ record fs₁ { floc = record (floc fs₁) { halted = true } }
+      run-eq = trans (exec-flat-step 1 (ir-to-trace (out-μ wf)) (mkFlat s alloc 0)
+                        mov-to-output nh refl)
+                     (exec-flat-stop 0 (ir-to-trace (out-μ wf)) fs₁ nh refl)
+
+      ev-[] : ∀ pc i → fetch (ir-to-trace (out-μ wf)) pc ≡ just i → ∀ fs → event-of i fs ≡ []
+      ev-[] zero    .mov-to-output refl fs = refl
+      ev-[] (suc n) i              ()   fs
+
+      mach-[] : ∀ f → flat-events f (ir-to-trace (out-μ wf)) (mkFlat s alloc 0) ≡ []
+      mach-[] f = flat-events-[] (ir-to-trace (out-μ wf)) ev-[] f (mkFlat s alloc 0)
+
+      keeps-alloc : falloc (flat-run 2 (out-μ wf) s alloc) ≡ alloc
+      keeps-alloc rewrite run-eq = refl
+
+      mem-eq : ∀ loc' → readLoc (forced (floc (flat-run 2 (out-μ wf) s alloc))) loc' ≡ readLoc s loc'
+      mem-eq loc' rewrite run-eq = reg-write-readLoc s regs' true loc'
+
+      valid' : ValidAtWF mIn alloc x input-loc (forced (floc (flat-run 2 (out-μ wf) s alloc)))
+      valid' = validityWF-mem-preserved x input-loc s _ input-before
+                 (λ loc' _ → mem-eq loc') valid
+
+      valid'' : ValidAtWF mIn (falloc (flat-run 2 (out-μ wf) s alloc))
+                  (eval (out-μ wf) x) input-loc
+                  (forced (floc (flat-run 2 (out-μ wf) s alloc)))
+      valid'' = subst (λ a → ValidAtWF mIn a (eval (out-μ wf) x) input-loc
+                               (forced (floc (flat-run 2 (out-μ wf) s alloc))))
+                      (sym keeps-alloc) (μ-layer-iso wf x valid')
+
+      out-ptr : readReg (regs s) Input1 ≡ SV-Ptr input-loc
+              → readReg (regs (forced (floc (flat-run 2 (out-μ wf) s alloc)))) Output
+                ≡ SV-Ptr input-loc
+      out-ptr eq rewrite run-eq =
+        trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) eq
+
+      before' : BeforeFrontier (falloc (flat-run 2 (out-μ wf) s alloc)) input-loc
+      before' rewrite keeps-alloc = input-before
+
+      place : InputAt x input-loc s
+            → ResultPlace (⟦ F ⟧TI (μ-type F)) mIn (falloc (flat-run 2 (out-μ wf) s alloc))
+                (falloc (flat-run 2 (out-μ wf) s alloc)) (eval (out-μ wf) x)
+                (forced (floc (flat-run 2 (out-μ wf) s alloc)))
+      place (in-loc eq)   = at-loc input-loc valid'' before' (out-ptr eq) valid'' before'
+      place (in-reg () _)
+      place (in-unit ())
+
+  obs-correct-Out : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (Out wf)
+  obs-correct-Out {F} wf _ mIn x input-loc s alloc _ valid input-before nh rdi-eq =
+    record
+      { traces-agree = λ k → 2 , cong (take k) (mach-[] 2)
+      ; value-realized =
+          2 , mIn , falloc (flat-run 2 (Out wf) s alloc) , place rdi-eq
+      }
+    where
+      regs' = writeReg (regs s) Output (readReg (regs s) Input1)
+      fs₁   = flat-exec-instr mov-to-output (ir-to-trace (Out wf)) (mkFlat s alloc 0)
+
+      run-eq : flat-run 2 (Out wf) s alloc
+             ≡ record fs₁ { floc = record (floc fs₁) { halted = true } }
+      run-eq = trans (exec-flat-step 1 (ir-to-trace (Out wf)) (mkFlat s alloc 0)
+                        mov-to-output nh refl)
+                     (exec-flat-stop 0 (ir-to-trace (Out wf)) fs₁ nh refl)
+
+      ev-[] : ∀ pc i → fetch (ir-to-trace (Out wf)) pc ≡ just i → ∀ fs → event-of i fs ≡ []
+      ev-[] zero    .mov-to-output refl fs = refl
+      ev-[] (suc n) i              ()   fs
+
+      mach-[] : ∀ f → flat-events f (ir-to-trace (Out wf)) (mkFlat s alloc 0) ≡ []
+      mach-[] f = flat-events-[] (ir-to-trace (Out wf)) ev-[] f (mkFlat s alloc 0)
+
+      keeps-alloc : falloc (flat-run 2 (Out wf) s alloc) ≡ alloc
+      keeps-alloc rewrite run-eq = refl
+
+      mem-eq : ∀ loc' → readLoc (forced (floc (flat-run 2 (Out wf) s alloc))) loc' ≡ readLoc s loc'
+      mem-eq loc' rewrite run-eq = reg-write-readLoc s regs' true loc'
+
+      valid' : ValidAtWF mIn alloc x input-loc (forced (floc (flat-run 2 (Out wf) s alloc)))
+      valid' = validityWF-mem-preserved x input-loc s _ input-before
+                 (λ loc' _ → mem-eq loc') valid
+
+      valid'' : ValidAtWF mIn (falloc (flat-run 2 (Out wf) s alloc))
+                  (eval (Out wf) x) input-loc
+                  (forced (floc (flat-run 2 (Out wf) s alloc)))
+      valid'' = subst (λ a → ValidAtWF mIn a (eval (Out wf) x) input-loc
+                               (forced (floc (flat-run 2 (Out wf) s alloc))))
+                      (sym keeps-alloc) (ν-layer-iso wf x valid')
+
+      out-ptr : readReg (regs s) Input1 ≡ SV-Ptr input-loc
+              → readReg (regs (forced (floc (flat-run 2 (Out wf) s alloc)))) Output
+                ≡ SV-Ptr input-loc
+      out-ptr eq rewrite run-eq =
+        trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) eq
+
+      before' : BeforeFrontier (falloc (flat-run 2 (Out wf) s alloc)) input-loc
+      before' rewrite keeps-alloc = input-before
+
+      place : InputAt x input-loc s
+            → ResultPlace (⟦ F ⟧TI (ν-type F)) mIn (falloc (flat-run 2 (Out wf) s alloc))
+                (falloc (flat-run 2 (Out wf) s alloc)) (eval (Out wf) x)
+                (forced (floc (flat-run 2 (Out wf) s alloc)))
+      place (in-loc eq)   = at-loc input-loc valid'' before' (out-ptr eq) valid'' before'
+      place (in-reg () _)
+      place (in-unit ())
+
+  -- ── `const` — DISCHARGED, and it is the first REGISTER-resident result of
+  -- class A. `ir-to-trace (const fit v) = instr-load-const fitˢ v ∷ []`, whose
+  -- `exec-abstract` writes `SV-Lit fitˢ v` to `Output` — which is exactly
+  -- `prim-sv fit v`, the literal `at-reg` claims. The domain is `Unit`, so the
+  -- input residence plays no part at all (nothing is read).
+  --
+  -- Two clauses because `prim-sv` dispatches on the `FitsInRegI` evidence; the
+  -- bodies are identical.
+  obs-correct-const : ∀ {A} (fit : FitsInRegI A) (v : ⟦ Carrier ⟧-baseI A)
+                    → IRObsCorrectF (const fit v)
+  obs-correct-const fits-int v _ mIn x input-loc s alloc _ valid input-before nh rdi-eq =
+    record
+      { traces-agree = λ k → 2 , cong (take k) (mach-[] 2)
+      ; value-realized =
+          2 , mIn , falloc (flat-run 2 (const fits-int v) s alloc) ,
+          at-reg input-loc fits-int before' out-lit before'
+      }
+    where
+      instr = instr-load-const fits-intˢ v
+      fs₁   = flat-exec-instr instr (ir-to-trace (const fits-int v)) (mkFlat s alloc 0)
+
+      run-eq : flat-run 2 (const fits-int v) s alloc
+             ≡ record fs₁ { floc = record (floc fs₁) { halted = true } }
+      run-eq = trans (exec-flat-step 1 (ir-to-trace (const fits-int v)) (mkFlat s alloc 0)
+                        instr nh refl)
+                     (exec-flat-stop 0 (ir-to-trace (const fits-int v)) fs₁ nh refl)
+
+      ev-[] : ∀ pc i → fetch (ir-to-trace (const fits-int v)) pc ≡ just i → ∀ fs → event-of i fs ≡ []
+      ev-[] zero    .instr refl fs = refl
+      ev-[] (suc n) i      ()   fs
+
+      mach-[] : ∀ f → flat-events f (ir-to-trace (const fits-int v)) (mkFlat s alloc 0) ≡ []
+      mach-[] f = flat-events-[] (ir-to-trace (const fits-int v)) ev-[] f (mkFlat s alloc 0)
+
+      keeps-alloc : falloc (flat-run 2 (const fits-int v) s alloc) ≡ alloc
+      keeps-alloc rewrite run-eq = refl
+
+      before' : BeforeFrontier (falloc (flat-run 2 (const fits-int v) s alloc)) input-loc
+      before' rewrite keeps-alloc = input-before
+
+      out-lit : readReg (regs (forced (floc (flat-run 2 (const fits-int v) s alloc)))) Output
+              ≡ prim-sv fits-int (eval (const fits-int v) x)
+      out-lit rewrite run-eq = writeReg-same (regs s) Output (SV-Lit fits-intˢ v)
+
+  obs-correct-const fits-float v _ mIn x input-loc s alloc _ valid input-before nh rdi-eq =
+    record
+      { traces-agree = λ k → 2 , cong (take k) (mach-[] 2)
+      ; value-realized =
+          2 , mIn , falloc (flat-run 2 (const fits-float v) s alloc) ,
+          at-reg input-loc fits-float before' out-lit before'
+      }
+    where
+      instr = instr-load-const fits-floatˢ v
+      fs₁   = flat-exec-instr instr (ir-to-trace (const fits-float v)) (mkFlat s alloc 0)
+
+      run-eq : flat-run 2 (const fits-float v) s alloc
+             ≡ record fs₁ { floc = record (floc fs₁) { halted = true } }
+      run-eq = trans (exec-flat-step 1 (ir-to-trace (const fits-float v)) (mkFlat s alloc 0)
+                        instr nh refl)
+                     (exec-flat-stop 0 (ir-to-trace (const fits-float v)) fs₁ nh refl)
+
+      ev-[] : ∀ pc i → fetch (ir-to-trace (const fits-float v)) pc ≡ just i → ∀ fs → event-of i fs ≡ []
+      ev-[] zero    .instr refl fs = refl
+      ev-[] (suc n) i      ()   fs
+
+      mach-[] : ∀ f → flat-events f (ir-to-trace (const fits-float v)) (mkFlat s alloc 0) ≡ []
+      mach-[] f = flat-events-[] (ir-to-trace (const fits-float v)) ev-[] f (mkFlat s alloc 0)
+
+      keeps-alloc : falloc (flat-run 2 (const fits-float v) s alloc) ≡ alloc
+      keeps-alloc rewrite run-eq = refl
+
+      before' : BeforeFrontier (falloc (flat-run 2 (const fits-float v) s alloc)) input-loc
+      before' rewrite keeps-alloc = input-before
+
+      out-lit : readReg (regs (forced (floc (flat-run 2 (const fits-float v) s alloc)))) Output
+              ≡ prim-sv fits-float (eval (const fits-float v) x)
+      out-lit rewrite run-eq = writeReg-same (regs s) Output (SV-Lit fits-floatˢ v)
+
   postulate
     obs-correct-fst       : ∀ {A B} → IRObsCorrectF (fst {A} {B})
     obs-correct-snd       : ∀ {A B} → IRObsCorrectF (snd {A} {B})
-    obs-correct-const     : ∀ {A} (fit : FitsInRegI A) (v : ⟦ Carrier ⟧-baseI A)
-                          → IRObsCorrectF (const fit v)
+    -- `In` — the ONE class-A constructor that did NOT fall to the `id`
+    -- template, and the reason is a SPEC gap, not a missing lemma. Its domain
+    -- is `⟦ F ⟧TI (μ-type F)`, a stuck application: unlike `out-μ`/`Out` (whose
+    -- domains are `μ-type F`/`ν-type F`, so `FitsInRegI …` and `… ≡ Unit` are
+    -- both absurd), neither of `In`'s off-pointer input residences can be
+    -- refuted — `⟦ K Unit ⟧TI X` really is `Unit`.
+    --
+    -- In that case the input has NO residence (D074), so after `mov-to-output`
+    -- nothing is known about `Output`, and `ResultPlace` has no shape to offer:
+    -- `at-loc`/`at-reg` both demand an `Output` equation, and `unit-result`
+    -- needs the CODOMAIN to be syntactically `Unit`, which `μ-type F` is not.
+    -- The `ValidAtWF` half is free (`valid-μ-wf … valid-unit-wf`); it is the
+    -- RESIDENCE that has no witness.
+    --
+    -- So `ResultPlace` is missing the dual of `InputAt`'s `in-unit`: "an erased
+    -- result, no residence claimed". Adding it is a spec change, and per this
+    -- plan's own gate the discharge dictates it rather than a guess ahead of
+    -- time — deferred with the case named.
     obs-correct-In        : ∀ {F} (wf : WellFormedFI F) (m : AllocMode)
                           → IRObsCorrectF (In wf m)
-    obs-correct-out-μ     : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (out-μ wf)
-    obs-correct-Out       : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (Out wf)
 
     -- CLASS B — allocating, no control flow. Step 1; adds the frontier thread.
     obs-correct-pair : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode)
