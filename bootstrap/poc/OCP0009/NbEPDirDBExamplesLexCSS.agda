@@ -65,6 +65,7 @@ open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesOrd
   using ( ⊢strong-base'; ⊢strong-step )
 open import poc.OCP0009.NbEPDirDBExamplesLexC
+open import poc.OCP0009.NbEPDirDBExamplesLexCMot
 open import poc.OCP0009.NbEPDirDBExamplesLexCSSData using ( module SSD )
 open import poc.OCP0009.NbEPDirDBExamplesLexCSS1 using ( module SS1 )
 open import poc.OCP0009.NbEPDirDBExamplesLexCSS2 using ( module SS2 )

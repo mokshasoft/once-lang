@@ -254,24 +254,6 @@ rec2T-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (cA cP μ₁ μ₂ x : RTm Γ) →
 rec2T-ren cA cP μ₁ μ₂ x =
   cong₆ rec2T' refl (ren-w μ₁) (ren-w x) (ren-w² μ₂) (ren-w² x) (ren-w³ cP)
 
--- ★ THE OUTER MOTIVE, as a combinator.  `lexAuxMot` is `Π Nat (auxBody …)`
---   with the μ₁-bound coming from the AMBIENT context and the μ₂-bound
---   being the Π's own variable.  Both successor branches APPLY this IH,
---   so they need its `renTy` pushed in — and `renTy vs` does not preserve
---   `var (vs vz)`, which is why the μ₁-bound must be a PARAMETER here
---   rather than written into the body the way `lexAuxMot` writes it.
-auxMotB : {Γ : Cx} (cA cP μ₁ μ₂ b₁ : RTm Γ) → RTy Γ
-auxMotB cA cP μ₁ μ₂ b₁ =
-  Π Nat (auxBody (w cA) (w cP) (w μ₁) (w μ₂) (w b₁) (var vz))
-
-auxMotB-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (cA cP μ₁ μ₂ b₁ : RTm Γ) →
-              renTy ρ (auxMotB cA cP μ₁ μ₂ b₁)
-            ≡ auxMotB (renTm ρ cA) (renTm ρ cP) (renTm ρ μ₁) (renTm ρ μ₂) (renTm ρ b₁)
-auxMotB-ren a b c d e =
-  cong (Π Nat)
-    (trans (auxBody-ren (w a) (w b) (w c) (w d) (w e) (var vz))
-           (cong₆ auxBody (ren-w a) (ren-w b) (ren-w c) (ren-w d) (ren-w e) refl))
-
 -- `(x : A) → rec₁ → rec₂ → P x`
 lStepT' : {Γ : Cx} (cA : RTm Γ) (r₁ : RTy (Γ ∙)) (r₂ : RTy ((Γ ∙) ∙))
           (cp : RTm (((Γ ∙) ∙) ∙)) → RTy Γ
@@ -348,77 +330,6 @@ lStepT-w⁶ a b c d =
   trans (cong (renTy vs) (lStepT-w⁵ a b c d))
         (lStepT-ren (w (w (w (w (w a))))) (w (w (w (w (w b)))))
                     (w (w (w (w (w c))))) (w (w (w (w (w d))))))
-
-
-lStepT-w⁷ : {Γ : Cx} (cA cP μ₁ μ₂ : RTm Γ) →
-            renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (lStepT cA cP μ₁ μ₂)))))))
-          ≡ lStepT (w (w (w (w (w (w (w cA))))))) (w (w (w (w (w (w (w cP))))))) (w (w (w (w (w (w (w μ₁))))))) (w (w (w (w (w (w (w μ₂)))))))
-lStepT-w⁷ a b c d =
-  trans (cong (renTy vs) (lStepT-w⁶ a b c d))
-        (lStepT-ren (w (w (w (w (w (w a)))))) (w (w (w (w (w (w b)))))) (w (w (w (w (w (w c)))))) (w (w (w (w (w (w d)))))))
-
-lStepT-w⁸ : {Γ : Cx} (cA cP μ₁ μ₂ : RTm Γ) →
-            renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (lStepT cA cP μ₁ μ₂))))))))
-          ≡ lStepT (w (w (w (w (w (w (w (w cA)))))))) (w (w (w (w (w (w (w (w cP)))))))) (w (w (w (w (w (w (w (w μ₁)))))))) (w (w (w (w (w (w (w (w μ₂))))))))
-lStepT-w⁸ a b c d =
-  trans (cong (renTy vs) (lStepT-w⁷ a b c d))
-        (lStepT-ren (w (w (w (w (w (w (w a))))))) (w (w (w (w (w (w (w b))))))) (w (w (w (w (w (w (w c))))))) (w (w (w (w (w (w (w d))))))))
-
-auxMotB-w² : {Γ : Cx} (cA cP μ₁ μ₂ b₁ : RTm Γ) →
-              renTy vs (renTy vs (auxMotB cA cP μ₁ μ₂ b₁))
-            ≡ auxMotB (w (w cA)) (w (w cP)) (w (w μ₁)) (w (w μ₂)) (w (w b₁))
-auxMotB-w² a b c d e =
-  trans (cong (renTy vs) (auxMotB-ren a b c d e))
-        (auxMotB-ren (w a) (w b) (w c) (w d) (w e))
-
-auxMotB-w³ : {Γ : Cx} (cA cP μ₁ μ₂ b₁ : RTm Γ) →
-              renTy vs (renTy vs (renTy vs (auxMotB cA cP μ₁ μ₂ b₁)))
-            ≡ auxMotB (w (w (w cA))) (w (w (w cP))) (w (w (w μ₁))) (w (w (w μ₂))) (w (w (w b₁)))
-auxMotB-w³ a b c d e =
-  trans (cong (renTy vs) (auxMotB-w² a b c d e))
-        (auxMotB-ren (w (w a)) (w (w b)) (w (w c)) (w (w d)) (w (w e)))
-
-auxMotB-w⁴ : {Γ : Cx} (cA cP μ₁ μ₂ b₁ : RTm Γ) →
-              renTy vs (renTy vs (renTy vs (renTy vs (auxMotB cA cP μ₁ μ₂ b₁))))
-            ≡ auxMotB (w (w (w (w cA)))) (w (w (w (w cP)))) (w (w (w (w μ₁)))) (w (w (w (w μ₂)))) (w (w (w (w b₁))))
-auxMotB-w⁴ a b c d e =
-  trans (cong (renTy vs) (auxMotB-w³ a b c d e))
-        (auxMotB-ren (w (w (w a))) (w (w (w b))) (w (w (w c))) (w (w (w d))) (w (w (w e))))
-
-auxMotB-w⁵ : {Γ : Cx} (cA cP μ₁ μ₂ b₁ : RTm Γ) →
-              renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (auxMotB cA cP μ₁ μ₂ b₁)))))
-            ≡ auxMotB (w (w (w (w (w cA))))) (w (w (w (w (w cP))))) (w (w (w (w (w μ₁))))) (w (w (w (w (w μ₂))))) (w (w (w (w (w b₁)))))
-auxMotB-w⁵ a b c d e =
-  trans (cong (renTy vs) (auxMotB-w⁴ a b c d e))
-        (auxMotB-ren (w (w (w (w a)))) (w (w (w (w b)))) (w (w (w (w c)))) (w (w (w (w d)))) (w (w (w (w e)))))
-
-auxMotB-w⁶ : {Γ : Cx} (cA cP μ₁ μ₂ b₁ : RTm Γ) →
-              renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (auxMotB cA cP μ₁ μ₂ b₁))))))
-            ≡ auxMotB (w (w (w (w (w (w cA)))))) (w (w (w (w (w (w cP)))))) (w (w (w (w (w (w μ₁)))))) (w (w (w (w (w (w μ₂)))))) (w (w (w (w (w (w b₁))))))
-auxMotB-w⁶ a b c d e =
-  trans (cong (renTy vs) (auxMotB-w⁵ a b c d e))
-        (auxMotB-ren (w (w (w (w (w a))))) (w (w (w (w (w b))))) (w (w (w (w (w c))))) (w (w (w (w (w d))))) (w (w (w (w (w e))))))
-
-auxMotB-w⁷ : {Γ : Cx} (cA cP μ₁ μ₂ b₁ : RTm Γ) →
-              renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (auxMotB cA cP μ₁ μ₂ b₁)))))))
-            ≡ auxMotB (w (w (w (w (w (w (w cA))))))) (w (w (w (w (w (w (w cP))))))) (w (w (w (w (w (w (w μ₁))))))) (w (w (w (w (w (w (w μ₂))))))) (w (w (w (w (w (w (w b₁)))))))
-auxMotB-w⁷ a b c d e =
-  trans (cong (renTy vs) (auxMotB-w⁶ a b c d e))
-        (auxMotB-ren (w (w (w (w (w (w a)))))) (w (w (w (w (w (w b)))))) (w (w (w (w (w (w c)))))) (w (w (w (w (w (w d)))))) (w (w (w (w (w (w e)))))))
-
-auxMotB-w⁸ : {Γ : Cx} (cA cP μ₁ μ₂ b₁ : RTm Γ) →
-              renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (auxMotB cA cP μ₁ μ₂ b₁))))))))
-            ≡ auxMotB (w (w (w (w (w (w (w (w cA)))))))) (w (w (w (w (w (w (w (w cP)))))))) (w (w (w (w (w (w (w (w μ₁)))))))) (w (w (w (w (w (w (w (w μ₂)))))))) (w (w (w (w (w (w (w (w b₁))))))))
-auxMotB-w⁸ a b c d e =
-  trans (cong (renTy vs) (auxMotB-w⁷ a b c d e))
-        (auxMotB-ren (w (w (w (w (w (w (w a))))))) (w (w (w (w (w (w (w b))))))) (w (w (w (w (w (w (w c))))))) (w (w (w (w (w (w (w d))))))) (w (w (w (w (w (w (w e))))))))
-
-auxMotB-w⁹ : {Γ : Cx} (cA cP μ₁ μ₂ b₁ : RTm Γ) →
-              renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (auxMotB cA cP μ₁ μ₂ b₁)))))))))
-            ≡ auxMotB (w (w (w (w (w (w (w (w (w cA))))))))) (w (w (w (w (w (w (w (w (w cP))))))))) (w (w (w (w (w (w (w (w (w μ₁))))))))) (w (w (w (w (w (w (w (w (w μ₂))))))))) (w (w (w (w (w (w (w (w (w b₁)))))))))
-auxMotB-w⁹ a b c d e =
-  trans (cong (renTy vs) (auxMotB-w⁸ a b c d e))
-        (auxMotB-ren (w (w (w (w (w (w (w (w a)))))))) (w (w (w (w (w (w (w (w b)))))))) (w (w (w (w (w (w (w (w c)))))))) (w (w (w (w (w (w (w (w d)))))))) (w (w (w (w (w (w (w (w e)))))))))
 
 
 -- ★ the same ladder for the MOTIVE.  A successor branch's inner IH is a
