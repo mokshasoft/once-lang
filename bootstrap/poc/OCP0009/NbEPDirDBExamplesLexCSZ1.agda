@@ -35,6 +35,7 @@ open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesOrd
   using ( ⊢strong-base'; ⊢strong-step )
 open import poc.OCP0009.NbEPDirDBExamplesLexC
+open import poc.OCP0009.NbEPDirDBExamplesLexCMot
 open import poc.OCP0009.NbEPDirDBExamplesLexCSZData using ( module SZD )
 
 module SZ1 (Δ : Ctx) (cA cP μ₁ μ₂ stp : RTm ⌊ Δ ⌋)
