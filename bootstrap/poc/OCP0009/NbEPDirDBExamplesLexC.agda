@@ -34,7 +34,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTy; base; U; El; Hom; Unit; Nat
         ; RTm; var; unit; nzero; nsuc; natrec; absurd; ordtr; ⌜Hom⌝; ⌜Nat⌝
         ; Ren; Π; lam; app; renTy; renTm; subTy; subTm; Sub; extS; extR
-        ; subTm-renTm; renTm-subTm; renTm-renTm )
+        ; subTm-renTm; renTm-subTm; renTm-renTm; subTm-id; idₛ )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶ᵀ_; Hom-Nat-sz; Hom-Nat-ss
         ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ
@@ -125,6 +125,23 @@ sub-w² {σ = σ} t = trans (sub-w {σ = extS σ} (w t)) (cong w (sub-w t))
 sub-w³ : {Γ Δ : Cx} {σ : Sub Γ Δ} (t : RTm Γ) →
          subTm (extS (extS (extS σ))) (w (w (w t))) ≡ w (w (w (subTm σ t)))
 sub-w³ {σ = σ} t = trans (sub-w {σ = extS (extS σ)} (w (w t))) (cong w (sub-w² t))
+
+
+-- ★ AND THE THIRD FLAVOUR, for the SUCCESSOR branches: `⊢natrec`'s step
+--   motive is `subTy nrs M`, and `nrs` is neither a `single` nor an
+--   `extS` — but on a WEAKENED term it is just one more weakening, since
+--   `nrs (vs x)` is `var (vs (vs x))`.
+--
+-- ⚠ It needs renaming-as-substitution, which is `subTm-id` composed with
+--   `renTm-subTm`: `ρ ᵣ∘ₛ idₛ` IS `λ x → var (ρ x)` by eta, the same
+--   move `sub-w`/`ren-w` make.
+ren-sub : {Γ Δ : Cx} {ρ : Ren Γ Δ} (t : RTm Γ) →
+          renTm ρ t ≡ subTm (λ x → var (ρ x)) t
+ren-sub {ρ = ρ} t = trans (cong (renTm ρ) (sym (subTm-id t)))
+                          (renTm-subTm {σ = idₛ} t)
+
+nrs-w : {Γ : Cx} (t : RTm Γ) → subTm nrs (w t) ≡ w (w t)
+nrs-w t = trans (subTm-renTm t) (sym (trans (renTm-renTm t) (ren-sub t)))
 
 
 ------------------------------------------------------------------------
@@ -264,6 +281,113 @@ lStepT-ren {ρ = ρ} cA cP μ₁ μ₂ =
     (trans (rec2T-ren (w (w cA)) (w (w cP)) (w (w μ₁)) (w (w μ₂)) (var (vs vz)))
            (cong₅ rec2T (ren-w² cA) (ren-w² cP) (ren-w² μ₁) (ren-w² μ₂) refl))
     (ren-w³ cP)
+
+------------------------------------------------------------------------
+-- ★ THE WEAKENING LADDER.  Every branch `⊢wk`s the step — and the deeper
+--   ones the inner IH as well — a DIFFERENT number of times, and each
+--   `⊢wk` leaves one more `renTy vs` sitting OUTSIDE the combinator,
+--   which Agda pushes into the Π-chain instead of reassociating.  These
+--   are the one-step lemmas composed with themselves; a branch picks the
+--   height it needs.  (Branch (0,0) predates them and inlines its own
+--   four-level chain; it is green, so it is left alone.)
+------------------------------------------------------------------------
+
+lStepT-w² : {Γ : Cx} (cA cP μ₁ μ₂ : RTm Γ) →
+            renTy vs (renTy vs (lStepT cA cP μ₁ μ₂))
+          ≡ lStepT (w (w cA)) (w (w cP)) (w (w μ₁)) (w (w μ₂))
+lStepT-w² a b c d =
+  trans (cong (renTy vs) (lStepT-ren a b c d)) (lStepT-ren (w a) (w b) (w c) (w d))
+
+lStepT-w³ : {Γ : Cx} (cA cP μ₁ μ₂ : RTm Γ) →
+            renTy vs (renTy vs (renTy vs (lStepT cA cP μ₁ μ₂)))
+          ≡ lStepT (w (w (w cA))) (w (w (w cP))) (w (w (w μ₁))) (w (w (w μ₂)))
+lStepT-w³ a b c d =
+  trans (cong (renTy vs) (lStepT-w² a b c d))
+        (lStepT-ren (w (w a)) (w (w b)) (w (w c)) (w (w d)))
+
+lStepT-w⁴ : {Γ : Cx} (cA cP μ₁ μ₂ : RTm Γ) →
+            renTy vs (renTy vs (renTy vs (renTy vs (lStepT cA cP μ₁ μ₂))))
+          ≡ lStepT (w (w (w (w cA)))) (w (w (w (w cP))))
+                   (w (w (w (w μ₁)))) (w (w (w (w μ₂))))
+lStepT-w⁴ a b c d =
+  trans (cong (renTy vs) (lStepT-w³ a b c d))
+        (lStepT-ren (w (w (w a))) (w (w (w b))) (w (w (w c))) (w (w (w d))))
+
+lStepT-w⁵ : {Γ : Cx} (cA cP μ₁ μ₂ : RTm Γ) →
+            renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (lStepT cA cP μ₁ μ₂)))))
+          ≡ lStepT (w (w (w (w (w cA))))) (w (w (w (w (w cP)))))
+                   (w (w (w (w (w μ₁))))) (w (w (w (w (w μ₂)))))
+lStepT-w⁵ a b c d =
+  trans (cong (renTy vs) (lStepT-w⁴ a b c d))
+        (lStepT-ren (w (w (w (w a)))) (w (w (w (w b))))
+                    (w (w (w (w c)))) (w (w (w (w d)))))
+
+lStepT-w⁶ : {Γ : Cx} (cA cP μ₁ μ₂ : RTm Γ) →
+            renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (lStepT cA cP μ₁ μ₂))))))
+          ≡ lStepT (w (w (w (w (w (w cA)))))) (w (w (w (w (w (w cP))))))
+                   (w (w (w (w (w (w μ₁)))))) (w (w (w (w (w (w μ₂))))))
+lStepT-w⁶ a b c d =
+  trans (cong (renTy vs) (lStepT-w⁵ a b c d))
+        (lStepT-ren (w (w (w (w (w a))))) (w (w (w (w (w b)))))
+                    (w (w (w (w (w c))))) (w (w (w (w (w d))))))
+
+
+-- ★ the same ladder for the MOTIVE.  A successor branch's inner IH is a
+--   CONTEXT VARIABLE whose type is `renTy vsⁿ M0lex`, and to apply it the
+--   Π-chain has to be reassociated back into `auxBody` form.
+auxBody-w² : {Γ : Cx} (cA cP μ₁ μ₂ b₁ b₂ : RTm Γ) →
+             renTy vs (renTy vs (auxBody cA cP μ₁ μ₂ b₁ b₂))
+           ≡ auxBody (w (w cA)) (w (w cP)) (w (w μ₁)) (w (w μ₂)) (w (w b₁)) (w (w b₂))
+auxBody-w² a b c d e f =
+  trans (cong (renTy vs) (auxBody-ren a b c d e f))
+        (auxBody-ren (w a) (w b) (w c) (w d) (w e) (w f))
+
+auxBody-w³ : {Γ : Cx} (cA cP μ₁ μ₂ b₁ b₂ : RTm Γ) →
+             renTy vs (renTy vs (renTy vs (auxBody cA cP μ₁ μ₂ b₁ b₂)))
+           ≡ auxBody (w (w (w cA))) (w (w (w cP))) (w (w (w μ₁)))
+                     (w (w (w μ₂))) (w (w (w b₁))) (w (w (w b₂)))
+auxBody-w³ a b c d e f =
+  trans (cong (renTy vs) (auxBody-w² a b c d e f))
+        (auxBody-ren (w (w a)) (w (w b)) (w (w c)) (w (w d)) (w (w e)) (w (w f)))
+
+auxBody-w⁴ : {Γ : Cx} (cA cP μ₁ μ₂ b₁ b₂ : RTm Γ) →
+             renTy vs (renTy vs (renTy vs (renTy vs (auxBody cA cP μ₁ μ₂ b₁ b₂))))
+           ≡ auxBody (w (w (w (w cA)))) (w (w (w (w cP)))) (w (w (w (w μ₁))))
+                     (w (w (w (w μ₂)))) (w (w (w (w b₁)))) (w (w (w (w b₂))))
+auxBody-w⁴ a b c d e f =
+  trans (cong (renTy vs) (auxBody-w³ a b c d e f))
+        (auxBody-ren (w (w (w a))) (w (w (w b))) (w (w (w c)))
+                     (w (w (w d))) (w (w (w e))) (w (w (w f))))
+
+auxBody-w⁵ : {Γ : Cx} (cA cP μ₁ μ₂ b₁ b₂ : RTm Γ) →
+             renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (auxBody cA cP μ₁ μ₂ b₁ b₂)))))
+           ≡ auxBody (w (w (w (w (w cA))))) (w (w (w (w (w cP))))) (w (w (w (w (w μ₁)))))
+                     (w (w (w (w (w μ₂))))) (w (w (w (w (w b₁))))) (w (w (w (w (w b₂)))))
+auxBody-w⁵ a b c d e f =
+  trans (cong (renTy vs) (auxBody-w⁴ a b c d e f))
+        (auxBody-ren (w (w (w (w a)))) (w (w (w (w b)))) (w (w (w (w c))))
+                     (w (w (w (w d)))) (w (w (w (w e)))) (w (w (w (w f)))))
+
+auxBody-w⁶ : {Γ : Cx} (cA cP μ₁ μ₂ b₁ b₂ : RTm Γ) →
+             renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (auxBody cA cP μ₁ μ₂ b₁ b₂))))))
+           ≡ auxBody (w (w (w (w (w (w cA)))))) (w (w (w (w (w (w cP))))))
+                     (w (w (w (w (w (w μ₁)))))) (w (w (w (w (w (w μ₂))))))
+                     (w (w (w (w (w (w b₁)))))) (w (w (w (w (w (w b₂))))))
+auxBody-w⁶ a b c d e f =
+  trans (cong (renTy vs) (auxBody-w⁵ a b c d e f))
+        (auxBody-ren (w (w (w (w (w a))))) (w (w (w (w (w b))))) (w (w (w (w (w c)))))
+                     (w (w (w (w (w d))))) (w (w (w (w (w e))))) (w (w (w (w (w f))))))
+
+auxBody-w⁷ : {Γ : Cx} (cA cP μ₁ μ₂ b₁ b₂ : RTm Γ) →
+             renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (auxBody cA cP μ₁ μ₂ b₁ b₂)))))))
+           ≡ auxBody (w (w (w (w (w (w (w cA))))))) (w (w (w (w (w (w (w cP)))))))
+                     (w (w (w (w (w (w (w μ₁))))))) (w (w (w (w (w (w (w μ₂)))))))
+                     (w (w (w (w (w (w (w b₁))))))) (w (w (w (w (w (w (w b₂)))))))
+auxBody-w⁷ a b c d e f =
+  trans (cong (renTy vs) (auxBody-w⁶ a b c d e f))
+        (auxBody-ren (w (w (w (w (w (w a)))))) (w (w (w (w (w (w b))))))
+                     (w (w (w (w (w (w c)))))) (w (w (w (w (w (w d))))))
+                     (w (w (w (w (w (w e)))))) (w (w (w (w (w (w f)))))))
 
 ------------------------------------------------------------------------
 -- THE COMBINATOR, over an arbitrary ambient context.
