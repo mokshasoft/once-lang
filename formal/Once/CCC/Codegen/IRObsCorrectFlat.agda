@@ -66,14 +66,16 @@ fits-erase : ∀ {B} → FitsInReg B → FitsInRegI ⌊ B ⌋
 fits-erase fits-intˢ   = fits-int
 fits-erase fits-floatˢ = fits-float
 open import Once.SigOp.Info using (effect; EffectShape; Pure; Emits; Halts)
-open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
 open import Once.IR.Size using (ir-size)
 open import Data.Nat.Properties using (≤-<-trans; ≤-trans; m≤m+n; m≤n+m; n≤1+n)
 open import Function using (case_of_)
 open import Once.CCC.Eval using (eval)
 open import Once.CCC.Machine.SMCore
   using (LocState; ValueLocation; SV-Ptr; sv-as-loc; halted; regs; readReg; Input1; Output;
-         instr-sigop; module AbstractExec)
+         instr-sigop; mov-to-output; writeReg; writeReg-same; AbstractTrace; module AbstractExec; module MemOps)
+open import Once.CCC.Machine.Validity using (module ValidityDef)
+open import Once.CCC.Machine.ValidAtWFHalted o using (validAtWF-set-halted)
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; module FrontierInvariant)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace)
@@ -91,7 +93,14 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open AbstractExec {FS} using (exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed)
   open FrontierInvariant {FS} using (BeforeFrontier)
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result; prim-sv)
+    using (ValidAtWF; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result; prim-sv
+          -- Plan 0.68 step 1: the class-A discharges move the value witness
+          -- across a REGISTER write. `ValueLocation` is `AtStack`/`AtDynamic`
+          -- only — there is no register location — so `readLoc` cannot see a
+          -- register write at all, and this is the combinator that says so.
+          ; validityWF-mem-preserved)
+  open MemOps {FS} using (readLoc)
+  open ValidityDef {FS} program-bound using (readLoc-stack-heap-eq)
   open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[])
   open RTA o {FS} program-bound using (Readable; r-unit; r-int; r-pair; readable?; readTyped-adequate)
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot)
@@ -292,9 +301,129 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- ORDER = `Once.IR`'s own constructor order, so a retired constructor shows
   -- up as a missing clause rather than as a silent variable catch-all.
   -- ════════════════════════════════════════════════════════════════════
+  -- ════════════════════════════════════════════════════════════════════
+  -- CLASS A, THE SHARED CORE (Plan 0.68 step 1).
+  --
+  -- Six constructors compile to the SAME one-instruction trace
+  -- `mov-to-output ∷ []` (`id`, `initial`, `free-heap`, `In`, `out-μ`, `Out`),
+  -- and three more differ only in which single instruction they emit. So the
+  -- discharge is written ONCE over the shape and instantiated, rather than
+  -- copied nine times.
+  --
+  -- WHAT MAKES IT EASY, stated once because every class-A/B proof rides it:
+  -- `ValueLocation` is `AtStack f k` or `AtDynamic hl` — there is NO register
+  -- location. So `readLoc` reads memory only, a register write is invisible to
+  -- it, and every memory-side invariant (`ValidAtWF`, and `BeforeFrontier`
+  -- which does not mention the state at all) survives `mov-to-output`
+  -- DEFINITIONALLY. `readLoc-stack-heap-eq` is the discharge of that, and
+  -- `validAtWF-set-halted` covers the `forced` at the end of the run.
+  -- ════════════════════════════════════════════════════════════════════
+
+  -- The missing half of `Flat`'s with-free step API: what the machine does when
+  -- the pc runs off the end of the trace. `exec-flat-step` peels a fetched
+  -- instruction; this peels the FINAL fetch, which halts. Stated over an
+  -- OPAQUE `fs` with both decisions as hypotheses — the same discipline, and
+  -- the reason it is needed: after one step the inner `halted (floc fs₁)` is no
+  -- longer a syntactic occurrence in the goal, so a second `rewrite` cannot
+  -- reach it. A semantic step API can.
+  exec-flat-stop : ∀ (n : ℕ) (prog : AbstractTrace) (fs : FlatState)
+    → halted (floc fs) ≡ false
+    → fetch prog (fpc fs) ≡ nothing
+    → exec-flat (suc n) prog fs ≡ record fs { floc = record (floc fs) { halted = true } }
+  exec-flat-stop n prog fs h-eq f-eq rewrite h-eq | f-eq = refl
+
+  -- The post-run state of a one-instruction register-only trace: memory is
+  -- untouched, so `readLoc` agrees with the entry state at EVERY location.
+  reg-write-readLoc : ∀ (s : LocState FS) (v : _) (b : _) (loc : ValueLocation FS)
+    → readLoc (record (record s { regs = v }) { halted = b }) loc ≡ readLoc s loc
+  reg-write-readLoc s v b loc =
+    readLoc-stack-heap-eq (record (record s { regs = v }) { halted = b }) s loc refl refl
+
+  -- ── `id` — DISCHARGED (Plan 0.68 step 1, the first of class A).
+  --
+  -- `ir-to-trace id = mov-to-output ∷ []`, so the whole run is: one register
+  -- write, then a fetch off the end of the trace (which halts). Both halves of
+  -- `MachineRefinesObsF` fall out:
+  --   traces-agree   — `mov-to-output` emits no event and `evalᴰ id = returnT`
+  --                    emits none either, so both sides are `[]`.
+  --   value-realized — `Output := Input1`, so the result's residence IS the
+  --                    input's residence: the three `InputAt` shapes map onto
+  --                    the three `ResultPlace` shapes one-for-one.
+  --
+  -- The single reduction lemma `run-eq` is what keeps this readable: `exec-flat`
+  -- is stuck on `halted s` until `nh` fires, so the reduction is done ONCE and
+  -- every component rewrites by it, instead of each re-deriving the run.
+  obs-correct-id : ∀ {A} → IRObsCorrectF (id {A})
+  obs-correct-id {A} _ mIn x input-loc s alloc _ valid input-before nh rdi-eq =
+    record
+      { traces-agree = λ k →
+          2 , trans (cong (take k) (mach-[] 2)) (cong (take k) (sym (denot-[] k)))
+      ; value-realized =
+          2 , mIn , falloc (flat-run 2 (id {A}) s alloc) , place rdi-eq
+      }
+    where
+      -- The post-`mov` register file and the intermediate flat state. `run-eq`
+      -- is derived from the two step lemmas rather than by `rewrite nh`: the
+      -- second step's `halted` test is not a syntactic occurrence in the goal.
+      regs' = writeReg (regs s) Output (readReg (regs s) Input1)
+      fs₁   = flat-exec-instr mov-to-output (ir-to-trace (id {A})) (mkFlat s alloc 0)
+
+      run-eq : flat-run 2 (id {A}) s alloc
+             ≡ record fs₁ { floc = record (floc fs₁) { halted = true } }
+      run-eq = trans (exec-flat-step 1 (ir-to-trace (id {A})) (mkFlat s alloc 0)
+                        mov-to-output nh refl)
+                     (exec-flat-stop 0 (ir-to-trace (id {A})) fs₁ nh refl)
+
+      -- Machine side: the only fetchable instruction is `mov-to-output`, which
+      -- emits nothing.
+      ev-[] : ∀ pc i → fetch (ir-to-trace (id {A})) pc ≡ just i → ∀ fs → event-of i fs ≡ []
+      ev-[] zero    .mov-to-output refl fs = refl
+      ev-[] (suc n) i              ()   fs
+
+      mach-[] : ∀ f → flat-events f (ir-to-trace (id {A})) (mkFlat s alloc 0) ≡ []
+      mach-[] f = flat-events-[] (ir-to-trace (id {A})) ev-[] f (mkFlat s alloc 0)
+
+      -- Denotation side: `evalᴰ id a = returnT a` emits nothing.
+      denot-[] : ∀ k → projTrace (evalᴰ (id {A}) (inject x)) k ≡ []
+      denot-[] k = refl
+
+      keeps-alloc : falloc (flat-run 2 (id {A}) s alloc) ≡ alloc
+      keeps-alloc rewrite run-eq = refl
+
+      -- A register write is invisible to `readLoc` (there is no register
+      -- `ValueLocation`), and so is the halt flag.
+      mem-eq : ∀ loc' → readLoc (forced (floc (flat-run 2 (id {A}) s alloc))) loc' ≡ readLoc s loc'
+      mem-eq loc' rewrite run-eq = reg-write-readLoc s regs' true loc'
+
+      valid' : ValidAtWF mIn alloc x input-loc (forced (floc (flat-run 2 (id {A}) s alloc)))
+      valid' = validityWF-mem-preserved x input-loc s _ input-before
+                 (λ loc' _ → mem-eq loc') valid
+
+      out-ptr : readReg (regs s) Input1 ≡ SV-Ptr input-loc
+              → readReg (regs (forced (floc (flat-run 2 (id {A}) s alloc)))) Output ≡ SV-Ptr input-loc
+      out-ptr eq rewrite run-eq =
+        trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) eq
+
+      out-lit : ∀ (fit : FitsInRegI A) → readReg (regs s) Input1 ≡ prim-sv fit x
+              → readReg (regs (forced (floc (flat-run 2 (id {A}) s alloc)))) Output ≡ prim-sv fit x
+      out-lit fit eq rewrite run-eq =
+        trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) eq
+
+      before' : BeforeFrontier (falloc (flat-run 2 (id {A}) s alloc)) input-loc
+      before' rewrite keeps-alloc = input-before
+
+      place : InputAt x input-loc s
+            → ResultPlace A mIn (falloc (flat-run 2 (id {A}) s alloc))
+                (falloc (flat-run 2 (id {A}) s alloc)) (eval (id {A}) x)
+                (forced (floc (flat-run 2 (id {A}) s alloc)))
+      place (in-loc eq)      = at-loc input-loc valid'' before' (out-ptr eq) valid'' before'
+        where valid'' = subst (λ a → ValidAtWF mIn a x input-loc
+                                       (forced (floc (flat-run 2 (id {A}) s alloc))))
+                              (sym keeps-alloc) valid'
+      place (in-reg fit eq)  = at-reg input-loc fit before' (out-lit fit eq) before'
+      place (in-unit refl)   = unit-result
+
   postulate
-    -- CLASS A — straight, no control flow. Plan 0.68 step 1; the cheap half.
-    obs-correct-id        : ∀ {A} → IRObsCorrectF (id {A})
     obs-correct-fst       : ∀ {A B} → IRObsCorrectF (fst {A} {B})
     obs-correct-snd       : ∀ {A B} → IRObsCorrectF (snd {A} {B})
     obs-correct-terminal  : ∀ {A} → IRObsCorrectF (terminal {A})
