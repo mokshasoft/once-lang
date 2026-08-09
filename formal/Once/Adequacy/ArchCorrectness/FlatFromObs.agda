@@ -83,6 +83,9 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open import Once.CCC.Machine.ClosureWellFormed o using (module ClosureWellFormedDef)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
+-- D100: the assembler's own precondition — the emitted local labels are
+-- pairwise distinct. Consumed by `AsmTraceCorrect` below.
+open import Once.Adequacy.LabelClash using (DistinctLabels)
 
 open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; MachineRefinesObsF; in-unit)
 open FlatMachine {FS} using (mkFlat)
@@ -201,10 +204,18 @@ flat-trace-of ioc (just ir) n =
 -- (against the DEFINED `flat-trace-of ioc`).
 ------------------------------------------------------------------------
 
+-- D100: the HONEST precondition on the toolchain. `as` refuses a file that
+-- defines a label twice, so for such a program `asm-sem asm` is the trace of
+-- nothing at all and this equation is FALSE — not merely unproved. Stating
+-- `DistinctLabels` here (and NOT on `assemble-correct`, where the same class of
+-- premise already went vacuous when `asm-sem` was defined) narrows every arch's
+-- `loader-faithful` axiom to the programs the assembler actually accepts. The
+-- apex supplies it, so `correct` gains no hypothesis — it gains an obligation.
 AsmTraceCorrect : (Maybe (IR Unit Unit) → Behavior) → Set
 AsmTraceCorrect ft =
   ∀ (m : P.Module) (asm : String) →
   C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
+  DistinctLabels arch m →
   ∀ (n : ℕ) → asm-sem asm n ≡ ft (moduleToIR m) n
 
 ------------------------------------------------------------------------

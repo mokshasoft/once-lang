@@ -110,7 +110,8 @@ deferred proofs sharing one missing piece: the return-address component.
 | 10 | `call-site-shape` | `ConcFlatSim` | deferred proof | REPLACED `events-running-call` 2026-08-06 (D098), now the THEOREM `call-step`. At an emitted call the closure register holds a live heap pointer whose second cell holds a code address naming a body that exists — every conjunct is what `ir-to-trace'`'s `curry` clause arranges. No `X.State`; same class and route as the D073 dataflow disciplines. Its resource half is the `x86-64-call-room` PARAMETER. HISTORY: was THE LAST CORRESPONDENCE GAP. Blocker LOCATED (D095): `effectiveAddr s (rip+label n) ≡ idx n` is a FICTION — a code address encodes as the label NUMBER while the concrete `call` jumps to the compiled address, and `idx ℓ ≡ x86-off prog j` is false. Fix (more faithful, not less — a real linker resolves that operand): resolve `lea … (rip+label ℓ)` through `X.find-label prog (thunk ℓ)`, then `find-thunk-pres` bridges. Costs one Semantics clause, a code map through the encoding (~56 + ~37 mechanical sites), the call's block-step (it writes the pushed address, EXTENDING `RetAddrs`), and one `StackRoom`-class resource premise. WAS the model gap; CLOSED as such by D092 (2026-08-06). `flat-exec-instr instr-call-closure` now transfers control the way `call *0x8(%r12)` does — pushes `fret`/`saved-frames`, enters `enter-call`'s frame, resolves the body with `find-thunk`. The concrete side of the transfer is already proven (`FlatComposition.find-thunk-pres`); what remains is the same return-address component as #9 |
 | 13 | `emitted-thunk-guarded` | `ConcFlatSim` | deferred proof | REPLACED `thunk-entry-empty` 2026-08-06 (D094), which is now the THEOREM `SegWF.seg-entry` — every way of arriving at a body entry is refuted (fall-through by this guard, jump by `find-label-sound`, return by `RetMatch`'s new call provenance, entry by position 0), leaving the call, which reserves nothing. What is left is the emitter's own statement: in an emitted trace a `c-thunk` sits at `suc q` with a `c-jmp` at `q` — the guard `ir-to-trace'` emits to stop the parent falling into the body. CODEGEN-class: only `ir-to-trace` in the type. Route: the structural induction over `ir-to-trace'` (`FrameFreeTrace`/`LabelScope` mould) — a `NoThunks`-decides-it helper collapses the clauses that emit no body entry, an append lemma handles the splices, and the one interesting adjacency (`c-jmp end ∷ c-thunk`) is inside a single literal list in the `curry` clauses |
 | 11 | `conc-fuel` | apex | **stub** | asserts adequacy of `step-budget-x86-64`, an UNDEFINED postulated `ℕ → ℕ` in `…CPU.X86-64` (siblings: `ev-x86-64`, `arith-env-x86-64`). Pin `step-budget` to a definition, then prove it. NOT a resource bound — do not launder it into a parameter |
-| 12 | `x86-64-loader-faithful` | apex | **axiom** | STAYS. Assembler + loader + printer + decoder round-trip; the boundary every verified compiler keeps |
+| 12 | `x86-64-loader-faithful` | apex | **axiom** | STAYS — but NARROWED 2026-08-09 (D100): it now carries `DistinctLabels x86-64 m`. Without that premise it was not merely trusted, it was FALSE for every program the emitter duplicated (`as` refuses the text, so its LHS is the trace of nothing). Same edit on the x86-32 / riscv64 twins, via the shared `AsmTraceCorrect` |
+| 14 | `program-labels-distinct` | `Once.Adequacy.LabelClash` | deferred proof / codegen | NEW 2026-08-09 (D100). The apex's supply of `DistinctLabels arch m` = `AllPairs _≢_ (C.moduleLabels arch Heap false m)`, the `.L…` sibling of `DistinctSymbols`/`program-no-clash`. **Currently FALSE** — `cata-dispatch` uses the IH for its algebra trace TWICE at one label range (D099), which is exactly the defect that shipped the 61-test regression. Route: `LabelRange`'s disjoint-range argument at every splice (counter monotonicity DONE, `LabelScope` containment DONE, uniqueness next), after the cata fork is decided. SCOPE: covers the non-linear `ir-to-trace'` walk; the per-arch `compile-trace-cnt` labels are inside the range but not in the list — that walk is linear, so a `LabelRange`-shaped one-liner each |
 
 Only #12 is permanent. #11 lives in the CPU layer, not the correspondence.
 NOTHING in this cone is a model gap any more — D092 closed the last one.
@@ -202,3 +203,39 @@ WRITTEN. Consequences:
 
 Postulate count UNCHANGED at 11: `emitted-shape-check`'s CONTENT grew (the
 `site-ok` conjunct), which is exactly the shape the plan called for.
+
+## THE ASSEMBLER BOUNDARY — what the model cannot express (D100)
+
+`ArchSemantics.assemble : String → List Byte` is TOTAL and UNINTERPRETED. It has
+no failure mode, so **no assembler or linker rejection is representable in the
+model.** Everything `as`/`ld` can refuse sits inside `<arch>-loader-faithful`,
+invisible — and worse, for a program the toolchain rejects that axiom is not
+"trusted", it is FALSE, because its left-hand side is the behaviour of a binary
+that was never produced. A `⊥`-probe cannot find any of this: the falsity is
+EXTERNAL (about `as`), not internal.
+
+Known members of the class, and where each stands:
+
+| what the toolchain refuses | stated? | status |
+|---|---|---|
+| duplicate `.globl` function symbol | yes — `DistinctSymbols` | **PROVED** (`program-no-clash`) |
+| duplicate `.L…` local label | yes — `DistinctLabels` (D100) | **residual #14**, currently false (D099's cata splice) |
+| unresolved `.L…` reference | yes — `EmittedWF.labels-resolvable` | stated on the trace; not yet the module-level premise. Subsumes `emitted-code-addr-has-body` |
+| duplicate `once_arith.block.<digest>` global | **NO** | **LIVE GAP.** `moduleSyms` lists only `once-symbol-path (cfName cf)`; the arith blocks `compileAllWithTarget` accumulates are emitted separately by `emitArithBlocks` with no dedup (`rewrite-ir`: "caller may dedup by digest" — the caller just `DL.++`s). The symbol is a pure function of the block body, so two structurally identical arith subtrees in one module define the same global twice. Route: extend `moduleSyms` to the FULL defined-symbol list and dedup by digest at the fold |
+| unresolved external `once_<primitive>` (Strata) | **NO** | link-time; same shape as `labels-resolvable` one level up |
+| out-of-range immediate / displacement, bad mnemonic, malformed text | **NO** | not expressible at all while `assemble` cannot fail |
+
+The structural repair for the whole class is to give the assembler a failure
+mode — `assemble : String → Maybe (List Byte)` — so that "the toolchain accepted
+this text" becomes a proposition the proofs carry instead of an assumption they
+cannot see. Until then, every member has to be found by hand and stated as a
+separate premise, which is exactly how D100 was found (after the fact, by `as`).
+
+### The general trap D100 exposed
+
+**A precondition attached to a trust point stays behind when the trust point
+moves.** `assemble-correct` carries `DistinctSymbols`; when `asm-sem` was DEFINED
+as `exec-bytes ∘ assemble`, that field collapsed to `λ _ _ _ _ _ → refl` and its
+premise became decorative. The trust moved to `loader-faithful`; the premise did
+not. Whenever a postulated field becomes a definition, AUDIT ITS PREMISES — they
+are now consumed by a `refl` and protect nothing.

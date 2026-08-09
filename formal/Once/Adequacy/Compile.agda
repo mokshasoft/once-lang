@@ -92,6 +92,11 @@ open import Once.Grammar.ModuleConvert using (gmoduleToModule)
 -- discharged in `Once.Adequacy.NameClash` via `once-symbol-own-≢` (the proven
 -- encoding injectivity) over the extractor's distinctness+validity guard.
 open import Once.Adequacy.NameClash using (DistinctSymbols; program-no-clash)
+-- D100 — its sibling one level down: the emitted LOCAL labels (`.L…`). Stated
+-- and (for now) owed in `Once.Adequacy.LabelClash`; consumed by
+-- `ArchCorrect.asm-trace-correct` and supplied at the apex, exactly as
+-- `program-no-clash` supplies `DistinctSymbols`.
+open import Once.Adequacy.LabelClash using (DistinctLabels; program-labels-distinct)
 
 -- `Arch` (here, via `Once.Adequacy.CPU.Interface`) and `C.Arch` (via
 -- `Once.Compile`) are now the SAME type — both re-export `Once.Target.Arch`
@@ -186,9 +191,20 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
       ∀ (n : ℕ) →
       ArchSemantics.exec-bytes as (ArchSemantics.assemble as asm) n ≡ asm-sem asm n
     -- the emitted asm's meaning equals the flat trace of the compiled IR.
+    -- D100 — HONEST PRECONDITION, the second one: the emitted LOCAL labels are
+    -- pairwise distinct. This is where the toolchain is trusted TODAY (each
+    -- arch's `<arch>-loader-faithful`), and `as` rejects a file that defines a
+    -- label twice — so without this premise the field is FALSE, not merely
+    -- unproved, for any program the emitter duplicates. `DistinctSymbols` on
+    -- `assemble-correct` is the same idea one level up; note it went VACUOUS
+    -- there once `asm-sem` was defined as `exec-bytes ∘ assemble`, which is the
+    -- general trap — a precondition attached to a trust point stays behind when
+    -- the trust point moves. The apex supplies this one (`program-labels-
+    -- distinct`), so `correct` gains no hypothesis.
     asm-trace-correct :
       ∀ (m : P.Module) (asm : String) →
       C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
+      DistinctLabels arch m →
       ∀ (n : ℕ) → asm-sem asm n ≡ flat-trace (moduleToIR m) n
     -- the flat machine's SigOp trace of a compiled IR equals its `obs`.
     ir-flat-correct :
@@ -320,7 +336,8 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
     ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ moduleToIR m ⟧IR n
   codegen-asm-correct arch m asm eq n =
-    trans (ArchCorrect.asm-trace-correct (arch-correct arch) m asm eq n)
+    trans (ArchCorrect.asm-trace-correct (arch-correct arch) m asm eq
+             (program-labels-distinct arch m) n)
           (ArchCorrect.ir-flat-correct  (arch-correct arch) (moduleToIR m) n)
 
   -- Stage 2 — asm trace = SOURCE trace. With `⟦_⟧M = ⟦ moduleToIR m ⟧IR`

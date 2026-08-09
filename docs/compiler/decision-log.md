@@ -7005,3 +7005,130 @@ fixing the MACHINE rather than by assuming harder — the call was modelled
 code address was made an address (D096). Each time the "unprovable" statement
 turned out to be a true statement about a machine that was not yet being
 modelled correctly.
+
+## D100: The Invariant the Axiom Was Hiding — Distinct Emitted Labels
+
+**Date**: 2026-08-09 · **Plan**: 0.54 rung D · **Status**: landed (wiring);
+the discharge is a named residual
+
+D099 named the DEFECT: `cata-{nat,linear}` splice the algebra trace TWICE
+(`I₁ ++ at ++ (I₂ ++ at ++ I₃)`) under ONE label range, so both copies carry the
+same labels and `as` refuses the file:
+
+    layer5-cata-nat.s:332: Error: symbol `.L_thunk_once_4main_10' is already
+                                  defined
+
+This entry is the INVARIANT — the reason a green tree shipped a binary the
+assembler rejects, and the wiring that makes the same class of defect a type
+error next time.
+
+### Why no proof caught it — three independent reasons
+
+1. **The model gives a duplicate-label program a perfectly good meaning.**
+   `find-label` is a FIRST-MATCH scan on all three arches, and the flat machine
+   resolves labels by the same first-match scan. With `.L…_10` defined twice
+   both machines pick the same one, so `conc-flat-sim` is TRUE. No theorem below
+   the toolchain boundary could have been false; no strengthening of the
+   top-level statement could have forced uniqueness.
+
+2. **The only layer that rejects duplicates is `as`, and that layer IS
+   `<arch>-loader-faithful`** — which was stated with no precondition at all. So
+   the axiom was not merely trusted, it was **FALSE** for every program the
+   emitter duplicated: `as` refuses the text, so the axiom's LHS is the trace of
+   nothing. Note it is EXTERNALLY false, not internally inconsistent —
+   `assemble : String → List Byte` is uninterpreted and total, with no failure
+   mode, so the usual `⊥`-probe could never have found this. Agda structurally
+   cannot catch a defect while the premise is absent.
+
+3. **The precondition ALREADY EXISTED, one level up, and went vacuous.**
+   `ArchCorrect.assemble-correct` carries `DistinctSymbols m`, discharged by the
+   real proof `program-no-clash`. But once `asm-sem` was DEFINED as
+   `exec-bytes ∘ assemble` (`FlatFromObs.flat-from-obs`), that field collapsed to
+   `assemble-correct = λ _ _ _ _ _ → refl` — the premise is consumed by a `refl`
+   and does nothing. The trust point moved to `loader-faithful`; **the
+   precondition did not move with it.**
+
+   GENERAL TRAP, worth remembering on its own: *a precondition attached to a
+   trust point stays behind when the trust point moves.* Whenever a postulated
+   field becomes a definition, audit its premises — they are now decorative.
+
+### The fix — one predicate, stated arch-generically, discharged once
+
+- `Once.CCC.Codegen.EmittedWF` — `labels-def` / `labels-ref` over
+  `AbstractTrace` (defining occurrences = `c-label`/`c-thunk`; referencing =
+  `c-jmp`, the two branches, `instr-load-code-addr`), and
+
+      record EmittedWF (at : AbstractTrace) where
+        labels-unique     : AllPairs _≢_ (labels-def at)            -- `as`
+        labels-resolvable : All (_∈ labels-def at) (labels-ref at)  -- `ld`
+
+  On the ABSTRACT TRACE deliberately: one statement, all three arches, no
+  per-arch restatement. `labels-resolvable` IS the existing residual
+  `emitted-code-addr-has-body` stated where it belongs — folding it in kills a
+  duplicate rather than adding one.
+
+- `Once.Compile.moduleLabels` — the mirror of `moduleSyms` one level down, over
+  the SAME `compileResolvedModule` list and threading the SAME counter
+  `compileAllWithTarget` threads (`l₁ ⊔ l₂`). It cannot drift from what the
+  backend emits. The counter is the one place the arch shows through
+  (`compile-trace-cnt` allocates further labels of its own), hence
+  `moduleLabels : Arch → …`; the labels themselves are read off the
+  arch-independent trace.
+
+- `Once.Adequacy.LabelClash` — `DistinctLabels arch m = AllPairs _≢_
+  (moduleLabels arch Heap false m)`, the sibling of `DistinctSymbols`.
+
+- **Premise site: `AsmTraceCorrect` + `ArchCorrect.asm-trace-correct`** — the
+  shared obligation type, so one edit reaches all three arches, and each arch
+  threads it into its own `<arch>-loader-faithful`. NOT on `assemble-correct`:
+  that is where the vacuity trap of (3) lives.
+
+- **Discharged ONCE at the apex**, in `Compile.WithCPU.codegen-asm-correct`,
+  exactly as `program-no-clash` discharges `DistinctSymbols`. So the top-level
+  `correct` gains NO hypothesis — the axiom got narrower and the apex owes a
+  theorem. Interim: ONE named residual, `program-labels-distinct`, class
+  **deferred proof / codegen**. The count rising is correct per the ledger's own
+  gate: naming an obligation beats hiding it inside an axiom.
+
+### It is provable, and FALSE exactly where the bug is
+
+`LabelRange`'s bricks: counter monotonicity (DONE), containment via `LabelScope`
+(DONE), uniqueness next, by the disjoint-range argument at every splice. It
+fails today at exactly one place — `cata-dispatch` uses the IH for `at` TWICE at
+the same range `[l, l₁)` — and holds after either cata fix. That is what "the
+invariant forces the proof in the right way" means: the residual is not a
+placeholder for work nobody can do, it is a false statement pointing at the bug.
+
+### Scope, stated honestly
+
+`compile-trace-cnt` allocates FURTHER labels per arch (case/loop expansion),
+starting at the counter the trace hands out. Those are inside the range but not
+in `moduleLabels`. That walk is LINEAR (it never splices a sub-trace twice), so
+its freshness is a `LabelRange`-shaped one-liner per arch — the easy half. The
+hard half (the non-linear `ir-to-trace'`) is the half stated.
+
+### The wider audit this opened
+
+Duplicate labels are one instance of a general blind spot: **`assemble : String →
+List Byte` is total and uninterpreted, so NO assembler rejection is
+representable.** Everything `as`/`ld` can refuse is invisible to the proofs and
+sits inside `loader-faithful`. Two findings from the sweep:
+
+- **`once_arith.block.<digest>` is not covered by `DistinctSymbols`.**
+  `moduleSyms` lists only `once-symbol-path (cfName cf)`. The arith blocks
+  `compileAllWithTarget` accumulates are emitted by `emitArithBlocks` as
+  `.globl once_arith.block.<d>` + `once_arith.block.<d>:`, with NO dedup
+  (`rewrite-ir`'s own comment says "caller may dedup by digest"; the caller just
+  `DL.++`s). The symbol is a pure function of the block body, so two
+  structurally identical arith subtrees anywhere in a module emit the SAME
+  global symbol twice — the same defect class as D099, one level up, still live.
+  Route: extend `moduleSyms` to the full defined-symbol list (functions + arith
+  blocks) and dedup the block list by digest at the fold.
+- **The premise says nothing about the primitive symbols we CALL.** Strata
+  interpretations supply them at link time; an unresolved one is an `ld` error
+  the model cannot express. Same shape as `labels-resolvable`, one level up.
+
+The structural repair for the whole class — and the right long-term move — is to
+give the assembler a failure mode (`assemble : String → Maybe (List Byte)`), so
+that "the toolchain accepted this text" becomes a proposition the proofs can
+carry rather than an assumption they cannot see.

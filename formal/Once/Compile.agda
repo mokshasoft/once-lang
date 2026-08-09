@@ -86,6 +86,13 @@ open import Once.Arith.IR public
 open import Once.Arith.Machine.IR using (ArithBlock)
 open import Once.Arith.Machine.Rewrite using (rewrite-ir)
 
+-- D100: the emitted LOCAL labels (`moduleLabels`, below) — the `.L…` sibling of
+-- `moduleSyms`. `labels-def` reads them off the abstract trace; the trace walk
+-- itself is telescoped per definition (`IRT.ir-to-trace-from o l ir`).
+open import Once.CCC.Label using (Label)
+open import Once.CCC.Codegen.EmittedWF using (labels-def)
+import Once.CCC.Codegen.IRToTrace as IRT
+
 -- Re-export Parser (for module loading)
 open import Once.Parser public
 open import Once.Parser.Module public
@@ -550,6 +557,58 @@ compileAllWithTarget target cfs =
           accBlks = proj₂ (proj₂ p)
           (l' , fn-asm , blks) = compileFunWithTarget target l cf
       in l' , (acc ++ fn-asm) , (accBlks DL.++ blks)
+
+------------------------------------------------------------------------
+-- D100 — THE LOCAL LABELS THIS CODEGEN EMITS.
+--
+-- The exact mirror of `moduleSyms` one level down: that list is the `.globl`
+-- function symbols, this one is the `.L…` labels the trace invents. `as`
+-- rejects a file that defines either twice, and the 2026-08-06 regression
+-- (`symbol .L_thunk_once_4main_10 is already defined`) was a duplicate in THIS
+-- list — invisible to every proof, because the only layer that rejects it is
+-- the assembler, i.e. the `<arch>-loader-faithful` axiom.
+--
+-- Defined over the SAME `CompiledFun` list `compileFromModule` renders and
+-- threading the SAME counter `compileAllWithTarget`'s fold threads (`l₁ ⊔ l₂`,
+-- both targets' walks) — so it cannot drift from what the backend emits. The
+-- counter is the one place the arch shows through: `irToAsm` allocates further
+-- labels of its own inside `compile-trace-cnt`, and the NEXT function starts
+-- past them. The labels themselves are read off the ABSTRACT TRACE
+-- (`labels-def`), which is arch-independent, so the invariant is one statement
+-- for all three targets.
+--
+-- SCOPE, honestly: the arch labels `compile-trace-cnt` allocates are inside the
+-- range but not in this list. That walk is LINEAR (it never splices a
+-- sub-trace twice), so its freshness is a per-arch `LabelRange` one-liner; the
+-- non-linear walk (`ir-to-trace'`, whose `Cata` clause splices its algebra
+-- twice) is the one this list sees.
+------------------------------------------------------------------------
+
+funLabels-cons : Bool → Target → ℕ → CompiledFun → ℕ × List Label
+funLabels-cons true  target l cf = l , []              -- primitive: no body, no labels
+funLabels-cons false target l cf =
+  let (_ , _ , dcIR) = directCallIR (cfType cf) (cfIR cf)
+      (ir' , _)      = rewrite-ir dcIR
+      (l₁ , _)       = irToAsm    target (cfName cf) l ir'
+      (l₂ , _)       = irToBodies target (cfName cf) l ir'
+      (_  , at)      = IRT.ir-to-trace-from (cfName cf) l ir'
+  in (l₁ ⊔ l₂) , labels-def at
+
+funLabels : Target → ℕ → CompiledFun → ℕ × List Label
+funLabels target l cf = funLabels-cons (cfIsPrimitive cf) target l cf
+
+emittedLabels : Target → ℕ → List CompiledFun → List Label
+emittedLabels target l []         = []
+emittedLabels target l (cf ∷ cfs) =
+  proj₂ (funLabels target l cf) DL.++ emittedLabels target (proj₁ (funLabels target l cf)) cfs
+
+moduleLabels-aux : Target → String ⊎ List CompiledFun → List Label
+moduleLabels-aux target (inj₁ _)   = []
+moduleLabels-aux target (inj₂ cfs) = emittedLabels target 0 cfs
+
+moduleLabels : Arch → AllocMode → Bool → Module → List Label
+moduleLabels arch m doOpt mod =
+  moduleLabels-aux (archTarget arch) (compileResolvedModule m doOpt mod)
 
 ------------------------------------------------------------------------
 -- Unified compilation entry point

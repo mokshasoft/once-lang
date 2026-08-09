@@ -48,6 +48,9 @@ open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace)
 open import Once.CCC.Target.X86-32.AbstractToX86-32 using (compile-trace)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
+-- D100: the assembler's precondition (distinct emitted local labels), threaded
+-- into this arch's `loader-faithful` axiom.
+open import Once.Adequacy.LabelClash using (DistinctLabels)
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
 -- Plan 0.54 rung D / D087: `program-bound` is a RESOURCE BOUND and so is now a
@@ -87,9 +90,12 @@ conc-trace (just ir) =
 postulate
   -- (A) TOOLCHAIN TRUST — assembler + loader + printer + decoder (GNU `as`
   -- class); NOT the CPU, NOT the arith logic.
+  -- D100: preconditioned on distinct emitted local labels — see the x86-64
+  -- instance for why the unconditioned form was FALSE rather than trusted.
   x86-32-loader-faithful :
     ∀ (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false x86-32 m ≡ C.Built asm →
+    DistinctLabels x86-32 m →
     ∀ (n : ℕ) → FFOc.asm-sem asm n ≡ conc-trace (moduleToIR m) n
   -- (B) THE SIMULATION — PROVABLE: concrete `run-events` ≡ abstract
   -- `flat-events`. Arith slice = `dispatch-arith-preserves` (here also the
@@ -99,8 +105,8 @@ postulate
     conc-trace mir n ≡ FFOc.flat-trace-of ir-obs-correct mir n
 
 asm-trace-correct-x86-32 : FFOc.AsmTraceCorrect (FFOc.flat-trace-of ir-obs-correct)
-asm-trace-correct-x86-32 m asm eq n =
-  trans (x86-32-loader-faithful m asm eq n)
+asm-trace-correct-x86-32 m asm eq dl n =
+  trans (x86-32-loader-faithful m asm eq dl n)
         (x86-32-conc-flat-sim (moduleToIR m) n)
 
 x86-32-correct : ArchCorrect x86-32 (arch-semantics x86-32)

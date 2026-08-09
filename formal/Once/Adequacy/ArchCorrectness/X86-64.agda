@@ -66,6 +66,9 @@ open import Once.CCC.Codegen.FrameFreeTrace o using (ir-to-trace-frame-free)
 open import Data.Empty using (⊥)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
+-- D100: the assembler's precondition (distinct emitted local labels), threaded
+-- into this arch's `loader-faithful` axiom.
+open import Once.Adequacy.LabelClash using (DistinctLabels)
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
 -- Plan 0.54 rung D / D087: `program-bound` is a RESOURCE BOUND, so it is a
@@ -137,9 +140,15 @@ postulate
   -- + printer + decoder round-trip. It is NOT the CPU semantics and NOT the
   -- arith logic; it is exactly the toolchain boundary every verified compiler
   -- keeps (cf. CompCert's assembler/loader).
+  -- D100: PRECONDITIONED on the emitted local labels being distinct. Without
+  -- it this axiom is FALSE, not merely trusted: `as` refuses a file that
+  -- defines `.L…` twice, so its LHS is the trace of a program that was never
+  -- produced. Externally false, and no `⊥`-probe could have found it —
+  -- `assemble : String → List Byte` is uninterpreted with no failure mode.
   x86-64-loader-faithful :
     ∀ (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false x86-64 m ≡ C.Built asm →
+    DistinctLabels x86-64 m →
     ∀ (n : ℕ) → FFOx.asm-sem asm n ≡ conc-trace (moduleToIR m) n
 
 -- ── (B) THE SIMULATION, now WIRED to the ConcFlatSim assembly (not a postulate).
@@ -430,8 +439,8 @@ x86-64-conc-flat-sim (just ir) n = conc-flat-sim-just ir n
 -- The seam, ASSEMBLED from (A) ∘ (B). No longer one opaque postulate: the
 -- provable half is named and separated from the honest toolchain axiom.
 asm-trace-correct-x86-64 : FFOx.AsmTraceCorrect (FFOx.flat-trace-of ir-obs-correct)
-asm-trace-correct-x86-64 m asm eq n =
-  trans (x86-64-loader-faithful m asm eq n)
+asm-trace-correct-x86-64 m asm eq dl n =
+  trans (x86-64-loader-faithful m asm eq dl n)
         (x86-64-conc-flat-sim (moduleToIR m) n)
 
 x86-64-correct : ArchCorrect x86-64 (arch-semantics x86-64)
