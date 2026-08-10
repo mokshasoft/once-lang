@@ -1,6 +1,14 @@
 ------------------------------------------------------------------------
--- ⚠ PARTIAL: the ZERO branch is green, the SUCCESSOR branch is not yet
---   written.  `⊢aAux`, the Π form and D7's unfolding lemma follow it.
+-- ⚠⚠ CURRENTLY **RED**.  Green through the ZERO branch and the successor
+--   branch's REASSOCIATIONS (commit c7953033); `⊢ihS` below is in flight.
+--
+--   LAST ERROR: at the `⊢lam1` context a subject `wᶠ (wᶠ m)` is expected
+--   and a `⊢wk`-headed term is supplied — i.e. a family is being weakened
+--   with plain `vs` where it needs `ren-lemma … (Ren⊢-ext there)`.  THIS
+--   one really is P1 (a family moved under a renaming), unlike the zero
+--   branch's error which I misdiagnosed as P1 and which turned out to be
+--   swapped μ arguments.  The fix is in `dmXS`/`dDesc`'s weakenings, not
+--   in the design.
 --
 -- ★ THE DESIGN RISK IS RETIRED.  `⊢absurd` is CODE-indexed, so the whole
 --   D4 shape depended on the vacuous branch's ex-falso result type landing
@@ -371,3 +379,51 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
                  (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ cM)))))) (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ m))))))
                  (w (w (w (w (w (var vz))))))
   ih₀-w⁵ = aAuxB-w⁵ (renTy vs A) (wᶠ cM) (wᶠ m) (var vz)
+
+  descS : RTm (⌊ Δ ⌋ ∙ ∙ ∙ ∙ ∙ ∙)
+  descS = ordtr (nsuc (w (wᶠ (wᶠ (wᶠ (wᶠ m)))))) (w (w (w (wᶠ (wᶠ m))))) (nsuc (var (vs (vs (vs (vs (vs vz))))))) (var vz) (var (vs (vs vz)))
+
+  ihS : RTm (⌊ Δ ⌋ ∙ ∙ ∙ ∙)
+  ihS = lam (lam (app (app (var (vs (vs (vs (vs vz))))) (var (vs vz))) descS))
+
+  aSBr : RTm (⌊ Δ ⌋ ∙ ∙)
+  aSBr = lam (lam (app (app (w (w (w (w stp)))) (var (vs vz))) ihS))
+
+  -- the IH₀ spine's cancellation: wᶠ⁶ cM peeled by its two ⊢apps
+  cancelIH : subTm (single descS)
+               (subTm (extS (single (var (vs vz))))
+                 (w (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ cM))))))))
+           ≡ w (wᶠ (wᶠ (wᶠ (wᶠ cM))))
+  cancelIH =
+    trans (cong (subTm (single descS))
+                (trans (sub-w {σ = single (var (vs vz))} (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ cM)))))))
+                       (cong w (wᶠ²-single (wᶠ (wᶠ (wᶠ (wᶠ cM))))))))
+          (wk-single {v = descS} (w (wᶠ (wᶠ (wᶠ (wᶠ cM))))))
+
+  ⊢ihS : ((((Δ ▹ Nat) ▹ aAuxMot) ▹ renTy vs (renTy vs A))
+            ▹ Hom Nat (wᶠ (wᶠ m)) (nsuc (var (vs (vs vz)))))
+           ⊢ ihS
+         ∷ aIHTat (renTy vs (renTy vs (renTy vs (renTy vs A))))
+                  (wᶠ (wᶠ (wᶠ (wᶠ cM)))) (wᶠ (wᶠ (wᶠ (wᶠ m))))
+                  (subTm (single (var (vs vz))) (wᶠ (wᶠ (wᶠ (wᶠ m)))))
+  ⊢ihS =
+    ⊢lam (ren-ty (ren-ty (ren-ty (ren-ty dA there) there) there) there)
+      (⊢lam (ty-Hom ty-Nat (⊢nsuc dm₄) dmXS)
+        (⊢-cast (cong El cancelIH)
+          (⊢app (⊢app (⊢-cast ih₀-w⁵ (⊢var (there (there (there (there here))))))
+                      (⊢var (there here)))
+                dDesc)))
+    where
+      dm₄ = ren-lemma (ren-lemma (ren-lemma (ren-lemma dm (Ren⊢-ext there)) (Ren⊢-ext there)) (Ren⊢-ext there)) (Ren⊢-ext there)
+      dm₂ = ren-lemma (ren-lemma dm (Ren⊢-ext there)) (Ren⊢-ext there)
+      dmXS = subst (λ z → ((((Δ ▹ Nat) ▹ aAuxMot) ▹ renTy vs (renTy vs A))
+                            ▹ Hom Nat (wᶠ (wᶠ m)) (nsuc (var (vs (vs vz)))))
+                            ▹ renTy vs (renTy vs (renTy vs (renTy vs A))) ⊢ z ∷ Nat)
+                   (sym (cong w (wᶠ²-single (wᶠ (wᶠ m)))))
+                   (⊢wk (⊢wk (⊢wk dm₂)))
+      dDesc = ⊢strong-step (⊢wk dm₄) (⊢wk (⊢wk (⊢wk (⊢wk dm₂))))
+                           (⊢var (there (there (there (there (there here))))))
+                           (⊢-cast (cong (λ z → Hom Nat (nsuc (w (wᶠ (wᶠ (wᶠ (wᶠ m)))))) (w (w z)))
+                                         (wᶠ²-single (wᶠ (wᶠ m))))
+                                   (⊢var here))
+                           (⊢var (there (there here)))
