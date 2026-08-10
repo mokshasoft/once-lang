@@ -974,196 +974,6 @@ pieces-≡ : ∀ {at : AbstractTrace} {a b : ℕ} {t t' : AbstractTrace}
          → t ≡ t' → Pieces at a b t → Pieces at a b t'
 pieces-≡ refl ps = ps
 
-------------------------------------------------------------------------
--- THE `cata-nat` WITNESS. This is what the `IRToTrace` refactor bought: the
--- skeleton decomposes DEFINITIONALLY, so the witness is two `pcons` and a
--- `pnil` with no transcription and no `++-assoc` transport.
-------------------------------------------------------------------------
-cata-nat-pieces : ∀ (n1 l1 : ℕ) (at : AbstractTrace)
-                → Pieces at l1 (suc (suc (suc (suc (suc (suc l1))))))
-                         (cata-trace-of (cata-dispatch strat-nat n1 l1 at))
-cata-nat-pieces n1 l1 at =
-  pcons refl I₁-ls (pcons refl I₂-ls (pnil refl I₃-ls))
-  where
-    hi = suc (suc (suc (suc (suc (suc l1)))))
-    L0 : l1 ≤ l1
-    L0 = ≤-refl
-    L1 : l1 ≤ suc l1
-    L1 = ≤-step L0
-    L2 : l1 ≤ suc (suc l1)
-    L2 = ≤-step L1
-    L3 : l1 ≤ suc (suc (suc l1))
-    L3 = ≤-step L2
-    L4 : l1 ≤ suc (suc (suc (suc l1)))
-    L4 = ≤-step L3
-    L5 : l1 ≤ suc (suc (suc (suc (suc l1))))
-    L5 = ≤-step L4
-    H0 : l1 < hi
-    H0 = ≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))
-    H1 : suc l1 < hi
-    H1 = ≤-step (≤-step (≤-step (≤-step ≤-refl)))
-    H2 : suc (suc l1) < hi
-    H2 = ≤-step (≤-step (≤-step ≤-refl))
-    H3 : suc (suc (suc l1)) < hi
-    H3 = ≤-step (≤-step ≤-refl)
-    H4 : suc (suc (suc (suc l1))) < hi
-    H4 = ≤-step ≤-refl
-    H5 : suc (suc (suc (suc (suc l1)))) < hi
-    H5 = ≤-refl
-    I₁-ls : LabelsIn l1 hi (cata-nat-I₁ n1 l1)
-    I₁-ls =
-      li-none refl ∷ li-none refl ∷
-      li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷ li-lab refl L2 H2 ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-lab refl L3 H3 ∷ li-lab refl L2 H2 ∷ li-none refl ∷
-      li-lab refl L3 H3 ∷ li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ []
-    I₂-ls : LabelsIn l1 hi (cata-nat-I₂ n1 l1)
-    I₂-ls =
-      li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ []
-    I₃-ls : LabelsIn l1 hi (cata-nat-I₃ l1)
-    I₃-ls = li-none refl ∷ li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ []
-
--- …and the other two skeletons. `linear` has two copies like `nat`;
--- `branching` has ONE, so its witness is a single `pcons`.
-cata-lin-pieces : ∀ (n1 l1 : ℕ) (at : AbstractTrace)
-                → Pieces at l1 (suc (suc (suc (suc l1))))
-                         (cata-trace-of (cata-dispatch strat-linear n1 l1 at))
-cata-lin-pieces n1 l1 at =
-  pcons refl I₁-ls (pcons refl I₂-ls (pnil refl I₃-ls))
-  where
-    hi = suc (suc (suc (suc l1)))
-    L0 : l1 ≤ l1
-    L0 = ≤-refl
-    L1 : l1 ≤ suc l1
-    L1 = ≤-step L0
-    L2 : l1 ≤ suc (suc l1)
-    L2 = ≤-step L1
-    L3 : l1 ≤ suc (suc (suc l1))
-    L3 = ≤-step L2
-    H0 : l1 < hi
-    H0 = ≤-step (≤-step (≤-step ≤-refl))
-    H1 : suc l1 < hi
-    H1 = ≤-step (≤-step ≤-refl)
-    H2 : suc (suc l1) < hi
-    H2 = ≤-step ≤-refl
-    H3 : suc (suc (suc l1)) < hi
-    H3 = ≤-refl
-    I₁-ls : LabelsIn l1 hi (cata-lin-I₁ n1 l1)
-    I₁-ls =
-      li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷ li-none refl ∷ []
-    I₂-ls : LabelsIn l1 hi (cata-lin-I₂ n1 l1)
-    I₂-ls =
-      li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-      li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-    I₃-ls : LabelsIn l1 hi (cata-lin-I₃ l1)
-    I₃-ls = li-none refl ∷ li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷ []
-
-cata-br-pieces : ∀ (F : Functor) (n1 l1 : ℕ) (at : AbstractTrace)
-               → Pieces at l1 (l1 + 4 + lsize F + lsize F)
-                        (cata-trace-of (cata-dispatch (strat-branching F) n1 l1 at))
-cata-br-pieces F n1 l1 at = pcons I₁-idle I₁-ls (pnil refl I₂-ls)
-  where
-    lv = l1 + 4
-    lr = lv + lsize F
-    hi = lr + lsize F
-    lv≤lr : lv ≤ lr
-    lv≤lr = m≤m+n lv (lsize F)
-    top : lv ≤ hi
-    top = ≤-trans lv≤lr (m≤m+n lr (lsize F))
-    L0 : l1 ≤ l1
-    L0 = ≤-refl
-    L1 : l1 ≤ suc l1
-    L1 = ≤-step L0
-    L2 : l1 ≤ l1 + 2
-    L2 = m≤m+n l1 2
-    L3 : l1 ≤ l1 + 3
-    L3 = m≤m+n l1 3
-    H0 : l1 < hi
-    H0 = <-transˡ (a<a+suc l1 3) top
-    H1 : suc l1 < hi
-    H1 = <-transˡ (sa<a+ss l1 2) top
-    H2 : l1 + 2 < hi
-    H2 = <-transˡ (+lt l1 2 4 (s≤s (s≤s (s≤s z≤n)))) top
-    H3 : l1 + 3 < hi
-    H3 = <-transˡ (+lt l1 3 4 (s≤s (s≤s (s≤s (s≤s z≤n))))) top
-    I₁-idle : seg-idle? (cata-br-I₁ F n1 l1) ≡ true
-    I₁-idle = idle-++ (visit-walk n1 (n1 + 4) (n1 + 5) F (n1 + 7) lv) _
-                (visit-idle F n1 (n1 + 4) (n1 + 5) (n1 + 7) lv)
-                (idle-++ (rebuild-walk (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) lr) _
-                  (rebuild-idle F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) lr) refl)
-    I₁-ls : LabelsIn l1 hi (cata-br-I₁ F n1 l1)
-    I₁-ls =
-      ++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-           li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-           li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
-      (++⁺ (push2-ls l1 hi n1 (n1 + 4) (n1 + 5))
-      (++⁺ (li-lab refl L0 H0 ∷ li-none refl ∷ li-none refl ∷
-            li-lab refl L1 H1 ∷ li-none refl ∷ li-none refl ∷
-            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
-      (++⁺ (push2-ls l1 hi (suc n1) (n1 + 4) (n1 + 5))
-      (++⁺ (li-none refl ∷ li-none refl ∷ [])
-      (++⁺ (ls-weaken (m≤m+n l1 4) (m≤m+n lr (lsize F))
-                      (visit-ls F n1 (n1 + 4) (n1 + 5) (n1 + 7) lv))
-      (++⁺ (li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷ [])
-      (++⁺ (li-lab refl L2 H2 ∷ li-none refl ∷ li-none refl ∷
-            li-lab refl L3 H3 ∷ li-none refl ∷ li-none refl ∷
-            li-none refl ∷ li-none refl ∷ [])
-      (++⁺ (ls-weaken (≤-trans (m≤m+n l1 4) lv≤lr) ≤-refl
-                      (rebuild-ls F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) lr))
-           (li-none refl ∷ [])))))))))
-    I₂-ls : LabelsIn l1 hi (cata-br-I₂ n1 l1)
-    I₂-ls =
-      ++⁺ (push2-ls l1 hi (n1 + 2) (n1 + 4) (n1 + 5))
-          (li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷
-           li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
-
--- (superseded note) WHY THE CATA WITNESSES WERE NOT HERE (2026-08-04, measured by attempting
--- them): a `Pieces` witness has to name the skeleton fragments, and in
--- `cata-trace-nat` / `-linear` / `-branching` they are `let`-bound INSIDE the
--- function (`descend-flat`, `build-layer`, `ascend-body`, `ascend-flat`, …) —
--- none is exported, so the witness would have to transcribe ~28 + ~15 + 3
--- instructions for the nat skeleton alone, and again for the other two. That
--- is duplication of the emitter's own definition, and it would rot silently
--- the moment the codegen is touched.
---
--- THE FIX IS IN `IRToTrace`, not here: lift those `let`s to top level, so
--- `cata-trace-nat n1 l1 at` reads `I₁ n1 l1 ++ at ++ (I₂ n1 l1 ++ at ++ I₃ l1)`
--- definitionally. Then every witness is `pcons refl … (pcons refl … (pnil …))`
--- with no transcription and no `++-assoc` transport. The emitted trace is
--- unchanged by construction, but the RIPPLE is real and worth budgeting: every
--- proof that pattern-matches the current shape moves with it —
--- `SlotBudget.cata-nat-below`, `FrameFreeTrace.cata-nat-ff`, `AllocMin`,
--- `CataIRSlotStable`, and `cata-nat-ls` above.
-
--- the strategy dispatch for the three witnesses. `strat-const`'s trace IS the
--- algebra, so it is `pnil`-free: one copy with empty skeleton either side.
-cata-pieces : ∀ (st : CataStrategy) (n1 l1 : ℕ) (at : AbstractTrace)
-            → Pieces at l1 (cata-label-of (cata-dispatch st n1 l1 at))
-                     (cata-trace-of (cata-dispatch st n1 l1 at))
--- `strat-const`'s trace IS the algebra, so this is one copy with empty
--- skeleton on both sides — modulo `xs ++ [] ≡ xs`.
-cata-pieces strat-const         n1 l1 at =
-  pieces-≡ (++-identityʳ at) (pcons refl [] (pnil refl []))
-cata-pieces strat-nat           n1 l1 at = cata-nat-pieces n1 l1 at
-cata-pieces strat-linear        n1 l1 at = cata-lin-pieces n1 l1 at
-cata-pieces (strat-branching F) n1 l1 at = cata-br-pieces F n1 l1 at
 
 -- a label-free prefix in front of a fragment: the prefix's window is EMPTY,
 -- so it is trivially disjoint from whatever follows.
@@ -1517,12 +1327,15 @@ segagree-curry H body ℓ bb e a b' c d idle ls natl saB lsB we b'≤c p q m st 
     lq-men rewrite lq = refl
     none-absurd : ∀ {A : Set} → nothing ≡ just m → A
     none-absurd ()
+    -- (the disjointness is PASSED to the helper, not `with`ed on: a
+    -- where-block's parent-clause variables live in its module telescope,
+    -- which `with` cannot abstract over.)
     clash : (a ≤ idx m) × (idx m < b') → (c ≤ idx m) × (idx m < d) → ⊥
-    clash wO wB = disj wO wB
-      where disj : _ → _ → ⊥
-            disj w1 w2 with b'≤c
-            ... | inj₁ le = <-asym (proj₂ w1) (≤-trans le (proj₁ w2))
-            ... | inj₂ le = <-asym (proj₂ w2) (≤-trans le (proj₁ w1))
+    clash wO wB = disj b'≤c wO wB
+      where disj : (b' ≤ c) ⊎ (d ≤ a)
+                 → (a ≤ idx m) × (idx m < b') → (c ≤ idx m) × (idx m < d) → ⊥
+            disj (inj₁ le) w1 w2 = <-asym (proj₂ w1) (≤-trans le (proj₁ w2))
+            disj (inj₂ le) w1 w2 = <-asym (proj₂ w2) (≤-trans le (proj₁ w1))
     go : CurryLoc H body ℓ bb e a b' st p → CurryLoc H body ℓ bb e a b' st q → _
     go (cl-mark nq) _ = none-absurd (trans (sym nq) mq)
     go _ (cl-mark nq) = none-absurd (trans (sym nq) lq-men)
@@ -1540,10 +1353,297 @@ segagree-curry H body ℓ bb e a b' c d idle ls natl saB lsB we b'≤c p q m st 
                       (sym sp))
 
 ------------------------------------------------------------------------
+-- THE CATA WITNESSES (D099 / C1). The algebra is emitted ONCE, as a called
+-- body inside a `c-thunk`/`c-ret` bracket at the END of the cata's trace —
+-- literally `curry`'s shape — so every strategy is ONE application of
+-- `segagree-curry`:
+--
+--     H ++ c-thunk (ℓ o bodyL) bb ∷ (at ++ c-ret bb ∷ c-label (ℓ o endL) ∷ [])
+--
+-- with `H` = the whole loop skeleton plus its jump over the body. `H` is idle
+-- (only the two markers move the segment), its labels are the skeleton's own
+-- window `[l1, hi)`, and the algebra's window `[lo, l1)` sits BELOW it — which
+-- is why `segagree-curry`'s last premise is disjointness rather than "above":
+-- `curry` passes `inj₁`, the cata `inj₂`.
+--
+-- This REPLACES the `Pieces` witnesses (`cata-{nat,lin,br}-pieces`): with one
+-- copy of the algebra there is no longer an alternation to classify, and the
+-- windows those witnesses carried moved here unchanged.
+------------------------------------------------------------------------
+cata-nat-agree : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace)
+               → (∀ s → seg-fold at s ≡ s) → SegAgree at → LabelsIn lo l1 at
+               → SegAgree (cata-trace-of (cata-dispatch strat-nat bb n1 l1 at))
+cata-nat-agree lo bb n1 l1 at natl saB lsB =
+  segagree-curry H at (ℓ o bodyL) bb (ℓ o endL) l1 hi lo l1
+    refl H-ls natl saB lsB (L7 , H7) (inj₂ ≤-refl)
+  where
+    hi    = suc (suc (suc (suc (suc (suc (suc (suc l1)))))))
+    bodyL = suc (suc (suc (suc (suc (suc l1)))))
+    endL  = suc (suc (suc (suc (suc (suc (suc l1))))))
+    H = cata-call-setup (suc (suc n1)) bodyL ++
+        (cata-nat-I₁ n1 l1 ++
+         (cata-call (suc (suc n1)) (suc (suc (suc n1))) ++
+          (cata-nat-I₂ n1 l1 ++
+           (cata-call (suc (suc n1)) (suc (suc (suc n1))) ++
+            (cata-nat-I₃ l1 ++ (instr-ctrl (c-jmp (ℓ o endL)) ∷ []))))))
+    L0 : l1 ≤ l1
+    L0 = ≤-refl
+    L1 : l1 ≤ suc l1
+    L1 = ≤-step L0
+    L2 : l1 ≤ suc (suc l1)
+    L2 = ≤-step L1
+    L3 : l1 ≤ suc (suc (suc l1))
+    L3 = ≤-step L2
+    L4 : l1 ≤ suc (suc (suc (suc l1)))
+    L4 = ≤-step L3
+    L5 : l1 ≤ suc (suc (suc (suc (suc l1))))
+    L5 = ≤-step L4
+    L7 : l1 ≤ endL
+    L7 = ≤-step (≤-step L5)
+    H0 : l1 < hi
+    H0 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))))
+    H1 : suc l1 < hi
+    H1 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))
+    H2 : suc (suc l1) < hi
+    H2 = ≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))
+    H3 : suc (suc (suc l1)) < hi
+    H3 = ≤-step (≤-step (≤-step (≤-step ≤-refl)))
+    H4 : suc (suc (suc (suc l1))) < hi
+    H4 = ≤-step (≤-step (≤-step ≤-refl))
+    H5 : suc (suc (suc (suc (suc l1)))) < hi
+    H5 = ≤-step (≤-step ≤-refl)
+    H7 : endL < hi
+    H7 = ≤-refl
+    layer : ∀ (tag : ℕ) → LabelsIn l1 hi
+              (mov-to-output ∷ store-at-slot n1 ∷ instr-alloc-heap 2 ∷
+               store-at-slot (suc n1) ∷ mov-to-input ∷ instr-load-tag-lit tag ∷
+               store-indirect ∷ load-from-slot n1 ∷ store-indirect-suc ∷
+               load-from-slot (suc n1) ∷ [])
+    layer tag = li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+                li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+    descend : LabelsIn l1 hi _
+    descend =
+      li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷ li-lab refl L2 H2 ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-lab refl L3 H3 ∷
+      li-lab refl L2 H2 ∷ li-none refl ∷
+      li-lab refl L3 H3 ∷ li-lab refl L0 H0 ∷
+      li-lab refl L1 H1 ∷ []
+    I₁ : LabelsIn l1 hi (cata-nat-I₁ n1 l1)
+    I₁ = li-none refl ∷ li-none refl ∷
+         ++⁺ descend (li-none refl ∷ li-none refl ∷ li-none refl ∷
+                      ++⁺ (layer 0) (li-none refl ∷ []))
+    I₂ : LabelsIn l1 hi (cata-nat-I₂ n1 l1)
+    I₂ = li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ li-none refl ∷
+         ++⁺ (layer 1) (li-none refl ∷ [])
+    I₃ : LabelsIn l1 hi (cata-nat-I₃ l1)
+    I₃ = li-none refl ∷ li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ []
+    H-ls : LabelsIn l1 hi H
+    H-ls =
+      ++⁺ (cata-setup-ls l1 hi _ bodyL)
+       (++⁺ I₁ (++⁺ (cata-call-ls l1 hi _ _)
+        (++⁺ I₂ (++⁺ (cata-call-ls l1 hi _ _)
+         (++⁺ I₃ (li-lab refl L7 H7 ∷ []))))))
+
+cata-lin-agree : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace)
+               → (∀ s → seg-fold at s ≡ s) → SegAgree at → LabelsIn lo l1 at
+               → SegAgree (cata-trace-of (cata-dispatch strat-linear bb n1 l1 at))
+cata-lin-agree lo bb n1 l1 at natl saB lsB =
+  segagree-curry H at (ℓ o bodyL) bb (ℓ o endL) l1 hi lo l1
+    refl H-ls natl saB lsB (L5 , H5) (inj₂ ≤-refl)
+  where
+    hi    = suc (suc (suc (suc (suc (suc l1)))))
+    bodyL = suc (suc (suc (suc l1)))
+    endL  = suc (suc (suc (suc (suc l1))))
+    cl    = suc (suc (suc (suc (suc (suc n1)))))
+    kk    = suc (suc (suc (suc (suc (suc (suc n1))))))
+    H = cata-call-setup cl bodyL ++
+        (cata-lin-I₁ n1 l1 ++
+         (cata-call cl kk ++
+          (cata-lin-I₂ n1 l1 ++
+           (cata-call cl kk ++
+            (cata-lin-I₃ l1 ++ (instr-ctrl (c-jmp (ℓ o endL)) ∷ []))))))
+    L0 : l1 ≤ l1
+    L0 = ≤-refl
+    L1 : l1 ≤ suc l1
+    L1 = ≤-step L0
+    L2 : l1 ≤ suc (suc l1)
+    L2 = ≤-step L1
+    L3 : l1 ≤ suc (suc (suc l1))
+    L3 = ≤-step L2
+    L5 : l1 ≤ endL
+    L5 = ≤-step (≤-step L3)
+    H0 : l1 < hi
+    H0 = ≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))
+    H1 : suc l1 < hi
+    H1 = ≤-step (≤-step (≤-step (≤-step ≤-refl)))
+    H2 : suc (suc l1) < hi
+    H2 = ≤-step (≤-step (≤-step ≤-refl))
+    H3 : suc (suc (suc l1)) < hi
+    H3 = ≤-step (≤-step ≤-refl)
+    H5 : endL < hi
+    H5 = ≤-refl
+    descend : LabelsIn l1 hi _
+    descend =
+      li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷ []
+    I₁ : LabelsIn l1 hi (cata-lin-I₁ n1 l1)
+    I₁ = ++⁺ descend (li-none refl ∷ [])
+    I₂ : LabelsIn l1 hi (cata-lin-I₂ n1 l1)
+    I₂ =
+      li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+      li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+    I₃ : LabelsIn l1 hi (cata-lin-I₃ l1)
+    I₃ = li-none refl ∷ li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷ []
+    H-ls : LabelsIn l1 hi H
+    H-ls =
+      ++⁺ (cata-setup-ls l1 hi _ bodyL)
+       (++⁺ I₁ (++⁺ (cata-call-ls l1 hi _ _)
+        (++⁺ I₂ (++⁺ (cata-call-ls l1 hi _ _)
+         (++⁺ I₃ (li-lab refl L5 H5 ∷ []))))))
+
+-- Tier 2 calls the algebra ONCE, so its `H` has one call site. The functor
+-- walks are stuck on `F`, so `H ++ body` is NOT definitionally the emitted
+-- trace here — one `++-assoc` at `cata-br-I₁` is the whole difference.
+cata-br-agree : ∀ (F : Functor) (lo bb n1 l1 : ℕ) (at : AbstractTrace)
+              → (∀ s → seg-fold at s ≡ s) → SegAgree at → LabelsIn lo l1 at
+              → SegAgree (cata-trace-of (cata-dispatch (strat-branching F) bb n1 l1 at))
+cata-br-agree F lo bb n1 l1 at natl saB lsB =
+  subst SegAgree assoc
+    (segagree-curry H at (ℓ o bodyL) bb (ℓ o endL) l1 hi2 lo l1
+      H-idle H-ls natl saB lsB (Lend , Hend) (inj₂ ≤-refl))
+  where
+    lv  = l1 + 4
+    lr  = lv + lsize F
+    hi  = lr + lsize F
+    hi2 = hi + 2
+    bodyL = hi
+    endL  = hi + 1
+    cl = n1 + 7 + (4 * fsize F) + 4
+    setup = cata-call-setup cl bodyL
+    call  = cata-call cl (cl + 1)
+    jmp   = instr-ctrl (c-jmp (ℓ o endL)) ∷ []
+    tailB = instr-ctrl (c-thunk (ℓ o bodyL) bb) ∷
+            (at ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label (ℓ o endL)) ∷ [])
+    inner = call ++ (cata-br-I₂ n1 l1 ++ jmp)
+    H = setup ++ (cata-br-I₁ F n1 l1 ++ inner)
+    assoc : H ++ tailB ≡ cata-trace-of (cata-dispatch (strat-branching F) bb n1 l1 at)
+    assoc = trans (++-assoc setup (cata-br-I₁ F n1 l1 ++ inner) tailB)
+                  (cong (setup ++_) (++-assoc (cata-br-I₁ F n1 l1) inner tailB))
+    hi≤hi2 : hi ≤ hi2
+    hi≤hi2 = m≤m+n hi 2
+    l1≤hi : l1 ≤ hi
+    l1≤hi = ≤-trans (m≤m+n l1 4) (≤-trans (m≤m+n lv (lsize F)) (m≤m+n lr (lsize F)))
+    Lend : l1 ≤ endL
+    Lend = ≤-trans l1≤hi (m≤m+n hi 1)
+    Hend : endL < hi2
+    Hend = ≤-reflexive (sym (+-suc hi 1))
+    lv≤lr : lv ≤ lr
+    lv≤lr = m≤m+n lv (lsize F)
+    top : lv ≤ hi
+    top = ≤-trans lv≤lr (m≤m+n lr (lsize F))
+    L0 : l1 ≤ l1
+    L0 = ≤-refl
+    L1 : l1 ≤ suc l1
+    L1 = ≤-step L0
+    L2 : l1 ≤ l1 + 2
+    L2 = m≤m+n l1 2
+    L3 : l1 ≤ l1 + 3
+    L3 = m≤m+n l1 3
+    H0 : l1 < hi
+    H0 = <-transˡ (a<a+suc l1 3) top
+    H1 : suc l1 < hi
+    H1 = <-transˡ (sa<a+ss l1 2) top
+    H2 : l1 + 2 < hi
+    H2 = <-transˡ (+lt l1 2 4 (s≤s (s≤s (s≤s z≤n)))) top
+    H3 : l1 + 3 < hi
+    H3 = <-transˡ (+lt l1 3 4 (s≤s (s≤s (s≤s (s≤s z≤n))))) top
+    I₁-idle : seg-idle? (cata-br-I₁ F n1 l1) ≡ true
+    I₁-idle = idle-++ (visit-walk n1 (n1 + 4) (n1 + 5) F (n1 + 7) lv) _
+                (visit-idle F n1 (n1 + 4) (n1 + 5) (n1 + 7) lv)
+                (idle-++ (rebuild-walk (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) lr) _
+                  (rebuild-idle F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) lr) refl)
+    H-idle : seg-idle? H ≡ true
+    H-idle = idle-++ setup (cata-br-I₁ F n1 l1 ++ inner) refl
+               (idle-++ (cata-br-I₁ F n1 l1) inner I₁-idle refl)
+    I₁-ls : LabelsIn l1 hi (cata-br-I₁ F n1 l1)
+    I₁-ls =
+      ++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+           li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+           li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (push2-ls l1 hi n1 (n1 + 4) (n1 + 5))
+      (++⁺ (li-lab refl L0 H0 ∷ li-none refl ∷ li-none refl ∷
+            li-lab refl L1 H1 ∷ li-none refl ∷ li-none refl ∷
+            li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (push2-ls l1 hi (suc n1) (n1 + 4) (n1 + 5))
+      (++⁺ (li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (ls-weaken (m≤m+n l1 4) (m≤m+n lr (lsize F))
+                      (visit-ls F n1 (n1 + 4) (n1 + 5) (n1 + 7) lv))
+      (++⁺ (li-lab refl L0 H0 ∷ li-lab refl L1 H1 ∷ [])
+      (++⁺ (li-lab refl L2 H2 ∷ li-none refl ∷ li-none refl ∷
+            li-lab refl L3 H3 ∷ li-none refl ∷ li-none refl ∷
+            li-none refl ∷ li-none refl ∷ [])
+      (++⁺ (ls-weaken (≤-trans (m≤m+n l1 4) lv≤lr) ≤-refl
+                      (rebuild-ls F (n1 + 2) (n1 + 4) (n1 + 5) (n1 + 7) lr))
+           (li-none refl ∷ [])))))))))
+    I₂-ls : LabelsIn l1 hi (cata-br-I₂ n1 l1)
+    I₂-ls =
+      ++⁺ (push2-ls l1 hi (n1 + 2) (n1 + 4) (n1 + 5))
+          (li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷
+           li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
+    H-ls : LabelsIn l1 hi2 H
+    H-ls =
+      ++⁺ (cata-setup-ls l1 hi2 cl bodyL)
+       (++⁺ (ls-weaken ≤-refl hi≤hi2 I₁-ls)
+        (++⁺ (cata-call-ls l1 hi2 cl (cl + 1))
+         (++⁺ (ls-weaken ≤-refl hi≤hi2 I₂-ls)
+              (li-lab refl Lend Hend ∷ []))))
+
+-- `strat-const`'s trace is setup ++ call ++ the body bracket: no loop at all,
+-- so `H` is just the two blocks and the jump over the body.
+cata-const-agree : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace)
+                 → (∀ s → seg-fold at s ≡ s) → SegAgree at → LabelsIn lo l1 at
+                 → SegAgree (cata-trace-of (cata-dispatch strat-const bb n1 l1 at))
+cata-const-agree lo bb n1 l1 at natl saB lsB =
+  segagree-curry H at (ℓ o l1) bb (ℓ o endL) l1 hi lo l1
+    refl H-ls natl saB lsB (Lend , Hend) (inj₂ ≤-refl)
+  where
+    hi   = l1 + 2
+    endL = l1 + 1
+    H = cata-call-setup n1 l1 ++
+        (cata-call n1 (n1 + 1) ++ (instr-ctrl (c-jmp (ℓ o endL)) ∷ []))
+    Lend : l1 ≤ endL
+    Lend = m≤m+n l1 1
+    Hend : endL < hi
+    Hend = ≤-reflexive (sym (+-suc l1 1))
+    H-ls : LabelsIn l1 hi H
+    H-ls = ++⁺ (cata-setup-ls l1 hi n1 l1)
+               (++⁺ (cata-call-ls l1 hi n1 (n1 + 1))
+                    (li-lab refl Lend Hend ∷ []))
+
+cata-agree : ∀ (st : CataStrategy) (lo bb n1 l1 : ℕ) (at : AbstractTrace)
+           → (∀ s → seg-fold at s ≡ s) → SegAgree at → LabelsIn lo l1 at
+           → SegAgree (cata-trace-of (cata-dispatch st bb n1 l1 at))
+cata-agree strat-const         lo bb n1 l1 at natl saB lsB = cata-const-agree lo bb n1 l1 at natl saB lsB
+cata-agree strat-nat           lo bb n1 l1 at natl saB lsB = cata-nat-agree lo bb n1 l1 at natl saB lsB
+cata-agree strat-linear        lo bb n1 l1 at natl saB lsB = cata-lin-agree lo bb n1 l1 at natl saB lsB
+cata-agree (strat-branching F) lo bb n1 l1 at natl saB lsB = cata-br-agree F lo bb n1 l1 at natl saB lsB
+
+------------------------------------------------------------------------
 -- THE INDUCTION. Every clause has its tool: leaves have an EMPTY label range,
 -- the closure/`apply`/injection clauses emit no `once` label at all, the
--- splicing clauses compose, `Cata` goes through `Pieces` (one repeated trace)
--- and `case` through `Pieces2` (two different ones, descending windows).
+-- splicing clauses compose, `Cata` goes through `segagree-curry` (its algebra
+-- is a called body, D099 / C1) and `case` through `Pieces2` (two different
+-- embedded traces, descending windows).
 ------------------------------------------------------------------------
 seg-agree   : ∀ {A B} (ir : IR A B) (n l : ℕ) → SegAgree (trace-of (ir-to-trace' n l ir))
 pair-agree  : ∀ {A B C} (f : IR A B) (g : IR A C) (n l : ℕ)
@@ -1609,11 +1709,14 @@ seg-agree (g ∘ f) n l =
     (inj₁ ≤-refl) (seg-agree f n l)
     (segagree-pre (mov-to-input ∷ []) _ _ _ (refl ∷ []) (labels-in g _ _) ≤-refl
                   (seg-agree g _ _))
+-- C1: the algebra is generated ONCE, at frontier 0 (its own frame), and
+-- CALLED — so this is `curry`'s bracket with the loop skeleton as the idle
+-- prefix. The algebra's window `[l, l1)` sits BELOW the skeleton's, which is
+-- the `inj₂` inside `cata-agree`.
 seg-agree (Cata {F} _ alg) n l =
-  pieces-agree _ (label-of (ir-to-trace' n l alg)) _ l (label-of (ir-to-trace' n l alg)) _
-    (cata-pieces (cata-strategy ⌈ F ⌉F) _ _ _)
-    (λ st → ok-neu (slots-below alg n l) st)
-    (seg-agree alg n l) (labels-in alg n l) (inj₂ ≤-refl)
+  cata-agree (cata-strategy ⌈ F ⌉F) l _ _ _ _
+    (λ st → ok-neu (slots-below alg 0 l) st)
+    (seg-agree alg 0 l) (labels-in alg 0 l)
 seg-agree (⟨ f , g ⟩ Stack) n l = pair-agree f g n l
 seg-agree (⟨ f , g ⟩ Heap)  n l = pair-agree-heap f g n l
 -- `case`: the skeleton's labels `l`/`suc l` are INTERLEAVED with the two
