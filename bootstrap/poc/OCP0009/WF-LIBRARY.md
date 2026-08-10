@@ -153,6 +153,40 @@ unfolding in the reductions. Both are fixable in the packaging.
 ⚠ It also explains, rather than excuses, why the `SpikeDivC` evaluation
 debt is only PARTIALLY closed (zero case end-to-end; recursive case open).
 
+### P1 — ETA COVERS EVERYTHING EXCEPT MOVING A FAMILY UNDER A RENAMING 📌
+
+*A proof pattern, not a decision — but it predicts which naturality lemmas
+are one-liners and which are not, so it belongs with the design.*
+
+The `LexC` kit is cheap because of an ETA observation: `extS σ ₛ∘ᵣ vs` and
+`vs ᵣ∘ₛ σ` are **literally the same function** — `extS σ (vs x)` *is*
+`renTm vs (σ x)` — so `sub-w` and `ren-w` are two-step `trans`es with no
+case analysis at all.
+
+That does **not** extend to families. Measured over the six naturality
+lemmas D4 needed:
+
+| lemma | shape | proof |
+|---|---|---|
+| `wk-singleTy` | subst into a weakened TYPE | eta, 1 line |
+| `wᶠ-single` | `extS (single v) ₛ∘ᵣ extR vs` = id | eta, 1 line |
+| `nrs-wTy` | `nrs` on a weakened type | eta, 1 line |
+| `aAuxB-sub/-ren` | distribute into the aux type | eta, 1 line |
+| **`wᶠ-nrs`** | `nrs` on a FAMILY | ⚠ pointwise BRIDGE |
+| **`ren-wᶠ`** | a FAMILY under a renaming | ⚠ pointwise BRIDGE |
+
+Both exceptions are the same shape: a **family moved under `extR`**. There
+`extS nrs ₛ∘ᵣ extR vs` and `extR vs ∘ᵣ extR ρ` agree only *after casing on
+the variable* — the composites are equal pointwise but are not the same
+function, so eta cannot see it and `subTm-cong`/`renTm-cong` with a
+two-case bridge is required.
+
+**How to apply.** When adding a naturality lemma, check first whether it
+moves a family under `extR`. If it does, budget a bridge; if not, expect
+the two-step `trans`. And at consolidation (D6) this is the line the kit
+splits along — the eta lemmas are generic substitution metatheory, the
+bridged ones are family-specific.
+
 ### D5 — The ladders should be INDEXED, not enumerated ⛔
 
 `lStepT-w²⁻⁸`, `auxBody-w²⁻⁷`, `auxMotB-w²⁻⁹` are hand-written iterates of
