@@ -85,6 +85,14 @@ open import poc.OCP0009.NbEPDirDBExamplesLexC using ( w; cong₄; sub-w; ren-w )
 wᶠ : {Γ : Cx} → RTm (Γ ∙) → RTm ((Γ ∙) ∙)
 wᶠ = renTm (extR vs)
 
+-- ★ `⊢wkᶠ` is to `wᶠ` what `⊢wk` is to `w`: it inserts a slot BELOW the
+--   family's own variable, so the family keeps pointing at the carrier.
+--   ⚠ Reach for this, not `⊢wk`, whenever the subject is a FAMILY — the
+--   two produce terms that look interchangeable and are not (P1).
+⊢wkᶠ : {Γ : Ctx} {A B : RTy ⌊ Γ ⌋} {t : RTm (⌊ Γ ⌋ ∙)} {T : RTy (⌊ Γ ⌋ ∙)} →
+       (Γ ▹ A) ⊢ t ∷ T → ((Γ ▹ B) ▹ renTy vs A) ⊢ wᶠ t ∷ renTy (extR vs) T
+⊢wkᶠ d = ren-lemma d (Ren⊢-ext there)
+
 ------------------------------------------------------------------------
 -- THE THREE TYPES — and there is not one `app` in them.
 ------------------------------------------------------------------------
@@ -342,12 +350,12 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
       (⊢lam (ty-Hom ty-Nat (⊢nsuc dmY) dmX)
         (⊢strong-base' dC dmY' dmX' dlt (⊢var (there (there here)))))
     where
-      dmY = ren-lemma (ren-lemma dm (Ren⊢-ext there)) (Ren⊢-ext there)
+      dmY = ⊢wkᶠ (⊢wkᶠ dm)
       dmX = subst (λ z → (((Δ ▹ A) ▹ Hom Nat m (w nzero)) ▹ renTy vs (renTy vs A)) ⊢ z ∷ Nat)
                   (sym (cong w (wᶠ²-single m))) (⊢wk (⊢wk dm))
       dmY' = ⊢wk dmY
       dmX' = ⊢wk (⊢wk (⊢wk dm))
-      dC = ⊢wk (ren-lemma (ren-lemma dcM (Ren⊢-ext there)) (Ren⊢-ext there))
+      dC = ⊢wk (⊢wkᶠ (⊢wkᶠ dcM))
       dlt = ⊢-cast (cong (λ z → Hom Nat (nsuc (w (wᶠ (wᶠ m)))) (w (w z)))
                          (wᶠ²-single m))
                    (⊢var here)
@@ -412,18 +420,53 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
         (⊢-cast (cong El cancelIH)
           (⊢app (⊢app (⊢-cast ih₀-w⁵ (⊢var (there (there (there (there here))))))
                       (⊢var (there here)))
-                dDesc)))
+                (⊢-cast (sym (cong (λ z → Hom Nat z (var (vs (vs (vs (vs (vs vz)))))))
+                                   (wᶠ²-single (wᶠ (wᶠ (wᶠ (wᶠ m)))))))
+                        dDesc))))
     where
-      dm₄ = ren-lemma (ren-lemma (ren-lemma (ren-lemma dm (Ren⊢-ext there)) (Ren⊢-ext there)) (Ren⊢-ext there)) (Ren⊢-ext there)
-      dm₂ = ren-lemma (ren-lemma dm (Ren⊢-ext there)) (Ren⊢-ext there)
+      dm₄ = ⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm)))
+      dm₂ = ⊢wkᶠ (⊢wkᶠ dm)
       dmXS = subst (λ z → ((((Δ ▹ Nat) ▹ aAuxMot) ▹ renTy vs (renTy vs A))
                             ▹ Hom Nat (wᶠ (wᶠ m)) (nsuc (var (vs (vs vz)))))
                             ▹ renTy vs (renTy vs (renTy vs (renTy vs A))) ⊢ z ∷ Nat)
                    (sym (cong w (wᶠ²-single (wᶠ (wᶠ m)))))
-                   (⊢wk (⊢wk (⊢wk dm₂)))
-      dDesc = ⊢strong-step (⊢wk dm₄) (⊢wk (⊢wk (⊢wk (⊢wk dm₂))))
+                   (⊢wk (⊢wk dm₂))
+      dDesc = ⊢strong-step (⊢wk dm₄) (⊢wk (⊢wk (⊢wk dm₂)))
                            (⊢var (there (there (there (there (there here))))))
                            (⊢-cast (cong (λ z → Hom Nat (nsuc (w (wᶠ (wᶠ (wᶠ (wᶠ m)))))) (w (w z)))
                                          (wᶠ²-single (wᶠ (wᶠ m))))
                                    (⊢var here))
                            (⊢var (there (there here)))
+
+  -- the outer spine's cancellation: wᶠ⁴ cM peeled by the step's two ⊢apps
+  cancelS : subTm (single ihS)
+              (subTm (extS (single (var (vs vz)))) (w (wᶠ (wᶠ (wᶠ (wᶠ cM))))))
+          ≡ w (wᶠ (wᶠ cM))
+  cancelS =
+    trans (cong (subTm (single ihS))
+                (trans (sub-w {σ = single (var (vs vz))} (wᶠ (wᶠ (wᶠ (wᶠ cM)))))
+                       (cong w (wᶠ²-single (wᶠ (wᶠ cM))))))
+          (wk-single {v = ihS} (w (wᶠ (wᶠ cM))))
+
+  ⊢aSBr : ((Δ ▹ Nat) ▹ aAuxMot) ⊢ aSBr ∷ subTy nrs aAuxMot
+  ⊢aSBr =
+    ⊢-cast (sym mot-s)
+      (⊢lam (ren-ty (ren-ty dA there) there)
+        (⊢lam (ty-Hom ty-Nat (⊢wkᶠ (⊢wkᶠ dm)) (⊢nsuc (⊢var (there (there here)))))
+          (⊢-cast (cong El cancelS)
+            (⊢app (⊢app (⊢-cast stp-w⁴ (⊢wk (⊢wk (⊢wk (⊢wk dstp)))))
+                        (⊢var (there here)))
+                  (⊢-cast (sym (aIHT-fit (renTy vs (renTy vs (renTy vs (renTy vs A))))
+                                         (wᶠ (wᶠ (wᶠ (wᶠ cM)))) (wᶠ (wᶠ (wᶠ (wᶠ m))))))
+                          ⊢ihS)))))
+
+  ------------------------------------------------------------------------
+  -- ★★ THE BOUNDED AUXILIARY, at an arbitrary bound.
+  ------------------------------------------------------------------------
+
+  aAuxTm : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
+  aAuxTm n = natrec aZBr aSBr n
+
+  ⊢aAux : {n : RTm ⌊ Δ ⌋} → Δ ⊢ n ∷ Nat →
+          Δ ⊢ aAuxTm n ∷ subTy (single n) aAuxMot
+  ⊢aAux dn = ⊢natrec ⊢aAuxMot ⊢aZBr ⊢aSBr dn
