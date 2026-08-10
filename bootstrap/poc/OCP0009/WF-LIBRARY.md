@@ -109,7 +109,7 @@ in `SpikeDivC`'s fifty-line step: 4 × `elCP`, 4 × `elNat`, 3 × `asA`,
 
 That tax is the INTERFACE's choice, not the kernel's.
 
-**RESULT — `NbEPDirDBExamplesAmrecT`, 9.3 s / 0.93 GB, green.** Carrier a
+**RESULT — `NbEPDirDBExamplesAmrecT`, 8.7 s / 0.94 GB cold, green.** Carrier a
 TYPE, motive and measure PRE-APPLIED families. Measured against `AmrecC`:
 
 | | AmrecC | AmrecT |
