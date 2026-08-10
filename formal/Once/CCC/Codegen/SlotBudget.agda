@@ -419,7 +419,8 @@ cata-mono strat-nat           bb n1 l1 at =
   ≤-trans (n≤1+n n1)
     (≤-trans (n≤1+n (suc n1))
       (≤-trans (n≤1+n (suc (suc n1))) (n≤1+n (suc (suc (suc n1))))))
-cata-mono strat-linear        bb n1 l1 at = m≤m+n n1 8
+cata-mono strat-linear        bb n1 l1 at =
+  ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))))
 cata-mono (strat-branching F) bb n1 l1 at =
   ≤-trans (m≤m+n n1 7)
     (≤-trans (m≤m+n (n1 + 7) (4 * fsize F))
@@ -585,74 +586,69 @@ cata-nat-below bb n1 l1 at bok =
     I₃ : All (SlotBelow b) _
     I₃ = sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ []
 
-cata-linear-below : ∀ (n1 l1 : ℕ) (at : AbstractTrace) → SegOK n1 at
-                  → SegOK (cata-budget-of (cata-dispatch strat-linear n1 l1 at))
-                          (cata-trace-of (cata-dispatch strat-linear n1 l1 at))
-cata-linear-below n1 l1 at ff =
-  segok-++ (segok-idle _ refl descend)
-    (segok-pre _ refl (sb-none refl ∷ []) (segok-++ at' ascend))
+cata-linear-below : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace) → SegOK bb at
+                  → SegOK (cata-budget-of (cata-dispatch strat-linear bb n1 l1 at))
+                          (cata-trace-of (cata-dispatch strat-linear bb n1 l1 at))
+cata-linear-below bb n1 l1 at bok =
+  segok-++ (cata-body-below _ _ bb at bok)
+   (segok-++ (segok-idle _ refl setup)
+    (segok-++ (segok-idle _ refl I₁)
+     (segok-++ (segok-idle _ refl call)
+      (segok-++ (segok-idle _ refl I₂)
+       (segok-++ (segok-idle _ refl call) (segok-idle _ refl I₃))))))
   where
-    b = suc (suc (suc (suc (suc (suc n1)))))
+    b = suc (suc (suc (suc (suc (suc (suc (suc n1)))))))
     p0 : n1 < b
-    p0 = ≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))
+    p0 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))))
     p1 : suc n1 < b
-    p1 = ≤-step (≤-step (≤-step (≤-step ≤-refl)))
+    p1 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))
     p2 : suc (suc n1) < b
-    p2 = ≤-step (≤-step (≤-step ≤-refl))
+    p2 = ≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))
     p3 : suc (suc (suc n1)) < b
-    p3 = ≤-step (≤-step ≤-refl)
+    p3 = ≤-step (≤-step (≤-step (≤-step ≤-refl)))
     p4 : suc (suc (suc (suc n1))) < b
-    p4 = ≤-step ≤-refl
+    p4 = ≤-step (≤-step (≤-step ≤-refl))
     p5 : suc (suc (suc (suc (suc n1)))) < b
-    p5 = ≤-refl
-    at' : SegOK b at
-    at' = segok-weaken {b' = b}
-            (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))) ff
-    descend : All (SlotBelow b) _
-    descend =
-      sb-none refl ∷ sb-none refl ∷ sb-slot refl p3 (λ _ ()) ∷
-      sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-      sb-none refl ∷ sb-none refl ∷
-      sb-none refl ∷ sb-slot refl p5 (λ _ ()) ∷
-      sb-none refl ∷ sb-slot refl p2 (λ _ ()) ∷
-      sb-none refl ∷ sb-slot refl p1 (λ _ ()) ∷ sb-none refl ∷
-      sb-slot refl p5 (λ _ ()) ∷ sb-none refl ∷
-      sb-slot refl p3 (λ _ ()) ∷ sb-none refl ∷
-      sb-slot refl p1 (λ _ ()) ∷ sb-slot refl p3 (λ _ ()) ∷
-      sb-slot refl p2 (λ _ ()) ∷ sb-none refl ∷
-      sb-none refl ∷ sb-none refl ∷ []
-    ascend : SegOK b _
-    ascend = segok-pre _ refl
-      (sb-none refl ∷ sb-none refl ∷
-      sb-slot refl p4 (λ _ ()) ∷
-      sb-slot refl p3 (λ _ ()) ∷ sb-none refl ∷
-      sb-none refl ∷ sb-slot refl p5 (λ _ ()) ∷
-      sb-none refl ∷ sb-slot refl p3 (λ _ ()) ∷
-      sb-none refl ∷ sb-slot refl p1 (λ _ ()) ∷ sb-none refl ∷
-      sb-slot refl p5 (λ _ ()) ∷ sb-none refl ∷
-      sb-slot refl p4 (λ _ ()) ∷ sb-none refl ∷
-      sb-none refl ∷ sb-slot refl p0 (λ _ ()) ∷ sb-none refl ∷
-      sb-none refl ∷ sb-none refl ∷
-      sb-slot refl p1 (λ _ ()) ∷ sb-none refl ∷
-      sb-slot refl p0 (λ _ ()) ∷ sb-none refl ∷ [])
-      (segok-++ at' (segok-idle _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])))
+    p5 = ≤-step (≤-step ≤-refl)
+    cl<b : suc (suc (suc (suc (suc (suc n1))))) < b
+    cl<b = ≤-step ≤-refl
+    k<b : suc (suc (suc (suc (suc (suc (suc n1)))))) < b
+    k<b = ≤-refl
+    setup : All (SlotBelow b) _
+    setup = sb-none refl ∷ sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷
+            sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ []
+    call : All (SlotBelow b) _
+    call = sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-slot refl cl<b (λ _ ()) ∷
+           sb-none refl ∷ sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
+           sb-none refl ∷ []
+    I₁ : All (SlotBelow b) _
+    I₁ = sb-none refl ∷ sb-none refl ∷ sb-slot refl p3 (λ _ ()) ∷
+         sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+         sb-none refl ∷ sb-none refl ∷
+         sb-none refl ∷ sb-slot refl p5 (λ _ ()) ∷
+         sb-none refl ∷ sb-slot refl p2 (λ _ ()) ∷
+         sb-none refl ∷ sb-slot refl p1 (λ _ ()) ∷ sb-none refl ∷
+         sb-slot refl p5 (λ _ ()) ∷ sb-none refl ∷
+         sb-slot refl p3 (λ _ ()) ∷ sb-none refl ∷
+         sb-slot refl p1 (λ _ ()) ∷ sb-slot refl p3 (λ _ ()) ∷
+         sb-slot refl p2 (λ _ ()) ∷ sb-none refl ∷
+         sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ []
+    I₂ : All (SlotBelow b) _
+    I₂ = sb-none refl ∷ sb-none refl ∷
+         sb-slot refl p4 (λ _ ()) ∷
+         sb-slot refl p3 (λ _ ()) ∷ sb-none refl ∷
+         sb-none refl ∷ sb-slot refl p5 (λ _ ()) ∷
+         sb-none refl ∷ sb-slot refl p3 (λ _ ()) ∷
+         sb-none refl ∷ sb-slot refl p1 (λ _ ()) ∷ sb-none refl ∷
+         sb-slot refl p5 (λ _ ()) ∷ sb-none refl ∷
+         sb-slot refl p4 (λ _ ()) ∷ sb-none refl ∷
+         sb-none refl ∷ sb-slot refl p0 (λ _ ()) ∷ sb-none refl ∷
+         sb-none refl ∷ sb-none refl ∷
+         sb-slot refl p1 (λ _ ()) ∷ sb-none refl ∷
+         sb-slot refl p0 (λ _ ()) ∷ sb-none refl ∷ []
+    I₃ : All (SlotBelow b) _
+    I₃ = sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ []
 
-------------------------------------------------------------------------
--- STRATEGY `strat-branching` DISCHARGED (2026-08-01) — the last one.
---
--- The Tier-2 branching cata reserves `4·fsize F + 4` slots above the algebra's
--- frontier: seven fixed ones (`s-todo`..`t2` at n1..n1+6, plus the base `wb` at
--- n1+7) and a stride-4 window per functor-nesting level for the compile-time
--- walks. The walk lemmas are inductions on `F` with the premise
--- `s + 4·fsize F ≤ b`: a `⊗` level owns `[s, s+3]` and recurses at `s+4` on
--- both sides, which `fsize (F ⊗ G) = 1 + fsize F + fsize G` covers; a `⊕`
--- level is a SINGLE `instr-case-on-tag` (its branch walks are nested traces,
--- and `slot-of` is `nothing` on the carrying instruction — the flat `fpc`
--- never indexes into them), so it contributes nothing at the `All` level and
--- `wrap-sum` needs no brick at all.
-------------------------------------------------------------------------
-
--- push the value in Output onto a 2-cell linked stack: three addressed slots
 push2-below : ∀ (topSlot tv tb b : ℕ) → topSlot < b → tv < b → tb < b
             → All (SlotBelow b) (push2 topSlot tv tb)
 push2-below topSlot tv tb b pt pv pb =
@@ -821,17 +817,40 @@ rebuild-idle (F ⊗ G) val tv tb s lb =
     (idle-++ (rebuild-walk val tv tb G (s + 4) (lb + lsize F)) _
       (rebuild-idle G val tv tb (s + 4) (lb + lsize F)) refl)
 
-cata-branching-below : ∀ (F : Functor) (n1 l1 : ℕ) (at : AbstractTrace)
-                     → SegOK n1 at
-                     → SegOK (cata-budget-of (cata-dispatch (strat-branching F) n1 l1 at))
-                             (cata-trace-of (cata-dispatch (strat-branching F) n1 l1 at))
+cata-branching-below : ∀ (F : Functor) (bb n1 l1 : ℕ) (at : AbstractTrace)
+                     → SegOK bb at
+                     → SegOK (cata-budget-of (cata-dispatch (strat-branching F) bb n1 l1 at))
+                             (cata-trace-of (cata-dispatch (strat-branching F) bb n1 l1 at))
 -- Plan 0.63 (iii): `I₁ ++ at ++ I₂`. I₁ absorbs init, flatten and the fold's
 -- prefix (so it carries BOTH functor walks); I₂ is the fold's tail plus the
 -- final read.
-cata-branching-below F n1 l1 at ff =
-  segok-++ (segok-idle _ I₁-idle I₁-all) (segok-++ at' (segok-idle _ refl I₂-all))
+-- D099 / C1: the skeleton's own witness is UNCHANGED — it is still stated at
+-- the pre-C1 budget `b`, and `segok-weaken` lifts it the two extra slots the
+-- call path takes. Only the body/setup/call blocks are new, and the algebra's
+-- weakening (`at'`, now unused) is gone: it lives in its own frame.
+cata-branching-below F bb n1 l1 at bok =
+  segok-++ (cata-body-below _ _ bb at bok)
+   (segok-++ (segok-idle _ refl setup)
+    (segok-++ (segok-weaken b≤b2 (segok-idle _ I₁-idle I₁-all))
+     (segok-++ (segok-idle _ refl call)
+               (segok-weaken b≤b2 (segok-idle _ refl I₂-all)))))
   where
     b = n1 + 7 + 4 * fsize F + 4
+    b≤b2 : b ≤ b + 2
+    b≤b2 = m≤m+n b 2
+    b+2 : suc (b + 1) ≤ b + 2
+    b+2 = ≤-reflexive (sym (+-suc b 1))
+    cl<b2 : b < b + 2
+    cl<b2 = ≤-trans (s≤s (m≤m+n b 1)) b+2
+    k<b2 : b + 1 < b + 2
+    k<b2 = b+2
+    setup : All (SlotBelow (b + 2)) _
+    setup = sb-none refl ∷ sb-slot refl cl<b2 (λ _ ()) ∷ sb-none refl ∷
+            sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ []
+    call : All (SlotBelow (b + 2)) _
+    call = sb-none refl ∷ sb-slot refl k<b2 (λ _ ()) ∷ sb-slot refl cl<b2 (λ _ ()) ∷
+           sb-none refl ∷ sb-none refl ∷ sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷
+           sb-none refl ∷ []
     fixed7 : n1 + 7 ≤ b
     fixed7 = ≤-trans (m≤m+n (n1 + 7) (4 * fsize F)) (m≤m+n (n1 + 7 + 4 * fsize F) 4)
     fixed7' : 7 + n1 ≤ b
@@ -855,8 +874,6 @@ cata-branching-below F n1 l1 at ff =
     q6 = ≤-trans (subst (λ z → suc z ≤ 7 + n1) (+-comm 6 n1) ≤-refl) fixed7'
     walk-room : n1 + 7 + 4 * fsize F ≤ b
     walk-room = m≤m+n (n1 + 7 + 4 * fsize F) 4
-    at' : SegOK b at
-    at' = segok-weaken {b' = b} (≤-trans (m≤m+n n1 7) fixed7) ff
     I₁-idle : seg-idle? (cata-br-I₁ F n1 l1) ≡ true
     I₁-idle = idle-++ (visit-walk n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4)) _
                 (visit-idle F n1 (n1 + 4) (n1 + 5) (n1 + 7) (l1 + 4))
@@ -892,15 +909,17 @@ cata-branching-below F n1 l1 at ff =
 
 
 
--- `strat-const` needs no skeleton at all — the cata IS its algebra there.
-cata-slots-below : ∀ (st : CataStrategy) (n1 l1 : ℕ) (at : AbstractTrace)
-                 → SegOK n1 at
-                 → SegOK (cata-budget-of (cata-dispatch st n1 l1 at))
-                         (cata-trace-of (cata-dispatch st n1 l1 at))
-cata-slots-below strat-const         n1 l1 at ff = ff
-cata-slots-below strat-nat           n1 l1 at ff = cata-nat-below n1 l1 at ff
-cata-slots-below strat-linear        n1 l1 at ff = cata-linear-below n1 l1 at ff
-cata-slots-below (strat-branching F) n1 l1 at ff = cata-branching-below F n1 l1 at ff
+-- D099 / C1: `strat-const` no longer passes the algebra's witness through —
+-- it emits a called body like the others, so it has a skeleton (setup + call)
+-- and its own witness.
+cata-slots-below : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
+                 → SegOK bb at
+                 → SegOK (cata-budget-of (cata-dispatch st bb n1 l1 at))
+                         (cata-trace-of (cata-dispatch st bb n1 l1 at))
+cata-slots-below strat-const         bb n1 l1 at bok = cata-const-below bb n1 l1 at bok
+cata-slots-below strat-nat           bb n1 l1 at bok = cata-nat-below bb n1 l1 at bok
+cata-slots-below strat-linear        bb n1 l1 at bok = cata-linear-below bb n1 l1 at bok
+cata-slots-below (strat-branching F) bb n1 l1 at bok = cata-branching-below F bb n1 l1 at bok
 
 ------------------------------------------------------------------------
 -- THE INDUCTION: every instruction of the emitted MAIN trace addresses a slot
@@ -1001,8 +1020,11 @@ slots-below (case f g) n l =
                      (segok-idle _ refl (sb-none refl ∷ [])))))
 slots-below (In _ _)   n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (out-μ _)  n l = segok-idle _ refl (sb-none refl ∷ [])
+-- C1: the algebra is generated at frontier 0 — its slots are its own frame's,
+-- so its witness is taken there and `segok-thunk` (inside `cata-body-below`)
+-- carries it across the frame change.
 slots-below (Cata {F} _ alg) n l =
-  cata-slots-below (cata-strategy ⌈ F ⌉F) _ _ _ (slots-below alg n l)
+  cata-slots-below (cata-strategy ⌈ F ⌉F) _ _ _ _ (slots-below alg 0 l)
 slots-below (Para _ _)     n l = segok-idle _ refl []
 slots-below (Out _)        n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (in-ν _ _)     n l = segok-idle _ refl []
