@@ -121,6 +121,38 @@ cleaner: `Δ ⊢ amrecTm ∷ Π (El cA) M`.
 `M` is abstract, so the naturality kit (`sub-w`, `wk-single`, …) comes
 back. That is the right direction under the criterion at the top.
 
+### D7 — A combinator must ship its COMPUTATION RULE, not only its typing ⛔
+
+**Discovered by trying to close the evaluation debt on `SpikeDivC`.**
+`divC-computes-zero` — `app divC nzero ⟶* nzero` — took eight hand-written
+reduction steps, because the user has to unfold the combinator's *internals*
+by hand: the outer `lam`, the measure's β-redex, the bounded auxiliary's
+`natrec` on the bound, the branch, and only then the step.
+
+For the RECURSIVE case that chain roughly doubles and then nests — the
+recursive call re-enters the auxiliary, so verifying `div 1 = 1` means
+replaying the whole unfolding a second time inside itself.
+
+⇒ **the combinator is not finished.** `⊢amrecΠ` ships a typing derivation
+and nothing else, so every caller who wants to know their function COMPUTES
+must re-derive how `amrecTm` unfolds. What is missing is a reduction lemma
+of the shape
+
+```agda
+amrec-unfold : app amrecTm x ⟶* app (app stp x) ⟨the IH at x⟩
+```
+
+with the successor-bound case (`natrec-suc` + two βs) as its engine. With
+that in hand a user's computation test is a few steps over their OWN step
+function, which is the only part they wrote.
+
+⚠ This is a USE-SITE defect in the same family as D4: the combinator
+exposes its internals — there via β-redexes in the types, here via
+unfolding in the reductions. Both are fixable in the packaging.
+
+⚠ It also explains, rather than excuses, why the `SpikeDivC` evaluation
+debt is only PARTIALLY closed (zero case end-to-end; recursive case open).
+
 ### D5 — The ladders should be INDEXED, not enumerated ⛔
 
 `lStepT-w²⁻⁸`, `auxBody-w²⁻⁷`, `auxMotB-w²⁻⁹` are hand-written iterates of
@@ -166,10 +198,21 @@ ways) and the wrong one for a FLATTERING one.
 ⇒ the next use site must be a recursion whose termination is NOT free, at a
 carrier that is NOT ℕ.
 
-⚠ **`SpikeDivC`'s step is type-correct but UNEVALUATED.** This session
-found `⊢gcd-descend` certifying a recursion that is not gcd; the same
-standard applies here. A `⟶*` test (pattern: `monus-computes`) is owed
-before it is called div.
+**Evaluation status of `SpikeDivC`** — partial, and honestly so:
+
+* ✅ `div-step-zero` — the step's zero equation, at an arbitrary IH;
+* ✅ `divC-computes-zero` — `app divC nzero ⟶* nzero`, END TO END through
+  the whole `⊢amrecΠ` machinery, 8 steps;
+* ⛔ the RECURSIVE case — still open, and it is where a spec error would
+  hide (the `⊢gcd-descend` bug was in the recursive equation, not the
+  base one). Blocked on two things: the test `(suc j) ∸ k` cannot reduce
+  while `k` is a context VARIABLE, and D7 — the combinator ships no
+  unfolding lemma, so the chain has to be replayed by hand inside itself.
+
+⚠ **The debt is the PROJECT's, not this file's.** There is no
+`div-computes` anywhere in the POC — only `monus-computes` — so the raw
+`⊢div` has never been evaluated either, and `ARCHITECTURE.md`'s "a closed,
+well-typed DIVISION" rests on types alone.
 
 --------------------------------------------------------------------------
 ## ⚠ THE DOGFOODING TARGET IS BLOCKED
