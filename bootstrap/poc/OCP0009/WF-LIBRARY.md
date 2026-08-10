@@ -18,6 +18,86 @@ proof.** The use sites so far: `SpikeAmrecInst` (instantiation),
 `SpikeDivC` (div through the combinator).
 
 --------------------------------------------------------------------------
+## THE TWO INTERFACES WE TESTED — spelled out
+
+Three decisions (D1, D2, D3 below) are **shared by both** and are settled
+independently: instantiation data context-polymorphic and closed; the
+combinator's data as PARAMETERS over an arbitrary ambient `Δ`; the
+conclusion Π-typed with pointwise derived.
+
+**What distinguishes the two is D4, and only D4:** how the carrier, motive
+and measure are presented.
+
+### Interface A — CODES AND FUNCTIONS (`NbEPDirDBExamplesAmrecC`)
+
+```agda
+cA : RTm ⌊ Δ ⌋              -- carrier as a CODE; the type is `El cA`
+cP : RTm ⌊ Δ ⌋              -- motive, with  Δ ⊢ cP ∷ Π (El cA) U
+μ  : RTm ⌊ Δ ⌋              -- measure, with Δ ⊢ μ  ∷ Π (El cA) Nat
+```
+
+so at a binder where the carrier variable is `x`:
+
+```agda
+μ x  =  app (w μ) (var vz)          -- a β-REDEX
+P x  =  El (app (w cP) (var vz))    -- a β-REDEX
+```
+
+### Interface B — TYPES AND PRE-APPLIED FAMILIES (`NbEPDirDBExamplesAmrecT`)
+
+```agda
+A  : RTy ⌊ Δ ⌋              -- carrier as a TYPE; no code, no `El`
+cM : RTm (⌊ Δ ⌋ ∙)          -- motive, a CODE FAMILY over the carrier var
+m  : RTm (⌊ Δ ⌋ ∙)          -- measure, a TERM FAMILY over the carrier var
+```
+
+so at the same binder:
+
+```agda
+μ x  =  m           -- no application at all
+P x  =  El cM       -- no application at all
+```
+
+⚠ **The motive is a CODE family, not an `RTy` family** — that is forced,
+not chosen. The vacuous branch builds its IH by ex falso and `⊢absurd` is
+CODE-indexed (`Γ ⊢ c ∷ U → … → ∷ El c`), so ex falso can only produce
+`El c`. An `RTy` motive would need a code carried alongside plus a
+conversion at every vacuous branch. B keeps all of the β saving without
+touching the kernel.
+
+### Pros and cons, measured
+
+| | A — codes + functions | B — types + families |
+|---|---|---|
+| `μ x` / `P x` at a binder | β-redexes | **the terms themselves** |
+| conversions, `div` use site | 12 | **4** |
+| conversions, pair use site | ≥7 `⊢conv` (step not built) | **3** |
+| `fst`/`snd` at a pair carrier | via `El-⌜Σ⌝` then `El-⌜Nat⌝`, every time | **direct** |
+| motive substitution at a use site | propositional — needs fitting lemmas | **definitional** |
+| fitting lemmas per `⊢app` spine | one per argument | **one, total** |
+| pointwise wrapper | 1 `⊢-cast` | **0 — it is `⊢app`** |
+| "the IH at an arbitrary bound" | ⛔ **not expressible** (`rec1T`'s bound is always `app μ x`) | ✅ `aIHTat` |
+| iterations to green, pair carrier | — | **0** |
+| cold check of the combinator | 13.4 s / 1.32 GB | **9.5 s / 0.94 GB** |
+| **top-level definitions** | **8** (+ ~10 imported from `LexC`) | 24 (+4 imported) |
+| **naturality lemmas needing a bridge** | **0** | 5 |
+| motive/measure as first-class object terms | ✅ | ⛔ they are Agda-level syntax |
+
+★ **B wins every use-site axis and loses two build-side ones**: it has more
+surface (24 definitions against A's 8, though A borrows ~10 from `LexC`, so
+the real gap is nearer 24 vs 18), and five of its naturality lemmas need a
+pointwise bridge where A needs none (see P1). Under the criterion at the
+top of this document — judge by the USE site — that trade is the right way
+round, and it was taken deliberately.
+
+⚠ **B gives up one thing A had:** with the motive and measure as Agda-level
+syntax they cannot be quantified over *inside* the object language. D2
+already gave that up when the data moved out of `Γ₄` into parameters, so
+nothing further is lost — but if a future use site needs a recursor
+abstracted over its motive as an object-language value, that is the axis it
+would have to come back on.
+
+--------------------------------------------------------------------------
 ## SETTLED
 
 ### D1 — Instantiation data must be CONTEXT-POLYMORPHIC and CLOSED ✅
@@ -360,3 +440,51 @@ with a measure that is a real computation rather than a projection — e.g.
 `μ (a , b) = a + b` — exercises: a non-trivial carrier, `El (⌜Σ⌝ …)`
 conversions on every projection (`El` only REDUCES to `Σ'`), and a descent
 that is not just `⊢monus-le`.
+
+--------------------------------------------------------------------------
+## THE CONSOLIDATION — plan
+
+**Both `⊢amrec` and `⊢lexrec` take interface B.** The evidence that this is
+one abstraction and not two: the naturality kit built for lexrec was not
+lexrec-specific — `rec1T` IS amrec's IH type verbatim, and the four
+obstructions amrec hit were the same four the lexrec branches hit. Only
+`cong₃` and `aAuxB` were new.
+
+⚠ **And there is a live hypothesis worth testing early.** Option C's lexrec
+port died on branch (S,S), which does not fit in 5.5 GB. Interface B's
+types carry ZERO `app`s and its fitting collapses to one lemma per spine,
+so the elaborated terms are markedly smaller. **(S,S) under interface B may
+fit where it did not under C.** Untested, and it should be tested BEFORE
+committing to re-port all four branches — the same "gate it on a spike"
+discipline that `HANDOFF-2026-08-09` §4a asks for.
+
+### Naming — `Library`, not `Examples`
+
+These are not examples any more; they are the library the WF axis exists to
+provide. The consolidated modules take `…Lib…` names, and the `Examples`
+modules that remain are the *users* (div, gcd, the pair probe, Ackermann).
+
+### Proposed module layout
+
+| module | contents |
+|---|---|
+| `NbEPDirDBLibWk` | the naturality kit: `w`, `wᶠ`, `⊢wkᶠ`, `cong₂₋₆`, `sub-w{,²,³}`, `ren-w{,²,³}`, `nrs-w`, `ren-sub`, `wk-singleTy`, `wᶠ-single`, `wᶠ¹-single`, `wᶠ²-single`, `wᶠ-nrs`, `ren-wTy`, `ren-wᶠ` — generic substitution metatheory, no recursor in sight |
+| `NbEPDirDBLibRec` | the shared IH types: `aIHTat`/`aIHT` and their `-sub`/`-ren`/`-fit`. ★ **`aIHTat` — the IH at an arbitrary bound — is load-bearing and must be nameable** (D8) |
+| `NbEPDirDBLibAmrec` | measure recursion: `aAuxB`, `aStepT`, the `AmT`/`AmTΠ` modules, and D7's unfolding lemmas |
+| `NbEPDirDBLibLexrec` | lexicographic recursion under interface B: `rec2T`, `lStepT`, the branches, `⊢lexrec` |
+
+Debts the consolidation closes:
+
+* the inverted dependency — `AmrecC` currently imports `…ExamplesLexC`;
+* D5, the ladders — `lStepT-w²⁻⁸`, `auxBody-w²⁻⁷`, `auxMotB-w²⁻⁹`,
+  `aAuxB-w²/⁵`, `aStepT-w⁴` are hand-written iterates of one lemma across
+  **four** combinators now. Index them or generate them; every new binder
+  depth currently adds a rung by hand.
+* `LexCMot`'s ad-hoc split, which was hygiene rather than design.
+
+### D8 — the library must name "the IH at an arbitrary bound" 📌
+
+*Opened by the pair carrier.* `natrec` needs a ℕ, so a non-ℕ carrier forces
+the case split onto the MEASURE rather than the carrier, and then the IH's
+bound is the natrec variable rather than `μ x`. Interface A cannot say
+this; interface B's `aIHTat` can. Any future re-packaging has to keep it.
