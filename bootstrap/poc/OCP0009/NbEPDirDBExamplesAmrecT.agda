@@ -65,6 +65,7 @@ open import poc.OCP0009.NbEPDirDBPi
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; _⟶*_; done; step; β; natrec-zero; natrec-suc
         ; ⊢lam; ⊢app; _⊢ty_
         ; ty-Nat; ty-Hom; ty-El; ty-Π )
 open import poc.OCP0009.NbEPDirDBSubj
@@ -73,6 +74,7 @@ open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesOrd using ( ⊢strong-base'; ⊢strong-step )
 open import poc.OCP0009.NbEPDirDBExamplesLexC using ( w; cong₄; sub-w; ren-w )
+open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
 
 ------------------------------------------------------------------------
 -- ★ `wᶠ` — weaken a FAMILY under a new binder, keeping the family's own
@@ -532,3 +534,51 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
   ⊢amrecPt : {x : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A →
              Δ ⊢ app amrecTm x ∷ subTy (single x) (El cM)
   ⊢amrecPt dx = ⊢app ⊢amrecΠ dx
+
+  ------------------------------------------------------------------------
+  -- ★★ D7 — THE COMPUTATION RULE.  A typing derivation is not enough: a
+  --    caller who wants to know their function COMPUTES must otherwise
+  --    re-derive how `amrecTm` unfolds, by hand, every time (that cost was
+  --    measured on SpikeDivC — eight steps for `div 0`, and it NESTS on
+  --    the recursive case).  These are the lemmas that make it their
+  --    step function's business and not the combinator's.
+  --
+  -- ⚠ The unfolding is CONDITIONAL on the measure reaching a numeral,
+  --   which is the honest statement: for an abstract `x` the recursion
+  --   cannot step, and that is the recursor doing its job.
+  ------------------------------------------------------------------------
+
+  -- the shape, unconditionally: β exposes the auxiliary at `μ x`.
+  amrec-β : (x : RTm ⌊ Δ ⌋) →
+            app amrecTm x
+          ⟶* app (app (natrec (subTm (single x) aZBr)
+                              (subTm (extS (extS (single x))) aSBr)
+                              (subTm (single x) m))
+                      x)
+                 (reflTm (subTm (single x) m))
+  amrec-β x = step (β _ x) done
+
+  -- ★ μ x ⟶* 0 : the recursion bottoms out in the VACUOUS branch.
+  amrec-unfold-z : (x : RTm ⌊ Δ ⌋) → subTm (single x) m ⟶* nzero →
+                   app amrecTm x
+                 ⟶* app (app (subTm (single x) aZBr) x)
+                        (reflTm (subTm (single x) m))
+  amrec-unfold-z x r =
+    step (β _ x)
+      (⟶*-appˡ (⟶*-appˡ
+        (⟶*-trans (⟶*-natrecⁿ r) (step (natrec-zero _ _) done))))
+
+  -- ★ μ x ⟶* suc k : one layer of the auxiliary peels, exposing the STEP.
+  amrec-unfold-s : (x k : RTm ⌊ Δ ⌋) → subTm (single x) m ⟶* nsuc k →
+                   app amrecTm x
+                 ⟶* app (app (subTm (single (natrec (subTm (single x) aZBr)
+                                                    (subTm (extS (extS (single x))) aSBr)
+                                                    k))
+                                     (subTm (extS (single k))
+                                            (subTm (extS (extS (single x))) aSBr)))
+                             x)
+                        (reflTm (subTm (single x) m))
+  amrec-unfold-s x k r =
+    step (β _ x)
+      (⟶*-appˡ (⟶*-appˡ
+        (⟶*-trans (⟶*-natrecⁿ r) (step (natrec-suc _ _ k) done))))
