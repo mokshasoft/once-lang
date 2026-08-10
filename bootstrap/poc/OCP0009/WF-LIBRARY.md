@@ -99,7 +99,7 @@ derive one.
 --------------------------------------------------------------------------
 ## OPEN
 
-### D4 — The β TAX: motive and measure as object-language FUNCTIONS ⛔
+### D4 — The β TAX: motive and measure as object-language FUNCTIONS ✅ (combinator done; use-site measurement outstanding)
 
 `aStepT` demands `cP : Π (El cA) U` and `μ : Π (El cA) Nat`. β is a
 REDUCTION in this kernel, not Agda computation, so **every use of the
@@ -109,7 +109,24 @@ in `SpikeDivC`'s fifty-line step: 4 × `elCP`, 4 × `elNat`, 3 × `asA`,
 
 That tax is the INTERFACE's choice, not the kernel's.
 
-**Proposal, untested:** take the motive as a **type family**
+**RESULT — `NbEPDirDBExamplesAmrecT`, 9.3 s / 0.93 GB, green.** Carrier a
+TYPE, motive and measure PRE-APPLIED families. Measured against `AmrecC`:
+
+| | AmrecC | AmrecT |
+|---|---|---|
+| `app`s in the combinator's types | 6 | **0** |
+| `aAuxB-sub` peels | 3 | **2** |
+| fitting lemmas per ⊢app spine | one per argument | **one, total** |
+| the Π conclusion | `Π (El cA) (El (app (w cP) (var vz)))` | **`Π A (El cM)`** |
+| the pointwise wrapper | 1 `⊢-cast` (`wk-single`) | **0 casts — it is `⊢app`** |
+| the recursion's bound | `aAuxTm (app (w μ) (var vz))` + a `⊢app` to build it | **`aAuxTm m`**, premise `dm` unweakened |
+
+⚠ Build-side cost: six naturality lemmas (`wk-singleTy`, `wᶠ-single`,
+`wᶠ¹-single`, `wᶠ²-single`, `nrs-wTy`, `wᶠ-nrs`, `ren-wᶠ`) and one helper
+(`⊢wkᶠ`). I predicted this would GROW relative to AmrecC; it did not —
+`aAuxB-sub` shrank too. The trade was favourable on both sides.
+
+**Original proposal (now confirmed):** take the motive as a **type family**
 `M : RTy (⌊ Δ ⌋ ∙)` and the measure as a **term with a free variable**
 `m : RTm (⌊ Δ ⌋ ∙)`, i.e. already applied. Then `P x` is
 `subTy (single x) M` and `μ x` is `subTm (single x) m`, both of which
@@ -121,7 +138,7 @@ cleaner: `Δ ⊢ amrecTm ∷ Π (El cA) M`.
 `M` is abstract, so the naturality kit (`sub-w`, `wk-single`, …) comes
 back. That is the right direction under the criterion at the top.
 
-### D7 — A combinator must ship its COMPUTATION RULE, not only its typing ⛔
+### D7 — A combinator must ship its COMPUTATION RULE, not only its typing ✅ (shipped for AmrecT)
 
 **Discovered by trying to close the evaluation debt on `SpikeDivC`.**
 `divC-computes-zero` — `app divC nzero ⟶* nzero` — took eight hand-written
