@@ -228,6 +228,38 @@ aIHT-fit {X = X} A cM m =
   cong₄ aIHTat' (wk-singleTy A) (wᶠ-single m) (sub-w m)
         (trans (sub-w {σ = extS (single X)} (wᶠ cM)) (cong w (wᶠ-single cM)))
 
+-- ★ the `⊢wk` ladder (D5: these are iterates of ONE lemma and should be
+--   indexed, not listed — recorded, not fixed).
+aAuxB-w² : {Γ : Cx} (A : RTy Γ) (cM m : RTm (Γ ∙)) (n : RTm Γ) →
+           renTy vs (renTy vs (aAuxB A cM m n))
+         ≡ aAuxB (renTy vs (renTy vs A)) (wᶠ (wᶠ cM)) (wᶠ (wᶠ m)) (w (w n))
+aAuxB-w² A cM m n =
+  trans (cong (renTy vs) (aAuxB-ren A cM m n))
+        (aAuxB-ren (renTy vs A) (wᶠ cM) (wᶠ m) (w n))
+
+aAuxB-w⁵ : {Γ : Cx} (A : RTy Γ) (cM m : RTm (Γ ∙)) (n : RTm Γ) →
+           renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (aAuxB A cM m n)))))
+         ≡ aAuxB (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs A)))))
+                 (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ cM))))) (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ m)))))
+                 (w (w (w (w (w n)))))
+aAuxB-w⁵ A cM m n =
+  trans (cong (renTy vs) (cong (renTy vs) (cong (renTy vs) (aAuxB-w² A cM m n))))
+  (trans (cong (renTy vs) (cong (renTy vs) (aAuxB-ren (renTy vs (renTy vs A)) (wᶠ (wᶠ cM)) (wᶠ (wᶠ m)) (w (w n)))))
+  (trans (cong (renTy vs) (aAuxB-ren (renTy vs (renTy vs (renTy vs A))) (wᶠ (wᶠ (wᶠ cM))) (wᶠ (wᶠ (wᶠ m))) (w (w (w n)))))
+         (aAuxB-ren (renTy vs (renTy vs (renTy vs (renTy vs A))))
+                    (wᶠ (wᶠ (wᶠ (wᶠ cM)))) (wᶠ (wᶠ (wᶠ (wᶠ m)))) (w (w (w (w n)))))))
+
+aStepT-w⁴ : {Γ : Cx} (A : RTy Γ) (cM m : RTm (Γ ∙)) →
+            renTy vs (renTy vs (renTy vs (renTy vs (aStepT A cM m))))
+          ≡ aStepT (renTy vs (renTy vs (renTy vs (renTy vs A))))
+                   (wᶠ (wᶠ (wᶠ (wᶠ cM)))) (wᶠ (wᶠ (wᶠ (wᶠ m))))
+aStepT-w⁴ A cM m =
+  trans (cong (renTy vs) (cong (renTy vs) (cong (renTy vs) (aStepT-ren A cM m))))
+  (trans (cong (renTy vs) (cong (renTy vs) (aStepT-ren (renTy vs A) (wᶠ cM) (wᶠ m))))
+  (trans (cong (renTy vs) (aStepT-ren (renTy vs (renTy vs A)) (wᶠ (wᶠ cM)) (wᶠ (wᶠ m))))
+         (aStepT-ren (renTy vs (renTy vs (renTy vs A)))
+                     (wᶠ (wᶠ (wᶠ cM))) (wᶠ (wᶠ (wᶠ m))))))
+
 ------------------------------------------------------------------------
 -- THE COMBINATOR, over an arbitrary ambient context.
 ------------------------------------------------------------------------
@@ -322,3 +354,20 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
                   (⊢-cast (sym (aIHT-fit (renTy vs (renTy vs A)) (wᶠ (wᶠ cM)) (wᶠ (wᶠ m))))
                           ⊢ihZ)))))
 
+
+  ------------------------------------------------------------------------
+  -- n = suc n': the IH at n' is a CONTEXT VARIABLE, applied at `y`, and
+  -- `⊢strong-step` is the descent — μ y < μ x and μ x ≤ suc n' give
+  -- μ y ≤ n'.
+  ------------------------------------------------------------------------
+
+  stp-w⁴ : renTy vs (renTy vs (renTy vs (renTy vs (aStepT A cM m))))
+         ≡ aStepT (renTy vs (renTy vs (renTy vs (renTy vs A))))
+                  (wᶠ (wᶠ (wᶠ (wᶠ cM)))) (wᶠ (wᶠ (wᶠ (wᶠ m))))
+  stp-w⁴ = aStepT-w⁴ A cM m
+
+  ih₀-w⁵ : renTy vs (renTy vs (renTy vs (renTy vs (renTy vs aAuxMot))))
+         ≡ aAuxB (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs A))))))
+                 (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ cM)))))) (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ m))))))
+                 (w (w (w (w (w (var vz))))))
+  ih₀-w⁵ = aAuxB-w⁵ (renTy vs A) (wᶠ cM) (wᶠ m) (var vz)
