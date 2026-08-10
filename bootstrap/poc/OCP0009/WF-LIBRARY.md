@@ -270,11 +270,27 @@ conversion either side. That is the exact move `HANDOFF-2026-08-07` records
 as impossible under `Γ₅`: *"Ackermann's step must build pairs, which needs
 the carrier concrete, which is exactly what the abstract Γ₅ denied."*
 
-⚠ Under `AmrecC` the same carrier is `El (⌜Σ⌝ ⌜Nat⌝ ⌜Nat⌝)`, which only
-REDUCES to `Σ'` — so every projection and the pair construction would each
-need a `⊢conv` through `El-⌜Σ⌝`, on top of the motive/measure β-redexes.
-That comparison is not yet built; the *count* above is D4's, measured, and
-the AmrecC figure is a prediction until its version exists.
+**AND THE `AmrecC` VERSION — `SpikePairC`, 2.9 s / 0.42 GB.** ⚠ Its STEP
+is not built; what follows is the instantiation and conversion layer ONLY,
+against a `SpikePairT` that is COMPLETE. The gap is therefore a lower
+bound on the real one.
+
+| | SpikePairT (D4, complete) | SpikePairC (AmrecC, no step) |
+|---|---|---|
+| conversion-lemma lines | 4 | **12** |
+| `⊢conv` occurrences | 3 | **7** |
+| projection helpers | none needed | `prj₁`, `prj₂` — every `fst`/`snd` goes through `El-⌜Σ⌝` then `El-⌜Nat⌝` |
+
+★★ **AND ONE DIFFERENCE IS EXPRESSIVENESS, NOT VERBOSITY.** `rec1T cA cP μ
+x`'s bound is always `app (w μ) (w x)` — the measure APPLIED to a term. A
+pair carrier FORCES a case split on `fst x`, because `natrec` needs a ℕ and
+`x` is a pair, and that requires the IH's bound to be the natrec VARIABLE.
+`rec1T` cannot say that, so `ihC` and `⊢ihC` have to be written by hand and
+reconciled with the combinator's own slot. D4 ships exactly this as
+`aIHTat`, and `SpikePairT` used it directly.
+
+⇒ the pair carrier does not merely cost `AmrecC` more conversions; it puts
+the case-split motive outside what its interface can express.
 
 **ON MEASURING "EASE" RATHER THAN SIZE.** Line count is the wrong headline
 when the two are the same order. The defensible proxies, in the order they
