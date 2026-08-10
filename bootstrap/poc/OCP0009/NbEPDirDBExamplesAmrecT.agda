@@ -200,6 +200,17 @@ wᶠ²-single t =
     ren-sub'' : (u : RTm _) → renTm vs u ≡ subTm (λ x → var (vs x)) u
     ren-sub'' u = trans (cong (renTm vs) (sym (subTm-id u))) (renTm-subTm u)
 
+-- ⚠ bridge: one `wᶠ` then `single (var vz)` is the IDENTITY — the family's
+--   variable is put back exactly where it came from.
+wᶠ¹-single : {Γ : Cx} (t : RTm (Γ ∙)) →
+             subTm (single (var vz)) (wᶠ t) ≡ t
+wᶠ¹-single t =
+  trans (subTm-renTm t) (trans (subTm-cong bridge t) (subTm-id t))
+  where
+    bridge : ∀ x → _
+    bridge vz     = refl
+    bridge (vs x) = refl
+
 -- the renaming twins the step's reassociation needs
 ren-wTy : {Γ Δ : Cx} {ρ : Ren Γ Δ} (T : RTy Γ) →
           renTy (extR ρ) (renTy vs T) ≡ renTy vs (renTy ρ T)
@@ -468,3 +479,56 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
   ⊢aAux : {n : RTm ⌊ Δ ⌋} → Δ ⊢ n ∷ Nat →
           Δ ⊢ aAuxTm n ∷ subTy (single n) aAuxMot
   ⊢aAux dn = ⊢natrec ⊢aAuxMot ⊢aZBr ⊢aSBr dn
+
+------------------------------------------------------------------------
+-- ★★★ THE COMBINATOR ITSELF, Π-TYPED.
+--
+-- `AmT` is instantiated at `Δ ▹ A` — the module applies to ITSELF at a
+-- deeper context, which is what parameterising over `Δ` buys.
+--
+-- ★★ AND THE BOUND IS LITERALLY `m`.  With the measure pre-applied, "the
+--   auxiliary at μ x" is `aAuxTm m` — no application, no β-redex, and the
+--   bound's typing premise is `dm` itself, unweakened.  Under AmrecC this
+--   was `aAuxTm (app (w μ) (var vz))` with a `⊢app` to build it.
+------------------------------------------------------------------------
+
+module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
+            (dA   : Δ ⊢ty A)
+            (dcM  : (Δ ▹ A) ⊢ cM ∷ U)
+            (dm   : (Δ ▹ A) ⊢ m ∷ Nat)
+            (dstp : Δ ⊢ stp ∷ aStepT A cM m)
+            where
+
+  open AmT (Δ ▹ A) (renTy vs A) (wᶠ cM) (wᶠ m) (w stp)
+           (ren-ty dA there) (⊢wkᶠ dcM) (⊢wkᶠ dm)
+           (⊢-cast (aStepT-ren A cM m) (⊢wk dstp))
+
+  amrecTm : RTm ⌊ Δ ⌋
+  amrecTm = lam (app (app (aAuxTm m) (var vz)) (reflTm m))
+
+  -- the spine's two substitutions, w (wᶠ cM) → cM
+  cancelΠ : subTm (single (reflTm m))
+              (subTm (extS (single (var vz))) (w (wᶠ cM)))
+          ≡ cM
+  cancelΠ =
+    trans (cong (subTm (single (reflTm m)))
+                (trans (sub-w {σ = single (var vz)} (wᶠ cM))
+                       (cong w (wᶠ¹-single cM))))
+          (wk-single {v = reflTm m} cM)
+
+  -- ★★ THE Π FORM.  Note the codomain: `El cM`, not
+  --    `El (app (w cP) (var vz))` — the motive is already applied.
+  ⊢amrecΠ : Δ ⊢ amrecTm ∷ Π A (El cM)
+  ⊢amrecΠ =
+    ⊢lam dA
+      (⊢-cast (cong El cancelΠ)
+        (⊢app (⊢app (⊢-cast (mot-at m) (⊢aAux dm)) (⊢var here))
+              (⊢-cast (sym (cong₂ (λ a b → Hom Nat a b)
+                                  (wᶠ¹-single m) (wk-single {v = var vz} m)))
+                      (⊢le-refl dm))))
+
+  -- ★ …and the POINTWISE form, DERIVED — and under D4 it needs NO CAST at
+  --   all, because `P x` is `subTy (single x) (El cM)` definitionally.
+  ⊢amrecPt : {x : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A →
+             Δ ⊢ app amrecTm x ∷ subTy (single x) (El cM)
+  ⊢amrecPt dx = ⊢app ⊢amrecΠ dx
