@@ -28,7 +28,7 @@ open import Once.CanonicalName using (CanonicalName)
 
 module Once.CCC.Codegen.CataIRSlotStable (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.Bool.Properties using (∧-assoc)
 open import Data.Unit using (⊤; tt)
@@ -58,7 +58,9 @@ open import Once.CCC.Codegen.IRToTrace o
   using (ir-to-trace; ir-to-trace'; cata-strategy; cata-dispatch;
          CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
          cata-trace-nat; cata-trace-linear; cata-trace-branching;
-         visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂)
+         visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂;
+         -- D099 / C1: the called-algebra blocks.
+         cata-body; cata-call-setup; cata-call; cata-trace-const; fsize)
 
 module CataIRSlotStable {FS : FrameSemantics} where
   open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
@@ -251,55 +253,46 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- scratch-load-count ∷ load-tag ∷ mov ∷ build-layer-0(10) ∷ mov ∷
   -- (at ++ ascend-flat); ascend-flat = la-top ∷ la-end ∷ mov ∷
   -- build-layer-1(10) ∷ mov ∷ ((at ++ [scratch-dec]) ++ [jmp,label]).
-  cata-trace-nat-stable : ∀ n1 l1 at → AllSlotStable at
-                        → AllSlotStable (proj₂ (proj₂ (cata-trace-nat n1 l1 at)))
-  cata-trace-nat-stable n1 l1 at sat =
-    tt ∷ᴬ tt ∷ᴬ
-    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ  -- descend-flat (12)
-    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ                                                          -- scratch-load-count, load-tag, mov
-    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ                -- build-layer 0 (10)
-    tt ∷ᴬ                                                                       -- mov
-    -- Plan 0.63 (iii): `I₁ ++ at ++ (I₂ ++ at ++ I₃)`
-    ++⁺ sat                                                                     -- at (base)
-      (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ                                                        -- la-top, la-end, mov
-       tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ              -- build-layer 1 (10)
-       tt ∷ᴬ                                                                    -- mov
-       ++⁺ sat (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ []ᴬ))                                         -- at ++ I₃
+  -- D099 / C1: the algebra is a CALLED BODY now, so every strategy's trace is
+  -- `cata-body ++ <all concrete>` — and that makes these four witnesses
+  -- collapse. The body is the only place `at` appears, so it is the only place
+  -- the hypothesis is needed; everything after it settles by the decider.
+  --
+  -- `instr-call-closure` is slot-stable (the predicate is ⊥ only for
+  -- `instr-alloc-stack`/`instr-reclaim-to`/`instr-loop`), which is the same
+  -- reason `ir-stable apply` is `all-stable?-sound refl`.
+  cata-body-stable : ∀ b e bb at → AllSlotStable at
+                   → AllSlotStable (cata-body b e bb at)
+  cata-body-stable b e bb at sat = tt ∷ᴬ tt ∷ᴬ ++⁺ sat (tt ∷ᴬ tt ∷ᴬ []ᴬ)
 
-  -- Tier-1 linear: descend(25) ∷ scratch-load-count ∷ (at ++ ascend);
-  -- ascend = (25 concrete) ∷ (at ++ [scratch-dec, jmp, label]).
-  cata-trace-linear-stable : ∀ n1 l1 at → AllSlotStable at
-                           → AllSlotStable (proj₂ (proj₂ (cata-trace-linear n1 l1 at)))
-  cata-trace-linear-stable n1 l1 at sat =
-    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ                                              -- descend (25)
-    tt ∷ᴬ                                                                       -- scratch-load-count
-    ++⁺ sat                                                                     -- at (base)
-      (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-       tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-       tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ                                            -- ascend prefix (25)
-       ++⁺ sat (all-stable?-sound _ refl))                                      -- at (ascend) ++ [scratch-dec,jmp,label]
+  cata-trace-const-stable : ∀ bb n1 l1 at → AllSlotStable at
+                          → AllSlotStable (proj₂ (proj₂ (cata-trace-const bb n1 l1 at)))
+  cata-trace-const-stable bb n1 l1 at sat =
+    ++⁺ (cata-body-stable l1 (l1 +ℕ 1) bb at sat) (all-stable?-sound _ refl)
 
-  -- Tier-2 branching via the boolean route: `all-stable? (branching-trace)
-  -- ≡ true` (then `all-stable?-sound`). The concrete scaffold reduces away;
-  -- `all-stable?-++` peels each neutral (visit-walk F / rebuild-walk F / at)
-  -- and `all-stable?-complete` / the `at` hypothesis discharge them.
-  branching-true : ∀ F n1 l1 at → all-stable? at ≡ true
-                 → all-stable? (proj₂ (proj₂ (cata-trace-branching F n1 l1 at))) ≡ true
-  -- Plan 0.63 (iii): the trace is `I₁ ++ at ++ I₂`, and I₁ itself splices the
-  -- two functor walks — so peel I₁'s two neutrals, then `at`, then I₂ computes.
-  -- Plan 0.63 (iii): the trace is `I₁ ++ at ++ I₂`. The concrete parts compute
-  -- away, so only the three stuck splices need peeling: the two functor walks
-  -- (both inside I₁) and the algebra.
-  -- Plan 0.63 (iii): the trace is `I₁ ++ at ++ I₂`. Split THERE first — a peel
-  -- inside I₁ would have to cross the outer `++ at`, which needs assoc and is
-  -- not definitional. After the top split, I₁'s own splices peel normally.
-  branching-true F n1 l1 at sa =
-    trans (all-stable?-++ (cata-br-I₁ F n1 l1) (at ++ cata-br-I₂ n1 l1))
-      (∧-intro I₁-true
-        (trans (all-stable?-++ at (cata-br-I₂ n1 l1)) (∧-intro sa refl)))
+  cata-trace-nat-stable : ∀ bb n1 l1 at → AllSlotStable at
+                        → AllSlotStable (proj₂ (proj₂ (cata-trace-nat bb n1 l1 at)))
+  cata-trace-nat-stable bb n1 l1 at sat =
+    ++⁺ (cata-body-stable (suc (suc (suc (suc (suc (suc l1))))))
+                          (suc (suc (suc (suc (suc (suc (suc l1))))))) bb at sat)
+        (all-stable?-sound _ refl)
+
+  cata-trace-linear-stable : ∀ bb n1 l1 at → AllSlotStable at
+                           → AllSlotStable (proj₂ (proj₂ (cata-trace-linear bb n1 l1 at)))
+  cata-trace-linear-stable bb n1 l1 at sat =
+    ++⁺ (cata-body-stable (l1 +ℕ 4) (l1 +ℕ 5) bb at sat) (all-stable?-sound _ refl)
+
+  -- Tier 2 is the one exception: its skeleton splices the two COMPILE-TIME
+  -- functor walks, which are stuck on `F`, so the tail still needs the boolean
+  -- route with those two peels (the algebra's peel is gone — it is in the body).
+  cata-trace-branching-stable : ∀ F bb n1 l1 at → AllSlotStable at
+                              → AllSlotStable (proj₂ (proj₂ (cata-trace-branching F bb n1 l1 at)))
+  cata-trace-branching-stable F bb n1 l1 at sat =
+    ++⁺ (cata-body-stable bodyL (bodyL +ℕ 1) bb at sat)
+        (all-stable?-sound _ rest-true)
     where
+      bodyL = l1 +ℕ 4 +ℕ lsize F +ℕ lsize F
+      cl    = n1 +ℕ 7 +ℕ (4 *ℕ fsize F) +ℕ 4
       I₁-true : all-stable? (cata-br-I₁ F n1 l1) ≡ true
       I₁-true =
         trans (all-stable?-++ (visit-walk n1 (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4)) _)
@@ -307,19 +300,24 @@ module CataIRSlotStable {FS : FrameSemantics} where
             (trans (all-stable?-++ (rebuild-walk (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4 +ℕ lsize F)) _)
               (∧-intro (all-stable?-complete _ (rebuild-walk-stable (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4 +ℕ lsize F)))
                        refl)))
+      rest-true : all-stable? (cata-call-setup cl bodyL ++
+                               (cata-br-I₁ F n1 l1 ++
+                                (cata-call cl (cl +ℕ 1) ++ cata-br-I₂ n1 l1))) ≡ true
+      -- both tails spelled out: nested `++` leaves the peel's `ys` ambiguous.
+      tail₂ = cata-call cl (cl +ℕ 1) ++ cata-br-I₂ n1 l1
+      tail₁ = cata-br-I₁ F n1 l1 ++ tail₂
+      rest-true =
+        trans (all-stable?-++ (cata-call-setup cl bodyL) tail₁)
+          (∧-intro refl
+            (trans (all-stable?-++ (cata-br-I₁ F n1 l1) tail₂) (∧-intro I₁-true refl)))
 
-  cata-trace-branching-stable : ∀ F n1 l1 at → AllSlotStable at
-                              → AllSlotStable (proj₂ (proj₂ (cata-trace-branching F n1 l1 at)))
-  cata-trace-branching-stable F n1 l1 at sat =
-    all-stable?-sound _ (branching-true F n1 l1 at (all-stable?-complete at sat))
-
-  cata-dispatch-slot-stable : ∀ (strat : CataStrategy) (n l : ℕ) (at : AbstractTrace)
+  cata-dispatch-slot-stable : ∀ (strat : CataStrategy) (bb n l : ℕ) (at : AbstractTrace)
                             → AllSlotStable at
-                            → AllSlotStable (proj₂ (proj₂ (cata-dispatch strat n l at)))
-  cata-dispatch-slot-stable strat-const         n l at sat = sat
-  cata-dispatch-slot-stable strat-nat           n l at sat = cata-trace-nat-stable n l at sat
-  cata-dispatch-slot-stable strat-linear        n l at sat = cata-trace-linear-stable n l at sat
-  cata-dispatch-slot-stable (strat-branching F) n l at sat = cata-trace-branching-stable F n l at sat
+                            → AllSlotStable (proj₂ (proj₂ (cata-dispatch strat bb n l at)))
+  cata-dispatch-slot-stable strat-const         bb n l at sat = cata-trace-const-stable bb n l at sat
+  cata-dispatch-slot-stable strat-nat           bb n l at sat = cata-trace-nat-stable bb n l at sat
+  cata-dispatch-slot-stable strat-linear        bb n l at sat = cata-trace-linear-stable bb n l at sat
+  cata-dispatch-slot-stable (strat-branching F) bb n l at sat = cata-trace-branching-stable F bb n l at sat
 
   ----------------------------------------------------------------------
   -- The theorem: every trace `ir-to-trace` emits is slot-stable.
@@ -369,8 +367,9 @@ module CataIRSlotStable {FS : FrameSemantics} where
     ++⁺ (ir-stable g _ _)
       (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
        ++⁺ (ir-stable f n (suc (suc l))) (tt ∷ᴬ []ᴬ))
+  -- C1: the algebra is generated at frontier 0 (its own frame).
   ir-stable (Cata {F} _ alg) n l =
-    cata-dispatch-slot-stable (cata-strategy ⌈ F ⌉F) _ _ _ (ir-stable alg n l)
+    cata-dispatch-slot-stable (cata-strategy ⌈ F ⌉F) _ _ _ _ (ir-stable alg 0 l)
 
   -- top-level: the trace `ir-to-trace ir` (= `trc (ir-to-trace' 0 0 ir)`).
   ir-to-trace-slot-stable : ∀ {A B} (ir : IR A B) → AllSlotStable (ir-to-trace ir)

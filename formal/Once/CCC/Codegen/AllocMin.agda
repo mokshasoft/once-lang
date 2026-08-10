@@ -29,7 +29,7 @@ open import Once.CanonicalName using (CanonicalName)
 
 module Once.CCC.Codegen.AllocMin (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; suc; _+_; _≤_; s≤s; z≤n)
+open import Data.Nat using (ℕ; suc; _+_; _≤_; s≤s; z≤n; _*_)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_)
 open import Data.List using (List; []; _∷_; _++_)
@@ -52,7 +52,10 @@ open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
-   cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize)
+   cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize;
+   -- D099 / C1: the called-algebra blocks.
+   cata-body; cata-call-setup; cata-call; cata-trace-const;
+   cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; fsize)
 open import Once.CCC.Codegen.FrameFreeTrace o using (trace-of; cata-trace-of)
 
 -- The per-instruction fact, reducing on every constructor (CATCHALL): only an
@@ -120,37 +123,80 @@ rebuild-walk-am valSlot tv tb (F ⊗ G) s lb =
 ------------------------------------------------------------------------
 -- The three cata strategies (the algebra trace `at` is the caller's IH).
 ------------------------------------------------------------------------
-cata-nat-am : ∀ n1 l1 at → AllocMinTrace at
-            → AllocMinTrace (cata-trace-of (cata-trace-nat n1 l1 at))
-cata-nat-am n1 l1 at am =
+-- D099 / C1: the three shared blocks. `cata-call-setup` allocates the algebra's
+-- closure record — a 2-cell heap block, so `am2` sits at its head; nothing else
+-- in the call path allocates.
+cata-body-am : ∀ b e bb at → AllocMinTrace at → AllocMinTrace (cata-body b e bb at)
+cata-body-am b e bb at am = tt ∷ tt ∷ ++⁺ am (tt ∷ tt ∷ [])
+
+cata-setup-am : ∀ cl bl → AllocMinTrace (cata-call-setup cl bl)
+cata-setup-am cl bl = am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+
+cata-call-am : ∀ cl k → AllocMinTrace (cata-call cl k)
+cata-call-am cl k = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+
+nat-I₁-am : ∀ n1 l1 → AllocMinTrace (cata-nat-I₁ n1 l1)
+nat-I₁-am n1 l1 =
   tt ∷ tt ∷
-  ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])  -- descend-flat
+  ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
       (tt ∷ tt ∷ tt ∷
-       ++⁺ (tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])       -- build-layer 0
-           -- Plan 0.63 (iii): `I₁ ++ at ++ (I₂ ++ at ++ I₃)`
-           (tt ∷ ++⁺ am
-             (tt ∷ tt ∷ tt ∷
-              ++⁺ (tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
-                  (tt ∷ ++⁺ am (tt ∷ tt ∷ tt ∷ [])))))
+       ++⁺ (tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) (tt ∷ []))
 
-cata-linear-am : ∀ n1 l1 at → AllocMinTrace at
-               → AllocMinTrace (cata-trace-of (cata-trace-linear n1 l1 at))
-cata-linear-am n1 l1 at am = ++⁺ descend (tt ∷ ++⁺ am ascend)
-  where
-    descend : AllocMinTrace _
-    descend = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷
-              tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-    ascend : AllocMinTrace _
-    ascend = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷
-             tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
-             ++⁺ am (tt ∷ tt ∷ tt ∷ [])
+nat-I₂-am : ∀ n1 l1 → AllocMinTrace (cata-nat-I₂ n1 l1)
+nat-I₂-am n1 l1 =
+  tt ∷ tt ∷ tt ∷ ++⁺ (tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []) (tt ∷ [])
 
-cata-branching-am : ∀ F n1 l1 at → AllocMinTrace at
-                  → AllocMinTrace (cata-trace-of (cata-trace-branching F n1 l1 at))
--- Plan 0.63 (iii): `I₁ ++ at ++ I₂`.
-cata-branching-am F n1 l1 at am =
-  ++⁺ I₁ (++⁺ am I₂)
+nat-I₃-am : ∀ l1 → AllocMinTrace (cata-nat-I₃ l1)
+nat-I₃-am l1 = tt ∷ tt ∷ tt ∷ []
+
+cata-nat-am : ∀ bb n1 l1 at → AllocMinTrace at
+            → AllocMinTrace (cata-trace-of (cata-trace-nat bb n1 l1 at))
+cata-nat-am bb n1 l1 at am =
+  ++⁺ (cata-body-am bodyL endL bb at am)
+      (++⁺ (cata-setup-am cl bodyL)
+           (++⁺ (nat-I₁-am n1 l1)
+                (++⁺ (cata-call-am cl k)
+                     (++⁺ (nat-I₂-am n1 l1)
+                          (++⁺ (cata-call-am cl k) (nat-I₃-am l1))))))
   where
+    bodyL = suc (suc (suc (suc (suc (suc l1)))))
+    endL  = suc (suc (suc (suc (suc (suc (suc l1))))))
+    cl    = suc (suc n1)
+    k     = suc (suc (suc n1))
+
+cata-const-am : ∀ bb n1 l1 at → AllocMinTrace at
+              → AllocMinTrace (cata-trace-of (cata-trace-const bb n1 l1 at))
+cata-const-am bb n1 l1 at am =
+  ++⁺ (cata-body-am l1 (l1 + 1) bb at am)
+      (++⁺ (cata-setup-am n1 l1) (cata-call-am n1 (n1 + 1)))
+
+cata-linear-am : ∀ bb n1 l1 at → AllocMinTrace at
+               → AllocMinTrace (cata-trace-of (cata-trace-linear bb n1 l1 at))
+cata-linear-am bb n1 l1 at am =
+  ++⁺ (cata-body-am (l1 + 4) (l1 + 5) bb at am)
+      (++⁺ (cata-setup-am (n1 + 6) (l1 + 4))
+           (++⁺ lin-I₁
+                (++⁺ (cata-call-am (n1 + 6) (n1 + 7))
+                     (++⁺ lin-I₂ (++⁺ (cata-call-am (n1 + 6) (n1 + 7)) lin-I₃)))))
+  where
+    lin-I₁ : AllocMinTrace _
+    lin-I₁ = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷
+             tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+    lin-I₂ : AllocMinTrace _
+    lin-I₂ = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷
+             tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+    lin-I₃ : AllocMinTrace _
+    lin-I₃ = tt ∷ tt ∷ tt ∷ []
+
+cata-branching-am : ∀ F bb n1 l1 at → AllocMinTrace at
+                  → AllocMinTrace (cata-trace-of (cata-trace-branching F bb n1 l1 at))
+cata-branching-am F bb n1 l1 at am =
+  ++⁺ (cata-body-am bodyL (bodyL + 1) bb at am)
+      (++⁺ (cata-setup-am cl bodyL)
+           (++⁺ I₁ (++⁺ (cata-call-am cl (cl + 1)) I₂)))
+  where
+    bodyL = l1 + 4 + lsize F + lsize F
+    cl    = n1 + 7 + (4 * fsize F) + 4
     I₁ : AllocMinTrace _
     I₁ = ++⁺ (tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
              (++⁺ (push2-am n1 (n1 + 4) (n1 + 5))
@@ -166,12 +212,12 @@ cata-branching-am F n1 l1 at am =
     I₂ = ++⁺ (push2-am (n1 + 2) (n1 + 4) (n1 + 5))
              (++⁺ (tt ∷ tt ∷ []) (tt ∷ tt ∷ tt ∷ []))
 
-cata-dispatch-am : ∀ st n1 l1 at → AllocMinTrace at
-                 → AllocMinTrace (cata-trace-of (cata-dispatch st n1 l1 at))
-cata-dispatch-am strat-const         n1 l1 at am = am
-cata-dispatch-am strat-nat           n1 l1 at am = cata-nat-am n1 l1 at am
-cata-dispatch-am strat-linear        n1 l1 at am = cata-linear-am n1 l1 at am
-cata-dispatch-am (strat-branching F) n1 l1 at am = cata-branching-am F n1 l1 at am
+cata-dispatch-am : ∀ st bb n1 l1 at → AllocMinTrace at
+                 → AllocMinTrace (cata-trace-of (cata-dispatch st bb n1 l1 at))
+cata-dispatch-am strat-const         bb n1 l1 at am = cata-const-am bb n1 l1 at am
+cata-dispatch-am strat-nat           bb n1 l1 at am = cata-nat-am bb n1 l1 at am
+cata-dispatch-am strat-linear        bb n1 l1 at am = cata-linear-am bb n1 l1 at am
+cata-dispatch-am (strat-branching F) bb n1 l1 at am = cata-branching-am F bb n1 l1 at am
 
 ------------------------------------------------------------------------
 -- THE THEOREM, over arbitrary frontier `n` / label counter `l`.
@@ -219,8 +265,9 @@ alloc-min-trace' (case f g) n l =
                 (++⁺ (alloc-min-trace' f _ _) (tt ∷ []))))
 alloc-min-trace' (In _ _)  n l = tt ∷ []
 alloc-min-trace' (out-μ _) n l = tt ∷ []
+-- C1: the algebra is generated at frontier 0 (its own frame).
 alloc-min-trace' (Cata {F} _ alg) n l =
-  cata-dispatch-am (cata-strategy ⌈ F ⌉F) _ _ _ (alloc-min-trace' alg n l)
+  cata-dispatch-am (cata-strategy ⌈ F ⌉F) _ _ _ _ (alloc-min-trace' alg 0 l)
 alloc-min-trace' (Para _ _)     n l = []
 alloc-min-trace' (Out _)        n l = tt ∷ []
 alloc-min-trace' (in-ν _ _)     n l = []
