@@ -1,0 +1,224 @@
+------------------------------------------------------------------------
+-- OCP-0009 · WF LIBRARY — THE WEAKENING AND SUBSTITUTION KIT.
+--
+-- Generic substitution metatheory.  No recursor appears in this module:
+-- everything here is about how `renTm`/`subTm` interact with weakening,
+-- and it is shared by every combinator the WF axis provides.
+--
+-- ★ TWO FLAVOURS OF WEAKENING, and the distinction is load-bearing:
+--
+--     w  t   inserts a slot ABOVE everything          (`renTm vs`)
+--     wᶠ t   inserts a slot BELOW a FAMILY's variable  (`renTm (extR vs)`)
+--
+--   A "family" is a term over an extended context — a motive or a measure
+--   whose free variable IS the carrier element.  Use `⊢wkᶠ` for those and
+--   `⊢wk` for ordinary terms: they produce terms that look interchangeable
+--   and are not.
+--
+-- ⚠ P1 — ETA COVERS EVERYTHING EXCEPT MOVING A FAMILY UNDER A RENAMING.
+--   `extS σ ₛ∘ᵣ vs` and `vs ᵣ∘ₛ σ` are literally the same function, so
+--   `sub-w`/`ren-w` are two-step `trans`es with no case analysis.  That
+--   does NOT extend to families: `wᶠ-single`, `wᶠ¹/²-single`, `wᶠ-nrs` and
+--   `ren-wᶠ` each need a pointwise BRIDGE, because the composites agree
+--   only after casing on the variable.  Budget a bridge whenever a lemma
+--   moves a family under `extR`.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module poc.OCP0009.NbEPDirDBLibWk where
+
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import poc.OCP0009.NbEPDirDBPi
+  using ( Cx; ε; _∙; Var; vz; vs; Ren
+        ; RTy; El; Hom; Nat; U
+        ; RTm; var; nzero; nsuc
+        ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR
+        ; subTm-renTm; renTm-subTm; renTm-renTm; subTm-id; subTm-cong
+        ; subTy-renTy; subTy-id; renTy-renTy; renTy-subTy; renTm-cong; idₛ )
+open import poc.OCP0009.NbEPDirDBType
+  using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; there )
+open import poc.OCP0009.NbEPDirDBSubj using ( ren-lemma; Ren⊢-ext )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+
+------------------------------------------------------------------------
+-- congruences
+------------------------------------------------------------------------
+
+cong₃ : {A B C D : Set} (f : A → B → C → D)
+        {a a' : A} {b b' : B} {c c' : C} →
+        a ≡ a' → b ≡ b' → c ≡ c' → f a b c ≡ f a' b' c'
+cong₃ f refl refl refl = refl
+
+cong₄ : {A B C D E : Set} (f : A → B → C → D → E)
+        {a a' : A} {b b' : B} {c c' : C} {d d' : D} →
+        a ≡ a' → b ≡ b' → c ≡ c' → d ≡ d' → f a b c d ≡ f a' b' c' d'
+cong₄ f refl refl refl refl = refl
+
+cong₅ : {A B C D E F : Set} (f : A → B → C → D → E → F)
+        {a a' : A} {b b' : B} {c c' : C} {d d' : D} {e e' : E} →
+        a ≡ a' → b ≡ b' → c ≡ c' → d ≡ d' → e ≡ e' →
+        f a b c d e ≡ f a' b' c' d' e'
+cong₅ f refl refl refl refl refl = refl
+
+cong₆ : {A B C D E F G : Set} (f : A → B → C → D → E → F → G)
+        {a a' : A} {b b' : B} {c c' : C} {d d' : D} {e e' : E} {h h' : F} →
+        a ≡ a' → b ≡ b' → c ≡ c' → d ≡ d' → e ≡ e' → h ≡ h' →
+        f a b c d e h ≡ f a' b' c' d' e' h'
+cong₆ f refl refl refl refl refl refl = refl
+
+------------------------------------------------------------------------
+-- the two weakenings
+------------------------------------------------------------------------
+
+w : {Γ : Cx} → RTm Γ → RTm (Γ ∙)
+w = renTm vs
+
+wᶠ : {Γ : Cx} → RTm (Γ ∙) → RTm ((Γ ∙) ∙)
+wᶠ = renTm (extR vs)
+
+⊢wkᶠ : {Γ : Ctx} {A B : RTy ⌊ Γ ⌋} {t : RTm (⌊ Γ ⌋ ∙)} {T : RTy (⌊ Γ ⌋ ∙)} →
+       (Γ ▹ A) ⊢ t ∷ T → ((Γ ▹ B) ▹ renTy vs A) ⊢ wᶠ t ∷ renTy (extR vs) T
+⊢wkᶠ d = ren-lemma d (Ren⊢-ext there)
+
+------------------------------------------------------------------------
+-- substitution vs weakening — the ETA half (no case analysis)
+------------------------------------------------------------------------
+
+sub-w : {Γ Δ : Cx} {σ : Sub Γ Δ} (t : RTm Γ) →
+        subTm (extS σ) (w t) ≡ w (subTm σ t)
+sub-w t = trans (subTm-renTm t) (sym (renTm-subTm t))
+
+sub-w² : {Γ Δ : Cx} {σ : Sub Γ Δ} (t : RTm Γ) →
+         subTm (extS (extS σ)) (w (w t)) ≡ w (w (subTm σ t))
+sub-w² {σ = σ} t = trans (sub-w {σ = extS σ} (w t)) (cong w (sub-w t))
+
+sub-w³ : {Γ Δ : Cx} {σ : Sub Γ Δ} (t : RTm Γ) →
+         subTm (extS (extS (extS σ))) (w (w (w t))) ≡ w (w (w (subTm σ t)))
+sub-w³ {σ = σ} t = trans (sub-w {σ = extS (extS σ)} (w (w t))) (cong w (sub-w² t))
+
+ren-w : {Γ Δ : Cx} {ρ : Ren Γ Δ} (t : RTm Γ) →
+        renTm (extR ρ) (w t) ≡ w (renTm ρ t)
+ren-w t = trans (renTm-renTm t) (sym (renTm-renTm t))
+
+ren-w² : {Γ Δ : Cx} {ρ : Ren Γ Δ} (t : RTm Γ) →
+         renTm (extR (extR ρ)) (w (w t)) ≡ w (w (renTm ρ t))
+ren-w² {ρ = ρ} t = trans (ren-w {ρ = extR ρ} (w t)) (cong w (ren-w t))
+
+ren-w³ : {Γ Δ : Cx} {ρ : Ren Γ Δ} (t : RTm Γ) →
+         renTm (extR (extR (extR ρ))) (w (w (w t))) ≡ w (w (w (renTm ρ t)))
+ren-w³ {ρ = ρ} t = trans (ren-w {ρ = extR (extR ρ)} (w (w t))) (cong w (ren-w² t))
+
+ren-sub : {Γ Δ : Cx} {ρ : Ren Γ Δ} (t : RTm Γ) →
+          renTm ρ t ≡ subTm (λ x → var (ρ x)) t
+ren-sub {ρ = ρ} t = trans (cong (renTm ρ) (sym (subTm-id t)))
+                          (renTm-subTm {σ = idₛ} t)
+
+nrs-w : {Γ : Cx} (t : RTm Γ) → subTm nrs (w t) ≡ w (w t)
+nrs-w t = trans (subTm-renTm t) (sym (trans (renTm-renTm t) (ren-sub t)))
+
+------------------------------------------------------------------------
+-- the TYPE-level twins
+------------------------------------------------------------------------
+
+wk-singleTy : {Γ : Cx} {v : RTm Γ} (T : RTy Γ) → subTy (single v) (renTy vs T) ≡ T
+wk-singleTy T = trans (subTy-renTy T) (subTy-id T)
+
+nrs-wTy : {Γ : Cx} (T : RTy Γ) → subTy nrs (renTy vs T) ≡ renTy vs (renTy vs T)
+nrs-wTy T =
+  trans (subTy-renTy T)
+        (sym (trans (renTy-renTy T) (ren-subTy T)))
+  where
+    ren-subTy : (T : RTy _) → renTy _ T ≡ subTy (λ x → var _) T
+    ren-subTy T = trans (cong (renTy _) (sym (subTy-id T))) (renTy-subTy T)
+
+ren-wTy : {Γ Δ : Cx} {ρ : Ren Γ Δ} (T : RTy Γ) →
+          renTy (extR ρ) (renTy vs T) ≡ renTy vs (renTy ρ T)
+ren-wTy T = trans (renTy-renTy T) (sym (renTy-renTy T))
+
+------------------------------------------------------------------------
+-- ⚠ the FAMILY lemmas — each needs a pointwise bridge (P1)
+------------------------------------------------------------------------
+
+wᶠ-single : {Γ : Cx} {v : RTm Γ} (t : RTm (Γ ∙)) →
+            subTm (extS (single v)) (wᶠ t) ≡ t
+wᶠ-single t =
+  trans (subTm-renTm t) (trans (subTm-cong bridge t) (subTm-id t))
+  where
+    bridge : ∀ x → _
+    bridge vz     = refl
+    bridge (vs x) = refl
+
+wᶠ¹-single : {Γ : Cx} (t : RTm (Γ ∙)) →
+             subTm (single (var vz)) (wᶠ t) ≡ t
+wᶠ¹-single t =
+  trans (subTm-renTm t) (trans (subTm-cong bridge t) (subTm-id t))
+  where
+    bridge : ∀ x → _
+    bridge vz     = refl
+    bridge (vs x) = refl
+
+wᶠ²-single : {Γ : Cx} (t : RTm (Γ ∙)) →
+             subTm (single (var (vs vz))) (wᶠ (wᶠ t)) ≡ w t
+wᶠ²-single t =
+  trans (subTm-renTm (wᶠ t))
+        (trans (subTm-renTm t)
+               (trans (subTm-cong bridge t) (sym (ren-sub'' t))))
+  where
+    bridge : ∀ x → _
+    bridge vz     = refl
+    bridge (vs x) = refl
+    ren-sub'' : (u : RTm _) → renTm vs u ≡ subTm (λ x → var (vs x)) u
+    ren-sub'' u = trans (cong (renTm vs) (sym (subTm-id u))) (renTm-subTm u)
+
+wᶠ-nrs : {Γ : Cx} (t : RTm (Γ ∙)) → subTm (extS nrs) (wᶠ t) ≡ wᶠ (wᶠ t)
+wᶠ-nrs t =
+  trans (subTm-renTm t)
+        (trans (subTm-cong bridge t)
+               (sym (trans (renTm-renTm t) (ren-sub' t))))
+  where
+    bridge : ∀ x → _
+    bridge vz     = refl
+    bridge (vs x) = refl
+    ren-sub' : (u : RTm _) → renTm _ u ≡ subTm (λ x → var _) u
+    ren-sub' u = trans (cong (renTm _) (sym (subTm-id u))) (renTm-subTm u)
+
+ren-wᶠ : {Γ Δ : Cx} {ρ : Ren Γ Δ} (t : RTm (Γ ∙)) →
+         renTm (extR (extR ρ)) (wᶠ t) ≡ wᶠ (renTm (extR ρ) t)
+ren-wᶠ t =
+  trans (renTm-renTm t) (trans (renTm-cong bridge t) (sym (renTm-renTm t)))
+  where
+    bridge : ∀ x → _
+    bridge vz     = refl
+    bridge (vs x) = refl
+
+------------------------------------------------------------------------
+-- ★★ D5 — ITERATED WEAKENING, INDEXED RATHER THAN ENUMERATED.
+--
+-- Every combinator so far grew its own hand-written ladder — `lStepT-w²⁻⁸`,
+-- `auxBody-w²⁻⁷`, `auxMotB-w²⁻⁹`, `aAuxB-w²/⁵`, `aStepT-w⁴` — because each
+-- branch depth needs one more rung.  Four combinators, all listing iterates
+-- of ONE lemma.  These are that lemma, indexed by the depth.
+--
+-- ⚠ The `-w^` ladder for a given combinator is then THREE LINES and covers
+--   every depth, instead of one definition per rung.  See `LibAmrec`.
+------------------------------------------------------------------------
+
+infixl 6 _∙^_
+_∙^_ : Cx → ℕ → Cx
+Γ ∙^ zero  = Γ
+Γ ∙^ suc n = (Γ ∙^ n) ∙
+
+-- ordinary weakening, n times
+w^ : {Γ : Cx} (n : ℕ) → RTm Γ → RTm (Γ ∙^ n)
+w^ zero    t = t
+w^ (suc n) t = w (w^ n t)
+
+wTy^ : {Γ : Cx} (n : ℕ) → RTy Γ → RTy (Γ ∙^ n)
+wTy^ zero    T = T
+wTy^ (suc n) T = renTy vs (wTy^ n T)
+
+-- ★ FAMILY weakening, n times: the family's own variable stays on top and
+--   n slots are inserted beneath it.
+wᶠ^ : {Γ : Cx} (n : ℕ) → RTm (Γ ∙) → RTm ((Γ ∙^ n) ∙)
+wᶠ^ zero    t = t
+wᶠ^ (suc n) t = wᶠ (wᶠ^ n t)
