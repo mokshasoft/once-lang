@@ -42,13 +42,17 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; Ren
         ; RTy; El; Hom; Nat; U
         ; RTm; var; nzero; nsuc; natrec; absurd; ordtr; lam; app
-        ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR )
+        ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR
+        ; subTy-renTy; subTy-id; subTm-renTm; subTm-id; subTm-cong
+        ; renTm-renTm; renTy-renTy; renTm-cong; renTy-cong; idₛ
+        ; renTy-subTy; renTm-subTm )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; _⊢ty_
         ; ty-Nat; ty-Hom; ty-El; ty-Π )
-open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
+open import poc.OCP0009.NbEPDirDBSubj
+  using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesOrd using ( ⊢strong-base'; ⊢strong-step )
@@ -101,3 +105,51 @@ aAuxB-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (A : RTy Γ) (cM m : RTm (Γ ∙)) (n 
           ≡ aAuxB (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m) (renTm ρ n)
 aAuxB-ren {ρ = ρ} A cM m n =
   cong₄ aAuxB' refl refl (ren-w n) (ren-w {ρ = extR ρ} cM)
+
+------------------------------------------------------------------------
+-- ★ THE NATURALITY LAYER — D4's BUILD-SIDE COST, in full.
+--
+-- Four lemmas, and each is a two-step `trans` in the house style: fuse the
+-- renaming into the substitution, observe the composite is the identity
+-- (or one more weakening), and appeal to `*-cong` + `*-id`.
+------------------------------------------------------------------------
+
+-- the type-level `wk-single` — substituting into a weakened TYPE
+wk-singleTy : {Γ : Cx} {v : RTm Γ} (T : RTy Γ) → subTy (single v) (renTy vs T) ≡ T
+wk-singleTy T = trans (subTy-renTy T) (subTy-id T)
+
+-- ★ THE FAMILY VERSION.  `extS (single v) ₛ∘ᵣ extR vs` is the IDENTITY:
+--   the family's own variable is held in place by both, and everything
+--   below it is weakened then immediately substituted back.
+wᶠ-single : {Γ : Cx} {v : RTm Γ} (t : RTm (Γ ∙)) →
+            subTm (extS (single v)) (wᶠ t) ≡ t
+wᶠ-single t =
+  trans (subTm-renTm t) (trans (subTm-cong bridge t) (subTm-id t))
+  where
+    bridge : ∀ x → _
+    bridge vz     = refl
+    bridge (vs x) = refl
+
+-- `nrs` on a weakened type / family: one more weakening, as for `nrs-w`
+nrs-wTy : {Γ : Cx} (T : RTy Γ) → subTy nrs (renTy vs T) ≡ renTy vs (renTy vs T)
+nrs-wTy T =
+  trans (subTy-renTy T)
+        (sym (trans (renTy-renTy T) (ren-subTy T)))
+  where
+    ren-subTy : (T : RTy _) → renTy _ T ≡ subTy (λ x → var _) T
+    ren-subTy T = trans (cong (renTy _) (sym (subTy-id T))) (renTy-subTy T)
+
+-- ⚠ this one needs a pointwise BRIDGE: `extS nrs ₛ∘ᵣ extR vs` and
+--   `extR vs ∘ᵣ extR vs` agree, but only after casing on the variable —
+--   eta alone does not see it, unlike `sub-w`/`ren-w`.
+wᶠ-nrs : {Γ : Cx} (t : RTm (Γ ∙)) → subTm (extS nrs) (wᶠ t) ≡ wᶠ (wᶠ t)
+wᶠ-nrs t =
+  trans (subTm-renTm t)
+        (trans (subTm-cong bridge t)
+               (sym (trans (renTm-renTm t) (ren-sub' t))))
+  where
+    bridge : ∀ x → _
+    bridge vz     = refl
+    bridge (vs x) = refl
+    ren-sub' : (u : RTm _) → renTm _ u ≡ subTm (λ x → var _) u
+    ren-sub' u = trans (cong (renTm _) (sym (subTm-id u))) (renTm-subTm u)
