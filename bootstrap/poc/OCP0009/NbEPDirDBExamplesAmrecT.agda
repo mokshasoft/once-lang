@@ -71,14 +71,21 @@ wᶠ = renTm (extR vs)
 -- THE THREE TYPES — and there is not one `app` in them.
 ------------------------------------------------------------------------
 
+-- ★ the IH at an EXPLICIT `μ x`.  `aIHT` is its instance where the
+--   carrier variable is `x`, so `μ x` is `m` itself — which is the whole
+--   point of pre-applying the measure.
+aIHTat' : {Γ : Cx} (A : RTy Γ) (m mx : RTm (Γ ∙)) (cm : RTm ((Γ ∙) ∙)) → RTy Γ
+aIHTat' A m mx cm = Π A (Π (Hom Nat (nsuc m) mx) (El cm))
+
+aIHTat : {Γ : Cx} (A : RTy Γ) (cM m : RTm (Γ ∙)) (μx : RTm Γ) → RTy Γ
+aIHTat A cM m μx = aIHTat' A m (w μx) (w cM)
+
 -- `(y : A) → μ y < μ x → P y`, at the binder where `x` is the carrier var
 aIHT : {Γ : Cx} (A : RTy Γ) (cM m : RTm (Γ ∙)) → RTy (Γ ∙)
-aIHT A cM m =
-  Π (renTy vs A)
-    (Π (Hom Nat (nsuc (wᶠ m)) (w m))
-       (El (w (wᶠ cM))))
+aIHT A cM m = aIHTat (renTy vs A) (wᶠ cM) (wᶠ m) m
 
 -- `(x : A) → ((y : A) → μ y < μ x → P y) → P x`
+
 aStepT : {Γ : Cx} (A : RTy Γ) (cM m : RTm (Γ ∙)) → RTy Γ
 aStepT A cM m = Π A (Π (aIHT A cM m) (El (w cM)))
 
@@ -153,3 +160,80 @@ wᶠ-nrs t =
     bridge (vs x) = refl
     ren-sub' : (u : RTm _) → renTm _ u ≡ subTm (λ x → var _) u
     ren-sub' u = trans (cong (renTm _) (sym (subTm-id u))) (renTm-subTm u)
+
+-- the renaming twins the step's reassociation needs
+ren-wTy : {Γ Δ : Cx} {ρ : Ren Γ Δ} (T : RTy Γ) →
+          renTy (extR ρ) (renTy vs T) ≡ renTy vs (renTy ρ T)
+ren-wTy T = trans (renTy-renTy T) (sym (renTy-renTy T))
+
+-- ⚠ bridge again: `extR (extR ρ) ∘ᵣ extR vs` and `extR vs ∘ᵣ extR ρ`
+--   agree only after casing, exactly as in `wᶠ-nrs`.
+ren-wᶠ : {Γ Δ : Cx} {ρ : Ren Γ Δ} (t : RTm (Γ ∙)) →
+         renTm (extR (extR ρ)) (wᶠ t) ≡ wᶠ (renTm (extR ρ) t)
+ren-wᶠ t =
+  trans (renTm-renTm t) (trans (renTm-cong bridge t) (sym (renTm-renTm t)))
+  where
+    bridge : ∀ x → _
+    bridge vz     = refl
+    bridge (vs x) = refl
+
+aIHT-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (A : RTy Γ) (cM m : RTm (Γ ∙)) →
+           renTy (extR ρ) (aIHT A cM m)
+         ≡ aIHT (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+aIHT-ren {ρ = ρ} A cM m =
+  cong₄ (λ a p q c → Π a (Π (Hom Nat (nsuc p) q) (El c)))
+        (ren-wTy A) (ren-wᶠ m) (ren-w {ρ = extR ρ} m)
+        (trans (ren-w {ρ = extR (extR ρ)} (wᶠ cM)) (cong w (ren-wᶠ cM)))
+
+aStepT-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (A : RTy Γ) (cM m : RTm (Γ ∙)) →
+             renTy ρ (aStepT A cM m)
+           ≡ aStepT (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+aStepT-ren {ρ = ρ} A cM m =
+  cong₂ (λ r c → Π (renTy ρ A) (Π r (El c)))
+        (aIHT-ren A cM m) (ren-w {ρ = extR ρ} cM)
+
+------------------------------------------------------------------------
+-- THE COMBINATOR, over an arbitrary ambient context.
+------------------------------------------------------------------------
+
+module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
+           (dA   : Δ ⊢ty A)
+           (dcM  : (Δ ▹ A) ⊢ cM ∷ U)
+           (dm   : (Δ ▹ A) ⊢ m ∷ Nat)
+           (dstp : Δ ⊢ stp ∷ aStepT A cM m)
+           where
+
+  -- the natrec motive: the bound `n` is the recursion variable.
+  aAuxMot : RTy (⌊ Δ ⌋ ∙)
+  aAuxMot = aAuxB (renTy vs A) (wᶠ cM) (wᶠ m) (var vz)
+
+  ⊢aAuxMot : (Δ ▹ Nat) ⊢ty aAuxMot
+  ⊢aAuxMot =
+    ty-Π (ren-ty dA there)
+      (ty-Π (ty-Hom ty-Nat (ren-lemma dm (Ren⊢-ext there)) (⊢var (there here)))
+            (ty-El (⊢wk (ren-lemma dcM (Ren⊢-ext there)))))
+
+  -- ★ the motive at ANY bound.  Four peels, one per argument, and three of
+  --   them are the family lemmas — no `app`, so no β anywhere.
+  mot-at : (n : RTm ⌊ Δ ⌋) → subTy (single n) aAuxMot ≡ aAuxB A cM m n
+  mot-at n =
+    trans (aAuxB-sub {σ = single n} (renTy vs A) (wᶠ cM) (wᶠ m) (var vz))
+          (cong₄ aAuxB (wk-singleTy A) (wᶠ-single cM) (wᶠ-single m) refl)
+
+  mot-s : subTy nrs aAuxMot
+        ≡ aAuxB (renTy vs (renTy vs A)) (wᶠ (wᶠ cM)) (wᶠ (wᶠ m))
+                (nsuc (var (vs vz)))
+  mot-s =
+    trans (aAuxB-sub {σ = nrs} (renTy vs A) (wᶠ cM) (wᶠ m) (var vz))
+          (cong₄ aAuxB (nrs-wTy A) (wᶠ-nrs cM) (wᶠ-nrs m) refl)
+
+-- ★★ THE FITTING LEMMA, and it is the ONLY one an ⊢app argument needs.
+--    Applying the step to `x` instantiates the IH's `μ x` slot; with the
+--    measure pre-applied that slot is just `subTm (single x) m`, and the
+--    other three arguments peel with the family lemmas.
+aIHT-fit : {Γ : Cx} {X : RTm Γ} (A : RTy Γ) (cM m : RTm (Γ ∙)) →
+           subTy (single X) (aIHT A cM m)
+         ≡ aIHTat A cM m (subTm (single X) m)
+aIHT-fit {X = X} A cM m =
+  cong₄ aIHTat' (wk-singleTy A) (wᶠ-single m) (sub-w m)
+        (trans (sub-w {σ = extS (single X)} (wᶠ cM)) (cong w (wᶠ-single cM)))
