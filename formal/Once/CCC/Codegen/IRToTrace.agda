@@ -281,13 +281,20 @@ cata-call cl k =
 cata-trace-nat : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-trace-nat bb n1 l1 at =
   suc (suc (suc (suc n1))) , suc (suc (suc (suc (suc (suc (suc (suc l1))))))) ,
-  (cata-body (suc (suc (suc (suc (suc (suc l1))))))
-             (suc (suc (suc (suc (suc (suc (suc l1))))))) bb at ++
-   (cata-call-setup (suc (suc n1)) (suc (suc (suc (suc (suc (suc l1)))))) ++
-    (cata-nat-I₁ n1 l1 ++
-     (cata-call (suc (suc n1)) (suc (suc (suc n1))) ++
-      (cata-nat-I₂ n1 l1 ++
-       (cata-call (suc (suc n1)) (suc (suc (suc n1))) ++ cata-nat-I₃ l1))))))
+  -- D099 / C1 (2026-08-10): the body bracket goes LAST, not first. That is not
+  -- cosmetic — `segagree-curry` proves `SegAgree (H ++ c-thunk … ∷ (body ++
+  -- c-ret … ∷ c-label e ∷ []))` for an arbitrary IDLE labelled prefix `H`, and
+  -- the loop skeleton is exactly that. With the bracket last, `H` = the loop
+  -- plus its jump-over and the existing combinator applies directly; with it
+  -- first, the loop would be a SUFFIX, which nothing in `LabelScope` supports.
+  (cata-call-setup (suc (suc n1)) (suc (suc (suc (suc (suc (suc l1)))))) ++
+   (cata-nat-I₁ n1 l1 ++
+    (cata-call (suc (suc n1)) (suc (suc (suc n1))) ++
+     (cata-nat-I₂ n1 l1 ++
+      (cata-call (suc (suc n1)) (suc (suc (suc n1))) ++
+       (cata-nat-I₃ l1 ++
+        cata-body (suc (suc (suc (suc (suc (suc l1))))))
+                  (suc (suc (suc (suc (suc (suc (suc l1)))))) ) bb at))))))
 
 -- Plan 0.36 Phase 2b Tier 1: functor-general LINEAR (single recursive
 -- position, with payload) cata codegen via a SIMPLE 2-cell linked payload
@@ -359,12 +366,12 @@ cata-trace-linear : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × Abst
 -- `+` would need a transport at every one.
 cata-trace-linear bb n1 l1 at =
   suc (suc (suc (suc (suc (suc (suc (suc n1))))))) , suc (suc (suc (suc (suc (suc l1))))) ,
-  (cata-body (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) bb at ++
-   (cata-call-setup (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc l1)))) ++
-    (cata-lin-I₁ n1 l1 ++
-     (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) ++
-      (cata-lin-I₂ n1 l1 ++
-       (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) ++ cata-lin-I₃ l1))))))
+  (cata-call-setup (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc l1)))) ++
+   (cata-lin-I₁ n1 l1 ++
+    (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) ++
+     (cata-lin-I₂ n1 l1 ++
+      (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) ++
+       (cata-lin-I₃ l1 ++ cata-body (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) bb at))))))
 
 -- ────────────────────────────────────────────────────────────────────
 -- Plan 0.36 Phase 2b Tier 2: functor-general BRANCHING cata codegen
@@ -524,13 +531,14 @@ cata-br-I₂ n1 l1 =
 cata-trace-branching : Functor → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-trace-branching F bb n1 l1 at =
   (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 2 , (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) +ℕ 2 ,
-  (cata-body (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F)
-             ((l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) +ℕ 1) bb at ++
-   (cata-call-setup (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4)
-                    (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) ++
-    (cata-br-I₁ F n1 l1 ++
-     (cata-call (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4)
-                ((n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 1) ++ cata-br-I₂ n1 l1))))
+  (cata-call-setup (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4)
+                   (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) ++
+   (cata-br-I₁ F n1 l1 ++
+    (cata-call (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4)
+               ((n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 1) ++
+     (cata-br-I₂ n1 l1 ++
+      cata-body (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F)
+                ((l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) +ℕ 1) bb at))))
 
 -- Dispatch the strategy. Nat / branching still route to the Nat codegen
 -- (branching = Tier 2, still segfaults); linear gets the Tier-1 codegen.
@@ -543,8 +551,8 @@ cata-trace-branching F bb n1 l1 at =
 cata-trace-const : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-trace-const bb n1 l1 at =
   n1 +ℕ 2 , l1 +ℕ 2 ,
-  (cata-body l1 (l1 +ℕ 1) bb at ++
-   (cata-call-setup n1 l1 ++ cata-call n1 (n1 +ℕ 1)))
+  (cata-call-setup n1 l1 ++
+   (cata-call n1 (n1 +ℕ 1) ++ cata-body l1 (l1 +ℕ 1) bb at))
 
 cata-dispatch : CataStrategy → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-dispatch strat-const         bb n1 l1 at = cata-trace-const bb n1 l1 at

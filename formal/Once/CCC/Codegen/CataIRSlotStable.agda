@@ -60,7 +60,8 @@ open import Once.CCC.Codegen.IRToTrace o
          cata-trace-nat; cata-trace-linear; cata-trace-branching;
          visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂;
          -- D099 / C1: the called-algebra blocks.
-         cata-body; cata-call-setup; cata-call; cata-trace-const; fsize)
+         cata-body; cata-call-setup; cata-call; cata-trace-const; fsize;
+         cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃)
 
 module CataIRSlotStable {FS : FrameSemantics} where
   open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
@@ -268,19 +269,30 @@ module CataIRSlotStable {FS : FrameSemantics} where
   cata-trace-const-stable : ∀ bb n1 l1 at → AllSlotStable at
                           → AllSlotStable (proj₂ (proj₂ (cata-trace-const bb n1 l1 at)))
   cata-trace-const-stable bb n1 l1 at sat =
-    ++⁺ (cata-body-stable l1 (l1 +ℕ 1) bb at sat) (all-stable?-sound _ refl)
+    ++⁺ (all-stable?-sound (cata-call-setup n1 l1 ++ cata-call n1 (n1 +ℕ 1)) refl)
+        (cata-body-stable l1 (l1 +ℕ 1) bb at sat)
 
   cata-trace-nat-stable : ∀ bb n1 l1 at → AllSlotStable at
                         → AllSlotStable (proj₂ (proj₂ (cata-trace-nat bb n1 l1 at)))
   cata-trace-nat-stable bb n1 l1 at sat =
-    ++⁺ (cata-body-stable (suc (suc (suc (suc (suc (suc l1))))))
-                          (suc (suc (suc (suc (suc (suc (suc l1))))))) bb at sat)
-        (all-stable?-sound _ refl)
+    ++⁺ (all-stable?-sound
+           (cata-call-setup (suc (suc n1)) (suc (suc (suc (suc (suc (suc l1)))))) ++
+            (cata-nat-I₁ n1 l1 ++
+             (cata-call (suc (suc n1)) (suc (suc (suc n1))) ++
+              (cata-nat-I₂ n1 l1 ++
+               (cata-call (suc (suc n1)) (suc (suc (suc n1))) ++ cata-nat-I₃ l1))))) refl)
+        (cata-body-stable (suc (suc (suc (suc (suc (suc l1)))))) (suc (suc (suc (suc (suc (suc (suc l1))))))) bb at sat)
 
   cata-trace-linear-stable : ∀ bb n1 l1 at → AllSlotStable at
                            → AllSlotStable (proj₂ (proj₂ (cata-trace-linear bb n1 l1 at)))
   cata-trace-linear-stable bb n1 l1 at sat =
-    ++⁺ (cata-body-stable (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) bb at sat) (all-stable?-sound _ refl)
+    ++⁺ (all-stable?-sound
+           (cata-call-setup (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc l1)))) ++
+            (cata-lin-I₁ n1 l1 ++
+             (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) ++
+              (cata-lin-I₂ n1 l1 ++
+               (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) ++ cata-lin-I₃ l1))))) refl)
+        (cata-body-stable (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) bb at sat)
 
   -- Tier 2 is the one exception: its skeleton splices the two COMPILE-TIME
   -- functor walks, which are stuck on `F`, so the tail still needs the boolean
@@ -288,8 +300,10 @@ module CataIRSlotStable {FS : FrameSemantics} where
   cata-trace-branching-stable : ∀ F bb n1 l1 at → AllSlotStable at
                               → AllSlotStable (proj₂ (proj₂ (cata-trace-branching F bb n1 l1 at)))
   cata-trace-branching-stable F bb n1 l1 at sat =
-    ++⁺ (cata-body-stable bodyL (bodyL +ℕ 1) bb at sat)
-        (all-stable?-sound _ rest-true)
+    ++⁺ (all-stable?-sound (cata-call-setup cl bodyL ++
+                            (cata-br-I₁ F n1 l1 ++
+                             (cata-call cl (cl +ℕ 1) ++ cata-br-I₂ n1 l1))) rest-true)
+        (cata-body-stable bodyL (bodyL +ℕ 1) bb at sat)
     where
       bodyL = l1 +ℕ 4 +ℕ lsize F +ℕ lsize F
       cl    = n1 +ℕ 7 +ℕ (4 *ℕ fsize F) +ℕ 4
@@ -302,7 +316,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
                        refl)))
       rest-true : all-stable? (cata-call-setup cl bodyL ++
                                (cata-br-I₁ F n1 l1 ++
-                                (cata-call cl (cl +ℕ 1) ++ cata-br-I₂ n1 l1))) ≡ true
+                                (cata-call cl (cl +ℕ 1) ++ cata-br-I₂ n1 l1))) ≡ true  -- unchanged: the body moved out from in FRONT of it
       -- both tails spelled out: nested `++` leaves the peel's `ys` ambiguous.
       tail₂ = cata-call cl (cl +ℕ 1) ++ cata-br-I₂ n1 l1
       tail₁ = cata-br-I₁ F n1 l1 ++ tail₂

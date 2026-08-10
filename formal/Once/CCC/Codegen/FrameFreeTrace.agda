@@ -185,12 +185,13 @@ cata-nat-ff : ∀ bb n1 l1 at → FrameFreeTrace at
 -- Arguments spelled out rather than `_`: the composition has to pin where each
 -- block ends, and `at` is a variable, so the splits cannot be inferred.
 cata-nat-ff bb n1 l1 at ff =
-  ++⁺ (cata-body-ff bodyL endL bb at ff)
-      (++⁺ (cata-setup-ff cl bodyL)
-           (++⁺ (nat-I₁-ff n1 l1)
-                (++⁺ (cata-call-ff cl k)
-                     (++⁺ (nat-I₂-ff n1 l1)
-                          (++⁺ (cata-call-ff cl k) (nat-I₃-ff l1))))))
+  ++⁺ (cata-setup-ff cl bodyL)
+      (++⁺ (nat-I₁-ff n1 l1)
+           (++⁺ (cata-call-ff cl k)
+                (++⁺ (nat-I₂-ff n1 l1)
+                     (++⁺ (cata-call-ff cl k)
+                          (++⁺ (nat-I₃-ff l1)
+                               (cata-body-ff bodyL endL bb at ff))))))
   where
     bodyL = suc (suc (suc (suc (suc (suc l1)))))
     endL  = suc (suc (suc (suc (suc (suc (suc l1))))))
@@ -200,17 +201,18 @@ cata-nat-ff bb n1 l1 at ff =
 cata-const-ff : ∀ bb n1 l1 at → FrameFreeTrace at
               → FrameFreeTrace (cata-trace-of (cata-trace-const bb n1 l1 at))
 cata-const-ff bb n1 l1 at ff =
-  ++⁺ (cata-body-ff l1 (l1 + 1) bb at ff)
-      (++⁺ (cata-setup-ff n1 l1) (cata-call-ff n1 (n1 + 1)))
+  ++⁺ (cata-setup-ff n1 l1)
+      (++⁺ (cata-call-ff n1 (n1 + 1)) (cata-body-ff l1 (l1 + 1) bb at ff))
 
 cata-linear-ff : ∀ bb n1 l1 at → FrameFreeTrace at
                → FrameFreeTrace (cata-trace-of (cata-trace-linear bb n1 l1 at))
 cata-linear-ff bb n1 l1 at ff =
-  ++⁺ (cata-body-ff (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) bb at ff)
-      (++⁺ (cata-setup-ff (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc l1)))))
-           (++⁺ lin-I₁
-                (++⁺ (cata-call-ff (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))))
-                     (++⁺ lin-I₂ (++⁺ (cata-call-ff (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1)))))))) lin-I₃)))))
+  ++⁺ (cata-setup-ff (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc l1)))))
+      (++⁺ lin-I₁
+           (++⁺ (cata-call-ff (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))))
+                (++⁺ lin-I₂
+                     (++⁺ (cata-call-ff (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))))
+                          (++⁺ lin-I₃ (cata-body-ff (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) bb at ff))))))
   where
     -- 26: the old witness split as `++⁺ (25 tt) (tt ∷ …)` right before `at`.
     lin-I₁ : FrameFreeTrace _
@@ -226,9 +228,9 @@ cata-branching-ff : ∀ F bb n1 l1 at → FrameFreeTrace at
                   → FrameFreeTrace (cata-trace-of (cata-trace-branching F bb n1 l1 at))
 -- Tier 2 splices once, so it has ONE call site.
 cata-branching-ff F bb n1 l1 at ff =
-  ++⁺ (cata-body-ff bodyL (bodyL + 1) bb at ff)
-      (++⁺ (cata-setup-ff cl bodyL)
-           (++⁺ I₁ (++⁺ (cata-call-ff cl (cl + 1)) I₂)))
+  ++⁺ (cata-setup-ff cl bodyL)
+      (++⁺ I₁ (++⁺ (cata-call-ff cl (cl + 1))
+                   (++⁺ I₂ (cata-body-ff bodyL (bodyL + 1) bb at ff))))
   where
     bodyL = l1 + 4 + lsize F + lsize F
     cl    = n1 + 7 + (4 * fsize F) + 4
