@@ -30,12 +30,14 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Π; renTy; renTm; subTy; subTm )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
+        ; _⟶*_; done; step; natrec-zero; ξ-appˡ
         ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; _⊢ty_
         ; ty-Nat; ty-Hom; ty-El; ty-Π
         ; _≅ᵀ_; csymᵀ; ctrnᵀ
         ; _⟶_; β; ξ-nsuc; ξ-Homˡ; ξ-Homʳ )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBExamplesDiv
   using ( monusTm; monusStep; ⊢monus; ⊢div-descend )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( reflTm )
@@ -189,3 +191,33 @@ divC = amrecTm
 ⊢divC-at : {m : RTm ⌊ Γ₃ ⌋} → Γ₃ ⊢ m ∷ El cAt →
            Γ₃ ⊢ app divC m ∷ El (app cPt m)
 ⊢divC-at dm = ⊢amrecPt dm
+
+------------------------------------------------------------------------
+-- ★★ AND IT COMPUTES.  Type-correct is not the same as "is div" — this
+--    session found `⊢gcd-descend` certifying a recursion that is NOT gcd,
+--    so the same standard applies here.
+--
+-- ⚠ NOTE: the RAW `⊢div` has never been evaluated either.  There is no
+--   `div-computes` anywhere in the POC — only `monus-computes` — so
+--   ARCHITECTURE's "a closed, well-typed DIVISION" rests on types alone,
+--   exactly the standard this file used to meet.  The debt was the
+--   project's, not just this file's.
+------------------------------------------------------------------------
+
+-- the step's ZERO equation: `div 0 = 0`, whatever the IH is.
+div-step-zero : (ih : RTm ⌊ Γ₃ ⌋) → app (app divStp nzero) ih ⟶* nzero
+div-step-zero ih =
+  step (ξ-appˡ (β _ nzero))
+    (step (ξ-appˡ (natrec-zero _ _))
+      (step (β _ ih) done))
+
+-- ★ END TO END, through `⊢amrecΠ`'s whole machinery: the outer lam, the
+--   measure's β-redex, the bounded auxiliary's `natrec` on the bound, the
+--   zero branch, and the step.  `div 0 ⟶* 0`.
+divC-computes-zero : app divC nzero ⟶* nzero
+divC-computes-zero =
+  step (β _ nzero)
+    (⟶*-trans (⟶*-appˡ (⟶*-appˡ (⟶*-natrecⁿ (step (β _ nzero) done))))
+      (⟶*-trans (⟶*-appˡ (⟶*-appˡ (step (natrec-zero _ _) done)))
+        (⟶*-trans (⟶*-appˡ (step (β _ nzero) done))
+          (step (β _ _) (div-step-zero _)))))
