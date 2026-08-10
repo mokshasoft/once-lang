@@ -13,7 +13,10 @@
 -- use site costs nothing before the real `div` step goes in.  What it
 -- measures is exactly the boilerplate a caller pays.
 --
--- ⚠ Not `div` yet — `divStp` below returns 0 for everything.
+-- ⚠ THE STEP IS THE ONLY CONTENT.  Everything the bounded auxiliary used
+--   to require — divAuxMot/divZBr/divInnerMot/divSBr/⊢divAux — is now
+--   supplied by `⊢amrecΠ`.  What is left is the algorithm itself: split
+--   the dividend, test `m ∸ k`, recurse once with `⊢div-descend`.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -23,15 +26,21 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; El; Hom; Nat; U
-        ; RTm; var; nzero; nsuc; lam; app
+        ; RTm; var; nzero; nsuc; natrec; lam; app
         ; Π; renTy; renTm; subTy; subTm )
 open import poc.OCP0009.NbEPDirDBType
-  using ( Ctx; ◇; _▹_; ⌊_⌋
-        ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc
+  using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
+        ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; _⊢ty_
         ; ty-Nat; ty-Hom; ty-El; ty-Π
-        ; _≅ᵀ_; csymᵀ )
+        ; _≅ᵀ_; csymᵀ; ctrnᵀ
+        ; _⟶_; β; ξ-nsuc; ξ-Homˡ; ξ-Homʳ )
+open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import poc.OCP0009.NbEPDirDBExamplesDiv
+  using ( monusTm; monusStep; ⊢monus; ⊢div-descend )
+open import poc.OCP0009.NbEPDirDBExamplesStrong using ( reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesLexC using ( w; rec1T )
+open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBExamplesAmrecC using ( aStepT; module AmΠ )
 -- ★ the ℕ-carrier instantiation package, reused verbatim from the
 --   instantiation spike — the data are CONTEXT-POLYMORPHIC, so the same
@@ -51,24 +60,115 @@ open import poc.OCP0009.SpikeAmrecInst
 --   is the pay-off of making them context-polymorphic.
 ------------------------------------------------------------------------
 
-⊢ihT : {Γ : Ctx} → (Γ ▹ El cAt) ⊢ty rec1T (w cAt) (w cPt) (w μt) (var vz)
-⊢ihT =
+-- ★ ONE lemma covers every IH type the file needs, at any `x`.
+⊢ihTat : {Γ : Ctx} {x : RTm ⌊ Γ ⌋} → Γ ⊢ x ∷ El cAt → Γ ⊢ty rec1T cAt cPt μt x
+⊢ihTat dx =
   ty-Π (ty-El dcA)
-    (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢app dμ (⊢var here)))
-                         (⊢app dμ (⊢var (there here))))
+    (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢app dμ (⊢var here))) (⊢app dμ (⊢wk dx)))
           (ty-El (⊢app dcP (⊢var (there here)))))
 
+-- `nzero` and `nsuc _` as carrier elements: the carrier IS ℕ, one conv.
+asA : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ Nat → Γ ⊢ t ∷ El cAt
+asA dt = ⊢conv dt (csymᵀ elNat)
+
+⊢ihT : {Γ : Ctx} → (Γ ▹ El cAt) ⊢ty rec1T cAt cPt μt (var vz)
+⊢ihT = ⊢ihTat (⊢var here)
+
 ------------------------------------------------------------------------
--- the STUB step: ignores both the argument and the IH.
+-- ★ THE β TAX, in full.  The instantiated measure is `lam (var vz)`, so
+--   `app μt t` is a β-REDEX, not `t`.  Two named conversions cover every
+--   use, and they are the only cost the ℕ-carrier package imposes.
 ------------------------------------------------------------------------
 
+homμ : {Γ : Cx} (a b : RTm Γ) →
+       Hom Nat (nsuc (app μt a)) (app μt b) ≅ᵀ Hom Nat (nsuc a) b
+homμ a b =
+  red→≅ᵀ (stepᵀ (ξ-Homˡ (ξ-nsuc (β (var vz) a)))
+                (stepᵀ (ξ-Homʳ (β (var vz) b)) doneᵀ))
+
+------------------------------------------------------------------------
+-- THE STEP — the whole of `div`.
+--
+--   div m = case m of
+--     0     → 0
+--     suc j → case (suc j) ∸ k of        -- k is the divisor's predecessor
+--       0     → 0                        -- suc j < suc k
+--       suc _ → suc (ih (j ∸ k) ⊢div-descend)
+--
+-- ⚠ THE DIVIDEND MUST BE SPLIT FIRST, before the test: the descent
+--   `j ∸ k < suc j` holds UNCONDITIONALLY once `m = suc j` is known,
+--   whereas `m ∸ suc k < m` needs `m > 0`, which the test does not give
+--   in a form the types can use.  Same reason `⊢div` splits first.
+--
+-- ★ THE MOTIVE ABSTRACTS THE IH.  `ih`'s type mentions `x`, so splitting
+--   `x` must carry it: the motive is `λ x. IH(x) → P x`, and the branches
+--   take the IH as an argument.  This is `⊢div`'s own trick (there it
+--   carried the `≤` premise) and needs nothing new.
+------------------------------------------------------------------------
+
+divMot : RTy (⌊ Γ₃ ⌋ ∙ ∙)
+divMot = Π (rec1T cAt cPt μt (var vz)) (El (app cPt (var (vs vz))))
+
+⊢divMot : ((Γ₃ ▹ El cAt) ▹ Nat) ⊢ty divMot
+⊢divMot =
+  ty-Π (ty-Π (ty-El dcA)
+             (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢app dμ (⊢var here)))
+                                  (⊢app dμ (⊢conv (⊢var (there here)) (csymᵀ elNat))))
+                   (ty-El (⊢app dcP (⊢var (there here))))))
+       (ty-El (⊢app dcP (⊢conv (⊢var (there here)) (csymᵀ elNat))))
+
+-- m = 0: the quotient is 0, and the IH is discarded.
+divZ : RTm (⌊ Γ₃ ⌋ ∙)
+divZ = lam nzero
+
+⊢divZ : (Γ₃ ▹ El cAt) ⊢ divZ ∷ subTy (single nzero) divMot
+⊢divZ = ⊢lam (⊢ihTat (asA ⊢nzero)) (⊢conv ⊢nzero (csymᵀ (elCP nzero)))
+
+-- m = suc j: test, then one recursive call at `j ∸ k`.
+divS : RTm (⌊ Γ₃ ⌋ ∙ ∙ ∙)
+divS =
+  lam (natrec nzero
+        (nsuc (app (app (var (vs (vs vz))) (monusTm (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs (vs (vs (vs vz)))))))))
+                   (natrec (reflTm (var (vs (vs (vs (vs vz)))))) (monusStep (vs (vs (vs (vs vz))))) (var (vs (vs (vs (vs (vs (vs vz))))))))))
+        (monusTm (nsuc (var (vs (vs vz)))) (var (vs (vs (vs (vs vz)))))))
+
+-- the inner test's motive is CONSTANT in the test variable — the result
+-- is `P (suc j)` either way.
+divSMot : RTy (⌊ Γ₃ ⌋ ∙ ∙ ∙ ∙ ∙)
+divSMot = El (app cPt (nsuc (var (vs (vs (vs vz))))))
+
+⊢divSMot : (((((Γ₃ ▹ El cAt) ▹ Nat) ▹ divMot)
+              ▹ rec1T cAt cPt μt (nsuc (var (vs vz)))) ▹ Nat) ⊢ty divSMot
+⊢divSMot =
+  ty-El (⊢app dcP (⊢conv (⊢nsuc (⊢var (there (there (there here))))) (csymᵀ elNat)))
+
+⊢divS : (((Γ₃ ▹ El cAt) ▹ Nat) ▹ divMot) ⊢ divS ∷ subTy nrs divMot
+⊢divS =
+  ⊢lam ⊢ihTS
+    (⊢natrec ⊢divSMot
+      (⊢conv ⊢nzero (csymᵀ (elCP (nsuc (var (vs (vs vz)))))))
+      (⊢conv (⊢nsuc (⊢conv (⊢app (⊢app (⊢var (there (there here))) dArg) dDesc)
+                           (elCP (monusTm (var (vs (vs (vs (vs vz)))))
+                                          (var (vs (vs (vs (vs (vs (vs vz)))))))))))
+             (csymᵀ (elCP (nsuc (var (vs (vs (vs (vs vz))))))))) 
+      (⊢monus (⊢nsuc (⊢var (there (there here)))) (⊢var (there (there (there (there here)))))))
+  where
+    ⊢ihTS = ⊢ihTat (asA (⊢nsuc (⊢var (there here))))
+    dj = ⊢var (there (there (there (there here))))
+    dk = ⊢var (there (there (there (there (there (there here))))))
+    dArg = asA (⊢monus dj dk)
+    dDesc =
+      ⊢conv (⊢div-descend dj dk)
+            (csymᵀ (homμ (monusTm (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs (vs (vs (vs vz))))))))
+                         (nsuc (var (vs (vs (vs (vs vz))))))))
+
 divStp : RTm ⌊ Γ₃ ⌋
-divStp = lam (lam nzero)
+divStp = lam (natrec divZ divS (var vz))
 
 ⊢divStp : Γ₃ ⊢ divStp ∷ aStepT cAt cPt μt
 ⊢divStp =
   ⊢lam (ty-El dcA)
-    (⊢lam ⊢ihT (⊢conv ⊢nzero (csymᵀ (elCP (var (vs vz))))))
+    (⊢natrec ⊢divMot ⊢divZ ⊢divS (⊢conv (⊢var here) elNat))
 
 ------------------------------------------------------------------------
 -- ★★ THE USE SITE.  One `open`, and the recursor exists as a CLOSED
