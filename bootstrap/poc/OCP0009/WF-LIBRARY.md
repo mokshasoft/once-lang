@@ -99,7 +99,7 @@ derive one.
 --------------------------------------------------------------------------
 ## OPEN
 
-### D4 — The β TAX: motive and measure as object-language FUNCTIONS ✅ (combinator done; use-site measurement outstanding)
+### D4 — The β TAX: motive and measure as object-language FUNCTIONS ✅ MEASURED
 
 `aStepT` demands `cP : Π (El cA) U` and `μ : Π (El cA) Nat`. β is a
 REDUCTION in this kernel, not Agda computation, so **every use of the
@@ -233,7 +233,33 @@ what will fix it. Extract once, after D4 settles.
 | use site | result |
 |---|---|
 | `SpikeAmrecInst` | instantiation is cheap: 43 lines, green first try. But `⊢amrec` still uncallable (D2) |
-| `SpikeDivC` | plumbing ~8 lines, one `open`. Algorithm 50 lines vs raw `⊢div`'s 75 |
+| `SpikeDivC` | plumbing ~8 lines, one `open`. 113 lines total, **12 conversions** |
+| `SpikeDivT` | **72 lines total, 4 conversions** — 3.4 s / 0.41 GB cold |
+
+★★ **D4 MEASURED AT THE USE SITE — `SpikeDivT` against `SpikeDivC`, same
+function, same kernel:**
+
+| | SpikeDivC | SpikeDivT |
+|---|---|---|
+| conversions in the algorithm | 4 `elCP`, 4 `elNat`, 3 `asA`, 1 `homμ` = **12** | 3 `asP`, 1 `elNat` = **4** |
+| non-comment lines | 113 | **72** |
+| instantiation data | `⌜Nat⌝`, `lam ⌜Nat⌝`, `lam (var vz)` + 3 `⊢lam` derivations | `Nat`, `⌜Nat⌝`, `var vz` + `ty-Nat`, `⊢⌜Nat⌝`, `⊢var here` |
+| the natrec scrutinee | `⊢conv (⊢var here) elNat` | `⊢var here` |
+| the case-split motive | needed `rec1T-sub` fits | **`subTy (single x)` is DEFINITIONAL** — no fitting lemma |
+| the inner test's motive | mentions `app cPt (nsuc j)` | constant `El ⌜Nat⌝` |
+| the descent | `⊢div-descend` + a `homμ` cast | **`⊢div-descend`, unchanged** |
+| the pointwise form | one `⊢-cast` | **none** |
+
+⚠ **The 4 that remain are irreducible, not residue.** `⊢absurd` is
+code-indexed, so `P x` must be `El ⌜Nat⌝` and every `Nat` result crosses
+once. Getting below 4 would need a kernel change to ex falso — which the
+kernel argues against for inversion reasons (see D4's note).
+
+⚠ **And 72 lines is still not below raw `⊢div`'s 75.** The combinator now
+costs essentially nothing at the use site, but div's own case analysis is
+what the file is, and no measure-recursion combinator removes that. The
+right reading of 113 → 72 is that D4 removed the *interface's* overhead,
+not that the abstraction beats hand-rolling for this particular function.
 
 **⛔ The div A/B is NOT a win on lines: 99 total against 75 raw.** It buys
 one `natrec` NESTING LEVEL — 10 definitions against 16, one motive and two
