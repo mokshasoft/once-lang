@@ -1499,7 +1499,13 @@ curry-locate H body ℓ bb e a b' st p idle ls natl we = go (split-pos H p)
 segagree-curry : ∀ (H body : AbstractTrace) (ℓ : LabelId) (bb : ℕ) (e : LabelId) (a b' c d : ℕ)
                → seg-idle? H ≡ true → LabelsIn a b' H
                → (∀ s → seg-fold body s ≡ s) → SegAgree body → LabelsIn c d body
-               → (a ≤ idx e) × (idx e < b') → b' ≤ c
+               -- D099 / C1: was `b' ≤ c` — "the body's window sits ABOVE the
+               -- prefix's". True for `curry` (its two labels are allocated
+               -- first, the body after) and FALSE for the cata, which generates
+               -- its algebra FIRST and its own labels after. Only DISJOINTNESS
+               -- is ever needed, so that is what it asks for now: `curry`
+               -- passes `inj₁`, the cata `inj₂`.
+               → (a ≤ idx e) × (idx e < b') → (b' ≤ c) ⊎ (d ≤ a)
                → SegAgree (H ++ instr-ctrl (c-thunk ℓ bb) ∷
                            (body ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label e) ∷ []))
 segagree-curry H body ℓ bb e a b' c d idle ls natl saB lsB we b'≤c p q m st mq lq =
@@ -1512,7 +1518,11 @@ segagree-curry H body ℓ bb e a b' c d idle ls natl saB lsB we b'≤c p q m st 
     none-absurd : ∀ {A : Set} → nothing ≡ just m → A
     none-absurd ()
     clash : (a ≤ idx m) × (idx m < b') → (c ≤ idx m) × (idx m < d) → ⊥
-    clash wO wB = <-asym (proj₂ wO) (≤-trans b'≤c (proj₁ wB))
+    clash wO wB = disj wO wB
+      where disj : _ → _ → ⊥
+            disj w1 w2 with b'≤c
+            ... | inj₁ le = <-asym (proj₂ w1) (≤-trans le (proj₁ w2))
+            ... | inj₂ le = <-asym (proj₂ w2) (≤-trans le (proj₁ w1))
     go : CurryLoc H body ℓ bb e a b' st p → CurryLoc H body ℓ bb e a b' st q → _
     go (cl-mark nq) _ = none-absurd (trans (sym nq) mq)
     go _ (cl-mark nq) = none-absurd (trans (sym nq) lq-men)
@@ -1573,7 +1583,7 @@ seg-agree (curry bd Stack) n l =
           li-lab refl (n≤1+n l) ≤-refl ∷ [])
     (λ s → ok-neu (slots-below bd 0 (suc (suc l))) s)
     (seg-agree bd 0 (suc (suc l))) (labels-in bd 0 (suc (suc l)))
-    (n≤1+n l , ≤-refl) ≤-refl
+    (n≤1+n l , ≤-refl) (inj₁ ≤-refl)
 seg-agree (curry bd Heap)  n l =
   segagree-curry _ _ (ℓ o l) _ (ℓ o (suc l)) l (suc (suc l)) (suc (suc l)) _
     refl (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
@@ -1581,7 +1591,7 @@ seg-agree (curry bd Heap)  n l =
           li-lab refl (n≤1+n l) ≤-refl ∷ [])
     (λ s → ok-neu (slots-below bd 0 (suc (suc l))) s)
     (seg-agree bd 0 (suc (suc l))) (labels-in bd 0 (suc (suc l)))
-    (n≤1+n l , ≤-refl) ≤-refl
+    (n≤1+n l , ≤-refl) (inj₁ ≤-refl)
 seg-agree apply n l =
   segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
      refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
