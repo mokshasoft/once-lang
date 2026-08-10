@@ -1,14 +1,12 @@
 ------------------------------------------------------------------------
--- ⚠⚠ CURRENTLY **RED**.  Green through the ZERO branch and the successor
---   branch's REASSOCIATIONS (commit c7953033); `⊢ihS` below is in flight.
+-- ⚠ PARTIAL: both branches and `⊢aAux` are GREEN.  Still to come: the Π
+--   form, D7's unfolding lemma, and the SpikeDivC rewrite that measures
+--   the use-site saving.
 --
---   LAST ERROR: at the `⊢lam1` context a subject `wᶠ (wᶠ m)` is expected
---   and a `⊢wk`-headed term is supplied — i.e. a family is being weakened
---   with plain `vs` where it needs `ren-lemma … (Ren⊢-ext there)`.  THIS
---   one really is P1 (a family moved under a renaming), unlike the zero
---   branch's error which I misdiagnosed as P1 and which turned out to be
---   swapped μ arguments.  The fix is in `dmXS`/`dDesc`'s weakenings, not
---   in the design.
+-- ⚠ P1 IN PRACTICE: use `⊢wkᶠ` for a FAMILY, `⊢wk` for a term — they
+--   produce terms that look interchangeable and are not.  But note both of
+--   the successor branch's real bugs were the weakening COUNT, not the
+--   kind; the helper makes the choice visible, not the arithmetic right.
 --
 -- ★ THE DESIGN RISK IS RETIRED.  `⊢absurd` is CODE-indexed, so the whole
 --   D4 shape depended on the vacuous branch's ex-falso result type landing
