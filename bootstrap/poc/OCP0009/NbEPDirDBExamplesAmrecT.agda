@@ -1,24 +1,13 @@
 ------------------------------------------------------------------------
--- ⚠⚠⚠ WIP — THIS MODULE IS CURRENTLY **RED**.  Everything up to and
---     including `aIHT-fit`, `⊢aAuxMot`, `mot-at`, `mot-s` and `stp-w²` is
---     green (that state is commit 7b90c811).  The ZERO BRANCH below is in
---     flight and does not typecheck.
+-- ⚠ PARTIAL: the ZERO branch is green, the SUCCESSOR branch is not yet
+--   written.  `⊢aAux`, the Π form and D7's unfolding lemma follow it.
 --
---     LAST ERROR, for whoever picks this up: `⊢strong-base'`'s `k` is
---     inferred from the `lt` variable's type, and Agda expects the subject
---     `wᶠ (wᶠ (wᶠ m))` where `⊢wk dmY` supplies `w (wᶠ (wᶠ m))`.  So the
---     IH's measure argument is being weakened with `extR vs` where the
---     branch supplies plain `vs` — i.e. ANOTHER instance of P1 (moving a
---     family under a renaming), and it needs the `ren-wᶠ` bridge rather
---     than `⊢wk`.  That is a fix in the branch, not in the design.
---
---     ★ NOTHING ABOUT D4's CLAIM IS IN DOUBT FROM THIS: the types carry
---       zero `app`s, `aAuxB-sub` peels twice, `aIHT-fit` is one lemma, and
---       `⊢absurd`'s code-indexing lines up (`ihZ`'s ex-falso result type
---       IS the IH slot's `El (w (wᶠ (wᶠ cM)))`, no conversion).  What is
---       unfinished is de Bruijn bookkeeping in one branch.
+-- ★ THE DESIGN RISK IS RETIRED.  `⊢absurd` is CODE-indexed, so the whole
+--   D4 shape depended on the vacuous branch's ex-falso result type landing
+--   exactly on the IH slot.  It does: `ihZ`'s type is literally the slot's
+--   `El (w (wᶠ (wᶠ cM)))`, with NO conversion.  Keeping the motive a code
+--   FAMILY rather than an `RTy` family is what buys that.
 ------------------------------------------------------------------------
-
 ------------------------------------------------------------------------
 -- OCP-0009 — ★★ MEASURE RECURSION, D4: CARRIER AS A TYPE, MOTIVE AND
 -- MEASURE AS FAMILIES.  The β-tax fix.
@@ -291,7 +280,7 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
   ------------------------------------------------------------------------
 
   ihZ : RTm (⌊ Δ ⌋ ∙ ∙)
-  ihZ = lam (lam (absurd (w (wᶠ (wᶠ cM))) (ordtr (nsuc (wᶠ (wᶠ (wᶠ m)))) (w (wᶠ (wᶠ m))) nzero (var vz) (var (vs (vs vz))))))
+  ihZ = lam (lam (absurd (w (wᶠ (wᶠ cM))) (ordtr (nsuc (w (wᶠ (wᶠ m)))) (w (w (w m))) nzero (var vz) (var (vs (vs vz))))))
 
   aZBr : RTm ⌊ Δ ⌋
   aZBr = lam (lam (app (app (w (w stp)) (var (vs vz))) ihZ))
@@ -311,13 +300,17 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
   ⊢ihZ =
     ⊢lam (ren-ty (ren-ty dA there) there)
       (⊢lam (ty-Hom ty-Nat (⊢nsuc dmY) dmX)
-        (⊢strong-base' dC dmY' dmX' (⊢var here) (⊢var (there (there here)))))
+        (⊢strong-base' dC dmY' dmX' dlt (⊢var (there (there here)))))
     where
       dmY = ren-lemma (ren-lemma dm (Ren⊢-ext there)) (Ren⊢-ext there)
-      dmX = subst (λ z → _ ⊢ z ∷ Nat) (sym (cong w (wᶠ²-single m))) (⊢wk (⊢wk dm))
+      dmX = subst (λ z → (((Δ ▹ A) ▹ Hom Nat m (w nzero)) ▹ renTy vs (renTy vs A)) ⊢ z ∷ Nat)
+                  (sym (cong w (wᶠ²-single m))) (⊢wk (⊢wk dm))
       dmY' = ⊢wk dmY
-      dmX' = ⊢wk dmX
+      dmX' = ⊢wk (⊢wk (⊢wk dm))
       dC = ⊢wk (ren-lemma (ren-lemma dcM (Ren⊢-ext there)) (Ren⊢-ext there))
+      dlt = ⊢-cast (cong (λ z → Hom Nat (nsuc (w (wᶠ (wᶠ m)))) (w (w z)))
+                         (wᶠ²-single m))
+                   (⊢var here)
 
   ⊢aZBr : Δ ⊢ aZBr ∷ subTy (single nzero) aAuxMot
   ⊢aZBr =
