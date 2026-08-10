@@ -1,4 +1,25 @@
 ------------------------------------------------------------------------
+-- ⚠⚠⚠ WIP — THIS MODULE IS CURRENTLY **RED**.  Everything up to and
+--     including `aIHT-fit`, `⊢aAuxMot`, `mot-at`, `mot-s` and `stp-w²` is
+--     green (that state is commit 7b90c811).  The ZERO BRANCH below is in
+--     flight and does not typecheck.
+--
+--     LAST ERROR, for whoever picks this up: `⊢strong-base'`'s `k` is
+--     inferred from the `lt` variable's type, and Agda expects the subject
+--     `wᶠ (wᶠ (wᶠ m))` where `⊢wk dmY` supplies `w (wᶠ (wᶠ m))`.  So the
+--     IH's measure argument is being weakened with `extR vs` where the
+--     branch supplies plain `vs` — i.e. ANOTHER instance of P1 (moving a
+--     family under a renaming), and it needs the `ren-wᶠ` bridge rather
+--     than `⊢wk`.  That is a fix in the branch, not in the design.
+--
+--     ★ NOTHING ABOUT D4's CLAIM IS IN DOUBT FROM THIS: the types carry
+--       zero `app`s, `aAuxB-sub` peels twice, `aIHT-fit` is one lemma, and
+--       `⊢absurd`'s code-indexing lines up (`ihZ`'s ex-falso result type
+--       IS the IH slot's `El (w (wᶠ (wᶠ cM)))`, no conversion).  What is
+--       unfinished is de Bruijn bookkeeping in one branch.
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
 -- OCP-0009 — ★★ MEASURE RECURSION, D4: CARRIER AS A TYPE, MOTIVE AND
 -- MEASURE AS FAMILIES.  The β-tax fix.
 --
@@ -37,7 +58,7 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBExamplesAmrecT where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; Ren
         ; RTy; El; Hom; Nat; U
@@ -161,6 +182,21 @@ wᶠ-nrs t =
     ren-sub' : (u : RTm _) → renTm _ u ≡ subTm (λ x → var _) u
     ren-sub' u = trans (cong (renTm _) (sym (subTm-id u))) (renTm-subTm u)
 
+-- ⚠ bridge: the family under TWO `extR vs` then `single (var (vs vz))`
+--   collapses to a single weakening.  This is the spine's cancellation.
+wᶠ²-single : {Γ : Cx} (t : RTm (Γ ∙)) →
+             subTm (single (var (vs vz))) (wᶠ (wᶠ t)) ≡ w t
+wᶠ²-single t =
+  trans (subTm-renTm (wᶠ t))
+        (trans (subTm-renTm t)
+               (trans (subTm-cong bridge t) (sym (ren-sub'' t))))
+  where
+    bridge : ∀ x → _
+    bridge vz     = refl
+    bridge (vs x) = refl
+    ren-sub'' : (u : RTm _) → renTm vs u ≡ subTm (λ x → var (vs x)) u
+    ren-sub'' u = trans (cong (renTm vs) (sym (subTm-id u))) (renTm-subTm u)
+
 -- the renaming twins the step's reassociation needs
 ren-wTy : {Γ Δ : Cx} {ρ : Ren Γ Δ} (T : RTy Γ) →
           renTy (extR ρ) (renTy vs T) ≡ renTy vs (renTy ρ T)
@@ -191,6 +227,17 @@ aStepT-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (A : RTy Γ) (cM m : RTm (Γ ∙)) �
 aStepT-ren {ρ = ρ} A cM m =
   cong₂ (λ r c → Π (renTy ρ A) (Π r (El c)))
         (aIHT-ren A cM m) (ren-w {ρ = extR ρ} cM)
+
+-- ★★ THE FITTING LEMMA, and it is the ONLY one an ⊢app argument needs.
+--    Applying the step to `x` instantiates the IH's `μ x` slot; with the
+--    measure pre-applied that slot is just `subTm (single x) m`, and the
+--    other three arguments peel with the family lemmas.
+aIHT-fit : {Γ : Cx} {X : RTm Γ} (A : RTy Γ) (cM m : RTm (Γ ∙)) →
+           subTy (single X) (aIHT A cM m)
+         ≡ aIHTat A cM m (subTm (single X) m)
+aIHT-fit {X = X} A cM m =
+  cong₄ aIHTat' (wk-singleTy A) (wᶠ-single m) (sub-w m)
+        (trans (sub-w {σ = extS (single X)} (wᶠ cM)) (cong w (wᶠ-single cM)))
 
 ------------------------------------------------------------------------
 -- THE COMBINATOR, over an arbitrary ambient context.
@@ -227,13 +274,58 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
     trans (aAuxB-sub {σ = nrs} (renTy vs A) (wᶠ cM) (wᶠ m) (var vz))
           (cong₄ aAuxB (nrs-wTy A) (wᶠ-nrs cM) (wᶠ-nrs m) refl)
 
--- ★★ THE FITTING LEMMA, and it is the ONLY one an ⊢app argument needs.
---    Applying the step to `x` instantiates the IH's `μ x` slot; with the
---    measure pre-applied that slot is just `subTm (single x) m`, and the
---    other three arguments peel with the family lemmas.
-aIHT-fit : {Γ : Cx} {X : RTm Γ} (A : RTy Γ) (cM m : RTm (Γ ∙)) →
-           subTy (single X) (aIHT A cM m)
-         ≡ aIHTat A cM m (subTm (single X) m)
-aIHT-fit {X = X} A cM m =
-  cong₄ aIHTat' (wk-singleTy A) (wᶠ-single m) (sub-w m)
-        (trans (sub-w {σ = extS (single X)} (wᶠ cM)) (cong w (wᶠ-single cM)))
+  ------------------------------------------------------------------------
+  -- the ⊢wk'd step, reassociated (the obstruction every branch hits)
+  ------------------------------------------------------------------------
+
+  stp-w² : renTy vs (renTy vs (aStepT A cM m))
+         ≡ aStepT (renTy vs (renTy vs A)) (wᶠ (wᶠ cM)) (wᶠ (wᶠ m))
+  stp-w² = trans (cong (renTy vs) (aStepT-ren A cM m))
+                 (aStepT-ren (renTy vs A) (wᶠ cM) (wᶠ m))
+
+  ------------------------------------------------------------------------
+  -- n = 0: `μ x ≤ 0` kills every recursive call, so the IH is EX FALSO.
+  -- ★ this is where `⊢absurd`'s CODE-indexing is exercised: the motive is
+  --   a code FAMILY, so the ex-falso result type `El c` is exactly the
+  --   `El (w cM'')` the IH slot wants — no conversion.
+  ------------------------------------------------------------------------
+
+  ihZ : RTm (⌊ Δ ⌋ ∙ ∙)
+  ihZ = lam (lam (absurd (w (wᶠ (wᶠ cM))) (ordtr (nsuc (wᶠ (wᶠ (wᶠ m)))) (w (wᶠ (wᶠ m))) nzero (var vz) (var (vs (vs vz))))))
+
+  aZBr : RTm ⌊ Δ ⌋
+  aZBr = lam (lam (app (app (w (w stp)) (var (vs vz))) ihZ))
+
+  -- the spine's cancellation: w (wᶠ (wᶠ cM)) peeled by the two ⊢apps
+  cancelZ : subTm (single ihZ) (subTm (extS (single (var (vs vz)))) (w (wᶠ (wᶠ cM))))
+          ≡ w cM
+  cancelZ =
+    trans (cong (subTm (single ihZ))
+                (trans (sub-w {σ = single (var (vs vz))} (wᶠ (wᶠ cM)))
+                       (cong w (wᶠ²-single cM))))
+          (wk-single {v = ihZ} (w cM))
+
+  ⊢ihZ : (((Δ ▹ A) ▹ Hom Nat m (w nzero))) ⊢ ihZ
+       ∷ aIHTat (renTy vs (renTy vs A)) (wᶠ (wᶠ cM)) (wᶠ (wᶠ m))
+                (subTm (single (var (vs vz))) (wᶠ (wᶠ m)))
+  ⊢ihZ =
+    ⊢lam (ren-ty (ren-ty dA there) there)
+      (⊢lam (ty-Hom ty-Nat (⊢nsuc dmY) dmX)
+        (⊢strong-base' dC dmY' dmX' (⊢var here) (⊢var (there (there here)))))
+    where
+      dmY = ren-lemma (ren-lemma dm (Ren⊢-ext there)) (Ren⊢-ext there)
+      dmX = subst (λ z → _ ⊢ z ∷ Nat) (sym (cong w (wᶠ²-single m))) (⊢wk (⊢wk dm))
+      dmY' = ⊢wk dmY
+      dmX' = ⊢wk dmX
+      dC = ⊢wk (ren-lemma (ren-lemma dcM (Ren⊢-ext there)) (Ren⊢-ext there))
+
+  ⊢aZBr : Δ ⊢ aZBr ∷ subTy (single nzero) aAuxMot
+  ⊢aZBr =
+    ⊢-cast (sym (mot-at nzero))
+      (⊢lam dA
+        (⊢lam (ty-Hom ty-Nat dm ⊢nzero)
+          (⊢-cast (cong El cancelZ)
+            (⊢app (⊢app (⊢-cast stp-w² (⊢wk (⊢wk dstp))) (⊢var (there here)))
+                  (⊢-cast (sym (aIHT-fit (renTy vs (renTy vs A)) (wᶠ (wᶠ cM)) (wᶠ (wᶠ m))))
+                          ⊢ihZ)))))
+
