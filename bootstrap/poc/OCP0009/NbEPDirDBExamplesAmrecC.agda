@@ -54,8 +54,8 @@ open import poc.OCP0009.NbEPDirDBExamplesOrd using ( ⊢strong-base'; ⊢strong-
 --   `rec1T` IS this combinator's IH type, and `sub-w`/`ren-w`/`cong₄` are
 --   the whole toolkit.  Nothing new was needed here.
 open import poc.OCP0009.NbEPDirDBExamplesLexC
-  using ( w; cong₄; cong₆; sub-w; sub-w²; sub-w³; ren-w; ren-w²; ren-w³
-        ; nrs-w; rec1T; rec1T'; rec1T-sub; rec1T-ren )
+  using ( w; cong₄; sub-w; sub-w²; ren-w; ren-w²
+        ; nrs-w; rec1T; rec1T-sub; rec1T-ren )
 
 ------------------------------------------------------------------------
 -- THE TYPES, as combinators over the data.
