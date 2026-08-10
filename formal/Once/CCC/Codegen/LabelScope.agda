@@ -288,10 +288,10 @@ cata-nat-ls : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → Lab
                        (cata-trace-of (cata-dispatch strat-nat bb n1 l1 at))
 -- C1: `cata-body ++ setup ++ I₁ ++ call ++ I₂ ++ call ++ I₃`.
 cata-nat-ls lo bb n1 l1 at lo≤l1 atls =
-  ++⁺ (cata-body-ls lo hi bodyL endL _ at at' L7 H7)
-   (++⁺ (cata-setup-ls lo hi _ bodyL)
-    (++⁺ I₁ (++⁺ (cata-call-ls lo hi _ _)
-     (++⁺ I₂ (++⁺ (cata-call-ls lo hi _ _) I₃)))))
+  ++⁺ (cata-setup-ls lo hi _ bodyL)
+   (++⁺ I₁ (++⁺ (cata-call-ls lo hi _ _)
+    (++⁺ I₂ (++⁺ (cata-call-ls lo hi _ _)
+     (++⁺ I₃ (cata-body-ls lo hi bodyL endL _ at at' L7 H7))))))
   where
     hi = suc (suc (suc (suc (suc (suc (suc (suc l1)))))))
     bodyL = suc (suc (suc (suc (suc (suc l1)))))
@@ -369,10 +369,10 @@ cata-linear-ls : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → 
 -- C1: same block order as nat. Linear's window grows from four labels to six
 -- (the body and its jump-over join).
 cata-linear-ls lo bb n1 l1 at lo≤l1 atls =
-  ++⁺ (cata-body-ls lo hi (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) _ at at' L5 H5)
-   (++⁺ (cata-setup-ls lo hi _ (suc (suc (suc (suc l1)))))
-    (++⁺ I₁ (++⁺ (cata-call-ls lo hi _ _)
-     (++⁺ I₂ (++⁺ (cata-call-ls lo hi _ _) I₃)))))
+  ++⁺ (cata-setup-ls lo hi _ (suc (suc (suc (suc l1)))))
+   (++⁺ I₁ (++⁺ (cata-call-ls lo hi _ _)
+    (++⁺ I₂ (++⁺ (cata-call-ls lo hi _ _)
+     (++⁺ I₃ (cata-body-ls lo hi (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) _ at at' L5 H5))))))
   where
     hi = suc (suc (suc (suc (suc (suc l1)))))
     L0 : lo ≤ l1
@@ -438,10 +438,11 @@ cata-branching-ls : ∀ (F : Functor) (lo bb n1 l1 : ℕ) (at : AbstractTrace) �
 -- gets ONE call site. The two functor-walk windows are UNCHANGED; `ls-weaken`
 -- lifts them over the two labels the body bracket adds above them.
 cata-branching-ls F lo bb n1 l1 at lo≤l1 atls =
-  ++⁺ (cata-body-ls lo hi2 hi (hi + 1) _ at at2 Lend Hend)
-   (++⁺ (cata-setup-ls lo hi2 _ hi)
-    (++⁺ (ls-weaken ≤-refl hi≤hi2 I₁-ls)
-     (++⁺ (cata-call-ls lo hi2 _ _) (ls-weaken ≤-refl hi≤hi2 I₂-ls))))
+  ++⁺ (cata-setup-ls lo hi2 _ hi)
+   (++⁺ (ls-weaken ≤-refl hi≤hi2 I₁-ls)
+    (++⁺ (cata-call-ls lo hi2 _ _)
+     (++⁺ (ls-weaken ≤-refl hi≤hi2 I₂-ls)
+          (cata-body-ls lo hi2 hi (hi + 1) _ at at2 Lend Hend))))
   where
     lv = l1 + 4
     lr = lv + lsize F
@@ -511,8 +512,8 @@ cata-const-ls : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → L
               → LabelsIn lo (cata-label-of (cata-dispatch strat-const bb n1 l1 at))
                          (cata-trace-of (cata-dispatch strat-const bb n1 l1 at))
 cata-const-ls lo bb n1 l1 at lo≤l1 atls =
-  ++⁺ (cata-body-ls lo hi l1 (l1 + 1) _ at at' Lend Hend)
-   (++⁺ (cata-setup-ls lo hi _ l1) (cata-call-ls lo hi _ _))
+  ++⁺ (cata-setup-ls lo hi _ l1)
+   (++⁺ (cata-call-ls lo hi _ _) (cata-body-ls lo hi l1 (l1 + 1) _ at at' Lend Hend))
   where
     hi = l1 + 2
     Hend : l1 + 1 < hi

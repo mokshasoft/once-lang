@@ -519,8 +519,7 @@ cata-const-below : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace) → SegOK bb at
                  → SegOK (cata-budget-of (cata-dispatch strat-const bb n1 l1 at))
                          (cata-trace-of (cata-dispatch strat-const bb n1 l1 at))
 cata-const-below bb n1 l1 at bok =
-  segok-++ (cata-body-below _ _ bb at bok)
-    (segok-idle _ refl
+  segok-++ (segok-idle _ refl
       (-- setup
        sb-none refl ∷ sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
        sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
@@ -528,6 +527,7 @@ cata-const-below bb n1 l1 at bok =
        sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-slot refl cl<b (λ _ ()) ∷
        sb-none refl ∷ sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
        sb-none refl ∷ []))
+    (cata-body-below _ _ bb at bok)
   where
     -- `n1 + 2 ≡ suc (n1 + 1)` is `+-suc n1 1`; both bounds ride it.
     n+2 : suc (n1 + 1) ≤ n1 + 2
@@ -544,12 +544,12 @@ cata-nat-below : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace) → SegOK bb at
 -- rather than one flat 68-entry list, which is what the pre-C1 witness had to
 -- be because the algebra was spliced into the middle of it.
 cata-nat-below bb n1 l1 at bok =
-  segok-++ (cata-body-below _ _ bb at bok)
-   (segok-++ (segok-idle _ refl setup)
-    (segok-++ (segok-idle _ refl I₁)
-     (segok-++ (segok-idle _ refl call)
-      (segok-++ (segok-idle _ refl I₂)
-       (segok-++ (segok-idle _ refl call) (segok-idle _ refl I₃))))))
+  segok-++ (segok-idle _ refl setup)
+   (segok-++ (segok-idle _ refl I₁)
+    (segok-++ (segok-idle _ refl call)
+     (segok-++ (segok-idle _ refl I₂)
+      (segok-++ (segok-idle _ refl call)
+       (segok-++ (segok-idle _ refl I₃) (cata-body-below _ _ bb at bok))))))
   where
     b = suc (suc (suc (suc n1)))
     p<b : n1 < b
@@ -590,12 +590,12 @@ cata-linear-below : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace) → SegOK bb at
                   → SegOK (cata-budget-of (cata-dispatch strat-linear bb n1 l1 at))
                           (cata-trace-of (cata-dispatch strat-linear bb n1 l1 at))
 cata-linear-below bb n1 l1 at bok =
-  segok-++ (cata-body-below _ _ bb at bok)
-   (segok-++ (segok-idle _ refl setup)
-    (segok-++ (segok-idle _ refl I₁)
-     (segok-++ (segok-idle _ refl call)
-      (segok-++ (segok-idle _ refl I₂)
-       (segok-++ (segok-idle _ refl call) (segok-idle _ refl I₃))))))
+  segok-++ (segok-idle _ refl setup)
+   (segok-++ (segok-idle _ refl I₁)
+    (segok-++ (segok-idle _ refl call)
+     (segok-++ (segok-idle _ refl I₂)
+      (segok-++ (segok-idle _ refl call)
+       (segok-++ (segok-idle _ refl I₃) (cata-body-below _ _ bb at bok))))))
   where
     b = suc (suc (suc (suc (suc (suc (suc (suc n1)))))))
     p0 : n1 < b
@@ -829,11 +829,11 @@ cata-branching-below : ∀ (F : Functor) (bb n1 l1 : ℕ) (at : AbstractTrace)
 -- call path takes. Only the body/setup/call blocks are new, and the algebra's
 -- weakening (`at'`, now unused) is gone: it lives in its own frame.
 cata-branching-below F bb n1 l1 at bok =
-  segok-++ (cata-body-below _ _ bb at bok)
-   (segok-++ (segok-idle _ refl setup)
-    (segok-++ (segok-weaken b≤b2 (segok-idle _ I₁-idle I₁-all))
-     (segok-++ (segok-idle _ refl call)
-               (segok-weaken b≤b2 (segok-idle _ refl I₂-all)))))
+  segok-++ (segok-idle _ refl setup)
+   (segok-++ (segok-weaken b≤b2 (segok-idle _ I₁-idle I₁-all))
+    (segok-++ (segok-idle _ refl call)
+     (segok-++ (segok-weaken b≤b2 (segok-idle _ refl I₂-all))
+               (cata-body-below _ _ bb at bok))))
   where
     b = n1 + 7 + 4 * fsize F + 4
     b≤b2 : b ≤ b + 2

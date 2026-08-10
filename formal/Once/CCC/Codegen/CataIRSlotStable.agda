@@ -299,11 +299,17 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- route with those two peels (the algebra's peel is gone — it is in the body).
   cata-trace-branching-stable : ∀ F bb n1 l1 at → AllSlotStable at
                               → AllSlotStable (proj₂ (proj₂ (cata-trace-branching F bb n1 l1 at)))
+  -- Nested `++⁺` mirroring the emitter's own nesting, NOT a two-way
+  -- prefix/body split: `cata-br-I₁` contains the functor walks, which are stuck
+  -- on `F`, so the concrete blocks around them do not reduce and the
+  -- association is not definitional (nat/linear get away with the flat split
+  -- precisely because every block there IS concrete).
   cata-trace-branching-stable F bb n1 l1 at sat =
-    ++⁺ (all-stable?-sound (cata-call-setup cl bodyL ++
-                            (cata-br-I₁ F n1 l1 ++
-                             (cata-call cl (cl +ℕ 1) ++ cata-br-I₂ n1 l1))) rest-true)
-        (cata-body-stable bodyL (bodyL +ℕ 1) bb at sat)
+    ++⁺ (all-stable?-sound (cata-call-setup cl bodyL) refl)
+        (++⁺ (all-stable?-sound (cata-br-I₁ F n1 l1) I₁-true)
+             (++⁺ (all-stable?-sound (cata-call cl (cl +ℕ 1)) refl)
+                  (++⁺ (all-stable?-sound (cata-br-I₂ n1 l1) refl)
+                       (cata-body-stable bodyL (bodyL +ℕ 1) bb at sat))))
     where
       bodyL = l1 +ℕ 4 +ℕ lsize F +ℕ lsize F
       cl    = n1 +ℕ 7 +ℕ (4 *ℕ fsize F) +ℕ 4
@@ -314,16 +320,6 @@ module CataIRSlotStable {FS : FrameSemantics} where
             (trans (all-stable?-++ (rebuild-walk (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4 +ℕ lsize F)) _)
               (∧-intro (all-stable?-complete _ (rebuild-walk-stable (n1 +ℕ 2) (n1 +ℕ 4) (n1 +ℕ 5) F (n1 +ℕ 7) (l1 +ℕ 4 +ℕ lsize F)))
                        refl)))
-      rest-true : all-stable? (cata-call-setup cl bodyL ++
-                               (cata-br-I₁ F n1 l1 ++
-                                (cata-call cl (cl +ℕ 1) ++ cata-br-I₂ n1 l1))) ≡ true  -- unchanged: the body moved out from in FRONT of it
-      -- both tails spelled out: nested `++` leaves the peel's `ys` ambiguous.
-      tail₂ = cata-call cl (cl +ℕ 1) ++ cata-br-I₂ n1 l1
-      tail₁ = cata-br-I₁ F n1 l1 ++ tail₂
-      rest-true =
-        trans (all-stable?-++ (cata-call-setup cl bodyL) tail₁)
-          (∧-intro refl
-            (trans (all-stable?-++ (cata-br-I₁ F n1 l1) tail₂) (∧-intro I₁-true refl)))
 
   cata-dispatch-slot-stable : ∀ (strat : CataStrategy) (bb n l : ℕ) (at : AbstractTrace)
                             → AllSlotStable at
