@@ -280,7 +280,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   cata-trace-linear-stable : ∀ bb n1 l1 at → AllSlotStable at
                            → AllSlotStable (proj₂ (proj₂ (cata-trace-linear bb n1 l1 at)))
   cata-trace-linear-stable bb n1 l1 at sat =
-    ++⁺ (cata-body-stable (l1 +ℕ 4) (l1 +ℕ 5) bb at sat) (all-stable?-sound _ refl)
+    ++⁺ (cata-body-stable (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) bb at sat) (all-stable?-sound _ refl)
 
   -- Tier 2 is the one exception: its skeleton splices the two COMPILE-TIME
   -- functor walks, which are stuck on `F`, so the tail still needs the boolean

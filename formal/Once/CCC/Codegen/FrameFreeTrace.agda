@@ -206,8 +206,8 @@ cata-const-ff bb n1 l1 at ff =
 cata-linear-ff : ∀ bb n1 l1 at → FrameFreeTrace at
                → FrameFreeTrace (cata-trace-of (cata-trace-linear bb n1 l1 at))
 cata-linear-ff bb n1 l1 at ff =
-  ++⁺ (cata-body-ff (l1 + 4) (l1 + 5) bb at ff)
-      (++⁺ (cata-setup-ff (suc (suc (suc (suc (suc (suc n1)))))) (l1 + 4))
+  ++⁺ (cata-body-ff (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) bb at ff)
+      (++⁺ (cata-setup-ff (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc l1)))))
            (++⁺ lin-I₁
                 (++⁺ (cata-call-ff (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))))
                      (++⁺ lin-I₂ (++⁺ (cata-call-ff (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1)))))))) lin-I₃)))))

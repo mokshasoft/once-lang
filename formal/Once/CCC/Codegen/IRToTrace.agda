@@ -358,9 +358,9 @@ cata-trace-linear : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × Abst
 -- `n1 … suc⁵ n1`: SegOK's bounds are `≤-step` chains, and mixing towers with
 -- `+` would need a transport at every one.
 cata-trace-linear bb n1 l1 at =
-  suc (suc (suc (suc (suc (suc (suc (suc n1))))))) , l1 +ℕ 6 ,
-  (cata-body (l1 +ℕ 4) (l1 +ℕ 5) bb at ++
-   (cata-call-setup (suc (suc (suc (suc (suc (suc n1)))))) (l1 +ℕ 4) ++
+  suc (suc (suc (suc (suc (suc (suc (suc n1))))))) , suc (suc (suc (suc (suc (suc l1))))) ,
+  (cata-body (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) bb at ++
+   (cata-call-setup (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc l1)))) ++
     (cata-lin-I₁ n1 l1 ++
      (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) ++
       (cata-lin-I₂ n1 l1 ++

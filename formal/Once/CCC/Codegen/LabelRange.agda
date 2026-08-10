@@ -84,7 +84,13 @@ cata-label-mono strat-nat           bb n1 l1 at =
             (≤-trans (n≤1+n (suc (suc (suc (suc (suc l1))))))
               (≤-trans (n≤1+n (suc (suc (suc (suc (suc (suc l1)))))))
                        (n≤1+n (suc (suc (suc (suc (suc (suc (suc l1))))))))))))))
-cata-label-mono strat-linear        bb n1 l1 at = m≤m+n l1 6
+cata-label-mono strat-linear        bb n1 l1 at =
+  ≤-trans (n≤1+n l1)
+    (≤-trans (n≤1+n (suc l1))
+      (≤-trans (n≤1+n (suc (suc l1)))
+        (≤-trans (n≤1+n (suc (suc (suc l1))))
+          (≤-trans (n≤1+n (suc (suc (suc (suc l1)))))
+                   (n≤1+n (suc (suc (suc (suc (suc l1))))))))))
 cata-label-mono (strat-branching F) bb n1 l1 at =
   ≤-trans (m≤m+n l1 4)
     (≤-trans (m≤m+n (l1 + 4) (lsize F))
