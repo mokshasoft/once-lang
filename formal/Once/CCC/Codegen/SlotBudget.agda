@@ -38,7 +38,7 @@ module Once.CCC.Codegen.SlotBudget (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
 open import Data.Nat.Properties using
-  (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-comm; +-assoc;
+  (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-comm; +-assoc; +-suc;
    *-suc; *-monoʳ-≤; ≤-step)
 open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.Unit using (⊤; tt)
@@ -62,14 +62,16 @@ open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace; Slot; lea-slot;
    mov-to-output; mov-to-input; store-at-slot; load-from-slot;
    store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit;
-   instr-ctrl; c-thunk; c-ret; c-label)
+   instr-ctrl; c-thunk; c-ret; c-label; c-jmp)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; ir-to-trace; ir-stack-budget;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; fsize; lsize;
    push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-nat-layer
-   ; cata-br-I₁; cata-br-I₂)
+   ; cata-br-I₁; cata-br-I₂
+   -- D099 / C1: the called-algebra blocks.
+   ; cata-body; cata-call-setup; cata-call; cata-trace-const)
 
 -- the two projections of `ir-to-trace'`'s 4-tuple this module reads (record
 -- patterns, so they reduce under eta — IRToTrace's own are private)
@@ -492,45 +494,97 @@ cata-nat-layer-below n1 tag b p<b s<b =
 -- STRATEGY `strat-nat` DISCHARGED: the Nat-shaped cata reserves exactly two
 -- slots above the algebra's frontier, and every other instruction of the
 -- skeleton is slot-free (loop labels, jumps, reg-ops, the two `at` splices).
-cata-nat-below : ∀ (n1 l1 : ℕ) (at : AbstractTrace) → SegOK n1 at
-               → SegOK (cata-budget-of (cata-dispatch strat-nat n1 l1 at))
-                       (cata-trace-of (cata-dispatch strat-nat n1 l1 at))
-cata-nat-below n1 l1 at ff =
-  -- Plan 0.63 (iii): `I₁ ++ at ++ (I₂ ++ at ++ I₃)`.
-  segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ [])
-   (segok-++ (segok-idle _ refl descend)
-    (segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
-     (segok-++ (segok-idle _ refl (layer 0))
-      (segok-pre _ refl (sb-none refl ∷ [])
-       (segok-++ at'
-        (segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
-         (segok-++ (segok-idle _ refl (layer 1))
-          (segok-pre _ refl (sb-none refl ∷ [])
-           (segok-++ at'
-             (segok-idle _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])))))))))))
-  where
-    p<b : n1 < suc (suc n1)
-    p<b = ≤-step ≤-refl
-    s<b : suc n1 < suc (suc n1)
-    s<b = ≤-refl
-    at' = segok-weaken {b' = suc (suc n1)} (≤-step (≤-step ≤-refl)) ff
-    descend : All (SlotBelow (suc (suc n1))) _
-    descend = sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-              sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-              sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ []
-    -- indexed by the tag: the skeleton uses the layer at both 0 and 1
-    layer : ∀ (tag : ℕ) → All (SlotBelow (suc (suc n1))) (cata-nat-layer n1 tag)
-    layer tag = sb-none refl ∷ sb-slot refl p<b (λ _ ()) ∷ sb-none refl ∷
-                sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
-                sb-none refl ∷ sb-slot refl p<b (λ _ ()) ∷ sb-none refl ∷
-                sb-slot refl s<b (λ _ ()) ∷ []
+-- D099 / C1: the algebra is a CALLED BODY, so its slots live in ITS OWN frame
+-- and its `SegOK` is taken at its own budget `bb`, not the cata's.
+-- `segok-thunk` is exactly the combinator for that — it was built for `curry`'s
+-- inline body (`slots-below (curry b m) n l` feeds it `slots-below b 0 …`), and
+-- the cata's body bracket is the same `c-thunk … / c-ret … / c-label` shape.
+--
+-- Second place C1 SIMPLIFIES: the old witnesses had to `segok-weaken` the
+-- algebra into the CATA's budget at both splice sites, which was only sound
+-- because the algebra was generated at the cata's own frontier. It is not any
+-- more, and the frame change is what removes the weakening.
+cata-body-below : ∀ {B : ℕ} (bl el bb : ℕ) (at : AbstractTrace) → SegOK bb at
+                → SegOK B (cata-body bl el bb at)
+cata-body-below bl el bb at bok =
+  segok-pre (instr-ctrl (c-jmp (ℓ o el)) ∷ []) refl (sb-none refl ∷ [])
+    (segok-thunk (ℓ o bl) bb (ℓ o el) at bok)
 
--- STRATEGY `strat-linear` DISCHARGED (2026-08-01): the Tier-1 linear cata
--- reserves exactly SIX slots above the algebra's frontier — `pstash` (n1),
--- `sstash`, `node-cur`, `stack-top`, `acc-slot`, `xstash` (n1+5) — and every
--- other instruction of the skeleton is slot-free (loop labels, branches,
--- reg-ops, the heap-linked payload-stack loads/stores, the two `at` splices).
--- Same shape as `cata-nat-below`, just longer.
+-- The call path's own slot references: the record pointer `cl` and the layer
+-- stash `k`. Everything else in setup/call is slot-free, and
+-- `instr-call-closure` is segment-idle (the same reason `slots-below apply`
+-- is one `segok-idle`).
+cata-const-below : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace) → SegOK bb at
+                 → SegOK (cata-budget-of (cata-dispatch strat-const bb n1 l1 at))
+                         (cata-trace-of (cata-dispatch strat-const bb n1 l1 at))
+cata-const-below bb n1 l1 at bok =
+  segok-++ (cata-body-below _ _ bb at bok)
+    (segok-idle _ refl
+      (-- setup
+       sb-none refl ∷ sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
+       sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+       -- call
+       sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-slot refl cl<b (λ _ ()) ∷
+       sb-none refl ∷ sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
+       sb-none refl ∷ []))
+  where
+    -- `n1 + 2 ≡ suc (n1 + 1)` is `+-suc n1 1`; both bounds ride it.
+    n+2 : suc (n1 + 1) ≤ n1 + 2
+    n+2 = ≤-reflexive (sym (+-suc n1 1))
+    cl<b : n1 < n1 + 2
+    cl<b = ≤-trans (s≤s (m≤m+n n1 1)) n+2
+    k<b : n1 + 1 < n1 + 2
+    k<b = n+2
+
+cata-nat-below : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace) → SegOK bb at
+               → SegOK (cata-budget-of (cata-dispatch strat-nat bb n1 l1 at))
+                       (cata-trace-of (cata-dispatch strat-nat bb n1 l1 at))
+-- One `segok-idle` per BLOCK, mirroring the emitter's own `++` structure —
+-- rather than one flat 68-entry list, which is what the pre-C1 witness had to
+-- be because the algebra was spliced into the middle of it.
+cata-nat-below bb n1 l1 at bok =
+  segok-++ (cata-body-below _ _ bb at bok)
+   (segok-++ (segok-idle _ refl setup)
+    (segok-++ (segok-idle _ refl I₁)
+     (segok-++ (segok-idle _ refl call)
+      (segok-++ (segok-idle _ refl I₂)
+       (segok-++ (segok-idle _ refl call) (segok-idle _ refl I₃))))))
+  where
+    b = suc (suc (suc (suc n1)))
+    p<b : n1 < b
+    p<b = ≤-step (≤-step (≤-step ≤-refl))
+    s<b : suc n1 < b
+    s<b = ≤-step (≤-step ≤-refl)
+    cl<b : suc (suc n1) < b
+    cl<b = ≤-step ≤-refl
+    k<b : suc (suc (suc n1)) < b
+    k<b = ≤-refl
+    setup : All (SlotBelow b) _
+    setup = sb-none refl ∷ sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷
+            sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ []
+    call : All (SlotBelow b) _
+    call = sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-slot refl cl<b (λ _ ()) ∷
+           sb-none refl ∷ sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
+           sb-none refl ∷ []
+    I₁ : All (SlotBelow b) _
+    I₁ = sb-none refl ∷ sb-none refl ∷
+         sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+         sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+         sb-none refl ∷ sb-none refl ∷
+         sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+         sb-none refl ∷ sb-slot refl p<b (λ _ ()) ∷ sb-none refl ∷
+         sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+         sb-slot refl p<b (λ _ ()) ∷ sb-none refl ∷ sb-slot refl s<b (λ _ ()) ∷
+         sb-none refl ∷ []
+    I₂ : All (SlotBelow b) _
+    I₂ = sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+         sb-none refl ∷ sb-slot refl p<b (λ _ ()) ∷ sb-none refl ∷
+         sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+         sb-slot refl p<b (λ _ ()) ∷ sb-none refl ∷ sb-slot refl s<b (λ _ ()) ∷
+         sb-none refl ∷ []
+    I₃ : All (SlotBelow b) _
+    I₃ = sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ []
+
 cata-linear-below : ∀ (n1 l1 : ℕ) (at : AbstractTrace) → SegOK n1 at
                   → SegOK (cata-budget-of (cata-dispatch strat-linear n1 l1 at))
                           (cata-trace-of (cata-dispatch strat-linear n1 l1 at))

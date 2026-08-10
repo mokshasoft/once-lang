@@ -174,10 +174,10 @@ cata-linear-am : ∀ bb n1 l1 at → AllocMinTrace at
                → AllocMinTrace (cata-trace-of (cata-trace-linear bb n1 l1 at))
 cata-linear-am bb n1 l1 at am =
   ++⁺ (cata-body-am (l1 + 4) (l1 + 5) bb at am)
-      (++⁺ (cata-setup-am (n1 + 6) (l1 + 4))
+      (++⁺ (cata-setup-am (suc (suc (suc (suc (suc (suc n1)))))) (l1 + 4))
            (++⁺ lin-I₁
-                (++⁺ (cata-call-am (n1 + 6) (n1 + 7))
-                     (++⁺ lin-I₂ (++⁺ (cata-call-am (n1 + 6) (n1 + 7)) lin-I₃)))))
+                (++⁺ (cata-call-am (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))))
+                     (++⁺ lin-I₂ (++⁺ (cata-call-am (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1)))))))) lin-I₃)))))
   where
     lin-I₁ : AllocMinTrace _
     lin-I₁ = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷

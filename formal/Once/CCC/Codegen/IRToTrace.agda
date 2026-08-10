@@ -354,14 +354,17 @@ cata-lin-I₃ l1 =
 -- Slots `n1 … n1+5` are the layer builder's, `n1+6`/`n1+7` the call's.
 -- Labels `l1 … l1+3` the loop's, `l1+4` the body, `l1+5` the join.
 cata-trace-linear : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
+-- Slot numbers as suc-towers (not `+`), matching `cata-lin-I₁`'s own
+-- `n1 … suc⁵ n1`: SegOK's bounds are `≤-step` chains, and mixing towers with
+-- `+` would need a transport at every one.
 cata-trace-linear bb n1 l1 at =
-  n1 +ℕ 8 , l1 +ℕ 6 ,
+  suc (suc (suc (suc (suc (suc (suc (suc n1))))))) , l1 +ℕ 6 ,
   (cata-body (l1 +ℕ 4) (l1 +ℕ 5) bb at ++
-   (cata-call-setup (n1 +ℕ 6) (l1 +ℕ 4) ++
+   (cata-call-setup (suc (suc (suc (suc (suc (suc n1)))))) (l1 +ℕ 4) ++
     (cata-lin-I₁ n1 l1 ++
-     (cata-call (n1 +ℕ 6) (n1 +ℕ 7) ++
+     (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) ++
       (cata-lin-I₂ n1 l1 ++
-       (cata-call (n1 +ℕ 6) (n1 +ℕ 7) ++ cata-lin-I₃ l1))))))
+       (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) ++ cata-lin-I₃ l1))))))
 
 -- ────────────────────────────────────────────────────────────────────
 -- Plan 0.36 Phase 2b Tier 2: functor-general BRANCHING cata codegen

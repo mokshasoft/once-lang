@@ -207,10 +207,10 @@ cata-linear-ff : ∀ bb n1 l1 at → FrameFreeTrace at
                → FrameFreeTrace (cata-trace-of (cata-trace-linear bb n1 l1 at))
 cata-linear-ff bb n1 l1 at ff =
   ++⁺ (cata-body-ff (l1 + 4) (l1 + 5) bb at ff)
-      (++⁺ (cata-setup-ff (n1 + 6) (l1 + 4))
+      (++⁺ (cata-setup-ff (suc (suc (suc (suc (suc (suc n1)))))) (l1 + 4))
            (++⁺ lin-I₁
-                (++⁺ (cata-call-ff (n1 + 6) (n1 + 7))
-                     (++⁺ lin-I₂ (++⁺ (cata-call-ff (n1 + 6) (n1 + 7)) lin-I₃)))))
+                (++⁺ (cata-call-ff (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))))
+                     (++⁺ lin-I₂ (++⁺ (cata-call-ff (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1)))))))) lin-I₃)))))
   where
     -- 26: the old witness split as `++⁺ (25 tt) (tt ∷ …)` right before `at`.
     lin-I₁ : FrameFreeTrace _
