@@ -255,6 +255,40 @@ code-indexed, so `P x` must be `El ⌜Nat⌝` and every `Nat` result crosses
 once. Getting below 4 would need a kernel change to ex falso — which the
 kernel argues against for inversion reasons (see D4's note).
 
+★★★ **SECOND USE SITE — `SpikePairT`, a PAIR carrier, 3.2 s / 0.42 GB,
+GREEN FIRST TRY.** The first use site that is not at ℕ.
+
+| | result |
+|---|---|
+| iterations to green | **0** — compiled as written |
+| `El-⌜Σ⌝` conversions | **0** — the carrier is `Σ' Nat Nat`, a TYPE, so `⊢fst`/`⊢snd` apply DIRECTLY |
+| conversions in the step | **2** (one `asP`, one for the descent) |
+| non-comment lines | 69 |
+
+★ **And the recursive call BUILDS A PAIR** — `⊢pair` applied directly, no
+conversion either side. That is the exact move `HANDOFF-2026-08-07` records
+as impossible under `Γ₅`: *"Ackermann's step must build pairs, which needs
+the carrier concrete, which is exactly what the abstract Γ₅ denied."*
+
+⚠ Under `AmrecC` the same carrier is `El (⌜Σ⌝ ⌜Nat⌝ ⌜Nat⌝)`, which only
+REDUCES to `Σ'` — so every projection and the pair construction would each
+need a `⊢conv` through `El-⌜Σ⌝`, on top of the motive/measure β-redexes.
+That comparison is not yet built; the *count* above is D4's, measured, and
+the AmrecC figure is a prediction until its version exists.
+
+**ON MEASURING "EASE" RATHER THAN SIZE.** Line count is the wrong headline
+when the two are the same order. The defensible proxies, in the order they
+proved informative:
+
+1. **DEFINITIONAL vs propositional.** `subTy (single x)` on the case-split
+   motive is definitional under D4 — not a smaller obligation, *no*
+   obligation. Line counts cannot see this.
+2. **Iterations to green.** `SpikePairT` needed none.
+3. **Do the types read as the mathematics?** `aIHT PairT ⌜Nat⌝ msr`
+   unfolds to `(y : Σ' Nat Nat) → fst y < fst x → El ⌜Nat⌝`.
+4. **Are the instantiation data ATOMS or derivations?** `ty-Σ ty-Nat
+   ty-Nat`, `⊢fst (⊢var here)` — versus a `⊢lam` per datum under AmrecC.
+
 ⚠ **And 72 lines is still not below raw `⊢div`'s 75.** The combinator now
 costs essentially nothing at the use site, but div's own case analysis is
 what the file is, and no measure-recursion combinator removes that. The
