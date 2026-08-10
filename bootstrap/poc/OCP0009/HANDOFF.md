@@ -8,7 +8,9 @@
 Branch `ocp-0009-poc0-nbe`. All modules `--safe`. Verify any module from
 `bootstrap/` with `./check.sh poc/OCP0009/<Module>.agda`. Companion docs:
 `FINDINGS.md` (design conclusions + proof patterns), `PATHS.md` (per-module
-table + two-paths write-up). **This file is the cold-start state and — its main
+table + two-paths write-up), `WF-LIBRARY.md` (the WF-axis combinators'
+PACKAGING — what is settled, what is open, and the use-site evidence for
+each; read it before touching `⊢amrec`/`⊢lexrec`). **This file is the cold-start state and — its main
 job — WHAT'S LEFT before the POC is finalized.**
 
 --------------------------------------------------------------------------

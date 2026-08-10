@@ -1,0 +1,192 @@
+# OCP-0009 · The WF-axis LIBRARY — abstraction decisions
+
+*The kernel is not in question here. Every kernel-level exercise is fast and
+green (`⊢div` 2.3 s, `LexAsm` 2.8 s, nested-`natrec` Ackermann 0.61 s), and
+nothing in this thread failed for want of a kernel feature. What is in
+question is the PACKAGING of the derived combinators — `⊢amrec`, `⊢lexrec`
+and whatever replaces them.*
+
+**The criterion, and it is not the obvious one:** an abstraction is judged
+by how simple it is to **USE**. Building and proving it may be arbitrarily
+difficult. The combinator is derived once and called many times, so build
+cost amortises to nothing while use cost is paid by every caller. Reporting
+a combinator as "expensive" on the strength of its own derivation cost
+answers a question nobody asked.
+
+⇒ **Every decision below is settled or opened by a USE SITE, never by a
+proof.** The use sites so far: `SpikeAmrecInst` (instantiation),
+`SpikeDivC` (div through the combinator).
+
+--------------------------------------------------------------------------
+## SETTLED
+
+### D1 — Instantiation data must be CONTEXT-POLYMORPHIC and CLOSED ✅
+
+```agda
+cAt cPt μt : {Γ : Cx} → RTm Γ          -- not  : RTm ε
+dcA : {Γ : Ctx} → Γ ⊢ cAt ∷ U          -- not  : ◇ ⊢ cAt ∷ U
+```
+
+**Why.** A recursor's spine visits many depths — the combinator instantiates
+itself at `Δ ▹ El cA`, branches sit under two or three `⊢lam`s, and the
+step's IH sits deeper still. Data fixed at one context need a `⊢wk` and
+usually a cast at every one of those sites.
+
+**What it buys, measured.** For CLOSED data, `w cAt ≡ cAt` **definitionally**
+— `renTm` recurses structurally and meets no variable — so:
+
+* the four terms and four derivations, written ONCE in `SpikeAmrecInst`,
+  were reused **verbatim** in `SpikeDivC` at a different ambient context;
+* **zero `⊢wk`, zero casts** on the data at any depth;
+* every `wk-single` / `sub-w` fit that the abstract-data case needs (the
+  whole `LexC` naturality kit) simply does not arise.
+
+**How to apply.** Write instantiation packages as `{Γ : Cx} → RTm Γ` from
+the start, and keep the data closed. Where a use site needs the same shape
+at many `x`, generalise once — `⊢ihTat : Γ ⊢ x ∷ El cAt → Γ ⊢ty rec1T … x`
+covered all three IH sites in `SpikeDivC`.
+
+⚠ This is the single highest-leverage decision in this thread. It is also
+the only one that was cheap: it cost nothing to adopt and paid at once.
+
+### D2 — Data as PARAMETERS, not as slots of a bespoke context ✅
+
+`Dogfood`'s `⊢amrec` puts `cA`/`cP`/`μ`/`stp` in a context `Γ₄` and states
+its conclusion **pointwise** in an `x`. It has never been called, and it
+cannot be: its premise `Γ₄ ⊢ x ∷ El cA` is `El` of a context VARIABLE, all
+four slots CONSUME an `El cA` and none produces one, so the premise is
+unsatisfiable. Extending `Γ₄` does not help — the statement is fixed AT
+`Γ₄`, so an extended context needs it re-derived.
+
+`⊢lexrec` has the identical shape and is unusable for the identical reason.
+
+⚠ Structural argument, not machine-checked. Strong enough to explain why
+neither combinator appears outside its own module; prove it before it goes
+into `ARCHITECTURE.md`.
+
+⇒ Parameterise over an arbitrary ambient `Δ` (option C's `Lx` style). That
+is what makes a combinator CONTEXT-POLYMORPHIC, and context-polymorphism is
+the property that was actually missing.
+
+**Evidence it is the load-bearing change:** `AmΠ` instantiates `Am` at
+`Δ ▹ El cA` — the module applies to ITSELF at a deeper context. That is the
+one move `Γ₄` forbade, and it is what lets the recursion's bound be `μ x`
+for a BOUND `x` rather than a closed numeral (all `sub-lemma` can supply).
+Cost of the self-application: four `⊢wk`s and one cast.
+
+### D3 — Π-typed conclusion is PRIMITIVE; pointwise is DERIVED ✅
+
+```agda
+⊢amrecΠ : Δ ⊢ amrecTm ∷ Π (El cA) (El (app (w cP) (var vz)))   -- primitive
+⊢amrecPt dx = ⊢-cast (cong (λ z → El (app z x)) (wk-single cP))
+                     (⊢app ⊢amrecΠ dx)                          -- derived, 2 lines
+```
+
+**Why Π must exist** — not taste: two things in this POC consume only
+TERMS, never Agda-level functions. A context SLOT (the step slot is
+Π-typed, and `⊢lexrec`'s own branches already pass `rec₁`/`rec₂` into
+`⊢app` as terms), and `sub-lemma` (a `σ` maps variables to `RTm`s).
+
+**Why pointwise still earns its place:** it lands directly at
+`El (app cP x)` with no `wk-single` residue, so it chains into further
+derivations more cleanly.
+
+**Why not prove both:** Π ⟹ pointwise is one `⊢app` and one `wk-single`.
+The converse needs the pointwise statement instantiated at `x := var vz` in
+the EXTENDED context and re-`⊢lam`med, which requires D2. Ship both,
+derive one.
+
+--------------------------------------------------------------------------
+## OPEN
+
+### D4 — The β TAX: motive and measure as object-language FUNCTIONS ⛔
+
+`aStepT` demands `cP : Π (El cA) U` and `μ : Π (El cA) Nat`. β is a
+REDUCTION in this kernel, not Agda computation, so **every use of the
+motive or the measure is a redex that never reduces on its own**. Measured
+in `SpikeDivC`'s fifty-line step: 4 × `elCP`, 4 × `elNat`, 3 × `asA`,
+1 × `homμ`.
+
+That tax is the INTERFACE's choice, not the kernel's.
+
+**Proposal, untested:** take the motive as a **type family**
+`M : RTy (⌊ Δ ⌋ ∙)` and the measure as a **term with a free variable**
+`m : RTm (⌊ Δ ⌋ ∙)`, i.e. already applied. Then `P x` is
+`subTy (single x) M` and `μ x` is `subTm (single x) m`, both of which
+COMPUTE at a use site where `M`/`m` are concrete — `subTy (single x) Nat`
+is `Nat`, `subTm (single x) (var vz)` is `x`. The conclusion also gets
+cleaner: `Δ ⊢ amrecTm ∷ Π (El cA) M`.
+
+⚠ Expect the trade to move cost to the BUILD side: inside the combinator
+`M` is abstract, so the naturality kit (`sub-w`, `wk-single`, …) comes
+back. That is the right direction under the criterion at the top.
+
+### D5 — The ladders should be INDEXED, not enumerated ⛔
+
+`lStepT-w²⁻⁸`, `auxBody-w²⁻⁷`, `auxMotB-w²⁻⁹` are hand-written iterates of
+one lemma, and every new branch depth adds a rung. This is the only piece
+of the kit with unbounded surface. Decide at consolidation.
+
+### D6 — Kit extraction ⛔ (deliberately deferred)
+
+The naturality kit turned out NOT to be lexrec-specific: `rec1T` IS amrec's
+IH type verbatim, and the four obstructions amrec hit were the same four
+the lexrec branches hit. The shared surface is exactly `AmrecC`'s import
+line:
+
+```
+w, cong₄, sub-w, sub-w², ren-w, ren-w², nrs-w, rec1T, rec1T-sub, rec1T-ren
+```
+
+plus `cong₃`, currently local to `AmrecC`.
+
+⚠ `AmrecC` importing `…ExamplesLexC` is an inverted dependency and known
+debt. Deferred on purpose: the boundary is not yet known, and use sites are
+what will fix it. Extract once, after D4 settles.
+
+--------------------------------------------------------------------------
+## USE-SITE EVIDENCE
+
+| use site | result |
+|---|---|
+| `SpikeAmrecInst` | instantiation is cheap: 43 lines, green first try. But `⊢amrec` still uncallable (D2) |
+| `SpikeDivC` | plumbing ~8 lines, one `open`. Algorithm 50 lines vs raw `⊢div`'s 75 |
+
+**⛔ The div A/B is NOT a win on lines: 99 total against 75 raw.** It buys
+one `natrec` NESTING LEVEL — 10 definitions against 16, one motive and two
+branches against two motives and four — and gives it back in β conversions.
+
+★ **And div was the wrong showcase, for an instructive reason: its
+termination was already free.** `⊢div-descend` is `⊢monus-le` plus one
+conversion, because the order COMPUTES. A combinator that replaces the
+`Acc` apparatus saves nothing where the apparatus costs nothing. div was
+the right choice for a FAIR comparison (it is the one function built both
+ways) and the wrong one for a FLATTERING one.
+
+⇒ the next use site must be a recursion whose termination is NOT free, at a
+carrier that is NOT ℕ.
+
+⚠ **`SpikeDivC`'s step is type-correct but UNEVALUATED.** This session
+found `⊢gcd-descend` certifying a recursion that is not gcd; the same
+standard applies here. A `⟶*` test (pattern: `monus-computes`) is owed
+before it is called div.
+
+--------------------------------------------------------------------------
+## ⚠ THE DOGFOODING TARGET IS BLOCKED
+
+The most persuasive use site would be the POC's own `sz`-bounded
+recursions — `prog`, `usplit`, `trS`, `ordtrS`, which all thread
+`(n : ℕ) → … → sz t ≤ n` by hand. `ARCHITECTURE.md` is explicit that
+`⊢amrec` applies to them **"the moment `RTm` is a kernel type and `sz` is
+definable"**.
+
+`RTy` has `base`, `U`, `Π`, `Σ'`, `El`, `Hom`, `Id`, `Nat`, `Unit` — **no
+user-defined inductive types**. So dogfooding needs the inductive-types
+axis, which `ARCHITECTURE.md` ranks as the real blocker and the highest
+value, and which is a much larger job than anything in this document.
+
+**The best available non-ℕ carrier today is `Σ'` (a pair).** A pair carrier
+with a measure that is a real computation rather than a projection — e.g.
+`μ (a , b) = a + b` — exercises: a non-trivial carrier, `El (⌜Σ⌝ …)`
+conversions on every projection (`El` only REDUCES to `Σ'`), and a descent
+that is not just `⊢monus-le`.
