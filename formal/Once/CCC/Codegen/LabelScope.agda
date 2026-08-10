@@ -65,7 +65,9 @@ open import Once.CCC.Codegen.IRToTrace o using
   ; strat-branching; cata-strategy; cata-dispatch; lsize
   ; push2; pop2; wrap-sum; visit-walk; rebuild-walk
   ; cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-nat-layer; cata-nat-descend
-  ; cata-br-I₁; cata-br-I₂; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃)
+  ; cata-br-I₁; cata-br-I₂; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃
+  -- D099 / C1: the called-algebra blocks.
+  ; cata-body; cata-call-setup; cata-call; cata-trace-const; fsize)
 open import Once.CCC.Codegen.LabelRange o using (label-of; cata-label-of; label-mono; cata-label-mono)
 open import Once.CCC.Codegen.SlotBudget o using
   (fetch-at; seg-at; SegState; seg-idle?; idle-seg-at
@@ -254,22 +256,46 @@ rebuild-ls (F ⊗ G) val tv tb s lb =
 lo≤ : ∀ {lo l1 : ℕ} → lo ≤ l1 → lo ≤ l1
 lo≤ p = p
 
+-- D099 / C1: the three shared blocks, on the LABEL side.
+--
+-- Only TWO of the new instructions mention a label in this walk's sense:
+-- `once-label-of` is `just` for `c-label`/`c-jmp`/the two branches and
+-- `nothing` for everything else — so the body's `c-thunk` and the setup's
+-- `instr-load-code-addr` contribute NOTHING here. They carry `thunk`-provenance
+-- labels (D082), which is a disjoint namespace this walk does not track.
+--
+-- So the body bracket adds exactly the jump-over pair: `c-jmp end` at the head
+-- and `c-label end` at the tail, both naming `end`.
+cata-body-ls : ∀ (lo hi bl el bb : ℕ) (at : AbstractTrace)
+             → LabelsIn lo hi at → lo ≤ el → el < hi
+             → LabelsIn lo hi (cata-body bl el bb at)
+cata-body-ls lo hi bl el bb at atls Lel Hel =
+  li-lab refl Lel Hel ∷ li-none refl ∷
+  ++⁺ atls (li-none refl ∷ li-lab refl Lel Hel ∷ [])
+
+cata-setup-ls : ∀ (lo hi cl bl : ℕ) → LabelsIn lo hi (cata-call-setup cl bl)
+cata-setup-ls lo hi cl bl =
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+
+cata-call-ls : ∀ (lo hi cl k : ℕ) → LabelsIn lo hi (cata-call cl k)
+cata-call-ls lo hi cl k =
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+
 cata-nat-ls : ∀ (lo n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → LabelsIn lo l1 at
             → LabelsIn lo (cata-label-of (cata-dispatch strat-nat n1 l1 at))
                        (cata-trace-of (cata-dispatch strat-nat n1 l1 at))
+-- C1: `cata-body ++ setup ++ I₁ ++ call ++ I₂ ++ call ++ I₃`.
 cata-nat-ls lo n1 l1 at lo≤l1 atls =
-  -- Plan 0.63 (iii): `I₁ ++ at ++ (I₂ ++ at ++ I₃)`
-  li-none refl ∷ li-none refl ∷
-  ++⁺ descend
-      (li-none refl ∷ li-none refl ∷ li-none refl ∷
-       ++⁺ (layer 0)
-           (li-none refl ∷ ++⁺ at'
-             (li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ li-none refl ∷
-              ++⁺ (layer 1)
-                  (li-none refl ∷ ++⁺ at'
-                    (li-none refl ∷ li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ [])))))
+  ++⁺ (cata-body-ls lo hi bodyL endL _ at at' L7 H7)
+   (++⁺ (cata-setup-ls lo hi _ bodyL)
+    (++⁺ I₁ (++⁺ (cata-call-ls lo hi _ _)
+     (++⁺ I₂ (++⁺ (cata-call-ls lo hi _ _) I₃)))))
   where
-    hi = suc (suc (suc (suc (suc (suc l1)))))
+    hi = suc (suc (suc (suc (suc (suc (suc (suc l1)))))))
+    bodyL = suc (suc (suc (suc (suc (suc l1)))))
+    endL  = suc (suc (suc (suc (suc (suc (suc l1))))))
     L0 : lo ≤ l1
     L0 = lo≤l1
     L1 : lo ≤ suc l1
@@ -282,20 +308,30 @@ cata-nat-ls lo n1 l1 at lo≤l1 atls =
     L4 = ≤-step L3
     L5 : lo ≤ suc (suc (suc (suc (suc l1))))
     L5 = ≤-step L4
+    L6 : lo ≤ bodyL
+    L6 = ≤-step L5
+    L7 : lo ≤ endL
+    L7 = ≤-step L6
+    -- two more than before: the body label and the jump-over join.
     H0 : l1 < hi
-    H0 = ≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))
+    H0 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))))
     H1 : suc l1 < hi
-    H1 = ≤-step (≤-step (≤-step (≤-step ≤-refl)))
+    H1 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))
     H2 : suc (suc l1) < hi
-    H2 = ≤-step (≤-step (≤-step ≤-refl))
+    H2 = ≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))
     H3 : suc (suc (suc l1)) < hi
-    H3 = ≤-step (≤-step ≤-refl)
+    H3 = ≤-step (≤-step (≤-step (≤-step ≤-refl)))
     H4 : suc (suc (suc (suc l1))) < hi
-    H4 = ≤-step ≤-refl
+    H4 = ≤-step (≤-step (≤-step ≤-refl))
     H5 : suc (suc (suc (suc (suc l1)))) < hi
-    H5 = ≤-refl
+    H5 = ≤-step (≤-step ≤-refl)
+    H6 : bodyL < hi
+    H6 = ≤-step ≤-refl
+    H7 : endL < hi
+    H7 = ≤-refl
     at' : LabelsIn lo hi at
-    at' = ls-weaken ≤-refl (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))) atls
+    at' = ls-weaken ≤-refl
+            (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))))) atls
     -- `build-layer tag` is ten slot/heap instructions: no label anywhere.
     -- Indexed by the tag because the skeleton uses it at BOTH 0 and 1, and a
     -- `_`-inferred trace would unify with whichever came first.
@@ -314,6 +350,15 @@ cata-nat-ls lo n1 l1 at lo≤l1 atls =
       li-lab refl L2 H2 ∷ li-none refl ∷
       li-lab refl L3 H3 ∷ li-lab refl L0 H0 ∷
       li-lab refl L1 H1 ∷ []
+    I₁ : LabelsIn lo hi (cata-nat-I₁ n1 l1)
+    I₁ = li-none refl ∷ li-none refl ∷
+         ++⁺ descend (li-none refl ∷ li-none refl ∷ li-none refl ∷
+                      ++⁺ (layer 0) (li-none refl ∷ []))
+    I₂ : LabelsIn lo hi (cata-nat-I₂ n1 l1)
+    I₂ = li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ li-none refl ∷
+         ++⁺ (layer 1) (li-none refl ∷ [])
+    I₃ : LabelsIn lo hi (cata-nat-I₃ l1)
+    I₃ = li-none refl ∷ li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ []
 
 
 -- The Tier-1 LINEAR skeleton: four labels above `l1` (`ld-top`, `ld-end`,
