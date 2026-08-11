@@ -159,7 +159,14 @@ toolchain-boundary work (Intel SDM byte encoding), not a correspondence gap.
 
 - `x86-32` / `riscv64` each still postulate their whole `conc-flat-sim` plus a
   loader axiom and an opaque `entry-frame`. x86-64 is the only arch with a real
-  correspondence; the other two assume it.
+  correspondence; the other two assume it. **No row moved on 2026-08-11, and
+  that is worth saying out loud**: plan 0.69 (D102) found both of those arches'
+  EMITTERS defective — x86-32's slots aliased their caller's frame, riscv64's
+  bodies destroyed their own return address — and fixed them, with every
+  residual here unchanged. The blanket postulates are exactly what let a broken
+  emitter sit under a green tree for six weeks; x86-32's was even inconsistent
+  with its own `FrameInstantiation`. Plans 0.65/0.66 replace these two rows with
+  proofs, and that is the point of doing them.
 - `cata-correct` (`IRObsCorrectFlat`) — **NO LONGER FALSE as of 2026-08-11
   (D101, C1)**; an ordinary deferred proof again. It WAS false: `cata-dispatch`
   spliced the algebra trace TWICE at ONE label range (`I₁ ++ at ++ (I₂ ++ at ++
