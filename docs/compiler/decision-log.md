@@ -7132,3 +7132,100 @@ The structural repair for the whole class — and the right long-term move — i
 give the assembler a failure mode (`assemble : String → Maybe (List Byte)`), so
 that "the toolchain accepted this text" becomes a proposition the proofs can
 carry rather than an assumption they cannot see.
+
+---
+
+## D101: C1 — the Cata's Algebra Is Emitted ONCE, as a Called Body
+
+**Date**: 2026-08-10/11 · **Plan**: 0.68 step 4 · **Status**: landed
+(`fix/cata-single-algebra`); x86-64 exit tests back to 55/0/0
+
+D099 named the defect (the algebra spliced twice under one label range) and
+D100 wired the invariant that will make its class a type error. This entry is
+the FIX, and the two things it cost.
+
+### The fork, and why A lost
+
+Three options were on the table:
+
+- **A — re-generate the second copy at a fresh label counter.** Names become
+  distinct by construction and no proof machinery is new. It was built to 7 of
+  8 walks on `fix/cata-label-duplication` (`a33af0b9`) and then REJECTED: an
+  algebra that itself contains a `Cata` has ITS algebra duplicated too, so
+  nesting depth `d` costs `2^d` copies of the innermost algebra. Correct, and
+  not a tolerable steady state.
+- **B — D089's splice `path`,** distinguishing the copies inside the label
+  identity. `Label.path` is dead code (`ℓ o n = mkLabelId o [] n`); it would
+  re-teach every label-ordering argument about paths, to distinguish copies
+  that C1 does not create.
+- **C1 — emit the algebra ONCE and CALL it.** Chosen.
+
+### What C1 is
+
+The algebra becomes a called body inside the cata's own trace — the same
+`c-thunk`/`c-ret` bracket `curry` has emitted since the 0.63 flip, so this does
+NOT re-open the flip that inlined bodies:
+
+    <setup> ++ <loop skeleton> ++ c-jmp end ∷ c-thunk body bb ∷
+                                  (at ++ c-ret bb ∷ c-label end ∷ [])
+
+NO NEW INSTRUCTION. `instr-call-closure` (D092/D098) transfers control to
+whatever code address sits in the closure record's second cell, so the setup
+builds that 2-cell record ONCE before the loop and each application site
+points `fclosure` at it. The (env, arg) pair-packing is `apply`'s TRACE, not
+the instruction, so the algebra keeps its own convention: layer in `Input1`,
+result in `Output`.
+
+**The bracket goes LAST, not first** — that is load-bearing, not cosmetic.
+`segagree-curry` proves `SegAgree (H ++ c-thunk … ∷ (body ++ c-ret … ∷
+c-label e ∷ []))` for an arbitrary IDLE labelled prefix `H`, and with the
+bracket last the loop skeleton IS that `H`. With it first the loop would be a
+SUFFIX, which nothing in `LabelScope` supports.
+
+### What it bought on the proof side (four simplifications, not costs)
+
+The algebra is now generated at FRONTIER 0 — it runs in its own frame, exactly
+as `curry`'s body does. Consequences: `frontier-mono`'s Cata clause collapsed
+(the caller's frontier is not advanced by the algebra); `CataIRSlotStable`'s
+witnesses became `++⁺ (all-stable?-sound _ refl) (cata-body-stable … at sat)`
+instead of ~50 spelled-out entries; `SlotBudget` lost the `segok-weaken` of the
+algebra into the cata's budget at every site (it was only sound because the
+algebra shared the cata's frame); and `LabelScope`'s Cata case became one
+`segagree-curry` application, retiring `cata-{nat,lin,br}-pieces` and
+`cata-pieces` entirely — their window content moved into the combinator's
+arguments. `segagree-curry`'s last premise was generalised from `b' ≤ c` to
+`(b' ≤ c) ⊎ (d ≤ a)` because `curry` allocates its labels before its body and
+the cata after: **a window premise phrased as an ordering is usually
+disjointness that happened to be true in the first client.**
+
+### What it costs, recorded honestly
+
+The cata's `traces-agree` now has a CALL/RETURN excursion per layer instead of
+straight-line code, so `cata-correct`'s eventual discharge must consume the
+return-address residuals (#9 `ret-site-owes`/`ret-budget-matches`, #10
+`call-site-shape`) inside the cata induction. Those are owed anyway; threading
+them through `cata-correct` is strictly more than closing them at their own
+call sites. Paid knowingly, for `2^d` → 1.
+
+### The defect C1 itself shipped, and what it says
+
+The first C1 emitter was green on all four clusters and WRONG: `cata-call-setup`
+points `Input1` at the record to write its cells (`store-indirect`) and never
+handed it back, so the skeleton's first read of the μ-value got the record's
+tag cell instead. Every cata folded ZERO layers — `cata-nat` exited 0 instead
+of 3. Fixed by stashing the incoming value in the call's spare slot `k` and
+reloading it at the end of the setup.
+
+The point is not the slip; it is that **nothing in the proof could fail**.
+`cata-correct` is a postulate, so no theorem relates the cata's trace to the
+fold, and the six codegen walks (labels, slots, frames, allocation, stability)
+are all TRUE of the broken trace. The exit tests were the only witness. This is
+D100's thesis restated from the other side: a top-level postulate does not
+merely leave work undone, it removes the ability to be wrong.
+
+### Status after this
+
+`program-labels-distinct` (D100, residual #14) is now TRUE of the emitter, and
+`cata-correct` stops being FALSE — it becomes an ordinary owed proof whose own
+blocker is unchanged (base and ascend were amputated by `5088e571` and must be
+rebuilt). Neither is discharged here.
