@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
--- Copyright (C) 2025-2026 Jonas Claesson and contributors
+-- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
 -- Once.CCC.Codegen.CataNatChain — the descend-ready interface (Plan 0.36

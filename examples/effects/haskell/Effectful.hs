@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
--- Copyright (C) 2025-2026 Jonas Claesson and contributors
+-- Copyright (C) 2025-2026 Jonas Claesson
 --
 -- effectful version of the State + Teletype program (cf. Once examples 03-05).
 -- Illustrative: shows the fast, ReaderT-IO-backed algebraic-effects style.

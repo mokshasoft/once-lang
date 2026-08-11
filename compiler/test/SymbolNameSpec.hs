@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
--- Copyright (C) 2025-2026 Jonas Claesson and contributors
+-- Copyright (C) 2025-2026 Jonas Claesson
 
 -- | Golden tests pinning the Haskell symbol mangler (Once.Target.SymbolName)
 -- to the verified Agda original (Once.Target.Symbol). The first group asserts

@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
--- Copyright (C) 2025-2026 Jonas Claesson and contributors
+-- Copyright (C) 2025-2026 Jonas Claesson
 
 -- | Haskell mirror of @Once.Target.Symbol.once-symbol-path@ — the verified
 -- assembly-symbol mangler the codegen uses for SigOp call sites.

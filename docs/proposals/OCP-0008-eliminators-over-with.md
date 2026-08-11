@@ -1,6 +1,6 @@
 # OCP-0008: Eliminators over `with` (no opaque case-analysis in dependent Once)
 
-**Author:** Jonas Claeson
+**Author:** Jonas Claesson
 **Status:** Draft
 **Created:** 2026-06-30
 

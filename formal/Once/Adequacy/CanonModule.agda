@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
--- Copyright (C) 2025-2026 Jonas Claesson and contributors
+-- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
 -- Once.Adequacy.CanonModule — Plan 0.51 Step 4 (module-level wiring).

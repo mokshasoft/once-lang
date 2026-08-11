@@ -1,6 +1,6 @@
 # OCP-0006: `Once.Spec` — One Home for the Language Definition
 
-**Author:** Jonas Claeson
+**Author:** Jonas Claesson
 **Status:** DELIVERED (plan 0.58 closed 2026-07-13). `Once.Spec` is the
 canonical, load-bearing spec door: `Once.Certified` consumes `CorrectCompiler`
 through it; `Spec.Meaning` re-exports the derivation denotation `⟦_⟧ᵈ`

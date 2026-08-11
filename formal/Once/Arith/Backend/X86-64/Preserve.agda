@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
--- Copyright (C) 2025-2026 Jonas Claesson and contributors
+-- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
 -- Once.Arith.Backend.X86-64.Preserve  (Plan 0.54 Phase B / Option 2)

@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
--- Copyright (C) 2025-2026 Jonas Claesson and contributors
+-- Copyright (C) 2025-2026 Jonas Claesson
 
 -- Layer 4 test: closure values carried as a SUM payload.
 -- Exercises CCT1 (exponentials) crossed with CCT2 (coproducts):

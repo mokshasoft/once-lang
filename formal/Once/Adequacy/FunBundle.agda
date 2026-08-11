@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
--- Copyright (C) 2025-2026 Jonas Claesson and contributors
+-- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
 -- Once.Adequacy.FunBundle — Plan 0.55: the per-function bundled

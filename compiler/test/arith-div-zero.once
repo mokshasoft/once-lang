@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
--- Copyright (C) 2025-2026 Jonas Claesson and contributors
+-- Copyright (C) 2025-2026 Jonas Claesson
 
 -- arith-div-zero.once: D055 total division by zero: x / 0 = -1 (all-ones).
 -- f 7 = 7 / 0 = -1; low byte = 255. Expected exit code 255.

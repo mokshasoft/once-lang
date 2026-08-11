@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
--- Copyright (C) 2025-2026 Jonas Claesson and contributors
+-- Copyright (C) 2025-2026 Jonas Claesson
 
 -- arith-mod-1.once: remainder. f x = x % 6; f 20 = 2. Expected exit code 2.
 -- Plan 0.57 (D055): % is total.

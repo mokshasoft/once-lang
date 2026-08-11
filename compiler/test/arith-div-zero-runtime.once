@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
--- Copyright (C) 2025-2026 Jonas Claesson and contributors
+-- Copyright (C) 2025-2026 Jonas Claesson
 
 -- arith-div-zero-runtime.once: D055 guard fires for a RUNTIME (non-literal)
 -- zero divisor — the case the guard actually exists for. The divisor `x - x`

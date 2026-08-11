@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
--- Copyright (C) 2025-2026 Jonas Claesson and contributors
+-- Copyright (C) 2025-2026 Jonas Claesson
 
 -- Type inference (D007/D072): a NESTED composition with a bare poly arm.
 -- `compose id id : a -> a` (the oracle keeps the schema through the inner

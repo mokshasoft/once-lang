@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Copyright (C) 2025-2026 Jonas Claesson and contributors
+# Copyright (C) 2025-2026 Jonas Claesson
 #
 # Test-harness-local Emits SigOp `emit : Eff Int Unit` (Plan 0.36).
 # Runtime = NOP: the observable is the SigOp trace (asserted at the Agda

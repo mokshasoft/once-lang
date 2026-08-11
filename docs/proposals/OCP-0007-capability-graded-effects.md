@@ -1,6 +1,6 @@
 # OCP-0007: Capability-Graded Effects
 
-**Author:** Jonas Claeson
+**Author:** Jonas Claesson
 **Status:** Draft
 **Created:** 2026-06-26
 

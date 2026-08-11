@@ -1,6 +1,6 @@
 # OCP-0009: Decidable Dependent Types via the Total Core
 
-**Author:** Jonas Claeson
+**Author:** Jonas Claesson
 **Status:** Draft
 **Created:** 2026-07-05
 

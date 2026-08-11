@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
--- Copyright (C) 2025-2026 Jonas Claesson and contributors
+-- Copyright (C) 2025-2026 Jonas Claesson
 
 -- Plan 0.36 Phase-0 north-star test. RED until the functor-general cata
 -- codegen (Phase 2) lands.

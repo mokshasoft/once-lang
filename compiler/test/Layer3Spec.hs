@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
--- Copyright (C) 2025-2026 Jonas Claesson and contributors
+-- Copyright (C) 2025-2026 Jonas Claesson
 
 -- | Layer 3 codegen tests — nested combinations of Layer 1 (products)
 -- and Layer 2 (sums): pairs containing sums, sums containing pairs,

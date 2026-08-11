@@ -1,6 +1,6 @@
 # OCP-0005: Decision State & Invariant Encoding
 
-**Author:** Jonas Claeson
+**Author:** Jonas Claesson
 **Status:** Draft
 **Created:** 2026-06-09
 

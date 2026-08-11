@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
--- Copyright (C) 2025-2026 Jonas Claesson and contributors
+-- Copyright (C) 2025-2026 Jonas Claesson
 
 -- Layer 1 test: compose chain over snd morphisms
 -- (snd . snd . snd) (1, (2, (3, 42))) should yield 42 via the
