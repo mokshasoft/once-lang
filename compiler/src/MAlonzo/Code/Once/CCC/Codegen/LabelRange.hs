@@ -35,11 +35,12 @@ d_cata'45'dispatch_14 ::
   MAlonzo.Code.Once.CCC.Codegen.IRToTrace.T_CataStrategy_20 ->
   Integer ->
   Integer ->
+  Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_cata'45'dispatch_14 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_cata'45'dispatch_316
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_cata'45'dispatch_356
       (coe v0)
 -- Once.CCC.Codegen.LabelRange._.ir-to-trace'
 d_ir'45'to'45'trace''_18 ::
@@ -52,7 +53,7 @@ d_ir'45'to'45'trace''_18 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_ir'45'to'45'trace''_18 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_348
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
       (coe v0)
 -- Once.CCC.Codegen.LabelRange.label-of
 d_label'45'of_40 ::
@@ -84,24 +85,63 @@ du_cata'45'label'45'of_44 v0
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.LabelRange.cata-label-mono
-d_cata'45'label'45'mono_56 ::
+d_cata'45'label'45'mono_58 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.Codegen.IRToTrace.T_CataStrategy_20 ->
   Integer ->
   Integer ->
+  Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_cata'45'label'45'mono_56 ~v0 v1 ~v2 v3 ~v4
-  = du_cata'45'label'45'mono_56 v1 v3
-du_cata'45'label'45'mono_56 ::
+d_cata'45'label'45'mono_58 ~v0 v1 ~v2 ~v3 v4 ~v5
+  = du_cata'45'label'45'mono_58 v1 v4
+du_cata'45'label'45'mono_58 ::
   MAlonzo.Code.Once.CCC.Codegen.IRToTrace.T_CataStrategy_20 ->
   Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-du_cata'45'label'45'mono_56 v0 v1
+du_cata'45'label'45'mono_58 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.C_strat'45'const_22
         -> coe
-             MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v1)
+             MAlonzo.Code.Data.Nat.Properties.du_m'8804'm'43'n_3624 (coe v1)
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.C_strat'45'nat_24
+        -> coe
+             MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
+             (coe
+                MAlonzo.Code.Data.Nat.Properties.d_n'8804'1'43'n_2988 (coe v1))
+             (coe
+                MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
+                (coe
+                   MAlonzo.Code.Data.Nat.Properties.d_n'8804'1'43'n_2988
+                   (coe addInt (coe (1 :: Integer)) (coe v1)))
+                (coe
+                   MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
+                   (coe
+                      MAlonzo.Code.Data.Nat.Properties.d_n'8804'1'43'n_2988
+                      (coe addInt (coe (2 :: Integer)) (coe v1)))
+                   (coe
+                      MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
+                      (coe
+                         MAlonzo.Code.Data.Nat.Properties.d_n'8804'1'43'n_2988
+                         (coe addInt (coe (3 :: Integer)) (coe v1)))
+                      (coe
+                         MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
+                         (coe
+                            MAlonzo.Code.Data.Nat.Properties.d_n'8804'1'43'n_2988
+                            (coe addInt (coe (4 :: Integer)) (coe v1)))
+                         (coe
+                            MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
+                            (coe
+                               MAlonzo.Code.Data.Nat.Properties.d_n'8804'1'43'n_2988
+                               (coe addInt (coe (5 :: Integer)) (coe v1)))
+                            (coe
+                               MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
+                               (coe
+                                  MAlonzo.Code.Data.Nat.Properties.d_n'8804'1'43'n_2988
+                                  (coe addInt (coe (6 :: Integer)) (coe v1)))
+                               (coe
+                                  MAlonzo.Code.Data.Nat.Properties.d_n'8804'1'43'n_2988
+                                  (coe addInt (coe (7 :: Integer)) (coe v1)))))))))
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.C_strat'45'linear_26
         -> coe
              MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
              (coe
@@ -129,24 +169,6 @@ du_cata'45'label'45'mono_56 v0 v1
                          (coe
                             MAlonzo.Code.Data.Nat.Properties.d_n'8804'1'43'n_2988
                             (coe addInt (coe (5 :: Integer)) (coe v1)))))))
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.C_strat'45'linear_26
-        -> coe
-             MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
-             (coe
-                MAlonzo.Code.Data.Nat.Properties.d_n'8804'1'43'n_2988 (coe v1))
-             (coe
-                MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
-                (coe
-                   MAlonzo.Code.Data.Nat.Properties.d_n'8804'1'43'n_2988
-                   (coe addInt (coe (1 :: Integer)) (coe v1)))
-                (coe
-                   MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
-                   (coe
-                      MAlonzo.Code.Data.Nat.Properties.d_n'8804'1'43'n_2988
-                      (coe addInt (coe (2 :: Integer)) (coe v1)))
-                   (coe
-                      MAlonzo.Code.Data.Nat.Properties.d_n'8804'1'43'n_2988
-                      (coe addInt (coe (3 :: Integer)) (coe v1)))))
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.C_strat'45'branching_28 v2
         -> coe
              MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
@@ -158,23 +180,38 @@ du_cata'45'label'45'mono_56 v0 v1
                    MAlonzo.Code.Data.Nat.Properties.du_m'8804'm'43'n_3624
                    (coe addInt (coe (4 :: Integer)) (coe v1)))
                 (coe
-                   MAlonzo.Code.Data.Nat.Properties.du_m'8804'm'43'n_3624
+                   MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
                    (coe
-                      addInt
+                      MAlonzo.Code.Data.Nat.Properties.du_m'8804'm'43'n_3624
                       (coe
-                         addInt (coe (4 :: Integer))
+                         addInt
                          (coe
-                            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_lsize_162 (coe v2)))
-                      (coe v1))))
+                            addInt (coe (4 :: Integer))
+                            (coe
+                               MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_lsize_190 (coe v2)))
+                         (coe v1)))
+                   (coe
+                      MAlonzo.Code.Data.Nat.Properties.du_m'8804'm'43'n_3624
+                      (coe
+                         addInt
+                         (coe
+                            addInt
+                            (coe
+                               addInt (coe (4 :: Integer))
+                               (coe
+                                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_lsize_190 (coe v2)))
+                            (coe
+                               MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_lsize_190 (coe v2)))
+                         (coe v1)))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.LabelRange.label-mono
-d_label'45'mono_94 ::
+d_label'45'mono_104 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Integer -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_label'45'mono_94 v0 v1 v2 v3 v4 v5
+d_label'45'mono_104 v0 v1 v2 v3 v4 v5
   = case coe v3 of
       MAlonzo.Code.Once.IR.C_id_22
         -> coe
@@ -183,19 +220,19 @@ d_label'45'mono_94 v0 v1 v2 v3 v4 v5
         -> coe
              MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
              (coe
-                d_label'45'mono_94 (coe v0) (coe v1) (coe v7) (coe v10) (coe v4)
+                d_label'45'mono_104 (coe v0) (coe v1) (coe v7) (coe v10) (coe v4)
                 (coe v5))
              (coe
-                d_label'45'mono_94 (coe v0) (coe v7) (coe v2) (coe v9)
+                d_label'45'mono_104 (coe v0) (coe v7) (coe v2) (coe v9)
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                    (coe
-                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_348
+                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
                       (coe v0) (coe v1) (coe v7) (coe v4) (coe v5) (coe v10)))
                 (coe
                    du_label'45'of_40
                    (coe
-                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_348
+                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
                       (coe v0) (coe v1) (coe v7) (coe v4) (coe v5) (coe v10))))
       MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v9 v10 v11
         -> case coe v2 of
@@ -205,40 +242,40 @@ d_label'45'mono_94 v0 v1 v2 v3 v4 v5
                       -> coe
                            MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
                            (coe
-                              d_label'45'mono_94 (coe v0) (coe v1) (coe v12) (coe v9)
+                              d_label'45'mono_104 (coe v0) (coe v1) (coe v12) (coe v9)
                               (coe addInt (coe (3 :: Integer)) (coe v4)) (coe v5))
                            (coe
-                              d_label'45'mono_94 (coe v0) (coe v1) (coe v13) (coe v10)
+                              d_label'45'mono_104 (coe v0) (coe v1) (coe v13) (coe v10)
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                  (coe
-                                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_348
+                                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
                                     (coe v0) (coe v1) (coe v12)
                                     (coe addInt (coe (3 :: Integer)) (coe v4)) (coe v5) (coe v9)))
                               (coe
                                  du_label'45'of_40
                                  (coe
-                                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_348
+                                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
                                     (coe v0) (coe v1) (coe v12)
                                     (coe addInt (coe (3 :: Integer)) (coe v4)) (coe v5) (coe v9))))
                     MAlonzo.Code.Once.IR.C_Heap_8
                       -> coe
                            MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
                            (coe
-                              d_label'45'mono_94 (coe v0) (coe v1) (coe v12) (coe v9)
+                              d_label'45'mono_104 (coe v0) (coe v1) (coe v12) (coe v9)
                               (coe addInt (coe (4 :: Integer)) (coe v4)) (coe v5))
                            (coe
-                              d_label'45'mono_94 (coe v0) (coe v1) (coe v13) (coe v10)
+                              d_label'45'mono_104 (coe v0) (coe v1) (coe v13) (coe v10)
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                  (coe
-                                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_348
+                                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
                                     (coe v0) (coe v1) (coe v12)
                                     (coe addInt (coe (4 :: Integer)) (coe v4)) (coe v5) (coe v9)))
                               (coe
                                  du_label'45'of_40
                                  (coe
-                                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_348
+                                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
                                     (coe v0) (coe v1) (coe v12)
                                     (coe addInt (coe (4 :: Integer)) (coe v4)) (coe v5) (coe v9))))
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -274,20 +311,20 @@ d_label'45'mono_94 v0 v1 v2 v3 v4 v5
                        (coe
                           MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
                           (coe
-                             d_label'45'mono_94 (coe v0) (coe v11) (coe v2) (coe v9) (coe v4)
+                             d_label'45'mono_104 (coe v0) (coe v11) (coe v2) (coe v9) (coe v4)
                              (coe addInt (coe (2 :: Integer)) (coe v5)))
                           (coe
-                             d_label'45'mono_94 (coe v0) (coe v12) (coe v2) (coe v10)
+                             d_label'45'mono_104 (coe v0) (coe v12) (coe v2) (coe v10)
                              (coe
                                 MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                 (coe
-                                   MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_348
+                                   MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
                                    (coe v0) (coe v11) (coe v2) (coe v4)
                                    (coe addInt (coe (2 :: Integer)) (coe v5)) (coe v9)))
                              (coe
                                 du_label'45'of_40
                                 (coe
-                                   MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_348
+                                   MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
                                    (coe v0) (coe v11) (coe v2) (coe v4)
                                    (coe addInt (coe (2 :: Integer)) (coe v5)) (coe v9))))))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -312,7 +349,7 @@ d_label'45'mono_94 v0 v1 v2 v3 v4 v5
                              MAlonzo.Code.Data.Nat.Properties.d_n'8804'1'43'n_2988
                              (coe addInt (coe (1 :: Integer)) (coe v5)))
                           (coe
-                             d_label'45'mono_94 (coe v0)
+                             d_label'45'mono_104 (coe v0)
                              (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v1) (coe v11))
                              (coe v12) (coe v9) (coe (0 :: Integer))
                              (coe addInt (coe (2 :: Integer)) (coe v5)))))
@@ -332,23 +369,23 @@ d_label'45'mono_94 v0 v1 v2 v3 v4 v5
                -> coe
                     MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
                     (coe
-                       d_label'45'mono_94 (coe v0)
+                       d_label'45'mono_104 (coe v0)
                        (coe
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v10) (coe v2))
-                       (coe v2) (coe v9) (coe v4) (coe v5))
+                       (coe v2) (coe v9) (coe (0 :: Integer)) (coe v5))
                     (coe
-                       du_cata'45'label'45'mono_56
+                       du_cata'45'label'45'mono_58
                        (coe
                           MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_cata'45'strategy_50
                           (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_568 (coe v10)))
                        (coe
                           du_label'45'of_40
                           (coe
-                             MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_348
+                             MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
                              (coe v0)
                              (coe
                                 MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v10) (coe v2))
-                             (coe v2) (coe v4) (coe v5) (coe v9))))
+                             (coe v2) (coe (0 :: Integer)) (coe v5) (coe v9))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_Para_112 v7 v9
         -> coe

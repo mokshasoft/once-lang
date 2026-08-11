@@ -255,15 +255,27 @@ cata-body body-label end-label bb at =
 -- The closure record for the algebra, built ONCE before the loop: cell 0 the
 -- (unused) environment, cell 1 the body's code address — the cell `do-call`
 -- reads.
-cata-call-setup : ℕ → ℕ → AbstractTrace
-cata-call-setup cl body-label =
+--
+-- IT MUST HAND `Input1` BACK. Writing the record's cells needs `Input1`
+-- pointing AT the record (`store-indirect`), and the very next thing the
+-- skeleton does is read the μ-value the cata was called on — out of `Input1`.
+-- So the value is stashed in the call's spare slot `k` first and reloaded
+-- last. (Found by the exit tests: without this the descend loop read the
+-- record's tag cell, took the base branch immediately, and every cata
+-- returned the fold of zero layers.)
+cata-call-setup : ℕ → ℕ → ℕ → AbstractTrace
+cata-call-setup cl k body-label =
+  mov-to-output ∷
+  store-at-slot k ∷
   instr-alloc-heap 2 ∷
   store-at-slot cl ∷
   mov-to-input ∷
   instr-load-tag-lit 0 ∷
   store-indirect ∷
   instr-load-code-addr (ℓ o body-label) ∷
-  store-indirect-suc ∷ []
+  store-indirect-suc ∷
+  load-from-slot k ∷
+  mov-to-input ∷ []
 
 -- One application of the algebra. On entry `Input1` holds the layer; on return
 -- `Output` holds the algebra's result — the same contract the spliced copy had.
@@ -287,7 +299,7 @@ cata-trace-nat bb n1 l1 at =
   -- the loop skeleton is exactly that. With the bracket last, `H` = the loop
   -- plus its jump-over and the existing combinator applies directly; with it
   -- first, the loop would be a SUFFIX, which nothing in `LabelScope` supports.
-  (cata-call-setup (suc (suc n1)) (suc (suc (suc (suc (suc (suc l1)))))) ++
+  (cata-call-setup (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc (suc (suc l1)))))) ++
    (cata-nat-I₁ n1 l1 ++
     (cata-call (suc (suc n1)) (suc (suc (suc n1))) ++
      (cata-nat-I₂ n1 l1 ++
@@ -366,7 +378,8 @@ cata-trace-linear : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × Abst
 -- `+` would need a transport at every one.
 cata-trace-linear bb n1 l1 at =
   suc (suc (suc (suc (suc (suc (suc (suc n1))))))) , suc (suc (suc (suc (suc (suc l1))))) ,
-  (cata-call-setup (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc l1)))) ++
+  (cata-call-setup (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1)))))))
+                   (suc (suc (suc (suc l1)))) ++
    (cata-lin-I₁ n1 l1 ++
     (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) ++
      (cata-lin-I₂ n1 l1 ++
@@ -532,6 +545,7 @@ cata-trace-branching : Functor → ℕ → ℕ → ℕ → AbstractTrace → ℕ
 cata-trace-branching F bb n1 l1 at =
   (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 2 , (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) +ℕ 2 ,
   (cata-call-setup (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4)
+                   ((n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 1)
                    (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) ++
    (cata-br-I₁ F n1 l1 ++
     (cata-call (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4)
@@ -551,7 +565,7 @@ cata-trace-branching F bb n1 l1 at =
 cata-trace-const : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-trace-const bb n1 l1 at =
   n1 +ℕ 2 , l1 +ℕ 2 ,
-  (cata-call-setup n1 l1 ++
+  (cata-call-setup n1 (n1 +ℕ 1) l1 ++
    (cata-call n1 (n1 +ℕ 1) ++ cata-body l1 (l1 +ℕ 1) bb at))
 
 cata-dispatch : CataStrategy → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace

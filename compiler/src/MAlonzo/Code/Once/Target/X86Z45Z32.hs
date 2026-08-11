@@ -145,12 +145,12 @@ d_x86'45'32'45'irToAsm_18 v0 v1 v2 v3 v4
             (coe
                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                (coe
-                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_718
+                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_766
                   (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))
             (coe
                MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                (coe
-                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_718
+                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_766
                   (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))))
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -164,7 +164,7 @@ d_x86'45'32'45'irToAsm_18 v0 v1 v2 v3 v4
                   MAlonzo.Code.Data.Nat.Show.d_show_56
                   (mulInt
                      (coe
-                        MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_732
+                        MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_780
                         (coe v0) (coe v2) (coe v3) (coe v1) (coe v4))
                      (coe (4 :: Integer))))
                (coe
@@ -184,12 +184,12 @@ d_x86'45'32'45'irToAsm_18 v0 v1 v2 v3 v4
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                     (coe
-                                       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_718
+                                       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_766
                                        (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                     (coe
-                                       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_718
+                                       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_766
                                        (coe v0) (coe v2) (coe v3) (coe v1) (coe v4))))))
                         (coe
                            MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -200,7 +200,7 @@ d_x86'45'32'45'irToAsm_18 v0 v1 v2 v3 v4
                                  MAlonzo.Code.Data.Nat.Show.d_show_56
                                  (mulInt
                                     (coe
-                                       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_732
+                                       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_780
                                        (coe v0) (coe v2) (coe v3) (coe v1) (coe v4))
                                     (coe (4 :: Integer))))
                               (coe
@@ -221,12 +221,12 @@ d_x86'45'32'45'irToBodies_42 v0 v1 v2 v3 v4
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'bodies'45'from_742
+            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'bodies'45'from_790
             (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'bodies'45'from_742
+            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'bodies'45'from_790
             (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))
 -- Once.Target.X86-32._.emit-thunk-body
 d_emit'45'thunk'45'body_54 ::

@@ -282,6 +282,7 @@ library
       MAlonzo.Code.Once.Arith.SigOp.IntLit
       MAlonzo.Code.Once.Arith.Type
       MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable
+      MAlonzo.Code.Once.CCC.Codegen.EmittedWF
       MAlonzo.Code.Once.CCC.Codegen.AllocMin
       MAlonzo.Code.Once.CCC.Codegen.CataNextSlot
       MAlonzo.Code.Once.CCC.Codegen.FlatStepLemmas
@@ -291,6 +292,7 @@ library
       MAlonzo.Code.Once.CCC.Codegen.ShapeTable
       MAlonzo.Code.Once.CCC.Codegen.SlotBudget
       MAlonzo.Code.Once.CCC.Machine.FlatPtrBounds
+      MAlonzo.Code.Once.CCC.Machine.ValidAtWFHalted
       MAlonzo.Code.Once.CCC.Machine.FlatRegTagWF
       MAlonzo.Code.Once.CCC.Machine.FlatStackPtr
       MAlonzo.Code.Once.CCC.Machine.FlatStackSlot
@@ -489,6 +491,7 @@ library
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64
       MAlonzo.Code.Once.Denotation.Behavior
       MAlonzo.Code.Once.Adequacy.Compile
+      MAlonzo.Code.Once.Adequacy.LabelClash
       MAlonzo.Code.Once.Adequacy.CPU
       MAlonzo.Code.Once.Adequacy.CPU.Interface
       MAlonzo.Code.Once.Adequacy.CPU.RiscV64

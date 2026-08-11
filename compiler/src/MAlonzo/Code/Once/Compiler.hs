@@ -377,12 +377,12 @@ d_compile'45'cr_36 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22) ->
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
-  MAlonzo.Code.Once.Compile.T_CompileResult_722 ->
+  MAlonzo.Code.Once.Compile.T_CompileResult_786 ->
   Maybe [MAlonzo.Code.Data.Fin.Base.T_Fin_10]
 d_compile'45'cr_36 ~v0 ~v1 ~v2 ~v3 ~v4 = du_compile'45'cr_36
 du_compile'45'cr_36 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
-  MAlonzo.Code.Once.Compile.T_CompileResult_722 ->
+  MAlonzo.Code.Once.Compile.T_CompileResult_786 ->
   Maybe [MAlonzo.Code.Data.Fin.Base.T_Fin_10]
 du_compile'45'cr_36
   = coe
@@ -611,7 +611,7 @@ d_correct'45'cr_46 ::
   Bool ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Once.Compile.T_CompileResult_722 ->
+  MAlonzo.Code.Once.Compile.T_CompileResult_786 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -624,7 +624,7 @@ du_correct'45'cr_46 ::
   Bool ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Once.Compile.T_CompileResult_722 ->
+  MAlonzo.Code.Once.Compile.T_CompileResult_786 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->

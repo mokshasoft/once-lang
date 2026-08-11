@@ -109,7 +109,7 @@ du_ir'45'stack'45'budget_208 ::
   MAlonzo.Code.Once.IR.T_IR_16 -> Integer
 du_ir'45'stack'45'budget_208 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_702
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_750
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.X86-64.RunContext._.ir-to-trace
 d_ir'45'to'45'trace_210 ::
@@ -129,7 +129,7 @@ du_ir'45'to'45'trace_210 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286]
 du_ir'45'to'45'trace_210 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_684
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_732
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.X86-64.RunContext.EntryLike
 d_EntryLike_212 ::
