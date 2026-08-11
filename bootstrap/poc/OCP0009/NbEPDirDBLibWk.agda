@@ -170,6 +170,24 @@ wᶠ²-single t =
     ren-sub'' : (u : RTm _) → renTm vs u ≡ subTm (λ x → var (vs x)) u
     ren-sub'' u = trans (cong (renTm vs) (sym (subTm-id u))) (renTm-subTm u)
 
+-- ⚠ THE PATTERN, and it is a ladder in waiting: `single (var (vs^(n-1) vz))`
+--   collapses `n` family-weakenings to `n-1` ordinary ones.  Three rungs
+--   so far — the branch depth decides which you need, and (0,S) wanted the
+--   third.  Worth indexing (D5) if a fourth ever appears.
+wᶠ³-single : {Γ : Cx} (t : RTm (Γ ∙)) →
+             subTm (single (var (vs (vs vz)))) (wᶠ (wᶠ (wᶠ t))) ≡ w (w t)
+wᶠ³-single t =
+  trans (subTm-renTm (wᶠ (wᶠ t)))
+        (trans (subTm-renTm (wᶠ t))
+               (trans (subTm-renTm t)
+                      (trans (subTm-cong bridge t) (sym (ren-sub'' t)))))
+  where
+    bridge : ∀ x → _
+    bridge vz     = refl
+    bridge (vs x) = refl
+    ren-sub'' : (u : RTm _) → renTm vs (renTm vs u) ≡ subTm (λ x → var (vs (vs x))) u
+    ren-sub'' u = trans (renTm-renTm u) (ren-sub u)
+
 wᶠ-nrs : {Γ : Cx} (t : RTm (Γ ∙)) → subTm (extS nrs) (wᶠ t) ≡ wᶠ (wᶠ t)
 wᶠ-nrs t =
   trans (subTm-renTm t)
