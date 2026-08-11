@@ -26,14 +26,20 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; Ren
         ; RTy; El; Hom; Nat; U
-        ; RTm; var; nzero; nsuc
+        ; RTm; var; nzero; nsuc; lam; app; absurd; ordtr
         ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR )
-open import poc.OCP0009.NbEPDirDBType using ( Ctx; _▹_; ⌊_⌋; single; nrs )
+open import poc.OCP0009.NbEPDirDBType
+  using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢lam; ⊢app
+        ; ty-Nat; ty-Hom; ty-El; ty-Π )
+open import poc.OCP0009.NbEPDirDBSubj
+  using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢-ext )
+open import poc.OCP0009.NbEPDirDBExamplesOrd using ( ⊢strong-base'; ⊢strong-step )
 open import poc.OCP0009.NbEPDirDBLibWk
   using ( w; wᶠ; cong₃; cong₄; cong₅; cong₆; sub-w; sub-w²; ren-w
         ; wk-singleTy; wᶠ-single; ren-wTy; ren-wᶠ; nrs-wTy; wᶠ-nrs )
-open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-ren )
-open import poc.OCP0009.NbEPDirDBLibWk using ( wTy^; wᶠ^ )
+open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-ren; aIHT-fit )
+open import poc.OCP0009.NbEPDirDBLibWk using ( wTy^; wᶠ^; ⊢wkᶠ; wᶠ³-single )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 
 ------------------------------------------------------------------------
@@ -179,15 +185,20 @@ M1lex A cM m₁ m₂ b₁ =
 --   `wk-single`s; here only the two BOUNDS can move.
 ------------------------------------------------------------------------
 
-module ZS (Γ : Cx) (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) where
+module ZS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
+           (dA   : Δ ⊢ty A)
+           (dcM  : (Δ ▹ A) ⊢ cM ∷ U)
+           (dm₁  : (Δ ▹ A) ⊢ m₁ ∷ Nat)
+           (dm₂  : (Δ ▹ A) ⊢ m₂ ∷ Nat)
+           (dstp : Δ ⊢ stp ∷ lStepT A cM m₁ m₂)
+           where
 
-  -- the inner motive at n₁ = 0, over (Γ ▹ Nat[n₂])
-  mot : RTy ((Γ ∙) ∙)
+  -- the inner motive at n₁ = 0, over (Δ ▹ Nat[n₂])
+  mot : RTy ((⌊ Δ ⌋ ∙) ∙)
   mot = M0lex (renTy vs A) (wᶠ cM) (wᶠ m₁) (wᶠ m₂)
 
-  -- ★ the boundary.  `nrs` moves only `n₂'` (to `nsuc n₂'`); the μ₁-bound
-  --   is the literal `nzero` and rides through, and A/cM/m₁/m₂ cannot move
-  --   at all — they are already at the depth they are used.
+  -- ★ the boundary.  `nrs` moves only `n₂'`; the μ₁-bound is the literal
+  --   `nzero` and A/cM/m₁/m₂ cannot move — they are already at depth.
   mot-s : subTy nrs mot
         ≡ auxB (renTy vs (renTy vs (renTy vs A)))
                (wᶠ (wᶠ (wᶠ cM))) (wᶠ (wᶠ (wᶠ m₁))) (wᶠ (wᶠ (wᶠ m₂)))
@@ -197,3 +208,27 @@ module ZS (Γ : Cx) (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) where
                     (wᶠ (wᶠ m₁)) (wᶠ (wᶠ m₂)) nzero (var vz))
           (cong₆ auxB (nrs-wTy (renTy vs A)) (wᶠ-nrs (wᶠ cM))
                       (wᶠ-nrs (wᶠ m₁)) (wᶠ-nrs (wᶠ m₂)) refl refl)
+
+  ------------------------------------------------------------------------
+  -- ★ rec₁ — VACUOUS at (0,S): `μ₁ y < μ₁ x ≤ 0`.
+  --
+  --   The branch context is `((Δ ▹ Nat) ▹ Nat) ▹ mot` plus three ⊢lams
+  --   (x, le, lt) — six slots above Δ.  `x` is `var (vs (vs vz))`, so the
+  --   ⊢app fit is `aIHT-fit` (rec₁'s fit is amrec's), and that fit's bound
+  --   is `w (w (wᶠ³ m₁))` by `wᶠ³-single`.
+  ------------------------------------------------------------------------
+
+  BCtx : Ctx
+  BCtx = ((((((Δ ▹ Nat) ▹ Nat) ▹ mot)
+             ▹ renTy vs (renTy vs (renTy vs A)))
+             ▹ Hom Nat (wᶠ (wᶠ (wᶠ m₁))) nzero)
+             ▹ Hom Nat (w (wᶠ (wᶠ (wᶠ m₂)))) (nsuc (var (vs (vs (vs vz))))))
+
+  -- ⚠ `rec1tm` NOT WRITTEN.  The scaffolding above is sound; the term is
+  --   not, and I will not leave a guessed one here.  What is known:
+  --     * the ⊢app fit is `aIHT-fit` (rec₁'s fit is amrec's);
+  --     * its bound is `w (w (wᶠ³ m₁))`, by `wᶠ³-single` at `t := wᶠ³ m₁`;
+  --     * the body is `⊢strong-base'`, the shape of AmrecT's `⊢ihZ`.
+  --   ⚠ AND THE TOWER DEPTHS MUST BE DERIVED FROM `BCtx`, NOT GUESSED —
+  --   every failed attempt in this file and in the amrec branches was a
+  --   miscounted weakening, never a design problem.  Probe each binder.
