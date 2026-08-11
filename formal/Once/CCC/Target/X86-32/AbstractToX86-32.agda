@@ -19,7 +19,7 @@
 -- Once's mapping:
 --   - eax: Output register (return value)
 --   - ecx: Input1 register (first logical argument)
---   - ebp: frame pointer
+--   - ebp: unused by the slot machine (slots are esp-relative)
 --   - ebx: closure/environment pointer (callee-saved)
 ------------------------------------------------------------------------
 
@@ -81,7 +81,7 @@ slot-to-disp n = n *ℕ slot-size
 -- Key register mapping:
 --   Input1  → ecx
 --   Output → eax
---   Frame  → ebp
+--   Frame  → esp (slots are ESP-relative, as on x86-64 — plan 0.69)
 --   Closure → ebx (environment pointer)
 ------------------------------------------------------------------------
 
@@ -118,14 +118,14 @@ compile-abstract load-indirect-suc =
   mov (reg eax) (mem (base+disp ecx slot-size)) ∷ []
 
 -- load-from-slot: Output := stack[slot]
--- x86-32: mov eax, [ebp + slot*4]
+-- x86-32: mov eax, [esp + slot*4]
 compile-abstract (load-from-slot n) =
-  mov (reg eax) (mem (base+disp ebp (slot-to-disp n))) ∷ []
+  mov (reg eax) (mem (base+disp esp (slot-to-disp n))) ∷ []
 
 -- store-at-slot: stack[slot] := Output
--- x86-32: mov [ebp + slot*4], eax
+-- x86-32: mov [esp + slot*4], eax
 compile-abstract (store-at-slot n) =
-  mov (mem (base+disp ebp (slot-to-disp n))) (reg eax) ∷ []
+  mov (mem (base+disp esp (slot-to-disp n))) (reg eax) ∷ []
 
 -- store-indirect: *Input1 := Output
 -- x86-32: mov [ecx], eax
@@ -138,21 +138,21 @@ compile-abstract store-indirect-suc =
   mov (mem (base+disp ecx slot-size)) (reg eax) ∷ []
 
 -- lea-slot: Output := &stack[slot]
--- x86-32: lea eax, [ebp + slot*4]
+-- x86-32: lea eax, [esp + slot*4]
 compile-abstract (lea-slot n) =
-  lea eax (base+disp ebp (slot-to-disp n)) ∷ []
+  lea eax (base+disp esp (slot-to-disp n)) ∷ []
 
 -- restore-input: Input1 := stack[slot]
--- x86-32: mov ecx, [ebp + slot*4]
+-- x86-32: mov ecx, [esp + slot*4]
 compile-abstract (restore-input n) =
-  mov (reg ecx) (mem (base+disp ebp (slot-to-disp n))) ∷ []
+  mov (reg ecx) (mem (base+disp esp (slot-to-disp n))) ∷ []
 
 -- lea-indexed: Input1 := &(base + 4*idx). base = SV-Ptr at slot n, idx =
 -- Scratch (edx). Plan 0.53: mirror x86-64 (4-byte words on i386). No scaled
 -- index in this model, so synthesize 4*idx in eax by two doublings, then add
 -- to the base pointer; result in ecx (Input1).
 compile-abstract (lea-indexed n) =
-  mov (reg ecx) (mem (base+disp ebp (slot-to-disp n))) ∷
+  mov (reg ecx) (mem (base+disp esp (slot-to-disp n))) ∷
   mov (reg eax) (reg edx) ∷
   add (reg eax) (reg eax) ∷
   add (reg eax) (reg eax) ∷
@@ -208,14 +208,14 @@ compile-abstract instr-call-closure =
 compile-abstract (worklist-init n) = []
 
 -- worklist-push: Push Output to worklist at slot
--- x86-32: mov [ebp + slot*4], eax  (same as store-at-slot)
+-- x86-32: mov [esp + slot*4], eax  (same as store-at-slot)
 compile-abstract (worklist-push n) =
-  mov (mem (base+disp ebp (slot-to-disp n))) (reg eax) ∷ []
+  mov (mem (base+disp esp (slot-to-disp n))) (reg eax) ∷ []
 
 -- worklist-pop: Pop from worklist at slot to Output
--- x86-32: mov eax, [ebp + slot*4]  (same as load-from-slot)
+-- x86-32: mov eax, [esp + slot*4]  (same as load-from-slot)
 compile-abstract (worklist-pop n) =
-  mov (reg eax) (mem (base+disp ebp (slot-to-disp n))) ∷ []
+  mov (reg eax) (mem (base+disp esp (slot-to-disp n))) ∷ []
 
 -- worklist-check: Check if worklist is empty (no-op in simplified model)
 -- x86-32: (empty - proofs use Star-based reasoning, not loop mechanics)

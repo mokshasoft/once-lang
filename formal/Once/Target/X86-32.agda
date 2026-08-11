@@ -77,24 +77,28 @@ x86-32-functionEpilogue = "    ret\n\n"
 
 -- Plan 0.53: each compiled IR function sets up a standard i386 ebp frame
 -- (push ebp; mov ebp,esp; sub esp,budget*4) and tears it down before ret.
--- Slots are ebp-relative; the return address is on the stack (x86 call/ret),
--- so nested closure calls need no extra save. compile-trace-cnt o expands
--- structured case-on-tag / loop nodes.
+-- Plan 0.69: slots are ESP-relative, exactly as on x86-64. They used to be
+-- `ebp`-relative with `%ebp` anchored once here, in the function prologue —
+-- which was right while closure bodies were separate TEXT with their own
+-- prologue (`x86-32-irToBodies`, below). The 0.63 flip inlined the bodies and
+-- that path went dead, so an inlined body's `sub esp` re-anchored nothing and
+-- its slots aliased its caller's frame. With esp-relative slots the body
+-- bracket's own `sub`/`add` IS the re-anchor, which is why the identical
+-- `c-thunk`/`c-ret` lowering has always been correct on x86-64.
+-- The return address is on the stack (x86 call/ret), so nested closure calls
+-- need no extra save. compile-trace-cnt o expands structured case-on-tag /
+-- loop nodes.
 x86-32-irToAsm : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
 x86-32-irToAsm o l ir =
   let budget       = IRT.ir-stack-budget-from o l ir
       (l' , trace) = IRT.ir-to-trace-from o l ir
       (l'' , prog) = compile-trace-cnt o l' trace
       frame        = budget * 4
-  -- ebp is the frame BOTTOM: reserve, then `mov ebp,esp`, so the codegen's
-  -- positive `slot*4(%ebp)` offsets index UP into the reserved region
-  -- (leaving the saved ebp + return address above %ebp untouched).
-  in l'' , ("    pushl %ebp\n" ++
-            "    subl $" ++ showNat frame ++ ", %esp\n" ++
-            "    movl %esp, %ebp\n" ++
+  -- The frame IS the reservation: `slot*4(%esp)` indexes up into it, and the
+  -- return address sits just above. Same shape as x86-64's.
+  in l'' , ("    subl $" ++ showNat frame ++ ", %esp\n" ++
             programToText prog ++
-            "    leal " ++ showNat frame ++ "(%ebp), %esp\n" ++
-            "    popl %ebp\n")
+            "    addl $" ++ showNat frame ++ ", %esp\n")
 
 -- Plan 0.53: closure-body (thunk) emission. Each `.L_thunk_<n>` body gets its
 -- own ebp frame + ret; reachable via `movl $.L_thunk_<n>, reg`.
