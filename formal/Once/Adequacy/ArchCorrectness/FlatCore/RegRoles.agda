@@ -19,13 +19,14 @@
 -- Output register agrees — so naming them is what lets the statements survive
 -- a change of arch.
 --
--- NO LAWS HERE, DELIBERATELY. Role DISTINCTNESS (that a write to Output leaves
--- Input1 alone) is free today: with the roles projected from a concrete record,
--- `X.readReg (X.writeReg rf out-reg v) in1-reg` still reduces exactly as
--- `readReg (writeReg rf rax v) rdi` did. It stops being free at G1c step 2,
--- where the post-state becomes abstract — so the distinctness the proofs
--- actually use gets added there, driven by the obligations rather than
--- guessed at here.
+-- INDEXED BY A `Role` ENUM, not eight independent fields — and that is step 2
+-- talking. Once the post-state is abstract, "a write to Output leaves Input1
+-- alone" stops being free (it used to be `writeReg`/`readReg` reduction on two
+-- distinct constructors) and has to be stated. Stated over eight fields it is
+-- 28 inequalities; stated over a `Role` enum it is `ρ' ≢ ρ`, ONE premise, and
+-- the arch discharges it by an eight-way case split where the constructors
+-- make every case `refl` or absurd. The eight names below are DERIVED, so the
+-- 120 sites G1c step 1 renamed did not have to move again.
 --
 -- ONE MEASURED CAVEAT, for whoever instantiates this next (plan 0.66): x86-32
 -- CANNOT fill this record injectively. It has eight GPRs, the machine has nine
@@ -36,15 +37,30 @@
 
 module Once.Adequacy.ArchCorrectness.FlatCore.RegRoles where
 
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Nullary using (¬_)
+
+data Role : Set where
+  -- the flat machine's own three
+  role-sp      : Role   -- stack pointer: IS the current frame's base (plan 0.61)
+  role-clos    : Role   -- closure pointer, mirroring the flat `fclosure` (D097)
+  role-heap    : Role   -- heap frontier, the bump allocator's top
+  -- the abstract machine's registers
+  role-out     : Role
+  role-in1     : Role
+  role-in2     : Role
+  role-scratch : Role
+  role-count   : Role   -- the cata tally (plan 0.54 D item 4)
+
 record RegRoles (Reg : Set) : Set where
   field
-    -- the flat machine's own three
-    sp-reg      : Reg   -- stack pointer: IS the current frame's base (plan 0.61)
-    clos-reg    : Reg   -- closure pointer, mirroring the flat `fclosure` (D097)
-    heap-reg    : Reg   -- heap frontier, the bump allocator's top
-    -- the abstract machine's registers
-    out-reg     : Reg   -- Output
-    in1-reg     : Reg   -- Input1
-    in2-reg     : Reg   -- Input2
-    scratch-reg : Reg   -- Scratch
-    count-reg   : Reg   -- Count, the cata tally (plan 0.54 D item 4)
+    reg-of : Role → Reg
+
+  sp-reg      = reg-of role-sp
+  clos-reg    = reg-of role-clos
+  heap-reg    = reg-of role-heap
+  out-reg     = reg-of role-out
+  in1-reg     = reg-of role-in1
+  in2-reg     = reg-of role-in2
+  scratch-reg = reg-of role-scratch
+  count-reg   = reg-of role-count

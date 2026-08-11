@@ -20,18 +20,20 @@
 module Once.Adequacy.ArchCorrectness.X86-64.RegRoles where
 
 open import Once.CCC.Target.X86-64.Syntax using (Reg; rax; rbx; rsi; rdi; rsp; r12; r14; r15)
-open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
+open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
+  using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1; role-in2; role-scratch; role-count)
+
+x86-64-reg-of : Role → Reg
+x86-64-reg-of role-sp      = rsp
+x86-64-reg-of role-clos    = r12
+x86-64-reg-of role-heap    = r15
+x86-64-reg-of role-out     = rax
+x86-64-reg-of role-in1     = rdi
+x86-64-reg-of role-in2     = rsi
+x86-64-reg-of role-scratch = rbx
+x86-64-reg-of role-count   = r14
 
 x86-64-roles : RegRoles Reg
-x86-64-roles = record
-  { sp-reg      = rsp
-  ; clos-reg    = r12
-  ; heap-reg    = r15
-  ; out-reg     = rax
-  ; in1-reg     = rdi
-  ; in2-reg     = rsi
-  ; scratch-reg = rbx
-  ; count-reg   = r14
-  }
+x86-64-roles = record { reg-of = x86-64-reg-of }
 
 open RegRoles x86-64-roles public

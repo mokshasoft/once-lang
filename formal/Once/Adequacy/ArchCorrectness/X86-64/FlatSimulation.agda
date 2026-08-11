@@ -63,6 +63,10 @@ import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FC
 module C = FC FS word-eq   -- HeapView / enc-sv / FlatCorr data fields
 open C using (HeapView; haddr; HDom; hfront)
 open import Once.CCC.Label using (once; thunk; LabelId)
+-- Plan 0.65 G1c step 2: the register-poke sims take any post-state `SetsRole`
+-- describes; `C.sets-role-x86` is x86-64 exhibiting the one it builds.
+open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
+  using (role-sp; role-clos; role-heap; role-out; role-in1; role-in2; role-scratch; role-count)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
   using (blk-off; blk-len; blk-off-suc; fetch-block-head; find-label-corr; find-thunk-corr; fetch-block-2nd; fetch-block-3rd; fetch-block-4th; fetch-block-5th; fetch-block-6th)
 open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-add-rr; step-sub-ri; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-push; step-pop; step-lea; step-lea-label; step-ret; step-call)
@@ -282,22 +286,22 @@ block-step-mov-rr {hv} prog fs s i dst src cc h-flat ft ca fpc-eq rsame dataPost
 block-step-mov-to-output : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-to-output → BlockStep hv prog fs s mov-to-output
 block-step-mov-to-output {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s mov-to-output rax rdi cc h ft refl refl (refl , refl) (C.sim-mov-to-output fs s (dataCorr cc))
+  block-step-mov-rr prog fs s mov-to-output rax rdi cc h ft refl refl (refl , refl) (C.sim-mov-to-output fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _))
 
 block-step-mov-to-input : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-to-input → BlockStep hv prog fs s mov-to-input
 block-step-mov-to-input {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s mov-to-input rdi rax cc h ft refl refl (refl , refl) (C.sim-mov-to-input fs s (dataCorr cc))
+  block-step-mov-rr prog fs s mov-to-input rdi rax cc h ft refl refl (refl , refl) (C.sim-mov-to-input fs s _ (dataCorr cc) (C.sets-role-x86 s role-in1 _ _))
 
 block-step-mov-input2-to-output : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-input2-to-output → BlockStep hv prog fs s mov-input2-to-output
 block-step-mov-input2-to-output {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s mov-input2-to-output rax rsi cc h ft refl refl (refl , refl) (C.sim-mov-input2-to-output fs s (dataCorr cc))
+  block-step-mov-rr prog fs s mov-input2-to-output rax rsi cc h ft refl refl (refl , refl) (C.sim-mov-input2-to-output fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _))
 
 block-step-mov-output-to-input2 : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-output-to-input2 → BlockStep hv prog fs s mov-output-to-input2
 block-step-mov-output-to-input2 {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s mov-output-to-input2 rsi rax cc h ft refl refl (refl , refl) (C.sim-mov-output-to-input2 fs s (dataCorr cc))
+  block-step-mov-rr prog fs s mov-output-to-input2 rsi rax cc h ft refl refl (refl , refl) (C.sim-mov-output-to-input2 fs s _ (dataCorr cc) (C.sets-role-x86 s role-in2 _ _))
 
 -- Generic single-`mov reg,imm` block-step (load-tag-lit, reg-op imm loads).
 block-step-mov-ri : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s : X.State)
@@ -340,27 +344,27 @@ block-step-mov-ri {hv} prog fs s i dst n cc h-flat ft ca fpc-eq rsame dataPost =
 block-step-load-tag-lit : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-load-tag-lit n) → BlockStep hv prog fs s (instr-load-tag-lit n)
 block-step-load-tag-lit {hv} prog fs s n cc h ft =
-  block-step-mov-ri prog fs s (instr-load-tag-lit n) rax n cc h ft refl refl (refl , refl) (C.sim-load-tag-lit n fs s (dataCorr cc))
+  block-step-mov-ri prog fs s (instr-load-tag-lit n) rax n cc h ft refl refl (refl , refl) (C.sim-load-tag-lit n fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _))
 
 block-step-scratch-one : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-one) → BlockStep hv prog fs s (instr-reg-op scratch-one)
 block-step-scratch-one {hv} prog fs s cc h ft =
-  block-step-mov-ri prog fs s (instr-reg-op scratch-one) rbx 1 cc h ft refl refl (refl , refl) (C.sim-reg-scratch-one fs s (dataCorr cc))
+  block-step-mov-ri prog fs s (instr-reg-op scratch-one) rbx 1 cc h ft refl refl (refl , refl) (C.sim-reg-scratch-one fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _))
 
 block-step-scratch-zero : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-zero) → BlockStep hv prog fs s (instr-reg-op scratch-zero)
 block-step-scratch-zero {hv} prog fs s cc h ft =
-  block-step-mov-ri prog fs s (instr-reg-op scratch-zero) rbx 0 cc h ft refl refl (refl , refl) (C.sim-reg-scratch-zero fs s (dataCorr cc))
+  block-step-mov-ri prog fs s (instr-reg-op scratch-zero) rbx 0 cc h ft refl refl (refl , refl) (C.sim-reg-scratch-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _))
 
 block-step-count-zero : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op count-zero) → BlockStep hv prog fs s (instr-reg-op count-zero)
 block-step-count-zero {hv} prog fs s cc h ft =
-  block-step-mov-ri prog fs s (instr-reg-op count-zero) r14 0 cc h ft refl refl (refl , refl) (C.sim-reg-count-zero fs s (dataCorr cc))
+  block-step-mov-ri prog fs s (instr-reg-op count-zero) r14 0 cc h ft refl refl (refl , refl) (C.sim-reg-count-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-count _ _))
 
 block-step-scratch-load-count : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-load-count) → BlockStep hv prog fs s (instr-reg-op scratch-load-count)
 block-step-scratch-load-count {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s (instr-reg-op scratch-load-count) rbx r14 cc h ft refl refl (refl , refl) (C.sim-reg-scratch-load-count fs s (dataCorr cc))
+  block-step-mov-rr prog fs s (instr-reg-op scratch-load-count) rbx r14 cc h ft refl refl (refl , refl) (C.sim-reg-scratch-load-count fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _))
 
 -- c-label: pc passes through (x86 `label` is a 1-instr no-op). The flat
 -- step only bumps fpc, so the DATA correspondence transports unchanged
