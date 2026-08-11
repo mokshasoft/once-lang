@@ -284,7 +284,40 @@ the two-step `trans`. And at consolidation (D6) this is the line the kit
 splits along — the eta lemmas are generic substitution metatheory, the
 bridged ones are family-specific.
 
-### D5 — The ladders should be INDEXED, not enumerated ⛔
+### D9 — WHERE THE LIBRARY CAN DISCHARGE A PREMISE, IT MUST ✅
+
+`amrec-unfold-z`/`-s` are conditional on the measure reaching a numeral.
+At a CLOSED carrier that is a theorem, not caller information:
+
+```agda
+natEval : {n : RTm ε} → ◇ ⊢ n ∷ Nat → NatVal n     -- LibNatVal, 7 lines
+measure-evals : … → (x : RTm ε) → ◇ ⊢ x ∷ A → NatVal (subTm (single x) m)
+```
+
+`natEval` is `consistency`'s own pattern: `wnorm c-◇` reaches a normal
+form, that form cannot step so `progress`+`canNat` make it `nzero` or
+`nsuc k`, compose.
+
+⚠ **The boundary is CANONICITY, not normalisation.** `wnorm` works at an
+arbitrary context; `canNat` is `RTm ε` only. At an open context the measure
+still normalises — to a NEUTRAL containing the free variable, which is not
+a numeral and never will be. So the premise there is genuine information
+the caller has and the library cannot derive.
+
+⇒ **two lemmas, two domains.** `SpikePairT` (at `◇`) gets it free;
+`SpikeDivT` (whose context carries the divisor `k`) does not, and that is
+correct rather than a gap. The conditional form is not a weaker fallback.
+
+★ **The general rule:** if a premise is derivable in some domain, the
+library derives it there rather than charging every caller. Making users
+prove a theorem is ceremony; the four typing parameters of `AmTΠ` are the
+real obligations, and those Agda already enforces.
+
+### D5 — The ladders should be INDEXED, not enumerated ✅
+
+**CLOSED** — `_∙^_`/`w^`/`wTy^`/`wᶠ^` in `LibWk`, and each combinator's
+ladder is three lines covering every depth. 24 hand-written rungs across
+four combinators became 2 indexed lemmas. Originally:
 
 `lStepT-w²⁻⁸`, `auxBody-w²⁻⁷`, `auxMotB-w²⁻⁹` are hand-written iterates of
 one lemma, and every new branch depth adds a rung. This is the only piece

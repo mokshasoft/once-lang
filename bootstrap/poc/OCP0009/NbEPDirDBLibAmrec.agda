@@ -45,6 +45,8 @@ open import poc.OCP0009.NbEPDirDBLibWk
         ; wᶠ¹-single; wᶠ²-single; nrs-wTy; wᶠ-nrs; ren-wTy; ren-wᶠ
         ; _∙^_; w^; wTy^; wᶠ^ )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-ren; aIHT-fit )
+open import poc.OCP0009.NbEPDirDBLibNatVal using ( NatVal; nv-zero; nv-suc; natEval )
+open import poc.OCP0009.NbEPDirDBSubj using ( ⊢[] )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
 
 ------------------------------------------------------------------------
@@ -447,3 +449,22 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
     step (β _ x)
       (⟶*-appˡ (⟶*-appˡ
         (⟶*-trans (⟶*-natrecⁿ r) (step (natrec-suc _ _ k) done))))
+
+------------------------------------------------------------------------
+-- ★★ AT A CLOSED CARRIER, THE UNFOLDING'S PREMISE IS FREE.
+--
+-- `amrec-unfold-z`/`-s` are conditional on the measure reaching a numeral.
+-- That premise is real information at an OPEN context — there the measure
+-- normalises to a NEUTRAL containing the free variable, and no library can
+-- supply it.  At `◇` it is a THEOREM (`natEval`), so the library discharges
+-- it and the caller just cases on the answer.
+--
+-- ⚠ The boundary is CANONICITY, not normalisation: `wnorm` works at any
+--   context, `canNat` is closed-only.  Two lemmas, two domains — the
+--   conditional form is the correct one whenever anything is open, not a
+--   weaker fallback.
+------------------------------------------------------------------------
+
+measure-evals : (A : RTy ε) (m : RTm (ε ∙)) → (◇ ▹ A) ⊢ m ∷ Nat →
+                (x : RTm ε) → ◇ ⊢ x ∷ A → NatVal (subTm (single x) m)
+measure-evals A m dm x dx = natEval (⊢[] dm dx)
