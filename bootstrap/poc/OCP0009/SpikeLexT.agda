@@ -31,7 +31,7 @@ open import poc.OCP0009.NbEPDirDBPi
 open import poc.OCP0009.NbEPDirDBType using ( Ctx; _▹_; ⌊_⌋; single; nrs )
 open import poc.OCP0009.NbEPDirDBLibWk
   using ( w; wᶠ; cong₃; cong₄; cong₅; cong₆; sub-w; sub-w²; ren-w
-        ; wk-singleTy; wᶠ-single; ren-wTy; ren-wᶠ )
+        ; wk-singleTy; wᶠ-single; ren-wTy; ren-wᶠ; nrs-wTy; wᶠ-nrs )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT )
 
 ------------------------------------------------------------------------
@@ -131,3 +131,29 @@ M0lex A cM m₁ m₂ =
 M1lex : {Γ : Cx} (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) (b₁ : RTm Γ) → RTy (Γ ∙)
 M1lex A cM m₁ m₂ b₁ =
   auxB (renTy vs A) (wᶠ cM) (wᶠ m₁) (wᶠ m₂) (nsuc (w b₁)) (var vz)
+
+------------------------------------------------------------------------
+-- ★ GATE STEP 2b — BRANCH (0,S).  The motive boundary first: `⊢natrec`'s
+--   STEP demands `subTy nrs M0lex`, and the three ⊢lams build the `auxB`
+--   form.  Under codes-and-functions this needed `auxBody-sub` plus four
+--   `wk-single`s; here only the two BOUNDS can move.
+------------------------------------------------------------------------
+
+module ZS (Γ : Cx) (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) where
+
+  -- the inner motive at n₁ = 0, over (Γ ▹ Nat[n₂])
+  mot : RTy ((Γ ∙) ∙)
+  mot = M0lex (renTy vs A) (wᶠ cM) (wᶠ m₁) (wᶠ m₂)
+
+  -- ★ the boundary.  `nrs` moves only `n₂'` (to `nsuc n₂'`); the μ₁-bound
+  --   is the literal `nzero` and rides through, and A/cM/m₁/m₂ cannot move
+  --   at all — they are already at the depth they are used.
+  mot-s : subTy nrs mot
+        ≡ auxB (renTy vs (renTy vs (renTy vs A)))
+               (wᶠ (wᶠ (wᶠ cM))) (wᶠ (wᶠ (wᶠ m₁))) (wᶠ (wᶠ (wᶠ m₂)))
+               nzero (nsuc (var (vs vz)))
+  mot-s =
+    trans (auxB-sub {σ = nrs} (renTy vs (renTy vs A)) (wᶠ (wᶠ cM))
+                    (wᶠ (wᶠ m₁)) (wᶠ (wᶠ m₂)) nzero (var vz))
+          (cong₆ auxB (nrs-wTy (renTy vs A)) (wᶠ-nrs (wᶠ cM))
+                      (wᶠ-nrs (wᶠ m₁)) (wᶠ-nrs (wᶠ m₂)) refl refl)
