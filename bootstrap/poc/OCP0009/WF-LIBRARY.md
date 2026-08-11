@@ -218,7 +218,31 @@ cleaner: `Δ ⊢ amrecTm ∷ Π (El cA) M`.
 `M` is abstract, so the naturality kit (`sub-w`, `wk-single`, …) comes
 back. That is the right direction under the criterion at the top.
 
-### D7 — A combinator must ship its COMPUTATION RULE, not only its typing ✅ (shipped for AmrecT)
+### D7 — A combinator must ship its COMPUTATION RULE, not only its typing ◐ PARTIAL
+
+**Shipped:** `amrec-β`, `amrec-unfold-z`, `amrec-unfold-s` (conditional on
+the measure reaching a numeral), and `AmTΠ◇.amrec-unfold`, which discharges
+that premise at a closed carrier via D9.
+
+⛔ **NOT YET THE IDEAL SHAPE, and this is the open item.** All of the above
+reach the AUXILIARY's branch:
+
+```agda
+app amrecTm x ⟶* app (app (subTm (single x) aZBr) x) (reflTm …)
+```
+
+What a caller actually wants to reason about is their OWN step:
+
+```agda
+app amrecTm x ⟶* app (app stp x) ⟨the IH at x⟩          -- the ideal
+```
+
+Two more β steps get there — `aZBr` is `lam (lam (app (app (w (w stp)) …) ihZ))`,
+so peeling its two binders exposes `stp`. Expected to be cheap at `Δ = ◇`,
+where everything is closed and the substitutions compute; the open case
+needs `wk-single` on the step. **Until this lands, a caller still unfolds
+one layer of the library's internals by hand, which is exactly what D7 was
+opened to stop.**
 
 **Discovered by trying to close the evaluation debt on `SpikeDivC`.**
 `divC-computes-zero` — `app divC nzero ⟶* nzero` — took eight hand-written
