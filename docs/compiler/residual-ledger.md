@@ -111,7 +111,7 @@ deferred proofs sharing one missing piece: the return-address component.
 | 13 | `emitted-thunk-guarded` | `ConcFlatSim` | deferred proof | REPLACED `thunk-entry-empty` 2026-08-06 (D094), which is now the THEOREM `SegWF.seg-entry` — every way of arriving at a body entry is refuted (fall-through by this guard, jump by `find-label-sound`, return by `RetMatch`'s new call provenance, entry by position 0), leaving the call, which reserves nothing. What is left is the emitter's own statement: in an emitted trace a `c-thunk` sits at `suc q` with a `c-jmp` at `q` — the guard `ir-to-trace'` emits to stop the parent falling into the body. CODEGEN-class: only `ir-to-trace` in the type. Route: the structural induction over `ir-to-trace'` (`FrameFreeTrace`/`LabelScope` mould) — a `NoThunks`-decides-it helper collapses the clauses that emit no body entry, an append lemma handles the splices, and the one interesting adjacency (`c-jmp end ∷ c-thunk`) is inside a single literal list in the `curry` clauses |
 | 11 | `conc-fuel` | apex | **stub** | asserts adequacy of `step-budget-x86-64`, an UNDEFINED postulated `ℕ → ℕ` in `…CPU.X86-64` (siblings: `ev-x86-64`, `arith-env-x86-64`). Pin `step-budget` to a definition, then prove it. NOT a resource bound — do not launder it into a parameter |
 | 12 | `x86-64-loader-faithful` | apex | **axiom** | STAYS — but NARROWED 2026-08-09 (D100): it now carries `DistinctLabels x86-64 m`. Without that premise it was not merely trusted, it was FALSE for every program the emitter duplicated (`as` refuses the text, so its LHS is the trace of nothing). Same edit on the x86-32 / riscv64 twins, via the shared `AsmTraceCorrect` |
-| 14 | `program-labels-distinct` | `Once.Adequacy.LabelClash` | deferred proof / codegen | NEW 2026-08-09 (D100). The apex's supply of `DistinctLabels arch m` = `AllPairs _≢_ (C.moduleLabels arch Heap false m)`, the `.L…` sibling of `DistinctSymbols`/`program-no-clash`. **Currently FALSE** — `cata-dispatch` uses the IH for its algebra trace TWICE at one label range (D099), which is exactly the defect that shipped the 61-test regression. Route: `LabelRange`'s disjoint-range argument at every splice (counter monotonicity DONE, `LabelScope` containment DONE, uniqueness next), after the cata fork is decided. SCOPE: covers the non-linear `ir-to-trace'` walk; the per-arch `compile-trace-cnt` labels are inside the range but not in the list — that walk is linear, so a `LabelRange`-shaped one-liner each |
+| 14 | `program-labels-distinct` | `Once.Adequacy.LabelClash` | deferred proof / codegen | NEW 2026-08-09 (D100). The apex's supply of `DistinctLabels arch m` = `AllPairs _≢_ (C.moduleLabels arch Heap false m)`, the `.L…` sibling of `DistinctSymbols`/`program-no-clash`. **TRUE of the emitter as of 2026-08-11** (D101/C1 emits the algebra once, as a called body) — was FALSE while `cata-dispatch` used the IH for its algebra trace TWICE at one label range (D099), the defect that shipped the 61-test regression. Still OWED as a proof. Route: `LabelRange`'s disjoint-range argument at every splice (counter monotonicity DONE, `LabelScope` containment DONE incl. the cata's `segagree-curry` case, uniqueness next). SCOPE: covers the non-linear `ir-to-trace'` walk; the per-arch `compile-trace-cnt` labels are inside the range but not in the list — that walk is linear, so a `LabelRange`-shaped one-liner each |
 
 Only #12 is permanent. #11 lives in the CPU layer, not the correspondence.
 NOTHING in this cone is a model gap any more — D092 closed the last one.
@@ -160,16 +160,21 @@ toolchain-boundary work (Intel SDM byte encoding), not a correspondence gap.
 - `x86-32` / `riscv64` each still postulate their whole `conc-flat-sim` plus a
   loader axiom and an opaque `entry-frame`. x86-64 is the only arch with a real
   correspondence; the other two assume it.
-- `cata-correct` (`IRObsCorrectFlat`) — **FALSE AS STATED**, reclassified
-  2026-08-09 (Plan 0.68 step 0). Not a deferred proof: `cata-dispatch` splices
-  the algebra trace TWICE at ONE label range (`I₁ ++ at ++ (I₂ ++ at ++ I₃)`),
-  and the flat machine resolves labels by a first-match scan over the whole
-  trace — so the second copy's `c-jmp end` lands in the FIRST copy and the
-  machine's events diverge from `evalᴰ`. This is D099's defect, and this row is
-  where it actually lives; the assembler premise (D100, residual #14) is the
-  downstream symptom. Refutable until the cata fork lands. Its intended
-  discharge is ALSO amputated: `5088e571` deleted the ascend/value/trace thirds
-  2026-06-17, leaving only descend. Rebuilding base+ascend is a project.
+- `cata-correct` (`IRObsCorrectFlat`) — **NO LONGER FALSE as of 2026-08-11
+  (D101, C1)**; an ordinary deferred proof again. It WAS false: `cata-dispatch`
+  spliced the algebra trace TWICE at ONE label range (`I₁ ++ at ++ (I₂ ++ at ++
+  I₃)`), and the flat machine resolves labels by a first-match scan over the
+  whole trace, so the second copy's `c-jmp end` landed in the FIRST copy and
+  the machine's events diverged from `evalᴰ` (D099's defect; the assembler
+  premise, residual #14, was its downstream symptom). C1 emits the algebra ONCE
+  as a called body, so there is no second copy to confuse. Its discharge is
+  still AMPUTATED — `5088e571` deleted the ascend/value/trace thirds 2026-06-17,
+  leaving only descend; rebuilding base+ascend is a project — and C1 adds a
+  call/return excursion per layer, so the discharge must also consume residuals
+  #9/#10 inside the cata induction. **Note what this row could not do**: while
+  it is a postulate, no theorem relates the cata's trace to the fold, which is
+  why C1's first emitter shipped a cata that folded zero layers with all four
+  clusters green. Only the exit tests saw it.
 - `obs-correct-rest` (`IRObsCorrectFlat`) — **DELETED 2026-08-09** (Plan 0.68
   step 0). The catch-all is enumerated: 22 named obligations, one per IR
   constructor, no catch-all clause, apex green. It was hiding two independent
