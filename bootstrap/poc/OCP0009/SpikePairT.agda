@@ -42,8 +42,10 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢⌜Nat⌝; _⊢ty_
         ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Σ
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Nat⌝; Hom-Nat-ss
-        ; _⟶_; βfst; ξ-nsuc; ξ-Homˡ; ξ-Homʳ )
+        ; _⟶_; _⟶*_; done; step; βfst; βsnd; β; natrec-zero; natrec-suc
+        ; ξ-nsuc; ξ-Homˡ; ξ-Homʳ; ξ-appˡ )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBLibRec   using ( aIHT; aIHTat )
@@ -134,3 +136,41 @@ fTm = amrecTm
 
 ⊢f : ◇ ⊢ fTm ∷ Π PairT (El ⌜Nat⌝)
 ⊢f = ⊢amrecΠ
+
+------------------------------------------------------------------------
+-- ★★ AND IT COMPUTES.  Type-correct is not the same as correct — this
+--    session found `⊢gcd-descend` certifying a recursion that was not gcd
+--    — so the step's defining equations are checked here as REDUCTIONS.
+--
+-- ⚠ These are the USER's half.  The combinator's half — how `amrecTm`
+--   unfolds to the step — is `amrec-unfold-z`/`-s` in LibAmrec, already
+--   proven there.  Together they cover `app fTm x`.
+------------------------------------------------------------------------
+
+-- ★ `f (0 , 1) = 1` — the zero equation, end to end at concrete values.
+--   ⚠ concrete rather than an arbitrary `b`: for an open `b` the final β
+--   leaves `subTm (single ih) (w b)`, which is `b` only PROPOSITIONALLY
+--   (`wk-single`).  At a numeral it computes.
+f-computes-zero : (ih : RTm ε) →
+                  app (app fStp (pair nzero (nsuc nzero))) ih ⟶* nsuc nzero
+f-computes-zero ih =
+  step (ξ-appˡ (β _ (pair nzero (nsuc nzero))))
+    (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst nzero (nsuc nzero)) done)))
+      (⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done))
+        (step (β _ ih)
+          (step (βsnd nzero (nsuc nzero)) done))))
+
+-- ★★ THE SUCCESSOR EQUATION — the one that matters.  `f (1 , 0)` really
+--    does recurse at `(0 , suc 0)`: the pair is BUILT and handed to the
+--    IH, with the descent alongside.  A gcd-class spec error — a recursion
+--    that typechecks but recurses at the wrong argument — would show here
+--    and nowhere else.
+f-computes-suc : (ih : RTm ε) →
+                 app (app fStp (pair (nsuc nzero) nzero)) ih
+               ⟶* app (app ih (pair nzero (nsuc (snd (pair (nsuc nzero) nzero)))))
+                      (reflTm nzero)
+f-computes-suc ih =
+  step (ξ-appˡ (β _ (pair (nsuc nzero) nzero)))
+    (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst (nsuc nzero) nzero) done)))
+      (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ nzero) done))
+        (step (β _ ih) done)))
