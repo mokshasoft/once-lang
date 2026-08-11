@@ -103,3 +103,31 @@ auxB-sub {σ = σ} A cM m₁ m₂ n₁ n₂ =
         (sub-w {σ = extS σ} m₂)
         (sub-w² {σ = σ} n₂)
         (sub-w² {σ = extS σ} cM)
+
+------------------------------------------------------------------------
+-- THE MOTIVES.  lexrec's auxiliary is DOUBLY bounded and recursed by
+-- NESTED `natrec` — outer on n₁, inner on n₂ — so there are three:
+--
+--   lexMot   the OUTER motive, `Π Nat (auxB … n₁ n₂)`, quantifying n₂
+--   M0lex    the inner motive at n₁ = 0
+--   M1lex    the inner motive at n₁ = suc n₁'
+--
+-- ⚠ THE μ₁-BOUND MUST BE A PARAMETER of `lexMot`, exactly as `auxMotB`
+--   needed under codes-and-functions and for the same reason: `renTy vs`
+--   does NOT preserve the `var (vs vz)` that writing the bound inline
+--   would produce.  Families change the DATA's presentation, not this.
+------------------------------------------------------------------------
+
+lexMot : {Γ : Cx} (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) (b₁ : RTm Γ) → RTy Γ
+lexMot A cM m₁ m₂ b₁ =
+  Π Nat (auxB (renTy vs A) (wᶠ cM) (wᶠ m₁) (wᶠ m₂) (w b₁) (var vz))
+
+-- the inner motives: the μ₂-bound is the inner natrec's variable, and the
+-- μ₁-bound is `0` or `suc n₁'` respectively.
+M0lex : {Γ : Cx} (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) → RTy (Γ ∙)
+M0lex A cM m₁ m₂ =
+  auxB (renTy vs A) (wᶠ cM) (wᶠ m₁) (wᶠ m₂) nzero (var vz)
+
+M1lex : {Γ : Cx} (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) (b₁ : RTm Γ) → RTy (Γ ∙)
+M1lex A cM m₁ m₂ b₁ =
+  auxB (renTy vs A) (wᶠ cM) (wᶠ m₁) (wᶠ m₂) (nsuc (w b₁)) (var vz)
