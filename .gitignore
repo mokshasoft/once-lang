@@ -20,3 +20,5 @@ formal/_build/
 
 # Instructions
 .do-not-commit/
+compiler/qemu_*.core
+qemu_*.core
