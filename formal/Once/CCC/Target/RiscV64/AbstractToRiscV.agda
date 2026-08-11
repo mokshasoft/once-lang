@@ -314,9 +314,21 @@ compile-abstract (instr-ctrl (c-jmp n))                 = j (once n) ∷ []
 -- `emit-thunk-body` defined `.L_thunk_<n>` as separate TEXT. With the bodies
 -- inline that text is gone, so the `lla` referenced an undefined symbol — a
 -- link failure caught by the exit tests and invisible to the proofs.
-compile-abstract (instr-ctrl (c-thunk n b))             = label (thunk n) ∷ addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ []
+--
+-- Plan 0.69: THE BODY MUST SPILL `ra`. On x86 the return address is on the
+-- stack, so a body that calls something cannot lose it. On RISC-V it lives in
+-- a REGISTER, and `instr-call-closure` lowers to `jalr ra t1 0` — so a body
+-- that performs any call overwrites its own return address, and its `ret`
+-- (= `jalr zero, ra, 0`) jumps back into itself. That is the hang the exit
+-- tests saw. The dead `emit-thunk-body` path (`Once.Target.RiscV64`) always
+-- did this; the flip inlined the body and left the spill behind.
+--
+-- One extra slot on top of the body's own budget holds it: reserve
+-- `slots (suc b)`, put `ra` in the top word at `slots b (sp)`, so the body's
+-- own slots 0 … b-1 are untouched.
+compile-abstract (instr-ctrl (c-thunk n b))             = label (thunk n) ∷ addi sp sp (Data.Integer.-_ (+ (slots (suc b)))) ∷ sd ra sp (slots b) ∷ []
   where import Data.Integer
-compile-abstract (instr-ctrl (c-ret b))                 = addi sp sp (+ (slots b)) ∷ ret ∷ []
+compile-abstract (instr-ctrl (c-ret b))                 = ld ra sp (slots b) ∷ addi sp sp (+ (slots (suc b))) ∷ ret ∷ []
 compile-abstract (instr-ctrl (c-branch-scratch-zero n)) = beq s3 zero (once n) ∷ []
 compile-abstract (instr-ctrl (c-branch-tag-zero n))     = ld t1 t0 0 ∷ beq t1 zero (once n) ∷ []
 

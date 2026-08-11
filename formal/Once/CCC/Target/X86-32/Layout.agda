@@ -194,35 +194,6 @@ frame-preserved-slot0-disjoint frame1 frame2 k frame1+4≤frame2 =
     frame1<frame2 = <-≤-trans frame1<frame1+4 frame1+4≤frame2
 
 ------------------------------------------------------------------------
--- x86-32-Specific Calling Convention Lemmas
-------------------------------------------------------------------------
-
--- | Slot address is above thunk's ebp
-slot-addr-above-thunk-ebp : ∀ sp k esp thunk-ebp →
-  addr sp ≡ esp + 4 →
-  thunk-ebp ≡ esp ∸ 8 →
-  esp > 8 →
-  slot-addr sp k > thunk-ebp
-slot-addr-above-thunk-ebp sp k esp thunk-ebp addr-eq ebp-eq esp>8 = slot>ebp
-  where
-    open import Data.Nat.Properties using (≤-<-trans)
-
-    slot-eq : slot-addr sp k ≡ (esp + 4) + k * word-size
-    slot-eq = cong (λ a → a + k * word-size) addr-eq
-
-    slot≥esp+4 : slot-addr sp k ≥ esp + 4
-    slot≥esp+4 = subst (_≥ esp + 4) (sym slot-eq) (m≤m+n (esp + 4) (k * word-size))
-
-    esp+4>esp : esp + 4 > esp
-    esp+4>esp = m<m+n esp (s≤s z≤n)
-
-    ebp≤esp : thunk-ebp ≤ esp
-    ebp≤esp = subst (_≤ esp) (sym ebp-eq) (m∸n≤m esp 8)
-
-    slot>ebp : slot-addr sp k > thunk-ebp
-    slot>ebp = ≤-<-trans ebp≤esp (<-≤-trans esp+4>esp slot≥esp+4)
-
-------------------------------------------------------------------------
 -- Re-export FrameSlotInternal at top level
 ------------------------------------------------------------------------
 

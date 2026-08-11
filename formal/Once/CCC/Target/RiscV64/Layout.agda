@@ -194,35 +194,6 @@ frame-preserved-slot0-disjoint frame1 frame2 k frame1+8≤frame2 =
     frame1<frame2 = <-≤-trans frame1<frame1+8 frame1+8≤frame2
 
 ------------------------------------------------------------------------
--- RiscV64-Specific Calling Convention Lemmas
-------------------------------------------------------------------------
-
--- | Slot address is above thunk's fp
-slot-addr-above-thunk-fp : ∀ sp k rsp thunk-fp →
-  addr sp ≡ rsp + 8 →
-  thunk-fp ≡ rsp ∸ 16 →
-  rsp > 16 →
-  slot-addr sp k > thunk-fp
-slot-addr-above-thunk-fp sp k rsp thunk-fp addr-eq fp-eq rsp>16 = slot>fp
-  where
-    open import Data.Nat.Properties using (≤-<-trans)
-
-    slot-eq : slot-addr sp k ≡ (rsp + 8) + k * word-size
-    slot-eq = cong (λ a → a + k * word-size) addr-eq
-
-    slot≥rsp+8 : slot-addr sp k ≥ rsp + 8
-    slot≥rsp+8 = subst (_≥ rsp + 8) (sym slot-eq) (m≤m+n (rsp + 8) (k * word-size))
-
-    rsp+8>rsp : rsp + 8 > rsp
-    rsp+8>rsp = m<m+n rsp (s≤s z≤n)
-
-    fp≤rsp : thunk-fp ≤ rsp
-    fp≤rsp = subst (_≤ rsp) (sym fp-eq) (m∸n≤m rsp 16)
-
-    slot>fp : slot-addr sp k > thunk-fp
-    slot>fp = ≤-<-trans fp≤rsp (<-≤-trans rsp+8>rsp slot≥rsp+8)
-
-------------------------------------------------------------------------
 -- Re-export FrameSlotInternal at top level
 ------------------------------------------------------------------------
 
