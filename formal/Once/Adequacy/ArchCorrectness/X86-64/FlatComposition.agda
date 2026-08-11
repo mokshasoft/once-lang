@@ -33,6 +33,7 @@ open import Once.Type using (FitsInReg; fits-int; fits-float)
 open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 import Once.CCC.Target.X86-64.Semantics as X
+import Once.CCC.Target.X86-64.Syntax as XS
 open import Once.CCC.Target.X86-64.Syntax
   using ( Instr; Program
         ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
@@ -41,83 +42,66 @@ open import Once.CCC.Target.X86-64.Syntax
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-abstract; compile-trace)
 
 ------------------------------------------------------------------------
--- Block lengths and the cumulative x86 offset of a flat pc.
+-- Plan 0.65 G1b: THE BLOCK-OFFSET MACHINERY IS ARCH-GENERIC and lives in
+-- `…FlatCore.FlatComposition`. What x86-64 supplies is its instruction type,
+-- its emitter, its fetch — and the two things only an ISA can say: which
+-- instructions are labels, and that the label scan steps past the ones that
+-- are not. That second one is `skip-law`, and its 22-clause case split is the
+-- enumeration this module used to carry inside `find-label-go-skip`. It is the
+-- same evidence; it now lives where the constructors do, and the correspondence
+-- gets a three-line induction instead.
 ------------------------------------------------------------------------
-x86-len : AbstractInstr → ℕ
-x86-len i = length (compile-abstract i)
+is-label? : XS.Instr → Bool
+is-label? (label _) = true
+is-label? (mov _ _) = false
+is-label? (lea _ _) = false
+is-label? (add _ _) = false
+is-label? (sub _ _) = false
+is-label? (cmp _ _) = false
+is-label? (test _ _) = false
+is-label? (jmp _) = false
+is-label? (je _) = false
+is-label? (jne _) = false
+is-label? (call _) = false
+is-label? (call-sym _) = false
+is-label? ret = false
+is-label? (push _) = false
+is-label? (pop _) = false
+is-label? nop = false
+is-label? ud2 = false
+is-label? syscall = false
 
--- x86-off prog j = number of x86 instructions before flat index j.
-x86-off : AbstractTrace → ℕ → ℕ
-x86-off _        zero    = zero
-x86-off []       (suc _) = zero
-x86-off (i ∷ is) (suc j) = x86-len i + x86-off is j
+-- The scan steps past a non-label. One `refl` per constructor: the case split
+-- is what makes `X.find-label-go`'s catch-all reduce.
+skip-law : ∀ (t : Label) (i : XS.Instr) (rest : Program) (xi : ℕ)
+         → is-label? i ≡ false
+         → X.find-label-go t (i ∷ rest) xi ≡ X.find-label-go t rest (suc xi)
+skip-law t (label _) rest xi ()
+skip-law t (mov _ _) rest xi _ = refl
+skip-law t (lea _ _) rest xi _ = refl
+skip-law t (add _ _) rest xi _ = refl
+skip-law t (sub _ _) rest xi _ = refl
+skip-law t (cmp _ _) rest xi _ = refl
+skip-law t (test _ _) rest xi _ = refl
+skip-law t (jmp _) rest xi _ = refl
+skip-law t (je _) rest xi _ = refl
+skip-law t (jne _) rest xi _ = refl
+skip-law t (call _) rest xi _ = refl
+skip-law t (call-sym _) rest xi _ = refl
+skip-law t ret rest xi _ = refl
+skip-law t (push _) rest xi _ = refl
+skip-law t (pop _) rest xi _ = refl
+skip-law t nop rest xi _ = refl
+skip-law t ud2 rest xi _ = refl
+skip-law t syscall rest xi _ = refl
 
-------------------------------------------------------------------------
--- A label-free x86 block: find-label scans past it, advancing the index
--- by the block length, without matching.
-------------------------------------------------------------------------
-has-label : Program → Bool
-has-label []            = false
-has-label (label _ ∷ _) = true
-has-label (_ ∷ is)      = has-label is
-
-find-label-go-skip : ∀ (target : Label) (block rest : Program) (xi : ℕ)
-  → has-label block ≡ false
-  → X.find-label-go target (block ++ rest) xi ≡ X.find-label-go target rest (xi + length block)
-find-label-go-skip target []             rest xi _  =
-  cong (X.find-label-go target rest) (sym (+-identityʳ xi))
-find-label-go-skip target (label _ ∷ bs) rest xi ()
-find-label-go-skip target (mov _ _ ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
-find-label-go-skip target (lea _ _ ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
-find-label-go-skip target (add _ _ ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
-find-label-go-skip target (sub _ _ ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
-find-label-go-skip target (cmp _ _ ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
-find-label-go-skip target (test _ _ ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
-find-label-go-skip target (jmp _ ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
-find-label-go-skip target (je _ ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
-find-label-go-skip target (jne _ ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
-find-label-go-skip target (call _ ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
-find-label-go-skip target (call-sym _ ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
-find-label-go-skip target (ret ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
-find-label-go-skip target (push _ ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
-find-label-go-skip target (pop _ ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
-find-label-go-skip target (nop ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
-find-label-go-skip target (ud2 ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
-find-label-go-skip target (syscall ∷ bs) rest xi nl =
-  trans (find-label-go-skip target bs rest (suc xi) nl)
-        (cong (X.find-label-go target rest) (sym (+-suc xi (length bs))))
+open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS XS.Instr
+       compile-abstract compile-trace (λ _ _ → refl)
+       X.fetch (λ _ → refl) (λ _ _ → refl) (λ _ _ _ → refl)
+       is-label? X.find-label-go skip-law
+  public
+  -- the block-offset names this arch's downstream modules already use
+  renaming (blk-len to x86-len; blk-off to x86-off; blk-off-suc to x86-off-suc)
 
 -- Plan 0.63 (D082): a block that IS a single label, but in a FOREIGN
 -- provenance. The scan does not match it and steps past it, costing one
@@ -377,60 +361,10 @@ find-thunk-corr prog target xi j ft-eq with find-thunk-pres prog target 0 xi j (
 -- block offset, is the compiled tail of the flat program. So fetching the
 -- compiled program at `x86-off prog k` gives the start of block k.
 ------------------------------------------------------------------------
-drop-len-++ : ∀ {A : Set} (xs ys : List A) → drop (length xs) (xs ++ ys) ≡ ys
-drop-len-++ []       ys = refl
-drop-len-++ (x ∷ xs) ys = drop-len-++ xs ys
-
-drop-[] : ∀ {A : Set} (n : ℕ) → drop {A = A} n [] ≡ []
-drop-[] zero    = refl
-drop-[] (suc n) = refl
-
-drop-+ : ∀ {A : Set} (m n : ℕ) (xs : List A) → drop (m + n) xs ≡ drop n (drop m xs)
-drop-+ zero    n xs       = refl
-drop-+ (suc m) n []       = sym (drop-[] n)
-drop-+ (suc m) n (x ∷ xs) = drop-+ m n xs
-
--- drop the first k flat blocks ⟺ drop the first (x86-off k) x86 instrs.
-drop-compile : ∀ (prog : AbstractTrace) (k : ℕ)
-  → drop (x86-off prog k) (compile-trace prog) ≡ compile-trace (drop k prog)
-drop-compile prog       zero    = refl
-drop-compile []         (suc k) = refl
-drop-compile (i ∷ is)   (suc k) =
-  trans (drop-+ (x86-len i) (x86-off is k) (compile-abstract i ++ compile-trace is))
-        (trans (cong (drop (x86-off is k)) (drop-len-++ (compile-abstract i) (compile-trace is)))
-               (drop-compile is k))
-
--- fetch indexes by dropping: fetch xs n = fetch (drop n xs) 0.
-fetch-drop : ∀ (xs : Program) (n : ℕ) → X.fetch xs n ≡ X.fetch (drop n xs) 0
-fetch-drop []       n       = sym (cong (λ ys → X.fetch ys 0) (drop-[] n))
-fetch-drop (x ∷ xs) zero    = refl
-fetch-drop (x ∷ xs) (suc n) = fetch-drop xs n
-
--- The x86 instruction at the block offset = the head of block k.
-fetch-at-offset : ∀ (prog : AbstractTrace) (k : ℕ)
-  → X.fetch (compile-trace prog) (x86-off prog k) ≡ X.fetch (compile-trace (drop k prog)) 0
-fetch-at-offset prog k =
-  trans (fetch-drop (compile-trace prog) (x86-off prog k))
-        (cong (λ xs → X.fetch xs 0) (drop-compile prog k))
-
--- pc advance: the x86 offset of the NEXT flat pc = current offset + the
--- block length of the instruction at the current pc. (block-step's
--- straight-line pc bookkeeping.)
-x86-off-suc : ∀ (prog : AbstractTrace) (k : ℕ) (i : AbstractInstr)
-  → fetch prog k ≡ just i
-  → x86-off prog (suc k) ≡ x86-off prog k + x86-len i
-x86-off-suc []       k       i ()
-x86-off-suc (j ∷ js) zero    .j refl = +-identityʳ (x86-len j)
-x86-off-suc (j ∷ js) (suc k) i  eq   =
-  trans (cong (x86-len j +_) (x86-off-suc js k i eq))
-        (sym (+-assoc (x86-len j) (x86-off js k) (x86-len i)))
-
--- drop at a fetched position exposes the instruction as the head.
-drop-fetch : ∀ (prog : AbstractTrace) (k : ℕ) (i : AbstractInstr)
-  → fetch prog k ≡ just i → drop k prog ≡ i ∷ drop (suc k) prog
-drop-fetch []       k       i ()
-drop-fetch (j ∷ js) zero    .j refl = refl
-drop-fetch (j ∷ js) (suc k) i  eq   = drop-fetch js k i eq
+-- These all come from `FlatCore.FlatComposition` now (opened above):
+--   drop-[] / drop-len-++ / drop-+ / drop-compile / fetch-drop /
+--   fetch-at-offset / x86-off-suc (blk-off-suc) / drop-fetch
+-- — list and offset arithmetic with no instruction set in it.
 
 -- The x86 instruction at block offset k is the head of compile-abstract i
 -- (where i is the flat instruction at flat index k).
