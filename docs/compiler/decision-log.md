@@ -7229,3 +7229,68 @@ merely leave work undone, it removes the ability to be wrong.
 `cata-correct` stops being FALSE — it becomes an ordinary owed proof whose own
 blocker is unchanged (base and ascend were amputated by `5088e571` and must be
 rebuilt). Neither is discharged here.
+
+---
+
+## D102: The Flip Left Each Arch's Frame Ceremony Behind
+
+**Date**: 2026-08-11 · **Plan**: 0.69 (closed by this entry) · **Status**:
+landed on `fix/arch-frame-model`; all three arches 55/0/0, `cabal test` 266/266
+
+The 0.63 flip moved closure bodies INLINE into the main trace, so `ir-to-bodies`
+stopped producing anything and `irToBodies` emits `""`. What nobody noticed for
+six weeks is that **each arch's per-body frame ceremony lived in that path**,
+and only that path. The bodies moved; the ceremony did not move with them.
+
+Three arches, one cause, three different amounts of damage:
+
+| arch | what the dead path did per body | what it cost |
+|---|---|---|
+| x86-64 | `subq $N,%rsp` … `addq` | NOTHING — slots are already `%rsp`-relative and the return address is on the stack. The only arch that kept working. |
+| x86-32 | `pushl %ebp; subl $N; movl %esp,%ebp` … | THE SLOT ANCHOR. Slots were `n(%ebp)` with `%ebp` anchored once in the function prologue, so an inlined body's `sub esp` re-anchored nothing: its slots aliased its caller's frame and ran off the end. 20 tests, all SIGSEGV. |
+| riscv64 | `addi sp,-(N+8); sd ra, N(sp)` … | THE `ra` SPILL. The return address is a REGISTER and `instr-call-closure` is `jalr ra t1 0`, so a body that called anything destroyed its own return address and `ret` jumped back into itself. 37 tests, 36 of them HANGS. |
+
+### Why no proof could see it
+
+On x86-32 and riscv64 the entire simulation is one postulate
+(`<arch>-conc-flat-sim`) plus a loader axiom. There is no theorem relating
+either arch's instructions to the flat machine, so all four Agda clusters were
+green throughout. Worse for x86-32: `X86-32/FrameInstantiation.agda` already
+said `frame-base = sp-addr` and `slot-addr f k = sp-addr f + k * word-size` —
+**the emitter had been outside its own arch's formal model the whole time**, and
+the blanket postulate is exactly what made that unobservable. Compare D101,
+where a postulate removed the ability to be wrong about the cata's fold; this is
+the same shape at the ISA boundary.
+
+### The fixes, and why each is two lines
+
+Because the dead path still SHOWED the intended shape. Neither fix was a design
+exercise — both were transcriptions of what `emit-thunk-body` had always done:
+
+    x86-32:  slots become `[esp + slot*4]`, function frame becomes
+             `subl $frame,%esp` … `addl $frame,%esp`, no `%ebp` traffic.
+             Then the body bracket's own `sub`/`add` IS the re-anchor — which
+             is why the IDENTICAL `c-thunk`/`c-ret` lowering has always been
+             correct on x86-64.
+
+    riscv64: `c-thunk n b ↦ label ∷ addi sp sp -(slots (suc b)) ∷ sd ra sp (slots b)`
+             `c-ret   b   ↦ ld ra sp (slots b) ∷ addi sp sp (slots (suc b)) ∷ ret`
+             One slot above the body's own budget holds `ra`; the ABSTRACT
+             budget does not move, the extra word is the lowering's own.
+
+### What this bought beyond the tests
+
+**The three arches now share one frame model** — slots addressed off the stack
+pointer, re-anchored by the body bracket itself. That was plan 0.66's stated
+premise ("width is the one new axis"), which was FALSE until now: x86-32
+differed on two axes, width AND frame anchor. It is true today, and it is also
+what makes plan 0.65's `FlatCore` a generalisation over the ISA rather than
+over the ISA plus two frame conventions.
+
+### The general rule
+
+D100 said a precondition attached to a trust point stays behind when the trust
+point moves. This is the same rule one layer down, and the layer matters: **what
+stays behind need not be a proof obligation — it can be a prologue.** When a
+refactor moves WHERE code is emitted, inventory what the old site did BESIDES
+emitting it. The dead path is the checklist; read it before deleting it.
