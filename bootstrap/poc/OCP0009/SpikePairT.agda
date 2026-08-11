@@ -46,8 +46,8 @@ open import poc.OCP0009.NbEPDirDBType
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
-open import poc.OCP0009.NbEPDirDBExamplesAmrecT
-  using ( aIHT; aIHTat; aStepT; module AmTΠ )
+open import poc.OCP0009.NbEPDirDBLibRec   using ( aIHT; aIHTat )
+open import poc.OCP0009.NbEPDirDBLibAmrec using ( aStepT; module AmTΠ )
 
 ------------------------------------------------------------------------
 -- ★ THE INSTANTIATION.  The carrier is a TYPE, so there is no code, no
