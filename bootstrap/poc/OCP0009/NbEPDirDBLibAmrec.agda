@@ -368,9 +368,11 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
             (dstp : Δ ⊢ stp ∷ aStepT A cM m)
             where
 
+  -- ★ public: the unfolding lemmas' TYPES mention /, so the
+  --   auxiliary's branches are already part of the interface.
   open AmT (Δ ▹ A) (renTy vs A) (wᶠ cM) (wᶠ m) (w stp)
            (ren-ty dA there) (⊢wkᶠ dcM) (⊢wkᶠ dm)
-           (⊢-cast (aStepT-ren A cM m) (⊢wk dstp))
+           (⊢-cast (aStepT-ren A cM m) (⊢wk dstp)) public
 
   amrecTm : RTm ⌊ Δ ⌋
   amrecTm = lam (app (app (aAuxTm m) (var vz)) (reflTm m))
@@ -468,3 +470,43 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
 measure-evals : (A : RTy ε) (m : RTm (ε ∙)) → (◇ ▹ A) ⊢ m ∷ Nat →
                 (x : RTm ε) → ◇ ⊢ x ∷ A → NatVal (subTm (single x) m)
 measure-evals A m dm x dx = natEval (⊢[] dm dx)
+
+------------------------------------------------------------------------
+-- ★★ AND THE TWO HALVES, COMPOSED.  At a closed carrier a caller touches
+--    neither `NatVal` nor the conditional lemmas: it hands over `x` and
+--    its derivation and gets the reduction.
+--
+-- ⚠ Still one step short of the ideal D7 shape — this reaches the
+--   AUXILIARY's branch, not the user's step; two more βs would take it to
+--   `app (app stp x) ⟨ih⟩`.  Flagged rather than claimed.
+------------------------------------------------------------------------
+
+module AmTΠ◇ (A : RTy ε) (cM m : RTm (ε ∙)) (stp : RTm ε)
+             (dA   : ◇ ⊢ty A)
+             (dcM  : (◇ ▹ A) ⊢ cM ∷ U)
+             (dm   : (◇ ▹ A) ⊢ m ∷ Nat)
+             (dstp : ◇ ⊢ stp ∷ aStepT A cM m)
+             where
+
+  open AmTΠ ◇ A cM m stp dA dcM dm dstp public
+
+  data Unfold (x : RTm ε) : Set where
+    unf-z : app amrecTm x
+          ⟶* app (app (subTm (single x) aZBr) x) (reflTm (subTm (single x) m))
+          → Unfold x
+    unf-s : (k : RTm ε) →
+            app amrecTm x
+          ⟶* app (app (subTm (single (natrec (subTm (single x) aZBr)
+                                             (subTm (extS (extS (single x))) aSBr)
+                                             k))
+                              (subTm (extS (single k))
+                                     (subTm (extS (extS (single x))) aSBr)))
+                      x)
+                 (reflTm (subTm (single x) m))
+          → Unfold x
+
+  -- ★ the premise is gone: canonicity supplies it.
+  amrec-unfold : (x : RTm ε) → ◇ ⊢ x ∷ A → Unfold x
+  amrec-unfold x dx with measure-evals A m dm x dx
+  ... | nv-zero r  = unf-z (amrec-unfold-z x r)
+  ... | nv-suc k r = unf-s k (amrec-unfold-s x k r)
