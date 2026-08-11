@@ -7,10 +7,10 @@
 -- Plan 0.32 Phase D (composition, Stage 1): the BLOCK-OFFSET machinery
 -- for the abstract↔x86 plus-simulation. Each abstract instruction lowers
 -- to a contiguous x86 BLOCK (1 instr for most, 2 for alloc-heap, …), so
--- the x86 pc is NOT the flat pc — it is `x86-off prog (flat-pc)`, the sum
+-- the x86 pc is NOT the flat pc — it is `blk-off prog (flat-pc)`, the sum
 -- of block lengths before it. This module proves the load-bearing
 -- `find-label` preservation: a jump that lands at flat index `j` lands at
--- x86 index `x86-off prog j` in the compiled program. (Injective encodings
+-- x86 index `blk-off prog j` in the compiled program. (Injective encodings
 -- + a non-lockstep simulation — see the plus-simulation design.)
 --
 -- Plan 0.65 G1b: ALL OF THAT IS NOW ARCH-GENERIC and lives in
@@ -184,5 +184,3 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS XS.Instr
        is-label? label X.find-label-go (λ _ _ → refl) skip-law
        label-hit label-miss headView
   public
-  -- the block-offset names this arch's downstream modules already use
-  renaming (blk-len to x86-len; blk-off to x86-off; blk-off-suc to x86-off-suc)

@@ -120,7 +120,7 @@ open import Once.CCC.Machine.FlatRegTagWF FS using
 open C using (HeapView; haddr; HDom; hfront; lo) public
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
-  using (x86-len; x86-off; drop-compile; fetch-drop; drop-[]; fetch-block-head
+  using (blk-len; blk-off; drop-compile; fetch-drop; drop-[]; fetch-block-head
         ; find-label-none-corr; fetch-block-2nd; find-thunk-corr)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
@@ -397,7 +397,7 @@ fetch-just-drop []       k       i ()
 fetch-just-drop (x ∷ xs) zero    i eq = cong (_∷ xs) (just-injective eq)
 fetch-just-drop (x ∷ xs) (suc k) i eq = fetch-just-drop xs k i eq
 
--- pc-alignment at a SigOp: the concrete pc = x86-off prog (fpc fs) (pc-off) fetches
+-- pc-alignment at a SigOp: the concrete pc = blk-off prog (fpc fs) (pc-off) fetches
 -- the compiled head of `instr-sigop si`, which is exactly its one `call-sym`
 -- (compile-sigOp = call-sym (once-symbol-path (name si)) ∷ []). Chain: pc-off ▸
 -- fetch-drop ▸ drop-compile ▸ fetch-just-drop ▸ (compile-trace cons reduces the head).
@@ -407,7 +407,7 @@ sigop-concrete-fetch : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
                          ≡ just (call-sym (once-symbol-path (SigOpInfo.name si)))
 sigop-concrete-fetch prog fs s si cc ftq =
   trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
-  (trans (fetch-drop (compile-trace prog) (x86-off prog (fpc fs)))
+  (trans (fetch-drop (compile-trace prog) (blk-off prog (fpc fs)))
   (trans (cong (λ z → X.fetch z 0) (drop-compile prog (fpc fs)))
          (cong (λ z → X.fetch (compile-trace z) 0) (fetch-just-drop prog (fpc fs) (instr-sigop si) ftq))))
 
@@ -501,7 +501,7 @@ sigop-run-external ev env n prog fs s si cc h ftq env-eq =
     env-eq
 
 -- PROGRAM END (wp-end), PROVEN: the abstract fetch runs out (`fpc` past the trace),
--- so the concrete pc = `x86-off prog (fpc fs)` (pc-off) sits past `compile-trace prog`
+-- so the concrete pc = `blk-off prog (fpc fs)` (pc-off) sits past `compile-trace prog`
 -- — fetch there is `nothing`, hence run-events emits []. Chain: pc-off ▸ fetch-drop ▸
 -- drop-compile ▸ fetch-nothing-drop (drop past ⇒ [] ⇒ compile-trace [] ⇒ fetch [] = nothing).
 events-running-end : ∀ {hv : HeapView} (n : ℕ) (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
@@ -513,7 +513,7 @@ events-running-end {hv} n ev env prog fs s cc wf h ftq =
   where cfetch-nothing : X.fetch (compile-trace prog) (X.State.pc s) ≡ nothing
         cfetch-nothing =
           trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
-          (trans (fetch-drop (compile-trace prog) (x86-off prog (fpc fs)))
+          (trans (fetch-drop (compile-trace prog) (blk-off prog (fpc fs)))
           (trans (cong (λ z → X.fetch z 0) (drop-compile prog (fpc fs)))
                  (cong (λ z → X.fetch (compile-trace z) 0) (fetch-nothing-drop prog (fpc fs) ftq))))
 
@@ -1947,7 +1947,7 @@ mutual
                  ++ flat-events n prog (flat-exec-instr (instr-load-code-addr k) prog fs))
       go (just j) fteq =
         ccc-step-bs {hv} n ev env prog fs s (instr-load-code-addr k)
-          (block-step-load-code-addr prog fs s k (x86-off prog j) cc h ftq
+          (block-step-load-code-addr prog fs s k (blk-off prog j) cc h ftq
              (find-thunk-corr prog k 0 j fteq))
           wf ftq h refl h
       go nothing fteq = ⊥-elim (no-body (proj₂ (has-body)))
@@ -1963,7 +1963,7 @@ mutual
                   nj ()
   events-running-fetch {hv} n ev env prog fs s instr-save-closure-reg cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s instr-save-closure-reg (block-step-save-closure-reg prog fs s cc h ftq) wf ftq h refl h
-  -- Trivial cata bookkeeping (x86-len 0, flat identity): proven block-step ⇒ ccc-step-bs.
+  -- Trivial cata bookkeeping (blk-len 0, flat identity): proven block-step ⇒ ccc-step-bs.
   events-running-fetch {hv} n ev env prog fs s (worklist-init k) cc wf h ftq = ccc-step-bs n ev env prog fs s (worklist-init k) (block-step-worklist-init prog fs s k cc h ftq) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (worklist-check k) cc wf h ftq = ccc-step-bs n ev env prog fs s (worklist-check k) (block-step-worklist-check prog fs s k cc h ftq) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (instr-reclaim-to k) cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-reclaim-to k) (block-step-reclaim-to prog fs s k cc h ftq) wf ftq h refl h
@@ -2013,7 +2013,7 @@ mutual
 
   -- The reusable CCC engine, GENERALISED to take an explicit BlockStep: one abstract
   -- step `i` (event-of i fs = [], flat step leaves the machine running: hpost) ↦ its
-  -- compiled block `X.exec (x86-len i)` (the given BlockStep), mirrored into run-events
+  -- compiled block `X.exec (blk-len i)` (the given BlockStep), mirrored into run-events
   -- (block-run-exec), then recurse via events-agree. Taking the BlockStep explicitly
   -- lets witnessed cases (c-jmp with its found-label, …) feed their PROVEN block-step
   -- lemma rather than routing through block-step-any's residual.
@@ -2031,15 +2031,15 @@ mutual
               → halted (floc (flat-exec-instr i prog fs)) ≡ false
               → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                     ≡ event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs))
-  ccc-step-bs n ev env prog fs s i bs wf ftq h ev[] hpost = (x86-len i + proj₁ rec) , result
+  ccc-step-bs n ev env prog fs s i bs wf ftq h ev[] hpost = (blk-len i + proj₁ rec) , result
     where -- the post-state invariant comes from the FLAT-MACHINE theorem, once,
           -- for every instruction (`FlatStoreWF.flat-wf-step`).
           rec = events-agree n ev env prog (flat-exec-instr i prog fs) (proj₁ bs)
                              (proj₂ (proj₂ bs)) (flat-inv-step i prog fs ftq h wf)
-          result : RTx.run-events val-x86-64 ev env (x86-len i + proj₁ rec) (compile-trace prog) s
+          result : RTx.run-events val-x86-64 ev env (blk-len i + proj₁ rec) (compile-trace prog) s
                  ≡ event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs)
           result rewrite ev[] =
-            trans (block-run-exec ev env (x86-len i) (proj₁ rec) (compile-trace prog) s
+            trans (block-run-exec ev env (blk-len i) (proj₁ rec) (compile-trace prog) s
                      (proj₁ (proj₂ bs)) (trans (C.halt-eq (dataCorr (proj₂ (proj₂ bs)))) hpost))
                   (proj₂ rec)
 

@@ -302,7 +302,7 @@ StackWindows am mem stk fl ((f , b) ∷ fr) =
 -- carry: after `leave-frame` the new head is the old second, whose cell the
 -- tail already describes, and `add rsp,8b ; ret` writes no memory at all.
 --
--- `xoff` is the pc translation (`x86-off prog` at the use site) rather than the
+-- `xoff` is the pc translation (`blk-off prog` at the use site) rather than the
 -- program itself, so this stays a statement about the machine, not the emitter.
 -- The length rows: `fret` longer than the live frames is impossible
 -- (`ConcFlatSim.RetMatch` pairs them), so that row is `⊥`; the outermost frame
@@ -1358,7 +1358,7 @@ sim-thunk {hv} b newFlags newPc fs s corr lo' lo'≤lo front-lo' lo'≤rsp fits 
 -- the same separation `ret-write-in-frame` uses, read from the other side.
 ------------------------------------------------------------------------
 -- `jₐ` is the ABSTRACT pc the call lands on and `newPc` the concrete one; they
--- are different numbers (`x86-off` apart) and `FlatCorr` constrains neither —
+-- are different numbers (`blk-off` apart) and `FlatCorr` constrains neither —
 -- relating them is `CompiledCorr.pc-off`'s job.
 sim-call : {hv : HeapView} (jₐ newPc retAddr : ℕ) (fs : FlatState) (s : X.State) → FlatCorr hv fs s
   → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')

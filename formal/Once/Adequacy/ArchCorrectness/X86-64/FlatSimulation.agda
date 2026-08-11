@@ -10,7 +10,7 @@
 -- compiled program `compile-trace prog`, where:
 --   * the DATA agrees (registers under enc-sv, heap under enc-hl, flags,
 --     halt) — exactly the FlatCorrespondence.FlatCorr data fields, and
---   * the CONTROL agrees up to the block offset: x86.pc = x86-off prog
+--   * the CONTROL agrees up to the block offset: x86.pc = blk-off prog
 --     (fpc fs)  (one flat instruction ↦ a contiguous x86 BLOCK; NOT 1-to-1
 --     lockstep — see [[feedback-injectivity-not-lockstep]]).
 --
@@ -20,13 +20,13 @@
 --
 -- ROADMAP (this file, in progress):
 --   [x] CompiledCorr relation (data ⊕ block-offset pc)
---   [ ] block-step: one flat step ↔ `exec (x86-len i)` of its x86 block,
+--   [ ] block-step: one flat step ↔ `exec (blk-len i)` of its x86 block,
 --       preserving CompiledCorr (uses sim-* for data, find-label-corr for
---       jumps, x86-off for the pc advance). Needs the per-x86-instr
+--       jumps, blk-off for the pc advance). Needs the per-x86-instr
 --       "execInstr reduces to the sim-* post-state" facts (the deferred
 --       (B) obligations).
 --   [ ] fuel induction: exec-flat fuel prog fs ↔ exec (bound) (compile-
---       trace prog) s, lifting block-step; fuel bound = Σ x86-len.
+--       trace prog) s, lifting block-step; fuel bound = Σ blk-len.
 --   [ ] wire into Correct.agda (retires compile-ir).
 ------------------------------------------------------------------------
 
@@ -64,7 +64,7 @@ module C = FC FS word-eq   -- HeapView / enc-sv / FlatCorr data fields
 open C using (HeapView; haddr; HDom; hfront)
 open import Once.CCC.Label using (once; thunk; LabelId)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
-  using (x86-off; x86-len; x86-off-suc; fetch-block-head; find-label-corr; find-thunk-corr; fetch-block-2nd; fetch-block-3rd; fetch-block-4th; fetch-block-5th; fetch-block-6th)
+  using (blk-off; blk-len; blk-off-suc; fetch-block-head; find-label-corr; find-thunk-corr; fetch-block-2nd; fetch-block-3rd; fetch-block-4th; fetch-block-5th; fetch-block-6th)
 open import Once.Adequacy.ArchCorrectness.X86-64.StepLemmas using (exec-1; step-mov-rr; step-mov-ri; step-label; step-jmp; step-mov-rm; step-mov-mr; step-add-ri; step-add-rr; step-sub-ri; step-cmp-ri; step-cmp-mi; step-je-taken; step-je-not; step-push; step-pop; step-lea; step-lea-label; step-ret; step-call)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Data.Empty using (⊥)
@@ -83,20 +83,20 @@ open import Data.Float using () renaming (Float to AgdaFloat)
 ------------------------------------------------------------------------
 -- The compiled correspondence = the DATA correspondence (FlatCorr, now
 -- pc-free) ⊕ the block-offset pc relation. block-step gets the data from
--- the sim-* lemmas (which produce FlatCorr) and the pc from x86-off-suc /
+-- the sim-* lemmas (which produce FlatCorr) and the pc from blk-off-suc /
 -- find-label-corr — cleanly separated. (Plan 0.34: no zf-eq.)
 ------------------------------------------------------------------------
 record CompiledCorr (hv : HeapView) (prog : AbstractTrace) (fs : FlatState) (s : X.State) : Set where
   field
     dataCorr : C.FlatCorr hv fs s
     -- CONTROL: x86 pc sits at the block offset of the flat pc (NOT fpc fs).
-    pc-off   : X.State.pc s ≡ x86-off prog (fpc fs)
+    pc-off   : X.State.pc s ≡ blk-off prog (fpc fs)
     -- THE PENDING RETURNS (D093): every ghost `fret` entry is REALLY in the
     -- machine's memory, at its frame's window end, under the same block-offset
     -- translation the pc uses. This is the component that makes a return a
     -- correspondence step rather than an assumption — and it lives HERE, not in
     -- `FlatCorr`, because translating an abstract pc needs `prog`.
-    ret-eq   : C.RetAddrs (x86-off prog) (X.State.memory s)
+    ret-eq   : C.RetAddrs (blk-off prog) (X.State.memory s)
                           (C.frames-of (falloc fs)) (fret fs)
     -- THE CODE MAP IS THE PROGRAM'S OWN RESOLUTION (D096). A `SV-Code ℓ`
     -- encodes to `caddr hv ℓ`, and this says that is the index the compiled
@@ -143,14 +143,14 @@ b-cmp-reg-imm : ∀ (prog : Program) (s : X.State) (dst : Reg) (n : ℕ)
 b-cmp-reg-imm prog s dst n = refl
 
 ------------------------------------------------------------------------
--- block-step (Plan 0.32 Stage 2): one flat step ↔ X.exec (x86-len i) of
+-- block-step (Plan 0.32 Stage 2): one flat step ↔ X.exec (blk-len i) of
 -- its compiled block, preserving CompiledCorr. Result type abbreviation:
 ------------------------------------------------------------------------
 -- A step may EXTEND the heap view (only `instr-alloc-heap` does); `BlockStep`
 -- is the same-view case, `BlockStepAt hv hv'` the general one.
 BlockStepAt : HeapView → HeapView → AbstractTrace → FlatState → X.State → AbstractInstr → Set
 BlockStepAt hv hv' prog fs s i =
-  Σ X.State (λ s' → (X.exec (x86-len i) (compile-trace prog) s ≡ just s')
+  Σ X.State (λ s' → (X.exec (blk-len i) (compile-trace prog) s ≡ just s')
                   × CompiledCorr hv' prog (flat-exec-instr i prog fs) s')
 
 BlockStep : HeapView → AbstractTrace → FlatState → X.State → AbstractInstr → Set
@@ -172,8 +172,8 @@ RetSame prog fs i =
 -- own post-memory, with a separation argument rather than this.
 ret-same : ∀ (prog : AbstractTrace) (fs : FlatState) (i : AbstractInstr)
              (mem : X.Memory) (rs : RetSame prog fs i)
-         → C.RetAddrs (x86-off prog) mem (C.frames-of (falloc fs)) (fret fs)
-         → C.RetAddrs (x86-off prog) mem
+         → C.RetAddrs (blk-off prog) mem (C.frames-of (falloc fs)) (fret fs)
+         → C.RetAddrs (blk-off prog) mem
                       (C.frames-of (falloc (flat-exec-instr i prog fs)))
                       (fret (flat-exec-instr i prog fs))
 ret-same prog fs i _ (fr-eq , rt-eq) r
@@ -188,10 +188,10 @@ ret-heap-store : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s 
                    (a : ℕ) (v : X.Word)
                → CompiledCorr hv prog fs s
                → a < C.lo hv
-               → C.RetAddrs (x86-off prog) (writeMem (X.State.memory s) a v)
+               → C.RetAddrs (blk-off prog) (writeMem (X.State.memory s) a v)
                             (C.frames-of (falloc fs)) (fret fs)
 ret-heap-store {hv} prog fs s a v cc a<lo =
-  C.ret-agree-above (x86-off prog) (X.State.memory s) (writeMem (X.State.memory s) a v)
+  C.ret-agree-above (blk-off prog) (X.State.memory s) (writeMem (X.State.memory s) a v)
     (stackMem (floc fs)) (C.lo hv) (C.frames-of (falloc fs)) (fret fs)
     (λ c le → C.read-write-miss (X.State.memory s) a v c (λ eq → <⇒≢ (<-transˡ a<lo le) (sym eq)))
     (C.stack-eq (dataCorr cc)) (ret-eq cc)
@@ -205,11 +205,11 @@ ret-slot-store : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s 
                    (slot : Slot) (v : X.Word)
                → CompiledCorr hv prog fs s
                → slot < frame-slots (falloc fs)
-               → C.RetAddrs (x86-off prog)
+               → C.RetAddrs (blk-off prog)
                    (writeMem (X.State.memory s) (X.readReg (xregs s) rsp + slot-to-disp slot) v)
                    (C.frames-of (falloc fs)) (fret fs)
 ret-slot-store {hv} prog fs s slot v cc slot<b =
-  C.ret-write-in-frame (x86-off prog) (X.State.memory s) (stackMem (floc fs))
+  C.ret-write-in-frame (blk-off prog) (X.State.memory s) (stackMem (floc fs))
     (X.readReg (xregs s) rsp + slot-to-disp slot) v (C.lo hv)
     (current-frame (falloc fs)) (frame-slots (falloc fs))
     (saved-frames (falloc fs)) (fret fs)
@@ -240,7 +240,7 @@ eris-frames nothing  ls alloc = refl
 -- whose x86 block is one `mov (reg dst) (reg src)`. The caller supplies the
 -- compile-abstract shape (refl) + the DATA correspondence (a sim-* lemma).
 -- Assembly: fetch-block-head + step-mov-rr + exec-1 (x86), then pc via
--- pc-off + x86-off-suc. No flags (Plan 0.34).
+-- pc-off + blk-off-suc. No flags (Plan 0.34).
 block-step-mov-rr : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s : X.State)
     (i : AbstractInstr) (dst src : Reg)
   → CompiledCorr hv prog fs s
@@ -270,13 +270,13 @@ block-step-mov-rr {hv} prog fs s i dst src cc h-flat ft ca fpc-eq rsame dataPost
     snh = step-mov-rr {compile-trace prog} {s} {dst} {src} fetch-x86
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    exec-eq-len : X.exec (x86-len i) (compile-trace prog) s ≡ just post
+    exec-eq-len : X.exec (blk-len i) (compile-trace prog) s ≡ just post
     exec-eq-len = trans (cong (λ m → X.exec m (compile-trace prog) s) (cong length ca)) exec-eq
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr i prog fs))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr i prog fs))
     pco' rewrite fpc-eq =
       trans (cong (_+ 1) po)
-            (trans (sym (cong (x86-off prog (fpc fs) +_) (cong length ca)))
-                   (sym (x86-off-suc prog (fpc fs) i ft)))
+            (trans (sym (cong (blk-off prog (fpc fs) +_) (cong length ca)))
+                   (sym (blk-off-suc prog (fpc fs) i ft)))
 
 -- The four register shuffles (mov-to-output ↔ rax/rdi, …) — one-liners.
 block-step-mov-to-output : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
@@ -329,13 +329,13 @@ block-step-mov-ri {hv} prog fs s i dst n cc h-flat ft ca fpc-eq rsame dataPost =
     snh = step-mov-ri {compile-trace prog} {s} {dst} {n} fetch-x86
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    exec-eq-len : X.exec (x86-len i) (compile-trace prog) s ≡ just post
+    exec-eq-len : X.exec (blk-len i) (compile-trace prog) s ≡ just post
     exec-eq-len = trans (cong (λ m → X.exec m (compile-trace prog) s) (cong length ca)) exec-eq
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr i prog fs))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr i prog fs))
     pco' rewrite fpc-eq =
       trans (cong (_+ 1) po)
-            (trans (sym (cong (x86-off prog (fpc fs) +_) (cong length ca)))
-                   (sym (x86-off-suc prog (fpc fs) i ft)))
+            (trans (sym (cong (blk-off prog (fpc fs) +_) (cong length ca)))
+                   (sym (blk-off-suc prog (fpc fs) i ft)))
 
 block-step-load-tag-lit : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-load-tag-lit n) → BlockStep hv prog fs s (instr-load-tag-lit n)
@@ -388,8 +388,8 @@ block-step-c-label {hv} prog fs s n cc h ft = post , exec-eq , record
     snh = step-label {compile-trace prog} {s} {once n} fetch-x86
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-ctrl (c-label n)) prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-ctrl (c-label n)) ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-label n)) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-label n)) ft))
 
 -- Plan 0.63 step 2a: `c-thunk` NO LONGER HAS A BLOCK-STEP HERE. Step 1's
 -- `block-step-c-thunk` was a copy of `block-step-c-label` — sound while the
@@ -403,9 +403,9 @@ block-step-c-label {hv} prog fs s n cc h ft = post , exec-eq , record
 -- fence as `c-ret` and the frame ops. The brick to compose when 2c lands is
 -- `block-step-alloc-stack` below, preceded by a `step-label` fetch.
 
--- worklist-init / worklist-check: pure cata bookkeeping — compile to [] (x86-len 0),
+-- worklist-init / worklist-check: pure cata bookkeeping — compile to [] (blk-len 0),
 -- flat step is identity (exec-abstract = s,alloc) mod fpc, x86 does nothing. FlatCorr
--- copied (floc/falloc unchanged); pc-off shifts by x86-len 0 (+-identityʳ). The
+-- copied (floc/falloc unchanged); pc-off shifts by blk-len 0 (+-identityʳ). The
 -- cleanest possible block-step: `X.exec 0 = just s` is refl.
 block-step-worklist-init : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (worklist-init n) → BlockStep hv prog fs s (worklist-init n)
@@ -414,7 +414,7 @@ block-step-worklist-init {hv} prog fs s n cc h ft = s , refl , record
                       ; rbx-eq = C.rbx-eq dc ; r14-eq = C.r14-eq dc ; r12-eq = C.r12-eq dc ; halt-eq = C.halt-eq dc ; rsp-eq = C.rsp-eq dc ; r15-eq = C.r15-eq dc ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc ; heap-eq = C.heap-eq dc
                       ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
   ; pc-off = trans (pc-off cc)
-             (sym (trans (x86-off-suc prog (fpc fs) (worklist-init n) ft) (+-identityʳ _)))
+             (sym (trans (blk-off-suc prog (fpc fs) (worklist-init n) ft) (+-identityʳ _)))
              ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where dc = dataCorr cc
 
@@ -425,11 +425,11 @@ block-step-worklist-check {hv} prog fs s n cc h ft = s , refl , record
                       ; rbx-eq = C.rbx-eq dc ; r14-eq = C.r14-eq dc ; r12-eq = C.r12-eq dc ; halt-eq = C.halt-eq dc ; rsp-eq = C.rsp-eq dc ; r15-eq = C.r15-eq dc ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc ; heap-eq = C.heap-eq dc
                       ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
   ; pc-off = trans (pc-off cc)
-             (sym (trans (x86-off-suc prog (fpc fs) (worklist-check n) ft) (+-identityʳ _)))
+             (sym (trans (blk-off-suc prog (fpc fs) (worklist-check n) ft) (+-identityʳ _)))
              ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where dc = dataCorr cc
 
--- instr-reclaim-to: allocation bookkeeping — compile to [] (x86-len 0), flat step
+-- instr-reclaim-to: allocation bookkeeping — compile to [] (blk-len 0), flat step
 -- lowers `next-slot` (floc + heapMem unchanged). The heap correspondence is carried
 -- by the VIEW (not indexed by the abstract alloc state), so it copies through
 -- unchanged — this is what retired the old `LiveIn-reclaim` allocator postulate.
@@ -441,7 +441,7 @@ block-step-reclaim-to {hv} prog fs s n cc h ft = s , refl , record
                       ; heap-eq = C.heap-eq dc
                       ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }   -- reclaim-to changes next-slot, not frame-slots ⇒ bound stable
   ; pc-off = trans (pc-off cc)
-             (sym (trans (x86-off-suc prog (fpc fs) (instr-reclaim-to n) ft) (+-identityʳ _)))
+             (sym (trans (blk-off-suc prog (fpc fs) (instr-reclaim-to n) ft) (+-identityʳ _)))
              ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where dc = dataCorr cc
 
@@ -460,12 +460,12 @@ block-step-c-jmp {hv} prog fs s n j cc h ft fl-eq = block-step
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (jmp (once n))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-ctrl (c-jmp n)) ft)
-    fl-x86 : X.find-label (compile-trace prog) (once n) ≡ just (x86-off prog j)
+    fl-x86 : X.find-label (compile-trace prog) (once n) ≡ just (blk-off prog j)
     fl-x86 = find-label-corr prog n 0 j fl-eq
     post : X.State
-    post = record s { pc = x86-off prog j }
+    post = record s { pc = blk-off prog j }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-jmp {compile-trace prog} {s} {once n} {x86-off prog j} fetch-x86 fl-x86
+    snh = step-jmp {compile-trace prog} {s} {once n} {blk-off prog j} fetch-x86 fl-x86
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     block-step : BlockStep hv prog fs s (instr-ctrl (c-jmp n))
@@ -504,8 +504,8 @@ block-step-load-indirect {hv} prog fs s hl w cc h ft i-eq live-hl h-eq =
     snh = step-mov-rm {compile-trace prog} {s} {rax} {base rdi} {C.enc-sv hv w} fetch-x86 rd
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr load-indirect prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) load-indirect ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr load-indirect prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) load-indirect ft))
 
 -- load-indirect-suc: Output := *(sucLoc Input1) ↔ `mov rax, [rdi + slot]`.
 -- The address law C.haddr-suc hv bridges the x86 effective address (haddr hv hl +
@@ -537,8 +537,8 @@ block-step-load-indirect-suc {hv} prog fs s hl w cc h ft i-eq live-shl h-eq =
     snh = step-mov-rm {compile-trace prog} {s} {rax} {base+disp rdi slot-size} {C.enc-sv hv w} fetch-x86 rd
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr load-indirect-suc prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) load-indirect-suc ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr load-indirect-suc prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) load-indirect-suc ft))
 
 -- load-from-slot: Output := stack[current-frame, slot] ↔ `mov rax, [rsp + disp]`.
 -- The read VALUE comes from the NEW stack-eq field (memory s at rsp+disp = enc-maybe
@@ -571,8 +571,8 @@ block-step-load-from-slot {hv} prog fs s slot w cc h ft slot<ns st-eq =
     snh = step-mov-rm {compile-trace prog} {s} {rax} {base+disp rsp (slot-to-disp slot)} {C.enc-sv hv w} fetch-x86 rd
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (load-from-slot slot) prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (load-from-slot slot) ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (load-from-slot slot) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (load-from-slot slot) ft))
 
 -- restore-input: Input1 := stack[current-frame, slot] ↔ `mov rdi, [rsp+disp]`.
 -- Identical to load-from-slot but the destination register is rdi (Input1).
@@ -602,8 +602,8 @@ block-step-restore-input {hv} prog fs s slot w cc h ft slot<ns st-eq =
     snh = step-mov-rm {compile-trace prog} {s} {rdi} {base+disp rsp (slot-to-disp slot)} {C.enc-sv hv w} fetch-x86 rd
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (restore-input slot) prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (restore-input slot) ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (restore-input slot) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (restore-input slot) ft))
 
 -- alloc-stack: reserve n slots ↔ `sub rsp, n*8`. Uses step-sub-ri; the flag
 -- clobber is invisible (FlatCorr flag-free). The 3 fresh-frame facts (entry,
@@ -631,7 +631,7 @@ block-step-alloc-stack : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv pro
   -- dispatch route is `⊥`-elim (`frame-op-absurd`) and this lemma has no
   -- caller; only a matched prologue/epilogue producer could discharge it, and
   -- `ir-to-trace` emits none.
-  → C.RetAddrs (x86-off prog) (X.State.memory s)
+  → C.RetAddrs (blk-off prog) (X.State.memory s)
                (C.frames-of (falloc (flat-exec-instr (instr-alloc-stack n) prog fs)))
                (fret (flat-exec-instr (instr-alloc-stack n) prog fs))
   → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-alloc-stack n)
@@ -657,8 +657,8 @@ block-step-alloc-stack {hv} prog fs s n cc h ft fresh-abs lo' lo'≤lo front-lo'
                           (flat-exec-instr (instr-alloc-stack n) prog fs) post
     dataPost = C.sim-alloc-stack n newFlags fs s dc fresh-abs
                                  lo' lo'≤lo front-lo' lo'≤rsp fits
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-alloc-stack n) prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-alloc-stack n) ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-alloc-stack n) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-alloc-stack n) ft))
 
 ------------------------------------------------------------------------
 -- THE CLOSURE BODY ENTRY: `c-thunk n b` ↔ `label (thunk n) ; sub rsp, 8b`.
@@ -725,10 +725,10 @@ block-step-c-thunk {hv} prog fs s n b cc h ft lo' lo'≤lo front-lo' lo'≤rsp f
     dataPost = C.sim-thunk b newFlags (pc s + 1 + 1) fs s dc
                            lo' lo'≤lo front-lo' lo'≤rsp fits
     pco' : X.State.pc post-sub
-         ≡ x86-off prog (fpc (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs))
+         ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs))
     pco' = trans (+-assoc (pc s) 1 1)
                  (trans (cong (_+ 2) po)
-                        (sym (x86-off-suc prog (fpc fs) (instr-ctrl (c-thunk n b)) ft)))
+                        (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-thunk n b)) ft)))
     -- THE PENDING RETURN'S CELL DOES NOT MOVE (D093). The marker shifts the
     -- frame down by its reservation and sets the reservation to it, so the
     -- window END returns to the frame's own base — which is where it already
@@ -747,10 +747,10 @@ block-step-c-thunk {hv} prog fs s n b cc h ft lo' lo'≤lo front-lo' lo'≤rsp f
              (trans (sym (+-identityʳ (frame-base FS (current-frame (falloc fs)))))
                     (cong (frame-base FS (current-frame (falloc fs)) +_)
                           (sym (cong slots empty-frame)))))
-    retPost : C.RetAddrs (x86-off prog) (X.State.memory post-sub)
+    retPost : C.RetAddrs (blk-off prog) (X.State.memory post-sub)
                          (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs)))
                          (fret (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs))
-    retPost = C.ret-head (x86-off prog) (X.State.memory s)
+    retPost = C.ret-head (blk-off prog) (X.State.memory s)
                          (current-frame (falloc fs))
                          (shift-frame FS (current-frame (falloc fs)) b)
                          (frame-slots (falloc fs)) b
@@ -774,7 +774,7 @@ block-step-c-thunk {hv} prog fs s n b cc h ft lo' lo'≤lo front-lo' lo'≤rsp f
 --                                                 correspond to at all.
 --
 -- The two scans agree by `find-thunk-corr`; the pushed return address is
--- `x86-off prog (suc (fpc fs))` on both sides by `x86-off-suc`, since the
+-- `blk-off prog (suc (fpc fs))` on both sides by `blk-off-suc`, since the
 -- call's block is one instruction.
 ------------------------------------------------------------------------
 block-step-call : ∀ {hv : HeapView} prog fs s hl ℓ j → CompiledCorr hv prog fs s
@@ -805,22 +805,22 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
     r12-val = trans (C.r12-eq dc) (cong (C.enc-sv hv) ceq)
     cell-addr : X.readReg (xregs s) r12 + slot-size ≡ haddr hv (sucHL hl)
     cell-addr = trans (cong (_+ slot-size) r12-val) (sym (C.haddr-suc hv hl))
-    conc-res : X.find-label (compile-trace prog) (thunk ℓ) ≡ just (x86-off prog j)
+    conc-res : X.find-label (compile-trace prog) (thunk ℓ) ≡ just (blk-off prog j)
     conc-res = find-thunk-corr prog ℓ 0 j fteq
     rd : X.readMem (X.State.memory s) (X.effectiveAddr s (base+disp r12 slot-size))
-       ≡ just (x86-off prog j)
+       ≡ just (blk-off prog j)
     rd = trans (cong (X.readMem (X.State.memory s)) cell-addr)
         (trans (C.heap-eq dc (sucHL hl) live)
         (trans (cong (C.enc-maybe hv) heq)
-               (cong just (code-eq cc ℓ (x86-off prog j) conc-res))))
+               (cong just (code-eq cc ℓ (blk-off prog j) conc-res))))
     retAddr : ℕ
     retAddr = X.State.pc s + 1
     post : X.State
     post = record s { regs   = xwriteReg (xregs s) rsp (X.readReg (xregs s) rsp ∸ slot-size)
                     ; memory = writeMem (memory s) (X.readReg (xregs s) rsp ∸ slot-size) retAddr
-                    ; pc     = x86-off prog j }
+                    ; pc     = blk-off prog j }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-call {compile-trace prog} {s} {base+disp r12 slot-size} {x86-off prog j} fetch-x86 rd
+    snh = step-call {compile-trace prog} {s} {base+disp r12 slot-size} {blk-off prog j} fetch-x86 rd
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     -- the abstract post-state, in the shape `callView` hands back
@@ -836,9 +836,9 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
                           (flat-exec-instr instr-call-closure prog fs) post
     dataPost = subst (λ z → C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo') z post)
                      (sym step-eq)
-                     (C.sim-call j (x86-off prog j) retAddr fs s dc lo' lo'≤lo front-lo' lo'≤rsp fits)
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr instr-call-closure prog fs))
-    pco' = cong (λ z → x86-off prog (fpc z)) (sym step-eq)
+                     (C.sim-call j (blk-off prog j) retAddr fs s dc lo' lo'≤lo front-lo' lo'≤rsp fits)
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr instr-call-closure prog fs))
+    pco' = cong (λ z → blk-off prog (fpc z)) (sym step-eq)
     -- THE PUSHED CELL, described: the entered frame reserves nothing, so its
     -- window END is its own base — the very cell the call wrote.
     newbase : X.readReg (xregs s) rsp ∸ slot-size
@@ -847,16 +847,16 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
                     (trans (cong (λ w → frame-base FS (current-frame (falloc fs)) ∸ 1 * w)
                                  (sym word-eq))
                            (sym (shift-base FS (current-frame (falloc fs)) 1)))
-    ret-val : retAddr ≡ x86-off prog (suc (fpc fs))
-    ret-val = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) instr-call-closure ft))
+    ret-val : retAddr ≡ blk-off prog (suc (fpc fs))
+    ret-val = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) instr-call-closure ft))
     w<base : X.readReg (xregs s) rsp ∸ slot-size < frame-base FS (current-frame (falloc fs))
     w<base = subst (X.readReg (xregs s) rsp ∸ slot-size <_) (C.rsp-eq dc)
                    (subst (suc (X.readReg (xregs s) rsp ∸ slot-size) ≤_) (m∸n+n≡m fits)
                           (m<m+n (X.readReg (xregs s) rsp ∸ slot-size) (s≤s z≤n)))
-    retPost : C.RetAddrs (x86-off prog) (X.State.memory post)
+    retPost : C.RetAddrs (blk-off prog) (X.State.memory post)
                          (C.frames-of (falloc (flat-exec-instr instr-call-closure prog fs)))
                          (fret (flat-exec-instr instr-call-closure prog fs))
-    retPost = subst (λ z → C.RetAddrs (x86-off prog) (X.State.memory post)
+    retPost = subst (λ z → C.RetAddrs (blk-off prog) (X.State.memory post)
                              (C.frames-of (falloc z)) (fret z))
                     (sym step-eq)
                     ( head-cell , gap , tail )
@@ -864,7 +864,7 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
         waddr = X.readReg (xregs s) rsp ∸ slot-size
         head-cell : X.readMem (X.State.memory post)
                       (frame-base FS (shift-frame FS (current-frame (falloc fs)) 1) + slots 0)
-                    ≡ just (x86-off prog (suc (fpc fs)))
+                    ≡ just (blk-off prog (suc (fpc fs)))
         head-cell = trans (cong (λ a → X.readMem (X.State.memory post) a)
                                (trans (+-identityʳ _) (sym newbase)))
                           (trans (C.read-write-hit (memory s) waddr retAddr) (cong just ret-val))
@@ -872,9 +872,9 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
                         (C.frames-of (falloc fs))
         gap = trans (cong (_+ slot-size) (trans (+-identityʳ _) (sym newbase)))
                     (trans (m∸n+n≡m fits) (C.rsp-eq dc))
-        tail : C.RetAddrs (x86-off prog) (X.State.memory post)
+        tail : C.RetAddrs (blk-off prog) (X.State.memory post)
                           (C.frames-of (falloc fs)) (fret fs)
-        tail = C.ret-agree-above (x86-off prog) (memory s) (X.State.memory post)
+        tail = C.ret-agree-above (blk-off prog) (memory s) (X.State.memory post)
                  (stackMem (floc fs)) (frame-base FS (current-frame (falloc fs)))
                  (C.frames-of (falloc fs)) (fret fs)
                  (λ a le → C.read-write-miss (memory s) waddr retAddr a
@@ -895,7 +895,7 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
 --   the ADDRESS  — `rsp-eq` puts `%rsp` at the frame's base, the bracket
 --                  premise `b ≡ frame-slots` makes `add rsp,8b` land on the
 --                  window END, which is where the call put the address;
---   the VALUE    — `RetAddrs`' head says that cell holds `x86-off prog rpc`,
+--   the VALUE    — `RetAddrs`' head says that cell holds `blk-off prog rpc`,
 --                  so the concrete pc lands where the abstract `fpc` does;
 --   the NEW %rsp — `GapNext` says the caller's base is one slot above that
 --                  cell, which is exactly where `ret` leaves `%rsp` (rsp-eq
@@ -931,17 +931,17 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq =
     step-add : X.step-not-halted (compile-trace prog) s ≡ just post-add
     step-add = step-add-ri {compile-trace prog} {s} {rsp} {slots b} fetch-add
     -- THE COMPONENT, projected at the cons shape of `fret`
-    comp : C.RetAddrs (x86-off prog) (X.State.memory s)
+    comp : C.RetAddrs (blk-off prog) (X.State.memory s)
                       ((current-frame (falloc fs) , frame-slots (falloc fs)) ∷ saved-frames (falloc fs))
                       (rpc ∷ rest)
-    comp = subst (λ rl → C.RetAddrs (x86-off prog) (X.State.memory s)
+    comp = subst (λ rl → C.RetAddrs (blk-off prog) (X.State.memory s)
                            (C.frames-of (falloc fs)) rl) req (ret-eq cc)
     -- …and the address it speaks about IS where the `add` left `%rsp`
     addr-eq : X.readReg (X.State.regs post-add) rsp
             ≡ frame-base FS (current-frame (falloc fs)) + slots (frame-slots (falloc fs))
     addr-eq = trans (cong (_+ slots b) (C.rsp-eq dc)) (cong (λ z → frame-base FS (current-frame (falloc fs)) + slots z) beq)
     rd : X.readMem (X.State.memory post-add) (X.readReg (X.State.regs post-add) rsp)
-       ≡ just (x86-off prog rpc)
+       ≡ just (blk-off prog rpc)
     rd = trans (cong (X.readMem (X.State.memory s)) addr-eq) (proj₁ comp)
     -- step 2: the pop-and-jump
     fetch-ret : X.fetch (compile-trace prog) (X.State.pc post-add) ≡ just ret
@@ -950,9 +950,9 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq =
     post-ret : X.State
     post-ret = record post-add { regs = xwriteReg (X.State.regs post-add) rsp
                                           (X.readReg (X.State.regs post-add) rsp + slot-size)
-                               ; pc = x86-off prog rpc }
+                               ; pc = blk-off prog rpc }
     step-r : X.step-not-halted (compile-trace prog) post-add ≡ just post-ret
-    step-r = step-ret {compile-trace prog} {post-add} {x86-off prog rpc} fetch-ret rd
+    step-r = step-ret {compile-trace prog} {post-add} {blk-off prog rpc} fetch-ret rd
     exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-ret
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-add} halt-s step-add halt-s)
                     (exec-1 {compile-trace prog} {0} {post-add} {post-ret} halt-s step-r halt-s)
@@ -970,13 +970,13 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq =
              ≡ frame-base FS (current-frame (leave-frame (falloc fs)))
     restores = trans (cong (_+ slot-size) addr-eq) (trans gap (sym (base-leave feq)))
     dataPost : C.FlatCorr hv (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) post-ret
-    dataPost = C.sim-ret b rpc rest newFlags (x86-off prog rpc) fs s dc req restores
-    pco' : X.State.pc post-ret ≡ x86-off prog (fpc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
-    pco' = cong (x86-off prog) (sym (do-ret-pc-∷ fs rpc rest req))
-    retPost : C.RetAddrs (x86-off prog) (X.State.memory post-ret)
+    dataPost = C.sim-ret b rpc rest newFlags (blk-off prog rpc) fs s dc req restores
+    pco' : X.State.pc post-ret ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
+    pco' = cong (blk-off prog) (sym (do-ret-pc-∷ fs rpc rest req))
+    retPost : C.RetAddrs (blk-off prog) (X.State.memory post-ret)
                          (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)))
                          (fret (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
-    retPost = subst₂ (C.RetAddrs (x86-off prog) (X.State.memory s))
+    retPost = subst₂ (C.RetAddrs (blk-off prog) (X.State.memory s))
                      (sym (trans (cong C.frames-of (do-ret-alloc fs)) (frames-leave feq)))
                      (sym (do-ret-fret-∷ fs rpc rest req))
                      (proj₂ (proj₂ comp))
@@ -996,7 +996,7 @@ block-step-dealloc-stack : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv p
   -- …and the return picture, a premise for the same reason as
   -- `block-step-alloc-stack`'s: this POPS a frame, and the instruction is
   -- unemittable, so no caller exists to discharge it.
-  → C.RetAddrs (x86-off prog) (X.State.memory s)
+  → C.RetAddrs (blk-off prog) (X.State.memory s)
                (C.frames-of (falloc (flat-exec-instr (instr-dealloc-stack n) prog fs)))
                (fret (flat-exec-instr (instr-dealloc-stack n) prog fs))
   → BlockStep hv prog fs s (instr-dealloc-stack n)
@@ -1020,8 +1020,8 @@ block-step-dealloc-stack {hv} prog fs s n cc h ft restores retPost =
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     dataPost : C.FlatCorr hv (flat-exec-instr (instr-dealloc-stack n) prog fs) post
     dataPost = C.sim-dealloc-stack n newFlags fs s dc restores
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-dealloc-stack n) prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-dealloc-stack n) ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-dealloc-stack n) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-dealloc-stack n) ft))
 
 -- push-frame / pop-frame: THE `%rbp` FRAME MODEL IS A FOSSIL. Their
 -- `block-step-*` pair was deleted 2026-08-04 — flagged deletable on
@@ -1050,8 +1050,8 @@ block-step-load-const {hv} prog fs s v cc h ft =
     snh = step-mov-ri {compile-trace prog} {s} {rax} {v} fetch-x86
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-load-const fits-int v) prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-load-const fits-int v) ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-load-const fits-int v) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-load-const fits-int v) ft))
 
 -- …and the FLOAT constant (D079): the same one-step immediate load, with
 -- the IEEE-754 bit pattern. Was a divergence (`ud2` vs. a running abstract
@@ -1074,8 +1074,8 @@ block-step-load-const-float {hv} prog fs s v cc h ft =
     snh = step-mov-ri {compile-trace prog} {s} {rax} {float-bits v} fetch-x86
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-load-const fits-float v) prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-load-const fits-float v) ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-load-const fits-float v) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-load-const fits-float v) ft))
 
 -- load-code-addr: Output := SV-Code n ↔ `lea rax, .L_thunk_n(%rip)`.
 --
@@ -1105,8 +1105,8 @@ block-step-load-code-addr {hv} prog fs s n j cc h ft fl =
     snh = step-lea-label {compile-trace prog} {s} {rax} {n} {j} fetch-x86 fl
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-load-code-addr n) prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-load-code-addr n) ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-load-code-addr n) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-load-code-addr n) ft))
 
 -- save-closure-reg: abstract identity ↔ `mov r12, rdi`. r12 is untracked, so the
 -- whole FlatCorr copies through (sim-save-closure-reg).
@@ -1128,8 +1128,8 @@ block-step-save-closure-reg {hv} prog fs s cc h ft =
     snh = step-mov-rr {compile-trace prog} {s} {r12} {rdi} fetch-x86
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr instr-save-closure-reg prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) instr-save-closure-reg ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr instr-save-closure-reg prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) instr-save-closure-reg ft))
 
 -- worklist-push / worklist-pop: their abstract semantics + x86 lowering are
 -- IDENTICAL to store-at-slot / load-from-slot respectively (SMCore/AbstractToX86),
@@ -1170,8 +1170,8 @@ block-step-worklist-push {hv} prog fs s slot cc h ft slot<ns disj =
     dataPost : C.FlatCorr hv (flat-exec-instr (worklist-push slot) prog fs) post
     dataPost = subst (C.FlatCorr hv (flat-exec-instr (worklist-push slot) prog fs)) (sym post-eq)
                      (C.sim-store-at-slot slot fs s dc slot<ns disj)
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (worklist-push slot) prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (worklist-push slot) ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (worklist-push slot) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (worklist-push slot) ft))
 
 block-step-worklist-pop : ∀ {hv : HeapView} prog fs s slot w → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (worklist-pop slot)
@@ -1199,8 +1199,8 @@ block-step-worklist-pop {hv} prog fs s slot w cc h ft slot<ns st-eq =
     snh = step-mov-rm {compile-trace prog} {s} {rax} {base+disp rsp (slot-to-disp slot)} {C.enc-sv hv w} fetch-x86 rd
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (worklist-pop slot) prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (worklist-pop slot) ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (worklist-pop slot) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (worklist-pop slot) ft))
 
 -- store-indirect: *Input1 := Output ↔ `mov [rdi], rax`. step-mov-mr writes
 -- the RAW register values (readReg rdi / readReg rax); sim-store-indirect's
@@ -1217,7 +1217,7 @@ block-step-store-indirect : ∀ {hv : HeapView} prog fs s hl → CompiledCorr hv
   → BlockStep hv prog fs s store-indirect
 block-step-store-indirect {hv} prog fs s hl cc h ft i-eq live-hl guard =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
-                          ; ret-eq = subst (λ m → C.RetAddrs (x86-off prog) m
+                          ; ret-eq = subst (λ m → C.RetAddrs (blk-off prog) m
                                                     (C.frames-of (falloc fs)) (fret fs))
                                            (cong₂ (writeMem (memory s)) (sym rdi-val) refl)
                                            (ret-heap-store prog fs s (haddr hv hl) _ cc
@@ -1247,8 +1247,8 @@ block-step-store-indirect {hv} prog fs s hl cc h ft i-eq live-hl guard =
     dataPost : C.FlatCorr hv (flat-exec-instr store-indirect prog fs) post
     dataPost = subst (C.FlatCorr hv (flat-exec-instr store-indirect prog fs)) (sym post-eq)
                      (C.sim-store-indirect hl fs s dc i-eq live-hl guard)
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr store-indirect prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) store-indirect ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr store-indirect prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) store-indirect ft))
 
 -- store-indirect-suc: *(sucLoc Input1) := Output ↔ `mov [rdi+slot], rax`.
 -- Like store-indirect + the address law C.haddr-suc hv for the +slot offset.
@@ -1261,7 +1261,7 @@ block-step-store-indirect-suc : ∀ {hv : HeapView} prog fs s hl → CompiledCor
   → BlockStep hv prog fs s store-indirect-suc
 block-step-store-indirect-suc {hv} prog fs s hl cc h ft i-eq live-shl guard =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
-                          ; ret-eq = subst (λ m → C.RetAddrs (x86-off prog) m
+                          ; ret-eq = subst (λ m → C.RetAddrs (blk-off prog) m
                                                     (C.frames-of (falloc fs)) (fret fs))
                                            (cong₂ (writeMem (memory s)) (sym addr-val) refl)
                                            (ret-heap-store prog fs s (haddr hv (sucHL hl)) _ cc
@@ -1292,8 +1292,8 @@ block-step-store-indirect-suc {hv} prog fs s hl cc h ft i-eq live-shl guard =
     dataPost : C.FlatCorr hv (flat-exec-instr store-indirect-suc prog fs) post
     dataPost = subst (C.FlatCorr hv (flat-exec-instr store-indirect-suc prog fs)) (sym post-eq)
                      (C.sim-store-indirect-suc hl fs s dc i-eq live-shl guard)
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr store-indirect-suc prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) store-indirect-suc ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr store-indirect-suc prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) store-indirect-suc ft))
 
 -- store-at-slot: stack[current-frame, slot] := Output ↔ `mov [rsp+disp], rax`.
 -- step-mov-mr writes the RAW rax; sim-store-at-slot's post has enc-sv Output —
@@ -1335,8 +1335,8 @@ block-step-store-at-slot {hv} prog fs s slot cc h ft slot<ns disj =
     dataPost : C.FlatCorr hv (flat-exec-instr (store-at-slot slot) prog fs) post
     dataPost = subst (C.FlatCorr hv (flat-exec-instr (store-at-slot slot) prog fs)) (sym post-eq)
                      (C.sim-store-at-slot slot fs s dc slot<ns disj)
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (store-at-slot slot) prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (store-at-slot slot) ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (store-at-slot slot) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (store-at-slot slot) ft))
 
 -- Arithmetic reg-ops: count-inc (add rsi,1) / scratch-dec (sub rbx,1).
 -- x86 add/sub set flags as a side effect, but CompiledCorr/FlatCorr are
@@ -1364,8 +1364,8 @@ block-step-count-inc {hv} prog fs s k cc h ft c-eq =
     snh = step-add-ri {compile-trace prog} {s} {r14} {1} fetch-x86
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-reg-op count-inc) prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-reg-op count-inc) ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-reg-op count-inc) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-reg-op count-inc) ft))
 
 block-step-scratch-dec : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-dec)
@@ -1389,8 +1389,8 @@ block-step-scratch-dec {hv} prog fs s k cc h ft sc-eq =
     snh = step-sub-ri {compile-trace prog} {s} {rbx} {1} fetch-x86
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (instr-reg-op scratch-dec) prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (instr-reg-op scratch-dec) ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-reg-op scratch-dec) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-reg-op scratch-dec) ft))
 
 -- c-branch-scratch-zero: cmp rbx,0 ; je n. Two x86 steps; the je branch
 -- depends on whether Scratch ≟ 0. With Scratch = SV-Tag k, the flat
@@ -1420,12 +1420,12 @@ block-step-c-branch-scratch-zero {hv} prog fs s n zero j cc h ft sc-eq fl-eq = r
                      (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-branch-scratch-zero n)) ft)
     zf-true : X.Flags.zf (flags post-cmp) ≡ true
     zf-true = cong (_≡ᵇ 0) rbx-val
-    fl-x86 : X.find-label (compile-trace prog) (once n) ≡ just (x86-off prog j)
+    fl-x86 : X.find-label (compile-trace prog) (once n) ≡ just (blk-off prog j)
     fl-x86 = find-label-corr prog n 0 j fl-eq
     post-je : X.State
-    post-je = record post-cmp { pc = x86-off prog j }
+    post-je = record post-cmp { pc = blk-off prog j }
     step-je : X.step-not-halted (compile-trace prog) post-cmp ≡ just post-je
-    step-je = step-je-taken {compile-trace prog} {post-cmp} {once n} {x86-off prog j} fetch-je zf-true fl-x86
+    step-je = step-je-taken {compile-trace prog} {post-cmp} {once n} {blk-off prog j} fetch-je zf-true fl-x86
     exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-je
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-cmp} halt-s step-cmp halt-s)
                     (exec-1 {compile-trace prog} {0} {post-cmp} {post-je} halt-s step-je halt-s)
@@ -1461,8 +1461,8 @@ block-step-c-branch-scratch-zero {hv} prog fs s n (suc m) j cc h ft sc-eq fl-eq 
     exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-je
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-cmp} halt-s step-cmp halt-s)
                     (exec-1 {compile-trace prog} {0} {post-cmp} {post-je} halt-s step-je halt-s)
-    pco' : X.State.pc post-je ≡ x86-off prog (suc (fpc fs))
-    pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (x86-off-suc prog (fpc fs) (instr-ctrl (c-branch-scratch-zero n)) ft)))
+    pco' : X.State.pc post-je ≡ blk-off prog (suc (fpc fs))
+    pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-branch-scratch-zero n)) ft)))
     result : BlockStep hv prog fs s (instr-ctrl (c-branch-scratch-zero n))
     result rewrite sc-eq = post-je , exec-eq , record
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
@@ -1502,12 +1502,12 @@ block-step-c-branch-tag-zero {hv} prog fs s n loc zero j cc h ft i-eq r-eq rd fl
     fetch-je : X.fetch (compile-trace prog) (X.State.pc post-cmp) ≡ just (je (once n))
     fetch-je = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) po)
                      (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)
-    fl-x86 : X.find-label (compile-trace prog) (once n) ≡ just (x86-off prog j)
+    fl-x86 : X.find-label (compile-trace prog) (once n) ≡ just (blk-off prog j)
     fl-x86 = find-label-corr prog n 0 j fl-eq
     post-je : X.State
-    post-je = record post-cmp { pc = x86-off prog j }
+    post-je = record post-cmp { pc = blk-off prog j }
     step-je : X.step-not-halted (compile-trace prog) post-cmp ≡ just post-je
-    step-je = step-je-taken {compile-trace prog} {post-cmp} {once n} {x86-off prog j} fetch-je refl fl-x86
+    step-je = step-je-taken {compile-trace prog} {post-cmp} {once n} {blk-off prog j} fetch-je refl fl-x86
     exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-je
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-cmp} halt-s step-cmp halt-s)
                     (exec-1 {compile-trace prog} {0} {post-cmp} {post-je} halt-s step-je halt-s)
@@ -1543,8 +1543,8 @@ block-step-c-branch-tag-zero {hv} prog fs s n loc (suc m) j cc h ft i-eq r-eq rd
                     (exec-1 {compile-trace prog} {0} {post-cmp} {post-je} halt-s step-je halt-s)
     cond-eq : tag-zf (flat-read-tag (floc fs)) ≡ sv-is-zero (SV-Tag {FS} (suc m))
     cond-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) r-eq)
-    pco' : X.State.pc post-je ≡ x86-off prog (suc (fpc fs))
-    pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (x86-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))
+    pco' : X.State.pc post-je ≡ blk-off prog (suc (fpc fs))
+    pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))
     result : BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
     result rewrite cond-eq = post-je , exec-eq , record
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
@@ -1654,8 +1654,8 @@ block-step-c-branch-tag-nz {hv} prog fs s n loc m cc h ft i-eq r-eq rd = result
                     (exec-1 {compile-trace prog} {0} {post-cmp} {post-je} halt-s step-je halt-s)
     cond-eq : tag-zf (flat-read-tag (floc fs)) ≡ sv-is-zero (SV-Tag {FS} (suc m))
     cond-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) r-eq)
-    pco' : X.State.pc post-je ≡ x86-off prog (suc (fpc fs))
-    pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (x86-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))
+    pco' : X.State.pc post-je ≡ blk-off prog (suc (fpc fs))
+    pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))
     result : BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
     result rewrite cond-eq = post-je , exec-eq , record
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
@@ -1718,9 +1718,9 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wf2 wfs wfc wfcl wf-heap wf-s
                           (flat-exec-instr (instr-alloc-heap n) prog fs) post-add
     dataPost = C.sim-alloc-heap n (X.State.flags post-add) (pc post-mov + 1) fs s dc
                  wf1 wf2 wfs wfc wfcl wf-heap wf-stack fresh-abs room
-    pco' : X.State.pc post-add ≡ x86-off prog (fpc (flat-exec-instr (instr-alloc-heap n) prog fs))
-    pco' = trans (trans (cong (λ p → (p + 1) + 1) po) (+-assoc (x86-off prog (fpc fs)) 1 1))
-                 (sym (x86-off-suc prog (fpc fs) (instr-alloc-heap n) ft))
+    pco' : X.State.pc post-add ≡ blk-off prog (fpc (flat-exec-instr (instr-alloc-heap n) prog fs))
+    pco' = trans (trans (cong (λ p → (p + 1) + 1) po) (+-assoc (blk-off prog (fpc fs)) 1 1))
+                 (sym (blk-off-suc prog (fpc fs) (instr-alloc-heap n) ft))
 
 -- lea-slot: Output := &stack[frame, slot] ↔ `lea rax, [rsp + slot-to-disp slot]`.
 -- Plan 0.61's payoff: `X.effectiveAddr s (base+disp rsp d) = readReg rsp + d`, and
@@ -1747,8 +1747,8 @@ block-step-lea-slot {hv} prog fs s slot cc h ft =
     snh = step-lea {compile-trace prog} {s} {rax} {rsp} {slot-to-disp slot} fetch-x86
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr (lea-slot slot) prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) (lea-slot slot) ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (lea-slot slot) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (lea-slot slot) ft))
 
 
 -- c-branch NOT TAKEN (`Scratch ≡ SV-Tag (suc m)`): the `je` falls through, so the
@@ -1785,8 +1785,8 @@ block-step-c-branch-nz {hv} prog fs s n m cc h ft sc-eq = result
     exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-je
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-cmp} halt-s step-cmp halt-s)
                     (exec-1 {compile-trace prog} {0} {post-cmp} {post-je} halt-s step-je halt-s)
-    pco' : X.State.pc post-je ≡ x86-off prog (suc (fpc fs))
-    pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (x86-off-suc prog (fpc fs) (instr-ctrl (c-branch-scratch-zero n)) ft)))
+    pco' : X.State.pc post-je ≡ blk-off prog (suc (fpc fs))
+    pco' = trans (+-assoc (pc s) 1 1) (trans (cong (_+ 2) po) (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-branch-scratch-zero n)) ft)))
     result : BlockStep hv prog fs s (instr-ctrl (c-branch-scratch-zero n))
     result rewrite sc-eq = post-je , exec-eq , record
       { dataCorr = record { rdi-eq = C.rdi-eq dc ; rsi-eq = C.rsi-eq dc ; rax-eq = C.rax-eq dc
@@ -1836,8 +1836,8 @@ block-step-load-indirect-stack {hv} prog fs s f k w cc h ft i-eq f-eq k<ss st-eq
     dataPost : C.FlatCorr hv (flat-exec-instr load-indirect prog fs) post
     dataPost = C.sim-load-indirect-stack f k w fs s dc i-eq
                  (trans (cong (λ fr → stackMem (floc fs) fr k) f-eq) st-eq)
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr load-indirect prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) load-indirect ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr load-indirect prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) load-indirect ft))
 
 -- load-indirect-suc through a stack pointer ↔ `mov rax, [rdi + 8]`. The x86
 -- address is `slot-addr f k + 8`, which for the current frame is
@@ -1884,8 +1884,8 @@ block-step-load-indirect-suc-stack {hv} prog fs s f k w cc h ft i-eq f-eq sk<ss 
     dataPost : C.FlatCorr hv (flat-exec-instr load-indirect-suc prog fs) post
     dataPost = C.sim-load-indirect-suc-stack f k w fs s dc i-eq
                  (trans (cong (λ fr → stackMem (floc fs) fr (suc k)) f-eq) st-eq)
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr load-indirect-suc prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) load-indirect-suc ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr load-indirect-suc prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) load-indirect-suc ft))
 
 -- store-indirect through a stack pointer ↔ `mov [rdi], rax`, where rdi is the
 -- slot's address. Same shape as `block-step-store-at-slot`, with the address
@@ -1932,8 +1932,8 @@ block-step-store-indirect-stack {hv} prog fs s f k cc h ft i-eq f-eq k<ns disj =
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     dataPost : C.FlatCorr hv (flat-exec-instr store-indirect prog fs) post
     dataPost = C.sim-store-indirect-stack k fs s dc i-eq' k<ns disj
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr store-indirect prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) store-indirect ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr store-indirect prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) store-indirect ft))
 
 -- …and the SECOND cell: `mov [rdi+8], rax`, whose target is rsp+8·(suc k) —
 -- exactly what `sucLoc (AtStack f k)` names abstractly. The address arithmetic is
@@ -1986,5 +1986,5 @@ block-step-store-indirect-suc-stack {hv} prog fs s f k cc h ft i-eq f-eq sk<ns d
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     dataPost : C.FlatCorr hv (flat-exec-instr store-indirect-suc prog fs) post
     dataPost = C.sim-store-indirect-suc-stack k fs s dc i-eq' sk<ns disj
-    pco' : X.State.pc post ≡ x86-off prog (fpc (flat-exec-instr store-indirect-suc prog fs))
-    pco' = trans (cong (_+ 1) po) (sym (x86-off-suc prog (fpc fs) store-indirect-suc ft))
+    pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr store-indirect-suc prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) store-indirect-suc ft))
