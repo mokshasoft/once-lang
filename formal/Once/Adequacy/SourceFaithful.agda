@@ -19,7 +19,7 @@
 -- demanded. Leaf cases (`unit`, the `semM`-routed arith/comparison, the
 -- `evalᴰ`-routed `lift-morphism`) are near-definitional because `⟦_⟧ˢ` denotes
 -- them through the SAME `semM`/`evalᴰ` the elaborated IR uses. `faithful` is
--- now TOTAL and postulate-free: every constructor (including `cata`/`ana` via
+-- now TOTAL: every constructor (including `cata`/`ana` via
 -- `FaithfulLemmas.cata-body`/`ana-body`) is discharged.
 ------------------------------------------------------------------------
 
@@ -433,5 +433,5 @@ faithful (case' {Γ = Γ} {A = A} {B = B} {C = C} s l r) dγ n =
 -- purity assumption (the build trace is threaded, not discarded).
 faithful {Γ = Γ} (cata wf alg) dγ k = FL.cata-body {Γ = Γ} wf alg (λ j → faithful alg tt j) dγ k
 -- ana: dual of cata; reduces to the same closure-bridge via `ana-body`
--- (+ the `ana-ev-bridge` trace lemma). Postulate-free.
+-- (+ the `ana-ev-bridge` trace lemma).
 faithful {Γ = Γ} (ana wf coalg) dγ k = FL.ana-body {Γ = Γ} wf coalg (λ j → faithful coalg tt j) dγ k

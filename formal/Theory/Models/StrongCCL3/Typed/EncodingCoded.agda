@@ -24,8 +24,6 @@
 -- type involves μ) follows once encode-tyc is shown faithful — that
 -- proof lives in a sibling .CodedFaithful module (forthcoming).
 --
--- ZERO POSTULATES.
---
 -- TOWER LEVEL: CCT3.
 ------------------------------------------------------------------------
 

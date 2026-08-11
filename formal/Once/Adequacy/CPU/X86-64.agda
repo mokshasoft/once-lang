@@ -8,7 +8,7 @@
 -- shape, restored from history) into the portable `ArchSemantics`
 -- interface.
 --
--- Concrete fields (no postulates, real ISA semantics):
+-- Concrete fields (real ISA semantics):
 --   - Program      = List Instr  (from Once.CCC.Target.X86-64.Syntax)
 --   - State        = the existing record (regs, memory, flags, pc, halted)
 --   - initialState = X86-64.Semantics.initState

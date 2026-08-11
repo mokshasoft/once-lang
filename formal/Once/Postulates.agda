@@ -62,7 +62,8 @@ postulate
 -- Semantic Gap S1: Fixed Point Semantics
 ------------------------------------------------------------------------
 --
--- NOT A POSTULATE (no axiom is assumed), but a KNOWN SEMANTIC GAP.
+-- A KNOWN SEMANTIC GAP, recorded as documentation. It lives in the
+-- DEFINITION of ⟦_⟧ for Fix, below.
 --
 -- The current interpretation of Fix F uses a simple newtype wrapper:
 --
@@ -98,5 +99,5 @@ postulate
 --
 ------------------------------------------------------------------------
 
--- No postulate needed; this is a documentation marker
--- The limitation is intrinsic to how ⟦_⟧ is defined for Fix.
+-- A documentation marker: the limitation is intrinsic to how ⟦_⟧ is
+-- defined for Fix.

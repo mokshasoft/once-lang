@@ -84,7 +84,7 @@ wf-NatF = wf-Sum (wf-K base-Unit) wf-Id
 --     produces Cons (head, rec tail) where rec is the continuation.
 --
 -- This is provably terminating: Para recurses on the Nat structure,
--- which is well-founded, with no TERMINATING pragma needed.
+-- which is well-founded.
 --
 obs : ∀ {A}
     → WellFormedF (StreamF A)
@@ -213,7 +213,7 @@ obs {A} wfStream wfList =
 --
 -- The ν→μ operations (obs, obsWhile, obsUntil) are based on Para over
 -- the bounding parameter, ensuring termination by structural recursion.
--- Para is derived from Cata, so no TERMINATING pragmas are needed.
+-- Para is derived from Cata, so termination is Cata's.
 --
 -- The μ→ν operations (embed, periodic) are Anas, which are always safe
 -- (productive by IR totality).

@@ -3,7 +3,7 @@
 --
 -- Consequences of the Ranzow Fixpoint property.
 --
--- This module contains ZERO postulates. Every theorem takes the
+-- Every theorem here takes the
 -- required Established math facts as explicit hypotheses. At a concrete
 -- instantiation, clients discharge these hypotheses using modules in
 -- Theory.Established.* (e.g., LambekScott1986.confluence).

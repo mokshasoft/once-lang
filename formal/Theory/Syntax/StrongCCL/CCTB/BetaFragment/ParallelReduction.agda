@@ -6,7 +6,7 @@
 --   ⟶-to-⟹  : single reduction step embeds as a parallel step
 --   ⟹-to-⟶* : a parallel step expands to a finite reduction sequence
 --
--- No postulates. All proofs by structural induction.
+-- All proofs by structural induction.
 --
 -- This module is the foundation for the diamond-property proof
 -- (Theory.Syntax.CCTB.Diamond) which in turn gives CCTB confluence.

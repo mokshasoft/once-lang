@@ -76,9 +76,8 @@ HeapRoom =
 -- the same thing about the two ends of the same virgin region `[hfront, lo)`:
 -- an allocation must not consume it from below, a frame reservation must not
 -- consume it from above. Same conditioning (`RunAt` + `CompiledCorr` + the
--- site), same class, same reason it is a PARAMETER and not a postulate
--- (D087): a linker sizing pass discharges it, and a parameter is the hole
--- that proof slots into.
+-- site), same class, same reason it is a PARAMETER (D087): a linker sizing
+-- pass discharges it, and a parameter is the hole that proof slots into.
 --
 -- WHY `hfront + slots b ≤ %rsp` AND NOT THE TWO CONSEQUENCES SEPARATELY. The
 -- `c-thunk` block-step needs `slots b ≤ %rsp` (the `sub` does not underflow)

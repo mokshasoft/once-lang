@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- Theory.Syntax.StrongCCL.CCT1.BetaFragment.Confluence
 --
--- β-CCT1 confluence, rigorously derived (no postulates).
+-- β-CCT1 confluence, rigorously derived.
 --
 -- SCOPE: this proves confluence of the β-subset of CCT1 reduction
 -- (β rules + eta-pair inherited from CCTB). curry-η is excluded from

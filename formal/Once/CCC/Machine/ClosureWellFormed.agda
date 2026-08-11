@@ -1714,8 +1714,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- STRONG version: requires an additional LocsInRegions hypothesis that
   -- witnesses the value's sub-locations all land in input/fresh/heap/anc
   -- (never in the gap [input-bound, fresh-start) on current frame).
-  -- This is the version that can be proven without postulates (modulo μ/ν
-  -- stubs, which require sister lemmas in MuValidity).
+  -- This is the version that is provable outright (modulo μ/ν stubs, which
+  -- require sister lemmas in MuValidity).
   --
   -- The original `validityWF-mem-preserved-in-regions` (below, still
   -- postulated as SMP.!!) is the unsafe version without this hypothesis.

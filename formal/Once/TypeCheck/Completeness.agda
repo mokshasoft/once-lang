@@ -978,7 +978,7 @@ regrade-eff (m-case f g)         with regrade-eff f | regrade-eff g
 regrade-eff _                    = nothing
 
 -- Plan 0.52: the former `subsume-residual` postulate (the m-compose/m-case
--- pure⊑eff wrinkle) is now DISCHARGED postulate-free — the elaborator's eff-clause
+-- pure⊑eff wrinkle) is now DISCHARGED — the elaborator's eff-clause
 -- accepts a subsumed pure compose/case (checkCompose/checkCase try eff, else check
 -- at pure and wrap in arr'/t-subsume), and compose/case-eff-complete (MorphComplete)
 -- prove it. See subsume-complete below.
@@ -1698,7 +1698,8 @@ mutual
   -- remain scoped postulates there (the latter pending plan 0.50).
   -- (Plan 0.36 Phase 2a follow-up DISCHARGED: `pair-lit-check-complete` was the
   -- pair-literal check-mode completeness postulate — now proven via `pair-lit-reduce`
-  -- + the `iFromInfer` switch / `check-completeV`, above. No postulate remains.)
+  -- + the `iFromInfer` switch / `check-completeV`, above. The proof is
+  -- complete.)
 
   -- `nothing ≡ just _` is absurd — returns any goal type (no `⊥` import needed).
   nothing≢just : ∀ {ℓ} {A : Set ℓ} {x : A} {C : Set} → nothing ≡ just x → C
@@ -1729,8 +1730,8 @@ mutual
   ... | wfv-no eqNo | _                           = nothing≢just (trans (sym eqNo) eqWF)
 
   -- Plan 0.42: the `⊢ᵍ` completeness — a closed global-element value elaborates
-  -- at a pure arrow. POSTULATE-FREE. `g-int` is the direct `RInt` clause;
-  -- `g-terminal` routes through the existing bare-`terminal` fallback; the
+  -- at a pure arrow, every clause discharged. `g-int` is the direct `RInt`
+  -- clause; `g-terminal` routes through the bare-`terminal` fallback; the
   -- structural shapes (`g-pair`/`g-inl`/`g-inr`/`g-In`) scrutinise the SAME
   -- `inspectCheckG` view as their value-lift `checkElabV` clauses, so the
   -- elaborator reduces (no `with checkG` opacity). `checkG-just` rules out the
@@ -1915,7 +1916,7 @@ mutual
   subsume-complete (t-morph-lift (m-curry mFᵐ))    = curry-eff-complete mFᵐ
   -- Plan 0.52: m-compose/m-case at eff — the elaborator's eff-clause tries eff
   -- (genuinely-eff arms), else checks at pure and wraps in arr'/t-subsume. Both
-  -- discharged by compose/case-eff-complete (postulate-free), so subsume-residual
+  -- discharged by compose/case-eff-complete, so subsume-residual
   -- is RETIRED (the last unsound gap closed).
   subsume-complete (t-morph-lift (m-compose eqB df dg)) = compose-eff-complete eqB df dg
   subsume-complete (t-morph-lift (m-case df dg))        = case-eff-complete df dg

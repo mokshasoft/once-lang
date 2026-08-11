@@ -16,7 +16,7 @@
 --   2. The postulates were unprovable (different Agda data types)
 --   3. They were not needed for any proofs outside this module
 --
--- All remaining content is fully proven with no postulates.
+-- All remaining content is fully proven.
 ------------------------------------------------------------------------
 
 module Once.Semantics.Coherence where
@@ -139,7 +139,7 @@ sem-fmap-comp F f g x =
 -- Summary
 ------------------------------------------------------------------------
 --
--- This module provides fully PROVEN coherence lemmas (no postulates):
+-- This module provides fully PROVEN coherence lemmas:
 --
 -- 1. Base Type Interpretation Coherence:
 --    - base-interp-coherence: ⟦ ℕ ⟧-base A ≡ ⟦ A ⟧ for IsBaseType A

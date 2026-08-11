@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.Grammar.TypeAliasBridge — independent relational spec for the TYPE ALIAS
--- declaration parser + sound/complete bridge. No shim, no postulate. Bottoms at
+-- declaration parser + sound/complete bridge. Bottoms at
 -- the proven `ParsesType` island (`Once.Grammar.ParserBridge`).
 ------------------------------------------------------------------------
 

@@ -23,7 +23,9 @@
 -- Each case takes its required bisimilarity laws as explicit
 -- hypotheses.
 --
--- ZERO POSTULATES. ZERO use of Theory.Established.Cotransparency.
+-- Each case rests on the bisimilarity laws it takes as hypotheses, and on
+-- nothing else — in particular it stands independently of
+-- Theory.Established.Cotransparency.
 --
 -- TOWER LEVEL: CCT4.
 ------------------------------------------------------------------------

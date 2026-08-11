@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.Grammar.FunDefBridge — independent relational spec for the FUNCTION
--- DEFINITION declaration parser + sound/complete bridge. No shim, no postulate.
+-- DEFINITION declaration parser + sound/complete bridge.
 -- Bottoms at the proven `ParsesExpr` island (`Once.Grammar.ExprBridge`).
 --
 -- Stage 1: `ParsesParams` (parameter scanner) over the routed `parseParamsWF`.

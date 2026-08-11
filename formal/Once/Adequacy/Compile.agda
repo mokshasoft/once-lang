@@ -88,7 +88,7 @@ open import Once.Parser using (parseStrict)
 open import Once.Grammar.ModuleConvert using (gmoduleToModule)
 
 -- Plan 0.50 (de-island): `DistinctSymbols` + the PROVED `program-no-clash`,
--- the precondition the assembler trust point demands. Imported, not postulated —
+-- the precondition the assembler trust point demands. Imported and
 -- discharged in `Once.Adequacy.NameClash` via `once-symbol-own-≢` (the proven
 -- encoding injectivity) over the extractor's distinctness+validity guard.
 open import Once.Adequacy.NameClash using (DistinctSymbols; program-no-clash)
@@ -474,8 +474,8 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   correct-gm arch doOpt (just m) tw =
     correct-mir arch doOpt m (moduleToIR m) refl (λ ir mi → tw m refl ir mi)
 
-  -- THE unconditional claim (Plan 0.48), COMPOSED (not postulated). The three
-  -- layers walk `gmoduleToModule → moduleToIR → compileFromModule` on explicit
+  -- THE unconditional claim (Plan 0.48), COMPOSED from three layers. They
+  -- walk `gmoduleToModule → moduleToIR → compileFromModule` on explicit
   -- arguments (no `with`); only the Built-case trace differs by `doOpt`:
   -- `false` is the PROVEN codegen chain, `true` is the `opt-trace` lift.
   correct : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
@@ -708,8 +708,8 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- ════════════════════════════════════════════════════════════════════
   -- The GRAND THEOREM (D060): `correct` above IS the whole statement.
   -- There is now ONE denotational meaning: the surface `⟦_⟧ˢ` and the IR
-  -- `⟦_⟧ᴰ` are two presentations of it, tied by `faithful` (proven,
-  -- postulate-free, in `Once.Adequacy.SourceFaithful`). The old second
+  -- `⟦_⟧ᴰ` are two presentations of it, tied by `faithful` (proven in
+  -- `Once.Adequacy.SourceFaithful`). The old second
   -- conjunct compared `evalᴰ` against an INDEPENDENT `SS.eval` reference;
   -- with `SS.eval` retired (D060) that comparison collapses to `faithful`,
   -- a standalone load-bearing fact rather than a conjunct bolted onto the

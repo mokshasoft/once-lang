@@ -161,7 +161,7 @@ data IR where
   -- guarantees termination (cata) or productivity (ana).
   --
   -- All constructors require WellFormedFI proofs to ensure functors only
-  -- use K with base types, enabling postulate-free semantic evaluation.
+  -- use K with base types, so semantic evaluation is defined for all of them.
   --------------------------------------------------------------------------
 
   -- Initial algebra operations (inductive types, total recursion)
@@ -219,7 +219,7 @@ data IR where
   -- Semantically: Hylo alg coalg ≡ Fuse alg (coalg ∘ In)
   -- The coalgebra wraps In to convert the pre-destructed G-layer to F-layer.
   --
-  -- NO TERMINATING PRAGMA NEEDED - termination follows from Fuse!
+  -- Termination follows from Fuse.
   --
   Hylo : ∀ {F G} → WellFormedFI F → WellFormedFI G → ∀ {B}
        → IR (⟦ F ⟧TI B) B                          -- algebra: F(B) → B
@@ -240,7 +240,7 @@ data IR where
   -- Semantically: Fuse alg transform = cata (alg ∘ transform)
   -- But computed via direct recursion for deforestation.
   --
-  -- NO TERMINATING PRAGMA NEEDED - termination is structural!
+  -- Termination is structural.
   --
   Fuse : ∀ {F G} → WellFormedFI F → WellFormedFI G → ∀ {B}
        → IR (⟦ F ⟧TI B) B                              -- algebra: F(B) → B

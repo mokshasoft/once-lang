@@ -9,7 +9,6 @@
 -- (Theory.Syntax.CCTB.LocalConfluence) via Newman's lemma
 -- (Theory.Derived.Newman).
 --
--- No postulates.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.StrongCCL.CCTB.ConfluenceFull where

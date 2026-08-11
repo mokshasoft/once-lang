@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- Theory.Derived.ConfluenceFromDiamond
 --
--- ABSTRACT LEMMA (no postulates): the diamond property of any binary
+-- ABSTRACT LEMMA, proved from the relation alone: the diamond property
 -- relation implies confluence of its reflexive-transitive closure.
 --
 --   If R has the diamond property,

@@ -5,7 +5,7 @@
 -- Once.Grammar.SignatureBridge — independent relational spec + bridge for the
 -- `signature` declaration `name : polytype [! shape]` (`parseSignatureB`).
 -- Bottoms at the `ParsesPolyType` island + a small `ParsesEffAnnot` relation for
--- the optional `! halts`/`! emits` annotation. No postulate.
+-- the optional `! halts`/`! emits` annotation.
 ------------------------------------------------------------------------
 
 module Once.Grammar.SignatureBridge where

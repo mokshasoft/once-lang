@@ -1842,7 +1842,7 @@ module AbstractExec {FS : FrameSemantics} where
   --   `cmp [rdi],0 ; je inl ; <g> ; jmp end ; inl: <f>`:
   -- tag 0 → f (inl), tag ≥ 1 → g (inr), malformed scrutinee → halt.
   -- `f`/`g` are strict subterms, so the exec-trace recursion is
-  -- structural (no new TERMINATING). This makes `exec-loop` fold a
+  -- structural. This makes `exec-loop` fold a
   -- heap-μ-value for real (see Examples.AbstractCataFold).
   exec-abstract (instr-case-on-tag f g) s alloc =
     exec-case-dispatch (case-tag-at s) f g s alloc

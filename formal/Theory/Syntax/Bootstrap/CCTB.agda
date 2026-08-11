@@ -15,7 +15,6 @@
 -- RULES DERIVED VIA CONVERTIBILITY:
 --   eta-pair-gen: via pair-comp-reverse + eta-pair + id-left.
 --
--- Zero postulates.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.Bootstrap.CCTB where

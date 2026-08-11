@@ -26,7 +26,6 @@
 -- restricted subsystems (the Curien1985 β-fragment), which is what the
 -- bootstrap actually relies on.
 --
--- ZERO POSTULATES.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.StrongCCL.CCT1.NonConfluenceWitness where

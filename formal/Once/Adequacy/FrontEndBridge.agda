@@ -51,7 +51,7 @@ open import Once.Parser
   using (allTrailing; parseStrict; parseStrict-pm; parseStrict-at)
 
 ------------------------------------------------------------------------
--- LEXER — NO SHIM. The genuine independent char-production relation `Lexes` +
+-- LEXER. The genuine independent char-production relation `Lexes` +
 -- `lexer-sound`/`lexer-complete` now come from `Once.Adequacy.LexerBridge`
 -- (relation over `LexesChars`; soundness for all 27 special heads + full
 -- determinism + completeness = sound ∘ det, all GENUINELY PROVEN). The single

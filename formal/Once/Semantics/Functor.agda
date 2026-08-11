@@ -249,7 +249,7 @@ anaS-unfold F coalg a = sfmapAna-is-sfmap F F coalg (coalg a)
 
 -- | Paramorphism: fold with access to original substructure
 --
--- Derived from cataS - NO TERMINATING pragma needed.
+-- Derived from cataS, so termination is cataS's.
 -- Para's algebra receives both the recursive result AND the original
 -- substructure, enabling bounded recursion patterns like `obs`.
 --
@@ -272,7 +272,7 @@ paraS {F} {A} alg x = proj₂ (cataS {F} alg' x)
 --
 -- When transform is a NATURAL TRANSFORMATION (parametric in the recursive
 -- position), fusion reduces to cata with a composed algebra. This version
--- requires NO TERMINATING pragma because cataS is structurally recursive.
+-- rides cataS's structural recursion.
 --
 -- A natural transformation `∀ {A} → ⟦ G ⟧SF A → ⟦ F ⟧SF A` satisfies:
 --   transform ∘ sfmap G f = sfmap F f ∘ transform  (naturality)
@@ -296,8 +296,9 @@ fuseNatS {F} {G} {B} transform alg = cataS {G} (alg ∘ transform)
 -- This is the generalization of `fuseNatS`: when the transform is a (monoidal)
 -- NATURAL transformation — parametric in the recursive position, with a
 -- shape-determined monoid annotation — the whole fold is just `cataS` at the
--- carrier `M × B`, so it needs NO TERMINATING pragma (unlike the monomorphic
--- `fuseW`). The recursion is `cataS`'s structural descent; the per-layer monoid
+-- carrier `M × B`, so its termination is cataS's (unlike the monomorphic
+-- `fuseW`, which needs its own argument). The recursion is `cataS`'s
+-- structural descent; the per-layer monoid
 -- is accumulated in fused depth-first order — transform (pre), children (in
 -- functor order, via `collectM`), algebra (post) — matching `fuseW` exactly but
 -- provably structural. `fuseNatS` is its `⊤`-monoid instance.

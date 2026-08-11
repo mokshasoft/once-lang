@@ -24,7 +24,6 @@
 --   can only EXIST when the provider has μ. So "needs CCT3" is a fact
 --   about whoever supplies Code/encode, not about the theorem statement.
 --
--- ZERO POSTULATES.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}

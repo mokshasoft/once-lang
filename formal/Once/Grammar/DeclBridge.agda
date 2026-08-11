@@ -5,7 +5,8 @@
 -- Once.Grammar.DeclBridge — the per-declaration relation `ParsesDecl` (a sum of
 -- the six decl forms) + `sound-decl`/`complete-decl`, dispatching on `parseDeclB`
 -- (the `pdb-kw1→kw2→kw3→fb` keyword chain + `tryOpDeclB`). Discharges the apex
--- `ParsesDecl`/`sound-decl`/`complete-decl` postulate. No postulate, no shim.
+-- `ParsesDecl`/`sound-decl`/`complete-decl` postulate, replacing it with
+-- a proof.
 ------------------------------------------------------------------------
 
 module Once.Grammar.DeclBridge where

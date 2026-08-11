@@ -12,7 +12,7 @@
 -- selector (`bundle-realize`) read from it, so their agreement is definitional.
 --
 -- Promoted from the validated `BundlePOC.agda` blueprint. The two plumbing
--- lemmas are PROVEN here (not postulated):
+-- lemmas are PROVEN here:
 --   * `compileFun-ce`          — ce-returning refinement of `compileFun-sound`.
 --   * `bundle→compiled≡compiled` — `caf-go-bundle` ↔ `compileAllFuns-go`.
 ------------------------------------------------------------------------

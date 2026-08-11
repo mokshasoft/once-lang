@@ -297,7 +297,7 @@ module _ (N : ℕ) where
                                   (mem-agree-heap i s inStk) (inHp p)))
 
   -- pl-inv: non-spill via t0-inv+plg-mem-cong (WF unused); spill via the region
-  -- model (plg-stack-write-invisible) from WF — NO postulate.
+  -- model (plg-stack-write-invisible) from WF.
   pl-inv : ∀ i s → WF s → ∀ p → path-load (EA.exec1 val-riscv64 N i s) p ≡ path-load s p
   pl-inv (XI.Xmov-imm d z) s wf p = pl-inv-ns (XI.Xmov-imm d z) s p refl
   pl-inv (XI.Xmov-rr d src) s wf p = pl-inv-ns (XI.Xmov-rr d src) s p refl

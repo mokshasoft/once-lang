@@ -300,7 +300,7 @@ open import Once.Semantics.Machine
          sem-fmap;
          coerce-functor; coerce-functor⁻¹; coerce-round-trip; coerce⁻¹-round-trip;
          ⟦_⟧F;
-         -- Proven for well-formed functors (no postulates)
+         -- Proven for well-formed functors
          sem-cata-compute)
 -- 0.47: the axiom-using identity laws live in Once.Semantics.Machine.Laws.
 open import Once.Semantics.Machine.Laws using (sem-cata-In-id; sem-ana-Out-id)
@@ -338,9 +338,9 @@ open import Once.Postulates using (extensionality)
 --   = x                                            (by sem-cata-In-id)
 --
 -- Proven using function extensionality.
--- The semantic foundation is sem-cata-In-id in Once.Semantics.Value (postulate-free).
+-- The semantic foundation is sem-cata-In-id in Once.Semantics.Value.
 --
--- Note: Requires WellFormedF proof for postulate-free verification.
+-- Note: Requires a WellFormedF proof.
 --
 eval-cata-In-id : ∀ {F : Functor} → (wf : WellFormedF F) → (m : AllocMode) (x : ⟦ μ-type F ⟧)
                 → eval (Cata {F} wf (In {F} wf m)) x ≡ x
@@ -360,7 +360,7 @@ eval-cata-In-id {F} wf m x =
             ≡ sem-cata wf (sem-In F) x
       step1 = cong (λ alg → sem-cata wf alg x) alg-eq
 
-      -- Step 2: Apply sem-cata-In-id (well-formed, no postulates)
+      -- Step 2: Apply sem-cata-In-id (well-formed)
       step2 : sem-cata wf (sem-In F) x ≡ x
       step2 = sem-cata-In-id wf x
 
@@ -460,7 +460,7 @@ eval-cata-In {F} wf {A} alg m x =
       alg′ : ⟦ F ⟧F ⟦ A ⟧ → ⟦ A ⟧
       alg′ = λ fa → eval alg (coerce-functor⁻¹ F A fa)
 
-      -- Step 1: Apply sem-cata-compute (well-formed, no postulates)
+      -- Step 1: Apply sem-cata-compute (well-formed)
       -- sem-cata wf alg′ (sem-In F (coerce x)) = alg′ (sem-fmap F (sem-cata wf alg′) (coerce x))
       step1 : sem-cata wf alg′ (sem-In F (coerce-functor F (μ-type F) x))
             ≡ alg′ (sem-fmap F (sem-cata wf alg′) (coerce-functor F (μ-type F) x))

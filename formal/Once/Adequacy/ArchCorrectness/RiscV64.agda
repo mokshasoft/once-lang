@@ -55,7 +55,7 @@ open import Once.Adequacy.LabelClash using (DistinctLabels)
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
 -- Plan 0.54 rung D / D087: `program-bound` is a RESOURCE BOUND and so is now a
--- module PARAMETER threaded from the apex, not a postulate here.
+-- module PARAMETER threaded from the apex.
 open IRObsCorrectFlatness {rv64-frame-semantics} program-bound using (ir-obs-correct)
 
 ------------------------------------------------------------------------

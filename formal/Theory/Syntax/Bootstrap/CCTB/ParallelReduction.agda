@@ -8,7 +8,7 @@
 --   ⟹→⟶*  : a parallel step expands to finitely many single steps
 --   ⟶*→⟹* / ⟹*→⟶* : the closures agree.
 --
--- No postulates. The diamond property of _⟹_ is NOT proven here.
+-- Scope: the bridges. The diamond property of _⟹_ is proven elsewhere.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.Bootstrap.CCTB.ParallelReduction where

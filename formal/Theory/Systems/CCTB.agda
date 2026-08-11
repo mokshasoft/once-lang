@@ -6,9 +6,9 @@
 --
 -- This module defines what a CCTB STRUCTURE is: the generators, a
 -- congruence _≈_ on morphisms, and the universal-property equations
--- that any CCTB must satisfy. It contains NO postulates and NO
--- theorems — only the algebraic signature that downstream modules
--- (Syntax/*, Established/*, RanzowFixpoint/*) quantify over.
+-- that any CCTB must satisfy. It is the algebraic signature alone, which
+-- downstream modules (Syntax/*, Established/*, RanzowFixpoint/*)
+-- quantify over.
 --
 -- Directed rewriting (_⟶_, _⟶*_, IsNormalForm) is NOT part of the
 -- Systems level: it is an artifact of a particular *syntactic*

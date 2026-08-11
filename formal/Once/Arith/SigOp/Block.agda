@@ -113,8 +113,8 @@ block-name e = "arith.block." ++ block-digest e
 -- The machine layer denotes `Int` as a modular `Word` (= the CPU's
 -- `add`), so `block-semM` is the definitional `Word` evaluator,
 -- mirroring `eval-arith` (the ℤ spec) op-for-op with the modular
--- operations from `Once.Arith.Word`. No postulates, no no-overflow
--- side condition: wraparound is the defined meaning.
+-- operations from `Once.Arith.Word`: wraparound IS the defined meaning, so
+-- the evaluator is total on every input.
 --
 -- `M.⟦ Int ⟧` is `ℕ` (machine `IntRep`), and `Word` is `ℕ`, so the
 -- result carrier matches definitionally.

@@ -22,7 +22,8 @@
 -- This module is just a structured wrapper that exposes the theorem
 -- in terms of HasCoFixpoint instead of the bare bisimilarity.
 --
--- ZERO POSTULATES introduced here. Pulls in one Established postulate.
+-- Its whole mathematical content is one Established postulate,
+-- Cotransparency, re-exposed.
 --
 -- TOWER LEVEL: CCT4 (no CCT3 base — ν-types only exist at CCT4).
 ------------------------------------------------------------------------

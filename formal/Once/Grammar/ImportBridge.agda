@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.Grammar.ImportBridge — independent relational spec for the IMPORT
--- declaration parser + sound/complete bridge. No shim, no postulate. First
+-- declaration parser + sound/complete bridge. First
 -- proven leaf for `Once.Adequacy`'s `ParsesDecl`.
 --
 --   * `ParsesModulePath` (dotted module path) ↔ `parseModulePath-WFB`.

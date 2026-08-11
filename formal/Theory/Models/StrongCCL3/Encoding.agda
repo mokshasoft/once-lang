@@ -24,8 +24,6 @@
 --
 --   - All 16 Term constructors are covered.
 --
--- ZERO POSTULATES.
---
 -- TOWER LEVEL: CCT3.
 ------------------------------------------------------------------------
 

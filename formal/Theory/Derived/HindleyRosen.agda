@@ -20,7 +20,7 @@
 -- diamond of the union, confluence of Star(R ∪ S) follows via
 -- ConfluenceFromDiamond.confluence.
 --
--- ZERO POSTULATES. Pure structural lemma about abstract relations.
+-- A pure structural lemma about abstract relations.
 ------------------------------------------------------------------------
 
 module Theory.Derived.HindleyRosen where

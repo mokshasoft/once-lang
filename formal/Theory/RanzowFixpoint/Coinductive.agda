@@ -9,7 +9,7 @@
 --
 --     T ∘ ⌜T⌝ω  ≈ω  ⌜T⌝ω
 --
--- This file contains DEFINITIONS ONLY. Zero postulates, zero theorems.
+-- This file contains DEFINITIONS ONLY.
 -- The definitions are parameterized over a CCT4 structure (the minimum
 -- level that supports ν-types and hence bisimilarity-based
 -- self-encoding), a Coreducible carrier on that structure, and a

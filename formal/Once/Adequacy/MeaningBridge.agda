@@ -109,7 +109,7 @@ rel-lookup (Γ , A ^ q) (suc i) {dγ₁ , a₁} {dγ₂ , a₂} (re , _)  = rel-
 -- and every `sigop-ref-bridge` case via `concrete-rel→refl`/`RelT-refl` (the
 -- arrow corner routes through the correctly-dispatching `sigOpRefᴰ`); and
 -- `cata-bridge` (the fold congruence) in `Once.Adequacy.CataBridge`, applied at
--- the `m-cata` case via the recursive `bridge-m alg`. This module is POSTULATE-FREE.
+-- the `m-cata` case via the recursive `bridge-m alg`. Every case is proved.
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------

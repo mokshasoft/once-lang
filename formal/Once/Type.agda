@@ -425,7 +425,7 @@ mutual
 --
 -- Ground `Type` carries no type variables — that invariant is
 -- load-bearing for clean `_≟T_`, clean IR pattern-matching, and the
--- optimizer's postulate-free status (plan 0.2.5 rationale).
+-- optimizer's fully-proved status (plan 0.2.5 rationale).
 -- `PolyType` is a *separate* data type that mirrors `Type` plus a
 -- `PTVar` constructor, used strictly at the parser/signature boundary
 -- for user-declared polymorphic signatures like `swap : a * b → b * a`.

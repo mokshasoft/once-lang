@@ -8,7 +8,7 @@
 --
 --     T ∘ ⌜T⌝  ⟶*  ⌜T⌝
 --
--- This file contains DEFINITIONS ONLY. Zero postulates, zero theorems.
+-- This file contains DEFINITIONS ONLY.
 -- The definitions are parameterized over a CCT3 structure (the minimum
 -- level that supports self-encoding via μ-types), a directed reduction
 -- on that structure, and an encoding scheme.

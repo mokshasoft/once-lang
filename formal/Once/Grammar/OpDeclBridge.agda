@@ -6,7 +6,7 @@
 -- operator-form declaration `(op)` followed by a type signature or a function
 -- definition (`tryOpDeclB`). The operator-name scanner `parseOpCharsB` is
 -- structural (recurses on the tail), so its relation `ParsesOpChars` is too.
--- Bottoms at `ParsesPolyType` + the reused `ParsesFunDef`. No postulate.
+-- Bottoms at `ParsesPolyType` + the reused `ParsesFunDef`.
 ------------------------------------------------------------------------
 
 module Once.Grammar.OpDeclBridge where

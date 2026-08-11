@@ -180,7 +180,7 @@ elaborate m (app f x) = apply ∘ ⟨ elaborate m f , elaborate m x ⟩ m
 --   (…) ∘ fst            : IR (Γ * Unit) B         -- ignore Unit input
 --   curry (…) m          : IR Γ (Unit ⇒[Many] B)    -- abstract the Unit
 --   curry (…) m          : IR Γ (Unit ⇛ B)          -- Plan 0.52 M2: ungraded
--- No new IR constructors, no coercion, no postulate. (`arr` retired: pure and
+-- Built from the existing IR constructors alone. (`arr` retired: pure and
 -- eff arrows are the same ungraded `⇛` object, so no tag needed.)
 elaborate m (effApp f x) =
   curry ((apply ∘ ⟨ elaborate m f , elaborate m x ⟩ m) ∘ fst) m

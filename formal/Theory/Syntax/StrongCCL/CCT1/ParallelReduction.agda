@@ -27,7 +27,6 @@
 -- This commit defines ⟹ and the two bridges. The diamond property
 -- and the SN application come in subsequent commits.
 --
--- ZERO POSTULATES.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.StrongCCL.CCT1.ParallelReduction where

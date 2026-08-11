@@ -8,7 +8,7 @@
 --   ⟹→⟶*  : a parallel step expands to finitely many single steps
 --   ⟶*→⟹* : the reflexive-transitive closures agree.
 --
--- No postulates. Ported from bootstrap/normalizer/Syntax/CCC.agda
+-- Ported from bootstrap/normalizer/Syntax/CCC.agda
 -- (stripped of the cata/In/Out CCT3 additions; kept only the CCT1
 -- fragment).
 --

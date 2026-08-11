@@ -11,8 +11,6 @@
 -- μ-data, and the RF property only uses composition and reduction,
 -- both of which are shared with CCT3.
 --
--- ZERO POSTULATES in this module.
---
 -- TOWER LEVEL: CCT4.
 ------------------------------------------------------------------------
 

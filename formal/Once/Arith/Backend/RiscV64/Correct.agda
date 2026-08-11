@@ -7,7 +7,7 @@
 -- Plan 0.54 — RiscV64 instantiation of the shared width-parametric,
 -- PROVEN refinement module (`Once.Arith.Backend.Correct`) at width 64.
 -- Re-exports the proven concrete machine (`exec-x86`), the discharged
--- `refine`/`refine-program`, and `block-correct` — no postulates.
+-- `refine`/`refine-program`, and `block-correct`, all proved at this width.
 ------------------------------------------------------------------------
 
 module Once.Arith.Backend.RiscV64.Correct where

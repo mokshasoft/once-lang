@@ -11,8 +11,6 @@
 -- require larger proofs about the term datatype and are deferred
 -- to follow-up modules.
 --
--- ZERO POSTULATES.
---
 -- TOWER LEVEL: CCT3.
 ------------------------------------------------------------------------
 

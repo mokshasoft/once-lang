@@ -14,7 +14,6 @@
 -- we use the qualified module alias `F = full-Closure` to refer to the
 -- full-reduction constructors unambiguously.
 --
--- No postulates.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.StrongCCL.CCTB.LocalConfluence where

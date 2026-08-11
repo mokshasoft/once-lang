@@ -1,8 +1,8 @@
 ------------------------------------------------------------------------
 -- Theory.Derived.Newman
 --
--- ABSTRACT LEMMA (no postulates): a strongly normalizing relation
--- is confluent iff it is locally confluent.
+-- ABSTRACT LEMMA, proved from the relation alone: a strongly normalizing
+-- relation is confluent iff it is locally confluent.
 --
 --   Newman's lemma : SN R → LocalConfluent R → Confluent R
 --

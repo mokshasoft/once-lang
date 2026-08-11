@@ -41,8 +41,6 @@
 --   the SPFs used by Once's standard datatypes (List, Maybe, Tree,
 --   Stream, Nat, etc.).
 --
--- ZERO POSTULATES.
---
 -- TOWER LEVEL: CCT3.
 ------------------------------------------------------------------------
 

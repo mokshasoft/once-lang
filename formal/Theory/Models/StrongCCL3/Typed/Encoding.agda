@@ -35,8 +35,6 @@
 --
 -- Both lift in Phase 2 once a Func universe of SPF codes is introduced.
 --
--- ZERO POSTULATES.
---
 -- TOWER LEVEL: CCT3.
 ------------------------------------------------------------------------
 

@@ -34,7 +34,7 @@
 --   curry-compose: curry-β-ext + curry-η
 --
 -- RESULT: adequacy at CCTBStructure (9 laws) and CCT1Structure
--- (13 laws), ZERO postulates.
+-- (13 laws), each law derived from the generators above.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.Bootstrap.CCT1 where

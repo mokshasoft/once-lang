@@ -32,8 +32,6 @@
 --   is independent of this refinement: only TyF and encode-ty change in
 --   Phase 2; TermF, encode-typed, and the coherence proof are unaffected.
 --
--- ZERO POSTULATES.
---
 -- TOWER LEVEL: CCT3.
 ------------------------------------------------------------------------
 

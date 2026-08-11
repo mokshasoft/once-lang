@@ -30,8 +30,7 @@
 --
 -- These properties are DEFINITIONAL — they describe the co-encoding,
 -- not the bisimilarity. They are discharged at instantiation by
--- inspection of the concrete co-encoding scheme. ZERO postulates in
--- this module.
+-- inspection of the concrete co-encoding scheme.
 --
 -- TOWER LEVEL: CCT4.
 ------------------------------------------------------------------------

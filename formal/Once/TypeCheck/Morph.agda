@@ -15,7 +15,7 @@
 -- `Raw`, `Type`, `IR`), it lets the `cata` typing rule carry decidable
 -- equation premises (`morphRaw? alg ≡ just mr`, `morphToIR mr … ≡ just
 -- algIR`) rather than a property of the elaborated term — which keeps
--- `check-complete` total + postulate-free without any bidirectional
+-- `check-complete` total and fully proved without any bidirectional
 -- coherence with the main elaborator (the IR comes from `morphToIR`,
 -- not from extracting the elaboration).
 ------------------------------------------------------------------------

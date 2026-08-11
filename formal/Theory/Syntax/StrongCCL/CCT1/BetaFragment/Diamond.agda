@@ -6,7 +6,6 @@
 -- curry-η is excluded from this system (see BaseRules.agda for the
 -- rationale). curry-* is therefore purely structural.
 --
--- No postulates.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.StrongCCL.CCT1.BetaFragment.Diamond where

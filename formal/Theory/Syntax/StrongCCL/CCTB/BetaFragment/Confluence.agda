@@ -9,7 +9,6 @@
 --   2. Therefore Star _⟹_ is confluent (ConfluenceFromDiamond).
 --   3. Bridges _⟶*_ ↔ Star _⟹_ transfer confluence.
 --
--- No postulates.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.StrongCCL.CCTB.BetaFragment.Confluence where

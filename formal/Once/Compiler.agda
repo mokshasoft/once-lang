@@ -11,9 +11,9 @@
 --   - the proof + compile   (`Once.Adequacy.Compile`)
 --
 -- and constructs a single `CorrectCompiler` value the CLI consumes.
--- This file should be one record literal — no logic, no postulates
--- of its own. If the assembly typechecks, the compiler is correct
--- (modulo the postulates listed in the participating modules).
+-- This file should be one record literal: assembly only, with every
+-- ingredient proved elsewhere. If the assembly typechecks, the compiler
+-- is correct (modulo the postulates listed in the participating modules).
 ------------------------------------------------------------------------
 
 -- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its

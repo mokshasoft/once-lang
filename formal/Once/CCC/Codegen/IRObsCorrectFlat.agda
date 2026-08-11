@@ -747,7 +747,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- ════════════════════════════════════════════════════════════════════
   -- `obs-correct-sigop` — the `SigOp` case carved OUT of `obs-correct-rest`
-  -- and discharged DIRECTLY (zero new postulates) for the tractable class:
+  -- and discharged DIRECTLY for the tractable class:
   -- `Pure` + fits-in-reg SigOps (which is exactly `arith.block.*`). This is
   -- the FLAT-machine analogue of `Once.CCC.SigOp.PureProvider` (which does
   -- the same over the abstract `exec-trace`); here we target

@@ -10,8 +10,6 @@
 -- so this module pays the cost in hypothesis-threading rather than
 -- expanding the carrier.
 --
--- ZERO POSTULATES.
---
 -- TOWER LEVEL: CCT3.
 ------------------------------------------------------------------------
 

@@ -2,8 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.Adequacy.LexerBridge — the GENUINE lexer relation (Plan 0.52, NO shim,
--- NO postulate).
+-- Once.Adequacy.LexerBridge — the GENUINE lexer relation (Plan 0.52).
 --
 -- `LexesChars` is the independent char-production relation: one constructor per
 -- `tokenize-WF` rule, each carrying a `headK c ≡ hkX` premise (the head

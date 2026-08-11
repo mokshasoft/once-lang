@@ -12,7 +12,7 @@
 -- term datatype; this skeleton makes the analogous obligations
 -- visible at the formal/Theory/ layer.
 --
--- ZERO POSTULATES. This module is purely a record of obligations.
+-- This module is purely a record of obligations.
 --
 -- TOWER LEVEL: CCT3.
 ------------------------------------------------------------------------

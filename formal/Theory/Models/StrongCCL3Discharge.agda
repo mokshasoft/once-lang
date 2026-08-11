@@ -11,8 +11,6 @@
 -- form) and 5 (branch uniformity) are deferred — same fundamental
 -- limitations as the canonical-CCT3 discharge.
 --
--- ZERO POSTULATES.
---
 -- TOWER LEVEL: CCT3.
 ------------------------------------------------------------------------
 

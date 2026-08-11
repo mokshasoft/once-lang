@@ -11,8 +11,8 @@
 -- μ-data, and the property only uses composition, reduction, and the
 -- Code object, all of which are shared with CCT3.
 --
--- ZERO POSTULATES in this module. Pulls in (via FullCorrectness)
--- exactly one Established postulate: Transparency.
+-- Rests, via FullCorrectness, on exactly one Established postulate:
+-- Transparency.
 --
 -- TOWER LEVEL: CCT4.
 ------------------------------------------------------------------------

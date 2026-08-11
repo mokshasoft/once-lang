@@ -26,8 +26,6 @@
 --   μ-type sidesteps that without giving up structural fidelity:
 --   encoders are still injective because their tag ranges are disjoint.
 --
--- ZERO POSTULATES.
---
 -- TOWER LEVEL: CCT3.
 ------------------------------------------------------------------------
 

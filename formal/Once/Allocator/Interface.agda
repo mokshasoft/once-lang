@@ -96,7 +96,7 @@ record AllocatorInterface
     -- currently-live block" — the fact the conservation/simulation layer
     -- (Plan 0.35 M6/M7) consumes. For a monotone allocator the fresh ref
     -- exceeds all prior refs; for a reusing allocator the popped slot is, by
-    -- construction, not currently live. No postulate: each instance proves it.
+    -- construction, not currently live. Each instance proves it.
     alloc-fresh :
       ∀ {n s addr' n'} →
       Allocated s addr' n' →

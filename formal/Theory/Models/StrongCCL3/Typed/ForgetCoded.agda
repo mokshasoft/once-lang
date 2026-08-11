@@ -15,8 +15,6 @@
 --   ∀ {A B : TyClosed} (t : Term (lift A) (lift B)) →
 --     (forget-c ∘ encode-typed-c t) ≈ encode t
 --
--- ZERO POSTULATES.
---
 -- TOWER LEVEL: CCT3.
 ------------------------------------------------------------------------
 

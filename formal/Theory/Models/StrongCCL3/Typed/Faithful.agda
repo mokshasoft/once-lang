@@ -28,8 +28,6 @@
 -- recovery (impossible at the erased layer) plus deferral of the
 -- term part to encode.
 --
--- ZERO POSTULATES.
---
 -- TOWER LEVEL: CCT3.
 ------------------------------------------------------------------------
 

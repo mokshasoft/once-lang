@@ -13,7 +13,6 @@
 -- Every rule strictly decreases w, and every congruence preserves
 -- strict decrease. Well-founded induction on ℕ lifts to Acc _⟶full_.
 --
--- No postulates.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.StrongCCL.CCTB.SN where

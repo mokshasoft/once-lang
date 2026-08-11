@@ -17,9 +17,8 @@
 -- conjunction theorem: if both single-side correctness theorems
 -- apply, the combined transformation is correct in both regimes.
 --
--- ZERO POSTULATES introduced here. Pulls in the two Established
--- postulates (Transparency + Cotransparency) via the underlying
--- correctness theorems.
+-- Rests on the two Established postulates (Transparency + Cotransparency),
+-- pulled in via the underlying correctness theorems.
 --
 -- TOWER LEVEL: CCT4 (ν is required).
 ------------------------------------------------------------------------

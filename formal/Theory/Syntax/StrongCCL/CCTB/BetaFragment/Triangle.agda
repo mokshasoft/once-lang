@@ -14,7 +14,6 @@
 -- enumerate the concrete shapes of f/g needed to make compose-* /
 -- pair-* reduce under Agda's pattern matching.
 --
--- No postulates.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.StrongCCL.CCTB.BetaFragment.Triangle where

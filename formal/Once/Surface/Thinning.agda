@@ -432,6 +432,6 @@ weakenFromEmpty {Γ = _S,_^_ Γ' _ _} e = weaken (weakenFromEmpty {Γ = Γ'} e)
 --   - 1 rename function (~30 lines)
 --   - 9 one-line thinning definitions (⊆-exch₀ through ⊆-exch₈)
 --   - 9 one-line exchange definitions
---   - Structural recursion on Expr (no TERMINATING pragma needed)
+--   - Structural recursion on Expr
 --
 -- BONUS: Works for ANY depth by adding more one-line thinnings

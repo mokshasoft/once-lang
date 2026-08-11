@@ -20,7 +20,9 @@
 -- Each special case takes its required reduction laws as explicit
 -- hypotheses, mirroring the Properties.agda style.
 --
--- ZERO POSTULATES. ZERO use of Theory.Established.Transparency.
+-- Each case rests on the reduction laws it takes as hypotheses, and on
+-- nothing else — in particular it stands independently of
+-- Theory.Established.Transparency.
 --
 -- TOWER LEVEL: CCT3.
 ------------------------------------------------------------------------

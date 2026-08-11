@@ -225,9 +225,10 @@ open import Data.List using ([])   -- for `EntryLike`'s empty frame stack
 -- 2026-07-28 pass) pins the INSTRUCTION and leaves the STATE arbitrary, so it did
 -- not close the hole.
 --
--- `Reachable` is DATA, not a postulated predicate: a postulated one could be
--- uninhabited, which trades inconsistency for conditional vacuity. `reach-start`
--- admits any state a loader could hand `main`; `reach-step` is one flat step.
+-- `Reachable` is DATA, so it is inhabited by construction: a postulated
+-- predicate could be empty, which trades inconsistency for conditional
+-- vacuity. `reach-start` admits any state a loader could hand `main`;
+-- `reach-step` is one flat step.
 ------------------------------------------------------------------------
 
 -- (The run context — `EntryLike`, `Reachable`, `Emitted`, `RunAt` — now

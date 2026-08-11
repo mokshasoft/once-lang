@@ -7,7 +7,7 @@
 -- Plan 0.50 — the DISCHARGE of `program-no-clash`: the symbols the compiler
 -- emits for a module's top-level definitions are pairwise distinct. This is
 -- the precondition the assembler trust point (`assemble-correct`) demands, and
--- it is PROVED here (no postulate), by exactly the decomposition the design
+-- it is PROVED here, by exactly the decomposition the design
 -- intends:
 --
 --   distinct DEFINITION names         (from `extractFunctions`' guard)
@@ -192,7 +192,7 @@ caf-syms doOpt polys sigEffs (fi ∷ rest) ctx cfs caf-eq
         cons true  _ = IH
         cons false _ = cong (once-symbol-own (FunInfo.funName fi) ∷_) IH
 
--- PROVED (no postulate): the symbols the codegen emits for `m` are distinct.
+-- PROVED: the symbols the codegen emits for `m` are distinct.
 program-no-clash : ∀ (m : Module) → DistinctSymbols m
 program-no-clash (mkModule ds)
   with extractFunctions (extractAliases (mkModule ds)) (mkModule ds) in efeq

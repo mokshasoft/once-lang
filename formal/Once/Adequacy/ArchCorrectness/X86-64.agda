@@ -72,8 +72,8 @@ open import Once.Adequacy.LabelClash using (DistinctLabels)
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
 -- Plan 0.54 rung D / D087: `program-bound` is a RESOURCE BOUND, so it is a
--- PARAMETER, not a postulate. It used to be postulated once per arch (three
--- copies); threading it from the top means the top-level statement says
+-- PARAMETER. It used to be postulated once per arch (three copies);
+-- threading it from the top means the top-level statement says
 -- "for any program bound" explicitly instead of assuming one into existence.
 -- (`--safe` rejects every postulate, so this is on the critical path too.)
 open IRObsCorrectFlatness {x86-64-frame-semantics} program-bound using (ir-obs-correct; MachineRefinesObsF)
@@ -91,7 +91,7 @@ open IRObsCorrectFlatness {x86-64-frame-semantics} program-bound using (ir-obs-c
 -- An x86-64 `Frame` is a `StackAddr`: an address plus a proof it lies in the
 -- stack region, with `frame-base = addr`. So the frame can simply BE the
 -- loader's `%rsp`, and `entry-frame-base` collapses to `refl` (see
--- `entry-frame-base` below — a theorem now, not a postulate).
+-- `entry-frame-base` below — a theorem now).
 --
 -- What survives is the one irreducible loader fact: that the `%rsp` we are
 -- handed is inside the stack region. `stack-top` itself is already postulated
@@ -106,7 +106,7 @@ entry-frame-x86-64 = stack-addr X.stack-top stack-top-in-stack
 
 module FFOx = FFO o x86-64 x86-64-frame-semantics entry-frame-x86-64 (arch-semantics x86-64) program-bound
 
--- A THEOREM now, not a postulate: the entry frame IS the loader's `%rsp`
+-- A THEOREM: the entry frame IS the loader's `%rsp`
 -- (`entry-frame-x86-64 = stack-addr stack-top _`) and `frame-base` on x86-64 is
 -- the `addr` projection, so this holds DEFINITIONALLY. Both `entry-corr`'s
 -- `rsp-eq` and the `stack-eq` floor bound consume it.
@@ -151,7 +151,7 @@ postulate
     DistinctLabels x86-64 m →
     ∀ (n : ℕ) → FFOx.asm-sem asm n ≡ conc-trace (moduleToIR m) n
 
--- ── (B) THE SIMULATION, now WIRED to the ConcFlatSim assembly (not a postulate).
+-- ── (B) THE SIMULATION, WIRED to the ConcFlatSim assembly.
 -- The apex node `conc-flat-sim-just` is DEFINED via `events-agree`; every gap it
 -- rests on is a NAMED obligation on THIS path (deleting it fails the typecheck).
 open FlatMachine {x86-64-frame-semantics} using (mkFlat)

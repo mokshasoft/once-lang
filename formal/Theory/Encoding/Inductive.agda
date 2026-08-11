@@ -29,7 +29,7 @@
 --
 -- These properties are DEFINITIONAL — they describe the encoding, not
 -- the reduction. They are discharged at instantiation by inspection of
--- the concrete encoding scheme. ZERO postulates in this module.
+-- the concrete encoding scheme.
 --
 -- TOWER LEVEL: CCT3.
 ------------------------------------------------------------------------

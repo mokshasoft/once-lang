@@ -902,7 +902,7 @@ inferElab-RApp-id ctx (success T Ψ argE d f') =
 -- references, it emits a `Surface.poly x T` placeholder rather than
 -- recursing into the def's body. Phase 2 (`resolveExpr` below)
 -- tree-walks the emitted Expr and splices bodies at `poly` nodes,
--- well-founded on `length polys`. No TERMINATING pragma needed.
+-- well-founded on `length polys`.
 ------------------------------------------------------------------------
 -- Plan 0.4 T0 Option B — postulates referenced by the merged
 -- mutual block. Placed BEFORE the block so V bodies inside can see
@@ -1451,7 +1451,7 @@ mutual
   -- (`extract-morph` succeeds on it). Otherwise fall through to the
   -- closure-realm `app (app specCase fE) gE` form. Mirrors the
   -- `checkComposeWithBg` morphism-realm bypass but with no dependent
-  -- `composeArgB` premise (so completeness stays postulate-free).
+  -- `composeArgB` premise (so completeness stays fully proved).
   -- Plan 0.49 / D063: ONE grade-polymorphic clause (D056 — the bespoke eff
   -- copy is gone). Both arms must be morphisms (`extractMorphWitness`); emit the
   -- direct `lift-morphism (IR.case m_f m_g)`; no closure fallback.

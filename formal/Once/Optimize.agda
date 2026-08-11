@@ -269,7 +269,7 @@ Id ≟Functor (_ ⊗ _) = no (λ ())
 -- IR equality (needed for eta uniqueness laws)
 ------------------------------------------------------------------------
 
--- IR equality — decidable equality, postulate-free.
+-- IR equality — a decidable equality, by structural recursion.
 --
 -- Approach (generic-codomain trick):
 -- The inner helper `_≟IRH_` takes two IR terms with independent type
@@ -867,7 +867,7 @@ wants-coprod f =
 --
 -- NOTE: Due to dependent type indices in recursion scheme constructors
 -- (⟦ F ⟧T can produce any type structure), we use "view" patterns
--- (see below, implemented postulate-free via the generic-codomain trick)
+-- (see below, implemented via the generic-codomain trick)
 -- to classify targets.
 ------------------------------------------------------------------------
 
@@ -911,7 +911,7 @@ data InlInrView : ∀ {A B : IRTy} → IR A B → Set where
   iiv-other : ∀ {A B} (f : IR A B) → InlInrView f
 
 ------------------------------------------------------------------------
--- View implementations (postulate-free, OCP-0003 compliant)
+-- View implementations (OCP-0003 compliant)
 --
 -- The generic-codomain trick: for views constrained to a specific target
 -- shape (B * C or A + B), we use a helper with a free codomain and an

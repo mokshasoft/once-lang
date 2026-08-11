@@ -9,7 +9,6 @@
 -- on both sides — a non-linear pattern that linear pattern matching
 -- cannot decide without this lemma.
 --
--- ZERO POSTULATES.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.StrongCCL.CCT1.DecidableEquality where

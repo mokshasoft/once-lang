@@ -27,7 +27,8 @@ open import Once.Semantics.Functor.Laws
 open import Once.Semantics.Value IntRep
 
 -- | Function extensionality (used only by `sem-cata-In-id`). A valid axiom
---   (provable in Cubical Agda); kept here so the definitions module is axiom-free.
+--   (provable in Cubical Agda); kept here so the definitions module
+--   depends on nothing but its own definitions.
 postulate
   funext : ∀ {A : Set} {B : A → Set} {f g : (x : A) → B x} →
            (∀ x → f x ≡ g x) → f ≡ g

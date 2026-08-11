@@ -4,7 +4,6 @@
 -- Parallel reduction at CCT1, and its bridges with _⟶*_.
 -- Extends the CCTB pattern with curry/apply generators and curry β/η.
 --
--- No postulates.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.StrongCCL.CCT1.BetaFragment.ParallelReduction where

@@ -26,7 +26,6 @@
 -- (many `apply ∘ ⟨ left , right ⟩` patterns that look reasonable
 -- linguistically are type-impossible).
 --
--- ZERO POSTULATES.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.StrongCCL.CCT1.Diamond where

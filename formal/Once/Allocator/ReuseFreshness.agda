@@ -18,7 +18,7 @@
 -- invariant: `alloc-fresh` quantifies over blocks live in the PRE-state,
 -- whose refs are (by definition of "live = not currently freed) absent from
 -- the pre-state free-list — which still contains the ref being popped. So
--- the popped ref differs from every pre-live ref. No postulate.
+-- the popped ref differs from every pre-live ref.
 --
 -- (The full reusing AllocatorInterface instance — with the free-list state,
 -- idempotent free, and the new block's own liveness witness — is the M7

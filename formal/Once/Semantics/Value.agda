@@ -91,11 +91,11 @@ open import Once.Semantics.Functor
          fold-unfoldS; unfold-foldS; cataS-computation; cataS-In-id)
 -- D062/0.47: the bisimulation machinery (⟦_⟧SF-rel, _∼S_, bisimS-to-eq, …) and
 -- the axiom-using identity laws moved to `Once.Semantics.Functor.Laws` /
--- `Once.Semantics.Value.Laws`, so this definitions module is axiom-free.
+-- `Once.Semantics.Value.Laws`, so this module holds definitions only.
 
 -- | Semantic interpretation of μ-type (initial algebra)
 --
--- Defined via translation to SFunctor, not postulated.
+-- Defined via translation to SFunctor.
 -- μ-coherence is now provable (essentially refl).
 --
 ⟦μ⟧ : Functor → Set
@@ -103,7 +103,7 @@ open import Once.Semantics.Functor
 
 -- | Semantic interpretation of ν-type (final coalgebra)
 --
--- Defined via translation to SFunctor, not postulated.
+-- Defined via translation to SFunctor.
 -- ν-coherence is now provable (essentially refl).
 --
 ⟦ν⟧ : Functor → Set
@@ -377,10 +377,10 @@ coerce-full-to-base Buffer x = x
 -- | Coerce from base to full interpretation
 --
 ------------------------------------------------------------------------
--- Well-Formed Type Coercion (No Postulates)
+-- Well-Formed Type Coercion
 --
 -- OCP-0003: Coercion from base to full interpretation requires an
--- IsBaseType proof, ensuring totality without postulates.
+-- IsBaseType proof, which is what makes it total.
 --
 -- For base types, the coercion is an identity (structurally).
 -- Complex types (functions, μ-type, ν-type, GuardedT) are excluded
@@ -390,7 +390,7 @@ coerce-full-to-base Buffer x = x
 
 -- | Coerce from base to full interpretation
 --
--- Requires an IsBaseType proof, making it total without postulates.
+-- Requires an IsBaseType proof, which is what makes it total.
 --
 coerce-base-to-full : ∀ {A} → IsBaseType A → ⟦ IntRep ⟧-base A → ⟦ A ⟧
 coerce-base-to-full base-Unit x = x
@@ -408,7 +408,7 @@ coerce-base-to-full (base-Sum pA pB) (inj₂ b) = inj₂ (coerce-base-to-full pB
 -- Type Coercion Round-Trip Properties (Well-Formed Only)
 --
 -- For base types (IsBaseType A), the coercions are definitionally identity.
--- This provides a postulate-free path for well-formed functors.
+-- So well-formed functors have a fully computed path through the coercions.
 ------------------------------------------------------------------------
 
 -- | For base types, coerce-base-to-full ∘ coerce-full-to-base = id (PROVEN)
@@ -475,7 +475,7 @@ coerce-μ-out (wf-Sum wfF wfG) X (inj₂ y) = inj₂ (coerce-μ-out wfG X y)
 coerce-μ-out (wf-Prod wfF wfG) X (x , y) = (coerce-μ-out wfF X x , coerce-μ-out wfG X y)
 
 ------------------------------------------------------------------------
--- Well-Formed μ-Coercion Round-Trip (PROVEN, No Postulates)
+-- Well-Formed μ-Coercion Round-Trip (PROVEN)
 --
 -- For well-formed functors, the μ-coercion round-trips are provable
 -- using the base-type round-trip lemmas.
@@ -524,7 +524,7 @@ sem-In F x = ⟨ coerce-μ-in F (⟦μ⟧ F) x ⟩
 -- | Out: μF → F(μF) (destructor, inverse of In)
 --
 -- OCP-0003: Defined via SPF's outS with coercion.
--- Requires WellFormedF proof for postulate-free coercion.
+-- Requires a WellFormedF proof, which is what defines the coercion.
 --
 sem-Out : ∀ {F : Functor} → WellFormedF F → ⟦μ⟧ F → ⟦ F ⟧F (⟦μ⟧ F)
 sem-Out {F} wf x = coerce-μ-out wf (⟦μ⟧ F) (outS (translateF IntRep F) x)
@@ -532,14 +532,14 @@ sem-Out {F} wf x = coerce-μ-out wf (⟦μ⟧ F) (outS (translateF IntRep F) x)
 -- | Catamorphism: given algebra F(A) → A, fold μF → A
 --
 -- OCP-0003: Defined via SPF's cataS with coercions.
--- Requires WellFormedF proof for postulate-free coercion.
+-- Requires a WellFormedF proof, which is what defines the coercion.
 --
 sem-cata : ∀ {F : Functor} → WellFormedF F → {A : Set} → (⟦ F ⟧F A → A) → ⟦μ⟧ F → A
 sem-cata {F} wf {A} alg = cataS {translateF IntRep F} (λ x → alg (coerce-μ-out wf A x))
 
 -- | Paramorphism: fold with access to original substructure
 --
--- OCP-0003 Phase 10: Derived from sem-cata - NO TERMINATING pragma needed.
+-- OCP-0003 Phase 10: Derived from sem-cata, so termination is sem-cata's.
 -- Para's algebra receives (⟦ F ⟧F (⟦μ⟧ F × A)), giving access to both
 -- the original substructure (⟦μ⟧ F) and the recursive result (A).
 --
@@ -564,7 +564,7 @@ coerce-ν-in : ∀ F (X : Set) → ⟦ F ⟧F X → ⟦ translateF IntRep F ⟧S
 coerce-ν-in = coerce-μ-in  -- Same structure
 
 -- | Coerce from ⟦ translateF F ⟧SF to ⟦ F ⟧F (for ν-type operations)
--- Requires WellFormedF proof for postulate-free coercion.
+-- Requires a WellFormedF proof, which is what defines the coercion.
 coerce-ν-out : ∀ {F} → WellFormedF F → (X : Set) → ⟦ translateF IntRep F ⟧SF X → ⟦ F ⟧F X
 coerce-ν-out = coerce-μ-out  -- Same structure
 
@@ -575,7 +575,7 @@ coerce-ν-out = coerce-μ-out  -- Same structure
 -- | CoOut: νF → F(νF) (observation)
 --
 -- OCP-0003: Defined via SPF's unfoldS with coercion.
--- Requires WellFormedF proof for postulate-free coercion.
+-- Requires a WellFormedF proof, which is what defines the coercion.
 --
 sem-CoOut : ∀ {F : Functor} → WellFormedF F → ⟦ν⟧ F → ⟦ F ⟧F (⟦ν⟧ F)
 sem-CoOut {F} wf x = coerce-ν-out wf (⟦ν⟧ F) (unfoldS x)
@@ -612,7 +612,7 @@ sem-CoOut-CoIn {F} wf x = coerce-μ-round-trip wf (⟦ν⟧ F) x
 --
 -- D062: guardedness-CHECKED corecursion (global --guardedness) — the mutual
 -- `sfmapSemAna` places the corecursive `sem-ana` calls structurally at SId, so
--- Agda sees the guard. No TERMINATING. Bridged to `sfmap` by `sfmapSemAna-is-sfmap`.
+-- Agda sees the guard. Bridged to `sfmap` by `sfmapSemAna-is-sfmap`.
 mutual
   sem-ana : ∀ (F : Functor) {A : Set} → (A → ⟦ F ⟧F A) → A → ⟦ν⟧ F
   unfoldS (sem-ana F {A} coalg a) =
@@ -659,7 +659,7 @@ sfmapSemAna-is-sfmap F (H₁ S⊗ H₂) coalg (x , y)  =
 -- | Natural Transformation Fusion (TERMINATING-free)
 --
 -- OCP-0003: When the transform is a NATURAL TRANSFORMATION (parametric in
--- the recursive position), fusion can be implemented without TERMINATING.
+-- the recursive position), fusion is cataS's structural recursion.
 --
 -- A natural transform `∀ {A} → ⟦ G ⟧F A → ⟦ F ⟧F A` cannot inspect the A values,
 -- so it reduces to structural recursion: fuseNatS transform alg = cataS (alg ∘ transform)
@@ -737,7 +737,7 @@ sem-fuseNat-events {M} _·_ ε F G wfF wfG {B} transform alg =
 -- Recursion Scheme Laws (OCP-0003: Proven for Well-Formed Functors)
 --
 -- These capture the key properties of initial algebras and final
--- coalgebras. Proven for well-formed functors without postulates.
+-- coalgebras. Proven for well-formed functors.
 ------------------------------------------------------------------------
 
 -- | In and Out are inverses (Lambek's Lemma, one direction)

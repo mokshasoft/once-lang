@@ -5,7 +5,7 @@
 -- Once.Parser.Generic.PolyInst — instantiate the generic type-grammar parser
 -- at PolyType. The extra atom is a lowercase TVar. Yields ParsesPolyType (the
 -- independent relation) + a bound-free parser + sound/complete, all derived
--- from the generic Make modules with zero new postulates. Plan 0.7-2.
+-- from the generic Make modules. Plan 0.7-2.
 ------------------------------------------------------------------------
 
 module Once.Parser.Generic.PolyInst where

@@ -14,7 +14,7 @@
 -- invariance) transport the conclusion across. The trace's straightness
 -- comes from `straight-ir-to-trace` for any Cata-free IR.
 --
--- Combines (all postulate-free):
+-- Combines two proved lemmas:
 --   * Flat.exec-trace-is-flat   — flat final ≡ exec-trace final (up to forced)
 --   * ValidAtWFHalted.validAtWF-set-halted — ValidAtWF ignores `halted`
 ------------------------------------------------------------------------

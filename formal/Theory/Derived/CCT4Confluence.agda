@@ -15,7 +15,7 @@
 --   (3) par*-to-⟶* : Every parallel-reduction sequence is a reduction
 --       sequence.
 --
--- From these, cct4-confluence is proven with zero new postulates by
+-- From these, cct4-confluence is proven by
 -- delegating to the abstract Takahashi lemma in ConfluenceFromDiamond.
 --
 -- TOWER LEVEL: CCT4.

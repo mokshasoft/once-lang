@@ -19,7 +19,6 @@
 --   with terminal where needed). So source-Void cases are handled by
 --   construction of the encoding.
 --
--- ZERO POSTULATES.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --no-positivity-check #-}

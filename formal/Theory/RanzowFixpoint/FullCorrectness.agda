@@ -27,7 +27,8 @@
 -- This module is just a structured wrapper that exposes the theorem
 -- in terms of HasRanzowFixpoint instead of the bare reduction.
 --
--- ZERO POSTULATES introduced here. Pulls in one Established postulate.
+-- Its whole mathematical content is one Established postulate,
+-- Transparency, re-exposed.
 --
 -- TOWER LEVEL: CCT3.
 ------------------------------------------------------------------------

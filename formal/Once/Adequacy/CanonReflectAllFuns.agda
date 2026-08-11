@@ -14,7 +14,7 @@
 --
 -- (Historical note: `polys-reflect-ᶜ` and `inferType-reflect` began as
 -- scaffold postulates; both are REAL PROOFS now — the latter including
--- the D072 oracle branch. No postulates remain in this module.)
+-- the D072 oracle branch.)
 ------------------------------------------------------------------------
 
 module Once.Adequacy.CanonReflectAllFuns where

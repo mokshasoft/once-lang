@@ -4,8 +4,8 @@
 -- The evaluator-form of the Ranzow Fixpoint correctness fragment — the
 -- dual of Theory.RanzowFixpoint.Correctness.
 --
--- This module contains ZERO postulates. As in the rewriting version,
--- every theorem takes the required facts as explicit hypotheses; a
+-- As in the rewriting version, every theorem takes the required facts as
+-- explicit hypotheses; a
 -- concrete inspectable CCC-VM discharges them from the evaluator's
 -- functional/total character.
 --

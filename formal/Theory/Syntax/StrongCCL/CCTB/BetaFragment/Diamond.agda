@@ -10,7 +10,6 @@
 -- further case analysis on u; those are deferred to a follow-up file
 -- once Lemma 1 is stabilized.
 --
--- No postulates.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.StrongCCL.CCTB.BetaFragment.Diamond where

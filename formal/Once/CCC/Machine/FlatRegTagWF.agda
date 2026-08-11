@@ -30,8 +30,8 @@
 -- Proved by induction over `exec-abstract`, mutually with `regtag-trace` /
 -- `regtag-case` / `regtag-loop` so the nested `instr-case-on-tag` / `instr-loop`
 -- traces are covered (mirroring `FlatStoreWF`). Lifted to `flat-exec-instr` at
--- the end. NO new postulates: `instr-sigop` writes only `Output` and `halted`,
--- so a SigOp cannot disturb a counter.
+-- the end. The `instr-sigop` case holds because it writes only `Output` and
+-- `halted`, so a SigOp cannot disturb a counter.
 ------------------------------------------------------------------------
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)

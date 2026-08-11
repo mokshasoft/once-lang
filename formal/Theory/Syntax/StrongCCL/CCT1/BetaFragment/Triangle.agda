@@ -6,7 +6,6 @@
 -- Now tractable because curry-η is excluded from the rule system
 -- (see BaseRules.agda).
 --
--- No postulates.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.StrongCCL.CCT1.BetaFragment.Triangle where
