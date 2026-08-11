@@ -22,7 +22,7 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.SpikeLexT where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; Ren
         ; RTy; El; Hom; Nat; U
@@ -232,3 +232,34 @@ module ZS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
   --   ⚠ AND THE TOWER DEPTHS MUST BE DERIVED FROM `BCtx`, NOT GUESSED —
   --   every failed attempt in this file and in the amrec branches was a
   --   miscounted weakening, never a design problem.  Probe each binder.
+
+  -- ★ read off PROBE 1's goal rather than guessed: the goal was
+  --     Π (wTy^ 6 A) (Π (Hom Nat (nsuc (wᶠ^ 6 m₁))
+  --                              (w (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₁))))
+  --                     (El (w (wᶠ^ 6 cM))))
+  --   so the term is two ⊢lams over an `absurd` at `w (wᶠ^ 6 cM)`, and the
+  --   `ordtr`'s endpoints are that Hom's, each weakened once by the second
+  --   binder.  ⚠ Note `μ₁ x` stays in its SUBSTITUTED form — matching the
+  --   goal exactly costs nothing here and avoids a cast in the term.
+  rec1tm : RTm ⌊ BCtx ⌋
+  rec1tm =
+    lam (lam (absurd (w (wᶠ^ 6 cM))
+                     (ordtr (nsuc (w (wᶠ^ 6 m₁)))
+                            (w (w (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₁))))
+                            nzero (var vz) (var (vs (vs (vs vz)))))))
+
+  -- ⊢rec1's TYPE, verified to agree with the term above (probe 2 rejected
+  -- only the subject, never the type):
+  --
+  --   BCtx ⊢ rec1tm ∷ aIHTat (wTy^ 6 A) (wᶠ^ 6 cM) (wᶠ^ 6 m₁)
+  --                          (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₁))
+  --
+  -- ⚠ THE DERIVATION IS NOT WRITTEN.  Its shape is
+  --     ⊢lam tyA₆ (⊢lam (ty-Hom ty-Nat (⊢nsuc dk) dmX)
+  --                (⊢strong-base' dC (⊢wk dk) (⊢wk dmX)
+  --                               (⊢var here) (⊢var (there (there (there here))))))
+  --   with tyA₆ = ren-ty ×6, dk = ⊢wkᶠ ×6 from dm₁, dC = ⊢wk (⊢wkᶠ ×6 from
+  --   dcM), and dmX the substituted μ₁ x — `subst` along
+  --   `cong w (wᶠ³-single (wᶠ³ m₁))` over `⊢wk³ (⊢wkᶠ³ dm₁)`.
+  --   ⚠ `dmX` is where it currently fails: the weakening count around the
+  --   subst does not line up.  Probe THAT premise on its own next.
