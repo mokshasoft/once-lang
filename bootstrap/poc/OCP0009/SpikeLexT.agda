@@ -213,6 +213,29 @@ lexMot : {Γ : Cx} (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) (b₁ : RTm Γ) �
 lexMot A cM m₁ m₂ b₁ =
   Π Nat (auxB (renTy vs A) (wᶠ cM) (wᶠ m₁) (wᶠ m₂) (w b₁) (var vz))
 
+-- ★ and the OUTER motive's ladder.  (S,S) reads the outer IH out of the
+--   context under nine ⊢wks, so `lexMot` needs the same treatment `auxB`
+--   and `lStepT` got — indexed, not enumerated.
+lexMot-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙))
+             (b₁ : RTm Γ) →
+             renTy ρ (lexMot A cM m₁ m₂ b₁)
+           ≡ lexMot (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m₁)
+                    (renTm (extR ρ) m₂) (renTm ρ b₁)
+lexMot-ren {ρ = ρ} A cM m₁ m₂ b₁ =
+  cong (Π Nat)
+    (trans (auxB-ren {ρ = extR ρ} (renTy vs A) (wᶠ cM) (wᶠ m₁) (wᶠ m₂)
+                     (w b₁) (var vz))
+           (cong₆ auxB (ren-wTy A) (ren-wᶠ cM) (ren-wᶠ m₁) (ren-wᶠ m₂)
+                       (ren-w b₁) refl))
+
+lexMot-w^ : {Γ : Cx} (n : ℕ) (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) (b₁ : RTm Γ) →
+            wTy^ n (lexMot A cM m₁ m₂ b₁)
+          ≡ lexMot (wTy^ n A) (wᶠ^ n cM) (wᶠ^ n m₁) (wᶠ^ n m₂) (w^ n b₁)
+lexMot-w^ zero    A cM m₁ m₂ b₁ = refl
+lexMot-w^ (suc n) A cM m₁ m₂ b₁ =
+  trans (cong (renTy vs) (lexMot-w^ n A cM m₁ m₂ b₁))
+        (lexMot-ren (wTy^ n A) (wᶠ^ n cM) (wᶠ^ n m₁) (wᶠ^ n m₂) (w^ n b₁))
+
 -- the inner motives: the μ₂-bound is the inner natrec's variable, and the
 -- μ₁-bound is `0` or `suc n₁'` respectively.
 M0lex : {Γ : Cx} (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) → RTy (Γ ∙)
