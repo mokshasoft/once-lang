@@ -27,19 +27,21 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; Ren
         ; RTy; El; Hom; Nat; U
         ; RTm; var; nzero; nsuc; lam; app; absurd; ordtr
-        ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR )
+        ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR
+        ; subTy-renTy; renTy-subTy )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢lam; ⊢app
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢ordtr; ⊢lam; ⊢app
         ; ty-Nat; ty-Hom; ty-El; ty-Π )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢-ext )
 open import poc.OCP0009.NbEPDirDBExamplesOrd using ( ⊢strong-base'; ⊢strong-step )
 open import poc.OCP0009.NbEPDirDBLibWk
-  using ( w; wᶠ; cong₃; cong₄; cong₅; cong₆; sub-w; sub-w²; ren-w
+  using ( w; wᶠ; cong₃; cong₄; cong₅; cong₆; sub-w; sub-w²; ren-w; ren-w²
         ; wk-singleTy; wᶠ-single; ren-wTy; ren-wᶠ; nrs-wTy; wᶠ-nrs )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-ren; aIHT-fit )
-open import poc.OCP0009.NbEPDirDBLibWk using ( wTy^; wᶠ^; ⊢wkᶠ; wᶠ³-single )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w^; wTy^; wᶠ^; ⊢wkᶠ; wᶠ³-single )
+open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 
 ------------------------------------------------------------------------
@@ -73,6 +75,26 @@ rec2Tat A cM m₁ m₂ μ₁x μ₂x =
 rec2T : {Γ : Cx} (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) → RTy (Γ ∙)
 rec2T A cM m₁ m₂ =
   rec2Tat (renTy vs A) (wᶠ cM) (wᶠ m₁) (wᶠ m₂) m₁ m₂
+
+-- ★★ rec₂'s FITTING LEMMA — the twin of `aIHT-fit`, and like it there is
+--    ONE per spine rather than one per argument.  Six peels, all of them
+--    the eta lemmas or `wᶠ-single`; not an `app` in sight.
+rec2T-fit : {Γ : Cx} {X : RTm Γ} (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) →
+            subTy (single X) (rec2T A cM m₁ m₂)
+          ≡ rec2Tat A cM m₁ m₂ (subTm (single X) m₁) (subTm (single X) m₂)
+rec2T-fit {X = X} A cM m₁ m₂ =
+  cong₆ rec2Tat' (wk-singleTy A) (wᶠ-single m₁) (sub-w m₁)
+        (trans (sub-w {σ = extS (single X)} (wᶠ m₂)) (cong w (wᶠ-single m₂)))
+        (sub-w² {σ = single X} m₂)
+        (trans (sub-w² {σ = extS (single X)} (wᶠ cM))
+               (cong (λ z → w (w z)) (wᶠ-single cM)))
+
+-- the TYPE-level twin of `sub-w`, by the same eta observation (P1: this
+-- one moves no family, so no bridge).  ⚠ Belongs in `LibWk` at
+-- consolidation; kept local while this file is a spike.
+sub-wTy : {Γ Δ : Cx} {σ : Sub Γ Δ} (T : RTy Γ) →
+          subTy (extS σ) (renTy vs T) ≡ renTy vs (subTy σ T)
+sub-wTy T = trans (subTy-renTy T) (sym (renTy-subTy T))
 
 ------------------------------------------------------------------------
 -- the step — `(x : A) → rec₁ → rec₂ → P x`
@@ -111,6 +133,29 @@ auxB-sub {σ = σ} A cM m₁ m₂ n₁ n₂ =
         (sub-w {σ = extS σ} m₂)
         (sub-w² {σ = σ} n₂)
         (sub-w² {σ = extS σ} cM)
+
+auxB-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙))
+           (n₁ n₂ : RTm Γ) →
+           renTy ρ (auxB A cM m₁ m₂ n₁ n₂)
+         ≡ auxB (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m₁)
+                (renTm (extR ρ) m₂) (renTm ρ n₁) (renTm ρ n₂)
+auxB-ren {ρ = ρ} A cM m₁ m₂ n₁ n₂ =
+  cong₆ auxB' refl refl (ren-w n₁)
+        (ren-w {ρ = extR ρ} m₂)
+        (ren-w² {ρ = ρ} n₂)
+        (ren-w² {ρ = extR ρ} cM)
+
+-- ★ D5 again: the AUXILIARY's ladder, indexed.  (0,S)'s inner IH sits
+--   seven ⊢wks down; (S,S)'s will sit deeper, and this covers both.
+auxB-w^ : {Γ : Cx} (n : ℕ) (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙))
+          (n₁ n₂ : RTm Γ) →
+          wTy^ n (auxB A cM m₁ m₂ n₁ n₂)
+        ≡ auxB (wTy^ n A) (wᶠ^ n cM) (wᶠ^ n m₁) (wᶠ^ n m₂) (w^ n n₁) (w^ n n₂)
+auxB-w^ zero    A cM m₁ m₂ n₁ n₂ = refl
+auxB-w^ (suc n) A cM m₁ m₂ n₁ n₂ =
+  trans (cong (renTy vs) (auxB-w^ n A cM m₁ m₂ n₁ n₂))
+        (auxB-ren (wTy^ n A) (wᶠ^ n cM) (wᶠ^ n m₁) (wᶠ^ n m₂)
+                  (w^ n n₁) (w^ n n₂))
 
 ------------------------------------------------------------------------
 -- ★ THE `⊢wk` NATURALITY the branches need: `⊢wk`ing the step leaves a
@@ -254,12 +299,276 @@ module ZS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
   --   BCtx ⊢ rec1tm ∷ aIHTat (wTy^ 6 A) (wᶠ^ 6 cM) (wᶠ^ 6 m₁)
   --                          (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₁))
   --
-  -- ⚠ THE DERIVATION IS NOT WRITTEN.  Its shape is
-  --     ⊢lam tyA₆ (⊢lam (ty-Hom ty-Nat (⊢nsuc dk) dmX)
-  --                (⊢strong-base' dC (⊢wk dk) (⊢wk dmX)
-  --                               (⊢var here) (⊢var (there (there (there here))))))
-  --   with tyA₆ = ren-ty ×6, dk = ⊢wkᶠ ×6 from dm₁, dC = ⊢wk (⊢wkᶠ ×6 from
-  --   dcM), and dmX the substituted μ₁ x — `subst` along
-  --   `cong w (wᶠ³-single (wᶠ³ m₁))` over `⊢wk³ (⊢wkᶠ³ dm₁)`.
-  --   ⚠ `dmX` is where it currently fails: the weakening count around the
-  --   subst does not line up.  Probe THAT premise on its own next.
+  ------------------------------------------------------------------------
+  -- ★ PROBE 3 — `dmX` ALONE.  The handoff's instruction: this premise is
+  --   where ⊢rec1 failed, so it is derived by itself before anything is
+  --   assembled around it.
+  ------------------------------------------------------------------------
+
+  -- ⚠ AND THE ANSWER WAS THE `sym`, NOT THE COUNT.  `⊢wk³ (⊢wkᶠ³ dm₁)` —
+  --   the count the previous session guessed — is right; what was wrong is
+  --   which way the `subst` runs.  `⊢wkᶠ³` lands exactly on `BCtx`'s first
+  --   FOUR slots (Nat, Nat, mot, wTy³ A), and the remaining three `⊢wk`s
+  --   climb the two `Hom`s and the `y` binder.  ⭐ This is the third time a
+  --   derivation failure here was bookkeeping and not design.
+  dmX : (BCtx ▹ wTy^ 6 A) ⊢ w (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₁)) ∷ Nat
+  dmX = subst (λ z → (BCtx ▹ wTy^ 6 A) ⊢ z ∷ Nat)
+              (sym (cong w (wᶠ³-single (wᶠ^ 3 m₁))))
+              (⊢wk (⊢wk (⊢wk (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₁))))))
+
+  ------------------------------------------------------------------------
+  -- the other three premises, each nameable on its own
+  ------------------------------------------------------------------------
+
+  tyA₆ : BCtx ⊢ty wTy^ 6 A
+  tyA₆ = ren-ty (ren-ty (ren-ty (ren-ty (ren-ty (ren-ty dA there) there)
+                                        there) there) there) there
+
+  dk : (BCtx ▹ wTy^ 6 A) ⊢ wᶠ^ 6 m₁ ∷ Nat
+  dk = ⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₁)))))
+
+  dC : ((BCtx ▹ wTy^ 6 A)
+          ▹ Hom Nat (nsuc (wᶠ^ 6 m₁))
+                    (w (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₁))))
+       ⊢ w (wᶠ^ 6 cM) ∷ U
+  dC = ⊢wk (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dcM))))))
+
+  -- ⚠ the ONE cast: `le` comes out of the context in the UNSUBSTITUTED
+  --   form `w⁴ (wᶠ³ m₁)` while the term carries `μ₁ x` substituted, and
+  --   `wᶠ³-single` is exactly the bridge between them.  Same shape as
+  --   `LibAmrec.⊢ihZ`'s `dlt`, one level deeper.
+  dle : ((BCtx ▹ wTy^ 6 A)
+           ▹ Hom Nat (nsuc (wᶠ^ 6 m₁))
+                     (w (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₁))))
+        ⊢ var (vs (vs (vs vz)))
+        ∷ Hom Nat (w (w (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₁)))) nzero
+  dle = ⊢-cast (cong (λ z → Hom Nat (w (w z)) nzero)
+                     (sym (wᶠ³-single (wᶠ^ 3 m₁))))
+               (⊢var (there (there (there here))))
+
+  ------------------------------------------------------------------------
+  -- ★★ ⊢rec1 — the (0,S) branch's FIRST recursor argument, derived.
+  --
+  --   The type is forced: the step's rec₁ slot is `rec1T = aIHT`, and the
+  --   ⊢app at `x = var (vs (vs vz))` fits it with `aIHT-fit`, whose output
+  --   is `aIHTat …` at the SUBSTITUTED bound.  So this statement is the one
+  --   the branch will consume, not a convenient variant of it.
+  ------------------------------------------------------------------------
+
+  ⊢rec1 : BCtx ⊢ rec1tm
+        ∷ aIHTat (wTy^ 6 A) (wᶠ^ 6 cM) (wᶠ^ 6 m₁)
+                 (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₁))
+  ⊢rec1 =
+    ⊢lam tyA₆
+      (⊢lam (ty-Hom ty-Nat (⊢nsuc dk) dmX)
+        (⊢strong-base' dC (⊢wk dk) (⊢wk dmX) (⊢var here) dle))
+
+  ------------------------------------------------------------------------
+  -- ★★★ GATE STEP 2c — `⊢rec2`, THE REAL RECURSIVE CALL.
+  --
+  --   n₁ = 0 still collapses rec₁ into `absurd`, but n₂ = suc n₂' makes
+  --   rec₂ INVOKE the inner IH, and that IH is a context VARIABLE whose
+  --   type is `renTy vs⁷ mot` — seven ⊢wks' worth of `renTy` sitting
+  --   OUTSIDE the Π-chain.  This is the obstruction (0,0) never paid.
+  --
+  --   THE TWO DESCENTS rec₂ discharges to make the call:
+  --     μ₁ y ≤ 0   plain `⊢ordtr` — μ₁ y ≤ μ₁ x and μ₁ x ≤ 0;
+  --     μ₂ y ≤ n₂' `⊢strong-step` — μ₂ y < μ₂ x and μ₂ x ≤ suc n₂'.
+  --   The second one IS the lexicographic descent: n₁ held, n₂ down.
+  ------------------------------------------------------------------------
+
+  -- the second measure's premises, mirroring `dk`/`dmX` exactly
+  dk₂ : (BCtx ▹ wTy^ 6 A) ⊢ wᶠ^ 6 m₂ ∷ Nat
+  dk₂ = ⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₂)))))
+
+  dmX₂ : (BCtx ▹ wTy^ 6 A) ⊢ w (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₂)) ∷ Nat
+  dmX₂ = subst (λ z → (BCtx ▹ wTy^ 6 A) ⊢ z ∷ Nat)
+               (sym (cong w (wᶠ³-single (wᶠ^ 3 m₂))))
+               (⊢wk (⊢wk (⊢wk (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₂))))))
+
+  -- ★ the inner IH's own type, reassociated out of seven ⊢wks.  Under
+  --   codes-and-functions this was `auxBody-w⁷`, a hand-written rung;
+  --   here it is `auxB-w^ 7` and the same three lines cover (S,S) too.
+  IH-w⁷ : wTy^ 7 mot
+        ≡ auxB (wTy^ 9 A) (wᶠ^ 9 cM) (wᶠ^ 9 m₁) (wᶠ^ 9 m₂)
+               nzero (var (vs (vs (vs (vs (vs (vs (vs vz))))))))
+  IH-w⁷ = auxB-w^ 7 (wTy^ 2 A) (wᶠ^ 2 cM) (wᶠ^ 2 m₁) (wᶠ^ 2 m₂) nzero (var vz)
+
+  -- the two descent TERMS.  Named because both appear inside the spine's
+  -- substitutions, so the cancellation lemmas have to mention them.
+  lt₁ZS : RTm (⌊ BCtx ⌋ ∙ ∙ ∙)
+  lt₁ZS = ordtr (w (w (wᶠ^ 6 m₁))) (w (w (w (w (w (wᶠ^ 3 m₁)))))) nzero
+                (var (vs vz)) (var (vs (vs (vs (vs vz)))))
+
+  lt₂ZS : RTm (⌊ BCtx ⌋ ∙ ∙ ∙)
+  lt₂ZS = ordtr (nsuc (w (w (wᶠ^ 6 m₂)))) (w (w (w (w (w (wᶠ^ 3 m₂))))))
+                (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))
+                (var vz) (var (vs (vs (vs vz))))
+
+  rec2tm : RTm ⌊ BCtx ⌋
+  rec2tm =
+    lam (lam (lam (app (app (app (var (vs (vs (vs (vs (vs (vs vz)))))))
+                                 (var (vs (vs vz))))
+                            lt₁ZS)
+                       lt₂ZS)))
+
+  ------------------------------------------------------------------------
+  -- the IH spine's three fits.  ★ ONE lemma per argument, and each is
+  -- `wᶠ³-single` composed with the eta lemmas — no `app`, so no β.
+  ------------------------------------------------------------------------
+
+  μ₁-fit : subTm (single (var (vs (vs vz)))) (wᶠ^ 9 m₁) ≡ w (w (wᶠ^ 6 m₁))
+  μ₁-fit = wᶠ³-single (wᶠ^ 6 m₁)
+
+  -- μ₂'s slot is under a binder, so it peels with `sub-w` first
+  μ₂-fit : subTm (single lt₁ZS)
+             (subTm (extS (single (var (vs (vs vz))))) (w (wᶠ^ 9 m₂)))
+         ≡ w (w (wᶠ^ 6 m₂))
+  μ₂-fit =
+    trans (cong (subTm (single lt₁ZS))
+                (trans (sub-w {σ = single (var (vs (vs vz)))} (wᶠ^ 9 m₂))
+                       (cong w (wᶠ³-single (wᶠ^ 6 m₂)))))
+          (wk-single {v = lt₁ZS} (w (w (wᶠ^ 6 m₂))))
+
+  -- the motive's cancellation down the IH spine: wᶠ⁹ cM → wᶠ⁶ cM
+  ihCancel : subTm (single lt₂ZS)
+               (subTm (extS (single lt₁ZS))
+                 (subTm (extS (extS (single (var (vs (vs vz))))))
+                        (w (w (wᶠ^ 9 cM)))))
+           ≡ w (w (wᶠ^ 6 cM))
+  ihCancel =
+    trans (cong (λ z → subTm (single lt₂ZS) (subTm (extS (single lt₁ZS)) z))
+                (trans (sub-w² {σ = single (var (vs (vs vz)))} (wᶠ^ 9 cM))
+                       (cong (λ z → w (w z)) (wᶠ³-single (wᶠ^ 6 cM)))))
+          (trans (cong (subTm (single lt₂ZS))
+                       (trans (sub-w {σ = single lt₁ZS} (w (w (w (wᶠ^ 6 cM)))))
+                              (cong w (wk-single {v = lt₁ZS} (w (w (wᶠ^ 6 cM)))))))
+                 (wk-single {v = lt₂ZS} (w (w (wᶠ^ 6 cM)))))
+
+  ------------------------------------------------------------------------
+  -- the descents, derived
+  ------------------------------------------------------------------------
+
+  ⊢lt₁ZS : ((((BCtx ▹ wTy^ 6 A)
+                ▹ Hom Nat (wᶠ^ 6 m₁)
+                          (w (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₁))))
+                ▹ Hom Nat (nsuc (w (wᶠ^ 6 m₂)))
+                          (w (w (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₂))))))
+           ⊢ lt₁ZS ∷ Hom Nat (w (w (wᶠ^ 6 m₁))) nzero
+  ⊢lt₁ZS =
+    ⊢ordtr (⊢wk (⊢wk dk))
+           (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₁))))))))
+           ⊢nzero
+           (⊢-cast (cong (λ z → Hom Nat (w (w (wᶠ^ 6 m₁))) (w (w (w z))))
+                         (wᶠ³-single (wᶠ^ 3 m₁)))
+                   (⊢var (there here)))
+           (⊢var (there (there (there (there here)))))
+
+  ⊢lt₂ZS : ((((BCtx ▹ wTy^ 6 A)
+                ▹ Hom Nat (wᶠ^ 6 m₁)
+                          (w (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₁))))
+                ▹ Hom Nat (nsuc (w (wᶠ^ 6 m₂)))
+                          (w (w (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₂))))))
+           ⊢ lt₂ZS
+           ∷ Hom Nat (w (w (wᶠ^ 6 m₂)))
+                     (var (vs (vs (vs (vs (vs (vs (vs vz))))))))
+  ⊢lt₂ZS =
+    ⊢strong-step (⊢wk (⊢wk dk₂))
+                 (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₂))))))))
+                 (⊢var (there (there (there (there (there (there (there here))))))))
+                 (⊢-cast (cong (λ z → Hom Nat (nsuc (w (w (wᶠ^ 6 m₂)))) (w (w (w z))))
+                               (wᶠ³-single (wᶠ^ 3 m₂)))
+                         (⊢var here))
+                 (⊢var (there (there (there here))))
+
+  ------------------------------------------------------------------------
+  -- ★★ ⊢rec2, ASSEMBLED.
+  ------------------------------------------------------------------------
+
+  ⊢rec2 : BCtx ⊢ rec2tm
+        ∷ rec2Tat (wTy^ 6 A) (wᶠ^ 6 cM) (wᶠ^ 6 m₁) (wᶠ^ 6 m₂)
+                  (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₁))
+                  (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₂))
+  ⊢rec2 =
+    ⊢lam tyA₆
+      (⊢lam (ty-Hom ty-Nat dk dmX)
+        (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢wk dk₂)) (⊢wk dmX₂))
+          (⊢-cast (cong El ihCancel)
+            (⊢app (⊢app (⊢app (⊢-cast IH-w⁷
+                                 (⊢var (there (there (there (there (there (there here))))))))
+                               (⊢var (there (there here))))
+                        (⊢-cast (sym (cong (λ z → Hom Nat z nzero) μ₁-fit)) ⊢lt₁ZS))
+                  (⊢-cast (sym (cong (λ z → Hom Nat z (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))
+                                     μ₂-fit))
+                          ⊢lt₂ZS)))))
+
+  ------------------------------------------------------------------------
+  -- ★★★ GATE STEP 2d — BRANCH (0,S), ASSEMBLED.  ⚠ THIS IS THE NUMBER.
+  --
+  --   The same branch under codes-and-functions is `…ExamplesLexCZS`,
+  --   47.2 s / 4.43 GB, and that module's cost is almost entirely these
+  --   two derivations.  Everything cheap built before this point bore on
+  --   nothing; the ratio measured here is what decides (S,S).
+  ------------------------------------------------------------------------
+
+  lexZS : RTm (⌊ Δ ⌋ ∙ ∙ ∙)
+  lexZS =
+    lam (lam (lam (app (app (app (w^ 6 stp) (var (vs (vs vz)))) rec1tm) rec2tm)))
+
+  -- the step, six levels down — `lStepT-w^` covers every branch depth
+  stp-w⁶ : wTy^ 6 (lStepT A cM m₁ m₂)
+         ≡ lStepT (wTy^ 6 A) (wᶠ^ 6 cM) (wᶠ^ 6 m₁) (wᶠ^ 6 m₂)
+  stp-w⁶ = lStepT-w^ 6 A cM m₁ m₂
+
+  -- rec₁'s slot: `aIHT-fit`, unchanged — rec₁'s fit IS amrec's.
+  rec1-fit : subTy (single (var (vs (vs vz))))
+                   (rec1T (wTy^ 6 A) (wᶠ^ 6 cM) (wᶠ^ 6 m₁))
+           ≡ aIHTat (wTy^ 6 A) (wᶠ^ 6 cM) (wᶠ^ 6 m₁)
+                    (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₁))
+  rec1-fit = aIHT-fit (wTy^ 6 A) (wᶠ^ 6 cM) (wᶠ^ 6 m₁)
+
+  -- rec₂'s slot: one `sub-wTy` to get the rec₁ binder's weakening out of
+  -- the way, one `wk-singleTy` to cancel it, then `rec2T-fit`.
+  rec2-fit : subTy (single rec1tm)
+               (subTy (extS (single (var (vs (vs vz)))))
+                      (renTy vs (rec2T (wTy^ 6 A) (wᶠ^ 6 cM) (wᶠ^ 6 m₁) (wᶠ^ 6 m₂))))
+           ≡ rec2Tat (wTy^ 6 A) (wᶠ^ 6 cM) (wᶠ^ 6 m₁) (wᶠ^ 6 m₂)
+                     (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₁))
+                     (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₂))
+  rec2-fit =
+    trans (cong (subTy (single rec1tm))
+                (sub-wTy {σ = single (var (vs (vs vz)))}
+                         (rec2T (wTy^ 6 A) (wᶠ^ 6 cM) (wᶠ^ 6 m₁) (wᶠ^ 6 m₂))))
+          (trans (wk-singleTy {v = rec1tm}
+                    (subTy (single (var (vs (vs vz))))
+                           (rec2T (wTy^ 6 A) (wᶠ^ 6 cM) (wᶠ^ 6 m₁) (wᶠ^ 6 m₂))))
+                 (rec2T-fit (wTy^ 6 A) (wᶠ^ 6 cM) (wᶠ^ 6 m₁) (wᶠ^ 6 m₂)))
+
+  -- the outer spine's cancellation: wᶠ⁶ cM peeled by the step's three ⊢apps
+  cMcancel : subTm (single rec2tm)
+               (subTm (extS (single rec1tm))
+                 (subTm (extS (extS (single (var (vs (vs vz))))))
+                        (w (w (wᶠ^ 6 cM)))))
+           ≡ w (w (wᶠ^ 3 cM))
+  cMcancel =
+    trans (cong (λ z → subTm (single rec2tm) (subTm (extS (single rec1tm)) z))
+                (trans (sub-w² {σ = single (var (vs (vs vz)))} (wᶠ^ 6 cM))
+                       (cong (λ z → w (w z)) (wᶠ³-single (wᶠ^ 3 cM)))))
+          (trans (cong (subTm (single rec2tm))
+                       (trans (sub-w {σ = single rec1tm} (w (w (w (wᶠ^ 3 cM)))))
+                              (cong w (wk-single {v = rec1tm} (w (w (wᶠ^ 3 cM)))))))
+                 (wk-single {v = rec2tm} (w (w (wᶠ^ 3 cM)))))
+
+  ⊢lexZS : (((Δ ▹ Nat) ▹ Nat) ▹ mot) ⊢ lexZS ∷ subTy nrs mot
+  ⊢lexZS =
+    ⊢-cast (sym mot-s)
+      (⊢lam (ren-ty (ren-ty (ren-ty dA there) there) there)
+        (⊢lam (ty-Hom ty-Nat (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₁))) ⊢nzero)
+          (⊢lam (ty-Hom ty-Nat (⊢wk (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₂))))
+                        (⊢nsuc (⊢var (there (there (there here))))))
+            (⊢-cast (cong El cMcancel)
+              (⊢app (⊢app (⊢app (⊢-cast stp-w⁶
+                                   (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk dstp)))))))
+                                 (⊢var (there (there here))))
+                          (⊢-cast (sym rec1-fit) ⊢rec1))
+                    (⊢-cast (sym rec2-fit) ⊢rec2))))))
