@@ -507,13 +507,29 @@ lexrec-specific — `rec1T` IS amrec's IH type verbatim, and the four
 obstructions amrec hit were the same four the lexrec branches hit. Only
 `cong₃` and `aAuxB` were new.
 
-⚠ **And there is a live hypothesis worth testing early.** Option C's lexrec
-port died on branch (S,S), which does not fit in 5.5 GB. Interface B's
-types carry ZERO `app`s and its fitting collapses to one lemma per spine,
-so the elaborated terms are markedly smaller. **(S,S) under interface B may
-fit where it did not under C.** Untested, and it should be tested BEFORE
-committing to re-port all four branches — the same "gate it on a spike"
-discipline that `HANDOFF-2026-08-09` §4a asks for.
+★★★ **THE LIVE HYPOTHESIS IS NOW TESTED, AND IT HELD.** Option C's lexrec
+port died on branch (S,S), which does not fit in 5.5 GB. The prediction
+was that interface B's zero-`app` types and one-fit-per-spine would shrink
+the elaborated terms enough. Measured, same box, cold, one sample each:
+
+| branch | A — codes + functions | B — types + families |
+|---|---|---|
+| (0,S) | 48.7 s / 4.35 GB (`LexCZS`) | **8.8 s / 0.71 GB** (`SpikeLexT`) |
+| (S,S) | ⛔ **OOM at 5.5 GB, both halves, even with `+RTS -c`** | **15.3 s / 1.66 GB** (`SpikeLexSS`) |
+
+⚠ The (0,S) row UNDERSTATES the gap: `SpikeLexT` also carries the whole
+type layer (`rec2T`, `lStepT`, `auxB`, the motives, three indexed ladders)
+that `LexCZS` imports from `LexC`/`LexCMot`.
+
+★ **And the mechanism is visible in one line.** (S,S)'s rec₁ resets n₂ by
+instantiating the outer IH at `μ₂ y`. Under A that is
+`app (w¹⁰ μ₂) (var (vs vz))` — a redex that never reduces, carried inside
+every subsequent substitution and traversed by every conversion check.
+Under B it is `w (wᶠ⁸ m₂)`. `LexCSS`'s own header had already identified
+the driver as "the `w`-tower depth on opaque terms"; pre-applying the
+measure is what shortens the towers.
+
+⇒ **Re-porting the remaining branches ((0,0), (S,0)) is no longer gated.**
 
 ### Naming — `Library`, not `Examples`
 
