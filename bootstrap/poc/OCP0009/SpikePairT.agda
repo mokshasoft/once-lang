@@ -49,7 +49,8 @@ open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natre
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBLibRec   using ( aIHT; aIHTat )
-open import poc.OCP0009.NbEPDirDBLibAmrec using ( aStepT; module AmTΠ )
+open import poc.OCP0009.NbEPDirDBLibAmrec using ( aStepT; module AmTΠ; measure-evals )
+open import poc.OCP0009.NbEPDirDBLibNatVal using ( NatVal; nv-zero; nv-suc )
 
 ------------------------------------------------------------------------
 -- ★ THE INSTANTIATION.  The carrier is a TYPE, so there is no code, no
@@ -174,3 +175,26 @@ f-computes-suc ih =
     (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst (nsuc nzero) nzero) done)))
       (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ nzero) done))
         (step (β _ ih) done)))
+
+------------------------------------------------------------------------
+-- ★★ AND THE UNFOLDING'S PREMISE IS DISCHARGED, NOT ASSUMED.
+--
+-- This use site is at `◇`, so `measure-evals` supplies what
+-- `amrec-unfold-z`/`-s` need.  Nothing here proves that `fst x` reaches a
+-- numeral — the library does, from canonicity.
+--
+-- ⚠ `SpikeDivT` would NOT get this: its ambient context carries the
+--   divisor `k` as a free variable, so its measure normalises to a NEUTRAL
+--   and the premise is genuine caller information.  Same library, two
+--   domains.
+------------------------------------------------------------------------
+
+msr-evals : (x : RTm ε) → ◇ ⊢ x ∷ PairT → NatVal (subTm (single x) msr)
+msr-evals = measure-evals PairT msr ⊢msr
+
+-- ★ concretely: the measure at `(1 , 0)` really does reach a numeral, and
+--   the library — not this file — is what knows it.
+msr-evals-at : NatVal (subTm (single (pair (nsuc nzero) nzero)) msr)
+msr-evals-at =
+  msr-evals (pair (nsuc nzero) nzero)
+            (⊢pair ty-Nat (⊢nsuc ⊢nzero) ⊢nzero)
