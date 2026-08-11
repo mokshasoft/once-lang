@@ -32,7 +32,9 @@ open import poc.OCP0009.NbEPDirDBType using ( Ctx; _▹_; ⌊_⌋; single; nrs )
 open import poc.OCP0009.NbEPDirDBLibWk
   using ( w; wᶠ; cong₃; cong₄; cong₅; cong₆; sub-w; sub-w²; ren-w
         ; wk-singleTy; wᶠ-single; ren-wTy; ren-wᶠ; nrs-wTy; wᶠ-nrs )
-open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT )
+open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-ren )
+open import poc.OCP0009.NbEPDirDBLibWk using ( wTy^; wᶠ^ )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 
 ------------------------------------------------------------------------
 -- ★ rec₁ is aIHT.  Nothing to define.
@@ -103,6 +105,44 @@ auxB-sub {σ = σ} A cM m₁ m₂ n₁ n₂ =
         (sub-w {σ = extS σ} m₂)
         (sub-w² {σ = σ} n₂)
         (sub-w² {σ = extS σ} cM)
+
+------------------------------------------------------------------------
+-- ★ THE `⊢wk` NATURALITY the branches need: `⊢wk`ing the step leaves a
+--   `renTy` OUTSIDE `lStepT`, and Agda pushes it into the Π-chain instead
+--   of reassociating.  Same obstruction every branch hits.
+------------------------------------------------------------------------
+
+rec2T-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) →
+            renTy (extR ρ) (rec2T A cM m₁ m₂)
+          ≡ rec2T (renTy ρ A) (renTm (extR ρ) cM)
+                  (renTm (extR ρ) m₁) (renTm (extR ρ) m₂)
+rec2T-ren {ρ = ρ} A cM m₁ m₂ =
+  cong₆ rec2Tat' (ren-wTy A) (ren-wᶠ m₁) (ren-w {ρ = extR ρ} m₁)
+        (trans (ren-w {ρ = extR (extR ρ)} (wᶠ m₂)) (cong w (ren-wᶠ m₂)))
+        (trans (ren-w {ρ = extR (extR ρ)} (w m₂)) (cong w (ren-w {ρ = extR ρ} m₂)))
+        (trans (ren-w {ρ = extR (extR (extR ρ))} (w (wᶠ cM)))
+               (cong w (trans (ren-w {ρ = extR (extR ρ)} (wᶠ cM)) (cong w (ren-wᶠ cM)))))
+
+lStepT-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) →
+             renTy ρ (lStepT A cM m₁ m₂)
+           ≡ lStepT (renTy ρ A) (renTm (extR ρ) cM)
+                    (renTm (extR ρ) m₁) (renTm (extR ρ) m₂)
+lStepT-ren {ρ = ρ} A cM m₁ m₂ =
+  cong₄ lStepT' refl
+    (aIHT-ren A cM m₁)
+    (trans (ren-wTy (rec2T A cM m₁ m₂)) (cong (renTy vs) (rec2T-ren A cM m₁ m₂)))
+    (trans (ren-w {ρ = extR (extR ρ)} (w cM)) (cong w (ren-w {ρ = extR ρ} cM)))
+
+-- ★ D5 applied to lexrec: the ladder, INDEXED.  Every branch ⊢wks the step
+--   a different number of times — (0,S) six, (S,S) eight — and this covers
+--   all of them.
+lStepT-w^ : {Γ : Cx} (n : ℕ) (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) →
+            wTy^ n (lStepT A cM m₁ m₂)
+          ≡ lStepT (wTy^ n A) (wᶠ^ n cM) (wᶠ^ n m₁) (wᶠ^ n m₂)
+lStepT-w^ zero    A cM m₁ m₂ = refl
+lStepT-w^ (suc n) A cM m₁ m₂ =
+  trans (cong (renTy vs) (lStepT-w^ n A cM m₁ m₂))
+        (lStepT-ren (wTy^ n A) (wᶠ^ n cM) (wᶠ^ n m₁) (wᶠ^ n m₂))
 
 ------------------------------------------------------------------------
 -- THE MOTIVES.  lexrec's auxiliary is DOUBLY bounded and recursed by
