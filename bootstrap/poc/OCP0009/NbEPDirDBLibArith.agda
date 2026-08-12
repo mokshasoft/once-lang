@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- OCP-0009 — ARITHMETIC FOR gcd: `+` IS MONOTONE IN ITS SECOND ARGUMENT.
 --
--- `SpikePairT`'s header deferred gcd because "gcd's descent needs
+-- `NbEPDirDBExamplesPairLib`'s header deferred gcd because "gcd's descent needs
 -- monotonicity of `+` under `≤` and its strict form — a real arithmetic
 -- development".  This is the tractable half of that development, and the
 -- point of the file is to establish exactly WHERE the line falls.
@@ -40,7 +40,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikeArith where
+module poc.OCP0009.NbEPDirDBLibArith where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong₂ )
 open import poc.OCP0009.NbEPDirDBPi

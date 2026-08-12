@@ -10,8 +10,8 @@
 --   termination is NOT free, at a carrier that is NOT ℕ… a pair carrier
 --   with a measure that is a real computation rather than a projection —
 --   e.g. `μ (a , b) = a + b`."*  All three hold: `Σ' Nat Nat`, `a + b`,
---   and a descent that took `SpikeArith` + `SpikePlusComm` +
---   `SpikeGcdDesc` to build.
+--   and a descent that took `NbEPDirDBLibArith` + `NbEPDirDBLibArithComm` +
+--   `NbEPDirDBLibArithMonus` to build.
 --
 -- ⚠ AND IT IS THE FUNCTION `⊢gcd-descend` WAS NOT.  That lemma is
 --   `⊢div-descend` renamed and certifies the ONE-SIDED recursion
@@ -35,7 +35,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikeGcd where
+module poc.OCP0009.NbEPDirDBExamplesGcdLib where
 
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
@@ -61,9 +61,9 @@ open import poc.OCP0009.NbEPDirDBExamplesDiv
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( aStepT; module AmTΠ )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asP )
-open import poc.OCP0009.SpikeArith using ( plusMonoTm )
-open import poc.OCP0009.SpikePlusComm using ( plusMonoLTm )
-open import poc.OCP0009.SpikeGcdDesc
+open import poc.OCP0009.NbEPDirDBLibArith using ( plusMonoTm )
+open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLTm )
+open import poc.OCP0009.NbEPDirDBLibArithMonus
   using ( monusLtTm; ⊢desc-left; ⊢desc-right; pred* )
 
 ------------------------------------------------------------------------
@@ -269,7 +269,7 @@ gcdTm = amrecTm
 --
 -- ⚠ CONCRETE numerals, not an arbitrary `a`: for an open `a` the final β
 --   leaves `subTm (single ih) (w a)`, which is `a` only PROPOSITIONALLY
---   (`wk-single`).  At a numeral it computes.  Same note as `SpikePairT`.
+--   (`wk-single`).  At a numeral it computes.  Same note as `NbEPDirDBExamplesPairLib`.
 ------------------------------------------------------------------------
 
 -- `1 ∸ 3 ⟶* 0`, which is what sends the comparison down the `a ≤ b` side

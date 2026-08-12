@@ -243,7 +243,7 @@ direct formulation would force the combinator to NAME the instantiated IH
 in its own statement (a five-fold substitution chain), which is what made
 it unusable.  CPS makes that term the combinator's private business.
 
-★ **Measured end to end, `SpikeGcd`:**
+★ **Measured end to end, `NbEPDirDBExamplesGcdLib`:**
 
 ```agda
 gcd-2-0 : app gcdTm (pair 2 0) ⟶* 2
@@ -313,7 +313,7 @@ debt is only PARTIALLY closed (zero case end-to-end; recursive case open).
 
 ### D10 — A NESTED RECURSIVE CALL MUST BE HOISTED BEHIND A `Def` ⛔ NEW, AND IT IS A USE-SITE DEFECT
 
-*Found by `SpikeLexAck` (Ackermann), 2026-08-12. Nothing in this document
+*Found by `NbEPDirDBExamplesAckLib` (Ackermann), 2026-08-12. Nothing in this document
 or any handoff predicted it, and the way you discover it is by OOMing.*
 
 When a step function's recursive call CONSUMES another recursive call —
@@ -355,7 +355,7 @@ unfolding lemmas do NOT help here** — this is an ELABORATION cost, not a
 reduction cost, so the two defects are independent.
 
 ⇒ The library should ship the pair-carrier descent helpers (`dropˡ`,
-`dropʳ`, `holdˡ` in `SpikeLexAck`) with explicit arguments, so callers
+`dropʳ`, `holdˡ` in `NbEPDirDBExamplesAckLib`) with explicit arguments, so callers
 inherit the fix instead of rediscovering it.
 
 ### D11 — WHAT IS `lexrec` ACTUALLY FOR?  A NEGATIVE RESULT WITH A MECHANISM 📌 2026-08-12
@@ -373,7 +373,7 @@ a DERIVED term of the kernel, so by construction none adds definitional
 power. The honest question is only whether the packaging pays.
 
 ★★ **AND `lexrec` IS LITERALLY THE HAND-ROLLED CONSTRUCTION.** Compare its
-own auxiliary with `SpikeAckT`, the no-combinator control:
+own auxiliary with `NbEPDirDBExamplesAckKernel`, the no-combinator control:
 
 ```agda
 lexAuxTm n = natrec lexZ lexS n                  -- SpikeLexAsm
@@ -390,8 +390,8 @@ form — measured on the one function that exercises both recursors:
 
 | Ackermann | lines | cold |
 |---|---|---|
-| `SpikeAckT` — nested `natrec`, no combinator | 26 | **0.61 s** |
-| `SpikeLexAck` — through `⊢lexrecΠ` | ~100 | 8.8 s |
+| `NbEPDirDBExamplesAckKernel` — nested `natrec`, no combinator | 26 | **0.61 s** |
+| `NbEPDirDBExamplesAckLib` — through `⊢lexrecΠ` | ~100 | 8.8 s |
 
 **⭐ THE MECHANISM, and it is why the search is hard.** `lexrec`'s power
 over `amrec` is exactly the UNBOUNDED μ₂ RESET — "when μ₁ drops, μ₂ is
@@ -421,7 +421,7 @@ recursion is awkward. That is where to look if anyone wants to.
 **The case FOR keeping it anyway**, stated honestly: lexicographic
 termination is first-class in every comparable system — Agda's own
 termination checker does lex descent on argument tuples (which is why
-`SpikeAckAgda1` is 9 lines and free), Coq has `lexprod`, Isabelle's `fun`
+`NbEPDirDBExamplesAckAgda1` is 9 lines and free), Coq has `lexprod`, Isabelle's `fun`
 tries lex orders by default, ACL2 has ordinal measures. A self-hosting
 language wanting parity has a reason to ship it. But the claim should be
 **parity and ergonomics, not reach**, and `ARCHITECTURE.md` currently
@@ -481,8 +481,8 @@ still normalises — to a NEUTRAL containing the free variable, which is not
 a numeral and never will be. So the premise there is genuine information
 the caller has and the library cannot derive.
 
-⇒ **two lemmas, two domains.** `SpikePairT` (at `◇`) gets it free;
-`SpikeDivT` (whose context carries the divisor `k`) does not, and that is
+⇒ **two lemmas, two domains.** `NbEPDirDBExamplesPairLib` (at `◇`) gets it free;
+`NbEPDirDBExamplesDivLib` (whose context carries the divisor `k`) does not, and that is
 correct rather than a gap. The conditional form is not a weaker fallback.
 
 ★ **The general rule:** if a premise is derivable in some domain, the
@@ -524,15 +524,15 @@ what will fix it. Extract once, after D4 settles.
 |---|---|
 | `SpikeAmrecInst` | instantiation is cheap: 43 lines, green first try. But `⊢amrec` still uncallable (D2) |
 | `SpikeDivC` | plumbing ~8 lines, one `open`. 113 lines total, **12 conversions** |
-| `SpikeDivT` | **72 lines total, 4 conversions** — 3.4 s / 0.41 GB cold |
-| `SpikePairT` | amrec at a PAIR carrier — 95 lines, 3 `⊢conv`, green first try |
-| **`SpikeLexUse`** | ★ **LEXREC CALLED** — 99 lines, 4 `⊢conv`, green first try, 4.1 s / 0.44 GB |
+| `NbEPDirDBExamplesDivLib` | **72 lines total, 4 conversions** — 3.4 s / 0.41 GB cold |
+| `NbEPDirDBExamplesPairLib` | amrec at a PAIR carrier — 95 lines, 3 `⊢conv`, green first try |
+| **`NbEPDirDBExamplesLexPair`** | ★ **LEXREC CALLED** — 99 lines, 4 `⊢conv`, green first try, 4.1 s / 0.44 GB |
 
 ★★★ **AND THE SECOND COMBINATOR COSTS THE USE SITE ALMOST NOTHING.**
-`SpikeLexUse` is `SpikePairT`'s function at the same carrier with the
+`NbEPDirDBExamplesLexPair` is `NbEPDirDBExamplesPairLib`'s function at the same carrier with the
 recursion moved from a measure to a LEXICOGRAPHIC pair:
 
-| | `SpikePairT` (amrec) | `SpikeLexUse` (lexrec) |
+| | `NbEPDirDBExamplesPairLib` (amrec) | `NbEPDirDBExamplesLexPair` (lexrec) |
 |---|---|---|
 | non-comment lines | 95 | **99** |
 | `⊢conv` | 3 | **4** |
@@ -546,7 +546,7 @@ cost sits on the build side where it amortises.
 
 ⚠ **And this is the check `⊢lexrec`'s `Γ₅` ancestor failed.** That one was
 "derived end to end" and is uncallable by D2. A typing derivation is not
-evidence of a usable interface; instantiating it is. `SpikeLexUse` exists
+evidence of a usable interface; instantiating it is. `NbEPDirDBExamplesLexPair` exists
 for no other reason.
 
 ★ **What the use site actually exercises** is the pairing `≤` with `<`:
@@ -557,7 +557,7 @@ in ω, so no single ℕ measure reflects it. That is why there are two
 combinators and not one; `rec1T = aIHT` is literal sharing of the IH
 TYPE, not of the recursor.
 
-★★ **D4 MEASURED AT THE USE SITE — `SpikeDivT` against `SpikeDivC`, same
+★★ **D4 MEASURED AT THE USE SITE — `NbEPDirDBExamplesDivLib` against `SpikeDivC`, same
 function, same kernel:**
 
 | | SpikeDivC | SpikeDivT |
@@ -576,7 +576,7 @@ code-indexed, so `P x` must be `El ⌜Nat⌝` and every `Nat` result crosses
 once. Getting below 4 would need a kernel change to ex falso — which the
 kernel argues against for inversion reasons (see D4's note).
 
-★★★ **SECOND USE SITE — `SpikePairT`, a PAIR carrier, 3.2 s / 0.42 GB,
+★★★ **SECOND USE SITE — `NbEPDirDBExamplesPairLib`, a PAIR carrier, 3.2 s / 0.42 GB,
 GREEN FIRST TRY.** The first use site that is not at ℕ.
 
 | | result |
@@ -593,7 +593,7 @@ the carrier concrete, which is exactly what the abstract Γ₅ denied."*
 
 **AND THE `AmrecC` VERSION — `SpikePairC`, 2.9 s / 0.42 GB.** ⚠ Its STEP
 is not built; what follows is the instantiation and conversion layer ONLY,
-against a `SpikePairT` that is COMPLETE. The gap is therefore a lower
+against a `NbEPDirDBExamplesPairLib` that is COMPLETE. The gap is therefore a lower
 bound on the real one.
 
 | | SpikePairT (D4, complete) | SpikePairC (AmrecC, no step) |
@@ -608,7 +608,7 @@ pair carrier FORCES a case split on `fst x`, because `natrec` needs a ℕ and
 `x` is a pair, and that requires the IH's bound to be the natrec VARIABLE.
 `rec1T` cannot say that, so `ihC` and `⊢ihC` have to be written by hand and
 reconciled with the combinator's own slot. D4 ships exactly this as
-`aIHTat`, and `SpikePairT` used it directly.
+`aIHTat`, and `NbEPDirDBExamplesPairLib` used it directly.
 
 ⇒ the pair carrier does not merely cost `AmrecC` more conversions; it puts
 the case-split motive outside what its interface can express.
@@ -620,7 +620,7 @@ proved informative:
 1. **DEFINITIONAL vs propositional.** `subTy (single x)` on the case-split
    motive is definitional under D4 — not a smaller obligation, *no*
    obligation. Line counts cannot see this.
-2. **Iterations to green.** `SpikePairT` needed none.
+2. **Iterations to green.** `NbEPDirDBExamplesPairLib` needed none.
 3. **Do the types read as the mathematics?** `aIHT PairT ⌜Nat⌝ msr`
    unfolds to `(y : Σ' Nat Nat) → fst y < fst x → El ⌜Nat⌝`.
 4. **Are the instantiation data ATOMS or derivations?** `ty-Σ ty-Nat

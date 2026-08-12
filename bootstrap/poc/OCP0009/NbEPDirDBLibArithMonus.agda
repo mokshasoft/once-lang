@@ -8,7 +8,7 @@
 --     a ≤ b :  a + (b ∸ a)  <  a + b     `⊢plus-mono`    (base arg)
 --
 --   That is the whole reason commutativity had to be proved: one of the
---   two is unreachable without it (`SpikeArith`'s header).
+--   two is unreachable without it (`NbEPDirDBLibArith`'s header).
 --
 -- ★★ AND THE STRICT MONUS FACT IS AN INDUCTION ON `b`, NOT `⊢monus-le`.
 --   `⊢monus-le` is stated for a `Var` — deliberately, so its motive's
@@ -26,7 +26,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikeGcdDesc where
+module poc.OCP0009.NbEPDirDBLibArithMonus where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong )
 open import poc.OCP0009.NbEPDirDBPi
@@ -50,8 +50,8 @@ open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBExamplesDiv
   using ( predTm; ⊢pred; ⊢pred-le; monusTm; ⊢monus
         ; monus-zero; monus-suc; pred-suc; homˡ* )
-open import poc.OCP0009.SpikeArith using ( plusMonoB; plusMonoTm; ⊢plus-mono )
-open import poc.OCP0009.SpikePlusComm using ( plusMonoLB; plusMonoLTm; ⊢plus-mono-l )
+open import poc.OCP0009.NbEPDirDBLibArith using ( plusMonoB; plusMonoTm; ⊢plus-mono )
+open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLB; plusMonoLTm; ⊢plus-mono-l )
 
 ------------------------------------------------------------------------
 -- lifting a reduction into `pred`'s scrutinee

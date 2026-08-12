@@ -15,7 +15,7 @@ peak RSS, on the 7.5 GiB box, with all dependencies already built.
 ## 1. The three-way Ackermann comparison
 
 Ackermann is the example `⊢lexrec` was built to unlock, so it is the fair
-yardstick. Modules: `SpikeAckAgda1`, `SpikeAckAgda2`, `SpikeAckT`.
+yardstick. Modules: `NbEPDirDBExamplesAckAgda1`, `NbEPDirDBExamplesAckAgda2`, `NbEPDirDBExamplesAckKernel`.
 
 | # | Ackermann, how | time | RSS |
 |---|---|---|---|
@@ -38,7 +38,7 @@ Read off:
 structurally recursive at higher type (the outer `natrec` returns
 `Nat → Nat`), so it never needed a measure. `⊢lexrec` earns its keep on
 the recursions that are not — `div`, `gcd`, quicksort on a pair measure.
-`SpikeAckT` is kept only as the cost baseline.
+`NbEPDirDBExamplesAckKernel` is kept only as the cost baseline.
 
 ## 2. What the cost actually is: a 2×2×2 ablation
 

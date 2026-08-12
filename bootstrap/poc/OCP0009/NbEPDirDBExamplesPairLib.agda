@@ -28,7 +28,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikePairT where
+module poc.OCP0009.NbEPDirDBExamplesPairLib where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
@@ -183,7 +183,7 @@ f-computes-suc ih =
 -- `amrec-unfold-z`/`-s` need.  Nothing here proves that `fst x` reaches a
 -- numeral — the library does, from canonicity.
 --
--- ⚠ `SpikeDivT` would NOT get this: its ambient context carries the
+-- ⚠ `NbEPDirDBExamplesDivLib` would NOT get this: its ambient context carries the
 --   divisor `k` as a free variable, so its measure normalises to a NEUTRAL
 --   and the premise is genuine caller information.  Same library, two
 --   domains.

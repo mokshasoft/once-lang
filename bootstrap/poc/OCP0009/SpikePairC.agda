@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- OCP-0009 — THE SAME PAIR-CARRIER FUNCTION UNDER `AmrecC`.
 --
--- `SpikePairT` built `f (a , b) = case a of 0 → b; suc a' → f (a' , suc b)`
+-- `NbEPDirDBExamplesPairLib` built `f (a , b) = case a of 0 → b; suc a' → f (a' , suc b)`
 -- through the D4 interface: green first try, 69 lines, ZERO `El-⌜Σ⌝`
 -- conversions.  This is the same function through the AmrecC interface, so
 -- the comparison is measured rather than predicted.
@@ -19,7 +19,7 @@
 --      requires the IH's bound to be the natrec VARIABLE, so the motive
 --      has to be hand-written and then reconciled with `rec1T` at the
 --      instantiation point.  D4's `aIHTat` is exactly this combinator, and
---      `SpikePairT` used it directly.
+--      `NbEPDirDBExamplesPairLib` used it directly.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -98,7 +98,7 @@ dμ = ⊢lam (ty-El dcA) (prj₁ (⊢var here))
 -- Splitting on `fst x` needs the IH's bound to be the natrec VARIABLE.
 -- `rec1T cA cP μ x`'s bound is `app (w μ) (w x)` — always the measure
 -- APPLIED to a term — so the case-split motive cannot be built from it.
--- Both of these have to be written by hand here.  In `SpikePairT` they
+-- Both of these have to be written by hand here.  In `NbEPDirDBExamplesPairLib` they
 -- are `aIHTat PairT ⌜Nat⌝ msr b` and `⊢ihTat db`, supplied by the library.
 ------------------------------------------------------------------------
 

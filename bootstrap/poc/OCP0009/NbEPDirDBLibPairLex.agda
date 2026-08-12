@@ -6,14 +6,14 @@
 -- at that carrier, at an ARBITRARY pair of bounds.
 --
 -- ⚠ SEPARATE FROM `LibPair` ON PURPOSE.  `LibPair` is used by AMREC
---   callers too (`SpikeGcd`), and it must not drag the lexicographic
+--   callers too (`NbEPDirDBExamplesGcdLib`), and it must not drag the lexicographic
 --   recursor in behind them.  The bridge pays for itself only where both
 --   are already wanted.
 --
 -- ★ D8 IS WHY BOTH ARE "…Tat" FORMS.  `natrec` needs a ℕ, so at a non-ℕ
 --   carrier the case split lands on the MEASURE and the IH's bound is the
---   natrec VARIABLE rather than `μ x`.  Both `SpikeLexUse` (one split) and
---   `SpikeLexAck` (two) need exactly that.
+--   natrec VARIABLE rather than `μ x`.  Both `NbEPDirDBExamplesLexPair` (one split) and
+--   `NbEPDirDBExamplesAckLib` (two) need exactly that.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}

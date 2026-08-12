@@ -11,7 +11,7 @@
 --    recursive call's own argument — and when that argument is itself a
 --    nested recursive call, an IMPLICIT solved by unification against it
 --    is the `agda-plus-inversion-trap` in another costume.  Measured on
---    `SpikeLexAck` (Ackermann, whose outer call consumes its inner one):
+--    `NbEPDirDBExamplesAckLib` (Ackermann, whose outer call consumes its inner one):
 --
 --      inner call inline, implicits    192.5 s / 4.41 GB
 --      hoisted behind a `Def`, explicit 10.1 s / 0.84 GB

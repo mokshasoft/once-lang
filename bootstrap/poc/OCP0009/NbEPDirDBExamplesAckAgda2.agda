@@ -15,7 +15,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikeAckAgda2 where
+module poc.OCP0009.NbEPDirDBExamplesAckAgda2 where
 
 data ℕ : Set where
   zero : ℕ

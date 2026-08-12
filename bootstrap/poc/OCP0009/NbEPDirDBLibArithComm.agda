@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- OCP-0009 — COMMUTATIVITY OF `+`, and the `Id`-at-`Nat` kit it needs.
 --
--- ⚠ WHY.  `SpikeArith` proves `+` monotone in its BASE argument and shows
+-- ⚠ WHY.  `NbEPDirDBLibArith` proves `+` monotone in its BASE argument and shows
 --   that the RECURSED argument is unreachable that way — `plusTm` recurses
 --   on its first argument, so for open `x`,`y` both sides are stuck, and
 --   `<` is a COMPUTING `Hom Nat` rather than an inductive family, so there
@@ -30,7 +30,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikePlusComm where
+module poc.OCP0009.NbEPDirDBLibArithComm where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
@@ -51,7 +51,7 @@ open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( natAsEl; El-homNat )
-open import poc.OCP0009.SpikeArith using ( plusMonoB; plusMonoTm; ⊢plus-mono )
+open import poc.OCP0009.NbEPDirDBLibArith using ( plusMonoB; plusMonoTm; ⊢plus-mono )
 open import poc.OCP0009.NbEPDirDBLibPair using ( asN )
 
 ------------------------------------------------------------------------
@@ -311,7 +311,7 @@ trHomʳ t p h = jsub (⌜Hom⌝ ⌜Nat⌝ (w t) (var vz)) p h
 --   `SpikeArith.⊢plus-mono` gives `c + x < c + y`; commutativity moves
 --   both endpoints across, and `x + c < y + c` is what gcd's first branch
 --   needs.  ⚠ THIS IS THE LEMMA THAT WAS UNREACHABLE DIRECTLY — see
---   `SpikeArith`'s header for why (`plusTm` is stuck in its first
+--   `NbEPDirDBLibArith`'s header for why (`plusTm` is stuck in its first
 --   argument and `<` is not an inductive family).
 ------------------------------------------------------------------------
 

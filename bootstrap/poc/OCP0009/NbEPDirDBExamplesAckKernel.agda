@@ -21,7 +21,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikeAckT where
+module poc.OCP0009.NbEPDirDBExamplesAckKernel where
 
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; RTy; Nat; RTm; var; vz; vs; nzero; nsuc; natrec; lam; app; Π )
