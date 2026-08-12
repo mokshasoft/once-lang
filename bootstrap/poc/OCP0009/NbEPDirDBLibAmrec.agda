@@ -31,7 +31,7 @@ open import poc.OCP0009.NbEPDirDBPi
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; _⟶*_; done; step; β; natrec-zero; natrec-suc
+        ; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc
         ; ⊢lam; ⊢app; _⊢ty_
         ; ty-Nat; ty-Hom; ty-El; ty-Π )
 open import poc.OCP0009.NbEPDirDBSubj
@@ -41,7 +41,7 @@ open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesOrd using ( ⊢strong-base'; ⊢strong-step )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import poc.OCP0009.NbEPDirDBLibWk
-  using ( w; wᶠ; ⊢wkᶠ; cong₃; cong₄; sub-w; ren-w; wk-singleTy; wᶠ-single
+  using ( w; wᶠ; ⊢wkᶠ; cong₃; cong₄; sub-w; sub-w²; sub-w³; sub-w⁴; ren-w; wk-singleTy; wᶠ-single
         ; wᶠ¹-single; wᶠ²-single; nrs-wTy; wᶠ-nrs; ren-wTy; ren-wᶠ
         ; _∙^_; w^; wTy^; wᶠ^ )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-ren; aIHT-fit )
@@ -451,6 +451,144 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
     step (β _ x)
       (⟶*-appˡ (⟶*-appˡ
         (⟶*-trans (⟶*-natrecⁿ r) (step (natrec-suc _ _ k) done))))
+
+  ------------------------------------------------------------------------
+  -- ★★★ D7's IDEAL SHAPE — REACH THE CALLER'S STEP.
+  --
+  -- ⚠ WHY THE LEMMAS ABOVE ARE NOT ENOUGH.  They land on the AUXILIARY's
+  --   branch, `app (app (subTm (single x) aZBr) x) …`, but a caller's own
+  --   theorem is about `app (app stp x) ih` — so the two DO NOT COMPOSE,
+  --   and every caller re-peels `aZBr`'s two binders by hand.  That is the
+  --   defect D7 was opened for and it survived the first attempt.
+  --
+  -- ★ THE INTERFACE IS CPS, and that is what makes it fit.  A caller
+  --   proves their step's equation UNIVERSALLY IN THE IH — which is the
+  --   shape it already has, because the IH is never inspected:
+  --
+  --       (ih : RTm ⌊ Δ ⌋) → app (app stp x) ih ⟶* answer
+  --
+  --   and hands it here to get `app amrecTm x ⟶* answer`.  Passing the IH
+  --   in continuation position means the combinator never has to NAME the
+  --   instantiated IH in its own statement, which is what made the direct
+  --   formulation unusable.
+  --
+  -- ★ Two βs peel the branch's binders; the weakenings on `stp` and on `x`
+  --   then cancel by `wk-single`.  ⚠ Propositionally, NOT definitionally —
+  --   even at `Δ = ◇` an OPAQUE `stp` has no `w stp ≡ stp`, so D7's note
+  --   that this "should be cheap at ◇" was optimistic about the wrong
+  --   thing: it is cheap, but by lemma, not by computation.
+  ------------------------------------------------------------------------
+
+  -- the IH the ZERO branch hands the step, fully instantiated
+  ihZ-at : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
+  ihZ-at x =
+    subTm (single (reflTm (subTm (single x) m)))
+      (subTm (extS (single x)) (subTm (extS (extS (single x))) ihZ))
+
+  -- three weakenings on `stp`, three substitutions, one `wk-single` each
+  stp-cancel : (x r : RTm ⌊ Δ ⌋) →
+    subTm (single r)
+      (subTm (extS (single x))
+        (subTm (extS (extS (single x))) (w (w (w stp)))))
+    ≡ stp
+  stp-cancel x r =
+    trans (cong (λ z → subTm (single r) (subTm (extS (single x)) z))
+                (trans (sub-w² {σ = single x} (w stp))
+                       (cong (λ z → w (w z)) (wk-single {v = x} stp))))
+      (trans (cong (subTm (single r))
+                   (trans (sub-w {σ = single x} (w stp))
+                          (cong w (wk-single {v = x} stp))))
+             (wk-single {v = r} stp))
+
+  -- the carrier argument: the two inner substitutions COMPUTE, leaving one
+  x-cancel : (x r : RTm ⌊ Δ ⌋) →
+    subTm (single r)
+      (subTm (extS (single x)) (subTm (extS (extS (single x))) (var (vs vz))))
+    ≡ x
+  x-cancel x r = wk-single {v = r} x
+
+  -- ★★ μ x ⟶* 0 : the whole reduction, in the caller's own terms.
+  amrec-step-z : {P : RTm ⌊ Δ ⌋} (x : RTm ⌊ Δ ⌋) →
+                 subTm (single x) m ⟶* nzero →
+                 ((ih : RTm ⌊ Δ ⌋) → app (app stp x) ih ⟶* P) →
+                 app amrecTm x ⟶* P
+  amrec-step-z {P = P} x r h =
+    ⟶*-trans
+      (⟶*-trans (amrec-unfold-z x r)
+        (step (ξ-appˡ (β _ x))
+          (step (β _ (reflTm (subTm (single x) m))) done)))
+      (subst (λ z → z ⟶* P)
+             (sym (cong₂ (λ s y → app (app s y) (ihZ-at x))
+                         (stp-cancel x (reflTm (subTm (single x) m)))
+                         (x-cancel x (reflTm (subTm (single x) m)))))
+             (h (ihZ-at x)))
+
+  -- ★★ μ x ⟶* suc k : the same, one layer down.  ⚠ `aSBr` carries FIVE
+  --    weakenings on the step against `aZBr`'s three, so the cancellation
+  --    is a five-rung chain (`sub-w⁴`…`wk-single`) rather than three.
+  auxIH : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
+  auxIH x k = natrec (subTm (single x) aZBr)
+                     (subTm (extS (extS (single x))) aSBr) k
+
+  ihS-at : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
+  ihS-at x k =
+    subTm (single (reflTm (subTm (single x) m)))
+      (subTm (extS (single x))
+        (subTm (extS (extS (single (auxIH x k))))
+          (subTm (extS (extS (extS (single k))))
+            (subTm (extS (extS (extS (extS (single x))))) ihS))))
+
+  stp-cancel-s : (x k r : RTm ⌊ Δ ⌋) →
+    subTm (single r)
+      (subTm (extS (single x))
+        (subTm (extS (extS (single (auxIH x k))))
+          (subTm (extS (extS (extS (single k))))
+            (subTm (extS (extS (extS (extS (single x)))))
+                   (w (w (w (w (w stp)))))))))
+    ≡ stp
+  stp-cancel-s x k r =
+    trans (cong (λ z → subTm (single r)
+                         (subTm (extS (single x))
+                           (subTm (extS (extS (single (auxIH x k))))
+                             (subTm (extS (extS (extS (single k)))) z))))
+                (trans (sub-w⁴ {σ = single x} (w stp))
+                       (cong (λ z → w (w (w (w z)))) (wk-single {v = x} stp))))
+    (trans (cong (λ z → subTm (single r)
+                          (subTm (extS (single x))
+                            (subTm (extS (extS (single (auxIH x k)))) z)))
+                 (trans (sub-w³ {σ = single k} (w stp))
+                        (cong (λ z → w (w (w z))) (wk-single {v = k} stp))))
+    (trans (cong (λ z → subTm (single r) (subTm (extS (single x)) z))
+                 (trans (sub-w² {σ = single (auxIH x k)} (w stp))
+                        (cong (λ z → w (w z)) (wk-single {v = auxIH x k} stp))))
+    (trans (cong (subTm (single r))
+                 (trans (sub-w {σ = single x} (w stp))
+                        (cong w (wk-single {v = x} stp))))
+           (wk-single {v = r} stp))))
+
+  x-cancel-s : (x k r : RTm ⌊ Δ ⌋) →
+    subTm (single r)
+      (subTm (extS (single x))
+        (subTm (extS (extS (single (auxIH x k))))
+          (subTm (extS (extS (extS (single k))))
+            (subTm (extS (extS (extS (extS (single x))))) (var (vs vz))))))
+    ≡ x
+  x-cancel-s x k r = wk-single {v = r} x
+
+  amrec-step-s : {P : RTm ⌊ Δ ⌋} (x k : RTm ⌊ Δ ⌋) →
+                 subTm (single x) m ⟶* nsuc k →
+                 ((ih : RTm ⌊ Δ ⌋) → app (app stp x) ih ⟶* P) →
+                 app amrecTm x ⟶* P
+  amrec-step-s {P = P} x k r h =
+    ⟶*-trans
+      (⟶*-trans (amrec-unfold-s x k r)
+        (step (ξ-appˡ (β _ x))
+          (step (β _ (reflTm (subTm (single x) m))) done)))
+      (subst (λ z → z ⟶* P)
+             (sym (cong₂ (λ s y → app (app s y) (ihS-at x k))
+                         (stp-cancel-s x k (reflTm (subTm (single x) m)))
+                         (x-cancel-s x k (reflTm (subTm (single x) m)))))
+             (h (ihS-at x k)))
 
 ------------------------------------------------------------------------
 -- ★★ AT A CLOSED CARRIER, THE UNFOLDING'S PREMISE IS FREE.

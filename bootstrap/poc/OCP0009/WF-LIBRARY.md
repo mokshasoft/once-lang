@@ -218,13 +218,51 @@ cleaner: `Δ ⊢ amrecTm ∷ Π (El cA) M`.
 `M` is abstract, so the naturality kit (`sub-w`, `wk-single`, …) comes
 back. That is the right direction under the criterion at the top.
 
-### D7 — A combinator must ship its COMPUTATION RULE, not only its typing ◐ PARTIAL
+### D7 — A combinator must ship its COMPUTATION RULE, not only its typing ✅ CLOSED 2026-08-12 (amrec)
 
 **Shipped:** `amrec-β`, `amrec-unfold-z`, `amrec-unfold-s` (conditional on
 the measure reaching a numeral), and `AmTΠ◇.amrec-unfold`, which discharges
 that premise at a closed carrier via D9.
 
-⛔ **NOT YET THE IDEAL SHAPE, and this is the open item.** All of the above
+✅ **AND THE IDEAL SHAPE IS NOW SHIPPED TOO** — `amrec-step-z` /
+`amrec-step-s`, `LibAmrec`, 2026-08-12.  What follows is the record of why
+the first attempt was not enough, because the reason generalises.
+
+★★ **THE FIX WAS THE INTERFACE, NOT THE PROOF: PUT THE IH IN CONTINUATION
+POSITION.**
+
+```agda
+amrec-step-s : (x k : RTm ⌊ Δ ⌋) → subTm (single x) m ⟶* nsuc k →
+               ((ih : RTm ⌊ Δ ⌋) → app (app stp x) ih ⟶* P) →
+               app amrecTm x ⟶* P
+```
+
+A caller's own theorem is ALREADY universally quantified in the IH —
+a step function never inspects it — so this is the shape they have.  The
+direct formulation would force the combinator to NAME the instantiated IH
+in its own statement (a five-fold substitution chain), which is what made
+it unusable.  CPS makes that term the combinator's private business.
+
+★ **Measured end to end, `SpikeGcd`:**
+
+```agda
+gcd-2-0 : app gcdTm (pair 2 0) ⟶* 2
+gcd-2-0 = amrec-step-s X20 n1 msr-2-0 gcd-computes-b0
+```
+
+ONE LINE, no glue — `gcd-computes-b0` is the caller's half, unchanged.
+⚠ Before this, that composition was NOT EXPRESSIBLE.
+
+⚠ **And D7's own cost note below was optimistic about the wrong thing.**
+It predicted this would be "cheap at `Δ = ◇`, where everything is closed
+and the substitutions compute".  It IS cheap — three rungs for the zero
+branch, five for the successor — but by LEMMA, not by computation: an
+OPAQUE `stp : RTm ε` has no `w stp ≡ stp` definitionally, so `wk-single`
+is paid at ◇ exactly as at any other `Δ`.  D1's "closed data cancel
+definitionally" holds for CONCRETE closed data, not for parameters.
+
+--------------------------------------------------------------------------
+**THE ORIGINAL DEFECT, for the record.**  The first three lemmas all
 reach the AUXILIARY's branch:
 
 ```agda
@@ -240,9 +278,8 @@ app amrecTm x ⟶* app (app stp x) ⟨the IH at x⟩          -- the ideal
 Two more β steps get there — `aZBr` is `lam (lam (app (app (w (w stp)) …) ihZ))`,
 so peeling its two binders exposes `stp`. Expected to be cheap at `Δ = ◇`,
 where everything is closed and the substitutions compute; the open case
-needs `wk-single` on the step. **Until this lands, a caller still unfolds
-one layer of the library's internals by hand, which is exactly what D7 was
-opened to stop.**
+needs `wk-single` on the step. ~~Until this lands, a caller still unfolds one layer of the library's
+internals by hand~~ — CLOSED, see above.
 
 **Discovered by trying to close the evaluation debt on `SpikeDivC`.**
 `divC-computes-zero` — `app divC nzero ⟶* nzero` — took eight hand-written
