@@ -353,66 +353,13 @@ compile-trace-cnt o n (i ∷ rest) =
 -- Plan 0.54 rung D: WHERE THE TWO LOWERINGS AGREE.
 --
 -- `compile-trace` (below) is the plain fold; `compile-trace-cnt` (above) is what
--- the compiler actually emits (`Once.Target.X86-64`). They differ on EXACTLY two
--- constructors — `instr-case-on-tag` and `instr-loop`, where the fold emits the
--- `ud2` sentinel and the threaded version emits the real label/branch lowering.
--- `NoNested` marks the traces where they coincide, so a correspondence proved
--- over the fold transfers to the emitted program.
-NoNestedI : AbstractInstr → Set
-NoNestedI (instr-case-on-tag _ _) = ⊥
-NoNestedI (instr-loop _)          = ⊥
-NoNestedI _                       = ⊤
+-- the compiler actually emits. They differ on exactly two constructors, and
+-- `NoNested` marks the traces where they coincide. That predicate mentions no
+-- x86 at all, so it is SHARED (plan 0.65) — re-exported here so every existing
+-- importer of this module reads unchanged.
+open import Once.CCC.Machine.NoNested public
 
-NoNested : AbstractTrace → Set
-NoNested []       = ⊤
-NoNested (i ∷ is) = NoNestedI i × NoNested is
 
--- Item 6 (2026-08-01): the unemittable set (`FrameFreeI`'s ⊥ cases) SUBSUMES
--- the nested set, so every emitted trace is `NoNested` — which makes
--- `compile-trace-cnt` and the plain `compile-trace` coincide on every emitted
--- program (`compile-trace-cnt-agrees` applies unconditionally at the apex,
--- retiring the `conc-flat-sim-nested` split).
--- Plan 0.63: the EMITTER FENCE suffices — the closure markers carry no
--- nested trace either, so widening from `FrameFreeI` costs nothing here.
-no-nested-of-frame-free : ∀ (i : AbstractInstr) → EmittableI i → NoNestedI i
-no-nested-of-frame-free mov-to-output           _ = tt
-no-nested-of-frame-free mov-to-input            _ = tt
-no-nested-of-frame-free mov-output-to-input2    _ = tt
-no-nested-of-frame-free mov-input2-to-output    _ = tt
-no-nested-of-frame-free load-indirect           _ = tt
-no-nested-of-frame-free load-indirect-suc       _ = tt
-no-nested-of-frame-free (load-from-slot _)      _ = tt
-no-nested-of-frame-free (store-at-slot _)       _ = tt
-no-nested-of-frame-free store-indirect          _ = tt
-no-nested-of-frame-free store-indirect-suc      _ = tt
-no-nested-of-frame-free (lea-slot _)            _ = tt
-no-nested-of-frame-free (restore-input _)       _ = tt
-no-nested-of-frame-free (lea-indexed _)         ()
-no-nested-of-frame-free (instr-alloc-stack _)   ()
-no-nested-of-frame-free (instr-dealloc-stack _) ()
-no-nested-of-frame-free (instr-push-frame _)    ()
-no-nested-of-frame-free instr-pop-frame         ()
-no-nested-of-frame-free (instr-loop _)          ()
-no-nested-of-frame-free (instr-case-on-tag _ _) ()
-no-nested-of-frame-free (instr-reclaim-to _)    _ = tt
-no-nested-of-frame-free instr-call-closure      _ = tt
-no-nested-of-frame-free (worklist-init _)       _ = tt
-no-nested-of-frame-free (worklist-push _)       _ = tt
-no-nested-of-frame-free (worklist-pop _)        _ = tt
-no-nested-of-frame-free (worklist-check _)      _ = tt
-no-nested-of-frame-free (instr-sigop _)         _ = tt
-no-nested-of-frame-free (instr-load-const _ _)  _ = tt
-no-nested-of-frame-free (instr-load-code-addr _) _ = tt
-no-nested-of-frame-free instr-save-closure-reg  _ = tt
-no-nested-of-frame-free (instr-load-tag-lit _)  _ = tt
-no-nested-of-frame-free (instr-alloc-heap _)    _ = tt
-no-nested-of-frame-free (instr-reg-op _)        _ = tt
-no-nested-of-frame-free (instr-ctrl _)          _ = tt
-
-no-nested-of-all : ∀ (t : AbstractTrace) → All EmittableI t → NoNested t
-no-nested-of-all []       _          = tt
-no-nested-of-all (i ∷ is) (fi ∷ fis) =
-  no-nested-of-frame-free i fi , no-nested-of-all is fis
 
 -- Backward-compatible non-threaded variant — direct foldr.
 -- Doesn't dispatch case-on-tag (emits ud2 for it via compile-abstract).
@@ -421,48 +368,6 @@ compile-trace : AbstractTrace → Program
 compile-trace [] = []
 compile-trace (i ∷ is) = compile-abstract i ++ compile-trace is
 -- Decidable, because the APEX needs to split on the fragment (`conc-flat-sim-just`
--- can only transport the correspondence when the two lowerings coincide).
-NoNestedI? : (i : AbstractInstr) → Dec (NoNestedI i)
-NoNestedI? (instr-case-on-tag _ _) = no (λ z → z)
-NoNestedI? (instr-loop _)          = no (λ z → z)
-NoNestedI? mov-to-output           = yes tt
-NoNestedI? mov-to-input            = yes tt
-NoNestedI? mov-output-to-input2    = yes tt
-NoNestedI? mov-input2-to-output    = yes tt
-NoNestedI? load-indirect           = yes tt
-NoNestedI? load-indirect-suc       = yes tt
-NoNestedI? (load-from-slot _)      = yes tt
-NoNestedI? (store-at-slot _)       = yes tt
-NoNestedI? store-indirect          = yes tt
-NoNestedI? store-indirect-suc      = yes tt
-NoNestedI? (lea-slot _)            = yes tt
-NoNestedI? (restore-input _)       = yes tt
-NoNestedI? (lea-indexed _)         = yes tt
-NoNestedI? (instr-alloc-stack _)   = yes tt
-NoNestedI? (instr-dealloc-stack _) = yes tt
-NoNestedI? (instr-reclaim-to _)    = yes tt
-NoNestedI? (instr-push-frame _)    = yes tt
-NoNestedI? instr-pop-frame         = yes tt
-NoNestedI? instr-call-closure      = yes tt
-NoNestedI? (worklist-init _)       = yes tt
-NoNestedI? (worklist-push _)       = yes tt
-NoNestedI? (worklist-pop _)        = yes tt
-NoNestedI? (worklist-check _)      = yes tt
-NoNestedI? (instr-sigop _)         = yes tt
-NoNestedI? (instr-load-const _ _)  = yes tt
-NoNestedI? (instr-load-code-addr _) = yes tt
-NoNestedI? instr-save-closure-reg  = yes tt
-NoNestedI? (instr-load-tag-lit _)  = yes tt
-NoNestedI? (instr-alloc-heap _)    = yes tt
-NoNestedI? (instr-reg-op _)        = yes tt
-NoNestedI? (instr-ctrl _)          = yes tt
-
-NoNested? : (t : AbstractTrace) → Dec (NoNested t)
-NoNested? []       = yes tt
-NoNested? (i ∷ is) with NoNestedI? i | NoNested? is
-... | yes p | yes q = yes (p , q)
-... | no ¬p | _     = no (λ z → ¬p (proj₁ z))
-... | _     | no ¬q = no (λ z → ¬q (proj₂ z))
 
 -- On a `NoNested` trace the two lowerings agree — same program, counter
 -- untouched (only case/loop consume labels). This is what lets the flat↔x86
