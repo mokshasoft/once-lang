@@ -38,7 +38,7 @@ open import poc.OCP0009.NbEPDirDBExamplesOrd using ( ⊢strong-base'; ⊢strong-
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBLibWk
   using ( w; wᶠ; cong₆; sub-w; sub-w²; wk-singleTy; wᶠ-single
-        ; wᶠ²-single; wᶠ³-single; w^; wTy^; wᶠ^; ⊢wkᶠ )
+        ; wᶠ²-single; wᶠ³-single; w^; wTy^; wᶠ^; ⊢wkᶠ; sub-wTy )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-fit )
 open import poc.OCP0009.SpikeLexT
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
