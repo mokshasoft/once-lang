@@ -28,7 +28,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTy; El; Hom; Nat; U
         ; RTm; var; nzero; nsuc; lam; app; absurd; ordtr
         ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR
-        ; subTy-renTy; renTy-subTy )
+        ; subTy-renTy; renTy-subTy; subTm-renTm; renTm-subTm; subTm-cong )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢ordtr; ⊢lam; ⊢app
@@ -95,6 +95,24 @@ rec2T-fit {X = X} A cM m₁ m₂ =
 sub-wTy : {Γ Δ : Cx} {σ : Sub Γ Δ} (T : RTy Γ) →
           subTy (extS σ) (renTy vs T) ≡ renTy vs (subTy σ T)
 sub-wTy T = trans (subTy-renTy T) (sym (renTy-subTy T))
+
+-- ★ …and the FAMILY twin, which by P1 needs a pointwise BRIDGE — it moves
+--   a family under `extR`.  `wᶠ-single` and `wᶠ-nrs` are its two special
+--   cases; the ASSEMBLY needs the general σ, because the outer motive is
+--   instantiated at an arbitrary bound.
+-- ⚠ The bridge's successor case is exactly `ren-w` at `ρ := vs`: both
+--   composites weaken `σ x` twice, one through `extR vs ∘ᵣ vs` and one
+--   through `vs ∘ᵣ vs`, and those are the same function only after the
+--   variable is cased on.
+wᶠ-sub : {Γ Δ : Cx} {σ : Sub Γ Δ} (t : RTm (Γ ∙)) →
+         subTm (extS (extS σ)) (wᶠ t) ≡ wᶠ (subTm (extS σ) t)
+wᶠ-sub {σ = σ} t =
+  trans (subTm-renTm t)
+        (trans (subTm-cong bridge t) (sym (renTm-subTm t)))
+  where
+    bridge : ∀ x → _
+    bridge vz     = refl
+    bridge (vs x) = sym (ren-w {ρ = vs} (σ x))
 
 ------------------------------------------------------------------------
 -- the step — `(x : A) → rec₁ → rec₂ → P x`
@@ -235,6 +253,47 @@ lexMot-w^ zero    A cM m₁ m₂ b₁ = refl
 lexMot-w^ (suc n) A cM m₁ m₂ b₁ =
   trans (cong (renTy vs) (lexMot-w^ n A cM m₁ m₂ b₁))
         (lexMot-ren (wTy^ n A) (wᶠ^ n cM) (wᶠ^ n m₁) (wᶠ^ n m₂) (w^ n b₁))
+
+-- ★★ THE OUTER MOTIVE'S FIT — the ASSEMBLY's load-bearing lemma, and the
+--    twin of `aIHT-fit`/`rec2T-fit`: instantiating `lexMot` at a bound.
+--    Four peels and two `refl`s; the μ₁-bound becomes `w X` and the
+--    μ₂-bound stays the `Π Nat`'s own variable, which is exactly the
+--    "n₂ is unconstrained when n₁ drops" of the lexicographic order.
+lexMot-fit : {Γ : Cx} {X : RTm Γ} (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) →
+             subTy (single X) (lexMot (renTy vs A) (wᶠ cM) (wᶠ m₁) (wᶠ m₂) (var vz))
+           ≡ lexMot A cM m₁ m₂ X
+lexMot-fit {X = X} A cM m₁ m₂ =
+  cong (Π Nat)
+    (trans (auxB-sub {σ = extS (single X)} (renTy vs (renTy vs A))
+                     (wᶠ (wᶠ cM)) (wᶠ (wᶠ m₁)) (wᶠ (wᶠ m₂))
+                     (var (vs vz)) (var vz))
+           (cong₆ auxB
+             (trans (sub-wTy {σ = single X} (renTy vs A))
+                    (cong (renTy vs) (wk-singleTy A)))
+             (trans (wᶠ-sub {σ = single X} (wᶠ cM)) (cong wᶠ (wᶠ-single cM)))
+             (trans (wᶠ-sub {σ = single X} (wᶠ m₁)) (cong wᶠ (wᶠ-single m₁)))
+             (trans (wᶠ-sub {σ = single X} (wᶠ m₂)) (cong wᶠ (wᶠ-single m₂)))
+             refl refl))
+
+-- ★ and its `nrs` instance, which is the OUTER STEP's boundary.  Same six
+--   slots; only the μ₁-bound moves, to `suc n₁'`.
+lexMot-nrs : {Γ : Cx} (A : RTy Γ) (cM m₁ m₂ : RTm (Γ ∙)) →
+             subTy nrs (lexMot (renTy vs A) (wᶠ cM) (wᶠ m₁) (wᶠ m₂) (var vz))
+           ≡ Π Nat (auxB (renTy vs (renTy vs (renTy vs A)))
+                         (wᶠ (wᶠ (wᶠ cM))) (wᶠ (wᶠ (wᶠ m₁))) (wᶠ (wᶠ (wᶠ m₂)))
+                         (nsuc (var (vs (vs vz)))) (var vz))
+lexMot-nrs A cM m₁ m₂ =
+  cong (Π Nat)
+    (trans (auxB-sub {σ = extS nrs} (renTy vs (renTy vs A))
+                     (wᶠ (wᶠ cM)) (wᶠ (wᶠ m₁)) (wᶠ (wᶠ m₂))
+                     (var (vs vz)) (var vz))
+           (cong₆ auxB
+             (trans (sub-wTy {σ = nrs} (renTy vs A))
+                    (cong (renTy vs) (nrs-wTy A)))
+             (trans (wᶠ-sub {σ = nrs} (wᶠ cM)) (cong wᶠ (wᶠ-nrs cM)))
+             (trans (wᶠ-sub {σ = nrs} (wᶠ m₁)) (cong wᶠ (wᶠ-nrs m₁)))
+             (trans (wᶠ-sub {σ = nrs} (wᶠ m₂)) (cong wᶠ (wᶠ-nrs m₂)))
+             refl refl))
 
 -- the inner motives: the μ₂-bound is the inner natrec's variable, and the
 -- μ₁-bound is `0` or `suc n₁'` respectively.
