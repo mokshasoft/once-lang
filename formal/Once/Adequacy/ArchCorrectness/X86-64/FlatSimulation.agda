@@ -1173,7 +1173,7 @@ block-step-worklist-push {hv} prog fs s slot cc h ft slot<ns disj =
                    (C.rax-eq dc)
     dataPost : C.FlatCorr hv (flat-exec-instr (worklist-push slot) prog fs) post
     dataPost = subst (C.FlatCorr hv (flat-exec-instr (worklist-push slot) prog fs)) (sym post-eq)
-                     (C.sim-store-at-slot slot fs s dc slot<ns disj)
+                     (C.sim-store-at-slot slot fs s _ dc slot<ns disj (C.sets-mem-x86 s _ _ _ _))
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (worklist-push slot) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (worklist-push slot) ft))
 
@@ -1250,7 +1250,7 @@ block-step-store-indirect {hv} prog fs s hl cc h ft i-eq live-hl guard =
                    (cong₂ (writeMem (memory s)) rdi-val (C.rax-eq dc))
     dataPost : C.FlatCorr hv (flat-exec-instr store-indirect prog fs) post
     dataPost = subst (C.FlatCorr hv (flat-exec-instr store-indirect prog fs)) (sym post-eq)
-                     (C.sim-store-indirect hl fs s dc i-eq live-hl guard)
+                     (C.sim-store-indirect hl fs s _ dc i-eq live-hl guard (C.sets-mem-x86 s _ _ _ _))
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr store-indirect prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) store-indirect ft))
 
@@ -1295,7 +1295,7 @@ block-step-store-indirect-suc {hv} prog fs s hl cc h ft i-eq live-shl guard =
                    (cong₂ (writeMem (memory s)) addr-val (C.rax-eq dc))
     dataPost : C.FlatCorr hv (flat-exec-instr store-indirect-suc prog fs) post
     dataPost = subst (C.FlatCorr hv (flat-exec-instr store-indirect-suc prog fs)) (sym post-eq)
-                     (C.sim-store-indirect-suc hl fs s dc i-eq live-shl guard)
+                     (C.sim-store-indirect-suc hl fs s _ dc i-eq live-shl guard (C.sets-mem-x86 s _ _ _ _))
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr store-indirect-suc prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) store-indirect-suc ft))
 
@@ -1338,7 +1338,7 @@ block-step-store-at-slot {hv} prog fs s slot cc h ft slot<ns disj =
                    (C.rax-eq dc)
     dataPost : C.FlatCorr hv (flat-exec-instr (store-at-slot slot) prog fs) post
     dataPost = subst (C.FlatCorr hv (flat-exec-instr (store-at-slot slot) prog fs)) (sym post-eq)
-                     (C.sim-store-at-slot slot fs s dc slot<ns disj)
+                     (C.sim-store-at-slot slot fs s _ dc slot<ns disj (C.sets-mem-x86 s _ _ _ _))
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (store-at-slot slot) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (store-at-slot slot) ft))
 
@@ -1937,7 +1937,7 @@ block-step-store-indirect-stack {hv} prog fs s f k cc h ft i-eq f-eq k<ns disj =
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     dataPost : C.FlatCorr hv (flat-exec-instr store-indirect prog fs) post
-    dataPost = C.sim-store-indirect-stack k fs s dc i-eq' k<ns disj
+    dataPost = C.sim-store-indirect-stack k fs s _ dc i-eq' k<ns disj (C.sets-mem-x86 s _ _ _ _)
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr store-indirect prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) store-indirect ft))
 
@@ -1991,6 +1991,6 @@ block-step-store-indirect-suc-stack {hv} prog fs s f k cc h ft i-eq f-eq sk<ns d
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     dataPost : C.FlatCorr hv (flat-exec-instr store-indirect-suc prog fs) post
-    dataPost = C.sim-store-indirect-suc-stack k fs s dc i-eq' sk<ns disj
+    dataPost = C.sim-store-indirect-suc-stack k fs s _ dc i-eq' sk<ns disj (C.sets-mem-x86 s _ _ _ _)
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr store-indirect-suc prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) store-indirect-suc ft))
