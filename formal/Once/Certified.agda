@@ -38,16 +38,23 @@ open import Once.CanonicalName using (CanonicalName)
 open import Data.Nat using (ℕ)
 
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
+import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 
 module Once.Certified
   (o : CanonicalName) (program-bound : ℕ)
   (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o)
-  (x86-64-call-room : RB.CallRoom o) where
+  (x86-64-call-room : RB.CallRoom o)
+  -- Plan 0.65: riscv64's three, threaded the same way (D087). They could not
+  -- be stated until riscv64 had a correspondence to condition them on; now
+  -- they are, the apex constrains their shape instead of G2 inventing it.
+  (riscv64-heap-room : RBr.HeapRoom o) (riscv64-stack-room : RBr.StackRoom o)
+  (riscv64-call-room : RBr.CallRoom o) where
 
 -- P5 (OCP-0006): the correctness criterion is consumed THROUGH the spec
 -- door — `Once.Spec` is on the certified path, not an island.
 open import Once.Spec using (CorrectCompiler)
-open import Once.Compiler o program-bound x86-64-heap-room x86-64-stack-room x86-64-call-room using (once-compiler)
+open import Once.Compiler o program-bound x86-64-heap-room x86-64-stack-room x86-64-call-room
+       riscv64-heap-room riscv64-stack-room riscv64-call-room using (once-compiler)
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
 
 record CertifiedBuild : Set₁ where

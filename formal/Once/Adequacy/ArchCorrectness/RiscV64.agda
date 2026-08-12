@@ -28,7 +28,16 @@ open import Once.CanonicalName using (CanonicalName)
 
 open import Data.Nat using (ℕ)
 
-module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (program-bound : ℕ) where
+import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
+
+module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (program-bound : ℕ)
+  -- Plan 0.65: the three resource bounds, as PARAMETERS threaded from the apex
+  -- (D087), symmetric with x86-64. Not yet CONSUMED — `riscv64-conc-flat-sim`
+  -- is still whole-cloth, so nothing below has asked for them — but the thread
+  -- is what fixes their SHAPE before G2's block-steps are written, which is the
+  -- point: a premise handed down is not a premise invented.
+  (riscv64-heap-room : RBr.HeapRoom o) (riscv64-stack-room : RBr.StackRoom o)
+  (riscv64-call-room : RBr.CallRoom o) where
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)

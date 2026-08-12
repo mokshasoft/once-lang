@@ -192,6 +192,7 @@ ccc-riscv64:
 # exists to prevent.
 	@sh -c '$(AGDA_CMD) Once/Adequacy/ArchCorrectness/RiscV64/RegRoles.agda'
 	@sh -c '$(AGDA_CMD) Once/Adequacy/ArchCorrectness/RiscV64/FlatComposition.agda'
+	@sh -c '$(AGDA_CMD) Once/Adequacy/ArchCorrectness/RiscV64/FlatCorrespondence.agda'
 
 #-----------------------------------------------------------------------------
 # Pipeline: Arithmetic Primitives (target-specific)

@@ -25,11 +25,14 @@ open import Once.CanonicalName using (CanonicalName)
 open import Data.Nat using (ℕ)
 
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
+import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 
 module Once.Compiler
   (o : CanonicalName) (program-bound : ℕ)
   (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o)
-  (x86-64-call-room : RB.CallRoom o) where
+  (x86-64-call-room : RB.CallRoom o)
+  (riscv64-heap-room : RBr.HeapRoom o) (riscv64-stack-room : RBr.StackRoom o)
+  (riscv64-call-room : RBr.CallRoom o) where
 
 open import Data.List using (List)
 open import Data.Nat using (ℕ)
@@ -44,7 +47,8 @@ open import Once.Adequacy.SourceTrace using (⟦_⟧)
 -- this assembly point. `Once.Adequacy.Compile.WithCPU` itself stays
 -- free of those imports.
 open import Once.Adequacy.CPU      using (Arch; Byte; arch-semantics)
-open import Once.Adequacy.ArchCorrectness o program-bound x86-64-heap-room x86-64-stack-room x86-64-call-room using (arch-correctness)
+open import Once.Adequacy.ArchCorrectness o program-bound x86-64-heap-room x86-64-stack-room x86-64-call-room
+       riscv64-heap-room riscv64-stack-room riscv64-call-room using (arch-correctness)
 import Once.Adequacy.Compile as VCompile
 
 -- Instantiate the verified pipeline with the concrete per-arch
