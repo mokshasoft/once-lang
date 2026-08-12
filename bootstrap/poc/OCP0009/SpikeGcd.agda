@@ -47,18 +47,22 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢⌜Nat⌝
         ; ty-Nat; ty-Hom; ty-El; ty-Π
         ; _≅ᵀ_; csymᵀ
-        ; ξ-nsuc; ξ-Homˡ; ξ-natrecⁿ; ξ-natrecᶻ; βfst; βsnd )
+        ; ξ-nsuc; ξ-Homˡ; ξ-natrecⁿ; ξ-natrecᶻ; βfst; βsnd
+        ; _⟶_; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
-open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
-open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm; ⊢monus )
+open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
+open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus; n1; n2; n3 )
+open import poc.OCP0009.NbEPDirDBExamplesDiv
+  using ( monusTm; ⊢monus; monus-zero; monus-suc; pred-zero; pred-suc
+        ; monus-computes )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( aStepT; module AmTΠ )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asP )
 open import poc.OCP0009.SpikeArith using ( plusMonoTm )
 open import poc.OCP0009.SpikePlusComm using ( plusMonoLTm )
 open import poc.OCP0009.SpikeGcdDesc
-  using ( monusLtTm; ⊢desc-left; ⊢desc-right )
+  using ( monusLtTm; ⊢desc-left; ⊢desc-right; pred* )
 
 ------------------------------------------------------------------------
 -- ★ THE MEASURE — a real computation, not a projection.
@@ -250,3 +254,80 @@ gcdTm = amrecTm
 --   `TERMINATING`, no fuel, no `Acc`, nothing added to the kernel.
 ⊢gcd : ◇ ⊢ gcdTm ∷ Π PairT (El ⌜Nat⌝)
 ⊢gcd = ⊢amrecΠ
+
+------------------------------------------------------------------------
+-- ★★★ AND IT COMPUTES.  Type-correct is not the same as correct: this
+--     repo already has ONE recorded case of a recursion that typechecked
+--     and was not the intended function (`⊢gcd-descend`).  These four
+--     reductions pin all four defining equations.
+--
+-- ⚠ These are the USER's half — how `amrecTm` unfolds TO the step is
+--   `amrec-unfold-z`/`-s` in `LibAmrec`, already proven there.  Together
+--   they cover `app gcdTm x`.
+--
+-- ⚠ CONCRETE numerals, not an arbitrary `a`: for an open `a` the final β
+--   leaves `subTm (single ih) (w a)`, which is `a` only PROPOSITIONALLY
+--   (`wk-single`).  At a numeral it computes.  Same note as `SpikePairT`.
+------------------------------------------------------------------------
+
+-- `1 ∸ 3 ⟶* 0`, which is what sends the comparison down the `a ≤ b` side
+monus-1-3 : {Γ : Cx} → monusTm {Γ} n1 n3 ⟶* nzero
+monus-1-3 =
+  ⟶*-trans (monus-suc n1 n2)
+    (⟶*-trans (pred* (⟶*-trans (monus-suc n1 n1)
+                        (⟶*-trans (pred* (⟶*-trans (monus-suc n1 nzero)
+                                            (⟶*-trans (pred* (monus-zero n1))
+                                                      (pred-suc nzero))))
+                                  pred-zero)))
+              pred-zero)
+
+-- ★ 1.  `gcd (a , 0) = a`
+gcd-computes-b0 : (ih : RTm ε) → app (app gcdStp (pair n2 nzero)) ih ⟶* n2
+gcd-computes-b0 ih =
+  step (ξ-appˡ (β _ (pair n2 nzero)))
+    (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βsnd n2 nzero) done)))
+      (⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done))
+        (step (β _ ih) (step (βfst n2 nzero) done))))
+
+-- ★ 2.  `gcd (0 , b) = b`
+gcd-computes-a0 : (ih : RTm ε) → app (app gcdStp (pair nzero n2)) ih ⟶* n2
+gcd-computes-a0 ih =
+  step (ξ-appˡ (β _ (pair nzero n2)))
+    (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βsnd nzero n2) done)))
+      (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ n1) done))
+        (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst nzero n2) done)))
+          (⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done))
+            (step (β _ ih) done)))))
+
+-- ★★ 3.  a > b : `gcd (3 , 1)` really does recurse at `(3 ∸ 1 , 1)` —
+--     SUBTRACT b FROM a, KEEP b.  ⚠ This is the equation a gcd-class spec
+--     error lands on, and the one `⊢gcd-descend`'s recursion got wrong.
+gcd-recurses-left : (ih : RTm ε) →
+                    app (app gcdStp (pair n3 n1)) ih
+                  ⟶* app (app ih (pair (monusTm n3 n1) n1))
+                         (plusMonoLTm (monusTm n3 n1) n3 n1 (monusLtTm n2 nzero))
+gcd-recurses-left ih =
+  step (ξ-appˡ (β _ (pair n3 n1)))
+    (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βsnd n3 n1) done)))
+      (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ nzero) done))
+        (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst n3 n1) done)))
+          (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ n2) done))
+            (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ monus-computes))
+              (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ n1) done))
+                (step (β _ ih) done)))))))
+
+-- ★★ 4.  a ≤ b : `gcd (1 , 3)` recurses at `(1 , 3 ∸ 1)` — KEEP a,
+--     SUBTRACT a FROM b.  The comparison really does pick the other side.
+gcd-recurses-right : (ih : RTm ε) →
+                     app (app gcdStp (pair n1 n3)) ih
+                   ⟶* app (app ih (pair n1 (monusTm n3 n1)))
+                          (plusMonoTm (monusLtTm n2 nzero) n1)
+gcd-recurses-right ih =
+  step (ξ-appˡ (β _ (pair n1 n3)))
+    (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βsnd n1 n3) done)))
+      (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ n2) done))
+        (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst n1 n3) done)))
+          (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ nzero) done))
+            (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ monus-1-3))
+              (⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done))
+                (step (β _ ih) done)))))))
