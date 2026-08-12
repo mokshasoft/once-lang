@@ -109,7 +109,7 @@ module FFOx = FFO o x86-64 x86-64-frame-semantics entry-frame-x86-64 (arch-seman
 -- A THEOREM: the entry frame IS the loader's `%rsp`
 -- (`entry-frame-x86-64 = stack-addr stack-top _`) and `frame-base` on x86-64 is
 -- the `addr` projection, so this holds DEFINITIONALLY. Both `entry-corr`'s
--- `rsp-eq` and the `stack-eq` floor bound consume it.
+-- `sp-eq` and the `stack-eq` floor bound consume it.
 entry-frame-base : frame-base x86-64-frame-semantics
                      (current-frame (FFOx.entry-alloc 0)) ≡ X.stack-top
 entry-frame-base = refl
@@ -253,18 +253,18 @@ entry-corr : ∀ (ir : IR Unit Unit)
                           (ArchSemantics.initialState as64)
 entry-corr ir = record
   { dataCorr = record
-      { rdi-eq  = refl
+      { in1-eq  = refl
       -- D097: the entry `%r12` is 0 and the entry `fclosure` is the D074 tag
       -- filler, which encodes to 0 — the same match the other registers make.
-      ; r12-eq  = refl
-      ; rsi-eq  = refl
-      ; rax-eq  = refl
-      ; rbx-eq  = refl
+      ; clos-eq  = refl
+      ; in2-eq  = refl
+      ; out-eq  = refl
+      ; scratch-eq  = refl
       -- emptyRegFile's %r14 ≡ 0 ≡ enc-sv (SV-Tag 0), the entry `Count` filler
-      ; r14-eq  = refl
+      ; count-eq  = refl
       ; halt-eq = refl
-      ; rsp-eq  = sym entry-frame-base   -- initState's %rsp IS the entry frame's base
-      ; r15-eq  = refl          -- emptyRegFile's %r15 ≡ 0 ≡ the entry frontier
+      ; sp-eq  = sym entry-frame-base   -- initState's %rsp IS the entry frame's base
+      ; frontier-eq  = refl          -- emptyRegFile's %r15 ≡ 0 ≡ the entry frontier
       ; dom-fresh = λ ()        -- nothing is mapped yet
       -- …and nothing needs to be: the entry heap is empty (`dom-written`'s
       -- hypothesis is `nothing ≡ just w`) and no block has a size yet

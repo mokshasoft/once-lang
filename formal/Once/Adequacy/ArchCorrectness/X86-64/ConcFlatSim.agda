@@ -2287,7 +2287,7 @@ mutual
           halt-s : X.State.halted s ≡ false
           halt-s = trans (C.halt-eq dc) h
           rbx0 : X.readReg (X.State.regs s) rbx ≡ 0
-          rbx0 = trans (C.rbx-eq dc) (cong (C.enc-sv hv) sc-eq)
+          rbx0 = trans (C.scratch-eq dc) (cong (C.enc-sv hv) sc-eq)
           fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (reg rbx) (imm 0))
           fetch-cmp = trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
                             (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-scratch-zero m)) ftq)
@@ -2428,14 +2428,14 @@ mutual
           dc = dataCorr cc
           addr-val : X.readReg (X.State.regs s) rdi + 0 ≡ haddr hv hl
           addr-val = trans (+-identityʳ (X.readReg (X.State.regs s) rdi))
-                           (trans (C.rdi-eq dc) (cong (C.enc-sv hv) i-eq))
+                           (trans (C.in1-eq dc) (cong (C.enc-sv hv) i-eq))
           rd-heap : X.readMem (X.State.memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just k
           rd-heap = trans (cong (X.readMem (X.State.memory s)) addr-val)
                           (trans (C.heap-eq dc hl (C.dom-written dc hl r-eq))
                                  (cong (C.enc-maybe hv) r-eq))
       -- STACK (the probe's route): the pointer denotes `slot-addr f k'`; the
       -- live-pair theorem pins it to the current frame's live window, where
-      -- `rsp-eq` + `stack-eq` relate exactly that cell.
+      -- `sp-eq` + `stack-eq` relate exactly that cell.
       go-loc (AtStack f k') k i-eq r-eq =
         go-fl (AtStack f k') k i-eq r-eq rd-stack (find-label prog m) refl
         where
@@ -2446,11 +2446,11 @@ mutual
           rdi-val : X.readReg (X.State.regs s) rdi + 0
                   ≡ X.readReg (X.State.regs s) rsp + slot-to-disp k'
           rdi-val = trans (+-identityʳ (X.readReg (X.State.regs s) rdi))
-                    (trans (C.rdi-eq dc)
+                    (trans (C.in1-eq dc)
                     (trans (cong (C.enc-sv hv) i-eq)
                     (trans (cong (λ fr → slot-addr FS fr k') (proj₁ spc))
                     (trans (slot-addr-linear FS (current-frame (falloc fs)) k')
-                           (cong₂ (λ b w' → b + k' * w') (sym (C.rsp-eq dc)) word-eq)))))
+                           (cong₂ (λ b w' → b + k' * w') (sym (C.sp-eq dc)) word-eq)))))
           rd-stack : X.readMem (X.State.memory s) (X.effectiveAddr s (base+disp rdi 0)) ≡ just k
           rd-stack = trans (cong (X.readMem (X.State.memory s)) rdi-val)
                            (C.stack-eq-cur dc k' (proj₂ spc) _ st-cf)
@@ -2565,7 +2565,7 @@ mutual
           go-loc (AtDynamic hl) i-eq ib = go-mem hl i-eq (ib hl refl) (heapMem (floc fs) hl) refl
           -- Plan 0.61: a load THROUGH A STACK POINTER is an ordinary step —
           -- the pointer denotes `slot-addr f k`, and for the CURRENT frame's live
-          -- slots (`stack-ptr-current`, a THEOREM) `rsp-eq` + `stack-eq` relate
+          -- slots (`stack-ptr-current`, a THEOREM) `sp-eq` + `stack-eq` relate
           -- exactly that cell.
           go-loc (AtStack f k)  i-eq ib =
             go-stack f k i-eq (stack-ptr-current prog fs f k (inv-run wf) i-eq)
