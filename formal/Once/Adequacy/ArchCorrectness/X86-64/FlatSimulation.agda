@@ -659,8 +659,9 @@ block-step-alloc-stack {hv} prog fs s n cc h ft fresh-abs lo' lo'≤lo front-lo'
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
                           (flat-exec-instr (instr-alloc-stack n) prog fs) post
-    dataPost = C.sim-alloc-stack n newFlags fs s dc fresh-abs
+    dataPost = C.sim-alloc-stack n fs s _ dc fresh-abs
                                  lo' lo'≤lo front-lo' lo'≤rsp fits
+                                 (C.sets-role-x86 s role-sp _ _ _)
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-alloc-stack n) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-alloc-stack n) ft))
 
@@ -726,8 +727,9 @@ block-step-c-thunk {hv} prog fs s n b cc h ft lo' lo'≤lo front-lo' lo'≤rsp f
                     (exec-1 {compile-trace prog} {0} {post-lab} {post-sub} halt-s step-sub halt-s)
     dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
                           (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs) post-sub
-    dataPost = C.sim-thunk b newFlags (pc s + 1 + 1) fs s dc
+    dataPost = C.sim-thunk b fs s _ dc
                            lo' lo'≤lo front-lo' lo'≤rsp fits
+                           (C.sets-role-x86 s role-sp _ _ _)
     pco' : X.State.pc post-sub
          ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs))
     pco' = trans (+-assoc (pc s) 1 1)
@@ -840,7 +842,7 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
                           (flat-exec-instr instr-call-closure prog fs) post
     dataPost = subst (λ z → C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo') z post)
                      (sym step-eq)
-                     (C.sim-call j (blk-off prog j) retAddr fs s dc lo' lo'≤lo front-lo' lo'≤rsp fits)
+                     (C.sim-call j retAddr fs s _ dc lo' lo'≤lo front-lo' lo'≤rsp fits (C.sets-role-mem-x86 s role-sp _ _ _ _ _))
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr instr-call-closure prog fs))
     pco' = cong (λ z → blk-off prog (fpc z)) (sym step-eq)
     -- THE PUSHED CELL, described: the entered frame reserves nothing, so its
@@ -974,7 +976,7 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq =
              ≡ frame-base FS (current-frame (leave-frame (falloc fs)))
     restores = trans (cong (_+ slot-size) addr-eq) (trans gap (sym (base-leave feq)))
     dataPost : C.FlatCorr hv (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) post-ret
-    dataPost = C.sim-ret b rpc rest newFlags (blk-off prog rpc) fs s dc req restores
+    dataPost = C.sim-ret b rpc rest fs s _ dc req restores (C.sets-role-x86 s role-sp _ _ _)
     pco' : X.State.pc post-ret ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
     pco' = cong (blk-off prog) (sym (do-ret-pc-∷ fs rpc rest req))
     retPost : C.RetAddrs (blk-off prog) (X.State.memory post-ret)
@@ -1023,7 +1025,7 @@ block-step-dealloc-stack {hv} prog fs s n cc h ft restores retPost =
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     dataPost : C.FlatCorr hv (flat-exec-instr (instr-dealloc-stack n) prog fs) post
-    dataPost = C.sim-dealloc-stack n newFlags fs s dc restores
+    dataPost = C.sim-dealloc-stack n fs s _ dc restores (C.sets-role-x86 s role-sp _ _ _)
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-dealloc-stack n) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-dealloc-stack n) ft))
 
@@ -1720,8 +1722,9 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wf2 wfs wfc wfcl wf-heap wf-s
                     (exec-1 {compile-trace prog} {0} {post-mov} {post-add} halt-s step2 halt-s)
     dataPost : C.FlatCorr (C.extend-view hv (next-heap-ref (falloc fs)) n (C.dom-fresh dc) room)
                           (flat-exec-instr (instr-alloc-heap n) prog fs) post-add
-    dataPost = C.sim-alloc-heap n (X.State.flags post-add) (pc post-mov + 1) fs s dc
+    dataPost = C.sim-alloc-heap n fs s _ dc
                  wf1 wf2 wfs wfc wfcl wf-heap wf-stack fresh-abs room
+                 (C.sets-2roles-x86 s role-out role-heap _ _ _ _ (λ ()))
     pco' : X.State.pc post-add ≡ blk-off prog (fpc (flat-exec-instr (instr-alloc-heap n) prog fs))
     pco' = trans (trans (cong (λ p → (p + 1) + 1) po) (+-assoc (blk-off prog (fpc fs)) 1 1))
                  (sym (blk-off-suc prog (fpc fs) (instr-alloc-heap n) ft))

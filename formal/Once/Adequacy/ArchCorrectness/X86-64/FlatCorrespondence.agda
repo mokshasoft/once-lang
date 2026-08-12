@@ -615,6 +615,39 @@ module _ {hv : HeapView} {fs : FlatState} {s s' : X.State} {wa : ℕ} {wv : X.Wo
   mkeep-lo-le = subst (lo hv ≤_) (sym (mem-regs sm role-sp)) (lo-le corr)
 
 ------------------------------------------------------------------------
+-- THE TWO COMBINED SHAPES, and they exist because the ISA does — not because
+-- the interface wanted generality. `call` lowers `%rsp` AND stores the return
+-- address in the slot it just freed; `alloc-heap`'s two-instruction block
+-- writes Output and the frontier. Neither decomposes into two `SetsRole`s,
+-- because the INTERMEDIATE state is not something either lemma is given.
+--
+-- (A single record indexed by "which roles and which address were written"
+-- would subsume all four. Worth doing when the module moves into `FlatCore`;
+-- not worth doing speculatively here, where four concrete shapes cover 33
+-- lemmas and each says exactly what its instruction does.)
+------------------------------------------------------------------------
+record SetsRoleMem (s s' : X.State) (ρ : Role) (v : X.Word) (a : ℕ) (mv : X.Word) : Set where
+  field
+    rm-at-role  : X.readReg (X.State.regs s') (reg-of ρ) ≡ v
+    rm-off-role : ∀ ρ' → ¬ (ρ' ≡ ρ)
+                → X.readReg (X.State.regs s') (reg-of ρ') ≡ X.readReg (X.State.regs s) (reg-of ρ')
+    rm-at-addr  : X.readMem (X.State.memory s') a ≡ just mv
+    rm-off-addr : ∀ a' → ¬ (a' ≡ a)
+                → X.readMem (X.State.memory s') a' ≡ X.readMem (X.State.memory s) a'
+    rm-halt     : X.State.halted s' ≡ X.State.halted s
+open SetsRoleMem public
+
+record Sets2Roles (s s' : X.State) (ρ₁ ρ₂ : Role) (v₁ v₂ : X.Word) : Set where
+  field
+    at-role₁  : X.readReg (X.State.regs s') (reg-of ρ₁) ≡ v₁
+    at-role₂  : X.readReg (X.State.regs s') (reg-of ρ₂) ≡ v₂
+    off-roles : ∀ ρ → ¬ (ρ ≡ ρ₁) → ¬ (ρ ≡ ρ₂)
+              → X.readReg (X.State.regs s') (reg-of ρ) ≡ X.readReg (X.State.regs s) (reg-of ρ)
+    keeps-mem₂  : X.State.memory s' ≡ X.State.memory s
+    keeps-halt₂ : X.State.halted s' ≡ X.State.halted s
+open Sets2Roles public
+
+------------------------------------------------------------------------
 -- The window a straight-line instruction addresses: the CURRENT frame's,
 -- in the `%rsp`-relative form the emitted code uses. This is the head of
 -- the frame list, re-anchored through `rsp-eq` — i.e. exactly the field
@@ -1111,6 +1144,42 @@ sets-mem-x86 s a v fl p = record
   ; mem-halt = refl
   }
 
+-- The two combined shapes, realised the same way. `off-roles` reuses
+-- `sets-role-x86`'s enumeration twice rather than repeating 64 clauses: a
+-- double register write is two single writes, and the state it lands in is the
+-- one the inner write's realiser already describes.
+sets-role-mem-x86 : ∀ (s : X.State) (ρ : Role) (v : X.Word) (a : ℕ) (mv : X.Word) (fl : X.Flags) (p : ℕ)
+  → SetsRoleMem s (mkstate (xwriteReg (xregs s) (reg-of ρ) v)
+                           (writeMem (memory s) a mv) fl p (xhalted s)) ρ v a mv
+sets-role-mem-x86 s ρ v a mv fl p = record
+  { rm-at-role  = at-role (sets-role-x86 s ρ v fl p)
+  ; rm-off-role = off-role (sets-role-x86 s ρ v fl p)
+  ; rm-at-addr  = read-write-hit (memory s) a mv
+  ; rm-off-addr = λ a' ne → read-write-miss (memory s) a mv a' ne
+  ; rm-halt     = refl
+  }
+
+-- `ρ₁ ≢ ρ₂` IS A PREMISE, and it has to be: the first write's value must
+-- survive the second, which is false if they name one register. The call site
+-- passes literal constructors, so it discharges with `λ ()` — the same shape
+-- every `keep-*` use has.
+sets-2roles-x86 : ∀ (s : X.State) (ρ₁ ρ₂ : Role) (v₁ v₂ : X.Word) (fl : X.Flags) (p : ℕ)
+  → ¬ (ρ₁ ≡ ρ₂)
+  → Sets2Roles s (mkstate (xwriteReg (xwriteReg (xregs s) (reg-of ρ₁) v₁) (reg-of ρ₂) v₂)
+                          (memory s) fl p (xhalted s)) ρ₁ ρ₂ v₁ v₂
+sets-2roles-x86 s ρ₁ ρ₂ v₁ v₂ fl p ne = record
+  { at-role₁ = trans (off-role (sets-role-x86 s' ρ₂ v₂ fl p) ρ₁ ne)
+                     (at-role (sets-role-x86 s ρ₁ v₁ fl p))
+  ; at-role₂ = at-role (sets-role-x86 s' ρ₂ v₂ fl p)
+  ; off-roles = λ ρ ne₁ ne₂ →
+      trans (off-role (sets-role-x86 s' ρ₂ v₂ fl p) ρ ne₂)
+            (off-role (sets-role-x86 s ρ₁ v₁ fl p) ρ ne₁)
+  ; keeps-mem₂ = refl ; keeps-halt₂ = refl
+  }
+  where
+    s' : X.State
+    s' = mkstate (xwriteReg (xregs s) (reg-of ρ₁) v₁) (memory s) fl p (xhalted s)
+
 -- THE FLOOR IS ONLY EVER READ AT THE HEAD, so replacing it there is the whole
 -- of both frame moves: `enter-frame` conses (the tail's floor becomes the
 -- caller's base), `leave-frame` drops the head (the floor drops back to `lo`).
@@ -1460,7 +1529,7 @@ sim-store-at-slot {hv} slot fs s s' corr slot<b disj sm = corr-clean
 -- (heap liveness is invariant under a next-slot change — `liveinv`). Flags are
 -- clobbered by `sub` but FlatCorr is flag-free, so the post is flag-parametric.
 ------------------------------------------------------------------------
-sim-alloc-stack : {hv : HeapView} (n : ℕ) (newFlags : X.Flags) (fs : FlatState) (s : X.State) → FlatCorr hv fs s
+sim-alloc-stack : {hv : HeapView} (n : ℕ) (fs : FlatState) (s s' : X.State) → FlatCorr hv fs s
   -- fresh (abstract): the CALLEE frame the reservation moves into is unwritten.
   -- Plan 0.61: the flat machine shifts `current-frame` here, so this is about
   -- the SHIFTED frame — a strictly weaker (and more obviously true) premise
@@ -1486,30 +1555,28 @@ sim-alloc-stack : {hv : HeapView} (n : ℕ) (newFlags : X.Flags) (fs : FlatState
   -- be provably BELOW the caller's and the frame list would not compose. The
   -- honest sibling of `heap-room`: stack overflow, spent here.
   → slots n ≤ X.readReg (xregs s) sp-reg
+  → SetsRole s s' role-sp (X.readReg (X.State.regs s) sp-reg ∸ slots n)
   → FlatCorr (descend-view hv lo' lo'≤lo front-lo')
-             (flat-exec-instr (instr-alloc-stack n) [] fs)
-             (mkstate (xwriteReg (xregs s) sp-reg (X.readReg (xregs s) sp-reg ∸ slots n))
-                      (memory s) newFlags (pc s + 1) (xhalted s))
-sim-alloc-stack {hv} n newFlags fs s corr fresh-abs lo' lo'≤lo front-lo' lo'≤sp-reg fits = record
-  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
-  ; r14-eq = r14-eq corr
-  ; r12-eq = r12-eq corr ; halt-eq = halt-eq corr
+             (flat-exec-instr (instr-alloc-stack n) [] fs) s'
+sim-alloc-stack {hv} n fs s s' corr fresh-abs lo' lo'≤lo front-lo' lo'≤sp-reg fits st = record
+  { rdi-eq = keep-in1 corr st (λ ()) ; rsi-eq = keep-in2 corr st (λ ()) ; rax-eq = keep-out corr st (λ ()) ; rbx-eq = keep-scratch corr st (λ ())
+  ; r14-eq = keep-count corr st (λ ())
+  ; r12-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st
   -- the reservation moves %rsp DOWN n slots and the frame with it (`shift-base`)
-  ; rsp-eq = newbase
-  ; r15-eq = r15-eq corr ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr
-  ; heap-eq = heap-eq corr
-  ; lo-le = lo'≤sp-reg
-  ; untouched = untouched-descend lo' lo'≤lo front-lo' corr
+  ; rsp-eq = trans (at-role st) newbase
+  ; r15-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr
+  ; heap-eq = keep-heap corr st
+  ; lo-le = subst (lo' ≤_) (sym (at-role st)) lo'≤sp-reg
+  ; untouched = λ a fa a<lo → trans (cong (λ m → X.readMem m a) (keeps-mem st))
+                                    (untouched-descend lo' lo'≤lo front-lo' corr a fa a<lo)
   -- Plan 0.63: the prologue CONSES a frame (`enter-frame n`), so the post's
   -- windows are the callee's — bounded by its own reservation `n`, and fresh on
   -- both sides — on top of the pre-state's, whose floor rises from `lo` to the
   -- callee's window END. That end IS the caller's base (`fits`), so the caller's
   -- window is carried across the call untouched rather than dropped.
-  ; stack-eq = subst (lo' ≤_) newbase lo'≤sp-reg
-             , win-at (amap hv) (memory s) (stackMem (floc fs)) (shift-frame cf n) n
-                       (X.readReg (xregs s) sp-reg ∸ slots n) newbase stk
-             , windows-reanchor (lo hv) (frame-base (shift-frame cf n) + slots n)
-                 cf (frame-slots (falloc fs)) (saved-frames (falloc fs)) tail-le (stack-eq corr) }
+  ; stack-eq = subst (λ m → StackWindows (amap hv) m (stackMem (floc fs)) lo'
+                                          (frames-of (enter-frame n (falloc fs))))
+                     (sym (keeps-mem st)) windows-s }
   where
     cf = current-frame (falloc fs)
     newbase : X.readReg (xregs s) sp-reg ∸ slots n ≡ frame-base (shift-frame cf n)
@@ -1530,6 +1597,11 @@ sim-alloc-stack {hv} n newFlags fs s corr fresh-abs lo' lo'≤lo front-lo' lo'�
     tail-le : frame-base (shift-frame cf n) + slots n ≤ frame-base cf
     tail-le = ≤-reflexive (trans (cong (_+ slots n) (sym newbase))
                                  (trans (m∸n+n≡m fits) (rsp-eq corr)))
+    windows-s = subst (lo' ≤_) newbase lo'≤sp-reg
+              , win-at (amap hv) (memory s) (stackMem (floc fs)) (shift-frame cf n) n
+                        (X.readReg (xregs s) sp-reg ∸ slots n) newbase stk
+              , windows-reanchor (lo hv) (frame-base (shift-frame cf n) + slots n)
+                  cf (frame-slots (falloc fs)) (saved-frames (falloc fs)) tail-le (stack-eq corr)
 
 ------------------------------------------------------------------------
 -- THE CLOSURE BODY'S RESERVATION: `c-thunk _ b` ↔ `label (thunk _) ; sub rsp, 8b`.
@@ -1550,8 +1622,8 @@ sim-alloc-stack {hv} n newFlags fs s corr fresh-abs lo' lo'≤lo front-lo' lo'�
 -- a closure applied twice at one depth re-enters over its predecessor's data.
 -- The head window is now vacuous from `fresh-abs` alone.
 ------------------------------------------------------------------------
-sim-thunk : {hv : HeapView} (b : ℕ) (newFlags : X.Flags) (newPc : ℕ)
-            (fs : FlatState) (s : X.State) → FlatCorr hv fs s
+sim-thunk : {hv : HeapView} (b : ℕ)
+            (fs : FlatState) (s s' : X.State) → FlatCorr hv fs s
   -- NO `fresh-abs` PREMISE (Plan 0.54 rung D): `do-thunk` CLEARS the entered
   -- frame, so the callee window is vacuous by COMPUTATION rather than by
   -- assumption. Postulating freshness here would have been assuming something
@@ -1560,31 +1632,22 @@ sim-thunk : {hv : HeapView} (b : ℕ) (newFlags : X.Flags) (newPc : ℕ)
   → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
   → lo' ≤ X.readReg (xregs s) sp-reg ∸ slots b
   → slots b ≤ X.readReg (xregs s) sp-reg
-  → FlatCorr (descend-view hv lo' lo'≤lo front-lo')
-             (do-thunk b fs)
-             (mkstate (xwriteReg (xregs s) sp-reg (X.readReg (xregs s) sp-reg ∸ slots b))
-                      (memory s) newFlags newPc (xhalted s))
-sim-thunk {hv} b newFlags newPc fs s corr lo' lo'≤lo front-lo' lo'≤sp-reg fits = record
-  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
-  ; r14-eq = r14-eq corr
-  ; r12-eq = r12-eq corr ; halt-eq = halt-eq corr
-  ; rsp-eq = newbase
-  ; r15-eq = r15-eq corr ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr
+  → SetsRole s s' role-sp (X.readReg (X.State.regs s) sp-reg ∸ slots b)
+  → FlatCorr (descend-view hv lo' lo'≤lo front-lo') (do-thunk b fs) s'
+sim-thunk {hv} b fs s s' corr lo' lo'≤lo front-lo' lo'≤sp-reg fits st = record
+  { rdi-eq = keep-in1 corr st (λ ()) ; rsi-eq = keep-in2 corr st (λ ()) ; rax-eq = keep-out corr st (λ ()) ; rbx-eq = keep-scratch corr st (λ ())
+  ; r14-eq = keep-count corr st (λ ())
+  ; r12-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st
+  ; rsp-eq = trans (at-role st) newbase
+  ; r15-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr
   ; dom-sized = dom-sized corr
-  ; heap-eq = heap-eq corr
-  ; lo-le = lo'≤sp-reg
-  ; untouched = untouched-descend lo' lo'≤lo front-lo' corr
-  ; stack-eq = subst (lo' ≤_) newbase lo'≤sp-reg
-             , head-window
-             , windows-forget (stackMem (floc fs)) (stackMem (floc (do-thunk b fs)))
-                 (frame-base (shift-frame cf b) + slots b) (saved-frames (falloc fs))
-                 (λ f' k' v' → MemOps.clear-frame-just (stackMem (floc fs))
-                                 (shift-frame cf b) b f' k' v')
-                 (windows-lower (frame-base cf + slots (frame-slots (falloc fs)))
-                    (frame-base (shift-frame cf b) + slots b)
-                    (saved-frames (falloc fs))
-                    (≤-trans tail-le (m≤m+n (frame-base cf) (slots (frame-slots (falloc fs)))))
-                    (proj₂ (proj₂ (stack-eq corr)))) }
+  ; heap-eq = keep-heap corr st
+  ; lo-le = subst (lo' ≤_) (sym (at-role st)) lo'≤sp-reg
+  ; untouched = λ a fa a<lo → trans (cong (λ m → X.readMem m a) (keeps-mem st))
+                                    (untouched-descend lo' lo'≤lo front-lo' corr a fa a<lo)
+  ; stack-eq = subst (λ m → StackWindows (amap hv) m (stackMem (floc (do-thunk b fs))) lo'
+                                          (frames-of (falloc (do-thunk b fs))))
+                     (sym (keeps-mem st)) windows-s }
   where
     cf = current-frame (falloc fs)
     nothing≢just : ∀ {A : Set} {x : A} → nothing ≡ just x → ⊥
@@ -1605,6 +1668,17 @@ sim-thunk {hv} b newFlags newPc fs s corr lo' lo'≤lo front-lo' lo'≤sp-reg fi
     tail-le : frame-base (shift-frame cf b) + slots b ≤ frame-base cf
     tail-le = ≤-reflexive (trans (cong (_+ slots b) (sym newbase))
                                  (trans (m∸n+n≡m fits) (rsp-eq corr)))
+    windows-s = subst (lo' ≤_) newbase lo'≤sp-reg
+              , head-window
+              , windows-forget (stackMem (floc fs)) (stackMem (floc (do-thunk b fs)))
+                  (frame-base (shift-frame cf b) + slots b) (saved-frames (falloc fs))
+                  (λ f' k' v' → MemOps.clear-frame-just (stackMem (floc fs))
+                                  (shift-frame cf b) b f' k' v')
+                  (windows-lower (frame-base cf + slots (frame-slots (falloc fs)))
+                     (frame-base (shift-frame cf b) + slots b)
+                     (saved-frames (falloc fs))
+                     (≤-trans tail-le (m≤m+n (frame-base cf) (slots (frame-slots (falloc fs)))))
+                     (proj₂ (proj₂ (stack-eq corr))))
 
 ------------------------------------------------------------------------
 -- THE CALL (D098): `instr-call-closure` ↔ `call *0x8(%r12)`.
@@ -1623,33 +1697,39 @@ sim-thunk {hv} b newFlags newPc fs s corr lo' lo'≤lo front-lo' lo'≤sp-reg fi
 -- `jₐ` is the ABSTRACT pc the call lands on and `newPc` the concrete one; they
 -- are different numbers (`blk-off` apart) and `FlatCorr` constrains neither —
 -- relating them is `CompiledCorr.pc-off`'s job.
-sim-call : {hv : HeapView} (jₐ newPc retAddr : ℕ) (fs : FlatState) (s : X.State) → FlatCorr hv fs s
+sim-call : {hv : HeapView} (jₐ retAddr : ℕ) (fs : FlatState) (s s' : X.State) → FlatCorr hv fs s
   → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
   → lo' ≤ X.readReg (xregs s) sp-reg ∸ slot-size
   -- ROOM FOR THE RETURN ADDRESS: the one slot the call spends. Same class as
   -- `StackRoom` (D087) and supplied the same way.
   → slot-size ≤ X.readReg (xregs s) sp-reg
+  → SetsRoleMem s s' role-sp (X.readReg (X.State.regs s) sp-reg ∸ slot-size)
+                (X.readReg (X.State.regs s) sp-reg ∸ slot-size) retAddr
   → FlatCorr (descend-view hv lo' lo'≤lo front-lo')
              (record fs { falloc = enter-call (falloc fs)
                         ; fret   = suc (fpc fs) ∷ fret fs
                         ; fpc    = jₐ })
-             (mkstate (xwriteReg (xregs s) sp-reg (X.readReg (xregs s) sp-reg ∸ slot-size))
-                      (writeMem (memory s) (X.readReg (xregs s) sp-reg ∸ slot-size) retAddr)
-                      (flags s) newPc (xhalted s))
-sim-call {hv} jₐ newPc retAddr fs s corr lo' lo'≤lo front-lo' lo'≤sp-reg fits = record
-  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr
-  ; r14-eq = r14-eq corr ; r12-eq = r12-eq corr ; halt-eq = halt-eq corr
-  ; rsp-eq = newbase
-  ; r15-eq = r15-eq corr ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr
+             s'
+sim-call {hv} jₐ retAddr fs s s' corr lo' lo'≤lo front-lo' lo'≤sp-reg fits rm = record
+  { rdi-eq = trans (rm-off-role rm role-in1 (λ ())) (rdi-eq corr)
+  ; rsi-eq = trans (rm-off-role rm role-in2 (λ ())) (rsi-eq corr)
+  ; rax-eq = trans (rm-off-role rm role-out (λ ())) (rax-eq corr)
+  ; rbx-eq = trans (rm-off-role rm role-scratch (λ ())) (rbx-eq corr)
+  ; r14-eq = trans (rm-off-role rm role-count (λ ())) (r14-eq corr)
+  ; r12-eq = trans (rm-off-role rm role-clos (λ ())) (r12-eq corr)
+  ; halt-eq = trans (rm-halt rm) (halt-eq corr)
+  ; rsp-eq = trans (rm-at-role rm) newbase
+  ; r15-eq = trans (rm-off-role rm role-heap (λ ())) (r15-eq corr)
+  ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr
   ; dom-sized = dom-sized corr
   -- the heap is under the frontier, the write is at or above the descended
   -- mark, and the mark is above the frontier — so the store misses every cell
-  ; heap-eq = λ hl d → trans (read-write-miss (memory s) waddr retAddr (haddr hv hl)
+  ; heap-eq = λ hl d → trans (rm-off-addr rm (haddr hv hl)
                                (λ eq → <⇒≢ (<-transˡ (dom-below hv d)
                                               (≤-trans front-lo' lo'≤sp-reg)) eq))
                              (heap-eq corr hl d)
-  ; lo-le = lo'≤sp-reg
-  ; untouched = λ a fa a<lo' → trans (read-write-miss (memory s) waddr retAddr a
+  ; lo-le = subst (lo' ≤_) (sym (rm-at-role rm)) lo'≤sp-reg
+  ; untouched = λ a fa a<lo' → trans (rm-off-addr rm a
                                        (λ eq → <⇒≢ (<-transˡ a<lo' lo'≤sp-reg) eq))
                                      (untouched-descend lo' lo'≤lo front-lo' corr a fa a<lo')
   ; stack-eq = subst (lo' ≤_) newbase lo'≤sp-reg
@@ -1657,10 +1737,10 @@ sim-call {hv} jₐ newPc retAddr fs s corr lo' lo'≤lo front-lo' lo'≤sp-reg f
              , windows-reanchor (frame-base cf) (frame-base (shift-frame cf 1) + slots 0)
                  cf (frame-slots (falloc fs)) (saved-frames (falloc fs))
                  tail-floor
-                 (windows-above (memory s) (writeMem (memory s) waddr retAddr)
+                 (windows-above (memory s) (X.State.memory s')
                     (stackMem (floc fs)) (stackMem (floc fs))
                     (frame-base cf) ((cf , frame-slots (falloc fs)) ∷ saved-frames (falloc fs))
-                    (λ a le → read-write-miss (memory s) waddr retAddr a
+                    (λ a le → rm-off-addr rm a
                                 (λ eq → <⇒≢ (<-transˡ w<base le) (sym eq)))
                     (λ _ _ _ → refl)
                     (windows-reanchor (lo hv) (frame-base cf) cf (frame-slots (falloc fs))
@@ -1709,22 +1789,22 @@ sim-call {hv} jₐ newPc retAddr fs s corr lo' lo'≤lo front-lo' lo'≤sp-reg f
 -- The 4 tracked regs / halt / heap are untouched (dealloc changes neither
 -- falloc's heap fields nor stackMem). Flag-parametric.
 ------------------------------------------------------------------------
-sim-dealloc-stack : {hv : HeapView} (n : ℕ) (newFlags : X.Flags) (fs : FlatState) (s : X.State) → FlatCorr hv fs s
+sim-dealloc-stack : {hv : HeapView} (n : ℕ) (fs : FlatState) (s s' : X.State) → FlatCorr hv fs s
   -- MATCHED PAIRING (plan 0.61): the frame this epilogue restores is the one the
   -- entry `alloc-stack n` shifted away from, so its base is where %rsp lands.
   → X.readReg (xregs s) sp-reg + slots n
       ≡ frame-base (current-frame (leave-frame (falloc fs)))
-  → FlatCorr hv (flat-exec-instr (instr-dealloc-stack n) [] fs)
-             (mkstate (xwriteReg (xregs s) sp-reg (X.readReg (xregs s) sp-reg + slots n))
-                      (memory s) newFlags (pc s + 1) (xhalted s))
-sim-dealloc-stack {hv} n newFlags fs s corr restores = record
-  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr ; rbx-eq = rbx-eq corr ; r14-eq = r14-eq corr
-  ; r12-eq = r12-eq corr ; halt-eq = halt-eq corr ; rsp-eq = restores ; r15-eq = r15-eq corr
+  → SetsRole s s' role-sp (X.readReg (X.State.regs s) sp-reg + slots n)
+  → FlatCorr hv (flat-exec-instr (instr-dealloc-stack n) [] fs) s'
+sim-dealloc-stack {hv} n fs s s' corr restores st = record
+  { rdi-eq = keep-in1 corr st (λ ()) ; rsi-eq = keep-in2 corr st (λ ()) ; rax-eq = keep-out corr st (λ ()) ; rbx-eq = keep-scratch corr st (λ ()) ; r14-eq = keep-count corr st (λ ())
+  ; r12-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; rsp-eq = trans (at-role st) restores ; r15-eq = keep-heap-reg corr st (λ ())
   -- the epilogue RAISES %rsp, so the high-water mark stays below it — and the mark
   -- itself does NOT move back up: the freed cells keep their contents, which is
   -- exactly the dead memory the mark exists to remember.
-  ; lo-le = ≤-trans (lo-le corr) (m≤m+n (X.readReg (xregs s) sp-reg) (slots n))
-  ; untouched = untouched corr
+  ; lo-le = subst (lo hv ≤_) (sym (at-role st))
+                  (≤-trans (lo-le corr) (m≤m+n (X.readReg (xregs s) sp-reg) (slots n)))
+  ; untouched = keep-untouched corr st
   -- Plan 0.61: the epilogue RESTORES the caller's frame; the move leaves the
   -- allocation frontier alone, so `dom-fresh` only needs transporting.
   ; dom-fresh = λ {hl} d → subst (λ m → ref-id (heap-ref hl) < m)
@@ -1733,10 +1813,12 @@ sim-dealloc-stack {hv} n newFlags fs s corr restores = record
   ; dom-sized = λ hl lt → dom-sized corr hl
                   (subst (λ szs → heap-offset hl < szs (ref-id (heap-ref hl)))
                          (leave-frame-block-size (falloc fs)) lt)
-  ; heap-eq = heap-eq corr
+  ; heap-eq = keep-heap corr st
   -- THE RETURN'S WINDOW, DERIVED: drop the callee's frame and the caller's
   -- window is what is left (`windows-leave`).
-  ; stack-eq = windows-leave (falloc fs) (lo hv) (stack-eq corr) }
+  ; stack-eq = subst (λ m → StackWindows (amap hv) m (stackMem (floc fs)) (lo hv)
+                                          (frames-of (leave-frame (falloc fs))))
+                     (sym (keeps-mem st)) (windows-leave (falloc fs) (lo hv) (stack-eq corr)) }
 
 ------------------------------------------------------------------------
 -- THE RETURN (D095): `c-ret b` ↔ `add rsp, 8b ; ret`.
@@ -1752,34 +1834,39 @@ sim-dealloc-stack {hv} n newFlags fs s corr restores = record
 -- through `rsp-eq`. That is why the gap lives in the component — the return is
 -- the one step that needs it as an EQUALITY.
 ------------------------------------------------------------------------
-sim-ret : {hv : HeapView} (b rpc : ℕ) (rest : List ℕ) (newFlags : X.Flags) (npc : ℕ)
-          (fs : FlatState) (s : X.State) → FlatCorr hv fs s
+-- Plan 0.65 G1c step 2: the post-state used to write `%rsp` TWICE, nested —
+-- once for the `add` and once for the `ret`'s pop. As a claim about the state
+-- AFTER the pair, that is one write of the final value, and the nesting
+-- disappears with the literal.
+sim-ret : {hv : HeapView} (b rpc : ℕ) (rest : List ℕ)
+          (fs : FlatState) (s s' : X.State) → FlatCorr hv fs s
         → fret fs ≡ rpc ∷ rest
         → X.readReg (xregs s) sp-reg + slots b + slot-size
             ≡ frame-base (current-frame (leave-frame (falloc fs)))
-        → FlatCorr hv (do-ret (fret fs) fs)
-                   (mkstate (xwriteReg (xwriteReg (xregs s) sp-reg (X.readReg (xregs s) sp-reg + slots b))
-                                       sp-reg (X.readReg (xregs s) sp-reg + slots b + slot-size))
-                            (memory s) newFlags npc (xhalted s))
-sim-ret {hv} b rpc rest newFlags npc fs s corr req restores rewrite req = record
-  { rdi-eq = rdi-eq corr ; rsi-eq = rsi-eq corr ; rax-eq = rax-eq corr
-  ; rbx-eq = rbx-eq corr ; r14-eq = r14-eq corr
-  ; r12-eq = r12-eq corr ; halt-eq = halt-eq corr ; rsp-eq = restores ; r15-eq = r15-eq corr
+        → SetsRole s s' role-sp (X.readReg (X.State.regs s) sp-reg + slots b + slot-size)
+        → FlatCorr hv (do-ret (fret fs) fs) s'
+sim-ret {hv} b rpc rest fs s s' corr req restores st rewrite req = record
+  { rdi-eq = keep-in1 corr st (λ ()) ; rsi-eq = keep-in2 corr st (λ ()) ; rax-eq = keep-out corr st (λ ())
+  ; rbx-eq = keep-scratch corr st (λ ()) ; r14-eq = keep-count corr st (λ ())
+  ; r12-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; rsp-eq = trans (at-role st) restores ; r15-eq = keep-heap-reg corr st (λ ())
   -- `%rsp` only RISES, so the high-water mark stays below it and the freed
   -- cells keep their contents — the dead memory the mark exists to remember.
-  ; lo-le = ≤-trans (lo-le corr)
-              (≤-trans (m≤m+n (X.readReg (xregs s) sp-reg) (slots b))
-                       (m≤m+n (X.readReg (xregs s) sp-reg + slots b) slot-size))
-  ; untouched = untouched corr
+  ; lo-le = subst (lo hv ≤_) (sym (at-role st))
+              (≤-trans (lo-le corr)
+                (≤-trans (m≤m+n (X.readReg (xregs s) sp-reg) (slots b))
+                         (m≤m+n (X.readReg (xregs s) sp-reg + slots b) slot-size)))
+  ; untouched = keep-untouched corr st
   ; dom-fresh = λ {hl} d → subst (λ m → ref-id (heap-ref hl) < m)
                                  (sym (leave-frame-heap-ref (falloc fs))) (dom-fresh corr d)
   ; dom-written = dom-written corr
   ; dom-sized = λ hl lt → dom-sized corr hl
                   (subst (λ szs → heap-offset hl < szs (ref-id (heap-ref hl)))
                          (leave-frame-block-size (falloc fs)) lt)
-  ; heap-eq = heap-eq corr
+  ; heap-eq = keep-heap corr st
   -- drop the callee's frame and the caller's window is what is left
-  ; stack-eq = windows-leave (falloc fs) (lo hv) (stack-eq corr) }
+  ; stack-eq = subst (λ m → StackWindows (amap hv) m (stackMem (floc fs)) (lo hv)
+                                          (frames-of (leave-frame (falloc fs))))
+                     (sym (keeps-mem st)) (windows-leave (falloc fs) (lo hv) (stack-eq corr)) }
 
 ------------------------------------------------------------------------
 -- FRAME PUSH / POP: the `%rbp` frame model is a FOSSIL — `sim-push-frame`
@@ -2071,8 +2158,8 @@ windows-enc-ext hv st n pf rm mem stk fl ((f , b) ∷ fr) wf (bd , win , rest) =
 -- the old frontier — so `rax-eq` is `r15-eq` transported by `ext-addr-base`.
 -- The store-WF premises are what make the extension INVISIBLE to everything else
 -- (no live value referenced the not-yet-allocated ref).
-sim-alloc-heap : ∀ {hv : HeapView} (n : ℕ) (newFlags : X.Flags) (newPc : ℕ)
-                 (fs : FlatState) (s : X.State) (corr : FlatCorr hv fs s)
+sim-alloc-heap : ∀ {hv : HeapView} (n : ℕ)
+                 (fs : FlatState) (s s' : X.State) (corr : FlatCorr hv fs s)
   → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Input1)
   → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Input2)
   → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Scratch)
@@ -2093,21 +2180,23 @@ sim-alloc-heap : ∀ {hv : HeapView} (n : ℕ) (newFlags : X.Flags) (newPc : ℕ
   -- EXHAUSTION, and it now also DISCHARGES the fresh block's concrete freshness
   -- (`FlatCorr.untouched`) — the postulate `alloc-heap-fresh-x86` is retired.
   → (room : hfront hv + slots n ≤ lo hv)
+  -- the two-instruction block writes Output (the block's base) and then the
+  -- frontier; `Sets2Roles` is what says the OTHER six roles survive both.
+  → Sets2Roles s s' role-out role-heap
+               (X.readReg (X.State.regs s) heap-reg)
+               (X.readReg (X.State.regs s) heap-reg + slots n)
   → FlatCorr (extend-view hv (next-heap-ref (falloc fs)) n (dom-fresh corr) room)
-             (flat-exec-instr (instr-alloc-heap n) [] fs)
-             (mkstate (xwriteReg (xwriteReg (xregs s) out-reg (X.readReg (xregs s) heap-reg)) heap-reg
-                                 (X.readReg (xregs s) heap-reg + slots n))
-                      (memory s) newFlags newPc (xhalted s))
-sim-alloc-heap {hv} n newFlags newPc fs s corr wf1 wf2 wfs wfc wfcl wf-heap wf-stack fresh-abs room = record
-  { rdi-eq  = trans (rdi-eq corr) (sym (enc-ext hv st n dfr room (readReg (regs (floc fs)) Input1) wf1))
-  ; rsi-eq  = trans (rsi-eq corr) (sym (enc-ext hv st n dfr room (readReg (regs (floc fs)) Input2) wf2))
-  ; r14-eq  = trans (r14-eq corr) (sym (enc-ext hv st n dfr room (readReg (regs (floc fs)) Count) wfc))
-  ; rax-eq  = trans (r15-eq corr) (sym (ext-addr-base hv st))
-  ; rbx-eq  = trans (rbx-eq corr) (sym (enc-ext hv st n dfr room (readReg (regs (floc fs)) Scratch) wfs))
-  ; r12-eq  = trans (r12-eq corr) (sym (enc-ext hv st n dfr room (fclosure fs) wfcl))
-  ; halt-eq = halt-eq corr
-  ; rsp-eq  = rsp-eq corr
-  ; r15-eq  = cong (_+ slots n) (r15-eq corr)
+             (flat-exec-instr (instr-alloc-heap n) [] fs) s'
+sim-alloc-heap {hv} n fs s s' corr wf1 wf2 wfs wfc wfcl wf-heap wf-stack fresh-abs room s2 = record
+  { rdi-eq  = trans (trans (off-roles s2 role-in1 (λ ()) (λ ())) (rdi-eq corr)) (sym (enc-ext hv st n dfr room (readReg (regs (floc fs)) Input1) wf1))
+  ; rsi-eq  = trans (trans (off-roles s2 role-in2 (λ ()) (λ ())) (rsi-eq corr)) (sym (enc-ext hv st n dfr room (readReg (regs (floc fs)) Input2) wf2))
+  ; r14-eq  = trans (trans (off-roles s2 role-count (λ ()) (λ ())) (r14-eq corr)) (sym (enc-ext hv st n dfr room (readReg (regs (floc fs)) Count) wfc))
+  ; rax-eq  = trans (trans (at-role₁ s2) (r15-eq corr)) (sym (ext-addr-base hv st))
+  ; rbx-eq  = trans (trans (off-roles s2 role-scratch (λ ()) (λ ())) (rbx-eq corr)) (sym (enc-ext hv st n dfr room (readReg (regs (floc fs)) Scratch) wfs))
+  ; r12-eq  = trans (trans (off-roles s2 role-clos (λ ()) (λ ())) (r12-eq corr)) (sym (enc-ext hv st n dfr room (fclosure fs) wfcl))
+  ; halt-eq = trans (keeps-halt₂ s2) (halt-eq corr)
+  ; rsp-eq  = trans (off-roles s2 role-sp (λ ()) (λ ())) (rsp-eq corr)
+  ; r15-eq  = trans (at-role₂ s2) (cong (_+ slots n) (r15-eq corr))
   ; dom-fresh = df
   -- the bump writes no heap cell, so anything written was covered BEFORE and
   -- enters the extended domain as an old cell
@@ -2116,10 +2205,14 @@ sim-alloc-heap {hv} n newFlags newPc fs s corr wf1 wf2 wfs wfc wfcl wf-heap wf-s
   ; heap-eq = hp
   -- %rsp is untouched by the bump; the virgin region only SHRANK (its floor rose
   -- from `hfront` to `hfront + 8n`), so both invariants transport.
-  ; lo-le = lo-le corr
-  ; untouched = λ a fa a<lo → untouched corr a (≤-trans (m≤m+n (hfront hv) (slots n)) fa) a<lo
-  ; stack-eq = windows-enc-ext hv st n dfr room (memory s) (stackMem (floc fs))
-                 (lo hv) (frames-of (falloc fs)) wf-stack (stack-eq corr)
+  ; lo-le = subst (lo hv ≤_) (sym (off-roles s2 role-sp (λ ()) (λ ()))) (lo-le corr)
+  ; untouched = λ a fa a<lo → trans (cong (λ m → X.readMem m a) (keeps-mem₂ s2))
+                                    (untouched corr a (≤-trans (m≤m+n (hfront hv) (slots n)) fa) a<lo)
+  ; stack-eq = subst (λ m → StackWindows (amap (extend-view hv st n dfr room)) m
+                                          (stackMem (floc fs)) (lo hv) (frames-of (falloc fs)))
+                     (sym (keeps-mem₂ s2))
+                     (windows-enc-ext hv st n dfr room (memory s) (stackMem (floc fs))
+                        (lo hv) (frames-of (falloc fs)) wf-stack (stack-eq corr))
   }
   where
     st  = next-heap-ref (falloc fs)
@@ -2149,16 +2242,20 @@ sim-alloc-heap {hv} n newFlags newPc fs s corr wf1 wf2 wfs wfc wfcl wf-heap wf-s
     df : ∀ {hl : HeapLocation} → ExtDom hv st n hl → ref-id (heap-ref hl) < suc st
     df (ext-old d)       = m<n⇒m<1+n (dfr d)
     df (ext-fresh req _) = subst (_< suc st) (sym req) ≤-refl
+    -- the bump touches no memory, so the extended heap agreement is the old one
+    -- carried across `keeps-mem₂` — one `trans` in front of each clause.
     hp : ∀ (hl : HeapLocation) → ExtDom hv st n hl
-       → X.readMem (memory s) (ext-addr hv st hl) ≡ enc-maybe hv' (heapMem (floc fs) hl)
+       → X.readMem (X.State.memory s') (ext-addr hv st hl) ≡ enc-maybe hv' (heapMem (floc fs) hl)
     hp hl (ext-old d) =
-      trans (cong (X.readMem (memory s)) (ext-addr-old hv st hl (dfr d)))
+      trans (cong (λ m → X.readMem m (ext-addr hv st hl)) (keeps-mem₂ s2))
+      (trans (cong (X.readMem (memory s)) (ext-addr-old hv st hl (dfr d)))
             (trans (heap-eq corr hl d)
-                   (sym (enc-ext-maybe hv st n dfr room (heapMem (floc fs) hl) (wf-heap hl d))))
+                   (sym (enc-ext-maybe hv st n dfr room (heapMem (floc fs) hl) (wf-heap hl d)))))
     hp hl (ext-fresh req off<n) =
-      trans (cong (X.readMem (memory s)) (ext-addr-fresh hv st hl req))
+      trans (cong (λ m → X.readMem m (ext-addr hv st hl)) (keeps-mem₂ s2))
+      (trans (cong (X.readMem (memory s)) (ext-addr-fresh hv st hl req))
             (trans (fresh-x86 (heap-offset hl) off<n)
-                   (sym (cong (enc-maybe hv') (fresh-abs hl req))))
+                   (sym (cong (enc-maybe hv') (fresh-abs hl req)))))
 
 ------------------------------------------------------------------------
 -- STACK ADDRESS: `lea-slot slot` (Output := &stack[frame, slot]) ↔
