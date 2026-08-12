@@ -209,6 +209,30 @@ ren-wᶠ t =
     bridge vz     = refl
     bridge (vs x) = refl
 
+-- the TYPE-level twin of `sub-w`, by the same eta observation (P1: this
+-- one moves no family, so no bridge).  ★ Lifted here 2026-08-12; it was local to a spike.
+sub-wTy : {Γ Δ : Cx} {σ : Sub Γ Δ} (T : RTy Γ) →
+          subTy (extS σ) (renTy vs T) ≡ renTy vs (subTy σ T)
+sub-wTy T = trans (subTy-renTy T) (sym (renTy-subTy T))
+
+-- ★ …and the FAMILY twin, which by P1 needs a pointwise BRIDGE — it moves
+--   a family under `extR`.  `wᶠ-single` and `wᶠ-nrs` are its two special
+--   cases; the ASSEMBLY needs the general σ, because the outer motive is
+--   instantiated at an arbitrary bound.
+-- ⚠ The bridge's successor case is exactly `ren-w` at `ρ := vs`: both
+--   composites weaken `σ x` twice, one through `extR vs ∘ᵣ vs` and one
+--   through `vs ∘ᵣ vs`, and those are the same function only after the
+--   variable is cased on.
+wᶠ-sub : {Γ Δ : Cx} {σ : Sub Γ Δ} (t : RTm (Γ ∙)) →
+         subTm (extS (extS σ)) (wᶠ t) ≡ wᶠ (subTm (extS σ) t)
+wᶠ-sub {σ = σ} t =
+  trans (subTm-renTm t)
+        (trans (subTm-cong bridge t) (sym (renTm-subTm t)))
+  where
+    bridge : ∀ x → _
+    bridge vz     = refl
+    bridge (vs x) = sym (ren-w {ρ = vs} (σ x))
+
 ------------------------------------------------------------------------
 -- ★★ D5 — ITERATED WEAKENING, INDEXED RATHER THAN ENUMERATED.
 --
