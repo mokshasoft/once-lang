@@ -372,6 +372,37 @@ what will fix it. Extract once, after D4 settles.
 | `SpikeAmrecInst` | instantiation is cheap: 43 lines, green first try. But `⊢amrec` still uncallable (D2) |
 | `SpikeDivC` | plumbing ~8 lines, one `open`. 113 lines total, **12 conversions** |
 | `SpikeDivT` | **72 lines total, 4 conversions** — 3.4 s / 0.41 GB cold |
+| `SpikePairT` | amrec at a PAIR carrier — 95 lines, 3 `⊢conv`, green first try |
+| **`SpikeLexUse`** | ★ **LEXREC CALLED** — 99 lines, 4 `⊢conv`, green first try, 4.1 s / 0.44 GB |
+
+★★★ **AND THE SECOND COMBINATOR COSTS THE USE SITE ALMOST NOTHING.**
+`SpikeLexUse` is `SpikePairT`'s function at the same carrier with the
+recursion moved from a measure to a LEXICOGRAPHIC pair:
+
+| | `SpikePairT` (amrec) | `SpikeLexUse` (lexrec) |
+|---|---|---|
+| non-comment lines | 95 | **99** |
+| `⊢conv` | 3 | **4** |
+| iterations to green | 0 | **0** |
+| what the extra buys | — | a second recursor and a second descent |
+
+Four lines and one conversion for `rec₂`. Under the criterion at the top
+of this document — judge by the USE site — going from measure recursion to
+lexicographic recursion is very nearly free for the caller, and the whole
+cost sits on the build side where it amortises.
+
+⚠ **And this is the check `⊢lexrec`'s `Γ₅` ancestor failed.** That one was
+"derived end to end" and is uncallable by D2. A typing derivation is not
+evidence of a usable interface; instantiating it is. `SpikeLexUse` exists
+for no other reason.
+
+★ **What the use site actually exercises** is the pairing `≤` with `<`:
+`f (a , suc b') = f (a , b')` discharges μ₁ by REFLEXIVITY (the first
+component is held) and μ₂ by a real strict descent. ⚠ **`amrec` cannot
+state that** — lex order on ℕ² has order type ω², and ω² does not embed
+in ω, so no single ℕ measure reflects it. That is why there are two
+combinators and not one; `rec1T = aIHT` is literal sharing of the IH
+TYPE, not of the recursor.
 
 ★★ **D4 MEASURED AT THE USE SITE — `SpikeDivT` against `SpikeDivC`, same
 function, same kernel:**
