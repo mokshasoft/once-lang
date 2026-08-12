@@ -343,6 +343,15 @@ compile-abstract (instr-ctrl (c-branch-tag-zero n))     = ld t1 t0 0 ∷ beq t1 
 -- maps compile-abstract, which sees only the sentinel). Each case/loop
 -- consumes 2 fresh labels; the counter threads through so nested structures
 -- get unique labels. Input1 pointer = t0 (tag at 0(t0)); loop counter = s3.
+-- Plan 0.65 (G1 validation): the plain block-wise lowering, which riscv64 did
+-- not have. `FlatCore.FlatComposition` is stated over it — every abstract
+-- instruction lowers to a contiguous block and the machine pc is the sum of the
+-- block lengths before it — so the correspondence needs it whether or not the
+-- emitter's own entry point is `compile-trace-cnt`. Mirrors x86-64's exactly.
+compile-trace : AbstractTrace → Program
+compile-trace [] = []
+compile-trace (i ∷ is) = compile-abstract i ++ compile-trace is
+
 compile-trace-cnt : CanonicalName → ℕ → AbstractTrace → ℕ × Program
 compile-trace-cnt o n [] = n , []
 compile-trace-cnt o n (instr-loop body ∷ rest) =

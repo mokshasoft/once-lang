@@ -185,6 +185,13 @@ ccc-x86-32:
 ccc-riscv64:
 	@echo "Type-checking RISC-V 64 CCC backend (Target instance)..."
 	@sh -c '$(AGDA_CMD) Once/Target/RiscV64.agda'
+# Plan 0.65: the riscv64 SECOND INSTANCE of the arch-generic correspondence
+# core. `Once/Target/RiscV64.agda` is the emitter and does not import these, so
+# without naming them here they would be islands — green when checked by hand
+# and invisible to the gate, which is the one failure mode a second instance
+# exists to prevent.
+	@sh -c '$(AGDA_CMD) Once/Adequacy/ArchCorrectness/RiscV64/RegRoles.agda'
+	@sh -c '$(AGDA_CMD) Once/Adequacy/ArchCorrectness/RiscV64/FlatComposition.agda'
 
 #-----------------------------------------------------------------------------
 # Pipeline: Arithmetic Primitives (target-specific)
