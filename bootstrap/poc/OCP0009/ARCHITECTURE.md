@@ -691,13 +691,37 @@ and it does not scale: one former per datatype, versus one `μ` for all.
    arguments instead of a disjunction), no equality on ℕ (`<`/`≤` are
    both computing `Hom Nat`).
 
-   ⚠ STILL ℕ-CARRIER ONLY.  `⊢amrec` is carrier-generic (`A : U`,
-   `μ : A → Nat`); `⊢lexrec` is not, and the claim that its proof would
-   generalise unchanged is UNTESTED.  Cheapest remaining item on this
-   axis.  Multiset measures are also still open — no current demand.
+   ✅ **CARRIER-GENERICITY: CLOSED 2026-08-12.**  `⊢lexrecΠ`
+   (`SpikeLexAsm`) takes an arbitrary carrier `A : RTy ⌊ Δ ⌋` over an
+   arbitrary ambient `Δ`, with the same `Π A (El cM)` conclusion as
+   `⊢amrecΠ`, and `SpikeLexUse`/`SpikeLexAck` call it at `Σ' Nat Nat`.
+   Multiset measures are still open — no current demand.
 
-   ★ NOT YET DEMONSTRATED: Ackermann, the example this was supposed to
-   unlock, is not written.  Deriving it is the "use it" check — twice
+   ⛔⛔ **AND THE "OUT OF REACH" CLAIM ABOVE IS FALSE — CORRECTED
+   2026-08-12.**  Ackermann, the example this was supposed to unlock, is
+   now written BOTH ways, and the comparison retires the motivation:
+
+       SpikeAckT     nested `natrec`, NO combinator    26 lines / 0.61 s
+       SpikeLexAck   through `⊢lexrecΠ`               ~100 lines / 8.8 s
+
+   Ackermann is structurally recursive at HIGHER TYPE — the outer
+   recursion returns `Nat → Nat` — so it never needed a measure at all.
+   ★ And `⊢lexrec`'s own auxiliary is that same construction (`lexAuxTm =
+   natrec lexZ lexS n` with `lexZ = lam (natrec …)`), plus order
+   certificates; it is a DERIVED term, so it cannot add definitional
+   power to the kernel and never could.  See `WF-LIBRARY.md` D11 for the
+   mechanism — the unbounded μ₂ reset that makes `lexrec` stronger than
+   `amrec` is the same feature that makes the higher-order structural
+   form available — and for the honest case for keeping it (parity with
+   Agda/Coq/Isabelle/ACL2, all of which have lexicographic termination
+   first-class).
+
+   ⇒ **`⊢lexrec`'s claim is PARITY AND ERGONOMICS, not reach.**  The WF
+   AXIS itself is unaffected: it is justified by `div` and `gcd`, which
+   are non-structural and genuinely need a measure, and that is
+   `⊢amrec`'s job, not `⊢lexrec`'s.
+
+   ★ The original "use it" check — twice
    today a spec bug was caught by USE and by nothing else.
 
 3. **Ordinals / transfinite** — much larger, no current demand.
@@ -768,7 +792,10 @@ is DECIDABILITY OF CONVERSION, nothing else.
   * **course-of-values** — `⊢sind`. ✅ done.
   * **measure into ℕ, any carrier** — `⊢amrec`. ✅ done.
   * **LEXICOGRAPHIC** — ✅ done, `⊢lexrec` (`NbEPDirDBExamplesLexAsm`),
-    machine-checked 2026-08-06.  ⚠ the sketch below was the PREDICTION
+    machine-checked 2026-08-06; re-derived carrier-generically as
+    `⊢lexrecΠ` (`SpikeLexAsm`) 2026-08-12.  ⚠ **but see `WF-LIBRARY.md`
+    D11: no function has been found that REQUIRES it, and there is a
+    mechanism for why.  Its claim is parity and ergonomics, not reach.**  ⚠ the sketch below was the PREDICTION
     and its route was wrong (see the ranked list above): not nested
     `⊢amrec` but a doubly-bounded auxiliary by nested `natrec`.  The two
     design points DID hold — `<`/`≤` as computing `Hom Nat` so no
