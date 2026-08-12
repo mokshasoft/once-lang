@@ -32,7 +32,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikeLexSS where
+module poc.OCP0009.NbEPDirDBLibLexrecSS where
 
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; cong₂; subst )
@@ -54,7 +54,7 @@ open import poc.OCP0009.NbEPDirDBLibWk
         ; wᶠ²-single; wᶠ³-single; nrs-wTy; wᶠ-nrs
         ; w^; wTy^; wᶠ^; ⊢wkᶠ; sub-wTy )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-fit )
-open import poc.OCP0009.SpikeLexT
+open import poc.OCP0009.NbEPDirDBLibLexrecT
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 
 module SS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)

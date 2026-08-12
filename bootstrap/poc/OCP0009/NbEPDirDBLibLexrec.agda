@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- OCP-0009 — ★★★ LEXREC ASSEMBLED UNDER FAMILIES.
+-- OCP-0009 · WF LIBRARY — LEXICOGRAPHIC RECURSION.  ★ ENTRY POINT.
 --
 --     lexrec : ((x : A) → ((y : A) → μ₁ y < μ₁ x → P y)
 --                       → ((y : A) → μ₁ y ≤ μ₁ x → μ₂ y < μ₂ x → P y)
@@ -24,7 +24,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikeLexAsm where
+module poc.OCP0009.NbEPDirDBLibLexrec where
 
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; cong₂; subst )
@@ -44,10 +44,15 @@ open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBLibWk
   using ( w; wᶠ; cong₆; sub-w; sub-w²; wk-singleTy; wᶠ-single
         ; wᶠ¹-single; w^; wTy^; wᶠ^; ⊢wkᶠ )
-open import poc.OCP0009.SpikeLexT
-open import poc.OCP0009.SpikeLexSS using ( module SS )
-open import poc.OCP0009.SpikeLexZZ using ( module ZZ )
-open import poc.OCP0009.SpikeLexSZ using ( module SZ )
+-- ★ THE PUBLIC ENTRY POINT.  A caller imports THIS module and nothing
+--   else: the type layer is re-exported, the four branches are private
+--   implementation.  They are separate files only because Agda's
+--   traversal phases are per-module and branch (S,S) alone is 1.7 GB.
+open import poc.OCP0009.NbEPDirDBLibLexrecT public
+open import poc.OCP0009.NbEPDirDBLibLexrecZZ using ( module ZZ )
+open import poc.OCP0009.NbEPDirDBLibLexrecZS using ( module ZS )
+open import poc.OCP0009.NbEPDirDBLibLexrecSZ using ( module SZ )
+open import poc.OCP0009.NbEPDirDBLibLexrecSS using ( module SS )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 
 ------------------------------------------------------------------------

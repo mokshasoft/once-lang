@@ -721,14 +721,33 @@ These are not examples any more; they are the library the WF axis exists to
 provide. The consolidated modules take `…Lib…` names, and the `Examples`
 modules that remain are the *users* (div, gcd, the pair probe, Ackermann).
 
-### Proposed module layout
+### Module layout — ✅ LANDED 2026-08-12
 
 | module | contents |
 |---|---|
 | `NbEPDirDBLibWk` | the naturality kit: `w`, `wᶠ`, `⊢wkᶠ`, `cong₂₋₆`, `sub-w{,²,³}`, `ren-w{,²,³}`, `nrs-w`, `ren-sub`, `wk-singleTy`, `wᶠ-single`, `wᶠ¹-single`, `wᶠ²-single`, `wᶠ-nrs`, `ren-wTy`, `ren-wᶠ` — generic substitution metatheory, no recursor in sight |
 | `NbEPDirDBLibRec` | the shared IH types: `aIHTat`/`aIHT` and their `-sub`/`-ren`/`-fit`. ★ **`aIHTat` — the IH at an arbitrary bound — is load-bearing and must be nameable** (D8) |
 | `NbEPDirDBLibAmrec` | measure recursion: `aAuxB`, `aStepT`, the `AmT`/`AmTΠ` modules, and D7's unfolding lemmas |
-| `NbEPDirDBLibLexrec` | lexicographic recursion under interface B: `rec2T`, `lStepT`, the branches, `⊢lexrec` |
+| `NbEPDirDBLibPair` | the pair carrier: `PairT`, both projection measures, the `El ⌜Nat⌝`/`Nat` crossings, and the four descents `dropˡ`/`dropʳ`/`holdˡ`/`holdʳ` (D10) |
+| `NbEPDirDBLibLexrec` | ★ **THE ENTRY POINT** — the assembly, `⊢lexrecΠ`, `⊢lexrecPt`, and a `public` re-export of the type layer. A caller imports this and nothing else |
+| `NbEPDirDBLibLexrecT` | the type layer: `rec2T*`, `lStepT*`, `auxB*`, the motives, the indexed ladders, the fits |
+| `NbEPDirDBLibLexrec{ZZ,ZS,SZ,SS}` | one branch each — private implementation |
+| `NbEPDirDBLibPairLex` | the bridge: the two recursor types well-formed at the pair carrier. ⚠ SEPARATE from `LibPair`, which amrec callers use and must not drag lexrec in behind them |
+
+⚠ **The branches are separate FILES, not separate concepts.** Agda's
+traversal phases are per-module and branch (S,S) alone is 1.7 GB; one
+module would be ~2.8 GB against a 5.5 GB cap, and D10 is this document's
+own evidence that a 20% margin is not enough. The façade makes the split
+invisible at the use site, which is the axis that matters.
+
+⛔ **AND "RETIRE THE LEGACY MODULES" IS WITHDRAWN AS STATED.** The live
+stack imports NOTHING from `AmrecC`/`AmrecT`/`LexC*`/option B's `Lex*` —
+checked mechanically, zero edges — so the inverted dependency
+(`AmrecC` → `…ExamplesLexC`) is already quarantined and costs the library
+nothing. Deleting them would instead destroy evidence THIS DOCUMENT
+CITES: `SpikeDivC`'s 12 conversions, `SpikePairC`'s counts, `LexCZS`'s
+48.7 s / 4.35 GB, `LexCSS`'s OOM. ⇒ they stay, as measurements, and the
+debt is discharged by DISCONNECTION rather than deletion.
 
 Debts the consolidation closes:
 

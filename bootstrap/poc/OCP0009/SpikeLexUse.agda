@@ -52,29 +52,14 @@ open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
 open import poc.OCP0009.NbEPDirDBLibPair
   using ( PairT; ⊢PairT; msr₁; msr₂; ⊢msr₁; ⊢msr₂; elNat; asP; holdˡ; dropʳ )
-open import poc.OCP0009.SpikeLexT using ( rec1T; rec2Tat; lStepT )
-open import poc.OCP0009.SpikeLexAsm using ( module LxΠ )
+-- ★ the recursor types now come from the library too (was local here,
+--   which made `SpikeLexAck` import a USE SITE for them).
+open import poc.OCP0009.NbEPDirDBLibPairLex using ( ⊢rec1Tat; ⊢rec2Tat )
+-- ★ ONE import: the façade re-exports the type layer.
+open import poc.OCP0009.NbEPDirDBLibLexrec using ( rec1T; rec2Tat; lStepT; module LxΠ )
 
 -- ★ THE INSTANTIATION comes from `NbEPDirDBLibPair` — carrier, both
 --   measures, and the `El ⌜Nat⌝`/`Nat` crossings.  Nothing to write.
-
-------------------------------------------------------------------------
--- the two recursor types at an ARBITRARY bound, well-formed.  ★ `rec₂`
--- needs BOTH bounds nameable; that is `rec2Tat`, D8's twin.
-------------------------------------------------------------------------
-
-⊢rec1Tat : {Γ : Ctx} {b : RTm ⌊ Γ ⌋} → Γ ⊢ b ∷ Nat →
-           Γ ⊢ty aIHTat PairT ⌜Nat⌝ msr₁ b
-⊢rec1Tat db =
-  ty-Π ⊢PairT (ty-Π (ty-Hom ty-Nat (⊢nsuc ⊢msr₁) (⊢wk db)) (ty-El ⊢⌜Nat⌝))
-
-⊢rec2Tat : {Γ : Ctx} {b₁ b₂ : RTm ⌊ Γ ⌋} → Γ ⊢ b₁ ∷ Nat → Γ ⊢ b₂ ∷ Nat →
-           Γ ⊢ty rec2Tat PairT ⌜Nat⌝ msr₁ msr₂ b₁ b₂
-⊢rec2Tat db₁ db₂ =
-  ty-Π ⊢PairT
-    (ty-Π (ty-Hom ty-Nat ⊢msr₁ (⊢wk db₁))
-      (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢wk ⊢msr₂)) (⊢wk (⊢wk db₂)))
-            (ty-El ⊢⌜Nat⌝)))
 
 ------------------------------------------------------------------------
 -- THE STEP.  Split on `snd x`; the motive abstracts rec₂'s μ₂-BOUND, so

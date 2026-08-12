@@ -1,26 +1,17 @@
 ------------------------------------------------------------------------
--- OCP-0009 — GATE SPIKE: lexrec's TYPE LAYER under the families
--- interface, ahead of re-porting any branch.
+-- OCP-0009 · WF LIBRARY — LEXREC BRANCH (0,S).
 --
--- ★ THE QUESTION THIS EXISTS TO ANSWER.  Option C's lexrec died at branch
---   (S,S): `LexCSS1` and `LexCSS2` each OOM at the 5.5 GB cap, both halves,
---   even under `+RTS -c`.  That was the codes-and-functions interface.
---   Families removes every `app` from the types and collapses the fitting
---   to one lemma per spine, so the elaborated terms should be markedly
---   smaller.  Does (S,S) fit?
+-- n₁ = 0 collapses rec₁ into `absurd`; n₂ = suc n₂' makes rec₂ invoke the
+-- INNER IH, which is a context variable under seven ⊢wks.  The two
+-- descents are `⊢ordtr` (μ₁ y ≤ 0) and `⊢strong-step` (μ₂ y ≤ n₂') — the
+-- latter IS the lexicographic descent.
 --
--- ⚠ THIS FILE IS THE TYPE LAYER ONLY — no branch, no derivation.  It is
---   step 1 of the gate: establish that lexrec's four types EXIST under
---   families and see how much `LibRec` already supplies, before spending
---   anything on a branch.
---
--- ★ AND THE FIRST ANSWER IS FREE: `rec₁`'s type IS `aIHT`, the measure
---   recursor's IH, verbatim.  Only `rec₂` (two descents) and `lStepT` are
---   new, which is the concrete form of "these are one abstraction".
+-- ⚠ THE MEASURED BRANCH.  Under codes-and-functions the same branch is
+--   `…ExamplesLexCZS`, 48.7 s / 4.35 GB, against 8.8 s / 0.71 GB here.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikeLexT where
+module poc.OCP0009.NbEPDirDBLibLexrecZS where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import poc.OCP0009.NbEPDirDBPi
