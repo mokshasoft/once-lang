@@ -180,12 +180,15 @@ fZ₂ =
 --   its RESULT is the second component of the pair the outer one — rec₁,
 --   μ₁ strictly down — recurses at.
 -- ⚠⚠ THE INNER CALL IS HOISTED, and that is not cosmetic.  Written inline
---   inside `⊢fS₂` this module OOMs at the 5.5 GB cap (measured: 102 s to
---   the kill, twice, on an otherwise idle box) while the same file
---   truncated one definition earlier costs 4.3 s / 0.43 GB.  Behind a
---   top-level `Def` with an explicit type the traversal phases walk a
---   NAME instead of the spine — the `⊢strong-base'` pattern, and the one
---   lever `agda-cost-is-elaborated-term-size` says actually works.
+--   inside `⊢fS₂` this module costs 192.5 s / 4.41 GB; behind a top-level
+--   `Def` with an explicit type it costs 10.1 s / 0.84 GB.  19× time,
+--   5.3× memory, both measured cold on an IDLE box.  The traversal phases
+--   walk a NAME instead of the spine — the `⊢strong-base'` pattern, and
+--   the one lever `agda-cost-is-elaborated-term-size` says works.
+--   ⚠ 4.41 GB against the 5.5 GB cap is a 20% margin: the inline form
+--   OOMs as soon as anything else is running.  That is how this was
+--   found, and it is why the hoist is a robustness fix and not merely a
+--   speed-up.
 C8 : Ctx
 C8 =
   ((C5 ▹ Nat) ▹ M₂)
