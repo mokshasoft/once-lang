@@ -281,17 +281,24 @@ or any handoff predicted it, and the way you discover it is by OOMing.*
 
 When a step function's recursive call CONSUMES another recursive call —
 `ack (suc m') (suc n') = ack (m' , ack (suc m' , n'))` — writing the inner
-call inline inside the outer one is the difference between finishing and
-not:
+call inline inside the outer one costs an order of magnitude:
 
-| the SAME file, same box, same conditions | |
+| the SAME file, IDLE box, cold, one sample each | |
 |---|---|
-| inner call written INLINE | ⛔ **OOM at the 5.5 GB cap**, 102 s to the kill, twice |
-| inner call behind a top-level `Def` with an explicit type | ✅ **~11 s / ~0.84 GB** |
-| (the same file truncated one definition earlier) | 4.3 s / 0.43 GB |
+| inner call written INLINE | 192.5 s / **4.41 GB** |
+| inner call behind a top-level `Def` with an explicit type | **10.1 s / 0.84 GB** |
 
-⚠ The A/B is what makes this a real finding rather than measurement noise:
-contention would move both arms, not one.
+**19× time, 5.3× memory.**
+
+⚠ **CORRECTION, and it matters.** This entry first claimed the inline form
+OOMs at the 5.5 GB cap — measured twice, at 102 s to the kill. It does
+not: those runs had ANOTHER `agda` on the box, and 4.41 GB plus a
+competitor is what exceeded the cap. On an idle machine the inline form
+COMPLETES. Re-measured on an idle box before publishing this number.
+
+⚠ But 4.41 GB against a 5.5 GB cap is a 20% margin — one concurrent
+process, or one more binder of depth, away from failing. The lever is
+still worth taking; it is a robustness fix, not a works/doesn't-work one.
 
 **Why.** The inner call's term lands inside the OUTER call's expected
 TYPE — `fst (pair m' ⟨the whole inner spine⟩)` — so every conversion check
