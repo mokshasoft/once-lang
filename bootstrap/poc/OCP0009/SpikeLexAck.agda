@@ -65,12 +65,12 @@ open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
-open import poc.OCP0009.SpikeLexT using ( rec2Tat; lStepT )
-open import poc.OCP0009.SpikeLexAsm using ( module LxΠ )
+-- ★ ONE import: the façade re-exports the type layer.
+open import poc.OCP0009.NbEPDirDBLibLexrec using ( rec2Tat; lStepT; module LxΠ )
 open import poc.OCP0009.NbEPDirDBLibPair
   using ( PairT; ⊢PairT; msr₁; msr₂; ⊢msr₁; ⊢msr₂
         ; elNat; asP; asN; dropˡ; dropʳ; holdˡ )
-open import poc.OCP0009.SpikeLexUse using ( ⊢rec1Tat; ⊢rec2Tat )
+open import poc.OCP0009.NbEPDirDBLibPairLex using ( ⊢rec1Tat; ⊢rec2Tat )
 
 -- ★ `asN`, `dropˡ`, `dropʳ` and `holdˡ` now come from
 --   `NbEPDirDBLibPair` (D10) — this file used to define all four.

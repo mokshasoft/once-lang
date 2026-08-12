@@ -19,7 +19,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikeLexSZ where
+module poc.OCP0009.NbEPDirDBLibLexrecSZ where
 
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; cong₂; subst )
@@ -40,7 +40,7 @@ open import poc.OCP0009.NbEPDirDBLibWk
   using ( w; wᶠ; cong₆; sub-w; sub-w²; wk-singleTy; wᶠ-single
         ; wᶠ²-single; wᶠ³-single; w^; wTy^; wᶠ^; ⊢wkᶠ; sub-wTy )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-fit )
-open import poc.OCP0009.SpikeLexT
+open import poc.OCP0009.NbEPDirDBLibLexrecT
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 
 module SZ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
