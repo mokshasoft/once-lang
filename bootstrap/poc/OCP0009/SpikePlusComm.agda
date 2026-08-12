@@ -1,0 +1,262 @@
+------------------------------------------------------------------------
+-- OCP-0009 — COMMUTATIVITY OF `+`, and the `Id`-at-`Nat` kit it needs.
+--
+-- ⚠ WHY.  `SpikeArith` proves `+` monotone in its BASE argument and shows
+--   that the RECURSED argument is unreachable that way — `plusTm` recurses
+--   on its first argument, so for open `x`,`y` both sides are stuck, and
+--   `<` is a COMPUTING `Hom Nat` rather than an inductive family, so there
+--   is nothing to induct on.  gcd needs BOTH (its two branches change
+--   different components), and commutativity is what bridges them.
+--
+-- ★ THE KIT IS FOUR `jsub`s.  The kernel's `⊢jsub` is TRANSPORT — carry a
+--   CODE family `d` along an `Id` — not full `J`, and transport is all
+--   that is wanted here.  Each of `cong nsuc`, `sym` and `trans` is the
+--   same call with a different `d`:
+--
+--     cong nsuc   d = ⌜Id⌝ ⌜Nat⌝ (nsuc (w a)) (nsuc (var vz))
+--     sym         d = ⌜Id⌝ ⌜Nat⌝ (var vz)     (w a)
+--     trans       d = ⌜Id⌝ ⌜Nat⌝ (w a)        (var vz)
+--
+-- ⚠ EVERY `Id` HERE IS AT `El ⌜Nat⌝`, NOT AT `Nat` — `⊢idrefl` and
+--   `⊢jsub` are CODE-indexed (`Γ ⊢ c ∷ U → … ∷ Id (El c) t t`), the same
+--   forcing that makes the WF library's motive a code (`WF-LIBRARY.md`
+--   D4).  So `natAsEl`/`asN` cross in and out, and `El-⌜Id⌝` converts the
+--   `jsub` result back to an `Id`.  That is the whole overhead.
+--
+-- ⚠ AND EVERY `jsub` PAYS ONE `wk-single`: the family `d` mentions the
+--   ambient endpoint as `w a`, and `subTm (single _)` undoes that only
+--   PROPOSITIONALLY.  One `⊢-cast` per call, twice per lemma (the input
+--   `e` and the output).
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module poc.OCP0009.SpikePlusComm where
+
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import poc.OCP0009.NbEPDirDBPi
+  using ( Cx; ε; _∙; vz; vs
+        ; RTy; El; Id; Nat
+        ; RTm; var; nzero; nsuc; natrec; idrefl; jsub; ⌜Id⌝; ⌜Nat⌝
+        ; renTm; subTy; subTm )
+open import poc.OCP0009.NbEPDirDBType
+  using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; ⊢idrefl; ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝
+        ; ty-Id; ty-El; ty-Nat
+        ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Id⌝
+        ; ξ-Idˡ; ξ-Idʳ; ξ-nsuc; natrec-zero; natrec-suc )
+open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
+open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w )
+open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
+open import poc.OCP0009.NbEPDirDBExamplesStrong using ( natAsEl )
+open import poc.OCP0009.NbEPDirDBLibPair using ( asN )
+
+------------------------------------------------------------------------
+-- `Id` at `Nat`, and its code twin
+------------------------------------------------------------------------
+
+IdN : {Γ : Cx} → RTm Γ → RTm Γ → RTy Γ
+IdN a b = Id (El ⌜Nat⌝) a b
+
+⊢tyIdN : {Γ : Ctx} {a b : RTm ⌊ Γ ⌋} →
+         Γ ⊢ a ∷ Nat → Γ ⊢ b ∷ Nat → Γ ⊢ty IdN a b
+⊢tyIdN da db = ty-Id (ty-El ⊢⌜Nat⌝) (natAsEl da) (natAsEl db)
+
+-- `El (⌜Id⌝ ⌜Nat⌝ a b) ≅ᵀ IdN a b` — the one reduction every `jsub` needs
+elIdN : {Γ : Cx} (a b : RTm Γ) → El (⌜Id⌝ ⌜Nat⌝ a b) ≅ᵀ IdN a b
+elIdN a b = red→≅ᵀ (stepᵀ (El-⌜Id⌝ _ _ _) doneᵀ)
+
+reflN : {Γ : Cx} → RTm Γ → RTm Γ
+reflN a = idrefl ⌜Nat⌝ a
+
+⊢reflN : {Γ : Ctx} {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ Nat → Γ ⊢ reflN a ∷ IdN a a
+⊢reflN da = ⊢idrefl ⊢⌜Nat⌝ (natAsEl da)
+
+------------------------------------------------------------------------
+-- ★ cong nsuc
+------------------------------------------------------------------------
+
+congS : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+congS a p = jsub (⌜Id⌝ ⌜Nat⌝ (nsuc (w a)) (nsuc (var vz))) p (reflN (nsuc a))
+
+⊢congS : {Γ : Ctx} {a b p : RTm ⌊ Γ ⌋} →
+         Γ ⊢ a ∷ Nat → Γ ⊢ b ∷ Nat → Γ ⊢ p ∷ IdN a b →
+         Γ ⊢ congS a p ∷ IdN (nsuc a) (nsuc b)
+⊢congS {a = a} {b = b} da db dp =
+  ⊢conv (⊢-cast (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ (nsuc z) (nsuc b))) (wk-single {v = b} a))
+                (⊢jsub dd (natAsEl da) (natAsEl db) dp de))
+        (elIdN (nsuc a) (nsuc b))
+  where
+    dd = ⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢nsuc (⊢wk da)))
+                      (natAsEl (⊢nsuc (asN (⊢var here))))
+    de = ⊢-cast (sym (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ (nsuc z) (nsuc a)))
+                           (wk-single {v = a} a)))
+                (⊢conv (⊢reflN (⊢nsuc da)) (csymᵀ (elIdN (nsuc a) (nsuc a))))
+
+------------------------------------------------------------------------
+-- ★ sym and trans — the same call, other families
+------------------------------------------------------------------------
+
+symN : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+symN a p = jsub (⌜Id⌝ ⌜Nat⌝ (var vz) (w a)) p (reflN a)
+
+⊢symN : {Γ : Ctx} {a b p : RTm ⌊ Γ ⌋} →
+        Γ ⊢ a ∷ Nat → Γ ⊢ b ∷ Nat → Γ ⊢ p ∷ IdN a b →
+        Γ ⊢ symN a p ∷ IdN b a
+⊢symN {a = a} {b = b} da db dp =
+  ⊢conv (⊢-cast (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ b z)) (wk-single {v = b} a))
+                (⊢jsub dd (natAsEl da) (natAsEl db) dp de))
+        (elIdN b a)
+  where
+    dd = ⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (natAsEl (⊢wk da))
+    de = ⊢-cast (sym (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ a z)) (wk-single {v = a} a)))
+                (⊢conv (⊢reflN da) (csymᵀ (elIdN a a)))
+
+transN : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+transN a p q = jsub (⌜Id⌝ ⌜Nat⌝ (w a) (var vz)) q p
+
+⊢transN : {Γ : Ctx} {a b c p q : RTm ⌊ Γ ⌋} →
+          Γ ⊢ a ∷ Nat → Γ ⊢ b ∷ Nat → Γ ⊢ c ∷ Nat →
+          Γ ⊢ p ∷ IdN a b → Γ ⊢ q ∷ IdN b c →
+          Γ ⊢ transN a p q ∷ IdN a c
+⊢transN {a = a} {b = b} {c = c} da db dc dp dq =
+  ⊢conv (⊢-cast (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ z c)) (wk-single {v = c} a))
+                (⊢jsub dd (natAsEl db) (natAsEl dc) dq de))
+        (elIdN a c)
+  where
+    dd = ⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢wk da)) (⊢var here)
+    de = ⊢-cast (sym (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ z b)) (wk-single {v = b} a)))
+                (⊢conv dp (csymᵀ (elIdN a b)))
+
+------------------------------------------------------------------------
+-- ★ 1.  `m + 0 = m`.  ⚠ `plusTm` recurses on its FIRST argument, so
+--   `0 + n ⟶ n` is FREE and `m + 0` is the one that needs an induction.
+--   The motive mentions no ambient term, so — uniquely among the three —
+--   it needs no `mot-at`/`mot-s`.
+------------------------------------------------------------------------
+
+plus0B : {Γ : Cx} (m : RTm Γ) → RTy Γ
+plus0B m = IdN (plusTm m nzero) m
+
+⊢plus0Mot : {Γ : Ctx} → (Γ ▹ Nat) ⊢ty plus0B (var vz)
+⊢plus0Mot = ⊢tyIdN (⊢plus (⊢var here) ⊢nzero) (⊢var here)
+
+plus0Tm : {Γ : Cx} → RTm Γ → RTm Γ
+plus0Tm m = natrec (reflN nzero) (congS (plusTm (var (vs vz)) nzero) (var vz)) m
+
+⊢plus0 : {Γ : Ctx} {m : RTm ⌊ Γ ⌋} → Γ ⊢ m ∷ Nat → Γ ⊢ plus0Tm m ∷ plus0B m
+⊢plus0 dm = ⊢natrec ⊢plus0Mot zB sB dm
+  where
+    zB = ⊢conv (⊢reflN ⊢nzero)
+           (csymᵀ (red→≅ᵀ (stepᵀ (ξ-Idˡ (natrec-zero _ _)) doneᵀ)))
+    sB = ⊢conv (⊢congS (⊢plus (⊢var (there here)) ⊢nzero) (⊢var (there here))
+                       (⊢var here))
+           (csymᵀ (red→≅ᵀ (stepᵀ (ξ-Idˡ (natrec-suc _ _ _)) doneᵀ)))
+
+------------------------------------------------------------------------
+-- ★ 2.  `m + suc n = suc (m + n)`.  ⚠ `n` is AMBIENT, so the motive is
+--   bound-explicit and pays `mot-at`/`mot-s` — the house pattern.
+------------------------------------------------------------------------
+
+plusSB : {Γ : Cx} (n m : RTm Γ) → RTy Γ
+plusSB n m = IdN (plusTm m (nsuc n)) (nsuc (plusTm m n))
+
+⊢plusSMot : {Γ : Ctx} {n : RTm ⌊ Γ ⌋} → Γ ⊢ n ∷ Nat →
+            (Γ ▹ Nat) ⊢ty plusSB (w n) (var vz)
+⊢plusSMot dn =
+  ⊢tyIdN (⊢plus (⊢var here) (⊢nsuc (⊢wk dn)))
+         (⊢nsuc (⊢plus (⊢var here) (⊢wk dn)))
+
+psMot-at : {Γ : Cx} (n k : RTm Γ) →
+           subTy (single k) (plusSB (w n) (var vz)) ≡ plusSB n k
+psMot-at n k =
+  cong (λ z → IdN (plusTm k (nsuc z)) (nsuc (plusTm k z))) (wk-single {v = k} n)
+
+psMot-s : {Γ : Cx} (n : RTm Γ) →
+          subTy nrs (plusSB (w n) (var vz))
+        ≡ plusSB (w (w n)) (nsuc (var (vs vz)))
+psMot-s n =
+  cong (λ z → IdN (plusTm (nsuc (var (vs vz))) (nsuc z))
+                  (nsuc (plusTm (nsuc (var (vs vz))) z)))
+       (nrs-w n)
+
+plusSTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+plusSTm n m =
+  natrec (reflN (nsuc n))
+         (congS (plusTm (var (vs vz)) (nsuc (w (w n)))) (var vz))
+         m
+
+⊢plusS : {Γ : Ctx} {n m : RTm ⌊ Γ ⌋} →
+         Γ ⊢ n ∷ Nat → Γ ⊢ m ∷ Nat → Γ ⊢ plusSTm n m ∷ plusSB n m
+⊢plusS {n = n} {m = m} dn dm =
+  ⊢-cast (psMot-at n m) (⊢natrec (⊢plusSMot dn) zB sB dm)
+  where
+    zB = ⊢-cast (sym (psMot-at n nzero))
+           (⊢conv (⊢reflN (⊢nsuc dn))
+             (csymᵀ (ctrnᵀ (red→≅ᵀ (stepᵀ (ξ-Idˡ (natrec-zero _ _)) doneᵀ))
+                           (red→≅ᵀ (stepᵀ (ξ-Idʳ (ξ-nsuc (natrec-zero _ _))) doneᵀ)))))
+    sB = ⊢-cast (sym (psMot-s n))
+           (⊢conv (⊢congS (⊢plus (⊢var (there here)) (⊢nsuc (⊢wk (⊢wk dn))))
+                          (⊢nsuc (⊢plus (⊢var (there here)) (⊢wk (⊢wk dn))))
+                          (⊢var here))
+             (csymᵀ (ctrnᵀ (red→≅ᵀ (stepᵀ (ξ-Idˡ (natrec-suc _ _ _)) doneᵀ))
+                           (red→≅ᵀ (stepᵀ (ξ-Idʳ (ξ-nsuc (natrec-suc _ _ _))) doneᵀ)))))
+
+------------------------------------------------------------------------
+-- ★★ 3.  COMMUTATIVITY.  `m + n = n + m`, by `natrec` on `m`, using 1 in
+--    the base and 2 in the step.  ⚠ The step's right-hand side `n + suc m'`
+--    is STUCK (n is open) — that is exactly why 2 is needed, and exactly
+--    why the recursed-argument monotonicity was unreachable directly.
+------------------------------------------------------------------------
+
+commB : {Γ : Cx} (n m : RTm Γ) → RTy Γ
+commB n m = IdN (plusTm m n) (plusTm n m)
+
+⊢commMot : {Γ : Ctx} {n : RTm ⌊ Γ ⌋} → Γ ⊢ n ∷ Nat →
+           (Γ ▹ Nat) ⊢ty commB (w n) (var vz)
+⊢commMot dn =
+  ⊢tyIdN (⊢plus (⊢var here) (⊢wk dn)) (⊢plus (⊢wk dn) (⊢var here))
+
+cmMot-at : {Γ : Cx} (n k : RTm Γ) →
+           subTy (single k) (commB (w n) (var vz)) ≡ commB n k
+cmMot-at n k =
+  cong (λ z → IdN (plusTm k z) (plusTm z k)) (wk-single {v = k} n)
+
+cmMot-s : {Γ : Cx} (n : RTm Γ) →
+          subTy nrs (commB (w n) (var vz))
+        ≡ commB (w (w n)) (nsuc (var (vs vz)))
+cmMot-s n =
+  cong (λ z → IdN (plusTm (nsuc (var (vs vz))) z) (plusTm z (nsuc (var (vs vz)))))
+       (nrs-w n)
+
+commTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+commTm n m =
+  natrec (symN (plusTm n nzero) (plus0Tm n))
+         (transN (nsuc (plusTm (var (vs vz)) (w (w n))))
+                 (congS (plusTm (var (vs vz)) (w (w n))) (var vz))
+                 (symN (plusTm (w (w n)) (nsuc (var (vs vz))))
+                       (plusSTm (var (vs vz)) (w (w n)))))
+         m
+
+⊢comm : {Γ : Ctx} {n m : RTm ⌊ Γ ⌋} →
+        Γ ⊢ n ∷ Nat → Γ ⊢ m ∷ Nat → Γ ⊢ commTm n m ∷ commB n m
+⊢comm {n = n} {m = m} dn dm =
+  ⊢-cast (cmMot-at n m) (⊢natrec (⊢commMot dn) zB sB dm)
+  where
+    zB = ⊢-cast (sym (cmMot-at n nzero))
+           (⊢conv (⊢symN (⊢plus dn ⊢nzero) dn (⊢plus0 dn))
+             (csymᵀ (red→≅ᵀ (stepᵀ (ξ-Idˡ (natrec-zero _ _)) doneᵀ))))
+    sB = ⊢-cast (sym (cmMot-s n))
+           (⊢conv (⊢transN (⊢nsuc (⊢plus dm' dn''))
+                           (⊢nsuc (⊢plus dn'' dm'))
+                           (⊢plus dn'' (⊢nsuc dm'))
+                           (⊢congS (⊢plus dm' dn'') (⊢plus dn'' dm') (⊢var here))
+                           (⊢symN (⊢plus dn'' (⊢nsuc dm'))
+                                  (⊢nsuc (⊢plus dn'' dm'))
+                                  (⊢plusS dm' dn'')))
+             (csymᵀ (red→≅ᵀ (stepᵀ (ξ-Idˡ (natrec-suc _ _ _)) doneᵀ))))
+      where
+        dm'  = ⊢var (there here)
+        dn'' = ⊢wk (⊢wk dn)
