@@ -274,6 +274,46 @@ unfolding in the reductions. Both are fixable in the packaging.
 ⚠ It also explains, rather than excuses, why the `SpikeDivC` evaluation
 debt is only PARTIALLY closed (zero case end-to-end; recursive case open).
 
+### D10 — A NESTED RECURSIVE CALL MUST BE HOISTED BEHIND A `Def` ⛔ NEW, AND IT IS A USE-SITE DEFECT
+
+*Found by `SpikeLexAck` (Ackermann), 2026-08-12. Nothing in this document
+or any handoff predicted it, and the way you discover it is by OOMing.*
+
+When a step function's recursive call CONSUMES another recursive call —
+`ack (suc m') (suc n') = ack (m' , ack (suc m' , n'))` — writing the inner
+call inline inside the outer one is the difference between finishing and
+not:
+
+| the SAME file, same box, same conditions | |
+|---|---|
+| inner call written INLINE | ⛔ **OOM at the 5.5 GB cap**, 102 s to the kill, twice |
+| inner call behind a top-level `Def` with an explicit type | ✅ **~11 s / ~0.84 GB** |
+| (the same file truncated one definition earlier) | 4.3 s / 0.43 GB |
+
+⚠ The A/B is what makes this a real finding rather than measurement noise:
+contention would move both arms, not one.
+
+**Why.** The inner call's term lands inside the OUTER call's expected
+TYPE — `fst (pair m' ⟨the whole inner spine⟩)` — so every conversion check
+in the outer spine re-traverses it. Behind a `Def` the traversal phases
+walk a NAME. This is `agda-cost-is-elaborated-term-size`'s lever, and it
+is the only one that has ever worked on this axis.
+
+**Two halves to the fix, and both mattered:**
+1. hoist the inner call to a top-level term + derivation with an explicit
+   type (the `⊢strong-base'` pattern);
+2. make the descent helpers' term arguments **EXPLICIT**, not implicit —
+   an implicit solved by unification against a huge term is the same trap
+   `agda-plus-inversion-trap` records for `+`.
+
+**How to apply.** Any step function whose recursion nests. ⚠ **D7's
+unfolding lemmas do NOT help here** — this is an ELABORATION cost, not a
+reduction cost, so the two defects are independent.
+
+⇒ The library should ship the pair-carrier descent helpers (`dropˡ`,
+`dropʳ`, `holdˡ` in `SpikeLexAck`) with explicit arguments, so callers
+inherit the fix instead of rediscovering it.
+
 ### P1 — ETA COVERS EVERYTHING EXCEPT MOVING A FAMILY UNDER A RENAMING 📌
 
 *A proof pattern, not a decision — but it predicts which naturality lemmas
