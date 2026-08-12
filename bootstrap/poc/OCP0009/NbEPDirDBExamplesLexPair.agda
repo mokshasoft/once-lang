@@ -14,14 +14,14 @@
 --     f (a , suc b') = f (a , b')          -- μ₁ HELD, μ₂ DOWN → rec₂
 --
 --   so `f (a , b) = a`.  The point is the plumbing, exactly as in
---   `SpikePairT`: what is exercised is the LEXICOGRAPHIC descent, where
+--   `NbEPDirDBExamplesPairLib`: what is exercised is the LEXICOGRAPHIC descent, where
 --   the μ₁ obligation is discharged by REFLEXIVITY (`fst y ≤ fst x`
 --   because the recursive call keeps the first component) and the μ₂
 --   obligation is a real strict descent.  That pairing — one `≤`, one
 --   `<` — is precisely what `rec₂` is and what `amrec` cannot state.
 --
 -- ⚠ HONEST SCOPE: this uses `rec₂` only.  `rec₁` is `aIHT`, which
---   `SpikePairT` already exercises at this very carrier through `amrec`,
+--   `NbEPDirDBExamplesPairLib` already exercises at this very carrier through `amrec`,
 --   so nothing about it is untested — but a function using BOTH is a
 --   better demo and is not this one.  Ackermann is that function (#9).
 --
@@ -31,7 +31,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikeLexUse where
+module poc.OCP0009.NbEPDirDBExamplesLexPair where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
@@ -53,7 +53,7 @@ open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
 open import poc.OCP0009.NbEPDirDBLibPair
   using ( PairT; ⊢PairT; msr₁; msr₂; ⊢msr₁; ⊢msr₂; elNat; asP; holdˡ; dropʳ )
 -- ★ the recursor types now come from the library too (was local here,
---   which made `SpikeLexAck` import a USE SITE for them).
+--   which made `NbEPDirDBExamplesAckLib` import a USE SITE for them).
 open import poc.OCP0009.NbEPDirDBLibPairLex using ( ⊢rec1Tat; ⊢rec2Tat )
 -- ★ ONE import: the façade re-exports the type layer.
 open import poc.OCP0009.NbEPDirDBLibLexrec using ( rec1T; rec2Tat; lStepT; module LxΠ )

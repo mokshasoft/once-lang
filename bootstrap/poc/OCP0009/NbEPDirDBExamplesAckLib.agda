@@ -7,24 +7,24 @@
 --                                       ↑ μ₁ HELD, μ₂ DOWN → rec₂
 --                             ↑ μ₁ DOWN → rec₁
 --
--- ★ THE USE SITE THAT EXERCISES BOTH RECURSORS.  `SpikeLexUse` uses
+-- ★ THE USE SITE THAT EXERCISES BOTH RECURSORS.  `NbEPDirDBExamplesLexPair` uses
 --   `rec₂` alone; this one uses `rec₁` twice and `rec₂` once, and the
 --   outer call CONSUMES the inner call's result, so the recursion is
 --   genuinely nested and not merely two-armed.
 --
 -- ⛔⛔ AND ACKERMANN DOES **NOT** NEED `⊢lexrec`.  Do not cite this file as
---   the justification for the WF axis — `SpikeAckT` defines the same
+--   the justification for the WF axis — `NbEPDirDBExamplesAckKernel` defines the same
 --   function over the same kernel by NESTED `natrec` with a higher-order
 --   motive (the outer recursion returns `Nat → Nat`), in 26 lines and
 --   0.61 s, with no measure, no `Hom Nat` order and no combinator at all.
 --   Ackermann happens to be structurally recursive at HIGHER TYPE.
---   `SpikeAckT`'s own header says this and warns against exactly the
+--   `NbEPDirDBExamplesAckKernel`'s own header says this and warns against exactly the
 --   claim; the functions that genuinely need lexicographic descent are
 --   the ones it names — div, gcd, quicksort on a pair measure.
 --
 --   What this file IS: the first use site to exercise rec₁, rec₂ and a
 --   nested call together, and the one that found the `Def` cliff below.
---   ⚠ It is ~18× slower than `SpikeAckT` at the same function; that gap
+--   ⚠ It is ~18× slower than `NbEPDirDBExamplesAckKernel` at the same function; that gap
 --   is the price of going through a general recursor, and it is worth
 --   knowing before quoting this module as evidence of anything.
 --
@@ -46,7 +46,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikeLexAck where
+module poc.OCP0009.NbEPDirDBExamplesAckLib where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi

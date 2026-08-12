@@ -694,7 +694,7 @@ and it does not scale: one former per datatype, versus one `μ` for all.
    ✅ **CARRIER-GENERICITY: CLOSED 2026-08-12.**  `⊢lexrecΠ`
    (`SpikeLexAsm`) takes an arbitrary carrier `A : RTy ⌊ Δ ⌋` over an
    arbitrary ambient `Δ`, with the same `Π A (El cM)` conclusion as
-   `⊢amrecΠ`, and `SpikeLexUse`/`SpikeLexAck` call it at `Σ' Nat Nat`.
+   `⊢amrecΠ`, and `NbEPDirDBExamplesLexPair`/`NbEPDirDBExamplesAckLib` call it at `Σ' Nat Nat`.
    Multiset measures are still open — no current demand.
 
    ⛔⛔ **AND THE "OUT OF REACH" CLAIM ABOVE IS FALSE — CORRECTED

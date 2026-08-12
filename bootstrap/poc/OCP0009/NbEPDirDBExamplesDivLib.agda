@@ -24,7 +24,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikeDivT where
+module poc.OCP0009.NbEPDirDBExamplesDivLib where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
