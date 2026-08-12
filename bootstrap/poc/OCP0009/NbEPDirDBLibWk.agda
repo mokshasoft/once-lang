@@ -96,6 +96,15 @@ sub-w³ : {Γ Δ : Cx} {σ : Sub Γ Δ} (t : RTm Γ) →
          subTm (extS (extS (extS σ))) (w (w (w t))) ≡ w (w (w (subTm σ t)))
 sub-w³ {σ = σ} t = trans (sub-w {σ = extS (extS σ)} (w (w t))) (cong w (sub-w² t))
 
+-- ⚠ a fourth rung, wanted by D7's successor case (`aSBr` carries FIVE
+--   weakenings on the step).  ⭐ D5's argument applies: these are iterates
+--   of one lemma and want indexing, not listing.
+sub-w⁴ : {Γ Δ : Cx} {σ : Sub Γ Δ} (t : RTm Γ) →
+         subTm (extS (extS (extS (extS σ)))) (w (w (w (w t))))
+       ≡ w (w (w (w (subTm σ t))))
+sub-w⁴ {σ = σ} t =
+  trans (sub-w {σ = extS (extS (extS σ))} (w (w (w t)))) (cong w (sub-w³ t))
+
 ren-w : {Γ Δ : Cx} {ρ : Ren Γ Δ} (t : RTm Γ) →
         renTm (extR ρ) (w t) ≡ w (renTm ρ t)
 ren-w t = trans (renTm-renTm t) (sym (renTm-renTm t))

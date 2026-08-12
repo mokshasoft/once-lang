@@ -40,9 +40,11 @@ module poc.OCP0009.SpikeGcd where
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π
-        ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝ )
+        ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝
+        ; subTm )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋
+        ; single
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢⌜Nat⌝
         ; ty-Nat; ty-Hom; ty-El; ty-Π
@@ -245,7 +247,7 @@ gcdStp =
 ------------------------------------------------------------------------
 
 open AmTΠ ◇ PairT ⌜Nat⌝ msr gcdStp ⊢PairT ⊢⌜Nat⌝ ⊢msr ⊢gcdStp
-  using ( amrecTm; ⊢amrecΠ; ⊢amrecPt )
+  using ( amrecTm; ⊢amrecΠ; ⊢amrecPt; amrec-step-z; amrec-step-s )
 
 gcdTm : RTm ε
 gcdTm = amrecTm
@@ -331,3 +333,39 @@ gcd-recurses-right ih =
             (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ monus-1-3))
               (⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done))
                 (step (β _ ih) done)))))))
+
+------------------------------------------------------------------------
+-- ★★★★ END TO END — D7's IDEAL SHAPE COMPOSING WITH THE CALLER'S HALF.
+--
+--   `gcd-computes-b0` above is already universally quantified in the IH,
+--   because a step function never inspects it.  That IS the shape
+--   `amrec-step-s` consumes, so the two compose with no glue at all:
+--
+--       app gcdTm (2 , 0) ⟶* 2
+--
+--   ⚠ Before D7's ideal shape this was NOT expressible — `amrec-unfold-s`
+--     landed on the auxiliary's branch and the caller's theorem was about
+--     `app (app stp x) ih`, so the two did not meet.  This one line is the
+--     entire point of closing D7.
+------------------------------------------------------------------------
+
+-- `μ (2 , 0) = 2 + 0 ⟶* suc 1`, which is what selects the successor case
+plus-2-0 : {Γ : Cx} → plusTm {Γ} n2 nzero ⟶* n2
+plus-2-0 =
+  step (natrec-suc _ _ _)
+    (step (ξ-nsuc (natrec-suc _ _ _))
+      (step (ξ-nsuc (ξ-nsuc (natrec-zero _ _))) done))
+
+-- ⚠ pinned at `ε`: the numerals are context-polymorphic, so an inline
+--   `pair n2 nzero` leaves its context a meta.
+X20 : RTm ε
+X20 = pair n2 nzero
+
+msr-2-0 : subTm (single X20) msr ⟶* nsuc n1
+msr-2-0 =
+  ⟶*-trans (⟶*-natrecⁿ (step (βfst n2 nzero) done))
+    (⟶*-trans (step (ξ-natrecᶻ (βsnd n2 nzero)) done) plus-2-0)
+
+-- ★★★ `gcd (2 , 0) = 2`, THROUGH THE WHOLE COMBINATOR.
+gcd-2-0 : app gcdTm X20 ⟶* n2
+gcd-2-0 = amrec-step-s X20 n1 msr-2-0 gcd-computes-b0
