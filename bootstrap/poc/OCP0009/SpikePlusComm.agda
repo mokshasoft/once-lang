@@ -35,13 +35,13 @@ module poc.OCP0009.SpikePlusComm where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
-        ; RTy; El; Id; Nat
-        ; RTm; var; nzero; nsuc; natrec; idrefl; jsub; ⌜Id⌝; ⌜Nat⌝
+        ; RTy; El; Id; Nat; Hom
+        ; RTm; var; nzero; nsuc; natrec; idrefl; jsub; ⌜Id⌝; ⌜Nat⌝; ⌜Hom⌝
         ; renTm; subTy; subTm )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢idrefl; ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝
+        ; ⊢idrefl; ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝; ⊢⌜Hom⌝
         ; ty-Id; ty-El; ty-Nat
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Id⌝
         ; ξ-Idˡ; ξ-Idʳ; ξ-nsuc; natrec-zero; natrec-suc )
@@ -50,7 +50,8 @@ open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
-open import poc.OCP0009.NbEPDirDBExamplesStrong using ( natAsEl )
+open import poc.OCP0009.NbEPDirDBExamplesStrong using ( natAsEl; El-homNat )
+open import poc.OCP0009.SpikeArith using ( plusMonoB; plusMonoTm; ⊢plus-mono )
 open import poc.OCP0009.NbEPDirDBLibPair using ( asN )
 
 ------------------------------------------------------------------------
@@ -260,3 +261,76 @@ commTm n m =
       where
         dm'  = ⊢var (there here)
         dn'' = ⊢wk (⊢wk dn)
+
+------------------------------------------------------------------------
+-- ★★ TRANSPORTING A `Hom Nat` ALONG AN `Id`.
+--
+-- Two more `jsub`s, one per endpoint.  ⚠ The family is a `⌜Hom⌝` CODE and
+-- the result comes out as `El (⌜Hom⌝ …)`, so `El-homNat` converts back —
+-- the same code-indexing tax the `Id` kit pays above.
+------------------------------------------------------------------------
+
+homN : {Γ : Cx} (a b : RTm Γ) → El (⌜Hom⌝ ⌜Nat⌝ a b) ≅ᵀ Hom Nat a b
+homN a b = red→≅ᵀ (El-homNat a b)
+
+trHomˡ : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+trHomˡ u p h = jsub (⌜Hom⌝ ⌜Nat⌝ (var vz) (w u)) p h
+
+⊢trHomˡ : {Γ : Ctx} {a b u p h : RTm ⌊ Γ ⌋} →
+          Γ ⊢ a ∷ Nat → Γ ⊢ b ∷ Nat → Γ ⊢ u ∷ Nat →
+          Γ ⊢ p ∷ IdN a b → Γ ⊢ h ∷ Hom Nat a u →
+          Γ ⊢ trHomˡ u p h ∷ Hom Nat b u
+⊢trHomˡ {a = a} {b = b} {u = u} da db du dp dh =
+  ⊢conv (⊢-cast (cong (λ z → El (⌜Hom⌝ ⌜Nat⌝ b z)) (wk-single {v = b} u))
+                (⊢jsub dd (natAsEl da) (natAsEl db) dp de))
+        (homN b u)
+  where
+    dd = ⊢⌜Hom⌝ ⊢⌜Nat⌝ (⊢var here) (natAsEl (⊢wk du))
+    de = ⊢-cast (sym (cong (λ z → El (⌜Hom⌝ ⌜Nat⌝ a z)) (wk-single {v = a} u)))
+                (⊢conv dh (csymᵀ (homN a u)))
+
+trHomʳ : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+trHomʳ t p h = jsub (⌜Hom⌝ ⌜Nat⌝ (w t) (var vz)) p h
+
+⊢trHomʳ : {Γ : Ctx} {a b t p h : RTm ⌊ Γ ⌋} →
+          Γ ⊢ a ∷ Nat → Γ ⊢ b ∷ Nat → Γ ⊢ t ∷ Nat →
+          Γ ⊢ p ∷ IdN a b → Γ ⊢ h ∷ Hom Nat t a →
+          Γ ⊢ trHomʳ t p h ∷ Hom Nat t b
+⊢trHomʳ {a = a} {b = b} {t = t} da db dt dp dh =
+  ⊢conv (⊢-cast (cong (λ z → El (⌜Hom⌝ ⌜Nat⌝ z b)) (wk-single {v = b} t))
+                (⊢jsub dd (natAsEl da) (natAsEl db) dp de))
+        (homN t b)
+  where
+    dd = ⊢⌜Hom⌝ ⊢⌜Nat⌝ (natAsEl (⊢wk dt)) (⊢var here)
+    de = ⊢-cast (sym (cong (λ z → El (⌜Hom⌝ ⌜Nat⌝ z a)) (wk-single {v = a} t)))
+                (⊢conv dh (csymᵀ (homN t a)))
+
+------------------------------------------------------------------------
+-- ★★★ THE PAYOFF: `+` IS MONOTONE IN ITS RECURSED ARGUMENT TOO.
+--
+--   `SpikeArith.⊢plus-mono` gives `c + x < c + y`; commutativity moves
+--   both endpoints across, and `x + c < y + c` is what gcd's first branch
+--   needs.  ⚠ THIS IS THE LEMMA THAT WAS UNREACHABLE DIRECTLY — see
+--   `SpikeArith`'s header for why (`plusTm` is stuck in its first
+--   argument and `<` is not an inductive family).
+------------------------------------------------------------------------
+
+plusMonoLB : {Γ : Cx} (x y c : RTm Γ) → RTy Γ
+plusMonoLB x y c = Hom Nat (nsuc (plusTm x c)) (plusTm y c)
+
+plusMonoLTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+plusMonoLTm x y c p =
+  trHomʳ (nsuc (plusTm x c)) (commTm y c)
+    (trHomˡ (plusTm c y) (congS (plusTm c x) (commTm x c))
+      (plusMonoTm p c))
+
+⊢plus-mono-l : {Γ : Ctx} {x y c p : RTm ⌊ Γ ⌋} →
+               Γ ⊢ x ∷ Nat → Γ ⊢ y ∷ Nat → Γ ⊢ c ∷ Nat →
+               Γ ⊢ p ∷ Hom Nat (nsuc x) y →
+               Γ ⊢ plusMonoLTm x y c p ∷ plusMonoLB x y c
+⊢plus-mono-l {x = x} {y = y} {c = c} dx dy dc dp =
+  ⊢trHomʳ (⊢plus dc dy) (⊢plus dy dc) (⊢nsuc (⊢plus dx dc))
+          (⊢comm dy dc)
+          (⊢trHomˡ (⊢nsuc (⊢plus dc dx)) (⊢nsuc (⊢plus dx dc)) (⊢plus dc dy)
+                   (⊢congS (⊢plus dc dx) (⊢plus dx dc) (⊢comm dx dc))
+                   (⊢plus-mono dx dy dc dp))
