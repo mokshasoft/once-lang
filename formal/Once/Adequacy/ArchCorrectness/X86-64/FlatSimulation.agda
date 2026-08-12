@@ -286,22 +286,22 @@ block-step-mov-rr {hv} prog fs s i dst src cc h-flat ft ca fpc-eq rsame dataPost
 block-step-mov-to-output : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-to-output → BlockStep hv prog fs s mov-to-output
 block-step-mov-to-output {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s mov-to-output rax rdi cc h ft refl refl (refl , refl) (C.sim-mov-to-output fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _))
+  block-step-mov-rr prog fs s mov-to-output rax rdi cc h ft refl refl (refl , refl) (C.sim-mov-to-output fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _ _))
 
 block-step-mov-to-input : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-to-input → BlockStep hv prog fs s mov-to-input
 block-step-mov-to-input {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s mov-to-input rdi rax cc h ft refl refl (refl , refl) (C.sim-mov-to-input fs s _ (dataCorr cc) (C.sets-role-x86 s role-in1 _ _))
+  block-step-mov-rr prog fs s mov-to-input rdi rax cc h ft refl refl (refl , refl) (C.sim-mov-to-input fs s _ (dataCorr cc) (C.sets-role-x86 s role-in1 _ _ _))
 
 block-step-mov-input2-to-output : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-input2-to-output → BlockStep hv prog fs s mov-input2-to-output
 block-step-mov-input2-to-output {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s mov-input2-to-output rax rsi cc h ft refl refl (refl , refl) (C.sim-mov-input2-to-output fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _))
+  block-step-mov-rr prog fs s mov-input2-to-output rax rsi cc h ft refl refl (refl , refl) (C.sim-mov-input2-to-output fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _ _))
 
 block-step-mov-output-to-input2 : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-output-to-input2 → BlockStep hv prog fs s mov-output-to-input2
 block-step-mov-output-to-input2 {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s mov-output-to-input2 rsi rax cc h ft refl refl (refl , refl) (C.sim-mov-output-to-input2 fs s _ (dataCorr cc) (C.sets-role-x86 s role-in2 _ _))
+  block-step-mov-rr prog fs s mov-output-to-input2 rsi rax cc h ft refl refl (refl , refl) (C.sim-mov-output-to-input2 fs s _ (dataCorr cc) (C.sets-role-x86 s role-in2 _ _ _))
 
 -- Generic single-`mov reg,imm` block-step (load-tag-lit, reg-op imm loads).
 block-step-mov-ri : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s : X.State)
@@ -344,27 +344,27 @@ block-step-mov-ri {hv} prog fs s i dst n cc h-flat ft ca fpc-eq rsame dataPost =
 block-step-load-tag-lit : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-load-tag-lit n) → BlockStep hv prog fs s (instr-load-tag-lit n)
 block-step-load-tag-lit {hv} prog fs s n cc h ft =
-  block-step-mov-ri prog fs s (instr-load-tag-lit n) rax n cc h ft refl refl (refl , refl) (C.sim-load-tag-lit n fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _))
+  block-step-mov-ri prog fs s (instr-load-tag-lit n) rax n cc h ft refl refl (refl , refl) (C.sim-load-tag-lit n fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _ _))
 
 block-step-scratch-one : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-one) → BlockStep hv prog fs s (instr-reg-op scratch-one)
 block-step-scratch-one {hv} prog fs s cc h ft =
-  block-step-mov-ri prog fs s (instr-reg-op scratch-one) rbx 1 cc h ft refl refl (refl , refl) (C.sim-reg-scratch-one fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _))
+  block-step-mov-ri prog fs s (instr-reg-op scratch-one) rbx 1 cc h ft refl refl (refl , refl) (C.sim-reg-scratch-one fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
 
 block-step-scratch-zero : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-zero) → BlockStep hv prog fs s (instr-reg-op scratch-zero)
 block-step-scratch-zero {hv} prog fs s cc h ft =
-  block-step-mov-ri prog fs s (instr-reg-op scratch-zero) rbx 0 cc h ft refl refl (refl , refl) (C.sim-reg-scratch-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _))
+  block-step-mov-ri prog fs s (instr-reg-op scratch-zero) rbx 0 cc h ft refl refl (refl , refl) (C.sim-reg-scratch-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
 
 block-step-count-zero : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op count-zero) → BlockStep hv prog fs s (instr-reg-op count-zero)
 block-step-count-zero {hv} prog fs s cc h ft =
-  block-step-mov-ri prog fs s (instr-reg-op count-zero) r14 0 cc h ft refl refl (refl , refl) (C.sim-reg-count-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-count _ _))
+  block-step-mov-ri prog fs s (instr-reg-op count-zero) r14 0 cc h ft refl refl (refl , refl) (C.sim-reg-count-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-count _ _ _))
 
 block-step-scratch-load-count : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-load-count) → BlockStep hv prog fs s (instr-reg-op scratch-load-count)
 block-step-scratch-load-count {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s (instr-reg-op scratch-load-count) rbx r14 cc h ft refl refl (refl , refl) (C.sim-reg-scratch-load-count fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _))
+  block-step-mov-rr prog fs s (instr-reg-op scratch-load-count) rbx r14 cc h ft refl refl (refl , refl) (C.sim-reg-scratch-load-count fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
 
 -- c-label: pc passes through (x86 `label` is a 1-instr no-op). The flat
 -- step only bumps fpc, so the DATA correspondence transports unchanged
@@ -490,7 +490,7 @@ block-step-load-indirect : ∀ {hv : HeapView} prog fs s hl w → CompiledCorr h
   → heapMem (floc fs) hl ≡ just w
   → BlockStep hv prog fs s load-indirect
 block-step-load-indirect {hv} prog fs s hl w cc h ft i-eq live-hl h-eq =
-  post , exec-eq , record { dataCorr = C.sim-load-indirect hl w fs s dc i-eq h-eq ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  post , exec-eq , record { dataCorr = C.sim-load-indirect hl w fs s _ dc i-eq h-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
@@ -521,7 +521,7 @@ block-step-load-indirect-suc : ∀ {hv : HeapView} prog fs s hl w → CompiledCo
   → heapMem (floc fs) (sucHL hl) ≡ just w
   → BlockStep hv prog fs s load-indirect-suc
 block-step-load-indirect-suc {hv} prog fs s hl w cc h ft i-eq live-shl h-eq =
-  post , exec-eq , record { dataCorr = C.sim-load-indirect-suc hl w fs s dc i-eq h-eq ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  post , exec-eq , record { dataCorr = C.sim-load-indirect-suc hl w fs s _ dc i-eq h-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
@@ -555,7 +555,7 @@ block-step-load-from-slot : ∀ {hv : HeapView} prog fs s slot w → CompiledCor
   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
   → BlockStep hv prog fs s (load-from-slot slot)
 block-step-load-from-slot {hv} prog fs s slot w cc h ft slot<ns st-eq =
-  post , exec-eq , record { dataCorr = C.sim-load-from-slot slot w fs s dc st-eq ; pc-off = pco'
+  post , exec-eq , record { dataCorr = C.sim-load-from-slot slot w fs s _ dc st-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco'
                        ; ret-eq = ret-same prog fs (load-from-slot slot) (memory s)
                                      (elfs-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl) (ret-eq cc)
                        ; code-eq = code-eq cc }
@@ -586,7 +586,7 @@ block-step-restore-input : ∀ {hv : HeapView} prog fs s slot w → CompiledCorr
   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
   → BlockStep hv prog fs s (restore-input slot)
 block-step-restore-input {hv} prog fs s slot w cc h ft slot<ns st-eq =
-  post , exec-eq , record { dataCorr = C.sim-restore-input slot w fs s dc st-eq ; pc-off = pco'
+  post , exec-eq , record { dataCorr = C.sim-restore-input slot w fs s _ dc st-eq (C.sets-role-x86 s role-in1 _ _ _) ; pc-off = pco'
                        ; ret-eq = ret-same prog fs (restore-input slot) (memory s)
                                      (eris-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl) (ret-eq cc)
                        ; code-eq = code-eq cc }
@@ -1040,7 +1040,7 @@ block-step-load-const : ∀ {hv : HeapView} prog fs s (v : Carrier) → Compiled
   → fetch prog (fpc fs) ≡ just (instr-load-const fits-int v)
   → BlockStep hv prog fs s (instr-load-const fits-int v)
 block-step-load-const {hv} prog fs s v cc h ft =
-  post , exec-eq , record { dataCorr = C.sim-load-const v fs s dc ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  post , exec-eq , record { dataCorr = C.sim-load-const v fs s _ dc (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
@@ -1064,7 +1064,7 @@ block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : AgdaFloat) → 
   → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
   → BlockStep hv prog fs s (instr-load-const fits-float v)
 block-step-load-const-float {hv} prog fs s v cc h ft =
-  post , exec-eq , record { dataCorr = C.sim-load-const-float v fs s dc ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  post , exec-eq , record { dataCorr = C.sim-load-const-float v fs s _ dc (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
@@ -1094,7 +1094,7 @@ block-step-load-code-addr : ∀ {hv : HeapView} prog fs s n j → CompiledCorr h
   → X.find-label (compile-trace prog) (thunk n) ≡ just j
   → BlockStep hv prog fs s (instr-load-code-addr n)
 block-step-load-code-addr {hv} prog fs s n j cc h ft fl =
-  post , exec-eq , record { dataCorr = C.sim-load-code-addr n j fs s dc (code-eq cc n j fl)
+  post , exec-eq , record { dataCorr = C.sim-load-code-addr n j fs s _ dc (code-eq cc n j fl) (C.sets-role-x86 s role-out _ _ _)
                           ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -1118,7 +1118,7 @@ block-step-save-closure-reg : ∀ {hv : HeapView} prog fs s → CompiledCorr hv 
   → fetch prog (fpc fs) ≡ just instr-save-closure-reg
   → BlockStep hv prog fs s instr-save-closure-reg
 block-step-save-closure-reg {hv} prog fs s cc h ft =
-  post , exec-eq , record { dataCorr = C.sim-save-closure-reg fs s dc ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  post , exec-eq , record { dataCorr = C.sim-save-closure-reg fs s _ dc (C.sets-role-x86 s role-clos _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
@@ -1183,7 +1183,7 @@ block-step-worklist-pop : ∀ {hv : HeapView} prog fs s slot w → CompiledCorr 
   → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
   → BlockStep hv prog fs s (worklist-pop slot)
 block-step-worklist-pop {hv} prog fs s slot w cc h ft slot<ns st-eq =
-  post , exec-eq , record { dataCorr = C.sim-load-from-slot slot w fs s dc st-eq ; pc-off = pco'
+  post , exec-eq , record { dataCorr = C.sim-load-from-slot slot w fs s _ dc st-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco'
                        ; ret-eq = ret-same prog fs (load-from-slot slot) (memory s)
                                      (elfs-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl) (ret-eq cc)
                        ; code-eq = code-eq cc }
@@ -1352,7 +1352,7 @@ block-step-count-inc : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog 
   → BlockStep hv prog fs s (instr-reg-op count-inc)
 block-step-count-inc {hv} prog fs s k cc h ft c-eq =
   post , exec-eq , record
-    { dataCorr = C.sim-reg-count-inc k (updateFlags (xreadReg (xregs s) r14 + 1) (xreadReg (xregs s) r14)) fs s dc c-eq
+    { dataCorr = C.sim-reg-count-inc k fs s _ dc c-eq (C.sets-role-x86 s role-count _ _ _)
     ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -1377,7 +1377,7 @@ block-step-scratch-dec : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv pro
   → BlockStep hv prog fs s (instr-reg-op scratch-dec)
 block-step-scratch-dec {hv} prog fs s k cc h ft sc-eq =
   post , exec-eq , record
-    { dataCorr = C.sim-reg-scratch-dec k (updateFlags (xreadReg (xregs s) rbx ∸ 1) (xreadReg (xregs s) rbx)) fs s dc sc-eq
+    { dataCorr = C.sim-reg-scratch-dec k fs s _ dc sc-eq (C.sets-role-x86 s role-scratch _ _ _)
     ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -1734,7 +1734,7 @@ block-step-lea-slot : ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv pro
   → fetch prog (fpc fs) ≡ just (lea-slot slot)
   → BlockStep hv prog fs s (lea-slot slot)
 block-step-lea-slot {hv} prog fs s slot cc h ft =
-  post , exec-eq , record { dataCorr = C.sim-lea-slot slot fs s dc ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  post , exec-eq , record { dataCorr = C.sim-lea-slot slot fs s _ dc (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
@@ -1838,8 +1838,9 @@ block-step-load-indirect-stack {hv} prog fs s f k w cc h ft i-eq f-eq k<ss st-eq
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     dataPost : C.FlatCorr hv (flat-exec-instr load-indirect prog fs) post
-    dataPost = C.sim-load-indirect-stack f k w fs s dc i-eq
+    dataPost = C.sim-load-indirect-stack f k w fs s _ dc i-eq
                  (trans (cong (λ fr → stackMem (floc fs) fr k) f-eq) st-eq)
+                 (C.sets-role-x86 s role-out _ _ _)
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr load-indirect prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) load-indirect ft))
 
@@ -1886,8 +1887,9 @@ block-step-load-indirect-suc-stack {hv} prog fs s f k w cc h ft i-eq f-eq sk<ss 
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     dataPost : C.FlatCorr hv (flat-exec-instr load-indirect-suc prog fs) post
-    dataPost = C.sim-load-indirect-suc-stack f k w fs s dc i-eq
+    dataPost = C.sim-load-indirect-suc-stack f k w fs s _ dc i-eq
                  (trans (cong (λ fr → stackMem (floc fs) fr (suc k)) f-eq) st-eq)
+                 (C.sets-role-x86 s role-out _ _ _)
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr load-indirect-suc prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) load-indirect-suc ft))
 
