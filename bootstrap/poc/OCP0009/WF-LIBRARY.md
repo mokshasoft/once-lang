@@ -321,6 +321,75 @@ reduction cost, so the two defects are independent.
 `dropʳ`, `holdˡ` in `SpikeLexAck`) with explicit arguments, so callers
 inherit the fix instead of rediscovering it.
 
+### D11 — WHAT IS `lexrec` ACTUALLY FOR?  A NEGATIVE RESULT WITH A MECHANISM 📌 2026-08-12
+
+⚠ **First, a distinction this document has been sloppy about.** The WF
+AXIS and `⊢lexrec` are not the same thing. The axis is justified by `div`
+and `gcd` — non-structural recursions that genuinely need a measure — and
+`⊢amrecΠ` earns its keep there. `⊢lexrec` is one combinator ON the axis
+and stands or falls separately. Nothing below bears on the axis.
+
+**The question.** Is there a function that REQUIRES `⊢lexrec`?
+
+**The answer is no, and it cannot be otherwise:** every combinator here is
+a DERIVED term of the kernel, so by construction none adds definitional
+power. The honest question is only whether the packaging pays.
+
+★★ **AND `lexrec` IS LITERALLY THE HAND-ROLLED CONSTRUCTION.** Compare its
+own auxiliary with `SpikeAckT`, the no-combinator control:
+
+```agda
+lexAuxTm n = natrec lexZ lexS n                  -- SpikeLexAsm
+lexZ       = lam (natrec lexZZ lexZS (var vz))   -- outer branch is a FUNCTION
+
+ackTm = lam (natrec (lam (nsuc (var vz))) ackStep (var vz))   -- SpikeAckT
+                                                 -- outer motive `Π Nat Nat`
+```
+
+Same shape: an outer `natrec` whose motive is a function type, an inner
+`natrec` under it. `lexrec` is that, plus the order certificates. So the
+certificates are PURE OVERHEAD whenever the recursion has a structural
+form — measured on the one function that exercises both recursors:
+
+| Ackermann | lines | cold |
+|---|---|---|
+| `SpikeAckT` — nested `natrec`, no combinator | 26 | **0.61 s** |
+| `SpikeLexAck` — through `⊢lexrecΠ` | ~100 | 8.8 s |
+
+**⭐ THE MECHANISM, and it is why the search is hard.** `lexrec`'s power
+over `amrec` is exactly the UNBOUNDED μ₂ RESET — "when μ₁ drops, μ₂ is
+unconstrained". Then:
+
+* a two-measure recursion that never uses the reset has a COLLAPSING
+  measure, typically μ₁+μ₂, so `amrec` suffices. Concretely
+  `f (a,b) = f (a ∸ b, b) | f (a, b ∸ 1)` looks lexicographic and
+  collapses under `a+b`;
+* a recursion that DOES use the reset grows Ackermann-fast — and that is
+  precisely the class the higher-order structural form handles naturally.
+
+⇒ **Needing `lexrec` and being able to avoid it look like the same
+condition.** Every function the docs name as its justification —
+Ackermann (`ARCHITECTURE.md` §679), `div`, `gcd`, quicksort, mutual
+recursion — is reachable without it: `div`/`gcd` share ONE single-measure
+certificate (`⊢gcd-descend = ⊢div-descend`), quicksort descends on length,
+and mutual recursion's measure is (size, tag) with a BOUNDED tag, so
+`2·size + tag` collapses it.
+
+⚠ **This is an argument, not a machine-checked theorem.** What is measured
+is the Ackermann A/B. **What would falsify it:** a recursion that uses the
+reset AND whose higher-order form is unnatural — most plausibly at a
+carrier that does not factor as `μ₁ × rest`, where currying the outer
+recursion is awkward. That is where to look if anyone wants to.
+
+**The case FOR keeping it anyway**, stated honestly: lexicographic
+termination is first-class in every comparable system — Agda's own
+termination checker does lex descent on argument tuples (which is why
+`SpikeAckAgda1` is 9 lines and free), Coq has `lexprod`, Isabelle's `fun`
+tries lex orders by default, ACL2 has ordinal measures. A self-hosting
+language wanting parity has a reason to ship it. But the claim should be
+**parity and ergonomics, not reach**, and `ARCHITECTURE.md` currently
+claims reach.
+
 ### P1 — ETA COVERS EVERYTHING EXCEPT MOVING A FAMILY UNDER A RENAMING 📌
 
 *A proof pattern, not a decision — but it predicts which naturality lemmas
