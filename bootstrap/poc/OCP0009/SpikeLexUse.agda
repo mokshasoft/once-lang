@@ -50,35 +50,13 @@ open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
+open import poc.OCP0009.NbEPDirDBLibPair
+  using ( PairT; ⊢PairT; msr₁; msr₂; ⊢msr₁; ⊢msr₂; elNat; asP; holdˡ; dropʳ )
 open import poc.OCP0009.SpikeLexT using ( rec1T; rec2Tat; lStepT )
 open import poc.OCP0009.SpikeLexAsm using ( module LxΠ )
 
-------------------------------------------------------------------------
--- ★ THE INSTANTIATION.  Carrier a TYPE, both measures PROJECTIONS — so
---   `⊢fst`/`⊢snd` apply directly, with no `El-⌜Σ⌝` in sight.
-------------------------------------------------------------------------
-
-PairT : {Γ : Cx} → RTy Γ
-PairT = Σ' Nat Nat
-
-⊢PairT : {Γ : Ctx} → Γ ⊢ty PairT
-⊢PairT = ty-Σ ty-Nat ty-Nat
-
-msr₁ msr₂ : {Γ : Cx} → RTm (Γ ∙)
-msr₁ = fst (var vz)
-msr₂ = snd (var vz)
-
-⊢msr₁ : {Γ : Ctx} → (Γ ▹ PairT) ⊢ msr₁ ∷ Nat
-⊢msr₁ = ⊢fst (⊢var here)
-
-⊢msr₂ : {Γ : Ctx} → (Γ ▹ PairT) ⊢ msr₂ ∷ Nat
-⊢msr₂ = ⊢snd (⊢var here)
-
-elNat : {Γ : Cx} → El (⌜Nat⌝ {Γ}) ≅ᵀ Nat
-elNat = red→≅ᵀ (stepᵀ El-⌜Nat⌝ doneᵀ)
-
-asP : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ Nat → Γ ⊢ t ∷ El ⌜Nat⌝
-asP d = ⊢conv d (csymᵀ elNat)
+-- ★ THE INSTANTIATION comes from `NbEPDirDBLibPair` — carrier, both
+--   measures, and the `El ⌜Nat⌝`/`Nat` crossings.  Nothing to write.
 
 ------------------------------------------------------------------------
 -- the two recursor types at an ARBITRARY bound, well-formed.  ★ `rec₂`
@@ -152,13 +130,13 @@ fS =
     dx    = ⊢var (there (there (there (there here))))
     db'   = ⊢var (there (there (there here)))
     dPair = ⊢pair ty-Nat (⊢fst dx) db'
-    -- ★ `fst (pair (fst x) _)` REDUCES to `fst x`: the descent is reflexive.
-    dDesc₁ = ⊢conv (⊢le-refl (⊢fst dx))
-                   (csymᵀ (red→≅ᵀ (stepᵀ (ξ-Homˡ (βfst _ _)) doneᵀ)))
-    -- ★ `snd (pair _ b')` REDUCES to `b'`: `b' < suc b'` after one peel.
-    dDesc₂ = ⊢conv (⊢le-refl db')
-                   (csymᵀ (ctrnᵀ (red→≅ᵀ (stepᵀ (ξ-Homˡ (ξ-nsuc (βsnd _ _))) doneᵀ))
-                                 (red→≅ᵀ (stepᵀ (Hom-Nat-ss _ _) doneᵀ))))
+    -- ★ BOTH DESCENTS COME FROM THE LIBRARY (D10).  `holdˡ` is μ₁ held —
+    --   `fst (pair (fst x) _)` reduces to `fst x`, so reflexivity — and
+    --   `dropʳ` is μ₂ strictly down.  The caller writes neither.
+    a      = fst (var (vs (vs (vs (vs vz)))))
+    b      = var (vs (vs (vs vz)))
+    dDesc₁ = holdˡ a b (⊢fst dx)
+    dDesc₂ = dropʳ a b db'
 
 fStp : RTm ε
 fStp = lam (natrec fZ fS msr₂)

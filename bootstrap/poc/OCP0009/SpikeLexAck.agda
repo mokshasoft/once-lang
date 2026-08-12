@@ -67,44 +67,13 @@ open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
 open import poc.OCP0009.SpikeLexT using ( rec2Tat; lStepT )
 open import poc.OCP0009.SpikeLexAsm using ( module LxΠ )
-open import poc.OCP0009.SpikeLexUse
+open import poc.OCP0009.NbEPDirDBLibPair
   using ( PairT; ⊢PairT; msr₁; msr₂; ⊢msr₁; ⊢msr₂
-        ; elNat; asP; ⊢rec1Tat; ⊢rec2Tat )
+        ; elNat; asP; asN; dropˡ; dropʳ; holdˡ )
+open import poc.OCP0009.SpikeLexUse using ( ⊢rec1Tat; ⊢rec2Tat )
 
--- the other direction of `asP`: a motive result used as a NUMBER, which
--- is what the nested call needs to build its pair.
-asN : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ Nat
-asN d = ⊢conv d elNat
-
-------------------------------------------------------------------------
--- ★ THE DESCENTS, factored.  All three recursive calls descend by the
---   same two moves — a projection out of a freshly BUILT pair, then one
---   `Hom-Nat-ss` peel — so they are worth naming once.
---
---   `dropˡ`  `nsuc (fst (pair a b)) ≤ nsuc a`   from `a ≤ a`
---   `dropʳ`  `nsuc (snd (pair a b)) ≤ nsuc b`   from `b ≤ b`
---   `holdˡ`  `fst (pair a b) ≤ a`               from `a ≤ a`
-------------------------------------------------------------------------
-
-dropˡ : {Γ : Ctx} (a b : RTm ⌊ Γ ⌋) → Γ ⊢ a ∷ Nat →
-        Γ ⊢ reflTm a ∷ Hom Nat (nsuc (fst (pair a b))) (nsuc a)
-dropˡ a b da =
-  ⊢conv (⊢le-refl da)
-        (csymᵀ (ctrnᵀ (red→≅ᵀ (stepᵀ (ξ-Homˡ (ξ-nsuc (βfst _ _))) doneᵀ))
-                      (red→≅ᵀ (stepᵀ (Hom-Nat-ss _ _) doneᵀ))))
-
-dropʳ : {Γ : Ctx} (a b : RTm ⌊ Γ ⌋) → Γ ⊢ b ∷ Nat →
-        Γ ⊢ reflTm b ∷ Hom Nat (nsuc (snd (pair a b))) (nsuc b)
-dropʳ a b db =
-  ⊢conv (⊢le-refl db)
-        (csymᵀ (ctrnᵀ (red→≅ᵀ (stepᵀ (ξ-Homˡ (ξ-nsuc (βsnd _ _))) doneᵀ))
-                      (red→≅ᵀ (stepᵀ (Hom-Nat-ss _ _) doneᵀ))))
-
-holdˡ : {Γ : Ctx} (a b : RTm ⌊ Γ ⌋) → Γ ⊢ a ∷ Nat →
-        Γ ⊢ reflTm a ∷ Hom Nat (fst (pair a b)) a
-holdˡ a b da =
-  ⊢conv (⊢le-refl da)
-        (csymᵀ (red→≅ᵀ (stepᵀ (ξ-Homˡ (βfst _ _)) doneᵀ)))
+-- ★ `asN`, `dropˡ`, `dropʳ` and `holdˡ` now come from
+--   `NbEPDirDBLibPair` (D10) — this file used to define all four.
 
 ------------------------------------------------------------------------
 -- THE OUTER MOTIVE — the split on `fst x`.  It abstracts BOTH of rec₁'s
