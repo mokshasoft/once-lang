@@ -27,11 +27,11 @@
 -- machine-dependent, last", and it is the LEAST — 115 machine-mentioning code
 -- lines out of 2,833, four percent, in two clumps with this block between them.
 --
--- The three obligations it consumes are PARAMETERS (`FlatCore.RunWFTypes`),
--- not declarations, so the residuals stay where the ledger records them while
--- their 1,076 lines of consumers move. Promoting the residuals themselves is a
--- separate, ledger-visible step — and worth taking, since a residual in the
--- core is discharged once for all three arches instead of once per arch.
+-- It also DECLARES the seven arch-generic residuals (G1d step 2), which were
+-- `ConcFlatSim`'s. They are assumed once here rather than once per arch — the
+-- second payoff this plan predicted for extracting a core at all. The companion
+-- `RunWFTypes` module that carried them as parameters through step 1 is gone
+-- with them.
 ------------------------------------------------------------------------
 
 
@@ -59,16 +59,12 @@ open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (yes; no; Dec)
-import Once.Adequacy.ArchCorrectness.FlatCore.RunWFTypes as WFT
 
 module Once.Adequacy.ArchCorrectness.FlatCore.RunWF
   (o : CanonicalName)
   (FS : FrameSemantics)
   (slot-size : ℕ)
   (word-eq : frame-word FS ≡ slot-size)
-  (run-meets             : WFT.RunMeets o FS slot-size word-eq)
-  (emitted-shape-check   : WFT.EmittedShapeCheck o FS slot-size word-eq)
-  (emitted-thunk-guarded : WFT.EmittedThunkGuarded o FS slot-size word-eq)
   where
 
 
@@ -117,6 +113,193 @@ open import Data.Product using (uncurry)
 -- NOT `public`: `ConcFlatSim` already re-exports `RunContext` through its own
 -- arch wrapper, and two public routes to one definition is a clash.
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
+
+------------------------------------------------------------------------
+-- THE ARCH-GENERIC RESIDUALS (Plan 0.65 G1d step 2, 2026-08-12).
+--
+-- These seven were declared in `X86-64.ConcFlatSim`, and the block's own
+-- comments already said why that was the wrong home: "No `X.State` in the
+-- type: this is a fact about the ABSTRACT machine". Checked mechanically, not
+-- taken on the comment's word — none of the seven mentions `X.State`,
+-- `HeapView`, `RTx` or the correspondence in its TYPE (the flag that first
+-- fired on `call-site-shape` was its own prose).
+--
+-- Left where they were, riscv64 and x86-32 would each have had to declare
+-- their own copy of each, and the ledger would have grown threefold for facts
+-- that are one fact. Here they are assumed ONCE and, when discharged,
+-- discharged once for all three arches — the second payoff this plan predicted
+-- for extracting a core at all.
+--
+-- The two that stayed behind are `arith-sigop-contract` and
+-- `external-sigop-contract`: both quantify over `HeapView` and the x86-64
+-- arith runtime, so they are genuinely x86-64's.
+------------------------------------------------------------------------
+postulate
+  call-site-shape : ∀ prog (fs : FlatState) → RunAt prog fs
+                  → fetch prog (fpc fs) ≡ just instr-call-closure
+                  → Σ HeapLocation (λ hl → Σ LabelId (λ ℓ → Σ ℕ (λ j →
+                      (fclosure fs ≡ SV-Ptr (AtDynamic hl))
+                      × (heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ))
+                      × (find-thunk prog ℓ ≡ just j))))
+
+  -- (`events-running-thunk` LIVED HERE. It is now a THEOREM — `thunk-step`
+  -- below.)
+  --
+  -- THE RETURN'S TWO INPUTS (D095). `events-running-ret` is GONE — the
+  -- correspondence for `c-ret` is now the theorem `ret-step` below, built on
+  -- the proven `block-step-c-ret`. What is left are two facts about the
+  -- ABSTRACT machine running an EMITTED program; neither mentions `X.State`,
+  -- so neither is a correspondence gap.
+  --
+  -- (1) A REACHABLE RETURN OWES A RETURN. A `c-ret` sits inside a closure body,
+  -- and a body is entered only by a CALL, which pushes. (This is `ret-site-owes`
+  -- from D091 — the same statement, but now TRUE-and-provable rather than
+  -- colliding with `run-no-ret`: the call is modelled.) Route: the static
+  -- segment stack and the dynamic `fret` have the same depth (with the same
+  -- one-instant exception `SegCur` already names), and `SlotBudget`'s
+  -- neutrality says an emitted body is a matched `c-thunk`/`c-ret` bracket —
+  -- so at a `c-ret` the static stack is non-empty, hence so is `fret`.
+  ret-site-owes : ∀ prog (fs : FlatState) (b : ℕ) → RunAt prog fs
+                → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+                → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
+
+  -- THE EMITTER'S GUARD (D094): in an emitted trace a `c-thunk` is at `suc q`
+  -- with a `c-jmp` at `q` — the jump that stops the parent falling into the
+  -- body. CODEGEN-class (only `ir-to-trace` in the type). Discharge: the
+  -- structural induction over `ir-to-trace'`, shape written up in D094.
+  emitted-thunk-guarded : ∀ (ir : IR Unit Unit) (p : ℕ) (ℓ : LabelId) (bb : ℕ)
+                        → fetch (ir-to-trace ir) p ≡ just (instr-ctrl (c-thunk ℓ bb))
+                        → Σ ℕ (λ q → (p ≡ suc q)
+                              × Σ LabelId (λ m → fetch (ir-to-trace ir) q
+                                                   ≡ just (instr-ctrl (c-jmp m))))
+
+  -- …and its sibling (D096): an emitted code address names a body that EXISTS.
+  -- `ir-to-trace'`'s `curry` clause emits `instr-load-code-addr (ℓ o this)` and
+  -- `c-thunk (ℓ o this)` together, so the scan cannot miss. CODEGEN-class, and
+  -- it belongs in the same induction as the two above.
+  emitted-code-addr-has-body : ∀ (ir : IR Unit Unit) (p : ℕ) (ℓ : LabelId)
+                             → fetch (ir-to-trace ir) p ≡ just (instr-load-code-addr ℓ)
+                             → Σ ℕ (λ j → find-thunk (ir-to-trace ir) ℓ ≡ just j)
+
+  -- (2) THE BRACKET: the budget a return RELEASES is the reservation in force.
+  -- `ir-to-trace'` emits `c-thunk ℓ bb … c-ret bb` — one `bb`, written twice —
+  -- so this is the emitter's own bracket, and it belongs with
+  -- `emitted-thunk-guarded` in the same induction over `ir-to-trace'`.
+  ret-budget-matches : ∀ prog (fs : FlatState) (b : ℕ) → RunAt prog fs
+                     → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+                     → b ≡ frame-slots (falloc fs)
+
+  -- THE BRANCH SCRUTINEE DISCIPLINE (D073, replaces `branch-tag-badptr` +
+  -- `branch-tag-bad`): at an emitted `c-branch-tag-zero` site the scrutinee
+  -- register holds a live heap pointer to a WRITTEN TAG cell — codegen only
+  -- emits the tag branch right after loading a constructed node's pointer.
+  -- The old pair asserted a RUN-EVENTS equation for the divergent routes,
+  -- which is closable by NO layout choice (D054 literals are arbitrary words,
+  -- so a non-pointer's encoding can always collide with a mapped address);
+  -- this is the honest dataflow fact instead, in the
+  -- `store-indirect-inbounds` mold. Discharge trajectory: a per-site
+  -- register-shape invariant (static expectation at each emitted site +
+  -- preservation, the FlatStackPtr pattern).
+  -- PLAN 0.62's TWO OBLIGATIONS (the dataflow disciplines' discharge now
+  -- routes through the typed shape checker; these are the remaining named
+  -- milestones — their TYPES are the M2b/M3 specs):
+  --
+  -- M2b — THE EMITTER SHAPE CHECK: for a heap-moded IR, the typed
+  -- expectation checker accepts the emitted trace (some label environment —
+  -- the cata/case loop invariants — makes every site and control transfer
+  -- check). Discharge: the FrameFreeTrace/SlotBudget-mold walk over
+  -- `ir-to-trace'`, `check-++` at every splice, the G2 invariants as the
+  -- LabelEnv values.
+  emitted-shape-check : ∀ (ir : IR Unit Unit) → HeapModed ir
+                      → Σ LabelEnv (λ env →
+                          check-shapes env (entry-expect Unit) (ir-to-trace ir) ≡ true)
+  -- M3 — RUN CONSISTENCY: a reachable state of a CHECKED program meets the
+  -- scanned expectation at its pc. Discharge: induction on `Reachable`
+  -- (entry: the D074 all-tag state meets `entry-expect Unit` via `rs-unit`;
+  -- step: per-instruction transfer soundness — the `shape-uw`/
+  -- `meets-cell-uw` store bricks, `sub-expect-sound` at control).
+  run-meets : ∀ prog (fs : FlatState) → RunAt prog fs → (env : LabelEnv)
+            → check-shapes env (entry-expect Unit) prog ≡ true
+            → Meets (state-at env (entry-expect Unit) prog (fpc fs)) fs
+  -- `branch-tag-label-miss` RETIRED 2026-08-01 — a theorem now (`go-miss` in
+  -- `tag-branch-step`): not-taken rides the label-free
+  -- `block-step-c-branch-tag-nz`, taken-plus-missing is the je-halt template
+  -- on `find-label-none-corr`, and the bad-read routes fold into
+  -- `branch-tag-bad` (they never depended on the label).
+
+
+  -- `stack-ptr-case` / `ptr-bounds-case` RETIRED with item 6: the case steps
+  -- of both invariants are absurd on `FrameFreeI` now.
+
+  -- The load/branch DISCIPLINE residuals are GONE (Plan 0.62 wiring,
+  -- 2026-08-02): `load-indirect{,-suc}-target-ptr` and
+  -- `branch-tag-scrutinee-wf` are now THEOREMS below, derived from
+  -- `emitted-shape-check` + `run-meets` + the checker's site extraction.
+  -- `store-indirect{,-suc}-bad` RETIRED 2026-08-03: the divergent route (a
+  -- store through a NON-pointer) is unreachable in emitted code — the
+  -- shape checker's store-site discipline (`is-fresh`) makes it absurd.
+  -- See `store-indirect{,-suc}-target-ptr` below.
+
+  -- A slot the emitted code READS is frame-live (`slot < frame-slots`): reads stay
+  -- inside the frame the prologue reserved. Conditioned on the SITE (a property of
+  -- emitted programs, not of arbitrary states) and covering the empty case too —
+  -- which used to be what let the empty-slot reads be proved via
+  -- `slot-empty-stop`. That lemma is GONE (Plan 0.54 rung D): the empty case is
+  -- now UNREACHABLE instead, because `site-ok` requires a claim at every slot
+  -- read and `MeetsSlot` refutes a claim at an unwritten slot. The slot MUST be the fetched instruction's own
+  -- (`slot-of i ≡ just slot`): quantified over an unrelated `slot` this claims
+  -- `slot < frame-slots` for every slot, which is inconsistent (take `slot ≡
+  -- frame-slots`) — it would prove the whole correspondence vacuously.
+  -- MEMORY EXHAUSTION (plan 0.54 rung D) — the price of "the two regions grow
+  -- towards each other", and the ONLY thing the layout separation assumes. The
+  -- ONE allocating instruction the emitter produces has room between the heap
+  -- frontier and the stack's high-water mark; the
+  -- disjointness facts that used to be postulated are derived from the carried
+  -- `sep` these keep true. A real runtime failure mode (OOM / stack overflow),
+  -- not a claim about addresses — the same class as the `conc-fuel` step budget.
+  -- Plan 0.54 rung D step 3: the heap's room is measured against the stack's
+  -- HIGH-WATER MARK, not the current `%rsp` — a region the stack has already
+  -- visited keeps its (dead) contents, so only the VIRGIN part of the gap is
+  -- available. That is also what discharges the fresh block's freshness on the
+  -- concrete side, which is why `alloc-heap-fresh-x86` is gone.
+  -- (`heap-room` is a MODULE PARAMETER now — see the header. It was the one
+  -- resource bound stated inside the correspondence rather than at the apex
+  -- beside `conc-fuel`.)
+  -- RETIRED 2026-07-31 (plan 0.54 rung D, item 2): `stack-room` / `frame-room` /
+  -- `pop-room`, and the alloc-stack FRESH-FRAME pair `alloc-stack-fresh-{abs,x86}`
+  -- together with `alloc-stack-entry`, all conditioned a frame-op site — and an
+  -- EMITTED program has none (`FrameFree` / `frame-op-absurd`). The fresh-frame
+  -- pair was the one place where the correspondence assumed something FALSE of a
+  -- re-entered frame (both halves false, agreeing); it is gone with its site.
+  -- RETIRED 2026-07-30 (plan 0.54 rung D step 3): "the fresh block is UNWRITTEN on
+  -- the concrete side" was `alloc-heap-fresh-x86`, and stated over the region at or
+  -- above `%r15` it was FALSE — a deep call that returns leaves written cells below
+  -- the current `%rsp`, and the heap can bump into them. It is now a THEOREM about
+  -- the region the stack has never reached: `FlatCorr.untouched` on
+  -- `[hfront, lo)`, which `heap-room` puts the fresh cells inside.
+  -- (Its abstract counterpart — nothing references or has written the not-yet-
+  -- allocated block — was already PROVEN, `FlatStoreWF`.)
+  -- `lea-indexed-wf` RETIRED 2026-08-01: `lea-indexed` has NO PRODUCER — the
+  -- cata codegen walks heap-LINKED stacks (`push2`/`pop2`; IRToTrace says
+  -- "NOT lea-indexed") — so it joined `FrameFreeI`'s ⊥ set and its dispatch
+  -- route is `⊥`-elim. The cursor-discipline residual died with its site.
+
+  -- RETIRED 2026-07-31 (plan 0.54 rung D, item 2): the MATCHED PROLOGUE/EPILOGUE
+  -- family — `dealloc-stack-restores`, `pop-frame-restores`, `dealloc-stack-full`,
+  -- `pop-frame-empty`, `pop-frame-saved`. Each was a pairing property of emitted
+  -- code at a frame-op site, and emitted code contains no frame op.
+  -- `load-const-float` RETIRED 2026-08-03 (D079): a float CONSTANT is a
+  -- 64-bit pattern, so codegen emits it as an ordinary immediate instead of
+  -- `ud2` — both machines now load the same word and continue. (Float
+  -- ARITHMETIC remains unsupported; that is a separate, unemitted path.)
+
+  -- ARITH SIGOP interpretation contract (D061): the internal-producer obligation,
+  -- discharged OFFLINE from the arith proofs (dispatch-arith-preserves + arith-block-
+  -- correct). For a Pure SigOp, the arith-env maps its symbol to the block `pl`, and
+  -- dispatching `pl` yields the CompiledCorr of the flat post-state. `sigop-step` proves
+  -- the run-events mechanics AROUND this (pc-alignment + run-events-arith), so this
+  -- states exactly the residual arith obligation — nothing about the machine loop.
+
 
 --
 -- `FrameFreeI` (`Once.CCC.Machine.FrameFree`) and its emitter induction live
