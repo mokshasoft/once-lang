@@ -14,6 +14,7 @@ module poc.OCP0009.NbEPDirDBFundSN where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
 
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
@@ -28,7 +29,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; subTy-renTy; subTm-renTm
         ; renTy-subTy; renTm-subTm
         ; subTy-subTy; subTm-subTm
-        ; subTy-id; subTm-id; renTm-renTm; renTm-cong )
+        ; subTy-id; subTm-id; renTm-renTm; renTm-cong
+        ; Desc; Mu; con; elim; lookupD; sel; fields; ren-fields; ren-sel )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; nrs
         ; _⟶_; _⟶*_; done; step
@@ -118,7 +120,8 @@ open import poc.OCP0009.NbEPDirDBLR
         ; homSem₁
         ; ⟶ᵀ*-sub
         ; IsNormal; WN; mkWN; wn
-        ; projl; projr; dfst; dsnd )
+        ; projl; projr; dfst; dsnd
+        ; sne-elim; sn-con; snr-ι; snr-elimᵗ; mustk?; mustk?-ren )
 
 
 private
@@ -171,6 +174,7 @@ subTy-var ρ (Σ' A B) =
 subTy-var ρ (El t)   = cong El (subTm-var ρ t)
 subTy-var ρ (Hom A t u) =
   Hom-cong₃ (subTy-var ρ A) (subTm-var ρ t) (subTm-var ρ u)
+subTy-var ρ (Mu D)   = refl
 subTy-var ρ (Id A t u) =
   Id-cong₃ (subTy-var ρ A) (subTm-var ρ t) (subTm-var ρ u)
 subTm-var ρ (var x)   = refl
@@ -190,6 +194,8 @@ subTm-var ρ ⌜Unit⌝     = refl
 subTm-var ρ unit       = refl
 subTm-var ρ nzero      = refl
 subTm-var ρ (nsuc n)   = cong nsuc (subTm-var ρ n)
+subTm-var ρ (con k q)  = cong (con k) (subTm-var ρ q)
+subTm-var ρ (elim D ms t) = cong₂ (elim D) (subTm-var ρ ms) (subTm-var ρ t)
 subTm-var ρ (natrec z w n) =
   natrec-cong₃ (subTm-var ρ z)
     (trans (subTm-cong (exts2-var ρ) w) (subTm-var (extR (extR ρ)) w))
@@ -319,6 +325,11 @@ sne-anti {t = var x}    _             = sne-var x
 sne-anti {ρ = ρ} {t = natrec z w n} (sne-natrec hz hw hn key) =
   sne-natrec (sn-anti hz) (sn-anti hw) (sn-anti hn)
              (trans (sym (natstk?-ren ρ n)) key)
+-- ★ INDUCTIVE TYPES: one classifier, so the key transports through
+-- `mustk?-ren` — `sne-natrec`'s shape exactly.
+sne-anti {ρ = ρ} {t = elim D ms t₀} (sne-elim hm ht key) =
+  sne-elim (sn-anti hm) (sn-anti ht)
+           (trans (sym (mustk?-ren ρ t₀)) key)
 sne-anti {t = app t u}  (sne-app n s) = sne-app (sne-anti n) (sn-anti s)
 sne-anti {t = absurd c e} (sne-absurd sc sn₀) = sne-absurd (sn-anti sc) (sn-anti sn₀)
 -- ★★ WF stage E: three bounds, so the key transports through
@@ -346,6 +357,10 @@ sn-anti {t = nzero}    _              = sn-nzero
 sn-anti {t = nsuc n}   (sn-nsuc h)    = sn-nsuc (sn-anti h)
 sn-anti {t = natrec z w n} (sn-ne nt) = sn-ne (sne-anti nt)
 sn-anti {t = natrec z w n} (sn-exp r h) with snr-anti r
+... | t' , (r' , refl) = sn-exp r' (sn-anti h)
+sn-anti {t = con k q}  (sn-con h)     = sn-con (sn-anti h)
+sn-anti {t = elim D ms t₀} (sn-ne nt) = sn-ne (sne-anti nt)
+sn-anti {t = elim D ms t₀} (sn-exp r h) with snr-anti r
 ... | t' , (r' , refl) = sn-exp r' (sn-anti h)
 sn-anti {t = lam s}    (sn-lam h)     = sn-lam (sn-anti h)
 sn-anti {t = pair a b} (sn-pair ha hb) = sn-pair (sn-anti ha) (sn-anti hb)
@@ -401,6 +416,18 @@ snr-anti {ρ = ρ} {t = natrec z w (nsuc m)} (snr-natrec-suc hz hw hn) =
                        (ren-comm-ext ρ w m))) )
 snr-anti {t = natrec z w n} (snr-natrecⁿ r) with snr-anti r
 ... | n' , (r' , refl) = natrec z w n' , (snr-natrecⁿ r' , refl)
+-- ★ INDUCTIVE TYPES: the scrutinee is matched SHAPED (`con k q`) for the
+-- reason the comment below gives — otherwise `renTm ρ (con k q)` does not
+-- reduce and the index unification sticks.  The equation is `ren-fields`
+-- composed with `ren-sel`, the same pair `⟶-ren` needed.
+snr-anti {ρ = ρ} {t = elim D ms (con k q)} (snr-ι hm hq) =
+  fields D ms (lookupD D k) (sel k ms) q
+  , ( snr-ι (sn-anti hm) (sn-anti hq)
+    , sym (trans (ren-fields ρ D ms (lookupD D k) (sel k ms) q)
+                 (cong (λ w → fields D (renTm ρ ms) (lookupD D k) w (renTm ρ q))
+                       (ren-sel ρ k ms))) )
+snr-anti {t = elim D ms t₀} (snr-elimᵗ r) with snr-anti r
+... | t' , (r' , refl) = elim D ms t' , (snr-elimᵗ r' , refl)
 -- ★★ WF stage E: the bounds must be matched SHAPED, or `renTm ρ a` does
 -- not reduce and the index unification gets stuck (the `snr-βfst`
 -- SplitError is the same disease).  The serialized xi's each carry the
@@ -436,6 +463,11 @@ snr-anti {t = app nzero u}      (snr-app ())
 snr-anti {t = app (nsuc k) u}   (snr-app ())
 snr-anti {t = app (natrec z w n) u} (snr-app r) with snr-anti r
 ... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
+-- ★ INDUCTIVE TYPES: in a SPINE position a `con` head is inert (no SNRed
+-- rule steps it) and an `elim` head recurses — `nsuc`/`natrec` exactly.
+snr-anti {t = app (con k q) u}  (snr-app ())
+snr-anti {t = app (elim D ms t₀) u} (snr-app r) with snr-anti r
+... | t' , (r' , refl) = app t' u , (snr-app r' , refl)
 snr-anti {t = absurd c e} ()
 -- ex falso is a permanent neutral, so as a SCRUTINEE it never lets an
 -- eliminator fire — every one of these is `()` on the inner step.
@@ -461,6 +493,12 @@ snr-anti {t = snd nzero}        (snr-snd ())
 snr-anti {t = snd (nsuc k)}     (snr-snd ())
 snr-anti {t = snd (natrec z w n)} (snr-snd r) with snr-anti r
 ... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
+snr-anti {t = snd (con k q)}    (snr-snd ())
+snr-anti {t = snd (elim D ms t₀)} (snr-snd r) with snr-anti r
+... | t' , (r' , refl) = snd t' , (snr-snd r' , refl)
+snr-anti {t = fst (con k q)}    (snr-fst ())
+snr-anti {t = fst (elim D ms t₀)} (snr-fst r) with snr-anti r
+... | t' , (r' , refl) = fst t' , (snr-fst r' , refl)
 snr-anti {t = fst (pair a b)}   (snr-βfst h) =
   a , (snr-βfst (sn-anti h) , refl)
 snr-anti {t = fst (app a b)}    (snr-fst r) with snr-anti r
@@ -665,10 +703,20 @@ snr-anti {t = tr d (hrefl (nsuc k) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ()))
 snr-anti {t = tr d (hrefl (nsuc k) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr d (hrefl (natrec z w n) s) e} (snr-trᵖ r) with snr-anti r
 ... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
+-- ★ INDUCTIVE TYPES: the MOTIVE stays a variable here, as in the `natrec`
+-- rows above — `trstk?` falls to `pathstk?` on a `con`/`elim` path, so it
+-- does not look at the motive at all.
+snr-anti {t = tr d (hrefl (con k q) s) e} (snr-trᵖ r) with snr-anti r
+... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (hrefl (elim D₁ ms₁ t₁) s) e} (snr-trᵖ r) with snr-anti r
+... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d unit e} (snr-trᵖ ())
 snr-anti {t = tr d nzero e} (snr-trᵖ ())
 snr-anti {t = tr d (nsuc k) e} (snr-trᵖ ())
 snr-anti {t = tr d (natrec z w n) e} (snr-trᵖ r) with snr-anti r
+... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
+snr-anti {t = tr d (con k q) e} (snr-trᵖ ())
+snr-anti {t = tr d (elim D₁ ms₁ t₁) e} (snr-trᵖ r) with snr-anti r
 ... | t' , (r' , refl) = tr d t' e , (snr-trᵖ r' , refl)
 snr-anti {t = tr d (jsub d₁ p₁ e₁) e} (snr-trᵖ r) with snr-anti r
 ... | p' , (r' , refl) = tr d p' e , (snr-trᵖ r' , refl)
@@ -684,6 +732,9 @@ csr-anti {t = unit} (csr-here ())
 csr-anti {t = nzero} (csr-here ())
 csr-anti {t = nsuc _} (csr-here ())
 csr-anti {t = natrec z w n} (csr-here r) with snr-anti r
+... | t' , (r' , refl) = t' , (csr-here r' , refl)
+csr-anti {t = con _ _} (csr-here ())
+csr-anti {t = elim D ms t₀} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
 csr-anti {t = ordtr a t u p q} (csr-here r) with snr-anti r
 ... | t' , (r' , refl) = t' , (csr-here r' , refl)
@@ -733,6 +784,9 @@ sne-ren {ρ = ρ} (sne-var x)   = sne-var (ρ x)
 sne-ren {ρ = ρ} (sne-natrec {n = n} hz hw hn key) =
   sne-natrec (sn-ren hz) (sn-ren hw) (sn-ren hn)
              (trans (natstk?-ren ρ n) key)
+-- ★ INDUCTIVE TYPES: the key transports FORWARD through `mustk?-ren`.
+sne-ren {ρ = ρ} (sne-elim {t = t₀} hm ht key) =
+  sne-elim (sn-ren hm) (sn-ren ht) (trans (mustk?-ren ρ t₀) key)
 sne-ren (sne-app n s)         = sne-app (sne-ren n) (sn-ren s)
 sne-ren (sne-absurd sc sn₀)   = sne-absurd (sn-ren sc) (sn-ren sn₀)
 sne-ren (sne-fst n)           = sne-fst (sne-ren n)
@@ -766,6 +820,7 @@ sn-ren (sn-idrefl h₁ h₂) = sn-idrefl (sn-ren h₁) (sn-ren h₂)
 sn-ren sn-unit          = sn-unit
 sn-ren sn-nzero         = sn-nzero
 sn-ren (sn-nsuc h)      = sn-nsuc (sn-ren h)
+sn-ren (sn-con h)       = sn-con (sn-ren h)
 sn-ren (sn-exp r h)     = sn-exp (snr-ren r) (sn-ren h)
 
 snr-ren {ρ = ρ} (snr-β {s = s} {u = u} hu) =
@@ -783,6 +838,14 @@ snr-ren {ρ = ρ} (snr-natrec-suc {z = z} {w = w} {n = m} hz hw hn) =
                           (ren-comm-ext ρ w m))))
         (snr-natrec-suc (sn-ren hz) (sn-ren hw) (sn-ren hn))
 snr-ren (snr-natrecⁿ r) = snr-natrecⁿ (snr-ren r)
+-- ★ INDUCTIVE TYPES: ι's equation, forward — `ren-fields` after `ren-sel`.
+snr-ren {ρ = ρ} (snr-ι {D = D} {ms = ms} {k = k} {p = q} hm hq) =
+  subst (SNRed (elim D (renTm ρ ms) (con k (renTm ρ q))))
+        (sym (trans (ren-fields ρ D ms (lookupD D k) (sel k ms) q)
+                    (cong (λ w → fields D (renTm ρ ms) (lookupD D k) w (renTm ρ q))
+                          (ren-sel ρ k ms))))
+        (snr-ι (sn-ren hm) (sn-ren hq))
+snr-ren (snr-elimᵗ r)   = snr-elimᵗ (snr-ren r)
 snr-ren (snr-ordtr-z ht hu hp hq) =
   snr-ordtr-z (sn-ren ht) (sn-ren hu) (sn-ren hp) (sn-ren hq)
 snr-ren (snr-ordtr-szz ha hq)    = snr-ordtr-szz (sn-ren ha) (sn-ren hq)
