@@ -324,3 +324,25 @@ gcd-recurses-right ih =
             (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ monus-1-3))
               (⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done))
                 (step (β _ ih) done)))))))
+
+------------------------------------------------------------------------
+-- ★ the measure at (2,0), reduced.  SHARED by both kernel routes: each
+--   needs it to select the auxiliary's successor branch.
+------------------------------------------------------------------------
+
+-- `μ (2 , 0) = 2 + 0 ⟶* suc 1`, which is what selects the successor case
+plus-2-0 : {Γ : Cx} → plusTm {Γ} n2 nzero ⟶* n2
+plus-2-0 =
+  step (natrec-suc _ _ _)
+    (step (ξ-nsuc (natrec-suc _ _ _))
+      (step (ξ-nsuc (ξ-nsuc (natrec-zero _ _))) done))
+
+-- ⚠ pinned at `ε`: the numerals are context-polymorphic, so an inline
+--   `pair n2 nzero` leaves its context a meta.
+X20 : RTm ε
+X20 = pair n2 nzero
+
+msr-2-0 : subTm (single X20) msr ⟶* nsuc n1
+msr-2-0 =
+  ⟶*-trans (⟶*-natrecⁿ (step (βfst n2 nzero) done))
+    (⟶*-trans (step (ξ-natrecᶻ (βsnd n2 nzero)) done) plus-2-0)

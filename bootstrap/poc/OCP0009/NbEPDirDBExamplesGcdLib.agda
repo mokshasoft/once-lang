@@ -30,7 +30,7 @@ open import poc.OCP0009.NbEPDirDBLibArith using ( plusMonoTm )
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLTm )
 open import poc.OCP0009.NbEPDirDBLibArithMonus using ( monusLtTm; pred* )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
-  using ( msr; ⊢msr; gcdStp; ⊢gcdStp; gcd-computes-b0 )
+  using ( msr; ⊢msr; gcdStp; ⊢gcdStp; gcd-computes-b0; X20; msr-2-0 )
 
 ------------------------------------------------------------------------
 -- ★★★ gcd, THROUGH THE COMBINATOR.
@@ -61,23 +61,6 @@ gcdTm = amrecTm
 --     `app (app stp x) ih`, so the two did not meet.  This one line is the
 --     entire point of closing D7.
 ------------------------------------------------------------------------
-
--- `μ (2 , 0) = 2 + 0 ⟶* suc 1`, which is what selects the successor case
-plus-2-0 : {Γ : Cx} → plusTm {Γ} n2 nzero ⟶* n2
-plus-2-0 =
-  step (natrec-suc _ _ _)
-    (step (ξ-nsuc (natrec-suc _ _ _))
-      (step (ξ-nsuc (ξ-nsuc (natrec-zero _ _))) done))
-
--- ⚠ pinned at `ε`: the numerals are context-polymorphic, so an inline
---   `pair n2 nzero` leaves its context a meta.
-X20 : RTm ε
-X20 = pair n2 nzero
-
-msr-2-0 : subTm (single X20) msr ⟶* nsuc n1
-msr-2-0 =
-  ⟶*-trans (⟶*-natrecⁿ (step (βfst n2 nzero) done))
-    (⟶*-trans (step (ξ-natrecᶻ (βsnd n2 nzero)) done) plus-2-0)
 
 -- ★★★ `gcd (2 , 0) = 2`, THROUGH THE WHOLE COMBINATOR.
 gcd-2-0 : app gcdTm X20 ⟶* n2

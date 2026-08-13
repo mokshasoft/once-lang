@@ -53,6 +53,7 @@ open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; ⊢fst; ⊢snd; ⊢⌜Nat⌝
+        ; _⟶*_; done; step; β; ξ-appˡ; natrec-suc
         ; ty-Nat; ty-Hom; ty-El; ty-Π )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBExamplesOrd using ( ⊢strong-base'; ⊢strong-step )
@@ -61,7 +62,10 @@ open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )
-open import poc.OCP0009.NbEPDirDBExamplesGcdStep using ( msr; ⊢msr; gcdStp; ⊢gcdStp )
+open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
+open import poc.OCP0009.NbEPDirDBExamplesNat using ( n1; n2 )
+open import poc.OCP0009.NbEPDirDBExamplesGcdStep
+  using ( msr; ⊢msr; gcdStp; ⊢gcdStp; X20; msr-2-0; gcd-computes-b0 )
 
 ------------------------------------------------------------------------
 -- THE BOUNDED AUXILIARY'S TYPE — `(x : A) → μ x ≤ n → P x`.
@@ -174,3 +178,32 @@ gcdKTm = lam (app (app (auxTm msr) (var vz)) (reflTm msr))
 
 ⊢gcdK : ◇ ⊢ gcdKTm ∷ Π PairT (El ⌜Nat⌝)
 ⊢gcdK = ⊢lam ⊢PairT (⊢app (⊢app (⊢aux ⊢msr) (⊢var here)) (⊢le-refl ⊢msr))
+
+------------------------------------------------------------------------
+-- ★★★★ END TO END, BY HAND — and this is what D7's CPS lemma saves.
+--
+--   `NbEPDirDBExamplesGcdLib.gcd-2-0` is ONE line:
+--
+--       gcd-2-0 = amrec-step-s X20 n1 msr-2-0 gcd-computes-b0
+--
+--   Here the caller must peel the auxiliary themselves: β to expose it,
+--   reduce the measure to a successor, `natrec-suc` to pick the branch,
+--   then TWO more βs for the branch's own binders — and only then does the
+--   caller's step lemma apply.  Six steps against one.
+--
+-- ★ ONE THING IS EASIER HERE, and it is the mirror of the cost finding:
+--   the five weakenings on the step cancel DEFINITIONALLY, because
+--   `gcdStp` is a CONCRETE term and `renTm vs` walks it to itself.
+--   `LibAmrec` needs `stp-cancel-s` (a five-rung `wk-single` chain)
+--   for exactly this, because there the step is an opaque parameter.
+------------------------------------------------------------------------
+
+gcdK-2-0 : app gcdKTm X20 ⟶* n2
+gcdK-2-0 =
+  ⟶*-trans
+    (step (β _ X20)
+      (⟶*-trans (⟶*-appˡ (⟶*-appˡ (⟶*-natrecⁿ msr-2-0)))
+        (⟶*-trans (⟶*-appˡ (⟶*-appˡ (step (natrec-suc _ _ n1) done)))
+          (step (ξ-appˡ (β _ X20))
+            (step (β _ (reflTm (subTm (single X20) msr))) done)))))
+    (gcd-computes-b0 _)
