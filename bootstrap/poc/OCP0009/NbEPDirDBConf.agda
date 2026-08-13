@@ -27,6 +27,7 @@ module poc.OCP0009.NbEPDirDBConf where
 
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app; pair; fst; snd; absurd; ordtr
         ; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub
@@ -34,7 +35,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
         ; Ren; extR; renTm; renTm-renTm; renTm-cong
         ; Sub; extS; subTm; renTm-subTm; subTm-renTm; subTm-cong
-        ; _ᵣ∘ₛ_; _ₛ∘ᵣ_; _∘ᵣ_ )
+        ; _ᵣ∘ₛ_; _ₛ∘ᵣ_; _∘ᵣ_
+        ; Desc; DCon; dι; dρ; dκ; con; elim; lookupD; sel; fields; ren-fields; ren-sel; sub-fields; sub-sel )
 open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false; pw?; stkC?; stkA?; pwBody; pwShift
         ; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren
@@ -53,7 +55,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
         ; tr-J-Unit; El-⌜Nat⌝; El-⌜Unit⌝
         ; _⟶*_; done; step
-        ; _≅_; cred; crfl; csym; ctrn )
+        ; _≅_; cred; crfl; csym; ctrn
+        ; ι-elim; ξ-con; ξ-elimᵐ; ξ-elimᵗ )
 open import poc.OCP0009.NbEPDirDBSR
   using ( sub-comm; sub-comm-ext; ⟶-sub; wk-sub; wk₁-sub; swp-sub; pwShift-sub )
 
@@ -232,6 +235,39 @@ private
 ⟶*-natrecⁿ done       = done
 ⟶*-natrecⁿ (step r q) = step (ξ-natrecⁿ r) (⟶*-natrecⁿ q)
 
+-- ★ INDUCTIVE TYPES: the two congruence closures, plus the two DERIVED
+--   ones — `sel`/`fields` are metalevel functions, so their closures are
+--   inductions on ℕ and `DCon`, not on the reduction sequence.
+⟶*-con : {k : ℕ} {p p' : RTm Γ} → p ⟶* p' → con k p ⟶* con k p'
+⟶*-con done       = done
+⟶*-con (step r q) = step (ξ-con r) (⟶*-con q)
+
+⟶*-elimᵐ : {D : Desc} {ms ms' t : RTm Γ} →
+           ms ⟶* ms' → elim D ms t ⟶* elim D ms' t
+⟶*-elimᵐ done       = done
+⟶*-elimᵐ (step r q) = step (ξ-elimᵐ r) (⟶*-elimᵐ q)
+
+⟶*-elimᵗ : {D : Desc} {ms t t' : RTm Γ} →
+           t ⟶* t' → elim D ms t ⟶* elim D ms t'
+⟶*-elimᵗ done       = done
+⟶*-elimᵗ (step r q) = step (ξ-elimᵗ r) (⟶*-elimᵗ q)
+
+⟶*-sel : (k : ℕ) {ms ms' : RTm Γ} → ms ⟶* ms' → sel k ms ⟶* sel k ms'
+⟶*-sel zero    q = ⟶*-fst q
+⟶*-sel (suc k) q = ⟶*-sel k (⟶*-snd q)
+
+⟶*-fields : (D : Desc) {ms ms' : RTm Γ} (C : DCon) {m m' p p' : RTm Γ} →
+            ms ⟶* ms' → m ⟶* m' → p ⟶* p' →
+            fields D ms C m p ⟶* fields D ms' C m' p'
+⟶*-fields D dι       qms qm qp = qm
+⟶*-fields D (dρ C)   qms qm qp =
+  ⟶*-fields D C qms
+    (⟶*-trans (⟶*-appˡ (⟶*-trans (⟶*-appˡ qm) (⟶*-appʳ (⟶*-fst qp))))
+              (⟶*-appʳ (⟶*-trans (⟶*-elimᵐ qms) (⟶*-elimᵗ (⟶*-fst qp)))))
+    (⟶*-snd qp)
+⟶*-fields D (dκ A C) qms qm qp =
+  ⟶*-fields D C qms (⟶*-trans (⟶*-appˡ qm) (⟶*-appʳ (⟶*-fst qp))) (⟶*-snd qp)
+
 ⟶*-sub : (σ : Sub Γ Δ) {t u : RTm Γ} → t ⟶* u → subTm σ t ⟶* subTm σ u
 ⟶*-sub σ done       = done
 ⟶*-sub σ (step r p) = step (⟶-sub σ r) (⟶*-sub σ p)
@@ -348,6 +384,15 @@ pwShift-ren ρ t =
 ⟶-ren ρ (ξ-natrecᶻ r) = ξ-natrecᶻ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-natrecˢ r) = ξ-natrecˢ (⟶-ren (extR (extR ρ)) r)
 ⟶-ren ρ (ξ-natrecⁿ r) = ξ-natrecⁿ (⟶-ren ρ r)
+⟶-ren ρ (ι-elim D ms k p) =
+  subst (elim D (renTm ρ ms) (con k (renTm ρ p)) ⟶_)
+        (sym (trans (ren-fields ρ D ms (lookupD D k) (sel k ms) p)
+                    (cong (λ w → fields D (renTm ρ ms) (lookupD D k) w (renTm ρ p))
+                          (ren-sel ρ k ms))))
+        (ι-elim D (renTm ρ ms) k (renTm ρ p))
+⟶-ren ρ (ξ-con r)   = ξ-con   (⟶-ren ρ r)
+⟶-ren ρ (ξ-elimᵐ r) = ξ-elimᵐ (⟶-ren ρ r)
+⟶-ren ρ (ξ-elimᵗ r) = ξ-elimᵗ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-⌜Π⌝ˡ r) = ξ-⌜Π⌝ˡ (⟶-ren ρ r)
 ⟶-ren ρ (ξ-⌜Π⌝ʳ r) = ξ-⌜Π⌝ʳ (⟶-ren (extR ρ) r)
 ⟶-ren ρ (ξ-⌜Σ⌝ˡ r) = ξ-⌜Σ⌝ˡ (⟶-ren ρ r)
@@ -617,6 +662,9 @@ subTm-monoˢ h ⌜Unit⌝   = done
 subTm-monoˢ h unit     = done
 subTm-monoˢ h nzero    = done
 subTm-monoˢ h (nsuc n) = ⟶*-nsuc (subTm-monoˢ h n)
+subTm-monoˢ h (con k p) = ⟶*-con (subTm-monoˢ h p)
+subTm-monoˢ h (elim D ms t) =
+  ⟶*-trans (⟶*-elimᵐ (subTm-monoˢ h ms)) (⟶*-elimᵗ (subTm-monoˢ h t))
 subTm-monoˢ h (natrec z s n) =
   ⟶*-trans (⟶*-natrecᶻ (subTm-monoˢ h z))
            (⟶*-trans (⟶*-natrecˢ (subTm-monoˢ (extS-mono (extS-mono h)) s))
@@ -733,6 +781,29 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
                 z ⟹ z' → s ⟹ s' → n ⟹ n' →
                 natrec z s (nsuc n) ⟹
                 subTm (single (natrec z' s' n')) (subTm (extS (single n')) s')
+  -- ★ INDUCTIVE TYPES: two congruences plus the ι root, developed
+  -- componentwise (the `pβ`/`pnatrec-suc` shape).
+  pcon  : {k : ℕ} {p p' : RTm Γ} → p ⟹ p' → con k p ⟹ con k p'
+  pelim : {D : Desc} {ms ms' t t' : RTm Γ} →
+          ms ⟹ ms' → t ⟹ t' → elim D ms t ⟹ elim D ms' t'
+  pι    : {D : Desc} {ms ms' : RTm Γ} {k : ℕ} {p p' : RTm Γ} →
+          ms ⟹ ms' → p ⟹ p' →
+          elim D ms (con k p) ⟹ fields D ms' (lookupD D k) (sel k ms') p'
+
+-- ★ `sel` and `fields` are METALEVEL, so their ⟹-congruences are lemmas
+--   rather than constructors — `pι`'s right-hand side mentions both, and
+--   every use of `pι` in the triangle needs them.
+p-sel : (k : ℕ) {ms ms' : RTm Γ} → ms ⟹ ms' → sel k ms ⟹ sel k ms'
+p-sel zero    pms = pfst pms
+p-sel (suc k) pms = p-sel k (psnd pms)
+
+p-fields : {D : Desc} {ms ms' : RTm Γ} (C : DCon) {m m' p p' : RTm Γ} →
+           ms ⟹ ms' → m ⟹ m' → p ⟹ p' →
+           fields D ms C m p ⟹ fields D ms' C m' p'
+p-fields dι       pms pm pp = pm
+p-fields (dρ C)   pms pm pp =
+  p-fields C pms (papp (papp pm (pfst pp)) (pelim pms (pfst pp))) (psnd pp)
+p-fields (dκ A C) pms pm pp = p-fields C pms (papp pm (pfst pp)) (psnd pp)
 
 ⟹-refl : (t : RTm Γ) → t ⟹ t
 ⟹-refl ⌜Nat⌝      = p⌜Nat⌝
@@ -740,6 +811,8 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
 ⟹-refl unit       = punit
 ⟹-refl nzero      = pnzero
 ⟹-refl (nsuc n)   = pnsuc (⟹-refl n)
+⟹-refl (con k p)  = pcon (⟹-refl p)
+⟹-refl (elim D ms t) = pelim (⟹-refl ms) (⟹-refl t)
 ⟹-refl (natrec z s n) = pnatrec (⟹-refl z) (⟹-refl s) (⟹-refl n)
 ⟹-refl (var x)    = pvar x
 ⟹-refl (lam t)    = plam (⟹-refl t)
@@ -894,6 +967,10 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
 ⟶→⟹ (ξ-natrecᶻ r) = pnatrec (⟶→⟹ r) (⟹-refl _) (⟹-refl _)
 ⟶→⟹ (ξ-natrecˢ r) = pnatrec (⟹-refl _) (⟶→⟹ r) (⟹-refl _)
 ⟶→⟹ (ξ-natrecⁿ r) = pnatrec (⟹-refl _) (⟹-refl _) (⟶→⟹ r)
+⟶→⟹ (ι-elim D ms k p) = pι (⟹-refl ms) (⟹-refl p)
+⟶→⟹ (ξ-con r)   = pcon   (⟶→⟹ r)
+⟶→⟹ (ξ-elimᵐ r) = pelim  (⟶→⟹ r) (⟹-refl _)
+⟶→⟹ (ξ-elimᵗ r) = pelim  (⟹-refl _) (⟶→⟹ r)
 ⟶→⟹ (β t u)     = pβ (⟹-refl t) (⟹-refl u)
 ⟶→⟹ (βfst a b)  = pβfst (⟹-refl a) (⟹-refl b)
 ⟶→⟹ (βsnd a b)  = pβsnd (⟹-refl a) (⟹-refl b)
@@ -958,6 +1035,13 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
 ⟹→⟶* punit      = done
 ⟹→⟶* pnzero     = done
 ⟹→⟶* (pnsuc p)  = ⟶*-nsuc (⟹→⟶* p)
+⟹→⟶* (pcon p)   = ⟶*-con (⟹→⟶* p)
+⟹→⟶* (pelim pms pt) =
+  ⟶*-trans (⟶*-elimᵐ (⟹→⟶* pms)) (⟶*-elimᵗ (⟹→⟶* pt))
+⟹→⟶* (pι {D = D} {ms = ms} {k = k} {p = p} pms pp) =
+  step (ι-elim D ms k p)
+       (⟶*-fields D (lookupD D k) (⟹→⟶* pms)
+                  (⟶*-sel k (⟹→⟶* pms)) (⟹→⟶* pp))
 ⟹→⟶* (pnatrec pz ps pn) =
   ⟶*-trans (⟶*-natrecᶻ (⟹→⟶* pz))
            (⟶*-trans (⟶*-natrecˢ (⟹→⟶* ps)) (⟶*-natrecⁿ (⟹→⟶* pn)))
@@ -1086,6 +1170,14 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
 ⟹-ren ρ punit      = punit
 ⟹-ren ρ pnzero     = pnzero
 ⟹-ren ρ (pnsuc p)  = pnsuc (⟹-ren ρ p)
+⟹-ren ρ (pcon p)   = pcon (⟹-ren ρ p)
+⟹-ren ρ (pelim pms pt) = pelim (⟹-ren ρ pms) (⟹-ren ρ pt)
+⟹-ren ρ (pι {D = D} {ms = ms} {ms'} {k = k} {p = p} {p'} pms pp) =
+  subst (elim D (renTm ρ ms) (con k (renTm ρ p)) ⟹_)
+        (sym (trans (ren-fields ρ D ms' (lookupD D k) (sel k ms') p')
+                    (cong (λ w → fields D (renTm ρ ms') (lookupD D k) w (renTm ρ p'))
+                          (ren-sel ρ k ms'))))
+        (pι (⟹-ren ρ pms) (⟹-ren ρ pp))
 ⟹-ren ρ (pnatrec pz ps pn) =
   pnatrec (⟹-ren ρ pz) (⟹-ren (extR (extR ρ)) ps) (⟹-ren ρ pn)
 ⟹-ren ρ (pnatrec-zero pz ps) =
@@ -1222,6 +1314,14 @@ pwBody-⟹ (pnatrec-suc _ _ _) ()
 ⟹-sub h punit      = punit
 ⟹-sub h pnzero     = pnzero
 ⟹-sub h (pnsuc p)  = pnsuc (⟹-sub h p)
+⟹-sub h (pcon p)   = pcon (⟹-sub h p)
+⟹-sub h (pelim pms pt) = pelim (⟹-sub h pms) (⟹-sub h pt)
+⟹-sub {σ = σ} {σ'} h (pι {D = D} {ms = ms} {ms'} {k = k} {p = p} {p'} pms pp) =
+  subst (λ w → subTm σ (elim D ms (con k p)) ⟹ w)
+        (sym (trans (sub-fields σ' D ms' (lookupD D k) (sel k ms') p')
+                    (cong (λ w → fields D (subTm σ' ms') (lookupD D k) w (subTm σ' p'))
+                          (sub-sel σ' k ms'))))
+        (pι (⟹-sub h pms) (⟹-sub h pp))
 ⟹-sub h (pnatrec pz ps pn) =
   pnatrec (⟹-sub h pz) (⟹-sub (⟹-exts (⟹-exts h)) ps) (⟹-sub h pn)
 ⟹-sub h (pnatrec-zero pz ps) =
@@ -1357,6 +1457,8 @@ app (ap c b p) u ⁺    = app (ap c b p ⁺) (u ⁺)
 app (⌜Id⌝ c a b) u ⁺  = app (⌜Id⌝ c a b ⁺) (u ⁺)
 app (idrefl c t) u ⁺  = app (idrefl c t ⁺) (u ⁺)
 app (jsub d p e) u ⁺  = app (jsub d p e ⁺) (u ⁺)
+app (con k c) u ⁺     = app (con k c ⁺) (u ⁺)
+app (elim D ms t) u ⁺ = app (elim D ms t ⁺) (u ⁺)
 fst (pair a b) ⁺   = a ⁺
 fst (var x) ⁺      = fst (var x ⁺)
 fst (lam t) ⁺      = fst (lam t ⁺)
@@ -1381,6 +1483,8 @@ fst (ap c b p) ⁺    = fst (ap c b p ⁺)
 fst (⌜Id⌝ c a b) ⁺  = fst (⌜Id⌝ c a b ⁺)
 fst (idrefl c t) ⁺  = fst (idrefl c t ⁺)
 fst (jsub d p e) ⁺  = fst (jsub d p e ⁺)
+fst (con k c) ⁺     = fst (con k c ⁺)
+fst (elim D ms t) ⁺ = fst (elim D ms t ⁺)
 snd (pair a b) ⁺   = b ⁺
 snd (var x) ⁺      = snd (var x ⁺)
 snd (lam t) ⁺      = snd (lam t ⁺)
@@ -1405,6 +1509,8 @@ snd (ap c b p) ⁺    = snd (ap c b p ⁺)
 snd (⌜Id⌝ c a b) ⁺  = snd (⌜Id⌝ c a b ⁺)
 snd (idrefl c t) ⁺  = snd (idrefl c t ⁺)
 snd (jsub d p e) ⁺  = snd (jsub d p e ⁺)
+snd (con k c) ⁺     = snd (con k c ⁺)
+snd (elim D ms t) ⁺ = snd (elim D ms t ⁺)
 ⌜Nat⌝ ⁺            = ⌜Nat⌝
 ⌜Unit⌝ ⁺           = ⌜Unit⌝
 ⌜base⌝ ⁺           = ⌜base⌝
@@ -1454,6 +1560,11 @@ natrec z s nzero ⁺ = z ⁺
 natrec z s (nsuc n) ⁺ =
   subTm (single (natrec (z ⁺) (s ⁺) (n ⁺))) (subTm (extS (single (n ⁺))) (s ⁺))
 natrec z s n ⁺ = natrec (z ⁺) (s ⁺) (n ⁺)
+-- ★ INDUCTIVE TYPES: `elim` develops by the SCRUTINEE's head, exactly as
+-- `natrec` does — one keyed row, then congruence.
+con k c ⁺ = con k (c ⁺)
+elim D ms (con k c) ⁺ = fields D (ms ⁺) (lookupD D k) (sel k (ms ⁺)) (c ⁺)
+elim D ms t ⁺ = elim D (ms ⁺) (t ⁺)
 
 trB⁺ (⌜Hom⌝ c a m) s e = e ⁺
 trB⁺ d s e = tr (d ⁺) (hrefl ⌜base⌝ (s ⁺)) (e ⁺)
@@ -2638,6 +2749,450 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 -- `⌜Id⌝` / `idrefl` — congruence only.
 ⟹-⁺ (p⌜Id⌝ p q r) = p⌜Id⌝ (⟹-⁺ p) (⟹-⁺ q) (⟹-⁺ r)
 ⟹-⁺ (pidrefl p q) = pidrefl (⟹-⁺ p) (⟹-⁺ q)
+⟹-⁺ {t = app (con x t) t₁} (papp w1@(pcon x₁) x₂) =
+  papp (⟹-⁺ w1) (⟹-⁺ x₂)
+⟹-⁺ {t = app (elim x t t₁) t₂} (papp w1@(pelim x₁ x₂) x₃) =
+  papp (⟹-⁺ w1) (⟹-⁺ x₃)
+⟹-⁺ {t = app (elim x t (con k p)) t₁} (papp w1@(pι x₁ x₂) x₃) =
+  papp (⟹-⁺ w1) (⟹-⁺ x₃)
+⟹-⁺ {t = ordtr (nsuc t) (con x t₁) nzero t₂ t₃} (pordtr w1@(pnsuc x₁) w2@(pcon x₂) w3@pnzero x₃ x₄) =
+  pordtr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ w3) (⟹-⁺ x₃) (⟹-⁺ x₄)
+⟹-⁺ {t = ordtr (nsuc t) (elim x t₁ t₂) nzero t₃ t₄} (pordtr w1@(pnsuc x₁) w2@(pelim x₂ x₃) w3@pnzero x₄ x₅) =
+  pordtr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ w3) (⟹-⁺ x₄) (⟹-⁺ x₅)
+⟹-⁺ {t = ordtr (nsuc t) (elim x t₁ (con k p)) nzero t₂ t₃} (pordtr w1@(pnsuc x₁) w2@(pι x₂ x₃) w3@pnzero x₄ x₅) =
+  pordtr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ w3) (⟹-⁺ x₄) (⟹-⁺ x₅)
+⟹-⁺ {t = ordtr (nsuc t) (con x t₁) (nsuc t₂) t₃ t₄} (pordtr w1@(pnsuc x₁) w2@(pcon x₂) w3@(pnsuc x₃) x₄ x₅) =
+  pordtr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ w3) (⟹-⁺ x₄) (⟹-⁺ x₅)
+⟹-⁺ {t = ordtr (nsuc t) (elim x t₁ t₂) (nsuc t₃) t₄ t₅} (pordtr w1@(pnsuc x₁) w2@(pelim x₂ x₃) w3@(pnsuc x₄) x₅ x₆) =
+  pordtr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ w3) (⟹-⁺ x₅) (⟹-⁺ x₆)
+⟹-⁺ {t = ordtr (nsuc t) (elim x t₁ (con k p)) (nsuc t₂) t₃ t₄} (pordtr w1@(pnsuc x₁) w2@(pι x₂ x₃) w3@(pnsuc x₄) x₅ x₆) =
+  pordtr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ w3) (⟹-⁺ x₅) (⟹-⁺ x₆)
+⟹-⁺ {t = ordtr (nsuc t) t₁ (con x t₂) t₃ t₄} (pordtr w1@(pnsuc x₁) x₂ w2@(pcon x₃) x₄ x₅) =
+  pordtr (⟹-⁺ w1) (⟹-⁺ x₂) (⟹-⁺ w2) (⟹-⁺ x₄) (⟹-⁺ x₅)
+⟹-⁺ {t = ordtr (nsuc t) t₁ (elim x t₂ t₃) t₄ t₅} (pordtr w1@(pnsuc x₁) x₂ w2@(pelim x₃ x₄) x₅ x₆) =
+  pordtr (⟹-⁺ w1) (⟹-⁺ x₂) (⟹-⁺ w2) (⟹-⁺ x₅) (⟹-⁺ x₆)
+⟹-⁺ {t = ordtr (nsuc t) t₁ (elim x t₂ (con k p)) t₃ t₄} (pordtr w1@(pnsuc x₁) x₂ w2@(pι x₃ x₄) x₅ x₆) =
+  pordtr (⟹-⁺ w1) (⟹-⁺ x₂) (⟹-⁺ w2) (⟹-⁺ x₅) (⟹-⁺ x₆)
+⟹-⁺ {t = ordtr (con x t) t₁ t₂ t₃ t₄} (pordtr w1@(pcon x₁) x₂ x₃ x₄ x₅) =
+  pordtr (⟹-⁺ w1) (⟹-⁺ x₂) (⟹-⁺ x₃) (⟹-⁺ x₄) (⟹-⁺ x₅)
+⟹-⁺ {t = ordtr (elim x t t₁) t₂ t₃ t₄ t₅} (pordtr w1@(pelim x₁ x₂) x₃ x₄ x₅ x₆) =
+  pordtr (⟹-⁺ w1) (⟹-⁺ x₃) (⟹-⁺ x₄) (⟹-⁺ x₅) (⟹-⁺ x₆)
+⟹-⁺ {t = ordtr (elim x t (con k p)) t₁ t₂ t₃ t₄} (pordtr w1@(pι x₁ x₂) x₃ x₄ x₅ x₆) =
+  pordtr (⟹-⁺ w1) (⟹-⁺ x₃) (⟹-⁺ x₄) (⟹-⁺ x₅) (⟹-⁺ x₆)
+⟹-⁺ {t = fst (con x t)} (pfst w1@(pcon x₁)) =
+  pfst (⟹-⁺ w1)
+⟹-⁺ {t = fst (elim x t t₁)} (pfst w1@(pelim x₁ x₂)) =
+  pfst (⟹-⁺ w1)
+⟹-⁺ {t = fst (elim x t (con k p))} (pfst w1@(pι x₁ x₂)) =
+  pfst (⟹-⁺ w1)
+⟹-⁺ {t = snd (con x t)} (psnd w1@(pcon x₁)) =
+  psnd (⟹-⁺ w1)
+⟹-⁺ {t = snd (elim x t t₁)} (psnd w1@(pelim x₁ x₂)) =
+  psnd (⟹-⁺ w1)
+⟹-⁺ {t = snd (elim x t (con k p))} (psnd w1@(pι x₁ x₂)) =
+  psnd (⟹-⁺ w1)
+⟹-⁺ {t = tr (⌜Hom⌝ c a (con k p)) (lam t) t₁} (ptr w1@(p⌜Hom⌝ x x₁ (pcon x₂)) w2@(plam x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (⌜Hom⌝ c a (elim D ms t)) (lam t₁) t₂} (ptr w1@(p⌜Hom⌝ x x₁ (pelim x₂ x₃)) w2@(plam x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (⌜Hom⌝ c a (elim D ms (con k p))) (lam t) t₁} (ptr w1@(p⌜Hom⌝ x x₁ (pι x₂ x₃)) w2@(plam x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (con k p) (lam t) t₁} (ptr w1@(pcon x) w2@(plam x₁) x₂) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₂)
+⟹-⁺ {t = tr (elim D ms t) (lam t₁) t₂} (ptr w1@(pelim x x₁) w2@(plam x₂) x₃) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₃)
+⟹-⁺ {t = tr (elim D ms (con k p)) (lam t) t₁} (ptr w1@(pι x x₁) w2@(plam x₂) x₃) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₃)
+⟹-⁺ {t = tr (var x) (hrefl (con x₁ t) t₁) t₂} (ptr w1@(pvar x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (var x) (hrefl (elim x₁ t t₁) t₂) t₃} (ptr w1@(pvar x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (var x) (hrefl (elim x₁ t (con k p)) t₁) t₂} (ptr w1@(pvar x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (lam t) (hrefl (con x t₁) t₂) t₃} (ptr w1@(plam x₁) w2@(phrefl (pcon x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (lam t) (hrefl (elim x t₁ t₂) t₃) t₄} (ptr w1@(plam x₁) w2@(phrefl (pelim x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (lam t) (hrefl (elim x t₁ (con k p)) t₂) t₃} (ptr w1@(plam x₁) w2@(phrefl (pι x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (app t u) (hrefl (con x t₁) t₂) t₃} (ptr w1@(papp x₁ x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (app t u) (hrefl (elim x t₁ t₂) t₃) t₄} (ptr w1@(papp x₁ x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (app t u) (hrefl (elim x t₁ (con k p)) t₂) t₃} (ptr w1@(papp x₁ x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (app (lam t) u) (hrefl (con x t₁) t₂) t₃} (ptr w1@(pβ x₁ x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (app (lam t) u) (hrefl (elim x t₁ t₂) t₃) t₄} (ptr w1@(pβ x₁ x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (app (lam t) u) (hrefl (elim x t₁ (con k p)) t₂) t₃} (ptr w1@(pβ x₁ x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (pair a b) (hrefl (con x t) t₁) t₂} (ptr w1@(ppair x₁ x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (pair a b) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(ppair x₁ x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (pair a b) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(ppair x₁ x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (absurd c e) (hrefl (con x t) t₁) t₂} (ptr w1@(pabsurd x₁ x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (absurd c e) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(pabsurd x₁ x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (absurd c e) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(pabsurd x₁ x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (ordtr a t u p q) (hrefl (con k p₁) t₁) t₂} (ptr w1@(pordtr x x₁ x₂ x₃ x₄) w2@(phrefl (pcon x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (ordtr a t u p q) (hrefl (elim D ms t₁) t₂) t₃} (ptr w1@(pordtr x x₁ x₂ x₃ x₄) w2@(phrefl (pelim x₅ x₆) x₇) x₈) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₈)
+⟹-⁺ {t = tr (ordtr a t u p q) (hrefl (elim D ms (con k p₁)) t₁) t₂} (ptr w1@(pordtr x x₁ x₂ x₃ x₄) w2@(phrefl (pι x₅ x₆) x₇) x₈) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₈)
+⟹-⁺ {t = tr (ordtr .nzero t u p q) (hrefl (con k p₁) t₁) t₂} (ptr w1@pordtr-z w2@(phrefl (pcon x) x₁) x₂) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₂)
+⟹-⁺ {t = tr (ordtr .nzero t u p q) (hrefl (elim D ms t₁) t₂) t₃} (ptr w1@pordtr-z w2@(phrefl (pelim x x₁) x₂) x₃) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₃)
+⟹-⁺ {t = tr (ordtr .nzero t u p q) (hrefl (elim D ms (con k p₁)) t₁) t₂} (ptr w1@pordtr-z w2@(phrefl (pι x x₁) x₂) x₃) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₃)
+⟹-⁺ {t = tr (ordtr (nsuc a) .nzero .nzero p q) (hrefl (con k p₁) t) t₁} (ptr w1@(pordtr-szz x) w2@(phrefl (pcon x₁) x₂) x₃) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₃)
+⟹-⁺ {t = tr (ordtr (nsuc a) .nzero .nzero p q) (hrefl (elim D ms t) t₁) t₂} (ptr w1@(pordtr-szz x) w2@(phrefl (pelim x₁ x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (ordtr (nsuc a) .nzero .nzero p q) (hrefl (elim D ms (con k p₁)) t) t₁} (ptr w1@(pordtr-szz x) w2@(phrefl (pι x₁ x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (ordtr (nsuc a) (nsuc t) .nzero p q) (hrefl (con k p₁) t₁) t₂} (ptr w1@(pordtr-ssz x) w2@(phrefl (pcon x₁) x₂) x₃) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₃)
+⟹-⁺ {t = tr (ordtr (nsuc a) (nsuc t) .nzero p q) (hrefl (elim D ms t₁) t₂) t₃} (ptr w1@(pordtr-ssz x) w2@(phrefl (pelim x₁ x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (ordtr (nsuc a) (nsuc t) .nzero p q) (hrefl (elim D ms (con k p₁)) t₁) t₂} (ptr w1@(pordtr-ssz x) w2@(phrefl (pι x₁ x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (ordtr (nsuc a) .nzero (nsuc u) p q) (hrefl (con k p₁) t) t₁} (ptr w1@(pordtr-szs x x₁ x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (ordtr (nsuc a) .nzero (nsuc u) p q) (hrefl (elim D ms t) t₁) t₂} (ptr w1@(pordtr-szs x x₁ x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (ordtr (nsuc a) .nzero (nsuc u) p q) (hrefl (elim D ms (con k p₁)) t) t₁} (ptr w1@(pordtr-szs x x₁ x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (ordtr (nsuc a) (nsuc t) (nsuc u) p q) (hrefl (con k p₁) t₁) t₂} (ptr w1@(pordtr-sss x x₁ x₂ x₃ x₄) w2@(phrefl (pcon x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (ordtr (nsuc a) (nsuc t) (nsuc u) p q) (hrefl (elim D ms t₁) t₂) t₃} (ptr w1@(pordtr-sss x x₁ x₂ x₃ x₄) w2@(phrefl (pelim x₅ x₆) x₇) x₈) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₈)
+⟹-⁺ {t = tr (ordtr (nsuc a) (nsuc t) (nsuc u) p q) (hrefl (elim D ms (con k p₁)) t₁) t₂} (ptr w1@(pordtr-sss x x₁ x₂ x₃ x₄) w2@(phrefl (pι x₅ x₆) x₇) x₈) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₈)
+⟹-⁺ {t = tr (fst p) (hrefl (con x t) t₁) t₂} (ptr w1@(pfst x₁) w2@(phrefl (pcon x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (fst p) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(pfst x₁) w2@(phrefl (pelim x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (fst p) (hrefl (elim x t (con k p₁)) t₁) t₂} (ptr w1@(pfst x₁) w2@(phrefl (pι x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (snd p) (hrefl (con x t) t₁) t₂} (ptr w1@(psnd x₁) w2@(phrefl (pcon x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (snd p) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(psnd x₁) w2@(phrefl (pelim x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (snd p) (hrefl (elim x t (con k p₁)) t₁) t₂} (ptr w1@(psnd x₁) w2@(phrefl (pι x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (fst (pair a b)) (hrefl (con x t) t₁) t₂} (ptr w1@(pβfst x₁ x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (fst (pair a b)) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(pβfst x₁ x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (fst (pair a b)) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(pβfst x₁ x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (snd (pair a b)) (hrefl (con x t) t₁) t₂} (ptr w1@(pβsnd x₁ x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (snd (pair a b)) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(pβsnd x₁ x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (snd (pair a b)) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(pβsnd x₁ x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr t (hrefl (con x t₁) t₂) t₃} (ptr w1@p⌜base⌝ w2@(phrefl (pcon x₁) x₂) x₃) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₃)
+⟹-⁺ {t = tr t (hrefl (elim x t₁ t₂) t₃) t₄} (ptr w1@p⌜base⌝ w2@(phrefl (pelim x₁ x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr t (hrefl (elim x t₁ (con k p)) t₂) t₃} (ptr w1@p⌜base⌝ w2@(phrefl (pι x₁ x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (⌜Π⌝ c d) (hrefl (con x t) t₁) t₂} (ptr w1@(p⌜Π⌝ x₁ x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (⌜Π⌝ c d) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(p⌜Π⌝ x₁ x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (⌜Π⌝ c d) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(p⌜Π⌝ x₁ x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (⌜Σ⌝ c d) (hrefl (con x t) t₁) t₂} (ptr w1@(p⌜Σ⌝ x₁ x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (⌜Σ⌝ c d) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(p⌜Σ⌝ x₁ x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (⌜Σ⌝ c d) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(p⌜Σ⌝ x₁ x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (⌜Hom⌝ c a b) (hrefl (con x t) t₁) t₂} (ptr w1@(p⌜Hom⌝ x₁ x₂ x₃) w2@(phrefl (pcon x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (⌜Hom⌝ c a b) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(p⌜Hom⌝ x₁ x₂ x₃) w2@(phrefl (pelim x₄ x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (⌜Hom⌝ c a b) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(p⌜Hom⌝ x₁ x₂ x₃) w2@(phrefl (pι x₄ x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (hrefl c t) (hrefl (con x t₁) t₂) t₃} (ptr w1@(phrefl x₁ x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (hrefl c t) (hrefl (elim x t₁ t₂) t₃) t₄} (ptr w1@(phrefl x₁ x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (hrefl c t) (hrefl (elim x t₁ (con k p)) t₂) t₃} (ptr w1@(phrefl x₁ x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (tr d p e) (hrefl (con x t) t₁) t₂} (ptr w1@(ptr x₁ x₂ x₃) w2@(phrefl (pcon x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (tr d p e) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(ptr x₁ x₂ x₃) w2@(phrefl (pelim x₄ x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (tr d p e) (hrefl (elim x t (con k p₁)) t₁) t₂} (ptr w1@(ptr x₁ x₂ x₃) w2@(phrefl (pι x₄ x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl .⌜base⌝ s) e) (hrefl (con x t) t₁) t₂} (ptr w1@(ptr-J-base x₁) w2@(phrefl (pcon x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl .⌜base⌝ s) e) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(ptr-J-base x₁) w2@(phrefl (pelim x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl .⌜base⌝ s) e) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(ptr-J-base x₁) w2@(phrefl (pι x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr t (hrefl (con x t₁) t₂) t₃} (ptr w1@p⌜Nat⌝ w2@(phrefl (pcon x₁) x₂) x₃) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₃)
+⟹-⁺ {t = tr t (hrefl (elim x t₁ t₂) t₃) t₄} (ptr w1@p⌜Nat⌝ w2@(phrefl (pelim x₁ x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr t (hrefl (elim x t₁ (con k p)) t₂) t₃} (ptr w1@p⌜Nat⌝ w2@(phrefl (pι x₁ x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr t (hrefl (con x t₁) t₂) t₃} (ptr w1@p⌜Unit⌝ w2@(phrefl (pcon x₁) x₂) x₃) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₃)
+⟹-⁺ {t = tr t (hrefl (elim x t₁ t₂) t₃) t₄} (ptr w1@p⌜Unit⌝ w2@(phrefl (pelim x₁ x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr t (hrefl (elim x t₁ (con k p)) t₂) t₃} (ptr w1@p⌜Unit⌝ w2@(phrefl (pι x₁ x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl .⌜Unit⌝ s) e) (hrefl (con x t) t₁) t₂} (ptr w1@(ptr-J-Unit x₁) w2@(phrefl (pcon x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl .⌜Unit⌝ s) e) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(ptr-J-Unit x₁) w2@(phrefl (pelim x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl .⌜Unit⌝ s) e) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(ptr-J-Unit x₁) w2@(phrefl (pι x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e) (hrefl (con x t) t₁) t₂} (ptr w1@(ptr-J-Σ x₁) w2@(phrefl (pcon x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(ptr-J-Σ x₁) w2@(phrefl (pelim x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(ptr-J-Σ x₁) w2@(phrefl (pι x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e) (hrefl (con x t) t₁) t₂} (ptr w1@(ptr-J-Id x₁) w2@(phrefl (pcon x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(ptr-J-Id x₁) w2@(phrefl (pelim x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(ptr-J-Id x₁) w2@(phrefl (pι x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (tr .(var vz) (lam f) e) (hrefl (con x t) t₁) t₂} (ptr w1@(ptr-taut x₁ x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (tr .(var vz) (lam f) e) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(ptr-taut x₁ x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (tr .(var vz) (lam f) e) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(ptr-taut x₁ x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (hrefl C s) (hrefl (con x t) t₁) t₂} (ptr w1@(phrefl-pw x₁ x₂ x₃) w2@(phrefl (pcon x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (hrefl C s) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(phrefl-pw x₁ x₂ x₃) w2@(phrefl (pelim x₄ x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (hrefl C s) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(phrefl-pw x₁ x₂ x₃) w2@(phrefl (pι x₄ x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) e) (hrefl (con x t) t₁) t₂} (ptr w1@(ptr-J-Hom x₁ x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) e) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(ptr-J-Hom x₁ x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜Hom⌝ c₁ a₁ b₁) s) e) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(ptr-J-Hom x₁ x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a .(var vz)) (lam f) e) (hrefl (con x t) t₁) t₂} (ptr w1@(ptr-pw x₁ x₂ x₃ x₄ x₅) w2@(phrefl (pcon x₆) x₇) x₈) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₈)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a .(var vz)) (lam f) e) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(ptr-pw x₁ x₂ x₃ x₄ x₅) w2@(phrefl (pelim x₆ x₇) x₈) x₉) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₉)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a .(var vz)) (lam f) e) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(ptr-pw x₁ x₂ x₃ x₄ x₅) w2@(phrefl (pι x₆ x₇) x₈) x₉) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₉)
+⟹-⁺ {t = tr (ap cB b p) (hrefl (con x t) t₁) t₂} (ptr w1@(pap x₁ x₂ x₃) w2@(phrefl (pcon x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (ap cB b p) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(pap x₁ x₂ x₃) w2@(phrefl (pelim x₄ x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (ap cB b p) (hrefl (elim x t (con k p₁)) t₁) t₂} (ptr w1@(pap x₁ x₂ x₃) w2@(phrefl (pι x₄ x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (ap cB b (hrefl c₁ s)) (hrefl (con x t) t₁) t₂} (ptr w1@(pap-J x₁ x₂ x₃ x₄) w2@(phrefl (pcon x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (ap cB b (hrefl c₁ s)) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(pap-J x₁ x₂ x₃ x₄) w2@(phrefl (pelim x₅ x₆) x₇) x₈) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₈)
+⟹-⁺ {t = tr (ap cB b (hrefl c₁ s)) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(pap-J x₁ x₂ x₃ x₄) w2@(phrefl (pι x₅ x₆) x₇) x₈) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₈)
+⟹-⁺ {t = tr (⌜Id⌝ c a b) (hrefl (con x t) t₁) t₂} (ptr w1@(p⌜Id⌝ x₁ x₂ x₃) w2@(phrefl (pcon x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (⌜Id⌝ c a b) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(p⌜Id⌝ x₁ x₂ x₃) w2@(phrefl (pelim x₄ x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (⌜Id⌝ c a b) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(p⌜Id⌝ x₁ x₂ x₃) w2@(phrefl (pι x₄ x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (idrefl c t) (hrefl (con x t₁) t₂) t₃} (ptr w1@(pidrefl x₁ x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (idrefl c t) (hrefl (elim x t₁ t₂) t₃) t₄} (ptr w1@(pidrefl x₁ x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (idrefl c t) (hrefl (elim x t₁ (con k p)) t₂) t₃} (ptr w1@(pidrefl x₁ x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (jsub d p e) (hrefl (con x t) t₁) t₂} (ptr w1@(pjsub x₁ x₂ x₃) w2@(phrefl (pcon x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (jsub d p e) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(pjsub x₁ x₂ x₃) w2@(phrefl (pelim x₄ x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (jsub d p e) (hrefl (elim x t (con k p₁)) t₁) t₂} (ptr w1@(pjsub x₁ x₂ x₃) w2@(phrefl (pι x₄ x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (jsub d (idrefl c s) e) (hrefl (con x t) t₁) t₂} (ptr w1@(pjsub-refl x₁) w2@(phrefl (pcon x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (jsub d (idrefl c s) e) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(pjsub-refl x₁) w2@(phrefl (pelim x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (jsub d (idrefl c s) e) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(pjsub-refl x₁) w2@(phrefl (pι x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr t (hrefl (con x t₁) t₂) t₃} (ptr w1@punit w2@(phrefl (pcon x₁) x₂) x₃) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₃)
+⟹-⁺ {t = tr t (hrefl (elim x t₁ t₂) t₃) t₄} (ptr w1@punit w2@(phrefl (pelim x₁ x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr t (hrefl (elim x t₁ (con k p)) t₂) t₃} (ptr w1@punit w2@(phrefl (pι x₁ x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr t (hrefl (con x t₁) t₂) t₃} (ptr w1@pnzero w2@(phrefl (pcon x₁) x₂) x₃) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₃)
+⟹-⁺ {t = tr t (hrefl (elim x t₁ t₂) t₃) t₄} (ptr w1@pnzero w2@(phrefl (pelim x₁ x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr t (hrefl (elim x t₁ (con k p)) t₂) t₃} (ptr w1@pnzero w2@(phrefl (pι x₁ x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (nsuc n) (hrefl (con x t) t₁) t₂} (ptr w1@(pnsuc x₁) w2@(phrefl (pcon x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (nsuc n) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(pnsuc x₁) w2@(phrefl (pelim x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (nsuc n) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(pnsuc x₁) w2@(phrefl (pι x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (natrec z s n) (hrefl (con x t) t₁) t₂} (ptr w1@(pnatrec x₁ x₂ x₃) w2@(phrefl (pcon x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (natrec z s n) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(pnatrec x₁ x₂ x₃) w2@(phrefl (pelim x₄ x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (natrec z s n) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(pnatrec x₁ x₂ x₃) w2@(phrefl (pι x₄ x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (natrec z s .nzero) (hrefl (con x t) t₁) t₂} (ptr w1@(pnatrec-zero x₁ x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (natrec z s .nzero) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(pnatrec-zero x₁ x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (natrec z s .nzero) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(pnatrec-zero x₁ x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (natrec z s (nsuc n)) (hrefl (con x t) t₁) t₂} (ptr w1@(pnatrec-suc x₁ x₂ x₃) w2@(phrefl (pcon x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (natrec z s (nsuc n)) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(pnatrec-suc x₁ x₂ x₃) w2@(phrefl (pelim x₄ x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (natrec z s (nsuc n)) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(pnatrec-suc x₁ x₂ x₃) w2@(phrefl (pι x₄ x₅) x₆) x₇) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
+⟹-⁺ {t = tr (con k p) (hrefl ⌜base⌝ t) t₁} (ptr w1@(pcon x) w2@(phrefl p⌜base⌝ x₁) x₂) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₂)
+⟹-⁺ {t = tr (con k p) (hrefl (⌜Σ⌝ t t₁) t₂) t₃} (ptr w1@(pcon x) w2@(phrefl (p⌜Σ⌝ x₁ x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (con k p) (hrefl (⌜Hom⌝ t t₁ t₂) t₃) t₄} (ptr w1@(pcon x) w2@(phrefl (p⌜Hom⌝ x₁ x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (con k p) (hrefl (⌜Id⌝ t t₁ t₂) t₃) t₄} (ptr w1@(pcon x) w2@(phrefl (p⌜Id⌝ x₁ x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (con k p) (hrefl (con x t) t₁) t₂} (ptr w1@(pcon x₁) w2@(phrefl (pcon x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (con k p) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(pcon x₁) w2@(phrefl (pelim x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (con k p) (hrefl (elim x t (con k₁ p₁)) t₁) t₂} (ptr w1@(pcon x₁) w2@(phrefl (pι x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (con k p) (hrefl ⌜Unit⌝ t) t₁} (ptr w1@(pcon x) w2@(phrefl p⌜Unit⌝ x₁) x₂) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₂)
+⟹-⁺ {t = tr (con k p) (hrefl (⌜Hom⌝ t t₁ t₂) t₃) t₄} (ptr w1@(pcon x) w2@(phrefl-pw x₁ x₂ x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (elim D ms t) (hrefl ⌜base⌝ t₁) t₂} (ptr w1@(pelim x x₁) w2@(phrefl p⌜base⌝ x₂) x₃) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₃)
+⟹-⁺ {t = tr (elim D ms t) (hrefl (⌜Σ⌝ t₁ t₂) t₃) t₄} (ptr w1@(pelim x x₁) w2@(phrefl (p⌜Σ⌝ x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (elim D ms t) (hrefl (⌜Hom⌝ t₁ t₂ t₃) t₄) t₅} (ptr w1@(pelim x x₁) w2@(phrefl (p⌜Hom⌝ x₂ x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (elim D ms t) (hrefl (⌜Id⌝ t₁ t₂ t₃) t₄) t₅} (ptr w1@(pelim x x₁) w2@(phrefl (p⌜Id⌝ x₂ x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (elim D ms t) (hrefl (con x t₁) t₂) t₃} (ptr w1@(pelim x₁ x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (elim D ms t) (hrefl (elim x t₁ t₂) t₃) t₄} (ptr w1@(pelim x₁ x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (elim D ms t) (hrefl (elim x t₁ (con k p)) t₂) t₃} (ptr w1@(pelim x₁ x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (elim D ms t) (hrefl ⌜Unit⌝ t₁) t₂} (ptr w1@(pelim x x₁) w2@(phrefl p⌜Unit⌝ x₂) x₃) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₃)
+⟹-⁺ {t = tr (elim D ms t) (hrefl (⌜Hom⌝ t₁ t₂ t₃) t₄) t₅} (ptr w1@(pelim x x₁) w2@(phrefl-pw x₂ x₃ x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (elim D ms (con k p)) (hrefl ⌜base⌝ t) t₁} (ptr w1@(pι x x₁) w2@(phrefl p⌜base⌝ x₂) x₃) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₃)
+⟹-⁺ {t = tr (elim D ms (con k p)) (hrefl (⌜Σ⌝ t t₁) t₂) t₃} (ptr w1@(pι x x₁) w2@(phrefl (p⌜Σ⌝ x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (elim D ms (con k p)) (hrefl (⌜Hom⌝ t t₁ t₂) t₃) t₄} (ptr w1@(pι x x₁) w2@(phrefl (p⌜Hom⌝ x₂ x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (elim D ms (con k p)) (hrefl (⌜Id⌝ t t₁ t₂) t₃) t₄} (ptr w1@(pι x x₁) w2@(phrefl (p⌜Id⌝ x₂ x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (elim D ms (con k p)) (hrefl (con x t) t₁) t₂} (ptr w1@(pι x₁ x₂) w2@(phrefl (pcon x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (elim D ms (con k p)) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(pι x₁ x₂) w2@(phrefl (pelim x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (elim D ms (con k p)) (hrefl (elim x t (con k₁ p₁)) t₁) t₂} (ptr w1@(pι x₁ x₂) w2@(phrefl (pι x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (elim D ms (con k p)) (hrefl ⌜Unit⌝ t) t₁} (ptr w1@(pι x x₁) w2@(phrefl p⌜Unit⌝ x₂) x₃) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₃)
+⟹-⁺ {t = tr (elim D ms (con k p)) (hrefl (⌜Hom⌝ t t₁ t₂) t₃) t₄} (ptr w1@(pι x x₁) w2@(phrefl-pw x₂ x₃ x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr t (con x t₁) t₂} (ptr x₁ w1@(pcon x₂) x₃) =
+  ptr (⟹-⁺ x₁) (⟹-⁺ w1) (⟹-⁺ x₃)
+⟹-⁺ {t = tr t (elim x t₁ t₂) t₃} (ptr x₁ w1@(pelim x₂ x₃) x₄) =
+  ptr (⟹-⁺ x₁) (⟹-⁺ w1) (⟹-⁺ x₄)
+⟹-⁺ {t = tr t (elim x t₁ (con k p)) t₂} (ptr x₁ w1@(pι x₂ x₃) x₄) =
+  ptr (⟹-⁺ x₁) (⟹-⁺ w1) (⟹-⁺ x₄)
+⟹-⁺ {t = ap t t₁ (hrefl (con x t₂) t₃)} (pap x₁ x₂ w1@(phrefl (pcon x₃) x₄)) =
+  pap (⟹-⁺ x₁) (⟹-⁺ x₂) (⟹-⁺ w1)
+⟹-⁺ {t = ap t t₁ (hrefl (elim x t₂ t₃) t₄)} (pap x₁ x₂ w1@(phrefl (pelim x₃ x₄) x₅)) =
+  pap (⟹-⁺ x₁) (⟹-⁺ x₂) (⟹-⁺ w1)
+⟹-⁺ {t = ap t t₁ (hrefl (elim x t₂ (con k p)) t₃)} (pap x₁ x₂ w1@(phrefl (pι x₃ x₄) x₅)) =
+  pap (⟹-⁺ x₁) (⟹-⁺ x₂) (⟹-⁺ w1)
+⟹-⁺ {t = ap t t₁ (con x t₂)} (pap x₁ x₂ w1@(pcon x₃)) =
+  pap (⟹-⁺ x₁) (⟹-⁺ x₂) (⟹-⁺ w1)
+⟹-⁺ {t = ap t t₁ (elim x t₂ t₃)} (pap x₁ x₂ w1@(pelim x₃ x₄)) =
+  pap (⟹-⁺ x₁) (⟹-⁺ x₂) (⟹-⁺ w1)
+⟹-⁺ {t = ap t t₁ (elim x t₂ (con k p))} (pap x₁ x₂ w1@(pι x₃ x₄)) =
+  pap (⟹-⁺ x₁) (⟹-⁺ x₂) (⟹-⁺ w1)
+⟹-⁺ {t = jsub t (con x t₁) t₂} (pjsub x₁ w1@(pcon x₂) x₃) =
+  pjsub (⟹-⁺ x₁) (⟹-⁺ w1) (⟹-⁺ x₃)
+⟹-⁺ {t = jsub t (elim x t₁ t₂) t₃} (pjsub x₁ w1@(pelim x₂ x₃) x₄) =
+  pjsub (⟹-⁺ x₁) (⟹-⁺ w1) (⟹-⁺ x₄)
+⟹-⁺ {t = jsub t (elim x t₁ (con k p)) t₂} (pjsub x₁ w1@(pι x₂ x₃) x₄) =
+  pjsub (⟹-⁺ x₁) (⟹-⁺ w1) (⟹-⁺ x₄)
+⟹-⁺ {t = natrec t t₁ (con x t₂)} (pnatrec x₁ x₂ w1@(pcon x₃)) =
+  pnatrec (⟹-⁺ x₁) (⟹-⁺ x₂) (⟹-⁺ w1)
+⟹-⁺ {t = natrec t t₁ (elim x t₂ t₃)} (pnatrec x₁ x₂ w1@(pelim x₃ x₄)) =
+  pnatrec (⟹-⁺ x₁) (⟹-⁺ x₂) (⟹-⁺ w1)
+⟹-⁺ {t = natrec t t₁ (elim x t₂ (con k p))} (pnatrec x₁ x₂ w1@(pι x₃ x₄)) =
+  pnatrec (⟹-⁺ x₁) (⟹-⁺ x₂) (⟹-⁺ w1)
+
+------------------------------------------------------------------------
+-- ★ INDUCTIVE TYPES — the triangle's three new rows.
+--
+-- ⚠ `pelim` SPLITS ON THE SCRUTINEE'S TERM SHAPE, not on its derivation.
+--   `_⁺` distinguishes only `con` from everything else, so one clause per
+--   RTm former (26) suffices where a split on `_⟹_`'s constructors would
+--   have cost ~60.  `pnatrec` above could not use the trick: its `_⁺` keys
+--   on TWO numeral heads, so the split has to see both.
+------------------------------------------------------------------------
+⟹-⁺ (pcon pp) = pcon (⟹-⁺ pp)
+-- the ι root: `fields`/`sel` are metalevel, so the development runs
+-- through their congruence LEMMAS rather than a constructor.
+⟹-⁺ (pι {D = D} {k = k} pms pp) =
+  p-fields (lookupD D k) (⟹-⁺ pms) (p-sel k (⟹-⁺ pms)) (⟹-⁺ pp)
+-- ★ the one that fires: a `con` scrutinee turns congruence into the root.
+⟹-⁺ (pelim {t = con k c} pms (pcon pp)) = pι (⟹-⁺ pms) (⟹-⁺ pp)
+⟹-⁺ (pelim {t = (var x)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (lam t)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (app f a)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (pair a b)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (absurd c e)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (ordtr a t u p q)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (fst p)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (snd p)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = ⌜base⌝} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (⌜Π⌝ c d)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (⌜Σ⌝ c d)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (⌜Hom⌝ c a b)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (hrefl c t)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (tr d p e)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (ap c b p)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (⌜Id⌝ c a b)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (idrefl c t)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (jsub d p e)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = unit} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = nzero} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (nsuc n)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (natrec z s w)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = ⌜Nat⌝} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = ⌜Unit⌝} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
+⟹-⁺ (pelim {t = (elim D₁ ms₁ t₁)} pms pt) = pelim (⟹-⁺ pms) (⟹-⁺ pt)
 
 ------------------------------------------------------------------------
 -- Diamond (from the triangle), then confluence of `⟹*`, then of `⟶*`.
