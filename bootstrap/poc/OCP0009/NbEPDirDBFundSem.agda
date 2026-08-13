@@ -117,7 +117,8 @@ open import poc.OCP0009.NbEPDirDBLR
         ; homSem₁
         ; ⟶ᵀ*-sub
         ; IsNormal; WN; mkWN; wn
-        ; projl; projr; dfst; dsnd )
+        ; projl; projr; dfst; dsnd
+        ; sne-elim; sn-con; ne-elim; mustk? )
 
 open import poc.OCP0009.NbEPDirDBFundSN
 
@@ -288,6 +289,7 @@ sne→nopw (sne-tr _ _ _ key) = key
 sne→nopw (sne-ap _ _ _ key) = refl
 sne→nopw (sne-jsub _ _ _ key) = key
 sne→nopw (sne-natrec _ _ _ key) = key
+sne→nopw (sne-elim _ _ key)     = key
 sne→nopw (sne-ordtr _ _ _ _ _ key) = key
 
 -- star-folds for the head strategy.
@@ -370,6 +372,9 @@ snHH sp sn-nzero snt noPiT =
   sn-ne (sne-hrefl (snPlug sp sn-nzero) snt (nopw-plug sp refl))
 snHH sp (sn-nsuc h) snt noPiT =
   sn-ne (sne-hrefl (snPlug sp (sn-nsuc h)) snt (nopw-plug sp refl))
+-- ★ INDUCTIVE TYPES: a `con` is an inert canonical head, like `nsuc`.
+snHH sp (sn-con h) snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-con h)) snt (nopw-plug sp refl))
 snHH sp (sn-cΠ {c = γ} {d = δ} h₁ h₂) snt noPiT =
   ⊥-elim (noPiT (Σ.fst (Σ.snd (pw-El-decode (plug sp (⌜Π⌝ γ δ))
                                             (pw-plug sp refl)))))
@@ -612,6 +617,7 @@ codeNormA (sn-idrefl h₁ h₂) kn = _ , (csr-done , cfa-dead refl)
 codeNormA sn-unit kn      = _ , (csr-done , cfa-dead refl)
 codeNormA sn-nzero kn     = _ , (csr-done , cfa-dead refl)
 codeNormA (sn-nsuc h) kn  = _ , (csr-done , cfa-dead refl)
+codeNormA (sn-con h)  kn  = _ , (csr-done , cfa-dead refl)
 codeNormA (sn-cΠ h₁ h₂) ()
 codeNormA (sn-cH {a = a₂} {b = b₂} hC ha hb) kn with codeNormA hC kn
 ... | C* , (csr , cfa-stk k)  =
@@ -648,6 +654,7 @@ codeNorm (sn-idrefl h₁ h₂) kn = _ , (csr-done , cf-dead refl)
 codeNorm sn-unit kn      = _ , (csr-done , cf-dead refl)
 codeNorm sn-nzero kn     = _ , (csr-done , cf-dead refl)
 codeNorm (sn-nsuc h) kn  = _ , (csr-done , cf-dead refl)
+codeNorm (sn-con h)  kn  = _ , (csr-done , cf-dead refl)
 codeNorm (sn-cΠ h₁ h₂) ()
 codeNorm (sn-cH {a = a₂} {b = b₂} hC ha hb) kn with codeNormA hC kn
 ... | C* , (csr , cfa-stk k)  =
@@ -784,6 +791,7 @@ motFate (sn-ne (sne-tr h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-ne (sne-ap h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-ne (sne-jsub h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-ne (sne-natrec h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
+motFate (sn-ne (sne-elim h₁ h₂ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-lam h) = _ , (csr-done , mf-dead refl)
 motFate (sn-pair a b) = _ , (csr-done , mf-dead refl)
@@ -797,6 +805,7 @@ motFate (sn-idrefl h₁ h₂) = _ , (csr-done , mf-dead refl)
 motFate sn-unit     = _ , (csr-done , mf-dead refl)
 motFate sn-nzero    = _ , (csr-done , mf-dead refl)
 motFate (sn-nsuc h) = _ , (csr-done , mf-dead refl)
+motFate (sn-con h)  = _ , (csr-done , mf-dead refl)
 motFate (sn-cH {c = C₂} {a = a₂} {b = b₂} hC ha hb) with motFate hC
 ... | C* , (csr , mf-pw k)   = ⌜Hom⌝ C* a₂ b₂ , (csrs-hom csr , mf-pw k)
 ... | C* , (csr , mf-dead k) = ⌜Hom⌝ C* a₂ b₂ , (csrs-hom csr , mf-dead k)
@@ -849,6 +858,8 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
     sn-ne (sne-tr snM (sn-ne (sne-jsub h₁ h₂ h₃ key)) snE key)
   go' (sn-ne (sne-natrec h₁ h₂ h₃ key)) =
     sn-ne (sne-tr snM (sn-ne (sne-natrec h₁ h₂ h₃ key)) snE key)
+  go' (sn-ne (sne-elim h₁ h₂ key)) =
+    sn-ne (sne-tr snM (sn-ne (sne-elim h₁ h₂ key)) snE key)
   go' (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) =
     sn-ne (sne-tr snM (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) snE key)
   go' (sn-lam snf) with motFate snCT
@@ -873,6 +884,7 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
   go' sn-unit           = sn-ne (sne-tr snM sn-unit snE refl)
   go' sn-nzero          = sn-ne (sne-tr snM sn-nzero snE refl)
   go' (sn-nsuc h)       = sn-ne (sne-tr snM (sn-nsuc h) snE refl)
+  go' (sn-con h)        = sn-ne (sne-tr snM (sn-con h) snE refl)
 
   goH sn-cb sns kn = sn-exp (snr-J-base snM sns) snE
   goH sn-cUnit sns kn = sn-exp (snr-J-Unit snM sns) snE
@@ -901,6 +913,8 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
     sn-ne (sne-tr snM (sn-ne (sne-hrefl sn-nzero sns refl)) snE refl)
   goH (sn-nsuc h) sns kn =
     sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-nsuc h) sns refl)) snE refl)
+  goH (sn-con h) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-con h) sns refl)) snE refl)
   goH (sn-cΠ h₁ h₂) sns ()
   goH (sn-cH hC h₂ h₃) sns kn with codeNormA hC kn
   ... | C*c , (csr , cfa-stk k) =
@@ -1044,6 +1058,8 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-jsub h₁ h₂ h₃ key)) snE' key)
   go₀ (sn-ne (sne-natrec h₁ h₂ h₃ key)) hpʹ =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-natrec h₁ h₂ h₃ key)) snE' key)
+  go₀ (sn-ne (sne-elim h₁ h₂ key)) hpʹ =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-elim h₁ h₂ key)) snE' key)
   go₀ (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) hpʹ =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) snE' key)
   go₀ (sn-lam snf) hpʹ = pwC snf hpʹ
@@ -1059,6 +1075,7 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
   go₀ sn-unit hpʹ      = CR3₀ RH0 (sne-tr snM sn-unit snE' refl)
   go₀ sn-nzero hpʹ     = CR3₀ RH0 (sne-tr snM sn-nzero snE' refl)
   go₀ (sn-nsuc h) hpʹ  = CR3₀ RH0 (sne-tr snM (sn-nsuc h) snE' refl)
+  go₀ (sn-con h) hpʹ   = CR3₀ RH0 (sne-tr snM (sn-con h) snE' refl)
 
   goH₀ sn-cb sns kn = exp₀ RH0 (snr-J-base snM sns) heU
   goH₀ sn-cUnit sns kn = exp₀ RH0 (snr-J-Unit snM sns) heU
@@ -1084,6 +1101,8 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-nzero sns refl)) snE' refl)
   goH₀ (sn-nsuc h) sns kn =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-nsuc h) sns refl)) snE' refl)
+  goH₀ (sn-con h) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-con h) sns refl)) snE' refl)
   goH₀ (sn-cΠ h₁ h₂) sns ()
   goH₀ (sn-cH hC h₂ h₃) sns kn with codeNormA hC kn
   ... | C*c , (csr , cfa-stk k) =
@@ -1344,4 +1363,5 @@ ne-nostk (ne-tr _)    = refl
 ne-nostk (ne-ap _)    = refl
 ne-nostk (ne-jsub _)  = refl
 ne-nostk (ne-natrec _) = refl
+ne-nostk (ne-elim _)   = refl
 ne-nostk (ne-ordtr _) = refl
