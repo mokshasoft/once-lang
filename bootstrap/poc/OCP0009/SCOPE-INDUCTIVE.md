@@ -284,9 +284,13 @@ parameterised in both relations.
 --------------------------------------------------------------------------
 ## 3d. ⛔ WHAT FOUR GATES STILL DO NOT COVER
 
-1. ★ **Gates 3 and 4 COMBINED.** Gate 3 is indexed without `κ`; gate 4 has
-   `κ` without indexing. The design above merges them, but the merged form
-   is **untested** — and it is the one the kernel would use.
+1. ~~★ **Gates 3 and 4 COMBINED**~~ — ✅ **CLEARED: `SpikeIDescSigma`,
+   0.74 s, green first try.** The merge is not automatic — indexing makes
+   `MuMem` a FAMILY and makes `Lift` apply its predicate at a COMPUTED
+   index, so the knot has to close over an index being computed inside it.
+   | Q15 | ★★ knot POSITIVITY with `MuMem` a family | ✅ |
+   | Q16 | ★★ elimination TERMINATION with index threaded AND `κ` crossing to `⊩` | ✅ |
+   | Q17 | ★★★ **`RTm`'s own shape at one description** — `var` (κ), `lam` (ρ suc, binding), `app` (ρ id) — plus a NESTED datatype at an index | ✅ |
 2. **The `⊩₀`/`⊩₁` split.** The kernel's LR has two levels; all four spikes
    have one.
 3. ★★ **THE REDUCTION THEORY — completely untouched.** No spike has an
@@ -294,9 +298,30 @@ parameterised in both relations.
    nothing about `Conf` or `Subj`, which are ~25% of the measured bill.
    ⚠ Four greens on the SHAPE say nothing about this.
 
-⇒ the four gates settle the DESCRIPTION LANGUAGE and clear the
-logical-relation shape. The cost estimate in §1 is unchanged: they remove
-the risk of the design being wrong, not the work of writing it.
+⇒ **five spikes, ~450 lines, settle the DESCRIPTION LANGUAGE and clear the
+logical-relation shape at `RTm`'s own constructor shapes.** The cost
+estimate in §1 is unchanged: they remove the risk of the design being
+wrong, not the work of writing it.
+
+--------------------------------------------------------------------------
+## 3e. ⭐ WHERE THE NEXT RISK IS, AND IT HAS MOVED
+
+Every remaining unknown is now on the **reduction** side, not the shape:
+
+| | |
+|---|---|
+| the `⊩₀`/`⊩₁` split | all five spikes have one level, the kernel has two |
+| ★★ **the eliminator as an object-language FORMER** | with its ι-rule — hence `Conf` and `Subj`, ~25% of the measured bill, **completely untouched** |
+
+⚠ **Five greens on the shape say nothing about either.** The `ordtr` bill
+put 23% in `Conf` alone, and `ordtr` had NO binder; a generic eliminator
+has a motive, a binder per recursive field, and an ι-rule whose
+confluence argument has to hold for every description.
+
+⇒ **that is where a branch becomes worth it.** The shape work needed no
+kernel changes and none was made; the reduction work cannot avoid them,
+and `SR`/`Conf`/`Subj`/`LR`/`Fund`/`Canon` all have to re-close before the
+tree is green again.
 
 --------------------------------------------------------------------------
 ## 4. THE ACCEPTANCE TEST
