@@ -26,7 +26,7 @@ open import Data.Bool using (Bool; true; false; if_then_else_; not; _∧_; _∨_
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Function using (_∘_)
+open import Function using (_∘_; case_of_)
 open import Relation.Nullary using (yes; no)
 -- Plan 0.63: provenance-typed labels, shared with x86-64 (`Label` arrives
 -- re-exported from `Syntax`; the scan needs its boolean equality).
@@ -403,22 +403,39 @@ execInstr prog s (call-sym _) =
 -- Program execution
 ------------------------------------------------------------------------
 
+-- Plan 0.65 (G2): WITH-FREE, matching x86-64's shape exactly (its Plan 0.27
+-- C3). `step` factors through `step-not-halted`, and `exec` is
+-- `if_then_else_` + an explicit `exec-cont` rather than a nested
+-- `with halted s | step prog s | halted s'`.
+--
+-- The two are DEFINITIONALLY EQUAL on every input, so nothing that ran before
+-- changes. What changes is REDUCIBILITY: a `rewrite` of a register or memory
+-- read inside `execInstr` now fires through `exec`, instead of being frozen
+-- behind a generated `with`-auxiliary. The per-instruction step lemmas are
+-- stated over `step-not-halted`, so without this they could not be written at
+-- all — this was riscv64's third asymmetry with x86-64, after the emitter's
+-- missing `compile-trace` and `compile-trace-cnt-agrees`, and the first one in
+-- the SEMANTICS rather than the emitter.
+
+-- | One step, given the machine is not already halted.
+step-not-halted : Program → State → Maybe State
+step-not-halted prog s = case fetch prog (pc s) of λ where
+  nothing      → just (record s { halted = true })
+  (just instr) → execInstr prog s instr
+
 -- | Execute one step
 step : Program → State → Maybe State
-step prog s with halted s
-... | true = just s  -- Already halted
-... | false with fetch prog (pc s)
-...   | nothing = just (record s { halted = true })  -- End of program
-...   | just instr = execInstr prog s instr
+step prog s = if halted s then just s else step-not-halted prog s
 
 -- | Execute n steps (bounded execution)
-exec : ℕ → Program → State → Maybe State
-exec zero _ s = just s
-exec (suc n) prog s with step prog s
-... | nothing = nothing
-... | just s' with halted s'
-...   | true = just s'
-...   | false = exec n prog s'
+exec      : ℕ → Program → State → Maybe State
+exec-cont : ℕ → Program → Maybe State → Maybe State
+
+exec zero    _    s = just s
+exec (suc n) prog s = if halted s then just s else exec-cont n prog (step-not-halted prog s)
+
+exec-cont _ _    nothing   = nothing
+exec-cont n prog (just s') = if halted s' then just s' else exec n prog s'
 
 -- | Execute until PC reaches target (or halted, or fuel exhausted)
 exec-until-pc : (target : ℕ) → (fuel : ℕ) → Program → State → Maybe State

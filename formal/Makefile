@@ -185,14 +185,15 @@ ccc-x86-32:
 ccc-riscv64:
 	@echo "Type-checking RISC-V 64 CCC backend (Target instance)..."
 	@sh -c '$(AGDA_CMD) Once/Target/RiscV64.agda'
-# Plan 0.65: the riscv64 SECOND INSTANCE of the arch-generic correspondence
-# core. `Once/Target/RiscV64.agda` is the emitter and does not import these, so
-# without naming them here they would be islands — green when checked by hand
-# and invisible to the gate, which is the one failure mode a second instance
-# exists to prevent.
-	@sh -c '$(AGDA_CMD) Once/Adequacy/ArchCorrectness/RiscV64/RegRoles.agda'
-	@sh -c '$(AGDA_CMD) Once/Adequacy/ArchCorrectness/RiscV64/FlatComposition.agda'
-	@sh -c '$(AGDA_CMD) Once/Adequacy/ArchCorrectness/RiscV64/FlatCorrespondence.agda'
+# Plan 0.65: `RegRoles`, `FlatComposition`, `FlatCorrespondence`,
+# `FlatSimulation` and `ResourceBounds` USED to be named here because nothing
+# imported them. They are now reachable from the apex —
+# `ArchCorrectness.RiscV64 → ResourceBounds → FlatSimulation →
+# {FlatComposition, FlatCorrespondence} → RegRoles` — so the `certified`
+# cluster covers them and naming them here would be a crutch pretending to be
+# a gate. `StepLemmas` is the one that is still an island: its consumers are
+# G2's block-steps, which do not exist yet.
+	@sh -c '$(AGDA_CMD) Once/Adequacy/ArchCorrectness/RiscV64/StepLemmas.agda'
 
 #-----------------------------------------------------------------------------
 # Pipeline: Arithmetic Primitives (target-specific)
