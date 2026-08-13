@@ -7348,8 +7348,23 @@ missing `compile-trace`, all three targets' missing `compile-trace-cnt-agrees`,
 and riscv64's `with`-bound `step`/`exec`. Three of the four are defects rather
 than absences.
 
+### x86-32 had it too, and worse
+
+Checked immediately, because this entry's own lesson says to. `mov-code r,
+$.L_thunk_ℓ` advanced the pc and left `r` **untouched** — not even a definite
+value, so the register kept whatever it held before. Its comment said this
+"mirrors x86-64's `lea` of a `rip+label`", which was TRUE WHEN WRITTEN and
+became false at D096. x86-32's closure call is `call *4(%ebx)`, so the same
+argument applies and `x86-32-loader-faithful` was false for the same programs.
+
+Fixed identically. **All three targets now resolve a code address through
+`find-label … (thunk ℓ)` and halt on an absent label** — one defect, found
+once, repaired three times, which is what "per-arch fix to shared-machinery
+defect" costs when it is not chased across the arches on the day.
+
 ### What it cost
 
 `step-lla` gains its resolved form and a sibling `step-lla-missing` — two
-outcomes where there was one, exactly as `j` has. Nothing else moved: the
-value was previously unconstrained, so no proof depended on it being 0.
+outcomes where there was one, exactly as `j` has. Nothing else moved on either
+arch: the value was previously unconstrained, so no proof depended on it being
+0 (riscv64) or stale (x86-32).

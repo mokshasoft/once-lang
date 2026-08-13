@@ -25,7 +25,7 @@ open import Data.String using (String)
 open import Function using (case_of_)
 -- Plan 0.63: provenance-typed labels, shared with x86-64 (`Label` comes in
 -- re-exported from `Syntax`; the scan needs its boolean equality).
-open import Once.CCC.Label using (_≡ᵇᴸ_)
+open import Once.CCC.Label using (_≡ᵇᴸ_; thunk)
 
 ------------------------------------------------------------------------
 -- Machine State
@@ -289,11 +289,29 @@ execInstr prog s ud2 =
 execInstr prog s (label _) =
   just (record s { pc = pc s + 1 })
 
--- Plan 0.53: `mov-code` loads a link-time code address; the abstract model
--- does not track those, so it advances the pc and leaves the register opaque
--- (mirrors x86-64's `lea` of a `rip+label`).
-execInstr prog s (mov-code _ _) =
-  just (record s { pc = pc s + 1 })
+-- THE CODE-ADDRESS DEFECT, FIXED (D096/D103, applied to x86-32 2026-08-13).
+--
+-- `mov-code r, $.L_thunk_ℓ` used to advance the pc and leave `r` UNTOUCHED —
+-- not even a definite value, so the register kept whatever it held before. Its
+-- comment said this "mirrors x86-64's `lea` of a `rip+label`", which was true
+-- when written and became false at D096.
+--
+-- The value is JUMPED THROUGH: `IRToTrace` emits `instr-load-code-addr ℓ` to
+-- build a closure record, x86-32 lowers it here, the result goes in the
+-- record's second cell, and `instr-call-closure` lowers to
+-- `call *4(%ebx)`. So the modelled machine transferred control to a stale
+-- register value on every closure application while the real one jumped to the
+-- body — `x86-32-loader-faithful` was FALSE for every program that applies a
+-- closure.
+--
+-- This machine is INDEX-ADDRESSED (`pc` is a position in `prog`, `find-label`
+-- returns one, `jmp-l` moves `pc` to one), so the faithful value of a code
+-- address is the label's INDEX, resolved exactly as `jmp-l` resolves its
+-- target. An absent label halts, as there.
+execInstr prog s (mov-code r ℓ) =
+  case find-label prog (thunk ℓ) of λ where
+    (just pc') → just (record s { regs = writeReg (regs s) r pc' ; pc = pc s + 1 })
+    nothing    → just (record s { halted = true })
 -- Plan 0.63: `jmp-l` is the LABEL jump and now resolves like x86-64's `jmp`.
 execInstr prog s (jmp-l target) =
   case find-label prog target of λ where
