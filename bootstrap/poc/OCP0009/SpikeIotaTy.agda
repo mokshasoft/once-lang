@@ -162,11 +162,15 @@ renTy-renTy ρ σ Unit     = refl
 renTy-renTy ρ σ (Π A B)  =
   cong₂ Π (renTy-renTy ρ σ A)
           (trans (renTy-renTy (extR ρ) (extR σ) B)
-                 (renTy-cong (λ { vz → refl ; (vs x) → refl }) B))
+                 (renTy-cong {ρ = λ x → extR ρ (extR σ x)}
+                             {σ = extR (λ x → ρ (σ x))}
+                             (λ { vz → refl ; (vs x) → refl }) B))
 renTy-renTy ρ σ (Σ' A B) =
   cong₂ Σ' (renTy-renTy ρ σ A)
            (trans (renTy-renTy (extR ρ) (extR σ) B)
-                  (renTy-cong (λ { vz → refl ; (vs x) → refl }) B))
+                  (renTy-cong {ρ = λ x → extR ρ (extR σ x)}
+                              {σ = extR (λ x → ρ (σ x))}
+                              (λ { vz → refl ; (vs x) → refl }) B))
 renTy-renTy ρ σ (Mu D)   = refl
 
 wk : {Γ : Cx} → RTy Γ → RTy (Γ ∙)
@@ -188,7 +192,9 @@ wk-nat ρ A = trans (renTy-renTy (extR ρ) vs A) (sym (renTy-renTy vs ρ A))
 -- and it is absorbing: renaming a closed-weakened type does nothing.
 εwk-ren : {Γ Δ : Cx} (ρ : Ren Γ Δ) (A : RTy ε) →
           renTy ρ (εwkTy A) ≡ εwkTy A
-εwk-ren ρ A = trans (renTy-renTy ρ εren A) (renTy-cong (λ ()) A)
+εwk-ren ρ A =
+  trans (renTy-renTy ρ εren A)
+        (renTy-cong {ρ = λ x → ρ (εren x)} {σ = εren} (λ ()) A)
 
 ------------------------------------------------------------------------
 -- ★ Q18 — THE COMPUTED TYPES.
@@ -254,13 +260,17 @@ methsTy-ren ρ D B (C ◃ E) =
 
 -- ★ the `dρ` method, RESHAPED so the non-dependent `⊢app` can consume it:
 --   its body really is a WEAKENING, and this is the proof.
+-- ★ the `dρ` method's body IS a weakening, and this is the proof.  Both
+--   `⊢app`s in `fields-ty` need it: the non-dependent Π rule only accepts
+--   a codomain presented as `wk _`.
 methTy-dρ : {Γ : Cx} (D : Desc) (B : RTy Γ) (C : DCon) →
-            wk (Π B (methTy D (wk B) C))
+            wk (Π B (wk (methTy D B C)))
               ≡ Π (wk B) (methTy D (wk (wk B)) C)
 methTy-dρ D B C =
   cong (Π (wk B))
-       (trans (methTy-ren (extR vs) D (wk B) C)
-              (cong (λ z → methTy D z C) (wk-nat vs B)))
+       (trans (wk-nat vs (methTy D B C))
+              (trans (cong wk (methTy-ren vs D B C))
+                     (methTy-ren vs D (wk B) C)))
 
 ------------------------------------------------------------------------
 -- the ι-rule's machinery, verbatim from the kernel
@@ -377,40 +387,33 @@ fields-ty : {Γ : Cx} {Θ : Ctx Γ} (D : Desc) (B : RTy Γ) (ms : RTm Γ)
             Θ ⊢ p ∷ payTy D C →
             Θ ⊢ fields D ms C m p ∷ B
 fields-ty D B ms dι m p hms hm hp = hm
-fields-ty D B ms (dρ C) m p hms hm hp =
+fields-ty {Θ = Θ} D B ms (dρ C) m p hms hm hp =
   fields-ty D B ms C _ (snd p) hms
     (⊢app (⊢app hm' hfst) (⊢elim hms hfst))
     (⊢snd hp')
   where
-    hp' : _ ⊢ p ∷ Σ' (Mu D) (wk (payTy D C))
-    hp' = subst (λ z → _ ⊢ p ∷ Σ' (Mu D) z) (sym (payTy-ren vs D C)) hp
+    hp' : Θ ⊢ p ∷ Σ' (Mu D) (wk (payTy D C))
+    hp' = subst (λ z → Θ ⊢ p ∷ Σ' (Mu D) z) (sym (payTy-ren vs D C)) hp
 
-    hfst : _ ⊢ fst p ∷ Mu D
+    hfst : Θ ⊢ fst p ∷ Mu D
     hfst = ⊢fst hp'
 
     -- ⚠ `m`'s type must be READ as `Π (Mu D) (wk _)` before `⊢app` will
     --   take it — that is what `methTy-dρ` is for.  And the SECOND `⊢app`
     --   needs the inner body read as a weakening too (`methTy-ren`).
-    hm' : _ ⊢ m ∷ Π (Mu D) (wk (Π B (wk (methTy D B C))))
-    hm' = subst (λ z → _ ⊢ m ∷ Π (Mu D) z)
-                (sym (trans (methTy-dρ D B C)
-                            (cong (Π (wk B))
-                                  (cong (λ z → methTy D z C)
-                                        (sym (wk-nat vs B))))))
-                (subst (λ z → _ ⊢ m ∷ Π (Mu D) (Π (wk B) z))
-                       (cong (λ z → methTy D z C) (wk-nat vs B))
-                       hm)
-fields-ty D B ms (dκ A C) m p hms hm hp =
+    hm' : Θ ⊢ m ∷ Π (Mu D) (wk (Π B (wk (methTy D B C))))
+    hm' = subst (λ z → Θ ⊢ m ∷ Π (Mu D) z) (sym (methTy-dρ D B C)) hm
+fields-ty {Θ = Θ} D B ms (dκ A C) m p hms hm hp =
   fields-ty D B ms C _ (snd p) hms (⊢app hm' hfst) (⊢snd hp')
   where
-    hp' : _ ⊢ p ∷ Σ' (εwkTy A) (wk (payTy D C))
-    hp' = subst (λ z → _ ⊢ p ∷ Σ' (εwkTy A) z) (sym (payTy-ren vs D C)) hp
+    hp' : Θ ⊢ p ∷ Σ' (εwkTy A) (wk (payTy D C))
+    hp' = subst (λ z → Θ ⊢ p ∷ Σ' (εwkTy A) z) (sym (payTy-ren vs D C)) hp
 
-    hfst : _ ⊢ fst p ∷ εwkTy A
+    hfst : Θ ⊢ fst p ∷ εwkTy A
     hfst = ⊢fst hp'
 
-    hm' : _ ⊢ m ∷ Π (εwkTy A) (wk (methTy D B C))
-    hm' = subst (λ z → _ ⊢ m ∷ Π (εwkTy A) z)
+    hm' : Θ ⊢ m ∷ Π (εwkTy A) (wk (methTy D B C))
+    hm' = subst (λ z → Θ ⊢ m ∷ Π (εwkTy A) z)
                 (sym (methTy-ren vs D B C)) hm
 
 ------------------------------------------------------------------------
