@@ -246,11 +246,15 @@ step-add-rr : ∀ {prog s r r'}
 step-add-rr ft rewrite ft = refl
 
 -- sub reg, imm
+-- Plan 0.70 phase C: the machine subtracts MODULARLY, so this says `⊖`. A
+-- consumer that knows the subtraction does not borrow converts to `∸` with
+-- `Once.Word.Width.⊖≡∸` — which is exactly what the `fits`/`room` premises
+-- beside every stack reservation already supply.
 step-sub-ri : ∀ {prog s r n}
             → fetch prog (pc s) ≡ just (sub (reg r) (imm n))
             → step-not-halted prog s
-              ≡ just (record s { regs = writeReg (regs s) r (readReg (regs s) r ∸ n)
-                               ; flags = updateFlags (readReg (regs s) r ∸ n)
+              ≡ just (record s { regs = writeReg (regs s) r (readReg (regs s) r W.⊖ n)
+                               ; flags = updateFlags (readReg (regs s) r W.⊖ n)
                                                      (readReg (regs s) r)
                                ; pc = pc s + 1 })
 step-sub-ri ft rewrite ft = refl

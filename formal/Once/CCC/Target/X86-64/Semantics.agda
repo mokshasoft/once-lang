@@ -24,6 +24,9 @@ module Once.CCC.Target.X86-64.Semantics where
 
 open import Once.CCC.Target.X86-64.Syntax
 open import Once.CCC.Label using (Label; _≡ᵇᴸ_; idx; thunk)
+-- Plan 0.70 phase C (PROBE): the machine's arithmetic is MODULAR.
+import Once.Word as W64
+module W = W64.Width 64
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _≟_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
@@ -305,7 +308,7 @@ execInstr prog s (sub dst src) =
     (just d) → case readOperand s src of λ where
       nothing  → nothing
       (just v) →
-        let result = d ∸ v
+        let result = d W.⊖ v
         in just (record (writeOperand s dst result)
                  { pc    = pc s + 1
                  ; flags = updateFlags result d })

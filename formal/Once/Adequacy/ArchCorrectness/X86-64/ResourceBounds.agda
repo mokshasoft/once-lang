@@ -28,7 +28,7 @@ open import Once.CanonicalName using (CanonicalName)
 
 module Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; _+_; _≤_)
+open import Data.Nat using (ℕ; _+_; _≤_; _<_)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
@@ -36,10 +36,13 @@ import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FCx
 import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation as FSimx
 import Once.Adequacy.ArchCorrectness.X86-64.RunContext as RCx
 import Once.CCC.Target.X86-64.Semantics as X
+import Once.Word as W64
+module W = W64.Width 64
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; instr-call-closure)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; instr-call-closure
+        ; instr-reg-op; scratch-dec)
 open import Once.CCC.Label using (LabelId)
-open import Once.CCC.Target.X86-64.Syntax using (slots; slot-size; reg; rsp)
+open import Once.CCC.Target.X86-64.Syntax using (slots; slot-size; reg; rsp; rbx; Reg)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (x86-64-frame-semantics)
 
@@ -121,3 +124,43 @@ CallRoom =
   → FlatMachine.fetch {x86-64-frame-semantics} prog
       (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just instr-call-closure
   → FCx.hfront hv + slot-size ≤ X.readReg (X.State.regs s) rsp
+
+------------------------------------------------------------------------
+-- THE MACHINE IS FINITE (plan 0.70 phase C).
+--
+-- Once the model's arithmetic is MODULAR, two facts the ℕ model gave for free
+-- have to be said. Both are D087-class — properties of a running program that
+-- a loader or the emitter establishes — so both are PARAMETERS, which is the
+-- hole a future proof slots into.
+--
+-- (1) REGISTERS HOLD MACHINE WORDS. Trivially true of any real state, and not
+-- derivable here: `⊕`/`⊖` produce normed results, but `mov reg, imm n` and
+-- `lea` write values this model does not bound. It becomes a THEOREM the day
+-- the register file carries its range, and this parameter is where that proof
+-- will land.
+RegRange : Set₁
+RegRange =
+  ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
+    (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
+    (s : X.State) (r : Reg)
+  → RCx.RunAt o x86-64-frame-semantics refl prog fs
+  → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+  → X.readReg (X.State.regs s) r < W.modulus
+
+-- (2) A REACHABLE `scratch-dec` FINDS A NON-ZERO SCRATCH — the no-borrow
+-- condition for the one subtraction that never had one. NOT a new assumption
+-- about the world: the emitter already guarantees it, since `cata-nat-I₂`/`I₃`
+-- emit `L4: branch-if-scratch-zero → L5 ; body ; scratch-dec ; jmp L4 ; L5:`
+-- and the decrement is reached only when the branch was not taken. Same class
+-- and same route as `emitted-thunk-guarded`: a fact about `ir-to-trace`'s
+-- output, discharged by the structural induction over it.
+ScratchDecGuarded : Set₁
+ScratchDecGuarded =
+  ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
+    (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
+    (s : X.State)
+  → RCx.RunAt o x86-64-frame-semantics refl prog fs
+  → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+  → FlatMachine.fetch {x86-64-frame-semantics} prog
+      (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-reg-op scratch-dec)
+  → 1 ≤ X.readReg (X.State.regs s) rbx

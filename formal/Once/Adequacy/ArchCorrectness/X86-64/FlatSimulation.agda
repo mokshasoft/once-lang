@@ -638,8 +638,13 @@ block-step-alloc-stack : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv pro
   → C.RetAddrs (blk-off prog) (X.State.memory s)
                (C.frames-of (falloc (flat-exec-instr (instr-alloc-stack n) prog fs)))
                (fret (flat-exec-instr (instr-alloc-stack n) prog fs))
+  -- THE MACHINE IS FINITE (plan 0.70 phase C): `%rsp` holds a value below the
+  -- modulus. Same class as `StackRoom`/`HeapRoom` (D087) — a fact about the
+  -- running program that the loader establishes — so it arrives as a premise
+  -- rather than being assumed inside.
+  → xreadReg (xregs s) rsp < X.W.modulus
   → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-alloc-stack n)
-block-step-alloc-stack {hv} prog fs s n cc h ft fresh-abs lo' lo'≤lo front-lo' lo'≤rsp fits retPost =
+block-step-alloc-stack {hv} prog fs s n cc h ft fresh-abs lo' lo'≤lo front-lo' lo'≤rsp fits retPost rsp<mod =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = retPost ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -648,13 +653,26 @@ block-step-alloc-stack {hv} prog fs s n cc h ft fresh-abs lo' lo'≤lo front-lo'
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (sub (reg rsp) (imm (slots n)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-alloc-stack n) ft)
+    -- PLAN 0.70 PHASE C: the machine subtracts MODULARLY. `fits` — which has
+    -- sat here since D085 purely to tame truncated `∸` — is exactly the
+    -- no-borrow side condition under which `⊖` and `∸` agree, so the bridge is
+    -- `⊖≡∸` applied to a premise that was already present. The remaining
+    -- ingredient is the upper bound, which is genuinely new: a register holds
+    -- a value below the modulus because the machine is finite.
+    borrow-free : xreadReg (xregs s) rsp X.W.⊖ slots n ≡ xreadReg (xregs s) rsp ∸ slots n
+    borrow-free = X.W.⊖≡∸ (xreadReg (xregs s) rsp) (slots n) fits rsp<mod
     newFlags : X.Flags
     newFlags = updateFlags (xreadReg (xregs s) rsp ∸ slots n) (xreadReg (xregs s) rsp)
     post : X.State
     post = record s { regs = xwriteReg (xregs s) rsp (xreadReg (xregs s) rsp ∸ slots n)
                     ; flags = newFlags ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-sub-ri {compile-trace prog} {s} {rsp} {slots n} fetch-x86
+    snh = subst (λ w → X.step-not-halted (compile-trace prog) s
+                       ≡ just (record s { regs = xwriteReg (xregs s) rsp w
+                                        ; flags = updateFlags w (xreadReg (xregs s) rsp)
+                                        ; pc = pc s + 1 }))
+                borrow-free
+                (step-sub-ri {compile-trace prog} {s} {rsp} {slots n} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
@@ -696,8 +714,10 @@ block-step-c-thunk : ∀ {hv : HeapView} prog fs s n b → CompiledCorr hv prog 
   -- pre-state's reservation and the component would be lost. Supplied at the
   -- dispatch site from the run invariant, where the emitter's layout lives.
   → frame-slots (falloc fs) ≡ 0
+  -- THE MACHINE IS FINITE (plan 0.70 phase C), as at `block-step-alloc-stack`.
+  → xreadReg (xregs s) rsp < X.W.modulus
   → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-thunk n b))
-block-step-c-thunk {hv} prog fs s n b cc h ft lo' lo'≤lo front-lo' lo'≤rsp fits empty-frame =
+block-step-c-thunk {hv} prog fs s n b cc h ft lo' lo'≤lo front-lo' lo'≤rsp fits empty-frame rsp<mod =
   post-sub , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = retPost ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -720,8 +740,17 @@ block-step-c-thunk {hv} prog fs s n b cc h ft lo' lo'≤lo front-lo' lo'≤rsp f
     post-sub : X.State
     post-sub = record s { regs = xwriteReg (xregs s) rsp (xreadReg (xregs s) rsp ∸ slots b)
                         ; flags = newFlags ; pc = pc s + 1 + 1 }
+    -- plan 0.70 phase C: `fits` is the no-borrow condition (see
+    -- `block-step-alloc-stack`); `post-lab` has the same `%rsp` as `s`.
+    borrow-free : xreadReg (xregs s) rsp X.W.⊖ slots b ≡ xreadReg (xregs s) rsp ∸ slots b
+    borrow-free = X.W.⊖≡∸ (xreadReg (xregs s) rsp) (slots b) fits rsp<mod
     step-sub : X.step-not-halted (compile-trace prog) post-lab ≡ just post-sub
-    step-sub = step-sub-ri {compile-trace prog} {post-lab} {rsp} {slots b} fetch-sub
+    step-sub = subst (λ w → X.step-not-halted (compile-trace prog) post-lab
+                            ≡ just (record s { regs = xwriteReg (xregs s) rsp w
+                                             ; flags = updateFlags w (xreadReg (xregs s) rsp)
+                                             ; pc = pc s + 1 + 1 }))
+                     borrow-free
+                     (step-sub-ri {compile-trace prog} {post-lab} {rsp} {slots b} fetch-sub)
     exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-sub
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-lab} halt-s step-lab halt-s)
                     (exec-1 {compile-trace prog} {0} {post-lab} {post-sub} halt-s step-sub halt-s)
@@ -1373,11 +1402,29 @@ block-step-count-inc {hv} prog fs s k cc h ft c-eq =
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-reg-op count-inc) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-reg-op count-inc) ft))
 
+-- PLAN 0.70 PHASE C — THE ONE SUBTRACTION THAT HAD NO GUARD.
+--
+-- The other three `sub` sites (`alloc-stack`, `c-thunk`, `call`) carry a
+-- `fits` premise that has always existed to tame truncated `∸`, and it turns
+-- out to be exactly the no-borrow condition modular subtraction needs. This
+-- one carried none: it decremented unconditionally, and BOTH sides clamped at
+-- zero (`∸` on the machine, `sv-pred (SV-Tag 0) = SV-Tag 0` abstractly), so
+-- the correspondence was true while both diverged from hardware together.
+--
+-- The guard is not new — it is in the EMITTED CODE. `cata-nat-I₂`/`I₃` emit
+--
+--     L4: c-branch-scratch-zero → L5 ; <body> ; scratch-dec ; c-jmp L4 ; L5:
+--
+-- so the decrement is reached only when the branch was NOT taken. `1 ≤ scratch`
+-- was true of every reachable state all along and simply was not written down.
+-- Now it is, and the dispatch discharges it from the branch it just took.
 block-step-scratch-dec : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-dec)
   → readReg (regs (floc fs)) Scratch ≡ SV-Tag k
+  → 1 ≤ xreadReg (xregs s) rbx                    -- the branch guard, recorded
+  → xreadReg (xregs s) rbx < X.W.modulus          -- the machine is finite
   → BlockStep hv prog fs s (instr-reg-op scratch-dec)
-block-step-scratch-dec {hv} prog fs s k cc h ft sc-eq =
+block-step-scratch-dec {hv} prog fs s k cc h ft sc-eq no-borrow rbx<mod =
   post , exec-eq , record
     { dataCorr = C.sim-reg-scratch-dec k fs s _ dc sc-eq (C.sets-role-x86 s role-scratch _ _ _)
     ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
@@ -1388,11 +1435,18 @@ block-step-scratch-dec {hv} prog fs s k cc h ft sc-eq =
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (sub (reg rbx) (imm 1))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-reg-op scratch-dec) ft)
+    borrow-free : xreadReg (xregs s) rbx X.W.⊖ 1 ≡ xreadReg (xregs s) rbx ∸ 1
+    borrow-free = X.W.⊖≡∸ (xreadReg (xregs s) rbx) 1 no-borrow rbx<mod
     post : X.State
     post = record s { regs = xwriteReg (xregs s) rbx (xreadReg (xregs s) rbx ∸ 1)
                     ; flags = updateFlags (xreadReg (xregs s) rbx ∸ 1) (xreadReg (xregs s) rbx) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-sub-ri {compile-trace prog} {s} {rbx} {1} fetch-x86
+    snh = subst (λ w → X.step-not-halted (compile-trace prog) s
+                       ≡ just (record s { regs = xwriteReg (xregs s) rbx w
+                                        ; flags = updateFlags w (xreadReg (xregs s) rbx)
+                                        ; pc = pc s + 1 }))
+                borrow-free
+                (step-sub-ri {compile-trace prog} {s} {rbx} {1} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-reg-op scratch-dec) prog fs))

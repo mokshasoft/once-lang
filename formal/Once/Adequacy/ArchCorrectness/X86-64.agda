@@ -24,7 +24,12 @@ import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 module Once.Adequacy.ArchCorrectness.X86-64
   (o : CanonicalName) (program-bound : ℕ)
   (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o)
-  (x86-64-call-room : RB.CallRoom o) where
+  (x86-64-call-room : RB.CallRoom o)
+  -- PLAN 0.70 PHASE C: the machine is finite. Same class and same threading as
+  -- the three rooms (D087) — a fact about the running program that a loader or
+  -- the emitter establishes, and a parameter is the hole its proof slots into.
+  (x86-64-reg-range : RB.RegRange o)
+  (x86-64-scratch-dec-guarded : RB.ScratchDecGuarded o) where
 
 open import Data.Nat using (ℕ; _+_; s≤s; z≤n)
 open import Data.Unit using (tt)
@@ -176,6 +181,7 @@ open import Data.Nat using (_≤_)
 
 open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
   x86-64-frame-semantics refl x86-64-heap-room x86-64-stack-room x86-64-call-room
+  x86-64-reg-range x86-64-scratch-dec-guarded
   using (events-agree; CompiledCorr; HeapView
         ; FlatInv; EntryLike; Reachable; reach-start
         ; inv-wf; inv-regtag; inv-ev; inv-env; inv-run; mkRunAt)

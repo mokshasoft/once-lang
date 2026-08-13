@@ -39,7 +39,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 -- before the body, where the applied `open import … FS word-eq` has not run.
 open import Data.Maybe using (just)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; instr-call-closure)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; instr-call-closure
+        ; instr-reg-op; scratch-dec)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 import Once.CCC.Target.X86-64.Semantics as X
 import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FC
@@ -97,6 +98,24 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                ≡ just instr-call-closure
              → FC.hfront hv + slot-size ≤ X.readReg (X.State.regs s) rsp)
+  -- PLAN 0.70 PHASE C: the machine is finite. Both D087-class. Spelled out
+  -- against this module's own `FS`, exactly as the three rooms are — the
+  -- `…X86-64.ResourceBounds` copies pin `x86-64-frame-semantics` and are the
+  -- types the APEX threads, which is a different job.
+  (reg-range : ∀ {hv : FC.HeapView FS word-eq}
+                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
+                 (s : X.State) (r : Reg)
+             → RC.RunAt o FS word-eq prog fs
+             → FSim.CompiledCorr FS word-eq hv prog fs s
+             → X.readReg (X.State.regs s) r < X.W.modulus)
+  (scratch-dec-guarded : ∀ {hv : FC.HeapView FS word-eq}
+                           (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
+                           (s : X.State)
+                       → RC.RunAt o FS word-eq prog fs
+                       → FSim.CompiledCorr FS word-eq hv prog fs s
+                       → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
+                           ≡ just (instr-reg-op scratch-dec)
+                       → 1 ≤ X.readReg (X.State.regs s) rbx)
   where
 
 open import Data.Maybe using (Maybe; just; nothing; maybe′)
@@ -814,7 +833,8 @@ mutual
     -- inference — pinning it to `hv` here would demand `lo' ≡ lo hv`)
     ccc-step-bs n ev env prog fs s (instr-ctrl (c-thunk m b))
       (block-step-c-thunk prog fs s m b cc h ftq lo' lo'≤lo front-lo' lo'≤rsp fits
-                          (thunk-entry-empty prog fs m b (inv-run wf) ftq))
+                          (thunk-entry-empty prog fs m b (inv-run wf) ftq)
+                          (reg-range prog fs s rsp (inv-run wf) cc))
       wf ftq h refl h
     where
       -- the site's resource fact: the reservation stays above the heap frontier
@@ -1210,7 +1230,9 @@ mutual
                         ++ flat-events n prog (flat-exec-instr (instr-reg-op scratch-dec) prog fs))
           go-sv (SV-Tag k)   sc-eq =
             ccc-step-bs {hv} n ev env prog fs s (instr-reg-op scratch-dec)
-              (block-step-scratch-dec prog fs s k cc h ftq sc-eq) wf ftq h refl h
+              (block-step-scratch-dec prog fs s k cc h ftq sc-eq
+                (scratch-dec-guarded prog fs s (inv-run wf) cc ftq)
+                (reg-range prog fs s rbx (inv-run wf) cc)) wf ftq h refl h
           -- NON-TAG: IMPOSSIBLE (`FlatRegTagWF`). Abstractly `sv-pred` of a
           -- non-tag COERCES to `SV-Tag 0` while the concrete `sub rbx,1`
           -- decrements the encoding — the two only agree on a tag.

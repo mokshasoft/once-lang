@@ -108,6 +108,30 @@ abstract one — read it off the signature: does it mention `X.State` /
     (`slots n ≤ %rsp` at every frame reservation, `m∸n+n≡m` at every
     re-anchoring). Those are the shape a modular `Word` would generalise.
 
+    PHASE C STARTED 2026-08-13 — x86-64's SUBTRACTION IS NOW MODULAR. The
+    semantics computes `⊖`, `step-sub-ri` says so, and all four `sub` block-steps
+    bridge back to `∸` with `Once.Word.Width.⊖≡∸`. Three of them (`alloc-stack`,
+    `c-thunk`, `call`) needed NO new premise: their `fits` — present since D085
+    purely to tame truncated `∸` — is exactly the no-borrow condition.
+
+    TWO NEW D087-CLASS PARAMETERS, threaded `Certified → Compiler →
+    ArchCorrectness → X86-64 → ConcFlatSim` like the three rooms:
+
+      RegRange           a register holds a value below the modulus. Trivially
+                         true of any real state and NOT derivable here: `⊕`/`⊖`
+                         norm their results, but `mov reg, imm n` and `lea` do
+                         not. Becomes a theorem when the register file carries
+                         its range.
+      ScratchDecGuarded  a reachable `scratch-dec` finds a non-zero Scratch —
+                         the no-borrow condition for the ONE subtraction that
+                         never had one. Not a new assumption about the world:
+                         `cata-nat-I₂`/`I₃` emit the branch that guarantees it,
+                         so the route is the `emitted-thunk-guarded` induction.
+
+    Remaining in C: x86-64's `add`, then riscv64 and x86-32, then the ABSTRACT
+    side (`sv-pred`'s clamp must become the wrap, or the correspondence goes
+    false rather than the model faithful).
+
     PLANNED: `plans/0.70-machine-word-is-finite.md` (written 2026-08-13). Its
     first finding is that the repair is NOT "replace ℕ with Once.Word": the
     machine word does two jobs, and they want opposite treatments. As a VALUE
