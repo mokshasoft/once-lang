@@ -212,21 +212,91 @@ does not. Universe-polymorphism avoided for free.
 
 Recorded so the clearance is not over-read. In rough order of risk:
 
-1. ★★ **`σ` — a constructor carrying a VALUE the rest of the description
-   depends on.** `RTm`'s `var : Var Γ → RTm Γ` needs it, and in a
-   SYNTACTIC setting it is genuinely harder than in the metalanguage: the
-   carried value is an open TERM whose value is not known, so the
-   description's continuation cannot be selected by computing on it. ⇒
-   **this is gate 4**, and it is the last shape question.
+1. ~~★★ **`σ`**~~ — ✅ **CLEARED, gate 4 below.**
 2. **The `⊩₀`/`⊩₁` split.** The kernel's LR has two levels; all three
    spikes have one.
 3. **The eliminator as an object-language FORMER** with its ι-reduction —
    and hence the `Conf` and `Subj` halves of the cascade, ~25% of the
    measured bill. ⚠ Nothing so far touches the reduction theory at all.
 
-⇒ the three gates clear the LOGICAL-RELATION shape, including binding,
-which was what could have killed the axis outright. They do not clear the
-reduction theory, and `σ` is still open.
+### ✅ GATE 4 ALSO PASSES — `SpikeDescSigma`, 0.71 s, green first try
+
+★★ **The `σ` question got SMALLER, and that is the finding.** Full `IDesc`
+needs `σ : (S : Set) → (S → IDesc I) → IDesc I` for two reasons, and
+**neither arises for a syntax**:
+
+* a later field's SHAPE depending on an earlier field's VALUE — checked
+  against all 25 of `RTm`'s constructors, none does;
+* the target index needing to be BOUND (`cons : A → Vec n → Vec (suc n)`) —
+  but `RTm` relates `Γ` to `Γ` or `Γ ∙`, never downward, so gate 3's
+  "target = ambient index, `ρ` computes the field index" already covers it.
+
+⇒ what is needed is not dependent `σ` but a NON-DEPENDENT non-recursive
+field, `κ : Ty → Con → Con`.
+
+★★★ **And the real difficulty is elsewhere — a three-way KNOT.** A field of
+type `A` must be a member of the AMBIENT relation at `A`, so:
+
+```
+Lift ── calls ──▶ ⊩ ── unfolds at `mu D` to ──▶ MuMem ── declared with ──▶ Lift
+```
+
+| | question | |
+|---|---|---|
+| Q11 | ★ do `Ty`, `Con`, `Desc` form a legal MUTUAL block? | ✅ |
+| Q12 | ★★ does the knot pass POSITIVITY — `MuMem` (data) mutual with `⊩` (function)? | ✅ |
+| Q13 | ★★★ does elimination pass TERMINATION across the knot? | ✅ |
+| Q14 | a non-recursive field, and a NESTED datatype (field type = another `mu`)? | ✅ both |
+
+★ **Two things make the knot legal, and both are load-bearing:**
+
+1. **`Lift` stays PARAMETERISED in both relations** — it mentions neither
+   `MuMem` nor `⊩` by name, so it can be defined *before* the block that
+   ties them.
+2. **The `κ` case hands the ambient membership back UNCHANGED.** A
+   non-recursive field is not a recursive position, so no IH is owed
+   there — which is exactly what keeps termination in reach.
+
+--------------------------------------------------------------------------
+## 3c. ★★ THE DESIGN, SETTLED BY FOUR GATES
+
+```agda
+data Con (I : Set) where       -- one constructor's fields
+  ι : Con I                    --   done; targets the ambient index
+  ρ : (I → I) → Con I → Con I  --   recursive field at a COMPUTED index
+  κ : Ty → Con I → Con I       --   non-recursive field of object type
+Desc I = List (Con I)          -- a datatype IS a list of constructors
+con : ℕ → Tm → Tm              -- terms: TAG + payload, built from unit/pr
+```
+
+with `Lift : Con I → (I → Tm → Set) → (Ty → Tm → Set) → I → Tm → Set`
+parameterised in both relations.
+
+★ **What this design does NOT need**, each checked rather than assumed:
+
+| | |
+|---|---|
+| a COPRODUCT | choice lives in the term's tag (gate 2) — and the kernel has none |
+| `Set₁` | `ρ` carries an index FUNCTION, not a `σ` over `Set` (gate 3) |
+| dependent `σ` | no syntax constructor's field shape depends on a value (gate 4) |
+| a POSITIVITY CHECKER | the `Desc` grammar enforces it structurally |
+
+--------------------------------------------------------------------------
+## 3d. ⛔ WHAT FOUR GATES STILL DO NOT COVER
+
+1. ★ **Gates 3 and 4 COMBINED.** Gate 3 is indexed without `κ`; gate 4 has
+   `κ` without indexing. The design above merges them, but the merged form
+   is **untested** — and it is the one the kernel would use.
+2. **The `⊩₀`/`⊩₁` split.** The kernel's LR has two levels; all four spikes
+   have one.
+3. ★★ **THE REDUCTION THEORY — completely untouched.** No spike has an
+   eliminator as an object-language FORMER, no ι-rule, and therefore
+   nothing about `Conf` or `Subj`, which are ~25% of the measured bill.
+   ⚠ Four greens on the SHAPE say nothing about this.
+
+⇒ the four gates settle the DESCRIPTION LANGUAGE and clear the
+logical-relation shape. The cost estimate in §1 is unchanged: they remove
+the risk of the design being wrong, not the work of writing it.
 
 --------------------------------------------------------------------------
 ## 4. THE ACCEPTANCE TEST
