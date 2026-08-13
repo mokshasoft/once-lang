@@ -812,6 +812,64 @@ subTm-id (con k p) = cong (con k) (subTm-id p)
 subTm-id (elim D ms t) = cong₂ (elim D) (subTm-id ms) (subTm-id t)
 
 ------------------------------------------------------------------------
+-- ★ THE ι-RULE'S MACHINERY — three TOTAL metalevel functions on raw
+--   syntax, and their four naturality lemmas.
+--
+-- ⚠ ALL THREE ARE TOTAL, deliberately.  `lookupD` returns `dι` off the end
+--   of a description and `sel` bottoms out in whatever `snd`-chain it is
+--   handed; neither can get stuck.  That is what keeps `_⟶_` a
+--   SIDE-CONDITION-FREE relation — the ι-rule needs no `lookup D k ≡ just C`
+--   premise, so determinism stays a one-line pattern match and confluence
+--   never has to invert a `just`.  Junk tags reduce to junk; ⊢con rules
+--   them out, exactly as the rest of this raw syntax is disciplined.
+------------------------------------------------------------------------
+
+-- the k-th constructor's field list; `dι` (no fields) off the end
+lookupD : Desc → ℕ → DCon
+lookupD dnil    _       = dι
+lookupD (C ◃ D) zero    = C
+lookupD (C ◃ D) (suc k) = lookupD D k
+
+-- the k-th METHOD out of a right-nested tuple `pair m₀ (pair m₁ …)`
+sel : ℕ → RTm Γ → RTm Γ
+sel zero    ms = fst ms
+sel (suc k) ms = sel k (snd ms)
+
+-- ★ APPLY a method to a payload, guided by the field list.  A `dρ` field
+--   passes BOTH the field and its elimination (the IH); a `dκ` field
+--   passes only the field — a non-recursive position owes no IH, which is
+--   the same accounting `SpikeDescSigma`'s `elimLift` made in the model.
+fields : Desc → RTm Γ → DCon → RTm Γ → RTm Γ → RTm Γ
+fields D ms dι       m p = m
+fields D ms (dρ C)   m p =
+  fields D ms C (app (app m (fst p)) (elim D ms (fst p))) (snd p)
+fields D ms (dκ A C) m p = fields D ms C (app m (fst p)) (snd p)
+
+ren-sel : (ρ : Ren Γ Δ) (k : ℕ) (ms : RTm Γ) →
+          renTm ρ (sel k ms) ≡ sel k (renTm ρ ms)
+ren-sel ρ zero    ms = refl
+ren-sel ρ (suc k) ms = ren-sel ρ k (snd ms)
+
+sub-sel : (σ : Sub Γ Δ) (k : ℕ) (ms : RTm Γ) →
+          subTm σ (sel k ms) ≡ sel k (subTm σ ms)
+sub-sel σ zero    ms = refl
+sub-sel σ (suc k) ms = sub-sel σ k (snd ms)
+
+ren-fields : (ρ : Ren Γ Δ) (D : Desc) (ms : RTm Γ) (C : DCon) (m p : RTm Γ) →
+             renTm ρ (fields D ms C m p)
+               ≡ fields D (renTm ρ ms) C (renTm ρ m) (renTm ρ p)
+ren-fields ρ D ms dι       m p = refl
+ren-fields ρ D ms (dρ C)   m p = ren-fields ρ D ms C _ (snd p)
+ren-fields ρ D ms (dκ A C) m p = ren-fields ρ D ms C _ (snd p)
+
+sub-fields : (σ : Sub Γ Δ) (D : Desc) (ms : RTm Γ) (C : DCon) (m p : RTm Γ) →
+             subTm σ (fields D ms C m p)
+               ≡ fields D (subTm σ ms) C (subTm σ m) (subTm σ p)
+sub-fields σ D ms dι       m p = refl
+sub-fields σ D ms (dρ C)   m p = sub-fields σ D ms C _ (snd p)
+sub-fields σ D ms (dκ A C) m p = sub-fields σ D ms C _ (snd p)
+
+------------------------------------------------------------------------
 -- ★ THE CATEGORY-OF-CONTEXTS LAWS ON TYPES — the coherence that makes the
 --   definitional Π-stability NON-vacuous. `[∘]ᵀ` is the Beck–Chevalley-
 --   relevant law: type substitution commutes with COMPOSITION, so Π commutes

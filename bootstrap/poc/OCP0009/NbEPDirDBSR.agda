@@ -33,6 +33,7 @@
 module poc.OCP0009.NbEPDirDBSR where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; subst; cong; cong₂ )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; ⌜Π⌝; ⌜Hom⌝; hrefl; tr; ap; ⌜Id⌝; idrefl; jsub
@@ -40,7 +41,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
         ; Ren; extR; Sub; subTy; subTm; extS; _∘ₛ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; renTm
         ; subTm-subTm; subTm-cong; subTm-renTm; subTm-id; renTm-subTm
-        ; renTm-renTm; renTm-cong )
+        ; renTm-renTm; renTm-cong
+        ; Desc; con; elim; lookupD; sel; fields; sub-fields; sub-sel )
 open import poc.OCP0009.NbEPDirDBVar using ( ren-as-sub )
 open import poc.OCP0009.NbEPDirDBVar
   using ( pw?; stkC?; stkA?; pwBody; pwShift
@@ -62,7 +64,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; _⊢_∷_; ⊢var; ⊢lam; ⊢app; here
-        ; _⊢ty_; ty-base )
+        ; _⊢ty_; ty-base
+        ; ι-elim; ξ-con; ξ-elimᵐ; ξ-elimᵗ )
 
 private
   variable
@@ -280,6 +283,15 @@ pwShift-sub σ t =
 ⟶-sub σ (ξ-natrecᶻ r) = ξ-natrecᶻ (⟶-sub σ r)
 ⟶-sub σ (ξ-natrecˢ r) = ξ-natrecˢ (⟶-sub (extS (extS σ)) r)
 ⟶-sub σ (ξ-natrecⁿ r) = ξ-natrecⁿ (⟶-sub σ r)
+⟶-sub σ (ι-elim D ms k p) =
+  subst (elim D (subTm σ ms) (con k (subTm σ p)) ⟶_)
+        (sym (trans (sub-fields σ D ms (lookupD D k) (sel k ms) p)
+                    (cong (λ w → fields D (subTm σ ms) (lookupD D k) w (subTm σ p))
+                          (sub-sel σ k ms))))
+        (ι-elim D (subTm σ ms) k (subTm σ p))
+⟶-sub σ (ξ-con r)   = ξ-con   (⟶-sub σ r)
+⟶-sub σ (ξ-elimᵐ r) = ξ-elimᵐ (⟶-sub σ r)
+⟶-sub σ (ξ-elimᵗ r) = ξ-elimᵗ (⟶-sub σ r)
 ⟶-sub σ (ξ-jsubᵈ r) = ξ-jsubᵈ (⟶-sub (extS σ) r)
 ⟶-sub σ (ξ-jsubᵖ r) = ξ-jsubᵖ (⟶-sub σ r)
 ⟶-sub σ (ξ-jsubᵉ r) = ξ-jsubᵉ (⟶-sub σ r)

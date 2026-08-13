@@ -35,12 +35,14 @@
 module poc.OCP0009.NbEPDirDBType where
 
 open import normalizer.Syntax.Types using ( _≡_; refl )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Id; ⌜Id⌝; idrefl; jsub
         ; Unit; Nat; unit; nzero; nsuc; natrec; extS; ⌜Nat⌝; ⌜Unit⌝
-        ; Ren; extR; Sub; subTy; subTm; renTy; renTm )
+        ; Ren; extR; Sub; subTy; subTm; renTy; renTm
+        ; Desc; Mu; con; elim; lookupD; sel; fields )
 open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false; occTm; pw?; stkC?; stkA?; flat?; pwBody; pwShift
         ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id )
@@ -252,6 +254,24 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
               s ⟶ s' → natrec z s n ⟶ natrec z s' n
   ξ-natrecⁿ : {z : RTm Γ} {s : RTm ((Γ ∙) ∙)} {n n' : RTm Γ} →
               n ⟶ n' → natrec z s n ⟶ natrec z s n'
+  -- ★ INDUCTIVE-TYPES AXIS: THE ι-RULE.  Keyed on the canonical head
+  -- `con k p`, exactly as `natrec-suc` is keyed on `nsuc n`.
+  --
+  -- ⚠ NO SIDE CONDITION.  `lookupD` and `sel` are total (see Pi), so this
+  -- is one rule with no `lookup D k ≡ just C` premise — determinism is a
+  -- pattern match and confluence never inverts a `just`.  An out-of-range
+  -- tag reduces to junk; `⊢con` is what rules it out.
+  --
+  -- The recursive calls are BUILT BY `fields`, one `elim D ms (fst …)` per
+  -- `dρ` — at a payload projection, i.e. strictly inside `p`.  That is the
+  -- same descent `natrec-suc` makes to `n`, generalised to a field list.
+  ι-elim   : (D : Desc) (ms : RTm Γ) (k : ℕ) (p : RTm Γ) →
+             elim D ms (con k p) ⟶ fields D ms (lookupD D k) (sel k ms) p
+  ξ-con    : {k : ℕ} {p p' : RTm Γ} → p ⟶ p' → con k p ⟶ con k p'
+  ξ-elimᵐ  : {D : Desc} {ms ms' t : RTm Γ} →
+             ms ⟶ ms' → elim D ms t ⟶ elim D ms' t
+  ξ-elimᵗ  : {D : Desc} {ms t t' : RTm Γ} →
+             t ⟶ t' → elim D ms t ⟶ elim D ms t'
 
 data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   El-⌜base⌝ : El (⌜base⌝ {Γ}) ⟶ᵀ base
