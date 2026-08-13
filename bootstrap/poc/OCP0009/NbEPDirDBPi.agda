@@ -39,6 +39,9 @@ module poc.OCP0009.NbEPDirDBPi where
 
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; cong; cong₂ )
+-- ★ INDUCTIVE-TYPES AXIS: a metalanguage ℕ, used only as a CONSTRUCTOR
+--   TAG.  It is not the object-language `Nat`.
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 
 ------------------------------------------------------------------------
 -- Scopes (de Bruijn depth) and variables. Untyped scoping — genuine
@@ -60,6 +63,15 @@ data Var : Cx → Set where
 
 data RTy : Cx → Set
 data RTm : Cx → Set
+-- ★ INDUCTIVE-TYPES AXIS.  ⚠ DESCRIPTIONS ARE CLOSED: `Con` carries field
+--   types at `ε`, so a description mentions no ambient variable and
+--   `renTy ρ (Mu D) = Mu D` holds ON THE NOSE.  That is what keeps this
+--   former from needing a parallel `renDesc`/`subDesc` development with
+--   its own naturality tower — the single biggest cost decision here.
+--   ⚠ Limitation, recorded: a PARAMETERISED datatype (`List A` for a
+--   variable `A`) needs open descriptions and is NOT step 1.
+data DCon : Set
+data Desc : Set
 
 data RTy where
   base : ∀ {Γ} → RTy Γ
@@ -81,6 +93,8 @@ data RTy where
   -- ★ the TWO-FORMER kernel (SPIKE-TWOFORMER): the SYMMETRIC identity
   -- type, INERT — no type-level computation, ξ-congruences only.
   Id   : ∀ {Γ} → RTy Γ → RTm Γ → RTm Γ → RTy Γ
+  -- ★★ INDUCTIVE TYPES: a datatype, given by its description.
+  Mu   : ∀ {Γ} → Desc → RTy Γ
 
 data RTm where
   var  : ∀ {Γ} → Var Γ → RTm Γ
@@ -133,12 +147,34 @@ data RTm where
   nzero  : ∀ {Γ} → RTm Γ
   nsuc   : ∀ {Γ} → RTm Γ → RTm Γ
   natrec : ∀ {Γ} → RTm Γ → RTm ((Γ ∙) ∙) → RTm Γ → RTm Γ
+  -- ★★ INDUCTIVE TYPES.
+  --   `con k p`      constructor TAG `k` and a PAYLOAD built from
+  --                  `unit`/`pair` — the choice lives in the term, which
+  --                  is why no coproduct is needed (SpikeDescTm).
+  --   `elim D ms t`  the description, a METHOD TUPLE (again nested
+  --                  pairs), and the scrutinee.
+  con  : ∀ {Γ} → ℕ → RTm Γ → RTm Γ
+  elim : ∀ {Γ} → Desc → RTm Γ → RTm Γ → RTm Γ
   -- ★ WF-axis stage C (N-in): `Nat` becomes SMALL — it gets a code, so
   -- it can appear in `U`-families.  That is what unlocks Id-rewriting
   -- AT `Nat` (`jsub` needs a code family), cong-at-ℕ, and ≤ as a
   -- transportable relation.
   ⌜Nat⌝  : ∀ {Γ} → RTm Γ
   ⌜Unit⌝ : ∀ {Γ} → RTm Γ
+
+-- ★ DESCRIPTIONS.  `DCon` is one constructor's field list; `Desc` is the
+--   datatype, i.e. the list of its constructors.  ⚠ Both CLOSED — see the
+--   note at the forward declarations.
+data DCon where
+  dι : DCon                  -- no more fields
+  dρ : DCon → DCon           -- a RECURSIVE field, then more
+  dκ : RTy ε → DCon → DCon   -- a NON-RECURSIVE field of a CLOSED type
+
+data Desc where
+  dnil : Desc
+  _◃_  : DCon → Desc → Desc
+
+infixr 5 _◃_
 
 private
   variable
@@ -166,6 +202,7 @@ renTy ρ (Σ' A B) = Σ' (renTy ρ A) (renTy (extR ρ) B)
 renTy ρ (El t)   = El (renTm ρ t)
 renTy ρ (Hom A t u) = Hom (renTy ρ A) (renTm ρ t) (renTm ρ u)
 renTy ρ (Id A t u) = Id (renTy ρ A) (renTm ρ t) (renTm ρ u)
+renTy ρ (Mu D) = Mu D
 renTm ρ (var x)   = var (ρ x)
 renTm ρ (lam t)   = lam (renTm (extR ρ) t)
 renTm ρ (app t u)  = app (renTm ρ t) (renTm ρ u)
@@ -192,6 +229,8 @@ renTm ρ nzero         = nzero
 renTm ρ (nsuc n)      = nsuc (renTm ρ n)
 renTm ρ (natrec z s n) =
   natrec (renTm ρ z) (renTm (extR (extR ρ)) s) (renTm ρ n)
+renTm ρ (con k p) = con k (renTm ρ p)
+renTm ρ (elim D ms t) = elim D (renTm ρ ms) (renTm ρ t)
 
 ------------------------------------------------------------------------
 -- Parallel substitutions (variable-for-term) and their action.
@@ -215,6 +254,7 @@ subTy σ (Σ' A B) = Σ' (subTy σ A) (subTy (extS σ) B)
 subTy σ (El t)   = El (subTm σ t)
 subTy σ (Hom A t u) = Hom (subTy σ A) (subTm σ t) (subTm σ u)
 subTy σ (Id A t u) = Id (subTy σ A) (subTm σ t) (subTm σ u)
+subTy σ (Mu D) = Mu D
 subTm σ (var x)   = σ x
 subTm σ (lam t)   = lam (subTm (extS σ) t)
 subTm σ (app t u)  = app (subTm σ t) (subTm σ u)
@@ -241,6 +281,8 @@ subTm σ nzero         = nzero
 subTm σ (nsuc n)      = nsuc (subTm σ n)
 subTm σ (natrec z s n) =
   natrec (subTm σ z) (subTm (extS (extS σ)) s) (subTm σ n)
+subTm σ (con k p) = con k (subTm σ p)
+subTm σ (elim D ms t) = elim D (subTm σ ms) (subTm σ t)
 
 -- Identity and the four composition operators (explicit-index, genuine
 -- Ren/Sub — same shape as NbEPDirDB).
@@ -357,6 +399,7 @@ renTy-cong h (Hom A t u) =
   Hom-cong₃ (renTy-cong h A) (renTm-cong h t) (renTm-cong h u)
 renTy-cong h (Id A t u) =
   Id-cong₃ (renTy-cong h A) (renTm-cong h t) (renTm-cong h u)
+renTy-cong h (Mu D) = refl
 renTm-cong h (var x)   = cong var (h x)
 renTm-cong h (lam t)   = cong lam (renTm-cong (extR-cong h) t)
 renTm-cong h (app t u)  = cong₂ app (renTm-cong h t) (renTm-cong h u)
@@ -387,6 +430,8 @@ renTm-cong h (jsub d p e)    =
   jsub-cong₃ (renTm-cong (extR-cong h) d) (renTm-cong h p) (renTm-cong h e)
 renTm-cong h (ap c b p)    =
   ap-cong₃ (renTm-cong h c) (renTm-cong (extR-cong h) b) (renTm-cong h p)
+renTm-cong h (con k p) = cong (con k) (renTm-cong h p)
+renTm-cong h (elim D ms t) = cong₂ (elim D) (renTm-cong h ms) (renTm-cong h t)
 
 extS-cong : {σ σ' : Sub Γ Δ} → (∀ (x : Var Γ) → σ x ≡ σ' x) →
             ∀ (x : Var (Γ ∙)) → extS σ x ≡ extS σ' x
@@ -408,6 +453,7 @@ subTy-cong h (Hom A t u) =
   Hom-cong₃ (subTy-cong h A) (subTm-cong h t) (subTm-cong h u)
 subTy-cong h (Id A t u) =
   Id-cong₃ (subTy-cong h A) (subTm-cong h t) (subTm-cong h u)
+subTy-cong h (Mu D) = refl
 subTm-cong h (var x)   = h x
 subTm-cong h (lam t)   = cong lam (subTm-cong (extS-cong h) t)
 subTm-cong h (app t u)  = cong₂ app (subTm-cong h t) (subTm-cong h u)
@@ -438,6 +484,8 @@ subTm-cong h (jsub d p e)    =
   jsub-cong₃ (subTm-cong (extS-cong h) d) (subTm-cong h p) (subTm-cong h e)
 subTm-cong h (ap c b p)    =
   ap-cong₃ (subTm-cong h c) (subTm-cong (extS-cong h) b) (subTm-cong h p)
+subTm-cong h (con k p) = cong (con k) (subTm-cong h p)
+subTm-cong h (elim D ms t) = cong₂ (elim D) (subTm-cong h ms) (subTm-cong h t)
 
 ------------------------------------------------------------------------
 -- The four mutual fusion lemmas (each a type/term pair). Binder cases bridge
@@ -467,6 +515,7 @@ renTy-renTy (Hom A t u) =
   Hom-cong₃ (renTy-renTy A) (renTm-renTm t) (renTm-renTm u)
 renTy-renTy (Id A t u) =
   Id-cong₃ (renTy-renTy A) (renTm-renTm t) (renTm-renTm u)
+renTy-renTy (Mu D) = refl
 renTm-renTm (var x)   = refl
 renTm-renTm {ρ' = ρ'} {ρ} (lam t) =
   cong lam (trans (renTm-renTm t) (renTm-cong (extr-extr ρ' ρ) t))
@@ -507,6 +556,8 @@ renTm-renTm {ρ' = ρ'} {ρ} (ap c b p) =
   ap-cong₃ (renTm-renTm c)
            (trans (renTm-renTm b) (renTm-cong (extr-extr ρ' ρ) b))
            (renTm-renTm p)
+renTm-renTm (con k p) = cong (con k) (renTm-renTm p)
+renTm-renTm (elim D ms t) = cong₂ (elim D) (renTm-renTm ms) (renTm-renTm t)
 
 -- sub ∘ ren.
 exts-extr : (σ : Sub Δ Θ) (ρ : Ren Γ Δ) (x : Var (Γ ∙)) →
@@ -531,6 +582,7 @@ subTy-renTy (Hom A t u) =
   Hom-cong₃ (subTy-renTy A) (subTm-renTm t) (subTm-renTm u)
 subTy-renTy (Id A t u) =
   Id-cong₃ (subTy-renTy A) (subTm-renTm t) (subTm-renTm u)
+subTy-renTy (Mu D) = refl
 subTm-renTm (var x)   = refl
 subTm-renTm {σ = σ} {ρ} (lam t) =
   cong lam (trans (subTm-renTm t) (subTm-cong (exts-extr σ ρ) t))
@@ -571,6 +623,8 @@ subTm-renTm {σ = σ} {ρ} (ap c b p) =
   ap-cong₃ (subTm-renTm c)
            (trans (subTm-renTm b) (subTm-cong (exts-extr σ ρ) b))
            (subTm-renTm p)
+subTm-renTm (con k p) = cong (con k) (subTm-renTm p)
+subTm-renTm (elim D ms t) = cong₂ (elim D) (subTm-renTm ms) (subTm-renTm t)
 
 -- ren ∘ sub.
 extr-exts : (ρ : Ren Δ Θ) (σ : Sub Γ Δ) (x : Var (Γ ∙)) →
@@ -595,6 +649,7 @@ renTy-subTy (Hom A t u) =
   Hom-cong₃ (renTy-subTy A) (renTm-subTm t) (renTm-subTm u)
 renTy-subTy (Id A t u) =
   Id-cong₃ (renTy-subTy A) (renTm-subTm t) (renTm-subTm u)
+renTy-subTy (Mu D) = refl
 renTm-subTm (var x)   = refl
 renTm-subTm {ρ = ρ} {σ} (lam t) =
   cong lam (trans (renTm-subTm t) (subTm-cong (extr-exts ρ σ) t))
@@ -635,6 +690,8 @@ renTm-subTm {ρ = ρ} {σ} (ap c b p) =
   ap-cong₃ (renTm-subTm c)
            (trans (renTm-subTm b) (subTm-cong (extr-exts ρ σ) b))
            (renTm-subTm p)
+renTm-subTm (con k p) = cong (con k) (renTm-subTm p)
+renTm-subTm (elim D ms t) = cong₂ (elim D) (renTm-subTm ms) (renTm-subTm t)
 
 -- sub ∘ sub.
 exts-exts : (τ : Sub Δ Θ) (σ : Sub Γ Δ) (x : Var (Γ ∙)) →
@@ -659,6 +716,7 @@ subTy-subTy (Hom A t u) =
   Hom-cong₃ (subTy-subTy A) (subTm-subTm t) (subTm-subTm u)
 subTy-subTy (Id A t u) =
   Id-cong₃ (subTy-subTy A) (subTm-subTm t) (subTm-subTm u)
+subTy-subTy (Mu D) = refl
 subTm-subTm (var x)   = refl
 subTm-subTm {τ = τ} {σ} (lam t) =
   cong lam (trans (subTm-subTm t) (subTm-cong (exts-exts τ σ) t))
@@ -699,6 +757,8 @@ subTm-subTm {τ = τ} {σ} (ap c b p) =
   ap-cong₃ (subTm-subTm c)
            (trans (subTm-subTm b) (subTm-cong (exts-exts τ σ) b))
            (subTm-subTm p)
+subTm-subTm (con k p) = cong (con k) (subTm-subTm p)
+subTm-subTm (elim D ms t) = cong₂ (elim D) (subTm-subTm ms) (subTm-subTm t)
 
 -- Identity: `exts` preserves `idₛ`, hence `subTy idₛ = id`.
 exts-id : (x : Var (Γ ∙)) → extS idₛ x ≡ idₛ x
@@ -716,6 +776,7 @@ subTy-id (Σ' A B) = cong₂ Σ' (subTy-id A) (trans (subTy-cong exts-id B) (sub
 subTy-id (El t)   = cong El (subTm-id t)
 subTy-id (Hom A t u) = Hom-cong₃ (subTy-id A) (subTm-id t) (subTm-id u)
 subTy-id (Id A t u) = Id-cong₃ (subTy-id A) (subTm-id t) (subTm-id u)
+subTy-id (Mu D) = refl
 subTm-id (var x)   = refl
 subTm-id (lam t)   = cong lam (trans (subTm-cong exts-id t) (subTm-id t))
 subTm-id (app t u)  = cong₂ app (subTm-id t) (subTm-id u)
@@ -747,6 +808,8 @@ subTm-id (jsub d p e)    =
   jsub-cong₃ (trans (subTm-cong exts-id d) (subTm-id d)) (subTm-id p) (subTm-id e)
 subTm-id (ap c b p)    =
   ap-cong₃ (subTm-id c) (trans (subTm-cong exts-id b) (subTm-id b)) (subTm-id p)
+subTm-id (con k p) = cong (con k) (subTm-id p)
+subTm-id (elim D ms t) = cong₂ (elim D) (subTm-id ms) (subTm-id t)
 
 ------------------------------------------------------------------------
 -- ★ THE CATEGORY-OF-CONTEXTS LAWS ON TYPES — the coherence that makes the
