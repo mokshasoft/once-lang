@@ -74,17 +74,19 @@ step-mv : ∀ {prog s rd rs}
                            ; pc = pc s + 1 })
 step-mv ft rewrite ft = refl
 
--- li rd, imm — a NON-NEGATIVE immediate, which is every one the emitter
--- produces (`li s3 (+ 1)`, `li s4 (+ 0)`). The negative case is a different
--- post-state (`0`), so it is not folded in here.
-step-li : ∀ {prog s rd} {n : ℕ}
-        → fetch prog (pc s) ≡ just (li rd (+ n))
+-- li rd, imm — NOW OVER EVERY IMMEDIATE, both signs (plan 0.70 phase D). It
+-- used to be restricted to non-negative ones, "because the negative case is a
+-- different post-state (`0`)". That post-state was a DEFECT, not a case: a real
+-- `li a0, -1` loads all-ones. `execInstr` reads the immediate with `W.fromℤ` —
+-- D054's two's-complement reading, which also norms — so the two signs are one
+-- clause and the lemma no longer has to dodge half its domain.
+step-li : ∀ {prog s rd} {imm : ℤ}
+        → fetch prog (pc s) ≡ just (li rd imm)
         → step-not-halted prog s
-          ≡ just (record s { regs = writeReg (regs s) rd (offsetToℕ (+ n))
+          ≡ just (record s { regs = writeReg (regs s) rd (W.fromℤ imm)
                            ; pc = pc s + 1 })
 step-li ft rewrite ft = refl
 
--- addi rd, rs, +n : the ADD direction (a non-negative immediate).
 --
 -- PLAN 0.70 PHASE C: the machine's arithmetic is MODULAR, so these three say
 -- `⊕`/`⊖` — and they are stated that way from the START rather than stated in
@@ -93,13 +95,15 @@ step-li ft rewrite ft = refl
 -- range obligation there, where it belongs: on the LAYOUT, never on the
 -- instruction (D054 — wraparound is defined semantics, not something to prove
 -- absent).
-step-addi-pos : ∀ {prog s rd rs} {n : ℕ}
-              → fetch prog (pc s) ≡ just (addi rd rs (+ n))
-              → step-not-halted prog s
-                ≡ just (record s { regs = writeReg (regs s) rd
-                                            (readReg (regs s) rs W.⊕ offsetToℕ (+ n))
-                                 ; pc = pc s + 1 })
-step-addi-pos ft rewrite ft = refl
+-- …and `addi`, likewise over both signs: it is `rs + sext(imm)`, ONE modular
+-- addition once the immediate is read as a word.
+step-addi : ∀ {prog s rd rs} {imm : ℤ}
+          → fetch prog (pc s) ≡ just (addi rd rs imm)
+          → step-not-halted prog s
+            ≡ just (record s { regs = writeReg (regs s) rd
+                                        (readReg (regs s) rs W.⊕ W.fromℤ imm)
+                             ; pc = pc s + 1 })
+step-addi ft rewrite ft = refl
 
 -- add rd, rs1, rs2
 step-add : ∀ {prog s rd rs1 rs2}

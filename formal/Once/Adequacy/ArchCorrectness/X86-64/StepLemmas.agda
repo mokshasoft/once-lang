@@ -27,7 +27,7 @@
 
 module Once.Adequacy.ArchCorrectness.X86-64.StepLemmas where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _≡ᵇ_; _<_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
@@ -152,10 +152,26 @@ step-pop : ∀ {prog s r v}
 step-pop ft rd rewrite ft | rd = refl
 
 -- mov reg ← imm
+--
+-- PLAN 0.70 PHASE D — THE LITERAL SEAM, NOW VISIBLE. The machine NORMS an
+-- immediate, because an instruction's immediate field is a machine word and a
+-- wider value has no encoding. So this lemma can only conclude `writeReg r n`
+-- so these lemmas say `W.norm n` — EXACTLY what `execInstr` does, and nothing
+-- more. A consumer that knows its immediate fits converts with `W.norm-id`,
+-- paying the range obligation where it has the facts to pay it. At the
+-- `instr-load-const` site that obligation IS the seam `lit-word : Carrier →
+-- Word` used to pass over silently: the model used to admit a register holding
+-- a value no register can hold.
+--
+-- STATED THIS WAY DELIBERATELY, and not with a `n < modulus` premise discharged
+-- by `rewrite` here: that formulation was written first and DID NOT TYPECHECK IN
+-- 900s. A `rewrite` by a `norm` equation inside these lemmas forces reduction
+-- against `modulus = 2 ^ 64` at every use. Keeping them premise-free keeps them
+-- pure `refl` readouts of `execInstr`, which is what this module is for.
 step-mov-ri : ∀ {prog s r n}
             → fetch prog (pc s) ≡ just (mov (reg r) (imm n))
             → step-not-halted prog s
-              ≡ just (record s { regs = writeReg (regs s) r n ; pc = pc s + 1 })
+              ≡ just (record s { regs = writeReg (regs s) r (W.norm n) ; pc = pc s + 1 })
 step-mov-ri ft rewrite ft = refl
 
 -- mov reg ← [mem]: needs the read value.
@@ -170,7 +186,7 @@ step-mov-rm ft rd rewrite ft | rd = refl
 step-mov-mi : ∀ {prog s m n}
             → fetch prog (pc s) ≡ just (mov (mem m) (imm n))
             → step-not-halted prog s
-              ≡ just (record s { memory = writeMem (memory s) (effectiveAddr s m) n
+              ≡ just (record s { memory = writeMem (memory s) (effectiveAddr s m) (W.norm n)
                                ; pc = pc s + 1 })
 step-mov-mi ft rewrite ft = refl
 
@@ -187,8 +203,8 @@ step-mov-mr ft rewrite ft = refl
 step-cmp-ri : ∀ {prog s r n}
             → fetch prog (pc s) ≡ just (cmp (reg r) (imm n))
             → step-not-halted prog s
-              ≡ just (record s { flags = mkflags (readReg (regs s) r ≡ᵇ n)
-                                                 (readReg (regs s) r <ᵇ n) false
+              ≡ just (record s { flags = mkflags (readReg (regs s) r ≡ᵇ W.norm n)
+                                                 (readReg (regs s) r <ᵇ W.norm n) false
                                ; pc = pc s + 1 })
 step-cmp-ri ft rewrite ft = refl
 
@@ -197,7 +213,7 @@ step-cmp-mi : ∀ {prog s m n v}
             → fetch prog (pc s) ≡ just (cmp (mem m) (imm n))
             → readMem (memory s) (effectiveAddr s m) ≡ just v
             → step-not-halted prog s
-              ≡ just (record s { flags = mkflags (v ≡ᵇ n) (v <ᵇ n) false ; pc = pc s + 1 })
+              ≡ just (record s { flags = mkflags (v ≡ᵇ W.norm n) (v <ᵇ W.norm n) false ; pc = pc s + 1 })
 step-cmp-mi ft rd rewrite ft | rd = refl
 
 -- THE CALL (D098): read the target through the closure register, push the
@@ -242,8 +258,8 @@ step-ret ft rd rewrite ft | rd = refl
 step-add-ri : ∀ {prog s r n}
             → fetch prog (pc s) ≡ just (add (reg r) (imm n))
             → step-not-halted prog s
-              ≡ just (record s { regs = writeReg (regs s) r (readReg (regs s) r W.⊕ n)
-                               ; flags = updateFlags (readReg (regs s) r W.⊕ n)
+              ≡ just (record s { regs = writeReg (regs s) r (readReg (regs s) r W.⊕ W.norm n)
+                               ; flags = updateFlags (readReg (regs s) r W.⊕ W.norm n)
                                                      (readReg (regs s) r)
                                ; pc = pc s + 1 })
 step-add-ri ft rewrite ft = refl
@@ -266,8 +282,8 @@ step-add-rr ft rewrite ft = refl
 step-sub-ri : ∀ {prog s r n}
             → fetch prog (pc s) ≡ just (sub (reg r) (imm n))
             → step-not-halted prog s
-              ≡ just (record s { regs = writeReg (regs s) r (readReg (regs s) r W.⊖ n)
-                               ; flags = updateFlags (readReg (regs s) r W.⊖ n)
+              ≡ just (record s { regs = writeReg (regs s) r (readReg (regs s) r W.⊖ W.norm n)
+                               ; flags = updateFlags (readReg (regs s) r W.⊖ W.norm n)
                                                      (readReg (regs s) r)
                                ; pc = pc s + 1 })
 step-sub-ri ft rewrite ft = refl

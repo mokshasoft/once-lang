@@ -40,10 +40,10 @@ module Once.Word where
 import Data.Nat as ℕ
 open ℕ using (ℕ; zero; suc; _∸_; _^_; _≤_; _<_; s≤s; z≤n)
 open import Data.Nat.DivMod using (_%_; _/_; n%1≡0; n/1≡n; n%n≡0; m<n⇒m%n≡m; m%n<n;
-   %-distribˡ-*; m%n%n≡m%n; [m+n]%n≡m%n)
+   %-distribˡ-*; %-distribˡ-+; m%n%n≡m%n; [m+n]%n≡m%n)
 open import Data.Nat.Properties using
   (m^n≢0; m^n>0; +-identityʳ; +-comm;
-   +-mono-≤; +-monoʳ-≤; +-monoʳ-<; ∸-monoˡ-≤; m+n∸n≡m; m∸n+n≡m; m∸[m∸n]≡n;
+   +-mono-≤; +-monoʳ-≤; +-monoʳ-<; ^-monoʳ-≤; ∸-monoˡ-≤; m+n∸n≡m; m∸n+n≡m; m∸[m∸n]≡n;
    ≤-refl; ≡ᵇ⇒≡; <ᵇ⇒<; ≤⇒≯; ≤-trans; <⇒≤; ≤-<-trans; m∸n≤m; +-∸-assoc; +-∸-comm)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣; sign; _◃_; _-_; -_)
 open import Data.Integer.Properties using (_<?_; m-n≡m⊖n; ⊖-<; +◃n≡+n; -◃n≡-n; neg-involutive)
@@ -434,6 +434,50 @@ module Width (bits : ℕ) where
     where
       y≤mod : y ℕ.≤ modulus
       y≤mod = ≤-trans y≤x (<⇒≤ x<mod)
+
+  ------------------------------------------------------------------------
+  -- NORMALISING AN OPERAND CHANGES NOTHING — plan 0.70 phase D.
+  --
+  -- The three semantics now `norm` an IMMEDIATE before using it, because an
+  -- instruction's immediate field is a machine word and a value too wide for it
+  -- cannot be encoded. That is not cosmetic: `_⊖_` is `norm (x + (modulus ∸ y))`
+  -- and TRUNCATED `∸` makes it WRONG for `y ≥ modulus` (`modulus ∸ y` clamps to
+  -- `0`, so `x ⊖ y` collapses to `norm x`). Norming the operand is what keeps
+  -- `⊖` on its intended domain.
+  --
+  -- For ADDITION the change is invisible unconditionally — `⊕` norms its sum
+  -- anyway, so a pre-normed argument cannot be observed:
+  ⊕-normʳ : ∀ (x y : ℕ) → x ⊕ norm y ≡ x ⊕ y
+  ⊕-normʳ x y =
+    trans (%-distribˡ-+ x (norm y) modulus)
+          (trans (cong (λ z → (x % modulus ℕ.+ z) % modulus) (m%n%n≡m%n y modulus))
+                 (sym (%-distribˡ-+ x y modulus)))
+
+  -- For SUBTRACTION it is invisible exactly when the operand was in range to
+  -- begin with — which every consumer already knows, because `⊖≡∸`'s own
+  -- premises (`y ≤ x`, `x < modulus`) give it.
+  ⊖-normʳ : ∀ (x y : Word) → y < modulus → x ⊖ norm y ≡ x ⊖ y
+  ⊖-normʳ x y y<mod = cong (λ z → norm (x ℕ.+ (modulus ∸ z))) (m<n⇒m%n≡m y<mod)
+
+  -- …and the plain form, for the operands that are simply MOVED or COMPARED
+  -- rather than added: an in-range value survives normalisation untouched.
+  norm-id : ∀ {n : ℕ} → n < modulus → norm n ≡ n
+  norm-id = m<n⇒m%n≡m
+
+  -- `imm 0` — the immediate at every zero test and at `count-zero`. True at
+  -- EVERY width, so it is proved here rather than at the instances; `refl` does
+  -- NOT work, because `bits` is symbolic in this module and `mod-helper` cannot
+  -- step against a stuck `2 ^ bits`. (`imm 1`, the other small immediate, needs
+  -- `1 < modulus` and so is false at `bits ≡ 0`; its sites use `norm-id`, where
+  -- `2 ^ 64` is a literal and the bound computes.)
+  -- The range fact a literal `imm 1` needs (`0<modulus` is already above): one
+  -- bit of width, which every real target has.
+  1<modulus : 1 ≤ bits → 1 < modulus
+  1<modulus 1≤bits = ^-monoʳ-≤ 2 1≤bits
+
+  norm-0 : norm 0 ≡ 0
+  norm-0 = m<n⇒m%n≡m 0<modulus
+
 
 ------------------------------------------------------------------------
 -- Standard instantiations

@@ -137,7 +137,7 @@ effectiveAddr s (label-rel n)    = n
 readOperand : State → Operand → Maybe Word
 readOperand s (reg r) = just (readReg (regs s) r)
 readOperand s (mem m) = readMem (memory s) (effectiveAddr s m)
-readOperand s (imm n) = just n
+readOperand s (imm n) = just (W.norm n)
 
 writeOperand : State → Operand → Word → State
 writeOperand s (reg r) v = record s { regs = writeReg (regs s) r v }

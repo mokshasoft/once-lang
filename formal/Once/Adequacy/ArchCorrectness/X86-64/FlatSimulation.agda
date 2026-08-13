@@ -130,9 +130,12 @@ b-mov-reg-reg : ∀ (prog : Program) (s : X.State) (dst src : Reg)
 b-mov-reg-reg prog s dst src = refl
 
 -- mov (reg dst) (imm n): tag/reg-op immediate loads (load-tag-lit, …).
+-- PLAN 0.70 PHASE D: the machine NORMS an immediate (an immediate field holds a
+-- machine word), so this readout says so. Consumers convert with `W.norm-id` /
+-- `W.norm-0` where they know the immediate fits.
 b-mov-reg-imm : ∀ (prog : Program) (s : X.State) (dst : Reg) (n : ℕ)
   → execInstr prog s (mov (reg dst) (imm n))
-    ≡ just (mkstate (xwriteReg (xregs s) dst n)
+    ≡ just (mkstate (xwriteReg (xregs s) dst (X.W.norm n))
                     (memory s) (flags s) (pc s + 1) (xhalted s))
 b-mov-reg-imm prog s dst n = refl
 
@@ -142,7 +145,7 @@ b-mov-reg-imm prog s dst n = refl
 b-cmp-reg-imm : ∀ (prog : Program) (s : X.State) (dst : Reg) (n : ℕ)
   → execInstr prog s (cmp (reg dst) (imm n))
     ≡ just (mkstate (xregs s) (memory s)
-                    (mkflags (xreadReg (xregs s) dst ≡ᵇ n) (xreadReg (xregs s) dst <ᵇ n) false)
+                    (mkflags (xreadReg (xregs s) dst ≡ᵇ X.W.norm n) (xreadReg (xregs s) dst <ᵇ X.W.norm n) false)
                     (pc s + 1) (xhalted s))
 b-cmp-reg-imm prog s dst n = refl
 
@@ -310,12 +313,19 @@ block-step-mov-ri : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) 
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just i
   → compile-abstract i ≡ mov (reg dst) (imm n) ∷ []
+  -- PLAN 0.70 PHASE D — THE IMMEDIATE FITS IN A MACHINE WORD. The machine norms
+  -- an immediate (an immediate field IS a word), so reading the post-state back
+  -- as a bare `n` needs `n` in range. This is the `lit-word : Carrier → Word`
+  -- seam made visible: the model used to admit a register holding a value no
+  -- register can hold. Callers with a literal immediate discharge it by
+  -- computation; `instr-load-const` is where it becomes a real obligation.
+  → n < X.W.modulus
   → fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)
   → RetSame prog fs i                                      -- …and moves no frame
   → C.FlatCorr hv (flat-exec-instr i prog fs)
                (record s { regs = xwriteReg (xregs s) dst n ; pc = pc s + 1 })
   → BlockStep hv prog fs s i
-block-step-mov-ri {hv} prog fs s i dst n cc h-flat ft ca fpc-eq rsame dataPost =
+block-step-mov-ri {hv} prog fs s i dst n cc h-flat ft ca fits fpc-eq rsame dataPost =
   post , exec-eq-len , record { dataCorr = dataPost ; pc-off = pco'
                              ; ret-eq = ret-same prog fs i (memory s) rsame (ret-eq cc)
                              ; code-eq = code-eq cc }
@@ -330,7 +340,10 @@ block-step-mov-ri {hv} prog fs s i dst n cc h-flat ft ca fpc-eq rsame dataPost =
     post : X.State
     post = record s { regs = xwriteReg (xregs s) dst n ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-mov-ri {compile-trace prog} {s} {dst} {n} fetch-x86
+    snh = subst (λ w → X.step-not-halted (compile-trace prog) s
+                       ≡ just (record s { regs = xwriteReg (xregs s) dst w ; pc = pc s + 1 }))
+                (X.W.norm-id fits)
+                (step-mov-ri {compile-trace prog} {s} {dst} {n} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     exec-eq-len : X.exec (blk-len i) (compile-trace prog) s ≡ just post
@@ -341,25 +354,29 @@ block-step-mov-ri {hv} prog fs s i dst n cc h-flat ft ca fpc-eq rsame dataPost =
             (trans (sym (cong (blk-off prog (fpc fs) +_) (cong length ca)))
                    (sym (blk-off-suc prog (fpc fs) i ft)))
 
+-- PLAN 0.70 PHASE D: the tag literal must FIT IN A MACHINE WORD. Propagated
+-- rather than discharged here, because `n` is this lemma's own parameter — the
+-- caller is where a concrete tag is known.
 block-step-load-tag-lit : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just (instr-load-tag-lit n) → BlockStep hv prog fs s (instr-load-tag-lit n)
-block-step-load-tag-lit {hv} prog fs s n cc h ft =
-  block-step-mov-ri prog fs s (instr-load-tag-lit n) rax n cc h ft refl refl (refl , refl) (C.sim-load-tag-lit n fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _ _))
+  → fetch prog (fpc fs) ≡ just (instr-load-tag-lit n) → n < X.W.modulus
+  → BlockStep hv prog fs s (instr-load-tag-lit n)
+block-step-load-tag-lit {hv} prog fs s n cc h ft fits =
+  block-step-mov-ri prog fs s (instr-load-tag-lit n) rax n cc h ft refl fits refl (refl , refl) (C.sim-load-tag-lit n fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _ _))
 
 block-step-scratch-one : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-one) → BlockStep hv prog fs s (instr-reg-op scratch-one)
 block-step-scratch-one {hv} prog fs s cc h ft =
-  block-step-mov-ri prog fs s (instr-reg-op scratch-one) rbx 1 cc h ft refl refl (refl , refl) (C.sim-reg-scratch-one fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
+  block-step-mov-ri prog fs s (instr-reg-op scratch-one) rbx 1 cc h ft refl (X.W.1<modulus (s≤s z≤n)) refl (refl , refl) (C.sim-reg-scratch-one fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
 
 block-step-scratch-zero : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-zero) → BlockStep hv prog fs s (instr-reg-op scratch-zero)
 block-step-scratch-zero {hv} prog fs s cc h ft =
-  block-step-mov-ri prog fs s (instr-reg-op scratch-zero) rbx 0 cc h ft refl refl (refl , refl) (C.sim-reg-scratch-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
+  block-step-mov-ri prog fs s (instr-reg-op scratch-zero) rbx 0 cc h ft refl X.W.0<modulus refl (refl , refl) (C.sim-reg-scratch-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
 
 block-step-count-zero : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op count-zero) → BlockStep hv prog fs s (instr-reg-op count-zero)
 block-step-count-zero {hv} prog fs s cc h ft =
-  block-step-mov-ri prog fs s (instr-reg-op count-zero) r14 0 cc h ft refl refl (refl , refl) (C.sim-reg-count-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-count _ _ _))
+  block-step-mov-ri prog fs s (instr-reg-op count-zero) r14 0 cc h ft refl X.W.0<modulus refl (refl , refl) (C.sim-reg-count-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-count _ _ _))
 
 block-step-scratch-load-count : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-load-count) → BlockStep hv prog fs s (instr-reg-op scratch-load-count)
@@ -659,8 +676,15 @@ block-step-alloc-stack {hv} prog fs s n cc h ft fresh-abs lo' lo'≤lo front-lo'
     -- `⊖≡∸` applied to a premise that was already present. The remaining
     -- ingredient is the upper bound, which is genuinely new: a register holds
     -- a value below the modulus because the machine is finite.
-    borrow-free : xreadReg (xregs s) rsp X.W.⊖ slots n ≡ xreadReg (xregs s) rsp ∸ slots n
-    borrow-free = X.W.⊖≡∸ (xreadReg (xregs s) rsp) (slots n) fits rsp<mod
+    -- PLAN 0.70 PHASE D: peel the immediate's `norm` FIRST. `⊖` is
+    -- `norm (x + (modulus ∸ y))`, so an out-of-range `y` would collapse it to
+    -- `norm x` — norming the operand is what keeps `⊖` on its domain. The
+    -- range fact is not new: `fits` and `rsp<mod` already give it.
+    in-range : slots n < X.W.modulus
+    in-range = ≤-<-trans fits rsp<mod
+    borrow-free : xreadReg (xregs s) rsp X.W.⊖ X.W.norm (slots n) ≡ xreadReg (xregs s) rsp ∸ slots n
+    borrow-free = trans (X.W.⊖-normʳ (xreadReg (xregs s) rsp) (slots n) in-range)
+                        (X.W.⊖≡∸ (xreadReg (xregs s) rsp) (slots n) fits rsp<mod)
     newFlags : X.Flags
     newFlags = updateFlags (xreadReg (xregs s) rsp ∸ slots n) (xreadReg (xregs s) rsp)
     post : X.State
@@ -742,8 +766,15 @@ block-step-c-thunk {hv} prog fs s n b cc h ft lo' lo'≤lo front-lo' lo'≤rsp f
                         ; flags = newFlags ; pc = pc s + 1 + 1 }
     -- plan 0.70 phase C: `fits` is the no-borrow condition (see
     -- `block-step-alloc-stack`); `post-lab` has the same `%rsp` as `s`.
-    borrow-free : xreadReg (xregs s) rsp X.W.⊖ slots b ≡ xreadReg (xregs s) rsp ∸ slots b
-    borrow-free = X.W.⊖≡∸ (xreadReg (xregs s) rsp) (slots b) fits rsp<mod
+    -- PLAN 0.70 PHASE D: peel the immediate's `norm` FIRST. `⊖` is
+    -- `norm (x + (modulus ∸ y))`, so an out-of-range `y` would collapse it to
+    -- `norm x` — norming the operand is what keeps `⊖` on its domain. The
+    -- range fact is not new: `fits` and `rsp<mod` already give it.
+    in-range : slots b < X.W.modulus
+    in-range = ≤-<-trans fits rsp<mod
+    borrow-free : xreadReg (xregs s) rsp X.W.⊖ X.W.norm (slots b) ≡ xreadReg (xregs s) rsp ∸ slots b
+    borrow-free = trans (X.W.⊖-normʳ (xreadReg (xregs s) rsp) (slots b) in-range)
+                        (X.W.⊖≡∸ (xreadReg (xregs s) rsp) (slots b) fits rsp<mod)
     step-sub : X.step-not-halted (compile-trace prog) post-lab ≡ just post-sub
     step-sub = subst (λ w → X.step-not-halted (compile-trace prog) post-lab
                             ≡ just (record s { regs = xwriteReg (xregs s) rsp w
@@ -970,8 +1001,11 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq no-
     post-add : X.State
     post-add = record s { regs = xwriteReg (xregs s) rsp (xreadReg (xregs s) rsp + slots b)
                         ; flags = newFlags ; pc = pc s + 1 }
-    wrap-free : xreadReg (xregs s) rsp X.W.⊕ slots b ≡ xreadReg (xregs s) rsp + slots b
-    wrap-free = X.W.⊕≡+ (xreadReg (xregs s) rsp) (slots b) no-wrap
+    wrap-free : xreadReg (xregs s) rsp X.W.⊕ X.W.norm (slots b) ≡ xreadReg (xregs s) rsp + slots b
+    -- PHASE D: peel the immediate's `norm` first — UNCONDITIONAL for `⊕`,
+    -- which norms its sum anyway, so a pre-normed argument is unobservable.
+    wrap-free = trans (X.W.⊕-normʳ (xreadReg (xregs s) rsp) (slots b))
+                      (X.W.⊕≡+ (xreadReg (xregs s) rsp) (slots b) no-wrap)
     step-add : X.step-not-halted (compile-trace prog) s ≡ just post-add
     step-add = subst (λ w → X.step-not-halted (compile-trace prog) s
                             ≡ just (record s { regs = xwriteReg (xregs s) rsp w
@@ -1068,8 +1102,11 @@ block-step-dealloc-stack {hv} prog fs s n cc h ft restores retPost no-wrap =
     post : X.State
     post = record s { regs = xwriteReg (xregs s) rsp (xreadReg (xregs s) rsp + slots n)
                     ; flags = newFlags ; pc = pc s + 1 }
-    wrap-free : xreadReg (xregs s) rsp X.W.⊕ slots n ≡ xreadReg (xregs s) rsp + slots n
-    wrap-free = X.W.⊕≡+ (xreadReg (xregs s) rsp) (slots n) no-wrap
+    wrap-free : xreadReg (xregs s) rsp X.W.⊕ X.W.norm (slots n) ≡ xreadReg (xregs s) rsp + slots n
+    -- PHASE D: peel the immediate's `norm` first — UNCONDITIONAL for `⊕`,
+    -- which norms its sum anyway, so a pre-normed argument is unobservable.
+    wrap-free = trans (X.W.⊕-normʳ (xreadReg (xregs s) rsp) (slots n))
+                      (X.W.⊕≡+ (xreadReg (xregs s) rsp) (slots n) no-wrap)
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
     snh = subst (λ w → X.step-not-halted (compile-trace prog) s
                        ≡ just (record s { regs = xwriteReg (xregs s) rsp w
@@ -1093,10 +1130,21 @@ block-step-dealloc-stack {hv} prog fs s n cc h ft restores retPost no-wrap =
 
 -- load-const (int): Output := SV-Lit fits-int v ↔ `mov rax, imm v` (1 step).
 -- With the enc-sv fix the immediate matches exactly (sim-load-const's out-eq = refl).
+--
+-- PLAN 0.70 PHASE D — THIS IS THE `lit-word` SEAM, AND IT IS NOW A PREMISE.
+-- `lit-word : Carrier → Word` is the identity, which is only FAITHFUL for a
+-- literal that fits in a machine word: the immediate field of a `mov` holds a
+-- word, and the machine norms it. Before phase D this lemma silently concluded
+-- that the register held `v` for ANY `v` — a register holding a value no
+-- register can hold. Now the obligation is visible, and it is the honest one:
+-- D054 makes `Int` a modular `Word`, so an elaborated literal is in range by
+-- construction; the day that is threaded from the frontend, this premise is
+-- discharged rather than assumed.
 block-step-load-const : ∀ {hv : HeapView} prog fs s (v : Carrier) → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-load-const fits-int v)
+  → v < X.W.modulus
   → BlockStep hv prog fs s (instr-load-const fits-int v)
-block-step-load-const {hv} prog fs s v cc h ft =
+block-step-load-const {hv} prog fs s v cc h ft fits =
   post , exec-eq , record { dataCorr = C.sim-load-const v fs s _ dc (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -1108,7 +1156,10 @@ block-step-load-const {hv} prog fs s v cc h ft =
     post : X.State
     post = record s { regs = xwriteReg (xregs s) rax v ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-mov-ri {compile-trace prog} {s} {rax} {v} fetch-x86
+    snh = subst (λ w → X.step-not-halted (compile-trace prog) s
+                       ≡ just (record s { regs = xwriteReg (xregs s) rax w ; pc = pc s + 1 }))
+                (X.W.norm-id fits)
+                (step-mov-ri {compile-trace prog} {s} {rax} {v} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-load-const fits-int v) prog fs))
@@ -1117,10 +1168,17 @@ block-step-load-const {hv} prog fs s v cc h ft =
 -- …and the FLOAT constant (D079): the same one-step immediate load, with
 -- the IEEE-754 bit pattern. Was a divergence (`ud2` vs. a running abstract
 -- machine); now the two machines agree instruction for instruction.
+-- …and the same seam on the float side. Here the bound is TRUE BY CONSTRUCTION
+-- — `float-bits` is `primWord64ToNat` of a `Word64`, whose image is below 2⁶⁴ by
+-- definition — but the standard library carries no such lemma, so it arrives as
+-- a premise rather than a proof. That is the one place in phase D where a
+-- premise stands in for something already known; it is discharged the day
+-- `Data.Word.Properties` gains the bound.
 block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : AgdaFloat) → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
+  → float-bits v < X.W.modulus
   → BlockStep hv prog fs s (instr-load-const fits-float v)
-block-step-load-const-float {hv} prog fs s v cc h ft =
+block-step-load-const-float {hv} prog fs s v cc h ft fits =
   post , exec-eq , record { dataCorr = C.sim-load-const-float v fs s _ dc (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -1132,7 +1190,10 @@ block-step-load-const-float {hv} prog fs s v cc h ft =
     post : X.State
     post = record s { regs = xwriteReg (xregs s) rax (float-bits v) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-mov-ri {compile-trace prog} {s} {rax} {float-bits v} fetch-x86
+    snh = subst (λ w → X.step-not-halted (compile-trace prog) s
+                       ≡ just (record s { regs = xwriteReg (xregs s) rax w ; pc = pc s + 1 }))
+                (X.W.norm-id fits)
+                (step-mov-ri {compile-trace prog} {s} {rax} {float-bits v} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-load-const fits-float v) prog fs))
@@ -1428,8 +1489,11 @@ block-step-count-inc {hv} prog fs s k cc h ft c-eq no-wrap =
     post : X.State
     post = record s { regs = xwriteReg (xregs s) r14 (xreadReg (xregs s) r14 + 1)
                     ; flags = updateFlags (xreadReg (xregs s) r14 + 1) (xreadReg (xregs s) r14) ; pc = pc s + 1 }
-    wrap-free : xreadReg (xregs s) r14 X.W.⊕ 1 ≡ xreadReg (xregs s) r14 + 1
-    wrap-free = X.W.⊕≡+ (xreadReg (xregs s) r14) 1 no-wrap
+    wrap-free : xreadReg (xregs s) r14 X.W.⊕ X.W.norm 1 ≡ xreadReg (xregs s) r14 + 1
+    -- PHASE D: peel the immediate's `norm` first — UNCONDITIONAL for `⊕`,
+    -- which norms its sum anyway, so a pre-normed argument is unobservable.
+    wrap-free = trans (X.W.⊕-normʳ (xreadReg (xregs s) r14) 1)
+                      (X.W.⊕≡+ (xreadReg (xregs s) r14) 1 no-wrap)
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
     snh = subst (λ w → X.step-not-halted (compile-trace prog) s
                        ≡ just (record s { regs = xwriteReg (xregs s) r14 w
@@ -1475,8 +1539,15 @@ block-step-scratch-dec {hv} prog fs s k cc h ft sc-eq no-borrow rbx<mod =
     fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (sub (reg rbx) (imm 1))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-reg-op scratch-dec) ft)
-    borrow-free : xreadReg (xregs s) rbx X.W.⊖ 1 ≡ xreadReg (xregs s) rbx ∸ 1
-    borrow-free = X.W.⊖≡∸ (xreadReg (xregs s) rbx) 1 no-borrow rbx<mod
+    -- PLAN 0.70 PHASE D: peel the immediate's `norm` FIRST. `⊖` is
+    -- `norm (x + (modulus ∸ y))`, so an out-of-range `y` would collapse it to
+    -- `norm x` — norming the operand is what keeps `⊖` on its domain. The
+    -- range fact is not new: `no-borrow` and `rbx<mod` already give it.
+    in-range : 1 < X.W.modulus
+    in-range = ≤-<-trans no-borrow rbx<mod
+    borrow-free : xreadReg (xregs s) rbx X.W.⊖ X.W.norm 1 ≡ xreadReg (xregs s) rbx ∸ 1
+    borrow-free = trans (X.W.⊖-normʳ (xreadReg (xregs s) rbx) 1 in-range)
+                        (X.W.⊖≡∸ (xreadReg (xregs s) rbx) 1 no-borrow rbx<mod)
     post : X.State
     post = record s { regs = xwriteReg (xregs s) rbx (xreadReg (xregs s) rbx ∸ 1)
                     ; flags = updateFlags (xreadReg (xregs s) rbx ∸ 1) (xreadReg (xregs s) rbx) ; pc = pc s + 1 }
@@ -1822,9 +1893,12 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wf2 wfs wfc wfcl wf-heap wf-s
     no-wrap = ≤-<-trans (subst (λ z → z + slots n ≤ C.lo hv)
                                (sym (C.frontier-eq dc)) room)
                         lo-fits
-    wrap-free : xreadReg (xregs post-mov) r15 X.W.⊕ slots n
+    wrap-free : xreadReg (xregs post-mov) r15 X.W.⊕ X.W.norm (slots n)
               ≡ xreadReg (xregs post-mov) r15 + slots n
-    wrap-free = X.W.⊕≡+ (xreadReg (xregs post-mov) r15) (slots n) no-wrap
+    -- PHASE D: peel the immediate's `norm` first — UNCONDITIONAL for `⊕`,
+    -- which norms its sum anyway, so a pre-normed argument is unobservable.
+    wrap-free = trans (X.W.⊕-normʳ (xreadReg (xregs post-mov) r15) (slots n))
+                      (X.W.⊕≡+ (xreadReg (xregs post-mov) r15) (slots n) no-wrap)
     step2 : X.step-not-halted (compile-trace prog) post-mov ≡ just post-add
     step2 = subst (λ w → X.step-not-halted (compile-trace prog) post-mov
                          ≡ just (record post-mov { regs = xwriteReg (xregs post-mov) r15 w

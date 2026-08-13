@@ -53,60 +53,74 @@ abstract one — read it off the signature: does it mention `X.State` /
       arith-sigop-contract, external-sigop-contract, conc-fuel
       (see THE CPU-MODEL ROOT below)
 
-    THE UNBOUNDED-REGISTER MODEL — an UNTRACKED MODEL GAP, named 2026-08-13.
+    THE UNBOUNDED-REGISTER MODEL — NAMED 2026-08-13, CLOSED 2026-08-13 by
+    plan 0.70. Kept here (rather than deleted) because the entry is what makes
+    the repair auditable, and because what REMAINS is named at the end.
 
-    All three target semantics define `Word = ℕ`, with `add` as `_+_` and `sub`
-    as TRUNCATED `_∸_`. Real registers are fixed-width and modular. So:
+    The gap was: all three target semantics defined `Word = ℕ`, `add` as `_+_`
+    and `sub` as TRUNCATED `_∸_`, while real registers are fixed-width and
+    modular. `add` diverged only past 2⁶⁴; `sub` diverged AT SMALL VALUES
+    (`3 ∸ 5 = 0` in the model, `2⁶⁴ − 2` on hardware). The correspondence was
+    nevertheless TRUE, which is why nothing caught it: the ABSTRACT flat machine
+    clamped identically, so both sides diverged from hardware TOGETHER.
 
-      * `add` diverges only past 2^64 (2^32) — astronomically far, but a
-        divergence;
-      * `sub` diverges AT SMALL VALUES. `3 ∸ 5 = 0` in the model; on hardware
-        `3 - 5` is `2^64 - 2`. Truncated subtraction is not modular
-        subtraction, and the gap opens at the first subtraction that would go
-        negative, not at the word boundary.
+    WHERE THE DIVERGENCE LANDED — and the reason it was the deepest kind of gap.
+    An earlier draft blamed `<arch>-loader-faithful`. That was wrong and the
+    truth was worse: `asm-sem` and `conc-trace` BOTH run our own `run-trace`, so
+    the arithmetic cancelled and no postulate in the tree ever claimed our
+    `execInstr` matches a real CPU. The theorem was conditional on a machine
+    model whose fidelity was not assumed, not proved, and not stated — invisible
+    to postulate-counting. D103's `lla` defect was the same class one level down.
 
-    THE CORRESPONDENCE IS NEVERTHELESS TRUE, which is why nothing has caught
-    this: the ABSTRACT flat machine uses the same arithmetic (`sv-pred
-    (SV-Tag 0) = SV-Tag 0` clamps exactly as `∸` does), so both sides diverge
-    from hardware TOGETHER and agree with each other.
+    WHAT CLOSED IT (plan 0.70, phases A–D, all three arches):
 
-    WHERE THE DIVERGENCE LANDS — CORRECTED 2026-08-13. An earlier draft of this
-    entry said it lands in `<arch>-loader-faithful`. **That is wrong, and the
-    truth is worse.** `asm-sem = exec-bytes ∘ assemble` and
-    `exec-bytes bytes = run-trace (decode bytes) initialState`, while
-    `conc-trace` is `run-trace` applied to the compiled program directly — so
-    BOTH SIDES of that axiom use OUR model's `run-trace`, the arithmetic
-    cancels, and the axiom's own comment ("NOT the CPU, NOT the arith logic")
-    is accurate. `run-trace` is DERIVED from `execInstr` on every arch, so real
-    silicon appears nowhere.
+      * ARITHMETIC INSTRUCTIONS ARE MODULAR. `add`/`sub`/`addi` compute `⊕`/`⊖`
+        at the target's width — x86-32 at `Width 32`, which is what the `bits`
+        parameter was for. No no-overflow precondition sits on any instruction:
+        D054 makes wraparound correct, defined semantics, so a program whose
+        arithmetic wraps stays covered rather than excluded.
+      * IMMEDIATES ARE NORMED. An immediate field holds a machine word. This was
+        not cosmetic — `⊖` is `norm (x + (modulus ∸ y))`, which truncated `∸`
+        makes WRONG for `y ≥ modulus` (it collapses to `norm x`), so norming the
+        operand is what keeps `⊖` on its domain.
+      * ADDRESSES STAY ORDERED ℕ, under an explicit no-wrap invariant — phase
+        A's decision, and CompCert's. Modular arithmetic supplies neither the
+        order the layout separation needs nor the cancellation `slot-addr-inj`
+        needs. So `effectiveAddr` and the implicit `%rsp` moves in
+        `push`/`pop`/`call`/`ret` keep `+`/`∸` BY DESIGN. `sub rsp, n` shows both
+        layers at once: the instruction is modular, and the block-step reads its
+        result back as ordered ℕ through the no-borrow condition.
+      * TWO DEFECTS FELL OUT, both D103-class: riscv64's `lla` wrote 0 instead of
+        resolving the label, and riscv64's `li` wrote 0 for a NEGATIVE immediate
+        (a real `li a0, -1` loads all-ones). Both are fixed; `step-li` now covers
+        both signs instead of dodging half its domain.
 
-    **No postulate in the tree claims our `execInstr` matches a real CPU.** The
-    grand theorem is therefore conditional on a machine model whose fidelity to
-    hardware is not assumed, not proved, and not stated — the deepest kind of
-    gap, because unlike an axiom it cannot be found by counting postulates. It
-    is the reason plan 0.70 exists, and D103's `lla` defect was an instance of
-    the same class one level down.
+    WHAT REMAINS, and it is now TRACKED rather than untracked — five parameters,
+    threaded `Certified → Compiler → ArchCorrectness → X86-64 → ConcFlatSim`:
 
-    IT IS ALSO ALREADY DECIDED AGAINST. D054 settled that Once's `Int` denotes
-    a MODULAR `Once.Word` (carrier ℕ in `[0, modulus)`, width-parameterised),
-    precisely so the runtime value type is the machine's. The tree now carries
-    both notions, meeting at `FlatCore.FlatCorrespondence.lit-word : Carrier →
-    Word` — a modular value injected into an unbounded one.
+      RegRange           a register holds a value below the modulus. Becomes a
+                         theorem when the register file carries its range.
+      ScratchDecGuarded  a reachable `scratch-dec` finds a non-zero Scratch.
+                         Route: the `emitted-thunk-guarded` induction.
+      AddrNoWrap         `ret-no-wrap`, `count-no-wrap`, `lo-fits` — the layout
+                         and the observable counter stay inside the address
+                         space. D087 class; a linker sizing pass discharges them.
+      LitFits            `tag-fits`, `lit-fits`, `float-fits` — an emitted
+                         immediate fits in a machine word. NOT a linker fact:
+                         D054 makes an elaborated literal in range BY
+                         CONSTRUCTION, so this is the frontend's range simply not
+                         threaded here yet. `float-fits` is true by construction
+                         too (`primWord64ToNat`'s image is below 2⁶⁴); it is
+                         assumed only because `Data.Word.Properties` states no
+                         such bound.
 
-    WHAT THE REPAIR COSTS, stated so the size is not underestimated. The
-    correspondence should be over an ABSTRACT `Word` with its operations and
-    laws — neither `ℕ` nor `ℤ` — so the current models are one instance and a
-    modular model another. The instructive part is that this WILL break proofs:
-    the window and frame arithmetic leans on ℕ ordering, `+-cancelˡ-≡`,
-    `*-cancelʳ-≡` and `m∸n+n≡m`, and modular arithmetic satisfies none of them
-    unconditionally. Those breaks are not obstacles to route around — they ARE
-    the content of "the machine is finite", and each one is a place the current
-    proof is quietly assuming an infinite register file.
-
-    Related, and the reason the `fits`/`room` premises already exist: several
-    proofs ALREADY carry side conditions that exist only to tame `∸`
-    (`slots n ≤ %rsp` at every frame reservation, `m∸n+n≡m` at every
-    re-anchoring). Those are the shape a modular `Word` would generalise.
+    AND ONE ASYMMETRY LEFT IN THE MODEL: the ABSTRACT flat machine's `sv-succ`/
+    `sv-pred` are still ℕ — `sv-pred` CLAMPS where the machine now wraps. The
+    correspondence is true because `count-no-wrap` and `ScratchDecGuarded`
+    exclude exactly the states where they would differ. Making `sv-pred` wrap
+    would let `ScratchDecGuarded` be DELETED rather than discharged, and is the
+    one place where "fix the abstract side first" genuinely applies, since these
+    are values rather than addresses.
 
     PHASE C STARTED 2026-08-13 — x86-64's SUBTRACTION IS NOW MODULAR. The
     semantics computes `⊖`, `step-sub-ri` says so, and all four `sub` block-steps

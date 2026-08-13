@@ -30,14 +30,14 @@
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.CCC.Target.RiscV64.Syntax using (slot-size)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 
 module Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation
   (FS : FrameSemantics)
   (word-eq : frame-word FS ≡ slot-size)
   where
 
-open import Data.Nat using (ℕ; suc; _+_; zero; _∸_)
+open import Data.Nat using (ℕ; suc; _+_; zero; _∸_; _<_; s≤s; z≤n)
 open import Data.Nat.Properties using (+-identityʳ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -197,9 +197,9 @@ block-step-scratch-load-count {hv} prog fs s cc h ft =
 -- Generic single-`li rd, +n` block-step — x86-64's `block-step-mov-ri`.
 --
 -- The immediate is `+ n` because that is what the emitter produces, and it is
--- also what `step-li` covers: `li` with a NEGATIVE immediate lands on a
--- different post-state (`0`), so folding the two together would state
--- something the machine does not do.
+-- `step-li` now covers BOTH signs (phase D): the old restriction existed only
+-- because `execInstr` wrote `0` for a negative immediate, which was a defect
+-- rather than a case. The emitter still only produces non-negative ones here.
 ------------------------------------------------------------------------
 block-step-li : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s : R.State)
     (i : AbstractInstr) (dst : Reg) (n : ℕ)
@@ -207,13 +207,17 @@ block-step-li : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s :
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just i
   → compile-abstract i ≡ li dst (ℤ.+ n) ∷ []
+  -- PLAN 0.70 PHASE D — THE IMMEDIATE FITS IN A MACHINE WORD, exactly as on
+  -- x86-64. `li` reads its immediate with `W.fromℤ`, which NORMS, so reading
+  -- the post-state back as a bare `n` needs `n` in range.
+  → n < R.W.modulus
   → fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)
   → RetSame prog fs i
   → C.FlatCorr hv (flat-exec-instr i prog fs)
                (record s { regs = R.writeReg (R.State.regs s) dst (R.offsetToℕ (ℤ.+ n))
                          ; pc = R.State.pc s + 1 })
   → BlockStep hv prog fs s i
-block-step-li {hv} prog fs s i dst n cc h-flat ft ca fpc-eq rsame dataPost =
+block-step-li {hv} prog fs s i dst n cc h-flat ft ca fits fpc-eq rsame dataPost =
   post , exec-eq-len , record { dataCorr = dataPost ; pc-off = pco'
                               ; ret-eq = ret-same prog fs i (R.State.memory s) rsame (ret-eq cc)
                               ; code-eq = code-eq cc }
@@ -229,7 +233,11 @@ block-step-li {hv} prog fs s i dst n cc h-flat ft ca fpc-eq rsame dataPost =
     post = record s { regs = R.writeReg (R.State.regs s) dst (R.offsetToℕ (ℤ.+ n))
                     ; pc = R.State.pc s + 1 }
     snh : R.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-li {compile-trace prog} {s} {dst} {n} fetch-rv
+    snh = subst (λ w → R.step-not-halted (compile-trace prog) s
+                       ≡ just (record s { regs = R.writeReg (R.State.regs s) dst w
+                                        ; pc = R.State.pc s + 1 }))
+                (R.W.norm-id fits)
+                (step-li {compile-trace prog} {s} {dst} {ℤ.+ n} fetch-rv)
     exec-eq : R.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     exec-eq-len : R.exec (blk-len i) (compile-trace prog) s ≡ just post
@@ -240,31 +248,34 @@ block-step-li {hv} prog fs s i dst n cc h-flat ft ca fpc-eq rsame dataPost =
             (trans (sym (cong ((blk-off prog (fpc fs)) +_) (cong length ca)))
                    (sym (blk-off-suc prog (fpc fs) i ft)))
 
+-- PHASE D: the tag literal must fit in a machine word; propagated, since `n` is
+-- this lemma's own parameter (x86-64's `block-step-load-tag-lit` does the same).
 block-step-load-tag-lit : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
-  → fetch prog (fpc fs) ≡ just (instr-load-tag-lit n) → BlockStep hv prog fs s (instr-load-tag-lit n)
-block-step-load-tag-lit {hv} prog fs s n cc h ft =
-  block-step-li prog fs s (instr-load-tag-lit n) a0 n cc h ft refl refl (refl , refl)
+  → fetch prog (fpc fs) ≡ just (instr-load-tag-lit n) → n < R.W.modulus
+  → BlockStep hv prog fs s (instr-load-tag-lit n)
+block-step-load-tag-lit {hv} prog fs s n cc h ft fits =
+  block-step-li prog fs s (instr-load-tag-lit n) a0 n cc h ft refl fits refl (refl , refl)
     (C.sim-load-tag-lit n fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-out _ _))
 
 block-step-scratch-one : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-one)
   → BlockStep hv prog fs s (instr-reg-op scratch-one)
 block-step-scratch-one {hv} prog fs s cc h ft =
-  block-step-li prog fs s (instr-reg-op scratch-one) s3 1 cc h ft refl refl (refl , refl)
+  block-step-li prog fs s (instr-reg-op scratch-one) s3 1 cc h ft refl (R.W.1<modulus (s≤s z≤n)) refl (refl , refl)
     (C.sim-reg-scratch-one fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-scratch _ _))
 
 block-step-scratch-zero : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-zero)
   → BlockStep hv prog fs s (instr-reg-op scratch-zero)
 block-step-scratch-zero {hv} prog fs s cc h ft =
-  block-step-li prog fs s (instr-reg-op scratch-zero) s3 0 cc h ft refl refl (refl , refl)
+  block-step-li prog fs s (instr-reg-op scratch-zero) s3 0 cc h ft refl R.W.0<modulus refl (refl , refl)
     (C.sim-reg-scratch-zero fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-scratch _ _))
 
 block-step-count-zero : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op count-zero)
   → BlockStep hv prog fs s (instr-reg-op count-zero)
 block-step-count-zero {hv} prog fs s cc h ft =
-  block-step-li prog fs s (instr-reg-op count-zero) s4 0 cc h ft refl refl (refl , refl)
+  block-step-li prog fs s (instr-reg-op count-zero) s4 0 cc h ft refl R.W.0<modulus refl (refl , refl)
     (C.sim-reg-count-zero fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-count _ _))
 
 ------------------------------------------------------------------------

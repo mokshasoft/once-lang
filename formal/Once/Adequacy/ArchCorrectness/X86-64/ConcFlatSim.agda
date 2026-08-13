@@ -38,9 +38,16 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 -- telescoping (`RC.RunAt o FS word-eq …`) — a parameter's type is elaborated
 -- before the body, where the applied `open import … FS word-eq` has not run.
 open import Data.Maybe using (just)
+-- …and the pieces the LITERAL parameters' types need (phase D), likewise
+-- imported before the module header.
+open import Once.Type using (fits-int; fits-float)
+open import Once.Word using (Carrier)
+open import Data.Float using () renaming (Float to AgdaFloat)
+open import Once.Semantics.FloatBits using (float-bits)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-ret; instr-call-closure
-        ; instr-reg-op; scratch-dec; count-inc; instr-dealloc-stack)
+        ; instr-reg-op; scratch-dec; count-inc; instr-dealloc-stack
+        ; instr-load-tag-lit; instr-load-const)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 import Once.CCC.Target.X86-64.Semantics as X
 import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FC
@@ -140,6 +147,32 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
                  → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                      ≡ just (instr-reg-op count-inc)
                  → X.readReg (X.State.regs s) r14 + 1 < X.W.modulus)
+  -- THE LITERAL SEAM (phase D): an emitted immediate fits in a machine word.
+  -- `…ResourceBounds.LitFits`'s three fields.
+  (tag-fits : ∀ {hv : FC.HeapView FS word-eq}
+                (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
+                (s : X.State) (n : ℕ)
+            → RC.RunAt o FS word-eq prog fs
+            → FSim.CompiledCorr FS word-eq hv prog fs s
+            → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
+                ≡ just (instr-load-tag-lit n)
+            → n < X.W.modulus)
+  (lit-fits : ∀ {hv : FC.HeapView FS word-eq}
+                (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
+                (s : X.State) (v : Carrier)
+            → RC.RunAt o FS word-eq prog fs
+            → FSim.CompiledCorr FS word-eq hv prog fs s
+            → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
+                ≡ just (instr-load-const fits-int v)
+            → v < X.W.modulus)
+  (float-fits : ∀ {hv : FC.HeapView FS word-eq}
+                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
+                  (s : X.State) (v : AgdaFloat)
+              → RC.RunAt o FS word-eq prog fs
+              → FSim.CompiledCorr FS word-eq hv prog fs s
+              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
+                  ≡ just (instr-load-const fits-float v)
+              → float-bits v < X.W.modulus)
   (lo-fits : ∀ {hv : FC.HeapView FS word-eq}
                (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                (s : X.State)
@@ -710,10 +743,12 @@ mutual
     ⊥-elim (frame-op-absurd prog fs instr-pop-frame (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
   events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-int v) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-load-const fits-int v)
-      (block-step-load-const prog fs s v cc h ftq) wf ftq h refl h
+      (block-step-load-const prog fs s v cc h ftq
+         (lit-fits prog fs s v (inv-run wf) cc ftq)) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (instr-load-const fits-float v) cc wf h ftq =
     ccc-step-bs {hv} n ev env prog fs s (instr-load-const fits-float v)
-      (block-step-load-const-float prog fs s v cc h ftq) wf ftq h refl h
+      (block-step-load-const-float prog fs s v cc h ftq
+         (float-fits prog fs s v (inv-run wf) cc ftq)) wf ftq h refl h
   -- plan 0.61: with stack addresses, the indexed cursor computes a real address.
   -- `lea-indexed` joined the unemittable set 2026-08-01 (heap-linked stacks,
   -- no indexed cursor) — the route is absurd, like the frame ops and the loop.
@@ -756,7 +791,7 @@ mutual
   events-running-fetch {hv} n ev env prog fs s (worklist-init k) cc wf h ftq = ccc-step-bs n ev env prog fs s (worklist-init k) (block-step-worklist-init prog fs s k cc h ftq) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (worklist-check k) cc wf h ftq = ccc-step-bs n ev env prog fs s (worklist-check k) (block-step-worklist-check prog fs s k cc h ftq) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (instr-reclaim-to k) cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-reclaim-to k) (block-step-reclaim-to prog fs s k cc h ftq) wf ftq h refl h
-  events-running-fetch {hv} n ev env prog fs s (instr-load-tag-lit k) cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-load-tag-lit k) (block-step-load-tag-lit prog fs s k cc h ftq) wf ftq h refl h
+  events-running-fetch {hv} n ev env prog fs s (instr-load-tag-lit k) cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-load-tag-lit k) (block-step-load-tag-lit prog fs s k cc h ftq (tag-fits prog fs s k (inv-run wf) cc ftq)) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (instr-ctrl (c-label m)) cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-ctrl (c-label m)) (block-step-c-label prog fs s m cc h ftq) wf ftq h refl h
   -- Plan 0.63 step 2a: NEITHER CLOSURE MARKER HAS A PRODUCER yet
   -- (`ir-to-trace` is main-only), and both now MOVE THE FRAME — the body's

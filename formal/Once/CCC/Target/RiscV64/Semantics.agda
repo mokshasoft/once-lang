@@ -298,9 +298,9 @@ execInstr prog s (sub rd rs1 rs2) =
 
 execInstr prog s (addi rd rs imm) =
   let v1 = readReg (regs s) rs
-      result = if isNegative imm
-               then v1 W.⊖ ∣ imm ∣
-               else v1 W.⊕ offsetToℕ imm
+      -- `addi` is `rs + sext(imm)` in two's complement — ONE modular addition
+      -- for both signs, once the immediate is read as a word (phase D).
+      result = v1 W.⊕ W.fromℤ imm
   in just (record s { regs = writeReg (regs s) rd result
                     ; pc = pc s + 1 })
 
@@ -308,8 +308,13 @@ execInstr prog s (addi rd rs imm) =
 -- Load Immediate
 ------------------------------------------------------------------------
 
+-- li rd, imm — PLAN 0.70 PHASE D. This used to write `0` for a NEGATIVE
+-- immediate, which is the same class of defect as D103's `lla`: a real `li a0,
+-- -1` loads all-ones, not zero. `fromℤ` is the two's-complement reading D054
+-- already fixed for `Int`, and it norms, so both signs are handled by the one
+-- clause that the ISA actually describes.
 execInstr prog s (li rd imm) =
-  let result = if isNegative imm then 0 else offsetToℕ imm
+  let result = W.fromℤ imm
   in just (record s { regs = writeReg (regs s) rd result
                     ; pc = pc s + 1 })
 

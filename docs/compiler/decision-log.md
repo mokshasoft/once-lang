@@ -7368,3 +7368,24 @@ defect" costs when it is not chased across the arches on the day.
 outcomes where there was one, exactly as `j` has. Nothing else moved on either
 arch: the value was previously unconstrained, so no proof depended on it being
 0 (riscv64) or stale (x86-32).
+
+### Second instance, same arch, found 2026-08-13 (plan 0.70 phase D)
+
+`li rd, imm` wrote **`0` for a negative immediate**. A real `li a0, -1` loads
+all-ones; the model loaded zero. Same shape as the `lla` defect above — a clause
+that returns a plausible-looking constant instead of doing the ISA's job — and
+it had the same camouflage: a step lemma (`step-li`) stated ONLY for
+non-negative immediates, with a comment explaining that the negative case "lands
+on a different post-state (`0`)". The restriction read as care about a genuine
+case split; it was in fact the defect, documented.
+
+FIX: `execInstr` reads the immediate with `Once.Word.Width.fromℤ` — D054's
+two's-complement reading, which also norms — so both signs are one clause, and
+`step-li` now covers its whole domain. `addi` got the same treatment (`rs +
+sext(imm)` is one modular addition).
+
+LESSON, worth more than the fix: **a lemma restricted to part of an
+instruction's domain is a place to look for a defect.** The restriction is
+evidence that the excluded case does something the author could not state — and
+"could not state" is more often wrong than subtle.
+

@@ -40,8 +40,12 @@ import Once.Word as W64
 module W = W64.Width 64
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-ret; instr-call-closure
-        ; instr-reg-op; scratch-dec; count-inc)
+        ; instr-reg-op; scratch-dec; count-inc; instr-load-tag-lit; instr-load-const)
 open import Once.CCC.Label using (LabelId)
+open import Once.Type using (fits-int; fits-float)
+open import Once.Word using (Carrier)
+open import Once.Semantics.FloatBits using (float-bits)
+open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.CCC.Target.X86-64.Syntax using (slots; slot-size; reg; rsp; rbx; r14; Reg)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (x86-64-frame-semantics)
@@ -234,3 +238,59 @@ record AddrNoWrap : Set₁ where
       → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
       → FCx.lo hv < W.modulus
 open AddrNoWrap public
+
+------------------------------------------------------------------------
+-- (4) THE EMITTED LITERALS FIT IN A MACHINE WORD — plan 0.70 phase D.
+--
+-- THE `lit-word` SEAM, and the last thing phase D had to make visible. The
+-- machine NORMS an immediate, because an instruction's immediate field holds a
+-- machine word and a wider value has no encoding. `lit-word : Carrier → Word`
+-- is the identity, so it is faithful exactly on literals that fit — and before
+-- phase D nothing said so: the model silently concluded that a register held
+-- `v` for ANY `v`, i.e. a register holding a value no register can hold.
+--
+-- NOT THE SAME CLASS AS THE ROOMS, and worth being precise about. D054 makes
+-- Once's `Int` a modular `Word`, so an ELABORATED literal is in range BY
+-- CONSTRUCTION; this is not a fact about the world that a linker establishes,
+-- it is a fact about the frontend that is simply not threaded here yet. The day
+-- the elaborator's range is carried through to the trace, these are discharged
+-- rather than assumed — which is exactly what a parameter, and not a postulate,
+-- leaves room for (D087).
+record LitFits : Set₁ where
+  field
+    -- `instr-load-tag-lit n` → `mov rax, imm n`: sum/loop tags.
+    tag-fits :
+      ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
+        (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
+        (s : X.State) (n : ℕ)
+      → RCx.RunAt o x86-64-frame-semantics refl prog fs
+      → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+      → FlatMachine.fetch {x86-64-frame-semantics} prog
+          (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-load-tag-lit n)
+      → n < W.modulus
+
+    -- `instr-load-const fits-int v` → `mov rax, imm v`: THE user literal.
+    lit-fits :
+      ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
+        (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
+        (s : X.State) (v : Carrier)
+      → RCx.RunAt o x86-64-frame-semantics refl prog fs
+      → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+      → FlatMachine.fetch {x86-64-frame-semantics} prog
+          (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
+      → v < W.modulus
+
+    -- …and the float pattern. TRUE BY CONSTRUCTION — `float-bits` is
+    -- `primWord64ToNat` of a `Word64`, whose image is below 2⁶⁴ by definition —
+    -- but `Data.Word.Properties` carries no such bound, so it is assumed here
+    -- and provable the day the standard library states it.
+    float-fits :
+      ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
+        (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
+        (s : X.State) (v : AgdaFloat)
+      → RCx.RunAt o x86-64-frame-semantics refl prog fs
+      → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+      → FlatMachine.fetch {x86-64-frame-semantics} prog
+          (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-load-const fits-float v)
+      → float-bits v < W.modulus
+open LitFits public

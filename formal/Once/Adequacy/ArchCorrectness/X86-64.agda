@@ -35,7 +35,11 @@ module Once.Adequacy.ArchCorrectness.X86-64
   -- no no-overflow precondition may sit on the instruction), which moves the
   -- range obligation to the consumer. All four are LAYOUT/counter facts, never
   -- claims about user arithmetic.
-  (x86-64-addr-no-wrap : RB.AddrNoWrap o) where
+  (x86-64-addr-no-wrap : RB.AddrNoWrap o)
+  -- …and the LITERAL seam (phase D): an emitted immediate fits in a machine
+  -- word. Not a linker fact like the rooms — D054 makes an elaborated literal
+  -- in range BY CONSTRUCTION; this is the frontend's range, not yet threaded.
+  (x86-64-lit-fits : RB.LitFits o) where
 
 open import Data.Nat using (ℕ; _+_; s≤s; z≤n)
 open import Data.Unit using (tt)
@@ -189,6 +193,7 @@ open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
   x86-64-frame-semantics refl x86-64-heap-room x86-64-stack-room x86-64-call-room
   x86-64-reg-range x86-64-scratch-dec-guarded
   (RB.ret-no-wrap x86-64-addr-no-wrap) (RB.count-no-wrap x86-64-addr-no-wrap)
+  (RB.tag-fits x86-64-lit-fits) (RB.lit-fits x86-64-lit-fits) (RB.float-fits x86-64-lit-fits)
   (RB.lo-fits x86-64-addr-no-wrap)
   using (events-agree; CompiledCorr; HeapView
         ; FlatInv; EntryLike; Reachable; reach-start
