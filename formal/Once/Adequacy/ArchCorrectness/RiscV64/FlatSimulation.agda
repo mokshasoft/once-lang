@@ -37,7 +37,7 @@ module Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation
   (word-eq : frame-word FS ≡ slot-size)
   where
 
-open import Data.Nat using (ℕ; suc; _+_; zero; _∸_; _<_; s≤s; z≤n)
+open import Data.Nat using (ℕ; suc; _+_; zero; _∸_; _<_; s≤s; z≤n; _≤_)
 open import Data.Nat.Properties using (+-identityʳ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -56,15 +56,17 @@ open C using (HeapView; haddr; HDom; hfront)
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS
   using (blk-off; blk-len; blk-off-suc; fetch-block-head)
 open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
-  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; a0; a1; t0; s3; s4; sp; slots)
+  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-lla)
+open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; lla; a0; a1; t0; s3; s4; sp; slots)
 import Data.Integer as ℤ
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (role-sp; role-clos; role-heap; role-out; role-in1; role-in2; role-scratch; role-count)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace; compile-abstract; slot-to-disp)
-open import Data.Nat.Properties using (+-monoʳ-<; *-monoˡ-<)
+open import Data.Nat.Properties using (+-monoʳ-<; *-monoˡ-<; ≤-<-trans)
 open import Data.Empty using (⊥)
 open import Once.CCC.FrameSemantics using (frame-base)
+open import Once.Word using (Carrier)
+open import Once.Type using (fits-int)
 
 ------------------------------------------------------------------------
 -- The compiled correspondence.
@@ -482,3 +484,137 @@ block-step-lea-slot {hv} prog fs s slot cc h ft no-wrap =
     dataPost = C.sim-lea-slot slot fs s _ dc (C.sets-role-riscv64 s role-out _ _)
     pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (lea-slot slot) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (lea-slot slot) ft))
+
+------------------------------------------------------------------------
+-- THE CONSTANT AND COUNTER OPS (0.65 G2).
+--
+-- WHERE riscv64 DIVERGES FROM x86-64 HERE, and it is the ISA this time:
+-- RISC-V has NO `sub` with an immediate. It decrements with `addi rd, rs, -1`,
+-- a genuinely NEGATIVE immediate — the case `execInstr` used to get WRONG
+-- (D103's second instance, fixed in plan 0.70 phase D, where `li`/`addi` moved
+-- to `W.fromℤ`). So `scratch-dec` reaches `⊖` through `⊕-neg-suc` rather than
+-- directly, and that route only exists because the defect was fixed.
+--
+-- ALSO PER-ARCH: `instr-load-const fits-float` emits `unimp` on riscv64 — a
+-- TRAP, not a load — so there is deliberately NO float block-step here. x86-64
+-- loads the IEEE-754 pattern; riscv64 has no float support yet, and the
+-- correspondence must not pretend otherwise.
+------------------------------------------------------------------------
+
+-- load-const (int): Output := SV-Lit fits-int v ↔ `li a0, v`. Shares
+-- `block-step-li` with the tag/reg-op loads, so the phase-D range obligation
+-- arrives the same way.
+block-step-load-const : ∀ {hv : HeapView} prog fs s (v : Carrier) → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-load-const fits-int v)
+  → v < R.W.modulus
+  → BlockStep hv prog fs s (instr-load-const fits-int v)
+block-step-load-const {hv} prog fs s v cc h ft fits =
+  block-step-li prog fs s (instr-load-const fits-int v) a0 v cc h ft refl fits refl (refl , refl)
+    (C.sim-load-const v fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-out _ _))
+
+-- load-code-addr: Output := SV-Code n ↔ `lla a0, .L_thunk_n`. D103's FIRST
+-- instance was here: `lla` used to write 0, so this block-step could not have
+-- been stated truthfully before plan 0.70.
+block-step-load-code-addr : ∀ {hv : HeapView} prog fs s n j → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-load-code-addr n)
+  → R.find-label (compile-trace prog) (thunk n) ≡ just j
+  → BlockStep hv prog fs s (instr-load-code-addr n)
+block-step-load-code-addr {hv} prog fs s n j cc h ft fl =
+  post , exec-eq , record { dataCorr = C.sim-load-code-addr n j fs s _ dc (code-eq cc n j fl) (C.sets-role-riscv64 s role-out _ _)
+                          ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-rv : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (lla a0 n)
+    fetch-rv = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) (instr-load-code-addr n) ft)
+    post : R.State
+    post = record s { regs = R.writeReg (R.State.regs s) a0 j ; pc = R.State.pc s + 1 }
+    snh : R.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-lla {compile-trace prog} {s} {a0} {n} {j} fetch-rv fl
+    exec-eq : R.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-load-code-addr n) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-load-code-addr n) ft))
+
+-- count-inc ↔ `addi s4, s4, 1`. The observable counter; same no-wrap bound as
+-- x86-64's `add r14, 1` (plan 0.70 phase C).
+block-step-count-inc : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-reg-op count-inc)
+  → readReg (regs (floc fs)) Count ≡ SV-Tag k
+  → R.readReg (R.State.regs s) s4 + 1 < R.W.modulus
+  → BlockStep hv prog fs s (instr-reg-op count-inc)
+block-step-count-inc {hv} prog fs s k cc h ft c-eq no-wrap =
+  post , exec-eq , record
+    { dataCorr = C.sim-reg-count-inc k fs s _ dc c-eq (C.sets-role-riscv64 s role-count _ _)
+    ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-rv : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (addi s4 s4 (ℤ.+ 1))
+    fetch-rv = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) (instr-reg-op count-inc) ft)
+    wrap-free : R.readReg (R.State.regs s) s4 R.W.⊕ R.W.fromℤ (ℤ.+ 1)
+              ≡ R.readReg (R.State.regs s) s4 + 1
+    wrap-free = trans (R.W.⊕-normʳ (R.readReg (R.State.regs s) s4) 1)
+                      (R.W.⊕≡+ (R.readReg (R.State.regs s) s4) 1 no-wrap)
+    post : R.State
+    post = record s { regs = R.writeReg (R.State.regs s) s4 (R.readReg (R.State.regs s) s4 + 1)
+                    ; pc = R.State.pc s + 1 }
+    snh : R.step-not-halted (compile-trace prog) s ≡ just post
+    snh = subst (λ w → R.step-not-halted (compile-trace prog) s
+                       ≡ just (record s { regs = R.writeReg (R.State.regs s) s4 w
+                                        ; pc = R.State.pc s + 1 }))
+                wrap-free
+                (step-addi {compile-trace prog} {s} {s4} {s4} {ℤ.+ 1} fetch-rv)
+    exec-eq : R.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-reg-op count-inc) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-reg-op count-inc) ft))
+
+-- scratch-dec ↔ `addi s3, s3, -1` — THE NEGATIVE IMMEDIATE. `⊕-neg-suc` is what
+-- turns adding a two's complement into `⊖`; from there it is x86-64's route
+-- exactly (`⊖≡∸` under the branch guard).
+block-step-scratch-dec : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-dec)
+  → readReg (regs (floc fs)) Scratch ≡ SV-Tag k
+  → 1 ≤ R.readReg (R.State.regs s) s3          -- the branch guard, recorded
+  → R.readReg (R.State.regs s) s3 < R.W.modulus
+  → BlockStep hv prog fs s (instr-reg-op scratch-dec)
+block-step-scratch-dec {hv} prog fs s k cc h ft sc-eq no-borrow s3<mod =
+  post , exec-eq , record
+    { dataCorr = C.sim-reg-scratch-dec k fs s _ dc sc-eq (C.sets-role-riscv64 s role-scratch _ _)
+    ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-rv : R.fetch (compile-trace prog) (R.State.pc s)
+             ≡ just (addi s3 s3 (ℤ.-[1+ 0 ]))
+    fetch-rv = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) (instr-reg-op scratch-dec) ft)
+    in-range : 1 < R.W.modulus
+    in-range = ≤-<-trans no-borrow s3<mod
+    borrow-free : R.readReg (R.State.regs s) s3 R.W.⊕ R.W.fromℤ (ℤ.-[1+ 0 ])
+                ≡ R.readReg (R.State.regs s) s3 ∸ 1
+    borrow-free = trans (R.W.⊕-neg-suc (R.readReg (R.State.regs s) s3) 0 in-range)
+                        (R.W.⊖≡∸ (R.readReg (R.State.regs s) s3) 1 no-borrow s3<mod)
+    post : R.State
+    post = record s { regs = R.writeReg (R.State.regs s) s3 (R.readReg (R.State.regs s) s3 ∸ 1)
+                    ; pc = R.State.pc s + 1 }
+    snh : R.step-not-halted (compile-trace prog) s ≡ just post
+    snh = subst (λ w → R.step-not-halted (compile-trace prog) s
+                       ≡ just (record s { regs = R.writeReg (R.State.regs s) s3 w
+                                        ; pc = R.State.pc s + 1 }))
+                borrow-free
+                (step-addi {compile-trace prog} {s} {s3} {s3} {ℤ.-[1+ 0 ]} fetch-rv)
+    exec-eq : R.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-reg-op scratch-dec) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-reg-op scratch-dec) ft))

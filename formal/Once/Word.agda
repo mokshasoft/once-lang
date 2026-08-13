@@ -478,6 +478,17 @@ module Width (bits : ℕ) where
   norm-0 : norm 0 ≡ 0
   norm-0 = m<n⇒m%n≡m 0<modulus
 
+  -- ADDING A NEGATIVE IMMEDIATE IS MODULAR SUBTRACTION. RISC-V has no `sub`
+  -- with an immediate — it decrements with `addi rd, rs, -k` — so the
+  -- correspondence needs this to reach `⊖`, and then `⊖≡∸`. Stated at `suc k`
+  -- because that is the shape `-[1+_]` gives; `- (+ 0)` is `+ 0` and needs no
+  -- lemma.
+  ⊕-neg-suc : ∀ (x : Word) (k : ℕ) → suc k < modulus
+            → x ⊕ fromℤ (-[1+ k ]) ≡ x ⊖ suc k
+  ⊕-neg-suc x k lt =
+    trans (⊕-normʳ x (modulus ∸ norm (suc k)))
+          (cong (λ z → norm (x ℕ.+ (modulus ∸ z))) (norm-id lt))
+
 
 ------------------------------------------------------------------------
 -- Standard instantiations
