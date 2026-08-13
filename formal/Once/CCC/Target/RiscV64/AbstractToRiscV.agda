@@ -41,6 +41,7 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Once.Target.Symbol using (once-symbol; once-symbol-path)
 
 -- Import RISC-V syntax
+open import Once.Semantics.FloatBits using (float-bits)
 open import Once.CCC.Target.RiscV64.Syntax
   using (Reg; zero; ra; sp; fp; a0; a1; a2; a3; a4; a5; a6; a7;
          s1; s2; s3; s4; t0; t1; t2; t3; t4;
@@ -270,10 +271,15 @@ compile-abstract (instr-reclaim-to n) = []
 -- Emit a single symbolic call; linker resolves the name at build time
 -- to the externally-defined function body. CCC stays name-agnostic.
 compile-abstract (instr-sigop si) = call-sym (once-symbol-path (SigOpInfo.name si)) ∷ []
--- Plan 0.53: const literal. Mirror x86-64's compile-const:
--- fits-int loads the immediate into Output (a0); float still trapped.
+-- Plan 0.53: const literal. Mirrors x86-64's `compile-const`.
+-- D079 APPLIED TO riscv64 (2026-08-13, plan 0.65 G2): a float CONSTANT is a
+-- 64-bit PATTERN, so it loads as an ordinary immediate — no FPU needed. This
+-- was `unimp`, a TRAP, which made the machines diverge on this route exactly as
+-- x86-64's `ud2` did before D079. `li` is the assembler's pseudo-instruction
+-- and expands to the `lui`/`addi` sequence, which is the same trust seam as gas
+-- promoting `movq $big` to `movabs`.
 compile-abstract (instr-load-const fits-int   v) = li a0 (+ v) ∷ []
-compile-abstract (instr-load-const fits-float _) = unimp ∷ []
+compile-abstract (instr-load-const fits-float v) = li a0 (+ (float-bits v)) ∷ []
 -- Plan 0.53: closure-body code-addr load. Mirror x86-64's
 -- `lea .L_thunk_n(%rip), %rax` — load the body label address into Output.
 compile-abstract (instr-load-code-addr n) = lla a0 n ∷ []

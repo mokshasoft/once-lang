@@ -5641,6 +5641,29 @@ the immediate, and `load-const-float` is DELETED.
   be rejected at the frontend. That is a language-level amputation where
   a 3-line encoder suffices.
 
+### Applied to riscv64 2026-08-13 (plan 0.65 G2) — and NOT to x86-32, on purpose
+
+riscv64 emitted `unimp` for `instr-load-const fits-float`: the same TRAP-instead-
+of-load that this decision removed from x86-64, one arch over, left behind
+because riscv64 had no correspondence to hold it to account. It now emits
+`li a0, <bits>`, and `block-step-load-const-float` states the correspondence.
+`li` is the assembler's pseudo-instruction and expands to `lui`/`addi` — the
+same trust seam as gas promoting `movq $big` to `movabs`.
+
+**x86-32 keeps its `ud2`, and that is correct rather than lazy.** `float-bits`
+is a 64-BIT pattern (`primWord64ToNat` of a `Word64`), and x86-32's word is 32
+bits. Loading it into `eax` would not merely be awkward — since plan 0.70 phase
+D norms immediates, it would SILENTLY TRUNCATE the pattern to its low 32 bits
+and produce a wrong float with no diagnostic. Trapping is the honest behaviour
+until floats have a two-word representation on 32-bit targets. Note also that
+`LitFits.float-fits` (`float-bits v < modulus`) is TRUE at 64 bits and FALSE in
+general at 32 — the parameter itself records the distinction.
+
+THE GENERAL POINT: a "feature gap" on one arch is worth re-deriving rather than
+inheriting. Two of the three trapping clauses were leftovers; the third was a
+representation constraint. They looked identical from the outside.
+
+
 ## D080: The D061 SigOp Contracts Are Larger Than Their Reason — Split Them
 
 **Date**: 2026-08-03

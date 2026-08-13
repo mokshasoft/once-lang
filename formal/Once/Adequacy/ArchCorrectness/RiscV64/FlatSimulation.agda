@@ -66,7 +66,9 @@ open import Data.Nat.Properties using (+-monoʳ-<; *-monoˡ-<; ≤-<-trans)
 open import Data.Empty using (⊥)
 open import Once.CCC.FrameSemantics using (frame-base)
 open import Once.Word using (Carrier)
-open import Once.Type using (fits-int)
+open import Once.Semantics.FloatBits using (float-bits)
+open import Data.Float using () renaming (Float to AgdaFloat)
+open import Once.Type using (fits-int; fits-float)
 
 ------------------------------------------------------------------------
 -- The compiled correspondence.
@@ -495,10 +497,11 @@ block-step-lea-slot {hv} prog fs s slot cc h ft no-wrap =
 -- to `W.fromℤ`). So `scratch-dec` reaches `⊖` through `⊕-neg-suc` rather than
 -- directly, and that route only exists because the defect was fixed.
 --
--- ALSO PER-ARCH: `instr-load-const fits-float` emits `unimp` on riscv64 — a
--- TRAP, not a load — so there is deliberately NO float block-step here. x86-64
--- loads the IEEE-754 pattern; riscv64 has no float support yet, and the
--- correspondence must not pretend otherwise.
+-- FLOATS ARE NO LONGER ABSENT HERE. `instr-load-const fits-float` used to emit
+-- `unimp` — a TRAP — so there was no correspondence to state and riscv64 sat
+-- below x86-64 on this route. That is D079's exact situation one arch over
+-- (x86-64's clause was `ud2` until 2026-08-03), and it is fixed the same way:
+-- a float constant is a 64-bit PATTERN, so it loads as an ordinary immediate.
 ------------------------------------------------------------------------
 
 -- load-const (int): Output := SV-Lit fits-int v ↔ `li a0, v`. Shares
@@ -618,3 +621,17 @@ block-step-scratch-dec {hv} prog fs s k cc h ft sc-eq no-borrow s3<mod =
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-reg-op scratch-dec) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-reg-op scratch-dec) ft))
+
+-- load-const (float): Output := SV-Lit fits-float v ↔ `li a0, <bits>`.
+-- D079 applied to riscv64 (0.65 G2). Shares `block-step-li` with the int case,
+-- so the phase-D range obligation arrives identically — and here it is TRUE BY
+-- CONSTRUCTION (`float-bits` is `primWord64ToNat` of a `Word64`), assumed only
+-- because `Data.Word.Properties` states no such bound.
+block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : AgdaFloat) → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
+  → float-bits v < R.W.modulus
+  → BlockStep hv prog fs s (instr-load-const fits-float v)
+block-step-load-const-float {hv} prog fs s v cc h ft fits =
+  block-step-li prog fs s (instr-load-const fits-float v) a0 (float-bits v) cc h ft refl fits refl (refl , refl)
+    (C.sim-load-const-float v fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-out _ _))
