@@ -663,6 +663,101 @@ carrier that is NOT ℕ.
 well-typed DIVISION" rests on types alone.
 
 --------------------------------------------------------------------------
+## ★★★ gcd THREE WAYS — THE COMPARISON, 2026-08-13
+
+*The same function, by three routes, with the STEP and the ARITHMETIC
+factored out so the measurement is of the recursor and not the algorithm.
+Cold, one sample each. gcd rather than Ackermann on purpose: Agda's
+termination checker gets Ackermann FREE (its recursive arguments are
+subterms, so `…AckAgda1` is nine lines), but subtractive gcd has no
+structural form in any argument, so all three routes must build
+well-foundedness explicitly and differ only in what they build it OVER.*
+
+| | own lines | own cost | total lines | total cost |
+|---|---|---|---|---|
+| **1 · pure Agda**, `Acc` on `a+b` | 86 | 0.4 s / 0.11 GB | **86** | **0.4 s** |
+| **2 · kernel**, auxiliary by hand | 106 | 30.5 s / 2.29 GB | 684 | 48.9 s |
+| **3 · kernel**, through `⊢amrecΠ` | **28** | **3.8 s / 0.34 GB** | 606 | 22.3 s |
+
+Shared by routes 2 and 3: the arithmetic (`LibArith` 58 + `LibArithComm`
+219 + `LibArithMonus` 94 = 371 lines, 10.3 s) and the step
+(`…GcdStep` 207 lines, 8.2 s).
+
+### Q1 — does the kernel's WF AXIS make proofs simpler? ⛔ No, and that is
+### the wrong question for it
+
+7× the lines and 55× the time against pure Agda. But the axis is not
+competing with Agda — it is REPRODUCING Agda's termination machinery
+inside an object language that has none. What the measurement does say is
+*where* the cost is, and it is not where one would guess:
+
+**54% of route 3 is ARITHMETIC (371 of 606 lines), not recursion.** And
+the arithmetic gap has a single cause — Agda's `_∸_`/`_+_` are defined by
+pattern matching and REDUCE on open terms; the kernel's are `natrec` terms
+that are STUCK until the scrutinee is a numeral:
+
+| fact | pure Agda | over the kernel |
+|---|---|---|
+| `suc a ∸ suc b = a ∸ b` | one clause of `_∸_`, definitional | its own induction (`⊢monusLt`) |
+| `+` monotone, base argument | 3 lines | 58 lines (`LibArith`) |
+| `+` monotone, recursed argument | 3 lines | ⛔ unreachable directly — needs `Id`, `jsub`, and commutativity: **219 lines** |
+
+⇒ **The axis's real cost is that the object language's arithmetic does not
+compute on open terms.** The recursion machinery is the cheap part. Any
+successor kernel wanting this feature should read that as the target to
+attack, not the recursor.
+
+### Q2 — do the LIBRARIES make proofs easier? ✅ Yes, decisively
+
+At the use site, on an identical step: **28 lines against 106** (3.8×),
+and — this is the part I got wrong from inspection — **3.8 s against
+30.5 s** (8×) and **0.34 GB against 2.29 GB** (6.7×).
+
+⚠⚠ **I PREDICTED THE HAND-ROLLED ROUTE WOULD BE CHEAPER.** At a CONCRETE
+carrier `renTy vs PairT` and `renTm (extR vs) msr` just compute, so all
+TEN of `LibAmrec`'s naturality lemmas discharge by `refl` and never need
+stating. The lemma count really is zero. The cost went the other way.
+
+★ **Because "it computes" is not a saving — it is the EXPENSIVE path once
+the terms are big.** Agda re-normalises the concrete carrier at every
+obligation instead of applying a NAME; `LibAmrec`'s ten lemmas are
+`Def`-backed, so the traversal phases walk a reference. Same mechanism as
+`agda-cost-is-elaborated-term-size`, D10, and the Ackermann `Def` cliff —
+the third appearance in one session.
+
+⇒ **the naturality layer is a PERFORMANCE mechanism, not only a
+genericity tax.** A caller with a single concrete carrier still wants it.
+
+And D7 shows the same shape at the reduction level: end-to-end is
+
+```agda
+gcd-2-0 = amrec-step-s X20 n1 msr-2-0 gcd-computes-b0     -- route 3, ONE line
+```
+
+against six reduction steps by hand in route 2 (β, reduce the measure,
+`natrec-suc`, two more βs, then the step lemma).
+
+⚠ **One thing route 2 has easier, and it is the mirror image:** its five
+weakenings on the step cancel DEFINITIONALLY, because `gcdStp` is a
+concrete term. `LibAmrec` needs `stp-cancel-s`, a five-rung `wk-single`
+chain, for exactly that — because there the step is an opaque parameter.
+
+### Q3 — performance
+
+Route 1 is 0.4 s; route 3 is 22.3 s end to end and route 2 is 48.9 s. ⚠
+The library's OWN build (`LibWk` 1.9 + `LibRec` 1.5 + `LibAmrec` 10.7 +
+`LibPair` 2.1 ≈ 16 s) is NOT in those totals and should not be: it is
+amortised across callers, and by this document's opening criterion build
+cost is not what a combinator is judged on. It currently has four amrec
+callers plus all four lexrec branches.
+
+★ **The headline is that the library is faster at the use site than not
+using it.** That is not the trade this document expected to be defending —
+D4 through D9 all assumed the library's job was to move cost from the
+caller to the build, and it does; what is new is that it moves cost DOWN
+in absolute terms as well.
+
+--------------------------------------------------------------------------
 ## ⚠ THE DOGFOODING TARGET IS BLOCKED
 
 The most persuasive use site would be the POC's own `sz`-bounded
