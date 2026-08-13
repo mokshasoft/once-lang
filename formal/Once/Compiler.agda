@@ -33,6 +33,7 @@ module Once.Compiler
   (x86-64-call-room : RB.CallRoom o)
   (x86-64-reg-range : RB.RegRange o)
   (x86-64-scratch-dec-guarded : RB.ScratchDecGuarded o)
+  (x86-64-addr-no-wrap : RB.AddrNoWrap o)
   (riscv64-heap-room : RBr.HeapRoom o) (riscv64-stack-room : RBr.StackRoom o)
   (riscv64-call-room : RBr.CallRoom o) where
 
@@ -50,7 +51,7 @@ open import Once.Adequacy.SourceTrace using (⟦_⟧)
 -- free of those imports.
 open import Once.Adequacy.CPU      using (Arch; Byte; arch-semantics)
 open import Once.Adequacy.ArchCorrectness o program-bound x86-64-heap-room x86-64-stack-room x86-64-call-room
-       x86-64-reg-range x86-64-scratch-dec-guarded
+       x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap
        riscv64-heap-room riscv64-stack-room riscv64-call-room using (arch-correctness)
 import Once.Adequacy.Compile as VCompile
 

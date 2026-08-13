@@ -29,7 +29,13 @@ module Once.Adequacy.ArchCorrectness.X86-64
   -- the three rooms (D087) — a fact about the running program that a loader or
   -- the emitter establishes, and a parameter is the hole its proof slots into.
   (x86-64-reg-range : RB.RegRange o)
-  (x86-64-scratch-dec-guarded : RB.ScratchDecGuarded o) where
+  (x86-64-scratch-dec-guarded : RB.ScratchDecGuarded o)
+  -- …and the four `add` sites' range obligations, bundled: `add` computes
+  -- `W.⊕` unconditionally (D054 — wraparound is correct, defined semantics, so
+  -- no no-overflow precondition may sit on the instruction), which moves the
+  -- range obligation to the consumer. All four are LAYOUT/counter facts, never
+  -- claims about user arithmetic.
+  (x86-64-addr-no-wrap : RB.AddrNoWrap o) where
 
 open import Data.Nat using (ℕ; _+_; s≤s; z≤n)
 open import Data.Unit using (tt)
@@ -182,6 +188,8 @@ open import Data.Nat using (_≤_)
 open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
   x86-64-frame-semantics refl x86-64-heap-room x86-64-stack-room x86-64-call-room
   x86-64-reg-range x86-64-scratch-dec-guarded
+  (RB.ret-no-wrap x86-64-addr-no-wrap) (RB.count-no-wrap x86-64-addr-no-wrap)
+  (RB.lo-fits x86-64-addr-no-wrap)
   using (events-agree; CompiledCorr; HeapView
         ; FlatInv; EntryLike; Reachable; reach-start
         ; inv-wf; inv-regtag; inv-ev; inv-env; inv-run; mkRunAt)

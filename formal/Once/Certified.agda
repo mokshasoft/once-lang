@@ -46,6 +46,7 @@ module Once.Certified
   (x86-64-call-room : RB.CallRoom o)
   (x86-64-reg-range : RB.RegRange o)
   (x86-64-scratch-dec-guarded : RB.ScratchDecGuarded o)
+  (x86-64-addr-no-wrap : RB.AddrNoWrap o)
   -- Plan 0.65: riscv64's three, threaded the same way (D087). They could not
   -- be stated until riscv64 had a correspondence to condition them on; now
   -- they are, the apex constrains their shape instead of G2 inventing it.
@@ -56,7 +57,7 @@ module Once.Certified
 -- door — `Once.Spec` is on the certified path, not an island.
 open import Once.Spec using (CorrectCompiler)
 open import Once.Compiler o program-bound x86-64-heap-room x86-64-stack-room x86-64-call-room
-       x86-64-reg-range x86-64-scratch-dec-guarded
+       x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap
        riscv64-heap-room riscv64-stack-room riscv64-call-room using (once-compiler)
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
 

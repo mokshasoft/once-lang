@@ -76,7 +76,7 @@ open import Data.Nat using (zero; suc)
 open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-comm; ∸-+-assoc; *-suc; *-identityʳ; *-assoc
                                       ; +-monoʳ-<; *-monoˡ-<
                                       ; <⇒≢; <-transˡ; ≤-trans; m∸n≤m; m≤m+n; m∸n+n≡m
-                                      ; m<m+n; ≤-refl)
+                                      ; m<m+n; ≤-refl; ≤-<-trans)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst; subst₂)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
@@ -947,8 +947,15 @@ block-step-c-ret : ∀ {hv : HeapView} prog fs s b rpc rest f₀ b₀ frs
   → b ≡ frame-slots (falloc fs)
   -- …and the frame it returns INTO, from the same `RetMatch` pairing
   → saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs
+  -- THE ADDRESS SPACE DOES NOT WRAP (plan 0.70 phase C): the released `%rsp`
+  -- is representable. `add` computes `W.⊕` unconditionally — D054 forbids a
+  -- no-overflow precondition ON THE INSTRUCTION — so the consumer that wants
+  -- plain `+` pays here. A LAYOUT fact, not a claim about user arithmetic:
+  -- `addr-eq`/`gap` below show this sum IS the caller's frame base less one
+  -- slot. Threaded as `AddrNoWrap.ret-no-wrap` (D087).
+  → xreadReg (xregs s) rsp + slots b < X.W.modulus
   → BlockStep hv prog fs s (instr-ctrl (c-ret b))
-block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq =
+block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq no-wrap =
   post-ret , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = retPost ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -963,8 +970,15 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq =
     post-add : X.State
     post-add = record s { regs = xwriteReg (xregs s) rsp (xreadReg (xregs s) rsp + slots b)
                         ; flags = newFlags ; pc = pc s + 1 }
+    wrap-free : xreadReg (xregs s) rsp X.W.⊕ slots b ≡ xreadReg (xregs s) rsp + slots b
+    wrap-free = X.W.⊕≡+ (xreadReg (xregs s) rsp) (slots b) no-wrap
     step-add : X.step-not-halted (compile-trace prog) s ≡ just post-add
-    step-add = step-add-ri {compile-trace prog} {s} {rsp} {slots b} fetch-add
+    step-add = subst (λ w → X.step-not-halted (compile-trace prog) s
+                            ≡ just (record s { regs = xwriteReg (xregs s) rsp w
+                                             ; flags = updateFlags w (xreadReg (xregs s) rsp)
+                                             ; pc = pc s + 1 }))
+                     wrap-free
+                     (step-add-ri {compile-trace prog} {s} {rsp} {slots b} fetch-add)
     -- THE COMPONENT, projected at the cons shape of `fret`
     comp : C.RetAddrs (blk-off prog) (X.State.memory s)
                       ((current-frame (falloc fs) , frame-slots (falloc fs)) ∷ saved-frames (falloc fs))
@@ -1034,8 +1048,13 @@ block-step-dealloc-stack : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv p
   → C.RetAddrs (blk-off prog) (X.State.memory s)
                (C.frames-of (falloc (flat-exec-instr (instr-dealloc-stack n) prog fs)))
                (fret (flat-exec-instr (instr-dealloc-stack n) prog fs))
+  -- THE ADDRESS SPACE DOES NOT WRAP (plan 0.70 phase C), as in
+  -- `block-step-c-ret`. `restores` just above already says this sum IS the
+  -- restored frame's base, so what is added is only that the base is
+  -- representable — a layout fact.
+  → xreadReg (xregs s) rsp + slots n < X.W.modulus
   → BlockStep hv prog fs s (instr-dealloc-stack n)
-block-step-dealloc-stack {hv} prog fs s n cc h ft restores retPost =
+block-step-dealloc-stack {hv} prog fs s n cc h ft restores retPost no-wrap =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = retPost ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -1049,8 +1068,15 @@ block-step-dealloc-stack {hv} prog fs s n cc h ft restores retPost =
     post : X.State
     post = record s { regs = xwriteReg (xregs s) rsp (xreadReg (xregs s) rsp + slots n)
                     ; flags = newFlags ; pc = pc s + 1 }
+    wrap-free : xreadReg (xregs s) rsp X.W.⊕ slots n ≡ xreadReg (xregs s) rsp + slots n
+    wrap-free = X.W.⊕≡+ (xreadReg (xregs s) rsp) (slots n) no-wrap
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-add-ri {compile-trace prog} {s} {rsp} {slots n} fetch-x86
+    snh = subst (λ w → X.step-not-halted (compile-trace prog) s
+                       ≡ just (record s { regs = xwriteReg (xregs s) rsp w
+                                        ; flags = updateFlags w (xreadReg (xregs s) rsp)
+                                        ; pc = pc s + 1 }))
+                wrap-free
+                (step-add-ri {compile-trace prog} {s} {rsp} {slots n} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     dataPost : C.FlatCorr hv (flat-exec-instr (instr-dealloc-stack n) prog fs) post
@@ -1380,8 +1406,15 @@ block-step-store-at-slot {hv} prog fs s slot cc h ft slot<ns disj =
 block-step-count-inc : ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op count-inc)
   → readReg (regs (floc fs)) Count ≡ SV-Tag k
+  -- THE COUNTER DOES NOT WRAP (plan 0.70 phase C). The one `add` site that is
+  -- not an address: `%r14` is the OBSERVABLE counter. `add` computes `W.⊕`
+  -- unconditionally (D054), so the consumer supplies the range — here the
+  -- resource bound "this run does not emit 2⁶⁴ observations", which is of the
+  -- same D087 family as `HeapRoom`, and just as discharge-able by a linker
+  -- argument about the program's own size.
+  → xreadReg (xregs s) r14 + 1 < X.W.modulus
   → BlockStep hv prog fs s (instr-reg-op count-inc)
-block-step-count-inc {hv} prog fs s k cc h ft c-eq =
+block-step-count-inc {hv} prog fs s k cc h ft c-eq no-wrap =
   post , exec-eq , record
     { dataCorr = C.sim-reg-count-inc k fs s _ dc c-eq (C.sets-role-x86 s role-count _ _ _)
     ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
@@ -1395,8 +1428,15 @@ block-step-count-inc {hv} prog fs s k cc h ft c-eq =
     post : X.State
     post = record s { regs = xwriteReg (xregs s) r14 (xreadReg (xregs s) r14 + 1)
                     ; flags = updateFlags (xreadReg (xregs s) r14 + 1) (xreadReg (xregs s) r14) ; pc = pc s + 1 }
+    wrap-free : xreadReg (xregs s) r14 X.W.⊕ 1 ≡ xreadReg (xregs s) r14 + 1
+    wrap-free = X.W.⊕≡+ (xreadReg (xregs s) r14) 1 no-wrap
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
-    snh = step-add-ri {compile-trace prog} {s} {r14} {1} fetch-x86
+    snh = subst (λ w → X.step-not-halted (compile-trace prog) s
+                       ≡ just (record s { regs = xwriteReg (xregs s) r14 w
+                                        ; flags = updateFlags w (xreadReg (xregs s) r14)
+                                        ; pc = pc s + 1 }))
+                wrap-free
+                (step-add-ri {compile-trace prog} {s} {r14} {1} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-reg-op count-inc) prog fs))
@@ -1746,9 +1786,16 @@ block-step-alloc-heap : ∀ {hv : HeapView} prog fs s n → (cc : CompiledCorr h
   -- the fresh block's cells provably unwritten (the old `fresh-x86` premise, and
   -- with it the postulate `alloc-heap-fresh-x86`, is GONE).
   → (room : C.hfront hv + slots n ≤ C.lo hv)
+  -- THE LAYOUT FITS IN THE ADDRESS SPACE (plan 0.70 phase C). `add` computes
+  -- `W.⊕` unconditionally (D054), so the bump's no-wrap is the consumer's to
+  -- pay — but here `room` above already bounds the bumped frontier by the
+  -- stack's high-water mark, so the ONLY thing missing is that the mark itself
+  -- is representable. That is the layout bound in its most basic form, and it
+  -- is strictly weaker than a per-site no-wrap premise.
+  → C.lo hv < X.W.modulus
   → BlockStep (C.extend-view hv (next-heap-ref (falloc fs)) n (C.dom-fresh (dataCorr cc)) room)
               prog fs s (instr-alloc-heap n)
-block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wf2 wfs wfc wfcl wf-heap wf-stack fresh-abs room =
+block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wf2 wfs wfc wfcl wf-heap wf-stack fresh-abs room lo-fits =
   post-add , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -1769,8 +1816,22 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wf2 wfs wfc wfcl wf-heap wf-s
                                ; flags = updateFlags (xreadReg (xregs post-mov) r15 + slots n)
                                                      (xreadReg (xregs post-mov) r15)
                                ; pc = pc post-mov + 1 }
+    -- `%r15` IS the frontier (`frontier-eq`), so `room` bounds the bump by
+    -- `lo`, and `lo-fits` carries it under the modulus.
+    no-wrap : xreadReg (xregs post-mov) r15 + slots n < X.W.modulus
+    no-wrap = ≤-<-trans (subst (λ z → z + slots n ≤ C.lo hv)
+                               (sym (C.frontier-eq dc)) room)
+                        lo-fits
+    wrap-free : xreadReg (xregs post-mov) r15 X.W.⊕ slots n
+              ≡ xreadReg (xregs post-mov) r15 + slots n
+    wrap-free = X.W.⊕≡+ (xreadReg (xregs post-mov) r15) (slots n) no-wrap
     step2 : X.step-not-halted (compile-trace prog) post-mov ≡ just post-add
-    step2 = step-add-ri {compile-trace prog} {post-mov} {r15} {slots n} fetch-add
+    step2 = subst (λ w → X.step-not-halted (compile-trace prog) post-mov
+                         ≡ just (record post-mov { regs = xwriteReg (xregs post-mov) r15 w
+                                                 ; flags = updateFlags w (xreadReg (xregs post-mov) r15)
+                                                 ; pc = pc post-mov + 1 }))
+                  wrap-free
+                  (step-add-ri {compile-trace prog} {post-mov} {r15} {slots n} fetch-add)
     exec-eq : X.exec 2 (compile-trace prog) s ≡ just post-add
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-mov} halt-s step1 halt-s)
                     (exec-1 {compile-trace prog} {0} {post-mov} {post-add} halt-s step2 halt-s)

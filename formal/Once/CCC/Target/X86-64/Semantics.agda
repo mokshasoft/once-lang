@@ -297,7 +297,7 @@ execInstr prog s (add dst src) =
     (just d) → case readOperand s src of λ where
       nothing  → nothing
       (just v) →
-        let result = d + v
+        let result = d W.⊕ v
         in just (record (writeOperand s dst result)
                  { pc    = pc s + 1
                  ; flags = updateFlags result d })

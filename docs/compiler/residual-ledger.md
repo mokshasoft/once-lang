@@ -128,9 +128,50 @@ abstract one — read it off the signature: does it mention `X.State` /
                          `cata-nat-I₂`/`I₃` emit the branch that guarantees it,
                          so the route is the `emitted-thunk-guarded` induction.
 
-    Remaining in C: x86-64's `add`, then riscv64 and x86-32, then the ABSTRACT
+    x86-64's ADDITION FOLLOWED, same day. `add` computes `⊕` — with NO
+    no-overflow premise on the instruction, which D054 forbids outright:
+    wraparound is correct, defined Once semantics, "not something the programmer
+    or the compiler must prove absent", and a precondition there would be
+    "exactly the narrow regime where the impossible accidentally holds". An
+    earlier attempt DID balk at the range obligations and back the change out;
+    that reasoning is recorded and corrected in plan 0.70 phase C.
+
+    The obligations are real but they are LAYOUT facts, because every `add` the
+    compiler emits computes an address (`rsp`, `r15`, the `rcx`/`rdi` index
+    scaling) or the observable counter (`r14`) — never a user `Int`, which goes
+    through the Arith backend over `Once.Word` and wraps there by design. So a
+    program whose arithmetic overflows stays fully covered by the theorem.
+
+      AddrNoWrap         a record of three, threaded as ONE parameter so the
+                         four-module thread does not change as fields move:
+                           ret-no-wrap    `%rsp + slots b < modulus` at `c-ret`
+                           count-no-wrap  `%r14 + 1 < modulus` at `count-inc` —
+                                          the one non-address site: "this run
+                                          does not emit 2⁶⁴ observations"
+                           lo-fits        `lo < modulus` — the stack's
+                                          high-water mark is representable, the
+                                          layout bound in its most basic form
+                         Same D087 class and same discharge route as the three
+                         rooms: a linker sizing pass.
+
+    THE HEAP BUMP COST NOTHING: `HeapRoom` already bounds the bumped frontier by
+    `lo`, so `lo-fits` discharges it outright rather than needing a site premise.
+    A fourth field (`dealloc-no-wrap`) was written and DELETED —
+    `instr-dealloc-stack` is unemittable, ConcFlatSim kills that route with
+    `frame-op-absurd`, and a bound that is never consumed should not be assumed.
+    `lea-indexed`'s `add`s are unemittable for the same reason, so only THREE
+    `add` sites are live — exactly the three fields.
+
+    DIVISION NEEDED NOTHING: D055 already made `/`/`%` total on RISC-V's
+    semantics, in `Once.Word` as `_/ˢ_`/`_%ˢ_` — one definition all three arches
+    share, so the "align where the arches differ" work predates this phase.
+
+    Remaining in C: riscv64 and x86-32 (riscv64's `step-add`/`step-sub` still say
+    `+`/`∸`, and its block-steps do not exist yet — plan 0.65 G2 should write
+    them modular rather than write them in ℕ and convert), then the ABSTRACT
     side (`sv-pred`'s clamp must become the wrap, or the correspondence goes
-    false rather than the model faithful).
+    false rather than the model faithful; `ScratchDecGuarded` is what currently
+    excludes the case where they disagree).
 
     PLANNED: `plans/0.70-machine-word-is-finite.md` (written 2026-08-13). Its
     first finding is that the repair is NOT "replace ℕ with Once.Word": the

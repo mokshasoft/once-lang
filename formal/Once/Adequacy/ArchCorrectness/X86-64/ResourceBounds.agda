@@ -39,10 +39,10 @@ import Once.CCC.Target.X86-64.Semantics as X
 import Once.Word as W64
 module W = W64.Width 64
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; instr-call-closure
-        ; instr-reg-op; scratch-dec)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-ret; instr-call-closure
+        ; instr-reg-op; scratch-dec; count-inc)
 open import Once.CCC.Label using (LabelId)
-open import Once.CCC.Target.X86-64.Syntax using (slots; slot-size; reg; rsp; rbx; Reg)
+open import Once.CCC.Target.X86-64.Syntax using (slots; slot-size; reg; rsp; rbx; r14; Reg)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (x86-64-frame-semantics)
 
@@ -164,3 +164,73 @@ ScratchDecGuarded =
   → FlatMachine.fetch {x86-64-frame-semantics} prog
       (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-reg-op scratch-dec)
   → 1 ≤ X.readReg (X.State.regs s) rbx
+
+------------------------------------------------------------------------
+-- (3) THE ADDRESS SPACE DOES NOT WRAP at the emitted `add` sites.
+--
+-- Plan 0.70 phase C. `execInstr`'s `add` computes `W.⊕` — modular, always,
+-- with NO no-overflow premise, because D054 makes wraparound *correct,
+-- defined* Once semantics, "not something the programmer or the compiler
+-- must prove absent". A precondition there would be exactly "the narrow
+-- regime where the impossible accidentally holds", which D054 rejects.
+--
+-- So the obligation moves to the CONSUMER, and this is it. It is NOT a claim
+-- about user arithmetic: every `add` the compiler emits computes an ADDRESS
+-- (`rsp` frame release, `r15` heap bump, the `rcx`/`rdi` index scaling) or
+-- the observable COUNTER (`r14`). A user `Int` addition never reaches this
+-- instruction — it goes through the Arith backend over `Once.Word` and wraps
+-- there by design, which is why a program whose `Int` arithmetic overflows is
+-- still fully covered by the correctness theorem.
+--
+-- What this says is therefore the same KIND of thing as `HeapRoom` /
+-- `StackRoom` / `CallRoom`: the compiled program's layout fits in the machine's
+-- address space. Same discharge route too — a linker that sizes the image.
+--
+-- SITE-CONDITIONED, and that is forced: quantified over an arbitrary addend
+-- `n` this family is REFUTABLE (take `n ≡ modulus`), the residual-inconsistency
+-- trap. Every field therefore pins its addend to the fetched instruction.
+--
+-- A RECORD rather than loose definitions so the thread above
+-- (`ArchCorrectness.X86-64` → `ArchCorrectness` → `Compiler` → `Certified`)
+-- is written once and does not change as fields are added.
+record AddrNoWrap : Set₁ where
+  field
+    -- `c-ret b` → `add rsp, slots b`: releasing the frame stays in range.
+    -- (The released address is the caller's frame base less one slot — see
+    -- `block-step-c-ret`'s `addr-eq`/`gap` — so this is a layout fact.)
+    ret-no-wrap :
+      ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
+        (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
+        (s : X.State) (b : ℕ)
+      → RCx.RunAt o x86-64-frame-semantics refl prog fs
+      → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+      → FlatMachine.fetch {x86-64-frame-semantics} prog
+          (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-ctrl (c-ret b))
+      → X.readReg (X.State.regs s) rsp + slots b < W.modulus
+
+    -- `count-inc` → `add r14, 1`: THE ONE NON-ADDRESS SITE. `%r14` is the
+    -- observable counter, so this says the run does not emit 2⁶⁴ observations.
+    count-no-wrap :
+      ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
+        (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
+        (s : X.State)
+      → RCx.RunAt o x86-64-frame-semantics refl prog fs
+      → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+      → FlatMachine.fetch {x86-64-frame-semantics} prog
+          (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-reg-op count-inc)
+      → X.readReg (X.State.regs s) r14 + 1 < W.modulus
+
+    -- THE STACK'S HIGH-WATER MARK IS REPRESENTABLE. Not site-conditioned,
+    -- because it need not be: it mentions no addend. This is the layout bound
+    -- in its most basic form — and it is what discharges the heap bump's
+    -- no-wrap outright, since `HeapRoom` already bounds the bumped frontier
+    -- by `lo`. The other three fields are the sites where no such bound was
+    -- already in hand.
+    lo-fits :
+      ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
+        (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
+        (s : X.State)
+      → RCx.RunAt o x86-64-frame-semantics refl prog fs
+      → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+      → FCx.lo hv < W.modulus
+open AddrNoWrap public

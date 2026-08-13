@@ -26,7 +26,7 @@ open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-offset; hea
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Label using (once; LabelId)
 open import Once.CCC.Target.X86-64.Syntax using
-  ( slot-size; slots; Program; Instr; Reg; Operand; reg; imm; mem; base; base+disp; rsp; rbp; rax; rdi; rbx
+  ( slot-size; slots; Program; Instr; Reg; Operand; reg; imm; mem; base; base+disp; rsp; rbp; rax; rdi; rbx; r14
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
   ; ret; push; pop; nop; ud2; syscall; label )
 open import Data.Nat using (ℕ; _+_; _*_; _<_; _≤_; _∸_; _≡ᵇ_; _⊓_)
@@ -39,8 +39,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 -- before the body, where the applied `open import … FS word-eq` has not run.
 open import Data.Maybe using (just)
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; instr-call-closure
-        ; instr-reg-op; scratch-dec)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-ret; instr-call-closure
+        ; instr-reg-op; scratch-dec; count-inc; instr-dealloc-stack)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 import Once.CCC.Target.X86-64.Semantics as X
 import Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence as FC
@@ -116,6 +116,36 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
                        → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                            ≡ just (instr-reg-op scratch-dec)
                        → 1 ≤ X.readReg (X.State.regs s) rbx)
+  -- THE ADDRESS SPACE DOES NOT WRAP at the four emitted `add` sites (plan 0.70
+  -- phase C). `execInstr`'s `add` computes `W.⊕` unconditionally, because D054
+  -- makes wraparound *correct, defined* Once semantics — so no no-overflow
+  -- precondition may sit on the instruction, and the range obligation lands
+  -- here instead. NOT a claim about user arithmetic: every `add` the compiler
+  -- emits computes an address or the observable counter; a user `Int` addition
+  -- goes through the Arith backend over `Once.Word` and wraps there by design.
+  -- These are `…ResourceBounds.AddrNoWrap`'s four fields.
+  (ret-no-wrap : ∀ {hv : FC.HeapView FS word-eq}
+                   (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
+                   (s : X.State) (b : ℕ)
+               → RC.RunAt o FS word-eq prog fs
+               → FSim.CompiledCorr FS word-eq hv prog fs s
+               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
+                   ≡ just (instr-ctrl (c-ret b))
+               → X.readReg (X.State.regs s) rsp + slots b < X.W.modulus)
+  (count-no-wrap : ∀ {hv : FC.HeapView FS word-eq}
+                     (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
+                     (s : X.State)
+                 → RC.RunAt o FS word-eq prog fs
+                 → FSim.CompiledCorr FS word-eq hv prog fs s
+                 → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
+                     ≡ just (instr-reg-op count-inc)
+                 → X.readReg (X.State.regs s) r14 + 1 < X.W.modulus)
+  (lo-fits : ∀ {hv : FC.HeapView FS word-eq}
+               (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
+               (s : X.State)
+           → RC.RunAt o FS word-eq prog fs
+           → FSim.CompiledCorr FS word-eq hv prog fs s
+           → FC.lo hv < X.W.modulus)
   where
 
 open import Data.Maybe using (Maybe; just; nothing; maybe′)
@@ -670,7 +700,8 @@ mutual
          (inv-closure wf)
          (λ hl _ → wf-heap (inv-wf wf) hl) (wf-stack (inv-wf wf))
          (λ hl eq → wf-fresh (inv-wf wf) hl (≤-reflexive (sym eq)))
-         (heap-room prog fs s k (inv-run wf) cc ftq)) wf ftq h refl h
+         (heap-room prog fs s k (inv-run wf) cc ftq)
+         (lo-fits prog fs s (inv-run wf) cc)) wf ftq h refl h
   events-running-fetch {hv} n ev env prog fs s (instr-dealloc-stack k) cc wf h ftq =
     ⊥-elim (frame-op-absurd prog fs (instr-dealloc-stack k) (run-emitted (inv-run wf)) (run-heap (inv-run wf)) ftq)
   events-running-fetch {hv} n ev env prog fs s (instr-push-frame k) cc wf h ftq =
@@ -890,7 +921,8 @@ mutual
           go-sv (f₀ , b₀ , frs , feq) =
             ccc-step-bs n ev env prog fs s (instr-ctrl (c-ret b))
               (block-step-c-ret prog fs s b rpc rest f₀ b₀ frs cc h ftq req
-                 (ret-budget-matches prog fs b (inv-run wf) ftq) feq)
+                 (ret-budget-matches prog fs b (inv-run wf) ftq) feq
+                 (ret-no-wrap prog fs s b (inv-run wf) cc ftq))
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) ≡ false
                   hpost rewrite req = h
@@ -1254,7 +1286,8 @@ mutual
                         ++ flat-events n prog (flat-exec-instr (instr-reg-op count-inc) prog fs))
           go-sv (SV-Tag k)   i2-eq =
             ccc-step-bs {hv} n ev env prog fs s (instr-reg-op count-inc)
-              (block-step-count-inc prog fs s k cc h ftq i2-eq) wf ftq h refl h
+              (block-step-count-inc prog fs s k cc h ftq i2-eq
+                 (count-no-wrap prog fs s (inv-run wf) cc ftq)) wf ftq h refl h
           -- NON-TAG: IMPOSSIBLE (`FlatRegTagWF`) — the tally register `Count`
           -- is written only by `count-zero` / `count-inc`, both tag producers.
           go-sv (SV-Ptr p)    i2-eq = ⊥-elim (flat-count-is-tag fs (SV-Ptr p) (inv-regtag wf) i2-eq)

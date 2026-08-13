@@ -226,11 +226,24 @@ step-ret : ∀ {prog s v}
 step-ret ft rd rewrite ft | rd = refl
 
 -- add reg, imm
+-- Plan 0.70 phase C: the machine adds MODULARLY, so this says `⊕` — D054's
+-- "wraparound is correct, defined semantics, not something the programmer or
+-- the compiler must prove absent". There is NO no-overflow premise here and
+-- there must not be one: that would be the "narrow regime where the impossible
+-- accidentally holds" D054 names as the thing to avoid.
+--
+-- A consumer that needs plain `+` converts with `Once.Word.Width.⊕≡+`, paying
+-- the `< modulus` obligation there. Every `add` the compiler emits computes an
+-- ADDRESS or the observable COUNTER (`rsp`, `r15`, `r14`, the `rcx`/`rdi`
+-- index scaling) — never a user `Int`, which goes through the Arith backend
+-- over `Once.Word` and wraps there by design. So that obligation is a LAYOUT
+-- bound of the `HeapRoom`/`StackRoom`/`CallRoom` family (D087: a parameter,
+-- not a postulate), never an assumption about what user values do.
 step-add-ri : ∀ {prog s r n}
             → fetch prog (pc s) ≡ just (add (reg r) (imm n))
             → step-not-halted prog s
-              ≡ just (record s { regs = writeReg (regs s) r (readReg (regs s) r + n)
-                               ; flags = updateFlags (readReg (regs s) r + n)
+              ≡ just (record s { regs = writeReg (regs s) r (readReg (regs s) r W.⊕ n)
+                               ; flags = updateFlags (readReg (regs s) r W.⊕ n)
                                                      (readReg (regs s) r)
                                ; pc = pc s + 1 })
 step-add-ri ft rewrite ft = refl
@@ -239,8 +252,8 @@ step-add-ri ft rewrite ft = refl
 step-add-rr : ∀ {prog s r r'}
             → fetch prog (pc s) ≡ just (add (reg r) (reg r'))
             → step-not-halted prog s
-              ≡ just (record s { regs = writeReg (regs s) r (readReg (regs s) r + readReg (regs s) r')
-                               ; flags = updateFlags (readReg (regs s) r + readReg (regs s) r')
+              ≡ just (record s { regs = writeReg (regs s) r (readReg (regs s) r W.⊕ readReg (regs s) r')
+                               ; flags = updateFlags (readReg (regs s) r W.⊕ readReg (regs s) r')
                                                      (readReg (regs s) r)
                                ; pc = pc s + 1 })
 step-add-rr ft rewrite ft = refl
