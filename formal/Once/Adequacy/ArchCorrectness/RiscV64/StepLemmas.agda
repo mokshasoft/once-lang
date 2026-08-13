@@ -131,12 +131,22 @@ step-sd : ∀ {prog s rs rd offset}
                            ; pc = pc s + 1 })
 step-sd ft rewrite ft = refl
 
--- lla rd, ℓ : the abstract model leaves rd opaque (0) and advances.
-step-lla : ∀ {prog s rd n}
-         → fetch prog (pc s) ≡ just (lla rd n)
+-- lla rd, ℓ : RESOLVES the label (D096, applied to riscv64 2026-08-13) — it
+-- used to write 0, which made the modelled machine jump to 0 on every closure
+-- application. Two outcomes now, exactly as `j` has: the body's index, or halt
+-- when the label is absent.
+step-lla : ∀ {prog s rd ℓ jix}
+         → fetch prog (pc s) ≡ just (lla rd ℓ)
+         → find-label prog (thunk ℓ) ≡ just jix
          → step-not-halted prog s
-           ≡ just (record s { regs = writeReg (regs s) rd 0 ; pc = pc s + 1 })
-step-lla ft rewrite ft = refl
+           ≡ just (record s { regs = writeReg (regs s) rd jix ; pc = pc s + 1 })
+step-lla ft fl rewrite ft | fl = refl
+
+step-lla-missing : ∀ {prog s rd ℓ}
+                 → fetch prog (pc s) ≡ just (lla rd ℓ)
+                 → find-label prog (thunk ℓ) ≡ nothing
+                 → step-not-halted prog s ≡ just (record s { halted = true })
+step-lla-missing ft fl rewrite ft | fl = refl
 
 -- j target : the label RESOLVES (plan 0.63) — x86-64's `jmp`.
 step-j : ∀ {prog s target}

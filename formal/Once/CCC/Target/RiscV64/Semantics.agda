@@ -308,12 +308,36 @@ execInstr prog s (auipc rd imm) =
   in just (record s { regs = writeReg (regs s) rd result
                     ; pc = pc s + 1 })
 
--- lla rd, .L_thunk_n : load a code-label address (Plan 0.53). The abstract
--- model doesn't track link-time label addresses; advance pc, leave rd opaque
--- (0). Not exercised by the FS-generic apex (no target exec runs here).
-execInstr prog s (lla rd n) =
-  just (record s { regs = writeReg (regs s) rd 0
-                 ; pc = pc s + 1 })
+-- THE CODE-ADDRESS DEFECT, FIXED (D096, applied to riscv64 2026-08-13).
+--
+-- `lla rd, .L_thunk_ℓ` used to write 0 — "the abstract model doesn't track
+-- link-time label addresses; leave rd opaque". That was not a coarser view of
+-- the CPU, it was WRONG, for exactly the reason D096 gives for x86-64's `lea`:
+-- this machine is INDEX-ADDRESSED (`pc` is a position in `prog`, `find-label`
+-- returns one, `j`/`beq`/`jalr` all move `pc` to one), so the faithful value of
+-- a code address is the label's INDEX.
+--
+-- And the value IS used as an address here. `IRToTrace` emits
+-- `instr-load-code-addr ℓ` to build a closure record; riscv64 lowers it to this
+-- instruction; the value is stored in the record's second cell; and
+-- `instr-call-closure` lowers to `ld t1, 8(s1) ; jalr ra, t1, 0`, which JUMPS
+-- THROUGH IT. Under the old clause the modelled machine jumped to 0 on every
+-- closure application while the real one jumped to the body — so
+-- `riscv64-loader-faithful` was FALSE for every program that applies a closure,
+-- with the fiction hiding inside the trusted axiom.
+--
+-- It survived because of the same reasoning D096 records for x86-64: the old
+-- comment said "not exercised by the FS-generic apex", and nothing in the proof
+-- cone consumed the value as an address. That stopped being true when D092
+-- modelled the call in the SHARED flat machine — which applies to every target,
+-- not just the one whose semantics was fixed at the time.
+--
+-- An absent label halts, exactly as it does for `j` and the branches.
+execInstr prog s (lla rd ℓ) =
+  case find-label prog (thunk ℓ) of λ where
+    -- `jix`, not `j`: that name is the jump INSTRUCTION here.
+    (just jix) → just (record s { regs = writeReg (regs s) rd jix ; pc = pc s + 1 })
+    nothing    → just (record s { halted = true })
 
 ------------------------------------------------------------------------
 -- Move (pseudo-instruction)

@@ -7294,3 +7294,62 @@ point moves. This is the same rule one layer down, and the layer matters: **what
 stays behind need not be a proof obligation — it can be a prologue.** When a
 refactor moves WHERE code is emitted, inventory what the old site did BESIDES
 emitting it. The dead path is the checklist; read it before deleting it.
+
+---
+
+## D103: D096 Was an ARCH FIX for a SHARED Defect — riscv64's `lla` Wrote 0
+
+**Date**: 2026-08-13 · **Status**: Fixed · **Plan**: 0.65 (G2)
+
+### The defect
+
+`Target.RiscV64.Semantics`'s `lla rd, .L_thunk_ℓ` wrote **0** into `rd`:
+
+    execInstr prog s (lla rd n) =
+      just (record s { regs = writeReg (regs s) rd 0 ; pc = pc s + 1 })
+
+with the comment "the abstract model doesn't track link-time label addresses;
+advance pc, leave rd opaque (0). Not exercised by the FS-generic apex."
+
+That value is **jumped through**. `IRToTrace` emits `instr-load-code-addr ℓ` to
+build a closure record; riscv64 lowers it to this instruction; the result goes
+into the record's second cell; and `instr-call-closure` lowers to
+`ld t1, 8(s1) ; jalr ra, t1, 0`. So the modelled machine jumped to 0 on every
+closure application while the real one jumped to the body — making
+`riscv64-loader-faithful` **false** for every program that applies a closure,
+with the fiction hiding inside the trusted axiom.
+
+This is D096's defect verbatim. Fixed the same way: resolve the label through
+`find-label prog (thunk ℓ)`; an absent label halts, as for `j` and the branches.
+
+### Why it survived D096
+
+**D096 was applied to one arch, and the reasoning that made it safe to defer
+elsewhere expired without anyone re-checking.** Both defects were shielded by
+the same argument — "nothing in the proof cone uses the value as an address."
+For x86-64 that stopped being true when **D092 modelled the call**, and D096
+followed. But D092 changed the SHARED flat machine, so it invalidated the
+excuse for **every** target at once, while only x86-64's semantics was
+repaired. riscv64 kept a comment asserting a safety property that D092 had
+already removed.
+
+### The general lesson
+
+A per-arch fix to a defect found in shared machinery leaves the same defect in
+the other arches, and its justification comment becomes stale SILENTLY — no
+typechecker sees it, because each arch's semantics is independently well-formed.
+The three targets' surfaces are now diffed mechanically (`AbstractTo*` and, as
+of this entry, the code-address clause of each `Semantics`); that diff is what
+found this, two days after the emitters' own asymmetries.
+
+Corollary for plan 0.65: this is the FOURTH thing porting the correspondence to
+a second arch has found that was invisible from x86-64 alone — after riscv64's
+missing `compile-trace`, all three targets' missing `compile-trace-cnt-agrees`,
+and riscv64's `with`-bound `step`/`exec`. Three of the four are defects rather
+than absences.
+
+### What it cost
+
+`step-lla` gains its resolved form and a sibling `step-lla-missing` — two
+outcomes where there was one, exactly as `j` has. Nothing else moved: the
+value was previously unconstrained, so no proof depended on it being 0.
