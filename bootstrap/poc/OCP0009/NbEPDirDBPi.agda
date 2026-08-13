@@ -835,15 +835,30 @@ sel : ℕ → RTm Γ → RTm Γ
 sel zero    ms = fst ms
 sel (suc k) ms = sel k (snd ms)
 
--- ★ APPLY a method to a payload, guided by the field list.  A `dρ` field
---   passes BOTH the field and its elimination (the IH); a `dκ` field
---   passes only the field — a non-recursive position owes no IH, which is
+-- ★★ THE IH TUPLE.  One entry per RECURSIVE field; a `dκ` field owes no
+--   induction hypothesis and is SKIPPED, not filled with a placeholder —
 --   the same accounting `SpikeDescSigma`'s `elimLift` made in the model.
+ihs : Desc → RTm Γ → DCon → RTm Γ → RTm Γ
+ihs D ms dι       p = unit
+ihs D ms (dρ C)   p = pair (elim D ms (fst p)) (ihs D ms C (snd p))
+ihs D ms (dκ A C) p = ihs D ms C (snd p)
+
+-- ★★★ APPLY a method to a payload — TUPLED (gate 5c): the method receives
+--   the payload WHOLE and the IH tuple beside it.
+--
+--   ⚠⚠ NOT CURRIED, and that is a decision, not a style.  Curried
+--     application hands the method `fst p`/`snd p` and never `p`, so under
+--     a DEPENDENT motive its result type can only mention the payload
+--     REBUILT from its own binders — `pair (fst p) unit` — which is `p`
+--     only up to SURJECTIVE PAIRING.  Gate 5b could not even STATE
+--     subject reduction without that η; gate 5c proves it here without.
+--
+--   ⇒ the η requirement was the SYMPTOM of an information loss, and it
+--     would have coupled this axis to the OPEN G4 conversion decision.
+--     Passing the payload whole is also the ALGEBRA form: a description
+--     denotes a functor, the payload IS the functor application.
 fields : Desc → RTm Γ → DCon → RTm Γ → RTm Γ → RTm Γ
-fields D ms dι       m p = m
-fields D ms (dρ C)   m p =
-  fields D ms C (app (app m (fst p)) (elim D ms (fst p))) (snd p)
-fields D ms (dκ A C) m p = fields D ms C (app m (fst p)) (snd p)
+fields D ms C m p = app (app m p) (ihs D ms C p)
 
 ren-sel : (ρ : Ren Γ Δ) (k : ℕ) (ms : RTm Γ) →
           renTm ρ (sel k ms) ≡ sel k (renTm ρ ms)
@@ -855,19 +870,29 @@ sub-sel : (σ : Sub Γ Δ) (k : ℕ) (ms : RTm Γ) →
 sub-sel σ zero    ms = refl
 sub-sel σ (suc k) ms = sub-sel σ k (snd ms)
 
+ren-ihs : (ρ : Ren Γ Δ) (D : Desc) (ms : RTm Γ) (C : DCon) (p : RTm Γ) →
+          renTm ρ (ihs D ms C p) ≡ ihs D (renTm ρ ms) C (renTm ρ p)
+ren-ihs ρ D ms dι       p = refl
+ren-ihs ρ D ms (dρ C)   p = cong₂ pair refl (ren-ihs ρ D ms C (snd p))
+ren-ihs ρ D ms (dκ A C) p = ren-ihs ρ D ms C (snd p)
+
+sub-ihs : (σ : Sub Γ Δ) (D : Desc) (ms : RTm Γ) (C : DCon) (p : RTm Γ) →
+          subTm σ (ihs D ms C p) ≡ ihs D (subTm σ ms) C (subTm σ p)
+sub-ihs σ D ms dι       p = refl
+sub-ihs σ D ms (dρ C)   p = cong₂ pair refl (sub-ihs σ D ms C (snd p))
+sub-ihs σ D ms (dκ A C) p = sub-ihs σ D ms C (snd p)
+
 ren-fields : (ρ : Ren Γ Δ) (D : Desc) (ms : RTm Γ) (C : DCon) (m p : RTm Γ) →
              renTm ρ (fields D ms C m p)
                ≡ fields D (renTm ρ ms) C (renTm ρ m) (renTm ρ p)
-ren-fields ρ D ms dι       m p = refl
-ren-fields ρ D ms (dρ C)   m p = ren-fields ρ D ms C _ (snd p)
-ren-fields ρ D ms (dκ A C) m p = ren-fields ρ D ms C _ (snd p)
+ren-fields ρ D ms C m p = cong (app (app (renTm ρ m) (renTm ρ p)))
+                               (ren-ihs ρ D ms C p)
 
 sub-fields : (σ : Sub Γ Δ) (D : Desc) (ms : RTm Γ) (C : DCon) (m p : RTm Γ) →
              subTm σ (fields D ms C m p)
                ≡ fields D (subTm σ ms) C (subTm σ m) (subTm σ p)
-sub-fields σ D ms dι       m p = refl
-sub-fields σ D ms (dρ C)   m p = sub-fields σ D ms C _ (snd p)
-sub-fields σ D ms (dκ A C) m p = sub-fields σ D ms C _ (snd p)
+sub-fields σ D ms C m p = cong (app (app (subTm σ m) (subTm σ p)))
+                               (sub-ihs σ D ms C p)
 
 ------------------------------------------------------------------------
 -- ★ THE CATEGORY-OF-CONTEXTS LAWS ON TYPES — the coherence that makes the

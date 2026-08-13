@@ -36,7 +36,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Ren; extR; renTm; renTm-renTm; renTm-cong
         ; Sub; extS; subTm; renTm-subTm; subTm-renTm; subTm-cong
         ; _ᵣ∘ₛ_; _ₛ∘ᵣ_; _∘ᵣ_
-        ; Desc; DCon; dι; dρ; dκ; con; elim; lookupD; sel; fields; ren-fields; ren-sel; sub-fields; sub-sel )
+        ; Desc; DCon; dι; dρ; dκ; con; elim; lookupD; sel; fields; ren-fields; ren-sel; sub-fields; sub-sel
+        ; ihs )
 open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false; pw?; stkC?; stkA?; pwBody; pwShift
         ; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren
@@ -256,17 +257,23 @@ private
 ⟶*-sel zero    q = ⟶*-fst q
 ⟶*-sel (suc k) q = ⟶*-sel k (⟶*-snd q)
 
+-- ⚠ TUPLED (gate 5c): the induction on the field list now lives in
+--   `⟶*-ihs`; `fields` itself is one application, so its closure is two
+--   `app` congruences over it.
+⟶*-ihs : (D : Desc) {ms ms' : RTm Γ} (C : DCon) {p p' : RTm Γ} →
+         ms ⟶* ms' → p ⟶* p' → ihs D ms C p ⟶* ihs D ms' C p'
+⟶*-ihs D dι       qms qp = done
+⟶*-ihs D (dρ C)   qms qp =
+  ⟶*-trans (⟶*-pairˡ (⟶*-trans (⟶*-elimᵐ qms) (⟶*-elimᵗ (⟶*-fst qp))))
+           (⟶*-pairʳ (⟶*-ihs D C qms (⟶*-snd qp)))
+⟶*-ihs D (dκ A C) qms qp = ⟶*-ihs D C qms (⟶*-snd qp)
+
 ⟶*-fields : (D : Desc) {ms ms' : RTm Γ} (C : DCon) {m m' p p' : RTm Γ} →
             ms ⟶* ms' → m ⟶* m' → p ⟶* p' →
             fields D ms C m p ⟶* fields D ms' C m' p'
-⟶*-fields D dι       qms qm qp = qm
-⟶*-fields D (dρ C)   qms qm qp =
-  ⟶*-fields D C qms
-    (⟶*-trans (⟶*-appˡ (⟶*-trans (⟶*-appˡ qm) (⟶*-appʳ (⟶*-fst qp))))
-              (⟶*-appʳ (⟶*-trans (⟶*-elimᵐ qms) (⟶*-elimᵗ (⟶*-fst qp)))))
-    (⟶*-snd qp)
-⟶*-fields D (dκ A C) qms qm qp =
-  ⟶*-fields D C qms (⟶*-trans (⟶*-appˡ qm) (⟶*-appʳ (⟶*-fst qp))) (⟶*-snd qp)
+⟶*-fields D C qms qm qp =
+  ⟶*-trans (⟶*-appˡ (⟶*-trans (⟶*-appˡ qm) (⟶*-appʳ qp)))
+           (⟶*-appʳ (⟶*-ihs D C qms qp))
 
 ⟶*-sub : (σ : Sub Γ Δ) {t u : RTm Γ} → t ⟶* u → subTm σ t ⟶* subTm σ u
 ⟶*-sub σ done       = done
@@ -797,13 +804,17 @@ p-sel : (k : ℕ) {ms ms' : RTm Γ} → ms ⟹ ms' → sel k ms ⟹ sel k ms'
 p-sel zero    pms = pfst pms
 p-sel (suc k) pms = p-sel k (psnd pms)
 
+p-ihs : {D : Desc} {ms ms' : RTm Γ} (C : DCon) {p p' : RTm Γ} →
+        ms ⟹ ms' → p ⟹ p' → ihs D ms C p ⟹ ihs D ms' C p'
+p-ihs dι       pms pp = punit
+p-ihs (dρ C)   pms pp =
+  ppair (pelim pms (pfst pp)) (p-ihs C pms (psnd pp))
+p-ihs (dκ A C) pms pp = p-ihs C pms (psnd pp)
+
 p-fields : {D : Desc} {ms ms' : RTm Γ} (C : DCon) {m m' p p' : RTm Γ} →
            ms ⟹ ms' → m ⟹ m' → p ⟹ p' →
            fields D ms C m p ⟹ fields D ms' C m' p'
-p-fields dι       pms pm pp = pm
-p-fields (dρ C)   pms pm pp =
-  p-fields C pms (papp (papp pm (pfst pp)) (pelim pms (pfst pp))) (psnd pp)
-p-fields (dκ A C) pms pm pp = p-fields C pms (papp pm (pfst pp)) (psnd pp)
+p-fields C pms pm pp = papp (papp pm pp) (p-ihs C pms pp)
 
 ⟹-refl : (t : RTm Γ) → t ⟹ t
 ⟹-refl ⌜Nat⌝      = p⌜Nat⌝

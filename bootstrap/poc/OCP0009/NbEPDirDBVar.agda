@@ -79,7 +79,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Ren; extR; renTy; renTm; Sub; extS; subTm
         ; renTm-renTm; subTm-renTm; renTm-subTm; subTm-cong
         ; Desc; Mu; con; elim
-        ; DCon; dι; dρ; dκ; sel; fields )
+        ; DCon; dι; dρ; dκ; sel; fields
+        ; ihs )
 
 private
   variable
@@ -520,15 +521,23 @@ occ-sel : {x : Var Γ} (k : ℕ) (ms : RTm Γ) →
 occ-sel zero    ms e = e
 occ-sel (suc k) ms e = occ-sel k (snd ms) e
 
+-- ★ the IH TUPLE introduces no variable — one entry per `dρ`, and each is
+--   `elim D ms (fst p)`, built only from `ms` and `p`.
+occ-ihs : {x : Var Γ} (D : Desc) (ms : RTm Γ) (C : DCon) (p : RTm Γ) →
+          occTm x ms ≡ false → occTm x p ≡ false →
+          occTm x (ihs D ms C p) ≡ false
+occ-ihs D ms dι       p ems ep = refl
+occ-ihs D ms (dρ C)   p ems ep =
+  ∨-false (∨-false ems ep) (occ-ihs D ms C (snd p) ems ep)
+occ-ihs D ms (dκ A C) p ems ep = occ-ihs D ms C (snd p) ems ep
+
+-- ⚠ TUPLED (gate 5c): `fields` is now ONE application, so this is a
+--   `∨-false` over `occ-ihs` rather than an induction on the field list.
 occ-fields : {x : Var Γ} (D : Desc) (ms : RTm Γ) (C : DCon) (m p : RTm Γ) →
              occTm x ms ≡ false → occTm x m ≡ false → occTm x p ≡ false →
              occTm x (fields D ms C m p) ≡ false
-occ-fields D ms dι       m p ems em ep = em
-occ-fields D ms (dρ C)   m p ems em ep =
-  occ-fields D ms C _ (snd p) ems
-    (∨-false (∨-false em ep) (∨-false ems ep)) ep
-occ-fields D ms (dκ A C) m p ems em ep =
-  occ-fields D ms C _ (snd p) ems (∨-false em ep) ep
+occ-fields D ms C m p ems em ep =
+  ∨-false (∨-false em ep) (occ-ihs D ms C p ems ep)
 
 
 -- Two substitutions agreeing on every OCCURRING variable act equally
