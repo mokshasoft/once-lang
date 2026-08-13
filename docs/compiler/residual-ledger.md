@@ -93,6 +93,16 @@ abstract one — read it off the signature: does it mention `X.State` /
     (`slots n ≤ %rsp` at every frame reservation, `m∸n+n≡m` at every
     re-anchoring). Those are the shape a modular `Word` would generalise.
 
+    PLANNED: `plans/0.70-machine-word-is-finite.md` (written 2026-08-13). Its
+    first finding is that the repair is NOT "replace ℕ with Once.Word": the
+    machine word does two jobs, and they want opposite treatments. As a VALUE
+    it is modular (D054). As an ADDRESS the proofs need ORDER and CANCELLATION,
+    which modular arithmetic does not supply — `slot-addr-inj` cancels
+    `* slot-size`, and modularly `8 * 0 ≡ 8 * 2^61`, so two distinct slots
+    would share an address. Addresses therefore stay ordered `ℕ` under an
+    explicit NO-WRAP region invariant (CompCert's shape), which is what today's
+    proofs already assume silently.
+
     THEY MOVED MODULE, 2026-08-12 (plan 0.65 G1d step 2). Seven residuals that
     were declared in `X86-64.ConcFlatSim` now live in
     `Once.Adequacy.ArchCorrectness.FlatCore.RunWF`: rows 5, 6, 9 (both), 10, 13
