@@ -397,6 +397,20 @@ atCon-inst k M p =
                     (λ { vz → refl ; (vs x) → refl }) M)
 
 -- identity substitution, and substituting under a weakening
+subTm-id : {Γ : Cx} (t : RTm Γ) → subTm var t ≡ t
+subTm-id (var x)      = refl
+subTm-id (lam t)      =
+  cong lam (trans (subTm-cong {σ = extS var} {τ = var}
+                              (λ { vz → refl ; (vs x) → refl }) t)
+                  (subTm-id t))
+subTm-id (app t u)    = cong₂ app (subTm-id t) (subTm-id u)
+subTm-id unit         = refl
+subTm-id (pair a b)   = cong₂ pair (subTm-id a) (subTm-id b)
+subTm-id (fst p)      = cong fst (subTm-id p)
+subTm-id (snd p)      = cong snd (subTm-id p)
+subTm-id (con k p)    = cong (con k) (subTm-id p)
+subTm-id (elim D m t) = cong₂ (elim D) (subTm-id m) (subTm-id t)
+
 subTy-id : {Γ : Cx} (A : RTy Γ) → subTy var A ≡ A
 subTy-id Unit     = refl
 subTy-id (Π A B)  =
@@ -421,40 +435,157 @@ sub-single-wk u X =
                (subTy-id X))
 
 ------------------------------------------------------------------------
--- ★★ THE TUPLED FORMULATION, at the `suc`-shaped constructor `dρ dι` —
---    the same instance gate 5b used, so the comparison is apples to
---    apples.
+-- ★★ THE TUPLED FORMULATION, GENERAL IN `DCon`.
 --
---      payload   q : Σ' (Mu D) Unit
---      IHs       Σ' M[fst q] Unit
---      method    Π (q : pay). Π (ihs : IH q). M[con k q]
+--   payTy  D C      Σ-chain over the field list
+--   ihTy   D C q M  Σ-chain of `M[πᵢ q]` over the `dρ` fields ONLY
+--   methTy D k C M  Π (payTy) (Π (ihTy) (wk (atCon k M)))
 --
---    ⚠ the result mentions the PAYLOAD binder only, so it is a `wk` over
---      the IH binder — which is why the second application is
---      non-dependent and `sub-single-wk` finishes it.
+--   ⚠ the result mentions the PAYLOAD binder only, never the IH binder,
+--     so it is a `wk` over the latter — that is what keeps the second
+--     application non-dependent.
 ------------------------------------------------------------------------
 
-payTyρ : {Γ : Cx} → Desc → RTy Γ
-payTyρ D = Σ' (Mu D) Unit
+-- the unique renaming out of the empty context: a `dκ`'s CLOSED field
+-- type used at an arbitrary Γ
+εren : {Γ : Cx} → Ren ε Γ
+εren ()
 
-ihTyρ : {Γ : Cx} → RTy (Γ ∙) → RTm Γ → RTy Γ
-ihTyρ M q = Σ' (M [ fst q ]) Unit
+εwkTy : {Γ : Cx} → RTy ε → RTy Γ
+εwkTy = renTy εren
 
-methTyTρ : {Γ : Cx} → Desc → ℕ → RTy (Γ ∙) → RTy Γ
-methTyTρ D k M =
-  Π (payTyρ D)
-    (Π (ihTyρ (renTy (extR vs) M) (var vz))
+renTy-cong : {Γ Δ : Cx} {ρ τ : Ren Γ Δ} → (∀ x → ρ x ≡ τ x) →
+             (A : RTy Γ) → renTy ρ A ≡ renTy τ A
+renTy-cong h Unit     = refl
+renTy-cong h (Π A B)  = cong₂ Π (renTy-cong h A) (renTy-cong (extR-cong h) B)
+renTy-cong h (Σ' A B) = cong₂ Σ' (renTy-cong h A) (renTy-cong (extR-cong h) B)
+renTy-cong h (Mu D)   = refl
+
+renTy-renTy : {Γ Δ Θ : Cx} (ρ : Ren Δ Θ) (τ : Ren Γ Δ) (A : RTy Γ) →
+              renTy ρ (renTy τ A) ≡ renTy (λ x → ρ (τ x)) A
+renTy-renTy ρ τ Unit     = refl
+renTy-renTy ρ τ (Π A B)  =
+  cong₂ Π (renTy-renTy ρ τ A)
+          (trans (renTy-renTy (extR ρ) (extR τ) B)
+                 (renTy-cong {ρ = λ x → extR ρ (extR τ x)}
+                             {τ = extR (λ x → ρ (τ x))}
+                             (λ { vz → refl ; (vs x) → refl }) B))
+renTy-renTy ρ τ (Σ' A B) =
+  cong₂ Σ' (renTy-renTy ρ τ A)
+           (trans (renTy-renTy (extR ρ) (extR τ) B)
+                  (renTy-cong {ρ = λ x → extR ρ (extR τ x)}
+                              {τ = extR (λ x → ρ (τ x))}
+                              (λ { vz → refl ; (vs x) → refl }) B))
+renTy-renTy ρ τ (Mu D)   = refl
+
+εwk-ren : {Γ Δ : Cx} (ρ : Ren Γ Δ) (A : RTy ε) →
+          renTy ρ (εwkTy A) ≡ εwkTy A
+εwk-ren ρ A =
+  trans (renTy-renTy ρ εren A)
+        (renTy-cong {ρ = λ x → ρ (εren x)} {τ = εren} (λ ()) A)
+
+εwk-sub : {Γ Δ : Cx} (σ : Sub Γ Δ) (A : RTy ε) →
+          subTy σ (εwkTy A) ≡ εwkTy A
+εwk-sub σ A =
+  trans (subTy-ren σ εren A)
+        (trans (subTy-cong {σ = λ x → σ (εren x)} {τ = λ x → var (εren x)}
+                           (λ ()) A)
+               (sym (renTy-is-sub εren A)))
+  where
+    renTy-is-sub : {Γ Δ : Cx} (ρ : Ren Γ Δ) (A : RTy Γ) →
+                   renTy ρ A ≡ subTy (λ x → var (ρ x)) A
+    renTy-is-sub ρ Unit     = refl
+    renTy-is-sub ρ (Π A B)  =
+      cong₂ Π (renTy-is-sub ρ A)
+              (trans (renTy-is-sub (extR ρ) B)
+                     (subTy-cong {σ = λ x → var (extR ρ x)}
+                                 {τ = extS (λ x → var (ρ x))}
+                                 (λ { vz → refl ; (vs x) → refl }) B))
+    renTy-is-sub ρ (Σ' A B) =
+      cong₂ Σ' (renTy-is-sub ρ A)
+               (trans (renTy-is-sub (extR ρ) B)
+                      (subTy-cong {σ = λ x → var (extR ρ x)}
+                                  {τ = extS (λ x → var (ρ x))}
+                                  (λ { vz → refl ; (vs x) → refl }) B))
+    renTy-is-sub ρ (Mu D)   = refl
+
+------------------------------------------------------------------------
+
+payTy : {Γ : Cx} → Desc → DCon → RTy Γ
+payTy D dι       = Unit
+payTy D (dρ C)   = Σ' (Mu D)    (payTy D C)
+payTy D (dκ A C) = Σ' (εwkTy A) (payTy D C)
+
+-- payloads are CLOSED, so both actions are inert on them
+payTy-ren : {Γ Δ : Cx} (ρ : Ren Γ Δ) (D : Desc) (C : DCon) →
+            renTy ρ (payTy D C) ≡ payTy D C
+payTy-ren ρ D dι       = refl
+payTy-ren ρ D (dρ C)   = cong (Σ' (Mu D)) (payTy-ren (extR ρ) D C)
+payTy-ren ρ D (dκ A C) =
+  cong₂ Σ' (εwk-ren ρ A) (payTy-ren (extR ρ) D C)
+
+payTy-sub : {Γ Δ : Cx} (σ : Sub Γ Δ) (D : Desc) (C : DCon) →
+            subTy σ (payTy D C) ≡ payTy D C
+payTy-sub σ D dι       = refl
+payTy-sub σ D (dρ C)   = cong (Σ' (Mu D)) (payTy-sub (extS σ) D C)
+payTy-sub σ D (dκ A C) =
+  cong₂ Σ' (εwk-sub σ A) (payTy-sub (extS σ) D C)
+
+------------------------------------------------------------------------
+
+ihTy : {Γ : Cx} → Desc → DCon → RTm Γ → RTy (Γ ∙) → RTy Γ
+ihTy D dι       q M = Unit
+ihTy D (dρ C)   q M = Σ' (M [ fst q ]) (wk (ihTy D C (snd q) M))
+ihTy D (dκ A C) q M = ihTy D C (snd q) M
+
+-- ★ the IH tuple's substitution law.  `M` travels under `extS`, `q` under
+--   the substitution itself.
+ihTy-sub : {Γ Δ : Cx} (σ : Sub Γ Δ) (D : Desc) (C : DCon)
+           (q : RTm Γ) (M : RTy (Γ ∙)) →
+           subTy σ (ihTy D C q M)
+             ≡ ihTy D C (subTm σ q) (subTy (extS σ) M)
+ihTy-sub σ D dι       q M = refl
+ihTy-sub σ D (dρ C)   q M =
+  cong₂ Σ' (trans (subTy-subTy σ (single (fst q)) M)
+                  (trans (subTy-cong
+                            {σ = λ x → subTm σ (single (fst q) x)}
+                            {τ = λ x → subTm (single (fst (subTm σ q)))
+                                              (extS σ x)}
+                            (λ { vz → refl
+                               ; (vs x) → sym (trans (subTm-ren (single (fst (subTm σ q))) vs (σ x))
+                                                     (subTm-id (σ x))) }) M)
+                         (sym (subTy-subTy (single (fst (subTm σ q))) (extS σ) M))))
+           (trans (subTy-wk σ (ihTy D C (snd q) M))
+                  (cong wk (ihTy-sub σ D C (snd q) M)))
+ihTy-sub σ D (dκ A C) q M = ihTy-sub σ D C (snd q) M
+
+------------------------------------------------------------------------
+
+methTy : {Γ : Cx} → Desc → ℕ → DCon → RTy (Γ ∙) → RTy Γ
+methTy D k C M =
+  Π (payTy D C)
+    (Π (ihTy D C (var vz) (renTy (extR vs) M))
        (wk (atCon k M)))
 
--- `ihs` builds the IH tuple; `fieldsT` is the TUPLED ι right-hand side
-ihsρ : {Γ : Cx} → Desc → RTm Γ → RTm Γ → RTm Γ
-ihsρ D ms p = pair (elim D ms (fst p)) unit
+ihs : {Γ : Cx} → Desc → RTm Γ → DCon → RTm Γ → RTm Γ
+ihs D ms dι       p = unit
+ihs D ms (dρ C)   p = pair (elim D ms (fst p)) (ihs D ms C (snd p))
+ihs D ms (dκ A C) p = ihs D ms C (snd p)
 
-fieldsTρ : {Γ : Cx} → Desc → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-fieldsTρ D ms m p = app (app m p) (ihsρ D ms p)
+fieldsT : {Γ : Cx} → Desc → RTm Γ → DCon → RTm Γ → RTm Γ → RTm Γ
+fieldsT D ms C m p = app (app m p) (ihs D ms C p)
+
+-- ★ L5 — weaken past a binder, then substitute it: the identity.
+wk-single-id : {Γ : Cx} (p : RTm Γ) (M : RTy (Γ ∙)) →
+               subTy (extS (single p)) (renTy (extR vs) M) ≡ M
+wk-single-id p M =
+  trans (subTy-ren (extS (single p)) (extR vs) M)
+        (trans (subTy-cong {σ = λ x → extS (single p) (extR vs x)} {τ = var}
+                           (λ { vz → refl ; (vs x) → refl }) M)
+               (subTy-id M))
 
 ------------------------------------------------------------------------
--- typing — DEPENDENT Π, as in 5b
+-- typing — DEPENDENT Π/Σ
 ------------------------------------------------------------------------
 
 data Ctx : Cx → Set where
@@ -469,33 +600,59 @@ data _⊢_∷_ : {Γ : Cx} → Ctx Γ → RTm Γ → RTy Γ → Set where
           Θ ⊢ a ∷ A → Θ ⊢ b ∷ B [ a ] → Θ ⊢ pair a b ∷ Σ' A B
   ⊢fst  : {Γ : Cx} {Θ : Ctx Γ} {A : RTy Γ} {B : RTy (Γ ∙)} {p : RTm Γ} →
           Θ ⊢ p ∷ Σ' A B → Θ ⊢ fst p ∷ A
+  ⊢snd  : {Γ : Cx} {Θ : Ctx Γ} {A : RTy Γ} {B : RTy (Γ ∙)} {p : RTm Γ} →
+          Θ ⊢ p ∷ Σ' A B → Θ ⊢ snd p ∷ B [ fst p ]
   ⊢elim : {Γ : Cx} {Θ : Ctx Γ} {D : Desc} {M : RTy (Γ ∙)} {ms t : RTm Γ} →
           Θ ⊢ t ∷ Mu D → Θ ⊢ elim D ms t ∷ M [ t ]
   ⊢conv : {Γ : Cx} {Θ : Ctx Γ} {A B : RTy Γ} {t : RTm Γ} →
           Θ ⊢ t ∷ A → A ≡ B → Θ ⊢ t ∷ B
 
 ------------------------------------------------------------------------
--- ★★★ Q23 — THE GATE.  Dependent subject reduction for ι, TUPLED.
---
---     ⚠⚠ NOTE THE SIGNATURE: there is NO η PREMISE.  Compare 5b, whose
---        `sr-ι-dep` could not even be STATED without one.
+-- ★ the IH tuple really inhabits its type, at EVERY field list.
+--   ⚠ `dρ` contributes an IH, `dκ` does not — a non-recursive field owes
+--     no induction hypothesis, the same accounting `SpikeDescSigma`'s
+--     `elimLift` made in the model.
+------------------------------------------------------------------------
+
+ihs-ty : {Γ : Cx} {Θ : Ctx Γ} (D : Desc) (ms : RTm Γ) (C : DCon)
+         (p : RTm Γ) (M : RTy (Γ ∙)) →
+         Θ ⊢ p ∷ payTy D C → Θ ⊢ ihs D ms C p ∷ ihTy D C p M
+ihs-ty D ms dι p M hp = ⊢unit
+ihs-ty {Θ = Θ} D ms (dρ C) p M hp =
+  ⊢pair (⊢elim (⊢fst hp))
+        (subst (λ z → Θ ⊢ ihs D ms C (snd p) ∷ z)
+               (sym (sub-single-wk (elim D ms (fst p)) (ihTy D C (snd p) M)))
+               (ihs-ty D ms C (snd p) M htail))
+  where
+    htail : Θ ⊢ snd p ∷ payTy D C
+    htail = ⊢conv (⊢snd hp) (payTy-sub (single (fst p)) D C)
+ihs-ty {Θ = Θ} D ms (dκ A C) p M hp = ihs-ty D ms C (snd p) M htail
+  where
+    htail : Θ ⊢ snd p ∷ payTy D C
+    htail = ⊢conv (⊢snd hp) (payTy-sub (single (fst p)) D C)
+
+------------------------------------------------------------------------
+-- ★★★ THE GATE, GENERAL IN `DCon`.  Dependent subject reduction for ι,
+--     tupled methods, and STILL NO η PREMISE.
 ------------------------------------------------------------------------
 
 sr-ι-tup :
-  {Γ : Cx} {Θ : Ctx Γ} (D : Desc) (k : ℕ) (M : RTy (Γ ∙))
+  {Γ : Cx} {Θ : Ctx Γ} (D : Desc) (k : ℕ) (C : DCon) (M : RTy (Γ ∙))
   (ms m p : RTm Γ) →
-  Θ ⊢ m ∷ methTyTρ D k M →
-  Θ ⊢ p ∷ payTyρ D →
-  Θ ⊢ fieldsTρ D ms m p ∷ M [ con k p ]
-sr-ι-tup {Γ} {Θ} D k M ms m p hm hp =
-  ⊢conv (⊢app step1 hihs) (trans (sub-single-wk (ihsρ D ms p) (atCon k M [ p ]))
-                                 (atCon-inst k M p))
+  Θ ⊢ m ∷ methTy D k C M →
+  Θ ⊢ p ∷ payTy D C →
+  Θ ⊢ fieldsT D ms C m p ∷ M [ con k p ]
+sr-ι-tup {Γ} {Θ} D k C M ms m p hm hp =
+  ⊢conv (⊢app step1 (ihs-ty D ms C p M hp))
+        (trans (sub-single-wk (ihs D ms C p) (atCon k M [ p ]))
+               (atCon-inst k M p))
   where
-    -- the method applied to the WHOLE payload
-    step1 : Θ ⊢ app m p ∷ Π (ihTyρ (renTy (extR vs) M) (var vz) [ p ])
-                            (wk (atCon k M [ p ]))
-    step1 = ⊢conv (⊢app hm hp)
-                  (cong (Π _) (subTy-wk (single p) (atCon k M)))
+    ihTy-eq : subTy (single p) (ihTy D C (var vz) (renTy (extR vs) M))
+                ≡ ihTy D C p M
+    ihTy-eq =
+      trans (ihTy-sub (single p) D C (var vz) (renTy (extR vs) M))
+            (cong (ihTy D C p) (wk-single-id p M))
 
-    hihs : Θ ⊢ ihsρ D ms p ∷ (ihTyρ (renTy (extR vs) M) (var vz) [ p ])
-    hihs = ⊢conv (⊢pair (⊢elim (⊢fst hp)) ⊢unit) refl
+    step1 : Θ ⊢ app m p ∷ Π (ihTy D C p M) (wk (atCon k M [ p ]))
+    step1 = ⊢conv (⊢app hm hp)
+                  (cong₂ Π ihTy-eq (subTy-wk (single p) (atCon k M)))

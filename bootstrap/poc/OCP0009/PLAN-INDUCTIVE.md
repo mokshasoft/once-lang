@@ -20,7 +20,8 @@ language), `WF-LIBRARY.md` (D1–D11, the defect log), `ARCHITECTURE.md`
 | occurrence (`Var`), stuckness (`mustk?`, `LR`) | ✅ |
 | SN layer (`SNe`/`SN`/`SNRed`/`Ne`) | ✅ |
 | anti-renaming (`FundSN`), `Fund*` chain, `Canon`'s measure | ✅ |
-| **typing rules** `⊢Mu`/`⊢con`/`⊢elim` | ❌ **not started** |
+| eliminator shape (gates 5/5b/5c, general) | ✅ **tupled, dependent, no η** |
+| **typing rules** `⊢Mu`/`⊢con`/`⊢elim` in the kernel | ❌ **not started** ⬅ NEXT |
 | subject reduction at ι, progress at ι | ⚠ **VACUOUS** — see §3 |
 | the model, `⊩₀Mu` / the `MuMem` knot | ❌ **not started** |
 
@@ -84,18 +85,33 @@ is the point of the axis. See `gcd-not-done-until-gaps-abc-closed` — the
 same standard applies here.
 
 --------------------------------------------------------------------------
-## 2. STEP 1 — GENERALISE GATE 5c  ⬅ NEXT
+## 2. STEP 1 — GENERALISE GATE 5c  ✅ **DONE** 2026-08-13
 
-5c proves the `dρ dι` (`suc`-shaped) instance only — deliberately, so it
-is apples-to-apples with 5b. Needed for the general `DCon`:
+`SpikeIotaTup` (658 lines, `--safe`, no postulates, no holes) proves
 
-* `payTy D C` — Σ-chain over the field list (have it, gate 5);
-* `ihTy D C q M` — Σ-chain of `M[πᵢ q]` over the `dρ` fields **only**;
-* `methTy D k C M` = `Π (payTy D C) (Π (ihTy …) (wk (atCon k M)))`;
-* `ihs D ms C p` — builds the IH tuple;
-* their `-ren`/`-sub` lemmas, and `sel-ty` at the tupled `methsTy`.
+    sr-ι-tup : Θ ⊢ m ∷ methTy D k C M →
+               Θ ⊢ p ∷ payTy D C →
+               Θ ⊢ fieldsT D ms C m p ∷ M [ con k p ]
 
-⚠ Nothing in 5c suggests an obstacle. That is **not** the same as proved.
+for **arbitrary `DCon`** — no η premise, no restriction to the `suc`
+shape.
+
+What it took beyond the instance:
+
+* `εwkTy` + `εwk-ren`/`εwk-sub` — a `dκ`'s CLOSED field type at any Γ;
+* `payTy-ren`/`payTy-sub` — payloads are closed, so both actions are inert;
+* **`ihTy-sub`** — the one genuinely new lemma: the IH tuple's
+  substitution law, where `M` travels under `extS` and `q` under the
+  substitution itself. Absent from the instance because one field has
+  nothing to thread;
+* `wk-single-id`, `sub-single-wk`, `subTm-id`/`subTy-id` — the plumbing;
+* `ihs-ty` — the IH tuple inhabits its type at every field list.
+
+★ `ihs-ty` carries the accounting that must match the model: a `dρ` field
+  contributes an IH, a `dκ` field contributes **none** — skipped, not
+  filled with a placeholder. That is exactly `SpikeDescSigma`'s `elimLift`
+  ("a non-recursive field is not a recursive position, so no IH is owed"),
+  so the term layer and the model layer agree on what a description means.
 
 --------------------------------------------------------------------------
 ## 3. STEP 2 — THE KERNEL, ONCE
