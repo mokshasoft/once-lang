@@ -131,17 +131,27 @@ writeReg rf t2   v = record rf { get-t2 = v }
 writeReg rf t3   v = record rf { get-t3 = v }
 writeReg rf t4   v = record rf { get-t4 = v }
 
+-- ADDRESSES ARE NOT VALUES (plan 0.70 phase A). The machine word has been
+-- doing two jobs under one name: as a VALUE it is what `Int` computes and is
+-- MODULAR (D054); as an ADDRESS it indexes memory and carries the layout
+-- ORDER (`hfront ≤ lo ≤ sp`), which modular arithmetic does not supply.
+-- Both are `ℕ` today, so this is definitionally a no-op — it is NAMING, not a
+-- check: `Addr = ℕ` is transparent, so the typechecker still cannot tell them
+-- apart. Making it opaque is a separate, expensive decision (see the plan).
+Addr : Set
+Addr = ℕ
+
 -- | Memory: mapping from addresses to values
 -- Simplified model: memory is a partial function from Word to Word
 Memory : Set
-Memory = Word → Maybe Word
+Memory = Addr → Maybe Word
 
 -- | Read from memory
-readMem : Memory → Word → Maybe Word
+readMem : Memory → Addr → Maybe Word
 readMem m addr = m addr
 
 -- | Write to memory
-writeMem : Memory → Word → Word → Memory
+writeMem : Memory → Addr → Word → Memory
 writeMem m addr val = λ a → if a ≡ᵇ addr then just val else m a
 
 -- | Machine state
@@ -182,7 +192,7 @@ initState = mkstate emptyRegFile emptyMemory 0 false
 
 -- | Compute effective address for memory operand
 -- Format: base + offset where offset is signed
-effectiveAddr : RegFile → Reg → ℕ → Word
+effectiveAddr : RegFile → Reg → ℕ → Addr
 effectiveAddr rf base-reg offset = readReg rf base-reg + offset
 
 -- | Compute effective address with signed offset

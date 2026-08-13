@@ -69,13 +69,23 @@ writeReg rf edi v = record rf { get-edi = v }
 writeReg rf ebp v = record rf { get-ebp = v }
 writeReg rf esp v = record rf { get-esp = v }
 
-Memory : Set
-Memory = Word → Maybe Word
+-- ADDRESSES ARE NOT VALUES (plan 0.70 phase A). The machine word has been
+-- doing two jobs under one name: as a VALUE it is what `Int` computes and is
+-- MODULAR (D054); as an ADDRESS it indexes memory and carries the layout
+-- ORDER (`hfront ≤ lo ≤ sp`), which modular arithmetic does not supply.
+-- Both are `ℕ` today, so this is definitionally a no-op — it is NAMING, not a
+-- check: `Addr = ℕ` is transparent, so the typechecker still cannot tell them
+-- apart. Making it opaque is a separate, expensive decision (see the plan).
+Addr : Set
+Addr = ℕ
 
-readMem : Memory → Word → Maybe Word
+Memory : Set
+Memory = Addr → Maybe Word
+
+readMem : Memory → Addr → Maybe Word
 readMem m addr = m addr
 
-writeMem : Memory → Word → Word → Memory
+writeMem : Memory → Addr → Word → Memory
 writeMem m addr val = λ a → if a ≡ᵇ addr then just val else m a
 
 record Flags : Set where
@@ -114,7 +124,7 @@ initState = mkstate emptyRegFile emptyMemory initFlags 0 false
 -- Operand evaluation
 ------------------------------------------------------------------------
 
-effectiveAddr : State → Mem → Word
+effectiveAddr : State → Mem → Addr
 effectiveAddr s (base r)         = readReg (regs s) r
 effectiveAddr s (base+disp r d)  = readReg (regs s) r + d
 effectiveAddr s (label-rel n)    = n

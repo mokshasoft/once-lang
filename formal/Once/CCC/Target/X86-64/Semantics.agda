@@ -103,14 +103,28 @@ writeReg rf r13 v = record rf { get-r13 = v }
 writeReg rf r14 v = record rf { get-r14 = v }
 writeReg rf r15 v = record rf { get-r15 = v }
 
+-- ADDRESSES ARE NOT VALUES (plan 0.70 phase A).
+--
+-- The machine word has been doing two jobs under one name. As a VALUE it is
+-- what `Int` computes, and D054 already settled that this is MODULAR. As an
+-- ADDRESS it is what memory is indexed by and what the layout separation
+-- (`hfront ≤ lo ≤ %rsp`) is ORDERED by — and modular arithmetic supplies
+-- neither that order nor the cancellation `slot-addr-inj` needs.
+--
+-- Naming them apart is the first step of making the machine finite. Both are
+-- `ℕ` today, so this is definitionally a no-op; what changes is that the two
+-- roles are now VISIBLE, and phases B/C can move them separately.
+Addr : Set
+Addr = ℕ
+
 -- | Memory: mapping from addresses to values
 Memory : Set
-Memory = Word → Maybe Word
+Memory = Addr → Maybe Word
 
-readMem : Memory → Word → Maybe Word
+readMem : Memory → Addr → Maybe Word
 readMem m addr = m addr
 
-writeMem : Memory → Word → Word → Memory
+writeMem : Memory → Addr → Word → Memory
 writeMem m addr val = λ a → if a ≡ᵇ addr then just val else m a
 
 -- | Flags register (simplified: just zero / carry / sign)
@@ -173,7 +187,7 @@ initState = mkstate (writeReg emptyRegFile rsp stack-top) emptyMemory initFlags 
 -- Operand evaluation
 ------------------------------------------------------------------------
 
-effectiveAddr : State → Mem → Word
+effectiveAddr : State → Mem → Addr
 effectiveAddr s (base r)         = readReg (regs s) r
 effectiveAddr s (base+disp r d)  = readReg (regs s) r + d
 effectiveAddr s (rip+disp d)     = pc s + d
