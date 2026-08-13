@@ -135,6 +135,60 @@ for name, src in CATCHALL:
 print("  ⚠ a catch-all is often correct — but it is SILENT.  When adding a")
 print("    former, CONFIRM each default above rather than inherit it.")
 
+# ── 4. VACUOUS DISCHARGE — metatheorems that are TRUE but say NOTHING ──────
+#
+# ⚠ THE CLASS OF BUG THIS EXISTS FOR.  A rule can be added to `_⟶_` whose
+#   subject-reduction row is discharged by `⊥-elim`/`()` because no typing
+#   rule names its former yet.  That is SOUND and it is `--safe`-clean —
+#   and it is INDISTINGUISHABLE FROM A PROOF in a green build.  The
+#   `subTI` incident (`consistency` vacuous until fixed) is the same shape.
+#
+#   ⇒ vacuity is a fine INTERMEDIATE state.  It must never be a SILENT one.
+print("\n== 4. VACUOUSLY discharged metatheorem rows (outstanding debt) ==")
+subj = read('NbEPDirDBSubj.agda'); canon = read('NbEPDirDBCanon.agda')
+vac = 0
+for fname, src, label in (('sr', subj, 'subject reduction'),
+                          ('prog', canon, 'progress'),
+                          ('usplit', canon, 'code canonicity')):
+    rows = re.findall(r'^' + fname + r'\s+.*$', src, re.M)
+    bad = [r for r in rows if '⊥-elim' in r]
+    if bad:
+        vac += len(bad)
+        print(f"  {fname:<7} ({label}): {len(bad)} of {len(rows)} rows are ⊥-elim")
+        for r in bad:
+            m = re.search(r'\((ι-elim|ξ-\w+|[a-z][\w-]*)', r)
+            print(f"      at {m.group(1) if m else r.strip()[:48]}")
+if vac == 0:
+    print("  none — every row carries content")
+else:
+    print(f"  ⇒ {vac} rows prove NOTHING about their rule.  Each becomes a REAL")
+    print("    obligation the moment its typing rule lands.  Track, do not ship.")
+
+# ── 5. PROMISSORY NOTES — comments that defer an obligation ────────────────
+#
+# A design choice in one layer whose obligation is discharged in another
+# layer that does not exist yet.  The ι-rule's "junk tags reduce to junk;
+# `⊢con` is what rules them out" was one, and it was FALSE as written —
+# `lookupD`'s totality makes subject reduction false without a `k ∈D D`
+# premise.  Nothing checked the note; a gate found it by accident.
+print("\n== 5. PROMISSORY NOTES (a comment is not a mechanism) ==")
+import glob as _g
+pat = re.compile(r'--.*\b(is what rules|will rule|ruled out by|handled by|'
+                 r'deferred to|becomes real when|DELETE WHEN|TEMPORARY)\b',
+                 re.I)
+notes = 0
+for f in sorted(_g.glob('NbEPDirDB*.agda')):
+    for i, line in enumerate(open(f), 1):
+        if pat.search(line):
+            notes += 1
+            print(f"  {f:<34}:{i}  {line.strip()[:72]}")
+print(f"  ⇒ {notes} note(s).  Each asserts an invariant NOTHING CHECKS.")
+print("    ⚠ RULE: totalising a partial function RELOCATES its obligation,")
+print("      it does not remove it.  A new `_⟶_` rule should ship with the")
+print("      STATEMENT of its subject-reduction obligation, even if the")
+print("      proof is deferred — writing the statement is what exposes the")
+print("      missing premise (that is how gate 5 found `k ∈D D`).")
+
 if fail:
     print(f"\n!! FAIL: {fail} orphaned/missing.  Agda will NOT catch this —"
           " datatypes need no coverage.", file=sys.stderr)
