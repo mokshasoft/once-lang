@@ -175,20 +175,58 @@ to a nested datatype.
 Both spikes model **elimination in the metalanguage** and are
 **non-indexed**. Untested, in rough order of risk:
 
-1. ★★ **INDEXING.** `RTm : Cx → Set`, so the dogfooding target needs
-   `IDesc`, not `Desc`. Every lifting gains an index argument and `MuMem`
-   becomes a family. **This is the biggest remaining unknown and should be
-   gate 3** — and it is cheap to ask, since gates 1–2 took ~200 lines
-   between them.
+1. ~~★★ **INDEXING**~~ — ✅ **CLEARED, gate 3 below.**
 2. **The `⊩₀`/`⊩₁` split.** The kernel's LR has two levels; the spikes have
    one.
 3. **The eliminator as an object-language FORMER**, with its ι-reduction —
    and hence the `Conf` and `Subj` halves of the cascade, which together
    are ~25% of the measured bill.
 
-⇒ gates 1 and 2 clear the LOGICAL-RELATION shape, which was the thing that
-could have killed the axis outright. They do not clear the reduction
-theory, and they say nothing about indexing.
+### ✅ GATE 3 ALSO PASSES — `SpikeIDesc`, 0.66 s, green
+
+★★ **Indexing needs LESS than full `IDesc`.** The essential content is that
+a constructor's recursive field may sit at a DIFFERENT index from its
+target — which is exactly what BINDING is. So `ρ` carries an index
+FUNCTION:
+
+```agda
+data Con (I : Set) : Set where
+  ι : Con I                      -- done; targets the ambient index
+  ρ : (I → I) → Con I → Con I    -- a recursive field at `f i`
+```
+
+⇒ `lam : RTm (Γ ∙) → RTm Γ` is `ρ (_∙) ι`; `app` is `ρ id (ρ id ι)`.
+
+| | question | |
+|---|---|---|
+| Q8 | ★ does the nesting survive when the predicate becomes a FAMILY `I → Tm → Set` and `Lift` applies it at a COMPUTED index? | ✅ |
+| Q9 | ★★ does elimination still pass TERMINATION with the index threaded through both halves of the mutual block? | ✅ |
+| Q10 | does a genuinely BINDING datatype instantiate it? | ✅ — a mini λ-syntax indexed by context depth, `lam` at `suc n → n` |
+
+★ **And `Con I` stays in `Set`.** Full `IDesc`'s
+`σ : (S : Set) → (S → IDesc I) → IDesc I` forces `Set₁`; an index FUNCTION
+does not. Universe-polymorphism avoided for free.
+
+--------------------------------------------------------------------------
+## 3b. ⛔ WHAT THE THREE GATES DO NOT COVER
+
+Recorded so the clearance is not over-read. In rough order of risk:
+
+1. ★★ **`σ` — a constructor carrying a VALUE the rest of the description
+   depends on.** `RTm`'s `var : Var Γ → RTm Γ` needs it, and in a
+   SYNTACTIC setting it is genuinely harder than in the metalanguage: the
+   carried value is an open TERM whose value is not known, so the
+   description's continuation cannot be selected by computing on it. ⇒
+   **this is gate 4**, and it is the last shape question.
+2. **The `⊩₀`/`⊩₁` split.** The kernel's LR has two levels; all three
+   spikes have one.
+3. **The eliminator as an object-language FORMER** with its ι-reduction —
+   and hence the `Conf` and `Subj` halves of the cascade, ~25% of the
+   measured bill. ⚠ Nothing so far touches the reduction theory at all.
+
+⇒ the three gates clear the LOGICAL-RELATION shape, including binding,
+which was what could have killed the axis outright. They do not clear the
+reduction theory, and `σ` is still open.
 
 --------------------------------------------------------------------------
 ## 4. THE ACCEPTANCE TEST
