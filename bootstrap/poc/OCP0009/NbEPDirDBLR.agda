@@ -91,7 +91,8 @@ open import poc.OCP0009.NbEPDirDBConf
         ; ⟶*-jsubᵈ; ⟶*-jsubᵖ; ⟶*-jsubᵉ; ⟶*-⌜Id⌝ᶜ; ⟶*-⌜Id⌝ˡ; ⟶*-⌜Id⌝ʳ
         ; ⟶*-idreflᶜ; ⟶*-idreflᵃ
         ; ⟶*-nsuc; ⟶*-natrecᶻ; ⟶*-natrecˢ; ⟶*-natrecⁿ ; ⟶*-absurdᶜ; ⟶*-absurdᵉ
-        ; ⟶*-ordtrᵃ; ⟶*-ordtrᵗ; ⟶*-ordtrᵘ; ⟶*-ordtrᵖ; ⟶*-ordtrq )
+        ; ⟶*-ordtrᵃ; ⟶*-ordtrᵗ; ⟶*-ordtrᵘ; ⟶*-ordtrᵖ; ⟶*-ordtrq
+        ; ⟶*-con; ⟶*-elimᵐ; ⟶*-elimᵗ )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Homᵀ
         ; confluentᵀ; church-rosserᵀ; Id-reduct
@@ -214,6 +215,14 @@ stablecd? unit           = true
 stablecd? nzero          = true
 stablecd? (nsuc n)       = true
 stablecd? (natrec z s n) = natstk? n
+-- ★ INDUCTIVE TYPES: ⚠ these two are NOT the catch-all.  `sne→stablecd`
+--   obliges every NEUTRAL to be a stable code, and a stuck `elim` is a
+--   neutral — so it must answer `mustk?`, exactly as a stuck `natrec`
+--   answers `natstk?`.  Inheriting `false` here makes that lemma
+--   UNPROVABLE (and `stableA?` inherits this row through its own
+--   catch-all `stableA? t = stablecd? t`).
+stablecd? (con k q)      = true
+stablecd? (elim D ms t)  = mustk? t
 -- ★★ WF stage C: ⌜Nat⌝ is DEAD.  Since the retraction of `tr-J-Nat`
 -- (`stkC? ⌜Nat⌝ = false`) NO rule fires on a `hrefl ⌜Nat⌝ s` path —
 -- not J, not `ap-J`, not `tr-pw`/`tr-taut` (those need a lam path) —
@@ -843,6 +852,10 @@ stableA?-red (ξ-nsuc r) h = refl
 stableA?-red (ξ-natrecᶻ r) h = h
 stableA?-red (ξ-natrecˢ r) h = h
 stableA?-red (ξ-natrecⁿ r) h = natstk?-red r h
+stableA?-red (ξ-con r) h = refl
+stableA?-red (ι-elim D ms k q) ()
+stableA?-red (ξ-elimᵐ r) h = h
+stableA?-red (ξ-elimᵗ r) h = mustk?-red r h
 stableA?-red (ordtr-z _ _ _ _) ()
 stableA?-red (ordtr-szz _ _ _) ()
 stableA?-red (ordtr-ssz _ _ _ _) ()
@@ -905,6 +918,10 @@ stablecd?-red (ξ-nsuc r) h = refl
 stablecd?-red (ξ-natrecᶻ r) h = h
 stablecd?-red (ξ-natrecˢ r) h = h
 stablecd?-red (ξ-natrecⁿ r) h = natstk?-red r h
+stablecd?-red (ξ-con r) h = refl
+stablecd?-red (ι-elim D ms k q) ()
+stablecd?-red (ξ-elimᵐ r) h = h
+stablecd?-red (ξ-elimᵗ r) h = mustk?-red r h
 stablecd?-red (ordtr-z _ _ _ _) ()
 stablecd?-red (ordtr-szz _ _ _) ()
 stablecd?-red (ordtr-ssz _ _ _ _) ()
@@ -1547,6 +1564,8 @@ deadA→nopw unit h = refl
 deadA→nopw nzero h = refl
 deadA→nopw (nsuc n) h = refl
 deadA→nopw (natrec z s n) h = h
+deadA→nopw (con k q) h = refl
+deadA→nopw (elim D ms t) h = h
 
 dead→nopw : (C : RTm Γ) → stablecd? C ≡ true → nopw? C ≡ true
 dead→nopw (var x) h = refl
@@ -1571,6 +1590,8 @@ dead→nopw unit h = refl
 dead→nopw nzero h = refl
 dead→nopw (nsuc n) h = refl
 dead→nopw (natrec z s n) h = h
+dead→nopw (con k q) h = refl
+dead→nopw (elim D ms t) h = h
 
 
 -- an hrefl path at a DEAD code is tr-stuck under EVERY motive shape.
@@ -1902,6 +1923,10 @@ natstk?-red* : {t t' : RTm Γ} → t ⟶* t' → natstk? t ≡ true → natstk? 
 natstk?-red* done h       = h
 natstk?-red* (step r q) h = natstk?-red* q (natstk?-red r h)
 
+mustk?-red* : {t t' : RTm Γ} → t ⟶* t' → mustk? t ≡ true → mustk? t' ≡ true
+mustk?-red* done h       = h
+mustk?-red* (step r q) h = mustk?-red* q (mustk?-red r h)
+
 -- ★★ WF stage E: the multi-step closures, one per BOUND.  `wne` needs
 -- all three, composed in `ordstk?`'s own dispatch order.
 -- ⚠ every implicit is bound at the recursive call, per the standing
@@ -2128,6 +2153,12 @@ data SNe {Γ} where
   sne-ordtr : {a t u p q : RTm Γ} →
               SN a → SN t → SN u → SN p → SN q → ordstk? a t u ≡ true →
               SNe (ordtr a t u p q)
+  -- ★ INDUCTIVE TYPES: an `elim` whose SCRUTINEE never becomes a `con` is
+  -- neutral — `sne-natrec`'s shape with `mustk?` for `natstk?`.  The
+  -- METHODS are payload, so they only ride along as `SN`, exactly as
+  -- `natrec`'s branches do.
+  sne-elim : {D : Desc} {ms t : RTm Γ} →
+             SN ms → SN t → mustk? t ≡ true → SNe (elim D ms t)
 
 data SN {Γ} where
   sn-ne   : {t : RTm Γ} → SNe t → SN t
@@ -2147,6 +2178,8 @@ data SN {Γ} where
   sn-unit   : SN (unit {Γ})
   sn-nzero  : SN (nzero {Γ})
   sn-nsuc   : {n : RTm Γ} → SN n → SN (nsuc n)
+  -- ★ INDUCTIVE TYPES: a constructor is SN-inert, like `nsuc`.
+  sn-con    : {k : ℕ} {p : RTm Γ} → SN p → SN (con k p)
   sn-exp  : {t t' : RTm Γ} → SNRed t t' → SN t' → SN t
 
 data SNRed {Γ} where
@@ -2209,6 +2242,15 @@ data SNRed {Γ} where
                                  (subTm (extS (single n)) w))
   snr-natrecⁿ : {z : RTm Γ} {w : RTm ((Γ ∙) ∙)} {n n' : RTm Γ} →
                 SNRed n n' → SNRed (natrec z w n) (natrec z w n')
+  -- ★ INDUCTIVE TYPES: ι, plus one ξ for the SCRUTINEE only — weak head,
+  -- exactly as `snr-natrecⁿ` leaves the branches alone.  The discarded
+  -- material rides as `SN` (the `snr-β` pattern).
+  snr-ι     : {D : Desc} {ms : RTm Γ} {k : ℕ} {p : RTm Γ} →
+              SN ms → SN p →
+              SNRed (elim D ms (con k p))
+                    (fields D ms (lookupD D k) (sel k ms) p)
+  snr-elimᵗ : {D : Desc} {ms t t' : RTm Γ} →
+              SNRed t t' → SNRed (elim D ms t) (elim D ms t')
   -- ★★ WF stage E: the order's five root rules, each discarding the
   -- material it drops as `SN` (the `snr-β` pattern), plus one ξ per
   -- BOUND.  Three scrutinees, so three ξ's — `p`/`q` are payload and
@@ -2306,6 +2348,8 @@ snr→⟶ (snr-J-Id _ _ _ _ _) = tr-J-Id _ _ _ _ _ _ _ _
 snr→⟶ (snr-natrec-zero _)      = natrec-zero _ _
 snr→⟶ (snr-natrec-suc _ _ _)   = natrec-suc _ _ _
 snr→⟶ (snr-natrecⁿ r)          = ξ-natrecⁿ (snr→⟶ r)
+snr→⟶ (snr-ι _ _)              = ι-elim _ _ _ _
+snr→⟶ (snr-elimᵗ r)            = ξ-elimᵗ (snr→⟶ r)
 snr→⟶ (snr-ordtr-z _ _ _ _)    = ordtr-z _ _ _ _
 snr→⟶ (snr-ordtr-szz _ _)      = ordtr-szz _ _ _
 snr→⟶ (snr-ordtr-ssz _ _ _)    = ordtr-ssz _ _ _ _
@@ -2343,6 +2387,8 @@ snr-nonpw (snr-J-Id _ _ _ _ _) = refl
 snr-nonpw (snr-natrec-zero _)     = refl
 snr-nonpw (snr-natrec-suc _ _ _)  = refl
 snr-nonpw (snr-natrecⁿ _)         = refl
+snr-nonpw (snr-ι _ _)             = refl
+snr-nonpw (snr-elimᵗ _)           = refl
 snr-nonpw (snr-ordtr-z _ _ _ _)   = refl
 snr-nonpw (snr-ordtr-szz _ _)     = refl
 snr-nonpw (snr-ordtr-ssz _ _ _)   = refl
@@ -2502,6 +2548,14 @@ snr-det (snr-natrecⁿ ()) (snr-natrec-zero _)
 snr-det (snr-natrec-suc _ _ _) (snr-natrec-suc _ _ _) = refl
 snr-det (snr-natrec-suc _ _ _) (snr-natrecⁿ ())
 snr-det (snr-natrecⁿ ()) (snr-natrec-suc _ _ _)
+-- ★ INDUCTIVE TYPES: ι and the ξ overlap only where the scrutinee is a
+-- `con`, and NO SNRed rule steps a `con` — so the cross cases are refuted
+-- definitionally, exactly as `natrec`'s are.
+snr-det (snr-ι _ _) (snr-ι _ _)         = refl
+snr-det (snr-ι _ _) (snr-elimᵗ ())
+snr-det (snr-elimᵗ ()) (snr-ι _ _)
+snr-det (snr-elimᵗ {D = D} {ms = ms} r) (snr-elimᵗ r') =
+  cong (elim D ms) (snr-det r r')
 snr-det (snr-natrecⁿ {z = z} {w = w} r) (snr-natrecⁿ r') =
   cong (λ q → natrec z w q) (snr-det r r')
 -- ★★ WF stage E: `natrec`'s argument three times over.  Every cross
@@ -2613,6 +2667,12 @@ sne-whred (sne-natrec snz snw snn ()) (snr-natrec-zero _)
 sne-whred (sne-natrec snz snw snn ()) (snr-natrec-suc _ _ _)
 sne-whred (sne-natrec snz snw snn key) (snr-natrecⁿ r) =
   sne-natrec snz snw (sn-whred snn r) (natstk?-red (snr→⟶ r) key)
+-- ★ INDUCTIVE TYPES: ι is refuted DEFINITIONALLY — it fires only on a
+-- `con` scrutinee and `mustk?` of a `con` is `false`, so the neutral's own
+-- key contradicts it.  That is exactly what keying `sne-elim` bought.
+sne-whred (sne-elim snm snt ()) (snr-ι _ _)
+sne-whred (sne-elim snm snt key) (snr-elimᵗ r) =
+  sne-elim snm (sn-whred snt r) (mustk?-red (snr→⟶ r) key)
 -- ★★ WF stage E: every root rule is refuted DEFINITIONALLY — each one
 -- fires only on numeral bounds, and `natstk?` of a numeral is `false`,
 -- so `ordstk?` computes to `false` and the key is `()`.
@@ -2711,6 +2771,10 @@ data Ne {Γ} : RTm Γ → Set where
   -- every other eliminator it carries only the stuckness, not the SN.
   ne-ordtr : {a t u p q : RTm Γ} →
              ordstk? a t u ≡ true → Ne (ordtr a t u p q)
+  -- ★ INDUCTIVE TYPES: the `Ne` peer of `sne-elim` — same key, and like
+  -- every other eliminator it carries only the stuckness.
+  ne-elim : {D : Desc} {ms t : RTm Γ} →
+            mustk? t ≡ true → Ne (elim D ms t)
 
 ne-red : {t t' : RTm Γ} → Ne t → t ⟶ t' → Ne t'
 ne-red (ne-var x) ()
@@ -2749,6 +2813,11 @@ ne-red (ne-natrec ()) (natrec-suc _ _ _)
 ne-red (ne-natrec key) (ξ-natrecᶻ r) = ne-natrec key
 ne-red (ne-natrec key) (ξ-natrecˢ r) = ne-natrec key
 ne-red (ne-natrec key) (ξ-natrecⁿ r) = ne-natrec (natstk?-red r key)
+-- ★ INDUCTIVE TYPES: ι refuted by the key; the methods leave it alone;
+-- the scrutinee moves it.  `natrec`'s three rows exactly.
+ne-red (ne-elim ()) (ι-elim _ _ _ _)
+ne-red (ne-elim key) (ξ-elimᵐ r) = ne-elim key
+ne-red (ne-elim key) (ξ-elimᵗ r) = ne-elim (mustk?-red r key)
 -- ★★ WF stage E: the five root rules are refuted by the key, the three
 -- bound congruences move it, and the two PROOF congruences leave it
 -- alone — `ordstk?` does not mention `p`/`q`.
@@ -2777,6 +2846,7 @@ sne→ne (sne-tr _ _ _ key) = ne-tr key
 sne→ne (sne-ap _ _ _ key) = ne-ap key
 sne→ne (sne-jsub _ _ _ key) = ne-jsub key
 sne→ne (sne-natrec _ _ _ key) = ne-natrec key
+sne→ne (sne-elim _ _ key) = ne-elim key
 sne→ne (sne-ordtr _ _ _ _ _ key) = ne-ordtr key
 
 -- extractors for `fund`'s path analysis: strict neutrals are safe spine
@@ -2792,6 +2862,7 @@ sne→spine (sne-tr _ _ _ key) = key
 sne→spine (sne-ap _ _ _ key) = key
 sne→spine (sne-jsub _ _ _ key) = key
 sne→spine (sne-natrec _ _ _ key) = key
+sne→spine (sne-elim _ _ key) = key
 sne→spine (sne-ordtr _ _ _ _ _ key) = key
 
 -- ★ the `stableA?` peer.  A strict neutral is never ⌜Nat⌝- or
@@ -2808,6 +2879,7 @@ sne→stableA (sne-tr _ _ _ key) = key
 sne→stableA (sne-ap _ _ _ key) = key
 sne→stableA (sne-jsub _ _ _ key) = key
 sne→stableA (sne-natrec _ _ _ key) = key
+sne→stableA (sne-elim _ _ key) = key
 sne→stableA (sne-ordtr _ _ _ _ _ key) = key
 
 sne→stablecd : {t : RTm Γ} → SNe t → stablecd? t ≡ true
@@ -2821,6 +2893,7 @@ sne→stablecd (sne-tr _ _ _ key) = key
 sne→stablecd (sne-ap _ _ _ key) = key
 sne→stablecd (sne-jsub _ _ _ key) = key
 sne→stablecd (sne-natrec _ _ _ key) = key
+sne→stablecd (sne-elim _ _ key) = key
 sne→stablecd (sne-ordtr _ _ _ _ _ key) = key
 
 -- ★ WF stage A: a strict neutral is never a numeral — the extractor
@@ -2836,6 +2909,7 @@ sne→natstk (sne-tr _ _ _ key)   = key
 sne→natstk (sne-ap _ _ _ key)   = key
 sne→natstk (sne-jsub _ _ _ key) = key
 sne→natstk (sne-natrec _ _ _ key) = key
+sne→natstk (sne-elim _ _ key) = key
 sne→natstk (sne-ordtr _ _ _ _ _ key) = key
 
 -- renaming preserves every classifier ON THE NOSE — the entire
@@ -2986,7 +3060,7 @@ stableA?-ren ρ nzero         = refl
 stableA?-ren ρ (nsuc n)      = refl
 stableA?-ren ρ (natrec z s n) = natstk?-ren ρ n
 stableA?-ren ρ (con k q) = refl
-stableA?-ren ρ (elim D ms t) = refl
+stableA?-ren ρ (elim D ms t) = mustk?-ren ρ t
 
 stablecd?-ren ρ (var x)       = refl
 stablecd?-ren ρ (lam t)       = refl
@@ -3013,7 +3087,7 @@ stablecd?-ren ρ nzero         = refl
 stablecd?-ren ρ (nsuc n)      = refl
 stablecd?-ren ρ (natrec z s n) = natstk?-ren ρ n
 stablecd?-ren ρ (con k q) = refl
-stablecd?-ren ρ (elim D ms t) = refl
+stablecd?-ren ρ (elim D ms t) = mustk?-ren ρ t
 
 pathstk?-ren ρ (var x)       = refl
 pathstk?-ren ρ (lam t)       = refl
@@ -5544,6 +5618,22 @@ wne (sne-natrec {z = z} {w = w} {n = n} z₀ w₀ n₀ key)
 -- carry the key — and once they are normal, all five root rules are
 -- refuted by `key'` computing to `false ≡ true`, exactly as `natrec`'s
 -- two are.
+-- ★ INDUCTIVE TYPES: two subterms, and only the SCRUTINEE carries the key;
+-- once normal, ι is refuted by `key'` computing to `false ≡ true`.
+wne (sne-elim {D = D} {ms = ms} {t = t} m₀ t₀ key)
+  with wn m₀ | wn t₀
+... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ =
+      mkWNe (elim D n₁ n₂)
+            (⟶*-trans (⟶*-elimᵐ r₁) (⟶*-elimᵗ r₂))
+            nrm' (sne-elim sn₁ sn₂ key')
+  where
+    key' : mustk? n₂ ≡ true
+    key' = mustk?-red* r₂ key
+
+    nrm' : IsNormal (elim D n₁ n₂)
+    nrm' (ι-elim _ _ _ _) = f≢t key'
+    nrm' (ξ-elimᵐ q) = nm₁ q
+    nrm' (ξ-elimᵗ q) = nm₂ q
 wne (sne-ordtr {a = a} {t = t} {u = u} a₀ t₀ u₀ p₀ q₀ key)
   with wn a₀ | wn t₀ | wn u₀ | wn p₀ | wn q₀
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃
@@ -5640,6 +5730,11 @@ wn (sn-nsuc h) with wn h
   where
     nrm' : IsNormal (nsuc n₁)
     nrm' (ξ-nsuc q) = nm₁ q
+wn (sn-con {k = k} h) with wn h
+... | mkWN n₁ r₁ nm₁ sn₁ = mkWN (con k n₁) (⟶*-con r₁) nrm' (sn-con sn₁)
+  where
+    nrm' : IsNormal (con k n₁)
+    nrm' (ξ-con q) = nm₁ q
 wn (sn-exp r h) with wn h
 ... | mkWN n₁ r₁ nm₁ sn₁ = mkWN n₁ (step (snr→⟶ r) r₁) nm₁ sn₁
 
