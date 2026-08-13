@@ -142,8 +142,53 @@ disjunction precisely to avoid needing one). So the options are:
 * carry the payload as a tag plus an argument LIST, and have `Lift` walk
   the list against the description.
 
-⇒ **the next spike is that one**, and it should be run before any kernel
-work: it decides whether this axis is one cascade or two.
+### ✅ AND SO DID THE SECOND — `SpikeDescTm`, 0.73 s, green first try
+
+**The design that passes: SUM-OF-PRODUCTS WITH A NUMERAL TAG.**
+
+```agda
+data Con  where ι : Con ; ρ : Con → Con        -- one constructor's fields
+data Desc where [] ; _∷_ : Con → Desc → Desc   -- a datatype IS a list
+con : ℕ → Tm → Tm                              -- TAG + payload
+```
+
+| | question | |
+|---|---|---|
+| Q5 | ★ does `Lift` — walking a `Con` against a PAYLOAD TERM — survive being nested inside `MuMem`, now WITH `mm-ne` and `mm-exp`? | ✅ |
+| Q6 | ★★ does elimination by recursion on the MEMBERSHIP proof pass TERMINATION, when the sub-proofs are reached only by UNFOLDING `Lift` into a product? | ✅ |
+| Q7 | does a concrete datatype instantiate it non-vacuously? | ✅ — ℕ, with a neutral member, a redex member, and a non-degenerate `classify` |
+
+★★★ **AND THE COPRODUCT PROBLEM IS GONE.** `SpikeDesc` used `δ` (choice)
+*inside* the description, whose object-language reading is `inl`/`inr`.
+Moving the choice OUT of the type and INTO the term as a tag needs only
+`Nat` and a pair — **both of which the kernel already has**.
+
+⇒ **the axis is ONE cascade, not two.**
+
+⚠ Restriction bought with it, and it is the right one: choice may appear
+only at the TOP of a description. That is exactly "sum of products", i.e.
+what a datatype declaration *is*; a field that is itself a choice belongs
+to a nested datatype.
+
+### ⛔ WHAT THE TWO GATES STILL DO NOT COVER
+
+Both spikes model **elimination in the metalanguage** and are
+**non-indexed**. Untested, in rough order of risk:
+
+1. ★★ **INDEXING.** `RTm : Cx → Set`, so the dogfooding target needs
+   `IDesc`, not `Desc`. Every lifting gains an index argument and `MuMem`
+   becomes a family. **This is the biggest remaining unknown and should be
+   gate 3** — and it is cheap to ask, since gates 1–2 took ~200 lines
+   between them.
+2. **The `⊩₀`/`⊩₁` split.** The kernel's LR has two levels; the spikes have
+   one.
+3. **The eliminator as an object-language FORMER**, with its ι-reduction —
+   and hence the `Conf` and `Subj` halves of the cascade, which together
+   are ~25% of the measured bill.
+
+⇒ gates 1 and 2 clear the LOGICAL-RELATION shape, which was the thing that
+could have killed the axis outright. They do not clear the reduction
+theory, and they say nothing about indexing.
 
 --------------------------------------------------------------------------
 ## 4. THE ACCEPTANCE TEST
