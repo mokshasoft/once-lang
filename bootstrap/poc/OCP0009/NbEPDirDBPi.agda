@@ -895,6 +895,65 @@ sub-fields σ D ms C m p = cong (app (app (subTm σ m) (subTm σ p)))
                                (sub-ihs σ D ms C p)
 
 ------------------------------------------------------------------------
+-- ★★ THE ELIMINATOR'S COMPUTED TYPES (gate 5c, general in `DCon`).
+--
+--   payTy   D C      the PAYLOAD's type — a Σ-chain over the field list
+--   ihTy    D C q M  the IH TUPLE's type — one entry per `dρ`, NONE per
+--                    `dκ` (a non-recursive field owes no hypothesis)
+--   atCon   k M      the motive RE-BASED at the payload binder
+--   methTy  D k C M  Π (payTy) (Π (ihTy) (wk (atCon k M)))
+--
+-- ⚠ No new JUDGMENT is needed: `⊢con`/`⊢elim` reuse the existing Π/Σ
+--   rules against these.
+------------------------------------------------------------------------
+
+-- ★ the unique SUBSTITUTION out of the empty context.  ⚠ defined by
+--   `subTy`, not `renTy`, on purpose: both inertness laws below then come
+--   from one composition law plus a VACUOUS congruence (`Var ε` is
+--   empty), with no ren-versus-sub mismatch to bridge.
+εsub : Sub ε Γ
+εsub ()
+
+εwkTy : RTy ε → RTy Γ
+εwkTy = subTy εsub
+
+εwk-ren : (ρ : Ren Γ Δ) (A : RTy ε) → renTy ρ (εwkTy A) ≡ εwkTy A
+εwk-ren ρ A = trans (renTy-subTy A) (subTy-cong (λ ()) A)
+
+εwk-sub : (σ : Sub Γ Δ) (A : RTy ε) → subTy σ (εwkTy A) ≡ εwkTy A
+εwk-sub σ A = trans (subTy-subTy A) (subTy-cong (λ ()) A)
+
+-- ★★ the PAYLOAD's type: a Σ-chain over one constructor's field list.
+--    Closed, so both actions are inert on it.
+payTy : Desc → DCon → RTy Γ
+payTy D dι       = Unit
+payTy D (dρ C)   = Σ' (Mu D)    (payTy D C)
+payTy D (dκ A C) = Σ' (εwkTy A) (payTy D C)
+
+payTy-ren : (ρ : Ren Γ Δ) (D : Desc) (C : DCon) →
+            renTy ρ (payTy D C) ≡ payTy D C
+payTy-ren ρ D dι       = refl
+payTy-ren ρ D (dρ C)   = cong (Σ' (Mu D)) (payTy-ren (extR ρ) D C)
+payTy-ren ρ D (dκ A C) = cong₂ Σ' (εwk-ren ρ A) (payTy-ren (extR ρ) D C)
+
+payTy-sub : (σ : Sub Γ Δ) (D : Desc) (C : DCon) →
+            subTy σ (payTy D C) ≡ payTy D C
+payTy-sub σ D dι       = refl
+payTy-sub σ D (dρ C)   = cong (Σ' (Mu D)) (payTy-sub (extS σ) D C)
+payTy-sub σ D (dκ A C) = cong₂ Σ' (εwk-sub σ A) (payTy-sub (extS σ) D C)
+
+-- ★★ the TAG INDEXES A REAL CONSTRUCTOR.  ⚠⚠ gate 5's Q21: `lookupD` is
+--    TOTAL (it answers `dι` off the end, so `_⟶_` needs no side
+--    condition), and `payTy D dι = Unit` — so WITHOUT this premise an
+--    out-of-range tag with payload `unit` would be typeable, ι would
+--    reduce it to `sel k ms`, and that bottoms out in `fst unit`.
+--    SUBJECT REDUCTION WOULD BE FALSE.  Totality relocates the
+--    obligation; it does not remove it.
+data _∈D_ : ℕ → Desc → Set where
+  hereD  : {C : DCon} {E : Desc} → zero ∈D (C ◃ E)
+  thereD : {k : ℕ} {C : DCon} {E : Desc} → k ∈D E → suc k ∈D (C ◃ E)
+
+------------------------------------------------------------------------
 -- ★ THE CATEGORY-OF-CONTEXTS LAWS ON TYPES — the coherence that makes the
 --   definitional Π-stability NON-vacuous. `[∘]ᵀ` is the Beck–Chevalley-
 --   relevant law: type substitution commutes with COMPOSITION, so Π commutes

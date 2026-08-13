@@ -34,7 +34,7 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBType where
 
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import normalizer.Syntax.Types using ( _≡_; refl; trans )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
@@ -42,7 +42,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Id; ⌜Id⌝; idrefl; jsub
         ; Unit; Nat; unit; nzero; nsuc; natrec; extS; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; extR; Sub; subTy; subTm; renTy; renTm
-        ; Desc; Mu; con; elim; lookupD; sel; fields )
+        ; Desc; Mu; con; elim; lookupD; sel; fields
+        ; payTy; payTy-ren; payTy-sub; εwkTy; εwk-ren; εwk-sub; _∈D_; hereD; thereD; DCon; dι; dρ; dκ; dnil; _◃_; ihs; subTy-subTy; subTy-cong; renTy-subTy )
 open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false; occTm; pw?; stkC?; stkA?; flat?; pwBody; pwShift
         ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id )
@@ -65,6 +66,63 @@ single u (vs x) = var x
 nrs : Sub (Γ ∙) ((Γ ∙) ∙)
 nrs vz     = nsuc (var (vs vz))
 nrs (vs x) = var (vs (vs x))
+
+------------------------------------------------------------------------
+-- ★★ THE ELIMINATOR'S COMPUTED TYPES (gate 5c).  Here rather than in
+--    `Pi` because they need `single`, and because `⊢con`/`⊢elim` are
+--    the only consumers.
+------------------------------------------------------------------------
+
+-- ★★ the IH TUPLE's type: one entry per `dρ`, NONE per `dκ`.
+--    ⚠ a non-recursive field owes no induction hypothesis — it is
+--      SKIPPED, not filled with a placeholder.  Same accounting as
+--      `SpikeDescSigma`'s `elimLift` in the model, which is why the term
+--      layer and the model layer agree on what a description means.
+ihTy : Desc → DCon → RTm Γ → RTy (Γ ∙) → RTy Γ
+ihTy D dι       q M = Unit
+ihTy D (dρ C)   q M = Σ' (subTy (single (fst q)) M) (renTy vs (ihTy D C (snd q) M))
+ihTy D (dκ A C) q M = ihTy D C (snd q) M
+
+-- ★★★ THE MOTIVE, RE-BASED AT THE PAYLOAD BINDER.  `atCon k M` is `M`
+--     with its SCRUTINEE binder replaced by `con k ⟨-⟩`, so its own
+--     binder is now the PAYLOAD.  This is the move that makes tupled
+--     methods type WITHOUT η (gate 5c).
+conS : ℕ → Sub (Γ ∙) (Γ ∙)
+conS k vz     = con k (var vz)
+conS k (vs x) = var (vs x)
+
+atCon : ℕ → RTy (Γ ∙) → RTy (Γ ∙)
+atCon k M = subTy (conS k) M
+
+-- instantiating the re-based motive at a payload IS the motive at that
+-- constructor.  ⚠ NO η — the congruence is `refl` in every case.
+atCon-inst : (k : ℕ) (M : RTy (Γ ∙)) (p : RTm Γ) →
+             subTy (single p) (atCon k M) ≡ subTy (single (con k p)) M
+atCon-inst k M p =
+  trans (subTy-subTy M) (subTy-cong (λ { vz → refl ; (vs x) → refl }) M)
+
+-- ★★ one constructor's METHOD — TUPLED: the payload whole, then the IHs.
+methTy : Desc → ℕ → DCon → RTy (Γ ∙) → RTy Γ
+methTy D k C M =
+  Π (payTy D C)
+    (Π (ihTy D C (var vz) (renTy (extR vs) M))
+       (renTy vs (atCon k M)))
+
+-- the METHOD TUPLE, right-nested so `sel` navigates it by `fst`/`snd`.
+--
+-- ⚠⚠ THE TAG MUST ADVANCE.  Each method's result is `atCon k M` — the
+--   motive at ITS OWN constructor — so the k-th entry carries tag `k`,
+--   not `0`.  The extra `ℕ` is that offset.  With a fixed `0` every
+--   method would claim to produce `M[con 0 …]` and `sel-ty` (which pulls
+--   entry `k` out at `methTy D k (lookupD D k) M`) would be unprovable.
+methsTyFrom : Desc → RTy (Γ ∙) → ℕ → Desc → RTy Γ
+methsTyFrom D M j dnil    = Unit
+methsTyFrom D M j (C ◃ E) =
+  Σ' (methTy D j C M) (renTy vs (methsTyFrom D M (suc j) E))
+
+methsTy : Desc → RTy (Γ ∙) → Desc → RTy Γ
+methsTy D M E = methsTyFrom D M zero E
+
 
 -- The top-two-variable SWAP renaming — what `tr-pw` uses to move the
 -- `⌜Π⌝`-codomain code under the new lambda: the Π-binder becomes the new
@@ -535,6 +593,27 @@ data _⊢_∷_ where
             ((Γ ▹ Nat) ▹ M) ⊢ s ∷ subTy nrs M →
             Γ ⊢ n ∷ Nat →
             Γ ⊢ natrec z s n ∷ subTy (single n) M
+  -- ★★★ INDUCTIVE TYPES (gate 5c).  No new JUDGMENT: the payload's type
+  -- and the method's type are COMPUTED from the description, so these
+  -- reuse the existing Π/Σ rules.
+  --
+  -- ⚠⚠ `k ∈D D` IS LOAD-BEARING (gate 5, Q21).  `lookupD` is total, and
+  -- `payTy D dι = Unit`, so without it an out-of-range tag with payload
+  -- `unit` is typeable, ι reduces it to `sel k ms`, and that bottoms out
+  -- in `fst unit`.  Subject reduction would be FALSE, not unprovable.
+  ⊢con  : ∀ {Γ D k p} →
+          k ∈D D →
+          Γ ⊢ p ∷ payTy D (lookupD D k) →
+          Γ ⊢ con k p ∷ Mu D
+  -- ★ DEPENDENT elimination — the motive is a family over the scrutinee,
+  -- exactly as `⊢natrec`'s is.  Methods are TUPLED: each receives the
+  -- payload WHOLE and the IH tuple beside it, which is what lets this
+  -- type without η (gate 5b vs 5c).
+  ⊢elim : ∀ {Γ D M ms t} →
+          (Γ ▹ Mu D) ⊢ty M →
+          Γ ⊢ ms ∷ methsTy D M D →
+          Γ ⊢ t ∷ Mu D →
+          Γ ⊢ elim D ms t ∷ subTy (single t) M
   ⊢conv : ∀ {Γ t A B}   → Γ ⊢ t ∷ A → A ≅ᵀ B → Γ ⊢ t ∷ B
 
 data _⊢ty_ where
@@ -546,6 +625,11 @@ data _⊢ty_ where
   ty-Id   : ∀ {Γ A t u} → Γ ⊢ty A → Γ ⊢ t ∷ A → Γ ⊢ u ∷ A → Γ ⊢ty Id A t u
   ty-Unit : ∀ {Γ}     → Γ ⊢ty Unit
   ty-Nat  : ∀ {Γ}     → Γ ⊢ty Nat
+  -- ★ INDUCTIVE TYPES.  ⚠ UNCONDITIONAL for now: a garbage `dκ A` yields
+  -- a type nothing inhabits — permissive, not unsound.  Description
+  -- WELL-FORMEDNESS becomes REQUIRED for the model, where `⊩₀ (Mu D)`
+  -- needs `⊩₀ A` at every `dκ`.  See PLAN-INDUCTIVE §4.
+  ty-Mu   : ∀ {Γ D}   → Γ ⊢ty Mu D
   -- W2: `Hom` FORMATION — both endpoints at the same (well-formed) type.
   ty-Hom  : ∀ {Γ A t u} → Γ ⊢ty A → Γ ⊢ t ∷ A → Γ ⊢ u ∷ A → Γ ⊢ty Hom A t u
 
