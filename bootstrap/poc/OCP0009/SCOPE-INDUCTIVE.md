@@ -99,6 +99,52 @@ the mechanical row-filling both measured precedents show.
 LR case does not go through at three constructors it will not go through at
 `RTm`'s twenty-five.
 
+### ✅ THE GATE PASSED — `SpikeDesc`, 0.67 s, green first try, 2026-08-13
+
+Four questions, in dependency order, all ✅:
+
+| | question | |
+|---|---|---|
+| Q1 | does `μ D` pass POSITIVITY, given `⟦_⟧` is a function the checker must unfold? | ✅ |
+| Q2 | does the generic `fold` pass TERMINATION? | ✅ — but only written MUTUALLY with its map; the one-liner `f (map D (fold f) xs)` passes `fold f` as a function and the checker then cannot see it is applied to subterms |
+| Q3 | ★ does `Lift` — a predicate lifting by recursion on the description — survive being used NESTED inside the relation's own `data` declaration? | ✅ **this was the gate** |
+| Q4 | ★★ does `fund`'s fold case go through — does the IH ARRIVE at every recursive position? | ✅ |
+
+Plus a non-vacuous instance: ℕ as a description, `sz` by the GENERIC fold
+(the acceptance test `ARCHITECTURE.md` names), computing by `refl`, and
+`foldPres` instantiated at it.
+
+⇒ **the shape is sound and the axis is not blocked on it.**
+
+### ⛔ BUT THE SPIKE DID NOT ASK THE NEXT QUESTION, AND IT IS A REAL ONE
+
+`SpikeDesc` works in the METALANGUAGE: `μ D` is an Agda datatype, so its
+elements *are* description-shaped and `Lift` can walk them directly. Over
+`RTm` they are not. The kernel's `NatMem` has FOUR constructors —
+`nm-ne`, `nm-zero`, `nm-suc`, `nm-exp` — because it classifies *terms*,
+including neutrals and terms that expand to members. `SpikeDesc`'s `MuMem`
+has only `mm-con`.
+
+So the open question is:
+
+> **how does an object-language constructor term carry its fields, so that
+> `Lift` can walk them against the description?**
+
+⚠ **And it has a sharp consequence.** With `δ` (choice) the natural answer
+is a coproduct — and **the kernel has none**, a fact `ARCHITECTURE.md`
+leans on repeatedly (`⊢lexrec` takes two recursor arguments rather than a
+disjunction precisely to avoid needing one). So the options are:
+
+* add coproducts — **another ~2 kloc cascade**, and it should be priced
+  before choosing;
+* replace `δ` with a `σ` over a finite tag, putting the choice in the
+  TERM (`con : tag → fields → μ D`) rather than in the type;
+* carry the payload as a tag plus an argument LIST, and have `Lift` walk
+  the list against the description.
+
+⇒ **the next spike is that one**, and it should be run before any kernel
+work: it decides whether this axis is one cascade or two.
+
 --------------------------------------------------------------------------
 ## 4. THE ACCEPTANCE TEST
 
