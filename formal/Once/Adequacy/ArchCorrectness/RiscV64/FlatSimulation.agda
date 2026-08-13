@@ -56,12 +56,15 @@ open C using (HeapView; haddr; HDom; hfront)
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS
   using (blk-off; blk-len; blk-off-suc; fetch-block-head)
 open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
-  using (exec-1; step-mv; step-li; step-label)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; a0; a1; t0; s3; s4)
+  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi)
+open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; a0; a1; t0; s3; s4; sp; slots)
 import Data.Integer as ℤ
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (role-sp; role-clos; role-heap; role-out; role-in1; role-in2; role-scratch; role-count)
-open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace; compile-abstract)
+open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace; compile-abstract; slot-to-disp)
+open import Data.Nat.Properties using (+-monoʳ-<; *-monoˡ-<)
+open import Data.Empty using (⊥)
+open import Once.CCC.FrameSemantics using (frame-base)
 
 ------------------------------------------------------------------------
 -- The compiled correspondence.
@@ -314,3 +317,168 @@ block-step-c-label {hv} prog fs s n cc h ft = post , exec-eq , record
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-label n)) prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-label n)) ft))
+
+------------------------------------------------------------------------
+-- THE SLOT ACCESSES — riscv64's first MEMORY-touching block-steps (0.65 G2).
+--
+-- Mirrors x86-64's three exactly, which is the point: `stack-eq-cur` already
+-- states the read address as `rreg s sp-reg + slot-to-disp k`, and riscv64's
+-- `effectiveAddr rf base off` IS `readReg rf base + off`, so the generic
+-- correspondence lands on `ld`/`sd` with no adapter. The two helpers below are
+-- copied from x86-64 for the same reason (`elfs-frames` is abstract-side only
+-- and is a candidate for the core; `ret-slot-store` differs only by the state
+-- type).
+------------------------------------------------------------------------
+
+elfs-frames : ∀ (mv : Maybe (StoredValue FS)) (ls : LocState FS) (alloc : AllocState {FS})
+            → C.frames-of (proj₂ (AbstractExec.exec-load-from-slot-with-value {FS} mv ls alloc))
+              ≡ C.frames-of alloc
+elfs-frames (just v) ls alloc = refl
+elfs-frames nothing  ls alloc = refl
+
+-- A STACK STORE MISSES EVERY PENDING RETURN (D093) — x86-64's `ret-slot-store`,
+-- at riscv64's state type.
+ret-slot-store : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s : R.State)
+                   (slot : Slot) (v : R.Word)
+               → CompiledCorr hv prog fs s
+               → slot < frame-slots (falloc fs)
+               → C.RetAddrs (blk-off prog)
+                   (R.writeMem (R.State.memory s)
+                      (R.readReg (R.State.regs s) sp + slot-to-disp slot) v)
+                   (C.frames-of (falloc fs)) (fret fs)
+ret-slot-store {hv} prog fs s slot v cc slot<b =
+  C.ret-write-in-frame (blk-off prog) (R.State.memory s) (stackMem (floc fs))
+    (R.readReg (R.State.regs s) sp + slot-to-disp slot) v (C.lo hv)
+    (current-frame (falloc fs)) (frame-slots (falloc fs))
+    (saved-frames (falloc fs)) (fret fs)
+    w<end (C.stack-eq (dataCorr cc)) (ret-eq cc)
+  where
+    w<end : R.readReg (R.State.regs s) sp + slot-to-disp slot
+          < frame-base FS (current-frame (falloc fs)) + slots (frame-slots (falloc fs))
+    w<end rewrite C.sp-eq (dataCorr cc) =
+      +-monoʳ-< (frame-base FS (current-frame (falloc fs))) (*-monoˡ-< slot-size slot<b)
+
+-- load-from-slot: Output := stack[slot] ↔ `ld a0, slot*8(sp)`.
+block-step-load-from-slot : ∀ {hv : HeapView} prog fs s slot w → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (load-from-slot slot)
+  → slot < frame-slots (falloc fs)
+  → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
+  → BlockStep hv prog fs s (load-from-slot slot)
+block-step-load-from-slot {hv} prog fs s slot w cc h ft slot<ns st-eq =
+  post , exec-eq , record { dataCorr = C.sim-load-from-slot slot w fs s _ dc st-eq (C.sets-role-riscv64 s role-out _ _) ; pc-off = pco'
+                          ; ret-eq = ret-same prog fs (load-from-slot slot) (R.State.memory s)
+                                       (elfs-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl) (ret-eq cc)
+                          ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-rv : R.fetch (compile-trace prog) (R.State.pc s)
+             ≡ just (ld a0 sp (slot-to-disp slot))
+    fetch-rv = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) (load-from-slot slot) ft)
+    rd : R.readMem (R.State.memory s)
+           (R.effectiveAddr (R.State.regs s) sp (slot-to-disp slot))
+       ≡ just (C.enc-sv hv w)
+    rd = C.stack-eq-cur dc slot slot<ns _ st-eq
+    post : R.State
+    post = record s { regs = R.writeReg (R.State.regs s) a0 (C.enc-sv hv w)
+                    ; pc = R.State.pc s + 1 }
+    snh : R.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-ld {compile-trace prog} {s} {a0} {sp} {slot-to-disp slot} {C.enc-sv hv w} fetch-rv rd
+    exec-eq : R.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (load-from-slot slot) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (load-from-slot slot) ft))
+
+-- store-at-slot: stack[slot] := Output ↔ `sd a0, slot*8(sp)`.
+block-step-store-at-slot : ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (store-at-slot slot)
+  → slot < frame-slots (falloc fs)
+  → (∀ hl' → HDom hv hl' → (R.readReg (R.State.regs s) sp + slot-to-disp slot ≡ haddr hv hl') → ⊥)
+  → BlockStep hv prog fs s (store-at-slot slot)
+block-step-store-at-slot {hv} prog fs s slot cc h ft slot<ns disj =
+  post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
+                          ; ret-eq = ret-slot-store prog fs s slot _ cc slot<ns
+                          ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-rv : R.fetch (compile-trace prog) (R.State.pc s)
+             ≡ just (sd a0 sp (slot-to-disp slot))
+    fetch-rv = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) (store-at-slot slot) ft)
+    post : R.State
+    post = record s { memory = R.writeMem (R.State.memory s)
+                                 (R.effectiveAddr (R.State.regs s) sp (slot-to-disp slot))
+                                 (R.readReg (R.State.regs s) a0)
+                    ; pc = R.State.pc s + 1 }
+    snh : R.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-sd {compile-trace prog} {s} {a0} {sp} {slot-to-disp slot} fetch-rv
+    exec-eq : R.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    post-eq : post ≡ R.mkstate (R.State.regs s)
+                        (R.writeMem (R.State.memory s)
+                           (R.readReg (R.State.regs s) sp + slot-to-disp slot)
+                           (C.enc-sv hv (readReg (regs (floc fs)) Output)))
+                        (R.State.pc s + 1) (R.State.halted s)
+    post-eq = cong (λ v → R.mkstate (R.State.regs s)
+                            (R.writeMem (R.State.memory s)
+                               (R.readReg (R.State.regs s) sp + slot-to-disp slot) v)
+                            (R.State.pc s + 1) (R.State.halted s))
+                   (C.out-eq dc)
+    dataPost : C.FlatCorr hv (flat-exec-instr (store-at-slot slot) prog fs) post
+    dataPost = subst (C.FlatCorr hv (flat-exec-instr (store-at-slot slot) prog fs)) (sym post-eq)
+                     (C.sim-store-at-slot slot fs s _ dc slot<ns disj (C.sets-mem-riscv64 s _ _ _))
+    pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (store-at-slot slot) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (store-at-slot slot) ft))
+
+-- lea-slot: Output := &stack[slot] ↔ `addi a0, sp, slot*8`.
+--
+-- THE ONE PLACE riscv64 DIFFERS FROM x86-64 HERE, and it is plan 0.70's doing
+-- rather than the ISA's: x86-64 computes this address with `lea`, which is not
+-- an arithmetic instruction and so was never made modular. riscv64 has no `lea`
+-- — it computes the address with `addi`, a real add — so the block-step needs
+-- the ADDRESS NO-WRAP fact that x86-64's `lea` route never had to state. Same
+-- class as `AddrNoWrap` (D087); a premise here until riscv64 has a
+-- `ConcFlatSim` to supply it.
+block-step-lea-slot : ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (lea-slot slot)
+  → R.readReg (R.State.regs s) sp + slot-to-disp slot < R.W.modulus
+  → BlockStep hv prog fs s (lea-slot slot)
+block-step-lea-slot {hv} prog fs s slot cc h ft no-wrap =
+  post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-rv : R.fetch (compile-trace prog) (R.State.pc s)
+             ≡ just (addi a0 sp (ℤ.+ (slot-to-disp slot)))
+    fetch-rv = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) (lea-slot slot) ft)
+    -- `addi` computes `⊕` on a NORMED immediate; peel the norm (unconditional
+    -- for `⊕`) and then the modularity (the no-wrap premise).
+    addr-eq : R.readReg (R.State.regs s) sp R.W.⊕ R.W.fromℤ (ℤ.+ (slot-to-disp slot))
+            ≡ R.readReg (R.State.regs s) sp + slot-to-disp slot
+    addr-eq = trans (R.W.⊕-normʳ (R.readReg (R.State.regs s) sp) (slot-to-disp slot))
+                    (R.W.⊕≡+ (R.readReg (R.State.regs s) sp) (slot-to-disp slot) no-wrap)
+    post : R.State
+    post = record s { regs = R.writeReg (R.State.regs s) a0
+                               (R.readReg (R.State.regs s) sp + slot-to-disp slot)
+                    ; pc = R.State.pc s + 1 }
+    snh : R.step-not-halted (compile-trace prog) s ≡ just post
+    snh = subst (λ w → R.step-not-halted (compile-trace prog) s
+                       ≡ just (record s { regs = R.writeReg (R.State.regs s) a0 w
+                                        ; pc = R.State.pc s + 1 }))
+                addr-eq
+                (step-addi {compile-trace prog} {s} {a0} {sp} {ℤ.+ (slot-to-disp slot)} fetch-rv)
+    exec-eq : R.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    dataPost : C.FlatCorr hv (flat-exec-instr (lea-slot slot) prog fs) post
+    dataPost = C.sim-lea-slot slot fs s _ dc (C.sets-role-riscv64 s role-out _ _)
+    pco' : R.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (lea-slot slot) prog fs))
+    pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) (lea-slot slot) ft))
