@@ -68,9 +68,24 @@ abstract one — read it off the signature: does it mention `X.State` /
     THE CORRESPONDENCE IS NEVERTHELESS TRUE, which is why nothing has caught
     this: the ABSTRACT flat machine uses the same arithmetic (`sv-pred
     (SV-Tag 0) = SV-Tag 0` clamps exactly as `∸` does), so both sides diverge
-    from hardware TOGETHER and agree with each other. The divergence therefore
-    lands in `<arch>-loader-faithful` — the same trusted axiom D103's
-    code-address defect was hiding inside, and for the same structural reason.
+    from hardware TOGETHER and agree with each other.
+
+    WHERE THE DIVERGENCE LANDS — CORRECTED 2026-08-13. An earlier draft of this
+    entry said it lands in `<arch>-loader-faithful`. **That is wrong, and the
+    truth is worse.** `asm-sem = exec-bytes ∘ assemble` and
+    `exec-bytes bytes = run-trace (decode bytes) initialState`, while
+    `conc-trace` is `run-trace` applied to the compiled program directly — so
+    BOTH SIDES of that axiom use OUR model's `run-trace`, the arithmetic
+    cancels, and the axiom's own comment ("NOT the CPU, NOT the arith logic")
+    is accurate. `run-trace` is DERIVED from `execInstr` on every arch, so real
+    silicon appears nowhere.
+
+    **No postulate in the tree claims our `execInstr` matches a real CPU.** The
+    grand theorem is therefore conditional on a machine model whose fidelity to
+    hardware is not assumed, not proved, and not stated — the deepest kind of
+    gap, because unlike an axiom it cannot be found by counting postulates. It
+    is the reason plan 0.70 exists, and D103's `lla` defect was an instance of
+    the same class one level down.
 
     IT IS ALSO ALREADY DECIDED AGAINST. D054 settled that Once's `Int` denotes
     a MODULAR `Once.Word` (carrier ℕ in `[0, modulus)`, width-parameterised),
