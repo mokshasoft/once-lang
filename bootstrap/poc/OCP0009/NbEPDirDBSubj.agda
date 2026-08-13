@@ -27,6 +27,7 @@ module poc.OCP0009.NbEPDirDBSubj where
 
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ ; ⊥ )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
@@ -36,7 +37,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; _∘ᵣ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_
         ; subTy-renTy; renTy-subTy; subTy-subTy; renTy-renTy
         ; subTy-cong; renTy-cong; subTy-id; subTm-renTm; subTm-id; subTm-cong
-        ; renTm-renTm; renTm-subTm; ⌜Hom⌝-cong₃; Hom-cong₃; ordtr-cong₅ )
+        ; renTm-renTm; renTm-subTm; ⌜Hom⌝-cong₃; Hom-cong₃; ordtr-cong₅
+        ; Desc; Mu; con; elim; lookupD; sel; fields )
 open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false; _∨_; occTm; ∨-false; ∨-false₁; ∨-false₂
         ; occ-ren-eq; occ-sub; eqv; Avoids; occ-ren-tm; avoids-wk
@@ -49,7 +51,8 @@ open import poc.OCP0009.NbEPDirDBVar
         ; nonatc-ren; nonatc-sub; nonatc-pwBody
         ; stkA?; stkA?-ren; stkA?-sub; stkC?→stkA?
         ; NoNatHd; nnh-base; nnh-Unit; nnh-Σ; nnh-Id; nnh-Π; nnh-Hom
-        ; nonatc→hd; stkC?→hd )
+        ; nonatc→hd; stkC?→hd
+        ; occ-sel; occ-fields )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; nrs; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
         ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
@@ -73,7 +76,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢ap; ⊢conv
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢⌜Nat⌝; ⊢⌜Unit⌝
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
-        ; ⊢ctx_; c-◇; c-▹ )
+        ; ⊢ctx_; c-◇; c-▹
+        ; ι-elim; ξ-con; ξ-elimᵐ; ξ-elimᵗ )
 open import poc.OCP0009.NbEPDirDBSR using ( ≅ᵀ-sub; ⟶-sub )
 open import poc.OCP0009.NbEPDirDBConf
   using ( ⟶-ren; ⟶*-ren; ren-comm; subTm-monoˢ; extS-mono; single-mono
@@ -196,6 +200,7 @@ subTy-monoˢ : {σ σ' : Sub Γ Δ} → (∀ x → σ x ⟶* σ' x) →
 subTy-monoˢ h base     = doneᵀ
 subTy-monoˢ h Unit     = doneᵀ
 subTy-monoˢ h Nat      = doneᵀ
+subTy-monoˢ h (Mu D)   = doneᵀ
 subTy-monoˢ h U        = doneᵀ
 subTy-monoˢ h (El t)   = ⟶ᵀ*-El (subTm-monoˢ h t)
 subTy-monoˢ h (Π A B)  =
@@ -286,6 +291,17 @@ occ-red {x = x} (β t u) e = occ-sub h t (∨-false₁ (occTm (vs x) t) e)
 occ-red {x = x} (βfst a b) e = ∨-false₁ (occTm x a) e
 occ-red {x = x} (βsnd a b) e = ∨-false₂ (occTm x a) e
 occ-red (ξ-nsuc r) e = occ-red r e
+-- ★ INDUCTIVE TYPES: ι introduces no variable — `occ-fields`/`occ-sel`.
+occ-red (ξ-con r) e = occ-red r e
+occ-red {x = x} (ξ-elimᵐ {ms = ms} r) e =
+  ∨-false (occ-red r (∨-false₁ (occTm x ms) e)) (∨-false₂ (occTm x ms) e)
+occ-red {x = x} (ξ-elimᵗ {ms = ms} r) e =
+  ∨-false (∨-false₁ (occTm x ms) e) (occ-red r (∨-false₂ (occTm x ms) e))
+occ-red {x = x} (ι-elim D ms k p) e =
+  occ-fields D ms (lookupD D k) (sel k ms) p
+    (∨-false₁ (occTm x ms) e)
+    (occ-sel k ms (∨-false₁ (occTm x ms) e))
+    (∨-false₂ (occTm x ms) e)
 occ-red {x = x} (ξ-natrecᶻ {z = z} {s = s₀} r) e =
   ∨-false (occ-red r (∨-false₁ (occTm x z) e)) (∨-false₂ (occTm x z) e)
 occ-red {x = x} (ξ-natrecˢ {z = z} {s = s₀} r) e =
@@ -1497,6 +1513,34 @@ gen-tr (⊢conv d c) with gen-tr d
 ------------------------------------------------------------------------
 
 sr : {Γ : Ctx} {t u : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} → Γ ⊢ t ∷ A → t ⟶ u → Γ ⊢ u ∷ A
+------------------------------------------------------------------------
+-- ⚠⚠ TEMPORARY — DELETE WHEN `⊢con`/`⊢elim` LAND.
+--
+-- The inductive-types axis has its FORMERS and its ι-RULE but no TYPING
+-- rules yet, so no derivation can have a `con`/`elim` subject: the only
+-- constructor of `_⊢_∷_` that admits an arbitrary subject is `⊢conv`, and
+-- a `⊢conv` chain must bottom out at a rule that names its former.  These
+-- two inversions say exactly that, and they make subject reduction's four
+-- new rows VACUOUS rather than proved.
+--
+-- ⇒ subject reduction for ι is NOT established here.  It becomes real work
+--   the moment `⊢elim` exists, and this block goes away then.
+------------------------------------------------------------------------
+gen-con : {Γ : Ctx} {k : ℕ} {p : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+          Γ ⊢ con k p ∷ C → ⊥
+gen-con (⊢conv d c) = gen-con d
+
+gen-elim : {Γ : Ctx} {D : Desc} {ms t : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+           Γ ⊢ elim D ms t ∷ C → ⊥
+gen-elim (⊢conv d c) = gen-elim d
+
+⊥-elim' : {A : Set} → ⊥ → A
+⊥-elim' ()
+
+sr d (ι-elim D ms k p) = ⊥-elim' (gen-elim d)
+sr d (ξ-con r)   = ⊥-elim' (gen-con d)
+sr d (ξ-elimᵐ r) = ⊥-elim' (gen-elim d)
+sr d (ξ-elimᵗ r) = ⊥-elim' (gen-elim d)
 sr d (ξ-nsuc r) with gen-nsuc d
 ... | (dn , cC) = ⊢conv (⊢nsuc (sr dn r)) (csymᵀ cC)
 sr d (natrec-zero z s₀) with gen-natrec d

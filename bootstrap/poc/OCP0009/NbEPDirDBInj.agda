@@ -30,7 +30,8 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; base; U; Π; Σ'; El; Hom; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
         ; var; lam; app; pair; fst; snd; absurd; ordtr; vz; vs; renTm
-        ; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝ )
+        ; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝
+        ; Desc; Mu; con; elim )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
         ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
@@ -50,7 +51,8 @@ open import poc.OCP0009.NbEPDirDBConf
         ; pordtr; pordtr-z; pordtr-szz; pordtr-ssz; pordtr-szs; pordtr-sss
         ; ⟶*-nsuc
         ; _⁺; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟶*-trans
-        ; ⟹-ren; ⟶*-ren; ⟶*-appˡ )
+        ; ⟹-ren; ⟶*-ren; ⟶*-appˡ
+        ; pcon; pelim; pι )
 
 private
   variable
@@ -141,6 +143,10 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   -- ★ WF stage A: Unit/Nat are INERT type formers — nullary congruences.
   pUnit : Unit {Γ} ⟹ᵀ Unit
   pNat  : Nat {Γ} ⟹ᵀ Nat
+  -- ★ INDUCTIVE TYPES: `Mu D` is INERT at the type level — no rule
+  -- unfolds it, so its only row is reflexivity.  The computation lives
+  -- entirely in `elim`, on the TERM side.
+  pMu   : {D : Desc} → Mu {Γ} D ⟹ᵀ Mu D
   pEl   : {t t' : RTm Γ} → t ⟹ t' → El t ⟹ᵀ El t'
   pΠ    : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} → A ⟹ᵀ A' → B ⟹ᵀ B' → Π A B ⟹ᵀ Π A' B'
   pΣ    : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} → A ⟹ᵀ A' → B ⟹ᵀ B' → Σ' A B ⟹ᵀ Σ' A' B'
@@ -181,6 +187,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ-refl base     = pbase
 ⟹ᵀ-refl Unit     = pUnit
 ⟹ᵀ-refl Nat      = pNat
+⟹ᵀ-refl (Mu D)   = pMu
 ⟹ᵀ-refl (El t)   = pEl (⟹-refl t)
 ⟹ᵀ-refl U        = pU
 ⟹ᵀ-refl (Π A B)  = pΠ (⟹ᵀ-refl A) (⟹ᵀ-refl B)
@@ -220,6 +227,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ→⟶ᵀ* pbase    = doneᵀ
 ⟹ᵀ→⟶ᵀ* pUnit    = doneᵀ
 ⟹ᵀ→⟶ᵀ* pNat     = doneᵀ
+⟹ᵀ→⟶ᵀ* pMu      = doneᵀ
 ⟹ᵀ→⟶ᵀ* pU       = doneᵀ
 ⟹ᵀ→⟶ᵀ* (pEl p)  = ⟶ᵀ*-El (⟹→⟶* p)
 ⟹ᵀ→⟶ᵀ* (pΠ p q) = ⟶ᵀ*-trans (⟶ᵀ*-Πˡ (⟹ᵀ→⟶ᵀ* p)) (⟶ᵀ*-Πʳ (⟹ᵀ→⟶ᵀ* q))
@@ -269,6 +277,7 @@ _⁺ᵀ : RTy Γ → RTy Γ
 base ⁺ᵀ         = base
 Unit ⁺ᵀ         = Unit
 Nat ⁺ᵀ          = Nat
+Mu D ⁺ᵀ         = Mu D
 U ⁺ᵀ            = U
 El (var x) ⁺ᵀ   = El (var x ⁺)
 El (lam t) ⁺ᵀ   = El (lam t ⁺)
@@ -294,6 +303,8 @@ El (jsub d p e) ⁺ᵀ  = El (jsub d p e ⁺)
 El (hrefl c t) ⁺ᵀ   = El (hrefl c t ⁺)
 El (tr d p e) ⁺ᵀ    = El (tr d p e ⁺)
 El (ap c b p) ⁺ᵀ    = El (ap c b p ⁺)
+El (con k c) ⁺ᵀ     = El (con k c ⁺)
+El (elim D ms t) ⁺ᵀ = El (elim D ms t ⁺)
 Π A B ⁺ᵀ        = Π (A ⁺ᵀ) (B ⁺ᵀ)
 Σ' A B ⁺ᵀ       = Σ' (A ⁺ᵀ) (B ⁺ᵀ)
 -- W2: `Hom` develops by the head of its TYPE argument.  Where the head is
@@ -318,6 +329,7 @@ Hom (Σ' A B) t u ⁺ᵀ    = Hom (Σ' (A ⁺ᵀ) (B ⁺ᵀ)) (t ⁺) (u ⁺)
 Hom (El e) t u ⁺ᵀ      = Hom ((El e) ⁺ᵀ) (t ⁺) (u ⁺)
 Hom (Hom A a b) t u ⁺ᵀ = Hom ((Hom A a b) ⁺ᵀ) (t ⁺) (u ⁺)
 Hom (Id A a b) t u ⁺ᵀ  = Hom ((Id A a b) ⁺ᵀ) (t ⁺) (u ⁺)
+Hom (Mu D) t u ⁺ᵀ      = Hom (Mu D) (t ⁺) (u ⁺)
 -- the two-former kernel: `Id` is INERT — a UNIFORM development row, no
 -- head dispatch at all.
 Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
@@ -329,6 +341,28 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ pEl-⌜Unit⌝     = pUnit
 ⟹ᵀ-⁺ pUnit          = pUnit
 ⟹ᵀ-⁺ pNat           = pNat
+⟹ᵀ-⁺ pMu            = pMu
+
+------------------------------------------------------------------------
+-- ★ INDUCTIVE TYPES — ten rows, and every one of them is congruence.
+--   `con`/`elim` heads are inert AS CODES (`El`) and as `Hom`-at-`Nat`
+--   ENDPOINTS: neither `El`'s decoding nor the ordered-Nat unfolding keys
+--   on them, so the type layer just develops the pieces.  `pMu` in the
+--   ambient position is the same story for the new TYPE former.
+------------------------------------------------------------------------
+⟹ᵀ-⁺ (pEl w@(pcon _))    = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pelim _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pι _ _))    = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(pcon _)) =
+  pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(pelim _ _)) =
+  pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(pι _ _)) =
+  pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
+⟹ᵀ-⁺ (pHom pNat w@(pcon _) pu)    = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat w@(pelim _ _) pu) = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat w@(pι _ _) pu)    = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pMu pt pu) = pHom pMu (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pEl w@punit)  = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@pnzero) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pnsuc _))  = pEl (⟹-⁺ w)

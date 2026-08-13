@@ -68,6 +68,7 @@
 module poc.OCP0009.NbEPDirDBVar where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; ap-cong₃
         ; RTy; base; U; Π; Σ'; El; Hom
@@ -77,7 +78,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; ⌜Hom⌝-cong₃; tr-cong₃; ordtr-cong₅; ⌜Id⌝-cong₃; jsub-cong₃; Id-cong₃
         ; Ren; extR; renTy; renTm; Sub; extS; subTm
         ; renTm-renTm; subTm-renTm; renTm-subTm; subTm-cong
-        ; Desc; Mu; con; elim )
+        ; Desc; Mu; con; elim
+        ; DCon; dι; dρ; dκ; sel; fields )
 
 private
   variable
@@ -449,6 +451,7 @@ occ-sub h (con k p)  e = occ-sub h p e
 occ-sub {x = x} h (elim D ms t) e =
   ∨-false (occ-sub h ms (∨-false₁ (occTm x ms) e))
           (occ-sub h t  (∨-false₂ (occTm x ms) e))
+
 occ-sub {x = x} h (natrec z s n) e =
   ∨-false (occ-sub h z (∨-false₁ (occTm x z) e))
           (∨-false (occ-sub (ext-occ (ext-occ h)) s
@@ -507,6 +510,26 @@ occ-sub {x = x} h (ap c b p) e =
   ∨-false (occ-sub h c (∨-false₁ (occTm x c) e))
           (∨-false (occ-sub (ext-occ h) b (∨-false₁ (occTm (vs x) b) (∨-false₂ (occTm x c) e)))
                    (occ-sub h p (∨-false₂ (occTm (vs x) b) (∨-false₂ (occTm x c) e))))
+
+------------------------------------------------------------------------
+-- ★ INDUCTIVE TYPES: the ι-rule's right-hand side introduces no variable.
+--   `occ-red` (Subj) needs exactly this to keep `PosC` alive across ι.
+------------------------------------------------------------------------
+occ-sel : {x : Var Γ} (k : ℕ) (ms : RTm Γ) →
+          occTm x ms ≡ false → occTm x (sel k ms) ≡ false
+occ-sel zero    ms e = e
+occ-sel (suc k) ms e = occ-sel k (snd ms) e
+
+occ-fields : {x : Var Γ} (D : Desc) (ms : RTm Γ) (C : DCon) (m p : RTm Γ) →
+             occTm x ms ≡ false → occTm x m ≡ false → occTm x p ≡ false →
+             occTm x (fields D ms C m p) ≡ false
+occ-fields D ms dι       m p ems em ep = em
+occ-fields D ms (dρ C)   m p ems em ep =
+  occ-fields D ms C _ (snd p) ems
+    (∨-false (∨-false em ep) (∨-false ems ep)) ep
+occ-fields D ms (dκ A C) m p ems em ep =
+  occ-fields D ms C _ (snd p) ems (∨-false em ep) ep
+
 
 -- Two substitutions agreeing on every OCCURRING variable act equally
 -- (SpikeTr §9, promoted) — how `sr`'s `tr-pw` case bridges the swap
