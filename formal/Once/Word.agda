@@ -40,11 +40,11 @@ module Once.Word where
 import Data.Nat as ℕ
 open ℕ using (ℕ; zero; suc; _∸_; _^_; _≤_; _<_; s≤s; z≤n)
 open import Data.Nat.DivMod using (_%_; _/_; n%1≡0; n/1≡n; n%n≡0; m<n⇒m%n≡m; m%n<n;
-   %-distribˡ-*; m%n%n≡m%n)
+   %-distribˡ-*; m%n%n≡m%n; [m+n]%n≡m%n)
 open import Data.Nat.Properties using
   (m^n≢0; m^n>0; +-identityʳ; +-comm;
    +-mono-≤; +-monoʳ-≤; +-monoʳ-<; ∸-monoˡ-≤; m+n∸n≡m; m∸n+n≡m; m∸[m∸n]≡n;
-   ≤-refl; ≡ᵇ⇒≡; <ᵇ⇒<; ≤⇒≯)
+   ≤-refl; ≡ᵇ⇒≡; <ᵇ⇒<; ≤⇒≯; ≤-trans; <⇒≤; ≤-<-trans; m∸n≤m; +-∸-assoc; +-∸-comm)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣; sign; _◃_; _-_; -_)
 open import Data.Integer.Properties using (_<?_; m-n≡m⊖n; ⊖-<; +◃n≡+n; -◃n≡-n; neg-involutive)
 import Data.Sign as Sign
@@ -399,6 +399,41 @@ module Width (bits : ℕ) where
     ... | false with (a ℕ.≡ᵇ intMin) ∧ (c ℕ.≡ᵇ negOne)
     ...   | true  = 0<modulus
     ...   | false = fromℤ-in-range (tmodℤ (toℤ a) (toℤ c))
+
+  ------------------------------------------------------------------------
+  -- THE ℕ↔MODULAR BRIDGE (plan 0.70 phase B).
+  --
+  -- The three target semantics model registers as unbounded `ℕ` with `_+_`
+  -- and TRUNCATED `_∸_`. These two lemmas say exactly when that model agrees
+  -- with the machine, and the asymmetry between them is the whole content of
+  -- the phase:
+  --
+  --   ADDITION agrees while the sum stays in range — a condition about the
+  --     RESULT, and one no current proof carries.
+  --   SUBTRACTION agrees exactly when it does not BORROW (`y ≤ x`) — a
+  --     condition about the ARGUMENTS, and one three of the four subtracting
+  --     `sim-*` lemmas ALREADY carry, because truncated `∸` forced them to.
+  --
+  -- So the `fits`/`room` premises that look like ℕ bookkeeping are in fact the
+  -- faithfulness side-conditions, written a site at a time. Phase C consumes
+  -- these; see the plan for the audit of which sites are covered.
+  ------------------------------------------------------------------------
+
+  -- Modular addition IS ℕ addition while the sum stays below the modulus.
+  ⊕≡+ : ∀ (x y : Word) → x ℕ.+ y < modulus → x ⊕ y ≡ x ℕ.+ y
+  ⊕≡+ x y lt = m<n⇒m%n≡m lt
+
+  -- Modular subtraction IS truncated subtraction exactly when it does not
+  -- borrow. Below that they diverge MAXIMALLY: `∸` clamps to 0 while `⊖`
+  -- wraps to `modulus ∸ (y ∸ x)`.
+  ⊖≡∸ : ∀ (x y : Word) → y ℕ.≤ x → x < modulus → x ⊖ y ≡ x ℕ.∸ y
+  ⊖≡∸ x y y≤x x<mod =
+    trans (cong norm (trans (sym (+-∸-assoc x y≤mod)) (+-∸-comm modulus y≤x)))
+          (trans ([m+n]%n≡m%n (x ℕ.∸ y) modulus)
+                 (m<n⇒m%n≡m (≤-<-trans (m∸n≤m x y) x<mod)))
+    where
+      y≤mod : y ℕ.≤ modulus
+      y≤mod = ≤-trans y≤x (<⇒≤ x<mod)
 
 ------------------------------------------------------------------------
 -- Standard instantiations
