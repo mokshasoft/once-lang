@@ -26,12 +26,24 @@
 -- Neither does a pc: `FlatCorr` has no pc field, that discipline living one
 -- layer up in the block-steps.
 --
--- WORD AND MEMORY ARE NOT PARAMETERS. On every target a word IS a `ℕ`, a
--- memory IS a partial map from addresses to words, and reading and writing one
--- are application and update. Only `writeReg` genuinely cannot cross — it is a
--- record update on a particular register file — which is why the four
--- REALISERS (`sets-*-x86` and friends) stay in the arch layer and are the only
--- things there.
+-- WORD AND MEMORY ARE NOT PARAMETERS — and the reason is weaker than it looks,
+-- so it is stated honestly (2026-08-13). All three target MODELS define
+-- `Word = ℕ`, a memory as `ℕ → Maybe ℕ`, and reading/writing as application
+-- and update, so nothing here has to abstract over them.
+--
+-- That is a fact about the current models, NOT about the machines. A real
+-- register is a fixed-width modular word: `add` wraps at 2^64 and `sub` of a
+-- larger value gives the two's-complement result, whereas these models use
+-- unbounded `_+_` and TRUNCATED `_∸_`, which clamps at zero. D054 already
+-- decided that Once's own `Int` denotes a modular `Once.Word`, so the tree
+-- carries both notions and they meet at `lit-word : Carrier → Word` a few
+-- lines below. See the residual ledger's "THE UNBOUNDED-REGISTER MODEL" for
+-- why this correspondence is nevertheless TRUE, and where the divergence
+-- actually lands.
+--
+-- Only `writeReg` genuinely cannot cross — it is a record update on a
+-- particular register file — which is why the four REALISERS stay in the arch
+-- layer and are the only things there.
 ------------------------------------------------------------------------
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)

@@ -53,6 +53,46 @@ abstract one — read it off the signature: does it mention `X.State` /
       arith-sigop-contract, external-sigop-contract, conc-fuel
       (see THE CPU-MODEL ROOT below)
 
+    THE UNBOUNDED-REGISTER MODEL — an UNTRACKED MODEL GAP, named 2026-08-13.
+
+    All three target semantics define `Word = ℕ`, with `add` as `_+_` and `sub`
+    as TRUNCATED `_∸_`. Real registers are fixed-width and modular. So:
+
+      * `add` diverges only past 2^64 (2^32) — astronomically far, but a
+        divergence;
+      * `sub` diverges AT SMALL VALUES. `3 ∸ 5 = 0` in the model; on hardware
+        `3 - 5` is `2^64 - 2`. Truncated subtraction is not modular
+        subtraction, and the gap opens at the first subtraction that would go
+        negative, not at the word boundary.
+
+    THE CORRESPONDENCE IS NEVERTHELESS TRUE, which is why nothing has caught
+    this: the ABSTRACT flat machine uses the same arithmetic (`sv-pred
+    (SV-Tag 0) = SV-Tag 0` clamps exactly as `∸` does), so both sides diverge
+    from hardware TOGETHER and agree with each other. The divergence therefore
+    lands in `<arch>-loader-faithful` — the same trusted axiom D103's
+    code-address defect was hiding inside, and for the same structural reason.
+
+    IT IS ALSO ALREADY DECIDED AGAINST. D054 settled that Once's `Int` denotes
+    a MODULAR `Once.Word` (carrier ℕ in `[0, modulus)`, width-parameterised),
+    precisely so the runtime value type is the machine's. The tree now carries
+    both notions, meeting at `FlatCore.FlatCorrespondence.lit-word : Carrier →
+    Word` — a modular value injected into an unbounded one.
+
+    WHAT THE REPAIR COSTS, stated so the size is not underestimated. The
+    correspondence should be over an ABSTRACT `Word` with its operations and
+    laws — neither `ℕ` nor `ℤ` — so the current models are one instance and a
+    modular model another. The instructive part is that this WILL break proofs:
+    the window and frame arithmetic leans on ℕ ordering, `+-cancelˡ-≡`,
+    `*-cancelʳ-≡` and `m∸n+n≡m`, and modular arithmetic satisfies none of them
+    unconditionally. Those breaks are not obstacles to route around — they ARE
+    the content of "the machine is finite", and each one is a place the current
+    proof is quietly assuming an infinite register file.
+
+    Related, and the reason the `fits`/`room` premises already exist: several
+    proofs ALREADY carry side conditions that exist only to tame `∸`
+    (`slots n ≤ %rsp` at every frame reservation, `m∸n+n≡m` at every
+    re-anchoring). Those are the shape a modular `Word` would generalise.
+
     THEY MOVED MODULE, 2026-08-12 (plan 0.65 G1d step 2). Seven residuals that
     were declared in `X86-64.ConcFlatSim` now live in
     `Once.Adequacy.ArchCorrectness.FlatCore.RunWF`: rows 5, 6, 9 (both), 10, 13
