@@ -111,7 +111,8 @@ open import poc.OCP0009.NbEPDirDBLR
         ; homSem₁
         ; ⟶ᵀ*-sub
         ; IsNormal; WN; mkWN; wn
-        ; projl; projr; dfst; dsnd )
+        ; projl; projr; dfst; dsnd
+        ; sne-elim; sn-con; mustk? )
 
 open import poc.OCP0009.NbEPDirDBFundSN
 open import poc.OCP0009.NbEPDirDBFundSem
@@ -707,6 +708,8 @@ fund {Ξ = Ξ} {σ = σ}
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-jsub h₁ h₂ h₃ k)) k)
   goP (sn-ne (sne-natrec h₁ h₂ h₃ k)) =
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-natrec h₁ h₂ h₃ k)) k)
+  goP (sn-ne (sne-elim h₁ h₂ k)) =
+    CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-elim h₁ h₂ k)) k)
   goP (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ k)) =
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ k)) k)
   goP (sn-lam h)       = CR3₀ R_H (sne-ap snCB snBB (sn-lam h) refl)
@@ -722,6 +725,7 @@ fund {Ξ = Ξ} {σ = σ}
   goP sn-unit           = CR3₀ R_H (sne-ap snCB snBB sn-unit refl)
   goP sn-nzero          = CR3₀ R_H (sne-ap snCB snBB sn-nzero refl)
   goP (sn-nsuc h)       = CR3₀ R_H (sne-ap snCB snBB (sn-nsuc h) refl)
+  goP (sn-con h)        = CR3₀ R_H (sne-ap snCB snBB (sn-con h) refl)
 
 -- ★ the two-former kernel: the three symmetric cases.
 fund {σ = σ} (⊢⌜Id⌝ {c = c} {a = a} {b = b} dc da db) x₀ ρ =
@@ -841,6 +845,7 @@ fund {Ξ = Ξ} {σ = σ}
   nkeyJ (sne-ap _ _ _ key) = key
   nkeyJ (sne-jsub _ _ _ key) = key
   nkeyJ (sne-natrec _ _ _ key) = key
+  nkeyJ (sne-elim _ _ key) = key
   nkeyJ (sne-ordtr _ _ _ _ _ key) = key
 
   goP : {p' : RTm Ξ} → SN p' → IdPay tI uI p' →
@@ -881,6 +886,8 @@ fund {Ξ = Ξ} {σ = σ}
     CR3₁ (emb R₀u) (sne-jsub snDI sn-nzero (CR1₁ (emb R₀t) hEt) refl)
   goP (sn-nsuc h) pay =
     CR3₁ (emb R₀u) (sne-jsub snDI (sn-nsuc h) (CR1₁ (emb R₀t) hEt) refl)
+  goP (sn-con h) pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI (sn-con h) (CR1₁ (emb R₀t) hEt) refl)
 
   projP : (emb R₀u) ⊩₁∋ jsub dI pI eI
   projP = goP (projl hpP) (projr hpP)
@@ -921,6 +928,7 @@ fund {Ξ = Ξ} {σ = σ}
   nkey (sne-ap _ _ _ key) = key
   nkey (sne-jsub _ _ _ key) = key
   nkey (sne-natrec _ _ _ key) = key
+  nkey (sne-elim _ _ key) = key
   nkey (sne-ordtr _ _ _ _ _ key) = key
 
   cr3 : {p' : RTm Ξ} → SN p' → trstk? (var (vz {Ξ})) p' ≡ true →
@@ -966,6 +974,7 @@ fund {Ξ = Ξ} {σ = σ}
   piCase q ⊩F ⊩G rt ru rEt rEu sn-unit hp'  = cr3 sn-unit refl
   piCase q ⊩F ⊩G rt ru rEt rEu sn-nzero hp' = cr3 sn-nzero refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-nsuc h) hp' = cr3 (sn-nsuc h) refl
+  piCase q ⊩F ⊩G rt ru rEt rEu (sn-con h) hp'  = cr3 (sn-con h) refl
 
   main : (R : ⊩₁ (Hom U tI uI)) → R ⊩₁∋ pI →
          Σ (⊩₁ (El uI)) (λ R' → R' ⊩₁∋ tr (var vz) pI eI)
@@ -1232,6 +1241,8 @@ fund {Ξ = Ξ} {σ = σ}
     cr3 (sn-ne (sne-jsub h₁ h₂ h₃ key)) key
   go (sn-ne (sne-natrec h₁ h₂ h₃ key)) hp' =
     cr3 (sn-ne (sne-natrec h₁ h₂ h₃ key)) key
+  go (sn-ne (sne-elim h₁ h₂ key)) hp' =
+    cr3 (sn-ne (sne-elim h₁ h₂ key)) key
   go (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) hp' =
     cr3 (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) key
   go (sn-lam snf) hp'      = goLam snf hp'
@@ -1247,6 +1258,7 @@ fund {Ξ = Ξ} {σ = σ}
   go sn-unit hp'           = cr3 sn-unit refl
   go sn-nzero hp'          = cr3 sn-nzero refl
   go (sn-nsuc h) hp'       = cr3 (sn-nsuc h) refl
+  go (sn-con h) hp'        = cr3 (sn-con h) refl
 
   -- the path's own head star, wrapped into the tr.
   trP-star : {p₁ p₂ : RTm Ξ} → p₁ ⟶snr* p₂ →
@@ -1285,6 +1297,8 @@ fund {Ξ = Ξ} {σ = σ}
     cr3 (sn-ne (sne-hrefl sn-nzero sns refl)) refl
   goh (sn-nsuc h) sns kn hp' =
     cr3 (sn-ne (sne-hrefl (sn-nsuc h) sns refl)) refl
+  goh (sn-con h) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-con h) sns refl)) refl
   goh (sn-cΠ h₁ h₂) sns () hp'
   -- ★ W2b: a ⌜Hom⌝-CODE path — normalize its spine (codeNorm); the
   -- J-able leaf fires tr-J-Hom (endpoint transfer = the SAME heTgt as

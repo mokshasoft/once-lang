@@ -42,7 +42,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; renTm; renTy; Sub; subTm; subTy
         ; renTm-subTm; subTm-id
-        ; subTy-renTy; subTy-cong; subTy-id )
+        ; subTy-renTy; subTy-cong; subTy-id
+        ; Desc; Mu; con; elim )
 open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false; pw?; stkC?; stkA?; flat→stk; pw?-ren; occTm; subTm-occ
         ; NoNatC; NoNatHd; nonatc→hd; nonatc-sub; stkC?→stkA?; stkC?→hd
@@ -81,7 +82,8 @@ open import poc.OCP0009.NbEPDirDBSubj
         ; NoNat; nn-base; nn-U; nn-Unit; nn-El; nn-Π; nn-Σ; nn-Hom; nn-Id
         ; Hom-to-Hom; hom-to-Π; homAmb→
         ; ≅ᵀ-Homᵀ; ⊢[]; sr*; ⊢wk; nonathd-red
-        ; nn-El )
+        ; nn-El
+        ; gen-con; gen-elim )
 open import poc.OCP0009.NbEPDirDBLR
   using ( base-nf; U-nf; Unit-nf; Nat-nf; IsNormal; WN; mkWN )
 open import poc.OCP0009.NbEPDirDBFund using ( wnorm )
@@ -622,6 +624,8 @@ szb nzero          = zero
 szb (nsuc n)       = sz n
 szb (ordtr a t u p q) = sz a + sz t + sz u + sz p + sz q
 szb (natrec z w n) = sz z + sz w + sz n
+szb (con k p)      = sz p
+szb (elim D ms t)  = sz ms + sz t
 
 szb-ren : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : RTm Γ) → szb (renTm ρ t) ≡ szb t
 sz-ren  : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : RTm Γ) → sz (renTm ρ t) ≡ sz t
@@ -655,6 +659,8 @@ szb-ren ρ nzero         = refl
 szb-ren ρ (nsuc n)      = sz-ren ρ n
 szb-ren ρ (natrec z w n) =
   cong₂ _+_ (cong₂ _+_ (sz-ren ρ z) (sz-ren _ w)) (sz-ren ρ n)
+szb-ren ρ (con k p)     = sz-ren ρ p
+szb-ren ρ (elim D ms t) = cong₂ _+_ (sz-ren ρ ms) (sz-ren ρ t)
 szb-ren ρ (ordtr a t u p q) =
   cong₂ _+_ (cong₂ _+_ (cong₂ _+_ (cong₂ _+_ (sz-ren ρ a) (sz-ren ρ t))
                                   (sz-ren ρ u))
@@ -948,6 +954,13 @@ mutual
   prog : (n : ℕ) {t : RTm ε} {T : RTy ε} → ◇ ⊢ t ∷ T → sz t ≤ n → Prog t
   prog zero    d ()
   prog (suc m) {t = var x}       d le = ⊥-elim (noVar x)
+  -- ⚠⚠ TEMPORARY, and it is the SAME vacuity as Subj's `sr` rows: with no
+  -- `⊢con`/`⊢elim`, a closed derivation at these heads cannot exist, so
+  -- PROGRESS AT ι IS NOT PROVED HERE.  Deleted when the typing rules land,
+  -- at which point `con` becomes a `prog-can` row (it is an introduction
+  -- form) and `elim` becomes a real eliminator case.
+  prog (suc m) {t = con k p}     d le = ⊥-elim (gen-con d)
+  prog (suc m) {t = elim D ms t} d le = ⊥-elim (gen-elim d)
   prog (suc m) {t = lam s}       d le = prog-can (can-lam s)
   prog (suc m) {t = pair a b}    d le = prog-can (can-pair a b)
   prog (suc m) {t = ⌜base⌝}      d le = prog-can can-cb
@@ -997,6 +1010,9 @@ mutual
   usplit : (n : ℕ) {c : RTm ε} → ◇ ⊢ c ∷ U → sz c ≤ n → UProg c
   usplit zero    d ()
   usplit (suc m) {c = var x}   d le = ⊥-elim (noVar x)
+  -- ⚠ same vacuity as `prog` above.
+  usplit (suc m) {c = con k p}     d le = ⊥-elim (gen-con d)
+  usplit (suc m) {c = elim D ms t} d le = ⊥-elim (gen-elim d)
   usplit (suc m) {c = ⌜base⌝}  d le = u-stk refl
   usplit (suc m) {c = ⌜Nat⌝}   d le = u-nat refl
   usplit (suc m) {c = ⌜Unit⌝}  d le = u-stk refl
