@@ -31,6 +31,10 @@ open import Relation.Nullary using (yes; no)
 -- Plan 0.63: provenance-typed labels, shared with x86-64 (`Label` arrives
 -- re-exported from `Syntax`; the scan needs its boolean equality).
 open import Once.CCC.Label using (_≡ᵇᴸ_)
+-- PLAN 0.70 PHASE C: the machine's arithmetic is MODULAR (D054 — the runtime
+-- value type IS the modular word, and wraparound is defined semantics).
+import Once.Word as W64R
+module W = W64R.Width 64
 
 ------------------------------------------------------------------------
 -- Machine State
@@ -281,22 +285,22 @@ execInstr prog s (sd rs rd offset) =
 execInstr prog s (add rd rs1 rs2) =
   let v1 = readReg (regs s) rs1
       v2 = readReg (regs s) rs2
-      result = v1 + v2
+      result = v1 W.⊕ v2
   in just (record s { regs = writeReg (regs s) rd result
                     ; pc = pc s + 1 })
 
 execInstr prog s (sub rd rs1 rs2) =
   let v1 = readReg (regs s) rs1
       v2 = readReg (regs s) rs2
-      result = v1 ∸ v2
+      result = v1 W.⊖ v2
   in just (record s { regs = writeReg (regs s) rd result
                     ; pc = pc s + 1 })
 
 execInstr prog s (addi rd rs imm) =
   let v1 = readReg (regs s) rs
       result = if isNegative imm
-               then v1 ∸ ∣ imm ∣
-               else v1 + offsetToℕ imm
+               then v1 W.⊖ ∣ imm ∣
+               else v1 W.⊕ offsetToℕ imm
   in just (record s { regs = writeReg (regs s) rd result
                     ; pc = pc s + 1 })
 

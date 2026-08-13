@@ -85,11 +85,19 @@ step-li : ∀ {prog s rd} {n : ℕ}
 step-li ft rewrite ft = refl
 
 -- addi rd, rs, +n : the ADD direction (a non-negative immediate).
+--
+-- PLAN 0.70 PHASE C: the machine's arithmetic is MODULAR, so these three say
+-- `⊕`/`⊖` — and they are stated that way from the START rather than stated in
+-- ℕ and converted later, which is the mistake x86-64 paid for once. A consumer
+-- wanting plain `+`/`∸` converts with `Once.Word.Width.⊕≡+`/`⊖≡∸` and pays the
+-- range obligation there, where it belongs: on the LAYOUT, never on the
+-- instruction (D054 — wraparound is defined semantics, not something to prove
+-- absent).
 step-addi-pos : ∀ {prog s rd rs} {n : ℕ}
               → fetch prog (pc s) ≡ just (addi rd rs (+ n))
               → step-not-halted prog s
                 ≡ just (record s { regs = writeReg (regs s) rd
-                                            (readReg (regs s) rs + offsetToℕ (+ n))
+                                            (readReg (regs s) rs W.⊕ offsetToℕ (+ n))
                                  ; pc = pc s + 1 })
 step-addi-pos ft rewrite ft = refl
 
@@ -98,7 +106,7 @@ step-add : ∀ {prog s rd rs1 rs2}
          → fetch prog (pc s) ≡ just (add rd rs1 rs2)
          → step-not-halted prog s
            ≡ just (record s { regs = writeReg (regs s) rd
-                                       (readReg (regs s) rs1 + readReg (regs s) rs2)
+                                       (readReg (regs s) rs1 W.⊕ readReg (regs s) rs2)
                             ; pc = pc s + 1 })
 step-add ft rewrite ft = refl
 
@@ -107,7 +115,7 @@ step-sub : ∀ {prog s rd rs1 rs2}
          → fetch prog (pc s) ≡ just (sub rd rs1 rs2)
          → step-not-halted prog s
            ≡ just (record s { regs = writeReg (regs s) rd
-                                       (readReg (regs s) rs1 ∸ readReg (regs s) rs2)
+                                       (readReg (regs s) rs1 W.⊖ readReg (regs s) rs2)
                             ; pc = pc s + 1 })
 step-sub ft rewrite ft = refl
 

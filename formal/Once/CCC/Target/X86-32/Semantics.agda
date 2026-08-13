@@ -26,6 +26,11 @@ open import Function using (case_of_)
 -- Plan 0.63: provenance-typed labels, shared with x86-64 (`Label` comes in
 -- re-exported from `Syntax`; the scan needs its boolean equality).
 open import Once.CCC.Label using (_≡ᵇᴸ_; thunk)
+-- PLAN 0.70 PHASE C: the machine's arithmetic is MODULAR (D054), at THIS
+-- target's width — 32, which is the whole reason `Once.Word` is parameterised
+-- by `bits` rather than fixed at 64.
+import Once.Word as W32
+module W = W32.Width 32
 
 ------------------------------------------------------------------------
 -- Machine State
@@ -212,7 +217,7 @@ execInstr prog s (add dst src) =
     (just d) → case readOperand s src of λ where
       nothing  → nothing
       (just v) →
-        let result = d + v
+        let result = d W.⊕ v
         in just (record (writeOperand s dst result)
                  { pc = pc s + 1 ; flags = updateFlags result })
 
@@ -222,7 +227,7 @@ execInstr prog s (sub dst src) =
     (just d) → case readOperand s src of λ where
       nothing  → nothing
       (just v) →
-        let result = d ∸ v
+        let result = d W.⊖ v
         in just (record (writeOperand s dst result)
                  { pc = pc s + 1 ; flags = updateFlags result })
 

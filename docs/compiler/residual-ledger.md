@@ -166,12 +166,26 @@ abstract one — read it off the signature: does it mention `X.State` /
     semantics, in `Once.Word` as `_/ˢ_`/`_%ˢ_` — one definition all three arches
     share, so the "align where the arches differ" work predates this phase.
 
-    Remaining in C: riscv64 and x86-32 (riscv64's `step-add`/`step-sub` still say
-    `+`/`∸`, and its block-steps do not exist yet — plan 0.65 G2 should write
-    them modular rather than write them in ℕ and convert), then the ABSTRACT
-    side (`sv-pred`'s clamp must become the wrap, or the correspondence goes
-    false rather than the model faithful; `ScratchDecGuarded` is what currently
-    excludes the case where they disagree).
+    PHASE C IS DONE ON ALL THREE ARCHES (2026-08-13). riscv64 (`add`/`sub`/`addi`)
+    and x86-32 (`add`/`sub`, at `Width 32`) cost NOTHING: riscv64's step lemmas
+    are now stated in `⊕`/`⊖` from the start rather than stated in ℕ and
+    converted, and nothing above them broke — riscv64's block-steps do not exist
+    yet (plan 0.65 G2) and x86-32 has no correspondence directory. The
+    conversion is in place BEFORE the proofs that would have had to be rewritten.
+
+    WHAT C DELIBERATELY DOES NOT TOUCH, per phase A's decision (addresses are not
+    values): `∸`/`+` survive at the ADDRESS sites — `effectiveAddr`, and the
+    implicit `%rsp` moves inside `push`/`pop`/`call`/`ret`. Addresses stay
+    ordered ℕ under a no-wrap invariant; only the ARITHMETIC INSTRUCTIONS are
+    modular. `sub rsp, n` shows both layers at once: the instruction computes
+    `⊖`, and the block-step reads the result back as ordered ℕ through the
+    no-borrow condition. `cmp`/`test` needed nothing — they compare rather than
+    subtract.
+
+    Remaining after C: the ABSTRACT side (`sv-pred`'s clamp must become the wrap,
+    or the correspondence goes false rather than the model faithful;
+    `ScratchDecGuarded` is what currently excludes the case where they disagree),
+    and phase D's `lit-word` seam.
 
     PLANNED: `plans/0.70-machine-word-is-finite.md` (written 2026-08-13). Its
     first finding is that the repair is NOT "replace ℕ with Once.Word": the
