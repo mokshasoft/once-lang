@@ -793,7 +793,7 @@ is DECIDABILITY OF CONVERSION, nothing else.
   * **measure into ℕ, any carrier** — `⊢amrec`. ✅ done.
   * **LEXICOGRAPHIC** — ✅ done, `⊢lexrec` (`NbEPDirDBExamplesLexAsm`),
     machine-checked 2026-08-06; re-derived carrier-generically as
-    `⊢lexrecΠ` (`SpikeLexAsm`) 2026-08-12.  ⚠ **but see `WF-LIBRARY.md`
+    `⊢lexrecΠ` (`NbEPDirDBLibLexrec`) 2026-08-12.  ⚠ **but see `WF-LIBRARY.md`
     D11: no function has been found that REQUIRES it, and there is a
     mechanism for why.  Its claim is parity and ergonomics, not reach.**  ⚠ the sketch below was the PREDICTION
     and its route was wrong (see the ranked list above): not nested

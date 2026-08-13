@@ -418,14 +418,43 @@ reset AND whose higher-order form is unnatural — most plausibly at a
 carrier that does not factor as `μ₁ × rest`, where currying the outer
 recursion is awkward. That is where to look if anyone wants to.
 
-**The case FOR keeping it anyway**, stated honestly: lexicographic
-termination is first-class in every comparable system — Agda's own
-termination checker does lex descent on argument tuples (which is why
-`NbEPDirDBExamplesAckAgda1` is 9 lines and free), Coq has `lexprod`, Isabelle's `fun`
-tries lex orders by default, ACL2 has ordinal measures. A self-hosting
-language wanting parity has a reason to ship it. But the claim should be
-**parity and ergonomics, not reach**, and `ARCHITECTURE.md` currently
-claims reach.
+**The case FOR keeping it anyway**, and ⚠ **a correction to how this
+entry first put it.** I wrote that "lexicographic termination is
+first-class in Agda's checker". That is true only for SUBTERM descent and
+it is a different mechanism:
+
+| | Agda's termination checker | `⊢lexrec` |
+|---|---|---|
+| what it descends on | the ARGUMENT TUPLE, syntactically | arbitrary MEASURES `μ₁`, `μ₂` |
+| what it needs | nothing — automatic | an explicit descent proof |
+| `ack` | ✅ accepted (args are subterms) | ✅ |
+| `gcd` | ⛔ rejected (`a ∸ b` is a subterm of nothing) | ✅ |
+
+So Agda's builtin is WEAKER in one direction (blind to measures) and
+stronger in another (automatic). For measure descent Agda users reach for
+`Induction.WellFounded`'s `Acc` — a LIBRARY, exactly like this one.
+Neither `amrec` nor `lexrec` is a builtin anywhere; Coq's `lexprod`,
+Isabelle's `fun` heuristic and ACL2's ordinal measures are the same
+library-level story.
+
+★★ **AND THE REASON NO USE SITE TURNED UP IS THE CARRIER, NOT THE
+COMBINATOR** — a second correction, and the more useful one. Everything
+argued above is about ℕ-carried recursions, where the two-measure cases
+either collapse under `μ₁+μ₂` or grow Ackermann-fast. That is a fact about
+ℕ, not about `lexrec`.
+
+The canonical genuine example is **unification**: Robinson's algorithm
+terminates on (number of unsolved variables, total term size)
+lexicographically, and the size can *increase* when a variable is
+eliminated — an unbounded reset, exactly what makes lex strictly stronger
+than any single measure, and not structural in any argument. It cannot be
+written here for one reason: `RTy` has no user-defined inductive types, so
+there is no term carrier to unify over.
+
+⇒ **`lexrec`'s missing use site and the dogfooding blocker are THE SAME
+BLOCKER** (see "THE DOGFOODING TARGET IS BLOCKED" below). The honest claim
+is *not* "lexrec has no use case" but "lexrec's use cases live on the
+inductive-types axis, which is not built yet".
 
 ### P1 — ETA COVERS EVERYTHING EXCEPT MOVING A FAMILY UNDER A RENAMING 📌
 
