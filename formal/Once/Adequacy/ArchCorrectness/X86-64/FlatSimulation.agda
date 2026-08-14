@@ -2176,3 +2176,68 @@ block-step-store-indirect-suc-stack {hv} prog fs s f k cc h ft i-eq f-eq sk<ns d
     dataPost = C.sim-store-indirect-suc-stack k fs s _ dc i-eq' sk<ns disj (C.sets-mem-x86 s _ _ _ _)
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr store-indirect-suc prog fs))
     pco' = trans (cong (_+ 1) po) (sym (blk-off-suc prog (fpc fs) store-indirect-suc ft))
+
+------------------------------------------------------------------------
+-- THE SUPPLY RECORD (plan 0.65 G2 item 4, slice 2 — the deliverable).
+--
+-- x86-64 filling the core's `BlockSteps`: one field per block-step the
+-- ENGINE dispatches to, and the thing slice 3's generic event layer will take
+-- as its per-arch argument.
+--
+-- IT IS ALSO THE GATE. A `BlockSteps` field that is under-constrained relative
+-- to what an arch needs typechecks perfectly on its own — the record is just a
+-- type — and the engine would simply never demand the missing premise. That
+-- failure mode was invisible until this value existed, because a record VALUE
+-- takes its field types from the record and so cannot drift from them. From
+-- here on, weakening a field breaks this line.
+--
+-- The five block-steps above with NO field here are not omissions: the engine
+-- refutes `alloc-stack` / `dealloc-stack` / `push-frame` / `pop-frame` /
+-- `lea-indexed` outright (`frame-op-absurd` — `ir-to-trace` emits none of
+-- them), so nothing can ever call them.
+------------------------------------------------------------------------
+x86-64-block-steps : BlockSteps
+x86-64-block-steps = record
+  { bs-mov-to-output        = block-step-mov-to-output
+  ; bs-mov-to-input         = block-step-mov-to-input
+  ; bs-mov-input2-to-output = block-step-mov-input2-to-output
+  ; bs-mov-output-to-input2 = block-step-mov-output-to-input2
+  ; bs-scratch-one          = block-step-scratch-one
+  ; bs-scratch-zero         = block-step-scratch-zero
+  ; bs-count-zero           = block-step-count-zero
+  ; bs-scratch-load-count   = block-step-scratch-load-count
+  ; bs-c-label              = block-step-c-label
+  ; bs-reclaim-to           = block-step-reclaim-to
+  ; bs-worklist-init        = block-step-worklist-init
+  ; bs-worklist-check       = block-step-worklist-check
+  ; bs-lea-slot             = block-step-lea-slot
+  ; bs-save-closure-reg     = block-step-save-closure-reg
+  ; bs-load-tag-lit         = block-step-load-tag-lit
+  ; bs-load-indirect            = block-step-load-indirect
+  ; bs-load-indirect-stack      = block-step-load-indirect-stack
+  ; bs-load-indirect-suc        = block-step-load-indirect-suc
+  ; bs-load-indirect-suc-stack  = block-step-load-indirect-suc-stack
+  ; bs-load-from-slot           = block-step-load-from-slot
+  ; bs-restore-input            = block-step-restore-input
+  ; bs-worklist-pop             = block-step-worklist-pop
+  ; bs-store-at-slot            = block-step-store-at-slot
+  ; bs-worklist-push            = block-step-worklist-push
+  ; bs-store-indirect           = block-step-store-indirect
+  ; bs-store-indirect-stack     = block-step-store-indirect-stack
+  ; bs-store-indirect-suc       = block-step-store-indirect-suc
+  ; bs-store-indirect-suc-stack = block-step-store-indirect-suc-stack
+  ; bs-c-jmp                    = block-step-c-jmp
+  ; bs-c-branch-scratch-zero    = block-step-c-branch-scratch-zero
+  ; bs-c-branch-nz              = block-step-c-branch-nz
+  ; bs-c-branch-tag-zero        = block-step-c-branch-tag-zero
+  ; bs-c-branch-tag-nz          = block-step-c-branch-tag-nz
+  ; bs-scratch-dec              = block-step-scratch-dec
+  ; bs-count-inc                = block-step-count-inc
+  ; bs-c-thunk                  = block-step-c-thunk
+  ; bs-c-ret                    = block-step-c-ret
+  ; bs-load-const               = block-step-load-const
+  ; bs-load-const-float         = block-step-load-const-float
+  ; bs-load-code-addr           = block-step-load-code-addr
+  ; bs-call                     = block-step-call
+  ; bs-alloc-heap               = block-step-alloc-heap
+  }

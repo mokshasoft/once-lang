@@ -79,10 +79,10 @@ module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
   where
 
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open FlatMachine {FS} using (FlatState; fpc; fret; falloc)
+open FlatMachine {FS} using (FlatState; fpc; fret; falloc; fclosure)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open FlatMachine {FS} using (floc; halted; fetch)
-open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-ref; ref-id)
 open import Data.Nat using (zero; suc; _+_; _*_; _∸_; _≤_; _<_)
 open import Data.Nat.Properties using (<-irrefl; <-transˡ; ≤-trans; m≤m+n)
 open import Data.List using (List; []; _∷_; drop)
@@ -92,6 +92,13 @@ open import Data.Maybe.Properties using (just-injective)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (refl; sym; cong)
 open import Once.CCC.Label using (LabelId; thunk)
+-- …and the pieces the LAST FIVE fields' types need: the store-WF predicates
+-- (arch-free, parameterised by `FS`) and the two literal shapes.
+open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
+open import Once.Type using (fits-int; fits-float)
+open import Once.Word using (Carrier)
+open import Data.Float using () renaming (Float to AgdaFloat)
+open import Once.Semantics.FloatBits using (float-bits)
 
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 -- PRIVATE: an instance re-opened publicly would clash with the `C` every arch
@@ -101,7 +108,7 @@ private
   module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
 
 open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; caddr; HDom; haddr
-               ; lo; hfront; descend-view)
+               ; lo; hfront; descend-view; extend-view; slots; dom-fresh)
 open RegRoles roles using (sp-reg; in1-reg; scratch-reg; count-reg)
 
 ------------------------------------------------------------------------
@@ -577,4 +584,91 @@ record BlockSteps : Set₁ where
       → saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs
       → rreg s sp-reg + b * slot-size < modulus
       → BlockStep hv prog fs s (instr-ctrl (c-ret b))
+    ------------------------------------------------------------------
+    -- GROUP 4 — THE LAST FIVE, and the record closes at 42.
+    --
+    -- WHAT IS NOT HERE, which is how the count came out exact. Five abstract
+    -- instructions have block-steps in `FlatSimulation` and NO field:
+    -- `alloc-stack`, `dealloc-stack`, `push-frame`, `pop-frame`,
+    -- `lea-indexed`. The engine refutes every one of them (`frame-op-absurd`
+    -- — the `Emitted`/`FrameFreeI` fence: `ir-to-trace` emits none). A
+    -- block-step is a field only if the ENGINE CALLS IT. `instr-sigop` is
+    -- absent for a different reason: it routes to the event layer, not to a
+    -- block step.
+    --
+    -- The two literals take their range premise the way `load-tag-lit` does —
+    -- the engine applies its own resource parameter and passes the result.
+    ------------------------------------------------------------------
+    bs-load-const :
+      ∀ {hv : HeapView} prog fs s (v : Carrier) → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-load-const fits-int v)
+      → v < modulus
+      → BlockStep hv prog fs s (instr-load-const fits-int v)
+    bs-load-const-float :
+      ∀ {hv : HeapView} prog fs s (v : AgdaFloat) → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
+      → float-bits v < modulus
+      → BlockStep hv prog fs s (instr-load-const fits-float v)
+    -- READ THE CALL, NOT THE NAME: this field's label premise is the CONCRETE
+    -- scan — this module's `find-label` parameter — where the jump family's is
+    -- the abstract one. The engine supplies it from `find-thunk-corr` and
+    -- instantiates `j` to `blk-off prog j₀`; `code-eq` is what turns it into
+    -- the address the load must produce (D096).
+    bs-load-code-addr :
+      ∀ {hv : HeapView} prog fs s n j → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-load-code-addr n)
+      → find-label (compile-trace prog) (thunk n) ≡ just j
+      → BlockStep hv prog fs s (instr-load-code-addr n)
+    -- THE CALL (D098). The site's dataflow shape — closure pointer, code cell,
+    -- the body it names — plus the descend-view quartet, which here reserves
+    -- ONE slot (the return address) where `c-thunk` reserves the body's
+    -- budget. The code cell's liveness is `dom-written`: the abstract machine
+    -- wrote it, so the view maps it.
+    bs-call :
+      ∀ {hv : HeapView} prog fs s hl ℓ j → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just instr-call-closure
+      → fclosure fs ≡ SV-Ptr (AtDynamic hl)
+      → heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ)
+      → HDom hv (sucHL hl)
+      → FlatMachine.find-thunk {FS} prog ℓ ≡ just j
+      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
+      → lo' ≤ rreg s sp-reg ∸ slot-size
+      → slot-size ≤ rreg s sp-reg
+      → BlockStepAt hv (descend-view hv lo' lo'≤lo front-lo') prog fs s
+                    instr-call-closure
+    -- ALLOCATION, the widest field and the one a transcription slip would
+    -- quietly wreck. It is wide because it EXTENDS the view, and a view
+    -- extension has to know that the new block's references are fresh and its
+    -- cells unwritten — hence five register-side `sv-below`s (the four
+    -- abstract registers plus the closure, D097), the heap and EVERY frame's
+    -- stack (D085), and the unwritten-cell fact. `room` measures the bump
+    -- against the stack's HIGH-WATER MARK rather than the live `sp`, which is
+    -- what makes the fresh cells provably unwritten and what retired the old
+    -- `alloc-heap-fresh` postulate.
+    --
+    -- `cc` is NAMED because the result type uses it: the extended view is
+    -- built from the correspondence's own `dom-fresh`.
+    bs-alloc-heap :
+      ∀ {hv : HeapView} prog fs s n → (cc : CompiledCorr hv prog fs s)
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-alloc-heap n)
+      → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Input1)
+      → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Input2)
+      → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Scratch)
+      → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Count)
+      → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+      → (∀ hl → HDom hv hl → svm-below (next-heap-ref (falloc fs)) (heapMem (floc fs) hl))
+      → (∀ (f : FrameSemantics.Frame FS) (k : Slot)
+           → svm-below (next-heap-ref (falloc fs)) (stackMem (floc fs) f k))
+      → (∀ hl → ref-id (heap-ref hl) ≡ next-heap-ref (falloc fs)
+              → heapMem (floc fs) hl ≡ nothing)
+      → (room : hfront hv + slots n ≤ lo hv)
+      → lo hv < modulus
+      → BlockStep (extend-view hv (next-heap-ref (falloc fs)) n
+                               (dom-fresh (dataCorr cc)) room)
+                  prog fs s (instr-alloc-heap n)
 open BlockSteps public
