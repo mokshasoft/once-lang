@@ -62,7 +62,7 @@ open import poc.OCP0009.NbEPDirDBType
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBVar using ( ren-as-sub )
-open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-ren )
+open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-ren; ⟶*-sub )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus; n1; n2; n3 )
 open import poc.OCP0009.NbEPDirDBExamplesDiv
   using ( monusTm; ⊢monus; monus-zero; monus-suc; pred-zero; pred-suc
@@ -423,99 +423,87 @@ gcd-a0-var b ih =
             (⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done))
               (step (β _ ih) done))))))
 
--- ⛔ EQUATIONS 3 AND 4 — WHAT THEY NEED, measured rather than guessed.
+------------------------------------------------------------------------
+-- ★★★★ EQUATION 3 — `a > b` recurses at `(a ∸ b , b)`, AT VARIABLES.
 --
--- ★ THE RIGHT FORMULATION IS CONDITIONAL.  At variables the innermost
---   `natrec` is stuck, because its scrutinee is `monusTm (nsuc a') (nsuc b')`
---   and `monus` computes on neither.  So the DISPATCH cannot commit to a
---   branch — but the dispatch is the only thing that depends on the
---   comparison.  Taking the comparison as a HYPOTHESIS separates the two:
+-- ⚠⚠ THE MOVE THAT MAKES IT WORK, after ~10 failed attempts fighting
+--   weakening transports: PROVE IT AT VARIABLES, THEN SUBSTITUTE.
 --
---     (a' b' d ih : RTm Γ) → monusTm (nsuc a') (nsuc b') ⟶* nsuc d →
---       app (app gcdStp (pair (nsuc a') (nsuc b'))) ih
---     ⟶* app (app ih (pair (monusTm (nsuc a') (nsuc b')) (nsuc b'))) <descent>
+--   The transports existed only because `a'`/`b'` were arbitrary TERMS, so
+--   `subTm σ (renTm ρ a')` reduced only PROPOSITIONALLY — and each fix
+--   changed what Agda inferred, so the target moved.  With `a'`/`b'` taken
+--   to be VARIABLES the very same composites COMPUTE, every transport
+--   disappears, and the chain closes with no `subst` at all.  `⟶*-sub`
+--   then recovers the general statement, because reduction is
+--   substitution-stable.
 --
---   and the mirror with `⟶* nzero` for a ≤ b.  The literal lemmas below
---   are exactly these instantiated, with `monus-computes` discharging the
---   hypothesis — which is why they work and the general form is what they
---   were shadowing.
---
--- ⚠ WHAT STOPS IT TODAY IS BOOKKEEPING AT DEPTH, not the formulation.  The
---   comparison branch sits SEVEN binders deep ([0]=ih [1]=G3 [2]=d [3]=G2
---   [4]=k' [5]=G1 [6]=n' [7]=x), so `a'`, `b'` and `d` each arrive weakened
---   by a DIFFERENT amount, and the hypothesis `mh` must be restated about
---   the substituted forms before `⟶*-natrecⁿ` will accept it.  `wkS2`
---   handles depth two; each of these needs its own.  Measured by probing
---   the chain: the first mismatch is `natrec-suc`'s predecessor (that one
---   IS `wkS2`), the next is `mh` itself.
---
--- ⇒ tractable, and strictly bigger than equations 1 and 2.  Recorded here
---   so the next attempt starts from the formulation rather than rediscovering it.
---
--- ★★ SHAPES DERIVED (2026-08-14) by bracket-matching Agda's expected type.
---   The method works and these are the answers: `a'` sits under `wkS2`'s
---   core, then FOUR weakenings under FOUR substitutions (extS³…extS¹,
---   single); `b'` under SIX of each, being bound one `natrec` earlier.
---   Both peels were written, both typecheck AT A USE SITE, and `a'`'s
---   transport — `trans (peel4 _) (wkS2 a')` — is ACCEPTED at the RHS.
---
--- ⛔ WHAT STILL BLOCKS IT IS NOT A MISSING LEMMA: **THE TARGET MOVES.**
---   The chain leaves many intermediates as `_`, and Agda re-solves them
---   after every edit — `b'`'s tower measured SIX layers, then SEVEN,
---   depending only on what else had just been fixed.  Deriving against a
---   moving target does not converge; that is what defeated ~10 attempts,
---   not the depth itself.
---
--- ⇒ THE FIX IS TO PIN THE CHAIN FIRST, not to hunt for another lemma:
---   write the intermediates EXPLICITLY (no `_`) so the expected type stops
---   changing, then derive `b'`'s peel once against it.  ⚠ Note the peels
---   need their `u`s NAMED to typecheck standalone — written with `_` they
---   elaborate only at a use site.
---
--- ⇒ next attempt: PIN, then derive.  Do not guess.
---
--- ★★ MEASURED PROGRESS — do NOT redo this part.  Working the chain with
---   `wkGen`/`wkS3` in hand, the transports resolve IN ORDER:
---     1. `natrec-suc`'s predecessor — `wkS2`, or simply left as `_`;
---     2. the hypothesis `mh` — needs BOTH `a'` and `b'` transported by
---        `wkS3`:  subst (λ x → monusTm (nsuc x) _ ⟶* _) (sym (wkS3 a'))
---        nested with the same for `b'`.  ⚠ THIS IS THE STEP THAT LOOKED
---        HARD, AND IT IS SOLVED — with both in place Agda ACCEPTS `mh`;
---     3. the final RHS after `β _ ih` — STILL OPEN.  It mentions `a'` and
---        `b'` in four positions, so it wants ONE compound transport rather
---        than four, at one layer beyond `wkS3`.
---
--- ⇒ only step 3 remains.  `wkS3` is kept for it, and note how it is built:
---   BY COMPOSITION (`wkS2` inward, then `wkS` outward).
---
--- ⚠⚠ STEP 3 IS **NOT** "ONE MORE LAYER OF THE SAME", and this was measured:
---   `wkS`, `wkS2` and `wkS3` were each tried at the RHS position and ALL
---   THREE FAIL.  Reading the expected type shows why — every one of those
---   is `single`-headed at the outside (`subTm (single u) …`), whereas the
---   RHS position's outermost wrapper is `extS`-HEADED:
---
---       subTm (extS (single u)) (…)
---
---   So stacking further `single` layers cannot reach it, however many are
---   composed.  What is missing is the `extS`-headed companion, something of
---   the shape
---
---       wkE : subTm (extS (single v)) (renTm vs (renTm vs t)) ≡ renTm vs t
---
---   after which the RHS transport should be `wkE` composed with the `wkS`
---   family, not more of the family alone.  ⚠ `wkE` is CONJECTURED from the
---   error's shape, NOT proved — do not assume it typechecks as written.
---
--- ★ AND ONE COMPOUND TRANSPORT, not four: `a'` and `b'` occur in four
---   positions in the RHS, but all four come from `G3s`'s body at one
---   context, so a single `subst` per variable covers them.
+-- ★ This is why the depth never mattered: it was never a bookkeeping
+--   problem, it was a problem of proving the general case directly instead
+--   of proving the generic one and instantiating.
+------------------------------------------------------------------------
 
--- ⛔ EQUATIONS 3 AND 4 (the two recursive cases) are NOT reduction-provable
---   at variables, and this is not a gap in the proofs — it is the same
---   stuckness one level deeper.  Both need the COMPARISON, which computes
---   `a ∸ b`; at variables `monusTm a b` is stuck, so the dispatch cannot
---   commit to a side.  Establishing them needs a PROPOSITIONAL statement
---   proved by induction on both components, not a `⟶*` chain.
+gtRHS : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+gtRHS ih A B = app (app ih (pair (monusTm (nsuc A) (nsuc B)) (nsuc B)))
+                   (plusMonoLTm (monusTm (nsuc A) (nsuc B)) (nsuc A) (nsuc B)
+                                (monusLtTm A B))
+
+-- the GENERIC instance: `a'`/`b'` are the two outermost variables
+gcd-gt-gen : {Γ : Cx} (d ih : RTm (Γ ∙ ∙)) →
+             monusTm (nsuc (var (vs vz))) (nsuc (var vz)) ⟶* nsuc d →
+             app (app gcdStp (pair (nsuc (var (vs vz))) (nsuc (var vz)))) ih
+           ⟶* gtRHS ih (var (vs vz)) (var vz)
+gcd-gt-gen d ih mh =
+  step (ξ-appˡ (β _ (pair (nsuc (var (vs vz))) (nsuc (var vz)))))
+    (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βsnd _ _) done)))
+      (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ _) done))
+        (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst _ _) done)))
+          (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ _) done))
+            (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ mh))
+              (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ _) done))
+                (step (β _ ih) done)))))))
+
+------------------------------------------------------------------------
+-- ★★★★ EQUATION 4 — `a ≤ b` recurses at `(a , b ∸ a)`, AT VARIABLES.
+--   Same shape, other branch: the comparison reaching ZERO selects `G3z`.
+------------------------------------------------------------------------
+
+leRHS : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+leRHS ih A B = app (app ih (pair (nsuc A) (monusTm (nsuc B) (nsuc A))))
+                   (plusMonoTm (monusLtTm B A) (nsuc A))
+
+gcd-le-gen : {Γ : Cx} (ih : RTm (Γ ∙ ∙)) →
+             monusTm (nsuc (var (vs vz))) (nsuc (var vz)) ⟶* nzero →
+             app (app gcdStp (pair (nsuc (var (vs vz))) (nsuc (var vz)))) ih
+           ⟶* leRHS ih (var (vs vz)) (var vz)
+gcd-le-gen ih mh =
+  step (ξ-appˡ (β _ (pair (nsuc (var (vs vz))) (nsuc (var vz)))))
+    (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βsnd _ _) done)))
+      (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ _) done))
+        (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst _ _) done)))
+          (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ _) done))
+            (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ mh))
+              (⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done))
+                (step (β _ ih) done)))))))
+
+------------------------------------------------------------------------
+-- ★ WHAT THE TWO LEMMAS ABOVE DO AND DO NOT SAY.
+--
+-- ✅ They ARE equation 3 and equation 4 at VARIABLES — `a'` and `b'` are
+--    genuine variables, not literals, and the `ih` is arbitrary.  The
+--    COMPARISON is a hypothesis, which is forced: `monusTm` computes on
+--    neither argument at a variable, so the dispatch cannot commit to a
+--    side without it.  The literal lemmas below are these instantiated,
+--    with `monus-computes` discharging the hypothesis.
+--
+-- ⛔ They do NOT immediately give the arbitrary-TERM form
+--    `(a' b' : RTm Γ) → … ⟶* gtRHS ih a' b'`.  `⟶*-sub` transports the
+--    CONCLUSION from the generic instance to any instance, but the
+--    HYPOTHESIS would have to travel the other way — and at variables the
+--    generic `monusTm` is stuck, so there is nothing to supply.  Any
+--    concrete instance can discharge it by computation; a symbolic one
+--    needs the comparison decided first, which is an induction on both
+--    components.
+------------------------------------------------------------------------
 
 -- ★★ 3.  a > b : `gcd (3 , 1)` really does recurse at `(3 ∸ 1 , 1)` —
 --     SUBTRACT b FROM a, KEEP b.  ⚠ This is the equation a gcd-class spec
