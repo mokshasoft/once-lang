@@ -15,17 +15,20 @@ module poc.OCP0009.NbEPDirDBExamplesGcdLib where
 
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs; RTy; El; Nat; Π; RTm; var; nzero; nsuc
-        ; natrec; app; pair; fst; snd; ⌜Nat⌝; subTm )
+        ; natrec; app; pair; fst; snd; ⌜Nat⌝; subTm; lam )
 open import poc.OCP0009.NbEPDirDBType
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single; _⊢_∷_; ⊢nzero; ⊢nsuc; ⊢pair; ty-Nat
+  using ( Ctx; ◇; _▹_; ⌊_⌋; single; _⊢_∷_; _⊢ty_; ⊢nzero; ⊢nsuc; ⊢pair; ty-Nat
         ; ⊢⌜Nat⌝; _⟶*_; done; step; β; ξ-appˡ; ξ-nsuc; ξ-natrecᶻ
-        ; natrec-zero; natrec-suc; βfst; βsnd )
+        ; natrec-zero; natrec-suc; βfst; βsnd
+        ; ⊢var; here; there; ⊢conv; ⊢natrec; ⊢lam; ⊢app; csymᵀ )
+open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Idˡ )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; n1; n2; n3 )
 open import poc.OCP0009.NbEPDirDBExamplesDiv
   using ( monusTm; monus-zero; monus-suc; pred-zero; pred-suc; monus-computes )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( module AmTΠ )
-open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )
+open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asN )
+open import poc.OCP0009.NbEPDirDBLibArithComm using ( IdN; ⊢tyIdN; reflN; ⊢reflN )
 open import poc.OCP0009.NbEPDirDBLibArith using ( plusMonoTm )
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLTm )
 open import poc.OCP0009.NbEPDirDBLibArithMonus using ( monusLtTm; pred* )
@@ -157,6 +160,16 @@ gcd-suc-0 n =
 gcdAt : (Δ : Ctx) → RTm ⌊ Δ ⌋
 gcdAt Δ = GcdAt.amrecTm Δ
 
+-- the zero case, also at an arbitrary context
+X00At : {Δ : Ctx} → RTm ⌊ Δ ⌋
+X00At = pair nzero nzero
+
+msr-0-0At : {Δ : Ctx} → subTm (single (X00At {Δ})) msr ⟶* nzero
+msr-0-0At =
+  ⟶*-trans (⟶*-natrecⁿ (step (βfst nzero nzero) done))
+    (⟶*-trans (step (ξ-natrecᶻ (βsnd nzero nzero)) done)
+      (step (natrec-zero _ _) done))
+
 msr-suc-0At : {Δ : Ctx} (n : RTm ⌊ Δ ⌋) →
               subTm (single (pair (nsuc n) nzero)) msr ⟶* nsuc (plusTm n nzero)
 msr-suc-0At n =
@@ -171,3 +184,37 @@ gcd-suc-0At : {Δ : Ctx} (n : RTm ⌊ Δ ⌋) →
 gcd-suc-0At {Δ} n =
   GcdAt.amrec-step-s Δ (pair (nsuc n) nzero) (plusTm n nzero)
                      (msr-suc-0At n) (gcd-b0-var (nsuc n))
+
+-- the motive: `gcd (a , 0) ≡ a`, as an object-language TYPE
+gcdB0B : {Δ : Ctx} (a : RTm ⌊ Δ ⌋) → RTy ⌊ Δ ⌋
+gcdB0B {Δ} a = IdN (app (gcdAt Δ) (pair a nzero)) a
+
+⊢gcdB0Mot : {Δ : Ctx} → (Δ ▹ Nat) ⊢ty gcdB0B {Δ ▹ Nat} (var vz)
+⊢gcdB0Mot {Δ} =
+  ⊢tyIdN (asN (⊢app (GcdAt.⊢amrecΠ (Δ ▹ Nat))
+                    (⊢pair ty-Nat (⊢var here) ⊢nzero)))
+         (⊢var here)
+
+-- ★ the proof TERM.  ⚠ the IH is NEVER USED: splitting `a` is not there to
+--   supply an induction hypothesis, it is there to UN-STICK THE MEASURE.
+--   Once `a` is `suc x`, `μ (suc x , 0)` is a syntactic successor and the
+--   combinator computes on its own.  A structural recursion whose IH is
+--   dead is exactly the signature of "the obstruction was stuckness".
+gcdB0Tm : {Δ : Ctx} → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
+gcdB0Tm a = natrec (reflN nzero) (reflN (nsuc (var (vs vz)))) a
+
+⊢gcdB0 : {Δ : Ctx} {a : RTm ⌊ Δ ⌋} → Δ ⊢ a ∷ Nat → Δ ⊢ gcdB0Tm a ∷ gcdB0B a
+⊢gcdB0 {Δ} da = ⊢natrec ⊢gcdB0Mot zB sB da
+  where
+    zB = ⊢conv (⊢reflN ⊢nzero)
+           (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ (GcdAt.amrec-step-z Δ X00At msr-0-0At
+                                     (gcd-b0-var nzero)))))
+    sB = ⊢conv (⊢reflN (⊢nsuc (⊢var (there here))))
+           (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ (gcd-suc-0At {(Δ ▹ Nat) ▹ gcdB0B {Δ ▹ Nat} (var vz)} (var (vs vz))))))
+
+-- ★★★★ GAP A, CLOSED.  A single closed term of a single object-language
+--   type, saying `∀ a. gcd (a , 0) = a`.  Not a family of meta-level
+--   reduction sequences — one theorem, INTERNAL to the theory.
+⊢gcd-b0-Π : ◇ ⊢ lam (gcdB0Tm {◇ ▹ Nat} (var vz))
+                ∷ Π Nat (gcdB0B {◇ ▹ Nat} (var vz))
+⊢gcd-b0-Π = ⊢lam ty-Nat (⊢gcdB0 {◇ ▹ Nat} (⊢var here))
