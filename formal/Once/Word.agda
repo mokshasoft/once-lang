@@ -489,6 +489,19 @@ module Width (bits : ℕ) where
     trans (⊕-normʳ x (modulus ∸ norm (suc k)))
           (cong (λ z → norm (x ℕ.+ (modulus ∸ z))) (norm-id lt))
 
+  -- …and the form the CONSUMER wants: `addi rd, rs, -k` IS `rs ∸ k` whenever the
+  -- subtraction does not borrow. Uniform over `k`, which matters because
+  -- `- (+ 0)` is `+ 0` rather than `-[1+ _ ]` — a case split the call sites
+  -- should not each have to make. RISC-V decrements the stack pointer, the
+  -- scratch counter and everything else this way, so this is the one bridge
+  -- from a negative immediate to the ℕ view the layout is stated in.
+  ⊕-neg : ∀ (x : Word) (k : ℕ) → k ℕ.≤ x → x < modulus
+        → x ⊕ fromℤ (- (+ k)) ≡ x ℕ.∸ k
+  ⊕-neg x zero    _   x<m =
+    trans (⊕-normʳ x 0) (trans (cong norm (+-identityʳ x)) (norm-id x<m))
+  ⊕-neg x (suc j) k≤x x<m =
+    trans (⊕-neg-suc x j (≤-<-trans k≤x x<m)) (⊖≡∸ x (suc j) k≤x x<m)
+
 
 ------------------------------------------------------------------------
 -- Standard instantiations

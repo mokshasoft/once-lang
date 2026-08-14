@@ -20,9 +20,11 @@
 -- fire. That was riscv64's third asymmetry with x86-64 and the first in the
 -- semantics rather than the emitter.
 --
--- WHAT IS NOT HERE: `beq`. Its two outcomes are the content of G1d step 3's
--- branch-block law — one instruction here against x86-64's `cmp ; je` pair —
--- so it is stated where that law will consume it, not guessed at now.
+-- `beq` IS NOW HERE (0.65 G2), with its two outcomes. It was held back until
+-- the branch-block law existed to consume it; that law is riscv64's real
+-- structural difference from x86-64 — ONE instruction where x86-64 needs
+-- `cmp ; je` — so the block is one step shorter and there is no flags register
+-- in between.
 ------------------------------------------------------------------------
 
 module Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas where
@@ -191,3 +193,35 @@ step-fetch-none : ∀ {prog s}
                 → fetch prog (pc s) ≡ nothing
                 → step-not-halted prog s ≡ just (record s { halted = true })
 step-fetch-none ft rewrite ft = refl
+
+------------------------------------------------------------------------
+-- THE BRANCH, both outcomes. RISC-V compares two REGISTERS directly, with no
+-- flags register in between — which is structural difference #1 from plan 0.65,
+-- and the reason this is one lemma pair rather than a `cmp` lemma plus a `je`
+-- lemma. `beq rs1, zero` reads as "rs1 ≡ 0" only because `readReg rf zero` is
+-- hardwired to `0` (and `writeReg rf zero` is ignored), which the model does
+-- get right.
+------------------------------------------------------------------------
+
+step-beq-taken : ∀ {prog s rs1 rs2 target tgt}
+               → fetch prog (pc s) ≡ just (beq rs1 rs2 target)
+               → (readReg (regs s) rs1 ≡ᵇ readReg (regs s) rs2) ≡ true
+               → find-label prog target ≡ just tgt
+               → step-not-halted prog s ≡ just (record s { pc = tgt })
+step-beq-taken ft eq fl rewrite ft | eq | fl = refl
+
+step-beq-not : ∀ {prog s rs1 rs2 target}
+             → fetch prog (pc s) ≡ just (beq rs1 rs2 target)
+             → (readReg (regs s) rs1 ≡ᵇ readReg (regs s) rs2) ≡ false
+             → step-not-halted prog s ≡ just (record s { pc = pc s + 1 })
+step-beq-not ft ne rewrite ft | ne = refl
+
+-- …and `j` with its label RESOLVED, which is the form a block-step wants
+-- (`step-j` above leaves the `jump-to` unreduced). Same shape as
+-- `step-beq-taken`: the `with` inside `jump-to` is on `find-label prog target`,
+-- so rewriting by that equation fires straight through it.
+step-j-found : ∀ {prog s target tgt}
+             → fetch prog (pc s) ≡ just (j target)
+             → find-label prog target ≡ just tgt
+             → step-not-halted prog s ≡ just (record s { pc = tgt })
+step-j-found ft fl rewrite ft | fl = refl
