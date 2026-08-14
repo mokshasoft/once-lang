@@ -48,7 +48,8 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π
         ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝
-        ; subTm; renTm; subTm-renTm; subTm-id; subTm-subTm; subTm-cong; extS )
+        ; subTm; renTm; subTm-renTm; subTm-id; subTm-subTm; subTm-cong; extS
+        ; Sub; Ren; Var; idₛ; renTm-renTm; _∘ᵣ_ )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; single
@@ -310,6 +311,32 @@ gcd-computes-a0 ih =
 --   by a variable, is a proof for EVERY `a`.
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- ★★★ THE GENERIC WEAKENING TRANSPORT.
+--
+-- ⚠⚠ EVERY mismatch in these reduction chains has ONE shape: a term `t`
+--   that was WEAKENED into a deeper context (by the binders a `natrec-suc`
+--   or a `lam` introduces) and then hit by substitutions that put it back.
+--   The composite is pointwise the identity ON `t`'s VARIABLES — but only
+--   PROPOSITIONALLY, so each occurrence needs a transport.
+--
+-- ★ THE POINT: it does not need one lemma per DEPTH.  Stated with the
+--   substitution and the renaming abstract, a single lemma covers every
+--   depth, because nested weakenings collapse (`renTm-renTm`) and nested
+--   substitutions collapse (`subTm-subTm`) before it applies.  The caller
+--   supplies only the pointwise fact, which is `refl` whenever the
+--   composite computes.
+--
+--   This replaces the ad-hoc `wkS`/`wkS2` pair below — both are now
+--   one-liners through it — and is what equations 3 and 4 will need at
+--   depths 5 to 7.
+------------------------------------------------------------------------
+
+wkGen : {Γ Δ : Cx} {σ : Sub Δ Γ} {ρ : Ren Γ Δ} →
+        ((x : Var Γ) → σ (ρ x) ≡ var x) →
+        (t : RTm Γ) → subTm σ (renTm ρ t) ≡ t
+wkGen h t = trans (subTm-renTm t) (trans (subTm-cong h t) (subTm-id t))
+
 -- ⚠ ONE TRANSPORT IS UNAVOIDABLE, and it is instructive.  At a LITERAL the
 --   final projection lands on `n2` definitionally, because a numeral is
 --   closed and both actions are inert on it.  At a VARIABLE the same step
@@ -317,7 +344,7 @@ gcd-computes-a0 ih =
 --   not definitionally.  That single `≡` is the whole difference between
 --   the literal test and the general theorem.
 wkS : {Γ : Cx} {v : RTm Γ} (t : RTm Γ) → subTm (single v) (renTm vs t) ≡ t
-wkS t = trans (subTm-renTm t) (subTm-id t)
+wkS t = wkGen (λ x → refl) t
 
 -- ★ `gcd (a , 0) = a` — for an ARBITRARY `a`, closed or open.
 gcd-b0-var : {Γ : Cx} (a ih : RTm Γ) → app (app gcdStp (pair a nzero)) ih ⟶* a
@@ -346,11 +373,14 @@ gcd-b0-var a ih =
 --   only propositionally, so it needs its own lemma.
 wkS2 : {Γ : Cx} {u v : RTm Γ} (t : RTm Γ) →
        subTm (single u) (subTm (extS (single v)) (renTm vs (renTm vs t))) ≡ t
-wkS2 {u = u} t =
-  trans (cong (subTm (single u))
-              (trans (subTm-renTm (renTm vs t)) (subTm-renTm t)))
-    (trans (subTm-subTm t)
-      (trans (subTm-cong (λ x → refl) t) (subTm-id t)))
+-- ⚠ TWO substitutions, so one COLLAPSE is needed before `wkGen` applies:
+--   `subTm-subTm` fuses them, `renTm-renTm` fuses the two weakenings, and
+--   then the pointwise fact is `refl` again.  That is the general recipe at
+--   any depth — collapse, then `wkGen`.
+wkS2 {u = u} {v = v} t =
+  trans (cong (subTm (single u)) (cong (subTm (extS (single v))) (renTm-renTm t)))
+    (trans (subTm-subTm (renTm (vs ∘ᵣ vs) t))
+      (wkGen (λ x → refl) t))
 
 -- ★ `gcd (0 , suc b) = suc b` — for an ARBITRARY `b`.
 gcd-a0-var : {Γ : Cx} (b ih : RTm Γ) →
