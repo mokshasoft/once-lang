@@ -26,8 +26,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; subTy-subTy; subTm-subTm
         ; subTy-id; subTm-id; renTm-renTm; renTm-cong
         ; Desc; DCon; Mu; con; elim; lookupD; εsub; εwkTy; payTy; payTy-sub
-        ; _∈D_; hereD; thereD; sel; ihs )
-open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+        ; _∈D_; hereD; thereD; sel; ihs; dnil; _◃_; dι; dρ; dκ )
+open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; nrs
         ; _⟶_; _⟶*_; done; step
@@ -52,6 +52,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
         ; ty-Mu; ⊢con; ⊢elim
+        ; methTy; methsTy; methsTyFrom; ihTy; atCon; atCon-inst; conS
         ; DConWf; dwf-ι; dwf-ρ; dwf-κ; DescWf; dwf-nil; dwf-cons
         ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢ordtr
         ; ⊢ctx_; c-◇; c-▹
@@ -128,6 +129,36 @@ private
   variable
     Θ Ξ : Cx
     Γ Δ : Ctx
+-- ★ `sel k` extracts method `k` AT ITS OWN TAG, semantically — the exact
+--   mirror of `sel-ty` (Subj), including its arithmetic.  ⚠ the `k ∈D E`
+--   premise is again what kills the `dnil` case: there `methsTyFrom` is
+--   `Unit`, whose membership is only `SN`, so there is no method to
+--   extract.  Same premise, same reason, one level up.
+--   ⚠ `+zero`/`+-suc` take their Nat summands EXPLICITLY, or the metas leak.
+selSem : (D : Desc) (MI : RTy (Ξ ∙)) (E : Desc) (j k : ℕ) (ms : RTm Ξ) →
+         k ∈D E → (R : ⊩₁ (methsTyFrom D MI j E)) → R ⊩₁∋ ms →
+         Rel (methTy D (j + k) (lookupD E k) MI) (sel k ms)
+selSem {Ξ = Ξ} D MI (C ◃ E) j zero ms hereD R h =
+  relTy (cong (λ n → methTy D n C MI) (sym (+zero j))) (⊩₁-fstm R h)
+  where
+    +zero : (n : ℕ) → (n + zero) ≡ n
+    +zero zero    = refl
+    +zero (suc n) = cong suc (+zero n)
+selSem {Ξ = Ξ} D MI (C ◃ E) j (suc k) ms (thereD i) R h =
+  relTy (cong (λ n → methTy D n (lookupD E k) MI) (sym (+-suc j k)))
+        (selSem D MI E (suc j) k (snd ms) i (dfst m₂) (dsnd m₂))
+  where
+    +-suc : (n o : ℕ) → (n + suc o) ≡ suc (n + o)
+    +-suc zero    o = refl
+    +-suc (suc n) o = cong suc (+-suc n o)
+
+    wk-sub-single : (A : RTy Ξ) (u : RTm Ξ) → subTy (single u) (renTy vs A) ≡ A
+    wk-sub-single A u =
+      trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
+
+    m₂ = relTy (wk-sub-single (methsTyFrom D MI (suc j) E) (fst ms))
+               (⊩₁-sndm R h)
+
 fund-ty : {σ : Sub ⌊ Γ ⌋ Ξ} {A : RTy ⌊ Γ ⌋} →
           Γ ⊢ty A → Var Ξ → Γ ⊩ˢ σ → ⊩₁ (subTy σ A)
 fund : {σ : Sub ⌊ Γ ⌋ Ξ} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
