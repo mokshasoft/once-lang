@@ -3598,10 +3598,17 @@ lookupP (dp-cons _  dp) (suc k) = lookupP dp k
 --   `SN` is carried at the top (as `⊩₀Nat` carries it beside `NatMem`),
 --   and canonicity gets the shape from TYPING — `⊢ p ∷ payTy D C` plus
 --   canonicity at `Unit`/`Σ'` — exactly as it already does for `Σ'`.
+--   ⚠ SN IS CARRIED AT EVERY NODE, and the `dρ` slot carries `SN (fst t)`
+--   beside its payload.  Not redundancy: `⊢elim` must run this BACKWARD —
+--   turn a `Lift` into a semantic member of `payTy D C` so the method can
+--   be applied to it — and membership at `Σ'` is `SN t × …`.  There is no
+--   `SN t → SN (fst t)` lemma in this kernel, so the SN has to travel WITH
+--   the payload.  `SN` is standalone, so positivity is untouched, and
+--   `SN (fst t) × P (fst t)` is LITERALLY `⊩₁Mu doneᵀ di ⊩₁∋ fst t`.
 Lift : (C : DCon) → KPred Γ C → (RTm Γ → Set) → RTm Γ → Set
-Lift dι       kp-ι        P t = ⊤
-Lift (dρ C)   (kp-ρ kp)   P t = P (fst t)   × Lift C kp P (snd t)
-Lift (dκ A C) (kp-κ Q kp) P t = Q (fst t)   × Lift C kp P (snd t)
+Lift dι       kp-ι        P t = SN t
+Lift (dρ C)   (kp-ρ kp)   P t = SN t × ((SN (fst t) × P (fst t)) × Lift C kp P (snd t))
+Lift (dκ A C) (kp-κ Q kp) P t = SN t × (Q (fst t) × Lift C kp P (snd t))
 
 -- ★ and the payload itself.  Neutral / constructor / head-expansion —
 --   `NatMem`'s shape exactly, so every transport is the SN transport.
@@ -4302,7 +4309,7 @@ irrelMu d₁ d₂ (mm-ne n)        = mm-ne n
 irrelMu d₁ d₂ (mm-exp r m)     = mm-exp r (irrelMu d₁ d₂ m)
 irrelMu d₁ d₂ (mm-con k {p} l) = mm-con k (irrelAtK d₁ d₂ d₁ d₂ k p l)
 
-irrelAtK d₁ d₂ di-nil di-nil k p l = _
+irrelAtK d₁ d₂ di-nil di-nil k p l = l
 irrelAtK d₁ d₂ (di-cons i₁ _) (di-cons i₂ _) zero    p l = liftK d₁ d₂ i₁ i₂ p l
 irrelAtK d₁ d₂ (di-cons _ q₁) (di-cons _ q₂) (suc k) p l =
   irrelAtK d₁ d₂ q₁ q₂ k p l
@@ -4310,16 +4317,18 @@ irrelAtK d₁ d₂ (di-cons _ q₁) (di-cons _ q₂) (suc k) p l =
 -- ⚠ the payload halves are taken by PATTERN, not by `projl`/`projr`:
 --   those are functions, so `projl l` is an application and Agda would
 --   not see it as a subterm of `l` — which is what the cycle needs.
-liftK d₁ d₂ ki-ι ki-ι p l = _
-liftK d₁ d₂ (ki-ρ i₁) (ki-ρ i₂) p (m , rest) =
-  ( irrelMu d₁ d₂ m
-  , liftK d₁ d₂ i₁ i₂ (snd p) rest )
+liftK d₁ d₂ ki-ι ki-ι p l = l
+liftK d₁ d₂ (ki-ρ i₁) (ki-ρ i₂) p (sp , ((sf , m) , rest)) =
+  ( sp
+  , ( (sf , irrelMu d₁ d₂ m)
+    , liftK d₁ d₂ i₁ i₂ (snd p) rest ) )
 -- ★ THE κ SLOT — two witnesses at ONE type, collapsed by `irrel₀` itself.
 --   `w₁` is a strict subterm of the `KInterp` that came in, hence of the
 --   `⊩₀Mu` `irrel₀` started from: that is what makes the cycle decrease.
-liftK d₁ d₂ (ki-κ w₁ i₁) (ki-κ w₂ i₂) p (m , rest) =
-  ( projl (irrel₀ crflᵀ w₁ w₂) (fst p) m
-  , liftK d₁ d₂ i₁ i₂ (snd p) rest )
+liftK d₁ d₂ (ki-κ w₁ i₁) (ki-κ w₂ i₂) p (sp , (q , rest)) =
+  ( sp
+  , ( projl (irrel₀ crflᵀ w₁ w₂) (fst p) q
+    , liftK d₁ d₂ i₁ i₂ (snd p) rest ) )
 
 ------------------------------------------------------------------------
 -- 3b. FORWARD TRANSFER at level 0, and hence transfer along CONVERSION.
