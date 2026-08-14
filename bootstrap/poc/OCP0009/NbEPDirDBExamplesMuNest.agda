@@ -33,15 +33,18 @@ open import Agda.Builtin.Nat using ( zero; suc )
 open import normalizer.Syntax.Types using ( _≡_; refl )
 
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; ε; RTy; RTm; El; Mu; U; Unit
+  using ( Cx; ε; _∙; RTy; RTm; El; Mu; U; Unit; Σ'; Π
         ; Desc; DCon; dι; dρ; dκ; dnil; _◃_; ⌜Mu⌝
-        ; con; unit; pair; payTy; lookupD
+        ; con; unit; pair; fst; lam; app; elim; payTy; lookupD
+        ; sel; ihs; fields
         ; _∈D_; hereD; thereD )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; ⌊_⌋; _⊢_∷_; _⊢ty_
         ; DConWf; dwf-ι; dwf-ρ; dwf-κ; DescWf; dwf-nil; dwf-cons
         ; ty-Mu; ⊢con; ⊢⌜Mu⌝; ⊢unit; ⊢pair; ty-Unit
-        ; ⊢conv; _≅ᵀ_; credᵀ; csymᵀ; El-⌜Mu⌝ )
+        ; ⊢conv; _≅ᵀ_; credᵀ; csymᵀ; El-⌜Mu⌝
+        ; ⊢elim; ⊢lam; ty-Σ; ty-El; methsTy
+        ; _⟶_; _⟶*_; done; step; ι-elim; β; βfst; ξ-appˡ )
 
 ------------------------------------------------------------------------
 -- 1. ℕ as a description — the INNER datatype.
@@ -111,15 +114,64 @@ ty-Wrap = ty-Mu wrapWf
 ⊢wrap-zero = ⊢con wrapWf hereD (⊢pair ty-Unit ⊢zeroAsField ⊢unit)
 
 ------------------------------------------------------------------------
+-- 3b. ★★★ ELIMINATING A NESTED VALUE — and watching it COMPUTE.
+--
+-- ⚠ THE ACCOUNTING THAT MATTERS HERE: a `dκ` field owes NO INDUCTION
+--   HYPOTHESIS.  `ihTy WrapD (dκ A dι) q M` computes to `ihTy WrapD dι …`
+--   = `Unit`, and `ihs` correspondingly yields `unit` — the nested ℕ is a
+--   PARAMETER, not a recursive occurrence, so the method receives the
+--   payload and an EMPTY IH tuple.  Getting that wrong in either `ihs` or
+--   `ihTy` alone would desynchronise them and nothing below would type.
+------------------------------------------------------------------------
+
+-- the motive: constant `Unit` (enough to exercise the machinery without
+-- dragging in motive-dependency, which `⊢natrec` already covers)
+MotU : RTy (⌊ ◇ ⌋ ∙)
+MotU = Unit
+
+-- the single method: takes the payload, takes the (empty) IH tuple, and
+-- returns `unit`.
+methWrap : RTm ⌊ ◇ ⌋
+methWrap = lam (lam unit)
+
+⊢payloadTy : ◇ ⊢ty Σ' (El `ℕcode) Unit
+⊢payloadTy = ty-Σ (ty-El ⊢ℕcode) ty-Unit
+
+⊢methWrap : ◇ ⊢ methWrap ∷ Π (Σ' (El `ℕcode) Unit) (Π Unit Unit)
+⊢methWrap = ⊢lam ⊢payloadTy (⊢lam ty-Unit ⊢unit)
+
+-- the method TUPLE — right-nested, so `sel 0` is `fst`.
+msWrap : RTm ⌊ ◇ ⌋
+msWrap = pair methWrap unit
+
+⊢msWrap : ◇ ⊢ msWrap ∷ methsTy WrapD MotU WrapD
+⊢msWrap = ⊢pair ty-Unit ⊢methWrap ⊢unit
+
+-- ★ the eliminator at a NESTED datatype, fully typed.
+⊢elimWrap : ◇ ⊢ elim WrapD msWrap (`wrap `zero) ∷ Unit
+⊢elimWrap = ⊢elim wrapWf ty-Unit ⊢msWrap ⊢wrap-zero
+
+-- ★★ …and it COMPUTES.  ι fires on the `con` scrutinee, `sel 0` projects
+--    the method, then two β's consume the payload and the empty IH tuple.
+--    Each step is a REAL constructor of `_⟶_`; nothing is postulated.
+elimWrap-computes : elim WrapD msWrap (`wrap `zero) ⟶* unit
+elimWrap-computes =
+  step (ι-elim WrapD msWrap zero (pair `zero unit))
+  (step (ξ-appˡ (ξ-appˡ (βfst methWrap unit)))
+  (step (ξ-appˡ (β (lam unit) (pair `zero unit)))
+  (step (β unit unit)
+   done)))
+
+------------------------------------------------------------------------
 -- 4. ★ WHAT THIS DOES **NOT** SHOW, recorded so the demonstration is not
 --    over-read.
 --
 --   · It exhibits ONE nesting level.  Nothing here proves an arbitrary
 --     depth, though nothing obstructs it either: `⌜Mu⌝ WrapD` is itself a
 --     code, so `dκ (El (⌜Mu⌝ WrapD))` is the next rung.
---   · It says nothing about the ELIMINATOR at a nested type.  `⊢elim` is
---     general in the description, so it applies — but a worked nested
---     `elim` is a separate example.
+--   · The motive is CONSTANT.  A dependent motive over a nested scrutinee
+--     is not exercised here; `⊢natrec`'s case in `Fund` is where motive
+--     dependency is actually stressed.
 ------------------------------------------------------------------------
 
 -- the next rung, to show the construction genuinely iterates
