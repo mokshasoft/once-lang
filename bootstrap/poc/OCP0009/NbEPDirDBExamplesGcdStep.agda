@@ -452,6 +452,28 @@ gcd-a0-var b ih =
 -- ⇒ tractable, and strictly bigger than equations 1 and 2.  Recorded here
 --   so the next attempt starts from the formulation rather than rediscovering it.
 --
+-- ★★ SHAPES DERIVED (2026-08-14) by bracket-matching Agda's expected type.
+--   The method works and these are the answers: `a'` sits under `wkS2`'s
+--   core, then FOUR weakenings under FOUR substitutions (extS³…extS¹,
+--   single); `b'` under SIX of each, being bound one `natrec` earlier.
+--   Both peels were written, both typecheck AT A USE SITE, and `a'`'s
+--   transport — `trans (peel4 _) (wkS2 a')` — is ACCEPTED at the RHS.
+--
+-- ⛔ WHAT STILL BLOCKS IT IS NOT A MISSING LEMMA: **THE TARGET MOVES.**
+--   The chain leaves many intermediates as `_`, and Agda re-solves them
+--   after every edit — `b'`'s tower measured SIX layers, then SEVEN,
+--   depending only on what else had just been fixed.  Deriving against a
+--   moving target does not converge; that is what defeated ~10 attempts,
+--   not the depth itself.
+--
+-- ⇒ THE FIX IS TO PIN THE CHAIN FIRST, not to hunt for another lemma:
+--   write the intermediates EXPLICITLY (no `_`) so the expected type stops
+--   changing, then derive `b'`'s peel once against it.  ⚠ Note the peels
+--   need their `u`s NAMED to typecheck standalone — written with `_` they
+--   elaborate only at a use site.
+--
+-- ⇒ next attempt: PIN, then derive.  Do not guess.
+--
 -- ★★ MEASURED PROGRESS — do NOT redo this part.  Working the chain with
 --   `wkGen`/`wkS3` in hand, the transports resolve IN ORDER:
 --     1. `natrec-suc`'s predecessor — `wkS2`, or simply left as `_`;
