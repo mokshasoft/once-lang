@@ -72,25 +72,23 @@ open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.Type using (fits-int; fits-float)
 
 ------------------------------------------------------------------------
--- The compiled correspondence.
+-- The compiled correspondence — NOW THE CORE'S (plan 0.65 G2, item 4's first
+-- slice). riscv64's copy and x86-64's were structurally identical, differing
+-- only in the state type, so the record moved to
+-- `FlatCore.CompiledCorrespondence` and both arches instantiate it. What was a
+-- duplicated four-field record is now one statement.
 ------------------------------------------------------------------------
-record CompiledCorr (hv : HeapView) (prog : AbstractTrace) (fs : FlatState) (s : R.State) : Set where
-  field
-    dataCorr : C.FlatCorr hv fs s
-    -- CONTROL: the machine pc sits at the block offset of the flat pc.
-    pc-off   : R.State.pc s ≡ blk-off prog (fpc fs)
-    -- THE PENDING RETURNS (D093): every ghost `fret` entry is really in the
-    -- machine's memory, at its frame's window end, under the same block-offset
-    -- translation the pc uses.
-    ret-eq   : C.RetAddrs (blk-off prog) (R.State.memory s)
-                          (C.frames-of (falloc fs)) (fret fs)
-    -- THE CODE MAP IS THE PROGRAM'S OWN RESOLUTION (D096): a `SV-Code ℓ`
-    -- encodes to `caddr hv ℓ`, and that is the index the compiled program's
-    -- own label scan finds.
-    code-eq  : ∀ (ℓ : LabelId) (j : ℕ)
-             → R.find-label (compile-trace prog) (thunk ℓ) ≡ just j
-             → C.caddr hv ℓ ≡ j
-open CompiledCorr public
+open import Once.Adequacy.ArchCorrectness.RiscV64.RegRoles using (riscv64-roles)
+open import Once.CCC.Target.RiscV64.Syntax using (Reg; Program) renaming (slot-size to rv-slot-size)
+open R.State using () renaming (halted to rhalted)
+
+rreg' : R.State → Reg → ℕ
+rreg' s r = R.readReg (R.State.regs s) r
+
+open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
+       FS rv-slot-size word-eq Reg riscv64-roles R.State rreg' R.State.memory rhalted
+       R.State.pc Program compile-trace R.find-label blk-off
+  public
 
 ------------------------------------------------------------------------
 -- THE RETURN PICTURE IS UNTOUCHED (D093), same statement as x86-64's: the

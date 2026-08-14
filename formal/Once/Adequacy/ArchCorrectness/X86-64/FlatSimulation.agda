@@ -90,30 +90,19 @@ open import Data.Float using () renaming (Float to AgdaFloat)
 -- the sim-* lemmas (which produce FlatCorr) and the pc from blk-off-suc /
 -- find-label-corr — cleanly separated. (Plan 0.34: no zf-eq.)
 ------------------------------------------------------------------------
-record CompiledCorr (hv : HeapView) (prog : AbstractTrace) (fs : FlatState) (s : X.State) : Set where
-  field
-    dataCorr : C.FlatCorr hv fs s
-    -- CONTROL: x86 pc sits at the block offset of the flat pc (NOT fpc fs).
-    pc-off   : X.State.pc s ≡ blk-off prog (fpc fs)
-    -- THE PENDING RETURNS (D093): every ghost `fret` entry is REALLY in the
-    -- machine's memory, at its frame's window end, under the same block-offset
-    -- translation the pc uses. This is the component that makes a return a
-    -- correspondence step rather than an assumption — and it lives HERE, not in
-    -- `FlatCorr`, because translating an abstract pc needs `prog`.
-    ret-eq   : C.RetAddrs (blk-off prog) (X.State.memory s)
-                          (C.frames-of (falloc fs)) (fret fs)
-    -- THE CODE MAP IS THE PROGRAM'S OWN RESOLUTION (D096). A `SV-Code ℓ`
-    -- encodes to `caddr hv ℓ`, and this says that is the index the compiled
-    -- program's own label scan finds — the same scan the concrete `lea` and
-    -- `jmp` use. It lives HERE rather than in the view for `pc-off`'s reason:
-    -- translating a label needs `prog`.
-    --
-    -- Every step carries it unchanged: it mentions only `hv` and `prog`, and
-    -- both view transformers copy the code map verbatim.
-    code-eq  : ∀ (ℓ : LabelId) (j : ℕ)
-             → X.find-label (compile-trace prog) (thunk ℓ) ≡ just j
-             → C.caddr hv ℓ ≡ j
-open CompiledCorr public
+-- THE COMPILED CORRESPONDENCE — NOW THE CORE'S (plan 0.65 G2, item 4's first
+-- slice). x86-64's record and riscv64's were structurally identical, differing
+-- only in the state type, so it moved to `FlatCore.CompiledCorrespondence` and
+-- both arches instantiate it. The field comments (why `pc-off`/`ret-eq`/
+-- `code-eq` live here rather than in `FlatCorr` — D093, D096) moved with it.
+open import Once.Adequacy.ArchCorrectness.X86-64.RegRoles using (x86-64-roles)
+xrreg : X.State → Reg → ℕ
+xrreg s r = X.readReg (X.State.regs s) r
+
+open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
+       FS slot-size word-eq Reg x86-64-roles X.State xrreg X.State.memory X.State.halted
+       X.State.pc Program compile-trace X.find-label blk-off
+  public
 
 ------------------------------------------------------------------------
 -- (B) execInstr-reduces facts. For each x86 instruction the codegen
