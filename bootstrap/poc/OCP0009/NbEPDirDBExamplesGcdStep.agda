@@ -234,14 +234,22 @@ G3s =
 --   a chain and substituting the halves needs each half's SOURCE fixed;
 --   with `β _ x` the lam body becomes an unsolved meta once the halves are
 --   no longer joined by a shared target.
+-- ★ the two COMPOSITE branches, named.  Each `natrec-suc` in a reduction
+--   chain takes the natrec's own two branches as arguments; leaving them
+--   `_` is what makes a split chain's target an unsolved meta.  With these
+--   names every step can be PINNED, so the target computes.
+--   Contexts: the outer `natrec`'s successor branch sits under two extra
+--   binders (predecessor + IH), hence Γ∙∙∙ then Γ∙⁵.
+gcdInn2 : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙)
+gcdInn2 = natrec G3z G3s
+                 (monusTm (nsuc (var (vs vz)))
+                          (nsuc (var (vs (vs (vs vz))))))
+
+gcdInn1 : {Γ : Cx} → RTm (Γ ∙ ∙ ∙)
+gcdInn1 = natrec G2z gcdInn2 (fst (var (vs (vs vz))))
+
 gcdBody : {Γ : Cx} → RTm (Γ ∙)
-gcdBody = natrec G1z
-                 (natrec G2z
-                         (natrec G3z G3s
-                                 (monusTm (nsuc (var (vs vz)))
-                                          (nsuc (var (vs (vs (vs vz)))))))
-                         (fst (var (vs (vs vz)))))
-                 (snd (var vz))
+gcdBody = natrec G1z gcdInn1 (snd (var vz))
 
 gcdStp : {Γ : Cx} → RTm Γ
 gcdStp = lam gcdBody
@@ -472,6 +480,29 @@ gtRHS ih A B = app (app ih (pair (monusTm (nsuc A) (nsuc B)) (nsuc B)))
 --
 -- ⇒ also needed: `σ3` must carry `d`, since the comparison's reduct appears
 --   in the SECOND half.  Two variables are not enough.
+
+-- ⛔ THE ARBITRARY-TERM FORM: still open, and here is the exact state.
+--
+-- ★ PROGRESS THAT STUCK: `gcdBody`/`gcdInn1`/`gcdInn2` are now named, so
+--   every chain step CAN be pinned — `β gcdBody gX`, and
+--   `natrec-suc (subTm (single gX) G1z) (subTm (extS (extS (single gX))) gcdInn1) b'`
+--   both elaborate.  With the early steps pinned the target stops moving,
+--   which was the thing that defeated the first ten attempts.
+--
+-- ⛔ WHAT REMAINS: the hypothesis `mh` must be restated about the
+--   substituted `a'`.  The shape is now STABLE and known —
+--     renTm vs (subTm (single U) (subTm (extS (single b')) (renTm vs (renTm vs a'))))
+--   i.e. `renTm vs` of `wkS2`'s core, so ≡ `renTm vs a'` — but the
+--   transport keeps landing at the wrong context level (`_Γ ∙ != Γ`), so
+--   `⟶*-ren vs mh` composed with `cong (renTm vs) (wkS2 a')` does not fit
+--   as written.  It is one correctly-levelled transport away.
+--
+-- ⚠ ROUTE 3 (split + substitute + splice) is ALSO viable and was carried
+--   further than this: with the steps pinned, `gtPart1`'s target computes
+--   and prints in full (~1750 chars).  Pasting it as an explicit type
+--   would close that route mechanically — rejected here only because a
+--   1750-character type is not something this POC should carry.
+------------------------------------------------------------------------
 
 -- the GENERIC instance: `a'`/`b'` are the two outermost variables
 gcd-gt-gen : {Γ : Cx} (d ih : RTm (Γ ∙ ∙)) →
