@@ -35,14 +35,15 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢lam; ⊢app; _⊢ty_
         ; ty-Nat; ty-Hom; ty-El; ty-Π )
 open import poc.OCP0009.NbEPDirDBSubj
-  using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext )
+  using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext
+        ; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesOrd using ( ⊢strong-base'; ⊢strong-step )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import poc.OCP0009.NbEPDirDBLibWk
   using ( w; wᶠ; ⊢wkᶠ; cong₃; cong₄; sub-w; sub-w²; sub-w³; sub-w⁴; ren-w; wk-singleTy; wᶠ-single
-        ; wᶠ¹-single; wᶠ²-single; nrs-wTy; wᶠ-nrs; ren-wTy; ren-wᶠ
+        ; wᶠ¹-single; wᶠ²-single; nrs-wTy; wᶠ-nrs; ren-wTy; ren-wᶠ; sub-wTy; wᶠ-sub
         ; _∙^_; w^; wTy^; wᶠ^ )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-ren; aIHT-fit )
 open import poc.OCP0009.NbEPDirDBLibNatVal using ( NatVal; nv-zero; nv-suc; natEval )
@@ -806,23 +807,199 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
   --   lemmas, one level down.
   ------------------------------------------------------------------------
 
-  aux-ty : (x n : RTm ⌊ Δ ⌋) →
-           subTy (single x) (aAuxB (renTy vs A) (wᶠ cM) (wᶠ m) (w n))
-         ≡ aAuxB A cM m n
-  aux-ty x n =
-    trans (aAuxB-sub {σ = single x} (renTy vs A) (wᶠ cM) (wᶠ m) (w n))
-          (cong₄ aAuxB (wk-singleTy A) (wᶠ-single cM) (wᶠ-single m)
-                       (wk-single {v = x} n))
+  -- ★ THE CARRIER IS SUBSTITUTED ONCE, INTO THE BRANCHES, and the bound is
+  --   then free: `auxIH x n` is `natrec (auxZ x) (auxS x) n` by definition,
+  --   so ONE motive and TWO branch derivations serve every bound.
+  auxZ : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
+  auxZ x = subTm (single x) aZBr
+
+  auxS : RTm ⌊ Δ ⌋ → RTm ((⌊ Δ ⌋ ∙) ∙)
+  auxS x = subTm (extS (extS (single x))) aSBr
+
+  -- the natrec motive at the AmTΠ level — `aAuxMot` with the carrier gone
+  mot₀ : RTy (⌊ Δ ⌋ ∙)
+  mot₀ = aAuxB (renTy vs A) (wᶠ cM) (wᶠ m) (var vz)
+
+  mot₀-at : (n : RTm ⌊ Δ ⌋) → subTy (single n) mot₀ ≡ aAuxB A cM m n
+  mot₀-at n =
+    trans (aAuxB-sub {σ = single n} (renTy vs A) (wᶠ cM) (wᶠ m) (var vz))
+          (cong₄ aAuxB (wk-singleTy A) (wᶠ-single cM) (wᶠ-single m) refl)
+
+  mot₀-s : subTy nrs mot₀
+         ≡ aAuxB (renTy vs (renTy vs A)) (wᶠ (wᶠ cM)) (wᶠ (wᶠ m))
+                 (nsuc (var (vs vz)))
+  mot₀-s =
+    trans (aAuxB-sub {σ = nrs} (renTy vs A) (wᶠ cM) (wᶠ m) (var vz))
+          (cong₄ aAuxB (nrs-wTy A) (wᶠ-nrs cM) (wᶠ-nrs m) refl)
+
+  ⊢mot₀ : (Δ ▹ Nat) ⊢ty mot₀
+  ⊢mot₀ =
+    ty-Π (ren-ty dA there)
+      (ty-Π (ty-Hom ty-Nat (ren-lemma dm (Ren⊢-ext there)) (⊢var (there here)))
+            (ty-El (⊢wk (ren-lemma dcM (Ren⊢-ext there)))))
+
+  -- ⚠ `subTy (extS (single x)) aAuxMot` is the motive AmT hands down; it is
+  --   `mot₀` only after the three peels, and Agda cannot invert `subTm` to
+  --   see it.  This is the lemma the successor branch's CONTEXT needs.
+  mot-x : (x : RTm ⌊ Δ ⌋) → subTy (extS (single x)) aAuxMot ≡ mot₀
+  mot-x x =
+    trans (aAuxB-sub {σ = extS (single x)}
+                     (renTy vs (renTy vs A)) (wᶠ (wᶠ cM)) (wᶠ (wᶠ m)) (var vz))
+          (cong₄ aAuxB
+                 (trans (sub-wTy {σ = single x} (renTy vs A))
+                        (cong (renTy vs) (wk-singleTy A)))
+                 (trans (wᶠ-sub {σ = single x} (wᶠ cM)) (cong wᶠ (wᶠ-single cM)))
+                 (trans (wᶠ-sub {σ = single x} (wᶠ m)) (cong wᶠ (wᶠ-single m)))
+                 refl)
+
+  ⊢auxZ : {x : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ auxZ x ∷ subTy (single nzero) mot₀
+  ⊢auxZ {x = x} dx =
+    ⊢-cast (trans (cong (subTy (single x)) (mot-at nzero))
+                  (trans (aAuxB-sub {σ = single x} (renTy vs A) (wᶠ cM) (wᶠ m) nzero)
+                         (trans (cong₄ aAuxB (wk-singleTy A) (wᶠ-single cM)
+                                             (wᶠ-single m) refl)
+                                (sym (mot₀-at nzero)))))
+           (⊢[] ⊢aZBr dx)
+
+  ⊢auxS : {x : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A →
+          ((Δ ▹ Nat) ▹ mot₀) ⊢ auxS x ∷ subTy nrs mot₀
+  ⊢auxS {x = x} dx =
+    subst (λ T → ((Δ ▹ Nat) ▹ T) ⊢ auxS x ∷ subTy nrs mot₀) (mot-x x)
+      (⊢-cast (trans (cong (subTy (extS (extS (single x)))) mot-s)
+                     (trans (aAuxB-sub {σ = extS (extS (single x))}
+                                       (renTy vs (renTy vs (renTy vs A)))
+                                       (wᶠ (wᶠ (wᶠ cM))) (wᶠ (wᶠ (wᶠ m)))
+                                       (nsuc (var (vs vz))))
+                            (trans (cong₄ aAuxB peelA peelC peelM refl)
+                                   (sym mot₀-s))))
+              (sub-lemma ⊢aSBr (Sub⊢-ext (Sub⊢-ext (⊢single dx)))))
+    where
+      peelA : subTy (extS (extS (single x))) (renTy vs (renTy vs (renTy vs A)))
+            ≡ renTy vs (renTy vs A)
+      peelA =
+        trans (sub-wTy {σ = extS (single x)} (renTy vs (renTy vs A)))
+              (cong (renTy vs)
+                    (trans (sub-wTy {σ = single x} (renTy vs A))
+                           (cong (renTy vs) (wk-singleTy A))))
+      peelC : subTm (extS (extS (extS (single x)))) (wᶠ (wᶠ (wᶠ cM)))
+            ≡ wᶠ (wᶠ cM)
+      peelC =
+        trans (wᶠ-sub {σ = extS (single x)} (wᶠ (wᶠ cM)))
+              (cong wᶠ (trans (wᶠ-sub {σ = single x} (wᶠ cM))
+                              (cong wᶠ (wᶠ-single cM))))
+      peelM : subTm (extS (extS (extS (single x)))) (wᶠ (wᶠ (wᶠ m)))
+            ≡ wᶠ (wᶠ m)
+      peelM =
+        trans (wᶠ-sub {σ = extS (single x)} (wᶠ (wᶠ m)))
+              (cong wᶠ (trans (wᶠ-sub {σ = single x} (wᶠ m))
+                              (cong wᶠ (wᶠ-single m))))
 
   ⊢auxIH : {x n : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ n ∷ Nat →
            Δ ⊢ auxIH x n ∷ aAuxB A cM m n
-  ⊢auxIH {x = x} {n = n} dx dn =
-    subst (λ z → Δ ⊢ natrec (subTm (single x) aZBr)
-                            (subTm (extS (extS (single x))) aSBr) z
-                  ∷ aAuxB A cM m n)
-          (wk-single {v = x} n)
-          (⊢-cast (aux-ty x n)
-                  (⊢[] (⊢-cast (mot-at (w n)) (⊢aAux (⊢wk dn))) dx))
+  ⊢auxIH {n = n} dx dn =
+    ⊢-cast (mot₀-at n) (⊢natrec ⊢mot₀ (⊢auxZ dx) (⊢auxS dx) dn)
+
+  ------------------------------------------------------------------------
+  -- ★★★ …AND UNDER AN ARBITRARY AMBIENT RENAMING, which is the form an
+  --    INTERNAL induction on the bound actually consumes.
+  --
+  -- ⚠ WHY THE `Δ`-LEVEL FORM IS NOT ENOUGH.  An induction on the bound is
+  --   a `natrec` whose MOTIVE mentions the auxiliary at `var vz` and whose
+  --   SUCCESSOR branch mentions it at `nsuc (var (vs vz))` — neither is a
+  --   `Δ`-level term, so `⊢auxIH` cannot type either.  ⚠ And re-opening
+  --   `AmTΠ` at the deeper context does NOT give the same raw term: its
+  --   branches are rebuilt from the WEAKENED parameters, and that they
+  --   agree with the weakening of these branches is a naturality lemma the
+  --   library does not have.
+  --
+  -- ★ The dodge is that `renTm ρ` distributes over `natrec` DEFINITIONALLY,
+  --   so the renamed branches are on the nose the branches of the renamed
+  --   auxiliary — and the scrutinee is then free to be anything, including
+  --   a variable.  Three renamings of the three pieces above; no naturality
+  --   of the combinator is needed at all.
+  ------------------------------------------------------------------------
+
+  motAt : {Γ' : Cx} (ρ : Ren ⌊ Δ ⌋ Γ') → RTy (Γ' ∙)
+  motAt ρ = aAuxB (renTy vs (renTy ρ A)) (wᶠ (renTm (extR ρ) cM))
+                  (wᶠ (renTm (extR ρ) m)) (var vz)
+
+  motAt-ren : {Γ' : Cx} (ρ : Ren ⌊ Δ ⌋ Γ') → renTy (extR ρ) mot₀ ≡ motAt ρ
+  motAt-ren ρ =
+    trans (aAuxB-ren {ρ = extR ρ} (renTy vs A) (wᶠ cM) (wᶠ m) (var vz))
+          (cong₄ aAuxB (ren-wTy A) (ren-wᶠ cM) (ren-wᶠ m) refl)
+
+  motAt-at : {Γ' : Cx} (ρ : Ren ⌊ Δ ⌋ Γ') (n : RTm Γ') →
+             subTy (single n) (motAt ρ)
+           ≡ aAuxB (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m) n
+  motAt-at ρ n =
+    trans (aAuxB-sub {σ = single n} (renTy vs (renTy ρ A))
+                     (wᶠ (renTm (extR ρ) cM)) (wᶠ (renTm (extR ρ) m)) (var vz))
+          (cong₄ aAuxB (wk-singleTy (renTy ρ A))
+                       (wᶠ-single (renTm (extR ρ) cM))
+                       (wᶠ-single (renTm (extR ρ) m)) refl)
+
+  motAt-s : {Γ' : Cx} (ρ : Ren ⌊ Δ ⌋ Γ') →
+            subTy nrs (motAt ρ)
+          ≡ aAuxB (renTy vs (renTy vs (renTy ρ A)))
+                  (wᶠ (wᶠ (renTm (extR ρ) cM))) (wᶠ (wᶠ (renTm (extR ρ) m)))
+                  (nsuc (var (vs vz)))
+  motAt-s ρ =
+    trans (aAuxB-sub {σ = nrs} (renTy vs (renTy ρ A))
+                     (wᶠ (renTm (extR ρ) cM)) (wᶠ (renTm (extR ρ) m)) (var vz))
+          (cong₄ aAuxB (nrs-wTy (renTy ρ A))
+                       (wᶠ-nrs (renTm (extR ρ) cM))
+                       (wᶠ-nrs (renTm (extR ρ) m)) refl)
+
+  -- ⚠ `renTm ρ (auxIH x n) ≡ auxAt ρ x (renTm ρ n)` holds by `refl` — that
+  --   is the whole point of taking the bound separately.
+  auxAt : {Γ' : Cx} (ρ : Ren ⌊ Δ ⌋ Γ') (x : RTm ⌊ Δ ⌋) (n : RTm Γ') → RTm Γ'
+  auxAt ρ x n = natrec (renTm ρ (auxZ x)) (renTm (extR (extR ρ)) (auxS x)) n
+
+  ⊢auxAt : {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} {x : RTm ⌊ Δ ⌋} {n : RTm ⌊ Θ ⌋} →
+           Ren⊢ Δ Θ ρ → Δ ⊢ x ∷ A → Θ ⊢ n ∷ Nat →
+           Θ ⊢ auxAt ρ x n
+             ∷ aAuxB (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m) n
+  ⊢auxAt {Θ = Θ} {ρ = ρ} {x = x} {n = n} h dx dn =
+    ⊢-cast (motAt-at ρ n) (⊢natrec dMot dZ dS dn)
+    where
+      dMot : (Θ ▹ Nat) ⊢ty motAt ρ
+      dMot = subst (λ T → (Θ ▹ Nat) ⊢ty T) (motAt-ren ρ)
+                   (ren-ty ⊢mot₀ (Ren⊢-ext h))
+
+      dZ : Θ ⊢ renTm ρ (auxZ x) ∷ subTy (single nzero) (motAt ρ)
+      dZ = ⊢-cast (trans (cong (renTy ρ) (mot₀-at nzero))
+                         (trans (aAuxB-ren {ρ = ρ} A cM m nzero)
+                                (sym (motAt-at ρ nzero))))
+                  (ren-lemma (⊢auxZ dx) h)
+
+      peelA : renTy (extR (extR ρ)) (renTy vs (renTy vs A))
+            ≡ renTy vs (renTy vs (renTy ρ A))
+      peelA = trans (ren-wTy {ρ = extR ρ} (renTy vs A))
+                    (cong (renTy vs) (ren-wTy {ρ = ρ} A))
+
+      peelC : renTm (extR (extR (extR ρ))) (wᶠ (wᶠ cM))
+            ≡ wᶠ (wᶠ (renTm (extR ρ) cM))
+      peelC = trans (ren-wᶠ {ρ = extR ρ} (wᶠ cM))
+                    (cong wᶠ (ren-wᶠ {ρ = ρ} cM))
+
+      peelM : renTm (extR (extR (extR ρ))) (wᶠ (wᶠ m))
+            ≡ wᶠ (wᶠ (renTm (extR ρ) m))
+      peelM = trans (ren-wᶠ {ρ = extR ρ} (wᶠ m))
+                    (cong wᶠ (ren-wᶠ {ρ = ρ} m))
+
+      dS : ((Θ ▹ Nat) ▹ motAt ρ) ⊢ renTm (extR (extR ρ)) (auxS x)
+             ∷ subTy nrs (motAt ρ)
+      dS = subst (λ T → ((Θ ▹ Nat) ▹ T) ⊢ renTm (extR (extR ρ)) (auxS x)
+                          ∷ subTy nrs (motAt ρ))
+                 (motAt-ren ρ)
+                 (⊢-cast (trans (cong (renTy (extR (extR ρ))) mot₀-s)
+                                (trans (aAuxB-ren {ρ = extR (extR ρ)}
+                                                  (renTy vs (renTy vs A))
+                                                  (wᶠ (wᶠ cM)) (wᶠ (wᶠ m))
+                                                  (nsuc (var (vs vz))))
+                                       (trans (cong₄ aAuxB peelA peelC peelM refl)
+                                              (sym (motAt-s ρ)))))
+                         (ren-lemma (⊢auxS dx) (Ren⊢-ext (Ren⊢-ext h))))
 
   -- ★ …and the auxiliary APPLIED: the argument's measure slot is
   --   `subTm (single a) m`, which is why the certificate's type mentions
