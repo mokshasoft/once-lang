@@ -1629,6 +1629,11 @@ sim-call : {hv : HeapView} (jₐ retAddr : ℕ) (fs : FlatState) (s s' : State) 
   → FlatCorr (descend-view hv lo' lo'≤lo front-lo')
              (record fs { falloc = enter-call (falloc fs)
                         ; fret   = suc (fpc fs) ∷ fret fs
+                        -- THE LINK (plan 0.65 G2): the call writes it on every
+                        -- arch. `FlatCorr` says nothing about it yet, so this
+                        -- costs nothing here — it is riscv64's `c-thunk` that
+                        -- will need to read it back.
+                        ; flink  = suc (fpc fs)
                         ; fpc    = jₐ })
              s'
 sim-call {hv} jₐ retAddr fs s s' corr lo' lo'≤lo front-lo' lo'≤sp-reg fits rm = record

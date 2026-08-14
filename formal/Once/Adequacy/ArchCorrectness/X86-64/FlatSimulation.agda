@@ -891,8 +891,13 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     -- the abstract post-state, in the shape `callView` hands back
     absPost : FlatState
+    -- …and the LINK (plan 0.65 G2): x86-64's `call` writes the return address
+    -- to memory AND leaves it as the link in the same instruction, so this is
+    -- the degenerate case of the abstract link register — the spill has already
+    -- happened by the time the callee's prologue runs.
     absPost = record fs { falloc = enter-call (falloc fs)
                         ; fret   = suc (fpc fs) ∷ fret fs
+                        ; flink  = suc (fpc fs)
                         ; fpc    = j }
     step-eq : flat-exec-instr instr-call-closure prog fs ≡ absPost
     step-eq = trans (cong (λ z → do-call-sv prog z fs) ceq)

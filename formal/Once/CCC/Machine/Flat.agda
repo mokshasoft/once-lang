@@ -61,6 +61,21 @@ module FlatMachine {FS : FrameSemantics} where
       -- that register lives at the FLAT level.
       fret     : List ℕ
       fclosure : StoredValue FS
+      -- THE LINK REGISTER (plan 0.65 G2). The return address as the CALL
+      -- leaves it, before any spill to the frame cell.
+      --
+      -- WHY THE ABSTRACT MACHINE NEEDS ONE. x86-64's `call` writes the return
+      -- address to memory and RISC-V's `jalr` writes it to a register, and the
+      -- flat machine modelled only the first — so between a `jalr` and the
+      -- callee's `sd ra`, riscv64's pending return lives somewhere the abstract
+      -- machine could not name, and `RetAddrs` was false at that boundary.
+      -- x86-64 hides this because its `call` writes the link AND spills it in
+      -- one instruction; it is the degenerate case, not the general one.
+      --
+      -- A plain `ℕ` with a filler value, exactly like `fclosure`'s `SV-Tag 0`:
+      -- meaningful only where the correspondence says so, and costing no edit
+      -- at the construction sites that go through `mkFlat`.
+      flink    : ℕ
   open FlatState public
 
   -- The 3-field constructor every existing site uses: no pending returns,
@@ -68,7 +83,7 @@ module FlatMachine {FS : FrameSemantics} where
   -- new fields cost no edit at the ~37 construction sites, all of which
   -- build exactly such a state.
   mkFlat : LocState FS → AllocState {FS} → ℕ → FlatState
-  mkFlat loc alloc pc = mkFlatFull loc alloc pc [] (SV-Tag 0)
+  mkFlat loc alloc pc = mkFlatFull loc alloc pc [] (SV-Tag 0) 0
 
   ----------------------------------------------------------------------
   -- `with`-free decision helpers
@@ -626,8 +641,13 @@ module FlatMachine {FS : FrameSemantics} where
   flat-halt fs = record fs { floc = record (floc fs) { halted = true } }
 
   do-call-at : Maybe ℕ → FlatState → FlatState
+  -- …and the call WRITES THE LINK as well as pushing the ghost return stack.
+  -- The two are the same number; they are separate because the concrete
+  -- machines write them at different moments (x86-64 both at once, riscv64 the
+  -- link at `jalr` and the spill at the callee's prologue).
   do-call-at (just j) fs = record fs { falloc = enter-call (falloc fs)
                                      ; fret   = suc (fpc fs) ∷ fret fs
+                                     ; flink  = suc (fpc fs)
                                      ; fpc    = j }
   do-call-at nothing  fs = flat-halt fs
 
@@ -667,6 +687,7 @@ module FlatMachine {FS : FrameSemantics} where
              → find-thunk prog ℓ ≡ just j
              → do-call prog fs ≡ record fs { falloc = enter-call (falloc fs)
                                            ; fret   = suc (fpc fs) ∷ fret fs
+                                           ; flink  = suc (fpc fs)
                                            ; fpc    = j }
              → CallPost prog fs
 
