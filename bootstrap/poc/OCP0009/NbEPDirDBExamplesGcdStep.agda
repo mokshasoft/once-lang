@@ -364,6 +364,35 @@ gcd-a0-var b ih =
             (⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done))
               (step (β _ ih) done))))))
 
+-- ⛔ EQUATIONS 3 AND 4 — WHAT THEY NEED, measured rather than guessed.
+--
+-- ★ THE RIGHT FORMULATION IS CONDITIONAL.  At variables the innermost
+--   `natrec` is stuck, because its scrutinee is `monusTm (nsuc a') (nsuc b')`
+--   and `monus` computes on neither.  So the DISPATCH cannot commit to a
+--   branch — but the dispatch is the only thing that depends on the
+--   comparison.  Taking the comparison as a HYPOTHESIS separates the two:
+--
+--     (a' b' d ih : RTm Γ) → monusTm (nsuc a') (nsuc b') ⟶* nsuc d →
+--       app (app gcdStp (pair (nsuc a') (nsuc b'))) ih
+--     ⟶* app (app ih (pair (monusTm (nsuc a') (nsuc b')) (nsuc b'))) <descent>
+--
+--   and the mirror with `⟶* nzero` for a ≤ b.  The literal lemmas below
+--   are exactly these instantiated, with `monus-computes` discharging the
+--   hypothesis — which is why they work and the general form is what they
+--   were shadowing.
+--
+-- ⚠ WHAT STOPS IT TODAY IS BOOKKEEPING AT DEPTH, not the formulation.  The
+--   comparison branch sits SEVEN binders deep ([0]=ih [1]=G3 [2]=d [3]=G2
+--   [4]=k' [5]=G1 [6]=n' [7]=x), so `a'`, `b'` and `d` each arrive weakened
+--   by a DIFFERENT amount, and the hypothesis `mh` must be restated about
+--   the substituted forms before `⟶*-natrecⁿ` will accept it.  `wkS2`
+--   handles depth two; each of these needs its own.  Measured by probing
+--   the chain: the first mismatch is `natrec-suc`'s predecessor (that one
+--   IS `wkS2`), the next is `mh` itself.
+--
+-- ⇒ tractable, and strictly bigger than equations 1 and 2.  Recorded here
+--   so the next attempt starts from the formulation rather than rediscovering it.
+
 -- ⛔ EQUATIONS 3 AND 4 (the two recursive cases) are NOT reduction-provable
 --   at variables, and this is not a gap in the proofs — it is the same
 --   stuckness one level deeper.  Both need the COMPARISON, which computes
