@@ -20,7 +20,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
         ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; ⌜Id⌝; idrefl; jsub
-        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
+        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
         ; ordtr-cong₅
         ; Ren; extR; renTy; renTm
         ; Sub; subTy; subTm; extS; idₛ
@@ -80,9 +80,9 @@ open import poc.OCP0009.NbEPDirDBLR
   using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap; sne-jsub
         ; Ne; ne-var; ne-app; ne-absurd; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁
         ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-cId; sn-idrefl; sn-exp
-        ; sn-cNat; sn-cUnit
+        ; sn-cNat; sn-cUnit; sn-cMu
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
-        ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-J-Id; snr-J-Unit; snr-taut; snr-trᵖ; snr-ap-J; snr-apᵖ
+        ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-J-Id; snr-J-Unit; snr-J-Mu; snr-taut; snr-trᵖ; snr-ap-J; snr-apᵖ
         ; snr-jsub-refl; snr-jsubᵖ
         ; snr-natrec-zero; snr-natrec-suc; snr-natrecⁿ
         ; sne-natrec; ne-natrec; sn-unit; sn-nzero; sn-nsuc
@@ -191,6 +191,8 @@ subTm-var ρ (snd p)    = cong snd (subTm-var ρ p)
 subTm-var ρ ⌜base⌝     = refl
 subTm-var ρ ⌜Nat⌝      = refl
 subTm-var ρ ⌜Unit⌝     = refl
+subTm-var ρ (⌜Mu⌝ Dᵐ)     = refl
+subTm-var ρ (⌜Mu⌝ Dᵐ)  = refl
 subTm-var ρ unit       = refl
 subTm-var ρ nzero      = refl
 subTm-var ρ (nsuc n)   = cong nsuc (subTm-var ρ n)
@@ -367,6 +369,8 @@ sn-anti {t = pair a b} (sn-pair ha hb) = sn-pair (sn-anti ha) (sn-anti hb)
 sn-anti {t = ⌜base⌝}   _              = sn-cb
 sn-anti {t = ⌜Nat⌝}    _              = sn-cNat
 sn-anti {t = ⌜Unit⌝}   _              = sn-cUnit
+sn-anti {t = (⌜Mu⌝ Dᵐ)}   _              = sn-cMu
+sn-anti {t = ⌜Mu⌝ Dᵐ}  _              = sn-cMu
 sn-anti {t = ⌜Π⌝ c d}  (sn-cΠ hc hd)  = sn-cΠ (sn-anti hc) (sn-anti hd)
 sn-anti {t = ⌜Σ⌝ c d}  (sn-cΣ hc hd)  = sn-cΣ (sn-anti hc) (sn-anti hd)
 sn-anti {t = ⌜Hom⌝ c a b} (sn-cH hc ha hb) =
@@ -529,8 +533,12 @@ snr-anti {t = tr d (hrefl ⌜base⌝ s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ()
 snr-anti {t = tr d (hrefl ⌜base⌝ s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl ⌜Unit⌝ s) e} (snr-J-Unit hd hs) =
   e , (snr-J-Unit (sn-anti hd) (sn-anti hs) , refl)
+snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Mu⌝ Dᵐ) s) e} (snr-J-Mu hd hs) =
+  e , (snr-J-Mu (sn-anti hd) (sn-anti hs) , refl)
 snr-anti {t = tr d (hrefl ⌜Unit⌝ s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-anti {t = tr d (hrefl (⌜Mu⌝ Dᵐ) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl ⌜Unit⌝ s) e} (snr-trᵖ (snr-hrefl-pw ()))
+snr-anti {t = tr d (hrefl (⌜Mu⌝ Dᵐ) s) e} (snr-trᵖ (snr-hrefl-pw ()))
 -- ⌜Nat⌝ has NO J root — a `hrefl ⌜Nat⌝` path is neutral — so the only
 -- shapes here are the (absurd) code reductions.
 -- an `absurd` path CODE is neither `pw?` nor `stkC?`, and it has no
@@ -543,6 +551,7 @@ snr-anti {t = tr d (hrefl ⌜Nat⌝ s) e} (snr-trᵖ (snr-hrefl-pw ()))
 snr-anti {t = tr (⌜Hom⌝ c a m) (absurd c₉ e₉) e} (snr-trᵖ ())
 snr-anti {t = tr (⌜Hom⌝ c a m) ⌜Nat⌝ e} (snr-trᵖ ())
 snr-anti {t = tr (⌜Hom⌝ c a m) ⌜Unit⌝ e} (snr-trᵖ ())
+snr-anti {t = tr (⌜Hom⌝ c a m) (⌜Mu⌝ Dᵐ) e} (snr-trᵖ ())
 snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-J-Σ hd h₁ h₂ hs) =
   e , (snr-J-Σ (sn-anti hd) (sn-anti h₁) (sn-anti h₂) (sn-anti hs) , refl)
 snr-anti {t = tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
@@ -628,6 +637,7 @@ snr-anti {t = app (pair a b) u} (snr-app ())
 snr-anti {t = app ⌜base⌝ u}     (snr-app ())
 snr-anti {t = app ⌜Nat⌝ u}      (snr-app ())
 snr-anti {t = app ⌜Unit⌝ u}     (snr-app ())
+snr-anti {t = app (⌜Mu⌝ Dᵐ) u}     (snr-app ())
 snr-anti {t = app (⌜Π⌝ c d) u}  (snr-app ())
 snr-anti {t = app (⌜Σ⌝ c d) u}  (snr-app ())
 snr-anti {t = fst (var x)}      (snr-fst ())
@@ -635,6 +645,8 @@ snr-anti {t = fst (lam s)}      (snr-fst ())
 snr-anti {t = fst ⌜base⌝}       (snr-fst ())
 snr-anti {t = fst ⌜Nat⌝}        (snr-fst ())
 snr-anti {t = fst ⌜Unit⌝}       (snr-fst ())
+snr-anti {t = fst (⌜Mu⌝ Dᵐ)}       (snr-fst ())
+snr-anti {t = fst (⌜Mu⌝ Dᵐ)}    (snr-fst ())
 snr-anti {t = fst (⌜Π⌝ c d)}    (snr-fst ())
 snr-anti {t = fst (⌜Σ⌝ c d)}    (snr-fst ())
 snr-anti {t = app (⌜Hom⌝ c a b) u} (snr-app ())
@@ -657,6 +669,8 @@ snr-anti {t = snd (lam s)}      (snr-snd ())
 snr-anti {t = snd ⌜base⌝}       (snr-snd ())
 snr-anti {t = snd ⌜Nat⌝}        (snr-snd ())
 snr-anti {t = snd ⌜Unit⌝}       (snr-snd ())
+snr-anti {t = snd (⌜Mu⌝ Dᵐ)}       (snr-snd ())
+snr-anti {t = snd (⌜Mu⌝ Dᵐ)}    (snr-snd ())
 snr-anti {t = snd (⌜Π⌝ c d)}    (snr-snd ())
 snr-anti {t = snd (⌜Σ⌝ c d)}    (snr-snd ())
 snr-anti {t = app (ap c b p) u} (snr-app r) with snr-anti r
@@ -744,6 +758,7 @@ csr-anti {t = ⌜base⌝} (csr-here ())
 csr-anti {t = absurd c e} (csr-here ())
 csr-anti {t = ⌜Nat⌝ } (csr-here ())
 csr-anti {t = ⌜Unit⌝ } (csr-here ())
+csr-anti {t = (⌜Mu⌝ Dᵐ) } (csr-here ())
 csr-anti {t = ⌜Π⌝ _ _} (csr-here ())
 csr-anti {t = ⌜Σ⌝ _ _} (csr-here ())
 csr-anti {t = app f u} (csr-here r) with snr-anti r
@@ -812,6 +827,7 @@ sn-ren (sn-pair ha hb)  = sn-pair (sn-ren ha) (sn-ren hb)
 sn-ren sn-cb            = sn-cb
 sn-ren sn-cNat          = sn-cNat
 sn-ren sn-cUnit         = sn-cUnit
+sn-ren sn-cMu           = sn-cMu
 sn-ren (sn-cΠ h₁ h₂)    = sn-cΠ (sn-ren h₁) (sn-ren h₂)
 sn-ren (sn-cΣ h₁ h₂)    = sn-cΣ (sn-ren h₁) (sn-ren h₂)
 sn-ren (sn-cH h₁ h₂ h₃) = sn-cH (sn-ren h₁) (sn-ren h₂) (sn-ren h₃)
@@ -870,6 +886,7 @@ snr-ren {ρ = ρ} (snr-hrefl-pw {C = C} {t = t} kp) =
         (snr-hrefl-pw (trans (pw?-ren ρ C) kp))
 snr-ren (snr-J-base hd hs) = snr-J-base (sn-ren hd) (sn-ren hs)
 snr-ren (snr-J-Unit hd hs) = snr-J-Unit (sn-ren hd) (sn-ren hs)
+snr-ren (snr-J-Mu hd hs)   = snr-J-Mu (sn-ren hd) (sn-ren hs)
 snr-ren (snr-J-Σ hd h₁ h₂ hs) =
   snr-J-Σ (sn-ren hd) (sn-ren h₁) (sn-ren h₂) (sn-ren hs)
 snr-ren {ρ = ρ} (snr-J-Hom {c₁ = c₁} hd h₁ h₂ h₃ hs ks) =
