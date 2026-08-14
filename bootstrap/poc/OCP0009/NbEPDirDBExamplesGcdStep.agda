@@ -115,17 +115,17 @@ descConv p q u =
 -- SPLIT 1 — on `snd x`.  ctx: [0]=n' [1]=x
 ------------------------------------------------------------------------
 
-G1 : RTy (ε ∙ ∙)
+G1 : {Γ : Cx} → RTy (Γ ∙ ∙)
 G1 = gcdG (plusTm (fst (var (vs vz))) (var vz))
 
-⊢G1 : ((◇ ▹ PairT) ▹ Nat) ⊢ty G1
+⊢G1 : {Γ : Ctx} → ((Γ ▹ PairT) ▹ Nat) ⊢ty G1
 ⊢G1 = ⊢gcdG (⊢plus (⊢fst (⊢var (there here))) (⊢var here))
 
 -- b = 0 : the answer is `a`, and the IH is discarded.
-G1z : RTm (ε ∙)
+G1z : {Γ : Cx} → RTm (Γ ∙)
 G1z = lam (fst (var (vs vz)))
 
-⊢G1z : (◇ ▹ PairT) ⊢ G1z ∷ gcdG (plusTm (fst (var vz)) nzero)
+⊢G1z : {Γ : Ctx} → (Γ ▹ PairT) ⊢ G1z ∷ gcdG (plusTm (fst (var vz)) nzero)
 ⊢G1z =
   ⊢lam (⊢gcdIH (⊢plus (⊢fst (⊢var here)) ⊢nzero))
        (asP (⊢fst (⊢var (there here))))
@@ -134,17 +134,17 @@ G1z = lam (fst (var (vs vz)))
 -- SPLIT 2 — on `fst x`.  ctx: [0]=k' [1]=G1 [2]=n' [3]=x
 ------------------------------------------------------------------------
 
-G2 : RTy (ε ∙ ∙ ∙ ∙)
+G2 : {Γ : Cx} → RTy (Γ ∙ ∙ ∙ ∙)
 G2 = gcdG (plusTm (var vz) (nsuc (var (vs (vs vz)))))
 
-⊢G2 : ((((◇ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ⊢ty G2
+⊢G2 : {Γ : Ctx} → ((((Γ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ⊢ty G2
 ⊢G2 = ⊢gcdG (⊢plus (⊢var here) (⊢nsuc (⊢var (there (there here)))))
 
 -- a = 0 : the answer is `b`.  ctx after the ⊢lam: [0]=ih [1]=G1 [2]=n' [3]=x
-G2z : RTm (ε ∙ ∙ ∙)
+G2z : {Γ : Cx} → RTm (Γ ∙ ∙ ∙)
 G2z = lam (nsuc (var (vs (vs vz))))
 
-⊢G2z : (((◇ ▹ PairT) ▹ Nat) ▹ G1) ⊢ G2z
+⊢G2z : {Γ : Ctx} → (((Γ ▹ PairT) ▹ Nat) ▹ G1) ⊢ G2z
      ∷ gcdG (plusTm nzero (nsuc (var (vs vz))))
 ⊢G2z =
   ⊢lam (⊢gcdIH (⊢plus ⊢nzero (⊢nsuc (⊢var (there here)))))
@@ -156,17 +156,17 @@ G2z = lam (nsuc (var (vs (vs vz))))
 -- ctx C4: [0]=G2 [1]=k' [2]=G1 [3]=n' [4]=x   so a = suc k', b = suc n'
 ------------------------------------------------------------------------
 
-G3 : RTy (ε ∙ ∙ ∙ ∙ ∙ ∙)
+G3 : {Γ : Cx} → RTy (Γ ∙ ∙ ∙ ∙ ∙ ∙)
 G3 = gcdG (plusTm (nsuc (var (vs (vs vz)))) (nsuc (var (vs (vs (vs (vs vz)))))))
 
-⊢G3 : ((((((◇ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) ▹ Nat) ⊢ty G3
+⊢G3 : {Γ : Ctx} → ((((((Γ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) ▹ Nat) ⊢ty G3
 ⊢G3 =
   ⊢gcdG (⊢plus (⊢nsuc (⊢var (there (there here))))
                (⊢nsuc (⊢var (there (there (there (there here)))))))
 
 -- a ≤ b : recurse at (a , b ∸ a).  SECOND component changes → ⊢desc-right.
 -- ctx after the ⊢lam: [0]=ih [1]=G2 [2]=k' [3]=G1 [4]=n' [5]=x
-G3z : RTm (ε ∙ ∙ ∙ ∙ ∙)
+G3z : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙)
 G3z =
   lam (app (app (var vz)
                 (pair (nsuc (var (vs (vs vz))))
@@ -175,7 +175,7 @@ G3z =
            (plusMonoTm (monusLtTm (var (vs (vs (vs (vs vz))))) (var (vs (vs vz))))
                        (nsuc (var (vs (vs vz))))))
 
-⊢G3z : (((((◇ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) ⊢ G3z
+⊢G3z : {Γ : Ctx} → (((((Γ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) ⊢ G3z
      ∷ gcdG (plusTm (nsuc (var (vs vz))) (nsuc (var (vs (vs (vs vz))))))
 ⊢G3z =
   ⊢lam (⊢gcdIH (⊢plus (⊢nsuc (⊢var (there here)))
@@ -194,7 +194,7 @@ G3z =
 
 -- a > b : recurse at (a ∸ b , b).  FIRST component changes → ⊢desc-left.
 -- ctx after the ⊢lam: [0]=ih [1]=G3 [2]=d [3]=G2 [4]=k' [5]=G1 [6]=n' [7]=x
-G3s : RTm (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+G3s : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
 G3s =
   lam (app (app (var vz)
                 (pair (monusTm (nsuc (var (vs (vs (vs (vs vz))))))
@@ -207,7 +207,7 @@ G3s =
                         (monusLtTm (var (vs (vs (vs (vs vz)))))
                                    (var (vs (vs (vs (vs (vs (vs vz))))))))))
 
-⊢G3s : (((((((◇ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) ▹ Nat) ▹ G3) ⊢ G3s
+⊢G3s : {Γ : Ctx} → (((((((Γ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) ▹ Nat) ▹ G3) ⊢ G3s
      ∷ gcdG (plusTm (nsuc (var (vs (vs (vs vz)))))
                     (nsuc (var (vs (vs (vs (vs (vs vz)))))))) 
 ⊢G3s =
@@ -228,7 +228,7 @@ G3s =
 -- ★★★ THE STEP, ASSEMBLED — three nested `natrec`s under one `lam`.
 ------------------------------------------------------------------------
 
-gcdStp : RTm ε
+gcdStp : {Γ : Cx} → RTm Γ
 gcdStp =
   lam (natrec G1z
               (natrec G2z
@@ -238,7 +238,7 @@ gcdStp =
                       (fst (var (vs (vs vz)))))
               (snd (var vz)))
 
-⊢gcdStp : ◇ ⊢ gcdStp ∷ aStepT PairT ⌜Nat⌝ msr
+⊢gcdStp : {Γ : Ctx} → Γ ⊢ gcdStp ∷ aStepT PairT ⌜Nat⌝ msr
 ⊢gcdStp =
   ⊢lam ⊢PairT
     (⊢natrec ⊢G1 ⊢G1z
