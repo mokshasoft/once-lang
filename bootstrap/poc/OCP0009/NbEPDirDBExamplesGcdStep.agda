@@ -43,11 +43,12 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBExamplesGcdStep where
 
+open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; subst )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π
         ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝
-        ; subTm )
+        ; subTm; renTm; subTm-renTm; subTm-id )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; single
@@ -291,6 +292,58 @@ gcd-computes-a0 ih =
         (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst nzero n2) done)))
           (⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done))
             (step (β _ ih) done)))))
+
+------------------------------------------------------------------------
+-- ★★★ GAP A, FIRST HALF — THE STEP'S EQUATIONS AT **VARIABLES**.
+--
+-- ⚠⚠ WHY THE LITERAL VERSIONS ABOVE PROVE LESS THAN THEY LOOK.  Each one
+--   states `gcd (a , 0) = a` in a COMMENT but proves it at `a = 2`.  A
+--   literal test cannot distinguish this step function from one that
+--   returns `2` regardless, and that is exactly the class of defect that
+--   already bit here once (the descent recursing on the wrong side).
+--
+-- ★ EQUATION 1 GENERALISES FOR FREE, and that is worth saying precisely:
+--   its proof above never inspects `n2`.  It uses `βsnd` to see the SECOND
+--   component is `0`, `natrec-zero` to take that branch, `β` to consume the
+--   ignored IH, and `βfst` to project the FIRST component back out.  Not
+--   one step looks inside `a`.  So the same proof term, with `n2` replaced
+--   by a variable, is a proof for EVERY `a`.
+------------------------------------------------------------------------
+
+-- ⚠ ONE TRANSPORT IS UNAVOIDABLE, and it is instructive.  At a LITERAL the
+--   final projection lands on `n2` definitionally, because a numeral is
+--   closed and both actions are inert on it.  At a VARIABLE the same step
+--   lands on `subTm (single ih) (renTm vs a)` — propositionally `a`, but
+--   not definitionally.  That single `≡` is the whole difference between
+--   the literal test and the general theorem.
+wkS : {v : RTm ε} (t : RTm ε) → subTm (single v) (renTm vs t) ≡ t
+wkS t = trans (subTm-renTm t) (subTm-id t)
+
+-- ★ `gcd (a , 0) = a` — for an ARBITRARY `a`, closed or open.
+gcd-b0-var : (a ih : RTm ε) → app (app gcdStp (pair a nzero)) ih ⟶* a
+gcd-b0-var a ih =
+  subst (λ z → app (app gcdStp (pair a nzero)) ih ⟶* z) (wkS a)
+    (step (ξ-appˡ (β _ (pair a nzero)))
+      (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βsnd a nzero) done)))
+        (⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done))
+          (step (β _ ih) (step (βfst _ nzero) done)))))
+
+-- ⚠ EQUATION 2 DOES **NOT** GENERALISE THE SAME WAY, and the asymmetry is
+--   forced by the algorithm, not by the proof.  `gcd (0 , b) = b` is
+--   reached by SPLITTING ON `b`: the step must see `snd` is a SUCCESSOR
+--   before it may look at `fst`.  At a variable `b` that `natrec` is stuck
+--   (`natstk? b = true`), so no reduction sequence exists at all.
+--   ⛔ NOT DONE: even one constructor in (`gcd (0 , suc b)`), the successor
+--   branch threads the bound predecessor through several binders, so the
+--   endpoint is not `nsuc b` up to `wkS` — it needs the branch body's own
+--   substitution lemma.  Recorded rather than half-proved.
+
+-- ⛔ EQUATIONS 3 AND 4 (the two recursive cases) are NOT reduction-provable
+--   at variables, and this is not a gap in the proofs — it is the same
+--   stuckness one level deeper.  Both need the COMPARISON, which computes
+--   `a ∸ b`; at variables `monusTm a b` is stuck, so the dispatch cannot
+--   commit to a side.  Establishing them needs a PROPOSITIONAL statement
+--   proved by induction on both components, not a `⟶*` chain.
 
 -- ★★ 3.  a > b : `gcd (3 , 1)` really does recurse at `(3 ∸ 1 , 1)` —
 --     SUBTRACT b FROM a, KEEP b.  ⚠ This is the equation a gcd-class spec
