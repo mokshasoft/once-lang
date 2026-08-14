@@ -140,6 +140,9 @@ fund : {σ : Sub ⌊ Γ ⌋ Ξ} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
 --   ⚠ this is the only place a `DInterp` can enter the model: `ty-Mu` is
 --     the sole rule introducing `Mu D`, which is why §4 had to become a
 --     premise rather than stay deferred.
+-- ★ the κ slot's witness, named ONCE so `interpK`, `payInterp` and
+--   `liftPay` all mention the SAME term and the goals match definitionally.
+elW : {c : RTm ε} → ◇ ⊢ c ∷ U → (x₀ : Var Ξ) → ⊩₀ (εwkTy (El c))
 interpK : {C : DCon} → DConWf C → Var Ξ → KInterp Ξ C
 interpD : {D : Desc} → DescWf D → Var Ξ → DInterp Ξ D
 
@@ -160,6 +163,18 @@ payLiftD : (D : Desc) (di : DInterp Ξ D) {E : Desc} (wE : DescWf E)
            R ⊩₁∋ p →
            Lift (lookupD E k) (lookupP (predsOf (interpD wE x₀)) k)
                 (MuMem D (predsOf di)) p
+
+-- ★★ and the CONVERSE, which `⊢elim` needs: the payload type's CANONICAL
+--   interp, and a `Lift` read back as a member of it.  `⊢elim` must APPLY
+--   the k-th method to the payload, and the method's domain is
+--   `payTy D C` — so the `Lift` sitting inside `mm-con` has to become a
+--   genuine semantic member again.  This is why `Lift` carries `SN`.
+payInterp : (D : Desc) (di : DInterp Ξ D) {C : DCon} (wC : DConWf C)
+            (x₀ : Var Ξ) → ⊩₁ (payTy D C)
+liftPay : (D : Desc) (di : DInterp Ξ D) {C : DCon} (wC : DConWf C)
+          (x₀ : Var Ξ) (p : RTm Ξ) →
+          Lift C (kpredsOf (interpK wC x₀)) (MuMem D (predsOf di)) p →
+          (payInterp D di wC x₀) ⊩₁∋ p
 
 -- the empty environment: `◇ ∋ x ∷ A` has no inhabitants.
 ⊩ˢ-ε : {Ξ : Cx} → ◇ ⊩ˢ (εsub {Ξ})
@@ -214,14 +229,15 @@ fund-ty {σ = σ} (ty-Hom {t = t} {u = u} tyA dt du) x₀ ρ = homSem₁ R ht hu
     hu = projl (irrel₁ crflᵀ (dfst (fund du x₀ ρ)) R)
                (subTm σ u) (dsnd (fund du x₀ ρ))
 
+elW {c = c} dc x₀ =
+  sem-El doneᵀ (projl (irrel₁ crflᵀ (dfst (fund dc x₀ ⊩ˢ-ε)) (⊩₁U doneᵀ))
+                      (subTm εsub c) (dsnd (fund dc x₀ ⊩ˢ-ε)))
+
 interpK dwf-ι          x₀ = ki-ι
 interpK (dwf-ρ w)      x₀ = ki-ρ (interpK w x₀)
 -- ★ the κ slot.  `εwkTy (El c) = El (subTm εsub c)` definitionally, so
 --   `sem-El`'s result lands at exactly the type `ki-κ` demands.
-interpK (dwf-κ c dc w) x₀ = ki-κ (sem-El doneᵀ hc) (interpK w x₀)
-  where
-    hc = projl (irrel₁ crflᵀ (dfst (fund dc x₀ ⊩ˢ-ε)) (⊩₁U doneᵀ))
-               (subTm εsub c) (dsnd (fund dc x₀ ⊩ˢ-ε))
+interpK (dwf-κ c dc w) x₀ = ki-κ (elW dc x₀) (interpK w x₀)
 
 interpD dwf-nil        x₀ = di-nil
 interpD (dwf-cons w e) x₀ = di-cons (interpK w x₀) (interpD e x₀)
@@ -242,19 +258,43 @@ payLiftK D di (dwf-ρ wC) x₀ R p h =
 -- `interpK` built, so the member has to come DOWN a level — `emb-coh`.
 payLiftK D di (dwf-κ c dc wC) x₀ R p h =
   ( CR1₁ R h
-  , ( projr (emb-coh W) (fst p)
-            (projl (irrel₁ crflᵀ (dfst m₁) (emb W)) (fst p) (dsnd m₁))
+  , ( projr (emb-coh (elW dc x₀)) (fst p)
+            (projl (irrel₁ crflᵀ (dfst m₁) (emb (elW dc x₀))) (fst p) (dsnd m₁))
     , payLiftK D di wC x₀ (dfst m₂) (snd p) (dsnd m₂) ) )
   where
-    W  = sem-El doneᵀ
-           (projl (irrel₁ crflᵀ (dfst (fund dc x₀ ⊩ˢ-ε)) (⊩₁U doneᵀ))
-                  (subTm εsub c) (dsnd (fund dc x₀ ⊩ˢ-ε)))
     m₁ = ⊩₁-fstm R h
     m₂ = relTy (payTy-sub (single (fst p)) D _) (⊩₁-sndm R h)
 
 payLiftD D di dwf-nil          x₀ k       R p h = CR1₁ R h
+
 payLiftD D di (dwf-cons wC wE) x₀ zero    R p h = payLiftK D di wC x₀ R p h
 payLiftD D di (dwf-cons wC wE) x₀ (suc k) R p h = payLiftD D di wE x₀ k R p h
+-- membership rides across a `⊩₁cast` — the equation is matched away.
+⊩₁cast-mem : {A A' : RTy Ξ} (eq : A ≡ A') (R : ⊩₁ A) {t : RTm Ξ} →
+             R ⊩₁∋ t → (⊩₁cast eq R) ⊩₁∋ t
+⊩₁cast-mem refl R h = h
+
+-- ⚠ the family is CONSTANT: `payTy` is substitution-inert, so the Σ-chain's
+--   tail does not depend on the head.  `payTy-sub` is the only cast.
+payInterp D di dwf-ι          x₀ = ⊩₁Unit doneᵀ
+payInterp D di (dwf-ρ wC)     x₀ =
+  ⊩₁Σ doneᵀ (⊩₁Mu doneᵀ di)
+      (λ u r → ⊩₁cast (sym (payTy-sub (single u) D _)) (payInterp D di wC x₀))
+payInterp D di (dwf-κ c dc wC) x₀ =
+  ⊩₁Σ doneᵀ (emb (elW dc x₀))
+      (λ u r → ⊩₁cast (sym (payTy-sub (single u) D _)) (payInterp D di wC x₀))
+
+liftPay D di dwf-ι x₀ p l = l
+liftPay D di (dwf-ρ wC) x₀ p (sp , (hf , rest)) =
+  ( sp
+  , ( hf
+    , ⊩₁cast-mem (sym (payTy-sub (single (fst p)) D _))
+                 (payInterp D di wC x₀) (liftPay D di wC x₀ (snd p) rest) ) )
+liftPay D di (dwf-κ c dc wC) x₀ p (sp , (q , rest)) =
+  ( sp
+  , ( projl (emb-coh (elW dc x₀)) (fst p) q
+    , ⊩₁cast-mem (sym (payTy-sub (single (fst p)) D _))
+                 (payInterp D di wC x₀) (liftPay D di wC x₀ (snd p) rest) ) )
 
 -- TERMS.
 fund (⊢var d) x₀ ρ = ρ d
