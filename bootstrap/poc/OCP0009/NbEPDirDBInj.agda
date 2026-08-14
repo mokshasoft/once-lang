@@ -30,14 +30,14 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; base; U; Π; Σ'; El; Hom; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
         ; var; lam; app; pair; fst; snd; absurd; ordtr; vz; vs; renTm
-        ; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝
+        ; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
         ; Desc; Mu; con; elim )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
         ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ
-        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss; El-⌜Nat⌝; El-⌜Unit⌝
+        ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
         ; ξ-idreflᶜ; ξ-idreflᵃ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ
         ; _⟶*_; done; step
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ )
@@ -47,7 +47,7 @@ open import poc.OCP0009.NbEPDirDBConf
         ; ptr; ptr-J-base; ptr-J-Σ; ptr-taut
         ; phrefl-pw; ptr-J-Hom; ptr-pw; pap; pap-J; p⌜Id⌝; pidrefl; pjsub; pjsub-refl
         ; ptr-J-Id; punit; pnzero; pnsuc; pnatrec; pnatrec-zero; pnatrec-suc
-        ; p⌜Nat⌝; p⌜Unit⌝; ptr-J-Unit
+        ; p⌜Nat⌝; p⌜Unit⌝; ptr-J-Unit; p⌜Mu⌝; ptr-J-Mu
         ; pordtr; pordtr-z; pordtr-szz; pordtr-ssz; pordtr-szs; pordtr-sss
         ; ⟶*-nsuc
         ; _⁺; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟶*-trans
@@ -179,6 +179,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
         A ⟹ᵀ A' → t ⟹ t' → u ⟹ u' → Id A t u ⟹ᵀ Id A' t' u'
   pEl-⌜Nat⌝  : El (⌜Nat⌝ {Γ}) ⟹ᵀ Nat
   pEl-⌜Unit⌝ : El (⌜Unit⌝ {Γ}) ⟹ᵀ Unit
+  pEl-⌜Mu⌝   : {Dᵐ : Desc} → El (⌜Mu⌝ {Γ} Dᵐ) ⟹ᵀ Mu Dᵐ
   pEl-⌜Id⌝ : {c c' a a' b b' : RTm Γ} →
              c ⟹ c' → a ⟹ a' → b ⟹ b' →
              El (⌜Id⌝ c a b) ⟹ᵀ Id (El c') a' b'
@@ -201,6 +202,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟶ᵀ→⟹ᵀ (Hom-Nat-ss m n) = pHom-Nat-ss (⟹-refl m) (⟹-refl n)
 ⟶ᵀ→⟹ᵀ El-⌜Nat⌝     = pEl-⌜Nat⌝
 ⟶ᵀ→⟹ᵀ El-⌜Unit⌝    = pEl-⌜Unit⌝
+⟶ᵀ→⟹ᵀ El-⌜Mu⌝      = pEl-⌜Mu⌝
 ⟶ᵀ→⟹ᵀ El-⌜base⌝    = pEl-⌜base⌝
 ⟶ᵀ→⟹ᵀ (El-⌜Π⌝ c d) = pEl-⌜Π⌝ (⟹-refl c) (⟹-refl d)
 ⟶ᵀ→⟹ᵀ (El-⌜Σ⌝ c d) = pEl-⌜Σ⌝ (⟹-refl c) (⟹-refl d)
@@ -224,6 +226,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ→⟶ᵀ* : {A B : RTy Γ} → A ⟹ᵀ B → A ⟶ᵀ* B
 ⟹ᵀ→⟶ᵀ* pEl-⌜Nat⌝  = stepᵀ El-⌜Nat⌝ doneᵀ
 ⟹ᵀ→⟶ᵀ* pEl-⌜Unit⌝ = stepᵀ El-⌜Unit⌝ doneᵀ
+⟹ᵀ→⟶ᵀ* pEl-⌜Mu⌝   = stepᵀ El-⌜Mu⌝ doneᵀ
 ⟹ᵀ→⟶ᵀ* pbase    = doneᵀ
 ⟹ᵀ→⟶ᵀ* pUnit    = doneᵀ
 ⟹ᵀ→⟶ᵀ* pNat     = doneᵀ
@@ -289,6 +292,7 @@ El (fst p) ⁺ᵀ   = El (fst p ⁺)
 El (snd p) ⁺ᵀ   = El (snd p ⁺)
 El ⌜Nat⌝ ⁺ᵀ     = Nat
 El ⌜Unit⌝ ⁺ᵀ    = Unit
+El (⌜Mu⌝ Dᵐ) ⁺ᵀ = Mu Dᵐ
 El ⌜base⌝ ⁺ᵀ    = base
 El (⌜Π⌝ c d) ⁺ᵀ = Π (El (c ⁺)) (El (d ⁺))
 El (⌜Σ⌝ c d) ⁺ᵀ = Σ' (El (c ⁺)) (El (d ⁺))
@@ -339,6 +343,7 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ pU             = pU
 ⟹ᵀ-⁺ pEl-⌜Nat⌝      = pNat
 ⟹ᵀ-⁺ pEl-⌜Unit⌝     = pUnit
+⟹ᵀ-⁺ pEl-⌜Mu⌝       = pMu
 ⟹ᵀ-⁺ pUnit          = pUnit
 ⟹ᵀ-⁺ pNat           = pNat
 ⟹ᵀ-⁺ pMu            = pMu
@@ -387,6 +392,7 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl (pβsnd p q)) = pEl (⟹-⁺ (pβsnd p q))
 ⟹ᵀ-⁺ (pEl p⌜Nat⌝)    = pEl-⌜Nat⌝
 ⟹ᵀ-⁺ (pEl p⌜Unit⌝)   = pEl-⌜Unit⌝
+⟹ᵀ-⁺ (pEl p⌜Mu⌝)     = pEl-⌜Mu⌝
 ⟹ᵀ-⁺ (pEl w@(ptr-J-Unit _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl p⌜base⌝)   = pEl-⌜base⌝
 ⟹ᵀ-⁺ (pEl (p⌜Π⌝ p q)) = pEl-⌜Π⌝ (⟹-⁺ p) (⟹-⁺ q)
@@ -407,6 +413,8 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl w@(pidrefl _ _))      = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pjsub _ _ _))      = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pjsub-refl _))     = pEl (⟹-⁺ w)
+-- ★ a J-step under `El` is just a term step: the code is not the head.
+⟹ᵀ-⁺ (pEl w@(ptr-J-Mu _))       = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pΠ p q)       = pΠ (⟹ᵀ-⁺ p) (⟹ᵀ-⁺ q)
 ⟹ᵀ-⁺ (pΣ p q)       = pΣ (⟹ᵀ-⁺ p) (⟹ᵀ-⁺ q)
 ⟹ᵀ-⁺ pEl-⌜base⌝     = pbase
@@ -453,6 +461,8 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(pβsnd _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@p⌜Nat⌝) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@p⌜Unit⌝) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@p⌜Mu⌝)   = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(ptr-J-Mu _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(ptr-J-Unit _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@p⌜base⌝) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) pu@(p⌜Π⌝ _ _)) = pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ pu)
@@ -488,6 +498,8 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pHom pNat pt@(pβsnd _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@p⌜Nat⌝ pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@p⌜Unit⌝ pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@p⌜Mu⌝ pu)   = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat pt@(ptr-J-Mu _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(ptr-J-Unit _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@p⌜base⌝ pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat pt@(p⌜Π⌝ _ _) pu) = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
@@ -520,6 +532,7 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 -- endpoints — the same one-step-behind principle `El` itself uses.
 ⟹ᵀ-⁺ (pHom pEl-⌜Nat⌝ pt pu)  = pHom pNat (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pEl-⌜Unit⌝ pt pu) = pHom pUnit (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pEl-⌜Mu⌝ pt pu)   = pHom pMu (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pEl-⌜base⌝ pt pu) =
   pHom (⟹ᵀ-⁺ pEl-⌜base⌝) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom (pEl-⌜Π⌝ p q) pt pu) =
