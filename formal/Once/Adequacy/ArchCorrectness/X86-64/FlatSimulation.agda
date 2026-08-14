@@ -101,7 +101,7 @@ xrreg s r = X.readReg (X.State.regs s) r
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
        FS slot-size word-eq Reg x86-64-roles X.State xrreg X.State.memory X.State.halted
-       X.State.pc Program compile-trace X.find-label blk-off
+       X.State.pc Program compile-trace X.find-label blk-off blk-len X.exec
   public
 
 ------------------------------------------------------------------------
@@ -144,13 +144,8 @@ b-cmp-reg-imm prog s dst n = refl
 ------------------------------------------------------------------------
 -- A step may EXTEND the heap view (only `instr-alloc-heap` does); `BlockStep`
 -- is the same-view case, `BlockStepAt hv hv'` the general one.
-BlockStepAt : HeapView → HeapView → AbstractTrace → FlatState → X.State → AbstractInstr → Set
-BlockStepAt hv hv' prog fs s i =
-  Σ X.State (λ s' → (X.exec (blk-len i) (compile-trace prog) s ≡ just s')
-                  × CompiledCorr hv' prog (flat-exec-instr i prog fs) s')
-
-BlockStep : HeapView → AbstractTrace → FlatState → X.State → AbstractInstr → Set
-BlockStep hv = BlockStepAt hv hv
+-- (`BlockStepAt`/`BlockStep` moved to FlatCore.CompiledCorrespondence:
+--  identical on both arches but for the state type and which `exec`.)
 
 -- THE RETURN PICTURE IS UNTOUCHED (D093). The generic helpers below are
 -- polymorphic in the instruction, so `falloc (flat-exec-instr i prog fs)` does

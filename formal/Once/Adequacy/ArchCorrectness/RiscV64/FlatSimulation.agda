@@ -87,7 +87,7 @@ rreg' s r = R.readReg (R.State.regs s) r
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
        FS rv-slot-size word-eq Reg riscv64-roles R.State rreg' R.State.memory rhalted
-       R.State.pc Program compile-trace R.find-label blk-off
+       R.State.pc Program compile-trace R.find-label blk-off blk-len R.exec
   public
 
 ------------------------------------------------------------------------
@@ -113,13 +113,8 @@ ret-same prog fs i _ (fr-eq , rt-eq) r rewrite fr-eq | rt-eq = r
 ------------------------------------------------------------------------
 -- ONE ABSTRACT STEP ↔ ITS COMPILED BLOCK.
 ------------------------------------------------------------------------
-BlockStepAt : HeapView → HeapView → AbstractTrace → FlatState → R.State → AbstractInstr → Set
-BlockStepAt hv hv' prog fs s i =
-  Σ R.State (λ s' → (R.exec (blk-len i) (compile-trace prog) s ≡ just s')
-                  × CompiledCorr hv' prog (flat-exec-instr i prog fs) s')
-
-BlockStep : HeapView → AbstractTrace → FlatState → R.State → AbstractInstr → Set
-BlockStep hv = BlockStepAt hv hv
+-- (`BlockStepAt`/`BlockStep` moved to FlatCore.CompiledCorrespondence:
+--  identical on both arches but for the state type and which `exec`.)
 
 ------------------------------------------------------------------------
 -- Generic single-`mv rd, rs` block-step. Assembly: fetch-block-head +

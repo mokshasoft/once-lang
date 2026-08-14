@@ -38,11 +38,12 @@
 open import Data.Nat using (ℕ)
 open import Data.Bool using (Bool)
 open import Data.Maybe using (Maybe; just)
+open import Data.Product using (Σ; _×_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
 open import Data.Nat using (NonZero)
-open import Once.CCC.Machine.SMCore using (AbstractTrace)
+open import Once.CCC.Machine.SMCore
 open import Once.CCC.Label using (Label)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
@@ -63,13 +64,16 @@ module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
   (Program : Set)
   (compile-trace : AbstractTrace → Program)
   (find-label : Program → Label → Maybe ℕ)
-  -- the block-offset translation, from `FlatComposition`
+  -- the block-offset translation and block LENGTH, from `FlatComposition`
   (blk-off : AbstractTrace → ℕ → ℕ)
+  (blk-len : AbstractInstr → ℕ)
+  -- …and fuel-bounded execution, the one machine operation a BLOCK step needs
+  -- that a state correspondence does not.
+  (exec : ℕ → Program → State → Maybe State)
   where
 
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fpc; fret; falloc)
-open import Once.CCC.Machine.SMCore
 open MemOps {FS} using (writeLoc; writeLocToHeap)
 open FlatMachine {FS} using (floc)
 open import Once.Memory.HeapAddress using (HeapLocation)
@@ -165,3 +169,20 @@ store-guard fs hl = go (readReg (regs (floc fs)) Output) refl
         go (SV-Code c)            o-eq rewrite o-eq = refl
         go (SV-Ptr (AtDynamic w)) o-eq rewrite o-eq = refl
         go (SV-Ptr (AtStack f k)) o-eq rewrite o-eq = refl
+
+------------------------------------------------------------------------
+-- A BLOCK STEP — one abstract instruction, the whole block it compiles to.
+--
+-- Identical on both arches before this moved: same Σ, same three components,
+-- differing only in the state type and which `exec`. `BlockStepAt` carries TWO
+-- views because the view-EXTENDING instructions (`alloc-heap` extends it,
+-- `alloc-stack`/`c-thunk`/`call` descend it) land their post-state in a
+-- different one; `BlockStep` is the diagonal, which is most of them.
+------------------------------------------------------------------------
+BlockStepAt : HeapView → HeapView → AbstractTrace → FlatState → State → AbstractInstr → Set
+BlockStepAt hv hv' prog fs s i =
+  Σ State (λ s' → (exec (blk-len i) (compile-trace prog) s ≡ just s')
+                × CompiledCorr hv' prog (FlatMachine.flat-exec-instr {FS} i prog fs) s')
+
+BlockStep : HeapView → AbstractTrace → FlatState → State → AbstractInstr → Set
+BlockStep hv = BlockStepAt hv hv
