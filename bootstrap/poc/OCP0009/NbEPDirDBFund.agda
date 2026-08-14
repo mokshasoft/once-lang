@@ -25,7 +25,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; renTy-subTy; renTm-subTm
         ; subTy-subTy; subTm-subTm
         ; subTy-id; subTm-id; renTm-renTm; renTm-cong
-        ; Desc; DCon; Mu; con; elim; lookupD; εsub; εwkTy; payTy; payTy-sub )
+        ; Desc; DCon; Mu; con; elim; lookupD; εsub; εwkTy; payTy; payTy-sub
+        ; _∈D_; hereD; thereD; sel; ihs )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; nrs
@@ -427,7 +428,7 @@ fund {σ = σ} (⊢nsuc {n = n} dn) x₀ ρ =
 fund {σ = σ} (⊢con {D = D} {k = k} {p = p} w i dp) x₀ ρ =
   ( ⊩₁Mu doneᵀ di
   , ( sn-con (CR1₁ (dfst m) (dsnd m))
-    , mm-con k (payLiftD D di w x₀ k (dfst m) (subTm σ p) (dsnd m)) ) )
+    , mm-con k i (payLiftD D di w x₀ k (dfst m) (subTm σ p) (dsnd m)) ) )
   where
     di = interpD w x₀
     m  = relTy (payTy-sub σ D (lookupD D k)) (fund dp x₀ ρ)
