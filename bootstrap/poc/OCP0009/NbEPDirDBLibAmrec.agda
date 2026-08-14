@@ -22,7 +22,7 @@ module poc.OCP0009.NbEPDirDBLibAmrec where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; Ren
-        ; RTy; El; Hom; Nat; U
+        ; RTy; El; Hom; Nat; U; Id
         ; RTm; var; nzero; nsuc; natrec; absurd; ordtr; lam; app
         ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR
         ; subTy-renTy; subTy-id; subTm-renTm; subTm-id; subTm-cong
@@ -32,8 +32,9 @@ open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
         ; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc
-        ; ⊢lam; ⊢app; _⊢ty_
+        ; ⊢lam; ⊢app; _⊢ty_; ⊢conv; csymᵀ; ctrnᵀ
         ; ty-Nat; ty-Hom; ty-El; ty-Π )
+open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext
         ; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single )
@@ -155,6 +156,80 @@ aStepT-w^ zero    A cM m = refl
 aStepT-w^ (suc n) A cM m =
   trans (cong (renTy vs) (aStepT-w^ n A cM m))
         (aStepT-ren (wTy^ n A) (wᶠ^ n cM) (wᶠ^ n m))
+
+------------------------------------------------------------------------
+-- ★★★ THE EXTENSIONALITY PREMISE — the CALLER's half of irrelevance.
+--
+-- ⚠ WHY THE LIBRARY NEEDS ONE AT ALL.  `app amrecTm x` reduces exactly to
+--   `app (app (auxIH x μx) x) (reflTm μx)` and no further: the auxiliary's
+--   `natrec` is stuck on `μx`.  An INTERNAL unfolding therefore has to
+--   transport along an `Id`, `⊢jsub`'s family must typecheck at an
+--   ARBITRARY bound `v`, and `auxIH x v` only reaches an `El _` when it is
+--   applied to a certificate of type `Hom Nat (μ a) v` — which for a
+--   generic `v` has no inhabitant to weaken in.  So the certificate has to
+--   be bound INSIDE the family, and the transport's source obligation is
+--   then "any two certificates give the same answer".  That is
+--   IRRELEVANCE, and it is provable by induction on the bound — but only
+--   if the step's answer depends on its IH POINTWISE.
+--
+-- ★ This is the standard side condition: Agda's own
+--   `Induction.WellFounded.FixPoint` demands precisely it.  It is the
+--   caller's to discharge, and a step that uses its IH once (gcd, via
+--   `RecCall`) discharges it by ONE instantiation of the hypothesis.
+--
+-- ⚠⚠ AND IT IS STATED META-LEVEL, NOT AS AN `RTy`.  The internal Π-form
+--   would carry the pointwise hypothesis as an object-language type — four
+--   nested binders over `Id`s — and every caller would have to BUILD an
+--   inhabitant with `⊢lam`.  Meta-level, the hypothesis is an Agda
+--   function the induction applies directly, and the caller supplies it by
+--   instantiating its own reduction lemma.  Context-polymorphic (`ρ`)
+--   because the induction consumes it under the branch's own binders,
+--   never at `Δ` itself.
+------------------------------------------------------------------------
+
+-- a NAMED existential: "inhabited, and here is the witness".  ⚠ Named for
+-- the same reason `RecCall` is — a caller must project WITHOUT
+-- `with`-abstracting over the term, which at these sizes OOM-kills the
+-- module (measured: exit 143).
+data Prv (Γ : Ctx) (T : RTy ⌊ Γ ⌋) : Set where
+  prv : (e : RTm ⌊ Γ ⌋) → Γ ⊢ e ∷ T → Prv Γ T
+
+prvTm : {Γ : Ctx} {T : RTy ⌊ Γ ⌋} → Prv Γ T → RTm ⌊ Γ ⌋
+prvTm (prv e _) = e
+
+prvOk : {Γ : Ctx} {T : RTy ⌊ Γ ⌋} (p : Prv Γ T) → Γ ⊢ prvTm p ∷ T
+prvOk (prv _ d) = d
+
+-- ★ THE BRIDGE reductions cross to reach an `Id`: an identity between the
+--   REDUCTS is an identity between the sources.  Every unfold lemma in this
+--   module is `⟶*`-valued, so this is how any of them enters an internal
+--   statement.
+idOfRed : {Γ : Ctx} {T : RTy ⌊ Γ ⌋} {t₁ t₂ u₁ u₂ : RTm ⌊ Γ ⌋} →
+          t₁ ⟶* u₁ → t₂ ⟶* u₂ → Prv Γ (Id T u₁ u₂) → Prv Γ (Id T t₁ t₂)
+idOfRed r₁ r₂ (prv e d) =
+  prv e (⊢conv d (csymᵀ (ctrnᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ r₁)) (red→≅ᵀ (⟶ᵀ*-Idʳ r₂)))))
+
+-- `(x : A) (ih₁ ih₂ : IH x) → (∀ y q. ih₁ y q ≡ ih₂ y q) → stp x ih₁ ≡ stp x ih₂`
+StepExt : (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋) → Set
+StepExt Δ A cM m stp =
+  {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
+  (a ih₁ ih₂ : RTm ⌊ Θ ⌋) →
+  Θ ⊢ a ∷ renTy ρ A →
+  -- ⚠ NO typing premise on `ih₁`/`ih₂`, deliberately.  A provider reduces
+  --   `app (app stp a) ihᵢ` with `ihᵢ` an opaque term (that is what every
+  --   step-reduction lemma here already does — `gcd-le-term` takes its
+  --   `ih` as a bare `RTm`) and finishes with `idOfRed`, so it never
+  --   inspects one; and the consumer has its own (`⊢ihZ-atP`/`⊢ihS-atP`).
+  --   An unused premise would only make this harder to discharge.
+  ((y q : RTm ⌊ Θ ⌋) →
+     Θ ⊢ y ∷ renTy ρ A →
+     Θ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) (renTm (extR ρ) m)))
+                     (subTm (single a) (renTm (extR ρ) m)) →
+     Prv Θ (Id (El (subTm (single y) (renTm (extR ρ) cM)))
+               (app (app ih₁ y) q) (app (app ih₂ y) q))) →
+  Prv Θ (Id (El (subTm (single a) (renTm (extR ρ) cM)))
+            (app (app (renTm ρ stp) a) ih₁)
+            (app (app (renTm ρ stp) a) ih₂))
 
 ------------------------------------------------------------------------
 -- THE COMBINATOR, over an arbitrary ambient context.
