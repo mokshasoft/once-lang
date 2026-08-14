@@ -32,7 +32,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Id; ⌜Id⌝; idrefl; jsub; Id-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
-        ; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝
+        ; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
         ; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ
         ; _∘ᵣ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_
         ; subTy-renTy; renTy-subTy; subTy-subTy; renTy-renTy
@@ -51,7 +51,7 @@ open import poc.OCP0009.NbEPDirDBVar
         ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id
         ; nonatc-ren; nonatc-sub; nonatc-pwBody
         ; stkA?; stkA?-ren; stkA?-sub; stkC?→stkA?
-        ; NoNatHd; nnh-base; nnh-Unit; nnh-Σ; nnh-Id; nnh-Π; nnh-Hom
+        ; NoNatHd; nnh-base; nnh-Unit; nnh-Σ; nnh-Id; nnh-Π; nnh-Hom; nnh-Mu
         ; nonatc→hd; stkC?→hd
         ; occ-sel; occ-fields )
 open import poc.OCP0009.NbEPDirDBType
@@ -62,8 +62,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs; ordtr-sss
         ; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
-        ; tr-J-base; tr-J-Σ; tr-J-Id; tr-J-Unit; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
-        ; El-⌜Nat⌝; El-⌜Unit⌝
+        ; tr-J-base; tr-J-Σ; tr-J-Id; tr-J-Unit; tr-J-Mu; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
+        ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
         ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
         ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
@@ -75,7 +75,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢absurd; ⊢ordtr; ⊢trU
         ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢ap; ⊢conv
-        ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢⌜Nat⌝; ⊢⌜Unit⌝
+        ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢⌜Nat⌝; ⊢⌜Unit⌝; ⊢⌜Mu⌝
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
         ; ⊢ctx_; c-◇; c-▹
         ; ι-elim; ξ-con; ξ-elimᵐ; ξ-elimᵗ
@@ -167,6 +167,7 @@ wk-ren ρ t = trans (renTm-renTm t) (sym (renTm-renTm t))
 -- so renaming is the identity on them.
 ⟶ᵀ-ren ρ El-⌜Nat⌝  = El-⌜Nat⌝
 ⟶ᵀ-ren ρ El-⌜Unit⌝ = El-⌜Unit⌝
+⟶ᵀ-ren ρ El-⌜Mu⌝   = El-⌜Mu⌝
 ⟶ᵀ-ren ρ (ξ-El r) = ξ-El (⟶-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-Πˡ r) = ξ-Πˡ (⟶ᵀ-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-Πʳ r) = ξ-Πʳ (⟶ᵀ-ren (extR ρ) r)
@@ -422,6 +423,9 @@ occ-red {x = x} (tr-J-Id c a m c₁ a₁ b₁ s e₀) e =
 occ-red {x = x} (tr-J-Unit c a m s e₀) e =
   ∨-false₂ (occTm x (hrefl ⌜Unit⌝ s))
            (∨-false₂ (occTm (vs x) (⌜Hom⌝ c a m)) e)
+occ-red {x = x} (tr-J-Mu {D = Dᵐ} c a m s e₀) e =
+  ∨-false₂ (occTm x (hrefl (⌜Mu⌝ Dᵐ) s))
+           (∨-false₂ (occTm (vs x) (⌜Hom⌝ c a m)) e)
 occ-red (tr-taut f e₀) e = e
 occ-red {x = x} (hrefl-pw C s key) e =
   ∨-false (pwBody-occ C key (∨-false₁ (occTm x C) e))
@@ -595,17 +599,20 @@ data NoNat {Γ} : RTy Γ → Set where
   nn-Σ    : {F : RTy Γ} {G : RTy (Γ ∙)} → NoNat (Σ' F G)
   nn-Hom  : {H : RTy Γ} {a b : RTm Γ} → NoNat (Hom H a b)
   nn-Id   : {A : RTy Γ} {t u : RTm Γ} → NoNat (Id A t u)
+  nn-Mu   : {Dᵐ : Desc} → NoNat (Mu {Γ} Dᵐ)
 
 nonat-red : {A A' : RTy Γ} → NoNat A → A ⟶ᵀ A' → NoNat A'
 nonat-red nn-base ()
 nonat-red nn-U ()
 nonat-red nn-Unit ()
+nonat-red nn-Mu ()
 nonat-red (nn-El _)  El-⌜base⌝        = nn-base
 nonat-red (nn-El _)  (El-⌜Π⌝ _ _)     = nn-Π
 nonat-red (nn-El _)  (El-⌜Σ⌝ _ _)     = nn-Σ
 nonat-red (nn-El _)  (El-⌜Hom⌝ _ _ _) = nn-Hom
 nonat-red (nn-El _)  (El-⌜Id⌝ _ _ _)  = nn-Id
 nonat-red (nn-El _)  El-⌜Unit⌝        = nn-Unit
+nonat-red (nn-El _)  El-⌜Mu⌝          = nn-Mu
 -- ★★ THE excluded case, and the only one: a ⌜Nat⌝-headed ambient.
 nonat-red (nn-El ()) El-⌜Nat⌝
 nonat-red (nn-El nc) (ξ-El r)        = nn-El (nonathd-red nc r)
@@ -1054,6 +1061,7 @@ ren-lemma {ρ = ρ} (⊢snd {B = B} {p = p} d) h =
 ren-lemma ⊢⌜base⌝ h = ⊢⌜base⌝
 ren-lemma ⊢⌜Nat⌝ h = ⊢⌜Nat⌝
 ren-lemma ⊢⌜Unit⌝ h = ⊢⌜Unit⌝
+ren-lemma (⊢⌜Mu⌝ w) h = ⊢⌜Mu⌝ w
 ren-lemma (⊢⌜Π⌝ dc dd) h = ⊢⌜Π⌝ (ren-lemma dc h) (ren-lemma dd (Ren⊢-ext h))
 ren-lemma (⊢⌜Σ⌝ dc dd) h = ⊢⌜Σ⌝ (ren-lemma dc h) (ren-lemma dd (Ren⊢-ext h))
 ren-lemma (⊢⌜Hom⌝ dc da db) h =
@@ -1160,6 +1168,7 @@ sub-lemma {σ = σ} (⊢snd {B = B} {p = p} d) h =
 sub-lemma ⊢⌜base⌝ h = ⊢⌜base⌝
 sub-lemma ⊢⌜Nat⌝ h = ⊢⌜Nat⌝
 sub-lemma ⊢⌜Unit⌝ h = ⊢⌜Unit⌝
+sub-lemma (⊢⌜Mu⌝ w) h = ⊢⌜Mu⌝ w
 sub-lemma (⊢⌜Π⌝ dc dd) h = ⊢⌜Π⌝ (sub-lemma dc h) (sub-lemma dd (Sub⊢-ext h))
 sub-lemma (⊢⌜Σ⌝ dc dd) h = ⊢⌜Σ⌝ (sub-lemma dc h) (sub-lemma dd (Sub⊢-ext h))
 sub-lemma (⊢⌜Hom⌝ dc da db) h =
@@ -1467,6 +1476,8 @@ data StkAmb {Γ : Cx} : RTy Γ → Set where
   -- ★ WF stage C: `⌜Unit⌝` IS a stable code, so its decode joins the
   -- stable ambients.
   st-Unit : StkAmb (Unit {Γ})
+  -- ★ `Mu D` is inert: never `U`, never `Π`.
+  st-Mu   : {Dᵐ : Desc} → StkAmb (Mu {Γ} Dᵐ)
   -- ★★ SpikeNatJ: `Nat` IS a stable ambient.  `StkAmb A` means "A never
   -- becomes `U` or `Π`", NOT "A is stuck" — that second notion is LR's
   -- `StkHd`, and the two must not be confused.  `Nat` is inert, and a
@@ -1480,6 +1491,7 @@ stamb-red (st-el {c = ⌜base⌝} k) El-⌜base⌝ = st-base
 stamb-red (st-el {c = ⌜Σ⌝ c d} k) (El-⌜Σ⌝ _ _) = st-Σ
 stamb-red (st-el {c = ⌜Id⌝ c a b} k) (El-⌜Id⌝ _ _ _) = st-Id
 stamb-red (st-el {c = ⌜Unit⌝} k) El-⌜Unit⌝ = st-Unit
+stamb-red (st-el {c = ⌜Mu⌝ _} k) El-⌜Mu⌝ = st-Mu
 stamb-red (st-el {c = ⌜Nat⌝} k) El-⌜Nat⌝ = st-Nat
 stamb-red st-Nat ()
 stamb-red st-Unit ()
@@ -2057,6 +2069,25 @@ sr d (tr-J-Unit cm am mm s e₀) with gen-tr d
 ...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
             with Hom-to-Hom
                    (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) (nn-El nnh-Unit))
+                   (subst (Hom A t u ⟶ᵀ*_) eqW rL)
+...         | mkHomRed rA rt ru =
+              ⊢conv de
+                (ctrnᵀ (ctrnᵀ (mono-El[] (⌜Hom⌝ cm am mm) rt)
+                         (ctrnᵀ (csymᵀ (mono-El[] (⌜Hom⌝ cm am mm) rs₁))
+                           (ctrnᵀ (mono-El[] (⌜Hom⌝ cm am mm) rs₂)
+                             (csymᵀ (mono-El[] (⌜Hom⌝ cm am mm) ru)))))
+                       (csymᵀ cC))
+sr d (tr-J-Mu {D = Dᵐ} cm am mm s e₀) with gen-tr d
+... | tgU (mkTrInvU () t u dt du dp de cC)
+... | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du dp de cC)
+      with gen-hrefl dp
+...   | (dc , (ds , cH)) with church-rosserᵀ cH
+...     | W , (rL , rR)
+          with homred-inv stknn-red stknn-noU stknn-noΠ stknn-noN
+                          (st-el {c = ⌜Mu⌝ Dᵐ} refl , nn-El nnh-Mu) rR
+...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
+            with Hom-to-Hom
+                   (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) (nn-El nnh-Mu))
                    (subst (Hom A t u ⟶ᵀ*_) eqW rL)
 ...         | mkHomRed rA rt ru =
               ⊢conv de
