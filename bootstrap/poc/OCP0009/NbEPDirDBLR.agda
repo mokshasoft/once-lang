@@ -53,7 +53,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Ren; extR; Sub; subTy; subTm; extS; renTm
         ; subTm-renTm; subTm-id; Hom-cong₃; ⌜Hom⌝-cong₃
         ; Desc; Mu; con; elim; lookupD; sel; fields
-        ; DCon; dι; dρ; dκ; dnil; _◃_; εwkTy )
+        ; DCon; dι; dρ; dκ; dnil; _◃_; εwkTy; _∈D_; hereD; thereD )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; nrs
         ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
@@ -3616,7 +3616,13 @@ Lift (dκ A C) (kp-κ Q kp) P t = SN t × (Q (fst t) × Lift C kp P (snd t))
 --   `n : RTm Γ` pins it for `NatMem`.
 data MuMem {Γ} (D : Desc) (dp : DPred Γ D) : RTm Γ → Set where
   mm-ne  : {t : RTm Γ} → SNe t → MuMem D dp t
-  mm-con : (k : ℕ) {p : RTm Γ} →
+  -- ⚠ `k ∈D D` IS REQUIRED, and it is not bookkeeping.  `lookupD` is
+  --   TOTAL, so without it `con 99 p` with `SN p` is a member of EVERY
+  --   description — and `⊢elim` then has no method to apply, because
+  --   `sel`'s type needs the very same premise (`sel-ty`, in Subj).
+  --   `⊢con` already carries it; the payload has to mirror it or the
+  --   fundamental theorem at `⊢elim` is simply false.
+  mm-con : (k : ℕ) → k ∈D D → {p : RTm Γ} →
            Lift (lookupD D k) (lookupP dp k) (MuMem D dp) p →
            MuMem D dp (con k p)
   mm-exp : {t t' : RTm Γ} → SNRed t t' → MuMem D dp t' → MuMem D dp t
@@ -4307,7 +4313,7 @@ irrel₀ c (⊩₀Mu p di₁) (⊩₀Mu q di₂) with joinW c p q
 
 irrelMu d₁ d₂ (mm-ne n)        = mm-ne n
 irrelMu d₁ d₂ (mm-exp r m)     = mm-exp r (irrelMu d₁ d₂ m)
-irrelMu d₁ d₂ (mm-con k {p} l) = mm-con k (irrelAtK d₁ d₂ d₁ d₂ k p l)
+irrelMu d₁ d₂ (mm-con k i {p} l) = mm-con k i (irrelAtK d₁ d₂ d₁ d₂ k p l)
 
 irrelAtK d₁ d₂ di-nil di-nil k p l = l
 irrelAtK d₁ d₂ (di-cons i₁ _) (di-cons i₂ _) zero    p l = liftK d₁ d₂ i₁ i₂ p l
