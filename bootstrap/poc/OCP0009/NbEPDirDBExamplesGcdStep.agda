@@ -230,15 +230,21 @@ G3s =
 -- ★★★ THE STEP, ASSEMBLED — three nested `natrec`s under one `lam`.
 ------------------------------------------------------------------------
 
+-- ⚠ the BODY is named so that `β gcdBody x` pins its own source.  Splitting
+--   a chain and substituting the halves needs each half's SOURCE fixed;
+--   with `β _ x` the lam body becomes an unsolved meta once the halves are
+--   no longer joined by a shared target.
+gcdBody : {Γ : Cx} → RTm (Γ ∙)
+gcdBody = natrec G1z
+                 (natrec G2z
+                         (natrec G3z G3s
+                                 (monusTm (nsuc (var (vs vz)))
+                                          (nsuc (var (vs (vs (vs vz)))))))
+                         (fst (var (vs (vs vz)))))
+                 (snd (var vz))
+
 gcdStp : {Γ : Cx} → RTm Γ
-gcdStp =
-  lam (natrec G1z
-              (natrec G2z
-                      (natrec G3z G3s
-                              (monusTm (nsuc (var (vs vz)))
-                                       (nsuc (var (vs (vs (vs vz)))))))
-                      (fst (var (vs (vs vz)))))
-              (snd (var vz)))
+gcdStp = lam gcdBody
 
 ⊢gcdStp : {Γ : Ctx} → Γ ⊢ gcdStp ∷ aStepT PairT ⌜Nat⌝ msr
 ⊢gcdStp =
@@ -446,6 +452,26 @@ gtRHS : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
 gtRHS ih A B = app (app ih (pair (monusTm (nsuc A) (nsuc B)) (nsuc B)))
                    (plusMonoLTm (monusTm (nsuc A) (nsuc B)) (nsuc A) (nsuc B)
                                 (monusLtTm A B))
+
+-- ⛔ ROUTE 3 (split the chain, substitute each half, splice the term-level
+--   hypothesis) — ATTEMPTED, NOT LANDED, and the reason is now precise.
+--
+-- ★ The plan is sound and needs no transports.  What defeats it as written
+--   is that `⟶*-sub σ : t ⟶* u → subTm σ t ⟶* subTm σ u` cannot have `t`
+--   and `u` inferred FROM ITS RESULT: that would mean solving
+--   `subTm σ t ≡ X` for `t`, i.e. higher-order unification.  So each half's
+--   type must come from its argument — and an inline chain's target is a
+--   meta.  ⚠ The intermediate CANNOT stay implicit here, though it could
+--   under a bare `⟶*-trans`.
+--
+-- ⇒ THE INTERMEDIATE MUST BE WRITTEN, and it is findable rather than
+--   guessable: pin each chain step's arguments (they are `gcdBody`'s own
+--   nested branches, now named down to `G1z`/`G2z`/`G3z`/`G3s`) so the
+--   target COMPUTES instead of remaining a meta, then read it off.  The
+--   composite branches between them still need names for that.
+--
+-- ⇒ also needed: `σ3` must carry `d`, since the comparison's reduct appears
+--   in the SECOND half.  Two variables are not enough.
 
 -- the GENERIC instance: `a'`/`b'` are the two outermost variables
 gcd-gt-gen : {Γ : Cx} (d ih : RTm (Γ ∙ ∙)) →
