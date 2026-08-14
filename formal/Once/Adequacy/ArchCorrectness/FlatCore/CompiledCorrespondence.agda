@@ -69,6 +69,15 @@ module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
 
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fpc; fret; falloc)
+open import Once.CCC.Machine.SMCore using (AbstractInstr)
+open import Data.Nat using (zero; suc; _+_; _*_; _≤_)
+open import Data.Nat.Properties using (<-irrefl; <-transˡ; ≤-trans; m≤m+n)
+open import Data.List using (List; []; _∷_; drop)
+open import Data.List.Properties using (drop-[])
+open import Data.Maybe using (nothing)
+open import Data.Maybe.Properties using (just-injective)
+open import Data.Empty using (⊥)
+open import Relation.Binary.PropositionalEquality using (refl; sym; cong)
 open import Once.CCC.Label using (LabelId; thunk)
 
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
@@ -79,6 +88,7 @@ private
   module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
 
 open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; caddr)
+open RegRoles roles using (sp-reg)
 
 ------------------------------------------------------------------------
 -- THE COMPILED CORRESPONDENCE.
@@ -93,3 +103,45 @@ record CompiledCorr (hv : HeapView) (prog : AbstractTrace)
              → find-label (compile-trace prog) (thunk ℓ) ≡ just j
              → caddr hv ℓ ≡ j
 open CompiledCorr public
+
+------------------------------------------------------------------------
+-- THE ARCH-FREE HELPERS from `ConcFlatSim` (plan 0.65 G2 item 4, slice 1).
+--
+-- Classifying that file's 14 top-level definitions showed three groups: some
+-- mention no machine at all, some mention it only through `rreg`, and some
+-- enumerate the ISA. The first two move here; only the third has to become a
+-- parameter of the engine. These are the first two groups.
+------------------------------------------------------------------------
+
+-- Fetching past the end means nothing is left to drop.
+fetch-nothing-drop : ∀ (prog : AbstractTrace) (k : ℕ)
+                   → FlatMachine.fetch {FS} prog k ≡ nothing → drop k prog ≡ []
+fetch-nothing-drop []       k       eq = drop-[] k
+fetch-nothing-drop (i ∷ is) zero    ()
+fetch-nothing-drop (i ∷ is) (suc k) eq = fetch-nothing-drop is k eq
+
+-- …and fetching AT `k` exposes that instruction at the head of the drop. The
+-- abstract-side ingredient for per-instruction pc-alignment.
+fetch-just-drop : ∀ (prog : AbstractTrace) (k : ℕ) (i : AbstractInstr)
+                → FlatMachine.fetch {FS} prog k ≡ just i
+                → drop k prog ≡ i ∷ drop (suc k) prog
+fetch-just-drop []       k       i ()
+fetch-just-drop (x ∷ xs) zero    i eq = cong (_∷ xs) (just-injective eq)
+fetch-just-drop (x ∷ xs) (suc k) i eq = fetch-just-drop xs k i eq
+
+-- An address at or above the heap frontier aliases no LIVE heap cell — every
+-- mapped cell is strictly below it (`dom-below`).
+above-frontier-disj : ∀ {hv : CFC.HeapView} (a : ℕ) → CFC.hfront hv ≤ a
+                    → ∀ hl → CFC.HDom hv hl → a ≡ CFC.haddr hv hl → ⊥
+above-frontier-disj {hv} a le hl live eq =
+  <-irrefl (sym eq) (<-transˡ (CFC.dom-below hv live) le)
+
+-- …and the instance every stack store needs: a current-frame slot address is at
+-- or above the stack pointer, hence above every live heap cell. Stated through
+-- `rreg`/`sp-reg`, which is why it is generic despite naming a register.
+slot-heap-disj : ∀ {hv : CFC.HeapView} (fs : FlatState) (s : State) → CFC.FlatCorr hv fs s
+               → (k : ℕ) → ∀ hl → CFC.HDom hv hl
+               → (rreg s (sp-reg) + k * slot-size ≡ CFC.haddr hv hl) → ⊥
+slot-heap-disj {hv} fs s corr k =
+  above-frontier-disj {hv} (rreg s sp-reg + k * slot-size)
+    (≤-trans (CFC.sep corr) (m≤m+n (rreg s sp-reg) (k * slot-size)))

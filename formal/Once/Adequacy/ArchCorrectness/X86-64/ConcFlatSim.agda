@@ -384,17 +384,6 @@ flat-inv-step i prog fs ftq h inv = record
 -- only that the allocating instructions have room (the `*-room` block below),
 -- i.e. that the program does not exhaust memory.
 ------------------------------------------------------------------------
-above-frontier-disj : ∀ {hv : HeapView} (a : ℕ) → hfront hv ≤ a
-                    → ∀ hl → HDom hv hl → a ≡ haddr hv hl → ⊥
-above-frontier-disj {hv} a le hl live eq = <-irrefl (sym eq) (<-transˡ (C.dom-below hv live) le)
-
--- a current-frame slot address is at or above %rsp, hence above every live cell
-slot-heap-disj : ∀ {hv : HeapView} (fs : FlatState) (s : X.State) → C.FlatCorr hv fs s
-               → (k : Slot) → ∀ hl → HDom hv hl
-               → (X.readReg (X.State.regs s) rsp + slot-to-disp k ≡ haddr hv hl) → ⊥
-slot-heap-disj {hv} fs s corr k =
-  above-frontier-disj {hv} (X.readReg (X.State.regs s) rsp + slot-to-disp k)
-    (≤-trans (C.sep corr) (m≤m+n (X.readReg (X.State.regs s) rsp) (slot-to-disp k)))
 
 -- (`ptr-heap-disj` — the same fact with the heap stores' argument order —
 -- DELETED with Plan 0.63's D085: a heap store no longer takes stack
@@ -446,19 +435,10 @@ open import Once.Denotation.Trace using (SigOpEvent)
 
 -- fetch prog k ≡ nothing (k past the trace) ⇒ dropping k blocks leaves []. The
 -- abstract-side ingredient for the program-end boundary.
-fetch-nothing-drop : ∀ (prog : AbstractTrace) (k : ℕ) → fetch prog k ≡ nothing → drop k prog ≡ []
-fetch-nothing-drop []       k       eq = drop-[] k
-fetch-nothing-drop (i ∷ is) zero    ()
-fetch-nothing-drop (i ∷ is) (suc k) eq = fetch-nothing-drop is k eq
 
 -- fetch prog k ≡ just i ⇒ dropping k blocks exposes i at the head. The abstract-
 -- side ingredient for the per-instruction pc-alignment (concrete fetch = the
 -- compiled head of the fetched abstract instruction).
-fetch-just-drop : ∀ (prog : AbstractTrace) (k : ℕ) (i : AbstractInstr)
-                → fetch prog k ≡ just i → drop k prog ≡ i ∷ drop (suc k) prog
-fetch-just-drop []       k       i ()
-fetch-just-drop (x ∷ xs) zero    i eq = cong (_∷ xs) (just-injective eq)
-fetch-just-drop (x ∷ xs) (suc k) i eq = fetch-just-drop xs k i eq
 
 -- pc-alignment at a SigOp: the concrete pc = blk-off prog (fpc fs) (pc-off) fetches
 -- the compiled head of `instr-sigop si`, which is exactly its one `call-sym`
