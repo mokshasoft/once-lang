@@ -36,7 +36,7 @@
 ------------------------------------------------------------------------
 
 open import Data.Nat using (ℕ)
-open import Data.Bool using (Bool)
+open import Data.Bool using (Bool; false)
 open import Data.Maybe using (Maybe; just)
 open import Data.Product using (Σ; _×_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -75,7 +75,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fpc; fret; falloc)
 open MemOps {FS} using (writeLoc; writeLocToHeap)
-open FlatMachine {FS} using (floc)
+open FlatMachine {FS} using (floc; halted; fetch)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Data.Nat using (zero; suc; _+_; _*_; _≤_)
 open import Data.Nat.Properties using (<-irrefl; <-transˡ; ≤-trans; m≤m+n)
@@ -186,3 +186,84 @@ BlockStepAt hv hv' prog fs s i =
 
 BlockStep : HeapView → AbstractTrace → FlatState → State → AbstractInstr → Set
 BlockStep hv = BlockStepAt hv hv
+
+------------------------------------------------------------------------
+-- THE BLOCK-STEP SUPPLY (plan 0.65 G2 item 4, slice 2).
+--
+-- One field per abstract instruction: what an ARCH owes the generic engine.
+-- The engine dispatches on `AbstractInstr` and calls these; giving it this
+-- record is what makes the event/trace layer — the largest single file — written
+-- once rather than per target.
+--
+-- BUILT GROUP BY GROUP, BY PREMISE COUNT, because the 42 fields are not
+-- uniform: 11 take only (cc, h, ft), and the tail runs to `alloc-heap`'s 14,
+-- carrying view-descent and resource premises where a transcription slip would
+-- typecheck but mean the wrong thing. This is also each arch's checklist.
+--
+-- GROUP 1 — the straight-line register moves and the two no-op controls: no
+-- premises beyond the correspondence, non-halt, and the fetch.
+------------------------------------------------------------------------
+-- `Set₁`: the fields quantify over `HeapView`, which is itself `Set₁`.
+record BlockSteps : Set₁ where
+  field
+    bs-mov-to-output :
+      ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just mov-to-output
+      → BlockStep hv prog fs s mov-to-output
+    bs-mov-to-input :
+      ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just mov-to-input
+      → BlockStep hv prog fs s mov-to-input
+    bs-mov-input2-to-output :
+      ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just mov-input2-to-output
+      → BlockStep hv prog fs s mov-input2-to-output
+    bs-mov-output-to-input2 :
+      ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just mov-output-to-input2
+      → BlockStep hv prog fs s mov-output-to-input2
+    bs-scratch-one :
+      ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-one)
+      → BlockStep hv prog fs s (instr-reg-op scratch-one)
+    bs-scratch-zero :
+      ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-zero)
+      → BlockStep hv prog fs s (instr-reg-op scratch-zero)
+    bs-count-zero :
+      ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-reg-op count-zero)
+      → BlockStep hv prog fs s (instr-reg-op count-zero)
+    bs-scratch-load-count :
+      ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-load-count)
+      → BlockStep hv prog fs s (instr-reg-op scratch-load-count)
+    bs-c-label :
+      ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-label n))
+      → BlockStep hv prog fs s (instr-ctrl (c-label n))
+    bs-reclaim-to :
+      ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-reclaim-to n)
+      → BlockStep hv prog fs s (instr-reclaim-to n)
+    bs-worklist-init :
+      ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (worklist-init n)
+      → BlockStep hv prog fs s (worklist-init n)
+    bs-worklist-check :
+      ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (worklist-check n)
+      → BlockStep hv prog fs s (worklist-check n)
+open BlockSteps public
