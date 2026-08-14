@@ -208,6 +208,54 @@ print("      STATEMENT of its subject-reduction obligation, even if the")
 print("      proof is deferred — writing the statement is what exposes the")
 print("      missing premise (that is how gate 5 found `k ∈D D`).")
 
+# ── 6. CONDITIONAL lemmas with NO CONSUMER — the VACUITY blind spot ───────
+#
+# Check 4 catches vacuity in METATHEOREM ROWS (a case discharged by ⊥-elim).
+# It does NOT catch a lemma whose HYPOTHESIS is unsatisfiable — that one is
+# `--safe`, hole-free, green, and proves nothing.
+#
+# Measured 2026-08-14: `gcd-gt-gen`/`gcd-le-gen` were stated at VARIABLES
+# with the comparison as a premise —
+#     monusTm (nsuc a) (nsuc b) ⟶* nsuc d → …
+# — but `monusTm` recurses on its SECOND argument, so at a variable `b` that
+# natrec is STUCK and the premise is uninhabitable exactly where the lemma
+# lives.  Both typechecked. Both proved nothing.
+#
+# Deciding satisfiability is out of reach, so this checks the SIGNAL that
+# actually found it: a lemma that takes a REDUCTION as a hypothesis and
+# which NOTHING CONSUMES.  A conditional lemma exists to be applied; if no
+# call site ever discharges its premise, that premise is unexamined.
+print("\n== 6. CONDITIONAL lemmas with NO CONSUMER (vacuity risk) ==")
+srcs = {f: open(f).read() for f in sorted(_g.glob('NbEPDirDB*.agda'))}
+decl = re.compile(r'^([^\s:()\[\]{}]+)\s*:\s*(.*)$')
+risky = 0
+for f, txt in srcs.items():
+    lines = txt.split("\n")
+    for i, line in enumerate(lines):
+        m = decl.match(line)
+        if not m: continue
+        name, rest = m.group(1), m.group(2)
+        if name.startswith('--'): continue
+        # gather the full type: continuation lines are indented
+        j, ty = i + 1, rest
+        while j < len(lines) and (lines[j].startswith(' ') or lines[j].startswith('\t')):
+            ty += " " + lines[j].strip(); j += 1
+        # a REDUCTION appearing as a PREMISE: `⟶` with a later `→`
+        k = max(ty.find('⟶*'), ty.find('⟶'))
+        if k < 0 or '→' not in ty[k:]: continue
+        # consumers: any mention outside its own declaration and clauses
+        uses = sum(len(re.findall(r'(?<![A-Za-z0-9-])' + re.escape(name) + r'(?![A-Za-z0-9-])', t))
+                   for t in srcs.values())
+        own  = len(re.findall(r'^' + re.escape(name) + r'(?![A-Za-z0-9-])', txt, re.M))
+        if uses - own <= 0:
+            risky += 1
+            print(f"  {f:<34}:{i+1:<5} {name}")
+print(f"  ⇒ {risky} conditional lemma(s) with no consumer.")
+print("    ⚠ Not a failure — a REVIEW list.  For each, ask: can the premise")
+print("      be discharged AT THE ARGUMENTS THE LEMMA IS STATED FOR?  If")
+print("      only concrete arguments can discharge it, the lemma belongs at")
+print("      arbitrary TERMS, not at variables.")
+
 if fail:
     print(f"\n!! FAIL: {fail} orphaned/missing.  Agda will NOT catch this —"
           " datatypes need no coverage.", file=sys.stderr)
