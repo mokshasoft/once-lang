@@ -200,6 +200,21 @@ BlockStep hv = BlockStepAt hv hv
 -- carrying view-descent and resource premises where a transcription slip would
 -- typecheck but mean the wrong thing. This is also each arch's checklist.
 --
+-- WHERE THE FIELD SHAPES COME FROM, and it is NOT either arch's block-step
+-- declaration. A field's premises are exactly what the ENGINE can supply at the
+-- dispatch site: the correspondence, non-halt, the fetch, and whatever it
+-- derives from `FlatInv`/`RunAt`. Anything an arch needs BEYOND that is that
+-- arch's own business, closed over when it builds its record.
+--
+-- The case that forced this, and that a declaration-driven transcription would
+-- have got wrong: `lea-slot` takes (cc, h, ft) on x86-64, which computes the
+-- address with `lea`, but riscv64 has no `lea` and uses `addi` — a real add —
+-- so ITS block-step also needs an address no-wrap premise (plan 0.70). Copying
+-- either signature into the record would be wrong: x86-64's under-constrains
+-- riscv64, riscv64's imposes on x86-64 a premise it cannot discharge. The field
+-- is the ENGINE's interface; riscv64 supplies it by applying its block-step to
+-- a bound from its own resource parameters.
+--
 -- GROUP 1 — the straight-line register moves and the two no-op controls: no
 -- premises beyond the correspondence, non-halt, and the fetch.
 ------------------------------------------------------------------------
