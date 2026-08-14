@@ -38,7 +38,7 @@
 open import Data.Nat using (ℕ)
 open import Data.Bool using (Bool; false)
 open import Data.Maybe using (Maybe; just)
-open import Data.Product using (Σ; _×_)
+open import Data.Product using (Σ; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
@@ -80,10 +80,10 @@ module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
 
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fpc; fret; falloc)
-open MemOps {FS} using (writeLoc; writeLocToHeap)
+open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open FlatMachine {FS} using (floc; halted; fetch)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
-open import Data.Nat using (zero; suc; _+_; _*_; _≤_; _<_)
+open import Data.Nat using (zero; suc; _+_; _*_; _∸_; _≤_; _<_)
 open import Data.Nat.Properties using (<-irrefl; <-transˡ; ≤-trans; m≤m+n)
 open import Data.List using (List; []; _∷_; drop)
 open import Data.List.Properties using (drop-[])
@@ -100,8 +100,9 @@ import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 private
   module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
 
-open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; caddr; HDom; haddr)
-open RegRoles roles using (sp-reg)
+open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; caddr; HDom; haddr
+               ; lo; hfront; descend-view)
+open RegRoles roles using (sp-reg; in1-reg; scratch-reg; count-reg)
 
 ------------------------------------------------------------------------
 -- THE COMPILED CORRESPONDENCE.
@@ -464,4 +465,116 @@ record BlockSteps : Set₁ where
       → suc k < frame-slots (falloc fs)
       → (∀ hl' → HDom hv hl' → (rreg s sp-reg + suc k * slot-size ≡ haddr hv hl') → ⊥)
       → BlockStep hv prog fs s store-indirect-suc
+    ------------------------------------------------------------------
+    -- GROUP 3b, the band's other half — CONTROL, the two counters, and the
+    -- two frame markers.
+    --
+    -- THE LABEL PREMISE IS THE ABSTRACT SCAN ONLY. `FlatMachine.find-label`,
+    -- qualified because this module's own `find-label` parameter is the
+    -- CONCRETE program's scan — a different function over a different type,
+    -- and confusing them is exactly the kind of slip the record exists to
+    -- prevent. The engine passes the abstract one and nothing else, so that is
+    -- the field. That the concrete scan AGREES is a theorem
+    -- (`FlatComposition.find-label-corr`, already generic), which the arch
+    -- applies inside its own block-step — x86-64 does; riscv64 currently takes
+    -- it as a premise instead, which is riscv64's to fix, not the field's.
+    --
+    -- FIVE CONTROL FIELDS FOR THREE INSTRUCTIONS, again because the engine
+    -- splits: a branch whose label is MISSING but which is NOT TAKEN never
+    -- consults the label, so it is an ordinary fall-through step with no label
+    -- premise at all (`…-nz`). Only taken-and-missing halts, and that is a
+    -- stuck route, not a block-step.
+    ------------------------------------------------------------------
+    bs-c-jmp :
+      ∀ {hv : HeapView} prog fs s n j → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-jmp n))
+      → FlatMachine.find-label {FS} prog n ≡ just j
+      → BlockStep hv prog fs s (instr-ctrl (c-jmp n))
+    bs-c-branch-scratch-zero :
+      ∀ {hv : HeapView} prog fs s n k j → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero n))
+      → readReg (regs (floc fs)) Scratch ≡ SV-Tag k
+      → FlatMachine.find-label {FS} prog n ≡ just j
+      → BlockStep hv prog fs s (instr-ctrl (c-branch-scratch-zero n))
+    bs-c-branch-nz :
+      ∀ {hv : HeapView} prog fs s n m → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero n))
+      → readReg (regs (floc fs)) Scratch ≡ SV-Tag (suc m)
+      → BlockStep hv prog fs s (instr-ctrl (c-branch-scratch-zero n))
+    -- The tag branch reads its condition THROUGH a pointer, so it carries the
+    -- concrete read as well — at the address the Input1 register holds, which
+    -- is the generic reading of both arches' `effectiveAddr … 0`.
+    bs-c-branch-tag-zero :
+      ∀ {hv : HeapView} prog fs s n loc k j → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+      → readLoc (floc fs) loc ≡ just (SV-Tag k)
+      → memory s (rreg s in1-reg + 0) ≡ just k
+      → FlatMachine.find-label {FS} prog n ≡ just j
+      → BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
+    bs-c-branch-tag-nz :
+      ∀ {hv : HeapView} prog fs s n loc m → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+      → readLoc (floc fs) loc ≡ just (SV-Tag (suc m))
+      → memory s (rreg s in1-reg + 0) ≡ just (suc m)
+      → BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
+    -- THE TWO COUNTERS. Both are `add`/`sub` sites, so both pay plan 0.70's
+    -- range obligation — the engine derives it from its own resource
+    -- parameters and passes the result, exactly as at `load-tag-lit`. The
+    -- registers are named by ROLE, which is what makes `rbx`/`s3` one field.
+    bs-scratch-dec :
+      ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-dec)
+      → readReg (regs (floc fs)) Scratch ≡ SV-Tag k
+      → 1 ≤ rreg s scratch-reg
+      → rreg s scratch-reg < modulus
+      → BlockStep hv prog fs s (instr-reg-op scratch-dec)
+    bs-count-inc :
+      ∀ {hv : HeapView} prog fs s k → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-reg-op count-inc)
+      → readReg (regs (floc fs)) Count ≡ SV-Tag k
+      → rreg s count-reg + 1 < modulus
+      → BlockStep hv prog fs s (instr-reg-op count-inc)
+    -- …AND THE TWO FRAME MARKERS, the band's top end.
+    --
+    -- `c-thunk` is the first field whose RESULT is not the diagonal: it
+    -- DESCENDS the view, so it lands in `descend-view`, and the three
+    -- ingredients of that view (`lo'` and its two bounds) are premises rather
+    -- than derived — the engine computes `lo'` as a meet from the stack-room
+    -- parameter and hands all three over. `frame-slots ≡ 0` is D093: a body
+    -- entry is reached by a call, and `enter-call` reserves nothing.
+    bs-c-thunk :
+      ∀ {hv : HeapView} prog fs s n b → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk n b))
+      → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
+      → lo' ≤ rreg s sp-reg ∸ b * slot-size
+      → b * slot-size ≤ rreg s sp-reg
+      → frame-slots (falloc fs) ≡ 0
+      → rreg s sp-reg < modulus
+      → BlockStepAt hv (descend-view hv lo' lo'≤lo front-lo') prog fs s
+                    (instr-ctrl (c-thunk n b))
+    -- `c-ret` (D095): the two shapes only the RUN knows — the return stack is
+    -- a cons and the released budget IS the reservation in force — plus the
+    -- frame it returns into, which `RetMatch` pairs with the return stack for
+    -- free. Nine parameters before the correspondence, and every one of them
+    -- is a witness the engine already had to produce to reach this branch.
+    bs-c-ret :
+      ∀ {hv : HeapView} prog fs s b rpc rest f₀ b₀ frs
+      → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+      → fret fs ≡ rpc ∷ rest
+      → b ≡ frame-slots (falloc fs)
+      → saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs
+      → rreg s sp-reg + b * slot-size < modulus
+      → BlockStep hv prog fs s (instr-ctrl (c-ret b))
 open BlockSteps public
