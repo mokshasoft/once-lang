@@ -790,6 +790,65 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
              (aux-cycle x y k₁ k₂ (descS-at x a k₁ p y (q₁ (ihS-atP x a k₁ p)))
                         z {q = q₂} r₂ h₂)
 
+  ------------------------------------------------------------------------
+  -- ★★★ THE TYPING INTERFACE FOR THE AUXILIARY AT AN ARBITRARY BOUND.
+  --
+  -- ⚠ EVERYTHING IN THE CYCLE BLOCK ABOVE IS `⟶*`-VALUED, and a reduction
+  --   can say nothing INTERNAL — no `Id`, no `Π`.  The first thing any
+  --   internal statement about the recursion needs is a TYPE for
+  --   `auxIH x n`, and the library did not have one: `⊢aAux` types the
+  --   auxiliary at the `Δ ▹ A` level, i.e. BEFORE the carrier is
+  --   substituted, and nothing carried it across.  These three close that.
+  --
+  -- ★ There is no new content: it is `⊢aAux` at the WEAKENED bound, then
+  --   `⊢[]` at `x`.  The bound rides through `single x` untouched
+  --   (`wk-single`) and the other three arguments peel with `mot-at`'s own
+  --   lemmas, one level down.
+  ------------------------------------------------------------------------
+
+  aux-ty : (x n : RTm ⌊ Δ ⌋) →
+           subTy (single x) (aAuxB (renTy vs A) (wᶠ cM) (wᶠ m) (w n))
+         ≡ aAuxB A cM m n
+  aux-ty x n =
+    trans (aAuxB-sub {σ = single x} (renTy vs A) (wᶠ cM) (wᶠ m) (w n))
+          (cong₄ aAuxB (wk-singleTy A) (wᶠ-single cM) (wᶠ-single m)
+                       (wk-single {v = x} n))
+
+  ⊢auxIH : {x n : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ n ∷ Nat →
+           Δ ⊢ auxIH x n ∷ aAuxB A cM m n
+  ⊢auxIH {x = x} {n = n} dx dn =
+    subst (λ z → Δ ⊢ natrec (subTm (single x) aZBr)
+                            (subTm (extS (extS (single x))) aSBr) z
+                  ∷ aAuxB A cM m n)
+          (wk-single {v = x} n)
+          (⊢-cast (aux-ty x n)
+                  (⊢[] (⊢-cast (mot-at (w n)) (⊢aAux (⊢wk dn))) dx))
+
+  -- ★ …and the auxiliary APPLIED: the argument's measure slot is
+  --   `subTm (single a) m`, which is why the certificate's type mentions
+  --   `a` and not `x` — the same separation the cycle lemmas make.
+  ⊢aux-app : {x a n p : RTm ⌊ Δ ⌋} →
+             Δ ⊢ x ∷ A → Δ ⊢ n ∷ Nat → Δ ⊢ a ∷ A →
+             Δ ⊢ p ∷ Hom Nat (subTm (single a) m) n →
+             Δ ⊢ app (app (auxIH x n) a) p ∷ El (subTm (single a) cM)
+  ⊢aux-app {a = a} {n = n} {p = p} dx dn da dp =
+    ⊢-cast (cong El (wk-single {v = p} (subTm (single a) cM)))
+      (⊢app (⊢-cast (cong₂ (λ b c → Π (Hom Nat (subTm (single a) m) b) (El c))
+                           (wk-single {v = a} n) (sub-w {σ = single a} cM))
+                    (⊢app (⊢auxIH dx dn) da))
+            dp)
+
+  -- ★★ THE NON-VACUITY WITNESS, and it is the one instance the combinator
+  --   itself uses: bound `μ x`, certificate `reflTm (μ x)`, argument `x`.
+  --   That term is exactly `amrec-β`'s target, so the pair above types the
+  --   β-reduct of `app amrecTm x` — the premise is dischargeable at the
+  --   arguments the library actually reduces to.
+  ⊢aux-at-μ : {x : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A →
+              Δ ⊢ app (app (auxIH x (subTm (single x) m)) x)
+                      (reflTm (subTm (single x) m))
+                ∷ El (subTm (single x) cM)
+  ⊢aux-at-μ dx = ⊢aux-app dx (⊢[] dm dx) dx (⊢le-refl (⊢[] dm dx))
+
   amrec-step-s : {P : RTm ⌊ Δ ⌋} (x k : RTm ⌊ Δ ⌋) →
                  subTm (single x) m ⟶* nsuc k →
                  ((ih : RTm ⌊ Δ ⌋) → app (app stp x) ih ⟶* P) →

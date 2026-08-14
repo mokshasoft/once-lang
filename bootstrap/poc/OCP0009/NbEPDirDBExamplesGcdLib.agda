@@ -398,9 +398,58 @@ gcdLeB {Δ} a b =
 --   i.e. the combinator's fixpoint equation as an INTERNAL identity
 --   rather than a reduction.  Every unfold lemma in `NbEPDirDBLibAmrec`
 --   is `⟶*`-valued; that is what confines them to concrete measures.
---   With an Id-valued unfold, equations 3/4 follow by `jsub` on the
---   hypothesis above, and `b` is free at last.
 --
 --   ⇒ THE NEXT DELIVERABLE IS IN THE WF LIBRARY, NOT IN THE GCD EXAMPLE.
 --     That is the finding; it relocates the remaining work.
+--
+------------------------------------------------------------------------
+-- ⚠⚠ CORRECTION, SECOND PASS (same day).  The paragraph above said
+--   equations 3/4 "follow by `jsub`" once that lemma exists.  BOTH halves
+--   of that were wrong, and the second half is the expensive one.
+--
+-- ⛔ (i) `amrec-unfold-Id` DOES NOT FOLLOW BY `jsub` EITHER.  `⊢jsub`
+--   transports a CODE FAMILY `d` over a variable `v : El ⌜Nat⌝`; the
+--   family may not mention the proof, and it must be well-typed at `U`
+--   for an ARBITRARY `v`.  It must also mention `auxIH x v`, or it says
+--   nothing about the unfolding — and `auxIH x v` only reaches an `El _`
+--   once it is applied to a carrier AND to a certificate of type
+--   `Hom Nat (μ of that carrier) v`, which at an arbitrary `v` has no
+--   inhabitant to weaken in from `Δ`.  So the certificate must be BOUND
+--   INSIDE the family (`⌜Π⌝` over `⌜Hom⌝ ⌜Nat⌝ (w μx) (var vz)` — the
+--   only formable option), and the transport's source is then quantified
+--   over ALL certificates while the combinator supplies exactly one,
+--   `reflTm μx`.  ⇒ the source obligation IS certificate irrelevance.
+--
+-- ⛔ (ii) AND EVEN WITH IT, 3/4 DO NOT FOLLOW.  Their right-hand side is
+--   a FRESH `app gcdTm Y` — the auxiliary at bound `μ Y` with certificate
+--   `reflTm (μ Y)` — whereas the left-hand side's recursive call is
+--   `app (app (auxIH X k) Y) descS`: bound `k`, and the auxiliary's index
+--   still `X`.  Relating those is bound-and-certificate irrelevance
+--   again.  ⚠ Note also that the MEASURE is not the obstruction here, as
+--   the block above implies: `μ (suc a , suc b) ⟶* nsuc (a + suc b)`
+--   fires at VARIABLES, so the cycle lemmas do apply.  What does not
+--   compute is `monusTm`'s branch selection — which is exactly what
+--   `gcdGtH`/`gcdLeH` internalise.
+--
+-- ★ SO THE MISSING THEOREM IS IRRELEVANCE, and it is reachable at a price
+--   the CALLER pays once.  It follows from STEP EXTENSIONALITY — "the
+--   step's answer depends on its IH only pointwise" — by INTERNAL
+--   induction on the bound:
+--     · bound `0`      the IH that branch hands over is `⊢strong-base'`,
+--                      i.e. EX FALSO, so any two certificates agree for
+--                      free — and `Id (El C) a b` is reachable by
+--                      `absurd`, being `El (⌜Id⌝ C a b)` up to `El-⌜Id⌝`;
+--     · bound `suc k`  both sides reduce to `app (app stp y) ihᵢ`, the two
+--                      IHs differ only in the certificate they pass down,
+--                      and that difference is the induction hypothesis
+--                      at `k`.
+--   Extensionality is the STANDARD side condition — Agda's own
+--   `Induction.WellFounded.FixPoint` demands precisely it — and gcd's
+--   step can discharge it, using its IH exactly once (`RecCall`).
+--
+--   ⇒ THE INTERFACE CHANGE: `AmTΠ` takes an extensionality premise, and
+--     the induction is stated with `⊢auxIH`/`⊢aux-app` (landed in the WF
+--     library alongside this note: the auxiliary at an arbitrary bound
+--     had NO typing lemma at all, only reductions, so nothing INTERNAL
+--     about the recursion was even statable).
 ------------------------------------------------------------------------
