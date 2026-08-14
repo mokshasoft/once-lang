@@ -61,6 +61,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⟶_; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
+open import poc.OCP0009.NbEPDirDBVar using ( ren-as-sub )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-ren )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus; n1; n2; n3 )
 open import poc.OCP0009.NbEPDirDBExamplesDiv
@@ -336,6 +337,23 @@ wkGen : {Γ Δ : Cx} {σ : Sub Δ Γ} {ρ : Ren Γ Δ} →
         ((x : Var Γ) → σ (ρ x) ≡ var x) →
         (t : RTm Γ) → subTm σ (renTm ρ t) ≡ t
 wkGen h t = trans (subTm-renTm t) (trans (subTm-cong h t) (subTm-id t))
+
+-- ★★ …and the version landing on a RENAMED target rather than on `t`.
+--   ⚠ CONFIRMED (this typechecks): the `wkS` family is `single`-headed and
+--   returns `t` EXACTLY; the composites that arise `extS`-headed return `t`
+--   STILL WEAKENED.  Same three moves, one different endpoint —
+--   `ren-as-sub` where `wkGen` uses `subTm-id`.
+wkGenR : {Γ Δ Θ : Cx} {σ : Sub Δ Θ} {ρ : Ren Γ Δ} {ρ' : Ren Γ Θ} →
+         ((x : Var Γ) → σ (ρ x) ≡ var (ρ' x)) →
+         (t : RTm Γ) → subTm σ (renTm ρ t) ≡ renTm ρ' t
+wkGenR {ρ' = ρ'} h t =
+  trans (subTm-renTm t) (trans (subTm-cong h t) (sym (ren-as-sub ρ' t)))
+
+-- the `extS`-headed companion the previous commit CONJECTURED — it holds.
+wkE : {Γ : Cx} {v : RTm Γ} (t : RTm Γ) →
+      subTm (extS (single v)) (renTm vs (renTm vs t)) ≡ renTm vs t
+wkE t = trans (cong (subTm (extS (single _))) (renTm-renTm t))
+              (wkGenR (λ x → refl) t)
 
 -- ⚠ ONE TRANSPORT IS UNAVOIDABLE, and it is instructive.  At a LITERAL the
 --   final projection lands on `n2` definitionally, because a numeral is
