@@ -32,9 +32,9 @@ open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
         ; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc
-        ; ⊢lam; ⊢app; _⊢ty_; ⊢conv; csymᵀ; ctrnᵀ
+        ; ⊢lam; ⊢app; _⊢ty_; ⊢conv; csymᵀ; ctrnᵀ; ⊢⌜Id⌝; El-⌜Id⌝
         ; ty-Nat; ty-Hom; ty-El; ty-Π )
-open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
+open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext
         ; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single )
@@ -208,6 +208,26 @@ idOfRed : {Γ : Ctx} {T : RTy ⌊ Γ ⌋} {t₁ t₂ u₁ u₂ : RTm ⌊ Γ ⌋}
           t₁ ⟶* u₁ → t₂ ⟶* u₂ → Prv Γ (Id T u₁ u₂) → Prv Γ (Id T t₁ t₂)
 idOfRed r₁ r₂ (prv e d) =
   prv e (⊢conv d (csymᵀ (ctrnᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ r₁)) (red→≅ᵀ (⟶ᵀ*-Idʳ r₂)))))
+
+-- ⚠ TWO NATURALITY LEMMAS FOR `aIHTat`, kept HERE while the irrelevance
+--   work is in flight — they belong in `NbEPDirDBLibRec` beside `aIHT-ren`
+--   and `aIHT-fit`, and should be lifted once it settles (the route
+--   `sub-wTy` took, and `LibRec` has 13 dependents to recheck).
+-- ★ `Π`/`Hom`/`El` all distribute DEFINITIONALLY, so each is one `cong₂`
+--   over the two `w`s and nothing else.
+aIHTat-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (A : RTy Γ) (cM m : RTm (Γ ∙)) (μ : RTm Γ) →
+             subTy σ (aIHTat A cM m μ)
+           ≡ aIHTat (subTy σ A) (subTm (extS σ) cM) (subTm (extS σ) m) (subTm σ μ)
+aIHTat-sub {σ = σ} A cM m μ =
+  cong₂ (λ u c → Π (subTy σ A) (Π (Hom Nat (nsuc (subTm (extS σ) m)) u) (El c)))
+        (sub-w μ) (sub-w {σ = extS σ} cM)
+
+aIHTat-ren : {Γ Γ' : Cx} {ρ : Ren Γ Γ'} (A : RTy Γ) (cM m : RTm (Γ ∙)) (μ : RTm Γ) →
+             renTy ρ (aIHTat A cM m μ)
+           ≡ aIHTat (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m) (renTm ρ μ)
+aIHTat-ren {ρ = ρ} A cM m μ =
+  cong₂ (λ u c → Π (renTy ρ A) (Π (Hom Nat (nsuc (renTm (extR ρ) m)) u) (El c)))
+        (ren-w μ) (ren-w {ρ = extR ρ} cM)
 
 -- `(x : A) (ih₁ ih₂ : IH x) → (∀ y q. ih₁ y q ≡ ih₂ y q) → stp x ih₁ ≡ stp x ih₂`
 StepExt : (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋) → Set
@@ -927,6 +947,48 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
                  (trans (wᶠ-sub {σ = single x} (wᶠ m)) (cong wᶠ (wᶠ-single m)))
                  refl)
 
+  -- ★★ THE SIX PEELS, hoisted: each is used by the branch's TYPE, by its
+  --    renaming, and again by the branch IH's typing below.  Three carry a
+  --    substitution `single x` past two family weakenings, three a renaming.
+  peelA-x : (x : RTm ⌊ Δ ⌋) →
+            subTy (extS (extS (single x))) (renTy vs (renTy vs (renTy vs A)))
+          ≡ renTy vs (renTy vs A)
+  peelA-x x =
+    trans (sub-wTy {σ = extS (single x)} (renTy vs (renTy vs A)))
+          (cong (renTy vs)
+                (trans (sub-wTy {σ = single x} (renTy vs A))
+                       (cong (renTy vs) (wk-singleTy A))))
+
+  peelC-x : (x : RTm ⌊ Δ ⌋) →
+            subTm (extS (extS (extS (single x)))) (wᶠ (wᶠ (wᶠ cM))) ≡ wᶠ (wᶠ cM)
+  peelC-x x =
+    trans (wᶠ-sub {σ = extS (single x)} (wᶠ (wᶠ cM)))
+          (cong wᶠ (trans (wᶠ-sub {σ = single x} (wᶠ cM))
+                          (cong wᶠ (wᶠ-single cM))))
+
+  peelM-x : (x : RTm ⌊ Δ ⌋) →
+            subTm (extS (extS (extS (single x)))) (wᶠ (wᶠ (wᶠ m))) ≡ wᶠ (wᶠ m)
+  peelM-x x =
+    trans (wᶠ-sub {σ = extS (single x)} (wᶠ (wᶠ m)))
+          (cong wᶠ (trans (wᶠ-sub {σ = single x} (wᶠ m))
+                          (cong wᶠ (wᶠ-single m))))
+
+  peelA-ρ : {Γ' : Cx} (ρ : Ren ⌊ Δ ⌋ Γ') →
+            renTy (extR (extR ρ)) (renTy vs (renTy vs A))
+          ≡ renTy vs (renTy vs (renTy ρ A))
+  peelA-ρ ρ = trans (ren-wTy {ρ = extR ρ} (renTy vs A))
+                    (cong (renTy vs) (ren-wTy {ρ = ρ} A))
+
+  peelC-ρ : {Γ' : Cx} (ρ : Ren ⌊ Δ ⌋ Γ') →
+            renTm (extR (extR (extR ρ))) (wᶠ (wᶠ cM))
+          ≡ wᶠ (wᶠ (renTm (extR ρ) cM))
+  peelC-ρ ρ = trans (ren-wᶠ {ρ = extR ρ} (wᶠ cM)) (cong wᶠ (ren-wᶠ {ρ = ρ} cM))
+
+  peelM-ρ : {Γ' : Cx} (ρ : Ren ⌊ Δ ⌋ Γ') →
+            renTm (extR (extR (extR ρ))) (wᶠ (wᶠ m))
+          ≡ wᶠ (wᶠ (renTm (extR ρ) m))
+  peelM-ρ ρ = trans (ren-wᶠ {ρ = extR ρ} (wᶠ m)) (cong wᶠ (ren-wᶠ {ρ = ρ} m))
+
   ⊢auxZ : {x : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ auxZ x ∷ subTy (single nzero) mot₀
   ⊢auxZ {x = x} dx =
     ⊢-cast (trans (cong (subTy (single x)) (mot-at nzero))
@@ -945,29 +1007,9 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
                                        (renTy vs (renTy vs (renTy vs A)))
                                        (wᶠ (wᶠ (wᶠ cM))) (wᶠ (wᶠ (wᶠ m)))
                                        (nsuc (var (vs vz))))
-                            (trans (cong₄ aAuxB peelA peelC peelM refl)
+                            (trans (cong₄ aAuxB (peelA-x x) (peelC-x x) (peelM-x x) refl)
                                    (sym mot₀-s))))
               (sub-lemma ⊢aSBr (Sub⊢-ext (Sub⊢-ext (⊢single dx)))))
-    where
-      peelA : subTy (extS (extS (single x))) (renTy vs (renTy vs (renTy vs A)))
-            ≡ renTy vs (renTy vs A)
-      peelA =
-        trans (sub-wTy {σ = extS (single x)} (renTy vs (renTy vs A)))
-              (cong (renTy vs)
-                    (trans (sub-wTy {σ = single x} (renTy vs A))
-                           (cong (renTy vs) (wk-singleTy A))))
-      peelC : subTm (extS (extS (extS (single x)))) (wᶠ (wᶠ (wᶠ cM)))
-            ≡ wᶠ (wᶠ cM)
-      peelC =
-        trans (wᶠ-sub {σ = extS (single x)} (wᶠ (wᶠ cM)))
-              (cong wᶠ (trans (wᶠ-sub {σ = single x} (wᶠ cM))
-                              (cong wᶠ (wᶠ-single cM))))
-      peelM : subTm (extS (extS (extS (single x)))) (wᶠ (wᶠ (wᶠ m)))
-            ≡ wᶠ (wᶠ m)
-      peelM =
-        trans (wᶠ-sub {σ = extS (single x)} (wᶠ (wᶠ m)))
-              (cong wᶠ (trans (wᶠ-sub {σ = single x} (wᶠ m))
-                              (cong wᶠ (wᶠ-single m))))
 
   ⊢auxIH : {x n : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ n ∷ Nat →
            Δ ⊢ auxIH x n ∷ aAuxB A cM m n
@@ -1047,21 +1089,6 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
                                 (sym (motAt-at ρ nzero))))
                   (ren-lemma (⊢auxZ dx) h)
 
-      peelA : renTy (extR (extR ρ)) (renTy vs (renTy vs A))
-            ≡ renTy vs (renTy vs (renTy ρ A))
-      peelA = trans (ren-wTy {ρ = extR ρ} (renTy vs A))
-                    (cong (renTy vs) (ren-wTy {ρ = ρ} A))
-
-      peelC : renTm (extR (extR (extR ρ))) (wᶠ (wᶠ cM))
-            ≡ wᶠ (wᶠ (renTm (extR ρ) cM))
-      peelC = trans (ren-wᶠ {ρ = extR ρ} (wᶠ cM))
-                    (cong wᶠ (ren-wᶠ {ρ = ρ} cM))
-
-      peelM : renTm (extR (extR (extR ρ))) (wᶠ (wᶠ m))
-            ≡ wᶠ (wᶠ (renTm (extR ρ) m))
-      peelM = trans (ren-wᶠ {ρ = extR ρ} (wᶠ m))
-                    (cong wᶠ (ren-wᶠ {ρ = ρ} m))
-
       dS : ((Θ ▹ Nat) ▹ motAt ρ) ⊢ renTm (extR (extR ρ)) (auxS x)
              ∷ subTy nrs (motAt ρ)
       dS = subst (λ T → ((Θ ▹ Nat) ▹ T) ⊢ renTm (extR (extR ρ)) (auxS x)
@@ -1072,7 +1099,7 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
                                                   (renTy vs (renTy vs A))
                                                   (wᶠ (wᶠ cM)) (wᶠ (wᶠ m))
                                                   (nsuc (var (vs vz))))
-                                       (trans (cong₄ aAuxB peelA peelC peelM refl)
+                                       (trans (cong₄ aAuxB (peelA-ρ ρ) (peelC-ρ ρ) (peelM-ρ ρ) refl)
                                               (sym (motAt-s ρ)))))
                          (ren-lemma (⊢auxS dx) (Ren⊢-ext (Ren⊢-ext h))))
 
@@ -1100,6 +1127,221 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
                       (reflTm (subTm (single x) m))
                 ∷ El (subTm (single x) cM)
   ⊢aux-at-μ dx = ⊢aux-app dx (⊢[] dm dx) dx (⊢le-refl (⊢[] dm dx))
+
+  ------------------------------------------------------------------------
+  -- ★★★ THE ZERO BRANCH'S IH, TYPED — after the carrier, the argument and
+  --    the certificate have all been substituted in.
+  --
+  -- ⚠ WHY THIS IS NEEDED, and it was NOT obvious.  The pointwise half of
+  --   irrelevance at bound `0` is EX FALSO, so it looked free.  It is not:
+  --   `⊢absurd` wants a CODE, the code is `⌜Id⌝ c (ih₁ y q) (ih₂ y q)`, and
+  --   `⊢⌜Id⌝` types that only when BOTH ENDPOINTS are typed — so the
+  --   ex-falso proof needs the branch IH's OWN type.  `⊢ihZ` has it only
+  --   BEFORE the three substitutions, and `subTm` does not inverse.
+  --
+  -- ★ Four steps, and the type is in `aIHTat` normal form at every one:
+  --   substitute the carrier `x`, rename the ambient, substitute the
+  --   argument `a`, substitute the certificate `p`.  ⚠ The bound needs
+  --   NAMING first: `⊢ihZ` states it as `subTm (single (var (vs vz)))
+  --   (wᶠ³ m)`, which `wᶠ²-single` reads as `w (wᶠ m)` — the measure at the
+  --   branch's own argument slot.  Left as it stands, no peel matches.
+  ------------------------------------------------------------------------
+
+  ihZ-atR : {Γ' : Cx} (ρ : Ren ⌊ Δ ⌋ Γ') (x : RTm ⌊ Δ ⌋) (a p : RTm Γ') → RTm Γ'
+  ihZ-atR ρ x a p =
+    subTm (single p)
+      (subTm (extS (single a))
+        (renTm (extR (extR ρ)) (subTm (extS (extS (single x))) ihZ)))
+
+  ⊢ihZ-atR : {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
+             {x : RTm ⌊ Δ ⌋} {a p : RTm ⌊ Θ ⌋} →
+             Δ ⊢ x ∷ A → Θ ⊢ a ∷ renTy ρ A →
+             Θ ⊢ p ∷ Hom Nat (subTm (single a) (renTm (extR ρ) m)) nzero →
+             Θ ⊢ ihZ-atR ρ x a p
+               ∷ aIHTat (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+                        (subTm (single a) (renTm (extR ρ) m))
+  ⊢ihZ-atR {Θ = Θ} {ρ = ρ} h {x = x} {a = a} {p = p} dx da dp =
+    ⊢-cast (trans (aIHTat-sub {σ = single p} (renTy vs (renTy ρ A))
+                              (wᶠ (renTm (extR ρ) cM)) (wᶠ (renTm (extR ρ) m))
+                              (w (subTm (single a) (renTm (extR ρ) m))))
+                  (cong₄ aIHTat (wk-singleTy (renTy ρ A))
+                                (wᶠ-single (renTm (extR ρ) cM))
+                                (wᶠ-single (renTm (extR ρ) m))
+                                (wk-single {v = p}
+                                           (subTm (single a) (renTm (extR ρ) m)))))
+           (⊢[] d3 dp)
+    where
+      -- the bound, NAMED (see the header's ⚠)
+      d0 : (((Δ ▹ A) ▹ renTy vs A) ▹ Hom Nat (wᶠ m) nzero) ⊢ ihZ
+             ∷ aIHTat (renTy vs (renTy vs (renTy vs A)))
+                      (wᶠ (wᶠ (wᶠ cM))) (wᶠ (wᶠ (wᶠ m))) (w (wᶠ m))
+      d0 = ⊢-cast (cong (aIHTat (renTy vs (renTy vs (renTy vs A)))
+                                (wᶠ (wᶠ (wᶠ cM))) (wᶠ (wᶠ (wᶠ m))))
+                        (wᶠ²-single (wᶠ m)))
+                  ⊢ihZ
+
+      d1 : ((Δ ▹ A) ▹ Hom Nat m nzero)
+             ⊢ subTm (extS (extS (single x))) ihZ
+             ∷ aIHTat (renTy vs (renTy vs A)) (wᶠ (wᶠ cM)) (wᶠ (wᶠ m)) (w m)
+      d1 = subst (λ T → ((Δ ▹ A) ▹ T) ⊢ subTm (extS (extS (single x))) ihZ
+                          ∷ aIHTat (renTy vs (renTy vs A)) (wᶠ (wᶠ cM))
+                                   (wᶠ (wᶠ m)) (w m))
+                 (cong (λ z → Hom Nat z nzero) (wᶠ-single m))
+             (subst (λ T → ((Δ ▹ T)
+                             ▹ subTy (extS (single x)) (Hom Nat (wᶠ m) nzero))
+                             ⊢ subTm (extS (extS (single x))) ihZ
+                             ∷ aIHTat (renTy vs (renTy vs A)) (wᶠ (wᶠ cM))
+                                      (wᶠ (wᶠ m)) (w m))
+                    (wk-singleTy A)
+                    (⊢-cast (trans (aIHTat-sub {σ = extS (extS (single x))}
+                                               (renTy vs (renTy vs (renTy vs A)))
+                                               (wᶠ (wᶠ (wᶠ cM))) (wᶠ (wᶠ (wᶠ m)))
+                                               (w (wᶠ m)))
+                                   (cong₄ aIHTat (peelA-x x) (peelC-x x) (peelM-x x)
+                                          (trans (sub-w {σ = extS (single x)} (wᶠ m))
+                                                 (cong w (wᶠ-single m)))))
+                            (sub-lemma d0 (Sub⊢-ext (Sub⊢-ext (⊢single dx))))))
+
+      d2 : ((Θ ▹ renTy ρ A) ▹ Hom Nat (renTm (extR ρ) m) nzero)
+             ⊢ renTm (extR (extR ρ)) (subTm (extS (extS (single x))) ihZ)
+             ∷ aIHTat (renTy vs (renTy vs (renTy ρ A)))
+                      (wᶠ (wᶠ (renTm (extR ρ) cM))) (wᶠ (wᶠ (renTm (extR ρ) m)))
+                      (w (renTm (extR ρ) m))
+      d2 = ⊢-cast (trans (aIHTat-ren {ρ = extR (extR ρ)}
+                                     (renTy vs (renTy vs A)) (wᶠ (wᶠ cM))
+                                     (wᶠ (wᶠ m)) (w m))
+                         (cong₄ aIHTat (peelA-ρ ρ) (peelC-ρ ρ) (peelM-ρ ρ)
+                                (ren-w {ρ = extR ρ} m)))
+                  (ren-lemma d1 (Ren⊢-ext (Ren⊢-ext h)))
+
+      d3 : (Θ ▹ Hom Nat (subTm (single a) (renTm (extR ρ) m)) nzero)
+             ⊢ subTm (extS (single a))
+                     (renTm (extR (extR ρ)) (subTm (extS (extS (single x))) ihZ))
+             ∷ aIHTat (renTy vs (renTy ρ A)) (wᶠ (renTm (extR ρ) cM))
+                      (wᶠ (renTm (extR ρ) m))
+                      (w (subTm (single a) (renTm (extR ρ) m)))
+      d3 = ⊢-cast (trans (aIHTat-sub {σ = extS (single a)}
+                                     (renTy vs (renTy vs (renTy ρ A)))
+                                     (wᶠ (wᶠ (renTm (extR ρ) cM)))
+                                     (wᶠ (wᶠ (renTm (extR ρ) m)))
+                                     (w (renTm (extR ρ) m)))
+                         (cong₄ aIHTat
+                                (trans (sub-wTy {σ = single a}
+                                                (renTy vs (renTy ρ A)))
+                                       (cong (renTy vs) (wk-singleTy (renTy ρ A))))
+                                (trans (wᶠ-sub {σ = single a}
+                                               (wᶠ (renTm (extR ρ) cM)))
+                                       (cong wᶠ (wᶠ-single (renTm (extR ρ) cM))))
+                                (trans (wᶠ-sub {σ = single a}
+                                               (wᶠ (renTm (extR ρ) m)))
+                                       (cong wᶠ (wᶠ-single (renTm (extR ρ) m))))
+                                (sub-w {σ = single a} (renTm (extR ρ) m))))
+                  (sub-lemma d2 (Sub⊢-ext (⊢single da)))
+
+  ------------------------------------------------------------------------
+  -- ★★★★ IRRELEVANCE AT BOUND `0` — THE FIRST ONE, and the induction's
+  --     zero branch.
+  --
+  --   Two certificates, one answer: `aux 0 a c₁ ≡ aux 0 a c₂`.  The
+  --   auxiliary DOES look at its certificate (the zero branch feeds it to
+  --   `ordtr`), so this is not syntactic — it is `StepExt` plus the fact
+  --   that the IH the branch hands over is EX FALSO, which is what makes
+  --   the pointwise premise free: `μ y < μ a ≤ 0` is `base`, and
+  --   `Id (El C) t u` is `El (⌜Id⌝ C t u)`, so `absurd` reaches it.
+  --
+  -- ⚠ `⊢⌜Id⌝` is why `⊢ihZ-atR` had to exist: the code needs BOTH endpoints
+  --   typed, and the endpoints are the two IHs applied.
+  ------------------------------------------------------------------------
+
+  -- the zero branch's three weakenings on `stp`, across the renaming
+  stp-cancel-zR : {Γ' : Cx} (ρ : Ren ⌊ Δ ⌋ Γ') (x : RTm ⌊ Δ ⌋) (a p : RTm Γ') →
+    subTm (single p)
+      (subTm (extS (single a))
+        (renTm (extR (extR ρ))
+          (subTm (extS (extS (single x))) (w (w (w stp))))))
+    ≡ renTm ρ stp
+  stp-cancel-zR ρ x a p =
+    trans (cong (λ z → subTm (single p)
+                         (subTm (extS (single a)) (renTm (extR (extR ρ)) z)))
+                (trans (sub-w² {σ = single x} (w stp))
+                       (cong (λ z → w (w z)) (wk-single {v = x} stp))))
+    (trans (cong (λ z → subTm (single p) (subTm (extS (single a)) z))
+                 (trans (ren-w {ρ = extR ρ} (w stp))
+                        (cong w (ren-w {ρ = ρ} stp))))
+    (trans (cong (subTm (single p))
+                 (trans (sub-w {σ = single a} (w (renTm ρ stp)))
+                        (cong w (wk-single {v = a} (renTm ρ stp)))))
+           (wk-single {v = p} (renTm ρ stp))))
+
+  -- ★ the CPS zero-unfold, at a renaming — `aux-step-sF`'s twin
+  auxAt-step-z : {Γ' : Cx} {P : RTm Γ' → RTm Γ'}
+                 (ρ : Ren ⌊ Δ ⌋ Γ') (x : RTm ⌊ Δ ⌋) (a n p : RTm Γ') →
+                 n ⟶* nzero →
+                 ((ih : RTm Γ') → app (app (renTm ρ stp) a) ih ⟶* P ih) →
+                 app (app (auxAt ρ x n) a) p ⟶* P (ihZ-atR ρ x a p)
+  auxAt-step-z {P = P} ρ x a n p r hh =
+    ⟶*-trans
+      (⟶*-trans (⟶*-appˡ (⟶*-appˡ (⟶*-trans (⟶*-natrecⁿ r)
+                                            (step (natrec-zero _ _) done))))
+                (step (ξ-appˡ (β _ a)) (step (β _ p) done)))
+      (subst (λ z → z ⟶* P (ihZ-atR ρ x a p))
+             (sym (cong₂ (λ sf yv → app (app sf yv) (ihZ-atR ρ x a p))
+                         (stp-cancel-zR ρ x a p) (wk-single {v = p} a)))
+             (hh (ihZ-atR ρ x a p)))
+
+  aux-irr-z : StepExt Δ A cM m stp →
+              {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
+              (x : RTm ⌊ Δ ⌋) (a c₁ c₂ : RTm ⌊ Θ ⌋) →
+              Δ ⊢ x ∷ A → Θ ⊢ a ∷ renTy ρ A →
+              Θ ⊢ c₁ ∷ Hom Nat (subTm (single a) (renTm (extR ρ) m)) nzero →
+              Θ ⊢ c₂ ∷ Hom Nat (subTm (single a) (renTm (extR ρ) m)) nzero →
+              Prv Θ (Id (El (subTm (single a) (renTm (extR ρ) cM)))
+                        (app (app (auxAt ρ x nzero) a) c₁)
+                        (app (app (auxAt ρ x nzero) a) c₂))
+  aux-irr-z ext {Θ = Θ} {ρ = ρ} h x a c₁ c₂ dx da dc₁ dc₂ =
+    idOfRed (auxAt-step-z ρ x a nzero c₁ done (λ _ → done))
+            (auxAt-step-z ρ x a nzero c₂ done (λ _ → done))
+            (ext h a (ihZ-atR ρ x a c₁) (ihZ-atR ρ x a c₂) da pw)
+    where
+      dm' : (Θ ▹ renTy ρ A) ⊢ renTm (extR ρ) m ∷ Nat
+      dm' = ren-lemma dm (Ren⊢-ext h)
+
+      dcM' : (Θ ▹ renTy ρ A) ⊢ renTm (extR ρ) cM ∷ U
+      dcM' = ren-lemma dcM (Ren⊢-ext h)
+
+      -- applying an IH to its two arguments: two `⊢app`s, three peels
+      appIH : {ih : RTm ⌊ Θ ⌋} →
+              Θ ⊢ ih ∷ aIHTat (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+                              (subTm (single a) (renTm (extR ρ) m)) →
+              (y q : RTm ⌊ Θ ⌋) → Θ ⊢ y ∷ renTy ρ A →
+              Θ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) (renTm (extR ρ) m)))
+                              (subTm (single a) (renTm (extR ρ) m)) →
+              Θ ⊢ app (app ih y) q ∷ El (subTm (single y) (renTm (extR ρ) cM))
+      appIH dih y q dy dq =
+        ⊢-cast (cong El (wk-single {v = q}
+                                   (subTm (single y) (renTm (extR ρ) cM))))
+          (⊢app (⊢-cast (cong₂ (λ u c →
+                                  Π (Hom Nat (nsuc (subTm (single y)
+                                                          (renTm (extR ρ) m))) u)
+                                    (El c))
+                               (wk-single {v = y}
+                                          (subTm (single a) (renTm (extR ρ) m)))
+                               (sub-w {σ = single y} (renTm (extR ρ) cM)))
+                        (⊢app dih dy))
+                dq)
+
+      pw : (y q : RTm ⌊ Θ ⌋) → Θ ⊢ y ∷ renTy ρ A →
+           Θ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) (renTm (extR ρ) m)))
+                           (subTm (single a) (renTm (extR ρ) m)) →
+           Prv Θ (Id (El (subTm (single y) (renTm (extR ρ) cM)))
+                     (app (app (ihZ-atR ρ x a c₁) y) q)
+                     (app (app (ihZ-atR ρ x a c₂) y) q))
+      pw y q dy dq =
+        prv _ (⊢conv (⊢strong-base' (⊢⌜Id⌝ (⊢[] dcM' dy)
+                                           (appIH (⊢ihZ-atR h dx da dc₁) y q dy dq)
+                                           (appIH (⊢ihZ-atR h dx da dc₂) y q dy dq))
+                                    (⊢[] dm' dy) (⊢[] dm' da) dq dc₁)
+                     (red→≅ᵀ (stepᵀ (El-⌜Id⌝ _ _ _) doneᵀ)))
 
   amrec-step-s : {P : RTm ⌊ Δ ⌋} (x k : RTm ⌊ Δ ⌋) →
                  subTm (single x) m ⟶* nsuc k →
