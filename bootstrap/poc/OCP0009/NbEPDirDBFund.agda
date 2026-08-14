@@ -26,7 +26,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; subTy-subTy; subTm-subTm
         ; subTy-id; subTm-id; renTm-renTm; renTm-cong
         ; Desc; DCon; Mu; con; elim; lookupD; εsub; εwkTy; payTy; payTy-sub
-        ; _∈D_; hereD; thereD; sel; ihs; dnil; _◃_; dι; dρ; dκ )
+        ; _∈D_; hereD; thereD; sel; ihs; dnil; _◃_; dι; dρ; dκ; fields )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; nrs
@@ -75,7 +75,8 @@ open import poc.OCP0009.NbEPDirDBSubj
   using ( HomΠShape; hsΠ; hsH; hom-shape; hom-shapeN; nn-U; NoNat; pw-El-decode
         ; HomRed; mkHomRed; Hom-to-Hom; homAmb→
         ; HomToΠ; via-U; via-Π; hom-to-Π
-        ; U-reduct; wk-cancel-tm; ≅ᵀ-Homᵀ; gen-var; subTy-comm; subTy-monoˢ )
+        ; U-reduct; wk-cancel-tm; ≅ᵀ-Homᵀ; gen-var; subTy-comm; subTy-monoˢ
+        ; methsTyFrom-sub; ihTy-sub )
 open import poc.OCP0009.NbEPDirDBLR
   using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap; sne-jsub
         ; Ne; ne-var; ne-app; ne-absurd; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁
@@ -120,7 +121,7 @@ open import poc.OCP0009.NbEPDirDBLR
         ; ⟶ᵀ*-sub
         ; IsNormal; WN; mkWN; wn
         ; projl; projr; dfst; dsnd
-        ; sne-elim; sn-con; mustk? )
+        ; sne-elim; sn-con; mustk?; sne→mustk; snr-ι; snr-elimᵗ )
 
 open import poc.OCP0009.NbEPDirDBFundSN
 open import poc.OCP0009.NbEPDirDBFundSem
@@ -207,6 +208,13 @@ liftPay : (D : Desc) (di : DInterp Ξ D) {C : DCon} (wC : DConWf C)
           (x₀ : Var Ξ) (p : RTm Ξ) →
           Lift C (kpredsOf (interpK wC x₀)) (MuMem D (predsOf di)) p →
           (payInterp D di wC x₀) ⊩₁∋ p
+-- ⚠ the suffix-walking form, for the same reason `payLiftD` has one: at a
+--   VARIABLE `DescWf` the lookup does not compute, so it must be walked.
+liftPayAt : (D : Desc) (di : DInterp Ξ D) {E : Desc} (wE : DescWf E)
+            (x₀ : Var Ξ) (k : ℕ) (p : RTm Ξ) →
+            Lift (lookupD E k) (lookupP (predsOf (interpD wE x₀)) k)
+                 (MuMem D (predsOf di)) p →
+            Rel (payTy D (lookupD E k)) p
 
 -- the empty environment: `◇ ∋ x ∷ A` has no inhabitants.
 ⊩ˢ-ε : {Ξ : Cx} → ◇ ⊩ˢ (εsub {Ξ})
@@ -327,6 +335,11 @@ liftPay D di (dwf-κ c dc wC) x₀ p (sp , (q , rest)) =
   , ( projl (emb-coh (elW dc x₀)) (fst p) q
     , ⊩₁cast-mem (sym (payTy-sub (single (fst p)) D _))
                  (payInterp D di wC x₀) (liftPay D di wC x₀ (snd p) rest) ) )
+
+liftPayAt D di dwf-nil          x₀ k       p l = (⊩₁Unit doneᵀ , l)
+liftPayAt D di (dwf-cons wC wE) x₀ zero    p l =
+  (payInterp D di wC x₀ , liftPay D di wC x₀ p l)
+liftPayAt D di (dwf-cons wC wE) x₀ (suc k) p l = liftPayAt D di wE x₀ k p l
 
 -- TERMS.
 fund (⊢var d) x₀ ρ = ρ d
@@ -463,6 +476,155 @@ fund {σ = σ} (⊢con {D = D} {k = k} {p = p} w i dp) x₀ ρ =
   where
     di = interpD w x₀
     m  = relTy (payTy-sub σ D (lookupD D k)) (fund dp x₀ ρ)
+
+-- ★★★ INDUCTIVE TYPES — the ELIMINATOR.  `⊢natrec`'s analogue, general in
+--   the description: the worker recurses on `MuMem` (no fuel, no measure),
+--   a neutral scrutinee makes `elim` neutral, and a `con` scrutinee fires
+--   the ι-rule.  `ihsSem` builds the IH tuple and is mutual with the
+--   worker — `ihs`/`ihTy` SKIP `dκ` fields, so its accounting matches
+--   theirs field for field.
+fund {Ξ = Ξ} {σ = σ} (⊢elim {D = D} {M = M} {ms = ms} {t = t} w dM dms dt) x₀ ρ =
+  relTy (sym (trans (subTy-comm σ M t) (sub-single-Ty σ tI M)))
+        (MotC tI htI , go tI (projl htI) (projr htI) htI)
+  where
+    msI = subTm σ ms
+    tI  = subTm σ t
+    MI  = subTy (extS σ) M
+    di  = interpD w x₀
+
+    ⊩Mu : ⊩₁ (Mu {Ξ} D)
+    ⊩Mu = ⊩₁Mu doneᵀ di
+
+    htI : ⊩Mu ⊩₁∋ tI
+    htI = projl (irrel₁ crflᵀ (dfst (fund dt x₀ ρ)) ⊩Mu) tI (dsnd (fund dt x₀ ρ))
+
+    MotC : (u : RTm Ξ) → ⊩Mu ⊩₁∋ u → ⊩₁ (subTy (σ ,ₛ u) M)
+    MotC u r = fund-ty dM x₀ (⊩ˢ-ext ρ ⊩Mu u r)
+
+    hms = relTy (methsTyFrom-sub σ D M zero D) (fund dms x₀ ρ)
+
+    snMs : SN msI
+    snMs = CR1₁ (dfst hms) (dsnd hms)
+
+    go : (u : RTm Ξ) (snu : SN u) (mm : MuMem D (predsOf di) u) (r : ⊩Mu ⊩₁∋ u) →
+         (MotC u r) ⊩₁∋ elim D msI u
+    ihsSem : {C : DCon} (wC : DConWf C) (p : RTm Ξ) →
+             Lift C (kpredsOf (interpK wC x₀)) (MuMem D (predsOf di)) p →
+             Rel (ihTy D C p MI) (ihs D msI C p)
+    -- ⚠ suffix-walking again — at a variable `DescWf` the lookup is stuck.
+    ihsAt : {E : Desc} (wE : DescWf E) (k : ℕ) (p : RTm Ξ) →
+            Lift (lookupD E k) (lookupP (predsOf (interpD wE x₀)) k)
+                 (MuMem D (predsOf di)) p →
+            Rel (ihTy D (lookupD E k) p MI) (ihs D msI (lookupD E k) p)
+
+    wk-single-ty : (u : RTm Ξ) (A : RTy Ξ) → subTy (single u) (renTy vs A) ≡ A
+    wk-single-ty u A =
+      trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
+
+    wk-sub-ty : (τ : Sub (Ξ ∙) Ξ) (A : RTy (Ξ ∙)) →
+                subTy (extS τ) (renTy vs A) ≡ renTy vs (subTy τ A)
+    wk-sub-ty τ A = trans (subTy-renTy A) (sym (renTy-subTy A))
+
+    wk-single-id : (u : RTm Ξ) (A : RTy (Ξ ∙)) →
+                   subTy (extS (single u)) (renTy (extR vs) A) ≡ A
+    wk-single-id u A =
+      trans (subTy-renTy A)
+            (trans (subTy-cong (λ { vz → refl ; (vs x) → refl }) A) (subTy-id A))
+
+    go u snu (mm-ne nt) r = CR3₁ (MotC u r) (sne-elim snMs snu (sne→mustk nt))
+
+    go u snu (mm-exp {t' = u'} rr mm) r =
+      exp₁ (MotC u r) (snr-elimᵗ rr)
+        (projl (irrel₁ (csymᵀ conv) (MotC u' r') (MotC u r))
+               (elim D msI u') (go u' (sn-whred snu rr) mm r'))
+      where
+        r' : ⊩Mu ⊩₁∋ u'
+        r' = (sn-whred snu rr , mm)
+
+        cons-mono : (x : Var _) → (σ ,ₛ u) x ⟶* (σ ,ₛ u') x
+        cons-mono vz     = step (snr→⟶ rr) done
+        cons-mono (vs y) = done
+
+        conv : subTy (σ ,ₛ u) M ≅ᵀ subTy (σ ,ₛ u') M
+        conv = red→≅ᵀ (subTy-monoˢ cons-mono M)
+
+    -- ★★ the ι-rule fires.  The method is selected at its own tag, applied
+    --   to the payload and then to the IH tuple; `atCon-inst` is what makes
+    --   the result land at the motive's instance AT THIS CONSTRUCTOR — the
+    --   η-free landing gate 5c was chosen for.
+    go .(con k _) snu (mm-con k i {p} lft) r =
+      exp₁ (MotC (con k p) r) (snr-ι snMs snP)
+           (projl (irrel₁ crflᵀ (dfst app2') (MotC (con k p) r))
+                  (fields D msI (lookupD D k) (sel k msI) p) (dsnd app2'))
+      where
+        hpay = liftPayAt D di w x₀ k p lft
+
+        snP : SN p
+        snP = CR1₁ (dfst hpay) (dsnd hpay)
+
+        hmeth = selSem D MI D zero k msI i (dfst hms) (dsnd hms)
+
+        app1 = ⊩₁-app (dfst hmeth) (dfst hpay) (dsnd hmeth) (dsnd hpay)
+
+        hih = relTy (sym (trans (ihTy-sub (single p) D (lookupD D k) (var vz)
+                                          (renTy (extR vs) MI))
+                                (cong (ihTy D (lookupD D k) p) (wk-single-id p MI))))
+                    (ihsAt w k p lft)
+
+        app2 = ⊩₁-app (dfst app1) (dfst hih) (dsnd app1) (dsnd hih)
+
+        -- ★ the LANDING.  Peel the two weakenings the method's codomain
+        --   carries, then `atCon-inst` — instantiating the re-based motive
+        --   at the payload IS the motive at `con k p`, with NO η.
+        eq : subTy (single (ihs D msI (lookupD D k) p))
+                   (subTy (extS (single p)) (renTy vs (atCon k MI)))
+             ≡ subTy (σ ,ₛ con k p) M
+        eq = trans (cong (subTy (single (ihs D msI (lookupD D k) p)))
+                         (wk-sub-ty (single p) (atCon k MI)))
+                   (trans (wk-single-ty (ihs D msI (lookupD D k) p)
+                                        (subTy (single p) (atCon k MI)))
+                          (trans (atCon-inst k MI p)
+                                 (sub-single-Ty σ (con k p) M)))
+
+        app2' = relTy eq app2
+
+    ihsSem dwf-ι           p l = (⊩₁Unit doneᵀ , sn-unit)
+    -- the RECURSIVE field contributes an IH: a genuine `pair`, so `sem-pair`.
+    -- ⚠ `hf` is destructured BY PATTERN: `projr` is a function here, so
+    --   `projr hf` is an application and Agda would not see it as a
+    --   subterm — which is exactly what this recursion's decrease needs.
+    ihsSem (dwf-ρ {C = C'} wC) p (sp , ((sf , mf) , rest)) =
+      ( ⊩₁Σ doneᵀ ⊩F ⊩G , sem-pair doneᵀ ⊩F ⊩G snA snB rA rB )
+      where
+        tl = ihsSem wC (snd p) rest
+
+        hf : ⊩Mu ⊩₁∋ fst p
+        hf = (sf , mf)
+
+        ⊩F : ⊩₁ (subTy (single (fst p)) MI)
+        ⊩F = ⊩₁cast (sym (sub-single-Ty σ (fst p) M)) (MotC (fst p) hf)
+
+        rA : ⊩F ⊩₁∋ elim D msI (fst p)
+        rA = ⊩₁cast-mem (sym (sub-single-Ty σ (fst p) M)) (MotC (fst p) hf)
+                        (go (fst p) sf mf hf)
+
+        ⊩G : (u : RTm Ξ) → ⊩F ⊩₁∋ u →
+             ⊩₁ (subTy (single u) (renTy vs (ihTy D C' (snd p) MI)))
+        ⊩G u _ = ⊩₁cast (sym (wk-single-ty u (ihTy D C' (snd p) MI))) (dfst tl)
+
+        rB : (⊩G (elim D msI (fst p)) rA) ⊩₁∋ ihs D msI C' (snd p)
+        rB = ⊩₁cast-mem (sym (wk-single-ty (elim D msI (fst p))
+                                           (ihTy D C' (snd p) MI)))
+                        (dfst tl) (dsnd tl)
+
+        snA = CR1₁ ⊩F rA
+        snB = CR1₁ (dfst tl) (dsnd tl)
+    -- a `dκ` field owes NO induction hypothesis — skipped, matching `ihs`.
+    ihsSem (dwf-κ c dc wC) p (sp , (q , rest)) = ihsSem wC (snd p) rest
+
+    ihsAt dwf-nil          k       p l = (⊩₁Unit doneᵀ , sn-unit)
+    ihsAt (dwf-cons wC wE) zero    p l = ihsSem wC p l
+    ihsAt (dwf-cons wC wE) (suc k) p l = ihsAt wE k p l
 
 fund {Ξ = Ξ} {σ = σ} (⊢lam {B = B} {t = s} tyA d) x₀ ρ =
   ( ⊩₁Π doneᵀ ⊩F ⊩G , sem-lam doneᵀ ⊩F ⊩G sns f )
