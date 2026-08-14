@@ -342,3 +342,65 @@ gcd-2-1 =
 
     c₂ : RTm ⌊ ◇ ⌋
     c₂ = descS-at X21 X11 n1 c₁ Y₂ (q₂ (ihS-atP X21 X11 n1 c₁))
+
+------------------------------------------------------------------------
+-- ★★★ GAP A'S LAST PIECE — EQUATIONS 3 AND 4 INTERNALLY.  ⛔ STATEMENTS
+--     ONLY; the proof terms are OPEN and the obstruction is below.
+--
+-- The reduction forms (`gcd-gt-term`/`gcd-le-term`) are as strong as a
+-- REDUCTION can be: `monusTm` recurses on its second argument, so their
+-- premise cannot be discharged at a variable `b`.  The internal form
+-- replaces that premise with an `Id`, which a variable CAN satisfy.
+------------------------------------------------------------------------
+
+-- the hypothesis, internalised: "the descent lands on a successor"
+gcdGtH : {Δ : Ctx} (a b d : RTm ⌊ Δ ⌋) → RTy ⌊ Δ ⌋
+gcdGtH a b d = IdN (monusTm (nsuc a) (nsuc b)) (nsuc d)
+
+-- …and on zero
+gcdLeH : {Δ : Ctx} (a b : RTm ⌊ Δ ⌋) → RTy ⌊ Δ ⌋
+gcdLeH a b = IdN (monusTm (nsuc a) (nsuc b)) nzero
+
+-- ★ equation 3, internally: gcd (suc a , suc b) = gcd (a∸b , suc b)
+gcdGtB : {Δ : Ctx} (a b : RTm ⌊ Δ ⌋) → RTy ⌊ Δ ⌋
+gcdGtB {Δ} a b =
+  IdN (app (gcdAt Δ) (pair (nsuc a) (nsuc b)))
+      (app (gcdAt Δ) (pair (monusTm (nsuc a) (nsuc b)) (nsuc b)))
+
+-- ★ equation 4, internally: gcd (suc a , suc b) = gcd (suc a , b∸a)
+gcdLeB : {Δ : Ctx} (a b : RTm ⌊ Δ ⌋) → RTy ⌊ Δ ⌋
+gcdLeB {Δ} a b =
+  IdN (app (gcdAt Δ) (pair (nsuc a) (nsuc b)))
+      (app (gcdAt Δ) (pair (nsuc a) (monusTm (nsuc b) (nsuc a))))
+
+------------------------------------------------------------------------
+-- ⛔⛔ THE OBSTRUCTION, and it is NOT the one I expected.
+--
+-- ⚠ FIRST, A CORRECTION.  I claimed the `AmTΠ` cycle work would unlock
+--   these.  IT DOES NOT.  `aux-cycle` needs `n ⟶* nsuc k` — the measure
+--   REDUCING to a successor.  At a variable pair the measure is
+--   `plusTm (fst (a,b)) (snd (a,b))`, whose `natrec` is stuck on the
+--   neutral `a`, so no bound premise is ever available and every unfold
+--   lemma in the library is inapplicable.  The cycle closed gap C; it has
+--   no purchase here.
+--
+-- ⚠ SECOND, WHY `⊢gcd-b0-Π` (equation 1) IS NOT A TEMPLATE.  That proof
+--   is `natrec (reflN nzero) (reflN (nsuc (var (vs vz)))) a` — it never
+--   uses its IH, because `gcd (a,0) = a` holds by the OUTER natrec's ZERO
+--   branch, which fires whatever `a` is.  Equations 3/4 are the recursive
+--   branches: their content IS the recursive call, so no such shortcut.
+--
+-- ★ WHAT IS ACTUALLY NEEDED — one missing lemma, statable now:
+--
+--     amrec-unfold-Id : Δ ⊢ p ∷ IdN μx (nsuc k) →
+--                       Δ ⊢ ? ∷ IdN (app amrecTm x) (app (app stp x) ih)
+--
+--   i.e. the combinator's fixpoint equation as an INTERNAL identity
+--   rather than a reduction.  Every unfold lemma in `NbEPDirDBLibAmrec`
+--   is `⟶*`-valued; that is what confines them to concrete measures.
+--   With an Id-valued unfold, equations 3/4 follow by `jsub` on the
+--   hypothesis above, and `b` is free at last.
+--
+--   ⇒ THE NEXT DELIVERABLE IS IN THE WF LIBRARY, NOT IN THE GCD EXAMPLE.
+--     That is the finding; it relocates the remaining work.
+------------------------------------------------------------------------
