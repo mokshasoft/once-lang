@@ -43,7 +43,7 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBExamplesGcdStep where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; subst )
+open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; subst; sym )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π
@@ -61,7 +61,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⟶_; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
-open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
+open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-ren )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus; n1; n2; n3 )
 open import poc.OCP0009.NbEPDirDBExamplesDiv
   using ( monusTm; ⊢monus; monus-zero; monus-suc; pred-zero; pred-suc
@@ -382,6 +382,17 @@ wkS2 {u = u} {v = v} t =
     (trans (subTm-subTm (renTm (vs ∘ᵣ vs) t))
       (wkGen (λ x → refl) t))
 
+-- ★ depth THREE: `wkS2`'s shape wrapped in one more weaken-and-substitute.
+--   Note it is built by COMPOSITION, not from scratch — collapse inward
+--   with `wkS2`, then peel the outer layer with `wkS`.  That is how the
+--   deeper instances the comparison branch needs are meant to be built.
+wkS3 : {Γ : Cx} {u₁ u₂ v : RTm Γ} (t : RTm Γ) →
+       subTm (single u₂)
+         (renTm vs (subTm (single u₁)
+           (subTm (extS (single v)) (renTm vs (renTm vs t))))) ≡ t
+wkS3 {u₂ = u₂} t =
+  trans (cong (λ z → subTm (single u₂) (renTm vs z)) (wkS2 t)) (wkS t)
+
 -- ★ `gcd (0 , suc b) = suc b` — for an ARBITRARY `b`.
 gcd-a0-var : {Γ : Cx} (b ih : RTm Γ) →
              app (app gcdStp (pair nzero (nsuc b))) ih ⟶* nsuc b
@@ -422,6 +433,21 @@ gcd-a0-var b ih =
 --
 -- ⇒ tractable, and strictly bigger than equations 1 and 2.  Recorded here
 --   so the next attempt starts from the formulation rather than rediscovering it.
+--
+-- ★★ MEASURED PROGRESS — do NOT redo this part.  Working the chain with
+--   `wkGen`/`wkS3` in hand, the transports resolve IN ORDER:
+--     1. `natrec-suc`'s predecessor — `wkS2`, or simply left as `_`;
+--     2. the hypothesis `mh` — needs BOTH `a'` and `b'` transported by
+--        `wkS3`:  subst (λ x → monusTm (nsuc x) _ ⟶* _) (sym (wkS3 a'))
+--        nested with the same for `b'`.  ⚠ THIS IS THE STEP THAT LOOKED
+--        HARD, AND IT IS SOLVED — with both in place Agda ACCEPTS `mh`;
+--     3. the final RHS after `β _ ih` — STILL OPEN.  It mentions `a'` and
+--        `b'` in four positions, so it wants ONE compound transport rather
+--        than four, at one layer beyond `wkS3`.
+--
+-- ⇒ only step 3 remains.  `wkS3` is kept for it, and note how it is built:
+--   BY COMPOSITION (`wkS2` inward, then `wkS` outward), which is how the
+--   next layer should be built too — not from scratch.
 
 -- ⛔ EQUATIONS 3 AND 4 (the two recursive cases) are NOT reduction-provable
 --   at variables, and this is not a gap in the proofs — it is the same
