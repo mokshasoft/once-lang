@@ -22,7 +22,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; natrec-zero; natrec-suc; βfst; βsnd
         ; ⊢var; here; there; ⊢conv; ⊢natrec; ⊢lam; ⊢app; csymᵀ )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Idˡ )
-open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-appʳ; ⟶*-pairʳ )
+open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-appʳ; ⟶*-pairʳ; ⟶*-pairˡ )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; n1; n2; n3 )
 open import poc.OCP0009.NbEPDirDBExamplesDiv
@@ -35,7 +35,8 @@ open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLTm )
 open import poc.OCP0009.NbEPDirDBLibArithMonus using ( monusLtTm; pred* )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( msr; ⊢msr; gcdStp; ⊢gcdStp; gcd-computes-b0; X20; msr-2-0
-        ; gcd-b0-var; gcd-le-term; le-mh-1; recCert; recRed; _⟫_ )
+        ; gcd-b0-var; gcd-le-term; le-mh-1; recCert; recRed; _⟫_
+        ; gcd-gt-term; gt-mh-1 )
 
 ------------------------------------------------------------------------
 -- ★★★ gcd, THROUGH THE COMBINATOR.
@@ -276,3 +277,68 @@ gcd-1-1 =
 
     c₁ : RTm ⌊ ◇ ⌋
     c₁ = descS-at X11 X11 n1 p₀ Y (q (ihS-atP X11 X11 n1 p₀))
+
+------------------------------------------------------------------------
+-- ★★★★★ TWO TURNS — `gcd (2,1) = 1`.
+--
+-- ⚠ This is the one that shows the cycle really is a LOOP and not a
+--   one-off, and it exercises BOTH recursive branches, which `gcd (1,1)`
+--   did not:
+--
+--     (2,1)  2∸1 = 1 ≠ 0  ⇒  the a>b branch  ⇒  recurse at (2∸1 , 1)
+--     (1,1)  1∸1 = 0      ⇒  the a≤b branch  ⇒  recurse at (1 , 1∸1)
+--     (1,0)  base case    ⇒  return 1
+--
+--   So turn 1 is `gcd-gt-term`, turn 2 is `gcd-le-term`, and NOTHING
+--   between them is bespoke: each turn is one `aux-cycle` plus a
+--   reduction that computes the recursive argument.  The bound descends
+--   3 ⇒ 2 ⇒ 1 and the auxiliary's INDEX stays `X21` throughout — which is
+--   precisely why index and argument had to be separated.
+------------------------------------------------------------------------
+
+X21 : RTm ⌊ ◇ ⌋
+X21 = pair n2 n1
+
+-- μ (2,1) = 2 + 1 = 3
+msr-2-1 : subTm (single X21) msr ⟶* nsuc n2
+msr-2-1 =
+    ⟶*-natrecⁿ (step (βfst n2 n1) done)
+  ⟫ step (ξ-natrecᶻ (βsnd n2 n1)) done
+  ⟫ step (natrec-suc _ _ (nsuc nzero)) done
+  ⟫ step (ξ-nsuc (natrec-suc _ _ nzero)) done
+  ⟫ step (ξ-nsuc (ξ-nsuc (natrec-zero _ _))) done
+
+gcd-2-1 : app amrecTm X21 ⟶* n1
+gcd-2-1 =
+    amrec-β X21
+  ⟫ aux-cycle X21 X21 μ21 n2 p₀ Y₁ {q = q₁} msr-2-1
+      (λ ih → recRed (gcd-gt-term n1 nzero nzero ih (gt-mh-1 nzero)))
+  ⟫ ⟶*-appˡ (⟶*-appʳ (⟶*-pairˡ (gt-mh-1 nzero)))   -- 2∸1 ⇒ 1, so arg is (1,1)
+  ⟫ aux-cycle X21 X11 n2 n1 c₁ Y₂ {q = q₂} done
+      (λ ih → recRed (gcd-le-term nzero nzero ih le-mh-1))
+  ⟫ ⟶*-appˡ (⟶*-appʳ (⟶*-pairʳ le-mh-1))           -- 1∸1 ⇒ 0, so arg is (1,0)
+  ⟫ aux-step-s X21 (pair n1 nzero) n1 nzero c₂ done (gcd-b0-var n1)
+  where
+    μ21 : RTm ⌊ ◇ ⌋
+    μ21 = subTm (single X21) msr
+
+    p₀ : RTm ⌊ ◇ ⌋
+    p₀ = reflTm μ21
+
+    Y₁ : RTm ⌊ ◇ ⌋              -- (2∸1 , 1), uncomputed
+    Y₁ = pair (monusTm (nsuc n1) (nsuc nzero)) (nsuc nzero)
+
+    q₁ : RTm ⌊ ◇ ⌋ → RTm ⌊ ◇ ⌋
+    q₁ ih = recCert (gcd-gt-term n1 nzero nzero ih (gt-mh-1 nzero))
+
+    c₁ : RTm ⌊ ◇ ⌋
+    c₁ = descS-at X21 X21 n2 p₀ Y₁ (q₁ (ihS-atP X21 X21 n2 p₀))
+
+    Y₂ : RTm ⌊ ◇ ⌋              -- (1 , 1∸1), uncomputed
+    Y₂ = pair (nsuc nzero) (monusTm (nsuc nzero) (nsuc nzero))
+
+    q₂ : RTm ⌊ ◇ ⌋ → RTm ⌊ ◇ ⌋
+    q₂ ih = recCert (gcd-le-term nzero nzero ih le-mh-1)
+
+    c₂ : RTm ⌊ ◇ ⌋
+    c₂ = descS-at X21 X11 n1 c₁ Y₂ (q₂ (ihS-atP X21 X11 n1 c₁))
