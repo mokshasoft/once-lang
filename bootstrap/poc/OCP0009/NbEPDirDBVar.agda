@@ -74,7 +74,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTy; base; U; Π; Σ'; El; Hom
         ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
-        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
+        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
         ; ⌜Hom⌝-cong₃; tr-cong₃; ordtr-cong₅; ⌜Id⌝-cong₃; jsub-cong₃; Id-cong₃
         ; Ren; extR; renTy; renTm; Sub; extS; subTm
         ; renTm-renTm; subTm-renTm; renTm-subTm; subTm-cong
@@ -139,6 +139,7 @@ occTm x (jsub d p e)    = occTm (vs x) d ∨ occTm x p ∨ occTm x e
 occTm x (ap c b p)    = occTm x c ∨ occTm (vs x) b ∨ occTm x p
 occTm x ⌜Nat⌝         = false
 occTm x ⌜Unit⌝        = false
+occTm x (⌜Mu⌝ D)        = false
 occTm x unit          = false
 occTm x nzero         = false
 occTm x (nsuc n)      = occTm x n
@@ -241,6 +242,7 @@ occ-ren-tm h (hrefl c t)   = ∨-false (occ-ren-tm h c) (occ-ren-tm h t)
 occ-ren-tm h (idrefl c t)   = ∨-false (occ-ren-tm h c) (occ-ren-tm h t)
 occ-ren-tm h ⌜Nat⌝      = refl
 occ-ren-tm h ⌜Unit⌝     = refl
+occ-ren-tm h (⌜Mu⌝ D)     = refl
 occ-ren-tm h unit       = refl
 occ-ren-tm h nzero      = refl
 occ-ren-tm h (nsuc n)   = occ-ren-tm h n
@@ -412,6 +414,7 @@ occ-ren-eq h (hrefl c t)   = cong₂ _∨_ (occ-ren-eq h c) (occ-ren-eq h t)
 occ-ren-eq h (idrefl c t)   = cong₂ _∨_ (occ-ren-eq h c) (occ-ren-eq h t)
 occ-ren-eq h ⌜Nat⌝      = refl
 occ-ren-eq h ⌜Unit⌝     = refl
+occ-ren-eq h (⌜Mu⌝ D)     = refl
 occ-ren-eq h unit       = refl
 occ-ren-eq h nzero      = refl
 occ-ren-eq h (nsuc n)   = occ-ren-eq h n
@@ -445,6 +448,7 @@ occ-sub : {σ : Sub Γ Δ} {x : Var Γ} {x' : Var Δ} →
           (t : RTm Γ) → occTm x t ≡ false → occTm x' (subTm σ t) ≡ false
 occ-sub h ⌜Nat⌝      e = refl
 occ-sub h ⌜Unit⌝     e = refl
+occ-sub h (⌜Mu⌝ D)     e = refl
 occ-sub h unit       e = refl
 occ-sub h nzero      e = refl
 occ-sub h (nsuc n)   e = occ-sub h n e
@@ -554,6 +558,7 @@ subTm-occ : {σ τ : Sub Γ Δ} (m : RTm Γ) →
             subTm σ m ≡ subTm τ m
 subTm-occ ⌜Nat⌝      h = refl
 subTm-occ ⌜Unit⌝     h = refl
+subTm-occ (⌜Mu⌝ D)     h = refl
 subTm-occ unit       h = refl
 subTm-occ nzero      h = refl
 subTm-occ (nsuc n)   h = cong nsuc (subTm-occ n h)
@@ -678,6 +683,8 @@ pw? _             = false
 data NoNatC {Γ} : RTm Γ → Set where
   nnc-base : NoNatC (⌜base⌝ {Γ})
   nnc-Unit : NoNatC (⌜Unit⌝ {Γ})
+  -- ★ `El (⌜Mu⌝ D)` decodes to `Mu D`, which is never `Nat`.
+  nnc-Mu   : {D : Desc} → NoNatC (⌜Mu⌝ {Γ} D)
   nnc-Σ    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatC (⌜Σ⌝ c d)
   nnc-Id   : {c a b : RTm Γ} → NoNatC (⌜Id⌝ c a b)
   -- ★★ HEREDITARY along the pw-spine, and this is not decoration:
@@ -693,6 +700,7 @@ data NoNatC {Γ} : RTm Γ → Set where
 nonatc-ren : (ρ : Ren Γ Δ) {c : RTm Γ} → NoNatC c → NoNatC (renTm ρ c)
 nonatc-ren ρ nnc-base = nnc-base
 nonatc-ren ρ nnc-Unit = nnc-Unit
+nonatc-ren ρ nnc-Mu   = nnc-Mu
 nonatc-ren ρ nnc-Σ    = nnc-Σ
 nonatc-ren ρ nnc-Id   = nnc-Id
 nonatc-ren ρ (nnc-Π nd)  = nnc-Π (nonatc-ren (extR ρ) nd)
@@ -701,6 +709,7 @@ nonatc-ren ρ (nnc-Hom nc) = nnc-Hom (nonatc-ren ρ nc)
 nonatc-sub : (σ : Sub Γ Δ) {c : RTm Γ} → NoNatC c → NoNatC (subTm σ c)
 nonatc-sub σ nnc-base = nnc-base
 nonatc-sub σ nnc-Unit = nnc-Unit
+nonatc-sub σ nnc-Mu   = nnc-Mu
 nonatc-sub σ nnc-Σ    = nnc-Σ
 nonatc-sub σ nnc-Id   = nnc-Id
 nonatc-sub σ (nnc-Π nd)  = nnc-Π (nonatc-sub (extS σ) nd)
@@ -737,6 +746,7 @@ stkA? ⌜base⌝        = true
 stkA? (⌜Σ⌝ c d)     = true
 stkA? (⌜Id⌝ c a b)  = true
 stkA? ⌜Unit⌝        = true
+stkA? (⌜Mu⌝ D)        = true
 stkA? ⌜Nat⌝         = true
 stkA? (⌜Hom⌝ C a b) = stkA? C
 stkA? _             = false
@@ -753,6 +763,7 @@ stkC? (⌜Id⌝ c a b)  = true
 -- ⌜Π⌝-able, so paths at it are J-only (exactly the ⌜base⌝/⌜Σ⌝/⌜Id⌝
 -- verdict).
 stkC? ⌜Unit⌝        = true
+stkC? (⌜Mu⌝ D)        = true
 -- ★★ ⌜Nat⌝ is NOT J-able, and this is the axis's one real cost.
 -- `stkC?` is the J-ABILITY key (it is what `tr-J-Hom` and `ap-J` test),
 -- and `tr-J-Nat` BREAKS SUBJECT REDUCTION: `Hom-Nat-z` reads
@@ -783,6 +794,7 @@ stkC?→stkA? (fst _) ()
 stkC?→stkA? (snd _) ()
 stkC?→stkA? ⌜base⌝ h = refl
 stkC?→stkA? ⌜Unit⌝ h = refl
+stkC?→stkA? (⌜Mu⌝ D) h = refl
 stkC?→stkA? ⌜Nat⌝ ()
 stkC?→stkA? (⌜Π⌝ _ _) ()
 stkC?→stkA? (⌜Σ⌝ _ _) h = refl
@@ -812,6 +824,7 @@ stkC?→stkA? (natrec _ _ _) ()
 data NoNatHd {Γ} : RTm Γ → Set where
   nnh-base : NoNatHd (⌜base⌝ {Γ})
   nnh-Unit : NoNatHd (⌜Unit⌝ {Γ})
+  nnh-Mu   : {D : Desc} → NoNatHd (⌜Mu⌝ {Γ} D)
   nnh-Σ    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatHd (⌜Σ⌝ c d)
   nnh-Id   : {c a b : RTm Γ} → NoNatHd (⌜Id⌝ c a b)
   nnh-Π    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatHd (⌜Π⌝ c d)
@@ -820,6 +833,7 @@ data NoNatHd {Γ} : RTm Γ → Set where
 nonatc→hd : {c : RTm Γ} → NoNatC c → NoNatHd c
 nonatc→hd nnc-base = nnh-base
 nonatc→hd nnc-Unit = nnh-Unit
+nonatc→hd nnc-Mu   = nnh-Mu
 nonatc→hd nnc-Σ    = nnh-Σ
 nonatc→hd nnc-Id   = nnh-Id
 nonatc→hd (nnc-Π _)   = nnh-Π
@@ -836,6 +850,7 @@ stkC?→hd (fst _) ()
 stkC?→hd (snd _) ()
 stkC?→hd ⌜base⌝ h = nnh-base
 stkC?→hd ⌜Unit⌝ h = nnh-Unit
+stkC?→hd (⌜Mu⌝ D) h = nnh-Mu
 stkC?→hd ⌜Nat⌝ ()
 stkC?→hd (⌜Π⌝ _ _) ()
 stkC?→hd (⌜Σ⌝ _ _) h = nnh-Σ
@@ -867,6 +882,7 @@ stkA?-ren ρ (snd t)       = refl
 stkA?-ren ρ ⌜base⌝        = refl
 stkA?-ren ρ ⌜Nat⌝         = refl
 stkA?-ren ρ ⌜Unit⌝        = refl
+stkA?-ren ρ (⌜Mu⌝ D)        = refl
 stkA?-ren ρ unit          = refl
 stkA?-ren ρ nzero         = refl
 stkA?-ren ρ (nsuc n)      = refl
@@ -909,6 +925,7 @@ nonatc-pwBody (⌜Π⌝ γ δ) (nnc-Π nd) h = nd
 nonatc-pwBody (⌜Hom⌝ C a b) (nnc-Hom nc) h = nnc-Hom (nonatc-pwBody C nc h)
 nonatc-pwBody ⌜base⌝ nnc-base ()
 nonatc-pwBody ⌜Unit⌝ nnc-Unit ()
+nonatc-pwBody (⌜Mu⌝ D) nnc-Mu ()
 nonatc-pwBody (⌜Σ⌝ c d) nnc-Σ ()
 nonatc-pwBody (⌜Id⌝ c a b) nnc-Id ()
 
@@ -930,6 +947,7 @@ stkA?⊥pw (⌜Hom⌝ C a b) h = stkA?⊥pw C h
 stkA?⊥pw (⌜Id⌝ C a b) h = refl
 stkA?⊥pw ⌜Nat⌝ h = refl
 stkA?⊥pw ⌜Unit⌝ h = refl
+stkA?⊥pw (⌜Mu⌝ D) h = refl
 stkA?⊥pw (hrefl c t) ()
 stkA?⊥pw (idrefl c t) ()
 stkA?⊥pw (tr d p e) ()
@@ -954,6 +972,7 @@ stk⊥pw (⌜Hom⌝ C a b) h = stkA?⊥pw C h
 stk⊥pw (⌜Id⌝ C a b) h = refl
 stk⊥pw ⌜Nat⌝ ()
 stk⊥pw ⌜Unit⌝ h = refl
+stk⊥pw (⌜Mu⌝ D) h = refl
 stk⊥pw (hrefl c t) ()
 stk⊥pw (idrefl c t) ()
 stk⊥pw (tr d p e) ()
@@ -973,6 +992,7 @@ pw?-ren ρ (snd t)       = refl
 pw?-ren ρ ⌜base⌝        = refl
 pw?-ren ρ ⌜Nat⌝         = refl
 pw?-ren ρ ⌜Unit⌝        = refl
+pw?-ren ρ (⌜Mu⌝ D)        = refl
 pw?-ren ρ unit          = refl
 pw?-ren ρ nzero         = refl
 pw?-ren ρ (nsuc n)      = refl
@@ -1001,6 +1021,7 @@ stkC?-ren ρ (snd t)       = refl
 stkC?-ren ρ ⌜base⌝        = refl
 stkC?-ren ρ ⌜Nat⌝         = refl
 stkC?-ren ρ ⌜Unit⌝        = refl
+stkC?-ren ρ (⌜Mu⌝ D)        = refl
 stkC?-ren ρ unit          = refl
 stkC?-ren ρ nzero         = refl
 stkC?-ren ρ (nsuc n)      = refl
@@ -1058,6 +1079,7 @@ flat?-ren ρ (snd t)        = refl
 flat?-ren ρ ⌜base⌝         = refl
 flat?-ren ρ ⌜Nat⌝          = refl
 flat?-ren ρ ⌜Unit⌝         = refl
+flat?-ren ρ (⌜Mu⌝ D)         = refl
 flat?-ren ρ unit           = refl
 flat?-ren ρ nzero          = refl
 flat?-ren ρ (nsuc n)       = refl
@@ -1163,6 +1185,7 @@ stkA?-sub σ (⌜Hom⌝ C a b) h = stkA?-sub σ C h
 stkA?-sub σ (⌜Id⌝ C a b) h = refl
 stkA?-sub σ ⌜Nat⌝ h = refl
 stkA?-sub σ ⌜Unit⌝ h = refl
+stkA?-sub σ (⌜Mu⌝ D) h = refl
 stkA?-sub σ (hrefl c t) ()
 stkA?-sub σ (idrefl c t) ()
 stkA?-sub σ (tr d p e) ()
@@ -1188,6 +1211,7 @@ stkC?-sub σ (⌜Hom⌝ C a b) h = stkA?-sub σ C h
 stkC?-sub σ (⌜Id⌝ C a b) h = refl
 stkC?-sub σ ⌜Nat⌝ ()
 stkC?-sub σ ⌜Unit⌝ h = refl
+stkC?-sub σ (⌜Mu⌝ D) h = refl
 stkC?-sub σ (hrefl c t) ()
 stkC?-sub σ (idrefl c t) ()
 stkC?-sub σ (tr d p e) ()
@@ -1355,6 +1379,7 @@ ren-as-sub ρ (jsub d p e) =
   ptw (vs x) = refl
 ren-as-sub ρ ⌜Nat⌝ = refl
 ren-as-sub ρ ⌜Unit⌝ = refl
+ren-as-sub ρ (⌜Mu⌝ D) = refl
 ren-as-sub ρ unit  = refl
 ren-as-sub ρ nzero = refl
 ren-as-sub ρ (nsuc n) = cong nsuc (ren-as-sub ρ n)
