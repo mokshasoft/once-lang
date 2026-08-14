@@ -488,12 +488,30 @@ gcd-le-gen ih mh =
 ------------------------------------------------------------------------
 -- ★ WHAT THE TWO LEMMAS ABOVE DO AND DO NOT SAY.
 --
--- ✅ They ARE equation 3 and equation 4 at VARIABLES — `a'` and `b'` are
---    genuine variables, not literals, and the `ih` is arbitrary.  The
---    COMPARISON is a hypothesis, which is forced: `monusTm` computes on
---    neither argument at a variable, so the dispatch cannot commit to a
---    side without it.  The literal lemmas below are these instantiated,
---    with `monus-computes` discharging the hypothesis.
+-- ⛔⛔ THEY ARE **VACUOUS**.  Found by asking "what exercises these?" —
+--    nothing does, and the reason is fatal: THEIR PREMISE CANNOT BE
+--    SATISFIED AT VARIABLES.
+--
+--    `monusTm m n = natrec m (predTm (var vz)) n` recurses on its SECOND
+--    argument.  So `monusTm (nsuc A) (nsuc B)` steps to
+--    `predTm (monusTm (nsuc A) B)`, and with `B` a VARIABLE that inner
+--    `natrec` is stuck; `predTm` of a stuck term is another stuck
+--    `natrec`.  It reaches neither `nsuc d` nor `nzero`.  So both
+--    hypotheses are uninhabitable exactly where the lemmas are stated, and
+--    an implication with an unsatisfiable premise proves NOTHING — the
+--    same trap as [[subti-postulate-was-false]], one layer out.
+--
+-- ⚠ THE LESSON: `--safe`, zero holes and a green build do not make a
+--    statement meaningful.  "Proved at variables" was the goal, and these
+--    are literally that — but making the COMPARISON a hypothesis moved the
+--    whole content into a premise that variables cannot discharge.  The
+--    literal lemmas below are NOT instances of these; they are genuine but
+--    only at literals.
+--
+-- ⇒ WHAT IS ACTUALLY STILL MISSING for equations 3 and 4: the
+--   arbitrary-TERM form, where the premise CAN be discharged by the
+--   caller (concrete arguments compute).  That is the statement I failed
+--   to prove, and these two do not stand in for it.
 --
 -- ⛔ They do NOT immediately give the arbitrary-TERM form
 --    `(a' b' : RTm Γ) → … ⟶* gtRHS ih a' b'`.  `⟶*-sub` transports the
