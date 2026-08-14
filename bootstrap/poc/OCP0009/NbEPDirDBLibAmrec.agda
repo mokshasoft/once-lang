@@ -575,20 +575,232 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
     ≡ x
   x-cancel-s x k r = wk-single {v = r} x
 
+  ------------------------------------------------------------------------
+  -- ★★★ THE UNFOLD AT AN **ARBITRARY BOUND** — the piece that makes the
+  --    recursion RE-ENTERABLE, and hence the shared infrastructure the
+  --    end-to-end run needs.
+  --
+  -- ⚠ WHY `amrec-step-s` IS NOT ENOUGH, stated precisely.  `amrecTm` is
+  --   `aAuxTm m` — the auxiliary at the bound `μ x`, and ONLY that bound.
+  --   But look at what the step actually receives:
+  --
+  --     ihS = lam (lam (app (app (var (vs (vs (vs (vs vz))))) (var (vs vz))) descS))
+  --                             └── the natrec's OWN IH variable
+  --
+  --   i.e. the induction hypothesis IS the auxiliary at the DECREMENTED
+  --   bound `k`.  So a recursive call never lands back on `amrecTm`; it
+  --   lands on `auxIH x k`.  A lemma phrased in terms of `amrecTm` can
+  --   therefore describe the FIRST unfolding and no other — which is
+  --   exactly why the base case composed and no recursing run did.
+  --
+  -- ★ The fix is to take the bound as a PARAMETER.  `auxIH x n` is the
+  --   auxiliary at bound `n`, and the two lemmas below unfold it without
+  --   ever mentioning `μ x`.  `amrec-step-z/-s` then become the special
+  --   case `n := μ x`, and are re-derived as such below rather than
+  --   re-proved — which is the check that the generalisation is faithful.
+  ------------------------------------------------------------------------
+
+  -- ⚠⚠ THE INDEX AND THE ARGUMENT ARE DIFFERENT TERMS, and conflating them
+  --   is what stops a cycle from chaining.  `auxIH x k` is the auxiliary
+  --   SPECIALISED to the carrier `x` (measured: `auxIH x k ≡ auxIH y k` is
+  --   NOT refl — the measure family `m` really does mention the slot), and
+  --   after one turn it is applied to a DIFFERENT `y`.  So every lemma
+  --   below takes the argument `a` separately from the index `x`; with
+  --   them identified, turn 2's source could never match turn 1's target.
+
+  -- the IH term the successor branch hands to the step, with the
+  -- certificate and the ARGUMENT as parameters
+  ihS-atP : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
+  ihS-atP x a k p =
+    subTm (single p)
+      (subTm (extS (single a))
+        (subTm (extS (extS (single (auxIH x k))))
+          (subTm (extS (extS (extS (single k))))
+            (subTm (extS (extS (extS (extS (single x))))) ihS))))
+
+  stp-cancel-sAt : (x a k r : RTm ⌊ Δ ⌋) →
+    subTm (single r)
+      (subTm (extS (single a))
+        (subTm (extS (extS (single (auxIH x k))))
+          (subTm (extS (extS (extS (single k))))
+            (subTm (extS (extS (extS (extS (single x)))))
+                   (w (w (w (w (w stp)))))))))
+    ≡ stp
+  stp-cancel-sAt x a k r =
+    trans (cong (λ z → subTm (single r)
+                         (subTm (extS (single a))
+                           (subTm (extS (extS (single (auxIH x k))))
+                             (subTm (extS (extS (extS (single k)))) z))))
+                (trans (sub-w⁴ {σ = single x} (w stp))
+                       (cong (λ z → w (w (w (w z)))) (wk-single {v = x} stp))))
+    (trans (cong (λ z → subTm (single r)
+                          (subTm (extS (single a))
+                            (subTm (extS (extS (single (auxIH x k)))) z)))
+                 (trans (sub-w³ {σ = single k} (w stp))
+                        (cong (λ z → w (w (w z))) (wk-single {v = k} stp))))
+    (trans (cong (λ z → subTm (single r) (subTm (extS (single a)) z))
+                 (trans (sub-w² {σ = single (auxIH x k)} (w stp))
+                        (cong (λ z → w (w z)) (wk-single {v = auxIH x k} stp))))
+    (trans (cong (subTm (single r))
+                 (trans (sub-w {σ = single a} (w stp))
+                        (cong w (wk-single {v = a} stp))))
+           (wk-single {v = r} stp))))
+
+  a-cancel-sAt : (x a k r : RTm ⌊ Δ ⌋) →
+    subTm (single r)
+      (subTm (extS (single a))
+        (subTm (extS (extS (single (auxIH x k))))
+          (subTm (extS (extS (extS (single k))))
+            (subTm (extS (extS (extS (extS (single x))))) (var (vs vz))))))
+    ≡ a
+  a-cancel-sAt x a k r = wk-single {v = r} a
+
+  -- ★ bound ⟶* 0 : the auxiliary takes its VACUOUS branch.
+  aux-unfold-z : (x a n p : RTm ⌊ Δ ⌋) → n ⟶* nzero →
+                 app (app (auxIH x n) a) p
+               ⟶* app (app (subTm (single x) aZBr) a) p
+  aux-unfold-z x a n p r =
+    ⟶*-appˡ (⟶*-appˡ (⟶*-trans (⟶*-natrecⁿ r) (step (natrec-zero _ _) done)))
+
+  -- ★ bound ⟶* suc k : one layer peels, exposing the STEP at bound `k`.
+  aux-unfold-s : (x a n k p : RTm ⌊ Δ ⌋) → n ⟶* nsuc k →
+                 app (app (auxIH x n) a) p
+               ⟶* app (app (subTm (single (auxIH x k))
+                              (subTm (extS (single k))
+                                (subTm (extS (extS (single x))) aSBr)))
+                           a) p
+  aux-unfold-s x a n k p r =
+    ⟶*-appˡ (⟶*-appˡ (⟶*-trans (⟶*-natrecⁿ r) (step (natrec-suc _ _ k) done)))
+
+  -- ★★★ …and reaching the CALLER'S step, at an arbitrary bound, WITH THE
+  --    TARGET ALLOWED TO MENTION `ih`.
+  --
+  -- ⚠⚠ THIS `P : RTm → RTm` IS THE WHOLE POINT.  `amrec-step-s` takes a
+  --   FLAT `P : RTm`, quantified OUTSIDE `ih`, so `P` structurally cannot
+  --   mention the recursive call — which is why the base case composed
+  --   through it and no recursing run ever did.  Indexing `P` by `ih`
+  --   costs nothing in the proof and is exactly what was missing.
+  aux-step-sF : {P : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋} (x a n k p : RTm ⌊ Δ ⌋) →
+                n ⟶* nsuc k →
+                ((ih : RTm ⌊ Δ ⌋) → app (app stp a) ih ⟶* P ih) →
+                app (app (auxIH x n) a) p ⟶* P (ihS-atP x a k p)
+  aux-step-sF {P = P} x a n k p r h =
+    ⟶*-trans
+      (⟶*-trans (aux-unfold-s x a n k p r)
+        (step (ξ-appˡ (β _ a)) (step (β _ p) done)))
+      (subst (λ z → z ⟶* P (ihS-atP x a k p))
+             (sym (cong₂ (λ sf yv → app (app sf yv) (ihS-atP x a k p))
+                         (stp-cancel-sAt x a k p)
+                         (a-cancel-sAt x a k p)))
+             (h (ihS-atP x a k p)))
+
+  -- the flat form is the CONSTANT family — kept because callers whose
+  -- result does not mention `ih` (every base case) read better with it.
+  aux-step-s : {P : RTm ⌊ Δ ⌋} (x a n k p : RTm ⌊ Δ ⌋) →
+               n ⟶* nsuc k →
+               ((ih : RTm ⌊ Δ ⌋) → app (app stp a) ih ⟶* P) →
+               app (app (auxIH x n) a) p ⟶* P
+  aux-step-s {P = P} x a n k p r h = aux-step-sF {P = λ _ → P} x a n k p r h
+
+  -- ★★★ THE LOOP-CLOSER: the `ih` handed over IS the auxiliary at `k`.
+  --
+  -- ⚠ The certificate is NAMED, not existential.  An existential forces
+  --   callers to destructure, and `with`-abstracting over a term this size
+  --   OOM-kills the module (measured: exit 143 under the cgroup cap).
+  appAt2 : {t f₁ f₂ y₁ y₂ u : RTm ⌊ Δ ⌋} → f₁ ≡ f₂ → y₁ ≡ y₂ →
+           t ⟶* app (app f₁ y₁) u → t ⟶* app (app f₂ y₂) u
+  appAt2 refl refl h = h
+
+  descS-at : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ →
+             RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
+  descS-at x a k p y q =
+    subTm (single q)
+      (subTm (extS (single y))
+        (subTm (extS (extS (single p)))
+          (subTm (extS (extS (extS (single a))))
+            (subTm (extS (extS (extS (extS (single (auxIH x k))))))
+              (subTm (extS (extS (extS (extS (extS (single k))))))
+                (subTm (extS (extS (extS (extS (extS (extS (single x)))))))
+                       descS))))))
+
+  aux-cancel : (x a k p y q : RTm ⌊ Δ ⌋) →
+    subTm (single q)
+      (subTm (extS (single y))
+        (subTm (extS (extS (single p)))
+          (subTm (extS (extS (extS (single a))))
+            (w (w (w (w (auxIH x k))))))))
+    ≡ auxIH x k
+  aux-cancel x a k p y q =
+    trans (cong (λ z → subTm (single q)
+                         (subTm (extS (single y))
+                           (subTm (extS (extS (single p))) z)))
+                (trans (sub-w³ {σ = single a} (w (auxIH x k)))
+                       (cong (λ z → w (w (w z))) (wk-single {v = a} (auxIH x k)))))
+    (trans (cong (λ z → subTm (single q) (subTm (extS (single y)) z))
+                 (trans (sub-w² {σ = single p} (w (auxIH x k)))
+                        (cong (λ z → w (w z)) (wk-single {v = p} (auxIH x k)))))
+    (trans (cong (subTm (single q))
+                 (trans (sub-w {σ = single y} (w (auxIH x k)))
+                        (cong w (wk-single {v = y} (auxIH x k)))))
+           (wk-single {v = q} (auxIH x k))))
+
+  ih-app : (x a k p y q : RTm ⌊ Δ ⌋) →
+           app (app (ihS-atP x a k p) y) q
+         ⟶* app (app (auxIH x k) y) (descS-at x a k p y q)
+  ih-app x a k p y q =
+    appAt2 (aux-cancel x a k p y q) (wk-single {v = q} y)
+           (step (ξ-appˡ (β _ y)) (step (β _ q) done))
+
+  ------------------------------------------------------------------------
+  -- ★★★★ THE COMPLETE CYCLE — one full turn, and it CHAINS.
+  --
+  --   app (app (auxIH x n) a) p   ⟶*   app (app (auxIH x k) y) c
+  --
+  --   The target has the SAME SHAPE as the source with `a := y`, `n := k`,
+  --   `p := c` — so the next turn is another `aux-cycle`, and a recursing
+  --   run is just iterating it.  That is what no combination of the
+  --   previous lemmas could express.
+  ------------------------------------------------------------------------
+  aux-cycle : (x a n k p y : RTm ⌊ Δ ⌋) {q : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋} →
+              n ⟶* nsuc k →
+              ((ih : RTm ⌊ Δ ⌋) → app (app stp a) ih ⟶* app (app ih y) (q ih)) →
+              app (app (auxIH x n) a) p
+            ⟶* app (app (auxIH x k) y) (descS-at x a k p y (q (ihS-atP x a k p)))
+  aux-cycle x a n k p y {q = q} r h =
+    ⟶*-trans (aux-step-sF {P = λ ih → app (app ih y) (q ih)} x a n k p r h)
+             (ih-app x a k p y (q (ihS-atP x a k p)))
+
+  -- ★★★★★ TWO TURNS, COMPOSED.  This is the non-vacuity check for the
+  --   whole block: a cycle lemma that cannot be chained would be another
+  --   `amrec-step-s` — usable once, useless for a run.  Turn 2 is applied
+  --   at `a := y` and `n := k₁`, i.e. literally turn 1's target, with NO
+  --   transport in between.  A run of any length is this, iterated.
+  aux-cycle² : (x a n k₁ k₂ p y z : RTm ⌊ Δ ⌋)
+               {q₁ q₂ : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋} →
+               n ⟶* nsuc k₁ → k₁ ⟶* nsuc k₂ →
+               ((ih : RTm ⌊ Δ ⌋) → app (app stp a) ih ⟶* app (app ih y) (q₁ ih)) →
+               ((ih : RTm ⌊ Δ ⌋) → app (app stp y) ih ⟶* app (app ih z) (q₂ ih)) →
+               app (app (auxIH x n) a) p
+             ⟶* app (app (auxIH x k₂) z)
+                    (descS-at x y k₂ (descS-at x a k₁ p y (q₁ (ihS-atP x a k₁ p)))
+                              z (q₂ (ihS-atP x y k₂
+                                       (descS-at x a k₁ p y (q₁ (ihS-atP x a k₁ p))))))
+  aux-cycle² x a n k₁ k₂ p y z {q₁ = q₁} {q₂ = q₂} r₁ r₂ h₁ h₂ =
+    ⟶*-trans (aux-cycle x a n k₁ p y {q = q₁} r₁ h₁)
+             (aux-cycle x y k₁ k₂ (descS-at x a k₁ p y (q₁ (ihS-atP x a k₁ p)))
+                        z {q = q₂} r₂ h₂)
+
   amrec-step-s : {P : RTm ⌊ Δ ⌋} (x k : RTm ⌊ Δ ⌋) →
                  subTm (single x) m ⟶* nsuc k →
                  ((ih : RTm ⌊ Δ ⌋) → app (app stp x) ih ⟶* P) →
                  app amrecTm x ⟶* P
+  -- ★ now a SPECIAL CASE of `aux-step-s` at `n := μ x`, not a second
+  --   proof: `amrecTm` β-reduces to the auxiliary at that bound, and the
+  --   general lemma takes it from there.
   amrec-step-s {P = P} x k r h =
-    ⟶*-trans
-      (⟶*-trans (amrec-unfold-s x k r)
-        (step (ξ-appˡ (β _ x))
-          (step (β _ (reflTm (subTm (single x) m))) done)))
-      (subst (λ z → z ⟶* P)
-             (sym (cong₂ (λ s y → app (app s y) (ihS-at x k))
-                         (stp-cancel-s x k (reflTm (subTm (single x) m)))
-                         (x-cancel-s x k (reflTm (subTm (single x) m)))))
-             (h (ihS-at x k)))
+    ⟶*-trans (amrec-β x)
+             (aux-step-s x x (subTm (single x) m) k
+                         (reflTm (subTm (single x) m)) r h)
 
 ------------------------------------------------------------------------
 -- ★★ AT A CLOSED CARRIER, THE UNFOLDING'S PREMISE IS FREE.
