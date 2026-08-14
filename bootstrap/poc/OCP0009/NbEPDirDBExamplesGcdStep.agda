@@ -454,6 +454,21 @@ wkS3e : {Γ : Cx} {u₁ u₂ u₃ : RTm Γ} (t : RTm Γ) →
         ≡ t
 wkS3e {u₃ = u₃} t = trans (cong (subTm (single u₃)) (wkS2e t)) (wkS t)
 
+-- ★★ READING A REDUCTION AS A TRACE.  `⟶*-trans` is associative, so a
+--   RIGHT-ASSOCIATIVE infix version needs no grouping at all: an n-step
+--   chain is n lines and ZERO nesting parens, instead of n nested
+--   `⟶*-trans (…(…))` whose closing run has to be counted by hand.  The
+--   intermediates stay IMPLICIT exactly as they were — this is only
+--   notation, no new content.
+infixr 5 _⟫_
+_⟫_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
+_⟫_ = ⟶*-trans
+
+-- one reduction as a chain segment, so every line of a trace has the
+-- same shape
+one : {Γ : Cx} {t u : RTm Γ} → t ⟶ u → t ⟶* u
+one r = step r done
+
 -- ★★ THE PEEL FAMILY.  Each `pkN` walks ONE `extS` layer out through one
 --   weakening (`wk-sub-tm`), and the `peelN`s are those composed.  This is
 --   the shape the eliminator's leaf actually produces: N nested `natrec`
@@ -542,9 +557,9 @@ cong₃g f refl refl refl = refl
 --   `subst`s leaves the untouched slot as a `_` under a binder, which Agda
 --   cannot solve; taking both equations at once keeps every implicit
 --   first-order, so the use site pins them.
-mhAt : {Γ : Cx} {A₁ A₂ B₁ B₂ d : RTm Γ} → A₁ ≡ A₂ → B₁ ≡ B₂ →
-       monusTm (nsuc A₂) (nsuc B₂) ⟶* nsuc d →
-       monusTm (nsuc A₁) (nsuc B₁) ⟶* nsuc d
+mhAt : {Γ : Cx} {A₁ A₂ B₁ B₂ r : RTm Γ} → A₁ ≡ A₂ → B₁ ≡ B₂ →
+       monusTm (nsuc A₂) (nsuc B₂) ⟶* r →
+       monusTm (nsuc A₁) (nsuc B₁) ⟶* r
 mhAt refl refl h = h
 
 -- ⚠ likewise for the chain's TARGET: `subst (λ z → _ ⟶* z)` leaves the
@@ -560,7 +575,7 @@ appAt : {Γ : Cx} {t f₁ f₂ : RTm Γ} (u : RTm Γ) → f₁ ≡ f₂ →
         t ⟶* app f₁ u → t ⟶* app f₂ u
 appAt u refl h = h
 
--- ★★★ THE STEP EQUATION'S SHAPE.  The certificate `c` is EXISTENTIAL, and
+-- ★★★ THE STEP EQUATIONS' SHAPE — SHARED by both recursive branches.  The certificate `c` is EXISTENTIAL, and
 --   that is a deliberate statement of scope, not a dodge:
 --
 --   · WHAT IS CLAIMED: the step function, at `(suc a , suc b)` with the
@@ -574,8 +589,8 @@ appAt u refl h = h
 --     arithmetic template (`commTm`, `plusMonoTm`, `trHomˡ/ʳ`, `congS`, …).
 --     That suite is worth building, but it is a separate piece of work and
 --     it is NOT what "gcd satisfies its defining equations" means.
-data GtStep {Γ : Cx} (t ih A B : RTm Γ) : Set where
-  gtStep : (c : RTm Γ) → t ⟶* app (app ih (pair A B)) c → GtStep t ih A B
+data RecCall {Γ : Cx} (t ih A B : RTm Γ) : Set where
+  recCall : (c : RTm Γ) → t ⟶* app (app ih (pair A B)) c → RecCall t ih A B
 
 -- ★ `gcd (0 , suc b) = suc b` — for an ARBITRARY `b`.
 gcd-a0-var : {Γ : Cx} (b ih : RTm Γ) →
@@ -638,29 +653,27 @@ gtRHS ih A B = app (app ih (pair (monusTm (nsuc A) (nsuc B)) (nsuc B)))
 --   is carried to the substituted `a'` by `⟶*-ren` plus one `cong`.
 gcd-gt-term : {Γ : Cx} (a' b' d ih : RTm Γ) →
               monusTm (nsuc a') (nsuc b') ⟶* nsuc d →
-              GtStep (app (app gcdStp (pair (nsuc a') (nsuc b'))) ih) ih
+              RecCall (app (app gcdStp (pair (nsuc a') (nsuc b'))) ih) ih
                      (monusTm (nsuc a') (nsuc b')) (nsuc b')
-gcd-gt-term {Γ} a' b' d ih mh = gtStep _ (
-  step (ξ-appˡ (β gcdBody gX))
-    (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βsnd _ _) done)))
-      (⟶*-trans (⟶*-appˡ (step (natrec-suc (subTm (single gX) G1z)
-                                           (subTm (extS (extS (single gX))) gcdInn1)
-                                           b') done))
-        (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst _ _) done)))
-          (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ _) done))
-            (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ
-                        (mhAt (wkS3 a') (wkS3e b') mh)))
-              (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ _) done))
-                (step (β _ ih)
-                  (appAt _
-                    (cong₃g (λ I A B →
-                               app I (pair (monusTm (nsuc A) (nsuc B)) (nsuc B)))
-                            refl
-                            (trans (peel4 {u₁ = R₂} {u₂ = d} {u₃ = R₃} {u₄ = ih} W)
-                                   (wkS2 {u = R₁} {v = b'} a'))
-                            (peel6 {u₁ = R₁} {u₂ = W} {u₃ = R₂}
-                                   {u₄ = d} {u₅ = R₃} {u₆ = ih} b'))
-                    done)))))))))
+gcd-gt-term {Γ} a' b' d ih mh = recCall _
+  --  each line is ONE reduction of the trace, read top to bottom
+  ( one (ξ-appˡ (β gcdBody gX))                         -- unfold the step fn
+  ⟫ ⟶*-appˡ (⟶*-natrecⁿ (one (βsnd _ _)))               -- scrutinee snd = suc b
+  ⟫ ⟶*-appˡ (one (natrec-suc (subTm (single gX) G1z)
+                             (subTm (extS (extS (single gX))) gcdInn1) b'))
+  ⟫ ⟶*-appˡ (⟶*-natrecⁿ (one (βfst _ _)))               -- scrutinee fst = suc a
+  ⟫ ⟶*-appˡ (one (natrec-suc _ _ _))
+  ⟫ ⟶*-appˡ (⟶*-natrecⁿ (mhAt (wkS3 a') (wkS3e b') mh)) -- run the descent a∸b
+  ⟫ ⟶*-appˡ (one (natrec-suc _ _ _))                    -- it hit suc d ⇒ G3s
+  ⟫ appAt _                                             -- …and feed in ih
+      (cong₃g (λ I A B → app I (pair (monusTm (nsuc A) (nsuc B)) (nsuc B)))
+              refl
+              (trans (peel4 {u₁ = R₂} {u₂ = d} {u₃ = R₃} {u₄ = ih} W)
+                     (wkS2 {u = R₁} {v = b'} a'))
+              (peel6 {u₁ = R₁} {u₂ = W} {u₃ = R₂}
+                     {u₄ = d} {u₅ = R₃} {u₆ = ih} b'))
+      (one (β _ ih))
+  )
   where
     gX : RTm Γ
     gX = pair (nsuc a') (nsuc b')
@@ -711,7 +724,7 @@ gt-mh-1 d = ⟶*-trans (monus-suc (nsuc (nsuc d)) nzero)
               (⟶*-trans (pred* (monus-zero (nsuc (nsuc d)))) (pred-suc (nsuc d)))
 
 gcd-gt-at-1 : {Γ : Cx} (d ih : RTm Γ) →
-              GtStep (app (app gcdStp (pair (nsuc (nsuc d)) (nsuc nzero))) ih) ih
+              RecCall (app (app gcdStp (pair (nsuc (nsuc d)) (nsuc nzero))) ih) ih
                      (monusTm (nsuc (nsuc d)) (nsuc nzero)) (nsuc nzero)
 gcd-gt-at-1 d ih = gcd-gt-term (nsuc d) nzero d ih (gt-mh-1 d)
 
@@ -747,9 +760,9 @@ gcd-gt-at-1 d ih = gcd-gt-term (nsuc d) nzero d ih (gt-mh-1 d)
 --    solvable, whereas the same equation taken as a first-order argument
 --    lets the USE SITE supply everything.
 --
--- ⚠ AND WHAT IS NOT CLAIMED: the certificate is existential (`GtStep`),
+-- ⚠ AND WHAT IS NOT CLAIMED: the certificate is existential (`RecCall`),
 --   and `b` must be a numeral.  Both limits are stated where they bite —
---   see `GtStep`'s comment and the note after `gcd-gt-at-1`.
+--   see `RecCall`'s comment and the note after `gcd-gt-at-1`.
 --
 -- ⚠ ROUTE 3 (split + substitute + splice) was abandoned, not refuted.  It
 --   also reaches the same wall: `subTm σ (gtRHS …) ≡ gtRHS …` needs
@@ -768,26 +781,85 @@ gcd-gt-at-1 d ih = gcd-gt-term (nsuc d) nzero d ih (gt-mh-1 d)
 --   Same shape, other branch: the comparison reaching ZERO selects `G3z`.
 ------------------------------------------------------------------------
 
+gcd-le-term : {Γ : Cx} (a' b' ih : RTm Γ) →
+              monusTm (nsuc a') (nsuc b') ⟶* nzero →
+              RecCall (app (app gcdStp (pair (nsuc a') (nsuc b'))) ih) ih
+                      (nsuc a') (monusTm (nsuc b') (nsuc a'))
+gcd-le-term {Γ} a' b' ih mh = recCall _
+  --  identical trace to equation 3 until the descent lands: ZERO, not suc
+  ( one (ξ-appˡ (β gcdBody gX))                         -- unfold the step fn
+  ⟫ ⟶*-appˡ (⟶*-natrecⁿ (one (βsnd _ _)))               -- scrutinee snd = suc b
+  ⟫ ⟶*-appˡ (one (natrec-suc (subTm (single gX) G1z)
+                             (subTm (extS (extS (single gX))) gcdInn1) b'))
+  ⟫ ⟶*-appˡ (⟶*-natrecⁿ (one (βfst _ _)))               -- scrutinee fst = suc a
+  ⟫ ⟶*-appˡ (one (natrec-suc _ _ _))
+  ⟫ ⟶*-appˡ (⟶*-natrecⁿ (mhAt (wkS3 a') (wkS3e b') mh)) -- run the descent a∸b
+  ⟫ ⟶*-appˡ (one (natrec-zero _ _))                     -- it hit ZERO ⇒ G3z
+  ⟫ appAt _                                             -- …and feed in ih
+      (cong₃g (λ I A B → app I (pair (nsuc A) (monusTm (nsuc B) (nsuc A))))
+              refl
+              (trans (wkS2 {u = ih} {v = R₂} W)
+                     (wkS2 {u = R₁} {v = b'} a'))
+              (peel4 {u₁ = R₁} {u₂ = W} {u₃ = R₂} {u₄ = ih} b'))
+      (one (β _ ih))
+  )
+  where
+    gX : RTm Γ
+    gX = pair (nsuc a') (nsuc b')
+
+    R₁ : RTm Γ
+    R₁ = natrec (subTm (single gX) G1z)
+                (subTm (extS (extS (single gX))) gcdInn1) b'
+
+    W : RTm Γ
+    W = subTm (single R₁) (subTm (extS (single b')) (renTm vs (renTm vs a')))
+
+    R₂ : RTm Γ
+    R₂ = natrec (subTm (single R₁)
+                  (subTm (extS (single b')) (subTm (extS (extS (single gX))) G2z)))
+                (subTm (extS (extS (single R₁)))
+                  (subTm (extS (extS (extS (single b'))))
+                    (subTm (extS (extS (extS (extS (single gX))))) gcdInn2)))
+                W
+
+-- ★★★ NON-VACUITY for equation 4 — and note what it CANNOT be.
+--
+-- ⚠⚠ THE REACH HERE IS STRICTLY SHORTER THAN EQUATION 3's, and the reason
+--   is structural, not laziness.  `mh` demands the descent reach ZERO.
+--   With `b` a numeral the descent computes to `pred…pred (suc a)`, i.e.
+--   to `a`, so `mh` forces `a ⟶* zero` — and a VARIABLE never reduces.
+--   Equation 3 escaped this: it demands `⟶* suc d`, which `a := suc d`
+--   satisfies with `d` a genuine variable.  So:
+--
+--     equation 3 : arbitrary `a` (a variable survives), numeral `b`
+--     equation 4 : `a` and `b` both forced GROUND
+--
+--   ⇒ equation 4 at real variables is UNREACHABLE through a reduction
+--     premise.  It needs the propositional route (a `⊢`-level monus/order
+--     hypothesis instead of `⟶*`), which is the same work that lifts `b`
+--     off numerals in equation 3.  The theorem above is stated at
+--     arbitrary terms and is ready for that hypothesis; only the WITNESS
+--     below is ground.
+le-mh-1 : {Γ : Cx} → monusTm {Γ} (nsuc nzero) (nsuc nzero) ⟶* nzero
+le-mh-1 = ⟶*-trans (monus-suc (nsuc nzero) nzero)
+            (⟶*-trans (pred* (monus-zero (nsuc nzero))) (pred-suc nzero))
+
+gcd-le-at-1 : {Γ : Cx} (ih : RTm Γ) →
+              RecCall (app (app gcdStp (pair (nsuc nzero) (nsuc nzero))) ih) ih
+                      (nsuc nzero) (monusTm (nsuc nzero) (nsuc nzero))
+gcd-le-at-1 ih = gcd-le-term nzero nzero ih le-mh-1
+
 leRHS : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
 leRHS ih A B = app (app ih (pair (nsuc A) (monusTm (nsuc B) (nsuc A))))
                    (plusMonoTm (monusLtTm B A) (nsuc A))
 
-gcd-le-gen : {Γ : Cx} (ih : RTm (Γ ∙ ∙)) →
-             monusTm (nsuc (var (vs vz))) (nsuc (var vz)) ⟶* nzero →
-             app (app gcdStp (pair (nsuc (var (vs vz))) (nsuc (var vz)))) ih
-           ⟶* leRHS ih (var (vs vz)) (var vz)
-gcd-le-gen ih mh =
-  step (ξ-appˡ (β _ (pair (nsuc (var (vs vz))) (nsuc (var vz)))))
-    (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βsnd _ _) done)))
-      (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ _) done))
-        (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst _ _) done)))
-          (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ _) done))
-            (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ mh))
-              (⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done))
-                (step (β _ ih) done)))))))
+-- ⚠ THE EARLIER GENERIC FORM (`gcd-le-gen`) IS DELETED for the same reason
+--   `gcd-gt-gen` was: VACUOUS, and superseded by `gcd-le-term` above, which
+--   is stated at arbitrary terms AND has an instance.
 
 ------------------------------------------------------------------------
--- ★ WHAT THE TWO LEMMAS ABOVE DO AND DO NOT SAY.
+-- ★ THE VACUITY POST-MORTEM (kept: the two lemmas it dissects are gone,
+--   but the TRAP is the thing worth remembering).
 --
 -- ⛔⛔ THEY ARE **VACUOUS**.  Found by asking "what exercises these?" —
 --    nothing does, and the reason is fatal: THEIR PREMISE CANNOT BE
