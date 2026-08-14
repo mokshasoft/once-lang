@@ -24,7 +24,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; subTy-renTy; subTm-renTm
         ; renTy-subTy; renTm-subTm
         ; subTy-subTy; subTm-subTm
-        ; subTy-id; subTm-id; renTm-renTm; renTm-cong )
+        ; subTy-id; subTm-id; renTm-renTm; renTm-cong
+        ; Desc; DCon; Mu; con; elim; lookupD; εsub; εwkTy; payTy )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; nrs
         ; _⟶_; _⟶*_; done; step
@@ -48,6 +49,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢⌜Nat⌝; ⊢⌜Unit⌝
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
+        ; ty-Mu; ⊢con; ⊢elim
+        ; DConWf; dwf-ι; dwf-ρ; dwf-κ; DescWf; dwf-nil; dwf-cons
         ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢ordtr
         ; ⊢ctx_; c-◇; c-▹
         ; ⊢id; ⊢appex )
@@ -98,6 +101,7 @@ open import poc.OCP0009.NbEPDirDBLR
         ; payT-cast; payT-code; payHomT; _⟶snr*_; snr-done; snr-step
         ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; _⊩₀∋_; bwd₀; exp₁
         ; ⊩₀Unit; ⊩₀Nat; ⊩₀Mu; ⊩₁Mu; Mu-nf
+        ; KInterp; ki-ι; ki-ρ; ki-κ; DInterp; di-nil; di-cons
         ; base-nf; Unit-nf; Nat-nf; El-ne-reduct; mkElNe; Hom-stk-reduct; mkHomStk
         ; nopw?; trlam?; stablecd?; stableA?; idstk?; sne→spine; wk-single; snr→⟶
         ; exp₀; f≢t
@@ -125,6 +129,21 @@ fund-ty : {σ : Sub ⌊ Γ ⌋ Ξ} {A : RTy ⌊ Γ ⌋} →
           Γ ⊢ty A → Var Ξ → Γ ⊩ˢ σ → ⊩₁ (subTy σ A)
 fund : {σ : Sub ⌊ Γ ⌋ Ξ} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
        Γ ⊢ t ∷ A → Var Ξ → Γ ⊩ˢ σ → Rel (subTy σ A) (subTm σ t)
+
+-- ★★ PLAN §4's semantic half: a well-formed description HAS an
+--   interpretation.  Mutual with `fund` because each `dκ` slot's witness
+--   is obtained by RUNNING the fundamental theorem on that slot's code —
+--   the `ty-El` idiom, at the EMPTY environment since the code is closed.
+--
+--   ⚠ this is the only place a `DInterp` can enter the model: `ty-Mu` is
+--     the sole rule introducing `Mu D`, which is why §4 had to become a
+--     premise rather than stay deferred.
+interpK : {C : DCon} → DConWf C → Var Ξ → KInterp Ξ C
+interpD : {D : Desc} → DescWf D → Var Ξ → DInterp Ξ D
+
+-- the empty environment: `◇ ∋ x ∷ A` has no inhabitants.
+⊩ˢ-ε : {Ξ : Cx} → ◇ ⊩ˢ (εsub {Ξ})
+⊩ˢ-ε ()
 
 -- TYPE FORMATION.  `base`/`U` are their own whnf; `Π`/`Σ'` build the family by
 -- extending the substitution; `El` is the one that changes level — down to `⊩₀`
@@ -162,6 +181,11 @@ fund-ty (ty-Id tyA dt du) x₀ ρ = ⊩₁Id doneᵀ
 -- INERT, so their interps are immediate.
 fund-ty ty-Unit x₀ ρ = ⊩₁Unit doneᵀ
 fund-ty ty-Nat  x₀ ρ = ⊩₁Nat  doneᵀ
+-- ★★ INDUCTIVE TYPES.  `subTy σ (Mu D) = Mu D` DEFINITIONALLY (closed
+--   descriptions), so the goal needs no cast — the whole point of closing
+--   `Desc` over `RTy ε` rather than carrying a renaming/substitution tower.
+fund-ty (ty-Mu w) x₀ ρ = ⊩₁Mu doneᵀ (interpD w x₀)
+
 fund-ty {σ = σ} (ty-Hom {t = t} {u = u} tyA dt du) x₀ ρ = homSem₁ R ht hu
   where
     R  = fund-ty tyA x₀ ρ
@@ -169,6 +193,18 @@ fund-ty {σ = σ} (ty-Hom {t = t} {u = u} tyA dt du) x₀ ρ = homSem₁ R ht hu
                (subTm σ t) (dsnd (fund dt x₀ ρ))
     hu = projl (irrel₁ crflᵀ (dfst (fund du x₀ ρ)) R)
                (subTm σ u) (dsnd (fund du x₀ ρ))
+
+interpK dwf-ι          x₀ = ki-ι
+interpK (dwf-ρ w)      x₀ = ki-ρ (interpK w x₀)
+-- ★ the κ slot.  `εwkTy (El c) = El (subTm εsub c)` definitionally, so
+--   `sem-El`'s result lands at exactly the type `ki-κ` demands.
+interpK (dwf-κ c dc w) x₀ = ki-κ (sem-El doneᵀ hc) (interpK w x₀)
+  where
+    hc = projl (irrel₁ crflᵀ (dfst (fund dc x₀ ⊩ˢ-ε)) (⊩₁U doneᵀ))
+               (subTm εsub c) (dsnd (fund dc x₀ ⊩ˢ-ε))
+
+interpD dwf-nil        x₀ = di-nil
+interpD (dwf-cons w e) x₀ = di-cons (interpK w x₀) (interpD e x₀)
 
 -- TERMS.
 fund (⊢var d) x₀ ρ = ρ d
