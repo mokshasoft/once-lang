@@ -52,7 +52,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
         ; Ren; extR; Sub; subTy; subTm; extS; renTm
         ; subTm-renTm; subTm-id; Hom-cong₃; ⌜Hom⌝-cong₃
-        ; Desc; Mu; con; elim; lookupD; sel; fields )
+        ; Desc; Mu; con; elim; lookupD; sel; fields
+        ; DCon; dι; dρ; dκ; dnil; _◃_; εwkTy )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; nrs
         ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ
@@ -3434,6 +3435,9 @@ data StkHd {Γ} : RTy Γ → Set where
   -- Note this arm produces `StkHd` of the whole `Hom`, which is why
   -- `⊩₀Hom`/`⊩₁Hom` now take `StkHd (Hom H a b)` rather than `StkHd H`.
   sh-NatH : {a b : RTm Γ} → homnat? a b ≡ true → StkHd (Hom Nat a b)
+  -- ★ `Mu` is a stuck head, `base`-style: no rule computes `Hom (Mu D) a b`.
+  -- (Contrast `Nat`, whose order rules removed `sh-Nat` at stage B.)
+  sh-Mu   : {D : Desc} → StkHd (Mu {Γ} D)
 
 stkhd-red : {H H' : RTy Γ} → StkHd H → H ⟶ᵀ H' → StkHd H'
 stkhd-red (sh-ne ()) El-⌜base⌝
@@ -3536,6 +3540,87 @@ natmem-whred (nm-exp r₀ h) r with snr-det r₀ r
 ... | refl = h
 
 ------------------------------------------------------------------------
+-- ★★★ INDUCTIVE-TYPES AXIS — the `Mu` membership payload.
+--
+-- ⚠⚠ WHY THIS LIVES HERE, BEFORE `⊩₀`, AND MENTIONS NOTHING OF IT.
+--   `_⊩₀∋_` is INHERENTLY negative-recursive at `Π` (`⊩₀Π` carries
+--   `(u : RTm Γ) → ⊩F ⊩₀∋ u → …`).  That is fine for a FUNCTION — Agda
+--   accepts `_⊩₀∋_` — but ANY DATATYPE mutual with it inherits the
+--   negativity.  Gates 6 and 6b both died there: an existential package,
+--   and then a carried WITNESS, each forced `MuMem` into the block.
+--
+--   ⇒ `MuMem` must not mention the relation AT ALL.  It does not, and so
+--     it sits out here, structurally identical to `NatMem` above — which
+--     is exactly WHY `NatMem` has always worked.
+--
+--   The κ-field's membership is supplied as a PREDICATE (gate 6c, design
+--   f).  Where that predicate comes FROM is `KOk`/`DOk`'s business, down
+--   in the block; `MuMem` never asks.
+--
+--   Price, and it is metalanguage-only: `KPred` quantifies over
+--   `RTm Γ → Set`, so it lands in `Set₁`, and `⊩₀`/`⊩₁` follow.  Object
+--   -level expressiveness is FULL — `dκ` stays unrestricted.
+------------------------------------------------------------------------
+
+-- one constructor's field list, each `dκ` slot carrying its membership
+-- ⚠ `Γ` is written EXPLICITLY at every recursive occurrence.  Unlike
+--   `NatMem n` (where `n : RTm Γ` pins it), `KPred C` has only `C : DCon`
+--   — which carries no context — so an implicit `Γ` there is an unsolved
+--   meta, not an inferred one.
+data KPred (Γ : Cx) : DCon → Set₁ where
+  kp-ι : KPred Γ dι
+  kp-ρ : {C : DCon} → KPred Γ C → KPred Γ (dρ C)
+  kp-κ : {A : RTy ε} {C : DCon} →
+         (RTm Γ → Set) → KPred Γ C → KPred Γ (dκ A C)
+
+-- …and a whole description's
+data DPred (Γ : Cx) : Desc → Set₁ where
+  dp-nil  : DPred Γ dnil
+  dp-cons : {C : DCon} {E : Desc} →
+            KPred Γ C → DPred Γ E → DPred Γ (C ◃ E)
+
+-- ⚠ TOTAL, mirroring `lookupD`: `dι` off the end, hence `kp-ι`.
+lookupP : {D : Desc} → DPred Γ D → (k : ℕ) → KPred Γ (lookupD D k)
+lookupP dp-nil          _       = kp-ι
+lookupP (dp-cons kp _)  zero    = kp
+lookupP (dp-cons _  dp) (suc k) = lookupP dp k
+
+-- the payload predicate for ONE constructor's fields: a Σ-chain walked in
+-- lockstep with `payTy`.  `P` is the RECURSIVE occurrence's predicate.
+-- ★★ PROJECTION-BASED, not pair-pattern-based — `fst p` / `snd p`, never
+--   a match on `pair`.  Three reasons, all pre-existing:
+--     · `⊩₀Σ`'s membership is already written this way (`⊩F ⊩₀∋ fst t`),
+--       and `payTy` makes the payload a Σ-chain, so this IS that idiom;
+--     · the ι-rule's own `ihs` walks the payload by `fst`/`snd`
+--       (`NbEPDirDBPi`), so the semantics tracks the syntax step for step;
+--     · it needs no case split on `RTm`, which has 30+ formers.
+--   The payload's SHAPE is not asserted here and does not need to be:
+--   `SN` is carried at the top (as `⊩₀Nat` carries it beside `NatMem`),
+--   and canonicity gets the shape from TYPING — `⊢ p ∷ payTy D C` plus
+--   canonicity at `Unit`/`Σ'` — exactly as it already does for `Σ'`.
+Lift : (C : DCon) → KPred Γ C → (RTm Γ → Set) → RTm Γ → Set
+Lift dι       kp-ι        P t = ⊤
+Lift (dρ C)   (kp-ρ kp)   P t = P (fst t)   × Lift C kp P (snd t)
+Lift (dκ A C) (kp-κ Q kp) P t = Q (fst t)   × Lift C kp P (snd t)
+
+-- ★ and the payload itself.  Neutral / constructor / head-expansion —
+--   `NatMem`'s shape exactly, so every transport is the SN transport.
+-- ★ `Γ` may stay IMPLICIT here — `dp : DPred Γ D` pins it, exactly as
+--   `n : RTm Γ` pins it for `NatMem`.
+data MuMem {Γ} (D : Desc) (dp : DPred Γ D) : RTm Γ → Set where
+  mm-ne  : {t : RTm Γ} → SNe t → MuMem D dp t
+  mm-con : (k : ℕ) {p : RTm Γ} →
+           Lift (lookupD D k) (lookupP dp k) (MuMem D dp) p →
+           MuMem D dp (con k p)
+  mm-exp : {t t' : RTm Γ} → SNRed t t' → MuMem D dp t' → MuMem D dp t
+
+mumem-whred : {D : Desc} {dp : DPred Γ D} {t t' : RTm Γ} →
+              MuMem D dp t → SNRed t t' → MuMem D dp t'
+mumem-whred (mm-ne n)     r = mm-ne (sne-whred n r)
+mumem-whred (mm-exp r₀ h) r with snr-det r₀ r
+... | refl = h
+
+------------------------------------------------------------------------
 -- ★★★ WF-axis stage E: `ordtr` IS STRONGLY NORMALIZING.
 --
 -- This is `ordtr`'s whole semantic content, and it is the exact mirror
@@ -3619,6 +3704,26 @@ sn-ordtr .(nsuc _) .(nsuc _) .(nsuc _) p q sa (nm-suc {n = a₀} ma) st (nm-suc 
 data ⊩₀_ {Γ} : RTy Γ → Set
 _⊩₀∋_ : {Γ : Cx} {A : RTy Γ} → ⊩₀ A → RTm Γ → Set
 
+-- ★★ WHERE THE κ-PREDICATES COME FROM.  `⊩₀Mu` carries WITNESSES —
+--   ordinary `⊩₀`s, so `⊩₀` STAYS IN `Set` — and `predsOf` turns them
+--   into the `DPred` that `MuMem` wants.  The split is the whole trick:
+--
+--     · `MuMem` takes PREDICATES, so it is not mutual with `_⊩₀∋_` and
+--       stays strictly positive.  Gates 6/6b died carrying witnesses INTO
+--       it, where `Lift` had to APPLY them — and `_⊩₀∋_` is negative at Π.
+--     · `⊩₀Mu` carries WITNESSES, so `irrel₀` has something to recurse on
+--       and nonsense interpretations are unrepresentable.
+--
+--   `predsOf` is the one-way bridge; it lives in the mutual block because
+--   it names `_⊩₀∋_`.  ⚠ This also keeps `⊩₁` in `Set`: `⊩₁U`'s
+--   membership STORES a `⊩₀` interp, so a `Set₁` level 0 would have
+--   forced level 1's membership up too — and with no cumulativity that
+--   means `Lift`-wrapping every `⊩₁` clause across five modules.
+data KInterp (Γ : Cx) : DCon → Set
+data DInterp (Γ : Cx) : Desc → Set
+kpredsOf : {C : DCon} → KInterp Γ C → KPred Γ C
+predsOf  : {D : Desc} → DInterp Γ D → DPred Γ D
+
 -- the endpoint-join payload: reaching an `idrefl` yields a confluence
 -- join of the Id-type's endpoints.
 IdPay : (a b p : RTm Γ) → Set
@@ -3674,6 +3779,28 @@ data ⊩₀_ {Γ} where
   -- mirrors level 1 exactly, `NatMem` payload included.
   ⊩₀Unit : {A : RTy Γ} → A ⟶ᵀ* Unit → ⊩₀ A
   ⊩₀Nat  : {A : RTy Γ} → A ⟶ᵀ* Nat → ⊩₀ A
+  -- ★★★ the inductive-types axis.  Membership is `SN t × MuMem D dp t`,
+  -- mirroring `⊩₀Nat`'s `NatMem` exactly — and for the same structural
+  -- reason: the payload mentions no part of the relation.
+  ⊩₀Mu   : {A : RTy Γ} {D : Desc} → A ⟶ᵀ* Mu D → DInterp Γ D → ⊩₀ A
+
+data KInterp Γ where
+  ki-ι : KInterp Γ dι
+  ki-ρ : {C : DCon} → KInterp Γ C → KInterp Γ (dρ C)
+  ki-κ : {A : RTy ε} {C : DCon} →
+         ⊩₀ (εwkTy A) → KInterp Γ C → KInterp Γ (dκ A C)
+
+data DInterp Γ where
+  di-nil  : DInterp Γ dnil
+  di-cons : {C : DCon} {E : Desc} →
+            KInterp Γ C → DInterp Γ E → DInterp Γ (C ◃ E)
+
+kpredsOf ki-ι        = kp-ι
+kpredsOf (ki-ρ ki)   = kp-ρ (kpredsOf ki)
+kpredsOf (ki-κ w ki) = kp-κ (λ t → w ⊩₀∋ t) (kpredsOf ki)
+
+predsOf di-nil         = dp-nil
+predsOf (di-cons ki d) = dp-cons (kpredsOf ki) (predsOf d)
 
 ⊩₀base _     ⊩₀∋ t = SN t
 ⊩₀ne _ _     ⊩₀∋ t = SN t
@@ -3685,6 +3812,17 @@ data ⊩₀_ {Γ} where
 ⊩₀Id {a = a} {b = b} _ ⊩₀∋ t = SN t × IdPay a b t
 ⊩₀Unit _     ⊩₀∋ t = SN t
 ⊩₀Nat _      ⊩₀∋ t = SN t × NatMem t
+-- ★ the `DOk` proof is IGNORED — `MuMem` needs only the predicates.  That
+--   is the whole design: membership does not depend on the relation, so
+--   `MuMem` is not mutual with it and stays strictly positive.
+⊩₀Mu {D = D} _ di ⊩₀∋ t = SN t × MuMem D (predsOf di) t
+
+-- ⚠ TOTAL, in lockstep with `lookupP`/`lookupD`: off the end all three
+--   give the empty constructor (`dι`/`kp-ι`/`ko-ι`).
+lookupI : {D : Desc} → DInterp Γ D → (k : ℕ) → KInterp Γ (lookupD D k)
+lookupI di-nil          _       = ki-ι
+lookupI (di-cons ki _)  zero    = ki
+lookupI (di-cons _  dj) (suc k) = lookupI dj k
 
 bwd₀ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₀ B → ⊩₀ A
 bwd₀ p (⊩₀base q)    = ⊩₀base (⟶ᵀ*-trans p q)
@@ -3695,6 +3833,7 @@ bwd₀ p (⊩₀Hom q s)   = ⊩₀Hom  (⟶ᵀ*-trans p q) s
 bwd₀ p (⊩₀Id q)      = ⊩₀Id   (⟶ᵀ*-trans p q)
 bwd₀ p (⊩₀Unit q)    = ⊩₀Unit (⟶ᵀ*-trans p q)
 bwd₀ p (⊩₀Nat q)     = ⊩₀Nat  (⟶ᵀ*-trans p q)
+bwd₀ p (⊩₀Mu q di)   = ⊩₀Mu   (⟶ᵀ*-trans p q) di
 
 -- `bwd₀` only rewrites the REDUCTION WITNESS, never the membership — so
 -- both directions are the identity once the interp's head is exposed.
@@ -3710,6 +3849,7 @@ bwd₀-mem q (⊩₀Hom _ _) h = h
 bwd₀-mem q (⊩₀Id _)    h = h
 bwd₀-mem q (⊩₀Unit _)  h = h
 bwd₀-mem q (⊩₀Nat _)   h = h
+bwd₀-mem q (⊩₀Mu _ _)  h = h
 
 bwd₀-mem⁻ : {A B : RTy Γ} (q : A ⟶ᵀ* B) (R : ⊩₀ B) {t : RTm Γ} →
             R ⊩₀∋ t → (bwd₀ q R) ⊩₀∋ t
@@ -3721,6 +3861,7 @@ bwd₀-mem⁻ q (⊩₀Hom _ _) h = h
 bwd₀-mem⁻ q (⊩₀Id _)    h = h
 bwd₀-mem⁻ q (⊩₀Unit _)  h = h
 bwd₀-mem⁻ q (⊩₀Nat _)   h = h
+bwd₀-mem⁻ q (⊩₀Mu _ _)  h = h
 
 ------------------------------------------------------------------------
 -- 3a. IRRELEVANCE UP TO CONVERSION, at level 0.
@@ -3735,6 +3876,36 @@ bwd₀-mem⁻ q (⊩₀Nat _)   h = h
 
 irrel₀ : {A B : RTy Γ} → A ≅ᵀ B → (R : ⊩₀ A) (S : ⊩₀ B) →
          ((t : RTm Γ) → R ⊩₀∋ t → S ⊩₀∋ t) × ((t : RTm Γ) → S ⊩₀∋ t → R ⊩₀∋ t)
+
+-- ★★★ THE `Mu` HALF OF IRRELEVANCE, mutual with `irrel₀` itself.
+--
+--   This is the knot design (f) creates and gate 6c deliberately left
+--   open (its `IrrelAt` was an external hypothesis).  Two interps at one
+--   type carry `DPred`s that need not be syntactically equal — but `DOk`
+--   pins every κ-slot to `λ t → w ⊩₀∋ t` for SOME `w`, so they differ
+--   only by the CHOICE of witness, and `irrel₀` is exactly what collapses
+--   that.  Hence: `irrel₀` at `Mu` calls `irrelMu`, which calls `irrel₀`
+--   at each κ-field's type.
+--
+--   ⚠ TERMINATION is by the `DOk`/`KOk` structure, not the types: each
+--     `w` is a strict subterm of the `DOk` that came in, so the recursive
+--     `irrel₀` call is on a structurally smaller witness.
+--   ⚠ the constructor's field list is reached by WALKING THE `DInterp`
+--     SUFFIX (`irrelAtK`), not by a `lookupI` call: Agda cannot see that
+--     `lookupI di k`'s parts are subterms of `di`, which severs the
+--     size-change cycle.  The FULL interps stay fixed — they are what
+--     `MuMem` mentions — and only the suffix shrinks.
+irrelMu : {D : Desc} (di₁ di₂ : DInterp Γ D) {t : RTm Γ} →
+          MuMem D (predsOf di₁) t → MuMem D (predsOf di₂) t
+irrelAtK : {D : Desc} (di₁ di₂ : DInterp Γ D)
+           {E : Desc} (dj₁ dj₂ : DInterp Γ E)
+           (k : ℕ) (p : RTm Γ) →
+           Lift (lookupD E k) (lookupP (predsOf dj₁) k) (MuMem D (predsOf di₁)) p →
+           Lift (lookupD E k) (lookupP (predsOf dj₂) k) (MuMem D (predsOf di₂)) p
+liftK : {D : Desc} (di₁ di₂ : DInterp Γ D)
+        {C : DCon} (ki₁ ki₂ : KInterp Γ C) (p : RTm Γ) →
+        Lift C (kpredsOf ki₁) (MuMem D (predsOf di₁)) p →
+        Lift C (kpredsOf ki₂) (MuMem D (predsOf di₂)) p
 
 -- both sides non-`Π`: membership is `SN t` on both, so transfer is identity.
 irrel₀ c (⊩₀base _) (⊩₀base _) = (λ _ h → h) , (λ _ h → h)
@@ -4052,6 +4223,104 @@ irrel₀ c (⊩₀Nat p) (⊩₀Unit q) with joinW c p q
 irrel₀ c (⊩₀Unit _) (⊩₀Unit _) = (λ _ h → h) , (λ _ h → h)
 irrel₀ c (⊩₀Nat _)  (⊩₀Nat _)  = (λ _ h → h) , (λ _ h → h)
 
+-- ★ `Mu` versus every other former: `Mu D` is a NORMAL FORM (`Mu-nf`), so
+--   any join with a differently-headed type is absurd.
+irrel₀ c (⊩₀Mu p _) (⊩₀base q) with joinW c p q
+... | E , (mE , bE) with base-nf bE
+...   | refl with Mu-nf mE
+...     | ()
+irrel₀ c (⊩₀base p) (⊩₀Mu q _) with joinW c p q
+... | E , (bE , mE) with base-nf bE
+...   | refl with Mu-nf mE
+...     | ()
+irrel₀ c (⊩₀Mu p _) (⊩₀ne q n) with joinW c p q
+... | E , (mE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Mu-nf mE
+...     | ()
+irrel₀ c (⊩₀ne p n) (⊩₀Mu q _) with joinW c p q
+... | E , (eE , mE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with Mu-nf mE
+...     | ()
+irrel₀ c (⊩₀Mu p _) (⊩₀Π q _ _) with joinW c p q
+... | E , (mE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Mu-nf mE
+...     | ()
+irrel₀ c (⊩₀Π p _ _) (⊩₀Mu q _) with joinW c p q
+... | E , (πE , mE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with Mu-nf mE
+...     | ()
+irrel₀ c (⊩₀Mu p _) (⊩₀Σ q _ _) with joinW c p q
+... | E , (mE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Mu-nf mE
+...     | ()
+irrel₀ c (⊩₀Σ p _ _) (⊩₀Mu q _) with joinW c p q
+... | E , (σE , mE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with Mu-nf mE
+...     | ()
+irrel₀ c (⊩₀Mu p _) (⊩₀Hom q sh) with joinW c p q
+... | E , (mE , hE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Mu-nf mE
+...     | ()
+irrel₀ c (⊩₀Hom p sh) (⊩₀Mu q _) with joinW c p q
+... | E , (hE , mE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with Mu-nf mE
+...     | ()
+irrel₀ c (⊩₀Mu p _) (⊩₀Id q) with joinW c p q
+... | E , (mE , iE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Mu-nf mE
+...     | ()
+irrel₀ c (⊩₀Id p) (⊩₀Mu q _) with joinW c p q
+... | E , (iE , mE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with Mu-nf mE
+...     | ()
+irrel₀ c (⊩₀Mu p _) (⊩₀Unit q) with joinW c p q
+... | E , (mE , uE) with Unit-nf uE
+...   | refl with Mu-nf mE
+...     | ()
+irrel₀ c (⊩₀Unit p) (⊩₀Mu q _) with joinW c p q
+... | E , (uE , mE) with Unit-nf uE
+...   | refl with Mu-nf mE
+...     | ()
+irrel₀ c (⊩₀Mu p _) (⊩₀Nat q) with joinW c p q
+... | E , (mE , nE) with Nat-nf nE
+...   | refl with Mu-nf mE
+...     | ()
+irrel₀ c (⊩₀Nat p) (⊩₀Mu q _) with joinW c p q
+... | E , (nE , mE) with Nat-nf nE
+...   | refl with Mu-nf mE
+...     | ()
+-- ★★ `Mu`/`Mu`: the join forces the two DESCRIPTIONS equal (matching the
+--   second `refl` inverts `Mu`'s injectivity), but NOT the two `DPred`s —
+--   that residual difference is precisely what `irrelMu` collapses.
+irrel₀ c (⊩₀Mu p di₁) (⊩₀Mu q di₂) with joinW c p q
+... | E , (m₁ , m₂) with Mu-nf m₁
+...   | refl with Mu-nf m₂
+...     | refl = ( (λ _ h → (projl h , irrelMu di₁ di₂ (projr h)))
+                 , (λ _ h → (projl h , irrelMu di₂ di₁ (projr h))) )
+
+irrelMu d₁ d₂ (mm-ne n)        = mm-ne n
+irrelMu d₁ d₂ (mm-exp r m)     = mm-exp r (irrelMu d₁ d₂ m)
+irrelMu d₁ d₂ (mm-con k {p} l) = mm-con k (irrelAtK d₁ d₂ d₁ d₂ k p l)
+
+irrelAtK d₁ d₂ di-nil di-nil k p l = _
+irrelAtK d₁ d₂ (di-cons i₁ _) (di-cons i₂ _) zero    p l = liftK d₁ d₂ i₁ i₂ p l
+irrelAtK d₁ d₂ (di-cons _ q₁) (di-cons _ q₂) (suc k) p l =
+  irrelAtK d₁ d₂ q₁ q₂ k p l
+
+-- ⚠ the payload halves are taken by PATTERN, not by `projl`/`projr`:
+--   those are functions, so `projl l` is an application and Agda would
+--   not see it as a subterm of `l` — which is what the cycle needs.
+liftK d₁ d₂ ki-ι ki-ι p l = _
+liftK d₁ d₂ (ki-ρ i₁) (ki-ρ i₂) p (m , rest) =
+  ( irrelMu d₁ d₂ m
+  , liftK d₁ d₂ i₁ i₂ (snd p) rest )
+-- ★ THE κ SLOT — two witnesses at ONE type, collapsed by `irrel₀` itself.
+--   `w₁` is a strict subterm of the `KInterp` that came in, hence of the
+--   `⊩₀Mu` `irrel₀` started from: that is what makes the cycle decrease.
+liftK d₁ d₂ (ki-κ w₁ i₁) (ki-κ w₂ i₂) p (m , rest) =
+  ( projl (irrel₀ crflᵀ w₁ w₂) (fst p) m
+  , liftK d₁ d₂ i₁ i₂ (snd p) rest )
+
 ------------------------------------------------------------------------
 -- 3b. FORWARD TRANSFER at level 0, and hence transfer along CONVERSION.
 ------------------------------------------------------------------------
@@ -4095,6 +4364,12 @@ fwd₀ p (⊩₀Nat q) with confluentᵀ p q
 ... | E , (bE , nE) with Nat-nf nE
 ...   | refl = ⊩₀Nat bE
 
+-- ★ `Mu D` is a NORMAL FORM (`Mu-nf`, no ⟶ᵀ out of it), so the interp
+--   travels unchanged — description AND its interpretation both inert.
+fwd₀ p (⊩₀Mu q di) with confluentᵀ p q
+... | E , (bE , mE) with Mu-nf mE
+...   | refl = ⊩₀Mu bE di
+
 conv₀ : {A B : RTy Γ} → A ≅ᵀ B → ⊩₀ A → ⊩₀ B
 conv₀ c R with church-rosserᵀ c
 ... | C , (aC , bC) = bwd₀ bC (fwd₀ aC R)
@@ -4112,6 +4387,7 @@ CR1₀ (⊩₀Hom _ _) h = h
 CR1₀ (⊩₀Id _)    h = projl h
 CR1₀ (⊩₀Unit _)  h = h
 CR1₀ (⊩₀Nat _)   h = projl h
+CR1₀ (⊩₀Mu _ _)  h = projl h
 
 CR3₀ : {A : RTy Γ} (R : ⊩₀ A) {t : RTm Γ} → SNe t → R ⊩₀∋ t
 CR3₀ (⊩₀base _)    nt = sn-ne nt
@@ -4120,6 +4396,7 @@ CR3₀ (⊩₀Id _)      nt = (sn-ne nt , λ ch → ⊥-elim (sne-nopay nt ch))
 CR3₀ (⊩₀ne _ _)    nt = sn-ne nt
 CR3₀ (⊩₀Unit _)    nt = sn-ne nt
 CR3₀ (⊩₀Nat _)     nt = (sn-ne nt , nm-ne nt)
+CR3₀ (⊩₀Mu _ _)    nt = (sn-ne nt , mm-ne nt)
 CR3₀ (⊩₀Π _ ⊩F ⊩G) nt =
   (sn-ne nt , λ u ru → CR3₀ (⊩G u ru) (sne-app nt (CR1₀ ⊩F ru)))
 CR3₀ (⊩₀Σ _ ⊩F ⊩G) {t} nt =
@@ -4135,6 +4412,7 @@ exp₀ (⊩₀Id _) r h =
 exp₀ (⊩₀ne _ _)    r h = sn-exp r h
 exp₀ (⊩₀Unit _)    r h = sn-exp r h
 exp₀ (⊩₀Nat _)     r h = (sn-exp r (projl h) , nm-exp r (projr h))
+exp₀ (⊩₀Mu _ _)    r h = (sn-exp r (projl h) , mm-exp r (projr h))
 exp₀ (⊩₀Π _ ⊩F ⊩G) r h =
   (sn-exp r (projl h) , λ v rv → exp₀ (⊩G v rv) (snr-app r) (projr h v rv))
 -- ★ the `Σ'` case needs a CONVERSION, not just a congruence: expanding `t` to
@@ -4190,6 +4468,7 @@ PayT (⊩₀Hom _ _) c = ⊤
 PayT (⊩₀Id _)    c = ⊤
 PayT (⊩₀Unit _)  c = ⊤
 PayT (⊩₀Nat _)   c = ⊤
+PayT (⊩₀Mu _ _) c = ⊤
 PayT {Γ = Γ} (⊩₀Π _ ⊩F ⊩G) c =
   (v : RTm Γ) (r : ⊩F ⊩₀∋ v) →
   Σ (RTm Γ) (λ c* →
@@ -4225,6 +4504,7 @@ payT-exp r q (⊩₀Hom _ _) pay = _
 payT-exp r q (⊩₀Id _) pay = _
 payT-exp r q (⊩₀Unit _) pay = _
 payT-exp r q (⊩₀Nat _) pay = _
+payT-exp r q (⊩₀Mu _ _) pay = _
 payT-exp r q (⊩₀Π _ ⊩F ⊩G) pay v rv with pay v rv
 ... | c* , (csr , rest) = c* , (csr-step (csr-here r) csr , rest)
 
@@ -4247,6 +4527,7 @@ payT-whred r (⊩₀Hom _ _) pay = _
 payT-whred r (⊩₀Id _) pay = _
 payT-whred r (⊩₀Unit _) pay = _
 payT-whred r (⊩₀Nat _) pay = _
+payT-whred r (⊩₀Mu _ _) pay = _
 payT-whred r (⊩₀Π _ ⊩F ⊩G) pay v rv with pay v rv
 ... | c* , (csr , (key , rest)) =
       c* , (payT-whred-node r csr key , (key , rest))
@@ -4262,6 +4543,13 @@ payT-irrel cv R (⊩₀Hom _ _) pay = _
 payT-irrel cv R (⊩₀Id _) pay = _
 payT-irrel cv R (⊩₀Unit _) pay = _
 payT-irrel cv R (⊩₀Nat _) pay = _
+payT-irrel cv R (⊩₀Mu _ _) pay = _
+-- ★ `Mu` versus `Π`: `Mu D` is a normal form and `Π` cannot be reached
+--   from it, so the join is absurd.
+payT-irrel cv (⊩₀Mu p _) (⊩₀Π q _ _) pay with joinW cv p q
+... | E , (mE , πE) with Mu-nf mE
+...   | refl with Π-reduct πE
+...     | mkΠRed _ _ () _ _
 payT-irrel cv (⊩₀base p) (⊩₀Π q _ _) pay with joinW cv p q
 ... | E , (bE , πE) with base-nf bE
 ...   | refl with Π-reduct πE
@@ -4340,6 +4628,12 @@ data ⊩₁_ {Γ} where
   ⊩₁Nat  : {A : RTy Γ} → A ⟶ᵀ* Nat → ⊩₁ A
   ⊩₁Id   : {A H : RTy Γ} {a b : RTm Γ}
          → A ⟶ᵀ* Id H a b → ⊩₁ A
+  -- ★ the inductive-types axis at level 1.  It carries the SAME
+  --   `DInterp` as level 0 — the κ-field types are CLOSED and their
+  --   membership is computed at level 0 either way, exactly as
+  --   `⊩₁Nat`'s payload is the very same `NatMem` as `⊩₀Nat`'s.  That is
+  --   what makes `emb`/`emb-coh` at `Mu` the identity.
+  ⊩₁Mu   : {A : RTy Γ} {D : Desc} → A ⟶ᵀ* Mu D → DInterp Γ D → ⊩₁ A
 
 ⊩₁base _     ⊩₁∋ t = SN t
 ⊩₁U _        ⊩₁∋ t = SN t × Σ (⊩₀ (El t)) (λ R → PayT R t)
@@ -4350,6 +4644,7 @@ data ⊩₁_ {Γ} where
 ⊩₁Hom _ _    ⊩₁∋ t = SN t
 ⊩₁Unit _     ⊩₁∋ t = SN t
 ⊩₁Nat _      ⊩₁∋ t = SN t × NatMem t
+⊩₁Mu {D = D} _ di ⊩₁∋ t = SN t × MuMem D (predsOf di) t
 ⊩₁Id {a = a} {b = b} _ ⊩₁∋ t = SN t × IdPay a b t
 
 bwd₁ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₁ B → ⊩₁ A
@@ -4361,6 +4656,7 @@ bwd₁ p (⊩₁Σ q ⊩F ⊩G) = ⊩₁Σ    (⟶ᵀ*-trans p q) ⊩F ⊩G
 bwd₁ p (⊩₁Hom q s)   = ⊩₁Hom  (⟶ᵀ*-trans p q) s
 bwd₁ p (⊩₁Unit q)    = ⊩₁Unit (⟶ᵀ*-trans p q)
 bwd₁ p (⊩₁Nat q)     = ⊩₁Nat  (⟶ᵀ*-trans p q)
+bwd₁ p (⊩₁Mu q di)   = ⊩₁Mu   (⟶ᵀ*-trans p q) di
 bwd₁ p (⊩₁Id q)      = ⊩₁Id   (⟶ᵀ*-trans p q)
 
 -- ★ the level-1 peer of `bwd₀-mem⁻`, never needed until stage E.
@@ -4378,6 +4674,7 @@ bwd₁-mem⁻ q (⊩₁Σ _ _ _) h = h
 bwd₁-mem⁻ q (⊩₁Hom _ _) h = h
 bwd₁-mem⁻ q (⊩₁Unit _)  h = h
 bwd₁-mem⁻ q (⊩₁Nat _)   h = h
+bwd₁-mem⁻ q (⊩₁Mu _ _)  h = h
 bwd₁-mem⁻ q (⊩₁Id _)    h = h
 
 ------------------------------------------------------------------------
@@ -4514,6 +4811,88 @@ irrel₁ c (⊩₁Nat p) (⊩₁Unit q) with joinW c p q
 ...   | refl with Unit-nf uE
 ...     | ()
 irrel₁ c (⊩₁Unit _) (⊩₁Unit _) = (λ _ h → h) , (λ _ h → h)
+
+-- ★ `Mu` versus every other level-1 former: `Mu D` is a normal form.
+irrel₁ c (⊩₁Mu p _) (⊩₁base q) with joinW c p q
+... | E , (mE , oE) with base-nf oE
+...   | refl with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁base p) (⊩₁Mu q _) with joinW c p q
+... | E , (oE , mE) with base-nf oE
+...   | refl with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁Mu p _) (⊩₁U q) with joinW c p q
+... | E , (mE , oE) with U-nf oE
+...   | refl with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁U p) (⊩₁Mu q _) with joinW c p q
+... | E , (oE , mE) with U-nf oE
+...   | refl with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁Mu p _) (⊩₁ne q n) with joinW c p q
+... | E , (mE , oE) with El-ne-reduct n oE
+...   | mkElNe _ _ refl with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁ne p n) (⊩₁Mu q _) with joinW c p q
+... | E , (oE , mE) with El-ne-reduct n oE
+...   | mkElNe _ _ refl with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁Mu p _) (⊩₁Π q _ _) with joinW c p q
+... | E , (mE , oE) with Π-reduct oE
+...   | mkΠRed _ _ refl _ _ with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁Π p _ _) (⊩₁Mu q _) with joinW c p q
+... | E , (oE , mE) with Π-reduct oE
+...   | mkΠRed _ _ refl _ _ with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁Mu p _) (⊩₁Σ q _ _) with joinW c p q
+... | E , (mE , oE) with Σ-reduct oE
+...   | mkΣRed _ _ refl _ _ with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁Σ p _ _) (⊩₁Mu q _) with joinW c p q
+... | E , (oE , mE) with Σ-reduct oE
+...   | mkΣRed _ _ refl _ _ with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁Mu p _) (⊩₁Hom q sh) with joinW c p q
+... | E , (mE , oE) with Hom-stk-reduct sh oE
+...   | mkHomStk _ _ _ _ refl with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁Hom p sh) (⊩₁Mu q _) with joinW c p q
+... | E , (oE , mE) with Hom-stk-reduct sh oE
+...   | mkHomStk _ _ _ _ refl with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁Mu p _) (⊩₁Unit q) with joinW c p q
+... | E , (mE , oE) with Unit-nf oE
+...   | refl with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁Unit p) (⊩₁Mu q _) with joinW c p q
+... | E , (oE , mE) with Unit-nf oE
+...   | refl with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁Mu p _) (⊩₁Nat q) with joinW c p q
+... | E , (mE , oE) with Nat-nf oE
+...   | refl with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁Nat p) (⊩₁Mu q _) with joinW c p q
+... | E , (oE , mE) with Nat-nf oE
+...   | refl with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁Mu p _) (⊩₁Id q) with joinW c p q
+... | E , (mE , oE) with Id-reduct oE
+...   | _ , (_ , (_ , (refl , _))) with Mu-nf mE
+...     | ()
+irrel₁ c (⊩₁Id p) (⊩₁Mu q _) with joinW c p q
+... | E , (oE , mE) with Id-reduct oE
+...   | _ , (_ , (_ , (refl , _))) with Mu-nf mE
+...     | ()
+-- ★★ `Mu`/`Mu` at level 1 — the same residual-`DInterp` difference as at
+--   level 0, collapsed by the very same `irrelMu`.
+irrel₁ c (⊩₁Mu p di₁) (⊩₁Mu q di₂) with joinW c p q
+... | E , (m₁ , m₂) with Mu-nf m₁
+...   | refl with Mu-nf m₂
+...     | refl = ( (λ _ h → (projl h , irrelMu di₁ di₂ (projr h)))
+                 , (λ _ h → (projl h , irrelMu di₂ di₁ (projr h))) )
+
 irrel₁ c (⊩₁Nat _)  (⊩₁Nat _)  = (λ _ h → h) , (λ _ h → h)
 irrel₁ c (⊩₁base _) (⊩₁base _) = (λ _ h → h) , (λ _ h → h)
 irrel₁ c (⊩₁base _) (⊩₁ne _ _) = (λ _ h → h) , (λ _ h → h)
@@ -4805,6 +5184,9 @@ fwd₁ p (⊩₁Unit q) with confluentᵀ p q
 fwd₁ p (⊩₁Nat q) with confluentᵀ p q
 ... | E , (bE , nE) with Nat-nf nE
 ...   | refl = ⊩₁Nat bE
+fwd₁ p (⊩₁Mu q di) with confluentᵀ p q
+... | E , (bE , mE) with Mu-nf mE
+...   | refl = ⊩₁Mu bE di
 fwd₁ p (⊩₁Id q) with confluentᵀ p q
 ... | E , (bE , iE) with Id-reduct iE
 ...   | _ , (_ , (_ , (refl , _))) = ⊩₁Id bE
@@ -4831,6 +5213,7 @@ CR1₁ (⊩₁Σ _ _ _) h = projl h
 CR1₁ (⊩₁Hom _ _) h = h
 CR1₁ (⊩₁Unit _) h = h
 CR1₁ (⊩₁Nat _)  h = projl h
+CR1₁ (⊩₁Mu _ _) h = projl h
 CR1₁ (⊩₁Id _)    h = projl h
 
 CR3₁ : {A : RTy Γ} (R : ⊩₁ A) {t : RTm Γ} → SNe t → R ⊩₁∋ t
@@ -4840,6 +5223,7 @@ CR3₁ (⊩₁ne _ _)    nt = sn-ne nt
 CR3₁ (⊩₁Hom _ _)   nt = sn-ne nt
 CR3₁ (⊩₁Unit _)    nt = sn-ne nt
 CR3₁ (⊩₁Nat _)     nt = (sn-ne nt , nm-ne nt)
+CR3₁ (⊩₁Mu _ _)    nt = (sn-ne nt , mm-ne nt)
 CR3₁ (⊩₁Id _)      nt = (sn-ne nt , λ ch → ⊥-elim (sne-nopay nt ch))
 CR3₁ (⊩₁Π _ ⊩F ⊩G) nt =
   (sn-ne nt , λ u ru → CR3₁ (⊩G u ru) (sne-app nt (CR1₁ ⊩F ru)))
@@ -4853,6 +5237,7 @@ exp₁ (⊩₁ne _ _)    r h = sn-exp r h
 exp₁ (⊩₁Hom _ _)   r h = sn-exp r h
 exp₁ (⊩₁Unit _)    r h = sn-exp r h
 exp₁ (⊩₁Nat _)     r h = (sn-exp r (projl h) , nm-exp r (projr h))
+exp₁ (⊩₁Mu _ _)    r h = (sn-exp r (projl h) , mm-exp r (projr h))
 exp₁ (⊩₁Id _) r h =
   ( sn-exp r (projl h) , λ ch → projr h (idpay-peel r ch) )
 exp₁ (⊩₁U _)       r h =
@@ -4886,6 +5271,7 @@ mem-whred₁ (⊩₁ne _ _)  r h = sn-whred h r
 mem-whred₁ (⊩₁Hom _ _) r h = sn-whred h r
 mem-whred₁ (⊩₁Unit _) r h = sn-whred h r
 mem-whred₁ (⊩₁Nat _)  r h = (sn-whred (projl h) r , natmem-whred (projr h) r)
+mem-whred₁ (⊩₁Mu _ _) r h = (sn-whred (projl h) r , mumem-whred (projr h) r)
 mem-whred₁ (⊩₁Id _) r h =
   ( sn-whred (projl h) r , λ ch → projr h (snr-step r ch) )
 mem-whred₁ (⊩₁U _)     r h =
@@ -4928,6 +5314,7 @@ emb (⊩₀Hom p s)   = ⊩₁Hom p s
 emb (⊩₀Id p)      = ⊩₁Id p
 emb (⊩₀Unit p)    = ⊩₁Unit p
 emb (⊩₀Nat p)     = ⊩₁Nat p
+emb (⊩₀Mu p di)   = ⊩₁Mu p di
 emb (⊩₀ne p n)    = ⊩₁ne p n
 emb (⊩₀Π p ⊩F ⊩G) =
   ⊩₁Π p (emb ⊩F) (λ u r → emb (⊩G u (projr (emb-coh ⊩F) u r)))
@@ -4939,6 +5326,7 @@ emb-coh (⊩₀Hom _ _) = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Id _)    = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Unit _)  = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Nat _)   = (λ _ h → h) , (λ _ h → h)
+emb-coh (⊩₀Mu _ _)  = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀ne _ _) = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Σ _ ⊩F ⊩G) =
     (λ t h → (projl h
@@ -5190,6 +5578,7 @@ homSem₁ (⊩₁Nat p) {a} {b} ha hb =
   bwd₁ (⟶ᵀ*-Homᵀ p)
        (homNatSem a b (projl ha) (projr ha) (projl hb) (projr hb))
 homSem₁ (⊩₁Id p)      ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Id)
+homSem₁ (⊩₁Mu p _)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Mu)
 homSem₁ (⊩₁U p) {c} {d} hc hd =
   ⊩₁Π (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ p) (stepᵀ (Hom-U c d) doneᵀ))
       (emb (Σ.fst (projr hc)))
@@ -5295,6 +5684,7 @@ payT-bwd₀' q (⊩₀Hom _ _) pay = _
 payT-bwd₀' q (⊩₀Id _)    pay = _
 payT-bwd₀' q (⊩₀Unit _)  pay = _
 payT-bwd₀' q (⊩₀Nat _)   pay = _
+payT-bwd₀' q (⊩₀Mu _ _)  pay = _
 payT-bwd₀' q (⊩₀Π _ _ _) pay = pay
 
 -- ★ and the payload is trivial at every leaf too — none of `⊩₀Unit`,
@@ -5327,6 +5717,7 @@ homSem₀ (⊩₀ne p n)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom (sh-ne 
 homSem₀ (⊩₀Σ p ⊩F ⊩G) ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Σ)
 homSem₀ (⊩₀Hom p s)   ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom s)
 homSem₀ (⊩₀Unit p)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Unit)
+homSem₀ (⊩₀Mu p _)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Mu)
 homSem₀ (⊩₀Nat p) {a} {b} ha hb =
   bwd₀ (⟶ᵀ*-Homᵀ p)
        (homNatSem₀ a b (projl ha) (projr ha) (projl hb) (projr hb))
@@ -5361,6 +5752,7 @@ homSem₀-mem-endpoints :
   {t : RTm Γ} →
   (homSem₀ R ha hb) ⊩₀∋ t → (homSem₀ R ha' hb') ⊩₀∋ t
 homSem₀-mem-endpoints (⊩₀base p)    ha hb ha' hb' h = h
+homSem₀-mem-endpoints (⊩₀Mu p _)    ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀ne p n)    ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀Σ p ⊩F ⊩G) ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀Hom p s)   ha hb ha' hb' h = h
@@ -5419,6 +5811,7 @@ payHomT : {X : RTy Γ} (⊩c : ⊩₀ X) {C a b : RTm Γ}
           (ha : ⊩c ⊩₀∋ a) (hb : ⊩c ⊩₀∋ b) →
           PayT (homSem₀ ⊩c ha hb) (⌜Hom⌝ C a b)
 payHomT (⊩₀base _)  payC ha hb = _
+payHomT (⊩₀Mu _ _)  payC ha hb = _
 payHomT (⊩₀ne _ _)  payC ha hb = _
 payHomT (⊩₀Σ _ _ _) payC ha hb = _
 payHomT (⊩₀Hom _ _) payC ha hb = _
@@ -5468,6 +5861,7 @@ sem-⌜Hom⌝ p snc sna snb ⊩c payc ha hb =
   payT-bwd₀ : {A B : RTy _} (q : A ⟶ᵀ* B) (R : ⊩₀ B) {c₀ : RTm _} →
               PayT R c₀ → PayT (bwd₀ q R) c₀
   payT-bwd₀ q (⊩₀base _)  pay = _
+  payT-bwd₀ q (⊩₀Mu _ _)  pay = _
   payT-bwd₀ q (⊩₀ne _ _)  pay = _
   payT-bwd₀ q (⊩₀Σ _ _ _) pay = _
   payT-bwd₀ q (⊩₀Hom _ _) pay = _
