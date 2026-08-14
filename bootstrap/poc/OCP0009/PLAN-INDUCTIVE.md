@@ -21,9 +21,11 @@ language), `WF-LIBRARY.md` (D1–D11, the defect log), `ARCHITECTURE.md`
 | SN layer (`SNe`/`SN`/`SNRed`/`Ne`) | ✅ |
 | anti-renaming (`FundSN`), `Fund*` chain, `Canon`'s measure | ✅ |
 | eliminator shape (gates 5/5b/5c, general) | ✅ **tupled, dependent, no η** |
-| **typing rules** `⊢Mu`/`⊢con`/`⊢elim` in the kernel | ❌ **not started** ⬅ NEXT |
-| subject reduction at ι, progress at ι | ⚠ **VACUOUS** — see §3 |
-| the model, `⊩₀Mu` / the `MuMem` knot | ❌ **not started** |
+| **typing rules** `⊢Mu`/`⊢con`/`⊢elim` in the kernel | ✅ landed |
+| subject reduction at ι | ✅ **PROVED** |
+| `Fund`/`Canon` at `Mu` | ⛔ blocked on §5 — see §3's ordering note |
+| progress at ι (`Canon`) | ⚠ still 4 PLACEHOLDER rows |
+| the model, `⊩₀Mu` / the `MuMem` knot | ❌ **not started** ⬅ NEXT |
 
 `./sweep.sh` → ALL GREEN, 81 modules, 3 RED skipped.
 `./check-formers.sh` → 26 formers / 0 orphaned; `UNMAPPED Mu` is §5.
@@ -129,10 +131,27 @@ gains constructors), and doing it twice pays it twice.
 2. `⊢Mu` / `⊢con` (with `k ∈D D`) / `⊢elim` (dependent motive).
    The kernel already ships `subTy-subTy` et al in `Pi`, so the tower
    comes for free.
-3. **delete the vacuous blocks** in `Subj` (`sr`'s 4 rows) and `Canon`
-   (`prog`, `usplit`) and prove them for real.
-   ✅ *the check:* `check-formers.sh` check 4 must report **0** vacuous
-   rows. It reports 4 today.
+3. **delete the vacuous blocks** and prove them for real.
+   * `Subj` (`sr`'s 4 rows) — ✅ **DONE**. Subject reduction at ι is
+     proved; see the `sr` ι row and `sel-ty`/`ihs-ty`/`Mu-inj`.
+   * `Canon` (`prog`, `usplit`) — ⛔ **BLOCKED ON §5**, see below.
+
+⚠⚠ **ORDERING CORRECTION, 2026-08-14.** §3 and §5 are NOT independent.
+`Fund`'s
+
+    fund-ty : Γ ⊢ty A → Var Ξ → Γ ⊩ˢ σ → ⊩₁ (subTy σ A)
+
+must produce **`⊩₁ (Mu D)`** at `ty-Mu` — i.e. the MODEL. And `Canon`
+imports `Fund` (`wnorm`), so it is blocked behind it.
+
+  ⇒ `Subj` was completable because subject reduction is purely SYNTACTIC.
+    `Fund` and `Canon` are SEMANTIC. **§5 must land before §3 closes.**
+
+  ★ Everything else in §3 is done: Pi, Type, SR, Inj, Subj, LR, FundSN,
+    FundSem all green with the new rules.
+
+  ★ `check-formers.sh` check 4 reports the remaining debt precisely: 4
+    ⚠ PLACEHOLDER rows, all in `Canon`, all at `con`/`elim`.
 
 --------------------------------------------------------------------------
 ## 4. STEP 3 — DESCRIPTION WELL-FORMEDNESS
