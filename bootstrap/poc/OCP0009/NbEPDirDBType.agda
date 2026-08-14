@@ -40,7 +40,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
         ; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; Id; ⌜Id⌝; idrefl; jsub
-        ; Unit; Nat; unit; nzero; nsuc; natrec; extS; ⌜Nat⌝; ⌜Unit⌝
+        ; Unit; Nat; unit; nzero; nsuc; natrec; extS; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
         ; Ren; extR; Sub; subTy; subTm; renTy; renTm
         ; Desc; Mu; con; elim; lookupD; sel; fields
         ; payTy; payTy-ren; payTy-sub; εwkTy; εwk-ren; εwk-sub; _∈D_; hereD; thereD; DCon; dι; dρ; dκ; dnil; _◃_; ihs; subTy-subTy; subTy-cong; renTy-subTy )
@@ -225,6 +225,15 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
               tr (⌜Hom⌝ c a m) (hrefl ⌜Unit⌝ s) e ⟶ e
   tr-J-Id   : (c a m : RTm (Γ ∙)) (c₁ a₁ b₁ : RTm Γ) (s e : RTm Γ) →
               tr (⌜Hom⌝ c a m) (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e ⟶ e
+  -- ★★ INDUCTIVE TYPES: `⌜Mu⌝` is J-ABLE, and belongs with ⌜base⌝/⌜Σ⌝/
+  -- ⌜Id⌝/⌜Unit⌝ rather than with ⌜Nat⌝.  The dividing line is whether the
+  -- decode's `Hom` COMPUTES: `Hom Nat a b` does (the order rules discard
+  -- an endpoint, which is what breaks J at ⌜Nat⌝), whereas nothing
+  -- computes `Hom (Mu D) a b` — that is exactly why `sh-Mu` is a STUCK
+  -- HEAD in the SN layer.  So `stkC? (⌜Mu⌝ D) = true` and this rule is
+  -- its obligation.
+  tr-J-Mu   : {D : Desc} (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
+              tr (⌜Hom⌝ c a m) (hrefl (⌜Mu⌝ D) s) e ⟶ e
   -- directed univalence computing a third time: transport at the
   -- tautological motive along a (canonical) universe path is application
   tr-taut   : (f : RTm (Γ ∙)) (e : RTm Γ) →
@@ -341,6 +350,10 @@ data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   El-⌜Id⌝   : (c a b : RTm Γ) → El (⌜Id⌝ c a b) ⟶ᵀ Id (El c) a b
   -- ★ stage C (N-in): the datatype codes decode.
   El-⌜Nat⌝  : El (⌜Nat⌝ {Γ}) ⟶ᵀ Nat
+  -- ★★ INDUCTIVE TYPES: the code DECODES.  This is the single rule
+  -- that makes `Mu D` a SMALL type, and so the single rule that
+  -- unlocks nesting — `dκ (El (⌜Mu⌝ D'))` is now well-formed.
+  El-⌜Mu⌝   : {D : Desc} → El (⌜Mu⌝ {Γ} D) ⟶ᵀ Mu D
   El-⌜Unit⌝ : El (⌜Unit⌝ {Γ}) ⟶ᵀ Unit
   ξ-El : {t t' : RTm Γ} → t ⟶ t' → El t ⟶ᵀ El t'
   ξ-Πˡ : {A A' : RTy Γ} {B : RTy (Γ ∙)} → A ⟶ᵀ A' → Π A B ⟶ᵀ Π A' B
@@ -576,6 +589,10 @@ data _⊢_∷_ where
                           Γ ⊢ ⌜Id⌝ c a b ∷ U
   -- ★ stage C: `Nat` and `Unit` are SMALL.
   ⊢⌜Nat⌝  : ∀ {Γ} → Γ ⊢ ⌜Nat⌝ {⌊ Γ ⌋} ∷ U
+  -- ⚠ carries `DescWf` for the SAME reason `ty-Mu` does: the model
+  -- needs a `⊩₀` witness at every `dκ` slot, and this is now a second
+  -- door through which `Mu D` enters — so it must carry the same key.
+  ⊢⌜Mu⌝   : ∀ {Γ D} → DescWf D → Γ ⊢ ⌜Mu⌝ {⌊ Γ ⌋} D ∷ U
   ⊢⌜Unit⌝ : ∀ {Γ} → Γ ⊢ ⌜Unit⌝ {⌊ Γ ⌋} ∷ U
   ⊢idrefl : ∀ {Γ c t}   → Γ ⊢ c ∷ U → Γ ⊢ t ∷ El c →
                           Γ ⊢ idrefl c t ∷ Id (El c) t t
