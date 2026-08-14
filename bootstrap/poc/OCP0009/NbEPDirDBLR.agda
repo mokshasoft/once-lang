@@ -2746,6 +2746,13 @@ Nat-nf : {A : RTy Γ} → Nat {Γ} ⟶ᵀ* A → A ≡ Nat
 Nat-nf doneᵀ        = refl
 Nat-nf (stepᵀ () _)
 
+-- ★ INDUCTIVE TYPES: `Mu D` is INERT at the type level — no `_⟶ᵀ_` rule
+--   has it as subject — so it is its own only reduct, exactly like `Nat`
+--   and `Unit`.  This is what makes every `Mu`-versus-X clash two lines.
+Mu-nf : {D : Desc} {A : RTy Γ} → Mu {Γ} D ⟶ᵀ* A → A ≡ Mu D
+Mu-nf doneᵀ        = refl
+Mu-nf (stepᵀ () _)
+
 -- ⚠ The TYPE-level neutrality payload is a PLAIN syntactic `Ne`, not `SNe`.
 -- `El-ne-reduct` needs neutrality preserved under reduction, and for `SNe` that
 -- would need `SN` closed under reduction — a real lemma in the JM presentation
