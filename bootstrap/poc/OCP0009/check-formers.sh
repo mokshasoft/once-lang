@@ -150,19 +150,38 @@ vac = 0
 for fname, src, label in (('sr', subj, 'subject reduction'),
                           ('prog', canon, 'progress'),
                           ('usplit', canon, 'code canonicity')):
-    rows = re.findall(r'^' + fname + r'\s+.*$', src, re.M)
+    # ⚠ leading whitespace ALLOWED: `prog`/`usplit` live inside a `mutual`
+    #   block, so an `^`-anchored regex silently MISSED them — this check
+    #   reported "none" while two vacuous rows were still present.
+    rows = re.findall(r'^\s*' + fname + r'\s+.*$', src, re.M)
     bad = [r for r in rows if '⊥-elim' in r]
     if bad:
         vac += len(bad)
         print(f"  {fname:<7} ({label}): {len(bad)} of {len(rows)} rows are ⊥-elim")
         for r in bad:
-            m = re.search(r'\((ι-elim|ξ-\w+|[a-z][\w-]*)', r)
-            print(f"      at {m.group(1) if m else r.strip()[:48]}")
+            # show WHAT is being eliminated — that is what says whether the
+            # row is legitimate or debt.  `noVar` is a STRUCTURAL
+            # impossibility (no variables in ◇); a `gen-…` inversion that
+            # returns ⊥ is a PLACEHOLDER for a missing typing rule.
+            m = re.search(r'⊥-elim \(([\w-]+)', r)
+            why = m.group(1) if m else '?'
+            # ⚠ HEURISTIC, and it cannot be more than that: a name ending
+            #   `-clash` or `noVar` refutes the premise STRUCTURALLY; a
+            #   `gen-…` returning ⊥ is a PLACEHOLDER for a missing rule.
+            #   Anything else is flagged for a HUMAN to classify.
+            kind = ('structural' if why == 'noVar' or why.endswith('-clash')
+                    else '⚠ PLACEHOLDER' if why.startswith('gen-')
+                    else '? REVIEW')
+            subj = re.search(r'\{[tc] = ([^}]*)\}', r)
+            print(f"      {kind:<11} ⊥-elim ({why})"
+                  f"{'  at ' + subj.group(1) if subj else ''}")
 if vac == 0:
     print("  none — every row carries content")
 else:
-    print(f"  ⇒ {vac} rows prove NOTHING about their rule.  Each becomes a REAL")
-    print("    obligation the moment its typing rule lands.  Track, do not ship.")
+    print(f"  ⇒ {vac} row(s) discharged by ⊥.  `structural` is fine — the premise")
+    print("    is genuinely uninhabitable.  ⚠ PLACEHOLDER stands in for a MISSING")
+    print("    TYPING RULE and proves nothing about its former; it becomes a real")
+    print("    obligation the moment that rule lands.  `? REVIEW` = classify by hand.")
 
 # ── 5. PROMISSORY NOTES — comments that defer an obligation ────────────────
 #

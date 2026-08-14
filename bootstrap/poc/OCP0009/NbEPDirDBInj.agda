@@ -634,6 +634,23 @@ red→≅ᵀ (stepᵀ r p) = ctrnᵀ (credᵀ r) (red→≅ᵀ p)
 Πinj≡ : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} → Π A B ≡ Π A' B' → (A ≡ A') × (B ≡ B')
 Πinj≡ refl = refl , refl
 
+------------------------------------------------------------------------
+-- ★ Mu-INJECTIVITY.  Cheaper than Π's: `Mu D` is INERT — no `_⟶ᵀ_` rule
+--   has it as subject — so it is its own only reduct, and Church–Rosser
+--   collapses immediately.
+------------------------------------------------------------------------
+
+Muinj≡ : {D D' : Desc} → Mu {Γ} D ≡ Mu D' → D ≡ D'
+Muinj≡ refl = refl
+
+Mu-reduct : {D : Desc} {C : RTy Γ} → Mu D ⟶ᵀ* C → C ≡ Mu D
+Mu-reduct doneᵀ        = refl
+Mu-reduct (stepᵀ () _)
+
+Mu-inj : {D D' : Desc} → Mu {Γ} D ≅ᵀ Mu D' → D ≡ D'
+Mu-inj c with church-rosserᵀ c
+... | C , (r₁ , r₂) = Muinj≡ (trans (sym (Mu-reduct r₁)) (Mu-reduct r₂))
+
 -- ★ Π-INJECTIVITY OF CONVERSION — dHoTT-24's scoped ceiling, discharged.
 Π-inj : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} →
         Π A B ≅ᵀ Π A' B' → (A ≅ᵀ A') × (B ≅ᵀ B')
