@@ -2876,6 +2876,25 @@ sne→spine (sne-ordtr _ _ _ _ _ key) = key
 -- ★ the `stableA?` peer.  A strict neutral is never ⌜Nat⌝- or
 -- ⌜Hom⌝-headed, so `stableA?` and `stablecd?` agree once the head is
 -- exposed — every row is the same term.
+-- ★ INDUCTIVE TYPES: the `mustk?` peer, which `⊢elim`'s neutral case
+-- needs to feed `sne-elim`.  `mustk?` and `spine?` agree on every neutral
+-- former except `hrefl`, where `mustk?` is unconditionally `true` — so
+-- every row is either `refl`, the sub-derivation's `spine?`, or the
+-- carried key, exactly as in `sne→stableA` below.
+sne→mustk : {t : RTm Γ} → SNe t → mustk? t ≡ true
+sne→mustk (sne-var x)             = refl
+sne→mustk (sne-app n _)           = sne→spine n
+sne→mustk (sne-absurd _ _)        = refl
+sne→mustk (sne-fst n)             = sne→spine n
+sne→mustk (sne-snd n)             = sne→spine n
+sne→mustk (sne-hrefl _ _ _)       = refl
+sne→mustk (sne-tr _ _ _ key)      = key
+sne→mustk (sne-ap _ _ _ key)      = key
+sne→mustk (sne-jsub _ _ _ key)    = key
+sne→mustk (sne-natrec _ _ _ key)  = key
+sne→mustk (sne-elim _ _ key)      = key
+sne→mustk (sne-ordtr _ _ _ _ _ key) = key
+
 sne→stableA : {t : RTm Γ} → SNe t → stableA? t ≡ true
 sne→stableA (sne-var x)        = refl
 sne→stableA (sne-app n _)      = sne→spine n
