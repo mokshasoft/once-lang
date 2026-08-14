@@ -1657,19 +1657,6 @@ gen-tr (⊢conv d c) with gen-tr d
 ------------------------------------------------------------------------
 
 sr : {Γ : Ctx} {t u : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} → Γ ⊢ t ∷ A → t ⟶ u → Γ ⊢ u ∷ A
-------------------------------------------------------------------------
--- ⚠⚠ TEMPORARY — DELETE WHEN `⊢con`/`⊢elim` LAND.
---
--- The inductive-types axis has its FORMERS and its ι-RULE but no TYPING
--- rules yet, so no derivation can have a `con`/`elim` subject: the only
--- constructor of `_⊢_∷_` that admits an arbitrary subject is `⊢conv`, and
--- a `⊢conv` chain must bottom out at a rule that names its former.  These
--- two inversions say exactly that, and they make subject reduction's four
--- new rows VACUOUS rather than proved.
---
--- ⇒ subject reduction for ι is NOT established here.  It becomes real work
---   the moment `⊢elim` exists, and this block goes away then.
-------------------------------------------------------------------------
 -- ★★★ REAL INVERSIONS.  These REPLACE the `⊥`-valued placeholders that
 --   stood here while `⊢con`/`⊢elim` did not exist.  The placeholders made
 --   subject reduction at ι VACUOUS; these make it provable.

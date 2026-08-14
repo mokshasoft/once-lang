@@ -1028,11 +1028,6 @@ mutual
   prog : (n : ℕ) {t : RTm ε} {T : RTy ε} → ◇ ⊢ t ∷ T → sz t ≤ n → Prog t
   prog zero    d ()
   prog (suc m) {t = var x}       d le = ⊥-elim (noVar x)
-  -- ⚠⚠ TEMPORARY, and it is the SAME vacuity as Subj's `sr` rows: with no
-  -- `⊢con`/`⊢elim`, a closed derivation at these heads cannot exist, so
-  -- PROGRESS AT ι IS NOT PROVED HERE.  Deleted when the typing rules land,
-  -- at which point `con` becomes a `prog-can` row (it is an introduction
-  -- form) and `elim` becomes a real eliminator case.
   -- ★★ INDUCTIVE TYPES: `con` is an introduction form, so it is already a
   -- value; a closed `elim` ALWAYS STEPS (`elimS`).
   prog (suc m) {t = con k p}     d le = prog-can (can-con k p)
