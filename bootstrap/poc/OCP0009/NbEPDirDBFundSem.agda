@@ -103,7 +103,7 @@ open import poc.OCP0009.NbEPDirDBLR
         ; PayT; payChain; payT-exp; payT-whred; payT-irrel
         ; payT-cast; payT-code; payHomT; _⟶snr*_; snr-done; snr-step
         ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; _⊩₀∋_; bwd₀; exp₁
-        ; ⊩₀Unit; ⊩₀Nat
+        ; ⊩₀Unit; ⊩₀Nat; ⊩₀Mu; ⊩₁Mu; Mu-nf
         ; base-nf; Unit-nf; Nat-nf; El-ne-reduct; mkElNe; Hom-stk-reduct; mkHomStk
         ; nopw?; trlam?; stablecd?; stableA?; idstk?; sne→spine; wk-single; snr→⟶
         ; exp₀; f≢t
@@ -194,6 +194,8 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 ... | mkΠRed _ _ () _ _
 ⊩₁-app (⊩₁Nat p) S h k with Π-reduct p
 ... | mkΠRed _ _ () _ _
+⊩₁-app (⊩₁Mu p _) S h k with Π-reduct p
+... | mkΠRed _ _ () _ _
 ⊩₁-app (⊩₁Id p) S h k with Π-reduct p
 ... | mkΠRed _ _ () _ _
 ⊩₁-app (⊩₁Π p ⊩F ⊩G) S {v = v} h k with Π-reduct p
@@ -220,6 +222,8 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 ... | mkΣRed _ _ () _ _
 ⊩₁-fstm (⊩₁Nat p) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
+⊩₁-fstm (⊩₁Mu p _) h with Σ-reduct p
+... | mkΣRed _ _ () _ _
 ⊩₁-fstm (⊩₁Id p) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
 ⊩₁-fstm (⊩₁Σ p ⊩F ⊩G) h with Σ-reduct p
@@ -242,6 +246,8 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 ⊩₁-sndm (⊩₁Unit p) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
 ⊩₁-sndm (⊩₁Nat p) h with Σ-reduct p
+... | mkΣRed _ _ () _ _
+⊩₁-sndm (⊩₁Mu p _) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
 ⊩₁-sndm (⊩₁Id p) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
@@ -413,6 +419,7 @@ mem-bwd₁ q (⊩₁Σ _ _ _) h = h
 mem-bwd₁ q (⊩₁Hom _ _) h = h
 mem-bwd₁ q (⊩₁Unit _)  h = h
 mem-bwd₁ q (⊩₁Nat _)   h = h
+mem-bwd₁ q (⊩₁Mu _ _)  h = h
 mem-bwd₁ q (⊩₁Id _)    h = h
 
 natHreflMem : {Γ : Cx} (a b : RTm Γ) (sa : SN a) (ma : NatMem a)
@@ -462,6 +469,15 @@ semHreflPay x₀ (⊩₀Unit p) lk snc pay snt ht =
   noPiT ch with church-rosserᵀ
                  (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
   ... | E , (uE , πE) with Unit-nf uE
+  ...   | refl with Π-reduct πE
+  ...     | mkΠRed _ _ () _ _
+semHreflPay x₀ (⊩₀Mu p _) lk snc pay snt ht =
+  snHH sp-nil snc snt noPiT
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (mE , πE) with Mu-nf mE
   ...   | refl with Π-reduct πE
   ...     | mkΠRed _ _ () _ _
 semHreflPay x₀ {t = t} (⊩₀Nat p) lk snc pay snt ht =
@@ -951,6 +967,16 @@ semTr x₀ (⊩₀Unit p) lk snCT payR hA hT hU snp hTe hUe hp hE =
 -- ENDPOINT-BLIND (`hns₀-in`) — SN-ness is the whole obligation, so the
 -- generic `snTrGo` still does all the work; it just has to be threaded
 -- through the order-hom wrapper instead of landing on a `⊩₀Hom`.
+semTr x₀ (⊩₀Mu p di) lk snCT payR hA hT hU snp hTe hUe hp hE =
+  snTrGo noPiT snCT (CR1₀ (⊩₀Mu p di) hA)
+         (CR1₀ (homSem₀ (⊩₀Mu p di) hA hT) hE) snp
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (mE , πE) with Mu-nf mE
+  ...   | refl with Π-reduct πE
+  ...     | mkΠRed _ _ () _ _
 semTr x₀ (⊩₀Nat p) lk snCT payR {aP} {tP} {uP} hA hT hU snp hTe hUe hp hE =
   bwd₀-mem⁻ (⟶ᵀ*-Homᵀ p)
     (homNatSem₀ aP uP (projl hA) (projr hA) (projl hU) (projr hU))
