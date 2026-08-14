@@ -472,6 +472,10 @@ infix 3 _⊢_∷_
 infix 3 _⊢ty_
 data _⊢_∷_ : (Γ : Ctx) → RTm ⌊ Γ ⌋ → RTy ⌊ Γ ⌋ → Set
 data _⊢ty_ : (Γ : Ctx) → RTy ⌊ Γ ⌋ → Set
+-- ★★ PLAN §4 — DESCRIPTION WELL-FORMEDNESS.  Mutual with typing because a
+--   `dκ` slot's smallness is a TYPING fact (`◇ ⊢ c ∷ U`).
+data DConWf : DCon → Set
+data DescWf : Desc → Set
 
 data _⊢_∷_ where
   ⊢var  : ∀ {Γ x A}     → Γ ∋ x ∷ A → Γ ⊢ var x ∷ A
@@ -602,6 +606,7 @@ data _⊢_∷_ where
   -- `unit` is typeable, ι reduces it to `sel k ms`, and that bottoms out
   -- in `fst unit`.  Subject reduction would be FALSE, not unprovable.
   ⊢con  : ∀ {Γ D k p} →
+          DescWf D →
           k ∈D D →
           Γ ⊢ p ∷ payTy D (lookupD D k) →
           Γ ⊢ con k p ∷ Mu D
@@ -610,6 +615,7 @@ data _⊢_∷_ where
   -- payload WHOLE and the IH tuple beside it, which is what lets this
   -- type without η (gate 5b vs 5c).
   ⊢elim : ∀ {Γ D M ms t} →
+          DescWf D →
           (Γ ▹ Mu D) ⊢ty M →
           Γ ⊢ ms ∷ methsTy D M D →
           Γ ⊢ t ∷ Mu D →
@@ -629,9 +635,37 @@ data _⊢ty_ where
   -- a type nothing inhabits — permissive, not unsound.  Description
   -- WELL-FORMEDNESS becomes REQUIRED for the model, where `⊩₀ (Mu D)`
   -- needs `⊩₀ A` at every `dκ`.  See PLAN-INDUCTIVE §4.
-  ty-Mu   : ∀ {Γ D}   → Γ ⊢ty Mu D
+  -- ★ now CONDITIONAL.  The model needs a `⊩₀` witness at every `dκ`
+  -- slot, and there is nowhere else to get one: `ty-Mu` is the only rule
+  -- that introduces `Mu D`, so it is the only place the interpretation
+  -- can enter.  (It was unconditional while `Mu` had no model.)
+  ty-Mu   : ∀ {Γ D}   → DescWf D → Γ ⊢ty Mu D
   -- W2: `Hom` FORMATION — both endpoints at the same (well-formed) type.
   ty-Hom  : ∀ {Γ A t u} → Γ ⊢ty A → Γ ⊢ t ∷ A → Γ ⊢ u ∷ A → Γ ⊢ty Hom A t u
+
+-- ★★ the descriptions the model can interpret.
+--
+-- ⚠ THE κ FIELD MUST BE SMALL — `El c` for a CLOSED code.  This is not an
+--   ad-hoc restriction to make the proof go through: an inductive type
+--   belongs to the universe exactly when its fields do, which is the rule
+--   Agda and Coq use.  Concretely it is what lets `fund-ty` build the
+--   `⊩₀ (εwkTy (El c))` witness that `ki-κ` demands, via `sem-El`.
+--
+-- ⚠ CONSEQUENCE, recorded so it is not discovered later: `dκ (Mu D')` —
+--   a NESTED datatype — is NOT well-formed yet, because `Mu D'` is not
+--   `El c` for any code.  There is no `⌜Mu⌝`.  Adding one (with
+--   `El-⌜Mu⌝ : El (⌜Mu⌝ D) ⟶ᵀ Mu D`, on the `⌜Nat⌝`-at-stage-C template)
+--   unlocks nesting and invalidates none of this — `dwf-κ` just gains
+--   `⌜Mu⌝` as an admissible code.  Gate 6c's `WrapD` tested exactly that
+--   case, so it is a real capability deferred, not a hypothetical.
+data DConWf where
+  dwf-ι : DConWf dι
+  dwf-ρ : {C : DCon} → DConWf C → DConWf (dρ C)
+  dwf-κ : {C : DCon} (c : RTm ε) → ◇ ⊢ c ∷ U → DConWf C → DConWf (dκ (El c) C)
+
+data DescWf where
+  dwf-nil  : DescWf dnil
+  dwf-cons : {C : DCon} {E : Desc} → DConWf C → DescWf E → DescWf (C ◃ E)
 
 -- CONTEXT well-formedness. Needed because `⊢var`'s type comes from a lookup:
 -- syntactic validity at `⊢var` is exactly "a lookup in a well-formed context
