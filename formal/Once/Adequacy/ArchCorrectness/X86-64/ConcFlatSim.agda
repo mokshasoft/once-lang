@@ -499,18 +499,7 @@ event-of-pure si fs eqe rewrite eqe = refl
 -- of the trace; and it was needed only to paper over a MODEL DEFECT, since the
 -- hardware's `mov [rdi],rax` stores the address and continues. `writeLoc` now
 -- writes (SMCore), so both residuals are DELETED rather than discharged.
-store-guard : ∀ fs (hl : HeapLocation)
-            → writeLoc (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)
-              ≡ writeLocToHeap (floc fs) hl (readReg (regs (floc fs)) Output)
-store-guard fs hl = go (readReg (regs (floc fs)) Output) refl
-  where go : ∀ (v : StoredValue FS) → readReg (regs (floc fs)) Output ≡ v
-           → writeLoc (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)
-             ≡ writeLocToHeap (floc fs) hl (readReg (regs (floc fs)) Output)
-        go (SV-Tag t)             o-eq rewrite o-eq = refl
-        go (SV-Lit p v)           o-eq rewrite o-eq = refl
-        go (SV-Code c)            o-eq rewrite o-eq = refl
-        go (SV-Ptr (AtDynamic w)) o-eq rewrite o-eq = refl
-        go (SV-Ptr (AtStack f k)) o-eq rewrite o-eq = refl
+-- (`store-guard` moved to FlatCore.CompiledCorrespondence — arch-free.)
 
 -- `slot-empty-stop` DELETED (Plan 0.54 rung D). It read "the abstract slot is
 -- empty ⇒ the concrete cell is unmapped ⇒ both machines stop", and that middle

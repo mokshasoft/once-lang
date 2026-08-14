@@ -69,7 +69,10 @@ module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
 
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fpc; fret; falloc)
-open import Once.CCC.Machine.SMCore using (AbstractInstr)
+open import Once.CCC.Machine.SMCore
+open MemOps {FS} using (writeLoc; writeLocToHeap)
+open FlatMachine {FS} using (floc)
+open import Once.Memory.HeapAddress using (HeapLocation)
 open import Data.Nat using (zero; suc; _+_; _*_; _≤_)
 open import Data.Nat.Properties using (<-irrefl; <-transˡ; ≤-trans; m≤m+n)
 open import Data.List using (List; []; _∷_; drop)
@@ -145,3 +148,20 @@ slot-heap-disj : ∀ {hv : CFC.HeapView} (fs : FlatState) (s : State) → CFC.Fl
 slot-heap-disj {hv} fs s corr k =
   above-frontier-disj {hv} (rreg s sp-reg + k * slot-size)
     (≤-trans (CFC.sep corr) (m≤m+n (rreg s sp-reg) (k * slot-size)))
+
+-- A HEAP STORE THROUGH A DYNAMIC POINTER IS A HEAP STORE, for every value shape
+-- the Output register can hold — the stack pointer included. Proven
+-- unconditionally 2026-07-31 (it used to hold for four shapes of five, because
+-- `writeLoc` dropped a stack pointer); arch-free, so it belongs here.
+store-guard : ∀ (fs : FlatState) (hl : HeapLocation)
+            → writeLoc (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)
+              ≡ writeLocToHeap (floc fs) hl (readReg (regs (floc fs)) Output)
+store-guard fs hl = go (readReg (regs (floc fs)) Output) refl
+  where go : ∀ (v : StoredValue FS) → readReg (regs (floc fs)) Output ≡ v
+           → writeLoc (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)
+             ≡ writeLocToHeap (floc fs) hl (readReg (regs (floc fs)) Output)
+        go (SV-Tag t)             o-eq rewrite o-eq = refl
+        go (SV-Lit p v)           o-eq rewrite o-eq = refl
+        go (SV-Code c)            o-eq rewrite o-eq = refl
+        go (SV-Ptr (AtDynamic w)) o-eq rewrite o-eq = refl
+        go (SV-Ptr (AtStack f k)) o-eq rewrite o-eq = refl
