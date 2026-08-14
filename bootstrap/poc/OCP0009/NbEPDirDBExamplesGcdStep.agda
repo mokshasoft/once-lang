@@ -48,7 +48,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π
         ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝
-        ; subTm; renTm; subTm-renTm; subTm-id )
+        ; subTm; renTm; subTm-renTm; subTm-id; subTm-subTm; subTm-cong; extS )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; single
@@ -337,6 +337,32 @@ gcd-b0-var a ih =
 --   branch threads the bound predecessor through several binders, so the
 --   endpoint is not `nsuc b` up to `wkS` — it needs the branch body's own
 --   substitution lemma.  Recorded rather than half-proved.
+
+-- ⚠ THE TRANSPORT IS ONE BINDER DEEPER HERE, and that is the whole reason
+--   equation 2 is harder than equation 1.  `natrec-suc` binds TWO variables
+--   (the predecessor and the IH) before the branch runs, so `b` arrives
+--   weakened TWICE and substituted twice.  The composite maps
+--   `vs (vs x) ↦ var x` — pointwise the identity on `b`'s variables — but
+--   only propositionally, so it needs its own lemma.
+wkS2 : {Γ : Cx} {u v : RTm Γ} (t : RTm Γ) →
+       subTm (single u) (subTm (extS (single v)) (renTm vs (renTm vs t))) ≡ t
+wkS2 {u = u} t =
+  trans (cong (subTm (single u))
+              (trans (subTm-renTm (renTm vs t)) (subTm-renTm t)))
+    (trans (subTm-subTm t)
+      (trans (subTm-cong (λ x → refl) t) (subTm-id t)))
+
+-- ★ `gcd (0 , suc b) = suc b` — for an ARBITRARY `b`.
+gcd-a0-var : {Γ : Cx} (b ih : RTm Γ) →
+             app (app gcdStp (pair nzero (nsuc b))) ih ⟶* nsuc b
+gcd-a0-var b ih =
+  subst (λ z → app (app gcdStp (pair nzero (nsuc b))) ih ⟶* nsuc z) (wkS2 b)
+    (step (ξ-appˡ (β _ (pair nzero (nsuc b))))
+      (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βsnd nzero (nsuc b)) done)))
+        (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ b) done))
+          (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst _ _) done)))
+            (⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done))
+              (step (β _ ih) done))))))
 
 -- ⛔ EQUATIONS 3 AND 4 (the two recursive cases) are NOT reduction-provable
 --   at variables, and this is not a gap in the proofs — it is the same
