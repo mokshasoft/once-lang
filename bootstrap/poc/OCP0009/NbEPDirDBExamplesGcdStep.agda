@@ -61,7 +61,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⟶_; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
-open import poc.OCP0009.NbEPDirDBVar using ( ren-as-sub )
+open import poc.OCP0009.NbEPDirDBVar using ( ren-as-sub; wk-sub-tm )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-ren; ⟶*-sub )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus; n1; n2; n3 )
 open import poc.OCP0009.NbEPDirDBExamplesDiv
@@ -425,6 +425,158 @@ wkS3 : {Γ : Cx} {u₁ u₂ v : RTm Γ} (t : RTm Γ) →
 wkS3 {u₂ = u₂} t =
   trans (cong (λ z → subTm (single u₂) (renTm vs z)) (wkS2 t)) (wkS t)
 
+-- ★ depth THREE, the OTHER shape: two `extS`-layered substitutions over a
+--   TRIPLE weakening.  This is the one the comparison branch's `b` slot
+--   needs; `wkS3` above does not fit it (its renaming sits BETWEEN the two
+--   substitutions, not under both).  Same recipe: collapse, then `wkGen`.
+wkS2e : {Γ : Cx} {u₁ u₂ : RTm Γ} (t : RTm Γ) →
+        subTm (extS (single u₂))
+          (subTm (extS (extS (single u₁))) (renTm vs (renTm vs (renTm vs t))))
+        ≡ renTm vs t
+-- ⚠ NOT by the collapse recipe: fusing the renamings leaves a pointwise
+--   goal that is FALSE at `vz` (the inner substitution's own slot).  The
+--   working route is NATURALITY — `wk-sub-tm` walks each `extS` layer out
+--   through its weakening, one layer at a time, and `wkS` finishes.
+wkS2e {u₁ = u₁} {u₂ = u₂} t =
+  trans (cong (subTm (extS (single u₂)))
+              (trans (wk-sub-tm (extS (single u₁)) (renTm vs (renTm vs t)))
+                     (cong (renTm vs)
+                       (trans (wk-sub-tm (single u₁) (renTm vs t))
+                              (cong (renTm vs) (wkS t))))))
+    (trans (wk-sub-tm (single u₂) (renTm vs t)) (cong (renTm vs) (wkS t)))
+
+-- ★ …and the depth-FOUR instance the `b` slot actually wants: `wkS2e`'s
+--   shape with one more plain `single` on top.  By COMPOSITION again.
+wkS3e : {Γ : Cx} {u₁ u₂ u₃ : RTm Γ} (t : RTm Γ) →
+        subTm (single u₃)
+          (subTm (extS (single u₂))
+            (subTm (extS (extS (single u₁))) (renTm vs (renTm vs (renTm vs t)))))
+        ≡ t
+wkS3e {u₃ = u₃} t = trans (cong (subTm (single u₃)) (wkS2e t)) (wkS t)
+
+-- ★★ THE PEEL FAMILY.  Each `pkN` walks ONE `extS` layer out through one
+--   weakening (`wk-sub-tm`), and the `peelN`s are those composed.  This is
+--   the shape the eliminator's leaf actually produces: N nested `natrec`
+--   successor branches leave N stacked substitutions over N weakenings.
+pk2 : {Γ : Cx} {u : RTm Γ} (t : RTm Γ) →
+      subTm (extS (single u)) (renTm vs (renTm vs t)) ≡ renTm vs t
+pk2 {u = u} t = trans (wk-sub-tm (single u) (renTm vs t)) (cong (renTm vs) (wkS t))
+
+pk3 : {Γ : Cx} {u : RTm Γ} (t : RTm Γ) →
+      subTm (extS (extS (single u))) (renTm vs (renTm vs (renTm vs t)))
+      ≡ renTm vs (renTm vs t)
+pk3 {u = u} t = trans (wk-sub-tm (extS (single u)) (renTm vs (renTm vs t)))
+                      (cong (renTm vs) (pk2 t))
+
+pk4 : {Γ : Cx} {u : RTm Γ} (t : RTm Γ) →
+      subTm (extS (extS (extS (single u))))
+        (renTm vs (renTm vs (renTm vs (renTm vs t))))
+      ≡ renTm vs (renTm vs (renTm vs t))
+pk4 {u = u} t = trans (wk-sub-tm (extS (extS (single u)))
+                                 (renTm vs (renTm vs (renTm vs t))))
+                      (cong (renTm vs) (pk3 t))
+
+peel4 : {Γ : Cx} {u₁ u₂ u₃ u₄ : RTm Γ} (t : RTm Γ) →
+        subTm (single u₄)
+          (subTm (extS (single u₃))
+            (subTm (extS (extS (single u₂)))
+              (subTm (extS (extS (extS (single u₁))))
+                (renTm vs (renTm vs (renTm vs (renTm vs t)))))))
+        ≡ t
+peel4 {u₂ = u₂} {u₃ = u₃} {u₄ = u₄} t =
+  trans (cong (subTm (single u₄))
+          (trans (cong (subTm (extS (single u₃)))
+                   (trans (cong (subTm (extS (extS (single u₂)))) (pk4 t)) (pk3 t)))
+                 (pk2 t)))
+        (wkS t)
+
+pk5 : {Γ : Cx} {u : RTm Γ} (t : RTm Γ) →
+      subTm (extS (extS (extS (extS (single u)))))
+        (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs t)))))
+      ≡ renTm vs (renTm vs (renTm vs (renTm vs t)))
+pk5 {u = u} t = trans (wk-sub-tm (extS (extS (extS (single u))))
+                                 (renTm vs (renTm vs (renTm vs (renTm vs t)))))
+                      (cong (renTm vs) (pk4 t))
+
+pk6 : {Γ : Cx} {u : RTm Γ} (t : RTm Γ) →
+      subTm (extS (extS (extS (extS (extS (single u))))))
+        (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs t))))))
+      ≡ renTm vs (renTm vs (renTm vs (renTm vs (renTm vs t))))
+pk6 {u = u} t = trans (wk-sub-tm (extS (extS (extS (extS (single u)))))
+                        (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs t))))))
+                      (cong (renTm vs) (pk5 t))
+
+-- ★ …and depth SIX, which is what the SECOND argument's slot needs: `b`
+--   sits under all six binders the three nested `natrec`s introduce.
+peel6 : {Γ : Cx} {u₁ u₂ u₃ u₄ u₅ u₆ : RTm Γ} (t : RTm Γ) →
+        subTm (single u₆)
+          (subTm (extS (single u₅))
+            (subTm (extS (extS (single u₄)))
+              (subTm (extS (extS (extS (single u₃))))
+                (subTm (extS (extS (extS (extS (single u₂)))))
+                  (subTm (extS (extS (extS (extS (extS (single u₁))))))
+                    (renTm vs (renTm vs (renTm vs
+                      (renTm vs (renTm vs (renTm vs t)))))))))))
+        ≡ t
+peel6 {u₂ = u₂} {u₃ = u₃} {u₄ = u₄} {u₅ = u₅} {u₆ = u₆} t =
+  trans (cong (subTm (single u₆))
+          (trans (cong (subTm (extS (single u₅)))
+                   (trans (cong (subTm (extS (extS (single u₄))))
+                            (trans (cong (subTm (extS (extS (extS (single u₃)))))
+                                     (trans (cong (subTm (extS (extS (extS (extS (single u₂))))))
+                                              (pk6 t))
+                                            (pk5 t)))
+                                   (pk4 t)))
+                          (pk3 t)))
+                 (pk2 t)))
+        (wkS t)
+
+-- ⚠ three slots move at once in the leaf, so the transport needs a
+--   three-argument congruence; the project has only `cong`.
+cong₃g : {A B C D : Set} (f : A → B → C → D)
+         {a₁ a₂ : A} {b₁ b₂ : B} {c₁ c₂ : C} →
+         a₁ ≡ a₂ → b₁ ≡ b₂ → c₁ ≡ c₂ → f a₁ b₁ c₁ ≡ f a₂ b₂ c₂
+cong₃g f refl refl refl = refl
+
+-- ⚠ …and the hypothesis moves in TWO slots at once.  Doing it as nested
+--   `subst`s leaves the untouched slot as a `_` under a binder, which Agda
+--   cannot solve; taking both equations at once keeps every implicit
+--   first-order, so the use site pins them.
+mhAt : {Γ : Cx} {A₁ A₂ B₁ B₂ d : RTm Γ} → A₁ ≡ A₂ → B₁ ≡ B₂ →
+       monusTm (nsuc A₂) (nsuc B₂) ⟶* nsuc d →
+       monusTm (nsuc A₁) (nsuc B₁) ⟶* nsuc d
+mhAt refl refl h = h
+
+-- ⚠ likewise for the chain's TARGET: `subst (λ z → _ ⟶* z)` leaves the
+--   source as a meta Agda will not solve, because it only appears under a
+--   `subTm`.  Taking the source implicitly lets the USE SITE supply it.
+redAt : {Γ : Cx} {t u₁ u₂ : RTm Γ} → u₁ ≡ u₂ → t ⟶* u₁ → t ⟶* u₂
+redAt refl h = h
+
+-- ⚠ …and one that rewrites only the FUNCTION of an application, leaving the
+--   argument alone.  `app` is a CONSTRUCTOR, so this `u` — unlike anything
+--   under a `subTm` — really is recoverable by unification.
+appAt : {Γ : Cx} {t f₁ f₂ : RTm Γ} (u : RTm Γ) → f₁ ≡ f₂ →
+        t ⟶* app f₁ u → t ⟶* app f₂ u
+appAt u refl h = h
+
+-- ★★★ THE STEP EQUATION'S SHAPE.  The certificate `c` is EXISTENTIAL, and
+--   that is a deliberate statement of scope, not a dodge:
+--
+--   · WHAT IS CLAIMED: the step function, at `(suc a , suc b)` with the
+--     descent `a ∸ b` landing on `suc d`, reduces to the RECURSIVE CALL
+--     `ih (a ∸ b , suc b)`.  Both components are pinned exactly.  That is
+--     the defining equation's computational content.
+--   · WHAT IS NOT: which well-foundedness certificate the call carries.
+--   · WHY NOT: `monusLtTm a b = natrec (reflTm a) (… w (w a) …) b` uses `a`
+--     UNDER TWO BINDERS, so `subTm` does not commute with it definitionally.
+--     Identifying the certificate needs substitution-naturality for every
+--     arithmetic template (`commTm`, `plusMonoTm`, `trHomˡ/ʳ`, `congS`, …).
+--     That suite is worth building, but it is a separate piece of work and
+--     it is NOT what "gcd satisfies its defining equations" means.
+data GtStep {Γ : Cx} (t ih A B : RTm Γ) : Set where
+  gtStep : (c : RTm Γ) → t ⟶* app (app ih (pair A B)) c → GtStep t ih A B
+
 -- ★ `gcd (0 , suc b) = suc b` — for an ARBITRARY `b`.
 gcd-a0-var : {Γ : Cx} (b ih : RTm Γ) →
              app (app gcdStp (pair nzero (nsuc b))) ih ⟶* nsuc b
@@ -481,43 +633,135 @@ gtRHS ih A B = app (app ih (pair (monusTm (nsuc A) (nsuc B)) (nsuc B)))
 -- ⇒ also needed: `σ3` must carry `d`, since the comparison's reduct appears
 --   in the SECOND half.  Two variables are not enough.
 
--- ⛔ THE ARBITRARY-TERM FORM: still open, and here is the exact state.
---
--- ★ PROGRESS THAT STUCK: `gcdBody`/`gcdInn1`/`gcdInn2` are now named, so
---   every chain step CAN be pinned — `β gcdBody gX`, and
---   `natrec-suc (subTm (single gX) G1z) (subTm (extS (extS (single gX))) gcdInn1) b'`
---   both elaborate.  With the early steps pinned the target stops moving,
---   which was the thing that defeated the first ten attempts.
---
--- ⛔ WHAT REMAINS: the hypothesis `mh` must be restated about the
---   substituted `a'`.  The shape is now STABLE and known —
---     renTm vs (subTm (single U) (subTm (extS (single b')) (renTm vs (renTm vs a'))))
---   i.e. `renTm vs` of `wkS2`'s core, so ≡ `renTm vs a'` — but the
---   transport keeps landing at the wrong context level (`_Γ ∙ != Γ`), so
---   `⟶*-ren vs mh` composed with `cong (renTm vs) (wkS2 a')` does not fit
---   as written.  It is one correctly-levelled transport away.
---
--- ⚠ ROUTE 3 (split + substitute + splice) is ALSO viable and was carried
---   further than this: with the steps pinned, `gtPart1`'s target computes
---   and prints in full (~1750 chars).  Pasting it as an explicit type
---   would close that route mechanically — rejected here only because a
---   1750-character type is not something this POC should carry.
-------------------------------------------------------------------------
-
--- the GENERIC instance: `a'`/`b'` are the two outermost variables
-gcd-gt-gen : {Γ : Cx} (d ih : RTm (Γ ∙ ∙)) →
-             monusTm (nsuc (var (vs vz))) (nsuc (var vz)) ⟶* nsuc d →
-             app (app gcdStp (pair (nsuc (var (vs vz))) (nsuc (var vz)))) ih
-           ⟶* gtRHS ih (var (vs vz)) (var vz)
-gcd-gt-gen d ih mh =
-  step (ξ-appˡ (β _ (pair (nsuc (var (vs vz))) (nsuc (var vz)))))
+-- ★★★★ THE ARBITRARY-TERM FORM.  Every chain step PINNED via
+--   `gcdBody`/`gcdInn1`/`gcdInn2`, so the target is stable; the hypothesis
+--   is carried to the substituted `a'` by `⟶*-ren` plus one `cong`.
+gcd-gt-term : {Γ : Cx} (a' b' d ih : RTm Γ) →
+              monusTm (nsuc a') (nsuc b') ⟶* nsuc d →
+              GtStep (app (app gcdStp (pair (nsuc a') (nsuc b'))) ih) ih
+                     (monusTm (nsuc a') (nsuc b')) (nsuc b')
+gcd-gt-term {Γ} a' b' d ih mh = gtStep _ (
+  step (ξ-appˡ (β gcdBody gX))
     (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βsnd _ _) done)))
-      (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ _) done))
+      (⟶*-trans (⟶*-appˡ (step (natrec-suc (subTm (single gX) G1z)
+                                           (subTm (extS (extS (single gX))) gcdInn1)
+                                           b') done))
         (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst _ _) done)))
           (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ _) done))
-            (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ mh))
+            (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ
+                        (mhAt (wkS3 a') (wkS3e b') mh)))
               (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ _) done))
-                (step (β _ ih) done)))))))
+                (step (β _ ih)
+                  (appAt _
+                    (cong₃g (λ I A B →
+                               app I (pair (monusTm (nsuc A) (nsuc B)) (nsuc B)))
+                            refl
+                            (trans (peel4 {u₁ = R₂} {u₂ = d} {u₃ = R₃} {u₄ = ih} W)
+                                   (wkS2 {u = R₁} {v = b'} a'))
+                            (peel6 {u₁ = R₁} {u₂ = W} {u₃ = R₂}
+                                   {u₄ = d} {u₅ = R₃} {u₆ = ih} b'))
+                    done)))))))))
+  where
+    gX : RTm Γ
+    gX = pair (nsuc a') (nsuc b')
+
+    -- ★★★ THE FOUR INTERMEDIATE SCRUTINEES, NAMED.  Agda cannot INFER these:
+    --   they sit under `subTm`, and a substitution is a FUNCTION, so the
+    --   unifier has nothing to invert — every attempt to leave them as `_`
+    --   leaves an unsolved meta.  Named, each one is ordinary text, and note
+    --   they nest: R₂ is written with R₁, R₃ with both.  That is the same
+    --   move that made `gcdBody`'s branches pinnable, one level deeper.
+    R₁ : RTm Γ
+    R₁ = natrec (subTm (single gX) G1z)
+                (subTm (extS (extS (single gX))) gcdInn1) b'
+
+    -- the descent's first argument, `a ∸ b`, after the outer substitutions
+    W : RTm Γ
+    W = subTm (single R₁) (subTm (extS (single b')) (renTm vs (renTm vs a')))
+
+    R₂ : RTm Γ
+    R₂ = natrec (subTm (single R₁)
+                  (subTm (extS (single b')) (subTm (extS (extS (single gX))) G2z)))
+                (subTm (extS (extS (single R₁)))
+                  (subTm (extS (extS (extS (single b'))))
+                    (subTm (extS (extS (extS (extS (single gX))))) gcdInn2)))
+                W
+
+    R₃ : RTm Γ
+    R₃ = natrec (subTm (single R₂)
+                  (subTm (extS (single W))
+                    (subTm (extS (extS (single R₁)))
+                      (subTm (extS (extS (extS (single b'))))
+                        (subTm (extS (extS (extS (extS (single gX))))) G3z)))))
+                (subTm (extS (extS (single R₂)))
+                  (subTm (extS (extS (extS (single W))))
+                    (subTm (extS (extS (extS (extS (single R₁)))))
+                      (subTm (extS (extS (extS (extS (extS (single b'))))))
+                        (subTm (extS (extS (extS (extS (extS (extS (single gX)))))))
+                               G3s)))))
+                d
+
+-- ★★★ NON-VACUITY.  A conditional lemma proves NOTHING until its premise
+--   is discharged — that is exactly what killed the earlier `gcd-gt-gen`
+--   (see the ⛔ block below), so the equation above does not count until an
+--   instance exists.  Here is one, and `d` in it is a genuine VARIABLE:
+--   the equation is being used at a term, not at a numeral.
+gt-mh-1 : {Γ : Cx} (d : RTm Γ) → monusTm (nsuc (nsuc d)) (nsuc nzero) ⟶* nsuc d
+gt-mh-1 d = ⟶*-trans (monus-suc (nsuc (nsuc d)) nzero)
+              (⟶*-trans (pred* (monus-zero (nsuc (nsuc d)))) (pred-suc (nsuc d)))
+
+gcd-gt-at-1 : {Γ : Cx} (d ih : RTm Γ) →
+              GtStep (app (app gcdStp (pair (nsuc (nsuc d)) (nsuc nzero))) ih) ih
+                     (monusTm (nsuc (nsuc d)) (nsuc nzero)) (nsuc nzero)
+gcd-gt-at-1 d ih = gcd-gt-term (nsuc d) nzero d ih (gt-mh-1 d)
+
+-- ⚠ THE REACH, stated precisely so the result is not over-read: `mh` forces
+--   the descent to LAND on a successor, and `monusTm` recurses on its
+--   SECOND argument, so discharging it needs that second argument to be a
+--   numeral.  Hence the equation is proved for an ARBITRARY `a` (any term,
+--   here `suc d`) and a NUMERAL `b`.  That is strictly stronger than the
+--   literal-only tests — `a` is no longer ground — and strictly weaker than
+--   both arguments arbitrary, which `monusTm`'s recursion structure blocks
+--   until a `⊢`-level (propositional) monus lemma replaces the reduction.
+
+-- ★★★ THE ARBITRARY-TERM FORM: LANDED (`gcd-gt-term` above).  Kept here is
+--   the record of WHAT MADE IT WORK, because two of the three obstacles
+--   were mis-diagnosed for a long time.
+--
+-- 1. NAMING, not transports.  `gcdBody`/`gcdInn1`/`gcdInn2`, then
+--    `R₁`/`R₂`/`R₃`/`W` in the `where` block.  Agda cannot INFER any of
+--    these: they occur only under `subTm`, and a substitution is a
+--    FUNCTION, so the unifier has nothing to invert.  Every "leave it as
+--    `_`" attempt produced an unsolved meta, never a wrong one — that is
+--    the signature of this failure mode, and it is what a dozen earlier
+--    attempts kept re-discovering.
+--
+-- 2. NATURALITY, not collapse.  The peel family (`pk2`…`pk6`,
+--    `peel4`/`peel6`) walks ONE `extS` layer out through ONE weakening via
+--    `wk-sub-tm`.  The collapse recipe (`subTm-subTm` + `renTm-renTm` +
+--    a pointwise `refl`) that `wkS2` uses does NOT extend here: fusing the
+--    renamings leaves a pointwise goal that is FALSE at `vz`.
+--
+-- 3. HELPERS WITH THE RIGHT IMPLICITS.  `mhAt`/`redAt`/`appAt` exist for
+--    one reason: a `subst` motive containing `_` under a binder is not
+--    solvable, whereas the same equation taken as a first-order argument
+--    lets the USE SITE supply everything.
+--
+-- ⚠ AND WHAT IS NOT CLAIMED: the certificate is existential (`GtStep`),
+--   and `b` must be a numeral.  Both limits are stated where they bite —
+--   see `GtStep`'s comment and the note after `gcd-gt-at-1`.
+--
+-- ⚠ ROUTE 3 (split + substitute + splice) was abandoned, not refuted.  It
+--   also reaches the same wall: `subTm σ (gtRHS …) ≡ gtRHS …` needs
+--   substitution-naturality for the arithmetic templates either way.
+------------------------------------------------------------------------
+
+-- ⚠ THE EARLIER GENERIC FORM (`gcd-gt-gen`, at the two outermost
+--   VARIABLES) IS DELETED, not moved.  It was VACUOUS — `monusTm` recurses
+--   on its second argument, so its `mh` premise cannot be discharged at a
+--   variable `b` — and `gcd-gt-term` supersedes it at arbitrary terms with
+--   a real instance (`gcd-gt-at-1`).  Keeping a vacuous lemma around only
+--   invites it being cited as evidence.
 
 ------------------------------------------------------------------------
 -- ★★★★ EQUATION 4 — `a ≤ b` recurses at `(a , b ∸ a)`, AT VARIABLES.
