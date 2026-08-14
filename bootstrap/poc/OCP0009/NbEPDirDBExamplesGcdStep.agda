@@ -446,8 +446,29 @@ gcd-a0-var b ih =
 --        than four, at one layer beyond `wkS3`.
 --
 -- ⇒ only step 3 remains.  `wkS3` is kept for it, and note how it is built:
---   BY COMPOSITION (`wkS2` inward, then `wkS` outward), which is how the
---   next layer should be built too — not from scratch.
+--   BY COMPOSITION (`wkS2` inward, then `wkS` outward).
+--
+-- ⚠⚠ STEP 3 IS **NOT** "ONE MORE LAYER OF THE SAME", and this was measured:
+--   `wkS`, `wkS2` and `wkS3` were each tried at the RHS position and ALL
+--   THREE FAIL.  Reading the expected type shows why — every one of those
+--   is `single`-headed at the outside (`subTm (single u) …`), whereas the
+--   RHS position's outermost wrapper is `extS`-HEADED:
+--
+--       subTm (extS (single u)) (…)
+--
+--   So stacking further `single` layers cannot reach it, however many are
+--   composed.  What is missing is the `extS`-headed companion, something of
+--   the shape
+--
+--       wkE : subTm (extS (single v)) (renTm vs (renTm vs t)) ≡ renTm vs t
+--
+--   after which the RHS transport should be `wkE` composed with the `wkS`
+--   family, not more of the family alone.  ⚠ `wkE` is CONJECTURED from the
+--   error's shape, NOT proved — do not assume it typechecks as written.
+--
+-- ★ AND ONE COMPOUND TRANSPORT, not four: `a'` and `b'` occur in four
+--   positions in the RHS, but all four come from `G3s`'s body at one
+--   context, so a single `subst` per variable covers them.
 
 -- ⛔ EQUATIONS 3 AND 4 (the two recursive cases) are NOT reduction-provable
 --   at variables, and this is not a gap in the proofs — it is the same
