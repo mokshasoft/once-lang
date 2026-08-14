@@ -316,11 +316,11 @@ gcd-computes-a0 ih =
 --   lands on `subTm (single ih) (renTm vs a)` — propositionally `a`, but
 --   not definitionally.  That single `≡` is the whole difference between
 --   the literal test and the general theorem.
-wkS : {v : RTm ε} (t : RTm ε) → subTm (single v) (renTm vs t) ≡ t
+wkS : {Γ : Cx} {v : RTm Γ} (t : RTm Γ) → subTm (single v) (renTm vs t) ≡ t
 wkS t = trans (subTm-renTm t) (subTm-id t)
 
 -- ★ `gcd (a , 0) = a` — for an ARBITRARY `a`, closed or open.
-gcd-b0-var : (a ih : RTm ε) → app (app gcdStp (pair a nzero)) ih ⟶* a
+gcd-b0-var : {Γ : Cx} (a ih : RTm Γ) → app (app gcdStp (pair a nzero)) ih ⟶* a
 gcd-b0-var a ih =
   subst (λ z → app (app gcdStp (pair a nzero)) ih ⟶* z) (wkS a)
     (step (ξ-appˡ (β _ (pair a nzero)))
