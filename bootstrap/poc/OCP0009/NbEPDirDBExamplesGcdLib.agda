@@ -37,7 +37,14 @@ open import poc.OCP0009.NbEPDirDBExamplesGcdStep
 -- ★★★ gcd, THROUGH THE COMBINATOR.
 ------------------------------------------------------------------------
 
-open AmTΠ ◇ PairT ⌜Nat⌝ msr gcdStp ⊢PairT ⊢⌜Nat⌝ ⊢msr ⊢gcdStp
+-- ★ every parameter is now context-polymorphic, so the combinator can be
+--   instantiated at ANY context — which is what a proof under a binder
+--   needs.  `GcdAt ◇` is the closed instance used throughout below.
+module GcdAt (Δ : Ctx) where
+  open AmTΠ Δ PairT ⌜Nat⌝ msr gcdStp ⊢PairT ⊢⌜Nat⌝ ⊢msr ⊢gcdStp public
+    using ( amrecTm; ⊢amrecΠ; ⊢amrecPt; amrec-step-z; amrec-step-s )
+
+open GcdAt ◇
   using ( amrecTm; ⊢amrecΠ; ⊢amrecPt; amrec-step-z; amrec-step-s )
 
 gcdTm : RTm ε
@@ -128,3 +135,39 @@ gcd-suc-0 n =
 --   above.  Closing that needs the INTERNAL propositional form —
 --   `Π Nat (Id Nat (app gcdTm (pair (var vz) nzero)) (var vz))` — proved by
 --   dependent `natrec` with these two as its branches.
+
+------------------------------------------------------------------------
+-- ★★★★ GAP A, FINISHED — THE **INTERNAL** THEOREM.
+--
+-- The two lemmas above are META-level: they are Agda functions producing
+-- reduction sequences, one per shape of `a`.  What was still missing is a
+-- SINGLE statement, and one that lives INSIDE the object language:
+--
+--     ⊢gcd-b0 : ◇ ⊢ gcdB0Tm ∷ Π Nat (IdN (gcd (var vz , 0)) (var vz))
+--
+-- ⚠ THE OBSTRUCTION THAT MADE THIS HARD was never the Id-kit; it was that
+--   a dependent `natrec`'s SUCCESSOR BRANCH lives under a binder, so it
+--   must talk about `gcd (suc x , 0)` for a VARIABLE `x`.  `gcd-suc-0`
+--   above is stated at `ε`, and a closed-context lemma cannot be used
+--   there.  Making the whole gcd construction context-polymorphic is what
+--   unblocked it — see the commit that generalised `gcdStp`.
+------------------------------------------------------------------------
+
+-- gcd at an arbitrary context, and the two computation lemmas there
+gcdAt : (Δ : Ctx) → RTm ⌊ Δ ⌋
+gcdAt Δ = GcdAt.amrecTm Δ
+
+msr-suc-0At : {Δ : Ctx} (n : RTm ⌊ Δ ⌋) →
+              subTm (single (pair (nsuc n) nzero)) msr ⟶* nsuc (plusTm n nzero)
+msr-suc-0At n =
+  ⟶*-trans (⟶*-natrecⁿ (step (βfst (nsuc n) nzero) done))
+    (⟶*-trans (step (ξ-natrecᶻ (βsnd (nsuc n) nzero)) done)
+      (step (natrec-suc _ _ n) done))
+
+-- ★ `gcd (suc n , 0) ⟶* suc n` AT ANY CONTEXT — the successor branch's
+--   computational content.
+gcd-suc-0At : {Δ : Ctx} (n : RTm ⌊ Δ ⌋) →
+              app (gcdAt Δ) (pair (nsuc n) nzero) ⟶* nsuc n
+gcd-suc-0At {Δ} n =
+  GcdAt.amrec-step-s Δ (pair (nsuc n) nzero) (plusTm n nzero)
+                     (msr-suc-0At n) (gcd-b0-var (nsuc n))
