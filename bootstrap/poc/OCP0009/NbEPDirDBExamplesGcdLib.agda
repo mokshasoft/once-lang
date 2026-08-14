@@ -22,7 +22,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; natrec-zero; natrec-suc; βfst; βsnd
         ; ⊢var; here; there; ⊢conv; ⊢natrec; ⊢lam; ⊢app; csymᵀ )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Idˡ )
-open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
+open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-appʳ; ⟶*-pairʳ )
+open import poc.OCP0009.NbEPDirDBExamplesStrong using ( reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; n1; n2; n3 )
 open import poc.OCP0009.NbEPDirDBExamplesDiv
   using ( monusTm; monus-zero; monus-suc; pred-zero; pred-suc; monus-computes )
@@ -34,7 +35,7 @@ open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLTm )
 open import poc.OCP0009.NbEPDirDBLibArithMonus using ( monusLtTm; pred* )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( msr; ⊢msr; gcdStp; ⊢gcdStp; gcd-computes-b0; X20; msr-2-0
-        ; gcd-b0-var )
+        ; gcd-b0-var; gcd-le-term; le-mh-1; recCert; recRed; _⟫_ )
 
 ------------------------------------------------------------------------
 -- ★★★ gcd, THROUGH THE COMBINATOR.
@@ -45,10 +46,12 @@ open import poc.OCP0009.NbEPDirDBExamplesGcdStep
 --   needs.  `GcdAt ◇` is the closed instance used throughout below.
 module GcdAt (Δ : Ctx) where
   open AmTΠ Δ PairT ⌜Nat⌝ msr gcdStp ⊢PairT ⊢⌜Nat⌝ ⊢msr ⊢gcdStp public
-    using ( amrecTm; ⊢amrecΠ; ⊢amrecPt; amrec-step-z; amrec-step-s )
+    using ( amrecTm; ⊢amrecΠ; ⊢amrecPt; amrec-step-z; amrec-step-s
+          ; amrec-β; auxIH; aux-cycle; aux-step-s; descS-at; ihS-atP )
 
 open GcdAt ◇
-  using ( amrecTm; ⊢amrecΠ; ⊢amrecPt; amrec-step-z; amrec-step-s )
+  using ( amrecTm; ⊢amrecΠ; ⊢amrecPt; amrec-step-z; amrec-step-s
+        ; amrec-β; auxIH; aux-cycle; aux-step-s; descS-at; ihS-atP )
 
 gcdTm : RTm ε
 gcdTm = amrecTm
@@ -218,3 +221,58 @@ gcdB0Tm a = natrec (reflN nzero) (reflN (nsuc (var (vs vz)))) a
 ⊢gcd-b0-Π : ◇ ⊢ lam (gcdB0Tm {◇ ▹ Nat} (var vz))
                 ∷ Π Nat (gcdB0B {◇ ▹ Nat} (var vz))
 ⊢gcd-b0-Π = ⊢lam ty-Nat (⊢gcdB0 {◇ ▹ Nat} (⊢var here))
+
+------------------------------------------------------------------------
+-- ★★★★★ A RECURSING RUN — `gcd (1,1) = 1`, THROUGH A REAL RECURSIVE CALL.
+--
+-- ⚠⚠ WHY THIS IS THE FIRST ONE.  Every earlier end-to-end result here
+--   (`gcd-0-0`, `gcd-2-0`, `gcd-suc-0`) bottoms out in the step function
+--   IMMEDIATELY — the measure hits its base case and the recursion never
+--   re-enters.  They therefore test the combinator's plumbing but not its
+--   recursion.  This one takes the `a ≤ b` branch, so the step calls its
+--   `ih`, and that call has to land back on the auxiliary and unfold
+--   AGAIN.  Expressing that is exactly what `aux-cycle` was built for.
+--
+--   The trace, four lines and one turn of the loop:
+--     amrec-β    unfold the combinator at (1,1); bound is μ(1,1) = 2
+--     aux-cycle  step ⇒ recursive call at (1 , 1∸1), auxiliary now at bound 1
+--     ⟶*-pairʳ   compute the argument 1∸1 ⇒ 0   (in ARGUMENT position)
+--     aux-step-s at (1,0) the step returns directly — `gcd-b0-var`
+------------------------------------------------------------------------
+
+X11 : RTm ⌊ ◇ ⌋
+X11 = pair n1 n1
+
+-- μ (1,1) = 1 + 1 = 2, i.e. `suc 1` — so the cycle's bound premise holds.
+msr-1-1 : subTm (single X11) msr ⟶* nsuc n1
+msr-1-1 =
+    ⟶*-natrecⁿ (step (βfst n1 n1) done)
+  ⟫ step (ξ-natrecᶻ (βsnd n1 n1)) done
+  ⟫ step (natrec-suc _ _ nzero) done
+  ⟫ step (ξ-nsuc (natrec-zero _ _)) done
+
+gcd-1-1 : app amrecTm X11 ⟶* n1
+gcd-1-1 =
+    amrec-β X11
+  ⟫ aux-cycle X11 X11 μ11 n1 p₀ Y {q = q} msr-1-1
+      (λ ih → recRed (gcd-le-term nzero nzero ih le-mh-1))
+  ⟫ ⟶*-appˡ (⟶*-appʳ (⟶*-pairʳ le-mh-1))
+  ⟫ aux-step-s X11 (pair n1 nzero) n1 nzero c₁ done (gcd-b0-var n1)
+  where
+    μ11 : RTm ⌊ ◇ ⌋
+    μ11 = subTm (single X11) msr
+
+    p₀ : RTm ⌊ ◇ ⌋
+    p₀ = reflTm μ11
+
+    -- the recursive call's argument: (1 , 1∸1), not yet computed
+    Y : RTm ⌊ ◇ ⌋
+    Y = pair (nsuc nzero) (monusTm (nsuc nzero) (nsuc nzero))
+
+    -- ⚠ the certificate is a FAMILY in `ih` — it is BUILT from the `ih`
+    --   the auxiliary hands over, which is why `aux-cycle` takes it so.
+    q : RTm ⌊ ◇ ⌋ → RTm ⌊ ◇ ⌋
+    q ih = recCert (gcd-le-term nzero nzero ih le-mh-1)
+
+    c₁ : RTm ⌊ ◇ ⌋
+    c₁ = descS-at X11 X11 n1 p₀ Y (q (ihS-atP X11 X11 n1 p₀))

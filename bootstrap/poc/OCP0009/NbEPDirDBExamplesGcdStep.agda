@@ -592,6 +592,15 @@ appAt u refl h = h
 data RecCall {Γ : Cx} (t ih A B : RTm Γ) : Set where
   recCall : (c : RTm Γ) → t ⟶* app (app ih (pair A B)) c → RecCall t ih A B
 
+-- ★ …and its projections, so a caller can feed the certificate to a lemma
+--   that needs it as a FAMILY in `ih` (which `aux-cycle` does).
+recCert : {Γ : Cx} {t ih A B : RTm Γ} → RecCall t ih A B → RTm Γ
+recCert (recCall c _) = c
+
+recRed : {Γ : Cx} {t ih A B : RTm Γ} (r : RecCall t ih A B) →
+         t ⟶* app (app ih (pair A B)) (recCert r)
+recRed (recCall c p) = p
+
 -- ★ `gcd (0 , suc b) = suc b` — for an ARBITRARY `b`.
 gcd-a0-var : {Γ : Cx} (b ih : RTm Γ) →
              app (app gcdStp (pair nzero (nsuc b))) ih ⟶* nsuc b
