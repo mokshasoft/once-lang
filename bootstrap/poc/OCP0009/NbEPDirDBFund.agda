@@ -25,7 +25,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; renTy-subTy; renTm-subTm
         ; subTy-subTy; subTm-subTm
         ; subTy-id; subTm-id; renTm-renTm; renTm-cong
-        ; Desc; DCon; Mu; con; elim; lookupD; εsub; εwkTy; payTy )
+        ; Desc; DCon; Mu; con; elim; lookupD; εsub; εwkTy; payTy; payTy-sub )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; nrs
         ; _⟶_; _⟶*_; done; step
@@ -102,6 +103,7 @@ open import poc.OCP0009.NbEPDirDBLR
         ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; _⊩₀∋_; bwd₀; exp₁
         ; ⊩₀Unit; ⊩₀Nat; ⊩₀Mu; ⊩₁Mu; Mu-nf
         ; KInterp; ki-ι; ki-ρ; ki-κ; DInterp; di-nil; di-cons
+        ; MuMem; mm-ne; mm-con; mm-exp; Lift; lookupP; kpredsOf; predsOf
         ; base-nf; Unit-nf; Nat-nf; El-ne-reduct; mkElNe; Hom-stk-reduct; mkHomStk
         ; nopw?; trlam?; stablecd?; stableA?; idstk?; sne→spine; wk-single; snr→⟶
         ; exp₀; f≢t
@@ -140,6 +142,24 @@ fund : {σ : Sub ⌊ Γ ⌋ Ξ} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
 --     premise rather than stay deferred.
 interpK : {C : DCon} → DConWf C → Var Ξ → KInterp Ξ C
 interpD : {D : Desc} → DescWf D → Var Ξ → DInterp Ξ D
+
+-- ★★ and §4's OTHER semantic half: a semantic member of the PAYLOAD type
+--   is a `Lift` of the field list.  This is what `⊢con` needs, and it is
+--   where `payTy`'s Σ-chain and `Lift`'s projections line up — both walk
+--   the `DCon` by `fst`/`snd`, which is exactly why `Lift` was written
+--   projection-based rather than pair-pattern-based.
+payLiftK : (D : Desc) (di : DInterp Ξ D) {C : DCon} (wC : DConWf C)
+           (x₀ : Var Ξ) (R : ⊩₁ (payTy D C)) (p : RTm Ξ) → R ⊩₁∋ p →
+           Lift C (kpredsOf (interpK wC x₀)) (MuMem D (predsOf di)) p
+-- ⚠ walks the `DescWf` SUFFIX rather than calling a lookup: every index
+--   then lines up DEFINITIONALLY (`lookupP (predsOf (interpD (dwf-cons …)))
+--   zero` computes to `kpredsOf (interpK …)`), so no transport is needed.
+--   The same reason `irrelAtK` is written this way.
+payLiftD : (D : Desc) (di : DInterp Ξ D) {E : Desc} (wE : DescWf E)
+           (x₀ : Var Ξ) (k : ℕ) (R : ⊩₁ (payTy D (lookupD E k))) (p : RTm Ξ) →
+           R ⊩₁∋ p →
+           Lift (lookupD E k) (lookupP (predsOf (interpD wE x₀)) k)
+                (MuMem D (predsOf di)) p
 
 -- the empty environment: `◇ ∋ x ∷ A` has no inhabitants.
 ⊩ˢ-ε : {Ξ : Cx} → ◇ ⊩ˢ (εsub {Ξ})
@@ -205,6 +225,36 @@ interpK (dwf-κ c dc w) x₀ = ki-κ (sem-El doneᵀ hc) (interpK w x₀)
 
 interpD dwf-nil        x₀ = di-nil
 interpD (dwf-cons w e) x₀ = di-cons (interpK w x₀) (interpD e x₀)
+
+payLiftK D di dwf-ι x₀ R p h = CR1₁ R h
+-- the RECURSIVE field: its member is a `Mu` member, so move it onto the
+-- interp `MuMem` is indexed by (`irrel₁` at `crflᵀ`) and take the payload.
+payLiftK D di (dwf-ρ wC) x₀ R p h =
+  -- ★ `SN (fst p) × MuMem …` IS `⊩₁Mu doneᵀ di ⊩₁∋ fst p`, so the moved
+  --   membership goes in WHOLE — no re-pairing.
+  ( CR1₁ R h
+  , ( projl (irrel₁ crflᵀ (dfst m₁) (⊩₁Mu doneᵀ di)) (fst p) (dsnd m₁)
+    , payLiftK D di wC x₀ (dfst m₂) (snd p) (dsnd m₂) ) )
+  where
+    m₁ = ⊩₁-fstm R h
+    m₂ = relTy (payTy-sub (single (fst p)) D _) (⊩₁-sndm R h)
+-- the NON-RECURSIVE field: its predicate is `_⊩₀∋_` at the very witness
+-- `interpK` built, so the member has to come DOWN a level — `emb-coh`.
+payLiftK D di (dwf-κ c dc wC) x₀ R p h =
+  ( CR1₁ R h
+  , ( projr (emb-coh W) (fst p)
+            (projl (irrel₁ crflᵀ (dfst m₁) (emb W)) (fst p) (dsnd m₁))
+    , payLiftK D di wC x₀ (dfst m₂) (snd p) (dsnd m₂) ) )
+  where
+    W  = sem-El doneᵀ
+           (projl (irrel₁ crflᵀ (dfst (fund dc x₀ ⊩ˢ-ε)) (⊩₁U doneᵀ))
+                  (subTm εsub c) (dsnd (fund dc x₀ ⊩ˢ-ε)))
+    m₁ = ⊩₁-fstm R h
+    m₂ = relTy (payTy-sub (single (fst p)) D _) (⊩₁-sndm R h)
+
+payLiftD D di dwf-nil          x₀ k       R p h = CR1₁ R h
+payLiftD D di (dwf-cons wC wE) x₀ zero    R p h = payLiftK D di wC x₀ R p h
+payLiftD D di (dwf-cons wC wE) x₀ (suc k) R p h = payLiftD D di wE x₀ k R p h
 
 -- TERMS.
 fund (⊢var d) x₀ ρ = ρ d
@@ -328,6 +378,19 @@ fund {σ = σ} (⊢nsuc {n = n} dn) x₀ ρ =
   where
     hn = projl (irrel₁ crflᵀ (dfst (fund dn x₀ ρ)) (⊩₁Nat doneᵀ))
                (subTm σ n) (dsnd (fund dn x₀ ρ))
+
+-- ★★ INDUCTIVE TYPES — the CONSTRUCTOR.  `nm-suc`'s analogue, one level
+--   more general: the payload is a whole field list rather than a single
+--   recursive argument, so `payLiftD` does what `projr hn` does above.
+--   `subTy σ (Mu D) = Mu D` and `payTy` is substitution-inert, so the only
+--   cast is `payTy-sub` moving the IH onto the un-substituted payload type.
+fund {σ = σ} (⊢con {D = D} {k = k} {p = p} w i dp) x₀ ρ =
+  ( ⊩₁Mu doneᵀ di
+  , ( sn-con (CR1₁ (dfst m) (dsnd m))
+    , mm-con k (payLiftD D di w x₀ k (dfst m) (subTm σ p) (dsnd m)) ) )
+  where
+    di = interpD w x₀
+    m  = relTy (payTy-sub σ D (lookupD D k)) (fund dp x₀ ρ)
 
 fund {Ξ = Ξ} {σ = σ} (⊢lam {B = B} {t = s} tyA d) x₀ ρ =
   ( ⊩₁Π doneᵀ ⊩F ⊩G , sem-lam doneᵀ ⊩F ⊩G sns f )
