@@ -82,7 +82,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fpc; fret; falloc)
 open MemOps {FS} using (writeLoc; writeLocToHeap)
 open FlatMachine {FS} using (floc; halted; fetch)
-open import Once.Memory.HeapAddress using (HeapLocation)
+open import Once.Memory.HeapAddress using (HeapLocation; sucHL)
 open import Data.Nat using (zero; suc; _+_; _*_; _≤_; _<_)
 open import Data.Nat.Properties using (<-irrefl; <-transˡ; ≤-trans; m≤m+n)
 open import Data.List using (List; []; _∷_; drop)
@@ -100,7 +100,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 private
   module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
 
-open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; caddr)
+open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; caddr; HDom; haddr)
 open RegRoles roles using (sp-reg)
 
 ------------------------------------------------------------------------
@@ -327,4 +327,141 @@ record BlockSteps : Set₁ where
       → fetch prog (fpc fs) ≡ just (instr-load-tag-lit n)
       → n < modulus
       → BlockStep hv prog fs s (instr-load-tag-lit n)
+    ------------------------------------------------------------------
+    -- GROUP 3, the 5–8 band's first half — THE LOADS AND THE STORES.
+    --
+    -- Where the extra premises come from, and it is a DIFFERENT source than
+    -- group 2's: the engine does not hand these down from its own parameters,
+    -- it CASE-SPLITS to get them. `load-indirect` is dispatched by a helper
+    -- that splits `Input1`'s value and then the target cell, and calls a
+    -- different block-step per branch — which is why one abstract instruction
+    -- takes TWO fields here (`…` and `…-stack`) and not one. The field list
+    -- follows the branches, because the branches are what the engine has.
+    --
+    -- SO THE `nothing` BRANCHES ARE NOT FIELDS. An unwritten slot or an empty
+    -- heap cell does not step: it either goes to `⊥` (the shape table forbids
+    -- reading an unwritten slot) or to a STUCK route, where the engine shows
+    -- both machines halt. The stuck routes name concrete instructions, so they
+    -- are a separate per-arch supply the engine will need — NOT block-steps,
+    -- and not this record. See the handoff.
+    --
+    -- The disjointness premise is spelled in the shape the core's own
+    -- `slot-heap-disj` produces, since that is what the engine passes. Both
+    -- arches' `slot-to-disp k` IS `k * slot-size`, definitionally.
+    ------------------------------------------------------------------
+    bs-load-indirect :
+      ∀ {hv : HeapView} prog fs s hl w → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just load-indirect
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+      → HDom hv hl
+      → heapMem (floc fs) hl ≡ just w
+      → BlockStep hv prog fs s load-indirect
+    bs-load-indirect-stack :
+      ∀ {hv : HeapView} prog fs s f k w → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just load-indirect
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+      → f ≡ current-frame (falloc fs)
+      → k < frame-slots (falloc fs)
+      → stackMem (floc fs) (current-frame (falloc fs)) k ≡ just w
+      → BlockStep hv prog fs s load-indirect
+    bs-load-indirect-suc :
+      ∀ {hv : HeapView} prog fs s hl w → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just load-indirect-suc
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+      → HDom hv (sucHL hl)
+      → heapMem (floc fs) (sucHL hl) ≡ just w
+      → BlockStep hv prog fs s load-indirect-suc
+    bs-load-indirect-suc-stack :
+      ∀ {hv : HeapView} prog fs s f k w → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just load-indirect-suc
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+      → f ≡ current-frame (falloc fs)
+      → suc k < frame-slots (falloc fs)
+      → stackMem (floc fs) (current-frame (falloc fs)) (suc k) ≡ just w
+      → BlockStep hv prog fs s load-indirect-suc
+    -- The three STACK READS. Same two premises each — the slot is inside the
+    -- runtime frame, and it has been written — and they differ only in which
+    -- register receives the value, which is the arch's business, not the
+    -- engine's.
+    bs-load-from-slot :
+      ∀ {hv : HeapView} prog fs s slot w → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (load-from-slot slot)
+      → slot < frame-slots (falloc fs)
+      → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
+      → BlockStep hv prog fs s (load-from-slot slot)
+    bs-restore-input :
+      ∀ {hv : HeapView} prog fs s slot w → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (restore-input slot)
+      → slot < frame-slots (falloc fs)
+      → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
+      → BlockStep hv prog fs s (restore-input slot)
+    bs-worklist-pop :
+      ∀ {hv : HeapView} prog fs s slot w → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (worklist-pop slot)
+      → slot < frame-slots (falloc fs)
+      → stackMem (floc fs) (current-frame (falloc fs)) slot ≡ just w
+      → BlockStep hv prog fs s (worklist-pop slot)
+    -- The two STACK WRITES: in-frame (D085) plus the heap disjointness, which
+    -- is where a slot store differs from a slot read — the abstract write goes
+    -- to the stack and must be shown not to disturb a live heap cell.
+    bs-store-at-slot :
+      ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (store-at-slot slot)
+      → slot < frame-slots (falloc fs)
+      → (∀ hl' → HDom hv hl' → (rreg s sp-reg + slot * slot-size ≡ haddr hv hl') → ⊥)
+      → BlockStep hv prog fs s (store-at-slot slot)
+    bs-worklist-push :
+      ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (worklist-push slot)
+      → slot < frame-slots (falloc fs)
+      → (∀ hl' → HDom hv hl' → (rreg s sp-reg + slot * slot-size ≡ haddr hv hl') → ⊥)
+      → BlockStep hv prog fs s (worklist-push slot)
+    -- …and the four INDIRECT WRITES. The heap branches take the `store-guard`
+    -- equation (this module's own helper — the guard IS arch-free); the stack
+    -- branches take the disjointness instead, at their own slot.
+    bs-store-indirect :
+      ∀ {hv : HeapView} prog fs s hl → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just store-indirect
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+      → HDom hv hl
+      → writeLoc (floc fs) (AtDynamic hl) (readReg (regs (floc fs)) Output)
+        ≡ writeLocToHeap (floc fs) hl (readReg (regs (floc fs)) Output)
+      → BlockStep hv prog fs s store-indirect
+    bs-store-indirect-stack :
+      ∀ {hv : HeapView} prog fs s f k → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just store-indirect
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+      → f ≡ current-frame (falloc fs)
+      → k < frame-slots (falloc fs)
+      → (∀ hl' → HDom hv hl' → (rreg s sp-reg + k * slot-size ≡ haddr hv hl') → ⊥)
+      → BlockStep hv prog fs s store-indirect
+    bs-store-indirect-suc :
+      ∀ {hv : HeapView} prog fs s hl → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just store-indirect-suc
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+      → HDom hv (sucHL hl)
+      → writeLoc (floc fs) (AtDynamic (sucHL hl)) (readReg (regs (floc fs)) Output)
+        ≡ writeLocToHeap (floc fs) (sucHL hl) (readReg (regs (floc fs)) Output)
+      → BlockStep hv prog fs s store-indirect-suc
+    bs-store-indirect-suc-stack :
+      ∀ {hv : HeapView} prog fs s f k → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just store-indirect-suc
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
+      → f ≡ current-frame (falloc fs)
+      → suc k < frame-slots (falloc fs)
+      → (∀ hl' → HDom hv hl' → (rreg s sp-reg + suc k * slot-size ≡ haddr hv hl') → ⊥)
+      → BlockStep hv prog fs s store-indirect-suc
 open BlockSteps public
