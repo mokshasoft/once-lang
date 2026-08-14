@@ -109,7 +109,21 @@ if [ "$WHAT" = "--report" ]; then echo; echo "(report only; nothing built)"; exi
 
 # --- build ----------------------------------------------------------------
 echo
-echo "-- BUILDING ${#TOBUILD[@]} module(s), sequentially"
+# ⚠ ORDER MATTERS: a module needing a non-default RTS must be built BEFORE
+#   anything that imports it.  `needs_c` reads a file's OWN header, so if a
+#   heavy module is first pulled in as a DEPENDENCY of an earlier build, it
+#   is compiled without its flag and dies of memory — which reads as a
+#   SIGTERM on the IMPORTER, not on the module that actually needs the flag.
+#   (Measured: LexAsm(143), whose log showed it checking LexSS2; LexAsm
+#   builds clean in ~4s once LexSS2 is warm.)  So: RTS-special modules first.
+ORDERED=(); REST=()
+for f in "${TOBUILD[@]:-}"; do
+  [ -n "$f" ] || continue
+  if needs_c "$f"; then ORDERED+=("$f"); else REST+=("$f"); fi
+done
+TOBUILD=("${ORDERED[@]:-}" "${REST[@]:-}")
+
+echo "-- BUILDING ${#TOBUILD[@]} module(s), sequentially (RTS-special first)"
 fail=0; failed=()
 for f in "${TOBUILD[@]:-}"; do
   [ -n "$f" ] || continue
