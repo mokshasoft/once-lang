@@ -25,7 +25,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; renTy-subTy; renTm-subTm
         ; subTy-subTy; subTm-subTm
         ; subTy-id; subTm-id; renTm-renTm; renTm-cong
-        ; Desc; DCon; Mu; con; elim; lookupD; εsub; εwkTy; payTy; payTy-sub
+        ; Desc; DCon; Mu; con; elim; lookupD; εsub; εwkTy; payTy; payTy-sub; ⌜Mu⌝
         ; _∈D_; hereD; thereD; sel; ihs; dnil; _◃_; dι; dρ; dκ; fields )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import poc.OCP0009.NbEPDirDBType
@@ -48,10 +48,10 @@ open import poc.OCP0009.NbEPDirDBType
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
         ; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢⌜Σ⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢tr; ⊢trU; ⊢ap; ⊢conv
-        ; ⊢⌜Nat⌝; ⊢⌜Unit⌝
+        ; ⊢⌜Nat⌝; ⊢⌜Unit⌝; ⊢⌜Mu⌝
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
-        ; ty-Mu; ⊢con; ⊢elim
+        ; ty-Mu; ⊢con; ⊢elim; El-⌜Mu⌝
         ; methTy; methsTy; methsTyFrom; ihTy; atCon; atCon-inst; conS
         ; DConWf; dwf-ι; dwf-ρ; dwf-κ; DescWf; dwf-nil; dwf-cons
         ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢ordtr
@@ -81,7 +81,7 @@ open import poc.OCP0009.NbEPDirDBLR
   using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap; sne-jsub
         ; Ne; ne-var; ne-app; ne-absurd; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁
         ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-cId; sn-idrefl; sn-exp
-        ; sn-cNat; sn-cUnit
+        ; sn-cNat; sn-cUnit; sn-cMu; snr-J-Mu
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
         ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-J-Id; snr-J-Unit; snr-taut; snr-trᵖ; snr-ap-J; snr-apᵖ
         ; snr-jsub-refl; snr-jsubᵖ
@@ -764,6 +764,13 @@ fund ⊢⌜Nat⌝ x₀ ρ =
   ( ⊩₁U doneᵀ , (sn-cNat , (⊩₀Nat (stepᵀ El-⌜Nat⌝ doneᵀ) , _)) )
 fund ⊢⌜Unit⌝ x₀ ρ =
   ( ⊩₁U doneᵀ , (sn-cUnit , (⊩₀Unit (stepᵀ El-⌜Unit⌝ doneᵀ) , _)) )
+-- ★★ INDUCTIVE TYPES: the code is a U-member, and its ⊩₀ component is the
+-- DECODE's interp — so the `DInterp` enters here through `interpD`, the
+-- very same way it does at `ty-Mu`.  This is the second door §4's premise
+-- was added to guard, and `⊢⌜Mu⌝` carries the key.
+fund (⊢⌜Mu⌝ w) x₀ ρ =
+  ( ⊩₁U doneᵀ
+  , (sn-cMu , (⊩₀Mu (stepᵀ El-⌜Mu⌝ doneᵀ) (interpD w x₀) , _)) )
 
 fund {Ξ = Ξ} {σ = σ} (⊢⌜Π⌝ {c = c} {d = e} dc de) x₀ ρ =
   ( ⊩₁U doneᵀ , sem-⌜Π⌝ doneᵀ snc sne ⊩c f pays )
@@ -1052,6 +1059,7 @@ fund {Ξ = Ξ} {σ = σ}
   goP sn-cb            = CR3₀ R_H (sne-ap snCB snBB sn-cb refl)
   goP sn-cNat            = CR3₀ R_H (sne-ap snCB snBB sn-cNat refl)
   goP sn-cUnit            = CR3₀ R_H (sne-ap snCB snBB sn-cUnit refl)
+  goP sn-cMu              = CR3₀ R_H (sne-ap snCB snBB sn-cMu refl)
   goP (sn-cΠ h₁ h₂)    = CR3₀ R_H (sne-ap snCB snBB (sn-cΠ h₁ h₂) refl)
   goP (sn-cΣ h₁ h₂)    = CR3₀ R_H (sne-ap snCB snBB (sn-cΣ h₁ h₂) refl)
   goP (sn-cH h₁ h₂ h₃) = CR3₀ R_H (sne-ap snCB snBB (sn-cH h₁ h₂ h₃) refl)
@@ -1209,6 +1217,8 @@ fund {Ξ = Ξ} {σ = σ}
     CR3₁ (emb R₀u) (sne-jsub snDI sn-cNat (CR1₁ (emb R₀t) hEt) refl)
   goP sn-cUnit pay =
     CR3₁ (emb R₀u) (sne-jsub snDI sn-cUnit (CR1₁ (emb R₀t) hEt) refl)
+  goP sn-cMu pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI sn-cMu (CR1₁ (emb R₀t) hEt) refl)
   goP (sn-cΠ h₁ h₂) pay =
     CR3₁ (emb R₀u) (sne-jsub snDI (sn-cΠ h₁ h₂) (CR1₁ (emb R₀t) hEt) refl)
   goP (sn-cΣ h₁ h₂) pay =
@@ -1303,6 +1313,7 @@ fund {Ξ = Ξ} {σ = σ}
   piCase q ⊩F ⊩G rt ru rEt rEu sn-cb hp'           = cr3 sn-cb refl
   piCase q ⊩F ⊩G rt ru rEt rEu sn-cNat hp'         = cr3 sn-cNat refl
   piCase q ⊩F ⊩G rt ru rEt rEu sn-cUnit hp'        = cr3 sn-cUnit refl
+  piCase q ⊩F ⊩G rt ru rEt rEu sn-cMu hp'          = cr3 sn-cMu refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-cΠ h₁ h₂) hp'   = cr3 (sn-cΠ h₁ h₂) refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-cΣ h₁ h₂) hp'   = cr3 (sn-cΣ h₁ h₂) refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-cH h₁ h₂ h₃) hp' = cr3 (sn-cH h₁ h₂ h₃) refl
@@ -1589,6 +1600,7 @@ fund {Ξ = Ξ} {σ = σ}
   go sn-cb hp'             = cr3 sn-cb refl
   go sn-cNat hp'           = cr3 sn-cNat refl
   go sn-cUnit hp'          = cr3 sn-cUnit refl
+  go sn-cMu hp'            = cr3 sn-cMu refl
   go (sn-cΠ h₁ h₂) hp'     = cr3 (sn-cΠ h₁ h₂) refl
   go (sn-cΣ h₁ h₂) hp'     = cr3 (sn-cΣ h₁ h₂) refl
   go (sn-cH h₁ h₂ h₃) hp'  = cr3 (sn-cH h₁ h₂ h₃) refl
@@ -1610,6 +1622,9 @@ fund {Ξ = Ξ} {σ = σ}
   -- ⌜Unit⌝ is `stkC?`, so J FIRES — same endpoint transfer as ⌜base⌝.
   goh sn-cUnit sns kn hp' =
     ( R_result , exp₁ R_result (snr-J-Unit snD sns) heTgt )
+  -- ⌜Mu⌝ is `stkC?` too, so J fires there as well.
+  goh sn-cMu sns kn hp' =
+    ( R_result , exp₁ R_result (snr-J-Mu snD sns) heTgt )
   -- ⌜Nat⌝ is not: J is off there (the step-0 retraction), so the whole
   -- `tr` is permanently NEUTRAL and CR3 carries it.
   goh sn-cNat sns kn hp' =

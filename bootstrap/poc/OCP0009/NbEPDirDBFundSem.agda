@@ -22,7 +22,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTy; base; U; Π; Σ'; El; Hom; Id; Hom-cong₃; Id-cong₃; ⌜Hom⌝-cong₃; tr-cong₃; ap-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
         ; RTm; var; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
         ; ⌜Id⌝; idrefl; jsub
-        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝
+        ; Unit; Nat; unit; nzero; nsuc; natrec; natrec-cong₃; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝; Desc; Mu
         ; Ren; extR; renTy; renTm
         ; Sub; subTy; subTm; extS; idₛ
         ; _∘ᵣ_
@@ -46,7 +46,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢absurd
         ; El-⌜Hom⌝; ξ-El; El-⌜Π⌝; _⟶ᵀ_; El-⌜base⌝; El-⌜Σ⌝; El-⌜Id⌝
-        ; El-⌜Nat⌝; El-⌜Unit⌝
+        ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
         ; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
@@ -80,7 +80,7 @@ open import poc.OCP0009.NbEPDirDBLR
   using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap; sne-jsub
         ; Ne; ne-var; ne-app; ne-absurd; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁
         ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-cId; sn-idrefl; sn-exp
-        ; sn-cNat; sn-cUnit
+        ; sn-cNat; sn-cUnit; sn-cMu; snr-J-Mu
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
         ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-J-Id; snr-J-Unit; snr-taut; snr-trᵖ; snr-ap-J; snr-apᵖ
         ; snr-jsub-refl; snr-jsubᵖ
@@ -366,6 +366,8 @@ snHH sp sn-cNat snt noPiT =
   sn-ne (sne-hrefl (snPlug sp sn-cNat) snt (nopw-plug sp refl))
 snHH sp sn-cUnit snt noPiT =
   sn-ne (sne-hrefl (snPlug sp sn-cUnit) snt (nopw-plug sp refl))
+snHH sp sn-cMu snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp sn-cMu) snt (nopw-plug sp refl))
 snHH sp (sn-cΣ h₁ h₂) snt noPiT =
   sn-ne (sne-hrefl (snPlug sp (sn-cΣ h₁ h₂)) snt (nopw-plug sp refl))
 snHH sp (sn-cId h₁ h₂ h₃) snt noPiT =
@@ -625,6 +627,7 @@ codeNormA (sn-lam h) kn = _ , (csr-done , cfa-dead refl)
 codeNormA (sn-pair ha hb) kn = _ , (csr-done , cfa-dead refl)
 codeNormA sn-cb kn = _ , (csr-done , cfa-stk refl)
 codeNormA sn-cUnit kn = _ , (csr-done , cfa-stk refl)
+codeNormA sn-cMu   kn = _ , (csr-done , cfa-stk refl)
 -- ★ THE row.  `codeNorm` sends this one to `cf-dead`.
 codeNormA sn-cNat kn = _ , (csr-done , cfa-stk refl)
 codeNormA (sn-cΣ h₁ h₂) kn = _ , (csr-done , cfa-stk refl)
@@ -660,6 +663,7 @@ codeNorm (sn-lam h) kn = _ , (csr-done , cf-dead refl)
 codeNorm (sn-pair ha hb) kn = _ , (csr-done , cf-dead refl)
 codeNorm sn-cb kn = _ , (csr-done , cf-stk refl)
 codeNorm sn-cUnit kn = _ , (csr-done , cf-stk refl)
+codeNorm sn-cMu   kn = _ , (csr-done , cf-stk refl)
 -- ★★ the THIRD code kind: ⌜Nat⌝ is neither `pw?` nor `stkC?`.  It is
 -- however DEAD (nothing fires on a `hrefl ⌜Nat⌝` path since the
 -- retraction), so it lands in `cf-dead` and `CodeFate` stays two-way.
@@ -814,6 +818,7 @@ motFate (sn-pair a b) = _ , (csr-done , mf-dead refl)
 motFate sn-cb = _ , (csr-done , mf-dead refl)
 motFate sn-cNat = _ , (csr-done , mf-dead refl)
 motFate sn-cUnit = _ , (csr-done , mf-dead refl)
+motFate sn-cMu   = _ , (csr-done , mf-dead refl)
 motFate (sn-cΠ h₁ h₂) = _ , (csr-done , mf-pw refl)
 motFate (sn-cΣ h₁ h₂) = _ , (csr-done , mf-dead refl)
 motFate (sn-cId h₁ h₂ h₃) = _ , (csr-done , mf-dead refl)
@@ -892,6 +897,7 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
   go' sn-cb            = sn-ne (sne-tr snM sn-cb snE refl)
   go' sn-cNat            = sn-ne (sne-tr snM sn-cNat snE refl)
   go' sn-cUnit            = sn-ne (sne-tr snM sn-cUnit snE refl)
+  go' sn-cMu              = sn-ne (sne-tr snM sn-cMu snE refl)
   go' (sn-cΠ h₁ h₂)    = sn-ne (sne-tr snM (sn-cΠ h₁ h₂) snE refl)
   go' (sn-cΣ h₁ h₂)    = sn-ne (sne-tr snM (sn-cΣ h₁ h₂) snE refl)
   go' (sn-cH h₁ h₂ h₃) = sn-ne (sne-tr snM (sn-cH h₁ h₂ h₃) snE refl)
@@ -904,6 +910,7 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
 
   goH sn-cb sns kn = sn-exp (snr-J-base snM sns) snE
   goH sn-cUnit sns kn = sn-exp (snr-J-Unit snM sns) snE
+  goH sn-cMu   sns kn = sn-exp (snr-J-Mu snM sns) snE
   -- ★★ J is OFF at ⌜Nat⌝, so this configuration is permanently stuck —
   -- i.e. NEUTRAL.  `stablecd? ⌜Nat⌝ = true` is exactly the key that
   -- lets `sne-tr` accept it.
@@ -1093,6 +1100,7 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
   go₀ sn-cb hpʹ            = CR3₀ RH0 (sne-tr snM sn-cb snE' refl)
   go₀ sn-cNat hpʹ            = CR3₀ RH0 (sne-tr snM sn-cNat snE' refl)
   go₀ sn-cUnit hpʹ            = CR3₀ RH0 (sne-tr snM sn-cUnit snE' refl)
+  go₀ sn-cMu   hpʹ            = CR3₀ RH0 (sne-tr snM sn-cMu snE' refl)
   go₀ (sn-cΠ h₁ h₂) hpʹ    = CR3₀ RH0 (sne-tr snM (sn-cΠ h₁ h₂) snE' refl)
   go₀ (sn-cΣ h₁ h₂) hpʹ    = CR3₀ RH0 (sne-tr snM (sn-cΣ h₁ h₂) snE' refl)
   go₀ (sn-cH h₁ h₂ h₃) hpʹ = CR3₀ RH0 (sne-tr snM (sn-cH h₁ h₂ h₃) snE' refl)
@@ -1105,6 +1113,7 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
 
   goH₀ sn-cb sns kn = exp₀ RH0 (snr-J-base snM sns) heU
   goH₀ sn-cUnit sns kn = exp₀ RH0 (snr-J-Unit snM sns) heU
+  goH₀ sn-cMu   sns kn = exp₀ RH0 (snr-J-Mu snM sns) heU
   goH₀ sn-cNat sns kn =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl sn-cNat sns refl)) snE' refl)
   goH₀ (sn-cΣ h₁ h₂) sns kn = exp₀ RH0 (snr-J-Σ snM h₁ h₂ sns) heU
@@ -1318,6 +1327,8 @@ data StkEl {Ξ : Cx} : RTy Ξ → Set where
   -- Subj's `StkAmb` ("never Π/U"), so its key is `stkA?` and the
   -- order rules are ABSORBED below, not refuted.
   se-Nat  : StkEl (Nat {Ξ})
+  -- ★ `El (⌜Mu⌝ D)` decodes to the inert `Mu D`.
+  se-Mu   : {Dᵐ : Desc} → StkEl (Mu {Ξ} Dᵐ)
 
 stkel-red : {A A' : RTy Ξ} → StkEl A → A ⟶ᵀ A' → StkEl A'
 stkel-red (se-el {c = ⌜base⌝} k) El-⌜base⌝ = se-base
@@ -1328,8 +1339,10 @@ stkel-red (se-el {c = ⌜Π⌝ _ _} ()) (El-⌜Π⌝ _ _)
 stkel-red (se-el {c = ⌜Id⌝ c' a' b'} k) (El-⌜Id⌝ _ _ _) = se-Id
 stkel-red (se-el {c = ⌜Unit⌝} k) El-⌜Unit⌝ = se-Unit
 stkel-red (se-el {c = ⌜Nat⌝} k) El-⌜Nat⌝ = se-Nat
+stkel-red (se-el k) (El-⌜Mu⌝ {D = Dᵐ}) = se-Mu {Dᵐ = Dᵐ}
 stkel-red se-Unit ()
 stkel-red se-Nat ()
+stkel-red se-Mu ()
 stkel-red se-Id (ξ-Idᵀ r) = se-Id
 stkel-red se-Id (ξ-Idˡ r) = se-Id
 stkel-red se-Id (ξ-Idʳ r) = se-Id
