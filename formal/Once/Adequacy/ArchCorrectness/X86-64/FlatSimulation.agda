@@ -102,6 +102,7 @@ xrreg s r = X.readReg (X.State.regs s) r
 open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
        FS slot-size word-eq Reg x86-64-roles X.State xrreg X.State.memory X.State.halted
        X.State.pc Program compile-trace X.find-label blk-off blk-len X.exec
+       X.W.modulus
   public
 
 ------------------------------------------------------------------------

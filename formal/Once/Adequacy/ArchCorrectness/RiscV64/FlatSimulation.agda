@@ -88,6 +88,7 @@ rreg' s r = R.readReg (R.State.regs s) r
 open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
        FS rv-slot-size word-eq Reg riscv64-roles R.State rreg' R.State.memory rhalted
        R.State.pc Program compile-trace R.find-label blk-off blk-len R.exec
+       R.W.modulus
   public
 
 ------------------------------------------------------------------------

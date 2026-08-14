@@ -70,6 +70,12 @@ module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
   -- …and fuel-bounded execution, the one machine operation a BLOCK step needs
   -- that a state correspondence does not.
   (exec : ℕ → Program → State → Maybe State)
+  -- THE MACHINE'S WORD MODULUS (plan 0.65 G2 item 4, slice 2, group 2). Added
+  -- for `bs-load-tag-lit`, whose engine call site passes a literal-fits premise
+  -- `n < W.modulus` — the ONE group-2 field with a premise beyond the three.
+  -- Not derivable from `slot-size`: x86-32 has 32-bit words and 4-byte slots,
+  -- but the two are different facts, and the correspondence needs only this one.
+  (modulus : ℕ)
   where
 
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -77,7 +83,7 @@ open FlatMachine {FS} using (FlatState; fpc; fret; falloc)
 open MemOps {FS} using (writeLoc; writeLocToHeap)
 open FlatMachine {FS} using (floc; halted; fetch)
 open import Once.Memory.HeapAddress using (HeapLocation)
-open import Data.Nat using (zero; suc; _+_; _*_; _≤_)
+open import Data.Nat using (zero; suc; _+_; _*_; _≤_; _<_)
 open import Data.Nat.Properties using (<-irrefl; <-transˡ; ≤-trans; m≤m+n)
 open import Data.List using (List; []; _∷_; drop)
 open import Data.List.Properties using (drop-[])
@@ -217,6 +223,11 @@ BlockStep hv = BlockStepAt hv hv
 --
 -- GROUP 1 — the straight-line register moves and the two no-op controls: no
 -- premises beyond the correspondence, non-halt, and the fetch.
+--
+-- GROUP 2 — `lea-slot`, `save-closure-reg`, `load-tag-lit`. The first two are
+-- three-premise like group 1 (`lea-slot` DESPITE riscv64's fourth: see above);
+-- the third is where the engine passes a fact it derived rather than one it was
+-- handed, and it is why this module now takes the machine's word `modulus`.
 ------------------------------------------------------------------------
 -- `Set₁`: the fields quantify over `HeapView`, which is itself `Set₁`.
 record BlockSteps : Set₁ where
@@ -281,4 +292,39 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (worklist-check n)
       → BlockStep hv prog fs s (worklist-check n)
+    ------------------------------------------------------------------
+    -- GROUP 2 — the three that still take (cc, h, ft) at the DISPATCH SITE,
+    -- read off the engine's calls rather than either arch's declaration.
+    --
+    -- `lea-slot` is the case that made the rule (see the header): x86-64's
+    -- block-step takes (cc, h, ft) and riscv64's takes a fourth address
+    -- no-wrap premise, because it computes the address with a real `addi`.
+    -- The ENGINE passes three, so the field is three; riscv64 applies its own
+    -- resource parameter when it builds this record, and x86-64 is not made to
+    -- discharge a bound its `lea` never needed.
+    ------------------------------------------------------------------
+    bs-lea-slot :
+      ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (lea-slot slot)
+      → BlockStep hv prog fs s (lea-slot slot)
+    bs-save-closure-reg :
+      ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just instr-save-closure-reg
+      → BlockStep hv prog fs s instr-save-closure-reg
+    -- …and the group's one FOUR-premise field. The engine does not merely
+    -- forward `cc`/`h`/`ft` here: it applies its own literal-fits resource
+    -- parameter (`tag-fits prog fs s n (inv-run wf) cc ft`) and passes the
+    -- RESULT. So `n < modulus` is what the field takes — the applied fact, not
+    -- the parameter that produced it, which stays the engine's business.
+    -- Both arches' block-steps already take exactly this premise (D087 /
+    -- plan 0.70 phase D: an elaborated tag is in range by construction, it is
+    -- simply not threaded from the frontend yet).
+    bs-load-tag-lit :
+      ∀ {hv : HeapView} prog fs s n → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-load-tag-lit n)
+      → n < modulus
+      → BlockStep hv prog fs s (instr-load-tag-lit n)
 open BlockSteps public
