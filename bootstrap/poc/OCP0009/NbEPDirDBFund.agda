@@ -97,7 +97,7 @@ open import poc.OCP0009.NbEPDirDBLR
         ; PayT; payChain; payT-exp; payT-whred; payT-irrel
         ; payT-cast; payT-code; payHomT; _⟶snr*_; snr-done; snr-step
         ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; _⊩₀∋_; bwd₀; exp₁
-        ; ⊩₀Unit; ⊩₀Nat
+        ; ⊩₀Unit; ⊩₀Nat; ⊩₀Mu; ⊩₁Mu; Mu-nf
         ; base-nf; Unit-nf; Nat-nf; El-ne-reduct; mkElNe; Hom-stk-reduct; mkHomStk
         ; nopw?; trlam?; stablecd?; stableA?; idstk?; sne→spine; wk-single; snr→⟶
         ; exp₀; f≢t
@@ -600,6 +600,8 @@ fund {Ξ = Ξ} {σ = σ}
   flatMem (⊩₁Unit p) sns = sns
   flatMem (⊩₁Nat p) sns with ett-star (et-el kflat) p
   ... | ()
+  flatMem (⊩₁Mu p _) sns with ett-star (et-el kflat) p
+  ... | ()
   flatMem (⊩₁ne {n = n} p ne) sns with ett-star (et-el kflat) p
   ... | et-el {c = n₂} k' =
         ⊥-elim (f≢t (trans (sym (ne-nostk ne)) (flat→stk n₂ k')))
@@ -820,6 +822,8 @@ fund {Ξ = Ξ} {σ = σ}
   ... | _ , (_ , (_ , ((), _)))
   idMemGet (⊩₁Nat ch) h with Id-reduct ch
   ... | _ , (_ , (_ , ((), _)))
+  idMemGet (⊩₁Mu ch _) h with Id-reduct ch
+  ... | _ , (_ , (_ , ((), _)))
 
   hpP = idMemGet (dfst (fund dp x₀ ρ)) (dsnd (fund dp x₀ ρ))
 
@@ -991,6 +995,8 @@ fund {Ξ = Ξ} {σ = σ}
   main (⊩₁Unit q) hp with hom-shapeN nn-U q
   ... | ()
   main (⊩₁Nat q) hp with hom-shapeN nn-U q
+  ... | ()
+  main (⊩₁Mu q _) hp with hom-shapeN nn-U q
   ... | ()
   -- ★ stage C: `Hom-to-Hom` is keyed on the TARGET ambient now, so the
   -- source witness `nn-U` is pushed forward along `q` first.
