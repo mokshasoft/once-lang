@@ -45,6 +45,13 @@ open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Target.RiscV64.Syntax using (slots; slot-size; sp)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.RiscV64.FrameInstantiation using (rv64-frame-semantics)
+-- …and riscv64's ENGINE INTERFACES (plan 0.65 G2). Imported here for the same
+-- reason this module's own siblings are: nothing else reaches them, and an
+-- unimported module is invisible to the four clusters. The instantiation pins
+-- the frame semantics exactly as the bounds above do.
+import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim as CFSr
+open CFSr o rv64-frame-semantics refl public
+  using (riscv64-emitter; riscv64-machine; riscv64-traceloop)
 
 ------------------------------------------------------------------------
 -- HEAP EXHAUSTION: at an emitted `instr-alloc-heap n` the bump does not run
