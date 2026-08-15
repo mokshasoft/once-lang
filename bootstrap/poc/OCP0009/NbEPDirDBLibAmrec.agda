@@ -9,11 +9,31 @@
 -- variable is `x`, `μ x` IS `m` and `P x` IS `El cM` — no application, no
 -- β-redex.  See WF-LIBRARY.md for the measurements behind that choice.
 --
--- Ships THREE things, and a caller needs all three:
+-- Ships FOUR things, and a caller needs all four:
 --   * `⊢amrecΠ`  the combinator as a closed Π-typed TERM;
 --   * `⊢amrecPt` the pointwise form, DERIVED — one `⊢app`, no cast;
 --   * `amrec-β` / `amrec-unfold-z` / `amrec-unfold-s`, the COMPUTATION
---     rule, so a caller never re-derives how `amrecTm` unfolds (D7).
+--     rule, so a caller never re-derives how `amrecTm` unfolds (D7);
+--   * `irr-ind` and `amrec-unfold-Id`, the INTERNAL forms of both — an
+--     object-language `Id`, not a `⟶*`.
+--
+-- ★★ THE INTERNAL LAYER, and why it exists.  Everything `⟶*`-valued says
+--   nothing INSIDE the language: no `Id`, no `Π`, so no defining equation
+--   at a variable.  `app amrecTm x` reduces exactly to
+--   `app (app (auxIH x μx) x) (reflTm μx)` and no further — the auxiliary's
+--   `natrec` is stuck on the neutral `μ x`.  Moving off that bound is
+--   CERTIFICATE- AND BOUND-IRRELEVANCE:
+--
+--     irr-ind : (n₂ : Nat) (a : A) (c₁ : μ a ≤ n) (c₂ : μ a ≤ n₂) →
+--                 aux x n a c₁ ≡ aux y n₂ a c₂
+--
+--   proved by induction on the bound from `StepExt`, and then
+--
+--     amrec-unfold-Id : μ x ≤ suc k  →  amrecTm x ≡ stp x ⟨ih⟩
+--
+--   ⚠ CONDITIONAL on `StepExt`, which is the CALLER's to discharge and
+--   which nothing in this tree supplies yet.  `amrec-unfold-Id-red` is the
+--   non-vacuity witness for the OTHER premise.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -34,7 +54,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc
         ; ⊢lam; ⊢app; _⊢ty_; ⊢conv; csymᵀ; ctrnᵀ; ⊢⌜Id⌝; El-⌜Id⌝
         ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Id )
-open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; stepᵀ; doneᵀ )
+open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; ⟶ᵀ*-Homʳ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; ∋-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext
         ; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single )
@@ -209,6 +229,15 @@ idOfRed : {Γ : Ctx} {T : RTy ⌊ Γ ⌋} {t₁ t₂ u₁ u₂ : RTm ⌊ Γ ⌋}
 idOfRed r₁ r₂ (prv e d) =
   prv e (⊢conv d (csymᵀ (ctrnᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ r₁)) (red→≅ᵀ (⟶ᵀ*-Idʳ r₂)))))
 
+-- ★ …and the SAME BRIDGE the other way: an identity between two terms is
+--   an identity between their reducts.  ⚠ Both directions are needed and
+--   they are not interchangeable — a proof arrives at whichever end its
+--   producer left it, and only one of the two ends is the caller's.
+idToRed : {Γ : Ctx} {T : RTy ⌊ Γ ⌋} {t₁ t₂ u₁ u₂ : RTm ⌊ Γ ⌋} →
+          t₁ ⟶* u₁ → t₂ ⟶* u₂ → Prv Γ (Id T t₁ t₂) → Prv Γ (Id T u₁ u₂)
+idToRed r₁ r₂ (prv e d) =
+  prv e (⊢conv d (ctrnᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ r₁)) (red→≅ᵀ (⟶ᵀ*-Idʳ r₂))))
+
 -- ★ `Ren⊢` under one more AMBIENT binder.  `Ren⊢-ext` grows the renaming
 --   with a matching slot on BOTH sides; this grows only the TARGET, which
 --   is what an ambient TOWER `vs^n` needs — and a tower is exactly what an
@@ -268,6 +297,17 @@ extcondR : {Γ Γ' Γ'' : Cx} {ϑ : Ren Γ' Γ''} {ρ : Ren Γ Γ'} {ρ' : Ren �
            (∀ v → extR ϑ (extR ρ v) ≡ extR ρ' v)
 extcondR h vz     = refl
 extcondR h (vs v) = cong vs (h v)
+
+-- ★ …and the degenerate case: a renaming that is POINTWISE the identity is
+--   the identity.  `extR` of the identity is not definitionally the
+--   identity function, so even this needs the bridge.
+renTm-idR : {Γ : Cx} {ρ : Ren Γ Γ} → (∀ v → ρ v ≡ v) → (t : RTm Γ) →
+            renTm ρ t ≡ t
+renTm-idR h t = trans (renTm-cong h t) (trans (ren-sub t) (subTm-id t))
+
+renTy-idR : {Γ : Cx} {ρ : Ren Γ Γ} → (∀ v → ρ v ≡ v) → (T : RTy Γ) →
+            renTy ρ T ≡ T
+renTy-idR h T = trans (renTy-cong h T) (trans (ren-subTy' T) (subTy-id T))
 
 cong₇ : {A B C D E F G H : Set} (f : A → B → C → D → E → F → G → H)
         {a a' : A} {b b' : B} {c c' : C} {d d' : D} {e e' : E} {g g' : F} {i i' : G} →
@@ -2787,6 +2827,127 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
                             (⊢var (there (there (there (there here)))))
                             (⊢var (there here))
                             dIH)
+
+  ------------------------------------------------------------------------
+  -- ★★★★★ PIECE 9 — THE INTERNAL UNFOLDING, `amrec-unfold-Id`.
+  --
+  --     ⊢ app amrecTm x  ≡  app (app stp x) ⟨ih⟩     : El (P x)
+  --
+  -- ⚠⚠ AND IT DOES NOT NEED `jsub` AT ALL.  The plan this route was opened
+  --   with was "TRANSPORT FIRST, THEN REDUCE": move the auxiliary's bound
+  --   off the stuck `μ x` along an `Id`, so `amrec-unfold-s` can fire.  That
+  --   forced the family to bind the certificate internally (`⌜Π⌝` over
+  --   `⌜Hom⌝`), which made the transport's source obligation certificate
+  --   irrelevance — and irrelevance is what pieces 6–8 built.
+  --
+  -- ★ But the theorem those pieces actually produce is BOUND irrelevance as
+  --   well: `aux x n₁ a c₁ ≡ aux y n₂ a c₂` for two INDEPENDENT bounds.  So
+  --   the bound can be moved DIRECTLY, and `jsub` — with its ban on the
+  --   family mentioning the proof, and its demand that the family typecheck
+  --   at an arbitrary `v` — never enters.  ⚠ Do not re-attempt the
+  --   `⌜Π⌝`-family transport; it is not on the path any more.
+  --
+  -- ★★ AND THE PREMISE CAME OUT WEAKER THAN PLANNED.  The plan needed
+  --   `Id Nat (μ x) (nsuc k)`; what is needed is only the INEQUALITY
+  --   `μ x ≤ nsuc k`, because the auxiliary at ANY bound above the measure
+  --   computes the same answer.  An identity would give the inequality; the
+  --   converse is false, so this is strictly more usable.
+  ------------------------------------------------------------------------
+
+  -- the identity ambient renaming, and what it does to the three data
+  idR : Ren ⌊ Δ ⌋ ⌊ Δ ⌋
+  idR v = v
+
+  extR-idR : ∀ v → extR idR v ≡ v
+  extR-idR vz     = refl
+  extR-idR (vs v) = refl
+
+  extR²-idR : ∀ v → extR (extR idR) v ≡ v
+  extR²-idR vz          = refl
+  extR²-idR (vs vz)     = refl
+  extR²-idR (vs (vs v)) = refl
+
+  auxAt-id : (z n : RTm ⌊ Δ ⌋) → auxAt idR z n ≡ auxIH z n
+  auxAt-id z n =
+    cong₂ (λ u s → natrec u s n)
+          (renTm-idR (λ v → refl) (auxZ z))
+          (renTm-idR extR²-idR (auxS z))
+
+  amrec-unfold-Id :
+    StepExt Δ A cM m stp →
+    {x k p : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ k ∷ Nat →
+    Δ ⊢ p ∷ Hom Nat (subTm (single x) m) (nsuc k) →
+    Prv Δ (Id (El (subTm (single x) cM))
+              (app amrecTm x)
+              (app (app stp x) (ihS-atP x x k p)))
+  amrec-unfold-Id ext {x = x} {k = k} {p = p} dx dk dp =
+    idToRed done
+            (aux-step-sF {P = λ ih → app (app stp x) ih} x x (nsuc k) k p done
+                         (λ _ → done))
+            (idOfRed (amrec-β x) done
+                     (prv-cast idEq (irrElim dAt x (reflTm μx) p dA' dc₁ dc₂)))
+    where
+      μx  = subTm (single x) m
+      dμx = ⊢[] dm dx
+
+      mId : renTm (extR idR) m ≡ m
+      mId = renTm-idR extR-idR m
+
+      -- the induction, instantiated at the SECOND bound `nsuc k`
+      dAt : Δ ⊢ app (prvTm (irr-ind ext dx dx dμx)) (nsuc k)
+              ∷ irrT idR x x μx (nsuc k)
+      dAt = ⊢-cast (trans (irrT-sub vs idR (λ v → refl) x x (w μx) (var vz))
+                          (cong (λ u → irrT idR x x u (nsuc k))
+                                (wk-single {v = nsuc k} μx)))
+                   (⊢app (prvOk (irr-ind ext dx dx dμx)) (⊢nsuc dk))
+
+      dA' : Δ ⊢ x ∷ renTy idR A
+      dA' = ⊢-cast (sym (renTy-idR (λ v → refl) A)) dx
+
+      dc₁ : Δ ⊢ reflTm μx ∷ Hom Nat (subTm (single x) (renTm (extR idR) m)) μx
+      dc₁ = ⊢-cast (cong (λ z → Hom Nat (subTm (single x) z) μx) (sym mId))
+                   (⊢le-refl dμx)
+
+      dc₂ : Δ ⊢ p ∷ Hom Nat (subTm (single x) (renTm (extR idR) m)) (nsuc k)
+      dc₂ = ⊢-cast (cong (λ z → Hom Nat (subTm (single x) z) (nsuc k)) (sym mId))
+                   dp
+
+      idEq : Id (El (subTm (single x) (renTm (extR idR) cM)))
+                (app (app (auxAt idR x μx) x) (reflTm μx))
+                (app (app (auxAt idR x (nsuc k)) x) p)
+           ≡ Id (El (subTm (single x) cM))
+                (app (app (auxIH x μx) x) (reflTm μx))
+                (app (app (auxIH x (nsuc k)) x) p)
+      idEq = cong₃ (λ c e₁ e₂ → Id (El c) e₁ e₂)
+                   (cong (subTm (single x)) (renTm-idR extR-idR cM))
+                   (cong (λ z → app (app z x) (reflTm μx)) (auxAt-id x μx))
+                   (cong (λ z → app (app z x) p) (auxAt-id x (nsuc k)))
+
+  -- ★★ NON-VACUITY, and it is the thing to check before believing any of
+  --    this (Green ≠ meaningful).  `amrec-unfold-Id`'s premise is NOT a
+  --    hidden identity: whenever the measure REDUCES to a successor it is
+  --    discharged by `reflTm` and one conversion.  So the Id-form subsumes
+  --    the `⟶*`-form `amrec-step-s`, and the premise is inhabited at exactly
+  --    the arguments the library already reduces at.
+  --
+  -- ⚠ What is STILL undischarged is `StepExt` — the caller's half.  Nothing
+  --   in this tree supplies one, so `amrec-unfold-Id` is real machinery with
+  --   a real statement and is NOT yet evidence that any particular function
+  --   unfolds internally.
+  ⊢le-of-red : {x k : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → subTm (single x) m ⟶* nsuc k →
+               Δ ⊢ reflTm (subTm (single x) m)
+                 ∷ Hom Nat (subTm (single x) m) (nsuc k)
+  ⊢le-of-red dx r = ⊢conv (⊢le-refl (⊢[] dm dx)) (red→≅ᵀ (⟶ᵀ*-Homʳ r))
+
+  amrec-unfold-Id-red :
+    StepExt Δ A cM m stp →
+    {x k : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ k ∷ Nat →
+    subTm (single x) m ⟶* nsuc k →
+    Prv Δ (Id (El (subTm (single x) cM))
+              (app amrecTm x)
+              (app (app stp x)
+                   (ihS-atP x x k (reflTm (subTm (single x) m)))))
+  amrec-unfold-Id-red ext dx dk r = amrec-unfold-Id ext dx dk (⊢le-of-red dx r)
 
   amrec-step-s : {P : RTm ⌊ Δ ⌋} (x k : RTm ⌊ Δ ⌋) →
                  subTm (single x) m ⟶* nsuc k →
