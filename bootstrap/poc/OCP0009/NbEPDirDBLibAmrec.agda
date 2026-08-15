@@ -235,12 +235,20 @@ StepExt Δ A cM m stp =
   {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
   (a ih₁ ih₂ : RTm ⌊ Θ ⌋) →
   Θ ⊢ a ∷ renTy ρ A →
-  -- ⚠ NO typing premise on `ih₁`/`ih₂`, deliberately.  A provider reduces
-  --   `app (app stp a) ihᵢ` with `ihᵢ` an opaque term (that is what every
-  --   step-reduction lemma here already does — `gcd-le-term` takes its
-  --   `ih` as a bare `RTm`) and finishes with `idOfRed`, so it never
-  --   inspects one; and the consumer has its own (`⊢ihZ-atP`/`⊢ihS-atP`).
-  --   An unused premise would only make this harder to discharge.
+  -- ⚠⚠ THESE TWO WERE DROPPED AND ARE BACK — measured 2026-08-15.  The
+  --   argument for dropping them was that a provider reduces
+  --   `app (app stp a) ihᵢ` with `ihᵢ` opaque and never inspects one.  True
+  --   of the REDUCTION, false of the provider as a whole: to instantiate
+  --   the pointwise hypothesis it must supply `q`'s typing, i.e. type the
+  --   recursive call's CERTIFICATE, and (probe, same day) that certificate
+  --   is literally the step branch's own certificate under the reduction's
+  --   substitutions — so it is typed by `sub-lemma` on the branch's
+  --   derivation, and `sub-lemma` needs a `Sub⊢` for a substitution that
+  --   includes `single ihᵢ`.  Hence `ihᵢ` must be typed.
+  Θ ⊢ ih₁ ∷ aIHTat (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+                   (subTm (single a) (renTm (extR ρ) m)) →
+  Θ ⊢ ih₂ ∷ aIHTat (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+                   (subTm (single a) (renTm (extR ρ) m)) →
   ((y q : RTm ⌊ Θ ⌋) →
      Θ ⊢ y ∷ renTy ρ A →
      Θ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) (renTm (extR ρ) m)))
@@ -1301,7 +1309,8 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
   aux-irr-z ext {Θ = Θ} {ρ = ρ} h x a c₁ c₂ dx da dc₁ dc₂ =
     idOfRed (auxAt-step-z ρ x a nzero c₁ done (λ _ → done))
             (auxAt-step-z ρ x a nzero c₂ done (λ _ → done))
-            (ext h a (ihZ-atR ρ x a c₁) (ihZ-atR ρ x a c₂) da pw)
+            (ext h a (ihZ-atR ρ x a c₁) (ihZ-atR ρ x a c₂) da
+                 (⊢ihZ-atR h dx da dc₁) (⊢ihZ-atR h dx da dc₂) pw)
     where
       dm' : (Θ ▹ renTy ρ A) ⊢ renTm (extR ρ) m ∷ Nat
       dm' = ren-lemma dm (Ren⊢-ext h)
