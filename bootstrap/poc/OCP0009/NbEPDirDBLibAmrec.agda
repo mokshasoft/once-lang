@@ -27,7 +27,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR
         ; subTy-renTy; subTy-id; subTm-renTm; subTm-id; subTm-cong
         ; renTm-renTm; renTy-renTy; renTm-cong; renTy-cong; subTy-cong; idₛ
-        ; renTy-subTy; renTm-subTm )
+        ; renTy-subTy; renTm-subTm; ordtr-cong₅ )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
@@ -45,7 +45,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import poc.OCP0009.NbEPDirDBLibWk
   using ( w; wᶠ; ⊢wkᶠ; cong₃; cong₄; sub-w; sub-w²; sub-w³; sub-w⁴; ren-w; wk-singleTy; wᶠ-single
         ; wᶠ¹-single; wᶠ²-single; nrs-wTy; wᶠ-nrs; ren-wTy; ren-wᶠ; sub-wTy; wᶠ-sub
-        ; ren-sub; ren-w²; ren-w³; nrs-w; cong₆; _∙^_; w^; wTy^; wᶠ^ )
+        ; ren-sub; ren-w²; ren-w³; nrs-w; cong₅; cong₆; _∙^_; w^; wTy^; wᶠ^ )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-ren; aIHT-fit )
 open import poc.OCP0009.NbEPDirDBLibNatVal using ( NatVal; nv-zero; nv-suc; natEval )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢[] )
@@ -1791,6 +1791,352 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
                            (cong wᶠ (wᶠ-single mρ)))
                     (sub-w {σ = single a} mρ))
 
+  ------------------------------------------------------------------------
+  -- ★★★ THE SUCCESSOR BRANCH'S IH, APPLIED — `ih-app` at a renaming, and
+  --    WITH ITS CERTIFICATE NAMED.
+  --
+  -- ⚠ WHY THE CERTIFICATE HAS TO BE PEELED, and it was the one place the
+  --   route could have stalled.  The (suc,suc) leaf of the induction closes
+  --   by instantiating the INDUCTION HYPOTHESIS at the recursive call — and
+  --   `⊢app` wants that call's certificate TYPED.  The certificate the
+  --   reduction actually hands over is `descS` under SEVEN substitution
+  --   layers, and `subTm` does not invert, so no amount of subject
+  --   reduction produces a typing for it.  `descS-peel` says what it IS —
+  --   `ordtr (nsuc μy) μa (nsuc k) q p` — and then `⊢strong-step` types it
+  --   from the two hypotheses the pointwise premise already supplies.
+  ------------------------------------------------------------------------
+
+  appAt2R : {Γ' : Cx} {t f₁ f₂ y₁ y₂ u : RTm Γ'} → f₁ ≡ f₂ → y₁ ≡ y₂ →
+            t ⟶* app (app f₁ y₁) u → t ⟶* app (app f₂ y₂) u
+  appAt2R refl refl hh = hh
+
+  descS-atR : {Γ' : Cx} (ρ : Ren ⌊ Δ ⌋ Γ') (x : RTm ⌊ Δ ⌋)
+              (a k p y q : RTm Γ') → RTm Γ'
+  descS-atR ρ x a k p y q =
+    subTm (single q)
+      (subTm (extS (single y))
+        (subTm (extS (extS (single p)))
+          (subTm (extS (extS (extS (single a))))
+            (subTm (extS (extS (extS (extS (single (auxAt ρ x k))))))
+              (subTm (extS (extS (extS (extS (extS (single k))))))
+                (renTm (extR (extR (extR (extR (extR (extR ρ))))))
+                  (subTm (extS (extS (extS (extS (extS (extS (single x)))))))
+                         descS)))))))
+
+  -- the IH₀ slot survives the four outer substitutions — `aux-cancel` with
+  -- `auxAt ρ x k` in place of `auxIH x k`; the renaming sits BELOW it and
+  -- acts as the identity on the slot's variable, so the proof is the same
+  aux-cancelR : {Γ' : Cx} (ρ : Ren ⌊ Δ ⌋ Γ') (x : RTm ⌊ Δ ⌋)
+                (a k p y q : RTm Γ') →
+    subTm (single q)
+      (subTm (extS (single y))
+        (subTm (extS (extS (single p)))
+          (subTm (extS (extS (extS (single a))))
+            (w (w (w (w (auxAt ρ x k))))))))
+    ≡ auxAt ρ x k
+  aux-cancelR ρ x a k p y q =
+    trans (cong (λ z → subTm (single q)
+                         (subTm (extS (single y))
+                           (subTm (extS (extS (single p))) z)))
+                (trans (sub-w³ {σ = single a} (w (auxAt ρ x k)))
+                       (cong (λ z → w (w (w z)))
+                             (wk-single {v = a} (auxAt ρ x k)))))
+    (trans (cong (λ z → subTm (single q) (subTm (extS (single y)) z))
+                 (trans (sub-w² {σ = single p} (w (auxAt ρ x k)))
+                        (cong (λ z → w (w z))
+                              (wk-single {v = p} (auxAt ρ x k)))))
+    (trans (cong (subTm (single q))
+                 (trans (sub-w {σ = single y} (w (auxAt ρ x k)))
+                        (cong w (wk-single {v = y} (auxAt ρ x k)))))
+           (wk-single {v = q} (auxAt ρ x k))))
+
+  ih-appR : {Γ' : Cx} (ρ : Ren ⌊ Δ ⌋ Γ') (x : RTm ⌊ Δ ⌋) (a k p y q : RTm Γ') →
+            app (app (ihS-atR ρ x a k p) y) q
+          ⟶* app (app (auxAt ρ x k) y) (descS-atR ρ x a k p y q)
+  ih-appR ρ x a k p y q =
+    appAt2R (aux-cancelR ρ x a k p y q) (wk-single {v = q} y)
+            (step (ξ-appˡ (β _ y)) (step (β _ q) done))
+
+  -- ★★ …AND WHAT THAT CERTIFICATE IS.  Five arguments, five peels: two are
+  --    `refl` (the two variables `q` and `p` reach their slots by
+  --    computation), one is the five-rung `w`-ladder for the bound, and the
+  --    two measures are the `w`/`wᶠ` staircase — `sub-w`+`wᶠ-sub` down,
+  --    `ren-wᶠ` across the renaming, `wᶠ-single` at each landing.
+  descS-peel : {Γ' : Cx} (ρ : Ren ⌊ Δ ⌋ Γ') (x : RTm ⌊ Δ ⌋)
+               (a k p y q : RTm Γ') →
+               descS-atR ρ x a k p y q
+             ≡ ordtr (nsuc (subTm (single y) (renTm (extR ρ) m)))
+                     (subTm (single a) (renTm (extR ρ) m))
+                     (nsuc k) q p
+  descS-peel {Γ' = Γ'} ρ x a k p y q =
+    ordtr-cong₅ (cong nsuc pμy) pμa (cong nsuc pk) refl pp
+    where
+      AX = auxAt ρ x k
+      mρ = renTm (extR ρ) m
+
+      S1 : RTm (Γ' ∙) → RTm Γ'
+      S1 t = subTm (single q) t
+      S2 : RTm ((Γ' ∙) ∙) → RTm Γ'
+      S2 t = S1 (subTm (extS (single y)) t)
+      S3 : RTm (((Γ' ∙) ∙) ∙) → RTm Γ'
+      S3 t = S2 (subTm (extS (extS (single p))) t)
+      S4 : RTm ((((Γ' ∙) ∙) ∙) ∙) → RTm Γ'
+      S4 t = S3 (subTm (extS (extS (extS (single a)))) t)
+      S5 : RTm (((((Γ' ∙) ∙) ∙) ∙) ∙) → RTm Γ'
+      S5 t = S4 (subTm (extS (extS (extS (extS (single AX))))) t)
+      S6 : RTm ((((((Γ' ∙) ∙) ∙) ∙) ∙) ∙) → RTm Γ'
+      S6 t = S5 (subTm (extS (extS (extS (extS (extS (single k)))))) t)
+      S7 : RTm ((((((⌊ Δ ⌋ ∙) ∙) ∙) ∙) ∙) ∙) → RTm Γ'
+      S7 t = S6 (renTm (extR (extR (extR (extR (extR (extR ρ)))))) t)
+
+      ------------------------------------------------------------------
+      -- argument 1: the measure at the ARGUMENT slot, `w (wᶠ⁵ m)`
+      ------------------------------------------------------------------
+      a1e7 : subTm (extS (extS (extS (extS (extS (extS (single x)))))))
+                   (w (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ m))))))
+           ≡ w (wᶠ (wᶠ (wᶠ (wᶠ m))))
+      a1e7 =
+        trans (sub-w {σ = extS (extS (extS (extS (extS (single x)))))}
+                     (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ m))))))
+              (cong w (trans (wᶠ-sub {σ = extS (extS (extS (single x)))}
+                                     (wᶠ (wᶠ (wᶠ (wᶠ m)))))
+                      (cong wᶠ (trans (wᶠ-sub {σ = extS (extS (single x))}
+                                              (wᶠ (wᶠ (wᶠ m))))
+                               (cong wᶠ (trans (wᶠ-sub {σ = extS (single x)}
+                                                       (wᶠ (wᶠ m)))
+                                        (cong wᶠ (trans (wᶠ-sub {σ = single x} (wᶠ m))
+                                                 (cong wᶠ (wᶠ-single m))))))))))
+
+      a1e6 : renTm (extR (extR (extR (extR (extR (extR ρ))))))
+                   (w (wᶠ (wᶠ (wᶠ (wᶠ m)))))
+           ≡ w (wᶠ (wᶠ (wᶠ (wᶠ mρ))))
+      a1e6 =
+        trans (ren-w {ρ = extR (extR (extR (extR (extR ρ))))} (wᶠ (wᶠ (wᶠ (wᶠ m)))))
+              (cong w (trans (ren-wᶠ {ρ = extR (extR (extR ρ))} (wᶠ (wᶠ (wᶠ m))))
+                      (cong wᶠ (trans (ren-wᶠ {ρ = extR (extR ρ)} (wᶠ (wᶠ m)))
+                               (cong wᶠ (trans (ren-wᶠ {ρ = extR ρ} (wᶠ m))
+                                        (cong wᶠ (ren-wᶠ {ρ = ρ} m))))))))
+
+      a1e5 : subTm (extS (extS (extS (extS (extS (single k))))))
+                   (w (wᶠ (wᶠ (wᶠ (wᶠ mρ)))))
+           ≡ w (wᶠ (wᶠ (wᶠ mρ)))
+      a1e5 =
+        trans (sub-w {σ = extS (extS (extS (extS (single k))))}
+                     (wᶠ (wᶠ (wᶠ (wᶠ mρ)))))
+              (cong w (trans (wᶠ-sub {σ = extS (extS (single k))} (wᶠ (wᶠ (wᶠ mρ))))
+                      (cong wᶠ (trans (wᶠ-sub {σ = extS (single k)} (wᶠ (wᶠ mρ)))
+                               (cong wᶠ (trans (wᶠ-sub {σ = single k} (wᶠ mρ))
+                                        (cong wᶠ (wᶠ-single mρ))))))))
+
+      a1e4 : subTm (extS (extS (extS (extS (single AX)))))
+                   (w (wᶠ (wᶠ (wᶠ mρ))))
+           ≡ w (wᶠ (wᶠ mρ))
+      a1e4 =
+        trans (sub-w {σ = extS (extS (extS (single AX)))} (wᶠ (wᶠ (wᶠ mρ))))
+              (cong w (trans (wᶠ-sub {σ = extS (single AX)} (wᶠ (wᶠ mρ)))
+                      (cong wᶠ (trans (wᶠ-sub {σ = single AX} (wᶠ mρ))
+                               (cong wᶠ (wᶠ-single mρ))))))
+
+      a1e3 : subTm (extS (extS (extS (single a)))) (w (wᶠ (wᶠ mρ)))
+           ≡ w (wᶠ mρ)
+      a1e3 =
+        trans (sub-w {σ = extS (extS (single a))} (wᶠ (wᶠ mρ)))
+              (cong w (trans (wᶠ-sub {σ = single a} (wᶠ mρ))
+                             (cong wᶠ (wᶠ-single mρ))))
+
+      a1e2 : subTm (extS (extS (single p))) (w (wᶠ mρ)) ≡ w mρ
+      a1e2 = trans (sub-w {σ = extS (single p)} (wᶠ mρ))
+                   (cong w (wᶠ-single mρ))
+
+      a1e1 : subTm (extS (single y)) (w mρ) ≡ w (subTm (single y) mρ)
+      a1e1 = sub-w {σ = single y} mρ
+
+      pμy : S7 (subTm (extS (extS (extS (extS (extS (extS (single x)))))))
+                      (w (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ m)))))))
+          ≡ subTm (single y) mρ
+      pμy =
+        trans (cong S7 a1e7)
+        (trans (cong S6 a1e6)
+        (trans (cong S5 a1e5)
+        (trans (cong S4 a1e4)
+        (trans (cong S3 a1e3)
+        (trans (cong S2 a1e2)
+        (trans (cong S1 a1e1)
+               (wk-single {v = q} (subTm (single y) mρ))))))))
+
+      ------------------------------------------------------------------
+      -- argument 2: the measure at the CARRIER slot, `w³ (wᶠ³ m)`
+      ------------------------------------------------------------------
+      a2e7 : subTm (extS (extS (extS (extS (extS (extS (single x)))))))
+                   (w (w (w (wᶠ (wᶠ (wᶠ m))))))
+           ≡ w (w (w (wᶠ (wᶠ m))))
+      a2e7 =
+        trans (sub-w³ {σ = extS (extS (extS (single x)))} (wᶠ (wᶠ (wᶠ m))))
+              (cong (λ z → w (w (w z)))
+                    (trans (wᶠ-sub {σ = extS (single x)} (wᶠ (wᶠ m)))
+                           (cong wᶠ (trans (wᶠ-sub {σ = single x} (wᶠ m))
+                                           (cong wᶠ (wᶠ-single m))))))
+
+      a2e6 : renTm (extR (extR (extR (extR (extR (extR ρ))))))
+                   (w (w (w (wᶠ (wᶠ m)))))
+           ≡ w (w (w (wᶠ (wᶠ mρ))))
+      a2e6 =
+        trans (ren-w³ {ρ = extR (extR (extR ρ))} (wᶠ (wᶠ m)))
+              (cong (λ z → w (w (w z)))
+                    (trans (ren-wᶠ {ρ = extR ρ} (wᶠ m))
+                           (cong wᶠ (ren-wᶠ {ρ = ρ} m))))
+
+      a2e5 : subTm (extS (extS (extS (extS (extS (single k))))))
+                   (w (w (w (wᶠ (wᶠ mρ)))))
+           ≡ w (w (w (wᶠ mρ)))
+      a2e5 =
+        trans (sub-w³ {σ = extS (extS (single k))} (wᶠ (wᶠ mρ)))
+              (cong (λ z → w (w (w z)))
+                    (trans (wᶠ-sub {σ = single k} (wᶠ mρ))
+                           (cong wᶠ (wᶠ-single mρ))))
+
+      a2e4 : subTm (extS (extS (extS (extS (single AX))))) (w (w (w (wᶠ mρ))))
+           ≡ w (w (w mρ))
+      a2e4 =
+        trans (sub-w³ {σ = extS (single AX)} (wᶠ mρ))
+              (cong (λ z → w (w (w z))) (wᶠ-single mρ))
+
+      a2e3 : subTm (extS (extS (extS (single a)))) (w (w (w mρ)))
+           ≡ w (w (w (subTm (single a) mρ)))
+      a2e3 = sub-w³ {σ = single a} mρ
+
+      a2e2 : subTm (extS (extS (single p))) (w (w (w (subTm (single a) mρ))))
+           ≡ w (w (subTm (single a) mρ))
+      a2e2 = trans (sub-w² {σ = single p} (w (subTm (single a) mρ)))
+                   (cong (λ z → w (w z)) (wk-single {v = p} (subTm (single a) mρ)))
+
+      a2e1 : subTm (extS (single y)) (w (w (subTm (single a) mρ)))
+           ≡ w (subTm (single a) mρ)
+      a2e1 = trans (sub-w {σ = single y} (w (subTm (single a) mρ)))
+                   (cong w (wk-single {v = y} (subTm (single a) mρ)))
+
+      pμa : S7 (subTm (extS (extS (extS (extS (extS (extS (single x)))))))
+                      (w (w (w (wᶠ (wᶠ (wᶠ m)))))))
+          ≡ subTm (single a) mρ
+      pμa =
+        trans (cong S7 a2e7)
+        (trans (cong S6 a2e6)
+        (trans (cong S5 a2e5)
+        (trans (cong S4 a2e4)
+        (trans (cong S3 a2e3)
+        (trans (cong S2 a2e2)
+        (trans (cong S1 a2e1)
+               (wk-single {v = q} (subTm (single a) mρ))))))))
+
+      ------------------------------------------------------------------
+      -- argument 3: the BOUND — five rungs of `w`, and the first three
+      -- layers reach it by computation
+      ------------------------------------------------------------------
+      a3e4 : subTm (extS (extS (extS (extS (single AX)))))
+                   (w (w (w (w (w k)))))
+           ≡ w (w (w (w k)))
+      a3e4 = trans (sub-w⁴ {σ = single AX} (w k))
+                   (cong (λ z → w (w (w (w z)))) (wk-single {v = AX} k))
+
+      a3e3 : subTm (extS (extS (extS (single a)))) (w (w (w (w k))))
+           ≡ w (w (w k))
+      a3e3 = trans (sub-w³ {σ = single a} (w k))
+                   (cong (λ z → w (w (w z))) (wk-single {v = a} k))
+
+      a3e2 : subTm (extS (extS (single p))) (w (w (w k))) ≡ w (w k)
+      a3e2 = trans (sub-w² {σ = single p} (w k))
+                   (cong (λ z → w (w z)) (wk-single {v = p} k))
+
+      a3e1 : subTm (extS (single y)) (w (w k)) ≡ w k
+      a3e1 = trans (sub-w {σ = single y} (w k)) (cong w (wk-single {v = y} k))
+
+      pk : S5 (w (w (w (w (w k))))) ≡ k
+      pk =
+        trans (cong S4 a3e4)
+        (trans (cong S3 a3e3)
+        (trans (cong S2 a3e2)
+        (trans (cong S1 a3e1)
+               (wk-single {v = q} k))))
+
+      ------------------------------------------------------------------
+      -- argument 5: the OTHER certificate — two rungs, the rest computes
+      ------------------------------------------------------------------
+      pp : S2 (w (w p)) ≡ p
+      pp =
+        trans (cong S1 (trans (sub-w {σ = single y} (w p))
+                              (cong w (wk-single {v = y} p))))
+              (wk-single {v = q} p)
+
+  -- ★ THE IH's OWN TYPE, abbreviated — it is the one type every pointwise
+  --   argument below is stated at.
+  ihTy : {Θ : Ctx} (ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋) (a : RTm ⌊ Θ ⌋) → RTy ⌊ Θ ⌋
+  ihTy ρ a = aIHTat (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+                    (subTm (single a) (renTm (extR ρ) m))
+
+  -- applying an IH to its two arguments: two `⊢app`s, three peels
+  appIH : {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} {a ih : RTm ⌊ Θ ⌋} →
+          Θ ⊢ ih ∷ ihTy ρ a →
+          (y q : RTm ⌊ Θ ⌋) → Θ ⊢ y ∷ renTy ρ A →
+          Θ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) (renTm (extR ρ) m)))
+                          (subTm (single a) (renTm (extR ρ) m)) →
+          Θ ⊢ app (app ih y) q ∷ El (subTm (single y) (renTm (extR ρ) cM))
+  appIH {ρ = ρ} {a = a} dih y q dy dq =
+    ⊢-cast (cong El (wk-single {v = q} (subTm (single y) (renTm (extR ρ) cM))))
+      (⊢app (⊢-cast (cong₂ (λ u c →
+                              Π (Hom Nat (nsuc (subTm (single y)
+                                                      (renTm (extR ρ) m))) u)
+                                (El c))
+                           (wk-single {v = y}
+                                      (subTm (single a) (renTm (extR ρ) m)))
+                           (sub-w {σ = single y} (renTm (extR ρ) cM)))
+                    (⊢app dih dy))
+            dq)
+
+  -- ★★ THE IRRELEVANCE COMBINATOR, factored out of `aux-irr-z`.  TWO
+  --    reductions to `app (app stp a) ihᵢ` and the pointwise hypothesis give
+  --    the `Id` between the SOURCES — and the sources are free, so the same
+  --    lemma serves all four leaves of the induction below.
+  aux-irr : StepExt Δ A cM m stp →
+            {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
+            {t₁ t₂ a ih₁ ih₂ : RTm ⌊ Θ ⌋} →
+            Θ ⊢ a ∷ renTy ρ A →
+            Θ ⊢ ih₁ ∷ ihTy ρ a → Θ ⊢ ih₂ ∷ ihTy ρ a →
+            t₁ ⟶* app (app (renTm ρ stp) a) ih₁ →
+            t₂ ⟶* app (app (renTm ρ stp) a) ih₂ →
+            ((y q : RTm ⌊ Θ ⌋) → Θ ⊢ y ∷ renTy ρ A →
+               Θ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) (renTm (extR ρ) m)))
+                               (subTm (single a) (renTm (extR ρ) m)) →
+               Prv Θ (Id (El (subTm (single y) (renTm (extR ρ) cM)))
+                         (app (app ih₁ y) q) (app (app ih₂ y) q))) →
+            Prv Θ (Id (El (subTm (single a) (renTm (extR ρ) cM))) t₁ t₂)
+  aux-irr ext h da d₁ d₂ r₁ r₂ pw = idOfRed r₁ r₂ (ext h _ _ _ da d₁ d₂ pw)
+
+  -- ★★ …AND THE POINTWISE PREMISE IS EX FALSO whenever EITHER bound is `0`:
+  --    `μ y < μ a ≤ 0` is `base`, and `Id (El C) t u` is `El (⌜Id⌝ C t u)`,
+  --    so `absurd` reaches it.  ⚠ It does not matter WHICH of the two
+  --    certificates is the `≤ 0` one — the code is `⌜Id⌝ C (ih₁ y q)
+  --    (ih₂ y q)` either way, which is why three of the four leaves share
+  --    this one lemma.
+  pwZ : {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
+        {a c ih₁ ih₂ : RTm ⌊ Θ ⌋} →
+        Θ ⊢ a ∷ renTy ρ A →
+        Θ ⊢ c ∷ Hom Nat (subTm (single a) (renTm (extR ρ) m)) nzero →
+        Θ ⊢ ih₁ ∷ ihTy ρ a → Θ ⊢ ih₂ ∷ ihTy ρ a →
+        (y q : RTm ⌊ Θ ⌋) → Θ ⊢ y ∷ renTy ρ A →
+        Θ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) (renTm (extR ρ) m)))
+                        (subTm (single a) (renTm (extR ρ) m)) →
+        Prv Θ (Id (El (subTm (single y) (renTm (extR ρ) cM)))
+                  (app (app ih₁ y) q) (app (app ih₂ y) q))
+  pwZ h da dc d₁ d₂ y q dy dq =
+    prv _ (⊢conv (⊢strong-base' (⊢⌜Id⌝ (⊢[] (ren-lemma dcM (Ren⊢-ext h)) dy)
+                                       (appIH d₁ y q dy dq)
+                                       (appIH d₂ y q dy dq))
+                                (⊢[] dm' dy) (⊢[] dm' da) dq dc)
+                 (red→≅ᵀ (stepᵀ (El-⌜Id⌝ _ _ _) doneᵀ)))
+    where dm' = ren-lemma dm (Ren⊢-ext h)
+
+  -- ★ …and the ORIGINAL zero-irrelevance is now DERIVED — the faithfulness
+  --   check on the factoring.
   aux-irr-z : StepExt Δ A cM m stp →
               {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
               (x : RTm ⌊ Δ ⌋) (a c₁ c₂ : RTm ⌊ Θ ⌋) →
@@ -1800,51 +2146,11 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
               Prv Θ (Id (El (subTm (single a) (renTm (extR ρ) cM)))
                         (app (app (auxAt ρ x nzero) a) c₁)
                         (app (app (auxAt ρ x nzero) a) c₂))
-  aux-irr-z ext {Θ = Θ} {ρ = ρ} h x a c₁ c₂ dx da dc₁ dc₂ =
-    idOfRed (auxAt-step-z ρ x a nzero c₁ done (λ _ → done))
+  aux-irr-z ext {ρ = ρ} h x a c₁ c₂ dx da dc₁ dc₂ =
+    aux-irr ext h da (⊢ihZ-atR h dx da dc₁) (⊢ihZ-atR h dx da dc₂)
+            (auxAt-step-z ρ x a nzero c₁ done (λ _ → done))
             (auxAt-step-z ρ x a nzero c₂ done (λ _ → done))
-            (ext h a (ihZ-atR ρ x a c₁) (ihZ-atR ρ x a c₂) da
-                 (⊢ihZ-atR h dx da dc₁) (⊢ihZ-atR h dx da dc₂) pw)
-    where
-      dm' : (Θ ▹ renTy ρ A) ⊢ renTm (extR ρ) m ∷ Nat
-      dm' = ren-lemma dm (Ren⊢-ext h)
-
-      dcM' : (Θ ▹ renTy ρ A) ⊢ renTm (extR ρ) cM ∷ U
-      dcM' = ren-lemma dcM (Ren⊢-ext h)
-
-      -- applying an IH to its two arguments: two `⊢app`s, three peels
-      appIH : {ih : RTm ⌊ Θ ⌋} →
-              Θ ⊢ ih ∷ aIHTat (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m)
-                              (subTm (single a) (renTm (extR ρ) m)) →
-              (y q : RTm ⌊ Θ ⌋) → Θ ⊢ y ∷ renTy ρ A →
-              Θ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) (renTm (extR ρ) m)))
-                              (subTm (single a) (renTm (extR ρ) m)) →
-              Θ ⊢ app (app ih y) q ∷ El (subTm (single y) (renTm (extR ρ) cM))
-      appIH dih y q dy dq =
-        ⊢-cast (cong El (wk-single {v = q}
-                                   (subTm (single y) (renTm (extR ρ) cM))))
-          (⊢app (⊢-cast (cong₂ (λ u c →
-                                  Π (Hom Nat (nsuc (subTm (single y)
-                                                          (renTm (extR ρ) m))) u)
-                                    (El c))
-                               (wk-single {v = y}
-                                          (subTm (single a) (renTm (extR ρ) m)))
-                               (sub-w {σ = single y} (renTm (extR ρ) cM)))
-                        (⊢app dih dy))
-                dq)
-
-      pw : (y q : RTm ⌊ Θ ⌋) → Θ ⊢ y ∷ renTy ρ A →
-           Θ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) (renTm (extR ρ) m)))
-                           (subTm (single a) (renTm (extR ρ) m)) →
-           Prv Θ (Id (El (subTm (single y) (renTm (extR ρ) cM)))
-                     (app (app (ihZ-atR ρ x a c₁) y) q)
-                     (app (app (ihZ-atR ρ x a c₂) y) q))
-      pw y q dy dq =
-        prv _ (⊢conv (⊢strong-base' (⊢⌜Id⌝ (⊢[] dcM' dy)
-                                           (appIH (⊢ihZ-atR h dx da dc₁) y q dy dq)
-                                           (appIH (⊢ihZ-atR h dx da dc₂) y q dy dq))
-                                    (⊢[] dm' dy) (⊢[] dm' da) dq dc₁)
-                     (red→≅ᵀ (stepᵀ (El-⌜Id⌝ _ _ _) doneᵀ)))
+            (pwZ h da dc₁ (⊢ihZ-atR h dx da dc₁) (⊢ihZ-atR h dx da dc₂))
 
   ------------------------------------------------------------------------
   -- ★★★★ PIECE 7 — IRRELEVANCE AS AN OBJECT-LANGUAGE TYPE.
@@ -2070,6 +2376,417 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
   ⊢irrB dx dy =
     ty-Π ty-Nat
       (⊢irrT (wR there) dx dy (⊢var (there here)) (⊢var here))
+
+  ------------------------------------------------------------------------
+  -- ★★★★ PIECE 8 — THE INDUCTION ON THE BOUND.
+  --
+  -- ONE `natrec` on the first bound, and INSIDE each of its branches one
+  -- more on the second.  ⚠ The inner one is a CASE SPLIT, not a recursion:
+  -- the second bound never descends, it is only looked at.  That is why the
+  -- two-bound statement costs ~1.5× the one-bound one and not twice.
+  --
+  -- The four leaves:
+  --   (0,0) (0,S) (S,0)  the pointwise premise is EX FALSO — one of the two
+  --                      certificates bounds `μ a` by `0`, so `μ y < μ a ≤ 0`
+  --                      is `base`.  All three are `pwZ`.
+  --   (S,S)              the pointwise premise IS the induction hypothesis,
+  --                      instantiated at the recursive call.
+  ------------------------------------------------------------------------
+
+  prv-cast : {Γ : Ctx} {T T' : RTy ⌊ Γ ⌋} → T ≡ T' → Prv Γ T → Prv Γ T'
+  prv-cast refl pp = pp
+
+  vsθ : {Γ' : Cx} → Ren ⌊ Δ ⌋ Γ' → Ren ⌊ Δ ⌋ (Γ' ∙)
+  vsθ θ v = vs (θ v)
+
+  -- ★ INTRODUCTION: three `⊢lam`s, and the body is the `Id` that `aux-irr`
+  --   produces — with `peelθ` folded in, since that is the one place the
+  --   motive's `El` and the combinator's `El` are written differently.
+  irrIntro : {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ θ →
+             {x y : RTm ⌊ Δ ⌋} {n₁ n₂ : RTm ⌊ Θ ⌋} →
+             Θ ⊢ n₁ ∷ Nat → Θ ⊢ n₂ ∷ Nat →
+             Prv (irrΘ θ n₁ n₂)
+                 (Id (El (subTm (single (var (vs (vs vz))))
+                                (renTm (extR (θ₃ θ)) cM)))
+                     (app (app (auxAt (θ₃ θ) x (w (w (w n₁))))
+                               (var (vs (vs vz)))) (var (vs vz)))
+                     (app (app (auxAt (θ₃ θ) y (w (w (w n₂))))
+                               (var (vs (vs vz)))) (var vz))) →
+             Prv Θ (irrT θ x y n₁ n₂)
+  irrIntro {θ = θ} h {x = x} {y = y} {n₁ = n₁} {n₂ = n₂} dn₁ dn₂ (prv e d) =
+    prv (lam (lam (lam e)))
+        (⊢lam (ren-ty dA h)
+          (⊢lam (ty-Hom ty-Nat dmθ (⊢wk dn₁))
+            (⊢lam (ty-Hom ty-Nat (⊢wk dmθ) (⊢wk (⊢wk dn₂)))
+                  (⊢-cast (cong (λ C →
+                                   Id (El C)
+                                      (app (app (auxAt (θ₃ θ) x (w (w (w n₁))))
+                                                (var (vs (vs vz)))) (var (vs vz)))
+                                      (app (app (auxAt (θ₃ θ) y (w (w (w n₂))))
+                                                (var (vs (vs vz)))) (var vz)))
+                                (peelθ θ cM))
+                          d))))
+    where dmθ = ren-lemma dm (Ren⊢-ext h)
+
+  -- ★★ ELIMINATION — what `irrT` MEANS, in the combinator's own vocabulary.
+  --    Three `⊢app`s; every peel is `wk-single`, `sub-w` or `auxAt-sub`.
+  --    ⚠ This is also the form PIECE 9 consumes: an internal `Id` between
+  --    two auxiliary applications, at bounds and certificates of the
+  --    caller's choosing.
+  irrElim : {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} {x y : RTm ⌊ Δ ⌋}
+            {n₁ n₂ t : RTm ⌊ Θ ⌋} →
+            Θ ⊢ t ∷ irrT θ x y n₁ n₂ →
+            (a c₁ c₂ : RTm ⌊ Θ ⌋) →
+            Θ ⊢ a ∷ renTy θ A →
+            Θ ⊢ c₁ ∷ Hom Nat (subTm (single a) (renTm (extR θ) m)) n₁ →
+            Θ ⊢ c₂ ∷ Hom Nat (subTm (single a) (renTm (extR θ) m)) n₂ →
+            Prv Θ (Id (El (subTm (single a) (renTm (extR θ) cM)))
+                      (app (app (auxAt θ x n₁) a) c₁)
+                      (app (app (auxAt θ y n₂) a) c₂))
+  irrElim {Θ = Θ} {θ = θ} {x = x} {y = y} {n₁ = n₁} {n₂ = n₂} {t = t} dt a c₁ c₂ da dc₁ dc₂ =
+    prv (app (app (app t a) c₁) c₂)
+        (⊢-cast eq3 (⊢app (⊢-cast eq2 (⊢app (⊢-cast eq1 (⊢app dt da)) dc₁)) dc₂))
+    where
+      mθ  = renTm (extR θ) m
+      cMθ = renTm (extR θ) cM
+      μa  = subTm (single a) mθ
+      μcM = subTm (single a) cMθ
+      θ₁ = vsθ θ
+      θ₂ = vsθ (vsθ θ)
+
+      -- layer 1: the carrier `a`
+      b₁₁ : subTm (single a) (w n₁) ≡ n₁
+      b₁₁ = wk-single {v = a} n₁
+
+      m₂₁ : subTm (extS (single a)) (w mθ) ≡ w μa
+      m₂₁ = sub-w {σ = single a} mθ
+
+      b₂₁ : subTm (extS (single a)) (w (w n₂)) ≡ w n₂
+      b₂₁ = trans (sub-w {σ = single a} (w n₂)) (cong w (wk-single {v = a} n₂))
+
+      c₃₁ : subTm (extS (extS (single a))) (w (w cMθ)) ≡ w (w μcM)
+      c₃₁ = sub-w² {σ = single a} cMθ
+
+      aux₁ : {z : RTm ⌊ Δ ⌋} {n : RTm ⌊ Θ ⌋} →
+             subTm (extS (extS (single a))) (auxAt (θ₃ θ) z (w (w (w n))))
+           ≡ auxAt θ₂ z (w (w n))
+      aux₁ {z = z} {n = n} =
+        trans (auxAt-sub (θ₃ θ) θ₂ (λ v → refl) z (w (w (w n))))
+              (cong (auxAt θ₂ z)
+                    (trans (sub-w² {σ = single a} (w n))
+                           (cong (λ u → w (w u)) (wk-single {v = a} n))))
+
+      eq1 : subTy (single a)
+                  (Π (Hom Nat mθ (w n₁))
+                     (Π (Hom Nat (w mθ) (w (w n₂)))
+                        (Id (El (w (w cMθ)))
+                            (app (app (auxAt (θ₃ θ) x (w (w (w n₁))))
+                                      (var (vs (vs vz)))) (var (vs vz)))
+                            (app (app (auxAt (θ₃ θ) y (w (w (w n₂))))
+                                      (var (vs (vs vz)))) (var vz)))))
+          ≡ Π (Hom Nat μa n₁)
+              (Π (Hom Nat (w μa) (w n₂))
+                 (Id (El (w (w μcM)))
+                     (app (app (auxAt θ₂ x (w (w n₁))) (w (w a))) (var (vs vz)))
+                     (app (app (auxAt θ₂ y (w (w n₂))) (w (w a))) (var vz))))
+      eq1 = cong₆ (λ u₁ u₂ u₃ u₄ e₁ e₂ →
+                     Π (Hom Nat μa u₁) (Π (Hom Nat u₂ u₃) (Id (El u₄) e₁ e₂)))
+                  b₁₁ m₂₁ b₂₁ c₃₁
+                  (cong (λ z → app (app z (w (w a))) (var (vs vz))) (aux₁ {z = x}))
+                  (cong (λ z → app (app z (w (w a))) (var vz)) (aux₁ {z = y}))
+
+      -- layer 2: the first certificate
+      aux₂ : {z : RTm ⌊ Δ ⌋} {n : RTm ⌊ Θ ⌋} →
+             subTm (extS (single c₁)) (auxAt θ₂ z (w (w n))) ≡ auxAt θ₁ z (w n)
+      aux₂ {z = z} {n = n} =
+        trans (auxAt-sub θ₂ θ₁ (λ v → refl) z (w (w n)))
+              (cong (auxAt θ₁ z)
+                    (trans (sub-w {σ = single c₁} (w n)) (cong w (wk-single {v = c₁} n))))
+
+      eq2 : subTy (single c₁)
+                  (Π (Hom Nat (w μa) (w n₂))
+                     (Id (El (w (w μcM)))
+                         (app (app (auxAt θ₂ x (w (w n₁))) (w (w a))) (var (vs vz)))
+                         (app (app (auxAt θ₂ y (w (w n₂))) (w (w a))) (var vz))))
+          ≡ Π (Hom Nat μa n₂)
+              (Id (El (w μcM))
+                  (app (app (auxAt θ₁ x (w n₁)) (w a)) (w c₁))
+                  (app (app (auxAt θ₁ y (w n₂)) (w a)) (var vz)))
+      eq2 = cong₅ (λ u₁ u₂ u₃ e₁ e₂ → Π (Hom Nat u₁ u₂) (Id (El u₃) e₁ e₂))
+                  (wk-single {v = c₁} μa) (wk-single {v = c₁} n₂)
+                  (trans (sub-w {σ = single c₁} (w μcM))
+                         (cong w (wk-single {v = c₁} μcM)))
+                  (cong₂ (λ z u → app (app z u) (w c₁)) (aux₂ {z = x})
+                         (trans (sub-w {σ = single c₁} (w a))
+                                (cong w (wk-single {v = c₁} a))))
+                  (cong₂ (λ z u → app (app z u) (var vz)) (aux₂ {z = y})
+                         (trans (sub-w {σ = single c₁} (w a))
+                                (cong w (wk-single {v = c₁} a))))
+
+      -- layer 3: the second certificate
+      aux₃ : {z : RTm ⌊ Δ ⌋} {n : RTm ⌊ Θ ⌋} →
+             subTm (single c₂) (auxAt θ₁ z (w n)) ≡ auxAt θ z n
+      aux₃ {z = z} {n = n} =
+        trans (auxAt-sub θ₁ θ (λ v → refl) z (w n))
+              (cong (auxAt θ z) (wk-single {v = c₂} n))
+
+      eq3 : subTy (single c₂)
+                  (Id (El (w μcM))
+                      (app (app (auxAt θ₁ x (w n₁)) (w a)) (w c₁))
+                      (app (app (auxAt θ₁ y (w n₂)) (w a)) (var vz)))
+          ≡ Id (El μcM) (app (app (auxAt θ x n₁) a) c₁)
+                        (app (app (auxAt θ y n₂) a) c₂)
+      eq3 = cong₃ (λ u e₁ e₂ → Id (El u) e₁ e₂)
+                  (wk-single {v = c₂} μcM)
+                  (cong₃ (λ z u v → app (app z u) v) (aux₃ {z = x})
+                         (wk-single {v = c₂} a) (wk-single {v = c₂} c₁))
+                  (cong₂ (λ z u → app (app z u) c₂) (aux₃ {z = y})
+                         (wk-single {v = c₂} a))
+
+  -- ★★ THE INNER CASE SPLIT.
+  irrSplit : {Θ₀ : Ctx} {θ : Ren ⌊ Δ ⌋ (⌊ Θ₀ ⌋ ∙)} → Ren⊢ Δ (Θ₀ ▹ Nat) θ →
+             {x y : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ y ∷ A →
+             {n₁ : RTm (⌊ Θ₀ ⌋ ∙)} → (Θ₀ ▹ Nat) ⊢ n₁ ∷ Nat →
+             Prv (Θ₀ ▹ Nat) (irrT θ x y n₁ nzero) →
+             Prv (((Θ₀ ▹ Nat) ▹ Nat) ▹ irrT (vsθ θ) x y (w n₁) (var vz))
+                 (irrT (vsθ (vsθ θ)) x y (w (w n₁)) (nsuc (var (vs vz)))) →
+             Prv (Θ₀ ▹ Nat) (irrT θ x y n₁ (var vz))
+  irrSplit {θ = θ} h dx dy {n₁ = n₁} dn₁ (prv z dz) (prv s ds) =
+    prv (natrec z s (var vz))
+        (⊢-cast eqAt (⊢natrec (⊢irrT (wR h) dx dy (⊢wk dn₁) (⊢var here))
+                              (⊢-cast (sym eqZ) dz) (⊢-cast (sym eqS) ds)
+                              (⊢var here)))
+    where
+      eqAt : subTy (single (var vz)) (irrT (vsθ θ) _ _ (w n₁) (var vz))
+           ≡ irrT θ _ _ n₁ (var vz)
+      eqAt = trans (irrT-sub (vsθ θ) θ (λ v → refl) _ _ (w n₁) (var vz))
+                   (cong (λ u → irrT θ _ _ u (var vz)) (wk-single {v = var vz} n₁))
+
+      eqZ : subTy (single nzero) (irrT (vsθ θ) _ _ (w n₁) (var vz))
+          ≡ irrT θ _ _ n₁ nzero
+      eqZ = trans (irrT-sub (vsθ θ) θ (λ v → refl) _ _ (w n₁) (var vz))
+                  (cong (λ u → irrT θ _ _ u nzero) (wk-single {v = nzero} n₁))
+
+      eqS : subTy nrs (irrT (vsθ θ) _ _ (w n₁) (var vz))
+          ≡ irrT (vsθ (vsθ θ)) _ _ (w (w n₁)) (nsuc (var (vs vz)))
+      eqS = trans (irrT-sub (vsθ θ) (vsθ (vsθ θ)) (λ v → refl) _ _ (w n₁) (var vz))
+                  (cong (λ u → irrT (vsθ (vsθ θ)) _ _ u (nsuc (var (vs vz))))
+                        (nrs-w n₁))
+
+  ------------------------------------------------------------------------
+  -- THE FOUR LEAVES
+  ------------------------------------------------------------------------
+
+  irr-zz : StepExt Δ A cM m stp →
+           {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} (h : Ren⊢ Δ Θ θ) →
+           {x y : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ y ∷ A →
+           Prv Θ (irrT θ x y nzero nzero)
+  irr-zz ext {θ = θ} h {x = x} {y = y} dx dy =
+    irrIntro h ⊢nzero ⊢nzero
+      (aux-irr ext (⊢irr-θ₃ h) ⊢irr-a d₁ d₂
+               (auxAt-step-z (θ₃ θ) x (var (vs (vs vz))) nzero (var (vs vz))
+                             done (λ _ → done))
+               (auxAt-step-z (θ₃ θ) y (var (vs (vs vz))) nzero (var vz)
+                             done (λ _ → done))
+               (pwZ (⊢irr-θ₃ h) ⊢irr-a ⊢irr-c₁ d₁ d₂))
+    where
+      d₁ = ⊢ihZ-atR (⊢irr-θ₃ h) dx ⊢irr-a ⊢irr-c₁
+      d₂ = ⊢ihZ-atR (⊢irr-θ₃ h) dy ⊢irr-a ⊢irr-c₂
+
+  irr-zs : StepExt Δ A cM m stp →
+           {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} (h : Ren⊢ Δ Θ θ) →
+           {x y : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ y ∷ A →
+           {k : RTm ⌊ Θ ⌋} → Θ ⊢ k ∷ Nat →
+           Prv Θ (irrT θ x y nzero (nsuc k))
+  irr-zs ext {θ = θ} h {x = x} {y = y} dx dy {k = k} dk =
+    irrIntro h ⊢nzero (⊢nsuc dk)
+      (aux-irr ext (⊢irr-θ₃ h) ⊢irr-a d₁ d₂
+               (auxAt-step-z (θ₃ θ) x (var (vs (vs vz))) nzero (var (vs vz))
+                             done (λ _ → done))
+               (auxAt-step-sF (θ₃ θ) y (var (vs (vs vz))) (nsuc (w (w (w k))))
+                              (w (w (w k))) (var vz) done (λ _ → done))
+               (pwZ (⊢irr-θ₃ h) ⊢irr-a ⊢irr-c₁ d₁ d₂))
+    where
+      d₁ = ⊢ihZ-atR (⊢irr-θ₃ h) dx ⊢irr-a ⊢irr-c₁
+      d₂ = ⊢ihS-atR (⊢irr-θ₃ h) dy (⊢wk (⊢wk (⊢wk dk))) ⊢irr-a ⊢irr-c₂
+
+  irr-sz : StepExt Δ A cM m stp →
+           {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} (h : Ren⊢ Δ Θ θ) →
+           {x y : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ y ∷ A →
+           {k : RTm ⌊ Θ ⌋} → Θ ⊢ k ∷ Nat →
+           Prv Θ (irrT θ x y (nsuc k) nzero)
+  irr-sz ext {θ = θ} h {x = x} {y = y} dx dy {k = k} dk =
+    irrIntro h (⊢nsuc dk) ⊢nzero
+      (aux-irr ext (⊢irr-θ₃ h) ⊢irr-a d₁ d₂
+               (auxAt-step-sF (θ₃ θ) x (var (vs (vs vz))) (nsuc (w (w (w k))))
+                              (w (w (w k))) (var (vs vz)) done (λ _ → done))
+               (auxAt-step-z (θ₃ θ) y (var (vs (vs vz))) nzero (var vz)
+                             done (λ _ → done))
+               (pwZ (⊢irr-θ₃ h) ⊢irr-a ⊢irr-c₂ d₁ d₂))
+    where
+      d₁ = ⊢ihS-atR (⊢irr-θ₃ h) dx (⊢wk (⊢wk (⊢wk dk))) ⊢irr-a ⊢irr-c₁
+      d₂ = ⊢ihZ-atR (⊢irr-θ₃ h) dy ⊢irr-a ⊢irr-c₂
+
+  -- ★ the IH, weakened one binder — `irrB`'s own `Π Nat` rides through by
+  --   `irrT-ren`, which is the only place the motive's naturality is used
+  irrΠ-ren : {Γ' : Cx} (θ : Ren ⌊ Δ ⌋ Γ') (x y : RTm ⌊ Δ ⌋) (k : RTm Γ') →
+             renTy vs (Π Nat (irrT (vsθ θ) x y (w k) (var vz)))
+           ≡ Π Nat (irrT (vsθ (vsθ θ)) x y (w (w k)) (var vz))
+  irrΠ-ren θ x y k =
+    cong (Π Nat)
+         (trans (irrT-ren (vsθ θ) (vsθ (vsθ θ)) (λ v → refl) x y (w k) (var vz))
+                (cong (λ u → irrT (vsθ (vsθ θ)) x y u (var vz)) (ren-w k)))
+
+  ihW : {Θ : Ctx} {B : RTy ⌊ Θ ⌋} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} {x y : RTm ⌊ Δ ⌋}
+        {k t : RTm ⌊ Θ ⌋} →
+        Θ ⊢ t ∷ Π Nat (irrT (vsθ θ) x y (w k) (var vz)) →
+        (Θ ▹ B) ⊢ w t ∷ Π Nat (irrT (vsθ (vsθ θ)) x y (w (w k)) (var vz))
+  ihW {θ = θ} {x = x} {y = y} {k = k} d = ⊢-cast (irrΠ-ren θ x y k) (⊢wk d)
+
+  -- ★★★★ THE (S,S) LEAF — the only one that uses the induction hypothesis,
+  --      and the only one that needs the recursive call's CERTIFICATE typed.
+  irr-ss : StepExt Δ A cM m stp →
+           {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} (h : Ren⊢ Δ Θ θ) →
+           {x y : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ y ∷ A →
+           {k₁ k₂ t : RTm ⌊ Θ ⌋} → Θ ⊢ k₁ ∷ Nat → Θ ⊢ k₂ ∷ Nat →
+           Θ ⊢ t ∷ Π Nat (irrT (vsθ θ) x y (w k₁) (var vz)) →
+           Prv Θ (irrT θ x y (nsuc k₁) (nsuc k₂))
+  irr-ss ext {Θ = Θ} {θ = θ} h {x = x} {y = y} dx dy {k₁ = k₁} {k₂ = k₂} {t = t} dk₁ dk₂ dih =
+    irrIntro h (⊢nsuc dk₁) (⊢nsuc dk₂)
+      (aux-irr ext ρ⊢ ⊢irr-a d₁ d₂
+               (auxAt-step-sF ρ x A3 (nsuc K₁) K₁ C₁ done (λ _ → done))
+               (auxAt-step-sF ρ y A3 (nsuc K₂) K₂ C₂ done (λ _ → done))
+               pw)
+    where
+      ρ  = θ₃ θ
+      ρ⊢ = ⊢irr-θ₃ h {n₁ = nsuc k₁} {n₂ = nsuc k₂}
+      A3 = var (vs (vs vz))
+      C₁ = var (vs vz)
+      C₂ = var vz
+      K₁ = w (w (w k₁))
+      K₂ = w (w (w k₂))
+
+      dK₁ = ⊢wk (⊢wk (⊢wk dk₁))
+      dK₂ = ⊢wk (⊢wk (⊢wk dk₂))
+      d₁ = ⊢ihS-atR ρ⊢ dx dK₁ ⊢irr-a ⊢irr-c₁
+      d₂ = ⊢ihS-atR ρ⊢ dy dK₂ ⊢irr-a ⊢irr-c₂
+
+      dmρ  = ren-lemma dm (Ren⊢-ext ρ⊢)
+      dμa  = ⊢[] dmρ (⊢irr-a {n₁ = nsuc k₁} {n₂ = nsuc k₂})
+
+      -- the IH at the leaf's depth, then INSTANTIATED at the second bound
+      dihΘ₃ : irrΘ θ (nsuc k₁) (nsuc k₂)
+                ⊢ w (w (w t)) ∷ Π Nat (irrT (vsθ ρ) x y (w K₁) (var vz))
+      dihΘ₃ = ihW (ihW (ihW dih))
+
+      dihAt : irrΘ θ (nsuc k₁) (nsuc k₂)
+                ⊢ app (w (w (w t))) K₂ ∷ irrT ρ x y K₁ K₂
+      dihAt = ⊢-cast (trans (irrT-sub (vsθ ρ) ρ (λ v → refl) x y (w K₁) (var vz))
+                            (cong (λ u → irrT ρ x y u K₂) (wk-single {v = K₂} K₁)))
+                     (⊢app dihΘ₃ dK₂)
+
+      pw : (y' q : RTm ⌊ irrΘ θ (nsuc k₁) (nsuc k₂) ⌋) →
+           irrΘ θ (nsuc k₁) (nsuc k₂) ⊢ y' ∷ renTy ρ A →
+           irrΘ θ (nsuc k₁) (nsuc k₂) ⊢ q
+             ∷ Hom Nat (nsuc (subTm (single y') (renTm (extR ρ) m)))
+                       (subTm (single A3) (renTm (extR ρ) m)) →
+           Prv (irrΘ θ (nsuc k₁) (nsuc k₂))
+               (Id (El (subTm (single y') (renTm (extR ρ) cM)))
+                   (app (app (ihS-atR ρ x A3 K₁ C₁) y') q)
+                   (app (app (ihS-atR ρ y A3 K₂ C₂) y') q))
+      pw y' q dy' dq =
+        idOfRed (ih-appR ρ x A3 K₁ C₁ y' q) (ih-appR ρ y A3 K₂ C₂ y' q)
+                (irrElim dihAt y' (descS-atR ρ x A3 K₁ C₁ y' q)
+                                  (descS-atR ρ y A3 K₂ C₂ y' q)
+                         dy' (dD x K₁ C₁ dK₁ ⊢irr-c₁) (dD y K₂ C₂ dK₂ ⊢irr-c₂))
+        where
+          -- ★ the recursive call's certificate: `descS-peel` says WHAT it is,
+          --   and `⊢strong-step` then types it from the two hypotheses the
+          --   pointwise premise already hands over — `q` (μ y' < μ a) and the
+          --   branch's own certificate (μ a ≤ suc K).
+          dD : (z : RTm ⌊ Δ ⌋) (K C : RTm ⌊ irrΘ θ (nsuc k₁) (nsuc k₂) ⌋) →
+               irrΘ θ (nsuc k₁) (nsuc k₂) ⊢ K ∷ Nat →
+               irrΘ θ (nsuc k₁) (nsuc k₂) ⊢ C
+                 ∷ Hom Nat (subTm (single A3) (renTm (extR ρ) m)) (nsuc K) →
+               irrΘ θ (nsuc k₁) (nsuc k₂) ⊢ descS-atR ρ z A3 K C y' q
+                 ∷ Hom Nat (subTm (single y') (renTm (extR ρ) m)) K
+          dD z K C dK dC =
+            subst (λ u → irrΘ θ (nsuc k₁) (nsuc k₂) ⊢ u
+                           ∷ Hom Nat (subTm (single y') (renTm (extR ρ) m)) K)
+                  (sym (descS-peel ρ z A3 K C y' q))
+                  (⊢strong-step (⊢[] dmρ dy') dμa dK dq dC)
+
+  ------------------------------------------------------------------------
+  -- ★★★★★ …AND THE INDUCTION ITSELF — CERTIFICATE- AND BOUND-IRRELEVANCE,
+  --       INTERNALLY.
+  --
+  --     ⊢ (n₂ : Nat) (a : A) (c₁ : μ a ≤ n) (c₂ : μ a ≤ n₂) →
+  --         aux x n a c₁ ≡ aux y n₂ a c₂
+  --
+  -- ⚠ CONDITIONAL on `StepExt`, which is the CALLER's to discharge — see the
+  --   header.  Nothing in this module supplies one, so this is machinery
+  --   with a real statement, not yet evidence that any particular function
+  --   has the property.
+  ------------------------------------------------------------------------
+
+  irr-ind : StepExt Δ A cM m stp →
+            {x y : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ y ∷ A →
+            {n : RTm ⌊ Δ ⌋} → Δ ⊢ n ∷ Nat →
+            Prv Δ (Π Nat (irrT vs x y (w n) (var vz)))
+  irr-ind ext {x = x} {y = y} dx dy {n = n} dn =
+    prv (natrec (lam (prvTm ZP)) (lam (prvTm SP)) n)
+        (⊢-cast (peelAt n)
+                (⊢natrec (⊢irrB dx dy)
+                         (⊢-cast (sym (peelAt nzero)) (⊢lam ty-Nat (prvOk ZP)))
+                         (⊢-cast (sym peelS) (⊢lam ty-Nat (prvOk SP)))
+                         dn))
+    where
+      peelAt : (u : RTm ⌊ Δ ⌋) →
+               subTy (single u) (irrB x y) ≡ Π Nat (irrT vs x y (w u) (var vz))
+      peelAt u = cong (Π Nat)
+                      (irrT-sub (λ v → vs (vs v)) vs (λ v → refl) x y
+                                (var (vs vz)) (var vz))
+
+      peelS : subTy nrs (irrB x y)
+            ≡ Π Nat (irrT (λ v → vs (vs (vs v))) x y
+                          (nsuc (var (vs (vs vz)))) (var vz))
+      peelS = cong (Π Nat)
+                   (irrT-sub (λ v → vs (vs v)) (λ v → vs (vs (vs v))) (λ v → refl)
+                             x y (var (vs vz)) (var vz))
+
+      -- n = 0: both inner cases are ex falso, from `c₁ : μ a ≤ 0`
+      ZP : Prv (Δ ▹ Nat) (irrT vs x y nzero (var vz))
+      ZP = irrSplit there dx dy ⊢nzero
+                    (irr-zz ext there dx dy)
+                    (irr-zs ext (wR (wR there)) dx dy (⊢var (there here)))
+
+      -- n = suc k₁: the (S,0) case is ex falso from `c₂`, and (S,S) is the IH
+      dIH : ((((Δ ▹ Nat) ▹ irrB x y) ▹ Nat) ▹ Nat)
+              ▹ irrT (vsθ (λ v → vs (vs (vs v)))) x y
+                     (w (nsuc (var (vs (vs vz))))) (var vz)
+              ⊢ var (vs (vs (vs vz)))
+              ∷ Π Nat (irrT (vsθ (λ v → vs (vs (vs (vs (vs v)))))) x y
+                            (w (var (vs (vs (vs (vs vz)))))) (var vz))
+      dIH =
+        ⊢-cast (trans (cong (λ S → renTy vs (renTy vs (renTy vs S)))
+                            (irrΠ-ren vs x y (var vz)))
+               (trans (cong (λ S → renTy vs (renTy vs S))
+                            (irrΠ-ren (vsθ vs) x y (w (var vz))))
+               (trans (cong (renTy vs)
+                            (irrΠ-ren (vsθ (vsθ vs)) x y (w (w (var vz)))))
+                      (irrΠ-ren (vsθ (vsθ (vsθ vs))) x y (w (w (w (var vz))))))))
+               (⊢var (there (there (there here))))
+
+      SP : Prv (((Δ ▹ Nat) ▹ irrB x y) ▹ Nat)
+               (irrT (λ v → vs (vs (vs v))) x y
+                     (nsuc (var (vs (vs vz)))) (var vz))
+      SP = irrSplit (wR (wR there)) dx dy (⊢nsuc (⊢var (there (there here))))
+                    (irr-sz ext (wR (wR there)) dx dy
+                            (⊢var (there (there here))))
+                    (irr-ss ext (wR (wR (wR (wR there)))) dx dy
+                            (⊢var (there (there (there (there here)))))
+                            (⊢var (there here))
+                            dIH)
 
   amrec-step-s : {P : RTm ⌊ Δ ⌋} (x k : RTm ⌊ Δ ⌋) →
                  subTm (single x) m ⟶* nsuc k →
