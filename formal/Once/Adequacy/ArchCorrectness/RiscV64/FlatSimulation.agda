@@ -1032,10 +1032,11 @@ block-step-worklist-pop {hv} prog fs s slot w cc h ft slot<ns st-eq =
 block-step-c-jmp : ∀ {hv : HeapView} prog fs s n j₀ → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-jmp n))
-  → R.find-label (compile-trace prog) (once n) ≡ just (blk-off prog j₀)
+  -- (the CONCRETE scan is no longer a premise: `find-label-corr` derives it
+  -- from the abstract one, which is what the engine passes. Plan 0.65 G2.)
   → find-label prog n ≡ just j₀
   → BlockStep hv prog fs s (instr-ctrl (c-jmp n))
-block-step-c-jmp {hv} prog fs s n j₀ cc h ft fl-rv fl-eq = block-step
+block-step-c-jmp {hv} prog fs s n j₀ cc h ft fl-eq = block-step
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : R.State.halted s ≡ false
@@ -1046,6 +1047,10 @@ block-step-c-jmp {hv} prog fs s n j₀ cc h ft fl-rv fl-eq = block-step
     post : R.State
     post = record s { pc = blk-off prog j₀ }
     snh : R.step-not-halted (compile-trace prog) s ≡ just post
+    -- the CONCRETE scan agrees with the abstract one: a THEOREM
+    -- (`FlatComposition.find-label-corr`), not a premise.
+    fl-rv : R.find-label (compile-trace prog) (once n) ≡ just (blk-off prog j₀)
+    fl-rv = find-label-corr prog n 0 j₀ fl-eq
     snh = step-j-found {compile-trace prog} {s} {once n} {blk-off prog j₀} fetch-rv fl-rv
     exec-eq : R.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
@@ -1066,10 +1071,11 @@ block-step-c-branch-scratch-zero : ∀ {hv : HeapView} prog fs s n k j₀ → Co
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero n))
   → readReg (regs (floc fs)) Scratch ≡ SV-Tag k
-  → R.find-label (compile-trace prog) (once n) ≡ just (blk-off prog j₀)
+  -- (the CONCRETE scan is no longer a premise: `find-label-corr` derives it
+  -- from the abstract one, which is what the engine passes. Plan 0.65 G2.)
   → find-label prog n ≡ just j₀
   → BlockStep hv prog fs s (instr-ctrl (c-branch-scratch-zero n))
-block-step-c-branch-scratch-zero {hv} prog fs s n zero j₀ cc h ft sc-eq fl-rv fl-eq = result
+block-step-c-branch-scratch-zero {hv} prog fs s n zero j₀ cc h ft sc-eq fl-eq = result
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : R.State.halted s ≡ false
@@ -1084,6 +1090,10 @@ block-step-c-branch-scratch-zero {hv} prog fs s n zero j₀ cc h ft sc-eq fl-rv 
     post : R.State
     post = record s { pc = blk-off prog j₀ }
     snh : R.step-not-halted (compile-trace prog) s ≡ just post
+    -- the CONCRETE scan agrees with the abstract one: a THEOREM
+    -- (`FlatComposition.find-label-corr`), not a premise.
+    fl-rv : R.find-label (compile-trace prog) (once n) ≡ just (blk-off prog j₀)
+    fl-rv = find-label-corr prog n 0 j₀ fl-eq
     snh = step-beq-taken {compile-trace prog} {s} {s3} {zero} {once n} {blk-off prog j₀} fetch-rv taken fl-rv
     exec-eq : R.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
@@ -1096,7 +1106,7 @@ block-step-c-branch-scratch-zero {hv} prog fs s n zero j₀ cc h ft sc-eq fl-rv 
                           ; heap-eq = C.heap-eq dc
                           ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
       ; pc-off = refl ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
-block-step-c-branch-scratch-zero {hv} prog fs s n (suc m) j₀ cc h ft sc-eq fl-rv fl-eq = result
+block-step-c-branch-scratch-zero {hv} prog fs s n (suc m) j₀ cc h ft sc-eq fl-eq = result
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : R.State.halted s ≡ false
@@ -1136,10 +1146,11 @@ block-step-c-branch-tag-zero : ∀ {hv : HeapView} prog fs s n loc k j₀ → Co
   → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
   → readLoc (floc fs) loc ≡ just (SV-Tag k)
   → R.readMem (R.State.memory s) (R.effectiveAddr (R.State.regs s) t0 0) ≡ just k
-  → R.find-label (compile-trace prog) (once n) ≡ just (blk-off prog j₀)
+  -- (the CONCRETE scan is no longer a premise: `find-label-corr` derives it
+  -- from the abstract one, which is what the engine passes. Plan 0.65 G2.)
   → find-label prog n ≡ just j₀
   → BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
-block-step-c-branch-tag-zero {hv} prog fs s n loc zero j₀ cc h ft i-eq r-eq rd fl-rv fl-eq = result
+block-step-c-branch-tag-zero {hv} prog fs s n loc zero j₀ cc h ft i-eq r-eq rd fl-eq = result
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : R.State.halted s ≡ false
@@ -1157,6 +1168,10 @@ block-step-c-branch-tag-zero {hv} prog fs s n loc zero j₀ cc h ft i-eq r-eq rd
     post : R.State
     post = record post-ld { pc = blk-off prog j₀ }
     step-b : R.step-not-halted (compile-trace prog) post-ld ≡ just post
+    -- the CONCRETE scan agrees with the abstract one: a THEOREM
+    -- (`FlatComposition.find-label-corr`), not a premise.
+    fl-rv : R.find-label (compile-trace prog) (once n) ≡ just (blk-off prog j₀)
+    fl-rv = find-label-corr prog n 0 j₀ fl-eq
     step-b = step-beq-taken {compile-trace prog} {post-ld} {t1} {zero} {once n} {blk-off prog j₀} fetch-beq refl fl-rv
     exec-eq : R.exec 2 (compile-trace prog) s ≡ just post
     exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-ld} halt-s step-ld' halt-s)
@@ -1172,7 +1187,7 @@ block-step-c-branch-tag-zero {hv} prog fs s n loc zero j₀ cc h ft i-eq r-eq rd
                           ; heap-eq = C.heap-eq dc
                           ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
       ; pc-off = refl ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
-block-step-c-branch-tag-zero {hv} prog fs s n loc (suc m) j₀ cc h ft i-eq r-eq rd fl-rv fl-eq = result
+block-step-c-branch-tag-zero {hv} prog fs s n loc (suc m) j₀ cc h ft i-eq r-eq rd fl-eq = result
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : R.State.halted s ≡ false
@@ -1459,3 +1474,93 @@ block-step-dealloc-stack-step {hv} prog fs s n cc ft no-wrap =
              ≡ just (addi sp sp (ℤ.+ (slots n)))
     fetch-rv = trans (cong (R.fetch (compile-trace prog)) po)
                      (fetch-block-head prog (fpc fs) (instr-dealloc-stack n) ft)
+
+------------------------------------------------------------------------
+-- THE TWO NOT-TAKEN FALL-THROUGHS (plan 0.65 G2).
+--
+-- A branch whose label is MISSING but which is NOT TAKEN never consults the
+-- label, so it is an ordinary step and the engine dispatches it to a
+-- LABEL-FREE block-step. That is why `BlockSteps` has these two fields at all.
+--
+-- The proofs are the not-taken clauses above with the label parameters
+-- dropped — `beq` falls through on a non-zero tag whether or not the target
+-- resolves, which is exactly the content.
+------------------------------------------------------------------------
+block-step-c-branch-nz : ∀ {hv : HeapView} prog fs s n m → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero n))
+  → readReg (regs (floc fs)) Scratch ≡ SV-Tag (suc m)
+  → BlockStep hv prog fs s (instr-ctrl (c-branch-scratch-zero n))
+block-step-c-branch-nz {hv} prog fs s n m cc h ft sc-eq = result
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-rv : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (beq s3 zero (once n))
+    fetch-rv = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-scratch-zero n)) ft)
+    s3-val : R.readReg (R.State.regs s) s3 ≡ suc m
+    s3-val = trans (C.scratch-eq dc) (cong (C.enc-sv hv) sc-eq)
+    not-taken : (R.readReg (R.State.regs s) s3 ≡ᵇ R.readReg (R.State.regs s) zero) ≡ false
+    not-taken = cong (_≡ᵇ 0) s3-val
+    post : R.State
+    post = record s { pc = R.State.pc s + 1 }
+    snh : R.step-not-halted (compile-trace prog) s ≡ just post
+    snh = step-beq-not {compile-trace prog} {s} {s3} {zero} {once n} fetch-rv not-taken
+    exec-eq : R.exec 1 (compile-trace prog) s ≡ just post
+    exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
+    result : BlockStep hv prog fs s (instr-ctrl (c-branch-scratch-zero n))
+    result rewrite sc-eq = post , exec-eq , record
+      { dataCorr = record { in1-eq = C.in1-eq dc ; in2-eq = C.in2-eq dc ; out-eq = C.out-eq dc
+                          ; scratch-eq = C.scratch-eq dc ; count-eq = C.count-eq dc ; clos-eq = C.clos-eq dc
+                          ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc
+                          ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc
+                          ; heap-eq = C.heap-eq dc
+                          ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
+      ; pc-off = trans (cong (_+ 1) po)
+                       (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-branch-scratch-zero n)) ft))
+      ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+
+block-step-c-branch-tag-nz : ∀ {hv : HeapView} prog fs s n loc m → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero n))
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+  → readLoc (floc fs) loc ≡ just (SV-Tag (suc m))
+  → R.readMem (R.State.memory s) (R.effectiveAddr (R.State.regs s) t0 0) ≡ just (suc m)
+  → BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
+block-step-c-branch-tag-nz {hv} prog fs s n loc m cc h ft i-eq r-eq rd = result
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-ld : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (ld t1 t0 0)
+    fetch-ld = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)
+    post-ld : R.State
+    post-ld = record s { regs = R.writeReg (R.State.regs s) t1 (suc m) ; pc = R.State.pc s + 1 }
+    step-ld' : R.step-not-halted (compile-trace prog) s ≡ just post-ld
+    step-ld' = step-ld {compile-trace prog} {s} {t1} {t0} {0} {suc m} fetch-ld rd
+    fetch-beq : R.fetch (compile-trace prog) (R.State.pc post-ld) ≡ just (beq t1 zero (once n))
+    fetch-beq = trans (cong (λ p → R.fetch (compile-trace prog) (p + 1)) po)
+                      (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)
+    post : R.State
+    post = record post-ld { pc = R.State.pc post-ld + 1 }
+    step-b : R.step-not-halted (compile-trace prog) post-ld ≡ just post
+    step-b = step-beq-not {compile-trace prog} {post-ld} {t1} {zero} {once n} fetch-beq refl
+    exec-eq : R.exec 2 (compile-trace prog) s ≡ just post
+    exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-ld} halt-s step-ld' halt-s)
+                    (exec-1 {compile-trace prog} {0} {post-ld} {post} halt-s step-b halt-s)
+    cond-eq : tag-zf (flat-read-tag (floc fs)) ≡ sv-is-zero (SV-Tag {FS} (suc m))
+    cond-eq = cong tag-zf (trans (cong (flat-read-at (floc fs)) (cong sv-as-loc i-eq)) r-eq)
+    result : BlockStep hv prog fs s (instr-ctrl (c-branch-tag-zero n))
+    result rewrite cond-eq = post , exec-eq , record
+      { dataCorr = record { in1-eq = C.in1-eq dc ; in2-eq = C.in2-eq dc ; out-eq = C.out-eq dc
+                          ; scratch-eq = C.scratch-eq dc ; count-eq = C.count-eq dc ; clos-eq = C.clos-eq dc
+                          ; halt-eq = C.halt-eq dc ; sp-eq = C.sp-eq dc ; frontier-eq = C.frontier-eq dc
+                          ; dom-fresh = C.dom-fresh dc ; dom-written = C.dom-written dc ; dom-sized = C.dom-sized dc
+                          ; heap-eq = C.heap-eq dc
+                          ; lo-le = C.lo-le dc ; untouched = C.untouched dc ; stack-eq = C.stack-eq dc }
+      ; pc-off = trans (+-assoc (R.State.pc s) 1 1)
+                       (trans (cong (_+ 2) po)
+                              (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))
+      ; ret-eq = ret-eq cc ; code-eq = code-eq cc }

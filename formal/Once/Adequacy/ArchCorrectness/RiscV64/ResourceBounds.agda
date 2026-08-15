@@ -40,18 +40,21 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation as FSimr
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RCr
 import Once.CCC.Target.RiscV64.Semantics as R
 open import Once.CCC.Machine.SMCore
-  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; instr-call-closure)
+  using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; instr-call-closure; lea-slot)
 open import Once.CCC.Label using (LabelId)
 open import Once.CCC.Target.RiscV64.Syntax using (slots; slot-size; sp)
+open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)
+open import Data.Nat using (_<_)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.RiscV64.FrameInstantiation using (rv64-frame-semantics)
 -- …and riscv64's ENGINE INTERFACES (plan 0.65 G2). Imported here for the same
 -- reason this module's own siblings are: nothing else reaches them, and an
 -- unimported module is invisible to the four clusters. The instantiation pins
 -- the frame semantics exactly as the bounds above do.
+-- (imported, not applied: the import alone is what makes it typechecked, and
+-- it now takes a resource parameter the apex will thread — `SlotAddrNoWrap`
+-- below.)
 import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim as CFSr
-open CFSr o rv64-frame-semantics refl public
-  using (riscv64-emitter; riscv64-machine; riscv64-traceloop)
 
 ------------------------------------------------------------------------
 -- HEAP EXHAUSTION: at an emitted `instr-alloc-heap n` the bump does not run
@@ -97,3 +100,29 @@ CallRoom =
   → FlatMachine.fetch {rv64-frame-semantics} prog
       (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just instr-call-closure
   → FCr.hfront hv + slot-size ≤ R.readReg (R.State.regs s) sp
+
+------------------------------------------------------------------------
+-- THE SLOT ADDRESS DOES NOT WRAP (plan 0.65 G2, D087 class).
+--
+-- riscv64's fourth bound, and the one x86-64 has no counterpart for: it has no
+-- `lea`, so a slot address is computed with `addi`, a real add, and `add`
+-- computes `W.⊕` unconditionally (D054 — wraparound is DEFINED semantics, so
+-- no no-overflow precondition may sit on the instruction). The range
+-- obligation lands here instead.
+--
+-- NOT conditioned on `RunAt`, unlike its three siblings above, and that is
+-- forced rather than chosen: the engine's `bs-lea-slot` field hands an arch
+-- only the correspondence, the non-halt and the fetch. So this is STRICTLY
+-- STRONGER than the family it belongs to. Check it against the 2026-07-30
+-- refutability probe before trusting it; if it does not survive, the fix is to
+-- give the engine's field a `RunAt` premise rather than to weaken this.
+------------------------------------------------------------------------
+SlotAddrNoWrap : Set₁
+SlotAddrNoWrap =
+  ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
+    (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
+    (s : R.State) (slot : ℕ)
+  → FSimr.CompiledCorr rv64-frame-semantics refl hv prog fs s
+  → FlatMachine.fetch {rv64-frame-semantics} prog
+      (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (lea-slot slot)
+  → R.readReg (R.State.regs s) sp + slot-to-disp slot < R.W.modulus

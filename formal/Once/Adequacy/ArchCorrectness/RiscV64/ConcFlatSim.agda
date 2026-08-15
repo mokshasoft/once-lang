@@ -28,11 +28,40 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.CCC.Target.RiscV64.Syntax using (slot-size)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CanonicalName using (CanonicalName)
+-- imported UNAPPLIED, so the module's own `FS`/`word-eq` can be threaded into
+-- the resource parameter's type — a parameter's type is elaborated before the
+-- body, where the applied `open import … FS word-eq` has not run.
+import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation as FSimr
+import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
+import Once.CCC.Target.RiscV64.Semantics as RS
+open import Once.CCC.Machine.SMCore using (AbstractTrace; lea-slot)
+open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.CCC.Target.RiscV64.Syntax using (sp)
+open import Once.CCC.Target.RiscV64.AbstractToRiscV using (slot-to-disp)
+open import Data.Nat using (ℕ; _+_; _<_)
+open import Data.Maybe using (just)
 
 module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
   (o : CanonicalName)
   (FS : FrameSemantics)
   (word-eq : frame-word FS ≡ slot-size)
+  -- THE SLOT ADDRESS DOES NOT WRAP (plan 0.70 class, D087). riscv64 has no
+  -- `lea`: it computes a slot's address with `addi`, a REAL add, so its
+  -- `block-step-lea-slot` needs a range fact that x86-64's route never had.
+  --
+  -- CONDITIONED ON `CompiledCorr` + THE FETCH, and NOT on `RunAt` — not by
+  -- preference but by force: the engine's `bs-lea-slot` field hands an arch
+  -- only `(cc, h, ft)`, because that is what it passes on x86-64. So this is
+  -- strictly stronger than the `AddrNoWrap` family it belongs to, all of which
+  -- carry `RunAt`. Before trusting it, check it is not REFUTABLE the way six
+  -- residuals were on 2026-07-30; if it is, the honest fix is to give the
+  -- field a `RunAt` premise, not to weaken the bound. Recorded in the handoff.
+  (slot-addr-no-wrap :
+     ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
+       (fs : FlatMachine.FlatState {FS}) (s : RS.State) (slot : ℕ)
+     → FSimr.CompiledCorr FS word-eq hv prog fs s
+     → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (lea-slot slot)
+     → RS.readReg (RS.State.regs s) sp + slot-to-disp slot < RS.W.modulus)
   where
 
 open import Data.Nat using (ℕ; zero; suc; _+_)
@@ -165,3 +194,29 @@ riscv64-traceloop = record
   ; sigop-call = call-sym ; sigop-lowering = λ _ → refl ; sigop-matchCall = λ _ → refl
   ; nonhalt-noncall = r-nonhalt-noncall
   }
+
+------------------------------------------------------------------------
+-- …AND THE ONE BLOCK-STEP WHOSE SHAPE DIFFERED (plan 0.65 G2).
+--
+-- `bs-lea-slot` offers `(cc, h, ft)` — three premises, because that is what
+-- the engine passes. riscv64's block-step wants a fourth. This is the arch
+-- closing that gap from its own resource parameter, and it is the pattern the
+-- slice-2 note described: the field is the ENGINE's interface, and an arch
+-- needing more supplies it here rather than widening the interface for
+-- everyone.
+--
+-- Stated at exactly the field's type, so `Supply`'s `bs-lea-slot` is this.
+------------------------------------------------------------------------
+open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation FS word-eq using
+  (block-step-lea-slot; CompiledCorr; BlockStep)
+open import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence FS word-eq using
+  (HeapView)
+open FlatMachine {FS} using (fpc; floc; fetch)
+open import Once.CCC.Machine.SMCore using (halted)
+
+riscv64-lea-slot : ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog fs s
+                 → halted (floc fs) ≡ false
+                 → fetch prog (fpc fs) ≡ just (lea-slot slot)
+                 → BlockStep hv prog fs s (lea-slot slot)
+riscv64-lea-slot prog fs s slot cc h ft =
+  block-step-lea-slot prog fs s slot cc h ft (slot-addr-no-wrap prog fs s slot cc ft)
