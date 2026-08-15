@@ -1297,6 +1297,73 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
                          (stp-cancel-zR ρ x a p) (wk-single {v = p} a)))
              (hh (ihZ-atR ρ x a p)))
 
+  -- ★ …and the SUCCESSOR twin.  `aSBr` carries FIVE weakenings on the step
+  --   against `aZBr`'s three, so the cancellation is a five-rung chain, and
+  --   the renaming rides through each rung by `ren-w`.
+  ihS-atR : {Γ' : Cx} (ρ : Ren ⌊ Δ ⌋ Γ') (x : RTm ⌊ Δ ⌋) (a k p : RTm Γ') →
+            RTm Γ'
+  ihS-atR ρ x a k p =
+    subTm (single p)
+      (subTm (extS (single a))
+        (subTm (extS (extS (single (auxAt ρ x k))))
+          (subTm (extS (extS (extS (single k))))
+            (renTm (extR (extR (extR (extR ρ))))
+              (subTm (extS (extS (extS (extS (single x))))) ihS)))))
+
+  stp-cancel-sR : {Γ' : Cx} (ρ : Ren ⌊ Δ ⌋ Γ') (x : RTm ⌊ Δ ⌋) (a k r : RTm Γ') →
+    subTm (single r)
+      (subTm (extS (single a))
+        (subTm (extS (extS (single (auxAt ρ x k))))
+          (subTm (extS (extS (extS (single k))))
+            (renTm (extR (extR (extR (extR ρ))))
+              (subTm (extS (extS (extS (extS (single x)))))
+                     (w (w (w (w (w stp))))))))))
+    ≡ renTm ρ stp
+  stp-cancel-sR ρ x a k r =
+    trans (cong (λ z → subTm (single r)
+                         (subTm (extS (single a))
+                           (subTm (extS (extS (single (auxAt ρ x k))))
+                             (subTm (extS (extS (extS (single k))))
+                               (renTm (extR (extR (extR (extR ρ)))) z)))))
+                (trans (sub-w⁴ {σ = single x} (w stp))
+                       (cong (λ z → w (w (w (w z)))) (wk-single {v = x} stp))))
+    (trans (cong (λ z → subTm (single r)
+                          (subTm (extS (single a))
+                            (subTm (extS (extS (single (auxAt ρ x k))))
+                              (subTm (extS (extS (extS (single k)))) z))))
+                 (trans (ren-w {ρ = extR (extR (extR ρ))} (w (w (w stp))))
+                        (cong w (trans (ren-w {ρ = extR (extR ρ)} (w (w stp)))
+                                       (cong w (trans (ren-w {ρ = extR ρ} (w stp))
+                                                      (cong w (ren-w {ρ = ρ} stp))))))))
+    (trans (cong (λ z → subTm (single r)
+                          (subTm (extS (single a))
+                            (subTm (extS (extS (single (auxAt ρ x k)))) z)))
+                 (trans (sub-w³ {σ = single k} (w (renTm ρ stp)))
+                        (cong (λ z → w (w (w z))) (wk-single {v = k} (renTm ρ stp)))))
+    (trans (cong (λ z → subTm (single r) (subTm (extS (single a)) z))
+                 (trans (sub-w² {σ = single (auxAt ρ x k)} (w (renTm ρ stp)))
+                        (cong (λ z → w (w z))
+                              (wk-single {v = auxAt ρ x k} (renTm ρ stp)))))
+    (trans (cong (subTm (single r))
+                 (trans (sub-w {σ = single a} (w (renTm ρ stp)))
+                        (cong w (wk-single {v = a} (renTm ρ stp)))))
+           (wk-single {v = r} (renTm ρ stp))))))
+
+  auxAt-step-sF : {Γ' : Cx} {P : RTm Γ' → RTm Γ'}
+                  (ρ : Ren ⌊ Δ ⌋ Γ') (x : RTm ⌊ Δ ⌋) (a n k p : RTm Γ') →
+                  n ⟶* nsuc k →
+                  ((ih : RTm Γ') → app (app (renTm ρ stp) a) ih ⟶* P ih) →
+                  app (app (auxAt ρ x n) a) p ⟶* P (ihS-atR ρ x a k p)
+  auxAt-step-sF {P = P} ρ x a n k p r hh =
+    ⟶*-trans
+      (⟶*-trans (⟶*-appˡ (⟶*-appˡ (⟶*-trans (⟶*-natrecⁿ r)
+                                            (step (natrec-suc _ _ k) done))))
+                (step (ξ-appˡ (β _ a)) (step (β _ p) done)))
+      (subst (λ z → z ⟶* P (ihS-atR ρ x a k p))
+             (sym (cong₂ (λ sf yv → app (app sf yv) (ihS-atR ρ x a k p))
+                         (stp-cancel-sR ρ x a k p) (wk-single {v = p} a)))
+             (hh (ihS-atR ρ x a k p)))
+
   aux-irr-z : StepExt Δ A cM m stp →
               {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
               (x : RTm ⌊ Δ ⌋) (a c₁ c₂ : RTm ⌊ Θ ⌋) →
