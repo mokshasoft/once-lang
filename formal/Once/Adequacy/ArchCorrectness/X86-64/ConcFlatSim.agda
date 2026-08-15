@@ -489,6 +489,149 @@ execInstr-cmp-mi prog s a v rd rewrite rd = refl
 -- `slot-read-written` below.
 -- (`sigop-run-external` and `events-running-end` moved to the engine too.)
 
+
+------------------------------------------------------------------------
+-- THE STUCK ROUTES, x86-64's half (plan 0.65 G2 item 4, slice 3).
+--
+-- The engine asks only for the CONCRETE claim — that nothing more comes out
+-- of this machine — and discharges the abstract half itself
+-- (`EE.stuck-result`: the flat machine has halted, so `flat-events` is []).
+-- These five are that concrete claim, and they are where the instruction
+-- names live: a `mov rax,[rdi]` faulting on an unmapped address, a `jmp`/`je`
+-- to a label the compiled program does not contain.
+------------------------------------------------------------------------
+stuck-load-indirect : ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just load-indirect
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → C.HDom hv hl
+  → heapMem (floc fs) hl ≡ nothing
+  → EE.StuckAt ev env (compile-trace prog) s
+stuck-load-indirect ev env prog fs s hl cc h ftq i-eq dom h-eq =
+  1 , RTx.run-events-stuck val-x86-64 ev env 0 (compile-trace prog) s
+        (mov (reg rax) (mem (base rdi)))
+        (trans (C.halt-eq (dataCorr cc)) h) (proj₁ stuckp) refl (proj₂ stuckp)
+  where stuckp = load-indirect-heap-empty-stuck prog fs s hl cc ftq i-eq dom h-eq
+
+stuck-load-indirect-suc : ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just load-indirect-suc
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → C.HDom hv (sucHL hl)
+  → heapMem (floc fs) (sucHL hl) ≡ nothing
+  → EE.StuckAt ev env (compile-trace prog) s
+stuck-load-indirect-suc ev env prog fs s hl cc h ftq i-eq dom h-eq =
+  1 , RTx.run-events-stuck val-x86-64 ev env 0 (compile-trace prog) s
+        (mov (reg rax) (mem (base+disp rdi slot-size)))
+        (trans (C.halt-eq (dataCorr cc)) h) (proj₁ stuckp) refl (proj₂ stuckp)
+  where stuckp = load-indirect-suc-heap-empty-stuck prog fs s hl cc ftq i-eq dom h-eq
+
+-- a concrete jump to a MISSING label HALTS (it does not get stuck), so the
+-- trace takes one step and then emits nothing.
+stuck-c-jmp : ∀ {hv : HeapView} ev env prog fs s m → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-jmp m))
+  → find-label prog m ≡ nothing
+  → EE.StuckAt ev env (compile-trace prog) s
+stuck-c-jmp ev env prog fs s m cc h ftq fl-eq =
+  2 , trans (RTx.run-events-noncall val-x86-64 ev env 1 (compile-trace prog) s
+               (jmp (once m)) halt-s fetch-x86 refl step-eq)
+            (RTx.run-events-halted val-x86-64 ev env 0 (compile-trace prog) s' refl)
+  where
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq (dataCorr cc)) h
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (jmp (once m))
+    fetch-x86 = trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
+                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-jmp m)) ftq)
+    s' : X.State
+    s' = record s { halted = true }
+    step-eq : X.execInstr (compile-trace prog) s (jmp (once m)) ≡ just s'
+    step-eq rewrite find-label-none-corr prog m fl-eq = refl
+
+-- the two TAKEN branches whose label is absent: `cmp` then a `je` that halts.
+stuck-c-branch-scratch-zero : ∀ {hv : HeapView} ev env prog fs s m → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero m))
+  → readReg (regs (floc fs)) Scratch ≡ SV-Tag 0
+  → find-label prog m ≡ nothing
+  → EE.StuckAt ev env (compile-trace prog) s
+stuck-c-branch-scratch-zero {hv} ev env prog fs s m cc h ftq sc-eq fl-eq =
+  3 , trans (RTx.run-events-noncall val-x86-64 ev env 2 (compile-trace prog) s
+               (cmp (reg rbx) (imm 0)) halt-s fetch-cmp refl step-cmp)
+      (trans (RTx.run-events-noncall val-x86-64 ev env 1 (compile-trace prog) post-cmp
+               (je (once m)) halt-s fetch-je refl step-je)
+             (RTx.run-events-halted val-x86-64 ev env 0 (compile-trace prog) post-je refl))
+  where
+    dc = dataCorr cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    rbx0 : X.readReg (X.State.regs s) rbx ≡ 0
+    rbx0 = trans (C.scratch-eq dc) (cong (C.enc-sv hv) sc-eq)
+    fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (reg rbx) (imm 0))
+    fetch-cmp = trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
+                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-scratch-zero m)) ftq)
+    post-cmp : X.State
+    post-cmp = record s { flags = X.mkflags (X.readReg (X.State.regs s) rbx ≡ᵇ 0)
+                                            (X.readReg (X.State.regs s) rbx X.<ᵇ 0) false
+                        ; pc = X.State.pc s + 1 }
+    step-cmp : X.execInstr (compile-trace prog) s (cmp (reg rbx) (imm 0)) ≡ just post-cmp
+    step-cmp = b-cmp-reg-imm (compile-trace prog) s rbx 0
+    fetch-je : X.fetch (compile-trace prog) (X.State.pc post-cmp) ≡ just (je (once m))
+    fetch-je = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) (pc-off cc))
+                     (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-branch-scratch-zero m)) ftq)
+    post-je : X.State
+    post-je = record post-cmp { halted = true }
+    step-je : X.execInstr (compile-trace prog) post-cmp (je (once m)) ≡ just post-je
+    step-je rewrite rbx0 | find-label-none-corr prog m fl-eq = refl
+
+stuck-c-branch-tag-zero : ∀ {hv : HeapView} ev env prog fs s m loc → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+  → readLoc (floc fs) loc ≡ just (SV-Tag 0)
+  → X.readMem (X.State.memory s) (X.readReg (X.State.regs s) rdi + 0) ≡ just 0
+  → find-label prog m ≡ nothing
+  → EE.StuckAt ev env (compile-trace prog) s
+stuck-c-branch-tag-zero ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq =
+  3 , trans (RTx.run-events-noncall val-x86-64 ev env 2 (compile-trace prog) s
+               (cmp (mem (base+disp rdi 0)) (imm 0)) halt-s fetch-cmp refl step-cmp)
+      (trans (RTx.run-events-noncall val-x86-64 ev env 1 (compile-trace prog) post-cmp
+               (je (once m)) halt-s fetch-je refl step-je)
+             (RTx.run-events-halted val-x86-64 ev env 0 (compile-trace prog) post-je refl))
+  where
+    dc = dataCorr cc
+    halt-s : X.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s)
+              ≡ just (cmp (mem (base+disp rdi 0)) (imm 0))
+    fetch-cmp = trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
+                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-tag-zero m)) ftq)
+    post-cmp : X.State
+    post-cmp = record s { flags = X.mkflags (0 ≡ᵇ 0) (0 X.<ᵇ 0) false
+                        ; pc = X.State.pc s + 1 }
+    step-cmp : X.execInstr (compile-trace prog) s (cmp (mem (base+disp rdi 0)) (imm 0))
+             ≡ just post-cmp
+    step-cmp = execInstr-cmp-mi (compile-trace prog) s (base+disp rdi 0) 0 rd
+    fetch-je : X.fetch (compile-trace prog) (X.State.pc post-cmp) ≡ just (je (once m))
+    fetch-je = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) (pc-off cc))
+                     (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-branch-tag-zero m)) ftq)
+    post-je : X.State
+    post-je = record post-cmp { halted = true }
+    step-je : X.execInstr (compile-trace prog) post-cmp (je (once m)) ≡ just post-je
+    step-je rewrite find-label-none-corr prog m fl-eq = refl
+
+-- …and the supply record itself. Same role as `x86-64-block-steps`: the field
+-- types come FROM the record, so an interface weakened to fit one arch breaks
+-- here rather than silently.
+x86-64-stuck-steps : EE.StuckSteps
+x86-64-stuck-steps = record
+  { st-load-indirect         = stuck-load-indirect
+  ; st-load-indirect-suc     = stuck-load-indirect-suc
+  ; st-c-jmp                 = stuck-c-jmp
+  ; st-c-branch-scratch-zero = stuck-c-branch-scratch-zero
+  ; st-c-branch-tag-zero     = stuck-c-branch-tag-zero
+  }
+
 postulate
   -- PER-INSTRUCTION DISPATCH residual for the cases not yet routed to `ccc-step`
   -- (instr-sigop arith/external, control jmp/branch, memory/frame/slot). Shrinks as
@@ -953,29 +1096,11 @@ mutual
               (block-step-c-jmp prog fs s m j cc h ftq fl-eq) wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) ≡ false
                   hpost rewrite fl-eq = h
-          go-fl nothing fl-eq = 2 , result
-            where
-              halt-s : X.State.halted s ≡ false
-              halt-s = trans (C.halt-eq (dataCorr cc)) h
-              fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (jmp (once m))
-              fetch-x86 = trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
-                                (fetch-block-head prog (fpc fs) (instr-ctrl (c-jmp m)) ftq)
-              s' : X.State
-              s' = record s { halted = true }
-              -- a concrete jump to a MISSING label HALTS (it does not get stuck)
-              step-eq : X.execInstr (compile-trace prog) s (jmp (once m)) ≡ just s'
-              step-eq rewrite find-label-none-corr prog m fl-eq = refl
-              hpost : halted (floc (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) ≡ true
-              hpost rewrite fl-eq = refl
-              result : RTx.run-events val-x86-64 ev env 2 (compile-trace prog) s
-                     ≡ event-of (instr-ctrl (c-jmp m)) fs
-                       ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)
-              result =
-                trans (RTx.run-events-noncall val-x86-64 ev env 1 (compile-trace prog) s
-                         (jmp (once m)) halt-s fetch-x86 refl step-eq)
-                      (trans (RTx.run-events-halted val-x86-64 ev env 0 (compile-trace prog) s' refl)
-                             (sym (flat-events-halted n prog
-                                    (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs) hpost)))
+          go-fl nothing fl-eq =
+            EE.stuck-result ev env n prog fs s (instr-ctrl (c-jmp m)) hpost refl
+              (stuck-c-jmp ev env prog fs s m cc h ftq fl-eq)
+            where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-jmp m)) prog fs)) ≡ true
+                  hpost rewrite fl-eq = refl
 
   -- CONTROL c-branch-scratch-zero: J-bridge on the Scratch value AND find-label. A tag
   -- `SV-Tag k` + a resolvable target ⇒ the PROVEN block-step-c-branch-scratch-zero (both
@@ -1017,42 +1142,11 @@ mutual
               hpost rewrite sc-eq = h
       -- TAKEN + MISSING: `cmp` then a `je` whose label is absent — the concrete
       -- machine HALTS (as `jmp` does), and so does `do-jump nothing`. Both [].
-      go-fl zero sc-eq nothing fl-eq = 3 , result
-        where
-          dc = dataCorr cc
-          halt-s : X.State.halted s ≡ false
-          halt-s = trans (C.halt-eq dc) h
-          rbx0 : X.readReg (X.State.regs s) rbx ≡ 0
-          rbx0 = trans (C.scratch-eq dc) (cong (C.enc-sv hv) sc-eq)
-          fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (cmp (reg rbx) (imm 0))
-          fetch-cmp = trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
-                            (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-scratch-zero m)) ftq)
-          post-cmp : X.State
-          post-cmp = record s { flags = X.mkflags (X.readReg (X.State.regs s) rbx ≡ᵇ 0)
-                                                  (X.readReg (X.State.regs s) rbx X.<ᵇ 0) false
-                              ; pc = X.State.pc s + 1 }
-          step-cmp : X.execInstr (compile-trace prog) s (cmp (reg rbx) (imm 0)) ≡ just post-cmp
-          step-cmp = b-cmp-reg-imm (compile-trace prog) s rbx 0
-          fetch-je : X.fetch (compile-trace prog) (X.State.pc post-cmp) ≡ just (je (once m))
-          fetch-je = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) (pc-off cc))
-                           (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-branch-scratch-zero m)) ftq)
-          post-je : X.State
-          post-je = record post-cmp { halted = true }
-          step-je : X.execInstr (compile-trace prog) post-cmp (je (once m)) ≡ just post-je
-          step-je rewrite rbx0 | find-label-none-corr prog m fl-eq = refl
-          hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) ≡ true
-          hpost rewrite sc-eq | fl-eq = refl
-          result : RTx.run-events val-x86-64 ev env 3 (compile-trace prog) s
-                 ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
-                   ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)
-          result =
-            trans (RTx.run-events-noncall val-x86-64 ev env 2 (compile-trace prog) s
-                     (cmp (reg rbx) (imm 0)) halt-s fetch-cmp refl step-cmp)
-            (trans (RTx.run-events-noncall val-x86-64 ev env 1 (compile-trace prog) post-cmp
-                     (je (once m)) halt-s fetch-je refl step-je)
-            (trans (RTx.run-events-halted val-x86-64 ev env 0 (compile-trace prog) post-je refl)
-                   (sym (flat-events-halted n prog
-                          (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs) hpost))))
+      go-fl zero sc-eq nothing fl-eq =
+        EE.stuck-result ev env n prog fs s (instr-ctrl (c-branch-scratch-zero m)) hpost refl
+          (stuck-c-branch-scratch-zero ev env prog fs s m cc h ftq sc-eq fl-eq)
+        where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-scratch-zero m)) prog fs)) ≡ true
+              hpost rewrite sc-eq | fl-eq = refl
       go-sv : ∀ (sv : StoredValue FS) → readReg (regs (floc fs)) Scratch ≡ sv
             → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s
                   ≡ event-of (instr-ctrl (c-branch-scratch-zero m)) fs
@@ -1114,41 +1208,11 @@ mutual
       -- MISSING LABEL, TAKEN: both machines halt — the concrete `je` to an
       -- absent label sets `halted` (`find-label-none-corr`), and
       -- `do-jump nothing` halts the flat machine. Both traces [].
-      go-fl loc zero i-eq r-eq rd nothing fl-eq = 3 , result
-        where
-          dc = dataCorr cc
-          halt-s : X.State.halted s ≡ false
-          halt-s = trans (C.halt-eq dc) h
-          fetch-cmp : X.fetch (compile-trace prog) (X.State.pc s)
-                    ≡ just (cmp (mem (base+disp rdi 0)) (imm 0))
-          fetch-cmp = trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
-                            (fetch-block-head prog (fpc fs) (instr-ctrl (c-branch-tag-zero m)) ftq)
-          post-cmp : X.State
-          post-cmp = record s { flags = X.mkflags (0 ≡ᵇ 0) (0 X.<ᵇ 0) false
-                              ; pc = X.State.pc s + 1 }
-          step-cmp : X.execInstr (compile-trace prog) s (cmp (mem (base+disp rdi 0)) (imm 0))
-                   ≡ just post-cmp
-          step-cmp = execInstr-cmp-mi (compile-trace prog) s (base+disp rdi 0) 0 rd
-          fetch-je : X.fetch (compile-trace prog) (X.State.pc post-cmp) ≡ just (je (once m))
-          fetch-je = trans (cong (λ p → X.fetch (compile-trace prog) (p + 1)) (pc-off cc))
-                           (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-branch-tag-zero m)) ftq)
-          post-je : X.State
-          post-je = record post-cmp { halted = true }
-          step-je : X.execInstr (compile-trace prog) post-cmp (je (once m)) ≡ just post-je
-          step-je rewrite find-label-none-corr prog m fl-eq = refl
-          hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ true
-          hpost rewrite i-eq | r-eq | fl-eq = refl
-          result : RTx.run-events val-x86-64 ev env 3 (compile-trace prog) s
-                 ≡ event-of (instr-ctrl (c-branch-tag-zero m)) fs
-                   ++ flat-events n prog (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)
-          result =
-            trans (RTx.run-events-noncall val-x86-64 ev env 2 (compile-trace prog) s
-                     (cmp (mem (base+disp rdi 0)) (imm 0)) halt-s fetch-cmp refl step-cmp)
-            (trans (RTx.run-events-noncall val-x86-64 ev env 1 (compile-trace prog) post-cmp
-                     (je (once m)) halt-s fetch-je refl step-je)
-            (trans (RTx.run-events-halted val-x86-64 ev env 0 (compile-trace prog) post-je refl)
-                   (sym (flat-events-halted n prog
-                          (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs) hpost))))
+      go-fl loc zero i-eq r-eq rd nothing fl-eq =
+        EE.stuck-result ev env n prog fs s (instr-ctrl (c-branch-tag-zero m)) hpost refl
+          (stuck-c-branch-tag-zero ev env prog fs s m loc cc h ftq i-eq r-eq rd fl-eq)
+        where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs)) ≡ true
+              hpost rewrite i-eq | r-eq | fl-eq = refl
       -- THE RESIDENCE DISPATCH: derive the concrete read per residence.
       go-loc : ∀ (loc : ValueLocation FS) (k : ℕ)
              → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
@@ -1264,18 +1328,12 @@ mutual
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ false
                   hpost rewrite i-eq | h-eq = h
-          go-mem hl i-eq ib nothing h-eq = 1 , result
-            where stuckp = load-indirect-heap-empty-stuck prog fs s hl cc ftq i-eq
-                             (C.dom-sized (dataCorr cc) hl ib) h-eq
-                  halt-s : X.State.halted s ≡ false
-                  halt-s = trans (C.halt-eq (dataCorr cc)) h
-                  hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ true
+          go-mem hl i-eq ib nothing h-eq =
+            EE.stuck-result ev env n prog fs s load-indirect hpost refl
+              (stuck-load-indirect ev env prog fs s hl cc h ftq i-eq
+                 (C.dom-sized (dataCorr cc) hl ib) h-eq)
+            where hpost : halted (floc (flat-exec-instr load-indirect prog fs)) ≡ true
                   hpost rewrite i-eq | h-eq = refl
-                  result : RTx.run-events val-x86-64 ev env 1 (compile-trace prog) s
-                         ≡ event-of load-indirect fs ++ flat-events n prog (flat-exec-instr load-indirect prog fs)
-                  result = trans (RTx.run-events-stuck val-x86-64 ev env 0 (compile-trace prog) s
-                                    (mov (reg rax) (mem (base rdi))) halt-s (proj₁ stuckp) refl (proj₂ stuckp))
-                                 (sym (flat-events-halted n prog (flat-exec-instr load-indirect prog fs) hpost))
           go-stack : ∀ f k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
                    → (f ≡ current-frame (falloc fs)) × (k < frame-slots (falloc fs))
                    → ∀ (mw : Maybe (StoredValue FS))
@@ -1331,18 +1389,12 @@ mutual
               wf ftq h refl hpost
             where hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ false
                   hpost rewrite i-eq | h-eq = h
-          go-mem hl i-eq ib nothing h-eq = 1 , result
-            where stuckp = load-indirect-suc-heap-empty-stuck prog fs s hl cc ftq i-eq
-                             (C.dom-sized (dataCorr cc) (sucHL hl) ib) h-eq
-                  halt-s : X.State.halted s ≡ false
-                  halt-s = trans (C.halt-eq (dataCorr cc)) h
-                  hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ true
+          go-mem hl i-eq ib nothing h-eq =
+            EE.stuck-result ev env n prog fs s load-indirect-suc hpost refl
+              (stuck-load-indirect-suc ev env prog fs s hl cc h ftq i-eq
+                 (C.dom-sized (dataCorr cc) (sucHL hl) ib) h-eq)
+            where hpost : halted (floc (flat-exec-instr load-indirect-suc prog fs)) ≡ true
                   hpost rewrite i-eq | h-eq = refl
-                  result : RTx.run-events val-x86-64 ev env 1 (compile-trace prog) s
-                         ≡ event-of load-indirect-suc fs ++ flat-events n prog (flat-exec-instr load-indirect-suc prog fs)
-                  result = trans (RTx.run-events-stuck val-x86-64 ev env 0 (compile-trace prog) s
-                                    (mov (reg rax) (mem (base+disp rdi slot-size))) halt-s (proj₁ stuckp) refl (proj₂ stuckp))
-                                 (sym (flat-events-halted n prog (flat-exec-instr load-indirect-suc prog fs) hpost))
           -- SECOND cell of a stack pair: `[rdi+8]` is slot `suc k` of the same frame.
           go-stack : ∀ f k → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtStack f k)
                    → (f ≡ current-frame (falloc fs)) × (suc k < frame-slots (falloc fs))

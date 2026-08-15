@@ -39,6 +39,7 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
+import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles as RR
 open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; instr-sigop)
 open import Once.SigOp.Info using (SigOpInfo; effect; Pure)
 open import Once.Target.Symbol using (once-symbol-path)
@@ -180,12 +181,13 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size wor
 -- already binds). Same application, hence the same types.
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
-open CFC using (HeapView)
+open CFC using (HeapView; HDom)
 
 ------------------------------------------------------------------------
 -- THE TRACE LOOP. `RT.run-events` here IS the arch's `run-events`: both are
 -- the same application of `RunTraceCore.RunTrace`.
 ------------------------------------------------------------------------
+open RegRoles roles using (in1-reg)
 import Once.Arith.Backend.RunTraceCore as Core
 module RT = Core.RunTrace State (List Instr) Instr Payload
                           xhalted xpc mfetch mexecInstr matchCall ret-past dispatchArith
@@ -197,6 +199,7 @@ module RT = Core.RunTrace State (List Instr) Instr Payload
 open import Once.CCC.Machine.SMCore hiding (Instr)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fpc; falloc; floc; fclosure; fetch; flat-exec-instr)
+open MemOps {FS} using (readLoc)
 open import Once.CCC.Machine.FlatStoreWF FS using (FlatWF; flat-wf-step; cl-step; sv-below)
 open import Once.CCC.Machine.FlatRegTagWF FS using (FlatRegTag; flat-regtag-step)
 
@@ -397,3 +400,89 @@ sigop-run-external ev env n prog fs s si cc h ftq env-eq =
 event-of-pure : ∀ {A B} (si : SigOpInfo A B) fs → effect si ≡ Pure
               → event-of (instr-sigop si) fs ≡ []
 event-of-pure si fs eqe rewrite eqe = refl
+
+------------------------------------------------------------------------
+-- THE STUCK ROUTES — the engine's SECOND per-arch supply (slice 3).
+--
+-- Slice 2's `BlockSteps` covers every branch where the abstract machine
+-- STEPS. These are the branches where it does not: an empty heap cell, a jump
+-- to a label that is not there. Neither is a `BlockStep` — nothing steps — and
+-- neither can be folded into that record: what an arch owes here is a
+-- run-events EQUATION, not a `BlockStep`.
+--
+-- WHY THEY ARE PER-ARCH AT ALL. "Both machines stop" is half generic and half
+-- not. The ABSTRACT half — the flat machine halts, so `flat-events` is [] — is
+-- the engine's, and `stuck-result` below discharges it once. The CONCRETE half
+-- is the claim that the emitted block gets stuck or halts too, and stating it
+-- means naming the instruction: `mov rax, [rdi]` faulting on an unmapped
+-- address, a `jmp` to a missing label setting `halted`. That is the arch's.
+--
+-- The engine therefore asks for exactly the concrete half, and no ISA detail
+-- crosses the boundary. It also absorbs what would otherwise have been engine
+-- parameters: `execInstr-cmp-mi` is used only inside the tag-branch's stuck
+-- route, so with this record `nonhalt-noncall` is the ONE ISA enumeration the
+-- engine still needs.
+------------------------------------------------------------------------
+
+-- what an arch owes: the concrete machine emits nothing from here on.
+StuckAt : RT.EvExtractor → RT.ArithEnv → List Instr → State → Set
+StuckAt ev env cprog s = Σ ℕ (λ M → RT.run-events ev env M cprog s ≡ [])
+
+record StuckSteps : Set₁ where
+  field
+    -- an indirect load through a pointer to an UNWRITTEN heap cell
+    st-load-indirect :
+      ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just load-indirect
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+      → HDom hv hl
+      → heapMem (floc fs) hl ≡ nothing
+      → StuckAt ev env (compile-trace prog) s
+    st-load-indirect-suc :
+      ∀ {hv : HeapView} ev env prog fs s hl → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just load-indirect-suc
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+      → HDom hv (sucHL hl)
+      → heapMem (floc fs) (sucHL hl) ≡ nothing
+      → StuckAt ev env (compile-trace prog) s
+    -- …and the three control routes whose label is MISSING. Only the TAKEN
+    -- ones are here: a not-taken branch never consults the label and is an
+    -- ordinary block step (`bs-c-branch-nz`, `bs-c-branch-tag-nz`).
+    st-c-jmp :
+      ∀ {hv : HeapView} ev env prog fs s m → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-jmp m))
+      → FlatMachine.find-label {FS} prog m ≡ nothing
+      → StuckAt ev env (compile-trace prog) s
+    st-c-branch-scratch-zero :
+      ∀ {hv : HeapView} ev env prog fs s m → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-scratch-zero m))
+      → readReg (regs (floc fs)) Scratch ≡ SV-Tag 0
+      → FlatMachine.find-label {FS} prog m ≡ nothing
+      → StuckAt ev env (compile-trace prog) s
+    st-c-branch-tag-zero :
+      ∀ {hv : HeapView} ev env prog fs s m loc → CompiledCorr hv prog fs s
+      → halted (floc fs) ≡ false
+      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-branch-tag-zero m))
+      → readReg (regs (floc fs)) Input1 ≡ SV-Ptr loc
+      → readLoc (floc fs) loc ≡ just (SV-Tag 0)
+      → memory s (rreg s in1-reg + 0) ≡ just 0
+      → FlatMachine.find-label {FS} prog m ≡ nothing
+      → StuckAt ev env (compile-trace prog) s
+open StuckSteps public
+
+-- THE GENERIC HALF, discharged once: if the flat machine has halted at the
+-- post-state and the instruction emits no event, then the arch's "nothing more
+-- comes out of the concrete machine" IS the correspondence at this branch.
+stuck-result : ∀ ev env n prog fs s (i : AbstractInstr)
+             → halted (floc (flat-exec-instr i prog fs)) ≡ true
+             → event-of i fs ≡ []
+             → StuckAt ev env (compile-trace prog) s
+             → Σ ℕ (λ M → RT.run-events ev env M (compile-trace prog) s
+                   ≡ event-of i fs ++ flat-events n prog (flat-exec-instr i prog fs))
+stuck-result ev env n prog fs s i hpost ev-eq (M , eq) =
+  M , trans eq (sym (trans (cong (_++ flat-events n prog (flat-exec-instr i prog fs)) ev-eq)
+                           (flat-events-halted n prog (flat-exec-instr i prog fs) hpost)))
