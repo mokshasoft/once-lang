@@ -4,19 +4,15 @@
 ------------------------------------------------------------------------
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch
 --
--- THE DISPATCH — `events-agree` and the ~19 members under it, the fuel
--- induction that IS the correspondence — over the interfaces `EventEngine`
--- defines.
+-- THE DISPATCH — `events-agree` and the ~19 members under it: the fuel
+-- induction that IS the correspondence between the concrete `run-events` trace
+-- and the abstract `flat-events`, written once for every target.
 --
--- WHY ITS OWN FILE, and this is a measurement rather than a preference. With
--- the dispatch appended to `EventEngine` the module wants more than 5.5 GiB to
--- typecheck and the OOM cap kills it: 64 telescope entries carried by every one
--- of the mutually recursive members, all live at once. Split, each file's peak
--- is its own — the fix plan 0.18 already used on `PairWF2`.
---
--- The generic layer's SHAPE is unchanged by the split. This module takes
--- `EventEngine`'s parameters, re-exports it, and adds the inner `Dispatch`
--- module for what an ARCH supplies: the two records and the resource bounds.
+-- WHY ITS OWN FILE, on top of the bundling. Two measurements, both from
+-- 2026-08-15: with 64 loose parameters this body needs more than 5.5 GiB and
+-- the OOM cap kills it, and splitting the file alone does NOT help. The
+-- telescope is what costs; the split is what keeps each file's peak its own.
+-- Bundled AND split, the members carry twelve entries.
 --
 -- THE EVENT ENGINE, stated once for every arch (plan 0.65 G2 item 4, slice 3).
 --
@@ -61,9 +57,9 @@ open import Once.CCC.Label using (Label; LabelId; _≡ᵇᴸ_)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Denotation.Trace using (SigOpEvent)
 import Once.Adequacy.ArchCorrectness.FlatCore.HeadView as HV
+import Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface as EI
 
 module Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch
-  -- Plan 0.63 (D089): the DEFINITION'S identity, which keys its labels.
   (o : CanonicalName)
   (FS : FrameSemantics)
   (slot-size : ℕ)
@@ -71,112 +67,19 @@ module Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch
   (word-eq : frame-word FS ≡ slot-size)
   (Reg : Set)
   (roles : RegRoles Reg)
-  (State : Set)
-  (rreg : State → Reg → ℕ)
-  (memory : State → (ℕ → Maybe ℕ))
-  (xhalted : State → Bool)
-  (xpc : State → ℕ)
   (modulus : ℕ)
-  ------------------------------------------------------------------
-  -- THE EMITTER AND THE ISA VIEW — `FlatComposition`'s own parameter list,
-  -- passed straight through so this module can instantiate it rather than
-  -- take a dozen of its lemmas one at a time.
-  ------------------------------------------------------------------
-  (Instr : Set)
-  (compile-abstract : AbstractInstr → List Instr)
-  (compile-trace : AbstractTrace → List Instr)
-  (ct-nil  : compile-trace [] ≡ [])
-  (ct-cons : ∀ i is → compile-trace (i ∷ is) ≡ compile-abstract i ++ compile-trace is)
-  (mfetch      : List Instr → ℕ → Maybe Instr)
-  (mfetch-nil  : ∀ n → mfetch [] n ≡ nothing)
-  (mfetch-zero : ∀ x xs → mfetch (x ∷ xs) zero ≡ just x)
-  (mfetch-suc  : ∀ x xs n → mfetch (x ∷ xs) (suc n) ≡ mfetch xs n)
-  (is-label?     : Instr → Bool)
-  (mk-label      : Label → Instr)
-  (find-label-go : Label → List Instr → ℕ → Maybe ℕ)
-  (find-label-nil : ∀ (t : Label) (xi : ℕ) → find-label-go t [] xi ≡ nothing)
-  (skip-law : ∀ (t : Label) (i : Instr) (rest : List Instr) (xi : ℕ)
-            → is-label? i ≡ false
-            → find-label-go t (i ∷ rest) xi ≡ find-label-go t rest (suc xi))
-  (label-hit : ∀ (ℓ t : Label) (rest : List Instr) (xi : ℕ)
-             → (ℓ ≡ᵇᴸ t) ≡ true
-             → find-label-go t (mk-label ℓ ∷ rest) xi ≡ just xi)
-  (label-miss : ∀ (ℓ t : Label) (rest : List Instr) (xi : ℕ)
-              → (ℓ ≡ᵇᴸ t) ≡ false
-              → find-label-go t (mk-label ℓ ∷ rest) xi ≡ find-label-go t rest (suc xi))
-  (headView : ∀ i → HV.HeadView FS Instr compile-abstract is-label? mk-label i)
-  -- …and the label scan as the CORRESPONDENCE names it (`code-eq`). Taken
-  -- rather than defined from `find-label-go`, so the arch passes the very term
-  -- its own `CompiledCorr` instance was built with.
-  (find-label : List Instr → Label → Maybe ℕ)
-  -- …and that it IS the scan `FlatComposition` reasons about. `refl` at every
-  -- arch (`find-label prog t = find-label-go t prog 0`), but the engine cannot
-  -- see that through two opaque parameters, and `load-code-addr` is where the
-  -- two meet: its premise is stated with the former and its witness produced
-  -- with the latter.
-  (find-label-def : ∀ prog t → find-label prog t ≡ find-label-go t prog 0)
-  ------------------------------------------------------------------
-  -- THE MACHINE'S STEP, single and fuel-bounded.
-  ------------------------------------------------------------------
-  (mexecInstr : List Instr → State → Instr → Maybe State)
-  (exec : ℕ → List Instr → State → Maybe State)
-  -- …and HOW FUEL PEELS, as six premise-free readouts. This is the only thing
-  -- the block backbone needs from `exec`'s definition, and stating it this way
-  -- keeps the proof `with`-free: an opaque parameter does not reduce, so the
-  -- equations have to be handed over rather than computed. Each is one line at
-  -- an arch (`refl` after a rewrite of the boolean).
-  (exec-zero      : ∀ prog s → exec 0 prog s ≡ just s)
-  (exec-halted    : ∀ n prog s → xhalted s ≡ true → exec (suc n) prog s ≡ just s)
-  (exec-end       : ∀ n prog s {s'} → xhalted s ≡ false
-                  → mfetch prog (xpc s) ≡ nothing
-                  → exec (suc n) prog s ≡ just s' → xhalted s' ≡ true)
-  (exec-stuck     : ∀ n prog s j → xhalted s ≡ false → mfetch prog (xpc s) ≡ just j
-                  → mexecInstr prog s j ≡ nothing → exec (suc n) prog s ≡ nothing)
-  (exec-step-halt : ∀ n prog s j s₁ → xhalted s ≡ false → mfetch prog (xpc s) ≡ just j
-                  → mexecInstr prog s j ≡ just s₁ → xhalted s₁ ≡ true
-                  → exec (suc n) prog s ≡ just s₁)
-  (exec-step-run  : ∀ n prog s j s₁ → xhalted s ≡ false → mfetch prog (xpc s) ≡ just j
-                  → mexecInstr prog s j ≡ just s₁ → xhalted s₁ ≡ false
-                  → exec (suc n) prog s ≡ exec n prog s₁)
-  ------------------------------------------------------------------
-  -- THE TRACE LOOP's telescope — `RunTraceCore.RunTrace`'s, which is where
-  -- the event layer already lived. `Payload` is the arch's arith-block
-  -- representation, with its value function baked into `dispatchArith`.
-  ------------------------------------------------------------------
-  (Payload : Set)
-  (matchCall : Instr → Maybe String)
-  (ret-past : State → State)
-  (dispatchArith : Payload → State → State)
-  -- the REAL extractor and env this arch runs with. Pinned, not quantified:
-  -- the SigOp contracts are false over an arbitrary `ev`/`env` (2026-07-30).
-  (ev-arch : String → State → List SigOpEvent)
-  (arith-env : List Instr → String → Maybe Payload)
-  -- HOW A SIGOP IS LOWERED, which is the same on every target: to ONE call by
-  -- symbol. Three lines, and they are what let the SigOp reductions below be
-  -- written once — `matchCall` recognising exactly the instruction the emitter
-  -- produced is the whole content of the arith/external dispatch.
-  (sigop-call : String → Instr)
-  (sigop-lowering : ∀ {A B} (si : SigOpInfo A B)
-                  → compile-abstract (instr-sigop si)
-                    ≡ sigop-call (once-symbol-path (SigOpInfo.name si)) ∷ [])
-  (sigop-matchCall : ∀ lbl → matchCall (sigop-call lbl) ≡ just lbl)
-  ------------------------------------------------------------------
-  -- THE ONE ISA ENUMERATION the trace backbone needs. A step that leaves the
-  -- machine RUNNING was not a `call-sym`: `execInstr (call-sym _)` always
-  -- halts. Proven per arch by one clause per instruction — the only place the
-  -- engine would otherwise have to know the instruction set.
-  ------------------------------------------------------------------
-  (nonhalt-noncall : ∀ prog s j {s₁} → mexecInstr prog s j ≡ just s₁
-                   → xhalted s₁ ≡ false → matchCall j ≡ nothing)
+  (E : EI.Emitter FS Reg)
+  (M : EI.Machine FS Reg E)
+  (T : EI.TraceLoop FS Reg E M)
   where
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
-  o FS slot-size word-eq Reg roles State rreg memory xhalted xpc modulus Instr compile-abstract compile-trace ct-nil ct-cons mfetch mfetch-nil mfetch-zero mfetch-suc is-label? mk-label find-label-go find-label-nil skip-law label-hit label-miss headView find-label find-label-def mexecInstr exec exec-zero exec-halted exec-end exec-stuck exec-step-halt exec-step-run Payload matchCall ret-past dispatchArith ev-arch arith-env sigop-call sigop-lowering sigop-matchCall nonhalt-noncall
+  o FS slot-size word-eq Reg roles modulus E M T
   public
+open EI.Emitter   {FS} {Reg} E
+open EI.Machine   {FS} {Reg} {E} M
+open EI.TraceLoop {FS} {Reg} {E} {M} T
 
--- the engine's own non-public opens, repeated: `CFC`, `RT`, `FlatInv` and the
--- rest arrive through the re-export above, but the unqualified names they were
--- opened under do not travel with them.
 
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂; uncurry)
 open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-transˡ; <-irrefl; m≤m+n; m≤n+m
@@ -248,8 +151,6 @@ open import Once.CCC.FrameSemantics using (slot-addr; slot-addr-linear)
 open FrameSemantics FS using (Frame)
 
 
--- (the role names and the view accessors already arrive with the engine; the
--- flat event trace does not — the engine opened it non-publicly.)
 -- …and the ABSTRACT-MACHINE well-formedness layer (plan 0.65 G1d): 1,099 lines
 -- that mention no machine at all, and that the dispatch leans on constantly —
 -- `slot-read-in-frame`, `load-indirect-target-wf`, `stack-ptr-current`,
@@ -260,74 +161,12 @@ open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch
                               ; event-of; flat-events-halted)
 
-module Dispatch
-  (bss : BlockSteps)
-  (sts : StuckSteps)
-  -- MEMORY / STACK / CALL-DEPTH EXHAUSTION, conditioned on `RunAt` and the
-  -- correspondence — without them they are REFUTABLE (the 2026-07-30 vacuity
-  -- lesson), which is why the run context had to exist before this did.
-  (heap-room : ∀ {hv : HeapView} prog fs s n → RunAt prog fs
-             → CompiledCorr hv prog fs s
-             → fetch prog (fpc fs) ≡ just (instr-alloc-heap n)
-             → CFC.hfront hv + slots n ≤ CFC.lo hv)
-  (stack-room : ∀ {hv : HeapView} prog fs s m b → RunAt prog fs
-              → CompiledCorr hv prog fs s
-              → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk m b))
-              → CFC.hfront hv + slots b ≤ rreg s sp-reg)
-  (call-room : ∀ {hv : HeapView} prog fs s → RunAt prog fs
-             → CompiledCorr hv prog fs s
-             → fetch prog (fpc fs) ≡ just instr-call-closure
-             → CFC.hfront hv + slot-size ≤ rreg s sp-reg)
-  -- THE MACHINE IS FINITE, and the four `add` sites do not wrap (plan 0.70).
-  (reg-range : ∀ {hv : HeapView} prog fs s r → RunAt prog fs
-             → CompiledCorr hv prog fs s → rreg s r < modulus)
-  (scratch-dec-guarded : ∀ {hv : HeapView} prog fs s → RunAt prog fs
-                       → CompiledCorr hv prog fs s
-                       → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-dec)
-                       → 1 ≤ rreg s scratch-reg)
-  (ret-no-wrap : ∀ {hv : HeapView} prog fs s b → RunAt prog fs
-               → CompiledCorr hv prog fs s
-               → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
-               → rreg s sp-reg + slots b < modulus)
-  (count-no-wrap : ∀ {hv : HeapView} prog fs s → RunAt prog fs
-                 → CompiledCorr hv prog fs s
-                 → fetch prog (fpc fs) ≡ just (instr-reg-op count-inc)
-                 → rreg s count-reg + 1 < modulus)
-  -- THE LITERAL SEAM: an emitted immediate fits in a machine word.
-  (tag-fits : ∀ {hv : HeapView} prog fs s n → RunAt prog fs
-            → CompiledCorr hv prog fs s
-            → fetch prog (fpc fs) ≡ just (instr-load-tag-lit n) → n < modulus)
-  (lit-fits : ∀ {hv : HeapView} prog fs s (v : Carrier) → RunAt prog fs
-            → CompiledCorr hv prog fs s
-            → fetch prog (fpc fs) ≡ just (instr-load-const fits-int v) → v < modulus)
-  (float-fits : ∀ {hv : HeapView} prog fs s (v : AgdaFloat) → RunAt prog fs
-              → CompiledCorr hv prog fs s
-              → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
-              → float-bits v < modulus)
-  (lo-fits : ∀ {hv : HeapView} prog fs s → RunAt prog fs
-           → CompiledCorr hv prog fs s → CFC.lo hv < modulus)
-  -- THE TWO SIGOP CONTRACTS (D061).
-  (arith-sigop-contract : ∀ {hv : HeapView} (env : RT.ArithEnv) prog fs s {A B}
-                            (si : SigOpInfo A B)
-                        → RunAt prog fs
-                        → env ≡ arith-env (compile-trace prog)
-                        → effect si ≡ Pure → CompiledCorr hv prog fs s
-                        → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                        → Σ Payload (λ pl → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
-                            × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)
-                                (dispatchArith pl s)))
-  (external-sigop-contract : ∀ {hv : HeapView} (ev : RT.EvExtractor) (env : RT.ArithEnv)
-                               prog fs s {A B} (si : SigOpInfo A B)
-                           → RunAt prog fs
-                           → ev ≡ ev-arch → env ≡ arith-env (compile-trace prog)
-                           → CompiledCorr hv prog fs s
-                           → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                           → (env (once-symbol-path (SigOpInfo.name si)) ≡ nothing)
-                             × (ev (once-symbol-path (SigOpInfo.name si)) s
-                                 ≡ event-of (instr-sigop si) fs)
-                             × CompiledCorr hv prog (flat-exec-instr (instr-sigop si) prog fs)
-                                 (ret-past s))
-  where
+------------------------------------------------------------------------
+-- ONE parameter: everything an arch supplies, in `Supply`.
+------------------------------------------------------------------------
+module Dispatch (sup : Supply) where
+  open Supply sup
+
 
   mutual
     events-agree : ∀ {hv : HeapView} N (ev : RT.EvExtractor) (env : RT.ArithEnv)
