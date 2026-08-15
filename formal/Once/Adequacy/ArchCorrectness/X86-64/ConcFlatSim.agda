@@ -203,7 +203,11 @@ open C using (HeapView; haddr; HDom; hfront; lo) public
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
 open import Once.Adequacy.ArchCorrectness.X86-64.FlatComposition FS
   using (blk-len; blk-off; drop-compile; fetch-drop; drop-[]; fetch-block-head
-        ; find-label-none-corr; fetch-block-2nd; find-thunk-corr)
+        ; find-label-none-corr; fetch-block-2nd; find-thunk-corr
+        -- …and the ISA VIEW this arch supplies to the generic layers: the label
+        -- scan's four laws plus the lowering enumeration. `FlatComposition`
+        -- already took them; the engine takes the same ones (slice 3).
+        ; is-label?; skip-law; label-hit; label-miss; headView)
 open import Once.CCC.Target.X86-64.AbstractToX86 using (compile-trace; compile-abstract; slot-to-disp)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Machine.FrameFree using (FrameFreeI; FrameFreeT; EmittableI; frame-free-emittable)
@@ -274,6 +278,46 @@ nonhalt-noncall prog s ud2        eq hnh = refl
 nonhalt-noncall prog s syscall    eq hnh = refl
 nonhalt-noncall prog s (label _)  eq hnh = refl
 
+------------------------------------------------------------------------
+-- HOW FUEL PEELS, as six premise-free readouts (plan 0.65 G2 item 4, slice 3).
+--
+-- The generic engine cannot compute with `exec` — to it that is an opaque
+-- parameter — so the equations it needs come across as these. Each is `refl`
+-- once the boolean and the fetch have been rewritten; what they say is exactly
+-- `Semantics.exec`'s five clauses, read out one branch at a time.
+------------------------------------------------------------------------
+x-exec-zero : ∀ prog s → X.exec 0 prog s ≡ just s
+x-exec-zero prog s = refl
+
+x-exec-halted : ∀ n prog s → X.State.halted s ≡ true → X.exec (suc n) prog s ≡ just s
+x-exec-halted n prog s h rewrite h = refl
+
+-- past the end: the machine halts IN PLACE, so whatever `exec` lands on is halted
+x-exec-end : ∀ n prog s {s'} → X.State.halted s ≡ false
+           → X.fetch prog (X.State.pc s) ≡ nothing
+           → X.exec (suc n) prog s ≡ just s' → X.State.halted s' ≡ true
+x-exec-end n prog s {s'} h ftn eq =
+  sym (cong X.State.halted (just-injective (trans (sym step) eq)))
+  where step : X.exec (suc n) prog s ≡ just (record s { halted = true })
+        step rewrite h | ftn = refl
+
+x-exec-stuck : ∀ n prog s j → X.State.halted s ≡ false
+             → X.fetch prog (X.State.pc s) ≡ just j
+             → X.execInstr prog s j ≡ nothing → X.exec (suc n) prog s ≡ nothing
+x-exec-stuck n prog s j h ftq exn rewrite h | ftq | exn = refl
+
+x-exec-step-halt : ∀ n prog s j s₁ → X.State.halted s ≡ false
+                 → X.fetch prog (X.State.pc s) ≡ just j
+                 → X.execInstr prog s j ≡ just s₁ → X.State.halted s₁ ≡ true
+                 → X.exec (suc n) prog s ≡ just s₁
+x-exec-step-halt n prog s j s₁ h ftq exq h1 rewrite h | ftq | exq | h1 = refl
+
+x-exec-step-run : ∀ n prog s j s₁ → X.State.halted s ≡ false
+                → X.fetch prog (X.State.pc s) ≡ just j
+                → X.execInstr prog s j ≡ just s₁ → X.State.halted s₁ ≡ false
+                → X.exec (suc n) prog s ≡ X.exec n prog s₁
+x-exec-step-run n prog s j s₁ h ftq exq h1 rewrite h | ftq | exq | h1 = refl
+
 private
   t≢f : true ≡ false → ⊥
   t≢f ()
@@ -319,55 +363,44 @@ open import Data.List using ([])   -- for `EntryLike`'s empty frame stack
 open import Once.Adequacy.ArchCorrectness.X86-64.RunContext o FS word-eq public
 
 
--- The bundle threaded through `events-agree`: the two proved state invariants
--- PLUS the hypotheses that make the residuals true. `ev`/`env` are pinned because
--- the SigOp contracts speak about them: quantified over an arbitrary `env`,
--- `arith-sigop-contract` asserts `env sym ≡ just pl`, which `env := λ _ → nothing`
--- refutes.
-record FlatInv (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-               (prog : AbstractTrace) (fs : FlatState) : Set where
-  constructor mkFlatInv
-  field
-    inv-wf      : FlatWF fs
-    -- D097: …and the CLOSURE REGISTER is below the frontier too. `FlatWF` is
-    -- indexed by the `LocState`, and `fclosure` is a `FlatState` field, so it
-    -- needs saying separately — which is only now load-bearing: the closure
-    -- register's ENCODING must survive an allocation extending the heap view,
-    -- and `enc-ext` asks for exactly this bound.
-    inv-closure : sv-below (next-heap-ref (falloc fs)) (fclosure fs)
-    inv-regtag  : FlatRegTag fs
-    inv-ev      : ev ≡ ev-x86-64
-    inv-env     : env ≡ arith-env-x86-64 (compile-trace prog)
-    inv-run     : RunAt prog fs
-open FlatInv public
-
--- THE FRAME OPS HAVE NO PRODUCER (plan 0.54 rung D, item 2). The four abstract
--- frame instructions are not a fragment the correspondence has yet to cover —
--- an EMITTED program cannot contain them at all: the per-arch backend brackets
--- each trace with `subq $budget*8, %rsp` / `addq` itself (`ir-stack-budget`), so
--- `ir-to-trace` never emits `instr-alloc-stack` / `instr-dealloc-stack` /
--- `instr-push-frame` / `instr-pop-frame`; they survive only in the legacy IR-WF
--- layer, which is not on this path.
+------------------------------------------------------------------------
+-- THE GENERIC EVENT ENGINE, instantiated (plan 0.65 G2 item 4, slice 3).
 --
--- Consequently the four dispatch clauses below are UNREACHABLE (`⊥-elim`), and
--- with them go ELEVEN residuals that used to condition them — `alloc-stack-entry`,
--- `alloc-stack-fresh-{abs,x86}`, `stack-room`, `dealloc-stack-{full,restores}`,
--- `frame-room`, `pop-frame-{empty,saved,restores}`, `pop-room`. That is the point
--- of stating it this way rather than proving each: they were facts about matched
--- prologue/epilogue pairs the emitter never produces.
-flat-inv-step : ∀ {ev env} (i : AbstractInstr) (prog : AbstractTrace) (fs : FlatState)
-              → fetch prog (fpc fs) ≡ just i → halted (floc fs) ≡ false
-              → FlatInv ev env prog fs → FlatInv ev env prog (flat-exec-instr i prog fs)
-flat-inv-step i prog fs ftq h inv = record
-  { inv-wf      = flat-wf-step i prog fs (inv-wf inv)
-  ; inv-closure = cl-step i prog fs (inv-wf inv) (inv-closure inv)
-  ; inv-regtag  = flat-regtag-step i prog fs (inv-regtag inv)
-  ; inv-ev      = inv-ev inv
-  ; inv-env     = inv-env inv
-  ; inv-run     = mkRunAt (run-ir (inv-run inv)) (run-emit (inv-run inv))
-                          (run-heap (inv-run inv))
-                          (reach-step i fs (run-reach (inv-run inv)) ftq h)
-  }
+-- Everything below this line that USED to be written here and is now written
+-- once, for every arch, comes through `EE`. What x86-64 supplies is the four
+-- things the engine is generic OVER: the emitter's law surface (the same one
+-- `FlatComposition` takes), the machine's step and how its fuel peels, the
+-- trace loop's telescope (which `RunTrace` already had), and the one ISA
+-- enumeration — `nonhalt-noncall`.
+--
+-- NOT opened `public` wholesale: the engine re-exports `FlatComposition`,
+-- `CompiledCorrespondence` and `RunContext`, all three of which this module
+-- already has in scope by another path. Only what the engine ADDS is named.
+------------------------------------------------------------------------
+import Once.Adequacy.ArchCorrectness.FlatCore.EventEngine as Engine
+import Once.CCC.Target.X86-64.Syntax as XS
+open import Data.List using (List)
+open import Once.Adequacy.ArchCorrectness.X86-64.RegRoles using (x86-64-roles)
+module EE = Engine
+  o FS slot-size word-eq Reg x86-64-roles X.State xrreg X.State.memory
+  X.State.halted X.State.pc X.W.modulus
+  XS.Instr compile-abstract compile-trace refl (λ _ _ → refl)
+  X.fetch (λ _ → refl) (λ _ _ → refl) (λ _ _ _ → refl)
+  is-label? label X.find-label-go (λ _ _ → refl) skip-law
+  label-hit label-miss headView X.find-label
+  X.execInstr X.exec
+  x-exec-zero x-exec-halted x-exec-end x-exec-stuck x-exec-step-halt x-exec-step-run
+  (List XInstr × ℕ) RTx.matchCall RTx.ret-past (uncurry (dispatch-arith val-x86-64))
+  ev-x86-64 arith-env-x86-64
+  nonhalt-noncall
+
+open EE using (FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-env
+              ; inv-run; flat-inv-step; block-run-exec) public
+
+
+-- (`FlatInv` and `flat-inv-step` moved to `FlatCore.EventEngine` — the two
+-- invariants they bundle are the ABSTRACT machine's, and the run context was
+-- already generic. Re-exported from `EE` above.)
 
 -- THE SLOT AN INSTRUCTION ADDRESSES, if any. Enumerated (no catch-all, so it
 -- reduces at the use sites). This is what ties a slot-liveness assumption to
@@ -391,35 +424,9 @@ flat-inv-step i prog fs ftq h inv = record
 -- list's floor (`C.windows-heap-store`).)
 
 
--- WITNESS-FREE block chaining: if `X.exec L` reaches a NON-halted `s'`, then every
--- one of the L steps was non-halting (else exec would have stopped at a halted
--- state ≠ s'), hence non-call — so run-events mirrors it, emitting [] and landing
--- on s'. The concrete-side backbone of the per-instruction dispatch, derived purely
--- from `X.exec L ≡ just s'` + `halted s' ≡ false` (no separate call-free witness).
---
--- Key mechanism: in each branch the `with … in` abstraction has ALREADY reduced
--- `X.exec (suc L)` inside `eq`'s type (through `halted s` / fetch / execInstr /
--- `halted s₁`), so `eq` speaks directly about the peeled result — we USE that rather
--- than fight it by re-introducing `X.exec` via lemmas. Every early-stop leaves
--- `eq : just <a halted state> ≡ just s'`, whose `halted = true` clashes with `hs'`
--- (`maybe′ halted`-cong avoids `just-injective`'s eta-expansion of `s'`); the one
--- running step is non-call (nonhalt-noncall) so run-events-noncall advances, then recurse.
-block-run-exec : ∀ (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                   L rest cprog s {s'} → X.exec L cprog s ≡ just s' → X.State.halted s' ≡ false
-               → RTx.run-events val-x86-64 ev env (L + rest) cprog s
-                   ≡ RTx.run-events val-x86-64 ev env rest cprog s'
-block-run-exec ev env zero rest cprog s eq hs' =
-  cong (λ z → RTx.run-events val-x86-64 ev env rest cprog z) (just-injective eq)
-block-run-exec ev env (suc L) rest cprog s {s'} eq hs' with X.State.halted s in hs
-... | true  = ⊥-elim (t≢f (trans (sym hs) (trans (cong (maybe′ X.State.halted true) eq) hs')))
-... | false with X.fetch cprog (X.State.pc s) in ft
-...   | nothing = ⊥-elim (t≢f (trans (cong (maybe′ X.State.halted true) eq) hs'))
-...   | just j with X.execInstr cprog s j in exq
-...     | nothing = ⊥-elim (n≢j eq)
-...     | just s₁ with X.State.halted s₁ in hs1
-...       | true  = ⊥-elim (t≢f (trans (sym hs1) (trans (cong (maybe′ X.State.halted true) eq) hs')))
-...       | false rewrite nonhalt-noncall cprog s j exq hs1 | exq =
-              block-run-exec ev env L rest cprog s₁ eq hs'
+-- (`block-run-exec` moved to `FlatCore.EventEngine` with the six `exec`
+-- readouts above: given how fuel peels, the argument is the same on every
+-- machine, and `nonhalt-noncall` is the only ISA fact in it.)
 
 ------------------------------------------------------------------------
 -- (3) events-agree: the fuel induction relating the concrete run-events event
