@@ -1364,6 +1364,338 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
                          (stp-cancel-sR ρ x a k p) (wk-single {v = p} a)))
              (hh (ihS-atR ρ x a k p)))
 
+  ------------------------------------------------------------------------
+  -- ★★★ THE SUCCESSOR BRANCH'S IH, TYPED.  `⊢ihZ-atR` one level up: SIX
+  --    steps rather than four, because `ihS` sits under five binders
+  --    (`x`, `k`, `ih₀`, `a`, `p`) and the renaming goes in after `x`.
+  --
+  -- ★ Step 4 is why `⊢auxAt` had to exist: the `ih₀` slot is substituted by
+  --   `auxAt ρ x k`, the auxiliary at the DECREMENTED bound, and `Sub⊢`
+  --   wants it typed at `aAuxB (renTy ρ A) … k` — which is exactly
+  --   `⊢auxAt`'s conclusion.
+  ------------------------------------------------------------------------
+
+  ⊢ihS-atR : {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
+             {x : RTm ⌊ Δ ⌋} {a k p : RTm ⌊ Θ ⌋} →
+             Δ ⊢ x ∷ A → Θ ⊢ k ∷ Nat → Θ ⊢ a ∷ renTy ρ A →
+             Θ ⊢ p ∷ Hom Nat (subTm (single a) (renTm (extR ρ) m)) (nsuc k) →
+             Θ ⊢ ihS-atR ρ x a k p
+               ∷ aIHTat (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+                        (subTm (single a) (renTm (extR ρ) m))
+  ⊢ihS-atR {Θ = Θ} {ρ = ρ} h {x = x} {a = a} {k = k} {p = p} dx dk da dp =
+    ⊢-cast (trans (aIHTat-sub {σ = single p} (renTy vs Aρ) (wᶠ cMρ) (wᶠ mρ) (w μa))
+                  (cong₄ aIHTat (wk-singleTy Aρ) (wᶠ-single cMρ) (wᶠ-single mρ)
+                                (wk-single {v = p} μa)))
+           (⊢[] d5 dp)
+    where
+      Aρ  = renTy ρ A
+      cMρ = renTm (extR ρ) cM
+      mρ  = renTm (extR ρ) m
+      μa  = subTm (single a) mρ
+      AX  = auxAt ρ x k
+
+      d0 : (((((Δ ▹ A) ▹ Nat) ▹ aAuxMot) ▹ renTy vs (renTy vs (renTy vs A)))
+             ▹ Hom Nat (wᶠ (wᶠ (wᶠ m))) (nsuc (var (vs (vs vz)))))
+             ⊢ ihS
+             ∷ aIHTat (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs A)))))
+                      (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ cM))))) (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ m)))))
+                      (w (wᶠ (wᶠ (wᶠ m))))
+      d0 = ⊢-cast (cong (aIHTat (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs A)))))
+                                (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ cM)))))
+                                (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ m))))))
+                        (wᶠ²-single (wᶠ (wᶠ (wᶠ m)))))
+                  ⊢ihS
+
+      d1 : ((((Δ ▹ Nat) ▹ mot₀) ▹ renTy vs (renTy vs A))
+             ▹ Hom Nat (wᶠ (wᶠ m)) (nsuc (var (vs (vs vz)))))
+             ⊢ subTm (extS (extS (extS (extS (single x))))) ihS
+             ∷ aIHTat (renTy vs (renTy vs (renTy vs (renTy vs A))))
+                      (wᶠ (wᶠ (wᶠ (wᶠ cM)))) (wᶠ (wᶠ (wᶠ (wᶠ m))))
+                      (w (wᶠ (wᶠ m)))
+      d1 =
+        subst (λ T → ((((Δ ▹ Nat) ▹ mot₀) ▹ renTy vs (renTy vs A)) ▹ T)
+                       ⊢ subTm (extS (extS (extS (extS (single x))))) ihS
+                       ∷ aIHTat (renTy vs (renTy vs (renTy vs (renTy vs A))))
+                                (wᶠ (wᶠ (wᶠ (wᶠ cM)))) (wᶠ (wᶠ (wᶠ (wᶠ m))))
+                                (w (wᶠ (wᶠ m))))
+              (cong (λ z → Hom Nat z (nsuc (var (vs (vs vz))))) (peelM-x x))
+        (subst (λ T → ((((Δ ▹ Nat) ▹ mot₀) ▹ T)
+                        ▹ subTy (extS (extS (extS (single x))))
+                                (Hom Nat (wᶠ (wᶠ (wᶠ m))) (nsuc (var (vs (vs vz))))))
+                       ⊢ subTm (extS (extS (extS (extS (single x))))) ihS
+                       ∷ aIHTat (renTy vs (renTy vs (renTy vs (renTy vs A))))
+                                (wᶠ (wᶠ (wᶠ (wᶠ cM)))) (wᶠ (wᶠ (wᶠ (wᶠ m))))
+                                (w (wᶠ (wᶠ m))))
+               (peelA-x x)
+        (subst (λ T → ((((Δ ▹ Nat) ▹ T)
+                         ▹ subTy (extS (extS (single x)))
+                                 (renTy vs (renTy vs (renTy vs A))))
+                        ▹ subTy (extS (extS (extS (single x))))
+                                (Hom Nat (wᶠ (wᶠ (wᶠ m))) (nsuc (var (vs (vs vz))))))
+                       ⊢ subTm (extS (extS (extS (extS (single x))))) ihS
+                       ∷ aIHTat (renTy vs (renTy vs (renTy vs (renTy vs A))))
+                                (wᶠ (wᶠ (wᶠ (wᶠ cM)))) (wᶠ (wᶠ (wᶠ (wᶠ m))))
+                                (w (wᶠ (wᶠ m))))
+               (mot-x x)
+               (⊢-cast ty1 (sub-lemma d0 (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext
+                                            (Sub⊢-ext (⊢single dx)))))))))
+        where
+          ty1 : subTy (extS (extS (extS (extS (single x)))))
+                      (aIHTat (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs A)))))
+                              (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ cM))))) (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ m)))))
+                              (w (wᶠ (wᶠ (wᶠ m)))))
+              ≡ aIHTat (renTy vs (renTy vs (renTy vs (renTy vs A))))
+                       (wᶠ (wᶠ (wᶠ (wᶠ cM)))) (wᶠ (wᶠ (wᶠ (wᶠ m)))) (w (wᶠ (wᶠ m)))
+          ty1 =
+            trans (aIHTat-sub {σ = extS (extS (extS (extS (single x))))}
+                              (renTy vs (renTy vs (renTy vs (renTy vs (renTy vs A)))))
+                              (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ cM))))) (wᶠ (wᶠ (wᶠ (wᶠ (wᶠ m)))))
+                              (w (wᶠ (wᶠ (wᶠ m)))))
+                  (cong₄ aIHTat
+                    (trans (sub-wTy {σ = extS (extS (extS (single x)))}
+                                    (renTy vs (renTy vs (renTy vs (renTy vs A)))))
+                           (cong (renTy vs)
+                                 (trans (sub-wTy {σ = extS (extS (single x))}
+                                                 (renTy vs (renTy vs (renTy vs A))))
+                                        (cong (renTy vs) (peelA-x x)))))
+                    (trans (wᶠ-sub {σ = extS (extS (extS (single x)))}
+                                   (wᶠ (wᶠ (wᶠ (wᶠ cM)))))
+                           (cong wᶠ (trans (wᶠ-sub {σ = extS (extS (single x))}
+                                                   (wᶠ (wᶠ (wᶠ cM))))
+                                           (cong wᶠ (peelC-x x)))))
+                    (trans (wᶠ-sub {σ = extS (extS (extS (single x)))}
+                                   (wᶠ (wᶠ (wᶠ (wᶠ m)))))
+                           (cong wᶠ (trans (wᶠ-sub {σ = extS (extS (single x))}
+                                                   (wᶠ (wᶠ (wᶠ m))))
+                                           (cong wᶠ (peelM-x x)))))
+                    (trans (sub-w {σ = extS (extS (extS (single x)))} (wᶠ (wᶠ (wᶠ m))))
+                           (cong w (peelM-x x))))
+
+      d2 : ((((Θ ▹ Nat) ▹ motAt ρ) ▹ renTy vs (renTy vs Aρ))
+             ▹ Hom Nat (wᶠ (wᶠ mρ)) (nsuc (var (vs (vs vz)))))
+             ⊢ renTm (extR (extR (extR (extR ρ))))
+                     (subTm (extS (extS (extS (extS (single x))))) ihS)
+             ∷ aIHTat (renTy vs (renTy vs (renTy vs (renTy vs Aρ))))
+                      (wᶠ (wᶠ (wᶠ (wᶠ cMρ)))) (wᶠ (wᶠ (wᶠ (wᶠ mρ))))
+                      (w (wᶠ (wᶠ mρ)))
+      d2 =
+        subst (λ T → ((((Θ ▹ Nat) ▹ motAt ρ) ▹ renTy vs (renTy vs Aρ)) ▹ T)
+                       ⊢ renTm (extR (extR (extR (extR ρ))))
+                               (subTm (extS (extS (extS (extS (single x))))) ihS)
+                       ∷ aIHTat (renTy vs (renTy vs (renTy vs (renTy vs Aρ))))
+                                (wᶠ (wᶠ (wᶠ (wᶠ cMρ)))) (wᶠ (wᶠ (wᶠ (wᶠ mρ))))
+                                (w (wᶠ (wᶠ mρ))))
+              (cong (λ z → Hom Nat z (nsuc (var (vs (vs vz))))) (peelM-ρ ρ))
+        (subst (λ T → ((((Θ ▹ Nat) ▹ motAt ρ) ▹ T)
+                        ▹ renTy (extR (extR (extR ρ)))
+                                (Hom Nat (wᶠ (wᶠ m)) (nsuc (var (vs (vs vz))))))
+                       ⊢ renTm (extR (extR (extR (extR ρ))))
+                               (subTm (extS (extS (extS (extS (single x))))) ihS)
+                       ∷ aIHTat (renTy vs (renTy vs (renTy vs (renTy vs Aρ))))
+                                (wᶠ (wᶠ (wᶠ (wᶠ cMρ)))) (wᶠ (wᶠ (wᶠ (wᶠ mρ))))
+                                (w (wᶠ (wᶠ mρ))))
+               (peelA-ρ ρ)
+        (subst (λ T → ((((Θ ▹ Nat) ▹ T)
+                         ▹ renTy (extR (extR ρ)) (renTy vs (renTy vs A)))
+                        ▹ renTy (extR (extR (extR ρ)))
+                                (Hom Nat (wᶠ (wᶠ m)) (nsuc (var (vs (vs vz))))))
+                       ⊢ renTm (extR (extR (extR (extR ρ))))
+                               (subTm (extS (extS (extS (extS (single x))))) ihS)
+                       ∷ aIHTat (renTy vs (renTy vs (renTy vs (renTy vs Aρ))))
+                                (wᶠ (wᶠ (wᶠ (wᶠ cMρ)))) (wᶠ (wᶠ (wᶠ (wᶠ mρ))))
+                                (w (wᶠ (wᶠ mρ))))
+               (motAt-ren ρ)
+               (⊢-cast ty2 (ren-lemma d1 (Ren⊢-ext (Ren⊢-ext (Ren⊢-ext
+                                            (Ren⊢-ext h))))))))
+        where
+          ty2 : renTy (extR (extR (extR (extR ρ))))
+                      (aIHTat (renTy vs (renTy vs (renTy vs (renTy vs A))))
+                              (wᶠ (wᶠ (wᶠ (wᶠ cM)))) (wᶠ (wᶠ (wᶠ (wᶠ m))))
+                              (w (wᶠ (wᶠ m))))
+              ≡ aIHTat (renTy vs (renTy vs (renTy vs (renTy vs Aρ))))
+                       (wᶠ (wᶠ (wᶠ (wᶠ cMρ)))) (wᶠ (wᶠ (wᶠ (wᶠ mρ))))
+                       (w (wᶠ (wᶠ mρ)))
+          ty2 =
+            trans (aIHTat-ren {ρ = extR (extR (extR (extR ρ)))}
+                              (renTy vs (renTy vs (renTy vs (renTy vs A))))
+                              (wᶠ (wᶠ (wᶠ (wᶠ cM)))) (wᶠ (wᶠ (wᶠ (wᶠ m))))
+                              (w (wᶠ (wᶠ m))))
+                  (cong₄ aIHTat
+                    (trans (ren-wTy {ρ = extR (extR (extR ρ))}
+                                    (renTy vs (renTy vs (renTy vs A))))
+                           (cong (renTy vs)
+                                 (trans (ren-wTy {ρ = extR (extR ρ)}
+                                                 (renTy vs (renTy vs A)))
+                                        (cong (renTy vs) (peelA-ρ ρ)))))
+                    (trans (ren-wᶠ {ρ = extR (extR (extR ρ))} (wᶠ (wᶠ (wᶠ cM))))
+                           (cong wᶠ (trans (ren-wᶠ {ρ = extR (extR ρ)} (wᶠ (wᶠ cM)))
+                                           (cong wᶠ (peelC-ρ ρ)))))
+                    (trans (ren-wᶠ {ρ = extR (extR (extR ρ))} (wᶠ (wᶠ (wᶠ m))))
+                           (cong wᶠ (trans (ren-wᶠ {ρ = extR (extR ρ)} (wᶠ (wᶠ m)))
+                                           (cong wᶠ (peelM-ρ ρ)))))
+                    (trans (ren-w {ρ = extR (extR (extR ρ))} (wᶠ (wᶠ m)))
+                           (cong w (peelM-ρ ρ))))
+
+      d3 : (((Θ ▹ aAuxB Aρ cMρ mρ k) ▹ renTy vs Aρ)
+             ▹ Hom Nat (wᶠ mρ) (nsuc (w (w k))))
+             ⊢ subTm (extS (extS (extS (single k))))
+                     (renTm (extR (extR (extR (extR ρ))))
+                            (subTm (extS (extS (extS (extS (single x))))) ihS))
+             ∷ aIHTat (renTy vs (renTy vs (renTy vs Aρ)))
+                      (wᶠ (wᶠ (wᶠ cMρ))) (wᶠ (wᶠ (wᶠ mρ))) (w (wᶠ mρ))
+      d3 =
+        subst (λ T → (((Θ ▹ aAuxB Aρ cMρ mρ k) ▹ renTy vs Aρ) ▹ T)
+                       ⊢ subTm (extS (extS (extS (single k))))
+                               (renTm (extR (extR (extR (extR ρ))))
+                                      (subTm (extS (extS (extS (extS (single x))))) ihS))
+                       ∷ aIHTat (renTy vs (renTy vs (renTy vs Aρ)))
+                                (wᶠ (wᶠ (wᶠ cMρ))) (wᶠ (wᶠ (wᶠ mρ))) (w (wᶠ mρ)))
+              (cong (λ z → Hom Nat z (nsuc (w (w k))))
+                    (trans (wᶠ-sub {σ = single k} (wᶠ mρ))
+                           (cong wᶠ (wᶠ-single mρ))))
+        (subst (λ T → (((Θ ▹ aAuxB Aρ cMρ mρ k) ▹ T)
+                        ▹ subTy (extS (extS (single k)))
+                                (Hom Nat (wᶠ (wᶠ mρ)) (nsuc (var (vs (vs vz))))))
+                       ⊢ subTm (extS (extS (extS (single k))))
+                               (renTm (extR (extR (extR (extR ρ))))
+                                      (subTm (extS (extS (extS (extS (single x))))) ihS))
+                       ∷ aIHTat (renTy vs (renTy vs (renTy vs Aρ)))
+                                (wᶠ (wᶠ (wᶠ cMρ))) (wᶠ (wᶠ (wᶠ mρ))) (w (wᶠ mρ)))
+               (trans (sub-wTy {σ = single k} (renTy vs Aρ))
+                      (cong (renTy vs) (wk-singleTy Aρ)))
+        (subst (λ T → (((Θ ▹ T) ▹ subTy (extS (single k)) (renTy vs (renTy vs Aρ)))
+                        ▹ subTy (extS (extS (single k)))
+                                (Hom Nat (wᶠ (wᶠ mρ)) (nsuc (var (vs (vs vz))))))
+                       ⊢ subTm (extS (extS (extS (single k))))
+                               (renTm (extR (extR (extR (extR ρ))))
+                                      (subTm (extS (extS (extS (extS (single x))))) ihS))
+                       ∷ aIHTat (renTy vs (renTy vs (renTy vs Aρ)))
+                                (wᶠ (wᶠ (wᶠ cMρ))) (wᶠ (wᶠ (wᶠ mρ))) (w (wᶠ mρ)))
+               (motAt-at ρ k)
+               (⊢-cast ty3 (sub-lemma d2 (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext
+                                            (⊢single dk))))))))
+        where
+          ty3 : subTy (extS (extS (extS (single k))))
+                      (aIHTat (renTy vs (renTy vs (renTy vs (renTy vs Aρ))))
+                              (wᶠ (wᶠ (wᶠ (wᶠ cMρ)))) (wᶠ (wᶠ (wᶠ (wᶠ mρ))))
+                              (w (wᶠ (wᶠ mρ))))
+              ≡ aIHTat (renTy vs (renTy vs (renTy vs Aρ)))
+                       (wᶠ (wᶠ (wᶠ cMρ))) (wᶠ (wᶠ (wᶠ mρ))) (w (wᶠ mρ))
+          ty3 =
+            trans (aIHTat-sub {σ = extS (extS (extS (single k)))}
+                              (renTy vs (renTy vs (renTy vs (renTy vs Aρ))))
+                              (wᶠ (wᶠ (wᶠ (wᶠ cMρ)))) (wᶠ (wᶠ (wᶠ (wᶠ mρ))))
+                              (w (wᶠ (wᶠ mρ))))
+                  (cong₄ aIHTat
+                    (trans (sub-wTy {σ = extS (extS (single k))}
+                                    (renTy vs (renTy vs (renTy vs Aρ))))
+                           (cong (renTy vs)
+                                 (trans (sub-wTy {σ = extS (single k)}
+                                                 (renTy vs (renTy vs Aρ)))
+                                        (cong (renTy vs)
+                                              (trans (sub-wTy {σ = single k}
+                                                              (renTy vs Aρ))
+                                                     (cong (renTy vs)
+                                                           (wk-singleTy Aρ)))))))
+                    (trans (wᶠ-sub {σ = extS (extS (single k))} (wᶠ (wᶠ (wᶠ cMρ))))
+                           (cong wᶠ (trans (wᶠ-sub {σ = extS (single k)} (wᶠ (wᶠ cMρ)))
+                                           (cong wᶠ (trans (wᶠ-sub {σ = single k}
+                                                                   (wᶠ cMρ))
+                                                           (cong wᶠ (wᶠ-single cMρ)))))))
+                    (trans (wᶠ-sub {σ = extS (extS (single k))} (wᶠ (wᶠ (wᶠ mρ))))
+                           (cong wᶠ (trans (wᶠ-sub {σ = extS (single k)} (wᶠ (wᶠ mρ)))
+                                           (cong wᶠ (trans (wᶠ-sub {σ = single k}
+                                                                   (wᶠ mρ))
+                                                           (cong wᶠ (wᶠ-single mρ)))))))
+                    (trans (sub-w {σ = extS (extS (single k))} (wᶠ (wᶠ mρ)))
+                           (cong w (trans (wᶠ-sub {σ = single k} (wᶠ mρ))
+                                          (cong wᶠ (wᶠ-single mρ))))))
+
+      d4 : ((Θ ▹ Aρ) ▹ Hom Nat mρ (nsuc (w k)))
+             ⊢ subTm (extS (extS (single AX)))
+                     (subTm (extS (extS (extS (single k))))
+                            (renTm (extR (extR (extR (extR ρ))))
+                                   (subTm (extS (extS (extS (extS (single x))))) ihS)))
+             ∷ aIHTat (renTy vs (renTy vs Aρ)) (wᶠ (wᶠ cMρ)) (wᶠ (wᶠ mρ)) (w mρ)
+      d4 =
+        subst (λ T → ((Θ ▹ Aρ) ▹ T)
+                       ⊢ subTm (extS (extS (single AX)))
+                               (subTm (extS (extS (extS (single k))))
+                                      (renTm (extR (extR (extR (extR ρ))))
+                                             (subTm (extS (extS (extS (extS (single x))))) ihS)))
+                       ∷ aIHTat (renTy vs (renTy vs Aρ)) (wᶠ (wᶠ cMρ))
+                                (wᶠ (wᶠ mρ)) (w mρ))
+              (cong₂ (λ u v → Hom Nat u (nsuc v)) (wᶠ-single mρ)
+                     (trans (sub-w {σ = single AX} (w k))
+                            (cong w (wk-single {v = AX} k))))
+        (subst (λ T → ((Θ ▹ T)
+                        ▹ subTy (extS (single AX)) (Hom Nat (wᶠ mρ) (nsuc (w (w k)))))
+                       ⊢ subTm (extS (extS (single AX)))
+                               (subTm (extS (extS (extS (single k))))
+                                      (renTm (extR (extR (extR (extR ρ))))
+                                             (subTm (extS (extS (extS (extS (single x))))) ihS)))
+                       ∷ aIHTat (renTy vs (renTy vs Aρ)) (wᶠ (wᶠ cMρ))
+                                (wᶠ (wᶠ mρ)) (w mρ))
+               (wk-singleTy Aρ)
+               (⊢-cast ty4 (sub-lemma d3 (Sub⊢-ext (Sub⊢-ext
+                                            (⊢single (⊢auxAt h dx dk)))))))
+        where
+          ty4 : subTy (extS (extS (single AX)))
+                      (aIHTat (renTy vs (renTy vs (renTy vs Aρ)))
+                              (wᶠ (wᶠ (wᶠ cMρ))) (wᶠ (wᶠ (wᶠ mρ))) (w (wᶠ mρ)))
+              ≡ aIHTat (renTy vs (renTy vs Aρ)) (wᶠ (wᶠ cMρ)) (wᶠ (wᶠ mρ)) (w mρ)
+          ty4 =
+            trans (aIHTat-sub {σ = extS (extS (single AX))}
+                              (renTy vs (renTy vs (renTy vs Aρ)))
+                              (wᶠ (wᶠ (wᶠ cMρ))) (wᶠ (wᶠ (wᶠ mρ))) (w (wᶠ mρ)))
+                  (cong₄ aIHTat
+                    (trans (sub-wTy {σ = extS (single AX)} (renTy vs (renTy vs Aρ)))
+                           (cong (renTy vs)
+                                 (trans (sub-wTy {σ = single AX} (renTy vs Aρ))
+                                        (cong (renTy vs) (wk-singleTy Aρ)))))
+                    (trans (wᶠ-sub {σ = extS (single AX)} (wᶠ (wᶠ cMρ)))
+                           (cong wᶠ (trans (wᶠ-sub {σ = single AX} (wᶠ cMρ))
+                                           (cong wᶠ (wᶠ-single cMρ)))))
+                    (trans (wᶠ-sub {σ = extS (single AX)} (wᶠ (wᶠ mρ)))
+                           (cong wᶠ (trans (wᶠ-sub {σ = single AX} (wᶠ mρ))
+                                           (cong wᶠ (wᶠ-single mρ)))))
+                    (trans (sub-w {σ = extS (single AX)} (wᶠ mρ))
+                           (cong w (wᶠ-single mρ))))
+
+      d5 : (Θ ▹ Hom Nat μa (nsuc k))
+             ⊢ subTm (extS (single a))
+                     (subTm (extS (extS (single AX)))
+                            (subTm (extS (extS (extS (single k))))
+                                   (renTm (extR (extR (extR (extR ρ))))
+                                          (subTm (extS (extS (extS (extS (single x))))) ihS))))
+             ∷ aIHTat (renTy vs Aρ) (wᶠ cMρ) (wᶠ mρ) (w μa)
+      d5 =
+        subst (λ T → (Θ ▹ T)
+                       ⊢ subTm (extS (single a))
+                               (subTm (extS (extS (single AX)))
+                                      (subTm (extS (extS (extS (single k))))
+                                             (renTm (extR (extR (extR (extR ρ))))
+                                                    (subTm (extS (extS (extS (extS (single x))))) ihS))))
+                       ∷ aIHTat (renTy vs Aρ) (wᶠ cMρ) (wᶠ mρ) (w μa))
+              (cong (λ z → Hom Nat μa (nsuc z)) (wk-single {v = a} k))
+              (⊢-cast ty5 (sub-lemma d4 (Sub⊢-ext (⊢single da))))
+        where
+          ty5 : subTy (extS (single a))
+                      (aIHTat (renTy vs (renTy vs Aρ)) (wᶠ (wᶠ cMρ))
+                              (wᶠ (wᶠ mρ)) (w mρ))
+              ≡ aIHTat (renTy vs Aρ) (wᶠ cMρ) (wᶠ mρ) (w μa)
+          ty5 =
+            trans (aIHTat-sub {σ = extS (single a)} (renTy vs (renTy vs Aρ))
+                              (wᶠ (wᶠ cMρ)) (wᶠ (wᶠ mρ)) (w mρ))
+                  (cong₄ aIHTat
+                    (trans (sub-wTy {σ = single a} (renTy vs Aρ))
+                           (cong (renTy vs) (wk-singleTy Aρ)))
+                    (trans (wᶠ-sub {σ = single a} (wᶠ cMρ))
+                           (cong wᶠ (wᶠ-single cMρ)))
+                    (trans (wᶠ-sub {σ = single a} (wᶠ mρ))
+                           (cong wᶠ (wᶠ-single mρ)))
+                    (sub-w {σ = single a} mρ))
+
   aux-irr-z : StepExt Δ A cM m stp →
               {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
               (x : RTm ⌊ Δ ⌋) (a c₁ c₂ : RTm ⌊ Θ ⌋) →
