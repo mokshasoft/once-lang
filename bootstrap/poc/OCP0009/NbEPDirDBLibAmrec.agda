@@ -26,17 +26,17 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTm; var; nzero; nsuc; natrec; absurd; ordtr; lam; app
         ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR
         ; subTy-renTy; subTy-id; subTm-renTm; subTm-id; subTm-cong
-        ; renTm-renTm; renTy-renTy; renTm-cong; renTy-cong; idₛ
+        ; renTm-renTm; renTy-renTy; renTm-cong; renTy-cong; subTy-cong; idₛ
         ; renTy-subTy; renTm-subTm )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
         ; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc
         ; ⊢lam; ⊢app; _⊢ty_; ⊢conv; csymᵀ; ctrnᵀ; ⊢⌜Id⌝; El-⌜Id⌝
-        ; ty-Nat; ty-Hom; ty-El; ty-Π )
+        ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Id )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj
-  using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext
+  using ( ⊢wk; ⊢-cast; ∋-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext
         ; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
@@ -45,7 +45,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import poc.OCP0009.NbEPDirDBLibWk
   using ( w; wᶠ; ⊢wkᶠ; cong₃; cong₄; sub-w; sub-w²; sub-w³; sub-w⁴; ren-w; wk-singleTy; wᶠ-single
         ; wᶠ¹-single; wᶠ²-single; nrs-wTy; wᶠ-nrs; ren-wTy; ren-wᶠ; sub-wTy; wᶠ-sub
-        ; _∙^_; w^; wTy^; wᶠ^ )
+        ; ren-sub; ren-w²; ren-w³; nrs-w; cong₆; _∙^_; w^; wTy^; wᶠ^ )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-ren; aIHT-fit )
 open import poc.OCP0009.NbEPDirDBLibNatVal using ( NatVal; nv-zero; nv-suc; natEval )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢[] )
@@ -208,6 +208,79 @@ idOfRed : {Γ : Ctx} {T : RTy ⌊ Γ ⌋} {t₁ t₂ u₁ u₂ : RTm ⌊ Γ ⌋}
           t₁ ⟶* u₁ → t₂ ⟶* u₂ → Prv Γ (Id T u₁ u₂) → Prv Γ (Id T t₁ t₂)
 idOfRed r₁ r₂ (prv e d) =
   prv e (⊢conv d (csymᵀ (ctrnᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ r₁)) (red→≅ᵀ (⟶ᵀ*-Idʳ r₂)))))
+
+-- ★ `Ren⊢` under one more AMBIENT binder.  `Ren⊢-ext` grows the renaming
+--   with a matching slot on BOTH sides; this grows only the TARGET, which
+--   is what an ambient TOWER `vs^n` needs — and a tower is exactly what an
+--   internal induction's motive sits under.  ⚠ Reach for this, not
+--   `Ren⊢-ext`, whenever the new binder is NOT in the source context.
+wR : {Γ Θ : Ctx} {ρ : Ren ⌊ Γ ⌋ ⌊ Θ ⌋} {B : RTy ⌊ Θ ⌋} →
+     Ren⊢ Γ Θ ρ → Ren⊢ Γ (Θ ▹ B) (λ v → vs (ρ v))
+wR h v = ∋-cast (renTy-renTy _) (there (h v))
+
+------------------------------------------------------------------------
+-- ★★★ THE POINTWISE CALCULUS — every peel the induction needs, from ONE
+--    observation: a substitution that meets a renaming is another
+--    RENAMING, and which one is decided VARIABLE-BY-VARIABLE.
+--
+-- ⚠ WHY THIS, RATHER THAN MORE `wᶠ`-TOWER LEMMAS.  The induction pushes
+--   `single _` and `nrs` past an AMBIENT tower `vs^n` that grows with the
+--   depth, and a tower lemma has to be re-proved at every rung (that is
+--   what `wᶠ¹/²/³-single` are, and they ran out at three).  Stated
+--   pointwise, the SAME four lemmas serve every rung and every branch:
+--   the caller supplies a two-case bridge and gets the collapse.
+------------------------------------------------------------------------
+
+ren-subTy' : {Γ Γ' : Cx} {ρ : Ren Γ Γ'} (T : RTy Γ) →
+             renTy ρ T ≡ subTy (λ x → var (ρ x)) T
+ren-subTy' {ρ = ρ} T = trans (cong (renTy ρ) (sym (subTy-id T))) (renTy-subTy T)
+
+subren : {Γ Γ' Γ'' : Cx} {σ : Sub Γ' Γ''} {ρ : Ren Γ Γ'} {ρ' : Ren Γ Γ''} →
+         (∀ v → σ (ρ v) ≡ var (ρ' v)) →
+         (t : RTm Γ) → subTm σ (renTm ρ t) ≡ renTm ρ' t
+subren h t = trans (subTm-renTm t) (trans (subTm-cong h t) (sym (ren-sub t)))
+
+subrenTy : {Γ Γ' Γ'' : Cx} {σ : Sub Γ' Γ''} {ρ : Ren Γ Γ'} {ρ' : Ren Γ Γ''} →
+           (∀ v → σ (ρ v) ≡ var (ρ' v)) →
+           (T : RTy Γ) → subTy σ (renTy ρ T) ≡ renTy ρ' T
+subrenTy h T = trans (subTy-renTy T) (trans (subTy-cong h T) (sym (ren-subTy' T)))
+
+renren : {Γ Γ' Γ'' : Cx} {ϑ : Ren Γ' Γ''} {ρ : Ren Γ Γ'} {ρ' : Ren Γ Γ''} →
+         (∀ v → ϑ (ρ v) ≡ ρ' v) →
+         (t : RTm Γ) → renTm ϑ (renTm ρ t) ≡ renTm ρ' t
+renren h t = trans (renTm-renTm t) (renTm-cong h t)
+
+renrenTy : {Γ Γ' Γ'' : Cx} {ϑ : Ren Γ' Γ''} {ρ : Ren Γ Γ'} {ρ' : Ren Γ Γ''} →
+           (∀ v → ϑ (ρ v) ≡ ρ' v) →
+           (T : RTy Γ) → renTy ϑ (renTy ρ T) ≡ renTy ρ' T
+renrenTy h T = trans (renTy-renTy T) (renTy-cong h T)
+
+-- ★ …and the bridges themselves lift under a binder, so a condition proved
+--   once at the ambient level serves at every depth the branches reach.
+extcond : {Γ Γ' Γ'' : Cx} {σ : Sub Γ' Γ''} {ρ : Ren Γ Γ'} {ρ' : Ren Γ Γ''} →
+          (∀ v → σ (ρ v) ≡ var (ρ' v)) →
+          (∀ v → extS σ (extR ρ v) ≡ var (extR ρ' v))
+extcond h vz     = refl
+extcond h (vs v) = cong (renTm vs) (h v)
+
+extcondR : {Γ Γ' Γ'' : Cx} {ϑ : Ren Γ' Γ''} {ρ : Ren Γ Γ'} {ρ' : Ren Γ Γ''} →
+           (∀ v → ϑ (ρ v) ≡ ρ' v) →
+           (∀ v → extR ϑ (extR ρ v) ≡ extR ρ' v)
+extcondR h vz     = refl
+extcondR h (vs v) = cong vs (h v)
+
+cong₇ : {A B C D E F G H : Set} (f : A → B → C → D → E → F → G → H)
+        {a a' : A} {b b' : B} {c c' : C} {d d' : D} {e e' : E} {g g' : F} {i i' : G} →
+        a ≡ a' → b ≡ b' → c ≡ c' → d ≡ d' → e ≡ e' → g ≡ g' → i ≡ i' →
+        f a b c d e g i ≡ f a' b' c' d' e' g' i'
+cong₇ f refl refl refl refl refl refl refl = refl
+
+cong₈ : {A B C D E F G H I : Set} (f : A → B → C → D → E → F → G → H → I)
+        {a a' : A} {b b' : B} {c c' : C} {d d' : D} {e e' : E} {g g' : F}
+        {i i' : G} {j j' : H} →
+        a ≡ a' → b ≡ b' → c ≡ c' → d ≡ d' → e ≡ e' → g ≡ g' → i ≡ i' → j ≡ j' →
+        f a b c d e g i j ≡ f a' b' c' d' e' g' i' j'
+cong₈ f refl refl refl refl refl refl refl refl = refl
 
 -- ⚠ TWO NATURALITY LEMMAS FOR `aIHTat`, kept HERE while the irrelevance
 --   work is in flight — they belong in `NbEPDirDBLibRec` beside `aIHT-ren`
@@ -1136,6 +1209,28 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
                 ∷ El (subTm (single x) cM)
   ⊢aux-at-μ dx = ⊢aux-app dx (⊢[] dm dx) dx (⊢le-refl (⊢[] dm dx))
 
+  -- ★ …AND THE SAME AT A RENAMING, which is the form an INTERNAL statement
+  --   about the auxiliary needs: the two endpoints of `irrB`'s `Id` live
+  --   under four binders, so nothing at the `Δ` level can type them.  A
+  --   direct transcription of `⊢aux-app` with `renTy ρ A` /
+  --   `renTm (extR ρ) cM` / `renTm (extR ρ) m` for the bare parameters and
+  --   `⊢auxAt` for `⊢auxIH` — no new content.
+  ⊢aux-appAt : {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
+               {x : RTm ⌊ Δ ⌋} {a n p : RTm ⌊ Θ ⌋} →
+               Δ ⊢ x ∷ A → Θ ⊢ n ∷ Nat → Θ ⊢ a ∷ renTy ρ A →
+               Θ ⊢ p ∷ Hom Nat (subTm (single a) (renTm (extR ρ) m)) n →
+               Θ ⊢ app (app (auxAt ρ x n) a) p
+                 ∷ El (subTm (single a) (renTm (extR ρ) cM))
+  ⊢aux-appAt {ρ = ρ} h {a = a} {n = n} {p = p} dx dn da dp =
+    ⊢-cast (cong El (wk-single {v = p} (subTm (single a) (renTm (extR ρ) cM))))
+      (⊢app (⊢-cast (cong₂ (λ b c →
+                              Π (Hom Nat (subTm (single a) (renTm (extR ρ) m)) b)
+                                (El c))
+                           (wk-single {v = a} n)
+                           (sub-w {σ = single a} (renTm (extR ρ) cM)))
+                    (⊢app (⊢auxAt h dx dn) da))
+            dp)
+
   ------------------------------------------------------------------------
   -- ★★★ THE ZERO BRANCH'S IH, TYPED — after the carrier, the argument and
   --    the certificate have all been substituted in.
@@ -1750,6 +1845,231 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
                                            (appIH (⊢ihZ-atR h dx da dc₂) y q dy dq))
                                     (⊢[] dm' dy) (⊢[] dm' da) dq dc₁)
                      (red→≅ᵀ (stepᵀ (El-⌜Id⌝ _ _ _) doneᵀ)))
+
+  ------------------------------------------------------------------------
+  -- ★★★★ PIECE 7 — IRRELEVANCE AS AN OBJECT-LANGUAGE TYPE.
+  --
+  -- ⚠ WHY `aux-irr-z` IS NOT ALREADY THE THEOREM.  It is META-level: an
+  --   Agda function from two certificates to a `Prv`.  An INDUCTION on the
+  --   bound is a `natrec`, and a `natrec` needs a MOTIVE — an `RTy`.  `irrT`
+  --   is that motive, and `aux-irr-z` becomes a branch only once the
+  --   statement exists to be a branch OF.
+  --
+  -- ★ TWO INDICES, TWO BOUNDS, and only one of them is internal.  Through
+  --   the induction the INDICES never change (the successor branch recurses
+  --   at `auxIH X k` with `X` untouched — the `gcd-2-1` run measured it), so
+  --   `x` and `y` stay META-level parameters.  `irrT` quantifies the three
+  --   binders `a , c₁ , c₂` and takes BOTH bounds as parameters; `irrB`
+  --   binds the second one internally, which is what the outer induction's
+  --   motive has to do.
+  --
+  -- ★★ AND IT IS INDEXED BY THE AMBIENT RENAMING `θ`, not by a `vs`-tower.
+  --    Every branch of the induction lands at a different depth; with the
+  --    tower spelled out, each depth needs its own peel (that is what
+  --    `wᶠ¹/²/³-single` are, and they ran out at three).  With `θ` abstract
+  --    there is ONE peel — `peelθ` — and the branches differ only in which
+  --    `θ` they pass.
+  ------------------------------------------------------------------------
+
+  -- the ambient renaming, pushed under `irrT`'s three binders
+  θ₃ : {Γ' : Cx} → Ren ⌊ Δ ⌋ Γ' → Ren ⌊ Δ ⌋ (((Γ' ∙) ∙) ∙)
+  θ₃ θ v = vs (vs (vs (θ v)))
+
+  cond₃ : {Γ' Γ'' : Cx} {σ : Sub Γ' Γ''} {θ : Ren ⌊ Δ ⌋ Γ'} {θ' : Ren ⌊ Δ ⌋ Γ''} →
+          (∀ v → σ (θ v) ≡ var (θ' v)) →
+          (∀ v → extS (extS (extS σ)) (θ₃ θ v) ≡ var (θ₃ θ' v))
+  cond₃ h v = cong (renTm vs) (cong (renTm vs) (cong (renTm vs) (h v)))
+
+  cond₃R : {Γ' Γ'' : Cx} {ϑ : Ren Γ' Γ''} {θ : Ren ⌊ Δ ⌋ Γ'} {θ' : Ren ⌊ Δ ⌋ Γ''} →
+           (∀ v → ϑ (θ v) ≡ θ' v) →
+           (∀ v → extR (extR (extR ϑ)) (θ₃ θ v) ≡ θ₃ θ' v)
+  cond₃R h v = cong vs (cong vs (cong vs (h v)))
+
+  -- ⚠⚠ THE ONE REAL PEEL, and it is the whole cost of the piece.
+  --   `⊢aux-appAt` demands the measure as `subTm (single a) (renTm (extR θ) m)`
+  --   — a SUBSTITUTED RENAMING — while the certificate slots reach the body
+  --   as a TOWER of `renTy vs`.  It is unavoidable: reordering the binders
+  --   does not change the tower's depth, and canonicalising on either form
+  --   just moves the collapse to the other side.  ★ Pointwise, it is two
+  --   `refl`s and a `renTm-renTm` fuse — and generic in `θ` and in the
+  --   family, so `cM` and `m` share it at every depth.
+  ww-ren : {Γ' : Cx} (θ : Ren ⌊ Δ ⌋ Γ') (t : RTm (⌊ Δ ⌋ ∙)) →
+           w (w (renTm (extR θ) t)) ≡ renTm (λ v → vs (vs (extR θ v))) t
+  ww-ren θ t = trans (cong w (renTm-renTm t)) (renTm-renTm t)
+
+  peelθ : {Γ' : Cx} (θ : Ren ⌊ Δ ⌋ Γ') (t : RTm (⌊ Δ ⌋ ∙)) →
+          subTm (single (var (vs (vs vz)))) (renTm (extR (θ₃ θ)) t)
+        ≡ w (w (renTm (extR θ) t))
+  peelθ θ t = trans (subren {ρ' = λ v → vs (vs (extR θ v))} bridge t)
+                    (sym (ww-ren θ t))
+    where
+      bridge : ∀ v → single (var (vs (vs vz))) (extR (θ₃ θ) v)
+                   ≡ var (vs (vs (extR θ v)))
+      bridge vz     = refl
+      bridge (vs v) = refl
+
+  -- the TYPE-level twin: the carrier slot's three `renTy vs`, fused
+  renθ₃ : {Γ' : Cx} (θ : Ren ⌊ Δ ⌋ Γ') (T : RTy ⌊ Δ ⌋) →
+          renTy vs (renTy vs (renTy vs (renTy θ T))) ≡ renTy (θ₃ θ) T
+  renθ₃ θ T =
+    trans (cong (λ S → renTy vs (renTy vs S)) (renTy-renTy T))
+          (trans (cong (renTy vs) (renTy-renTy T)) (renTy-renTy T))
+
+  -- ★ the auxiliary's own naturality.  `auxAt` is a `natrec` of two RENAMED
+  --   branches, so a substitution meets each of them as `subren` — the
+  --   auxiliary never has to be re-derived at a new depth.
+  auxAt-sub : {Γ' Γ'' : Cx} {σ : Sub Γ' Γ''}
+              (θ : Ren ⌊ Δ ⌋ Γ') (θ' : Ren ⌊ Δ ⌋ Γ'') →
+              (∀ v → σ (θ v) ≡ var (θ' v)) →
+              (x : RTm ⌊ Δ ⌋) (n : RTm Γ') →
+              subTm σ (auxAt θ x n) ≡ auxAt θ' x (subTm σ n)
+  auxAt-sub {σ = σ} θ θ' h x n =
+    cong₂ (λ z s → natrec z s (subTm σ n))
+          (subren h (auxZ x))
+          (subren (extcond (extcond h)) (auxS x))
+
+  auxAt-renʳ : {Γ' Γ'' : Cx} {ϑ : Ren Γ' Γ''}
+               (θ : Ren ⌊ Δ ⌋ Γ') (θ' : Ren ⌊ Δ ⌋ Γ'') →
+               (∀ v → ϑ (θ v) ≡ θ' v) →
+               (x : RTm ⌊ Δ ⌋) (n : RTm Γ') →
+               renTm ϑ (auxAt θ x n) ≡ auxAt θ' x (renTm ϑ n)
+  auxAt-renʳ {ϑ = ϑ} θ θ' h x n =
+    cong₂ (λ z s → natrec z s (renTm ϑ n))
+          (renren h (auxZ x))
+          (renren (extcondR (extcondR h)) (auxS x))
+
+  ------------------------------------------------------------------------
+  -- ★★ THE MOTIVE.  `(a : A) (c₁ : μ a ≤ n₁) (c₂ : μ a ≤ n₂) →
+  --    aux x n₁ a c₁ ≡ aux y n₂ a c₂`.
+  --
+  -- ★ `irrT'` takes every slot ALREADY at the depth it is used, so `subTy`
+  --   and `renTy` distribute into it by `refl` — the `aAuxB'` trick.  All
+  --   the naturality lives in the eight peels of `irrT-sub`/`-ren`.
+  ------------------------------------------------------------------------
+
+  irrT' : {Γ' : Cx} (Aθ : RTy Γ') (m₁ b₁ : RTm (Γ' ∙)) (m₂ b₂ : RTm ((Γ' ∙) ∙))
+          (c₃ zx zy : RTm (((Γ' ∙) ∙) ∙)) → RTy Γ'
+  irrT' Aθ m₁ b₁ m₂ b₂ c₃ zx zy =
+    Π Aθ
+      (Π (Hom Nat m₁ b₁)
+        (Π (Hom Nat m₂ b₂)
+          (Id (El c₃)
+              (app (app zx (var (vs (vs vz)))) (var (vs vz)))
+              (app (app zy (var (vs (vs vz)))) (var vz)))))
+
+  irrT : {Γ' : Cx} (θ : Ren ⌊ Δ ⌋ Γ') (x y : RTm ⌊ Δ ⌋) (n₁ n₂ : RTm Γ') → RTy Γ'
+  irrT θ x y n₁ n₂ =
+    irrT' (renTy θ A) (renTm (extR θ) m) (w n₁)
+          (w (renTm (extR θ) m)) (w (w n₂))
+          (w (w (renTm (extR θ) cM)))
+          (auxAt (θ₃ θ) x (w (w (w n₁))))
+          (auxAt (θ₃ θ) y (w (w (w n₂))))
+
+  irrT-sub : {Γ' Γ'' : Cx} {σ : Sub Γ' Γ''}
+             (θ : Ren ⌊ Δ ⌋ Γ') (θ' : Ren ⌊ Δ ⌋ Γ'') →
+             (∀ v → σ (θ v) ≡ var (θ' v)) →
+             (x y : RTm ⌊ Δ ⌋) (n₁ n₂ : RTm Γ') →
+             subTy σ (irrT θ x y n₁ n₂)
+           ≡ irrT θ' x y (subTm σ n₁) (subTm σ n₂)
+  irrT-sub {σ = σ} θ θ' h x y n₁ n₂ =
+    cong₈ irrT'
+      (subrenTy h A)
+      (subren (extcond h) m)
+      (sub-w n₁)
+      (trans (sub-w {σ = extS σ} (renTm (extR θ) m))
+             (cong w (subren (extcond h) m)))
+      (sub-w² n₂)
+      (trans (sub-w² {σ = extS σ} (renTm (extR θ) cM))
+             (cong (λ z → w (w z)) (subren (extcond h) cM)))
+      (trans (auxAt-sub (θ₃ θ) (θ₃ θ') (cond₃ {σ = σ} {θ = θ} {θ' = θ'} h) x (w (w (w n₁))))
+             (cong (auxAt (θ₃ θ') x) (sub-w³ n₁)))
+      (trans (auxAt-sub (θ₃ θ) (θ₃ θ') (cond₃ {σ = σ} {θ = θ} {θ' = θ'} h) y (w (w (w n₂))))
+             (cong (auxAt (θ₃ θ') y) (sub-w³ n₂)))
+
+  irrT-ren : {Γ' Γ'' : Cx} {ϑ : Ren Γ' Γ''}
+             (θ : Ren ⌊ Δ ⌋ Γ') (θ' : Ren ⌊ Δ ⌋ Γ'') →
+             (∀ v → ϑ (θ v) ≡ θ' v) →
+             (x y : RTm ⌊ Δ ⌋) (n₁ n₂ : RTm Γ') →
+             renTy ϑ (irrT θ x y n₁ n₂)
+           ≡ irrT θ' x y (renTm ϑ n₁) (renTm ϑ n₂)
+  irrT-ren {ϑ = ϑ} θ θ' h x y n₁ n₂ =
+    cong₈ irrT'
+      (renrenTy h A)
+      (renren (extcondR h) m)
+      (ren-w n₁)
+      (trans (ren-w {ρ = extR ϑ} (renTm (extR θ) m))
+             (cong w (renren (extcondR h) m)))
+      (ren-w² n₂)
+      (trans (ren-w² {ρ = extR ϑ} (renTm (extR θ) cM))
+             (cong (λ z → w (w z)) (renren (extcondR h) cM)))
+      (trans (auxAt-renʳ (θ₃ θ) (θ₃ θ') (cond₃R {ϑ = ϑ} {θ = θ} {θ' = θ'} h) x (w (w (w n₁))))
+             (cong (auxAt (θ₃ θ') x) (ren-w³ n₁)))
+      (trans (auxAt-renʳ (θ₃ θ) (θ₃ θ') (cond₃R {ϑ = ϑ} {θ = θ} {θ' = θ'} h) y (w (w (w n₂))))
+             (cong (auxAt (θ₃ θ') y) (ren-w³ n₂)))
+
+  ------------------------------------------------------------------------
+  -- the three binders, as a context, and the three variables they bind —
+  -- named once so every leaf of the induction reuses them
+  ------------------------------------------------------------------------
+
+  irrΘ : {Θ : Ctx} (θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋) (n₁ n₂ : RTm ⌊ Θ ⌋) → Ctx
+  irrΘ {Θ = Θ} θ n₁ n₂ =
+    ((Θ ▹ renTy θ A) ▹ Hom Nat (renTm (extR θ) m) (w n₁))
+       ▹ Hom Nat (w (renTm (extR θ) m)) (w (w n₂))
+
+  ⊢irr-θ₃ : {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ θ →
+            {n₁ n₂ : RTm ⌊ Θ ⌋} → Ren⊢ Δ (irrΘ θ n₁ n₂) (θ₃ θ)
+  ⊢irr-θ₃ h = wR (wR (wR h))
+
+  ⊢irr-a : {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} {n₁ n₂ : RTm ⌊ Θ ⌋} →
+           irrΘ θ n₁ n₂ ⊢ var (vs (vs vz)) ∷ renTy (θ₃ θ) A
+  ⊢irr-a {θ = θ} = ⊢-cast (renθ₃ θ A) (⊢var (there (there here)))
+
+  ⊢irr-c₁ : {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} {n₁ n₂ : RTm ⌊ Θ ⌋} →
+            irrΘ θ n₁ n₂ ⊢ var (vs vz)
+              ∷ Hom Nat (subTm (single (var (vs (vs vz))))
+                               (renTm (extR (θ₃ θ)) m))
+                        (w (w (w n₁)))
+  ⊢irr-c₁ {θ = θ} {n₁ = n₁} =
+    ⊢-cast (cong (λ z → Hom Nat z (w (w (w n₁)))) (sym (peelθ θ m)))
+           (⊢var (there here))
+
+  ⊢irr-c₂ : {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} {n₁ n₂ : RTm ⌊ Θ ⌋} →
+            irrΘ θ n₁ n₂ ⊢ var vz
+              ∷ Hom Nat (subTm (single (var (vs (vs vz))))
+                               (renTm (extR (θ₃ θ)) m))
+                        (w (w (w n₂)))
+  ⊢irr-c₂ {θ = θ} {n₂ = n₂} =
+    ⊢-cast (cong (λ z → Hom Nat z (w (w (w n₂)))) (sym (peelθ θ m)))
+           (⊢var here)
+
+  ⊢irrT : {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ θ →
+          {x y : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ y ∷ A →
+          {n₁ n₂ : RTm ⌊ Θ ⌋} → Θ ⊢ n₁ ∷ Nat → Θ ⊢ n₂ ∷ Nat →
+          Θ ⊢ty irrT θ x y n₁ n₂
+  ⊢irrT {θ = θ} h dx dy dn₁ dn₂ =
+    ty-Π (ren-ty dA h)
+      (ty-Π (ty-Hom ty-Nat dmθ (⊢wk dn₁))
+        (ty-Π (ty-Hom ty-Nat (⊢wk dmθ) (⊢wk (⊢wk dn₂)))
+          (ty-Id (ty-El (⊢wk (⊢wk dcMθ)))
+                 (⊢-cast (cong El (peelθ θ cM))
+                         (⊢aux-appAt (⊢irr-θ₃ h) dx (⊢wk (⊢wk (⊢wk dn₁)))
+                                     ⊢irr-a ⊢irr-c₁))
+                 (⊢-cast (cong El (peelθ θ cM))
+                         (⊢aux-appAt (⊢irr-θ₃ h) dy (⊢wk (⊢wk (⊢wk dn₂)))
+                                     ⊢irr-a ⊢irr-c₂)))))
+    where
+      dmθ = ren-lemma dm (Ren⊢-ext h)
+      dcMθ = ren-lemma dcM (Ren⊢-ext h)
+
+  -- ★ …and the OUTER motive: the second bound bound internally.
+  irrB : (x y : RTm ⌊ Δ ⌋) → RTy (⌊ Δ ⌋ ∙)
+  irrB x y = Π Nat (irrT (λ v → vs (vs v)) x y (var (vs vz)) (var vz))
+
+  ⊢irrB : {x y : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ y ∷ A → (Δ ▹ Nat) ⊢ty irrB x y
+  ⊢irrB dx dy =
+    ty-Π ty-Nat
+      (⊢irrT (wR there) dx dy (⊢var (there here)) (⊢var here))
 
   amrec-step-s : {P : RTm ⌊ Δ ⌋} (x k : RTm ⌊ Δ ⌋) →
                  subTm (single x) m ⟶* nsuc k →
