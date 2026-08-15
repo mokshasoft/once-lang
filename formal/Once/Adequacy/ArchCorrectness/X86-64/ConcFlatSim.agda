@@ -392,10 +392,13 @@ module EE = Engine
   x-exec-zero x-exec-halted x-exec-end x-exec-stuck x-exec-step-halt x-exec-step-run
   (List XInstr × ℕ) RTx.matchCall RTx.ret-past (uncurry (dispatch-arith val-x86-64))
   ev-x86-64 arith-env-x86-64
+  call-sym (λ _ → refl) (λ _ → refl)
   nonhalt-noncall
 
 open EE using (FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-env
-              ; inv-run; flat-inv-step; block-run-exec) public
+              ; inv-run; flat-inv-step; block-run-exec
+              ; events-running-end; sigop-concrete-fetch; sigop-run-arith
+              ; sigop-run-external; event-of-pure) public
 
 
 -- (`FlatInv` and `flat-inv-step` moved to `FlatCore.EventEngine` — the two
@@ -447,40 +450,9 @@ open import Once.Denotation.Trace using (SigOpEvent)
 -- side ingredient for the per-instruction pc-alignment (concrete fetch = the
 -- compiled head of the fetched abstract instruction).
 
--- pc-alignment at a SigOp: the concrete pc = blk-off prog (fpc fs) (pc-off) fetches
--- the compiled head of `instr-sigop si`, which is exactly its one `call-sym`
--- (compile-sigOp = call-sym (once-symbol-path (name si)) ∷ []). Chain: pc-off ▸
--- fetch-drop ▸ drop-compile ▸ fetch-just-drop ▸ (compile-trace cons reduces the head).
-sigop-concrete-fetch : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
-                     → CompiledCorr hv prog fs s → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                     → X.fetch (compile-trace prog) (X.State.pc s)
-                         ≡ just (call-sym (once-symbol-path (SigOpInfo.name si)))
-sigop-concrete-fetch prog fs s si cc ftq =
-  trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
-  (trans (fetch-drop (compile-trace prog) (blk-off prog (fpc fs)))
-  (trans (cong (λ z → X.fetch z 0) (drop-compile prog (fpc fs)))
-         (cong (λ z → X.fetch (compile-trace z) 0) (fetch-just-drop prog (fpc fs) (instr-sigop si) ftq))))
-
--- The run-events REDUCTION at an ARITH (Pure) SigOp, PROVEN given the arith-env
--- contract (env maps the symbol to the block pl): the compiled `call-sym` is fetched
--- (sigop-concrete-fetch), matched (matchCall refl), dispatched to the arith block with
--- NO event (run-events-arith). halted s is false via halt-eq. Leaves the concrete
--- state at `dispatch-arith`'s post-state — the value-carrying step, mirroring
--- flat-events' [] for a Pure SigOp.
-sigop-run-arith : ∀ {hv : HeapView} ev env n prog fs s {A B} (si : SigOpInfo A B) (pl : List XInstr × ℕ)
-                → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
-                → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
-                → RTx.run-events val-x86-64 ev env (suc n) (compile-trace prog) s
-                    ≡ RTx.run-events val-x86-64 ev env n (compile-trace prog)
-                        (uncurry (dispatch-arith val-x86-64) pl s)
-sigop-run-arith ev env n prog fs s si pl cc h ftq env-eq =
-  RTx.run-events-arith val-x86-64 ev env n (compile-trace prog) s
-    (call-sym (once-symbol-path (SigOpInfo.name si))) (once-symbol-path (SigOpInfo.name si)) pl
-    (trans (C.halt-eq (dataCorr cc)) h)
-    (sigop-concrete-fetch prog fs s si cc ftq)
-    refl
-    env-eq
+-- (`sigop-concrete-fetch` / `sigop-run-arith` moved to `FlatCore.EventEngine`:
+-- a SigOp lowers to ONE call-by-symbol on every target, which is the whole
+-- content of the arith/external dispatch — see its `sigop-lowering`.)
 
 -- `execInstr` at a memory-compare with a known read (aux helper — a
 -- `rewrite` inside the deep tag-branch where-block does not abstract).
@@ -490,10 +462,6 @@ execInstr-cmp-mi : ∀ prog (s : X.State) a v
     ≡ just (record s { flags = X.mkflags (v ≡ᵇ 0) (v X.<ᵇ 0) false
                      ; pc = X.State.pc s + 1 })
 execInstr-cmp-mi prog s a v rd rewrite rd = refl
-
--- A Pure SigOp emits no event (ev-of-loc's Pure branch is []).
-event-of-pure : ∀ {A B} (si : SigOpInfo A B) fs → effect si ≡ Pure → event-of (instr-sigop si) fs ≡ []
-event-of-pure si fs eqe rewrite eqe = refl
 
 -- STORE-GUARD, PROVEN UNCONDITIONALLY (2026-07-31): `writeLoc (AtDynamic hl) v ≡
 -- writeLocToHeap hl v` for every StoredValue shape, the stack pointer included.
@@ -519,42 +487,7 @@ event-of-pure si fs eqe rewrite eqe = refl
 -- are now UNREACHABLE instead: `site-ok` requires a non-`e-any` claim at every
 -- slot read, and `MeetsSlot` sends such a claim at `nothing` to `⊥`. See
 -- `slot-read-written` below.
--- The run-events REDUCTION at an EXTERNAL (Emits/Halts) SigOp, PROVEN given the
--- external-env contract (env maps the symbol to `nothing`): the compiled `call-sym`
--- is fetched + matched, and run-events-external EMITS `ev lbl s` then continues past
--- the call (ret-past). This is the value-carrying observable emission; the `ev`
--- extractor's value is pinned to `machine-event` by the honest per-target contract.
-sigop-run-external : ∀ {hv : HeapView} ev env n prog fs s {A B} (si : SigOpInfo A B)
-                   → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
-                   → fetch prog (fpc fs) ≡ just (instr-sigop si)
-                   → env (once-symbol-path (SigOpInfo.name si)) ≡ nothing
-                   → RTx.run-events val-x86-64 ev env (suc n) (compile-trace prog) s
-                       ≡ ev (once-symbol-path (SigOpInfo.name si)) s
-                         ++ RTx.run-events val-x86-64 ev env n (compile-trace prog) (RTx.ret-past s)
-sigop-run-external ev env n prog fs s si cc h ftq env-eq =
-  RTx.run-events-external val-x86-64 ev env n (compile-trace prog) s
-    (call-sym (once-symbol-path (SigOpInfo.name si))) (once-symbol-path (SigOpInfo.name si))
-    (trans (C.halt-eq (dataCorr cc)) h)
-    (sigop-concrete-fetch prog fs s si cc ftq)
-    refl
-    env-eq
-
--- PROGRAM END (wp-end), PROVEN: the abstract fetch runs out (`fpc` past the trace),
--- so the concrete pc = `blk-off prog (fpc fs)` (pc-off) sits past `compile-trace prog`
--- — fetch there is `nothing`, hence run-events emits []. Chain: pc-off ▸ fetch-drop ▸
--- drop-compile ▸ fetch-nothing-drop (drop past ⇒ [] ⇒ compile-trace [] ⇒ fetch [] = nothing).
-events-running-end : ∀ {hv : HeapView} (n : ℕ) (ev : RTx.EvExtractor val-x86-64) (env : RTx.ArithEnv val-x86-64)
-                       prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs → halted (floc fs) ≡ false
-                   → fetch prog (fpc fs) ≡ nothing
-                   → Σ ℕ (λ M → RTx.run-events val-x86-64 ev env M (compile-trace prog) s ≡ [])
-events-running-end {hv} n ev env prog fs s cc wf h ftq =
-  1 , RTx.run-events-fetch-none val-x86-64 ev env 0 (compile-trace prog) s cfetch-nothing
-  where cfetch-nothing : X.fetch (compile-trace prog) (X.State.pc s) ≡ nothing
-        cfetch-nothing =
-          trans (cong (X.fetch (compile-trace prog)) (pc-off cc))
-          (trans (fetch-drop (compile-trace prog) (blk-off prog (fpc fs)))
-          (trans (cong (λ z → X.fetch z 0) (drop-compile prog (fpc fs)))
-                 (cong (λ z → X.fetch (compile-trace z) 0) (fetch-nothing-drop prog (fpc fs) ftq))))
+-- (`sigop-run-external` and `events-running-end` moved to the engine too.)
 
 postulate
   -- PER-INSTRUCTION DISPATCH residual for the cases not yet routed to `ccc-step`

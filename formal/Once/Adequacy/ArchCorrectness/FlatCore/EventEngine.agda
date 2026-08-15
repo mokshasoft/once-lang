@@ -34,12 +34,14 @@
 open import Data.Nat using (ℕ; zero; suc; _+_; NonZero)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_; _++_)
+open import Data.List using (List; []; _∷_; _++_; drop)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
-open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr)
+open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr; instr-sigop)
+open import Once.SigOp.Info using (SigOpInfo; effect; Pure)
+open import Once.Target.Symbol using (once-symbol-path)
 open import Once.CCC.Label using (Label; LabelId; _≡ᵇᴸ_)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Denotation.Trace using (SigOpEvent)
@@ -128,6 +130,15 @@ module Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
   -- the SigOp contracts are false over an arbitrary `ev`/`env` (2026-07-30).
   (ev-arch : String → State → List SigOpEvent)
   (arith-env : List Instr → String → Maybe Payload)
+  -- HOW A SIGOP IS LOWERED, which is the same on every target: to ONE call by
+  -- symbol. Three lines, and they are what let the SigOp reductions below be
+  -- written once — `matchCall` recognising exactly the instruction the emitter
+  -- produced is the whole content of the arith/external dispatch.
+  (sigop-call : String → Instr)
+  (sigop-lowering : ∀ {A B} (si : SigOpInfo A B)
+                  → compile-abstract (instr-sigop si)
+                    ≡ sigop-call (once-symbol-path (SigOpInfo.name si)) ∷ [])
+  (sigop-matchCall : ∀ lbl → matchCall (sigop-call lbl) ≡ just lbl)
   ------------------------------------------------------------------
   -- THE ONE ISA ENUMERATION the trace backbone needs. A step that leaves the
   -- machine RUNNING was not a `call-sym`: `execInstr (call-sym _)` always
@@ -163,6 +174,13 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size word-eq
   public
+
+-- …and the data correspondence itself, which `CompiledCorrespondence` keeps
+-- private (an instance re-opened publicly would clash with the `C` every arch
+-- already binds). Same application, hence the same types.
+import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
+module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
+open CFC using (HeapView)
 
 ------------------------------------------------------------------------
 -- THE TRACE LOOP. `RT.run-events` here IS the arch's `run-events`: both are
@@ -293,3 +311,89 @@ block-run-exec ev env (suc L) rest cprog s {s'} eq hs' = go-h (xhalted s) refl
                            (nonhalt-noncall cprog s j exq h1) exq)
                         (block-run-exec ev env L rest cprog s₁
                            (trans (sym (exec-step-run L cprog s j s₁ hs ftq exq h1)) eq) hs')
+
+------------------------------------------------------------------------
+-- THE PROGRAM-END BOUNDARY, and the two SIGOP REDUCTIONS.
+------------------------------------------------------------------------
+open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
+open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch
+                              ; event-of; flat-events-halted)
+
+-- PROGRAM END: the abstract fetch runs out, so the concrete pc — which `pc-off`
+-- pins to `blk-off prog (fpc fs)` — sits past the compiled program, where the
+-- fetch is `nothing` and `run-events` emits [].
+events-running-end : ∀ {hv : HeapView} (n : ℕ) (ev : RT.EvExtractor) (env : RT.ArithEnv)
+                       prog fs s → CompiledCorr hv prog fs s → FlatInv ev env prog fs
+                   → halted (floc fs) ≡ false
+                   → fetch prog (fpc fs) ≡ nothing
+                   → Σ ℕ (λ M → RT.run-events ev env M (compile-trace prog) s ≡ [])
+events-running-end {hv} n ev env prog fs s cc wf h ftq =
+  1 , RT.run-events-fetch-none ev env 0 (compile-trace prog) s cfetch-nothing
+  where cfetch-nothing : mfetch (compile-trace prog) (xpc s) ≡ nothing
+        cfetch-nothing =
+          trans (cong (mfetch (compile-trace prog)) (pc-off cc))
+          (trans (fetch-drop (compile-trace prog) (blk-off prog (fpc fs)))
+          (trans (cong (λ z → mfetch z 0) (drop-compile prog (fpc fs)))
+          (trans (cong (λ z → mfetch (compile-trace z) 0)
+                       (fetch-nothing-drop prog (fpc fs) ftq))
+                 (trans (cong (λ z → mfetch z 0) ct-nil) (mfetch-nil 0)))))
+
+-- PC-ALIGNMENT AT A SIGOP: the concrete pc fetches the compiled head of
+-- `instr-sigop si`, which is exactly its one call-by-symbol.
+sigop-concrete-fetch : ∀ {hv : HeapView} prog fs s {A B} (si : SigOpInfo A B)
+                     → CompiledCorr hv prog fs s
+                     → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                     → mfetch (compile-trace prog) (xpc s)
+                         ≡ just (sigop-call (once-symbol-path (SigOpInfo.name si)))
+sigop-concrete-fetch prog fs s si cc ftq =
+  trans (cong (mfetch (compile-trace prog)) (pc-off cc))
+  (trans (fetch-drop (compile-trace prog) (blk-off prog (fpc fs)))
+  (trans (cong (λ z → mfetch z 0) (drop-compile prog (fpc fs)))
+  (trans (cong (λ z → mfetch (compile-trace z) 0)
+               (fetch-just-drop prog (fpc fs) (instr-sigop si) ftq))
+  (trans (cong (λ z → mfetch z 0) (ct-cons (instr-sigop si) (drop (suc (fpc fs)) prog)))
+  (trans (cong (λ z → mfetch (z ++ compile-trace (drop (suc (fpc fs)) prog)) 0)
+               (sigop-lowering si))
+         (mfetch-zero (sigop-call (once-symbol-path (SigOpInfo.name si)))
+                      (compile-trace (drop (suc (fpc fs)) prog))))))))
+
+-- ARITH (Pure) SigOp: the emitted call is fetched, matched, and dispatched to
+-- the arith block with NO event — mirroring `flat-events`' [] for a Pure SigOp.
+sigop-run-arith : ∀ {hv : HeapView} ev env n prog fs s {A B} (si : SigOpInfo A B) (pl : Payload)
+                → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                → env (once-symbol-path (SigOpInfo.name si)) ≡ just pl
+                → RT.run-events ev env (suc n) (compile-trace prog) s
+                    ≡ RT.run-events ev env n (compile-trace prog) (dispatchArith pl s)
+sigop-run-arith ev env n prog fs s si pl cc h ftq env-eq =
+  RT.run-events-arith ev env n (compile-trace prog) s
+    (sigop-call (once-symbol-path (SigOpInfo.name si)))
+    (once-symbol-path (SigOpInfo.name si)) pl
+    (trans (CFC.halt-eq (dataCorr cc)) h)
+    (sigop-concrete-fetch prog fs s si cc ftq)
+    (sigop-matchCall (once-symbol-path (SigOpInfo.name si)))
+    env-eq
+
+-- EXTERNAL (Emits/Halts) SigOp: the same fetch and match, but the env has no
+-- block for the symbol, so the loop EMITS `ev lbl s` and continues past the
+-- call. This is the value-carrying observable emission.
+sigop-run-external : ∀ {hv : HeapView} ev env n prog fs s {A B} (si : SigOpInfo A B)
+                   → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+                   → fetch prog (fpc fs) ≡ just (instr-sigop si)
+                   → env (once-symbol-path (SigOpInfo.name si)) ≡ nothing
+                   → RT.run-events ev env (suc n) (compile-trace prog) s
+                       ≡ ev (once-symbol-path (SigOpInfo.name si)) s
+                         ++ RT.run-events ev env n (compile-trace prog) (ret-past s)
+sigop-run-external ev env n prog fs s si cc h ftq env-eq =
+  RT.run-events-external ev env n (compile-trace prog) s
+    (sigop-call (once-symbol-path (SigOpInfo.name si)))
+    (once-symbol-path (SigOpInfo.name si))
+    (trans (CFC.halt-eq (dataCorr cc)) h)
+    (sigop-concrete-fetch prog fs s si cc ftq)
+    (sigop-matchCall (once-symbol-path (SigOpInfo.name si)))
+    env-eq
+
+-- A Pure SigOp emits no event (the extractor's Pure branch is []).
+event-of-pure : ∀ {A B} (si : SigOpInfo A B) fs → effect si ≡ Pure
+              → event-of (instr-sigop si) fs ≡ []
+event-of-pure si fs eqe rewrite eqe = refl
