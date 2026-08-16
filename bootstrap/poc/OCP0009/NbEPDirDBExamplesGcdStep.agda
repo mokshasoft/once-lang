@@ -48,11 +48,11 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π
         ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝
-        ; subTm; renTm; subTm-renTm; subTm-id; subTm-subTm; subTm-cong; extS
+        ; subTm; subTy; renTm; subTm-renTm; subTm-id; subTm-subTm; subTm-cong; extS
         ; Sub; Ren; Var; idₛ; renTm-renTm; _∘ᵣ_ )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋
-        ; single
+        ; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢⌜Nat⌝
         ; ty-Nat; ty-Hom; ty-El; ty-Π
@@ -139,14 +139,23 @@ G1z = lam (fst (var (vs vz)))
 G2 : {Γ : Cx} → RTy (Γ ∙ ∙ ∙ ∙)
 G2 = gcdG (plusTm (var vz) (nsuc (var (vs (vs vz)))))
 
-⊢G2 : {Γ : Ctx} → ((((Γ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ⊢ty G2
+-- ★★ THE SIBLING MOTIVE SLOTS ARE GENERALISED (`B`, `C`), 2026-08-16.
+--   ⚠ Not gratuitous polymorphism: gcd's `StepExt` runs the SAME three
+--   splits with the `Id`-motive `eqG …` where `⊢gcdStp` has `G1`/`G2`, and
+--   these derivations must typecheck in both contexts.  They can, because
+--   none of them ever LOOKS at that slot — every `there` below steps over
+--   it to a `Nat` or the carrier.  Leaving `G1`/`G2` hard-wired would force
+--   the caller to re-derive all of it.
+⊢G2 : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} →
+      ((((Γ ▹ PairT) ▹ Nat) ▹ B) ▹ Nat) ⊢ty G2
 ⊢G2 = ⊢gcdG (⊢plus (⊢var here) (⊢nsuc (⊢var (there (there here)))))
 
 -- a = 0 : the answer is `b`.  ctx after the ⊢lam: [0]=ih [1]=G1 [2]=n' [3]=x
 G2z : {Γ : Cx} → RTm (Γ ∙ ∙ ∙)
 G2z = lam (nsuc (var (vs (vs vz))))
 
-⊢G2z : {Γ : Ctx} → (((Γ ▹ PairT) ▹ Nat) ▹ G1) ⊢ G2z
+⊢G2z : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} →
+       (((Γ ▹ PairT) ▹ Nat) ▹ B) ⊢ G2z
      ∷ gcdG (plusTm nzero (nsuc (var (vs vz))))
 ⊢G2z =
   ⊢lam (⊢gcdIH (⊢plus ⊢nzero (⊢nsuc (⊢var (there here)))))
@@ -161,7 +170,8 @@ G2z = lam (nsuc (var (vs (vs vz))))
 G3 : {Γ : Cx} → RTy (Γ ∙ ∙ ∙ ∙ ∙ ∙)
 G3 = gcdG (plusTm (nsuc (var (vs (vs vz)))) (nsuc (var (vs (vs (vs (vs vz)))))))
 
-⊢G3 : {Γ : Ctx} → ((((((Γ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) ▹ Nat) ⊢ty G3
+⊢G3 : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)} →
+      ((((((Γ ▹ PairT) ▹ Nat) ▹ B) ▹ Nat) ▹ C) ▹ Nat) ⊢ty G3
 ⊢G3 =
   ⊢gcdG (⊢plus (⊢nsuc (⊢var (there (there here))))
                (⊢nsuc (⊢var (there (there (there (there here)))))))
@@ -178,9 +188,9 @@ G3 = gcdG (plusTm (nsuc (var (vs (vs vz)))) (nsuc (var (vs (vs (vs (vs vz)))))))
 --   library's certificate.  (2026-08-16, prerequisite 1 of gap A.)
 
 -- the context the branch's BODY lives in — five binders plus the `⊢lam`'s
-CΓz : Ctx → Ctx
-CΓz Γ = ((((( Γ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2)
-          ▹ gcdIH (plusTm (nsuc (var (vs vz))) (nsuc (var (vs (vs (vs vz))))))
+CΓz : (Γ : Ctx) (B : RTy (⌊ Γ ⌋ ∙ ∙)) (C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)) → Ctx
+CΓz Γ B C = ((((( Γ ▹ PairT) ▹ Nat) ▹ B) ▹ Nat) ▹ C)
+              ▹ gcdIH (plusTm (nsuc (var (vs vz))) (nsuc (var (vs (vs (vs vz))))))
 
 -- [2]=k' and [4]=n' AT THE BODY'S DEPTH
 KZ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙)
@@ -195,18 +205,18 @@ PAIRᶻ = pair (nsuc KZ) (monusTm (nsuc NZ) (nsuc KZ))
 CERTᶻ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙)
 CERTᶻ = plusMonoTm (monusLtTm NZ KZ) (nsuc KZ)
 
-dkz : {Γ : Ctx} → CΓz Γ ⊢ KZ ∷ Nat
+dkz : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)} → CΓz Γ B C ⊢ KZ ∷ Nat
 dkz = ⊢var (there (there here))
 
-dnz : {Γ : Ctx} → CΓz Γ ⊢ NZ ∷ Nat
+dnz : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)} → CΓz Γ B C ⊢ NZ ∷ Nat
 dnz = ⊢var (there (there (there (there here))))
 
-⊢PAIRᶻ : {Γ : Ctx} → CΓz Γ ⊢ PAIRᶻ ∷ PairT
+⊢PAIRᶻ : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)} → CΓz Γ B C ⊢ PAIRᶻ ∷ PairT
 ⊢PAIRᶻ = ⊢pair ty-Nat (⊢nsuc dkz) (⊢monus (⊢nsuc dnz) (⊢nsuc dkz))
 
 -- ★ the certificate, at the measure of the CALL, bounded by the measure of
 --   the branch's own (split) carrier `suc k' + suc n'`.
-⊢CERTᶻ : {Γ : Ctx} → CΓz Γ ⊢ CERTᶻ
+⊢CERTᶻ : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)} → CΓz Γ B C ⊢ CERTᶻ
        ∷ Hom Nat (nsuc (plusTm (fst PAIRᶻ) (snd PAIRᶻ))) (plusTm (nsuc KZ) (nsuc NZ))
 ⊢CERTᶻ =
   ⊢conv (⊢desc-right dkz dnz)
@@ -216,7 +226,8 @@ dnz = ⊢var (there (there (there (there here))))
 G3z : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙)
 G3z = lam (app (app (var vz) PAIRᶻ) CERTᶻ)
 
-⊢G3z : {Γ : Ctx} → (((((Γ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) ⊢ G3z
+⊢G3z : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)} →
+       (((((Γ ▹ PairT) ▹ Nat) ▹ B) ▹ Nat) ▹ C) ⊢ G3z
      ∷ gcdG (plusTm (nsuc (var (vs vz))) (nsuc (var (vs (vs (vs vz))))))
 ⊢G3z =
   ⊢lam (⊢gcdIH (⊢plus (⊢nsuc (⊢var (there here)))
@@ -226,10 +237,11 @@ G3z = lam (app (app (var vz) PAIRᶻ) CERTᶻ)
 -- a > b : recurse at (a ∸ b , b).  FIRST component changes → ⊢desc-left.
 -- ctx after the ⊢lam: [0]=ih [1]=G3 [2]=d [3]=G2 [4]=k' [5]=G1 [6]=n' [7]=x
 -- ★ same treatment as `G3z` — see the note there.
-CΓs : Ctx → Ctx
-CΓs Γ = ((((((( Γ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) ▹ Nat) ▹ G3)
-          ▹ gcdIH (plusTm (nsuc (var (vs (vs (vs vz)))))
-                          (nsuc (var (vs (vs (vs (vs (vs vz))))))))
+CΓs : (Γ : Ctx) (B : RTy (⌊ Γ ⌋ ∙ ∙)) (C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙))
+      (D : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙ ∙)) → Ctx
+CΓs Γ B C D = ((((((( Γ ▹ PairT) ▹ Nat) ▹ B) ▹ Nat) ▹ C) ▹ Nat) ▹ D)
+                ▹ gcdIH (plusTm (nsuc (var (vs (vs (vs vz)))))
+                                (nsuc (var (vs (vs (vs (vs (vs vz))))))))
 
 -- [4]=k' and [6]=n' AT THE BODY'S DEPTH
 KS : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
@@ -245,16 +257,20 @@ CERTˢ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
 CERTˢ = plusMonoLTm (monusTm (nsuc KS) (nsuc NS)) (nsuc KS) (nsuc NS)
                     (monusLtTm KS NS)
 
-dks : {Γ : Ctx} → CΓs Γ ⊢ KS ∷ Nat
+dks : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)}
+     {D : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙ ∙)} → CΓs Γ B C D ⊢ KS ∷ Nat
 dks = ⊢var (there (there (there (there here))))
 
-dns : {Γ : Ctx} → CΓs Γ ⊢ NS ∷ Nat
+dns : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)}
+     {D : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙ ∙)} → CΓs Γ B C D ⊢ NS ∷ Nat
 dns = ⊢var (there (there (there (there (there (there here))))))
 
-⊢PAIRˢ : {Γ : Ctx} → CΓs Γ ⊢ PAIRˢ ∷ PairT
+⊢PAIRˢ : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)}
+     {D : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙ ∙)} → CΓs Γ B C D ⊢ PAIRˢ ∷ PairT
 ⊢PAIRˢ = ⊢pair ty-Nat (⊢monus (⊢nsuc dks) (⊢nsuc dns)) (⊢nsuc dns)
 
-⊢CERTˢ : {Γ : Ctx} → CΓs Γ ⊢ CERTˢ
+⊢CERTˢ : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)}
+     {D : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙ ∙)} → CΓs Γ B C D ⊢ CERTˢ
        ∷ Hom Nat (nsuc (plusTm (fst PAIRˢ) (snd PAIRˢ))) (plusTm (nsuc KS) (nsuc NS))
 ⊢CERTˢ =
   ⊢conv (⊢desc-left dks dns)
@@ -264,7 +280,9 @@ dns = ⊢var (there (there (there (there (there (there here))))))
 G3s : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
 G3s = lam (app (app (var vz) PAIRˢ) CERTˢ)
 
-⊢G3s : {Γ : Ctx} → (((((((Γ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) ▹ Nat) ▹ G3) ⊢ G3s
+⊢G3s : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)}
+       {D : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙ ∙)} →
+       (((((((Γ ▹ PairT) ▹ Nat) ▹ B) ▹ Nat) ▹ C) ▹ Nat) ▹ D) ⊢ G3s
      ∷ gcdG (plusTm (nsuc (var (vs (vs (vs vz)))))
                     (nsuc (var (vs (vs (vs (vs (vs vz))))))))
 ⊢G3s =
@@ -300,16 +318,29 @@ gcdBody = natrec G1z gcdInn1 (snd (var vz))
 gcdStp : {Γ : Cx} → RTm Γ
 gcdStp = lam gcdBody
 
+-- ★ THE THREE NESTED `⊢natrec`s, NAMED.  ⚠ Not cosmetic, and the same
+--   lesson as `PAIRᶻ`/`CERTᶻ` above: `subTm` does not invert, so a caller
+--   that needs one of these sub-derivations cannot recover it from
+--   `⊢gcdStp`.  gcd's `StepExt` needs all three — each split has to re-type
+--   its own `natrec` AT A VARIABLE SCRUTINEE (`⊢natrec-var`), which takes
+--   exactly the motive and the two branch derivations.
+
+⊢gcdInn2 : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} →
+           ((((( Γ ▹ PairT) ▹ Nat) ▹ B) ▹ Nat) ▹ G2) ⊢ gcdInn2 ∷ subTy nrs G2
+⊢gcdInn2 =
+  ⊢natrec ⊢G3 ⊢G3z ⊢G3s
+          (⊢monus (⊢nsuc (⊢var (there here)))
+                  (⊢nsuc (⊢var (there (there (there here))))))
+
+⊢gcdInn1 : {Γ : Ctx} → ((( Γ ▹ PairT) ▹ Nat) ▹ G1) ⊢ gcdInn1 ∷ subTy nrs G1
+⊢gcdInn1 = ⊢natrec ⊢G2 ⊢G2z ⊢gcdInn2 (⊢fst (⊢var (there (there here))))
+
+⊢gcdBody : {Γ : Ctx} →
+           (Γ ▹ PairT) ⊢ gcdBody ∷ subTy (single (snd (var vz))) G1
+⊢gcdBody = ⊢natrec ⊢G1 ⊢G1z ⊢gcdInn1 (⊢snd (⊢var here))
+
 ⊢gcdStp : {Γ : Ctx} → Γ ⊢ gcdStp ∷ aStepT PairT ⌜Nat⌝ msr
-⊢gcdStp =
-  ⊢lam ⊢PairT
-    (⊢natrec ⊢G1 ⊢G1z
-      (⊢natrec ⊢G2 ⊢G2z
-        (⊢natrec ⊢G3 ⊢G3z ⊢G3s
-                 (⊢monus (⊢nsuc (⊢var (there here)))
-                         (⊢nsuc (⊢var (there (there (there here)))))))
-        (⊢fst (⊢var (there (there here)))))
-      (⊢snd (⊢var here)))
+⊢gcdStp = ⊢lam ⊢PairT ⊢gcdBody
 
 ------------------------------------------------------------------------
 -- ★★★ AND IT COMPUTES.  Type-correct is not the same as correct: this

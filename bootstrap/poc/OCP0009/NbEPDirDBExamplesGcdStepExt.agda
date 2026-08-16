@@ -61,18 +61,22 @@ open import poc.OCP0009.NbEPDirDBPi
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _∋_∷_; _⊢ty_; ⊢var; here; there; ⊢lam; ⊢app; ⊢nsuc; ⊢natrec
+        ; ⊢fst; ⊢snd; ⊢nzero; ⊢idrefl; natrec-zero
         ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Id; ⊢⌜Nat⌝
         ; _⟶_; _⟶*_; done; step; β; ξ-appˡ )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; ∋-cast; Ren⊢; Ren⊢-ext; ren-ty; ren-lemma )
 open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( Prv; prv; prvTm; prvOk; StepExt; StepPW; wR; renren; renTy-idR
-        ; subrenTy; aIHTat-ren )
+        ; subrenTy; aIHTat-ren; idOfRed )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )
+open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asP )
+open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
-  using ( gcdStp; gcdBody; msr; ⊢msr; G1z; gcdInn1; gcdIH; ⊢gcdIH; gcdG; ⊢gcdG )
+  using ( gcdStp; gcdBody; msr; ⊢msr; gcdIH; ⊢gcdIH; gcdG; ⊢gcdG
+        ; G1; ⊢G1; G1z; ⊢G1z; gcdInn1; ⊢gcdInn1; ⊢gcdBody )
+open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
 
 ------------------------------------------------------------------------
 -- ★ RENAMING-INVARIANCE OF THE STEP.
@@ -352,3 +356,62 @@ eqG μx f =
                    (⊢app df³ (⊢-cast (gcdIH-w² (w μx)) (⊢var (there here)))))))
   where
     df³ = ⊢-cast (gcdG-w³ μx) (⊢wk (⊢wk (⊢wk df)))
+
+------------------------------------------------------------------------
+-- ★★ SPLIT 1 — on `snd x`.  ctx: [0]=n' [1]=x
+--
+-- The motive mirrors `G1` exactly, with `gcdG` replaced by `eqG` and the
+-- `natrec` re-typed at the recursion variable by `⊢natrec-var`.
+------------------------------------------------------------------------
+
+μ₁ : {Γ : Cx} → RTm (Γ ∙ ∙)
+μ₁ = plusTm (fst (var (vs vz))) (var vz)
+
+f₁ : {Γ : Cx} → RTm (Γ ∙ ∙)
+f₁ = natrec (w G1z) (renTm (extR (extR vs)) gcdInn1) (var vz)
+
+M₁ : {Γ : Cx} → RTy (Γ ∙ ∙)
+M₁ = eqG μ₁ f₁
+
+-- ⭐ THE THREE MOTIVE BOUNDARIES ARE `refl`.  Everything in `gcdStp` is
+--   built from VARIABLES, so every `subTy`/`subTm` at a boundary COMPUTES
+--   — the note in `…GcdStep`'s header, cashed in.  No `mot-at`, no
+--   `wk-single`, no `eqG-sub` lemma.
+probe₁-at : {Γ : Cx} → subTy (single (snd (var vz))) (M₁ {Γ}) ≡ eqG msr gcdBody
+probe₁-at = refl
+
+probe₁-z : {Γ : Cx} →
+           subTy (single nzero) (M₁ {Γ})
+         ≡ eqG (plusTm (fst (var vz)) nzero) (natrec G1z gcdInn1 nzero)
+probe₁-z = refl
+
+------------------------------------------------------------------------
+-- ★ LEAF 1 — `snd x = 0`, so `gcd (a , 0) = a`.  IH-FREE.
+--
+-- ⭐ BOTH SIDES REDUCE TO THE SAME TERM, and literally: `G1z`'s body is
+--   `fst <the carrier>`, and the carrier does not mention the `ih` the
+--   `lam` just bound, so `subTm (single ihᵢ)` lands on the same thing for
+--   `ih₁` and `ih₂`.  ⚠ That is why the discarded argument costs nothing
+--   here — the usual `wk-single` tax is definitional at a concrete index.
+------------------------------------------------------------------------
+
+red₁z : {Γ : Cx} (i : RTm (Γ ∙ ∙ ∙ ∙)) →
+        app (w (w (w (natrec (G1z {Γ}) gcdInn1 nzero)))) i
+      ⟶* fst (var (vs (vs (vs vz))))
+red₁z i = ⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done)) (step (β _ i) done)
+
+leaf₁z : {Γ : Ctx} →
+         Prv (Γ ▹ PairT)
+             (eqG (plusTm (fst (var vz)) nzero) (natrec G1z gcdInn1 nzero))
+leaf₁z =
+  prv _ (⊢lam (⊢gcdIH dμ)
+          (⊢lam (⊢gcdIH (⊢wk dμ))
+            (⊢lam (⊢pwT (⊢wk (⊢wk dμ))
+                        (⊢-cast (gcdIH-w² _) (⊢var (there here)))
+                        (⊢-cast (gcdIH-w (w _)) (⊢var here)))
+                  (prvOk idPrf))))
+  where
+    dμ = ⊢plus (⊢fst (⊢var here)) ⊢nzero
+    idPrf = idOfRed (red₁z (var (vs (vs vz)))) (red₁z (var (vs vz)))
+              (prv _ (⊢idrefl ⊢⌜Nat⌝
+                        (asP (⊢fst (⊢var (there (there (there here))))))))
