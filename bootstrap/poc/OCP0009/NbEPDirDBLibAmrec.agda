@@ -298,6 +298,42 @@ extcondR : {Γ Γ' Γ'' : Cx} {ϑ : Ren Γ' Γ''} {ρ : Ren Γ Γ'} {ρ' : Ren �
 extcondR h vz     = refl
 extcondR h (vs v) = cong vs (h v)
 
+-- ★★ THE THIRD COMPOSITE: a RENAMING that meets a SUBSTITUTION.
+--
+-- `subren` and `renren` cover sub∘ren and ren∘ren.  ren∘sub is the one a
+-- CALLER of `StepExt` needs, because the pointwise premise is
+-- renaming-indexed and every term it speaks about (`ihS-atR`, `auxAt`) is
+-- built as a tower of substitutions.  Same one-line shape as its two
+-- siblings: fuse both sides to a single substitution and bridge them.
+--
+-- ⚠ The bridge relates `renTm ϑ (σ v)` to `σ' (ϑ' v)` — FOUR maps, not
+--   three, because ren∘sub has to re-emit both a substitution and a
+--   renaming.  That is why it needs its own `extcond`.
+rensub : {Γ Γ' Γ'' Γ₃ : Cx} {σ : Sub Γ Γ'} {ϑ : Ren Γ' Γ''}
+         {σ' : Sub Γ₃ Γ''} {ϑ' : Ren Γ Γ₃} →
+         (∀ v → renTm ϑ (σ v) ≡ σ' (ϑ' v)) →
+         (t : RTm Γ) → renTm ϑ (subTm σ t) ≡ subTm σ' (renTm ϑ' t)
+rensub h t = trans (renTm-subTm t) (trans (subTm-cong h t) (sym (subTm-renTm t)))
+
+extcondRS : {Γ Γ' Γ'' Γ₃ : Cx} {σ : Sub Γ Γ'} {ϑ : Ren Γ' Γ''}
+            {σ' : Sub Γ₃ Γ''} {ϑ' : Ren Γ Γ₃} →
+            (∀ v → renTm ϑ (σ v) ≡ σ' (ϑ' v)) →
+            (∀ v → renTm (extR ϑ) (extS σ v) ≡ extS σ' (extR ϑ' v))
+extcondRS h vz = refl
+extcondRS {σ = σ} {ϑ = ϑ} h (vs v) =
+  trans (renren {ϑ = extR ϑ} {ρ = vs} {ρ' = λ u → vs (ϑ u)} (λ _ → refl) (σ v))
+        (trans (sym (renren {ϑ = vs} {ρ = ϑ} {ρ' = λ u → vs (ϑ u)}
+                            (λ _ → refl) (σ v)))
+               (cong (renTm vs) (h v)))
+
+-- ★ the bridge for the commonest substitution of all.  ⚠ It needs the case
+--   split even though both cases are `refl`: `single` matches on the
+--   variable, so neither side computes until it is given one.
+singleBr : {Γ Γ' : Cx} {ϑ : Ren Γ Γ'} (t : RTm Γ) →
+           ∀ v → renTm ϑ (single t v) ≡ single (renTm ϑ t) (extR ϑ v)
+singleBr t vz     = refl
+singleBr t (vs v) = refl
+
 -- ★ …and the degenerate case: a renaming that is POINTWISE the identity is
 --   the identity.  `extR` of the identity is not definitionally the
 --   identity function, so even this needs the bridge.
@@ -2283,6 +2319,88 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
     cong₂ (λ z s → natrec z s (renTm ϑ n))
           (renren h (auxZ x))
           (renren (extcondR (extcondR h)) (auxS x))
+
+  ------------------------------------------------------------------------
+  -- ★★★ THE IH ARGUMENT'S NATURALITY — what makes `StepExt`'s pointwise
+  --     premise supplyable at a DEEPER context than `Θ`.
+  --
+  -- ⚠ WHY IT IS NEEDED AT ALL (2026-08-16).  A provider of `StepExt` whose
+  --   step CASE-SPLITS — and gcd's does, three times — consumes the
+  --   pointwise premise inside `natrec` branches, i.e. in a context with
+  --   binders `Θ` does not have.  So the premise is renaming-indexed, and
+  --   the library, which supplies it at `ih₁ = ihS-atR ρ x a k p`, has to
+  --   say what a renaming does to that.
+  --
+  -- ★ FIVE LAYERS, FIVE PEELS, and nothing else: four substitutions by
+  --   `rensub` and the innermost renaming by `renren`.  Each bridge is the
+  --   one below it under an `extcond`, so the whole thing is decided
+  --   variable-by-variable exactly once — the pointwise calculus, not a
+  --   tower lemma.  ⭐ The only layer that is not a bare `singleBr` is the
+  --   auxiliary's, and it composes with `auxAt-renʳ` in one `cong`.
+  --
+  -- ⚠ `descS-atR` deliberately gets NO twin.  Its seven layers would be a
+  --   real cost, and it is not needed: once the term has been rewritten to
+  --   `ihS-atR θ' …`, `ih-appR` is instantiated FRESH at the deeper context
+  --   and emits `descS-atR θ' …` directly, and `descS-peel` is already
+  --   generic in the renaming.
+  ------------------------------------------------------------------------
+
+  ihS-atR-renʳ : {Γ' Γ'' : Cx} {ϑ : Ren Γ' Γ''}
+                 (θ : Ren ⌊ Δ ⌋ Γ') (θ' : Ren ⌊ Δ ⌋ Γ'') →
+                 (∀ v → ϑ (θ v) ≡ θ' v) →
+                 (x : RTm ⌊ Δ ⌋) (a k p : RTm Γ') →
+                 renTm ϑ (ihS-atR θ x a k p)
+               ≡ ihS-atR θ' x (renTm ϑ a) (renTm ϑ k) (renTm ϑ p)
+  ihS-atR-renʳ {ϑ = ϑ} θ θ' h x a k p =
+    trans (rensub {ϑ' = extR ϑ} br₁ T₄)
+      (cong (subTm (single (renTm ϑ p)))
+        (trans (rensub {ϑ' = extR (extR ϑ)} br₂ T₃)
+          (cong (subTm (extS (single (renTm ϑ a))))
+            (trans (rensub {ϑ' = extR (extR (extR ϑ))} br₃ T₂)
+              (cong (subTm (extS (extS (single (auxAt θ' x (renTm ϑ k))))))
+                (trans (rensub {ϑ' = extR (extR (extR (extR ϑ)))} br₄ T₁)
+                  (cong (subTm (extS (extS (extS (single (renTm ϑ k))))))
+                    (renren br₅ T₀))))))))
+    where
+      T₀ = subTm (extS (extS (extS (extS (single x))))) ihS
+      T₁ = renTm (extR (extR (extR (extR θ)))) T₀
+      T₂ = subTm (extS (extS (extS (single k)))) T₁
+      T₃ = subTm (extS (extS (single (auxAt θ x k)))) T₂
+      T₄ = subTm (extS (single a)) T₃
+
+      -- ★ the auxiliary's layer: `singleBr` moves the renaming inside, then
+      --   `auxAt-renʳ` re-indexes the auxiliary itself.
+      brAux : ∀ v → renTm ϑ (single (auxAt θ x k) v)
+                  ≡ single (auxAt θ' x (renTm ϑ k)) (extR ϑ v)
+      brAux v = trans (singleBr (auxAt θ x k) v)
+                      (cong (λ t → single t (extR ϑ v)) (auxAt-renʳ θ θ' h x k))
+
+      -- ⚠ EACH BRIDGE IS NAMED WITH ITS TYPE, and that is not style.  Left
+      --   inline, `rensub`'s re-emitted `σ'` and `ϑ'` are metas that only
+      --   the bridge's own type pins, and a tower of `extcondRS`s blocks
+      --   every one of them on the next — measured, five unsolved
+      --   constraints.  ⭐ Same signature of failure as `subTm` not
+      --   inverting: an UNSOLVED META, never a wrong solution.
+      br₁ : ∀ v → renTm ϑ (single p v) ≡ single (renTm ϑ p) (extR ϑ v)
+      br₁ = singleBr p
+
+      br₂ : ∀ v → renTm (extR ϑ) (extS (single a) v)
+                ≡ extS (single (renTm ϑ a)) (extR (extR ϑ) v)
+      br₂ = extcondRS (singleBr a)
+
+      br₃ : ∀ v → renTm (extR (extR ϑ)) (extS (extS (single (auxAt θ x k))) v)
+                ≡ extS (extS (single (auxAt θ' x (renTm ϑ k))))
+                       (extR (extR (extR ϑ)) v)
+      br₃ = extcondRS (extcondRS brAux)
+
+      br₄ : ∀ v → renTm (extR (extR (extR ϑ))) (extS (extS (extS (single k))) v)
+                ≡ extS (extS (extS (single (renTm ϑ k))))
+                       (extR (extR (extR (extR ϑ))) v)
+      br₄ = extcondRS (extcondRS (extcondRS (singleBr k)))
+
+      br₅ : ∀ v → extR (extR (extR (extR ϑ))) (extR (extR (extR (extR θ))) v)
+                ≡ extR (extR (extR (extR θ'))) v
+      br₅ = extcondR (extcondR (extcondR (extcondR h)))
 
   ------------------------------------------------------------------------
   -- ★★ THE MOTIVE.  `(a : A) (c₁ : μ a ≤ n₁) (c₂ : μ a ≤ n₂) →
