@@ -1633,7 +1633,7 @@ sim-call : {hv : HeapView} (jₐ retAddr : ℕ) (fs : FlatState) (s s' : State) 
                         -- arch. `FlatCorr` says nothing about it yet, so this
                         -- costs nothing here — it is riscv64's `c-thunk` that
                         -- will need to read it back.
-                        ; flink  = suc (fpc fs)
+                        ; flink  = just (suc (fpc fs))
                         ; fpc    = jₐ })
              s'
 sim-call {hv} jₐ retAddr fs s s' corr lo' lo'≤lo front-lo' lo'≤sp-reg fits rm = record

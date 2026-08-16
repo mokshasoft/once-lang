@@ -529,7 +529,7 @@ module Dispatch (sup : Supply) where
             step-eq : flat-exec-instr instr-call-closure prog fs
                     ≡ record fs { falloc = enter-call (falloc fs)
                                 ; fret   = suc (fpc fs) ∷ fret fs
-                                ; flink  = suc (fpc fs)
+                                ; flink  = just (suc (fpc fs))
                                 ; fpc    = j }
             step-eq = trans (cong (λ z → do-call-sv prog z fs) ceq)
                      (trans (cong (λ z → do-call-code prog z fs) heq)

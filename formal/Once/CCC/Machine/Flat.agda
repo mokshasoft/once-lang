@@ -72,10 +72,16 @@ module FlatMachine {FS : FrameSemantics} where
       -- x86-64 hides this because its `call` writes the link AND spills it in
       -- one instruction; it is the degenerate case, not the general one.
       --
-      -- A plain `ℕ` with a filler value, exactly like `fclosure`'s `SV-Tag 0`:
-      -- meaningful only where the correspondence says so, and costing no edit
-      -- at the construction sites that go through `mkFlat`.
-      flink    : ℕ
+      -- A `Maybe`, and the `nothing` is load-bearing (2026-08-16): it is the
+      -- MARKER for the call window. `just r` means "a pending return the
+      -- callee has not spilled to its cell yet", which is exactly the state in
+      -- which `RetAddrs`' head claim is false on riscv64. `do-call-at` sets
+      -- it; `do-thunk` — the spill — clears it; nothing else writes it, so a
+      -- state has `just` iff the previous step was a call.
+      --
+      -- It was a plain `ℕ` with a filler value when the field was introduced,
+      -- because nothing READ it. The reader is the window.
+      flink    : Maybe ℕ
   open FlatState public
 
   -- The 3-field constructor every existing site uses: no pending returns,
@@ -83,7 +89,7 @@ module FlatMachine {FS : FrameSemantics} where
   -- new fields cost no edit at the ~37 construction sites, all of which
   -- build exactly such a state.
   mkFlat : LocState FS → AllocState {FS} → ℕ → FlatState
-  mkFlat loc alloc pc = mkFlatFull loc alloc pc [] (SV-Tag 0) 0
+  mkFlat loc alloc pc = mkFlatFull loc alloc pc [] (SV-Tag 0) nothing
 
   ----------------------------------------------------------------------
   -- `with`-free decision helpers
@@ -599,12 +605,19 @@ module FlatMachine {FS : FrameSemantics} where
   -- one-directional (`FlatCorrespondence`), which claims a match only where the
   -- ABSTRACT cell is written — so a cleared cell asserts nothing about the
   -- stale concrete one. The weakening and the clear are a matched pair.
+  -- …AND IT IS THE SPILL (plan 0.65 G2, 2026-08-16). The body's marker is
+  -- where every arch's prologue moves the pending return from wherever its
+  -- call left it into the cell `RetAddrs` names — x86-64's `call` had already
+  -- done it, riscv64's `sd ra, 8b(sp)` does it here. Clearing `flink` is what
+  -- says so, and it is what closes the window: from this state on, the head
+  -- claim is about memory again.
   do-thunk : ℕ → FlatState → FlatState
   do-thunk b fs = record fs
     { floc   = record (floc fs)
                  { stackMem = clear-frame (stackMem (floc fs))
                                 (shift-frame (current-frame (falloc fs)) b) b }
     ; falloc = grow-frame b (falloc fs)
+    ; flink  = nothing
     ; fpc    = suc (fpc fs) }
 
   ----------------------------------------------------------------------
@@ -647,7 +660,7 @@ module FlatMachine {FS : FrameSemantics} where
   -- link at `jalr` and the spill at the callee's prologue).
   do-call-at (just j) fs = record fs { falloc = enter-call (falloc fs)
                                      ; fret   = suc (fpc fs) ∷ fret fs
-                                     ; flink  = suc (fpc fs)
+                                     ; flink  = just (suc (fpc fs))
                                      ; fpc    = j }
   do-call-at nothing  fs = flat-halt fs
 
@@ -687,7 +700,7 @@ module FlatMachine {FS : FrameSemantics} where
              → find-thunk prog ℓ ≡ just j
              → do-call prog fs ≡ record fs { falloc = enter-call (falloc fs)
                                            ; fret   = suc (fpc fs) ∷ fret fs
-                                           ; flink  = suc (fpc fs)
+                                           ; flink  = just (suc (fpc fs))
                                            ; fpc    = j }
              → CallPost prog fs
 

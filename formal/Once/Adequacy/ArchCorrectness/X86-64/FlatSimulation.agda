@@ -886,7 +886,7 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
     -- happened by the time the callee's prologue runs.
     absPost = record fs { falloc = enter-call (falloc fs)
                         ; fret   = suc (fpc fs) ∷ fret fs
-                        ; flink  = suc (fpc fs)
+                        ; flink  = just (suc (fpc fs))
                         ; fpc    = j }
     step-eq : flat-exec-instr instr-call-closure prog fs ≡ absPost
     step-eq = trans (cong (λ z → do-call-sv prog z fs) ceq)
