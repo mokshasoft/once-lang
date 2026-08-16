@@ -30,6 +30,8 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
+-- for `flink-pres`'s two excluded writers (plan 0.65 G2)
+open import Data.Empty using (⊥; ⊥-elim)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Memory.HeapAddress using (sucHL)
@@ -769,6 +771,82 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr (instr-push-frame cap)  _ fs = flat-step-frame (instr-push-frame cap)  (enter-frame (suc cap)) fs
   flat-exec-instr instr-pop-frame         _ fs = flat-step-frame instr-pop-frame         leave-frame             fs
   flat-exec-instr i                                      _    fs = flat-step-straight i fs
+
+  ----------------------------------------------------------------------
+  -- WHERE THE LINK MOVES, and it is exactly two instructions (plan 0.65 G2,
+  -- 2026-08-16). The CALL sets it and the body ENTRY clears it; every other
+  -- instruction threads it, which is what makes `flink ≡ just _` a marker for
+  -- the one-step call window rather than a value that drifts.
+  --
+  -- ENUMERATED, because `flat-exec-instr`'s catch-all does not reduce on a
+  -- VARIABLE instruction — the recurring cost of a catch-all, and the reason
+  -- this is stated once here instead of at each of the forty consumers. The
+  -- three control clauses case-split on their own scrutinee (the resolved
+  -- label, the branch condition, the return stack); everything else is `refl`.
+  ----------------------------------------------------------------------
+  flink-do-jump : ∀ (mj : Maybe ℕ) (fs : FlatState) → flink (do-jump mj fs) ≡ flink fs
+  flink-do-jump (just _) fs = refl
+  flink-do-jump nothing  fs = refl
+
+  flink-do-branch : ∀ (c : Bool) (n : LabelId) (prog : AbstractTrace) (fs : FlatState)
+                  → flink (do-branch c n prog fs) ≡ flink fs
+  flink-do-branch true  n prog fs = flink-do-jump (find-label prog n) fs
+  flink-do-branch false n prog fs = refl
+
+  flink-do-ret : ∀ (l : List ℕ) (fs : FlatState) → flink (do-ret l fs) ≡ flink fs
+  flink-do-ret []      fs = refl
+  flink-do-ret (_ ∷ _) fs = refl
+
+  -- THE VIEW, rather than a lemma with disequality premises: every consumer
+  -- has to case-split on which of the three an instruction is anyway, and the
+  -- view hands back exactly the evidence that case needs.
+  data FlinkView (i : AbstractInstr) : Set where
+    fv-call  : i ≡ instr-call-closure → FlinkView i
+    fv-thunk : ∀ (ℓ : LabelId) (bb : ℕ) → i ≡ instr-ctrl (c-thunk ℓ bb) → FlinkView i
+    fv-pres  : (∀ prog fs → flink (flat-exec-instr i prog fs) ≡ flink fs) → FlinkView i
+
+  flinkView : ∀ (i : AbstractInstr) → FlinkView i
+  flinkView (instr-ctrl (c-label _))               = fv-pres (λ _ _ → refl)
+  flinkView (instr-ctrl (c-thunk ℓ bb))            = fv-thunk ℓ bb refl
+  flinkView (instr-ctrl (c-ret b))                 = fv-pres (λ _ fs → flink-do-ret (fret fs) fs)
+  flinkView (instr-ctrl (c-jmp n))                 = fv-pres (λ prog fs → flink-do-jump (find-label prog n) fs)
+  flinkView (instr-ctrl (c-branch-scratch-zero n)) =
+    fv-pres (λ prog fs → flink-do-branch (sv-is-zero (readReg (regs (floc fs)) Scratch)) n prog fs)
+  flinkView (instr-ctrl (c-branch-tag-zero n))     =
+    fv-pres (λ prog fs → flink-do-branch (tag-zf (flat-read-tag (floc fs))) n prog fs)
+  flinkView instr-call-closure                     = fv-call refl
+  flinkView mov-to-output                          = fv-pres (λ _ _ → refl)
+  flinkView mov-to-input                           = fv-pres (λ _ _ → refl)
+  flinkView mov-output-to-input2                   = fv-pres (λ _ _ → refl)
+  flinkView mov-input2-to-output                   = fv-pres (λ _ _ → refl)
+  flinkView load-indirect                          = fv-pres (λ _ _ → refl)
+  flinkView load-indirect-suc                      = fv-pres (λ _ _ → refl)
+  flinkView store-indirect                         = fv-pres (λ _ _ → refl)
+  flinkView store-indirect-suc                     = fv-pres (λ _ _ → refl)
+  flinkView instr-pop-frame                        = fv-pres (λ _ _ → refl)
+  flinkView instr-save-closure-reg                 = fv-pres (λ _ _ → refl)
+  flinkView (load-from-slot _)                     = fv-pres (λ _ _ → refl)
+  flinkView (store-at-slot _)                      = fv-pres (λ _ _ → refl)
+  flinkView (lea-slot _)                           = fv-pres (λ _ _ → refl)
+  flinkView (lea-indexed _)                        = fv-pres (λ _ _ → refl)
+  flinkView (restore-input _)                      = fv-pres (λ _ _ → refl)
+  flinkView (instr-alloc-stack _)                  = fv-pres (λ _ _ → refl)
+  flinkView (instr-dealloc-stack _)                = fv-pres (λ _ _ → refl)
+  flinkView (instr-reclaim-to _)                   = fv-pres (λ _ _ → refl)
+  flinkView (instr-push-frame _)                   = fv-pres (λ _ _ → refl)
+  flinkView (worklist-init _)                      = fv-pres (λ _ _ → refl)
+  flinkView (worklist-push _)                      = fv-pres (λ _ _ → refl)
+  flinkView (worklist-pop _)                       = fv-pres (λ _ _ → refl)
+  flinkView (worklist-check _)                     = fv-pres (λ _ _ → refl)
+  flinkView (instr-load-code-addr _)               = fv-pres (λ _ _ → refl)
+  flinkView (instr-load-tag-lit _)                 = fv-pres (λ _ _ → refl)
+  flinkView (instr-alloc-heap _)                   = fv-pres (λ _ _ → refl)
+  flinkView (instr-loop _)                         = fv-pres (λ _ _ → refl)
+  flinkView (instr-sigop _)                        = fv-pres (λ _ _ → refl)
+  flinkView (instr-reg-op _)                       = fv-pres (λ _ _ → refl)
+  flinkView (instr-load-const _ _)                 = fv-pres (λ _ _ → refl)
+  flinkView (instr-case-on-tag _ _)                = fv-pres (λ _ _ → refl)
+
 
   ----------------------------------------------------------------------
   -- Fuel-bounded execution (with-free: dispatch on halted / fetch).

@@ -1002,7 +1002,7 @@ stack-ptr-step (instr-ctrl c) prog fs r ftq ff wf =
 -- A start state satisfies the invariant vacuously: both memories are empty and
 -- no register holds a pointer.
 entry-stack-ptr : ∀ (fs : FlatState) → EntryLike fs → StackPtrWF fs
-entry-stack-ptr fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr) = record
+entry-stack-ptr fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr , _) = record
   { sp-regs  = λ r → go r (readReg (regs (floc fs)) r) refl
   ; sp-heap  = λ hl → subst StackPtrOK? (sym (hemp hl)) tt
   ; sp-stack = λ f k → subst StackPtrOK? (sym (semp f k)) tt }
@@ -1016,7 +1016,7 @@ entry-stack-ptr fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr) = record
 -- …and the pointer-bounds and store-WF invariants likewise (D074: the entry
 -- registers are all tags, both memories empty).
 entry-ptr-bounds : ∀ (fs : FlatState) → EntryLike fs → PtrBoundsWF fs
-entry-ptr-bounds fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr) = record
+entry-ptr-bounds fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr , _) = record
   { pb-regs  = λ r → go r (readReg (regs (floc fs)) r) refl
   ; pb-heap  = λ hl → subst (PtrB? _) (sym (hemp hl)) tt
   ; pb-stack = λ f k → subst (PtrB? _) (sym (semp f k)) tt }
@@ -1028,7 +1028,7 @@ entry-ptr-bounds fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr) = record
         go r (SV-Code c)   eq rewrite eq = tt
 
 entry-flat-wf : ∀ (fs : FlatState) → EntryLike fs → FlatWF fs
-entry-flat-wf fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr) = record
+entry-flat-wf fs (_ , _ , _ , _ , _ , hemp , semp , _ , noptr , _) = record
   { wf-regs  = λ r → go r (readReg (regs (floc fs)) r) refl
   ; wf-heap  = λ hl → subst (svm-below _) (sym (hemp hl)) tt
   ; wf-stack = λ f k → subst (svm-below _) (sym (semp f k)) tt
@@ -1420,3 +1420,103 @@ load-indirect-suc-target-wf prog fs r ftq with load-indirect-suc-target-ptr prog
   λ hl leq → ptr-bounds-suc fs Input1 hl (run-ptr-bounds prog fs r)
                (trans eq (cong SV-Ptr leq))
 
+
+------------------------------------------------------------------------
+-- THE CALL WINDOW IS ONE STEP WIDE, AND ITS INSTRUCTION IS A BODY MARKER
+-- (plan 0.65 G2, 2026-08-16).
+--
+-- `flink ≡ just _` says a call has happened and the callee has not spilled its
+-- return address yet. The callee's FIRST instruction is its own `c-thunk`: a
+-- call lands the pc on `find-thunk prog ℓ`, and `find-thunk-sound` — already a
+-- theorem — says what that index fetches.
+--
+-- WHY IT EARNS ITS KEEP. Without it, every block-step that is NOT the body
+-- marker would have to show it leaves the link alone: 41 obligations per arch,
+-- and on x86-64 the claim is not even true in general, since its link lives at
+-- `[rsp]` and a slot store can reach that address. With it, the engine hands
+-- those fields `flink fs ≡ nothing` and each discharges its link component by
+-- absurdity. One induction instead of 82 proofs.
+--
+-- The induction is `Reachable`, and every case is a clash rather than an
+-- argument:
+--
+--   entry        `EntryLike` says `flink ≡ nothing`.
+--   after a call `callView`: the halting route preserves the link and hands
+--                the clash to the IH; the entering route IS the theorem.
+--   after a body marker  `do-thunk` clears the link.
+--   after anything else  `FlinkView`'s `fv-pres` threads it, so the IH applies
+--                at the PRE-state and says the fetched instruction was a body
+--                marker — whereupon `fv-pres` at THAT instruction says the
+--                link was cleared, contradicting it being live.
+------------------------------------------------------------------------
+private
+  nothing≢justℕ : ∀ {x : ℕ} → nothing ≡ just x → ⊥
+  nothing≢justℕ ()
+
+run-link-at-thunk : ∀ prog (fs : FlatState) → RunAt prog fs
+                  → ∀ {r : ℕ} → flink fs ≡ just r
+                  → Σ LabelId (λ ℓ → Σ ℕ (λ bb →
+                      fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk ℓ bb))))
+run-link-at-thunk prog fs (mkRunAt ir eq hm reach) = go fs reach
+  where
+    Goal : FlatState → Set
+    Goal fs' = Σ LabelId (λ ℓ → Σ ℕ (λ bb →
+                 fetch prog (fpc fs') ≡ just (instr-ctrl (c-thunk ℓ bb))))
+
+    go : ∀ (fs' : FlatState) → Reachable prog (ir-stack-budget ir) fs'
+       → ∀ {r : ℕ} → flink fs' ≡ just r → Goal fs'
+    go fs' (reach-start .fs' (_ , _ , _ , _ , _ , _ , _ , _ , _ , fl) _) lk =
+      ⊥-elim (nothing≢justℕ (trans (sym fl) lk))
+    go .(flat-exec-instr i prog fs'') (reach-step i fs'' r' ftq h) {r} lk =
+      step (flinkView i)
+      where
+        -- the IH, once the link is known live at the PRE-state
+        ih-thunk : flink fs'' ≡ just r → Σ LabelId (λ ℓ → Σ ℕ (λ bb →
+                     i ≡ instr-ctrl (c-thunk ℓ bb)))
+        ih-thunk pre = proj₁ ihr , proj₁ (proj₂ ihr) ,
+                       just-injective (trans (sym ftq) (proj₂ (proj₂ ihr)))
+          where ihr = go fs'' r' pre
+
+        step : FlinkView i → Goal (flat-exec-instr i prog fs'')
+        -- THE CALL. `callView` splits into halt and enter.
+        step (fv-call ieq) = call-step (callView prog fs'')
+          where
+            red : flat-exec-instr i prog fs'' ≡ do-call prog fs''
+            red = cong (λ z → flat-exec-instr z prog fs'') ieq
+            call-step : CallPost prog fs'' → Goal (flat-exec-instr i prog fs'')
+            -- a HALTING call writes no link, so the link was already live and
+            -- the IH says the pc held a body marker — but `ftq` says it held
+            -- the call.
+            call-step (cp-halt heq) =
+              ⊥-elim (thunk≢call (proj₂ (proj₂ (ih-thunk pre))))
+              where
+                pre : flink fs'' ≡ just r
+                pre = trans (sym (cong flink (trans red heq))) lk
+                thunk≢call : ∀ {ℓ bb} → i ≡ instr-ctrl (c-thunk ℓ bb) → ⊥
+                thunk≢call teq with trans (sym teq) ieq
+                ... | ()
+            -- and an ENTERING call is the theorem: its pc IS the resolved
+            -- body index, and `find-thunk-sound` says what sits there.
+            call-step (cp-enter ℓ j feq eeq) =
+              ℓ , proj₁ fts ,
+              subst (λ z → fetch prog z ≡ just (instr-ctrl (c-thunk ℓ (proj₁ fts))))
+                    (sym (cong fpc (trans red eeq))) (proj₂ fts)
+              where fts = find-thunk-sound prog ℓ j feq
+        -- THE BODY MARKER clears the link, so it cannot be live after one.
+        step (fv-thunk ℓ bb ieq) =
+          ⊥-elim (nothing≢justℕ (trans (sym cleared) lk))
+          where cleared : flink (flat-exec-instr i prog fs'') ≡ nothing
+                cleared = cong (λ z → flink (flat-exec-instr z prog fs'')) ieq
+        -- EVERYTHING ELSE threads the link, so the IH applies at the
+        -- pre-state and says the instruction was a body marker — which this
+        -- very equation then says cleared the link.
+        step (fv-pres pres) =
+          ⊥-elim (nothing≢justℕ (trans (sym cleared) pre))
+          where
+            pre : flink fs'' ≡ just r
+            pre = trans (sym (pres prog fs'')) lk
+            ihr = ih-thunk pre
+            cleared : flink fs'' ≡ nothing
+            cleared = trans (sym (pres prog fs''))
+                            (cong (λ z → flink (flat-exec-instr z prog fs''))
+                                  (proj₂ (proj₂ ihr)))

@@ -371,6 +371,8 @@ entry-like B = refl , refl , refl , refl , refl
              -- no register holds ANY pointer: every entry register is the
              -- tag filler `SV-Tag 0` (D074)
              , no-ptr
+             -- the entry state is not inside a call window (plan 0.65 G2)
+             , refl
   where no-ptr : ∀ (r : AbstractReg) loc
                → readReg (regs FFOx.entry-s) r ≡ SV-Ptr loc → ⊥
         no-ptr Input1  loc ()

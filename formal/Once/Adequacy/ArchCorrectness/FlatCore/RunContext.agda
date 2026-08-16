@@ -88,6 +88,13 @@ EntryLike fs = (fpc fs ≡ 0)
              -- off (`entry-stack-ptr` / `entry-ptr-bounds` / `entry-flat-wf`).
              × (∀ (r : AbstractReg) (loc : ValueLocation FS)
                 → readReg (regs (floc fs)) r ≡ SV-Ptr loc → ⊥)
+             -- …and NO UNSPILLED RETURN (plan 0.65 G2, 2026-08-16). `flink`
+             -- marks the one-step call window, and a start state is not in
+             -- one — it has not been called from anywhere. True of the apex's
+             -- entry state by construction (`mkFlat` defaults it), and it is
+             -- the base case of `run-link-at-thunk`: without it a "start"
+             -- state could claim a pending return that no call ever made.
+             × (flink fs ≡ nothing)
 
 -- …indexed by the STATIC SLOT BUDGET `B` the prologue reserved. The entry state
 -- pins `frame-slots` to it (`reach-start`), and no reachable step can move it —
