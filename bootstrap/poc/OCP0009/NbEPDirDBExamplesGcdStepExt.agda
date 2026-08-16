@@ -162,7 +162,10 @@ Ren⊢-id : {Γ : Ctx} → Ren⊢ Γ Γ (λ v → v)
 Ren⊢-id {A = A} v = ∋-cast (sym (renTy-idR (λ _ → refl) A)) v
 
 -- `(y : Pair) (q : μ y < μa) → ih₁ y q ≡ ih₂ y q`, INTERNALLY
-pwT : {Γ : Ctx} (μa i₁ i₂ : RTm ⌊ Γ ⌋) → RTy ⌊ Γ ⌋
+-- ⚠ indexed by a RAW context `Cx`, not a `Ctx`: it carries no typing
+--   information, and the split motives below need it at depths that are not
+--   `⌊ _ ⌋` of anything.
+pwT : {Γ : Cx} (μa i₁ i₂ : RTm Γ) → RTy Γ
 pwT μa i₁ i₂ =
   Π PairT
     (Π (Hom Nat (nsuc msr) (w μa))
