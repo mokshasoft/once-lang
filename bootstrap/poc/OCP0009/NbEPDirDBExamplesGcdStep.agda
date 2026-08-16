@@ -168,63 +168,109 @@ G3 = gcdG (plusTm (nsuc (var (vs (vs vz)))) (nsuc (var (vs (vs (vs (vs vz)))))))
 
 -- a ≤ b : recurse at (a , b ∸ a).  SECOND component changes → ⊢desc-right.
 -- ctx after the ⊢lam: [0]=ih [1]=G2 [2]=k' [3]=G1 [4]=n' [5]=x
+--
+-- ★ THE RECURSIVE CALL'S TWO ARGUMENTS ARE NAMED, and so is the
+--   certificate's DERIVATION.  ⚠ Not cosmetic: the caller's `StepExt`
+--   instantiates the pointwise hypothesis at exactly `(PAIRᶻ , CERTᶻ)` and
+--   must supply BOTH their typings; inline, the certificate's derivation is
+--   unreachable, and `subTm` does not invert so it cannot be recovered from
+--   the branch afterwards.  Same reason `descS-peel` had to name the
+--   library's certificate.  (2026-08-16, prerequisite 1 of gap A.)
+
+-- the context the branch's BODY lives in — five binders plus the `⊢lam`'s
+CΓz : Ctx → Ctx
+CΓz Γ = ((((( Γ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2)
+          ▹ gcdIH (plusTm (nsuc (var (vs vz))) (nsuc (var (vs (vs (vs vz))))))
+
+-- [2]=k' and [4]=n' AT THE BODY'S DEPTH
+KZ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙)
+KZ = var (vs (vs vz))
+
+NZ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙)
+NZ = var (vs (vs (vs (vs vz))))
+
+PAIRᶻ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙)
+PAIRᶻ = pair (nsuc KZ) (monusTm (nsuc NZ) (nsuc KZ))
+
+CERTᶻ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙)
+CERTᶻ = plusMonoTm (monusLtTm NZ KZ) (nsuc KZ)
+
+dkz : {Γ : Ctx} → CΓz Γ ⊢ KZ ∷ Nat
+dkz = ⊢var (there (there here))
+
+dnz : {Γ : Ctx} → CΓz Γ ⊢ NZ ∷ Nat
+dnz = ⊢var (there (there (there (there here))))
+
+⊢PAIRᶻ : {Γ : Ctx} → CΓz Γ ⊢ PAIRᶻ ∷ PairT
+⊢PAIRᶻ = ⊢pair ty-Nat (⊢nsuc dkz) (⊢monus (⊢nsuc dnz) (⊢nsuc dkz))
+
+-- ★ the certificate, at the measure of the CALL, bounded by the measure of
+--   the branch's own (split) carrier `suc k' + suc n'`.
+⊢CERTᶻ : {Γ : Ctx} → CΓz Γ ⊢ CERTᶻ
+       ∷ Hom Nat (nsuc (plusTm (fst PAIRᶻ) (snd PAIRᶻ))) (plusTm (nsuc KZ) (nsuc NZ))
+⊢CERTᶻ =
+  ⊢conv (⊢desc-right dkz dnz)
+        (csymᵀ (descConv (nsuc KZ) (monusTm (nsuc NZ) (nsuc KZ))
+                         (plusTm (nsuc KZ) (nsuc NZ))))
+
 G3z : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙)
-G3z =
-  lam (app (app (var vz)
-                (pair (nsuc (var (vs (vs vz))))
-                      (monusTm (nsuc (var (vs (vs (vs (vs vz))))))
-                               (nsuc (var (vs (vs vz)))))))
-           (plusMonoTm (monusLtTm (var (vs (vs (vs (vs vz))))) (var (vs (vs vz))))
-                       (nsuc (var (vs (vs vz))))))
+G3z = lam (app (app (var vz) PAIRᶻ) CERTᶻ)
 
 ⊢G3z : {Γ : Ctx} → (((((Γ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) ⊢ G3z
      ∷ gcdG (plusTm (nsuc (var (vs vz))) (nsuc (var (vs (vs (vs vz))))))
 ⊢G3z =
   ⊢lam (⊢gcdIH (⊢plus (⊢nsuc (⊢var (there here)))
                       (⊢nsuc (⊢var (there (there (there here)))))))
-    (⊢app (⊢app (⊢var here)
-                (⊢pair ty-Nat (⊢nsuc dk) (⊢monus (⊢nsuc dn) (⊢nsuc dk))))
-          (⊢conv (⊢desc-right dk dn)
-                 (csymᵀ (descConv (nsuc (var (vs (vs vz))))
-                                  (monusTm (nsuc (var (vs (vs (vs (vs vz))))))
-                                           (nsuc (var (vs (vs vz)))))
-                                  (plusTm (nsuc (var (vs (vs vz))))
-                                          (nsuc (var (vs (vs (vs (vs vz))))))))))) 
-  where
-    dk = ⊢var (there (there here))
-    dn = ⊢var (there (there (there (there here))))
+    (⊢app (⊢app (⊢var here) ⊢PAIRᶻ) ⊢CERTᶻ)
 
 -- a > b : recurse at (a ∸ b , b).  FIRST component changes → ⊢desc-left.
 -- ctx after the ⊢lam: [0]=ih [1]=G3 [2]=d [3]=G2 [4]=k' [5]=G1 [6]=n' [7]=x
+-- ★ same treatment as `G3z` — see the note there.
+CΓs : Ctx → Ctx
+CΓs Γ = ((((((( Γ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) ▹ Nat) ▹ G3)
+          ▹ gcdIH (plusTm (nsuc (var (vs (vs (vs vz)))))
+                          (nsuc (var (vs (vs (vs (vs (vs vz))))))))
+
+-- [4]=k' and [6]=n' AT THE BODY'S DEPTH
+KS : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+KS = var (vs (vs (vs (vs vz))))
+
+NS : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+NS = var (vs (vs (vs (vs (vs (vs vz))))))
+
+PAIRˢ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+PAIRˢ = pair (monusTm (nsuc KS) (nsuc NS)) (nsuc NS)
+
+CERTˢ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+CERTˢ = plusMonoLTm (monusTm (nsuc KS) (nsuc NS)) (nsuc KS) (nsuc NS)
+                    (monusLtTm KS NS)
+
+dks : {Γ : Ctx} → CΓs Γ ⊢ KS ∷ Nat
+dks = ⊢var (there (there (there (there here))))
+
+dns : {Γ : Ctx} → CΓs Γ ⊢ NS ∷ Nat
+dns = ⊢var (there (there (there (there (there (there here))))))
+
+⊢PAIRˢ : {Γ : Ctx} → CΓs Γ ⊢ PAIRˢ ∷ PairT
+⊢PAIRˢ = ⊢pair ty-Nat (⊢monus (⊢nsuc dks) (⊢nsuc dns)) (⊢nsuc dns)
+
+⊢CERTˢ : {Γ : Ctx} → CΓs Γ ⊢ CERTˢ
+       ∷ Hom Nat (nsuc (plusTm (fst PAIRˢ) (snd PAIRˢ))) (plusTm (nsuc KS) (nsuc NS))
+⊢CERTˢ =
+  ⊢conv (⊢desc-left dks dns)
+        (csymᵀ (descConv (monusTm (nsuc KS) (nsuc NS)) (nsuc NS)
+                         (plusTm (nsuc KS) (nsuc NS))))
+
 G3s : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
-G3s =
-  lam (app (app (var vz)
-                (pair (monusTm (nsuc (var (vs (vs (vs (vs vz))))))
-                               (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))))
-                      (nsuc (var (vs (vs (vs (vs (vs (vs vz))))))))))
-           (plusMonoLTm (monusTm (nsuc (var (vs (vs (vs (vs vz))))))
-                                 (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))))
-                        (nsuc (var (vs (vs (vs (vs vz))))))
-                        (nsuc (var (vs (vs (vs (vs (vs (vs vz))))))))
-                        (monusLtTm (var (vs (vs (vs (vs vz)))))
-                                   (var (vs (vs (vs (vs (vs (vs vz))))))))))
+G3s = lam (app (app (var vz) PAIRˢ) CERTˢ)
 
 ⊢G3s : {Γ : Ctx} → (((((((Γ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) ▹ Nat) ▹ G3) ⊢ G3s
      ∷ gcdG (plusTm (nsuc (var (vs (vs (vs vz)))))
-                    (nsuc (var (vs (vs (vs (vs (vs vz)))))))) 
+                    (nsuc (var (vs (vs (vs (vs (vs vz))))))))
 ⊢G3s =
   ⊢lam (⊢gcdIH (⊢plus (⊢nsuc (⊢var (there (there (there here)))))
                       (⊢nsuc (⊢var (there (there (there (there (there here)))))))))
-    (⊢app (⊢app (⊢var here)
-                (⊢pair ty-Nat (⊢monus (⊢nsuc dk) (⊢nsuc dn)) (⊢nsuc dn)))
-          (⊢conv (⊢desc-left dk dn)
-                 (csymᵀ (descConv (monusTm (nsuc KK) (nsuc NN)) (nsuc NN)
-                                  (plusTm (nsuc KK) (nsuc NN))))))
-  where
-    KK = var (vs (vs (vs (vs vz))))
-    NN = var (vs (vs (vs (vs (vs (vs vz))))))
-    dk = ⊢var (there (there (there (there here))))
-    dn = ⊢var (there (there (there (there (there (there here))))))
+    (⊢app (⊢app (⊢var here) ⊢PAIRˢ) ⊢CERTˢ)
 
 ------------------------------------------------------------------------
 -- ★★★ THE STEP, ASSEMBLED — three nested `natrec`s under one `lam`.
