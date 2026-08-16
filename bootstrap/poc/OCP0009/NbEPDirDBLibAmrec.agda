@@ -47,10 +47,10 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR
         ; subTy-renTy; subTy-id; subTm-renTm; subTm-id; subTm-cong
         ; renTm-renTm; renTy-renTy; renTm-cong; renTy-cong; subTy-cong; idₛ
-        ; renTy-subTy; renTm-subTm; ordtr-cong₅ )
+        ; renTy-subTy; renTm-subTm; ordtr-cong₅; Id-cong₃ )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; _⊢_∷_; _∋_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
         ; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc
         ; ⊢lam; ⊢app; _⊢ty_; ⊢conv; csymᵀ; ctrnᵀ; ⊢⌜Id⌝; El-⌜Id⌝
         ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Id )
@@ -334,6 +334,32 @@ singleBr : {Γ Γ' : Cx} {ϑ : Ren Γ Γ'} (t : RTm Γ) →
 singleBr t vz     = refl
 singleBr t (vs v) = refl
 
+-- ★ …and the composite the two of them make, which is the SHAPE OF A
+--   MEASURE: `μ` at a renamed carrier.  Generic in the body, so `m` and
+--   `cM` share it.
+sub1-ren : {Γ Γ' Γ'' : Cx} {ϑ : Ren Γ' Γ''} (θ : Ren Γ Γ') (θ' : Ren Γ Γ'') →
+           (∀ v → ϑ (θ v) ≡ θ' v) → (a : RTm Γ') (t : RTm (Γ ∙)) →
+           renTm ϑ (subTm (single a) (renTm (extR θ) t))
+         ≡ subTm (single (renTm ϑ a)) (renTm (extR θ') t)
+sub1-ren {ϑ = ϑ} θ θ' br a t =
+  trans (rensub {ϑ' = extR ϑ} (singleBr a) (renTm (extR θ) t))
+        (cong (subTm (single (renTm ϑ a))) (renren (extcondR br) t))
+
+-- ★ TYPED renamings compose — pointwise, into a THIRD renaming `ρ'`.
+--
+-- ⚠ NOT `Ren⊢ Γ Θ' (λ v → ϑ (ρ v))`.  Bridging to a named `ρ'` is what
+--   keeps every type downstream written in one renaming instead of a
+--   composition, and it is the discipline `auxAt-renʳ`/`irrT-ren` already
+--   follow.  Composition-shaped types are what made the tower lemmas
+--   proliferate.
+Ren⊢-comp : {Γ Θ Θ' : Ctx} {ρ : Ren ⌊ Γ ⌋ ⌊ Θ ⌋} {ϑ : Ren ⌊ Θ ⌋ ⌊ Θ' ⌋}
+            {ρ' : Ren ⌊ Γ ⌋ ⌊ Θ' ⌋} →
+            Ren⊢ Γ Θ ρ → Ren⊢ Θ Θ' ϑ → (∀ v → ϑ (ρ v) ≡ ρ' v) →
+            Ren⊢ Γ Θ' ρ'
+Ren⊢-comp {Θ' = Θ'} {ρ' = ρ'} hρ hϑ br {x = x} {A = A} v =
+  subst (λ u → Θ' ∋ u ∷ renTy ρ' A) (br x)
+        (∋-cast (renrenTy br A) (hϑ (hρ v)))
+
 -- ★ …and the degenerate case: a renaming that is POINTWISE the identity is
 --   the identity.  `extR` of the identity is not definitionally the
 --   identity function, so even this needs the bridge.
@@ -378,6 +404,43 @@ aIHTat-ren {ρ = ρ} A cM m μ =
   cong₂ (λ u c → Π (renTy ρ A) (Π (Hom Nat (nsuc (renTm (extR ρ) m)) u) (El c)))
         (ren-w μ) (ren-w {ρ = extR ρ} cM)
 
+------------------------------------------------------------------------
+-- ★★★ THE POINTWISE HYPOTHESIS — "the two IHs agree at every argument".
+--
+-- ⚠⚠ RENAMING-INDEXED, and that is NOT decoration (2026-08-16).  It was a
+--   plain `(y q : RTm ⌊ Θ ⌋) → …` until gcd's `StepExt` was attempted, and
+--   that form is UNUSABLE by any provider whose step case-splits.  A split
+--   is a `natrec`, `⊢natrec` types its successor branch in `(Γ ▹ Nat) ▹ M`,
+--   and the recursive leaf's argument mentions the variables the split just
+--   bound — so the instance needed is at a `y : RTm ⌊ Θ' ⌋` for a Θ' with
+--   binders Θ does not have, and there is no `RTm ⌊ Θ' ⌋ → RTm ⌊ Θ ⌋`.
+--   It is a type error, not a difficulty.  Four escapes were checked and
+--   all are closed — see `HANDOFF-2026-08-16.md`; the one worth repeating
+--   is that internalising the premise as a `Π` first is CIRCULAR, because
+--   building that `Π` needs the premise at `Θ ▹ A ▹ Hom …`.
+--
+-- ★ The bridge `∀ v → ϑ (ρ v) ≡ ρ' v` rather than a composition `ϑ ∘ ρ`:
+--   every type below is then written in ONE renaming, which is what
+--   `auxAt-renʳ`/`irrT-ren` already do and what keeps the peels pointwise.
+--
+-- ★ The bound is `renTm ϑ (μ a)`, not `μ (renTm ϑ a)`.  The two are equal
+--   (`sub1-ren`) and the first is what `ren-lemma` hands the SUPPLIER for
+--   free, so the naturality is paid once, inside, instead of at every use.
+------------------------------------------------------------------------
+
+StepPW : (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙))
+         (Θ : Ctx) (ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋) (a ih₁ ih₂ : RTm ⌊ Θ ⌋) → Set
+StepPW Δ A cM m Θ ρ a ih₁ ih₂ =
+  {Θ' : Ctx} {ϑ : Ren ⌊ Θ ⌋ ⌊ Θ' ⌋} {ρ' : Ren ⌊ Δ ⌋ ⌊ Θ' ⌋} →
+  Ren⊢ Θ Θ' ϑ → (∀ v → ϑ (ρ v) ≡ ρ' v) →
+  (y q : RTm ⌊ Θ' ⌋) →
+  Θ' ⊢ y ∷ renTy ρ' A →
+  Θ' ⊢ q ∷ Hom Nat (nsuc (subTm (single y) (renTm (extR ρ') m)))
+                   (renTm ϑ (subTm (single a) (renTm (extR ρ) m))) →
+  Prv Θ' (Id (El (subTm (single y) (renTm (extR ρ') cM)))
+             (app (app (renTm ϑ ih₁) y) q)
+             (app (app (renTm ϑ ih₂) y) q))
+
 -- `(x : A) (ih₁ ih₂ : IH x) → (∀ y q. ih₁ y q ≡ ih₂ y q) → stp x ih₁ ≡ stp x ih₂`
 StepExt : (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋) → Set
 StepExt Δ A cM m stp =
@@ -398,12 +461,7 @@ StepExt Δ A cM m stp =
                    (subTm (single a) (renTm (extR ρ) m)) →
   Θ ⊢ ih₂ ∷ aIHTat (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m)
                    (subTm (single a) (renTm (extR ρ) m)) →
-  ((y q : RTm ⌊ Θ ⌋) →
-     Θ ⊢ y ∷ renTy ρ A →
-     Θ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) (renTm (extR ρ) m)))
-                     (subTm (single a) (renTm (extR ρ) m)) →
-     Prv Θ (Id (El (subTm (single y) (renTm (extR ρ) cM)))
-               (app (app ih₁ y) q) (app (app ih₂ y) q))) →
+  StepPW Δ A cM m Θ ρ a ih₁ ih₂ →
   Prv Θ (Id (El (subTm (single a) (renTm (extR ρ) cM)))
             (app (app (renTm ρ stp) a) ih₁)
             (app (app (renTm ρ stp) a) ih₂))
@@ -2179,11 +2237,7 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
             Θ ⊢ ih₁ ∷ ihTy ρ a → Θ ⊢ ih₂ ∷ ihTy ρ a →
             t₁ ⟶* app (app (renTm ρ stp) a) ih₁ →
             t₂ ⟶* app (app (renTm ρ stp) a) ih₂ →
-            ((y q : RTm ⌊ Θ ⌋) → Θ ⊢ y ∷ renTy ρ A →
-               Θ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) (renTm (extR ρ) m)))
-                               (subTm (single a) (renTm (extR ρ) m)) →
-               Prv Θ (Id (El (subTm (single y) (renTm (extR ρ) cM)))
-                         (app (app ih₁ y) q) (app (app ih₂ y) q))) →
+            StepPW Δ A cM m Θ ρ a ih₁ ih₂ →
             Prv Θ (Id (El (subTm (single a) (renTm (extR ρ) cM))) t₁ t₂)
   aux-irr ext h da d₁ d₂ r₁ r₂ pw = idOfRed r₁ r₂ (ext h _ _ _ da d₁ d₂ pw)
 
@@ -2193,23 +2247,51 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
   --    certificates is the `≤ 0` one — the code is `⌜Id⌝ C (ih₁ y q)
   --    (ih₂ y q)` either way, which is why three of the four leaves share
   --    this one lemma.
+  -- ★ the IH TYPE's naturality — four slots, four peels, and the fourth is
+  --   `sub1-ren`.  Needed because every supplier of `StepPW` has to move
+  --   its two IH derivations to the deeper context.
+  ihTy-ren : {Θ Θ' : Ctx} {ϑ : Ren ⌊ Θ ⌋ ⌊ Θ' ⌋}
+             (ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋) (ρ' : Ren ⌊ Δ ⌋ ⌊ Θ' ⌋) →
+             (∀ v → ϑ (ρ v) ≡ ρ' v) → (a : RTm ⌊ Θ ⌋) →
+             renTy ϑ (ihTy ρ a) ≡ ihTy ρ' (renTm ϑ a)
+  ihTy-ren {ϑ = ϑ} ρ ρ' br a =
+    trans (aIHTat-ren {ρ = ϑ} (renTy ρ A) (renTm (extR ρ) cM)
+                      (renTm (extR ρ) m) (subTm (single a) (renTm (extR ρ) m)))
+          (cong₄ aIHTat (renrenTy br A)
+                        (renren (extcondR br) cM)
+                        (renren (extcondR br) m)
+                        (sub1-ren ρ ρ' br a m))
+
   pwZ : {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
         {a c ih₁ ih₂ : RTm ⌊ Θ ⌋} →
         Θ ⊢ a ∷ renTy ρ A →
         Θ ⊢ c ∷ Hom Nat (subTm (single a) (renTm (extR ρ) m)) nzero →
         Θ ⊢ ih₁ ∷ ihTy ρ a → Θ ⊢ ih₂ ∷ ihTy ρ a →
-        (y q : RTm ⌊ Θ ⌋) → Θ ⊢ y ∷ renTy ρ A →
-        Θ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) (renTm (extR ρ) m)))
-                        (subTm (single a) (renTm (extR ρ) m)) →
-        Prv Θ (Id (El (subTm (single y) (renTm (extR ρ) cM)))
-                  (app (app ih₁ y) q) (app (app ih₂ y) q))
-  pwZ h da dc d₁ d₂ y q dy dq =
-    prv _ (⊢conv (⊢strong-base' (⊢⌜Id⌝ (⊢[] (ren-lemma dcM (Ren⊢-ext h)) dy)
-                                       (appIH d₁ y q dy dq)
-                                       (appIH d₂ y q dy dq))
-                                (⊢[] dm' dy) (⊢[] dm' da) dq dc)
+        StepPW Δ A cM m Θ ρ a ih₁ ih₂
+  pwZ {ρ = ρ} h {a = a} da dc d₁ d₂ {ϑ = ϑ} {ρ' = ρ'} hϑ br y q dy dq =
+    prv _ (⊢conv (⊢strong-base' (⊢⌜Id⌝ (⊢[] dcM' dy)
+                                       (appIH d₁' y q dy dq')
+                                       (appIH d₂' y q dy dq'))
+                                (⊢[] dm' dy) dμ' dq' dc')
                  (red→≅ᵀ (stepᵀ (El-⌜Id⌝ _ _ _) doneᵀ)))
-    where dm' = ren-lemma dm (Ren⊢-ext h)
+    where
+      -- ⚠ the composite typed renaming — `Ren⊢-comp`, not `Ren⊢-ext` twice:
+      --   `ρ'` is a THIRD renaming bridged to `ϑ ∘ ρ`, never that composite.
+      h'   = Ren⊢-comp h hϑ br
+      dcM' = ren-lemma dcM (Ren⊢-ext h')
+      dm'  = ren-lemma dm (Ren⊢-ext h')
+      -- ★ the ONE naturality this proof pays: the bound arrives as
+      --   `renTm ϑ (μ a)` and every typing rule below wants `μ (renTm ϑ a)`.
+      μeq  = sub1-ren ρ ρ' br a m
+      da'  = ⊢-cast (renrenTy br A) (ren-lemma da hϑ)
+      dμ'  = ⊢[] dm' da'
+      dq'  = ⊢-cast (cong (λ u → Hom Nat (nsuc (subTm (single y)
+                                                      (renTm (extR ρ') m))) u)
+                          μeq)
+                    dq
+      dc'  = ⊢-cast (cong (λ u → Hom Nat u nzero) μeq) (ren-lemma dc hϑ)
+      d₁'  = ⊢-cast (ihTy-ren ρ ρ' br a) (ren-lemma d₁ hϑ)
+      d₂'  = ⊢-cast (ihTy-ren ρ ρ' br a) (ren-lemma d₂ hϑ)
 
   -- ★ …and the ORIGINAL zero-irrelevance is now DERIVED — the faithfulness
   --   check on the factoring.
@@ -2843,36 +2925,71 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
                             (cong (λ u → irrT ρ x y u K₂) (wk-single {v = K₂} K₁)))
                      (⊢app dihΘ₃ dK₂)
 
-      pw : (y' q : RTm ⌊ irrΘ θ (nsuc k₁) (nsuc k₂) ⌋) →
-           irrΘ θ (nsuc k₁) (nsuc k₂) ⊢ y' ∷ renTy ρ A →
-           irrΘ θ (nsuc k₁) (nsuc k₂) ⊢ q
-             ∷ Hom Nat (nsuc (subTm (single y') (renTm (extR ρ) m)))
-                       (subTm (single A3) (renTm (extR ρ) m)) →
-           Prv (irrΘ θ (nsuc k₁) (nsuc k₂))
-               (Id (El (subTm (single y') (renTm (extR ρ) cM)))
-                   (app (app (ihS-atR ρ x A3 K₁ C₁) y') q)
-                   (app (app (ihS-atR ρ y A3 K₂ C₂) y') q))
-      pw y' q dy' dq =
-        idOfRed (ih-appR ρ x A3 K₁ C₁ y' q) (ih-appR ρ y A3 K₂ C₂ y' q)
-                (irrElim dihAt y' (descS-atR ρ x A3 K₁ C₁ y' q)
-                                  (descS-atR ρ y A3 K₂ C₂ y' q)
-                         dy' (dD x K₁ C₁ dK₁ ⊢irr-c₁) (dD y K₂ C₂ dK₂ ⊢irr-c₂))
+      -- ★★★★ THE ONLY LEAF WHOSE POINTWISE PREMISE HAS CONTENT — and, since
+      --      2026-08-16, the only one that pays for `StepPW` being
+      --      renaming-indexed.  ⚠ The extra cost is ONE rewrite: `ihS-atR-renʳ`
+      --      moves the two IH arguments to `Θ'`, and after that `ih-appR`,
+      --      `descS-atR` and `descS-peel` are instantiated FRESH at `ρ'` —
+      --      they are already generic in the renaming, so none of them needs
+      --      a naturality lemma of its own.  That is the whole saving.
+      pw : StepPW Δ A cM m (irrΘ θ (nsuc k₁) (nsuc k₂)) ρ A3
+                  (ihS-atR ρ x A3 K₁ C₁) (ihS-atR ρ y A3 K₂ C₂)
+      pw {ϑ = ϑ} {ρ' = ρ'} hϑ br y' q dy' dq =
+        prv-cast (Id-cong₃ refl (atArg (sym (ihS-atR-renʳ ρ ρ' br x A3 K₁ C₁)))
+                                (atArg (sym (ihS-atR-renʳ ρ ρ' br y A3 K₂ C₂))))
+          (idOfRed (ih-appR ρ' x A3' K₁' C₁' y' q)
+                   (ih-appR ρ' y A3' K₂' C₂' y' q)
+                   (irrElim dihAt' y' (descS-atR ρ' x A3' K₁' C₁' y' q)
+                                      (descS-atR ρ' y A3' K₂' C₂' y' q)
+                            dy' (dD x K₁' C₁' dK₁' dC₁') (dD y K₂' C₂' dK₂' dC₂')))
         where
+          -- ⚠ the rewrite lands on the IH ARGUMENT, but `Id-cong₃` wants it
+          --   on the whole application — one `cong`, easy to forget.
+          atArg : {u u' : RTm ⌊ _ ⌋} → u ≡ u' →
+                  app (app u y') q ≡ app (app u' y') q
+          atArg e = cong (λ z → app (app z y') q) e
+
+          h'  = Ren⊢-comp ρ⊢ hϑ br
+          A3' = renTm ϑ A3
+          K₁' = renTm ϑ K₁
+          K₂' = renTm ϑ K₂
+          C₁' = renTm ϑ C₁
+          C₂' = renTm ϑ C₂
+
+          -- the one naturality: the premise states the bound as
+          -- `renTm ϑ (μ A3)`, every rule below wants `μ (renTm ϑ A3)`
+          μeq  = sub1-ren ρ ρ' br A3 m
+          dmρ' = ren-lemma dm (Ren⊢-ext h')
+          dA3' = ⊢-cast (renrenTy br A) (ren-lemma ⊢irr-a hϑ)
+          dμa' = ⊢[] dmρ' dA3'
+          dq'  = ⊢-cast (cong (λ u → Hom Nat (nsuc (subTm (single y')
+                                                          (renTm (extR ρ') m))) u)
+                              μeq)
+                        dq
+
+          dK₁' = ren-lemma dK₁ hϑ
+          dK₂' = ren-lemma dK₂ hϑ
+          dC₁' = ⊢-cast (cong (λ u → Hom Nat u (nsuc K₁')) μeq)
+                        (ren-lemma (⊢irr-c₁ {n₁ = nsuc k₁} {n₂ = nsuc k₂}) hϑ)
+          dC₂' = ⊢-cast (cong (λ u → Hom Nat u (nsuc K₂')) μeq)
+                        (ren-lemma (⊢irr-c₂ {n₁ = nsuc k₁} {n₂ = nsuc k₂}) hϑ)
+
+          dihAt' = ⊢-cast (irrT-ren ρ ρ' br x y K₁ K₂) (ren-lemma dihAt hϑ)
+
           -- ★ the recursive call's certificate: `descS-peel` says WHAT it is,
           --   and `⊢strong-step` then types it from the two hypotheses the
           --   pointwise premise already hands over — `q` (μ y' < μ a) and the
           --   branch's own certificate (μ a ≤ suc K).
-          dD : (z : RTm ⌊ Δ ⌋) (K C : RTm ⌊ irrΘ θ (nsuc k₁) (nsuc k₂) ⌋) →
-               irrΘ θ (nsuc k₁) (nsuc k₂) ⊢ K ∷ Nat →
-               irrΘ θ (nsuc k₁) (nsuc k₂) ⊢ C
-                 ∷ Hom Nat (subTm (single A3) (renTm (extR ρ) m)) (nsuc K) →
-               irrΘ θ (nsuc k₁) (nsuc k₂) ⊢ descS-atR ρ z A3 K C y' q
-                 ∷ Hom Nat (subTm (single y') (renTm (extR ρ) m)) K
+          dD : (z : RTm ⌊ Δ ⌋) (K C : RTm ⌊ _ ⌋) →
+               _ ⊢ K ∷ Nat →
+               _ ⊢ C ∷ Hom Nat (subTm (single A3') (renTm (extR ρ') m)) (nsuc K) →
+               _ ⊢ descS-atR ρ' z A3' K C y' q
+                 ∷ Hom Nat (subTm (single y') (renTm (extR ρ') m)) K
           dD z K C dK dC =
-            subst (λ u → irrΘ θ (nsuc k₁) (nsuc k₂) ⊢ u
-                           ∷ Hom Nat (subTm (single y') (renTm (extR ρ) m)) K)
-                  (sym (descS-peel ρ z A3 K C y' q))
-                  (⊢strong-step (⊢[] dmρ dy') dμa dK dq dC)
+            subst (λ u → _ ⊢ u
+                           ∷ Hom Nat (subTm (single y') (renTm (extR ρ') m)) K)
+                  (sym (descS-peel ρ' z A3' K C y' q))
+                  (⊢strong-step (⊢[] dmρ' dy') dμa' dK dq' dC)
 
   ------------------------------------------------------------------------
   -- ★★★★★ …AND THE INDUCTION ITSELF — CERTIFICATE- AND BOUND-IRRELEVANCE,
