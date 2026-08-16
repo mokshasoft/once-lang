@@ -3615,9 +3615,9 @@ du_fetch_812 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286] ->
   Integer ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286
-du_fetch_812 = coe MAlonzo.Code.Once.CCC.Machine.Flat.du_fetch_210
+du_fetch_812 = coe MAlonzo.Code.Once.CCC.Machine.Flat.du_fetch_214
 -- Once.CCC.Codegen.FrameFreeTrace._.fetch-frame-free
-d_fetch'45'frame'45'free_944 ::
+d_fetch'45'frame'45'free_948 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -3627,9 +3627,9 @@ d_fetch'45'frame'45'free_944 ::
   Integer ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> AgdaAny
-d_fetch'45'frame'45'free_944 v0 ~v1 v2 v3 v4 v5 v6 ~v7
-  = du_fetch'45'frame'45'free_944 v0 v2 v3 v4 v5 v6
-du_fetch'45'frame'45'free_944 ::
+d_fetch'45'frame'45'free_948 v0 ~v1 v2 v3 v4 v5 v6 ~v7
+  = du_fetch'45'frame'45'free_948 v0 v2 v3 v4 v5 v6
+du_fetch'45'frame'45'free_948 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -3637,9 +3637,9 @@ du_fetch'45'frame'45'free_944 ::
   AgdaAny ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> AgdaAny
-du_fetch'45'frame'45'free_944 v0 v1 v2 v3 v4 v5 v6
+du_fetch'45'frame'45'free_948 v0 v1 v2 v3 v4 v5 v6
   = coe
-      MAlonzo.Code.Once.CCC.Machine.Flat.du_fetch'45'All_1476
+      MAlonzo.Code.Once.CCC.Machine.Flat.du_fetch'45'All_1480
       (coe
          MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_732
          (coe v0) (coe v1) (coe v2) (coe v3))

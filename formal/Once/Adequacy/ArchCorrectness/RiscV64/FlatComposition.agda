@@ -173,7 +173,7 @@ headView (instr-ctrl (c-label m)) = hv-clabel m refl (λ _ _ _ → refl) (λ _ _
 -- reservation, and the `ra` spill (D102). `hv-otherlabel`'s explicit tail
 -- absorbs the difference — no core change, one longer list here.
 headView (instr-ctrl (c-thunk m b)) =
-  hv-otherlabel m (addi sp sp (ℤ- (+ (slots (suc b)))) ∷ sd ra sp (slots b) ∷ []) refl refl
+  hv-otherlabel m (addi sp sp (ℤ- (+ (slots b))) ∷ sd ra sp (slots b) ∷ []) refl refl
                 (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-ret b)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView (instr-ctrl (c-jmp m)) = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)

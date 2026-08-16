@@ -126,7 +126,7 @@ du_block'45'as'45'ir_42 v0 v1
          (coe v0))
       (coe MAlonzo.Code.Once.Type.C_Int_136)
       (coe
-         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_368 (coe v0)
+         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_386 (coe v0)
          (coe v1))
 -- Once.Arith.Machine.Rewrite.try-lift
 d_try'45'lift_58 ::

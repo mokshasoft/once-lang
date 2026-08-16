@@ -232,11 +232,31 @@ compile-abstract instr-pop-frame =
 -- reads via `ld a0, 8(t0)`, and it must survive the call. This mirrors
 -- x86-64's `call *0x8(%r12)`, a memory-indirect call that never clobbers the
 -- argument register %rdi.
--- RV64: ld t1, 8(s1)      (load code pointer into scratch t1)
+-- RV64: ld   t1, 8(s1)     (load code pointer into scratch t1)
+--       addi sp, sp, -8   (reserve THIS CALL'S return-address slot)
 --       jalr ra, t1, 0    (call through t1; t0 preserved for the callee)
+--
+-- WHY THE CALLER RESERVES THE SLOT (plan 0.65 G2, 2026-08-16). The abstract
+-- `instr-call-closure` is `enter-call`: it descends the frame by ONE slot,
+-- because D086 says the CALL owns the return-address slot. x86-64's `call`
+-- does exactly that in hardware. RISC-V's `jalr` does not move `sp` at all, so
+-- until this line the reservation was folded into the callee's marker
+-- (`slots (suc b)`) — arithmetically right at the END of the pair, and wrong
+-- in BETWEEN: at the callee's entry, one abstract instruction after the call,
+-- the concrete `sp` was one slot above the abstract frame base and `sp-eq`
+-- was simply false. That window is the correspondence's granularity, so a
+-- fact true only across two instructions is not available to it.
+--
+-- Splitting the reservation the way the model splits it costs one `addi` per
+-- call site and makes the concrete call's FRAME effect equal the abstract
+-- one on both arches. What is left over is the genuine ABI difference — RISC-V
+-- leaves the return ADDRESS in `ra` until the callee spills it — and that one
+-- no emitter change can erase; it is what `FlatState.flink` models.
 compile-abstract instr-call-closure =
   ld t1 s1 slot-size ∷
+  addi sp sp (Data.Integer.-_ (+ slot-size)) ∷
   jalr ra t1 0 ∷ []
+  where import Data.Integer
 
 ------------------------------------------------------------------------
 -- Worklist operations (for Cata/recursion scheme support)
@@ -331,10 +351,13 @@ compile-abstract (instr-ctrl (c-jmp n))                 = j (once n) ∷ []
 -- tests saw. The dead `emit-thunk-body` path (`Once.Target.RiscV64`) always
 -- did this; the flip inlined the body and left the spill behind.
 --
--- One extra slot on top of the body's own budget holds it: reserve
--- `slots (suc b)`, put `ra` in the top word at `slots b (sp)`, so the body's
--- own slots 0 … b-1 are untouched.
-compile-abstract (instr-ctrl (c-thunk n b))             = label (thunk n) ∷ addi sp sp (Data.Integer.-_ (+ (slots (suc b)))) ∷ sd ra sp (slots b) ∷ []
+-- One extra slot on top of the body's own budget holds it, and THE CALLER NOW
+-- RESERVES THAT SLOT (2026-08-16 — see `instr-call-closure`). So this marker
+-- reserves the body's own `slots b` and the spill lands at `slots b (sp)`,
+-- which is the caller-reserved word just above the body's slots 0 … b-1 —
+-- the same cell as before the split, since the total descent is unchanged.
+-- `c-ret` releases `slots (suc b)` for the same reason and is untouched.
+compile-abstract (instr-ctrl (c-thunk n b))             = label (thunk n) ∷ addi sp sp (Data.Integer.-_ (+ (slots b))) ∷ sd ra sp (slots b) ∷ []
   where import Data.Integer
 compile-abstract (instr-ctrl (c-ret b))                 = ld ra sp (slots b) ∷ addi sp sp (+ (slots (suc b))) ∷ ret ∷ []
 compile-abstract (instr-ctrl (c-branch-scratch-zero n)) = beq s3 zero (once n) ∷ []

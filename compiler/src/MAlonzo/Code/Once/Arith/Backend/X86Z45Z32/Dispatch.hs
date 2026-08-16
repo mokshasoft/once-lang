@@ -25,36 +25,36 @@ import qualified MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg
 -- Once.Arith.Backend.X86-32.Dispatch._.dispatch-arith
 d_dispatch'45'arith_16 ::
   (MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
-   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_134 ->
+   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_268 ->
    MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8 -> Integer) ->
   [MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24] ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_134 ->
-  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_134
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_268 ->
+  MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_268
 d_dispatch'45'arith_16 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.C_mkstate_156
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.C_mkstate_290
       (coe
-         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_regs_146
+         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_regs_280
          (coe
             MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.ExecArith.d_exec'45'arith'45'block_88
             (coe v0) (coe v1) (coe v2)))
       (coe
-         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_memory_148
+         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_memory_282
          (coe
             MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.ExecArith.d_exec'45'arith'45'block_88
             (coe v0) (coe v1) (coe v2)))
       (coe
-         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_flags_150
+         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_flags_284
          (coe
             MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.ExecArith.d_exec'45'arith'45'block_88
             (coe v0) (coe v1) (coe v2)))
       (coe
          addInt (coe (1 :: Integer))
          (coe
-            MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_pc_152
+            MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_pc_286
             (coe v2)))
       (coe
-         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_halted_154
+         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.d_halted_288
          (coe
             MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.ExecArith.d_exec'45'arith'45'block_88
             (coe v0) (coe v1) (coe v2)))

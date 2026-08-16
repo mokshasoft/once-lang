@@ -425,6 +425,25 @@ library
       MAlonzo.Code.Once.Surface.Syntax
       MAlonzo.Code.Once.Surface.Thinning
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatFromObs
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.HeadView
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunWF
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.RegRoles
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.RegRoles
+      MAlonzo.Code.Once.CCC.Machine.NoNested
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32
       MAlonzo.Code.Once.Adequacy.CanonAllFuns

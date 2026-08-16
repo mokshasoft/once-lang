@@ -12704,7 +12704,7 @@ du_fetch_3582 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286] ->
   Integer ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286
-du_fetch_3582 = coe MAlonzo.Code.Once.CCC.Machine.Flat.du_fetch_210
+du_fetch_3582 = coe MAlonzo.Code.Once.CCC.Machine.Flat.du_fetch_214
 -- Once.CCC.Codegen.LabelScope._._.find-label
 d_find'45'label_3584 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -12718,7 +12718,7 @@ du_find'45'label_3584 ::
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 -> Maybe Integer
 du_find'45'label_3584 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.Flat.d_find'45'label_158 (coe v0)
+      MAlonzo.Code.Once.CCC.Machine.Flat.d_find'45'label_162 (coe v0)
 -- Once.CCC.Codegen.LabelScope._.fetch≡at
 d_fetch'8801'at_3592 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->

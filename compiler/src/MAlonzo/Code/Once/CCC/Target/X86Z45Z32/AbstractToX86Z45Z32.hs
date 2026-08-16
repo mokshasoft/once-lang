@@ -17,6 +17,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.List.Base
@@ -865,3 +866,10 @@ d_compile'45'trace_134 v0
              (coe d_compile'45'abstract_14 (coe v1))
              (coe d_compile'45'trace_134 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.CCC.Target.X86-32.AbstractToX86-32.compile-trace-cnt-agrees
+d_compile'45'trace'45'cnt'45'agrees_146 ::
+  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  Integer ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286] ->
+  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_compile'45'trace'45'cnt'45'agrees_146 = erased
