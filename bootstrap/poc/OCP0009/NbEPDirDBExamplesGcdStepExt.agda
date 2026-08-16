@@ -81,6 +81,7 @@ open import poc.OCP0009.NbEPDirDBExamplesGcdStep
         ; G1; ⊢G1; G1z; ⊢G1z; gcdInn1; ⊢gcdInn1; ⊢gcdBody
         ; G2; ⊢G2; G2z; ⊢G2z; gcdInn2; ⊢gcdInn2 )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
+open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm; ⊢monus )
 
 ------------------------------------------------------------------------
 -- ★ RENAMING-INVARIANCE OF THE STEP.
