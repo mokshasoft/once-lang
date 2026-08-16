@@ -111,6 +111,13 @@ record Machine (E : Emitter) : Set₁ where
     memory : State → (ℕ → Maybe ℕ)
     xhalted : State → Bool
     xpc : State → ℕ
+    -- WHERE AN UNSPILLED RETURN ADDRESS LIVES (plan 0.65 G2, 2026-08-16), and a
+    -- MACHINE field because it is exactly an ABI fact: between a call and the
+    -- callee's body marker the head pending return has not reached its stack
+    -- cell, and each arch says where it is instead — memory on x86-64 (`call`
+    -- pushed it), the link register on RISC-V (`jalr` wrote `ra`). Consumed by
+    -- `CompiledCorr.ret-eq` as `RetAddrs`' per-arch head row.
+    link-claim : State → ℕ → ℕ → Set
     mexecInstr : List Instr → State → Instr → Maybe State
     exec : ℕ → List Instr → State → Maybe State
     exec-zero      : ∀ prog s → exec 0 prog s ≡ just s

@@ -40,7 +40,7 @@ open import Data.Empty using (⊥-elim)
 import Once.CCC.Target.RiscV64.Semantics as R
 open R using (mkstate) renaming (writeReg to rwriteReg)
 open R.State using (memory) renaming (regs to rregs; halted to rhalted)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg)
+open import Once.CCC.Target.RiscV64.Syntax using (Reg; ra)
 open import Once.Adequacy.ArchCorrectness.RiscV64.RegRoles using (riscv64-roles)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1; role-in2; role-scratch; role-count)
@@ -61,6 +61,25 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
 -- The 64-clause `off-role` is riscv64's own — it is a fact about THIS register
 -- file, the same way `skip-law` is a fact about this instruction set.
 ------------------------------------------------------------------------
+------------------------------------------------------------------------
+-- THE LINK REGISTER IS NOT A ROLE (plan 0.65 G2, 2026-08-16), and this is the
+-- honest price of that. `SetsRole.off-role` speaks only about the eight ROLE
+-- registers, so a step that writes one of them says nothing about `ra` — and
+-- `ra` is where riscv64's `link-claim` reads. Mapping `role-link` onto an
+-- existing role to get this free is NOT available: x86-64 has no link register,
+-- and pointing `role-link` at `rsp` there makes `off-role`'s own disjointness
+-- clauses false. So: eight clauses, each `refl`, once.
+ra-off-role : ∀ (s : R.State) (ρ : Role) (v : Word)
+            → R.readReg (rwriteReg (rregs s) (reg-of ρ) v) ra ≡ R.readReg (rregs s) ra
+ra-off-role s role-sp      v = refl
+ra-off-role s role-clos    v = refl
+ra-off-role s role-heap    v = refl
+ra-off-role s role-out     v = refl
+ra-off-role s role-in1     v = refl
+ra-off-role s role-in2     v = refl
+ra-off-role s role-scratch v = refl
+ra-off-role s role-count   v = refl
+
 sets-role-riscv64 : ∀ (s : R.State) (ρ : Role) (v : Word) (p : ℕ)
   → SetsRole s (mkstate (rwriteReg (rregs s) (reg-of ρ) v) (memory s) p (rhalted s)) ρ v
 sets-role-riscv64 s ρ v p = record

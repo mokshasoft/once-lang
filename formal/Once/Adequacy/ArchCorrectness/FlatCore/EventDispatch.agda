@@ -162,6 +162,22 @@ open FlatEventTrace {FS} using (flat-events; flat-events-step; flat-events-fetch
                               ; event-of; flat-events-halted)
 
 ------------------------------------------------------------------------
+-- NO UNSPILLED RETURN AT A CALL OR A RETURN (plan 0.65 G2, 2026-08-16).
+-- `bs-call` and `bs-c-ret` both READ the head return cell, so they need
+-- `ret-eq`'s memory row rather than the arch's link claim — and `flink fs ≡
+-- nothing` is what selects it. `run-link-nothing` derives it from the fetch,
+-- and these are the two clashes it needs: a live link means a BODY MARKER is
+-- fetched, and neither branch fetched one.
+------------------------------------------------------------------------
+call≢thunk : ∀ {ℓ : LabelId} {bb : ℕ}
+           → just instr-call-closure ≡ just (instr-ctrl (c-thunk ℓ bb)) → ⊥
+call≢thunk ()
+
+ret≢thunk : ∀ {b : ℕ} {ℓ : LabelId} {bb : ℕ}
+          → just (instr-ctrl (c-ret b)) ≡ just (instr-ctrl (c-thunk ℓ bb)) → ⊥
+ret≢thunk ()
+
+------------------------------------------------------------------------
 -- ONE parameter: everything an arch supplies, in `Supply`.
 ------------------------------------------------------------------------
 module Dispatch (sup : Supply) where
@@ -470,7 +486,9 @@ module Dispatch (sup : Supply) where
               ccc-step-bs n ev env prog fs s (instr-ctrl (c-ret b))
                 (bs-c-ret bss prog fs s b rpc rest f₀ b₀ frs cc h ftq req
                    (ret-budget-matches prog fs b (inv-run wf) ftq) feq
-                   (ret-no-wrap prog fs s b (inv-run wf) cc ftq))
+                   (ret-no-wrap prog fs s b (inv-run wf) cc ftq)
+                   (run-link-nothing prog fs (inv-run wf)
+                      (λ ℓ bb teq → ret≢thunk (trans (sym ftq) teq))))
                 wf ftq h refl hpost
               where hpost : halted (floc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)) ≡ false
                     hpost rewrite req = h
@@ -507,7 +525,9 @@ module Dispatch (sup : Supply) where
           ccc-step-bs n ev env prog fs s instr-call-closure
             (bs-call bss prog fs s hl ℓ j cc h ftq ceq heq
                (CFC.dom-written (dataCorr cc) (sucHL hl) heq)
-               fteq lo' lo'≤lo front-lo' lo'≤rsp fits)
+               fteq lo' lo'≤lo front-lo' lo'≤rsp fits
+               (run-link-nothing prog fs (inv-run wf)
+                  (λ ℓ bb teq → call≢thunk (trans (sym ftq) teq))))
             wf ftq h refl hpost
           where
             room : CFC.hfront hv + slot-size ≤ rreg s sp-reg

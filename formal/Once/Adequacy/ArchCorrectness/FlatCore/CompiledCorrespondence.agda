@@ -62,6 +62,13 @@ module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
   (rreg : State → Reg → ℕ)
   (memory : State → (ℕ → Maybe ℕ))
   (xhalted : State → Bool)
+  -- WHERE AN UNSPILLED RETURN ADDRESS LIVES (plan 0.65 G2, 2026-08-16). In the
+  -- one-instruction window between a call and the callee's body marker the head
+  -- pending return has not reached its stack cell yet, and where it IS is an ABI
+  -- fact — memory on x86-64, the link register on RISC-V. This is what the
+  -- machine claims there; `ret-eq` hands it to `RetAddrs` as the head row, which
+  -- `FlatState.flink` selects. See `FlatCorrespondence.RetAddrs`.
+  (link-claim : State → ℕ → ℕ → Set)
   -- …and the two things `FlatCorrespondence` does not see: where the machine's
   -- program counter is, and how a compiled program resolves a label. Both are
   -- about the COMPILED program, which is this layer's whole subject.
@@ -84,7 +91,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
   where
 
 open import Once.CCC.Machine.Flat using (module FlatMachine)
-open FlatMachine {FS} using (FlatState; fpc; fret; falloc; fclosure)
+open FlatMachine {FS} using (FlatState; fpc; fret; falloc; fclosure; flink)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open FlatMachine {FS} using (floc; halted; fetch)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-ref; ref-id)
@@ -131,7 +138,8 @@ record CompiledCorr (hv : HeapView) (prog : AbstractTrace)
   field
     dataCorr : FlatCorr hv fs s
     pc-off   : xpc s ≡ blk-off prog (fpc fs)
-    ret-eq   : RetAddrs (blk-off prog) (memory s) (frames-of (falloc fs)) (fret fs)
+    ret-eq   : RetAddrs (blk-off prog) (memory s) (link-claim s) (flink fs)
+                        (frames-of (falloc fs)) (fret fs)
     code-eq  : ∀ (ℓ : LabelId) (j : ℕ)
              → find-label (compile-trace prog) (thunk ℓ) ≡ just j
              → caddr hv ℓ ≡ j
@@ -610,6 +618,11 @@ record BlockSteps : Set₁ where
       → b ≡ frame-slots (falloc fs)
       → saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs
       → rreg s sp-reg + b * slot-size < modulus
+      -- …and NO UNSPILLED RETURN (2026-08-16). A return READS the head cell, so
+      -- it needs `ret-eq`'s memory row rather than the arch's link claim. The
+      -- engine derives this from `run-link-at-thunk`: a live link means the
+      -- fetched instruction is a `c-thunk`, and this branch fetched a `c-ret`.
+      → flink fs ≡ nothing
       → BlockStep hv prog fs s (instr-ctrl (c-ret b))
     ------------------------------------------------------------------
     -- GROUP 4 — THE LAST FIVE, and the record closes at 42.
@@ -665,6 +678,11 @@ record BlockSteps : Set₁ where
       → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
       → lo' ≤ rreg s sp-reg ∸ slot-size
       → slot-size ≤ rreg s sp-reg
+      -- …and NO UNSPILLED RETURN, for the same reason `c-ret` needs it: the
+      -- call PUSHES a new head, so the old head must already be the memory row
+      -- this step preserves. Same engine derivation (this branch fetched a
+      -- `call`, not a `c-thunk`).
+      → flink fs ≡ nothing
       → BlockStepAt hv (descend-view hv lo' lo'≤lo front-lo') prog fs s
                     instr-call-closure
     -- ALLOCATION, the widest field and the one a transcription slip would

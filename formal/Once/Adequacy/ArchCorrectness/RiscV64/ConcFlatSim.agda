@@ -181,6 +181,9 @@ riscv64-machine = record
   { State = R.State ; rreg = λ s r → R.readReg (R.State.regs s) r
   ; memory = R.State.memory
   ; xhalted = R.State.halted ; xpc = R.State.pc
+  -- `jalr` writes the LINK REGISTER and nothing else: until the callee's
+  -- `sd ra` there is no cell to point at, so the claim ignores the address.
+  ; link-claim = FSimr.riscv64-link-claim o FS word-eq
   ; mexecInstr = R.execInstr ; exec = R.exec
   ; exec-zero = r-exec-zero ; exec-halted = r-exec-halted ; exec-end = r-exec-end
   ; exec-stuck = r-exec-stuck ; exec-step-halt = r-exec-step-halt

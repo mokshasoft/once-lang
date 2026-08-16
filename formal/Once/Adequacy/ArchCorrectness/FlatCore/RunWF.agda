@@ -1520,3 +1520,26 @@ run-link-at-thunk prog fs (mkRunAt ir eq hm reach) = go fs reach
             cleared = trans (sym (pres prog fs''))
                             (cong (λ z → flink (flat-exec-instr z prog fs''))
                                   (proj₂ (proj₂ ihr)))
+
+-- …AND THE FORM THE ENGINE ACTUALLY CONSUMES. `bs-call` and `bs-c-ret` need
+-- `flink fs ≡ nothing` — both READ the head return cell, so they need
+-- `ret-eq`'s memory row rather than the arch's link claim — and the engine is
+-- the only layer that can supply it, because it holds the `RunAt`. The
+-- contrapositive of the lemma above at a fetch that is not a body marker.
+--
+-- With-free by the standard aux (`de-with by parameterizing the equation`):
+-- the split is on `flink fs`, which is not a pattern position.
+run-link-nothing-aux : ∀ prog (fs : FlatState) → RunAt prog fs
+                     → (∀ (ℓ : LabelId) (bb : ℕ)
+                          → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk ℓ bb)) → ⊥)
+                     → ∀ (m : Maybe ℕ) → flink fs ≡ m → flink fs ≡ nothing
+run-link-nothing-aux prog fs ra nt nothing  eq = eq
+run-link-nothing-aux prog fs ra nt (just r) eq =
+  ⊥-elim (nt (proj₁ res) (proj₁ (proj₂ res)) (proj₂ (proj₂ res)))
+  where res = run-link-at-thunk prog fs ra eq
+
+run-link-nothing : ∀ prog (fs : FlatState) → RunAt prog fs
+                 → (∀ (ℓ : LabelId) (bb : ℕ)
+                      → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk ℓ bb)) → ⊥)
+                 → flink fs ≡ nothing
+run-link-nothing prog fs ra nt = run-link-nothing-aux prog fs ra nt (flink fs) refl

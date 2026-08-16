@@ -403,6 +403,9 @@ x86-64-machine : EI.Machine FS Reg x86-64-emitter
 x86-64-machine = record
   { State = X.State ; rreg = xrreg ; memory = X.State.memory
   ; xhalted = X.State.halted ; xpc = X.State.pc
+  -- x86-64's `call` PUSHES the return address, so an unspilled return is
+  -- already in its stack cell: the link claim IS the memory claim.
+  ; link-claim = x86-64-link-claim
   ; mexecInstr = X.execInstr ; exec = X.exec
   ; exec-zero = x-exec-zero ; exec-halted = x-exec-halted ; exec-end = x-exec-end
   ; exec-stuck = x-exec-stuck ; exec-step-halt = x-exec-step-halt

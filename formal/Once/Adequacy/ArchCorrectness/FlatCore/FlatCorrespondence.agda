@@ -396,13 +396,85 @@ GapNext : ℕ → List (Frame × ℕ) → Set
 GapNext e []              = ⊤
 GapNext e ((f' , b') ∷ _) = e + slot-size ≡ frame-base f'
 
-RetAddrs : (ℕ → ℕ) → Memory → List (Frame × ℕ) → List ℕ → Set
-RetAddrs xoff mem fr             []       = ⊤
-RetAddrs xoff mem ((f , b) ∷ fr) (r ∷ rs) =
+-- THE HEAD ROW IS PER-ARCH (plan 0.65 G2, 2026-08-16). Between a call and the
+-- callee's body marker the head pending return has not been SPILLED yet, and
+-- where it lives until then is an ABI fact: in memory on x86-64 (`call` pushed
+-- it), in the link register on RISC-V (`jalr` wrote `ra` and touched nothing
+-- else). `FlatState.flink` marks that one-instruction window — `just r` means
+-- "unspilled" — and `LK` is what the arch claims in it.
+--
+--   x86-64   λ a v → readMem (memory s) a ≡ just v   -- ≡ the `nothing` row
+--   riscv64  λ a v → rreg s ra ≡ v                   -- the address is ignored
+--
+-- The recursion passes `nothing`: only the HEAD can be unspilled, because the
+-- call jumps straight to a body marker and that marker spills. Converting the
+-- `just` row into the `nothing` row IS each arch's spill obligation, which is
+-- why this parameter and not a 42-times-owed `CompiledCorr` field (the dead
+-- route, kept in the plan file).
+RetAddrs : (ℕ → ℕ) → Memory → (ℕ → ℕ → Set) → Maybe ℕ
+         → List (Frame × ℕ) → List ℕ → Set
+RetAddrs xoff mem LK lk       fr             []       = ⊤
+RetAddrs xoff mem LK lk       []             (r ∷ rs) = ⊥
+RetAddrs xoff mem LK (just _) ((f , b) ∷ fr) (r ∷ rs) =
+  LK (frame-base f + slots b) (xoff r)
+  × GapNext (frame-base f + slots b) fr
+  × RetAddrs xoff mem LK nothing fr rs
+RetAddrs xoff mem LK nothing  ((f , b) ∷ fr) (r ∷ rs) =
   (readMem mem (frame-base f + slots b) ≡ just (xoff r))
   × GapNext (frame-base f + slots b) fr
-  × RetAddrs xoff mem fr rs
-RetAddrs xoff mem []             (r ∷ rs) = ⊥
+  × RetAddrs xoff mem LK nothing fr rs
+
+-- THE SPILL, AND ITS INVERSE (plan 0.65 G2, 2026-08-16). Converting the head
+-- row is the whole content of the call window, and it is exactly two lemmas:
+--
+--   ret-unlink  `just` → `nothing`: what the BODY MARKER does. The arch owes
+--               "wherever my link claim says the return address is, the stack
+--               cell now holds it" — the identity on x86-64 (`call` pushed it),
+--               the `sd ra` on riscv64.
+--   ret-relink  `nothing` → `just`: what the CALL does. The arch owes the
+--               converse at the cell it just wrote.
+--
+-- Only the head row moves; everything below is already `nothing`.
+ret-unlink : ∀ (xoff : ℕ → ℕ) (mem : Memory) (LK : ℕ → ℕ → Set) (lk : Maybe ℕ)
+               (fr : List (Frame × ℕ)) (rs : List ℕ)
+           → (∀ (a v : ℕ) → LK a v → readMem mem a ≡ just v)
+           → RetAddrs xoff mem LK lk fr rs
+           → RetAddrs xoff mem LK nothing fr rs
+ret-unlink xoff mem LK lk       fr             []       sp r           = tt
+ret-unlink xoff mem LK lk       []             (r ∷ rs) sp ()
+ret-unlink xoff mem LK (just _) ((f , b) ∷ fr) (r ∷ rs) sp (h , g , t) =
+  sp (frame-base f + slots b) (xoff r) h , g , t
+ret-unlink xoff mem LK nothing  ((f , b) ∷ fr) (r ∷ rs) sp (h , g , t) =
+  h , g , t
+
+ret-relink : ∀ (xoff : ℕ → ℕ) (mem : Memory) (LK : ℕ → ℕ → Set) (lk : Maybe ℕ)
+               (fr : List (Frame × ℕ)) (rs : List ℕ)
+           → (∀ (a v : ℕ) → readMem mem a ≡ just v → LK a v)
+           → RetAddrs xoff mem LK nothing fr rs
+           → RetAddrs xoff mem LK lk fr rs
+ret-relink xoff mem LK lk       fr             []       sp r           = tt
+ret-relink xoff mem LK lk       []             (r ∷ rs) sp ()
+ret-relink xoff mem LK (just _) ((f , b) ∷ fr) (r ∷ rs) sp (h , g , t) =
+  sp (frame-base f + slots b) (xoff r) h , g , t
+ret-relink xoff mem LK nothing  ((f , b) ∷ fr) (r ∷ rs) sp (h , g , t) =
+  h , g , t
+
+-- …and RE-STATING THE HEAD ROW AT A NEW STATE, which is what an arch whose
+-- link claim reads a REGISTER owes at every step that writes one. x86-64 never
+-- calls this (its claim is about memory, and a register write leaves memory
+-- alone); riscv64 calls it wherever `ra` is provably untouched.
+ret-relk : ∀ (xoff : ℕ → ℕ) (mem : Memory) (LK LK' : ℕ → ℕ → Set) (lk : Maybe ℕ)
+             (fr : List (Frame × ℕ)) (rs : List ℕ)
+         → (∀ (a v : ℕ) → LK a v → LK' a v)
+         → RetAddrs xoff mem LK lk fr rs
+         → RetAddrs xoff mem LK' lk fr rs
+ret-relk xoff mem LK LK' lk       fr             []       tr r           = tt
+ret-relk xoff mem LK LK' lk       []             (r ∷ rs) tr ()
+ret-relk xoff mem LK LK' (just _) ((f , b) ∷ fr) (r ∷ rs) tr (h , g , t) =
+  tr (frame-base f + slots b) (xoff r) h , g
+  , ret-relk xoff mem LK LK' nothing fr rs tr t
+ret-relk xoff mem LK LK' nothing  ((f , b) ∷ fr) (r ∷ rs) tr (h , g , t) =
+  h , g , ret-relk xoff mem LK LK' nothing fr rs tr t
 
 -- RE-ANCHORING THE HEAD (D093). The pending return at the head of `fret` is
 -- addressed by the CURRENT frame's window END, and a body entry MOVES that
@@ -410,13 +482,18 @@ RetAddrs xoff mem []             (r ∷ rs) = ⊥
 -- end therefore lands on the same cell (that is D086's whole point: the call's
 -- slot sits just above the body's frame), and this is the transport that says
 -- so. Everything below the head is untouched.
-ret-head : ∀ (xoff : ℕ → ℕ) (mem : Memory) (f f' : Frame) (b b' : ℕ)
+ret-head : ∀ (xoff : ℕ → ℕ) (mem : Memory) (LK : ℕ → ℕ → Set) (lk : Maybe ℕ)
+             (f f' : Frame) (b b' : ℕ)
              (fr : List (Frame × ℕ)) (rs : List ℕ)
          → frame-base f' + slots b' ≡ frame-base f + slots b
-         → RetAddrs xoff mem ((f , b) ∷ fr) rs
-         → RetAddrs xoff mem ((f' , b') ∷ fr) rs
-ret-head xoff mem f f' b b' fr []       eq r           = tt
-ret-head xoff mem f f' b b' fr (r ∷ rs) eq (h , g , t) =
+         → RetAddrs xoff mem LK lk ((f , b) ∷ fr) rs
+         → RetAddrs xoff mem LK lk ((f' , b') ∷ fr) rs
+ret-head xoff mem LK lk       f f' b b' fr []       eq r           = tt
+ret-head xoff mem LK (just _) f f' b b' fr (r ∷ rs) eq (h , g , t) =
+  subst (λ a → LK a (xoff r)) (sym eq) h
+  , subst (λ e → GapNext e fr) (sym eq) g
+  , t
+ret-head xoff mem LK nothing  f f' b b' fr (r ∷ rs) eq (h , g , t) =
   subst (λ a → readMem mem a ≡ just (xoff r)) (sym eq) h
   , subst (λ e → GapNext e fr) (sym eq) g
   , t
@@ -2355,18 +2432,35 @@ sim-store-indirect-suc-stack {hv} k fs s s' corr i-eq sk<b disj sm =
 --
 -- (1) A change confined BELOW the floor — every heap store, since a live heap
 -- cell is under `hfront ≤ lo ≤ %rsp`.
-ret-agree-above : ∀ (xoff : ℕ → ℕ) {am : AddrMap} (mem mem' : Memory) (stk : StackMem FS)
+--
+-- THE HEAD ROW TRAVELS BY ITS OWN PREMISE (2026-08-16). When `lk` is `just`
+-- the head claim is the ARCH's, not a memory read, so the memory agreement
+-- says nothing about it and a second premise carries it — guarded by the same
+-- `fl ≤ a` the memory one uses, since the head cell is at or above the floor.
+-- x86-64 discharges it from `ag` itself (its `LK` IS the memory read); riscv64
+-- from a register-preservation fact, ignoring the address.
+ret-agree-above : ∀ (xoff : ℕ → ℕ) {am : AddrMap} (mem mem' : Memory)
+                    (LK LK' : ℕ → ℕ → Set) (lk : Maybe ℕ) (stk : StackMem FS)
                     (fl : ℕ) (fr : List (Frame × ℕ)) (rs : List ℕ)
                 → (∀ (a : ℕ) → fl ≤ a → readMem mem' a ≡ readMem mem a)
+                → (∀ (a v : ℕ) → fl ≤ a → LK a v → LK' a v)
                 → StackWindows am mem stk fl fr
-                → RetAddrs xoff mem fr rs → RetAddrs xoff mem' fr rs
-ret-agree-above xoff mem mem' stk fl fr             []       ag sw r = tt
-ret-agree-above xoff mem mem' stk fl []             (x ∷ rs) ag sw ()
-ret-agree-above xoff mem mem' stk fl ((f , b) ∷ fr) (x ∷ rs) ag (bd , win , rest) (h , g , t) =
+                → RetAddrs xoff mem LK lk fr rs → RetAddrs xoff mem' LK' lk fr rs
+ret-agree-above xoff mem mem' LK LK' lk       stk fl fr             []       ag lag sw r = tt
+ret-agree-above xoff mem mem' LK LK' lk       stk fl []             (x ∷ rs) ag lag sw ()
+ret-agree-above xoff mem mem' LK LK' (just _) stk fl ((f , b) ∷ fr) (x ∷ rs) ag lag (bd , win , rest) (h , g , t) =
+  lag (frame-base f + slots b) (xoff x) (≤-trans bd (m≤m+n (frame-base f) (slots b))) h
+  , g
+  , ret-agree-above xoff mem mem' LK LK' nothing stk (frame-base f + slots b) fr rs
+      (λ a le → ag a (≤-trans (≤-trans bd (m≤m+n (frame-base f) (slots b))) le))
+      (λ a v le → lag a v (≤-trans (≤-trans bd (m≤m+n (frame-base f) (slots b))) le))
+      rest t
+ret-agree-above xoff mem mem' LK LK' nothing  stk fl ((f , b) ∷ fr) (x ∷ rs) ag lag (bd , win , rest) (h , g , t) =
   trans (ag (frame-base f + slots b) (≤-trans bd (m≤m+n (frame-base f) (slots b)))) h
   , g
-  , ret-agree-above xoff mem mem' stk (frame-base f + slots b) fr rs
+  , ret-agree-above xoff mem mem' LK LK' nothing stk (frame-base f + slots b) fr rs
       (λ a le → ag a (≤-trans (≤-trans bd (m≤m+n (frame-base f) (slots b))) le))
+      (λ a v le → lag a v (≤-trans (≤-trans bd (m≤m+n (frame-base f) (slots b))) le))
       rest t
 
 -- (2) A write INSIDE the current frame's window — every stack store, whose
@@ -2374,17 +2468,27 @@ ret-agree-above xoff mem mem' stk fl ((f , b) ∷ fr) (x ∷ rs) ag (bd , win , 
 -- head's own cell is the window END, strictly above the write; everything
 -- older is above that end by the floor thread. This is the D086 gap doing its
 -- job: the return address sits in it, and nothing the frame writes can reach.
-ret-write-in-frame : ∀ (xoff : ℕ → ℕ) {am : AddrMap} (mem : Memory) (stk : StackMem FS)
+ret-write-in-frame : ∀ (xoff : ℕ → ℕ) {am : AddrMap} (mem : Memory)
+                       (LK LK' : ℕ → ℕ → Set) (lk : Maybe ℕ) (stk : StackMem FS)
                        (a : ℕ) (v : Word) (fl : ℕ) (f : Frame) (b : ℕ)
                        (fr : List (Frame × ℕ)) (rs : List ℕ)
                    → a < frame-base f + slots b
+                   → (∀ (c w : ℕ) → a < c → LK c w → LK' c w)
                    → StackWindows am mem stk fl ((f , b) ∷ fr)
-                   → RetAddrs xoff mem ((f , b) ∷ fr) rs
-                   → RetAddrs xoff (writeMem mem a v) ((f , b) ∷ fr) rs
-ret-write-in-frame xoff mem stk a v fl f b fr []       lt sw r = tt
-ret-write-in-frame xoff {am} mem stk a v fl f b fr (x ∷ rs) lt (bd , win , rest) (h , g , t) =
+                   → RetAddrs xoff mem LK lk ((f , b) ∷ fr) rs
+                   → RetAddrs xoff (writeMem mem a v) LK' lk ((f , b) ∷ fr) rs
+ret-write-in-frame xoff mem LK LK' lk       stk a v fl f b fr []       lt lag sw r = tt
+ret-write-in-frame xoff {am} mem LK LK' (just _) stk a v fl f b fr (x ∷ rs) lt lag (bd , win , rest) (h , g , t) =
+  lag (frame-base f + slots b) (xoff x) lt h
+  , g
+  , ret-agree-above xoff mem (writeMem mem a v) LK LK' nothing stk (frame-base f + slots b) fr rs
+      (λ c le → read-write-miss mem a v c (λ eq → <⇒≢ (<-transˡ lt le) (sym eq)))
+      (λ c w le → lag c w (<-transˡ lt le))
+      rest t
+ret-write-in-frame xoff {am} mem LK LK' nothing stk a v fl f b fr (x ∷ rs) lt lag (bd , win , rest) (h , g , t) =
   trans (read-write-miss mem a v (frame-base f + slots b) (λ eq → <⇒≢ lt (sym eq))) h
   , g
-  , ret-agree-above xoff mem (writeMem mem a v) stk (frame-base f + slots b) fr rs
+  , ret-agree-above xoff mem (writeMem mem a v) LK LK' nothing stk (frame-base f + slots b) fr rs
       (λ c le → read-write-miss mem a v c (λ eq → <⇒≢ (<-transˡ lt le) (sym eq)))
+      (λ c w le → lag c w (<-transˡ lt le))
       rest t

@@ -7498,3 +7498,89 @@ Corollary for plan 0.65's method note: "field shapes come from the ENGINE's
 call site" is right, but the engine's call site is itself a choice. When an arch
 has to invent a bound to fill a field, check what the engine COULD have passed
 and did not — here `FlatInv` had the `RunAt` all along.
+
+## D105: The Call Window's Head Row Is PER-ARCH — `RetAddrs` Takes the Claim, Not `CompiledCorr` a Field
+
+**Date**: 2026-08-16 · **Status**: Landed · **Plan**: 0.65 (G2)
+
+### The window
+
+D086 gives the CALL the return-address slot, and D093 says every pending return
+in `fret` is really in memory at its frame's window end. Both are true on
+x86-64 at every instruction boundary, because `call` pushes the address in
+hardware. On RISC-V they are not: `jalr` writes `ra` and touches neither `sp`
+nor memory, so between the call and the callee's `sd ra` the head pending
+return has no cell at all.
+
+The `sp` half of that was an EMITTER problem and is closed (`0338648e`: the
+caller reserves its own slot with an `addi`). What is left is irreducible — for
+one whole abstract instruction the return address lives in a register on one
+arch and in memory on the other — and `FlatState.flink : Maybe ℕ` marks it.
+
+### The route that does not work, and why it is inviting
+
+The obvious move is a new `CompiledCorr` field:
+
+    link-eq : ∀ r → flink fs ≡ just r → link-corr s (blk-off prog r)
+
+with a `flink fs ≡ nothing` premise on the other 41 block-steps, each
+discharged `λ r ()`. It fails twice. All 42 fields owe the new field WHATEVER
+premise they carry — that is what a record means — and on x86-64 the
+preservation claim is not even true in general: a `store-at-slot 0` writes at
+`%rsp`, which is exactly where its link lives. The engine cannot rescue it
+either: `FlatInv` is abstract-side only, and the concrete state lives in
+`events-agree`'s arguments, so a fact about `s` has nowhere else to live.
+
+### What works: the row itself is the parameter
+
+`RetAddrs` takes the arch's claim and selects on `flink`:
+
+    RetAddrs xoff mem LK (just _) ((f,b) ∷ fr) (r ∷ rs) =
+      LK (frame-base f + slots b) (xoff r) × GapNext … × RetAddrs … nothing fr rs
+    RetAddrs xoff mem LK nothing  ((f,b) ∷ fr) (r ∷ rs) =
+      (readMem mem (frame-base f + slots b) ≡ just (xoff r)) × GapNext … × …
+
+`CompiledCorr.ret-eq` passes `link-claim s`, a new `EI.Machine` field —
+a MACHINE owes it, because it is an ABI fact:
+
+    x86-64    λ s a v → readMem (memory s) a ≡ just v   -- ≡ its `nothing` row
+    riscv64    λ s a v → rreg s ra ≡ v                  -- the address is ignored
+
+The recursion passes `nothing` because only the head can be unspilled: a call
+jumps straight to a body marker, and the marker spills. So the whole ABI
+difference is the HEAD ROW CONVERSION, and that is two lemmas —
+`ret-unlink` (`just`→`nothing`, what the marker does) and `ret-relink`
+(`nothing`→`just`, what the call does). x86-64 discharges both with
+`λ _ _ p → p`; riscv64's `ret-unlink` will be its `sd ra`.
+
+### What it cost, measured
+
+x86-64's ~21 `ret-eq` sites did not move at all, and that is not luck: a
+post-state is a RECORD UPDATE, so a register write leaves `memory` literally
+alone and the claim rides along. riscv64's sites did not move either, for the
+mirror reason — a write to a CONCRETE register leaves `ra` alone by
+computation. Only the two helpers polymorphic in the register
+(`block-step-mv`, `block-step-li`) cannot see that, and they take a one-line
+premise that is `refl` at all nine callers.
+
+Two block-steps DO need a premise, and it is a genuine one: `bs-call` and
+`bs-c-ret` both READ the head cell, so they need the memory row rather than the
+link claim. `flink fs ≡ nothing` is what selects it, and the engine derives it
+from `run-link-at-thunk` (a live link ⇒ the fetched instruction is a
+`c-thunk`) against its own fetch. That is the lemma's whole job — it does NOT
+save the block-steps, and the dead route above is why that is worth saying.
+
+### The general lesson
+
+**When two targets disagree about WHERE a fact lives rather than WHETHER it
+holds, parameterise the fact's own statement, not the record that carries it.**
+A field is owed by every member of a record; a parameter of the predicate is
+owed once, at the place the two arches actually differ. The tell that the field
+route was wrong was its arithmetic: one field × 42 members × 2 arches, against
+one parameter × 2 arches.
+
+Corollary, from the same session: state a transport between CLAIMS
+(`∀ a v → LK a v → LK' a v`), not between STATES
+(`link-claim s → link-claim s'`). The first leaves plain metas the expected
+type solves; the second asks the unifier to unfold a definition, and it does
+not.

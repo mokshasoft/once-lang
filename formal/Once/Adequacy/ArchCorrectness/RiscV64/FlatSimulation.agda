@@ -51,7 +51,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.CCC.Machine.SMCore
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open import Once.CCC.Machine.Flat
-open FlatMachine {FS} using (FlatState; fpc; fret; falloc; floc; halted; flat-exec-instr; fetch; find-label; tag-zf; flat-read-tag; flat-read-at; sv-is-zero; sv-as-loc)
+open FlatMachine {FS} using (FlatState; fpc; fret; flink; falloc; floc; halted; flat-exec-instr; fetch; find-label; tag-zf; flat-read-tag; flat-read-at; sv-is-zero; sv-as-loc; flink-do-ret)
 open import Once.CCC.Label using (once; thunk; LabelId)
 
 import Once.CCC.Target.RiscV64.Semantics as R
@@ -62,7 +62,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS
   using (blk-off; blk-len; blk-off-suc; fetch-block-head; fetch-block-2nd; find-label-corr)
 open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
   using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-lla; step-j-found; step-beq-taken; step-beq-not)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; lla; beq; j; a0; a1; t0; t1; s1; s2; s3; s4; sp; zero; slots)
+open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; lla; beq; j; a0; a1; t0; t1; s1; s2; s3; s4; sp; ra; zero; slots)
 import Data.Integer as ℤ
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (role-sp; role-clos; role-heap; role-out; role-in1; role-in2; role-scratch; role-count)
@@ -89,11 +89,36 @@ open R.State using () renaming (halted to rhalted)
 rreg' : R.State → Reg → ℕ
 rreg' s r = R.readReg (R.State.regs s) r
 
+-- WHERE AN UNSPILLED RETURN LIVES ON riscv64: IN A REGISTER (plan 0.65 G2).
+-- `jalr` writes `ra` and touches neither the stack pointer nor memory, so
+-- between a call and the callee's `sd ra` the head pending return has no cell
+-- at all. The ADDRESS argument is therefore ignored — that asymmetry with
+-- x86-64 (whose claim reads the very cell the address names) is the ABI
+-- difference this whole parameter exists to carry.
+riscv64-link-claim : R.State → ℕ → ℕ → Set
+riscv64-link-claim s _ v = rreg' s ra ≡ v
+
 open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
        o FS rv-slot-size word-eq Reg riscv64-roles R.State rreg' R.State.memory rhalted
+       riscv64-link-claim
        R.State.pc Program compile-trace R.find-label blk-off blk-len R.exec
        R.W.modulus
   public
+
+-- …and its price: a register claim must be RE-STATED at every post-state, where
+-- x86-64's memory claim rides along for free on a register write. One line per
+-- site, `refl` whenever the written register is concrete (the register file is
+-- a record, so `readReg (writeReg rf dst v) ra` computes).
+-- Stated as an IMPLICATION BETWEEN CLAIMS rather than between states: `LK`/`LK'`
+-- are then plain metas that the expected type solves outright, where
+-- `riscv64-link-claim ?s` would need the unifier to unfold a definition.
+ret-ra : ∀ {xoff : ℕ → ℕ} {mem : C.Memory} {LK LK' : ℕ → ℕ → Set} {lk : Maybe ℕ}
+           {fr : List (FrameSemantics.Frame FS × ℕ)} {rs : List ℕ}
+       → (∀ (a v : ℕ) → LK a v → LK' a v)
+       → C.RetAddrs xoff mem LK lk fr rs
+       → C.RetAddrs xoff mem LK' lk fr rs
+ret-ra {xoff} {mem} {LK} {LK'} {lk} {fr} {rs} tr =
+  C.ret-relk xoff mem LK LK' lk fr rs tr
 
 ------------------------------------------------------------------------
 -- THE RETURN PICTURE IS UNTOUCHED (D093), same statement as x86-64's: the
@@ -106,14 +131,15 @@ RetSame : AbstractTrace → FlatState → AbstractInstr → Set
 RetSame prog fs i =
   (C.frames-of (falloc (flat-exec-instr i prog fs)) ≡ C.frames-of (falloc fs))
   × (fret (flat-exec-instr i prog fs) ≡ fret fs)
+  × (flink (flat-exec-instr i prog fs) ≡ flink fs)
 
 ret-same : ∀ (prog : AbstractTrace) (fs : FlatState) (i : AbstractInstr)
-             (mem : C.Memory) (rs : RetSame prog fs i)
-         → C.RetAddrs (blk-off prog) mem (C.frames-of (falloc fs)) (fret fs)
-         → C.RetAddrs (blk-off prog) mem
+             (mem : C.Memory) {LK : ℕ → ℕ → Set} (rs : RetSame prog fs i)
+         → C.RetAddrs (blk-off prog) mem LK (flink fs) (C.frames-of (falloc fs)) (fret fs)
+         → C.RetAddrs (blk-off prog) mem LK (flink (flat-exec-instr i prog fs))
                       (C.frames-of (falloc (flat-exec-instr i prog fs)))
                       (fret (flat-exec-instr i prog fs))
-ret-same prog fs i _ (fr-eq , rt-eq) r rewrite fr-eq | rt-eq = r
+ret-same prog fs i _ (fr-eq , rt-eq , fl-eq) r rewrite fr-eq | rt-eq | fl-eq = r
 
 ------------------------------------------------------------------------
 -- ONE ABSTRACT STEP ↔ ITS COMPILED BLOCK.
@@ -134,13 +160,18 @@ block-step-mv : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s :
   → compile-abstract i ≡ mv dst src ∷ []
   → fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)
   → RetSame prog fs i
+  -- …AND THE LINK REGISTER IS NOT `dst` (plan 0.65 G2). riscv64's head-row
+  -- claim reads `ra`, so a register write has to say it missed it. `refl` at
+  -- every caller — `dst` is concrete there and the register file is a record.
+  → R.readReg (R.writeReg (R.State.regs s) dst (R.readReg (R.State.regs s) src)) ra
+    ≡ R.readReg (R.State.regs s) ra
   → C.FlatCorr hv (flat-exec-instr i prog fs)
                (record s { regs = R.writeReg (R.State.regs s) dst (R.readReg (R.State.regs s) src)
                          ; pc = R.State.pc s + 1 })
   → BlockStep hv prog fs s i
-block-step-mv {hv} prog fs s i dst src cc h-flat ft ca fpc-eq rsame dataPost =
+block-step-mv {hv} prog fs s i dst src cc h-flat ft ca fpc-eq rsame ra-keep dataPost =
   post , exec-eq-len , record { dataCorr = dataPost ; pc-off = pco'
-                              ; ret-eq = ret-same prog fs i (R.State.memory s) rsame (ret-eq cc)
+                              ; ret-eq = ret-ra (λ a v p → trans ra-keep p) (ret-same prog fs i (R.State.memory s) rsame (ret-eq cc))
                               ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -170,25 +201,25 @@ block-step-mv {hv} prog fs s i dst src cc h-flat ft ca fpc-eq rsame dataPost =
 block-step-mov-to-output : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-to-output → BlockStep hv prog fs s mov-to-output
 block-step-mov-to-output {hv} prog fs s cc h ft =
-  block-step-mv prog fs s mov-to-output a0 t0 cc h ft refl refl (refl , refl)
+  block-step-mv prog fs s mov-to-output a0 t0 cc h ft refl refl (refl , refl , refl) refl
     (C.sim-mov-to-output fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-out _ _))
 
 block-step-mov-to-input : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-to-input → BlockStep hv prog fs s mov-to-input
 block-step-mov-to-input {hv} prog fs s cc h ft =
-  block-step-mv prog fs s mov-to-input t0 a0 cc h ft refl refl (refl , refl)
+  block-step-mv prog fs s mov-to-input t0 a0 cc h ft refl refl (refl , refl , refl) refl
     (C.sim-mov-to-input fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-in1 _ _))
 
 block-step-mov-input2-to-output : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-input2-to-output → BlockStep hv prog fs s mov-input2-to-output
 block-step-mov-input2-to-output {hv} prog fs s cc h ft =
-  block-step-mv prog fs s mov-input2-to-output a0 a1 cc h ft refl refl (refl , refl)
+  block-step-mv prog fs s mov-input2-to-output a0 a1 cc h ft refl refl (refl , refl , refl) refl
     (C.sim-mov-input2-to-output fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-out _ _))
 
 block-step-mov-output-to-input2 : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-output-to-input2 → BlockStep hv prog fs s mov-output-to-input2
 block-step-mov-output-to-input2 {hv} prog fs s cc h ft =
-  block-step-mv prog fs s mov-output-to-input2 a1 a0 cc h ft refl refl (refl , refl)
+  block-step-mv prog fs s mov-output-to-input2 a1 a0 cc h ft refl refl (refl , refl , refl) refl
     (C.sim-mov-output-to-input2 fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-in2 _ _))
 
 -- …and `scratch-load-count`, the fifth `mv`.
@@ -196,7 +227,7 @@ block-step-scratch-load-count : ∀ {hv : HeapView} prog fs s → CompiledCorr h
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-load-count)
   → BlockStep hv prog fs s (instr-reg-op scratch-load-count)
 block-step-scratch-load-count {hv} prog fs s cc h ft =
-  block-step-mv prog fs s (instr-reg-op scratch-load-count) s3 s4 cc h ft refl refl (refl , refl)
+  block-step-mv prog fs s (instr-reg-op scratch-load-count) s3 s4 cc h ft refl refl (refl , refl , refl) refl
     (C.sim-reg-scratch-load-count fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-scratch _ _))
 
 ------------------------------------------------------------------------
@@ -219,13 +250,16 @@ block-step-li : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s :
   → n < R.W.modulus
   → fpc (flat-exec-instr i prog fs) ≡ suc (fpc fs)
   → RetSame prog fs i
+  -- …and the link register is not `dst`, as at `block-step-mv`.
+  → R.readReg (R.writeReg (R.State.regs s) dst (R.offsetToℕ (ℤ.+ n))) ra
+    ≡ R.readReg (R.State.regs s) ra
   → C.FlatCorr hv (flat-exec-instr i prog fs)
                (record s { regs = R.writeReg (R.State.regs s) dst (R.offsetToℕ (ℤ.+ n))
                          ; pc = R.State.pc s + 1 })
   → BlockStep hv prog fs s i
-block-step-li {hv} prog fs s i dst n cc h-flat ft ca fits fpc-eq rsame dataPost =
+block-step-li {hv} prog fs s i dst n cc h-flat ft ca fits fpc-eq rsame ra-keep dataPost =
   post , exec-eq-len , record { dataCorr = dataPost ; pc-off = pco'
-                              ; ret-eq = ret-same prog fs i (R.State.memory s) rsame (ret-eq cc)
+                              ; ret-eq = ret-ra (λ a v p → trans ra-keep p) (ret-same prog fs i (R.State.memory s) rsame (ret-eq cc))
                               ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -260,28 +294,28 @@ block-step-load-tag-lit : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv pr
   → fetch prog (fpc fs) ≡ just (instr-load-tag-lit n) → n < R.W.modulus
   → BlockStep hv prog fs s (instr-load-tag-lit n)
 block-step-load-tag-lit {hv} prog fs s n cc h ft fits =
-  block-step-li prog fs s (instr-load-tag-lit n) a0 n cc h ft refl fits refl (refl , refl)
+  block-step-li prog fs s (instr-load-tag-lit n) a0 n cc h ft refl fits refl (refl , refl , refl) refl
     (C.sim-load-tag-lit n fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-out _ _))
 
 block-step-scratch-one : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-one)
   → BlockStep hv prog fs s (instr-reg-op scratch-one)
 block-step-scratch-one {hv} prog fs s cc h ft =
-  block-step-li prog fs s (instr-reg-op scratch-one) s3 1 cc h ft refl (R.W.1<modulus (s≤s z≤n)) refl (refl , refl)
+  block-step-li prog fs s (instr-reg-op scratch-one) s3 1 cc h ft refl (R.W.1<modulus (s≤s z≤n)) refl (refl , refl , refl) refl
     (C.sim-reg-scratch-one fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-scratch _ _))
 
 block-step-scratch-zero : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-zero)
   → BlockStep hv prog fs s (instr-reg-op scratch-zero)
 block-step-scratch-zero {hv} prog fs s cc h ft =
-  block-step-li prog fs s (instr-reg-op scratch-zero) s3 0 cc h ft refl R.W.0<modulus refl (refl , refl)
+  block-step-li prog fs s (instr-reg-op scratch-zero) s3 0 cc h ft refl R.W.0<modulus refl (refl , refl , refl) refl
     (C.sim-reg-scratch-zero fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-scratch _ _))
 
 block-step-count-zero : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op count-zero)
   → BlockStep hv prog fs s (instr-reg-op count-zero)
 block-step-count-zero {hv} prog fs s cc h ft =
-  block-step-li prog fs s (instr-reg-op count-zero) s4 0 cc h ft refl R.W.0<modulus refl (refl , refl)
+  block-step-li prog fs s (instr-reg-op count-zero) s4 0 cc h ft refl R.W.0<modulus refl (refl , refl , refl) refl
     (C.sim-reg-count-zero fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-count _ _))
 
 ------------------------------------------------------------------------
@@ -348,13 +382,18 @@ ret-slot-store : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s 
                → C.RetAddrs (blk-off prog)
                    (R.writeMem (R.State.memory s)
                       (R.readReg (R.State.regs s) sp + slot-to-disp slot) v)
+                   (riscv64-link-claim s) (flink fs)
                    (C.frames-of (falloc fs)) (fret fs)
 ret-slot-store {hv} prog fs s slot v cc slot<b =
-  C.ret-write-in-frame (blk-off prog) (R.State.memory s) (stackMem (floc fs))
+  C.ret-write-in-frame (blk-off prog) (R.State.memory s)
+    (riscv64-link-claim s) (riscv64-link-claim s) (flink fs) (stackMem (floc fs))
     (R.readReg (R.State.regs s) sp + slot-to-disp slot) v (C.lo hv)
     (current-frame (falloc fs)) (frame-slots (falloc fs))
     (saved-frames (falloc fs)) (fret fs)
-    w<end (C.stack-eq (dataCorr cc)) (ret-eq cc)
+    w<end
+    -- the head row is a REGISTER claim: a memory write cannot touch it
+    (λ c w lt p → p)
+    (C.stack-eq (dataCorr cc)) (ret-eq cc)
   where
     w<end : R.readReg (R.State.regs s) sp + slot-to-disp slot
           < frame-base FS (current-frame (falloc fs)) + slots (frame-slots (falloc fs))
@@ -370,8 +409,8 @@ block-step-load-from-slot : ∀ {hv : HeapView} prog fs s slot w → CompiledCor
   → BlockStep hv prog fs s (load-from-slot slot)
 block-step-load-from-slot {hv} prog fs s slot w cc h ft slot<ns st-eq =
   post , exec-eq , record { dataCorr = C.sim-load-from-slot slot w fs s _ dc st-eq (C.sets-role-riscv64 s role-out _ _) ; pc-off = pco'
-                          ; ret-eq = ret-same prog fs (load-from-slot slot) (R.State.memory s)
-                                       (elfs-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl) (ret-eq cc)
+                          ; ret-eq = (ret-same prog fs (load-from-slot slot) (R.State.memory s)
+                                       (elfs-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl , refl) (ret-eq cc))
                           ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -404,7 +443,7 @@ block-step-store-at-slot : ∀ {hv : HeapView} prog fs s slot → CompiledCorr h
   → BlockStep hv prog fs s (store-at-slot slot)
 block-step-store-at-slot {hv} prog fs s slot cc h ft slot<ns disj =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
-                          ; ret-eq = ret-slot-store prog fs s slot _ cc slot<ns
+                          ; ret-eq = (ret-slot-store prog fs s slot _ cc slot<ns)
                           ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -512,7 +551,7 @@ block-step-load-const : ∀ {hv : HeapView} prog fs s (v : Carrier) → Compiled
   → v < R.W.modulus
   → BlockStep hv prog fs s (instr-load-const fits-int v)
 block-step-load-const {hv} prog fs s v cc h ft fits =
-  block-step-li prog fs s (instr-load-const fits-int v) a0 v cc h ft refl fits refl (refl , refl)
+  block-step-li prog fs s (instr-load-const fits-int v) a0 v cc h ft refl fits refl (refl , refl , refl) refl
     (C.sim-load-const v fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-out _ _))
 
 -- load-code-addr: Output := SV-Code n ↔ `lla a0, .L_thunk_n`. D103's FIRST
@@ -634,7 +673,7 @@ block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : AgdaFloat) → 
   → float-bits v < R.W.modulus
   → BlockStep hv prog fs s (instr-load-const fits-float v)
 block-step-load-const-float {hv} prog fs s v cc h ft fits =
-  block-step-li prog fs s (instr-load-const fits-float v) a0 (float-bits v) cc h ft refl fits refl (refl , refl)
+  block-step-li prog fs s (instr-load-const fits-float v) a0 (float-bits v) cc h ft refl fits refl (refl , refl , refl) refl
     (C.sim-load-const-float v fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-out _ _))
 
 ------------------------------------------------------------------------
@@ -654,11 +693,14 @@ ret-heap-store : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s 
                → CompiledCorr hv prog fs s
                → a < C.lo hv
                → C.RetAddrs (blk-off prog) (R.writeMem (R.State.memory s) a v)
+                            (riscv64-link-claim s) (flink fs)
                             (C.frames-of (falloc fs)) (fret fs)
 ret-heap-store {hv} prog fs s a v cc a<lo =
   C.ret-agree-above (blk-off prog) (R.State.memory s) (R.writeMem (R.State.memory s) a v)
+    (riscv64-link-claim s) (riscv64-link-claim s) (flink fs)
     (stackMem (floc fs)) (C.lo hv) (C.frames-of (falloc fs)) (fret fs)
     (λ c le → C.read-write-miss (R.State.memory s) a v c (λ eq → <⇒≢ (<-transˡ a<lo le) (sym eq)))
+    (λ c w le p → p)
     (C.stack-eq (dataCorr cc)) (ret-eq cc)
 
 -- load-indirect: Output := *Input1 ↔ `ld a0, 0(t0)`.
@@ -743,6 +785,7 @@ block-step-store-indirect : ∀ {hv : HeapView} prog fs s hl → CompiledCorr hv
 block-step-store-indirect {hv} prog fs s hl cc h ft i-eq live-hl guard =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
                           ; ret-eq = subst (λ m → C.RetAddrs (blk-off prog) m
+                                                    (riscv64-link-claim s) (flink fs)
                                                     (C.frames-of (falloc fs)) (fret fs))
                                            (cong₂ (R.writeMem (R.State.memory s)) (sym addr-eq) refl)
                                            (ret-heap-store prog fs s (haddr hv hl) _ cc
@@ -792,6 +835,7 @@ block-step-store-indirect-suc : ∀ {hv : HeapView} prog fs s hl → CompiledCor
 block-step-store-indirect-suc {hv} prog fs s hl cc h ft i-eq live-shl guard =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
                           ; ret-eq = subst (λ m → C.RetAddrs (blk-off prog) m
+                                                    (riscv64-link-claim s) (flink fs)
                                                     (C.frames-of (falloc fs)) (fret fs))
                                            (cong₂ (R.writeMem (R.State.memory s)) (sym addr-eq) refl)
                                            (ret-heap-store prog fs s (haddr hv (sucHL hl)) _ cc
@@ -849,8 +893,8 @@ block-step-restore-input : ∀ {hv : HeapView} prog fs s slot w → CompiledCorr
   → BlockStep hv prog fs s (restore-input slot)
 block-step-restore-input {hv} prog fs s slot w cc h ft slot<ns st-eq =
   post , exec-eq , record { dataCorr = C.sim-restore-input slot w fs s _ dc st-eq (C.sets-role-riscv64 s role-in1 _ _) ; pc-off = pco'
-                          ; ret-eq = ret-same prog fs (restore-input slot) (R.State.memory s)
-                                       (eris-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl) (ret-eq cc)
+                          ; ret-eq = (ret-same prog fs (restore-input slot) (R.State.memory s)
+                                       (eris-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl , refl) (ret-eq cc))
                           ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -879,7 +923,7 @@ block-step-save-closure-reg : ∀ {hv : HeapView} prog fs s → CompiledCorr hv 
   → fetch prog (fpc fs) ≡ just instr-save-closure-reg
   → BlockStep hv prog fs s instr-save-closure-reg
 block-step-save-closure-reg {hv} prog fs s cc h ft =
-  block-step-mv prog fs s instr-save-closure-reg s1 t0 cc h ft refl refl (refl , refl)
+  block-step-mv prog fs s instr-save-closure-reg s1 t0 cc h ft refl refl (refl , refl , refl) refl
     (C.sim-save-closure-reg fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-clos _ _))
 
 -- reclaim-to: EMITS NOTHING on either arch — it changes `next-slot`, not
@@ -949,7 +993,7 @@ block-step-worklist-push : ∀ {hv : HeapView} prog fs s slot → CompiledCorr h
   → BlockStep hv prog fs s (worklist-push slot)
 block-step-worklist-push {hv} prog fs s slot cc h ft slot<ns disj =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
-                          ; ret-eq = ret-slot-store prog fs s slot _ cc slot<ns
+                          ; ret-eq = (ret-slot-store prog fs s slot _ cc slot<ns)
                           ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -993,8 +1037,8 @@ block-step-worklist-pop : ∀ {hv : HeapView} prog fs s slot w → CompiledCorr 
   → BlockStep hv prog fs s (worklist-pop slot)
 block-step-worklist-pop {hv} prog fs s slot w cc h ft slot<ns st-eq =
   post , exec-eq , record { dataCorr = C.sim-load-from-slot slot w fs s _ dc st-eq (C.sets-role-riscv64 s role-out _ _) ; pc-off = pco'
-                          ; ret-eq = ret-same prog fs (load-from-slot slot) (R.State.memory s)
-                                       (elfs-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl) (ret-eq cc)
+                          ; ret-eq = (ret-same prog fs (load-from-slot slot) (R.State.memory s)
+                                       (elfs-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl , refl) (ret-eq cc))
                           ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -1335,7 +1379,7 @@ block-step-store-indirect-stack : ∀ {hv : HeapView} prog fs s f k → Compiled
   → BlockStep hv prog fs s store-indirect
 block-step-store-indirect-stack {hv} prog fs s f k cc h ft i-eq f-eq k<ns disj =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
-                          ; ret-eq = ret-slot-store prog fs s k _ cc k<ns
+                          ; ret-eq = (ret-slot-store prog fs s k _ cc k<ns)
                           ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -1383,7 +1427,7 @@ block-step-store-indirect-suc-stack : ∀ {hv : HeapView} prog fs s f k → Comp
   → BlockStep hv prog fs s store-indirect-suc
 block-step-store-indirect-suc-stack {hv} prog fs s f k cc h ft i-eq f-eq sk<ns disj =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
-                          ; ret-eq = ret-slot-store prog fs s (suc k) _ cc sk<ns
+                          ; ret-eq = (ret-slot-store prog fs s (suc k) _ cc sk<ns)
                           ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc

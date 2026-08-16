@@ -103,8 +103,17 @@ open import Once.Adequacy.ArchCorrectness.X86-64.RegRoles using (x86-64-roles)
 xrreg : X.State → Reg → ℕ
 xrreg s r = X.readReg (X.State.regs s) r
 
+-- WHERE AN UNSPILLED RETURN LIVES ON x86-64: exactly where a spilled one does.
+-- `call` PUSHES the return address, so the head row of `RetAddrs` in the
+-- call/marker window is the same memory claim as every other row — which is
+-- what makes this arch's three structural proofs a two-clause adapter rather
+-- than an argument. RISC-V is where the two rows differ.
+x86-64-link-claim : X.State → ℕ → ℕ → Set
+x86-64-link-claim s a v = X.State.memory s a ≡ just v
+
 open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
        o FS slot-size word-eq Reg x86-64-roles X.State xrreg X.State.memory X.State.halted
+       x86-64-link-claim
        X.State.pc Program compile-trace X.find-label blk-off blk-len X.exec
        X.W.modulus
   public
@@ -158,22 +167,27 @@ b-cmp-reg-imm prog s dst n = refl
 -- frame stack nor the ghost return stack. Stated once as a pair of equations
 -- the caller discharges with `refl refl` (`i` is concrete there) — the same
 -- shape as the `fpc-eq` premise beside it, and the same reason.
+-- (Third component added 2026-08-16: `RetAddrs` now selects its head row by
+-- `flink`, so "the return picture is untouched" includes the link marker. Every
+-- straight-line instruction discharges it `refl` — `flinkView` says so, and
+-- these call sites are where that pays out.)
 RetSame : AbstractTrace → FlatState → AbstractInstr → Set
 RetSame prog fs i =
   (C.frames-of (falloc (flat-exec-instr i prog fs)) ≡ C.frames-of (falloc fs))
   × (fret (flat-exec-instr i prog fs) ≡ fret fs)
+  × (flink (flat-exec-instr i prog fs) ≡ flink fs)
 
 -- …and its use: carry the pre-state's component across such a step. `mem` is
 -- explicit because the helpers that WRITE memory (the stores) need it at their
 -- own post-memory, with a separation argument rather than this.
 ret-same : ∀ (prog : AbstractTrace) (fs : FlatState) (i : AbstractInstr)
-             (mem : X.Memory) (rs : RetSame prog fs i)
-         → C.RetAddrs (blk-off prog) mem (C.frames-of (falloc fs)) (fret fs)
-         → C.RetAddrs (blk-off prog) mem
+             (mem : X.Memory) {LK : ℕ → ℕ → Set} (rs : RetSame prog fs i)
+         → C.RetAddrs (blk-off prog) mem LK (flink fs) (C.frames-of (falloc fs)) (fret fs)
+         → C.RetAddrs (blk-off prog) mem LK (flink (flat-exec-instr i prog fs))
                       (C.frames-of (falloc (flat-exec-instr i prog fs)))
                       (fret (flat-exec-instr i prog fs))
-ret-same prog fs i _ (fr-eq , rt-eq) r
-  rewrite fr-eq | rt-eq = r
+ret-same prog fs i _ (fr-eq , rt-eq , fl-eq) r
+  rewrite fr-eq | rt-eq | fl-eq = r
 
 -- A HEAP STORE MISSES THEM TOO, and more easily: a live heap cell is below the
 -- frontier (`dom-below`), the frontier is below the high-water mark
@@ -185,11 +199,19 @@ ret-heap-store : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s 
                → CompiledCorr hv prog fs s
                → a < C.lo hv
                → C.RetAddrs (blk-off prog) (writeMem (X.State.memory s) a v)
-                            (C.frames-of (falloc fs)) (fret fs)
+                            (λ ad w → writeMem (X.State.memory s) a v ad ≡ just w)
+                            (flink fs) (C.frames-of (falloc fs)) (fret fs)
 ret-heap-store {hv} prog fs s a v cc a<lo =
   C.ret-agree-above (blk-off prog) (X.State.memory s) (writeMem (X.State.memory s) a v)
+    (x86-64-link-claim s) (λ ad w → writeMem (X.State.memory s) a v ad ≡ just w)
+    (flink fs)
     (stackMem (floc fs)) (C.lo hv) (C.frames-of (falloc fs)) (fret fs)
     (λ c le → C.read-write-miss (X.State.memory s) a v c (λ eq → <⇒≢ (<-transˡ a<lo le) (sym eq)))
+    -- THE HEAD ROW TRAVELS BY THE SAME MISS, because on x86-64 it IS the memory
+    -- claim (`call` pushed the return address). This is the two-line adapter the
+    -- plan promised, and it is why the ~21 call sites did not move.
+    (λ c w le p → trans (C.read-write-miss (X.State.memory s) a v c
+                           (λ eq → <⇒≢ (<-transˡ a<lo le) (sym eq))) p)
     (C.stack-eq (dataCorr cc)) (ret-eq cc)
 
 -- A STACK STORE MISSES EVERY PENDING RETURN (D093). The write is inside this
@@ -203,13 +225,24 @@ ret-slot-store : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s 
                → slot < frame-slots (falloc fs)
                → C.RetAddrs (blk-off prog)
                    (writeMem (X.State.memory s) (X.readReg (xregs s) rsp + slot-to-disp slot) v)
-                   (C.frames-of (falloc fs)) (fret fs)
+                   (λ ad w → writeMem (X.State.memory s)
+                               (X.readReg (xregs s) rsp + slot-to-disp slot) v ad ≡ just w)
+                   (flink fs) (C.frames-of (falloc fs)) (fret fs)
 ret-slot-store {hv} prog fs s slot v cc slot<b =
-  C.ret-write-in-frame (blk-off prog) (X.State.memory s) (stackMem (floc fs))
+  C.ret-write-in-frame (blk-off prog) (X.State.memory s)
+    (x86-64-link-claim s)
+    (λ ad w → writeMem (X.State.memory s)
+                (X.readReg (xregs s) rsp + slot-to-disp slot) v ad ≡ just w)
+    (flink fs) (stackMem (floc fs))
     (X.readReg (xregs s) rsp + slot-to-disp slot) v (C.lo hv)
     (current-frame (falloc fs)) (frame-slots (falloc fs))
     (saved-frames (falloc fs)) (fret fs)
-    w<end (C.stack-eq (dataCorr cc)) (ret-eq cc)
+    w<end
+    -- the same adapter as `ret-heap-store`'s, at this write's own miss
+    (λ c w lt p → trans (C.read-write-miss (X.State.memory s)
+                           (X.readReg (xregs s) rsp + slot-to-disp slot) v c
+                           (λ eq → <⇒≢ lt (sym eq))) p)
+    (C.stack-eq (dataCorr cc)) (ret-eq cc)
   where
     w<end : X.readReg (xregs s) rsp + slot-to-disp slot
           < frame-base FS (current-frame (falloc fs)) + slots (frame-slots (falloc fs))
@@ -278,22 +311,22 @@ block-step-mov-rr {hv} prog fs s i dst src cc h-flat ft ca fpc-eq rsame dataPost
 block-step-mov-to-output : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-to-output → BlockStep hv prog fs s mov-to-output
 block-step-mov-to-output {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s mov-to-output rax rdi cc h ft refl refl (refl , refl) (C.sim-mov-to-output fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _ _))
+  block-step-mov-rr prog fs s mov-to-output rax rdi cc h ft refl refl (refl , refl , refl) (C.sim-mov-to-output fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _ _))
 
 block-step-mov-to-input : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-to-input → BlockStep hv prog fs s mov-to-input
 block-step-mov-to-input {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s mov-to-input rdi rax cc h ft refl refl (refl , refl) (C.sim-mov-to-input fs s _ (dataCorr cc) (C.sets-role-x86 s role-in1 _ _ _))
+  block-step-mov-rr prog fs s mov-to-input rdi rax cc h ft refl refl (refl , refl , refl) (C.sim-mov-to-input fs s _ (dataCorr cc) (C.sets-role-x86 s role-in1 _ _ _))
 
 block-step-mov-input2-to-output : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-input2-to-output → BlockStep hv prog fs s mov-input2-to-output
 block-step-mov-input2-to-output {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s mov-input2-to-output rax rsi cc h ft refl refl (refl , refl) (C.sim-mov-input2-to-output fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _ _))
+  block-step-mov-rr prog fs s mov-input2-to-output rax rsi cc h ft refl refl (refl , refl , refl) (C.sim-mov-input2-to-output fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _ _))
 
 block-step-mov-output-to-input2 : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just mov-output-to-input2 → BlockStep hv prog fs s mov-output-to-input2
 block-step-mov-output-to-input2 {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s mov-output-to-input2 rsi rax cc h ft refl refl (refl , refl) (C.sim-mov-output-to-input2 fs s _ (dataCorr cc) (C.sets-role-x86 s role-in2 _ _ _))
+  block-step-mov-rr prog fs s mov-output-to-input2 rsi rax cc h ft refl refl (refl , refl , refl) (C.sim-mov-output-to-input2 fs s _ (dataCorr cc) (C.sets-role-x86 s role-in2 _ _ _))
 
 -- Generic single-`mov reg,imm` block-step (load-tag-lit, reg-op imm loads).
 block-step-mov-ri : ∀ {hv : HeapView} (prog : AbstractTrace) (fs : FlatState) (s : X.State)
@@ -350,27 +383,27 @@ block-step-load-tag-lit : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv pr
   → fetch prog (fpc fs) ≡ just (instr-load-tag-lit n) → n < X.W.modulus
   → BlockStep hv prog fs s (instr-load-tag-lit n)
 block-step-load-tag-lit {hv} prog fs s n cc h ft fits =
-  block-step-mov-ri prog fs s (instr-load-tag-lit n) rax n cc h ft refl fits refl (refl , refl) (C.sim-load-tag-lit n fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _ _))
+  block-step-mov-ri prog fs s (instr-load-tag-lit n) rax n cc h ft refl fits refl (refl , refl , refl) (C.sim-load-tag-lit n fs s _ (dataCorr cc) (C.sets-role-x86 s role-out _ _ _))
 
 block-step-scratch-one : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-one) → BlockStep hv prog fs s (instr-reg-op scratch-one)
 block-step-scratch-one {hv} prog fs s cc h ft =
-  block-step-mov-ri prog fs s (instr-reg-op scratch-one) rbx 1 cc h ft refl (X.W.1<modulus (s≤s z≤n)) refl (refl , refl) (C.sim-reg-scratch-one fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
+  block-step-mov-ri prog fs s (instr-reg-op scratch-one) rbx 1 cc h ft refl (X.W.1<modulus (s≤s z≤n)) refl (refl , refl , refl) (C.sim-reg-scratch-one fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
 
 block-step-scratch-zero : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-zero) → BlockStep hv prog fs s (instr-reg-op scratch-zero)
 block-step-scratch-zero {hv} prog fs s cc h ft =
-  block-step-mov-ri prog fs s (instr-reg-op scratch-zero) rbx 0 cc h ft refl X.W.0<modulus refl (refl , refl) (C.sim-reg-scratch-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
+  block-step-mov-ri prog fs s (instr-reg-op scratch-zero) rbx 0 cc h ft refl X.W.0<modulus refl (refl , refl , refl) (C.sim-reg-scratch-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
 
 block-step-count-zero : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op count-zero) → BlockStep hv prog fs s (instr-reg-op count-zero)
 block-step-count-zero {hv} prog fs s cc h ft =
-  block-step-mov-ri prog fs s (instr-reg-op count-zero) r14 0 cc h ft refl X.W.0<modulus refl (refl , refl) (C.sim-reg-count-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-count _ _ _))
+  block-step-mov-ri prog fs s (instr-reg-op count-zero) r14 0 cc h ft refl X.W.0<modulus refl (refl , refl , refl) (C.sim-reg-count-zero fs s _ (dataCorr cc) (C.sets-role-x86 s role-count _ _ _))
 
 block-step-scratch-load-count : ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-reg-op scratch-load-count) → BlockStep hv prog fs s (instr-reg-op scratch-load-count)
 block-step-scratch-load-count {hv} prog fs s cc h ft =
-  block-step-mov-rr prog fs s (instr-reg-op scratch-load-count) rbx r14 cc h ft refl refl (refl , refl) (C.sim-reg-scratch-load-count fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
+  block-step-mov-rr prog fs s (instr-reg-op scratch-load-count) rbx r14 cc h ft refl refl (refl , refl , refl) (C.sim-reg-scratch-load-count fs s _ (dataCorr cc) (C.sets-role-x86 s role-scratch _ _ _))
 
 -- c-label: pc passes through (x86 `label` is a 1-instr no-op). The flat
 -- step only bumps fpc, so the DATA correspondence transports unchanged
@@ -563,7 +596,7 @@ block-step-load-from-slot : ∀ {hv : HeapView} prog fs s slot w → CompiledCor
 block-step-load-from-slot {hv} prog fs s slot w cc h ft slot<ns st-eq =
   post , exec-eq , record { dataCorr = C.sim-load-from-slot slot w fs s _ dc st-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco'
                        ; ret-eq = ret-same prog fs (load-from-slot slot) (memory s)
-                                     (elfs-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl) (ret-eq cc)
+                                     (elfs-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl , refl) (ret-eq cc)
                        ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -594,7 +627,7 @@ block-step-restore-input : ∀ {hv : HeapView} prog fs s slot w → CompiledCorr
 block-step-restore-input {hv} prog fs s slot w cc h ft slot<ns st-eq =
   post , exec-eq , record { dataCorr = C.sim-restore-input slot w fs s _ dc st-eq (C.sets-role-x86 s role-in1 _ _ _) ; pc-off = pco'
                        ; ret-eq = ret-same prog fs (restore-input slot) (memory s)
-                                     (eris-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl) (ret-eq cc)
+                                     (eris-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl , refl) (ret-eq cc)
                        ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -641,7 +674,8 @@ block-step-alloc-stack : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv pro
   -- dispatch route is `⊥`-elim (`frame-op-absurd`) and this lemma has no
   -- caller; only a matched prologue/epilogue producer could discharge it, and
   -- `ir-to-trace` emits none.
-  → C.RetAddrs (blk-off prog) (X.State.memory s)
+  → C.RetAddrs (blk-off prog) (X.State.memory s) (x86-64-link-claim s)
+               (flink (flat-exec-instr (instr-alloc-stack n) prog fs))
                (C.frames-of (falloc (flat-exec-instr (instr-alloc-stack n) prog fs)))
                (fret (flat-exec-instr (instr-alloc-stack n) prog fs))
   -- THE MACHINE IS FINITE (plan 0.70 phase C): `%rsp` holds a value below the
@@ -802,15 +836,23 @@ block-step-c-thunk {hv} prog fs s n b cc h ft lo' lo'≤lo front-lo' lo'≤rsp f
              (trans (sym (+-identityʳ (frame-base FS (current-frame (falloc fs)))))
                     (cong (frame-base FS (current-frame (falloc fs)) +_)
                           (sym (cong slots empty-frame)))))
-    retPost : C.RetAddrs (blk-off prog) (X.State.memory post-sub)
+    -- THE SPILL (plan 0.65 G2). The body marker converts the head row from the
+    -- link claim to the stack cell, and on x86-64 that conversion is the
+    -- IDENTITY: `call` wrote the cell, so the claim it left behind IS the cell's.
+    -- riscv64's `sd ra` is where this becomes an instruction.
+    retPost : C.RetAddrs (blk-off prog) (X.State.memory post-sub) (x86-64-link-claim post-sub)
+                         (flink (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs))
                          (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs)))
                          (fret (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs))
-    retPost = C.ret-head (blk-off prog) (X.State.memory s)
+    retPost = C.ret-head (blk-off prog) (X.State.memory s) (x86-64-link-claim s) nothing
                          (current-frame (falloc fs))
                          (shift-frame FS (current-frame (falloc fs)) b)
                          (frame-slots (falloc fs)) b
                          (saved-frames (falloc fs)) (fret fs)
-                         addr-eq (ret-eq cc)
+                         addr-eq
+                         (C.ret-unlink (blk-off prog) (X.State.memory s) (x86-64-link-claim s)
+                            (flink fs) (C.frames-of (falloc fs)) (fret fs)
+                            (λ a v p → p) (ret-eq cc))
 
 ------------------------------------------------------------------------
 -- THE CALL (D098): `instr-call-closure` ↔ `call *0x8(%r12)`.
@@ -842,8 +884,12 @@ block-step-call : ∀ {hv : HeapView} prog fs s hl ℓ j → CompiledCorr hv pro
   → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
   → lo' ≤ X.readReg (xregs s) rsp ∸ slot-size
   → slot-size ≤ X.readReg (xregs s) rsp      -- room for the return address
+  -- …and NO UNSPILLED RETURN ALREADY PENDING (plan 0.65 G2). The call PUSHES a
+  -- head, so the one it pushes onto must be the stack-cell row this step
+  -- carries across. The engine derives it from `run-link-at-thunk`.
+  → flink fs ≡ nothing
   → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s instr-call-closure
-block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo front-lo' lo'≤rsp fits =
+block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo front-lo' lo'≤rsp fits no-link =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = retPost
                           ; code-eq = code-eq cc }
   where
@@ -913,10 +959,12 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
     w<base = subst (X.readReg (xregs s) rsp ∸ slot-size <_) (C.sp-eq dc)
                    (subst (suc (X.readReg (xregs s) rsp ∸ slot-size) ≤_) (m∸n+n≡m fits)
                           (m<m+n (X.readReg (xregs s) rsp ∸ slot-size) (s≤s z≤n)))
-    retPost : C.RetAddrs (blk-off prog) (X.State.memory post)
+    retPost : C.RetAddrs (blk-off prog) (X.State.memory post) (x86-64-link-claim post)
+                         (flink (flat-exec-instr instr-call-closure prog fs))
                          (C.frames-of (falloc (flat-exec-instr instr-call-closure prog fs)))
                          (fret (flat-exec-instr instr-call-closure prog fs))
     retPost = subst (λ z → C.RetAddrs (blk-off prog) (X.State.memory post)
+                             (x86-64-link-claim post) (flink z)
                              (C.frames-of (falloc z)) (fret z))
                     (sym step-eq)
                     ( head-cell , gap , tail )
@@ -932,17 +980,22 @@ block-step-call {hv} prog fs s hl ℓ j cc h ft ceq heq live fteq lo' lo'≤lo f
                         (C.frames-of (falloc fs))
         gap = trans (cong (_+ slot-size) (trans (+-identityʳ _) (sym newbase)))
                     (trans (m∸n+n≡m fits) (C.sp-eq dc))
-        tail : C.RetAddrs (blk-off prog) (X.State.memory post)
-                          (C.frames-of (falloc fs)) (fret fs)
+        tail : C.RetAddrs (blk-off prog) (X.State.memory post) (x86-64-link-claim post)
+                          nothing (C.frames-of (falloc fs)) (fret fs)
         tail = C.ret-agree-above (blk-off prog) (memory s) (X.State.memory post)
+                 (x86-64-link-claim s) (x86-64-link-claim post) nothing
                  (stackMem (floc fs)) (frame-base FS (current-frame (falloc fs)))
                  (C.frames-of (falloc fs)) (fret fs)
                  (λ a le → C.read-write-miss (memory s) waddr retAddr a
                              (λ eq → <⇒≢ (<-transˡ w<base le) (sym eq)))
+                 (λ a v le p → trans (C.read-write-miss (memory s) waddr retAddr a
+                                        (λ eq → <⇒≢ (<-transˡ w<base le) (sym eq))) p)
                  (C.windows-reanchor (C.lo hv) (frame-base FS (current-frame (falloc fs)))
                     (current-frame (falloc fs)) (frame-slots (falloc fs))
                     (saved-frames (falloc fs)) ≤-refl (C.stack-eq dc))
-                 (ret-eq cc)
+                 (subst (λ z → C.RetAddrs (blk-off prog) (memory s) (x86-64-link-claim s) z
+                                 (C.frames-of (falloc fs)) (fret fs))
+                        no-link (ret-eq cc))
 
 ------------------------------------------------------------------------
 -- THE RETURN (D095): `c-ret b` ↔ `add rsp, 8b ; ret`.
@@ -979,8 +1032,12 @@ block-step-c-ret : ∀ {hv : HeapView} prog fs s b rpc rest f₀ b₀ frs
   -- `addr-eq`/`gap` below show this sum IS the caller's frame base less one
   -- slot. Threaded as `AddrNoWrap.ret-no-wrap` (D087).
   → xreadReg (xregs s) rsp + slots b < X.W.modulus
+  -- …and NO UNSPILLED RETURN (plan 0.65 G2). The `ret` READS the head cell, so
+  -- the head row must be the stack claim and not the arch's link claim. The
+  -- engine derives it from `run-link-at-thunk`: this branch fetched a `c-ret`.
+  → flink fs ≡ nothing
   → BlockStep hv prog fs s (instr-ctrl (c-ret b))
-block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq no-wrap =
+block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq no-wrap no-link =
   post-ret , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = retPost ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -1008,11 +1065,12 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq no-
                      wrap-free
                      (step-add-ri {compile-trace prog} {s} {rsp} {slots b} fetch-add)
     -- THE COMPONENT, projected at the cons shape of `fret`
-    comp : C.RetAddrs (blk-off prog) (X.State.memory s)
+    comp : C.RetAddrs (blk-off prog) (X.State.memory s) (x86-64-link-claim s) nothing
                       ((current-frame (falloc fs) , frame-slots (falloc fs)) ∷ saved-frames (falloc fs))
                       (rpc ∷ rest)
-    comp = subst (λ rl → C.RetAddrs (blk-off prog) (X.State.memory s)
-                           (C.frames-of (falloc fs)) rl) req (ret-eq cc)
+    comp = subst₂ (λ lk rl → C.RetAddrs (blk-off prog) (X.State.memory s)
+                               (x86-64-link-claim s) lk (C.frames-of (falloc fs)) rl)
+                  no-link req (ret-eq cc)
     -- …and the address it speaks about IS where the `add` left `%rsp`
     addr-eq : X.readReg (X.State.regs post-add) rsp
             ≡ frame-base FS (current-frame (falloc fs)) + slots (frame-slots (falloc fs))
@@ -1050,16 +1108,24 @@ block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req beq feq no-
     dataPost = C.sim-ret b rpc rest fs s _ dc req restores (C.sets-role-x86 s role-sp _ _ _)
     pco' : X.State.pc post-ret ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
     pco' = cong (blk-off prog) (sym (do-ret-pc-∷ fs rpc rest req))
-    retPost : C.RetAddrs (blk-off prog) (X.State.memory post-ret)
+    retPost : C.RetAddrs (blk-off prog) (X.State.memory post-ret) (x86-64-link-claim post-ret)
+                         (flink (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
                          (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)))
                          (fret (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
-    retPost = subst₂ (C.RetAddrs (blk-off prog) (X.State.memory s))
-                     (sym (trans (cong C.frames-of (do-ret-alloc fs)) (frames-leave feq)))
-                     (sym (do-ret-fret-∷ fs rpc rest req))
-                     (proj₂ (proj₂ comp))
+    retPost = subst (λ lk → C.RetAddrs (blk-off prog) (X.State.memory s) (x86-64-link-claim s) lk
+                              (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)))
+                              (fret (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)))
+                    (sym lk-post)
+                    (subst₂ (C.RetAddrs (blk-off prog) (X.State.memory s) (x86-64-link-claim s) nothing)
+                            (sym (trans (cong C.frames-of (do-ret-alloc fs)) (frames-leave feq)))
+                            (sym (do-ret-fret-∷ fs rpc rest req))
+                            (proj₂ (proj₂ comp)))
       where frames-leave : saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs
                          → C.frames-of (leave-frame (falloc fs)) ≡ saved-frames (falloc fs)
             frames-leave e rewrite e = refl
+            -- a RETURN threads the link (`flinkView`), and it was `nothing`
+            lk-post : flink (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) ≡ nothing
+            lk-post = trans (flink-do-ret (fret fs) fs) no-link
 
 -- dealloc-stack: free n slots ↔ `add rsp, n*8`. At a full-frame exit
 -- (frame-slots ≡ n), sim-dealloc-stack's post bound is vacuous. Uses step-add-ri.
@@ -1073,7 +1139,8 @@ block-step-dealloc-stack : ∀ {hv : HeapView} prog fs s n → CompiledCorr hv p
   -- …and the return picture, a premise for the same reason as
   -- `block-step-alloc-stack`'s: this POPS a frame, and the instruction is
   -- unemittable, so no caller exists to discharge it.
-  → C.RetAddrs (blk-off prog) (X.State.memory s)
+  → C.RetAddrs (blk-off prog) (X.State.memory s) (x86-64-link-claim s)
+               (flink (flat-exec-instr (instr-dealloc-stack n) prog fs))
                (C.frames-of (falloc (flat-exec-instr (instr-dealloc-stack n) prog fs)))
                (fret (flat-exec-instr (instr-dealloc-stack n) prog fs))
   -- THE ADDRESS SPACE DOES NOT WRAP (plan 0.70 phase C), as in
@@ -1297,7 +1364,7 @@ block-step-worklist-pop : ∀ {hv : HeapView} prog fs s slot w → CompiledCorr 
 block-step-worklist-pop {hv} prog fs s slot w cc h ft slot<ns st-eq =
   post , exec-eq , record { dataCorr = C.sim-load-from-slot slot w fs s _ dc st-eq (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco'
                        ; ret-eq = ret-same prog fs (load-from-slot slot) (memory s)
-                                     (elfs-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl) (ret-eq cc)
+                                     (elfs-frames (stackMem (floc fs) (current-frame (falloc fs)) slot) (floc fs) (falloc fs) , refl , refl) (ret-eq cc)
                        ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
@@ -1334,6 +1401,7 @@ block-step-store-indirect : ∀ {hv : HeapView} prog fs s hl → CompiledCorr hv
 block-step-store-indirect {hv} prog fs s hl cc h ft i-eq live-hl guard =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
                           ; ret-eq = subst (λ m → C.RetAddrs (blk-off prog) m
+                                                    (λ ad w → m ad ≡ just w) (flink fs)
                                                     (C.frames-of (falloc fs)) (fret fs))
                                            (cong₂ (writeMem (memory s)) (sym rdi-val) refl)
                                            (ret-heap-store prog fs s (haddr hv hl) _ cc
@@ -1378,6 +1446,7 @@ block-step-store-indirect-suc : ∀ {hv : HeapView} prog fs s hl → CompiledCor
 block-step-store-indirect-suc {hv} prog fs s hl cc h ft i-eq live-shl guard =
   post , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
                           ; ret-eq = subst (λ m → C.RetAddrs (blk-off prog) m
+                                                    (λ ad w → m ad ≡ just w) (flink fs)
                                                     (C.frames-of (falloc fs)) (fret fs))
                                            (cong₂ (writeMem (memory s)) (sym addr-val) refl)
                                            (ret-heap-store prog fs s (haddr hv (sucHL hl)) _ cc
