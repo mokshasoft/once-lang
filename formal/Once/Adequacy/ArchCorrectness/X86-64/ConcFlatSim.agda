@@ -77,7 +77,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                  (s : X.State) (n : ℕ)
              → RC.RunAt o FS word-eq prog fs
-             → FSim.CompiledCorr FS word-eq hv prog fs s
+             → FSim.CompiledCorr o FS word-eq hv prog fs s
              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                ≡ just (instr-alloc-heap n)
              -- (record projections INFER the module params from the record's own
@@ -92,7 +92,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
                   (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                   (s : X.State) (m : LabelId) (b : ℕ)
               → RC.RunAt o FS word-eq prog fs
-              → FSim.CompiledCorr FS word-eq hv prog fs s
+              → FSim.CompiledCorr o FS word-eq hv prog fs s
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                 ≡ just (instr-ctrl (c-thunk m b))
               → FC.hfront hv + slots b ≤ X.readReg (X.State.regs s) rsp)
@@ -101,7 +101,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
   (call-room : ∀ {hv : FC.HeapView FS word-eq}
                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS}) (s : X.State)
              → RC.RunAt o FS word-eq prog fs
-             → FSim.CompiledCorr FS word-eq hv prog fs s
+             → FSim.CompiledCorr o FS word-eq hv prog fs s
              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                ≡ just instr-call-closure
              → FC.hfront hv + slot-size ≤ X.readReg (X.State.regs s) rsp)
@@ -113,13 +113,13 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
                  (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                  (s : X.State) (r : Reg)
              → RC.RunAt o FS word-eq prog fs
-             → FSim.CompiledCorr FS word-eq hv prog fs s
+             → FSim.CompiledCorr o FS word-eq hv prog fs s
              → X.readReg (X.State.regs s) r < X.W.modulus)
   (scratch-dec-guarded : ∀ {hv : FC.HeapView FS word-eq}
                            (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                            (s : X.State)
                        → RC.RunAt o FS word-eq prog fs
-                       → FSim.CompiledCorr FS word-eq hv prog fs s
+                       → FSim.CompiledCorr o FS word-eq hv prog fs s
                        → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                            ≡ just (instr-reg-op scratch-dec)
                        → 1 ≤ X.readReg (X.State.regs s) rbx)
@@ -135,7 +135,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
                    (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                    (s : X.State) (b : ℕ)
                → RC.RunAt o FS word-eq prog fs
-               → FSim.CompiledCorr FS word-eq hv prog fs s
+               → FSim.CompiledCorr o FS word-eq hv prog fs s
                → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                    ≡ just (instr-ctrl (c-ret b))
                → X.readReg (X.State.regs s) rsp + slots b < X.W.modulus)
@@ -143,7 +143,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
                      (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                      (s : X.State)
                  → RC.RunAt o FS word-eq prog fs
-                 → FSim.CompiledCorr FS word-eq hv prog fs s
+                 → FSim.CompiledCorr o FS word-eq hv prog fs s
                  → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                      ≡ just (instr-reg-op count-inc)
                  → X.readReg (X.State.regs s) r14 + 1 < X.W.modulus)
@@ -153,7 +153,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                 (s : X.State) (n : ℕ)
             → RC.RunAt o FS word-eq prog fs
-            → FSim.CompiledCorr FS word-eq hv prog fs s
+            → FSim.CompiledCorr o FS word-eq hv prog fs s
             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                 ≡ just (instr-load-tag-lit n)
             → n < X.W.modulus)
@@ -161,7 +161,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                 (s : X.State) (v : Carrier)
             → RC.RunAt o FS word-eq prog fs
-            → FSim.CompiledCorr FS word-eq hv prog fs s
+            → FSim.CompiledCorr o FS word-eq hv prog fs s
             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                 ≡ just (instr-load-const fits-int v)
             → v < X.W.modulus)
@@ -169,7 +169,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
                   (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                   (s : X.State) (v : AgdaFloat)
               → RC.RunAt o FS word-eq prog fs
-              → FSim.CompiledCorr FS word-eq hv prog fs s
+              → FSim.CompiledCorr o FS word-eq hv prog fs s
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
               → float-bits v < X.W.modulus)
@@ -177,7 +177,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
                (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                (s : X.State)
            → RC.RunAt o FS word-eq prog fs
-           → FSim.CompiledCorr FS word-eq hv prog fs s
+           → FSim.CompiledCorr o FS word-eq hv prog fs s
            → FC.lo hv < X.W.modulus)
   where
 
@@ -194,7 +194,7 @@ open import Once.CCC.Machine.Flat
 open FlatMachine {FS}
 import Once.CCC.Target.X86-64.Semantics as X
 
-open import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation FS word-eq public
+open import Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation o FS word-eq public
 open import Once.CCC.Machine.FlatStoreWF FS using
   (FlatWF; flat-wf-step; cl-step; wf-regs; wf-heap; wf-stack; wf-fresh; sv-below; svm-below)
 open import Once.CCC.Machine.FlatRegTagWF FS using

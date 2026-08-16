@@ -33,6 +33,7 @@ open import Once.CanonicalName using (CanonicalName)
 -- body, where the applied `open import … FS word-eq` has not run.
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation as FSimr
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
+import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RCr
 import Once.CCC.Target.RiscV64.Semantics as RS
 open import Once.CCC.Machine.SMCore using (AbstractTrace; lea-slot)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -49,17 +50,18 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
   -- `lea`: it computes a slot's address with `addi`, a REAL add, so its
   -- `block-step-lea-slot` needs a range fact that x86-64's route never had.
   --
-  -- CONDITIONED ON `CompiledCorr` + THE FETCH, and NOT on `RunAt` — not by
-  -- preference but by force: the engine's `bs-lea-slot` field hands an arch
-  -- only `(cc, h, ft)`, because that is what it passes on x86-64. So this is
-  -- strictly stronger than the `AddrNoWrap` family it belongs to, all of which
-  -- carry `RunAt`. Before trusting it, check it is not REFUTABLE the way six
-  -- residuals were on 2026-07-30; if it is, the honest fix is to give the
-  -- field a `RunAt` premise, not to weaken the bound. Recorded in the handoff.
+  -- CONDITIONED ON `RunAt`, and it took the 2026-07-30 probe to put it there
+  -- (2026-08-16). Stated first without the run context — the engine's
+  -- `bs-lea-slot` field handed an arch only `(cc, h, ft)`, because that is
+  -- what it passed on x86-64 — and in that form it is REFUTABLE: a hand-picked
+  -- `prog ≡ lea-slot modulus ∷ []` satisfies the empty-view correspondence
+  -- while the conclusion says `modulus * 8 < modulus`. A correspondence does
+  -- not bound a slot INDEX; `RunAt` does. See `ResourceBounds.SlotAddrNoWrap`.
   (slot-addr-no-wrap :
      ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
        (fs : FlatMachine.FlatState {FS}) (s : RS.State) (slot : ℕ)
-     → FSimr.CompiledCorr FS word-eq hv prog fs s
+     → RCr.RunAt o FS slot-size word-eq prog fs
+     → FSimr.CompiledCorr o FS word-eq hv prog fs s
      → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (lea-slot slot)
      → RS.readReg (RS.State.regs s) sp + slot-to-disp slot < RS.W.modulus)
   where
@@ -198,16 +200,19 @@ riscv64-traceloop = record
 ------------------------------------------------------------------------
 -- …AND THE ONE BLOCK-STEP WHOSE SHAPE DIFFERED (plan 0.65 G2).
 --
--- `bs-lea-slot` offers `(cc, h, ft)` — three premises, because that is what
--- the engine passes. riscv64's block-step wants a fourth. This is the arch
--- closing that gap from its own resource parameter, and it is the pattern the
--- slice-2 note described: the field is the ENGINE's interface, and an arch
--- needing more supplies it here rather than widening the interface for
--- everyone.
+-- `bs-lea-slot` offers `(cc, h, ft, run)`. riscv64's block-step wants a range
+-- fact instead of the run context, and this is the arch converting one into
+-- the other through its own resource parameter — the pattern the slice-2 note
+-- described: the field is the ENGINE's interface, and an arch needing
+-- something else derives it here.
+--
+-- The `RunAt` is in that interface BECAUSE OF THIS ARCH (2026-08-16): without
+-- it the bound below is refutable, and x86-64 — which pays nothing, its `lea`
+-- needing no range fact — simply drops the argument.
 --
 -- Stated at exactly the field's type, so `Supply`'s `bs-lea-slot` is this.
 ------------------------------------------------------------------------
-open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation FS word-eq using
+open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq using
   (block-step-lea-slot; CompiledCorr; BlockStep)
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence FS word-eq using
   (HeapView)
@@ -217,6 +222,8 @@ open import Once.CCC.Machine.SMCore using (halted)
 riscv64-lea-slot : ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog fs s
                  → halted (floc fs) ≡ false
                  → fetch prog (fpc fs) ≡ just (lea-slot slot)
+                 → RCr.RunAt o FS slot-size word-eq prog fs
                  → BlockStep hv prog fs s (lea-slot slot)
-riscv64-lea-slot prog fs s slot cc h ft =
-  block-step-lea-slot prog fs s slot cc h ft (slot-addr-no-wrap prog fs s slot cc ft)
+riscv64-lea-slot prog fs s slot cc h ft run =
+  block-step-lea-slot prog fs s slot cc h ft
+    (slot-addr-no-wrap prog fs s slot run cc ft)

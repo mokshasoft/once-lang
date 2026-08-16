@@ -38,8 +38,12 @@ open import Once.Type using (fits-int)
 open import Once.Word using (Carrier)
 open import Data.Nat using (ℕ; _+_; _∸_; _*_; _≡ᵇ_; _<_; _≤_; s≤s; z≤n)
 open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Once.CanonicalName using (CanonicalName)
 
 module Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation
+  -- D089's definition identity, threaded only so `CompiledCorrespondence` can
+  -- state `bs-lea-slot`'s `RunAt` premise (2026-08-16).
+  (o : CanonicalName)
   (FS : FrameSemantics)
   (word-eq : frame-word FS ≡ slot-size)
   where
@@ -100,7 +104,7 @@ xrreg : X.State → Reg → ℕ
 xrreg s r = X.readReg (X.State.regs s) r
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
-       FS slot-size word-eq Reg x86-64-roles X.State xrreg X.State.memory X.State.halted
+       o FS slot-size word-eq Reg x86-64-roles X.State xrreg X.State.memory X.State.halted
        X.State.pc Program compile-trace X.find-label blk-off blk-len X.exec
        X.W.modulus
   public
@@ -2210,7 +2214,12 @@ x86-64-block-steps = record
   ; bs-reclaim-to           = block-step-reclaim-to
   ; bs-worklist-init        = block-step-worklist-init
   ; bs-worklist-check       = block-step-worklist-check
-  ; bs-lea-slot             = block-step-lea-slot
+  -- the `RunAt` is DROPPED: x86-64 computes a slot address with `lea`, which
+  -- carries no range obligation. The premise exists for riscv64's `addi`
+  -- (2026-08-16 — see the field), and this arch paying nothing for it is the
+  -- interface working as intended.
+  ; bs-lea-slot             = λ prog fs s slot cc h ft _ →
+                                block-step-lea-slot prog fs s slot cc h ft
   ; bs-save-closure-reg     = block-step-save-closure-reg
   ; bs-load-tag-lit         = block-step-load-tag-lit
   ; bs-load-indirect            = block-step-load-indirect

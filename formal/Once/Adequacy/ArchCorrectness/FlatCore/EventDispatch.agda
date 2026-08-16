@@ -269,7 +269,7 @@ module Dispatch (sup : Supply) where
     -- plan 0.61: a stack POINTER now has an address, so lea-slot routes.
     events-running-fetch {hv} n ev env prog fs s (lea-slot slot) cc wf h ftq =
       ccc-step-bs {hv} n ev env prog fs s (lea-slot slot)
-        (bs-lea-slot bss prog fs s slot cc h ftq) wf ftq h refl h
+        (bs-lea-slot bss prog fs s slot cc h ftq (inv-run wf)) wf ftq h refl h
     -- D096: the code address is RESOLVED now, so this dispatches on the scan
     -- exactly as `cjmp-step` does — and the two scans agree by `find-thunk-corr`,
     -- which has been sitting in `FlatComposition` waiting for its consumer since

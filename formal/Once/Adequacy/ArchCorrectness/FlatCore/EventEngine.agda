@@ -99,7 +99,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
   public
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
-       FS slot-size word-eq Reg roles State rreg memory xhalted
+       o FS slot-size word-eq Reg roles State rreg memory xhalted
        xpc (List Instr) compile-trace find-label blk-off blk-len exec modulus
   public
 

@@ -7412,3 +7412,89 @@ instruction's domain is a place to look for a defect.** The restriction is
 evidence that the excluded case does something the author could not state — and
 "could not state" is more often wrong than subtle.
 
+
+## D104: `SlotAddrNoWrap` Was REFUTABLE — a Correspondence Does Not Bound a Slot INDEX
+
+**Date**: 2026-08-16 · **Status**: Fixed · **Plan**: 0.65 (G2)
+
+### The claim, and why it looked safe
+
+riscv64 has no `lea`. It computes a slot's address with `addi`, a real add, and
+D054 makes `add` compute `W.⊕` unconditionally — wraparound is DEFINED
+semantics, so no no-overflow precondition may sit on the instruction. The range
+obligation therefore lands on the consumer, and `RiscV64/ConcFlatSim` took it as
+a D087-class resource parameter:
+
+    CompiledCorr hv prog fs s
+  → fetch prog (fpc fs) ≡ just (lea-slot slot)
+  → readReg (regs s) sp + slot-to-disp slot < W.modulus
+
+It was written WITHOUT a `RunAt` premise, and not by preference: the engine's
+`bs-lea-slot` field hands an arch only `(cc, h, ft)`, because that is what it
+passes on x86-64, whose `lea` needs no bound at all. The commit that introduced
+it (`251d5cfe`) flagged the anomaly — every sibling in the family
+(`HeapRoom`/`StackRoom`/`CallRoom`) carries `RunAt`, so this one was strictly
+stronger — and said to run the 2026-07-30 refutability probe before trusting it.
+
+### The probe, and it took twenty minutes
+
+Run 2026-08-16. `SlotAddrNoWrap → ⊥` typechecks, from a witness built by hand:
+
+    hv    HDom ≡ λ _ → ⊥, hfront ≡ lo ≡ 0, haddr hl ≡ heap-offset hl * 8
+    fs    every abstract register `SV-Tag 0`, heap and stack memory empty,
+          `saved-frames ≡ []`, `frame-slots ≡ 0`, current frame based at 0
+    s     every riscv64 register 0, memory `λ _ → nothing`, pc 0
+    prog  `lea-slot W.modulus ∷ []`
+
+Every field of `FlatCorr` is `refl`, an absurd lambda, or `z≤n`; `pc-off` and
+the fetch are `refl`; `ret-eq` is `tt` (`fret ≡ []`) and `code-eq` is vacuous
+(a one-instruction `addi` block carries no label). And the conclusion reads
+`0 + modulus * 8 < modulus`, which `m≤m*n` kills.
+
+### What the counterexample actually says
+
+**Nothing in a CORRESPONDENCE bounds a slot INDEX.** `CompiledCorr` relates a
+flat state to a machine state; a slot index comes from the PROGRAM, and the
+only thing that constrains the program is `RunAt` — `Emitted` gives
+`prog ≡ ir-to-trace ir`, and the shape check turns that into
+`slot < frame-slots ≤ ir-stack-budget`. That is exactly why the other three
+bounds carry `RunAt`, and the anomaly was the whole tell.
+
+Note what did NOT matter: the stack pointer. `Frame` is a `StackPointer`, so
+`frame-base` is bounded by the layout's `upper stack-bounds` and `sp-eq` pins
+`sp` to it — the register side was never the free variable. The free variable
+was the index, and it is free because a hand-picked `prog` is not an emitted
+one.
+
+### The fix, and what it cost each arch
+
+`bs-lea-slot` gains a `RunAt prog fs` premise, so `CompiledCorrespondence` now
+takes `o : CanonicalName` and imports `RunContext` privately (`EventEngine`
+opens the same instance publicly; module application is by alias, so the two
+`RunAt`s are one type). The dispatch passes `inv-run wf`, exactly as it does
+when deriving `bs-load-tag-lit`'s range premise from `tag-fits`.
+
+    x86-64   pays NOTHING. `bs-lea-slot = λ … cc h ft _ → block-step-lea-slot …`
+             — its `lea` never needed a range fact, and dropping the argument is
+             the interface working as designed.
+    riscv64  `slot-addr-no-wrap` and `ResourceBounds.SlotAddrNoWrap` gain the
+             premise and join their three siblings' shape.
+
+Ledger unchanged: riscv64's bounds are module parameters not yet threaded from
+the apex, so no row moved.
+
+### The general lesson
+
+**A residual whose premises mention only the STATE, while its conclusion
+mentions the PROGRAM, is asking the wrong layer.** That is the shape to look
+for — it is what "strictly stronger than its siblings" meant here, and the
+family's own conditioning was the available evidence. When a field's premise
+list is copied from the arch that needs the least (x86-64 passes three because
+`lea` is total), the arch that needs more cannot fix it locally: it can only
+close the gap from a parameter, and the parameter then inherits the field's
+insufficient context.
+
+Corollary for plan 0.65's method note: "field shapes come from the ENGINE's
+call site" is right, but the engine's call site is itself a choice. When an arch
+has to invent a bound to fill a field, check what the engine COULD have passed
+and did not — here `FlatInv` had the `RunAt` all along.

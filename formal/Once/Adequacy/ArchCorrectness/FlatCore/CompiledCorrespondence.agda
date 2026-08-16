@@ -45,8 +45,13 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles using (RegRoles)
 open import Data.Nat using (NonZero)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.Label using (Label)
+open import Once.CanonicalName using (CanonicalName)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
+  -- Plan 0.63 (D089): the DEFINITION'S identity, which keys its labels — and
+  -- therefore what `RunContext` needs. Added 2026-08-16 for `bs-lea-slot`'s
+  -- `RunAt` premise; see the field.
+  (o : CanonicalName)
   (FS : FrameSemantics)
   (slot-size : ℕ)
   ⦃ slot-size-nz : NonZero slot-size ⦄
@@ -101,11 +106,18 @@ open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.Semantics.FloatBits using (float-bits)
 
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
+import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RC
 -- PRIVATE: an instance re-opened publicly would clash with the `C` every arch
 -- already binds for its own `FlatCorrespondence` instance. Only the record
 -- below is exported.
+--
+-- `RC` is private for a different reason: `EventEngine` opens `RunContext`
+-- PUBLICLY at the same arguments, so re-exporting it here would make `RunAt`
+-- ambiguous at every engine consumer. Same instance either way (module
+-- application is by alias), so the two `RunAt`s are one type.
 private
   module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
+  module CRC = RC o FS slot-size word-eq
 
 open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; caddr; HDom; haddr
                ; lo; hfront; descend-view; extend-view; slots; dom-fresh)
@@ -232,10 +244,12 @@ BlockStep hv = BlockStepAt hv hv
 -- GROUP 1 — the straight-line register moves and the two no-op controls: no
 -- premises beyond the correspondence, non-halt, and the fetch.
 --
--- GROUP 2 — `lea-slot`, `save-closure-reg`, `load-tag-lit`. The first two are
--- three-premise like group 1 (`lea-slot` DESPITE riscv64's fourth: see above);
--- the third is where the engine passes a fact it derived rather than one it was
--- handed, and it is why this module now takes the machine's word `modulus`.
+-- GROUP 2 — `lea-slot`, `save-closure-reg`, `load-tag-lit`. `save-closure-reg`
+-- is three-premise like group 1; `load-tag-lit` is where the engine passes a
+-- fact it DERIVED rather than one it was handed, and it is why this module
+-- takes the machine's word `modulus`. `lea-slot` sits between the two: the
+-- engine hands over the `RunAt` itself and lets the arch derive from it (see
+-- the field — the three-premise form was refutable).
 ------------------------------------------------------------------------
 -- `Set₁`: the fields quantify over `HeapView`, which is itself `Set₁`.
 record BlockSteps : Set₁ where
@@ -307,14 +321,27 @@ record BlockSteps : Set₁ where
     -- `lea-slot` is the case that made the rule (see the header): x86-64's
     -- block-step takes (cc, h, ft) and riscv64's takes a fourth address
     -- no-wrap premise, because it computes the address with a real `addi`.
-    -- The ENGINE passes three, so the field is three; riscv64 applies its own
-    -- resource parameter when it builds this record, and x86-64 is not made to
-    -- discharge a bound its `lea` never needed.
+    -- riscv64 applies its own resource parameter when it builds this record,
+    -- and x86-64 is not made to discharge a bound its `lea` never needed.
+    --
+    -- …AND THE `RunAt`, ADDED 2026-08-16 BECAUSE THE THREE-PREMISE FORM WAS
+    -- REFUTABLE. riscv64's parameter was the ONE member of the D087 bound
+    -- family not conditioned on the run context, and the 2026-07-30 probe
+    -- killed it: `CompiledCorr` at the empty view, a frame based at 0 and
+    -- `prog = lea-slot modulus ∷ []` satisfies every premise while the
+    -- conclusion says `modulus < modulus`. Nothing in a CORRESPONDENCE bounds
+    -- a slot INDEX — that is `RunAt`'s shape check, via `Emitted`.
+    --
+    -- So the engine passes `inv-run wf` here, exactly as it does when deriving
+    -- `bs-load-tag-lit`'s range premise. x86-64 ignores the argument (its
+    -- `lea` needs no bound); riscv64 feeds it to `slot-addr-no-wrap`, which
+    -- now has the same shape as `HeapRoom`/`StackRoom`/`CallRoom`.
     ------------------------------------------------------------------
     bs-lea-slot :
       ∀ {hv : HeapView} prog fs s slot → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (lea-slot slot)
+      → CRC.RunAt prog fs
       → BlockStep hv prog fs s (lea-slot slot)
     bs-save-closure-reg :
       ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s

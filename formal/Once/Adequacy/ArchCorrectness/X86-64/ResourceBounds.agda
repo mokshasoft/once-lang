@@ -70,7 +70,7 @@ HeapRoom =
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
     (s : X.State) (n : ℕ)
   → RCx.RunAt o x86-64-frame-semantics refl prog fs
-  → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+  → FSimx.CompiledCorr o x86-64-frame-semantics refl hv prog fs s
   → FlatMachine.fetch {x86-64-frame-semantics} prog
       (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-alloc-heap n)
   → FCx.hfront hv + slots n ≤ FCx.lo hv
@@ -99,7 +99,7 @@ StackRoom =
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
     (s : X.State) (m : LabelId) (b : ℕ)
   → RCx.RunAt o x86-64-frame-semantics refl prog fs
-  → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+  → FSimx.CompiledCorr o x86-64-frame-semantics refl hv prog fs s
   → FlatMachine.fetch {x86-64-frame-semantics} prog
       (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-ctrl (c-thunk m b))
   → FCx.hfront hv + slots b ≤ X.readReg (X.State.regs s) rsp
@@ -124,7 +124,7 @@ CallRoom =
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
     (s : X.State)
   → RCx.RunAt o x86-64-frame-semantics refl prog fs
-  → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+  → FSimx.CompiledCorr o x86-64-frame-semantics refl hv prog fs s
   → FlatMachine.fetch {x86-64-frame-semantics} prog
       (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just instr-call-closure
   → FCx.hfront hv + slot-size ≤ X.readReg (X.State.regs s) rsp
@@ -148,7 +148,7 @@ RegRange =
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
     (s : X.State) (r : Reg)
   → RCx.RunAt o x86-64-frame-semantics refl prog fs
-  → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+  → FSimx.CompiledCorr o x86-64-frame-semantics refl hv prog fs s
   → X.readReg (X.State.regs s) r < W.modulus
 
 -- (2) A REACHABLE `scratch-dec` FINDS A NON-ZERO SCRATCH — the no-borrow
@@ -164,7 +164,7 @@ ScratchDecGuarded =
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
     (s : X.State)
   → RCx.RunAt o x86-64-frame-semantics refl prog fs
-  → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+  → FSimx.CompiledCorr o x86-64-frame-semantics refl hv prog fs s
   → FlatMachine.fetch {x86-64-frame-semantics} prog
       (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-reg-op scratch-dec)
   → 1 ≤ X.readReg (X.State.regs s) rbx
@@ -207,7 +207,7 @@ record AddrNoWrap : Set₁ where
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
         (s : X.State) (b : ℕ)
       → RCx.RunAt o x86-64-frame-semantics refl prog fs
-      → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+      → FSimx.CompiledCorr o x86-64-frame-semantics refl hv prog fs s
       → FlatMachine.fetch {x86-64-frame-semantics} prog
           (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-ctrl (c-ret b))
       → X.readReg (X.State.regs s) rsp + slots b < W.modulus
@@ -219,7 +219,7 @@ record AddrNoWrap : Set₁ where
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
         (s : X.State)
       → RCx.RunAt o x86-64-frame-semantics refl prog fs
-      → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+      → FSimx.CompiledCorr o x86-64-frame-semantics refl hv prog fs s
       → FlatMachine.fetch {x86-64-frame-semantics} prog
           (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-reg-op count-inc)
       → X.readReg (X.State.regs s) r14 + 1 < W.modulus
@@ -235,7 +235,7 @@ record AddrNoWrap : Set₁ where
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
         (s : X.State)
       → RCx.RunAt o x86-64-frame-semantics refl prog fs
-      → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+      → FSimx.CompiledCorr o x86-64-frame-semantics refl hv prog fs s
       → FCx.lo hv < W.modulus
 open AddrNoWrap public
 
@@ -264,7 +264,7 @@ record LitFits : Set₁ where
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
         (s : X.State) (n : ℕ)
       → RCx.RunAt o x86-64-frame-semantics refl prog fs
-      → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+      → FSimx.CompiledCorr o x86-64-frame-semantics refl hv prog fs s
       → FlatMachine.fetch {x86-64-frame-semantics} prog
           (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-load-tag-lit n)
       → n < W.modulus
@@ -275,7 +275,7 @@ record LitFits : Set₁ where
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
         (s : X.State) (v : Carrier)
       → RCx.RunAt o x86-64-frame-semantics refl prog fs
-      → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+      → FSimx.CompiledCorr o x86-64-frame-semantics refl hv prog fs s
       → FlatMachine.fetch {x86-64-frame-semantics} prog
           (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
       → v < W.modulus
@@ -289,7 +289,7 @@ record LitFits : Set₁ where
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
         (s : X.State) (v : AgdaFloat)
       → RCx.RunAt o x86-64-frame-semantics refl prog fs
-      → FSimx.CompiledCorr x86-64-frame-semantics refl hv prog fs s
+      → FSimx.CompiledCorr o x86-64-frame-semantics refl hv prog fs s
       → FlatMachine.fetch {x86-64-frame-semantics} prog
           (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-load-const fits-float v)
       → float-bits v < W.modulus

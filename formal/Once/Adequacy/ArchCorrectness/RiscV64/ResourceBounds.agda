@@ -66,7 +66,7 @@ HeapRoom =
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
     (s : R.State) (n : ℕ)
   → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
-  → FSimr.CompiledCorr rv64-frame-semantics refl hv prog fs s
+  → FSimr.CompiledCorr o rv64-frame-semantics refl hv prog fs s
   → FlatMachine.fetch {rv64-frame-semantics} prog
       (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-alloc-heap n)
   → FCr.hfront hv + slots n ≤ FCr.lo hv
@@ -81,7 +81,7 @@ StackRoom =
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
     (s : R.State) (m : LabelId) (b : ℕ)
   → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
-  → FSimr.CompiledCorr rv64-frame-semantics refl hv prog fs s
+  → FSimr.CompiledCorr o rv64-frame-semantics refl hv prog fs s
   → FlatMachine.fetch {rv64-frame-semantics} prog
       (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-ctrl (c-thunk m b))
   → FCr.hfront hv + slots b ≤ R.readReg (R.State.regs s) sp
@@ -96,7 +96,7 @@ CallRoom =
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
     (s : R.State)
   → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
-  → FSimr.CompiledCorr rv64-frame-semantics refl hv prog fs s
+  → FSimr.CompiledCorr o rv64-frame-semantics refl hv prog fs s
   → FlatMachine.fetch {rv64-frame-semantics} prog
       (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just instr-call-closure
   → FCr.hfront hv + slot-size ≤ R.readReg (R.State.regs s) sp
@@ -110,19 +110,28 @@ CallRoom =
 -- no no-overflow precondition may sit on the instruction). The range
 -- obligation lands here instead.
 --
--- NOT conditioned on `RunAt`, unlike its three siblings above, and that is
--- forced rather than chosen: the engine's `bs-lea-slot` field hands an arch
--- only the correspondence, the non-halt and the fetch. So this is STRICTLY
--- STRONGER than the family it belongs to. Check it against the 2026-07-30
--- refutability probe before trusting it; if it does not survive, the fix is to
--- give the engine's field a `RunAt` premise rather than to weaken this.
+-- CONDITIONED ON `RunAt`, like its three siblings — and it took a REFUTATION
+-- to get there (2026-08-16). Written first without the run context, because
+-- the engine's `bs-lea-slot` field handed an arch only the correspondence, the
+-- non-halt and the fetch, the 2026-07-30 probe killed it outright:
+--
+--     the empty view (`HDom ≡ ⊥`, `hfront ≡ lo ≡ 0`), a current frame based at
+--     address 0, every register zero, and `prog ≡ lea-slot modulus ∷ []`
+--     satisfies `CompiledCorr` and the fetch — while the conclusion reads
+--     `modulus * 8 < modulus`.
+--
+-- NOTHING IN A CORRESPONDENCE BOUNDS A SLOT INDEX. Bounding it is `RunAt`'s
+-- job (`Emitted` ⇒ the shape check ⇒ `slot < frame-slots ≤ ir-stack-budget`),
+-- which is precisely why the other three carry it. So the engine's field now
+-- hands the `RunAt` down, and this bound has the family's shape.
 ------------------------------------------------------------------------
 SlotAddrNoWrap : Set₁
 SlotAddrNoWrap =
   ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
     (s : R.State) (slot : ℕ)
-  → FSimr.CompiledCorr rv64-frame-semantics refl hv prog fs s
+  → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
+  → FSimr.CompiledCorr o rv64-frame-semantics refl hv prog fs s
   → FlatMachine.fetch {rv64-frame-semantics} prog
       (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (lea-slot slot)
   → R.readReg (R.State.regs s) sp + slot-to-disp slot < R.W.modulus

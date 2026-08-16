@@ -31,8 +31,12 @@
 open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.CCC.Target.RiscV64.Syntax using (slot-size)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst)
+open import Once.CanonicalName using (CanonicalName)
 
 module Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation
+  -- D089's definition identity, threaded only so `CompiledCorrespondence` can
+  -- state `bs-lea-slot`'s `RunAt` premise (2026-08-16).
+  (o : CanonicalName)
   (FS : FrameSemantics)
   (word-eq : frame-word FS ≡ slot-size)
   where
@@ -86,7 +90,7 @@ rreg' : R.State → Reg → ℕ
 rreg' s r = R.readReg (R.State.regs s) r
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
-       FS rv-slot-size word-eq Reg riscv64-roles R.State rreg' R.State.memory rhalted
+       o FS rv-slot-size word-eq Reg riscv64-roles R.State rreg' R.State.memory rhalted
        R.State.pc Program compile-trace R.find-label blk-off blk-len R.exec
        R.W.modulus
   public
