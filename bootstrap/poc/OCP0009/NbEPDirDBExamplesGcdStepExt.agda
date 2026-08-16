@@ -56,19 +56,23 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π; Id
         ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝
-        ; Ren; renTm; renTy; Sub; subTm; subTy; extR; extS; Id-cong₃ )
+        ; Ren; renTm; renTy; Sub; subTm; subTy; extR; extS; Id-cong₃
+        ; subTy-renTy; renTy-subTy; subTy-cong )
 open import poc.OCP0009.NbEPDirDBType
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢lam; ⊢nsuc
+  using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
+        ; _⊢_∷_; _∋_∷_; _⊢ty_; ⊢var; here; there; ⊢lam; ⊢app; ⊢nsuc; ⊢natrec
         ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Id; ⊢⌜Nat⌝
         ; _⟶_; _⟶*_; done; step; β; ξ-appˡ )
-open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast; ∋-cast; Ren⊢ )
+open import poc.OCP0009.NbEPDirDBSubj
+  using ( ⊢wk; ⊢-cast; ∋-cast; Ren⊢; Ren⊢-ext; ren-ty; ren-lemma )
 open import poc.OCP0009.NbEPDirDBLibAmrec
-  using ( Prv; prv; prvTm; prvOk; StepExt; StepPW; wR; renren; renTy-idR )
+  using ( Prv; prv; prvTm; prvOk; StepExt; StepPW; wR; renren; renTy-idR
+        ; subrenTy; aIHTat-ren )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
+open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
-  using ( gcdStp; gcdBody; msr; ⊢msr; G1z; gcdInn1; gcdIH )
+  using ( gcdStp; gcdBody; msr; ⊢msr; G1z; gcdInn1; gcdIH; ⊢gcdIH; gcdG; ⊢gcdG )
 
 ------------------------------------------------------------------------
 -- ★ RENAMING-INVARIANCE OF THE STEP.
@@ -196,3 +200,155 @@ pwIntro {a = a} {ih₁ = ih₁} {ih₂ = ih₂} dμ pw =
     idEq = Id-cong₃ refl
              (cong (λ z → app (app z (var (vs vz))) (var vz)) (sym (ww ih₁)))
              (cong (λ z → app (app z (var (vs vz))) (var vz)) (sym (ww ih₂)))
+
+------------------------------------------------------------------------
+-- ★★ A `natrec` RE-TYPED AT A VARIABLE SCRUTINEE.
+--
+-- Every one of the three splits needs the SAME thing: to state its motive
+-- it must mention `natrec z s <recursion variable>`, and `ty-Id` will only
+-- accept that if it is typed.  `⊢gcdStp` types each `natrec` at its own
+-- scrutinee (`snd x`, `fst x`, `a ∸ b`), never at a variable.
+--
+-- ★ ONE LEMMA, THREE USES, and it is generic: weaken the whole `⊢natrec`
+--   by one ambient binder and take the new variable as the scrutinee.  The
+--   three peels below are the entire content — a motive, a zero branch and
+--   a successor branch, each a `sub`-meets-`ren` commutation decided
+--   variable-by-variable.
+--
+-- ⚠ Do NOT try to get this by substituting into `⊢gcdStp`.  Its scrutinee
+--   is `snd x`, and no substitution turns that into a variable.
+------------------------------------------------------------------------
+
+module _ {Γ : Ctx} {M : RTy (⌊ Γ ⌋ ∙)} where
+
+  -- the motive, at the new variable — collapses to `M` itself
+  nv-at : subTy (single (var vz)) (renTy (extR vs) M) ≡ M
+  nv-at = trans (subrenTy br M) (renTy-idR (λ _ → refl) M)
+    where
+      br : ∀ v → single (var vz) (extR vs v) ≡ var v
+      br vz     = refl
+      br (vs u) = refl
+
+  -- the zero branch: `subTy` past the weakening
+  nv-z : subTy (single nzero) (renTy (extR vs) M)
+       ≡ renTy vs (subTy (single nzero) M)
+  nv-z = trans (subTy-renTy M) (trans (subTy-cong br M) (sym (renTy-subTy M)))
+    where
+      br : ∀ v → single nzero (extR vs v) ≡ renTm vs (single nzero v)
+      br vz     = refl
+      br (vs u) = refl
+
+  -- the successor branch: same commutation, one binder deeper
+  nv-s : subTy nrs (renTy (extR vs) M)
+       ≡ renTy (extR (extR vs)) (subTy nrs M)
+  nv-s = trans (subTy-renTy M) (trans (subTy-cong br M) (sym (renTy-subTy M)))
+    where
+      br : ∀ v → nrs (extR vs v) ≡ renTm (extR (extR vs)) (nrs v)
+      br vz     = refl
+      br (vs u) = refl
+
+⊢natrec-var :
+  {Γ : Ctx} {M : RTy (⌊ Γ ⌋ ∙)} {z : RTm ⌊ Γ ⌋} {s : RTm ((⌊ Γ ⌋ ∙) ∙)} →
+  (Γ ▹ Nat) ⊢ty M →
+  Γ ⊢ z ∷ subTy (single nzero) M →
+  ((Γ ▹ Nat) ▹ M) ⊢ s ∷ subTy nrs M →
+  (Γ ▹ Nat) ⊢ natrec (w z) (renTm (extR (extR vs)) s) (var vz) ∷ M
+⊢natrec-var {M = M} dM dz ds =
+  ⊢-cast nv-at
+    (⊢natrec (ren-ty dM (Ren⊢-ext wR-id))
+             (⊢-cast (sym nv-z) (⊢wk dz))
+             (⊢-cast (sym nv-s) (ren-lemma ds (Ren⊢-ext (Ren⊢-ext wR-id))))
+             (⊢var here))
+  where wR-id = wR Ren⊢-id
+
+------------------------------------------------------------------------
+-- ★ APPLYING AN IH to its two arguments — two `⊢app`s and one peel.
+--   (`LibAmrec.appIH` is the same lemma, but it lives inside a
+--   parameterised module and is stated in `aIHTat`'s slots.)
+------------------------------------------------------------------------
+
+appGcdIH : {Γ : Ctx} {μ i y q : RTm ⌊ Γ ⌋} →
+           Γ ⊢ i ∷ gcdIH μ → Γ ⊢ y ∷ PairT →
+           Γ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) msr)) μ →
+           Γ ⊢ app (app i y) q ∷ El ⌜Nat⌝
+appGcdIH {μ = μ} {y = y} di dy dq =
+  ⊢app (⊢-cast (cong (λ u → Π (Hom Nat (nsuc (subTm (single y) msr)) u)
+                              (El ⌜Nat⌝))
+                     (wk-single {v = y} μ))
+               (⊢app di dy))
+       dq
+
+-- ★ `gcdIH`/`gcdG` past a weakening.  ⚠ NOT definitional: `gcdIH` hides a
+--   `w μ` inside its `Hom`, so `renTy vs` has to fuse with it.  `aIHTat-ren`
+--   already says this; PairT/⌜Nat⌝/msr all compute through it.
+gcdIH-w : {Γ : Cx} (μ : RTm Γ) → renTy vs (gcdIH μ) ≡ gcdIH (w μ)
+gcdIH-w μ = aIHTat-ren PairT ⌜Nat⌝ msr μ
+
+gcdIH-w² : {Γ : Cx} (μ : RTm Γ) →
+           renTy vs (renTy vs (gcdIH μ)) ≡ gcdIH (w (w μ))
+gcdIH-w² μ = trans (cong (renTy vs) (gcdIH-w μ)) (gcdIH-w (w μ))
+
+gcdIH-w³ : {Γ : Cx} (μ : RTm Γ) →
+           renTy vs (renTy vs (renTy vs (gcdIH μ))) ≡ gcdIH (w (w (w μ)))
+gcdIH-w³ μ = trans (cong (renTy vs) (gcdIH-w² μ)) (gcdIH-w (w (w μ)))
+
+gcdG-w³ : {Γ : Cx} (μ : RTm Γ) →
+          renTy vs (renTy vs (renTy vs (gcdG μ))) ≡ gcdG (w (w (w μ)))
+gcdG-w³ μ = cong (λ T → Π T (El ⌜Nat⌝)) (gcdIH-w³ μ)
+
+⊢pwT : {Γ : Ctx} {μa i₁ i₂ : RTm ⌊ Γ ⌋} →
+       Γ ⊢ μa ∷ Nat → Γ ⊢ i₁ ∷ gcdIH μa → Γ ⊢ i₂ ∷ gcdIH μa →
+       Γ ⊢ty pwT μa i₁ i₂
+⊢pwT {μa = μa} dμ d₁ d₂ =
+  ty-Π ⊢PairT
+    (ty-Π (ty-Hom ty-Nat (⊢nsuc ⊢msr) (⊢wk dμ))
+          (ty-Id (ty-El ⊢⌜Nat⌝) (at d₁) (at d₂)))
+  where
+    at : {i : RTm ⌊ _ ⌋} → _ ⊢ i ∷ gcdIH μa → _
+    at d = appGcdIH (⊢-cast (gcdIH-w² μa) (⊢wk (⊢wk d)))
+                    (⊢var (there here)) (⊢var here)
+
+------------------------------------------------------------------------
+-- ★★★ `eqG` — THE `Id`-ANALOGUE OF `gcdG`.
+--
+--   gcdG μ  =  (ih : gcdIH μ) → Nat
+--   eqG μ f =  (i₁ i₂ : gcdIH μ) → (i₁ ≐ i₂ pointwise) → f i₁ ≡ f i₂
+--
+-- ★ THE TWO IHs AND THE HYPOTHESIS ARE Π-BOUND, and that is the whole
+--   design.  `⊢gcdStp`'s own motives already carry `gcdG (plusTm …)`, i.e.
+--   the IH type at the SPLIT-DEPENDENT bound; mirroring that means every
+--   branch receives its IHs at its own bound, and the recursive leaf's
+--   certificate `⊢CERTᶻ` — stated at `plusTm (nsuc k') (nsuc n')` — is
+--   then exactly what `⊢app` wants.  No transport, no order hypothesis.
+--
+-- ⚠ `f` is a PARAMETER, not Π-bound.  Quantifying it would make the
+--   statement false: two different IHs do give different answers for an
+--   arbitrary `f`.  It is the specific `natrec` that makes it true.
+------------------------------------------------------------------------
+
+eqG : {Γ : Cx} (μx f : RTm Γ) → RTy Γ
+eqG μx f =
+  Π (gcdIH μx)
+    (Π (gcdIH (w μx))
+       (Π (pwT (w (w μx)) (var (vs vz)) (var vz))
+          (Id (El ⌜Nat⌝) (app (w (w (w f))) (var (vs (vs vz))))
+                         (app (w (w (w f))) (var (vs vz))))))
+
+⊢eqG : {Γ : Ctx} {μx f : RTm ⌊ Γ ⌋} →
+       Γ ⊢ μx ∷ Nat → Γ ⊢ f ∷ gcdG μx → Γ ⊢ty eqG μx f
+⊢eqG {μx = μx} {f = f} dμ df =
+  ty-Π (⊢gcdIH dμ)
+    (ty-Π (⊢gcdIH (⊢wk dμ))
+      (ty-Π (⊢pwT (⊢wk (⊢wk dμ))
+                  (⊢-cast (gcdIH-w² μx) (⊢var (there here)))
+                  (⊢-cast (gcdIH-w (w μx)) (⊢var here)))
+            -- ⚠ THE TWO IH VARIABLES NEED DIFFERENT PEELS.  Both land at
+            --   `gcdIH (w (w (w μx)))`, but the first is `gcdIH μx` under
+            --   three weakenings and the second is `gcdIH (w μx)` under two
+            --   — the motive already weakened it once.  Sharing one helper
+            --   between them does not typecheck.
+            (ty-Id (ty-El ⊢⌜Nat⌝)
+                   (⊢app df³ (⊢-cast (gcdIH-w³ μx) (⊢var (there (there here)))))
+                   (⊢app df³ (⊢-cast (gcdIH-w² (w μx)) (⊢var (there here)))))))
+  where
+    df³ = ⊢-cast (gcdG-w³ μx) (⊢wk (⊢wk (⊢wk df)))
