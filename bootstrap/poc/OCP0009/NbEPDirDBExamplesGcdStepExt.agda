@@ -61,7 +61,8 @@ open import poc.OCP0009.NbEPDirDBPi
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _∋_∷_; _⊢ty_; ⊢var; here; there; ⊢lam; ⊢app; ⊢nsuc; ⊢natrec
-        ; ⊢fst; ⊢snd; ⊢nzero; ⊢idrefl; natrec-zero
+        ; ⊢fst; ⊢snd; ⊢nzero; ⊢idrefl; natrec-zero; natrec-suc
+        ; ⊢conv; _≅ᵀ_; csymᵀ
         ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Id; ⊢⌜Nat⌝
         ; _⟶_; _⟶*_; done; step; β; ξ-appˡ )
 open import poc.OCP0009.NbEPDirDBSubj
@@ -72,10 +73,13 @@ open import poc.OCP0009.NbEPDirDBLibAmrec
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asP )
-open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ )
+open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
+open import poc.OCP0009.NbEPDirDBInj
+  using ( _⟶ᵀ*_; stepᵀ; doneᵀ; red→≅ᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( gcdStp; gcdBody; msr; ⊢msr; gcdIH; ⊢gcdIH; gcdG; ⊢gcdG
-        ; G1; ⊢G1; G1z; ⊢G1z; gcdInn1; ⊢gcdInn1; ⊢gcdBody )
+        ; G1; ⊢G1; G1z; ⊢G1z; gcdInn1; ⊢gcdInn1; ⊢gcdBody
+        ; G2; ⊢G2; G2z; ⊢G2z; gcdInn2; ⊢gcdInn2 )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
 
 ------------------------------------------------------------------------
@@ -415,3 +419,37 @@ leaf₁z =
     idPrf = idOfRed (red₁z (var (vs (vs vz)))) (red₁z (var (vs vz)))
               (prv _ (⊢idrefl ⊢⌜Nat⌝
                         (asP (⊢fst (⊢var (there (there (there here))))))))
+
+------------------------------------------------------------------------
+-- ★★★ THE BRIDGE BETWEEN SPLITS — a reduction of `f` is a CONVERSION of
+--     `eqG μ f`.
+--
+-- ⚠ WHY IT IS NEEDED.  Split 1's successor branch must inhabit
+--   `subTy nrs M₁`, whose function slot is `natrec … (nsuc n')`.  Split 2
+--   produces the same statement about that term's `natrec-suc` REDUCT.  The
+--   two are not equal — only related by one step — so the branch cannot be
+--   a cast.  ⭐ But `eqG` mentions `f` only inside an `Id`, under three
+--   `Π`s, and the kernel has `ξ-Πʳ`, `ξ-Idˡ` and `ξ-Idʳ`, so the reduction
+--   pushes all the way in and becomes a TYPE conversion.  One `⊢conv` per
+--   split instead of re-lam-ing and bridging each `Id` by hand.
+------------------------------------------------------------------------
+
+eqG-red : {Γ : Cx} {μ f g : RTm Γ} → f ⟶* g → eqG μ f ≅ᵀ eqG μ g
+eqG-red {f = f} {g = g} r =
+  red→≅ᵀ (⟶ᵀ*-Πʳ (⟶ᵀ*-Πʳ (⟶ᵀ*-Πʳ
+    (⟶ᵀ*-trans (⟶ᵀ*-Idˡ (⟶*-appˡ r³)) (⟶ᵀ*-Idʳ (⟶*-appˡ r³))))))
+  where
+    r³ = ⟶*-ren vs (⟶*-ren vs (⟶*-ren vs r))
+
+------------------------------------------------------------------------
+-- ★★ SPLIT 2 — on `fst x`.  ctx: [0]=k' [1]=M₁ [2]=n' [3]=x
+------------------------------------------------------------------------
+
+f₂ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙)
+f₂ = natrec (w G2z) (renTm (extR (extR vs)) gcdInn2) (var vz)
+
+-- ⭐ …and the two splits MEET, in one `natrec-suc` step.
+probe₁-s : {Γ : Cx} →
+           subTm nrs (f₁ {Γ})
+         ⟶* subTm (single (fst (var (vs (vs vz))))) (f₂ {Γ})
+probe₁-s = step (natrec-suc _ _ _) done
