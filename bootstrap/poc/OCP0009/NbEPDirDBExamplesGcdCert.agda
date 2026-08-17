@@ -41,13 +41,15 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢fst; ⊢snd; ⊢pair; ty-Nat )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single; ⊢[] )
+open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( subren; renren )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( G1; ⊢G1; G1z; ⊢G1z; gcdInn1; ⊢gcdInn1
         ; G2; ⊢G2; G2z; ⊢G2z; gcdInn2; ⊢gcdInn2; wkS2
-        ; G3; ⊢G3; G3z; ⊢G3z; G3s; ⊢G3s )
+        ; G3; ⊢G3; G3z; ⊢G3z; G3s; ⊢G3s
+        ; CERTˢ; ⊢CERTˢ; PAIRˢ; KS; NS; gcdIH )
 
 ------------------------------------------------------------------------
 -- ★★★ A `natrec`'s TYPING, TRANSPORTED ALONG A SUBSTITUTION.
@@ -146,56 +148,102 @@ module GcdCertAt {Δ : Ctx} {a' b' d : RTm ⌊ Δ ⌋}
   ⊢W = subst (λ t → Δ ⊢ t ∷ Nat) (sym (wkS2 {u = R₁} {v = b'} a')) da
 
   ------------------------------------------------------------------------
-  -- ★ the two composite typed substitutions the deeper scrutinees need
+  -- ★ THE EIGHT SUBSTITUTION LAYERS, NAMED — one per slot of `CΓs`, in the
+  --   order the reduction applied them.  Naming them is what keeps the rest
+  --   of this module readable; spelled out, `σH` is a page wide.
   ------------------------------------------------------------------------
 
-  σA⊢ : Sub⊢ (Δ ▹ PairT) Δ (single gX)
+  σA : Sub (⌊ Δ ⌋ ∙) ⌊ Δ ⌋
+  σA = single gX
+
+  σB : Sub (⌊ Δ ⌋ ∙ ∙) ⌊ Δ ⌋
+  σB = single b' ∘ₛ extS σA
+
+  σC : Sub (⌊ Δ ⌋ ∙ ∙ ∙) ⌊ Δ ⌋
+  σC = single R₁ ∘ₛ extS σB
+
+  σA⊢ : Sub⊢ (Δ ▹ PairT) Δ σA
   σA⊢ = ⊢single ⊢gX
 
-  σB⊢ : Sub⊢ ((Δ ▹ PairT) ▹ Nat) Δ (single b' ∘ₛ extS (single gX))
-  σB⊢ = Sub⊢-∘ {σ = extS (single gX)} {τ = single b'}
+  σB⊢ : Sub⊢ ((Δ ▹ PairT) ▹ Nat) Δ σB
+  σB⊢ = Sub⊢-∘ {σ = extS σA} {τ = single b'}
                (Sub⊢-ext {C = Nat} σA⊢) (⊢single db)
 
-  σC⊢ : Sub⊢ (((Δ ▹ PairT) ▹ Nat) ▹ G1) Δ
-             (single R₁ ∘ₛ extS (single b' ∘ₛ extS (single gX)))
-  σC⊢ = Sub⊢-∘ {σ = extS (single b' ∘ₛ extS (single gX))} {τ = single R₁}
+  σC⊢ : Sub⊢ (((Δ ▹ PairT) ▹ Nat) ▹ G1) Δ σC
+  σC⊢ = Sub⊢-∘ {σ = extS σB} {τ = single R₁}
                (Sub⊢-ext {C = G1} σB⊢)
-               (⊢single (⊢-cast (subTy-subTy {τ = single b'}
-                                             {σ = extS (single gX)} G1) ⊢R₁))
+               (⊢single (⊢-cast (subTy-subTy {τ = single b'} {σ = extS σA} G1) ⊢R₁))
 
   ------------------------------------------------------------------------
-  -- ★ …and the same one-liner twice more, at the two deeper scrutinees.
-  --   ⚠ Every implicit substitution is PINNED.  Five times today an
-  --   inference has blocked on one, always the same shape: a substitution
-  --   that appears only in APPLIED position (`σ (ϑ v)`, `subTm σ x`) is a
-  --   higher-order pattern Agda solves partway and then gives up on.
+  -- ★ …and the same one-liner at each deeper scrutinee.  ⚠ Every implicit
+  --   substitution is PINNED: one that occurs only in APPLIED position is a
+  --   higher-order pattern Agda solves partway and then blocks on.
   ------------------------------------------------------------------------
 
   R₂ : RTm ⌊ Δ ⌋
-  R₂ = natrec (subTm (single R₁ ∘ₛ extS (single b' ∘ₛ extS (single gX))) G2z)
-              (subTm (extS (extS (single R₁ ∘ₛ extS (single b' ∘ₛ extS (single gX)))))
-                     gcdInn2)
-              W
+  R₂ = natrec (subTm σC G2z) (subTm (extS (extS σC)) gcdInn2) W
 
-  ⊢R₂ : Δ ⊢ R₂ ∷ subTy (single W)
-                       (subTy (extS (single R₁ ∘ₛ extS (single b' ∘ₛ extS (single gX))))
-                              G2)
+  ⊢R₂ : Δ ⊢ R₂ ∷ subTy (single W) (subTy (extS σC) G2)
   ⊢R₂ = ⊢natrec-at ⊢G2 ⊢G2z ⊢gcdInn2 σC⊢ ⊢W
 
-  σD⊢ : Sub⊢ ((((Δ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) Δ
-             (single W ∘ₛ extS (single R₁ ∘ₛ extS (single b' ∘ₛ extS (single gX))))
-  σD⊢ = Sub⊢-∘ {σ = extS (single R₁ ∘ₛ extS (single b' ∘ₛ extS (single gX)))}
-               {τ = single W}
+  σD : Sub (⌊ Δ ⌋ ∙ ∙ ∙ ∙) ⌊ Δ ⌋
+  σD = single W ∘ₛ extS σC
+
+  σD⊢ : Sub⊢ ((((Δ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) Δ σD
+  σD⊢ = Sub⊢-∘ {σ = extS σC} {τ = single W}
                (Sub⊢-ext {C = Nat} σC⊢) (⊢single ⊢W)
 
-  σE⊢ : Sub⊢ (((((Δ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) Δ
-             (single R₂ ∘ₛ extS (single W ∘ₛ extS
-               (single R₁ ∘ₛ extS (single b' ∘ₛ extS (single gX)))))
-  σE⊢ = Sub⊢-∘ {σ = extS (single W ∘ₛ extS
-                     (single R₁ ∘ₛ extS (single b' ∘ₛ extS (single gX))))}
-               {τ = single R₂}
+  σE : Sub (⌊ Δ ⌋ ∙ ∙ ∙ ∙ ∙) ⌊ Δ ⌋
+  σE = single R₂ ∘ₛ extS σD
+
+  σE⊢ : Sub⊢ (((((Δ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) Δ σE
+  σE⊢ = Sub⊢-∘ {σ = extS σD} {τ = single R₂}
                (Sub⊢-ext {C = G2} σD⊢)
-               (⊢single (⊢-cast (subTy-subTy {τ = single W}
-                                             {σ = extS (single R₁ ∘ₛ extS
-                                                    (single b' ∘ₛ extS (single gX)))}
-                                             G2) ⊢R₂))
+               (⊢single (⊢-cast (subTy-subTy {τ = single W} {σ = extS σC} G2) ⊢R₂))
+
+  ------------------------------------------------------------------------
+  -- ★ the LAST scrutinee, and the last three layers.
+  ------------------------------------------------------------------------
+
+  R₃ : RTm ⌊ Δ ⌋
+  R₃ = natrec (subTm σE G3z) (subTm (extS (extS σE)) G3s) d
+
+  ⊢R₃ : Δ ⊢ R₃ ∷ subTy (single d) (subTy (extS σE) G3)
+  ⊢R₃ = ⊢natrec-at ⊢G3 ⊢G3z ⊢G3s σE⊢ dd
+
+  σF : Sub (⌊ Δ ⌋ ∙ ∙ ∙ ∙ ∙ ∙) ⌊ Δ ⌋
+  σF = single d ∘ₛ extS σE
+
+  σF⊢ : Sub⊢ ((((((Δ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) ▹ Nat) Δ σF
+  σF⊢ = Sub⊢-∘ {σ = extS σE} {τ = single d}
+               (Sub⊢-ext {C = Nat} σE⊢) (⊢single dd)
+
+  σG : Sub (⌊ Δ ⌋ ∙ ∙ ∙ ∙ ∙ ∙ ∙) ⌊ Δ ⌋
+  σG = single R₃ ∘ₛ extS σF
+
+  σG⊢ : Sub⊢ (((((((Δ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2) ▹ Nat) ▹ G3) Δ σG
+  σG⊢ = Sub⊢-∘ {σ = extS σF} {τ = single R₃}
+               (Sub⊢-ext {C = G3} σF⊢)
+               (⊢single (⊢-cast (subTy-subTy {τ = single d} {σ = extS σE} G3) ⊢R₃))
+
+  ------------------------------------------------------------------------
+  -- ★★★★ THE CERTIFICATE, TYPED — and `CERTˢ` was never normalised.
+  --
+  -- ⚠ The `ih` layer is a PARAMETER, not fixed here: `ih` is whatever the
+  --   caller passes to the step, and its typing is what the caller has.
+  ------------------------------------------------------------------------
+
+  ⊢cert : {ih : RTm ⌊ Δ ⌋} →
+          Δ ⊢ ih ∷ subTy σG (gcdIH (plusTm (nsuc (var (vs (vs (vs vz)))))
+                                           (nsuc (var (vs (vs (vs (vs (vs vz))))))))) →
+          Δ ⊢ subTm (single ih ∘ₛ extS σG) CERTˢ
+            ∷ subTy (single ih ∘ₛ extS σG)
+                    (Hom Nat (nsuc (plusTm (fst PAIRˢ) (snd PAIRˢ)))
+                             (plusTm (nsuc KS) (nsuc NS)))
+  ⊢cert {ih = ih} dih =
+    sub-lemma ⊢CERTˢ
+      (Sub⊢-∘ {σ = extS σG} {τ = single ih}
+              (Sub⊢-ext {C = gcdIH (plusTm (nsuc (var (vs (vs (vs vz)))))
+                                           (nsuc (var (vs (vs (vs (vs (vs vz))))))))}
+                        σG⊢)
+              (⊢single dih))
