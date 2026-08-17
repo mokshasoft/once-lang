@@ -53,8 +53,13 @@ module GcdRecAt (Δ : Ctx) where
   -- certificates.  ⭐ THIS is what nothing weaker gives, and what
   -- `StepExt` was ultimately for.
   --
-  -- ⚠⚠ COMMENTED OUT — IT OOM-KILLS (three attempts 2026-08-17, every one
-  --   with a concurrent build running, so none is a clean measurement).
+  -- ⚠⚠ COMMENTED OUT — IT OOM-KILLS, and this is now a CLEAN measurement:
+  --   detached, uninterrupted, on a quiet box, exit 143 with zero errors
+  --   logged.  Earlier attempts were all under contention and I twice said
+  --   so as if that excused it; it does not — the cost is real.
+  --   ⚠ AND THE `.agdai` LIES: one exists for this module, but it PREDATES
+  --   the source by 42s and is from the CONDITIONAL version.  An interface
+  --   file is only evidence if it postdates the source.
   --   Kept verbatim so the discharge is not lost; the theorem below takes
   --   the witness as a HYPOTHESIS instead, which verifies that every
   --   interface in the recursive step lines up and isolates the remaining
