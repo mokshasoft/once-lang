@@ -249,21 +249,40 @@ module GcdCertAt {Δ : Ctx} {a' b' d : RTm ⌊ Δ ⌋}
               (⊢single dih))
 
   ------------------------------------------------------------------------
-  -- ⚠⚠ NOT DONE: THE NESTED FORM.  `⊢cert` above types the FUSED
-  --   `subTm (single ih ∘ₛ extS σG) CERTˢ`; `recCert (gcd-gt-term …)` is
-  --   EIGHT NESTED `subTm`s, and the caller needs the nested one.
+  -- ⚠⚠ NOT DONE: THE NESTED FORM — and five routes are ruled out.
   --
-  --   Both routes to it were tried and both OOM-kill (measured 2026-08-17,
-  --   one agda at a time):
-  --     * fusing the nested form to the composite — that is exactly the
-  --       comparison that costs >10min;
-  --     * applying `sub-lemma` one layer at a time, which lands on the
-  --       nested form directly.  Expensive even with the subject AND type
-  --       written out by hand, so it is not an inference artefact: eight
-  --       `Sub⊢-ext` towers over substituted contexts is simply a lot.
+  -- `⊢cert` above types the FUSED `subTm (single ih ∘ₛ extS σG) CERTˢ`;
+  -- `recCert (gcd-gt-term …)` is EIGHT NESTED `subTm`s, and the caller
+  -- needs the nested one.  Measured 2026-08-17, one agda at a time:
   --
-  --   ⭐ What IS established: the certificate is typeable by DERIVATION at
+  --   1. fuse nested → composite                    >10min (the comparison
+  --      the derivation route exists to avoid)
+  --   2. `sub-lemma` layer-by-layer, ONE term       OOM
+  --   3. …with subject AND type written by hand     OOM  ⇒ not an
+  --      inference artefact
+  --   4. …as EIGHT SEPARATE Defs, with `⊢CERTˢ`'s
+  --      `B`/`C`/`D` motive slots PINNED            1m37s + ONE honest type
+  --      error — the NEAR MISS.  `⊢R₂` is typed at the composite `σC`
+  --      where the chain wants it un-nested.
+  --   5. bridging that with `exts-exts` + `subTy-subTy` over `G2`   OOM
+  --
+  -- ⭐ ROUTE 4 IS THE ONE TO RESUME FROM.  Its diagnosis also explains the
+  --   earlier OOMs: `⊢CERTˢ` GENERALISES its sibling motive slots — the very
+  --   generalisation that let gcd's `StepExt` reuse it — so left implicit
+  --   they are metas, and unsolved metas across eight layers is what blew
+  --   the heap.  Pinned, layer 1 alone is 8.5s.
+  --
+  -- ⚠ THE COST IS `plusMonoLTm` UNFOLDING, always: through
+  --   `trHomʳ`/`trHomˡ`/`congS`/`commTm`/`jsub`.  Two untried angles —
+  --   (a) push the substitutions through the SMALL motives first
+  --   (`⊢G2`/`⊢G2z`/`⊢gcdInn2` layer by layer, then a plain `⊢natrec` at
+  --   the bottom), needing an `na-z`/`na-s` cast per layer; or (b) make the
+  --   certificate OPAQUE (`abstract`), since no caller of the certificate
+  --   needs to see inside it — only its type matters.  (b) is a change to a
+  --   shared library's abstraction boundary and is a DESIGN DECISION.
+  --
+  -- ⭐ What IS established: the certificate is typeable by DERIVATION at
   --   6.2s, and every ingredient (`⊢R₁`/`⊢W`/`⊢R₂`/`⊢R₃`, the eight typed
-  --   layers) is green and cheap.  The remaining problem is only the SHAPE
-  --   the reduction hands over, not the mathematics.
+  --   layers) is green and cheap.  What is missing is only the SHAPE the
+  --   reduction hands over, not the mathematics.
   ------------------------------------------------------------------------
