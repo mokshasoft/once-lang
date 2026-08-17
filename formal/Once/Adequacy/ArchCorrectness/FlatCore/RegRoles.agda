@@ -6,7 +6,7 @@
 --
 -- THE ROLE MAP (Plan 0.65 G1c, 2026-08-11).
 --
--- The abstract machine has a fixed set of registers — Output, Input1, Input2,
+-- The abstract machine has a fixed set of registers — Output, Input1,
 -- Scratch, Count — plus three the flat machine owns: the stack pointer, the
 -- closure pointer and the heap frontier. `FlatCorrespondence` named x86-64's
 -- physical registers for these **799 times**, and every one of those mentions
@@ -28,11 +28,13 @@
 -- make every case `refl` or absurd. The eight names below are DERIVED, so the
 -- 120 sites G1c step 1 renamed did not have to move again.
 --
--- ONE MEASURED CAVEAT, for whoever instantiates this next (plan 0.66): x86-32
--- CANNOT fill this record injectively. It has eight GPRs, the machine has nine
--- roles counting the frame pointer, and `Input2` and `Scratch` are both `edx`
--- there today. That is a real finding, not a nuisance — see plan 0.65's G1c
--- section for why there is no local fix and what the two real options are.
+-- THE CAVEAT G1c MEASURED IS NOW CLOSED (plan 0.66, 2026-08-17). x86-32 could
+-- not fill this record injectively: eight GPRs, nine roles counting the frame
+-- pointer, `Input2` and `Scratch` both `edx`. There was no LOCAL fix — `ebp` is
+-- the live frame anchor, so reassigning it is a SIGSEGV, not a fix. The fix was
+-- to delete the role: `Input2` had no producer on any arch, so it is RETIRED
+-- (see `SMCore.AbstractReg`), and x86-32's seven realised roles fit its seven
+-- available registers exactly.
 ------------------------------------------------------------------------
 
 module Once.Adequacy.ArchCorrectness.FlatCore.RegRoles where
@@ -48,7 +50,6 @@ data Role : Set where
   -- the abstract machine's registers
   role-out     : Role
   role-in1     : Role
-  role-in2     : Role
   role-scratch : Role
   role-count   : Role   -- the cata tally (plan 0.54 D item 4)
 
@@ -61,6 +62,5 @@ record RegRoles (Reg : Set) : Set where
   heap-reg    = reg-of role-heap
   out-reg     = reg-of role-out
   in1-reg     = reg-of role-in1
-  in2-reg     = reg-of role-in2
   scratch-reg = reg-of role-scratch
   count-reg   = reg-of role-count

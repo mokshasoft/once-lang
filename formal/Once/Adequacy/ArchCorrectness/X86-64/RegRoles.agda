@@ -9,7 +9,7 @@
 -- already makes, written down once where the correspondence can name it.
 --
 -- The long-lived roles sit in callee-saved registers (rbx/r14/r12/r15) and the
--- transient ones in the SysV argument/return registers (rax/rdi/rsi), which is
+-- transient ones in the SysV argument/return registers (rax/rdi), which is
 -- why a closure call can cross an arith block without spilling them.
 --
 -- Because this is a CONCRETE record, every projection reduces: `out-reg` IS
@@ -19,9 +19,9 @@
 
 module Once.Adequacy.ArchCorrectness.X86-64.RegRoles where
 
-open import Once.CCC.Target.X86-64.Syntax using (Reg; rax; rbx; rsi; rdi; rsp; r12; r14; r15)
+open import Once.CCC.Target.X86-64.Syntax using (Reg; rax; rbx; rdi; rsp; r12; r14; r15)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
-  using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1; role-in2; role-scratch; role-count)
+  using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1; role-scratch; role-count)
 
 x86-64-reg-of : Role → Reg
 x86-64-reg-of role-sp      = rsp
@@ -29,7 +29,6 @@ x86-64-reg-of role-clos    = r12
 x86-64-reg-of role-heap    = r15
 x86-64-reg-of role-out     = rax
 x86-64-reg-of role-in1     = rdi
-x86-64-reg-of role-in2     = rsi
 x86-64-reg-of role-scratch = rbx
 x86-64-reg-of role-count   = r14
 

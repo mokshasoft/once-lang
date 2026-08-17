@@ -44,8 +44,7 @@ open import Once.IR
 open import Once.IRTy using (⌈_⌉F)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_; fits-int; fits-float)
 open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr;
-         mov-to-output; mov-to-input; mov-output-to-input2; mov-input2-to-output;
-         load-indirect; load-indirect-suc; load-from-slot; store-at-slot;
+         mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot;
          store-indirect; store-indirect-suc; lea-slot; restore-input;
          instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to;
          instr-push-frame; instr-pop-frame; instr-call-closure;
@@ -117,8 +116,6 @@ module CataIRSlotStable {FS : FrameSemantics} where
     in All→AllI (all-stable?-sound f ef) , All→AllI (all-stable?-sound g eg)
   stable?-sound mov-to-output           _ = tt
   stable?-sound mov-to-input            _ = tt
-  stable?-sound mov-output-to-input2    _ = tt
-  stable?-sound mov-input2-to-output    _ = tt
   stable?-sound load-indirect           _ = tt
   stable?-sound load-indirect-suc       _ = tt
   stable?-sound (load-from-slot _)      _ = tt
@@ -177,8 +174,6 @@ module CataIRSlotStable {FS : FrameSemantics} where
     ∧-intro (all-stable?-complete f (AllI→All af)) (all-stable?-complete g (AllI→All ag))
   stable?-complete mov-to-output           _ = refl
   stable?-complete mov-to-input            _ = refl
-  stable?-complete mov-output-to-input2    _ = refl
-  stable?-complete mov-input2-to-output    _ = refl
   stable?-complete load-indirect           _ = refl
   stable?-complete load-indirect-suc       _ = refl
   stable?-complete (load-from-slot _)      _ = refl

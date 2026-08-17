@@ -7747,3 +7747,75 @@ Corollary for extractions specifically: generalising a working proof to a second
 instance is inherently bottom-up, so it is exactly the shape of work that needs
 the apex deleted at the START. The postulate you keep "until the island lands"
 is the one that makes the island's greenness meaningless.
+
+## D108: The Ninth Role Had No Producer — `Input2` Is RETIRED, Not Spilled
+
+**Date**: 2026-08-17 · **Status**: Fixed · **Plan**: 0.66
+
+### The blocker, as G1c left it
+
+`FlatCore.RegRoles` needs an INJECTIVE `reg-of : Role → Reg`, or the
+correspondence claims two roles agree with one register at every step. x86-32
+could not supply one:
+
+    role         x86-64   riscv64   x86-32
+    stack ptr    rsp      sp        esp
+    frame ptr    rbp      fp        ebp    ← the ninth role
+    Output       rax      a0        eax
+    Input1       rdi      t0        ecx
+    Input2       rsi      a1        edx  ←┐
+    Scratch      rbx      s3        edx  ←┘ SAME REGISTER
+    Count        r14      s4        edi
+    closure      r12      s1        ebx
+    heap top     r15      s2        esi
+
+Eight GPRs, nine roles. There is no free register: `ebp` is the live frame
+anchor every i386 epilogue restores `%esp` from, so reassigning it is a SIGSEGV
+(attempted and backed out 2026-08-11).
+
+### What the count was actually saying
+
+`Input2` had NO PRODUCER on any arch. Plan 0.2.4.5 Stage C introduced it for a
+split-input calling convention; that convention was REVERTED (`IRToTrace`: "Stage
+C γ-revert — uniform packed-pair convention"), and plan 0.54 rung D split the
+descend tally out of it into `Count`. What remained was a register the abstract
+machine carried, two instructions (`mov-output-to-input2`, `mov-input2-to-output`)
+`ir-to-trace` never emitted, and a role every arch had to name — surviving
+purely in proof enumerations.
+
+So the register count was not a shortage. It was the arch with the least slack
+reporting a dead role, and x86-32 was the only place the report could surface.
+
+### Why RETIRE and not SPILL
+
+The alternative on the table was to give x86-32's `Input2` a stack slot. That
+reads local and is not: `reg-of` is REGISTER-VALUED, so a spilled role widens the
+interface to `Role → Reg ⊎ Slot` and re-threads every role-indexed lemma on
+x86-64 and riscv64 as well — to keep an instruction nothing emits, and to put a
+memory access where the other two arches have a register.
+
+Retiring costs ~600 mentions across 38 files and removes machine state instead of
+adding an interface. The realised map is then injective everywhere: x86-32's
+seven roles in seven registers (esp/eax/ecx/edx/edi/ebx/esi) with `ebp` reserved.
+
+### The mislabelling that hid it
+
+Three files called `%edi` "Input2" while `count-*` is what writes `%edi`
+(`AbstractToX86-32`, `Arith/Backend/X86-32/Emit`, and riscv64's `s4`). None
+carried a correct label, which is why review never caught that Input2 and Scratch
+were one register. All three are corrected here.
+
+### The lesson
+
+**A role no emitter can produce is not a register shortage — it is state the
+machine does not have.** When an arch cannot fill an interface injectively, ask
+first which entries anything actually WRITES; the constrained arch is reporting a
+defect in the shared model, not asking for an exception. And when the answer is
+"nothing writes it", the fix deletes rather than widens: retiring a dead role is
+the only option that makes the remaining state smaller.
+
+Deferred, deliberately: the split-input convention returns as a type-driven
+optimisation for register-fittable primitive arguments. It brings its own
+register plumbing back WITH a producer, and x86-32's register pressure becomes a
+real question then — answerable against emitted code rather than against an
+enumeration.

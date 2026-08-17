@@ -224,8 +224,6 @@ module Dispatch (sup : Supply) where
     -- block-step lemma directly to ccc-step-bs (no block-step-any dispatcher — deleted).
     events-running-fetch {hv} n ev env prog fs s mov-to-output          cc wf h ftq = ccc-step-bs n ev env prog fs s mov-to-output          (bs-mov-to-output bss          prog fs s cc h ftq) wf ftq h refl h
     events-running-fetch {hv} n ev env prog fs s mov-to-input           cc wf h ftq = ccc-step-bs n ev env prog fs s mov-to-input           (bs-mov-to-input bss           prog fs s cc h ftq) wf ftq h refl h
-    events-running-fetch {hv} n ev env prog fs s mov-output-to-input2   cc wf h ftq = ccc-step-bs n ev env prog fs s mov-output-to-input2   (bs-mov-output-to-input2 bss   prog fs s cc h ftq) wf ftq h refl h
-    events-running-fetch {hv} n ev env prog fs s mov-input2-to-output   cc wf h ftq = ccc-step-bs n ev env prog fs s mov-input2-to-output   (bs-mov-input2-to-output bss   prog fs s cc h ftq) wf ftq h refl h
     events-running-fetch {hv} n ev env prog fs s (instr-reg-op scratch-one)        cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-reg-op scratch-one)        (bs-scratch-one bss        prog fs s cc h ftq) wf ftq h refl h
     events-running-fetch {hv} n ev env prog fs s (instr-reg-op scratch-zero)       cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-reg-op scratch-zero)       (bs-scratch-zero bss       prog fs s cc h ftq) wf ftq h refl h
     events-running-fetch {hv} n ev env prog fs s (instr-reg-op count-zero)        cc wf h ftq = ccc-step-bs n ev env prog fs s (instr-reg-op count-zero)        (bs-count-zero bss        prog fs s cc h ftq) wf ftq h refl h
@@ -256,7 +254,7 @@ module Dispatch (sup : Supply) where
     events-running-fetch {hv} n ev env prog fs s (instr-alloc-heap k) cc wf h ftq =
       ccc-step-bs n ev env prog fs s (instr-alloc-heap k)
         (bs-alloc-heap bss prog fs s k cc h ftq
-           (wf-regs (inv-wf wf) Input1) (wf-regs (inv-wf wf) Input2)
+           (wf-regs (inv-wf wf) Input1)
            (wf-regs (inv-wf wf) Scratch) (wf-regs (inv-wf wf) Count)
            (inv-closure wf)
            (λ hl _ → wf-heap (inv-wf wf) hl) (wf-stack (inv-wf wf))

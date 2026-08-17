@@ -139,7 +139,7 @@ entry-loc = AtDynamic (heap-loc (mkHeapRef 0) 0)
 -- vacuously at the start of the run. (Plan 0.54 D item 4 made `Scratch` and
 -- `Count` tags for `FlatRegTagWF`'s entry case; this finishes the move.)
 entry-regs : Registers FS
-entry-regs = mkRegs (SV-Tag 0) (SV-Tag 0) (SV-Tag 0) (SV-Tag 0) (SV-Tag 0)
+entry-regs = mkRegs (SV-Tag 0) (SV-Tag 0) (SV-Tag 0) (SV-Tag 0)
 
 -- THE ENTRY STATE IS INDEXED BY THE FRAME THE PROLOGUE RESERVED (2026-07-30).
 --

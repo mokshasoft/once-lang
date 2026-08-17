@@ -46,7 +46,6 @@ open import Once.SigOp.Info using (SigOpInfo)
 open import Once.CCC.Label using (Label; once; thunk)
   using (AbstractInstr; AbstractTrace; Slot;
          mov-to-output; mov-to-input;
-         mov-output-to-input2; mov-input2-to-output;
          load-indirect; load-indirect-suc;
          load-from-slot; store-at-slot; store-indirect; store-indirect-suc;
          lea-slot; restore-input;
@@ -84,15 +83,6 @@ compile-abstract mov-to-output =
 -- x86: mov rdi, rax
 compile-abstract mov-to-input =
   mov (reg rdi) (reg rax) ∷ []
-
--- mov-output-to-input2: Input2 := Output (Stage C split-input setup)
--- x86 SysV calling convention: rsi = second integer argument register
-compile-abstract mov-output-to-input2 =
-  mov (reg rsi) (reg rax) ∷ []
-
--- mov-input2-to-output: Output := Input2 (Stage C body-side snd)
-compile-abstract mov-input2-to-output =
-  mov (reg rax) (reg rsi) ∷ []
 
 -- load-indirect: Output := *Input1
 -- x86: mov rax, [rdi]
@@ -269,13 +259,14 @@ compile-abstract (instr-case-on-tag _ _) =
 compile-abstract (instr-loop _) =
   ud2 ∷ []
 
--- Plan 0.29 (M5): register pokes. Scratch=rbx, Input2=rsi.
+-- Plan 0.29 (M5): register pokes. Scratch=rbx, Count=r14.
 compile-abstract (instr-reg-op scratch-one)        = mov (reg rbx) (imm 1) ∷ []
 compile-abstract (instr-reg-op scratch-zero)       = mov (reg rbx) (imm 0) ∷ []
 compile-abstract (instr-reg-op scratch-dec)        = sub (reg rbx) (imm 1) ∷ []
--- Plan 0.54 D item 4: the tally is `Count` (r14, callee-saved like rbx), NOT
--- rsi. rsi is the ABI's second argument register (Input2) and holds arbitrary
--- values; sharing it with a ℕ counter is what made the counter ops unprovable.
+-- Plan 0.54 D item 4: the tally is `Count` (r14, callee-saved like rbx). It
+-- used to share the ABI's second argument register with a value role, which is
+-- what made the counter ops unprovable. (That role, `Input2`, is now retired —
+-- plan 0.66.)
 compile-abstract (instr-reg-op scratch-load-count) = mov (reg rbx) (reg r14) ∷ []
 compile-abstract (instr-reg-op count-zero)         = mov (reg r14) (imm 0) ∷ []
 compile-abstract (instr-reg-op count-inc)          = add (reg r14) (imm 1) ∷ []
@@ -381,12 +372,6 @@ compile-trace-cnt-agrees o n (mov-to-output ∷ rest) (_ , nn) =
        (compile-trace-cnt-agrees o n rest nn)
 compile-trace-cnt-agrees o n (mov-to-input ∷ rest) (_ , nn) =
   cong (λ p → proj₁ p , compile-abstract mov-to-input ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n (mov-output-to-input2 ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract mov-output-to-input2 ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n (mov-input2-to-output ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract mov-input2-to-output ++ proj₂ p)
        (compile-trace-cnt-agrees o n rest nn)
 compile-trace-cnt-agrees o n (load-indirect ∷ rest) (_ , nn) =
   cong (λ p → proj₁ p , compile-abstract load-indirect ++ proj₂ p)

@@ -129,8 +129,6 @@ const-no-label fits-float v = refl
 headView : ∀ (i : AbstractInstr) → HeadView i
 headView mov-to-output = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView mov-to-input = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView mov-output-to-input2 = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
-headView mov-input2-to-output = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView load-indirect = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView load-indirect-suc = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)
 headView store-indirect = hv-plain refl (λ _ _ _ → refl) (λ _ _ _ → refl)

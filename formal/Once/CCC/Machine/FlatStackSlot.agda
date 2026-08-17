@@ -129,8 +129,6 @@ flat-same-frames (instr-push-frame cap)  prog fs ()
 flat-same-frames instr-pop-frame         prog fs ()
 flat-same-frames mov-to-output            prog fs ff = mkSameFrames refl refl refl
 flat-same-frames mov-to-input             prog fs ff = mkSameFrames refl refl refl
-flat-same-frames mov-output-to-input2     prog fs ff = mkSameFrames refl refl refl
-flat-same-frames mov-input2-to-output     prog fs ff = mkSameFrames refl refl refl
 flat-same-frames load-indirect            prog fs ff = mkSameFrames refl refl refl
 flat-same-frames load-indirect-suc        prog fs ff = mkSameFrames refl refl refl
 flat-same-frames (load-from-slot k)       prog fs ff =

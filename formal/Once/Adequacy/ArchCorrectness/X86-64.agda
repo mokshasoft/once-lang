@@ -200,7 +200,7 @@ open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
         ; inv-wf; inv-regtag; inv-ev; inv-env; inv-run; mkRunAt)
 open import Once.CCC.Machine.FlatStoreWF x86-64-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.FlatRegTagWF x86-64-frame-semantics using (FlatRegTag)
-open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Input2; Output; Scratch; Count; readReg; regs; SV-Ptr; AtStack)
+open import Once.CCC.Machine.SMCore using (AbstractReg; Input1; Output; Scratch; Count; readReg; regs; SV-Ptr; AtStack)
 
 -- The heap address map is CARRIED by the correspondence and EXTENDED at each
 -- `instr-alloc-heap` (the fresh block lands at the concrete `%r15` frontier), so
@@ -276,7 +276,6 @@ entry-corr ir = record
       -- D097: the entry `%r12` is 0 and the entry `fclosure` is the D074 tag
       -- filler, which encodes to 0 — the same match the other registers make.
       ; clos-eq  = refl
-      ; in2-eq  = refl
       ; out-eq  = refl
       ; scratch-eq  = refl
       -- emptyRegFile's %r14 ≡ 0 ≡ enc-sv (SV-Tag 0), the entry `Count` filler
@@ -336,7 +335,6 @@ entry-wf B = record
   where
     reg-below : ∀ (r : AbstractReg) → sv-below 1 (readReg (regs FFOx.entry-s) r)
     reg-below Input1  = tt
-    reg-below Input2  = tt
     reg-below Output  = tt
     reg-below Scratch = tt
     reg-below Count   = tt
@@ -376,7 +374,6 @@ entry-like B = refl , refl , refl , refl , refl
   where no-ptr : ∀ (r : AbstractReg) loc
                → readReg (regs FFOx.entry-s) r ≡ SV-Ptr loc → ⊥
         no-ptr Input1  loc ()
-        no-ptr Input2  loc ()
         no-ptr Output  loc ()
         no-ptr Scratch loc ()
         no-ptr Count   loc ()

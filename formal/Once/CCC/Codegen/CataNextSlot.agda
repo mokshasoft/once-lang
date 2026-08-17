@@ -47,8 +47,7 @@ open import Once.CCC.Machine.SMCore
          c-thunk; c-ret;
          load-from-slot; restore-input; instr-alloc-stack; instr-reclaim-to; instr-loop;
          instr-case-on-tag;
-         mov-to-output; mov-to-input; mov-output-to-input2; mov-input2-to-output;
-         load-indirect; load-indirect-suc; store-at-slot; store-indirect; store-indirect-suc;
+         mov-to-output; mov-to-input; load-indirect; load-indirect-suc; store-at-slot; store-indirect; store-indirect-suc;
          lea-slot; lea-indexed; instr-dealloc-stack; instr-push-frame; instr-pop-frame;
          instr-call-closure; worklist-init; worklist-push; worklist-pop; worklist-check;
          instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg;
@@ -115,8 +114,6 @@ module CataNextSlot {FS : FrameSemantics} where
     abstract-keeps-next-slot (instr-ctrl _)        _ s alloc = refl
     abstract-keeps-next-slot mov-to-output         _ s alloc = refl
     abstract-keeps-next-slot mov-to-input          _ s alloc = refl
-    abstract-keeps-next-slot mov-output-to-input2  _ s alloc = refl
-    abstract-keeps-next-slot mov-input2-to-output  _ s alloc = refl
     abstract-keeps-next-slot load-indirect         _ s alloc = refl
     abstract-keeps-next-slot load-indirect-suc     _ s alloc = refl
     abstract-keeps-next-slot (store-at-slot k)     _ s alloc = refl
@@ -230,8 +227,6 @@ module CataNextSlot {FS : FrameSemantics} where
   -- returns the same allocator — alloc-heap bumps only next-heap-ref).
   flat-keeps-next-slot prog fs mov-to-output           _ = refl
   flat-keeps-next-slot prog fs mov-to-input            _ = refl
-  flat-keeps-next-slot prog fs mov-output-to-input2    _ = refl
-  flat-keeps-next-slot prog fs mov-input2-to-output    _ = refl
   flat-keeps-next-slot prog fs load-indirect           _ = refl
   flat-keeps-next-slot prog fs load-indirect-suc       _ = refl
   flat-keeps-next-slot prog fs (store-at-slot k)       _ = refl

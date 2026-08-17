@@ -16,7 +16,7 @@
 --   - The 4 abstract arith registers (`AbsReg 0..3`) map to `%edx`, `%edi`,
 --     `%ebx`, `%esi`. `%ebx` (closure) and `%esi` (heap) are GLOBAL in the
 --     wider codegen, so the block saves/restores them (push/pop). `%edx` and
---     `%edi` are free (Scratch / Input2, dead across a SigOp call).
+--     `%edi` are free (Scratch / Count, dead across a SigOp call).
 --   - Scratch stack slots live at `4*slot(%esp)` within a reserved frame.
 --     The block is a leaf (no calls), so it needs no return-address save
 --     beyond what `ret` already handles.
@@ -212,7 +212,7 @@ emit-arith-block sym blk =
       instr = emit-program (compile-abs body)
   in sym ++ ":\n" ++
      -- Save ALL four borrowed abstract-reg registers: %ebx (closure) and
-     -- %esi (heap) are global; %edx (Scratch) and %edi (Input2) are the
+     -- %esi (heap) are global; %edx (Scratch) and %edi (Count) are the
      -- CCC reg-op registers, live across a cata loop whose algebra calls
      -- this block. Clobbering %edx would corrupt the loop counter.
      "    pushl %ebx\n" ++

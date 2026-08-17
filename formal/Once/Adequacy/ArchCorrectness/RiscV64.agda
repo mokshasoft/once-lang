@@ -161,7 +161,7 @@ open FlatEventTrace {rv64-frame-semantics} using (flat-events)
 open import Once.CCC.Machine.FlatStoreWF rv64-frame-semantics using (FlatWF; sv-below)
 open import Once.CCC.Machine.FlatRegTagWF rv64-frame-semantics using (FlatRegTag)
 open import Once.CCC.Machine.SMCore using
-  (AbstractReg; Input1; Input2; Output; Scratch; Count; readReg; regs; SV-Ptr; AtStack)
+  (AbstractReg; Input1; Output; Scratch; Count; readReg; regs; SV-Ptr; AtStack)
 
 ------------------------------------------------------------------------
 -- THE ENTRY HEAP VIEW. Nothing is allocated yet: the domain is EMPTY, the
@@ -219,7 +219,7 @@ entry-corr : ∀ (ir : IR Unit Unit)
                           (ArchSemantics.initialState asR)
 entry-corr ir = record
   { dataCorr = record
-      { in1-eq = refl ; in2-eq = refl ; out-eq = refl
+      { in1-eq = refl ; out-eq = refl
       ; scratch-eq = refl ; count-eq = refl ; clos-eq = refl
       ; halt-eq = refl
       -- initState's `sp` IS the entry frame's base — TRUE only since the model
@@ -251,7 +251,6 @@ entry-wf B = record
   where
     reg-below : ∀ (r : AbstractReg) → sv-below 1 (readReg (regs FFOr.entry-s) r)
     reg-below Input1  = tt
-    reg-below Input2  = tt
     reg-below Output  = tt
     reg-below Scratch = tt
     reg-below Count   = tt
@@ -270,7 +269,6 @@ entry-like B = refl , refl , refl , refl , refl
   where
     no-ptr : ∀ (r : AbstractReg) (loc : _) → readReg (regs FFOr.entry-s) r ≡ SV-Ptr loc → _
     no-ptr Input1  loc ()
-    no-ptr Input2  loc ()
     no-ptr Output  loc ()
     no-ptr Scratch loc ()
     no-ptr Count   loc ()

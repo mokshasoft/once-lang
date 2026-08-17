@@ -47,7 +47,7 @@ open X.State using (memory) renaming (regs to xregs; halted to xhalted)
 open import Once.CCC.Target.X86-64.Syntax using (Reg)
 open import Once.Adequacy.ArchCorrectness.X86-64.RegRoles using (x86-64-roles)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
-  using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1; role-in2; role-scratch; role-count)
+  using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1; role-scratch; role-count)
 open RegRoles x86-64-roles using (reg-of)
 
 -- ONE accessor per observation, which is the whole interface the core needs.
@@ -88,7 +88,6 @@ sets-role-x86 s ρ v fl p = record
     at role-heap = refl
     at role-out = refl
     at role-in1 = refl
-    at role-in2 = refl
     at role-scratch = refl
     at role-count = refl
 
@@ -100,7 +99,6 @@ sets-role-x86 s ρ v fl p = record
     off role-sp      role-heap    _  = refl
     off role-sp      role-out     _  = refl
     off role-sp      role-in1     _  = refl
-    off role-sp      role-in2     _  = refl
     off role-sp      role-scratch _  = refl
     off role-sp      role-count   _  = refl
     off role-clos    role-sp      _  = refl
@@ -108,7 +106,6 @@ sets-role-x86 s ρ v fl p = record
     off role-clos    role-heap    _  = refl
     off role-clos    role-out     _  = refl
     off role-clos    role-in1     _  = refl
-    off role-clos    role-in2     _  = refl
     off role-clos    role-scratch _  = refl
     off role-clos    role-count   _  = refl
     off role-heap    role-sp      _  = refl
@@ -116,7 +113,6 @@ sets-role-x86 s ρ v fl p = record
     off role-heap    role-heap    ne = ⊥-elim (ne refl)
     off role-heap    role-out     _  = refl
     off role-heap    role-in1     _  = refl
-    off role-heap    role-in2     _  = refl
     off role-heap    role-scratch _  = refl
     off role-heap    role-count   _  = refl
     off role-out     role-sp      _  = refl
@@ -124,7 +120,6 @@ sets-role-x86 s ρ v fl p = record
     off role-out     role-heap    _  = refl
     off role-out     role-out     ne = ⊥-elim (ne refl)
     off role-out     role-in1     _  = refl
-    off role-out     role-in2     _  = refl
     off role-out     role-scratch _  = refl
     off role-out     role-count   _  = refl
     off role-in1     role-sp      _  = refl
@@ -132,23 +127,13 @@ sets-role-x86 s ρ v fl p = record
     off role-in1     role-heap    _  = refl
     off role-in1     role-out     _  = refl
     off role-in1     role-in1     ne = ⊥-elim (ne refl)
-    off role-in1     role-in2     _  = refl
     off role-in1     role-scratch _  = refl
     off role-in1     role-count   _  = refl
-    off role-in2     role-sp      _  = refl
-    off role-in2     role-clos    _  = refl
-    off role-in2     role-heap    _  = refl
-    off role-in2     role-out     _  = refl
-    off role-in2     role-in1     _  = refl
-    off role-in2     role-in2     ne = ⊥-elim (ne refl)
-    off role-in2     role-scratch _  = refl
-    off role-in2     role-count   _  = refl
     off role-scratch role-sp      _  = refl
     off role-scratch role-clos    _  = refl
     off role-scratch role-heap    _  = refl
     off role-scratch role-out     _  = refl
     off role-scratch role-in1     _  = refl
-    off role-scratch role-in2     _  = refl
     off role-scratch role-scratch ne = ⊥-elim (ne refl)
     off role-scratch role-count   _  = refl
     off role-count   role-sp      _  = refl
@@ -156,7 +141,6 @@ sets-role-x86 s ρ v fl p = record
     off role-count   role-heap    _  = refl
     off role-count   role-out     _  = refl
     off role-count   role-in1     _  = refl
-    off role-count   role-in2     _  = refl
     off role-count   role-scratch _  = refl
     off role-count   role-count   ne = ⊥-elim (ne refl)
 

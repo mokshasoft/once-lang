@@ -366,10 +366,6 @@ pb-abstract mov-to-output ls alloc ff am wfS wf =
   pb-write-reg _ ls Output (readReg (regs ls) Input1) (pb-regs wf Input1) wf
 pb-abstract mov-to-input ls alloc ff am wfS wf =
   pb-write-reg _ ls Input1 (readReg (regs ls) Output) (pb-regs wf Output) wf
-pb-abstract mov-output-to-input2 ls alloc ff am wfS wf =
-  pb-write-reg _ ls Input2 (readReg (regs ls) Output) (pb-regs wf Output) wf
-pb-abstract mov-input2-to-output ls alloc ff am wfS wf =
-  pb-write-reg _ ls Output (readReg (regs ls) Input2) (pb-regs wf Input2) wf
 pb-abstract load-indirect ls alloc ff am wfS wf =
   pb-load-resolved _ ls Output (sv-as-loc (readReg (regs ls) Input1)) wf
 pb-abstract load-indirect-suc ls alloc ff am wfS wf =
@@ -529,10 +525,6 @@ flat-ptr-bounds mov-to-output            prog fs ff am wfS wf =
   pb-abstract mov-to-output (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds mov-to-input             prog fs ff am wfS wf =
   pb-abstract mov-to-input (floc fs) (falloc fs) ff am wfS wf
-flat-ptr-bounds mov-output-to-input2     prog fs ff am wfS wf =
-  pb-abstract mov-output-to-input2 (floc fs) (falloc fs) ff am wfS wf
-flat-ptr-bounds mov-input2-to-output     prog fs ff am wfS wf =
-  pb-abstract mov-input2-to-output (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds load-indirect            prog fs ff am wfS wf =
   pb-abstract load-indirect (floc fs) (falloc fs) ff am wfS wf
 flat-ptr-bounds load-indirect-suc        prog fs ff am wfS wf =

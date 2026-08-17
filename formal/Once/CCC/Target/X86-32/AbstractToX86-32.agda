@@ -49,7 +49,6 @@ open import Once.Type using (fits-int; fits-float)
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace; Slot;
          mov-to-output; mov-to-input;
-         mov-output-to-input2; mov-input2-to-output;
          load-indirect; load-indirect-suc;
          load-from-slot; store-at-slot; store-indirect; store-indirect-suc;
          lea-slot; restore-input; lea-indexed;
@@ -98,16 +97,6 @@ compile-abstract mov-to-output =
 -- x86-32: mov ecx, eax
 compile-abstract mov-to-input =
   mov (reg ecx) (reg eax) ∷ []
-
--- mov-output-to-input2: Input2 := Output (Stage C split-input setup)
--- x86-32 cdecl convention has no fixed second-arg register; we use
--- edx as the conventional second integer argument register.
-compile-abstract mov-output-to-input2 =
-  mov (reg edx) (reg eax) ∷ []
-
--- mov-input2-to-output: Output := Input2 (Stage C body-side snd)
-compile-abstract mov-input2-to-output =
-  mov (reg eax) (reg edx) ∷ []
 
 -- load-indirect: Output := *Input1
 -- x86-32: mov eax, [ecx]
@@ -248,8 +237,11 @@ compile-abstract (instr-load-tag-lit n) = mov (reg eax) (imm n) ∷ []
 -- expanded (with labels + branches) by `compile-trace-cnt` below, not here.
 compile-abstract (instr-case-on-tag _ _) = ud2 ∷ []
 compile-abstract (instr-loop _) = ud2 ∷ []
--- Plan 0.53 (mirror x86-64 M5): register pokes. Scratch = edx, Input2 = edi
+-- Plan 0.53 (mirror x86-64 M5): register pokes. Scratch = edx, Count = edi
 -- (ebx = closure, esi = heap, ecx = Input1, eax = Output, ebp = frame).
+-- Plan 0.66 CORRECTED "Input2 = edi" to "Count = edi" — `count-*` is what
+-- writes `%edi`, and the mislabelling is why review never caught that Input2
+-- and Scratch were the SAME register here. Input2 is now retired.
 compile-abstract (instr-reg-op scratch-one)        = mov (reg edx) (imm 1) ∷ []
 compile-abstract (instr-reg-op scratch-zero)       = mov (reg edx) (imm 0) ∷ []
 compile-abstract (instr-reg-op scratch-dec)        = sub (reg edx) (imm 1) ∷ []
@@ -341,12 +333,6 @@ compile-trace-cnt-agrees o n (mov-to-output ∷ rest) (_ , nn) =
        (compile-trace-cnt-agrees o n rest nn)
 compile-trace-cnt-agrees o n (mov-to-input ∷ rest) (_ , nn) =
   cong (λ p → proj₁ p , compile-abstract mov-to-input ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n (mov-output-to-input2 ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract mov-output-to-input2 ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n (mov-input2-to-output ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract mov-input2-to-output ++ proj₂ p)
        (compile-trace-cnt-agrees o n rest nn)
 compile-trace-cnt-agrees o n (load-indirect ∷ rest) (_ , nn) =
   cong (λ p → proj₁ p , compile-abstract load-indirect ++ proj₂ p)

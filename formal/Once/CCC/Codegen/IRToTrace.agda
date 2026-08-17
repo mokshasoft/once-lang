@@ -86,8 +86,7 @@ import Once.Type as Ty
 
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace;
-         mov-to-output; mov-to-input; mov-output-to-input2; mov-input2-to-output;
-         load-indirect; load-indirect-suc; load-from-slot;
+         mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot;
          store-at-slot; store-indirect; store-indirect-suc;
          lea-slot; restore-input;
          instr-alloc-stack; instr-alloc-heap; instr-dealloc-stack; instr-reclaim-to;
@@ -319,7 +318,7 @@ cata-trace-nat bb n1 l1 at =
 --     terminal Int for K Int) — fed to `alg` directly (uniform base handling).
 --
 -- Three phases (Scratch survives `alg` — CCC code never touches rbx):
---   DESCEND+PUSH: Input2 counts depth n; for each cons, push x onto the
+--   DESCEND+PUSH: Count counts depth n; for each cons, push x onto the
 --     payload stack (`[x, prev-top]`, top in `stack-top`); advance to child.
 --     Ends with Input1 at the base node.
 --   BASE: Scratch := n; run `alg` on the base node → Output = base acc.
@@ -585,7 +584,8 @@ ir-to-trace' n l id        = n , l , (mov-to-output ∷ []) , []
 -- Plan 0.2.4.5 Stage C γ-revert: uniform packed-pair convention.
 -- fst / snd dereference Input1 (= pointer to packed pair record).
 -- The split-input optimization (apply pre-unpacks pair into
--- Input1/Input2) was reverted because nested fst/snd (reading from
+-- Input1 + a second input register) was reverted because nested fst/snd
+-- (reading from
 -- packed compound values) needed layout-discriminating lowering,
 -- which adds context tracking complexity that's a hiding place for
 -- postulates. Future: type-driven split for register-fittable
@@ -942,7 +942,7 @@ ir-to-trace' n l (In _ _)       = n , l , (mov-to-output ∷ []) , []
 -- out via the same `transport-trivial` pattern as id/arr/free-heap.
 ir-to-trace' n l (out-μ _)      = n , l , (mov-to-output ∷ []) , []
 -- Plan 0.29 (M5): NatF catamorphism via the generic fuel loop.
--- descend (count `inr` depth into Input2, Scratch = continue flag) →
+-- descend (count `inr` depth into Count, Scratch = continue flag) →
 -- Scratch := depth → base inl layer + alg → ascend (rebuild inr layer
 -- with prev result, alg, Scratch--). Scratch (rbx) survives `alg` (CCC
 -- code never touches rbx). Layer builds mirror the inl/inr Heap codegen.

@@ -30,7 +30,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
-  using (LocState; AllocState; halted; regs; readReg; Input1; Input2; Output; Scratch;
+  using (LocState; AllocState; halted; regs; readReg; Input1; Output; Scratch; Count;
          writeReg; writeReg-same; writeReg-preserves; sv-succ; SV-Tag;
          sv-as-loc; sucLoc; StoredValue; ValueLocation; AtStack; AtDynamic;
          RegOp; exec-reg-op; AbstractTrace;
@@ -77,11 +77,11 @@ module CataNatDescend {FS : FrameSemantics} where
       (flat-exec-instr load-indirect-suc prog
         (flat-exec-instr (instr-reg-op count-inc) prog fs))
 
-  -- `count-inc` preserves the Input1 register (it writes Input2).
-  input2-keeps-input1 : ∀ (s : LocState FS)
-                      → readReg (regs (exec-reg-op count-inc s)) Input1 ≡ readReg (regs s) Input1
-  input2-keeps-input1 s =
-    writeReg-preserves (regs s) Input2 Input1 (sv-succ (readReg (regs s) Input2)) (λ ())
+  -- `count-inc` preserves the Input1 register (it writes Count).
+  count-keeps-input1 : ∀ (s : LocState FS)
+                     → readReg (regs (exec-reg-op count-inc s)) Input1 ≡ readReg (regs s) Input1
+  count-keeps-input1 s =
+    writeReg-preserves (regs s) Count Input1 (sv-succ (readReg (regs s) Count)) (λ ())
 
   -- The body leaves Input1 pointing at the child: `count-inc` preserves
   -- Input1, `load-indirect-suc` puts the child (`*(Input1+1)`) in Output,
@@ -96,29 +96,29 @@ module CataNatDescend {FS : FrameSemantics} where
     → readLoc (floc fs) (sucLoc loc) ≡ just v
     → readReg (regs (floc (body-result prog fs))) Input1 ≡ v
   body-input1 prog fs loc v ptr child
-    rewrite trans (cong sv-as-loc (input2-keeps-input1 (floc fs))) ptr
+    rewrite trans (cong sv-as-loc (count-keeps-input1 (floc fs))) ptr
           | trans (reg-op-keeps-readLoc count-inc (floc fs) (sucLoc loc)) child = refl
 
-  -- The body PRESERVES the Scratch register (it writes only Input2 /
+  -- The body PRESERVES the Scratch register (it writes only Count /
   -- Output / Input1) — so the descend's depth-counter condition (Scratch ≠
   -- 0, set by `scratch-one`) holds across every continue iteration. After
   -- the same load-reducing rewrites, three `writeReg-preserves` peel
-  -- Input1 / Output / Input2 off the Scratch read.
+  -- Input1 / Output / Count off the Scratch read.
   body-scratch : ∀ (prog : AbstractTrace) (fs : FlatState)
                    (loc : ValueLocation FS) (v : StoredValue FS)
     → sv-as-loc (readReg (regs (floc fs)) Input1) ≡ just loc
     → readLoc (floc fs) (sucLoc loc) ≡ just v
     → readReg (regs (floc (body-result prog fs))) Scratch ≡ readReg (regs (floc fs)) Scratch
   body-scratch prog fs loc v ptr child
-    rewrite trans (cong sv-as-loc (input2-keeps-input1 (floc fs))) ptr
+    rewrite trans (cong sv-as-loc (count-keeps-input1 (floc fs))) ptr
           | trans (reg-op-keeps-readLoc count-inc (floc fs) (sucLoc loc)) child =
     trans (writeReg-preserves R2 Input1 Scratch v (λ ()))
           (trans (writeReg-preserves R1 Output Scratch v (λ ()))
-                 (writeReg-preserves R0 Input2 Scratch succ-v (λ ())))
+                 (writeReg-preserves R0 Count Scratch succ-v (λ ())))
     where
       R0 = regs (floc fs)
-      succ-v = sv-succ (readReg R0 Input2)
-      R1 = writeReg R0 Input2 succ-v
+      succ-v = sv-succ (readReg R0 Count)
+      R1 = writeReg R0 Count succ-v
       R2 = writeReg R1 Output v
 
   -- The body PRESERVES memory (`readLoc` at any location): all three
@@ -131,7 +131,7 @@ module CataNatDescend {FS : FrameSemantics} where
     → readLoc (floc fs) (sucLoc loc) ≡ just v
     → readLoc (floc (body-result prog fs)) loc' ≡ readLoc (floc fs) loc'
   body-readLoc prog fs loc v loc' ptr child
-    rewrite trans (cong sv-as-loc (input2-keeps-input1 (floc fs))) ptr
+    rewrite trans (cong sv-as-loc (count-keeps-input1 (floc fs))) ptr
           | trans (reg-op-keeps-readLoc count-inc (floc fs) (sucLoc loc)) child
     with loc'
   ... | AtStack f k = refl

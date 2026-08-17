@@ -150,27 +150,18 @@ rw-below : ∀ (n : ℕ) (rf : Registers FS) (x y : AbstractReg) (v : StoredValu
          → sv-below n v → sv-below n (readReg rf y)
          → sv-below n (readReg (writeReg rf x v) y)
 rw-below n rf Input1  Input1  v bv _  = bv
-rw-below n rf Input1  Input2  v _  bo = bo
 rw-below n rf Input1  Output  v _  bo = bo
 rw-below n rf Input1  Scratch v _  bo = bo
-rw-below n rf Input2  Input1  v _  bo = bo
-rw-below n rf Input2  Input2  v bv _  = bv
-rw-below n rf Input2  Output  v _  bo = bo
-rw-below n rf Input2  Scratch v _  bo = bo
 rw-below n rf Output  Input1  v _  bo = bo
-rw-below n rf Output  Input2  v _  bo = bo
 rw-below n rf Output  Output  v bv _  = bv
 rw-below n rf Output  Scratch v _  bo = bo
 rw-below n rf Scratch Input1  v _  bo = bo
-rw-below n rf Scratch Input2  v _  bo = bo
 rw-below n rf Scratch Output  v _  bo = bo
 rw-below n rf Scratch Scratch v bv _  = bv
 rw-below n rf Input1  Count   v _  bo = bo
-rw-below n rf Input2  Count   v _  bo = bo
 rw-below n rf Output  Count   v _  bo = bo
 rw-below n rf Scratch Count   v _  bo = bo
 rw-below n rf Count   Input1  v _  bo = bo
-rw-below n rf Count   Input2  v _  bo = bo
 rw-below n rf Count   Output  v _  bo = bo
 rw-below n rf Count   Scratch v _  bo = bo
 rw-below n rf Count   Count   v bv _  = bv
@@ -426,10 +417,6 @@ mutual
     wf-write-reg Output (readReg (regs ls) Input1) wf (wf-regs wf Input1) , ≤-refl
   wf-abstract mov-to-input ls alloc wf =
     wf-write-reg Input1 (readReg (regs ls) Output) wf (wf-regs wf Output) , ≤-refl
-  wf-abstract mov-output-to-input2 ls alloc wf =
-    wf-write-reg Input2 (readReg (regs ls) Output) wf (wf-regs wf Output) , ≤-refl
-  wf-abstract mov-input2-to-output ls alloc wf =
-    wf-write-reg Output (readReg (regs ls) Input2) wf (wf-regs wf Input2) , ≤-refl
   wf-abstract load-indirect ls alloc wf =
     wf-load-resolved Output (sv-as-loc (readReg (regs ls) Input1)) wf
       (sv-as-loc-below (next-heap-ref alloc) (readReg (regs ls) Input1) (wf-regs wf Input1)) , ≤-refl
@@ -655,8 +642,6 @@ cl-step instr-pop-frame                        prog fs wf b =
         (sv-mono (fclosure fs) (proj₂ (wf-abstract instr-pop-frame (floc fs) (falloc fs) wf)) b)
 cl-step mov-to-output            prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract mov-to-output (floc fs) (falloc fs) wf)) b
 cl-step mov-to-input             prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract mov-to-input (floc fs) (falloc fs) wf)) b
-cl-step mov-output-to-input2     prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract mov-output-to-input2 (floc fs) (falloc fs) wf)) b
-cl-step mov-input2-to-output     prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract mov-input2-to-output (floc fs) (falloc fs) wf)) b
 cl-step load-indirect            prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract load-indirect (floc fs) (falloc fs) wf)) b
 cl-step load-indirect-suc        prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract load-indirect-suc (floc fs) (falloc fs) wf)) b
 cl-step (load-from-slot k)       prog fs wf b = sv-mono (fclosure fs) (proj₂ (wf-abstract (load-from-slot k) (floc fs) (falloc fs) wf)) b
@@ -696,8 +681,6 @@ flat-wf-step (instr-ctrl (c-branch-tag-zero m))     prog fs wf =
 -- `flat-exec-instr`'s own catch-all in the case tree); each is `wf-abstract`.
 flat-wf-step mov-to-output            prog fs wf = proj₁ (wf-abstract mov-to-output (floc fs) (falloc fs) wf)
 flat-wf-step mov-to-input             prog fs wf = proj₁ (wf-abstract mov-to-input (floc fs) (falloc fs) wf)
-flat-wf-step mov-output-to-input2     prog fs wf = proj₁ (wf-abstract mov-output-to-input2 (floc fs) (falloc fs) wf)
-flat-wf-step mov-input2-to-output     prog fs wf = proj₁ (wf-abstract mov-input2-to-output (floc fs) (falloc fs) wf)
 flat-wf-step load-indirect            prog fs wf = proj₁ (wf-abstract load-indirect (floc fs) (falloc fs) wf)
 flat-wf-step load-indirect-suc        prog fs wf = proj₁ (wf-abstract load-indirect-suc (floc fs) (falloc fs) wf)
 flat-wf-step (load-from-slot k)       prog fs wf = proj₁ (wf-abstract (load-from-slot k) (floc fs) (falloc fs) wf)

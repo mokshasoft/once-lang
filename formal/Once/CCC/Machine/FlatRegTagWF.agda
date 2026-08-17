@@ -17,15 +17,15 @@
 --
 -- The invariant is a STATE invariant — local, per instruction, compositional —
 -- and NOT a whole-program dataflow fact. That is only true because plan 0.54 D
--- item 4 split the tally off `Input2` into its own `Count` register: the four
+-- item 4 split the tally off the second input register into its own `Count`
+-- register: the four
 -- writers of `Scratch` (`scratch-one`, `scratch-zero`, `scratch-dec`,
 -- `scratch-load-count`) and the two writers of `Count` (`count-zero`,
 -- `count-inc`) ALL produce a tag unconditionally, the last two by reading a
 -- register this very invariant says is a tag. Before the split,
 -- `mov-output-to-input2` (`Input2 := Output`) could put an arbitrary value in
--- the tally, so no such invariant existed — and that instruction is documented
--- as intended for future nested-pair codegen, so the property was false by
--- design intent, not merely unproven.
+-- the tally, so no such invariant existed — the property was false by design
+-- intent, not merely unproven. (`Input2` itself was retired by plan 0.66.)
 --
 -- Proved by induction over `exec-abstract`, mutually with `regtag-trace` /
 -- `regtag-case` / `regtag-loop` so the nested `instr-case-on-tag` / `instr-loop`
@@ -112,14 +112,10 @@ regtag-write-other {ls} x v sc-p ct-p wf = record
   { scratch-tag = (proj₁ (scratch-tag wf)) , trans sc-p (proj₂ (scratch-tag wf))
   ; count-tag   = (proj₁ (count-tag wf))   , trans ct-p (proj₂ (count-tag wf)) }
 
--- Input1 / Input2 / Output writes: both counters untouched (definitional).
+-- Input1 / Output writes: both counters untouched (definitional).
 regtag-write-in1 : ∀ {ls} (v : StoredValue FS) → RegTagWF ls
                  → RegTagWF (record ls { regs = writeReg (regs ls) Input1 v })
 regtag-write-in1 {ls} v wf = regtag-write-other {ls} Input1 v refl refl wf
-
-regtag-write-in2 : ∀ {ls} (v : StoredValue FS) → RegTagWF ls
-                 → RegTagWF (record ls { regs = writeReg (regs ls) Input2 v })
-regtag-write-in2 {ls} v wf = regtag-write-other {ls} Input2 v refl refl wf
 
 regtag-write-out : ∀ {ls} (v : StoredValue FS) → RegTagWF ls
                  → RegTagWF (record ls { regs = writeReg (regs ls) Output v })
@@ -152,7 +148,6 @@ regtag-halt {ls} wf = regtag-transport ls refl refl wf
 ------------------------------------------------------------------------
 NonCounter : AbstractReg → Set
 NonCounter Input1  = ⊤
-NonCounter Input2  = ⊤
 NonCounter Output  = ⊤
 NonCounter Scratch = ⊥
 NonCounter Count   = ⊥
@@ -160,7 +155,6 @@ NonCounter Count   = ⊥
 regtag-write-nc : ∀ {ls} (x : AbstractReg) → NonCounter x → (v : StoredValue FS)
                 → RegTagWF ls → RegTagWF (record ls { regs = writeReg (regs ls) x v })
 regtag-write-nc {ls} Input1 _ v wf = regtag-transport ls refl refl wf
-regtag-write-nc {ls} Input2 _ v wf = regtag-transport ls refl refl wf
 regtag-write-nc {ls} Output _ v wf = regtag-transport ls refl refl wf
 
 -- the SigOp shape: one non-counter register write AND a halt-flag update.
@@ -169,7 +163,6 @@ regtag-write-nc-halt : ∀ {ls} (x : AbstractReg) → NonCounter x
                      → RegTagWF ls
                      → RegTagWF (record ls { regs = writeReg (regs ls) x v ; halted = b })
 regtag-write-nc-halt {ls} Input1 _ v b wf = regtag-transport ls refl refl wf
-regtag-write-nc-halt {ls} Input2 _ v b wf = regtag-transport ls refl refl wf
 regtag-write-nc-halt {ls} Output _ v b wf = regtag-transport ls refl refl wf
 
 ------------------------------------------------------------------------
@@ -297,10 +290,6 @@ mutual
     regtag-write-nc Output tt (readReg (regs ls) Input1) wf
   regtag-abstract mov-to-input ls alloc wf =
     regtag-write-nc Input1 tt (readReg (regs ls) Output) wf
-  regtag-abstract mov-output-to-input2 ls alloc wf =
-    regtag-write-nc Input2 tt (readReg (regs ls) Output) wf
-  regtag-abstract mov-input2-to-output ls alloc wf =
-    regtag-write-nc Output tt (readReg (regs ls) Input2) wf
   regtag-abstract load-indirect ls alloc wf =
     regtag-load-resolved Output tt (sv-as-loc (readReg (regs ls) Input1)) wf
   regtag-abstract load-indirect-suc ls alloc wf =
@@ -454,8 +443,6 @@ flat-regtag-step (instr-ctrl (c-branch-tag-zero m))     prog fs wf =
   regtag-branch (tag-zf (flat-read-tag (floc fs))) m prog fs wf
 flat-regtag-step mov-to-output            prog fs wf = regtag-abstract mov-to-output (floc fs) (falloc fs) wf
 flat-regtag-step mov-to-input             prog fs wf = regtag-abstract mov-to-input (floc fs) (falloc fs) wf
-flat-regtag-step mov-output-to-input2     prog fs wf = regtag-abstract mov-output-to-input2 (floc fs) (falloc fs) wf
-flat-regtag-step mov-input2-to-output     prog fs wf = regtag-abstract mov-input2-to-output (floc fs) (falloc fs) wf
 flat-regtag-step load-indirect            prog fs wf = regtag-abstract load-indirect (floc fs) (falloc fs) wf
 flat-regtag-step load-indirect-suc        prog fs wf = regtag-abstract load-indirect-suc (floc fs) (falloc fs) wf
 flat-regtag-step (load-from-slot k)       prog fs wf = regtag-abstract (load-from-slot k) (floc fs) (falloc fs) wf

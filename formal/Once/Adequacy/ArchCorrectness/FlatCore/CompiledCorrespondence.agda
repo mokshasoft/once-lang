@@ -272,16 +272,6 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just mov-to-input
       → BlockStep hv prog fs s mov-to-input
-    bs-mov-input2-to-output :
-      ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
-      → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just mov-input2-to-output
-      → BlockStep hv prog fs s mov-input2-to-output
-    bs-mov-output-to-input2 :
-      ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
-      → halted (floc fs) ≡ false
-      → fetch prog (fpc fs) ≡ just mov-output-to-input2
-      → BlockStep hv prog fs s mov-output-to-input2
     bs-scratch-one :
       ∀ {hv : HeapView} prog fs s → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
@@ -723,7 +713,6 @@ record BlockSteps : Set₁ where
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-alloc-heap n)
       → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Input1)
-      → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Input2)
       → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Scratch)
       → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Count)
       → sv-below (next-heap-ref (falloc fs)) (fclosure fs)

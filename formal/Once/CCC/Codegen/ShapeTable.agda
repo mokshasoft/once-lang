@@ -50,8 +50,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace; CtrlInstr;
-   mov-to-output; mov-to-input; mov-output-to-input2; mov-input2-to-output;
-   load-indirect; load-indirect-suc; load-from-slot; store-at-slot;
+   mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot;
    store-indirect; store-indirect-suc; lea-slot; restore-input; lea-indexed;
    instr-alloc-stack; instr-dealloc-stack; instr-push-frame; instr-pop-frame;
    instr-reclaim-to; instr-call-closure;
@@ -88,7 +87,6 @@ record Expect : Set where
   constructor mkExpect
   field
     e-in1  : RegExpect
-    e-in2  : RegExpect
     e-out  : RegExpect
     e-slot : SlotEnv
 open Expect public
@@ -165,7 +163,6 @@ sub-slots src ((k , e) ∷ es) = sub-reg (slot-get src k) e ∧ sub-slots src es
 
 sub-expect : Expect → Expect → Bool
 sub-expect s t = sub-reg (e-in1 s) (e-in1 t)
-               ∧ sub-reg (e-in2 s) (e-in2 t)
                ∧ sub-reg (e-out s) (e-out t)
                ∧ sub-slots (e-slot s) (e-slot t)
 
@@ -240,10 +237,6 @@ step-expect env st mov-to-output =
   record st { e-out = e-in1 st }
 step-expect env st mov-to-input =
   record st { e-in1 = e-out st }
-step-expect env st mov-output-to-input2 =
-  record st { e-in2 = e-out st }
-step-expect env st mov-input2-to-output =
-  record st { e-out = e-in2 st }
 step-expect env st load-indirect =
   record st { e-out = load-fst (e-in1 st) }
 step-expect env st load-indirect-suc =
@@ -279,7 +272,7 @@ step-expect env st (instr-reclaim-to n)    = st
 step-expect env st instr-call-closure =
   -- the call's result contract is the model gap (`events-running-call`);
   -- no claim survives it
-  mkExpect e-any e-any e-any []
+  mkExpect e-any e-any []
 step-expect env st (worklist-init k) = st
 step-expect env st (worklist-push k) =
   record st { e-slot = slot-put (e-slot st) k (e-out st) }
@@ -307,7 +300,7 @@ step-expect env st (instr-alloc-heap n) =
     scrub-slots []             = []
     scrub-slots ((k , e) ∷ es) = (k , scrub e) ∷ scrub-slots es
     scrub-expect : Expect → Expect
-    scrub-expect e = mkExpect (scrub (e-in1 e)) (scrub (e-in2 e))
+    scrub-expect e = mkExpect (scrub (e-in1 e))
                               (scrub (e-out e)) (scrub-slots (e-slot e))
 step-expect env st (instr-loop b)          = st    -- unemittable
 step-expect env st (instr-case-on-tag f g) = st    -- unemittable
@@ -324,13 +317,13 @@ step-expect env st (instr-ctrl (c-label m)) = env m
 -- every state, so the walk stays sound. Step 2, which emits the bodies,
 -- owns giving body entries a real per-body entry claim (and `c-ret` a real
 -- obligation against the caller's continuation).
-step-expect env st (instr-ctrl (c-thunk m b)) = mkExpect e-any e-any e-any []
+step-expect env st (instr-ctrl (c-thunk m b)) = mkExpect e-any e-any []
 -- after a return the fall-through is dead, exactly as after `c-jmp`
-step-expect env st (instr-ctrl (c-ret b)) = mkExpect e-any e-any e-any []
+step-expect env st (instr-ctrl (c-ret b)) = mkExpect e-any e-any []
 step-expect env st (instr-ctrl (c-jmp m)) =
   -- fall-through after an unconditional jump is dead until the next label;
   -- no claim
-  mkExpect e-any e-any e-any []
+  mkExpect e-any e-any []
 step-expect env st (instr-ctrl (c-branch-scratch-zero m)) = st
 step-expect env st (instr-ctrl (c-branch-tag-zero m)) with e-in1 st
 ... | e-fresh c₀ c₁ = st                     -- statically-decided tag: no refinement needed
@@ -496,7 +489,7 @@ HeapModed (const _ _) = ⊤
 -- `entry-expect Unit`, which the D074 all-tag entry state meets via
 -- `rs-unit`)
 entry-expect : IRTy → Expect
-entry-expect A = mkExpect (e-repr A) e-any e-any []
+entry-expect A = mkExpect (e-repr A) e-any []
 
 ------------------------------------------------------------------------
 -- THE SITE EXTRACTION (FS-free): a positive check localizes — at every
@@ -554,7 +547,7 @@ module Sem (FS : FrameSemantics) where
     renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
   open import Once.CCC.Machine.SMCore as SM using
     (LocState; ValueLocation; StoredValue; SV-Ptr; SV-Tag; SV-Lit; SV-Code;
-     AtStack; AtDynamic; sucLoc; regs; readReg; Input1; Input2; Output;
+     AtStack; AtDynamic; sucLoc; regs; readReg; Input1; Output;
      stackMem; heapMem; current-frame; AllocState; next-heap-ref)
   open import Once.Memory.HeapAddress
     using (HeapLocation; heap-loc; mkHeapRef; heap-ref; heap-offset; ref-id; sucHL)
@@ -677,7 +670,6 @@ module Sem (FS : FrameSemantics) where
   Meets : Expect → FlatState → Set
   Meets e fs =
     MeetsR (e-in1 e) (falloc fs) (readReg (regs (floc fs)) Input1) (floc fs)
-    × MeetsR (e-in2 e) (falloc fs) (readReg (regs (floc fs)) Input2) (floc fs)
     × MeetsR (e-out e) (falloc fs) (readReg (regs (floc fs)) Output) (floc fs)
     × (∀ k → MeetsSlot (slot-get (e-slot e) k) (falloc fs)
               (stackMem (floc fs) (current-frame (falloc fs)) k) (floc fs))
@@ -857,20 +849,15 @@ module Sem (FS : FrameSemantics) where
   ... | no _     = sub-slots-sound src es (proj₂ (∧-split (sub-reg (slot-get src j) e) _ ok)) k
 
   sub-expect-sound : ∀ s' t {fs} → sub-expect s' t ≡ true → Meets s' fs → Meets t fs
-  sub-expect-sound s' t ok (m1 , m2 , m3 , ms) =
+  sub-expect-sound s' t ok (m1 , m3 , ms) =
     sub-reg-sound (e-in1 s') (e-in1 t) (proj₁ (∧-split (sub-reg (e-in1 s') (e-in1 t)) _ ok)) m1 ,
-    sub-reg-sound (e-in2 s') (e-in2 t)
-      (proj₁ (∧-split (sub-reg (e-in2 s') (e-in2 t)) _
-        (proj₂ (∧-split (sub-reg (e-in1 s') (e-in1 t)) _ ok)))) m2 ,
     sub-reg-sound (e-out s') (e-out t)
       (proj₁ (∧-split (sub-reg (e-out s') (e-out t)) _
-        (proj₂ (∧-split (sub-reg (e-in2 s') (e-in2 t)) _
-          (proj₂ (∧-split (sub-reg (e-in1 s') (e-in1 t)) _ ok)))))) m3 ,
+        (proj₂ (∧-split (sub-reg (e-in1 s') (e-in1 t)) _ ok)))) m3 ,
     λ k → sub-slot-sound (slot-get (e-slot s') k) (slot-get (e-slot t) k)
             (sub-slots-sound (e-slot s') (e-slot t)
               (proj₂ (∧-split (sub-reg (e-out s') (e-out t)) _
-                (proj₂ (∧-split (sub-reg (e-in2 s') (e-in2 t)) _
-                  (proj₂ (∧-split (sub-reg (e-in1 s') (e-in1 t)) _ ok))))))
+                (proj₂ (∧-split (sub-reg (e-in1 s') (e-in1 t)) _ ok))))
               k)
             (ms k)
 

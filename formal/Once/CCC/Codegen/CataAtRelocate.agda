@@ -46,8 +46,7 @@ open import Once.CCC.Machine.SMCore
          c-thunk; c-ret;
          -- the non-ctrl constructors (each relocates by `refl` via the
          -- `flat-step-straight` catch-all) — enumerated for `instr-reloc`.
-         mov-to-output; mov-to-input; mov-output-to-input2; mov-input2-to-output;
-         load-indirect; load-indirect-suc; load-from-slot; store-at-slot;
+         mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot;
          store-indirect; store-indirect-suc; lea-slot; restore-input;
          instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to; instr-push-frame;
          instr-pop-frame; instr-call-closure; worklist-init; worklist-push;
@@ -212,8 +211,6 @@ module CataAtRelocate {FS : FrameSemantics} where
   -- every non-ctrl instruction relocates by `refl`
   instr-reloc prog seg k fs mov-to-output           lr tr = refl
   instr-reloc prog seg k fs mov-to-input            lr tr = refl
-  instr-reloc prog seg k fs mov-output-to-input2    lr tr = refl
-  instr-reloc prog seg k fs mov-input2-to-output    lr tr = refl
   instr-reloc prog seg k fs load-indirect           lr tr = refl
   instr-reloc prog seg k fs load-indirect-suc       lr tr = refl
   instr-reloc prog seg k fs (load-from-slot _)      lr tr = refl

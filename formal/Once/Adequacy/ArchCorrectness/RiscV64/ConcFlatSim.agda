@@ -351,7 +351,6 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq using
   (block-step-lea-slot; CompiledCorr; BlockStep; BlockSteps
   ; block-step-mov-to-output; block-step-mov-to-input
-  ; block-step-mov-input2-to-output; block-step-mov-output-to-input2
   ; block-step-scratch-one; block-step-scratch-zero; block-step-count-zero
   ; block-step-scratch-load-count; block-step-c-label; block-step-reclaim-to
   ; block-step-worklist-init; block-step-worklist-check
@@ -533,8 +532,6 @@ riscv64-block-steps : BlockSteps
 riscv64-block-steps = record
   { bs-mov-to-output        = block-step-mov-to-output
   ; bs-mov-to-input         = block-step-mov-to-input
-  ; bs-mov-input2-to-output = block-step-mov-input2-to-output
-  ; bs-mov-output-to-input2 = block-step-mov-output-to-input2
   ; bs-scratch-one          = block-step-scratch-one
   ; bs-scratch-zero         = block-step-scratch-zero
   ; bs-count-zero           = block-step-count-zero

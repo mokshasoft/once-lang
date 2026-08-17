@@ -132,9 +132,27 @@ data OutsideOwned : HeapLocation → HeapOwnership → Set where
 -- AbstractReg here for `InReg : AbstractReg → ValueLocation`; that
 -- constructor has been retired, but AbstractReg's role for register
 -- state stays the same.)
+-- PLAN 0.66: `Input2` IS RETIRED (2026-08-17). It was the second argument
+-- location of plan 0.2.4.5 Stage C's split-input calling convention; that
+-- convention was REVERTED (see `IRToTrace.ir-to-trace' … fst/snd`, "Stage C
+-- γ-revert: uniform packed-pair convention"), and the descend tally that also
+-- lived there was split off into `Count` by plan 0.54 rung D. What was left
+-- had NO PRODUCER on any arch: `mov-{output-to-input2,input2-to-output}` were
+-- never emitted by `ir-to-trace`, and survived only in proof enumerations.
+--
+-- It was not free. x86-32 has eight GPRs and `ebp` is the live frame anchor
+-- every epilogue restores `%esp` from (plan 0.65 G1c: the "assign it to ebp"
+-- fix is a SIGSEGV, not a fix), so `Input2` and `Scratch` were both `edx`
+-- there — a role map that could not be filled INJECTIVELY, which is what
+-- `FlatCore.RegRoles` needs. Retiring the dead role is what makes x86-32's
+-- seven realised roles fit its seven available registers.
+--
+-- Future: the split-input convention returns as a type-driven optimisation
+-- pass for register-fittable primitive args (IRToTrace's note). It brings its
+-- own register plumbing back WITH a producer, and x86-32's register pressure
+-- becomes a real question then, answerable against real emitted code.
 data AbstractReg : Set where
   Input1 : AbstractReg    -- first argument location
-  Input2 : AbstractReg    -- second argument location
   Output : AbstractReg    -- result location
   -- Plan 0.29: loop-private scratch register (maps to callee-saved rbx).
   -- Used only by the recursion-scheme loop construct (`instr-loop`) to
@@ -142,24 +160,22 @@ data AbstractReg : Set where
   -- primitive or SigOp ever writes it (see `exec-abstract`), so it is
   -- preserved by every loop-body instruction for free.
   Scratch : AbstractReg
-  -- Plan 0.54 rung D (item 4): the descend TALLY, split off `Input2`.
+  -- Plan 0.54 rung D (item 4): the descend TALLY, split off the (now retired)
+  -- second argument location.
   --
-  -- The tally used to live in `Input2`, which is ALSO the second argument
-  -- location of the split-input calling convention (`mov-output-to-input2`
-  -- writes an arbitrary value there). Those two roles contradict: the tally
-  -- is always an `SV-Tag`, an argument is anything. That conflation made
-  -- `count-inc`/`scratch-dec`/`c-branch-scratch-zero` UNPROVABLE against the
-  -- concrete machine (abstract `sv-succ`/`sv-pred` coerce a non-tag to a tag;
-  -- x86 `add`/`sub` work on the encoding), and it was false by DESIGN INTENT,
-  -- not by accident — it merely is not violated yet, because the nested-pair
-  -- codegen that would write a value into `Input2` is unimplemented.
+  -- The tally used to live in `Input2`, which was ALSO the second argument
+  -- location of the split-input calling convention. Those two roles
+  -- contradict: the tally is always an `SV-Tag`, an argument is anything. That
+  -- conflation made `count-inc`/`scratch-dec`/`c-branch-scratch-zero`
+  -- UNPROVABLE against the concrete machine (abstract `sv-succ`/`sv-pred`
+  -- coerce a non-tag to a tag; x86 `add`/`sub` work on the encoding), and it
+  -- was false by DESIGN INTENT, not by accident.
   --
   -- With the roles split, `Count` and `Scratch` are written ONLY with tags
   -- (`count-zero`/`count-inc`/`scratch-one`/`scratch-zero`/`scratch-dec`, and
   -- `scratch-load-count : Scratch := Count`), so "both hold tags" is a STATE
   -- invariant provable by induction over every instruction — see
-  -- `Once.CCC.Machine.FlatRegTagWF`. `Input2` is left completely
-  -- unconstrained: it is a pure value register again.
+  -- `Once.CCC.Machine.FlatRegTagWF`.
   Count : AbstractReg
 
 -- `ValueLocation` (AtStack / AtDynamic) is defined in
@@ -264,16 +280,13 @@ HeapMem FS = HeapLocation → Maybe (StoredValue FS)
 ------------------------------------------------------------------------
 -- Registers: Hold Locations (not Words)
 --
--- Three-register model (Plan 0.2.4.5 D2):
 --   Input1 - first argument location (maps to RDI in x86 SysV)
---   Input2 - second argument location (maps to RSI in x86 SysV)
 --   Output - result location (maps to RAX in x86)
 --
--- Two input registers eliminate the (env, arg) pack-into-pair waste
--- in `apply-setup-trace`: apply now writes env to Input1 and arg to
--- Input2, no two-store + lea slot pack. CCC primitives top out at
--- a 2-product input shape, so two input registers cover all of
--- pair, curry's body, and apply.
+-- Plan 0.2.4.5 D2 gave this a second input register for a split-input
+-- convention; plan 0.66 retired it with the convention (see AbstractReg).
+-- `apply` packs (env, arg) into a pair, so ONE input register carries every
+-- CCC primitive's input.
 --
 -- Note: AbstractReg is declared earlier (above ValueLocation) so
 -- LocState's `regs : AbstractReg → ValueLocation` field can reference
@@ -283,27 +296,18 @@ HeapMem FS = HeapLocation → Maybe (StoredValue FS)
 -- Decidable equality for AbstractReg
 _≟R_ : (r₁ r₂ : AbstractReg) → Dec (r₁ ≡ r₂)
 Input1 ≟R Input1 = yes refl
-Input1 ≟R Input2 = no (λ ())
 Input1 ≟R Output = no (λ ())
-Input2 ≟R Input1 = no (λ ())
-Input2 ≟R Input2 = yes refl
-Input2 ≟R Output = no (λ ())
 Output ≟R Input1 = no (λ ())
-Output ≟R Input2 = no (λ ())
 Output ≟R Output = yes refl
 Input1 ≟R Scratch = no (λ ())
-Input2 ≟R Scratch = no (λ ())
 Output ≟R Scratch = no (λ ())
 Scratch ≟R Input1 = no (λ ())
-Scratch ≟R Input2 = no (λ ())
 Scratch ≟R Output = no (λ ())
 Scratch ≟R Scratch = yes refl
 Input1 ≟R Count = no (λ ())
-Input2 ≟R Count = no (λ ())
 Output ≟R Count = no (λ ())
 Scratch ≟R Count = no (λ ())
 Count ≟R Input1 = no (λ ())
-Count ≟R Input2 = no (λ ())
 Count ≟R Output = no (λ ())
 Count ≟R Scratch = no (λ ())
 Count ≟R Count = yes refl
@@ -315,7 +319,7 @@ Count ≟R Count = yes refl
 record Registers (FS : FrameSemantics) : Set where
   constructor mkRegs
   field
-    input1 input2 output : StoredValue FS
+    input1 output : StoredValue FS
     scratch : StoredValue FS  -- Plan 0.29: loop-private (rbx); see AbstractReg.Scratch
     count : StoredValue FS    -- Plan 0.54 D item 4: descend tally; see AbstractReg.Count
 
@@ -323,14 +327,12 @@ open Registers public
 
 readReg : ∀ {FS} → Registers FS → AbstractReg → StoredValue FS
 readReg r Input1 = input1 r
-readReg r Input2 = input2 r
 readReg r Output = output r
 readReg r Scratch = scratch r
 readReg r Count = count r
 
 writeReg : ∀ {FS} → Registers FS → AbstractReg → StoredValue FS → Registers FS
 writeReg r Input1 v = record r { input1 = v }
-writeReg r Input2 v = record r { input2 = v }
 writeReg r Output v = record r { output = v }
 writeReg r Scratch v = record r { scratch = v }
 writeReg r Count v = record r { count = v }
@@ -343,30 +345,20 @@ writeReg-preserves : ∀ {FS} (regs : Registers FS) dst r v →
   readReg (writeReg regs dst v) r ≡ readReg regs r
 writeReg-preserves regs Input1 Input1 v r≢dst = ⊥-elim (r≢dst refl)
   where open import Data.Empty using (⊥-elim)
-writeReg-preserves regs Input1 Input2 v r≢dst = refl
 writeReg-preserves regs Input1 Output v r≢dst = refl
-writeReg-preserves regs Input2 Input1 v r≢dst = refl
-writeReg-preserves regs Input2 Input2 v r≢dst = ⊥-elim (r≢dst refl)
-  where open import Data.Empty using (⊥-elim)
-writeReg-preserves regs Input2 Output v r≢dst = refl
 writeReg-preserves regs Output Input1 v r≢dst = refl
-writeReg-preserves regs Output Input2 v r≢dst = refl
 writeReg-preserves regs Output Output v r≢dst = ⊥-elim (r≢dst refl)
   where open import Data.Empty using (⊥-elim)
 writeReg-preserves regs Input1 Scratch v r≢dst = refl
-writeReg-preserves regs Input2 Scratch v r≢dst = refl
 writeReg-preserves regs Output Scratch v r≢dst = refl
 writeReg-preserves regs Scratch Input1 v r≢dst = refl
-writeReg-preserves regs Scratch Input2 v r≢dst = refl
 writeReg-preserves regs Scratch Output v r≢dst = refl
 writeReg-preserves regs Scratch Scratch v r≢dst = ⊥-elim (r≢dst refl)
   where open import Data.Empty using (⊥-elim)
 writeReg-preserves regs Input1 Count v r≢dst = refl
-writeReg-preserves regs Input2 Count v r≢dst = refl
 writeReg-preserves regs Output Count v r≢dst = refl
 writeReg-preserves regs Scratch Count v r≢dst = refl
 writeReg-preserves regs Count Input1 v r≢dst = refl
-writeReg-preserves regs Count Input2 v r≢dst = refl
 writeReg-preserves regs Count Output v r≢dst = refl
 writeReg-preserves regs Count Scratch v r≢dst = refl
 writeReg-preserves regs Count Count v r≢dst = ⊥-elim (r≢dst refl)
@@ -376,7 +368,6 @@ writeReg-preserves regs Count Count v r≢dst = ⊥-elim (r≢dst refl)
 writeReg-same : ∀ {FS} (regs : Registers FS) dst v →
   readReg (writeReg regs dst v) dst ≡ v
 writeReg-same regs Input1 v = refl
-writeReg-same regs Input2 v = refl
 writeReg-same regs Output v = refl
 writeReg-same regs Scratch v = refl
 writeReg-same regs Count v = refl
@@ -386,7 +377,6 @@ writeReg-same regs Count v = refl
 writeReg-overwrite : ∀ {FS} (regs : Registers FS) dst x y →
   writeReg (writeReg regs dst x) dst y ≡ writeReg regs dst y
 writeReg-overwrite regs Input1 x y = refl
-writeReg-overwrite regs Input2 x y = refl
 writeReg-overwrite regs Output x y = refl
 writeReg-overwrite regs Scratch x y = refl
 writeReg-overwrite regs Count x y = refl
@@ -1085,18 +1075,9 @@ data AbstractInstr : Set where
   mov-to-output      : AbstractInstr              -- Output := Input1
   mov-to-input       : AbstractInstr              -- Input1 := Output (compose bridge)
 
-  -- Plan 0.2.4.5 Stage C: split-input calling convention. Apply's
-  -- body receives env in Input1, arg in Input2 (no packed (env, arg)
-  -- record). These instructions move between the second input register
-  -- and Output, mirroring mov-to-input/mov-to-output for Input2.
-  --
-  -- For Layer 0–4 with no nested pair construction, fst lowers to
-  -- mov-to-output (read Input1) and snd lowers to mov-input2-to-output
-  -- (read Input2) — they project the body's split input. Layer 1+ with
-  -- nested packed pairs needs a layout-discriminating fst/snd; that's
-  -- a future concern.
-  mov-output-to-input2 : AbstractInstr            -- Input2 := Output
-  mov-input2-to-output : AbstractInstr            -- Output := Input2
+  -- (Plan 0.2.4.5 Stage C's `mov-output-to-input2` / `mov-input2-to-output`
+  -- were RETIRED with `Input2` by plan 0.66 — the split-input convention they
+  -- served was reverted, and `ir-to-trace` never emitted them.)
 
   -- Memory load operations (slot-level, not physical address arithmetic)
   load-indirect      : AbstractInstr              -- Output := *Input1
@@ -1240,9 +1221,9 @@ data AbstractInstr : Set where
   instr-loop : List AbstractInstr → AbstractInstr
 
   -- Plan 0.29 (M5): register-only counter pokes for the recursion-scheme
-  -- loop bodies (Scratch = loop counter/flag, Input2 = descend tally).
+  -- loop bodies (Scratch = loop counter/flag, Count = descend tally).
   -- No heap, no slot, frame-preserving — its whole cascade mirrors
-  -- `mov-to-output`. x86: mov/add/sub on rbx (Scratch) / rsi (Input2).
+  -- `mov-to-output`. x86: mov/add/sub on rbx (Scratch) / r14 (Count).
   instr-reg-op : RegOp → AbstractInstr
 
   -- Plan 0.32 (M3): flat control flow (label/jump/test). Added LAST for
@@ -1671,14 +1652,6 @@ module AbstractExec {FS : FrameSemantics} where
   -- mov-to-input: Input1 := Output (compose bridge)
   exec-abstract mov-to-input s alloc =
     record s { regs = writeReg (regs s) Input1 (readReg (regs s) Output) } , alloc
-
-  -- mov-output-to-input2: Input2 := Output (Stage C split-input setup)
-  exec-abstract mov-output-to-input2 s alloc =
-    record s { regs = writeReg (regs s) Input2 (readReg (regs s) Output) } , alloc
-
-  -- mov-input2-to-output: Output := Input2 (Stage C body-side snd)
-  exec-abstract mov-input2-to-output s alloc =
-    record s { regs = writeReg (regs s) Output (readReg (regs s) Input2) } , alloc
 
   -- load-indirect: Output := *Input1.
   -- Plan 0.13.2: Input1 holds StoredValue; only succeeds when it's

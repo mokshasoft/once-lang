@@ -369,8 +369,6 @@ ff→seg-id (instr-ctrl (c-branch-scratch-zero _)) _ = refl
 ff→seg-id (instr-ctrl (c-branch-tag-zero _))  _ = refl
 ff→seg-id mov-to-output                       _ = refl
 ff→seg-id mov-to-input                        _ = refl
-ff→seg-id mov-output-to-input2                _ = refl
-ff→seg-id mov-input2-to-output                _ = refl
 ff→seg-id load-indirect                       _ = refl
 ff→seg-id load-indirect-suc                   _ = refl
 ff→seg-id (load-from-slot _)                  _ = refl
@@ -608,8 +606,6 @@ pcView (lea-slot _)                           ()
 pcView (lea-indexed _)                        ()
 pcView mov-to-output                          _ = pv-suc tt tt (λ _ _ → refl)
 pcView mov-to-input                           _ = pv-suc tt tt (λ _ _ → refl)
-pcView mov-output-to-input2                   _ = pv-suc tt tt (λ _ _ → refl)
-pcView mov-input2-to-output                   _ = pv-suc tt tt (λ _ _ → refl)
 pcView load-indirect                          _ = pv-suc tt tt (λ _ _ → refl)
 pcView load-indirect-suc                      _ = pv-suc tt tt (λ _ _ → refl)
 pcView (load-from-slot _)                     _ = pv-suc tt tt (λ _ _ → refl)
@@ -991,10 +987,6 @@ stack-ptr-step mov-to-output prog fs r ftq ff wf =
   flat-stack-ptr mov-to-output prog fs ff wf
 stack-ptr-step mov-to-input prog fs r ftq ff wf =
   flat-stack-ptr mov-to-input prog fs ff wf
-stack-ptr-step mov-output-to-input2 prog fs r ftq ff wf =
-  flat-stack-ptr mov-output-to-input2 prog fs ff wf
-stack-ptr-step mov-input2-to-output prog fs r ftq ff wf =
-  flat-stack-ptr mov-input2-to-output prog fs ff wf
 stack-ptr-step load-indirect prog fs r ftq ff wf =
   flat-stack-ptr load-indirect prog fs ff wf
 stack-ptr-step load-indirect-suc prog fs r ftq ff wf =
@@ -1187,10 +1179,6 @@ ptr-bounds-step mov-to-output prog fs r ftq ff wfS wf =
   flat-ptr-bounds mov-to-output prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step mov-to-input prog fs r ftq ff wfS wf =
   flat-ptr-bounds mov-to-input prog fs ff (λ { _ () }) wfS wf
-ptr-bounds-step mov-output-to-input2 prog fs r ftq ff wfS wf =
-  flat-ptr-bounds mov-output-to-input2 prog fs ff (λ { _ () }) wfS wf
-ptr-bounds-step mov-input2-to-output prog fs r ftq ff wfS wf =
-  flat-ptr-bounds mov-input2-to-output prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step load-indirect prog fs r ftq ff wfS wf =
   flat-ptr-bounds load-indirect prog fs ff (λ { _ () }) wfS wf
 ptr-bounds-step load-indirect-suc prog fs r ftq ff wfS wf =
@@ -1308,7 +1296,7 @@ slot-read-written prog fs slot i r ftq sok empty =
                             (trans (sym (fetch-at-pc prog (fpc fs))) ftq)))
     met = subst (λ m → ST.Sem.MeetsSlot FS (ST.slot-get (ST.e-slot st) slot) (falloc fs) m (floc fs))
                 empty
-                (proj₂ (proj₂ (proj₂ (run-meets prog fs r env chk))) slot)
+                (proj₂ (proj₂ (run-meets prog fs r env chk)) slot)
 
 load-indirect-target-ptr : ∀ prog (fs : FlatState) → RunAt prog fs
                          → fetch prog (fpc fs) ≡ just load-indirect

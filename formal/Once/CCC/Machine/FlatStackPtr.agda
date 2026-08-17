@@ -170,27 +170,18 @@ stack-ptr-live fs r f k wf eq = stack-ptr-suc-live fs r f k wf eq
 readReg-write : ∀ (rf : Registers FS) (x r : AbstractReg) (v : StoredValue FS)
               → (readReg (writeReg rf x v) r ≡ v) ⊎ (readReg (writeReg rf x v) r ≡ readReg rf r)
 readReg-write rf Input1  Input1  v = inj₁ refl
-readReg-write rf Input1  Input2  v = inj₂ refl
 readReg-write rf Input1  Output  v = inj₂ refl
 readReg-write rf Input1  Scratch v = inj₂ refl
 readReg-write rf Input1  Count   v = inj₂ refl
-readReg-write rf Input2  Input1  v = inj₂ refl
-readReg-write rf Input2  Input2  v = inj₁ refl
-readReg-write rf Input2  Output  v = inj₂ refl
-readReg-write rf Input2  Scratch v = inj₂ refl
-readReg-write rf Input2  Count   v = inj₂ refl
 readReg-write rf Output  Input1  v = inj₂ refl
-readReg-write rf Output  Input2  v = inj₂ refl
 readReg-write rf Output  Output  v = inj₁ refl
 readReg-write rf Output  Scratch v = inj₂ refl
 readReg-write rf Output  Count   v = inj₂ refl
 readReg-write rf Scratch Input1  v = inj₂ refl
-readReg-write rf Scratch Input2  v = inj₂ refl
 readReg-write rf Scratch Output  v = inj₂ refl
 readReg-write rf Scratch Scratch v = inj₁ refl
 readReg-write rf Scratch Count   v = inj₂ refl
 readReg-write rf Count   Input1  v = inj₂ refl
-readReg-write rf Count   Input2  v = inj₂ refl
 readReg-write rf Count   Output  v = inj₂ refl
 readReg-write rf Count   Scratch v = inj₂ refl
 readReg-write rf Count   Count   v = inj₁ refl
@@ -443,10 +434,6 @@ sp-abstract mov-to-output ls alloc ff wf =
   sp-write-reg (current-frame alloc) ls Output (readReg (regs ls) Input1) (sp-regs wf Input1) wf
 sp-abstract mov-to-input ls alloc ff wf =
   sp-write-reg (current-frame alloc) ls Input1 (readReg (regs ls) Output) (sp-regs wf Output) wf
-sp-abstract mov-output-to-input2 ls alloc ff wf =
-  sp-write-reg (current-frame alloc) ls Input2 (readReg (regs ls) Output) (sp-regs wf Output) wf
-sp-abstract mov-input2-to-output ls alloc ff wf =
-  sp-write-reg (current-frame alloc) ls Output (readReg (regs ls) Input2) (sp-regs wf Input2) wf
 sp-abstract load-indirect ls alloc ff wf =
   sp-load-resolved (current-frame alloc) ls Output (sv-as-loc (readReg (regs ls) Input1)) wf
 sp-abstract load-indirect-suc ls alloc ff wf =
@@ -591,10 +578,6 @@ flat-stack-ptr mov-to-output            prog fs ff wf =
   sp-abstract mov-to-output (floc fs) (falloc fs) ff wf
 flat-stack-ptr mov-to-input             prog fs ff wf =
   sp-abstract mov-to-input (floc fs) (falloc fs) ff wf
-flat-stack-ptr mov-output-to-input2     prog fs ff wf =
-  sp-abstract mov-output-to-input2 (floc fs) (falloc fs) ff wf
-flat-stack-ptr mov-input2-to-output     prog fs ff wf =
-  sp-abstract mov-input2-to-output (floc fs) (falloc fs) ff wf
 flat-stack-ptr load-indirect            prog fs ff wf =
   sp-abstract load-indirect (floc fs) (falloc fs) ff wf
 flat-stack-ptr load-indirect-suc        prog fs ff wf =

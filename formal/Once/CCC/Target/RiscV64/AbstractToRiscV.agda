@@ -58,7 +58,6 @@ open import Once.Type using (fits-int; fits-float)
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace; Slot;
          mov-to-output; mov-to-input;
-         mov-output-to-input2; mov-input2-to-output;
          load-indirect; load-indirect-suc;
          load-from-slot; store-at-slot; store-indirect; store-indirect-suc;
          lea-slot; restore-input; lea-indexed;
@@ -109,15 +108,6 @@ compile-abstract mov-to-output =
 -- Copy a0 (Output) to t0 (Input1)
 compile-abstract mov-to-input =
   mv t0 a0 ∷ []
-
--- mov-output-to-input2: Input2 := Output (Stage C split-input setup)
--- RV64 LP64 calling convention: a1 = second integer argument register
-compile-abstract mov-output-to-input2 =
-  mv a1 a0 ∷ []
-
--- mov-input2-to-output: Output := Input2 (Stage C body-side snd)
-compile-abstract mov-input2-to-output =
-  mv a0 a1 ∷ []
 
 -- load-indirect: Output := *Input1
 -- t0 holds address (Input1), load value into a0 (Output)
@@ -318,7 +308,7 @@ compile-abstract (instr-load-tag-lit n) = li a0 (+ n) ∷ []
 -- once irToAsm/irToBodies route through compile-trace-cnt).
 compile-abstract (instr-case-on-tag _ _) = unimp ∷ []
 compile-abstract (instr-loop _) = unimp ∷ []
--- Plan 0.53 (mirror x86-64 M5): register pokes. Scratch = s3, Input2 = s4
+-- Plan 0.53 (mirror x86-64 M5): register pokes. Scratch = s3, Count = s4
 -- (callee-saved, otherwise unused by this codegen).
 compile-abstract (instr-reg-op scratch-one)        = li s3 (+ 1) ∷ []
 compile-abstract (instr-reg-op scratch-zero)       = li s3 (+ 0) ∷ []
@@ -438,12 +428,6 @@ compile-trace-cnt-agrees o n (mov-to-output ∷ rest) (_ , nn) =
        (compile-trace-cnt-agrees o n rest nn)
 compile-trace-cnt-agrees o n (mov-to-input ∷ rest) (_ , nn) =
   cong (λ p → proj₁ p , compile-abstract mov-to-input ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n (mov-output-to-input2 ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract mov-output-to-input2 ++ proj₂ p)
-       (compile-trace-cnt-agrees o n rest nn)
-compile-trace-cnt-agrees o n (mov-input2-to-output ∷ rest) (_ , nn) =
-  cong (λ p → proj₁ p , compile-abstract mov-input2-to-output ++ proj₂ p)
        (compile-trace-cnt-agrees o n rest nn)
 compile-trace-cnt-agrees o n (load-indirect ∷ rest) (_ , nn) =
   cong (λ p → proj₁ p , compile-abstract load-indirect ++ proj₂ p)

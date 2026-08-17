@@ -60,8 +60,6 @@ NoNested (i ∷ is) = NoNestedI i × NoNested is
 no-nested-of-frame-free : ∀ (i : AbstractInstr) → EmittableI i → NoNestedI i
 no-nested-of-frame-free mov-to-output           _ = tt
 no-nested-of-frame-free mov-to-input            _ = tt
-no-nested-of-frame-free mov-output-to-input2    _ = tt
-no-nested-of-frame-free mov-input2-to-output    _ = tt
 no-nested-of-frame-free load-indirect           _ = tt
 no-nested-of-frame-free load-indirect-suc       _ = tt
 no-nested-of-frame-free (load-from-slot _)      _ = tt
@@ -103,8 +101,6 @@ NoNestedI? (instr-case-on-tag _ _) = no (λ z → z)
 NoNestedI? (instr-loop _)          = no (λ z → z)
 NoNestedI? mov-to-output           = yes tt
 NoNestedI? mov-to-input            = yes tt
-NoNestedI? mov-output-to-input2    = yes tt
-NoNestedI? mov-input2-to-output    = yes tt
 NoNestedI? load-indirect           = yes tt
 NoNestedI? load-indirect-suc       = yes tt
 NoNestedI? (load-from-slot _)      = yes tt
