@@ -7668,3 +7668,82 @@ an arch has to fill, ask what the ENGINE could have passed and did not, and for
 every core lemma, ask which arch's instruction set its premise shape came from.
 `sim-call`'s `SetsRoleMem` is the answer to the second question, and it sat in a
 module whose whole purpose is to be arch-free.
+
+## D107: The Modelled riscv64 Loader Handed `main` a Stack Pointer of ZERO — and Only the Apex Could Have Asked
+
+**Date**: 2026-08-17 · **Status**: Fixed · **Plan**: 0.65 (G3)
+
+### What was wrong
+
+    x86-64   initState = mkstate (writeReg emptyRegFile rsp stack-top) …
+    riscv64  initState = mkstate emptyRegFile emptyMemory 0 false
+    x86-32   initState = mkstate emptyRegFile emptyMemory initFlags 0 false
+
+The stack grows DOWN. A `main` handed `sp ≡ 0` underflows on its first frame.
+Two of the three targets modelled a loader that does that, and x86-64 did not
+because it postulates `stack-top : Word` — "the `%rsp` the loader hands `main`" —
+and `initState` sets `rsp` to it.
+
+This is not a proof inconvenience. `entry-corr`'s `sp-eq` says the concrete
+entry `sp` IS the entry frame's base, and its `lo-le` says the high-water mark
+is at or below it. With `sp ≡ 0` and a frame based anywhere above 0, neither
+holds. **The entry correspondence is not provable against the old model** — so
+every step above it was resting on a state the machine cannot be in.
+
+### Why it survived
+
+`riscv64-conc-flat-sim` was a whole-cloth postulate at the apex: "the concrete
+`run-events` equals the abstract `flat-events`", the entire simulation assumed
+in one line. Nothing above the correspondence ever asked for the entry state, so
+nothing ever evaluated it.
+
+Plan 0.65's G1/G2 then built the whole riscv64 correspondence — the core
+extraction, all 42 block-steps, the five stuck routes, the resource family, the
+`Supply` — with that postulate still in place. **Every one of those was green
+while the entry state was unusable.** The four clusters cannot see it: an
+assumption that is never consumed is indistinguishable from one that is true.
+
+### How it was found
+
+By deleting the postulate FIRST and following the red, rather than building the
+island and wiring it at the end. `initState` was the first thing that turned
+red, before a line of `entry-corr` was written.
+
+That ordering was not the one this plan followed, and the plan is the reason:
+G1/G2 were an EXTRACTION — generalise x86-64's proof, instantiate at riscv64 —
+and an extraction has a natural bottom-up shape. The shim at the top is what let
+that shape run to completion unchallenged.
+
+### The fix, and what it costs
+
+riscv64 gets `stack-top` and `initState` sets `sp` to it, stated exactly as
+x86-64 states it: the entry `sp` is OPAQUE (the one thing the loader tells us),
+and the heap base is 0 without loss of generality since addresses are ℕ and only
+the relative order matters.
+
+With that, `entry-frame-riscv64` stops being an opaque postulate and becomes the
+loader's `sp` — a riscv64 `Frame` IS a `StackPointer`, so `entry-frame-base`
+collapses to `refl`, exactly the collapse x86-64 records. Net at the apex:
+
+    OUT  riscv64-conc-flat-sim   the whole simulation, whole-cloth
+    OUT  entry-frame-riscv64     an opaque `Frame`, about which nothing is provable
+    IN   stack-top-in-stack      the `sp` we are handed is in the stack region
+    IN   conc-fuel               D5 step-budget adequacy (x86-64 carries it too)
+    IN   main-heap-moded         frontend class (x86-64 carries it too)
+
+**x86-32 STILL HAS THE HOLE.** Fix it before its correspondence is written, not
+during — the same argument applies, and there is no island there yet to protect
+it from being noticed.
+
+### The general lesson
+
+**A postulate at the apex does not merely leave a gap — it disables the only
+check that would have found the model wrong underneath it.** "Wire the
+obligation in first" is usually argued as a discipline about proof structure.
+This is the sharper reason: the top-level statement is what EVALUATES the model.
+Until it does, a wrong model and a right one produce the same green.
+
+Corollary for extractions specifically: generalising a working proof to a second
+instance is inherently bottom-up, so it is exactly the shape of work that needs
+the apex deleted at the START. The postulate you keep "until the island lands"
+is the one that makes the island's greenness meaningless.

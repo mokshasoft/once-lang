@@ -186,9 +186,27 @@ emptyRegFile = mkregfile
 emptyMemory : Memory
 emptyMemory = λ _ → nothing
 
+------------------------------------------------------------------------
+-- THE LOADER'S STACK POINTER (plan 0.65 G3, 2026-08-17).
+--
+-- `initState` USED TO SET `sp` TO ZERO, and that is not a model of anything:
+-- the stack grows DOWN, so a `main` handed `sp ≡ 0` underflows on its first
+-- frame. It survived because riscv64's simulation was a whole-cloth postulate
+-- at the apex — nothing above ever asked what the loader hands `main`, so
+-- nothing caught it. Deleting that postulate is what turned it red, first
+-- thing, which is the argument for deleting it before writing the island and
+-- not after.
+--
+-- Stated exactly as x86-64 states it: the entry `sp` is OPAQUE — the one thing
+-- the loader tells us — and the heap base is 0 without loss of generality
+-- (addresses are ℕ; only the relative order matters), which is why `0 ≤
+-- stack-top` needs no assumption.
+postulate
+  stack-top : Word          -- the `sp` the loader hands `main`
+
 -- | Initial state
 initState : State
-initState = mkstate emptyRegFile emptyMemory 0 false
+initState = mkstate (writeReg emptyRegFile sp stack-top) emptyMemory 0 false
 
 ------------------------------------------------------------------------
 -- Address calculation

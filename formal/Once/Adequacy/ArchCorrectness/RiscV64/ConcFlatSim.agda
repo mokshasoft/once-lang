@@ -307,7 +307,10 @@ open EE using (FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-
               -- are NOT re-listed: `FlatSimulation` already binds them (the same
               -- instance, by module application), and naming them twice makes
               -- every use ambiguous.
-              ; StuckAt; StuckSteps) public
+              ; StuckAt; StuckSteps
+              -- …and the run-context vocabulary the APEX needs to exhibit the
+              -- entry state as a legitimate start state
+              ; EntryLike; Reachable; reach-start; mkRunAt) public
 
 -- the ABSTRACT machine's own vocabulary, which the stuck routes state their
 -- premises in (`hiding (Instr)`: this module's `Instr` is the CONCRETE one)
@@ -366,7 +369,11 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq us
   ; block-step-load-const; block-step-load-const-float
   ; block-step-load-code-addr; block-step-call; block-step-alloc-heap
   ; load-indirect-heap-empty-stuck; load-indirect-suc-heap-empty-stuck
-  ; dataCorr; pc-off; HeapView)
+  -- RE-EXPORTED (`public`): the APEX names `CompiledCorr`/`HeapView` when it
+  -- exhibits the entry correspondence. They come from here rather than from
+  -- `EE`'s public open — listing them in both makes every use ambiguous, and
+  -- this is the binding that already existed.
+  ; dataCorr; pc-off; HeapView; CompiledCorr) public
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence FS word-eq using
   (HeapView)
 

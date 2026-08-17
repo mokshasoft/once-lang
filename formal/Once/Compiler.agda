@@ -36,7 +36,12 @@ module Once.Compiler
   (x86-64-addr-no-wrap : RB.AddrNoWrap o)
   (x86-64-lit-fits : RB.LitFits o)
   (riscv64-heap-room : RBr.HeapRoom o) (riscv64-stack-room : RBr.StackRoom o)
-  (riscv64-call-room : RBr.CallRoom o) where
+  (riscv64-call-room : RBr.CallRoom o)
+  (riscv64-reg-range : RBr.RegRange o)
+  (riscv64-scratch-dec-guarded : RBr.ScratchDecGuarded o)
+  (riscv64-slot-addr-no-wrap : RBr.SlotAddrNoWrap o)
+  (riscv64-addr-no-wrap : RBr.AddrNoWrap o)
+  (riscv64-lit-fits : RBr.LitFits o) where
 
 open import Data.List using (List)
 open import Data.Nat using (ℕ)
@@ -53,7 +58,9 @@ open import Once.Adequacy.SourceTrace using (⟦_⟧)
 open import Once.Adequacy.CPU      using (Arch; Byte; arch-semantics)
 open import Once.Adequacy.ArchCorrectness o program-bound x86-64-heap-room x86-64-stack-room x86-64-call-room
        x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits
-       riscv64-heap-room riscv64-stack-room riscv64-call-room using (arch-correctness)
+       riscv64-heap-room riscv64-stack-room riscv64-call-room
+       riscv64-reg-range riscv64-scratch-dec-guarded riscv64-slot-addr-no-wrap
+       riscv64-addr-no-wrap riscv64-lit-fits using (arch-correctness)
 import Once.Adequacy.Compile as VCompile
 
 -- Instantiate the verified pipeline with the concrete per-arch

@@ -52,14 +52,21 @@ module Once.Certified
   -- be stated until riscv64 had a correspondence to condition them on; now
   -- they are, the apex constrains their shape instead of G2 inventing it.
   (riscv64-heap-room : RBr.HeapRoom o) (riscv64-stack-room : RBr.StackRoom o)
-  (riscv64-call-room : RBr.CallRoom o) where
+  (riscv64-call-room : RBr.CallRoom o)
+  (riscv64-reg-range : RBr.RegRange o)
+  (riscv64-scratch-dec-guarded : RBr.ScratchDecGuarded o)
+  (riscv64-slot-addr-no-wrap : RBr.SlotAddrNoWrap o)
+  (riscv64-addr-no-wrap : RBr.AddrNoWrap o)
+  (riscv64-lit-fits : RBr.LitFits o) where
 
 -- P5 (OCP-0006): the correctness criterion is consumed THROUGH the spec
 -- door — `Once.Spec` is on the certified path, not an island.
 open import Once.Spec using (CorrectCompiler)
 open import Once.Compiler o program-bound x86-64-heap-room x86-64-stack-room x86-64-call-room
        x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits
-       riscv64-heap-room riscv64-stack-room riscv64-call-room using (once-compiler)
+       riscv64-heap-room riscv64-stack-room riscv64-call-room
+       riscv64-reg-range riscv64-scratch-dec-guarded riscv64-slot-addr-no-wrap
+       riscv64-addr-no-wrap riscv64-lit-fits using (once-compiler)
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
 
 record CertifiedBuild : Set₁ where
