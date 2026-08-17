@@ -247,3 +247,23 @@ module GcdCertAt {Δ : Ctx} {a' b' d : RTm ⌊ Δ ⌋}
                                            (nsuc (var (vs (vs (vs (vs (vs vz))))))))}
                         σG⊢)
               (⊢single dih))
+
+  ------------------------------------------------------------------------
+  -- ⚠⚠ NOT DONE: THE NESTED FORM.  `⊢cert` above types the FUSED
+  --   `subTm (single ih ∘ₛ extS σG) CERTˢ`; `recCert (gcd-gt-term …)` is
+  --   EIGHT NESTED `subTm`s, and the caller needs the nested one.
+  --
+  --   Both routes to it were tried and both OOM-kill (measured 2026-08-17,
+  --   one agda at a time):
+  --     * fusing the nested form to the composite — that is exactly the
+  --       comparison that costs >10min;
+  --     * applying `sub-lemma` one layer at a time, which lands on the
+  --       nested form directly.  Expensive even with the subject AND type
+  --       written out by hand, so it is not an inference artefact: eight
+  --       `Sub⊢-ext` towers over substituted contexts is simply a lot.
+  --
+  --   ⭐ What IS established: the certificate is typeable by DERIVATION at
+  --   6.2s, and every ingredient (`⊢R₁`/`⊢W`/`⊢R₂`/`⊢R₃`, the eight typed
+  --   layers) is green and cheap.  The remaining problem is only the SHAPE
+  --   the reduction hands over, not the mathematics.
+  ------------------------------------------------------------------------
