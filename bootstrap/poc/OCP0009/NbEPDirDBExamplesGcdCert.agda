@@ -37,14 +37,15 @@ open import poc.OCP0009.NbEPDirDBPi
         ; subTy-subTy; subTy-cong; subTm-subTm )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢natrec; ⊢nzero; ⊢nsuc
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢natrec; ⊢nzero; ⊢nsuc; ⊢conv; csymᵀ
         ; ⊢fst; ⊢snd; ⊢pair; ty-Nat )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single; ⊢[] )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm )
 open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm )
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLTm; plusMonoLTm-sub )
-open import poc.OCP0009.NbEPDirDBLibArithMonus using ( monusLtTm; monusLtTm-sub )
+open import poc.OCP0009.NbEPDirDBLibArithMonus
+  using ( monusLtTm; monusLtTm-sub; ⊢desc-left )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( subren; renren )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )
@@ -53,7 +54,7 @@ open import poc.OCP0009.NbEPDirDBExamplesGcdStep
         ; G2; ⊢G2; G2z; ⊢G2z; gcdInn2; ⊢gcdInn2; wkS2
         ; G3; ⊢G3; G3z; ⊢G3z; G3s; ⊢G3s
         ; CERTˢ; ⊢CERTˢ; PAIRˢ; KS; NS; gcdIH
-        ; peel4; peel6; wkS2 )
+        ; peel4; peel6; wkS2; descConv )
 
 ------------------------------------------------------------------------
 -- ★★★ A `natrec`'s TYPING, TRANSPORTED ALONG A SUBSTITUTION.
@@ -463,3 +464,33 @@ module GcdCertEq {Γ : Cx} (a' b' d ih : RTm Γ) where
                      (cong nsuc pKS)
                      (cong nsuc pNS)
                      (trans f8 (cong₂ monusLtTm pKS pNS)))
+
+------------------------------------------------------------------------
+-- ★★★★★★ …AND THE CERTIFICATE IS TYPED.  ONE `⊢desc-left`.
+--
+-- ⭐ Compare with what this replaces: an eight-layer `sub-lemma` tower that
+--   OOM-killed, and before that a peel that ran past ten minutes.  Once the
+--   certificate is in `⊢desc-left`'s own form, its typing is the derivation
+--   that `⊢G3s` already builds — `descConv` just moves the measure across
+--   the pair's projections, exactly as `⊢CERTˢ` does.
+------------------------------------------------------------------------
+
+module GcdCertTy {Δ : Ctx} {a' b' d : RTm ⌊ Δ ⌋}
+                 (da : Δ ⊢ a' ∷ Nat) (db : Δ ⊢ b' ∷ Nat) (ih : RTm ⌊ Δ ⌋) where
+
+  open GcdCertEq a' b' d ih public
+
+  PAIRᶠ : RTm ⌊ Δ ⌋
+  PAIRᶠ = pair (monusTm (nsuc a') (nsuc b')) (nsuc b')
+
+  ⊢certClean : Δ ⊢ subTm τ₈ (subTm τ₇ (subTm τ₆ (subTm τ₅ (subTm τ₄
+                 (subTm τ₃ (subTm τ₂ (subTm τ₁ CERTˢ)))))))
+               ∷ Hom Nat (nsuc (plusTm (fst PAIRᶠ) (snd PAIRᶠ)))
+                         (plusTm (nsuc a') (nsuc b'))
+  ⊢certClean =
+    subst (λ t → Δ ⊢ t ∷ Hom Nat (nsuc (plusTm (fst PAIRᶠ) (snd PAIRᶠ)))
+                                 (plusTm (nsuc a') (nsuc b')))
+          (sym certEq)
+          (⊢conv (⊢desc-left da db)
+                 (csymᵀ (descConv (monusTm (nsuc a') (nsuc b')) (nsuc b')
+                                  (plusTm (nsuc a') (nsuc b')))))
