@@ -60,6 +60,27 @@ module GcdRecAt (Δ : Ctx) where
   --   ⚠ AND THE `.agdai` LIES: one exists for this module, but it PREDATES
   --   the source by 42s and is from the CONDITIONAL version.  An interface
   --   file is only evidence if it postdates the source.
+  --
+  -- ★★ BISECTED 2026-08-17, and the mechanism is now precise:
+  --
+  --     `irr-ind gcdStepExt dx dy dk`   returned, never opened   EXIT 0
+  --     `⊢app (prvOk (irr-ind …)) dn₂`  ⊢app forces it open      OOM
+  --     the same, ALONE in its own module                        OOM
+  --
+  --   ⇒ THE COST IS `prvOk` FORCING THE `Prv` OPEN.  Returning it never
+  --   looks inside; `prvOk` must expose `prv e d`, and `d` is `irr-ind`'s
+  --   four-leaf `⊢natrec` elaborated at gcd's step.  ⚠ AND MODULE
+  --   ISOLATION DOES NOT HELP — the lever that rescued `leaf₃s` and
+  --   `split2` fails here, because this is ONE definition rather than an
+  --   accumulation of them.
+  --
+  -- ⭐ SO THE FIX BELONGS IN `LibAmrec`, NOT HERE.  The four leaves
+  --   (`irr-zz`/`irr-zs`/`irr-sz`/`irr-ss`) are already separate Defs; what
+  --   is expensive is `irr-ind` ASSEMBLING them into a `natrec`, which
+  --   inlines all four.  Making the leaves OPAQUE there would let the
+  --   assembly reference them without inlining — the same "rigid head"
+  --   effect that made the certificate's naturality lemmas usable.  That is
+  --   a change to a shared library and a DESIGN DECISION.
   --   Kept verbatim so the discharge is not lost; the theorem below takes
   --   the witness as a HYPOTHESIS instead, which verifies that every
   --   interface in the recursive step lines up and isolates the remaining
