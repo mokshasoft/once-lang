@@ -746,7 +746,10 @@ block-step-alloc-stack {hv} prog fs s n cc h ft fresh-abs lo' lo'≤lo front-lo'
 -- one-directional the head window is vacuous from `fresh-abs` alone, so the
 -- block-step is a plain two-step composition.
 ------------------------------------------------------------------------
-block-step-c-thunk : ∀ {hv : HeapView} prog fs s n b → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+-- (`r` and the live-link premise are the FIELD's, added 2026-08-16 for riscv64,
+-- whose marker SPILLS onto the head return cell. x86-64's marker writes no
+-- memory, so it ignores both and its `ret-unlink` stays `λ _ _ p → p`.)
+block-step-c-thunk : ∀ {hv : HeapView} prog fs s n b r → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk n b))
   -- NO freshness premise: `do-thunk` CLEARS the entered frame, so the callee
   -- window holds by computation. Neither the abstract nor the concrete
@@ -763,8 +766,9 @@ block-step-c-thunk : ∀ {hv : HeapView} prog fs s n b → CompiledCorr hv prog 
   → frame-slots (falloc fs) ≡ 0
   -- THE MACHINE IS FINITE (plan 0.70 phase C), as at `block-step-alloc-stack`.
   → xreadReg (xregs s) rsp < X.W.modulus
+  → flink fs ≡ just r
   → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-thunk n b))
-block-step-c-thunk {hv} prog fs s n b cc h ft lo' lo'≤lo front-lo' lo'≤rsp fits empty-frame rsp<mod =
+block-step-c-thunk {hv} prog fs s n b r cc h ft lo' lo'≤lo front-lo' lo'≤rsp fits empty-frame rsp<mod no-link =
   post-sub , exec-eq , record { dataCorr = dataPost ; pc-off = pco' ; ret-eq = retPost ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc

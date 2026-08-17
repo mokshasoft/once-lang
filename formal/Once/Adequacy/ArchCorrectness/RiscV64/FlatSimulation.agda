@@ -51,7 +51,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.CCC.Machine.SMCore
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open import Once.CCC.Machine.Flat
-open FlatMachine {FS} using (FlatState; fpc; fret; flink; falloc; floc; halted; flat-exec-instr; fetch; find-label; tag-zf; flat-read-tag; flat-read-at; sv-is-zero; sv-as-loc; flink-do-ret)
+open FlatMachine {FS} using (FlatState; fpc; fret; flink; falloc; floc; fclosure; halted; flat-exec-instr; fetch; find-label; tag-zf; flat-read-tag; flat-read-at; sv-is-zero; sv-as-loc; flink-do-ret)
 open import Once.CCC.Label using (once; thunk; LabelId)
 
 import Once.CCC.Target.RiscV64.Semantics as R
@@ -70,6 +70,10 @@ open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace; compil
 open import Data.Nat.Properties using (+-monoʳ-<; *-monoˡ-<; ≤-<-trans; ≤-trans; <-transˡ; <⇒≢)
 open import Data.Empty using (⊥)
 open import Once.CCC.FrameSemantics using (frame-base; slot-addr; slot-addr-linear)
+-- …and what `block-step-alloc-heap`'s premise list needs: the store-WF
+-- predicates and the heap-reference identity (plan 0.65 G2).
+open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
+open import Once.Memory.HeapAddress using (heap-ref; ref-id)
 open import Once.Word using (Carrier)
 open import Once.Semantics.FloatBits using (float-bits)
 open import Data.Float using () renaming (Float to AgdaFloat)
@@ -1612,3 +1616,87 @@ block-step-c-branch-tag-nz {hv} prog fs s n loc m cc h ft i-eq r-eq rd = result
                        (trans (cong (_+ 2) po)
                               (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-branch-tag-zero n)) ft)))
       ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+
+------------------------------------------------------------------------
+-- ALLOCATION (plan 0.65 G2) — `mv a0, s2 ; addi s2, s2, n*8`.
+--
+-- x86-64's `block-step-alloc-heap` with `s2` where it writes `%r15`, and one
+-- field fewer in the post-state because riscv64 has no flags. The premise list
+-- is the field's, verbatim: a view EXTENSION has to know the new block's
+-- references are fresh and its cells unwritten, and `room` measures the bump
+-- against the stack's HIGH-WATER MARK rather than the live `sp` — which is
+-- what makes those cells provably unwritten (D085/D097).
+--
+-- The link register is untouched: both writes name a concrete register, so the
+-- head row's claim carries by computation.
+------------------------------------------------------------------------
+block-step-alloc-heap : ∀ {hv : HeapView} prog fs s n → (cc : CompiledCorr hv prog fs s)
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-alloc-heap n)
+  → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Input1)
+  → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Input2)
+  → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Scratch)
+  → sv-below (next-heap-ref (falloc fs)) (readReg (regs (floc fs)) Count)
+  → sv-below (next-heap-ref (falloc fs)) (fclosure fs)
+  → (∀ hl → HDom hv hl → svm-below (next-heap-ref (falloc fs)) (heapMem (floc fs) hl))
+  → (∀ (f : FrameSemantics.Frame FS) (k : Slot)
+       → svm-below (next-heap-ref (falloc fs)) (stackMem (floc fs) f k))
+  → (∀ hl → ref-id (heap-ref hl) ≡ next-heap-ref (falloc fs) → heapMem (floc fs) hl ≡ nothing)
+  → (room : C.hfront hv + slots n ≤ C.lo hv)
+  -- THE LAYOUT FITS IN THE ADDRESS SPACE (plan 0.70 phase C), exactly as on
+  -- x86-64: `room` already bounds the bumped frontier by the high-water mark,
+  -- so all that is missing is that the mark itself is representable.
+  → C.lo hv < R.W.modulus
+  → BlockStep (C.extend-view hv (next-heap-ref (falloc fs)) n (C.dom-fresh (dataCorr cc)) room)
+              prog fs s (instr-alloc-heap n)
+block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wf2 wfs wfc wfcl wf-heap wf-stack fresh-abs room lo-fits =
+  post-add , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
+                              ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    fetch-mv : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (mv a0 s2)
+    fetch-mv = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) (instr-alloc-heap n) ft)
+    post-mv : R.State
+    post-mv = record s { regs = R.writeReg (R.State.regs s) a0 (R.readReg (R.State.regs s) s2)
+                       ; pc = R.State.pc s + 1 }
+    step1 : R.step-not-halted (compile-trace prog) s ≡ just post-mv
+    step1 = step-mv {compile-trace prog} {s} {a0} {s2} fetch-mv
+    fetch-addi : R.fetch (compile-trace prog) (R.State.pc post-mv)
+               ≡ just (addi s2 s2 (ℤ.+ (slots n)))
+    fetch-addi = trans (cong (λ p → R.fetch (compile-trace prog) (p + 1)) po)
+                       (fetch-block-2nd prog (fpc fs) (instr-alloc-heap n) ft)
+    post-add : R.State
+    post-add = record post-mv
+                 { regs = R.writeReg (R.State.regs post-mv) s2
+                            (R.readReg (R.State.regs post-mv) s2 + slots n)
+                 ; pc = R.State.pc post-mv + 1 }
+    -- `s2` IS the frontier (`frontier-eq`), so `room` bounds the bump by `lo`,
+    -- and `lo-fits` carries it under the modulus.
+    no-wrap : R.readReg (R.State.regs post-mv) s2 + slots n < R.W.modulus
+    no-wrap = ≤-<-trans (subst (λ z → z + slots n ≤ C.lo hv)
+                               (sym (C.frontier-eq dc)) room)
+                        lo-fits
+    wrap-free : R.readReg (R.State.regs post-mv) s2 R.W.⊕ R.W.fromℤ (ℤ.+ (slots n))
+              ≡ R.readReg (R.State.regs post-mv) s2 + slots n
+    wrap-free = trans (R.W.⊕-normʳ (R.readReg (R.State.regs post-mv) s2) (slots n))
+                      (R.W.⊕≡+ (R.readReg (R.State.regs post-mv) s2) (slots n) no-wrap)
+    step2 : R.step-not-halted (compile-trace prog) post-mv ≡ just post-add
+    step2 = subst (λ w → R.step-not-halted (compile-trace prog) post-mv
+                         ≡ just (record post-mv { regs = R.writeReg (R.State.regs post-mv) s2 w
+                                                ; pc = R.State.pc post-mv + 1 }))
+                  wrap-free
+                  (step-addi {compile-trace prog} {post-mv} {s2} {s2} {ℤ.+ (slots n)} fetch-addi)
+    exec-eq : R.exec 2 (compile-trace prog) s ≡ just post-add
+    exec-eq = trans (exec-1 {compile-trace prog} {1} {s} {post-mv} halt-s step1 halt-s)
+                    (exec-1 {compile-trace prog} {0} {post-mv} {post-add} halt-s step2 halt-s)
+    dataPost : C.FlatCorr (C.extend-view hv (next-heap-ref (falloc fs)) n (C.dom-fresh dc) room)
+                          (flat-exec-instr (instr-alloc-heap n) prog fs) post-add
+    dataPost = C.sim-alloc-heap n fs s _ dc
+                 wf1 wf2 wfs wfc wfcl wf-heap wf-stack fresh-abs room
+                 (C.sets-2roles-riscv64 s role-out role-heap _ _ _ (λ ()))
+    pco' : R.State.pc post-add ≡ blk-off prog (fpc (flat-exec-instr (instr-alloc-heap n) prog fs))
+    pco' = trans (trans (cong (λ p → (p + 1) + 1) po) (+-assoc (blk-off prog (fpc fs)) 1 1))
+                 (sym (blk-off-suc prog (fpc fs) (instr-alloc-heap n) ft))

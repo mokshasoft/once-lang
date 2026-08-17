@@ -594,7 +594,7 @@ record BlockSteps : Set₁ where
     -- parameter and hands all three over. `frame-slots ≡ 0` is D093: a body
     -- entry is reached by a call, and `enter-call` reserves nothing.
     bs-c-thunk :
-      ∀ {hv : HeapView} prog fs s n b → CompiledCorr hv prog fs s
+      ∀ {hv : HeapView} prog fs s n b r → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk n b))
       → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
@@ -602,6 +602,13 @@ record BlockSteps : Set₁ where
       → b * slot-size ≤ rreg s sp-reg
       → frame-slots (falloc fs) ≡ 0
       → rreg s sp-reg < modulus
+      -- …AND A LIVE LINK (plan 0.65 G2, 2026-08-16). The marker is where the
+      -- head row is CONVERTED — `just` to `nothing` — and on an arch whose
+      -- conversion is a STORE (riscv64's `sd ra`) that store lands on the head
+      -- pending return's own cell. Without a live link it would overwrite a
+      -- saved return address. `RunWF.thunk-entry-link` is the engine's proof
+      -- that it cannot happen: the only way to a body entry is a call.
+      → flink fs ≡ just r
       → BlockStepAt hv (descend-view hv lo' lo'≤lo front-lo') prog fs s
                     (instr-ctrl (c-thunk n b))
     -- `c-ret` (D095): the two shapes only the RUN knows — the return stack is

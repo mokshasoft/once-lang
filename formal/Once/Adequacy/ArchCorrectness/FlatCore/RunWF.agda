@@ -481,9 +481,19 @@ record SegWF (prog : AbstractTrace) (B : ℕ) (fs : FlatState) : Set where
     -- `c-label`s (`find-label-sound`, D082's disjoint provenances); and a
     -- return cannot, because its address is one past a CALL (`RetMatch`'s
     -- provenance), which is not a `c-jmp`.
+    -- …AND WITH A LIVE LINK (plan 0.65 G2, 2026-08-16). Same enumeration, same
+    -- refutations: the ONLY way to reach a body entry is a call, and a call
+    -- sets `flink`. Carried in the SAME field rather than a second one because
+    -- every case but the call is `⊥-elim`, which produces a pair as readily as
+    -- an equation — the proof did not grow by a line.
+    --
+    -- riscv64 is what needs it. Its marker SPILLS (`sd ra, 8b(sp)`) onto the
+    -- head pending return's own cell, so without a live link that store would
+    -- overwrite a saved return address with whatever `ra` happens to hold. The
+    -- x86-64 route never asked, because its marker writes no memory.
     seg-entry : ∀ (ℓ : LabelId) (bb : ℕ)
               → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk ℓ bb))
-              → frame-slots (falloc fs) ≡ 0
+              → (frame-slots (falloc fs) ≡ 0) × Σ ℕ (λ r → flink fs ≡ just r)
 open SegWF public
 
 ------------------------------------------------------------------------
@@ -900,8 +910,9 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
                   mkSegWF (inj₂ (ℓ , proj₁ landing , proj₂ landing , refl))
                           (rm-∷ beq (fpc fs'' , refl , ftq) (seg-stack ih))
                           -- …and THIS is the case the whole invariant is about:
-                          -- the frame a call enters reserves nothing (D086).
-                          (λ _ _ _ → refl)
+                          -- the frame a call enters reserves nothing (D086),
+                          -- and the call is also what leaves the link live.
+                          (λ _ _ _ → refl , suc (fpc fs'') , refl)
                   where landing = find-thunk-sound prog ℓ j fteq
 
 -- …and the form the correspondence consumes (D093/D094). Was a POSTULATE for
@@ -910,7 +921,18 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
 thunk-entry-empty : ∀ prog (fs : FlatState) (ℓ : LabelId) (bb : ℕ) → RunAt prog fs
                   → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk ℓ bb))
                   → frame-slots (falloc fs) ≡ 0
-thunk-entry-empty prog fs ℓ bb r ftq = seg-entry (run-seg-wf prog fs r) ℓ bb ftq
+thunk-entry-empty prog fs ℓ bb r ftq = proj₁ (seg-entry (run-seg-wf prog fs r) ℓ bb ftq)
+
+-- …and its twin, which riscv64's body marker needs: A BODY ENTRY IS REACHED
+-- WITH A LIVE LINK. Same projection, same one assumption (the emitter's guard)
+-- underneath. This is the CONVERSE of `run-link-at-thunk`, and unlike that one
+-- it is a block-step's business rather than the engine's: riscv64's `sd ra`
+-- writes the head return cell, so it must know the value in `ra` IS that
+-- return address.
+thunk-entry-link : ∀ prog (fs : FlatState) (ℓ : LabelId) (bb : ℕ) → RunAt prog fs
+                 → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk ℓ bb))
+                 → Σ ℕ (λ r → flink fs ≡ just r)
+thunk-entry-link prog fs ℓ bb r ftq = proj₂ (seg-entry (run-seg-wf prog fs r) ℓ bb ftq)
 
 -- (`run-stack-slot` — "the window is the whole trace's budget" — is GONE with
 -- the flip. It is FALSE inside a closure body, whose window is the body's own
