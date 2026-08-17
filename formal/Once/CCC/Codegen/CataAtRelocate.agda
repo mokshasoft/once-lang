@@ -73,8 +73,15 @@ module CataAtRelocate {FS : FrameSemantics} where
 
   -- The relocation invariant: same state, pc — and every pending return
   -- address — shifted RIGHT by `k`.
+  --
+  -- `flink` SHIFTS TOO (island rot repaired 2026-08-17). D105 added the link
+  -- field and `do-call-at` writes `just (suc (fpc fs))` into it — a pc in the
+  -- same program, so relocation moves it exactly as it moves `fret`. This
+  -- module is reached only from `IRObsCorrectFlat`, so no cluster typechecks
+  -- it; a filtered `Everything` is what caught the omission.
   shift-pc : ℕ → FlatState → FlatState
-  shift-pc k fs = record fs { fpc = fpc fs + k ; fret = shift-rets k (fret fs) }
+  shift-pc k fs = record fs { fpc = fpc fs + k ; fret = shift-rets k (fret fs)
+                            ; flink = map (_+ k) (flink fs) }
 
   -- Straight step relocates: it ignores `prog` (no `find-label`) and only
   -- bumps the pc, so running in `prog` from the shifted pc = shifting the
