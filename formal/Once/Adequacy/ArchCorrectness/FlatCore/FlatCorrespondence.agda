@@ -104,7 +104,8 @@ open import Data.Nat.Properties using (+-comm; +-assoc; +-cancelˡ-≡; *-cancel
                                       ; m≤m+n; <-irrefl; <-trans; <-transʳ; <-transˡ
                                       ; +-monoʳ-<; *-monoˡ-<; ≤-refl; ≤-trans; m<n⇒m<1+n
                                       ; m+n≤o⇒m≤o∸n; <⇒≢; m∸n+n≡m; ≤-reflexive; m<m+n
-                                      ; +-monoʳ-≤; s≤s; z≤n; +-identityʳ; m∸n≤m; *-identityˡ)
+                                      ; +-monoʳ-≤; s≤s; z≤n; +-identityʳ; m∸n≤m; *-identityˡ
+                                      ; <⇒≤)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)
@@ -435,34 +436,39 @@ RetAddrs xoff mem LK nothing  ((f , b) ∷ fr) (r ∷ rs) =
 --               converse at the cell it just wrote.
 --
 -- Only the head row moves; everything below is already `nothing`.
+-- STATED AT THE HEAD CELL, not `∀ a`. A claim may IGNORE its address argument
+-- (riscv64's reads `ra` and looks at nothing else), and then the `∀ a` form is
+-- simply false — it would say the link register's value sits at EVERY address.
+-- The head is the only place either lemma applies, so the head is where the
+-- premise belongs.
 ret-unlink : ∀ (xoff : ℕ → ℕ) (mem : Memory) (LK : ℕ → ℕ → Set) (lk : Maybe ℕ)
-               (fr : List (Frame × ℕ)) (rs : List ℕ)
-           → (∀ (a v : ℕ) → LK a v → readMem mem a ≡ just v)
-           → RetAddrs xoff mem LK lk fr rs
-           → RetAddrs xoff mem LK nothing fr rs
-ret-unlink xoff mem LK lk       fr             []       sp r           = tt
-ret-unlink xoff mem LK lk       []             (r ∷ rs) sp ()
-ret-unlink xoff mem LK (just _) ((f , b) ∷ fr) (r ∷ rs) sp (h , g , t) =
-  sp (frame-base f + slots b) (xoff r) h , g , t
-ret-unlink xoff mem LK nothing  ((f , b) ∷ fr) (r ∷ rs) sp (h , g , t) =
+               (f : Frame) (b : ℕ) (fr : List (Frame × ℕ)) (rs : List ℕ)
+           → (∀ (v : ℕ) → LK (frame-base f + slots b) v
+                        → readMem mem (frame-base f + slots b) ≡ just v)
+           → RetAddrs xoff mem LK lk ((f , b) ∷ fr) rs
+           → RetAddrs xoff mem LK nothing ((f , b) ∷ fr) rs
+ret-unlink xoff mem LK lk       f b fr []       sp r           = tt
+ret-unlink xoff mem LK (just _) f b fr (r ∷ rs) sp (h , g , t) =
+  sp (xoff r) h , g , t
+ret-unlink xoff mem LK nothing  f b fr (r ∷ rs) sp (h , g , t) =
   h , g , t
 
 ret-relink : ∀ (xoff : ℕ → ℕ) (mem : Memory) (LK : ℕ → ℕ → Set) (lk : Maybe ℕ)
-               (fr : List (Frame × ℕ)) (rs : List ℕ)
-           → (∀ (a v : ℕ) → readMem mem a ≡ just v → LK a v)
-           → RetAddrs xoff mem LK nothing fr rs
-           → RetAddrs xoff mem LK lk fr rs
-ret-relink xoff mem LK lk       fr             []       sp r           = tt
-ret-relink xoff mem LK lk       []             (r ∷ rs) sp ()
-ret-relink xoff mem LK (just _) ((f , b) ∷ fr) (r ∷ rs) sp (h , g , t) =
-  sp (frame-base f + slots b) (xoff r) h , g , t
-ret-relink xoff mem LK nothing  ((f , b) ∷ fr) (r ∷ rs) sp (h , g , t) =
+               (f : Frame) (b : ℕ) (fr : List (Frame × ℕ)) (rs : List ℕ)
+           → (∀ (v : ℕ) → readMem mem (frame-base f + slots b) ≡ just v
+                        → LK (frame-base f + slots b) v)
+           → RetAddrs xoff mem LK nothing ((f , b) ∷ fr) rs
+           → RetAddrs xoff mem LK lk ((f , b) ∷ fr) rs
+ret-relink xoff mem LK lk       f b fr []       sp r           = tt
+ret-relink xoff mem LK (just _) f b fr (r ∷ rs) sp (h , g , t) =
+  sp (xoff r) h , g , t
+ret-relink xoff mem LK nothing  f b fr (r ∷ rs) sp (h , g , t) =
   h , g , t
 
--- …and RE-STATING THE HEAD ROW AT A NEW STATE, which is what an arch whose
--- link claim reads a REGISTER owes at every step that writes one. x86-64 never
--- calls this (its claim is about memory, and a register write leaves memory
--- alone); riscv64 calls it wherever `ra` is provably untouched.
+-- …and RE-STATING THE HEAD ROW AT A NEW CLAIM, which is what an arch whose
+-- claim reads a REGISTER owes at every step that writes one. x86-64 never calls
+-- it (its claim is about memory, and a register write leaves memory alone);
+-- riscv64 calls it wherever `ra` is provably untouched.
 ret-relk : ∀ (xoff : ℕ → ℕ) (mem : Memory) (LK LK' : ℕ → ℕ → Set) (lk : Maybe ℕ)
              (fr : List (Frame × ℕ)) (rs : List ℕ)
          → (∀ (a v : ℕ) → LK a v → LK' a v)
@@ -1259,6 +1265,54 @@ windows-above {am} mem mem' stk stk' fl ((f , b) ∷ fr) ag ab (bd , win , rest)
   where up : fl ≤ frame-base f + slots b
         up = ≤-trans bd (m≤m+n (frame-base f) (slots b))
 
+-- A STORE AT THE GAP CELL PRESERVES EVERY WINDOW (plan 0.65 G2, 2026-08-16).
+--
+-- riscv64's body marker SPILLS — `sd ra, 8b(sp)` — and the cell it writes is
+-- the current frame's window END: the slot D086 gave the CALL. The head's own
+-- window stops one slot short of it, and the CALLER's base is one slot past it.
+--
+-- That last half is `GapNext` and nothing weaker. `StackWindows` threads its
+-- floor as a `≤`, so from the windows alone the caller could start EXACTLY on
+-- the cell being written, and the store would be clobbering its slot 0. So the
+-- marker's store is legal precisely because the call reserved that cell — and
+-- `RetAddrs`, not `StackWindows`, is where that is recorded. x86-64 never met
+-- this: its marker writes no memory at all.
+window-store-above : ∀ {am : AddrMap} (mem : Memory) (stk : StackMem FS)
+                       (a : ℕ) (v : Word) (f : Frame) (b : ℕ)
+                   → frame-base f + slots b ≤ a
+                   → Window am mem stk f b
+                   → Window am (writeMem mem a v) stk f b
+window-store-above mem stk a v f b le win k k<b sv st =
+  trans (read-write-miss mem a v (frame-base f + slot-to-disp k)
+          (<⇒≢ (<-transˡ (+-monoʳ-< (frame-base f) (*-monoˡ-< slot-size k<b)) le)))
+        (win k k<b sv st)
+
+windows-store-gap : ∀ {am : AddrMap} (mem : Memory) (stk : StackMem FS) (v : Word)
+                      (fl : ℕ) (f : Frame) (b : ℕ) (fr : List (Frame × ℕ))
+                  → GapNext (frame-base f + slots b) fr
+                  → StackWindows am mem stk fl ((f , b) ∷ fr)
+                  → StackWindows am (writeMem mem (frame-base f + slots b) v) stk fl
+                                  ((f , b) ∷ fr)
+windows-store-gap mem stk v fl f b [] gn (bd , win , rest) =
+  bd , window-store-above mem stk (frame-base f + slots b) v f b ≤-refl win , tt
+windows-store-gap {am} mem stk v fl f b ((f₀ , b₀) ∷ fr) gn (bd , win , rest) =
+  bd , window-store-above mem stk a v f b ≤-refl win
+     , windows-lower (frame-base f₀) a ((f₀ , b₀) ∷ fr) a≤next
+         (windows-above mem (writeMem mem a v) stk stk (frame-base f₀) ((f₀ , b₀) ∷ fr)
+            (λ c le → read-write-miss mem a v c
+                        (λ eq → <⇒≢ (<-transˡ a<next le) (sym eq)))
+            (λ _ _ _ → refl)
+            (windows-reanchor a (frame-base f₀) f₀ b₀ fr ≤-refl rest))
+  where
+    a : ℕ
+    a = frame-base f + slots b
+    -- the caller's base is ONE SLOT past the cell — `GapNext`, and this is the
+    -- half `StackWindows` cannot supply
+    a<next : a < frame-base f₀
+    a<next = subst (a <_) gn (m<m+n a slot-size>0)
+    a≤next : a ≤ frame-base f₀
+    a≤next = <⇒≤ a<next
+
 -- A write strictly BELOW the floor is invisible to every window: the heap
 -- store's case, where the floor is `lo` and the target is a mapped cell.
 windows-write-below : ∀ {am : AddrMap} {s s' : State} (stk : StackMem FS)
@@ -1692,48 +1746,60 @@ sim-thunk {hv} b fs s s' corr lo' lo'≤lo front-lo' lo'≤sp-reg fits st = reco
 -- slots), and the caller's windows are untouched by a write under them. That is
 -- the same separation `ret-write-in-frame` uses, read from the other side.
 ------------------------------------------------------------------------
--- `jₐ` is the ABSTRACT pc the call lands on and `newPc` the concrete one; they
--- are different numbers (`blk-off` apart) and `FlatCorr` constrains neither —
--- relating them is `CompiledCorr.pc-off`'s job.
-sim-call : {hv : HeapView} (jₐ retAddr : ℕ) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+-- THE CALL'S FRAME EFFECT, and ONLY that (plan 0.65 G2, 2026-08-16).
+--
+-- This used to be `sim-call`, which took a `SetsRoleMem` — it assumed the call
+-- WRITES the return address to the reserved cell, which is x86-64's ABI and not
+-- RISC-V's (`jalr` writes `ra` and touches no memory). What the two arches
+-- share is the FRAME DESCENT: one slot, the entered frame reserving nothing.
+--
+-- The arch that also stores composes `corr-store-gap` on top — and the cell it
+-- writes IS the post-state's gap cell, so the same lemma the body marker uses
+-- covers it. The core cannot do that composition itself: `State` is abstract,
+-- so only an arch can name the intermediate state.
+
+------------------------------------------------------------------------
+-- THE CALL'S FRAME EFFECT, and ONLY that (plan 0.65 G2, 2026-08-16).
+--
+-- This used to be `sim-call`, which took a `SetsRoleMem` — it assumed the call
+-- WRITES the return address to the reserved cell, which is x86-64's ABI and not
+-- RISC-V's (`jalr` writes `ra` and touches no memory). What the two arches
+-- share is the FRAME DESCENT: one slot, the entered frame reserving nothing.
+--
+-- The arch that also stores composes `corr-store-gap` on top — and the cell it
+-- writes IS the post-state's gap cell, so the same lemma the body marker uses
+-- covers it. The core cannot do that composition itself: `State` is abstract,
+-- so only an arch can name the intermediate state.
+------------------------------------------------------------------------
+sim-call-frame : {hv : HeapView} (jₐ : ℕ) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
   → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
   → lo' ≤ rreg s sp-reg ∸ slot-size
   -- ROOM FOR THE RETURN ADDRESS: the one slot the call spends. Same class as
   -- `StackRoom` (D087) and supplied the same way.
   → slot-size ≤ rreg s sp-reg
-  → SetsRoleMem s s' role-sp (rreg s sp-reg ∸ slot-size)
-                (rreg s sp-reg ∸ slot-size) retAddr
+  → SetsRole s s' role-sp (rreg s sp-reg ∸ slot-size)
   → FlatCorr (descend-view hv lo' lo'≤lo front-lo')
              (record fs { falloc = enter-call (falloc fs)
                         ; fret   = suc (fpc fs) ∷ fret fs
-                        -- THE LINK (plan 0.65 G2): the call writes it on every
-                        -- arch. `FlatCorr` says nothing about it yet, so this
-                        -- costs nothing here — it is riscv64's `c-thunk` that
-                        -- will need to read it back.
+                        -- THE LINK: the call writes it on every arch, and it is
+                        -- what `RetAddrs`' head row reads until the callee's
+                        -- marker spills it.
                         ; flink  = just (suc (fpc fs))
                         ; fpc    = jₐ })
              s'
-sim-call {hv} jₐ retAddr fs s s' corr lo' lo'≤lo front-lo' lo'≤sp-reg fits rm = record
-  { in1-eq = trans (rm-off-role rm role-in1 (λ ())) (in1-eq corr)
-  ; in2-eq = trans (rm-off-role rm role-in2 (λ ())) (in2-eq corr)
-  ; out-eq = trans (rm-off-role rm role-out (λ ())) (out-eq corr)
-  ; scratch-eq = trans (rm-off-role rm role-scratch (λ ())) (scratch-eq corr)
-  ; count-eq = trans (rm-off-role rm role-count (λ ())) (count-eq corr)
-  ; clos-eq = trans (rm-off-role rm role-clos (λ ())) (clos-eq corr)
-  ; halt-eq = trans (rm-halt rm) (halt-eq corr)
-  ; sp-eq = trans (rm-at-role rm) newbase
-  ; frontier-eq = trans (rm-off-role rm role-heap (λ ())) (frontier-eq corr)
+sim-call-frame {hv} jₐ fs s s' corr lo' lo'≤lo front-lo' lo'≤sp-reg fits st = record
+  { in1-eq = keep-in1 corr st (λ ()) ; in2-eq = keep-in2 corr st (λ ())
+  ; out-eq = keep-out corr st (λ ()) ; scratch-eq = keep-scratch corr st (λ ())
+  ; count-eq = keep-count corr st (λ ()) ; clos-eq = keep-clos corr st (λ ())
+  ; halt-eq = keep-halt corr st
+  ; sp-eq = trans (at-role st) newbase
+  ; frontier-eq = keep-heap-reg corr st (λ ())
   ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr
   ; dom-sized = dom-sized corr
-  -- the heap is under the frontier, the write is at or above the descended
-  -- mark, and the mark is above the frontier — so the store misses every cell
-  ; heap-eq = λ hl d → trans (rm-off-addr rm (haddr hv hl)
-                               (λ eq → <⇒≢ (<-transˡ (dom-below hv d)
-                                              (≤-trans front-lo' lo'≤sp-reg)) eq))
+  ; heap-eq = λ hl d → trans (cong (λ m → readMem m (haddr hv hl)) (keeps-mem st))
                              (heap-eq corr hl d)
-  ; lo-le = subst (lo' ≤_) (sym (rm-at-role rm)) lo'≤sp-reg
-  ; untouched = λ a fa a<lo' → trans (rm-off-addr rm a
-                                       (λ eq → <⇒≢ (<-transˡ a<lo' lo'≤sp-reg) eq))
+  ; lo-le = subst (lo' ≤_) (sym (at-role st)) lo'≤sp-reg
+  ; untouched = λ a fa a<lo' → trans (cong (λ m → readMem m a) (keeps-mem st))
                                      (untouched-descend lo' lo'≤lo front-lo' corr a fa a<lo')
   ; stack-eq = subst (lo' ≤_) newbase lo'≤sp-reg
              , (λ k ())
@@ -1743,16 +1809,12 @@ sim-call {hv} jₐ retAddr fs s s' corr lo' lo'≤lo front-lo' lo'≤sp-reg fits
                  (windows-above (memory s) (memory s')
                     (stackMem (floc fs)) (stackMem (floc fs))
                     (frame-base cf) ((cf , frame-slots (falloc fs)) ∷ saved-frames (falloc fs))
-                    (λ a le → rm-off-addr rm a
-                                (λ eq → <⇒≢ (<-transˡ w<base le) (sym eq)))
+                    (λ a le → cong (λ m → readMem m a) (keeps-mem st))
                     (λ _ _ _ → refl)
                     (windows-reanchor (lo hv) (frame-base cf) cf (frame-slots (falloc fs))
                        (saved-frames (falloc fs)) ≤-refl (stack-eq corr))) }
   where
     cf    = current-frame (falloc fs)
-    waddr = rreg s sp-reg ∸ slot-size
-    -- `1 * slot-size` reduced to `slot-size` while `slot-size` was the literal
-    -- 8; as a parameter it does not, so the step is explicit.
     newbase : rreg s sp-reg ∸ slot-size ≡ frame-base (shift-frame cf 1)
     newbase = trans (cong (_∸ slot-size) (sp-eq corr))
                     (trans (cong (frame-base cf ∸_) (sym (*-identityˡ slot-size)))
@@ -1766,23 +1828,9 @@ sim-call {hv} jₐ retAddr fs s s' corr lo' lo'≤lo front-lo' lo'≤sp-reg fits
       ≤-trans (≤-reflexive (trans (+-identityʳ (frame-base (shift-frame cf 1))) (sym newbase)))
               (≤-trans (m∸n≤m (rreg s sp-reg) slot-size)
                        (≤-reflexive (sp-eq corr)))
-    -- the write lands strictly below the caller's base — that is the slot the
-    -- call spends, and `fits` is what says it exists
-    w<base : rreg s sp-reg ∸ slot-size < frame-base cf
-    w<base = subst (rreg s sp-reg ∸ slot-size <_) (sp-eq corr)
-                   (m∸n<m′ fits)
-      where m∸n<m′ : slot-size ≤ rreg s sp-reg
-                   → rreg s sp-reg ∸ slot-size < rreg s sp-reg
-            m∸n<m′ le = subst (suc (rreg s sp-reg ∸ slot-size) ≤_)
-                              (m∸n+n≡m le)
-                              (m<m+n (rreg s sp-reg ∸ slot-size) slot-size>0)
 
 ------------------------------------------------------------------------
--- STACK DEALLOCATION: `instr-dealloc-stack n` (free n slots) ↔ `add rsp, n*8`.
--- The epilogue restores the CALLER's frame and, with it, the caller's coverage
--- window.
---
--- PLAN 0.63 (D085) — RESOLVED. Before the `frame-slots` mirror was removed
+-- DEALLOC-STACK, and the premise D085 DELETED.
 -- (D084), the post-state's bound was `frame-slots ∸ n`, which a full-frame exit
 -- made `0`, so this obligation was VACUOUS and the question never came up. With
 -- the bound the restored frame's own `frame-slots`, the post genuinely has to
@@ -1826,19 +1874,14 @@ sim-dealloc-stack {hv} n fs s s' corr restores st = record
                                           (frames-of (leave-frame (falloc fs))))
                      (sym (keeps-mem st)) (windows-leave (falloc fs) (lo hv) (stack-eq corr)) }
 
-------------------------------------------------------------------------
--- THE RETURN (D095): `c-ret b` ↔ `add rsp, 8b ; ret`.
---
--- Almost exactly `sim-dealloc-stack` — both release the current frame and land
--- `%rsp` on the caller's base — with two differences that are the whole point
--- of the return: `%rsp` rises by one slot MORE (the `ret` pops the address the
--- call pushed), and the pc goes to that address rather than to the next
--- instruction. The pc is `CompiledCorr`'s business, so it enters here only as
--- the opaque `npc`.
---
--- `restores` is not a fresh assumption: it is `RetAddrs`' own `GapNext`, read
--- through `sp-eq`. That is why the gap lives in the component — the return is
--- the one step that needs it as an EQUALITY.
+
+-- (`sim-call` STOOD HERE and is DELETED, 2026-08-16. It took a `SetsRoleMem`,
+-- i.e. it assumed the call WRITES the return address to the reserved cell —
+-- x86-64's ABI, not RISC-V's. What the arches share is `sim-call-frame` above;
+-- the arch that also stores composes `corr-store-gap`, and the cell it writes
+-- IS the post-state's gap cell, so no new lemma was needed. x86-64's
+-- `block-step-call` now does exactly that and is unchanged in strength.)
+
 ------------------------------------------------------------------------
 -- Plan 0.65 G1c step 2: the post-state used to write `%rsp` TWICE, nested —
 -- once for the `add` and once for the `ret`'s pop. As a claim about the state
@@ -2425,6 +2468,90 @@ sim-store-indirect-suc-stack {hv} k fs s s' corr i-eq sk<b disj sm =
       ; stack-eq = windows-slot-store (floc fs) cf (frame-slots (falloc fs))
                      (suc k) Out (lo hv) (saved-frames (falloc fs)) sm-base sk<b (stack-eq corr) }
 
+-- …AND THE WHOLE CORRESPONDENCE SURVIVES THAT STORE (plan 0.65 G2, 2026-08-16).
+-- The record-level form of `windows-store-gap`, which is what riscv64's body
+-- marker consumes: it spills `ra` onto the gap cell and changes NOTHING else,
+-- so every register field rides across and the three memory fields each get the
+-- same miss — the gap cell is at or above the current frame's base, hence above
+-- the high-water mark, hence above the whole heap and the virgin region.
+-- A WRITE THE CORRESPONDENCE CANNOT SEE (plan 0.65 G2, 2026-08-16): every ROLE
+-- register keeps its value, memory and the halt flag are untouched, and the pc
+-- is not a `FlatCorr` field. riscv64's return needs it — its `ld ra, 8b(sp)`
+-- writes the LINK register, which is nobody's role, and x86-64 has no such
+-- instruction because its `ret` pops straight into the pc.
+corr-regs-agree : ∀ {hv : HeapView} (fs : FlatState) (s s' : State)
+                → FlatCorr hv fs s
+                → (∀ (ρ : Role) → rreg s' (reg-of ρ) ≡ rreg s (reg-of ρ))
+                → memory s' ≡ memory s → xhalted s' ≡ xhalted s
+                → FlatCorr hv fs s'
+corr-regs-agree {hv} fs s s' corr rr mm hh = record
+  { in1-eq = trans (rr role-in1) (in1-eq corr)
+  ; in2-eq = trans (rr role-in2) (in2-eq corr)
+  ; out-eq = trans (rr role-out) (out-eq corr)
+  ; scratch-eq = trans (rr role-scratch) (scratch-eq corr)
+  ; count-eq = trans (rr role-count) (count-eq corr)
+  ; clos-eq = trans (rr role-clos) (clos-eq corr)
+  ; halt-eq = trans hh (halt-eq corr)
+  ; sp-eq = trans (rr role-sp) (sp-eq corr)
+  ; frontier-eq = trans (rr role-heap) (frontier-eq corr)
+  ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr
+  ; dom-sized = dom-sized corr
+  ; heap-eq = λ hl d → trans (cong (λ m → readMem m (haddr hv hl)) mm) (heap-eq corr hl d)
+  ; lo-le = subst (lo hv ≤_) (sym (rr role-sp)) (lo-le corr)
+  ; untouched = λ c fc c<lo → trans (cong (λ m → readMem m c) mm) (untouched corr c fc c<lo)
+  ; stack-eq = subst (λ m → StackWindows (amap hv) m (stackMem (floc fs))
+                                         (lo hv) (frames-of (falloc fs)))
+                     (sym mm) (stack-eq corr) }
+
+corr-store-gap : ∀ {hv : HeapView} (fs : FlatState) (s s' : State) (v : Word)
+               → FlatCorr hv fs s
+               → (∀ (r : Reg) → rreg s' r ≡ rreg s r)
+               → xhalted s' ≡ xhalted s
+               → memory s' ≡ writeMem (memory s)
+                              (frame-base (current-frame (falloc fs))
+                               + slots (frame-slots (falloc fs))) v
+               → GapNext (frame-base (current-frame (falloc fs))
+                          + slots (frame-slots (falloc fs))) (saved-frames (falloc fs))
+               → FlatCorr hv fs s'
+corr-store-gap {hv} fs s s' v corr rr hh mm gn = record
+  { in1-eq = trans (rr in1-reg) (in1-eq corr)
+  ; in2-eq = trans (rr in2-reg) (in2-eq corr)
+  ; out-eq = trans (rr out-reg) (out-eq corr)
+  ; scratch-eq = trans (rr scratch-reg) (scratch-eq corr)
+  ; count-eq = trans (rr count-reg) (count-eq corr)
+  ; clos-eq = trans (rr clos-reg) (clos-eq corr)
+  ; halt-eq = trans hh (halt-eq corr)
+  ; sp-eq = trans (rr sp-reg) (sp-eq corr)
+  ; frontier-eq = trans (rr heap-reg) (frontier-eq corr)
+  ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr
+  ; dom-sized = dom-sized corr
+  ; heap-eq = λ hl d → trans (cong (λ m → readMem m (haddr hv hl)) mm)
+                       (trans (read-write-miss (memory s) a v (haddr hv hl)
+                                (<⇒≢ (<-transˡ (dom-below hv d) front≤a)))
+                              (heap-eq corr hl d))
+  ; lo-le = subst (lo hv ≤_) (sym (rr sp-reg)) (lo-le corr)
+  ; untouched = λ c fc c<lo → trans (cong (λ m → readMem m c) mm)
+                              (trans (read-write-miss (memory s) a v c
+                                       (<⇒≢ (<-transˡ c<lo lo≤a)))
+                                     (untouched corr c fc c<lo))
+  ; stack-eq = subst (λ m → StackWindows (amap hv) m (stackMem (floc fs))
+                                         (lo hv) (frames-of (falloc fs)))
+                     (sym mm)
+                     (windows-store-gap (memory s) (stackMem (floc fs)) v (lo hv)
+                        (current-frame (falloc fs)) (frame-slots (falloc fs))
+                        (saved-frames (falloc fs)) gn (stack-eq corr)) }
+  where
+    a : ℕ
+    a = frame-base (current-frame (falloc fs)) + slots (frame-slots (falloc fs))
+    -- the gap cell is at or above the current frame's base, and the base is at
+    -- or above the high-water mark — which is above the heap
+    lo≤a : lo hv ≤ a
+    lo≤a = ≤-trans (subst (lo hv ≤_) (sp-eq corr) (lo-le corr))
+                   (m≤m+n (frame-base (current-frame (falloc fs)))
+                          (slots (frame-slots (falloc fs))))
+    front≤a : hfront hv ≤ a
+    front≤a = ≤-trans (front-lo hv) lo≤a
+
 -- THE PENDING RETURNS SURVIVE A WRITE THAT MISSES THEM (D093), in the two
 -- shapes the emitted code produces. Both mirror `windows-above` — a return
 -- cell is a frame's window END, hence at or above that frame's base, hence
@@ -2492,3 +2619,66 @@ ret-write-in-frame xoff {am} mem LK LK' nothing stk a v fl f b fr (x ∷ rs) lt 
       (λ c le → read-write-miss mem a v c (λ eq → <⇒≢ (<-transˡ lt le) (sym eq)))
       (λ c w le → lag c w (<-transˡ lt le))
       rest t
+
+-- A CHANGE THE OLDER ROWS DO NOT SEE, with no claim transport to supply. Once
+-- the head is `nothing` the arch's claim never appears again, so demanding
+-- `LK → LK'` (as `ret-agree-above` must, for its head) would be asking for a
+-- witness that is not available and not needed.
+ret-agree-nothing : ∀ (xoff : ℕ → ℕ) {am : AddrMap} (mem mem' : Memory)
+                      (LK LK' : ℕ → ℕ → Set) (stk : StackMem FS)
+                      (fl : ℕ) (fr : List (Frame × ℕ)) (rs : List ℕ)
+                  → (∀ (a : ℕ) → fl ≤ a → readMem mem' a ≡ readMem mem a)
+                  → StackWindows am mem stk fl fr
+                  → RetAddrs xoff mem LK nothing fr rs
+                  → RetAddrs xoff mem' LK' nothing fr rs
+ret-agree-nothing xoff mem mem' LK LK' stk fl fr             []       ag sw rr = tt
+ret-agree-nothing xoff mem mem' LK LK' stk fl []             (x ∷ rs) ag sw ()
+ret-agree-nothing xoff mem mem' LK LK' stk fl ((f , b) ∷ fr) (x ∷ rs) ag (bd , win , rest) (h , g , t) =
+  trans (ag (frame-base f + slots b) (≤-trans bd (m≤m+n (frame-base f) (slots b)))) h
+  , g
+  , ret-agree-nothing xoff mem mem' LK LK' stk (frame-base f + slots b) fr rs
+      (λ a le → ag a (≤-trans (≤-trans bd (m≤m+n (frame-base f) (slots b))) le))
+      rest t
+
+-- THE SPILL AS ONE STEP, which is what an arch whose head-row conversion is a
+-- STORE needs. The two halves cannot be separated: BEFORE the store the head
+-- cell holds nothing usable, AFTER it the `just` row is gone — so `ret-unlink`
+-- alone (which keeps the memory fixed) cannot express it.
+--
+-- The older rows survive by `GapNext`, which the input's own head carries: the
+-- next frame's base is one slot ABOVE the cell being written, so every older
+-- return cell is too. This is the `RetAddrs` twin of `windows-store-gap`, and
+-- the same D086 reservation is what makes both true.
+ret-nil-frames : ∀ (xoff : ℕ → ℕ) (mem mem' : Memory) (LK LK' : ℕ → ℕ → Set)
+                   (rs : List ℕ)
+               → RetAddrs xoff mem LK nothing [] rs
+               → RetAddrs xoff mem' LK' nothing [] rs
+ret-nil-frames xoff mem mem' LK LK' []       r = tt
+ret-nil-frames xoff mem mem' LK LK' (x ∷ rs) ()
+
+ret-spill : ∀ (xoff : ℕ → ℕ) {am : AddrMap} (mem : Memory) (LK LK' : ℕ → ℕ → Set)
+              (stk : StackMem FS) (r : ℕ) (f : Frame) (b : ℕ) (v : Word)
+              (fr : List (Frame × ℕ)) (rs : List ℕ)
+          → StackWindows am mem stk (frame-base f + slots b) fr
+          → (∀ (w : ℕ) → LK (frame-base f + slots b) w → v ≡ w)
+          → RetAddrs xoff mem LK (just r) ((f , b) ∷ fr) rs
+          → RetAddrs xoff (writeMem mem (frame-base f + slots b) v) LK' nothing
+                     ((f , b) ∷ fr) rs
+ret-spill xoff mem LK LK' stk r f b v fr [] sw val rr = tt
+ret-spill xoff mem LK LK' stk r f b v [] (x ∷ rs) sw val (h , g , t) =
+  trans (read-write-hit mem (frame-base f + slots b) v) (cong just (val (xoff x) h))
+  , g
+  , ret-nil-frames xoff mem (writeMem mem (frame-base f + slots b) v) LK LK' rs t
+ret-spill xoff {am} mem LK LK' stk r f b v ((f₀ , b₀) ∷ fr) (x ∷ rs) sw val (h , g , t) =
+  trans (read-write-hit mem (frame-base f + slots b) v) (cong just (val (xoff x) h))
+  , g
+  , ret-agree-nothing xoff mem (writeMem mem (frame-base f + slots b) v) LK LK' stk
+      (frame-base f₀) ((f₀ , b₀) ∷ fr) rs
+      (λ c le → read-write-miss mem (frame-base f + slots b) v c
+                  (λ eq → <⇒≢ (<-transˡ a<next le) (sym eq)))
+      (windows-reanchor (frame-base f + slots b) (frame-base f₀) f₀ b₀ fr ≤-refl sw)
+      t
+  where
+    a<next : frame-base f + slots b < frame-base f₀
+    a<next = subst (frame-base f + slots b <_) g
+                   (m<m+n (frame-base f + slots b) slot-size>0)

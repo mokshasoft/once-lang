@@ -29,7 +29,7 @@ open import Once.CCC.Target.X86-64.Syntax using
   ( slot-size; slots; Program; Instr; Reg; Operand; reg; imm; mem; base; base+disp; rsp; rbp; rax; rdi; rbx; r14
   ; mov; lea; add; sub; cmp; test; jmp; je; jne; call; call-sym
   ; ret; push; pop; nop; ud2; syscall; label )
-open import Data.Nat using (ℕ; _+_; _*_; _<_; _≤_; _∸_; _≡ᵇ_; _⊓_)
+open import Data.Nat using (ℕ; suc; _+_; _*_; _<_; _≤_; _∸_; _≡ᵇ_; _⊓_)
 open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-transˡ; <-irrefl; m≤m+n; m≤n+m; m∸n≤m
                                       ; ⊓-glb; m⊓n≤m; m⊓n≤n; m+n≤o⇒m≤o∸n; +-identityʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -138,7 +138,11 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
                → FSim.CompiledCorr o FS word-eq hv prog fs s
                → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                    ≡ just (instr-ctrl (c-ret b))
-               → X.readReg (X.State.regs s) rsp + slots b < X.W.modulus)
+               -- `suc b`: the representable quantity is THE CALLER'S FRAME
+               -- BASE, frame AND the slot the call spent. x86-64 only needs the
+               -- weaker half here; riscv64, which adds both in one `addi`,
+               -- needs this one. See `Resources.ret-no-wrap`.
+               → X.readReg (X.State.regs s) rsp + slots (suc b) < X.W.modulus)
   (count-no-wrap : ∀ {hv : FC.HeapView FS word-eq}
                      (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                      (s : X.State)
@@ -184,7 +188,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
 open import Data.Maybe using (Maybe; just; nothing; maybe′)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.Nat using (zero; suc)
+open import Data.Nat using (zero)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst; subst₂)
 
 open import Once.CCC.Machine.SMCore

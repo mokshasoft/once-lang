@@ -594,7 +594,7 @@ record BlockSteps : Set₁ where
     -- parameter and hands all three over. `frame-slots ≡ 0` is D093: a body
     -- entry is reached by a call, and `enter-call` reserves nothing.
     bs-c-thunk :
-      ∀ {hv : HeapView} prog fs s n b r → CompiledCorr hv prog fs s
+      ∀ {hv : HeapView} prog fs s n b r rpc rest → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk n b))
       → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
@@ -609,6 +609,12 @@ record BlockSteps : Set₁ where
       -- saved return address. `RunWF.thunk-entry-link` is the engine's proof
       -- that it cannot happen: the only way to a body entry is a call.
       → flink fs ≡ just r
+      -- …AND A PENDING RETURN. Same source (`RunWF.thunk-entry-ret`), and the
+      -- spilling arch needs it for `RetAddrs`' HEAD ROW, which carries both the
+      -- value it is about to store and the `GapNext` that puts the caller's
+      -- base one slot ABOVE the cell — the half `StackWindows` cannot supply,
+      -- since its floor is only a `≤`.
+      → fret fs ≡ rpc ∷ rest
       → BlockStepAt hv (descend-view hv lo' lo'≤lo front-lo') prog fs s
                     (instr-ctrl (c-thunk n b))
     -- `c-ret` (D095): the two shapes only the RUN knows — the return stack is
@@ -624,7 +630,9 @@ record BlockSteps : Set₁ where
       → fret fs ≡ rpc ∷ rest
       → b ≡ frame-slots (falloc fs)
       → saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs
-      → rreg s sp-reg + b * slot-size < modulus
+      -- the CALLER'S BASE is representable — `suc b`, not `b`; see
+      -- `Resources.ret-no-wrap`
+      → rreg s sp-reg + suc b * slot-size < modulus
       -- …and NO UNSPILLED RETURN (2026-08-16). A return READS the head cell, so
       -- it needs `ret-eq`'s memory row rather than the arch's link claim. The
       -- engine derives this from `run-link-at-thunk`: a live link means the
@@ -685,6 +693,12 @@ record BlockSteps : Set₁ where
       → (lo' : ℕ) (lo'≤lo : lo' ≤ lo hv) (front-lo' : hfront hv ≤ lo')
       → lo' ≤ rreg s sp-reg ∸ slot-size
       → slot-size ≤ rreg s sp-reg
+      -- THE MACHINE IS FINITE (plan 0.70 phase C). x86-64's `call` reserves the
+      -- slot in HARDWARE and needs no range fact; riscv64 reserves it with an
+      -- `addi`, which computes `W.⊕` unconditionally (D054), so the no-borrow
+      -- side condition lands on the consumer. The engine already has it —
+      -- `reg-range`, the same one `bs-c-thunk` takes.
+      → rreg s sp-reg < modulus
       -- …and NO UNSPILLED RETURN, for the same reason `c-ret` needs it: the
       -- call PUSHES a new head, so the old head must already be the memory row
       -- this step preserves. Same engine derivation (this branch fetched a

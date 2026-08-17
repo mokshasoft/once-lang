@@ -51,7 +51,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.CCC.Machine.SMCore
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open import Once.CCC.Machine.Flat
-open FlatMachine {FS} using (FlatState; fpc; fret; flink; falloc; floc; fclosure; halted; flat-exec-instr; fetch; find-label; tag-zf; flat-read-tag; flat-read-at; sv-is-zero; sv-as-loc; flink-do-ret)
+open FlatMachine {FS} using (FlatState; fpc; fret; flink; falloc; floc; fclosure; halted; flat-exec-instr; fetch; find-label; tag-zf; flat-read-tag; flat-read-at; sv-is-zero; sv-as-loc; flink-do-ret; leave-frame; do-ret-pc-∷; do-ret-fret-∷; do-ret-alloc; enter-call; do-call-sv; do-call-code; do-call-at; find-thunk)
 open import Once.CCC.Label using (once; thunk; LabelId)
 
 import Once.CCC.Target.RiscV64.Semantics as R
@@ -59,17 +59,19 @@ import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FC
 module C = FC FS word-eq
 open C using (HeapView; haddr; HDom; hfront)
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition FS
-  using (blk-off; blk-len; blk-off-suc; fetch-block-head; fetch-block-2nd; find-label-corr)
+  using (blk-off; blk-len; blk-off-suc; fetch-block-head; fetch-block-2nd; fetch-block-3rd; find-label-corr; find-thunk-corr)
 open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
-  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-lla; step-j-found; step-beq-taken; step-beq-not)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; lla; beq; j; a0; a1; t0; t1; s1; s2; s3; s4; sp; ra; zero; slots)
+  using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-lla; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr)
+open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; lla; beq; j; ret; jalr; a0; a1; t0; t1; s1; s2; s3; s4; sp; ra; zero; slots)
 import Data.Integer as ℤ
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (role-sp; role-clos; role-heap; role-out; role-in1; role-in2; role-scratch; role-count)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace; compile-abstract; slot-to-disp)
-open import Data.Nat.Properties using (+-monoʳ-<; *-monoˡ-<; ≤-<-trans; ≤-trans; <-transˡ; <⇒≢)
+open import Relation.Binary.PropositionalEquality using (subst₂)
+open import Data.Nat.Properties using (+-monoʳ-<; *-monoˡ-<; ≤-<-trans; ≤-trans; <-transˡ; <⇒≢
+                                      ; m∸n+n≡m)
 open import Data.Empty using (⊥)
-open import Once.CCC.FrameSemantics using (frame-base; slot-addr; slot-addr-linear)
+open import Once.CCC.FrameSemantics using (frame-base; slot-addr; slot-addr-linear; shift-frame; shift-base)
 -- …and what `block-step-alloc-heap`'s premise list needs: the store-WF
 -- predicates and the heap-reference identity (plan 0.65 G2).
 open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
@@ -1700,3 +1702,505 @@ block-step-alloc-heap {hv} prog fs s n cc h ft wf1 wf2 wfs wfc wfcl wf-heap wf-s
     pco' : R.State.pc post-add ≡ blk-off prog (fpc (flat-exec-instr (instr-alloc-heap n) prog fs))
     pco' = trans (trans (cong (λ p → (p + 1) + 1) po) (+-assoc (blk-off prog (fpc fs)) 1 1))
                  (sym (blk-off-suc prog (fpc fs) (instr-alloc-heap n) ft))
+
+------------------------------------------------------------------------
+-- THE BODY MARKER (plan 0.65 G2) — `label (thunk n) ; addi sp,sp,-8b ;
+-- sd ra, 8b(sp)`, and THE SPILL is the third instruction.
+--
+-- x86-64's marker is two instructions and writes no memory: its `call` already
+-- put the return address in the cell, so its head-row conversion (`just` to
+-- `nothing`) is the identity. RISC-V's `jalr` left the address in `ra`, so the
+-- conversion here is a REAL STORE, and it lands on the head pending return's
+-- own cell — the slot D086 gave the call.
+--
+-- That store is legal for one reason and it is worth naming: the CALLER'S BASE
+-- IS ONE SLOT ABOVE IT. That is `GapNext`, which lives in `RetAddrs` and not in
+-- `StackWindows` — the windows thread their floor as a `≤`, so from them alone
+-- the caller could start exactly on the cell being written. The premises
+-- `no-link` and `pend` are what put the head row within reach; the engine
+-- proves both from the run (`thunk-entry-link` / `thunk-entry-ret`: the ONLY
+-- way to a body entry is a call).
+------------------------------------------------------------------------
+block-step-c-thunk : ∀ {hv : HeapView} prog fs s n b r rpc rest → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk n b))
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
+  → lo' ≤ R.readReg (R.State.regs s) sp ∸ slots b
+  → slots b ≤ R.readReg (R.State.regs s) sp
+  → frame-slots (falloc fs) ≡ 0
+  → R.readReg (R.State.regs s) sp < R.W.modulus
+  → flink fs ≡ just r
+  → fret fs ≡ rpc ∷ rest
+  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s (instr-ctrl (c-thunk n b))
+block-step-c-thunk {hv} prog fs s n b r rpc rest cc h ft lo' lo'≤lo front-lo' lo'≤sp fits
+                   empty-frame sp<mod no-link pend =
+  post-sd , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
+                             ; ret-eq = retPost ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    -- step 1: the body-entry label (pc only)
+    fetch-lab : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (label (thunk n))
+    fetch-lab = trans (cong (R.fetch (compile-trace prog)) po)
+                      (fetch-block-head prog (fpc fs) (instr-ctrl (c-thunk n b)) ft)
+    post-lab : R.State
+    post-lab = record s { pc = R.State.pc s + 1 }
+    step-lab : R.step-not-halted (compile-trace prog) s ≡ just post-lab
+    step-lab = step-label {compile-trace prog} {s} {thunk n} fetch-lab
+    -- step 2: the reservation
+    fetch-addi : R.fetch (compile-trace prog) (R.State.pc post-lab)
+               ≡ just (addi sp sp (ℤ.-_ (ℤ.+ (slots b))))
+    fetch-addi = trans (cong (λ q → R.fetch (compile-trace prog) (q + 1)) po)
+                       (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-thunk n b)) ft)
+    post-addi : R.State
+    post-addi = record s { regs = R.writeReg (R.State.regs s) sp
+                                    (R.readReg (R.State.regs s) sp ∸ slots b)
+                         ; pc = R.State.pc s + 1 + 1 }
+    step-addi' : R.step-not-halted (compile-trace prog) post-lab ≡ just post-addi
+    step-addi' = subst (λ w → R.step-not-halted (compile-trace prog) post-lab
+                              ≡ just (record s { regs = R.writeReg (R.State.regs s) sp w
+                                               ; pc = R.State.pc s + 1 + 1 }))
+                       (R.W.⊕-neg (R.readReg (R.State.regs s) sp) (slots b) fits sp<mod)
+                       (step-addi {compile-trace prog} {post-lab} {sp} {sp}
+                                  {ℤ.-_ (ℤ.+ (slots b))} fetch-addi)
+    -- step 3: THE SPILL. `sp` is back where the abstract frame's window ends —
+    -- `m∸n+n≡m fits` — which is the cell the call reserved.
+    fetch-sd : R.fetch (compile-trace prog) (R.State.pc post-addi)
+             ≡ just (sd ra sp (slots b))
+    fetch-sd = trans (cong (R.fetch (compile-trace prog))
+                           (trans (+-assoc (R.State.pc s) 1 1) (cong (_+ 2) po)))
+                     (fetch-block-3rd prog (fpc fs) (instr-ctrl (c-thunk n b)) ft)
+    waddr : ℕ
+    waddr = R.effectiveAddr (R.State.regs post-addi) sp (slots b)
+    post-sd : R.State
+    post-sd = record post-addi
+                { memory = R.writeMem (R.State.memory post-addi) waddr
+                             (R.readReg (R.State.regs post-addi) ra)
+                ; pc = R.State.pc post-addi + 1 }
+    step-sd' : R.step-not-halted (compile-trace prog) post-addi ≡ just post-sd
+    step-sd' = step-sd {compile-trace prog} {post-addi} {ra} {sp} {slots b} fetch-sd
+    exec-eq : R.exec 3 (compile-trace prog) s ≡ just post-sd
+    exec-eq = trans (exec-1 {compile-trace prog} {2} {s} {post-lab} halt-s step-lab halt-s)
+              (trans (exec-1 {compile-trace prog} {1} {post-lab} {post-addi} halt-s step-addi' halt-s)
+                     (exec-1 {compile-trace prog} {0} {post-addi} {post-sd} halt-s step-sd' halt-s))
+    -- WHERE THE STORE LANDS: `(sp ∸ 8b) + 8b`, i.e. the pre-state's `sp`, which
+    -- `sp-eq` puts at the current frame's base — and `empty-frame` makes that
+    -- base the frame's window END.
+    waddr-eq : waddr ≡ frame-base FS (current-frame (falloc fs))
+             + slots (frame-slots (falloc fs))
+    waddr-eq = trans (m∸n+n≡m fits)
+               (trans (C.sp-eq dc)
+                      (trans (sym (+-identityʳ (frame-base FS (current-frame (falloc fs)))))
+                             (cong (λ z → frame-base FS (current-frame (falloc fs)) + slots z)
+                                   (sym empty-frame))))
+    -- THE HEAD ROW, at the pre-state: `flink` is live, so it is the arch's
+    -- claim — `ra` holds the return address — and its `GapNext` is what makes
+    -- the store miss the caller's window.
+    head : C.RetAddrs (blk-off prog) (R.State.memory s) (riscv64-link-claim s)
+                      (just r)
+                      ((current-frame (falloc fs) , frame-slots (falloc fs))
+                       ∷ saved-frames (falloc fs))
+                      (rpc ∷ rest)
+    head = subst₂ (λ lk rs' → C.RetAddrs (blk-off prog) (R.State.memory s)
+                                (riscv64-link-claim s) lk (C.frames-of (falloc fs)) rs')
+                  no-link pend (ret-eq cc)
+    gap : C.GapNext (frame-base FS (current-frame (falloc fs))
+                     + slots (frame-slots (falloc fs))) (saved-frames (falloc fs))
+    gap = proj₁ (proj₂ head)
+    -- the abstract post-state's frame is the SHIFTED one, and its window end is
+    -- the same cell (D093's re-anchoring, `empty-frame` again)
+    fits-base : slots b ≤ frame-base FS (current-frame (falloc fs))
+    fits-base = subst (slots b ≤_) (C.sp-eq dc) fits
+    addr-eq : frame-base FS (shift-frame FS (current-frame (falloc fs)) b) + slots b
+            ≡ frame-base FS (current-frame (falloc fs)) + slots (frame-slots (falloc fs))
+    addr-eq =
+      trans (cong (_+ slots b)
+                  (trans (shift-base FS (current-frame (falloc fs)) b)
+                         (cong (frame-base FS (current-frame (falloc fs)) ∸_)
+                               (cong (b *_) word-eq))))
+      (trans (m∸n+n≡m fits-base)
+             (trans (sym (+-identityʳ (frame-base FS (current-frame (falloc fs)))))
+                    (cong (frame-base FS (current-frame (falloc fs)) +_)
+                          (sym (cong slots empty-frame)))))
+    -- the data correspondence at the RESERVATION, then across the spill
+    dataAddi : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
+                          (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs) post-addi
+    dataAddi = C.sim-thunk b fs s _ dc lo' lo'≤lo front-lo' lo'≤sp fits
+                           (C.sets-role-riscv64 s role-sp _ _)
+    dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
+                          (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs) post-sd
+    dataPost = C.corr-store-gap (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs)
+                 post-addi post-sd (R.readReg (R.State.regs post-addi) ra) dataAddi
+                 (λ _ → refl) refl
+                 (cong (λ z → R.writeMem (R.State.memory post-addi) z
+                                (R.readReg (R.State.regs post-addi) ra))
+                       (trans waddr-eq (sym addr-eq)))
+                 (subst (λ z → C.GapNext z (saved-frames (falloc fs))) (sym addr-eq) gap)
+    pco' : R.State.pc post-sd
+         ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs))
+    pco' = trans (trans (+-assoc (R.State.pc s + 1) 1 1)
+                        (trans (+-assoc (R.State.pc s) 1 2) (cong (_+ 3) po)))
+                 (sym (blk-off-suc prog (fpc fs) (instr-ctrl (c-thunk n b)) ft))
+    -- THE ROW CONVERSION, WHICH ON THIS ARCH IS THE STORE: the head cell now
+    -- holds what `ra` held, and `head` says that was the return address. Every
+    -- older row rides across by `GapNext` — the caller's base is one slot up.
+    val-ra : ℕ
+    val-ra = R.readReg (R.State.regs post-addi) ra
+    spilled : C.RetAddrs (blk-off prog)
+                (R.writeMem (R.State.memory s)
+                   (frame-base FS (current-frame (falloc fs))
+                    + slots (frame-slots (falloc fs))) val-ra)
+                (riscv64-link-claim post-sd) nothing
+                (C.frames-of (falloc fs)) (fret fs)
+    spilled = subst (λ rs' → C.RetAddrs (blk-off prog)
+                               (R.writeMem (R.State.memory s)
+                                  (frame-base FS (current-frame (falloc fs))
+                                   + slots (frame-slots (falloc fs))) val-ra)
+                               (riscv64-link-claim post-sd) nothing
+                               (C.frames-of (falloc fs)) rs')
+                    (sym pend)
+                    (C.ret-spill (blk-off prog) (R.State.memory s)
+                       (riscv64-link-claim s) (riscv64-link-claim post-sd)
+                       (stackMem (floc fs)) r
+                       (current-frame (falloc fs)) (frame-slots (falloc fs)) val-ra
+                       (saved-frames (falloc fs)) (rpc ∷ rest)
+                       (proj₂ (proj₂ (C.stack-eq dc)))
+                       -- WHAT IS SPILLED IS WHAT THE CLAIM SAID: the `addi` wrote
+                       -- `sp`, so `ra` still holds the value the head row is about.
+                       (λ w p → p)
+                       head)
+    retPost : C.RetAddrs (blk-off prog) (R.State.memory post-sd) (riscv64-link-claim post-sd)
+                         (flink (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs))
+                         (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs)))
+                         (fret (flat-exec-instr (instr-ctrl (c-thunk n b)) prog fs))
+    retPost = C.ret-head (blk-off prog) (R.State.memory post-sd)
+                         (riscv64-link-claim post-sd) nothing
+                         (current-frame (falloc fs))
+                         (shift-frame FS (current-frame (falloc fs)) b)
+                         (frame-slots (falloc fs)) b
+                         (saved-frames (falloc fs)) (fret fs)
+                         addr-eq
+                         (subst (λ m → C.RetAddrs (blk-off prog) m (riscv64-link-claim post-sd)
+                                         nothing (C.frames-of (falloc fs)) (fret fs))
+                                (cong (λ z → R.writeMem (R.State.memory s) z val-ra)
+                                      (sym waddr-eq))
+                                spilled)
+
+
+------------------------------------------------------------------------
+-- THE RETURN (D095) — `ld ra, 8b(sp) ; addi sp, sp, 8(b+1) ; ret`.
+--
+-- THREE instructions where x86-64 needs two, and the extra one is the mirror
+-- of the marker's spill: RISC-V has no pop, so the return address must come
+-- BACK into `ra` before `ret` can jump through it. That first `ld` writes a
+-- register that is nobody's ROLE, which is what `corr-regs-agree` is for.
+--
+-- It is also why `ret-no-wrap` had to say `suc b`: this arch reaches the
+-- caller's base in ONE `addi`, so the x86-64-shaped bound (which stopped at the
+-- frame, the `ret` supplying the last slot) was short by exactly one slot.
+--
+-- Everything else is x86-64's proof: the address from `sp-eq` plus the bracket
+-- premise `b ≡ frame-slots`, the value from `RetAddrs`' head, the new `sp` from
+-- `GapNext`.
+------------------------------------------------------------------------
+block-step-c-ret : ∀ {hv : HeapView} prog fs s b rpc rest f₀ b₀ frs
+  → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
+  → fret fs ≡ rpc ∷ rest
+  → b ≡ frame-slots (falloc fs)
+  → saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs
+  → R.readReg (R.State.regs s) sp + slots (suc b) < R.W.modulus
+  → flink fs ≡ nothing
+  → BlockStep hv prog fs s (instr-ctrl (c-ret b))
+block-step-c-ret {hv} prog fs s b rpc rest f₀ b₀ frs cc h ft req bslots feq no-wrap no-link =
+  post-ret , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
+                              ; ret-eq = retPost ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    -- THE COMPONENT, at the cons shape of `fret` and with the head row already
+    -- the MEMORY row (`no-link`).
+    comp : C.RetAddrs (blk-off prog) (R.State.memory s) (riscv64-link-claim s) nothing
+                      ((current-frame (falloc fs) , frame-slots (falloc fs))
+                       ∷ saved-frames (falloc fs))
+                      (rpc ∷ rest)
+    comp = subst₂ (λ lk rs' → C.RetAddrs (blk-off prog) (R.State.memory s)
+                                (riscv64-link-claim s) lk (C.frames-of (falloc fs)) rs')
+                  no-link req (ret-eq cc)
+    -- step 1: THE RELOAD. `sp` is the frame's base and `8b` its window end, so
+    -- the address is exactly the cell the call reserved.
+    addr-eq : R.effectiveAddr (R.State.regs s) sp (slots b)
+            ≡ frame-base FS (current-frame (falloc fs)) + slots (frame-slots (falloc fs))
+    addr-eq = trans (cong (_+ slots b) (C.sp-eq dc))
+                    (cong (λ z → frame-base FS (current-frame (falloc fs)) + slots z) bslots)
+    fetch-ld : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (ld ra sp (slots b))
+    fetch-ld = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) (instr-ctrl (c-ret b)) ft)
+    rd : R.readMem (R.State.memory s) (R.effectiveAddr (R.State.regs s) sp (slots b))
+       ≡ just (blk-off prog rpc)
+    rd = trans (cong (R.readMem (R.State.memory s)) addr-eq) (proj₁ comp)
+    post-ld : R.State
+    post-ld = record s { regs = R.writeReg (R.State.regs s) ra (blk-off prog rpc)
+                       ; pc = R.State.pc s + 1 }
+    step-ld' : R.step-not-halted (compile-trace prog) s ≡ just post-ld
+    step-ld' = step-ld {compile-trace prog} {s} {ra} {sp} {slots b} {blk-off prog rpc}
+                       fetch-ld rd
+    -- the link register is nobody's role, so the data correspondence rides
+    -- across the reload untouched
+    dc-ld : C.FlatCorr hv fs post-ld
+    dc-ld = C.corr-regs-agree fs s post-ld dc
+              (λ ρ → C.role-off-ra s ρ (blk-off prog rpc)) refl refl
+    -- step 2: the release, frame AND reserved slot in one instruction
+    fetch-addi : R.fetch (compile-trace prog) (R.State.pc post-ld)
+               ≡ just (addi sp sp (ℤ.+ (slots (suc b))))
+    fetch-addi = trans (cong (λ q → R.fetch (compile-trace prog) (q + 1)) po)
+                       (fetch-block-2nd prog (fpc fs) (instr-ctrl (c-ret b)) ft)
+    suc-slots : slots (suc b) ≡ slots b + slot-size
+    suc-slots = +-comm slot-size (slots b)
+    -- WRITTEN IN `sim-ret`'S SHAPE, not the instruction's: the emitter adds
+    -- `slots (suc b)` in one go, the model reaches the same address as
+    -- "frame, then the call's slot". Converting here rather than at the
+    -- correspondence keeps the post-state literal the one `SetsRole` describes.
+    newsp : ℕ
+    newsp = R.readReg (R.State.regs post-ld) sp + slots b + slot-size
+    wrap-free : R.readReg (R.State.regs post-ld) sp R.W.⊕ R.W.fromℤ (ℤ.+ (slots (suc b)))
+              ≡ newsp
+    wrap-free = trans (R.W.⊕-normʳ (R.readReg (R.State.regs s) sp) (slots (suc b)))
+                (trans (R.W.⊕≡+ (R.readReg (R.State.regs s) sp) (slots (suc b)) no-wrap)
+                (trans (cong (R.readReg (R.State.regs s) sp +_) suc-slots)
+                       (sym (+-assoc (R.readReg (R.State.regs s) sp) (slots b) slot-size))))
+    post-addi : R.State
+    post-addi = record post-ld
+                  { regs = R.writeReg (R.State.regs post-ld) sp newsp
+                  ; pc = R.State.pc post-ld + 1 }
+    step-addi' : R.step-not-halted (compile-trace prog) post-ld ≡ just post-addi
+    step-addi' = subst (λ w → R.step-not-halted (compile-trace prog) post-ld
+                              ≡ just (record post-ld
+                                        { regs = R.writeReg (R.State.regs post-ld) sp w
+                                        ; pc = R.State.pc post-ld + 1 }))
+                       wrap-free
+                       (step-addi {compile-trace prog} {post-ld} {sp} {sp}
+                                  {ℤ.+ (slots (suc b))} fetch-addi)
+    -- step 3: the jump through the reloaded link
+    fetch-ret : R.fetch (compile-trace prog) (R.State.pc post-addi) ≡ just ret
+    fetch-ret = trans (cong (R.fetch (compile-trace prog))
+                            (trans (+-assoc (R.State.pc s) 1 1) (cong (_+ 2) po)))
+                      (fetch-block-3rd prog (fpc fs) (instr-ctrl (c-ret b)) ft)
+    post-ret : R.State
+    post-ret = record post-addi { pc = R.readReg (R.State.regs post-addi) ra }
+    step-ret' : R.step-not-halted (compile-trace prog) post-addi ≡ just post-ret
+    step-ret' = step-ret {compile-trace prog} {post-addi} fetch-ret
+    exec-eq : R.exec 3 (compile-trace prog) s ≡ just post-ret
+    exec-eq = trans (exec-1 {compile-trace prog} {2} {s} {post-ld} halt-s step-ld' halt-s)
+              (trans (exec-1 {compile-trace prog} {1} {post-ld} {post-addi} halt-s step-addi' halt-s)
+                     (exec-1 {compile-trace prog} {0} {post-addi} {post-ret} halt-s step-ret' halt-s))
+    -- THE CALLER'S BASE is one slot above the cell — `GapNext`, read through the
+    -- frame list's shape — and that is where the `addi` lands `sp`.
+    gap : frame-base FS (current-frame (falloc fs)) + slots (frame-slots (falloc fs))
+          + slot-size
+        ≡ frame-base FS f₀
+    gap = subst (λ fr → C.GapNext (frame-base FS (current-frame (falloc fs))
+                                   + slots (frame-slots (falloc fs))) fr)
+                feq (proj₁ (proj₂ comp))
+    base-leave : saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs
+               → frame-base FS (current-frame (leave-frame (falloc fs))) ≡ frame-base FS f₀
+    base-leave e rewrite e = refl
+    restores : R.readReg (R.State.regs post-ld) sp + slots b + slot-size
+             ≡ frame-base FS (current-frame (leave-frame (falloc fs)))
+    restores = trans (cong (_+ slot-size) addr-eq) (trans gap (sym (base-leave feq)))
+    dataPost : C.FlatCorr hv (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) post-ret
+    dataPost = C.sim-ret b rpc rest fs post-ld post-ret dc-ld req restores
+                 (C.sets-role-riscv64 post-ld role-sp _ _)
+    pco' : R.State.pc post-ret ≡ blk-off prog (fpc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
+    pco' = cong (blk-off prog) (sym (do-ret-pc-∷ fs rpc rest req))
+    -- THE TAIL IS THE POST-STATE'S COMPONENT. Memory never moved; only `ra` and
+    -- `sp` did, and the rows below the head are memory reads.
+    lk-post : flink (flat-exec-instr (instr-ctrl (c-ret b)) prog fs) ≡ nothing
+    lk-post = trans (flink-do-ret (fret fs) fs) no-link
+    frames-leave : saved-frames (falloc fs) ≡ (f₀ , b₀) ∷ frs
+                 → C.frames-of (leave-frame (falloc fs)) ≡ saved-frames (falloc fs)
+    frames-leave e rewrite e = refl
+    retPost : C.RetAddrs (blk-off prog) (R.State.memory post-ret) (riscv64-link-claim post-ret)
+                         (flink (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
+                         (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)))
+                         (fret (flat-exec-instr (instr-ctrl (c-ret b)) prog fs))
+    retPost = subst (λ lk → C.RetAddrs (blk-off prog) (R.State.memory s)
+                              (riscv64-link-claim post-ret) lk
+                              (C.frames-of (falloc (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)))
+                              (fret (flat-exec-instr (instr-ctrl (c-ret b)) prog fs)))
+                    (sym lk-post)
+                    (subst₂ (C.RetAddrs (blk-off prog) (R.State.memory s)
+                               (riscv64-link-claim post-ret) nothing)
+                            (sym (trans (cong C.frames-of (do-ret-alloc fs)) (frames-leave feq)))
+                            (sym (do-ret-fret-∷ fs rpc rest req))
+                            -- `ra` changed, so the CLAIM changed — but at a
+                            -- `nothing`-headed component it is never read.
+                            (C.ret-agree-nothing (blk-off prog)
+                               (R.State.memory s) (R.State.memory s)
+                               (riscv64-link-claim s) (riscv64-link-claim post-ret)
+                               (stackMem (floc fs))
+                               (frame-base FS (current-frame (falloc fs))
+                                + slots (frame-slots (falloc fs)))
+                               (saved-frames (falloc fs)) rest
+                               (λ _ _ → refl)
+                               (proj₂ (proj₂ (C.stack-eq dc)))
+                               (proj₂ (proj₂ comp))))
+
+------------------------------------------------------------------------
+-- THE CALL (D098) — `ld t1, 8(s1) ; addi sp, sp, -8 ; jalr ra, t1, 0`.
+--
+-- The middle instruction is the one added 2026-08-16, and it is the whole of
+-- why `sp-eq` holds inside the call window: RISC-V's `jalr` does not move the
+-- stack pointer, so the CALLER reserves the slot D086 gave it, exactly where
+-- the abstract `enter-call` does.
+--
+-- What no emitter change can erase is the third instruction: `jalr` puts the
+-- return address in `ra` and writes NO memory. So the post-state's head row is
+-- the arch's link claim, and it stays that way until the callee's marker
+-- spills. That is `flink`, and this is where it is set.
+--
+-- `t1`, not `t0`: `t0` is Input1, which the callee reads.
+------------------------------------------------------------------------
+block-step-call : ∀ {hv : HeapView} prog fs s hl ℓ jx → CompiledCorr hv prog fs s
+  → halted (floc fs) ≡ false
+  → fetch prog (fpc fs) ≡ just instr-call-closure
+  → fclosure fs ≡ SV-Ptr (AtDynamic hl)
+  → heapMem (floc fs) (sucHL hl) ≡ just (SV-Code ℓ)
+  → HDom hv (sucHL hl)
+  → FlatMachine.find-thunk {FS} prog ℓ ≡ just jx
+  → (lo' : ℕ) (lo'≤lo : lo' ≤ C.lo hv) (front-lo' : C.hfront hv ≤ lo')
+  → lo' ≤ R.readReg (R.State.regs s) sp ∸ slot-size
+  → slot-size ≤ R.readReg (R.State.regs s) sp
+  -- THE MACHINE IS FINITE: the caller's `addi sp, sp, -8` is a real subtract,
+  -- so it needs the no-borrow range fact x86-64's hardware push never did.
+  → R.readReg (R.State.regs s) sp < R.W.modulus
+  → flink fs ≡ nothing
+  → BlockStepAt hv (C.descend-view hv lo' lo'≤lo front-lo') prog fs s instr-call-closure
+block-step-call {hv} prog fs s hl ℓ jx cc h ft ceq heq live fteq lo' lo'≤lo front-lo' lo'≤sp
+                fits sp<mod no-link =
+  post-jalr , exec-eq , record { dataCorr = dataPost ; pc-off = pco'
+                               ; ret-eq = retPost ; code-eq = code-eq cc }
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    halt-s : R.State.halted s ≡ false
+    halt-s = trans (C.halt-eq dc) h
+    -- step 1: THE TARGET. `s1` is the closure pointer, its second cell the code
+    -- address, and that address is the body's index (D096/D097).
+    s1-val : R.readReg (R.State.regs s) s1 ≡ haddr hv hl
+    s1-val = trans (C.clos-eq dc) (cong (C.enc-sv hv) ceq)
+    cell-addr : R.effectiveAddr (R.State.regs s) s1 slot-size ≡ haddr hv (sucHL hl)
+    cell-addr = trans (cong (_+ slot-size) s1-val) (sym (C.haddr-suc hv hl))
+    conc-res : R.find-label (compile-trace prog) (thunk ℓ) ≡ just (blk-off prog jx)
+    conc-res = find-thunk-corr prog ℓ 0 jx fteq
+    rd : R.readMem (R.State.memory s) (R.effectiveAddr (R.State.regs s) s1 slot-size)
+       ≡ just (blk-off prog jx)
+    rd = trans (cong (R.readMem (R.State.memory s)) cell-addr)
+        (trans (C.heap-eq dc (sucHL hl) live)
+        (trans (cong (C.enc-maybe hv) heq)
+               (cong just (code-eq cc ℓ (blk-off prog jx) conc-res))))
+    fetch-ld : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (ld t1 s1 slot-size)
+    fetch-ld = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) instr-call-closure ft)
+    post-ld : R.State
+    post-ld = record s { regs = R.writeReg (R.State.regs s) t1 (blk-off prog jx)
+                       ; pc = R.State.pc s + 1 }
+    step-ld' : R.step-not-halted (compile-trace prog) s ≡ just post-ld
+    step-ld' = step-ld {compile-trace prog} {s} {t1} {s1} {slot-size} {blk-off prog jx}
+                       fetch-ld rd
+    dc-ld : C.FlatCorr hv fs post-ld
+    dc-ld = C.corr-regs-agree fs s post-ld dc
+              (λ ρ → C.role-off-t1 s ρ (blk-off prog jx)) refl refl
+    -- step 2: THE CALLER RESERVES THE SLOT
+    fetch-addi : R.fetch (compile-trace prog) (R.State.pc post-ld)
+               ≡ just (addi sp sp (ℤ.-_ (ℤ.+ slot-size)))
+    fetch-addi = trans (cong (λ q → R.fetch (compile-trace prog) (q + 1)) po)
+                       (fetch-block-2nd prog (fpc fs) instr-call-closure ft)
+    post-addi : R.State
+    post-addi = record post-ld
+                  { regs = R.writeReg (R.State.regs post-ld) sp
+                             (R.readReg (R.State.regs post-ld) sp ∸ slot-size)
+                  ; pc = R.State.pc post-ld + 1 }
+    step-addi' : R.step-not-halted (compile-trace prog) post-ld ≡ just post-addi
+    step-addi' = subst (λ w → R.step-not-halted (compile-trace prog) post-ld
+                              ≡ just (record post-ld
+                                        { regs = R.writeReg (R.State.regs post-ld) sp w
+                                        ; pc = R.State.pc post-ld + 1 }))
+                       (R.W.⊕-neg (R.readReg (R.State.regs post-ld) sp) slot-size fits sp<mod)
+                       (step-addi {compile-trace prog} {post-ld} {sp} {sp}
+                                  {ℤ.-_ (ℤ.+ slot-size)} fetch-addi)
+    -- step 3: the transfer, and the LINK
+    fetch-jalr : R.fetch (compile-trace prog) (R.State.pc post-addi) ≡ just (jalr ra t1 0)
+    fetch-jalr = trans (cong (R.fetch (compile-trace prog))
+                             (trans (+-assoc (R.State.pc s) 1 1) (cong (_+ 2) po)))
+                       (fetch-block-3rd prog (fpc fs) instr-call-closure ft)
+    post-jalr : R.State
+    post-jalr = record post-addi
+                  { regs = R.writeReg (R.State.regs post-addi) ra (R.State.pc post-addi + 1)
+                  ; pc = R.effectiveAddr (R.State.regs post-addi) t1 0 }
+    step-jalr' : R.step-not-halted (compile-trace prog) post-addi ≡ just post-jalr
+    step-jalr' = step-jalr {compile-trace prog} {post-addi} {ra} {t1} {0} fetch-jalr
+    exec-eq : R.exec 3 (compile-trace prog) s ≡ just post-jalr
+    exec-eq = trans (exec-1 {compile-trace prog} {2} {s} {post-ld} halt-s step-ld' halt-s)
+              (trans (exec-1 {compile-trace prog} {1} {post-ld} {post-addi} halt-s step-addi' halt-s)
+                     (exec-1 {compile-trace prog} {0} {post-addi} {post-jalr} halt-s step-jalr' halt-s))
+    absPost : FlatState
+    absPost = record fs { falloc = enter-call (falloc fs)
+                        ; fret   = suc (fpc fs) ∷ fret fs
+                        ; flink  = just (suc (fpc fs))
+                        ; fpc    = jx }
+    step-eq : flat-exec-instr instr-call-closure prog fs ≡ absPost
+    step-eq = trans (cong (λ z → do-call-sv prog z fs) ceq)
+             (trans (cong (λ z → do-call-code prog z fs) heq)
+                    (cong (λ z → do-call-at z fs) fteq))
+    dataAddi : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo') absPost post-addi
+    dataAddi = C.sim-call-frame jx fs post-ld post-addi dc-ld lo' lo'≤lo front-lo' lo'≤sp fits
+                 (C.sets-role-riscv64 post-ld role-sp _ _)
+    dataPost : C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo')
+                          (flat-exec-instr instr-call-closure prog fs) post-jalr
+    dataPost = subst (λ z → C.FlatCorr (C.descend-view hv lo' lo'≤lo front-lo') z post-jalr)
+                     (sym step-eq)
+                     (C.corr-regs-agree absPost post-addi post-jalr dataAddi
+                        (λ ρ → C.role-off-ra post-addi ρ (R.State.pc post-addi + 1))
+                        refl refl)
+    pco' : R.State.pc post-jalr ≡ blk-off prog (fpc (flat-exec-instr instr-call-closure prog fs))
+    pco' = trans (+-identityʳ (R.readReg (R.State.regs post-addi) t1))
+                 (cong (λ z → blk-off prog (fpc z)) (sym step-eq))
+    -- THE LINK, which is what the head row now claims
+    ret-val : R.State.pc post-addi + 1 ≡ blk-off prog (suc (fpc fs))
+    ret-val = trans (trans (+-assoc (R.State.pc s + 1) 1 1)
+                           (trans (+-assoc (R.State.pc s) 1 2) (cong (_+ 3) po)))
+                    (sym (blk-off-suc prog (fpc fs) instr-call-closure ft))
+    newbase : R.readReg (R.State.regs post-ld) sp ∸ slot-size
+            ≡ frame-base FS (shift-frame FS (current-frame (falloc fs)) 1)
+    newbase = trans (cong (_∸ slot-size) (C.sp-eq dc-ld))
+                    (trans (cong (λ w → frame-base FS (current-frame (falloc fs)) ∸ 1 * w)
+                                 (sym word-eq))
+                           (sym (shift-base FS (current-frame (falloc fs)) 1)))
+    gap-post : C.GapNext (frame-base FS (shift-frame FS (current-frame (falloc fs)) 1) + slots 0)
+                         (C.frames-of (falloc fs))
+    gap-post = trans (cong (_+ slot-size) (trans (+-identityʳ _) (sym newbase)))
+                     (trans (m∸n+n≡m fits) (C.sp-eq dc-ld))
+    retPost : C.RetAddrs (blk-off prog) (R.State.memory post-jalr)
+                         (riscv64-link-claim post-jalr)
+                         (flink (flat-exec-instr instr-call-closure prog fs))
+                         (C.frames-of (falloc (flat-exec-instr instr-call-closure prog fs)))
+                         (fret (flat-exec-instr instr-call-closure prog fs))
+    retPost = subst (λ z → C.RetAddrs (blk-off prog) (R.State.memory post-jalr)
+                             (riscv64-link-claim post-jalr) (flink z)
+                             (C.frames-of (falloc z)) (fret z))
+                    (sym step-eq)
+                    ( ret-val , gap-post , tail )
+      where
+        tail : C.RetAddrs (blk-off prog) (R.State.memory post-jalr)
+                          (riscv64-link-claim post-jalr) nothing
+                          (C.frames-of (falloc fs)) (fret fs)
+        tail = C.ret-agree-nothing (blk-off prog) (R.State.memory s) (R.State.memory s)
+                 (riscv64-link-claim s) (riscv64-link-claim post-jalr)
+                 (stackMem (floc fs)) (C.lo hv) (C.frames-of (falloc fs)) (fret fs)
+                 (λ _ _ → refl) (C.stack-eq dc)
+                 (subst (λ lk → C.RetAddrs (blk-off prog) (R.State.memory s)
+                                  (riscv64-link-claim s) lk
+                                  (C.frames-of (falloc fs)) (fret fs))
+                        no-link (ret-eq cc))

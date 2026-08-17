@@ -427,15 +427,18 @@ module Dispatch (sup : Supply) where
       -- (the post view is the DESCENDED one, so `ccc-step-bs`'s `hv'` is left to
       -- inference — pinning it to `hv` here would demand `lo' ≡ lo hv`)
       ccc-step-bs n ev env prog fs s (instr-ctrl (c-thunk m b))
-        (bs-c-thunk bss prog fs s m b (proj₁ link) cc h ftq lo' lo'≤lo front-lo' lo'≤rsp fits
+        (bs-c-thunk bss prog fs s m b (proj₁ link) (proj₁ pend) (proj₁ (proj₂ pend))
+                            cc h ftq lo' lo'≤lo front-lo' lo'≤rsp fits
                             (thunk-entry-empty prog fs m b (inv-run wf) ftq)
                             (reg-range prog fs s sp-reg (inv-run wf) cc)
-                            (proj₂ link))
+                            (proj₂ link) (proj₂ (proj₂ pend)))
         wf ftq h refl h
       where
         -- A BODY ENTRY IS REACHED BY A CALL, hence with the link still live —
         -- what an arch whose marker SPILLS needs before it may store.
         link = thunk-entry-link prog fs m b (inv-run wf) ftq
+        -- …and the pending return it was pushed with
+        pend = thunk-entry-ret prog fs m b (inv-run wf) ftq
         -- the site's resource fact: the reservation stays above the heap frontier
         room : CFC.hfront hv + slots b ≤ rreg s sp-reg
         room = stack-room prog fs s m b (inv-run wf) cc ftq
@@ -530,6 +533,7 @@ module Dispatch (sup : Supply) where
             (bs-call bss prog fs s hl ℓ j cc h ftq ceq heq
                (CFC.dom-written (dataCorr cc) (sucHL hl) heq)
                fteq lo' lo'≤lo front-lo' lo'≤rsp fits
+               (reg-range prog fs s sp-reg (inv-run wf) cc)
                (run-link-nothing prog fs (inv-run wf)
                   (λ ℓ bb teq → call≢thunk (trans (sym ftq) teq))))
             wf ftq h refl hpost

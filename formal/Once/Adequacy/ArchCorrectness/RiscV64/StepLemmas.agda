@@ -170,6 +170,17 @@ step-j ft rewrite ft = refl
 
 -- ret : pc := ra. The `ra` spill/restore around it is `c-thunk`/`c-ret`'s
 -- business (D102 restored it); this is just the transfer.
+-- jalr rd, rs, offset : the INDIRECT CALL. `instr-call-closure` lowers to
+-- `jalr ra, t1, 0` — the link register gets the return address and the pc goes
+-- to the register's value. No memory is touched, which is the whole of the ABI
+-- difference the call window models (plan 0.65 G2).
+step-jalr : ∀ {prog s rd rs offset}
+          → fetch prog (pc s) ≡ just (jalr rd rs offset)
+          → step-not-halted prog s
+            ≡ just (record s { regs = writeReg (regs s) rd (pc s + 1)
+                             ; pc = effectiveAddr (regs s) rs offset })
+step-jalr ft rewrite ft = refl
+
 step-ret : ∀ {prog s}
          → fetch prog (pc s) ≡ just ret
          → step-not-halted prog s ≡ just (record s { pc = readReg (regs s) ra })

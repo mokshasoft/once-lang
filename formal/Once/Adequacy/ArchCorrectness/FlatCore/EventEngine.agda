@@ -460,7 +460,14 @@ record Supply : Set₁ where
     ret-no-wrap : ∀ {hv : HeapView} prog fs s b → RunAt prog fs
                → CompiledCorr hv prog fs s
                → fetch prog (fpc fs) ≡ just (instr-ctrl (c-ret b))
-               → rreg s sp-reg + slots b < modulus
+               -- `suc b`, NOT `b` (plan 0.65 G2, 2026-08-16). The quantity that
+               -- must be representable is THE CALLER'S FRAME BASE, which is the
+               -- frame AND the slot the call spent. x86-64 reaches it in two
+               -- instructions (`add rsp,8b` then the `ret`'s own pop) and needed
+               -- only the first bound; riscv64 does both in one `addi`, so the
+               -- x86-64-shaped premise was short by a slot. Same D104 shape: a
+               -- field's premise copied from the arch that needs the least.
+               → rreg s sp-reg + slots (suc b) < modulus
     count-no-wrap : ∀ {hv : HeapView} prog fs s → RunAt prog fs
                  → CompiledCorr hv prog fs s
                  → fetch prog (fpc fs) ≡ just (instr-reg-op count-inc)

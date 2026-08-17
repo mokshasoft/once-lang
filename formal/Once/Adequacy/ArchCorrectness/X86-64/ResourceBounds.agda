@@ -28,7 +28,7 @@ open import Once.CanonicalName using (CanonicalName)
 
 module Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; _+_; _≤_; _<_)
+open import Data.Nat using (ℕ; suc; _+_; _≤_; _<_)
 open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
@@ -210,7 +210,7 @@ record AddrNoWrap : Set₁ where
       → FSimx.CompiledCorr o x86-64-frame-semantics refl hv prog fs s
       → FlatMachine.fetch {x86-64-frame-semantics} prog
           (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-ctrl (c-ret b))
-      → X.readReg (X.State.regs s) rsp + slots b < W.modulus
+      → X.readReg (X.State.regs s) rsp + slots (suc b) < W.modulus
 
     -- `count-inc` → `add r14, 1`: THE ONE NON-ADDRESS SITE. `%r14` is the
     -- observable counter, so this says the run does not emit 2⁶⁴ observations.

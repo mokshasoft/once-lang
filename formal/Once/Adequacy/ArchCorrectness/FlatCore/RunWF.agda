@@ -491,9 +491,16 @@ record SegWF (prog : AbstractTrace) (B : ℕ) (fs : FlatState) : Set where
     -- head pending return's own cell, so without a live link that store would
     -- overwrite a saved return address with whatever `ra` happens to hold. The
     -- x86-64 route never asked, because its marker writes no memory.
+    -- …and a PENDING RETURN, for the same reason and by the same enumeration.
+    -- riscv64's spill needs it TWICE OVER: the head row of `RetAddrs` is what
+    -- says `ra` holds the return address, and its `GapNext` is what says the
+    -- caller's base is one slot ABOVE the cell being written — the half
+    -- `StackWindows`' `≤`-threaded floor cannot supply. Both live at the head
+    -- of `RetAddrs`, which exists only when `fret` is a cons.
     seg-entry : ∀ (ℓ : LabelId) (bb : ℕ)
               → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk ℓ bb))
               → (frame-slots (falloc fs) ≡ 0) × Σ ℕ (λ r → flink fs ≡ just r)
+                × Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
 open SegWF public
 
 ------------------------------------------------------------------------
@@ -912,7 +919,8 @@ run-seg-wf prog fs (mkRunAt ir eq hm reach) = go fs reach
                           -- …and THIS is the case the whole invariant is about:
                           -- the frame a call enters reserves nothing (D086),
                           -- and the call is also what leaves the link live.
-                          (λ _ _ _ → refl , suc (fpc fs'') , refl)
+                          (λ _ _ _ → refl , (suc (fpc fs'') , refl)
+                                           , suc (fpc fs'') , fret fs'' , refl)
                   where landing = find-thunk-sound prog ℓ j fteq
 
 -- …and the form the correspondence consumes (D093/D094). Was a POSTULATE for
@@ -932,7 +940,16 @@ thunk-entry-empty prog fs ℓ bb r ftq = proj₁ (seg-entry (run-seg-wf prog fs 
 thunk-entry-link : ∀ prog (fs : FlatState) (ℓ : LabelId) (bb : ℕ) → RunAt prog fs
                  → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk ℓ bb))
                  → Σ ℕ (λ r → flink fs ≡ just r)
-thunk-entry-link prog fs ℓ bb r ftq = proj₂ (seg-entry (run-seg-wf prog fs r) ℓ bb ftq)
+thunk-entry-link prog fs ℓ bb r ftq = proj₁ (proj₂ (seg-entry (run-seg-wf prog fs r) ℓ bb ftq))
+
+-- …and the third projection: A BODY ENTRY HAS A PENDING RETURN. Same one
+-- assumption; what riscv64's marker needs it for is `RetAddrs`' head row, which
+-- carries both the value it is about to spill and the `GapNext` that makes the
+-- spill miss the caller's window.
+thunk-entry-ret : ∀ prog (fs : FlatState) (ℓ : LabelId) (bb : ℕ) → RunAt prog fs
+                → fetch prog (fpc fs) ≡ just (instr-ctrl (c-thunk ℓ bb))
+                → Σ ℕ (λ rpc → Σ (List ℕ) (λ rest → fret fs ≡ rpc ∷ rest))
+thunk-entry-ret prog fs ℓ bb r ftq = proj₂ (proj₂ (seg-entry (run-seg-wf prog fs r) ℓ bb ftq))
 
 -- (`run-stack-slot` — "the window is the whole trace's budget" — is GONE with
 -- the flip. It is FALSE inside a closure body, whose window is the body's own

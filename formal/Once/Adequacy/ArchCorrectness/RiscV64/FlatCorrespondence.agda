@@ -40,7 +40,7 @@ open import Data.Empty using (⊥-elim)
 import Once.CCC.Target.RiscV64.Semantics as R
 open R using (mkstate) renaming (writeReg to rwriteReg)
 open R.State using (memory) renaming (regs to rregs; halted to rhalted)
-open import Once.CCC.Target.RiscV64.Syntax using (Reg; ra)
+open import Once.CCC.Target.RiscV64.Syntax using (Reg; ra; t1)
 open import Once.Adequacy.ArchCorrectness.RiscV64.RegRoles using (riscv64-roles)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1; role-in2; role-scratch; role-count)
@@ -79,6 +79,33 @@ ra-off-role s role-in1     v = refl
 ra-off-role s role-in2     v = refl
 ra-off-role s role-scratch v = refl
 ra-off-role s role-count   v = refl
+
+-- …and the MIRROR, which riscv64's `ret` needs: writing the LINK register
+-- leaves every role register alone. Eight clauses again, and again each `refl`.
+role-off-ra : ∀ (s : R.State) (ρ : Role) (w : Word)
+            → R.readReg (rwriteReg (rregs s) ra w) (reg-of ρ) ≡ R.readReg (rregs s) (reg-of ρ)
+role-off-ra s role-sp      w = refl
+role-off-ra s role-clos    w = refl
+role-off-ra s role-heap    w = refl
+role-off-ra s role-out     w = refl
+role-off-ra s role-in1     w = refl
+role-off-ra s role-in2     w = refl
+role-off-ra s role-scratch w = refl
+role-off-ra s role-count   w = refl
+
+-- …and the same for `t1`, the call's CODE-POINTER scratch. `AbstractToRiscV`
+-- picks `t1` and not `t0` precisely because `t0` IS a role (Input1) that the
+-- callee reads; this lemma is that choice made checkable.
+role-off-t1 : ∀ (s : R.State) (ρ : Role) (w : Word)
+            → R.readReg (rwriteReg (rregs s) t1 w) (reg-of ρ) ≡ R.readReg (rregs s) (reg-of ρ)
+role-off-t1 s role-sp      w = refl
+role-off-t1 s role-clos    w = refl
+role-off-t1 s role-heap    w = refl
+role-off-t1 s role-out     w = refl
+role-off-t1 s role-in1     w = refl
+role-off-t1 s role-in2     w = refl
+role-off-t1 s role-scratch w = refl
+role-off-t1 s role-count   w = refl
 
 sets-role-riscv64 : ∀ (s : R.State) (ρ : Role) (v : Word) (p : ℕ)
   → SetsRole s (mkstate (rwriteReg (rregs s) (reg-of ρ) v) (memory s) p (rhalted s)) ρ v

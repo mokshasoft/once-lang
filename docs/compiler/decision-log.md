@@ -7584,3 +7584,87 @@ Corollary, from the same session: state a transport between CLAIMS
 (`link-claim s → link-claim s'`). The first leaves plain metas the expected
 type solves; the second asks the unifier to unfold a definition, and it does
 not.
+
+## D106: RISC-V's Body Marker SPILLS Onto the Cell the Call Reserved — and Three Places That Assumed Otherwise
+
+**Date**: 2026-08-16 · **Status**: Landed · **Plan**: 0.65 (G2)
+
+### The instruction
+
+D105 put the call window's head row in `RetAddrs` and left each arch to convert
+it. On x86-64 the conversion is the identity — `call` already wrote the cell.
+On RISC-V it is a STORE:
+
+    c-thunk n b   label (thunk n) ; addi sp, sp, -8b ; sd ra, 8b(sp)
+
+and `sp + 8b` after the reservation is `sp` before it, which `sp-eq` puts at the
+current frame's base, which `frame-slots ≡ 0` (D094) makes the frame's window
+END — the slot D086 gave the CALL. **The marker writes the head pending
+return's own cell.** Three things in the development assumed no arch does that.
+
+### 1. It needs a live link, and a pending return — both were theorems
+
+Without `flink ≡ just r` the store overwrites a saved return address with
+whatever `ra` holds; without `fret ≡ rpc ∷ rest` there is no head row to say
+what `ra` holds. Both are true for the same reason `frame-slots ≡ 0` is: the
+ONLY way to reach a body entry is a call (fall-through refuted by the emitter's
+guard, jump by D082's disjoint provenances, return by `RetMatch`'s provenance,
+entry by the guard again).
+
+So `SegWF.seg-entry`'s conclusion now carries all three, and **the proof did not
+grow by a line**: every case but the call was already `⊥-elim`, which produces a
+triple as readily as an equation. Projections: `thunk-entry-empty`,
+`thunk-entry-link`, `thunk-entry-ret`.
+
+### 2. Its DATA correspondence needs `GapNext`, which lives in the OTHER component
+
+`StackWindows` threads its floor as a `≤`: from the windows alone the caller's
+frame could start exactly on the cell being written. What rules that out is
+`GapNext` — the caller's base is one slot ABOVE the cell — and `GapNext` is a
+row of `RetAddrs`, not of `StackWindows`.
+
+**So the two components D093 deliberately kept separate are COUPLED on a
+spilling arch, and the coupling is D086 doing its job**: the store is legal
+precisely because the call reserved that cell. New core lemmas
+`windows-store-gap` (windows) and `corr-store-gap` (the whole record), plus
+`ret-spill` — the `RetAddrs` twin, where the head row becomes the memory row
+BECAUSE of the write. The two halves cannot be separated: before the store the
+cell holds nothing usable, after it the `just` row is gone.
+
+### 3. `sim-call` was x86-64's ABI wearing the core's name
+
+It took a `SetsRoleMem` — it ASSUMED the call writes the return address to the
+reserved cell. `jalr` writes `ra` and no memory. Deleted, and replaced by
+`sim-call-frame`, which proves only what the arches share: the frame descends
+one slot and the entered frame reserves nothing. The arch that also stores
+composes `corr-store-gap` — and the cell x86-64 pushes to IS the post-state's
+gap cell, so no new lemma was needed and x86-64's call is unchanged in strength.
+
+The core could not do that composition itself: `State` is abstract, so only an
+arch can name the intermediate state (`%rsp` moved, memory not) that the real
+`call` never passes through.
+
+### 4. …and `ret-no-wrap` was short by a slot (D104 again)
+
+riscv64 reaches the caller's base in ONE `addi sp, sp, 8(b+1)`. x86-64 does it
+in two — `add rsp, 8b`, then the `ret`'s own pop — and needed a bound only on
+the first, so the field said `rreg s sp-reg + slots b < modulus`. The quantity
+that must be representable is THE CALLER'S FRAME BASE. Strengthened to
+`slots (suc b)`; x86-64 weakens it in one line. `bs-call` likewise gained
+`rreg s sp-reg < modulus`, because the caller's `addi sp,sp,-8` is a real
+subtract where x86-64's `call` reserves in hardware.
+
+### The general lesson
+
+**An ABI difference the emitter cannot erase will not stay inside the block
+step that meets it.** `sp-eq` was closable in the emitter (the caller now
+reserves its own slot); the return address living in a register was not, and it
+propagated into the state predicate (D105), the run invariant (`seg-entry`), the
+layout lemmas (`windows-store-gap`), and a resource bound (`ret-no-wrap`) — four
+layers, because each of them had quietly been stated at what ONE arch needed.
+
+The check that catches this class early is the one D104 named: for every field
+an arch has to fill, ask what the ENGINE could have passed and did not, and for
+every core lemma, ask which arch's instruction set its premise shape came from.
+`sim-call`'s `SetsRoleMem` is the answer to the second question, and it sat in a
+module whose whole purpose is to be arch-free.
