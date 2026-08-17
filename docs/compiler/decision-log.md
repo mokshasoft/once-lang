@@ -7819,3 +7819,80 @@ optimisation for register-fittable primitive arguments. It brings its own
 register plumbing back WITH a producer, and x86-32's register pressure becomes a
 real question then — answerable against emitted code rather than against an
 enumeration.
+
+## D109: A `Float` Does Not Fit in a 32-Bit Register — `FitsInReg` Is Stated Without an Arch
+
+**Date**: 2026-08-17 · **Status**: RESOLVED — the encoding is arch-relative · **Plan**: 0.66 (X2)
+
+### What the proof refused to accept
+
+Porting x86-64's block-steps to x86-32 stopped here:
+
+    x86-64   compile-abstract (instr-load-const fits-float v) = mov rax (imm (float-bits v)) ∷ []
+    x86-32   compile-abstract (instr-load-const fits-float _) = ud2 ∷ []
+
+The abstract machine LOADS the constant and keeps running; the x86-32 machine
+HALTS. No block-step can relate them, so `block-step-load-const-float` is not
+merely unwritten here — it is unprovable.
+
+### The emitter is not the defect
+
+`float-bits` is a 64-bit pattern and an i386 register is 32 bits wide. There is
+no `mov` that puts a double in `%eax`, so `ud2` is the honest lowering of a
+capability the target does not have. The defect is one level up.
+
+`FitsInReg` (`Once.Type`) is ARCH-INDEPENDENT. `fits-float` asserts globally
+that a `Float` is register-fittable — true at 64 bits, false at 32 — and
+`ir-to-trace'` acts on it unconditionally:
+
+    ir-to-trace' n l (const fits-float v) = … instr-load-const Ty.fits-float v ∷ …
+
+So the IR forms an instruction the 32-bit target cannot implement, and **every
+Once program containing a float literal traps at runtime on x86-32.** Not a
+proof inconvenience: a live miscompile, invisible to the exit tests because the
+one example that uses `I.Math.Float` (`examples/arith-test.once`) is not in the
+x86-32 exit-test list.
+
+### Why the correspondence is what found it
+
+The same reason D107 gives. `x86-32-conc-flat-sim` assumes the whole simulation,
+so nothing above ever asked what `ud2` means, and the arch that cannot do the
+thing was never made to say so. Deleting the postulate is what turned it into a
+type error.
+
+### The resolution: a `Float` IS what it usually is on a 32-bit machine
+
+Neither of the two ways out first considered (arch-dependent `FitsInReg`;
+lowering the literal to memory) is needed, and both were answering the wrong
+question. The premise to reject is that a `Float` is 64 bits ANYWHERE. On a
+32-bit target a `Float` is SINGLE precision — which is what every 32-bit ABI
+says — and then it fits a register, `FitsInReg` stays arch-independent, and the
+instruction the IR forms is one the machine can execute.
+
+So the ENCODING becomes a target property, exactly as `slot-size` already is:
+
+    Once.Semantics.FloatBits.float-bits         -- the 64-bit pattern
+    Once.Semantics.FloatBits.float-bits-single  -- the same value at 32 bits
+
+and `FlatCore.FlatCorrespondence` takes it as a parameter `fenc`, used by
+`enc-sv-at (SV-Lit fits-float v)`. 64-bit targets pass `float-bits`; x86-32
+passes `float-bits-single`. The correspondence never learns which — only that
+the emitter's immediate and `enc-sv` are the same function, which is what makes
+the block-step `refl`.
+
+`float-bits-single` is written IN AGDA, as arithmetic on the 64-bit pattern
+(sign, re-biased exponent, truncated mantissa, with the four edge classes —
+zero/subnormal, ±∞/NaN, overflow, underflow — pinned explicitly). Deliberately
+not an FFI primitive: the stdlib has no double→single conversion and this repo
+has no foreign bindings at all, so importing one would put the encoding of every
+float constant outside the language the compiler is checked in. Rounding is
+TRUNCATION, and that is a choice the correspondence permits because the encoding
+is only ever read forwards — it must be DETERMINISTIC, not IEEE-default.
+
+### The lesson
+
+**A capability predicate with no arch parameter is an assumption that every
+target is the widest one.** `fits-int`/`fits-float` read as facts about types;
+they are facts about a type AND a register file. The place that discovers this
+is the correspondence for the narrowest target, which is an argument for porting
+to the *smallest* machine early rather than last.

@@ -59,12 +59,18 @@ open import Once.Denotation.Trace using (SigOpEvent)
 import Once.Adequacy.ArchCorrectness.FlatCore.HeadView as HV
 import Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface as EI
 
+-- `fenc`'s type mentions it, so this import must precede the module header.
+open import Data.Float using () renaming (Float to AgdaFloat)
+
 module Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch
   (o : CanonicalName)
   (FS : FrameSemantics)
   (slot-size : ℕ)
   ⦃ slot-size-nz : NonZero slot-size ⦄
   (word-eq : frame-word FS ≡ slot-size)
+  -- HOW THIS TARGET ENCODES A FLOAT CONSTANT (plan 0.66, D109) — see
+  -- `FlatCorrespondence`'s parameter of the same name.
+  (fenc : AgdaFloat → ℕ)
   (Reg : Set)
   (roles : RegRoles Reg)
   (modulus : ℕ)
@@ -74,7 +80,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch
   where
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
-  o FS slot-size word-eq Reg roles modulus E M T
+  o FS slot-size word-eq fenc Reg roles modulus E M T
   public
 open EI.Emitter   {FS} {Reg} E
 open EI.Machine   {FS} {Reg} {E} M
@@ -86,8 +92,6 @@ open import Data.Nat.Properties using (≤-reflexive; ≤-trans; <-transˡ; <-ir
                                       ; m∸n≤m; ⊓-glb; m⊓n≤m; m⊓n≤n; m+n≤o⇒m≤o∸n; +-identityʳ
                                       ; +-assoc; +-comm)
 open import Once.Word using (Carrier)
-open import Data.Float using () renaming (Float to AgdaFloat)
-open import Once.Semantics.FloatBits using (float-bits)
 open import Once.Type using (fits-int; fits-float)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)

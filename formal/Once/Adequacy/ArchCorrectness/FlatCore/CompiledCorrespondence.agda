@@ -47,6 +47,9 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Label using (Label)
 open import Once.CanonicalName using (CanonicalName)
 
+-- `fenc`'s type mentions it, so this import must precede the module header.
+open import Data.Float using () renaming (Float to AgdaFloat)
+
 module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
   -- Plan 0.63 (D089): the DEFINITION'S identity, which keys its labels — and
   -- therefore what `RunContext` needs. Added 2026-08-16 for `bs-lea-slot`'s
@@ -56,6 +59,9 @@ module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
   (slot-size : ℕ)
   ⦃ slot-size-nz : NonZero slot-size ⦄
   (word-eq : frame-word FS ≡ slot-size)
+  -- HOW THIS TARGET ENCODES A FLOAT CONSTANT (plan 0.66, D109) — see
+  -- `FlatCorrespondence`'s parameter of the same name.
+  (fenc : AgdaFloat → ℕ)
   (Reg : Set)
   (roles : RegRoles Reg)
   (State : Set)
@@ -109,8 +115,6 @@ open import Once.CCC.Label using (LabelId; thunk)
 open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Word using (Carrier)
-open import Data.Float using () renaming (Float to AgdaFloat)
-open import Once.Semantics.FloatBits using (float-bits)
 
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
 import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RC
@@ -123,7 +127,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RC
 -- ambiguous at every engine consumer. Same instance either way (module
 -- application is by alias), so the two `RunAt`s are one type.
 private
-  module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
+  module CFC = FC FS slot-size word-eq fenc Reg roles State rreg memory xhalted
   module CRC = RC o FS slot-size word-eq
 
 open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; caddr; HDom; haddr
@@ -654,7 +658,7 @@ record BlockSteps : Set₁ where
       ∀ {hv : HeapView} prog fs s (v : AgdaFloat) → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
-      → float-bits v < modulus
+      → fenc v < modulus
       → BlockStep hv prog fs s (instr-load-const fits-float v)
     -- READ THE CALL, NOT THE NAME: this field's label premise is the CONCRETE
     -- scan — this module's `find-label` parameter — where the jump family's is

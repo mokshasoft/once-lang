@@ -426,7 +426,7 @@ x86-64-traceloop = record
   ; nonhalt-noncall = nonhalt-noncall
   }
 
-module EE = Engine o FS slot-size word-eq Reg x86-64-roles X.W.modulus
+module EE = Engine o FS slot-size word-eq float-bits Reg x86-64-roles X.W.modulus
                    x86-64-emitter x86-64-machine x86-64-traceloop
 
 open EE using (FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-env
@@ -762,6 +762,6 @@ x86-64-supply = record
   ; external-sigop-contract = external-sigop-contract
   }
 
-module ED = Dispatch o FS slot-size word-eq Reg x86-64-roles X.W.modulus
+module ED = Dispatch o FS slot-size word-eq float-bits Reg x86-64-roles X.W.modulus
                      x86-64-emitter x86-64-machine x86-64-traceloop
 open ED.Dispatch x86-64-supply public

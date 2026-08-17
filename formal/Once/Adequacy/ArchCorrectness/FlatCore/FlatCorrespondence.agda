@@ -50,7 +50,6 @@ open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.Memory.HeapAddress using (HeapLocation)
 open import Once.Word using (Carrier)
 open import Once.Type using (Int; Float; fits-int; fits-float)
-open import Once.Semantics.FloatBits using (float-bits)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.CCC.Machine.SMCore using (AllocState)
 open import Once.CCC.Label using (LabelId; idx)
@@ -71,6 +70,14 @@ module Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
   ⦃ slot-size-nz : NonZero slot-size ⦄
   -- The frame semantics' slot size IS this target's (`refl` at instantiation).
   (word-eq : frame-word FS ≡ slot-size)
+  -- HOW THIS TARGET ENCODES A FLOAT CONSTANT (plan 0.66, D109). A double is 64
+  -- bits; a 32-bit register is not, so the encoding is a property of the TARGET
+  -- exactly as `slot-size` is, and hardcoding `float-bits` here was the same
+  -- kind of assumption as hardcoding 8 would have been. 64-bit targets pass
+  -- `float-bits`, x86-32 passes `float-bits-single`. The correspondence never
+  -- needs to know WHICH — only that the emitter's immediate and `enc-sv` are
+  -- the same function, which is what makes the block-step `refl`.
+  (fenc : AgdaFloat → ℕ)
   -- the machine, as far as a correspondence can see it
   (Reg : Set)
   (roles : RegRoles Reg)
@@ -276,7 +283,7 @@ enc-sv-at am (SV-Ptr (AtStack f k))    = slot-addr f k
 -- case-tree translation, so `enc-sv-at am (SV-Lit fits-float v)` would not reduce
 -- and the extension-stability lemma below could not be stated by `refl`.
 enc-sv-at am (SV-Lit fits-int v)       = lit-word v
-enc-sv-at am (SV-Lit fits-float v)     = float-bits v
+enc-sv-at am (SV-Lit fits-float v)     = fenc v
 -- Plan 0.63 (D089): `SV-Code` now carries the label's IDENTITY, so its
 -- encoding is `idx` — numerically exactly what this yielded before, when the
 -- payload was the bare counter. The same FICTION `effectiveAddr (rip+label _)`
@@ -1914,10 +1921,10 @@ sim-load-const {hv} v fs s s' corr st = record
   ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
 
 -- …and the FLOAT constant (D079): identical, with the IEEE-754 pattern as
--- the immediate — `enc-sv (SV-Lit fits-float v)` IS `float-bits v`, so
+-- the immediate — `enc-sv (SV-Lit fits-float v)` IS `fenc v`, so
 -- `out-eq` is `at-role` exactly as in the int case.
 sim-load-const-float : {hv : HeapView} (v : AgdaFloat) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
-  → SetsRole s s' role-out (float-bits v)
+  → SetsRole s s' role-out (fenc v)
   → FlatCorr hv (flat-exec-instr (instr-load-const fits-float v) [] fs) s'
 sim-load-const-float {hv} v fs s s' corr st = record
   { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st ; scratch-eq = keep-scratch corr st (λ ()) ; count-eq = keep-count corr st (λ ())

@@ -49,6 +49,9 @@ open import Once.Denotation.Trace using (SigOpEvent)
 import Once.Adequacy.ArchCorrectness.FlatCore.HeadView as HV
 import Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface as EI
 
+-- `fenc`'s type mentions it, so this import must precede the module header.
+open import Data.Float using () renaming (Float to AgdaFloat)
+
 module Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
   -- Plan 0.63 (D089): the DEFINITION'S identity, which keys its labels.
   (o : CanonicalName)
@@ -56,6 +59,9 @@ module Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
   (slot-size : ℕ)
   ⦃ slot-size-nz : NonZero slot-size ⦄
   (word-eq : frame-word FS ≡ slot-size)
+  -- HOW THIS TARGET ENCODES A FLOAT CONSTANT (plan 0.66, D109) — see
+  -- `FlatCorrespondence`'s parameter of the same name.
+  (fenc : AgdaFloat → ℕ)
   (Reg : Set)
   (roles : RegRoles Reg)
   (modulus : ℕ)
@@ -78,8 +84,6 @@ open EI.TraceLoop {FS} {Reg} {E} {M} T
 
 open import Data.Product using (Σ; _,_; _×_; proj₁; proj₂)
 open import Once.Word using (Carrier)
-open import Data.Float using () renaming (Float to AgdaFloat)
-open import Once.Semantics.FloatBits using (float-bits)
 open import Once.Type using (fits-int; fits-float)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (maybe′)
@@ -99,7 +103,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
   public
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
-       o FS slot-size word-eq Reg roles State rreg memory xhalted link-claim
+       o FS slot-size word-eq fenc Reg roles State rreg memory xhalted link-claim
        xpc (List Instr) compile-trace find-label blk-off blk-len exec modulus
   public
 
@@ -110,7 +114,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.RunContext o FS slot-size wor
 -- private (an instance re-opened publicly would clash with the `C` every arch
 -- already binds). Same application, hence the same types.
 import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence as FC
-module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
+module CFC = FC FS slot-size word-eq fenc Reg roles State rreg memory xhalted
 open CFC using (HeapView; HDom; slots)
 
 ------------------------------------------------------------------------
@@ -482,7 +486,7 @@ record Supply : Set₁ where
     float-fits : ∀ {hv : HeapView} prog fs s (v : AgdaFloat) → RunAt prog fs
               → CompiledCorr hv prog fs s
               → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
-              → float-bits v < modulus
+              → fenc v < modulus
     lo-fits : ∀ {hv : HeapView} prog fs s → RunAt prog fs
            → CompiledCorr hv prog fs s → CFC.lo hv < modulus
     -- THE TWO SIGOP CONTRACTS (D061).

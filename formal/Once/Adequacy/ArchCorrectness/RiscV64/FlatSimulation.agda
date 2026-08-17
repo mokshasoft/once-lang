@@ -105,7 +105,7 @@ riscv64-link-claim : R.State → ℕ → ℕ → Set
 riscv64-link-claim s _ v = rreg' s ra ≡ v
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
-       o FS rv-slot-size word-eq Reg riscv64-roles R.State rreg' R.State.memory rhalted
+       o FS rv-slot-size word-eq float-bits Reg riscv64-roles R.State rreg' R.State.memory rhalted
        riscv64-link-claim
        R.State.pc Program compile-trace R.find-label blk-off blk-len R.exec
        R.W.modulus

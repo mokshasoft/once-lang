@@ -296,7 +296,7 @@ riscv64-traceloop = record
   ; nonhalt-noncall = r-nonhalt-noncall
   }
 
-module EE = Engine o FS slot-size word-eq Reg riscv64-roles R.W.modulus
+module EE = Engine o FS slot-size word-eq float-bits Reg riscv64-roles R.W.modulus
                    riscv64-emitter riscv64-machine riscv64-traceloop
 
 open EE using (FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-env
@@ -625,6 +625,6 @@ riscv64-supply = record
   ; external-sigop-contract = external-sigop-contract
   }
 
-module ED = Dispatch o FS slot-size word-eq Reg riscv64-roles RS.W.modulus
+module ED = Dispatch o FS slot-size word-eq float-bits Reg riscv64-roles RS.W.modulus
                      riscv64-emitter riscv64-machine riscv64-traceloop
 open ED.Dispatch riscv64-supply public
