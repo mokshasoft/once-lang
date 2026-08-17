@@ -32,12 +32,12 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBLibArithComm where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Id; Nat; Hom
         ; RTm; var; nzero; nsuc; natrec; idrefl; jsub; ⌜Id⌝; ⌜Nat⌝; ⌜Hom⌝
-        ; renTm; subTy; subTm )
+        ; renTm; subTy; subTm; Sub; extS )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
@@ -48,7 +48,7 @@ open import poc.OCP0009.NbEPDirDBType
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w; sub-w; sub-w² )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( natAsEl; El-homNat )
 open import poc.OCP0009.NbEPDirDBLibArith using ( plusMonoB; plusMonoTm; ⊢plus-mono )
@@ -334,3 +334,148 @@ plusMonoLTm x y c p =
           (⊢trHomˡ (⊢nsuc (⊢plus dc dx)) (⊢nsuc (⊢plus dx dc)) (⊢plus dc dy)
                    (⊢congS (⊢plus dc dx) (⊢plus dx dc) (⊢comm dx dc))
                    (⊢plus-mono dx dy dc dp))
+
+------------------------------------------------------------------------
+-- ★★★ SUBSTITUTION-NATURALITY FOR THE ARITHMETIC TEMPLATES.
+--
+-- ⚠ WHY THESE EXIST.  `HANDOFF-2026-08-15` recorded that "substitution
+--   naturality for every arithmetic template" was NOT on gap A's path.
+--   That was true of the LIBRARY half and false of the last mile: gcd's
+--   recursive equation has to TYPE the certificate the reduction hands
+--   over, and that certificate is `plusMonoLTm …` under eight
+--   substitutions.  `subTm σ (plusMonoLTm x y c p)` is NOT
+--   `plusMonoLTm (subTm σ x) …` definitionally, because `plusMonoLTm`
+--   unfolds through `trHomʳ`/`trHomˡ`/`congS`/`commTm`, each of which hides
+--   a `w`, and `subTm (extS σ) (w t)` vs `w (subTm σ t)` is `sub-w`.
+--
+-- ★ Each one is ONE `sub-w` (or `sub-w²`) under a `cong`.  They are
+--   library lemmas: general, reusable, and paid once.
+------------------------------------------------------------------------
+
+reflN-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (a : RTm Γ) →
+            subTm σ (reflN a) ≡ reflN (subTm σ a)
+reflN-sub a = refl
+
+congS-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (a p : RTm Γ) →
+            subTm σ (congS a p) ≡ congS (subTm σ a) (subTm σ p)
+congS-sub {σ = σ} a p =
+  cong (λ u → jsub (⌜Id⌝ ⌜Nat⌝ (nsuc u) (nsuc (var vz)))
+                   (subTm σ p) (reflN (nsuc (subTm σ a))))
+       (sub-w {σ = σ} a)
+
+symN-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (a p : RTm Γ) →
+           subTm σ (symN a p) ≡ symN (subTm σ a) (subTm σ p)
+symN-sub {σ = σ} a p =
+  cong (λ u → jsub (⌜Id⌝ ⌜Nat⌝ (var vz) u) (subTm σ p) (reflN (subTm σ a)))
+       (sub-w {σ = σ} a)
+
+transN-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (a p q : RTm Γ) →
+             subTm σ (transN a p q) ≡ transN (subTm σ a) (subTm σ p) (subTm σ q)
+transN-sub {σ = σ} a p q =
+  cong (λ u → jsub (⌜Id⌝ ⌜Nat⌝ u (var vz)) (subTm σ q) (subTm σ p))
+       (sub-w {σ = σ} a)
+
+trHomˡ-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (u p h : RTm Γ) →
+             subTm σ (trHomˡ u p h) ≡ trHomˡ (subTm σ u) (subTm σ p) (subTm σ h)
+trHomˡ-sub {σ = σ} u p h =
+  cong (λ z → jsub (⌜Hom⌝ ⌜Nat⌝ (var vz) z) (subTm σ p) (subTm σ h))
+       (sub-w {σ = σ} u)
+
+trHomʳ-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (t p h : RTm Γ) →
+             subTm σ (trHomʳ t p h) ≡ trHomʳ (subTm σ t) (subTm σ p) (subTm σ h)
+trHomʳ-sub {σ = σ} t p h =
+  cong (λ z → jsub (⌜Hom⌝ ⌜Nat⌝ z (var vz)) (subTm σ p) (subTm σ h))
+       (sub-w {σ = σ} t)
+
+plus0Tm-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (m : RTm Γ) →
+              subTm σ (plus0Tm m) ≡ plus0Tm (subTm σ m)
+plus0Tm-sub {σ = σ} m =
+  cong (λ s → natrec (reflN nzero) s (subTm σ m))
+       (congS-sub {σ = extS (extS σ)} (plusTm (var (vs vz)) nzero) (var vz))
+
+plusSTm-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (n m : RTm Γ) →
+              subTm σ (plusSTm n m) ≡ plusSTm (subTm σ n) (subTm σ m)
+plusSTm-sub {σ = σ} n m =
+  cong (λ s → natrec (reflN (nsuc (subTm σ n))) s (subTm σ m))
+       (trans (congS-sub {σ = extS (extS σ)}
+                         (plusTm (var (vs vz)) (nsuc (w (w n)))) (var vz))
+              (cong (λ u → congS (plusTm (var (vs vz)) (nsuc u)) (var vz))
+                    (sub-w² {σ = σ} n)))
+
+-- ⚠ the big one: `commTm`'s successor branch carries `w (w n)` FOUR times,
+--   through a `transN`, a `congS` and two `symN`s.
+commTm-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (n m : RTm Γ) →
+             subTm σ (commTm n m) ≡ commTm (subTm σ n) (subTm σ m)
+commTm-sub {σ = σ} n m = cong₂ⁿ zEq (trans sEq₁ (rewriteN (sub-w² {σ = σ} n)))
+  where
+    -- the successor branch's `w (w n)`, still under the substitution
+    N2 : RTm _
+    N2 = subTm (extS (extS σ)) (w (w n))
+
+    cong₂ⁿ : {z z' : RTm _} {s s' : RTm _} → z ≡ z' → s ≡ s' →
+             natrec z s (subTm σ m) ≡ natrec z' s' (subTm σ m)
+    cong₂ⁿ refl refl = refl
+
+    congT : {a a' p p' q q' : RTm _} → a ≡ a' → p ≡ p' → q ≡ q' →
+            transN a p q ≡ transN a' p' q'
+    congT refl refl refl = refl
+
+    zEq = trans (symN-sub {σ = σ} (plusTm n nzero) (plus0Tm n))
+                (cong (symN (plusTm (subTm σ n) nzero)) (plus0Tm-sub {σ = σ} n))
+
+    -- ⚠ STAGE 1: distribute the substitution into EVERY template.  Doing
+    --   only `transN-sub` leaves `congS`/`symN`/`plusSTm` still wrapped, and
+    --   the rewrite in stage 2 then has nothing to match.
+    sEq₁ = trans (transN-sub {σ = extS (extS σ)}
+                             (nsuc (plusTm (var (vs vz)) (w (w n))))
+                             (congS (plusTm (var (vs vz)) (w (w n))) (var vz))
+                             (symN (plusTm (w (w n)) (nsuc (var (vs vz))))
+                                   (plusSTm (var (vs vz)) (w (w n)))))
+                 (congT refl
+                        (congS-sub {σ = extS (extS σ)}
+                                   (plusTm (var (vs vz)) (w (w n))) (var vz))
+                        (trans (symN-sub {σ = extS (extS σ)}
+                                         (plusTm (w (w n)) (nsuc (var (vs vz))))
+                                         (plusSTm (var (vs vz)) (w (w n))))
+                               (cong (symN (plusTm N2 (nsuc (var (vs vz)))))
+                                     (plusSTm-sub {σ = extS (extS σ)}
+                                                  (var (vs vz)) (w (w n))))))
+
+    -- STAGE 2: now `N2` occurs four times and one rewrite closes it.
+    rewriteN : {u : RTm _} → N2 ≡ u →
+               transN (nsuc (plusTm (var (vs vz)) N2))
+                      (congS (plusTm (var (vs vz)) N2) (var vz))
+                      (symN (plusTm N2 (nsuc (var (vs vz))))
+                            (plusSTm (var (vs vz)) N2))
+             ≡ transN (nsuc (plusTm (var (vs vz)) u))
+                      (congS (plusTm (var (vs vz)) u) (var vz))
+                      (symN (plusTm u (nsuc (var (vs vz))))
+                            (plusSTm (var (vs vz)) u))
+    rewriteN refl = refl
+
+plusMonoTm-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (p c : RTm Γ) →
+                 subTm σ (plusMonoTm p c) ≡ plusMonoTm (subTm σ p) (subTm σ c)
+plusMonoTm-sub p c = refl
+
+-- ★★★ …and the one gap A actually needs.
+plusMonoLTm-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (x y c p : RTm Γ) →
+                  subTm σ (plusMonoLTm x y c p)
+                ≡ plusMonoLTm (subTm σ x) (subTm σ y) (subTm σ c) (subTm σ p)
+plusMonoLTm-sub {σ = σ} x y c p =
+  trans (trHomʳ-sub {σ = σ} (nsuc (plusTm x c)) (commTm y c)
+                    (trHomˡ (plusTm c y) (congS (plusTm c x) (commTm x c))
+                            (plusMonoTm p c)))
+        (cong₂ᵗ (commTm-sub {σ = σ} y c)
+                (trans (trHomˡ-sub {σ = σ} (plusTm c y)
+                                   (congS (plusTm c x) (commTm x c))
+                                   (plusMonoTm p c))
+                       (cong (λ z → trHomˡ (plusTm (subTm σ c) (subTm σ y)) z
+                                           (plusMonoTm (subTm σ p) (subTm σ c)))
+                             (trans (congS-sub {σ = σ} (plusTm c x) (commTm x c))
+                                    (cong (congS (plusTm (subTm σ c) (subTm σ x)))
+                                          (commTm-sub {σ = σ} x c))))))
+  where
+    cong₂ᵗ : {u u' h h' : RTm _} → u ≡ u' → h ≡ h' →
+             trHomʳ (nsuc (plusTm (subTm σ x) (subTm σ c))) u h
+           ≡ trHomʳ (nsuc (plusTm (subTm σ x) (subTm σ c))) u' h'
+    cong₂ᵗ refl refl = refl

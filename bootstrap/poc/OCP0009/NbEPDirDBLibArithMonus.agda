@@ -28,12 +28,12 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBLibArithMonus where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
         ; RTy; Hom; Nat
         ; RTm; var; nzero; nsuc; natrec; ordtr; unit
-        ; renTm; subTy; subTm )
+        ; renTm; subTy; subTm; Sub; extS )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
@@ -44,7 +44,7 @@ open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w; sub-w² )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBExamplesDiv
@@ -157,3 +157,38 @@ monusLtTm a b =
 ⊢desc-right da db =
   ⊢plus-mono (⊢monus (⊢nsuc db) (⊢nsuc da)) (⊢nsuc db) (⊢nsuc da)
              (⊢monusLt' db da)
+
+------------------------------------------------------------------------
+-- ★ SUBSTITUTION-NATURALITY, as for the templates in `…LibArithComm`.
+--   ⚠ `monusLtTm` hides `w (w a)` in FOUR places (once directly, three
+--   times inside `U`), so this is one `sub-w²` and one rewrite — the same
+--   distribute-then-rewrite shape as `commTm-sub`.
+------------------------------------------------------------------------
+
+reflTm-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (m : RTm Γ) →
+             subTm σ (reflTm m) ≡ reflTm (subTm σ m)
+reflTm-sub m = refl
+
+monusLtTm-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (a b : RTm Γ) →
+                subTm σ (monusLtTm a b) ≡ monusLtTm (subTm σ a) (subTm σ b)
+monusLtTm-sub {σ = σ} a b = rewriteA (sub-w² {σ = σ} a)
+  where
+    A2 : RTm _
+    A2 = subTm (extS (extS σ)) (w (w a))
+
+    rewriteA : {u : RTm _} → A2 ≡ u →
+               natrec (reflTm (subTm σ a))
+                 (ordtr (predTm (monusTm (nsuc A2) (nsuc (var (vs vz)))))
+                        (monusTm (nsuc A2) (nsuc (var (vs vz)))) A2
+                        (natrec unit (reflTm (var (vs vz)))
+                                (monusTm (nsuc A2) (nsuc (var (vs vz)))))
+                        (var vz))
+                 (subTm σ b)
+             ≡ natrec (reflTm (subTm σ a))
+                 (ordtr (predTm (monusTm (nsuc u) (nsuc (var (vs vz)))))
+                        (monusTm (nsuc u) (nsuc (var (vs vz)))) u
+                        (natrec unit (reflTm (var (vs vz)))
+                                (monusTm (nsuc u) (nsuc (var (vs vz)))))
+                        (var vz))
+                 (subTm σ b)
+    rewriteA refl = refl
