@@ -384,10 +384,15 @@ module GcdCertEq {Γ : Cx} (a' b' d ih : RTm Γ) where
   τ₇ = extS (single R₃ᵣ)
   τ₈ = single ih
 
-  -- ★ ONE LAYER of each template's naturality.  ⚠ The implicits ARE
-  --   inferable here, unlike the earlier `pmStep`, because the chain is
-  --   built bottom-up from a fully explicit first step — each `e`'s type
-  --   determines the next one's arguments.
+  -- ★ ONE LAYER of each template's naturality.
+  --
+  -- ⚠ BOTH PASS THEIR ARGUMENTS EXPLICITLY.  The earlier `pmStep` left them
+  --   implicit and blocked, because recovering `x` from `subTm σ x` needs
+  --   `subTm` inverted.  Named in the signature and passed on, they are
+  --   determined bottom-up from a fully explicit first step and nothing has
+  --   to be inverted.  ⭐ THAT — not opacity — is what makes the chain go
+  --   through: measured 2026-08-17, this works with `plusMonoLTm`
+  --   TRANSPARENT, so no `unfolding` is needed anywhere in the tree.
   pushPM : {Γ₁ Γ₂ : Cx} {t x y c q : RTm Γ₁} → t ≡ plusMonoLTm x y c q →
            (σ : Sub Γ₁ Γ₂) →
            subTm σ t ≡ plusMonoLTm (subTm σ x) (subTm σ y) (subTm σ c) (subTm σ q)
@@ -396,11 +401,6 @@ module GcdCertEq {Γ : Cx} (a' b' d ih : RTm Γ) where
 
   pushML : {Γ₁ Γ₂ : Cx} {t x y : RTm Γ₁} → t ≡ monusLtTm x y → (σ : Sub Γ₁ Γ₂) →
            subTm σ t ≡ monusLtTm (subTm σ x) (subTm σ y)
-  -- ⚠ ARGS EXPLICIT.  `plusMonoLTm` is OPAQUE so its arguments are
-  --   readable off the RHS and `_ _ _ _` suffices; `monusLtTm` is
-  --   TRANSPARENT, so the RHS unfolds and inversion fails (measured).
-  --   ⭐ A neat demonstration of what opacity buys: rigid heads make
-  --   unification work.
   pushML {x = x} {y = y} e σ =
     trans (cong (subTm σ) e) (monusLtTm-sub x y)
 

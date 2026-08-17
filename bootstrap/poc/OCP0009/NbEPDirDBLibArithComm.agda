@@ -318,44 +318,22 @@ trHomʳ t p h = jsub (⌜Hom⌝ ⌜Nat⌝ (w t) (var vz)) p h
 plusMonoLB : {Γ : Cx} (x y c : RTm Γ) → RTy Γ
 plusMonoLB x y c = Hom Nat (nsuc (plusTm x c)) (plusTm y c)
 
-------------------------------------------------------------------------
--- ★★★ `plusMonoLTm` IS OPAQUE, AND THAT IS A DESIGN DECISION (2026-08-17).
---
--- ⚠ WHY.  Measured: `subTm σ (plusMonoLTm …)` with the definition
---   TRANSPARENT traverses the whole unfolding — `trHomʳ`/`trHomˡ`/`congS`/
---   `commTm`/`jsub` — and gcd's recursive equation does that EIGHT times,
---   which OOM-kills.  Opaque, the term is five nodes.
---
--- ★ AND THE SUBSTITUTION STILL MOVES, via `plusMonoLTm-sub` below: the
---   naturality lemma pushes `subTm` through WITHOUT unfolding.  That is
---   what makes opacity affordable rather than merely restrictive — the
---   equations that used to come free from computation are now theorems, and
---   they are cheap because they are stated once.
---
--- ⚠ A CALLER THAT NEEDS THE DEFINITION TO COMPUTE — the concrete-numeral
---   reductions do, since they state their certificate in clean form — must
---   say `opaque unfolding plusMonoLTm`.  `…GcdStep`'s numeral demos are the
---   only such sites in the tree.
-------------------------------------------------------------------------
+plusMonoLTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+plusMonoLTm x y c p =
+  trHomʳ (nsuc (plusTm x c)) (commTm y c)
+    (trHomˡ (plusTm c y) (congS (plusTm c x) (commTm x c))
+      (plusMonoTm p c))
 
-opaque
-  plusMonoLTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  plusMonoLTm x y c p =
-    trHomʳ (nsuc (plusTm x c)) (commTm y c)
-      (trHomˡ (plusTm c y) (congS (plusTm c x) (commTm x c))
-        (plusMonoTm p c))
-
-  ⊢plus-mono-l : {Γ : Ctx} {x y c p : RTm ⌊ Γ ⌋} →
-                 Γ ⊢ x ∷ Nat → Γ ⊢ y ∷ Nat → Γ ⊢ c ∷ Nat →
-                 Γ ⊢ p ∷ Hom Nat (nsuc x) y →
-                 Γ ⊢ plusMonoLTm x y c p ∷ plusMonoLB x y c
-  ⊢plus-mono-l {x = x} {y = y} {c = c} dx dy dc dp =
-    ⊢trHomʳ (⊢plus dc dy) (⊢plus dy dc) (⊢nsuc (⊢plus dx dc))
-            (⊢comm dy dc)
-            (⊢trHomˡ (⊢nsuc (⊢plus dc dx)) (⊢nsuc (⊢plus dx dc)) (⊢plus dc dy)
-                     (⊢congS (⊢plus dc dx) (⊢plus dx dc) (⊢comm dx dc))
-                     (⊢plus-mono dx dy dc dp))
-
+⊢plus-mono-l : {Γ : Ctx} {x y c p : RTm ⌊ Γ ⌋} →
+               Γ ⊢ x ∷ Nat → Γ ⊢ y ∷ Nat → Γ ⊢ c ∷ Nat →
+               Γ ⊢ p ∷ Hom Nat (nsuc x) y →
+               Γ ⊢ plusMonoLTm x y c p ∷ plusMonoLB x y c
+⊢plus-mono-l {x = x} {y = y} {c = c} dx dy dc dp =
+  ⊢trHomʳ (⊢plus dc dy) (⊢plus dy dc) (⊢nsuc (⊢plus dx dc))
+          (⊢comm dy dc)
+          (⊢trHomˡ (⊢nsuc (⊢plus dc dx)) (⊢nsuc (⊢plus dx dc)) (⊢plus dc dy)
+                   (⊢congS (⊢plus dc dx) (⊢plus dx dc) (⊢comm dx dc))
+                   (⊢plus-mono dx dy dc dp))
 
 ------------------------------------------------------------------------
 -- ★★★ SUBSTITUTION-NATURALITY FOR THE ARITHMETIC TEMPLATES.
@@ -480,27 +458,24 @@ plusMonoTm-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (p c : RTm Γ) →
 plusMonoTm-sub p c = refl
 
 -- ★★★ …and the one gap A actually needs.
-opaque
- unfolding plusMonoLTm
-
- plusMonoLTm-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (x y c p : RTm Γ) →
-                   subTm σ (plusMonoLTm x y c p)
-                 ≡ plusMonoLTm (subTm σ x) (subTm σ y) (subTm σ c) (subTm σ p)
- plusMonoLTm-sub {σ = σ} x y c p =
-   trans (trHomʳ-sub {σ = σ} (nsuc (plusTm x c)) (commTm y c)
-                     (trHomˡ (plusTm c y) (congS (plusTm c x) (commTm x c))
-                             (plusMonoTm p c)))
-         (cong₂ᵗ (commTm-sub {σ = σ} y c)
-                 (trans (trHomˡ-sub {σ = σ} (plusTm c y)
-                                    (congS (plusTm c x) (commTm x c))
-                                    (plusMonoTm p c))
-                        (cong (λ z → trHomˡ (plusTm (subTm σ c) (subTm σ y)) z
-                                            (plusMonoTm (subTm σ p) (subTm σ c)))
-                              (trans (congS-sub {σ = σ} (plusTm c x) (commTm x c))
-                                     (cong (congS (plusTm (subTm σ c) (subTm σ x)))
-                                           (commTm-sub {σ = σ} x c))))))
-   where
-     cong₂ᵗ : {u u' h h' : RTm _} → u ≡ u' → h ≡ h' →
-              trHomʳ (nsuc (plusTm (subTm σ x) (subTm σ c))) u h
-            ≡ trHomʳ (nsuc (plusTm (subTm σ x) (subTm σ c))) u' h'
-     cong₂ᵗ refl refl = refl
+plusMonoLTm-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (x y c p : RTm Γ) →
+                  subTm σ (plusMonoLTm x y c p)
+                ≡ plusMonoLTm (subTm σ x) (subTm σ y) (subTm σ c) (subTm σ p)
+plusMonoLTm-sub {σ = σ} x y c p =
+  trans (trHomʳ-sub {σ = σ} (nsuc (plusTm x c)) (commTm y c)
+                    (trHomˡ (plusTm c y) (congS (plusTm c x) (commTm x c))
+                            (plusMonoTm p c)))
+        (cong₂ᵗ (commTm-sub {σ = σ} y c)
+                (trans (trHomˡ-sub {σ = σ} (plusTm c y)
+                                   (congS (plusTm c x) (commTm x c))
+                                   (plusMonoTm p c))
+                       (cong (λ z → trHomˡ (plusTm (subTm σ c) (subTm σ y)) z
+                                           (plusMonoTm (subTm σ p) (subTm σ c)))
+                             (trans (congS-sub {σ = σ} (plusTm c x) (commTm x c))
+                                    (cong (congS (plusTm (subTm σ c) (subTm σ x)))
+                                          (commTm-sub {σ = σ} x c))))))
+  where
+    cong₂ᵗ : {u u' h h' : RTm _} → u ≡ u' → h ≡ h' →
+             trHomʳ (nsuc (plusTm (subTm σ x) (subTm σ c))) u h
+           ≡ trHomʳ (nsuc (plusTm (subTm σ x) (subTm σ c))) u' h'
+    cong₂ᵗ refl refl = refl
