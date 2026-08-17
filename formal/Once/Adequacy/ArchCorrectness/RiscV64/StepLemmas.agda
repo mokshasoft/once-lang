@@ -170,6 +170,16 @@ step-j ft rewrite ft = refl
 
 -- ret : pc := ra. The `ra` spill/restore around it is `c-thunk`/`c-ret`'s
 -- business (D102 restored it); this is just the transfer.
+-- …and the `execInstr` readout of a LOAD, which the stuck routes need where the
+-- block-steps need `step-ld`. Stated here rather than at the consumer because
+-- `execInstr (ld …)` is a `with` on the read, and the rewrite only fires in the
+-- vocabulary the clause itself is written in.
+execInstr-ld : ∀ prog s rd rs offset v
+             → readMem (memory s) (effectiveAddr (regs s) rs offset) ≡ just v
+             → execInstr prog s (ld rd rs offset)
+               ≡ just (record s { regs = writeReg (regs s) rd v ; pc = pc s + 1 })
+execInstr-ld prog s rd rs offset v eq rewrite eq = refl
+
 -- jalr rd, rs, offset : the INDIRECT CALL. `instr-call-closure` lowers to
 -- `jalr ra, t1, 0` — the link register gets the return address and the pc goes
 -- to the register's value. No memory is touched, which is the whole of the ABI

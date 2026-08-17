@@ -2204,3 +2204,59 @@ block-step-call {hv} prog fs s hl ℓ jx cc h ft ceq heq live fteq lo' lo'≤lo 
                                   (riscv64-link-claim s) lk
                                   (C.frames-of (falloc fs)) (fret fs))
                         no-link (ret-eq cc))
+
+------------------------------------------------------------------------
+-- THE TWO STUCK LOADS (plan 0.65 G2) — x86-64's `*-heap-empty-stuck`, at
+-- riscv64's `ld`.
+--
+-- The abstract half is the engine's (`EE.stuck-result`); what an ARCH owes is
+-- only "nothing more comes out of the concrete machine", and for a load through
+-- a pointer to an UNWRITTEN cell that is `execInstr … ≡ nothing`, straight off
+-- `heap-eq` — the view maps the cell (`dom`), so the concrete read is the
+-- encoding of the abstract `nothing`.
+------------------------------------------------------------------------
+load-indirect-heap-empty-stuck : ∀ {hv : HeapView} prog fs s hl → CompiledCorr hv prog fs s
+  → fetch prog (fpc fs) ≡ just load-indirect
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → HDom hv hl
+  → heapMem (floc fs) hl ≡ nothing
+  → (R.fetch (compile-trace prog) (R.State.pc s) ≡ just (ld a0 t0 0))
+    × (R.execInstr (compile-trace prog) s (ld a0 t0 0) ≡ nothing)
+load-indirect-heap-empty-stuck {hv} prog fs s hl cc ft i-eq dom h-eq = fetch-rv , stuck
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    fetch-rv : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (ld a0 t0 0)
+    fetch-rv = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) load-indirect ft)
+    t0-val : R.readReg (R.State.regs s) t0 ≡ haddr hv hl
+    t0-val = trans (C.in1-eq dc) (cong (C.enc-sv hv) i-eq)
+    addr-eq : R.effectiveAddr (R.State.regs s) t0 0 ≡ haddr hv hl
+    addr-eq = trans (+-identityʳ (R.readReg (R.State.regs s) t0)) t0-val
+    rd : R.readMem (R.State.memory s) (R.effectiveAddr (R.State.regs s) t0 0) ≡ nothing
+    rd = trans (cong (R.readMem (R.State.memory s)) addr-eq)
+               (trans (C.heap-eq dc hl dom) (cong (C.enc-maybe hv) h-eq))
+    stuck : R.execInstr (compile-trace prog) s (ld a0 t0 0) ≡ nothing
+    stuck rewrite rd = refl
+
+load-indirect-suc-heap-empty-stuck : ∀ {hv : HeapView} prog fs s hl → CompiledCorr hv prog fs s
+  → fetch prog (fpc fs) ≡ just load-indirect-suc
+  → readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+  → HDom hv (sucHL hl)
+  → heapMem (floc fs) (sucHL hl) ≡ nothing
+  → (R.fetch (compile-trace prog) (R.State.pc s) ≡ just (ld a0 t0 slot-size))
+    × (R.execInstr (compile-trace prog) s (ld a0 t0 slot-size) ≡ nothing)
+load-indirect-suc-heap-empty-stuck {hv} prog fs s hl cc ft i-eq dom h-eq = fetch-rv , stuck
+  where
+    dc = dataCorr cc ; po = pc-off cc
+    fetch-rv : R.fetch (compile-trace prog) (R.State.pc s) ≡ just (ld a0 t0 slot-size)
+    fetch-rv = trans (cong (R.fetch (compile-trace prog)) po)
+                     (fetch-block-head prog (fpc fs) load-indirect-suc ft)
+    t0-val : R.readReg (R.State.regs s) t0 ≡ haddr hv hl
+    t0-val = trans (C.in1-eq dc) (cong (C.enc-sv hv) i-eq)
+    addr-eq : R.effectiveAddr (R.State.regs s) t0 slot-size ≡ haddr hv (sucHL hl)
+    addr-eq = trans (cong (_+ slot-size) t0-val) (sym (C.haddr-suc hv hl))
+    rd : R.readMem (R.State.memory s) (R.effectiveAddr (R.State.regs s) t0 slot-size) ≡ nothing
+    rd = trans (cong (R.readMem (R.State.memory s)) addr-eq)
+               (trans (C.heap-eq dc (sucHL hl) dom) (cong (C.enc-maybe hv) h-eq))
+    stuck : R.execInstr (compile-trace prog) s (ld a0 t0 slot-size) ≡ nothing
+    stuck rewrite rd = refl
