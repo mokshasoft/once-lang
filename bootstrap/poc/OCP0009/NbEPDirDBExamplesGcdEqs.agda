@@ -26,18 +26,21 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π; Id
         ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝; ordtr
+        ; vz; vs
         ; Ren; renTm; renTy; Sub; subTm; subTy; extR; extS )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there
-        ; _⟶_; _⟶*_; done; step
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; Π; El; ⌜Nat⌝
+        ; _⟶_; _⟶*_; done; step; ⊢conv; csymᵀ; _≅ᵀ_
         ; ξ-natrecⁿ; ξ-natrecᶻ; βfst; βsnd; natrec-suc )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast; ⊢[] )
+open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans )
 open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( Prv; prv; prvTm; prvOk; StepExt; module AmTΠ; aStepT; renTm-idR
-        ; idToRed )
-open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )
+        ; idToRed; idOfRed )
+open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asN )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm; ⊢monus )
 open import poc.OCP0009.NbEPDirDBExamplesOrd using ( ⊢strong-step )
@@ -56,7 +59,9 @@ module GcdEqAt (Δ : Ctx) where
 
   open AmTΠ Δ PairT ⌜Nat⌝ msr gcdStp ⊢PairT ⊢⌜Nat⌝ ⊢msr ⊢gcdStp public
     using ( amrecTm; auxIH; ihS-atP; descS-at; descS-atR; descS-peel
-          ; ih-app; amrec-unfold-Id-red; idR; auxAt-id; descS )
+          ; ih-app; amrec-unfold-Id-red; idR; auxAt-id; descS
+          ; irrT; irrT-sub; irrElim; irr-ind; amrec-β; ⊢auxIH; ⊢amrecPt
+          ; aAuxB; auxAt )
 
   ------------------------------------------------------------------------
   -- ★ TYPING THE RECURSIVE CALL'S CERTIFICATE, un-renamed.
@@ -179,3 +184,31 @@ module GcdEqAt (Δ : Ctx) where
                                (recCert (gcd-gt-term a' b' d (gIH a' b') mh))))
   gcd-gt-call {a' = a'} {b' = b'} {d = d} da db mh =
     idToRed done (recRed (gcd-gt-term a' b' d (gIH a' b') mh)) (gcd-unfold da db)
+
+  ------------------------------------------------------------------------
+  -- ★★ THE RECURSIVE ARGUMENT, and the two small interfaces the last step
+  --    needs: applying the auxiliary, and the irrelevance witness.
+  ------------------------------------------------------------------------
+
+  PAIRᵍ : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
+  PAIRᵍ a' b' = pair (monusTm (nsuc a') (nsuc b')) (nsuc b')
+
+  ⊢PAIRᵍ : {a' b' : RTm ⌊ Δ ⌋} → Δ ⊢ a' ∷ Nat → Δ ⊢ b' ∷ Nat →
+           Δ ⊢ PAIRᵍ a' b' ∷ PairT
+  ⊢PAIRᵍ da db = ⊢pair ty-Nat (⊢monus (⊢nsuc da) (⊢nsuc db)) (⊢nsuc db)
+
+  prvCast : {T T' : RTy ⌊ Δ ⌋} → T ≡ T' → Prv Δ T → Prv Δ T'
+  prvCast refl q = q
+
+  -- ★ applying the auxiliary to its carrier and certificate.  Two `⊢app`s;
+  --   the only peel is `wk-single` on the bound, and `⌜Nat⌝` is closed so
+  --   the codomain needs none.
+  appAux : {x n a c : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ PairT → Δ ⊢ n ∷ Nat →
+           Δ ⊢ a ∷ PairT → Δ ⊢ c ∷ Hom Nat (subTm (single a) msr) n →
+           Δ ⊢ app (app (auxIH x n) a) c ∷ El ⌜Nat⌝
+  appAux {n = n} {a = a} dx dn da dc =
+    ⊢app (⊢-cast (cong (λ u → Π (Hom Nat (subTm (single a) msr) u) (El ⌜Nat⌝))
+                       (wk-single {v = a} n))
+                 (⊢app (⊢auxIH dx dn) da))
+         dc
+
