@@ -38,6 +38,7 @@ open import poc.OCP0009.NbEPDirDBPi
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢natrec; ⊢nzero; ⊢nsuc; ⊢conv; csymᵀ
+        ; _⟶*_
         ; ⊢fst; ⊢snd; ⊢pair; ty-Nat )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single; ⊢[] )
@@ -50,7 +51,8 @@ open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( subren; renren )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
-  using ( G1; ⊢G1; G1z; ⊢G1z; gcdInn1; ⊢gcdInn1
+  using ( recCert; gcd-gt-term; msr; ⊢msr
+        ; G1; ⊢G1; G1z; ⊢G1z; gcdInn1; ⊢gcdInn1
         ; G2; ⊢G2; G2z; ⊢G2z; gcdInn2; ⊢gcdInn2; wkS2
         ; G3; ⊢G3; G3z; ⊢G3z; G3s; ⊢G3s
         ; CERTˢ; ⊢CERTˢ; PAIRˢ; KS; NS; gcdIH
@@ -494,3 +496,20 @@ module GcdCertTy {Δ : Ctx} {a' b' d : RTm ⌊ Δ ⌋}
           (⊢conv (⊢desc-left da db)
                  (csymᵀ (descConv (monusTm (nsuc a') (nsuc b')) (nsuc b')
                                   (plusTm (nsuc a') (nsuc b')))))
+
+------------------------------------------------------------------------
+-- ⚠⚠ AND A MEASURED DEAD END: stating this typing about `recCert` ITSELF.
+--
+--   `⊢recCert = ⊢certClean`, i.e. asking Agda to accept that the
+--   reduction's certificate IS the reconstructed `τ` chain, runs >40min —
+--   inside THIS module, where both terms are local and `certEq` is in
+--   scope, and >30min at a use site.  So the reconstruction is not
+--   syntactically what `gcd-gt-term` produces, and Agda normalises both
+--   sides, which unfolds `plusMonoLTm`.
+--
+--   ⭐ THE FIX IS NOT HERE.  It is to make `gcd-gt-term` produce the CLEAN
+--   certificate AT CONSTRUCTION (`certAt` + `certEq`, in its own
+--   `where`-block where `R₁`/`W`/`R₂`/`R₃` are already bound), so that
+--   `recCert` IS `gtCert a' b'` and no comparison exists anywhere.  That
+--   was unaffordable before `certEq`'s push-chain existed; it is cheap now.
+------------------------------------------------------------------------

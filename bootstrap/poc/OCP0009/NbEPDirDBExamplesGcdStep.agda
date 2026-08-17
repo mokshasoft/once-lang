@@ -43,7 +43,7 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBExamplesGcdStep where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; subst; sym )
+open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; cong₂; subst; sym )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π
@@ -71,9 +71,9 @@ open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( aStepT )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asP )
 open import poc.OCP0009.NbEPDirDBLibArith using ( plusMonoTm )
-open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLTm )
+open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLTm; plusMonoLTm-sub )
 open import poc.OCP0009.NbEPDirDBLibArithMonus
-  using ( monusLtTm; ⊢desc-left; ⊢desc-right; pred* )
+  using ( monusLtTm; monusLtTm-sub; ⊢desc-left; ⊢desc-right; pred* )
 
 ------------------------------------------------------------------------
 -- ★ THE MEASURE — a real computation, not a projection.
@@ -666,6 +666,24 @@ appAt u refl h = h
 --     arithmetic template (`commTm`, `plusMonoTm`, `trHomˡ/ʳ`, `congS`, …).
 --     That suite is worth building, but it is a separate piece of work and
 --     it is NOT what "gcd satisfies its defining equations" means.
+-- ★★ THE CERTIFICATE SLOT'S CAST — the twin of `appAt`.
+--
+-- ⚠ `appAt` fixes the FUNCTION half of `app (app ih PAIR) CERT`; nothing
+--   fixed the CERT half, so a `RecCall`'s certificate came out as `CERTˢ`
+--   under EIGHT substitutions.  A caller that must TYPE it then cannot —
+--   `subTm` does not invert — and RECONSTRUCTING the chain afterwards is
+--   worse: asking Agda to accept the reconstruction as the same term runs
+--   >40min (measured 2026-08-17, both at a use site and in `…GcdCert`).
+--   ⭐ So put the clean form in AT CONSTRUCTION.  Then `recCert` IS
+--   `gtCert a' b'`, which is `⊢desc-left`'s subject, and no comparison
+--   exists anywhere.
+certAt : {Γ : Cx} {t f u₁ u₂ : RTm Γ} → u₁ ≡ u₂ → t ⟶* app f u₁ → t ⟶* app f u₂
+certAt refl h = h
+
+gtCert : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+gtCert a' b' = plusMonoLTm (monusTm (nsuc a') (nsuc b')) (nsuc a') (nsuc b')
+                           (monusLtTm a' b')
+
 data RecCall {Γ : Cx} (t ih A B : RTm Γ) : Set where
   recCall : (c : RTm Γ) → t ⟶* app (app ih (pair A B)) c → RecCall t ih A B
 
@@ -741,7 +759,7 @@ gcd-gt-term : {Γ : Cx} (a' b' d ih : RTm Γ) →
               monusTm (nsuc a') (nsuc b') ⟶* nsuc d →
               RecCall (app (app gcdStp (pair (nsuc a') (nsuc b'))) ih) ih
                      (monusTm (nsuc a') (nsuc b')) (nsuc b')
-gcd-gt-term {Γ} a' b' d ih mh = recCall _
+gcd-gt-term {Γ} a' b' d ih mh = recCall (gtCert a' b') (certAt certEq
   --  each line is ONE reduction of the trace, read top to bottom
   ( one (ξ-appˡ (β gcdBody gX))                         -- unfold the step fn
   ⟫ ⟶*-appˡ (⟶*-natrecⁿ (one (βsnd _ _)))               -- scrutinee snd = suc b
@@ -759,7 +777,7 @@ gcd-gt-term {Γ} a' b' d ih mh = recCall _
               (peel6 {u₁ = R₁} {u₂ = W} {u₃ = R₂}
                      {u₄ = d} {u₅ = R₃} {u₆ = ih} b'))
       (one (β _ ih))
-  )
+  ))
   where
     gX : RTm Γ
     gX = pair (nsuc a') (nsuc b')
@@ -799,6 +817,70 @@ gcd-gt-term {Γ} a' b' d ih mh = recCall _
                         (subTm (extS (extS (extS (extS (extS (extS (single gX)))))))
                                G3s)))))
                 d
+
+
+    ------------------------------------------------------------------------
+    -- ★★★★ THE CERTIFICATE, IN CLEAN FORM — proved HERE, where `R₁`/`W`/
+    --      `R₂`/`R₃` are already bound, so nothing is reconstructed.
+    --
+    -- ★ Push the substitution through the certificate by NATURALITY
+    --   (`plusMonoLTm-sub`/`monusLtTm-sub`), one layer at a time, then peel
+    --   the arguments with the SAME `peel4`/`peel6`/`wkS2` the `pair` slot
+    --   uses above.  ⚠ Arguments passed EXPLICITLY: recovering `x` from
+    --   `subTm σ x` needs `subTm` inverted, which is the whole problem.
+    ------------------------------------------------------------------------
+
+    τ₁ = extS (extS (extS (extS (extS (extS (extS (single gX)))))))
+    τ₂ = extS (extS (extS (extS (extS (extS (single b'))))))
+    τ₃ = extS (extS (extS (extS (extS (single R₁)))))
+    τ₄ = extS (extS (extS (extS (single W))))
+    τ₅ = extS (extS (extS (single R₂)))
+    τ₆ = extS (extS (single d))
+    τ₇ = extS (single R₃)
+    τ₈ = single ih
+
+    pushPM : {Γ₁ Γ₂ : Cx} {t x y c q : RTm Γ₁} → t ≡ plusMonoLTm x y c q →
+             (σ : Sub Γ₁ Γ₂) →
+             subTm σ t ≡ plusMonoLTm (subTm σ x) (subTm σ y) (subTm σ c) (subTm σ q)
+    pushPM {x = x} {y = y} {c = c} {q = q} e σ =
+      trans (cong (subTm σ) e) (plusMonoLTm-sub x y c q)
+
+    pushML : {Γ₁ Γ₂ : Cx} {t x y : RTm Γ₁} → t ≡ monusLtTm x y → (σ : Sub Γ₁ Γ₂) →
+             subTm σ t ≡ monusLtTm (subTm σ x) (subTm σ y)
+    pushML {x = x} {y = y} e σ = trans (cong (subTm σ) e) (monusLtTm-sub x y)
+
+    e1 = plusMonoLTm-sub {σ = τ₁} (monusTm (nsuc KS) (nsuc NS))
+                         (nsuc KS) (nsuc NS) (monusLtTm KS NS)
+    e2 = pushPM e1 τ₂
+    e3 = pushPM e2 τ₃
+    e4 = pushPM e3 τ₄
+    e5 = pushPM e4 τ₅
+    e6 = pushPM e5 τ₆
+    e7 = pushPM e6 τ₇
+    e8 = pushPM e7 τ₈
+
+    f1 = monusLtTm-sub {σ = τ₁} KS NS
+    f2 = pushML f1 τ₂
+    f3 = pushML f2 τ₃
+    f4 = pushML f3 τ₄
+    f5 = pushML f4 τ₅
+    f6 = pushML f5 τ₆
+    f7 = pushML f6 τ₇
+    f8 = pushML f7 τ₈
+
+    pA = trans (peel4 {u₁ = R₂} {u₂ = d} {u₃ = R₃} {u₄ = ih} W)
+               (wkS2 {u = R₁} {v = b'} a')
+    pB = peel6 {u₁ = R₁} {u₂ = W} {u₃ = R₂}
+               {u₄ = d} {u₅ = R₃} {u₆ = ih} b'
+
+    congPM : {x x' y y' c c' q q' : RTm Γ} →
+             x ≡ x' → y ≡ y' → c ≡ c' → q ≡ q' →
+             plusMonoLTm x y c q ≡ plusMonoLTm x' y' c' q'
+    congPM refl refl refl refl = refl
+
+    certEq = trans e8 (congPM (cong₂ (λ A B → monusTm (nsuc A) (nsuc B)) pA pB)
+                              (cong nsuc pA) (cong nsuc pB)
+                              (trans f8 (cong₂ monusLtTm pA pB)))
 
 -- ★★★ NON-VACUITY.  A conditional lemma proves NOTHING until its premise
 --   is discharged — that is exactly what killed the earlier `gcd-gt-gen`
