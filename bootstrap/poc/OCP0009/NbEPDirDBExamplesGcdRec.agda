@@ -74,13 +74,22 @@ module GcdRecAt (Δ : Ctx) where
   --   `split2` fails here, because this is ONE definition rather than an
   --   accumulation of them.
   --
-  -- ⭐ SO THE FIX BELONGS IN `LibAmrec`, NOT HERE.  The four leaves
-  --   (`irr-zz`/`irr-zs`/`irr-sz`/`irr-ss`) are already separate Defs; what
-  --   is expensive is `irr-ind` ASSEMBLING them into a `natrec`, which
-  --   inlines all four.  Making the leaves OPAQUE there would let the
-  --   assembly reference them without inlining — the same "rigid head"
-  --   effect that made the certificate's naturality lemmas usable.  That is
-  --   a change to a shared library and a DESIGN DECISION.
+  -- ⚠ AND A HYPOTHESIS THAT WAS TESTED AND IS WRONG.  I read the bisect as
+  --   "`prvOk` FORCES the `Prv` open, and `Prv` is a `data` type so the
+  --   projection must pattern-match".  The fix that follows is to make
+  --   `Prv` a RECORD, whose eta makes `prvOk p`'s type follow from `p`'s
+  --   type with no unfolding.  Done, and `…LibAmrec` stayed green — but
+  --   `irrAt` STILL OOMs.  Reverted; the forcing is not the cost, or not
+  --   all of it.
+  --
+  -- ⇒ WHAT IS ACTUALLY KNOWN, and it is less than I claimed twice:
+  --     * `irr-ind gcdStepExt …` RETURNED is free (EXIT 0);
+  --     * `⊢app` on it OOMs, with or without the `irrT-sub` cast, in its
+  --       own module, and with `Prv` as a record;
+  --     * module isolation does not help — this is ONE definition.
+  --   The mechanism inside `⊢app` is NOT yet identified.  ⚠ Do not repeat
+  --   the two explanations already falsified: it is not `irr-ind`'s
+  --   instantiation as such, and it is not `prvOk`'s pattern match.
   --   Kept verbatim so the discharge is not lost; the theorem below takes
   --   the witness as a HYPOTHESIS instead, which verifies that every
   --   interface in the recursive step lines up and isolates the remaining
