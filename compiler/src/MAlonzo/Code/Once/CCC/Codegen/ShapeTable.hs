@@ -1131,7 +1131,7 @@ d_fclosure_1098 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fclosure_90 (coe v0)
 -- Once.CCC.Codegen.ShapeTable.Sem._.FlatState.flink
 d_flink_1100 ::
-  MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 -> Integer
+  MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 -> Maybe Integer
 d_flink_1100 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_flink_92 (coe v0)
 -- Once.CCC.Codegen.ShapeTable.Sem._.FlatState.floc

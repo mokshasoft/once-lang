@@ -61,149 +61,149 @@ du_exec'45'restore'45'input'45'with'45'value_110
 -- Once.CCC.Machine.FlatStackSlot._.FlatState
 d_FlatState_172 a0 = ()
 -- Once.CCC.Machine.FlatStackSlot._.do-branch
-d_do'45'branch_186 ::
+d_do'45'branch_188 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Bool ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68
-d_do'45'branch_186 v0
+d_do'45'branch_188 v0
   = coe
       MAlonzo.Code.Once.CCC.Machine.Flat.d_do'45'branch_516 (coe v0)
 -- Once.CCC.Machine.FlatStackSlot._.do-jump
-d_do'45'jump_196 ::
+d_do'45'jump_198 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe Integer ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68
-d_do'45'jump_196 ~v0 = du_do'45'jump_196
-du_do'45'jump_196 ::
+d_do'45'jump_198 ~v0 = du_do'45'jump_198
+du_do'45'jump_198 ::
   Maybe Integer ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68
-du_do'45'jump_196
+du_do'45'jump_198
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.du_do'45'jump_508
 -- Once.CCC.Machine.FlatStackSlot._.flat-exec-instr
-d_flat'45'exec'45'instr_266 ::
+d_flat'45'exec'45'instr_268 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68
-d_flat'45'exec'45'instr_266 v0
+d_flat'45'exec'45'instr_268 v0
   = coe
       MAlonzo.Code.Once.CCC.Machine.Flat.d_flat'45'exec'45'instr_1080
       (coe v0)
 -- Once.CCC.Machine.FlatStackSlot._.FlatState.falloc
-d_falloc_350 ::
+d_falloc_366 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_568
-d_falloc_350 v0
+d_falloc_366 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_falloc_84 (coe v0)
 -- Once.CCC.Machine.FlatStackSlot._.FlatState.fclosure
-d_fclosure_352 ::
+d_fclosure_368 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_68
-d_fclosure_352 v0
+d_fclosure_368 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fclosure_90 (coe v0)
 -- Once.CCC.Machine.FlatStackSlot._.FlatState.flink
-d_flink_354 ::
-  MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 -> Integer
-d_flink_354 v0
+d_flink_370 ::
+  MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 -> Maybe Integer
+d_flink_370 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_flink_92 (coe v0)
 -- Once.CCC.Machine.FlatStackSlot._.FlatState.floc
-d_floc_356 ::
+d_floc_372 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_482
-d_floc_356 v0
+d_floc_372 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_floc_82 (coe v0)
 -- Once.CCC.Machine.FlatStackSlot._.FlatState.fpc
-d_fpc_358 ::
+d_fpc_374 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 -> Integer
-d_fpc_358 v0
+d_fpc_374 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fpc_86 (coe v0)
 -- Once.CCC.Machine.FlatStackSlot._.FlatState.fret
-d_fret_360 ::
+d_fret_376 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 -> [Integer]
-d_fret_360 v0
+d_fret_376 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fret_88 (coe v0)
 -- Once.CCC.Machine.FlatStackSlot.SameFrames
-d_SameFrames_366 a0 a1 a2 = ()
-data T_SameFrames_366 = C_mkSameFrames_384
+d_SameFrames_390 a0 a1 a2 = ()
+data T_SameFrames_390 = C_mkSameFrames_408
 -- Once.CCC.Machine.FlatStackSlot.SameFrames.sf-slots
-d_sf'45'slots_378 ::
-  T_SameFrames_366 ->
+d_sf'45'slots_402 ::
+  T_SameFrames_390 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sf'45'slots_378 = erased
+d_sf'45'slots_402 = erased
 -- Once.CCC.Machine.FlatStackSlot.SameFrames.sf-saved
-d_sf'45'saved_380 ::
-  T_SameFrames_366 ->
+d_sf'45'saved_404 ::
+  T_SameFrames_390 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sf'45'saved_380 = erased
+d_sf'45'saved_404 = erased
 -- Once.CCC.Machine.FlatStackSlot.SameFrames.sf-ret
-d_sf'45'ret_382 ::
-  T_SameFrames_366 ->
+d_sf'45'ret_406 ::
+  T_SameFrames_390 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sf'45'ret_382 = erased
+d_sf'45'ret_406 = erased
 -- Once.CCC.Machine.FlatStackSlot.sf-refl
-d_sf'45'refl_388 ::
+d_sf'45'refl_412 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
-  T_SameFrames_366
-d_sf'45'refl_388 = erased
+  T_SameFrames_390
+d_sf'45'refl_412 = erased
 -- Once.CCC.Machine.FlatStackSlot.sf-jump
-d_sf'45'jump_396 ::
+d_sf'45'jump_420 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe Integer ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
-  T_SameFrames_366
-d_sf'45'jump_396 = erased
+  T_SameFrames_390
+d_sf'45'jump_420 = erased
 -- Once.CCC.Machine.FlatStackSlot.sf-branch
-d_sf'45'branch_412 ::
+d_sf'45'branch_436 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Bool ->
   MAlonzo.Code.Once.CCC.Label.T_LabelId_6 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
-  T_SameFrames_366
-d_sf'45'branch_412 = erased
+  T_SameFrames_390
+d_sf'45'branch_436 = erased
 -- Once.CCC.Machine.FlatStackSlot.ss-mv
-d_ss'45'mv_432 ::
+d_ss'45'mv_456 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_68 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_482 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_568 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_ss'45'mv_432 = erased
+d_ss'45'mv_456 = erased
 -- Once.CCC.Machine.FlatStackSlot.ss-mv-saved
-d_ss'45'mv'45'saved_450 ::
+d_ss'45'mv'45'saved_474 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_68 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_482 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_568 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_ss'45'mv'45'saved_450 = erased
+d_ss'45'mv'45'saved_474 = erased
 -- Once.CCC.Machine.FlatStackSlot.ss-mv-ri
-d_ss'45'mv'45'ri_468 ::
+d_ss'45'mv'45'ri_492 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_68 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_482 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_568 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_ss'45'mv'45'ri_468 = erased
+d_ss'45'mv'45'ri_492 = erased
 -- Once.CCC.Machine.FlatStackSlot.ss-mv-ri-saved
-d_ss'45'mv'45'ri'45'saved_486 ::
+d_ss'45'mv'45'ri'45'saved_510 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_68 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_482 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_568 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_ss'45'mv'45'ri'45'saved_486 = erased
+d_ss'45'mv'45'ri'45'saved_510 = erased
 -- Once.CCC.Machine.FlatStackSlot.flat-same-frames
-d_flat'45'same'45'frames_504 ::
+d_flat'45'same'45'frames_528 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
-  AgdaAny -> T_SameFrames_366
-d_flat'45'same'45'frames_504 = erased
+  AgdaAny -> T_SameFrames_390
+d_flat'45'same'45'frames_528 = erased

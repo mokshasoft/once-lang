@@ -185,7 +185,7 @@ d_find'45'label'45'def_190 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine
 d_Machine_196 a0 a1 a2 = ()
 data T_Machine_196
-  = C_constructor_356 (AgdaAny -> AgdaAny -> Integer)
+  = C_constructor_360 (AgdaAny -> AgdaAny -> Integer)
                       (AgdaAny -> Integer -> Maybe Integer) (AgdaAny -> Bool)
                       (AgdaAny -> Integer)
                       ([AgdaAny] -> AgdaAny -> AgdaAny -> Maybe AgdaAny)
@@ -198,75 +198,79 @@ d_mfetch_204 ::
   T_Emitter_14 -> [AgdaAny] -> Integer -> Maybe AgdaAny
 d_mfetch_204 v0 = coe d_mfetch_118 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine._.Instr
-d_Instr_280 :: T_Emitter_14 -> T_Machine_196 -> ()
-d_Instr_280 = erased
+d_Instr_282 :: T_Emitter_14 -> T_Machine_196 -> ()
+d_Instr_282 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine._.mfetch
-d_mfetch_282 ::
+d_mfetch_284 ::
   T_Emitter_14 ->
   T_Machine_196 -> [AgdaAny] -> Integer -> Maybe AgdaAny
-d_mfetch_282 v0 ~v1 = du_mfetch_282 v0
-du_mfetch_282 ::
+d_mfetch_284 v0 ~v1 = du_mfetch_284 v0
+du_mfetch_284 ::
   T_Emitter_14 -> [AgdaAny] -> Integer -> Maybe AgdaAny
-du_mfetch_282 v0 = coe d_mfetch_118 (coe v0)
+du_mfetch_284 v0 = coe d_mfetch_118 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine.State
-d_State_284 :: T_Machine_196 -> ()
-d_State_284 = erased
+d_State_286 :: T_Machine_196 -> ()
+d_State_286 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine.rreg
-d_rreg_286 :: T_Machine_196 -> AgdaAny -> AgdaAny -> Integer
-d_rreg_286 v0
+d_rreg_288 :: T_Machine_196 -> AgdaAny -> AgdaAny -> Integer
+d_rreg_288 v0
   = case coe v0 of
-      C_constructor_356 v2 v3 v4 v5 v6 v7 -> coe v2
+      C_constructor_360 v2 v3 v4 v5 v7 v8 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine.memory
-d_memory_288 ::
+d_memory_290 ::
   T_Machine_196 -> AgdaAny -> Integer -> Maybe Integer
-d_memory_288 v0
+d_memory_290 v0
   = case coe v0 of
-      C_constructor_356 v2 v3 v4 v5 v6 v7 -> coe v3
+      C_constructor_360 v2 v3 v4 v5 v7 v8 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine.xhalted
-d_xhalted_290 :: T_Machine_196 -> AgdaAny -> Bool
-d_xhalted_290 v0
+d_xhalted_292 :: T_Machine_196 -> AgdaAny -> Bool
+d_xhalted_292 v0
   = case coe v0 of
-      C_constructor_356 v2 v3 v4 v5 v6 v7 -> coe v4
+      C_constructor_360 v2 v3 v4 v5 v7 v8 -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine.xpc
-d_xpc_292 :: T_Machine_196 -> AgdaAny -> Integer
-d_xpc_292 v0
+d_xpc_294 :: T_Machine_196 -> AgdaAny -> Integer
+d_xpc_294 v0
   = case coe v0 of
-      C_constructor_356 v2 v3 v4 v5 v6 v7 -> coe v5
+      C_constructor_360 v2 v3 v4 v5 v7 v8 -> coe v5
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine.link-claim
+d_link'45'claim_296 ::
+  T_Machine_196 -> AgdaAny -> Integer -> Integer -> ()
+d_link'45'claim_296 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine.mexecInstr
-d_mexecInstr_294 ::
+d_mexecInstr_298 ::
   T_Machine_196 -> [AgdaAny] -> AgdaAny -> AgdaAny -> Maybe AgdaAny
-d_mexecInstr_294 v0
+d_mexecInstr_298 v0
   = case coe v0 of
-      C_constructor_356 v2 v3 v4 v5 v6 v7 -> coe v6
+      C_constructor_360 v2 v3 v4 v5 v7 v8 -> coe v7
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine.exec
-d_exec_296 ::
+d_exec_300 ::
   T_Machine_196 -> Integer -> [AgdaAny] -> AgdaAny -> Maybe AgdaAny
-d_exec_296 v0
+d_exec_300 v0
   = case coe v0 of
-      C_constructor_356 v2 v3 v4 v5 v6 v7 -> coe v7
+      C_constructor_360 v2 v3 v4 v5 v7 v8 -> coe v8
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine.exec-zero
-d_exec'45'zero_302 ::
+d_exec'45'zero_306 ::
   T_Machine_196 ->
   [AgdaAny] ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'zero_302 = erased
+d_exec'45'zero_306 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine.exec-halted
-d_exec'45'halted_310 ::
+d_exec'45'halted_314 ::
   T_Machine_196 ->
   Integer ->
   [AgdaAny] ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'halted_310 = erased
+d_exec'45'halted_314 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine.exec-end
-d_exec'45'end_320 ::
+d_exec'45'end_324 ::
   T_Machine_196 ->
   Integer ->
   [AgdaAny] ->
@@ -276,9 +280,9 @@ d_exec'45'end_320 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'end_320 = erased
+d_exec'45'end_324 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine.exec-stuck
-d_exec'45'stuck_330 ::
+d_exec'45'stuck_334 ::
   T_Machine_196 ->
   Integer ->
   [AgdaAny] ->
@@ -288,9 +292,9 @@ d_exec'45'stuck_330 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'stuck_330 = erased
+d_exec'45'stuck_334 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine.exec-step-halt
-d_exec'45'step'45'halt_342 ::
+d_exec'45'step'45'halt_346 ::
   T_Machine_196 ->
   Integer ->
   [AgdaAny] ->
@@ -302,9 +306,9 @@ d_exec'45'step'45'halt_342 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'step'45'halt_342 = erased
+d_exec'45'step'45'halt_346 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Machine.exec-step-run
-d_exec'45'step'45'run_354 ::
+d_exec'45'step'45'run_358 ::
   T_Machine_196 ->
   Integer ->
   [AgdaAny] ->
@@ -316,11 +320,11 @@ d_exec'45'step'45'run_354 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'step'45'run_354 = erased
+d_exec'45'step'45'run_358 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop
-d_TraceLoop_362 a0 a1 a2 a3 = ()
-data T_TraceLoop_362
-  = C_constructor_468 (AgdaAny ->
+d_TraceLoop_366 a0 a1 a2 a3 = ()
+data T_TraceLoop_366
+  = C_constructor_472 (AgdaAny ->
                        Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6)
                       (AgdaAny -> AgdaAny) (AgdaAny -> AgdaAny -> AgdaAny)
                       (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -329,134 +333,134 @@ data T_TraceLoop_362
                        MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Maybe AgdaAny)
                       (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> AgdaAny)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface._.Instr
-d_Instr_370 :: T_Emitter_14 -> T_Machine_196 -> ()
-d_Instr_370 = erased
+d_Instr_374 :: T_Emitter_14 -> T_Machine_196 -> ()
+d_Instr_374 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface._.compile-abstract
-d_compile'45'abstract_372 ::
+d_compile'45'abstract_376 ::
   T_Emitter_14 ->
   T_Machine_196 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286 ->
   [AgdaAny]
-d_compile'45'abstract_372 v0 ~v1 = du_compile'45'abstract_372 v0
-du_compile'45'abstract_372 ::
+d_compile'45'abstract_376 v0 ~v1 = du_compile'45'abstract_376 v0
+du_compile'45'abstract_376 ::
   T_Emitter_14 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286 ->
   [AgdaAny]
-du_compile'45'abstract_372 v0
+du_compile'45'abstract_376 v0
   = coe d_compile'45'abstract_106 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface._.State
-d_State_376 :: T_Machine_196 -> ()
-d_State_376 = erased
+d_State_380 :: T_Machine_196 -> ()
+d_State_380 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface._.mexecInstr
-d_mexecInstr_378 ::
+d_mexecInstr_382 ::
   T_Machine_196 -> [AgdaAny] -> AgdaAny -> AgdaAny -> Maybe AgdaAny
-d_mexecInstr_378 v0 = coe d_mexecInstr_294 (coe v0)
+d_mexecInstr_382 v0 = coe d_mexecInstr_298 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface._.xhalted
-d_xhalted_380 :: T_Machine_196 -> AgdaAny -> Bool
-d_xhalted_380 v0 = coe d_xhalted_290 (coe v0)
+d_xhalted_384 :: T_Machine_196 -> AgdaAny -> Bool
+d_xhalted_384 v0 = coe d_xhalted_292 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop._.Instr
-d_Instr_420 ::
-  T_Emitter_14 -> T_Machine_196 -> T_TraceLoop_362 -> ()
-d_Instr_420 = erased
+d_Instr_424 ::
+  T_Emitter_14 -> T_Machine_196 -> T_TraceLoop_366 -> ()
+d_Instr_424 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop._.compile-abstract
-d_compile'45'abstract_422 ::
+d_compile'45'abstract_426 ::
   T_Emitter_14 ->
   T_Machine_196 ->
-  T_TraceLoop_362 ->
+  T_TraceLoop_366 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286 ->
   [AgdaAny]
-d_compile'45'abstract_422 v0 ~v1 ~v2
-  = du_compile'45'abstract_422 v0
-du_compile'45'abstract_422 ::
+d_compile'45'abstract_426 v0 ~v1 ~v2
+  = du_compile'45'abstract_426 v0
+du_compile'45'abstract_426 ::
   T_Emitter_14 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286 ->
   [AgdaAny]
-du_compile'45'abstract_422 v0
+du_compile'45'abstract_426 v0
   = coe d_compile'45'abstract_106 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop._.State
-d_State_426 :: T_Machine_196 -> T_TraceLoop_362 -> ()
-d_State_426 = erased
+d_State_430 :: T_Machine_196 -> T_TraceLoop_366 -> ()
+d_State_430 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop._.mexecInstr
-d_mexecInstr_428 ::
+d_mexecInstr_432 ::
   T_Machine_196 ->
-  T_TraceLoop_362 -> [AgdaAny] -> AgdaAny -> AgdaAny -> Maybe AgdaAny
-d_mexecInstr_428 v0 ~v1 = du_mexecInstr_428 v0
-du_mexecInstr_428 ::
+  T_TraceLoop_366 -> [AgdaAny] -> AgdaAny -> AgdaAny -> Maybe AgdaAny
+d_mexecInstr_432 v0 ~v1 = du_mexecInstr_432 v0
+du_mexecInstr_432 ::
   T_Machine_196 -> [AgdaAny] -> AgdaAny -> AgdaAny -> Maybe AgdaAny
-du_mexecInstr_428 v0 = coe d_mexecInstr_294 (coe v0)
+du_mexecInstr_432 v0 = coe d_mexecInstr_298 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop._.xhalted
-d_xhalted_430 ::
-  T_Machine_196 -> T_TraceLoop_362 -> AgdaAny -> Bool
-d_xhalted_430 v0 ~v1 = du_xhalted_430 v0
-du_xhalted_430 :: T_Machine_196 -> AgdaAny -> Bool
-du_xhalted_430 v0 = coe d_xhalted_290 (coe v0)
+d_xhalted_434 ::
+  T_Machine_196 -> T_TraceLoop_366 -> AgdaAny -> Bool
+d_xhalted_434 v0 ~v1 = du_xhalted_434 v0
+du_xhalted_434 :: T_Machine_196 -> AgdaAny -> Bool
+du_xhalted_434 v0 = coe d_xhalted_292 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop.Payload
-d_Payload_432 :: T_TraceLoop_362 -> ()
-d_Payload_432 = erased
+d_Payload_436 :: T_TraceLoop_366 -> ()
+d_Payload_436 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop.matchCall
-d_matchCall_434 ::
-  T_TraceLoop_362 ->
+d_matchCall_438 ::
+  T_TraceLoop_366 ->
   AgdaAny -> Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_matchCall_434 v0
+d_matchCall_438 v0
   = case coe v0 of
-      C_constructor_468 v2 v3 v4 v5 v6 v7 -> coe v2
+      C_constructor_472 v2 v3 v4 v5 v6 v7 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop.ret-past
-d_ret'45'past_436 :: T_TraceLoop_362 -> AgdaAny -> AgdaAny
-d_ret'45'past_436 v0
+d_ret'45'past_440 :: T_TraceLoop_366 -> AgdaAny -> AgdaAny
+d_ret'45'past_440 v0
   = case coe v0 of
-      C_constructor_468 v2 v3 v4 v5 v6 v7 -> coe v3
+      C_constructor_472 v2 v3 v4 v5 v6 v7 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop.dispatchArith
-d_dispatchArith_438 ::
-  T_TraceLoop_362 -> AgdaAny -> AgdaAny -> AgdaAny
-d_dispatchArith_438 v0
+d_dispatchArith_442 ::
+  T_TraceLoop_366 -> AgdaAny -> AgdaAny -> AgdaAny
+d_dispatchArith_442 v0
   = case coe v0 of
-      C_constructor_468 v2 v3 v4 v5 v6 v7 -> coe v4
+      C_constructor_472 v2 v3 v4 v5 v6 v7 -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop.ev-arch
-d_ev'45'arch_440 ::
-  T_TraceLoop_362 ->
+d_ev'45'arch_444 ::
+  T_TraceLoop_366 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   AgdaAny -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
-d_ev'45'arch_440 v0
+d_ev'45'arch_444 v0
   = case coe v0 of
-      C_constructor_468 v2 v3 v4 v5 v6 v7 -> coe v5
+      C_constructor_472 v2 v3 v4 v5 v6 v7 -> coe v5
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop.arith-env
-d_arith'45'env_442 ::
-  T_TraceLoop_362 ->
+d_arith'45'env_446 ::
+  T_TraceLoop_366 ->
   [AgdaAny] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Maybe AgdaAny
-d_arith'45'env_442 v0
+d_arith'45'env_446 v0
   = case coe v0 of
-      C_constructor_468 v2 v3 v4 v5 v6 v7 -> coe v6
+      C_constructor_472 v2 v3 v4 v5 v6 v7 -> coe v6
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop.sigop-call
-d_sigop'45'call_444 ::
-  T_TraceLoop_362 ->
+d_sigop'45'call_448 ::
+  T_TraceLoop_366 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 -> AgdaAny
-d_sigop'45'call_444 v0
+d_sigop'45'call_448 v0
   = case coe v0 of
-      C_constructor_468 v2 v3 v4 v5 v6 v7 -> coe v7
+      C_constructor_472 v2 v3 v4 v5 v6 v7 -> coe v7
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop.sigop-lowering
-d_sigop'45'lowering_452 ::
-  T_TraceLoop_362 ->
+d_sigop'45'lowering_456 ::
+  T_TraceLoop_366 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sigop'45'lowering_452 = erased
+d_sigop'45'lowering_456 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop.sigop-matchCall
-d_sigop'45'matchCall_456 ::
-  T_TraceLoop_362 ->
+d_sigop'45'matchCall_460 ::
+  T_TraceLoop_366 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sigop'45'matchCall_456 = erased
+d_sigop'45'matchCall_460 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.TraceLoop.nonhalt-noncall
-d_nonhalt'45'noncall_466 ::
-  T_TraceLoop_362 ->
+d_nonhalt'45'noncall_470 ::
+  T_TraceLoop_366 ->
   [AgdaAny] ->
   AgdaAny ->
   AgdaAny ->
@@ -464,4 +468,4 @@ d_nonhalt'45'noncall_466 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_nonhalt'45'noncall_466 = erased
+d_nonhalt'45'noncall_470 = erased

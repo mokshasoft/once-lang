@@ -54,9 +54,9 @@ d_run'45'trace'45'riscv64_14 v0 v1
       (coe
          (\ v2 ->
             MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_400 (coe v2)))
-      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_464)
+      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_466)
       (coe
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_522)
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_524)
       (coe
          MAlonzo.Code.Once.Arith.Backend.RiscV64.RunTrace.d_matchCall_10)
       (coe
@@ -87,7 +87,7 @@ d_arch'45'semantics_24 ::
 d_arch'45'semantics_24
   = coe
       MAlonzo.Code.Once.Adequacy.CPU.Interface.C_constructor_56
-      MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_initState_412
-      MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_run_862
+      MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_initState_414
+      MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_run_864
       d_run'45'trace'45'riscv64_14 d_decode'45'riscv64_20
       d_assemble'45'riscv64_22
