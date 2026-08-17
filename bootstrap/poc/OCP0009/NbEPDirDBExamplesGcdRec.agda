@@ -90,6 +90,23 @@ module GcdRecAt (Δ : Ctx) where
   --   The mechanism inside `⊢app` is NOT yet identified.  ⚠ Do not repeat
   --   the two explanations already falsified: it is not `irr-ind`'s
   --   instantiation as such, and it is not `prvOk`'s pattern match.
+  --
+  -- ⚠⚠ AND PROFILING CANNOT SETTLE IT, which is itself worth knowing.
+  --   `--profile=all` prints only on COMPLETION, so a check that OOMs
+  --   yields nothing.  Tried, 2026-08-17:
+  --     `--profile=all` at the default 5500M cap        OOM, no profile
+  --     …with `AGDA_SAFE_MEM_MAX=6200M`                 OOM, no profile
+  --     …with 4000M RAM + `AGDA_SAFE_SWAP_MAX=5G`       OOM, no profile
+  --   ⇒ it is not MARGINALLY over the cap; ~9GB of headroom does not
+  --   finish it.  So `agda-perf-is-mutual-block-size`'s advice to profile
+  --   does not apply to a term that cannot be elaborated at all.
+  --
+  -- ⭐ WHAT WOULD ACTUALLY SETTLE IT: shrink the instance until it
+  --   completes, profile THAT, and extrapolate — e.g. `irr-ind` at a
+  --   trivial `StepExt` (a step that ignores its IH, where the four leaves
+  --   collapse), or at a smaller carrier than `PairT`.  That separates
+  --   "`irr-ind` is inherently large" from "gcd's `stp` makes it large",
+  --   which is the question none of the six experiments answered.
   --   Kept verbatim so the discharge is not lost; the theorem below takes
   --   the witness as a HYPOTHESIS instead, which verifies that every
   --   interface in the recursive step lines up and isolates the remaining
