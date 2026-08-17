@@ -366,19 +366,31 @@ step-not-halted prog s = case fetch prog (pc s) of λ where
   (just instr) → execInstr prog s instr
 
 step : Program → State → Maybe State
-step prog s with halted s
-... | true  = just s
-... | false = step-not-halted prog s
+step prog s = if halted s then just s else step-not-halted prog s
 
-exec : ℕ → Program → State → Maybe State
+-- PLAN 0.66 X2: written with `if_then_else_` + an explicit `exec-cont` (which
+-- pattern-matches the `Maybe` directly) rather than the nested
+-- `with halted s | step prog s | halted s'` it used before. This is the shape
+-- x86-64 has carried since plan 0.27 (C3), adopted here for the same reason
+-- and after hitting the same wall: `exec-1` — one step of `exec`, driven by
+-- the step result — is NOT PROVABLE against the `with` form, because the
+-- scrutinees freeze behind a generated auxiliary
+-- (`Semantics.with-670 s false n prog | (step prog s | halted s)`) that no
+-- `rewrite` of `halted`/`step-not-halted` can reach.
+--
+-- The two forms are DEFINITIONALLY EQUAL on every input: in the `else` branch
+-- `halted s` is `false`, which is exactly where `step prog s` reduces to
+-- `step-not-halted prog s`. So every `run`-by-`refl` example, and the extracted
+-- interpreter, are unaffected — this is fighting the definition rather than the
+-- proof, which is the cheaper fight.
+exec      : ℕ → Program → State → Maybe State
+exec-cont : ℕ → Program → Maybe State → Maybe State
+
 exec zero    _    s = just s
-exec (suc n) prog s with halted s
-... | true  = just s
-... | false with step prog s
-...   | nothing  = nothing
-...   | just s' with halted s'
-...     | true  = just s'
-...     | false = exec n prog s'
+exec (suc n) prog s = if halted s then just s else exec-cont n prog (step-not-halted prog s)
+
+exec-cont _ _    nothing   = nothing
+exec-cont n prog (just s') = if halted s' then just s' else exec n prog s'
 
 defaultFuel : ℕ
 defaultFuel = 10000
