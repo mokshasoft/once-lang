@@ -43,7 +43,7 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBExamplesGcdStep where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; subst; sym )
+open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; cong₂; subst; sym )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π
@@ -666,6 +666,26 @@ appAt u refl h = h
 --     arithmetic template (`commTm`, `plusMonoTm`, `trHomˡ/ʳ`, `congS`, …).
 --     That suite is worth building, but it is a separate piece of work and
 --     it is NOT what "gcd satisfies its defining equations" means.
+-- ★★ THE CERTIFICATE SLOT'S CAST — the twin of `appAt`.
+--
+-- ⚠ `appAt` fixes the FUNCTION half of `app (app ih PAIR) CERT`; nothing
+--   fixed the CERT half, so a `RecCall`'s certificate came out written in
+--   the reduction's own intermediate scrutinees `W`/`R₁`…`R₃`.  A caller
+--   that has to TYPE it then cannot, because `subTm` does not invert —
+--   and gap A's recursive equation has to type it.  Same lesson as
+--   `PAIRᶻ`/`CERTᶻ`: say what it IS, at construction.
+certAt : {Γ : Cx} {t f u₁ u₂ : RTm Γ} → u₁ ≡ u₂ → t ⟶* app f u₁ → t ⟶* app f u₂
+certAt refl h = h
+
+-- ★ the two recursive calls' certificates, in `⊢desc-left`/`⊢desc-right`
+--   form — i.e. exactly what `⊢G3s`/`⊢G3z` already derive.
+gtCert : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+gtCert a' b' = plusMonoLTm (monusTm (nsuc a') (nsuc b')) (nsuc a') (nsuc b')
+                           (monusLtTm a' b')
+
+leCert : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+leCert a' b' = plusMonoTm (monusLtTm b' a') (nsuc a')
+
 data RecCall {Γ : Cx} (t ih A B : RTm Γ) : Set where
   recCall : (c : RTm Γ) → t ⟶* app (app ih (pair A B)) c → RecCall t ih A B
 
@@ -741,25 +761,7 @@ gcd-gt-term : {Γ : Cx} (a' b' d ih : RTm Γ) →
               monusTm (nsuc a') (nsuc b') ⟶* nsuc d →
               RecCall (app (app gcdStp (pair (nsuc a') (nsuc b'))) ih) ih
                      (monusTm (nsuc a') (nsuc b')) (nsuc b')
-gcd-gt-term {Γ} a' b' d ih mh = recCall _
-  --  each line is ONE reduction of the trace, read top to bottom
-  ( one (ξ-appˡ (β gcdBody gX))                         -- unfold the step fn
-  ⟫ ⟶*-appˡ (⟶*-natrecⁿ (one (βsnd _ _)))               -- scrutinee snd = suc b
-  ⟫ ⟶*-appˡ (one (natrec-suc (subTm (single gX) G1z)
-                             (subTm (extS (extS (single gX))) gcdInn1) b'))
-  ⟫ ⟶*-appˡ (⟶*-natrecⁿ (one (βfst _ _)))               -- scrutinee fst = suc a
-  ⟫ ⟶*-appˡ (one (natrec-suc _ _ _))
-  ⟫ ⟶*-appˡ (⟶*-natrecⁿ (mhAt (wkS3 a') (wkS3e b') mh)) -- run the descent a∸b
-  ⟫ ⟶*-appˡ (one (natrec-suc _ _ _))                    -- it hit suc d ⇒ G3s
-  ⟫ appAt _                                             -- …and feed in ih
-      (cong₃g (λ I A B → app I (pair (monusTm (nsuc A) (nsuc B)) (nsuc B)))
-              refl
-              (trans (peel4 {u₁ = R₂} {u₂ = d} {u₃ = R₃} {u₄ = ih} W)
-                     (wkS2 {u = R₁} {v = b'} a'))
-              (peel6 {u₁ = R₁} {u₂ = W} {u₃ = R₂}
-                     {u₄ = d} {u₅ = R₃} {u₆ = ih} b'))
-      (one (β _ ih))
-  )
+gcd-gt-term {Γ} a' b' d ih mh = recCall (gtCert a' b') (certAt certPeel chain)
   where
     gX : RTm Γ
     gX = pair (nsuc a') (nsuc b')
@@ -799,6 +801,43 @@ gcd-gt-term {Γ} a' b' d ih mh = recCall _
                         (subTm (extS (extS (extS (extS (extS (extS (single gX)))))))
                                G3s)))))
                 d
+
+
+    -- ⚠⚠ NO TYPE SIGNATURE ON `chain`, DELIBERATELY.  Signed — or checked
+    --   against a `certAt`-constrained target — Agda propagates the expected
+    --   target inward and then has to solve `subTm (single ih) ?b` for the
+    --   final `β`, which `subTm` does not invert (measured: "when checking
+    --   that the expression β _ ih has type …").  Unsigned, the chain is
+    --   inferred BOTTOM-UP from its source and every `_` is determined.
+    chain =
+      --  each line is ONE reduction of the trace, read top to bottom
+      ( one (ξ-appˡ (β gcdBody gX))                         -- unfold the step fn
+      ⟫ ⟶*-appˡ (⟶*-natrecⁿ (one (βsnd _ _)))               -- scrutinee snd = suc b
+      ⟫ ⟶*-appˡ (one (natrec-suc (subTm (single gX) G1z)
+                                 (subTm (extS (extS (single gX))) gcdInn1) b'))
+      ⟫ ⟶*-appˡ (⟶*-natrecⁿ (one (βfst _ _)))               -- scrutinee fst = suc a
+      ⟫ ⟶*-appˡ (one (natrec-suc _ _ _))
+      ⟫ ⟶*-appˡ (⟶*-natrecⁿ (mhAt (wkS3 a') (wkS3e b') mh)) -- run the descent a∸b
+      ⟫ ⟶*-appˡ (one (natrec-suc _ _ _))                    -- it hit suc d ⇒ G3s
+      ⟫ appAt _                                             -- …and feed in ih
+          (cong₃g (λ I A B → app I (pair (monusTm (nsuc A) (nsuc B)) (nsuc B)))
+                  refl
+                  (trans (peel4 {u₁ = R₂} {u₂ = d} {u₃ = R₃} {u₄ = ih} W)
+                         (wkS2 {u = R₁} {v = b'} a'))
+                  (peel6 {u₁ = R₁} {u₂ = W} {u₃ = R₂}
+                         {u₄ = d} {u₅ = R₃} {u₆ = ih} b'))
+          (one (β _ ih))
+      )
+
+    -- ★ …and the peel to the clean certificate: the SAME two equations the
+    --   `pair` slot uses above, applied uniformly to `plusMonoLTm`'s four
+    --   arguments.
+    certPeel = cong₂ (λ A B → plusMonoLTm (monusTm (nsuc A) (nsuc B))
+                                          (nsuc A) (nsuc B) (monusLtTm A B))
+                     (trans (peel4 {u₁ = R₂} {u₂ = d} {u₃ = R₃} {u₄ = ih} W)
+                            (wkS2 {u = R₁} {v = b'} a'))
+                     (peel6 {u₁ = R₁} {u₂ = W} {u₃ = R₂}
+                            {u₄ = d} {u₅ = R₃} {u₆ = ih} b')
 
 -- ★★★ NON-VACUITY.  A conditional lemma proves NOTHING until its premise
 --   is discharged — that is exactly what killed the earlier `gcd-gt-gen`

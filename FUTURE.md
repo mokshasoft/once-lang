@@ -82,3 +82,53 @@ Split each module in two — primitives to a new `Lib*`, numeral demos left in
 - `NbEPDirDBLibArithLe` (added 2026-08-16) imports `…ExamplesNat` following
   its sibling `NbEPDirDBLibArith` exactly — it is consistent with the current
   convention, not a new deviation, and moves with the rest.
+
+## OCP-0009 WF library: lift `eqG`/`pwT` out of gcd into the combinator
+
+**Goal**: make "prove a step function is IH-extensional" a LIBRARY combinator,
+not something each caller rebuilds.
+
+**Current behavior**: discharging `StepExt` for gcd (done 2026-08-17,
+`…GcdStepExtA.gcdStepExt`) needed a machine that is shaped generally but is
+hard-wired to gcd's `PairT` / `msr` / `⌜Nat⌝`:
+
+| piece | what it is | gcd-specific? |
+| --- | --- | --- |
+| `pwT` / `pwIntro` / `pwElim` | the pointwise hypothesis as an object-language `Π`, and its intro/elim | **no** — only the carrier/measure/code are baked in |
+| `eqG μ f` | the `Id`-analogue of the step's result type, carrying the two IHs and the hypothesis as `Π`-bound | **no** — same |
+| `eqG-red` | a reduction of `f` is a CONVERSION of `eqG μ f` (pushes through 3 `Π`s and both `Id` sides) | **no** |
+| `eqGElim` | feed `eqG` its two IHs and the hypothesis | **no** |
+| `⊢natrec-var` | re-type a `natrec` at a VARIABLE scrutinee | **no** — every splitting step needs it |
+| `certAt` | fix the certificate slot of a `RecCall`-shaped reduction | **no** |
+| `gcdIH-w/-w²/-w³`, `pwT-w`, `gcdIH-sub`, `pwT-sub`, `eqG-sub` | the naturality twins | **no**, modulo the same hard-wiring |
+| `M₁`/`M₂`/`M₃`, the four leaves, `G1z`…`G3s`, `PAIRᶻ`/`CERTᶻ`/`PAIRˢ`/`CERTˢ` | subtractive Euclid | **yes** |
+
+⇒ Parameterised over `A` / `cM` / `m` (exactly `AmTΠ`'s parameters), everything
+in the "no" rows belongs beside `StepExt` in `NbEPDirDBLibAmrec`, and **the
+whole three-split pattern becomes a combinator**: "a step that case-splits `n`
+times on `natrec` scrutinees is IH-extensional if each leaf is".
+
+### Why this is worth doing
+
+The judging criterion is `WF-LIBRARY.md`'s: an abstraction is judged by how
+simple it is to USE; build cost amortises, use cost is paid by every caller.
+Right now the reusable machinery is ~600 lines that the NEXT recursive function
+would have to rewrite, and the genuinely function-specific part (the leaves) is
+the small, cheap half. That is the wrong way round.
+
+### Notes / constraints discovered while building it
+
+- ⚠ **Cost forced a ten-module split.** All of it in one module OOM-killed at
+  the cgroup cap on a 7 GB box. What worked, in order of effect: `where` →
+  top-level Defs (leaf 4: OOM → 10s); one module per expensive term; naming
+  `eqG-red`'s two instances (`split2` alone: OOM → 4.8s). A library version
+  should be laid out this way from the start.
+- ⚠ **Lifting is NOT universally cheaper.** The same move that rescued `leaf₃s`
+  from an OOM cost 13x when applied to `gcd-gt-term`'s intermediate scrutinees
+  (31s → 6m35s), because `where`-bound definitions are elaborated once per
+  clause while top-level functions of the clause's parameters are re-unfolded
+  at every use. The rule that holds is "one big term per Def", not "always
+  lift".
+- ⚠ **`eqG`'s motive boundaries are `refl` only at variables.** In the splits
+  every slot is a variable and `subTy` computes; instantiating at an abstract
+  carrier needs `eqG-sub`, because there `extS σ` meets a `w`.
