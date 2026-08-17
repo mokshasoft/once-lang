@@ -53,7 +53,7 @@ open import poc.OCP0009.NbEPDirDBExamplesGcdStep
         ; G2; ⊢G2; G2z; ⊢G2z; gcdInn2; ⊢gcdInn2; wkS2
         ; G3; ⊢G3; G3z; ⊢G3z; G3s; ⊢G3s
         ; CERTˢ; ⊢CERTˢ; PAIRˢ; KS; NS; gcdIH
-        ; peel4; peel6 )
+        ; peel4; peel6; wkS2 )
 
 ------------------------------------------------------------------------
 -- ★★★ A `natrec`'s TYPING, TRANSPORTED ALONG A SUBSTITUTION.
@@ -421,3 +421,45 @@ module GcdCertEq {Γ : Cx} (a' b' d ih : RTm Γ) where
   f6 = pushML f5 τ₆
   f7 = pushML f6 τ₇
   f8 = pushML f7 τ₈
+
+  ------------------------------------------------------------------------
+  -- ★ THE ARGUMENT PEELS — the SAME two the `pair` slot already uses in
+  --   `gcd-gt-term`, and they apply for the same reason: `KS` sits at index
+  --   4, so `τ₄` fills it with `w⁴ W` and the four layers above peel it
+  --   (`peel4`), then `W` IS `a'` (`wkS2`); `NS` sits at index 6, filled by
+  --   `τ₂`, peeled by the six above (`peel6`).
+  ------------------------------------------------------------------------
+
+  pKS : subTm τ₈ (subTm τ₇ (subTm τ₆ (subTm τ₅ (subTm τ₄
+          (subTm τ₃ (subTm τ₂ (subTm τ₁ KS))))))) ≡ a'
+  pKS = trans (peel4 {u₁ = R₂ᵣ} {u₂ = d} {u₃ = R₃ᵣ} {u₄ = ih} Wᵣ)
+              (wkS2 {u = R₁ᵣ} {v = b'} a')
+
+  pNS : subTm τ₈ (subTm τ₇ (subTm τ₆ (subTm τ₅ (subTm τ₄
+          (subTm τ₃ (subTm τ₂ (subTm τ₁ NS))))))) ≡ b'
+  pNS = peel6 {u₁ = R₁ᵣ} {u₂ = Wᵣ} {u₃ = R₂ᵣ}
+              {u₄ = d} {u₅ = R₃ᵣ} {u₆ = ih} b'
+
+  congPM : {x x' y y' c c' q q' : RTm Γ} →
+           x ≡ x' → y ≡ y' → c ≡ c' → q ≡ q' →
+           plusMonoLTm x y c q ≡ plusMonoLTm x' y' c' q'
+  congPM refl refl refl refl = refl
+
+  ------------------------------------------------------------------------
+  -- ★★★★★ THE CERTIFICATE, IN CLEAN FORM.
+  --
+  --   the reduction's certificate  ≡  plusMonoLTm (a∸b) a b (a<b)
+  --
+  -- ⭐ which is EXACTLY `⊢desc-left`'s subject — so typing it is now one
+  --   `⊢desc-left`, with no peel and no normalisation of the big term.
+  ------------------------------------------------------------------------
+
+  certEq : subTm τ₈ (subTm τ₇ (subTm τ₆ (subTm τ₅ (subTm τ₄
+             (subTm τ₃ (subTm τ₂ (subTm τ₁ CERTˢ)))))))
+         ≡ plusMonoLTm (monusTm (nsuc a') (nsuc b')) (nsuc a') (nsuc b')
+                       (monusLtTm a' b')
+  certEq =
+    trans e8 (congPM (cong₂ (λ A B → monusTm (nsuc A) (nsuc B)) pKS pNS)
+                     (cong nsuc pKS)
+                     (cong nsuc pNS)
+                     (trans f8 (cong₂ monusLtTm pKS pNS)))
