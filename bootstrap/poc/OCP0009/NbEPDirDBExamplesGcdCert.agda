@@ -265,6 +265,37 @@ module GcdCertAt {Δ : Ctx} {a' b' d : RTm ⌊ Δ ⌋}
   --      error — the NEAR MISS.  `⊢R₂` is typed at the composite `σC`
   --      where the chain wants it un-nested.
   --   5. bridging that with `exts-exts` + `subTy-subTy` over `G2`   OOM
+  --   6. `opaque plusMonoLTm` as scaffolding, to separate "wrong" from
+  --      "expensive"                                  OOM at 1m34s
+  --
+  -- ⭐⭐ ROUTE 6 FALSIFIED THE STATED CAUSE, and that is its value.  The
+  --   claim was that the cost is `plusMonoLTm` unfolding.  Blocking that
+  --   unfolding made `…GcdStep` 3x FASTER (22s → 7.7s, a real and separate
+  --   win) and moved the only failure to the numeral demos, which need
+  --   `subTm` to distribute INTO `plusMonoLTm` and were fixed by a local
+  --   `unfolding` — but the certificate chain STILL OOM-killed.
+  --
+  --   ⇒ THE DOMINANT COST IS NOT THE ARITHMETIC.  It is that `σC`/`σD`/`σE`
+  --   embed `R₁`/`R₂`/`R₃`, which embed `gcdInn1 → gcdInn2 → G3z`/`G3s` —
+  --   the WHOLE gcd body.  Every `Sub⊢-ext` tower over a context holding
+  --   those is expensive, and they cannot be made opaque because the
+  --   reduction lemmas need them to compute.  All six routes fail for this
+  --   one shared reason: each asks Agda to compare or normalise a type in
+  --   which the gcd body sits inside a substitution.
+  --
+  -- ⚠ SO IT IS NOT A TACTIC PROBLEM.  A seventh tactic is not the answer;
+  --   the FORMULATION has to change so the certificate is typed where the
+  --   gcd body is not in the substitution.  Two candidates, both DESIGN
+  --   DECISIONS about `RecCall`'s contract:
+  --     (a) `gcd-gt-term` hands back a certificate already in
+  --         `⊢desc-left`'s form AT CONSTRUCTION — restate the reduction so
+  --         the clean form is what the chain PRODUCES rather than something
+  --         recovered afterwards.  (`certAt` was heading here before it hit
+  --         the `β`-inference wall; the fix there was an unsignatured
+  --         `chain`, which is known to work.)
+  --     (b) state gcd's recursive equation with the certificate typing as
+  --         an explicit HYPOTHESIS, discharged separately at a site where
+  --         the gcd body is not in scope.
   --
   -- ⭐ ROUTE 4 IS THE ONE TO RESUME FROM.  Its diagnosis also explains the
   --   earlier OOMs: `⊢CERTˢ` GENERALISES its sibling motive slots — the very
