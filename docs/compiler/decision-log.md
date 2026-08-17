@@ -7847,11 +7847,30 @@ that a `Float` is register-fittable — true at 64 bits, false at 32 — and
 
     ir-to-trace' n l (const fits-float v) = … instr-load-const Ty.fits-float v ∷ …
 
-So the IR forms an instruction the 32-bit target cannot implement, and **every
-Once program containing a float literal traps at runtime on x86-32.** Not a
-proof inconvenience: a live miscompile, invisible to the exit tests because the
-one example that uses `I.Math.Float` (`examples/arith-test.once`) is not in the
-x86-32 exit-test list.
+So the IR forms an instruction the 32-bit target cannot implement.
+
+**CORRECTION (same day, before anything was built on it): the defect is LATENT,
+not live.** This entry first said "every Once program containing a float literal
+traps at runtime on x86-32". No Once program can contain a float literal at all:
+
+  * `Once/Parser/Token.agda` has `TInt`, `TString` and no float token — `TDot`
+    is only ever accumulated into an operator/qualified name
+    (`Parser/Expr.agda`), never into a numeral;
+  * `Once/Surface/Elaborate.agda` builds exactly one literal,
+    `intLit n = const fits-int ∣ n ∣ ∘ terminal`; `Float` appears nowhere in
+    `Once/Surface/`.
+
+So `ir-to-trace'`'s `const fits-float` clause is real code on a path the
+FRONTEND cannot reach. A `Float` value can still exist at runtime — `intToFloat`,
+`parseFloat`, `pi` are SigOps — but a float CONSTANT cannot be written. The
+`ud2` lowering was therefore a defect waiting for the surface syntax, not one
+shipping in binaries today, and `examples/arith-test.once` (which imports
+`I.Math.Float`) only exercises the IMPORT, its `main` being `exit0@S`.
+
+What survives unchanged is the reason the correspondence could not be written,
+and the fix: the encoding is a target property. What does not survive is the
+"live miscompile" framing — the right claim is that x86-32 could not have
+supported float literals the day they were added.
 
 ### Why the correspondence is what found it
 
