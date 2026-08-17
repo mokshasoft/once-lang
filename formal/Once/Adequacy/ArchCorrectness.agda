@@ -34,6 +34,7 @@ open import Data.Nat using (ℕ)
 
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
+import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
 
 module Once.Adequacy.ArchCorrectness
   (o : CanonicalName) (program-bound : ℕ)
@@ -51,7 +52,18 @@ module Once.Adequacy.ArchCorrectness
   (riscv64-scratch-dec-guarded : RBr.ScratchDecGuarded o)
   (riscv64-slot-addr-no-wrap : RBr.SlotAddrNoWrap o)
   (riscv64-addr-no-wrap : RBr.AddrNoWrap o)
-  (riscv64-lit-fits : RBr.LitFits o) where
+  (riscv64-lit-fits : RBr.LitFits o)
+  -- …and x86-32's, the SAME family again (plan 0.66 X3). It had NONE until now,
+  -- for the reason D107 names: its simulation was whole-cloth, so nothing above
+  -- ever asked what resources the running program needs. Seven, not eight —
+  -- `SlotAddrNoWrap` is riscv64's alone (D104: x86-32 computes a slot address
+  -- with `lea`, which carries no range obligation, exactly as x86-64 does).
+  (x86-32-heap-room : RB32.HeapRoom o) (x86-32-stack-room : RB32.StackRoom o)
+  (x86-32-call-room : RB32.CallRoom o)
+  (x86-32-reg-range : RB32.RegRange o)
+  (x86-32-scratch-dec-guarded : RB32.ScratchDecGuarded o)
+  (x86-32-addr-no-wrap : RB32.AddrNoWrap o)
+  (x86-32-lit-fits : RB32.LitFits o) where
 
 open import Once.Adequacy.CPU using (Arch; x86-64; x86-32; riscv64; arch-semantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
@@ -62,7 +74,8 @@ open import Once.Adequacy.Compile using (ArchCorrect)
 -- only its single named `<arch>-flat-from-obs` FS-plumbing residual (Plan 0.53).
 open import Once.Adequacy.ArchCorrectness.X86-64 o  program-bound x86-64-heap-room x86-64-stack-room x86-64-call-room
        x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits using (x86-64-correct)
-open import Once.Adequacy.ArchCorrectness.X86-32 o  program-bound using (x86-32-correct)
+open import Once.Adequacy.ArchCorrectness.X86-32 o  program-bound x86-32-heap-room x86-32-stack-room x86-32-call-room
+       x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits using (x86-32-correct)
 open import Once.Adequacy.ArchCorrectness.RiscV64 o program-bound
        riscv64-heap-room riscv64-stack-room riscv64-call-room
        riscv64-reg-range riscv64-scratch-dec-guarded riscv64-slot-addr-no-wrap

@@ -39,6 +39,7 @@ open import Data.Nat using (ℕ)
 
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
+import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
 
 module Once.Certified
   (o : CanonicalName) (program-bound : ℕ)
@@ -57,7 +58,16 @@ module Once.Certified
   (riscv64-scratch-dec-guarded : RBr.ScratchDecGuarded o)
   (riscv64-slot-addr-no-wrap : RBr.SlotAddrNoWrap o)
   (riscv64-addr-no-wrap : RBr.AddrNoWrap o)
-  (riscv64-lit-fits : RBr.LitFits o) where
+  (riscv64-lit-fits : RBr.LitFits o)
+  -- …and x86-32's seven (plan 0.66 X3): the arch had none while its simulation
+  -- was a whole-cloth postulate, which is precisely what a deleted apex
+  -- postulate makes visible — the resources a running program needs.
+  (x86-32-heap-room : RB32.HeapRoom o) (x86-32-stack-room : RB32.StackRoom o)
+  (x86-32-call-room : RB32.CallRoom o)
+  (x86-32-reg-range : RB32.RegRange o)
+  (x86-32-scratch-dec-guarded : RB32.ScratchDecGuarded o)
+  (x86-32-addr-no-wrap : RB32.AddrNoWrap o)
+  (x86-32-lit-fits : RB32.LitFits o) where
 
 -- P5 (OCP-0006): the correctness criterion is consumed THROUGH the spec
 -- door — `Once.Spec` is on the certified path, not an island.
@@ -66,7 +76,9 @@ open import Once.Compiler o program-bound x86-64-heap-room x86-64-stack-room x86
        x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits
        riscv64-heap-room riscv64-stack-room riscv64-call-room
        riscv64-reg-range riscv64-scratch-dec-guarded riscv64-slot-addr-no-wrap
-       riscv64-addr-no-wrap riscv64-lit-fits using (once-compiler)
+       riscv64-addr-no-wrap riscv64-lit-fits
+       x86-32-heap-room x86-32-stack-room x86-32-call-room
+       x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits using (once-compiler)
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
 
 record CertifiedBuild : Set₁ where
