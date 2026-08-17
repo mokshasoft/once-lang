@@ -122,8 +122,26 @@ emptyMemory = λ _ → nothing
 initFlags : Flags
 initFlags = mkflags false false false
 
+------------------------------------------------------------------------
+-- THE LOADER'S STACK POINTER (plan 0.66, 2026-08-17).
+--
+-- `initState` USED TO SET `esp` TO ZERO, and that is not a model of anything:
+-- the stack grows DOWN, so a `main` handed `esp ≡ 0` underflows on its first
+-- frame, and the entry correspondence's `sp-eq`/`lo-le` are not provable
+-- against it. x86-64 and riscv64 both had this hole and both had it hidden by
+-- a whole-cloth simulation postulate at the apex (D107); x86-32 still HAS that
+-- postulate, so the model is fixed here BEFORE the correspondence exists —
+-- while there is no island for a wrong model to hide in.
+--
+-- Stated exactly as the other two arches state it: the entry `esp` is OPAQUE —
+-- the one thing the loader tells us — and the heap base is 0 without loss of
+-- generality (addresses are ℕ; only the relative order matters), which is why
+-- `0 ≤ stack-top` needs no assumption.
+postulate
+  stack-top : Word          -- the %esp the loader hands `main`
+
 initState : State
-initState = mkstate emptyRegFile emptyMemory initFlags 0 false
+initState = mkstate (writeReg emptyRegFile esp stack-top) emptyMemory initFlags 0 false
 
 ------------------------------------------------------------------------
 -- Operand evaluation
