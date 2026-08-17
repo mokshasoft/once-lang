@@ -985,42 +985,50 @@ leRHS ih A B = app (app ih (pair (nsuc A) (monusTm (nsuc B) (nsuc A))))
 -- ★★ 3.  a > b : `gcd (3 , 1)` really does recurse at `(3 ∸ 1 , 1)` —
 --     SUBTRACT b FROM a, KEEP b.  ⚠ This is the equation a gcd-class spec
 --     error lands on, and the one `⊢gcd-descend`'s recursion got wrong.
-gcd-recurses-left : (ih : RTm ε) →
-                    app (app gcdStp (pair n3 n1)) ih
-                  ⟶* app (app ih (pair (monusTm n3 n1) n1))
-                         (plusMonoLTm (monusTm n3 n1) n3 n1 (monusLtTm n2 nzero))
-gcd-recurses-left ih =
-  step (ξ-appˡ (β _ (pair n3 n1)))
-    (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βsnd n3 n1) done)))
-      (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ nzero) done))
-        (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst n3 n1) done)))
-          (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ n2) done))
-            (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ monus-computes))
-              (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ n1) done))
-                (step (β _ ih) done)))))))
+-- ⚠ `unfolding plusMonoLTm` — THE NUMERAL DEMOS NEED IT TO COMPUTE.
+--   These two state their certificate in CLEAN form, so Agda must
+--   distribute `subTm` INTO `plusMonoLTm`, which needs the definition.
+--   Everything else in the tree is happy with it opaque; see the header
+--   of `…LibArithComm`.
+opaque
+ unfolding plusMonoLTm
 
--- ★★ 4.  a ≤ b : `gcd (1 , 3)` recurses at `(1 , 3 ∸ 1)` — KEEP a,
---     SUBTRACT a FROM b.  The comparison really does pick the other side.
-gcd-recurses-right : (ih : RTm ε) →
-                     app (app gcdStp (pair n1 n3)) ih
-                   ⟶* app (app ih (pair n1 (monusTm n3 n1)))
-                          (plusMonoTm (monusLtTm n2 nzero) n1)
-gcd-recurses-right ih =
-  step (ξ-appˡ (β _ (pair n1 n3)))
-    (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βsnd n1 n3) done)))
-      (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ n2) done))
-        (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst n1 n3) done)))
-          (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ nzero) done))
-            (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ monus-1-3))
-              (⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done))
-                (step (β _ ih) done)))))))
+ gcd-recurses-left : (ih : RTm ε) →
+                     app (app gcdStp (pair n3 n1)) ih
+                   ⟶* app (app ih (pair (monusTm n3 n1) n1))
+                          (plusMonoLTm (monusTm n3 n1) n3 n1 (monusLtTm n2 nzero))
+ gcd-recurses-left ih =
+   step (ξ-appˡ (β _ (pair n3 n1)))
+     (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βsnd n3 n1) done)))
+       (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ nzero) done))
+         (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst n3 n1) done)))
+           (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ n2) done))
+             (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ monus-computes))
+               (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ n1) done))
+                 (step (β _ ih) done)))))))
 
-------------------------------------------------------------------------
--- ★ the measure at (2,0), reduced.  SHARED by both kernel routes: each
---   needs it to select the auxiliary's successor branch.
-------------------------------------------------------------------------
+ -- ★★ 4.  a ≤ b : `gcd (1 , 3)` recurses at `(1 , 3 ∸ 1)` — KEEP a,
+ --     SUBTRACT a FROM b.  The comparison really does pick the other side.
+ gcd-recurses-right : (ih : RTm ε) →
+                      app (app gcdStp (pair n1 n3)) ih
+                    ⟶* app (app ih (pair n1 (monusTm n3 n1)))
+                           (plusMonoTm (monusLtTm n2 nzero) n1)
+ gcd-recurses-right ih =
+   step (ξ-appˡ (β _ (pair n1 n3)))
+     (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βsnd n1 n3) done)))
+       (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ n2) done))
+         (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ (step (βfst n1 n3) done)))
+           (⟶*-trans (⟶*-appˡ (step (natrec-suc _ _ nzero) done))
+             (⟶*-trans (⟶*-appˡ (⟶*-natrecⁿ monus-1-3))
+               (⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done))
+                 (step (β _ ih) done)))))))
 
--- `μ (2 , 0) = 2 + 0 ⟶* suc 1`, which is what selects the successor case
+ ------------------------------------------------------------------------
+ -- ★ the measure at (2,0), reduced.  SHARED by both kernel routes: each
+ --   needs it to select the auxiliary's successor branch.
+ ------------------------------------------------------------------------
+
+ -- `μ (2 , 0) = 2 + 0 ⟶* suc 1`, which is what selects the successor case
 plus-2-0 : {Γ : Cx} → plusTm {Γ} n2 nzero ⟶* n2
 plus-2-0 =
   step (natrec-suc _ _ _)
