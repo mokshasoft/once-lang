@@ -28,7 +28,7 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBExamplesGcdCert where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; sym; subst )
+open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; cong₂; sym; subst )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π
@@ -42,6 +42,9 @@ open import poc.OCP0009.NbEPDirDBType
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single; ⊢[] )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm )
+open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm )
+open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLTm; plusMonoLTm-sub )
+open import poc.OCP0009.NbEPDirDBLibArithMonus using ( monusLtTm; monusLtTm-sub )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( subren; renren )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )
@@ -49,7 +52,8 @@ open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( G1; ⊢G1; G1z; ⊢G1z; gcdInn1; ⊢gcdInn1
         ; G2; ⊢G2; G2z; ⊢G2z; gcdInn2; ⊢gcdInn2; wkS2
         ; G3; ⊢G3; G3z; ⊢G3z; G3s; ⊢G3s
-        ; CERTˢ; ⊢CERTˢ; PAIRˢ; KS; NS; gcdIH )
+        ; CERTˢ; ⊢CERTˢ; PAIRˢ; KS; NS; gcdIH
+        ; peel4; peel6 )
 
 ------------------------------------------------------------------------
 -- ★★★ A `natrec`'s TYPING, TRANSPORTED ALONG A SUBSTITUTION.
@@ -317,3 +321,103 @@ module GcdCertAt {Δ : Ctx} {a' b' d : RTm ⌊ Δ ⌋}
   --   layers) is green and cheap.  What is missing is only the SHAPE the
   --   reduction hands over, not the mathematics.
   ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ★★★★★ THE REFORMULATION — THE CERTIFICATE IN CLEAN FORM, AS A TERM.
+--
+-- ⚠ WHAT CHANGED, AND WHY IT SHOULD WORK WHERE SIX ROUTES DID NOT.
+--   Every earlier route asked Agda to compare or normalise a TYPE in which
+--   the gcd body sat inside a substitution.  This asks for a TERM equation
+--   at a RAW context — no `Ctx`, no typing, nothing that can pull in a
+--   derivation — and with `plusMonoLTm` OPAQUE the certificate is five
+--   nodes per layer instead of its whole unfolding.
+--
+-- ★ THE SUBSTITUTION STILL MOVES, by `plusMonoLTm-sub`/`monusLtTm-sub`.
+--   Those are the naturality lemmas built earlier and then set aside as
+--   "not needed on this route" — under opacity they are exactly the tool
+--   that makes it affordable.  ⭐ The equations that used to come free from
+--   computation are theorems now, and stating them once is the whole cost.
+------------------------------------------------------------------------
+
+module GcdCertEq {Γ : Cx} (a' b' d ih : RTm Γ) where
+
+  gXᵣ : RTm Γ
+  gXᵣ = pair (nsuc a') (nsuc b')
+
+  R₁ᵣ : RTm Γ
+  R₁ᵣ = natrec (subTm (single gXᵣ) G1z)
+               (subTm (extS (extS (single gXᵣ))) gcdInn1) b'
+
+  Wᵣ : RTm Γ
+  Wᵣ = subTm (single R₁ᵣ) (subTm (extS (single b')) (renTm vs (renTm vs a')))
+
+  R₂ᵣ : RTm Γ
+  R₂ᵣ = natrec (subTm (single R₁ᵣ)
+                 (subTm (extS (single b')) (subTm (extS (extS (single gXᵣ))) G2z)))
+               (subTm (extS (extS (single R₁ᵣ)))
+                 (subTm (extS (extS (extS (single b'))))
+                   (subTm (extS (extS (extS (extS (single gXᵣ))))) gcdInn2)))
+               Wᵣ
+
+  R₃ᵣ : RTm Γ
+  R₃ᵣ = natrec (subTm (single R₂ᵣ)
+                 (subTm (extS (single Wᵣ))
+                   (subTm (extS (extS (single R₁ᵣ)))
+                     (subTm (extS (extS (extS (single b'))))
+                       (subTm (extS (extS (extS (extS (single gXᵣ))))) G3z)))))
+               (subTm (extS (extS (single R₂ᵣ)))
+                 (subTm (extS (extS (extS (single Wᵣ))))
+                   (subTm (extS (extS (extS (extS (single R₁ᵣ)))))
+                     (subTm (extS (extS (extS (extS (extS (single b'))))))
+                       (subTm (extS (extS (extS (extS (extS (extS (single gXᵣ)))))))
+                              G3s)))))
+               d
+
+  -- the eight layers, innermost first
+  τ₁ = extS (extS (extS (extS (extS (extS (extS (single gXᵣ)))))))
+  τ₂ = extS (extS (extS (extS (extS (extS (single b'))))))
+  τ₃ = extS (extS (extS (extS (extS (single R₁ᵣ)))))
+  τ₄ = extS (extS (extS (extS (single Wᵣ))))
+  τ₅ = extS (extS (extS (single R₂ᵣ)))
+  τ₆ = extS (extS (single d))
+  τ₇ = extS (single R₃ᵣ)
+  τ₈ = single ih
+
+  -- ★ ONE LAYER of each template's naturality.  ⚠ The implicits ARE
+  --   inferable here, unlike the earlier `pmStep`, because the chain is
+  --   built bottom-up from a fully explicit first step — each `e`'s type
+  --   determines the next one's arguments.
+  pushPM : {Γ₁ Γ₂ : Cx} {t x y c q : RTm Γ₁} → t ≡ plusMonoLTm x y c q →
+           (σ : Sub Γ₁ Γ₂) →
+           subTm σ t ≡ plusMonoLTm (subTm σ x) (subTm σ y) (subTm σ c) (subTm σ q)
+  pushPM {x = x} {y = y} {c = c} {q = q} e σ =
+    trans (cong (subTm σ) e) (plusMonoLTm-sub x y c q)
+
+  pushML : {Γ₁ Γ₂ : Cx} {t x y : RTm Γ₁} → t ≡ monusLtTm x y → (σ : Sub Γ₁ Γ₂) →
+           subTm σ t ≡ monusLtTm (subTm σ x) (subTm σ y)
+  -- ⚠ ARGS EXPLICIT.  `plusMonoLTm` is OPAQUE so its arguments are
+  --   readable off the RHS and `_ _ _ _` suffices; `monusLtTm` is
+  --   TRANSPARENT, so the RHS unfolds and inversion fails (measured).
+  --   ⭐ A neat demonstration of what opacity buys: rigid heads make
+  --   unification work.
+  pushML {x = x} {y = y} e σ =
+    trans (cong (subTm σ) e) (monusLtTm-sub x y)
+
+  e1 = plusMonoLTm-sub {σ = τ₁} (monusTm (nsuc KS) (nsuc NS))
+                       (nsuc KS) (nsuc NS) (monusLtTm KS NS)
+  e2 = pushPM e1 τ₂
+  e3 = pushPM e2 τ₃
+  e4 = pushPM e3 τ₄
+  e5 = pushPM e4 τ₅
+  e6 = pushPM e5 τ₆
+  e7 = pushPM e6 τ₇
+  e8 = pushPM e7 τ₈
+
+  f1 = monusLtTm-sub {σ = τ₁} KS NS
+  f2 = pushML f1 τ₂
+  f3 = pushML f2 τ₃
+  f4 = pushML f3 τ₄
+  f5 = pushML f4 τ₅
+  f6 = pushML f5 τ₆
+  f7 = pushML f6 τ₇
+  f8 = pushML f7 τ₈
