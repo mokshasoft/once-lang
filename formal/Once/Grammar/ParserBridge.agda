@@ -311,6 +311,7 @@ mutual
   complete-prodTailWFraw (ppt-done {toks = TEOF       ∷ _} _) _ = _ , refl
   complete-prodTailWFraw (ppt-done {toks = TWord _    ∷ _} _) _ = _ , refl
   complete-prodTailWFraw (ppt-done {toks = TInt _     ∷ _} _) _ = _ , refl
+  complete-prodTailWFraw (ppt-done {toks = TFloat _ _ _ ∷ _} _) _ = _ , refl
   complete-prodTailWFraw (ppt-done {toks = TString _  ∷ _} _) _ = _ , refl
   complete-prodTailWFraw (ppt-done {toks = TStar ∷ _} ()) _
 
@@ -368,6 +369,7 @@ mutual
   complete-sumTailWFraw (pst-done {toks = TEOF       ∷ _} _) _ = _ , refl
   complete-sumTailWFraw (pst-done {toks = TWord _    ∷ _} _) _ = _ , refl
   complete-sumTailWFraw (pst-done {toks = TInt _     ∷ _} _) _ = _ , refl
+  complete-sumTailWFraw (pst-done {toks = TFloat _ _ _ ∷ _} _) _ = _ , refl
   complete-sumTailWFraw (pst-done {toks = TString _  ∷ _} _) _ = _ , refl
   complete-sumTailWFraw (pst-done {toks = TPlus ∷ _} ()) _
 
@@ -411,6 +413,7 @@ mutual
   complete-arrowTailWFraw (pat-done {toks = TEOF       ∷ _} _) _ = _ , refl
   complete-arrowTailWFraw (pat-done {toks = TWord _    ∷ _} _) _ = _ , refl
   complete-arrowTailWFraw (pat-done {toks = TInt _     ∷ _} _) _ = _ , refl
+  complete-arrowTailWFraw (pat-done {toks = TFloat _ _ _ ∷ _} _) _ = _ , refl
   complete-arrowTailWFraw (pat-done {toks = TString _  ∷ _} _) _ = _ , refl
   complete-arrowTailWFraw (pat-done {toks = TPlus   ∷ _} _) _ = _ , refl
   complete-arrowTailWFraw (pat-done {toks = TArrow  ∷ _} ()) _
@@ -513,6 +516,7 @@ mutual
   complete-functorProdTailWFraw (pfpt-done {toks = TEOF       ∷ _} _) _ = _ , refl
   complete-functorProdTailWFraw (pfpt-done {toks = TWord _    ∷ _} _) _ = _ , refl
   complete-functorProdTailWFraw (pfpt-done {toks = TInt _     ∷ _} _) _ = _ , refl
+  complete-functorProdTailWFraw (pfpt-done {toks = TFloat _ _ _ ∷ _} _) _ = _ , refl
   complete-functorProdTailWFraw (pfpt-done {toks = TString _  ∷ _} _) _ = _ , refl
   complete-functorProdTailWFraw (pfpt-done {toks = TStar ∷ _} ()) _
 
@@ -569,6 +573,7 @@ mutual
   complete-functorSumTailWFraw (pfst-done {toks = TEOF       ∷ _} _) _ = _ , refl
   complete-functorSumTailWFraw (pfst-done {toks = TWord _    ∷ _} _) _ = _ , refl
   complete-functorSumTailWFraw (pfst-done {toks = TInt _     ∷ _} _) _ = _ , refl
+  complete-functorSumTailWFraw (pfst-done {toks = TFloat _ _ _ ∷ _} _) _ = _ , refl
   complete-functorSumTailWFraw (pfst-done {toks = TString _  ∷ _} _) _ = _ , refl
   complete-functorSumTailWFraw (pfst-done {toks = TPlus ∷ _} ()) _
 

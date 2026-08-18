@@ -183,6 +183,7 @@ parsePolyAtomImpl (TLParen ∷ rest) with parsePolyTypeImpl rest
 
 -- Other heads: parser rejects.
 parsePolyAtomImpl (TInt _ ∷ _)     = nothing
+parsePolyAtomImpl (TFloat _ _ _ ∷ _) = nothing
 parsePolyAtomImpl (TString _ ∷ _)  = nothing
 parsePolyAtomImpl (TRParen ∷ _)    = nothing
 parsePolyAtomImpl (TLBrace ∷ _)    = nothing

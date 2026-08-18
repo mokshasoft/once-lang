@@ -139,6 +139,9 @@ data NotAtomStart : List Token → Set where
   nas-word-res   : ∀ {name rest} → isReserved name ≡ true
                  → NotAtomStart (TWord name ∷ rest)
   nas-TRParen    : ∀ {rest} → NotAtomStart (TRParen    ∷ rest)
+  -- Plan 0.71 F1: a float token starts no atom YET (F3 gives it one), so the
+  -- application stops at it exactly as it stops at a closing paren.
+  nas-TFloat     : ∀ {i f l rest} → NotAtomStart (TFloat i f l ∷ rest)
   nas-TLBrace    : ∀ {rest} → NotAtomStart (TLBrace    ∷ rest)
   nas-TRBrace    : ∀ {rest} → NotAtomStart (TRBrace    ∷ rest)
   nas-TColon     : ∀ {rest} → NotAtomStart (TColon     ∷ rest)
@@ -226,6 +229,12 @@ data NotTWord : Token → Set where
   ntw-TNewline   : NotTWord TNewline
   ntw-TEOF       : NotTWord TEOF
   ntw-TInt       : ∀ {n} → NotTWord (TInt n)
+  -- Plan 0.71 F1: the float token EXISTS but nothing consumes it yet. It gets
+  -- the two NEGATIVE facts (not a word, not a qualified-name prefix) because
+  -- those are true of it and the surrounding proofs need them — and pointedly
+  -- NOT `AppArgOk`, which would claim a parse `parseAtomExprWF` does not
+  -- produce. F3 adds the atom rule when the AST has a node to parse it into.
+  ntw-TFloat     : ∀ {i f l} → NotTWord (TFloat i f l)
   ntw-TString    : ∀ {s} → NotTWord (TString s)
 
 data NotQualPrefix : List Token → Set where
@@ -263,6 +272,7 @@ data NotQualPrefix : List Token → Set where
   nqp-TEOF       : ∀ {rest} → NotQualPrefix (TEOF       ∷ rest)
   nqp-TWord      : ∀ {s rest} → NotQualPrefix (TWord s  ∷ rest)
   nqp-TInt       : ∀ {n rest} → NotQualPrefix (TInt n   ∷ rest)
+  nqp-TFloat     : ∀ {i f l rest} → NotQualPrefix (TFloat i f l ∷ rest)
   nqp-TString    : ∀ {s rest} → NotQualPrefix (TString s ∷ rest)
   -- Lead is TAt but follow is not TWord → no ambiguity.
   nqp-TAt-[]     : NotQualPrefix (TAt ∷ [])

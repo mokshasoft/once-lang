@@ -130,6 +130,7 @@ skipNewlines-≤ (TCaret1 ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TCaret0 ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TCaretW ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TInt _ ∷ rest) refl = ≤-refl
+skipNewlines-≤ (TFloat _ _ _ ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TString _ ∷ rest) refl = ≤-refl
 skipNewlines-≤ (TEOF ∷ rest) refl = ≤-refl
 
