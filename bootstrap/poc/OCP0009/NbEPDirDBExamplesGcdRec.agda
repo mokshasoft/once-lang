@@ -101,12 +101,36 @@ module GcdRecAt (Δ : Ctx) where
   --   finish it.  So `agda-perf-is-mutual-block-size`'s advice to profile
   --   does not apply to a term that cannot be elaborated at all.
   --
-  -- ⭐ WHAT WOULD ACTUALLY SETTLE IT: shrink the instance until it
-  --   completes, profile THAT, and extrapolate — e.g. `irr-ind` at a
-  --   trivial `StepExt` (a step that ignores its IH, where the four leaves
-  --   collapse), or at a smaller carrier than `PairT`.  That separates
-  --   "`irr-ind` is inherently large" from "gcd's `stp` makes it large",
-  --   which is the question none of the six experiments answered.
+  -- ⭐⭐ AND THE CONTROLLED PROBE SETTLED THE CAUSE — `…ExamplesIrrProbe`,
+  --   green:
+  --
+  --     `⊢app (prvOk (irr-ind ext …)) dn₂`  at a TRIVIAL step   EXIT 0
+  --     the same, at `gcdStepExt`                               OOM
+  --
+  --   SAME carrier, code, measure and `⊢app`; the ONLY variable is which
+  --   `StepExt` is supplied.  ⇒ `irr-ind` is NOT inherently large — gcd's
+  --   step is what makes it large, because `irr-ind` APPLIES `ext` and
+  --   `idOfRed` pattern-matches the result, forcing that proof to reduce
+  --   once per leaf.  For the trivial step that is three lines; for gcd it
+  --   is the whole three-split assembly.
+  --
+  -- ⚠ THAT ALSO KILLED THE FIX I RECOMMENDED TWICE (opaque leaves in
+  --   `LibAmrec`): the leaves are not the problem.
+  --
+  -- ⚠⚠ AND THE FIX THE PROBE POINTS AT WAS TRIED AND FAILED TOO.  Make
+  --   `gcdStepExt` OPAQUE so `irr-ind` cannot unfold it — which REQUIRES
+  --   `Prv` to be a RECORD, since `idOfRed` must still match a `Prv` that
+  --   cannot reduce, and only eta allows that.  Both changes typecheck
+  --   (`…LibAmrec` EXIT 0, `…GcdStepExtA` EXIT 0) — and `irrAt` STILL OOMs.
+  --   Reverted.
+  --
+  --   ⇒ blocking the UNFOLDING is not sufficient, so the cost is not (only)
+  --   `ext`'s definition being inlined.  FOUR fixes now proposed and
+  --   falsified.  The next honest step is to profile the CHEAP probe
+  --   (`…ExamplesIrrProbe` completes, so `--profile=all` works there) and
+  --   compare its cost breakdown against a slightly-enlarged step, growing
+  --   the step until it OOMs — that finds WHICH FEATURE of gcd's step
+  --   crosses the line, which no experiment so far has isolated.
   --   Kept verbatim so the discharge is not lost; the theorem below takes
   --   the witness as a HYPOTHESIS instead, which verifies that every
   --   interface in the recursive step lines up and isolates the remaining
