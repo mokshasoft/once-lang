@@ -231,3 +231,21 @@ module GcdRecAt (Δ : Ctx) where
     gcd-gt-eq dirr =
       prv (transN (app amrecTm X) (prvTm s1) (prvTm (s2 dirr)))
           (⊢transN dA dB dC (prvOk s1) (prvOk (s2 dirr)))
+
+    ------------------------------------------------------------------------
+    -- ★★★★★ …AND THE WITNESS, DISCHARGED.  GAP A, EQUATION 3, UNCONDITIONAL.
+    --
+    -- `irr-at` performs the elimination inside `AmTΠ`, where `stp` and `ext`
+    -- are still VARIABLES; here it is a pure instantiation.  Two things had
+    -- to be true at once, and only the pair works:
+    --
+    --   * the ⊢app is elaborated at an ABSTRACT step   (5.8×, `…AbsProbe`)
+    --   * `irr-at` returns `Prv`, so no type ever names the witness term
+    --     (the raw `⊢` form kills `…LibAmrec`: EXIT 143, twice)
+    ------------------------------------------------------------------------
+
+    irrW : Prv Δ (irrT idR X Y K (subTm (single Y) msr))
+    irrW = irr-at gcdStepExt ⊢X ⊢Y ⊢K dμY
+
+    gcd-gt-eq! : Prv Δ (Id (El ⌜Nat⌝) (app amrecTm X) (app amrecTm Y))
+    gcd-gt-eq! = gcd-gt-eq (prvOk irrW)
