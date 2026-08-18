@@ -11,6 +11,7 @@
 module Once.Surface.Elaborate where
 
 open import Once.Type
+open import Once.Float.Dyadic using (Dyadic)
 open import Once.IR
 open import Once.Surface.Syntax
 open import Once.IRTy.WF using (wf-⌊⌋)
@@ -61,6 +62,15 @@ intLit n = const fits-int ∣ n ∣ ∘ terminal
 
 strLit : String → ∀ {Γ} → IR Γ Str
 strLit s = SigOp (str-lit-info s) ∘ terminal
+
+-- A float literal is an ordinary immediate load, exactly like `intLit` — the
+-- dyadic IS the machine-level value (0.72 P2), and the TARGET turns it into
+-- bits at its own width. No FPU is involved in loading a constant.
+--
+-- The representability witness is not consumed here: it has already done its
+-- work by making this term constructible only for accepted values.
+floatLit : Dyadic → ∀ {Γ} → IR Γ Float
+floatLit d = const fits-float d ∘ terminal
 
 -- Arithmetic operations (Int * Int → Int)
 addIR : IR (Int * Int) Int
@@ -220,6 +230,9 @@ elaborate m (int n) = intLit n
 
 -- String literal: constant that ignores environment
 elaborate m (str s) = strLit s
+
+-- Float literal: same shape; the witness is erased at this boundary.
+elaborate m (float d _) = floatLit d
 
 -- Arithmetic operations: pair operands, then apply primitive
 elaborate m (add e₁ e₂) = addIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m

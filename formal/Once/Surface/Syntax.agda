@@ -19,6 +19,8 @@ open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
 open import Data.Bool using (Bool; true; _∧_)
 open import Data.Integer using (ℤ)
+open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Representable using (RepresentableAll)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Data.String using (String)
 open import Once.CanonicalName using (CanonicalName)
@@ -118,6 +120,17 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- Literals — use no variables.
   int   : ∀ {n} {Γ : Ctx n} → ℤ → Expr Γ zeroUsage Int
   str   : ∀ {n} {Γ : Ctx n} → String → Expr Γ zeroUsage Str
+
+  -- A float literal CARRIES ITS REPRESENTABILITY WITNESS (plan 0.71 F4).
+  --
+  -- The alternative — a bare `Dyadic`, with the frontend promising to check —
+  -- leaves `encode`'s `modPow` reachable, and a value too precise for the
+  -- format would be SILENTLY TRUNCATED there rather than rejected. Putting the
+  -- witness in the constructor makes "no unrepresentable float exists in a
+  -- well-typed program" a fact about this datatype instead of a property of
+  -- one code path in the elaborator. There is exactly one construction site,
+  -- so it costs nothing to carry.
+  float : ∀ {n} {Γ : Ctx n} (d : Dyadic) → RepresentableAll d → Expr Γ zeroUsage Float
 
   -- Arithmetic (Int → Int → Int)
   add   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int

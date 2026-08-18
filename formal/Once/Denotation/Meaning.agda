@@ -53,7 +53,7 @@ open import Once.Arith.SigOp.Builders
          lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.TypeCheck.Judgment
   using (_⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_; _⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
-         g-int; g-terminal; g-pair; g-inl; g-inr; g-In;
+         g-int; g-float; g-terminal; g-pair; g-inl; g-inr; g-In;
          m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr;
          m-compose; m-case; m-pair; m-curry; m-cata; m-const;
          m-named; m-named-resolved;
@@ -61,7 +61,7 @@ open import Once.TypeCheck.Judgment
          t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
          t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
          t-var-poly-instantiate-infer;
-         t-int; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
+         t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
          t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-let; t-case;
          t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
          t-terminal-app; t-apply-app-infer; t-app; t-effApp)
@@ -107,6 +107,8 @@ named-sem {A} {B} cn bA cB a =
 
 ⟦_⟧ᵍ : ∀ {ctx e A} → ctx ⊢ᵍ e ∶ A → ⟦ A ⟧ᴰ
 ⟦ g-int n      ⟧ᵍ = absℤ n
+-- …and a float literal means its dyadic (0.72 P2: `⟦ Float ⟧` IS `Dyadic`).
+⟦ g-float _ _ _ d _ ⟧ᵍ = d
 ⟦ g-terminal _ _ ⟧ᵍ = tt
 ⟦ g-pair ga gb ⟧ᵍ = ⟦ ga ⟧ᵍ , ⟦ gb ⟧ᵍ
 ⟦ g-inl ga     ⟧ᵍ = inj₁ ⟦ ga ⟧ᵍ
@@ -196,6 +198,7 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦ t-var-poly-instantiate _ _ _ _ _ _ bodyD ⟧ᶜ dγ = ⟦ bodyD ⟧ᶜ tt
 
 ⟦ t-int n ⟧ᵢ                dγ = returnT (absℤ n)
+⟦ t-float _ _ _ d _ ⟧ᵢ      dγ = returnT d
 ⟦ t-str s ⟧ᵢ                dγ = returnT (semM (str-lit-info s) tt)
 ⟦ t-unit ⟧ᵢ                 dγ = returnT tt
 ⟦ t-unit-var ⟧ᵢ             dγ = returnT tt

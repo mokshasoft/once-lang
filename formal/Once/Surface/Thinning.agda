@@ -221,6 +221,9 @@ rename {Δ = Δ} θ (Surface.div {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
 rename {Δ = Δ} θ (Surface.mod' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.mod' (rename θ a) (rename θ b))
 rename {Δ = Δ} θ (Surface.str s) = subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.str s)
+-- A float literal thins like the other literals; the witness rides along
+-- unchanged, being a fact about the VALUE and not about the context.
+rename {Δ = Δ} θ (Surface.float d r) = subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.float d r)
 rename θ (Surface.neg a) = Surface.neg (rename θ a)
 rename {Δ = Δ} θ (Surface.lt {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.lt (rename θ a) (rename θ b))

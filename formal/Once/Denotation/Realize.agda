@@ -40,10 +40,10 @@ open import Once.TypeCheck.Raw using (RawExpr;
   OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment
-  using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵍ_∶_; g-int; g-terminal; g-pair; g-inl; g-inr; g-In;
+  using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵍ_∶_; g-int; g-float; g-terminal; g-pair; g-inl; g-inr; g-In;
          _⊢ᵐ_∶_⇨[_]_; m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr;
          m-compose; m-case; m-pair; m-curry; m-cata; m-const; m-named; m-named-resolved;
-         t-int; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved; t-var-import;
+         t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved; t-var-import;
          t-annot; t-pair; t-neg; t-let; t-case; t-binop-arith; t-binop-cmp;
          t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-apply-app-infer;
          t-app; t-effApp;
@@ -52,10 +52,11 @@ open import Once.TypeCheck.Judgment
          t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
          t-var-poly-instantiate-infer)
 open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
-  lam; app; effApp; pair; neg; let'; case'; int; str; unit;
+  lam; app; effApp; pair; neg; let'; case'; int; float; str; unit;
   add; sub; mul; div; mod'; lt; le; gt; ge; eq; ne; sigOp; poly;
   lift-morphism; morph-app; arr')
-open import Once.Surface.Elaborate using (intLit; elaborate)
+open import Once.Surface.Elaborate using (intLit; floatLit; elaborate)
+open import Once.Float.Representable using (fits-all)
 open import Once.Arith.SigOp.Builders using (value-info)
 open import Once.CanonicalName using (bare)
 open import Once.Surface.Syntax using (_+ᵘ_; _*ᵘ_)
@@ -96,6 +97,10 @@ realize-infer : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
 realize-global : ∀ {ctx : NamedCtx} {e : RawExpr} {A X : Type}
                → ctx ⊢ᵍ e ∶ A → IR ⌊ X ⌋ ⌊ A ⌋
 realize-global (g-int n)        = intLit n
+-- The reference elaboration reads the DYADIC off the acceptance witness — the
+-- same value the elaborator uses — so the two cannot disagree about what the
+-- literal denotes.
+realize-global (g-float _ _ _ d _) = floatLit d
 realize-global (g-terminal _ _) = IR.terminal
 realize-global (g-pair ga gb)   = ⟨ realize-global ga , realize-global gb ⟩ IR.Heap
 realize-global (g-inl ga)       = IR.inl IR.Heap ∘ realize-global ga
@@ -172,6 +177,7 @@ realize {ctx = ctx} {A = A} (t-var-poly-instantiate _ _ _ _ _ _ bodyD) =
 -- realize-infer (⊢ᵢ) — infer-mode reference elaboration.
 ------------------------------------------------------------------------
 realize-infer (t-int n)         = int n
+realize-infer (t-float _ _ _ d ok) = float d (fits-all ok)
 realize-infer (t-str s)         = str s
 realize-infer t-unit            = unit
 realize-infer t-unit-var        = unit

@@ -55,7 +55,7 @@ open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits 
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; renderError;
-  LambdaInInferMode; LambdaRequiresFunctionType; FloatLiteralUnsupported;
+  LambdaInInferMode; LambdaRequiresFunctionType; FloatNotRepresentable;
   InlInInferMode; InrInInferMode; InitialInInferMode;
   InlNeedsSumType; InrNeedsSumType;
   FstNeedsPair; SndNeedsPair; ArrNeedsFunction; NegationNotInt;
@@ -71,7 +71,7 @@ open import Once.Surface.Syntax as Surface using (lookupUsage; tailUsage; _+ᵘ_
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; +ᵘ-identityʳ; *ᵘ-zeroʳ)
-open import Once.Surface.Elaborate as Elab using (elaborate; intLit; strLit)
+open import Once.Surface.Elaborate as Elab using (elaborate; intLit; floatLit; strLit)
 
 open import Once.TypeCheck.Classify public
 import Once.Functor.Translate
@@ -79,6 +79,8 @@ open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; IsBaseT
 open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?;
   isConcrete?-complete; isBaseType?-complete)
 open import Once.TypeCheck.Morph using (MorphRaw; morphRaw?; morphToIR)
+open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Representable using (Accepted; accept?; fits-all)
 open import Once.TypeCheck.Judgment
 
 ------------------------------------------------------------------------
@@ -171,6 +173,18 @@ isRIntVliftTarget? :
 isRIntVliftTarget? (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Int) =
   just (X , π , refl)
 isRIntVliftTarget? _ = nothing
+
+-- …and the same view for a float literal. `gd-completeV` is what forces this
+-- to exist: without it, `g-float` at a pure-arrow-to-Float target would take
+-- the generic infer-and-match path and report a TypeMismatch, so the value
+-- realm would accept a derivation the checker rejects — completeness false in
+-- the same direction the acceptance premise fixes elsewhere.
+isRFloatVliftTarget? :
+  (T : Type) →
+  Maybe (∃-syntax (λ X → ∃-syntax (λ π → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.Float))))
+isRFloatVliftTarget? (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.Float) =
+  just (X , π , refl)
+isRFloatVliftTarget? _ = nothing
 
 -- | Classify a check-mode target type for a pair literal: a product `A * B`
 -- (bidirectional component check), a pure-arrow-to-product
@@ -664,9 +678,19 @@ inspectWellFormedF F with wellFormedF? F in eq
 -- recurse on the `⊢ᵍ` derivation. Per-type knowledge at the leaves
 -- (`intLit`/`terminal`); structure via the generic generators. `nothing` for
 -- non-value shapes — `⊢ᵍ` is the extractable family by construction.
+checkG-RFloat-aux : (ctx : NamedCtx) (X : Type) (i f l : ℕ)
+                 → Maybe (Σ[ d ∈ Dyadic ] Accepted i f l d)
+                 → Maybe (IR ⌊ X ⌋ ⌊ Once.Type.Float ⌋ × (ctx ⊢ᵍ Raw.RFloat i f l ∶ Once.Type.Float))
+checkG-RFloat-aux ctx X i f l nothing         = nothing
+checkG-RFloat-aux ctx X i f l (just (d , ok)) = just (floatLit d , g-float i f l d ok)
+
 checkG : (ctx : NamedCtx) (X : Type) (e : RawExpr) (A : Type)
        → Maybe (IR ⌊ X ⌋ ⌊ A ⌋ × (ctx ⊢ᵍ e ∶ A))
 checkG ctx X (Raw.RInt n) Once.Type.Int = just (intLit n , g-int n)
+-- A float literal is a value too, and it carries F4's decision the same way
+-- infer-mode does. With-free via an aux so completeness can rewrite by
+-- `accept?-complete` and see this reduce.
+checkG ctx X (Raw.RFloat i f l) Once.Type.Float = checkG-RFloat-aux ctx X i f l (accept? i f l)
 checkG ctx X (Raw.RVar "terminal") Once.Type.Unit
   with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
 ... | llv-not-found eqL | liv-not-found eqI = just (IR.terminal , g-terminal eqL eqI)
@@ -1267,6 +1291,24 @@ mutual
     ∀ (ctx : NamedCtx) (n : ℤ) (T : Type)
     → Maybe (∃-syntax (λ X → ∃-syntax (λ π → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Int))))
     → VerifiedCheckResult ctx (Raw.RInt n) T
+  -- RFloat check-mode dispatch: the value-lift view AND F4's decision, both
+  -- passed in. Two scrutinees, no overlap and no `with`.
+  checkElabV-RFloat-aux :
+    ∀ (ctx : NamedCtx) (i f l : ℕ) (T : Type)
+    → Maybe (∃-syntax (λ X → ∃-syntax (λ π → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.Float))))
+    → Maybe (Σ[ d ∈ Dyadic ] Accepted i f l d)
+    → VerifiedCheckResult ctx (Raw.RFloat i f l) T
+
+  -- RFloat infer-mode dispatch, taking F4's ACCEPTANCE DECISION explicitly.
+  -- `just (d , acc)` ⇒ the literal is exactly representable at every supported
+  -- format and elaborates to `Surface.float d`; `nothing` ⇒ a real type error
+  -- naming the offending digits. One scrutinee, no `with` inside the mutual
+  -- block (which is where `with` becomes unmanageable).
+  inferElabV-RFloat-aux :
+    ∀ (ctx : NamedCtx) (i f l : ℕ)
+    → Maybe (Σ[ d ∈ Dyadic ] Accepted i f l d)
+    → VerifiedInferResult ctx (Raw.RFloat i f l)
+
   -- RPair check-mode dispatch, taking the target classification explicitly
   -- (product / pure-arrow-to-product / other). One scrutinee, no overlap.
   checkElabV-RPair-aux :
@@ -1700,11 +1742,8 @@ mutual
   inferElabV ctx (Raw.RInt n) =
     success Int _ (Surface.int n) 0 (NamedCtx.freshCounter ctx) , t-int n
 
-  -- Plan 0.71/0.72 in flight — see `FloatLiteralUnsupported`. The carrier and
-  -- the encoders are done (0.72 P1/P2); what is missing is the Surface node and
-  -- the typing rule, and F4's exactness check that gates them.
   inferElabV ctx (Raw.RFloat i f l) =
-    failure FloatLiteralUnsupported , tt
+    inferElabV-RFloat-aux ctx i f l (accept? i f l)
 
   inferElabV ctx (Raw.RStringLit s) =
     success Str _ (Surface.str s) 0 (NamedCtx.freshCounter ctx) , t-str s
@@ -1845,6 +1884,8 @@ mutual
   -- the two outcomes don't overlap (no stuck `checkElabV (RInt n) T` for
   -- variable `T`). Behaviour is unchanged; the dispatch is now analysable.
   checkElabV-wf ctx ac (Raw.RInt n) T = checkElabV-RInt-aux ctx n T (isRIntVliftTarget? T)
+  checkElabV-wf ctx ac (Raw.RFloat i f l) T =
+    checkElabV-RFloat-aux ctx i f l T (isRFloatVliftTarget? T) (accept? i f l)
 
   -- Generic infer-and-match fallback — covers RInt, RStringLit, RUnit,
   -- RPair, RBinOp, RUnaryOp, RLet, RDestruct, RAnnot, RQualified, RResolved.
@@ -2504,9 +2545,40 @@ mutual
   checkElabV-RVar-bbc-inr-failure-aux ctx (Once.Type.μ-type _) err _ _ = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (Once.Type.ν-type _) err _ _ = failure err , tt
 
+  -- RFloat: F4's decision, made once and passed in.
+  --
+  -- The accepted branch hands the witness straight to BOTH the Surface node
+  -- and `t-float` — the same evidence, so the elaborated term and its typing
+  -- derivation cannot disagree about which literals are legal.
+  --
+  -- The rejected branch is a REAL ERROR carrying the digits the user wrote,
+  -- not a rounded value. That is the whole point of plan 0.71: `0.1` does not
+  -- become the nearest double, it fails to compile.
+  -- NB `ok`, not `acc`: `acc` is the well-founded-recursion constructor and is
+  -- in scope here, so binding it silently turns this into a constructor pattern.
+  inferElabV-RFloat-aux ctx i f l (just (d , ok)) =
+    success Float _ (Surface.float d (fits-all ok)) 0 (NamedCtx.freshCounter ctx)
+    , t-float i f l d ok
+  inferElabV-RFloat-aux ctx i f l nothing =
+    failure (FloatNotRepresentable i f l) , tt
+
   -- RInt: value-lift on a pure-arrow-to-Int target, else generic infer+match.
   -- `refl` refines `T` to the arrow so `t-value-lift (g-int n)` types; the
   -- `nothing` branch reproduces the old generic clause for RInt verbatim.
+  -- RFloat: value-lift on a pure-arrow-to-Float target when the literal is
+  -- accepted; otherwise the generic infer+match, which reports either the
+  -- representability error or the type mismatch — both real errors.
+  checkElabV-RFloat-aux ctx i f l T (just (X , π , refl)) (just (d , ok)) =
+    success Surface.zeroUsage (Surface.lift-morphism (floatLit d)) 0 (NamedCtx.freshCounter ctx)
+    , t-value-lift (g-float i f l d ok)
+  checkElabV-RFloat-aux ctx i f l T (just _) nothing =
+    failure (FloatNotRepresentable i f l) , tt
+  checkElabV-RFloat-aux ctx i f l T nothing _ with inferElabV ctx (Raw.RFloat i f l)
+  ... | failure err , _ = failure err , tt
+  ... | success T' Ψ eE d fr , w with T ≟T T'
+  ...   | yes refl = success Ψ eE d fr , t-embed w
+  ...   | no _     = failure (TypeMismatch T T') , tt
+
   checkElabV-RInt-aux ctx n T (just (X , π , refl)) =
     success Surface.zeroUsage (Surface.lift-morphism (intLit n)) 0 (NamedCtx.freshCounter ctx)
     , t-value-lift (g-int n)

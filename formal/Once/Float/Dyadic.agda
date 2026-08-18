@@ -24,7 +24,6 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; _<_; _≤_; s�
 open import Data.Nat.Properties using (≤-refl; ≤-trans; +-comm; m≤m+n; m≤n+m; *-comm)
 open import Data.Nat.DivMod using (_/_; _%_; m%n<n)
 open import Data.Nat.Properties using (m^n≢0)
-open import Data.Nat.Logarithm using (⌊log₂_⌋)
 open import Data.Nat.Properties using (m^n>0)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -157,9 +156,27 @@ private
 ------------------------------------------------------------------------
 
 -- | Bit length: `bitLen 0 = 0`, else `⌊log₂ m⌋ + 1`.
+--
+-- NOT the library's `⌊log₂_⌋`, and the reason is REDUCTION COST rather than
+-- taste. `⌊log₂_⌋` is defined by well-founded recursion, so evaluating it on a
+-- numeral normalises `<-wellFounded n` — an accessibility tree built by
+-- induction on `n`, i.e. LINEAR in the number. That is invisible on the small
+-- significands the pins below use, and hopeless at `2 ^ 24 + 1`, which is
+-- exactly the size `Once.Float.Representable`'s cross-target pin needs (the
+-- first significand binary32 cannot hold). Found the hard way: that pin did
+-- not finish.
+--
+-- Halving with fuel is structural, reduces in ⌈log₂ n⌉ steps, and each step is
+-- a builtin division. `n` is always enough fuel — the value reaches 0 after
+-- that many halvings — and matching `suc` on a numeral does not expand it to
+-- unary, so passing the number as its own fuel costs nothing.
+bitLen-go : ℕ → ℕ → ℕ
+bitLen-go zero       _         = 0
+bitLen-go (suc _)    zero      = 0
+bitLen-go (suc fuel) n@(suc _) = suc (bitLen-go fuel (n / 2))
+
 bitLen : ℕ → ℕ
-bitLen zero    = 0
-bitLen (suc n) = suc ⌊log₂ (suc n) ⌋
+bitLen n = bitLen-go n n
 
 -- | The stored (biased) exponent: `bias + (L − 1) − shift`, clamped.
 --

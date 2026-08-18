@@ -140,6 +140,12 @@ liftD {A} {B} ir = returnT (liftFn ir)
 ⟦ absurd e ⟧ˢ     dγ = ⟦ e ⟧ˢ dγ >>=T λ v → ⊥-elim v
 ⟦ let' e1 e2 ⟧ˢ   dγ = ⟦ e1 ⟧ˢ dγ >>=T λ v1 → ⟦ e2 ⟧ˢ (dγ , v1)
 ⟦ int n ⟧ˢ        dγ = returnT (absℤ n)
+-- A float literal denotes ITSELF. This is 0.72 P2's payoff at the denotation:
+-- `⟦ Float ⟧` IS `Dyadic`, so there is no encoder, no rounding and no abstract
+-- `semM` between the literal and its meaning — unlike `str` below. The IR side
+-- (`floatLit d = const fits-float d ∘ terminal`) evaluates to the same `d`, so
+-- the two agree DEFINITIONALLY, exactly as they do for `int`.
+⟦ float d _ ⟧ˢ    dγ = returnT d
 -- str: `str-lit-semM` is ABSTRACT (postulated, unlike the computing lit-int-semM),
 -- so the literal's value can't be the clean `s`; denote via its own SigOp `semM`
 -- (= `strLit`'s evalᴰ), matching the IR by construction (like arith).

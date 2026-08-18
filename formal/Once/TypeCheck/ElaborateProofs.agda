@@ -28,7 +28,9 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax)
+open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; proj₂)
+open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Representable using (Accepted; accept?-complete)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; cong₂; sym; trans)
 open import Once.Type
 open Once.Type using (showQuantity; showType) public
@@ -85,6 +87,24 @@ checkElab-fallback-RInt :
       checkElab ctx (Raw.RInt n) Int
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RInt {ctx} n with Int ≟T Int
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- RFloat infers at `Float` — BUT ONLY IF ACCEPTED, so the witness is a
+-- premise rather than something this lemma could conjure. That asymmetry with
+-- `RInt` is the acceptance rule showing up in the proofs exactly where it
+-- should: there is no fallback for a literal the compiler must reject.
+--
+-- `accept?-complete` is what turns the witness into the reduction: it says the
+-- decider agrees with the derivation, so `inferElabV`'s dispatch unsticks.
+checkElab-fallback-RFloat :
+  ∀ {ctx : NamedCtx} (i f l : ℕ) {d : Dyadic} (ok : Accepted i f l d)
+  → ∃-syntax (λ eE → ∃-syntax (λ dd → ∃-syntax (λ fr →
+      checkElab ctx (Raw.RFloat i f l) Float
+        ≡ success Surface.zeroUsage eE dd fr)))
+checkElab-fallback-RFloat {ctx} i f l ok
+  rewrite accept?-complete ok
+  with Float ≟T Float
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
@@ -645,6 +665,9 @@ resolveExprWF polys pAcc imps userFns fresh (Surface.absurd e) = Surface.absurd 
 resolveExprWF polys pAcc imps userFns fresh (Surface.let' e₁ e₂) =
   Surface.let' (resolveExprWF polys pAcc imps userFns fresh e₁) (resolveExprWF polys pAcc imps userFns fresh e₂)
 resolveExprWF polys _ imps userFns _ (Surface.int z) = Surface.int z
+-- A float literal has no names to resolve, exactly like the other literals;
+-- the witness passes through untouched.
+resolveExprWF polys _ imps userFns _ (Surface.float d r) = Surface.float d r
 resolveExprWF polys _ imps userFns _ (Surface.str s) = Surface.str s
 resolveExprWF polys pAcc imps userFns fresh (Surface.add a b) =
   Surface.add (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
