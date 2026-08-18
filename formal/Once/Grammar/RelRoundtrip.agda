@@ -86,6 +86,7 @@ NotCont→NotStar {TNewline   ∷ _} _ = tt
 NotCont→NotStar {TEOF       ∷ _} _ = tt
 NotCont→NotStar {TWord _    ∷ _} _ = tt
 NotCont→NotStar {TInt _     ∷ _} _ = tt
+NotCont→NotStar {TFloat _ _ _     ∷ _} _ = tt
 NotCont→NotStar {TString _  ∷ _} _ = tt
 
 NotCont→NotStarPlus : ∀ {toks} → NotCont toks → NotStarPlus toks
@@ -123,6 +124,7 @@ NotCont→NotStarPlus {TNewline   ∷ _} _ = tt
 NotCont→NotStarPlus {TEOF       ∷ _} _ = tt
 NotCont→NotStarPlus {TWord _    ∷ _} _ = tt
 NotCont→NotStarPlus {TInt _     ∷ _} _ = tt
+NotCont→NotStarPlus {TFloat _ _ _     ∷ _} _ = tt
 NotCont→NotStarPlus {TString _  ∷ _} _ = tt
 
 NotCont→NotStar-quantity : ∀ q {rest : List Token}
@@ -173,6 +175,7 @@ NotCont→NotArrowOrGrade {TNewline   ∷ _} _ = tt
 NotCont→NotArrowOrGrade {TEOF       ∷ _} _ = tt
 NotCont→NotArrowOrGrade {TWord _    ∷ _} _ = tt
 NotCont→NotArrowOrGrade {TInt _     ∷ _} _ = tt
+NotCont→NotArrowOrGrade {TFloat _ _ _     ∷ _} _ = tt
 NotCont→NotArrowOrGrade {TString _  ∷ _} _ = tt
 
 ------------------------------------------------------------------------
