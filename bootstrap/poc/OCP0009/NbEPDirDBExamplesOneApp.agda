@@ -1,0 +1,96 @@
+------------------------------------------------------------------------
+-- OCP-0009 — DOES **ONE** FORCED APPLICATION OF `gcdStepExt` FIT?
+--
+-- ⚠ THE SUB-QUESTION THAT DECIDES THE NEXT REFACTOR.  The ladder showed the
+--   cost is the `StepExt` PROOF, not the step term: `irr-ind` applies `ext`
+--   and `idOfRed` forces the result, ONCE PER LEAF — four times.  The
+--   obvious lever is to make that happen ONCE.  But that only helps if a
+--   SINGLE application fits:
+--
+--     one application cheap, four OOM   ⇒ hoisting to one is the fix
+--     one application OOMs              ⇒ hoisting is pointless; the cost
+--                                         is gcd's `StepExt` reducing AT
+--                                         ALL, and the interface has to
+--                                         change so it is never forced
+--
+-- ★ Every premise is a PARAMETER, so nothing here builds a `StepPW` or a
+--   renaming — the module measures exactly one thing: forcing the result of
+--   `gcdStepExt` open, via `prvOk`.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module poc.OCP0009.NbEPDirDBExamplesOneApp where
+
+open import poc.OCP0009.NbEPDirDBPi
+  using ( Cx; _∙; RTy; El; Id; RTm; app; ⌜Nat⌝
+        ; Ren; renTm; renTy; subTm; extR )
+open import poc.OCP0009.NbEPDirDBType
+  using ( Ctx; _▹_; ⌊_⌋; single; _⊢_∷_ )
+open import poc.OCP0009.NbEPDirDBSubj using ( Ren⊢ )
+open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
+open import poc.OCP0009.NbEPDirDBLibAmrec using ( prvTm; prvOk; StepPW )
+open import poc.OCP0009.NbEPDirDBLibPair using ( PairT )
+open import poc.OCP0009.NbEPDirDBExamplesGcdStep using ( gcdStp; msr )
+open import poc.OCP0009.NbEPDirDBExamplesGcdStepExtA using ( gcdStepExt )
+open import poc.OCP0009.NbEPDirDBLibAmrec using ( module AmTΠ; Prv; irrT )
+open import poc.OCP0009.NbEPDirDBType using ( ◇; _⊢ty_; ⊢nzero; ⊢nsuc )
+open import poc.OCP0009.NbEPDirDBPi using ( nzero; nsuc; var; vs; vz; Π; Nat )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w )
+open import poc.OCP0009.NbEPDirDBLibPair using ( ⊢PairT )
+open import poc.OCP0009.NbEPDirDBType using ( ⊢⌜Nat⌝ )
+open import poc.OCP0009.NbEPDirDBExamplesGcdStep using ( ⊢msr; ⊢gcdStp )
+
+-- the IH type at the carrier, spelled exactly as `StepExt` spells it
+IHTy : {Δ Θ : Ctx} (ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋) (a : RTm ⌊ Θ ⌋) → RTy ⌊ Θ ⌋
+IHTy ρ a = aIHTat (renTy ρ PairT) (renTm (extR ρ) ⌜Nat⌝) (renTm (extR ρ) msr)
+                  (subTm (single a) (renTm (extR ρ) msr))
+
+------------------------------------------------------------------------
+-- ★★★ ONE APPLICATION, FORCED.
+------------------------------------------------------------------------
+
+oneApp : {Δ Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} (hρ : Ren⊢ Δ Θ ρ)
+         (a ih₁ ih₂ : RTm ⌊ Θ ⌋)
+         (da : Θ ⊢ a ∷ renTy ρ PairT)
+         (d₁ : Θ ⊢ ih₁ ∷ IHTy ρ a) (d₂ : Θ ⊢ ih₂ ∷ IHTy ρ a)
+         (pw : StepPW Δ PairT ⌜Nat⌝ msr Θ ρ a ih₁ ih₂) →
+         Θ ⊢ prvTm (gcdStepExt hρ a ih₁ ih₂ da d₁ d₂ pw)
+           ∷ Id (El (subTm (single a) (renTm (extR ρ) ⌜Nat⌝)))
+                (app (app (renTm ρ gcdStp) a) ih₁)
+                (app (app (renTm ρ gcdStp) a) ih₂)
+oneApp hρ a ih₁ ih₂ da d₁ d₂ pw = prvOk (gcdStepExt hρ a ih₁ ih₂ da d₁ d₂ pw)
+
+------------------------------------------------------------------------
+-- ★★★ WHICH LEAF?  Three of `irr-ind`'s four are EX FALSO (`pwZ`); only
+--     `irr-ss` has content — it instantiates the pointwise hypothesis at
+--     the recursive call.  Force each at gcd's `ext` and compare.
+------------------------------------------------------------------------
+
+module LeafAt (Δ : Ctx) where
+
+  open AmTΠ Δ PairT ⌜Nat⌝ msr gcdStp ⊢PairT ⊢⌜Nat⌝ ⊢msr ⊢gcdStp public
+    using ( irr-zz; irr-zs; irr-sz; irr-ss; irrT; vsθ )
+
+  -- the cheapest leaf: both bounds zero, premise ex falso
+  leafZZ : {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} (h : Ren⊢ Δ Θ θ)
+           {x y : RTm ⌊ Δ ⌋} (dx : Δ ⊢ x ∷ PairT) (dy : Δ ⊢ y ∷ PairT) →
+           Prv Θ (irrT θ x y nzero nzero)
+  leafZZ h dx dy = irr-zz gcdStepExt h dx dy
+
+  -- ★ one bound zero, one a successor — still ex falso, but the successor
+  --   side goes through `⊢ihS-atR` rather than `⊢ihZ-atR`
+  leafZS : {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} (h : Ren⊢ Δ Θ θ)
+           {x y : RTm ⌊ Δ ⌋} (dx : Δ ⊢ x ∷ PairT) (dy : Δ ⊢ y ∷ PairT)
+           {k : RTm ⌊ Θ ⌋} (dk : Θ ⊢ k ∷ Nat) →
+           Prv Θ (irrT θ x y nzero (nsuc k))
+  leafZS h dx dy dk = irr-zs gcdStepExt h dx dy dk
+
+  -- ★★ THE ONLY LEAF WITH CONTENT: both bounds successors, so the pointwise
+  --    hypothesis is instantiated at the recursive call rather than being
+  --    ex falso.  This is where `descS-peel` and `⊢strong-step` live.
+  leafSS : {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} (h : Ren⊢ Δ Θ θ)
+           {x y : RTm ⌊ Δ ⌋} (dx : Δ ⊢ x ∷ PairT) (dy : Δ ⊢ y ∷ PairT)
+           {k₁ k₂ t : RTm ⌊ Θ ⌋} (dk₁ : Θ ⊢ k₁ ∷ Nat) (dk₂ : Θ ⊢ k₂ ∷ Nat)
+           (dih : Θ ⊢ t ∷ Π Nat (irrT (vsθ θ) x y (w k₁) (var vz))) →
+           Prv Θ (irrT θ x y (nsuc k₁) (nsuc k₂))
+  leafSS h dx dy dk₁ dk₂ dih = irr-ss gcdStepExt h dx dy dk₁ dk₂ dih
