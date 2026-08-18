@@ -7972,3 +7972,72 @@ definitions proofs reduce. Same family as "prefer top-level helpers taking
 `Dec`/`Maybe` arguments over `with`-blocks", and the same family as the
 MAlonzo case-tree blowups a `with`-wrapper causes — the cure is identical:
 name the auxiliary and take its result as a value.
+
+## D111: The Third Instance Is What Tests a Generic Core — Three Findings from Instantiating It
+
+**Date**: 2026-08-17 · **Status**: Landed (2 findings closed, 1 open) · **Plan**: 0.66 (closes it)
+
+Plan 0.65 extracted `FlatCore` from x86-64's correspondence and instantiated it
+at riscv64. Two instances built together prove little: the core was shaped while
+riscv64 was in view. **x86-32 is the first instance nobody tuned the core for**,
+and this entry records what that measured — the reason to keep porting to a
+third target even when two are green.
+
+### 1. The extraction GENERALISED — measured, not asserted
+
+`RegRoles`, `FlatCorrespondence`, `FlatComposition` and `ResourceBounds`
+transferred to x86-32 as x86-64's files with the register file and ISA swapped,
+each typechecking on the FIRST attempt. `FlatSimulation` — 42 block-steps,
+~2300 lines — needed four genuine edits and no structural change:
+
+    updateFlags takes ONE argument here (x86-32), not two
+    `mov-code r ℓ` where x86-64 has `lea r (rip+label ℓ)`
+    `jmp-l` where x86-64's `jmp` takes a label
+    `cmp [ecx]` where x86-64 addresses `[rdi+0]`
+
+Plan 0.66 predicted the first of those in advance as the test of whether the
+core obeyed its own rule (take the branch OUTCOME in read-back form, never
+mention `Flags`). It did: nothing in x86-32's `StepLemmas` is exported to the
+core.
+
+### 2. A CORE FIELD CARRIED AN ISA DETAIL — `+ 0` is a displacement (OPEN)
+
+`CompiledCorrespondence`'s tag-branch fields say
+
+    memory s (rreg s in1-reg + 0) ≡ just k
+
+The `+ 0` is a DISPLACEMENT. x86-64's `[rdi+0]` and riscv64's `ld t1, 0(t0)`
+both produce it, so two instances agreed and the shape looked arch-free;
+x86-32's `cmp [ecx], 0` has no displacement and does not. x86-32 converts
+locally with `+-identityʳ`, next to the addressing mode it belongs to.
+
+**Open follow-up**: the core should say what it MEANS — the tag cell is at the
+Input1 pointer — and let each arch add its own displacement. Two arches matching
+a detail is not the same as the detail being generic, which is precisely the
+failure mode this entry exists to name.
+
+### 3. A LATENT CLOBBER the emitter has no register to avoid
+
+`lea-indexed` on x86-32 lowers to
+
+    mov ecx, [esp+n] ; mov eax, edx ; add eax, eax ; add eax, eax ; add ecx, eax
+
+using `%eax` — the OUTPUT role — as the doubling temp, where x86-64 uses `rcx`,
+a register with no role at all. The abstract `lea-indexed` writes only Input1,
+so the lowering destroys a live value the model says survives.
+
+**Not a live defect**: the engine refutes `lea-indexed` outright
+(`frame-op-absurd` — `ir-to-trace` emits none), so no emitted trace contains it.
+It is the same shape `Input2` had before D108 retired it: dead today, wrong the
+day it gains a producer, and on this arch there is no spare register to fix it
+with. Recorded so the next person to give `lea-indexed` a producer finds this
+first.
+
+### The width audit found nothing, and that is the result
+
+Plan 0.66's premise was that `slot-size` (4 here, 8 elsewhere) is the one new
+axis. `grep '\b8\b'` over `FlatCore` returns COMMENTS ONLY; `slot-size` is a
+module parameter with a `NonZero` instance and the `word-eq` tie, and every
+offset goes through it. The core was width-clean before anyone checked — which
+is worth recording precisely because it is the audit that could have gone the
+other way.
