@@ -28,23 +28,23 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBLibArithMonus where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
-        ; RTy; Hom; Nat; El; Π
-        ; RTm; var; nzero; nsuc; natrec; ordtr; unit; lam; app
+        ; RTy; Hom; Nat; El; Π; base
+        ; RTm; var; nzero; nsuc; natrec; ordtr; unit; lam; app; absurd
         ; renTm; subTy; subTm; Sub; extS )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢ordtr; ty-Nat; ty-Hom
-        ; _≅ᵀ_; csymᵀ; Hom-Nat-ss
+        ; _≅ᵀ_; csymᵀ; Hom-Nat-ss; Hom-Nat-sz; ⊢absurd
         ; _⟶_; _⟶*_; done; step; ξ-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w; sub-w² )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w; sub-w; sub-w² )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBExamplesDiv
@@ -356,3 +356,127 @@ monusLeB a = Π Nat (Π (Hom Nat (w a) (var vz))
     (ty-Π (ty-Hom ty-Nat (⊢var (there here)) (⊢var here))
           (⊢tyIdN (⊢monus (⊢var (there (there here))) (⊢var (there here)))
                   ⊢nzero))
+
+-- ★ the two branches, as their own Defs (one big term per Def)
+
+monusLeZ : {Γ : Cx} → RTm Γ
+monusLeZ = lam (lam (monus0Tm (var (vs vz))))
+
+⊢monusLeZ : {Γ : Ctx} → Γ ⊢ monusLeZ ∷ monusLeB nzero
+⊢monusLeZ =
+  ⊢lam ty-Nat
+    (⊢lam (ty-Hom ty-Nat ⊢nzero (⊢var here))
+          (⊢monus0 (⊢var (there here))))
+
+-- ★★ THE INNER SPLIT.  At `a := suc k` the certificate decides `b`:
+--    `suc k ≤ 0` is `base` (absurd), `suc k ≤ suc j` IS `k ≤ j`.
+
+-- the inner motive: `b` fresh, `k` reachable past (b, ih)
+leC : {Γ : Cx} → RTy ((((Γ ∙) ∙) ∙) ∙)
+leC = Π (Hom Nat (nsuc (var (vs (vs (vs vz))))) (var vz))
+        (IdN (monusTm (nsuc (var (vs (vs (vs (vs vz)))))) (var (vs vz))) nzero)
+
+⊢leC : {Γ : Ctx} → ((((Γ ▹ Nat) ▹ monusLeB (var vz)) ▹ Nat) ▹ Nat) ⊢ty leC
+⊢leC = ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢var (there (there (there here))))) (⊢var here))
+            (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (there (there (there here))))))
+                            (⊢var (there here)))
+                    ⊢nzero)
+
+monusLeS : {Γ : Cx} → RTm ((Γ ∙) ∙)
+monusLeS =
+  lam (natrec (lam (absurd (⌜Id⌝ ⌜Nat⌝ (monusTm (nsuc (var (vs (vs (vs vz))))) nzero)
+                                       nzero)
+                           (var vz)))
+              (lam (transN (monusTm (nsuc (var (vs (vs (vs (vs (vs vz)))))))
+                                    (nsuc (var (vs (vs vz)))))
+                           (monusSSTm (var (vs (vs (vs (vs (vs vz))))))
+                                      (var (vs (vs vz))))
+                           (app (app (var (vs (vs (vs (vs vz)))))
+                                     (var (vs (vs vz))))
+                                (var vz))))
+              (var vz))
+
+monusLeTm : {Γ : Cx} → RTm Γ → RTm Γ
+monusLeTm a = natrec monusLeZ monusLeS a
+
+⊢monusLe : {Γ : Ctx} {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ Nat →
+           Γ ⊢ monusLeTm a ∷ monusLeB a
+⊢monusLe {a = a} da = ⊢natrec ⊢monusLeMot ⊢monusLeZ sB da
+  where
+    sB = ⊢lam ty-Nat (⊢natrec ⊢leC zBr sBr (⊢var here))
+      where
+        -- b := 0 :  `suc k ≤ 0` reduces to `base`, so the branch is absurd
+        zBr = ⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢var (there (there here)))) ⊢nzero)
+                   (⊢conv (⊢absurd dCode dBase) (elIdN _ _))
+          where
+            dCode = ⊢⌜Id⌝ ⊢⌜Nat⌝
+                      (natAsEl (⊢monus (⊢nsuc (⊢var (there (there (there here)))))
+                                       ⊢nzero))
+                      (natAsEl ⊢nzero)
+            dBase = ⊢conv (⊢var here) (red→≅ᵀ (stepᵀ (Hom-Nat-sz _) doneᵀ))
+        -- b := suc j :  `suc k ≤ suc j` IS `k ≤ j`, so the IH applies at j
+        -- ⚠ THE DOMAIN AND THE BODY SIT EITHER SIDE OF THE `lam`, so `k` and
+        --   `j` need DIFFERENT indices in the two positions — one binder
+        --   apart.  Sharing one derivation between them is the trap.
+        sBr = ⊢lam (ty-Hom ty-Nat (⊢nsuc dKᵈ) (⊢nsuc dJᵈ))
+                   (⊢transN dLHS dMID ⊢nzero (⊢monusSS dK' dJ) dIHapp)
+          where
+            -- domain side (before `c` is bound)
+            dKᵈ  = ⊢var (there (there (there (there here))))
+            dJᵈ  = ⊢var (there here)
+            -- body side (after `c` is bound)
+            dK'  = ⊢var (there (there (there (there (there here)))))
+            dJ   = ⊢var (there (there here))
+            dIH  = ⊢var (there (there (there (there here))))
+            dLHS = ⊢monus (⊢nsuc dK') (⊢nsuc dJ)
+            dMID = ⊢monus dK' dJ
+            dCer = ⊢conv (⊢var here) (red→≅ᵀ (stepᵀ (Hom-Nat-ss _ _) doneᵀ))
+            dIHapp = ⊢app (⊢app dIH dJ) dCer
+
+------------------------------------------------------------------------
+-- ★★ NON-VACUITY FOR THE BRIDGE — `a ∸ a ≡ 0`, at a VARIABLE `a`.
+--
+-- ⚠ THIS FILE'S OWN POST-MORTEM is the reason it is here: two lemmas were
+--   `--safe`, hole-free and green, and VACUOUS, because their premise could
+--   not be satisfied where they were stated.  `⊢monusLe` is a `Π` over the
+--   certificate, so the question is whether ANY certificate exists at a
+--   variable.  It does — `⊢le-refl` — and this is the witness.
+--
+-- ⭐ CONTRAST WITH THE `⟶*` PREMISE IT REPLACES.  `monusTm (nsuc a)
+--   (nsuc b) ⟶* nzero` forces BOTH arguments ground (a variable never
+--   reduces).  `Hom Nat a b` is inhabited at variables.  That difference is
+--   exactly why equation 4 was unreachable and is now approachable.
+------------------------------------------------------------------------
+
+monusSelfTm : {Γ : Cx} → RTm Γ → RTm Γ
+monusSelfTm a = app (app (monusLeTm a) a) (reflTm a)
+
+-- ⚠ TWO PEELS.  Applying a `Π`-quantified motive at `b := a` leaves the
+--   motive's DOUBLE weakening of `a` to cancel, plus the bound `b` slot.
+--   `sub-w` then `wk-single` for the first; `wk-single` alone for the
+--   second, since `extS σ (vs v)` is already `w (σ v)` definitionally.
+mself-peel : {Γ : Cx} (a : RTm Γ) →
+             subTm (single (reflTm a)) (subTm (extS (single a)) (w (w a))) ≡ a
+mself-peel a =
+  trans (cong (subTm (single (reflTm a)))
+              (trans (sub-w {σ = single a} (w a))
+                     (cong w (wk-single {v = a} a))))
+        (wk-single {v = reflTm a} a)
+
+mself-at : {Γ : Cx} (a : RTm Γ) →
+           subTy (single (reflTm a))
+                 (subTy (extS (single a))
+                        (IdN (monusTm (w (w a)) (var (vs vz))) nzero))
+         ≡ IdN (monusTm a a) nzero
+mself-at a = cong₂ (λ x y → IdN (monusTm x y) nzero)
+                   (mself-peel a) (wk-single {v = reflTm a} a)
+
+⊢monusSelf : {Γ : Ctx} {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ Nat →
+             Γ ⊢ monusSelfTm a ∷ IdN (monusTm a a) nzero
+⊢monusSelf {a = a} da =
+  ⊢-cast (mself-at a) (⊢app (⊢app (⊢monusLe da) da) dRefl)
+  where
+    -- the certificate slot is `Hom Nat (w a) (var vz)` under `single a`,
+    -- so reflexivity needs the same one-step peel
+    dRefl = ⊢-cast (sym (cong (λ z → Hom Nat z a) (wk-single {v = a} a)))
+                   (⊢le-refl da)
