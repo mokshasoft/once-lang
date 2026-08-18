@@ -77,7 +77,7 @@ open import Once.CCC.FrameSemantics using (frame-base; slot-addr; slot-addr-line
 open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
 open import Once.Memory.HeapAddress using (heap-ref; ref-id)
 open import Once.Word using (Carrier)
-open import Once.Semantics.FloatBits using (float-bits)
+open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.Type using (fits-int; fits-float)
 
@@ -105,7 +105,7 @@ riscv64-link-claim : R.State → ℕ → ℕ → Set
 riscv64-link-claim s _ v = rreg' s ra ≡ v
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
-       o FS rv-slot-size word-eq float-bits Reg riscv64-roles R.State rreg' R.State.memory rhalted
+       o FS rv-slot-size word-eq (encode binary64) Reg riscv64-roles R.State rreg' R.State.memory rhalted
        riscv64-link-claim
        R.State.pc Program compile-trace R.find-label blk-off blk-len R.exec
        R.W.modulus
@@ -661,15 +661,15 @@ block-step-scratch-dec {hv} prog fs s k cc h ft sc-eq no-borrow s3<mod =
 -- load-const (float): Output := SV-Lit fits-float v ↔ `li a0, <bits>`.
 -- D079 applied to riscv64 (0.65 G2). Shares `block-step-li` with the int case,
 -- so the phase-D range obligation arrives identically — and here it is TRUE BY
--- CONSTRUCTION (`float-bits` is `primWord64ToNat` of a `Word64`), assumed only
+-- CONSTRUCTION (`float-bits` (as it was) is `primWord64ToNat` of a `Word64`), assumed only
 -- because `Data.Word.Properties` states no such bound.
-block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : AgdaFloat) → CompiledCorr hv prog fs s
+block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : Dyadic) → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
-  → float-bits v < R.W.modulus
+  → (encode binary64) v < R.W.modulus
   → BlockStep hv prog fs s (instr-load-const fits-float v)
 block-step-load-const-float {hv} prog fs s v cc h ft fits =
-  block-step-li prog fs s (instr-load-const fits-float v) a0 (float-bits v) cc h ft refl fits refl (refl , refl , refl) refl
+  block-step-li prog fs s (instr-load-const fits-float v) a0 (encode binary64 v) cc h ft refl fits refl (refl , refl , refl) refl
     (C.sim-load-const-float v fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-out _ _))
 
 ------------------------------------------------------------------------

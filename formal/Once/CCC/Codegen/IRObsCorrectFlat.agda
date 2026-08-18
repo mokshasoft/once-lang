@@ -46,6 +46,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- surface `FitsInReg`/`fits-in-reg?` stay; the μ/functor + value-domain layer is IRTy.
 open import Once.Type using (Type; FitsInReg; fits-in-reg?)
   renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ; Int to Intˢ; Unit to Unitˢ)
+open import Once.Float.Dyadic using (Dyadic)
 open import Once.IRTy using (WellFormedFI-irrelevant)
 open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
 open import Once.IR using (IR; IRTy; Unit; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ; _∘_;
@@ -55,7 +56,7 @@ open import Once.IR using (IR; IRTy; Unit; AllocMode; Stack; Cata; SigOp; SigOpI
   id; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply;
   In; Para; Out; in-ν; Ana; Hylo; Fuse; free-heap; const;
   NatTr; ν-type; _*_)
-open import Once.IRTy using (⟦_⟧-baseI)
+open import Once.IRTy using (⟦_,_⟧-baseI)
 open import Once.Memory.HeapAddress using (HeapRef)
 open import Once.Word using (Carrier)
 open import Data.Unit using (tt)
@@ -611,7 +612,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   --
   -- Two clauses because `prim-sv` dispatches on the `FitsInRegI` evidence; the
   -- bodies are identical.
-  obs-correct-const : ∀ {A} (fit : FitsInRegI A) (v : ⟦ Carrier ⟧-baseI A)
+  obs-correct-const : ∀ {A} (fit : FitsInRegI A) (v : ⟦ Carrier , Dyadic ⟧-baseI A)
                     → IRObsCorrectF (const fit v)
   obs-correct-const fits-int v _ mIn x input-loc s alloc _ valid input-before nh rdi-eq =
     record

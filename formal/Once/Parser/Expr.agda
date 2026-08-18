@@ -50,7 +50,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type)
 open import Once.TypeCheck.Raw using (RawExpr; RVar; RQualified; RApp; RLam; RLet;
-                                       RPair; RDestruct; RUnit; RInt;
+                                       RPair; RDestruct; RUnit; RInt; RFloat;
                                        RStringLit; RAnnot; RBinOp; RUnaryOp;
                                        BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod;
                                        OpLt; OpLe; OpGt; OpGe; OpEq; OpNe;
@@ -873,10 +873,9 @@ parseAtomExprWF (TLParen  ∷ rest) (acc rec) = parseAtomExprWF-TLParen rest (re
 parseAtomExprWF (TLambda  ∷ rest) (acc rec) = parseAtomExprWF-TLambda rest (rec (s≤s ≤-refl))
 parseAtomExprWF (TWord name ∷ rest) (acc rec) = atomExprWordWF name rest (rec (s≤s ≤-refl))
 parseAtomExprWF (TInt n    ∷ rest) _ = just (RInt n , rest , pae-int)
--- Plan 0.71 F1: the token exists, but the AST has no float node yet — F3
--- adds it together with `pae-float`. Rejecting is the honest placeholder:
--- anything else would claim a meaning the elaborator cannot give it.
-parseAtomExprWF (TFloat _ _ _ ∷ _) _ = nothing
+-- Plan 0.71 F3a: the AST has its node now, so the rejection F1 left here
+-- becomes the real rule.
+parseAtomExprWF (TFloat i f l ∷ rest) _ = just (RFloat i f l , rest , pae-float)
 parseAtomExprWF (TString s ∷ rest) _ = just (RStringLit s , rest , pae-str)
 parseAtomExprWF (TRParen    ∷ _) _ = nothing
 parseAtomExprWF (TLBrace    ∷ _) _ = nothing
@@ -959,7 +958,13 @@ parseAppTailWF f (TString s ∷ rest) (acc rec)
 ...   | just (body , rest'' , dT) = just (body , rest'' , papp-arg aao-TString dA dT)
 -- Non-atom-start tokens: tail no-ops.
 parseAppTailWF f (TRParen   ∷ r) _ = just (f , TRParen   ∷ r , papp-done nas-TRParen)
-parseAppTailWF f (TFloat i fr l ∷ r) _ = just (f , TFloat i fr l ∷ r , papp-done nas-TFloat)
+parseAppTailWF f (TFloat i fr l ∷ rest) (acc rec)
+  with parseAtomExprWF (TFloat i fr l ∷ rest) (acc rec)
+... | nothing = nothing
+... | just (arg , rest' , dA)
+    with parseAppTailWF (RApp f arg) rest' (rec (ParsesAtomExpr-shrinks dA))
+...   | nothing                   = nothing
+...   | just (body , rest'' , dT) = just (body , rest'' , papp-arg aao-TFloat dA dT)
 parseAppTailWF f (TLBrace   ∷ r) _ = just (f , TLBrace   ∷ r , papp-done nas-TLBrace)
 parseAppTailWF f (TRBrace   ∷ r) _ = just (f , TRBrace   ∷ r , papp-done nas-TRBrace)
 parseAppTailWF f (TColon    ∷ r) _ = just (f , TColon    ∷ r , papp-done nas-TColon)

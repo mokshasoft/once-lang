@@ -46,7 +46,7 @@ open import Once.TypeCheck.Principal using (siglessSchema)
 open import Once.CanonicalName using (CanonicalName; canonical)
 open import Once.TypeCheck.Raw
   using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair;
-         RDestruct; RUnit; RInt; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna)
+         RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna)
 
 ------------------------------------------------------------------------
 -- ModuleMap: path → resolved Module
@@ -261,6 +261,7 @@ canonExpr bound um am (RDestruct s xl el xr er) =
   RDestruct (canonExpr bound um am s) xl (canonExpr (xl ∷ bound) um am el) xr (canonExpr (xr ∷ bound) um am er)
 canonExpr bound um am RUnit               = RUnit
 canonExpr bound um am (RInt n)            = RInt n
+canonExpr bound um am (RFloat i f l)            = RFloat i f l
 canonExpr bound um am (RStringLit s)      = RStringLit s
 canonExpr bound um am (RAnnot e t)        = RAnnot (canonExpr bound um am e) t
 canonExpr bound um am (RBinOp op a b)     = RBinOp op (canonExpr bound um am a) (canonExpr bound um am b)

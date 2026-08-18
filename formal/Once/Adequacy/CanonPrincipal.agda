@@ -243,6 +243,7 @@ module _ (imps : Imports) (sch : P.SchemaCtx) where
       step2 (pInfer-canon env bound ff n s eb)
         λ { (tf , n₁ , s₁) →
             step2 (pInfer-canon env bound g n₁ s₁ eb) λ _ → refl }
+    pInfer-canon env bound (Raw.RApp (Raw.RApp (Raw.RFloat i fr fl) f') g) n s eb = refl
     pInfer-canon env bound (Raw.RApp ff@(Raw.RApp (Raw.RStringLit str) f') g) n s eb =
       step2 (pInfer-canon env bound ff n s eb)
         λ { (tf , n₁ , s₁) →
@@ -285,6 +286,7 @@ module _ (imps : Imports) (sch : P.SchemaCtx) where
       step2 (pInfer-canon env bound x n s eb) λ _ → refl
     pInfer-canon env bound (Raw.RApp (Raw.RInt i) x) n s eb =
       step2 (pInfer-canon env bound x n s eb) λ _ → refl
+    pInfer-canon env bound (Raw.RApp (Raw.RFloat i fr fl) x) n s eb = refl
     pInfer-canon env bound (Raw.RApp (Raw.RStringLit str) x) n s eb =
       step2 (pInfer-canon env bound x n s eb) λ _ → refl
     pInfer-canon env bound (Raw.RApp (Raw.RQualified q al) x) n s eb = refl
@@ -308,6 +310,7 @@ module _ (imps : Imports) (sch : P.SchemaCtx) where
             destructFinish-canon env bound xl e₁ xr e₂ te n₁ s₁ eb }
     pInfer-canon env bound Raw.RUnit n s eb = refl
     pInfer-canon env bound (Raw.RInt i) n s eb = refl
+    pInfer-canon env bound (Raw.RFloat i fr fl) n s eb = refl
     pInfer-canon env bound (Raw.RStringLit str) n s eb = refl
     pInfer-canon env bound (Raw.RAnnot e T) n s eb with P.typeToPoly T
     ... | nothing = refl

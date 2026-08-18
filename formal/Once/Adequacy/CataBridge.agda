@@ -35,6 +35,7 @@ open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
 open import Once.Word using (Carrier)
+open import Once.Float.Dyadic using (Dyadic)
 open import Once.Type using (Type; Functor; ⟦_⟧T; μ-type)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF;
   IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
@@ -93,8 +94,8 @@ cata-bridge {F} {A'} {wfF} dalg mir algR {a} {.a} refl n
     -- Structural: a related functor layer (`RelSF`) coerces down to equal
     -- child-events and a `RelV (⟦G⟧T A')`-related folded argument `z`.
     layer-lemma : ∀ {G} (wf : WellFormedF G)
-        {y₁ y₂ : ⟦ translateF Carrier G ⟧SF (List SigOpEvent × ⟦ A' ⟧ᴰ)}
-      → RelSF (translateF Carrier G) RelC y₁ y₂
+        {y₁ y₂ : ⟦ translateF Carrier Dyadic G ⟧SF (List SigOpEvent × ⟦ A' ⟧ᴰ)}
+      → RelSF (translateF Carrier Dyadic G) RelC y₁ y₂
       → (events-F G proj₁ (coerce-μ-out wf _ y₁) ≡ events-F G proj₁ (coerce-μ-out wf _ y₂))
       × RelV (⟦ G ⟧T A')
           (coerce-functor⁻¹-D G A' (sem-fmap G proj₂ (coerce-μ-out wf _ y₁)))
@@ -113,7 +114,7 @@ cata-bridge {F} {A'} {wfF} dalg mir algR {a} {.a} refl n
     -- Algebra preservation: the two per-layer algebras produce `RelC`-related
     -- outputs — child events equal (`layer-lemma`) and the algebra step bridged
     -- by `algR` (= `bridge-m alg`) on the `RelV`-related folded argument.
-    algR-full : ∀ {y₁ y₂} → RelSF (translateF Carrier F) RelC y₁ y₂
+    algR-full : ∀ {y₁ y₂} → RelSF (translateF Carrier Dyadic F) RelC y₁ y₂
               → RelC (cata-ev-algᴰ-D {F} {A'} n dalg (coerce-μ-out wfF _ y₁))
                      (cata-ev-algᴰ-D {F} {A'} n (liftFn mir) (coerce-μ-out wfF _ y₂))
     algR-full rsf =

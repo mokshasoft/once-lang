@@ -32,6 +32,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans; subst; subst₂; subst-subst-sym; subst-sym-subst)
 
 open import Once.Word using (Carrier)
+open import Once.Float.Dyadic using (Dyadic)
 open import Once.Type as TT
   using (Functor; Unit; Void; Int; Str; Float; Buffer; _*_; _+_; _⇒[_]_; μ-type; ν-type)
 open import Once.Functor.Translate using (translateF)
@@ -60,15 +61,15 @@ open import Once.Postulates using (extensionality)
 
 mutual
   sem-ana-anaS-bisim : ∀ {F : Functor} {A : Set} (coalg : A → ⟦ F ⟧F A) (a : A)
-    → sem-ana F coalg a ∼S anaS {translateF Carrier F} (λ x → coerce-ν-in F A (coalg x)) a
+    → sem-ana F coalg a ∼S anaS {translateF Carrier Dyadic F} (λ x → coerce-ν-in F A (coalg x)) a
   unfoldS-∼ (sem-ana-anaS-bisim {F} {A} coalg a) =
-    sem-ana-anaS-rel coalg (translateF Carrier F) (coerce-ν-in F A (coalg a))
+    sem-ana-anaS-rel coalg (translateF Carrier Dyadic F) (coerce-ν-in F A (coalg a))
 
   sem-ana-anaS-rel : ∀ {F : Functor} {A : Set} (coalg : A → ⟦ F ⟧F A)
                        (H : SFunctor) (x : ⟦ H ⟧SF A)
-    → ⟦ H ⟧SF-rel (_∼S_ {translateF Carrier F})
+    → ⟦ H ⟧SF-rel (_∼S_ {translateF Carrier Dyadic F})
         (sfmapSemAna F H coalg x)
-        (sfmapAna {translateF Carrier F} H (λ y → coerce-ν-in F A (coalg y)) x)
+        (sfmapAna {translateF Carrier Dyadic F} H (λ y → coerce-ν-in F A (coalg y)) x)
   sem-ana-anaS-rel coalg (SK _)      x        = refl
   sem-ana-anaS-rel coalg SId         x        = sem-ana-anaS-bisim coalg x
   sem-ana-anaS-rel coalg (H₁ S⊕ H₂) (inj₁ x) = sem-ana-anaS-rel coalg H₁ x
@@ -77,7 +78,7 @@ mutual
     sem-ana-anaS-rel coalg H₁ x , sem-ana-anaS-rel coalg H₂ y
 
 sem-ana-anaS : ∀ {F : Functor} {A : Set} (coalg : A → ⟦ F ⟧F A) (a : A)
-  → sem-ana F coalg a ≡ anaS {translateF Carrier F} (λ x → coerce-ν-in F A (coalg x)) a
+  → sem-ana F coalg a ≡ anaS {translateF Carrier Dyadic F} (λ x → coerce-ν-in F A (coalg x)) a
 sem-ana-anaS coalg a = bisimS-to-eq _ _ (sem-ana-anaS-bisim coalg a)
 
 ------------------------------------------------------------------------

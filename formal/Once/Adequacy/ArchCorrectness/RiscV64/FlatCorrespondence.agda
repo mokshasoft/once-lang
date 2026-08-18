@@ -21,7 +21,7 @@
 -- asserted.
 ------------------------------------------------------------------------
 
-open import Once.Semantics.FloatBits using (float-bits)
+open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
 open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.CCC.Target.RiscV64.Syntax using (slot-size)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -51,7 +51,7 @@ rreg : R.State → Reg → ℕ
 rreg s r = R.readReg (R.State.regs s) r
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
-       FS slot-size word-eq float-bits Reg riscv64-roles R.State rreg memory rhalted
+       FS slot-size word-eq (encode binary64) Reg riscv64-roles R.State rreg memory rhalted
   public
 
 ------------------------------------------------------------------------

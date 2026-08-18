@@ -43,7 +43,7 @@ open import Data.Maybe using (just)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Word using (Carrier)
 open import Data.Float using () renaming (Float to AgdaFloat)
-open import Once.Semantics.FloatBits using (float-bits-single)
+open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-ret; instr-call-closure
         ; instr-reg-op; scratch-dec; count-inc; instr-dealloc-stack
@@ -171,12 +171,12 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
             → v < X.W.modulus)
   (float-fits : ∀ {hv : FC.HeapView FS word-eq}
                   (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-                  (s : X.State) (v : AgdaFloat)
+                  (s : X.State) (v : Dyadic)
               → RC.RunAt o FS word-eq prog fs
               → FSim.CompiledCorr o FS word-eq hv prog fs s
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
-              → float-bits-single v < X.W.modulus)
+              → (encode binary32) v < X.W.modulus)
   (lo-fits : ∀ {hv : FC.HeapView FS word-eq}
                (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                (s : X.State)
@@ -437,7 +437,7 @@ x86-32-traceloop = record
   ; nonhalt-noncall = nonhalt-noncall
   }
 
-module EE = Engine o FS slot-size word-eq float-bits-single Reg x86-32-roles X.W.modulus
+module EE = Engine o FS slot-size word-eq (encode binary32) Reg x86-32-roles X.W.modulus
                    x86-32-emitter x86-32-machine x86-32-traceloop
 
 open EE using (FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-env
@@ -782,6 +782,6 @@ x86-32-supply = record
   ; external-sigop-contract = external-sigop-contract
   }
 
-module ED = Dispatch o FS slot-size word-eq float-bits-single Reg x86-32-roles X.W.modulus
+module ED = Dispatch o FS slot-size word-eq (encode binary32) Reg x86-32-roles X.W.modulus
                      x86-32-emitter x86-32-machine x86-32-traceloop
 open ED.Dispatch x86-32-supply public

@@ -84,7 +84,7 @@ open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-comm; ∸-+-asso
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst; subst₂)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
-open import Once.Semantics.FloatBits using (float-bits; float-bits-single)
+open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
 open import Once.Type using (fits-float)
 open import Data.Float using () renaming (Float to AgdaFloat)
 
@@ -112,7 +112,7 @@ x86-32-link-claim : X.State → ℕ → ℕ → Set
 x86-32-link-claim s a v = X.State.memory s a ≡ just v
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
-       o FS slot-size word-eq float-bits-single Reg x86-32-roles X.State xrreg X.State.memory X.State.halted
+       o FS slot-size word-eq (encode binary32) Reg x86-32-roles X.State xrreg X.State.memory X.State.halted
        x86-32-link-claim
        X.State.pc Program compile-trace X.find-label blk-off blk-len X.exec
        X.W.modulus
@@ -1259,17 +1259,17 @@ block-step-load-const {hv} prog fs s v cc h ft fits =
 -- `Float` was 64 bits everywhere (D109): x86-32 lowered the instruction to
 -- `ud2`, so the abstract machine loaded a value and the concrete one trapped.
 --
--- With the encoding arch-relative — `float-bits-single` here, `float-bits` on
+-- With the encoding arch-relative — `float-bits-single` (as it was) here, `float-bits` (as it was) on
 -- the 64-bit targets, both passed to the core as `fenc` — the two sides load
 -- the SAME number and this is the int case verbatim, `norm-id` and all. Note
 -- what the premise says: `fenc v < modulus`, i.e. the encoded literal fits a
--- word of THIS machine. At 64 bits it is a fact about `float-bits`; here it is
--- a fact about `float-bits-single`, and it is true by the encoder's
+-- word of THIS machine. At 64 bits it is a fact about `float-bits` (as it was); here it is
+-- a fact about `float-bits-single` (as it was), and it is true by the encoder's
 -- construction rather than by luck.
 ------------------------------------------------------------------------
-block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : AgdaFloat) → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : Dyadic) → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
-  → float-bits-single v < X.W.modulus
+  → (encode binary32) v < X.W.modulus
   → BlockStep hv prog fs s (instr-load-const fits-float v)
 block-step-load-const-float {hv} prog fs s v cc h ft fits =
   post , exec-eq , record { dataCorr = C.sim-load-const-float v fs s _ dc (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
@@ -1277,16 +1277,16 @@ block-step-load-const-float {hv} prog fs s v cc h ft fits =
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
     halt-s = trans (C.halt-eq dc) h
-    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg eax) (imm (float-bits-single v)))
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg eax) (imm (encode binary32 v)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-load-const fits-float v) ft)
     post : X.State
-    post = record s { regs = xwriteReg (xregs s) eax (float-bits-single v) ; pc = pc s + 1 }
+    post = record s { regs = xwriteReg (xregs s) eax (encode binary32 v) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
     snh = subst (λ w → X.step-not-halted (compile-trace prog) s
                        ≡ just (record s { regs = xwriteReg (xregs s) eax w ; pc = pc s + 1 }))
                 (X.W.norm-id fits)
-                (step-mov-ri {compile-trace prog} {s} {eax} {float-bits-single v} fetch-x86)
+                (step-mov-ri {compile-trace prog} {s} {eax} {(encode binary32) v} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-load-const fits-float v) prog fs))

@@ -41,18 +41,21 @@ open import Once.Semantics.Functor
 -- Returns ⊤ for complex types (functions, recursive types).
 -- This is safe because K positions in practical functors use base types.
 --
-⟦_⟧-base : Set → Type → Set
-⟦ IntRep ⟧-base Unit = ⊤
-⟦ IntRep ⟧-base Void = ⊥
-⟦ IntRep ⟧-base (A * B) = ⟦ IntRep ⟧-base A × ⟦ IntRep ⟧-base B
-⟦ IntRep ⟧-base (A + B) = ⟦ IntRep ⟧-base A ⊎ ⟦ IntRep ⟧-base B
-⟦ IntRep ⟧-base (_ ⇒[ _ ] _) = ⊤  -- Functions (all kinds): return ⊤ (not used in K)
-⟦ IntRep ⟧-base (μ-type _) = ⊤    -- Recursive: return ⊤ (not used in K)
-⟦ IntRep ⟧-base (ν-type _) = ⊤    -- Corecursive: return ⊤ (not used in K)
-⟦ IntRep ⟧-base Int = IntRep
-⟦ IntRep ⟧-base Float = AgdaFloat
-⟦ IntRep ⟧-base Str = String
-⟦ IntRep ⟧-base Buffer = String
+-- PLAN 0.72 (D112): the THIRD place `Float` was pinned to Agda's double while
+-- `Int`'s carrier was a parameter (`Semantics.Value` and `IRTy` are the other
+-- two). Same fix, same reason.
+⟦_,_⟧-base : Set → Set → Type → Set
+⟦ IntRep , FloatRep ⟧-base Unit = ⊤
+⟦ IntRep , FloatRep ⟧-base Void = ⊥
+⟦ IntRep , FloatRep ⟧-base (A * B) = ⟦ IntRep , FloatRep ⟧-base A × ⟦ IntRep , FloatRep ⟧-base B
+⟦ IntRep , FloatRep ⟧-base (A + B) = ⟦ IntRep , FloatRep ⟧-base A ⊎ ⟦ IntRep , FloatRep ⟧-base B
+⟦ IntRep , FloatRep ⟧-base (_ ⇒[ _ ] _) = ⊤  -- Functions (all kinds): return ⊤ (not used in K)
+⟦ IntRep , FloatRep ⟧-base (μ-type _) = ⊤    -- Recursive: return ⊤ (not used in K)
+⟦ IntRep , FloatRep ⟧-base (ν-type _) = ⊤    -- Corecursive: return ⊤ (not used in K)
+⟦ IntRep , FloatRep ⟧-base Int = IntRep
+⟦ IntRep , FloatRep ⟧-base Float = FloatRep
+⟦ IntRep , FloatRep ⟧-base Str = String
+⟦ IntRep , FloatRep ⟧-base Buffer = String
 -- TVar removed from Type; now in PolyType (see Once.Type)
 
 ------------------------------------------------------------------------
@@ -63,11 +66,11 @@ open import Once.Semantics.Functor
 --
 -- Uses the base interpretation for K positions.
 --
-translateF : Set → Functor → SFunctor
-translateF IntRep (K A) = SK (⟦ IntRep ⟧-base A)
-translateF IntRep Id = SId
-translateF IntRep (F ⊕ G) = translateF IntRep F S⊕ translateF IntRep G
-translateF IntRep (F ⊗ G) = translateF IntRep F S⊗ translateF IntRep G
+translateF : Set → Set → Functor → SFunctor
+translateF IntRep FloatRep (K A) = SK (⟦ IntRep , FloatRep ⟧-base A)
+translateF IntRep FloatRep Id = SId
+translateF IntRep FloatRep (F ⊕ G) = translateF IntRep FloatRep F S⊕ translateF IntRep FloatRep G
+translateF IntRep FloatRep (F ⊗ G) = translateF IntRep FloatRep F S⊗ translateF IntRep FloatRep G
 
 ------------------------------------------------------------------------
 -- Semantic Fixed Points via Translation
@@ -79,15 +82,15 @@ translateF IntRep (F ⊗ G) = translateF IntRep F S⊗ translateF IntRep G
 --
 -- μ-sem F = μS (translateF F)
 --
-μ-sem : Set → Functor → Set
-μ-sem IntRep F = μS (translateF IntRep F)
+μ-sem : Set → Set → Functor → Set
+μ-sem IntRep FloatRep F = μS (translateF IntRep FloatRep F)
 
 -- | Semantic ν via translation
 --
 -- ν-sem F = νS (translateF F)
 --
-ν-sem : Set → Functor → Set
-ν-sem IntRep F = νS (translateF IntRep F)
+ν-sem : Set → Set → Functor → Set
+ν-sem IntRep FloatRep F = νS (translateF IntRep FloatRep F)
 
 ------------------------------------------------------------------------
 -- Functor Interpretation Coherence
@@ -103,22 +106,22 @@ translateF IntRep (F ⊗ G) = translateF IntRep F S⊗ translateF IntRep G
 --
 -- This is definitionally true by construction.
 --
-⟦_⟧F-base : Set → Functor → Set → Set
-⟦ IntRep ⟧F-base (K A) X = ⟦ IntRep ⟧-base A
-⟦ IntRep ⟧F-base Id X = X
-⟦ IntRep ⟧F-base (F ⊕ G) X = ⟦ IntRep ⟧F-base F X ⊎ ⟦ IntRep ⟧F-base G X
-⟦ IntRep ⟧F-base (F ⊗ G) X = ⟦ IntRep ⟧F-base F X × ⟦ IntRep ⟧F-base G X
+⟦_,_⟧F-base : Set → Set → Functor → Set → Set
+⟦ IntRep , FloatRep ⟧F-base (K A) X = ⟦ IntRep , FloatRep ⟧-base A
+⟦ IntRep , FloatRep ⟧F-base Id X = X
+⟦ IntRep , FloatRep ⟧F-base (F ⊕ G) X = ⟦ IntRep , FloatRep ⟧F-base F X ⊎ ⟦ IntRep , FloatRep ⟧F-base G X
+⟦ IntRep , FloatRep ⟧F-base (F ⊗ G) X = ⟦ IntRep , FloatRep ⟧F-base F X × ⟦ IntRep , FloatRep ⟧F-base G X
 
 -- | Translation preserves interpretation
-translate-coherence : ∀ IntRep F X → ⟦ translateF IntRep F ⟧SF X ≡ ⟦ IntRep ⟧F-base F X
-translate-coherence IntRep (K A) X = refl
-translate-coherence IntRep Id X = refl
-translate-coherence IntRep (F ⊕ G) X
-  rewrite translate-coherence IntRep F X
-        | translate-coherence IntRep G X = refl
-translate-coherence IntRep (F ⊗ G) X
-  rewrite translate-coherence IntRep F X
-        | translate-coherence IntRep G X = refl
+translate-coherence : ∀ IntRep FloatRep F X → ⟦ translateF IntRep FloatRep F ⟧SF X ≡ ⟦ IntRep , FloatRep ⟧F-base F X
+translate-coherence IntRep FloatRep (K A) X = refl
+translate-coherence IntRep FloatRep Id X = refl
+translate-coherence IntRep FloatRep (F ⊕ G) X
+  rewrite translate-coherence IntRep FloatRep F X
+        | translate-coherence IntRep FloatRep G X = refl
+translate-coherence IntRep FloatRep (F ⊗ G) X
+  rewrite translate-coherence IntRep FloatRep F X
+        | translate-coherence IntRep FloatRep G X = refl
 
 ------------------------------------------------------------------------
 -- Well-Formed Functors

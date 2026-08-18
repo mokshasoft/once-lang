@@ -11,7 +11,8 @@
 -- their bisimulation witnesses (need `bisimS-to-eq` from `Base.Laws`).
 ------------------------------------------------------------------------
 
-module Once.Semantics.Value.Laws (IntRep : Set) where
+-- Plan 0.72 (D112): `FloatRep` joins `IntRep`, as in `Semantics.Value`.
+module Once.Semantics.Value.Laws (IntRep : Set) (FloatRep : Set) where
 
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -24,7 +25,7 @@ open import Once.Semantics.Functor
          cataS; cataS-In-id)
 open import Once.Semantics.Functor.Laws
   using (_∼S_; ⟦_⟧SF-rel; bisimS-to-eq; unfoldS-∼)
-open import Once.Semantics.Value IntRep
+open import Once.Semantics.Value IntRep FloatRep
 
 -- | Function extensionality (used only by `sem-cata-In-id`). A valid axiom
 --   (provable in Cubical Agda); kept here so the definitions module
@@ -40,7 +41,7 @@ postulate
 -- | Identity catamorphism: cata with In algebra is identity (PROVEN).
 sem-cata-In-id : ∀ {F : Functor} → (wf : WellFormedF F) → (x : ⟦μ⟧ F) → sem-cata wf (sem-In F) x ≡ x
 sem-cata-In-id {F} wf x =
-  let TF = translateF IntRep F
+  let TF = translateF IntRep FloatRep F
       alg′ : ⟦ TF ⟧SF (μS TF) → μS TF
       alg′ y = ⟨ coerce-μ-in F (⟦μ⟧ F) (coerce-μ-out wf (⟦μ⟧ F) y) ⟩
       alg′-eq : ∀ y → alg′ y ≡ ⟨ y ⟩
@@ -61,9 +62,9 @@ private
   -- D062: guardedness-CHECKED — `sfmap-∼S-refl` places the corecursive
   -- `∼S-refl-at` call structurally at `SId`, so the guard is visible (no pragma).
   ∼S-refl-at : ∀ {F} → (y : ⟦ν⟧ F) → y ∼S y
-  sfmap-∼S-refl : ∀ {F} G (v : ⟦ G ⟧SF (⟦ν⟧ F)) → ⟦ G ⟧SF-rel (_∼S_ {translateF IntRep F}) v v
+  sfmap-∼S-refl : ∀ {F} G (v : ⟦ G ⟧SF (⟦ν⟧ F)) → ⟦ G ⟧SF-rel (_∼S_ {translateF IntRep FloatRep F}) v v
 
-  unfoldS-∼ (∼S-refl-at {F} y) = sfmap-∼S-refl (translateF IntRep F) (unfoldS y)
+  unfoldS-∼ (∼S-refl-at {F} y) = sfmap-∼S-refl (translateF IntRep FloatRep F) (unfoldS y)
 
   sfmap-∼S-refl (SK _) v = refl
   sfmap-∼S-refl SId v = ∼S-refl-at v
@@ -75,7 +76,7 @@ private
   CoIn-CoOut-bisim : ∀ {F} (wf : WellFormedF F) (y : ⟦ν⟧ F)
                    → sem-CoIn F (sem-CoOut wf y) ∼S y
   unfoldS-∼ (CoIn-CoOut-bisim {F} wf y) =
-    let TF = translateF IntRep F
+    let TF = translateF IntRep FloatRep F
         eq : coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf y) ≡ unfoldS y
         eq = coerce-μ⁻¹-round-trip wf (⟦ν⟧ F) (unfoldS y)
     in subst (λ z → ⟦ TF ⟧SF-rel _∼S_ z (unfoldS y)) (sym eq) (sfmap-∼S-refl TF (unfoldS y))
@@ -107,13 +108,13 @@ mutual
   sem-ana-Out-bisim : ∀ {F} (wf : WellFormedF F) (v w : ⟦ν⟧ F)
                     → v ≡ w → sem-ana F (sem-CoOut wf) v ∼S w
   unfoldS-∼ (sem-ana-Out-bisim {F} wf v w v≡w) =
-    sem-ana-Out-rel wf (translateF IntRep F)
+    sem-ana-Out-rel wf (translateF IntRep FloatRep F)
       (coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf v)) (unfoldS w)
       (trans (coerce-ν-in-sem-CoOut wf v) (cong unfoldS v≡w))
 
   sem-ana-Out-rel : ∀ {F} (wf : WellFormedF F) (H : SFunctor)
                     (a b : ⟦ H ⟧SF (⟦ν⟧ F)) → a ≡ b
-                  → ⟦ H ⟧SF-rel (_∼S_ {translateF IntRep F})
+                  → ⟦ H ⟧SF-rel (_∼S_ {translateF IntRep FloatRep F})
                       (sfmapSemAna F H (sem-CoOut wf) a) b
   sem-ana-Out-rel wf (SK _)     a b a≡b = a≡b
   sem-ana-Out-rel wf SId        a b a≡b = sem-ana-Out-bisim wf a b a≡b

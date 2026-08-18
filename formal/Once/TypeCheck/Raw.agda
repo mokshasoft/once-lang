@@ -14,6 +14,7 @@ module Once.TypeCheck.Raw where
 
 open import Data.String using (String)
 open import Data.Integer using (ℤ)
+open import Data.Nat using (ℕ)
 open import Once.Type using (Type; Functor)
 open import Once.CanonicalName using (CanonicalName)
 
@@ -91,6 +92,15 @@ data RawExpr : Set where
 
   -- Integer literal
   RInt      : ℤ → RawExpr
+
+  -- Plan 0.71: float literal, carried as the DECIMAL the lexer read — integer
+  -- part, fraction digits, fraction length — exactly as `Token.TFloat` does.
+  -- Not a dyadic value and not an `AgdaFloat`: this is RAW syntax, and the
+  -- conversion is a CHECKING-time judgement (F4/F5), because a literal that is
+  -- not exactly representable at every target width must produce a type ERROR
+  -- rather than a rounded value. Deciding that here would put the check on the
+  -- parse path, where there is no way to report it.
+  RFloat    : ℕ → ℕ → ℕ → RawExpr
 
   -- String literal
   RStringLit : String → RawExpr

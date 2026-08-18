@@ -228,18 +228,21 @@ data FitsInRegI : IRTy → Set where
 
 -- | The machine-carrier of a base IRTy object (mirror `⟦_⟧-base`), for the
 -- `const` literal's payload. `⊤` for non-base objects (never used at `K`).
-⟦_⟧-baseI : Set → IRTy → Set
-⟦ IntRep ⟧-baseI Unit      = ⊤
-⟦ IntRep ⟧-baseI Void      = ⊥
-⟦ IntRep ⟧-baseI (A * B)   = ⟦ IntRep ⟧-baseI A × ⟦ IntRep ⟧-baseI B
-⟦ IntRep ⟧-baseI (A + B)   = ⟦ IntRep ⟧-baseI A ⊎ ⟦ IntRep ⟧-baseI B
-⟦ IntRep ⟧-baseI (_ ⇛ _)   = ⊤
-⟦ IntRep ⟧-baseI (μ-type _) = ⊤
-⟦ IntRep ⟧-baseI (ν-type _) = ⊤
-⟦ IntRep ⟧-baseI Int       = IntRep
-⟦ IntRep ⟧-baseI Float     = AgdaFloat
-⟦ IntRep ⟧-baseI Str       = String
-⟦ IntRep ⟧-baseI Buffer    = String
+-- PLAN 0.72 (D112): TWO carriers now, mirroring `Semantics.Value`'s two
+-- parameters. `Int`'s was always a parameter; `Float`'s was `AgdaFloat`, a
+-- 64-bit double baked into the IR regardless of the target's width.
+⟦_,_⟧-baseI : Set → Set → IRTy → Set
+⟦ IntRep , FloatRep ⟧-baseI Unit      = ⊤
+⟦ IntRep , FloatRep ⟧-baseI Void      = ⊥
+⟦ IntRep , FloatRep ⟧-baseI (A * B)   = ⟦ IntRep , FloatRep ⟧-baseI A × ⟦ IntRep , FloatRep ⟧-baseI B
+⟦ IntRep , FloatRep ⟧-baseI (A + B)   = ⟦ IntRep , FloatRep ⟧-baseI A ⊎ ⟦ IntRep , FloatRep ⟧-baseI B
+⟦ IntRep , FloatRep ⟧-baseI (_ ⇛ _)   = ⊤
+⟦ IntRep , FloatRep ⟧-baseI (μ-type _) = ⊤
+⟦ IntRep , FloatRep ⟧-baseI (ν-type _) = ⊤
+⟦ IntRep , FloatRep ⟧-baseI Int       = IntRep
+⟦ IntRep , FloatRep ⟧-baseI Float     = FloatRep
+⟦ IntRep , FloatRep ⟧-baseI Str       = String
+⟦ IntRep , FloatRep ⟧-baseI Buffer    = String
 
 ------------------------------------------------------------------------
 -- The load-bearing definitional fact for Plan 0.52 M2: erasure sends

@@ -44,7 +44,7 @@ open import Once.CanonicalName using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (fits-int; fits-float)
-open import Once.Semantics.FloatBits using (float-bits-single)
+open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
@@ -224,7 +224,7 @@ compile-abstract (instr-sigop si) = call-sym (once-symbol-path (SigOpInfo.name s
 -- Plan 0.53: const literal → load into Output (eax). Mirror x86-64.
 compile-abstract (instr-load-const fits-int   v) = mov (reg eax) (imm v) ∷ []
 -- A FLOAT LITERAL IS SINGLE PRECISION HERE (plan 0.66, D109). This used to be
--- `ud2` — it TRAPPED — because `float-bits` is a 64-bit pattern and `%eax` is
+-- `ud2` — it TRAPPED — because `float-bits` (as it was) is a 64-bit pattern and `%eax` is
 -- 32 bits wide, which made every Once program containing a float literal fail
 -- at runtime on i386 and made the correspondence unprovable at this
 -- instruction. The premise to reject was that a `Float` is 64 bits everywhere:
@@ -232,7 +232,7 @@ compile-abstract (instr-load-const fits-int   v) = mov (reg eax) (imm v) ∷ []
 -- loads like any other immediate. `enc-sv` uses the SAME encoder (the core's
 -- `fenc` parameter), which is what makes the block-step `refl`.
 compile-abstract (instr-load-const fits-float v) =
-  mov (reg eax) (imm (float-bits-single v)) ∷ []
+  mov (reg eax) (imm (encode binary32 v)) ∷ []
 -- Plan 0.53: closure-body code-addr load → Output (eax) := &.L_thunk_n.
 compile-abstract (instr-load-code-addr n) = mov-code eax n ∷ []
 -- Plan 0.2.4.2: save closure-register. On x86-32 the closure pointer

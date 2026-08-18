@@ -46,7 +46,8 @@ open import Once.Arith.Machine.IR
 import Once.Word as OnceWord
 module W = OnceWord.Word64
 
-import Once.Semantics.Value OnceWord.Carrier as M
+open import Once.Float.Dyadic using (Dyadic)
+import Once.Semantics.Value OnceWord.Carrier Dyadic as M
 -- (Core ℤ as I removed: block-info's semI deleted — block-semM is the meaning.)
 
 ------------------------------------------------------------------------

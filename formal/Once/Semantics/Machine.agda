@@ -22,7 +22,10 @@ module Once.Semantics.Machine where
 
 -- Instantiate the value semantics at the target `Word` carrier (D054).
 open import Once.Word using (Carrier)
-open import Once.Semantics.Value Carrier public
+-- Plan 0.72 (D112): the float carrier, alongside `Carrier` — the two are
+-- exactly parallel, which is the point of the plan.
+open import Once.Float.Dyadic using (Dyadic)
+open import Once.Semantics.Value Carrier Dyadic public
 -- Plan 0.52 M2: the IR-object value domain `⟦_⟧ᴵ` (over ungraded `IRTy`) and
 -- its coherence `coh : ⟦ ⌊ T ⌋ ⟧ᴵ ≡ ⟦ T ⟧` with the surface domain above.
-open import Once.Semantics.ValueIR Carrier public
+open import Once.Semantics.ValueIR Carrier Dyadic public

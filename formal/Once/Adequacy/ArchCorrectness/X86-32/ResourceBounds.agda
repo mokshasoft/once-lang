@@ -48,7 +48,7 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Label using (LabelId)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Word using (Carrier)
-open import Once.Semantics.FloatBits using (float-bits-single)
+open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.CCC.Target.X86-32.Syntax using (slots; slot-size; reg; esp; edx; edi; Reg)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -285,7 +285,7 @@ record LitFits : Set₁ where
       → v < W.modulus
 
     -- …and the float pattern, at THIS target's width (D109): the encoder is
-    -- `float-bits-single`, not `float-bits`. Unlike x86-64's, this one is true
+    -- `float-bits-single` (as it was), not `float-bits` (as it was). Unlike x86-64's, this one is true
     -- by an argument the codebase owns rather than one the standard library
     -- owes: the encoder builds sign + exponent + mantissa out of parts bounded
     -- by 2³¹, 255·2²³ and 2²³, so its image is below 2³². It stays a parameter
@@ -294,10 +294,10 @@ record LitFits : Set₁ where
     float-fits :
       ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
-        (s : X.State) (v : AgdaFloat)
+        (s : X.State) (v : Dyadic)
       → RCx.RunAt o x86-32-frame-semantics refl prog fs
       → FSimx.CompiledCorr o x86-32-frame-semantics refl hv prog fs s
       → FlatMachine.fetch {x86-32-frame-semantics} prog
           (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-load-const fits-float v)
-      → float-bits-single v < W.modulus
+      → (encode binary32) v < W.modulus
 open LitFits public

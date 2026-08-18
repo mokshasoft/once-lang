@@ -23,6 +23,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym)
 
 open import Once.Word using (Carrier)
+open import Once.Float.Dyadic using (Dyadic)
 open import Once.Type using (Type; Functor; μ-type; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF; translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋; ⌊⟧T-commute; ⌈⟧TI-commute)
@@ -42,7 +43,7 @@ import Once.IR as IR
 -- commutes with a carrier subst.  Match-to-refl.
 coerce-μ-in-subst : ∀ (G : Functor) {X X' : Set} (p : X ≡ X') (x : ⟦ G ⟧F X)
   → coerce-μ-in G X' (subst (λ Y → ⟦ G ⟧F Y) p x)
-    ≡ subst (λ Y → ⟦ translateF Carrier G ⟧SF Y) p (coerce-μ-in G X x)
+    ≡ subst (λ Y → ⟦ translateF Carrier Dyadic G ⟧SF Y) p (coerce-μ-in G X x)
 coerce-μ-in-subst G refl x = refl
 
 -- Split a diagonal subst `⟦H⟧SF(μS H)` into carrier-subst then functor-subst.

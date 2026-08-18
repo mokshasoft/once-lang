@@ -84,7 +84,7 @@ open import Data.Nat.Properties using (+-assoc; +-identityʳ; +-comm; ∸-+-asso
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (sym; trans; cong; cong₂; subst; subst₂)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
-open import Once.Semantics.FloatBits using (float-bits)
+open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
 open import Once.Type using (fits-float)
 open import Data.Float using () renaming (Float to AgdaFloat)
 
@@ -112,7 +112,7 @@ x86-64-link-claim : X.State → ℕ → ℕ → Set
 x86-64-link-claim s a v = X.State.memory s a ≡ just v
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
-       o FS slot-size word-eq float-bits Reg x86-64-roles X.State xrreg X.State.memory X.State.halted
+       o FS slot-size word-eq (encode binary64) Reg x86-64-roles X.State xrreg X.State.memory X.State.halted
        x86-64-link-claim
        X.State.pc Program compile-trace X.find-label blk-off blk-len X.exec
        X.W.modulus
@@ -1259,14 +1259,14 @@ block-step-load-const {hv} prog fs s v cc h ft fits =
 -- the IEEE-754 bit pattern. Was a divergence (`ud2` vs. a running abstract
 -- machine); now the two machines agree instruction for instruction.
 -- …and the same seam on the float side. Here the bound is TRUE BY CONSTRUCTION
--- — `float-bits` is `primWord64ToNat` of a `Word64`, whose image is below 2⁶⁴ by
+-- — `float-bits` (as it was) is `primWord64ToNat` of a `Word64`, whose image is below 2⁶⁴ by
 -- definition — but the standard library carries no such lemma, so it arrives as
 -- a premise rather than a proof. That is the one place in phase D where a
 -- premise stands in for something already known; it is discharged the day
 -- `Data.Word.Properties` gains the bound.
-block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : AgdaFloat) → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : Dyadic) → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
-  → float-bits v < X.W.modulus
+  → (encode binary64) v < X.W.modulus
   → BlockStep hv prog fs s (instr-load-const fits-float v)
 block-step-load-const-float {hv} prog fs s v cc h ft fits =
   post , exec-eq , record { dataCorr = C.sim-load-const-float v fs s _ dc (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
@@ -1274,16 +1274,16 @@ block-step-load-const-float {hv} prog fs s v cc h ft fits =
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
     halt-s = trans (C.halt-eq dc) h
-    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (imm (float-bits v)))
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (imm (encode binary64 v)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-load-const fits-float v) ft)
     post : X.State
-    post = record s { regs = xwriteReg (xregs s) rax (float-bits v) ; pc = pc s + 1 }
+    post = record s { regs = xwriteReg (xregs s) rax (encode binary64 v) ; pc = pc s + 1 }
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
     snh = subst (λ w → X.step-not-halted (compile-trace prog) s
                        ≡ just (record s { regs = xwriteReg (xregs s) rax w ; pc = pc s + 1 }))
                 (X.W.norm-id fits)
-                (step-mov-ri {compile-trace prog} {s} {rax} {float-bits v} fetch-x86)
+                (step-mov-ri {compile-trace prog} {s} {rax} {(encode binary64) v} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-load-const fits-float v) prog fs))

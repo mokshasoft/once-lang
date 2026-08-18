@@ -30,7 +30,7 @@ open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_;
                                Unit; Void; Int; Float; Str; Buffer; _*_; _+_)
 open import Once.Semantics.Machine using (⟦_⟧; ⟦_⟧F; sem-fmap)
 import Once.SPF as SPF
-open import Once.Functor.Translate using (IsBaseType; WellFormedF; ⟦_⟧-base; ⟦_⟧F-base;
+open import Once.Functor.Translate using (IsBaseType; WellFormedF; ⟦_,_⟧-base; ⟦_,_⟧F-base;
                                           base-Unit; base-Void; base-Int; base-Float;
                                           base-Str; base-Buffer; base-Prod; base-Sum;
                                           wf-K; wf-Id; wf-Sum; wf-Prod)

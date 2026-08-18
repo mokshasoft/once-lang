@@ -31,11 +31,12 @@ module Once.Semantics.FloatBits where
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (maybe′)
+open import Once.Float.Dyadic using (Dyadic)
 open import Data.Float using () renaming (Float to AgdaFloat)
 import Data.Float as F
 open import Data.Word using () renaming (toℕ to word→ℕ)
 
-float-bits : AgdaFloat → ℕ
+float-bits : Dyadic → ℕ
 float-bits x = maybe′ word→ℕ 0 (F.toWord x)
 
 ------------------------------------------------------------------------
@@ -85,7 +86,7 @@ private
   2^63 = 9223372036854775808
 
 -- the raw single-precision pattern (< 2^32 by construction of its parts)
-float-bits-single : AgdaFloat → ℕ
+float-bits-single : Dyadic → ℕ
 float-bits-single x =
   let b = float-bits x
       s = (b / 2^63) * 2^31          -- sign bit, already in place

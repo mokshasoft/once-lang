@@ -40,7 +40,8 @@ open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Word using (Carrier)
-import Once.Semantics.Value Carrier as M
+open import Once.Float.Dyadic using (Dyadic)
+import Once.Semantics.Value Carrier Dyadic as M
 -- (Core ℤ `as I` removed: semI deleted — `semM` (ℕ/Word) is the meaning.)
 
 ------------------------------------------------------------------------

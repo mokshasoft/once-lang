@@ -93,7 +93,7 @@ modPow< x k = m%n<n x (2 ^ k) {{m^n≢0 2 k}}
 ------------------------------------------------------------------------
 -- THE ENCODING, and its RANGE — proved, not assumed.
 --
--- `LitFits.float-fits` exists on all three arches today because `float-bits`
+-- `LitFits.float-fits` exists on all three arches today because `float-bits` (as it was)
 -- is `primFloatToWord` and the standard library states no bound on it. Here
 -- the encoder is ℕ arithmetic over fields whose widths ARE the format, so the
 -- bound is a theorem and the parameter goes away (plan 0.72 P3).
@@ -147,7 +147,7 @@ sigField F (_ /2^ e) = modPow e (sig-bits F)
 encode : FloatFormat → Dyadic → ℕ
 encode F d = expField F d * (2 ^ sig-bits F) + sigField F d
 
--- | …and its RANGE, which is the point: a theorem, where `float-bits` needed a
+-- | …and its RANGE, which is the point: a theorem, where `float-bits` (as it was) needed a
 -- parameter (`LitFits.float-fits`) because the standard library states no bound
 -- on `primFloatToWord`.
 encode-fits : ∀ F d → encode F d < 2 ^ (exp-bits F + sig-bits F)

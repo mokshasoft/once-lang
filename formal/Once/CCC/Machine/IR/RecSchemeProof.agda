@@ -48,7 +48,8 @@ open import Once.CCC.Machine.Allocation using (AllocMode; Stack; Heap; AllocStat
 
 -- Import semantic operations
 open import Once.Word using (Carrier)
-open import Once.Semantics.Value Carrier using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-cata; sem-cata-compute; sem-fmap)
+open import Once.Float.Dyadic using (Dyadic)
+open import Once.Semantics.Value Carrier Dyadic using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-cata; sem-cata-compute; sem-fmap)
 
 ------------------------------------------------------------------------
 -- Proof Module

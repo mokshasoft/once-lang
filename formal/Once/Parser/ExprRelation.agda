@@ -64,7 +64,7 @@ open import Data.Empty using (⊥)
 
 open import Once.Type using (Type)
 open import Once.TypeCheck.Raw using (RawExpr; RVar; RQualified; RApp; RLam;
-                                       RLet; RPair; RDestruct; RUnit; RInt;
+                                       RLet; RPair; RDestruct; RUnit; RInt; RFloat;
                                        RStringLit; RAnnot; RBinOp; RUnaryOp;
                                        BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod;
                                        OpLt; OpLe; OpGt; OpGe; OpEq; OpNe;
@@ -141,7 +141,6 @@ data NotAtomStart : List Token → Set where
   nas-TRParen    : ∀ {rest} → NotAtomStart (TRParen    ∷ rest)
   -- Plan 0.71 F1: a float token starts no atom YET (F3 gives it one), so the
   -- application stops at it exactly as it stops at a closing paren.
-  nas-TFloat     : ∀ {i f l rest} → NotAtomStart (TFloat i f l ∷ rest)
   nas-TLBrace    : ∀ {rest} → NotAtomStart (TLBrace    ∷ rest)
   nas-TRBrace    : ∀ {rest} → NotAtomStart (TRBrace    ∷ rest)
   nas-TColon     : ∀ {rest} → NotAtomStart (TColon     ∷ rest)
@@ -181,6 +180,10 @@ data AppArgOk : List Token → Set where
   aao-TLParen : ∀ {rest} → AppArgOk (TLParen ∷ rest)
   aao-TLambda : ∀ {rest} → AppArgOk (TLambda ∷ rest)
   aao-TInt    : ∀ {n rest} → AppArgOk (TInt n ∷ rest)
+  -- Plan 0.71 F3a: WITHHELD at F1 and added now, in the same commit as the
+  -- atom rule below. Asserting this while `parseAtomExprWF` still returned
+  -- `nothing` would have claimed a parse the parser does not produce.
+  aao-TFloat  : ∀ {i f l rest} → AppArgOk (TFloat i f l ∷ rest)
   aao-TString : ∀ {s rest} → AppArgOk (TString s ∷ rest)
   aao-word    : ∀ {name rest} → isReserved name ≡ false
               → AppArgOk (TWord name ∷ rest)
@@ -445,6 +448,8 @@ mutual
 
     pae-int  : ∀ {n rest}
              → ParsesAtomExpr (TInt n ∷ rest) (RInt n) rest
+    pae-float : ∀ {i f l rest}
+             → ParsesAtomExpr (TFloat i f l ∷ rest) (RFloat i f l) rest
 
     pae-str  : ∀ {s rest}
              → ParsesAtomExpr (TString s ∷ rest) (RStringLit s) rest
@@ -699,6 +704,7 @@ mutual
     ∀ {toks e rest} → ParsesAtomExpr toks e rest → length rest < length toks
   ParsesAtomExpr-shrinks pae-unit      = s≤s (m≤n⇒m≤1+n ≤-refl)
   ParsesAtomExpr-shrinks pae-int       = s≤s ≤-refl
+  ParsesAtomExpr-shrinks pae-float     = s≤s ≤-refl
   ParsesAtomExpr-shrinks pae-str       = s≤s ≤-refl
   ParsesAtomExpr-shrinks (pae-var _ _) = s≤s ≤-refl
   ParsesAtomExpr-shrinks (pae-qual _)  = s≤s (m≤n⇒m≤1+n (n≤1+n _))

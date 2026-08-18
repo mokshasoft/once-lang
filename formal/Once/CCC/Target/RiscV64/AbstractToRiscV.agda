@@ -41,7 +41,7 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Once.Target.Symbol using (once-symbol; once-symbol-path)
 
 -- Import RISC-V syntax
-open import Once.Semantics.FloatBits using (float-bits)
+open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
 open import Once.CCC.Target.RiscV64.Syntax
   using (Reg; zero; ra; sp; fp; a0; a1; a2; a3; a4; a5; a6; a7;
          s1; s2; s3; s4; t0; t1; t2; t3; t4;
@@ -289,7 +289,7 @@ compile-abstract (instr-sigop si) = call-sym (once-symbol-path (SigOpInfo.name s
 -- and expands to the `lui`/`addi` sequence, which is the same trust seam as gas
 -- promoting `movq $big` to `movabs`.
 compile-abstract (instr-load-const fits-int   v) = li a0 (+ v) ∷ []
-compile-abstract (instr-load-const fits-float v) = li a0 (+ (float-bits v)) ∷ []
+compile-abstract (instr-load-const fits-float v) = li a0 (+ (encode binary64 v)) ∷ []
 -- Plan 0.53: closure-body code-addr load. Mirror x86-64's
 -- `lea .L_thunk_n(%rip), %rax` — load the body label address into Output.
 compile-abstract (instr-load-code-addr n) = lla a0 n ∷ []

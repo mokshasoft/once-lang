@@ -143,7 +143,8 @@ eval-unit-unique f x with eval f x
 open import Once.IR using (IR)
 open import Data.Integer using (ℤ)
 open import Once.Word using (Carrier)
-open import Once.Semantics.Value Carrier using (sem-cata; sem-para; sem-ana; sem-fuseNat; sem-fuseNat-cong; ⟦_⟧F; coerce-functor; coerce-functor⁻¹)
+open import Once.Float.Dyadic using (Dyadic)
+open import Once.Semantics.Value Carrier Dyadic using (sem-cata; sem-para; sem-ana; sem-fuseNat; sem-fuseNat-cong; ⟦_⟧F; coerce-functor; coerce-functor⁻¹)
 
 -- Cata: if two algebras evaluate equally (pointwise), so do their Cata applications.
 -- Proved by cong over the lambda inside the sem-cata call.

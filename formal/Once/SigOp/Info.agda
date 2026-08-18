@@ -51,7 +51,8 @@ open import Once.Functor.Translate using (IsBaseType; IsConcrete)
 
 -- | Machine-level interpretation (Int ≡ ℕ).
 open import Once.Word using (Carrier)
-import Once.Semantics.Value Carrier as M
+open import Once.Float.Dyadic using (Dyadic)
+import Once.Semantics.Value Carrier Dyadic as M
 
 ------------------------------------------------------------------------
 -- EffectShape — the SigOp's effect *shape*, indexed by codomain

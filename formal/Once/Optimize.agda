@@ -25,6 +25,7 @@ module Once.Optimize where
 
 open import Once.Type
 open import Once.IR
+open import Once.Float.Dyadic using (Dyadic)
 import Once.IRTy as II
 open import Once.CCC.Machine.SMCore using (_≟H_)
 
@@ -755,10 +756,10 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 ≟IRH-diag (const p₁ v₁) (const p₂ v₂) _ refl refl =
   ≟const-irrelevant p₁ p₂ v₁ v₂
   where
-    open import Once.IRTy using (⟦_⟧-baseI)
+    open import Once.IRTy using (⟦_,_⟧-baseI)
     open import Once.Word using (Carrier)
     postulate
-      ≟const-irrelevant : ∀ (q₁ q₂ : FitsInRegI _) (u₁ u₂ : ⟦ Carrier ⟧-baseI _) →
+      ≟const-irrelevant : ∀ (q₁ q₂ : FitsInRegI _) (u₁ u₂ : ⟦ Carrier , Dyadic ⟧-baseI _) →
                           Dec (const q₁ u₁ ≡ const q₂ u₂)
 
 ------------------------------------------------------------------------

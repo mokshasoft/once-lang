@@ -42,7 +42,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subs
 
 -- Semantic operations
 open import Once.Word using (Carrier)
-open import Once.Semantics.Value Carrier using (sem-In; sem-Out; sem-CoIn; sem-CoOut;
+open import Once.Float.Dyadic using (Dyadic)
+open import Once.Semantics.Value Carrier Dyadic using (sem-In; sem-Out; sem-CoIn; sem-CoOut;
                                           coerce-functor; coerce-functor⁻¹; sem-Out-In;
                                           sem-CoOut-CoIn; coerce-round-trip)
 

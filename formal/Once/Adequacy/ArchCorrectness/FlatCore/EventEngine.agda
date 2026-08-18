@@ -51,6 +51,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface as EI
 
 -- `fenc`'s type mentions it, so this import must precede the module header.
 open import Data.Float using () renaming (Float to AgdaFloat)
+open import Once.Float.Dyadic using (Dyadic)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
   -- Plan 0.63 (D089): the DEFINITION'S identity, which keys its labels.
@@ -61,7 +62,10 @@ module Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
   (word-eq : frame-word FS ≡ slot-size)
   -- HOW THIS TARGET ENCODES A FLOAT CONSTANT (plan 0.66, D109) — see
   -- `FlatCorrespondence`'s parameter of the same name.
-  (fenc : AgdaFloat → ℕ)
+  -- Plan 0.72 (D112): the encoder now takes the WIDTH-FREE carrier, not a
+  -- 64-bit double. That is the whole change: the target applies its format to
+  -- an exact value, instead of re-encoding a value that already had a width.
+  (fenc : Dyadic → ℕ)
   (Reg : Set)
   (roles : RegRoles Reg)
   (modulus : ℕ)
@@ -483,7 +487,7 @@ record Supply : Set₁ where
     lit-fits : ∀ {hv : HeapView} prog fs s (v : Carrier) → RunAt prog fs
             → CompiledCorr hv prog fs s
             → fetch prog (fpc fs) ≡ just (instr-load-const fits-int v) → v < modulus
-    float-fits : ∀ {hv : HeapView} prog fs s (v : AgdaFloat) → RunAt prog fs
+    float-fits : ∀ {hv : HeapView} prog fs s (v : Dyadic) → RunAt prog fs
               → CompiledCorr hv prog fs s
               → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
               → fenc v < modulus

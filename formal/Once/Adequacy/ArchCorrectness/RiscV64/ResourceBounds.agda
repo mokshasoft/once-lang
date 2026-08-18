@@ -51,7 +51,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Target.RiscV64.FrameInstantiation using (rv64-frame-semantics)
 open import Once.Word using (Carrier)
 open import Once.Type using (fits-int; fits-float)
-open import Once.Semantics.FloatBits using (float-bits)
+open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
 open import Data.Float using () renaming (Float to AgdaFloat)
 -- …and riscv64's ENGINE INTERFACES (plan 0.65 G2). Imported here for the same
 -- reason this module's own siblings are: nothing else reaches them, and an
@@ -255,10 +255,10 @@ record LitFits : Set₁ where
     float-fits :
       ∀ {hv : FCr.HeapView rv64-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {rv64-frame-semantics})
-        (s : R.State) (v : AgdaFloat)
+        (s : R.State) (v : Dyadic)
       → RCr.RunAt o rv64-frame-semantics slot-size refl prog fs
       → FSimr.CompiledCorr o rv64-frame-semantics refl hv prog fs s
       → FlatMachine.fetch {rv64-frame-semantics} prog
           (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-const fits-float v)
-      → float-bits v < R.W.modulus
+      → (encode binary64) v < R.W.modulus
 open LitFits public

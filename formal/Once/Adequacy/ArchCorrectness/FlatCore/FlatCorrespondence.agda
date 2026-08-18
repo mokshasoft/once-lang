@@ -59,6 +59,7 @@ open import Data.Maybe using (Maybe)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1; role-scratch; role-count)
+open import Once.Float.Dyadic using (Dyadic)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
   (FS : FrameSemantics)
@@ -72,12 +73,15 @@ module Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
   (word-eq : frame-word FS ≡ slot-size)
   -- HOW THIS TARGET ENCODES A FLOAT CONSTANT (plan 0.66, D109). A double is 64
   -- bits; a 32-bit register is not, so the encoding is a property of the TARGET
-  -- exactly as `slot-size` is, and hardcoding `float-bits` here was the same
+  -- exactly as `slot-size` is, and hardcoding `float-bits` (as it was) here was the same
   -- kind of assumption as hardcoding 8 would have been. 64-bit targets pass
-  -- `float-bits`, x86-32 passes `float-bits-single`. The correspondence never
+  -- `float-bits` (as it was), x86-32 passes `float-bits-single` (as it was). The correspondence never
   -- needs to know WHICH — only that the emitter's immediate and `enc-sv` are
   -- the same function, which is what makes the block-step `refl`.
-  (fenc : AgdaFloat → ℕ)
+  -- Plan 0.72 (D112): the encoder now takes the WIDTH-FREE carrier, not a
+  -- 64-bit double. That is the whole change: the target applies its format to
+  -- an exact value, instead of re-encoding a value that already had a width.
+  (fenc : Dyadic → ℕ)
   -- the machine, as far as a correspondence can see it
   (Reg : Set)
   (roles : RegRoles Reg)
@@ -1923,7 +1927,7 @@ sim-load-const {hv} v fs s s' corr st = record
 -- …and the FLOAT constant (D079): identical, with the IEEE-754 pattern as
 -- the immediate — `enc-sv (SV-Lit fits-float v)` IS `fenc v`, so
 -- `out-eq` is `at-role` exactly as in the int case.
-sim-load-const-float : {hv : HeapView} (v : AgdaFloat) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+sim-load-const-float : {hv : HeapView} (v : Dyadic) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
   → SetsRole s s' role-out (fenc v)
   → FlatCorr hv (flat-exec-instr (instr-load-const fits-float v) [] fs) s'
 sim-load-const-float {hv} v fs s s' corr st = record

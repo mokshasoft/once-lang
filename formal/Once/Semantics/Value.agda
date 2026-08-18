@@ -42,7 +42,12 @@
 -- ╚══════════════════════════════════════════════════════════════════╝
 ------------------------------------------------------------------------
 
-module Once.Semantics.Value (IntRep : Set) where
+-- PLAN 0.72 (D112): `FloatRep` joins `IntRep` as a parameter. `Float`'s
+-- representation was hardcoded to Agda's double while `Int`'s was a parameter,
+-- which is what let a 64-bit value be claimed to fit a 32-bit register with no
+-- postulate to point at. Instantiated at `Once.Float.Dyadic.Dyadic`, the
+-- width-free exact carrier — the analogue of `Once.Word.Carrier`.
+module Once.Semantics.Value (IntRep : Set) (FloatRep : Set) where
 
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -81,7 +86,7 @@ open import Once.Type
 -- interpretation equals the full interpretation.
 ------------------------------------------------------------------------
 
-open import Once.Functor.Translate using (μ-sem; ν-sem; translateF; ⟦_⟧-base; IsBaseType; WellFormedF)
+open import Once.Functor.Translate using (μ-sem; ν-sem; translateF; ⟦_,_⟧-base; IsBaseType; WellFormedF)
 open import Once.Functor.Translate
   using ( base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer
         ; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod)
@@ -99,7 +104,7 @@ open import Once.Semantics.Functor
 -- μ-coherence is now provable (essentially refl).
 --
 ⟦μ⟧ : Functor → Set
-⟦μ⟧ = μ-sem IntRep
+⟦μ⟧ = μ-sem IntRep FloatRep
 
 -- | Semantic interpretation of ν-type (final coalgebra)
 --
@@ -107,7 +112,7 @@ open import Once.Semantics.Functor
 -- ν-coherence is now provable (essentially refl).
 --
 ⟦ν⟧ : Functor → Set
-⟦ν⟧ = ν-sem IntRep
+⟦ν⟧ = ν-sem IntRep FloatRep
 
 -- ⟦Guarded⟧ removed: productivity follows from IR totality (see IR/Totality.agda)
 
@@ -127,7 +132,7 @@ open import Once.Semantics.Functor
 ⟦ ν-type F ⟧     = ⟦ν⟧ F
 -- GuardedT removed: productivity follows from IR totality
 ⟦ Int ⟧          = IntRep
-⟦ Float ⟧        = AgdaFloat
+⟦ Float ⟧        = FloatRep
 ⟦ Str ⟧          = String
 ⟦ Buffer ⟧       = String
 -- TVar removed from Type; now in PolyType (see Once.Type)
@@ -358,7 +363,7 @@ fmap-struct-coherence′ (F ⊗ G) f (x , y) = cong₂ _,_ (fmap-struct-coherenc
 -- - Base types: identity (definitionally equal)
 -- - Complex types: produce tt (base interp returns ⊤)
 --
-coerce-full-to-base : ∀ A → ⟦ A ⟧ → ⟦ IntRep ⟧-base A
+coerce-full-to-base : ∀ A → ⟦ A ⟧ → ⟦ IntRep , FloatRep ⟧-base A
 coerce-full-to-base Unit x = x
 coerce-full-to-base Void x = x
 coerce-full-to-base (A * B) (a , b) = (coerce-full-to-base A a , coerce-full-to-base B b)
@@ -392,7 +397,7 @@ coerce-full-to-base Buffer x = x
 --
 -- Requires an IsBaseType proof, which is what makes it total.
 --
-coerce-base-to-full : ∀ {A} → IsBaseType A → ⟦ IntRep ⟧-base A → ⟦ A ⟧
+coerce-base-to-full : ∀ {A} → IsBaseType A → ⟦ IntRep , FloatRep ⟧-base A → ⟦ A ⟧
 coerce-base-to-full base-Unit x = x
 coerce-base-to-full base-Void ()
 coerce-base-to-full base-Int x = x
@@ -432,7 +437,7 @@ coerce-base-type-round-trip (base-Sum pA pB) (inj₂ b) =
 
 -- | For base types, coerce-full-to-base ∘ coerce-base-to-full = id (PROVEN)
 --
-coerce-base-type⁻¹-round-trip : ∀ {A} → (pA : IsBaseType A) → (x : ⟦ IntRep ⟧-base A)
+coerce-base-type⁻¹-round-trip : ∀ {A} → (pA : IsBaseType A) → (x : ⟦ IntRep , FloatRep ⟧-base A)
                               → coerce-full-to-base A (coerce-base-to-full pA x) ≡ x
 coerce-base-type⁻¹-round-trip base-Unit x = refl
 coerce-base-type⁻¹-round-trip base-Void ()
@@ -450,13 +455,13 @@ coerce-base-type⁻¹-round-trip (base-Sum pA pB) (inj₂ b) =
 ------------------------------------------------------------------------
 -- μ-type Coercions (OCP-0003)
 --
--- Structural coercions between ⟦ F ⟧F X and ⟦ translateF IntRep F ⟧SF X.
+-- Structural coercions between ⟦ F ⟧F X and ⟦ translateF IntRep FloatRep F ⟧SF X.
 -- These use the type coercions above for the K case.
 ------------------------------------------------------------------------
 
 -- | Coerce from ⟦ F ⟧F to ⟦ translateF F ⟧SF (for μ-type operations)
 --
-coerce-μ-in : ∀ F (X : Set) → ⟦ F ⟧F X → ⟦ translateF IntRep F ⟧SF X
+coerce-μ-in : ∀ F (X : Set) → ⟦ F ⟧F X → ⟦ translateF IntRep FloatRep F ⟧SF X
 coerce-μ-in (K A) X x = coerce-full-to-base A x
 coerce-μ-in Id X x = x
 coerce-μ-in (F ⊕ G) X (inj₁ x) = inj₁ (coerce-μ-in F X x)
@@ -467,7 +472,7 @@ coerce-μ-in (F ⊗ G) X (x , y) = (coerce-μ-in F X x , coerce-μ-in G X y)
 --
 -- Requires a WellFormedF proof to ensure K positions only use base types.
 --
-coerce-μ-out : ∀ {F} → WellFormedF F → (X : Set) → ⟦ translateF IntRep F ⟧SF X → ⟦ F ⟧F X
+coerce-μ-out : ∀ {F} → WellFormedF F → (X : Set) → ⟦ translateF IntRep FloatRep F ⟧SF X → ⟦ F ⟧F X
 coerce-μ-out (wf-K pA) X x = coerce-base-to-full pA x
 coerce-μ-out wf-Id X x = x
 coerce-μ-out (wf-Sum wfF wfG) X (inj₁ x) = inj₁ (coerce-μ-out wfF X x)
@@ -496,7 +501,7 @@ coerce-μ-round-trip (wf-Prod wfF wfG) X (x , y) =
 
 -- | coerce-μ-in ∘ coerce-μ-out = id (PROVEN)
 --
-coerce-μ⁻¹-round-trip : ∀ {F} → (wf : WellFormedF F) → ∀ (X : Set) (x : ⟦ translateF IntRep F ⟧SF X)
+coerce-μ⁻¹-round-trip : ∀ {F} → (wf : WellFormedF F) → ∀ (X : Set) (x : ⟦ translateF IntRep FloatRep F ⟧SF X)
                       → coerce-μ-in F X (coerce-μ-out wf X x) ≡ x
 coerce-μ⁻¹-round-trip (wf-K pA) X x = coerce-base-type⁻¹-round-trip pA x
 coerce-μ⁻¹-round-trip wf-Id X x = refl
@@ -527,7 +532,7 @@ sem-In F x = ⟨ coerce-μ-in F (⟦μ⟧ F) x ⟩
 -- Requires a WellFormedF proof, which is what defines the coercion.
 --
 sem-Out : ∀ {F : Functor} → WellFormedF F → ⟦μ⟧ F → ⟦ F ⟧F (⟦μ⟧ F)
-sem-Out {F} wf x = coerce-μ-out wf (⟦μ⟧ F) (outS (translateF IntRep F) x)
+sem-Out {F} wf x = coerce-μ-out wf (⟦μ⟧ F) (outS (translateF IntRep FloatRep F) x)
 
 -- | Catamorphism: given algebra F(A) → A, fold μF → A
 --
@@ -535,7 +540,7 @@ sem-Out {F} wf x = coerce-μ-out wf (⟦μ⟧ F) (outS (translateF IntRep F) x)
 -- Requires a WellFormedF proof, which is what defines the coercion.
 --
 sem-cata : ∀ {F : Functor} → WellFormedF F → {A : Set} → (⟦ F ⟧F A → A) → ⟦μ⟧ F → A
-sem-cata {F} wf {A} alg = cataS {translateF IntRep F} (λ x → alg (coerce-μ-out wf A x))
+sem-cata {F} wf {A} alg = cataS {translateF IntRep FloatRep F} (λ x → alg (coerce-μ-out wf A x))
 
 -- | Paramorphism: fold with access to original substructure
 --
@@ -560,12 +565,12 @@ sem-para {F} wf {A} alg x = proj₂ (sem-cata wf alg' x)
 ------------------------------------------------------------------------
 
 -- | Coerce from ⟦ F ⟧F to ⟦ translateF F ⟧SF (for ν-type operations)
-coerce-ν-in : ∀ F (X : Set) → ⟦ F ⟧F X → ⟦ translateF IntRep F ⟧SF X
+coerce-ν-in : ∀ F (X : Set) → ⟦ F ⟧F X → ⟦ translateF IntRep FloatRep F ⟧SF X
 coerce-ν-in = coerce-μ-in  -- Same structure
 
 -- | Coerce from ⟦ translateF F ⟧SF to ⟦ F ⟧F (for ν-type operations)
 -- Requires a WellFormedF proof, which is what defines the coercion.
-coerce-ν-out : ∀ {F} → WellFormedF F → (X : Set) → ⟦ translateF IntRep F ⟧SF X → ⟦ F ⟧F X
+coerce-ν-out : ∀ {F} → WellFormedF F → (X : Set) → ⟦ translateF IntRep FloatRep F ⟧SF X → ⟦ F ⟧F X
 coerce-ν-out = coerce-μ-out  -- Same structure
 
 ------------------------------------------------------------------------
@@ -616,7 +621,7 @@ sem-CoOut-CoIn {F} wf x = coerce-μ-round-trip wf (⟦ν⟧ F) x
 mutual
   sem-ana : ∀ (F : Functor) {A : Set} → (A → ⟦ F ⟧F A) → A → ⟦ν⟧ F
   unfoldS (sem-ana F {A} coalg a) =
-    sfmapSemAna F (translateF IntRep F) coalg (coerce-ν-in F A (coalg a))
+    sfmapSemAna F (translateF IntRep FloatRep F) coalg (coerce-ν-in F A (coalg a))
 
   sfmapSemAna : ∀ (F : Functor) (H : SFunctor) {A : Set}
               → (A → ⟦ F ⟧F A) → ⟦ H ⟧SF A → ⟦ H ⟧SF (⟦ν⟧ F)
@@ -676,7 +681,7 @@ sem-fuseNat : ∀ (F G : Functor) → WellFormedF F → WellFormedF G → {B : S
             → (⟦ F ⟧F B → B)                   -- algebra: F(B) → B
             → ⟦μ⟧ G → B
 sem-fuseNat F G wfF wfG {B} transform alg =
-  fuseNatS {translateF IntRep F} {translateF IntRep G} {B}
+  fuseNatS {translateF IntRep FloatRep F} {translateF IntRep FloatRep G} {B}
     (coerce-μ-in F _ ∘ transform ∘ coerce-μ-out wfG _)
     (alg ∘ coerce-μ-out wfF B)
 
@@ -695,7 +700,7 @@ sem-fuseNat-cong : ∀ (F G : Functor) (wfF : WellFormedF F) (wfG : WellFormedF 
 sem-fuseNat-cong F G wfF wfG {B} φ ψ alg₁ alg₂ φψ-eq alg-eq x =
   cataS-cong Φ-eq x
   where
-    Φ-eq : ∀ (z : ⟦ translateF IntRep G ⟧SF B)
+    Φ-eq : ∀ (z : ⟦ translateF IntRep FloatRep G ⟧SF B)
          → alg₁ (coerce-μ-out wfF B (coerce-μ-in F B (φ (coerce-μ-out wfG B z))))
          ≡ alg₂ (coerce-μ-out wfF B (coerce-μ-in F B (ψ (coerce-μ-out wfG B z))))
     Φ-eq z =
@@ -717,7 +722,7 @@ sem-fuseNat-events : ∀ {M : Set} (_·_ : M → M → M) (ε : M)
                    → (⟦ F ⟧F B → M × B)               -- algebra: F(B) → (M , B)
                    → ⟦μ⟧ G → M × B
 sem-fuseNat-events {M} _·_ ε F G wfF wfG {B} transform alg =
-  fuseNatW {translateF IntRep F} {translateF IntRep G} {B} {M} _·_ ε
+  fuseNatW {translateF IntRep FloatRep F} {translateF IntRep FloatRep G} {B} {M} _·_ ε
     (λ {A} sg → (ε , coerce-μ-in F A (transform (coerce-μ-out wfG A sg))))
     (λ sfb → alg (coerce-μ-out wfF B sfb))
 
@@ -766,7 +771,7 @@ sem-In-Out wf ⟨ y ⟩ = cong ⟨_⟩ (coerce-μ⁻¹-round-trip wf _ y)
 -- coerce-μ-in F ∘ sem-fmap F f ≡ sfmap (translateF F) f ∘ coerce-μ-in F
 --
 fmap-coerce-μ-coherence : ∀ F {X Y : Set} (f : X → Y) (x : ⟦ F ⟧F X)
-                        → coerce-μ-in F Y (sem-fmap F f x) ≡ sfmap (translateF IntRep F) f (coerce-μ-in F X x)
+                        → coerce-μ-in F Y (sem-fmap F f x) ≡ sfmap (translateF IntRep FloatRep F) f (coerce-μ-in F X x)
 fmap-coerce-μ-coherence (K A) f x = refl
 fmap-coerce-μ-coherence Id f x = refl
 fmap-coerce-μ-coherence (F ⊕ G) f (inj₁ x) = cong inj₁ (fmap-coerce-μ-coherence F f x)
@@ -777,8 +782,8 @@ fmap-coerce-μ-coherence (F ⊗ G) f (x , y) = cong₂ _,_ (fmap-coerce-μ-coher
 --
 -- coerce-μ-out wf ∘ sfmap (translateF F) f ≡ sem-fmap F f ∘ coerce-μ-out wf
 --
-fmap-coerce-μ-coherence′ : ∀ {F} (wf : WellFormedF F) {X Y : Set} (f : X → Y) (x : ⟦ translateF IntRep F ⟧SF X)
-                         → coerce-μ-out wf Y (sfmap (translateF IntRep F) f x) ≡ sem-fmap F f (coerce-μ-out wf X x)
+fmap-coerce-μ-coherence′ : ∀ {F} (wf : WellFormedF F) {X Y : Set} (f : X → Y) (x : ⟦ translateF IntRep FloatRep F ⟧SF X)
+                         → coerce-μ-out wf Y (sfmap (translateF IntRep FloatRep F) f x) ≡ sem-fmap F f (coerce-μ-out wf X x)
 fmap-coerce-μ-coherence′ (wf-K pA) f x = refl
 fmap-coerce-μ-coherence′ wf-Id f x = refl
 fmap-coerce-μ-coherence′ (wf-Sum wfF wfG) f (inj₁ x) = cong inj₁ (fmap-coerce-μ-coherence′ wfF f x)
@@ -802,7 +807,7 @@ fmap-coerce-μ-coherence′ (wf-Prod wfF wfG) f (x , y) = cong₂ _,_ (fmap-coer
 sem-cata-compute : ∀ {F : Functor} → (wf : WellFormedF F) → ∀ {A : Set} (alg : ⟦ F ⟧F A → A) (x : ⟦ F ⟧F (⟦μ⟧ F))
                  → sem-cata wf alg (sem-In F x) ≡ alg (sem-fmap F (sem-cata wf alg) x)
 sem-cata-compute {F} wf {A} alg x =
-  let TF = translateF IntRep F
+  let TF = translateF IntRep FloatRep F
       alg′ = λ y → alg (coerce-μ-out wf A y)
       step1 : cataS {TF} alg′ ⟨ coerce-μ-in F (⟦μ⟧ F) x ⟩ ≡ alg′ (sfmap TF (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x))
       step1 = cataS-computation TF alg′ (coerce-μ-in F (⟦μ⟧ F) x)

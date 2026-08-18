@@ -24,6 +24,7 @@ module Once.IR where
 
 open import Data.String using (String)
 
+open import Once.Float.Dyadic using (Dyadic)
 -- Plan 0.52 M2: IR OBJECTS are the UNGRADED `Once.IRTy` (pure/eff arrows are
 -- the SAME object, so `arr` is retired). Re-exported so consumers get
 -- `Unit`/`_*_`/`_+_`/`_⇛_`/`μ-type`/`⟦_⟧TI`/`WellFormedFI`/`FitsInRegI`/… as IRTy.
@@ -44,7 +45,7 @@ open import Once.Type as T using (Type)
 open import Once.Memory.HeapAddress using (HeapRef)
 
 -- D054/0.47: `const` carries the literal's machine-carrier value
--- (`⟦ Carrier ⟧-base A` — the machine `Word` carrier for Int, `Float` for
+-- (`⟦ Carrier , Dyadic ⟧-base A` — the machine `Word` carrier for Int, `Float` for
 -- Float), NOT a Core interpretation. This keeps the IR a pure syntax tier
 -- with NO dependency on Once.Semantics.Value (`Once.Word` is a primitive,
 -- not the semantics layer — like `Memory.HeapAddress` above).
@@ -266,12 +267,12 @@ data IR where
   -- through `const` — they are produced by `terminal` (Unit is
   -- erased throughout the IR semantics post Plan 0.2.4.5).
   --
-  -- Carries the literal's machine-carrier value `⟦ Carrier ⟧-base A`
+  -- Carries the literal's machine-carrier value `⟦ Carrier , Dyadic ⟧-base A`
   -- (the `Word` carrier for Int, `Float` for Float) — Value-free, so the IR
   -- is a pure syntax tier. (D054: an `Int` literal denotes a `Word`; the
   -- carrier is width-agnostic and the target word size is threaded from the
   -- arch into `norm`/`fromℤ` at codegen/arith. Non-negative; neg is `OpNeg`.)
-  const : ∀ {A} → FitsInRegI A → ⟦ Carrier ⟧-baseI A → IR Unit A
+  const : ∀ {A} → FitsInRegI A → ⟦ Carrier , Dyadic ⟧-baseI A → IR Unit A
 
   -- Signature operations (opaque escape hatch).
   -- Carries a `SigOpInfo` (name + sem at both levels) so the IR

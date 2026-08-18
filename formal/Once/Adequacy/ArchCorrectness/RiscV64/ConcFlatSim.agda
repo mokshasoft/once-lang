@@ -46,7 +46,7 @@ open import Data.Nat using (ℕ; suc; _+_; _<_; _≤_)
 open import Once.CCC.Label using (LabelId)
 open import Once.Word using (Carrier)
 open import Once.Type using (fits-int; fits-float)
-open import Once.Semantics.FloatBits using (float-bits)
+open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Data.Maybe using (just)
 
@@ -151,12 +151,12 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
                 ≡ just (instr-load-const fits-int v)
             → v < RS.W.modulus)
   (float-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
-                  (fs : FlatMachine.FlatState {FS}) (s : RS.State) (v : AgdaFloat)
+                  (fs : FlatMachine.FlatState {FS}) (s : RS.State) (v : Dyadic)
               → RCr.RunAt o FS slot-size word-eq prog fs
               → FSimr.CompiledCorr o FS word-eq hv prog fs s
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
-              → float-bits v < RS.W.modulus)
+              → (encode binary64) v < RS.W.modulus)
   where
 
 open import Data.Nat using (ℕ; zero; suc; _+_)
@@ -296,7 +296,7 @@ riscv64-traceloop = record
   ; nonhalt-noncall = r-nonhalt-noncall
   }
 
-module EE = Engine o FS slot-size word-eq float-bits Reg riscv64-roles R.W.modulus
+module EE = Engine o FS slot-size word-eq (encode binary64) Reg riscv64-roles R.W.modulus
                    riscv64-emitter riscv64-machine riscv64-traceloop
 
 open EE using (FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-env
@@ -625,6 +625,6 @@ riscv64-supply = record
   ; external-sigop-contract = external-sigop-contract
   }
 
-module ED = Dispatch o FS slot-size word-eq float-bits Reg riscv64-roles RS.W.modulus
+module ED = Dispatch o FS slot-size word-eq (encode binary64) Reg riscv64-roles RS.W.modulus
                      riscv64-emitter riscv64-machine riscv64-traceloop
 open ED.Dispatch riscv64-supply public

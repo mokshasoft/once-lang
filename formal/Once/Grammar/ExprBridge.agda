@@ -156,6 +156,7 @@ parsesAtomExpr→opFails :
   → parseOpExprWF toks acc ≡ nothing
 parsesAtomExpr→opFails pae-unit       = refl
 parsesAtomExpr→opFails pae-int        = refl
+parsesAtomExpr→opFails pae-float      = refl
 parsesAtomExpr→opFails pae-str        = refl
 parsesAtomExpr→opFails (pae-var _ _)  = refl
 parsesAtomExpr→opFails (pae-qual _)   = refl
@@ -857,7 +858,6 @@ mutual
   ... | rv-reserved _     = _ , refl
   ... | rv-not-reserved nr = ⊥-elim (bool-absurd isR nr)
   complete-appTailWFraw (papp-done {toks = TRParen    ∷ _} nas-TRParen) _ = _ , refl
-  complete-appTailWFraw (papp-done {toks = TFloat _ _ _ ∷ _} nas-TFloat) _ = _ , refl
   complete-appTailWFraw (papp-done {toks = TLBrace    ∷ _} nas-TLBrace) _ = _ , refl
   complete-appTailWFraw (papp-done {toks = TRBrace    ∷ _} nas-TRBrace) _ = _ , refl
   complete-appTailWFraw (papp-done {toks = TColon     ∷ _} nas-TColon) _ = _ , refl
@@ -909,6 +909,11 @@ mutual
   ... | dT' , eqT
     rewrite eqT
     = _ , refl
+  complete-appTailWFraw (papp-arg aao-TFloat pae-float dT) (acc rec)
+    with complete-appTailWFraw dT (rec (s≤s ≤-refl))
+  ... | dT' , eqT
+    rewrite eqT
+    = _ , refl
   complete-appTailWFraw (papp-arg aao-TString pae-str dT) (acc rec)
     with complete-appTailWFraw dT (rec (s≤s ≤-refl))
   ... | dT' , eqT
@@ -933,6 +938,7 @@ mutual
   -- Leaves.
   complete-atomExprWFraw pae-unit (acc rec) = _ , refl
   complete-atomExprWFraw pae-int _ = _ , refl
+  complete-atomExprWFraw pae-float _ = _ , refl
   complete-atomExprWFraw pae-str _ = _ , refl
 
   -- Variable: dispatch through atomExprWordWF: views for "let", "destruct",

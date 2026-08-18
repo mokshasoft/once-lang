@@ -24,7 +24,7 @@ open import Once.CCC.Target.X86-64.Syntax
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Type using (FitsInReg; fits-int; fits-float)
-open import Once.Semantics.FloatBits using (float-bits)
+open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
 import Once.Semantics.Value as SC
 open import Once.Word using (Carrier)
 
@@ -44,18 +44,18 @@ compile-sigOp-length _ = refl
 -- Plan 0.11: const literal codegen. `FitsInReg` evidence dispatches;
 -- each register-fittable primitive emits its immediate-load.
 ------------------------------------------------------------------------
-compile-const : ∀ {A} → FitsInReg A → SC.⟦_⟧ Carrier A → Program
+compile-const : ∀ {A} → FitsInReg A → SC.⟦_⟧ Carrier Dyadic A → Program
 compile-const fits-int   n = mov (reg rax) (imm n) ∷ []
 -- D079 (2026-08-03): a float CONSTANT is a 64-bit pattern, so it loads as
 -- an ordinary immediate (gas promotes `movq $big` to `movabs`) — no FPU
 -- needed. Was `ud2`, which made the machines diverge on this route.
-compile-const fits-float v = mov (reg rax) (imm (float-bits v)) ∷ []
+compile-const fits-float v = mov (reg rax) (imm (encode binary64 v)) ∷ []
 
 compile-const-size : ∀ {A} → FitsInReg A → ℕ
 compile-const-size fits-int   = 1
 compile-const-size fits-float = 1
 
-compile-const-length : ∀ {A} (p : FitsInReg A) (v : SC.⟦_⟧ Carrier A) →
+compile-const-length : ∀ {A} (p : FitsInReg A) (v : SC.⟦_⟧ Carrier Dyadic A) →
                         length (compile-const p v) ≡ compile-const-size p
 compile-const-length fits-int   _ = refl
 compile-const-length fits-float _ = refl

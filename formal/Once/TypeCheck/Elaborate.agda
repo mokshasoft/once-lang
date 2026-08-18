@@ -55,7 +55,7 @@ open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits 
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; renderError;
-  LambdaInInferMode; LambdaRequiresFunctionType;
+  LambdaInInferMode; LambdaRequiresFunctionType; FloatLiteralUnsupported;
   InlInInferMode; InrInInferMode; InitialInInferMode;
   InlNeedsSumType; InrNeedsSumType;
   FstNeedsPair; SndNeedsPair; ArrNeedsFunction; NegationNotInt;
@@ -743,6 +743,7 @@ spineOf e = go e []
     go (Raw.RDestruct e a b c d) args = mkSpine (Raw.RDestruct e a b c d) args
     go Raw.RUnit             args = mkSpine Raw.RUnit args
     go (Raw.RInt n)          args = mkSpine (Raw.RInt n) args
+    go (Raw.RFloat i f l)    args = mkSpine (Raw.RFloat i f l) args
     go (Raw.RStringLit s)    args = mkSpine (Raw.RStringLit s) args
     go (Raw.RAnnot e t)      args = mkSpine (Raw.RAnnot e t) args
     go (Raw.RBinOp op x y)   args = mkSpine (Raw.RBinOp op x y) args
@@ -1698,6 +1699,12 @@ mutual
 
   inferElabV ctx (Raw.RInt n) =
     success Int _ (Surface.int n) 0 (NamedCtx.freshCounter ctx) , t-int n
+
+  -- Plan 0.71/0.72 in flight — see `FloatLiteralUnsupported`. The carrier and
+  -- the encoders are done (0.72 P1/P2); what is missing is the Surface node and
+  -- the typing rule, and F4's exactness check that gates them.
+  inferElabV ctx (Raw.RFloat i f l) =
+    failure FloatLiteralUnsupported , tt
 
   inferElabV ctx (Raw.RStringLit s) =
     success Str _ (Surface.str s) 0 (NamedCtx.freshCounter ctx) , t-str s

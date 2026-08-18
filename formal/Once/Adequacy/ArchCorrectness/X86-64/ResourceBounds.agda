@@ -44,7 +44,7 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Label using (LabelId)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Word using (Carrier)
-open import Once.Semantics.FloatBits using (float-bits)
+open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.CCC.Target.X86-64.Syntax using (slots; slot-size; reg; rsp; rbx; r14; Reg)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -280,17 +280,17 @@ record LitFits : Set₁ where
           (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
       → v < W.modulus
 
-    -- …and the float pattern. TRUE BY CONSTRUCTION — `float-bits` is
+    -- …and the float pattern. TRUE BY CONSTRUCTION — `float-bits` (as it was) is
     -- `primWord64ToNat` of a `Word64`, whose image is below 2⁶⁴ by definition —
     -- but `Data.Word.Properties` carries no such bound, so it is assumed here
     -- and provable the day the standard library states it.
     float-fits :
       ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
-        (s : X.State) (v : AgdaFloat)
+        (s : X.State) (v : Dyadic)
       → RCx.RunAt o x86-64-frame-semantics refl prog fs
       → FSimx.CompiledCorr o x86-64-frame-semantics refl hv prog fs s
       → FlatMachine.fetch {x86-64-frame-semantics} prog
           (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-load-const fits-float v)
-      → float-bits v < W.modulus
+      → (encode binary64) v < W.modulus
 open LitFits public
