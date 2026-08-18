@@ -19,7 +19,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTm; var; nzero; nsuc; app; pair; fst; snd; ⌜Nat⌝
         ; subTm )
 open import poc.OCP0009.NbEPDirDBType
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single; _⊢_∷_; ⊢app; ⊢nsuc; ⊢conv; csymᵀ
+  using ( Ctx; ◇; _▹_; ⌊_⌋; single; _⊢_∷_; ⊢app; ⊢nsuc; ⊢nzero; ⊢conv; csymᵀ
         ; _⟶*_; done )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢-cast; ⊢[] )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
@@ -33,7 +33,7 @@ open import poc.OCP0009.NbEPDirDBExamplesNat using ( ⊢plus )
 open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( reflTm; ⊢le-refl )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
-  using ( msr; ⊢msr; recCert; gcd-gt-term; descConv )
+  using ( msr; ⊢msr; recCert; gcd-gt-term; descConv; gt-mh-1 )
 open import poc.OCP0009.NbEPDirDBLibArithMonus using ( ⊢desc-left )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStepExtA using ( gcdStepExt )
@@ -249,3 +249,57 @@ module GcdRecAt (Δ : Ctx) where
 
     gcd-gt-eq! : Prv Δ (Id (El ⌜Nat⌝) (app amrecTm X) (app amrecTm Y))
     gcd-gt-eq! = gcd-gt-eq (prvOk irrW)
+
+  ------------------------------------------------------------------------
+  -- ★★★★★ NON-VACUITY FOR EQUATION 3 — an INSTANCE, not just a theorem.
+  --
+  -- ⚠ WHY THIS IS NOT OPTIONAL.  `…GcdStep`'s own post-mortem records two
+  --   lemmas that were `--safe`, hole-free, green — and VACUOUS, because
+  --   their premise could not be satisfied where they were stated.  A
+  --   conditional `gcd-gt-eq!` invites exactly that reading, so here it is
+  --   INSTANTIATED against a real `mh`.
+  --
+  -- ★ THE REACH, stated so the result is not over-read: `mh` forces the
+  --   descent to land on a SUCCESSOR, and `monusTm` recurses on its SECOND
+  --   argument, so discharging it needs that argument to be a NUMERAL.
+  --   Equation 3 therefore holds for an ARBITRARY `a` (here `suc (suc d)`,
+  --   with `d` a genuine variable) and a NUMERAL `b` (here `suc zero`).
+  --   ⚠ NOT both arguments arbitrary — that is what equation 4 needs and
+  --   what the propositional route is for.
+  --
+  -- ⭐ WHAT IS NEW HERE is the IRRELEVANCE hypothesis being gone.  The `mh`
+  --   limit is pre-existing and independent; `irr-at` did not widen it.
+  ------------------------------------------------------------------------
+
+  module GtEqAt1 {d : RTm ⌊ Δ ⌋} (dd : Δ ⊢ d ∷ Nat) where
+
+    open GtEq {a' = nsuc d} {b' = nzero} {d = d}
+              (⊢nsuc dd) ⊢nzero dd (gt-mh-1 d) public
+
+------------------------------------------------------------------------
+-- ⚠⚠ CORRECTION TO c367f5d3's MESSAGE — THERE WAS NO REGRESSION.
+--
+-- That commit reports `…GcdEqs` going 7.8s → 6m14s when `irr-at` was added
+-- to its export list, and calls it a 48× regression.  THAT IS WRONG.
+--
+-- Measured properly — deleting ONLY `…GcdEqs`'s own `.agdai` in both arms,
+-- so dependencies are equally warm, and `irr-at` present-vs-absent is the
+-- only difference:
+--
+--     cold, WITHOUT irr-at   8.23s
+--     cold, WITH    irr-at   8.05s      ⇒ identical, no regression
+--
+-- ★ WHERE THE 6m14s CAME FROM: that run was the FIRST `…GcdEqs` check after
+--   `…LibAmrec` had been rebuilt, so it re-typechecked the dependency chain.
+--   Every number it was compared against ran WARM.  Cold-vs-warm, not
+--   with-vs-without.
+--
+-- ⚠ THE RULE ALREADY EXISTED AND WAS NOT APPLIED: time Agda cold or not at
+--   all; a second `check.sh` run understates ~3×, and only DELETING the
+--   `.agdai` gives a cold reading (touching it does not).
+--
+-- ⇒ A leaf-module "isolation" of `irr-at` was built to fix this and then
+--   ABORTED once the premise evaporated.  Do not rebuild it for performance
+--   reasons; there is nothing to fix.  `open … public` is likewise NOT the
+--   cause — tested, 7.4s public vs 7.1s not.
+------------------------------------------------------------------------
