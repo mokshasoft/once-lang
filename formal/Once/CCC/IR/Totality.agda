@@ -32,7 +32,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type
 open import Once.IR
-open import Once.CCC.Eval using (⟦_⟧; eval)
+open import Once.CCC.Eval using (eval)
+-- Plan 0.52 M2: IR objects are ungraded `IRTy`, so an IR morphism's argument
+-- lives in the IR domain `⟦_⟧ᴵ` — NOT the surface `⟦_⟧`, which wants a `Type`.
+open import Once.Semantics.Machine using (⟦_⟧ᴵ)
+open import Once.IRTy using (IRTy; ⟦_⟧TI)
 
 ------------------------------------------------------------------------
 -- Totality of IR Evaluation
@@ -58,7 +62,7 @@ open import Once.CCC.Eval using (⟦_⟧; eval)
 -- The bootstrap normalizer postulates this for the same reason [4].
 --
 postulate
-  eval-total : ∀ {A B} (f : IR A B) (a : ⟦ A ⟧)
+  eval-total : ∀ {A B} (f : IR A B) (a : ⟦ A ⟧ᴵ)
              → ∃[ b ] (eval f a ≡ b)
 
 ------------------------------------------------------------------------
@@ -75,7 +79,10 @@ postulate
 -- any IR coalgebra terminates and produces ⟦ F ⟧T A, which is
 -- exactly one layer of functor structure.
 --
-coalg-produces-layer : ∀ {F A} (c : IR A (⟦ F ⟧T A)) (a : ⟦ A ⟧)
+-- Plan 0.52 M2: an IR coalgebra is an IR-LEVEL object throughout — `Ana` takes
+-- an `IRFunctor` with `WellFormedFI` and IR objects are `IRTy`, so the layer is
+-- `⟦ F ⟧TI A` and no surface `Type` appears anywhere in the statement.
+coalg-produces-layer : ∀ {F} {A : IRTy} (c : IR A (⟦ F ⟧TI A)) (a : ⟦ A ⟧ᴵ)
                      → ∃[ v ] (eval c a ≡ v)
 coalg-produces-layer c a = eval-total c a
 
@@ -94,7 +101,7 @@ coalg-produces-layer c a = eval-total c a
 --
 -- If f and g both terminate, then (g ∘ f) terminates.
 --
-comp-total : ∀ {A B C} (f : IR A B) (g : IR B C) (a : ⟦ A ⟧)
+comp-total : ∀ {A B C} (f : IR A B) (g : IR B C) (a : ⟦ A ⟧ᴵ)
            → ∃[ c ] (eval (g ∘ f) a ≡ c)
 comp-total f g a = eval-total (g ∘ f) a
 

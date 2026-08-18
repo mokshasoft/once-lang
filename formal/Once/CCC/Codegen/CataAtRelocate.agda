@@ -263,9 +263,13 @@ module CataAtRelocate {FS : FrameSemantics} where
                  → FlatSteps seg N fs₀ fs₁
                  → FlatSteps prog N (shift-pc k fs₀) (shift-pc k fs₁)
   relocate-steps prog seg k lr tr fe []                                = []
-  relocate-steps prog seg k lr tr fe (_∷_ {fs = fs₀} {i = i} (h , f) rest) =
+  -- The motive NAMES the chain's length and end state (`N'`, `fsE`) rather
+  -- than leaving them to be inferred: `subst`'s motive is a function the
+  -- unifier cannot invert, so an `_` here is a meta nothing later constrains.
+  relocate-steps prog seg k lr tr fe
+    (_∷_ {fs = fs₀} {k = N'} {fs' = fsE} {i = i} (h , f) rest) =
     (h , fe (fpc fs₀) i f)
-      ∷ subst (λ s → FlatSteps prog _ s (shift-pc k _))
+      ∷ subst (λ s → FlatSteps prog N' s (shift-pc k fsE))
               (sym (instr-reloc prog seg k fs₀ i lr tr))
               (relocate-steps prog seg k lr tr fe rest)
 

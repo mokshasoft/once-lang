@@ -31,7 +31,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Type using (Type; Functor; ν-type; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.IR
-open import Once.CCC.Eval using (⟦_⟧; eval)
+open import Once.CCC.Eval using (eval)
+-- Plan 0.52 M2: IR objects are ungraded `IRTy`, so an IR morphism's argument
+-- lives in the IR domain `⟦_⟧ᴵ` — NOT the surface `⟦_⟧`, which wants a `Type`.
+open import Once.Semantics.Machine using (⟦_⟧ᴵ)
+open import Once.IRTy using (⌊_⌋; IRTy; WellFormedFI; ⟦_⟧TI)
 
 -- Import totality foundation
 open import Once.CCC.IR.Totality using (eval-total; coalg-produces-layer)
@@ -49,7 +53,12 @@ open import Once.CCC.IR.Totality using (eval-total; coalg-produces-layer)
 --
 -- This IS productivity: each observation produces a value in finite time.
 --
-observation-terminates : ∀ {F A} (wf : WellFormedF F) (c : IR A (⟦ F ⟧T A)) (a : ⟦ A ⟧)
+-- Plan 0.52 M2: this statement lives ENTIRELY at the IR level. `Out`/`Ana` take
+-- an `IRFunctor` with `WellFormedFI`, and IR objects are `IRTy` — so the functor
+-- application is `⟦ F ⟧TI`, not the surface `⟦ F ⟧T`. Stating it over surface
+-- types and erasing was the wrong repair: the morphism never mentions `Type`.
+observation-terminates : ∀ {F} (wf : WellFormedFI F) {A : IRTy}
+                           (c : IR A (⟦ F ⟧TI A)) (a : ⟦ A ⟧ᴵ)
                        → ∃[ v ] (eval (Out wf ∘ Ana wf c) a ≡ v)
 observation-terminates wf c a = eval-total (Out wf ∘ Ana wf c) a
 
@@ -66,7 +75,7 @@ observation-terminates wf c a = eval-total (Out wf ∘ Ana wf c) a
 -- Any coalgebra c : IR A (⟦ F ⟧T A) terminates and produces ⟦ F ⟧T A.
 -- This is "guardedness" — but it's automatic, not checked.
 --
-guardedness-automatic : ∀ {F A} (c : IR A (⟦ F ⟧T A)) (a : ⟦ A ⟧)
+guardedness-automatic : ∀ {F} {A : IRTy} (c : IR A (⟦ F ⟧TI A)) (a : ⟦ A ⟧ᴵ)
                       → ∃[ layer ] (eval c a ≡ layer)
 guardedness-automatic {F} {A} c a = coalg-produces-layer {F} {A} c a
 
