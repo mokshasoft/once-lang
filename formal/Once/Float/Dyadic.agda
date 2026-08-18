@@ -24,6 +24,8 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; _<_; _≤_; s�
 open import Data.Nat.Properties using (≤-refl; ≤-trans; +-comm; m≤m+n; m≤n+m; *-comm)
 open import Data.Nat.DivMod using (_/_; _%_; m%n<n)
 open import Data.Nat.Properties using (m^n≢0)
+open import Data.Nat.Logarithm using (⌊log₂_⌋)
+open import Data.Nat.Properties using (m^n>0)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -132,26 +134,104 @@ private
                 (≤-trans (≤-reflexive step2)
                   (≤-trans step3 (≤-reflexive step4)))
 
--- | The two fields, named so the encoder and its bound can both refer to them.
--- Fields by construction: the exponent is clamped into `exp-bits` and the
--- significand truncated to `sig-bits`. Truncation is where a value too precise
--- for the format would lose information — which is exactly what plan 0.71's F4
--- forbids at the SOURCE, so no accepted literal reaches it.
-expField : FloatFormat → Dyadic → ℕ
-expField F (m /2^ _) = modPow (bias F + m) (exp-bits F)
+------------------------------------------------------------------------
+-- NORMALISATION: `sig / 2 ^ shift` ↦ `1.f × 2 ^ E`
+--
+-- IEEE-754 does not store a dyadic pair. It stores a BIASED EXPONENT and the
+-- FRACTION of a significand normalised to `1.f`, and getting from one to the
+-- other is the whole content of the encoder. For `m / 2 ^ e` with `m > 0`, let
+-- `L` be `m`'s bit length. Then
+--
+--     m / 2 ^ e  =  1.f × 2 ^ (L − 1 − e)
+--
+-- so the stored exponent is `bias + (L − 1) − e` and the fraction is `m` with
+-- its leading bit removed, left-aligned into `sig-bits`.
+--
+-- Writing the pair straight into the two fields — exponent ← `sig`, fraction ←
+-- `shift` — is what this module did until 2026-08-18. It typechecked, it
+-- satisfied `encode-fits` (both are residues), and the machine correspondence
+-- held BY CONSTRUCTION because both sides call this same function. Nothing in
+-- the tree could refute it, because no source program can produce a float
+-- literal yet. The pinned patterns at the bottom of this module are the answer:
+-- an encoder must be checked against numbers someone else computed.
+------------------------------------------------------------------------
 
+-- | Bit length: `bitLen 0 = 0`, else `⌊log₂ m⌋ + 1`.
+bitLen : ℕ → ℕ
+bitLen zero    = 0
+bitLen (suc n) = suc ⌊log₂ (suc n) ⌋
+
+-- | The stored (biased) exponent: `bias + (L − 1) − shift`, clamped.
+--
+-- The `∸` clamps rather than wrapping, so a value too small for the format
+-- lands on the zero/subnormal exponent instead of a nonsense one. Plan 0.71's
+-- F4 rejects such literals at the SOURCE, which is where the honest error is;
+-- this is the residual behaviour for anything that reaches here anyway.
+expField : FloatFormat → Dyadic → ℕ
+expField F (m /2^ e) = modPow ((bias F + (bitLen m ∸ 1)) ∸ e) (exp-bits F)
+
+-- | The stored fraction: `m` minus its leading bit, left-aligned in `sig-bits`.
 sigField : FloatFormat → Dyadic → ℕ
-sigField F (_ /2^ e) = modPow e (sig-bits F)
+sigField F (m /2^ _) =
+  modPow ((m ∸ 2 ^ (bitLen m ∸ 1)) * 2 ^ (sig-bits F ∸ (bitLen m ∸ 1))) (sig-bits F)
 
 -- | The IEEE-754 bit pattern of a dyadic value at a format.
+--
+-- Zero is its own pattern (all bits clear) and NOT the normalisation formula's
+-- output — `bitLen 0` has no leading bit to strip, so the general case would
+-- emit the bias as an exponent and call it `1.0`.
 encode : FloatFormat → Dyadic → ℕ
-encode F d = expField F d * (2 ^ sig-bits F) + sigField F d
+encode F (zero  /2^ _) = 0
+encode F (suc m /2^ e) =
+  expField F (suc m /2^ e) * (2 ^ sig-bits F) + sigField F (suc m /2^ e)
 
 -- | …and its RANGE, which is the point: a theorem, where `float-bits` (as it was) needed a
 -- parameter (`LitFits.float-fits`) because the standard library states no bound
 -- on `primFloatToWord`.
 encode-fits : ∀ F d → encode F d < 2 ^ (exp-bits F + sig-bits F)
-encode-fits F (m /2^ e) =
+encode-fits F (zero /2^ e) = m^n>0 2 (exp-bits F + sig-bits F)
+encode-fits F (suc m /2^ e) =
   combine-bound (exp-bits F) (sig-bits F)
-                (modPow< (bias F + m) (exp-bits F))
-                (modPow< e (sig-bits F))
+                (modPow< ((bias F + (bitLen (suc m) ∸ 1)) ∸ e) (exp-bits F))
+                (modPow< ((suc m ∸ 2 ^ (bitLen (suc m) ∸ 1))
+                            * 2 ^ (sig-bits F ∸ (bitLen (suc m) ∸ 1)))
+                         (sig-bits F))
+
+
+------------------------------------------------------------------------
+-- THE PINNED PATTERNS
+--
+-- Bit patterns computed OUTSIDE this module, checked by `refl` at typecheck
+-- time. They are the only thing here that could have caught the crossed fields
+-- described above, because every other property of the encoder — its range, its
+-- agreement with the machine — holds just as well for a wrong encoder.
+--
+-- Each is a value plan 0.71's F4 will accept (exactly representable at every
+-- supported format), which is also what makes them the right regression set.
+------------------------------------------------------------------------
+
+private
+  -- 1.0 → 0x3F800000 / 0x3FF0000000000000
+  _ : encode binary32 (1 /2^ 0) ≡ 1065353216
+  _ = refl
+  _ : encode binary64 (1 /2^ 0) ≡ 4607182418800017408
+  _ = refl
+
+  -- 0.5 = 1/2 → 0x3F000000 (exponent one below the bias, fraction 0)
+  _ : encode binary32 (1 /2^ 1) ≡ 1056964608
+  _ = refl
+
+  -- 1.5 = 3/2 → 0x3FC00000: the first case with a NON-ZERO fraction, so it is
+  -- the one that separates a real normalisation from a field-shuffle.
+  _ : encode binary32 (3 /2^ 1) ≡ 1069547520
+  _ = refl
+
+  -- 2.75 = 11/4 → 0x40300000
+  _ : encode binary32 (11 /2^ 2) ≡ 1076887552
+  _ = refl
+
+  -- 0.0 → all bits clear, by its own clause and not by the formula.
+  _ : encode binary32 (0 /2^ 0) ≡ 0
+  _ = refl
+  _ : encode binary64 (0 /2^ 5) ≡ 0
+  _ = refl
