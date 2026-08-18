@@ -143,3 +143,27 @@ module LeafAt (Δ : Ctx) where
            {n₁ n₂ : RTm ⌊ Θ ⌋} (dn₁ : Θ ⊢ n₁ ∷ Nat) (dn₂ : Θ ⊢ n₂ ∷ Nat) →
            Θ ⊢ty irrT θ x y n₁ n₂
   motive h dx dy dn₁ dn₂ = ⊢irrT h dx dy dn₁ dn₂
+
+------------------------------------------------------------------------
+-- ⚠⚠ AND THE TENSION IS NOT CLEAN — TESTED 2026-08-18, FALSIFIED.
+--
+-- The measurement said `irrSplit`'s 17.5s is the `⊢natrec` CONVERSION-
+-- CHECKING its branches against `irrT` types, and `irrT` mentions `auxAt`,
+-- so the remedy was to make `auxAt` OPAQUE and let those comparisons stay
+-- syntactic.  The question was whether the `aux-*` reduction lemmas could
+-- keep it transparent while the `irr-*` block did not.
+--
+-- THE SPLIT IS MECHANICALLY CLEAN: only TWO sites need `auxAt` to compute —
+-- `⊢auxAt` (its definitional typing) and the `aux-*` reduction block, which
+-- took one `opaque unfolding auxAt` covering 1,172 lines.  `irr-*` needed no
+-- unfolding at all, exactly as predicted.
+--
+-- ⚠ BUT IT MADE THINGS WORSE.  With that split in place `…LibAmrec` ITSELF
+--   OOMs — it is ~57s green without it.  So opacity on `auxAt` costs more
+--   than the conversion checking it was meant to avoid.
+--
+-- ⇒ SEVEN fixes now proposed and falsified for this obligation.  The
+--   LOCALISATION stands (the cost is `irrSplit`'s `⊢natrec`), but every
+--   remedy that blocks unfolding has failed, and this one made the library
+--   unbuildable.  Do not retry `auxAt` opacity.
+------------------------------------------------------------------------
