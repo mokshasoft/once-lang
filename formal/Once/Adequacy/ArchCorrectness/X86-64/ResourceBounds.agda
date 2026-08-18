@@ -44,7 +44,8 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Label using (LabelId)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Word using (Carrier)
-open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+open import Once.Float.Dyadic using (Dyadic; encode; encode-fits; binary32; binary64)
+open import Data.Nat.Properties using (<-≤-trans; ^-monoʳ-≤; n≤1+n)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.CCC.Target.X86-64.Syntax using (slots; slot-size; reg; rsp; rbx; r14; Reg)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -279,18 +280,31 @@ record LitFits : Set₁ where
       → FlatMachine.fetch {x86-64-frame-semantics} prog
           (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
       → v < W.modulus
-
-    -- …and the float pattern. TRUE BY CONSTRUCTION — `float-bits` (as it was) is
-    -- `primWord64ToNat` of a `Word64`, whose image is below 2⁶⁴ by definition —
-    -- but `Data.Word.Properties` carries no such bound, so it is assumed here
-    -- and provable the day the standard library states it.
-    float-fits :
-      ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
-        (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
-        (s : X.State) (v : Dyadic)
-      → RCx.RunAt o x86-64-frame-semantics refl prog fs
-      → FSimx.CompiledCorr o x86-64-frame-semantics refl hv prog fs s
-      → FlatMachine.fetch {x86-64-frame-semantics} prog
-          (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-load-const fits-float v)
-      → (encode binary64) v < W.modulus
 open LitFits public
+
+
+------------------------------------------------------------------------
+-- …and the float pattern, DISCHARGED (plan 0.72 P3) rather than assumed.
+--
+-- It was a parameter for as long as the encoder was `primFloatToWord`: the
+-- image of a primitive has no stated bound, so the fact had to be borrowed.
+-- With the encoder arithmetic on a dyadic (P1/P2) the bound is a THEOREM —
+-- `encode` is `exp * 2 ^ sig-bits + sig`, whose parts are residues, so it
+-- lands below `2 ^ (exp-bits + sig-bits)` = 2^63, and the register holds
+-- 2^64. The premises are inherited from the family's shape and none of
+-- them is used: the bound holds for EVERY dyadic, not merely the reachable
+-- ones, which is the difference between a discharged residual and a
+-- relocated one.
+------------------------------------------------------------------------
+float-fits :
+  ∀ {hv : FCx.HeapView x86-64-frame-semantics refl}
+    (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-64-frame-semantics})
+    (s : X.State) (v : Dyadic)
+  → RCx.RunAt o x86-64-frame-semantics refl prog fs
+  → FSimx.CompiledCorr o x86-64-frame-semantics refl hv prog fs s
+  → FlatMachine.fetch {x86-64-frame-semantics} prog
+      (FlatMachine.fpc {x86-64-frame-semantics} fs) ≡ just (instr-load-const fits-float v)
+  → (encode binary64) v < W.modulus
+float-fits _ _ _ v _ _ _ =
+  <-≤-trans (encode-fits binary64 v) (^-monoʳ-≤ 2 (n≤1+n 63))
+

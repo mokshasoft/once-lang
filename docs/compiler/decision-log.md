@@ -8046,6 +8046,24 @@ other way.
 
 **Date**: 2026-08-18 · **Status**: Decided; implementation is plan 0.72 · **Supersedes**: 0.71's F5/F6, completes D109
 
+**Landed 2026-08-18 (0.72 P1–P3).** `Once/Float/Dyadic.agda` is the carrier and
+`FloatFormat` the width; `Value`/`ValueIR`/`IRTy`/`Translate` take `FloatRep`
+as a parameter and `Once.Semantics.Machine` instantiates the pair at
+`(Carrier , Dyadic)`. `LitFits.float-fits` is now a THEOREM on all three
+arches (`<-≤-trans (encode-fits F v) (^-monoʳ-≤ 2 (n≤1+n k))`) and no longer a
+field of the record — the first of that family to be discharged rather than
+threaded. Two implementation facts worth carrying forward:
+
+- The `RInt` mirror does NOT hold everywhere. `pInfer`'s catch-all routes a
+  float head to `nothing`, so `pInfer-canon`'s two `RApp (RFloat …)` cases are
+  `refl` where `RInt`'s recurse into the argument. A catch-all is what makes a
+  new constructor's proof obligations UNLIKE its neighbour's, in both
+  directions — cf. the retired-ctor trap.
+- The elaborator rejects a float literal (`FloatLiteralUnsupported`) until
+  0.71's F3b supplies the typing rules. Rejecting loudly is the honest state
+  for a half-wired path; the alternative is a literal that types and then means
+  nothing.
+
 ### The four lines
 
     Once/Semantics/Value.agda:129   ⟦ Int ⟧   = IntRep      -- a PARAMETER

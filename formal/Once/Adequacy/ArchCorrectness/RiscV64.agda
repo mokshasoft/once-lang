@@ -150,7 +150,7 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
   (RBr.ret-no-wrap riscv64-addr-no-wrap) (RBr.count-no-wrap riscv64-addr-no-wrap)
   (RBr.lo-fits riscv64-addr-no-wrap)
   (RBr.tag-fits riscv64-lit-fits) (RBr.lit-fits riscv64-lit-fits)
-  (RBr.float-fits riscv64-lit-fits)
+  (RBr.float-fits o)
   using (events-agree; CompiledCorr
         ; FlatInv; EntryLike; Reachable; reach-start
         ; inv-wf; inv-regtag; inv-ev; inv-env; inv-run; mkRunAt)
