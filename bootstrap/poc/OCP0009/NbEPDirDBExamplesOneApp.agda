@@ -199,3 +199,35 @@ module LeafAt (Δ : Ctx) where
 --   proof across ten modules; none shrank the proof.  The trivial-ext
 --   probes are free and gcd's OOMs, so the term is the whole variable.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ★★★★ THE COST IS THE CONCRETE STEP TERM, IN THE TYPE — 2026-08-18.
+--
+-- Three modules, identical but for what is held ABSTRACT as a module
+-- PARAMETER (a variable Agda cannot unfold), measured cold:
+--
+--     stp        ext             time
+--     gcdStp     gcdStepExt      15.3s
+--     gcdStp     ABSTRACT        17.5s
+--     ABSTRACT   ABSTRACT         5.4s   ← bare module overhead
+--
+-- ⇒ THE EXT PROOF IS NOT THE DRIVER.  Removing it entirely (HoistP) does
+--   not move the number.  Shrinking `gcdStepExt` would buy NOTHING; do not
+--   spend effort there.
+--
+-- ⇒ THE COST IS IN THE TYPE, NOT THE PROOF.  With `ext` abstract there are
+--   no expensive proof values left, yet merely STATING and converting
+--   `irrT θ x y n₁ n₂` at a concrete `gcdStp` still costs 17.5s.  Any
+--   client that writes that type pays.  `irrT` mentions `auxAt`, `auxAt`
+--   mentions `auxS x`, and `auxS` carries the step.
+--
+-- ⚠ AND `IrrProbe` RUNG 2 WAS UNDERPOWERED, not decisive.  `stpB` is far
+--   smaller than `gcdStp`, so "bigger step term costs nothing" was a null
+--   result from a weak test, and it wrongly retired this mechanism once.
+--   Vary the step by a parameter, not by a slightly larger term.
+--
+-- ⇒ TARGET: `irrT'` ALREADY takes the two auxiliary occurrences as abstract
+--   slots `zx`/`zy`; `irrT` fills them with `auxAt …`, which is where the
+--   step enters.  Keeping them abstract through the assembly is exactly the
+--   configuration HoistQ measures FREE.
+------------------------------------------------------------------------
