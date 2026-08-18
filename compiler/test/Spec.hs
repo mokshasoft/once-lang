@@ -4,6 +4,7 @@ import Test.Tasty
 import Test.Tasty.Runners (NumThreads (..))
 
 import ArithSpec (arithTests)
+import FloatSpec (floatTests)
 import GeneratorSpec (generatorTests)
 import IRSpec (irTests)
 import Layer0Spec (layer0Tests)
@@ -41,6 +42,7 @@ main = defaultMain $ localOption (NumThreads 1) $ testGroup "Once"
   , layer4Tests
   , layer5Tests
   , arithTests
+  , floatTests
   , optimizeTests
   , traceTests
   , symbolNameTests

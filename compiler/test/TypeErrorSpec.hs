@@ -3,7 +3,9 @@
 
 -- | Tests for type errors that should be rejected.
 -- These test cases verify that ill-typed programs are correctly rejected.
-module TypeErrorSpec (typeErrorTests) where
+-- `accepts`/`rejects`/`typeCheckSource` are exported so FloatSpec can reuse
+-- them rather than duplicate the temp-file + `once check` plumbing.
+module TypeErrorSpec (typeErrorTests, accepts, rejects, typeCheckSource) where
 
 import Test.Tasty
 import Test.Tasty.HUnit

@@ -638,6 +638,7 @@ test-suite once-test
       Paths_once
       ArithSpec
       Backend.Common
+      FloatSpec
       GeneratorSpec
       IRSpec
       Layer0Spec
