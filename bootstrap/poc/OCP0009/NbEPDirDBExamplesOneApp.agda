@@ -21,9 +21,10 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBExamplesOneApp where
 
+open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; El; Id; RTm; app; ⌜Nat⌝
-        ; Ren; renTm; renTy; subTm; extR )
+        ; Ren; renTm; renTy; subTm; subTy; extR; nrs )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single; _⊢_∷_ )
 open import poc.OCP0009.NbEPDirDBSubj using ( Ren⊢ )
@@ -36,6 +37,7 @@ open import poc.OCP0009.NbEPDirDBLibAmrec using ( module AmTΠ; Prv; wR )
 open import poc.OCP0009.NbEPDirDBType using ( ◇; _⊢ty_; ⊢nzero; ⊢nsuc; ⊢var; here; there )
 open import poc.OCP0009.NbEPDirDBPi using ( nzero; nsuc; var; vs; vz; Π; Nat )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
+open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibPair using ( ⊢PairT )
 open import poc.OCP0009.NbEPDirDBType using ( ⊢⌜Nat⌝ )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep using ( ⊢msr; ⊢gcdStp )
@@ -69,7 +71,8 @@ oneApp hρ a ih₁ ih₂ da d₁ d₂ pw = prvOk (gcdStepExt hρ a ih₁ ih₂ d
 module LeafAt (Δ : Ctx) where
 
   open AmTΠ Δ PairT ⌜Nat⌝ msr gcdStp ⊢PairT ⊢⌜Nat⌝ ⊢msr ⊢gcdStp public
-    using ( irr-zz; irr-zs; irr-sz; irr-ss; irrT; vsθ; irrSplit )
+    using ( irr-zz; irr-zs; irr-sz; irr-ss; irrT; vsθ; irrSplit
+          ; irrT-sub; ⊢irrT )
 
   -- the cheapest leaf: both bounds zero, premise ex falso
   leafZZ : {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} (h : Ren⊢ Δ Θ θ)
@@ -105,3 +108,38 @@ module LeafAt (Δ : Ctx) where
     irrSplit there dx dy ⊢nzero
              (irr-zz gcdStepExt there dx dy)
              (irr-zs gcdStepExt (wR (wR there)) dx dy (⊢var (there here)))
+
+  ------------------------------------------------------------------------
+  -- ★★ SPLITTING `irrSplit` INTO ITS TWO HALVES.
+  --
+  --   (a) the THREE CASTS — pure type equalities, `irrT-sub` + `wk-single`
+  --   (b) the MOTIVE — `⊢irrT`, a `⊢ty` derivation for `irrT` itself
+  --
+  --   `irrT` mentions `auxAt x n`, i.e. the AUXILIARY, which is built from
+  --   the step — so (b) is the half that could carry gcd's step into the
+  --   type.  (a) never looks at the step at all.
+  ------------------------------------------------------------------------
+
+  -- (a) the three casts, at the shape `irrSplit` uses them
+  castAt : {Θ₀ : Ctx} {θ : Ren ⌊ Δ ⌋ (⌊ Θ₀ ⌋ ∙)} {x y : RTm ⌊ Δ ⌋}
+           (n₁ : RTm (⌊ Θ₀ ⌋ ∙)) →
+           subTy (single (var vz)) (irrT (vsθ θ) x y (w n₁) (var vz))
+         ≡ irrT θ x y n₁ (var vz)
+  castAt {θ = θ} {x = x} {y = y} n₁ =
+    trans (irrT-sub (vsθ θ) θ (λ v → refl) x y (w n₁) (var vz))
+          (cong (λ u → irrT θ x y u (var vz)) (wk-single {v = var vz} n₁))
+
+  castZ : {Θ₀ : Ctx} {θ : Ren ⌊ Δ ⌋ (⌊ Θ₀ ⌋ ∙)} {x y : RTm ⌊ Δ ⌋}
+          (n₁ : RTm (⌊ Θ₀ ⌋ ∙)) →
+          subTy (single nzero) (irrT (vsθ θ) x y (w n₁) (var vz))
+        ≡ irrT θ x y n₁ nzero
+  castZ {θ = θ} {x = x} {y = y} n₁ =
+    trans (irrT-sub (vsθ θ) θ (λ v → refl) x y (w n₁) (var vz))
+          (cong (λ u → irrT θ x y u nzero) (wk-single {v = nzero} n₁))
+
+  -- (b) the MOTIVE — the half that mentions the auxiliary
+  motive : {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} (h : Ren⊢ Δ Θ θ)
+           {x y : RTm ⌊ Δ ⌋} (dx : Δ ⊢ x ∷ PairT) (dy : Δ ⊢ y ∷ PairT)
+           {n₁ n₂ : RTm ⌊ Θ ⌋} (dn₁ : Θ ⊢ n₁ ∷ Nat) (dn₂ : Θ ⊢ n₂ ∷ Nat) →
+           Θ ⊢ty irrT θ x y n₁ n₂
+  motive h dx dy dn₁ dn₂ = ⊢irrT h dx dy dn₁ dn₂
