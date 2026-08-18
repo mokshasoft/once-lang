@@ -60,7 +60,7 @@ module GcdEqAt (Δ : Ctx) where
   open AmTΠ Δ PairT ⌜Nat⌝ msr gcdStp ⊢PairT ⊢⌜Nat⌝ ⊢msr ⊢gcdStp public
     using ( amrecTm; auxIH; ihS-atP; descS-at; descS-atR; descS-peel
           ; ih-app; amrec-unfold-Id-red; idR; auxAt-id; descS
-          ; irrT; irrT-sub; irrElim; irr-ind; amrec-β; ⊢auxIH; ⊢amrecPt
+          ; irrT; irrT-sub; irrElim; irr-ind; irr-at; amrec-β; ⊢auxIH; ⊢amrecPt
           ; aAuxB; auxAt )
 
   ------------------------------------------------------------------------

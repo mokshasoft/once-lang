@@ -3093,6 +3093,52 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
   idR : Ren ⌊ Δ ⌋ ⌊ Δ ⌋
   idR v = v
 
+  ------------------------------------------------------------------------
+  -- ★★★★ PIECE 11 — THE ELIMINATION, PERFORMED AT AN ABSTRACT STEP.
+  --
+  -- ⚠ WHY THIS BELONGS HERE AND NOT AT THE CALL SITE.  `irr-ind` returns a
+  --   `Prv` of a `Π Nat …`; every caller then has to `⊢app` it and cancel
+  --   the resulting `subTy` against `irrT`.  Written at the CALL SITE that
+  --   application is elaborated at a CONCRETE step term — and `irrT`
+  --   mentions `auxAt`, which carries the step, so the types involved are
+  --   enormous.  Written HERE it is elaborated ONCE, with `stp` and `ext`
+  --   still variables.
+  --
+  -- ★ MEASURED, in `…ExamplesAbsProbe` (marginal cost over module overhead,
+  --   on the `irrSplit` rung):
+  --
+  --     assembly written at a CONCRETE step            9.9s
+  --     assembly written ABSTRACT, then instantiated   1.7s   ~5.8×
+  --
+  --   ⚠ This is NOT the `opaque` family — nothing is asked to refrain from
+  --   unfolding.  The same elaboration still happens in full; it happens
+  --   ONCE, generically, instead of at every concrete use.  Nine remedies
+  --   were tried before this one and every other measured NULL; do not
+  --   "simplify" this back to the call site.
+  ------------------------------------------------------------------------
+
+  -- ⚠⚠ AND IT MUST RETURN `Prv`, NOT A RAW `⊢` JUDGEMENT.  The obvious
+  --   signature
+  --
+  --     Δ ⊢ app (prvTm (irr-ind ext dx dy dk)) n₂ ∷ irrT idR x y k n₂
+  --
+  --   mentions `prvTm (irr-ind …)`, so merely STATING it forces the whole
+  --   assembly's witness — `natrec (lam (prvTm ZP)) (lam (prvTm SP)) n`,
+  --   whose `ZP`/`SP` force their own leaves in turn.  MEASURED: that form
+  --   kills `…LibAmrec` outright (EXIT 143 twice, 9m26s and 7m34s
+  --   uncontended, 0 errors) where it is ~57s green.  `Prv Γ T` is indexed
+  --   ONLY by `T` — the witness is hidden in the constructor — which is
+  --   exactly what the rest of this module returns.
+  irr-at : (ext : StepExt Δ A cM m stp)
+           {x y k n₂ : RTm ⌊ Δ ⌋}
+           (dx : Δ ⊢ x ∷ A) (dy : Δ ⊢ y ∷ A)
+           (dk : Δ ⊢ k ∷ Nat) (dn₂ : Δ ⊢ n₂ ∷ Nat) →
+           Prv Δ (irrT idR x y k n₂)
+  irr-at ext {x = x} {y = y} {k = k} {n₂ = n₂} dx dy dk dn₂ =
+    prv _ (⊢-cast (trans (irrT-sub vs idR (λ v → refl) x y (w k) (var vz))
+                         (cong (λ u → irrT idR x y u n₂) (wk-single {v = n₂} k)))
+                  (⊢app (prvOk (irr-ind ext dx dy dk)) dn₂))
+
   extR-idR : ∀ v → extR idR v ≡ v
   extR-idR vz     = refl
   extR-idR (vs v) = refl
