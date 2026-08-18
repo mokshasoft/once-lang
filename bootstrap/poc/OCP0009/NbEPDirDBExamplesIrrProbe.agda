@@ -31,7 +31,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; subTm; subTy; renTm; extR )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; ⊢var; here; there; ⊢lam; ⊢app; ⊢fst
+        ; _⊢_∷_; ⊢var; here; there; ⊢lam; ⊢app; ⊢fst; ⊢snd
         ; _⟶*_; done; step; β; ξ-appˡ; ⊢idrefl; ⊢⌜Nat⌝ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢-cast; ren-lemma; Ren⊢ )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
@@ -40,6 +40,8 @@ open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( Prv; prv; prvTm; prvOk; StepExt; aStepT; idOfRed; module AmTΠ )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asP )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep using ( msr; ⊢msr; ⊢gcdIH )
+open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
+open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm; ⊢monus )
 
 ------------------------------------------------------------------------
 -- ★ THE TRIVIAL STEP — `λ x. λ ih. fst x`.  The IH is bound and ignored.
@@ -93,3 +95,53 @@ module ProbeAt (Δ : Ctx) where
              Δ ⊢ app (prvTm (irr-ind stpTExt dx dy dk)) n₂
                ∷ subTy (single n₂) (irrT vs x y (w k) (var vz))
   probeApp dx dy dk dn₂ = ⊢app (prvOk (irr-ind stpTExt dx dy dk)) dn₂
+
+------------------------------------------------------------------------
+-- ★★★ RUNG 2: THE SAME PROOF, A BIGGER STEP TERM.
+--
+-- ⚠ WHY NOT "a step with one split".  Any step that SPLITS needs the whole
+--   `eqG`/`pwT` machinery for its `StepExt`, so that rung would vary TWO
+--   things at once — term size AND proof shape — and could not attribute
+--   the cost.  This rung varies ONLY the term: `stpB` is several `natrec`s
+--   deep but still IGNORES its `ih`, so its `StepExt` is the same three
+--   lines as `stpT`'s.
+--
+--   ⇒ if this is cheap, step-term SIZE is not the cost and the `StepExt`
+--     PROOF is;  if it OOMs, size alone is enough to do it.
+------------------------------------------------------------------------
+
+stpB : {Γ : Cx} → RTm Γ
+stpB = lam (lam (monusTm (plusTm (fst (var (vs vz))) (snd (var (vs vz))))
+                         (plusTm (snd (var (vs vz))) (fst (var (vs vz))))))
+
+⊢stpB : {Γ : Ctx} → Γ ⊢ stpB ∷ aStepT PairT ⌜Nat⌝ msr
+⊢stpB = ⊢lam ⊢PairT (⊢lam (⊢gcdIH ⊢msr)
+          (asP (⊢monus (⊢plus (⊢fst dx) (⊢snd dx)) (⊢plus (⊢snd dx) (⊢fst dx)))))
+  where dx = ⊢var (there here)
+
+redB : {Γ : Cx} (a ih : RTm Γ) →
+       app (app stpB a) ih ⟶* monusTm (plusTm (fst a) (snd a))
+                                      (plusTm (snd a) (fst a))
+redB a ih =
+  subst (λ t → app (app stpB a) ih
+                 ⟶* monusTm (plusTm (fst t) (snd t)) (plusTm (snd t) (fst t)))
+        (wk-single {v = ih} a)
+        (step (ξ-appˡ (β _ a)) (step (β _ ih) done))
+
+stpBExt : {Δ : Ctx} → StepExt Δ PairT ⌜Nat⌝ msr stpB
+stpBExt hρ a ih₁ ih₂ da d₁ d₂ pw =
+  idOfRed (redB a ih₁) (redB a ih₂)
+          (prv _ (⊢idrefl ⊢⌜Nat⌝
+                    (asP (⊢monus (⊢plus (⊢fst da) (⊢snd da))
+                                 (⊢plus (⊢snd da) (⊢fst da))))))
+
+module ProbeBAt (Δ : Ctx) where
+
+  open AmTΠ Δ PairT ⌜Nat⌝ msr stpB ⊢PairT ⊢⌜Nat⌝ ⊢msr ⊢stpB public
+    using ( irrT; irr-ind )
+
+  probeAppB : {x y k n₂ : RTm ⌊ Δ ⌋} (dx : Δ ⊢ x ∷ PairT) (dy : Δ ⊢ y ∷ PairT)
+              (dk : Δ ⊢ k ∷ Nat) (dn₂ : Δ ⊢ n₂ ∷ Nat) →
+              Δ ⊢ app (prvTm (irr-ind stpBExt dx dy dk)) n₂
+                ∷ subTy (single n₂) (irrT vs x y (w k) (var vz))
+  probeAppB dx dy dk dn₂ = ⊢app (prvOk (irr-ind stpBExt dx dy dk)) dn₂
