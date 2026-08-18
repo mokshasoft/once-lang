@@ -8041,3 +8041,75 @@ module parameter with a `NonZero` instance and the `word-eq` tie, and every
 offset goes through it. The core was width-clean before anyone checked — which
 is worth recording precisely because it is the audit that could have gone the
 other way.
+
+## D112: `Float`'s Representation Is a PARAMETER, as `Int`'s Already Is
+
+**Date**: 2026-08-18 · **Status**: Decided; implementation is plan 0.72 · **Supersedes**: 0.71's F5/F6, completes D109
+
+### The four lines
+
+    Once/Semantics/Value.agda:129   ⟦ Int ⟧   = IntRep      -- a PARAMETER
+    Once/Semantics/Value.agda:130   ⟦ Float ⟧ = AgdaFloat   -- hardcoded, 64-bit
+    Once/IRTy.agda:239              ⟦ IntRep ⟧-baseI Int   = IntRep
+    Once/IRTy.agda:240              ⟦ IntRep ⟧-baseI Float = AgdaFloat
+
+`Int`'s representation is arch-relative and EXPLICIT — a parameter instantiated
+at the width-free `Carrier`, with the target's width applied at the machine by
+`norm` (D054). `Float`'s is arch-relative and IMPLICIT: fixed to Agda's double
+at both levels, with the target-relativity smuggled in one layer below.
+
+### What was actually holding the impossibility
+
+A 64-bit double cannot live in a 32-bit register, yet x86-32 compiled float
+literals. The mechanism is not a postulate — it is a definition:
+
+    Once/Type.agda:383           fits-float : FitsInReg Float   -- no arch, no premise
+    FlatCorrespondence.agda:286  enc-sv-at am (SV-Lit fits-float v) = fenc v
+
+`FitsInReg Float` is asserted unconditionally, and `enc-sv` is DEFINED as
+whatever encoder the target supplies. Abstract and concrete therefore agree by
+construction, and the loss is invisible to every gate: no name, no entry in the
+residual ledger, no probe that can refute it. **An unstated definitional
+assumption is strictly worse than an axiom** — an axiom can at least be counted.
+
+D109 fixed the symptom (x86-32 emitted `ud2`) by making the ENCODER
+target-relative. That was right as far as it went and wrong as a resting place:
+it left the DENOTATION fixed at 64 bits, so the encoder had to be lossy, and the
+lossiness had nowhere to be stated.
+
+### The decision
+
+**`Float` follows `Int`.** Its representation becomes a parameter of the value
+domain and of the IR carrier, instantiated at a width-free EXACT carrier (a
+dyadic rational `m / 2^e`, mirroring `Carrier = ℕ`), with the target's FORMAT
+applied at the machine, mirroring `norm`.
+
+The argument that settled it: any other answer makes `Float` the only base type
+whose width ignores the target while `Int`'s tracks it. Two fixes were
+considered and rejected for that reason — pinning `Float` to IEEE double
+everywhere and letting x86-32 hold it in memory like `Str` (consistent, but
+leaves `Float` the odd one out), and putting the width in the type as
+`F32`/`F64` (sound, but changes the surface language and makes users pick).
+
+### Consequences
+
+- `float-bits` and `float-bits-single` are DELETED, not justified: no
+  `primFloatToWord`, no NaN-encodes-as-0 edge, no unprovable faithfulness claim.
+- `LitFits.float-fits` becomes provable from the encoder's construction — a
+  residual deleted rather than moved.
+- `FitsInReg` gains the arch (D109's option (a)) as a consequence rather than a
+  separate decision.
+- An 8-bit target stops being a special case: it instantiates a narrow `IntRep`
+  and a narrow `FloatRep`; a target with no float format has no `Float`, which
+  is a reportable fact rather than a silent re-encoding.
+
+### The lesson
+
+**When two base types face the same question, the one that was solved first is
+the specification for the second.** `Int` had already answered "what does a
+value of this type mean when the target's width varies?" — parameterise the
+representation, apply the width at the machine, carry the literal's range as an
+obligation. `Float` was written as though the question had never been asked, and
+the gap hid for as long as nothing tried to compile a float literal on a narrow
+target. The review question this yields: for any base type, ask which OTHER base
+type already has its shape, and diff them.
