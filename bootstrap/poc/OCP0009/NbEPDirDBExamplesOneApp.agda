@@ -32,8 +32,8 @@ open import poc.OCP0009.NbEPDirDBLibAmrec using ( prvTm; prvOk; StepPW )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep using ( gcdStp; msr )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStepExtA using ( gcdStepExt )
-open import poc.OCP0009.NbEPDirDBLibAmrec using ( module AmTΠ; Prv; irrT )
-open import poc.OCP0009.NbEPDirDBType using ( ◇; _⊢ty_; ⊢nzero; ⊢nsuc )
+open import poc.OCP0009.NbEPDirDBLibAmrec using ( module AmTΠ; Prv; wR )
+open import poc.OCP0009.NbEPDirDBType using ( ◇; _⊢ty_; ⊢nzero; ⊢nsuc; ⊢var; here; there )
 open import poc.OCP0009.NbEPDirDBPi using ( nzero; nsuc; var; vs; vz; Π; Nat )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
 open import poc.OCP0009.NbEPDirDBLibPair using ( ⊢PairT )
@@ -69,7 +69,7 @@ oneApp hρ a ih₁ ih₂ da d₁ d₂ pw = prvOk (gcdStepExt hρ a ih₁ ih₂ d
 module LeafAt (Δ : Ctx) where
 
   open AmTΠ Δ PairT ⌜Nat⌝ msr gcdStp ⊢PairT ⊢⌜Nat⌝ ⊢msr ⊢gcdStp public
-    using ( irr-zz; irr-zs; irr-sz; irr-ss; irrT; vsθ )
+    using ( irr-zz; irr-zs; irr-sz; irr-ss; irrT; vsθ; irrSplit )
 
   -- the cheapest leaf: both bounds zero, premise ex falso
   leafZZ : {Θ : Ctx} {θ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} (h : Ren⊢ Δ Θ θ)
@@ -94,3 +94,14 @@ module LeafAt (Δ : Ctx) where
            (dih : Θ ⊢ t ∷ Π Nat (irrT (vsθ θ) x y (w k₁) (var vz))) →
            Prv Θ (irrT θ x y (nsuc k₁) (nsuc k₂))
   leafSS h dx dy dk₁ dk₂ dih = irr-ss gcdStepExt h dx dy dk₁ dk₂ dih
+
+  -- ★★★ THE INNER ASSEMBLY.  `irr-ind` builds `ZP` exactly like this: an
+  --     `irrSplit` over the SECOND bound, combining the two ex-falso leaves.
+  --     Every ingredient here is already measured cheap; this is the first
+  --     COMBINATION.
+  splitZP : {x y : RTm ⌊ Δ ⌋} (dx : Δ ⊢ x ∷ PairT) (dy : Δ ⊢ y ∷ PairT) →
+            Prv (Δ ▹ Nat) (irrT vs x y nzero (var vz))
+  splitZP dx dy =
+    irrSplit there dx dy ⊢nzero
+             (irr-zz gcdStepExt there dx dy)
+             (irr-zs gcdStepExt (wR (wR there)) dx dy (⊢var (there here)))
