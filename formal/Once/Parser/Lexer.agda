@@ -25,7 +25,7 @@ open import Data.Bool using (Bool; true; false; _∨_; _∧_; not; if_then_else_
 open import Data.Char using (Char; isAlpha; isDigit; isSpace; isLower) renaming (_≟_ to _≟c_)
 open import Relation.Nullary using (does)
 open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_; _<ᵇ_; _≤_; _<_; s≤s; z≤n)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; n<1+n; n≤1+n; <-trans; m≤n⇒m≤1+n)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; n<1+n; n≤1+n; <-trans; m≤n⇒m≤1+n; <⇒≤)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc; acc)
 open import Data.Integer using (ℤ; +_)
@@ -101,6 +101,22 @@ collectDigitsB (c ∷ cs) with isDigit c
 ... | true = let (digs , rest , bnd) = collectDigitsB cs
              in  c ∷ digs , rest , m≤n⇒m≤1+n bnd
 ... | false = [] , c ∷ cs , ≤-refl
+
+-- | Collect a FRACTION: a '.' followed by AT LEAST ONE digit (plan 0.71).
+--
+-- `nothing` when the input does not start one, and the digit requirement is
+-- what keeps the two readings of a dot disjoint: `x.f` is a qualified name and
+-- `1.` is not a literal, so neither steals from the other. Same
+-- `Maybe`-returning shape as `collectStringB`, so the caller dispatches on a
+-- value instead of a `with`.
+collectFracB : (cs : List Char) →
+               Maybe (Σ[ f ∈ List Char ] Σ[ rest ∈ List Char ]
+                        length rest < length cs)
+collectFracB ('.' ∷ c ∷ cs) with isDigit c
+... | true  = let (digs , rest , bnd) = collectDigitsB cs
+              in  just (c ∷ digs , rest , s≤s (m≤n⇒m≤1+n bnd))
+... | false = nothing
+collectFracB _ = nothing
 
 collectDigits : List Char → List Char × List Char
 collectDigits cs =
@@ -305,6 +321,13 @@ tok-str : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) �
           List Token
 tok-gen : (c : Char) (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
           Bool → Bool → List Token
+-- Plan 0.71: the numeric branch, split off so the fraction is dispatched on a
+-- VALUE (`collectFracB rest`) rather than a `with` — the same shape `tok-str`
+-- uses, and what keeps the clause reducible for the soundness proof.
+tok-num : (c : Char) (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
+          (digits rest : List Char) → length rest ≤ length cs →
+          Maybe (Σ[ f ∈ List Char ] Σ[ r ∈ List Char ] length r < length rest) →
+          List Token
 tok-nl  : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Bool → List Token
 tok-op2 : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
           Token → Token → Bool → List Token
@@ -349,11 +372,21 @@ tok-str cs rec (just (s , rest , bnd)) =
 tok-str cs rec nothing = []  -- error: unterminated string
 tok-gen c cs rec true  _     =
   let (digits , rest , bnd) = collectDigitsB cs
-  in  TInt (+ digitsToNat (c ∷ digits)) ∷ tokenize-WF rest (rec (s≤s bnd))
+  in  tok-num c cs rec digits rest bnd (collectFracB rest)
 tok-gen c cs rec false true  =
   let (ident , rest , bnd) = collectIdentB cs
   in  TWord (fromList (c ∷ ident)) ∷ tokenize-WF rest (rec (s≤s bnd))
 tok-gen c cs rec false false = tokenize-WF cs (rec (s≤s ≤-refl))
+
+-- A FLOAT when a fraction follows, an INT when it does not. The bound composes:
+-- the fraction's remainder is strictly shorter than the integer part's
+-- remainder, which is already bounded by the input — so the recursion decreases
+-- for the same reason it did before, one step further along.
+tok-num c cs rec digits rest bnd (just (frac , rest' , fbnd)) =
+  TFloat (digitsToNat (c ∷ digits)) (digitsToNat frac) (length frac)
+    ∷ tokenize-WF rest' (rec (s≤s (≤-trans (<⇒≤ fbnd) bnd)))
+tok-num c cs rec digits rest bnd nothing =
+  TInt (+ digitsToNat (c ∷ digits)) ∷ tokenize-WF rest (rec (s≤s bnd))
 
 -- `\n`: indented continuation (next char ' '/'\t') ⇒ insignificant (skip);
 -- else a significant `TNewline`. Both recurse on the tail `cs`.

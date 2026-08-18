@@ -25,7 +25,7 @@ module Once.Adequacy.LexerBridge where
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (_<_; suc; s≤s)
 open import Data.Nat.Induction using (<-wellFounded)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤n⇒m≤1+n; n<1+n; n≤1+n)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤n⇒m≤1+n; n<1+n; n≤1+n; <⇒≤)
 open import Data.List using (List; []; _∷_; length)
 open import Data.Char using (Char; isDigit)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -37,9 +37,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Parser.Token
 open import Once.Parser.Lexer
-  using (tokenize-WF; tok-str; tok-gen; tok-nl; tok-op2; tok-lbrace; tok-minus;
+  using (tokenize-WF; tok-str; tok-gen; tok-num; tok-nl; tok-op2; tok-lbrace; tok-minus;
          tok-caret; tok-head; tokenizeString; isIdentStart;
-         collectStringB; collectDigitsB; collectIdentB; skipLineB; skipBlockB;
+         collectStringB; collectDigitsB; collectFracB; collectIdentB; skipLineB; skipBlockB;
          digitsToNat; drop1; drop1-≤;
          nlIndent; isEqHead; isDashHead; dashClass; caretClass;
          Dash3; d-comment; d-arrow; d-minus; Caret4; c-1; c-0; c-w; c-gen;
@@ -100,9 +100,21 @@ data LexesChars : List Char → List Token → Set where
     LexesChars (c ∷ cs) (TString (fromList s) ∷ ts)
   lex-string-err : ∀ {c cs} → headK c ≡ hkStr → collectStringB cs ≡ nothing → LexesChars (c ∷ cs) []
   -- general head: digit / identifier / skip
+  -- PLAN 0.71: the numeric head splits on whether a FRACTION follows the
+  -- integer part. Both rules stay under `headK c ≡ hkGen` and `isDigit c ≡
+  -- true` — the float path adds no head class, so the other 25 classifier
+  -- cases are untouched. `collectFracB` decides between them, and each rule
+  -- carries its own outcome as a premise, so neither can fire where the other
+  -- should (the same shape `lex-caret*`/`lex-nl*` use).
   lex-digit : ∀ {c cs ts} → headK c ≡ hkGen → isDigit c ≡ true →
+    collectFracB (proj₁ (proj₂ (collectDigitsB cs))) ≡ nothing →
     LexesChars (proj₁ (proj₂ (collectDigitsB cs))) ts →
     LexesChars (c ∷ cs) (TInt (+ digitsToNat (c ∷ proj₁ (collectDigitsB cs))) ∷ ts)
+  lex-float : ∀ {c cs ts f r bnd} → headK c ≡ hkGen → isDigit c ≡ true →
+    collectFracB (proj₁ (proj₂ (collectDigitsB cs))) ≡ just (f , r , bnd) →
+    LexesChars r ts →
+    LexesChars (c ∷ cs)
+      (TFloat (digitsToNat (c ∷ proj₁ (collectDigitsB cs))) (digitsToNat f) (length f) ∷ ts)
   lex-ident : ∀ {c cs ts} → headK c ≡ hkGen → isDigit c ≡ false → isIdentStart c ≡ true →
     LexesChars (proj₁ (proj₂ (collectIdentB cs))) ts →
     LexesChars (c ∷ cs) (TWord (fromList (c ∷ proj₁ (collectIdentB cs))) ∷ ts)
@@ -136,6 +148,13 @@ sound-bang : ∀ {c} (cs : List Char) (rec : ∀ {y} → y < suc (length cs) →
 sound-str : ∀ {c} (cs : List Char) (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) → headK c ≡ hkStr →
   (r : Maybe (Σ[ s ∈ List Char ] Σ[ rest ∈ List Char ] length rest < length cs)) →
   collectStringB cs ≡ r → LexesChars (c ∷ cs) (tok-str cs rec r)
+sound-num : ∀ {c} (cs : List Char) (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) →
+            headK c ≡ hkGen → isDigit c ≡ true →
+            (i : Bool)
+            (m : Maybe (Σ[ f ∈ List Char ] Σ[ r ∈ List Char ]
+                          length r < length (proj₁ (proj₂ (collectDigitsB cs))))) →
+            collectFracB (proj₁ (proj₂ (collectDigitsB cs))) ≡ m →
+            LexesChars (c ∷ cs) (tok-gen c cs rec true i)
 sound-gen : ∀ {c} (cs : List Char) (rec : ∀ {y} → y < suc (length cs) → Acc _<_ y) → headK c ≡ hkGen →
   (d i : Bool) → isDigit c ≡ d → isIdentStart c ≡ i → LexesChars (c ∷ cs) (tok-gen c cs rec d i)
 
@@ -196,9 +215,21 @@ sound-str cs rec eqh (just (s , rest , bnd)) eq =
   lex-string eqh s rest bnd eq (lexes-tok rest (rec (m≤n⇒m≤1+n bnd)))
 sound-str cs rec eqh nothing eq = lex-string-err eqh eq
 
-sound-gen cs rec eqh true  i eqd eqi = lex-digit eqh eqd (lexes-tok _ (rec (s≤s (proj₂ (proj₂ (collectDigitsB cs))))))
+-- PLAN 0.71: the digit branch dispatches on `collectFracB`'s OUTCOME, taken as
+-- an argument with its defining equation (`sound-num`), so the goal reduces on
+-- the same value the tokenizer branched on. Passing the equation is what lets
+-- the rule's premise be discharged by `refl` at each site — the alternative,
+-- a `with` here, would abstract the goal away from `tok-num`'s clause.
+sound-gen cs rec eqh true  i eqd eqi =
+  sound-num cs rec eqh eqd i (collectFracB (proj₁ (proj₂ (collectDigitsB cs)))) refl
 sound-gen cs rec eqh false true  eqd eqi = lex-ident eqh eqd eqi (lexes-tok _ (rec (s≤s (proj₂ (proj₂ (collectIdentB cs))))))
 sound-gen cs rec eqh false false eqd eqi = lex-skip eqh eqd eqi (lexes-tok cs (rec (s≤s ≤-refl)))
+
+sound-num cs rec eqh eqd i nothing eqf
+  rewrite eqf = lex-digit eqh eqd eqf (lexes-tok _ (rec (s≤s (proj₂ (proj₂ (collectDigitsB cs))))))
+sound-num cs rec eqh eqd i (just (f , r , fbnd)) eqf
+  rewrite eqf = lex-float eqh eqd eqf
+                  (lexes-tok r (rec (s≤s (≤-trans (<⇒≤ fbnd) (proj₂ (proj₂ (collectDigitsB cs)))))))
 
 lexer-sound : ∀ (text : String) → Lexes text (tokenizeString text)
 lexer-sound text = lexes-tok (toList text) (<-wellFounded (length (toList text)))
@@ -248,7 +279,9 @@ tok-complete (acc rec) (lex-amp eqh d) rewrite eqh = cong (TAmpersand ∷_) (tok
 tok-complete (acc rec) (lex-dot eqh d) rewrite eqh = cong (TDot ∷_) (tok-complete (rec (s≤s ≤-refl)) d)
 tok-complete (acc rec) (lex-string eqh s rest bnd eq d) rewrite eqh | eq = cong (TString (fromList s) ∷_) (tok-complete (rec (m≤n⇒m≤1+n bnd)) d)
 tok-complete (acc rec) (lex-string-err eqh eq) rewrite eqh | eq = refl
-tok-complete (acc rec) (lex-digit {cs = cs} eqh eq d) rewrite eqh | eq = cong (_ ∷_) (tok-complete (rec (s≤s (proj₂ (proj₂ (collectDigitsB cs))))) d)
+tok-complete (acc rec) (lex-digit {cs = cs} eqh eq eqf d) rewrite eqh | eq | eqf = cong (_ ∷_) (tok-complete (rec (s≤s (proj₂ (proj₂ (collectDigitsB cs))))) d)
+tok-complete (acc rec) (lex-float {cs = cs} {bnd = fbnd} eqh eq eqf d) rewrite eqh | eq | eqf =
+  cong (_ ∷_) (tok-complete (rec (s≤s (≤-trans (<⇒≤ fbnd) (proj₂ (proj₂ (collectDigitsB cs)))))) d)
 tok-complete (acc rec) (lex-ident {cs = cs} eqh eqd eqi d) rewrite eqh | eqd | eqi = cong (_ ∷_) (tok-complete (rec (s≤s (proj₂ (proj₂ (collectIdentB cs))))) d)
 tok-complete (acc rec) (lex-skip eqh eqd eqi d) rewrite eqh | eqd | eqi = tok-complete (rec (s≤s ≤-refl)) d
 
