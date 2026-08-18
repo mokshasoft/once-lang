@@ -28,15 +28,17 @@
 module poc.OCP0009.NbEPDirDBExamplesGcdLeMid where
 
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; _∙; RTm; pair; nsuc; nzero; natrec; app; subTm; extS; renTm; vs; var; vz )
+  using ( Cx; _∙; RTm; RTy; Nat; pair; nsuc; nzero; natrec; app; subTm; extS; renTm; vs; var; vz )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶*_; _⟶_; β; βfst; βsnd; ξ-appˡ; natrec-suc; natrec-zero; single )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-appˡ; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm )
+open import poc.OCP0009.NbEPDirDBType using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢natrec )
 open import normalizer.Syntax.Types using ( _≡_; refl; cong₂ )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( gcdStp; gcdBody; G1z; gcdInn1; G2z; gcdInn2; G3z; G3s
-        ; PAIRᶻ; CERTᶻ; one; _⟫_; wkS3; wkS3e )
+        ; PAIRᶻ; CERTᶻ; one; _⟫_; wkS3; wkS3e
+        ; G1; ⊢G1; ⊢G1z; ⊢gcdInn1 )
 
 gXx : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
 gXx x y = pair (nsuc x) (nsuc y)
@@ -150,3 +152,37 @@ D3-clean : {Γ : Cx} (a' b' : RTm Γ) →
            D3' a' b' ≡ monusTm (nsuc a') (nsuc b')
 D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
                        (wkS3 a') (wkS3e b')
+
+------------------------------------------------------------------------
+-- ⚠⚠ THE NEXT OBSTACLE, MEASURED — TYPING THE ONE-HOLE CONTEXT.
+--
+-- Everything above is `⟶*`, which is UNTYPED, so none of it needed a
+-- typing derivation.  `congAt` is a `⊢` statement, so the transport needs
+--
+--     (Γ ▹ El ⌜Nat⌝) ⊢ <one-hole context> ∷ Nat
+--
+-- and that is the price of going propositional; the reductional proof
+-- never pays it because it never needs the term well-typed.
+--
+-- ⚠ AND IT CANNOT BE INHERITED.  Two routes are closed, both checked:
+--   * SUBJECT REDUCTION — `…SR` records general SR as an "HONEST CEILING
+--     (the real obstruction, not a gap)"; only a concrete instance exists.
+--     So the typing of an intermediate state does NOT follow from
+--     `⊢gcdStp` plus the chain.
+--   * REUSING `⊢G1`/`⊢G2`/`⊢G3` DIRECTLY — MEASURED, does not typecheck:
+--     `⊢G1` lives in `Γ ▹ PairT ▹ Nat`, while `R1'` sits in plain `Γ`
+--     after `single gX`.  The generalized sibling slots (`B`, `C`, `D`)
+--     make these context-POLYMORPHIC in their siblings, not in their own
+--     prefix, so they do not transport across the substitution.
+--   ⚠ And `subTm` does not invert (see `…GcdStep`'s note at `⊢gcdInn2`),
+--     so the sub-derivations cannot be recovered from `⊢gcdStp` either.
+--
+-- ⇒ SO EACH LAYER NEEDS ITS OWN DERIVATION, by the substitution lemma:
+--   typings for `gXx`, `R1'`, `W'`, `R2'`, then `⊢G3`/`⊢G3z`/`⊢G3s` pushed
+--   through the stack, then `⊢natrec-var` (which wants the branches
+--   WEAKENED — so build `F` from `w (Z3' a' b')`, not `Z3' (w a') (w b')`,
+--   and the peels cancel by `wk-single`).
+--
+--   That is ~12 substitution-lemma applications with their `Sub⊢`
+--   derivations.  Real work, well-defined, no known obstruction.
+------------------------------------------------------------------------
