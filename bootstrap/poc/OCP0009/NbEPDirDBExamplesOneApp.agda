@@ -167,3 +167,35 @@ module LeafAt (Δ : Ctx) where
 --   remedy that blocks unfolding has failed, and this one made the library
 --   unbuildable.  Do not retry `auxAt` opacity.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ⚠⚠ DEF-HOISTING BUYS NOTHING — TESTED 2026-08-18, FALSIFIED (fix #8).
+--
+-- Controlled A/B, two modules identical but for a TWO-LINE diff in
+-- `splitZP`'s two leaf arguments:
+--
+--   A  irrSplit … (irr-zz gcdStepExt there dx dy) (irr-zs gcdStepExt …)
+--   B  irrSplit … (leafZZ there dx dy)            (leafZS …)
+--
+-- where `leafZZ`/`leafZS` are named Defs with explicit `Prv Θ (irrT …)`
+-- ascriptions, i.e. the "split into Def-backed lemmas" lever that has
+-- worked elsewhere in this project.
+--
+--   A = 15.3s   B = 16.5s   ⇒ no effect (B slower, inside the ±12% floor).
+--
+-- ★ WHY, and it is worth keeping: `irr-zz gcdStepExt there dx dy` was
+--   ALREADY small syntactically — `gcdStepExt` is a Def REFERENCE, not an
+--   inlined body — so there was no duplication for hoisting to remove.  A
+--   further Def layer is unfolded during conversion just the same.
+--
+-- ⇒ THE MECHANISM IS NOW PINNED FROM BOTH SIDES.  The cost is the
+--   conversion check FORCING `gcdStepExt`'s body.  It does not scale with
+--   the number of syntactic references (hoisting: nil) and it does not
+--   scale with STEP-TERM size (`IrrProbe` rung 2, a bigger step under a
+--   3-line ext: nil, 4.4s for both rungs).  It scales with the EXT PROOF.
+--
+-- ⇒ ONE LEVER REMAINS UNTRIED: make `gcdStepExt`'s proof term SMALLER.
+--   All eight attempts so far changed how Agda HANDLES a fixed ~600-line
+--   proof across ten modules; none shrank the proof.  The trivial-ext
+--   probes are free and gcd's OOMs, so the term is the whole variable.
+------------------------------------------------------------------------
