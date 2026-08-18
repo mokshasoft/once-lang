@@ -1,0 +1,20 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Float literal regression (plan 0.71 F7). Expected exit code 7
+--
+-- The literal is USED — passed to `emitF` — so this asks nothing about dead
+-- code elimination. The SigOp's runtime is a nop; the observable is that the
+-- process REACHES its exit code instead of trapping.
+--
+-- This is the test that would have caught D109 on the day float literals
+-- landed: under the pre-0.66 x86-32 lowering a float constant compiled to
+-- `ud2`, so on that target this program died instead of exiting 7. It runs
+-- on x86-64, x86-32 and riscv64, and 0.5 is exact at every width — four
+-- significand bits suffice, so it stays valid on a narrower target too.
+
+import I.Linux.Syscalls as S
+import I.Test.Emit as T
+
+main : IO Unit
+main = let _ = emitF@T 0.5 in exit@S 7

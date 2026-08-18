@@ -7,3 +7,10 @@
 -- companion Emit.x86_64's once_<sym> just returns); the observable is the
 -- SigOp trace (asserted at the Agda `obs` level), not stdout.
 signature emit : Eff Int Unit
+
+-- | The same, for a Float — so a float LITERAL can be USED rather than merely
+-- bound. A test that binds a float and ignores it is asking whether dead-code
+-- elimination keeps it; a test that passes it to a SigOp is not asking that
+-- question at all, and also exercises argument passing at the calling
+-- convention. Runtime = nop, exactly like `emit`.
+signature emitF : Eff Float Unit

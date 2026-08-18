@@ -13,3 +13,13 @@
 emit:
     ret
 .size emit, .-emit
+
+# `emitF : Eff Float Unit` — the Float-argument twin of `emit`, same NOP
+# runtime. Takes its Float argument in %ecx (Once x86-32 Input1 convention); the point is that the caller had
+# to MATERIALISE the literal to make the call.
+.align 16
+.global emitF
+.type emitF, @function
+emitF:
+    ret
+.size emitF, .-emitF
