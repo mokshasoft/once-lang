@@ -30,11 +30,13 @@ module poc.OCP0009.NbEPDirDBExamplesGcdLeMid where
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTm; pair; nsuc; nzero; natrec; app; subTm; extS; renTm; vs; var; vz )
 open import poc.OCP0009.NbEPDirDBType
-  using ( _⟶*_; _⟶_; β; βfst; βsnd; ξ-appˡ; natrec-suc; single )
+  using ( _⟶*_; _⟶_; β; βfst; βsnd; ξ-appˡ; natrec-suc; natrec-zero; single )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-appˡ; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm )
+open import normalizer.Syntax.Types using ( _≡_; refl; cong₂ )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
-  using ( gcdStp; gcdBody; G1z; gcdInn1; G2z; gcdInn2; G3z; G3s; one; _⟫_ )
+  using ( gcdStp; gcdBody; G1z; gcdInn1; G2z; gcdInn2; G3z; G3s
+        ; PAIRᶻ; CERTᶻ; one; _⟫_; wkS3; wkS3e )
 
 gXx : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
 gXx x y = pair (nsuc x) (nsuc y)
@@ -105,3 +107,46 @@ gcd-le-prefix a' b' ih =
   ⟫ ⟶*-appˡ (⟶*-natrecⁿ (one (βfst _ _)))
   ⟫ ⟶*-appˡ (one (natrec-suc _ _ (W' a' b')))
   )
+
+------------------------------------------------------------------------
+-- ★★★ THE TAIL, AT A LITERAL ZERO.
+--
+-- ⭐ THIS IS THE WHOLE POINT OF THE PROPOSITIONAL ROUTE.  At `nzero` the
+--   third `natrec` FIRES (`natrec-zero` selects `G3z`) and one β-step
+--   reaches the recursive call.  Both are ordinary reductions needing no
+--   premise, because the scrutinee is now a literal CONSTRUCTOR instead of
+--   a stuck term.  The reduction that is impossible at a variable is
+--   trivial here, and the bridge's `Id` carries the result back.
+------------------------------------------------------------------------
+
+-- the substitution stack the two `G3z` components land under
+σz : {Γ : Cx} (a' b' ih : RTm Γ) → RTm ((((((Γ ∙) ∙) ∙) ∙) ∙) ∙) → RTm Γ
+σz a' b' ih t =
+  subTm (single ih)
+    (subTm (extS (single (R2' a' b')))
+      (subTm (extS (extS (single (W' a' b'))))
+        (subTm (extS (extS (extS (single (R1' a' b')))))
+          (subTm (extS (extS (extS (extS (single b')))))
+            (subTm (extS (extS (extS (extS (extS (single (gXx a' b'))))))) t)))))
+
+-- the recursive call `gcd (suc a', (suc b') ∸ (suc a'))`, with certificate
+RHSz : {Γ : Cx} (a' b' ih : RTm Γ) → RTm Γ
+RHSz a' b' ih = app (σz a' b' ih (app (var vz) PAIRᶻ)) (σz a' b' ih CERTᶻ)
+
+gcd-le-tail : {Γ : Cx} (a' b' ih : RTm Γ) →
+              midAt a' b' ih nzero ⟶* RHSz a' b' ih
+gcd-le-tail a' b' ih =
+  ( ⟶*-appˡ (one (natrec-zero (Z3' a' b') (S3' a' b')))
+  ⟫ one (β _ ih)
+  )
+
+------------------------------------------------------------------------
+-- ★★ AND THE DESCENT IS THE CLEAN ONE, up to the two weakening peels the
+--    reductional proof already carries.  `gcd-le-term` spends these inside
+--    `mhAt`; the propositional route spends them here, once.
+------------------------------------------------------------------------
+
+D3-clean : {Γ : Cx} (a' b' : RTm Γ) →
+           D3' a' b' ≡ monusTm (nsuc a') (nsuc b')
+D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
+                       (wkS3 a') (wkS3e b')
