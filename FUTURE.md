@@ -132,3 +132,50 @@ the small, cheap half. That is the wrong way round.
 - ⚠ **`eqG`'s motive boundaries are `refl` only at variables.** In the splits
   every slot is a variable and `subTy` computes; instantiating at an abstract
   carrier needs `eqG-sub`, because there `extS σ` meets a `w`.
+
+## The arithmetic library is REDUCTION-BIASED — audit it for the propositional half
+
+**Observed 2026-08-18, from closing equation 4's bridge.** Four ordinary
+arithmetic facts had to be built from scratch before gcd's `a ≤ b` branch could
+even be stated at variables:
+
+| built | what it is |
+|---|---|
+| `congPred` | congruence under `predTm` |
+| `⊢monus0` | `0 ∸ b ≡ 0` |
+| `⊢monusSS` | `suc a ∸ suc b ≡ a ∸ b` |
+| `congAt` | one-hole congruence at `Nat` |
+
+None is exotic. The pattern in what was missing is the point:
+
+**The library had the REDUCTION (`⟶*`) form of nearly every monus fact and
+almost none of the PROPOSITIONAL (`Id`) form.** `monus-zero`, `monus-suc`,
+`pred-suc`, `pred-zero`, `mlt-chain` are all `⟶*`. That is exactly the wrong
+bias for "at variables" results, because a `⟶*` premise forces its subject
+GROUND — a variable never reduces — which is precisely why equation 4 was
+unreachable for months and why equation 3 is stuck at *numeral `b`*.
+
+**Congruences were missing too.** `congS` existed (for `nsuc`) and nothing else,
+so every step that moves an identity under a former had to be invented at the
+point of use.
+
+### The audit worth doing
+
+1. **For each `⟶*` lemma in `…ExamplesDiv` / `…LibArith*`, ask whether the `Id`
+   form exists.** Where it doesn't, ask which "at variables" theorem it blocks.
+2. **Enumerate the congruences.** One per Nat former (`nsuc`, `predTm`,
+   `plusTm`, `monusTm` in each argument), plus the general one-hole `congAt`
+   now in `…LibArithMonus`.
+3. **Order facts.** `Hom Nat` COMPUTES (`Hom-Nat-z`/`-sz`/`-ss`), so inversion,
+   ex-falso and `0 ≤ n` are conversions rather than lemmas — but transitivity,
+   antisymmetry and `≤` vs `∸` bridges beyond `⊢monusLe` are not, and each is a
+   candidate premise for a "at variables" statement.
+
+### Why it pays
+
+The test for whether a missing lemma matters is the one this session used:
+**does its absence force a premise that variables cannot discharge?** That is
+the difference between a theorem and a vacuous one, and this repo already has a
+post-mortem on two lemmas that were `--safe`, hole-free, green and vacuous.
+Every propositional fact added widens what can be stated at variables; every
+`⟶*`-only fact silently narrows it.
