@@ -40,7 +40,7 @@ d_canonModule_6 v0
       (coe
          MAlonzo.Code.Data.List.Base.du_map_22
          (coe
-            MAlonzo.Code.Once.Parser.Module.Resolve.d_canonDecl_522
+            MAlonzo.Code.Once.Parser.Module.Resolve.d_canonDecl_534
             (coe
                MAlonzo.Code.Once.Parser.Module.Resolve.d_polyDefNames_314
                (coe v0))

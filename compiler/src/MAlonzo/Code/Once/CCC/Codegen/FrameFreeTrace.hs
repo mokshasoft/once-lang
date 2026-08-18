@@ -3507,7 +3507,7 @@ d_frame'45'free'45'trace''_494 v0 v1 v2 v3 v4 v5 v6
                     du_cata'45'dispatch'45'ff_438 (coe v0)
                     (coe
                        MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_cata'45'strategy_50
-                       (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_568 (coe v11)))
+                       (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_590 (coe v11)))
                     (coe v5)
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28

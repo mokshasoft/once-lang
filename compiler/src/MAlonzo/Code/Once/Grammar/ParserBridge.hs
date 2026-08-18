@@ -226,7 +226,7 @@ du_complete'45'atomWFraw_210 v0 v1 v2 v3
                             du_complete'45'typeWFraw_300 (coe v11) (coe v1)
                             (coe
                                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                               (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_16) (coe v2))
+                               (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                             (coe v8) in
                   coe
                     (case coe v12 of
@@ -237,7 +237,7 @@ du_complete'45'atomWFraw_210 v0 v1 v2 v3
                                  MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'paren_172
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_16) (coe v2))
+                                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                                  v13)
                               erased
                        _ -> MAlonzo.RTE.mazUnreachableError)
@@ -631,7 +631,7 @@ du_complete'45'functorAtomWFraw_314 v0 v1 v2 v3
                                  MAlonzo.Code.Once.Parser.TypeRelation.C_pfa'45'paren_306
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_16) (coe v2))
+                                    (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                                  v13)
                               erased
                        _ -> MAlonzo.RTE.mazUnreachableError)

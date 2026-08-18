@@ -1268,7 +1268,7 @@ d_frontier'45'mono_804 v0 v1 v2 v3 v4 v5
                     du_cata'45'mono_758
                     (coe
                        MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_cata'45'strategy_50
-                       (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_568 (coe v10)))
+                       (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_590 (coe v10)))
                     (coe v4)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_Para_112 v7 v9
@@ -9345,7 +9345,7 @@ d_slots'45'below_1910 v0 v1 v2 v3 v4 v5
                     d_cata'45'slots'45'below_1856 (coe v0)
                     (coe
                        MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_cata'45'strategy_50
-                       (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_568 (coe v10)))
+                       (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_590 (coe v10)))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe

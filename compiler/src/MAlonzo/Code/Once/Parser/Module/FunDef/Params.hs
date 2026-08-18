@@ -55,7 +55,7 @@ d_sepClass_28 v0
          (:) v2 v3
            -> case coe v2 of
                 MAlonzo.Code.Once.Parser.Token.C_TWord_8 v4 -> coe C_skWord_24
-                MAlonzo.Code.Once.Parser.Token.C_TEquals_24 -> coe C_skEq_22
+                MAlonzo.Code.Once.Parser.Token.C_TEquals_26 -> coe C_skEq_22
                 _ -> coe v1
          _ -> coe v1)
 -- Once.Parser.Module.FunDef.Params.parseParamsB

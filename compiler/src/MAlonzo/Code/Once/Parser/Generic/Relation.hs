@@ -35,7 +35,7 @@ d_isStar_8 v0
       (case coe v0 of
          (:) v2 v3
            -> case coe v2 of
-                MAlonzo.Code.Once.Parser.Token.C_TStar_50
+                MAlonzo.Code.Once.Parser.Token.C_TStar_52
                   -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
                 _ -> coe v1
          _ -> coe v1)
@@ -47,7 +47,7 @@ d_isPlus_10 v0
       (case coe v0 of
          (:) v2 v3
            -> case coe v2 of
-                MAlonzo.Code.Once.Parser.Token.C_TPlus_46
+                MAlonzo.Code.Once.Parser.Token.C_TPlus_48
                   -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
                 _ -> coe v1
          _ -> coe v1)
@@ -65,34 +65,34 @@ d_arrowDir_22 v0
       (case coe v0 of
          (:) v2 v3
            -> case coe v2 of
-                MAlonzo.Code.Once.Parser.Token.C_TArrow_26 -> coe C_adA_16
-                MAlonzo.Code.Once.Parser.Token.C_TCaret1_28
+                MAlonzo.Code.Once.Parser.Token.C_TArrow_28 -> coe C_adA_16
+                MAlonzo.Code.Once.Parser.Token.C_TCaret1_30
                   -> let v4 = coe C_adR_18 in
                      coe
                        (case coe v3 of
                           (:) v5 v6
                             -> case coe v5 of
-                                 MAlonzo.Code.Once.Parser.Token.C_TArrow_26
+                                 MAlonzo.Code.Once.Parser.Token.C_TArrow_28
                                    -> coe C_adG_14 (coe MAlonzo.Code.Once.Type.C_One_8)
                                  _ -> coe v4
                           _ -> coe v4)
-                MAlonzo.Code.Once.Parser.Token.C_TCaret0_30
+                MAlonzo.Code.Once.Parser.Token.C_TCaret0_32
                   -> let v4 = coe C_adR_18 in
                      coe
                        (case coe v3 of
                           (:) v5 v6
                             -> case coe v5 of
-                                 MAlonzo.Code.Once.Parser.Token.C_TArrow_26
+                                 MAlonzo.Code.Once.Parser.Token.C_TArrow_28
                                    -> coe C_adG_14 (coe MAlonzo.Code.Once.Type.C_Zero_6)
                                  _ -> coe v4
                           _ -> coe v4)
-                MAlonzo.Code.Once.Parser.Token.C_TCaretW_32
+                MAlonzo.Code.Once.Parser.Token.C_TCaretW_34
                   -> let v4 = coe C_adR_18 in
                      coe
                        (case coe v3 of
                           (:) v5 v6
                             -> case coe v5 of
-                                 MAlonzo.Code.Once.Parser.Token.C_TArrow_26
+                                 MAlonzo.Code.Once.Parser.Token.C_TArrow_28
                                    -> coe C_adG_14 (coe MAlonzo.Code.Once.Type.C_Many_10)
                                  _ -> coe v4
                           _ -> coe v4)
@@ -834,7 +834,7 @@ d_atomShrink_654 v0 v1 v2 v3 v4
                           du_typeShrink_708 (coe v0) (coe v12)
                           (coe
                              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                             (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_16) (coe v3))
+                             (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v3))
                           (coe v9))
                        (coe
                           MAlonzo.Code.Data.Nat.Base.C_s'8804's_34

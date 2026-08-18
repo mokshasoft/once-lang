@@ -31,11 +31,11 @@ d_quantityToken_6 ::
 d_quantityToken_6 v0
   = case coe v0 of
       MAlonzo.Code.Once.Type.C_Zero_6
-        -> coe MAlonzo.Code.Once.Parser.Token.C_TCaret0_30
+        -> coe MAlonzo.Code.Once.Parser.Token.C_TCaret0_32
       MAlonzo.Code.Once.Type.C_One_8
-        -> coe MAlonzo.Code.Once.Parser.Token.C_TCaret1_28
+        -> coe MAlonzo.Code.Once.Parser.Token.C_TCaret1_30
       MAlonzo.Code.Once.Type.C_Many_10
-        -> coe MAlonzo.Code.Once.Parser.Token.C_TCaretW_32
+        -> coe MAlonzo.Code.Once.Parser.Token.C_TCaretW_34
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.Printer.printGType
 d_printGType_8 ::
@@ -88,7 +88,7 @@ d_printGType_8 v0
       MAlonzo.Code.Once.Grammar.C__'8658''91'_'93'__24 v1 v2 v3
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_14)
+             (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_16)
              (coe
                 MAlonzo.Code.Data.List.Base.du__'43''43'__32
                 (coe d_printGType_8 (coe v1))
@@ -97,52 +97,52 @@ d_printGType_8 v0
                    (coe d_quantityToken_6 (coe v2))
                    (coe
                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                      (coe MAlonzo.Code.Once.Parser.Token.C_TArrow_26)
+                      (coe MAlonzo.Code.Once.Parser.Token.C_TArrow_28)
                       (coe
                          MAlonzo.Code.Data.List.Base.du__'43''43'__32
                          (coe d_printGType_8 (coe v3))
                          (coe
                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                            (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                            (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))))
       MAlonzo.Code.Once.Grammar.C__'8855'__26 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_14)
+             (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_16)
              (coe
                 MAlonzo.Code.Data.List.Base.du__'43''43'__32
                 (coe d_printGType_8 (coe v1))
                 (coe
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                   (coe MAlonzo.Code.Once.Parser.Token.C_TStar_50)
+                   (coe MAlonzo.Code.Once.Parser.Token.C_TStar_52)
                    (coe
                       MAlonzo.Code.Data.List.Base.du__'43''43'__32
                       (coe d_printGType_8 (coe v2))
                       (coe
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                         (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                         (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))
       MAlonzo.Code.Once.Grammar.C__'8853'__28 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_14)
+             (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_16)
              (coe
                 MAlonzo.Code.Data.List.Base.du__'43''43'__32
                 (coe d_printGType_8 (coe v1))
                 (coe
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                   (coe MAlonzo.Code.Once.Parser.Token.C_TPlus_46)
+                   (coe MAlonzo.Code.Once.Parser.Token.C_TPlus_48)
                    (coe
                       MAlonzo.Code.Data.List.Base.du__'43''43'__32
                       (coe d_printGType_8 (coe v2))
                       (coe
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                         (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                         (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))
       MAlonzo.Code.Once.Grammar.C_TEff_30 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_14)
+             (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_16)
              (coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe
@@ -156,7 +156,7 @@ d_printGType_8 v0
                       (coe d_printGType_8 (coe v2))
                       (coe
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                         (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                         (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))
       MAlonzo.Code.Once.Grammar.C_GMu_32 v1
         -> coe
@@ -166,13 +166,13 @@ d_printGType_8 v0
                 (coe ("Mu" :: Data.Text.Text)))
              (coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_14)
+                (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_16)
                 (coe
                    MAlonzo.Code.Data.List.Base.du__'43''43'__32
                    (coe d_printGFunctor_10 (coe v1))
                    (coe
                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                      (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                      (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
       MAlonzo.Code.Once.Grammar.C_TVar_34 v1
         -> coe
@@ -189,7 +189,7 @@ d_printGFunctor_10 v0
       MAlonzo.Code.Once.Grammar.C_GFK_36 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_14)
+             (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_16)
              (coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe
@@ -200,7 +200,7 @@ d_printGFunctor_10 v0
                    (coe d_printGType_8 (coe v1))
                    (coe
                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                      (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                      (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
       MAlonzo.Code.Once.Grammar.C_GFId_38
         -> coe
@@ -212,36 +212,36 @@ d_printGFunctor_10 v0
       MAlonzo.Code.Once.Grammar.C_GFSum_40 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_14)
+             (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_16)
              (coe
                 MAlonzo.Code.Data.List.Base.du__'43''43'__32
                 (coe d_printGFunctor_10 (coe v1))
                 (coe
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                   (coe MAlonzo.Code.Once.Parser.Token.C_TPlus_46)
+                   (coe MAlonzo.Code.Once.Parser.Token.C_TPlus_48)
                    (coe
                       MAlonzo.Code.Data.List.Base.du__'43''43'__32
                       (coe d_printGFunctor_10 (coe v2))
                       (coe
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                         (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                         (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))
       MAlonzo.Code.Once.Grammar.C_GFProd_42 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_14)
+             (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_16)
              (coe
                 MAlonzo.Code.Data.List.Base.du__'43''43'__32
                 (coe d_printGFunctor_10 (coe v1))
                 (coe
                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                   (coe MAlonzo.Code.Once.Parser.Token.C_TStar_50)
+                   (coe MAlonzo.Code.Once.Parser.Token.C_TStar_52)
                    (coe
                       MAlonzo.Code.Data.List.Base.du__'43''43'__32
                       (coe d_printGFunctor_10 (coe v2))
                       (coe
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                         (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                         (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.Printer.round-trip-Unit

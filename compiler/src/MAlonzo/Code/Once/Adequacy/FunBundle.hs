@@ -88,7 +88,7 @@ du_compileFunBody'45'ce_72 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Adequacy.AcceptSound.du_compileFunBody'45'aux'45'success_34
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1608
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1676
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
             (coe v0) (coe v1) (coe v2) (coe v3) (coe v4))
@@ -544,7 +544,7 @@ du_bundle'45'find_648 v0 v1
                        (coe MAlonzo.Code.Once.Parser.d_funName_108 (coe v15))
                        (coe ("main" :: Data.Text.Text)))
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__228 (coe v5)
+                       MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__240 (coe v5)
                        (coe d_EffUU_6))
                     (coe MAlonzo.Code.Once.Parser.d_funIsPrimitive_116 (coe v15))
                     (coe du_bundle'45'find_648 (coe v16) (coe v14))
@@ -775,7 +775,7 @@ d_bundle'45'realize_968 v0 v1 v2 v3 v4 v5
                               (coe MAlonzo.Code.Once.Parser.d_funName_108 (coe v19))
                               (coe ("main" :: Data.Text.Text)))
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__228 (coe v9)
+                              MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__240 (coe v9)
                               (coe d_EffUU_6))
                            (coe MAlonzo.Code.Once.Parser.d_funIsPrimitive_116 (coe v19))
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -859,7 +859,7 @@ d_bundle'45'realize'45'node_1218 v0 v1 v2 v3 v4 v5
                               (coe MAlonzo.Code.Once.Parser.d_funName_108 (coe v19))
                               (coe ("main" :: Data.Text.Text)))
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__228 (coe v9)
+                              MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__240 (coe v9)
                               (coe d_EffUU_6))
                            (coe MAlonzo.Code.Once.Parser.d_funIsPrimitive_116 (coe v19))
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -980,7 +980,7 @@ du_bundle'45'find'45'exists_1362 v0 v1
                                (coe ("main" :: Data.Text.Text))) in
                   coe
                     (let v18
-                           = MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__228
+                           = MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__240
                                (coe v5) (coe d_EffUU_6) in
                      coe
                        (let v19
@@ -1133,7 +1133,7 @@ d_bundle'45'main'45'node_1562 v0 v1 v2 v3 v4 v5
                               (coe MAlonzo.Code.Once.Parser.d_funName_108 (coe v19))
                               (coe ("main" :: Data.Text.Text)))
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__228 (coe v9)
+                              MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__240 (coe v9)
                               (coe d_EffUU_6))
                            (coe MAlonzo.Code.Once.Parser.d_funIsPrimitive_116 (coe v19))
                     _ -> MAlonzo.RTE.mazUnreachableError

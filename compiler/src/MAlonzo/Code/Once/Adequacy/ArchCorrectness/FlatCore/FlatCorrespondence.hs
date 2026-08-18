@@ -18,7 +18,6 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
-import qualified MAlonzo.Code.Agda.Builtin.Float
 import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
@@ -34,6 +33,7 @@ import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
+import qualified MAlonzo.Code.Once.Float.Dyadic
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
@@ -45,7 +45,7 @@ d_clos'45'reg_34 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -67,7 +67,7 @@ d_count'45'reg_36 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -89,7 +89,7 @@ d_heap'45'reg_38 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -111,7 +111,7 @@ d_in1'45'reg_40 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -133,7 +133,7 @@ d_out'45'reg_42 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -155,7 +155,7 @@ d_reg'45'of_44 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -180,7 +180,7 @@ d_scratch'45'reg_46 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -202,7 +202,7 @@ d_sp'45'reg_48 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -224,7 +224,7 @@ d_slots_50 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -241,7 +241,7 @@ d_slot'45'to'45'disp_54 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -259,7 +259,7 @@ d_nz'8658'pos_60 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -283,7 +283,7 @@ d_slot'45'size'62'0_62 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -300,7 +300,7 @@ d_Word_64 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -313,7 +313,7 @@ d_Memory_66 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -326,7 +326,7 @@ d_readMem_68 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -345,7 +345,7 @@ d_writeMem_74 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -372,7 +372,7 @@ d_readLoc_86 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -396,7 +396,7 @@ d_writeHeapMem_88 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -426,7 +426,7 @@ d_writeLoc_90 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -453,7 +453,7 @@ d_writeLocToHeap_96 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -479,7 +479,7 @@ d_writeLocToStack_98 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -509,7 +509,7 @@ d_exec'45'load'45'suc'45'via'45'resolved_102 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -537,7 +537,7 @@ d_exec'45'load'45'via'45'resolved_104 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -565,7 +565,7 @@ d_exec'45'store'45'suc'45'via'45'resolved_108 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -595,7 +595,7 @@ d_exec'45'store'45'via'45'resolved_110 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -627,7 +627,7 @@ d_do'45'ret_144 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -651,7 +651,7 @@ d_do'45'thunk_158 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -676,7 +676,7 @@ d_enter'45'call_160 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -700,7 +700,7 @@ d_flat'45'exec'45'instr_212 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -730,7 +730,7 @@ d_leave'45'frame_266 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -752,7 +752,7 @@ d_leave'45'frame'45'aux_268 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -778,7 +778,7 @@ d_sv'45'is'45'zero_292 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -831,7 +831,7 @@ d_shift'45'frame_332 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -852,7 +852,7 @@ d_sv'45'below_336 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -868,7 +868,7 @@ d_svm'45'below_338 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -884,7 +884,7 @@ d_exec'45'abstract_342 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -913,7 +913,7 @@ d_Frame_350 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -926,7 +926,7 @@ d_frame'45'base_352 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -947,7 +947,7 @@ d_slot'45'addr_358 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1042,7 +1042,7 @@ d_lit'45'word_418 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1080,7 +1080,7 @@ d_enc'45'sv'45'at_434 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1094,7 +1094,7 @@ d_enc'45'sv'45'at_434 v0 ~v1 ~v2 ~v3 v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
   = du_enc'45'sv'45'at_434 v0 v4 v11 v12
 du_enc'45'sv'45'at_434 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   T_AddrMap_422 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 -> Integer
 du_enc'45'sv'45'at_434 v0 v1 v2 v3
@@ -1122,7 +1122,7 @@ d_enc'45'maybe'45'at_462 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1137,7 +1137,7 @@ d_enc'45'maybe'45'at_462 v0 ~v1 ~v2 ~v3 v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
   = du_enc'45'maybe'45'at_462 v0 v4 v11 v12
 du_enc'45'maybe'45'at_462 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   T_AddrMap_422 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   Maybe Integer
@@ -1161,7 +1161,7 @@ d_enc'45'sv_474 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1174,7 +1174,7 @@ d_enc'45'sv_474 v0 ~v1 ~v2 ~v3 v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 v11
   = du_enc'45'sv_474 v0 v4 v11
 du_enc'45'sv_474 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   T_HeapView_362 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 -> Integer
 du_enc'45'sv_474 v0 v1 v2
@@ -1189,7 +1189,7 @@ d_enc'45'maybe_478 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1203,7 +1203,7 @@ d_enc'45'maybe_478 v0 ~v1 ~v2 ~v3 v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 v11
   = du_enc'45'maybe_478 v0 v4 v11
 du_enc'45'maybe_478 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   T_HeapView_362 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   Maybe Integer
@@ -1219,7 +1219,7 @@ d_frames'45'of_482 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1253,7 +1253,7 @@ d_Window_486 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1273,7 +1273,7 @@ d_StackWindows_502 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1293,7 +1293,7 @@ d_GapNext_526 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1308,7 +1308,7 @@ d_RetAddrs_536 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1327,7 +1327,7 @@ d_ret'45'unlink_610 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1382,7 +1382,7 @@ d_ret'45'relink_696 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1437,7 +1437,7 @@ d_ret'45'relk_782 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1523,7 +1523,7 @@ d_ret'45'head_888 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1688,7 +1688,7 @@ d_keep'45'in1_1136 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1713,7 +1713,7 @@ d_keep'45'out_1140 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1738,7 +1738,7 @@ d_keep'45'scratch_1144 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1763,7 +1763,7 @@ d_keep'45'count_1148 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1788,7 +1788,7 @@ d_keep'45'clos_1152 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1813,7 +1813,7 @@ d_keep'45'sp_1156 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1838,7 +1838,7 @@ d_keep'45'heap'45'reg_1160 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1863,7 +1863,7 @@ d_keep'45'halt_1164 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1885,7 +1885,7 @@ d_keep'45'heap_1168 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1909,7 +1909,7 @@ d_keep'45'lo'45'le_1176 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1939,7 +1939,7 @@ d_keep'45'untouched_1184 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -1965,7 +1965,7 @@ d_keep'45'stack_1194 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2018,7 +2018,7 @@ d_mkeep'45'in1_1262 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2040,7 +2040,7 @@ d_mkeep'45'out_1264 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2062,7 +2062,7 @@ d_mkeep'45'scratch_1266 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2084,7 +2084,7 @@ d_mkeep'45'count_1268 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2106,7 +2106,7 @@ d_mkeep'45'clos_1270 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2128,7 +2128,7 @@ d_mkeep'45'sp_1272 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2150,7 +2150,7 @@ d_mkeep'45'heap'45'reg_1274 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2172,7 +2172,7 @@ d_mkeep'45'halt_1276 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2194,7 +2194,7 @@ d_mkeep'45'lo'45'le_1278 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2292,7 +2292,7 @@ d_win'45'at_1406 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2325,7 +2325,7 @@ d_win'45'off_1452 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2367,7 +2367,7 @@ d_stack'45'eq'45'cur_1502 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2390,7 +2390,7 @@ d_sep_1518 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2417,7 +2417,7 @@ d_descend'45'view_1528 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2459,7 +2459,7 @@ d_sim'45'mov'45'to'45'output_1576 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2487,7 +2487,7 @@ d_sim'45'mov'45'to'45'input_1598 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2515,7 +2515,7 @@ d_sim'45'load'45'tag'45'lit_1622 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2544,7 +2544,7 @@ d_sim'45'reg'45'scratch'45'one_1646 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2572,7 +2572,7 @@ d_sim'45'reg'45'scratch'45'zero_1668 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2600,7 +2600,7 @@ d_sim'45'reg'45'count'45'zero_1690 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2628,7 +2628,7 @@ d_sim'45'reg'45'scratch'45'load'45'count_1712 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2656,7 +2656,7 @@ d_sv'45'tag'45'zero_1728 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2671,7 +2671,7 @@ d_enc'45'zero_1736 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2690,7 +2690,7 @@ d_sim'45'load'45'indirect'45'suc_1752 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2721,7 +2721,7 @@ d_cleanFlat_1778 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2778,7 +2778,7 @@ d_floc'45'eq_1780 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2802,7 +2802,7 @@ d_reduces_1786 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2826,7 +2826,7 @@ d_corr'45'clean_1790 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2859,7 +2859,7 @@ d_sim'45'load'45'indirect_1806 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2888,7 +2888,7 @@ d_cleanFlat_1832 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2945,7 +2945,7 @@ d_floc'45'eq_1834 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2969,7 +2969,7 @@ d_reduces_1840 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -2993,7 +2993,7 @@ d_corr'45'clean_1844 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3026,7 +3026,7 @@ d_sim'45'load'45'from'45'slot_1860 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3055,7 +3055,7 @@ d_ex'45'eq_1884 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3078,7 +3078,7 @@ d_cleanFlat_1888 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3134,7 +3134,7 @@ d_reduces_1890 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3157,7 +3157,7 @@ d_corr'45'clean_1894 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3189,7 +3189,7 @@ d_'8801''7495''45'refl_1900 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3204,7 +3204,7 @@ d_'8802''8594''8801''7495'false_1908 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3223,7 +3223,7 @@ d_untouched'45'write_1934 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3247,7 +3247,7 @@ d_untouched'45'heap'45'store_1962 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3274,7 +3274,7 @@ d_untouched'45'stack'45'store_2004 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3301,7 +3301,7 @@ d_store'45'heap'45'eq_2044 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3327,7 +3327,7 @@ d_store'45'dom'45'written_2136 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3439,7 +3439,7 @@ d_read'45'write'45'hit_2198 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3456,7 +3456,7 @@ d_read'45'write'45'miss_2218 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3477,7 +3477,7 @@ d_windows'45'reanchor_2250 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3517,7 +3517,7 @@ d_windows'45'lower_2280 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3563,7 +3563,7 @@ d_windows'45'forget_2326 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3625,7 +3625,7 @@ d_windows'45'leave_2380 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3662,7 +3662,7 @@ d_go_2400 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3730,7 +3730,7 @@ d_windows'45'above_2446 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3784,7 +3784,7 @@ d_up_2496 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3838,7 +3838,7 @@ d_window'45'store'45'above_2528 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3872,7 +3872,7 @@ d_windows'45'store'45'gap_2570 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3951,7 +3951,7 @@ d_a_2624 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -3995,7 +3995,7 @@ d_a'60'next_2626 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4041,7 +4041,7 @@ d_a'8804'next_2630 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4086,7 +4086,7 @@ d_windows'45'write'45'below_2660 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4118,7 +4118,7 @@ d_windows'45'heap'45'store_2708 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4153,7 +4153,7 @@ d_sim'45'store'45'indirect_2736 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4185,7 +4185,7 @@ d_v_2762 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4222,7 +4222,7 @@ d_cleanFlat_2764 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4266,7 +4266,7 @@ d_floc'45'eq_2766 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4290,7 +4290,7 @@ d_reduces_2770 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4314,7 +4314,7 @@ d_corr'45'clean_2774 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4353,7 +4353,7 @@ d_sim'45'store'45'indirect'45'suc_2788 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4386,7 +4386,7 @@ d_v_2814 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4423,7 +4423,7 @@ d_cleanFlat_2816 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4468,7 +4468,7 @@ d_floc'45'eq_2818 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4492,7 +4492,7 @@ d_reduces_2822 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4516,7 +4516,7 @@ d_corr'45'clean_2826 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4556,7 +4556,7 @@ d_sim'45'restore'45'input_2842 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4584,7 +4584,7 @@ d_ex'45'eq_2866 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4607,7 +4607,7 @@ d_cleanFlat_2870 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4663,7 +4663,7 @@ d_reduces_2872 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4686,7 +4686,7 @@ d_corr'45'clean_2876 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4718,7 +4718,7 @@ d_slot'45'addr'45'inj_2886 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4737,7 +4737,7 @@ d_atstack'45'slot'45'inj_2902 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4756,7 +4756,7 @@ d_atstack'45'frame'45'inj_2914 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4776,7 +4776,7 @@ d_store'45'slot'45'heap'45'eq_2934 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4805,7 +4805,7 @@ d_store'45'slot'45'stack'45'eq_2986 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4839,7 +4839,7 @@ d_just'45'inj_3026 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4876,7 +4876,7 @@ d_go_3028 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4912,7 +4912,7 @@ d_windows'45'slot'45'store_3062 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -4959,7 +4959,7 @@ d_waddr_3098 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5002,7 +5002,7 @@ d_w'60'fl_3100 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5052,7 +5052,7 @@ d_base'60'_3104 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5124,7 +5124,7 @@ d_sim'45'store'45'at'45'slot_3134 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5157,7 +5157,7 @@ d_base_3158 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5194,7 +5194,7 @@ d_Out_3160 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5233,7 +5233,7 @@ d_cf_3162 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5267,7 +5267,7 @@ d_sm'45'base_3164 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5293,7 +5293,7 @@ d_corr'45'clean_3168 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5335,7 +5335,7 @@ d_sim'45'alloc'45'stack_3188 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5380,7 +5380,7 @@ d_cf_3220 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5417,7 +5417,7 @@ d_newbase_3222 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5446,7 +5446,7 @@ d_stk_3232 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5480,7 +5480,7 @@ d_tail'45'le_3254 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5528,7 +5528,7 @@ d_windows'45's_3258 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5576,7 +5576,7 @@ d_sim'45'thunk_3290 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5618,7 +5618,7 @@ d_cf_3320 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5652,7 +5652,7 @@ d_nothing'8802'just_3326 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5682,7 +5682,7 @@ d_head'45'window_3332 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5713,7 +5713,7 @@ d_newbase_3374 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5739,7 +5739,7 @@ d_tail'45'le_3380 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5784,7 +5784,7 @@ d_windows'45's_3384 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5849,7 +5849,7 @@ d_sim'45'call'45'frame_3422 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5920,7 +5920,7 @@ d_cf_3452 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5954,7 +5954,7 @@ d_newbase_3454 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -5980,7 +5980,7 @@ d_tail'45'floor_3462 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6045,7 +6045,7 @@ d_sim'45'dealloc'45'stack_3506 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6094,7 +6094,7 @@ d_sim'45'ret_3554 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6159,7 +6159,7 @@ d_sim'45'load'45'const_3608 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6187,7 +6187,7 @@ d_sim'45'load'45'const'45'float_3634 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6195,7 +6195,7 @@ d_sim'45'load'45'const'45'float_3634 ::
   (AgdaAny -> Integer -> Maybe Integer) ->
   (AgdaAny -> Bool) ->
   T_HeapView_362 ->
-  MAlonzo.Code.Agda.Builtin.Float.T_Float_6 ->
+  MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   AgdaAny -> T_FlatCorr_982 -> T_SetsRole_1084 -> T_FlatCorr_982
@@ -6216,7 +6216,7 @@ d_sim'45'load'45'code'45'addr_3662 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6249,7 +6249,7 @@ d_sim'45'save'45'closure'45'reg_3690 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6277,7 +6277,7 @@ d_inc'45'enc_3710 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6296,7 +6296,7 @@ d_dec'45'enc_3720 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6315,7 +6315,7 @@ d_sim'45'reg'45'count'45'inc_3734 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6347,7 +6347,7 @@ d_sim'45'reg'45'scratch'45'dec_3764 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6379,7 +6379,7 @@ d_ext'45'addr'45'aux_3790 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6416,7 +6416,7 @@ d_ext'45'addr_3808 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6456,7 +6456,7 @@ d_ext'45'addr'45'old_3844 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6475,7 +6475,7 @@ d_go_3860 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6495,7 +6495,7 @@ d_ext'45'addr'45'fresh_3870 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6514,7 +6514,7 @@ d_go_3886 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6534,7 +6534,7 @@ d_ext'45'addr'45'base_3894 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6550,7 +6550,7 @@ d_'43''45'not'45''60'_3904 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6568,7 +6568,7 @@ d_ext'45'suc'45'aux_3922 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6588,7 +6588,7 @@ d_ext'45'suc_3948 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6606,7 +6606,7 @@ d_extend'45'view_3966 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6642,7 +6642,7 @@ d_below_3984 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6695,7 +6695,7 @@ d_cross_4004 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6721,7 +6721,7 @@ d_inj_4022 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6747,7 +6747,7 @@ d_addr'45'eq_4072 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6777,7 +6777,7 @@ d_off'45'eq_4074 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6807,7 +6807,7 @@ d_enc'45'ext_4090 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6829,7 +6829,7 @@ d_enc'45'ext'45'maybe_4174 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6851,7 +6851,7 @@ d_windows'45'enc'45'ext_4224 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6900,7 +6900,7 @@ d_sim'45'alloc'45'heap_4306 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6950,7 +6950,7 @@ d_st_4342 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -6990,7 +6990,7 @@ d_dfr_4344 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7031,7 +7031,7 @@ d_ds_4348 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7084,7 +7084,7 @@ d_go_4360 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7137,7 +7137,7 @@ d_hv''_4368 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7181,7 +7181,7 @@ d_fresh'45'x86_4372 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7216,7 +7216,7 @@ d_df_4380 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7269,7 +7269,7 @@ d_hp_4390 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7303,7 +7303,7 @@ d_sim'45'lea'45'slot_4434 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7331,7 +7331,7 @@ d_cf_4454 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7357,7 +7357,7 @@ d_addr'45'eq_4456 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7378,7 +7378,7 @@ d_sim'45'load'45'indirect'45'stack_4476 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7410,7 +7410,7 @@ d_cleanFlat_4504 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7468,7 +7468,7 @@ d_floc'45'eq_4506 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7493,7 +7493,7 @@ d_reduces_4512 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7518,7 +7518,7 @@ d_corr'45'clean_4516 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7552,7 +7552,7 @@ d_sim'45'load'45'indirect'45'suc'45'stack_4534 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7584,7 +7584,7 @@ d_cleanFlat_4562 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7642,7 +7642,7 @@ d_floc'45'eq_4564 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7667,7 +7667,7 @@ d_reduces_4570 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7692,7 +7692,7 @@ d_corr'45'clean_4574 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7726,7 +7726,7 @@ d_sim'45'store'45'indirect'45'stack_4590 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7761,7 +7761,7 @@ d_base_4616 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7799,7 +7799,7 @@ d_Out_4618 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7839,7 +7839,7 @@ d_cf_4620 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7874,7 +7874,7 @@ d_sm'45'base_4622 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7901,7 +7901,7 @@ d_cleanFlat_4626 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7949,7 +7949,7 @@ d_floc'45'eq_4628 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -7976,7 +7976,7 @@ d_reduces_4632 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8003,7 +8003,7 @@ d_corr'45'clean_4636 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8046,7 +8046,7 @@ d_sim'45'store'45'indirect'45'suc'45'stack_4652 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8081,7 +8081,7 @@ d_base_4678 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8119,7 +8119,7 @@ d_Out_4680 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8159,7 +8159,7 @@ d_cf_4682 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8194,7 +8194,7 @@ d_sm'45'base_4684 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8221,7 +8221,7 @@ d_cleanFlat_4688 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8271,7 +8271,7 @@ d_floc'45'eq_4690 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8298,7 +8298,7 @@ d_reduces_4694 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8325,7 +8325,7 @@ d_corr'45'clean_4698 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8368,7 +8368,7 @@ d_corr'45'regs'45'agree_4712 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8399,7 +8399,7 @@ d_corr'45'store'45'gap_4760 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8447,7 +8447,7 @@ d_a_4786 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8489,7 +8489,7 @@ d_lo'8804'a_4788 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8529,7 +8529,7 @@ d_front'8804'a_4792 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8565,7 +8565,7 @@ d_ret'45'agree'45'above_4840 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8727,7 +8727,7 @@ d_ret'45'write'45'in'45'frame_5026 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8874,7 +8874,7 @@ d_ret'45'agree'45'nothing_5196 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8941,7 +8941,7 @@ d_ret'45'nil'45'frames_5296 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -8965,7 +8965,7 @@ d_ret'45'spill_5350 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->
@@ -9048,7 +9048,7 @@ d_a'60'next_5454 ::
   Integer ->
   MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  (MAlonzo.Code.Agda.Builtin.Float.T_Float_6 -> Integer) ->
+  (MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer) ->
   () ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
   () ->

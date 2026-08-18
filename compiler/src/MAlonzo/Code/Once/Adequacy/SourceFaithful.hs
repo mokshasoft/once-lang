@@ -309,7 +309,7 @@ du_ef_560 ::
   MAlonzo.Code.Once.IR.T_IR_16
 du_ef_560 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108 (coe v0)
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114 (coe v0)
       (coe
          MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v1) (coe v3)
          (coe v2))
@@ -339,7 +339,7 @@ du_ex_562 ::
   MAlonzo.Code.Once.IR.T_IR_16
 du_ex_562 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108 (coe v0)
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114 (coe v0)
       (coe v1) (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v2)
 -- Once.Adequacy.SourceFaithful._.ihf-T
 d_ihf'45'T_568 ::
@@ -440,7 +440,7 @@ du_ee_648 ::
   MAlonzo.Code.Once.IR.T_IR_16
 du_ee_648 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
       (coe
          MAlonzo.Code.Once.Surface.Context.du__'44'__16 (coe v0) (coe v1))
       (coe v2) (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v3)
@@ -512,7 +512,7 @@ du_body_704 v0 v1 v2 v3 v4
          (coe
             MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38
             (coe
-               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108 (coe v0)
+               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114 (coe v0)
                (coe
                   MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v1)
                   (coe
@@ -522,7 +522,7 @@ du_body_704 v0 v1 v2 v3 v4
                   (coe v2))
                (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v3))
             (coe
-               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108 (coe v0)
+               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114 (coe v0)
                (coe v1) (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v4))
             (coe MAlonzo.Code.Once.IR.C_Heap_8)))
       (coe MAlonzo.Code.Once.IR.C_fst_44)
@@ -540,7 +540,7 @@ d_liftFn'45'curry'45'reduce'45'effApp_708 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_liftFn'45'curry'45'reduce'45'effApp_708 = erased
 -- Once.Adequacy.SourceFaithful._.dγ'
-d_dγ''_1140 ::
+d_dγ''_1146 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -551,12 +551,12 @@ d_dγ''_1140 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny -> Integer -> AgdaAny
-d_dγ''_1140 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9 ~v10
-  = du_dγ''_1140 v9
-du_dγ''_1140 :: AgdaAny -> AgdaAny
-du_dγ''_1140 v0 = coe v0
+d_dγ''_1146 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9 ~v10
+  = du_dγ''_1146 v9
+du_dγ''_1146 :: AgdaAny -> AgdaAny
+du_dγ''_1146 v0 = coe v0
 -- Once.Adequacy.SourceFaithful._.ee1
-d_ee1_1142 ::
+d_ee1_1148 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -567,19 +567,19 @@ d_ee1_1142 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny -> Integer -> MAlonzo.Code.Once.IR.T_IR_16
-d_ee1_1142 ~v0 v1 ~v2 ~v3 ~v4 ~v5 v6 v7 ~v8 ~v9 ~v10
-  = du_ee1_1142 v1 v6 v7
-du_ee1_1142 ::
+d_ee1_1148 ~v0 v1 ~v2 ~v3 ~v4 ~v5 v6 v7 ~v8 ~v9 ~v10
+  = du_ee1_1148 v1 v6 v7
+du_ee1_1148 ::
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.IR.T_IR_16
-du_ee1_1142 v0 v1 v2
+du_ee1_1148 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108 (coe v0)
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114 (coe v0)
       (coe v1) (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v2)
 -- Once.Adequacy.SourceFaithful._.ee2
-d_ee2_1144 ::
+d_ee2_1150 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -590,22 +590,22 @@ d_ee2_1144 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny -> Integer -> MAlonzo.Code.Once.IR.T_IR_16
-d_ee2_1144 ~v0 v1 v2 ~v3 ~v4 ~v5 v6 ~v7 v8 ~v9 ~v10
-  = du_ee2_1144 v1 v2 v6 v8
-du_ee2_1144 ::
+d_ee2_1150 ~v0 v1 v2 ~v3 ~v4 ~v5 v6 ~v7 v8 ~v9 ~v10
+  = du_ee2_1150 v1 v2 v6 v8
+du_ee2_1150 ::
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.IR.T_IR_16
-du_ee2_1144 v0 v1 v2 v3
+du_ee2_1150 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
       (coe
          MAlonzo.Code.Once.Surface.Context.du__'44'__16 (coe v0) (coe v2))
       (coe v1) (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v3)
 -- Once.Adequacy.SourceFaithful._.let-reduce
-d_let'45'reduce_1148 ::
+d_let'45'reduce_1154 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -617,9 +617,9 @@ d_let'45'reduce_1148 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_let'45'reduce_1148 = erased
+d_let'45'reduce_1154 = erased
 -- Once.Adequacy.SourceFaithful._.e2-eq
-d_e2'45'eq_1154 ::
+d_e2'45'eq_1160 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -632,9 +632,9 @@ d_e2'45'eq_1154 ::
   AgdaAny ->
   Integer ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_e2'45'eq_1154 = erased
+d_e2'45'eq_1160 = erased
 -- Once.Adequacy.SourceFaithful._.dγ'
-d_dγ''_1330 ::
+d_dγ''_1336 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -649,13 +649,13 @@ d_dγ''_1330 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny -> Integer -> AgdaAny
-d_dγ''_1330 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
+d_dγ''_1336 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
             v13 ~v14
-  = du_dγ''_1330 v13
-du_dγ''_1330 :: AgdaAny -> AgdaAny
-du_dγ''_1330 v0 = coe v0
+  = du_dγ''_1336 v13
+du_dγ''_1336 :: AgdaAny -> AgdaAny
+du_dγ''_1336 v0 = coe v0
 -- Once.Adequacy.SourceFaithful._.es
-d_es_1332 ::
+d_es_1338 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -670,22 +670,22 @@ d_es_1332 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny -> Integer -> MAlonzo.Code.Once.IR.T_IR_16
-d_es_1332 ~v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 v9 v10 ~v11 ~v12 ~v13
+d_es_1338 ~v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 v9 v10 ~v11 ~v12 ~v13
           ~v14
-  = du_es_1332 v1 v8 v9 v10
-du_es_1332 ::
+  = du_es_1338 v1 v8 v9 v10
+du_es_1338 ::
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.IR.T_IR_16
-du_es_1332 v0 v1 v2 v3
+du_es_1338 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108 (coe v0)
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114 (coe v0)
       (coe MAlonzo.Code.Once.Type.C__'43'__128 (coe v1) (coe v2))
       (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v3)
 -- Once.Adequacy.SourceFaithful._.ll
-d_ll_1334 ::
+d_ll_1340 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -700,23 +700,23 @@ d_ll_1334 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny -> Integer -> MAlonzo.Code.Once.IR.T_IR_16
-d_ll_1334 ~v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 ~v9 ~v10 v11 ~v12 ~v13
+d_ll_1340 ~v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 ~v9 ~v10 v11 ~v12 ~v13
           ~v14
-  = du_ll_1334 v1 v2 v8 v11
-du_ll_1334 ::
+  = du_ll_1340 v1 v2 v8 v11
+du_ll_1340 ::
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.IR.T_IR_16
-du_ll_1334 v0 v1 v2 v3
+du_ll_1340 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
       (coe
          MAlonzo.Code.Once.Surface.Context.du__'44'__16 (coe v0) (coe v2))
       (coe v1) (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v3)
 -- Once.Adequacy.SourceFaithful._.rr
-d_rr_1336 ::
+d_rr_1342 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -731,23 +731,23 @@ d_rr_1336 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny -> Integer -> MAlonzo.Code.Once.IR.T_IR_16
-d_rr_1336 ~v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9 ~v10 ~v11 v12 ~v13
+d_rr_1342 ~v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 v9 ~v10 ~v11 v12 ~v13
           ~v14
-  = du_rr_1336 v1 v2 v9 v12
-du_rr_1336 ::
+  = du_rr_1342 v1 v2 v9 v12
+du_rr_1342 ::
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.IR.T_IR_16
-du_rr_1336 v0 v1 v2 v3
+du_rr_1342 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
       (coe
          MAlonzo.Code.Once.Surface.Context.du__'44'__16 (coe v0) (coe v2))
       (coe v1) (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v3)
 -- Once.Adequacy.SourceFaithful._.reshape
-d_reshape_1338 ::
+d_reshape_1344 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -765,14 +765,14 @@ d_reshape_1338 ::
   Integer ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_reshape_1338 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
+d_reshape_1344 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
                ~v12 v13 ~v14 v15
-  = du_reshape_1338 v13 v15
-du_reshape_1338 ::
+  = du_reshape_1344 v13 v15
+du_reshape_1344 ::
   AgdaAny ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-du_reshape_1338 v0 v1
+du_reshape_1344 v0 v1
   = coe
       MAlonzo.Code.Data.Sum.Base.du_'91'_'44'_'93''8242'_66
       (\ v2 ->
@@ -787,7 +787,7 @@ du_reshape_1338 v0 v1
               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v0) (coe v2)))
       v1
 -- Once.Adequacy.SourceFaithful._.branchᴰ
-d_branch'7472'_1346 ::
+d_branch'7472'_1352 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -805,10 +805,10 @@ d_branch'7472'_1346 ::
   Integer ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_branch'7472'_1346 ~v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 v9 ~v10 v11
+d_branch'7472'_1352 ~v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 v9 ~v10 v11
                     v12 v13 ~v14
-  = du_branch'7472'_1346 v1 v2 v8 v9 v11 v12 v13
-du_branch'7472'_1346 ::
+  = du_branch'7472'_1352 v1 v2 v8 v9 v11 v12 v13
+du_branch'7472'_1352 ::
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -818,7 +818,7 @@ du_branch'7472'_1346 ::
   AgdaAny ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_branch'7472'_1346 v0 v1 v2 v3 v4 v5 v6
+du_branch'7472'_1352 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Data.Sum.Base.du_'91'_'44'_'93''8242'_66
       (\ v7 ->
@@ -830,7 +830,7 @@ du_branch'7472'_1346 v0 v1 v2 v3 v4 v5 v6
                  (coe
                     MAlonzo.Code.Once.Surface.Context.du__'44'__16 (coe v0) (coe v2))))
            (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v1))
-           (coe du_ll_1334 (coe v0) (coe v1) (coe v2) (coe v4))
+           (coe du_ll_1340 (coe v0) (coe v1) (coe v2) (coe v4))
            (coe
               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v6) (coe v7)))
       (\ v7 ->
@@ -842,11 +842,11 @@ du_branch'7472'_1346 v0 v1 v2 v3 v4 v5 v6
                  (coe
                     MAlonzo.Code.Once.Surface.Context.du__'44'__16 (coe v0) (coe v3))))
            (coe MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v1))
-           (coe du_rr_1336 (coe v0) (coe v1) (coe v3) (coe v5))
+           (coe du_rr_1342 (coe v0) (coe v1) (coe v3) (coe v5))
            (coe
               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v6) (coe v7)))
 -- Once.Adequacy.SourceFaithful._.dd-reduce
-d_dd'45'reduce_1356 ::
+d_dd'45'reduce_1362 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -862,9 +862,9 @@ d_dd'45'reduce_1356 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_dd'45'reduce_1356 = erased
+d_dd'45'reduce_1362 = erased
 -- Once.Adequacy.SourceFaithful._.case-fuse
-d_case'45'fuse_1366 ::
+d_case'45'fuse_1372 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -882,9 +882,9 @@ d_case'45'fuse_1366 ::
   Integer ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_case'45'fuse_1366 = erased
+d_case'45'fuse_1372 = erased
 -- Once.Adequacy.SourceFaithful._.assoc-fuse
-d_assoc'45'fuse_1376 ::
+d_assoc'45'fuse_1382 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -902,9 +902,9 @@ d_assoc'45'fuse_1376 ::
   Integer ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_assoc'45'fuse_1376 = erased
+d_assoc'45'fuse_1382 = erased
 -- Once.Adequacy.SourceFaithful._.case-reduce
-d_case'45'reduce_1388 ::
+d_case'45'reduce_1394 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -920,9 +920,9 @@ d_case'45'reduce_1388 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_case'45'reduce_1388 = erased
+d_case'45'reduce_1394 = erased
 -- Once.Adequacy.SourceFaithful._.branch-eq
-d_branch'45'eq_1398 ::
+d_branch'45'eq_1404 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -940,4 +940,4 @@ d_branch'45'eq_1398 ::
   Integer ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_branch'45'eq_1398 = erased
+d_branch'45'eq_1404 = erased

@@ -1498,15 +1498,17 @@ d_classifyAppHeadView_1062 v0
                -> coe C_ahv'45'other_1058
              MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_54 v3
                -> coe C_ahv'45'other_1058
-             MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_56 v3
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RFloat_56 v3 v4 v5
                -> coe C_ahv'45'other_1058
-             MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_58 v3 v4
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_58 v3
                -> coe C_ahv'45'other_1058
-             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60 v3 v4 v5
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_60 v3 v4
                -> coe C_ahv'45'other_1058
-             MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_62 v4
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_62 v3 v4 v5
                -> coe C_ahv'45'other_1058
-             MAlonzo.Code.Once.TypeCheck.Raw.C_RAna_64 v3 v4
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_64 v4
+               -> coe C_ahv'45'other_1058
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RAna_66 v3 v4
                -> coe C_ahv'45'other_1058
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_44 v1 v2
@@ -1521,15 +1523,17 @@ d_classifyAppHeadView_1062 v0
         -> coe C_ahv'45'other_1058
       MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_54 v1
         -> coe C_ahv'45'other_1058
-      MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_56 v1
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RFloat_56 v1 v2 v3
         -> coe C_ahv'45'other_1058
-      MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_58 v1 v2
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_58 v1
         -> coe C_ahv'45'other_1058
-      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60 v1 v2 v3
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_60 v1 v2
         -> coe C_ahv'45'other_1058
-      MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_62 v2
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_62 v1 v2 v3
         -> coe C_ahv'45'other_1058
-      MAlonzo.Code.Once.TypeCheck.Raw.C_RAna_64 v1 v2
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_64 v2
+        -> coe C_ahv'45'other_1058
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RAna_66 v1 v2
         -> coe C_ahv'45'other_1058
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Classify.viewToPba

@@ -46,11 +46,11 @@ d_quantityTokenOf_94 ::
 d_quantityTokenOf_94 v0
   = case coe v0 of
       MAlonzo.Code.Once.Type.C_Zero_6
-        -> coe MAlonzo.Code.Once.Parser.Token.C_TCaret0_30
+        -> coe MAlonzo.Code.Once.Parser.Token.C_TCaret0_32
       MAlonzo.Code.Once.Type.C_One_8
-        -> coe MAlonzo.Code.Once.Parser.Token.C_TCaret1_28
+        -> coe MAlonzo.Code.Once.Parser.Token.C_TCaret1_30
       MAlonzo.Code.Once.Type.C_Many_10
-        -> coe MAlonzo.Code.Once.Parser.Token.C_TCaretW_32
+        -> coe MAlonzo.Code.Once.Parser.Token.C_TCaretW_34
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.TypeRelation.ParsesAtom
 d_ParsesAtom_96 a0 a1 a2 = ()
@@ -265,7 +265,7 @@ d_ParsesAtom'45'shrinks_378 v0 v1 v2 v3
                           d_ParsesType'45'shrinks_432 (coe v11) (coe v1)
                           (coe
                              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                             (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_16) (coe v2))
+                             (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                           (coe v8))
                        (coe
                           MAlonzo.Code.Data.Nat.Base.C_s'8804's_34

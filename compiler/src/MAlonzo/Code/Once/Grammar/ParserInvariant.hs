@@ -75,7 +75,7 @@ d_ParsesAtom'45'NoNu_12 v0 v1 v2 v3
                     d_ParsesType'45'NoNu_66 (coe v11) (coe v1)
                     (coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                       (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_16) (coe v2))
+                       (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18) (coe v2))
                     (coe v8)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'mu_180 v7

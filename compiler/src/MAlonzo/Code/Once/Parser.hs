@@ -51,9 +51,9 @@ d_parse_4 v0
               (coe
                  MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                  (coe
-                    MAlonzo.Code.Once.Parser.Module.d_r_368
+                    MAlonzo.Code.Once.Parser.Module.d_r_370
                     (coe
-                       MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_832 (coe v0)))) in
+                       MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_908 (coe v0)))) in
     coe (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v1))
 -- Once.Parser.allTrailing
 d_allTrailing_18 ::
@@ -65,9 +65,9 @@ d_allTrailing_18 v0
          [] -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
          (:) v2 v3
            -> case coe v2 of
-                MAlonzo.Code.Once.Parser.Token.C_TNewline_72
+                MAlonzo.Code.Once.Parser.Token.C_TNewline_74
                   -> coe d_allTrailing_18 (coe v3)
-                MAlonzo.Code.Once.Parser.Token.C_TEOF_74
+                MAlonzo.Code.Once.Parser.Token.C_TEOF_76
                   -> coe d_allTrailing_18 (coe v3)
                 _ -> coe v1
          _ -> MAlonzo.RTE.mazUnreachableError)
@@ -89,69 +89,71 @@ d_showTokenPrefix_24 v0
                        ("\"" :: Data.Text.Text))
              MAlonzo.Code.Once.Parser.Token.C_TInt_10 v3
                -> coe ("TInt" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TString_12 v3
+             MAlonzo.Code.Once.Parser.Token.C_TFloat_12 v3 v4 v5
+               -> coe ("TFloat" :: Data.Text.Text)
+             MAlonzo.Code.Once.Parser.Token.C_TString_14 v3
                -> coe ("TString" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TLParen_14
+             MAlonzo.Code.Once.Parser.Token.C_TLParen_16
                -> coe ("TLParen" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TRParen_16
+             MAlonzo.Code.Once.Parser.Token.C_TRParen_18
                -> coe ("TRParen" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TLBrace_18
+             MAlonzo.Code.Once.Parser.Token.C_TLBrace_20
                -> coe ("TLBrace" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TRBrace_20
+             MAlonzo.Code.Once.Parser.Token.C_TRBrace_22
                -> coe ("TRBrace" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TColon_22
+             MAlonzo.Code.Once.Parser.Token.C_TColon_24
                -> coe ("TColon" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TEquals_24
+             MAlonzo.Code.Once.Parser.Token.C_TEquals_26
                -> coe ("TEquals" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TArrow_26
+             MAlonzo.Code.Once.Parser.Token.C_TArrow_28
                -> coe ("TArrow" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TCaret1_28
+             MAlonzo.Code.Once.Parser.Token.C_TCaret1_30
                -> coe ("TCaret1" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TCaret0_30
+             MAlonzo.Code.Once.Parser.Token.C_TCaret0_32
                -> coe ("TCaret0" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TCaretW_32
+             MAlonzo.Code.Once.Parser.Token.C_TCaretW_34
                -> coe ("TCaretW" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TLambda_34
+             MAlonzo.Code.Once.Parser.Token.C_TLambda_36
                -> coe ("TLambda" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TComma_36
+             MAlonzo.Code.Once.Parser.Token.C_TComma_38
                -> coe ("TComma" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TSemicolon_38
+             MAlonzo.Code.Once.Parser.Token.C_TSemicolon_40
                -> coe ("TSemicolon" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TAt_40
+             MAlonzo.Code.Once.Parser.Token.C_TAt_42
                -> coe ("TAt" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TPipe_42
+             MAlonzo.Code.Once.Parser.Token.C_TPipe_44
                -> coe ("TPipe" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TDot_44
+             MAlonzo.Code.Once.Parser.Token.C_TDot_46
                -> coe ("TDot" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TPlus_46
+             MAlonzo.Code.Once.Parser.Token.C_TPlus_48
                -> coe ("TPlus" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TMinus_48
+             MAlonzo.Code.Once.Parser.Token.C_TMinus_50
                -> coe ("TMinus" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TStar_50
+             MAlonzo.Code.Once.Parser.Token.C_TStar_52
                -> coe ("TStar" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TSlash_52
+             MAlonzo.Code.Once.Parser.Token.C_TSlash_54
                -> coe ("TSlash" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TPercent_54
+             MAlonzo.Code.Once.Parser.Token.C_TPercent_56
                -> coe ("TPercent" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TAmpersand_56
+             MAlonzo.Code.Once.Parser.Token.C_TAmpersand_58
                -> coe ("TAmpersand" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TLt_58
+             MAlonzo.Code.Once.Parser.Token.C_TLt_60
                -> coe ("TLt" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TLe_60
+             MAlonzo.Code.Once.Parser.Token.C_TLe_62
                -> coe ("TLe" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TGt_62
+             MAlonzo.Code.Once.Parser.Token.C_TGt_64
                -> coe ("TGt" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TGe_64
+             MAlonzo.Code.Once.Parser.Token.C_TGe_66
                -> coe ("TGe" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TEqEq_66
+             MAlonzo.Code.Once.Parser.Token.C_TEqEq_68
                -> coe ("TEqEq" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TNeq_68
+             MAlonzo.Code.Once.Parser.Token.C_TNeq_70
                -> coe ("TNeq" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TBang_70
+             MAlonzo.Code.Once.Parser.Token.C_TBang_72
                -> coe ("TBang" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TNewline_72
+             MAlonzo.Code.Once.Parser.Token.C_TNewline_74
                -> coe d_showTokenPrefix_24 (coe v2)
-             MAlonzo.Code.Once.Parser.Token.C_TEOF_74
+             MAlonzo.Code.Once.Parser.Token.C_TEOF_76
                -> coe d_showTokenPrefix_24 (coe v2)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -281,8 +283,8 @@ d_parseStrict_72 v0
   = coe
       d_parseStrict'45'pm_66
       (coe
-         MAlonzo.Code.Once.Parser.Module.d_parseModule_378
-         (coe MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_832 (coe v0)))
+         MAlonzo.Code.Once.Parser.Module.d_parseModule_380
+         (coe MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_908 (coe v0)))
 -- Once.Parser.extractAliases
 d_extractAliases_76 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->

@@ -1900,7 +1900,7 @@ d_pInfer_1352 v0 v1 v2 v3 v4 v5
                    (coe MAlonzo.Code.Once.Type.C_PInt_270)
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v4) (coe v5)))
-         MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_56 v7
+         MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_58 v7
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                 (coe
@@ -1908,7 +1908,7 @@ d_pInfer_1352 v0 v1 v2 v3 v4 v5
                    (coe MAlonzo.Code.Once.Type.C_PStr_274)
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v4) (coe v5)))
-         MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_58 v7 v8
+         MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_60 v7 v8
            -> let v9 = d_typeToPoly_554 (coe v8) in
               coe
                 (case coe v9 of
@@ -1933,7 +1933,7 @@ d_pInfer_1352 v0 v1 v2 v3 v4 v5
                                   _ -> MAlonzo.RTE.mazUnreachableError))
                    MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v9
                    _ -> MAlonzo.RTE.mazUnreachableError)
-         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_60 v7 v8 v9
+         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_62 v7 v8 v9
            -> coe
                 d__'62''62''61'R__916
                 (coe
@@ -1942,7 +1942,7 @@ d_pInfer_1352 v0 v1 v2 v3 v4 v5
                 (coe
                    du_'46'extendedlambda6_1636 (coe v0) (coe v1) (coe v2) (coe v7)
                    (coe v9))
-         MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_62 v8
+         MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_64 v8
            -> coe
                 d__'62''62''61'R__916
                 (coe
@@ -2282,7 +2282,7 @@ du_'46'extendedlambda7_1644 v0 v1 v2 v3 v4 v5 v6
                                           (coe
                                              MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
                                              (coe
-                                                MAlonzo.Code.Once.TypeCheck.Raw.d_isComparisonOp_92
+                                                MAlonzo.Code.Once.TypeCheck.Raw.d_isComparisonOp_94
                                                 (coe v3))
                                              (coe
                                                 MAlonzo.Code.Once.Type.C__P'43'__260

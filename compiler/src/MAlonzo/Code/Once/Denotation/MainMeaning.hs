@@ -66,7 +66,7 @@ d_mainMeaning'7496''45'go_20 v0 v1 v2 v3 v4 v5
                                   (coe
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v10)
                                      (coe
-                                        MAlonzo.Code.Once.Denotation.Meaning.d_'10214'_'10215''7580'_270
+                                        MAlonzo.Code.Once.Denotation.Meaning.d_'10214'_'10215''7580'_272
                                         (coe
                                            MAlonzo.Code.Once.TypeCheck.Classify.C_mkCtx_368
                                            (coe (0 :: Integer))
@@ -99,7 +99,7 @@ d_mainMeaning'7496''45'go_20 v0 v1 v2 v3 v4 v5
                               (coe MAlonzo.Code.Once.Parser.d_funName_108 (coe v14))
                               (coe ("main" :: Data.Text.Text)))
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__228 (coe v9)
+                              MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__240 (coe v9)
                               (coe MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6))
                            (coe MAlonzo.Code.Once.Parser.d_funIsPrimitive_116 (coe v14))
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -143,7 +143,7 @@ d_mmd'45'dispatch_46 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                                         else coe
                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v7)
                                                (coe
-                                                  MAlonzo.Code.Once.Denotation.Meaning.d_'10214'_'10215''7580'_270
+                                                  MAlonzo.Code.Once.Denotation.Meaning.d_'10214'_'10215''7580'_272
                                                   (coe
                                                      MAlonzo.Code.Once.TypeCheck.Classify.C_mkCtx_368
                                                      (coe (0 :: Integer))

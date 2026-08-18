@@ -394,7 +394,7 @@ d_fAtomP_90 v0 v1
                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
                                               _ -> MAlonzo.RTE.mazUnreachableError)
                              _ -> MAlonzo.RTE.mazUnreachableError))
-                MAlonzo.Code.Once.Parser.Token.C_TLParen_14
+                MAlonzo.Code.Once.Parser.Token.C_TLParen_16
                   -> let v5 = d_fSumP_94 (coe v0) (coe v4) in
                      coe
                        (case coe v5 of
@@ -404,7 +404,7 @@ d_fAtomP_90 v0 v1
                                    -> case coe v8 of
                                         (:) v9 v10
                                           -> case coe v9 of
-                                               MAlonzo.Code.Once.Parser.Token.C_TRParen_16
+                                               MAlonzo.Code.Once.Parser.Token.C_TRParen_18
                                                  -> coe
                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                       (coe
@@ -1056,7 +1056,7 @@ d_atomKw_100 v0 v1
                                                                   _ -> MAlonzo.RTE.mazUnreachableError))
                                               _ -> MAlonzo.RTE.mazUnreachableError))
                           _ -> MAlonzo.RTE.mazUnreachableError)
-                MAlonzo.Code.Once.Parser.Token.C_TLParen_14
+                MAlonzo.Code.Once.Parser.Token.C_TLParen_16
                   -> let v5 = d_typeP_82 (coe v0) (coe v4) in
                      coe
                        (case coe v5 of
@@ -1066,7 +1066,7 @@ d_atomKw_100 v0 v1
                                    -> case coe v8 of
                                         (:) v9 v10
                                           -> case coe v9 of
-                                               MAlonzo.Code.Once.Parser.Token.C_TRParen_16
+                                               MAlonzo.Code.Once.Parser.Token.C_TRParen_18
                                                  -> coe
                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                       (coe

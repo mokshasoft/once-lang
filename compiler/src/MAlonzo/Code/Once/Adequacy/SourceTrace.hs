@@ -246,7 +246,7 @@ d_srcToModule'45'aux_68 v0 v1
         -> coe
              d_eitherToMaybe_64
              (coe
-                MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveImports_690
+                MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveImports_702
                 (coe v0) (coe v2))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError

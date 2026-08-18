@@ -18,7 +18,6 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
-import qualified MAlonzo.Code.Agda.Builtin.Float
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.Nat.Base
@@ -31,8 +30,8 @@ import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
+import qualified MAlonzo.Code.Once.Float.Dyadic
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
-import qualified MAlonzo.Code.Once.Semantics.FloatBits
 import qualified MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
@@ -402,7 +401,9 @@ du_enc'45'maybe_114 v0
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_enc'45'maybe_478
       (coe v0)
-      (coe MAlonzo.Code.Once.Semantics.FloatBits.d_float'45'bits_6)
+      (coe
+         MAlonzo.Code.Once.Float.Dyadic.d_encode_122
+         (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_36))
 -- Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence._.enc-maybe-at
 d_enc'45'maybe'45'at_116 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -420,7 +421,9 @@ du_enc'45'maybe'45'at_116 v0
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_enc'45'maybe'45'at_462
       (coe v0)
-      (coe MAlonzo.Code.Once.Semantics.FloatBits.d_float'45'bits_6)
+      (coe
+         MAlonzo.Code.Once.Float.Dyadic.d_encode_122
+         (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_36))
 -- Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence._.enc-sv
 d_enc'45'sv_118 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -436,7 +439,9 @@ du_enc'45'sv_118 v0
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_enc'45'sv_474
       (coe v0)
-      (coe MAlonzo.Code.Once.Semantics.FloatBits.d_float'45'bits_6)
+      (coe
+         MAlonzo.Code.Once.Float.Dyadic.d_encode_122
+         (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_36))
 -- Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence._.enc-sv-at
 d_enc'45'sv'45'at_120 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -452,7 +457,9 @@ du_enc'45'sv'45'at_120 v0
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_enc'45'sv'45'at_434
       (coe v0)
-      (coe MAlonzo.Code.Once.Semantics.FloatBits.d_float'45'bits_6)
+      (coe
+         MAlonzo.Code.Once.Float.Dyadic.d_encode_122
+         (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_36))
 -- Once.Adequacy.ArchCorrectness.X86-64.FlatCorrespondence._.enc-zero
 d_enc'45'zero_122 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -1826,7 +1833,7 @@ d_sim'45'load'45'const'45'float_294 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_362 ->
-  MAlonzo.Code.Agda.Builtin.Float.T_Float_6 ->
+  MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.T_State_348 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.T_State_348 ->
@@ -1837,7 +1844,7 @@ d_sim'45'load'45'const'45'float_294 ~v0 ~v1
   = du_sim'45'load'45'const'45'float_294
 du_sim'45'load'45'const'45'float_294 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_362 ->
-  MAlonzo.Code.Agda.Builtin.Float.T_Float_6 ->
+  MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.T_State_348 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.T_State_348 ->

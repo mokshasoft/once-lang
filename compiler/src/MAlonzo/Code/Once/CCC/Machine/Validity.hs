@@ -37,7 +37,7 @@ d_pair_8 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   AgdaAny -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_pair_8 v0 v1 v2 v3
-  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'pair_306 v2 v3
+  = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'pair_308 v2 v3
 -- Once.CCC.Machine.Validity.ValidityDef._.readLoc
 d_readLoc_26 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->

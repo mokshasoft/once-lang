@@ -41,7 +41,7 @@ d_taEqHead_8 v0
       (case coe v0 of
          (:) v2 v3
            -> case coe v2 of
-                MAlonzo.Code.Once.Parser.Token.C_TEquals_24
+                MAlonzo.Code.Once.Parser.Token.C_TEquals_26
                   -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
                 _ -> coe v1
          _ -> coe v1)
@@ -363,7 +363,7 @@ d_effAnnotShape_264 v0
       (case coe v0 of
          (:) v2 v3
            -> case coe v2 of
-                MAlonzo.Code.Once.Parser.Token.C_TBang_70
+                MAlonzo.Code.Once.Parser.Token.C_TBang_72
                   -> case coe v3 of
                        (:) v4 v5
                          -> case coe v4 of
@@ -444,7 +444,7 @@ d_colonHead_300 v0
       (case coe v0 of
          (:) v2 v3
            -> case coe v2 of
-                MAlonzo.Code.Once.Parser.Token.C_TColon_22
+                MAlonzo.Code.Once.Parser.Token.C_TColon_24
                   -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
                 _ -> coe v1
          _ -> coe v1)

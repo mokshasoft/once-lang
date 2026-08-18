@@ -346,7 +346,7 @@ du_form_262 v0 v1
                                                                                                  (coe
                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                     (coe
-                                                                                                       MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_2808
+                                                                                                       MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_2878
                                                                                                        (coe
                                                                                                           (0 ::
                                                                                                              Integer))

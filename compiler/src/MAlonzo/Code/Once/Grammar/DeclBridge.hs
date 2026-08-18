@@ -702,7 +702,7 @@ du_sound'45'decl_68 v0
                                                                _ -> MAlonzo.RTE.mazUnreachableError))
                                            _ -> MAlonzo.RTE.mazUnreachableError))
                        _ -> MAlonzo.RTE.mazUnreachableError)
-             MAlonzo.Code.Once.Parser.Token.C_TLParen_14
+             MAlonzo.Code.Once.Parser.Token.C_TLParen_16
                -> coe
                     C_pd'45'opdecl_58
                     (coe
@@ -1269,7 +1269,7 @@ d_complete'45'decl_312 v0 v1 v2 v3
                     MAlonzo.Code.Once.Grammar.OpDeclBridge.du_complete'45'opDecl_456
                     (coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                       (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_14) (coe v9))
+                       (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_16) (coe v9))
                     (coe v7)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError

@@ -36,7 +36,7 @@ d_eqHead_10 v0
       (case coe v0 of
          (:) v2 v3
            -> case coe v2 of
-                MAlonzo.Code.Once.Parser.Token.C_TEquals_24
+                MAlonzo.Code.Once.Parser.Token.C_TEquals_26
                   -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
                 _ -> coe v1
          _ -> coe v1)

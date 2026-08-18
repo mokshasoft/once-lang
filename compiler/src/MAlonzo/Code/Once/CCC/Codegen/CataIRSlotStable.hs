@@ -1866,7 +1866,7 @@ d_ir'45'stable_518 v0 v1 v2 v3 v4 v5 v6
                     du_cata'45'dispatch'45'slot'45'stable_464 (coe v0) (coe v1)
                     (coe
                        MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_cata'45'strategy_50
-                       (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_568 (coe v11)))
+                       (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_590 (coe v11)))
                     (coe v5)
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28

@@ -46,7 +46,7 @@ d_lit'45'int'45'info_12 v0
          (\ v1 ->
             MAlonzo.Code.Data.Integer.Base.d_'8739'_'8739'_18 (coe v0)))
       (coe MAlonzo.Code.Once.SigOp.Info.C_Pure_124)
-      (coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_150)
+      (coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_202)
       (coe
-         MAlonzo.Code.Once.Functor.Translate.C_con'45'base_178
-         (coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Int_154))
+         MAlonzo.Code.Once.Functor.Translate.C_con'45'base_230
+         (coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Int_206))

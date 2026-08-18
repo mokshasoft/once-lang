@@ -39,28 +39,28 @@ d_opTokClass_16 v0
   = let v1 = coe C_otNone_14 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Parser.Token.C_TRParen_16 -> coe C_otClose_10
-         MAlonzo.Code.Once.Parser.Token.C_TAt_40
+         MAlonzo.Code.Once.Parser.Token.C_TRParen_18 -> coe C_otClose_10
+         MAlonzo.Code.Once.Parser.Token.C_TAt_42
            -> coe C_otChar_12 (coe '@')
-         MAlonzo.Code.Once.Parser.Token.C_TPipe_42
+         MAlonzo.Code.Once.Parser.Token.C_TPipe_44
            -> coe C_otChar_12 (coe '|')
-         MAlonzo.Code.Once.Parser.Token.C_TDot_44
+         MAlonzo.Code.Once.Parser.Token.C_TDot_46
            -> coe C_otChar_12 (coe '.')
-         MAlonzo.Code.Once.Parser.Token.C_TPlus_46
+         MAlonzo.Code.Once.Parser.Token.C_TPlus_48
            -> coe C_otChar_12 (coe '+')
-         MAlonzo.Code.Once.Parser.Token.C_TMinus_48
+         MAlonzo.Code.Once.Parser.Token.C_TMinus_50
            -> coe C_otChar_12 (coe '-')
-         MAlonzo.Code.Once.Parser.Token.C_TStar_50
+         MAlonzo.Code.Once.Parser.Token.C_TStar_52
            -> coe C_otChar_12 (coe '*')
-         MAlonzo.Code.Once.Parser.Token.C_TSlash_52
+         MAlonzo.Code.Once.Parser.Token.C_TSlash_54
            -> coe C_otChar_12 (coe '/')
-         MAlonzo.Code.Once.Parser.Token.C_TPercent_54
+         MAlonzo.Code.Once.Parser.Token.C_TPercent_56
            -> coe C_otChar_12 (coe '%')
-         MAlonzo.Code.Once.Parser.Token.C_TAmpersand_56
+         MAlonzo.Code.Once.Parser.Token.C_TAmpersand_58
            -> coe C_otChar_12 (coe '&')
-         MAlonzo.Code.Once.Parser.Token.C_TLt_58
+         MAlonzo.Code.Once.Parser.Token.C_TLt_60
            -> coe C_otChar_12 (coe '<')
-         MAlonzo.Code.Once.Parser.Token.C_TGt_62
+         MAlonzo.Code.Once.Parser.Token.C_TGt_64
            -> coe C_otChar_12 (coe '>')
          _ -> coe v1)
 -- Once.Parser.Module.OpName.pocStep
@@ -202,7 +202,7 @@ d_parseOperatorNameB_120 v0
       (case coe v0 of
          (:) v2 v3
            -> case coe v2 of
-                MAlonzo.Code.Once.Parser.Token.C_TLParen_14
+                MAlonzo.Code.Once.Parser.Token.C_TLParen_16
                   -> let v4
                            = d_parseOpCharsB_58
                                (coe v3) (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) in

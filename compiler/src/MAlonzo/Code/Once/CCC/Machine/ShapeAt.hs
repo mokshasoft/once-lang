@@ -18,7 +18,6 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
-import qualified MAlonzo.Code.Agda.Builtin.Float
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Nat.Base
@@ -31,6 +30,7 @@ import qualified MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CanonicalName
+import qualified MAlonzo.Code.Once.Float.Dyadic
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
@@ -103,7 +103,7 @@ data T_ShapeAt_66
                      T_ShapeAt_66 |
     C_shape'45'int_196 Integer
                        MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_646 |
-    C_shape'45'float_208 MAlonzo.Code.Agda.Builtin.Float.T_Float_6
+    C_shape'45'float_208 MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6
                          MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_646 |
     C_shape'45'str_218 MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_646 |
     C_shape'45'buffer_228 MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_646

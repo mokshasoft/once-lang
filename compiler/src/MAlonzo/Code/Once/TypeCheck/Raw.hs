@@ -48,24 +48,25 @@ data T_RawExpr_34
                    MAlonzo.Code.Agda.Builtin.String.T_String_6 T_RawExpr_34
                    MAlonzo.Code.Agda.Builtin.String.T_String_6 T_RawExpr_34 |
     C_RUnit_52 | C_RInt_54 Integer |
-    C_RStringLit_56 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_RAnnot_58 T_RawExpr_34 MAlonzo.Code.Once.Type.T_Type_112 |
-    C_RBinOp_60 T_BinOp_6 T_RawExpr_34 T_RawExpr_34 |
-    C_RUnaryOp_62 T_RawExpr_34 |
-    C_RAna_64 MAlonzo.Code.Once.Type.T_Functor_110 T_RawExpr_34
+    C_RFloat_56 Integer Integer Integer |
+    C_RStringLit_58 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_RAnnot_60 T_RawExpr_34 MAlonzo.Code.Once.Type.T_Type_112 |
+    C_RBinOp_62 T_BinOp_6 T_RawExpr_34 T_RawExpr_34 |
+    C_RUnaryOp_64 T_RawExpr_34 |
+    C_RAna_66 MAlonzo.Code.Once.Type.T_Functor_110 T_RawExpr_34
 -- Once.TypeCheck.Raw.RawType
-d_RawType_66 = ()
-data T_RawType_66
-  = C_RTVar_68 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_RTUnit_70 | C_RTVoid_72 | C_RTInt_74 | C_RTFloat_76 |
-    C_RTBuffer_78 | C_RTStr_80 |
-    C_RTProduct_82 T_RawType_66 T_RawType_66 |
-    C_RTSum_84 T_RawType_66 T_RawType_66 |
-    C_RTArrow_86 T_RawType_66 T_RawType_66 |
-    C_RTEff_88 T_RawType_66 T_RawType_66 | C_RTFix_90 T_RawType_66
+d_RawType_68 = ()
+data T_RawType_68
+  = C_RTVar_70 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_RTUnit_72 | C_RTVoid_74 | C_RTInt_76 | C_RTFloat_78 |
+    C_RTBuffer_80 | C_RTStr_82 |
+    C_RTProduct_84 T_RawType_68 T_RawType_68 |
+    C_RTSum_86 T_RawType_68 T_RawType_68 |
+    C_RTArrow_88 T_RawType_68 T_RawType_68 |
+    C_RTEff_90 T_RawType_68 T_RawType_68 | C_RTFix_92 T_RawType_68
 -- Once.TypeCheck.Raw.isComparisonOp
-d_isComparisonOp_92 :: T_BinOp_6 -> Bool
-d_isComparisonOp_92 v0
+d_isComparisonOp_94 :: T_BinOp_6 -> Bool
+d_isComparisonOp_94 v0
   = case coe v0 of
       C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
       C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
@@ -80,8 +81,8 @@ d_isComparisonOp_92 v0
       C_OpNe_28 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Raw.isArithmeticOp
-d_isArithmeticOp_94 :: T_BinOp_6 -> Bool
-d_isArithmeticOp_94 v0
+d_isArithmeticOp_96 :: T_BinOp_6 -> Bool
+d_isArithmeticOp_96 v0
   = case coe v0 of
       C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10

@@ -3642,7 +3642,7 @@ d_alloc'45'min'45'trace''_496 v0 v1 v2 v3 v4 v5
                     du_cata'45'dispatch'45'am_442 (coe v0)
                     (coe
                        MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_cata'45'strategy_50
-                       (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_568 (coe v10)))
+                       (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_590 (coe v10)))
                     (coe v4)
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28

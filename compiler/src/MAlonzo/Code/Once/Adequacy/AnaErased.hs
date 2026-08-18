@@ -47,9 +47,9 @@ du_sem'45'ana'45'anaS'45'bisim_16 v0 v1 v2
       MAlonzo.Code.Once.Semantics.Functor.Laws.C_constructor_94
       (coe
          du_sem'45'ana'45'anaS'45'rel_30 (coe v0) (coe v1)
-         (coe MAlonzo.Code.Once.Functor.Translate.du_translateF_38 (coe v0))
+         (coe MAlonzo.Code.Once.Functor.Translate.du_translateF_60 (coe v0))
          (coe
-            MAlonzo.Code.Once.Semantics.Value.du_coerce'45'ν'45'in_980 v0
+            MAlonzo.Code.Once.Semantics.Value.du_coerce'45'ν'45'in_982 v0
             erased (coe v1 v2)))
 -- Once.Adequacy.AnaErased.sem-ana-anaS-rel
 d_sem'45'ana'45'anaS'45'rel_30 ::
@@ -462,7 +462,7 @@ d_VE0_1156 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_56
       (coe
-         MAlonzo.Code.Once.IRTy.d_'8968'_'8969'_566
+         MAlonzo.Code.Once.IRTy.d_'8968'_'8969'_588
          (coe
             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68
             (coe MAlonzo.Code.Once.IRTy.d_eraseF_40 (coe v0))

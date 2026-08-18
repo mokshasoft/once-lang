@@ -305,7 +305,6 @@ library
       MAlonzo.Code.Once.IR.Size
       MAlonzo.Code.Once.IRTy
       MAlonzo.Code.Once.IRTy.WF
-      MAlonzo.Code.Once.Semantics.FloatBits
       MAlonzo.Code.Once.Semantics.ValueIR
       MAlonzo.Code.Once.Semantics.Functor.Laws
       MAlonzo.Code.Once.Adequacy.AnaErased
@@ -349,6 +348,8 @@ library
       MAlonzo.Code.Once.Semantics.Functor
       MAlonzo.Code.Once.Functor.Decide
       MAlonzo.Code.Once.Functor.Translate
+      MAlonzo.Code.Once.Float.Dyadic
+      MAlonzo.Code.Once.Float.Representable
       MAlonzo.Code.Once.Grammar
       MAlonzo.Code.Once.Grammar.ConcreteDec
       MAlonzo.Code.Once.Grammar.Convert

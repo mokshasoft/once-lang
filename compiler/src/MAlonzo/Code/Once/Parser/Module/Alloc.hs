@@ -95,7 +95,7 @@ d_allocStrat_12 v0
       (case coe v0 of
          (:) v2 v3
            -> case coe v2 of
-                MAlonzo.Code.Once.Parser.Token.C_TAt_40
+                MAlonzo.Code.Once.Parser.Token.C_TAt_42
                   -> case coe v3 of
                        (:) v4 v5
                          -> case coe v4 of

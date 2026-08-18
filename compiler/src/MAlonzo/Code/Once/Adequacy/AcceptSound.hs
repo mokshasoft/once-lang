@@ -48,7 +48,7 @@ d_compileFunBody'45'aux'45'success_34 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.TypeCheck.Elaborate.T_CheckElabResult_314 ->
+  MAlonzo.Code.Once.TypeCheck.Elaborate.T_CheckElabResult_326 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -56,11 +56,11 @@ d_compileFunBody'45'aux'45'success_34 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6
                                       ~v7 v8 ~v9 ~v10
   = du_compileFunBody'45'aux'45'success_34 v8
 du_compileFunBody'45'aux'45'success_34 ::
-  MAlonzo.Code.Once.TypeCheck.Elaborate.T_CheckElabResult_314 ->
+  MAlonzo.Code.Once.TypeCheck.Elaborate.T_CheckElabResult_326 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_compileFunBody'45'aux'45'success_34 v0
   = case coe v0 of
-      MAlonzo.Code.Once.TypeCheck.Elaborate.C_success_328 v1 v2 v3 v4
+      MAlonzo.Code.Once.TypeCheck.Elaborate.C_success_340 v1 v2 v3 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
              (coe
@@ -99,7 +99,7 @@ du_compileFunBody'45'sound_90 v0 v1 v2 v3 v4 v5
          (coe
             du_compileFunBody'45'aux'45'success_34
             (coe
-               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1608
+               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1676
                (coe
                   MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                   (coe v0) (coe v1) (coe v2) (coe v3) (coe v4))

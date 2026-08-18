@@ -43,7 +43,7 @@ d_subst'45'diag_40 = erased
 -- Once.Adequacy.InErased.In-ir
 d_In'45'ir_46 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_240 ->
   MAlonzo.Code.Once.IR.T_IR_16
 d_In'45'ir_46 v0 v1
   = coe
@@ -76,20 +76,20 @@ d_subst'45''10214''10215''7472''7477''45'fix_88 = erased
 -- Once.Adequacy.InErased.in-trace
 d_in'45'trace_100 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_240 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_in'45'trace_100 = erased
 -- Once.Adequacy.InErased.in-value-erase
 d_in'45'value'45'erase_120 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_240 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_in'45'value'45'erase_120 = erased
 -- Once.Adequacy.InErased.liftFn-In
 d_liftFn'45'In_144 ::
   MAlonzo.Code.Once.Type.T_Functor_110 ->
-  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_188 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_240 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_liftFn'45'In_144 = erased

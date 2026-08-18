@@ -846,7 +846,7 @@ du_sound'45'kw_316 v0 v1
                                                                _ -> MAlonzo.RTE.mazUnreachableError))
                                            _ -> MAlonzo.RTE.mazUnreachableError))
                        _ -> MAlonzo.RTE.mazUnreachableError)
-             MAlonzo.Code.Once.Parser.Token.C_TLParen_14
+             MAlonzo.Code.Once.Parser.Token.C_TLParen_16
                -> let v4
                         = coe
                             MAlonzo.Code.Once.Parser.Generic.Relation.d_extraP_200 v0 v3 in
@@ -896,7 +896,7 @@ du_sound'45'kw_316 v0 v1
                                                                                                          (coe
                                                                                                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                                                             (coe
-                                                                                                               MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                                                                                                               MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                                                                             (coe
                                                                                                                v23))
                                                                                                          (coe
@@ -925,7 +925,7 @@ du_sound'45'kw_316 v0 v1
                                                                                                (coe
                                                                                                   MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                                                   (coe
-                                                                                                     MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                                                                                                     MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                                                                   (coe
                                                                                                      v19))
                                                                                                (coe
@@ -964,7 +964,7 @@ du_sound'45'kw_316 v0 v1
                                                                                                (coe
                                                                                                   MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                                                   (coe
-                                                                                                     MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                                                                                                     MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                                                                   (coe
                                                                                                      v19))
                                                                                                (coe
@@ -991,7 +991,7 @@ du_sound'45'kw_316 v0 v1
                                                                                      (coe
                                                                                         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                                         (coe
-                                                                                           MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                                                                                           MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                                                         (coe v15))
                                                                                      (coe
                                                                                         du_sound'45'type_370
@@ -1054,7 +1054,7 @@ du_sound'45'kw_316 v0 v1
                                                                                                             (coe
                                                                                                                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                                                                (coe
-                                                                                                                  MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                                                                                                                  MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                                                                                (coe
                                                                                                                   v22))
                                                                                                             (coe
@@ -1084,7 +1084,7 @@ du_sound'45'kw_316 v0 v1
                                                                                                   (coe
                                                                                                      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                                                      (coe
-                                                                                                        MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                                                                                                        MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                                                                      (coe
                                                                                                         v18))
                                                                                                   (coe
@@ -1124,7 +1124,7 @@ du_sound'45'kw_316 v0 v1
                                                                                                   (coe
                                                                                                      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                                                      (coe
-                                                                                                        MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                                                                                                        MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                                                                      (coe
                                                                                                         v18))
                                                                                                   (coe
@@ -1151,7 +1151,7 @@ du_sound'45'kw_316 v0 v1
                                                                                         (coe
                                                                                            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                                            (coe
-                                                                                              MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                                                                                              MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                                                            (coe
                                                                                               v14))
                                                                                         (coe
@@ -1199,7 +1199,7 @@ du_sound'45'kw_316 v0 v1
                                                                                                   (coe
                                                                                                      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                                                      (coe
-                                                                                                        MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                                                                                                        MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                                                                      (coe
                                                                                                         v18))
                                                                                                   (coe
@@ -1226,7 +1226,7 @@ du_sound'45'kw_316 v0 v1
                                                                                         (coe
                                                                                            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                                            (coe
-                                                                                              MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                                                                                              MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                                                            (coe
                                                                                               v14))
                                                                                         (coe
@@ -1261,7 +1261,7 @@ du_sound'45'kw_316 v0 v1
                                                                                         (coe
                                                                                            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                                            (coe
-                                                                                              MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                                                                                              MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                                                            (coe
                                                                                               v14))
                                                                                         (coe
@@ -1287,7 +1287,7 @@ du_sound'45'kw_316 v0 v1
                                                                               (coe
                                                                                  MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                                  (coe
-                                                                                    MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                                                                                    MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                                                  (coe v10))
                                                                               (coe
                                                                                  du_sound'45'type_370
@@ -2713,7 +2713,7 @@ du_sound'45'fAtom_392 v0 v1
                                                            _ -> MAlonzo.RTE.mazUnreachableError)))
                                            _ -> MAlonzo.RTE.mazUnreachableError)
                           _ -> MAlonzo.RTE.mazUnreachableError))
-             MAlonzo.Code.Once.Parser.Token.C_TLParen_14
+             MAlonzo.Code.Once.Parser.Token.C_TLParen_16
                -> let v4
                         = MAlonzo.Code.Once.Parser.Generic.Parser.d_fAtomP_90
                             (coe v0) (coe v3) in
@@ -2747,7 +2747,7 @@ du_sound'45'fAtom_392 v0 v1
                                                                                  (coe
                                                                                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                                     (coe
-                                                                                       MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                                                                                       MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                                                     (coe v17))
                                                                                  (coe
                                                                                     du_sound'45'fSum_424
@@ -2771,7 +2771,7 @@ du_sound'45'fAtom_392 v0 v1
                                                                        (coe
                                                                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                           (coe
-                                                                             MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                                                                             MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                                           (coe v13))
                                                                        (coe
                                                                           du_sound'45'fSum_424
@@ -2803,7 +2803,7 @@ du_sound'45'fAtom_392 v0 v1
                                                                        (coe
                                                                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                           (coe
-                                                                             MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                                                                             MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                                           (coe v13))
                                                                        (coe
                                                                           du_sound'45'fSum_424
@@ -2826,7 +2826,7 @@ du_sound'45'fAtom_392 v0 v1
                                                              (coe
                                                                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                                 (coe
-                                                                   MAlonzo.Code.Once.Parser.Token.C_TRParen_16)
+                                                                   MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
                                                                 (coe v9))
                                                              (coe
                                                                 du_sound'45'fSum_424 (coe v0)

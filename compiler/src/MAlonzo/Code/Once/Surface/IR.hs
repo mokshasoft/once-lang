@@ -35,5 +35,5 @@ data T_SurfaceIR_6
     C_Let_94 MAlonzo.Code.Once.Type.T_Type_112 T_SurfaceIR_6
              T_SurfaceIR_6 |
     C_SigOp_100 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_148
-                MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_174
+                MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_200
+                MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_226

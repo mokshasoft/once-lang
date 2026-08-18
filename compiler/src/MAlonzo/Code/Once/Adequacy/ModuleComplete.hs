@@ -84,11 +84,11 @@ du_compileFunBody'45'complete_24 v0 v1 v2 v3 v4 v5 v6
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108
+         MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
          (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8) (coe v4)
          (coe MAlonzo.Code.Once.IR.C_Heap_8)
          (coe
-            MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_2808
+            MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_2878
             (coe (0 :: Integer))
             (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8) (coe v4)
             (coe v1)
@@ -104,7 +104,7 @@ du_compileFunBody'45'complete_24 v0 v1 v2 v3 v4 v5 v6
             (coe
                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                (coe
-                  MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_4952
+                  MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_4970
                   (coe
                      MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                      (coe v0) (coe v1) (coe v2) (coe v3) (coe v4))
@@ -302,13 +302,13 @@ d_caf'45'go'45'find'45'complete_286 v0 v1 v2 v3 v4 v5 v6
                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                   -> let v29
                                                            = coe
-                                                               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_108
+                                                               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
                                                                (coe
                                                                   MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                                                                (coe d_EffUU_6)
                                                                (coe MAlonzo.Code.Once.IR.C_Heap_8)
                                                                (coe
-                                                                  MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_2808
+                                                                  MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_2878
                                                                   (coe (0 :: Integer))
                                                                   (coe
                                                                      MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
@@ -337,7 +337,7 @@ d_caf'45'go'45'find'45'complete_286 v0 v1 v2 v3 v4 v5 v6
                                                                   (coe
                                                                      MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                                      (coe
-                                                                        MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_4952
+                                                                        MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_4970
                                                                         (coe
                                                                            MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                                                                            (coe v3) (coe v0)
@@ -798,7 +798,7 @@ d_mainRealized'45'go_572 v0 v1 v2 v3 v4 v5
                               (coe MAlonzo.Code.Once.Parser.d_funName_108 (coe v14))
                               (coe ("main" :: Data.Text.Text)))
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__228 (coe v9)
+                              MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__240 (coe v9)
                               (coe d_EffUU_6))
                            (coe MAlonzo.Code.Once.Parser.d_funIsPrimitive_116 (coe v14))
                     _ -> MAlonzo.RTE.mazUnreachableError

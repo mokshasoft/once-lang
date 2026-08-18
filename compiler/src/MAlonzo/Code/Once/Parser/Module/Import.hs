@@ -59,7 +59,7 @@ d_dotHead_18 v0
       (case coe v0 of
          (:) v2 v3
            -> case coe v2 of
-                MAlonzo.Code.Once.Parser.Token.C_TDot_44
+                MAlonzo.Code.Once.Parser.Token.C_TDot_46
                   -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
                 _ -> coe v1
          _ -> coe v1)

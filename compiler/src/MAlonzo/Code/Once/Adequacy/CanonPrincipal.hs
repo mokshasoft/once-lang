@@ -537,7 +537,7 @@ d_'46'extendedlambda10_842 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'46'extendedlambda10_842 = erased
 -- Once.Adequacy.CanonPrincipal._..extendedlambda11
-d_'46'extendedlambda11_870 ::
+d_'46'extendedlambda11_890 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -553,9 +553,9 @@ d_'46'extendedlambda11_870 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda11_870 = erased
+d_'46'extendedlambda11_890 = erased
 -- Once.Adequacy.CanonPrincipal._..extendedlambda12
-d_'46'extendedlambda12_932 ::
+d_'46'extendedlambda12_952 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -570,9 +570,9 @@ d_'46'extendedlambda12_932 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda12_932 = erased
+d_'46'extendedlambda12_952 = erased
 -- Once.Adequacy.CanonPrincipal._..extendedlambda13
-d_'46'extendedlambda13_960 ::
+d_'46'extendedlambda13_980 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -588,9 +588,9 @@ d_'46'extendedlambda13_960 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda13_960 = erased
+d_'46'extendedlambda13_980 = erased
 -- Once.Adequacy.CanonPrincipal._..extendedlambda14
-d_'46'extendedlambda14_990 ::
+d_'46'extendedlambda14_1010 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -607,9 +607,9 @@ d_'46'extendedlambda14_990 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda14_990 = erased
+d_'46'extendedlambda14_1010 = erased
 -- Once.Adequacy.CanonPrincipal._..extendedlambda15
-d_'46'extendedlambda15_1018 ::
+d_'46'extendedlambda15_1038 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -625,9 +625,9 @@ d_'46'extendedlambda15_1018 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda15_1018 = erased
+d_'46'extendedlambda15_1038 = erased
 -- Once.Adequacy.CanonPrincipal._..extendedlambda16
-d_'46'extendedlambda16_1052 ::
+d_'46'extendedlambda16_1072 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -646,9 +646,9 @@ d_'46'extendedlambda16_1052 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda16_1052 = erased
+d_'46'extendedlambda16_1072 = erased
 -- Once.Adequacy.CanonPrincipal._..extendedlambda17
-d_'46'extendedlambda17_1080 ::
+d_'46'extendedlambda17_1100 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -664,9 +664,9 @@ d_'46'extendedlambda17_1080 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda17_1080 = erased
+d_'46'extendedlambda17_1100 = erased
 -- Once.Adequacy.CanonPrincipal._..extendedlambda18
-d_'46'extendedlambda18_1110 ::
+d_'46'extendedlambda18_1130 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -683,9 +683,9 @@ d_'46'extendedlambda18_1110 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda18_1110 = erased
+d_'46'extendedlambda18_1130 = erased
 -- Once.Adequacy.CanonPrincipal._..extendedlambda19
-d_'46'extendedlambda19_1138 ::
+d_'46'extendedlambda19_1158 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -701,9 +701,9 @@ d_'46'extendedlambda19_1138 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda19_1138 = erased
+d_'46'extendedlambda19_1158 = erased
 -- Once.Adequacy.CanonPrincipal._..extendedlambda20
-d_'46'extendedlambda20_1258 ::
+d_'46'extendedlambda20_1296 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -719,9 +719,9 @@ d_'46'extendedlambda20_1258 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda20_1258 = erased
+d_'46'extendedlambda20_1296 = erased
 -- Once.Adequacy.CanonPrincipal._..extendedlambda21
-d_'46'extendedlambda21_1280 ::
+d_'46'extendedlambda21_1318 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -736,9 +736,9 @@ d_'46'extendedlambda21_1280 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda21_1280 = erased
+d_'46'extendedlambda21_1318 = erased
 -- Once.Adequacy.CanonPrincipal._..extendedlambda22
-d_'46'extendedlambda22_1310 ::
+d_'46'extendedlambda22_1348 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -756,9 +756,9 @@ d_'46'extendedlambda22_1310 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda22_1310 = erased
+d_'46'extendedlambda22_1348 = erased
 -- Once.Adequacy.CanonPrincipal._..extendedlambda23
-d_'46'extendedlambda23_1418 ::
+d_'46'extendedlambda23_1472 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -774,9 +774,9 @@ d_'46'extendedlambda23_1418 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda23_1418 = erased
+d_'46'extendedlambda23_1472 = erased
 -- Once.Adequacy.CanonPrincipal._..extendedlambda24
-d_'46'extendedlambda24_1426 ::
+d_'46'extendedlambda24_1480 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -795,9 +795,9 @@ d_'46'extendedlambda24_1426 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda24_1426 = erased
+d_'46'extendedlambda24_1480 = erased
 -- Once.Adequacy.CanonPrincipal._._.ihff
-d_ihff_1490 ::
+d_ihff_1544 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -816,9 +816,9 @@ d_ihff_1490 ::
   Integer ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_ihff_1490 = erased
+d_ihff_1544 = erased
 -- Once.Adequacy.CanonPrincipal._._.goC
-d_goC_1500 ::
+d_goC_1554 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -837,9 +837,9 @@ d_goC_1500 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_goC_1500 = erased
+d_goC_1554 = erased
 -- Once.Adequacy.CanonPrincipal._._..extendedlambda25
-d_'46'extendedlambda25_1504 ::
+d_'46'extendedlambda25_1558 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -859,9 +859,9 @@ d_'46'extendedlambda25_1504 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda25_1504 = erased
+d_'46'extendedlambda25_1558 = erased
 -- Once.Adequacy.CanonPrincipal._._..extendedlambda26
-d_'46'extendedlambda26_1518 ::
+d_'46'extendedlambda26_1572 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -882,9 +882,9 @@ d_'46'extendedlambda26_1518 ::
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda26_1518 = erased
+d_'46'extendedlambda26_1572 = erased
 -- Once.Adequacy.CanonPrincipal._._.headBare
-d_headBare_1528 ::
+d_headBare_1582 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -902,9 +902,9 @@ d_headBare_1528 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_headBare_1528 = erased
+d_headBare_1582 = erased
 -- Once.Adequacy.CanonPrincipal._._.headRes
-d_headRes_1534 ::
+d_headRes_1588 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -923,9 +923,9 @@ d_headRes_1534 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_headRes_1534 = erased
+d_headRes_1588 = erased
 -- Once.Adequacy.CanonPrincipal._._._.goR
-d_goR_1546 ::
+d_goR_1600 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -945,9 +945,9 @@ d_goR_1546 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_goR_1546 = erased
+d_goR_1600 = erased
 -- Once.Adequacy.CanonPrincipal._._._..extendedlambda27
-d_'46'extendedlambda27_1550 ::
+d_'46'extendedlambda27_1604 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -969,9 +969,9 @@ d_'46'extendedlambda27_1550 ::
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda27_1550 = erased
+d_'46'extendedlambda27_1604 = erased
 -- Once.Adequacy.CanonPrincipal._._.goH
-d_goH_1564 ::
+d_goH_1618 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -990,9 +990,9 @@ d_goH_1564 ::
   Bool ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_goH_1564 = erased
+d_goH_1618 = erased
 -- Once.Adequacy.CanonPrincipal._._._.goH2
-d_goH2_1576 ::
+d_goH2_1630 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -1012,9 +1012,9 @@ d_goH2_1576 ::
   Bool ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_goH2_1576 = erased
+d_goH2_1630 = erased
 -- Once.Adequacy.CanonPrincipal._..extendedlambda25
-d_'46'extendedlambda25_1648 ::
+d_'46'extendedlambda25_1702 ::
   MAlonzo.Code.Once.Type.T_PolyType_244 ->
   Integer ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -1033,42 +1033,42 @@ d_'46'extendedlambda25_1648 ::
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda25_1648 = erased
+d_'46'extendedlambda25_1702 = erased
 -- Once.Adequacy.CanonPrincipal._.pInfer-canon-top
-d_pInfer'45'canon'45'top_1662 ::
+d_pInfer'45'canon'45'top_1716 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_pInfer'45'canon'45'top_1662 = erased
+d_pInfer'45'canon'45'top_1716 = erased
 -- Once.Adequacy.CanonPrincipal.principal-canon
-d_principal'45'canon_1676 ::
+d_principal'45'canon_1730 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_principal'45'canon_1676 = erased
+d_principal'45'canon_1730 = erased
 -- Once.Adequacy.CanonPrincipal.principalGround-canon
-d_principalGround'45'canon_1696 ::
+d_principalGround'45'canon_1750 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_principalGround'45'canon_1696 = erased
+d_principalGround'45'canon_1750 = erased
 -- Once.Adequacy.CanonPrincipal.principalGround-polys
-d_principalGround'45'polys_1714 ::
+d_principalGround'45'polys_1768 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_principalGround'45'polys_1714 = erased
+d_principalGround'45'polys_1768 = erased
 -- Once.Adequacy.CanonPrincipal.siglessSchema-canon
-d_siglessSchema'45'canon_1730 ::
+d_siglessSchema'45'canon_1784 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_siglessSchema'45'canon_1730 = erased
+d_siglessSchema'45'canon_1784 = erased
