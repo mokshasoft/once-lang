@@ -30,15 +30,15 @@ import qualified MAlonzo.Code.Once.Type
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Emitter
 d_Emitter_14 a0 a1 = ()
 data T_Emitter_14
-  = C_constructor_192 (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286 ->
+  = C_constructor_192 (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2206 ->
                        [AgdaAny])
-                      ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286] ->
+                      ([MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2206] ->
                        [AgdaAny])
                       ([AgdaAny] -> Integer -> Maybe AgdaAny) (AgdaAny -> Bool)
                       (MAlonzo.Code.Once.CCC.Label.T_Label_22 -> AgdaAny)
                       (MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
                        [AgdaAny] -> Integer -> Maybe Integer)
-                      (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286 ->
+                      (MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2206 ->
                        MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.HeadView.T_HeadView_50)
                       ([AgdaAny] ->
                        MAlonzo.Code.Once.CCC.Label.T_Label_22 -> Maybe Integer)
@@ -48,7 +48,7 @@ d_Instr_104 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Emitter.compile-abstract
 d_compile'45'abstract_106 ::
   T_Emitter_14 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2206 ->
   [AgdaAny]
 d_compile'45'abstract_106 v0
   = case coe v0 of
@@ -57,7 +57,7 @@ d_compile'45'abstract_106 v0
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Emitter.compile-trace
 d_compile'45'trace_108 ::
   T_Emitter_14 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2206] ->
   [AgdaAny]
 d_compile'45'trace_108 v0
   = case coe v0 of
@@ -70,8 +70,8 @@ d_ct'45'nil_110 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Emitter.ct-cons
 d_ct'45'cons_116 ::
   T_Emitter_14 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286] ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2206 ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2206] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_ct'45'cons_116 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Emitter.mfetch
@@ -160,7 +160,7 @@ d_label'45'miss_178 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.Emitter.headView
 d_headView_182 ::
   T_Emitter_14 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2206 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.HeadView.T_HeadView_50
 d_headView_182 v0
   = case coe v0 of
@@ -339,12 +339,12 @@ d_Instr_374 = erased
 d_compile'45'abstract_376 ::
   T_Emitter_14 ->
   T_Machine_196 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2206 ->
   [AgdaAny]
 d_compile'45'abstract_376 v0 ~v1 = du_compile'45'abstract_376 v0
 du_compile'45'abstract_376 ::
   T_Emitter_14 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2206 ->
   [AgdaAny]
 du_compile'45'abstract_376 v0
   = coe d_compile'45'abstract_106 (coe v0)
@@ -367,13 +367,13 @@ d_compile'45'abstract_426 ::
   T_Emitter_14 ->
   T_Machine_196 ->
   T_TraceLoop_366 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2206 ->
   [AgdaAny]
 d_compile'45'abstract_426 v0 ~v1 ~v2
   = du_compile'45'abstract_426 v0
 du_compile'45'abstract_426 ::
   T_Emitter_14 ->
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2286 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2206 ->
   [AgdaAny]
 du_compile'45'abstract_426 v0
   = coe d_compile'45'abstract_106 (coe v0)

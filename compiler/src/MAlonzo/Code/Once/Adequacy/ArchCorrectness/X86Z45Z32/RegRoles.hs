@@ -10,7 +10,7 @@
 
 {-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
-module MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.RegRoles where
+module MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.RegRoles where
 
 import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     quotInt, remInt, geqInt, ltInt, eqInt, add64, sub64, mul64, quot64,
@@ -18,84 +18,87 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
-import qualified MAlonzo.Code.Once.Target.RiscV64.PhysReg
+import qualified MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg
 
--- Once.Adequacy.ArchCorrectness.RiscV64.RegRoles.riscv64-reg-of
-d_riscv64'45'reg'45'of_10 ::
+-- Once.Adequacy.ArchCorrectness.X86-32.RegRoles.x86-32-reg-of
+d_x86'45'32'45'reg'45'of_10 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_Role_10 ->
-  MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
-d_riscv64'45'reg'45'of_10 v0
+  MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8
+d_x86'45'32'45'reg'45'of_10 v0
   = case coe v0 of
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.C_role'45'sp_12
-        -> coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_sp_14
+        -> coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_esp_24
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.C_role'45'clos_14
-        -> coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_s1_34
+        -> coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_ebx_12
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.C_role'45'heap_16
-        -> coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_s2_36
+        -> coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_esi_18
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.C_role'45'out_18
-        -> coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_a0_18
+        -> coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_eax_10
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.C_role'45'in1_20
-        -> coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_t0_42
+        -> coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_ecx_14
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.C_role'45'scratch_22
-        -> coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_s3_38
+        -> coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_edx_16
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.C_role'45'count_24
-        -> coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_s4_40
+        -> coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.C_edi_20
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Adequacy.ArchCorrectness.RiscV64.RegRoles.riscv64-roles
-d_riscv64'45'roles_12 ::
+-- Once.Adequacy.ArchCorrectness.X86-32.RegRoles.x86-32-roles
+d_x86'45'32'45'roles_12 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28
-d_riscv64'45'roles_12
+d_x86'45'32'45'roles_12
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.C_constructor_50
-      (coe d_riscv64'45'reg'45'of_10)
--- Once.Adequacy.ArchCorrectness.RiscV64.RegRoles._.clos-reg
+      (coe d_x86'45'32'45'reg'45'of_10)
+-- Once.Adequacy.ArchCorrectness.X86-32.RegRoles._.clos-reg
 d_clos'45'reg_16 ::
-  MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+  MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8
 d_clos'45'reg_16
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.du_clos'45'reg_38
-      (coe d_riscv64'45'roles_12)
--- Once.Adequacy.ArchCorrectness.RiscV64.RegRoles._.count-reg
+      (coe d_x86'45'32'45'roles_12)
+-- Once.Adequacy.ArchCorrectness.X86-32.RegRoles._.count-reg
 d_count'45'reg_18 ::
-  MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+  MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8
 d_count'45'reg_18
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.du_count'45'reg_48
-      (coe d_riscv64'45'roles_12)
--- Once.Adequacy.ArchCorrectness.RiscV64.RegRoles._.heap-reg
+      (coe d_x86'45'32'45'roles_12)
+-- Once.Adequacy.ArchCorrectness.X86-32.RegRoles._.heap-reg
 d_heap'45'reg_20 ::
-  MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+  MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8
 d_heap'45'reg_20
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.du_heap'45'reg_40
-      (coe d_riscv64'45'roles_12)
--- Once.Adequacy.ArchCorrectness.RiscV64.RegRoles._.in1-reg
-d_in1'45'reg_22 :: MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+      (coe d_x86'45'32'45'roles_12)
+-- Once.Adequacy.ArchCorrectness.X86-32.RegRoles._.in1-reg
+d_in1'45'reg_22 ::
+  MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8
 d_in1'45'reg_22
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.du_in1'45'reg_44
-      (coe d_riscv64'45'roles_12)
--- Once.Adequacy.ArchCorrectness.RiscV64.RegRoles._.out-reg
-d_out'45'reg_24 :: MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+      (coe d_x86'45'32'45'roles_12)
+-- Once.Adequacy.ArchCorrectness.X86-32.RegRoles._.out-reg
+d_out'45'reg_24 ::
+  MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8
 d_out'45'reg_24
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.du_out'45'reg_42
-      (coe d_riscv64'45'roles_12)
--- Once.Adequacy.ArchCorrectness.RiscV64.RegRoles._.reg-of
+      (coe d_x86'45'32'45'roles_12)
+-- Once.Adequacy.ArchCorrectness.X86-32.RegRoles._.reg-of
 d_reg'45'of_26 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_Role_10 ->
-  MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
-d_reg'45'of_26 = coe d_riscv64'45'reg'45'of_10
--- Once.Adequacy.ArchCorrectness.RiscV64.RegRoles._.scratch-reg
+  MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8
+d_reg'45'of_26 = coe d_x86'45'32'45'reg'45'of_10
+-- Once.Adequacy.ArchCorrectness.X86-32.RegRoles._.scratch-reg
 d_scratch'45'reg_28 ::
-  MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+  MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8
 d_scratch'45'reg_28
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.du_scratch'45'reg_46
-      (coe d_riscv64'45'roles_12)
--- Once.Adequacy.ArchCorrectness.RiscV64.RegRoles._.sp-reg
-d_sp'45'reg_30 :: MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8
+      (coe d_x86'45'32'45'roles_12)
+-- Once.Adequacy.ArchCorrectness.X86-32.RegRoles._.sp-reg
+d_sp'45'reg_30 ::
+  MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.T_Reg_8
 d_sp'45'reg_30
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.du_sp'45'reg_36
-      (coe d_riscv64'45'roles_12)
+      (coe d_x86'45'32'45'roles_12)

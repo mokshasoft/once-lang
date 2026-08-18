@@ -443,6 +443,14 @@ library
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.RegRoles
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.ConcFlatSim
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.FlatComposition
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.FlatCorrespondence
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.FlatSimulation
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.RegRoles
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.ResourceBounds
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.RunContext
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.StepLemmas
       MAlonzo.Code.Once.CCC.Machine.NoNested
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32
