@@ -7915,3 +7915,60 @@ target is the widest one.** `fits-int`/`fits-float` read as facts about types;
 they are facts about a type AND a register file. The place that discovers this
 is the correspondence for the narrowest target, which is an argument for porting
 to the *smallest* machine early rather than last.
+
+## D110: `exec` Must Reduce — the `with` Form Freezes One-Step Reasoning Behind an Auxiliary
+
+**Date**: 2026-08-17 · **Status**: Applied to all three arches · **Plan**: 0.66 (X2)
+
+### The wall
+
+`exec-1` is the workhorse of every block-step: one step of `exec`, driven by the
+step result.
+
+    exec-1 : halted s ≡ false → step-not-halted prog s ≡ just s' → halted s' ≡ false
+           → exec (suc n) prog s ≡ exec n prog s'
+    exec-1 hs snh hs' rewrite hs | snh | hs' = refl
+
+It is NOT PROVABLE against an `exec` written with nested `with`:
+
+    exec (suc n) prog s with halted s
+    ... | true  = just s
+    ... | false with step prog s
+    ...   | nothing  = nothing
+    ...   | just s' with halted s' …
+
+The scrutinees freeze behind a generated auxiliary —
+`Semantics.with-670 s false n prog | (step prog s | halted s)` — and no
+`rewrite` of `halted` or `step-not-halted` can reach inside it. x86-64 hit this
+in plan 0.27 (C3) and moved its definition; x86-32 still had the old shape, and
+plan 0.66 hit the identical wall at the identical lemma.
+
+### The decision
+
+**The machine's `exec` is written with `if_then_else_` plus an explicit
+`exec-cont` that pattern-matches the `Maybe` directly** — on every arch, as a
+standing requirement of the model rather than a local fix:
+
+    exec zero    _    s = just s
+    exec (suc n) prog s = if halted s then just s else exec-cont n prog (step-not-halted prog s)
+    exec-cont _ _    nothing   = nothing
+    exec-cont n prog (just s') = if halted s' then just s' else exec n prog s'
+
+The two forms are DEFINITIONALLY EQUAL on every input: in the `else` branch
+`halted s` is `false`, which is exactly where `step prog s` reduces to
+`step-not-halted prog s`. So `run`-by-`refl` examples and the extracted
+interpreter are unaffected — this is the definition moving, not the proof.
+
+### Why it is recorded rather than left as a repeat
+
+It is the third time the shape mattered and the second time it cost a session to
+rediscover, and it is invisible from the outside: two definitions that compute
+the same function differ in whether a whole proof layer is possible. A reviewer
+comparing `exec` against the ISA sees nothing wrong with the `with` form.
+
+**The general rule**: a model's step function is consumed by REWRITING, so its
+definition must expose its scrutinees. `with` is for proofs, not for the
+definitions proofs reduce. Same family as "prefer top-level helpers taking
+`Dec`/`Maybe` arguments over `with`-blocks", and the same family as the
+MAlonzo case-tree blowups a `with`-wrapper causes — the cure is identical:
+name the auxiliary and take its result as a value.
