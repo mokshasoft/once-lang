@@ -28,7 +28,7 @@ open import Once.Parser.Module.Resolve
 open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; lookupLocal-go; extendNamedCtx; classifyAppHead)
 open import Once.TypeCheck.Judgment
-  using (_⊢ᵍ_∶_; g-int; g-terminal; g-pair; g-inl; g-inr; g-In)
+  using (_⊢ᵍ_∶_; g-int; g-float; g-terminal; g-pair; g-inl; g-inr; g-In)
 open import Once.TypeCheck.Context using (Ctx; names; name)
 open import Once.Surface.Syntax
   using () renaming (Ctx to SCtx; ∅ to S∅; _,_^_ to _S,_^_)
@@ -179,6 +179,9 @@ elemStr-tail {y} {x} bound ¬p with y ≟s x
 pres-ᵍ : ∀ {ctx e T} (bound : List String) →
   ctx ⊢ᵍ e ∶ T → ctx ⊢ᵍ canonExpr bound [] [] e ∶ T
 pres-ᵍ bound (g-int n) = g-int n
+-- Canonicalisation is the identity on a float literal, and the acceptance
+-- witness is about the VALUE, so it transports unchanged.
+pres-ᵍ bound (g-float i f l d ok) = g-float i f l d ok
 pres-ᵍ bound (g-terminal lL lI) rewrite canon-builtin bound "terminal" refl = g-terminal lL lI
 pres-ᵍ bound (g-pair d₁ d₂) = g-pair (pres-ᵍ bound d₁) (pres-ᵍ bound d₂)
 pres-ᵍ bound (g-inl d) rewrite canon-builtin bound "inl" refl = g-inl (pres-ᵍ bound d)

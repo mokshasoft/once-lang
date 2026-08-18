@@ -50,8 +50,8 @@ open import Once.SigOp.Info using (semM)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_;
   m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr; m-compose; m-case;
   m-pair; m-curry; m-cata; m-const; m-named; m-named-resolved;
-  g-int; g-terminal; g-pair; g-inl; g-inr; g-In;
-  t-int; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
+  g-int; g-float; g-terminal; g-pair; g-inl; g-inr; g-In;
+  t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
   t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
   t-terminal-app; t-apply-app-infer; t-app; t-effApp;
@@ -242,6 +242,10 @@ int-bridge n y k = refl , refl
 bridge-g : ∀ {ctx : NamedCtx} {e A} {X : Type} (d : ctx ⊢ᵍ e ∶ A) (y : ⟦ X ⟧ᴰ)
          → RelT A (returnT ⟦ d ⟧ᵍ) (liftFn (realize-global {X = X} d) y)
 bridge-g {ctx = ctx} {X = X} (g-int n) y = int-bridge {ctx = ctx} {X = X} n y
+-- The float leaf reduces the same way and even more directly: `⟦ g-float … ⟧ᵍ`
+-- IS `d`, and `realize-global (g-float … d …) = const fits-float d ∘ terminal`,
+-- whose `evalᴰ` is `d` — so both sides are `([] , d)` definitionally.
+bridge-g (g-float i f l d ok) y k = refl , refl
 -- `liftFn (realize-global d) y` is APPLIED to `y`, so `liftFn` unfolds and a
 -- `rewrite` of the (funext) reduction can't fire; convert with `subst (RelT …)`
 -- over the reduction applied at `y` (`cong (λ h → h y)`).
@@ -371,6 +375,7 @@ bridge-c : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᶜ e ∶ A ⨾ Ψ)
 
 -- Literals — pure `returnT`, identical values.
 bridge-i (t-int _)   re k = refl , refl
+bridge-i (t-float _ _ _ _ _) re k = refl , refl
 bridge-i (t-str _)   re k = refl , refl
 bridge-i t-unit      re k = refl , tt
 bridge-i t-unit-var  re k = refl , tt

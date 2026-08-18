@@ -2573,11 +2573,18 @@ mutual
     , t-value-lift (g-float i f l d ok)
   checkElabV-RFloat-aux ctx i f l T (just _) nothing =
     failure (FloatNotRepresentable i f l) , tt
-  checkElabV-RFloat-aux ctx i f l T nothing _ with inferElabV ctx (Raw.RFloat i f l)
-  ... | failure err , _ = failure err , tt
-  ... | success T' Ψ eE d fr , w with T ≟T T'
-  ...   | yes refl = success Ψ eE d fr , t-embed w
-  ...   | no _     = failure (TypeMismatch T T') , tt
+  -- The fallback does NOT re-invoke `inferElabV`. It could — the result is the
+  -- same — but `inferElabV` dispatches on `accept?` internally, and a proof
+  -- that scrutinises the decision out here cannot see through that second,
+  -- unabstracted occurrence (RealizeAgrees' `check-agreeV` gets stuck on
+  -- exactly this). Building the result from the decision already in hand keeps
+  -- check-mode's reduction visible to its callers.
+  checkElabV-RFloat-aux ctx i f l T nothing (just (d , ok)) with T ≟T Once.Type.Float
+  ... | yes refl = success Surface.zeroUsage (Surface.float d (fits-all ok)) 0 (NamedCtx.freshCounter ctx)
+                 , t-embed (t-float i f l d ok)
+  ... | no _     = failure (TypeMismatch T Once.Type.Float) , tt
+  checkElabV-RFloat-aux ctx i f l T nothing nothing =
+    failure (FloatNotRepresentable i f l) , tt
 
   checkElabV-RInt-aux ctx n T (just (X , π , refl)) =
     success Surface.zeroUsage (Surface.lift-morphism (intLit n)) 0 (NamedCtx.freshCounter ctx)

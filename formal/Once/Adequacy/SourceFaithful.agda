@@ -277,6 +277,7 @@ faithful (effApp {Γ = Γ} {A = A} {B = B} f x) dγ k =
 faithful (absurd v) dγ n = ⊥-elim (proj₂ (SD.⟦ v ⟧ˢ dγ n))
 faithful unit    dγ k = refl
 faithful (int n) dγ k = refl   -- intLit's semM reduces to `absℤ n`, matching ⟦int n⟧ˢ
+faithful (float d _) dγ k = refl -- ⟦float d⟧ˢ IS `d`, and floatLit's evalᴰ is the same `d`
 faithful (str s) dγ k = refl   -- ⟦str s⟧ˢ now denotes via str-lit-info's semM = strLit's evalᴰ
 -- Single-subterm projections/injections: `elaborate (op e) = <prim> ∘ elaborate e`
 -- and `⟦ op e ⟧ˢ = ⟦e⟧ˢ >>=T (λv → returnT (<prim> v))`; `_>>=T_` sees the same

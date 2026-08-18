@@ -35,6 +35,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 import Once.Type
 open import Once.Type using (Type; Int; Unit; Void; Float; Str; Buffer; _*_; _+_; μ-type; ν-type;
                              Purity; pure; eff; mk-kind; Many; One; Zero; _⇒[_]_; isUnit?; ⟦_⟧T; Functor)
+open import Once.Float.Representable using (accept?)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; lookupSigEffect; lookupImport; lookupLocal; composeMid; ctxWithImportsAndPolys)
 open import Once.TypeCheck.Elaborate using (success; failure; VerifiedInferResult; VerifiedCheckResult)
@@ -1512,6 +1513,12 @@ mutual
   infer-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) (ac : Acc _<_ (mInfer e)) {A Ψ se d f w}
     (eq : E.inferElabV ctx e ≡ (success A Ψ se d f , w)) → InferAgreeV ctx e eq
   infer-agreeV ctx (Raw.RInt n)       _ refl dγ k = refl
+  -- RFloat: the elaborator dispatches on F4's decision, so the equation only
+  -- pins the result once that decision is named. The rejected branch is
+  -- absurd — it produces a `failure`, and `eq` says otherwise.
+  infer-agreeV ctx (Raw.RFloat i f l) _ eq dγ k with accept? i f l | eq
+  ... | just (d , ok) | refl = refl
+  ... | nothing       | ()
   infer-agreeV ctx (Raw.RStringLit s) _ refl dγ k = refl
   infer-agreeV ctx Raw.RUnit          _ refl dγ k = refl
   -- RPair: with-free — delegate to the top-level `agree-RPair`, passing both
@@ -1636,6 +1643,19 @@ mutual
   ... | just (X , π , refl) | refl = refl
   ... | nothing | eq' with T E.≟T Int | eq'
   ...   | yes refl | refl = infer-agreeV ctx (Raw.RInt n) (rec (infer<check (Raw.RInt n))) refl dγ k
+  ...   | no _     | ()
+  -- RFloat mirrors it, with the acceptance decision as a THIRD scrutinee: the
+  -- vlift branch needs the literal accepted before it can produce a value.
+  -- The acceptance decision is scrutinised in BOTH branches, not just the
+  -- vlift one: the fallback path runs `inferElabV`, which dispatches on the
+  -- same decision, so leaving it unnamed there leaves the equation stuck.
+  check-agreeV ctx (Raw.RFloat i f l) T (acc rec) eq dγ k
+    with accept? i f l | E.isRFloatVliftTarget? T | eq
+  ... | just (d , ok) | just (X , π , refl) | refl = refl
+  ... | nothing       | just (X , π , refl) | ()
+  ... | nothing       | nothing             | ()
+  ... | just (d , ok) | nothing | eq' with T E.≟T Float | eq'
+  ...   | yes refl | refl = refl
   ...   | no _     | ()
   -- RPair: product target → bidirectional component check (pair denotation is
   -- fuel-`k`-pointwise, rewrite both component agreements); pure-arrow→product

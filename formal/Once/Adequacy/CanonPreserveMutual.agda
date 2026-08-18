@@ -84,6 +84,7 @@ mutual
     → Names⊆ ctx bound → PolyInB ctx bound
     → ctx ⊢ᵢ e ∶ A ⨾ Ψ → ctx ⊢ᵢ canonExpr bound [] [] e ∶ A ⨾ Ψ
   canon-pres-ᵢ bound sub pib (t-int n) = t-int n
+  canon-pres-ᵢ bound sub pib (t-float i f l d ok) = t-float i f l d ok
   canon-pres-ᵢ bound sub pib (t-str s) = t-str s
   canon-pres-ᵢ bound sub pib t-unit = t-unit
   canon-pres-ᵢ bound sub pib t-unit-var
