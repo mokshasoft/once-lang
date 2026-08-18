@@ -31,8 +31,8 @@ module poc.OCP0009.NbEPDirDBLibArithMonus where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
-        ; RTy; Hom; Nat
-        ; RTm; var; nzero; nsuc; natrec; ordtr; unit
+        ; RTy; Hom; Nat; El; Π
+        ; RTm; var; nzero; nsuc; natrec; ordtr; unit; lam; app
         ; renTm; subTy; subTm; Sub; extS )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
@@ -40,7 +40,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢ordtr; ty-Nat; ty-Hom
         ; _≅ᵀ_; csymᵀ; Hom-Nat-ss
         ; _⟶_; _⟶*_; done; step; ξ-natrecⁿ )
-open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
@@ -49,9 +49,16 @@ open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBExamplesDiv
   using ( predTm; ⊢pred; ⊢pred-le; monusTm; ⊢monus
-        ; monus-zero; monus-suc; pred-suc; homˡ* )
+        ; monus-zero; monus-suc; pred-suc; pred-zero; homˡ* )
 open import poc.OCP0009.NbEPDirDBLibArith using ( plusMonoB; plusMonoTm; ⊢plus-mono )
-open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLB; plusMonoLTm; ⊢plus-mono-l )
+open import poc.OCP0009.NbEPDirDBLibArithComm
+  using ( plusMonoLB; plusMonoLTm; ⊢plus-mono-l
+        ; IdN; ⊢tyIdN; elIdN; reflN; ⊢reflN; transN; ⊢transN )
+open import poc.OCP0009.NbEPDirDBExamplesStrong using ( natAsEl )
+open import poc.OCP0009.NbEPDirDBLibPair using ( asN )
+open import poc.OCP0009.NbEPDirDBPi using ( jsub; ⌜Id⌝; ⌜Nat⌝; idrefl )
+open import poc.OCP0009.NbEPDirDBType
+  using ( ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝; ⊢idrefl; ty-Id; ty-El; ty-Π; ⊢lam; ⊢app )
 
 ------------------------------------------------------------------------
 -- lifting a reduction into `pred`'s scrutinee
@@ -192,3 +199,160 @@ monusLtTm-sub {σ = σ} a b = rewriteA (sub-w² {σ = σ} a)
                         (var vz))
                  (subTm σ b)
     rewriteA refl = refl
+
+------------------------------------------------------------------------
+-- ★★★★ THE PROPOSITIONAL BRIDGE — PIECE 1: `cong` FOR `pred`.
+--
+-- ⚠ WHY IT IS NEEDED.  Equation 4 needs `a ≤ b → monus a b ≡ 0`, and
+--   `monusTm` recurses on its SECOND argument through `predTm`.  So every
+--   inductive step has to move an identity under a `predTm`, which is a
+--   congruence — and this kernel derives congruences by `jsub`, exactly as
+--   `congS` does for `nsuc`.  This is `congS` with `nsuc` → `predTm`.
+--
+-- ⚠ NOT the `⌜Π⌝`-family transport that is banned elsewhere: that ban is
+--   about a Π-VALUED family, and this family is `⌜Id⌝ ⌜Nat⌝ … …`, the same
+--   shape `congS`/`symN`/`transN` already use safely.
+------------------------------------------------------------------------
+
+congPred : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+congPred a p = jsub (⌜Id⌝ ⌜Nat⌝ (predTm (w a)) (predTm (var vz))) p
+                    (reflN (predTm a))
+
+⊢congPred : {Γ : Ctx} {a b p : RTm ⌊ Γ ⌋} →
+            Γ ⊢ a ∷ Nat → Γ ⊢ b ∷ Nat → Γ ⊢ p ∷ IdN a b →
+            Γ ⊢ congPred a p ∷ IdN (predTm a) (predTm b)
+⊢congPred {a = a} {b = b} da db dp =
+  ⊢conv (⊢-cast (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ (predTm z) (predTm b)))
+                      (wk-single {v = b} a))
+                (⊢jsub dd (natAsEl da) (natAsEl db) dp de))
+        (elIdN (predTm a) (predTm b))
+  where
+    dd = ⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢pred (⊢wk da)))
+                      (natAsEl (⊢pred (asN (⊢var here))))
+    de = ⊢-cast (sym (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ (predTm z) (predTm a)))
+                           (wk-single {v = a} a)))
+                (⊢conv (⊢reflN (⊢pred da))
+                       (csymᵀ (elIdN (predTm a) (predTm a))))
+
+------------------------------------------------------------------------
+-- ★★ PIECE 2 — `0 ∸ b ≡ 0`, by induction on `b`.
+--
+-- `monusTm` recurses on its SECOND argument, so this is the base fact the
+-- bridge needs at `a = 0`: a variable `b` never lets `natrec` fire, and an
+-- INTERNAL induction is the only way to reach it.
+------------------------------------------------------------------------
+
+monus0B : {Γ : Cx} (b : RTm Γ) → RTy Γ
+monus0B b = IdN (monusTm nzero b) nzero
+
+⊢monus0Mot : {Γ : Ctx} → (Γ ▹ Nat) ⊢ty monus0B (var vz)
+⊢monus0Mot = ⊢tyIdN (⊢monus ⊢nzero (⊢var here)) ⊢nzero
+
+monus0Tm : {Γ : Cx} → RTm Γ → RTm Γ
+monus0Tm b = natrec (reflN nzero)
+                    (congPred (monusTm nzero (var (vs vz))) (var vz))
+                    b
+
+⊢monus0 : {Γ : Ctx} {b : RTm ⌊ Γ ⌋} → Γ ⊢ b ∷ Nat →
+          Γ ⊢ monus0Tm b ∷ monus0B b
+⊢monus0 {b = b} db = ⊢natrec ⊢monus0Mot zB sB db
+  where
+    -- b := 0 :  0 ∸ 0 ⟶* 0, so `refl` after rewriting the left endpoint
+    zB = ⊢conv (⊢reflN ⊢nzero)
+               (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ (monus-zero nzero))))
+    -- b := suc k :  0 ∸ suc k ⟶* pred (0 ∸ k), and the IH gives 0 ∸ k ≡ 0
+    sB = ⊢conv (⊢conv (⊢congPred (⊢monus ⊢nzero (⊢var (there here))) ⊢nzero
+                                 (⊢var here))
+                      (red→≅ᵀ (⟶ᵀ*-Idʳ (pred-zero))))
+               (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ (monus-suc nzero (var (vs vz))))))
+
+------------------------------------------------------------------------
+-- ★★ PIECE 3 — `suc a ∸ suc b ≡ a ∸ b`, by induction on `b`.
+--
+-- ⚠ THE STEP THE BRIDGE TURNS ON.  `Hom Nat` computes, so `suc a ≤ suc b`
+--   CONVERTS to `a ≤ b` (`Hom-Nat-ss`) — the order side of the induction is
+--   free.  The `monus` side is not: `monusTm` recurses on its second
+--   argument, so peeling a `suc` off BOTH arguments is a real induction,
+--   and this is it.
+------------------------------------------------------------------------
+
+monusSSB : {Γ : Cx} (a b : RTm Γ) → RTy Γ
+monusSSB a b = IdN (monusTm (nsuc a) (nsuc b)) (monusTm a b)
+
+⊢monusSSMot : {Γ : Ctx} {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ Nat →
+              (Γ ▹ Nat) ⊢ty monusSSB (w a) (var vz)
+⊢monusSSMot da =
+  ⊢tyIdN (⊢monus (⊢nsuc (⊢wk da)) (⊢nsuc (⊢var here)))
+         (⊢monus (⊢wk da) (⊢var here))
+
+mss-at : {Γ : Cx} (a k : RTm Γ) →
+         subTy (single k) (monusSSB (w a) (var vz)) ≡ monusSSB a k
+mss-at a k =
+  cong (λ z → IdN (monusTm (nsuc z) (nsuc k)) (monusTm z k)) (wk-single {v = k} a)
+
+mss-s : {Γ : Cx} (a : RTm Γ) →
+        subTy nrs (monusSSB (w a) (var vz))
+      ≡ monusSSB (w (w a)) (nsuc (var (vs vz)))
+mss-s a =
+  cong (λ z → IdN (monusTm (nsuc z) (nsuc (nsuc (var (vs vz)))))
+                  (monusTm z (nsuc (var (vs vz)))))
+       (nrs-w a)
+
+monusSSTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+monusSSTm a b =
+  natrec (reflN a)
+         (congPred (monusTm (nsuc (w (w a))) (nsuc (var (vs vz)))) (var vz))
+         b
+
+⊢monusSS : {Γ : Ctx} {a b : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ Nat → Γ ⊢ b ∷ Nat →
+           Γ ⊢ monusSSTm a b ∷ monusSSB a b
+⊢monusSS {a = a} {b = b} da db =
+  ⊢-cast (mss-at a b) (⊢natrec (⊢monusSSMot da) zB sB db)
+  where
+    -- b := 0 :  suc a ∸ suc 0 ⟶* a  and  a ∸ 0 ⟶* a, so both sides are `a`
+    zB = ⊢-cast (sym (mss-at a nzero))
+           (⊢conv (⊢conv (⊢reflN da)
+                         (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idʳ (monus-zero a)))))
+                  (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ (mlt-chain a)))))
+    -- b := suc k :  both sides peel one `pred`, and the IH bridges them
+    sB = ⊢-cast (sym (mss-s a))
+           (⊢conv (⊢conv (⊢congPred dL dR (⊢var here))
+                         (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idʳ (monus-suc dA' dK')))))
+                  (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ (monus-suc (nsuc dA') (nsuc dK'))))))
+      where
+        dA  = ⊢wk (⊢wk da)
+        dA' = w (w a)
+        dK' = var (vs vz)
+        dL  = ⊢monus (⊢nsuc dA) (⊢nsuc (⊢var (there here)))
+        dR  = ⊢monus dA (⊢var (there here))
+
+------------------------------------------------------------------------
+-- ★★★★★ PIECE 4 — THE BRIDGE: `a ≤ b → a ∸ b ≡ 0`.
+--
+-- ⭐ WHY THE ORDER PREMISE AND NOT `Id (a ∸ b) 0`.  `Hom Nat` COMPUTES:
+--
+--     Hom Nat 0       n        ⟶ᵀ Unit          (0 ≤ n, trivially)
+--     Hom Nat (suc m) 0        ⟶ᵀ base          (suc m ≤ 0, absurd)
+--     Hom Nat (suc m) (suc n)  ⟶ᵀ Hom Nat m n   (inversion, FREE)
+--
+--   so the three cases of this induction are exactly the three rules, and
+--   inversion and ex-falso cost a CONVERSION rather than a lemma each.  An
+--   `Id`-on-`monus` premise would need both proved, and would leak
+--   `monusTm`'s recursion scheme into gcd's statement.
+--
+-- ⚠ THE INDUCTION IS ON `a`, WITH `b` QUANTIFIED INTERNALLY.  It has to be:
+--   the `suc`/`suc` case needs the IH at a DIFFERENT `b`, so `b` cannot be
+--   a meta-level parameter fixed outside.
+------------------------------------------------------------------------
+
+-- the inner goal, once `a` is a successor and `b` is bound
+monusLeB : {Γ : Cx} (a : RTm Γ) → RTy Γ
+monusLeB a = Π Nat (Π (Hom Nat (w a) (var vz))
+                      (IdN (monusTm (w (w a)) (var (vs vz))) nzero))
+
+⊢monusLeMot : {Γ : Ctx} → (Γ ▹ Nat) ⊢ty monusLeB (var vz)
+⊢monusLeMot =
+  ty-Π ty-Nat
+    (ty-Π (ty-Hom ty-Nat (⊢var (there here)) (⊢var here))
+          (⊢tyIdN (⊢monus (⊢var (there (there here))) (⊢var (there here)))
+                  ⊢nzero))
