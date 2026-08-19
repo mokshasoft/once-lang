@@ -855,3 +855,57 @@ Ss-collapse a' b' =
 --   (its `sub-lemma` chain built at `gcdG`-form inputs) rather than
 --   converting after the fact.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ★★★★★ ROUTE (ii) — COLLAPSE AS YOU PUSH, don't shrink afterwards.
+--
+-- The four failed `⊢S3s` attempts all built the layered type first and then
+-- tried to convert it.  `push-gcdG` instead collapses at EVERY step, so the
+-- type is never anything but `gcdG` applied to a parameter:
+--
+--     Γ ⊢ t ∷ gcdG μ   ⇒   Δ ⊢ subTm σ t ∷ gcdG (subTm σ μ)
+--
+-- ⚠ AND THE EQUALITY IT INSPECTS IS ONE `gcdG-sub`, not a `trans` chain.
+--   That is what killed `ctx-conv`: matching on `refl` had to evaluate
+--   `M3-small`'s whole chain.  A single-step equality is cheap to match.
+--
+-- ★ REUSABLE for any `gcdG`-typed derivation being transported.
+------------------------------------------------------------------------
+
+push-gcdG : {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {t : RTm ⌊ Γ ⌋} {μ : RTm ⌊ Γ ⌋} →
+            Sub⊢ Γ Δ σ → Γ ⊢ t ∷ gcdG μ →
+            Δ ⊢ subTm σ t ∷ gcdG (subTm σ μ)
+push-gcdG {Δ = Δ} {σ = σ} {t = t} {μ = μ} σ⊢ d =
+  subst (λ T → Δ ⊢ subTm σ t ∷ T) (gcdG-sub {σ = σ} μ) (sub-lemma d σ⊢)
+
+------------------------------------------------------------------------
+-- ⚠⚠⚠ `⊢S3s` RESISTS EVERY TRANSPORT FORMULATION — SIX ATTEMPTS, MEASURED.
+--
+--   `subst`, context as `_`                     OOM   1m52s
+--   …context pinned                             type error (ctx is layered)
+--   two `subst`s (context then type)            needs the layered type
+--                                               WRITTEN — self-defeating
+--   `ctx-conv refl d = d`, type implicit        OOM   2m20s
+--   route (ii): five `push-gcdG`, one term      OOM   3m52s
+--   …the same, split into five `Def`s           OOM   1m24s
+--
+-- ★ EVERY SURROUNDING PIECE IS GREEN: all three collapse chains
+--   (`M3-small`/`Z3-small`/`S3-small`), `⊢M3s`, `⊢Z3s`, and `push-gcdG`
+--   itself.  ONLY the successor branch's derivation fails.
+--
+-- ★★ AND THE COMMON FACTOR IS THAT ALL SIX **TRANSPORT** `⊢S3`.  Route (ii)
+--   was supposed to differ by collapsing per step — and it does keep the
+--   TYPE small — but it still carries `⊢S3`'s derivation through five
+--   substitutions, and that is apparently the cost, not the type.
+--
+--   ⚠ NOTE THIS CONTRADICTS THE WORKING HYPOTHESIS OF THE WHOLE COLLAPSE
+--     EFFORT.  `M3-small` demonstrably made things CHEAPER (1m02s against a
+--     6m44s baseline), so type size is real — but it is not the ONLY cost
+--     here, and for `⊢S3` it is not the binding one.
+--
+-- ⇒ SO THE NEXT MOVE IS NOT ANOTHER TRANSPORT.  The successor branch has to
+--   be BUILT at its final context rather than moved there — i.e. an
+--   `⊢G3s`-analogue stated directly at the substituted slots, the way
+--   `⊢natrec-var` states its branches rather than transporting them.
+--   ⚠ Do not attempt a seventh transport.
+------------------------------------------------------------------------
