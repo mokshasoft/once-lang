@@ -319,6 +319,28 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
 
 -- ★ the MOTIVE: `⊢G3` sits ONE slot deeper than `⊢G3z` (its own `natrec`
 --   variable), so every level gets one more `extS`.
+-- ⚠⚠ TESTED 2026-08-19 — EXPLICIT TYPES MAKE IT WORSE, NOT BETTER.
+--
+--   `⊢M3` with `→ _`                    module green, ~15s
+--   `⊢M3` with its type WRITTEN OUT     EXIT 143, 1m19s
+--
+--   …and that is `⊢M3` ALONE; the `⊢Fnr` assembly is still commented out.
+--
+-- ⇒ THE HYPOTHESIS IS DEAD.  The question was whether the types are BIG or
+--   only big AS WRITTEN.  They are big: Agda's INFERENCE keeps them in a
+--   compact form and writing them out EXPANDS them.  Stating types
+--   explicitly is the standard remedy in this codebase and here it is
+--   actively harmful.
+--
+-- ★ ONE THING THE TEST DID ESTABLISH: the context collapses.  Agda accepted
+--   `(Γ ▹ Nat)` and objected only to the substitution arity, so
+--   `subTy σ⁵ Nat ≡ Nat` definitionally — the layered context in the probe
+--   output was DISPLAY, not substance.
+--
+-- ⇒ So the remaining direction is NOT "state it smaller" but "never build
+--   the five-level stack at all" — i.e. change what the one-hole context is
+--   expressed in terms of.  That is a redesign of `midAt`, and it would
+--   invalidate `gcd-le-prefix`, which is green.  Scope before starting.
 ⊢M3 : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
       (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) → _
 ⊢M3 da db =
@@ -416,8 +438,17 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
 --   slots here (`G1` and `G2`), neither inferable.
 ------------------------------------------------------------------------
 
+-- ★ TEST: state the type EXPLICITLY with the CONTEXT COLLAPSED to
+--   `Γ ▹ Nat`.  If this checks, `subTy σ⁵ Nat ≡ Nat` definitionally and the
+--   inferred layered context was only big AS WRITTEN.
 ⊢M3 : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
-      (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) → _
+      (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) →
+      (Γ ▹ Nat) ⊢ty
+        subTy (extS (single (R2' a' b')))
+          (subTy (extS (extS (single (W' a' b'))))
+            (subTy (extS (extS (extS (single (R1' a' b')))))
+              (subTy (extS (extS (extS (extS (single b')))))
+                (subTy (extS (extS (extS (extS (extS (single (gXx a' b'))))))) G3))))
 ⊢M3 da db =
   sub-ty (sub-ty (sub-ty (sub-ty (sub-ty (⊢G3 {B = G1} {C = G2})
       (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single (⊢gXx da db))))))))
