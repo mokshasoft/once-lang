@@ -491,3 +491,56 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
 --   one line per definition and would discriminate "the types are big" from
 --   "the types are only big as WRITTEN".
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ★★★★★ SCOPING THE `midAt` REDESIGN — 2026-08-19.
+--
+-- ★ THE FACT EVERYTHING TURNS ON, and it was not established until now:
+--
+--     gcdG μx = Π (gcdIH μx) (El ⌜Nat⌝)          -- SMALL, parametric in μx
+--     G3      = gcdG (plusTm (nsuc (var (vs² vz))) (nsuc (var (vs⁴ vz))))
+--
+--   `vs² vz` is `k'` (a's predecessor), `vs⁴ vz` is `n'` (b's).  Under the
+--   five-level stack those become `W'` and `b'`, and `wkS2` already proves
+--   `W' ≡ a'`.  So the motive REDUCES to
+--
+--     gcdG (plusTm (nsuc a') (nsuc b'))
+--
+--   which is TINY.  G3 never mentions `var vz` (established earlier — that
+--   is why the transport is sound at all), so nothing else varies.
+--
+-- ⚠ AND THIS IS WHY THE EXPLICIT-TYPE TEST FAILED.  It wrote the LAYERED
+--   form — five nested `subTy`s — which is not the reduced form at all.
+--   Stating the REDUCED motive is untested and is a different proposition.
+--
+-- ─── OPTIONS, cheapest first ────────────────────────────────────────────
+--
+-- (B) STATE THE MOTIVE REDUCED.  `⊢M3 : … ⊢ty gcdG (plusTm (nsuc a') …)`,
+--     with a peel proving the five-fold substituted form equals it.  The
+--     peel is on `μ` ALONE — one `plusTm` argument pair — not on the whole
+--     type.  ⇒ CHEAPEST TEST BY FAR, and the one to run first.
+--     Risk: the peel may need the same `wkS` family already used for `W'`
+--     and the descent, which is known-tractable (both landed in one line).
+--
+-- (A) COMPUTE `Z3'`/`S3'` DIRECTLY.  `G3z = lam (app (app (var vz) PAIRᶻ)
+--     CERTᶻ)` and `PAIRᶻ`/`CERTᶻ` are modest terms in two variables, so the
+--     substituted branches ARE writable in closed form.  ⇒ removes the
+--     stack from the TERMS as well as the types.  More writing than (B),
+--     and `gcd-le-prefix` must be re-verified against the new forms.
+--
+-- (C) INTERNAL SPLIT INSTEAD OF TRANSPORT.  Prove eq 4 by internal `natrec`
+--     on the descent with `eqG`/`pwT`, as `gcdStepExt` does — the motive is
+--     then WRITTEN, never a substitution residue.  ⇒ no stack at all, but
+--     it is a different proof, and `gcd-le-prefix`/`-tail` become unused.
+--
+-- (D) Id-VALUED `RecCall`.  Replace `RecCall`'s `⟶*` with a `Prv … (Id …)`
+--     so eq 4 joins the amrec-level machinery that eq 3 uses, where gcd's
+--     step internals never enter the types.  ⇒ most principled, biggest
+--     blast radius: `RecCall`/`recRed` are used by eq 3 as well.
+--
+-- ⇒ RECOMMENDATION: run (B) first — it is one signature plus one peel, and
+--   it either fixes the OOM outright or tells us the motive is not the
+--   binding constraint.  (C) is the fallback and reuses machinery that is
+--   already proved.  (D) is the right END STATE but should not be started
+--   before eq 4 works at all.
+------------------------------------------------------------------------
