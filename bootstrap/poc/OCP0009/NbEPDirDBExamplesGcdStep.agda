@@ -68,7 +68,7 @@ open import poc.OCP0009.NbEPDirDBExamplesDiv
   using ( monusTm; ⊢monus; monus-zero; monus-suc; pred-zero; pred-suc
         ; monus-computes )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
-open import poc.OCP0009.NbEPDirDBLibAmrec using ( aStepT )
+open import poc.OCP0009.NbEPDirDBLibAmrec using ( aStepT; aIHTat-sub )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asP )
 open import poc.OCP0009.NbEPDirDBLibArith using ( plusMonoTm )
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLTm; plusMonoLTm-sub )
@@ -98,6 +98,18 @@ gcdG μx = Π (gcdIH μx) (El ⌜Nat⌝)
 
 ⊢gcdG : {Γ : Ctx} {μx : RTm ⌊ Γ ⌋} → Γ ⊢ μx ∷ Nat → Γ ⊢ty gcdG μx
 ⊢gcdG dμ = ty-Π (⊢gcdIH dμ) (ty-El ⊢⌜Nat⌝)
+
+-- ★ SUBSTITUTING INTO THE MOTIVE-FORMER MOVES ONLY ITS PARAMETER.
+--   `gcdG μ = Π (gcdIH μ) (El ⌜Nat⌝)` and `gcdIH μ = aIHTat PairT ⌜Nat⌝ msr μ`,
+--   so `aIHTat-sub` does all the work: `PairT`/`⌜Nat⌝` are closed and `msr`
+--   mentions only `vz`, which `extS σ` fixes, so all three ride through.
+--
+-- ⚠ NEEDED wherever a reduction's residue has to be read back as a motive —
+--   a five-level substitution stack collapses by five of these.  Written at
+--   its first use site (`…GcdLeMid`) and moved here, beside `gcdG`.
+gcdG-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (μ : RTm Γ) →
+           subTy σ (gcdG μ) ≡ gcdG (subTm σ μ)
+gcdG-sub {σ = σ} μ = cong (λ T → Π T (El ⌜Nat⌝)) (aIHTat-sub PairT ⌜Nat⌝ msr μ)
 
 ------------------------------------------------------------------------
 -- ★ the descent's conversion: the recursive call BUILDS a pair, so the
