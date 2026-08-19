@@ -28,7 +28,7 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBLibNatrec where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; subst )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; RTm; Nat; natrec; var; vz; vs; nzero
         ; Ren; Sub; renTy; renTm; subTy; subTm; extR; extS; _∘ₛ_
@@ -179,36 +179,27 @@ Sub⊢-∘ {σ = σ} {τ = τ} σ⊢ τ⊢ {A = A} v =
               (⊢-cast (sym na-s) (sub-lemma ds (Sub⊢-ext (Sub⊢-ext σ⊢))))
 
 ------------------------------------------------------------------------
--- ⚠ THE ITERABLE FORM — DRAFTED, one pointwise identity short.  Kept below.
+-- ★★★ …AND THE ITERABLE FORM.  Takes a `natrec`-at-a-variable TYPING and
+--     transports it along a substitution, so an n-deep stack is n
+--     applications.  This is what a client with a deep stack wants;
+--     `⊢natrec-var-push` above CONSUMES the three pieces and cannot chain.
 --
--- `⊢natrec-var-push` above CONSUMES the motive and both branches, so
--- chaining it down a stack would re-derive those at every level — the
--- expensive thing.  The iterable form takes a `natrec`-at-a-variable TYPING
--- and transports it, so an n-deep stack is n applications.
---
--- ⚠ WHAT IS MISSING: its term equality needs
---     ∀ v → renTm (extR² vs) (extS² σ v) ≡ extS³ σ (extR² vs v)
---   which is NOT `refl`.  `vz` and `vs vz` are; the `vs (vs u)` case needs
---   renaming FUSION (`renren`/`ww`-style) to see
---     renTm (extR² vs) (w (w t)) ≡ w (w (w t)).
---   `rensub` is otherwise exactly the right lemma and its four implicits all
---   need pinning (they are all in its subject).
---
--- ⇒ This is de Bruijn plumbing, not proof structure — the STRUCTURE is
---   settled.  Prove that pointwise identity and the transport lands.
+-- ⚠ The pointwise identity is NOT `refl`.  `vz`/`vs vz` are; the deep case
+--   needs renaming FUSION — `renTm (extR² vs) (w (w t)) ≡ w (w (w t))` —
+--   which is two `renren`s.  Proved HERE at an abstract σ, where it is
+--   small; a client would prove it at its own concrete types.
 ------------------------------------------------------------------------
 
-{-
-------------------------------------------------------------------------
--- ★★★ …AND THE ITERABLE FORM.  Takes a `natrec`-at-a-variable TYPING and
---     transports it along a substitution, so a stack of n substitutions is
---     n applications.  This is the one a client with a deep stack wants.
---
--- ⚠ The two casts are naturality, not commutation: `subTm (extS σ)` meeting
---   a weakening (`sub-w`) and meeting a renaming.  They are proved HERE at
---   an abstract σ, which is the whole point — at gcd's concrete stack the
---   same equalities are enormous.
-------------------------------------------------------------------------
+-- w² and w³ as single renamings, so `renren` can fuse through them
+w²-fuse : {Γ : Cx} (t : RTm Γ) → w (w t) ≡ renTm (λ v → vs (vs v)) t
+w²-fuse t = renren {ϑ = vs} {ρ = vs} {ρ' = λ v → vs (vs v)} (λ _ → refl) t
+
+w³-fuse : {Γ : Cx} (t : RTm Γ) →
+          w (w (w t)) ≡ renTm (λ v → vs (vs (vs v))) t
+w³-fuse t =
+  trans (cong w (w²-fuse t))
+        (renren {ϑ = vs} {ρ = λ v → vs (vs v)} {ρ' = λ v → vs (vs (vs v))}
+                (λ _ → refl) t)
 
 ⊢natrec-var-tr :
   {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {M : RTy (⌊ Γ ⌋ ∙)}
@@ -219,18 +210,28 @@ Sub⊢-∘ {σ = σ} {τ = τ} σ⊢ τ⊢ {A = A} v =
                      (renTm (extR (extR vs)) (subTm (extS (extS σ)) s))
                      (var vz)
     ∷ subTy (extS σ) M
-⊢natrec-var-tr {σ = σ} {z = z} {s = s} σ⊢ d =
-  subst (λ t → _ ⊢ t ∷ _) tm-eq (sub-lemma d (Sub⊢-ext σ⊢))
+-- ⚠ the `subst` motive must be PINNED — neither the context nor the type
+--   is determined by the equation being transported along.
+⊢natrec-var-tr {Δ = Δ} {σ = σ} {M = M} {z = z} {s = s} σ⊢ d =
+  subst (λ t → (Δ ▹ Nat) ⊢ t ∷ subTy (extS σ) M) tm-eq
+        (sub-lemma d (Sub⊢-ext σ⊢))
   where
+    br : ∀ v → renTm (extR (extR vs)) (extS (extS σ) v)
+             ≡ extS (extS (extS σ)) (extR (extR vs) v)
+    br vz          = refl
+    br (vs vz)     = refl
+    br (vs (vs u)) =
+      trans (cong (renTm (extR (extR vs))) (w²-fuse (σ u)))
+            (trans (renren {ϑ = extR (extR vs)} {ρ = λ v → vs (vs v)}
+                           {ρ' = λ v → vs (vs (vs v))} (λ _ → refl) (σ u))
+                   (sym (w³-fuse (σ u))))
+
     tm-eq : subTm (extS σ) (natrec (w z) (renTm (extR (extR vs)) s) (var vz))
           ≡ natrec (w (subTm σ z))
                    (renTm (extR (extR vs)) (subTm (extS (extS σ)) s))
                    (var vz)
-    -- ⚠ implicits PINNED — none is determined by the argument (`rensub`'s
-    --   four are all in its subject).
     tm-eq = cong₃ natrec (sub-w z)
-              (rensub {σ = extS (extS σ)} {ϑ = extR (extR vs)}
-                      {σ' = extS (extS (extS σ))} {ϑ' = extR (extR vs)}
-                      (λ _ → refl) s)
+              (sym (rensub {σ = extS (extS σ)} {ϑ = extR (extR vs)}
+                           {σ' = extS (extS (extS σ))} {ϑ' = extR (extR vs)}
+                           br s))
               refl
--}

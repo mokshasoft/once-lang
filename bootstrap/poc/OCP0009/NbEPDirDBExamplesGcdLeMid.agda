@@ -43,7 +43,8 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( nrs-w )
 open import poc.OCP0009.NbEPDirDBLibNatrec
-  using ( na-z; na-s; ⊢natrec-at; ⊢natrec-var; Sub⊢-∘ )
+  using ( na-z; na-s; ⊢natrec-at; ⊢natrec-var; ⊢natrec-var-push
+        ; ⊢natrec-var-tr; Sub⊢-∘ )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( gcdStp; gcdBody; G1z; gcdInn1; G2z; gcdInn2; G3z; G3s
         ; PAIRᶻ; CERTᶻ; one; _⟫_; wkS3; wkS3e
@@ -342,92 +343,68 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
       (Sub⊢-ext (Sub⊢-ext (⊢single (⊢R2' da db))))
 
 ------------------------------------------------------------------------
--- ★★★★★ THE ONE-HOLE CONTEXT, TYPED — ROUTE B, WITHOUT ANY COMMUTATION.
+-- ⚠⚠⚠ THE ASSEMBLY OOMs BY EVERY ROUTE — FOUR MEASURED, ALL UNCONTENDED.
 --
--- ⚠ THE OBVIOUS ORDER FAILS.  Building the branches first and then calling
---   `⊢natrec-var` needs `single nzero`/`nrs` OUTSIDE the five-level stack,
---   but `⊢G3z` carries its own `single nzero` INSIDE and `sub-lemma` pushes
---   the stack around it — Agda says `R2' != nzero`.  Fixing that costs TEN
---   `na-z`/`na-s` commutations, each needing Ctx-level contexts spelled out.
+--   `⊢natrec-var` on the layer-4 pieces   type error (`R2' != nzero`):
+--                                         `single nzero`/`nrs` are INSIDE
+--                                         the stack, it wants them outside
+--   push with `sub-lemma`, one term       EXIT 143, 2m04s
+--   …split into five `Def`s               EXIT 143, 1m50s
+--   …via `⊢natrec-var-push`/`-tr`         EXIT 143, 4m54s  ← WORSE
 --
--- ⭐ REVERSING THE ORDER COSTS NOTHING.  Apply `⊢natrec-var` FIRST, at the
---   top of the stack where `⊢G3`/`⊢G3z`/`⊢G3s` already live, and then push
---   the WHOLE derivation down with `sub-lemma`.  The hole survives because
---   every level is `Sub⊢-ext`-lifted and `extS σ vz = var vz`.
+--   in a module that otherwise checks in ~15s, 0 errors throughout.
 --
---   Third time this principle has paid: MOVE THE DERIVATION, NOT THE
---   PIECES.  (Layer 3 did the same; so did `⊢R2'`.)
+-- ⚠⚠ AND THE LIBRARY ROUTE WAS MY HYPOTHESIS, MEASURED WRONG.  I expected
+--   `…LibNatrec`'s lemmas to fix it the way `AbsProbe`'s abstract-then-
+--   instantiate fixed the other half of gap A.  It does not, and the reason
+--   is the difference between the two cases:
 --
--- ★ The `extS` counts are the MOTIVE's (5,4,3,2,1), not the branches' —
---   `⊢natrec-var`'s result lives one slot deeper than `⊢G3z`.
-------------------------------------------------------------------------
-
--- ⚠⚠⚠ ROUTE B OOMs — MEASURED TWICE, UNCONTENDED.  Draft kept below.
+--     * THERE, the type stayed the SAME SIZE and only the ELABORATION moved
+--       — so checking it once generically was a pure win (9.9s → 1.7s).
+--     * HERE, the TYPE ITSELF GROWS with stack depth.  Each transport is
+--       typed at `subTy (extS σ) M`, and by level five `M` is a fivefold
+--       substituted `G3` no matter where the proof was checked.
 --
---     as ONE nested term          EXIT 143, 2m04s
---     split into FIVE `Def`s      EXIT 143, 1m50s
+--   ⇒ LIBRARY ABSTRACTION MOVES THE PROOF, NOT THE TYPE.  That is the
+--     limit of the remedy that closed equation 3, stated precisely.
 --
---   in a module that otherwise checks in ~15s, with 0 errors both times.
+-- ⇒ SO THE REMAINING OPTION IS THE ONE `irrT` NEEDED: SHRINK WHAT THE
+--   ASSEMBLY'S TYPES MENTION.  The five-level stack over `G3` is the
+--   problem; nothing that preserves it will fit.  That is a redesign of how
+--   the one-hole context is expressed, not another proof tactic.
 --
--- ⚠ AND THE STANDARD REMEDY DID NOT WORK.  `one big term per Def` is this
---   codebase's oldest rule and it barely moved the number — which says the
---   cost is NOT term nesting.  It is the TYPE: each pushed derivation is
---   typed at FIVE nested `subTy`s over `G3`, and `G3` carries gcd's step
---   material.  Same class as `irrAt`, and consistent with the recorded
---   finding that module isolation does not help a single oversized
---   definition.
---
--- ⇒ SO THE ASSEMBLY IS A SIZE PROBLEM, not a structural one.  The proof
---   STRUCTURE is right — `⊢natrec-var` first, then push, hole preserved by
---   `Sub⊢-ext` — and layers 1-4 all type.  What does not fit is carrying a
---   five-fold substituted `G3` through five derivation transports.
---
--- ⇒ WHAT TO TRY NEXT, in order:
---     1. `AbsProbe`'s technique from the other half of gap A: hold the STEP
---        abstract, do the assembly generically, instantiate ONCE.  That
---        turned a 9.9s marginal cost into 1.7s there and is the only
---        remedy this session that measured positive.
---     2. Route A (ten `na-z`/`na-s` commutations) — but it moves the same
---        types around, so expect the same size problem.
---     3. Shrink what the ASSEMBLY's types mention, as `irrT` needed.
+-- ★ EVERYTHING ELSE IS GREEN AND COMMITTED: the bridge, the reduction
+--   skeleton, all four typing layers, and the library lemmas (which are
+--   correct and useful — `⊢natrec-var-push`/`-tr` just do not solve THIS).
 ------------------------------------------------------------------------
 
 {-
--- ⚠⚠ AND IT MUST BE FIVE `Def`s, NOT ONE NESTED TERM.  As a single
---   expression this OOMs — EXIT 143 at 2m04s, uncontended, 0 errors, in a
---   module that checks in ~15s otherwise.  That is this codebase's oldest
---   rule (`one big term per Def`) biting at the last step of the proof.
-
 ⊢Fnr0 : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
         (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) → _
 ⊢Fnr0 da db =
-  sub-lemma (⊢natrec-var (⊢G3 {B = G1} {C = G2}) (⊢G3z {B = G1} {C = G2})
-                         (⊢G3s {B = G1} {C = G2} {D = G3}))
-    (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single (⊢gXx da db)))))))
+  ⊢natrec-var-push
+    (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single (⊢gXx da db))))))
+    (⊢G3 {B = G1} {C = G2}) (⊢G3z {B = G1} {C = G2})
+    (⊢G3s {B = G1} {C = G2} {D = G3})
 
 ⊢Fnr1 : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
         (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) → _
 ⊢Fnr1 da db =
-  sub-lemma (⊢Fnr0 da db)
-    (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single db)))))
+  ⊢natrec-var-tr (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single db)))) (⊢Fnr0 da db)
 
 ⊢Fnr2 : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
         (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) → _
 ⊢Fnr2 da db =
-  sub-lemma (⊢Fnr1 da db)
-    (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single (⊢R1' da db)))))
+  ⊢natrec-var-tr (Sub⊢-ext (Sub⊢-ext (⊢single (⊢R1' da db)))) (⊢Fnr1 da db)
 
 ⊢Fnr3 : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
         (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) → _
 ⊢Fnr3 da db =
-  sub-lemma (⊢Fnr2 da db)
-    (Sub⊢-ext (Sub⊢-ext (⊢single (⊢W' da db))))
+  ⊢natrec-var-tr (Sub⊢-ext (⊢single (⊢W' da db))) (⊢Fnr2 da db)
 
 ⊢Fnr : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
        (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) → _
-⊢Fnr da db =
-  sub-lemma (⊢Fnr3 da db) (Sub⊢-ext (⊢single (⊢R2' da db)))
--}
+⊢Fnr da db = ⊢natrec-var-tr (⊢single (⊢R2' da db)) (⊢Fnr3 da db)
 
 {-
 ------------------------------------------------------------------------
@@ -458,4 +435,6 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
       (Sub⊢-ext (Sub⊢-ext (⊢single (⊢R1' da db)))))
       (Sub⊢-ext (⊢single (⊢W' da db))))
       (⊢single (⊢R2' da db))
+-}
+
 -}
