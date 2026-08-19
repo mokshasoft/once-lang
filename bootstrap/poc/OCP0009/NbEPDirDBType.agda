@@ -43,7 +43,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Unit; Nat; unit; nzero; nsuc; natrec; extS; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
         ; Ren; extR; Sub; subTy; subTm; renTy; renTm
         ; Desc; Mu; con; elim; lookupD; sel; fields
-        ; payTy; payTy-ren; payTy-sub; εwkTy; εwk-ren; εwk-sub; _∈D_; hereD; thereD; DCon; dι; dρ; dκ; dnil; _◃_; ihs; subTy-subTy; subTy-cong; renTy-subTy )
+        ; payTy; payTy-ren; payTy-sub; εwkTy; εwk-ren; εwk-sub; _∈D_; hereD; thereD; DCon; dι; dρ; dκ; dnil; _◃_; ihs; subTy-subTy; subTy-cong; renTy-subTy
+        ; subTm-renTm; subTm-id )
 open import poc.OCP0009.NbEPDirDBVar
   using ( 𝔹; true; false; occTm; pw?; stkC?; stkA?; flat?; pwBody; pwShift
         ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id )
@@ -60,6 +61,22 @@ single : RTm Γ → Sub (Γ ∙) Γ
 single u vz     = u
 single u (vs x) = var x
 
+
+-- ★ A `single` CANCELS A WEAKENING.  Two lines, used ~60 times across the
+--   tree.  Lives HERE because `single` does; its other two ingredients
+--   (`subTm-renTm`, `subTm-id`) are in `…Pi`.
+--
+-- ⚠ IT LIVED IN `…LR` — the 6269-line logical relation — until 2026-08-19,
+--   because that is where it was first needed.  ⚠ THE PROBLEM IS NOT that a
+--   library depended on metatheory: SN and canonicity ARE properties of the
+--   kernel and a library may legitimately depend on them.  The problem is
+--   that `wk-single` is not metatheory at all — it is SYNTAX, and reaching
+--   into the normalisation proof to fetch it makes every user pay for a
+--   6000-line development to get two lines.  `…LR` re-exports it, so its
+--   ~50 importers are unaffected.
+wk-single : {Γ : Cx} {v : RTm Γ} (t : RTm Γ) →
+            subTm (single v) (renTm vs t) ≡ t
+wk-single t = trans (subTm-renTm t) (subTm-id t)
 -- ★ WF-axis stage A: the successor-instance substitution — reads the
 -- motive M (over Γ, number) at `nsuc` of the number, in the recursor's
 -- step context (Γ, number, IH).

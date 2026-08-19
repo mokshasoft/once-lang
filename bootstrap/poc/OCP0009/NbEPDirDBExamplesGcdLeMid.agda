@@ -45,7 +45,7 @@ open import poc.OCP0009.NbEPDirDBSubj
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBLibWk using ( nrs-w; w )
+open import poc.OCP0009.NbEPDirDBLibWk using ( nrs-w; w; sub-w; pw1; pw2; pw3 )
 open import poc.OCP0009.NbEPDirDBLibNatrec
   using ( na-z; na-s; ⊢natrec-at; ⊢natrec-var; ⊢natrec-var-push
         ; ⊢natrec-var-tr; Sub⊢-∘ )
@@ -589,6 +589,8 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
 
 -- (`gcdG-sub` moved to `…GcdStep`, beside `gcdG`.)
 
+-- (`pw1`/`pw2`/`pw3` moved to `…LibWk`, beside `sub-w`.)
+
 ------------------------------------------------------------------------
 -- ★★★ COLLAPSING THE MOTIVE — five `gcdG-sub`s.
 --
@@ -631,22 +633,14 @@ module _ {Γ : Cx} (a' b' : RTm Γ) where
                  (gcdG-sub {σ = t4}
                            (subTm t3 (subTm t2 (subTm t1 (subTm t0 μ0))))))))
 
-  -- ⚠ …AND `μ` DOES NOT COMPUTE ALL THE WAY.  Tested with `refl`: the
-  --   substitutions cancel SOME weakenings but not all.  Agda reports
-  --
-  --     subTm t4 (subTm t3 (subTm t2 (w⁴ b')))  !=  w b'
-  --
-  --   so three substitutions must cancel three of four weakenings.  Each
-  --   step is `subTm (extSᵏ σ) (wᵏ⁺¹ t) ≡ wᵏ t` — `sub-w` down to the
-  --   `single`, then `wk-single`.  Mechanical, three steps per side.
-  --
-  -- ★ REUSABLE (standing ask): that step — "an `extS`-lifted substitution
-  --   cancels one weakening" — is general and has no gcd content.  It is
-  --   the `wkS2`/`wkS3`/`wkS3e` family generalised in the lifting depth;
-  --   those three exist only at the depths gcd happened to need.  A single
-  --   `k`-indexed lemma would replace all of them.
-  --
-  -- ⇒ NEXT: prove the two side peels (`W'` side and `b'` side), chain with
-  --   `M3-collapse`, and `⊢M3` can be stated at
-  --     `gcdG (plusTm (nsuc (w (W' a' b'))) (nsuc (w b')))`
-  --   — a SMALL type, which is what option (B) is for.
+  -- ★ …and now `μ` DOES collapse: three peels per side, at the lifting
+  --   depths of `t2`/`t3`/`t4` (`extS³`, `extS²`, `extS¹`).
+  μ-computes : subTm t4 (subTm t3 (subTm t2 (subTm t1 (subTm t0 μ0))))
+             ≡ plusTm (nsuc (w (W' a' b'))) (nsuc (w b'))
+  μ-computes = cong₂ (λ x y → plusTm (nsuc x) (nsuc y)) sideA sideB
+    where
+      -- `W'` enters MID-stack (it fills the `k'` slot), so by the time the
+      -- outer substitution reaches it only ONE weakening is left.
+      sideA = pw1 (W' a' b')
+      sideB = trans (cong (λ x → subTm t4 (subTm t3 x)) (pw3 b'))
+                    (trans (cong (subTm t4) (pw2 b')) (pw1 b'))

@@ -36,8 +36,9 @@ open import poc.OCP0009.NbEPDirDBPi
         ; subTm-renTm; renTm-subTm; renTm-renTm; subTm-id; subTm-cong
         ; subTy-renTy; subTy-id; renTy-renTy; renTy-subTy; renTm-cong; idₛ )
 open import poc.OCP0009.NbEPDirDBType
-  using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; there )
+  using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; there; wk-single )
 open import poc.OCP0009.NbEPDirDBSubj using ( ren-lemma; Ren⊢-ext )
+
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 
 ------------------------------------------------------------------------
@@ -273,3 +274,28 @@ wTy^ (suc n) T = renTy vs (wTy^ n T)
 wᶠ^ : {Γ : Cx} (n : ℕ) → RTm (Γ ∙) → RTm ((Γ ∙^ n) ∙)
 wᶠ^ zero    t = t
 wᶠ^ (suc n) t = wᶠ (wᶠ^ n t)
+
+------------------------------------------------------------------------
+-- ★★★ AN `extS`-LIFTED SUBSTITUTION CANCELS ONE WEAKENING — and the
+--     instances COMPOSE, so each depth is one line given the previous.
+--
+--   subTm (extSᵏ (single u)) (wᵏ⁺¹ t) ≡ wᵏ t
+--
+-- ⚠ GENERAL — no gcd content.  This is `wkS2`/`wkS3`/`wkS3e` generalised in
+--   the LIFTING DEPTH; those three exist only at the depths gcd happened to
+--   need.  Belongs in `…LibWk` beside `sub-w`; kept here while iterating.
+------------------------------------------------------------------------
+
+pw1 : {Γ' : Cx} {u : RTm Γ'} (t : RTm Γ') →
+      subTm (extS (single u)) (w (w t)) ≡ w t
+pw1 {u = u} t = trans (sub-w {σ = single u} (w t)) (cong w (wk-single t))
+
+pw2 : {Γ' : Cx} {u : RTm Γ'} (t : RTm Γ') →
+      subTm (extS (extS (single u))) (w (w (w t))) ≡ w (w t)
+pw2 {u = u} t =
+  trans (sub-w {σ = extS (single u)} (w (w t))) (cong w (pw1 {u = u} t))
+
+pw3 : {Γ' : Cx} {u : RTm Γ'} (t : RTm Γ') →
+      subTm (extS (extS (extS (single u)))) (w (w (w (w t)))) ≡ w (w (w t))
+pw3 {u = u} t =
+  trans (sub-w {σ = extS (extS (single u))} (w (w (w t)))) (cong w (pw2 {u = u} t))

@@ -826,6 +826,8 @@ subTm-id (ap c b p)    =
 subTm-id (con k p) = cong (con k) (subTm-id p)
 subTm-id (elim D ms t) = cong₂ (elim D) (subTm-id ms) (subTm-id t)
 
+
+
 ------------------------------------------------------------------------
 -- ★ THE ι-RULE'S MACHINERY — three TOTAL metalevel functions on raw
 --   syntax, and their four naturality lemmas.
