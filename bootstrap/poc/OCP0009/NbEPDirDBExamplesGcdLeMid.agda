@@ -34,6 +34,7 @@ open import poc.OCP0009.NbEPDirDBType
   using ( _⟶*_; _⟶_; β; βfst; βsnd; ξ-appˡ; natrec-suc; natrec-zero; single )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-appˡ; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm )
+open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ⌊_⌋; _⊢_∷_; _⊢ty_; _▹_; ⊢natrec; ⊢pair; ⊢nsuc; ⊢var; here; there; ty-Nat )
 open import poc.OCP0009.NbEPDirDBSubj
@@ -41,7 +42,7 @@ open import poc.OCP0009.NbEPDirDBSubj
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBLibWk using ( nrs-w )
+open import poc.OCP0009.NbEPDirDBLibWk using ( nrs-w; w )
 open import poc.OCP0009.NbEPDirDBLibNatrec
   using ( na-z; na-s; ⊢natrec-at; ⊢natrec-var; ⊢natrec-var-push
         ; ⊢natrec-var-tr; Sub⊢-∘ )
@@ -49,7 +50,7 @@ open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( gcdStp; gcdBody; G1z; gcdInn1; G2z; gcdInn2; G3z; G3s
         ; PAIRᶻ; CERTᶻ; one; _⟫_; wkS3; wkS3e
         ; G1; ⊢G1; ⊢G1z; ⊢gcdInn1; wkS2; G2; ⊢G2; ⊢G2z; ⊢gcdInn2
-        ; G3; ⊢G3; ⊢G3z; ⊢G3s )
+        ; G3; ⊢G3; ⊢G3z; ⊢G3s; gcdG )
 open import poc.OCP0009.NbEPDirDBType using ( single; nrs )
 
 gXx : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
@@ -341,8 +342,29 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
 --   the five-level stack at all" — i.e. change what the one-hole context is
 --   expressed in terms of.  That is a redesign of `midAt`, and it would
 --   invalidate `gcd-le-prefix`, which is green.  Scope before starting.
+-- ⚠ OPTION B, FIRST ATTEMPT — type error at 13.3s (NOT an OOM), and it
+--   revealed TWO obstacles where I expected one:
+--
+--     1. THE PEEL IS REQUIRED.  The five substitutions do NOT collapse
+--        definitionally onto `gcdG (plusTm …)`.  The mismatch is at the `μ`
+--        LEAVES — `subTm (extS σ) … (w⁵ b')` vs `w (w b')` — so the peel is
+--        on `μ` alone, as scoped.  ⚠ Note `μ` appears WEAKENED once inside
+--        `gcdIH`, so the depths are `w (w b')`, not `w b'`.
+--
+--     2. STATING THE TYPE UN-DETERMINES THE BODY.  With the signature
+--        given, the σ's in the `sub-ty` chain print as METAS (`_σ_992`).
+--        Inference had been fixing them from the inferred type; an explicit
+--        type removes that constraint and they must be pinned too.
+--
+--   ⚠ AND THE 13.3s IS NOT EVIDENCE THE REDUCED MOTIVE IS CHEAP — an early
+--     type error never reaches the expensive elaboration.  Do not read it
+--     as a win.
+--
+--   ⇒ Option B is still live but is TWO fixes, not one: peel `μ` (the wkS
+--     family, known tractable) AND pin the chain's σ's.
 ⊢M3 : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
-      (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) → _
+      (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) →
+      _
 ⊢M3 da db =
   sub-ty (sub-ty (sub-ty (sub-ty (sub-ty (⊢G3 {B = G1} {C = G2})
       (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single (⊢gXx da db))))))))
