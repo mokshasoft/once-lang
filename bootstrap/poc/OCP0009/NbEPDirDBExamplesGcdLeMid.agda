@@ -811,3 +811,47 @@ Ss-collapse a' b' =
 --
 -- ★ The motive chain (`M3-collapse` + `μ-computes` + `M3-small` + `⊢M3s`)
 --   is the worked template; the branches differ only in depth.
+
+------------------------------------------------------------------------
+-- ★★★★★ THE BRANCH DERIVATIONS, AT THE SMALL TYPES.
+--
+-- `⊢Z3`/`⊢S3` produce exactly the left-hand sides of `Z3-small`/`S3-small`
+-- (their `sub-lemma` levels are `u0`…`u4` and `v0`…`v4`), so each is one
+-- `subst` — the same shape as `⊢M3s`.
+------------------------------------------------------------------------
+
+⊢Z3s : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
+       (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) →
+       Γ ⊢ Z3' a' b' ∷ gcdG (plusTm (nsuc (W' a' b')) (nsuc b'))
+⊢Z3s {Γ} {a'} {b'} da db =
+  subst (λ T → Γ ⊢ Z3' a' b' ∷ T) (Z3-small a' b') (⊢Z3 da db)
+
+------------------------------------------------------------------------
+-- ⚠⚠ `⊢S3s` — THE SUCCESSOR BRANCH'S RESTATEMENT IS BLOCKED.  Four attempts:
+--
+--   `subst` with `_` for the context        OOM, 1m52s
+--   …context pinned                         type error — `⊢S3`'s context
+--                                           mentions the LAYERED motive
+--   two `subst`s (context then type)        needs `⊢S3`'s layered type
+--                                           WRITTEN, which is the thing the
+--                                           collapse avoids
+--   `ctx-conv refl d = d` (type implicit)   OOM, 2m20s
+--
+-- ★ WHY THE LAST ONE FAILS, and it is the interesting part: matching on
+--   `refl` forces Agda to evaluate `M3-small`'s whole `trans` chain to
+--   `refl`.  So a lemma written to AVOID naming the big type instead forces
+--   COMPUTING the proof that relates it.  Keeping the type implicit is not
+--   enough if the EQUALITY has to be inspected.
+--
+-- ⚠ AND THE SUCCESSOR BRANCH IS THE ONLY ONE WITH THIS PROBLEM.  `natrec`
+--   binds the motive in its successor branch, so `⊢S3` is the only piece
+--   whose CONTEXT mentions the motive; `⊢M3s`/`⊢Z3s` needed one `subst`
+--   each and both are green.  This is inherent to `natrec`, not to the
+--   collapse approach.
+--
+-- ⇒ WHAT TO TRY: a context-conversion that does NOT inspect the equality —
+--   e.g. carrying the motive as a module PARAMETER so both forms are the
+--   same variable, or restating `⊢S3` at the small motive from the start
+--   (its `sub-lemma` chain built at `gcdG`-form inputs) rather than
+--   converting after the fact.
+------------------------------------------------------------------------
