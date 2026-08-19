@@ -29,7 +29,7 @@ module poc.OCP0009.NbEPDirDBExamplesGcdLeMid where
 
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTm; RTy; Nat; pair; nsuc; nzero; natrec; app
-        ; subTm; subTy; extS; renTm; vs; var; vz; _∘ₛ_; subTy-subTy; subTy-cong; Var )
+        ; subTm; subTy; extS; renTm; vs; var; vz; _∘ₛ_; subTy-subTy; subTy-cong; Var; Sub )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶*_; _⟶_; β; βfst; βsnd; ξ-appˡ; natrec-suc; natrec-zero; single )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-appˡ; ⟶*-natrecⁿ )
@@ -39,13 +39,14 @@ open import poc.OCP0009.NbEPDirDBType
 open import poc.OCP0009.NbEPDirDBSubj
   using ( sub-lemma; sub-ty; Sub⊢; Sub⊢-ext; ⊢single; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT )
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( nrs-w )
+open import poc.OCP0009.NbEPDirDBExamplesGcdCert using ( na-z; na-s )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( gcdStp; gcdBody; G1z; gcdInn1; G2z; gcdInn2; G3z; G3s
         ; PAIRᶻ; CERTᶻ; one; _⟫_; wkS3; wkS3e
-        ; G1; ⊢G1; ⊢G1z; ⊢gcdInn1 )
+        ; G1; ⊢G1; ⊢G1z; ⊢gcdInn1; wkS2; G2; ⊢G2; ⊢G2z; ⊢gcdInn2 )
 open import poc.OCP0009.NbEPDirDBType using ( single; nrs )
 
 gXx : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
@@ -255,3 +256,92 @@ peelS gX =
           db
   where
     σ0 = ⊢single (⊢gXx da db)
+
+-- ★ layer 2: `W'` is `a'` IN DISGUISE.  `wkS2` is exactly its shape — two
+--   weakenings cancelled by two substitutions — so no new work.
+⊢W' : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋} →
+      Γ ⊢ a' ∷ Nat → Γ ⊢ b' ∷ Nat → Γ ⊢ W' a' b' ∷ Nat
+-- ⚠ the TERM moves here, not the type — `⊢-cast` is for types, so this
+--   is a `subst` on the subject position.
+⊢W' {Γ} {a' = a'} da db = subst (λ z → Γ ⊢ z ∷ Nat) (sym (wkS2 a')) da
+
+------------------------------------------------------------------------
+-- ⚠⚠ LAYER 3 (`R2'`) — DRAFTED, BLOCKED ON TYPED CONTEXTS.  The body is
+--    kept below, commented, because the STRUCTURE is right and only the
+--    instantiation is missing.
+--
+-- WHAT WORKS: the `⊢natrec` skeleton, the three chained `sub-lemma`s (one
+-- per substitution level), and the peels built from THREE `na-z`/`na-s` —
+-- one per level, walking `single nzero` / `nrs` outward.  `na-z`/`na-s`
+-- already exist in `…GcdCert` and are general; do not rebuild them.
+--
+-- ⚠ THE BLOCKER, and it is not another missing pin: `na-z`/`na-s` live in
+--   `module _ {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {M : RTy (⌊ Γ ⌋ ∙)}`.
+--   Supplying `σ` fixes only the ERASED contexts `⌊ Γ ⌋`/`⌊ Δ ⌋`, and
+--   `⌊_⌋` is not invertible, so the Ctx-level `Γ`/`Δ` stay unsolved.  They
+--   must be given as the TYPED contexts at each stack level —
+--   `((Γ ▹ PairT) ▹ Nat) ▹ G1` and friends — which is real information,
+--   not a mechanical pin.
+--
+--   ⇒ Four pinning traps were hit in this layer, and only the last is
+--     interesting: (1) `subTy-subTy`'s τ/σ, (2) the generalised slot `B`,
+--     (3) `G2`'s own context, (4) `where`-bound substitutions needing
+--     explicit `Sub` signatures.  All four are mechanical.  The typed
+--     contexts are the one that needs thought.
+------------------------------------------------------------------------
+
+{-
+-- ★ layer 3: `R2'`, the second real `⊢natrec`.  THREE substitutions now —
+--   `single gX`, then `single b'`, then `single R1'` — applied by CHAINING
+--   `sub-lemma`, because nested `sub-lemma` calls produce exactly the
+--   nested `subTm` form the terms already have.  (Composing into one `∘ₛ`
+--   would not: that gives `subTm (τ ∘ₛ σ)`, a different term.)
+⊢R2' : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
+       (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) →
+       Γ ⊢ R2' a' b'
+         ∷ subTy (single (W' a' b'))
+             (subTy (extS (single (R1' a' b')))
+               (subTy (extS (extS (single b')))
+                 (subTy (extS (extS (extS (single (gXx a' b'))))) G2)))
+⊢R2' {Γ} {a' = a'} {b' = b'} da db =
+  ⊢natrec mot (⊢-cast pz zb) (⊢-cast ps sb) (⊢W' da db)
+  where
+    σ0 = ⊢single (⊢gXx da db)
+    σ1 = ⊢single db
+    σ2 = ⊢single (⊢R1' da db)
+    -- ⚠ `B` PINNED — the generalised sibling slot cannot be inferred here
+    --   (the standing rule for generalised motive slots).
+    mot = sub-ty (sub-ty (sub-ty (⊢G2 {B = G1}) (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext σ0))))
+                         (Sub⊢-ext (Sub⊢-ext σ1)))
+                 (Sub⊢-ext σ2)
+    zb  = sub-lemma (sub-lemma (sub-lemma (⊢G2z {B = G1}) (Sub⊢-ext (Sub⊢-ext σ0)))
+                               (Sub⊢-ext σ1))
+                    σ2
+    sb  = sub-lemma (sub-lemma (sub-lemma (⊢gcdInn2 {B = G1})
+                                 (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext σ0)))))
+                               (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext σ1))))
+                    (Sub⊢-ext (Sub⊢-ext σ2))
+
+    -- ★ THREE `na-z`, one per stack level, walking `single nzero` OUTWARD.
+    --   No 4-deep composition needed — `na-z`/`na-s` are already general.
+    -- ⚠ SIGNATURES REQUIRED: without them these are metas and every
+    --   `{σ = sᵢ}` below stays unsolved.
+    s0 : Sub (((⌊ Γ ⌋ ∙) ∙) ∙) ((⌊ Γ ⌋ ∙) ∙)
+    s0 = extS (extS (single (gXx a' b')))
+    s1 : Sub ((⌊ Γ ⌋ ∙) ∙) (⌊ Γ ⌋ ∙)
+    s1 = extS (single b')
+    s2 : Sub (⌊ Γ ⌋ ∙) ⌊ Γ ⌋
+    s2 = single (R1' a' b')
+
+    pz = trans (cong (λ T → subTy s2 (subTy s1 T)) (sym (na-z {σ = s0} {M = G2 {⌊ Γ ⌋}})))
+           (trans (cong (subTy s2) (sym (na-z {σ = s1} {M = subTy (extS s0) (G2 {⌊ Γ ⌋})})))
+                  (sym (na-z {σ = s2} {M = subTy (extS s1) (subTy (extS s0) (G2 {⌊ Γ ⌋}))})))
+
+    -- ⚠ the SUCCESSOR chain runs at `extS²` of each level (that is what
+    --   `Sub⊢-ext (Sub⊢-ext …)` produced), so the `cong` wrappers must too.
+    ps = trans (cong (λ T → subTy (extS (extS s2)) (subTy (extS (extS s1)) T))
+                     (sym (na-s {σ = s0} {M = G2 {⌊ Γ ⌋}})))
+           (trans (cong (subTy (extS (extS s2)))
+                        (sym (na-s {σ = s1} {M = subTy (extS s0) (G2 {⌊ Γ ⌋})})))
+                  (sym (na-s {σ = s2} {M = subTy (extS s1) (subTy (extS s0) (G2 {⌊ Γ ⌋}))})))
+-}
