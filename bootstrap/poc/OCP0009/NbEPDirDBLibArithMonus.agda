@@ -481,42 +481,5 @@ mself-at a = cong₂ (λ x y → IdN (monusTm x y) nzero)
     dRefl = ⊢-cast (sym (cong (λ z → Hom Nat z a) (wk-single {v = a} a)))
                    (⊢le-refl da)
 
-------------------------------------------------------------------------
--- ★★★ THE TRANSPORT EQUATION 4 NEEDS — a ONE-HOLE congruence at `Nat`.
---
--- `congS`/`congPred` are this at a fixed former.  Equation 4 needs it at an
--- ARBITRARY Nat-valued context `F` with one hole, because the term whose
--- subterm moves is gcd's whole step application and the hole is the
--- DESCENT buried in its third `natrec`.
---
--- ⭐ SOUND HERE because gcd's third `natrec` has a motive CONSTANT in its
---   own scrutinee — `G3` mentions slots 2 and 4 but never `var vz`.  So
---   replacing the descent cannot change the type, and a plain congruence
---   suffices where a dependent motive would have needed a transport.
---
--- ⇒ USE: `F` is the step application with the descent as `var vz`; `p` is
---   `symN` of the bridge (`Id nzero (a ∸ b)`); the base case is the chain
---   at a LITERAL zero, where the `natrec` fires and everything reduces.
-------------------------------------------------------------------------
-
-congAt : {Γ : Cx} (F : RTm (Γ ∙)) → RTm Γ → RTm Γ → RTm Γ
-congAt F x p =
-  jsub (⌜Id⌝ ⌜Nat⌝ (w (subTm (single x) F)) F) p (reflN (subTm (single x) F))
-
--- ⚠ `F` is typed in `Γ ▹ El ⌜Nat⌝`, NOT `Γ ▹ Nat`: `⊢jsub`'s family lives
---   over the IDENTITY's type, and `IdN` is `Id (El ⌜Nat⌝) _ _`.
-⊢congAt : {Γ : Ctx} (F : RTm (⌊ Γ ⌋ ∙)) {x y p : RTm ⌊ Γ ⌋} →
-          (Γ ▹ El ⌜Nat⌝) ⊢ F ∷ Nat →
-          Γ ⊢ x ∷ Nat → Γ ⊢ y ∷ Nat → Γ ⊢ p ∷ IdN x y →
-          Γ ⊢ congAt F x p ∷ IdN (subTm (single x) F) (subTm (single y) F)
-⊢congAt F {x = x} {y = y} dF dx dy dp =
-  ⊢conv (⊢-cast (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ z (subTm (single y) F)))
-                      (wk-single {v = y} (subTm (single x) F)))
-                (⊢jsub dd (natAsEl dx) (natAsEl dy) dp de))
-        (elIdN (subTm (single x) F) (subTm (single y) F))
-  where
-    dd = ⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢wk (⊢[] dF (natAsEl dx)))) (natAsEl dF)
-    de = ⊢-cast (sym (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ z (subTm (single x) F)))
-                           (wk-single {v = x} (subTm (single x) F))))
-                (⊢conv (⊢reflN (⊢[] dF (natAsEl dx)))
-                       (csymᵀ (elIdN (subTm (single x) F) (subTm (single x) F))))
+-- (`congAt`/`⊢congAt` moved to `…LibArithComm`, beside `congS` —
+--  it is a general one-hole congruence, not monus arithmetic.)
