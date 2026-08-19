@@ -46,7 +46,8 @@ open import poc.OCP0009.NbEPDirDBLibNatrec using ( na-z; na-s; ⊢natrec-at; Sub
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( gcdStp; gcdBody; G1z; gcdInn1; G2z; gcdInn2; G3z; G3s
         ; PAIRᶻ; CERTᶻ; one; _⟫_; wkS3; wkS3e
-        ; G1; ⊢G1; ⊢G1z; ⊢gcdInn1; wkS2; G2; ⊢G2; ⊢G2z; ⊢gcdInn2 )
+        ; G1; ⊢G1; ⊢G1z; ⊢gcdInn1; wkS2; G2; ⊢G2; ⊢G2z; ⊢gcdInn2
+        ; G3; ⊢G3; ⊢G3z; ⊢G3s )
 open import poc.OCP0009.NbEPDirDBType using ( single; nrs )
 
 gXx : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
@@ -257,3 +258,54 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
                                    (⊢wk (⊢wk da)))
                        (Sub⊢-ext (⊢single db)))
             (⊢single (⊢R1' da db))
+
+------------------------------------------------------------------------
+-- ⚠⚠ LAYER 4 — DRAFTED, BLOCKED ON SLOT TYPES.  Kept below, commented.
+--
+-- The five `sub-lemma`/`sub-ty` levels are in the RIGHT ORDER — read off
+-- the printed endpoint: outermost `single R2'`, then `extS (single W')`,
+-- then `extS² (single R1')`, `extS³ (single b')`, `extS⁴ (single gX)`
+-- innermost.  What does not line up is the SLOT TYPES: `⊢W'` is typed
+-- `Γ ⊢ W' ∷ Nat`, so `⊢single ⊢W'` is a `Sub⊢ (Γ ▹ Nat) Γ`, but the slot
+-- it substitutes at that depth is not `Nat` — Agda reports `W'` where it
+-- wants `R1'`, i.e. the two levels' contexts are exchanged.
+--
+-- ⇒ WHAT IS NEEDED: track what TYPE each of the five slots actually has
+--   (they are `PairT`, `Nat`, `G1`, `Nat`, `G2` reading outward from `G3`)
+--   and give each `⊢single` a derivation at THAT type, rather than at
+--   `Nat` throughout.  `⊢W'`/`⊢R1'`/`⊢R2'` are already green — this is
+--   about which one goes at which depth, not about proving them.
+--
+-- ⚠ Layers 1-3 ARE green and committed; this is the last typing layer.
+------------------------------------------------------------------------
+
+{-
+------------------------------------------------------------------------
+-- ★★★ LAYER 4 — the THIRD `natrec`'s motive and branches, through the
+--     FIVE-level stack.  Same recipe as layer 3, one level deeper at each
+--     step; `⊢natrec-var` then assembles them at the HOLE.
+--
+-- ⚠ `B`/`C` PINNED — `⊢G3`/`⊢G3z`/`⊢G3s` have TWO generalised sibling
+--   slots here (`G1` and `G2`), neither inferable.
+------------------------------------------------------------------------
+
+⊢M3 : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
+      (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) → _
+⊢M3 da db =
+  sub-ty (sub-ty (sub-ty (sub-ty (sub-ty (⊢G3 {B = G1} {C = G2})
+      (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single (⊢gXx da db))))))))
+      (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single db))))))
+      (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single (⊢R1' da db))))))
+      (Sub⊢-ext (Sub⊢-ext (⊢single (⊢W' da db)))))
+      (Sub⊢-ext (⊢single (⊢R2' da db)))
+
+⊢Z3 : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
+      (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) → _
+⊢Z3 da db =
+  sub-lemma (sub-lemma (sub-lemma (sub-lemma (sub-lemma (⊢G3z {B = G1} {C = G2})
+      (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single (⊢gXx da db)))))))
+      (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single db)))))
+      (Sub⊢-ext (Sub⊢-ext (⊢single (⊢R1' da db)))))
+      (Sub⊢-ext (⊢single (⊢W' da db))))
+      (⊢single (⊢R2' da db))
+-}
