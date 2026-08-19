@@ -655,6 +655,52 @@ module _ {Γ : Cx} (a' b' : RTm Γ) where
            ≡ gcdG (plusTm (nsuc (w (W' a' b'))) (nsuc (w b')))
   M3-small = trans M3-collapse (cong gcdG μ-computes)
 
+  -- ★★ THE ZERO BRANCH's chain — same five `gcdG-sub`s, one `extS` less at
+  --    every level (`⊢G3z` sits at 5 slots, `⊢G3` at 6).
+  u0 : Sub (((((Γ ∙) ∙) ∙) ∙) ∙) ((((Γ ∙) ∙) ∙) ∙)
+  u0 = extS (extS (extS (extS (single (gXx a' b')))))
+  u1 : Sub ((((Γ ∙) ∙) ∙) ∙) (((Γ ∙) ∙) ∙)
+  u1 = extS (extS (extS (single b')))
+  u2 : Sub (((Γ ∙) ∙) ∙) ((Γ ∙) ∙)
+  u2 = extS (extS (single (R1' a' b')))
+  u3 : Sub ((Γ ∙) ∙) (Γ ∙)
+  u3 = extS (single (W' a' b'))
+  u4 : Sub (Γ ∙) Γ
+  u4 = single (R2' a' b')
+
+  μz : RTm (((((Γ ∙) ∙) ∙) ∙) ∙)
+  μz = plusTm (nsuc (var (vs vz))) (nsuc (var (vs (vs (vs vz)))))
+
+  Z3-collapse : subTy u4 (subTy u3 (subTy u2 (subTy u1 (subTy u0 (gcdG μz)))))
+              ≡ gcdG (subTm u4 (subTm u3 (subTm u2 (subTm u1 (subTm u0 μz)))))
+  Z3-collapse =
+    trans (cong (λ T → subTy u4 (subTy u3 (subTy u2 (subTy u1 T))))
+                (gcdG-sub {σ = u0} μz))
+      (trans (cong (λ T → subTy u4 (subTy u3 (subTy u2 T)))
+                   (gcdG-sub {σ = u1} (subTm u0 μz)))
+        (trans (cong (λ T → subTy u4 (subTy u3 T))
+                     (gcdG-sub {σ = u2} (subTm u1 (subTm u0 μz))))
+          (trans (cong (subTy u4)
+                       (gcdG-sub {σ = u3} (subTm u2 (subTm u1 (subTm u0 μz)))))
+                 (gcdG-sub {σ = u4}
+                           (subTm u3 (subTm u2 (subTm u1 (subTm u0 μz))))))))
+
+  -- ⚠ `μz`'s PEEL IS NOT YET RIGHT.  Tried the motive's shape one level
+  --   shallower (`pw2`/`pw1`/`wk-single` on the `b'` side, `refl` on the
+  --   other).  The `b'` side is fine; the OTHER side is not:
+  --
+  --     subTm u4 (… (subTm u0 (var (vs vz))))  !=  W' a' b'
+  --
+  --   and Agda shows the left computing to an `nsuc`-headed term while
+  --   `W'` computes to a `fst`-headed one.  ⇒ my reading of WHICH SLOT
+  --   `μz`'s first argument occupies is off: at branch depth the slots are
+  --   PairT(vs⁴), n'(vs³), G1(vs²), k'(vs), G2(vz), and the substituted
+  --   `k'` is evidently not `W'`.
+  --
+  -- ⇒ NEXT: wrong-target probe on that side to read what it actually is,
+  --   then `μz-computes` and `Z3-small` follow the motive's template.
+  --   ⚠ Do NOT guess the slot again — the depths here have been wrong twice.
+
 ------------------------------------------------------------------------
 -- ★★★★★ THE ASSEMBLY, AT SMALL TYPES.
 --
