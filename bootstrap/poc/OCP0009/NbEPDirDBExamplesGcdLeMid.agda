@@ -685,3 +685,28 @@ Ss-collapse : {Γ : Cx} (a' b' : RTm Γ) →
             ≡ gcdG (subTm nrs (plusTm (nsuc (w (W' a' b'))) (nsuc (w b'))))
 Ss-collapse a' b' =
   gcdG-sub {σ = nrs} (plusTm (nsuc (w (W' a' b'))) (nsuc (w b')))
+
+------------------------------------------------------------------------
+-- ★★★★★ THE ASSEMBLY — `⊢natrec-var` AT THE SMALL MOTIVE.
+--
+-- ⚠ THIS IS THE STEP THAT FAILED FOUR TIMES: once as a type error
+--   (`R2' != nzero`, the branches' `single nzero`/`nrs` being INSIDE the
+--   stack) and three times as an OOM (nested `sub-lemma`; split into five
+--   `Def`s; via `⊢natrec-var-push`/`-tr`).  Every one of those carried
+--   five-deep `subTy` types.  Now every type is in `gcdG` form.
+------------------------------------------------------------------------
+
+-- ⚠ AND EACH BRANCH NEEDS ITS OWN COLLAPSE CHAIN.  Attempted `⊢Z3s` by
+--   `subst`ing `⊢Z3` along `Zs-collapse` alone — that fails, because
+--   `⊢Z3`'s type is ALSO the five-level layered form (it is `G3z`'s type
+--   under the same stack).  `Zs-collapse` only relates the SMALL motive to
+--   its substituted parameter; it says nothing about the layered one.
+--
+-- ⇒ WHAT IS NEEDED, and it is the shape already proved for the motive:
+--     `Z3-collapse` — five `gcdG-sub`s on `G3z`'s type, then a `μ` peel
+--     `S3-collapse` — the same for `G3s`, two `extS` deeper
+--   Then `⊢Z3s`/`⊢S3s` are one `subst` each, and `⊢natrec-var` assembles
+--   `⊢M3s`/`⊢Z3s`/`⊢S3s` — all three in `gcdG` form.
+--
+-- ★ The motive chain (`M3-collapse` + `μ-computes` + `M3-small` + `⊢M3s`)
+--   is the worked template; the branches differ only in depth.
