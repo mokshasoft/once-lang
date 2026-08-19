@@ -37,7 +37,7 @@ open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ⌊_⌋; _⊢_∷_; _⊢ty_; _▹_; ⊢natrec; ⊢pair; ⊢nsuc; ⊢var; here; there; ty-Nat )
 open import poc.OCP0009.NbEPDirDBSubj
-  using ( sub-lemma; sub-ty; Sub⊢; Sub⊢-ext; ⊢single; ⊢-cast; ⊢wk )
+  using ( sub-lemma; sub-ty; Sub⊢; Sub⊢-ext; ⊢single; ⊢-cast; ⊢wk; subTy-comm )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
@@ -249,15 +249,37 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
 --   derivation through the outer substitutions with `sub-lemma` produces
 --   the 3-level substituted `natrec` directly — no `na-z` at the inner
 --   levels, which is what the hand-written version needed.
+-- ⚠ `⊢natrec-at` concludes `subTy (single n) …`, and `sub-lemma` pushes the
+--   outer substitutions AROUND that — leaving `single n` INSIDE, where the
+--   next layer needs it OUTSIDE as `single W'`.  `subTy-comm` walks it out,
+--   once per push.  (`n` here is `w (w a')`, and the two pushes turn it into
+--   exactly `W'` — which is `wkS2`'s statement, seen from the other side.)
 ⊢R2' : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
-       (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) → _
-⊢R2' da db =
-  sub-lemma (sub-lemma (⊢natrec-at (⊢G2 {B = G1}) (⊢G2z {B = G1})
+       (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) →
+       Γ ⊢ R2' a' b'
+         ∷ subTy (single (W' a' b'))
+             (subTy (extS (single (R1' a' b')))
+               (subTy (extS (extS (single b')))
+                 (subTy (extS (extS (extS (single (gXx a' b'))))) G2)))
+⊢R2' {Γ} {a' = a'} {b' = b'} da db = ⊢-cast comm2 raw
+  where
+    raw = sub-lemma (sub-lemma (⊢natrec-at (⊢G2 {B = G1}) (⊢G2z {B = G1})
                                    (⊢gcdInn2 {B = G1})
                                    (Sub⊢-ext (Sub⊢-ext (⊢single (⊢gXx da db))))
                                    (⊢wk (⊢wk da)))
                        (Sub⊢-ext (⊢single db)))
             (⊢single (⊢R1' da db))
+
+    inner = subTy (extS (extS (extS (single (gXx a' b'))))) G2
+
+    -- ⚠ `B` is EXPLICIT in `subTy-comm` and must be given: it is the type
+    --   `⊢natrec-at` produced under its own `single n`.
+    comm2 = trans (cong (subTy (single (R1' a' b')))
+                        (subTy-comm (extS (single b')) inner
+                                    (renTm vs (renTm vs a'))))
+                  (subTy-comm (single (R1' a' b'))
+                              (subTy (extS (extS (single b'))) inner)
+                              (subTm (extS (single b')) (renTm vs (renTm vs a'))))
 
 ------------------------------------------------------------------------
 -- ⚠⚠ LAYER 4 — DRAFTED, BLOCKED ON SLOT TYPES.  Kept below, commented.
@@ -278,6 +300,20 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
 --
 -- ⚠ Layers 1-3 ARE green and committed; this is the last typing layer.
 ------------------------------------------------------------------------
+
+-- ★ TEST: the ZERO BRANCH chain alone.  `⊢G3z` sits at
+--     (((((Γ ▹ PairT) ▹ Nat) ▹ G1) ▹ Nat) ▹ G2)
+--   and `single` removes the slot nearest `Γ` first, so the values are
+--   gX(PairT), b'(Nat), R1'(G1), W'(Nat), R2'(G2), with DECREASING extS.
+⊢Z3 : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
+      (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) → _
+⊢Z3 da db =
+  sub-lemma (sub-lemma (sub-lemma (sub-lemma (sub-lemma (⊢G3z {B = G1} {C = G2})
+      (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single (⊢gXx da db)))))))
+      (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single db)))))
+      (Sub⊢-ext (Sub⊢-ext (⊢single (⊢R1' da db)))))
+      (Sub⊢-ext (⊢single (⊢W' da db))))
+      (⊢single (⊢R2' da db))
 
 {-
 ------------------------------------------------------------------------
