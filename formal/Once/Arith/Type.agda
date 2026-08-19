@@ -14,57 +14,49 @@ module Once.Arith.Type where
 
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Bool using (Bool; true; false)
-open import Data.Integer using (ℤ)
-open import Data.Float using (Float)
+open import Once.Word using (Carrier)
+open import Once.Float.Dyadic using (Dyadic)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
 -- Numeric types
 ------------------------------------------------------------------------
 
--- | NumType: Types supported by the arithmetic compiler
+-- | NumType: the KINDS of number the arithmetic compiler handles — NOT their
+-- widths.
 --
--- These are the base types for efficient register-based computation.
--- Integer types are signed; unsigned variants could be added later.
+-- This used to read `I8 | I16 | I32 | I64 | F32 | F64`, i.e. the width lived in
+-- the type. That is the design D054 (for `Int`) and D112 (for `Float`) both
+-- REJECTED, and D112 names it explicitly: putting the width in the type
+-- "changes the surface language and makes users pick". The width is a property
+-- of the TARGET — `norm` applies it for integers, the target's `FloatFormat`
+-- for floats.
 --
+-- The six width-carrying constructors were also, measured 2026-08-19, NEVER
+-- USED: not one occurrence anywhere in the tree outside this module. They were
+-- a fossil of the rejected design, and they misled a reader into thinking the
+-- arith IR already had a float story. Deleting them is the honest state: the
+-- arith path is width-free, and always was.
 data NumType : Set where
-  I8   : NumType    -- 8-bit signed integer
-  I16  : NumType    -- 16-bit signed integer
-  I32  : NumType    -- 32-bit signed integer
-  I64  : NumType    -- 64-bit signed integer
-  F32  : NumType    -- 32-bit IEEE 754 float
-  F64  : NumType    -- 64-bit IEEE 754 float (double)
+  NInt   : NumType    -- the target's integer word
+  NFloat : NumType    -- the target's float
 
 ------------------------------------------------------------------------
 -- Type properties
 ------------------------------------------------------------------------
 
--- | Bit width of each numeric type
-bitwidth : NumType → ℕ
-bitwidth I8  = 8
-bitwidth I16 = 16
-bitwidth I32 = 32
-bitwidth I64 = 64
-bitwidth F32 = 32
-bitwidth F64 = 64
+-- `bitwidth` is DELETED with the width-carrying constructors: a `NumType` no
+-- longer knows a width, because the target owns it.
 
 -- | Whether the type is a floating-point type
 isFloat : NumType → Bool
-isFloat I8  = false
-isFloat I16 = false
-isFloat I32 = false
-isFloat I64 = false
-isFloat F32 = true
-isFloat F64 = true
+isFloat NInt   = false
+isFloat NFloat = true
 
 -- | Whether the type is an integer type
 isInteger : NumType → Bool
-isInteger I8  = true
-isInteger I16 = true
-isInteger I32 = true
-isInteger I64 = true
-isInteger F32 = false
-isInteger F64 = false
+isInteger NInt   = true
+isInteger NFloat = false
 
 ------------------------------------------------------------------------
 -- Register class (for code generation)
@@ -77,30 +69,23 @@ data RegClass : Set where
 
 -- | Determine register class from numeric type
 regClass : NumType → RegClass
-regClass I8  = GPR
-regClass I16 = GPR
-regClass I32 = GPR
-regClass I64 = GPR
-regClass F32 = XMM
-regClass F64 = XMM
+regClass NInt   = GPR
+regClass NFloat = XMM
 
 ------------------------------------------------------------------------
 -- Semantic interpretation
 ------------------------------------------------------------------------
 
--- | Interpretation of numeric types as Agda types
+-- | Interpretation of numeric kinds as Agda types.
 --
--- For now, we use ℤ for all integer types and Float for all float types.
--- A more precise model would use bounded integers (e.g., Int8, Int16, etc.)
--- but Agda's standard library doesn't provide these directly.
---
+-- `Carrier` and `Dyadic`, NOT `ℤ` and Agda's builtin `Float`. The old reading
+-- was the third fossil in this module: an Agda `Float` denotation is exactly
+-- what D112 removed everywhere else, because it bakes the widest target's
+-- format into the meaning of a value. Both carriers here are WIDTH-FREE, and
+-- the target applies its own width.
 ⟦_⟧N : NumType → Set
-⟦ I8  ⟧N = ℤ
-⟦ I16 ⟧N = ℤ
-⟦ I32 ⟧N = ℤ
-⟦ I64 ⟧N = ℤ
-⟦ F32 ⟧N = Float
-⟦ F64 ⟧N = Float
+⟦ NInt   ⟧N = Carrier
+⟦ NFloat ⟧N = Dyadic
 
 ------------------------------------------------------------------------
 -- Type equality (decidable)
@@ -111,18 +96,10 @@ regClass F64 = XMM
 -- Needed for type checking and register allocation.
 --
 data _≟N_ : NumType → NumType → Set where
-  refl-I8  : I8  ≟N I8
-  refl-I16 : I16 ≟N I16
-  refl-I32 : I32 ≟N I32
-  refl-I64 : I64 ≟N I64
-  refl-F32 : F32 ≟N F32
-  refl-F64 : F64 ≟N F64
+  refl-NInt   : NInt   ≟N NInt
+  refl-NFloat : NFloat ≟N NFloat
 
 -- | Type equality to propositional equality
 ≟N-to-≡ : ∀ {τ₁ τ₂} → τ₁ ≟N τ₂ → τ₁ ≡ τ₂
-≟N-to-≡ refl-I8  = refl
-≟N-to-≡ refl-I16 = refl
-≟N-to-≡ refl-I32 = refl
-≟N-to-≡ refl-I64 = refl
-≟N-to-≡ refl-F32 = refl
-≟N-to-≡ refl-F64 = refl
+≟N-to-≡ refl-NInt   = refl
+≟N-to-≡ refl-NFloat = refl
