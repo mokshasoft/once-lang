@@ -179,3 +179,62 @@ the difference between a theorem and a vacuous one, and this repo already has a
 post-mortem on two lemmas that were `--safe`, hole-free, green and vacuous.
 Every propositional fact added widens what can be stated at variables; every
 `⟶*`-only fact silently narrows it.
+
+## The WF libraries do not insulate their clients — every OOM is at a use site
+
+**Measured across 2026-08-18/19, not inferred.** Every OOM this session landed
+in an `Examples` module instantiating a library, never in a library:
+
+| where | |
+|---|---|
+| `irrAt` (`…GcdRec`) | OOM with ~9GB headroom |
+| `gcd-gt-eq` as one term | 75 min, never finished |
+| `⊢Fnr` (`…GcdLeMid`) | OOM twice — 2m04s as one term, 1m50s split into 5 `Def`s |
+| `…LibAmrec` | ~53s **green** |
+| `…LibNatrec` | seconds |
+
+### The mechanism, isolated by `…ExamplesAbsProbe`
+
+Same `irrSplit` rung, varying only what is held abstract as a module parameter:
+
+    stp        ext          total    marginal
+    ABSTRACT   ABSTRACT      5.4s    —
+    gcdStp     ABSTRACT     17.5s   12.1s
+    gcdStp     gcdStepExt   15.3s    9.9s
+
+⇒ the cost is the **concrete step term, in the TYPE**. `irrT` mentions
+`auxAt`, which mentions `auxS x`, which carries `stp`. `⊢Fnr`'s type is five
+nested `subTy`s over `G3`, and `G3` carries the same material.
+
+### Why this is an ABSTRACTION problem and not just "big proofs"
+
+`AmTΠ` *is* parametrised over `stp` — that part is right, and it is why the
+library itself compiles. But its exported **types mention the parameter**, so
+the parametrisation does not insulate the client: a use site pays
+proportionally to the step term at **every mention**, and an assembly has many.
+
+⚠ By this project's own stated priority — *libraries may be slow, use sites must
+be simple and fast* — the WF libraries currently FAIL, because the cost lands
+exactly where it was not supposed to.
+
+### The remedy is already demonstrated — `irr-at`
+
+`irrAt` resisted NINE fixes. What worked needed BOTH halves at once:
+
+1. **Do the elimination inside the parametrised module**, where `stp` and `ext`
+   are still variables. (5.8× on the rung.)
+2. **Return `Prv`, never a raw `⊢` judgement.** A type naming the witness —
+   `Δ ⊢ app (prvTm (irr-ind ext …)) n₂ ∷ …` — forces the whole assembly just to
+   STATE it, and kills `…LibAmrec` outright.
+
+Generalised: **a type that names a witness pays for that witness at every
+mention; `Prv` exists to prevent exactly that.**
+
+### The audit
+
+1. For each WF library export, ask: does its TYPE mention `stp` (directly, or
+   via `auxAt`/`G3`/`irrT`)? If so, the client pays per mention.
+2. Where it does, can the work move inside the parametrised module and export a
+   `Prv`-wrapped (or otherwise witness-free) result?
+3. `⊢Fnr` / the eq-4 assembly is the live instance: structurally correct,
+   OOMs, and the first thing to try is `AbsProbe`'s abstract-then-instantiate.
