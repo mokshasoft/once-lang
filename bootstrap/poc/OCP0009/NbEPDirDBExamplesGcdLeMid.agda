@@ -29,12 +29,15 @@ module poc.OCP0009.NbEPDirDBExamplesGcdLeMid where
 
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTm; RTy; Nat; pair; nsuc; nzero; natrec; app
-        ; subTm; subTy; extS; renTm; vs; var; vz; _∘ₛ_; subTy-subTy; subTy-cong; Var; Sub )
+        ; subTm; subTy; extS; renTm; vs; var; vz; _∘ₛ_; subTy-subTy; subTy-cong; Var; Sub
+        ; Π; El; ⌜Nat⌝ )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶*_; _⟶_; β; βfst; βsnd; ξ-appˡ; natrec-suc; natrec-zero; single )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-appˡ; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm )
+open import poc.OCP0009.NbEPDirDBLibAmrec using ( aIHTat-sub )
+open import poc.OCP0009.NbEPDirDBExamplesGcdStep using ( gcdIH; msr )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ⌊_⌋; _⊢_∷_; _⊢ty_; _▹_; ⊢natrec; ⊢pair; ⊢nsuc; ⊢var; here; there; ty-Nat )
 open import poc.OCP0009.NbEPDirDBSubj
@@ -566,3 +569,24 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
 --   already proved.  (D) is the right END STATE but should not be started
 --   before eq 4 works at all.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ★★★ OPTION B, ATTEMPT 2 — the per-level peel, from an EXISTING lemma.
+--
+-- `gcdG μ = Π (gcdIH μ) (El ⌜Nat⌝)` and `gcdIH μ = aIHTat PairT ⌜Nat⌝ msr μ`.
+-- `aIHTat-sub` ALREADY gives the naturality:
+--
+--   subTy σ (aIHTat A cM m μ) ≡ aIHTat (subTy σ A) (subTm (extS σ) cM)
+--                                      (subTm (extS σ) m) (subTm σ μ)
+--
+-- and `PairT`/`⌜Nat⌝` are closed while `msr` mentions only `vz`, which
+-- `extS σ` fixes — so all three collapse and only `μ` moves.
+--
+-- ⇒ ONE LEVEL of the peel is this lemma; the motive's five levels are five
+--   applications.  ★ REUSABLE: `gcdG-sub` belongs beside `gcdG` in
+--   `…GcdStep`; its CONTENT is `aIHTat-sub`, which is already general.
+------------------------------------------------------------------------
+
+gcdG-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (μ : RTm Γ) →
+           subTy σ (gcdG μ) ≡ gcdG (subTm σ μ)
+gcdG-sub {σ = σ} μ = cong (λ T → Π T (El ⌜Nat⌝)) (aIHTat-sub PairT ⌜Nat⌝ msr μ)
