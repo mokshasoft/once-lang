@@ -45,7 +45,8 @@ open import poc.OCP0009.NbEPDirDBSubj
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBLibWk using ( nrs-w; w; sub-w; pw1; pw2; pw3 )
+open import poc.OCP0009.NbEPDirDBLibWk
+  using ( nrs-w; w; sub-w; pw1; pw2; pw3; pw4 )
 open import poc.OCP0009.NbEPDirDBLibNatrec
   using ( na-z; na-s; ⊢natrec-at; ⊢natrec-var; ⊢natrec-var-push
         ; ⊢natrec-var-tr; Sub⊢-∘ )
@@ -704,6 +705,37 @@ module _ {Γ : Cx} (a' b' : RTm Γ) where
   Z3-small : subTy u4 (subTy u3 (subTy u2 (subTy u1 (subTy u0 (gcdG μz)))))
            ≡ gcdG (plusTm (nsuc (W' a' b')) (nsuc b'))
   Z3-small = trans Z3-collapse (cong gcdG μz-computes)
+
+  -- ★★ THE SUCCESSOR BRANCH — two `extS` deeper again (`⊢G3s` sits at 7
+  --    slots; `natrec` binds two in its successor branch).
+  v0 : Sub ((((((( Γ ∙) ∙) ∙) ∙) ∙) ∙) ∙) (((((( Γ ∙) ∙) ∙) ∙) ∙) ∙)
+  v0 = extS (extS (extS (extS (extS (extS (single (gXx a' b')))))))
+  v1 : Sub (((((( Γ ∙) ∙) ∙) ∙) ∙) ∙) ((((( Γ ∙) ∙) ∙) ∙) ∙)
+  v1 = extS (extS (extS (extS (extS (single b')))))
+  v2 : Sub ((((( Γ ∙) ∙) ∙) ∙) ∙) (((( Γ ∙) ∙) ∙) ∙)
+  v2 = extS (extS (extS (extS (single (R1' a' b')))))
+  v3 : Sub (((( Γ ∙) ∙) ∙) ∙) ((( Γ ∙) ∙) ∙)
+  v3 = extS (extS (extS (single (W' a' b'))))
+  v4 : Sub ((( Γ ∙) ∙) ∙) (( Γ ∙) ∙)
+  v4 = extS (extS (single (R2' a' b')))
+
+  μs : RTm ((((((( Γ ∙) ∙) ∙) ∙) ∙) ∙) ∙)
+  μs = plusTm (nsuc (var (vs (vs (vs vz)))))
+              (nsuc (var (vs (vs (vs (vs (vs vz)))))))
+
+  S3-collapse : subTy v4 (subTy v3 (subTy v2 (subTy v1 (subTy v0 (gcdG μs)))))
+              ≡ gcdG (subTm v4 (subTm v3 (subTm v2 (subTm v1 (subTm v0 μs)))))
+  S3-collapse =
+    trans (cong (λ T → subTy v4 (subTy v3 (subTy v2 (subTy v1 T))))
+                (gcdG-sub {σ = v0} μs))
+      (trans (cong (λ T → subTy v4 (subTy v3 (subTy v2 T)))
+                   (gcdG-sub {σ = v1} (subTm v0 μs)))
+        (trans (cong (λ T → subTy v4 (subTy v3 T))
+                     (gcdG-sub {σ = v2} (subTm v1 (subTm v0 μs))))
+          (trans (cong (subTy v4)
+                       (gcdG-sub {σ = v3} (subTm v2 (subTm v1 (subTm v0 μs)))))
+                 (gcdG-sub {σ = v4}
+                           (subTm v3 (subTm v2 (subTm v1 (subTm v0 μs))))))))
 
 ------------------------------------------------------------------------
 -- ★★★★★ THE ASSEMBLY, AT SMALL TYPES.

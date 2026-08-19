@@ -299,3 +299,12 @@ pw3 : {Γ' : Cx} {u : RTm Γ'} (t : RTm Γ') →
       subTm (extS (extS (extS (single u)))) (w (w (w (w t)))) ≡ w (w (w t))
 pw3 {u = u} t =
   trans (sub-w {σ = extS (extS (single u))} (w (w (w t)))) (cong w (pw2 {u = u} t))
+
+-- ★ one deeper again — the `natrec` SUCCESSOR branch sits two slots below
+--   the zero branch, so its parameter needs this depth.
+pw4 : {Γ' : Cx} {u : RTm Γ'} (t : RTm Γ') →
+      subTm (extS (extS (extS (extS (single u))))) (w (w (w (w (w t)))))
+    ≡ w (w (w (w t)))
+pw4 {u = u} t =
+  trans (sub-w {σ = extS (extS (extS (single u)))} (w (w (w (w t)))))
+        (cong w (pw3 {u = u} t))
