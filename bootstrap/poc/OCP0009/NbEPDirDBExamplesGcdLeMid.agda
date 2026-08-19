@@ -42,7 +42,7 @@ open import poc.OCP0009.NbEPDirDBLibPair using ( PairT )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( nrs-w )
-open import poc.OCP0009.NbEPDirDBExamplesGcdCert using ( na-z; na-s )
+open import poc.OCP0009.NbEPDirDBLibNatrec using ( na-z; na-s; ⊢natrec-at; Sub⊢-∘ )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( gcdStp; gcdBody; G1z; gcdInn1; G2z; gcdInn2; G3z; G3s
         ; PAIRᶻ; CERTᶻ; one; _⟫_; wkS3; wkS3e
