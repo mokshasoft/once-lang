@@ -51,6 +51,11 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBExamplesGcdStepExt where
 
+-- ★ re-exported: these live in `…LibNatrec` now, but callers (A1/A2)
+--   import them from here, so keep the name available.
+open import poc.OCP0009.NbEPDirDBLibNatrec
+  using ( ⊢natrec-var; Ren⊢-id ) public
+
 open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; cong₂; sym )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
@@ -173,8 +178,7 @@ red-β a ih = step (ξ-appˡ (β gcdBody a)) done
 ww : {Γ : Cx} (t : RTm Γ) → w (w t) ≡ renTm (λ v → vs (vs v)) t
 ww t = renren {ϑ = vs} {ρ = vs} {ρ' = λ v → vs (vs v)} (λ _ → refl) t
 
-Ren⊢-id : {Γ : Ctx} → Ren⊢ Γ Γ (λ v → v)
-Ren⊢-id {A = A} v = ∋-cast (sym (renTy-idR (λ _ → refl) A)) v
+-- (`Ren⊢-id` moved to `…LibNatrec` — general, not gcd-specific.)
 
 -- `(y : Pair) (q : μ y < μa) → ih₁ y q ≡ ih₂ y q`, INTERNALLY
 -- ⚠ indexed by a RAW context `Cx`, not a `Ctx`: it carries no typing
@@ -230,47 +234,7 @@ pwIntro {a = a} {ih₁ = ih₁} {ih₂ = ih₂} dμ pw =
 --   is `snd x`, and no substitution turns that into a variable.
 ------------------------------------------------------------------------
 
-module _ {Γ : Ctx} {M : RTy (⌊ Γ ⌋ ∙)} where
-
-  -- the motive, at the new variable — collapses to `M` itself
-  nv-at : subTy (single (var vz)) (renTy (extR vs) M) ≡ M
-  nv-at = trans (subrenTy br M) (renTy-idR (λ _ → refl) M)
-    where
-      br : ∀ v → single (var vz) (extR vs v) ≡ var v
-      br vz     = refl
-      br (vs u) = refl
-
-  -- the zero branch: `subTy` past the weakening
-  nv-z : subTy (single nzero) (renTy (extR vs) M)
-       ≡ renTy vs (subTy (single nzero) M)
-  nv-z = trans (subTy-renTy M) (trans (subTy-cong br M) (sym (renTy-subTy M)))
-    where
-      br : ∀ v → single nzero (extR vs v) ≡ renTm vs (single nzero v)
-      br vz     = refl
-      br (vs u) = refl
-
-  -- the successor branch: same commutation, one binder deeper
-  nv-s : subTy nrs (renTy (extR vs) M)
-       ≡ renTy (extR (extR vs)) (subTy nrs M)
-  nv-s = trans (subTy-renTy M) (trans (subTy-cong br M) (sym (renTy-subTy M)))
-    where
-      br : ∀ v → nrs (extR vs v) ≡ renTm (extR (extR vs)) (nrs v)
-      br vz     = refl
-      br (vs u) = refl
-
-⊢natrec-var :
-  {Γ : Ctx} {M : RTy (⌊ Γ ⌋ ∙)} {z : RTm ⌊ Γ ⌋} {s : RTm ((⌊ Γ ⌋ ∙) ∙)} →
-  (Γ ▹ Nat) ⊢ty M →
-  Γ ⊢ z ∷ subTy (single nzero) M →
-  ((Γ ▹ Nat) ▹ M) ⊢ s ∷ subTy nrs M →
-  (Γ ▹ Nat) ⊢ natrec (w z) (renTm (extR (extR vs)) s) (var vz) ∷ M
-⊢natrec-var {M = M} dM dz ds =
-  ⊢-cast nv-at
-    (⊢natrec (ren-ty dM (Ren⊢-ext wR-id))
-             (⊢-cast (sym nv-z) (⊢wk dz))
-             (⊢-cast (sym nv-s) (ren-lemma ds (Ren⊢-ext (Ren⊢-ext wR-id))))
-             (⊢var here))
-  where wR-id = wR Ren⊢-id
+-- (`nv-at`/`nv-z`/`nv-s`/`⊢natrec-var` moved to `…LibNatrec`.)
 
 ------------------------------------------------------------------------
 -- ★ APPLYING AN IH to its two arguments — two `⊢app`s and one peel.

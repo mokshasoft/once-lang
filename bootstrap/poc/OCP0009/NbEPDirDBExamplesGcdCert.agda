@@ -50,6 +50,8 @@ open import poc.OCP0009.NbEPDirDBLibArithMonus
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( subren; renren )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )
+open import poc.OCP0009.NbEPDirDBLibNatrec
+  using ( na-z; na-s; Sub⊢-∘; ⊢natrec-at; ⊢natrec-var ) public
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( recCert; gcd-gt-term; msr; ⊢msr
         ; G1; ⊢G1; G1z; ⊢G1z; gcdInn1; ⊢gcdInn1
@@ -71,51 +73,7 @@ open import poc.OCP0009.NbEPDirDBExamplesGcdStep
 --   `single nzero` resp. `nrs`, decided variable-by-variable.
 ------------------------------------------------------------------------
 
-module _ {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {M : RTy (⌊ Γ ⌋ ∙)} where
-
-  na-z : subTy (single nzero) (subTy (extS σ) M)
-       ≡ subTy σ (subTy (single nzero) M)
-  na-z = trans (subTy-subTy M) (trans (subTy-cong br M) (sym (subTy-subTy M)))
-    where
-      br : ∀ v → subTm (single nzero) (extS σ v) ≡ subTm σ (single nzero v)
-      br vz     = refl
-      br (vs u) = wk-single {v = nzero} (subTm σ (var u))
-
-  na-s : subTy nrs (subTy (extS σ) M)
-       ≡ subTy (extS (extS σ)) (subTy nrs M)
-  na-s = trans (subTy-subTy M) (trans (subTy-cong br M) (sym (subTy-subTy M)))
-    where
-      br : ∀ v → subTm nrs (extS σ v) ≡ subTm (extS (extS σ)) (nrs v)
-      br vz     = refl
-      br (vs u) =
-        trans (subren {σ = nrs} {ρ = vs} {ρ' = λ x → vs (vs x)}
-                      (λ _ → refl) (subTm σ (var u)))
-              (sym (renren {ϑ = vs} {ρ = vs} {ρ' = λ x → vs (vs x)}
-                           (λ _ → refl) (subTm σ (var u))))
-
--- ★ TYPED SUBSTITUTIONS COMPOSE.  ⚠ Also general, also missing from
---   `…Subj`.  One line: substitute the derivation `σ⊢` gives, then fuse the
---   two `subTy`s.  Needed because the reduction's scrutinees live three and
---   five slots deep, so their `Sub⊢`s are composites.
-Sub⊢-∘ : {Γ Δ Θ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {τ : Sub ⌊ Δ ⌋ ⌊ Θ ⌋} →
-         Sub⊢ Γ Δ σ → Sub⊢ Δ Θ τ → Sub⊢ Γ Θ (τ ∘ₛ σ)
-Sub⊢-∘ {σ = σ} {τ = τ} σ⊢ τ⊢ {A = A} v =
-  ⊢-cast (subTy-subTy A) (sub-lemma (σ⊢ v) τ⊢)
-
--- ★ …and the lemma itself.  Three lines; the two casts above are all of it.
-⊢natrec-at : {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {M : RTy (⌊ Γ ⌋ ∙)}
-             {z : RTm ⌊ Γ ⌋} {s : RTm ((⌊ Γ ⌋ ∙) ∙)} {n : RTm ⌊ Δ ⌋} →
-             (Γ ▹ Nat) ⊢ty M →
-             Γ ⊢ z ∷ subTy (single nzero) M →
-             ((Γ ▹ Nat) ▹ M) ⊢ s ∷ subTy nrs M →
-             Sub⊢ Γ Δ σ → Δ ⊢ n ∷ Nat →
-             Δ ⊢ natrec (subTm σ z) (subTm (extS (extS σ)) s) n
-               ∷ subTy (single n) (subTy (extS σ) M)
-⊢natrec-at dM dz ds σ⊢ dn =
-  ⊢natrec (sub-ty dM (Sub⊢-ext σ⊢))
-          (⊢-cast (sym na-z) (sub-lemma dz σ⊢))
-          (⊢-cast (sym na-s) (sub-lemma ds (Sub⊢-ext (Sub⊢-ext σ⊢))))
-          dn
+-- (`na-z`/`na-s`/`Sub⊢-∘`/`⊢natrec-at` moved to `…LibNatrec`.)
 
 ------------------------------------------------------------------------
 -- ★★ THE REDUCTION'S INTERMEDIATE SCRUTINEES, TYPED.
