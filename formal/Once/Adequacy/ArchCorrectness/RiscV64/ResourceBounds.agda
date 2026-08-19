@@ -262,7 +262,7 @@ open LitFits public
 -- image of a primitive has no stated bound, so the fact had to be borrowed.
 -- With the encoder arithmetic on a dyadic (P1/P2) the bound is a THEOREM —
 -- `encode` is `exp * 2 ^ sig-bits + sig`, whose parts are residues, so it
--- lands below `2 ^ (exp-bits + sig-bits)` = 2^63, and the register holds
+-- lands below `2 ^ (1 + exp-bits + sig-bits)` = 2^63, and the register holds
 -- 2^64. The premises are inherited from the family's shape and none of
 -- them is used: the bound holds for EVERY dyadic, not merely the reachable
 -- ones, which is the difference between a discharged residual and a
@@ -277,6 +277,5 @@ float-fits :
   → FlatMachine.fetch {rv64-frame-semantics} prog
       (FlatMachine.fpc {rv64-frame-semantics} fs) ≡ just (instr-load-const fits-float v)
   → (encode binary64) v < R.W.modulus
-float-fits _ _ _ v _ _ _ =
-  <-≤-trans (encode-fits binary64 v) (^-monoʳ-≤ 2 (n≤1+n 63))
+float-fits _ _ _ v _ _ _ = encode-fits binary64 v
 

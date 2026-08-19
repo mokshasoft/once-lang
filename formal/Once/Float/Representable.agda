@@ -36,6 +36,10 @@ module Once.Float.Representable where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; _≤_; _<_; s≤s; z≤n)
 open import Data.Nat.Properties using (_≟_; _≤?_; m^n≢0; ≡-irrelevant; ≤-irrelevant)
+open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
+open import Axiom.UniquenessOfIdentityProofs using (module Decidable⇒UIP)
+open import Data.Integer.Properties using () renaming (_≟_ to _≟ℤ_)
+
 open import Data.Nat.DivMod using (_/_)
 open import Data.List using (List; []; _∷_)
 open import Data.List.Relation.Unary.All using (All; all?; []; _∷_)
@@ -51,6 +55,12 @@ open import Data.Nat.DivMod using (m*n/n≡m)
 open import Once.Float.Dyadic
   using (Dyadic; _/2^_; sig; shift; bitLen;
          FloatFormat; sig-bits; exp-bits; bias; binary32; binary64)
+
+-- ℤ has decidable equality, hence UIP — same derivation `Data.Nat.Properties`
+-- uses for ℕ. Needed because `ExactDecimal`'s non-negativity field is a ℤ
+-- equation, and `Accepted` must stay a proposition.
+ℤ-irrelevant : ∀ {x y : ℤ} (p q : x ≡ y) → p ≡ q
+ℤ-irrelevant = Decidable⇒UIP.≡-irrelevant _≟ℤ_
 
 
 ------------------------------------------------------------------------
@@ -82,7 +92,13 @@ record ExactDecimal (i f l : ℕ) (d : Dyadic) : Set where
   constructor exact
   field
     shift-is   : shift d ≡ l
-    sig-scaled : sig d * (5 ^ l) ≡ i * (10 ^ l) + f
+    -- Stated on the MAGNITUDE, so the arithmetic stays in ℕ where the
+    -- division lemmas live…
+    sig-scaled : ∣ sig d ∣ * (5 ^ l) ≡ i * (10 ^ l) + f
+    -- …with non-negativity said explicitly rather than assumed: a decimal
+    -- literal has no sign (the lexer never produces one), and `- 1.5` is
+    -- negation applied to `1.5`, not a negative literal.
+    sig-pos    : sig d ≡ + ∣ sig d ∣
 
 open ExactDecimal public
 
@@ -97,14 +113,14 @@ open ExactDecimal public
 ------------------------------------------------------------------------
 
 storedExp : FloatFormat → Dyadic → ℕ
-storedExp F d = (bias F + (bitLen (sig d) ∸ 1)) ∸ shift d
+storedExp F d = (bias F + (bitLen ∣ sig d ∣ ∸ 1)) ∸ shift d
 
 record RepresentableAt (F : FloatFormat) (d : Dyadic) : Set where
   constructor representable
   field
     -- The significand fits: an `L`-bit significand needs `L − 1` fraction bits
     -- after the implicit leading 1.
-    mant-fits : bitLen (sig d) ≤ suc (sig-bits F)
+    mant-fits : bitLen ∣ sig d ∣ ≤ suc (sig-bits F)
     -- …and the exponent is a NORMAL one. `1 ≤` excludes the zero/subnormal
     -- code — which is also what rules out the `∸` having clamped, since a
     -- clamped `storedExp` is 0.
@@ -155,7 +171,7 @@ candidate i f l = ((i * (10 ^ l)) + f) / (5 ^ l)
 
 -- Every format in `supportedFormats`, decided.
 representableAt? : (F : FloatFormat) (d : Dyadic) → Dec (RepresentableAt F d)
-representableAt? F d with bitLen (sig d) ≤? suc (sig-bits F)
+representableAt? F d with bitLen ∣ sig d ∣ ≤? suc (sig-bits F)
 ... | no ¬m = no λ r → ¬m (mant-fits r)
 ... | yes m with 1 ≤? storedExp F d
 ...   | no ¬lo = no λ r → ¬lo (exp-lo r)
@@ -175,17 +191,17 @@ representableAll? d = all? (λ F → representableAt? F d) supportedFormats
 -- shape the elaborator uses for its own dispatches.
 accept-aux : (i f l m : ℕ)
            → Dec ((m * (5 ^ l)) ≡ ((i * (10 ^ l)) + f))
-           → Dec (RepresentableAll (m /2^ l))
+           → Dec (RepresentableAll ((+ m) /2^ l))
            → Maybe (Σ[ d ∈ Dyadic ] Accepted i f l d)
 accept-aux i f l m (no  _)  _        = nothing
 accept-aux i f l m (yes _)  (no  _)  = nothing
-accept-aux i f l m (yes eq) (yes r)  = just ((m /2^ l) , accepted (exact refl eq) r)
+accept-aux i f l m (yes eq) (yes r)  = just (((+ m) /2^ l) , accepted (exact refl eq refl) r)
 
 accept? : (i f l : ℕ) → Maybe (Σ[ d ∈ Dyadic ] Accepted i f l d)
 accept? i f l =
   accept-aux i f l (candidate i f l)
     ((candidate i f l * (5 ^ l)) ≟ ((i * (10 ^ l)) + f))
-    (representableAll? (candidate i f l /2^ l))
+    (representableAll? ((+ candidate i f l) /2^ l))
 
 
 ------------------------------------------------------------------------
@@ -201,13 +217,13 @@ accept? i f l =
 -- was exact (`sig d · 5 ^ l = i · 10 ^ l + f`), so the division cancels.
 ------------------------------------------------------------------------
 
-candidate-recovers : ∀ {i f l d} → ExactDecimal i f l d → candidate i f l ≡ sig d
+candidate-recovers : ∀ {i f l d} → ExactDecimal i f l d → candidate i f l ≡ ∣ sig d ∣
 candidate-recovers {i} {f} {l} {d} ex =
   begin
     candidate i f l                        ≡⟨⟩
     ((i * (10 ^ l)) + f) / (5 ^ l)         ≡⟨ cong (_/ (5 ^ l)) (sym (sig-scaled ex)) ⟩
-    (sig d * (5 ^ l)) / (5 ^ l)            ≡⟨ m*n/n≡m (sig d) (5 ^ l) ⟩
-    sig d                                  ∎
+    (∣ sig d ∣ * (5 ^ l)) / (5 ^ l)        ≡⟨ m*n/n≡m ∣ sig d ∣ (5 ^ l) ⟩
+    ∣ sig d ∣                              ∎
   where
     open ≡-Reasoning
     instance _ = m^n≢0 5 l
@@ -232,8 +248,8 @@ dyadic-η (_ /2^ _) = refl
 ------------------------------------------------------------------------
 
 exact-irrelevant : ∀ {i f l d} (p q : ExactDecimal i f l d) → p ≡ q
-exact-irrelevant (exact s₁ e₁) (exact s₂ e₂)
-  rewrite ≡-irrelevant s₁ s₂ | ≡-irrelevant e₁ e₂ = refl
+exact-irrelevant (exact s₁ e₁ p₁) (exact s₂ e₂ p₂)
+  rewrite ≡-irrelevant s₁ s₂ | ≡-irrelevant e₁ e₂ | ℤ-irrelevant p₁ p₂ = refl
 
 representableAt-irrelevant : ∀ {F d} (p q : RepresentableAt F d) → p ≡ q
 representableAt-irrelevant (representable m₁ lo₁ hi₁) (representable m₂ lo₂ hi₂)
@@ -251,13 +267,18 @@ accepted-irrelevant (accepted e₁ r₁) (accepted e₂ r₂)
 
 -- …so the decider agrees with THE GIVEN witness, not merely with some witness.
 accept?-complete : ∀ {i f l d} (ok : Accepted i f l d) → accept? i f l ≡ just (d , ok)
-accept?-complete {i} {f} {l} {m /2^ e} ok with shift-is (is-exact ok)
+accept?-complete {i} {f} {l} {(+ m) /2^ e} ok with shift-is (is-exact ok)
 -- Matching the shift equation (rather than rewriting by it) unifies `e` with
 -- `l` DEFINITIONALLY, which the goal needs: rewriting leaves `ok` at the old
 -- type and the two sides no longer agree.
 ... | refl
   rewrite candidate-recovers (is-exact ok)
-  with (m * (5 ^ l)) ≟ ((i * (10 ^ l)) + f) | representableAll? (m /2^ l)
+  with (m * (5 ^ l)) ≟ ((i * (10 ^ l)) + f) | representableAll? ((+ m) /2^ l)
 ... | no ¬eq | _     = ⊥-elim (¬eq (sig-scaled (is-exact ok)))
 ... | yes _  | no ¬r = ⊥-elim (¬r (fits-all ok))
-... | yes _  | yes _ = cong (λ z → just ((m /2^ l) , z)) (accepted-irrelevant _ ok)
+... | yes _  | yes _ = cong (λ z → just (((+ m) /2^ l) , z)) (accepted-irrelevant _ ok)
+-- A NEGATIVE significand cannot satisfy `ExactDecimal`: its non-negativity
+-- field would be `-[1+ n ] ≡ + (suc n)`, a constructor clash. Decimal literals
+-- have no sign — `- 1.5` is negation applied to `1.5`.
+accept?-complete { d = -[1+ _ ] /2^ _ } ok with sig-pos (is-exact ok)
+... | ()
