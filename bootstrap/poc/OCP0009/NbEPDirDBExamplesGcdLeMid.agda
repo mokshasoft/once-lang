@@ -644,3 +644,13 @@ module _ {Γ : Cx} (a' b' : RTm Γ) where
       sideA = pw1 (W' a' b')
       sideB = trans (cong (λ x → subTm t4 (subTm t3 x)) (pw3 b'))
                     (trans (cong (subTm t4) (pw2 b')) (pw1 b'))
+
+  -- ★★★★★ …AND THE MOTIVE, STATED SMALL.
+  --
+  --   `M3-collapse` then `μ-computes` rewrite the five-level substituted
+  --   motive to `gcdG (plusTm (nsuc (w W')) (nsuc (w b')))`.  The
+  --   DERIVATION is unchanged; only its STATED type shrinks — which is
+  --   the whole point of option (B).
+  M3-small : subTy t4 (subTy t3 (subTy t2 (subTy t1 (subTy t0 G3))))
+           ≡ gcdG (plusTm (nsuc (w (W' a' b'))) (nsuc (w b')))
+  M3-small = trans M3-collapse (cong gcdG μ-computes)
