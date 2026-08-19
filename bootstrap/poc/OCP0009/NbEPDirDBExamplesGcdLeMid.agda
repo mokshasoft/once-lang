@@ -685,21 +685,25 @@ module _ {Γ : Cx} (a' b' : RTm Γ) where
                  (gcdG-sub {σ = u4}
                            (subTm u3 (subTm u2 (subTm u1 (subTm u0 μz))))))))
 
-  -- ⚠ `μz`'s PEEL IS NOT YET RIGHT.  Tried the motive's shape one level
-  --   shallower (`pw2`/`pw1`/`wk-single` on the `b'` side, `refl` on the
-  --   other).  The `b'` side is fine; the OTHER side is not:
-  --
-  --     subTm u4 (… (subTm u0 (var (vs vz))))  !=  W' a' b'
-  --
-  --   and Agda shows the left computing to an `nsuc`-headed term while
-  --   `W'` computes to a `fst`-headed one.  ⇒ my reading of WHICH SLOT
-  --   `μz`'s first argument occupies is off: at branch depth the slots are
-  --   PairT(vs⁴), n'(vs³), G1(vs²), k'(vs), G2(vz), and the substituted
-  --   `k'` is evidently not `W'`.
-  --
-  -- ⇒ NEXT: wrong-target probe on that side to read what it actually is,
-  --   then `μz-computes` and `Z3-small` follow the motive's template.
-  --   ⚠ Do NOT guess the slot again — the depths here have been wrong twice.
+  -- ★ `μz` collapses too.  PROBED, not guessed — tracing each slot through
+  --   the stack:
+  --     `var (vs vz)`  (the `k'` slot) passes `u0`–`u2` UNTOUCHED (each
+  --        `extSᵏ σ` maps it to itself), `u3` yields `w W'`, `u4` cancels
+  --        that by `wk-single`.                       ⇒ one `wk-single`
+  --     `var (vs³ vz)` (the `n'` slot) survives `u0`, becomes `w³ b'` at
+  --        `u1`, then `pw2`/`pw1`/`wk-single`.        ⇒ three peels
+  --   The asymmetry is the same one the motive had, one level shallower.
+  μz-computes : subTm u4 (subTm u3 (subTm u2 (subTm u1 (subTm u0 μz))))
+              ≡ plusTm (nsuc (W' a' b')) (nsuc b')
+  μz-computes = cong₂ (λ x y → plusTm (nsuc x) (nsuc y)) zA zB
+    where
+      zA = wk-single (W' a' b')
+      zB = trans (cong (λ x → subTm u4 (subTm u3 x)) (pw2 b'))
+                 (trans (cong (subTm u4) (pw1 b')) (wk-single b'))
+
+  Z3-small : subTy u4 (subTy u3 (subTy u2 (subTy u1 (subTy u0 (gcdG μz)))))
+           ≡ gcdG (plusTm (nsuc (W' a' b')) (nsuc b'))
+  Z3-small = trans Z3-collapse (cong gcdG μz-computes)
 
 ------------------------------------------------------------------------
 -- ★★★★★ THE ASSEMBLY, AT SMALL TYPES.
