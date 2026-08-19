@@ -438,3 +438,25 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
 -}
 
 -}
+
+------------------------------------------------------------------------
+-- ★ WHAT THE MOTIVE ACTUALLY LOOKS LIKE — probed 2026-08-19.
+--
+-- Printing `⊢M3`'s type (wrong-target probe) shows the five substitutions
+-- do NOT collapse on their own.  They sit as five nested `subTy` layers
+-- around `gcdIH (plusTm …)` — and also around `El ⌜Nat⌝`, and even in the
+-- CONTEXT, which prints as `Γ ▹ subTy σ⁵ Nat` rather than `Γ ▹ Nat`.
+--
+-- ⚠ CAVEAT, and it matters: Agda's error messages show UNNORMALISED forms,
+--   so this does not prove the ELABORATED types are that large.  `subTy σ`
+--   on a closed type (`Nat`, `El ⌜Nat⌝`) should compute away.  The print is
+--   evidence about the SYNTACTIC form the derivations carry, not about
+--   what the checker holds.
+--
+-- ⇒ THE CHEAP TEST NOT YET RUN: state `⊢M3`/`⊢Z3`/`⊢S3` with EXPLICIT
+--   REDUCED types instead of `_`.  If `subTy σ⁵ Nat ≡ Nat` definitionally,
+--   the contexts collapse and the stated types are small — and Agda checks
+--   against the small form rather than inferring the layered one.  That is
+--   one line per definition and would discriminate "the types are big" from
+--   "the types are only big as WRITTEN".
+------------------------------------------------------------------------
