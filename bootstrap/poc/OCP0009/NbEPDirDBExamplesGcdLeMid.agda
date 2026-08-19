@@ -737,6 +737,25 @@ module _ {Γ : Cx} (a' b' : RTm Γ) where
                  (gcdG-sub {σ = v4}
                            (subTm v3 (subTm v2 (subTm v1 (subTm v0 μs))))))))
 
+  -- ★ `μs` collapses.  TRACED slot by slot (the module is 7m/iteration, so
+  --   derived rather than probed — the trace is short enough to follow):
+  --     `var (vs³ vz)` (k'): `v0`/`v1`/`v2` pass it through (each `extSᵏ σ`
+  --        with k>3 maps it to itself), `v3 = extS³ (single W')` yields
+  --        `w³ W'`, `v4 = extS² (single R2')` peels one ⇒ ONE `pw2`.
+  --     `var (vs⁵ vz)` (n'): `v0` passes, `v1 = extS⁵ (single b')` yields
+  --        `w⁵ b'`, then `pw4`/`pw3`/`pw2`   ⇒ THREE peels.
+  μs-computes : subTm v4 (subTm v3 (subTm v2 (subTm v1 (subTm v0 μs))))
+              ≡ plusTm (nsuc (w (w (W' a' b')))) (nsuc (w (w b')))
+  μs-computes = cong₂ (λ x y → plusTm (nsuc x) (nsuc y)) sA sB
+    where
+      sA = pw2 (W' a' b')
+      sB = trans (cong (λ x → subTm v4 (subTm v3 x)) (pw4 b'))
+                 (trans (cong (subTm v4) (pw3 b')) (pw2 b'))
+
+  S3-small : subTy v4 (subTy v3 (subTy v2 (subTy v1 (subTy v0 (gcdG μs)))))
+           ≡ gcdG (plusTm (nsuc (w (w (W' a' b')))) (nsuc (w (w b'))))
+  S3-small = trans S3-collapse (cong gcdG μs-computes)
+
 ------------------------------------------------------------------------
 -- ★★★★★ THE ASSEMBLY, AT SMALL TYPES.
 --
