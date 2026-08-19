@@ -668,3 +668,20 @@ module _ {Γ : Cx} (a' b' : RTm Γ) where
        (Γ ▹ Nat) ⊢ty gcdG (plusTm (nsuc (w (W' a' b'))) (nsuc (w b')))
 ⊢M3s {Γ} {a'} {b'} da db =
   subst (λ T → (Γ ▹ Nat) ⊢ty T) (M3-small a' b') (⊢M3 da db)
+
+-- ★ THE BRANCHES, same shape.  `subTy (single nzero)` and `subTy nrs` of the
+--   small motive collapse through `gcdG-sub` — only `gcdG`'s PARAMETER
+--   moves — so each is one `gcdG-sub` and one `subst`.
+
+Zs-collapse : {Γ : Cx} (a' b' : RTm Γ) →
+              subTy (single nzero) (gcdG (plusTm (nsuc (w (W' a' b'))) (nsuc (w b'))))
+            ≡ gcdG (subTm (single nzero)
+                     (plusTm (nsuc (w (W' a' b'))) (nsuc (w b'))))
+Zs-collapse a' b' =
+  gcdG-sub {σ = single nzero} (plusTm (nsuc (w (W' a' b'))) (nsuc (w b')))
+
+Ss-collapse : {Γ : Cx} (a' b' : RTm Γ) →
+              subTy nrs (gcdG (plusTm (nsuc (w (W' a' b'))) (nsuc (w b'))))
+            ≡ gcdG (subTm nrs (plusTm (nsuc (w (W' a' b'))) (nsuc (w b'))))
+Ss-collapse a' b' =
+  gcdG-sub {σ = nrs} (plusTm (nsuc (w (W' a' b'))) (nsuc (w b')))
