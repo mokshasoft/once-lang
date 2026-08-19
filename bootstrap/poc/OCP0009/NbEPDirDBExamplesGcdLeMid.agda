@@ -37,7 +37,7 @@ open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-appˡ; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( aIHTat-sub )
-open import poc.OCP0009.NbEPDirDBExamplesGcdStep using ( gcdIH; msr )
+open import poc.OCP0009.NbEPDirDBExamplesGcdStep using ( gcdIH; msr; gcdG-sub )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ⌊_⌋; _⊢_∷_; _⊢ty_; _▹_; ⊢natrec; ⊢pair; ⊢nsuc; ⊢var; here; there; ty-Nat )
 open import poc.OCP0009.NbEPDirDBSubj
@@ -587,6 +587,66 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
 --   `…GcdStep`; its CONTENT is `aIHTat-sub`, which is already general.
 ------------------------------------------------------------------------
 
-gcdG-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (μ : RTm Γ) →
-           subTy σ (gcdG μ) ≡ gcdG (subTm σ μ)
-gcdG-sub {σ = σ} μ = cong (λ T → Π T (El ⌜Nat⌝)) (aIHTat-sub PairT ⌜Nat⌝ msr μ)
+-- (`gcdG-sub` moved to `…GcdStep`, beside `gcdG`.)
+
+------------------------------------------------------------------------
+-- ★★★ COLLAPSING THE MOTIVE — five `gcdG-sub`s.
+--
+-- Each level rewrites `subTy σ (gcdG μ)` to `gcdG (subTm σ μ)`, walking the
+-- substitutions inward until only `μ` carries them.  `μ` is then a `plusTm`
+-- of two variables the stack fills, and those DO compute.
+--
+-- ⚠ The substitutions are NAMED — writing them inline is five levels of
+--   nesting and the parens do not survive hand-counting.
+------------------------------------------------------------------------
+
+module _ {Γ : Cx} (a' b' : RTm Γ) where
+
+  t0 : Sub ((((((Γ ∙) ∙) ∙) ∙) ∙) ∙) (((((Γ ∙) ∙) ∙) ∙) ∙)
+  t0 = extS (extS (extS (extS (extS (single (gXx a' b'))))))
+  t1 : Sub (((((Γ ∙) ∙) ∙) ∙) ∙) ((((Γ ∙) ∙) ∙) ∙)
+  t1 = extS (extS (extS (extS (single b'))))
+  t2 : Sub ((((Γ ∙) ∙) ∙) ∙) (((Γ ∙) ∙) ∙)
+  t2 = extS (extS (extS (single (R1' a' b'))))
+  t3 : Sub (((Γ ∙) ∙) ∙) ((Γ ∙) ∙)
+  t3 = extS (extS (single (W' a' b')))
+  t4 : Sub ((Γ ∙) ∙) (Γ ∙)
+  t4 = extS (single (R2' a' b'))
+
+  μ0 : RTm ((((((Γ ∙) ∙) ∙) ∙) ∙) ∙)
+  μ0 = plusTm (nsuc (var (vs (vs vz)))) (nsuc (var (vs (vs (vs (vs vz))))))
+
+  M3-collapse : subTy t4 (subTy t3 (subTy t2 (subTy t1 (subTy t0 G3))))
+              ≡ gcdG (subTm t4 (subTm t3 (subTm t2 (subTm t1 (subTm t0 μ0)))))
+  -- ⚠ σ PINNED on every call — `gcdG-sub`'s σ occurs only in its subject.
+  M3-collapse =
+    trans (cong (λ T → subTy t4 (subTy t3 (subTy t2 (subTy t1 T))))
+                (gcdG-sub {σ = t0} μ0))
+      (trans (cong (λ T → subTy t4 (subTy t3 (subTy t2 T)))
+                   (gcdG-sub {σ = t1} (subTm t0 μ0)))
+        (trans (cong (λ T → subTy t4 (subTy t3 T))
+                     (gcdG-sub {σ = t2} (subTm t1 (subTm t0 μ0))))
+          (trans (cong (subTy t4)
+                       (gcdG-sub {σ = t3} (subTm t2 (subTm t1 (subTm t0 μ0)))))
+                 (gcdG-sub {σ = t4}
+                           (subTm t3 (subTm t2 (subTm t1 (subTm t0 μ0))))))))
+
+  -- ⚠ …AND `μ` DOES NOT COMPUTE ALL THE WAY.  Tested with `refl`: the
+  --   substitutions cancel SOME weakenings but not all.  Agda reports
+  --
+  --     subTm t4 (subTm t3 (subTm t2 (w⁴ b')))  !=  w b'
+  --
+  --   so three substitutions must cancel three of four weakenings.  Each
+  --   step is `subTm (extSᵏ σ) (wᵏ⁺¹ t) ≡ wᵏ t` — `sub-w` down to the
+  --   `single`, then `wk-single`.  Mechanical, three steps per side.
+  --
+  -- ★ REUSABLE (standing ask): that step — "an `extS`-lifted substitution
+  --   cancels one weakening" — is general and has no gcd content.  It is
+  --   the `wkS2`/`wkS3`/`wkS3e` family generalised in the lifting depth;
+  --   those three exist only at the depths gcd happened to need.  A single
+  --   `k`-indexed lemma would replace all of them.
+  --
+  -- ⇒ NEXT: prove the two side peels (`W'` side and `b'` side), chain with
+  --   `M3-collapse`, and `⊢M3` can be stated at
+  --     `gcdG (plusTm (nsuc (w (W' a' b'))) (nsuc (w b')))`
+  --   — a SMALL type, which is what option (B) is for.
