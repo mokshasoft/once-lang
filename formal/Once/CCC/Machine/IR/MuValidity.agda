@@ -35,7 +35,7 @@ open import Once.CCC.Machine.Allocation hiding (AllocMode)
 -- Import semantic operations
 open import Once.Word using (Carrier)
 open import Once.Float.Dyadic using (Dyadic)
-open import Once.Semantics.Value Carrier Dyadic using (⟦μ⟧; ⟦ν⟧; ⟦_⟧F; sem-In; sem-Out; sem-CoIn; sem-CoOut)
+open import Once.Semantics.Value Carrier Carrier using (⟦μ⟧; ⟦ν⟧; ⟦_⟧F; sem-In; sem-Out; sem-CoIn; sem-CoOut)
 
 -- Import SigOpSem for Validity module
 open import Once.CCC.Eval using ()

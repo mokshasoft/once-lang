@@ -34,7 +34,7 @@ open import Once.SigOp.Info using (SigOpInfo; name)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Word using (Carrier)
 open import Once.Float.Dyadic using (Dyadic)
-import Once.Semantics.Value Carrier Dyadic as M
+import Once.Semantics.Value Carrier Carrier as M
 
 ------------------------------------------------------------------------
 -- Observable events.

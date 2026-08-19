@@ -43,7 +43,7 @@ import Once.IR as IR
 -- commutes with a carrier subst.  Match-to-refl.
 coerce-μ-in-subst : ∀ (G : Functor) {X X' : Set} (p : X ≡ X') (x : ⟦ G ⟧F X)
   → coerce-μ-in G X' (subst (λ Y → ⟦ G ⟧F Y) p x)
-    ≡ subst (λ Y → ⟦ translateF Carrier Dyadic G ⟧SF Y) p (coerce-μ-in G X x)
+    ≡ subst (λ Y → ⟦ translateF Carrier Carrier G ⟧SF Y) p (coerce-μ-in G X x)
 coerce-μ-in-subst G refl x = refl
 
 -- Split a diagonal subst `⟦H⟧SF(μS H)` into carrier-subst then functor-subst.

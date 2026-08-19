@@ -41,7 +41,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Word using (Carrier)
 open import Once.Float.Dyadic using (Dyadic)
-import Once.Semantics.Value Carrier Dyadic as M
+import Once.Semantics.Value Carrier Carrier as M
 -- (Core ℤ `as I` removed: semI deleted — `semM` (ℕ/Word) is the meaning.)
 
 ------------------------------------------------------------------------

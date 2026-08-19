@@ -25,7 +25,7 @@ open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Word using (Carrier)
 open import Once.Float.Dyadic using (Dyadic)
-open import Once.Semantics.Value Carrier Dyadic using (⟦_⟧F; ⟦μ⟧; sem-cata; sem-fmap;
+open import Once.Semantics.Value Carrier Carrier using (⟦_⟧F; ⟦μ⟧; sem-cata; sem-fmap;
   sem-Out; sem-In; sem-In-Out; sem-cata-compute)
 
 ------------------------------------------------------------------------

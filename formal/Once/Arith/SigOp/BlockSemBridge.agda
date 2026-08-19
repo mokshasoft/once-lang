@@ -39,7 +39,7 @@ open Sem 64 using (eval-arith-W)
 import Once.Word as OnceWord
 module W = OnceWord.Word64
 open import Once.Float.Dyadic using (Dyadic)
-import Once.Semantics.Value OnceWord.Carrier Dyadic as M
+import Once.Semantics.Value OnceWord.Carrier OnceWord.Carrier as M
 open import Once.Arith.SigOp.Block using (block-semM; projectM; maybe-zeroM)
 
 ------------------------------------------------------------------------

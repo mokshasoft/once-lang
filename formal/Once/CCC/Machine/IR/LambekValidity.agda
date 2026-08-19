@@ -34,7 +34,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.IR
-open import Once.CCC.Eval using (eval)
+import Once.CCC.Eval as Ev
+import Once.Semantics.Machine as EvV
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 open import Once.Type using (Type; Functor; μ-type; ν-type; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF; WellFormedF-irrelevant)
@@ -43,7 +44,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subs
 -- Semantic operations
 open import Once.Word using (Carrier)
 open import Once.Float.Dyadic using (Dyadic)
-open import Once.Semantics.Value Carrier Dyadic using (sem-In; sem-Out; sem-CoIn; sem-CoOut;
+open import Once.Semantics.Value Carrier Carrier using (sem-In; sem-Out; sem-CoIn; sem-CoOut;
                                           coerce-functor; coerce-functor⁻¹; sem-Out-In;
                                           sem-CoOut-CoIn; coerce-round-trip)
 
@@ -55,6 +56,13 @@ open import Once.Semantics.Value Carrier Dyadic using (sem-In; sem-Out; sem-CoIn
 ------------------------------------------------------------------------
 
 module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
+  -- Plan 0.73 (D113): `eval` is target-relative at `Float` — a float literal
+  -- has no format-free machine value. Inside a module already fixed to this
+  -- target's `FrameSemantics`, THE evaluator is the one at its float format,
+  -- so it is named once here and used unqualified below.
+  eval : ∀ {A B} → IR A B → EvV.⟦ A ⟧ᴵ → EvV.⟦ B ⟧ᴵ
+  eval = Ev.eval (FrameSemantics.float-format FS)
+
   open FrameSemantics FS
   open FrontierInvariant {FS}
 

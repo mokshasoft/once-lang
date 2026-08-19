@@ -47,8 +47,8 @@ open import Once.CCC.Label public using (LabelId; mkLabelId; owner; path; idx)
 -- info (name + semI + semM), not just the name. This unlocks per-name
 -- discharge of `ir-to-trace-correct-sigop` and per-(arch, name)
 -- discharge of `sigop-codegen-faithful`.
-open import Once.Type using (Type; Unit; Int; _*_; FitsInReg; fits-int; fits-in-reg?)
-open import Once.Semantics.Machine using (⟦_⟧)
+open import Once.Type using (Type; Unit; Int; Float; _*_; FitsInReg; fits-int; fits-float; fits-in-reg?)
+open import Once.Semantics.Machine using (⟦_⟧; LitPayload)
 open import Once.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
 
 private
@@ -75,6 +75,7 @@ open import Once.Memory.HeapAddress public
 -- D062: shared location types (Slot, ValueLocation/AtStack/AtDynamic), defined
 -- below the machine so the IR can import them without the machine. Re-exported.
 open import Once.CCC.Machine.Locations public
+open import Once.Float.Dyadic using (Dyadic; encode)
 
 -- Plan 0.14: the abstract-trace allocator instance lives in
 -- Once.Allocator.AbstractInstance. SMCore consumes it for the
@@ -203,6 +204,13 @@ data AbstractReg : Set where
 -- the only construct where the runtime needs to inspect a tag in
 -- memory — hence `SV-Tag`. See `plans/0.13.2-stored-value-type.md`
 -- for full rationale.
+--
+-- `SV-Lit`'s payload is `⟦ A ⟧` — the target's REPRESENTATION — at every type,
+-- including `Float` (D113). A `StoredValue` holds COMPUTED values, not only
+-- literals: a Pure SigOp's result is `SV-Lit fitB (semM si a)`, which is bits
+-- by construction and has no source syntax behind it. Source syntax appears
+-- exactly once, at `instr-load-const` (see `LitPayload` below), which is the
+-- instruction that MATERIALISES a literal — and it encodes as it executes.
 data StoredValue (FS : FrameSemantics) : Set where
   SV-Ptr  : ValueLocation FS → StoredValue FS
   SV-Tag  : ℕ → StoredValue FS
@@ -1142,7 +1150,7 @@ data AbstractInstr : Set where
   -- Int, etc.). CCC stays specific-primitive-type-agnostic; the
   -- per-arch backend knows specific register-fittable types because
   -- it has to emit specific machine instructions.
-  instr-load-const : ∀ {A : Type} → FitsInReg A → ⟦ A ⟧ → AbstractInstr
+  instr-load-const : ∀ {A : Type} (p : FitsInReg A) → LitPayload p → AbstractInstr
 
   -- Plan 0.2.4.2 Phase A: Load the address of a closure-body label
   -- into Output. The argument `n : ℕ` indexes into the parent
@@ -1625,6 +1633,18 @@ module AbstractExec {FS : FrameSemantics} where
   ...   | _        = exec-loop-run run n (loop-reanchor-loc s (proj₁ (run s alloc)))
                                          (loop-reanchor-alloc alloc (proj₂ (run s alloc)))
 
+  -- | MATERIALISE a literal: turn its source payload into the target's
+  -- representation (plan 0.73, D113).
+  --
+  -- An `Int` literal is already the machine value — the residue carrier is
+  -- width-free, so there is nothing to do. A `Float` literal is a dyadic, and
+  -- becomes bits only once a FORMAT is known, which is why the machine carries
+  -- the target's `float-format`. This is the one place source syntax turns
+  -- into bits; everything downstream of it, `SV-Lit` included, is bits.
+  lit-value : ∀ {A} (p : FitsInReg A) → LitPayload p → ⟦ A ⟧
+  lit-value fits-int   v = v
+  lit-value fits-float d = encode (FrameSemantics.float-format FS) d
+
   -- Plan 0.13.1: mutually recursive with exec-trace (case-on-tag
   -- dispatches into one of two sub-traces).
   exec-abstract : AbstractInstr → LocState FS → AllocState {FS} →
@@ -1794,7 +1814,7 @@ module AbstractExec {FS : FrameSemantics} where
   -- carried through to the cell so float vs int discrimination
   -- happens via pattern-matching on `SV-Lit isPrim v`.
   exec-abstract (instr-load-const isPrim v) s alloc =
-    record s { regs = writeReg (regs s) Output (SV-Lit isPrim v) } , alloc
+    record s { regs = writeReg (regs s) Output (SV-Lit isPrim (lit-value isPrim v)) } , alloc
 
   -- Plan 0.13.2: load a closure-body label's address into Output as
   -- `SV-Code n`. Replaces the encode-code-addr postulate.

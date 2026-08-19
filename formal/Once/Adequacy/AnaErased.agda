@@ -61,15 +61,15 @@ open import Once.Postulates using (extensionality)
 
 mutual
   sem-ana-anaS-bisim : ∀ {F : Functor} {A : Set} (coalg : A → ⟦ F ⟧F A) (a : A)
-    → sem-ana F coalg a ∼S anaS {translateF Carrier Dyadic F} (λ x → coerce-ν-in F A (coalg x)) a
+    → sem-ana F coalg a ∼S anaS {translateF Carrier Carrier F} (λ x → coerce-ν-in F A (coalg x)) a
   unfoldS-∼ (sem-ana-anaS-bisim {F} {A} coalg a) =
-    sem-ana-anaS-rel coalg (translateF Carrier Dyadic F) (coerce-ν-in F A (coalg a))
+    sem-ana-anaS-rel coalg (translateF Carrier Carrier F) (coerce-ν-in F A (coalg a))
 
   sem-ana-anaS-rel : ∀ {F : Functor} {A : Set} (coalg : A → ⟦ F ⟧F A)
                        (H : SFunctor) (x : ⟦ H ⟧SF A)
-    → ⟦ H ⟧SF-rel (_∼S_ {translateF Carrier Dyadic F})
+    → ⟦ H ⟧SF-rel (_∼S_ {translateF Carrier Carrier F})
         (sfmapSemAna F H coalg x)
-        (sfmapAna {translateF Carrier Dyadic F} H (λ y → coerce-ν-in F A (coalg y)) x)
+        (sfmapAna {translateF Carrier Carrier F} H (λ y → coerce-ν-in F A (coalg y)) x)
   sem-ana-anaS-rel coalg (SK _)      x        = refl
   sem-ana-anaS-rel coalg SId         x        = sem-ana-anaS-bisim coalg x
   sem-ana-anaS-rel coalg (H₁ S⊕ H₂) (inj₁ x) = sem-ana-anaS-rel coalg H₁ x
@@ -78,7 +78,7 @@ mutual
     sem-ana-anaS-rel coalg H₁ x , sem-ana-anaS-rel coalg H₂ y
 
 sem-ana-anaS : ∀ {F : Functor} {A : Set} (coalg : A → ⟦ F ⟧F A) (a : A)
-  → sem-ana F coalg a ≡ anaS {translateF Carrier Dyadic F} (λ x → coerce-ν-in F A (coalg x)) a
+  → sem-ana F coalg a ≡ anaS {translateF Carrier Carrier F} (λ x → coerce-ν-in F A (coalg x)) a
 sem-ana-anaS coalg a = bisimS-to-eq _ _ (sem-ana-anaS-bisim coalg a)
 
 ------------------------------------------------------------------------

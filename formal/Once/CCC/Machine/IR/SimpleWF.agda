@@ -24,7 +24,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.IR
-open import Once.CCC.Eval using (eval)
+import Once.CCC.Eval as Ev
+import Once.Semantics.Machine as EvV
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 
@@ -36,6 +37,13 @@ import Once.CCC.Machine.SMPrimitives as SMP
 ------------------------------------------------------------------------
 
 module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
+  -- Plan 0.73 (D113): `eval` is target-relative at `Float` — a float literal
+  -- has no format-free machine value. Inside a module already fixed to this
+  -- target's `FrameSemantics`, THE evaluator is the one at its float format,
+  -- so it is named once here and used unqualified below.
+  eval : ∀ {A B} → IR A B → EvV.⟦ A ⟧ᴵ → EvV.⟦ B ⟧ᴵ
+  eval = Ev.eval (FrameSemantics.float-format FS)
+
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}

@@ -35,7 +35,7 @@ open import Once.Semantics.Machine
   using () renaming (⟦_⟧ᴵ to ⟦_⟧)
 pair = sem-pair
 open import Once.IR
-open import Once.CCC.Eval using (eval)
+import Once.CCC.Eval as Ev
 open import Once.IR.Size
 
 ------------------------------------------------------------------------
@@ -60,6 +60,13 @@ open import Once.IR.Size
 -- This enables Apply to call run-ir on body using rs (body<bound)
 -- Also parameterized by SigOpSem for primitive evaluation
 module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
+  -- Plan 0.73 (D113): `eval` is target-relative at `Float` — a float literal
+  -- has no format-free machine value. Inside a module already fixed to this
+  -- target's `FrameSemantics`, THE evaluator is the one at its float format,
+  -- so it is named once here and used unqualified below.
+  eval : ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧
+  eval = Ev.eval (FrameSemantics.float-format FS)
+
   open MemOps {FS}
   open FrontierInvariant {FS}
 

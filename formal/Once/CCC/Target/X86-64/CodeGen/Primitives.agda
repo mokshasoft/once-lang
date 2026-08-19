@@ -25,8 +25,7 @@ open import Once.Target.Symbol using (once-symbol-path)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Type using (FitsInReg; fits-int; fits-float)
 open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
-import Once.Semantics.Value as SC
-open import Once.Word using (Carrier)
+open import Once.Semantics.Machine using (LitPayload)
 
 ------------------------------------------------------------------------
 -- Plan 0.11: SigOp call by symbolic name.
@@ -44,7 +43,10 @@ compile-sigOp-length _ = refl
 -- Plan 0.11: const literal codegen. `FitsInReg` evidence dispatches;
 -- each register-fittable primitive emits its immediate-load.
 ------------------------------------------------------------------------
-compile-const : ∀ {A} → FitsInReg A → SC.⟦_⟧ Carrier Dyadic A → Program
+-- Plan 0.73 (D113): the argument is the literal's PAYLOAD, not its denotation.
+-- At `Int` those coincide (the pattern is width-free); at `Float` the payload
+-- is the source dyadic and this is where it becomes bits.
+compile-const : ∀ {A} (p : FitsInReg A) → LitPayload p → Program
 compile-const fits-int   n = mov (reg rax) (imm n) ∷ []
 -- D079 (2026-08-03): a float CONSTANT is a 64-bit pattern, so it loads as
 -- an ordinary immediate (gas promotes `movq $big` to `movabs`) — no FPU
@@ -55,7 +57,7 @@ compile-const-size : ∀ {A} → FitsInReg A → ℕ
 compile-const-size fits-int   = 1
 compile-const-size fits-float = 1
 
-compile-const-length : ∀ {A} (p : FitsInReg A) (v : SC.⟦_⟧ Carrier Dyadic A) →
+compile-const-length : ∀ {A} (p : FitsInReg A) (v : LitPayload p) →
                         length (compile-const p v) ≡ compile-const-size p
 compile-const-length fits-int   _ = refl
 compile-const-length fits-float _ = refl

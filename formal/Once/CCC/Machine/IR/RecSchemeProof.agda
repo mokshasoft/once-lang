@@ -41,7 +41,8 @@ open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.IR using (IR; Cata; ⟦_⟧T)
 open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_; μ-type)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.CCC.Eval using (eval)
+import Once.CCC.Eval as Ev
+import Once.Semantics.Machine as EvV
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.IR.Size
 open import Once.CCC.Machine.Allocation using (AllocMode; Stack; Heap; AllocState)
@@ -49,7 +50,7 @@ open import Once.CCC.Machine.Allocation using (AllocMode; Stack; Heap; AllocStat
 -- Import semantic operations
 open import Once.Word using (Carrier)
 open import Once.Float.Dyadic using (Dyadic)
-open import Once.Semantics.Value Carrier Dyadic using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-cata; sem-cata-compute; sem-fmap)
+open import Once.Semantics.Value Carrier Carrier using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-cata; sem-cata-compute; sem-fmap)
 
 ------------------------------------------------------------------------
 -- Proof Module
@@ -58,6 +59,13 @@ open import Once.Semantics.Value Carrier Dyadic using (⟦μ⟧; ⟦_⟧F; sem-I
 ------------------------------------------------------------------------
 
 module RecSchemeProofImpl {FS : FrameSemantics} (program-bound : ℕ) where
+  -- Plan 0.73 (D113): `eval` is target-relative at `Float` — a float literal
+  -- has no format-free machine value. Inside a module already fixed to this
+  -- target's `FrameSemantics`, THE evaluator is the one at its float format,
+  -- so it is named once here and used unqualified below.
+  eval : ∀ {A B} → IR A B → EvV.⟦ A ⟧ᴵ → EvV.⟦ B ⟧ᴵ
+  eval = Ev.eval (FrameSemantics.float-format FS)
+
   open FrameSemantics FS
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound

@@ -35,7 +35,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- Plan 0.52 M2: machine values are IRTy values (⟦_⟧ᴵ), renamed to ⟦_⟧ locally.
 open import Once.IR using (IRTy; IRFunctor; _⊕_; Id; μ-type; ⟦_⟧TI; _+_; ⌈_⌉)
 open import Once.Semantics.Machine using (sem-inl; sem-inr) renaming (⟦_⟧ᴵ to ⟦_⟧)
-open import Once.CCC.Eval using (eval)
+import Once.CCC.Eval as Ev
+import Once.Semantics.Machine as EvV
 open import Once.IR using (out-μ; Heap)
 open import Once.IR using (WellFormedFI; WellFormedFI-irrelevant)
 open import Once.CCC.Machine.Allocation using (AllocState)
@@ -50,6 +51,13 @@ open import Once.CCC.Codegen.CataNatHeapExtract o using (module CataNatHeapExtra
 -- the whole seam transfers with the inl-branch type `Unit` replaced by the
 -- base layer `⟦G⟧T(μ F)`. This is the functor generalisation of `peel-μ`.
 module CataNatSeam {FS : FrameSemantics} (program-bound : ℕ) (G : IRFunctor) where
+  -- Plan 0.73 (D113): `eval` is target-relative at `Float` — a float literal
+  -- has no format-free machine value. Inside a module already fixed to this
+  -- target's `FrameSemantics`, THE evaluator is the one at its float format,
+  -- so it is named once here and used unqualified below.
+  eval : ∀ {A B} → IR A B → EvV.⟦ A ⟧ᴵ → EvV.⟦ B ⟧ᴵ
+  eval = Ev.eval (FrameSemantics.float-format FS)
+
   open MemOps {FS} using (readLoc)
 
   -- the strat-nat functor and its base layer.

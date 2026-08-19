@@ -46,7 +46,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- surface `FitsInReg`/`fits-in-reg?` stay; the μ/functor + value-domain layer is IRTy.
 open import Once.Type using (Type; FitsInReg; fits-in-reg?)
   renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ; Int to Intˢ; Unit to Unitˢ)
-open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Dyadic using (Dyadic; encode)
 open import Once.IRTy using (WellFormedFI-irrelevant)
 open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
 open import Once.IR using (IR; IRTy; Unit; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ; _∘_;
@@ -71,7 +71,8 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong;
 open import Once.IR.Size using (ir-size)
 open import Data.Nat.Properties using (≤-<-trans; ≤-trans; m≤m+n; m≤n+m; n≤1+n)
 open import Function using (case_of_)
-open import Once.CCC.Eval using (eval)
+import Once.CCC.Eval as Ev
+import Once.Semantics.Machine as EvV
 open import Once.CCC.Machine.SMCore
   using (LocState; ValueLocation; SV-Ptr; sv-as-loc; halted; regs; readReg; Input1; Output;
          instr-sigop; mov-to-output; instr-load-const; SV-Lit; writeReg; writeReg-same; AbstractTrace; module AbstractExec; module MemOps)
@@ -85,11 +86,27 @@ open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable)
 open import Once.CCC.Machine.ClosureWellFormed o using (module ClosureWellFormedDef)
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.Denotation.DenotTrace using (evalᴰ; inject)
+import Once.Denotation.DenotTrace as DT
+open import Once.Denotation.DenotTrace using (inject)
 open import Once.Denotation.TraceMonad using (projTrace)
+import Once.Denotation.TraceMonad as TM
 open import Once.Adequacy.FlatEvents using (module FlatEventTrace)
 
 module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
+  -- Plan 0.73 (D113): `eval` is target-relative at `Float` — a float literal
+  -- has no format-free machine value. Inside a module already fixed to this
+  -- target's `FrameSemantics`, THE evaluator is the one at its float format,
+  -- so it is named once here and used unqualified below.
+  eval : ∀ {A B} → IR A B → EvV.⟦ A ⟧ᴵ → EvV.⟦ B ⟧ᴵ
+  eval = Ev.eval (FrameSemantics.float-format FS)
+
+  -- …and the reference DENOTATION at the same format. That the machine and the
+  -- denotation read the format from ONE place is what makes this module's
+  -- obligations discharge: `float-format FS` is what `exec-abstract` encodes a
+  -- float literal at, so it is what `evalᴰ` must mean by one.
+  evalᴰ : ∀ {A B} → IR A B → DT.⟦ A ⟧ᴰᴵ → TM.T DT.⟦ B ⟧ᴰᴵ
+  evalᴰ = DT.evalᴰ (FrameSemantics.float-format FS)
+
   open FlatMachine {FS}
   open AbstractExec {FS} using (exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed)
   open FrontierInvariant {FS} using (BeforeFrontier)
@@ -680,7 +697,12 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
 
       out-lit : readReg (regs (forced (floc (flat-run 2 (const fits-float v) s alloc)))) Output
               ≡ prim-sv fits-float (eval (const fits-float v) x)
-      out-lit rewrite run-eq = writeReg-same (regs s) Output (SV-Lit fits-floatˢ v)
+      -- Plan 0.73 (D113): the machine MATERIALISES the literal as it executes —
+      -- `exec-abstract` writes `encode (float-format FS) v`, not the payload.
+      -- The denotation says the same because `eval` above is at the same
+      -- format; that agreement is the whole point of reading it from one place.
+      out-lit rewrite run-eq =
+        writeReg-same (regs s) Output (SV-Lit fits-floatˢ (encode (FrameSemantics.float-format FS) v))
 
   postulate
     obs-correct-fst       : ∀ {A B} → IRObsCorrectF (fst {A} {B})

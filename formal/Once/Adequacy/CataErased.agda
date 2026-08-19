@@ -183,7 +183,7 @@ subst-SK : ∀ {S₁ S₂ X : Set} (e : S₁ ≡ S₂) (a : S₂)
   → subst (λ H → ⟦ H ⟧SF X) (sym (cong SK e)) a ≡ subst (λ z → z) (sym e) a
 subst-SK refl a = refl
 
-base-z : ∀ {A} (ib : IsBaseType A) (y : ⟦ Carrier , Dyadic ⟧-base A)
+base-z : ∀ {A} (ib : IsBaseType A) (y : ⟦ Carrier , Carrier ⟧-base A)
   → inject (coerce-base-to-full (base-⌈⌉ (base-⌊⌋ ib)) (subst (λ z → z) (sym (base-coh A)) y))
     ≡ subst (λ z → z) (sym (cohᴰ A)) (inject (coerce-base-to-full ib y))
 base-z base-Unit   y = refl
@@ -218,9 +218,9 @@ module _ {A' : Type} where
   RelC l r = (proj₁ l ≡ proj₁ r) × (subst (λ z → z) (cohᴰ A') (proj₂ l) ≡ proj₂ r)
 
   layer-events : ∀ {G} (wfG : WellFormedF G)
-      {y₁ : ⟦ translateF Carrier Dyadic G ⟧SF (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)}
-      {y₂ : ⟦ translateF Carrier Dyadic G ⟧SF (List SigOpEvent × ⟦ A' ⟧ᴰ)}
-    → RelSF (translateF Carrier Dyadic G) RelC y₁ y₂
+      {y₁ : ⟦ translateF Carrier Carrier G ⟧SF (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)}
+      {y₂ : ⟦ translateF Carrier Carrier G ⟧SF (List SigOpEvent × ⟦ A' ⟧ᴰ)}
+    → RelSF (translateF Carrier Carrier G) RelC y₁ y₂
     → events-F ⌈ eraseF G ⌉F proj₁
         (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfG)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh G)) y₁))
       ≡ events-F G proj₁ (coerce-μ-out wfG _ y₂)
@@ -237,9 +237,9 @@ module _ {A' : Type} where
     cong₂ _++_ (layer-events wfF {x₁} {x₂} rf) (layer-events wfG {z₁} {z₂} rg)
 
   layer-z : ∀ {G} (wfG : WellFormedF G)
-      {y₁ : ⟦ translateF Carrier Dyadic G ⟧SF (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)}
-      {y₂ : ⟦ translateF Carrier Dyadic G ⟧SF (List SigOpEvent × ⟦ A' ⟧ᴰ)}
-    → RelSF (translateF Carrier Dyadic G) RelC y₁ y₂
+      {y₁ : ⟦ translateF Carrier Carrier G ⟧SF (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)}
+      {y₂ : ⟦ translateF Carrier Carrier G ⟧SF (List SigOpEvent × ⟦ A' ⟧ᴰ)}
+    → RelSF (translateF Carrier Carrier G) RelC y₁ y₂
     → subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute G A'))
         (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF G) ⌊ A' ⌋))
           (coerce-functor⁻¹-D ⌈ eraseF G ⌉F ⌈ ⌊ A' ⌋ ⌉
@@ -319,20 +319,20 @@ module _ {A' : Type} where
           dalg_L : ⟦ ⟦ ⌈ eraseF F ⌉F ⟧T ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ → T ⟦ ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ
           dalg_L z = evalᴰ mir' (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋)) z)
 
-          algL : ⟦ translateF Carrier Dyadic (⌈ eraseF F ⌉F) ⟧SF (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)
+          algL : ⟦ translateF Carrier Carrier (⌈ eraseF F ⌉F) ⟧SF (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)
           algL y = cata-ev-algᴰ-D {⌈ eraseF F ⌉F} {⌈ ⌊ A' ⌋ ⌉} n dalg_L (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ y)
 
-          algL' : ⟦ translateF Carrier Dyadic F ⟧SF (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)
+          algL' : ⟦ translateF Carrier Carrier F ⟧SF (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)
           algL' y = algL (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y)
 
-          algM : ⟦ translateF Carrier Dyadic F ⟧SF (List SigOpEvent × ⟦ A' ⟧ᴰ) → (List SigOpEvent × ⟦ A' ⟧ᴰ)
+          algM : ⟦ translateF Carrier Carrier F ⟧SF (List SigOpEvent × ⟦ A' ⟧ᴰ) → (List SigOpEvent × ⟦ A' ⟧ᴰ)
           algM y = cata-ev-algᴰ-D {F} {A'} n (liftFn mir) (coerce-μ-out wfF _ y)
 
-          Lr≡ : evalᴰ (IR.Cata (wf-⌊⌋ wfF) mir') w' n ≡ cataS {translateF Carrier Dyadic F} algL' (forget w)
+          Lr≡ : evalᴰ (IR.Cata (wf-⌊⌋ wfF) mir') w' n ≡ cataS {translateF Carrier Carrier F} algL' (forget w)
           Lr≡ = trans (cataS-subst-functor (tF-coh F) algL (forget w'))
-                      (cong (cataS {translateF Carrier Dyadic F} algL') seed-eq)
+                      (cong (cataS {translateF Carrier Carrier F} algL') seed-eq)
 
-          algR-full : ∀ {y₁ y₂} → RelSF (translateF Carrier Dyadic F) RelC y₁ y₂ → RelC (algL' y₁) (algM y₂)
+          algR-full : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) RelC y₁ y₂ → RelC (algL' y₁) (algM y₂)
           algR-full {y₁} {y₂} rsf = cong₂ _++_ (layer-events wfF rsf) trace-step , value-step
             where
               z_L = coerce-functor⁻¹-D ⌈ eraseF F ⌉F ⌈ ⌊ A' ⌋ ⌉ (sem-fmap ⌈ eraseF F ⌉F proj₂ (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y₁)))
@@ -342,7 +342,7 @@ module _ {A' : Type} where
               trace-step = trans (sym (subst-T-projTrace (cohᴰ A') (dalg_L z_L) n)) (cong (λ t → projTrace t n) step-eq)
               value-step = trans (sym (subst-T-valueT (cohᴰ A') (dalg_L z_L) n)) (cong (λ t → valueT t n) step-eq)
 
-          rc : RelC (cataS {translateF Carrier Dyadic F} algL' (forget w)) (cataS {translateF Carrier Dyadic F} algM (forget w))
+          rc : RelC (cataS {translateF Carrier Carrier F} algL' (forget w)) (cataS {translateF Carrier Carrier F} algM (forget w))
           rc = cataS-rel RelC algR-full (forget w)
 
 ------------------------------------------------------------------------
