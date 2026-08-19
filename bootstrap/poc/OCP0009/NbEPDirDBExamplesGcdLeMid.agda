@@ -28,17 +28,25 @@
 module poc.OCP0009.NbEPDirDBExamplesGcdLeMid where
 
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; _∙; RTm; RTy; Nat; pair; nsuc; nzero; natrec; app; subTm; extS; renTm; vs; var; vz )
+  using ( Cx; _∙; RTm; RTy; Nat; pair; nsuc; nzero; natrec; app
+        ; subTm; subTy; extS; renTm; vs; var; vz; _∘ₛ_; subTy-subTy; subTy-cong; Var )
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶*_; _⟶_; β; βfst; βsnd; ξ-appˡ; natrec-suc; natrec-zero; single )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-appˡ; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm )
-open import poc.OCP0009.NbEPDirDBType using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢natrec )
-open import normalizer.Syntax.Types using ( _≡_; refl; cong₂ )
+open import poc.OCP0009.NbEPDirDBType
+  using ( Ctx; ⌊_⌋; _⊢_∷_; _⊢ty_; _▹_; ⊢natrec; ⊢pair; ⊢nsuc; ⊢var; here; there; ty-Nat )
+open import poc.OCP0009.NbEPDirDBSubj
+  using ( sub-lemma; sub-ty; Sub⊢; Sub⊢-ext; ⊢single; ⊢-cast )
+open import poc.OCP0009.NbEPDirDBLibPair using ( PairT )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
+open import poc.OCP0009.NbEPDirDBLibWk using ( nrs-w )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( gcdStp; gcdBody; G1z; gcdInn1; G2z; gcdInn2; G3z; G3s
         ; PAIRᶻ; CERTᶻ; one; _⟫_; wkS3; wkS3e
         ; G1; ⊢G1; ⊢G1z; ⊢gcdInn1 )
+open import poc.OCP0009.NbEPDirDBType using ( single; nrs )
 
 gXx : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
 gXx x y = pair (nsuc x) (nsuc y)
@@ -186,3 +194,64 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
 --   That is ~12 substitution-lemma applications with their `Sub⊢`
 --   derivations.  Real work, well-defined, no known obstruction.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ★★★★ THE TYPING HALF — LAYER BY LAYER, BY THE SUBSTITUTION LEMMA.
+--
+-- Neither shortcut is available (see the note above), so each intermediate
+-- state gets its own derivation.  The recipe is uniform: `⊢single` for the
+-- substitution, `Sub⊢-ext` once per binder the target sits under, then
+-- `sub-ty` for motives and `sub-lemma` for terms.
+------------------------------------------------------------------------
+
+⊢gXx : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋} →
+       Γ ⊢ a' ∷ Nat → Γ ⊢ b' ∷ Nat → Γ ⊢ gXx a' b' ∷ PairT
+⊢gXx da db = ⊢pair ty-Nat (⊢nsuc da) (⊢nsuc db)
+
+-- ★★ THE PEEL RECIPE, and it is the reusable part of the typing half.
+--    Do NOT write the (large) type out: COMPOSE both sides with
+--    `subTy-subTy`, then compare the two substitutions POINTWISE with
+--    `subTy-cong`.  The pointwise goal is one line per variable.
+peelZ : {Γ : Cx} (gX : RTm Γ) →
+        subTy (single gX) (subTy (single nzero) G1)
+      ≡ subTy (single nzero) (subTy (extS (single gX)) G1)
+-- ⚠ τ/σ PINNED: they occur only in the lemma's SUBJECT, so inference
+--   leaves them blocked (the standing rule in this codebase).
+peelZ gX =
+  trans (subTy-subTy {τ = single gX} {σ = single nzero} G1)
+        (trans (subTy-cong pw G1)
+               (sym (subTy-subTy {τ = single nzero} {σ = extS (single gX)} G1)))
+  where
+    pw : ∀ (x : Var _) →
+         (single gX ∘ₛ single nzero) x ≡ (single nzero ∘ₛ extS (single gX)) x
+    pw vz          = refl
+    pw (vs vz)     = sym (wk-single {v = nzero} gX)
+    pw (vs (vs v)) = refl
+
+-- …and the same recipe for the SUCCESSOR branch, across `nrs`
+peelS : {Γ : Cx} (gX : RTm Γ) →
+        subTy (extS (extS (single gX))) (subTy nrs G1)
+      ≡ subTy nrs (subTy (extS (single gX)) G1)
+peelS gX =
+  trans (subTy-subTy {τ = extS (extS (single gX))} {σ = nrs} G1)
+        (trans (subTy-cong pw G1)
+               (sym (subTy-subTy {τ = nrs} {σ = extS (single gX)} G1)))
+  where
+    pw : ∀ (x : Var _) →
+         (extS (extS (single gX)) ∘ₛ nrs) x ≡ (nrs ∘ₛ extS (single gX)) x
+    pw vz          = refl
+    pw (vs vz)     = sym (nrs-w gX)   -- the only case with content
+    pw (vs (vs v)) = refl
+
+-- layer 1: `single gX` — one binder for the motive, two for the successor
+⊢R1' : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
+       (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) →
+       Γ ⊢ R1' a' b'
+         ∷ subTy (single b') (subTy (extS (single (gXx a' b'))) G1)
+⊢R1' {a' = a'} {b' = b'} da db =
+  ⊢natrec (sub-ty ⊢G1 (Sub⊢-ext σ0))
+          (⊢-cast (peelZ (gXx a' b')) (sub-lemma ⊢G1z σ0))
+          (⊢-cast (peelS (gXx a' b')) (sub-lemma ⊢gcdInn1 (Sub⊢-ext (Sub⊢-ext σ0))))
+          db
+  where
+    σ0 = ⊢single (⊢gXx da db)
