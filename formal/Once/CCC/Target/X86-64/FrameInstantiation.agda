@@ -33,6 +33,7 @@ open import Relation.Binary.Definitions using (tri<; tri≈; tri>)
 
 -- Import the architecture-independent interface
 open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.Float.Dyadic using (binary64)
 open import Once.Memory.MemoryLayoutSemantics using (Addr)
 
 -- Import X86-64 Layout for StackPointer and slot operations
@@ -233,6 +234,8 @@ x86-64-frame-semantics = record
   ; frame-word = word-size
   ; slot-addr-linear = λ f k → refl
   ; shift-base = λ f n → refl
+  -- Plan 0.73 (D113): x86-64 has SSE2 in its baseline ABI; a `double` is what a C `double` is.
+  ; float-format = binary64
   ; slot-zero-at-base = x86-slot-zero-at-base
   ; slot-injective = x86-slot-injective
   ; _≺_ = _x86-≺_

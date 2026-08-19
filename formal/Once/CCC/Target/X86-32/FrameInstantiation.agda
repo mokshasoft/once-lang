@@ -33,6 +33,7 @@ open import Relation.Binary.Definitions using (tri<; tri≈; tri>)
 
 -- Import the architecture-independent interface
 open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.Float.Dyadic using (binary32)
 open import Once.Memory.MemoryLayoutSemantics using (Addr)
 
 -- Import x86-32 Layout for StackPointer and slot operations
@@ -213,6 +214,9 @@ x86-32-frame-semantics = record
   ; frame-word = word-size
   ; slot-addr-linear = λ f k → refl
   ; shift-base = λ f n → refl
+  -- Plan 0.73 (D113): x86-32 keeps floats in a 32-bit GPR: a `binary64` immediate would not fit
+-- a word, so this target lays a `Float` out as single precision.
+  ; float-format = binary32
   ; slot-zero-at-base = x86-32-slot-zero-at-base
   ; slot-injective = x86-32-slot-injective
   ; _≺_ = _x86-32-≺_

@@ -42,6 +42,11 @@ open import Relation.Nullary using (Dec)
 -- Import Addr from MemoryLayoutSemantics
 open import Once.Memory.MemoryLayoutSemantics using (Addr)
 
+-- Plan 0.73 (D113): the target's FLOAT FORMAT is a target fact of exactly the
+-- kind this record already collects (`frame-word` is the machine word), so it
+-- joins them rather than getting a second mechanism of its own.
+open import Once.Float.Dyadic using (FloatFormat)
+
 ------------------------------------------------------------------------
 -- FrameSemantics Interface (Adjacency-Based)
 --
@@ -118,6 +123,28 @@ record FrameSemantics : Set₁ where
     -- | A shifted frame's base is exactly `n` slots down: the prologue's
     -- `sub sp, n·word`.
     shift-base : ∀ f n → frame-base (shift-frame f n) ≡ frame-base f ∸ n * frame-word
+
+    --------------------------------------------------------------------
+    -- The target's FLOAT FORMAT (plan 0.73, D113)
+    --
+    -- `frame-word` is already here because the machine cannot address a
+    -- slot without knowing the target's word. The float format is the same
+    -- kind of fact for the same reason: under D113 a `Float` DENOTES the
+    -- target's representation, so the abstract machine cannot materialise a
+    -- float literal without knowing how this target lays one out — `1.5` is
+    -- `0x3FC00000` at 32 bits and `0x3FF8000000000000` at 64.
+    --
+    -- With it here, `instr-load-const`'s dyadic payload is encoded AT EXEC
+    -- TIME, so a `StoredValue` is uniformly bits and the per-arch `fenc`
+    -- parameter threaded through the FlatCore correspondence disappears.
+    --
+    -- A target with no float support does not express that here (a format
+    -- is always statable); it refuses `Float` through `FitsInReg`, which
+    -- plan 0.72 P4 gives the arch.
+    --------------------------------------------------------------------
+
+    -- | How this target lays out a float: `binary32`, `binary64`, …
+    float-format : FloatFormat
 
     --------------------------------------------------------------------
     -- Frame Ordering

@@ -33,6 +33,7 @@ open import Relation.Binary.Definitions using (tri<; tri≈; tri>)
 
 -- Import the architecture-independent interface
 open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.Float.Dyadic using (binary64)
 open import Once.Memory.MemoryLayoutSemantics using (Addr)
 
 -- Import RISC-V 64 Layout for StackPointer and slot operations
@@ -233,6 +234,8 @@ rv64-frame-semantics = record
   ; frame-word = word-size
   ; slot-addr-linear = λ f k → refl
   ; shift-base = λ f n → refl
+  -- Plan 0.73 (D113): riscv64 with the `D` extension; a `double` fits a 64-bit register.
+  ; float-format = binary64
   ; slot-zero-at-base = rv64-slot-zero-at-base
   ; slot-injective = rv64-slot-injective
   ; _≺_ = _rv64-≺_
