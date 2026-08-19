@@ -28,7 +28,7 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBLibNatrec where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; subst )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; RTm; Nat; natrec; var; vz; vs; nzero
         ; Ren; Sub; renTy; renTm; subTy; subTm; extR; extS; _∘ₛ_
@@ -39,9 +39,9 @@ open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢-cast; ⊢wk; ren-ty; ren-lemma; Ren⊢-ext
         ; Sub⊢; Sub⊢-ext; sub-ty; sub-lemma; Ren⊢; ∋-cast )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBLibWk using ( w )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w; cong₃; sub-w )
 open import poc.OCP0009.NbEPDirDBLibAmrec
-  using ( wR; subren; renren; subrenTy; renTy-idR )
+  using ( wR; subren; renren; subrenTy; renTy-idR; rensub )
 
 -- ★ the identity typed renaming — also general, also from an example
 Ren⊢-id : {Γ : Ctx} → Ren⊢ Γ Γ (λ v → v)
@@ -144,3 +144,93 @@ Sub⊢-∘ {σ = σ} {τ = τ} σ⊢ τ⊢ {A = A} v =
           (⊢-cast (sym na-z) (sub-lemma dz σ⊢))
           (⊢-cast (sym na-s) (sub-lemma ds (Sub⊢-ext (Sub⊢-ext σ⊢))))
           dn
+------------------------------------------------------------------------
+-- ★★★ AT A VARIABLE SCRUTINEE, *UNDER A SUBSTITUTION* — and ITERABLE.
+--
+-- ★ WHY THIS BELONGS HERE AND NOT AT THE CALL SITE.  A client that pushes a
+--   `⊢natrec-var` typing down a substitution stack by hand pays the
+--   `na-z`/`na-s` commutations AT ITS OWN CONCRETE TYPES.  For gcd that is
+--   a five-fold substituted `G3` — measured OOM twice (2m04s as one term,
+--   1m50s split into five `Def`s, in a module that otherwise checks in
+--   ~15s).  Proved HERE, the same commutations happen ONCE at an ABSTRACT
+--   σ, where they are small.
+--
+-- ⚠ THIS ONE DOES NOT ITERATE — it CONSUMES the three pieces and yields
+--   one derivation.  `⊢natrec-var-tr` below is the iterable form.
+--
+-- ⚠ This is `⊢natrec-at`'s body with `⊢natrec-var` in place of `⊢natrec` —
+--   the two differ only in whether the scrutinee is the hole or arbitrary.
+------------------------------------------------------------------------
+
+⊢natrec-var-push :
+  {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {M : RTy (⌊ Γ ⌋ ∙)}
+  {z : RTm ⌊ Γ ⌋} {s : RTm ((⌊ Γ ⌋ ∙) ∙)} →
+  Sub⊢ Γ Δ σ →
+  (Γ ▹ Nat) ⊢ty M →
+  Γ ⊢ z ∷ subTy (single nzero) M →
+  ((Γ ▹ Nat) ▹ M) ⊢ s ∷ subTy nrs M →
+  (Δ ▹ Nat) ⊢ natrec (w (subTm σ z))
+                     (renTm (extR (extR vs)) (subTm (extS (extS σ)) s))
+                     (var vz)
+    ∷ subTy (extS σ) M
+⊢natrec-var-push σ⊢ dM dz ds =
+  ⊢natrec-var (sub-ty dM (Sub⊢-ext σ⊢))
+              (⊢-cast (sym na-z) (sub-lemma dz σ⊢))
+              (⊢-cast (sym na-s) (sub-lemma ds (Sub⊢-ext (Sub⊢-ext σ⊢))))
+
+------------------------------------------------------------------------
+-- ⚠ THE ITERABLE FORM — DRAFTED, one pointwise identity short.  Kept below.
+--
+-- `⊢natrec-var-push` above CONSUMES the motive and both branches, so
+-- chaining it down a stack would re-derive those at every level — the
+-- expensive thing.  The iterable form takes a `natrec`-at-a-variable TYPING
+-- and transports it, so an n-deep stack is n applications.
+--
+-- ⚠ WHAT IS MISSING: its term equality needs
+--     ∀ v → renTm (extR² vs) (extS² σ v) ≡ extS³ σ (extR² vs v)
+--   which is NOT `refl`.  `vz` and `vs vz` are; the `vs (vs u)` case needs
+--   renaming FUSION (`renren`/`ww`-style) to see
+--     renTm (extR² vs) (w (w t)) ≡ w (w (w t)).
+--   `rensub` is otherwise exactly the right lemma and its four implicits all
+--   need pinning (they are all in its subject).
+--
+-- ⇒ This is de Bruijn plumbing, not proof structure — the STRUCTURE is
+--   settled.  Prove that pointwise identity and the transport lands.
+------------------------------------------------------------------------
+
+{-
+------------------------------------------------------------------------
+-- ★★★ …AND THE ITERABLE FORM.  Takes a `natrec`-at-a-variable TYPING and
+--     transports it along a substitution, so a stack of n substitutions is
+--     n applications.  This is the one a client with a deep stack wants.
+--
+-- ⚠ The two casts are naturality, not commutation: `subTm (extS σ)` meeting
+--   a weakening (`sub-w`) and meeting a renaming.  They are proved HERE at
+--   an abstract σ, which is the whole point — at gcd's concrete stack the
+--   same equalities are enormous.
+------------------------------------------------------------------------
+
+⊢natrec-var-tr :
+  {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {M : RTy (⌊ Γ ⌋ ∙)}
+  {z : RTm ⌊ Γ ⌋} {s : RTm ((⌊ Γ ⌋ ∙) ∙)} →
+  Sub⊢ Γ Δ σ →
+  (Γ ▹ Nat) ⊢ natrec (w z) (renTm (extR (extR vs)) s) (var vz) ∷ M →
+  (Δ ▹ Nat) ⊢ natrec (w (subTm σ z))
+                     (renTm (extR (extR vs)) (subTm (extS (extS σ)) s))
+                     (var vz)
+    ∷ subTy (extS σ) M
+⊢natrec-var-tr {σ = σ} {z = z} {s = s} σ⊢ d =
+  subst (λ t → _ ⊢ t ∷ _) tm-eq (sub-lemma d (Sub⊢-ext σ⊢))
+  where
+    tm-eq : subTm (extS σ) (natrec (w z) (renTm (extR (extR vs)) s) (var vz))
+          ≡ natrec (w (subTm σ z))
+                   (renTm (extR (extR vs)) (subTm (extS (extS σ)) s))
+                   (var vz)
+    -- ⚠ implicits PINNED — none is determined by the argument (`rensub`'s
+    --   four are all in its subject).
+    tm-eq = cong₃ natrec (sub-w z)
+              (rensub {σ = extS (extS σ)} {ϑ = extR (extR vs)}
+                      {σ' = extS (extS (extS σ))} {ϑ' = extR (extR vs)}
+                      (λ _ → refl) s)
+              refl
+-}
