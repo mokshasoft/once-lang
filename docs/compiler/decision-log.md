@@ -8044,7 +8044,14 @@ other way.
 
 ## D112: `Float`'s Representation Is a PARAMETER, as `Int`'s Already Is
 
-**Date**: 2026-08-18 · **Status**: Decided; implementation is plan 0.72 · **Supersedes**: 0.71's F5/F6, completes D109
+**Date**: 2026-08-18 · **Status**: PARTLY CORRECTED BY D113 (2026-08-19) ·
+**Supersedes**: 0.71's F5/F6, completes D109
+
+> **Read D113 first.** The defect below is real and the PARAMETERISATION is
+> right. The choice of what to instantiate it at — an exact `Dyadic` — is
+> wrong: it gives `Float` a value level D054 deliberately removed from `Int`,
+> and IEEE arithmetic rounds, so exactness is the same unprovable straddle.
+> `⟦ Float ⟧` is the target's representation; `Dyadic` is the literal payload.
 
 **Landed 2026-08-18 (0.72 P1–P3).** `Once/Float/Dyadic.agda` is the carrier and
 `FloatFormat` the width; `Value`/`ValueIR`/`IRTy`/`Translate` take `FloatRep`
@@ -8131,3 +8138,90 @@ obligation. `Float` was written as though the question had never been asked, and
 the gap hid for as long as nothing tried to compile a float literal on a narrow
 target. The review question this yields: for any base type, ask which OTHER base
 type already has its shape, and diff them.
+
+## D113: `Float` Follows D054 — the Hardware's Promise, Not an Exact Value
+
+**Date**: 2026-08-19 · **Status**: Decided · **Corrects D112** (same day) ·
+**Extends D054 to the second numeric type**
+
+### What D112 got right and wrong
+
+D112 found a real defect: `⟦ Float ⟧` was hardcoded to Agda's double, so a
+32-bit target's narrower format had nowhere to be stated, and the loss was
+invisible to every gate. Making the representation a PARAMETER was right and
+stands.
+
+**Instantiating that parameter at an EXACT value (`Dyadic`) was wrong.** It
+gave `Float` a value level that D054 had deliberately removed from `Int`, and
+did so without noticing it was asserting the negation of a recorded decision.
+
+### The argument (D054's, applied to the second type)
+
+D054: *representation follows the promise*. A fixed-width representation
+implies modular semantics, and you cannot prove fixed-width `add` equals
+unbounded ℤ `+` — `255 + 1 = 0` in a byte, `= 256` in ℤ. So ℤ is not `Int`'s
+meaning; the `Word` is, and ℤ survives only as scaffolding inside the modular
+op and as the parked spec of a future `BigInt`.
+
+**The same sentence holds with the words changed:**
+
+> IEEE `fadd` ROUNDS. Exact dyadic `+` does not. They are different functions.
+
+So an exact-value denotation for `Float` is the identical straddle. The
+no-overflow side conditions D054 eliminated would return as no-rounding side
+conditions, and every float arithmetic obligation would carry a "within the
+exactly-representable regime" caveat — which is exactly the shape of hole D054
+was written to close.
+
+The user's framing, which is the whole decision in one line: **in the end it is
+the hardware that promises what it calculates.**
+
+### Why `Str` is not a counterexample
+
+`⟦ Str ⟧ = String` — an exact Agda value — so the codebase is not uniformly
+"denotation = machine representation". The distinction is ARITHMETIC. `Str` has
+none, so an exact denotation promises nothing the machine can contradict.
+`Float` has arithmetic, and its arithmetic rounds. D054's argument bites
+exactly where operations exist.
+
+### Decision
+
+**`Float`'s denotation is the target's float representation** — the width-free
+`Carrier`, with the FORMAT applied at the target, exactly as `Int`'s width is
+applied by `norm`. `⟦ Float ⟧ = Carrier`, symmetric with `⟦ Int ⟧ = Carrier`.
+
+**`Dyadic` demotes to the role ℤ has for `Int`**: the literal payload and the
+parked exact spec. The frontend parses digits into a `Dyadic`, decides
+representability against it, and encodes it at the target's format. It is not
+what a `Float` expression MEANS.
+
+**`encode`/`fenc` stay**, but as the literal ENCODER at codegen — not as a
+bridge between two denotations. There is only one denotation now.
+
+**F4's exactness rule becomes a statement about LITERALS**, which is where it
+belongs and where it is provable. It says nothing about arithmetic, and it is
+compatible with rounding (plan 0.71's successor decision).
+
+### Consequences
+
+- One line changes the model, because D112's parameterisation was right:
+  `Once.Semantics.Value Carrier Dyadic` → `Once.Semantics.Value Carrier Carrier`.
+- `enc-sv` for a float literal stops being a denotation bridge; the literal
+  arrives already encoded, as `Int`'s does.
+- A float literal must still reach the target UN-ENCODED at the IR level,
+  because — unlike a non-negative `Int` literal, whose bit pattern is the same
+  at every width — `1.5` is `0x3FC00000` at 32 bits and `0x3FF8000000000000` at
+  64. That is a fact about literal PAYLOADS, not about denotations, and it is
+  the same reason a `Str` literal carries a `String` to the target.
+- Float arithmetic, when it lands, is whatever the target's FPU computes —
+  with no exactness precondition to discharge.
+
+### The lesson
+
+**When a second instance of a solved problem appears, find the decision that
+solved the first one before designing.** D054 had already answered "what does a
+fixed-width numeric type mean?" with a general argument, and D112 re-answered
+it differently for `Float` without citing it. The review question: for any new
+type or representation, which EXISTING decision already covers its shape — and
+does this contradict it?
+
