@@ -54,7 +54,7 @@ open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( gcdStp; gcdBody; G1z; gcdInn1; G2z; gcdInn2; G3z; G3s
         ; PAIRᶻ; CERTᶻ; one; _⟫_; wkS3; wkS3e
         ; G1; ⊢G1; ⊢G1z; ⊢gcdInn1; wkS2; G2; ⊢G2; ⊢G2z; ⊢gcdInn2
-        ; G3; ⊢G3; ⊢G3z; ⊢G3s; gcdG )
+        ; G3; ⊢G3; ⊢G3z; ⊢G3s; gcdG; PAIRˢ; ⊢PAIRˢ; CERTˢ; ⊢CERTˢ )
 open import poc.OCP0009.NbEPDirDBType using ( single; nrs )
 
 gXx : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
@@ -908,4 +908,28 @@ push-gcdG {Δ = Δ} {σ = σ} {t = t} {μ = μ} σ⊢ d =
 --   `⊢G3s`-analogue stated directly at the substituted slots, the way
 --   `⊢natrec-var` states its branches rather than transporting them.
 --   ⚠ Do not attempt a seventh transport.
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ⚠⚠⚠ ATTEMPT 7 FAILS TOO — AND IT SETTLES THE MECHANISM.
+--
+-- Transport only the LEAVES: `⊢G3s` is `⊢lam <ih> (⊢app (⊢app (⊢var here)
+-- ⊢PAIRˢ) ⊢CERTˢ)`, and `⊢PAIRˢ`'s type is `PairT` — CLOSED.  It cannot
+-- grow under any substitution.  Five pushes, one per `Def`.
+--
+--     OOM, 1m39s.
+--
+-- ★★★ SO TYPE SIZE IS NOT THE BINDING COST.  A derivation whose type is a
+--   closed constant still cannot be carried through five substitutions.
+--   What is expensive is the TRANSPORT ITSELF — `sub-lemma` recursing over
+--   a derivation under a stack of `Sub⊢-ext`s, where every variable lookup
+--   walks the whole stack.
+--
+-- ⚠ THIS CORRECTS THE PREMISE OF THE WHOLE COLLAPSE EFFORT.  `M3-small` is
+--   still a real win (1m02s vs a 6m44s baseline), so type size MATTERS —
+--   but it is not what blocks `⊢S3s`, and no amount of shrinking types will
+--   unblock it.
+--
+-- ⇒ SEVEN attempts on `⊢S3s`, all measured.  See the session summary for
+--   the full side-by-side across gap A.
 ------------------------------------------------------------------------
