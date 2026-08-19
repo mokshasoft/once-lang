@@ -44,6 +44,7 @@ open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; ¬_; ⊥; ⊥-elim; Σ; _,_; _×_; ⊤ )
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import poc.OCP0009.NbEPDirDBType using ( wk-single ) public
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; Π; Σ'; El; Hom
@@ -4538,8 +4539,9 @@ exp₀ (⊩₀Σ {G = G} _ ⊩F ⊩G) {t} {t'} r h =
 -- (`payChain`), so the tree is pure data and transports structurally.
 ------------------------------------------------------------------------
 
-wk-single : {v : RTm Γ} (t : RTm Γ) → subTm (single v) (renTm vs t) ≡ t
-wk-single t = trans (subTm-renTm t) (subTm-id t)
+-- (`wk-single` moved to `…Pi`, beside its two ingredients — it is kernel
+--  syntax, not metatheory.  Re-exported below so its ~50 importers are
+--  unaffected.)
 
 infix 3 _⟶csr*_
 data _⟶csr*_ {Γ} : RTm Γ → RTm Γ → Set where
