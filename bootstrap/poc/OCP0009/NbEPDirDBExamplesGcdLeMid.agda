@@ -654,3 +654,17 @@ module _ {Γ : Cx} (a' b' : RTm Γ) where
   M3-small : subTy t4 (subTy t3 (subTy t2 (subTy t1 (subTy t0 G3))))
            ≡ gcdG (plusTm (nsuc (w (W' a' b'))) (nsuc (w b')))
   M3-small = trans M3-collapse (cong gcdG μ-computes)
+
+------------------------------------------------------------------------
+-- ★★★★★ THE ASSEMBLY, AT SMALL TYPES.
+--
+-- `⊢M3`'s chain produces exactly `M3-small`'s left-hand side (the `sub-ty`
+-- levels use `Sub⊢-ext` counts 5,4,3,2,1, which are `t0`…`t4`), so one
+-- `subst` restates it at the collapsed motive.
+------------------------------------------------------------------------
+
+⊢M3s : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
+       (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) →
+       (Γ ▹ Nat) ⊢ty gcdG (plusTm (nsuc (w (W' a' b'))) (nsuc (w b')))
+⊢M3s {Γ} {a'} {b'} da db =
+  subst (λ T → (Γ ▹ Nat) ⊢ty T) (M3-small a' b') (⊢M3 da db)
