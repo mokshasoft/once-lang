@@ -37,7 +37,7 @@ open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ⌊_⌋; _⊢_∷_; _⊢ty_; _▹_; ⊢natrec; ⊢pair; ⊢nsuc; ⊢var; here; there; ty-Nat )
 open import poc.OCP0009.NbEPDirDBSubj
-  using ( sub-lemma; sub-ty; Sub⊢; Sub⊢-ext; ⊢single; ⊢-cast )
+  using ( sub-lemma; sub-ty; Sub⊢; Sub⊢-ext; ⊢single; ⊢-cast; ⊢wk )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
@@ -209,53 +209,18 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
        Γ ⊢ a' ∷ Nat → Γ ⊢ b' ∷ Nat → Γ ⊢ gXx a' b' ∷ PairT
 ⊢gXx da db = ⊢pair ty-Nat (⊢nsuc da) (⊢nsuc db)
 
--- ★★ THE PEEL RECIPE, and it is the reusable part of the typing half.
---    Do NOT write the (large) type out: COMPOSE both sides with
---    `subTy-subTy`, then compare the two substitutions POINTWISE with
---    `subTy-cong`.  The pointwise goal is one line per variable.
-peelZ : {Γ : Cx} (gX : RTm Γ) →
-        subTy (single gX) (subTy (single nzero) G1)
-      ≡ subTy (single nzero) (subTy (extS (single gX)) G1)
--- ⚠ τ/σ PINNED: they occur only in the lemma's SUBJECT, so inference
---   leaves them blocked (the standing rule in this codebase).
-peelZ gX =
-  trans (subTy-subTy {τ = single gX} {σ = single nzero} G1)
-        (trans (subTy-cong pw G1)
-               (sym (subTy-subTy {τ = single nzero} {σ = extS (single gX)} G1)))
-  where
-    pw : ∀ (x : Var _) →
-         (single gX ∘ₛ single nzero) x ≡ (single nzero ∘ₛ extS (single gX)) x
-    pw vz          = refl
-    pw (vs vz)     = sym (wk-single {v = nzero} gX)
-    pw (vs (vs v)) = refl
-
--- …and the same recipe for the SUCCESSOR branch, across `nrs`
-peelS : {Γ : Cx} (gX : RTm Γ) →
-        subTy (extS (extS (single gX))) (subTy nrs G1)
-      ≡ subTy nrs (subTy (extS (single gX)) G1)
-peelS gX =
-  trans (subTy-subTy {τ = extS (extS (single gX))} {σ = nrs} G1)
-        (trans (subTy-cong pw G1)
-               (sym (subTy-subTy {τ = nrs} {σ = extS (single gX)} G1)))
-  where
-    pw : ∀ (x : Var _) →
-         (extS (extS (single gX)) ∘ₛ nrs) x ≡ (nrs ∘ₛ extS (single gX)) x
-    pw vz          = refl
-    pw (vs vz)     = sym (nrs-w gX)   -- the only case with content
-    pw (vs (vs v)) = refl
-
--- layer 1: `single gX` — one binder for the motive, two for the successor
+-- ★★★ LAYER 1, IN ONE LINE.  `⊢natrec-at`'s conclusion is
+--     `natrec (subTm σ z) (subTm (extS² σ) s) n`
+--   which is EXACTLY `R1'` at σ = `single gX`, z = `G1z`, s = `gcdInn1`,
+--   n = `b'`, M = `G1`.  It performs the `na-z`/`na-s` casts internally.
+--
+-- ⚠ I hand-wrote those casts as `peelZ`/`peelS` before finding the lemma —
+--   ~25 lines, now deleted.  See `…LibNatrec`'s header.
 ⊢R1' : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
        (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) →
        Γ ⊢ R1' a' b'
          ∷ subTy (single b') (subTy (extS (single (gXx a' b'))) G1)
-⊢R1' {a' = a'} {b' = b'} da db =
-  ⊢natrec (sub-ty ⊢G1 (Sub⊢-ext σ0))
-          (⊢-cast (peelZ (gXx a' b')) (sub-lemma ⊢G1z σ0))
-          (⊢-cast (peelS (gXx a' b')) (sub-lemma ⊢gcdInn1 (Sub⊢-ext (Sub⊢-ext σ0))))
-          db
-  where
-    σ0 = ⊢single (⊢gXx da db)
+⊢R1' da db = ⊢natrec-at ⊢G1 ⊢G1z ⊢gcdInn1 (⊢single (⊢gXx da db)) db
 
 -- ★ layer 2: `W'` is `a'` IN DISGUISE.  `wkS2` is exactly its shape — two
 --   weakenings cancelled by two substitutions — so no new work.
@@ -266,82 +231,29 @@ peelS gX =
 ⊢W' {Γ} {a' = a'} da db = subst (λ z → Γ ⊢ z ∷ Nat) (sym (wkS2 a')) da
 
 ------------------------------------------------------------------------
--- ⚠⚠ LAYER 3 (`R2'`) — DRAFTED, BLOCKED ON TYPED CONTEXTS.  The body is
---    kept below, commented, because the STRUCTURE is right and only the
---    instantiation is missing.
+-- ★★★ LAYER 3 — `R2'`, ALSO VIA `⊢natrec-at`.
 --
--- WHAT WORKS: the `⊢natrec` skeleton, the three chained `sub-lemma`s (one
--- per substitution level), and the peels built from THREE `na-z`/`na-s` —
--- one per level, walking `single nzero` / `nrs` outward.  `na-z`/`na-s`
--- already exist in `…GcdCert` and are general; do not rebuild them.
+-- Same lemma, now at σ = `single R1'`.  The TWO INNER substitution levels
+-- (`single gX`, then `single b'`) ride on the motive and branches via
+-- `sub-ty`/`sub-lemma`; the outer one is `⊢natrec-at`'s own σ.  No
+-- `Sub⊢-∘` composition is needed, and the `na-z`/`na-s` casts are inside
+-- the lemma.
 --
--- ⚠ THE BLOCKER, and it is not another missing pin: `na-z`/`na-s` live in
---   `module _ {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {M : RTy (⌊ Γ ⌋ ∙)}`.
---   Supplying `σ` fixes only the ERASED contexts `⌊ Γ ⌋`/`⌊ Δ ⌋`, and
---   `⌊_⌋` is not invertible, so the Ctx-level `Γ`/`Δ` stay unsolved.  They
---   must be given as the TYPED contexts at each stack level —
---   `((Γ ▹ PairT) ▹ Nat) ▹ G1` and friends — which is real information,
---   not a mechanical pin.
---
---   ⇒ Four pinning traps were hit in this layer, and only the last is
---     interesting: (1) `subTy-subTy`'s τ/σ, (2) the generalised slot `B`,
---     (3) `G2`'s own context, (4) `where`-bound substitutions needing
---     explicit `Sub` signatures.  All four are mechanical.  The typed
---     contexts are the one that needs thought.
+-- ⚠ `B` PINNED throughout — the generalised sibling slot is `G1` here and
+--   cannot be inferred.
 ------------------------------------------------------------------------
 
-{-
--- ★ layer 3: `R2'`, the second real `⊢natrec`.  THREE substitutions now —
---   `single gX`, then `single b'`, then `single R1'` — applied by CHAINING
---   `sub-lemma`, because nested `sub-lemma` calls produce exactly the
---   nested `subTm` form the terms already have.  (Composing into one `∘ₛ`
---   would not: that gives `subTm (τ ∘ₛ σ)`, a different term.)
+-- ⚠ AND THE INNER LEVELS DO NOT NEED THEIR OWN CASTS EITHER.  `subTm`
+--   DISTRIBUTES over `natrec`, so pushing the WHOLE `⊢natrec-at`
+--   derivation through the outer substitutions with `sub-lemma` produces
+--   the 3-level substituted `natrec` directly — no `na-z` at the inner
+--   levels, which is what the hand-written version needed.
 ⊢R2' : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
-       (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) →
-       Γ ⊢ R2' a' b'
-         ∷ subTy (single (W' a' b'))
-             (subTy (extS (single (R1' a' b')))
-               (subTy (extS (extS (single b')))
-                 (subTy (extS (extS (extS (single (gXx a' b'))))) G2)))
-⊢R2' {Γ} {a' = a'} {b' = b'} da db =
-  ⊢natrec mot (⊢-cast pz zb) (⊢-cast ps sb) (⊢W' da db)
-  where
-    σ0 = ⊢single (⊢gXx da db)
-    σ1 = ⊢single db
-    σ2 = ⊢single (⊢R1' da db)
-    -- ⚠ `B` PINNED — the generalised sibling slot cannot be inferred here
-    --   (the standing rule for generalised motive slots).
-    mot = sub-ty (sub-ty (sub-ty (⊢G2 {B = G1}) (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext σ0))))
-                         (Sub⊢-ext (Sub⊢-ext σ1)))
-                 (Sub⊢-ext σ2)
-    zb  = sub-lemma (sub-lemma (sub-lemma (⊢G2z {B = G1}) (Sub⊢-ext (Sub⊢-ext σ0)))
-                               (Sub⊢-ext σ1))
-                    σ2
-    sb  = sub-lemma (sub-lemma (sub-lemma (⊢gcdInn2 {B = G1})
-                                 (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext σ0)))))
-                               (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext σ1))))
-                    (Sub⊢-ext (Sub⊢-ext σ2))
-
-    -- ★ THREE `na-z`, one per stack level, walking `single nzero` OUTWARD.
-    --   No 4-deep composition needed — `na-z`/`na-s` are already general.
-    -- ⚠ SIGNATURES REQUIRED: without them these are metas and every
-    --   `{σ = sᵢ}` below stays unsolved.
-    s0 : Sub (((⌊ Γ ⌋ ∙) ∙) ∙) ((⌊ Γ ⌋ ∙) ∙)
-    s0 = extS (extS (single (gXx a' b')))
-    s1 : Sub ((⌊ Γ ⌋ ∙) ∙) (⌊ Γ ⌋ ∙)
-    s1 = extS (single b')
-    s2 : Sub (⌊ Γ ⌋ ∙) ⌊ Γ ⌋
-    s2 = single (R1' a' b')
-
-    pz = trans (cong (λ T → subTy s2 (subTy s1 T)) (sym (na-z {σ = s0} {M = G2 {⌊ Γ ⌋}})))
-           (trans (cong (subTy s2) (sym (na-z {σ = s1} {M = subTy (extS s0) (G2 {⌊ Γ ⌋})})))
-                  (sym (na-z {σ = s2} {M = subTy (extS s1) (subTy (extS s0) (G2 {⌊ Γ ⌋}))})))
-
-    -- ⚠ the SUCCESSOR chain runs at `extS²` of each level (that is what
-    --   `Sub⊢-ext (Sub⊢-ext …)` produced), so the `cong` wrappers must too.
-    ps = trans (cong (λ T → subTy (extS (extS s2)) (subTy (extS (extS s1)) T))
-                     (sym (na-s {σ = s0} {M = G2 {⌊ Γ ⌋}})))
-           (trans (cong (subTy (extS (extS s2)))
-                        (sym (na-s {σ = s1} {M = subTy (extS s0) (G2 {⌊ Γ ⌋})})))
-                  (sym (na-s {σ = s2} {M = subTy (extS s1) (subTy (extS s0) (G2 {⌊ Γ ⌋}))})))
--}
+       (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) → _
+⊢R2' da db =
+  sub-lemma (sub-lemma (⊢natrec-at (⊢G2 {B = G1}) (⊢G2z {B = G1})
+                                   (⊢gcdInn2 {B = G1})
+                                   (Sub⊢-ext (Sub⊢-ext (⊢single (⊢gXx da db))))
+                                   (⊢wk (⊢wk da)))
+                       (Sub⊢-ext (⊢single db)))
+            (⊢single (⊢R1' da db))
