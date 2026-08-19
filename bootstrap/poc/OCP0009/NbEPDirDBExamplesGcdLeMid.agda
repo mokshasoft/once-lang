@@ -315,6 +315,31 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
       (Sub⊢-ext (⊢single (⊢W' da db))))
       (⊢single (⊢R2' da db))
 
+-- ★ the MOTIVE: `⊢G3` sits ONE slot deeper than `⊢G3z` (its own `natrec`
+--   variable), so every level gets one more `extS`.
+⊢M3 : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
+      (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) → _
+⊢M3 da db =
+  sub-ty (sub-ty (sub-ty (sub-ty (sub-ty (⊢G3 {B = G1} {C = G2})
+      (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single (⊢gXx da db))))))))
+      (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single db))))))
+      (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single (⊢R1' da db))))))
+      (Sub⊢-ext (Sub⊢-ext (⊢single (⊢W' da db)))))
+      (Sub⊢-ext (⊢single (⊢R2' da db)))
+
+-- ★ the SUCCESSOR branch: THREE generalised slots here (`B`=G1, `C`=G2,
+--   `D`=G3 — the third natrec's own motive), all pinned.  `⊢G3s` sits TWO deeper (`natrec` binds two in its
+--   successor branch), so two more `extS` at every level.
+⊢S3 : {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
+      (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) → _
+⊢S3 da db =
+  sub-lemma (sub-lemma (sub-lemma (sub-lemma (sub-lemma (⊢G3s {B = G1} {C = G2} {D = G3})
+      (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single (⊢gXx da db)))))))))
+      (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single db)))))))
+      (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single (⊢R1' da db)))))))
+      (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single (⊢W' da db))))))
+      (Sub⊢-ext (Sub⊢-ext (⊢single (⊢R2' da db))))
+
 {-
 ------------------------------------------------------------------------
 -- ★★★ LAYER 4 — the THIRD `natrec`'s motive and branches, through the
