@@ -42,7 +42,8 @@ open import poc.OCP0009.NbEPDirDBLibPair using ( PairT )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( nrs-w )
-open import poc.OCP0009.NbEPDirDBLibNatrec using ( na-z; na-s; ⊢natrec-at; Sub⊢-∘ )
+open import poc.OCP0009.NbEPDirDBLibNatrec
+  using ( na-z; na-s; ⊢natrec-at; ⊢natrec-var; Sub⊢-∘ )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( gcdStp; gcdBody; G1z; gcdInn1; G2z; gcdInn2; G3z; G3s
         ; PAIRᶻ; CERTᶻ; one; _⟫_; wkS3; wkS3e
@@ -339,6 +340,36 @@ D3-clean a' b' = cong₂ (λ x y → monusTm (nsuc x) (nsuc y))
       (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single (⊢R1' da db)))))))
       (Sub⊢-ext (Sub⊢-ext (Sub⊢-ext (⊢single (⊢W' da db))))))
       (Sub⊢-ext (Sub⊢-ext (⊢single (⊢R2' da db))))
+
+------------------------------------------------------------------------
+-- ⚠⚠ THE ASSEMBLY — `⊢natrec-var` DOES NOT APPLY DIRECTLY.  MEASURED.
+--
+-- `⊢natrec-var` wants the branches at `subTy (single nzero) M3` and
+-- `subTy nrs M3` — with `single nzero`/`nrs` OUTSIDE the stack.  The layer-4
+-- chains produce them INSIDE: `⊢G3z`'s own type carries `single nzero`, and
+-- `sub-lemma` pushes the five levels AROUND it.  Agda reports
+-- `R2' != nzero`, i.e. the outermost substitution is the stack's, not the
+-- branch's.
+--
+-- ⇒ TWO ROUTES, both costed, neither started:
+--
+--   (A) COMMUTE.  Walk `single nzero` out through five levels with `na-z`,
+--       and `nrs` with `na-s` — TEN applications.  ⚠ Each needs `na-z`'s
+--       Ctx-level `Γ`/`Δ` given explicitly: supplying `σ` fixes only the
+--       ERASED `⌊ Γ ⌋`, and `⌊_⌋` does not invert.  That is the blocker
+--       recorded two commits ago; it is real information, not a pin.
+--
+--   (B) USE `⊢natrec-at` INSTEAD, with σ = the five-level stack COMPOSED
+--       (four `Sub⊢-∘`) with a weakening, and n = `var vz`.  Then the
+--       na-z/na-s casts happen INSIDE the lemma, as they did for layers 1
+--       and 3.  ⚠ Cost: `subTm (composite) G3z` is not syntactically the
+--       NESTED `Z3'`, so it needs `subTm-subTm` to reconcile — and `midAt`
+--       (hence `gcd-le-prefix`, already green) is stated in the nested form.
+--
+--   ⇒ (B) looks cheaper and is the same shape that worked twice already.
+--     The reconciliation is the part to scope first: either cast, or restate
+--     `midAt` composite and re-verify the prefix chain.
+------------------------------------------------------------------------
 
 {-
 ------------------------------------------------------------------------
