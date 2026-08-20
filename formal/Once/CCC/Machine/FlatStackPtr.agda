@@ -481,7 +481,7 @@ sp-abstract (instr-sigop si) ls alloc ff wf =
   sp-write-reg-halt (current-frame alloc) ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls)
                     (sigop-output-ok si ls) wf
 sp-abstract (instr-load-const p v)   ls alloc ff wf =
-  sp-write-reg (current-frame alloc) ls Output (SV-Lit p v) tt wf
+  sp-write-reg (current-frame alloc) ls Output (SV-Lit p (lit-value p v)) tt wf
 sp-abstract (instr-load-code-addr n) ls alloc ff wf =
   sp-write-reg (current-frame alloc) ls Output (SV-Code n) tt wf
 sp-abstract instr-save-closure-reg   ls alloc ff wf = wf

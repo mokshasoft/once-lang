@@ -464,7 +464,10 @@ mutual
   wf-abstract (instr-sigop si) ls alloc wf =
     wf-write-reg-halt Output (exec-sigop-output si ls) (exec-sigop-halts si ls) wf
       (sigop-output-below (next-heap-ref alloc) si ls) , ≤-refl
-  wf-abstract (instr-load-const p v) ls alloc wf = wf-write-reg Output (SV-Lit p v) wf tt , ≤-refl
+  -- D113: `exec-abstract` MATERIALISES the literal (`lit-value`), so the cell
+  -- holds the target's representation, not the payload. Mirrors the machine.
+  wf-abstract (instr-load-const p v) ls alloc wf =
+    wf-write-reg Output (SV-Lit p (lit-value p v)) wf tt , ≤-refl
   wf-abstract (instr-load-code-addr n) ls alloc wf = wf-write-reg Output (SV-Code n) wf tt , ≤-refl
   wf-abstract instr-save-closure-reg ls alloc wf = wf , ≤-refl
   wf-abstract (instr-load-tag-lit n) ls alloc wf = wf-write-reg Output (SV-Tag n) wf tt , ≤-refl

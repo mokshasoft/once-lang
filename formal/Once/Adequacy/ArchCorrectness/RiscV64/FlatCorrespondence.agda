@@ -51,7 +51,7 @@ rreg : R.State → Reg → ℕ
 rreg s r = R.readReg (R.State.regs s) r
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
-       FS slot-size word-eq (encode binary64) Reg riscv64-roles R.State rreg memory rhalted
+       FS slot-size word-eq Reg riscv64-roles R.State rreg memory rhalted
   public
 
 ------------------------------------------------------------------------

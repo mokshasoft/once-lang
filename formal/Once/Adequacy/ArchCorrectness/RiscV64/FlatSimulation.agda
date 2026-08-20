@@ -33,12 +33,22 @@ open import Once.CCC.Target.RiscV64.Syntax using (slot-size)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 open import Once.CanonicalName using (CanonicalName)
 
+-- `fmt-eq`'s type names a format, so this import must precede the header.
+open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+
 module Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation
   -- D089's definition identity, threaded only so `CompiledCorrespondence` can
   -- state `bs-lea-slot`'s `RunAt` premise (2026-08-16).
   (o : CanonicalName)
   (FS : FrameSemantics)
   (word-eq : frame-word FS ≡ slot-size)
+  -- …and the same kind of pinning for the FLOAT FORMAT (plan 0.73, D113).
+  -- The emitter writes `encode binary64` into the immediate; the abstract machine
+  -- materialises a float literal at `float-format FS`. For those to be the
+  -- same number, THIS `FS` has to be this arch's — and with `FS` abstract
+  -- here, that is not derivable, it is a premise. Discharged by `refl` at
+  -- instantiation, exactly as `word-eq` is.
+  (fmt-eq : FrameSemantics.float-format FS ≡ binary64)
   where
 
 open import Data.Nat using (ℕ; suc; _+_; zero; _∸_; _<_; s≤s; z≤n; _≤_; _≡ᵇ_; _*_)
@@ -77,7 +87,6 @@ open import Once.CCC.FrameSemantics using (frame-base; slot-addr; slot-addr-line
 open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
 open import Once.Memory.HeapAddress using (heap-ref; ref-id)
 open import Once.Word using (Carrier)
-open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.Type using (fits-int; fits-float)
 
@@ -105,7 +114,7 @@ riscv64-link-claim : R.State → ℕ → ℕ → Set
 riscv64-link-claim s _ v = rreg' s ra ≡ v
 
 open import Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
-       o FS rv-slot-size word-eq (encode binary64) Reg riscv64-roles R.State rreg' R.State.memory rhalted
+       o FS rv-slot-size word-eq Reg riscv64-roles R.State rreg' R.State.memory rhalted
        riscv64-link-claim
        R.State.pc Program compile-trace R.find-label blk-off blk-len R.exec
        R.W.modulus
@@ -666,11 +675,25 @@ block-step-scratch-dec {hv} prog fs s k cc h ft sc-eq no-borrow s3<mod =
 block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : Dyadic) → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
-  → (encode binary64) v < R.W.modulus
+  -- Stated in the INTERFACE's language (`lit-value`, the machine's own
+  -- materialisation) rather than the emitter's, so `BlockSteps` needs no
+  -- adapter. `fmt-eq` converts, once, below.
+  → AbstractExec.lit-value {FS} fits-float v < R.W.modulus
   → BlockStep hv prog fs s (instr-load-const fits-float v)
 block-step-load-const-float {hv} prog fs s v cc h ft fits =
-  block-step-li prog fs s (instr-load-const fits-float v) a0 (encode binary64 v) cc h ft refl fits refl (refl , refl , refl) refl
-    (C.sim-load-const-float v fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-out _ _))
+  block-step-li prog fs s (instr-load-const fits-float v) a0 (encode binary64 v) cc h ft refl fits64 refl (refl , refl , refl) refl
+    (C.sim-load-const-float v fs s _ (dataCorr cc) sr)
+  where
+    -- The premise speaks of `float-format FS`; `block-step-li` needs the
+    -- emitter's concrete format. One `subst` each way, and `fmt-eq` is spent.
+    -- (`subst`, not `rewrite`: `rewrite` would generalise `float-format FS`
+    -- over the whole type and the abstraction fails.)
+    fits64 : (encode binary64) v < R.W.modulus
+    fits64 = subst (λ F → encode F v < R.W.modulus) fmt-eq fits
+    sr : C.SetsRole s _ role-out (C.lit-word (AbstractExec.lit-value {FS} fits-float v))
+    sr = subst (λ F → C.SetsRole s _ role-out (C.lit-word (encode F v)))
+               (sym fmt-eq)
+               (C.sets-role-riscv64 s role-out _ _)
 
 ------------------------------------------------------------------------
 -- THE HEAP-INDIRECT ACCESSES (0.65 G2).

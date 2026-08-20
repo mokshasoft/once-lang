@@ -412,7 +412,7 @@ pb-abstract (instr-sigop si) ls alloc ff am wfS wf =
   pb-write-reg-halt _ ls Output (exec-sigop-output si ls) (exec-sigop-halts si ls)
                     (sigop-output-pb _ si ls) wf
 pb-abstract (instr-load-const p v)   ls alloc ff am wfS wf =
-  pb-write-reg _ ls Output (SV-Lit p v) tt wf
+  pb-write-reg _ ls Output (SV-Lit p (lit-value p v)) tt wf
 pb-abstract (instr-load-code-addr n) ls alloc ff am wfS wf =
   pb-write-reg _ ls Output (SV-Code n) tt wf
 pb-abstract instr-save-closure-reg   ls alloc ff am wfS wf = wf

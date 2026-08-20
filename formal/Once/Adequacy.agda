@@ -95,7 +95,13 @@ record CorrectCompiler : Set₁ where
     -- trace the instance picks up-to-`n` prefix equality, Plan 0.44).
     Typed : Set
     _⊢_   : Source → Typed → Set
-    ⟦_⟧ˢ  : Typed → Behavior
+    -- D114/D113: the meaning takes the ARCH, exactly as `exec` always has. A
+    -- machine-level denotation is target-relative at `Float` — `1.5` is
+    -- `0x3FC00000` at 32 bits and `0x3FF8000000000000` at 64 — so one meaning
+    -- for every target was a claim that could not be true at both. This is one
+    -- claim PER TARGET, not a weaker claim: `correct` still quantifies over
+    -- every arch, and now says what each of them means.
+    ⟦_⟧ˢ  : Arch → Typed → Behavior
     exec  : Arch → Bytes → Behavior
     _≈_   : Behavior → Behavior → Set
 
@@ -117,6 +123,6 @@ record CorrectCompiler : Set₁ where
     -- elaborate to the wrong trace — makes `correct` unprovable: a TYPE ERROR.
     correct : ∀ arch doOpt src →
         ( ∀ bytes → compile arch doOpt src ≡ just bytes →
-            Σ[ tp ∈ Typed ] ((src ⊢ tp) × (exec arch bytes ≈ ⟦ tp ⟧ˢ)) )
+            Σ[ tp ∈ Typed ] ((src ⊢ tp) × (exec arch bytes ≈ ⟦ arch ⟧ˢ tp)) )
       × ( ∀ tp → src ⊢ tp →
             Σ[ bytes ∈ Bytes ] (compile arch doOpt src ≡ just bytes) )

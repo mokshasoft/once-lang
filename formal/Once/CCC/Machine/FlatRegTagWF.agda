@@ -327,7 +327,9 @@ mutual
   -- claim needs `structured-pure-sigop-below`).
   regtag-abstract (instr-sigop si) ls alloc wf =
     regtag-write-nc-halt Output tt (exec-sigop-output si ls) (exec-sigop-halts si ls) wf
-  regtag-abstract (instr-load-const p v) ls alloc wf = regtag-write-nc Output tt (SV-Lit p v) wf
+  -- D113: the machine MATERIALISES the literal, so mirror `lit-value`.
+  regtag-abstract (instr-load-const p v) ls alloc wf =
+    regtag-write-nc Output tt (SV-Lit p (lit-value p v)) wf
   regtag-abstract (instr-load-code-addr n) ls alloc wf = regtag-write-nc Output tt (SV-Code n) wf
   regtag-abstract instr-save-closure-reg ls alloc wf = wf
   regtag-abstract (instr-load-tag-lit n) ls alloc wf = regtag-write-nc Output tt (SV-Tag n) wf

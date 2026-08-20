@@ -71,17 +71,6 @@ module Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
   ⦃ slot-size-nz : NonZero slot-size ⦄
   -- The frame semantics' slot size IS this target's (`refl` at instantiation).
   (word-eq : frame-word FS ≡ slot-size)
-  -- HOW THIS TARGET ENCODES A FLOAT CONSTANT (plan 0.66, D109). A double is 64
-  -- bits; a 32-bit register is not, so the encoding is a property of the TARGET
-  -- exactly as `slot-size` is, and hardcoding `float-bits` (as it was) here was the same
-  -- kind of assumption as hardcoding 8 would have been. 64-bit targets pass
-  -- `float-bits` (as it was), x86-32 passes `float-bits-single` (as it was). The correspondence never
-  -- needs to know WHICH — only that the emitter's immediate and `enc-sv` are
-  -- the same function, which is what makes the block-step `refl`.
-  -- Plan 0.72 (D112): the encoder now takes the WIDTH-FREE carrier, not a
-  -- 64-bit double. That is the whole change: the target applies its format to
-  -- an exact value, instead of re-encoding a value that already had a width.
-  (fenc : Dyadic → ℕ)
   -- the machine, as far as a correspondence can see it
   (Reg : Set)
   (roles : RegRoles Reg)
@@ -162,7 +151,7 @@ open FlatMachine {FS}
 open FrameSemantics FS using (shift-frame)
 
 open import Once.CCC.Machine.FlatStoreWF FS using (sv-below; svm-below)
-open AbstractExec {FS} using (exec-abstract; exec-load-from-slot-with-value; exec-restore-input-with-value)
+open AbstractExec {FS} using (exec-abstract; lit-value; exec-load-from-slot-with-value; exec-restore-input-with-value)
 open FrameSemantics FS using (Frame; frame-base; slot-addr; slot-addr-linear; shift-base; frame-word)
 
 ------------------------------------------------------------------------
@@ -278,16 +267,21 @@ enc-sv-at am (SV-Ptr (AtDynamic hl))   = hmap am hl
 -- callee's slot k and its caller's slot k were the same abstract cell, so no
 -- address could be assigned and this was a (false) `0`.
 enc-sv-at am (SV-Ptr (AtStack f k))    = slot-addr f k
--- A register-fittable INT literal encodes to its own value — exactly the immediate
--- `compile-const fits-int v = mov rax, v` loads (so load-const's out-eq is refl and
--- literal values flow through FlatCorr instead of collapsing to 0). Float is
--- unimplemented (`compile-const fits-float` traps to ud2), so it gets no register
--- correspondence — encode 0.
+-- A register-fittable literal encodes to ITS OWN VALUE, at both numeric types.
+-- That is exactly the immediate the emitter loads, so load-const's out-eq is
+-- `refl` and literal values flow through FlatCorr instead of collapsing to 0.
+--
+-- D113 is what made the float case identical to the int one. A `StoredValue`
+-- now holds the target's REPRESENTATION at both types — the machine encodes at
+-- `instr-load-const`, the one instruction that materialises a literal — so
+-- there is nothing left for `enc-sv` to convert. The per-arch `fenc : Dyadic →
+-- ℕ` parameter this module used to take is gone with it: `FS` already carries
+-- the target's format, so a second channel for the same fact was redundant.
 -- ENUMERATED (no catch-all): a `SV-Lit _ _` catch-all does not survive the
 -- case-tree translation, so `enc-sv-at am (SV-Lit fits-float v)` would not reduce
 -- and the extension-stability lemma below could not be stated by `refl`.
 enc-sv-at am (SV-Lit fits-int v)       = lit-word v
-enc-sv-at am (SV-Lit fits-float v)     = fenc v
+enc-sv-at am (SV-Lit fits-float v)     = lit-word v
 -- Plan 0.63 (D089): `SV-Code` now carries the label's IDENTITY, so its
 -- encoding is `idx` — numerically exactly what this yielded before, when the
 -- payload was the bare counter. The same FICTION `effectiveAddr (rip+label _)`
@@ -1924,11 +1918,13 @@ sim-load-const {hv} v fs s s' corr st = record
   { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st ; scratch-eq = keep-scratch corr st (λ ()) ; count-eq = keep-count corr st (λ ())
   ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
 
--- …and the FLOAT constant (D079): identical, with the IEEE-754 pattern as
--- the immediate — `enc-sv (SV-Lit fits-float v)` IS `fenc v`, so
--- `out-eq` is `at-role` exactly as in the int case.
+-- …and the FLOAT constant (D079/D113): identical, with the IEEE-754 pattern as
+-- the immediate. The payload is a `Dyadic` — source syntax — and the machine
+-- MATERIALISES it (`lit-value`, i.e. `encode (float-format FS)`), so what the
+-- emitter must put in the register is that same encoding. `enc-sv` is now the
+-- identity here, so `out-eq` is `at-role` exactly as in the int case.
 sim-load-const-float : {hv : HeapView} (v : Dyadic) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
-  → SetsRole s s' role-out (fenc v)
+  → SetsRole s s' role-out (lit-word (lit-value fits-float v))
   → FlatCorr hv (flat-exec-instr (instr-load-const fits-float v) [] fs) s'
 sim-load-const-float {hv} v fs s s' corr st = record
   { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st ; scratch-eq = keep-scratch corr st (λ ()) ; count-eq = keep-count corr st (λ ())

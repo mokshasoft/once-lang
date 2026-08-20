@@ -437,7 +437,7 @@ x86-32-traceloop = record
   ; nonhalt-noncall = nonhalt-noncall
   }
 
-module EE = Engine o FS slot-size word-eq (encode binary32) Reg x86-32-roles X.W.modulus
+module EE = Engine o FS slot-size word-eq Reg x86-32-roles X.W.modulus
                    x86-32-emitter x86-32-machine x86-32-traceloop
 
 open EE using (FlatInv; mkFlatInv; inv-wf; inv-closure; inv-regtag; inv-ev; inv-env
@@ -782,6 +782,6 @@ x86-32-supply = record
   ; external-sigop-contract = external-sigop-contract
   }
 
-module ED = Dispatch o FS slot-size word-eq (encode binary32) Reg x86-32-roles X.W.modulus
+module ED = Dispatch o FS slot-size word-eq Reg x86-32-roles X.W.modulus
                      x86-32-emitter x86-32-machine x86-32-traceloop
 open ED.Dispatch x86-32-supply public

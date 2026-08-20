@@ -47,7 +47,6 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Label using (Label)
 open import Once.CanonicalName using (CanonicalName)
 
--- `fenc`'s type mentions it, so this import must precede the module header.
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.Float.Dyadic using (Dyadic)
 
@@ -60,12 +59,6 @@ module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
   (slot-size : ℕ)
   ⦃ slot-size-nz : NonZero slot-size ⦄
   (word-eq : frame-word FS ≡ slot-size)
-  -- HOW THIS TARGET ENCODES A FLOAT CONSTANT (plan 0.66, D109) — see
-  -- `FlatCorrespondence`'s parameter of the same name.
-  -- Plan 0.72 (D112): the encoder now takes the WIDTH-FREE carrier, not a
-  -- 64-bit double. That is the whole change: the target applies its format to
-  -- an exact value, instead of re-encoding a value that already had a width.
-  (fenc : Dyadic → ℕ)
   (Reg : Set)
   (roles : RegRoles Reg)
   (State : Set)
@@ -131,7 +124,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.RunContext as RC
 -- ambiguous at every engine consumer. Same instance either way (module
 -- application is by alias), so the two `RunAt`s are one type.
 private
-  module CFC = FC FS slot-size word-eq fenc Reg roles State rreg memory xhalted
+  module CFC = FC FS slot-size word-eq Reg roles State rreg memory xhalted
   module CRC = RC o FS slot-size word-eq
 
 open CFC using (HeapView; FlatCorr; RetAddrs; frames-of; caddr; HDom; haddr
@@ -662,7 +655,7 @@ record BlockSteps : Set₁ where
       ∀ {hv : HeapView} prog fs s (v : Dyadic) → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
-      → fenc v < modulus
+      → AbstractExec.lit-value {FS} fits-float v < modulus
       → BlockStep hv prog fs s (instr-load-const fits-float v)
     -- READ THE CALL, NOT THE NAME: this field's label premise is the CONCRETE
     -- scan — this module's `find-label` parameter — where the jump family's is
