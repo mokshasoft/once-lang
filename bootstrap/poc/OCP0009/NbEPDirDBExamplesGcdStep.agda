@@ -481,10 +481,12 @@ gcd-b0-var a ih =
 --   reached by SPLITTING ON `b`: the step must see `snd` is a SUCCESSOR
 --   before it may look at `fst`.  At a variable `b` that `natrec` is stuck
 --   (`natstk? b = true`), so no reduction sequence exists at all.
---   ⛔ NOT DONE: even one constructor in (`gcd (0 , suc b)`), the successor
---   branch threads the bound predecessor through several binders, so the
---   endpoint is not `nsuc b` up to `wkS` — it needs the branch body's own
---   substitution lemma.  Recorded rather than half-proved.
+--   ⇒ so equation 2 is stated ONE CONSTRUCTOR IN, as `gcd (0 , suc b)`,
+--     which IS reachable with `b` a genuine variable.
+--   ★ DONE — see `gcd-a0-var` below.  The successor branch does thread the
+--     bound predecessor through several binders, so the endpoint is `nsuc b`
+--     only up to `wkS2` (depth TWO — `natrec-suc` binds the predecessor AND
+--     the IH); that lemma is right below and the proof is one `subst`.
 
 -- ⚠ THE TRANSPORT IS ONE BINDER DEEPER HERE, and that is the whole reason
 --   equation 2 is harder than equation 1.  `natrec-suc` binds TWO variables
