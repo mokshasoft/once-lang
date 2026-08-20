@@ -12,7 +12,15 @@
 -- lemma + the `RelEnv` it inducts over; the case discharges follow.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.MeaningBridge where
+open import Once.Float.Dyadic using (FloatFormat)
+
+-- Plan 0.73 (D113): this module's statements mention a denotation that is
+-- target-relative at `Float`, so the format is a parameter. A MODULE parameter
+-- rather than a per-lemma argument because everything here is a PROOF —
+-- downstream uses these as facts and never reduces them — so the "recursive
+-- function in a parameterised module stops reducing" trap does not apply. The
+-- denotations themselves take it as an explicit argument.
+module Once.Adequacy.MeaningBridge (fmt : FloatFormat) where
 
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
@@ -35,7 +43,7 @@ open import Once.Functor.Decide using (wellFormedF?)
 open import Once.Semantics.Machine using (sem-In; coerce-functor)
 open import Once.IRTy using (eraseF; ⌊⟧T-commute; IRTy)
 open import Once.IRTy.WF using (wf-⌊⌋)
-open import Once.Adequacy.InErased using (In-ir; liftFn-In)
+open import Once.Adequacy.InErased fmt using (In-ir; liftFn-In)
 open import Once.Postulates using (extensionality)
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; svar; SVar)
   renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
@@ -61,8 +69,8 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _
   t-var-poly-instantiate-infer)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵍ; ⟦_⟧ᵐ;
   lookupᴰ; Env; cata-sem; sigOpValᴰ; sigOpRefᴰ; svarᴰ; in-value; named-sem)
-open import Once.Adequacy.CataErased using (liftFn-SigOp)
-open import Once.Adequacy.LiftFnReduce using
+open import Once.Adequacy.CataErased fmt using (liftFn-SigOp)
+open import Once.Adequacy.LiftFnReduce fmt using
   (liftFn-id; liftFn-fst; liftFn-snd; liftFn-terminal; liftFn-inl; liftFn-inr;
    liftFn-∘; liftFn-pair; liftFn-curry; liftFn-case-inj₁; liftFn-case-inj₂; liftFn-apply)
 import Once.IR as IR
@@ -71,12 +79,12 @@ open import Once.Arith.SigOp.Builders using (value-info;
   lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.CanonicalName using (CanonicalName; bare)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-morph; realize-global; poly-usage-eq)
-open import Once.Adequacy.SourceFaithful using (faithful)
+open import Once.Adequacy.SourceFaithful fmt using (faithful)
 open import Once.Surface.Elaborate using (elaborate)
 import Once.Denotation.SourceDenote as SD
-open import Once.Adequacy.MeaningRelation
+open import Once.Adequacy.MeaningRelation fmt
   using (RelV; RelT; RelT-return; RelT-bind)
-open import Once.Adequacy.CataBridge using (cata-bridge)
+open import Once.Adequacy.CataBridge fmt using (cata-bridge)
 
 -- Move a codomain-subst on `f` across `g ∘_` into a domain-subst on `g`.
 -- Match-to-refl.  (`realize-global (g-In) = In ∘ subst(⌊⟧T)(rg) = In-ir ∘ rg`.)
@@ -175,7 +183,7 @@ mutual
 -- `concrete-rel→refl` (result is concrete). Funext-free.
 sigop-bridge : ∀ {A B} {cn : CanonicalName} (bA : IsBaseType A) (cB : IsConcrete B) {a b : ⟦ A ⟧ᴰ} → RelV A a b
              → RelT B (named-sem {A} {B} cn bA cB a)
-                      (liftFn (IR.SigOp (value-info {A} {B} cn bA cB)) b)
+                      (liftFn fmt (IR.SigOp (value-info {A} {B} cn bA cB)) b)
 sigop-bridge {A} {B} {cn} bA cB {a} {b} rv
   rewrite base-rel→eq bA rv
   = subst (λ f → RelT B (named-sem cn bA cB b) (f b))
@@ -190,7 +198,7 @@ sigop-bridge {A} {B} {cn} bA cB {a} {b} rv
 -- At a base (non-arrow) type SD's `sigOp` catch-all IS the closed `value-info`
 -- form; casing the witness exposes the shape so each clause is `refl`.
 sd-sigOp-base≡ : ∀ {n} {Γ : Ctx n} {A : Type} (cn : CanonicalName) (ib : IsBaseType A) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
-               → SD.⟦ sigOp {Γ = Γ} {A = A} cn (con-base ib) ⟧ˢ dγ ≡ sigOpValᴰ (value-info {Unit} {A} cn base-Unit (con-base ib))
+               → (SD.⟦ sigOp {Γ = Γ} {A = A} cn (con-base ib) ⟧ˢ fmt) dγ ≡ sigOpValᴰ (value-info {Unit} {A} cn base-Unit (con-base ib))
 sd-sigOp-base≡ cn base-Unit          dγ = refl
 sd-sigOp-base≡ cn base-Void          dγ = refl
 sd-sigOp-base≡ cn base-Int           dγ = refl
@@ -206,7 +214,7 @@ sd-sigOp-base≡ cn (base-Sum ibA ibB)  dγ = refl
 -- `con-fun` exposes `A` as an arrow so BOTH sides are the same `arrow-info`
 -- closure ⇒ plain reflexivity.
 sigop-ref-bridge : ∀ {n} {Γ : Ctx n} {A : Type} (cn : CanonicalName) (conc : IsConcrete A) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
-                 → RelT A (sigOpRefᴰ cn conc) (SD.⟦ sigOp {Γ = Γ} {A = A} cn conc ⟧ˢ dγ)
+                 → RelT A (sigOpRefᴰ cn conc) ((SD.⟦ sigOp {Γ = Γ} {A = A} cn conc ⟧ˢ fmt) dγ)
 sigop-ref-bridge {A = A} cn (con-base ib) dγ =
   subst (λ z → RelT A (sigOpRefᴰ cn (con-base ib)) z)
         (sym (sd-sigOp-base≡ cn ib dγ))
@@ -225,7 +233,7 @@ sigop-ref-bridge {A = Dom ⇒[ k ] Cod} cn (con-fun bDom cCod) dγ =
 -- recursive slot), so a `cong` finishes — no funext.
 in-app-bridge : ∀ {F : Functor} {wfF : WellFormedF F} {vᴸ vᴿ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ}
               → RelV (⟦ F ⟧T (μ-type F)) vᴸ vᴿ
-              → RelT (μ-type F) (returnT (in-value vᴸ)) (liftFn (In-ir wfF) vᴿ)
+              → RelT (μ-type F) (returnT (in-value vᴸ)) (liftFn fmt (In-ir wfF) vᴿ)
 in-app-bridge {F} {wfF} rv =
   subst (RelT (μ-type F) (returnT (in-value _))) (sym (liftFn-In wfF _))
         (λ k → refl , cong in-value (wfF-layer-eq wfF (λ r → r) rv))
@@ -234,13 +242,13 @@ in-app-bridge {F} {wfF} rv =
 -- whose `evalᴰ` reduces (via the catch-all + `eval (const …) = ∣n∣`, `inject{Int}=id`,
 -- `[]++[]=[]`) to `λ _ → ([] , ∣n∣) = returnT (absℤ n)` — definitionally the LHS.
 int-bridge : ∀ {ctx : NamedCtx} {X : Type} (n : ℤ) (y : ⟦ X ⟧ᴰ)
-           → RelT Int (returnT ⟦ g-int {ctx} n ⟧ᵍ) (liftFn (realize-global {X = X} (g-int {ctx} n)) y)
+           → RelT Int (returnT (⟦ g-int {ctx} n ⟧ᵍ fmt)) (liftFn fmt (realize-global {X = X} (g-int {ctx} n)) y)
 int-bridge n y k = refl , refl
 
 -- The VALUE realm, DISCHARGED — structural (`RelT-bind`/`RelT-return`, using
 -- `returnT x >>=T f ≡ f x` definitionally) + the two leaf facts above.
 bridge-g : ∀ {ctx : NamedCtx} {e A} {X : Type} (d : ctx ⊢ᵍ e ∶ A) (y : ⟦ X ⟧ᴰ)
-         → RelT A (returnT ⟦ d ⟧ᵍ) (liftFn (realize-global {X = X} d) y)
+         → RelT A (returnT (⟦ d ⟧ᵍ fmt)) (liftFn fmt (realize-global {X = X} d) y)
 bridge-g {ctx = ctx} {X = X} (g-int n) y = int-bridge {ctx = ctx} {X = X} n y
 -- The float leaf reduces the same way and even more directly: `⟦ g-float … ⟧ᵍ`
 -- IS `d`, and `realize-global (g-float … d …) = const fits-float d ∘ terminal`,
@@ -257,39 +265,39 @@ bridge-g {X = X} (g-terminal a b) y =
 -- `projTrace (sub) n ++ …`, equal by the sub-relation's trace half; the value
 -- follows from the sub-relation's value half.
 bridge-g {X = X} (g-pair {A = A₁} {B = A₂} ga gb) y =
-  subst (RelT (A₁ * A₂) (returnT (⟦ ga ⟧ᵍ , ⟦ gb ⟧ᵍ)))
+  subst (RelT (A₁ * A₂) (returnT ((⟦ ga ⟧ᵍ fmt) , (⟦ gb ⟧ᵍ fmt))))
         (cong (λ h → h y) (sym (liftFn-pair {X} {A₁} {A₂} (realize-global ga) (realize-global gb))))
         (λ n → cong₂ (λ x z → x ++ (z ++ [])) (proj₁ (bridge-g ga y n)) (proj₁ (bridge-g gb y n))
              , (proj₂ (bridge-g ga y n) , proj₂ (bridge-g gb y n)))
 bridge-g {X = X} (g-inl {A = A₁} {B = A₂} ga) y =
-  subst (RelT (A₁ + A₂) (returnT (inj₁ ⟦ ga ⟧ᵍ)))
+  subst (RelT (A₁ + A₂) (returnT (inj₁ (⟦ ga ⟧ᵍ fmt))))
         (cong (λ h → h y)
           (sym (trans (liftFn-∘ {A₁} {A₁ + A₂} {X} (IR.inl IR.Heap) (realize-global ga))
-                      (cong (λ hh → λ a → liftFn {X} {A₁} (realize-global ga) a >>=T hh) (liftFn-inl {A₁} {A₂})))))
+                      (cong (λ hh → λ a → liftFn fmt {X} {A₁} (realize-global ga) a >>=T hh) (liftFn-inl {A₁} {A₂})))))
         (λ n → cong (_++ []) (proj₁ (bridge-g ga y n)) , proj₂ (bridge-g ga y n))
 bridge-g {X = X} (g-inr {A = A₁} {B = A₂} gb) y =
-  subst (RelT (A₁ + A₂) (returnT (inj₂ ⟦ gb ⟧ᵍ)))
+  subst (RelT (A₁ + A₂) (returnT (inj₂ (⟦ gb ⟧ᵍ fmt))))
         (cong (λ h → h y)
           (sym (trans (liftFn-∘ {A₂} {A₁ + A₂} {X} (IR.inr IR.Heap) (realize-global gb))
-                      (cong (λ hh → λ a → liftFn {X} {A₂} (realize-global gb) a >>=T hh) (liftFn-inr {A₂} {A₁})))))
+                      (cong (λ hh → λ a → liftFn fmt {X} {A₂} (realize-global gb) a >>=T hh) (liftFn-inr {A₂} {A₁})))))
         (λ n → cong (_++ []) (proj₁ (bridge-g gb y n)) , proj₂ (bridge-g gb y n))
 -- g-In: `realize-global (g-In dec garg) = In wfF Heap ∘ realize-global garg`,
 -- so the RHS binds the (recursively bridged) `garg` then applies the pure `In`.
 -- Value via `wfF-layer-eq`+`cong` (as `in-app-bridge`); trace = the sub-trace
 -- (`In` adds none) modulo `++ []`.
 bridge-g {X = X} (g-In {F = F} {wfF = wfF} dec garg) y =
-  subst (RelT (μ-type F) (returnT (in-value ⟦ garg ⟧ᵍ)))
+  subst (RelT (μ-type F) (returnT (in-value (⟦ garg ⟧ᵍ fmt))))
         (cong (λ h → h y) (sym g-In-reduce))
         (λ k → trans (proj₁ (bridge-g garg y k)) (sym (++-identityʳ _))
              , cong in-value (wfF-layer-eq wfF (λ r → r) (proj₂ (bridge-g garg y k))))
   where
-    g-In-reduce : liftFn {X} {μ-type F} (realize-global (g-In dec garg))
-                ≡ (λ a → liftFn {X} {⟦ F ⟧T (μ-type F)} (realize-global garg) a >>=T (λ w → returnT (in-value w)))
+    g-In-reduce : liftFn fmt {X} {μ-type F} (realize-global (g-In dec garg))
+                ≡ (λ a → liftFn fmt {X} {⟦ F ⟧T (μ-type F)} (realize-global garg) a >>=T (λ w → returnT (in-value w)))
     g-In-reduce =
-      trans (cong (liftFn {X} {μ-type F}) (subst-∘-move (⌊⟧T-commute F (μ-type F))
+      trans (cong (liftFn fmt {X} {μ-type F}) (subst-∘-move (⌊⟧T-commute F (μ-type F))
                             (IR.In (wf-⌊⌋ wfF) IR.Heap) (realize-global garg)))
       (trans (liftFn-∘ {⟦ F ⟧T (μ-type F)} {μ-type F} {X} (In-ir wfF) (realize-global garg))
-             (cong (λ h → λ a → liftFn {X} {⟦ F ⟧T (μ-type F)} (realize-global garg) a >>=T h)
+             (cong (λ h → λ a → liftFn fmt {X} {⟦ F ⟧T (μ-type F)} (realize-global garg) a >>=T h)
                    (extensionality (liftFn-In wfF))))
 
 ------------------------------------------------------------------------
@@ -303,14 +311,14 @@ bridge-g {X = X} (g-In {F = F} {wfF = wfF} dec garg) y =
 -- over the (funext) reduction at the RelV level.
 wrapM : ∀ {ctx : NamedCtx} {e A B} {π : Purity} (d : ctx ⊢ᵐ e ∶ A ⇨[ π ] B)
           {g : ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ}
-      → liftFn (realize-morph d) ≡ g
-      → RelV (A ⇒[ mk-kind Many π ] B) (⟦ d ⟧ᵐ) g
-      → RelV (A ⇒[ mk-kind Many π ] B) (⟦ d ⟧ᵐ) (liftFn (realize-morph d))
+      → liftFn fmt (realize-morph d) ≡ g
+      → RelV (A ⇒[ mk-kind Many π ] B) ((⟦ d ⟧ᵐ fmt)) g
+      → RelV (A ⇒[ mk-kind Many π ] B) ((⟦ d ⟧ᵐ fmt)) (liftFn fmt (realize-morph d))
 wrapM {A = A} {B = B} {π = π} d eq body =
-  subst (RelV (A ⇒[ mk-kind Many π ] B) (⟦ d ⟧ᵐ)) (sym eq) body
+  subst (RelV (A ⇒[ mk-kind Many π ] B) ((⟦ d ⟧ᵐ fmt))) (sym eq) body
 
 bridge-m : ∀ {ctx : NamedCtx} {e A B} {π : Purity} (d : ctx ⊢ᵐ e ∶ A ⇨[ π ] B)
-         → RelV (A ⇒[ mk-kind Many π ] B) (⟦ d ⟧ᵐ) (liftFn (realize-morph d))
+         → RelV (A ⇒[ mk-kind Many π ] B) ((⟦ d ⟧ᵐ fmt)) (liftFn fmt (realize-morph d))
 bridge-m d@(m-id {T = T} _ _)          = wrapM d (liftFn-id {T})       (λ rv n → refl , rv)
 bridge-m d@(m-fst {A = A} {B = B} _ _) = wrapM d (liftFn-fst {A} {B})  (λ rv n → refl , proj₁ rv)
 bridge-m d@(m-snd {A = A} {B = B} _ _) = wrapM d (liftFn-snd {A} {B})  (λ rv n → refl , proj₂ rv)
@@ -323,10 +331,10 @@ bridge-m d@(m-compose {A = A} {B = B} {C = C} _ df dg) =
     cong₂ _++_ (proj₁ (bridge-m dg rv n)) (proj₁ (bridge-m df (proj₂ (bridge-m dg rv n)) n))
   , proj₂ (bridge-m df (proj₂ (bridge-m dg rv n)) n))
 bridge-m (m-case {A = A} {B = B} {C = C} df dg) {a = inj₁ a} {b = inj₁ b} rv =
-  subst (RelT C (⟦ df ⟧ᵐ a))
+  subst (RelT C ((⟦ df ⟧ᵐ fmt) a))
         (sym (liftFn-case-inj₁ {A} {B} {C} (realize-morph df) (realize-morph dg) b)) (bridge-m df rv)
 bridge-m (m-case {A = A} {B = B} {C = C} df dg) {a = inj₂ a} {b = inj₂ b} rv =
-  subst (RelT C (⟦ dg ⟧ᵐ a))
+  subst (RelT C ((⟦ dg ⟧ᵐ fmt) a))
         (sym (liftFn-case-inj₂ {A} {B} {C} (realize-morph df) (realize-morph dg) b)) (bridge-m dg rv)
 bridge-m (m-case df dg) {a = inj₁ _} {b = inj₂ _} ()
 bridge-m (m-case df dg) {a = inj₂ _} {b = inj₁ _} ()
@@ -339,7 +347,7 @@ bridge-m d@(m-curry {A = A} {B = B} {C = C} df) =
           (λ rv n → refl , (λ rb → bridge-m df (rv , rb)))
 bridge-m (m-const gd) {b = b} _ = bridge-g gd b
 bridge-m (m-cata {wfF = wfF} _ alg) {a = a} {b = b} rv =
-  cata-bridge {wfF = wfF} ⟦ alg ⟧ᵐ (realize-morph alg) (bridge-m alg) {a = a} {b = b} rv
+  cata-bridge {wfF = wfF} (⟦ alg ⟧ᵐ fmt) (realize-morph alg) (bridge-m alg) {a = a} {b = b} rv
 bridge-m {A = A} {B = B} (m-named {x = x} _ _ _ bA cB) {a = a} {b = b} rv =
   sigop-bridge {A = A} {B = B} {cn = bare x} bA cB {a = a} {b = b} rv
 bridge-m {A = A} {B = B} (m-named-resolved {cn = cn} _ bA cB) {a = a} {b = b} rv =
@@ -363,15 +371,15 @@ bridge-m {A = A} {B = B} (m-named-resolved {cn = cn} _ bA cB) {a = a} {b = b} rv
 -- poly bridge case see through `realize`'s `subst uEq (morph-app …)`.
 SD-subst-usage : ∀ {n} {Γ : Ctx n} {A} {Ψ Ψ' : Usage n} {eq : Ψ ≡ Ψ'}
                    {e : Expr Γ Ψ A} {dγ}
-  → SD.⟦ subst (λ u → Expr Γ u A) eq e ⟧ˢ dγ ≡ SD.⟦ e ⟧ˢ dγ
+  → (SD.⟦ subst (λ u → Expr Γ u A) eq e ⟧ˢ fmt) dγ ≡ (SD.⟦ e ⟧ˢ fmt) dγ
 SD-subst-usage {eq = refl} = refl
 
 bridge-i : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᵢ e ∶ A ⨾ Ψ)
            {dγ₁ dγ₂ : Env ctx} (re : RelEnv (NamedCtx.debruijn ctx) dγ₁ dγ₂)
-         → RelT A (⟦ d ⟧ᵢ dγ₁) (SD.⟦ realize-infer d ⟧ˢ dγ₂)
+         → RelT A ((⟦ d ⟧ᵢ fmt) dγ₁) ((SD.⟦ realize-infer d ⟧ˢ fmt) dγ₂)
 bridge-c : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᶜ e ∶ A ⨾ Ψ)
            {dγ₁ dγ₂ : Env ctx} (re : RelEnv (NamedCtx.debruijn ctx) dγ₁ dγ₂)
-         → RelT A (⟦ d ⟧ᶜ dγ₁) (SD.⟦ realize d ⟧ˢ dγ₂)
+         → RelT A ((⟦ d ⟧ᶜ fmt) dγ₁) ((SD.⟦ realize d ⟧ˢ fmt) dγ₂)
 
 -- Literals — pure `returnT`, identical values.
 bridge-i (t-int _)   re k = refl , refl
@@ -420,7 +428,7 @@ bridge-i (t-let d₁ d₂) re k =
 
 -- Case — split on the (related) scrutinee's injection; recurse in the branch.
 bridge-i (t-case ds dl dr) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re k
-  with valueT (⟦ ds ⟧ᵢ dγ₁) k | valueT (SD.⟦ realize-infer ds ⟧ˢ dγ₂) k | bridge-i ds re k
+  with valueT ((⟦ ds ⟧ᵢ fmt) dγ₁) k | valueT ((SD.⟦ realize-infer ds ⟧ˢ fmt) dγ₂) k | bridge-i ds re k
 ... | inj₁ a | inj₁ a' | tr , rv =
       cong₂ _++_ tr (proj₁ (bridge-i dl (re , rv) k)) , proj₂ (bridge-i dl (re , rv) k)
 ... | inj₂ b | inj₂ b' | tr , rv =
@@ -479,20 +487,20 @@ bridge-i (t-binop-cmp {op = OpMod} () _ _)
 -- Polymorphic-builtin applications — RHS is `morph-app <ir> …`; each `evalᴰ <ir>`
 -- reduces to the same pure post-op the LHS applies (modulo the `++ []` bookkeeping).
 bridge-i {A = A} (t-id-app d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
-  subst (RelT A (⟦ t-id-app d ⟧ᵢ dγ₁))
-        (sym (cong (SD.⟦ realize-infer d ⟧ˢ dγ₂ >>=T_) (liftFn-id {A})))
+  subst (RelT A ((⟦ t-id-app d ⟧ᵢ fmt) dγ₁))
+        (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) dγ₂ >>=T_) (liftFn-id {A})))
         (λ k → trans (proj₁ (bridge-i d re k)) (sym (++-identityʳ _)) , proj₂ (bridge-i d re k))
 bridge-i (t-fst-app {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
-  subst (RelT A (⟦ t-fst-app d ⟧ᵢ dγ₁)) (sym (cong (SD.⟦ realize-infer d ⟧ˢ dγ₂ >>=T_) (liftFn-fst {A} {B})))
+  subst (RelT A ((⟦ t-fst-app d ⟧ᵢ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) dγ₂ >>=T_) (liftFn-fst {A} {B})))
         (λ k → cong (_++ []) (proj₁ (bridge-i d re k)) , proj₁ (proj₂ (bridge-i d re k)))
 bridge-i (t-snd-app {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
-  subst (RelT B (⟦ t-snd-app d ⟧ᵢ dγ₁)) (sym (cong (SD.⟦ realize-infer d ⟧ˢ dγ₂ >>=T_) (liftFn-snd {A} {B})))
+  subst (RelT B ((⟦ t-snd-app d ⟧ᵢ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) dγ₂ >>=T_) (liftFn-snd {A} {B})))
         (λ k → cong (_++ []) (proj₁ (bridge-i d re k)) , proj₂ (proj₂ (bridge-i d re k)))
 bridge-i (t-terminal-app {T = T} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
-  subst (RelT Unit (⟦ t-terminal-app d ⟧ᵢ dγ₁)) (sym (cong (SD.⟦ realize-infer d ⟧ˢ dγ₂ >>=T_) (liftFn-terminal {T})))
+  subst (RelT Unit ((⟦ t-terminal-app d ⟧ᵢ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) dγ₂ >>=T_) (liftFn-terminal {T})))
         (λ k → cong (_++ []) (proj₁ (bridge-i d re k)) , tt)
 bridge-i (t-apply-app-infer {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
-  subst (RelT B (⟦ t-apply-app-infer d ⟧ᵢ dγ₁)) (sym (cong (SD.⟦ realize-infer d ⟧ˢ dγ₂ >>=T_) (liftFn-apply {A} {B} {mk-kind Many pure})))
+  subst (RelT B ((⟦ t-apply-app-infer d ⟧ᵢ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) dγ₂ >>=T_) (liftFn-apply {A} {B} {mk-kind Many pure})))
         (λ k → let bd = bridge-i d re k
                    inner = proj₁ (proj₂ bd) (proj₂ (proj₂ bd)) k
                in cong₂ _++_ (proj₁ bd) (proj₁ inner) , proj₂ inner)
@@ -525,17 +533,17 @@ bridge-c (t-In-app-check {wfF = wfF} _ d) re k =
       bi = in-app-bridge {wfF = wfF} (proj₂ bd) k
   in cong₂ _++_ (proj₁ bd) (proj₁ bi) , proj₂ bi
 bridge-c (t-apply-check {A = A} {B = B} dp) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
-  subst (RelT B (⟦ t-apply-check dp ⟧ᶜ dγ₁)) (sym (cong (SD.⟦ realize-infer dp ⟧ˢ dγ₂ >>=T_) (liftFn-apply {A} {B} {mk-kind Many pure})))
+  subst (RelT B ((⟦ t-apply-check dp ⟧ᶜ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer dp ⟧ˢ fmt) dγ₂ >>=T_) (liftFn-apply {A} {B} {mk-kind Many pure})))
         (λ k → let bd = bridge-i dp re k
                    inner = proj₁ (proj₂ bd) (proj₂ (proj₂ bd)) k
                in cong₂ _++_ (proj₁ bd) (proj₁ inner) , proj₂ inner)
 bridge-c (t-inl-app-check {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
-  subst (RelT (A + B) (⟦ t-inl-app-check {A = A} {B = B} d ⟧ᶜ dγ₁)) (sym (cong (SD.⟦ realize d ⟧ˢ dγ₂ >>=T_) (liftFn-inl {A} {B})))
+  subst (RelT (A + B) ((⟦ t-inl-app-check {A = A} {B = B} d ⟧ᶜ fmt) dγ₁)) (sym (cong ((SD.⟦ realize d ⟧ˢ fmt) dγ₂ >>=T_) (liftFn-inl {A} {B})))
         (λ k → cong (_++ []) (proj₁ (bridge-c d re k)) , proj₂ (bridge-c d re k))
 bridge-c (t-inr-app-check {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
-  subst (RelT (A + B) (⟦ t-inr-app-check {A = A} {B = B} d ⟧ᶜ dγ₁)) (sym (cong (SD.⟦ realize d ⟧ˢ dγ₂ >>=T_) (liftFn-inr {B} {A})))
+  subst (RelT (A + B) ((⟦ t-inr-app-check {A = A} {B = B} d ⟧ᶜ fmt) dγ₁)) (sym (cong ((SD.⟦ realize d ⟧ˢ fmt) dγ₂ >>=T_) (liftFn-inr {B} {A})))
         (λ k → cong (_++ []) (proj₁ (bridge-c d re k)) , proj₂ (bridge-c d re k))
-bridge-c (t-initial-app-check d) {dγ₁ = dγ₁} re k = ⊥-elim (valueT (⟦ d ⟧ᶜ dγ₁) k)
+bridge-c (t-initial-app-check d) {dγ₁ = dγ₁} re k = ⊥-elim (valueT ((⟦ d ⟧ᶜ fmt) dγ₁) k)
 bridge-c (t-subsume d) re = bridge-c d re
 bridge-c (t-arg-driven-app-check _ darg df) re k =
   let bf = bridge-c df re k
