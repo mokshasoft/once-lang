@@ -721,6 +721,111 @@ amrecTm-ren {ρ = ρ} stp cM m =
                      (ren-wᶠ {ρ = ρ} cM)
                      (ren-wᶠ {ρ = ρ} m)))
 
+-- ★★ RENAMING PAST A SUBSTITUTION — the condition, and how it LIFTS.
+--
+-- ⚠ A DIFFERENT SHAPE from the `-ren` family above.  Those pushed a
+--   renaming past WEAKENINGS (`ren-w`/`ren-wᶠ`), where every leaf was
+--   structural.  The recursive-call HANDLE is five nested SUBSTITUTIONS,
+--   so it needs `rensub`, whose side condition must be supplied at each
+--   level.  ⭐ Supplying it once and LIFTING beats writing five.
+ren-single : {Γ Γ' : Cx} {ρ : Ren Γ Γ'} (t : RTm Γ) →
+             (v : Var (Γ ∙)) →
+             renTm ρ (single t v) ≡ single (renTm ρ t) (extR ρ v)
+ren-single t vz     = refl
+ren-single t (vs u) = refl
+
+ren-cond-ext : {Γ Γ' Γ'' Γ₃ : Cx} {σ : Sub Γ Γ'} {ϑ : Ren Γ' Γ''}
+               {σ' : Sub Γ₃ Γ''} {ϑ' : Ren Γ Γ₃} →
+               (∀ v → renTm ϑ (σ v) ≡ σ' (ϑ' v)) →
+               (∀ v → renTm (extR ϑ) (extS σ v) ≡ extS σ' (extR ϑ' v))
+ren-cond-ext h vz     = refl
+ren-cond-ext {σ = σ} h (vs u) = trans (ren-w (σ u)) (cong w (h u))
+
+-- ★★★ THE AUXILIARY AT AN ARGUMENT — `auxIH`, parameterised.
+--
+-- ⚠ Note the shifted parameters: `AmTΠ` opens `AmT` at `Δ ▹ A`, so the
+--   branches are built from `(w stp) (wᶠ cM) (wᶠ m)`.
+auxIH' : {Γ : Cx} (stp : RTm Γ) (cM m : RTm (Γ ∙)) (x k : RTm Γ) → RTm Γ
+auxIH' stp cM m x k =
+  natrec (subTm (single x) (aZBr' (w stp) (wᶠ cM) (wᶠ m)))
+         (subTm (extS (extS (single x))) (aSBr' (w stp) (wᶠ m)))
+         k
+
+auxIH-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ}
+            (stp : RTm Γ) (cM m : RTm (Γ ∙)) (x k : RTm Γ) →
+            renTm ρ (auxIH' stp cM m x k)
+          ≡ auxIH' (renTm ρ stp) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+                   (renTm ρ x) (renTm ρ k)
+auxIH-ren {ρ = ρ} stp cM m x k =
+  cong₂ (λ z sb → natrec z sb (renTm ρ k))
+    -- zero branch: one `rensub`, then `aZBr-ren`, then the three spine peels
+    (trans (rensub (ren-single {ρ = ρ} x) (aZBr' (w stp) (wᶠ cM) (wᶠ m)))
+           (cong (subTm (single (renTm ρ x)))
+                 (trans (aZBr-ren {ρ = extR ρ} (w stp) (wᶠ cM) (wᶠ m))
+                        (cong₃ aZBr' (ren-w {ρ = ρ} stp)
+                                     (ren-wᶠ {ρ = ρ} cM)
+                                     (ren-wᶠ {ρ = ρ} m)))))
+    -- successor branch: the SAME condition, LIFTED twice
+    (trans (rensub (ren-cond-ext (ren-cond-ext (ren-single {ρ = ρ} x)))
+                   (aSBr' (w stp) (wᶠ m)))
+           (cong (subTm (extS (extS (single (renTm ρ x)))))
+                 (trans (aSBr-ren {ρ = extR ρ} (w stp) (wᶠ m))
+                        (cong₂ aSBr' (ren-w {ρ = ρ} stp)
+                                     (ren-wᶠ {ρ = ρ} m)))))
+
+-- ★★★★ THE RECURSIVE-CALL HANDLE, parameterised — five nested
+--   substitutions over `ihS` and `auxIH`.
+ihS-atP' : {Γ : Cx} (stp : RTm Γ) (cM m : RTm (Γ ∙))
+           (x a k p : RTm Γ) → RTm Γ
+ihS-atP' stp cM m x a k p =
+  subTm (single p)
+    (subTm (extS (single a))
+      (subTm (extS (extS (single (auxIH' stp cM m x k))))
+        (subTm (extS (extS (extS (single k))))
+          (subTm (extS (extS (extS (extS (single x))))) (ihS' (wᶠ m))))))
+
+-- ★ …AND ITS RENAMING LAW.  Five `rensub`s, and the side condition for
+--   each is the SAME `ren-single` LIFTED by `ren-cond-ext` — which is the
+--   whole reason that helper exists.  `auxIH-ren` and `ihS-ren` close the
+--   two leaves.
+ihS-atP-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (stp : RTm Γ) (cM m : RTm (Γ ∙))
+              (x a k p : RTm Γ) →
+              renTm ρ (ihS-atP' stp cM m x a k p)
+            ≡ ihS-atP' (renTm ρ stp) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+                       (renTm ρ x) (renTm ρ a) (renTm ρ k) (renTm ρ p)
+ihS-atP-ren {ρ = ρ} stp cM m x a k p =
+  trans (rensub (ren-single {ρ = ρ} p) T1)
+    (cong (subTm (single (renTm ρ p)))
+      (trans (rensub (ren-cond-ext (ren-single {ρ = ρ} a)) T2)
+        (cong (subTm (extS (single (renTm ρ a))))
+          (trans (rensub (ren-cond-ext (ren-cond-ext
+                            (ren-single {ρ = ρ} auxT))) T3)
+            (trans (cong (λ z → subTm (extS (extS (single z)))
+                                  (renTm (extR (extR (extR ρ))) T3))
+                         (auxIH-ren {ρ = ρ} stp cM m x k))
+              (cong (subTm (extS (extS (single auxT'))))
+                (trans (rensub (ren-cond-ext (ren-cond-ext (ren-cond-ext
+                                  (ren-single {ρ = ρ} k)))) T4)
+                  (cong (subTm (extS (extS (extS (single (renTm ρ k))))))
+                    (trans (rensub (ren-cond-ext (ren-cond-ext (ren-cond-ext
+                                      (ren-cond-ext (ren-single {ρ = ρ} x))))) T5)
+                      (cong (subTm (extS (extS (extS (extS
+                                      (single (renTm ρ x)))))))
+                        (trans (ihS-ren {ρ = extR ρ} (wᶠ m))
+                               (cong ihS' (ren-wᶠ {ρ = ρ} m)))))))))))))
+  where
+    -- ⚠ NAMED, not `_`.  `rensub` takes its subject EXPLICITLY, and at
+    --   these depths inference cannot recover it — the meta ends up
+    --   blocked on the very term it is meant to determine.
+    auxT  = auxIH' stp cM m x k
+    auxT' = auxIH' (renTm ρ stp) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+                   (renTm ρ x) (renTm ρ k)
+    T5 = ihS' (wᶠ m)
+    T4 = subTm (extS (extS (extS (extS (single x))))) T5
+    T3 = subTm (extS (extS (extS (single k)))) T4
+    T2 = subTm (extS (extS (single auxT))) T3
+    T1 = subTm (extS (single a)) T2
+
 module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
            (dA   : Δ ⊢ty A)
            (dcM  : (Δ ▹ A) ⊢ cM ∷ U)
@@ -1089,8 +1194,7 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
   --    weakenings on the step against `aZBr`'s three, so the cancellation
   --    is a five-rung chain (`sub-w⁴`…`wk-single`) rather than three.
   auxIH : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
-  auxIH x k = natrec (subTm (single x) aZBr)
-                     (subTm (extS (extS (single x))) aSBr) k
+  auxIH x k = auxIH' stp cM m x k
 
   ihS-at : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
   ihS-at x k =
@@ -1173,12 +1277,7 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
   -- the IH term the successor branch hands to the step, with the
   -- certificate and the ARGUMENT as parameters
   ihS-atP : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
-  ihS-atP x a k p =
-    subTm (single p)
-      (subTm (extS (single a))
-        (subTm (extS (extS (single (auxIH x k))))
-          (subTm (extS (extS (extS (single k))))
-            (subTm (extS (extS (extS (extS (single x))))) ihS))))
+  ihS-atP x a k p = ihS-atP' stp cM m x a k p
 
   stp-cancel-sAt : (x a k r : RTm ⌊ Δ ⌋) →
     subTm (single r)
