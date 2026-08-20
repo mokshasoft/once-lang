@@ -8225,3 +8225,118 @@ it differently for `Float` without citing it. The review question: for any new
 type or representation, which EXISTING decision already covers its shape — and
 does this contradict it?
 
+
+## D114: The OBSERVABLE Is Part of the Spec — and It Observes Only `Int` Arguments
+
+**Date**: 2026-08-20 · **Status**: Declaration landed; widening staged ·
+**Found while**: asking why a float literal's target format did not seem to
+affect the apex theorem (plan 0.73 F2c)
+
+### The finding
+
+`Once/Denotation/Trace.agda` records a SigOp invocation's argument **only when
+the SigOp's domain is syntactically `Int`**:
+
+    isInt? Int = just refl ; isInt? _ = nothing
+    mkEvent {D} si arg = mkEvent-name (name si) (isInt? D) arg
+
+Every other domain records `nothing`. With
+`signature print : Eff (String) Unit` (`Strata/Interpretations/Linux/File.once`),
+this means:
+
+> **`print "hello"` and `print "goodbye"` have the same `Behavior`.**
+
+A compiler that swapped every string argument would still satisfy `correct`.
+The same holds for `free : Eff Buffer Unit`, `realloc`, `argv`, `getline`,
+`heap_string`, and `emitF`. Only `exit@S n` is pinned, because its domain
+happens to be `Int` — which is why Layer 0's exit tests are meaningful and the
+three `float-emit-*.once` tests are not (they can only show the process does
+not trap).
+
+### Why it happened, which is the part worth remembering
+
+The machine side carries the identical gate, and says why
+(`Once/Adequacy/FlatEvents.agda:61-68`):
+
+> "ℕ argument decoded from `Input1` when the input type is `Int` (**matching
+> `mkEvent`'s `isInt?` gate on the source side, so the two sides can be proven
+> equal**)."
+
+**The observable was narrowed so the correspondence would go through.** That is
+the spec being shaped by the proof — the same inversion D057 was written to
+stop when it moved the meaning off the elaborator. A weaker observable makes
+`correct` easier to prove and less worth proving, and nothing in the gate
+signalled the trade.
+
+It survived because the spec did not declare it. `Once.Spec.Meaning` re-exported
+`ValueDomain`, `Behavior`, `Meaning`, `MainMeaning` — but spec-level `emit-D`
+calls `mkEvent`, and `Behavior = ℕ → List SigOpEvent` names the record, so the
+rule was load-bearing spec behaviour reached THROUGH declared spec modules while
+living in one that was never reviewed.
+
+### Decision
+
+**1. The observable is spec.** `Once.Denotation.Trace` is re-exported from
+`Once.Spec.Meaning`. Nothing moved — the module is 75 lines and contains only
+the event vocabulary, so declaring it was the whole fix.
+
+**2. The argument is observed as a TYPED BASE VALUE**, not as a machine word:
+
+    record SigOpEvent : Set where
+      field ev-name : CanonicalName
+            ev-dom  : Type
+            .ev-base : IsBaseType ev-dom
+            ev-arg  : ⟦ ev-dom ⟧
+
+Three reasons, in order of weight:
+
+- **A machine word states the WRONG thing about compounds.** For `Str`/`Buffer`/
+  products the register holds an ADDRESS. An address is a lowering artifact —
+  two correct compilers with different heap layouts would then have different
+  behaviours. `Maybe Carrier` does not merely fail to COVER compounds; extending
+  it later would mean redefining what `ev-arg` MEANS. Typed-value makes the
+  compound case an extension; machine-word makes it a rewrite.
+- **It observes in the domain the meaning already computes in.** Anything else
+  invents a second value language for the observable. And at the scalars the
+  two coincide — `⟦ Int ⟧ = ⟦ Float ⟧ = Carrier` — so nothing of the
+  "honest about registers" argument is lost: **D113 is what buys this**, because
+  `⟦ Float ⟧` already IS the target's representation.
+- **It is available today and deletes machinery.** Every `SigOpInfo` carries
+  `baseA : IsBaseType A` (`Once/SigOp/Info.agda:167`), and `IsBaseType` is
+  closed under `*`/`+` over Unit/Void/Int/Float/Str/Buffer with **no arrows** —
+  `IsConcrete` already excludes callbacks as "the cases a register ABI cannot
+  pass and the observational bridge cannot relate funext-free". So there is no
+  funext obstacle. `mkEvent si arg = mk-event (name si) _ (baseA si) arg` has no
+  dispatch at all, which retires `isInt?` and `mkEvent-name` — the latter exists
+  only to keep the dispatch reducing on an abstract domain.
+
+**3. An unfinished proof is a NAMED RESIDUAL, never a narrowed spec.** The
+machine side must decode `⟦ A ⟧` out of `Input1`. For scalars that is a register
+read; for compounds it is a heap walk (`readTyped`, plan 0.54 rung A, currently
+Unit/Int/pairs). Where the decode is not yet proved, the arch correspondence
+carries a named residual per shape that `make postulates` can see — the
+difference between "we have not proved `print` passes the right string" and
+"`correct` does not care what string `print` gets."
+
+### Consequences
+
+- Widening turns currently-discharged obligations into holes. That is the point:
+  they were discharged against a claim that was too weak.
+- `emitF` becomes a real observation, so the target's `FloatFormat` becomes part
+  of what a program MEANS — which is the threading plan 0.73 F2c describes, now
+  forced by the observable rather than adopted on principle.
+- Staging: scalars (`FitsInReg`: `Int`, `Float`) need no memory reasoning and
+  close the demonstrable hole; compound base types are a separate, larger piece.
+
+### The lesson
+
+**When a correspondence is hard to prove, check whether the fix narrowed the
+claim.** Both sides of this one were gated on `isInt?` and the comment said so
+in plain words for months. The guard is structural, not vigilance: if a
+statement declares what counts as correct, it belongs in the reviewed spec — a
+module the spec only reaches through is a module nobody reads.
+
+**Relates**: D057 (anchor the meaning independently of the implementation),
+D058 (`Behavior` is event-count-indexed), D061 (per-SigOp interpretation
+contracts), D113 (`⟦ Float ⟧` is the target's representation — what makes a
+typed float argument observable at all)
