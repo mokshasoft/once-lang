@@ -517,4 +517,40 @@ not belong inside the module.**
 2. Instantiate `AmTΠ` at `Θ'`; get the renaming-indexed bridge.
 3. Step 6, the successor branch, the `⊢natrec`.
 4. ⚠ The instantiation at `n := suc (μ x)` — the non-vacuity check.
+| 28 | 08-20 | `StepExt-ren` — directions worked out explicitly | ✅ **green** (after 3 guessed rounds) | ~60s |
+| 29 | 08-20 | `AmTΠ-at` — instantiate the module at a renamed context | ✅ **green first try** | ~60s |
+
+## ★★★ Route (b)'s foundation is COMPLETE
+
+    the `-ren` family   ✅   the recursor commutes with renaming
+    `StepExt-ren`       ✅   the side condition transports
+    `AmTΠ-at`           ✅   the module instantiates at any typed renaming
+
+★ **What it buys.** The irrelevance layer takes `x y : RTm ⌊ Δ ⌋` — context
+renaming-indexed, arguments not. Instantiating at `Θ` makes that module's
+own `Δ` *be* `Θ`, so its irrelevance applies to `Θ`-level arguments **with
+no change to the irrelevance layer**. The largest piece of `…LibAmrec` is
+reused rather than generalised — which was the entire argument for (b) over
+(a), and it held.
+
+★★ **What fixed `StepExt-ren` after three failed rounds**: working out the
+cast DIRECTIONS explicitly instead of guessing. `renren h` points FROM the
+separately-applied form TO the composite, so premises cast FORWARD and the
+conclusion casts BACK with `sym`. All three earlier failures were sign
+errors, not structural ones. ⇒ **when a lemma is a web of casts, write the
+directions down before writing the casts.**
+
+⚠ `StepPW` was the hard half — doubly renaming-indexed with its own
+coherence condition. The transport calls the given `pw` at `ρ³ := ϑ³ ∘ ϑ`,
+where its condition is `refl` and therefore always available, then
+re-expresses the RESULT at `σ³` via `br`. And `pw'` must be SIGNED with
+implicits pinned: as a bare lambda the three implicit renamings cannot be
+solved, because the coherence mentions a bound variable.
+
+## Next
+
+1. Relocate `ihCall-amrec` from the spike INTO `AmTΠ`, so `AmTΠ-at`
+   exports it — that IS the renaming-indexed bridge.
+2. Step 6 (`IndPW`), the successor branch, the `⊢natrec`.
+3. ⚠ The instantiation at `n := suc (μ x)` — the non-vacuity check.
 
