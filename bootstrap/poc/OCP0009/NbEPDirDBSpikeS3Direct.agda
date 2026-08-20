@@ -33,12 +33,12 @@ open import poc.OCP0009.NbEPDirDBPi
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ⌊_⌋; _▹_; _⊢_∷_; ⊢pair; ⊢nsuc; ⊢conv; ty-Nat; csymᵀ; single
         ; nrs; ⊢lam; ⊢app; ⊢var; here; wk-single; ⊢natrec; _≅ᵀ_; El-⌜Nat⌝
-        ; ⊢nzero; done )
+        ; ⊢nzero; done; ty-Hom )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
+open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm; natAsEl )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; ren-w; pw3; pw4; pw5; nrs-w; cong₃; sub-w )
-open import poc.OCP0009.NbEPDirDBLibPair using ( PairT )
+open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )
 open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( aIHTat-ren; Prv; prv; idToRed; idOfRed )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
@@ -48,7 +48,7 @@ open import poc.OCP0009.NbEPDirDBLibArithComm
 open import poc.OCP0009.NbEPDirDBLibArithMonus
   using ( monusLtTm; monusLtTm-sub; ⊢desc-left; monusLeTm; ⊢monusLe )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
-  using ( gcdIH; gcdG; ⊢gcdIH; descConv; KS; NS; PAIRˢ; CERTˢ; msr; gcdStp )
+  using ( gcdIH; gcdG; ⊢gcdIH; descConv; KS; NS; PAIRˢ; CERTˢ; msr; ⊢msr; gcdStp )
 open import poc.OCP0009.NbEPDirDBLibNatrec using ( ⊢natrec-var; ⊢natrec-var-at )
 open import poc.OCP0009.NbEPDirDBExamplesGcdLeMid
   using ( gXx; R1'; W'; R2'; S3'; Z3'; D3'; ⊢W'; Ss-collapse; Zs-collapse
@@ -561,3 +561,29 @@ eq4-at-var : {Γ : Ctx} {d ih : RTm ⌊ Γ ⌋} (dd : Γ ⊢ d ∷ Nat) →
                        (app (app gcdStp (pair (nsuc d) (nsuc d))) ih)
                        (RHSz d d ih))
 eq4-at-var dd dih = Eq4!.eq4 dd dd dih (⊢le-refl (⊢nsuc dd))
+
+
+------------------------------------------------------------------------
+-- ★★ …AND THE IH SLOT IS INHABITED, so nothing hides behind `dih`.
+--
+-- ⚠ WHY THIS MATTERS.  `eq4-at-var` discharges the ORDER premise but still
+--   takes the IH as a hypothesis.  If `gcdIH` were empty the instance would
+--   be vacuous again, one level down.  It is not: a CONSTANT function
+--   inhabits it, so the whole premise set is satisfiable at a variable.
+------------------------------------------------------------------------
+
+ihTriv : {Γ : Cx} → RTm Γ
+ihTriv = lam (lam nzero)
+
+⊢ihTriv : {Γ : Ctx} {μ : RTm ⌊ Γ ⌋} → Γ ⊢ μ ∷ Nat → Γ ⊢ ihTriv ∷ gcdIH μ
+⊢ihTriv dμ =
+  ⊢lam ⊢PairT (⊢lam (ty-Hom ty-Nat (⊢nsuc ⊢msr) (⊢wk dμ)) (natAsEl ⊢nzero))
+
+-- ★★★★★ EQUATION 4, WITH EVERY PREMISE DISCHARGED, at a VARIABLE `d`.
+eq4-unconditional :
+  {Γ : Ctx} {d : RTm ⌊ Γ ⌋} (dd : Γ ⊢ d ∷ Nat) →
+  Prv Γ (Id (El ⌜Nat⌝)
+            (app (app gcdStp (pair (nsuc d) (nsuc d))) ihTriv)
+            (RHSz d d ihTriv))
+eq4-unconditional dd =
+  eq4-at-var dd (⊢ihTriv (⊢plus (⊢nsuc (⊢W' dd dd)) (⊢nsuc dd)))
