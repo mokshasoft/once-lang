@@ -15,7 +15,15 @@
 -- `++-identityʳ`. No monad laws beyond right-identity of `_++_` are needed.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.WrapBridge where
+open import Once.Float.Dyadic using (FloatFormat)
+
+-- Plan 0.73 (D113): this module's statements mention a denotation that is
+-- target-relative at `Float`, so the format is a parameter. A MODULE parameter
+-- rather than a per-lemma argument because everything here is a PROOF —
+-- downstream uses these as facts and never reduces them — so the "recursive
+-- function in a parameterised module stops reducing" trap does not apply. The
+-- denotations themselves take it as an explicit argument.
+module Once.Adequacy.WrapBridge (fmt : FloatFormat) where
 
 open import Data.Nat using (ℕ)
 open import Data.List using (List; []; _++_)
@@ -36,8 +44,8 @@ EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 
 -- The entry-wrap trace = the closure-application run trace, pointwise in `n`.
 wrap-trace : ∀ (X : IR ⌊ Unit ⌋ ⌊ EffUU ⌋) (n : ℕ) →
-  projTrace (evalᴰ (C.wrapMainAsEntry X) tt) n
-  ≡ projTrace (evalᴰ X tt >>=T (λ clo → clo tt)) n
+  projTrace (evalᴰ fmt (C.wrapMainAsEntry X) tt) n
+  ≡ projTrace (evalᴰ fmt X tt >>=T (λ clo → clo tt)) n
 wrap-trace X n =
-  cong (_++ proj₁ (proj₂ (evalᴰ X tt n) tt n))
-       (++-identityʳ (proj₁ (evalᴰ X tt n)))
+  cong (_++ proj₁ (proj₂ (evalᴰ fmt X tt n) tt n))
+       (++-identityʳ (proj₁ (evalᴰ fmt X tt n)))

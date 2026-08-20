@@ -25,7 +25,15 @@
 -- plumbing pattern); it is TRUE and codegen-structural, not a trust axiom.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.MainExtract where
+open import Once.Float.Dyadic using (FloatFormat)
+
+-- Plan 0.73 (D113): this module's statements mention a denotation that is
+-- target-relative at `Float`, so the format is a parameter. A MODULE parameter
+-- rather than a per-lemma argument because everything here is a PROOF —
+-- downstream uses these as facts and never reduces them — so the "recursive
+-- function in a parameterised module stops reducing" trap does not apply. The
+-- denotations themselves take it as an explicit argument.
+module Once.Adequacy.MainExtract (fmt : FloatFormat) where
 
 open import Data.Nat using (ℕ)
 open import Data.List using (List; _++_; take)
@@ -43,8 +51,8 @@ import Once.Compile as C
 import Once.Parser.Module.Core as P
 open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
-open import Once.Adequacy.WrapBridge using (wrap-trace)
-open import Once.Adequacy.SourceFaithful using (faithful)
+open import Once.Adequacy.WrapBridge fmt using (wrap-trace)
+open import Once.Adequacy.SourceFaithful fmt using (faithful)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace)
 open import Once.Denotation.DenotTrace using (evalᴰ)
@@ -56,7 +64,7 @@ EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 -- Behavior: apply the closure `SD.⟦ se ⟧ˢ tt` to the Unit input, read the
 -- depth-`n` SigOp-trace prefix. Mirrors `⟦_⟧IR` but through `SD`.
 runMainˢ : ∀ {Ψ : Usage 0} → Expr ∅ Ψ EffUU → Behavior
-runMainˢ se n = take n (projTrace (SD.⟦ se ⟧ˢ tt >>=T (λ clo → clo tt)) n)
+runMainˢ se n = take n (projTrace ((SD.⟦ se ⟧ˢ fmt) tt >>=T (λ clo → clo tt)) n)
 
 -- Bind respects pointwise equality of the bound computation, at the trace level.
 bind-cong-trace : ∀ {X Y} (m m′ : T X) (f : X → T Y) (n : ℕ) →
@@ -66,7 +74,7 @@ bind-cong-trace m m′ f n eq = cong (λ p → proj₁ p ++ proj₁ (f (proj₂ 
 -- DISCHARGED (no longer a postulate): the compiled `main` IR is the entry-wrap
 -- of the elaborated resolved term — proven in `Once.Adequacy.MainIRForm` by the
 -- value-tracking induction over `compileAllFuns-go` + `findMain`.
-open import Once.Adequacy.MainForm using (main-ir-form; Form)
+open import Once.Adequacy.MainForm fmt using (main-ir-form; Form)
 
 -- THE SD bridge: the compiled `main` IR's denotational trace equals the
 -- INDEPENDENT surface meaning of `main`. Proven from `main-ir-form` (plumbing)
@@ -80,21 +88,21 @@ open import Once.Adequacy.MainForm using (main-ir-form; Form)
 source-meaningᴰ-aux : ∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Form ir →
   Σ-syntax (Usage 0) (λ Ψ →
     Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
-      ∀ (n : ℕ) → ⟦ just ir ⟧IR n ≡ runMainˢ seR n))
+      ∀ (n : ℕ) → ⟦ just ir ⟧IR fmt n ≡ runMainˢ seR n))
 source-meaningᴰ-aux ir (Ψ , seR , eq , _) = Ψ , seR , bridge
   where
-    bridge : ∀ (n : ℕ) → ⟦ just ir ⟧IR n ≡ runMainˢ seR n
+    bridge : ∀ (n : ℕ) → ⟦ just ir ⟧IR fmt n ≡ runMainˢ seR n
     bridge n =
-      trans (cong (λ X → ⟦ just X ⟧IR n) eq)
+      trans (cong (λ X → ⟦ just X ⟧IR fmt n) eq)
         (trans (cong (take n) (wrap-trace (elaborate C.Heap seR) n))
                (cong (take n)
-                 (bind-cong-trace (evalᴰ (elaborate C.Heap seR) tt)
-                                  (SD.⟦ seR ⟧ˢ tt) (λ clo → clo tt) n
+                 (bind-cong-trace (evalᴰ fmt (elaborate C.Heap seR) tt)
+                                  (SD.⟦ seR ⟧ˢ fmt tt) (λ clo → clo tt) n
                                   (faithful seR tt n))))
 
 source-meaningᴰ : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
   moduleToIR m ≡ just ir →
   Σ-syntax (Usage 0) (λ Ψ →
     Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
-      ∀ (n : ℕ) → ⟦ just ir ⟧IR n ≡ runMainˢ seR n))
+      ∀ (n : ℕ) → ⟦ just ir ⟧IR fmt n ≡ runMainˢ seR n))
 source-meaningᴰ m ir mi = source-meaningᴰ-aux ir (main-ir-form m ir mi)
