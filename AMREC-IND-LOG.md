@@ -122,4 +122,31 @@ right while the dependency structure is wrong.
 ★ Cost of finding this: one 15s check. Cost of finding it after building
 the `natrec` on top: gap A's answer is seven attempts and several OOMs.
 This is the whole argument for stating and typing the shape first.
+| 7 | 08-20 | `IndB` — the bounded statement the `natrec` inducts over | ✅ green (after 1 missing import) | ~15s |
+| 8 | 08-20 | `⊢IndB` — prove the bounded statement IS a type | ✅ green (after 2 fixes) | ~15s |
+
+**Attempt 7–8 notes.**
+- `μ x` inside `IndB` is `wᶠ m`, **not a substitution**. `m`'s own slot 0 IS
+  the `A`-argument, and `wᶠ` inserts the BOUND at slot 1 while leaving that
+  argument in place — so the measure lands on `x` with no substitution.
+  Getting this right removes a whole class of peels before they exist.
+- ⚠ The variable's type is the **composite**, not the context's:
+  `⊢var (there here)` yields `renTy vs (renTy vs (renTy vs A))` while both
+  `⊢PAtR` and `⊢app` want `renTy ρ₃ A`. Equal only up to `renTy-renTy`,
+  twice — the same fusion `wR` performs internally with `∋-cast`. One cast.
+- Two of the eight attempts were missing imports. Cheap here, but it is the
+  same class of slip that cost three rounds in the `LibStrong` split; the
+  standing rule (copy a parent's import block) has no parent to copy from
+  in a new module, so budget for it.
+
+## Scaffolding complete
+
+`IndAt` / `⊢IndAt` / `PAtR` / `⊢PAtR` / `IndPW` / `IndStep` / `AmrecInd` /
+`IndB` / `⊢IndB` — all green, whole module ~15s.
+
+**Remaining: the `natrec` itself.** Zero branch (`μ x ≤ 0`), successor
+branch (`μ x ≤ suc k`, where `amrec-unfold-Id` rewrites `amrecTm x` to
+`stp x ⟨ih⟩` and `IndStep` crosses it with the IH supplying `IndPW`). ⚠ This
+is the part that can still fight back — everything so far has been shape,
+not content.
 
