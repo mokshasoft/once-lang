@@ -161,7 +161,7 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
               → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
-              → (encode binary64) v < RS.W.modulus)
+              → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-float v < RS.W.modulus)
   where
 
 open import Data.Nat using (ℕ; zero; suc; _+_)

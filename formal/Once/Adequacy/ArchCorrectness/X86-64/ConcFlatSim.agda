@@ -181,7 +181,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim (o : CanonicalName)
               → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
-              → (encode binary64) v < X.W.modulus)
+              → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-float v < X.W.modulus)
   (lo-fits : ∀ {hv : FC.HeapView FS word-eq}
                (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                (s : X.State)
