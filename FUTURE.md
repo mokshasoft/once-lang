@@ -74,6 +74,53 @@ importers**. Every other importer — the ~70 — keeps working untouched.
 Measuring the edges before planning the churn turned a ~70-site refactor
 into a ~18-site one.
 
+## OCP-0009: the SECOND Lib/Examples inversion — general lemmas stranded in examples
+
+**Goal**: find general lemmas that live in `Examples*` because they were
+STATED at that example's instantiation.
+
+⚠ **The 2026-08-20 split does NOT cover this.** That one asked *"does any
+`Lib*` import an `Examples*`?"* and drove it to zero. Sound, but it can only
+see the inversion when the dependency already runs library→example. A
+general lemma sitting in an example is invisible to it, because **nothing
+imports it yet** — the dependency appears the moment some future library
+combinator needs it.
+
+**How it hides.** `⊢descS-at` is a fact about `descS-at`, which is
+`…LibAmrec`'s own construct — but it was written at gcd's `msr` rather than
+at the abstract measure `m`. Instantiating a general lemma at an example's
+parameters makes it *look* example-specific when its content is not.
+
+**Found so far** (`…ExamplesGcdEqs`, surfaced by `amrec-ind` needing a
+certificate typing): `extR-id`, `extR⁶-id`, `descS-at-idR`, `⊢descS-at`.
+
+⚠⚠ **AND THE MOVE IS NOT A PURE RENAME — MEASURED 2026-08-20.** Relocating
+them with `msr → m` FAILS:
+
+    renTm (extR idR) m != m   of type RTm (⌊ Δ ⌋ ∙)
+
+For gcd's **closed** `msr` that identity renaming reduces away
+definitionally; for an abstract `m` it is only propositional. So
+`⊢descS-at`'s proof silently depends on the measure being closed, and
+generalising it needs `renTm-idR` casts threaded through `descS-peel`'s
+endpoints.
+
+⇒ **Being stated at an instance can hide a real dependency on that
+instance, not just a cosmetic one.** The audit below must therefore CHECK
+each candidate generalises, not assume it. Reverted rather than left
+half-done.
+
+### The audit
+
+For each `Examples*` module, list the lemmas whose statements mention only
+LIBRARY constructs (`descS-at`, `auxAt`, `aIHTat`, `Hom`, `natrec`, …) and
+no example-specific term, once the example's own parameters are abstracted.
+Those belong in the library.
+
+⚠ Do this at a consolidation point, and expect it to be a bigger set than
+the four above — those were found by a single combinator needing a single
+certificate typing.
+
 ## OCP-0009 WF library: lift `eqG`/`pwT` out of gcd into the combinator
 
 **Goal**: make "prove a step function is IH-extensional" a LIBRARY combinator,
