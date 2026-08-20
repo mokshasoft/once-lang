@@ -8340,3 +8340,83 @@ module the spec only reaches through is a module nobody reads.
 D058 (`Behavior` is event-count-indexed), D061 (per-SigOp interpretation
 contracts), D113 (`⟦ Float ⟧` is the target's representation — what makes a
 typed float argument observable at all)
+
+## D115: An `Int` Literal Out of the Target's SIGNED Range Is a TYPE ERROR
+
+**Date**: 2026-08-20 · **Status**: Decided; implementation staged (plan 0.74) ·
+**Extends D054 to literals** · **Settles the question D113/D114 left open**
+
+### The decision
+
+Once's integers are SIGNED. On a `w`-bit target an `Int` holds
+`−2^(w−1) … 2^(w−1)−1`, so on an 8-bit target the largest literal is `127`.
+**`emit 298` there does not compile.** A literal outside the target's range is
+a TYPE ERROR — not a warning (Once has no warning channel yet) and not a
+silent wrap.
+
+### Why an error rather than a wrap
+
+D054 says representation follows the promise: fixed-width `add` wraps, and
+that IS the hardware's promise, so `255 + 1 = 0` in a byte is correct
+arithmetic and not an error. **A literal is not arithmetic.** `2001` is a value
+the programmer wrote down; silently substituting `2001 mod 256 = 209` is a
+substitution nobody asked for, and it is exactly the class of silent value
+change D109 was about.
+
+The language already answers this question for the OTHER numeric type and
+answers it this way: `Once.Float.Representable.accept?` REJECTS `3.14` rather
+than rounding it. `Int` was simply never asked. Two types, one question, and
+until now two different answers — the situation D113's lesson says to hunt
+for.
+
+### What it forces: the width must be THREADED, not baked
+
+A range check needs a width, and so does the denotation: `⟦ Int ⟧ = Carrier`
+is the residue, so `−5` denotes `2^w − 5` and is width-relative exactly as a
+float literal is format-relative. This is the same shape D113 produced for
+`Float`, and the machinery built for it is the template:
+
+    arch-float-format : Arch → FloatFormat      ⟶   the width's analogue
+    FrameSemantics.float-format                 ⟶   already has `frame-word`
+    LitPayload fits-float = Dyadic              ⟶   LitPayload fits-int = ℤ
+    lit-value fits-float d = encode fmt d       ⟶   lit-value fits-int z = fromℤ
+
+Note `FrameSemantics.frame-word` ALREADY carries the width (8/4/8 bytes), so
+the machine side needs no new field — `8 * frame-word FS` is the bit width.
+
+### A regression this supersedes, recorded honestly
+
+Fixing the signed-denotation bug (2026-08-20, `b2908563`) baked `Word64` into
+`Arith/SigOp/Builders`, `Surface/Elaborate.intLit`,
+`Denotation/Meaning` and `Denotation/SourceDenote`. That was right about
+SIGNEDNESS and wrong about WIDTH: those modules serve all three targets, and
+one of them is 32-bit. It is not a new promise — `block-semM` has baked 64
+since it was written — but it hardcodes a target fact where the target is not
+known, which is what D109 and D112 were both about. Plan 0.74 removes it.
+
+The three sites are not equally bad and should not be fixed identically:
+
+  * `Denotation/Meaning`, `Denotation/SourceDenote` — these ALREADY take a
+    threaded target parameter (the float format, D113). The width belongs in
+    the same parameter; widening it costs almost nothing, and not using a
+    channel that was already there was the plain error.
+  * `Surface/Elaborate.intLit` — the elaborator builds ONE IR for three
+    targets and cannot know the width. The fix is the `Float` answer: the
+    payload stays SOURCE SYNTAX (`ℤ`) and the machine materialises it.
+  * `Arith/SigOp/Builders`' `semM` family — the hard one. `SigOpInfo`'s `semM`
+    is a closed function, so threading a width means the arith SigOp
+    descriptors gain one. This is the D059 bill proper.
+
+### Consequences
+
+- The reference meaning becomes width-indexed at `Int`, joining `Float`. One
+  `Arch → target-numerics` map should carry both rather than two parallel maps.
+- `accept?` gains an integer sibling, and the frontend rejects out-of-range
+  literals with a real error message.
+- A NEGATIVE literal becomes writable (plan 0.73 F3) and range-checked in the
+  same stroke — `-129` on 8-bit is as much an error as `2001`.
+
+**Relates**: D054 (`Int` is a signed modular `Word`), D059 (width threaded from
+the arch, never hard-coded), D109 (a hardcoded target fact that made an
+impossibility invisible), D113 (`Float`'s representation is the target's — the
+template), D114 (the observable that made the negative-value bug visible)
