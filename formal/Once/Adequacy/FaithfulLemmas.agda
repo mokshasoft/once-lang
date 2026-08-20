@@ -14,7 +14,15 @@
 --                           values). Induction on the type.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.FaithfulLemmas where
+open import Once.Float.Dyadic using (FloatFormat)
+
+-- Plan 0.73 (D113): this module's statements mention a denotation that is
+-- target-relative at `Float`, so the format is a parameter. A MODULE parameter
+-- rather than a per-lemma argument because everything here is a PROOF —
+-- downstream uses these as facts and never reduces them — so the "recursive
+-- function in a parameterised module stops reducing" trap does not apply. The
+-- denotations themselves take it as an explicit argument.
+module Once.Adequacy.FaithfulLemmas (fmt : FloatFormat) where
 
 open import Data.Unit using (⊤; tt)
 open import Data.List using (List; []; _++_)
@@ -34,8 +42,8 @@ open import Once.IRTy using (⌊⟧T-commute; ⌈⟧TI-commute; eraseF; ⌈_⌉F
 import Once.IRTy as II
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Denotation.Meaning using (cata-sem; cata-ev-algᴰ-D)
-open import Once.Adequacy.CataErased using (evalᴰ-Cata-erased; subst-T-apply; subst-T-projTrace)
-open import Once.Adequacy.AnaErased using
+open import Once.Adequacy.CataErased fmt using (evalᴰ-Cata-erased; subst-T-apply; subst-T-projTrace)
+open import Once.Adequacy.AnaErased fmt using
   (events-F-erase; coerce-SFRel; coh-to-TRel; inject-coh-nat; forget-coh-gen;
    TRel; SFRel; sem-ana-erase-coh′; sem-ana-erase-full; coerce-νin-erase)
 open import Once.Semantics.Machine using
@@ -113,38 +121,38 @@ subst-arrow : ∀ {DI DT EI ET : Set} (pD : DI ≡ DT) (pE : EI ≡ ET) (g : DI 
 subst-arrow refl refl g = refl
 
 morph-app-bridge : ∀ {D E kk} (morph : Expr ∅ zeroUsage (D ⇒[ kk ] E))
-                     (ih : ∀ j → liftFn {⟦ ∅ ⟧ᶜ} {D ⇒[ kk ] E} (elaborate C.Heap morph) tt j ≡ SD.⟦ morph ⟧ˢ tt j)
+                     (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {D ⇒[ kk ] E} (elaborate C.Heap morph) tt j ≡ SD.⟦ morph ⟧ˢ fmt tt j)
                      (w : ⟦ D ⟧ᴰ) (n : ℕ)
-                   → liftFn {D} {E} (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩ C.Heap) w n
-                     ≡ (SD.⟦ morph ⟧ˢ tt >>=T (λ clo → clo w)) n
+                   → liftFn fmt {D} {E} (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩ C.Heap) w n
+                     ≡ (SD.⟦ morph ⟧ˢ fmt tt >>=T (λ clo → clo w)) n
 morph-app-bridge {D} {E} morph ih w n =
   trans (cong (λ X → subst T (cohᴰ E) X n) app-⟨⟩-clean)
     (trans (cong (λ h → subst T (cohᴰ E) (h >>=T (λ vf → vf w')) n) ih-evalᴰ)
-           (cong (λ t → t n) (transport-apply-bind (cohᴰ D) (cohᴰ E) (SD.⟦ morph ⟧ˢ tt) w)))
+           (cong (λ t → t n) (transport-apply-bind (cohᴰ D) (cohᴰ E) (SD.⟦ morph ⟧ˢ fmt tt) w)))
   where
     w' = subst (λ z → z) (sym (cohᴰ D)) w
     -- The elaborated closed-morphism `apply ∘ ⟨ morph ∘ terminal , id ⟩` applied to `w'`
     -- monad-reduces (`terminal`/`id` = `returnT`) to `evalᴰ morph tt >>=T (λ vf → vf w')`;
     -- the only residual is the pair-build's empty trace (`++ []`, `++-identityʳ`).
-    app-⟨⟩-clean : evalᴰ (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩ C.Heap) w'
-                   ≡ (evalᴰ (elaborate C.Heap morph) tt >>=T (λ vf → vf w'))
+    app-⟨⟩-clean : evalᴰ fmt (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩ C.Heap) w'
+                   ≡ (evalᴰ fmt (elaborate C.Heap morph) tt >>=T (λ vf → vf w'))
     app-⟨⟩-clean = extensionality (λ j →
       cong₂ _,_
-        (cong (_++ proj₁ (proj₂ (evalᴰ (elaborate C.Heap morph) tt j) w' j))
-              (++-identityʳ (proj₁ (evalᴰ (elaborate C.Heap morph) tt j))))
+        (cong (_++ proj₁ (proj₂ (evalᴰ fmt (elaborate C.Heap morph) tt j) w' j))
+              (++-identityʳ (proj₁ (evalᴰ fmt (elaborate C.Heap morph) tt j))))
         refl)
     -- `ih` in `evalᴰ`-form: `evalᴰ (elaborate morph) tt ≡ subst T (sym cohᴰ(D⇒E)) (SD.⟦morph⟧ˢ tt)`.
-    ih-evalᴰ : evalᴰ (elaborate C.Heap morph) tt
-               ≡ subst T (sym (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E))) (SD.⟦ morph ⟧ˢ tt)
+    ih-evalᴰ : evalᴰ fmt (elaborate C.Heap morph) tt
+               ≡ subst T (sym (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E))) (SD.⟦ morph ⟧ˢ fmt tt)
     ih-evalᴰ = trans (sym (subst-sym-subst (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E))))
                      (cong (subst T (sym (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E)))) (extensionality ih))
 
 -- … and its function form (equal as `T`-values, ∀ depth).
 morph-app-bridge-fun : ∀ {D E kk} (morph : Expr ∅ zeroUsage (D ⇒[ kk ] E))
-                         (ih : ∀ j → liftFn {⟦ ∅ ⟧ᶜ} {D ⇒[ kk ] E} (elaborate C.Heap morph) tt j ≡ SD.⟦ morph ⟧ˢ tt j)
+                         (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {D ⇒[ kk ] E} (elaborate C.Heap morph) tt j ≡ SD.⟦ morph ⟧ˢ fmt tt j)
                          (w : ⟦ D ⟧ᴰ)
-                       → liftFn (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩ C.Heap) w
-                         ≡ (SD.⟦ morph ⟧ˢ tt >>=T (λ clo → clo w))
+                       → liftFn fmt (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩ C.Heap) w
+                         ≡ (SD.⟦ morph ⟧ˢ fmt tt >>=T (λ clo → clo w))
 morph-app-bridge-fun morph ih w = extensionality (morph-app-bridge morph ih w)
 
 ------------------------------------------------------------------------
@@ -157,10 +165,10 @@ morph-app-bridge-fun morph ih w = extensionality (morph-app-bridge morph ih w)
 cata-body : ∀ {m} {Γ : Ctx m} {F : Functor} {A} {π : Purity}
               (wf : WellFormedF F)
               (alg : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
-              (ih : ∀ j → liftFn {⟦ ∅ ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} (elaborate C.Heap alg) tt j ≡ SD.⟦ alg ⟧ˢ tt j)
+              (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} (elaborate C.Heap alg) tt j ≡ SD.⟦ alg ⟧ˢ fmt tt j)
               (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-            → liftFn {⟦ Γ ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A} (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ k
-              ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ dγ k
+            → liftFn fmt {⟦ Γ ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A} (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ k
+              ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt dγ k
 cata-body {Γ = Γ} {F = F} {A = A} {π = π} wf alg ih dγ k =
   trans elab-cata-reduce fold-eq
   where
@@ -173,23 +181,23 @@ cata-body {Γ = Γ} {F = F} {A = A} {π = π} wf alg ih dγ k =
     -- The elaborated `curry (Cata-IR ∘ snd)` closure `liftFn`-reduces (through the
     -- `curry`/`snd`/transport) to `returnT (λ x → cata-sem wf (liftFn algIR) x)`
     -- (via `evalᴰ-Cata-erased`).  [the transport-heavy reduction]
-    elab-cata-reduce : liftFn {⟦ Γ ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A} (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ k
-                       ≡ returnT (λ x → cata-sem wf (liftFn algIR) x) k
+    elab-cata-reduce : liftFn fmt {⟦ Γ ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A} (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ k
+                       ≡ returnT (λ x → cata-sem wf (liftFn fmt algIR) x) k
     elab-cata-reduce = cong (λ t → t k)
-      (trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ (μ-type F)) (cohᴰ A)) (λ a → evalᴰ Cata-IR a))
-             (cong returnT (trans (subst-arrow (cohᴰ (μ-type F)) (cohᴰ A) (λ a → evalᴰ Cata-IR a))
+      (trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ (μ-type F)) (cohᴰ A)) (λ a → evalᴰ fmt Cata-IR a))
+             (cong returnT (trans (subst-arrow (cohᴰ (μ-type F)) (cohᴰ A) (λ a → evalᴰ fmt Cata-IR a))
                                   (extensionality (λ x → evalᴰ-Cata-erased {A} wf algIR x)))))
 
     -- Per layer the two algebras agree (`cata-ev-algᴰ-D (liftFn algIR)` vs
     -- `cata-ev-algˢ (⟦alg⟧ˢ tt)`) by the closure bridge — the OLD `alg-eq`.
     alg-eq : ∀ (n : ℕ)
-           → cata-ev-algᴰ-D {F} {A} n (liftFn algIR)
-             ≡ SD.cata-ev-algˢ {F} {A} n (SD.⟦ alg ⟧ˢ tt)
+           → cata-ev-algᴰ-D {F} {A} n (liftFn fmt algIR)
+             ≡ SD.cata-ev-algˢ {F} {A} n (SD.⟦ alg ⟧ˢ fmt tt)
     alg-eq n = extensionality (λ fc →
       cong (λ s → (events-F F proj₁ fc ++ projTrace s n , valueT s n))
            (morph-app-bridge-fun alg ih (coerce-functor⁻¹-D F A (sem-fmap F proj₂ fc))))
 
-    fold-eq : returnT (λ x → cata-sem wf (liftFn algIR) x) k ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ dγ k
+    fold-eq : returnT (λ x → cata-sem wf (liftFn fmt algIR) x) k ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt dγ k
     fold-eq = cong (_,_ []) (extensionality (λ x → extensionality (λ n →
       cong (λ a → let r = sem-cata wf a x in (proj₁ r , proj₂ r)) (alg-eq n))))
 
@@ -206,7 +214,7 @@ cata-body {Γ = Γ} {F = F} {A = A} {π = π} wf alg ih dγ k =
 -- `CataErased.evalᴰ-subst-dom`). `valueT`/`projTrace` of a value-`subst`ed
 -- `T` split trace (unchanged) from value (transported).
 evalᴰ-subst-cod : ∀ {X o₁ o₂ : II.IRTy} (eq : o₁ ≡ o₂) (ir : IR X o₁) (v : ⟦ X ⟧ᴰᴵ)
-  → evalᴰ (subst (λ o → IR X o) eq ir) v ≡ subst T (cong ⟦_⟧ᴰᴵ eq) (evalᴰ ir v)
+  → evalᴰ fmt (subst (λ o → IR X o) eq ir) v ≡ subst T (cong ⟦_⟧ᴰᴵ eq) (evalᴰ fmt ir v)
 evalᴰ-subst-cod refl ir v = refl
 
 valueT-subst : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (m : ℕ)
@@ -214,13 +222,13 @@ valueT-subst : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (m : ℕ)
 valueT-subst refl h m = refl
 
 ana-ev-bridge : ∀ {F A kk} (coalg : Expr ∅ zeroUsage (A ⇒[ kk ] ⟦ F ⟧T A))
-                  (ih : ∀ j → liftFn {⟦ ∅ ⟧ᶜ} {A ⇒[ kk ] ⟦ F ⟧T A} (elaborate C.Heap coalg) tt j ≡ SD.⟦ coalg ⟧ˢ tt j)
+                  (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {A ⇒[ kk ] ⟦ F ⟧T A} (elaborate C.Heap coalg) tt j ≡ SD.⟦ coalg ⟧ˢ fmt tt j)
                   (s : Val.⟦ A ⟧) (m : ℕ)
-              → ana-events {eraseF F} {⌊ A ⌋}
+              → ana-events fmt {eraseF F} {⌊ A ⌋}
                   (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A)
                          (apply ∘ ⟨ elaborate C.Heap coalg ∘ terminal , id ⟩ C.Heap))
                   (subst (λ z → z) (sym (coh A)) s) m
-                ≡ SD.ana-eventsˢ {F} {A} (SD.⟦ coalg ⟧ˢ tt) s m
+                ≡ SD.ana-eventsˢ {F} {A} (SD.⟦ coalg ⟧ˢ fmt tt) s m
 ana-ev-bridge coalg ih s zero = refl
 ana-ev-bridge {F} {A} coalg ih s (suc m) =
   cong₂ _++_ trace-eq events-eq
@@ -228,21 +236,21 @@ ana-ev-bridge {F} {A} coalg ih s (suc m) =
     p : IR ⌊ A ⌋ ⌊ ⟦ F ⟧T A ⌋
     p = apply ∘ ⟨ elaborate C.Heap coalg ∘ terminal , id ⟩ C.Heap
     seed-e = subst (λ z → z) (sym (coh A)) s
-    v0T = evalᴰ p (inject seed-e)
+    v0T = evalᴰ fmt p (inject seed-e)
     v0 = valueT v0T m
     eE = cong ⟦_⟧ᴰᴵ (⌊⟧T-commute F A)
     eS = cohᴰ (⟦ F ⟧T A)
 
-    step-e-eq : evalᴰ (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) p) (inject seed-e)
+    step-e-eq : evalᴰ fmt (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) p) (inject seed-e)
                 ≡ subst T eE v0T
     step-e-eq = evalᴰ-subst-cod (⌊⟧T-commute F A) p (inject seed-e)
 
-    step-s-eq : (SD.⟦ coalg ⟧ˢ tt >>=T (λ clo → clo (inject s))) ≡ subst T eS v0T
+    step-s-eq : (SD.⟦ coalg ⟧ˢ fmt tt >>=T (λ clo → clo (inject s))) ≡ subst T eS v0T
     step-s-eq = trans (sym (morph-app-bridge-fun coalg ih (inject s)))
-                      (cong (λ w → subst T eS (evalᴰ p w)) (sym (inject-coh-nat A s)))
+                      (cong (λ w → subst T eS (evalᴰ fmt p w)) (sym (inject-coh-nat A s)))
 
-    trace-eq : projTrace (evalᴰ (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) p) (inject seed-e)) m
-               ≡ projTrace (SD.⟦ coalg ⟧ˢ tt >>=T (λ clo → clo (inject s))) m
+    trace-eq : projTrace (evalᴰ fmt (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) p) (inject seed-e)) m
+               ≡ projTrace (SD.⟦ coalg ⟧ˢ fmt tt >>=T (λ clo → clo (inject s))) m
     trace-eq = trans (cong (λ t → projTrace t m) step-e-eq)
                  (trans (subst-T-projTrace eE v0T m)
                    (trans (sym (subst-T-projTrace eS v0T m))
@@ -251,9 +259,9 @@ ana-ev-bridge {F} {A} coalg ih s (suc m) =
     R : Val.⟦ ⌈ ⌊ A ⌋ ⌉ ⟧ → Val.⟦ A ⟧ → Set
     R xe xs = subst (λ z → z) (coh A) xe ≡ xs
 
-    child-e = λ seed → ana-events {eraseF F} {⌊ A ⌋}
+    child-e = λ seed → ana-events fmt {eraseF F} {⌊ A ⌋}
                 (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) p) seed m
-    child-s = λ seed → SD.ana-eventsˢ {F} {A} (SD.⟦ coalg ⟧ˢ tt) seed m
+    child-s = λ seed → SD.ana-eventsˢ {F} {A} ((SD.⟦ coalg ⟧ˢ fmt) tt) seed m
 
     child-R : ∀ {xe xs} → R xe xs → child-e xe ≡ child-s xs
     child-R {xe} {xs} req =
@@ -261,19 +269,19 @@ ana-ev-bridge {F} {A} coalg ih s (suc m) =
                   (trans (sym (subst-sym-subst (coh A))) (cong (subst (λ z → z) (sym (coh A))) req)))
             (ana-ev-bridge coalg ih xs m)
 
-    ve-eq : valueT (evalᴰ (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) p) (inject seed-e)) m
+    ve-eq : valueT (evalᴰ fmt (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) p) (inject seed-e)) m
             ≡ subst (λ z → z) eE v0
     ve-eq = trans (cong (λ t → valueT t m) step-e-eq) (valueT-subst eE v0T m)
 
-    vs-eq : valueT (SD.⟦ coalg ⟧ˢ tt >>=T (λ clo → clo (inject s))) m
+    vs-eq : valueT (SD.⟦ coalg ⟧ˢ fmt tt >>=T (λ clo → clo (inject s))) m
             ≡ subst (λ z → z) eS v0
     vs-eq = trans (cong (λ t → valueT t m) step-s-eq) (valueT-subst eS v0T m)
 
     events-eq : events-F ⌈ eraseF F ⌉F child-e
                   (coerce-functor ⌈ eraseF F ⌉F ⌈ ⌊ A ⌋ ⌉
                     (subst (λ Ty → Val.⟦ Ty ⟧) (⌈⟧TI-commute (eraseF F) ⌊ A ⌋)
-                      (forget (valueT (evalᴰ (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) p) (inject seed-e)) m))))
-                ≡ events-F F child-s (coerce-functor F A (forget (valueT (SD.⟦ coalg ⟧ˢ tt >>=T (λ clo → clo (inject s))) m)))
+                      (forget (valueT (evalᴰ fmt (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) p) (inject seed-e)) m))))
+                ≡ events-F F child-s (coerce-functor F A (forget (valueT (SD.⟦ coalg ⟧ˢ fmt tt >>=T (λ clo → clo (inject s))) m)))
     events-eq =
       trans (cong (λ X → events-F ⌈ eraseF F ⌉F child-e
                     (coerce-functor ⌈ eraseF F ⌉F ⌈ ⌊ A ⌋ ⌉
@@ -285,10 +293,10 @@ ana-ev-bridge {F} {A} coalg ih s (suc m) =
 ana-body : ∀ {mm} {Γ : Ctx mm} {F : Functor} {A} {π : Purity}
              (wf : WellFormedF F)
              (coalg : Expr ∅ zeroUsage (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A))
-             (ih : ∀ j → liftFn {⟦ ∅ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} (elaborate C.Heap coalg) tt j ≡ SD.⟦ coalg ⟧ˢ tt j)
+             (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} (elaborate C.Heap coalg) tt j ≡ SD.⟦ coalg ⟧ˢ fmt tt j)
              (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-           → liftFn {⟦ Γ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ν-type F} (elaborate C.Heap (ana {Γ = Γ} wf coalg)) dγ k
-             ≡ SD.⟦ ana {Γ = Γ} wf coalg ⟧ˢ dγ k
+           → liftFn fmt {⟦ Γ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ν-type F} (elaborate C.Heap (ana {Γ = Γ} wf coalg)) dγ k
+             ≡ SD.⟦ ana {Γ = Γ} wf coalg ⟧ˢ fmt dγ k
 ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ k =
   trans elab-ana-reduce (cong (_,_ []) per-a)
   where
@@ -298,19 +306,19 @@ ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ k =
     Ana-IR : IR ⌊ A ⌋ ⌊ ν-type F ⌋
     Ana-IR = Ana (wf-⌊⌋ wf) coalg'
 
-    elab-ana-reduce : liftFn {⟦ Γ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ν-type F} (elaborate C.Heap (ana {Γ = Γ} wf coalg)) dγ k
-                      ≡ returnT (λ a → liftFn Ana-IR a) k
+    elab-ana-reduce : liftFn fmt {⟦ Γ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ν-type F} (elaborate C.Heap (ana {Γ = Γ} wf coalg)) dγ k
+                      ≡ returnT (λ a → liftFn fmt Ana-IR a) k
     elab-ana-reduce = cong (λ t → t k)
-      (trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ (ν-type F))) (λ a → evalᴰ Ana-IR a))
-             (cong returnT (subst-arrow (cohᴰ A) (cohᴰ (ν-type F)) (λ a → evalᴰ Ana-IR a))))
+      (trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ (ν-type F))) (λ a → evalᴰ fmt Ana-IR a))
+             (cong returnT (subst-arrow (cohᴰ A) (cohᴰ (ν-type F)) (λ a → evalᴰ fmt Ana-IR a))))
 
     cL-e : Val.⟦ ⌈ ⌊ A ⌋ ⌉ ⟧ → ⟦ ⌈ eraseF F ⌉F ⟧F Val.⟦ ⌈ ⌊ A ⌋ ⌉ ⟧
     cL-e = λ a'' → coerce-functor ⌈ eraseF F ⌉F ⌈ ⌊ A ⌋ ⌉
                      (subst (λ Ty → Val.⟦ Ty ⟧) (⌈⟧TI-commute (eraseF F) ⌊ A ⌋)
-                            (forget (valueT (evalᴰ coalg' (inject a'')) 0)))
+                            (forget (valueT (evalᴰ fmt coalg' (inject a'')) 0)))
 
     cR : Val.⟦ A ⟧ → ⟦ F ⟧F Val.⟦ A ⟧
-    cR = λ a'' → coerce-functor F A (forget (valueT (valueT (SD.⟦ coalg ⟧ˢ tt) 0 (inject a'')) 0))
+    cR = λ a'' → coerce-functor F A (forget (valueT (valueT ((SD.⟦ coalg ⟧ˢ fmt) tt) 0 (inject a'')) 0))
 
     subst-νS-cong : ∀ {H₁ H₂ : SFunctor} (eq : H₁ ≡ H₂) (v : νS H₁)
                   → subst (λ z → z) (cong νS eq) v ≡ subst νS eq v
@@ -322,9 +330,9 @@ ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ k =
                       (cong (subst (λ z → z) (sym (coh A))) (forget-coh-gen A a))
 
     trace-at : ∀ (a : ⟦ A ⟧ᴰ) (n : ℕ)
-             → ana-events {eraseF F} {⌊ A ⌋} coalg' (forget (subst (λ z → z) (sym (cohᴰ A)) a)) n
-               ≡ SD.ana-eventsˢ {F} {A} (SD.⟦ coalg ⟧ˢ tt) (forget a) n
-    trace-at a n = trans (cong (λ z → ana-events {eraseF F} {⌊ A ⌋} coalg' z n) (seed-eq a))
+             → ana-events fmt {eraseF F} {⌊ A ⌋} coalg' (forget (subst (λ z → z) (sym (cohᴰ A)) a)) n
+               ≡ SD.ana-eventsˢ {F} {A} (SD.⟦ coalg ⟧ˢ fmt tt) (forget a) n
+    trace-at a n = trans (cong (λ z → ana-events fmt {eraseF F} {⌊ A ⌋} coalg' z n) (seed-eq a))
                          (ana-ev-bridge coalg ih (forget a) n)
 
     subst-fn-cod : ∀ {H₁ H₂ : SFunctor} (eq : H₁ ≡ H₂) (f : Val.⟦ A ⟧ → ⟦ H₁ ⟧SF Val.⟦ A ⟧)
@@ -333,29 +341,29 @@ ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ k =
     subst-fn-cod refl f = refl
 
     v0 : Val.⟦ A ⟧ → ⟦ ⌊ ⟦ F ⟧T A ⌋ ⟧ᴰᴵ
-    v0 x = valueT (evalᴰ coalgIR (inject (subst (λ z → z) (sym (coh A)) x))) 0
+    v0 x = valueT (evalᴰ fmt coalgIR (inject (subst (λ z → z) (sym (coh A)) x))) 0
 
     erased-eq : ∀ (x : Val.⟦ A ⟧)
               → subst (λ Ty → Val.⟦ Ty ⟧) (⌈⟧TI-commute (eraseF F) ⌊ A ⌋)
-                  (forget (valueT (evalᴰ coalg' (inject (subst (λ z → z) (sym (coh A)) x))) 0))
+                  (forget (valueT (evalᴰ fmt coalg' (inject (subst (λ z → z) (sym (coh A)) x))) 0))
                 ≡ subst (λ Ty → Val.⟦ Ty ⟧) (⌈⟧TI-commute (eraseF F) ⌊ A ⌋)
                     (forget (subst (λ z → z) (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute F A)) (v0 x)))
     erased-eq x = cong (λ w → subst (λ Ty → Val.⟦ Ty ⟧) (⌈⟧TI-commute (eraseF F) ⌊ A ⌋) (forget w))
       (trans (cong (λ t → valueT t 0) (evalᴰ-subst-cod (⌊⟧T-commute F A) coalgIR (inject (subst (λ z → z) (sym (coh A)) x))))
-             (valueT-subst (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute F A)) (evalᴰ coalgIR (inject (subst (λ z → z) (sym (coh A)) x))) 0))
+             (valueT-subst (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute F A)) (evalᴰ fmt coalgIR (inject (subst (λ z → z) (sym (coh A)) x))) 0))
 
     step-s-eq : ∀ (x : Val.⟦ A ⟧)
-              → (SD.⟦ coalg ⟧ˢ tt >>=T (λ clo → clo (inject x)))
-                ≡ subst T (cohᴰ (⟦ F ⟧T A)) (evalᴰ coalgIR (inject (subst (λ z → z) (sym (coh A)) x)))
+              → (SD.⟦ coalg ⟧ˢ fmt tt >>=T (λ clo → clo (inject x)))
+                ≡ subst T (cohᴰ (⟦ F ⟧T A)) (evalᴰ fmt coalgIR (inject (subst (λ z → z) (sym (coh A)) x)))
     step-s-eq x = trans (sym (morph-app-bridge-fun coalg ih (inject x)))
-                        (cong (λ w → subst T (cohᴰ (⟦ F ⟧T A)) (evalᴰ coalgIR w)) (sym (inject-coh-nat A x)))
+                        (cong (λ w → subst T (cohᴰ (⟦ F ⟧T A)) (evalᴰ fmt coalgIR w)) (sym (inject-coh-nat A x)))
 
     surface-eq : ∀ (x : Val.⟦ A ⟧)
-               → forget (valueT (valueT (SD.⟦ coalg ⟧ˢ tt) 0 (inject x)) 0)
+               → forget (valueT (valueT (SD.⟦ coalg ⟧ˢ fmt tt) 0 (inject x)) 0)
                  ≡ forget (subst (λ z → z) (cohᴰ (⟦ F ⟧T A)) (v0 x))
     surface-eq x = cong forget
       (trans (cong (λ t → valueT t 0) (step-s-eq x))
-             (valueT-subst (cohᴰ (⟦ F ⟧T A)) (evalᴰ coalgIR (inject (subst (λ z → z) (sym (coh A)) x))) 0))
+             (valueT-subst (cohᴰ (⟦ F ⟧T A)) (evalᴰ fmt coalgIR (inject (subst (λ z → z) (sym (coh A)) x))) 0))
 
     ceq : ∀ (a : ⟦ A ⟧ᴰ)
         → subst (λ H → Val.⟦ A ⟧ → ⟦ H ⟧SF Val.⟦ A ⟧) (tF-coh F)
@@ -382,9 +390,9 @@ ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ k =
                    (trans (sem-ana-erase-full (coh A) cL-e cR (forget (subst (λ z → z) (sym (cohᴰ A)) a)) (ceq a))
                           (cong (sem-ana F cR) (forget-coh-gen A a)))
 
-    per-a : (λ a → liftFn Ana-IR a)
-            ≡ (λ a → λ n → ( SD.ana-eventsˢ {F} {A} (SD.⟦ coalg ⟧ˢ tt) (forget a) n
+    per-a : (λ a → liftFn fmt Ana-IR a)
+            ≡ (λ a → λ n → ( SD.ana-eventsˢ {F} {A} (SD.⟦ coalg ⟧ˢ fmt tt) (forget a) n
                            , inject (sem-ana F cR (forget a)) ))
     per-a = extensionality (λ a → extensionality (λ n →
-      trans (subst-T-apply (cohᴰ (ν-type F)) (evalᴰ Ana-IR (subst (λ z → z) (sym (cohᴰ A)) a)) n)
+      trans (subst-T-apply (cohᴰ (ν-type F)) (evalᴰ fmt Ana-IR (subst (λ z → z) (sym (cohᴰ A)) a)) n)
             (cong₂ _,_ (trace-at a n) (value-at a))))

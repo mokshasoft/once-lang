@@ -13,7 +13,15 @@
 -- (the μ-twin of `AnaErased.coerce-νin-erase`, wrapped by `sem-In = ⟨_⟩∘coerce-μ-in`).
 ------------------------------------------------------------------------
 
-module Once.Adequacy.InErased where
+open import Once.Float.Dyadic using (FloatFormat)
+
+-- Plan 0.73 (D113): this module's statements mention a denotation that is
+-- target-relative at `Float`, so the format is a parameter. A MODULE parameter
+-- rather than a per-lemma argument because everything here is a PROOF —
+-- downstream uses these as facts and never reduces them — so the "recursive
+-- function in a parameterised module stops reducing" trap does not apply. The
+-- denotations themselves take it as an explicit argument.
+module Once.Adequacy.InErased (fmt : FloatFormat) where
 
 open import Function using (id)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -34,8 +42,8 @@ open import Once.Denotation.TraceMonad using (T; returnT; projTrace)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; forget; inject; cohᴰ)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (in-value)
-open import Once.Adequacy.CataErased using (subst-T-apply; subst-T-projTrace; evalᴰ-subst-dom)
-open import Once.Adequacy.AnaErased using (coerce-νin-erase)
+open import Once.Adequacy.CataErased fmt using (subst-T-apply; subst-T-projTrace; evalᴰ-subst-dom)
+open import Once.Adequacy.AnaErased fmt using (coerce-νin-erase)
 open import Once.Postulates using (extensionality)
 import Once.IR as IR
 
@@ -82,25 +90,25 @@ subst-⟦⟧ᴰᴵ-fix refl x = refl
 -- TRACE half: `[]` — `subst T` doesn't touch the trace; `evalᴰ-subst-dom` peels
 -- the domain subst; `rec-trace-D (In) = []` is definitional.
 in-trace : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ) (n : ℕ)
-  → projTrace (liftFn (In-ir wfF) v) n ≡ []
+  → projTrace (liftFn fmt (In-ir wfF) v) n ≡ []
 in-trace {F} wfF v n =
   trans (subst-T-projTrace (cong μS (tF-coh F))
-          (evalᴰ (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)) n)
+          (evalᴰ fmt (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)) n)
         (cong (λ hh → projTrace hh n)
           (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF) IR.Heap)
                            (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
 
 -- VALUE half — the coherence (PROBE: refl to read the goal).
 in-value-erase : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ) (n : ℕ)
-  → proj₂ (liftFn (In-ir wfF) v n) ≡ in-value v
+  → proj₂ (liftFn fmt (In-ir wfF) v n) ≡ in-value v
 in-value-erase {F} wfF v n =
   trans (cong proj₂ (subst-T-apply (cong μS (tF-coh F))
-                      (evalᴰ (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)) n))
+                      (evalᴰ fmt (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)) n))
   (trans (cong (λ hh → subst id (cong μS (tF-coh F)) (proj₂ (hh n)))
                (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF) IR.Heap)
                                 (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
   (trans (cong (λ arg → subst id (cong μS (tF-coh F))
-                         (proj₂ (evalᴰ (IR.In (wf-⌊⌋ wfF) IR.Heap) arg n)))
+                         (proj₂ (evalᴰ fmt (IR.In (wf-⌊⌋ wfF) IR.Heap) arg n)))
                (subst-⟦⟧ᴰᴵ-fix (⌊⟧T-commute F (μ-type F)) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
   (trans (subst-id-μS (tF-coh F) _)
   (trans (⟨⟩-subst-nat (tF-coh F) _)
@@ -116,5 +124,5 @@ in-value-erase {F} wfF v n =
 -- transported `In` is `returnT (in-value v)` — trace `[]`, value `in-value-erase`
 -- (the value is n-independent, so `in-value-erase` at 0 covers every `n`).
 liftFn-In : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ)
-  → liftFn (In-ir wfF) v ≡ returnT (in-value v)
+  → liftFn fmt (In-ir wfF) v ≡ returnT (in-value v)
 liftFn-In wfF v = extensionality λ n → cong₂ _,_ (in-trace wfF v n) (in-value-erase wfF v n)
