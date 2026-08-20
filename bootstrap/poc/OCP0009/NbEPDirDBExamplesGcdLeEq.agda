@@ -1,5 +1,6 @@
 ------------------------------------------------------------------------
--- OCP-0009 — ROUTE 8 FOR `⊢S3s`: BUILD, DO NOT TRANSPORT.
+-- OCP-0009 — GAP A, EQUATION 4: `gcd (suc a , suc b) = gcd (suc a , b ∸ a)`
+--             PROPOSITIONALLY, AT VARIABLES.  (Route 8 for `⊢S3s`.)
 --
 -- ⚠ WHAT THE OTHER SEVEN SHARE.  Attempts 45-51 (see GAP-A-ATTEMPTS.md)
 --   all build `⊢S3` at the LAYERED type and convert afterwards.  Seven
@@ -23,7 +24,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.NbEPDirDBSpikeS3Direct where
+module poc.OCP0009.NbEPDirDBExamplesGcdLeEq where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; cong₂; sym; subst )
 open import poc.OCP0009.NbEPDirDBPi
@@ -35,9 +36,11 @@ open import poc.OCP0009.NbEPDirDBType
         ; nrs; ⊢lam; ⊢app; ⊢var; here; wk-single; ⊢natrec; _≅ᵀ_; El-⌜Nat⌝
         ; ⊢nzero; done; ty-Hom )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm; natAsEl )
+open import poc.OCP0009.NbEPDirDBExamplesStrong
+  using ( ⊢le-refl; reflTm; natAsEl; elAsNat )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
-open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; ren-w; pw3; pw4; pw5; nrs-w; cong₃; sub-w )
+open import poc.OCP0009.NbEPDirDBLibWk
+  using ( w; wᶠ; ren-w; pw3; pw4; pw5; nrs-w; cong₃; sub-w; wfw-single; w²-single )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )
 open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( aIHTat-ren; Prv; prv; idToRed; idOfRed )
@@ -46,9 +49,11 @@ open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm; ⊢monus )
 open import poc.OCP0009.NbEPDirDBLibArithComm
   using ( plusMonoLTm; plusMonoLTm-sub; congAt; ⊢congAt; IdN )
 open import poc.OCP0009.NbEPDirDBLibArithMonus
-  using ( monusLtTm; monusLtTm-sub; ⊢desc-left; monusLeTm; ⊢monusLe )
+  using ( monusLtTm; monusLtTm-sub; ⊢desc-left; monusLeTm; ⊢monusLe
+        ; descLeftTm; descLeftTm-sub; ⊢monusLeAt )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
-  using ( gcdIH; gcdG; ⊢gcdIH; descConv; KS; NS; PAIRˢ; CERTˢ; msr; ⊢msr; gcdStp )
+  using ( gcdIH; gcdG; ⊢gcdIH; descConv; KS; NS; PAIRˢ; CERTˢ; msr; ⊢msr; gcdStp
+        ; gcdIH-ren )
 open import poc.OCP0009.NbEPDirDBLibNatrec using ( ⊢natrec-var; ⊢natrec-var-at )
 open import poc.OCP0009.NbEPDirDBExamplesGcdLeMid
   using ( gXx; R1'; W'; R2'; S3'; Z3'; D3'; ⊢W'; Ss-collapse; Zs-collapse
@@ -63,20 +68,6 @@ open import poc.OCP0009.NbEPDirDBExamplesGcdLeMid
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
--- ★ THE ONE CAST ROUTE 8 NEEDS, and why `⊢G3s` does not need it.
---
---   Applying the IH substitutes the argument into the codomain, so the
---   measure slot comes back as `subTm (single v) (wᶠ (w t))`.  In `⊢G3s`
---   the slots are de Bruijn VARIABLES and that reduces definitionally.
---   Route 8's slots are ABSTRACT TERMS, so it is only propositional —
---   `ren-w` to fuse the two renamings, then `wk-single` to cancel.
-------------------------------------------------------------------------
-
-wfw-single : {Γ : Cx} {v : RTm (Γ ∙)} (t : RTm Γ) →
-             subTm (single v) (wᶠ (w t)) ≡ w t
-wfw-single {v = v} t =
-  trans (cong (subTm (single v)) (ren-w t)) (wk-single (w t))
-
 module _ {Γ : Ctx} {W b : RTm ⌊ Γ ⌋}
          (dW : Γ ⊢ W ∷ Nat) (db : Γ ⊢ b ∷ Nat) where
 
@@ -144,33 +135,6 @@ module _ {Γ : Ctx} {W b : RTm ⌊ Γ ⌋}
                  (sym appEq))
            ⊢CERT*
 
-
-------------------------------------------------------------------------
--- ★★ THE LEFT-DESCENT CERTIFICATE, NAMED — AND IT COMMUTES WITH `subTm`.
---
--- ⚠ MEASURED: `pair`/`monusTm`/`nsuc` distribute over `subTm`
---   DEFINITIONALLY (that is why `eqP` is a bare `cong₂`), but
---   `plusMonoLTm` and `monusLtTm` do NOT — which is exactly why
---   `plusMonoLTm-sub`/`monusLtTm-sub` exist.  So the certificate needs its
---   own commutation lemma, and having it once beats five inline pushes.
---
--- ★ LIBRARY CANDIDATE: this is `⊢desc-left`'s subject, so it belongs beside
---   it in `…LibArithMonus`, not here.
-------------------------------------------------------------------------
-
-descLeftTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-descLeftTm a b =
-  plusMonoLTm (monusTm (nsuc a) (nsuc b)) (nsuc a) (nsuc b) (monusLtTm a b)
-
-descLeftTm-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (a b : RTm Γ) →
-                 subTm σ (descLeftTm a b)
-               ≡ descLeftTm (subTm σ a) (subTm σ b)
-descLeftTm-sub {σ = σ} a b =
-  trans (plusMonoLTm-sub (monusTm (nsuc a) (nsuc b)) (nsuc a) (nsuc b)
-                         (monusLtTm a b))
-        (cong (plusMonoLTm (monusTm (nsuc (subTm σ a)) (nsuc (subTm σ b)))
-                           (nsuc (subTm σ a)) (nsuc (subTm σ b)))
-              (monusLtTm-sub a b))
 
 ------------------------------------------------------------------------
 -- ★★★★★ THE PEELS, GENERIC IN WHAT IS SUBSTITUTED.
@@ -363,12 +327,6 @@ module Hole {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
 --   ever spoke about `renTy (extR vs)`, which does not care what was pushed.
 ------------------------------------------------------------------------
 
-elNat : {Γ : Cx} → El (⌜Nat⌝ {Γ}) ≅ᵀ Nat
-elNat = red→≅ᵀ (stepᵀ El-⌜Nat⌝ doneᵀ)
-
-elAsNat : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ Nat
-elAsNat d = ⊢conv d elNat
-
 module HoleE {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
              (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) where
 
@@ -389,10 +347,6 @@ module HoleE {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
 -- `midAt a' b' ih d = app (natrec …) ih`, so the family is that `app` with
 -- the descent as `var vz` and everything else weakened past it.
 ------------------------------------------------------------------------
-
-gcdIH-ren : {Γ Γ' : Cx} {ρ : Ren Γ Γ'} (μ : RTm Γ) →
-            renTy ρ (gcdIH μ) ≡ gcdIH (renTm ρ μ)
-gcdIH-ren μ = aIHTat-ren PairT ⌜Nat⌝ msr μ
 
 module HoleF {Γ : Ctx} {a' b' ih : RTm ⌊ Γ ⌋}
              (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat)
@@ -422,18 +376,6 @@ module HoleF {Γ : Ctx} {a' b' ih : RTm ⌊ Γ ⌋}
 --   congruence suffices where a dependent motive would need a transport.
 ------------------------------------------------------------------------
 
--- ★ the two-level weakening cancel the family needs — `wk-single` one
---   binder deeper, for the `natrec`'s successor branch.
-w²-single : {Γ : Cx} {x : RTm Γ} (t : RTm ((Γ ∙) ∙)) →
-            subTm (extS (extS (single x))) (renTm (extR (extR vs)) t) ≡ t
-w²-single {x = x} t =
-  trans (subTm-renTm t) (trans (subTm-cong br t) (subTm-id t))
-  where
-    br : ∀ v → extS (extS (single x)) (extR (extR vs) v) ≡ var v
-    br vz          = refl
-    br (vs vz)     = refl
-    br (vs (vs u)) = refl
-
 module Eq4 {Γ : Ctx} {a' b' ih : RTm ⌊ Γ ⌋}
            (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat)
            (dih : Γ ⊢ ih ∷ gcdIH (plusTm (nsuc (W' a' b')) (nsuc b')))
@@ -459,41 +401,6 @@ module Eq4 {Γ : Ctx} {a' b' ih : RTm ⌊ Γ ⌋}
              ∷ IdN (subTm (single (D3' a' b')) F) (subTm (single nzero) F)
   ⊢transport = ⊢congAt F ⊢F ⊢D3 ⊢nzero dp
 
-
-------------------------------------------------------------------------
--- ★★ THE ORDER BRIDGE, AT ARBITRARY `a`/`b` — `⊢monusSelf` GENERALISED.
---
--- `⊢monusSelf` is this at `b := a` with `refl` as the certificate.  Equation
--- 4 needs it at two DIFFERENT variables with a supplied order proof, so the
--- peels are the same two and only the instantiation differs.
---
--- ★ LIBRARY CANDIDATE: belongs in `…LibArithMonus` beside `⊢monusSelf`,
---   which should then be defined as its `b := a` instance.
-------------------------------------------------------------------------
-
-mle-peel : {Γ : Cx} (a b c : RTm Γ) →
-           subTm (single c) (subTm (extS (single b)) (w (w a))) ≡ a
-mle-peel a b c =
-  trans (cong (subTm (single c))
-              (trans (sub-w {σ = single b} (w a))
-                     (cong w (wk-single {v = b} a))))
-        (wk-single {v = c} a)
-
-mle-at : {Γ : Cx} (a b c : RTm Γ) →
-         subTy (single c)
-               (subTy (extS (single b))
-                      (IdN (monusTm (w (w a)) (var (vs vz))) nzero))
-       ≡ IdN (monusTm a b) nzero
-mle-at a b c = cong₂ (λ x y → IdN (monusTm x y) nzero)
-                     (mle-peel a b c) (wk-single {v = c} b)
-
-⊢monusLeAt : {Γ : Ctx} {a b le : RTm ⌊ Γ ⌋} →
-             Γ ⊢ a ∷ Nat → Γ ⊢ b ∷ Nat → Γ ⊢ le ∷ Hom Nat a b →
-             Γ ⊢ app (app (monusLeTm a) b) le ∷ IdN (monusTm a b) nzero
-⊢monusLeAt {a = a} {b = b} {le = le} da db dle =
-  ⊢-cast (mle-at a b le) (⊢app (⊢app (⊢monusLe da) db) dle')
-  where
-    dle' = ⊢-cast (sym (cong (λ z → Hom Nat z b) (wk-single {v = b} a))) dle
 
 ------------------------------------------------------------------------
 -- ★★★★★ EQUATION 4, PROPOSITIONALLY — AT VARIABLES.
