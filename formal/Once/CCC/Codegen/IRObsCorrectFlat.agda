@@ -47,6 +47,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Type using (Type; FitsInReg; fits-in-reg?)
   renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ; Int to Intˢ; Unit to Unitˢ)
 open import Once.Float.Dyadic using (Dyadic; encode)
+open import Data.Integer using (ℤ)
 open import Once.IRTy using (WellFormedFI-irrelevant)
 open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
 open import Once.IR using (IR; IRTy; Unit; AllocMode; Stack; Cata; SigOp; SigOpInfo; out-μ; _∘_;
@@ -629,7 +630,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   --
   -- Two clauses because `prim-sv` dispatches on the `FitsInRegI` evidence; the
   -- bodies are identical.
-  obs-correct-const : ∀ {A} (fit : FitsInRegI A) (v : ⟦ Carrier , Dyadic ⟧-baseI A)
+  obs-correct-const : ∀ {A} (fit : FitsInRegI A) (v : ⟦ ℤ , Dyadic ⟧-baseI A)
                     → IRObsCorrectF (const fit v)
   obs-correct-const fits-int v _ mIn x input-loc s alloc _ valid input-before nh rdi-eq =
     record
@@ -663,7 +664,10 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
 
       out-lit : readReg (regs (forced (floc (flat-run 2 (const fits-int v) s alloc)))) Output
               ≡ prim-sv fits-int (eval (const fits-int v) x)
-      out-lit rewrite run-eq = writeReg-same (regs s) Output (SV-Lit fits-intˢ v)
+      -- D115: the machine MATERIALISES the literal, exactly as the float
+      -- case below does — `lit-value` is two's complement at this width.
+      out-lit rewrite run-eq =
+        writeReg-same (regs s) Output (SV-Lit fits-intˢ (AbstractExec.lit-value {FS} fits-intˢ v))
 
   obs-correct-const fits-float v _ mIn x input-loc s alloc _ valid input-before nh rdi-eq =
     record

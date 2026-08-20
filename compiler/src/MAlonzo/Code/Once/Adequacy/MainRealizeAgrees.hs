@@ -26,17 +26,17 @@ import qualified MAlonzo.Code.Once.Adequacy.MainForm
 import qualified MAlonzo.Code.Once.Adequacy.ModuleComplete
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.Denotation.Trace
-import qualified MAlonzo.Code.Once.Float.Dyadic
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Surface.Syntax
+import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Soundness
 
 -- Once.Adequacy.MainRealizeAgrees.ME.runMainˢ
 d_runMain'738'_14 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
@@ -46,7 +46,7 @@ d_runMain'738'_14 v0 v1 v2 v3
       v2 v3
 -- Once.Adequacy.MainRealizeAgrees.ME.source-meaningᴰ
 d_source'45'meaning'7472'_16 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -63,7 +63,7 @@ du_source'45'meaning'7472'_16 v0 v1 v2
       v0
 -- Once.Adequacy.MainRealizeAgrees.main-extract
 d_main'45'extract_96 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
@@ -375,7 +375,7 @@ du_main'45'extract_96 v0
                                              erased)))))))))))))
 -- Once.Adequacy.MainRealizeAgrees.main-checkElab-coherence
 d_main'45'checkElab'45'coherence_172 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
@@ -582,7 +582,7 @@ du_main'45'checkElab'45'coherence_172 v0
                                                       erased erased))))))))))))))))
 -- Once.Adequacy.MainRealizeAgrees.main-realize-agrees-proof
 d_main'45'realize'45'agrees'45'proof_244 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->

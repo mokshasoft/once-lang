@@ -23,7 +23,6 @@ module Once.Denotation.Meaning where
 
 open import Data.Integer using (ℤ)
 import Once.Word as OnceWord
-module IntW = OnceWord.Word64
 open import Once.Float.Dyadic using (encode)
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Data.Fin using (Fin; zero; suc)
@@ -115,7 +114,11 @@ named-sem {A} {B} cn bA cB a =
 -- blocked arith path use. It used to be `absℤ` (absolute value), so `-5` would
 -- have meant 5; harmless only because no negative literal can be written yet,
 -- and plan 0.73 F3 was about to change that.
-⟦ g-int n      ⟧ᵍ fmt = IntW.fromℤ n
+-- D115: at THIS target's width, from the threaded numerics — NOT a baked
+-- `Word64`. `Int` is signed two's complement (D054), so `-5` denotes
+-- `2^w - 5` and is width-relative exactly as a float literal is
+-- format-relative. This is the same clause as `⟦ float … ⟧`, one type over.
+⟦ g-int n      ⟧ᵍ fmt = OnceWord.Width.fromℤ (int-bits fmt) n
 -- …and a float literal means ITS ENCODING AT THE TARGET'S FORMAT (D113).
 -- `⟦ Float ⟧` is the target's representation, not an exact value, and `1.5`
 -- has no target-free one — so the reference meaning takes the format. This
@@ -209,7 +212,7 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 -- `tt`. Structural recursion (bodyD is a premise ⇒ a subterm).
 ⟦ t-var-poly-instantiate _ _ _ _ _ _ bodyD ⟧ᶜ fmt dγ = (⟦ bodyD ⟧ᶜ fmt) tt
 
-⟦ t-int n ⟧ᵢ fmt                dγ = returnT (IntW.fromℤ n)
+⟦ t-int n ⟧ᵢ fmt                dγ = returnT (OnceWord.Width.fromℤ (int-bits fmt) n)
 -- D113, in the INFER realm: same clause, same reason as `g-float` above.
 ⟦ t-float _ _ _ d _ ⟧ᵢ fmt      dγ = returnT (encode (float-format fmt) d)
 ⟦ t-str s ⟧ᵢ fmt                dγ = returnT (semM (str-lit-info s) tt)

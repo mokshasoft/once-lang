@@ -49,6 +49,7 @@ open import Once.CCC.Label using (LabelId)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Word using (Carrier)
 open import Once.Float.Dyadic using (Dyadic; encode; encode-fits; binary32; binary64)
+open import Data.Integer using (ℤ)
 open import Data.Nat.Properties using (<-≤-trans; ^-monoʳ-≤; n≤1+n)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.CCC.Target.X86-32.Syntax using (slots; slot-size; reg; esp; edx; edi; Reg)
@@ -278,12 +279,12 @@ record LitFits : Set₁ where
     lit-fits :
       ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
         (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
-        (s : X.State) (v : Carrier)
+        (s : X.State) (v : ℤ)
       → RCx.RunAt o x86-32-frame-semantics refl prog fs
       → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
       → FlatMachine.fetch {x86-32-frame-semantics} prog
           (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-load-const fits-int v)
-      → v < W.modulus
+      → Once.CCC.Machine.SMCore.AbstractExec.lit-value {x86-32-frame-semantics} fits-int v < W.modulus
 open LitFits public
 
 

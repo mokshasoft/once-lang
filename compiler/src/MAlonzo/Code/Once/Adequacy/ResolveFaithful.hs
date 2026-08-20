@@ -21,9 +21,9 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Induction.WellFounded
-import qualified MAlonzo.Code.Once.Float.Dyadic
 import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Surface.Syntax
+import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.Adequacy.ResolveFaithful.resolveExpr-sigOp-closure-faithful
@@ -36,7 +36,7 @@ d_resolveExpr'45'poly'45'splice'45'faithful_60
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.ResolveFaithful.resolveExpr-poly-splice-faithful"
 -- Once.Adequacy.ResolveFaithful.resolveExpr-poly-faithful
 d_resolveExpr'45'poly'45'faithful_88 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
@@ -53,7 +53,7 @@ d_resolveExpr'45'poly'45'faithful_88 ::
 d_resolveExpr'45'poly'45'faithful_88 = erased
 -- Once.Adequacy.ResolveFaithful.bind2-faithful
 d_bind2'45'faithful_212 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   () ->
   () ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
@@ -67,7 +67,7 @@ d_bind2'45'faithful_212 ::
 d_bind2'45'faithful_212 = erased
 -- Once.Adequacy.ResolveFaithful.resolveExpr-faithful
 d_resolveExpr'45'faithful_258 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->

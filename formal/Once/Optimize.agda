@@ -757,9 +757,11 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
   ≟const-irrelevant p₁ p₂ v₁ v₂
   where
     open import Once.IRTy using (⟦_,_⟧-baseI)
-    open import Once.Word using (Carrier)
+    open import Data.Integer using (ℤ)
     postulate
-      ≟const-irrelevant : ∀ (q₁ q₂ : FitsInRegI _) (u₁ u₂ : ⟦ Carrier , Dyadic ⟧-baseI _) →
+      -- D115: the payload is SOURCE SYNTAX at both numeric types (`ℤ` /
+      -- `Dyadic`), so the decision is over source values, not machine words.
+      ≟const-irrelevant : ∀ (q₁ q₂ : FitsInRegI _) (u₁ u₂ : ⟦ ℤ , Dyadic ⟧-baseI _) →
                           Dec (const q₁ u₁ ≡ const q₂ u₂)
 
 ------------------------------------------------------------------------

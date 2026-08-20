@@ -1126,8 +1126,8 @@ du_riscv64'45'emitter_550 ::
 du_riscv64'45'emitter_550
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.C_constructor_192
-      MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'abstract_14
-      MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace_88
+      MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'abstract_146
+      MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace_220
       MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_466
       (coe
          MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatComposition.du_is'45'label'63'_12)
@@ -29123,7 +29123,7 @@ du_block'45'step'45'alloc'45'heap_1606 ::
 du_block'45'step'45'alloc'45'heap_1606 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                        v9 v10 v11 v12 v13 v14 v15 v16
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'alloc'45'heap_3384
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'alloc'45'heap_3536
       v2 v3 v4 v5
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-c-branch-nz
 d_block'45'step'45'c'45'branch'45'nz_1608 ::
@@ -29263,7 +29263,7 @@ du_block'45'step'45'c'45'branch'45'nz_1608 ::
 du_block'45'step'45'c'45'branch'45'nz_1608 v0 v1 v2 v3 v4 v5 v6 v7
                                            v8 v9
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'branch'45'nz_3230
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'branch'45'nz_3382
       v3 v6
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-c-branch-scratch-zero
 d_block'45'step'45'c'45'branch'45'scratch'45'zero_1610 ::
@@ -29408,7 +29408,7 @@ du_block'45'step'45'c'45'branch'45'scratch'45'zero_1610 ::
 du_block'45'step'45'c'45'branch'45'scratch'45'zero_1610 v0 v1 v2 v3
                                                         v4 v5 v6 v7 v8 v9 v10 v11
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'branch'45'scratch'45'zero_2536
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'branch'45'scratch'45'zero_2688
       v1 v3 v5 v6 v7
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-c-branch-tag-nz
 d_block'45'step'45'c'45'branch'45'tag'45'nz_1612 ::
@@ -29555,7 +29555,7 @@ du_block'45'step'45'c'45'branch'45'tag'45'nz_1612 ::
 du_block'45'step'45'c'45'branch'45'tag'45'nz_1612 v0 v1 v2 v3 v4 v5
                                                   v6 v7 v8 v9 v10 v11 v12
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'branch'45'tag'45'nz_3298
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'branch'45'tag'45'nz_3450
       v3 v6 v7
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-c-branch-tag-zero
 d_block'45'step'45'c'45'branch'45'tag'45'zero_1614 ::
@@ -29706,7 +29706,7 @@ du_block'45'step'45'c'45'branch'45'tag'45'zero_1614 ::
 du_block'45'step'45'c'45'branch'45'tag'45'zero_1614 v0 v1 v2 v3 v4
                                                     v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'branch'45'tag'45'zero_2668
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'branch'45'tag'45'zero_2820
       v1 v3 v6 v7 v8
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-c-jmp
 d_block'45'step'45'c'45'jmp_1616 ::
@@ -29845,7 +29845,7 @@ du_block'45'step'45'c'45'jmp_1616 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_block'45'step'45'c'45'jmp_1616 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'jmp_2474
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'jmp_2626
       v1 v3 v5 v6
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-c-label
 d_block'45'step'45'c'45'label_1618 ::
@@ -29980,7 +29980,7 @@ du_block'45'step'45'c'45'label_1618 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_block'45'step'45'c'45'label_1618 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'label_1286
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'label_1418
       v3 v5
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-c-ret
 d_block'45'step'45'c'45'ret_1620 ::
@@ -30137,7 +30137,7 @@ du_block'45'step'45'c'45'ret_1620 ::
 du_block'45'step'45'c'45'ret_1620 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10
                                   v11 v12 v13 v14 v15 v16 v17 v18
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'ret_3642
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'ret_3794
       (coe v0) v2 v3 v4 v5 v6 v7 v11
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-c-thunk
 d_block'45'step'45'c'45'thunk_1622 ::
@@ -30300,7 +30300,7 @@ du_block'45'step'45'c'45'thunk_1622 ::
 du_block'45'step'45'c'45'thunk_1622 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
                                     v10 v11 v12 v13 v14 v15 v16 v17 v18 v19 v20 v21
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'thunk_3484
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'thunk_3636
       (coe v0) v3 v4 v6 v8 v9 v10 v16
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-call
 d_block'45'step'45'call_1624 ::
@@ -30463,7 +30463,7 @@ du_block'45'step'45'call_1624 ::
 du_block'45'step'45'call_1624 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                               v12 v13 v14 v15 v16 v17 v18 v19 v20 v21
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'call_3800
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'call_3952
       (coe v0) v2 v3 v4 v7 v8 v18
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-count-inc
 d_block'45'step'45'count'45'inc_1626 ::
@@ -30602,7 +30602,7 @@ du_block'45'step'45'count'45'inc_1626 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_block'45'step'45'count'45'inc_1626 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'count'45'inc_1668
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'count'45'inc_1820
       v3 v5
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-count-zero
 d_block'45'step'45'count'45'zero_1628 ::
@@ -30736,7 +30736,7 @@ du_block'45'step'45'count'45'zero_1628 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_block'45'step'45'count'45'zero_1628 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'count'45'zero_1260
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'count'45'zero_1392
       (coe v0) v2 v3 v4 v5
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-lea-slot
 d_block'45'step'45'lea'45'slot_1630 ::
@@ -30873,7 +30873,7 @@ du_block'45'step'45'lea'45'slot_1630 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_block'45'step'45'lea'45'slot_1630 v0 v1 v2 v3 v4 v5 v6 v7 v8
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'lea'45'slot_1524
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'lea'45'slot_1656
       v3 v4 v5
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-load-code-addr
 d_block'45'step'45'load'45'code'45'addr_1632 ::
@@ -31013,7 +31013,7 @@ du_block'45'step'45'load'45'code'45'addr_1632 ::
 du_block'45'step'45'load'45'code'45'addr_1632 v0 v1 v2 v3 v4 v5 v6
                                               v7 v8 v9
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'code'45'addr_1614
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'code'45'addr_1766
       v3 v5 v6
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-load-const
 d_block'45'step'45'load'45'const_1634 ::
@@ -31152,7 +31152,7 @@ du_block'45'step'45'load'45'const_1634 ::
 du_block'45'step'45'load'45'const_1634 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                        v9
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'const_1582
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'const_1718
       (coe v0) v2 v3 v4 v5 v6
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-load-const-float
 d_block'45'step'45'load'45'const'45'float_1636 ::
@@ -31291,7 +31291,7 @@ du_block'45'step'45'load'45'const'45'float_1636 ::
 du_block'45'step'45'load'45'const'45'float_1636 v0 v1 v2 v3 v4 v5
                                                 v6 v7 v8 v9
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'const'45'float_1788
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'const'45'float_1940
       (coe v0) v2 v3 v4 v5 v6
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-load-from-slot
 d_block'45'step'45'load'45'from'45'slot_1638 ::
@@ -31434,7 +31434,7 @@ du_block'45'step'45'load'45'from'45'slot_1638 ::
 du_block'45'step'45'load'45'from'45'slot_1638 v0 v1 v2 v3 v4 v5 v6
                                               v7 v8 v9 v10 v11
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'from'45'slot_1404
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'from'45'slot_1536
       (coe v0) v1 v4 v6 v7
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-load-indirect
 d_block'45'step'45'load'45'indirect_1640 ::
@@ -31579,7 +31579,7 @@ du_block'45'step'45'load'45'indirect_1640 ::
 du_block'45'step'45'load'45'indirect_1640 v0 v1 v2 v3 v4 v5 v6 v7
                                           v8 v9 v10 v11 v12
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'indirect_1876
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'indirect_2028
       (coe v0) v1 v4 v6 v7
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-load-indirect-stack
 d_block'45'step'45'load'45'indirect'45'stack_1642 ::
@@ -31729,7 +31729,7 @@ du_block'45'step'45'load'45'indirect'45'stack_1642 ::
 du_block'45'step'45'load'45'indirect'45'stack_1642 v0 v1 v2 v3 v4
                                                    v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'indirect'45'stack_2818
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'indirect'45'stack_2970
       (coe v0) v1 v4 v7 v8
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-load-indirect-suc
 d_block'45'step'45'load'45'indirect'45'suc_1644 ::
@@ -31874,7 +31874,7 @@ du_block'45'step'45'load'45'indirect'45'suc_1644 ::
 du_block'45'step'45'load'45'indirect'45'suc_1644 v0 v1 v2 v3 v4 v5
                                                  v6 v7 v8 v9 v10 v11 v12
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'indirect'45'suc_1942
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'indirect'45'suc_2094
       (coe v0) v1 v4 v6 v7
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-load-indirect-suc-stack
 d_block'45'step'45'load'45'indirect'45'suc'45'stack_1646 ::
@@ -32024,7 +32024,7 @@ du_block'45'step'45'load'45'indirect'45'suc'45'stack_1646 ::
 du_block'45'step'45'load'45'indirect'45'suc'45'stack_1646 v0 v1 v2
                                                           v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'indirect'45'suc'45'stack_2900
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'indirect'45'suc'45'stack_3052
       (coe v0) v1 v4 v7 v8
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-load-tag-lit
 d_block'45'step'45'load'45'tag'45'lit_1648 ::
@@ -32163,7 +32163,7 @@ du_block'45'step'45'load'45'tag'45'lit_1648 ::
 du_block'45'step'45'load'45'tag'45'lit_1648 v0 v1 v2 v3 v4 v5 v6 v7
                                             v8 v9
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'tag'45'lit_1184
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'tag'45'lit_1316
       (coe v0) v2 v3 v4 v5 v6
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-mov-to-input
 d_block'45'step'45'mov'45'to'45'input_1650 ::
@@ -32297,7 +32297,7 @@ du_block'45'step'45'mov'45'to'45'input_1650 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_block'45'step'45'mov'45'to'45'input_1650 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'mov'45'to'45'input_1044
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'mov'45'to'45'input_1176
       (coe v0) v2 v3 v4 v5
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-mov-to-output
 d_block'45'step'45'mov'45'to'45'output_1652 ::
@@ -32432,7 +32432,7 @@ du_block'45'step'45'mov'45'to'45'output_1652 ::
 du_block'45'step'45'mov'45'to'45'output_1652 v0 v1 v2 v3 v4 v5 v6
                                              v7
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'mov'45'to'45'output_1020
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'mov'45'to'45'output_1152
       (coe v0) v2 v3 v4 v5
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-reclaim-to
 d_block'45'step'45'reclaim'45'to_1654 ::
@@ -32567,7 +32567,7 @@ du_block'45'step'45'reclaim'45'to_1654 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_block'45'step'45'reclaim'45'to_1654 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'reclaim'45'to_2248
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'reclaim'45'to_2400
       v3 v5
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-restore-input
 d_block'45'step'45'restore'45'input_1656 ::
@@ -32710,7 +32710,7 @@ du_block'45'step'45'restore'45'input_1656 ::
 du_block'45'step'45'restore'45'input_1656 v0 v1 v2 v3 v4 v5 v6 v7
                                           v8 v9 v10 v11
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'restore'45'input_2166
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'restore'45'input_2318
       (coe v0) v1 v4 v6 v7
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-save-closure-reg
 d_block'45'step'45'save'45'closure'45'reg_1658 ::
@@ -32845,7 +32845,7 @@ du_block'45'step'45'save'45'closure'45'reg_1658 ::
 du_block'45'step'45'save'45'closure'45'reg_1658 v0 v1 v2 v3 v4 v5
                                                 v6 v7
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'save'45'closure'45'reg_2222
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'save'45'closure'45'reg_2374
       (coe v0) v2 v3 v4 v5
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-scratch-dec
 d_block'45'step'45'scratch'45'dec_1660 ::
@@ -32987,7 +32987,7 @@ du_block'45'step'45'scratch'45'dec_1660 ::
 du_block'45'step'45'scratch'45'dec_1660 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                         v9 v10
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'scratch'45'dec_1726
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'scratch'45'dec_1878
       v3 v5
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-scratch-load-count
 d_block'45'step'45'scratch'45'load'45'count_1662 ::
@@ -33122,7 +33122,7 @@ du_block'45'step'45'scratch'45'load'45'count_1662 ::
 du_block'45'step'45'scratch'45'load'45'count_1662 v0 v1 v2 v3 v4 v5
                                                   v6 v7
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'scratch'45'load'45'count_1068
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'scratch'45'load'45'count_1200
       (coe v0) v2 v3 v4 v5
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-scratch-one
 d_block'45'step'45'scratch'45'one_1664 ::
@@ -33256,7 +33256,7 @@ du_block'45'step'45'scratch'45'one_1664 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_block'45'step'45'scratch'45'one_1664 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'scratch'45'one_1212
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'scratch'45'one_1344
       (coe v0) v2 v3 v4 v5
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-scratch-zero
 d_block'45'step'45'scratch'45'zero_1666 ::
@@ -33390,7 +33390,7 @@ du_block'45'step'45'scratch'45'zero_1666 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_block'45'step'45'scratch'45'zero_1666 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'scratch'45'zero_1236
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'scratch'45'zero_1368
       (coe v0) v2 v3 v4 v5
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-store-at-slot
 d_block'45'step'45'store'45'at'45'slot_1668 ::
@@ -33537,7 +33537,7 @@ du_block'45'step'45'store'45'at'45'slot_1668 ::
 du_block'45'step'45'store'45'at'45'slot_1668 v0 v1 v2 v3 v4 v5 v6
                                              v7 v8 v9 v10
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'at'45'slot_1464
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'at'45'slot_1596
       (coe v0) v2 v3 v4 v5 v6 v9
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-store-indirect
 d_block'45'step'45'store'45'indirect_1670 ::
@@ -33680,7 +33680,7 @@ du_block'45'step'45'store'45'indirect_1670 ::
 du_block'45'step'45'store'45'indirect_1670 v0 v1 v2 v3 v4 v5 v6 v7
                                            v8 v9 v10 v11
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'indirect_2008
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'indirect_2160
       (coe v0) v2 v3 v4 v5 v6 v10
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-store-indirect-stack
 d_block'45'step'45'store'45'indirect'45'stack_1672 ::
@@ -33834,7 +33834,7 @@ du_block'45'step'45'store'45'indirect'45'stack_1672 ::
 du_block'45'step'45'store'45'indirect'45'stack_1672 v0 v1 v2 v3 v4
                                                     v5 v6 v7 v8 v9 v10 v11 v12 v13
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'indirect'45'stack_2984
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'indirect'45'stack_3136
       (coe v0) v1 v2 v3 v4 v6 v7 v12
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-store-indirect-suc
 d_block'45'step'45'store'45'indirect'45'suc_1674 ::
@@ -33977,7 +33977,7 @@ du_block'45'step'45'store'45'indirect'45'suc_1674 ::
 du_block'45'step'45'store'45'indirect'45'suc_1674 v0 v1 v2 v3 v4 v5
                                                   v6 v7 v8 v9 v10 v11
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'indirect'45'suc_2076
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'indirect'45'suc_2228
       (coe v0) v2 v3 v4 v5 v6 v10
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-store-indirect-suc-stack
 d_block'45'step'45'store'45'indirect'45'suc'45'stack_1676 ::
@@ -34131,7 +34131,7 @@ du_block'45'step'45'store'45'indirect'45'suc'45'stack_1676 ::
 du_block'45'step'45'store'45'indirect'45'suc'45'stack_1676 v0 v1 v2
                                                            v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'indirect'45'suc'45'stack_3068
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'indirect'45'suc'45'stack_3220
       (coe v0) v1 v2 v3 v4 v6 v7 v12
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-worklist-check
 d_block'45'step'45'worklist'45'check_1678 ::
@@ -34266,7 +34266,7 @@ du_block'45'step'45'worklist'45'check_1678 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_block'45'step'45'worklist'45'check_1678 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'worklist'45'check_2316
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'worklist'45'check_2468
       v3 v5
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-worklist-init
 d_block'45'step'45'worklist'45'init_1680 ::
@@ -34401,7 +34401,7 @@ du_block'45'step'45'worklist'45'init_1680 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_block'45'step'45'worklist'45'init_1680 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'worklist'45'init_2282
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'worklist'45'init_2434
       v3 v5
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-worklist-pop
 d_block'45'step'45'worklist'45'pop_1682 ::
@@ -34544,7 +34544,7 @@ du_block'45'step'45'worklist'45'pop_1682 ::
 du_block'45'step'45'worklist'45'pop_1682 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                          v9 v10 v11
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'worklist'45'pop_2414
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'worklist'45'pop_2566
       (coe v0) v1 v4 v6 v7
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.block-step-worklist-push
 d_block'45'step'45'worklist'45'push_1684 ::
@@ -34691,7 +34691,7 @@ du_block'45'step'45'worklist'45'push_1684 ::
 du_block'45'step'45'worklist'45'push_1684 v0 v1 v2 v3 v4 v5 v6 v7
                                           v8 v9 v10
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'worklist'45'push_2352
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'worklist'45'push_2504
       (coe v0) v2 v3 v4 v5 v6 v9
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.dataCorr
 d_dataCorr_1686 ::
@@ -34840,7 +34840,7 @@ du_load'45'indirect'45'heap'45'empty'45'stuck_1688 ::
 du_load'45'indirect'45'heap'45'empty'45'stuck_1688 v0 v1 v2 v3 v4
                                                    v5 v6 v7 v8 v9
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_load'45'indirect'45'heap'45'empty'45'stuck_3956
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_load'45'indirect'45'heap'45'empty'45'stuck_4108
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.load-indirect-suc-heap-empty-stuck
 d_load'45'indirect'45'suc'45'heap'45'empty'45'stuck_1690 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -34980,7 +34980,7 @@ du_load'45'indirect'45'suc'45'heap'45'empty'45'stuck_1690 ::
 du_load'45'indirect'45'suc'45'heap'45'empty'45'stuck_1690 v0 v1 v2
                                                           v3 v4 v5 v6 v7 v8 v9
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_load'45'indirect'45'suc'45'heap'45'empty'45'stuck_4010
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_load'45'indirect'45'suc'45'heap'45'empty'45'stuck_4162
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.pc-off
 d_pc'45'off_1692 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
@@ -35992,7 +35992,7 @@ du_riscv64'45'lea'45'slot_1822 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_riscv64'45'lea'45'slot_1822 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'lea'45'slot_1524
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'lea'45'slot_1656
       (coe v0) (coe v1) (coe v2)
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim.stuck-load-indirect
 d_stuck'45'load'45'indirect_1854 ::
@@ -36263,7 +36263,7 @@ d_stuckp_1884 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
 du_stuckp_1884 :: MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_stuckp_1884
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_load'45'indirect'45'heap'45'empty'45'stuck_3956
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_load'45'indirect'45'heap'45'empty'45'stuck_4108
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim.stuck-load-indirect-suc
 d_stuck'45'load'45'indirect'45'suc_1900 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -36533,7 +36533,7 @@ d_stuckp_1930 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
 du_stuckp_1930 :: MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_stuckp_1930
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_load'45'indirect'45'suc'45'heap'45'empty'45'stuck_4010
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_load'45'indirect'45'suc'45'heap'45'empty'45'stuck_4162
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim.stuck-c-jmp
 d_stuck'45'c'45'jmp_1946 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -39581,164 +39581,164 @@ du_riscv64'45'block'45'steps_2122 v0
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.C_constructor_1996
       (\ v1 v2 v3 v4 v5 v6 v7 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'mov'45'to'45'output_1020
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'mov'45'to'45'output_1152
            (coe v0) v2 v3 v4 v5)
       (\ v1 v2 v3 v4 v5 v6 v7 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'mov'45'to'45'input_1044
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'mov'45'to'45'input_1176
            (coe v0) v2 v3 v4 v5)
       (\ v1 v2 v3 v4 v5 v6 v7 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'scratch'45'one_1212
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'scratch'45'one_1344
            (coe v0) v2 v3 v4 v5)
       (\ v1 v2 v3 v4 v5 v6 v7 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'scratch'45'zero_1236
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'scratch'45'zero_1368
            (coe v0) v2 v3 v4 v5)
       (\ v1 v2 v3 v4 v5 v6 v7 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'count'45'zero_1260
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'count'45'zero_1392
            (coe v0) v2 v3 v4 v5)
       (\ v1 v2 v3 v4 v5 v6 v7 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'scratch'45'load'45'count_1068
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'scratch'45'load'45'count_1200
            (coe v0) v2 v3 v4 v5)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'label_1286
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'label_1418
            v4 v6)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'reclaim'45'to_2248
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'reclaim'45'to_2400
            v4 v6)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'worklist'45'init_2282
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'worklist'45'init_2434
            v4 v6)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'worklist'45'check_2316
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'worklist'45'check_2468
            v4 v6)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 ->
          coe du_riscv64'45'lea'45'slot_1822 v4 v5 v6)
       (\ v1 v2 v3 v4 v5 v6 v7 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'save'45'closure'45'reg_2222
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'save'45'closure'45'reg_2374
            (coe v0) v2 v3 v4 v5)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'tag'45'lit_1184
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'tag'45'lit_1316
            (coe v0) v2 v3 v4 v5 v6)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'indirect_1876
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'indirect_2028
            (coe v0) v1 v4 v6 v7)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'indirect'45'stack_2818
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'indirect'45'stack_2970
            (coe v0) v1 v4 v7 v8)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'indirect'45'suc_1942
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'indirect'45'suc_2094
            (coe v0) v1 v4 v6 v7)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'indirect'45'suc'45'stack_2900
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'indirect'45'suc'45'stack_3052
            (coe v0) v1 v4 v7 v8)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'from'45'slot_1404
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'from'45'slot_1536
            (coe v0) v1 v4 v6 v7)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'restore'45'input_2166
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'restore'45'input_2318
            (coe v0) v1 v4 v6 v7)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'worklist'45'pop_2414
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'worklist'45'pop_2566
            (coe v0) v1 v4 v6 v7)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'at'45'slot_1464
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'at'45'slot_1596
            (coe v0) v2 v3 v4 v5 v6 v9)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'worklist'45'push_2352
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'worklist'45'push_2504
            (coe v0) v2 v3 v4 v5 v6 v9)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'indirect_2008
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'indirect_2160
            (coe v0) v2 v3 v4 v5 v6 v10)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'indirect'45'stack_2984
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'indirect'45'stack_3136
            (coe v0) v1 v2 v3 v4 v6 v7 v12)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'indirect'45'suc_2076
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'indirect'45'suc_2228
            (coe v0) v2 v3 v4 v5 v6 v10)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'indirect'45'suc'45'stack_3068
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'store'45'indirect'45'suc'45'stack_3220
            (coe v0) v1 v2 v3 v4 v6 v7 v12)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'jmp_2474
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'jmp_2626
            v2 v4 v6 v7)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'branch'45'scratch'45'zero_2536
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'branch'45'scratch'45'zero_2688
            v2 v4 v6 v7 v8)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'branch'45'nz_3230
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'branch'45'nz_3382
            v4 v7)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'branch'45'tag'45'zero_2668
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'branch'45'tag'45'zero_2820
            v2 v4 v7 v8 v9)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'branch'45'tag'45'nz_3298
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'branch'45'tag'45'nz_3450
            v4 v7 v8)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'scratch'45'dec_1726
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'scratch'45'dec_1878
            v4 v6)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'count'45'inc_1668
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'count'45'inc_1820
            v4 v6)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 v16 v17 v18
          v19 v20 v21 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'thunk_3484
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'thunk_3636
            (coe v0) v3 v4 v6 v8 v9 v10 v16)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 v16 v17
          v18 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'ret_3642
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'c'45'ret_3794
            (coe v0) v2 v3 v4 v5 v6 v7 v11)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'const_1582
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'const_1718
            (coe v0) v2 v3 v4 v5 v6)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'const'45'float_1788
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'const'45'float_1940
            (coe v0) v2 v3 v4 v5 v6)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'code'45'addr_1614
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'load'45'code'45'addr_1766
            v4 v6 v7)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 v16 v17 v18
          v19 v20 v21 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'call_3800
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'call_3952
            (coe v0) v2 v3 v4 v7 v8 v18)
       (\ v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 v16 v17 ->
          coe
-           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'alloc'45'heap_3384
+           MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation.du_block'45'step'45'alloc'45'heap_3536
            v3 v4 v5 v6)
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim.arith-sigop-contract
 d_arith'45'sigop'45'contract_2142

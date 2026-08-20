@@ -26,7 +26,6 @@ open import Data.Fin using (Fin) renaming (zero to fzero; suc to fsuc)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Integer using (ℤ)
 import Once.Word as OnceWord
-module IntW = OnceWord.Word64
 open import Data.List using (List; []; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
@@ -153,7 +152,11 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt ir)
 -- blocked arith path use. It used to be `absℤ` (absolute value), so `-5` would
 -- have meant 5; harmless only because no negative literal can be written yet,
 -- and plan 0.73 F3 was about to change that.
-⟦ int n ⟧ˢ fmt        dγ = returnT (IntW.fromℤ n)
+-- D115: at THIS target's width, from the threaded numerics — NOT a baked
+-- `Word64`. `Int` is signed two's complement (D054), so `-5` denotes
+-- `2^w - 5` and is width-relative exactly as a float literal is
+-- format-relative. This is the same clause as `⟦ float … ⟧`, one type over.
+⟦ int n ⟧ˢ fmt        dγ = returnT (OnceWord.Width.fromℤ (int-bits fmt) n)
 -- A float literal denotes ITSELF. This is 0.72 P2's payoff at the denotation:
 -- `⟦ Float ⟧` IS `Dyadic`, so there is no encoder, no rounding and no abstract
 -- `semM` between the literal and its meaning — unlike `str` below. The IR side

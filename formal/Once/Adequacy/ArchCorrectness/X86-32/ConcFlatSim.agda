@@ -44,6 +44,7 @@ open import Once.Type using (fits-int; fits-float)
 open import Once.Word using (Carrier)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+open import Data.Integer using (ℤ)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-ret; instr-call-closure
         ; instr-reg-op; scratch-dec; count-inc; instr-dealloc-stack
@@ -168,12 +169,12 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
             → n < X.W.modulus)
   (lit-fits : ∀ {hv : FC.HeapView FS word-eq}
                 (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-                (s : X.State) (v : Carrier)
+                (s : X.State) (v : ℤ)
             → RC.RunAt o FS word-eq prog fs
             → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                 ≡ just (instr-load-const fits-int v)
-            → v < X.W.modulus)
+            → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-int v < X.W.modulus)
   (float-fits : ∀ {hv : FC.HeapView FS word-eq}
                   (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
                   (s : X.State) (v : Dyadic)

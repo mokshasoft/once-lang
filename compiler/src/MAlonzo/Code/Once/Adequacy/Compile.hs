@@ -170,9 +170,7 @@ d_'10214'_'10215'M_38 v0 v1
       MAlonzo.Code.Once.Adequacy.SourceTrace.d_'10214'_'10215'IR_56
       (coe
          MAlonzo.Code.Once.Adequacy.SourceTrace.d_moduleToIR_52 (coe v0))
-      (coe
-         MAlonzo.Code.Once.Target.Arch.d_arch'45'float'45'format_14
-         (coe v1))
+      (coe MAlonzo.Code.Once.Target.Arch.d_arch'45'numerics_26 (coe v1))
 -- Once.Adequacy.Compile.ArchCorrect
 d_ArchCorrect_48 a0 a1 = ()
 data T_ArchCorrect_48
@@ -451,9 +449,7 @@ du_'10214'_'10215''8869''45'ir_260 v0 v1
              (coe
                 MAlonzo.Code.Once.Adequacy.SourceTrace.d_'10214'_'10215'IR_56
                 (coe v0)
-                (coe
-                   MAlonzo.Code.Once.Target.Arch.d_arch'45'float'45'format_14
-                   (coe v1)))
+                (coe MAlonzo.Code.Once.Target.Arch.d_arch'45'numerics_26 (coe v1)))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.Compile.WithCPU.⟦_⟧⊥-m
@@ -818,9 +814,7 @@ du_'10214'_'10215''738'_622 v0 v1
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                -> coe
                     MAlonzo.Code.Once.Adequacy.MainExtract.du_runMain'738'_20
-                    (coe
-                       MAlonzo.Code.Once.Target.Arch.d_arch'45'float'45'format_14
-                       (coe v0))
+                    (coe MAlonzo.Code.Once.Target.Arch.d_arch'45'numerics_26 (coe v0))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                        (coe
@@ -1526,9 +1520,7 @@ du_'10214'_'10215''7496'_1080 v0 v1
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                -> coe
                     MAlonzo.Code.Once.Denotation.MainMeaning.d_meaning'7496'_170
-                    (coe
-                       MAlonzo.Code.Once.Target.Arch.d_arch'45'float'45'format_14
-                       (coe v0))
+                    (coe MAlonzo.Code.Once.Target.Arch.d_arch'45'numerics_26 (coe v0))
                     (coe v2) (coe v4) (coe v5)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError

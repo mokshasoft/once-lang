@@ -300,7 +300,7 @@ du_blk'45'len_708
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition.du_blk'45'len_124
       (coe
-         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.AbstractToX86Z45Z32.d_compile'45'abstract_14)
+         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.AbstractToX86Z45Z32.d_compile'45'abstract_146)
 -- Once.Adequacy.ArchCorrectness.X86-32.FlatComposition._.blk-off
 d_blk'45'off_710 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -314,7 +314,7 @@ du_blk'45'off_710
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition.du_blk'45'off_128
       (coe
-         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.AbstractToX86Z45Z32.d_compile'45'abstract_14)
+         MAlonzo.Code.Once.CCC.Target.X86Z45Z32.AbstractToX86Z45Z32.d_compile'45'abstract_146)
 -- Once.Adequacy.ArchCorrectness.X86-32.FlatComposition._.blk-off-suc
 d_blk'45'off'45'suc_712 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->

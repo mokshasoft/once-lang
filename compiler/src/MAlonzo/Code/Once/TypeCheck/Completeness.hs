@@ -7279,7 +7279,7 @@ du_checkG'45'just_4904 v0 v1 v2 v3
              MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_54 v6
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                    (coe MAlonzo.Code.Once.Surface.Elaborate.du_intLit_140 (coe v6))
+                    (coe MAlonzo.Code.Once.Surface.Elaborate.du_intLit_8 (coe v6))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe MAlonzo.Code.Once.TypeCheck.Judgment.C_g'45'int_318) erased)
@@ -7287,7 +7287,7 @@ du_checkG'45'just_4904 v0 v1 v2 v3
       MAlonzo.Code.Once.TypeCheck.Judgment.C_g'45'float_330 v8 v9
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-             (coe MAlonzo.Code.Once.Surface.Elaborate.du_floatLit_152 (coe v8))
+             (coe MAlonzo.Code.Once.Surface.Elaborate.du_floatLit_20 (coe v8))
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                 (coe MAlonzo.Code.Once.TypeCheck.Judgment.C_g'45'float_330 v8 v9)
@@ -7512,7 +7512,7 @@ du_gd'45'completeV_4924 v0 v1 v2 v3
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
                        MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_366
-                       (coe MAlonzo.Code.Once.Surface.Elaborate.du_intLit_140 (coe v6)))
+                       (coe MAlonzo.Code.Once.Surface.Elaborate.du_intLit_8 (coe v6)))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
                        (coe
@@ -7531,7 +7531,7 @@ du_gd'45'completeV_4924 v0 v1 v2 v3
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
                 MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_366
-                (coe MAlonzo.Code.Once.Surface.Elaborate.du_floatLit_152 (coe v8)))
+                (coe MAlonzo.Code.Once.Surface.Elaborate.du_floatLit_20 (coe v8)))
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
                 (coe
@@ -7954,7 +7954,7 @@ du_const'45'morph'45'strong_4954 v0 v1 v2 v3
              MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_54 v6
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                    (coe MAlonzo.Code.Once.Surface.Elaborate.du_intLit_140 (coe v6))
+                    (coe MAlonzo.Code.Once.Surface.Elaborate.du_intLit_8 (coe v6))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
@@ -7964,7 +7964,7 @@ du_const'45'morph'45'strong_4954 v0 v1 v2 v3
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                           (coe
                              MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_366
-                             (coe MAlonzo.Code.Once.Surface.Elaborate.du_intLit_140 (coe v6)))
+                             (coe MAlonzo.Code.Once.Surface.Elaborate.du_intLit_8 (coe v6)))
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
                              (coe
@@ -7987,7 +7987,7 @@ du_const'45'morph'45'strong_4954 v0 v1 v2 v3
       MAlonzo.Code.Once.TypeCheck.Judgment.C_g'45'float_330 v8 v9
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-             (coe MAlonzo.Code.Once.Surface.Elaborate.du_floatLit_152 (coe v8))
+             (coe MAlonzo.Code.Once.Surface.Elaborate.du_floatLit_20 (coe v8))
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                 (coe
@@ -7997,7 +7997,7 @@ du_const'45'morph'45'strong_4954 v0 v1 v2 v3
                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                    (coe
                       MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_366
-                      (coe MAlonzo.Code.Once.Surface.Elaborate.du_floatLit_152 (coe v8)))
+                      (coe MAlonzo.Code.Once.Surface.Elaborate.du_floatLit_20 (coe v8)))
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
                       (coe

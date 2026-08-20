@@ -26,12 +26,14 @@ import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.IRTy.WF
 import qualified MAlonzo.Code.Once.Semantics.Value
 import qualified MAlonzo.Code.Once.SigOp.Info
+import qualified MAlonzo.Code.Once.Target.Arch
+import qualified MAlonzo.Code.Once.Word
 
 -- Once.CCC.Eval.eval
 d_eval_12 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> AgdaAny -> AgdaAny
 d_eval_12 v0 v1 v2 v3 v4
   = case coe v3 of
@@ -242,10 +244,16 @@ d_eval_12 v0 v1 v2 v3 v4
       MAlonzo.Code.Once.IR.C_free'45'heap_144 v5 -> coe v4
       MAlonzo.Code.Once.IR.C_const_148 v6 v7
         -> case coe v6 of
-             MAlonzo.Code.Once.IRTy.C_fits'45'int_512 -> coe v7
+             MAlonzo.Code.Once.IRTy.C_fits'45'int_512
+               -> coe
+                    MAlonzo.Code.Once.Word.d_fromℤ_20
+                    (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_20 (coe v2))
+                    (coe v7)
              MAlonzo.Code.Once.IRTy.C_fits'45'float_514
                -> coe
-                    MAlonzo.Code.Once.Float.Dyadic.d_encode_140 (coe v2) (coe v7)
+                    MAlonzo.Code.Once.Float.Dyadic.d_encode_140
+                    (coe MAlonzo.Code.Once.Target.Arch.d_float'45'format_22 (coe v2))
+                    (coe v7)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_SigOp_154 v5 v6 v7
         -> coe MAlonzo.Code.Once.SigOp.Info.du_semM_188 v7 v4
@@ -254,14 +262,14 @@ d_eval_12 v0 v1 v2 v3 v4
 d_appNatTr'45'F_22 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.IR.T_NatTr_18 -> () -> AgdaAny -> AgdaAny
 d_appNatTr'45'F_22 v0 v1 v2 v3 ~v4 v5
   = du_appNatTr'45'F_22 v0 v1 v2 v3 v5
 du_appNatTr'45'F_22 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.IR.T_NatTr_18 -> AgdaAny -> AgdaAny
 du_appNatTr'45'F_22 v0 v1 v2 v3 v4
   = case coe v3 of

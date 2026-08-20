@@ -13,9 +13,6 @@ module Once.Surface.Elaborate where
 open import Once.Type
 open import Once.Float.Dyadic using (Dyadic)
 open import Once.IR
-import Once.Word as OnceWord
-module IntW = OnceWord.Word64
-
 open import Once.Surface.Syntax
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Relation.Binary.PropositionalEquality using (subst)
@@ -65,10 +62,12 @@ open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; base-Un
 -- the two agreed and every proof went through; and because no negative literal
 -- can be written yet (`-5` parses as infix subtraction, never a literal token).
 -- Plan 0.73 F3 folds `- <literal>` in the parser and would have armed it.
--- Elaborator and denotation are corrected together, which is why `faithful`'s
--- `refl` still holds.
+-- D115 finished the job: the payload is the `ℤ` ITSELF, so the elaborator
+-- converts nothing. It cannot: it builds ONE IR for three targets and the
+-- width is not its to know. The machine materialises the literal at its own
+-- width (`lit-value`), exactly as it does a float literal at its own format.
 intLit : ℤ → ∀ {Γ} → IR Γ Int
-intLit n = const fits-int (IntW.fromℤ n) ∘ terminal
+intLit n = const fits-int n ∘ terminal
 
 strLit : String → ∀ {Γ} → IR Γ Str
 strLit s = SigOp (str-lit-info s) ∘ terminal

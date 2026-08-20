@@ -118,8 +118,7 @@ du_eval_654 v0 v1 v2
   = coe
       MAlonzo.Code.Once.CCC.Eval.d_eval_12 (coe v1) (coe v2)
       (coe
-         MAlonzo.Code.Once.CCC.FrameSemantics.d_float'45'format_120
-         (coe v0))
+         MAlonzo.Code.Once.CCC.FrameSemantics.d_fs'45'numerics_154 (coe v0))
 -- Once.CCC.Codegen.IRObsCorrectFlat.IRObsCorrectFlatness.evalᴰ
 d_eval'7472'_660 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -140,8 +139,7 @@ du_eval'7472'_660 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_12
       (coe
-         MAlonzo.Code.Once.CCC.FrameSemantics.d_float'45'format_120
-         (coe v0))
+         MAlonzo.Code.Once.CCC.FrameSemantics.d_fs'45'numerics_154 (coe v0))
       (coe v1) (coe v2)
 -- Once.CCC.Codegen.IRObsCorrectFlat.IRObsCorrectFlatness._.FlatState
 d_FlatState_666 a0 a1 a2 = ()

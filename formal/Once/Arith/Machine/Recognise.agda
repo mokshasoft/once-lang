@@ -131,8 +131,11 @@ recognise-body sh (const fits-int v ∘ rhs) with is-terminal? rhs
     is-terminal? : ∀ {X Y} → IR X Y → Bool
     is-terminal? terminal = true
     is-terminal? _        = false
--- D054/0.47: const carries the non-negative ℕ carrier; `alit` takes ℤ, so inject.
-... | true  = just (alit (+ v))
+-- D115: `const`'s payload is a `ℤ` now, and `alit` always took one, so the
+-- `+ v` injection is gone. That injection was itself the symptom — it forced
+-- every recognised literal to be non-negative, which is exactly the
+-- restriction the absolute-value denotation was hiding.
+... | true  = just (alit v)
 ... | false = nothing
 recognise-body sh (const fits-float _ ∘ _) = nothing
 

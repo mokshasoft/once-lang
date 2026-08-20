@@ -22,6 +22,7 @@ import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Float.Dyadic
+import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.CCC.FrameSemantics.FrameSemantics
@@ -144,3 +145,12 @@ d_frame'45'disjoint'45'bounded_150 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
 d_frame'45'disjoint'45'bounded_150 = erased
+-- Once.CCC.FrameSemantics.fs-numerics
+d_fs'45'numerics_154 ::
+  T_FrameSemantics_6 -> MAlonzo.Code.Once.Target.Arch.T_TargetNum_14
+d_fs'45'numerics_154 v0
+  = coe
+      MAlonzo.Code.Once.Target.Arch.C_mkTargetNum_24
+      (coe
+         mulInt (coe (8 :: Integer)) (coe d_frame'45'word_106 (coe v0)))
+      (coe d_float'45'format_120 (coe v0))

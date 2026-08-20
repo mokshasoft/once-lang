@@ -74,6 +74,8 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.StepLemmas
   using (exec-1; step-mv; step-li; step-label; step-ld; step-sd; step-addi; step-lla; step-j-found; step-beq-taken; step-beq-not; step-ret; step-jalr)
 open import Once.CCC.Target.RiscV64.Syntax using (Reg; mv; li; label; ld; sd; addi; lla; beq; j; ret; jalr; a0; a1; t0; t1; s1; s2; s3; s4; sp; ra; zero; slots)
 import Data.Integer as ℤ
+import Once.Word as OnceWord
+module IntW = OnceWord.Width 64
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (role-sp; role-clos; role-heap; role-out; role-in1; role-scratch; role-count)
 open import Once.CCC.Target.RiscV64.AbstractToRiscV using (compile-trace; compile-abstract; slot-to-disp)
@@ -550,14 +552,31 @@ block-step-lea-slot {hv} prog fs s slot cc h ft no-wrap =
 -- load-const (int): Output := SV-Lit fits-int v ↔ `li a0, v`. Shares
 -- `block-step-li` with the tag/reg-op loads, so the phase-D range obligation
 -- arrives the same way.
-block-step-load-const : ∀ {hv : HeapView} prog fs s (v : Carrier) → CompiledCorr hv prog fs s
+-- D115: the payload is a `ℤ` and the machine MATERIALISES it at its own
+-- width. No new premise: `word-eq` already pins it.
+bits-eq : 8 * FrameSemantics.frame-word FS ≡ 64
+bits-eq = cong (8 *_) word-eq
+
+block-step-load-const : ∀ {hv : HeapView} prog fs s (v : ℤ.ℤ) → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-load-const fits-int v)
-  → v < R.W.modulus
+  → AbstractExec.lit-value {FS} fits-int v < R.W.modulus
   → BlockStep hv prog fs s (instr-load-const fits-int v)
 block-step-load-const {hv} prog fs s v cc h ft fits =
-  block-step-li prog fs s (instr-load-const fits-int v) a0 v cc h ft refl fits refl (refl , refl , refl) refl
-    (C.sim-load-const v fs s _ (dataCorr cc) (C.sets-role-riscv64 s role-out _ _))
+  block-step-li prog fs s (instr-load-const fits-int v) a0 (IntW.fromℤ v) cc h ft refl fits64 refl (refl , refl , refl) refl
+    (C.sim-load-const v fs s _ (dataCorr cc) sr)
+  where
+    -- Convert the WORD once, then transport only that. Generalising over the
+    -- width instead would abstract the post-state too — riscv64's post state
+    -- mentions the materialised value — and the metas become unsolvable.
+    lv-eq : AbstractExec.lit-value {FS} fits-int v ≡ IntW.fromℤ v
+    lv-eq = cong (λ b → OnceWord.Width.fromℤ b v) bits-eq
+    fits64 : IntW.fromℤ v < R.W.modulus
+    fits64 = subst (_< R.W.modulus) lv-eq fits
+    sr : C.SetsRole s _ role-out (C.lit-word (AbstractExec.lit-value {FS} fits-int v))
+    sr = subst (λ w → C.SetsRole s _ role-out (C.lit-word w))
+               (sym lv-eq)
+               (C.sets-role-riscv64 s role-out _ _)
 
 -- load-code-addr: Output := SV-Code n ↔ `lla a0, .L_thunk_n`. D103's FIRST
 -- instance was here: `lla` used to write 0, so this block-step could not have

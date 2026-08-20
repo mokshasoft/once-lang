@@ -47,6 +47,7 @@ open import Once.CCC.Label using (LabelId)
 open import Once.Word using (Carrier)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+open import Data.Integer using (ℤ)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Data.Maybe using (just)
 
@@ -149,12 +150,12 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
                 ≡ just (instr-load-tag-lit n)
             → n < RS.W.modulus)
   (lit-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
-                (fs : FlatMachine.FlatState {FS}) (s : RS.State) (v : Carrier)
+                (fs : FlatMachine.FlatState {FS}) (s : RS.State) (v : ℤ)
             → RCr.RunAt o FS slot-size word-eq prog fs
             → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                 ≡ just (instr-load-const fits-int v)
-            → v < RS.W.modulus)
+            → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-int v < RS.W.modulus)
   (float-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                   (fs : FlatMachine.FlatState {FS}) (s : RS.State) (v : Dyadic)
               → RCr.RunAt o FS slot-size word-eq prog fs

@@ -36,6 +36,7 @@ import qualified MAlonzo.Code.Once.Float.Dyadic
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Word
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 import qualified MAlonzo.Code.Relation.Nullary.Reflects
 
@@ -2882,7 +2883,14 @@ du_lit'45'value_2800 ::
   MAlonzo.Code.Once.Type.T_FitsInReg_196 -> AgdaAny -> AgdaAny
 du_lit'45'value_2800 v0 v1 v2
   = case coe v1 of
-      MAlonzo.Code.Once.Type.C_fits'45'int_198 -> coe v2
+      MAlonzo.Code.Once.Type.C_fits'45'int_198
+        -> coe
+             MAlonzo.Code.Once.Word.d_fromℤ_20
+             (coe
+                mulInt (coe (8 :: Integer))
+                (coe
+                   MAlonzo.Code.Once.CCC.FrameSemantics.d_frame'45'word_106 (coe v0)))
+             (coe v2)
       MAlonzo.Code.Once.Type.C_fits'45'float_200
         -> coe
              MAlonzo.Code.Once.Float.Dyadic.d_encode_140

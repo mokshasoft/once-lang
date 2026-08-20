@@ -56,8 +56,7 @@ du_eval_20 v0 v1 v2
   = coe
       MAlonzo.Code.Once.CCC.Eval.d_eval_12 (coe v1) (coe v2)
       (coe
-         MAlonzo.Code.Once.CCC.FrameSemantics.d_float'45'format_120
-         (coe v0))
+         MAlonzo.Code.Once.CCC.FrameSemantics.d_fs'45'numerics_154 (coe v0))
 -- Once.CCC.Machine.Validity.ValidityDef._.readLoc
 d_readLoc_32 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->

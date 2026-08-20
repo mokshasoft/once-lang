@@ -1621,7 +1621,7 @@ du_conc'45'trace_206 v0 v1
              (coe du_asR_204)
              (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                 (coe
-                   MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace'45'cnt_94
+                   MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace'45'cnt_226
                    (coe v0) (coe (0 :: Integer))
                    (coe
                       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_732
@@ -2237,7 +2237,7 @@ du_entry'45'view_310 v0
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.C_mkHV_416
       (\ v1 ->
-         MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_slot'45'to'45'disp_10
+         MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_slot'45'to'45'disp_142
            (coe
               MAlonzo.Code.Once.Memory.HeapAddress.d_heap'45'offset_50 (coe v1)))
       (0 :: Integer) (coe du_code'45'map_296 (coe v0)) erased
@@ -3198,7 +3198,7 @@ d_agree_478 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
       (coe
          du_entry'45'view_310
          (coe
-            MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace_88
+            MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace_220
             (coe
                MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_732
                (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
@@ -3209,7 +3209,7 @@ d_agree_478 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
       (coe MAlonzo.Code.Once.Adequacy.CPU.RiscV64.d_ev'45'riscv64_10)
       (coe
          MAlonzo.Code.Once.Adequacy.CPU.RiscV64.d_arith'45'env'45'riscv64_12
-         (MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace_88
+         (MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace_220
             (coe
                MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_732
                (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)

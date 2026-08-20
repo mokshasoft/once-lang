@@ -33,12 +33,12 @@ import qualified MAlonzo.Code.Once.Denotation.Behavior
 import qualified MAlonzo.Code.Once.Denotation.DenotTrace
 import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
-import qualified MAlonzo.Code.Once.Float.Dyadic
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.Module.Resolve
+import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 import qualified MAlonzo.Code.Relation.Nullary.Reflects
@@ -202,7 +202,7 @@ d_moduleToIR_52 v0
 -- Once.Adequacy.SourceTrace.⟦_⟧IR
 d_'10214'_'10215'IR_56 ::
   Maybe MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 d_'10214'_'10215'IR_56 v0 v1
   = case coe v0 of
@@ -320,7 +320,7 @@ du_srcToModule'45'inv_150 v0
 -- Once.Adequacy.SourceTrace.sourceTrace-aux
 d_sourceTrace'45'aux_158 ::
   Maybe MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 d_sourceTrace'45'aux_158 v0 v1
   = case coe v0 of
@@ -333,7 +333,7 @@ d_sourceTrace'45'aux_158 v0 v1
 -- Once.Adequacy.SourceTrace.sourceTrace
 d_sourceTrace_166 ::
   MAlonzo.Code.Once.Denotation.Behavior.T_Source_8 ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 d_sourceTrace_166 v0 v1
   = coe
@@ -341,7 +341,7 @@ d_sourceTrace_166 v0 v1
 -- Once.Adequacy.SourceTrace.⟦_⟧
 d_'10214'_'10215'_172 ::
   MAlonzo.Code.Once.Denotation.Behavior.T_Source_8 ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 d_'10214'_'10215'_172 v0 = coe d_sourceTrace_166 (coe v0)
 -- Once.Adequacy.SourceTrace.⟦⟧-via-module
@@ -349,6 +349,6 @@ d_'10214''10215''45'via'45'module_182 ::
   MAlonzo.Code.Once.Denotation.Behavior.T_Source_8 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'10214''10215''45'via'45'module_182 = erased

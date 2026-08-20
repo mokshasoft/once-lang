@@ -26,18 +26,18 @@ import qualified MAlonzo.Code.Once.Adequacy.AcceptSound
 import qualified MAlonzo.Code.Once.Adequacy.FunBundle
 import qualified MAlonzo.Code.Once.Adequacy.ModuleComplete
 import qualified MAlonzo.Code.Once.Compile
-import qualified MAlonzo.Code.Once.Float.Dyadic
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Surface.Syntax
+import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.TypeCheck.ElaborateProofs
 
 -- Once.Adequacy.MainForm.EffUU
 d_EffUU_12 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Type.T_Type_112
 d_EffUU_12 ~v0 = du_EffUU_12
 du_EffUU_12 :: MAlonzo.Code.Once.Type.T_Type_112
@@ -52,24 +52,24 @@ du_EffUU_12
       (coe MAlonzo.Code.Once.Type.C_Unit_122)
 -- Once.Adequacy.MainForm.Payload
 d_Payload_16 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 -> ()
 d_Payload_16 = erased
 -- Once.Adequacy.MainForm.Form
 d_Form_44 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> ()
 d_Form_44 = erased
 -- Once.Adequacy.MainForm.MainNode
 d_MainNode_56 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> ()
 d_MainNode_56 = erased
 -- Once.Adequacy.MainForm.build-node
 d_build'45'node_102 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   [MAlonzo.Code.Once.Parser.T_PolyFunInfo_120] ->
@@ -132,7 +132,7 @@ du_build'45'node_102 v0 v1 v2
                (coe v1) (coe MAlonzo.Code.Once.Compile.d_emptyFunCtx_48))))
 -- Once.Adequacy.MainForm._.node
 d_node_130 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   [MAlonzo.Code.Once.Parser.T_PolyFunInfo_120] ->
@@ -226,7 +226,7 @@ du_node_130 v0 v1 v2 v3 v4 v5
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.MainForm.main-node-of
 d_main'45'node'45'of_170 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -245,7 +245,7 @@ du_main'45'node'45'of_170 v0
          (coe v0))
 -- Once.Adequacy.MainForm.mnf-caf
 d_mnf'45'caf_182 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
@@ -271,7 +271,7 @@ du_mnf'45'caf_182 v0 v1 v2 v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.MainForm.mnf-ef
 d_mnf'45'ef_222 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
@@ -304,7 +304,7 @@ du_mnf'45'ef_222 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.MainForm.main-ir-form
 d_main'45'ir'45'form_256 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -318,7 +318,7 @@ du_main'45'ir'45'form_256 v0
   = coe du_form_268 (coe v0) (coe du_main'45'node'45'of_170 (coe v0))
 -- Once.Adequacy.MainForm._.form
 d_form_268 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -479,7 +479,7 @@ du_form_268 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.MainForm.subst-app
 d_subst'45'app_316 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   () ->
   (AgdaAny -> ()) ->
   () ->
@@ -491,7 +491,7 @@ d_subst'45'app_316 ::
 d_subst'45'app_316 = erased
 -- Once.Adequacy.MainForm.mainRealized-bundle
 d_mainRealized'45'bundle_340 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
@@ -504,7 +504,7 @@ d_mainRealized'45'bundle_340 ::
 d_mainRealized'45'bundle_340 = erased
 -- Once.Adequacy.MainForm._.Motive
 d_Motive_366 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
@@ -517,7 +517,7 @@ d_Motive_366 ::
 d_Motive_366 = erased
 -- Once.Adequacy.MainForm._.F
 d_F_376 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
@@ -549,7 +549,7 @@ du_F_376 v0 v1 v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.MainForm._.x
 d_x_386 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
@@ -568,7 +568,7 @@ du_x_386 v0 v1
   = coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v0) (coe v1)
 -- Once.Adequacy.MainForm._.x'
 d_x''_388 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
@@ -586,7 +586,7 @@ du_x''_388 ::
 du_x''_388 v0 v1 = coe du_x_386 (coe v0) (coe v1)
 -- Once.Adequacy.MainForm._.mt'
 d_mt''_390 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
@@ -609,7 +609,7 @@ du_mt''_390 v0 v1
       (coe du_x''_388 (coe v0) (coe v1))
 -- Once.Adequacy.MainForm._.me'
 d_me''_392 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->

@@ -18,13 +18,13 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
-import qualified MAlonzo.Code.Once.Float.Dyadic
 import qualified MAlonzo.Code.Once.IR
+import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.Adequacy.WrapBridge.EffUU
 d_EffUU_8 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Type.T_Type_112
 d_EffUU_8 ~v0 = du_EffUU_8
 du_EffUU_8 :: MAlonzo.Code.Once.Type.T_Type_112
@@ -39,7 +39,7 @@ du_EffUU_8
       (coe MAlonzo.Code.Once.Type.C_Unit_122)
 -- Once.Adequacy.WrapBridge.wrap-trace
 d_wrap'45'trace_16 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_wrap'45'trace_16 = erased

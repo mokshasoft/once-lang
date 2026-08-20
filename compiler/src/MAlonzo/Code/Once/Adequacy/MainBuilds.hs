@@ -87,7 +87,7 @@ du_cfb'45'aux'45'doOpt_28 v0 v1 v2 v3 v4 v5 v6 v7
                          (coe v1)))
                    (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v6))
                    (coe
-                      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246 (coe v1)
+                      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114 (coe v1)
                       (coe v6) (coe MAlonzo.Code.Once.IR.C_Heap_8)
                       (coe
                          MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_2878
@@ -102,7 +102,7 @@ du_cfb'45'aux'45'doOpt_28 v0 v1 v2 v3 v4 v5 v6 v7
                             (coe v3))
                          (coe (0 :: Integer)) (coe v9))))
                 (coe
-                   MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246 (coe v1)
+                   MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114 (coe v1)
                    (coe v6) (coe MAlonzo.Code.Once.IR.C_Heap_8)
                    (coe
                       MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_2878

@@ -25,16 +25,16 @@ import qualified MAlonzo.Code.Once.Adequacy.MainForm
 import qualified MAlonzo.Code.Once.Denotation.SourceDenote
 import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
-import qualified MAlonzo.Code.Once.Float.Dyadic
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Surface.Syntax
+import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
 
 -- Once.Adequacy.MainExtract.EffUU
 d_EffUU_16 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Type.T_Type_112
 d_EffUU_16 ~v0 = du_EffUU_16
 du_EffUU_16 :: MAlonzo.Code.Once.Type.T_Type_112
@@ -49,13 +49,13 @@ du_EffUU_16
       (coe MAlonzo.Code.Once.Type.C_Unit_122)
 -- Once.Adequacy.MainExtract.runMainˢ
 d_runMain'738'_20 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 d_runMain'738'_20 v0 ~v1 v2 v3 = du_runMain'738'_20 v0 v2 v3
 du_runMain'738'_20 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 du_runMain'738'_20 v0 v1 v2
@@ -66,7 +66,7 @@ du_runMain'738'_20 v0 v1 v2
          (coe
             MAlonzo.Code.Once.Denotation.TraceMonad.du__'62''62''61'T__20
             (coe
-               MAlonzo.Code.Once.Denotation.SourceDenote.du_'10214'_'10215''738'_246
+               MAlonzo.Code.Once.Denotation.SourceDenote.du_'10214'_'10215''738'_114
                (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                (coe du_EffUU_16) (coe v1) (coe v0)
                (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
@@ -74,7 +74,7 @@ du_runMain'738'_20 v0 v1 v2
          (coe v2))
 -- Once.Adequacy.MainExtract.bind-cong-trace
 d_bind'45'cong'45'trace_40 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   () ->
   () ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
@@ -86,12 +86,12 @@ d_bind'45'cong'45'trace_40 ::
 d_bind'45'cong'45'trace_40 = erased
 -- Once.Adequacy.MainExtract._.Form
 d_Form_56 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> ()
 d_Form_56 = erased
 -- Once.Adequacy.MainExtract.source-meaningᴰ-aux
 d_source'45'meaning'7472''45'aux_68 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -114,7 +114,7 @@ du_source'45'meaning'7472''45'aux_68 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.MainExtract._.bridge
 d_bridge_84 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
@@ -124,7 +124,7 @@ d_bridge_84 ::
 d_bridge_84 = erased
 -- Once.Adequacy.MainExtract.source-meaningᴰ
 d_source'45'meaning'7472'_102 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
