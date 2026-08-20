@@ -308,3 +308,13 @@ pw4 : {Γ' : Cx} {u : RTm Γ'} (t : RTm Γ') →
 pw4 {u = u} t =
   trans (sub-w {σ = extS (extS (extS (single u)))} (w (w (w (w t)))))
         (cong w (pw3 {u = u} t))
+
+-- ★ one deeper still — the successor branch's BODY, under its `lam`.  Route
+--   8 builds `⊢S3s` at the final context, and the `n'` slot arrives there
+--   through `extS⁵`.
+pw5 : {Γ' : Cx} {u : RTm Γ'} (t : RTm Γ') →
+      subTm (extS (extS (extS (extS (extS (single u)))))) (w (w (w (w (w (w t))))))
+    ≡ w (w (w (w (w t))))
+pw5 {u = u} t =
+  trans (sub-w {σ = extS (extS (extS (extS (single u))))} (w (w (w (w (w t))))))
+        (cong w (pw4 {u = u} t))
