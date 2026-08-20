@@ -43,7 +43,7 @@ open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; wᶠ¹-single; ⊢wkᶠ; sub-w; cong₃ )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibAmrec
-  using ( aStepT; Prv; prv; prvOk; prvTm; StepExt; idOfRed; wR
+  using ( aStepT; Prv; prv; prvOk; prvTm; StepExt; idOfRed; prv-cast; wR
         ; subren; subrenTy; extcond; renTy-idR; renTm-idR; module AmTΠ )
 open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base )
 open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
@@ -232,7 +232,7 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
   open AmTΠ Δ A cM m stp dA dcM dm dstp
     using ( amrecTm; ⊢amrecΠ; idR; auxAt; auxAt-id; auxIH; ihS-atP; ih-app
           ; amrec-β; irrT; irrT-sub; irrElim; irr-ind; descS-at; ⊢descS-at
-          ; prv-cast; mId; extR-id )
+          ; mId; extR-id )
 
   -- ★★ the family with the RESULT SLOT OPEN — what `⊢jsub` transports.
   ⊢PFam : {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
