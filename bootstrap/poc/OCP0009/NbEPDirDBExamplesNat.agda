@@ -22,6 +22,9 @@ open import poc.OCP0009.NbEPDirDBPi
         ; RTy; base; U; El; Id; Unit; Nat
         ; RTm; var; unit; nzero; nsuc; natrec; idrefl; jsub
         ; subTm )
+-- ★ the PRIMITIVES now live in `…LibNat`; re-exported so every existing
+--   importer of this module keeps working unchanged.
+open import poc.OCP0009.NbEPDirDBLibNat public using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶_; _⟶*_; done; step
         ; natrec-zero; natrec-suc; ξ-nsuc
@@ -33,18 +36,6 @@ n1 n2 n3 : {Γ : Cx} → RTm Γ
 n1 = nsuc nzero
 n2 = nsuc (nsuc nzero)
 n3 = nsuc (nsuc (nsuc nzero))
-
--- ★ DESIGN POINT (settled writing this file): `natrec` is
--- TYPE-motived — the motive lives in the DERIVATION only (the ⊢lam
--- pattern), because code motives would need ⌜Nat⌝ ∈ U (stage C).
--- Term: natrec z s n; s has TWO binders (the number, then the IH).
-plusTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-plusTm m n = natrec n (nsuc (var vz)) m
-
--- the CONSTANT-Nat motive makes every obligation definitional:
-⊢plus : {Γ : Ctx} {m n : RTm ⌊ Γ ⌋} →
-        Γ ⊢ m ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ plusTm m n ∷ Nat
-⊢plus dm dn = ⊢natrec ty-Nat dn (⊢nsuc (⊢var here)) dm
 
 plus-computes : {Γ : Cx} → plusTm {Γ} n2 n1 ⟶* n3
 plus-computes =

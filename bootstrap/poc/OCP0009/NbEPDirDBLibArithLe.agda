@@ -45,7 +45,7 @@ open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w )
-open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
+open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBLibArith using ( plusMonoTm )
 open import poc.OCP0009.NbEPDirDBLibArithComm
   using ( IdN; commTm; ⊢comm; congS; ⊢congS; trHomˡ; ⊢trHomˡ; trHomʳ; ⊢trHomʳ )

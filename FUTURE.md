@@ -33,55 +33,46 @@
 - Consider separate "standard" vs "extended" Strata modules
 - Keep `-I:TYPE MODULE` for explicit override cases
 
-## OCP-0009 POC: split the four de-facto libraries out of `Examples*`
+## ~~OCP-0009 POC: split the four de-facto libraries out of `Examples*`~~ — DONE 2026-08-20
 
-**Goal**: stop `Lib*` modules importing `Examples*` modules.
+**Goal**: stop `Lib*` modules importing `Examples*` modules. **Achieved** —
+`grep -l "open import poc.OCP0009.NbEPDirDBExamples" NbEPDirDBLib*.agda`
+returns nothing.
 
-**Current behavior**: 12 `Lib*` modules in `bootstrap/poc/OCP0009/` import one
-or more of `NbEPDirDBExamples{Nat,Ord,Strong,Div}`, including
-`NbEPDirDBLibAmrec`, which is the WF-recursion library itself.
+Four new library modules, each re-exported `public` by the `Examples*` module
+it came from, so **no importer outside `Lib*` had to change**:
 
-**This is a NAMING problem, not a structural one** — verified 2026-08-16.
-The graph is acyclic and strictly one-way,
+| new module | holds | was in | `Lib*` importers repointed |
+| --- | --- | --- | --- |
+| `…LibNat` | `plusTm`, `⊢plus` | `…ExamplesNat` | 4 |
+| `…LibOrd` | `⊢trans`, `⊢strong-base`, `⊢strong-step`, `⊢strong-base'`, `⊢strong-descend` | `…ExamplesOrd` | 6 |
+| `…LibStrong` | `El-homNat`, `natAsEl`, `elAsNat`, `reflMot`, `reflTm`, `⊢reflMot`, `⊢le-refl-z/s`, `⊢le-refl` | `…ExamplesStrong` | 7 |
+| `…LibMonus` | `predTm`, `monusTm`, `⊢pred`, `⊢monus`, the four reduction laws, `homˡ*`, `predMot`, `⊢predMot`, `⊢pred-le` | `…ExamplesDiv` | 1 |
+
+### What the plan got wrong, and what made it cheap
+
+⚠ **The `⊢le-refl-z/s` row was wrong.** The table above listed them as
+"genuine examples" that stay behind. They are not demos — `⊢le-refl` is
+literally `natrec ⊢reflMot ⊢le-refl-z ⊢le-refl-s`, so they are its two
+branches and had to move with it. Check what a primitive is DEFINED BY
+before classifying its neighbours as examples.
+
+★ **The estimate of ~70 import sites was the expensive framing, and it was
+avoidable.** The `Lib* → Examples*` edges are NARROW — only a handful of
+names cross, and only 12 modules are on the library side:
 
 ```
-Lib*  →  Examples{Nat,Ord,Strong,Div}  →  kernel
+ExamplesOrd     ⊢strong-base', ⊢strong-step                    → 7 libs
+ExamplesStrong  ⊢le-refl, reflTm, natAsEl, El-homNat           → 7 libs
+ExamplesNat     plusTm, ⊢plus                                  → 4 libs
+ExamplesDiv     10 monus/pred names                            → 1 lib
 ```
 
-and none of those four imports anything from `Lib*`. They are libraries that
-kept an `Examples*` name from before they became load-bearing: they define
-`plusTm`/`⊢plus`, `monusTm`/`⊢monus`, `⊢le-refl`/`reflTm`, and
-`⊢strong-base'`/`⊢strong-step`/`⊢strong-descend` — the arithmetic and order
-primitives the whole WF layer is built on.
-
-**Why a rename is not enough**: each of the four is MIXED. Alongside the
-primitives they hold genuine concrete-numeral examples (`le-computes`, `⊢le`,
-`no-le`, `trans-computes`, `n1 n2 n3`, the numeral division runs), which a
-rename to `Lib*` would mislabel.
-
-### Approach
-
-Split each module in two — primitives to a new `Lib*`, numeral demos left in
-`Examples*` importing it — then repoint importers.
-
-| module | → new `Lib*` | genuine examples stay | importers | lines |
-| --- | --- | --- | --- | --- |
-| `…ExamplesOrd` | `…LibOrd` | `le-computes`, `⊢le`, `no-le`, `trans-computes` | 37 | 177 |
-| `…ExamplesStrong` | `…LibStrong` | the `⊢le-refl-z/s` demos | 35 | 298 |
-| `…ExamplesNat` | `…LibNat` | `n1 n2 n3` | 7 | 57 |
-| `…ExamplesDiv` | `…LibMonus` | the numeral runs | 6 | 405 |
-
-~70 import sites. Mechanical, but every touched module needs re-checking, and
-`sweep.sh` is ~10 minutes.
-
-### Notes
-
-- ⚠ **Do this at a consolidation point, not mid-build.** Churning 70 import
-  sites while something like gap A is in flight makes any regression hard to
-  attribute. Same batching discipline as the transport-free sweep.
-- `NbEPDirDBLibArithLe` (added 2026-08-16) imports `…ExamplesNat` following
-  its sibling `NbEPDirDBLibArith` exactly — it is consistent with the current
-  convention, not a new deviation, and moves with the rest.
+So the move is: split out exactly those, have the `Examples*` module
+`open import … public` its new `Lib*`, and repoint **only the `Lib*`
+importers**. Every other importer — the ~70 — keeps working untouched.
+Measuring the edges before planning the churn turned a ~70-site refactor
+into a ~18-site one.
 
 ## OCP-0009 WF library: lift `eqG`/`pwT` out of gcd into the combinator
 

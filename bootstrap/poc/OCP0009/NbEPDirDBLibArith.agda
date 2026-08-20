@@ -58,7 +58,7 @@ open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w )
-open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
+open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 
 ------------------------------------------------------------------------
 -- ⚠ THE MOTIVE MUST BE BOUND-EXPLICIT, exactly as `LibAmrec`'s `aAuxB`.
