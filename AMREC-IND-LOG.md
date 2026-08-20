@@ -442,4 +442,42 @@ nothing can state how they behave under a renaming.
 **Remaining rungs**: `ihS`(needs `descS`), `aZBr`, `aSBr`, `aAuxTm`,
 `amrecTm` — same shape, `cong` down the structure with `ren-w`/`ren-wᶠ` at
 the leaves.
+| 23 | 08-20 | Rungs 2–5: `descS'`/`ihS'`/`aZBr'`/`aSBr'` + `-ren` laws | ✅ **green, one batch** | ~60s |
+| 24 | 08-20 | Rungs 6–7: `aAuxTm'`/`amrecTm'` + `-ren` laws | ✅ green | ~60s |
+| 25 | 08-20 | Repoint `AmT`/`AmTΠ`'s own defs at the primed forms | ✅ green | ~60s |
+
+## ★★★ Route (b)'s foundation: the `-ren` family is COMPLETE
+
+    ihZ'     ihZ-ren
+    descS'   descS-ren
+    ihS'     ihS-ren
+    aZBr'    aZBr-ren
+    aSBr'    aSBr-ren
+    aAuxTm'  aAuxTm-ren
+    amrecTm' amrecTm-ren
+
+plus the spine peels `wwᶠ²-ren`, `wwᶠ⁴-ren`, `w³wᶠ²-ren`, `ren-w⁴`.
+
+★ **The recursor now provably commutes with renaming.** That is what lets
+`AmTΠ` be instantiated at `Θ'` — where irrelevance already applies to
+`Θ'`-level arguments — and connected back to `renTm ρ` of this
+instantiation.
+
+⚠ **Attempt 25 mattered and was nearly missed.** Writing the primed forms is
+not enough: `AmT`/`AmTΠ`'s own `ihZ`/`descS`/`ihS`/`aZBr`/`aSBr`/`aAuxTm`/
+`amrecTm` had to be REDEFINED as the primed forms, or the `-ren` laws would
+be about a parallel set of definitions rather than about the module's own.
+The bodies are definitionally equal, so nothing downstream changed.
+
+★ **Calibration**: rungs 1, 2–5 and 6–7 each went green on the first
+attempt. The pattern is `cong` down the structure with `ren-w`/`ren-wᶠ` at
+the leaves — genuinely mechanical once the first rung fixes the shape. Seven
+rungs cost three checks.
+
+## Next
+
+1. The renaming-indexed bridge, via `AmTΠ` instantiated at `Θ'` + the
+   `-ren` family.
+2. Step 6 (`IndPW`), the successor branch, the `⊢natrec`.
+3. ⚠ The instantiation at `n := suc (μ x)` — still the non-vacuity check.
 
