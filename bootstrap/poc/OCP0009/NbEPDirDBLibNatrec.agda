@@ -80,19 +80,47 @@ module _ {Γ : Ctx} {M : RTy (⌊ Γ ⌋ ∙)} where
       br vz     = refl
       br (vs u) = refl
 
+------------------------------------------------------------------------
+-- ★★ THE SAME, WITH THE NEW SLOT'S TYPE FREE.
+--
+-- ⚠ WHY THIS IS NEEDED, and it was not obvious.  `nv-at`/`nv-z`/`nv-s` are
+--   already generic in the slot — they speak only about `renTy (extR vs)`,
+--   which does not care WHAT was pushed on.  Only the CONCLUSION of
+--   `⊢natrec-var` hardcodes `Nat`.
+--
+-- ★ AND `⊢congAt` IS EXACTLY THE CLIENT.  Its family is typed in
+--   `Γ ▹ El ⌜Nat⌝`, because `⊢jsub`'s family lives over the IDENTITY's type
+--   and `IdN` is `Id (El ⌜Nat⌝) _ _`.  With `Nat` baked in, gcd's one-hole
+--   context could not be handed to it at all.
+--
+-- ⇒ the scrutinee's derivation becomes a PARAMETER, which is also what lets
+--   the caller insert the `El ⌜Nat⌝ → Nat` conversion.
+------------------------------------------------------------------------
+
+⊢natrec-var-at :
+  {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {M : RTy (⌊ Γ ⌋ ∙)}
+  {z : RTm ⌊ Γ ⌋} {s : RTm ((⌊ Γ ⌋ ∙) ∙)} →
+  (Γ ▹ A) ⊢ var vz ∷ Nat →
+  (Γ ▹ Nat) ⊢ty M →
+  Γ ⊢ z ∷ subTy (single nzero) M →
+  ((Γ ▹ Nat) ▹ M) ⊢ s ∷ subTy nrs M →
+  (Γ ▹ A) ⊢ natrec (w z) (renTm (extR (extR vs)) s) (var vz) ∷ M
+⊢natrec-var-at {M = M} dn dM dz ds =
+  ⊢-cast nv-at
+    (⊢natrec (ren-ty dM (Ren⊢-ext wR-id))
+             (⊢-cast (sym nv-z) (⊢wk dz))
+             (⊢-cast (sym nv-s) (ren-lemma ds (Ren⊢-ext (Ren⊢-ext wR-id))))
+             dn)
+  where wR-id = wR Ren⊢-id
+
 ⊢natrec-var :
   {Γ : Ctx} {M : RTy (⌊ Γ ⌋ ∙)} {z : RTm ⌊ Γ ⌋} {s : RTm ((⌊ Γ ⌋ ∙) ∙)} →
   (Γ ▹ Nat) ⊢ty M →
   Γ ⊢ z ∷ subTy (single nzero) M →
   ((Γ ▹ Nat) ▹ M) ⊢ s ∷ subTy nrs M →
   (Γ ▹ Nat) ⊢ natrec (w z) (renTm (extR (extR vs)) s) (var vz) ∷ M
-⊢natrec-var {M = M} dM dz ds =
-  ⊢-cast nv-at
-    (⊢natrec (ren-ty dM (Ren⊢-ext wR-id))
-             (⊢-cast (sym nv-z) (⊢wk dz))
-             (⊢-cast (sym nv-s) (ren-lemma ds (Ren⊢-ext (Ren⊢-ext wR-id))))
-             (⊢var here))
-  where wR-id = wR Ren⊢-id
+⊢natrec-var = ⊢natrec-var-at (⊢var here)
+
 
 ------------------------------------------------------------------------
 -- ★ AT AN ARBITRARY SCRUTINEE, under a substitution of the ambient

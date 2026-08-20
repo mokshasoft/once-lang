@@ -25,27 +25,34 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBSpikeS3Direct where
 
-open import normalizer.Syntax.Types using ( _≡_; trans; cong; cong₂; sym; subst )
+open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; cong₂; sym; subst )
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; _∙; RTy; Hom; Nat; RTm; nsuc; pair; fst; snd
+  using ( Cx; _∙; RTy; El; Hom; Nat; Id; RTm; nsuc; pair; fst; snd; ⌜Nat⌝; Ren; renTy
         ; var; vz; vs; lam; app; Sub; extS; subTm; subTy; natrec; nzero
-        ; renTm; extR )
+        ; renTm; extR; subTm-renTm; subTm-cong; subTm-id )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ⌊_⌋; _▹_; _⊢_∷_; ⊢pair; ⊢nsuc; ⊢conv; ty-Nat; csymᵀ; single
-        ; nrs; ⊢lam; ⊢app; ⊢var; here; wk-single; ⊢natrec )
+        ; nrs; ⊢lam; ⊢app; ⊢var; here; wk-single; ⊢natrec; _≅ᵀ_; El-⌜Nat⌝
+        ; ⊢nzero; done )
+open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
-open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; ren-w; pw3; pw4; pw5; nrs-w )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; ren-w; pw3; pw4; pw5; nrs-w; cong₃; sub-w )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT )
+open import poc.OCP0009.NbEPDirDBLibAmrec
+  using ( aIHTat-ren; Prv; prv; idToRed; idOfRed )
 open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm; ⊢monus )
-open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLTm; plusMonoLTm-sub )
-open import poc.OCP0009.NbEPDirDBLibArithMonus using ( monusLtTm; monusLtTm-sub; ⊢desc-left )
+open import poc.OCP0009.NbEPDirDBLibArithComm
+  using ( plusMonoLTm; plusMonoLTm-sub; congAt; ⊢congAt; IdN )
+open import poc.OCP0009.NbEPDirDBLibArithMonus
+  using ( monusLtTm; monusLtTm-sub; ⊢desc-left; monusLeTm; ⊢monusLe )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
-  using ( gcdIH; gcdG; ⊢gcdIH; descConv; KS; NS; PAIRˢ; CERTˢ )
-open import poc.OCP0009.NbEPDirDBLibNatrec using ( ⊢natrec-var )
+  using ( gcdIH; gcdG; ⊢gcdIH; descConv; KS; NS; PAIRˢ; CERTˢ; msr; gcdStp )
+open import poc.OCP0009.NbEPDirDBLibNatrec using ( ⊢natrec-var; ⊢natrec-var-at )
 open import poc.OCP0009.NbEPDirDBExamplesGcdLeMid
   using ( gXx; R1'; W'; R2'; S3'; Z3'; D3'; ⊢W'; Ss-collapse; Zs-collapse
-        ; D3-clean; ⊢M3s; ⊢Z3s )
+        ; D3-clean; ⊢M3s; ⊢Z3s; midAt; MID; RHSz; gcd-le-prefix; gcd-le-tail )
 
 ------------------------------------------------------------------------
 -- ★ THE FINAL CONTEXT.  `⊢S3s` lives at `(Γ ▹ Nat) ▹ <the small motive>`,
@@ -340,3 +347,217 @@ module Hole {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
                              (var vz)
                     ∷ M
   ⊢hole = ⊢natrec-var (⊢M3s da db) (⊢-cast (sym z-eq) (⊢Z3s da db)) ⊢S3s
+
+
+------------------------------------------------------------------------
+-- ★★★★★ THE ONE-HOLE CONTEXT, AT `El ⌜Nat⌝` — WHAT `⊢congAt` ACTUALLY WANTS.
+--
+-- ⚠ THE MISMATCH THAT BLOCKED THIS.  `⊢congAt`'s family is typed in
+--   `Γ ▹ El ⌜Nat⌝`, not `Γ ▹ Nat`, because `⊢jsub`'s family lives over the
+--   IDENTITY's type and `IdN` is `Id (El ⌜Nat⌝) _ _`.  `⊢natrec-var` bakes
+--   `Nat` into its conclusion, so it could not be handed over at all.
+--
+-- ★ FIXED IN THE LIBRARY, not here: `⊢natrec-var-at` takes the scrutinee's
+--   derivation as a parameter, which is exactly where the `El ⌜Nat⌝ → Nat`
+--   conversion goes.  `nv-at`/`nv-z`/`nv-s` needed no change — they only
+--   ever spoke about `renTy (extR vs)`, which does not care what was pushed.
+------------------------------------------------------------------------
+
+elNat : {Γ : Cx} → El (⌜Nat⌝ {Γ}) ≅ᵀ Nat
+elNat = red→≅ᵀ (stepᵀ El-⌜Nat⌝ doneᵀ)
+
+elAsNat : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ Nat
+elAsNat d = ⊢conv d elNat
+
+module HoleE {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
+             (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) where
+
+  open Assemble  da db using ( M; ⊢S3s )
+  open Assemble2 da db using ( z-eq )
+
+  ⊢holeE : (Γ ▹ El ⌜Nat⌝) ⊢ natrec (w (Z3' a' b'))
+                                   (renTm (extR (extR vs)) (S3' a' b'))
+                                   (var vz)
+                          ∷ M
+  ⊢holeE = ⊢natrec-var-at (elAsNat (⊢var here))
+                          (⊢M3s da db) (⊢-cast (sym z-eq) (⊢Z3s da db)) ⊢S3s
+
+
+------------------------------------------------------------------------
+-- ★★ …AND THE FULL ONE-HOLE FAMILY, `∷ Nat`, WHICH IS `⊢congAt`'s PREMISE.
+--
+-- `midAt a' b' ih d = app (natrec …) ih`, so the family is that `app` with
+-- the descent as `var vz` and everything else weakened past it.
+------------------------------------------------------------------------
+
+gcdIH-ren : {Γ Γ' : Cx} {ρ : Ren Γ Γ'} (μ : RTm Γ) →
+            renTy ρ (gcdIH μ) ≡ gcdIH (renTm ρ μ)
+gcdIH-ren μ = aIHTat-ren PairT ⌜Nat⌝ msr μ
+
+module HoleF {Γ : Ctx} {a' b' ih : RTm ⌊ Γ ⌋}
+             (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat)
+             (dih : Γ ⊢ ih ∷ gcdIH (plusTm (nsuc (W' a' b')) (nsuc b'))) where
+
+  open HoleE da db using ( ⊢holeE )
+
+  -- the IH, past the hole's slot
+  dihw : (Γ ▹ El ⌜Nat⌝) ⊢ w ih
+       ∷ gcdIH (plusTm (nsuc (w (W' a' b'))) (nsuc (w b')))
+  dihw = ⊢-cast (gcdIH-ren (plusTm (nsuc (W' a' b')) (nsuc b'))) (⊢wk dih)
+
+  ⊢F : (Γ ▹ El ⌜Nat⌝)
+     ⊢ app (natrec (w (Z3' a' b'))
+                   (renTm (extR (extR vs)) (S3' a' b'))
+                   (var vz))
+           (w ih)
+     ∷ Nat
+  ⊢F = elAsNat (⊢app ⊢holeE dihw)
+
+
+------------------------------------------------------------------------
+-- ★★★★★ THE TRANSPORT — EQUATION 4's `congAt` STEP.
+--
+-- ⭐ SOUND because gcd's third `natrec` has a motive CONSTANT in its own
+--   scrutinee, so replacing the descent cannot change the type and a plain
+--   congruence suffices where a dependent motive would need a transport.
+------------------------------------------------------------------------
+
+-- ★ the two-level weakening cancel the family needs — `wk-single` one
+--   binder deeper, for the `natrec`'s successor branch.
+w²-single : {Γ : Cx} {x : RTm Γ} (t : RTm ((Γ ∙) ∙)) →
+            subTm (extS (extS (single x))) (renTm (extR (extR vs)) t) ≡ t
+w²-single {x = x} t =
+  trans (subTm-renTm t) (trans (subTm-cong br t) (subTm-id t))
+  where
+    br : ∀ v → extS (extS (single x)) (extR (extR vs) v) ≡ var v
+    br vz          = refl
+    br (vs vz)     = refl
+    br (vs (vs u)) = refl
+
+module Eq4 {Γ : Ctx} {a' b' ih : RTm ⌊ Γ ⌋}
+           (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat)
+           (dih : Γ ⊢ ih ∷ gcdIH (plusTm (nsuc (W' a' b')) (nsuc b')))
+           {p : RTm ⌊ Γ ⌋} (dp : Γ ⊢ p ∷ IdN (D3' a' b') nzero) where
+
+  open HoleF     da db dih using ( ⊢F )
+  open Assemble2 da db     using ( ⊢D3 )
+
+  F : RTm (⌊ Γ ⌋ ∙)
+  F = app (natrec (w (Z3' a' b'))
+                  (renTm (extR (extR vs)) (S3' a' b'))
+                  (var vz))
+          (w ih)
+
+  -- ★ the family, instantiated, IS `midAt` — three weakening cancels.
+  F-at : (x : RTm ⌊ Γ ⌋) → subTm (single x) F ≡ midAt a' b' ih x
+  F-at x = cong₃ (λ z sb i → app (natrec z sb x) i)
+                 (wk-single {v = x} (Z3' a' b'))
+                 (w²-single {x = x} (S3' a' b'))
+                 (wk-single {v = x} ih)
+
+  ⊢transport : Γ ⊢ congAt F (D3' a' b') p
+             ∷ IdN (subTm (single (D3' a' b')) F) (subTm (single nzero) F)
+  ⊢transport = ⊢congAt F ⊢F ⊢D3 ⊢nzero dp
+
+
+------------------------------------------------------------------------
+-- ★★ THE ORDER BRIDGE, AT ARBITRARY `a`/`b` — `⊢monusSelf` GENERALISED.
+--
+-- `⊢monusSelf` is this at `b := a` with `refl` as the certificate.  Equation
+-- 4 needs it at two DIFFERENT variables with a supplied order proof, so the
+-- peels are the same two and only the instantiation differs.
+--
+-- ★ LIBRARY CANDIDATE: belongs in `…LibArithMonus` beside `⊢monusSelf`,
+--   which should then be defined as its `b := a` instance.
+------------------------------------------------------------------------
+
+mle-peel : {Γ : Cx} (a b c : RTm Γ) →
+           subTm (single c) (subTm (extS (single b)) (w (w a))) ≡ a
+mle-peel a b c =
+  trans (cong (subTm (single c))
+              (trans (sub-w {σ = single b} (w a))
+                     (cong w (wk-single {v = b} a))))
+        (wk-single {v = c} a)
+
+mle-at : {Γ : Cx} (a b c : RTm Γ) →
+         subTy (single c)
+               (subTy (extS (single b))
+                      (IdN (monusTm (w (w a)) (var (vs vz))) nzero))
+       ≡ IdN (monusTm a b) nzero
+mle-at a b c = cong₂ (λ x y → IdN (monusTm x y) nzero)
+                     (mle-peel a b c) (wk-single {v = c} b)
+
+⊢monusLeAt : {Γ : Ctx} {a b le : RTm ⌊ Γ ⌋} →
+             Γ ⊢ a ∷ Nat → Γ ⊢ b ∷ Nat → Γ ⊢ le ∷ Hom Nat a b →
+             Γ ⊢ app (app (monusLeTm a) b) le ∷ IdN (monusTm a b) nzero
+⊢monusLeAt {a = a} {b = b} {le = le} da db dle =
+  ⊢-cast (mle-at a b le) (⊢app (⊢app (⊢monusLe da) db) dle')
+  where
+    dle' = ⊢-cast (sym (cong (λ z → Hom Nat z b) (wk-single {v = b} a))) dle
+
+------------------------------------------------------------------------
+-- ★★★★★ EQUATION 4, PROPOSITIONALLY — AT VARIABLES.
+--
+-- ⚠ WHY THE PREMISE IS AN ORDER PROOF AND NOT A REDUCTION.  `gcd-le-term`
+--   demands `monus (suc a) (suc b) ⟶* nzero`; with `b` a numeral the
+--   descent computes to `a`, so that forces `a ⟶* zero` — and a VARIABLE
+--   never reduces.  `…GcdStep` records this: equation 4 at real variables
+--   is UNREACHABLE through a reduction premise.
+--
+-- ★ SO THE PREMISE IS `Hom Nat (suc a) (suc b)` — the kernel's order,
+--   which COMPUTES — and `⊢monusLeAt` turns it into the propositional
+--   `a ∸ b ≡ 0` that `congAt` transports along.
+------------------------------------------------------------------------
+
+module Eq4! {Γ : Ctx} {a' b' ih le : RTm ⌊ Γ ⌋}
+            (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat)
+            (dih : Γ ⊢ ih ∷ gcdIH (plusTm (nsuc (W' a' b')) (nsuc b')))
+            (dle : Γ ⊢ le ∷ Hom Nat (nsuc a') (nsuc b')) where
+
+  -- the order premise, as the identity `congAt` needs
+  dp : Γ ⊢ app (app (monusLeTm (nsuc a')) (nsuc b')) le ∷ IdN (D3' a' b') nzero
+  dp = ⊢-cast (cong (λ z → IdN z nzero) (sym (D3-clean a' b')))
+              (⊢monusLeAt (⊢nsuc da) (⊢nsuc db) dle)
+
+  open Eq4 da db dih dp using ( F; F-at; ⊢transport )
+
+  -- the transport, restated at `midAt`
+  step : Prv Γ (Id (El ⌜Nat⌝) (midAt a' b' ih (D3' a' b')) (midAt a' b' ih nzero))
+  step = prv _ (⊢-cast (cong₂ (λ x y → Id (El ⌜Nat⌝) x y)
+                              (F-at (D3' a' b')) (F-at nzero))
+                       ⊢transport)
+
+  -- ★★★ …AND THE EQUATION.  Prefix reduces in, tail reduces out, the
+  --   transport bridges the descent in the middle.
+  eq4 : Prv Γ (Id (El ⌜Nat⌝)
+                  (app (app gcdStp (pair (nsuc a') (nsuc b'))) ih)
+                  (RHSz a' b' ih))
+  eq4 = idToRed done (gcd-le-tail a' b' ih)
+          (idOfRed (gcd-le-prefix a' b' ih) done step)
+
+
+------------------------------------------------------------------------
+-- ★★★★★ NON-VACUITY FOR EQUATION 4 — AT A VARIABLE.
+--
+-- ⚠ WHAT WAS STRUCTURALLY UNREACHABLE.  `…GcdStep` records that equation
+--   4's REDUCTION premise `monus (suc a) (suc b) ⟶* nzero` forces BOTH `a`
+--   and `b` ground — with `b` a numeral the descent computes to `a`, so it
+--   demands `a ⟶* zero`, and a variable never reduces.  Hence
+--   `gcd-le-at-1` is at numerals, and the file says outright that equation
+--   4 at real variables is unreachable through a reduction premise.
+--
+-- ★ THE ORDER PREMISE IS NOT.  Take `a' := b' := d` with `d` a genuine
+--   VARIABLE; `Hom Nat (suc d) (suc d)` is discharged by reflexivity.
+--
+-- ⚠ THE IH REMAINS A HYPOTHESIS — exactly as in equation 3's `gcd-gt-eq`,
+--   where `ih` is likewise supplied.  What is discharged is the premise
+--   that was structurally unsatisfiable at variables, which is the whole
+--   reason for going propositional.
+------------------------------------------------------------------------
+
+eq4-at-var : {Γ : Ctx} {d ih : RTm ⌊ Γ ⌋} (dd : Γ ⊢ d ∷ Nat) →
+             Γ ⊢ ih ∷ gcdIH (plusTm (nsuc (W' d d)) (nsuc d)) →
+             Prv Γ (Id (El ⌜Nat⌝)
+                       (app (app gcdStp (pair (nsuc d) (nsuc d))) ih)
+                       (RHSz d d ih))
+eq4-at-var dd dih = Eq4!.eq4 dd dd dih (⊢le-refl (⊢nsuc dd))
