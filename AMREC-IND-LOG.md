@@ -287,4 +287,36 @@ Given `x : A` and `c : nsuc (μ x) ≤ suc k`, prove `P (x, amrec x)`.
 ⇒ Steps 1–4 are free or already exist. **5 and 6 are the real work**, and 5
 is the one to respect: transporting a code-valued predicate along the
 unfolding identity is precisely what made equation 4 expensive.
+| 15 | 08-20 | Factor `PFam` out of `PAtR`; `⊢PFam` | ✅ green | ~15s |
+| 16 | 08-20 | **STEP 5 — the motive transport** (`⊢transportP`) | ✅ **green, ONE LINE** | ~15s |
+
+## ★★★ Step 5 was predicted expensive. It was not — and the reason matters.
+
+    ⊢transportP ρ⊢ dP dy dt du dp de = ⊢jsub (⊢PFam ρ⊢ dP dy) dt du dp de
+
+⚠ **I called this "the one to respect" and predicted the successor branch
+would cost more than everything before it combined. That was wrong.**
+
+Why it collapsed: `⊢jsub` transports a CODE FAMILY over the type being
+equated. Once `PFam` — the motive with the argument filled and the RESULT
+SLOT OPEN — is factored out of `PAtR`, it *is* that family, over the
+recursor's result type `El cM[y]`. So the transport is a direct application.
+
+★★ AND THIS IS THE CLEANEST EVIDENCE YET ON THE WF-AXIS QUESTION.
+Gap A's equation 4 needed `⊢congAt` **plus** a hand-built one-hole context
+**plus** `⊢natrec-var-at` for the *same job* — moving a predicate across an
+identity. The difference is not cleverness applied later; it is that the
+motive here was **designed as a code in two slots from the start**, so
+`⊢jsub` applies with no encoding step.
+
+⇒ That cost in gap A was a DESIGN cost, not an inherent one. It is the
+strongest support so far for "with the right combinators the axis is worth
+it" — and it is a measurement, not an argument.
+
+## Remaining
+
+- Step 6: `IndPW` from the `natrec`'s IH (instantiate + `⊢trans`).
+- The successor branch assembled from steps 1–6.
+- The `⊢natrec`.
+- ⚠ The instantiation at `n := suc (μ x)` — the non-vacuity check.
 

@@ -29,12 +29,12 @@ module poc.OCP0009.NbEPDirDBSpikeAmrecInd where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; RTm; El; U; Nat; Hom; Π; var; vz; vs; Var; app; nsuc; nzero; natrec
-        ; lam; absurd
+        ; lam; absurd; jsub; Id
         ; subTm; subTy; renTy; renTm; Ren; extR; extS; renTy-renTy; Sub
         ; subTm-subTm; subTm-renTm; subTm-cong )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; ⊢nsuc; ⊢lam; ⊢nzero; nrs
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; ⊢nsuc; ⊢lam; ⊢nzero; nrs; ⊢jsub
         ; ty-El; ty-Π; ty-Hom; ty-Nat )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢; Ren⊢-ext; ren-lemma; ren-ty
@@ -107,9 +107,16 @@ module Stmt (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp :
 --
 -- ⇒ `extS (single y)` fills the argument and keeps the result slot open;
 --   `single val` then closes it, at the now-instantiated type `El cM[y]`.
+-- ★★ …and the motive with the ARGUMENT filled but the RESULT SLOT STILL
+--   OPEN.  ⭐ This is the piece `⊢jsub` wants: it transports a CODE FAMILY
+--   over the type being equated, and here that type is the recursor's
+--   result.  Factoring it out is what makes the successor branch's
+--   transport a single `⊢jsub` instead of a bespoke construction.
+PFam : {Γ Γ' : Cx} (ρ : Ren Γ Γ') (P : RTm ((Γ ∙) ∙)) (y : RTm Γ') → RTm (Γ' ∙)
+PFam ρ P y = subTm (extS (single y)) (renTm (extR (extR ρ)) P)
+
 PAtR : {Γ Γ' : Cx} (ρ : Ren Γ Γ') (P : RTm ((Γ ∙) ∙)) (y val : RTm Γ') → RTm Γ'
-PAtR ρ P y val =
-  subTm (single val) (subTm (extS (single y)) (renTm (extR (extR ρ)) P))
+PAtR ρ P y val = subTm (single val) (PFam ρ P y)
 
 ------------------------------------------------------------------------
 -- ★★★ …AND ITS SUBSTITUTION LAW, GENERIC IN σ.
@@ -221,6 +228,16 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
               (dstp : Δ ⊢ stp ∷ aStepT A cM m)
               where
 
+  -- ★★ the family with the RESULT SLOT OPEN — what `⊢jsub` transports.
+  ⊢PFam : {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
+          {P : RTm ((⌊ Δ ⌋ ∙) ∙)} →
+          ((Δ ▹ A) ▹ El cM) ⊢ P ∷ U →
+          {y : RTm ⌊ Θ ⌋} → Θ ⊢ y ∷ renTy ρ A →
+          (Θ ▹ El (subTm (single y) (renTm (extR ρ) cM))) ⊢ PFam ρ P y ∷ U
+  ⊢PFam ρ⊢ dP dy =
+    sub-lemma (ren-lemma dP (Ren⊢-ext (Ren⊢-ext ρ⊢)))
+              (Sub⊢-ext (⊢single dy))
+
   ⊢PAtR : {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
           {P : RTm ((⌊ Δ ⌋ ∙) ∙)} →
           ((Δ ▹ A) ▹ El cM) ⊢ P ∷ U →
@@ -228,10 +245,38 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
           Θ ⊢ y ∷ renTy ρ A →
           Θ ⊢ val ∷ El (subTm (single y) (renTm (extR ρ) cM)) →
           Θ ⊢ PAtR ρ P y val ∷ U
-  ⊢PAtR ρ⊢ dP dy dval =
-    ⊢[] (sub-lemma (ren-lemma dP (Ren⊢-ext (Ren⊢-ext ρ⊢)))
-                   (Sub⊢-ext (⊢single dy)))
-        dval
+  ⊢PAtR ρ⊢ dP dy dval = ⊢[] (⊢PFam ρ⊢ dP dy) dval
+
+  ------------------------------------------------------------------------
+  -- ★★★★★ STEP 5 — TRANSPORTING THE MOTIVE ALONG THE UNFOLDING.
+  --
+  -- The successor branch gets `P` at the STEP's result and needs it at
+  -- `amrec`'s.  `amrec-unfold-Id` supplies the `Id` between them; this
+  -- moves `P` across it.
+  --
+  -- ⭐ AND IT IS A DIRECT `⊢jsub`, because `PFam` is exactly the shape
+  --   `⊢jsub` transports: a CODE FAMILY over the type being equated, which
+  --   here is the recursor's result type `El cM[y]`.  Factoring `PFam` out
+  --   of `PAtR` turned the piece I had flagged as the expensive one into a
+  --   single application.
+  --
+  -- ⚠ Gap A's equation 4 needed `congAt` plus a hand-built one-hole context
+  --   for the same job.  The difference is not cleverness — it is that the
+  --   motive here was designed as a CODE from the start, so `⊢jsub` applies
+  --   without an encoding step.
+  ------------------------------------------------------------------------
+
+  ⊢transportP : {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
+                {P : RTm ((⌊ Δ ⌋ ∙) ∙)} →
+                ((Δ ▹ A) ▹ El cM) ⊢ P ∷ U →
+                {y t u p e : RTm ⌊ Θ ⌋} →
+                Θ ⊢ y ∷ renTy ρ A →
+                Θ ⊢ t ∷ El (subTm (single y) (renTm (extR ρ) cM)) →
+                Θ ⊢ u ∷ El (subTm (single y) (renTm (extR ρ) cM)) →
+                Θ ⊢ p ∷ Id (El (subTm (single y) (renTm (extR ρ) cM))) t u →
+                Θ ⊢ e ∷ El (PAtR ρ P y t) →
+                Θ ⊢ jsub (PFam ρ P y) p e ∷ El (PAtR ρ P y u)
+  ⊢transportP ρ⊢ dP dy dt du dp de = ⊢jsub (⊢PFam ρ⊢ dP dy) dt du dp de
 
   open AmTΠ Δ A cM m stp dA dcM dm dstp using ( amrecTm; ⊢amrecΠ )
 
