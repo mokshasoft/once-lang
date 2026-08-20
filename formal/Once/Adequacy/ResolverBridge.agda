@@ -52,7 +52,15 @@
 --   Estimate: ~400-700 lines across typing+trace. A dedicated arc, not a grind.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.ResolverBridge where
+open import Once.Float.Dyadic using (FloatFormat)
+
+-- Plan 0.73 (D113): this module's statements mention a denotation that is
+-- target-relative at `Float`, so the format is a parameter. A MODULE parameter
+-- rather than a per-lemma argument because everything here is a PROOF —
+-- downstream uses these as facts and never reduces them — so the "recursive
+-- function in a parameterised module stops reducing" trap does not apply. The
+-- denotations themselves take it as an explicit argument.
+module Once.Adequacy.ResolverBridge (fmt : FloatFormat) where
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (just)
@@ -67,7 +75,7 @@ import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.ModuleComplete as MC
 import Once.Adequacy.CanonModule as CMod
 import Once.Adequacy.CanonReflectModule as CRMod
-import Once.Adequacy.ResolverTrace as RT
+import Once.Adequacy.ResolverTrace fmt as RT
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit)
@@ -115,5 +123,5 @@ resolver-preserves-trace :
   resolveImports mm mU ≡ inj₂ mR →
   (mt-U : AS.ModuleTyped mU) → MC.HasValidMain-decl mU mt-U →
   ∀ {ir-R : IR ⌊ Unit ⌋ ⌊ Unit ⌋} → moduleToIR mR ≡ just ir-R →
-  ∀ (n : ℕ) → ⟦ moduleToIR mR ⟧IR n ≡ ⟦ moduleToIR mU ⟧IR n
+  ∀ (n : ℕ) → ⟦ moduleToIR mR ⟧IR fmt n ≡ ⟦ moduleToIR mU ⟧IR fmt n
 resolver-preserves-trace = RT.resolver-preserves-trace
