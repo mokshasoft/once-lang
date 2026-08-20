@@ -60,6 +60,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1; role-scratch; role-count)
 open import Once.Float.Dyadic using (Dyadic)
+open import Data.Integer using (ℤ)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
   (FS : FrameSemantics)
@@ -1906,13 +1907,16 @@ sim-ret {hv} b rpc rest fs s s' corr req restores st rewrite req = record
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
--- LOAD CONST (int): `instr-load-const fits-int v` (Output := SV-Lit fits-int v)
--- ↔ `mov rax, imm v`. With enc-sv(SV-Lit fits-int v) = v, the loaded immediate
--- matches the encoded literal exactly, so out-eq is refl; nothing else changes
--- (writeReg Output preserves the other regs / stack / heap / halt).
+-- LOAD CONST (int): `instr-load-const fits-int z` ↔ `mov rax, imm …`.
+--
+-- D115: the payload `z` is a `ℤ` — SOURCE SYNTAX, exactly as a float
+-- literal's is — and the machine MATERIALISES it (`lit-value`, i.e. two's
+-- complement at this target's width). So what the emitter must put in the
+-- register is that materialisation, and `enc-sv` is the identity on it. The
+-- int and float cases are now literally the same statement.
 ------------------------------------------------------------------------
-sim-load-const : {hv : HeapView} (v : Carrier) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
-  → SetsRole s s' role-out (lit-word v)
+sim-load-const : {hv : HeapView} (v : ℤ) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+  → SetsRole s s' role-out (lit-word (lit-value fits-int v))
   → FlatCorr hv (flat-exec-instr (instr-load-const fits-int v) [] fs) s'
 sim-load-const {hv} v fs s s' corr st = record
   { in1-eq = keep-in1 corr st (λ ()) ; out-eq = at-role st ; scratch-eq = keep-scratch corr st (λ ()) ; count-eq = keep-count corr st (λ ())

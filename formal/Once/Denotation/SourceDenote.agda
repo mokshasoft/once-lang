@@ -40,7 +40,8 @@ open import Once.Type
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D; coerce-functor⁻¹-D; cohᴰ; liftFn)
-open import Once.Float.Dyadic using (FloatFormat; encode)
+open import Once.Float.Dyadic using (encode)
+open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.IR using (IR; ⌊_⌋)
@@ -119,7 +120,7 @@ ana-eventsˢ {F} {A} coalgComp a (suc m) =
 -- transported form without re-importing the `⟦_⟧ˢ`-mixfix (Plan 0.52 M2).
 ------------------------------------------------------------------------
 
-liftD : (fmt : FloatFormat) → ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → T (⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ)
+liftD : (fmt : TargetNum) → ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → T (⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ)
 liftD fmt {A} {B} ir = returnT (liftFn fmt ir)
 
 ------------------------------------------------------------------------
@@ -133,7 +134,7 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt ir)
 -- fact in one clause. Not a module parameter: `⟦_⟧ˢ` is recursive, and a
 -- recursive function in a parameterised module stops reducing downstream.
 ⟦_⟧ˢ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A}
-     → Expr Γ Ψ A → FloatFormat → ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ → T ⟦ A ⟧ᴰ
+     → Expr Γ Ψ A → TargetNum → ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ → T ⟦ A ⟧ᴰ
 ⟦ var {Γ = Γ} i ⟧ˢ fmt dγ = returnT (lookupᴰ Γ i dγ)
 ⟦ lam q _ e ⟧ˢ fmt    dγ = returnT (λ a → ⟦ e ⟧ˢ fmt (dγ , a))
 ⟦ app f x ⟧ˢ fmt      dγ = ⟦ f ⟧ˢ fmt dγ >>=T λ vf → ⟦ x ⟧ˢ fmt dγ >>=T λ vx → vf vx
@@ -161,7 +162,7 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt ir)
 -- D113: a float literal MEANS its encoding at the target's format. This is
 -- the clause that makes the source denotation target-relative, and the only
 -- one that does.
-⟦ float d _ ⟧ˢ fmt    dγ = returnT (encode fmt d)
+⟦ float d _ ⟧ˢ fmt    dγ = returnT (encode (float-format fmt) d)
 -- str: `str-lit-semM` is ABSTRACT (postulated, unlike the computing lit-int-semM),
 -- so the literal's value can't be the clean `s`; denote via its own SigOp `semM`
 -- (= `strLit`'s evalᴰ), matching the IR by construction (like arith).

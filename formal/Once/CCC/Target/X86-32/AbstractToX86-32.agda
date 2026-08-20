@@ -45,6 +45,8 @@ open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+import Once.Word as OnceWord
+module IntW = OnceWord.Width 32
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
@@ -222,7 +224,11 @@ compile-abstract (instr-reclaim-to n) = []
 -- to the externally-defined function body. CCC stays name-agnostic.
 compile-abstract (instr-sigop si) = call-sym (once-symbol-path (SigOpInfo.name si)) ∷ []
 -- Plan 0.53: const literal → load into Output (eax). Mirror x86-64.
-compile-abstract (instr-load-const fits-int   v) = mov (reg eax) (imm v) ∷ []
+-- D115: an `Int` literal's payload is a `ℤ` (source syntax), so the emitter
+-- MATERIALISES it at this target's width — two's complement, 32 bits. Exactly
+-- what the float case beside it does with `encode`; before D115 the int case
+-- could skip this only because literals were never negative.
+compile-abstract (instr-load-const fits-int   v) = mov (reg eax) (imm (IntW.fromℤ v)) ∷ []
 -- A FLOAT LITERAL IS SINGLE PRECISION HERE (plan 0.66, D109). This used to be
 -- `ud2` — it TRAPPED — because `float-bits` (as it was) is a 64-bit pattern and `%eax` is
 -- 32 bits wide, which made every Once program containing a float literal fail

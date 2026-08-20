@@ -42,6 +42,8 @@ open import Once.Target.Symbol using (once-symbol; once-symbol-path)
 
 -- Import RISC-V syntax
 open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+import Once.Word as OnceWord
+module IntW = OnceWord.Width 64
 open import Once.CCC.Target.RiscV64.Syntax
   using (Reg; zero; ra; sp; fp; a0; a1; a2; a3; a4; a5; a6; a7;
          s1; s2; s3; s4; t0; t1; t2; t3; t4;
@@ -288,7 +290,11 @@ compile-abstract (instr-sigop si) = call-sym (once-symbol-path (SigOpInfo.name s
 -- x86-64's `ud2` did before D079. `li` is the assembler's pseudo-instruction
 -- and expands to the `lui`/`addi` sequence, which is the same trust seam as gas
 -- promoting `movq $big` to `movabs`.
-compile-abstract (instr-load-const fits-int   v) = li a0 (+ v) ∷ []
+-- D115: an `Int` literal's payload is a `ℤ` (source syntax), so the emitter
+-- MATERIALISES it at this target's width — two's complement, 64 bits. Exactly
+-- what the float case beside it does with `encode`; before D115 the int case
+-- could skip this only because literals were never negative.
+compile-abstract (instr-load-const fits-int   v) = li a0 (+ (IntW.fromℤ v)) ∷ []
 compile-abstract (instr-load-const fits-float v) = li a0 (+ (encode binary64 v)) ∷ []
 -- Plan 0.53: closure-body code-addr load. Mirror x86-64's
 -- `lea .L_thunk_n(%rip), %rax` — load the body label address into Output.

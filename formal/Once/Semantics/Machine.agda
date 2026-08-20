@@ -41,6 +41,7 @@ open import Once.Semantics.ValueIR Carrier Carrier public
 
 open import Once.Type using (FitsInReg; fits-int; fits-float; Int)
 open import Once.Float.Dyadic using (Dyadic)
+open import Data.Integer using (ℤ)
 
 -- | A LITERAL'S PAYLOAD is not its denotation (D113).
 --
@@ -48,20 +49,25 @@ open import Once.Float.Dyadic using (Dyadic)
 -- types. A literal's payload is what the compiler must CARRY to the target in
 -- order to produce that representation, and the two differ:
 --
---   * `Int`  — an integer literal's bit pattern is the SAME at every width, so
---     the payload already IS the machine value. Nothing to carry.
+--   * `Int`  — `-5` is `0xFFFFFFFB` at 32 bits and `0xFFFFFFFFFFFFFFFB` at 64,
+--     so there is no width-free bit pattern either. The payload is the SOURCE
+--     value (a `ℤ`) and the machine takes two's complement at its own width.
 --   * `Float` — `1.5` is `0x3FC00000` at 32 bits and `0x3FF8000000000000` at
---     64. There is no width-free bit pattern, so the payload is the SOURCE
+--     64. There is no format-free bit pattern, so the payload is the SOURCE
 --     value (a dyadic) and the machine encodes it at `float-format`.
 --
--- Conflating the two is what made an exact-value denotation look necessary
--- (D112). Stating the difference costs one type family and lets `⟦_⟧` stay the
--- machine representation at both types, per D054/D113.
+-- The two are the SAME STORY (D115). `Int` looked width-free only while
+-- literals were non-negative — a positive residue really is the same number at
+-- every width — and plan 0.73 F3 was about to make negative literals writable.
+--
+-- Conflating payload with denotation is what made an exact-value denotation
+-- look necessary (D112). Stating the difference costs one type family and lets
+-- `⟦_⟧` stay the machine representation at both types, per D054/D113.
 --
 -- Indexed by the `FitsInReg` EVIDENCE, not by the type: a literal payload only
 -- exists for a register-fittable type, so the two cases are the whole domain
 -- and no catch-all is needed. It also means every site that already
 -- pattern-matches the evidence (all of them) sees the payload type reduce.
 LitPayload : ∀ {A} → FitsInReg A → Set
-LitPayload fits-int   = ⟦ Int ⟧
+LitPayload fits-int   = ℤ
 LitPayload fits-float = Dyadic

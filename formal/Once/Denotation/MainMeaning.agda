@@ -36,7 +36,7 @@ import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.ModuleComplete as MC
 open import Once.Adequacy.ModuleComplete using (EffUU)
 open import Once.Parser using (FunInfo)
-open import Once.Float.Dyadic using (FloatFormat)
+open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open FunInfo
 
 -- The direct main closure: the denotation of `main`'s (∅-context) EffUU body.
@@ -50,10 +50,10 @@ MClo = ⟦ ⟦ ∅ ⟧ᶜᵗ ⟧ᴰ → T ⟦ EffUU ⟧ᴰ
 
 -- Plan 0.73 (D113): the format, explicit — this chain is recursive and its
 -- reduction is what `MainExtract`/`MeaningBridge` rewrite through.
-mainMeaningᵈ-go : ∀ {polys sigEffs funs ctx} (fmt : FloatFormat)
+mainMeaningᵈ-go : ∀ {polys sigEffs funs ctx} (fmt : TargetNum)
                   (aft : AS.AllFunsTyped polys sigEffs funs ctx)
                 → MC.MainExists aft → Σ-syntax (Usage 0) (λ _ → MClo)
-mmd-dispatch : ∀ {polys sigEffs nm bdy rest ctx ty Ψ} (fmt : FloatFormat)
+mmd-dispatch : ∀ {polys sigEffs nm bdy rest ctx ty Ψ} (fmt : TargetNum)
   (deriv : (ctxWithImportsAndSelfAndPolys ctx polys sigEffs nm ty) ⊢ᶜ bdy ∶ ty ⨾ Ψ)
   (rest-typed : AS.AllFunsTyped polys sigEffs rest (C.extendFunCtx ctx nm ty))
   (w : MC.MainExists rest-typed)
@@ -69,13 +69,13 @@ mmd-dispatch fmt deriv rest-typed w (no _)  _          _     = mainMeaningᵈ-go
 mmd-dispatch fmt deriv rest-typed w (yes _) (no _)     _     = mainMeaningᵈ-go fmt rest-typed w
 mmd-dispatch fmt deriv rest-typed w (yes _) (yes _)    true  = mainMeaningᵈ-go fmt rest-typed w
 
-mainMeaningᵈ-ef : ∀ (fmt : FloatFormat) (m : C.Module) (ef : String ⊎ (List FunInfo × List C.PolyFunInfo))
+mainMeaningᵈ-ef : ∀ (fmt : TargetNum) (m : C.Module) (ef : String ⊎ (List FunInfo × List C.PolyFunInfo))
   (mt : AS.ModuleTyped-ef m ef)
   → MC.ModuleMainEffUU-ef m ef mt → MC.ModuleMainExists-ef m ef mt
   → Σ-syntax (Usage 0) (λ _ → MClo)
 mainMeaningᵈ-ef fmt m (inj₂ (funs , polys)) mt amu me = mainMeaningᵈ-go fmt mt me
 
-mainMeaningᵈ : ∀ (fmt : FloatFormat) (m : C.Module) (mt : AS.ModuleTyped m) → MC.HasValidMain-decl m mt
+mainMeaningᵈ : ∀ (fmt : TargetNum) (m : C.Module) (mt : AS.ModuleTyped m) → MC.HasValidMain-decl m mt
              → Σ-syntax (Usage 0) (λ _ → MClo)
 mainMeaningᵈ fmt m mt (amu , me) =
   mainMeaningᵈ-ef fmt m (C.extractFunctions (C.extractAliases m) m) mt amu me
@@ -88,5 +88,5 @@ runMainᵈ : MClo → Behavior
 runMainᵈ dclo n = take n (projTrace (dclo tt >>=T (λ clo → clo tt)) n)
 
 -- THE direct reference meaning (discharges the apex `⟦_⟧ᵈ`).
-meaningᵈ : ∀ (fmt : FloatFormat) (m : C.Module) (mt : AS.ModuleTyped m) → MC.HasValidMain-decl m mt → Behavior
+meaningᵈ : ∀ (fmt : TargetNum) (m : C.Module) (mt : AS.ModuleTyped m) → MC.HasValidMain-decl m mt → Behavior
 meaningᵈ fmt m mt hvm = runMainᵈ (proj₂ (mainMeaningᵈ fmt m mt hvm))

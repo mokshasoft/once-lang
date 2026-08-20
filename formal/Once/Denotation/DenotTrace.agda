@@ -48,7 +48,7 @@ open import Once.CCC.Eval as Val using (eval; appNatTr-F)
 -- so the reference meaning is too. Threaded as an explicit argument rather
 -- than a module parameter: `evalᴰ` is recursive, and a recursive function in
 -- a parameterised module stops reducing downstream at a variable instance.
-open import Once.Float.Dyadic using (FloatFormat)   -- pure value domain `Val.⟦_⟧` + `eval`
+open import Once.Target.Arch using (TargetNum; int-bits; float-format)   -- pure value domain `Val.⟦_⟧` + `eval`
 open import Once.SigOp.Info
   using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
 open import Once.Functor.Translate using (WellFormedF)
@@ -104,24 +104,24 @@ open import Once.Denotation.ValueDomain public
 -- `rec-trace-D` with the value via the pure `eval`.
 ------------------------------------------------------------------------
 
-evalᴰ        : (fmt : FloatFormat) → ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
-rec-trace-D  : (fmt : FloatFormat) → ∀ {A B} → IR A B → Val.⟦ ⌈ A ⌉ ⟧ → ℕ → List SigOpEvent
+evalᴰ        : (fmt : TargetNum) → ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
+rec-trace-D  : (fmt : TargetNum) → ∀ {A B} → IR A B → Val.⟦ ⌈ A ⌉ ⟧ → ℕ → List SigOpEvent
 -- The events algebra for the `Cata` fold: children's events (`events-F`)
 -- followed by this layer's algebra events (`evalᴰ fmt alg` on the rebuilt functor
 -- layer). Plan 0.58: value carried in the MONADIC domain `⟦C⟧ᴰ` (NOT forgotten
 -- to `Val.⟦C⟧`) so an effectful-arrow carrier keeps its apply-time effects.
-cata-ev-algᴰ : (fmt : FloatFormat) → ∀ {F C} → ℕ → IR (⟦ F ⟧TI C) C
+cata-ev-algᴰ : (fmt : TargetNum) → ∀ {F C} → ℕ → IR (⟦ F ⟧TI C) C
              → ⟦ ⌈ F ⌉F ⟧F (List SigOpEvent × ⟦ C ⟧ᴰᴵ) → List SigOpEvent × ⟦ C ⟧ᴰᴵ
 -- `Para`'s trace algebra. `sem-para`'s algebra sees `⟦F⟧F (μF × A)` (each
 -- child: its substructure `μF` + its folded result `A`); we fold into
 -- `A = List × value`, applying the para-algebra `alg` to the `(μF , value)`
 -- layer per node and collecting its events.
-para-ev-algᴰ : (fmt : FloatFormat) → ∀ {F C} → ℕ → IR (⟦ F ⟧TI (μ-type F * C)) C
+para-ev-algᴰ : (fmt : TargetNum) → ∀ {F C} → ℕ → IR (⟦ F ⟧TI (μ-type F * C)) C
              → ⟦ ⌈ F ⌉F ⟧F (Val.⟦ ⌈ μ-type F ⌉ ⟧ × (List SigOpEvent × Val.⟦ ⌈ C ⌉ ⟧))
              → List SigOpEvent × Val.⟦ ⌈ C ⌉ ⟧
 -- The depth-bounded unfold trace: events of the first `n` unfold layers,
 -- in canonical (functor left-to-right) order, from the seed `a`.
-ana-events   : (fmt : FloatFormat) → ∀ {F A} → IR A (⟦ F ⟧TI A) → Val.⟦ ⌈ A ⌉ ⟧ → ℕ → List SigOpEvent
+ana-events   : (fmt : TargetNum) → ∀ {F A} → IR A (⟦ F ⟧TI A) → Val.⟦ ⌈ A ⌉ ⟧ → ℕ → List SigOpEvent
 
 evalᴰ fmt id            a        = returnT a
 evalᴰ fmt (g ∘ f)       a        = evalᴰ fmt f a >>=T evalᴰ fmt g
@@ -224,5 +224,5 @@ ana-events fmt {F} {A} coalg a (suc m) =
 -- compare against `liftFn fmt (realize… )` (Plan 0.52 M2).
 ------------------------------------------------------------------------
 
-liftFn : (fmt : FloatFormat) → ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
+liftFn : (fmt : TargetNum) → ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
 liftFn fmt {A} {B} ir v = subst T (cohᴰ B) (evalᴰ fmt ir (subst (λ z → z) (sym (cohᴰ A)) v))

@@ -76,6 +76,8 @@ open import Once.Memory.HeapAddress public
 -- below the machine so the IR can import them without the machine. Re-exported.
 open import Once.CCC.Machine.Locations public
 open import Once.Float.Dyadic using (Dyadic; encode)
+import Once.Word as Word
+import Data.Nat as ℕ
 
 -- Plan 0.14: the abstract-trace allocator instance lives in
 -- Once.Allocator.AbstractInstance. SMCore consumes it for the
@@ -1642,7 +1644,11 @@ module AbstractExec {FS : FrameSemantics} where
   -- the target's `float-format`. This is the one place source syntax turns
   -- into bits; everything downstream of it, `SV-Lit` included, is bits.
   lit-value : ∀ {A} (p : FitsInReg A) → LitPayload p → ⟦ A ⟧
-  lit-value fits-int   v = v
+  -- D115: at THIS target's width. `frame-word` is the machine word in BYTES,
+  -- so `8 * frame-word FS` is the bit width — the machine already had the
+  -- fact, which is why baking `Word64` anywhere was avoidable. `fromℤ` is
+  -- two's complement (D054: `Int` is SIGNED), so `-5` becomes `2^w - 5`.
+  lit-value fits-int   z = Word.Width.fromℤ (8 ℕ.* FrameSemantics.frame-word FS) z
   lit-value fits-float d = encode (FrameSemantics.float-format FS) d
 
   -- Plan 0.13.1: mutually recursive with exec-trace (case-on-tag

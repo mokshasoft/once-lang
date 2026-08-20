@@ -23,7 +23,7 @@
 -- `FaithfulLemmas.cata-body`/`ana-body`) is discharged.
 ------------------------------------------------------------------------
 
-open import Once.Float.Dyadic using (FloatFormat)
+open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
 -- target-relative at `Float`, so the format is a parameter. A MODULE parameter
@@ -31,7 +31,7 @@ open import Once.Float.Dyadic using (FloatFormat)
 -- downstream uses these as facts and never reduces them — so the "recursive
 -- function in a parameterised module stops reducing" trap does not apply. The
 -- denotations themselves take it as an explicit argument.
-module Once.Adequacy.SourceFaithful (fmt : FloatFormat) where
+module Once.Adequacy.SourceFaithful (fmt : TargetNum) where
 
 open import Data.Nat using (ℕ)
 open import Data.Unit using (tt)

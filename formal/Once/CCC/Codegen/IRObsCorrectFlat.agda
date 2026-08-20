@@ -98,14 +98,14 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- target's `FrameSemantics`, THE evaluator is the one at its float format,
   -- so it is named once here and used unqualified below.
   eval : ∀ {A B} → IR A B → EvV.⟦ A ⟧ᴵ → EvV.⟦ B ⟧ᴵ
-  eval = Ev.eval (FrameSemantics.float-format FS)
+  eval = Ev.eval (Once.CCC.FrameSemantics.fs-numerics FS)
 
   -- …and the reference DENOTATION at the same format. That the machine and the
   -- denotation read the format from ONE place is what makes this module's
   -- obligations discharge: `float-format FS` is what `exec-abstract` encodes a
   -- float literal at, so it is what `evalᴰ` must mean by one.
   evalᴰ : ∀ {A B} → IR A B → DT.⟦ A ⟧ᴰᴵ → TM.T DT.⟦ B ⟧ᴰᴵ
-  evalᴰ = DT.evalᴰ (FrameSemantics.float-format FS)
+  evalᴰ = DT.evalᴰ (Once.CCC.FrameSemantics.fs-numerics FS)
 
   open FlatMachine {FS}
   open AbstractExec {FS} using (exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed)

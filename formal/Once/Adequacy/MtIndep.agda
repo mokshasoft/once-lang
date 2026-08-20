@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 -- SCRATCH: mt-independence lemma for main-extract wiring (Plan 0.55 step 4).
 
-open import Once.Float.Dyadic using (FloatFormat)
+open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
 -- target-relative at `Float`, so the format is a parameter. A MODULE parameter
@@ -10,7 +10,7 @@ open import Once.Float.Dyadic using (FloatFormat)
 -- downstream uses these as facts and never reduces them — so the "recursive
 -- function in a parameterised module stops reducing" trap does not apply. The
 -- denotations themselves take it as an explicit argument.
-module Once.Adequacy.MtIndep (fmt : FloatFormat) where
+module Once.Adequacy.MtIndep (fmt : TargetNum) where
 
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)

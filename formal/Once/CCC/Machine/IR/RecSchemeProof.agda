@@ -64,7 +64,7 @@ module RecSchemeProofImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- target's `FrameSemantics`, THE evaluator is the one at its float format,
   -- so it is named once here and used unqualified below.
   eval : ∀ {A B} → IR A B → EvV.⟦ A ⟧ᴵ → EvV.⟦ B ⟧ᴵ
-  eval = Ev.eval (FrameSemantics.float-format FS)
+  eval = Ev.eval (Once.CCC.FrameSemantics.fs-numerics FS)
 
   open FrameSemantics FS
   open import Once.CCC.Machine.ClosureWellFormed

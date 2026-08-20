@@ -49,6 +49,7 @@ open import Once.CanonicalName using (CanonicalName)
 
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.Float.Dyadic using (Dyadic)
+open import Data.Integer using (ℤ)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
   -- Plan 0.63 (D089): the DEFINITION'S identity, which keys its labels — and
@@ -646,10 +647,10 @@ record BlockSteps : Set₁ where
     -- the engine applies its own resource parameter and passes the result.
     ------------------------------------------------------------------
     bs-load-const :
-      ∀ {hv : HeapView} prog fs s (v : Carrier) → CompiledCorr hv prog fs s
+      ∀ {hv : HeapView} prog fs s (v : ℤ) → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-load-const fits-int v)
-      → v < modulus
+      → AbstractExec.lit-value {FS} fits-int v < modulus
       → BlockStep hv prog fs s (instr-load-const fits-int v)
     bs-load-const-float :
       ∀ {hv : HeapView} prog fs s (v : Dyadic) → CompiledCorr hv prog fs s

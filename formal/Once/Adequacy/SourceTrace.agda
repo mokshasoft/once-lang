@@ -61,7 +61,7 @@ open import Once.Denotation.DenotTrace using (evalᴰ)
 -- Plan 0.73 (D113): the meaning is target-relative at `Float`, so the format
 -- is threaded in. An explicit ARGUMENT, not a module parameter — these are
 -- recursive and a parameterised module stops reducing at a variable instance.
-open import Once.Float.Dyadic using (FloatFormat)
+open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Once.Denotation.TraceMonad using (projTrace)
 
 ------------------------------------------------------------------------
@@ -128,7 +128,7 @@ moduleToIR mod = moduleToIR-aux (C.compileResolvedModule C.Heap false mod)
 -- The SigOp trace the denotational `evalᴰ` reads off `main`'s IR (the
 -- elaborated meaning), at observation depth `n` (Plan 0.46: the monadic
 -- `⟦_⟧ᴰ` is THE source observable; the operational `otrace` is retired).
-⟦_⟧IR : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → FloatFormat → Behavior
+⟦_⟧IR : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → TargetNum → Behavior
 ⟦ just ir ⟧IR fmt = λ n → take n (projTrace (evalᴰ fmt ir tt) n)
 ⟦ nothing ⟧IR _   = λ _ → []
 
@@ -202,11 +202,11 @@ srcToModule-inv src mR eq =
 -- conjunct of the compiler theorem).
 -- J-style dispatch on the parse result (explicit `Maybe`, no `with`), so
 -- `⟦⟧-via-module` below can `rewrite` the parse equation through it.
-sourceTrace-aux : Maybe P.Module → FloatFormat → Behavior
+sourceTrace-aux : Maybe P.Module → TargetNum → Behavior
 sourceTrace-aux (just m) fmt = ⟦ moduleToIR m ⟧IR fmt
 sourceTrace-aux nothing  _   = λ _ → []
 
-sourceTrace : Source → FloatFormat → Behavior
+sourceTrace : Source → TargetNum → Behavior
 sourceTrace src fmt = sourceTrace-aux (srcToModule src) fmt
 
 -- `abstract`: keep `⟦_⟧` opaque downstream. Otherwise `⟦ src ⟧` unfolds
@@ -215,7 +215,7 @@ sourceTrace src fmt = sourceTrace-aux (srcToModule src) fmt
 -- reduces the goal's `⟦ src ⟧` while the per-stage postulate's stays
 -- unreduced → `UnequalTerms`. Opacity makes both sides the same term.
 abstract
-  ⟦_⟧ : Source → FloatFormat → Behavior
+  ⟦_⟧ : Source → TargetNum → Behavior
   ⟦ src ⟧ = sourceTrace src
 
   -- Reduction lemma (exported): when `src` parses AND RESOLVES to module `m`
@@ -225,5 +225,5 @@ abstract
   -- no `with`-opacity. This discharges `Compile.gmoduleToModule-correct`.
   ⟦⟧-via-module :
     ∀ (src : Source) (m : P.Module) → srcToModule src ≡ just m →
-    ∀ (fmt : FloatFormat) → ⟦ src ⟧ fmt ≡ ⟦ moduleToIR m ⟧IR fmt
+    ∀ (fmt : TargetNum) → ⟦ src ⟧ fmt ≡ ⟦ moduleToIR m ⟧IR fmt
   ⟦⟧-via-module src m eq fmt rewrite eq = refl

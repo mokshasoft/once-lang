@@ -234,3 +234,19 @@ open FrameSemantics public
 -- See: Once.CCC.Target.X86.Correct.InitState.init-frame-gap-sufficient
 -- for the program entry trust boundary postulate.
 ------------------------------------------------------------------------
+------------------------------------------------------------------------
+-- THE TARGET'S NUMERICS, derived (plan 0.74, D115)
+--
+-- The machine already knows both facts: `float-format` above, and the WIDTH,
+-- which is `frame-word` (the machine word in BYTES) times eight. So a module
+-- fixed to a target never needs to name a width — which is what made baking
+-- `Word64` anywhere avoidable.
+--
+-- Derived rather than a field, so it cannot disagree with the two facts it is
+-- built from.
+------------------------------------------------------------------------
+
+open import Once.Target.Arch using (TargetNum; mkTargetNum)
+
+fs-numerics : FrameSemantics → TargetNum
+fs-numerics FS = mkTargetNum (8 * frame-word FS) (float-format FS)

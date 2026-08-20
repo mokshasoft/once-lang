@@ -20,7 +20,7 @@
 -- (`resolveExpr-sigOp-closure-faithful` / `resolveExpr-poly-splice-faithful`).
 ------------------------------------------------------------------------
 
-open import Once.Float.Dyadic using (FloatFormat)
+open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 
 -- Plan 0.73 (D113): this module's statements mention the source denotation,
 -- which is target-relative at `Float`, so the format is a parameter here. It
@@ -28,7 +28,7 @@ open import Once.Float.Dyadic using (FloatFormat)
 -- below is a PROOF — downstream uses these as facts, never reduces them — so
 -- the "recursive function in a parameterised module stops reducing" trap does
 -- not apply. The denotations themselves take it as an explicit argument.
-module Once.Adequacy.ResolveFaithful (fmt : FloatFormat) where
+module Once.Adequacy.ResolveFaithful (fmt : TargetNum) where
 
 open import Data.Nat using (ℕ; _<_)
 open import Data.Nat.Induction using (<-wellFounded)

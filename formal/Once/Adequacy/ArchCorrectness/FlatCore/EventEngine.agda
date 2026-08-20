@@ -51,6 +51,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface as EI
 
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Once.Float.Dyadic using (Dyadic)
+open import Data.Integer using (ℤ)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
   -- Plan 0.63 (D089): the DEFINITION'S identity, which keys its labels.
@@ -477,9 +478,10 @@ record Supply : Set₁ where
     tag-fits : ∀ {hv : HeapView} prog fs s n → RunAt prog fs
             → CompiledCorr hv prog fs s
             → fetch prog (fpc fs) ≡ just (instr-load-tag-lit n) → n < modulus
-    lit-fits : ∀ {hv : HeapView} prog fs s (v : Carrier) → RunAt prog fs
+    lit-fits : ∀ {hv : HeapView} prog fs s (v : ℤ) → RunAt prog fs
             → CompiledCorr hv prog fs s
-            → fetch prog (fpc fs) ≡ just (instr-load-const fits-int v) → v < modulus
+            → fetch prog (fpc fs) ≡ just (instr-load-const fits-int v)
+            → AbstractExec.lit-value {FS} fits-int v < modulus
     float-fits : ∀ {hv : HeapView} prog fs s (v : Dyadic) → RunAt prog fs
               → CompiledCorr hv prog fs s
               → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)

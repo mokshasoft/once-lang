@@ -57,7 +57,11 @@ open import Once.Semantics.Machine public using (⟦_⟧)
 open import Once.IRTy.WF using (wf-⌈⌉)
 
 -- Plan 0.73 (D113): the TARGET'S FLOAT FORMAT. See the header note.
-open import Once.Float.Dyadic using (FloatFormat; encode)
+open import Once.Float.Dyadic using (encode)
+-- D115: the target's numerics — the float FORMAT and the int WIDTH in one
+-- record, so a target's numeric facts cannot drift apart.
+open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+import Once.Word as OnceWord
 
 ------------------------------------------------------------------------
 -- Semantic Evaluation (machine-level)
@@ -67,12 +71,12 @@ open import Once.Float.Dyadic using (FloatFormat; encode)
 -- ignored in semantics (it's a compilation concern).
 ------------------------------------------------------------------------
 
-eval : ∀ {A B} (fmt : FloatFormat) → IR A B → ⟦ A ⟧ᴵ → ⟦ B ⟧ᴵ
+eval : ∀ {A B} (fmt : TargetNum) → IR A B → ⟦ A ⟧ᴵ → ⟦ B ⟧ᴵ
 -- D062: the natural transformation a `Fuse`/`Hylo` carries, interpreted at the
 -- functor level. Manifestly parametric in the recursive position `X` (it is
 -- never inspected) — routes/copies positions and evaluates the constant-leaf
 -- IR (`ntK`). Mutual with `eval` only through `ntK`.
-appNatTr-F : ∀ {G F} (fmt : FloatFormat) → NatTr G F → ∀ {X} → ⟦ G ⟧Fᴵ X → ⟦ F ⟧Fᴵ X
+appNatTr-F : ∀ {G F} (fmt : TargetNum) → NatTr G F → ∀ {X} → ⟦ G ⟧Fᴵ X → ⟦ F ⟧Fᴵ X
 
 eval fmt id x = x
 eval fmt (g ∘ f) x = eval fmt g (eval fmt f x)
@@ -97,8 +101,10 @@ eval fmt (free-heap _) x = x
 -- do not (D113): `1.5` has no format-free bit pattern, so the payload is the
 -- source dyadic and this is where the target's format materialises it. That
 -- is why `fmt` is an argument of this evaluator at all — see the header.
-eval fmt (const fits-int   v) _ = v
-eval fmt (const fits-float v) _ = encode fmt v
+-- D115: BOTH literals are source syntax, materialised at the target's own
+-- width/format. `Int` looked exempt only while literals were non-negative.
+eval fmt (const fits-int   v) _ = OnceWord.Width.fromℤ (int-bits fmt) v
+eval fmt (const fits-float v) _ = encode (float-format fmt) v
 -- Signature operations: the `SigOpInfo` carries the machine-level
 -- semantic function (`semM`).
 -- Plan 0.52 M2: the FFI boundary. `si : SigOpInfo A B` is surface-typed and

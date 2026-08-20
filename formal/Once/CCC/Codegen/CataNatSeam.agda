@@ -56,7 +56,7 @@ module CataNatSeam {FS : FrameSemantics} (program-bound : ℕ) (G : IRFunctor) w
   -- target's `FrameSemantics`, THE evaluator is the one at its float format,
   -- so it is named once here and used unqualified below.
   eval : ∀ {A B} → IR A B → EvV.⟦ A ⟧ᴵ → EvV.⟦ B ⟧ᴵ
-  eval = Ev.eval (FrameSemantics.float-format FS)
+  eval = Ev.eval (Once.CCC.FrameSemantics.fs-numerics FS)
 
   open MemOps {FS} using (readLoc)
 

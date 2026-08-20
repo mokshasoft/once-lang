@@ -42,6 +42,10 @@ open import Once.CanonicalName using (CanonicalName)
 
 -- `fmt-eq`'s type names a format, so this import must precede the header.
 open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+open import Data.Integer using (ℤ)
+import Once.Word as OnceWord
+module IntW = OnceWord.Width 32
+import Data.Nat as ℕ
 
 module Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation
   -- D089's definition identity, threaded only so `CompiledCorrespondence` can
@@ -1239,26 +1243,40 @@ block-step-dealloc-stack {hv} prog fs s n cc h ft restores retPost no-wrap =
 -- D054 makes `Int` a modular `Word`, so an elaborated literal is in range by
 -- construction; the day that is threaded from the frontend, this premise is
 -- discharged rather than assumed.
-block-step-load-const : ∀ {hv : HeapView} prog fs s (v : Carrier) → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+-- D115: the payload is a `ℤ` and the machine MATERIALISES it at its own
+-- width, exactly as the float case does with its format. The width needs no
+-- new premise: `word-eq : frame-word FS ≡ slot-size` already pins it, and
+-- `8 * slot-size` is this target's 32 definitionally.
+bits-eq : 8 ℕ.* FrameSemantics.frame-word FS ≡ 32
+bits-eq = cong (8 ℕ.*_) word-eq
+
+block-step-load-const : ∀ {hv : HeapView} prog fs s (v : ℤ) → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-load-const fits-int v)
-  → v < X.W.modulus
+  → AbstractExec.lit-value {FS} fits-int v < X.W.modulus
   → BlockStep hv prog fs s (instr-load-const fits-int v)
 block-step-load-const {hv} prog fs s v cc h ft fits =
-  post , exec-eq , record { dataCorr = C.sim-load-const v fs s _ dc (C.sets-role-x86 s role-out _ _ _) ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
+  post , exec-eq , record { dataCorr = C.sim-load-const v fs s _ dc sr ; pc-off = pco' ; ret-eq = ret-eq cc ; code-eq = code-eq cc }
   where
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
     halt-s = trans (C.halt-eq dc) h
-    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg eax) (imm v))
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg eax) (imm (IntW.fromℤ v)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-load-const fits-int v) ft)
     post : X.State
-    post = record s { regs = xwriteReg (xregs s) eax v ; pc = pc s + 1 }
+    post = record s { regs = xwriteReg (xregs s) eax (IntW.fromℤ v) ; pc = pc s + 1 }
+    -- the premise speaks of `8 * frame-word FS`; the emitter of 32
+    fits32 : IntW.fromℤ v < X.W.modulus
+    fits32 = subst (λ b → OnceWord.Width.fromℤ b v < X.W.modulus) bits-eq fits
+    sr : C.SetsRole s post role-out (C.lit-word (AbstractExec.lit-value {FS} fits-int v))
+    sr = subst (λ b → C.SetsRole s post role-out (C.lit-word (OnceWord.Width.fromℤ b v)))
+               (sym bits-eq)
+               (C.sets-role-x86 s role-out _ _ _)
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
     snh = subst (λ w → X.step-not-halted (compile-trace prog) s
                        ≡ just (record s { regs = xwriteReg (xregs s) eax w ; pc = pc s + 1 }))
-                (X.W.norm-id fits)
-                (step-mov-ri {compile-trace prog} {s} {eax} {v} fetch-x86)
+                (X.W.norm-id fits32)
+                (step-mov-ri {compile-trace prog} {s} {eax} {IntW.fromℤ v} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-load-const fits-int v) prog fs))

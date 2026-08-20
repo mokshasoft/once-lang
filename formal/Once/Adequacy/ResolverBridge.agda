@@ -52,7 +52,7 @@
 --   Estimate: ~400-700 lines across typing+trace. A dedicated arc, not a grind.
 ------------------------------------------------------------------------
 
-open import Once.Float.Dyadic using (FloatFormat)
+open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
 -- target-relative at `Float`, so the format is a parameter. A MODULE parameter
@@ -60,7 +60,7 @@ open import Once.Float.Dyadic using (FloatFormat)
 -- downstream uses these as facts and never reduces them — so the "recursive
 -- function in a parameterised module stops reducing" trap does not apply. The
 -- denotations themselves take it as an explicit argument.
-module Once.Adequacy.ResolverBridge (fmt : FloatFormat) where
+module Once.Adequacy.ResolverBridge (fmt : TargetNum) where
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (just)

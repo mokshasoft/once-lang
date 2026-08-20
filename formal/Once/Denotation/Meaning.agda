@@ -24,7 +24,8 @@ module Once.Denotation.Meaning where
 open import Data.Integer using (ℤ)
 import Once.Word as OnceWord
 module IntW = OnceWord.Word64
-open import Once.Float.Dyadic using (FloatFormat; encode)
+open import Once.Float.Dyadic using (encode)
+open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
@@ -108,7 +109,7 @@ named-sem {A} {B} cn bA cB a =
 -- The VALUE realm `⊢ᵍ` — a closed global element denotes a value `⟦A⟧ᴰ`.
 ------------------------------------------------------------------------
 
-⟦_⟧ᵍ : ∀ {ctx e A} → ctx ⊢ᵍ e ∶ A → FloatFormat → ⟦ A ⟧ᴰ
+⟦_⟧ᵍ : ∀ {ctx e A} → ctx ⊢ᵍ e ∶ A → TargetNum → ⟦ A ⟧ᴰ
 -- D054: an `Int` literal MEANS its two's-complement machine word, via
 -- `Once.Word.fromℤ` — the same function the elaborator's `intLit` and the
 -- blocked arith path use. It used to be `absℤ` (absolute value), so `-5` would
@@ -119,7 +120,7 @@ named-sem {A} {B} cn bA cB a =
 -- `⟦ Float ⟧` is the target's representation, not an exact value, and `1.5`
 -- has no target-free one — so the reference meaning takes the format. This
 -- clause is the entire reason it does; every other clause just passes it on.
-⟦ g-float _ _ _ d _ ⟧ᵍ fmt = encode fmt d
+⟦ g-float _ _ _ d _ ⟧ᵍ fmt = encode (float-format fmt) d
 ⟦ g-terminal _ _ ⟧ᵍ fmt = tt
 ⟦ g-pair ga gb ⟧ᵍ fmt = (⟦ ga ⟧ᵍ fmt) , (⟦ gb ⟧ᵍ fmt)
 ⟦ g-inl ga     ⟧ᵍ fmt = inj₁ (⟦ ga ⟧ᵍ fmt)
@@ -131,7 +132,7 @@ named-sem {A} {B} cn bA cB a =
 -- `⟦A⟧ᴰ → T⟦B⟧ᴰ = ⟦A ⇒ B⟧ᴰ`. Grade-erased (`π` ignored by the value domain).
 ------------------------------------------------------------------------
 
-⟦_⟧ᵐ : ∀ {ctx e A π B} → ctx ⊢ᵐ e ∶ A ⇨[ π ] B → FloatFormat → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
+⟦_⟧ᵐ : ∀ {ctx e A π B} → ctx ⊢ᵐ e ∶ A ⇨[ π ] B → TargetNum → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
 ⟦ m-id _ _        ⟧ᵐ fmt = λ a  → returnT a
 ⟦ m-fst _ _       ⟧ᵐ fmt = λ ab → returnT (proj₁ ab)
 ⟦ m-snd _ _       ⟧ᵐ fmt = λ ab → returnT (proj₂ ab)
@@ -187,8 +188,8 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 -- IR-free: morphisms via `⟦_⟧ᵐ`, values via `⟦_⟧ᵍ`, locals via `lookupᴰ`.
 ------------------------------------------------------------------------
 
-⟦_⟧ᶜ : ∀ {ctx e A Ψ} → ctx ⊢ᶜ e ∶ A ⨾ Ψ → FloatFormat → Env ctx → T ⟦ A ⟧ᴰ
-⟦_⟧ᵢ : ∀ {ctx e A Ψ} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → FloatFormat → Env ctx → T ⟦ A ⟧ᴰ
+⟦_⟧ᶜ : ∀ {ctx e A Ψ} → ctx ⊢ᶜ e ∶ A ⨾ Ψ → TargetNum → Env ctx → T ⟦ A ⟧ᴰ
+⟦_⟧ᵢ : ∀ {ctx e A Ψ} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → TargetNum → Env ctx → T ⟦ A ⟧ᴰ
 
 ⟦ t-morph-lift d ⟧ᶜ fmt         dγ = returnT (⟦ d ⟧ᵐ fmt)
 ⟦ t-value-lift g ⟧ᶜ fmt         dγ = returnT (λ _ → returnT (⟦ g ⟧ᵍ fmt))
@@ -210,7 +211,7 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 
 ⟦ t-int n ⟧ᵢ fmt                dγ = returnT (IntW.fromℤ n)
 -- D113, in the INFER realm: same clause, same reason as `g-float` above.
-⟦ t-float _ _ _ d _ ⟧ᵢ fmt      dγ = returnT (encode fmt d)
+⟦ t-float _ _ _ d _ ⟧ᵢ fmt      dγ = returnT (encode (float-format fmt) d)
 ⟦ t-str s ⟧ᵢ fmt                dγ = returnT (semM (str-lit-info s) tt)
 ⟦ t-unit ⟧ᵢ fmt                 dγ = returnT tt
 ⟦ t-unit-var ⟧ᵢ fmt             dγ = returnT tt
