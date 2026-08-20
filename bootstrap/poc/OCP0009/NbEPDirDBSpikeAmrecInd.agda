@@ -40,12 +40,13 @@ open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢; Ren⊢-ext; ren-lemma; ren-ty
         ; Sub⊢; Sub⊢-ext; ⊢single; sub-lemma )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
-open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; wᶠ¹-single; ⊢wkᶠ; sub-w )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; wᶠ¹-single; ⊢wkᶠ; sub-w; cong₃ )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibAmrec
-  using ( aStepT; Prv; wR; subren; subrenTy; extcond
-        ; renTy-idR; renTm-idR; module AmTΠ )
+  using ( aStepT; Prv; prv; prvOk; prvTm; StepExt; idOfRed; wR
+        ; subren; subrenTy; extcond; renTy-idR; renTm-idR; module AmTΠ )
 open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base )
+open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBLibNatrec using ( Ren⊢-id )
 
 module Stmt (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
@@ -228,6 +229,11 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
               (dstp : Δ ⊢ stp ∷ aStepT A cM m)
               where
 
+  open AmTΠ Δ A cM m stp dA dcM dm dstp
+    using ( amrecTm; ⊢amrecΠ; idR; auxAt; auxAt-id; auxIH; ihS-atP; ih-app
+          ; amrec-β; irrT; irrT-sub; irrElim; irr-ind; descS-at; ⊢descS-at
+          ; prv-cast; mId; extR-id )
+
   -- ★★ the family with the RESULT SLOT OPEN — what `⊢jsub` transports.
   ⊢PFam : {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
           {P : RTm ((⌊ Δ ⌋ ∙) ∙)} →
@@ -278,7 +284,65 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
                 Θ ⊢ jsub (PFam ρ P y) p e ∷ El (PAtR ρ P y u)
   ⊢transportP ρ⊢ dP dy dt du dp de = ⊢jsub (⊢PFam ρ⊢ dP dy) dt du dp de
 
-  open AmTΠ Δ A cM m stp dA dcM dm dstp using ( amrecTm; ⊢amrecΠ )
+  ------------------------------------------------------------------------
+  -- ★★★★★ THE BRIDGE — THE IH HANDLE'S CALLS **ARE** `amrec`.
+  --
+  -- Step 6 needs `P` of every call the handle makes.  Those calls are NOT
+  -- syntactically `amrec y`: `ih-app` reduces them to the AUXILIARY at the
+  -- bound `k`, while `amrec-β` reduces `amrec y` to the auxiliary at ITS
+  -- OWN bound `μ y`.  Different bounds, different certificates.
+  --
+  -- ★ `irrElim` equates exactly those two — that is what certificate
+  --   irrelevance IS — so the bridge is `ih-app` on the left, `amrec-β` on
+  --   the right, and irrelevance in the middle.
+  --
+  -- ⚠ NO PACKAGED VERSION EXISTED.  `…GcdRec`'s `s2` builds this inline for
+  --   gcd.  It belongs in the library: EVERY inductive proof over `amrec`
+  --   needs it, and rebuilding it per client is the amortisation failure
+  --   this whole exercise is about.
+  ------------------------------------------------------------------------
+
+  ihCall-amrec : StepExt Δ A cM m stp →
+                 {x k p : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ k ∷ Nat →
+                 Δ ⊢ p ∷ Hom Nat (subTm (single x) m) (nsuc k) →
+                 {y q : RTm ⌊ Δ ⌋} → Δ ⊢ y ∷ A →
+                 Δ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) m))
+                                 (subTm (single x) m) →
+                 Prv Δ (Id (El (subTm (single y) cM))
+                           (app (app (ihS-atP x x k p) y) q)
+                           (app amrecTm y))
+  ihCall-amrec ext {x = x} {k = k} {p = p} dx dk dp {y = y} {q = q} dy dq =
+    idOfRed (ih-app x x k p y q) (amrec-β y)
+            (prv-cast idEq
+              (irrElim dAt y (descS-at x x k p y q) (reflTm μy) dy' dc₁ dc₂))
+    where
+      μx = subTm (single x) m
+      μy = subTm (single y) m
+      dμx = ⊢[] dm dx
+      dμy = ⊢[] dm dy
+
+      -- the irrelevance witness at the two bounds `k` and `μ y`
+      dAt : Δ ⊢ app (prvTm (irr-ind ext dx dy dk)) μy ∷ irrT idR x y k μy
+      dAt = ⊢-cast (trans (irrT-sub vs idR (λ v → refl) x y (w k) (var vz))
+                          (cong (λ u → irrT idR x y u μy) (wk-single {v = μy} k)))
+                   (⊢app (prvOk (irr-ind ext dx dy dk)) dμy)
+
+      dy' = ⊢-cast (sym (renTy-idR (λ v → refl) A)) dy
+
+      -- ⚠ both certificates need `mId` — the measure's identity renaming
+      --   does not vanish at an abstract `m`.
+      dc₁ = ⊢-cast (cong (λ z → Hom Nat (subTm (single y) z) k) (sym mId))
+                   (⊢descS-at dμy dμx dk dq dp)
+      dc₂ = ⊢-cast (cong (λ z → Hom Nat (subTm (single y) z) μy) (sym mId))
+                   (⊢le-refl dμy)
+
+      idEq = cong₃ (λ c e₁ e₂ → Id (El c) e₁ e₂)
+                   (cong (subTm (single y))
+                         (renTm-idR (extR-id (λ v → refl)) cM))
+                   (cong (λ z → app (app z y) (descS-at x x k p y q))
+                         (auxAt-id x k))
+                   (cong (λ z → app (app z y) (reflTm μy)) (auxAt-id y μy))
+
 
   ------------------------------------------------------------------------
   -- ★★★★ THE BOUNDED STATEMENT — what the `natrec` on the measure bound
@@ -398,8 +462,8 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
   --   that comes back needs `renTy-idR`.  That is bookkeeping, not content.
   ------------------------------------------------------------------------
 
-  idR : Ren ⌊ Δ ⌋ ⌊ Δ ⌋
-  idR v = v
+  -- ⚠ `idR` is NOT defined here — `AmTΠ` already exports it, and defining
+  --   a second one makes every use ambiguous.  Same lesson as `mId`.
 
   zbrTm : RTm ((⌊ Δ ⌋ ∙) ∙) → RTm ⌊ Δ ⌋
   zbrTm P = lam (lam (absurd (PAtR (θ₂ idR) P (var (vs vz))

@@ -357,4 +357,44 @@ are back at committed state, both green, spike green.
    ★ Library lemma; every inductive proof over `amrec` will want it.
 3. Step 6 → successor branch → `⊢natrec`.
 4. ⚠ The instantiation at `n := suc (μ x)` — still the non-vacuity check.
+| 19 | 08-20 | Generalise `⊢descS-at` + 3 helpers, relocate to `AmTΠ` | ✅ green (2 rounds) | ~60s |
+| 20 | 08-20 | **THE BRIDGE** — `ihCall-amrec` | ✅ **green** (3 rounds, all scope/import) | ~15s |
+
+## ★★★ The bridge is proved
+
+    ihCall-amrec : StepExt … → … →
+      Prv Δ (Id (El (subTm (single y) cM))
+                (app (app (ihS-atP x x k p) y) q)      -- an IH call
+                (app amrecTm y))                        -- …IS `amrec y`
+
+`ih-app` on the left, `amrec-β` on the right, `irrElim` in the middle. The
+two sides are the auxiliary at DIFFERENT bounds with DIFFERENT certificates,
+and equating those is exactly what certificate irrelevance is for.
+
+⚠ **No packaged version existed** — `…GcdRec`'s `s2` builds it inline for
+gcd. It belongs in the library; rebuilding it per client is precisely the
+amortisation failure this exercise is about.
+
+### Step 1 (the relocation) paid off immediately
+
+`⊢descS-at` — generalised in attempt 19 — is what types the bridge's first
+certificate. Had it stayed in `…ExamplesGcdEqs`, the library's own bridge
+would have had to import an example.
+
+★ And the generalisation exposed a fact that was **already known but not
+shared**: `mId` (`renTm (extR idR) m ≡ m`) existed inside
+`amrec-unfold-Id`'s own `where` block. The next caller rediscovered it as a
+type error instead of inheriting it. ⇒ a `where`-bound fact about the
+MODULE'S PARAMETERS should be at module level.
+
+⚠ All three failures in attempt 20 were scope/import, not content — and one
+was a `python` `replace` that silently no-opped because I did not assert on
+it. **Third time today.** Assert on every replace.
+
+## Remaining
+
+- Step 6: `IndPW` from the `natrec`'s IH, via the bridge + `⊢transportP`.
+- The successor branch assembled; the `⊢natrec`.
+- ⚠ The instantiation at `n := suc (μ x)` — still the non-vacuity check.
+- Relocate `ihCall-amrec` (and `amrec-ind` itself) into `…LibAmrec`.
 
