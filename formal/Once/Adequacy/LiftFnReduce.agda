@@ -14,7 +14,15 @@
 -- `⟦_⟧ᴰ`). Match-to-refl + `subst-T-returnT`/`subst-arrowᴰ`/`pair-subst⁻`.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.LiftFnReduce where
+open import Once.Float.Dyadic using (FloatFormat)
+
+-- Plan 0.73 (D113): this module's statements mention a denotation that is
+-- target-relative at `Float`, so the format is a parameter. A MODULE parameter
+-- rather than a per-lemma argument because everything here is a PROOF —
+-- downstream uses these as facts and never reduces them — so the "recursive
+-- function in a parameterised module stops reducing" trap does not apply. The
+-- denotations themselves take it as an explicit argument.
+module Once.Adequacy.LiftFnReduce (fmt : FloatFormat) where
 
 open import Function using (id)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -90,62 +98,62 @@ subst-pair-bind refl refl mf mg = refl
 -- The combinator reductions (funext, for `rewrite` in the bridge clauses).
 ------------------------------------------------------------------------
 
-liftFn-id : liftFn {A} {A} IR.id ≡ (λ a → returnT a)
+liftFn-id : liftFn fmt {A} {A} IR.id ≡ (λ a → returnT a)
 liftFn-id {A} = extensionality λ a →
   trans (subst-T-returnT (cohᴰ A) (subst id (sym (cohᴰ A)) a))
         (cong returnT (subst-subst-sym (cohᴰ A)))
 
-liftFn-fst : liftFn {A * B} {A} fst ≡ (λ ab → returnT (proj₁ ab))
+liftFn-fst : liftFn fmt {A * B} {A} fst ≡ (λ ab → returnT (proj₁ ab))
 liftFn-fst {A} {B} = extensionality λ ab →
   trans (cong (λ w → subst T (cohᴰ A) (returnT (proj₁ w)))
               (pair-subst⁻ (cohᴰ A) (cohᴰ B) (proj₁ ab) (proj₂ ab)))
         (trans (subst-T-returnT (cohᴰ A) (subst id (sym (cohᴰ A)) (proj₁ ab)))
                (cong returnT (subst-subst-sym (cohᴰ A))))
 
-liftFn-snd : liftFn {A * B} {B} snd ≡ (λ ab → returnT (proj₂ ab))
+liftFn-snd : liftFn fmt {A * B} {B} snd ≡ (λ ab → returnT (proj₂ ab))
 liftFn-snd {A} {B} = extensionality λ ab →
   trans (cong (λ w → subst T (cohᴰ B) (returnT (proj₂ w)))
               (pair-subst⁻ (cohᴰ A) (cohᴰ B) (proj₁ ab) (proj₂ ab)))
         (trans (subst-T-returnT (cohᴰ B) (subst id (sym (cohᴰ B)) (proj₂ ab)))
                (cong returnT (subst-subst-sym (cohᴰ B))))
 
-liftFn-terminal : liftFn {A} {Unit} terminal ≡ (λ _ → returnT tt)
+liftFn-terminal : liftFn fmt {A} {Unit} terminal ≡ (λ _ → returnT tt)
 liftFn-terminal {A} = extensionality λ a → subst-T-returnT refl tt
 
-liftFn-inl : liftFn {A} {A + B} (IR.inl IR.Heap) ≡ (λ a → returnT (inj₁ a))
+liftFn-inl : liftFn fmt {A} {A + B} (IR.inl IR.Heap) ≡ (λ a → returnT (inj₁ a))
 liftFn-inl {A} {B} = extensionality λ a →
   trans (subst-T-returnT (cohᴰ (A + B)) (inj₁ (subst id (sym (cohᴰ A)) a)))
         (cong returnT (trans (push⊎₁ (cohᴰ A) (cohᴰ B) (subst id (sym (cohᴰ A)) a))
                              (cong inj₁ (subst-subst-sym (cohᴰ A)))))
 
-liftFn-inr : liftFn {B} {A + B} (IR.inr IR.Heap) ≡ (λ b → returnT (inj₂ b))
+liftFn-inr : liftFn fmt {B} {A + B} (IR.inr IR.Heap) ≡ (λ b → returnT (inj₂ b))
 liftFn-inr {B} {A} = extensionality λ b →
   trans (subst-T-returnT (cohᴰ (A + B)) (inj₂ (subst id (sym (cohᴰ B)) b)))
         (cong returnT (trans (push⊎₂ (cohᴰ A) (cohᴰ B) (subst id (sym (cohᴰ B)) b))
                              (cong inj₂ (subst-subst-sym (cohᴰ B)))))
 
 liftFn-∘ : (g : IR IR.⌊ B ⌋ IR.⌊ C ⌋) (f : IR IR.⌊ A ⌋ IR.⌊ B ⌋)
-  → liftFn {A} {C} (g ∘ f) ≡ (λ a → liftFn f a >>=T liftFn g)
+  → liftFn fmt {A} {C} (g ∘ f) ≡ (λ a → liftFn fmt f a >>=T liftFn fmt g)
 liftFn-∘ {B} {C} {A} g f = extensionality λ a →
-  subst-bind (cohᴰ B) (cohᴰ C) (evalᴰ f (subst id (sym (cohᴰ A)) a)) (evalᴰ g)
+  subst-bind (cohᴰ B) (cohᴰ C) (evalᴰ fmt f (subst id (sym (cohᴰ A)) a)) (evalᴰ fmt g)
 
 liftFn-pair : (f : IR IR.⌊ A ⌋ IR.⌊ B ⌋) (g : IR IR.⌊ A ⌋ IR.⌊ C ⌋)
-  → liftFn {A} {B * C} (⟨ f , g ⟩ IR.Heap)
-    ≡ (λ a → liftFn f a >>=T (λ b → liftFn g a >>=T (λ c → returnT (b , c))))
+  → liftFn fmt {A} {B * C} (⟨ f , g ⟩ IR.Heap)
+    ≡ (λ a → liftFn fmt f a >>=T (λ b → liftFn fmt g a >>=T (λ c → returnT (b , c))))
 liftFn-pair {A} {B} {C} f g = extensionality λ a →
   subst-pair-bind (cohᴰ B) (cohᴰ C)
-    (evalᴰ f (subst id (sym (cohᴰ A)) a)) (evalᴰ g (subst id (sym (cohᴰ A)) a))
+    (evalᴰ fmt f (subst id (sym (cohᴰ A)) a)) (evalᴰ fmt g (subst id (sym (cohᴰ A)) a))
 
 liftFn-curry : ∀ {A B C : Type} {k} (f : IR (IR.⌊ A ⌋ IR.* IR.⌊ B ⌋) IR.⌊ C ⌋)
-  → liftFn {A} {B ⇒[ k ] C} (curry f IR.Heap) ≡ (λ a → returnT (λ b → liftFn f (a , b)))
+  → liftFn fmt {A} {B ⇒[ k ] C} (curry f IR.Heap) ≡ (λ a → returnT (λ b → liftFn fmt f (a , b)))
 liftFn-curry {A} {B} {C} {k} f = extensionality λ a →
   trans (subst-T-returnT (cohᴰ (B ⇒[ k ] C))
-                         (λ b → evalᴰ f (subst id (sym (cohᴰ A)) a , b)))
+                         (λ b → evalᴰ fmt f (subst id (sym (cohᴰ A)) a , b)))
         (cong returnT
           (trans (subst-arrowᴰ (cohᴰ B) (cohᴰ C)
-                    (λ b → evalᴰ f (subst id (sym (cohᴰ A)) a , b)))
+                    (λ b → evalᴰ fmt f (subst id (sym (cohᴰ A)) a , b)))
                  (extensionality λ b →
-                   cong (λ w → subst T (cohᴰ C) (evalᴰ f w))
+                   cong (λ w → subst T (cohᴰ C) (evalᴰ fmt f w))
                         (sym (pair-subst⁻ (cohᴰ A) (cohᴰ B) a b)))))
 
 -- fully Set-abstracted case reductions: the case-function's branch reduction is
@@ -174,15 +182,15 @@ apply-red : ∀ {AI AT BI BT : Set} (pA : AI ≡ AT) (pB : BI ≡ BT)
 apply-red refl refl v = refl
 
 liftFn-apply : ∀ {A B : Type} {k}
-  → liftFn {(A ⇒[ k ] B) * A} {B} apply ≡ (λ v → proj₁ v (proj₂ v))
+  → liftFn fmt {(A ⇒[ k ] B) * A} {B} apply ≡ (λ v → proj₁ v (proj₂ v))
 liftFn-apply {A} {B} {k} = extensionality λ v → apply-red (cohᴰ A) (cohᴰ B) v
 
 liftFn-case-inj₁ : ∀ {A B C : Type} (f : IR IR.⌊ A ⌋ IR.⌊ C ⌋) (g : IR IR.⌊ B ⌋ IR.⌊ C ⌋) (a : ⟦ A ⟧ᴰ)
-  → liftFn {A + B} {C} (case f g) (inj₁ a) ≡ liftFn {A} {C} f a
+  → liftFn fmt {A + B} {C} (case f g) (inj₁ a) ≡ liftFn fmt {A} {C} f a
 liftFn-case-inj₁ {A} {B} {C} f g a =
-  lift-inj₁-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ (case {IR.⌊ A ⌋} {IR.⌊ B ⌋} {IR.⌊ C ⌋} f g)) (evalᴰ f) (λ x → refl) a
+  lift-inj₁-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt (case {IR.⌊ A ⌋} {IR.⌊ B ⌋} {IR.⌊ C ⌋} f g)) (evalᴰ fmt f) (λ x → refl) a
 
 liftFn-case-inj₂ : ∀ {A B C : Type} (f : IR IR.⌊ A ⌋ IR.⌊ C ⌋) (g : IR IR.⌊ B ⌋ IR.⌊ C ⌋) (b : ⟦ B ⟧ᴰ)
-  → liftFn {A + B} {C} (case f g) (inj₂ b) ≡ liftFn {B} {C} g b
+  → liftFn fmt {A + B} {C} (case f g) (inj₂ b) ≡ liftFn fmt {B} {C} g b
 liftFn-case-inj₂ {A} {B} {C} f g b =
-  lift-inj₂-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ (case {IR.⌊ A ⌋} {IR.⌊ B ⌋} {IR.⌊ C ⌋} f g)) (evalᴰ g) (λ x → refl) b
+  lift-inj₂-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt (case {IR.⌊ A ⌋} {IR.⌊ B ⌋} {IR.⌊ C ⌋} f g)) (evalᴰ fmt g) (λ x → refl) b

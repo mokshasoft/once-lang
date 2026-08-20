@@ -24,7 +24,15 @@
 -- clear of `MeaningBridge`'s `⟦_⟧`-mixfix soup, mirroring `CataFold`/`CataRel`.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.CataBridge where
+open import Once.Float.Dyadic using (FloatFormat)
+
+-- Plan 0.73 (D113): this module's statements mention a denotation that is
+-- target-relative at `Float`, so the format is a parameter. A MODULE parameter
+-- rather than a per-lemma argument because everything here is a PROOF —
+-- downstream uses these as facts and never reduces them — so the "recursive
+-- function in a parameterised module stops reducing" trap does not apply. The
+-- denotations themselves take it as an explicit argument.
+module Once.Adequacy.CataBridge (fmt : FloatFormat) where
 
 open import Data.Nat using (ℕ)
 open import Data.Unit using (⊤; tt)
@@ -51,9 +59,9 @@ open import Once.IRTy using (⌊_⌋; eraseF; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Relation.Binary.PropositionalEquality using (subst)
 import Once.IR as IR
-open import Once.Adequacy.MeaningRelation using (RelV; RelT)
+open import Once.Adequacy.MeaningRelation fmt using (RelV; RelT)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
-open import Once.Adequacy.CataErased using (evalᴰ-Cata-erased)
+open import Once.Adequacy.CataErased fmt using (evalᴰ-Cata-erased)
 
 ------------------------------------------------------------------------
 -- Reflexivity of `RelV` at base types (funext-free; a private copy so
@@ -79,10 +87,10 @@ base-refl (base-Sum ibA ibB) (inj₂ b) = base-refl ibB b
 
 cata-bridge : ∀ {F} {A'} {wfF : WellFormedF F}
               (dalg : ⟦ ⟦ F ⟧T A' ⟧ᴰ → T ⟦ A' ⟧ᴰ) (mir : IR.IR ⌊ ⟦ F ⟧T A' ⌋ ⌊ A' ⌋)
-              (algR : ∀ {x y} → RelV (⟦ F ⟧T A') x y → RelT A' (dalg x) (liftFn mir y))
+              (algR : ∀ {x y} → RelV (⟦ F ⟧T A') x y → RelT A' (dalg x) (liftFn fmt mir y))
               {a b : ⟦ μ-type F ⟧ᴰ} → RelV (μ-type F) a b
             → RelT A' (cata-sem wfF dalg a)
-                      (liftFn (IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR.IR o ⌊ A' ⌋) (⌊⟧T-commute F A') mir)) b)
+                      (liftFn fmt (IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR.IR o ⌊ A' ⌋) (⌊⟧T-commute F A') mir)) b)
 cata-bridge {F} {A'} {wfF} dalg mir algR {a} {.a} refl n
   rewrite evalᴰ-Cata-erased {A'} wfF mir a =
   cataS-rel RelC algR-full (forget a)
@@ -116,7 +124,7 @@ cata-bridge {F} {A'} {wfF} dalg mir algR {a} {.a} refl n
     -- by `algR` (= `bridge-m alg`) on the `RelV`-related folded argument.
     algR-full : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) RelC y₁ y₂
               → RelC (cata-ev-algᴰ-D {F} {A'} n dalg (coerce-μ-out wfF _ y₁))
-                     (cata-ev-algᴰ-D {F} {A'} n (liftFn mir) (coerce-μ-out wfF _ y₂))
+                     (cata-ev-algᴰ-D {F} {A'} n (liftFn fmt mir) (coerce-μ-out wfF _ y₂))
     algR-full rsf =
       let (ev-eq , z-rel) = layer-lemma wfF rsf
           (tr-eq , v-rel) = algR z-rel n
