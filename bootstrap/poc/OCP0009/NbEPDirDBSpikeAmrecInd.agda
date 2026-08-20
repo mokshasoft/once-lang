@@ -29,10 +29,12 @@ module poc.OCP0009.NbEPDirDBSpikeAmrecInd where
 open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; RTm; El; U; Nat; Hom; Π; var; vz; vs; Var; app; nsuc; nzero; natrec
+        ; lam; absurd
         ; subTm; subTy; renTy; renTm; Ren; extR; extS; renTy-renTy )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; ty-El; ty-Π; ty-Hom; ty-Nat )
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; ⊢nsuc; ⊢lam; ⊢nzero; nrs
+        ; ty-El; ty-Π; ty-Hom; ty-Nat )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢; Ren⊢-ext; ren-lemma; ren-ty
         ; Sub⊢; Sub⊢-ext; ⊢single; sub-lemma )
@@ -40,6 +42,7 @@ open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; wᶠ¹-single; ⊢wkᶠ )
 open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( aStepT; Prv; wR; module AmTΠ )
+open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base )
 
 module Stmt (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
             (dA   : Δ ⊢ty A)
@@ -206,20 +209,36 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
   --   `A`-argument, and `wᶠ` inserts the BOUND at slot 1 while leaving that
   --   argument where it is — so the measure lands on `x` with no
   --   substitution at all.
+  --
+  -- ⚠⚠ THE CERTIFICATE IS `μ x < n`, NOT `μ x ≤ n`, AND THAT IS FORCED.
+  --   With `≤`, the ZERO branch has to prove the statement at `μ x ≤ 0` —
+  --   which is SATISFIABLE (the measure really can be 0), so it needs an
+  --   unfolding there.  The only zero unfolding in the library is
+  --   `amrec-unfold-z`, and it is REDUCTION-based: its premise is
+  --   `μ x ⟶* nzero`, which a VARIABLE never satisfies.  That is precisely
+  --   the wall gap A's equation 4 hit, and there is no `Id`-valued zero
+  --   analogue of `amrec-unfold-Id` to escape through.
+  --
+  --   With `<`, the zero branch is `nsuc (μ x) ≤ 0`, which COMPUTES to
+  --   `base` — ex falso, no unfolding needed.  Same trick as
+  --   `⊢strong-base`, and the reason the order being a COMPUTING relation
+  --   pays off.  The successor branch then reads `nsuc (μ x) ≤ suc k`,
+  --   i.e. `μ x ≤ k`, which `⊢le-suc` widens to the `μ x ≤ suc k` that
+  --   `amrec-unfold-Id` wants.
   ------------------------------------------------------------------------
 
-  ρ₃ : Ren ⌊ Δ ⌋ ⌊ ((Δ ▹ Nat) ▹ renTy vs A) ▹ Hom Nat (wᶠ m) (var (vs vz)) ⌋
+  ρ₃ : Ren ⌊ Δ ⌋ ⌊ ((Δ ▹ Nat) ▹ renTy vs A) ▹ Hom Nat (nsuc (wᶠ m)) (var (vs vz)) ⌋
   ρ₃ v = vs (vs (vs v))
 
   IndB : RTm ((⌊ Δ ⌋ ∙) ∙) → RTy (⌊ Δ ⌋ ∙)
   IndB P =
     Π (renTy vs A)
-      (Π (Hom Nat (wᶠ m) (var (vs vz)))
+      (Π (Hom Nat (nsuc (wᶠ m)) (var (vs vz)))
          (El (PAtR ρ₃ P (var (vs vz))
                 (app (renTm ρ₃ amrecTm) (var (vs vz))))))
 
   -- ★ the ambient renaming, typed: three weakenings off `Δ`.
-  ρ₃⊢ : Ren⊢ Δ (((Δ ▹ Nat) ▹ renTy vs A) ▹ Hom Nat (wᶠ m) (var (vs vz))) ρ₃
+  ρ₃⊢ : Ren⊢ Δ (((Δ ▹ Nat) ▹ renTy vs A) ▹ Hom Nat (nsuc (wᶠ m)) (var (vs vz))) ρ₃
   ρ₃⊢ = wR (wR there)
 
   ⊢IndB : {P : RTm ((⌊ Δ ⌋ ∙) ∙)} →
@@ -227,7 +246,7 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
           (Δ ▹ Nat) ⊢ty IndB P
   ⊢IndB dP =
     ty-Π (ren-ty dA there)
-      (ty-Π (ty-Hom ty-Nat (⊢wkᶠ dm) (⊢var (there here)))
+      (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢wkᶠ dm)) (⊢var (there here)))
          (ty-El (⊢PAtR ρ₃⊢ dP dy (⊢app (ren-lemma ⊢amrecΠ ρ₃⊢) dy))))
     where
       -- ⚠ THE VARIABLE'S TYPE IS THE COMPOSITE, NOT THE CONTEXT'S.
@@ -240,6 +259,35 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
 
       dy = ⊢-cast dyEq (⊢var (there here))
 
+
+  ------------------------------------------------------------------------
+  -- ⚠⚠⚠ THE ZERO BRANCH — DRAFTED, AND BLOCKED ON A PEEL.  NOT PROVED.
+  --
+  -- ★ THE PROOF ITSELF IS SETTLED, and it is three lines:
+  --
+  --     ⊢lam dA (⊢lam <the Hom is a type> (⊢strong-base <P as a code> (⊢var here)))
+  --
+  --   At `n := 0` the hypothesis is `nsuc (μ x) ≤ 0`, the ORDER COMPUTES
+  --   (`Hom Nat (nsuc k) nzero ⟶ᵀ base`), and `⊢strong-base` discharges it.
+  --   No `amrec` unfolding, no reduction premise on the measure — which is
+  --   exactly why the certificate was shifted to `μ x < n`.
+  --
+  -- ⚠ WHAT BLOCKS IT IS BOOKKEEPING, NOT CONTENT: `subTy (single nzero)`
+  --   COLLAPSES A SLOT.  `IndB`'s body sits under THREE binders (n, x, c);
+  --   after the bound is substituted away it sits under TWO.  So the branch
+  --   needs its own renaming `ρ₂ = vs ∘ vs`, and a FUSION lemma relating
+  --
+  --       subTm (extS (extS (single nzero))) (renTm (extR (extR ρ₃)) P)
+  --     ≡ renTm (extR (extR ρ₂)) P
+  --
+  --   ⇒ this is exactly the `nv-z` / `na-z` shape in `…LibNatrec`, which
+  --     exists for `natrec`'s ordinary motive but not for `IndB`.  The
+  --     successor branch will need the `nv-s` twin.  Both are `subren`
+  --     fusions and neither is deep — but they are the next real work, and
+  --     writing the branch before them just fights the peel.
+  --
+  -- ⇒ NEXT: `IndB-z` and `IndB-s`, then the two branches, then `⊢natrec`.
+  ------------------------------------------------------------------------
 
 module Concl (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
              (dA   : Δ ⊢ty A)

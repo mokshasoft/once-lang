@@ -149,4 +149,63 @@ branch (`μ x ≤ suc k`, where `amrec-unfold-Id` rewrites `amrecTm x` to
 `stp x ⟨ih⟩` and `IndStep` crosses it with the IH supplying `IndPW`). ⚠ This
 is the part that can still fight back — everything so far has been shape,
 not content.
+| 9 | 08-20 | Shift the certificate to `μ x < n` | ✅ green | ~15s |
+| 10 | 08-20 | Zero branch by `⊢strong-base` | ⚠ **blocked on a peel** — parked, tree green | ~15s |
+
+## ★★★ Attempt 9 — a design correction the branches would have hit anyway
+
+The certificate was `μ x ≤ n`. That is **wrong**, and the reason is not
+aesthetic:
+
+- With `≤`, the ZERO branch must prove the statement at `μ x ≤ 0` — which is
+  **satisfiable** (the measure really can be 0), so it needs an unfolding
+  there. The only zero unfolding in the library is `amrec-unfold-z`, and it
+  is **reduction-based**: its premise is `μ x ⟶* nzero`, which a VARIABLE
+  never satisfies. ⚠ That is precisely the wall gap A's equation 4 hit, and
+  there is no `Id`-valued zero analogue of `amrec-unfold-Id` to escape by.
+- With `<`, the zero branch is `nsuc (μ x) ≤ 0`, which **computes to
+  `base`** — ex falso, no unfolding. Same move as `⊢strong-base`, and a
+  direct payoff of the order being a COMPUTING relation.
+- The successor branch then reads `nsuc (μ x) ≤ suc k`, i.e. `μ x ≤ k`,
+  which `⊢le-suc` widens to the `μ x ≤ suc k` that `amrec-unfold-Id` wants.
+
+⇒ Found by asking what the zero branch would need BEFORE writing it. Had the
+`≤` version been built first, it would have died at the reduction premise —
+the same dead end, rediscovered.
+
+## Attempt 10 — where it actually stands
+
+The zero branch's PROOF is settled and is three lines:
+`⊢lam dA (⊢lam <Hom is a type> (⊢strong-base <P as a code> (⊢var here)))`.
+
+⚠ What blocks it is **bookkeeping, not content**: `subTy (single nzero)`
+COLLAPSES A SLOT. `IndB`'s body sits under three binders (n, x, c); once the
+bound is substituted away it sits under two. So the branch needs its own
+renaming `ρ₂ = vs ∘ vs` plus a fusion
+
+    subTm (extS (extS (single nzero))) (renTm (extR (extR ρ₃)) P)
+  ≡ renTm (extR (extR ρ₂)) P
+
+which is exactly the `nv-z`/`na-z` shape `…LibNatrec` already has for
+`natrec`'s ordinary motive — but not for `IndB`. The successor branch needs
+the `nv-s` twin.
+
+**Parked deliberately with the tree green** rather than leaving a broken
+module. Writing the branch before the peel just fights the peel — gap A's
+most expensive lesson.
+
+## Vacuity — asked, not yet answered
+
+The zero branch being ex falso is normal (it is a base case). The real risk
+is the CONCLUSION being unreachable. It should discharge by instantiating
+`n := suc (μ x)` with `⊢le-refl`, the same move `⊢sind` uses — ⚠ but that is
+**unproved**, and this codebase has shipped a green-but-vacuous lemma before
+(`subti-postulate-was-false`). **Prove the instantiation before trusting any
+of this.**
+
+## Next, in order
+
+1. `IndB-z` / `IndB-s` — the two `subren` fusions.
+2. The two branches, then `⊢natrec`.
+3. **The instantiation at `n := suc (μ x)`** — the non-vacuity check.
 
