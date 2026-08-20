@@ -20,7 +20,15 @@
 -- `CataRel`/`CataBridge`, to keep the transport proof clear of `⟦_⟧`-mixfix soup.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.CataErased where
+open import Once.Float.Dyadic using (FloatFormat)
+
+-- Plan 0.73 (D113): this module's statements mention a denotation that is
+-- target-relative at `Float`, so the format is a parameter. A MODULE parameter
+-- rather than a per-lemma argument because everything here is a PROOF —
+-- downstream uses these as facts and never reduces them — so the "recursive
+-- function in a parameterised module stops reducing" trap does not apply. The
+-- denotations themselves take it as an explicit argument.
+module Once.Adequacy.CataErased (fmt : FloatFormat) where
 
 open import Data.Nat using (ℕ)
 open import Data.List using (List; _++_)
@@ -91,7 +99,7 @@ cataS-subst-functor refl alg x = refl
 -- object of an IR morphism is the same as back-transporting its argument.
 evalᴰ-subst-dom : ∀ {o₁ o₂ : IRTy} {B : IRTy} (eq : o₁ ≡ o₂)
     (m : IR.IR o₁ B) (z : ⟦ o₂ ⟧ᴰᴵ)
-  → evalᴰ (subst (λ o → IR.IR o B) eq m) z ≡ evalᴰ m (subst ⟦_⟧ᴰᴵ (sym eq) z)
+  → evalᴰ fmt (subst (λ o → IR.IR o B) eq m) z ≡ evalᴰ fmt m (subst ⟦_⟧ᴰᴵ (sym eq) z)
 evalᴰ-subst-dom refl m z = refl
 
 -- The IR-carrier cata trace-algebra is DEFINITIONALLY the Type-carrier one
@@ -101,9 +109,9 @@ evalᴰ-subst-dom refl m z = refl
 cata-ev-algᴰ-is-D : ∀ {F : IRFunctor} {C : IRTy} (n : ℕ)
     (alg : IR.IR (⟦ F ⟧TI C) C)
     (fc : ⟦ ⌈ F ⌉F ⟧F (List SigOpEvent × ⟦ C ⟧ᴰᴵ))
-  → cata-ev-algᴰ {F} {C} n alg fc
+  → cata-ev-algᴰ fmt {F} {C} n alg fc
     ≡ cata-ev-algᴰ-D {⌈ F ⌉F} {⌈ C ⌉} n
-        (λ z → evalᴰ alg (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute F C)) z)) fc
+        (λ z → evalᴰ fmt alg (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute F C)) z)) fc
 cata-ev-algᴰ-is-D n alg fc = refl
 
 ------------------------------------------------------------------------
@@ -297,8 +305,8 @@ module _ {A' : Type} where
 
   evalᴰ-Cata-erased : ∀ {F : Functor} (wfF : WellFormedF F)
       (mir : IR.IR ⌊ ⟦ F ⟧T A' ⌋ ⌊ A' ⌋) (w : ⟦ μ-type F ⟧ᴰ)
-    → liftFn (IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR.IR o ⌊ A' ⌋) (⌊⟧T-commute F A') mir)) w
-      ≡ cata-sem wfF (liftFn mir) w
+    → liftFn fmt (IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR.IR o ⌊ A' ⌋) (⌊⟧T-commute F A') mir)) w
+      ≡ cata-sem wfF (liftFn fmt mir) w
   evalᴰ-Cata-erased {F} wfF mir w = extensionality goal
     where
       mir' : IR.IR (⟦ eraseF F ⟧TI ⌊ A' ⌋) ⌊ A' ⌋
@@ -311,13 +319,13 @@ module _ {A' : Type} where
       seed-eq = trans (sym (subst-cong-μS (tF-coh F) w'))
                       (subst-subst-sym {P = λ z → z} (cong μS (tF-coh F)))
 
-      goal : ∀ n → liftFn (IR.Cata (wf-⌊⌋ wfF) mir') w n ≡ cata-sem wfF (liftFn mir) w n
-      goal n = trans (subst-T-apply (cohᴰ A') (evalᴰ (IR.Cata (wf-⌊⌋ wfF) mir') w') n)
+      goal : ∀ n → liftFn fmt (IR.Cata (wf-⌊⌋ wfF) mir') w n ≡ cata-sem wfF (liftFn fmt mir) w n
+      goal n = trans (subst-T-apply (cohᴰ A') (evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir') w') n)
                      (trans (cong (λ L → (proj₁ L , subst (λ z → z) (cohᴰ A') (proj₂ L))) Lr≡)
                             (cong₂ _,_ (proj₁ rc) (proj₂ rc)))
         where
           dalg_L : ⟦ ⟦ ⌈ eraseF F ⌉F ⟧T ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ → T ⟦ ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ
-          dalg_L z = evalᴰ mir' (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋)) z)
+          dalg_L z = evalᴰ fmt mir' (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋)) z)
 
           algL : ⟦ translateF Carrier Carrier (⌈ eraseF F ⌉F) ⟧SF (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)
           algL y = cata-ev-algᴰ-D {⌈ eraseF F ⌉F} {⌈ ⌊ A' ⌋ ⌉} n dalg_L (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ y)
@@ -326,9 +334,9 @@ module _ {A' : Type} where
           algL' y = algL (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y)
 
           algM : ⟦ translateF Carrier Carrier F ⟧SF (List SigOpEvent × ⟦ A' ⟧ᴰ) → (List SigOpEvent × ⟦ A' ⟧ᴰ)
-          algM y = cata-ev-algᴰ-D {F} {A'} n (liftFn mir) (coerce-μ-out wfF _ y)
+          algM y = cata-ev-algᴰ-D {F} {A'} n (liftFn fmt mir) (coerce-μ-out wfF _ y)
 
-          Lr≡ : evalᴰ (IR.Cata (wf-⌊⌋ wfF) mir') w' n ≡ cataS {translateF Carrier Carrier F} algL' (forget w)
+          Lr≡ : evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir') w' n ≡ cataS {translateF Carrier Carrier F} algL' (forget w)
           Lr≡ = trans (cataS-subst-functor (tF-coh F) algL (forget w'))
                       (cong (cataS {translateF Carrier Carrier F} algL') seed-eq)
 
@@ -336,9 +344,9 @@ module _ {A' : Type} where
           algR-full {y₁} {y₂} rsf = cong₂ _++_ (layer-events wfF rsf) trace-step , value-step
             where
               z_L = coerce-functor⁻¹-D ⌈ eraseF F ⌉F ⌈ ⌊ A' ⌋ ⌉ (sem-fmap ⌈ eraseF F ⌉F proj₂ (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y₁)))
-              step-eq : subst T (cohᴰ A') (dalg_L z_L) ≡ liftFn mir (coerce-functor⁻¹-D F A' (sem-fmap F proj₂ (coerce-μ-out wfF _ y₂)))
+              step-eq : subst T (cohᴰ A') (dalg_L z_L) ≡ liftFn fmt mir (coerce-functor⁻¹-D F A' (sem-fmap F proj₂ (coerce-μ-out wfF _ y₂)))
               step-eq = trans (cong (subst T (cohᴰ A')) (evalᴰ-subst-dom (⌊⟧T-commute F A') mir (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋)) z_L)))
-                              (cong (λ Z → subst T (cohᴰ A') (evalᴰ mir Z)) (layer-z wfF rsf))
+                              (cong (λ Z → subst T (cohᴰ A') (evalᴰ fmt mir Z)) (layer-z wfF rsf))
               trace-step = trans (sym (subst-T-projTrace (cohᴰ A') (dalg_L z_L) n)) (cong (λ t → projTrace t n) step-eq)
               value-step = trans (sym (subst-T-valueT (cohᴰ A') (dalg_L z_L) n)) (cong (λ t → valueT t n) step-eq)
 
@@ -393,10 +401,10 @@ forget-coh (base-Sum {A} {B} ibA ibB) (inj₂ b)
 ------------------------------------------------------------------------
 
 liftFn-SigOp : ∀ {A B : Type} (info : SigOpInfo A B) (bA : IsBaseType A)
-  → liftFn (IR.SigOp info)
+  → liftFn fmt (IR.SigOp info)
     ≡ (λ arg → λ n → (emit-D info (forget arg) , inject (semM info (forget arg))))
 liftFn-SigOp {A} {B} info bA = extensionality λ arg → extensionality λ n →
-  trans (subst-T-apply (cohᴰ B) (evalᴰ (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) n)
+  trans (subst-T-apply (cohᴰ B) (evalᴰ fmt (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) n)
         (cong₂ _,_ (cong (emit-D info) (forget-coh bA arg))
                    (trans (subst-subst-sym {P = λ z → z} (cohᴰ B))
                           (cong (λ w → inject (semM info w)) (forget-coh bA arg))))

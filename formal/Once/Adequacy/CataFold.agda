@@ -16,7 +16,15 @@
 -- `extract-morph-eff` and applies `cata-fold-eq`.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.CataFold where
+open import Once.Float.Dyadic using (FloatFormat)
+
+-- Plan 0.73 (D113): this module's statements mention a denotation that is
+-- target-relative at `Float`, so the format is a parameter. A MODULE parameter
+-- rather than a per-lemma argument because everything here is a PROOF —
+-- downstream uses these as facts and never reduces them — so the "recursive
+-- function in a parameterised module stops reducing" trap does not apply. The
+-- denotations themselves take it as an explicit argument.
+module Once.Adequacy.CataFold (fmt : FloatFormat) where
 
 open import Data.Nat using (ℕ)
 open import Data.List using (List; [])
@@ -35,7 +43,8 @@ open import Once.Surface.Syntax using (Expr; ∅; Ctx; zeroUsage; ⟦_⟧ᶜ)
 import Once.Surface.Syntax as Srf
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Postulates using (extensionality)
-open import Once.Adequacy.CataErased using (evalᴰ-Cata-erased)
+-- `CataErased` is parameterised by the format (D113); apply it to ours.
+open import Once.Adequacy.CataErased fmt using (evalᴰ-Cata-erased)
 import Once.IR as IR
 import Once.Denotation.SourceDenote as SD
 
@@ -48,10 +57,10 @@ cata-fold-eq : ∀ {n} {Γ : Ctx n} {F : Functor} {A : Type} {π : Purity}
     (wfF : WellFormedF F)
     (algE : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
     (m-alg : IR.IR ⌊ ⟦ F ⟧T A ⌋ ⌊ A ⌋)
-  → SD.⟦ algE ⟧ˢ tt ≡ SD.liftD m-alg
+  → SD.⟦ algE ⟧ˢ fmt tt ≡ SD.liftD fmt m-alg
   → ∀ (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-  → SD.⟦ Srf.cata {Γ = Γ} wfF algE ⟧ˢ dγ k
-      ≡ SD.liftD (IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR.IR o ⌊ A ⌋) (⌊⟧T-commute F A) m-alg)) k
+  → SD.⟦ Srf.cata {Γ = Γ} wfF algE ⟧ˢ fmt dγ k
+      ≡ SD.liftD fmt (IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR.IR o ⌊ A ⌋) (⌊⟧T-commute F A) m-alg)) k
 cata-fold-eq {F = F} {A = A} wfF algE m-alg feq dγ k =
   cong ([] ,_) (extensionality λ x →
     trans (cong (λ g → λ n → let r = sem-cata wfF (SD.cata-ev-algˢ {F} {A} n g) x in (proj₁ r , proj₂ r)) feq)
