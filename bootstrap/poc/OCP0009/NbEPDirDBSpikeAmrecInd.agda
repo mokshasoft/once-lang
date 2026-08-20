@@ -26,20 +26,20 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBSpikeAmrecInd where
 
-open import normalizer.Syntax.Types using ( _≡_; cong )
+open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; _∙; RTy; RTm; El; U; Nat; Hom; Π; var; vz; app; nsuc
-        ; subTm; subTy; renTy; renTm; Ren; extR; extS )
+  using ( Cx; _∙; RTy; RTm; El; U; Nat; Hom; Π; var; vz; vs; Var; app; nsuc; nzero; natrec
+        ; subTm; subTy; renTy; renTm; Ren; extR; extS; renTy-renTy )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; ⊢app; ty-El )
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; ty-El; ty-Π; ty-Hom; ty-Nat )
 open import poc.OCP0009.NbEPDirDBSubj
-  using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢; Ren⊢-ext; ren-lemma
+  using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢; Ren⊢-ext; ren-lemma; ren-ty
         ; Sub⊢; Sub⊢-ext; ⊢single; sub-lemma )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
-open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; wᶠ¹-single )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; wᶠ¹-single; ⊢wkᶠ )
 open import poc.OCP0009.NbEPDirDBLibAmrec
-  using ( aStepT; Prv; module AmTΠ )
+  using ( aStepT; Prv; wR; module AmTΠ )
 
 module Stmt (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
             (dA   : Δ ⊢ty A)
@@ -190,6 +190,56 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
     ⊢[] (sub-lemma (ren-lemma dP (Ren⊢-ext (Ren⊢-ext ρ⊢)))
                    (Sub⊢-ext (⊢single dy)))
         dval
+
+  open AmTΠ Δ A cM m stp dA dcM dm dstp using ( amrecTm; ⊢amrecΠ )
+
+  ------------------------------------------------------------------------
+  -- ★★★★ THE BOUNDED STATEMENT — what the `natrec` on the measure bound
+  --   actually inducts over:
+  --
+  --     "for every `x : A` with `μ x ≤ n`,  P holds at (x, amrec x)"
+  --
+  --   It lives at `Δ ▹ Nat`, the bound being that `Nat`.  Inside the two
+  --   `Π`s the slots read  [0]=c  [1]=x  [2]=n.
+  --
+  -- ⚠ `μ x` is `wᶠ m`, NOT a substitution.  `m`'s own slot 0 IS the
+  --   `A`-argument, and `wᶠ` inserts the BOUND at slot 1 while leaving that
+  --   argument where it is — so the measure lands on `x` with no
+  --   substitution at all.
+  ------------------------------------------------------------------------
+
+  ρ₃ : Ren ⌊ Δ ⌋ ⌊ ((Δ ▹ Nat) ▹ renTy vs A) ▹ Hom Nat (wᶠ m) (var (vs vz)) ⌋
+  ρ₃ v = vs (vs (vs v))
+
+  IndB : RTm ((⌊ Δ ⌋ ∙) ∙) → RTy (⌊ Δ ⌋ ∙)
+  IndB P =
+    Π (renTy vs A)
+      (Π (Hom Nat (wᶠ m) (var (vs vz)))
+         (El (PAtR ρ₃ P (var (vs vz))
+                (app (renTm ρ₃ amrecTm) (var (vs vz))))))
+
+  -- ★ the ambient renaming, typed: three weakenings off `Δ`.
+  ρ₃⊢ : Ren⊢ Δ (((Δ ▹ Nat) ▹ renTy vs A) ▹ Hom Nat (wᶠ m) (var (vs vz))) ρ₃
+  ρ₃⊢ = wR (wR there)
+
+  ⊢IndB : {P : RTm ((⌊ Δ ⌋ ∙) ∙)} →
+          ((Δ ▹ A) ▹ El cM) ⊢ P ∷ U →
+          (Δ ▹ Nat) ⊢ty IndB P
+  ⊢IndB dP =
+    ty-Π (ren-ty dA there)
+      (ty-Π (ty-Hom ty-Nat (⊢wkᶠ dm) (⊢var (there here)))
+         (ty-El (⊢PAtR ρ₃⊢ dP dy (⊢app (ren-lemma ⊢amrecΠ ρ₃⊢) dy))))
+    where
+      -- ⚠ THE VARIABLE'S TYPE IS THE COMPOSITE, NOT THE CONTEXT'S.
+      --   `⊢var (there here)` yields `renTy vs (renTy vs (renTy vs A))`,
+      --   while `⊢PAtR` and `⊢app` both want `renTy ρ₃ A`.  Equal only up
+      --   to `renTy-renTy`, twice — the same fusion `wR` does internally
+      --   with `∋-cast`.
+      dyEq : renTy vs (renTy vs (renTy vs A)) ≡ renTy ρ₃ A
+      dyEq = trans (cong (renTy vs) (renTy-renTy A)) (renTy-renTy A)
+
+      dy = ⊢-cast dyEq (⊢var (there here))
+
 
 module Concl (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
              (dA   : Δ ⊢ty A)
