@@ -38,6 +38,7 @@ open import Once.Type
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D; coerce-functor⁻¹-D; cohᴰ; liftFn)
+open import Once.Float.Dyadic using (FloatFormat; encode)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.IR using (IR; ⌊_⌋)
@@ -116,93 +117,101 @@ ana-eventsˢ {F} {A} coalgComp a (suc m) =
 -- transported form without re-importing the `⟦_⟧ˢ`-mixfix (Plan 0.52 M2).
 ------------------------------------------------------------------------
 
-liftD : ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → T (⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ)
-liftD {A} {B} ir = returnT (liftFn ir)
+liftD : (fmt : FloatFormat) → ∀ {A B : Type} → IR ⌊ A ⌋ ⌊ B ⌋ → T (⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ)
+liftD fmt {A} {B} ir = returnT (liftFn fmt ir)
 
 ------------------------------------------------------------------------
 -- THE SOURCE SEMANTICS. Structural on `Expr`; arrows are Kleisli arrows
 -- into `T`; `apply`/`let`/`case` thread the trace via `_>>=T_`.
 ------------------------------------------------------------------------
 
+-- Plan 0.73 (D113): the format, threaded as an explicit argument. A float
+-- literal has no target-free machine value, so a machine-level source
+-- denotation is target-relative — see `⟦ float d _ ⟧ˢ` below, which is that
+-- fact in one clause. Not a module parameter: `⟦_⟧ˢ` is recursive, and a
+-- recursive function in a parameterised module stops reducing downstream.
 ⟦_⟧ˢ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A}
-     → Expr Γ Ψ A → ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ → T ⟦ A ⟧ᴰ
-⟦ var {Γ = Γ} i ⟧ˢ dγ = returnT (lookupᴰ Γ i dγ)
-⟦ lam q _ e ⟧ˢ    dγ = returnT (λ a → ⟦ e ⟧ˢ (dγ , a))
-⟦ app f x ⟧ˢ      dγ = ⟦ f ⟧ˢ dγ >>=T λ vf → ⟦ x ⟧ˢ dγ >>=T λ vx → vf vx
-⟦ pair a b ⟧ˢ     dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (va , vb)
-⟦ fst' e ⟧ˢ       dγ = ⟦ e ⟧ˢ dγ >>=T λ v → returnT (proj₁ v)
-⟦ snd' e ⟧ˢ       dγ = ⟦ e ⟧ˢ dγ >>=T λ v → returnT (proj₂ v)
-⟦ inl' e ⟧ˢ       dγ = ⟦ e ⟧ˢ dγ >>=T λ v → returnT (inj₁ v)
-⟦ inr' e ⟧ˢ       dγ = ⟦ e ⟧ˢ dγ >>=T λ v → returnT (inj₂ v)
-⟦ case' s l r ⟧ˢ  dγ = ⟦ s ⟧ˢ dγ >>=T λ v →
-                         [ (λ a → ⟦ l ⟧ˢ (dγ , a)) , (λ b → ⟦ r ⟧ˢ (dγ , b)) ]′ v
-⟦ unit ⟧ˢ         dγ = returnT tt
-⟦ absurd e ⟧ˢ     dγ = ⟦ e ⟧ˢ dγ >>=T λ v → ⊥-elim v
-⟦ let' e1 e2 ⟧ˢ   dγ = ⟦ e1 ⟧ˢ dγ >>=T λ v1 → ⟦ e2 ⟧ˢ (dγ , v1)
-⟦ int n ⟧ˢ        dγ = returnT (absℤ n)
+     → Expr Γ Ψ A → FloatFormat → ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ → T ⟦ A ⟧ᴰ
+⟦ var {Γ = Γ} i ⟧ˢ fmt dγ = returnT (lookupᴰ Γ i dγ)
+⟦ lam q _ e ⟧ˢ fmt    dγ = returnT (λ a → ⟦ e ⟧ˢ fmt (dγ , a))
+⟦ app f x ⟧ˢ fmt      dγ = ⟦ f ⟧ˢ fmt dγ >>=T λ vf → ⟦ x ⟧ˢ fmt dγ >>=T λ vx → vf vx
+⟦ pair a b ⟧ˢ fmt     dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (va , vb)
+⟦ fst' e ⟧ˢ fmt       dγ = ⟦ e ⟧ˢ fmt dγ >>=T λ v → returnT (proj₁ v)
+⟦ snd' e ⟧ˢ fmt       dγ = ⟦ e ⟧ˢ fmt dγ >>=T λ v → returnT (proj₂ v)
+⟦ inl' e ⟧ˢ fmt       dγ = ⟦ e ⟧ˢ fmt dγ >>=T λ v → returnT (inj₁ v)
+⟦ inr' e ⟧ˢ fmt       dγ = ⟦ e ⟧ˢ fmt dγ >>=T λ v → returnT (inj₂ v)
+⟦ case' s l r ⟧ˢ fmt  dγ = ⟦ s ⟧ˢ fmt dγ >>=T λ v →
+                         [ (λ a → ⟦ l ⟧ˢ fmt (dγ , a)) , (λ b → ⟦ r ⟧ˢ fmt (dγ , b)) ]′ v
+⟦ unit ⟧ˢ fmt         dγ = returnT tt
+⟦ absurd e ⟧ˢ fmt     dγ = ⟦ e ⟧ˢ fmt dγ >>=T λ v → ⊥-elim v
+⟦ let' e1 e2 ⟧ˢ fmt   dγ = ⟦ e1 ⟧ˢ fmt dγ >>=T λ v1 → ⟦ e2 ⟧ˢ fmt (dγ , v1)
+⟦ int n ⟧ˢ fmt        dγ = returnT (absℤ n)
 -- A float literal denotes ITSELF. This is 0.72 P2's payoff at the denotation:
 -- `⟦ Float ⟧` IS `Dyadic`, so there is no encoder, no rounding and no abstract
 -- `semM` between the literal and its meaning — unlike `str` below. The IR side
 -- (`floatLit d = const fits-float d ∘ terminal`) evaluates to the same `d`, so
 -- the two agree DEFINITIONALLY, exactly as they do for `int`.
-⟦ float d _ ⟧ˢ    dγ = returnT d
+-- D113: a float literal MEANS its encoding at the target's format. This is
+-- the clause that makes the source denotation target-relative, and the only
+-- one that does.
+⟦ float d _ ⟧ˢ fmt    dγ = returnT (encode fmt d)
 -- str: `str-lit-semM` is ABSTRACT (postulated, unlike the computing lit-int-semM),
 -- so the literal's value can't be the clean `s`; denote via its own SigOp `semM`
 -- (= `strLit`'s evalᴰ), matching the IR by construction (like arith).
-⟦ str s ⟧ˢ        dγ = returnT (semM (str-lit-info s) tt)
+⟦ str s ⟧ˢ fmt        dγ = returnT (semM (str-lit-info s) tt)
 -- Arith / comparison / div-mod: all elaborate to `SigOp <op>-info` (Pure), so
 -- denote them through the SAME `semM` — `⟦ op a b ⟧ˢ` is then DEFINITIONALLY the
 -- IR side `⟦ <op>IR ∘ ⟨a,b⟩ ⟧ᴰ`, making M3's elaborate-correctness trivial here.
-⟦ add a b ⟧ˢ      dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM add-info (va , vb))
-⟦ sub a b ⟧ˢ      dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM sub-info (va , vb))
-⟦ mul a b ⟧ˢ      dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM mul-info (va , vb))
-⟦ div a b ⟧ˢ      dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM div-info (va , vb))
-⟦ mod' a b ⟧ˢ     dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM mod-info (va , vb))
-⟦ neg e ⟧ˢ        dγ = ⟦ e ⟧ˢ dγ >>=T λ v → returnT (semM neg-info v)
-⟦ lt a b ⟧ˢ       dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM lt-info (va , vb))
-⟦ le a b ⟧ˢ       dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM le-info (va , vb))
-⟦ gt a b ⟧ˢ       dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM gt-info (va , vb))
-⟦ ge a b ⟧ˢ       dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM ge-info (va , vb))
-⟦ eq a b ⟧ˢ       dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM eq-info (va , vb))
-⟦ ne a b ⟧ˢ       dγ = ⟦ a ⟧ˢ dγ >>=T λ va → ⟦ b ⟧ˢ dγ >>=T λ vb → returnT (semM ne-info (va , vb))
+⟦ add a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM add-info (va , vb))
+⟦ sub a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM sub-info (va , vb))
+⟦ mul a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM mul-info (va , vb))
+⟦ div a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM div-info (va , vb))
+⟦ mod' a b ⟧ˢ fmt     dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM mod-info (va , vb))
+⟦ neg e ⟧ˢ fmt        dγ = ⟦ e ⟧ˢ fmt dγ >>=T λ v → returnT (semM neg-info v)
+⟦ lt a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM lt-info (va , vb))
+⟦ le a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM le-info (va , vb))
+⟦ gt a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM gt-info (va , vb))
+⟦ ge a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM ge-info (va , vb))
+⟦ eq a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM eq-info (va , vb))
+⟦ ne a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM ne-info (va , vb))
 -- effApp: a SUSPENDED effect (`Unit ⇒[eff] B`) — the Eff design (D018). The
 -- effectful application is deferred into the Unit-thunk; its trace fires when the
 -- thunk is applied (at the top-level main run), threaded by `T`. No fork: the old
 -- immediate-vs-suspended mismatch was SS.eval (retired) vs the IR; one semantics
 -- now, and the Eff type IS suspended.
-⟦ effApp f x ⟧ˢ   dγ = returnT (λ _ → ⟦ f ⟧ˢ dγ >>=T λ vf → ⟦ x ⟧ˢ dγ >>=T λ vx → vf vx)
+⟦ effApp f x ⟧ˢ fmt   dγ = returnT (λ _ → ⟦ f ⟧ˢ fmt dγ >>=T λ vf → ⟦ x ⟧ˢ fmt dγ >>=T λ vx → vf vx)
 -- IR embedding: `lift-morphism`/`morph-app` inject a PRE-BUILT CCC morphism into
 -- the surface; their meaning IS the IR's denotation `evalᴰ ir` (definitionally
 -- matching elaborate, which maps them straight to `ir`). Not the IR-pivot — these
 -- are leaves embedding a fixed morphism, not the elaboration of a user subterm.
 -- Plan 0.52 M2: `ir : IR ⌊A⌋ ⌊B⌋`, so `evalᴰ ir : ⟦⌊A⌋⟧ᴰᴵ → T ⟦⌊B⌋⟧ᴰᴵ`;
 -- `cohᴰ` transports it to the surface `⟦A⟧ᴰ → T ⟦B⟧ᴰ` (grade-blind erasure).
-⟦ lift-morphism {A = A} {B = B} ir ⟧ˢ dγ = liftD {A} {B} ir
-⟦ arr' f ⟧ˢ       dγ = ⟦ f ⟧ˢ dγ
-⟦ morph-app {A = A} {B = B} ir e ⟧ˢ dγ =
-  ⟦ e ⟧ˢ dγ >>=T λ v → subst T (cohᴰ B) (evalᴰ ir (subst (λ z → z) (sym (cohᴰ A)) v))
+⟦ lift-morphism {A = A} {B = B} ir ⟧ˢ fmt dγ = liftD fmt {A} {B} ir
+⟦ arr' f ⟧ˢ fmt       dγ = ⟦ f ⟧ˢ fmt dγ
+⟦ morph-app {A = A} {B = B} ir e ⟧ˢ fmt dγ =
+  ⟦ e ⟧ˢ fmt dγ >>=T λ v → subst T (cohᴰ B) (evalᴰ fmt ir (subst (λ z → z) (sym (cohᴰ A)) v))
 -- Cata: the structural fold. The algebra is CLOSED (∅), so `⟦alg⟧ˢ tt` is the
 -- algebra closure; fold via `sem-cata` over `cata-ev-algˢ` (trace+value carrier),
 -- mirroring `evalᴰ (Cata …)` but elaborate-free (uses `⟦alg⟧ˢ`, not `evalᴰ alg`).
-⟦ cata {F = F} {A = A} wf alg ⟧ˢ dγ =
+⟦ cata {F = F} {A = A} wf alg ⟧ˢ fmt dγ =
   returnT (λ x → λ n →
-    let r = sem-cata wf (cata-ev-algˢ {F} {A} n (⟦ alg ⟧ˢ tt)) x
+    let r = sem-cata wf (cata-ev-algˢ {F} {A} n (⟦ alg ⟧ˢ fmt tt)) x
     in (proj₁ r , proj₂ r))
 -- Ana: the productive unfold. Coalgebra CLOSED (∅) → `⟦coalg⟧ˢ tt` is the
 -- closure. TRACE via `ana-eventsˢ` (depth-bounded prefix, the SOLE T-ℕ consumer);
 -- VALUE via `sem-ana` (the codata), mirroring `eval (Ana …)` but elaborate-free.
-⟦ ana {F = F} {A = A} wf coalg ⟧ˢ dγ =
+⟦ ana {F = F} {A = A} wf coalg ⟧ˢ fmt dγ =
   returnT (λ a → λ n →
-    ( ana-eventsˢ {F} {A} (⟦ coalg ⟧ˢ tt) (forget a) n
+    ( ana-eventsˢ {F} {A} (⟦ coalg ⟧ˢ fmt tt) (forget a) n
     , inject (sem-ana F (λ a' → coerce-functor F _
-                  (forget (valueT (valueT (⟦ coalg ⟧ˢ tt) 0 (inject a')) 0))) (forget a)) ))
+                  (forget (valueT (valueT (⟦ coalg ⟧ˢ fmt tt) 0 (inject a')) 0))) (forget a)) ))
 -- Effect primitives (sigOp/closure/poly): named external ops resolved to
 -- `generic-info name`, emitting + valued via the SAME emit-D/semM the IR uses
 -- (definitionally = elaborate's `SigOp (generic-info name) ∘ terminal`). sigOp
 -- DISPATCHES ON RESULT-TYPE SHAPE (matching elaborate): at an arrow it is a
 -- CLOSURE applying the SigOp to its arg (so the effect fires at apply, not at
 -- pair-build); at non-arrow it runs on terminal `tt`. closure/poly never wrap.
-⟦ sigOp {A = (Dom ⇒[ k ] Cod)} name (con-fun bDom cCod) ⟧ˢ dγ =
+⟦ sigOp {A = (Dom ⇒[ k ] Cod)} name (con-fun bDom cCod) ⟧ˢ fmt dγ =
   returnT (λ arg → λ n → ( emit-D (arrow-info {Dom} {Cod} k name bDom cCod) (forget arg)
                          , inject (semM (arrow-info {Dom} {Cod} k name bDom cCod) (forget arg)) ))
 -- VALUE-position references (non-arrow sigOp, closure, poly): `Pure` via
@@ -210,6 +219,6 @@ liftD {A} {B} ir = returnT (liftFn ir)
 -- emit `[]` at build. This is what makes `build-pure` hold for these leaves;
 -- interpretation-agnostic (no `classify-name`). Matches elaborate's
 -- `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays `refl`.
-⟦ sigOp {A = A} name conc ⟧ˢ   dγ = λ n → (emit-D (value-info {Unit} {A} name base-Unit conc) tt , inject (semM (value-info {Unit} {A} name base-Unit conc) tt))
-⟦ closure {A = A} name ⟧ˢ dγ = λ n → (emit-D (internal-info {A} (bare name)) tt , inject (semM (internal-info {A} (bare name)) tt))
-⟦ poly name PT ⟧ˢ         dγ = λ n → (emit-D (internal-info {PT} (bare name)) tt , inject (semM (internal-info {PT} (bare name)) tt))
+⟦ sigOp {A = A} name conc ⟧ˢ fmt   dγ = λ n → (emit-D (value-info {Unit} {A} name base-Unit conc) tt , inject (semM (value-info {Unit} {A} name base-Unit conc) tt))
+⟦ closure {A = A} name ⟧ˢ fmt dγ = λ n → (emit-D (internal-info {A} (bare name)) tt , inject (semM (internal-info {A} (bare name)) tt))
+⟦ poly name PT ⟧ˢ fmt         dγ = λ n → (emit-D (internal-info {PT} (bare name)) tt , inject (semM (internal-info {PT} (bare name)) tt))
