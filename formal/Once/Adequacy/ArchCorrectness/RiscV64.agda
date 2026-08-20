@@ -115,7 +115,7 @@ postulate
 entry-frame-riscv64 : FrameSemantics.Frame rv64-frame-semantics
 entry-frame-riscv64 = stack-addr RS.stack-top stack-top-in-stack
 
-module FFOr = FFO o riscv64 rv64-frame-semantics entry-frame-riscv64 (arch-semantics riscv64) program-bound
+module FFOr = FFO o riscv64 rv64-frame-semantics refl entry-frame-riscv64 (arch-semantics riscv64) program-bound
 asR = arch-semantics riscv64
 
 -- The concrete machine's SigOp trace of a compiled IR (see X86-64 for the full
@@ -144,7 +144,7 @@ postulate
 -- with x86-64's application, field for field.
 ------------------------------------------------------------------------
 open import Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim o
-  rv64-frame-semantics refl riscv64-slot-addr-no-wrap
+  rv64-frame-semantics refl refl riscv64-slot-addr-no-wrap
   riscv64-heap-room riscv64-stack-room riscv64-call-room
   riscv64-reg-range riscv64-scratch-dec-guarded
   (RBr.ret-no-wrap riscv64-addr-no-wrap) (RBr.count-no-wrap riscv64-addr-no-wrap)
@@ -351,5 +351,5 @@ asm-trace-correct-riscv64 m asm eq dl n =
 
 riscv64-correct : ArchCorrect riscv64 (arch-semantics riscv64)
 riscv64-correct =
-  FFO.flat-from-obs o riscv64 rv64-frame-semantics entry-frame-riscv64 (arch-semantics riscv64)
+  FFO.flat-from-obs o riscv64 rv64-frame-semantics refl entry-frame-riscv64 (arch-semantics riscv64)
     program-bound ir-obs-correct asm-trace-correct-riscv64

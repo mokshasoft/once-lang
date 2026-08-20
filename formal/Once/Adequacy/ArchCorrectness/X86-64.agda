@@ -119,7 +119,7 @@ postulate
 entry-frame-x86-64 : X86Frame
 entry-frame-x86-64 = stack-addr X.stack-top stack-top-in-stack
 
-module FFOx = FFO o x86-64 x86-64-frame-semantics entry-frame-x86-64 (arch-semantics x86-64) program-bound
+module FFOx = FFO o x86-64 x86-64-frame-semantics refl entry-frame-x86-64 (arch-semantics x86-64) program-bound
 
 -- A THEOREM: the entry frame IS the loader's `%rsp`
 -- (`entry-frame-x86-64 = stack-addr stack-top _`) and `frame-base` on x86-64 is
@@ -190,7 +190,7 @@ open import Data.Nat using (_≤_)
 -- `…X86-64.ResourceBounds.HeapRoom`, D087: resource bounds are parameters.)
 
 open import Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim o
-  x86-64-frame-semantics refl x86-64-heap-room x86-64-stack-room x86-64-call-room
+  x86-64-frame-semantics refl refl x86-64-heap-room x86-64-stack-room x86-64-call-room
   x86-64-reg-range x86-64-scratch-dec-guarded
   (RB.ret-no-wrap x86-64-addr-no-wrap) (RB.count-no-wrap x86-64-addr-no-wrap)
   (RB.tag-fits x86-64-lit-fits) (RB.lit-fits x86-64-lit-fits) (RB.float-fits o)
@@ -463,5 +463,5 @@ asm-trace-correct-x86-64 m asm eq dl n =
 
 x86-64-correct : ArchCorrect x86-64 (arch-semantics x86-64)
 x86-64-correct =
-  FFO.flat-from-obs o x86-64 x86-64-frame-semantics entry-frame-x86-64 (arch-semantics x86-64)
+  FFO.flat-from-obs o x86-64 x86-64-frame-semantics refl entry-frame-x86-64 (arch-semantics x86-64)
     program-bound ir-obs-correct asm-trace-correct-x86-64

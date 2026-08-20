@@ -128,7 +128,7 @@ postulate
 entry-frame-x86-32 : X86-32Frame
 entry-frame-x86-32 = stack-addr X.stack-top stack-top-in-stack
 
-module FFOx = FFO o x86-32 x86-32-frame-semantics entry-frame-x86-32 (arch-semantics x86-32) program-bound
+module FFOx = FFO o x86-32 x86-32-frame-semantics refl entry-frame-x86-32 (arch-semantics x86-32) program-bound
 
 -- A THEOREM: the entry frame IS the loader's `%esp`
 -- (`entry-frame-x86-32 = stack-addr stack-top _`) and `frame-base` on x86-32 is
@@ -199,7 +199,7 @@ open import Data.Nat using (_≤_)
 -- `…X86-32.ResourceBounds.HeapRoom`, D087: resource bounds are parameters.)
 
 open import Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim o
-  x86-32-frame-semantics refl x86-32-heap-room x86-32-stack-room x86-32-call-room
+  x86-32-frame-semantics refl refl x86-32-heap-room x86-32-stack-room x86-32-call-room
   x86-32-reg-range x86-32-scratch-dec-guarded
   (RB.ret-no-wrap x86-32-addr-no-wrap) (RB.count-no-wrap x86-32-addr-no-wrap)
   (RB.tag-fits x86-32-lit-fits) (RB.lit-fits x86-32-lit-fits) (RB.float-fits o)
@@ -472,5 +472,5 @@ asm-trace-correct-x86-32 m asm eq dl n =
 
 x86-32-correct : ArchCorrect x86-32 (arch-semantics x86-32)
 x86-32-correct =
-  FFO.flat-from-obs o x86-32 x86-32-frame-semantics entry-frame-x86-32 (arch-semantics x86-32)
+  FFO.flat-from-obs o x86-32 x86-32-frame-semantics refl entry-frame-x86-32 (arch-semantics x86-32)
     program-bound ir-obs-correct asm-trace-correct-x86-32
