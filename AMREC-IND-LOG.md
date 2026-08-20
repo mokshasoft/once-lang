@@ -248,4 +248,43 @@ Thirteen attempts, six errors, none costing more than one iteration.
 exactly what `IndBAt-sub` supplies. ⚠ Still unproved: both branches, the
 `⊢natrec`, and — the one that decides whether any of it means anything —
 **the instantiation at `n := suc (μ x)`**.
+| 14 | 08-20 | **The ZERO BRANCH** — `⊢zbr` | ✅ **green** (2 rounds) | ~15s |
+
+## ★★★ Zero branch: PROVED
+
+`⊢zbr : Δ ⊢ zbrTm P ∷ subTy (single nzero) (IndB P)`
+
+Three lines of content, exactly as predicted when the certificate was
+shifted to `μ x < n`: at `n := 0` the hypothesis is `nsuc (μ x) ≤ 0`, the
+order COMPUTES to `base`, and `⊢strong-base` discharges it. **No unfolding,
+no reduction premise on the measure** — the whole reason for the shift.
+
+⚠ `subTy (single nzero)` lands the ambient renaming at the IDENTITY, so
+`IndBAt-sub` is used at `θ' := idR` and the `renTy idR A` coming back needs
+`renTy-idR`. Bookkeeping, not content.
+
+⚠ One round lost to `⊢-cast` vs `subst`: `⊢-cast` moves a **term**
+judgement's type, but `dA'` is a `⊢ty` judgement and needs `subst`. Standing
+distinction in this codebase and easy to reach for the wrong one.
+
+## The successor branch — scoped, six steps
+
+Context is `(Δ ▹ Nat) ▹ IndB P`: the predecessor `k`, and the IH at `k`.
+Given `x : A` and `c : nsuc (μ x) ≤ suc k`, prove `P (x, amrec x)`.
+
+1. `μ x ≤ k` from `c` — one `⊢conv`, because `Hom-Nat-ss` makes the order
+   COMPUTE. (Free.)
+2. `μ x ≤ suc k` — `⊢trans` with `⊢le-suc`. (Free.)
+3. `amrec-unfold-Id` at bound `k` ⇒ `amrec x ≡ stp x ⟨ih⟩`. (Exists.)
+4. `IndStep` ⇒ `P (x, stp x ⟨ih⟩)`. (The caller's premise, by assumption.)
+5. ⚠ **Transport `P` along step 3's `Id`** to reach `P (x, amrec x)`. This is
+   `⊢jsub` on a CODE family — the same machinery `congAt` needed for gap A's
+   equation 4, and the substantial piece.
+6. ⚠ Supply `IndStep`'s `IndPW` from the `natrec`'s IH: instantiate the IH at
+   each recursive call, whose certificate `nsuc (μ y) ≤ μ x` composes with
+   step 1 by `⊢trans` to give `nsuc (μ y) ≤ k`.
+
+⇒ Steps 1–4 are free or already exist. **5 and 6 are the real work**, and 5
+is the one to respect: transporting a code-valued predicate along the
+unfolding identity is precisely what made equation 4 expensive.
 
