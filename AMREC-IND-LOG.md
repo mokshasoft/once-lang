@@ -97,4 +97,29 @@ callers — it is the one gcd has already discharged.
 `amrecTm x` to `stp x ⟨ih⟩`, then `IndStep` crosses it with the induction
 hypothesis supplying `IndPW`. ⚠ This is the part that can still fight back,
 and where the real cost is expected.
+| 5 | 08-20 | `⊢PAtR` — demand a TYPING of the motive application | ⚠ **found attempt 1's order was WRONG** | ~15s |
+| 6 | 08-20 | Same, with the order fixed (argument first) | ✅ green | ~15s |
+
+## ★★★ The method's first real win
+
+Attempt 1 chose to fill the RESULT slot before the ARGUMENT slot because it
+made `⊢IndAt` two clean `⊢[]`s. That order is **wrong**, and the reason is a
+DEPENDENCY rather than a convention: the result slot's type is `El cM`,
+which depends on the argument slot. Filling the result first is type-correct
+only when the value is written as a function of the argument VARIABLE.
+
+⚠ **`IndAt` gets away with it, and that is what made the mistake
+plausible.** Its `valAt = app (w amrecTm) (var vz)` IS such a function, so
+attempt 1 was green and looked like a settled design point. The general
+`PAtR`, taking an arbitrary `val`, is not — and it *still* checked green as
+a TERM operation (attempt 3). The error only surfaced when a TYPING was
+demanded of it.
+
+⇒ **A term-level definition being well-formed says nothing about whether
+its typing exists.** In a de Bruijn encoding the slot arithmetic can be
+right while the dependency structure is wrong.
+
+★ Cost of finding this: one 15s check. Cost of finding it after building
+the `natrec` on top: gap A's answer is seven attempts and several OOMs.
+This is the whole argument for stating and typing the shape first.
 
