@@ -45,16 +45,16 @@ open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast; ⊢[] )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w; sub-w; sub-w² )
-open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
-open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
-open import poc.OCP0009.NbEPDirDBExamplesDiv
+open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
+open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
+open import poc.OCP0009.NbEPDirDBLibMonus
   using ( predTm; ⊢pred; ⊢pred-le; monusTm; ⊢monus
         ; monus-zero; monus-suc; pred-suc; pred-zero; homˡ* )
 open import poc.OCP0009.NbEPDirDBLibArith using ( plusMonoB; plusMonoTm; ⊢plus-mono )
 open import poc.OCP0009.NbEPDirDBLibArithComm
   using ( plusMonoLB; plusMonoLTm; plusMonoLTm-sub; ⊢plus-mono-l
         ; IdN; ⊢tyIdN; elIdN; reflN; ⊢reflN; transN; ⊢transN )
-open import poc.OCP0009.NbEPDirDBExamplesStrong using ( natAsEl )
+open import poc.OCP0009.NbEPDirDBLibStrong using ( natAsEl )
 open import poc.OCP0009.NbEPDirDBLibPair using ( asN )
 open import poc.OCP0009.NbEPDirDBPi using ( jsub; ⌜Id⌝; ⌜Nat⌝; idrefl )
 open import poc.OCP0009.NbEPDirDBType

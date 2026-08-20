@@ -44,7 +44,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Nat⌝; Hom-Nat-ss
         ; ξ-nsuc; ξ-Homˡ; βfst; βsnd )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
+open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
 
 ------------------------------------------------------------------------
 -- the carrier and its two measures.  ★ A TYPE, so `⊢fst`/`⊢snd` apply

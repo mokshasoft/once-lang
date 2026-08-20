@@ -30,7 +30,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ty-Nat; ty-Hom; ty-El; ty-Π )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast; ren-ty )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBExamplesOrd using ( ⊢strong-base' )
+open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base' )
 open import poc.OCP0009.NbEPDirDBLibWk
   using ( w; wᶠ; cong₆; sub-w; sub-w²; wk-singleTy; wᶠ-single
         ; wᶠ³-single; w^; wTy^; wᶠ^; ⊢wkᶠ; sub-wTy )
