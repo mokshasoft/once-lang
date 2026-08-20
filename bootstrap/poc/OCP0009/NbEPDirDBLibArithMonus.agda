@@ -52,7 +52,7 @@ open import poc.OCP0009.NbEPDirDBExamplesDiv
         ; monus-zero; monus-suc; pred-suc; pred-zero; homˡ* )
 open import poc.OCP0009.NbEPDirDBLibArith using ( plusMonoB; plusMonoTm; ⊢plus-mono )
 open import poc.OCP0009.NbEPDirDBLibArithComm
-  using ( plusMonoLB; plusMonoLTm; ⊢plus-mono-l
+  using ( plusMonoLB; plusMonoLTm; plusMonoLTm-sub; ⊢plus-mono-l
         ; IdN; ⊢tyIdN; elIdN; reflN; ⊢reflN; transN; ⊢transN )
 open import poc.OCP0009.NbEPDirDBExamplesStrong using ( natAsEl )
 open import poc.OCP0009.NbEPDirDBLibPair using ( asN )
@@ -213,6 +213,33 @@ monusLtTm-sub {σ = σ} a b = rewriteA (sub-w² {σ = σ} a)
 --   about a Π-VALUED family, and this family is `⌜Id⌝ ⌜Nat⌝ … …`, the same
 --   shape `congS`/`symN`/`transN` already use safely.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ★★ THE LEFT-DESCENT CERTIFICATE, NAMED — AND ITS SUBSTITUTION LAW.
+--
+-- This is `⊢desc-left`'s SUBJECT.  It was inlined at every call site until
+-- gap A's equation 4 needed to push a substitution through it five times.
+--
+-- ⚠ WHY IT NEEDS A LAW AT ALL, which is not obvious: `pair`/`monusTm`/
+--   `nsuc` distribute over `subTm` DEFINITIONALLY, so the recursive call's
+--   ARGUMENT needs no lemma.  `plusMonoLTm` and `monusLtTm` do NOT — which
+--   is exactly why `plusMonoLTm-sub`/`monusLtTm-sub` exist.  This bundles
+--   the two into the one law a caller actually wants.
+------------------------------------------------------------------------
+
+descLeftTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+descLeftTm a b =
+  plusMonoLTm (monusTm (nsuc a) (nsuc b)) (nsuc a) (nsuc b) (monusLtTm a b)
+
+descLeftTm-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (a b : RTm Γ) →
+                 subTm σ (descLeftTm a b)
+               ≡ descLeftTm (subTm σ a) (subTm σ b)
+descLeftTm-sub {σ = σ} a b =
+  trans (plusMonoLTm-sub (monusTm (nsuc a) (nsuc b)) (nsuc a) (nsuc b)
+                         (monusLtTm a b))
+        (cong (plusMonoLTm (monusTm (nsuc (subTm σ a)) (nsuc (subTm σ b)))
+                           (nsuc (subTm σ a)) (nsuc (subTm σ b)))
+              (monusLtTm-sub a b))
 
 congPred : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
 congPred a p = jsub (⌜Id⌝ ⌜Nat⌝ (predTm (w a)) (predTm (var vz))) p
@@ -448,38 +475,53 @@ monusLeTm a = natrec monusLeZ monusLeS a
 --   exactly why equation 4 was unreachable and is now approachable.
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- ★★★ THE ORDER BRIDGE AT TWO DIFFERENT ARGUMENTS.
+--
+-- `⊢monusLe` gives the Π-quantified `a ≤ b → a ∸ b ≡ 0`; this applies it.
+-- ⚠ TWO PEELS, and they are the same two `⊢monusSelf` always needed —
+--   the motive's DOUBLE weakening of `a`, plus the bound `b` slot.  Only
+--   the instantiation differs, so `⊢monusSelf` is now the `b := a` case.
+--
+-- ★ gap A's equation 4 is the client: its premise is `Hom Nat (suc a)
+--   (suc b)` — the kernel's order, which COMPUTES — and this turns it into
+--   the propositional `a ∸ b ≡ 0` that `⊢congAt` transports along.
+------------------------------------------------------------------------
+
+mle-peel : {Γ : Cx} (a b c : RTm Γ) →
+           subTm (single c) (subTm (extS (single b)) (w (w a))) ≡ a
+mle-peel a b c =
+  trans (cong (subTm (single c))
+              (trans (sub-w {σ = single b} (w a))
+                     (cong w (wk-single {v = b} a))))
+        (wk-single {v = c} a)
+
+mle-at : {Γ : Cx} (a b c : RTm Γ) →
+         subTy (single c)
+               (subTy (extS (single b))
+                      (IdN (monusTm (w (w a)) (var (vs vz))) nzero))
+       ≡ IdN (monusTm a b) nzero
+mle-at a b c = cong₂ (λ x y → IdN (monusTm x y) nzero)
+                     (mle-peel a b c) (wk-single {v = c} b)
+
+⊢monusLeAt : {Γ : Ctx} {a b le : RTm ⌊ Γ ⌋} →
+             Γ ⊢ a ∷ Nat → Γ ⊢ b ∷ Nat → Γ ⊢ le ∷ Hom Nat a b →
+             Γ ⊢ app (app (monusLeTm a) b) le ∷ IdN (monusTm a b) nzero
+⊢monusLeAt {a = a} {b = b} {le = le} da db dle =
+  ⊢-cast (mle-at a b le) (⊢app (⊢app (⊢monusLe da) db) dle')
+  where
+    -- the certificate slot is `Hom Nat (w a) (var vz)` under `single b`
+    dle' = ⊢-cast (sym (cong (λ z → Hom Nat z b) (wk-single {v = b} a))) dle
+
 monusSelfTm : {Γ : Cx} → RTm Γ → RTm Γ
 monusSelfTm a = app (app (monusLeTm a) a) (reflTm a)
 
--- ⚠ TWO PEELS.  Applying a `Π`-quantified motive at `b := a` leaves the
---   motive's DOUBLE weakening of `a` to cancel, plus the bound `b` slot.
---   `sub-w` then `wk-single` for the first; `wk-single` alone for the
---   second, since `extS σ (vs v)` is already `w (σ v)` definitionally.
-mself-peel : {Γ : Cx} (a : RTm Γ) →
-             subTm (single (reflTm a)) (subTm (extS (single a)) (w (w a))) ≡ a
-mself-peel a =
-  trans (cong (subTm (single (reflTm a)))
-              (trans (sub-w {σ = single a} (w a))
-                     (cong w (wk-single {v = a} a))))
-        (wk-single {v = reflTm a} a)
-
-mself-at : {Γ : Cx} (a : RTm Γ) →
-           subTy (single (reflTm a))
-                 (subTy (extS (single a))
-                        (IdN (monusTm (w (w a)) (var (vs vz))) nzero))
-         ≡ IdN (monusTm a a) nzero
-mself-at a = cong₂ (λ x y → IdN (monusTm x y) nzero)
-                   (mself-peel a) (wk-single {v = reflTm a} a)
-
+-- ★ `⊢monusSelf` is now the `b := a` instance of `⊢monusLeAt`, with
+--   reflexivity as the order proof.  The two peels it used to do inline
+--   (`mself-peel`/`mself-at`) are `mle-peel`/`mle-at` above.
 ⊢monusSelf : {Γ : Ctx} {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ Nat →
              Γ ⊢ monusSelfTm a ∷ IdN (monusTm a a) nzero
-⊢monusSelf {a = a} da =
-  ⊢-cast (mself-at a) (⊢app (⊢app (⊢monusLe da) da) dRefl)
-  where
-    -- the certificate slot is `Hom Nat (w a) (var vz)` under `single a`,
-    -- so reflexivity needs the same one-step peel
-    dRefl = ⊢-cast (sym (cong (λ z → Hom Nat z a) (wk-single {v = a} a)))
-                   (⊢le-refl da)
+⊢monusSelf {a = a} da = ⊢monusLeAt da da (⊢le-refl da)
 
 -- (`congAt`/`⊢congAt` moved to `…LibArithComm`, beside `congS` —
 --  it is a general one-hole congruence, not monus arithmetic.)

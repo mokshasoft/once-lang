@@ -318,3 +318,30 @@ pw5 : {Γ' : Cx} {u : RTm Γ'} (t : RTm Γ') →
 pw5 {u = u} t =
   trans (sub-w {σ = extS (extS (extS (extS (single u))))} (w (w (w (w (w t))))))
         (cong w (pw4 {u = u} t))
+
+------------------------------------------------------------------------
+-- ★★ TWO MORE CANCELS, both from gap A's equation 4.
+------------------------------------------------------------------------
+
+-- ★ `wk-single` with a FAMILY weakening on the inside.  Applying an IH
+--   substitutes the argument into the codomain, and the measure slot comes
+--   back as `subTm (single v) (wᶠ (w t))`.
+-- ⚠ When the slot is a de Bruijn VARIABLE that reduces definitionally and
+--   no lemma is needed; at an abstract TERM it does not.  `ren-w` fuses the
+--   two renamings, `wk-single` cancels the result.
+wfw-single : {Γ : Cx} {v : RTm (Γ ∙)} (t : RTm Γ) →
+             subTm (single v) (wᶠ (w t)) ≡ w t
+wfw-single {v = v} t =
+  trans (cong (subTm (single v)) (ren-w t)) (wk-single (w t))
+
+-- ★ `wk-single` one binder deeper — what a `natrec`'s SUCCESSOR branch
+--   needs, since `natrec-suc` binds the predecessor AND the IH.
+w²-single : {Γ : Cx} {x : RTm Γ} (t : RTm ((Γ ∙) ∙)) →
+            subTm (extS (extS (single x))) (renTm (extR (extR vs)) t) ≡ t
+w²-single {x = x} t =
+  trans (subTm-renTm t) (trans (subTm-cong br t) (subTm-id t))
+  where
+    br : ∀ v → extS (extS (single x)) (extR (extR vs) v) ≡ var v
+    br vz          = refl
+    br (vs vz)     = refl
+    br (vs (vs u)) = refl

@@ -48,7 +48,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π
         ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝
-        ; subTm; subTy; renTm; subTm-renTm; subTm-id; subTm-subTm; subTm-cong; extS
+        ; subTm; subTy; renTm; renTy; subTm-renTm; subTm-id; subTm-subTm; subTm-cong; extS
         ; Sub; Ren; Var; idₛ; renTm-renTm; _∘ᵣ_ )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋
@@ -68,7 +68,7 @@ open import poc.OCP0009.NbEPDirDBExamplesDiv
   using ( monusTm; ⊢monus; monus-zero; monus-suc; pred-zero; pred-suc
         ; monus-computes )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
-open import poc.OCP0009.NbEPDirDBLibAmrec using ( aStepT; aIHTat-sub )
+open import poc.OCP0009.NbEPDirDBLibAmrec using ( aStepT; aIHTat-sub; aIHTat-ren )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asP )
 open import poc.OCP0009.NbEPDirDBLibArith using ( plusMonoTm )
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLTm; plusMonoLTm-sub )
@@ -110,6 +110,13 @@ gcdG μx = Π (gcdIH μx) (El ⌜Nat⌝)
 gcdG-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (μ : RTm Γ) →
            subTy σ (gcdG μ) ≡ gcdG (subTm σ μ)
 gcdG-sub {σ = σ} μ = cong (λ T → Π T (El ⌜Nat⌝)) (aIHTat-sub PairT ⌜Nat⌝ msr μ)
+
+-- ★ the RENAMING twin, for pushing an IH past a binder.  Same reason
+--   `aIHTat-sub` does all the work: `PairT`/`⌜Nat⌝` are closed and `msr`
+--   mentions only `vz`, so every renaming on them is the identity.
+gcdIH-ren : {Γ Γ' : Cx} {ρ : Ren Γ Γ'} (μ : RTm Γ) →
+            renTy ρ (gcdIH μ) ≡ gcdIH (renTm ρ μ)
+gcdIH-ren μ = aIHTat-ren PairT ⌜Nat⌝ msr μ
 
 ------------------------------------------------------------------------
 -- ★ the descent's conversion: the recursive call BUILDS a pair, so the

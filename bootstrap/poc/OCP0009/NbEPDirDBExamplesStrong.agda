@@ -52,6 +52,12 @@ El-homNat a b = stepᵀ (El-⌜Hom⌝ ⌜Nat⌝ a b) (stepᵀ (ξ-Homᵀ El-⌜N
 natAsEl : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ Nat → Γ ⊢ t ∷ El ⌜Nat⌝
 natAsEl d = ⊢conv d (csymᵀ (credᵀ El-⌜Nat⌝))
 
+-- ★ …and the other direction, which gap A's equation 4 needs.  `⊢congAt`'s
+--   family is typed in `Γ ▹ El ⌜Nat⌝`, so the `natrec` scrutinee arrives at
+--   `El ⌜Nat⌝` and has to be read back as a `Nat`.
+elAsNat : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ Nat
+elAsNat d = ⊢conv d (credᵀ El-⌜Nat⌝)
+
 ------------------------------------------------------------------------
 -- ★★★ 1. `m ≤ m` AT AN OPEN NATURAL.
 --
