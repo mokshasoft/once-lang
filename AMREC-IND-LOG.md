@@ -553,4 +553,32 @@ solved, because the coherence mentions a bound variable.
    exports it — that IS the renaming-indexed bridge.
 2. Step 6 (`IndPW`), the successor branch, the `⊢natrec`.
 3. ⚠ The instantiation at `n := suc (μ x)` — the non-vacuity check.
+| 30 | 08-20 | Repoint the spike at the hoisted `prv-cast` | ✅ green — **caught by the SWEEP, not the module check** | ~7 min |
+| 31 | 08-20 | Relocate `ihCall-amrec` into `AmTΠ` | ✅ green | ~60s |
+
+## ★★★★★ THE RENAMING-INDEXED BRIDGE EXISTS
+
+`ihCall-amrec` now lives in `AmTΠ`, so **`AmTΠ-at` exports it** — the bridge
+at an arbitrary typed renaming, obtained by INSTANTIATION rather than by
+writing a second, renamed proof.
+
+That is route (b) delivering exactly what it promised:
+
+    irrelevance layer   unchanged
+    `-ren` family       connects the instantiation back to `renTm ρ`
+    `StepExt-ren`       supplies the side condition, transported
+    `AmTΠ-at`           the module at any renaming
+    `ihCall-amrec`      …and therefore the bridge, at any renaming
+
+⚠ **A hoist is an interface change.** Moving `prv-cast` OUT of `AmTΠ`
+removed it from that module's exports, breaking a downstream `open … using
+(…)`. `…LibAmrec` stayed green throughout — only the client broke, and only
+the SWEEP caught it. ⇒ after a hoist, check clients, not just the module.
+
+## Next
+
+1. Step 6: `IndPW` from the `natrec`'s IH, via the renaming-indexed bridge
+   + `⊢transportP`.
+2. The successor branch; the `⊢natrec`.
+3. ⚠ The instantiation at `n := suc (μ x)` — the non-vacuity check.
 

@@ -3476,6 +3476,65 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
                                     (subTm (single a) v) (nsuc k) q p)
                      mId mId)
 
+  ------------------------------------------------------------------------
+  -- ★★★★★ THE BRIDGE — THE IH HANDLE'S CALLS **ARE** `amrec`.
+  --
+  -- Step 6 needs `P` of every call the handle makes.  Those calls are NOT
+  -- syntactically `amrec y`: `ih-app` reduces them to the AUXILIARY at the
+  -- bound `k`, while `amrec-β` reduces `amrec y` to the auxiliary at ITS
+  -- OWN bound `μ y`.  Different bounds, different certificates.
+  --
+  -- ★ `irrElim` equates exactly those two — that is what certificate
+  --   irrelevance IS — so the bridge is `ih-app` on the left, `amrec-β` on
+  --   the right, and irrelevance in the middle.
+  --
+  -- ⚠ NO PACKAGED VERSION EXISTED.  `…GcdRec`'s `s2` builds this inline for
+  --   gcd.  It belongs in the library: EVERY inductive proof over `amrec`
+  --   needs it, and rebuilding it per client is the amortisation failure
+  --   this whole exercise is about.
+  ------------------------------------------------------------------------
+
+  ihCall-amrec : StepExt Δ A cM m stp →
+                 {x k p : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ k ∷ Nat →
+                 Δ ⊢ p ∷ Hom Nat (subTm (single x) m) (nsuc k) →
+                 {y q : RTm ⌊ Δ ⌋} → Δ ⊢ y ∷ A →
+                 Δ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) m))
+                                 (subTm (single x) m) →
+                 Prv Δ (Id (El (subTm (single y) cM))
+                           (app (app (ihS-atP x x k p) y) q)
+                           (app amrecTm y))
+  ihCall-amrec ext {x = x} {k = k} {p = p} dx dk dp {y = y} {q = q} dy dq =
+    idOfRed (ih-app x x k p y q) (amrec-β y)
+            (prv-cast idEq
+              (irrElim dAt y (descS-at x x k p y q) (reflTm μy) dy' dc₁ dc₂))
+    where
+      μx = subTm (single x) m
+      μy = subTm (single y) m
+      dμx = ⊢[] dm dx
+      dμy = ⊢[] dm dy
+
+      -- the irrelevance witness at the two bounds `k` and `μ y`
+      dAt : Δ ⊢ app (prvTm (irr-ind ext dx dy dk)) μy ∷ irrT idR x y k μy
+      dAt = ⊢-cast (trans (irrT-sub vs idR (λ v → refl) x y (w k) (var vz))
+                          (cong (λ u → irrT idR x y u μy) (wk-single {v = μy} k)))
+                   (⊢app (prvOk (irr-ind ext dx dy dk)) dμy)
+
+      dy' = ⊢-cast (sym (renTy-idR (λ v → refl) A)) dy
+
+      -- ⚠ both certificates need `mId` — the measure's identity renaming
+      --   does not vanish at an abstract `m`.
+      dc₁ = ⊢-cast (cong (λ z → Hom Nat (subTm (single y) z) k) (sym mId))
+                   (⊢descS-at dμy dμx dk dq dp)
+      dc₂ = ⊢-cast (cong (λ z → Hom Nat (subTm (single y) z) μy) (sym mId))
+                   (⊢le-refl dμy)
+
+      idEq = cong₃ (λ c e₁ e₂ → Id (El c) e₁ e₂)
+                   (cong (subTm (single y))
+                         (renTm-idR (extR-id (λ v → refl)) cM))
+                   (cong (λ z → app (app z y) (descS-at x x k p y q))
+                         (auxAt-id x k))
+                   (cong (λ z → app (app z y) (reflTm μy)) (auxAt-id y μy))
+
   amrec-unfold-Id :
     StepExt Δ A cM m stp →
     {x k p : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ k ∷ Nat →
