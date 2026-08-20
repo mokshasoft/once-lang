@@ -319,4 +319,42 @@ it" — and it is a measurement, not an argument.
 - The successor branch assembled from steps 1–6.
 - The `⊢natrec`.
 - ⚠ The instantiation at `n := suc (μ x)` — the non-vacuity check.
+| 17 | 08-20 | Step 6 — locate the bridge `⟨ih⟩ y q ≡ amrec y` | ⚠ **blocked upstream** | — |
+| 18 | 08-20 | Relocate + generalise `⊢descS-at` into `AmTΠ` | ❌ **reverted** — does not generalise by rename | ~60s |
+
+## Where the successor branch actually stops
+
+Step 6 needs `IndPW`: `P` holds of every call the IH handle makes. The
+handle's calls are NOT `amrec y` — `ih-app` reduces them to the *auxiliary*
+at bound `k`. Bridging those to `amrec y` needs irrelevance:
+
+    ⟨ih⟩ y q  ⟶*  aux x k y (descS-at …)     [ih-app]
+    amrec y   ⟶*  aux y (μ y) y (reflTm …)   [amrec-β]
+    the two are equal                         [irrElim, from irr-ind ext]
+
+★ The pieces all exist and `irrElim` has exactly the right shape. **No
+packaged bridge does** — `GcdRec`'s `s2` builds it inline for gcd. It should
+be a library lemma; any inductive proof over `amrec` needs it.
+
+⚠ **But it needs `⊢descS-at` to type the certificate, and that is stranded
+in `…ExamplesGcdEqs`.** Attempting the relocation surfaced something worse
+than misplacement:
+
+    renTm (extR idR) m != m   of type RTm (⌊ Δ ⌋ ∙)
+
+For gcd's **closed** `msr` that identity renaming reduces away
+definitionally; for an abstract `m` it is only propositional. So the proof
+**silently depends on the measure being closed**. Generalising it means
+threading `renTm-idR` through `descS-peel`'s endpoints — bounded, but real.
+
+⇒ Reverted rather than left half-done. `…LibAmrec` and `…ExamplesGcdEqs`
+are back at committed state, both green, spike green.
+
+## Next, in order
+
+1. Generalise `⊢descS-at` properly (thread `renTm-idR`), relocate to `AmTΠ`.
+2. The bridge `⟨ih⟩ y q ≡ amrec y` — `ih-app` + `irrElim` + `amrec-β`.
+   ★ Library lemma; every inductive proof over `amrec` will want it.
+3. Step 6 → successor branch → `⊢natrec`.
+4. ⚠ The instantiation at `n := suc (μ x)` — still the non-vacuity check.
 
