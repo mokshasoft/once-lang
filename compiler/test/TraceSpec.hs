@@ -31,7 +31,7 @@ import Test.Tasty.HUnit
 
 import qualified Data.Text as T
 
-import Backend.Common (BackendArch (X86_64), buildAndRunTrace, decodeTrace)
+import Backend.Common (BackendArch (X86_64), buildAndRunTrace, decodeTrace, signedAt)
 
 traceTests :: TestTree
 -- Plan 0.52 retired `arr`; the const morphisms are written as integer
@@ -47,6 +47,37 @@ traceTests = testGroup "Effect traces (observable)"
       []
       [ "main = compose exit@S (compose 0 (compose emit@E 42))" ]
       [42] 0
+
+  -- NEGATIVE ARGUMENTS. Once's integers are SIGNED, so these pin down that a
+  -- negative argument reaches the SigOp as itself. They are not idle: the
+  -- source-level DENOTATION of these very programs is currently wrong in two
+  -- separate ways — `⟦ int n ⟧ˢ = absℤ n` (absolute value, so −5 would mean 5)
+  -- and `sub-semM (a , b) = a ℕ.∸ b` (monus, so `0 - 5` would mean 0). The
+  -- machine is right and the spec is not; these tests are what will keep the
+  -- machine right while the denotation is corrected to match it.
+  , traceTest "a negated literal emits its negative, not its magnitude"
+      [ "emitNeg : IO Unit"
+      , "emitNeg = emit@E (-5)"
+      ]
+      [ "main = compose exit@S (compose 7 emitNeg)" ]
+      [-5] 7
+
+  , traceTest "subtraction below zero emits a negative, not zero"
+      [ "emitNeg : IO Unit"
+      , "emitNeg = emit@E (3 - 8)"
+      ]
+      [ "main = compose exit@S (compose 7 emitNeg)" ]
+      [-5] 7
+
+  , traceTest "negative and positive arguments keep their order and signs"
+      [ "emitA : IO Unit"
+      , "emitA = emit@E (0 - 1)"
+      , ""
+      , "emitB : IO Unit"
+      , "emitB = emit@E 2"
+      ]
+      [ "main = compose exit@S (compose 7 (compose emitB emitA))" ]
+      [-1, 2] 7
 
   , traceTest "two emits preserve order (emit 5 before emit 3)"
       []
@@ -87,9 +118,11 @@ traceTest name helpers mainLines emitted exitCode =
       Left err -> assertFailure err
       Right (out, code) -> case decodeTrace X86_64 out of
         Left err   -> assertFailure err
-        Right args -> do
-          assertEqual "emitted arguments (effect order + full values)"
-                      emitted args
+        Right ws   -> do
+          -- Read each word as the SIGNED value it represents: Once has only
+          -- signed integers, so this is what `emit`'s `Int` argument MEANS.
+          assertEqual "emitted arguments (effect order + full signed values)"
+                      emitted (map (signedAt X86_64) ws)
           assertEqual "exit code (final exit SigOp argument)" exitCode code
 
 -- | A filesystem-safe name for the per-test build directory.

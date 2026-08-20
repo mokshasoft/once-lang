@@ -31,6 +31,7 @@ module Backend.Common
   , buildAndRunTraceOn
   , archWordBytes
   , decodeTrace
+  , signedAt
     -- * Common Types
   , tA
   , tB
@@ -182,6 +183,23 @@ buildAndRunTrace = buildAndRunTraceOn X86_64
 archWordBytes :: BackendArch -> Int
 archWordBytes X86_32 = 4
 archWordBytes _      = 8
+
+-- | Reinterpret a machine word as the SIGNED value it represents.
+--
+-- Once has only signed integers, so this is how an `Int` argument is read back
+-- from a trace. It is deliberately NOT folded into `decodeTrace`: a trace
+-- carries REPRESENTATIONS, and how to read one is decided by the argument's
+-- TYPE — the same split the spec makes when `ev-arg : ⟦ ev-dom ⟧` is read at
+-- its own base type. An `Int` is read as two's complement; a `Float`'s word is
+-- a bit pattern and is compared as-is.
+--
+-- It also makes `Int` expectations ARCH-INDEPENDENT: −5 is `0xFFFFFFFFFFFFFFFB`
+-- at 64 bits and `0xFFFFFFFB` at 32, and both read back as −5.
+signedAt :: BackendArch -> Integer -> Integer
+signedAt arch w
+  | w >= half = w - 2 * half
+  | otherwise = w
+  where half = 2 ^ (8 * archWordBytes arch - 1)
 
 -- | Decode a raw emit trace into the SEQUENCE OF ARGUMENTS it carries.
 --
