@@ -3594,6 +3594,50 @@ measure-evals A m dm x dx = natEval (⊢[] dm dx)
 --   `app (app stp x) ⟨ih⟩`.  Flagged rather than claimed.
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- ★★★★★ `AmTΠ` AT A RENAMED CONTEXT — route (b)'s payoff.
+--
+-- ⚠ WHAT THIS BUYS.  The irrelevance layer (`irrT`, `irrElim`, `irr-ind`)
+--   takes `x y : RTm ⌊ Δ ⌋` — the CONTEXT is renaming-indexed, the
+--   ARGUMENTS are not.  `amrec-ind`'s `IndPW` quantifies over an ARBITRARY
+--   `y : RTm ⌊ Θ ⌋`, so it cannot be stated through `AmTΠ Δ …`.
+--
+-- ★ Instantiating the module at `Θ` makes that module's OWN `Δ` be `Θ`,
+--   so its irrelevance applies to `Θ`-level arguments with NO change to
+--   the irrelevance layer itself — the largest piece of this file is
+--   REUSED, not generalised.
+--
+-- ★★ AND THE CONNECTION BACK is the `-ren` family: `amrecTm-ren` says this
+--   instantiation's recursor IS `renTm ρ` of the original's, so facts
+--   proved here transport to statements about `renTm ρ amrecTm`.
+--
+-- ⭐ The idiom is the module's own: `AmTΠ` already opens `AmT` at `Δ ▹ A`
+--   with renamed parameters, bridged by `aStepT-ren`.  This is that, at an
+--   arbitrary typed renaming.
+------------------------------------------------------------------------
+
+module AmTΠ-at {Δ Θ : Ctx} (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙))
+               (stp : RTm ⌊ Δ ⌋)
+               (dA   : Δ ⊢ty A)
+               (dcM  : (Δ ▹ A) ⊢ cM ∷ U)
+               (dm   : (Δ ▹ A) ⊢ m ∷ Nat)
+               (dstp : Δ ⊢ stp ∷ aStepT A cM m)
+               {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} (ρ⊢ : Ren⊢ Δ Θ ρ)
+               where
+
+  open AmTΠ Θ (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m) (renTm ρ stp)
+            (ren-ty dA ρ⊢)
+            (ren-lemma dcM (Ren⊢-ext ρ⊢))
+            (ren-lemma dm  (Ren⊢-ext ρ⊢))
+            (⊢-cast (aStepT-ren A cM m) (ren-lemma dstp ρ⊢))
+            public
+
+  -- ★ the side condition its lemmas need, transported rather than assumed
+  extΘ : StepExt Δ A cM m stp →
+         StepExt Θ (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+                   (renTm ρ stp)
+  extΘ = StepExt-ren ρ⊢
+
 module AmTΠ◇ (A : RTy ε) (cM m : RTm (ε ∙)) (stp : RTm ε)
              (dA   : ◇ ⊢ty A)
              (dcM  : (◇ ▹ A) ⊢ cM ∷ U)
