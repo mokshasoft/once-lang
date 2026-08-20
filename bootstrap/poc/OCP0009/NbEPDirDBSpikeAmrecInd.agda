@@ -26,11 +26,12 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBSpikeAmrecInd where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; RTm; El; U; Nat; Hom; Π; var; vz; vs; Var; app; nsuc; nzero; natrec
         ; lam; absurd
-        ; subTm; subTy; renTy; renTm; Ren; extR; extS; renTy-renTy )
+        ; subTm; subTy; renTy; renTm; Ren; extR; extS; renTy-renTy; Sub
+        ; subTm-subTm; subTm-renTm; subTm-cong )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; ⊢nsuc; ⊢lam; ⊢nzero; nrs
@@ -39,9 +40,10 @@ open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢; Ren⊢-ext; ren-lemma; ren-ty
         ; Sub⊢; Sub⊢-ext; ⊢single; sub-lemma )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
-open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; wᶠ¹-single; ⊢wkᶠ )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; wᶠ¹-single; ⊢wkᶠ; sub-w )
+open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibAmrec
-  using ( aStepT; Prv; wR; module AmTΠ )
+  using ( aStepT; Prv; wR; subren; subrenTy; extcond; module AmTΠ )
 open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base )
 
 module Stmt (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
@@ -106,6 +108,41 @@ module Stmt (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp :
 PAtR : {Γ Γ' : Cx} (ρ : Ren Γ Γ') (P : RTm ((Γ ∙) ∙)) (y val : RTm Γ') → RTm Γ'
 PAtR ρ P y val =
   subTm (single val) (subTm (extS (single y)) (renTm (extR (extR ρ)) P))
+
+------------------------------------------------------------------------
+-- ★★★ …AND ITS SUBSTITUTION LAW, GENERIC IN σ.
+--
+-- ⭐ Stated with a POINTWISE side condition, exactly like `irrT-sub`.  One
+--   lemma then serves every instantiation — the `natrec`'s zero branch
+--   (`single nzero`), its successor branch (`nrs`), and any later client —
+--   instead of one bespoke peel per branch.
+--
+-- ★ THE RECIPE: both sides are `subTm _ P` once the nested substitutions
+--   are FLATTENED (`subTm-renTm` then `subTm-subTm`), so the whole proof
+--   is one `subTm-cong` over a THREE-CASE bridge:
+--     vz        the result slot   — both sides give `subTm σ val`
+--     vs vz     the argument slot — both give `subTm σ y`, via `wk-single`
+--     vs (vs v) the ambient       — closed by the side condition `h`
+------------------------------------------------------------------------
+
+PAtR-sub : {Γ Γ' Γ'' : Cx} {σ : Sub Γ' Γ''} (ρ : Ren Γ Γ') (ρ' : Ren Γ Γ'') →
+           (∀ v → σ (ρ v) ≡ var (ρ' v)) →
+           (P : RTm ((Γ ∙) ∙)) (y val : RTm Γ') →
+           subTm σ (PAtR ρ P y val)
+         ≡ PAtR ρ' P (subTm σ y) (subTm σ val)
+PAtR-sub {σ = σ} ρ ρ' h P y val =
+  trans (cong (subTm σ) (cong (subTm (single val)) (subTm-renTm P)))
+    (trans (cong (subTm σ) (subTm-subTm P))
+      (trans (subTm-subTm P)
+        (trans (subTm-cong bridge P)
+          (trans (sym (subTm-subTm P))
+                 (cong (subTm (single (subTm σ val))) (sym (subTm-renTm P)))))))
+  where
+    bridge : ∀ v → _
+    bridge vz          = refl
+    bridge (vs vz)     = trans (cong (subTm σ) (wk-single {v = val} y))
+                               (sym (wk-single {v = subTm σ val} (subTm σ y)))
+    bridge (vs (vs v)) = h v
 
 ------------------------------------------------------------------------
 -- ★★★ THE INDUCTION HYPOTHESIS, POINTWISE — `P` holds of EVERY recursive
@@ -227,19 +264,81 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
   --   `amrec-unfold-Id` wants.
   ------------------------------------------------------------------------
 
-  ρ₃ : Ren ⌊ Δ ⌋ ⌊ ((Δ ▹ Nat) ▹ renTy vs A) ▹ Hom Nat (nsuc (wᶠ m)) (var (vs vz)) ⌋
-  ρ₃ v = vs (vs (vs v))
+  -- ★★ GENERIC IN THE AMBIENT RENAMING, so ONE substitution law serves
+  --   every instantiation.  ⭐ Exactly `irrT`'s design — `irrT θ x y n₁ n₂`
+  --   carries its own `θ` for the same reason, and `irrT-sub` is then one
+  --   lemma instead of one per depth.
+  θ₂ : {Γ' : Cx} → Ren ⌊ Δ ⌋ Γ' → Ren ⌊ Δ ⌋ ((Γ' ∙) ∙)
+  θ₂ θ v = vs (vs (θ v))
 
+  IndBAt : {Γ' : Cx} (θ : Ren ⌊ Δ ⌋ Γ') (P : RTm ((⌊ Δ ⌋ ∙) ∙))
+           (n : RTm Γ') → RTy Γ'
+  IndBAt θ P n =
+    Π (renTy θ A)
+      (Π (Hom Nat (nsuc (renTm (extR θ) m)) (w n))
+         (El (PAtR (θ₂ θ) P (var (vs vz))
+                (app (renTm (θ₂ θ) amrecTm) (var (vs vz))))))
+
+  -- the bound as `natrec` sees it: ambient `vs`, bound `var vz`
   IndB : RTm ((⌊ Δ ⌋ ∙) ∙) → RTy (⌊ Δ ⌋ ∙)
-  IndB P =
-    Π (renTy vs A)
-      (Π (Hom Nat (nsuc (wᶠ m)) (var (vs vz)))
-         (El (PAtR ρ₃ P (var (vs vz))
-                (app (renTm ρ₃ amrecTm) (var (vs vz))))))
+  IndB P = IndBAt vs P (var vz)
+
+  -- ★ the ambient renaming: `θ₂` at the `natrec` instantiation.
+  ρ₃ : Ren ⌊ Δ ⌋ ⌊ ((Δ ▹ Nat) ▹ renTy vs A) ▹ Hom Nat (nsuc (wᶠ m)) (var (vs vz)) ⌋
+  ρ₃ = θ₂ vs
 
   -- ★ the ambient renaming, typed: three weakenings off `Δ`.
   ρ₃⊢ : Ren⊢ Δ (((Δ ▹ Nat) ▹ renTy vs A) ▹ Hom Nat (nsuc (wᶠ m)) (var (vs vz))) ρ₃
   ρ₃⊢ = wR (wR there)
+
+  ------------------------------------------------------------------------
+  -- ★★★★★ `IndBAt-sub` — THE SUBSTITUTION LAW, GENERIC IN σ.
+  --
+  -- ONE lemma for BOTH `natrec` branches: the zero branch instantiates it
+  -- at `single nzero`, the successor branch at `nrs`.  Writing them
+  -- separately (as first sketched) would have been two bespoke peels with
+  -- the same content.
+  --
+  -- ★ Straight `cong₂` down the structure — `Π`, `Π`, `El` — bottoming out
+  --   in `subrenTy`/`subren` for the renamed pieces, `sub-w` for the bound,
+  --   and `PAtR-sub` for the motive.  Nothing here is deep; it is the
+  --   standing "-sub law per type former" tax, paid once.
+  --
+  -- ⚠ EVERY implicit σ/ρ/ρ' here IS PINNED — on `subren`, on `extcond`,
+  --   and on `cond₂`.  They occur only under an APPLICATION of a meta
+  --   (`_σ (_θ v) = σ (θ v)`), which is higher-order unification and Agda
+  --   will not decompose it.  The standing rule in this codebase; it costs
+  --   exactly one round every time it is forgotten, and it was forgotten
+  --   twice here.
+  ------------------------------------------------------------------------
+
+  -- the side condition, pushed under the motive's two binders
+  cond₂ : {Γ' Γ'' : Cx} {σ : Sub Γ' Γ''} {θ : Ren ⌊ Δ ⌋ Γ'} {θ' : Ren ⌊ Δ ⌋ Γ''} →
+          (∀ v → σ (θ v) ≡ var (θ' v)) →
+          (∀ v → extS (extS σ) (θ₂ θ v) ≡ var (θ₂ θ' v))
+  cond₂ h v = cong (λ t → renTm vs (renTm vs t)) (h v)
+
+  IndBAt-sub : {Γ' Γ'' : Cx} {σ : Sub Γ' Γ''}
+               (θ : Ren ⌊ Δ ⌋ Γ') (θ' : Ren ⌊ Δ ⌋ Γ'') →
+               (h : ∀ v → σ (θ v) ≡ var (θ' v)) →
+               (P : RTm ((⌊ Δ ⌋ ∙) ∙)) (n : RTm Γ') →
+               subTy σ (IndBAt θ P n) ≡ IndBAt θ' P (subTm σ n)
+  IndBAt-sub {σ = σ} θ θ' h P n =
+    cong₂ Π (subrenTy h A)
+      (cong₂ Π (cong₂ (λ u v → Hom Nat (nsuc u) v)
+                      (subren {σ = extS σ} {ρ = extR θ} {ρ' = extR θ'}
+                              (extcond {σ = σ} {ρ = θ} {ρ' = θ'} h) m)
+                      (sub-w n))
+               (cong El
+                  (trans (PAtR-sub (θ₂ θ) (θ₂ θ')
+                                   (cond₂ {σ = σ} {θ = θ} {θ' = θ'} h) P
+                                   (var (vs vz))
+                                   (app (renTm (θ₂ θ) amrecTm) (var (vs vz))))
+                         (cong (λ t → PAtR (θ₂ θ') P (var (vs vz))
+                                            (app t (var (vs vz))))
+                               (subren {σ = extS (extS σ)} {ρ = θ₂ θ} {ρ' = θ₂ θ'}
+                                       (cond₂ {σ = σ} {θ = θ} {θ' = θ'} h)
+                                       amrecTm)))))
 
   ⊢IndB : {P : RTm ((⌊ Δ ⌋ ∙) ∙)} →
           ((Δ ▹ A) ▹ El cM) ⊢ P ∷ U →
