@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2025-2026 Jonas Claesson
+#
+# riscv64 implementation of `I.Test.Emit` — the OBSERVABLE test interpretation.
+#
+# Once RV64 convention: the argument arrives in Input1 (t0), NOT a0. The shipped
+# nop `Strata/Interpretations/Test/Emit.riscv64` says a0 in its comment; that is
+# wrong, and it never showed because a nop reads nothing. The emitted call
+# sequence is `ld a0, 8(t0)` / `mv t0, a0` / `call emitF` — the value is in t0.
+#
+# Both routines preserve every role register (t0, s1 clos, s2 heap, s3 scratch,
+# s4 count) and return Unit (0) in Output (a0).
+
+.text
+
+# `emit : Eff Int Unit` — writes the argument's low byte.
+.align 4
+.global emit
+.type emit, @function
+emit:
+    addi    sp, sp, -32
+    sd      a1, 0(sp)
+    sd      a2, 8(sp)
+    sd      a7, 16(sp)
+    sb      t0, 24(sp)          # the argument's low byte
+    li      a0, 1               # fd = stdout
+    addi    a1, sp, 24          # buf
+    li      a2, 1               # count
+    li      a7, 64              # SYS_write
+    ecall
+    ld      a1, 0(sp)
+    ld      a2, 8(sp)
+    ld      a7, 16(sp)
+    addi    sp, sp, 32
+    li      a0, 0               # return Unit (0)
+    ret
+.size emit, .-emit
+
+# `emitF : Eff Float Unit` — writes the argument's whole 8-byte machine word,
+# little-endian. That word is `binary64` on this target.
+.align 4
+.global emitF
+.type emitF, @function
+emitF:
+    addi    sp, sp, -32
+    sd      a1, 0(sp)
+    sd      a2, 8(sp)
+    sd      a7, 16(sp)
+    sd      t0, 24(sp)          # the machine word, little-endian in memory
+    li      a0, 1               # fd = stdout
+    addi    a1, sp, 24          # buf
+    li      a2, 8               # count (the whole word)
+    li      a7, 64              # SYS_write
+    ecall
+    ld      a1, 0(sp)
+    ld      a2, 8(sp)
+    ld      a7, 16(sp)
+    addi    sp, sp, 32
+    li      a0, 0
+    ret
+.size emitF, .-emitF

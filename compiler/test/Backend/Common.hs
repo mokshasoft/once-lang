@@ -28,6 +28,7 @@ module Backend.Common
     -- * Effect-trace testing
   , testStrataDir
   , buildAndRunTrace
+  , buildAndRunTraceOn
     -- * Common Types
   , tA
   , tB
@@ -40,7 +41,10 @@ import System.Directory (createDirectoryIfMissing, findExecutable, makeAbsolute,
 import System.Environment (getEnvironment)
 import System.Exit (ExitCode (..))
 import System.FilePath ((</>))
-import System.Process (proc, env, readProcessWithExitCode, readCreateProcessWithExitCode)
+import System.IO (IOMode (WriteMode), withFile)
+import qualified Data.ByteString as BS
+import System.Process (proc, env, std_out, StdStream (UseHandle), createProcess,
+                       waitForProcess, readProcessWithExitCode, readCreateProcessWithExitCode)
 
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, assertFailure)
@@ -169,24 +173,47 @@ testStrataDir = "test/teststrata"
 -- code is the final `exit` argument. The compiler links the interpretation
 -- implementations itself — no manual assembly/link step.
 buildAndRunTrace :: String -> T.Text -> IO (Either String (String, Int))
-buildAndRunTrace name source = do
-  let testDir = "/tmp/once_trace_" ++ name
+buildAndRunTrace = buildAndRunTraceOn X86_64
+
+-- | 'buildAndRunTrace' at a chosen arch (plan 0.73 G5). The observable test
+-- interpretation now has an implementation for all three, so an effect trace
+-- can be read back on each — which is what makes a FLOAT argument's encoding
+-- observable at RUNTIME rather than only in the emitted assembly: the same
+-- literal emits eight bytes of `binary64` here and four of `binary32` on
+-- x86-32, because a `Float` denotes its target's representation (D113).
+buildAndRunTraceOn :: BackendArch -> String -> T.Text -> IO (Either String (String, Int))
+buildAndRunTraceOn arch name source = do
+  let tag     = archName arch
+      testDir = "/tmp/once_trace_" ++ tag ++ "_" ++ name
       srcFile = testDir </> name ++ ".once"
       exeFile = testDir </> name
   createDirectoryIfMissing True testDir
   TIO.writeFile srcFile source
-  (buildExit, _out, buildErr) <- runOnce
-    [ "build", "--target", "x86_64", "--exe"
+  (buildExit, _out, buildErr) <- runOnceArch arch
+    [ "build", "--target", tag, "--exe"
     , "--strata", testStrataDir, srcFile, "-o", exeFile ]
   case buildExit of
     ExitFailure _ -> do
       cleanupDir testDir
-      return $ Left $ "build failed: " ++ buildErr
+      return $ Left $ "[" ++ tag ++ "] build failed: " ++ buildErr
     ExitSuccess -> do
-      (runExit, runOut, _runErr) <- readProcessWithExitCode exeFile [] ""
-      cleanupDir testDir
-      let code = case runExit of ExitSuccess -> 0; ExitFailure c -> c
-      return $ Right (runOut, code)
+      -- Read the child's stdout as RAW BYTES. An effect trace is a byte
+      -- sequence, not text: `emitF` writes a float's machine word, and a
+      -- `binary64` pattern contains bytes like 0xE0 that are not valid UTF-8,
+      -- so decoding stdout as text throws instead of reporting the trace.
+      -- Each byte becomes one `Char` (latin-1), which is exactly what callers
+      -- already assume when they say `map fromEnum out`.
+      let outPath = testDir </> "stdout.bin"
+      code <- withFile outPath WriteMode $ \h -> do
+        (_, _, _, ph) <- createProcess
+          (proc "timeout" (["10"] ++ archRunPrefix arch ++ [exeFile]))
+            { std_out = UseHandle h }
+        runExit <- waitForProcess ph
+        pure (case runExit of ExitSuccess -> 0; ExitFailure c -> c)
+      raw <- BS.readFile outPath
+      let out = map (toEnum . fromIntegral) (BS.unpack raw)
+      length out `seq` cleanupDir testDir
+      return $ Right (out, code)
 
 -- | Test main for C swap test
 testMain :: T.Text

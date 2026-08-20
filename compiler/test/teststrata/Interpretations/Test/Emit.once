@@ -9,3 +9,14 @@
 -- real `I.Linux.Syscalls` (the Linux interpretation is symlinked into this test
 -- strata so a single --strata root resolves both imports).
 signature emit : Eff Int Unit
+
+-- | The same for a `Float`, and OBSERVABLE for the same reason.
+--
+-- `emit` writes its Int argument's low byte; `emitF` writes the float's whole
+-- MACHINE WORD, little-endian — 8 bytes on a 64-bit target, 4 on x86-32. That
+-- asymmetry is the point rather than an inconsistency: an `Int`'s value is
+-- width-free, so one byte identifies it, while a `Float` IS its target's
+-- representation (D113), so the only faithful thing to emit is the whole word.
+-- A test that reads those bytes is observing exactly what D114 says the trace
+-- carries — the SigOp's argument at its own base type.
+signature emitF : Eff Float Unit

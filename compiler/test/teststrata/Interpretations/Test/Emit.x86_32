@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2025-2026 Jonas Claesson
+#
+# x86-32 implementation of `I.Test.Emit` — the OBSERVABLE test interpretation.
+# The x86_64 companion documents the shape; this is the same contract at this
+# target's word size, which is the whole reason it exists: `emitF` here writes
+# FOUR bytes of `binary32` where the 64-bit targets write eight of `binary64`.
+#
+# Once x86-32 convention: the argument arrives in Input1 (%ecx). Both routines
+# preserve every role register — clos (%ebx), heap (%esi), scratch (%edx),
+# count (%edi) and Input1 itself — and return Unit (0) in Output (%eax).
+
+.text
+
+# `emit : Eff Int Unit` — writes the argument's low byte, so an emitted
+# sequence is observable as a byte string.
+.align 16
+.global emit
+.type emit, @function
+emit:
+    pushl   %ebx
+    pushl   %ecx                # Input1 — must survive the call
+    pushl   %edx
+    pushl   %esi
+    pushl   %edi
+    subl    $8, %esp
+    movb    %cl, (%esp)         # %ecx is still the argument
+    movl    $4, %eax            # SYS_write (32-bit)
+    movl    $1, %ebx            # fd = stdout
+    movl    %esp, %ecx          # buf
+    movl    $1, %edx            # count
+    int     $0x80
+    addl    $8, %esp
+    popl    %edi
+    popl    %esi
+    popl    %edx
+    popl    %ecx
+    popl    %ebx
+    xorl    %eax, %eax          # return Unit (0)
+    ret
+.size emit, .-emit
+
+# `emitF : Eff Float Unit` — writes the argument's whole 4-byte machine word,
+# little-endian. That word is `binary32` on this target.
+.align 16
+.global emitF
+.type emitF, @function
+emitF:
+    pushl   %ebx
+    pushl   %ecx
+    pushl   %edx
+    pushl   %esi
+    pushl   %edi
+    subl    $8, %esp
+    movl    %ecx, (%esp)        # the machine word, little-endian in memory
+    movl    $4, %eax            # SYS_write
+    movl    $1, %ebx            # fd = stdout
+    movl    %esp, %ecx          # buf
+    movl    $4, %edx            # count (the whole word)
+    int     $0x80
+    addl    $8, %esp
+    popl    %edi
+    popl    %esi
+    popl    %edx
+    popl    %ecx
+    popl    %ebx
+    xorl    %eax, %eax
+    ret
+.size emitF, .-emitF

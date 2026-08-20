@@ -26,3 +26,40 @@ emit:
     xorq    %rax, %rax          # return Unit (0)
     ret
 .size emit, .-emit
+
+# `emitF : Eff Float Unit` — the OBSERVABLE float twin of `emit`.
+#
+# Writes the argument's whole 8-byte machine word (little-endian) to stdout, so
+# a test can read back the exact IEEE-754 pattern the codegen materialised. On
+# this target that is `binary64`; x86-32 emits four bytes of `binary32`, and the
+# difference is observable precisely because a `Float` denotes its target's
+# representation (D113).
+#
+# Preserves every role register including Input1 (%rdi) — the abstract machine's
+# SigOp contract says Input1 is unchanged — and returns Unit (0) in %rax.
+# `syscall` also clobbers %rcx and %r11, so both are saved.
+.align 16
+.global emitF
+.type emitF, @function
+emitF:
+    pushq   %rdi                # Input1 — the argument, and must survive
+    pushq   %rsi
+    pushq   %rdx
+    pushq   %rcx                # clobbered by `syscall`
+    pushq   %r11                # likewise
+    subq    $16, %rsp
+    movq    %rdi, (%rsp)        # the machine word, little-endian in memory
+    movq    %rsp, %rsi          # rsi = buffer
+    movq    $1, %rdi            # rdi = fd (stdout)
+    movq    $8, %rdx            # rdx = count (the whole word)
+    movq    $1, %rax            # rax = SYS_write
+    syscall
+    addq    $16, %rsp
+    popq    %r11
+    popq    %rcx
+    popq    %rdx
+    popq    %rsi
+    popq    %rdi
+    xorq    %rax, %rax          # return Unit (0)
+    ret
+.size emitF, .-emitF

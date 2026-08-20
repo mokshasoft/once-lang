@@ -678,6 +678,7 @@ test-suite once-test
       once:once
   build-depends:
       base >=4.7 && <5
+    , bytestring
     , containers
     , directory
     , filepath
