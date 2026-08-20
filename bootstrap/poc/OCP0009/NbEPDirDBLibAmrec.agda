@@ -224,6 +224,13 @@ prvOk (prv _ d) = d
 --   is just a term plus its derivation, so `ren-lemma` does all the work.
 --   ⚠ Nothing renamed a `Prv` before 2026-08-20; every client that needed
 --   a renamed fact restated it instead.
+-- ⚠ HOISTED from inside `AmTΠ` (2026-08-20).  It never depended on the
+--   module's parameters, and a top-level client could not see it — the
+--   third time today a module-LOCAL definition of a parameter-independent
+--   fact had to be lifted (`mId`, `idR`, now this).
+prv-cast : {Γ : Ctx} {T T' : RTy ⌊ Γ ⌋} → T ≡ T' → Prv Γ T → Prv Γ T'
+prv-cast refl pp = pp
+
 prv-ren : {Γ Θ : Ctx} {ρ : Ren ⌊ Γ ⌋ ⌊ Θ ⌋} → Ren⊢ Γ Θ ρ →
           {T : RTy ⌊ Γ ⌋} → Prv Γ T → Prv Θ (renTy ρ T)
 prv-ren ρ⊢ (prv e d) = prv (renTm _ e) (ren-lemma d ρ⊢)
@@ -448,6 +455,28 @@ StepPW Δ A cM m Θ ρ a ih₁ ih₂ =
   Prv Θ' (Id (El (subTm (single y) (renTm (extR ρ') cM)))
              (app (app (renTm ϑ ih₁) y) q)
              (app (app (renTm ϑ ih₂) y) q))
+
+-- ⚠⚠⚠ `StepExt-ren` — DRAFTED AND PARKED (2026-08-20).  NOT PROVED.
+--
+--     StepExt-ren : Ren⊢ Δ Θ ρ → StepExt Δ A cM m stp →
+--                   StepExt Θ (renTy ρ A) (renTm (extR ρ) cM)
+--                             (renTm (extR ρ) m) (renTm ρ stp)
+--
+-- ★ DERIVABLE, not a new assumption: `StepExt` is ALREADY quantified over
+--   renamings, so this instantiates the original at the COMPOSITE `ϑ ∘ ρ`
+--   and re-associates.  `Ren⊢-comp` composes the typed renamings.
+--
+-- ⚠ WHAT IS HARD IS `StepPW`, not the idea.  It is DOUBLY
+--   renaming-indexed with its own coherence condition, so transporting it
+--   means calling the given `pw` at `ρ' := ϑ³ ∘ ϑ` — where the condition
+--   is `refl`, hence always available — and then re-expressing the RESULT
+--   at `ρ³` via `br`.  Three rounds went on those casts; the last failure
+--   was a malformed motive on `dq` (`Δ != Θ`), not a wrong plan.
+--
+-- ⇒ WHY IT MATTERS: it is the last piece before `AmTΠ` can be INSTANTIATED
+--   at `Θ'`, which is what supplies irrelevance at `Θ'`-level arguments and
+--   hence the renaming-indexed bridge `IndPW` needs.  The `-ren` family is
+--   COMPLETE and green; only this transport is open.
 
 -- `(x : A) (ih₁ ih₂ : IH x) → (∀ y q. ih₁ y q ≡ ih₂ y q) → stp x ih₁ ≡ stp x ih₂`
 StepExt : (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋) → Set
@@ -2795,8 +2824,7 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
   --                      instantiated at the recursive call.
   ------------------------------------------------------------------------
 
-  prv-cast : {Γ : Ctx} {T T' : RTy ⌊ Γ ⌋} → T ≡ T' → Prv Γ T → Prv Γ T'
-  prv-cast refl pp = pp
+  -- ⚠ `prv-cast` is now TOP LEVEL — it never used the module's parameters.
 
   vsθ : {Γ' : Cx} → Ren ⌊ Δ ⌋ Γ' → Ren ⌊ Δ ⌋ (Γ' ∙)
   vsθ θ v = vs (θ v)

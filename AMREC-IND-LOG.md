@@ -480,4 +480,41 @@ rungs cost three checks.
    `-ren` family.
 2. Step 6 (`IndPW`), the successor branch, the `⊢natrec`.
 3. ⚠ The instantiation at `n := suc (μ x)` — still the non-vacuity check.
+| 26 | 08-20 | Hoist `prv-cast` to top level | ✅ green | ~60s |
+| 27 | 08-20 | `StepExt-ren` — the transport into `Θ'` | ⚠ **drafted, PARKED** (3 rounds of casts) | ~60s |
+
+## Where route (b) stands
+
+★ **The `-ren` family is COMPLETE and green** (sweep: ALL GREEN, 110
+modules). The recursor provably commutes with renaming.
+
+⚠ **`StepExt-ren` is the one piece left before `AmTΠ` can be instantiated at
+`Θ'`** — and it is drafted, not proved.
+
+    StepExt-ren : Ren⊢ Δ Θ ρ → StepExt Δ A cM m stp →
+                  StepExt Θ (renTy ρ A) (renTm (extR ρ) cM)
+                            (renTm (extR ρ) m) (renTm ρ stp)
+
+It is DERIVABLE rather than a new assumption: `StepExt` is already
+quantified over renamings, so this instantiates the original at the
+composite `ϑ ∘ ρ`. `Ren⊢-comp` composes the typed renamings.
+
+**What is hard is `StepPW`, not the idea.** It is doubly renaming-indexed
+with its own coherence condition, so the transport means calling the given
+`pw` at `ρ' := ϑ³ ∘ ϑ` (where the condition is `refl`, hence always
+available) and then re-expressing the RESULT at `ρ³` via `br`. Three rounds
+went on those casts; the last failure was a malformed motive on `dq`
+(`Δ != Θ`) — a wrong cast, not a wrong plan.
+
+★ **Third hoist of the day.** `prv-cast` lived inside `AmTΠ` but never used
+its parameters, so a top-level client could not see it — after `mId` and
+`idR`. ⇒ **a definition that does not mention the module's parameters does
+not belong inside the module.**
+
+## Next
+
+1. `StepExt-ren` — finish the `StepPW` casts.
+2. Instantiate `AmTΠ` at `Θ'`; get the renaming-indexed bridge.
+3. Step 6, the successor branch, the `⊢natrec`.
+4. ⚠ The instantiation at `n := suc (μ x)` — the non-vacuity check.
 
