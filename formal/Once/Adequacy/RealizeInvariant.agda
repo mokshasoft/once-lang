@@ -12,7 +12,15 @@
 --     judgment realize to denotationally-equal terms.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.RealizeInvariant where
+open import Once.Float.Dyadic using (FloatFormat)
+
+-- Plan 0.73 (D113): this module's statements mention a denotation that is
+-- target-relative at `Float`, so the format is a parameter. A MODULE parameter
+-- rather than a per-lemma argument because everything here is a PROOF —
+-- downstream uses these as facts and never reduces them — so the "recursive
+-- function in a parameterised module stops reducing" trap does not apply. The
+-- denotations themselves take it as an explicit argument.
+module Once.Adequacy.RealizeInvariant (fmt : FloatFormat) where
 
 open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -30,4 +38,4 @@ postulate
   realize-invariant :
     ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} {Ψ : Usage (NamedCtx.size ctx)}
       (d₁ d₂ : ctx ⊢ᶜ e ∶ A ⨾ Ψ) (dγ : ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜ ⟧ᴰ) (k : ℕ)
-    → SD.⟦ realize d₁ ⟧ˢ dγ k ≡ SD.⟦ realize d₂ ⟧ˢ dγ k
+    → SD.⟦ realize d₁ ⟧ˢ fmt dγ k ≡ SD.⟦ realize d₂ ⟧ˢ fmt dγ k

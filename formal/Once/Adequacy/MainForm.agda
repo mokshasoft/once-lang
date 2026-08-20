@@ -16,7 +16,15 @@
 -- Lives ABOVE `FunBundle` (which imports `MainIRForm`), so no import cycle.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.MainForm where
+open import Once.Float.Dyadic using (FloatFormat)
+
+-- Plan 0.73 (D113): this module's statements mention a denotation that is
+-- target-relative at `Float`, so the format is a parameter. A MODULE parameter
+-- rather than a per-lemma argument because everything here is a PROOF —
+-- downstream uses these as facts and never reduces them — so the "recursive
+-- function in a parameterised module stops reducing" trap does not apply. The
+-- denotations themselves take it as an explicit argument.
+module Once.Adequacy.MainForm (fmt : FloatFormat) where
 
 open import Data.Bool using (Bool; false; true)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -55,7 +63,7 @@ open import Once.Adequacy.FunBundle as FB
          bundle→typed; bme→me; realize-agree)
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.ModuleComplete as MC
-open import Once.Adequacy.MtIndep using (mt-den-indep)
+open import Once.Adequacy.MtIndep fmt using (mt-den-indep)
 
 EffUU : Type
 EffUU = Unit ⇒[ mk-kind Many eff ] Unit
@@ -194,11 +202,11 @@ mainRealized-bundle : ∀ (m : C.Module) (mt : AS.ModuleTyped m) (hvm : MC.HasVa
   (b : FunBundle (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) funs C.emptyFunCtx)
   (bme : BMainExists b)
   (ef-eq : C.extractFunctions (C.extractAliases m) m ≡ inj₂ (funs , polys)) →
-  ∀ (n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ tt n ≡ SD.⟦ proj₂ (bundle-realize b bme) ⟧ˢ tt n
+  ∀ (n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt tt n ≡ SD.⟦ proj₂ (bundle-realize b bme) ⟧ˢ fmt tt n
 mainRealized-bundle m mt hvm {funs} {polys} b bme ef-eq n =
-  trans (cong (λ z → SD.⟦ proj₂ z ⟧ˢ tt n) (subst-app F ef-eq x))
+  trans (cong (λ z → SD.⟦ proj₂ z ⟧ˢ fmt tt n) (subst-app F ef-eq x))
     (trans (mt-den-indep mt' (bundle→typed b) me' (bme→me b bme) tt n)
-           (cong (λ z → SD.⟦ proj₂ z ⟧ˢ tt n) (realize-agree b bme)))
+           (cong (λ z → SD.⟦ proj₂ z ⟧ˢ fmt tt n) (realize-agree b bme)))
   where
     Motive : (ef : String ⊎ (List FunInfo × List C.PolyFunInfo)) → Set
     Motive ef = Σ-syntax (AS.ModuleTyped-ef m ef) (λ mtx →
