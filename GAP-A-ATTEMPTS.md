@@ -87,6 +87,7 @@ derivation whose *context* mentions the motive.
 | 49 | Route (ii): five `push-gcdG`, one term | OOM 3m52s |
 | 50 | …split into five `Def`s | OOM 1m24s |
 | **51** | **Transport only the leaves** (`⊢PAIRˢ`, type is closed `PairT`) | **OOM 1m39s** |
+| **52** | **Route 8 — BUILD at the final context, never transport** | ✅ **GREEN, 4.7s** |
 
 Everything around it is green: all three collapse chains, `⊢M3s`, `⊢Z3s`,
 and `push-gcdG` itself.
@@ -132,9 +133,50 @@ those renamings without fusing. This matches the two standing measurements —
 which is why the leaf transport was *worse* than transporting the whole
 thing, not better.
 
-## What this predicts
+## Route 8 — the prediction, tested
 
-The eighth route for `⊢S3s`, and the only one the pattern endorses:
+It worked, and the margin is not marginal: **4.7s against seven OOMs.**
+
+`⊢S3s : SΓ' ⊢ S3' a' b' ∷ subTy nrs M`, `--safe`, no postulate, no hole, no
+pragma. Three ingredients, none of which moves a derivation through
+`sub-lemma`:
+
+| Ingredient | What it does | Cost |
+|---|---|---|
+| leaves | `⊢PAIR*`/`⊢CERT*` built at the final context | 5.7s |
+| peels | `Peels.eqP`/`eqC` — **term** equalities, generic in the five substituted slots | — |
+| spine | `⊢lam`/`⊢app` directly; `subTm` had already distributed through `G3s`'s constructors | — |
+
+And with `⊢S3s` closed, the eq-4 assembly that OOMed as attempts 34–37
+became a bare application of the primitive `⊢natrec` — no substitution at
+all, because `⊢M3s`/`⊢Z3s`/`⊢S3s` produce exactly its three premises.
+
+### The abstraction lesson, measured a third time
+
+Stated **concretely**, the peels cost **6m47s** — matching `pw3`'s type
+forces Agda to build `w⁴ (W' a' b')`, and `W'` unfolds through `R1'`'s
+`natrec`. Made **generic** in the five substituted terms — the peels never
+look at *what* is substituted, only at *depth* — the same module is
+**4.7s**. An 87× difference from abstracting five parameters.
+
+This is the same shape as AbsProbe (5.4s abstract vs 17.5s concrete) and as
+`irr-at` returning `Prv`. Three independent measurements now.
+
+### What route 8 costs
+
+Two things, both cheap and both structural:
+
+- **`descLeftTm-sub`** — `pair`/`monusTm`/`nsuc` distribute over `subTm`
+  definitionally, but `plusMonoLTm`/`monusLtTm` do not. That is why
+  `plusMonoLTm-sub`/`monusLtTm-sub` exist; this bundles them once.
+- **`wfw-single`** — applying the IH leaves the measure slot as
+  `subTm (single v) (wᶠ (w t))`. `⊢G3s` gets that definitionally because its
+  slots are de Bruijn **variables**; route 8's are abstract **terms**, so it
+  is only propositional. `ren-w` to fuse, `wk-single` to cancel.
+
+## What this predicted
+
+The eighth route for `⊢S3s`, and the only one the pattern endorsed —
 **never transport `⊢S3` at all.** Build the successor branch's derivation
 at `gcdG` form *from the start* — feed `gcdG`-form inputs into the
 construction and apply `push-gcdG` at each construction step, so the
