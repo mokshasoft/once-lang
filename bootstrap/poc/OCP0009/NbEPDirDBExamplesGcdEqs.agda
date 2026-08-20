@@ -61,7 +61,8 @@ module GcdEqAt (Δ : Ctx) where
     using ( amrecTm; auxIH; ihS-atP; descS-at; descS-atR; descS-peel
           ; ih-app; amrec-unfold-Id-red; idR; auxAt-id; descS
           ; irrT; irrT-sub; irrElim; irr-ind; irr-at; amrec-β; ⊢auxIH; ⊢amrecPt
-          ; aAuxB; auxAt )
+          ; aAuxB; auxAt
+          ; extR-id; extR⁶-id; descS-at-idR; ⊢descS-at )
 
   ------------------------------------------------------------------------
   -- ★ TYPING THE RECURSIVE CALL'S CERTIFICATE, un-renamed.
@@ -76,38 +77,17 @@ module GcdEqAt (Δ : Ctx) where
   --   because `subTm` does not invert.  Say what it is first.
   ------------------------------------------------------------------------
 
-  extR-id : {Γ : Cx} {ρ : Ren Γ Γ} → (∀ v → ρ v ≡ v) → (∀ v → extR ρ v ≡ v)
-  extR-id h vz     = refl
-  extR-id h (vs v) = cong vs (h v)
-
-  extR⁶-id : ∀ v → extR (extR (extR (extR (extR (extR idR))))) v ≡ v
-  extR⁶-id = extR-id (extR-id (extR-id (extR-id (extR-id (extR-id (λ v → refl))))))
-
-  descS-at-idR : (x a k p y q : RTm ⌊ Δ ⌋) →
-                 descS-atR idR x a k p y q ≡ descS-at x a k p y q
-  descS-at-idR x a k p y q =
-    cong₂ (λ u t → subTm (single q)
-                     (subTm (extS (single y))
-                       (subTm (extS (extS (single p)))
-                         (subTm (extS (extS (extS (single a))))
-                           (subTm (extS (extS (extS (extS (single u)))))
-                             (subTm (extS (extS (extS (extS (extS (single k))))))
-                                    t))))))
-          (auxAt-id x k)
-          (renTm-idR extR⁶-id
-                     (subTm (extS (extS (extS (extS (extS (extS (single x)))))))
-                            descS))
-
-  ⊢descS-at : {x a k p y q : RTm ⌊ Δ ⌋} →
-              Δ ⊢ subTm (single y) msr ∷ Nat →
-              Δ ⊢ subTm (single a) msr ∷ Nat → Δ ⊢ k ∷ Nat →
-              Δ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) msr)) (subTm (single a) msr) →
-              Δ ⊢ p ∷ Hom Nat (subTm (single a) msr) (nsuc k) →
-              Δ ⊢ descS-at x a k p y q ∷ Hom Nat (subTm (single y) msr) k
-  ⊢descS-at {x = x} {a} {k} {p} {y} {q} dμy dμa dk dq dp =
-    subst (λ u → Δ ⊢ u ∷ Hom Nat (subTm (single y) msr) k)
-          (trans (sym (descS-peel idR x a k p y q)) (descS-at-idR x a k p y q))
-          (⊢strong-step dμy dμa dk dq dp)
+  -- ★ `extR-id` / `extR⁶-id` / `descS-at-idR` / `⊢descS-at` MOVED into
+  --   `AmTΠ` (`…LibAmrec`) on 2026-08-20 and re-exported by the `open`
+  --   above.  None was gcd-specific: they speak only about `descS-at` /
+  --   `descS-atR` / `auxAt`, the library's own constructs.  Being STATED at
+  --   `msr` is what made them look otherwise.
+  --
+  -- ⚠ The move was NOT a rename.  At the CLOSED `msr`, `renTm (extR idR) msr`
+  --   collapses definitionally and the proof never mentioned it; at an
+  --   abstract `m` it is only propositional.  That hidden dependency is now
+  --   explicit as `AmTΠ.mId` — which `amrec-unfold-Id` had all along in its
+  --   own `where`, unshared.
 
   ------------------------------------------------------------------------
   -- ★ THE MEASURE AT A CONSTRUCTOR-HEADED PAIR — the one thing that DOES

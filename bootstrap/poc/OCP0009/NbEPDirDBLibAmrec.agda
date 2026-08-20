@@ -3154,6 +3154,78 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
           (renTm-idR (λ v → refl) (auxZ z))
           (renTm-idR extR²-idR (auxS z))
 
+  ------------------------------------------------------------------------
+  -- ★ TYPING THE RECURSIVE CALL'S CERTIFICATE, un-renamed.
+  --
+  -- `descS-peel` says what the certificate IS, but only for the RENAMED
+  -- form `descS-atR`.  At the identity renaming the two coincide — the
+  -- extra `renTm (extR⁶ idR)` layer collapses and `auxAt idR` is `auxIH` —
+  -- so one bridge gives the un-renamed twin, and `⊢strong-step` types it.
+  --
+  -- ⚠ Same shape as `irr-ss`'s `dD`: a certificate that exists only as a
+  --   REDUCT can never be typed by subject reduction, because `subTm` does
+  --   not invert.  Say what it is first.
+  --
+  -- ⚠⚠ THESE LIVED IN `…ExamplesGcdEqs` UNTIL 2026-08-20, stated at gcd's
+  --   `msr`.  Nothing about them is gcd-specific — they speak only about
+  --   `descS-at`/`descS-atR`/`auxAt`, which are this module's own.  What
+  --   disguised it is that a general lemma STATED AT AN INSTANCE looks
+  --   instance-specific.
+  --
+  -- ⚠⚠⚠ AND THE MOVE WAS NOT A RENAME.  At gcd's CLOSED `msr`,
+  --   `renTm (extR idR) msr` reduces to `msr` DEFINITIONALLY, so the
+  --   original proof never mentioned it.  At an abstract `m` it is only
+  --   PROPOSITIONAL — the proof silently depended on the measure being
+  --   closed.  `mId` below is that dependency, made explicit.
+  ------------------------------------------------------------------------
+
+  extR-id : {Γ : Cx} {ρ : Ren Γ Γ} → (∀ v → ρ v ≡ v) → (∀ v → extR ρ v ≡ v)
+  extR-id h vz     = refl
+  extR-id h (vs v) = cong vs (h v)
+
+  extR⁶-id : ∀ v → extR (extR (extR (extR (extR (extR idR))))) v ≡ v
+  extR⁶-id = extR-id (extR-id (extR-id (extR-id (extR-id (extR-id (λ v → refl))))))
+
+  descS-at-idR : (x a k p y q : RTm ⌊ Δ ⌋) →
+                 descS-atR idR x a k p y q ≡ descS-at x a k p y q
+  descS-at-idR x a k p y q =
+    cong₂ (λ u t → subTm (single q)
+                     (subTm (extS (single y))
+                       (subTm (extS (extS (single p)))
+                         (subTm (extS (extS (extS (single a))))
+                           (subTm (extS (extS (extS (extS (single u)))))
+                             (subTm (extS (extS (extS (extS (extS (single k))))))
+                                    t))))))
+          (auxAt-id x k)
+          (renTm-idR extR⁶-id
+                     (subTm (extS (extS (extS (extS (extS (extS (single x)))))))
+                            descS))
+
+  -- ★ the dependency the gcd version hid: at an abstract measure the
+  --   identity renaming does NOT vanish definitionally.
+  mId : renTm (extR idR) m ≡ m
+  mId = renTm-idR (extR-id (λ v → refl)) m
+
+  ⊢descS-at : {x a k p y q : RTm ⌊ Δ ⌋} →
+              Δ ⊢ subTm (single y) m ∷ Nat →
+              Δ ⊢ subTm (single a) m ∷ Nat → Δ ⊢ k ∷ Nat →
+              Δ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) m)) (subTm (single a) m) →
+              Δ ⊢ p ∷ Hom Nat (subTm (single a) m) (nsuc k) →
+              Δ ⊢ descS-at x a k p y q ∷ Hom Nat (subTm (single y) m) k
+  ⊢descS-at {x = x} {a} {k} {p} {y} {q} dμy dμa dk dq dp =
+    subst (λ u → Δ ⊢ u ∷ Hom Nat (subTm (single y) m) k)
+          (trans (sym peelId) (descS-at-idR x a k p y q))
+          (⊢strong-step dμy dμa dk dq dp)
+    where
+      peelId : descS-atR idR x a k p y q
+             ≡ ordtr (nsuc (subTm (single y) m)) (subTm (single a) m)
+                     (nsuc k) q p
+      peelId =
+        trans (descS-peel idR x a k p y q)
+              (cong₂ (λ u v → ordtr (nsuc (subTm (single y) u))
+                                    (subTm (single a) v) (nsuc k) q p)
+                     mId mId)
+
   amrec-unfold-Id :
     StepExt Δ A cM m stp →
     {x k p : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A → Δ ⊢ k ∷ Nat →
@@ -3171,8 +3243,9 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
       μx  = subTm (single x) m
       dμx = ⊢[] dm dx
 
-      mId : renTm (extR idR) m ≡ m
-      mId = renTm-idR extR-idR m
+      -- ⚠ `mId` was defined HERE, locally.  It is now at module level,
+      --   because `⊢descS-at` needs the same fact — the dependency on the
+      --   measure not being closed was already known, just not shared.
 
       -- the induction, instantiated at the SECOND bound `nsuc k`
       dAt : Δ ⊢ app (prvTm (irr-ind ext dx dx dμx)) (nsuc k)
