@@ -29,11 +29,13 @@ module poc.OCP0009.NbEPDirDBSpikeAmrecInd where
 open import normalizer.Syntax.Types using ( _≡_; cong )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; RTm; El; U; Nat; Hom; Π; var; vz; app; nsuc
-        ; subTm; subTy; renTy; renTm; Ren; extR )
+        ; subTm; subTy; renTy; renTm; Ren; extR; extS )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single
         ; _⊢_∷_; _⊢ty_; ⊢var; here; ⊢app; ty-El )
-open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢ )
+open import poc.OCP0009.NbEPDirDBSubj
+  using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢; Ren⊢-ext; ren-lemma
+        ; Sub⊢; Sub⊢-ext; ⊢single; sub-lemma )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; wᶠ¹-single )
 open import poc.OCP0009.NbEPDirDBLibAmrec
@@ -84,16 +86,23 @@ module Stmt (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp :
 --   first and the ARGUMENT second.  Same convention as `IndAt`.
 ------------------------------------------------------------------------
 
--- ⚠ `val` IS WEAKENED ON THE WAY IN, and the reason is the slot order.
---   Filling the RESULT slot happens while the ARGUMENT is still bound, so
---   the substituted value must live one context deeper.  The outer
---   `single y` then cancels the weakening (`wk-single`) and lands `val`
---   back where it was written.
---   ⭐ `IndAt`'s `valAt` needs no such weakening — it is written AT
---   `⌊ Δ ⌋ ∙` already, as `app (w amrecTm) (var vz)`.
+-- ⚠⚠ THE ARGUMENT SLOT MUST BE FILLED **FIRST**, AND THE REASON IS A
+--   DEPENDENCY, not a convention.  The RESULT slot's type is `El cM`,
+--   which DEPENDS on the argument slot.  So substituting the result first
+--   is type-correct only when the value is written as a function of the
+--   argument VARIABLE — and an arbitrary `val` is not.
+--
+--   ⭐ `IndAt` gets away with the other order precisely because its
+--   `valAt = app (w amrecTm) (var vz)` IS such a function.  That is a
+--   special case, not the general rule, and reading it as the rule was
+--   attempt 1's mistake: the wrong order still checks as a TERM operation
+--   (attempt 3 was green) and only fails when a TYPING is demanded of it.
+--
+-- ⇒ `extS (single y)` fills the argument and keeps the result slot open;
+--   `single val` then closes it, at the now-instantiated type `El cM[y]`.
 PAtR : {Γ Γ' : Cx} (ρ : Ren Γ Γ') (P : RTm ((Γ ∙) ∙)) (y val : RTm Γ') → RTm Γ'
 PAtR ρ P y val =
-  subTm (single y) (subTm (single (w val)) (renTm (extR (extR ρ)) P))
+  subTm (single val) (subTm (extS (single y)) (renTm (extR (extR ρ)) P))
 
 ------------------------------------------------------------------------
 -- ★★★ THE INDUCTION HYPOTHESIS, POINTWISE — `P` holds of EVERY recursive
@@ -156,6 +165,31 @@ IndStep Δ A cM m stp P =
 --   evidence that any function has the property — exactly the status
 --   `StepExt` had before `…GcdStepExtA` discharged it.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ★★★ AND THE TYPING THAT DECIDES THE ORDER.  If `PAtR` is well-ordered
+--   this goes through; if not, no arrangement of casts saves it, because
+--   the mismatch is a genuine dependency.
+------------------------------------------------------------------------
+
+module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
+              (dA   : Δ ⊢ty A)
+              (dcM  : (Δ ▹ A) ⊢ cM ∷ U)
+              (dm   : (Δ ▹ A) ⊢ m ∷ Nat)
+              (dstp : Δ ⊢ stp ∷ aStepT A cM m)
+              where
+
+  ⊢PAtR : {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
+          {P : RTm ((⌊ Δ ⌋ ∙) ∙)} →
+          ((Δ ▹ A) ▹ El cM) ⊢ P ∷ U →
+          {y val : RTm ⌊ Θ ⌋} →
+          Θ ⊢ y ∷ renTy ρ A →
+          Θ ⊢ val ∷ El (subTm (single y) (renTm (extR ρ) cM)) →
+          Θ ⊢ PAtR ρ P y val ∷ U
+  ⊢PAtR ρ⊢ dP dy dval =
+    ⊢[] (sub-lemma (ren-lemma dP (Ren⊢-ext (Ren⊢-ext ρ⊢)))
+                   (Sub⊢-ext (⊢single dy)))
+        dval
 
 module Concl (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
              (dA   : Δ ⊢ty A)
