@@ -36,7 +36,7 @@ d__'8866''7522'_'8758'_'10814'__10 a0 a1 a2 a3 = ()
 data T__'8866''7522'_'8758'_'10814'__10
   = C_t'45'int_30 |
     C_t'45'float_42 MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6
-                    MAlonzo.Code.Once.Float.Representable.T_Accepted_80 |
+                    MAlonzo.Code.Once.Float.Representable.T_Accepted_94 |
     C_t'45'str_48 | C_t'45'unit_52 | C_t'45'unit'45'var_56 |
     C_t'45'var'45'local_68 MAlonzo.Code.Once.Surface.Context.T_SVar_184 |
     C_t'45'var'45'qualified_78 MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_226 |
@@ -106,7 +106,7 @@ d__'8866''7501'_'8758'__14 a0 a1 a2 = ()
 data T__'8866''7501'_'8758'__14
   = C_g'45'int_318 |
     C_g'45'float_330 MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6
-                     MAlonzo.Code.Once.Float.Representable.T_Accepted_80 |
+                     MAlonzo.Code.Once.Float.Representable.T_Accepted_94 |
     C_g'45'terminal_334 |
     C_g'45'pair_346 T__'8866''7501'_'8758'__14
                     T__'8866''7501'_'8758'__14 |

@@ -640,6 +640,7 @@ test-suite once-test
       ArithSpec
       Backend.Common
       FloatSpec
+      FloatEmitSpec
       GeneratorSpec
       IRSpec
       Layer0Spec

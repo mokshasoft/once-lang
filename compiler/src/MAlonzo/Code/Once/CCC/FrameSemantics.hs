@@ -21,49 +21,51 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Sum.Base
+import qualified MAlonzo.Code.Once.Float.Dyadic
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.CCC.FrameSemantics.FrameSemantics
 d_FrameSemantics_6 = ()
 data T_FrameSemantics_6
-  = C_constructor_148 (AgdaAny ->
+  = C_constructor_152 (AgdaAny ->
                        AgdaAny -> MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20)
                       (AgdaAny -> Integer) (AgdaAny -> Integer -> Integer)
                       (AgdaAny -> Integer -> AgdaAny) Integer
+                      MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28
                       (AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny)
                       (AgdaAny -> AgdaAny -> MAlonzo.Code.Data.Sum.Base.T__'8846'__30)
 -- Once.CCC.FrameSemantics.FrameSemantics.Frame
-d_Frame_78 :: T_FrameSemantics_6 -> ()
-d_Frame_78 = erased
+d_Frame_80 :: T_FrameSemantics_6 -> ()
+d_Frame_80 = erased
 -- Once.CCC.FrameSemantics.FrameSemantics._≟F_
-d__'8799'F__84 ::
+d__'8799'F__86 ::
   T_FrameSemantics_6 ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d__'8799'F__84 v0
+d__'8799'F__86 v0
   = case coe v0 of
-      C_constructor_148 v2 v3 v4 v7 v8 v12 v14 -> coe v2
+      C_constructor_152 v2 v3 v4 v7 v8 v11 v13 v15 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.FrameSemantics.FrameSemantics.frame-base
-d_frame'45'base_86 :: T_FrameSemantics_6 -> AgdaAny -> Integer
-d_frame'45'base_86 v0
+d_frame'45'base_88 :: T_FrameSemantics_6 -> AgdaAny -> Integer
+d_frame'45'base_88 v0
   = case coe v0 of
-      C_constructor_148 v2 v3 v4 v7 v8 v12 v14 -> coe v3
+      C_constructor_152 v2 v3 v4 v7 v8 v11 v13 v15 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.FrameSemantics.FrameSemantics.slot-addr
-d_slot'45'addr_88 ::
+d_slot'45'addr_90 ::
   T_FrameSemantics_6 -> AgdaAny -> Integer -> Integer
-d_slot'45'addr_88 v0
+d_slot'45'addr_90 v0
   = case coe v0 of
-      C_constructor_148 v2 v3 v4 v7 v8 v12 v14 -> coe v4
+      C_constructor_152 v2 v3 v4 v7 v8 v11 v13 v15 -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.FrameSemantics.FrameSemantics.slot-zero-at-base
-d_slot'45'zero'45'at'45'base_92 ::
+d_slot'45'zero'45'at'45'base_94 ::
   T_FrameSemantics_6 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_slot'45'zero'45'at'45'base_92 = erased
+d_slot'45'zero'45'at'45'base_94 = erased
 -- Once.CCC.FrameSemantics.FrameSemantics.slot-injective
-d_slot'45'injective_100 ::
+d_slot'45'injective_102 ::
   T_FrameSemantics_6 ->
   AgdaAny ->
   Integer ->
@@ -72,58 +74,66 @@ d_slot'45'injective_100 ::
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_slot'45'injective_100 = erased
+d_slot'45'injective_102 = erased
 -- Once.CCC.FrameSemantics.FrameSemantics.shift-frame
-d_shift'45'frame_102 ::
+d_shift'45'frame_104 ::
   T_FrameSemantics_6 -> AgdaAny -> Integer -> AgdaAny
-d_shift'45'frame_102 v0
+d_shift'45'frame_104 v0
   = case coe v0 of
-      C_constructor_148 v2 v3 v4 v7 v8 v12 v14 -> coe v7
+      C_constructor_152 v2 v3 v4 v7 v8 v11 v13 v15 -> coe v7
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.FrameSemantics.FrameSemantics.frame-word
-d_frame'45'word_104 :: T_FrameSemantics_6 -> Integer
-d_frame'45'word_104 v0
+d_frame'45'word_106 :: T_FrameSemantics_6 -> Integer
+d_frame'45'word_106 v0
   = case coe v0 of
-      C_constructor_148 v2 v3 v4 v7 v8 v12 v14 -> coe v8
+      C_constructor_152 v2 v3 v4 v7 v8 v11 v13 v15 -> coe v8
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.FrameSemantics.FrameSemantics.slot-addr-linear
-d_slot'45'addr'45'linear_110 ::
+d_slot'45'addr'45'linear_112 ::
   T_FrameSemantics_6 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_slot'45'addr'45'linear_110 = erased
+d_slot'45'addr'45'linear_112 = erased
 -- Once.CCC.FrameSemantics.FrameSemantics.shift-base
-d_shift'45'base_116 ::
+d_shift'45'base_118 ::
   T_FrameSemantics_6 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_shift'45'base_116 = erased
+d_shift'45'base_118 = erased
+-- Once.CCC.FrameSemantics.FrameSemantics.float-format
+d_float'45'format_120 ::
+  T_FrameSemantics_6 ->
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28
+d_float'45'format_120 v0
+  = case coe v0 of
+      C_constructor_152 v2 v3 v4 v7 v8 v11 v13 v15 -> coe v11
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.FrameSemantics.FrameSemantics._≺_
-d__'8826'__118 :: T_FrameSemantics_6 -> AgdaAny -> AgdaAny -> ()
-d__'8826'__118 = erased
+d__'8826'__122 :: T_FrameSemantics_6 -> AgdaAny -> AgdaAny -> ()
+d__'8826'__122 = erased
 -- Once.CCC.FrameSemantics.FrameSemantics.≺-trans
-d_'8826''45'trans_126 ::
+d_'8826''45'trans_130 ::
   T_FrameSemantics_6 ->
   AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
-d_'8826''45'trans_126 v0
+d_'8826''45'trans_130 v0
   = case coe v0 of
-      C_constructor_148 v2 v3 v4 v7 v8 v12 v14 -> coe v12
+      C_constructor_152 v2 v3 v4 v7 v8 v11 v13 v15 -> coe v13
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.FrameSemantics.FrameSemantics.≺-irrefl
-d_'8826''45'irrefl_130 ::
+d_'8826''45'irrefl_134 ::
   T_FrameSemantics_6 ->
   AgdaAny -> AgdaAny -> MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_'8826''45'irrefl_130 = erased
+d_'8826''45'irrefl_134 = erased
 -- Once.CCC.FrameSemantics.FrameSemantics.≺-compare
-d_'8826''45'compare_136 ::
+d_'8826''45'compare_140 ::
   T_FrameSemantics_6 ->
   AgdaAny -> AgdaAny -> MAlonzo.Code.Data.Sum.Base.T__'8846'__30
-d_'8826''45'compare_136 v0
+d_'8826''45'compare_140 v0
   = case coe v0 of
-      C_constructor_148 v2 v3 v4 v7 v8 v12 v14 -> coe v14
+      C_constructor_152 v2 v3 v4 v7 v8 v11 v13 v15 -> coe v15
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.FrameSemantics.FrameSemantics.frame-disjoint-bounded
-d_frame'45'disjoint'45'bounded_146 ::
+d_frame'45'disjoint'45'bounded_150 ::
   T_FrameSemantics_6 ->
   AgdaAny ->
   AgdaAny ->
@@ -133,4 +143,4 @@ d_frame'45'disjoint'45'bounded_146 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_frame'45'disjoint'45'bounded_146 = erased
+d_frame'45'disjoint'45'bounded_150 = erased

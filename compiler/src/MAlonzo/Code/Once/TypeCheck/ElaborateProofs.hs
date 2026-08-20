@@ -72,21 +72,21 @@ d_checkElab'45'fallback'45'RFloat_54 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
-  MAlonzo.Code.Once.Float.Representable.T_Accepted_80 ->
+  MAlonzo.Code.Once.Float.Representable.T_Accepted_94 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_checkElab'45'fallback'45'RFloat_54 v0 ~v1 ~v2 ~v3 v4 v5
   = du_checkElab'45'fallback'45'RFloat_54 v0 v4 v5
 du_checkElab'45'fallback'45'RFloat_54 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_338 ->
   MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
-  MAlonzo.Code.Once.Float.Representable.T_Accepted_80 ->
+  MAlonzo.Code.Once.Float.Representable.T_Accepted_94 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_checkElab'45'fallback'45'RFloat_54 v0 v1 v2
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
          MAlonzo.Code.Once.Surface.Syntax.C_float_198 v1
-         (MAlonzo.Code.Once.Float.Representable.d_fits'45'all_96 (coe v2)))
+         (MAlonzo.Code.Once.Float.Representable.d_fits'45'all_110 (coe v2)))
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
          (coe

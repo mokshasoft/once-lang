@@ -5,6 +5,7 @@ module Backend.Common
   , backendArches
   , buildAndRunOn
   , exitCases
+  , runOnceArch
     -- * Test Programs
   , testPrograms
   , helloOnce

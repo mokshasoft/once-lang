@@ -275,7 +275,7 @@ d_realize'45'infer_30 v0 v1 v2 v3 v4
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'float_42 v9 v10
         -> coe
              MAlonzo.Code.Once.Surface.Syntax.C_float_198 v9
-             (MAlonzo.Code.Once.Float.Representable.d_fits'45'all_96 (coe v10))
+             (MAlonzo.Code.Once.Float.Representable.d_fits'45'all_110 (coe v10))
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'str_48
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_58 v7

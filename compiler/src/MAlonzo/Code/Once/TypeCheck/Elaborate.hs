@@ -2684,7 +2684,7 @@ du_checkG_928 v0 v1 v2
                   -> coe
                        du_checkG'45'RFloat'45'aux_894
                        (coe
-                          MAlonzo.Code.Once.Float.Representable.d_accept'63'_252 (coe v4)
+                          MAlonzo.Code.Once.Float.Representable.d_accept'63'_266 (coe v4)
                           (coe v5) (coe v6))
                 _ -> coe v3
          _ -> coe v3)
@@ -7199,7 +7199,7 @@ d_inferElabV_1828 v0 v1
              d_inferElabV'45'RFloat'45'aux_2292 (coe v0) (coe v2) (coe v3)
              (coe v4)
              (coe
-                MAlonzo.Code.Once.Float.Representable.d_accept'63'_252 (coe v2)
+                MAlonzo.Code.Once.Float.Representable.d_accept'63'_266 (coe v2)
                 (coe v3) (coe v4))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_58 v2
         -> coe
@@ -8140,7 +8140,7 @@ du_checkElabV'45'wf_1844 v0 v1 v2
                 d_checkElabV'45'RFloat'45'aux_2280 (coe v0) (coe v4) (coe v5)
                 (coe v6) (coe v2) (coe d_isRFloatVliftTarget'63'_184 (coe v2))
                 (coe
-                   MAlonzo.Code.Once.Float.Representable.d_accept'63'_252 (coe v4)
+                   MAlonzo.Code.Once.Float.Representable.d_accept'63'_266 (coe v4)
                    (coe v5) (coe v6))
          _ -> coe v3)
 -- Once.TypeCheck.Elaborate.inferElabV-RApp-other
@@ -14011,7 +14011,7 @@ d_checkElabV'45'RFloat'45'aux_2280 v0 v1 v2 v3 v4 v5 v6
                                                         (coe v0)))
                                                   (coe
                                                      MAlonzo.Code.Once.Surface.Syntax.C_float_198 v8
-                                                     (MAlonzo.Code.Once.Float.Representable.d_fits'45'all_96
+                                                     (MAlonzo.Code.Once.Float.Representable.d_fits'45'all_110
                                                         (coe v9)))
                                                   (coe (0 :: Integer))
                                                   (coe
@@ -14068,7 +14068,7 @@ d_inferElabV'45'RFloat'45'aux_2292 v0 v1 v2 v3 v4
                           (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_354 (coe v0)))
                        (coe
                           MAlonzo.Code.Once.Surface.Syntax.C_float_198 v6
-                          (MAlonzo.Code.Once.Float.Representable.d_fits'45'all_96 (coe v7)))
+                          (MAlonzo.Code.Once.Float.Representable.d_fits'45'all_110 (coe v7)))
                        (coe (0 :: Integer))
                        (coe
                           MAlonzo.Code.Once.TypeCheck.Classify.d_freshCounter_360 (coe v0)))

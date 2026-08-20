@@ -51,17 +51,17 @@ d_compile'45'sigOp'45'length_20 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_compile'45'sigOp'45'length_20 = erased
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-const
-d_compile'45'const_24 ::
+d_compile'45'const_26 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_196 ->
   AgdaAny ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_28]
-d_compile'45'const_24 ~v0 v1 v2 = du_compile'45'const_24 v1 v2
-du_compile'45'const_24 ::
+d_compile'45'const_26 ~v0 v1 v2 = du_compile'45'const_26 v1 v2
+du_compile'45'const_26 ::
   MAlonzo.Code.Once.Type.T_FitsInReg_196 ->
   AgdaAny ->
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_28]
-du_compile'45'const_24 v0 v1
+du_compile'45'const_26 v0 v1
   = case coe v0 of
       MAlonzo.Code.Once.Type.C_fits'45'int_198
         -> coe
@@ -85,23 +85,23 @@ du_compile'45'const_24 v0 v1
                 (coe
                    MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_imm_26
                    (coe
-                      MAlonzo.Code.Once.Float.Dyadic.d_encode_122
-                      (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_36) (coe v1))))
+                      MAlonzo.Code.Once.Float.Dyadic.d_encode_140
+                      (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_42) (coe v1))))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-const-size
-d_compile'45'const'45'size_32 ::
+d_compile'45'const'45'size_34 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_196 -> Integer
-d_compile'45'const'45'size_32 ~v0 v1
-  = du_compile'45'const'45'size_32 v1
-du_compile'45'const'45'size_32 ::
+d_compile'45'const'45'size_34 ~v0 v1
+  = du_compile'45'const'45'size_34 v1
+du_compile'45'const'45'size_34 ::
   MAlonzo.Code.Once.Type.T_FitsInReg_196 -> Integer
-du_compile'45'const'45'size_32 v0
+du_compile'45'const'45'size_34 v0
   = coe seq (coe v0) (coe (1 :: Integer))
 -- Once.CCC.Target.X86-64.CodeGen.Primitives.compile-const-length
-d_compile'45'const'45'length_40 ::
+d_compile'45'const'45'length_42 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_FitsInReg_196 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_compile'45'const'45'length_40 = erased
+d_compile'45'const'45'length_42 = erased

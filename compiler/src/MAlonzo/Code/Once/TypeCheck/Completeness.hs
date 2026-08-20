@@ -7105,7 +7105,7 @@ du_infer'45'complete_4878 v0 v1 v2 v3
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe
                 MAlonzo.Code.Once.Surface.Syntax.C_float_198 v8
-                (MAlonzo.Code.Once.Float.Representable.d_fits'45'all_96 (coe v9)))
+                (MAlonzo.Code.Once.Float.Representable.d_fits'45'all_110 (coe v9)))
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
                 (coe

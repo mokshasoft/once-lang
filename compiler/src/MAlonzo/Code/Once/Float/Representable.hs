@@ -22,6 +22,7 @@ import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Nat
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
+import qualified MAlonzo.Code.Data.Integer.Base
 import qualified MAlonzo.Code.Data.List.Relation.Unary.All
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
@@ -29,93 +30,108 @@ import qualified MAlonzo.Code.Once.Float.Dyadic
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 import qualified MAlonzo.Code.Relation.Nullary.Reflects
 
+-- Once.Float.Representable.ℤ-irrelevant
+d_ℤ'45'irrelevant_14 ::
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_ℤ'45'irrelevant_14 = erased
 -- Once.Float.Representable.supportedFormats
-d_supportedFormats_6 ::
-  [MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_22]
-d_supportedFormats_6
+d_supportedFormats_16 ::
+  [MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28]
+d_supportedFormats_16
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-      (coe MAlonzo.Code.Once.Float.Dyadic.d_binary32_34)
+      (coe MAlonzo.Code.Once.Float.Dyadic.d_binary32_40)
       (coe
          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-         (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_36)
+         (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_42)
          (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
 -- Once.Float.Representable.ExactDecimal
-d_ExactDecimal_16 a0 a1 a2 a3 = ()
-data T_ExactDecimal_16 = C_exact_34
+d_ExactDecimal_26 a0 a1 a2 a3 = ()
+data T_ExactDecimal_26 = C_exact_48
 -- Once.Float.Representable.ExactDecimal.shift-is
-d_shift'45'is_30 ::
-  T_ExactDecimal_16 ->
+d_shift'45'is_42 ::
+  T_ExactDecimal_26 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_shift'45'is_30 = erased
+d_shift'45'is_42 = erased
 -- Once.Float.Representable.ExactDecimal.sig-scaled
-d_sig'45'scaled_32 ::
-  T_ExactDecimal_16 ->
+d_sig'45'scaled_44 ::
+  T_ExactDecimal_26 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sig'45'scaled_32 = erased
+d_sig'45'scaled_44 = erased
+-- Once.Float.Representable.ExactDecimal.sig-pos
+d_sig'45'pos_46 ::
+  T_ExactDecimal_26 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_sig'45'pos_46 = erased
 -- Once.Float.Representable.storedExp
-d_storedExp_36 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_22 ->
+d_storedExp_50 ::
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> Integer
-d_storedExp_36 v0 v1
+d_storedExp_50 v0 v1
   = coe
       MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22
       (addInt
-         (coe MAlonzo.Code.Once.Float.Dyadic.d_bias_42 (coe v0))
+         (coe MAlonzo.Code.Once.Float.Dyadic.d_bias_48 (coe v0))
          (coe
             MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22
-            (MAlonzo.Code.Once.Float.Dyadic.d_bitLen_104
-               (coe MAlonzo.Code.Once.Float.Dyadic.d_sig_12 (coe v1)))
+            (MAlonzo.Code.Once.Float.Dyadic.d_bitLen_110
+               (coe
+                  MAlonzo.Code.Data.Integer.Base.d_'8739'_'8739'_18
+                  (coe MAlonzo.Code.Once.Float.Dyadic.d_sig_12 (coe v1))))
             (1 :: Integer)))
       (MAlonzo.Code.Once.Float.Dyadic.d_shift_14 (coe v1))
 -- Once.Float.Representable.RepresentableAt
-d_RepresentableAt_46 a0 a1 = ()
-data T_RepresentableAt_46
-  = C_representable_64 MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_RepresentableAt_60 a0 a1 = ()
+data T_RepresentableAt_60
+  = C_representable_78 MAlonzo.Code.Data.Nat.Base.T__'8804'__22
                        MAlonzo.Code.Data.Nat.Base.T__'8804'__22
                        MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 -- Once.Float.Representable.RepresentableAt.mant-fits
-d_mant'45'fits_58 ::
-  T_RepresentableAt_46 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_mant'45'fits_58 v0
+d_mant'45'fits_72 ::
+  T_RepresentableAt_60 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_mant'45'fits_72 v0
   = case coe v0 of
-      C_representable_64 v1 v2 v3 -> coe v1
+      C_representable_78 v1 v2 v3 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Float.Representable.RepresentableAt.exp-lo
-d_exp'45'lo_60 ::
-  T_RepresentableAt_46 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_exp'45'lo_60 v0
+d_exp'45'lo_74 ::
+  T_RepresentableAt_60 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_exp'45'lo_74 v0
   = case coe v0 of
-      C_representable_64 v1 v2 v3 -> coe v2
+      C_representable_78 v1 v2 v3 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Float.Representable.RepresentableAt.exp-hi
-d_exp'45'hi_62 ::
-  T_RepresentableAt_46 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_exp'45'hi_62 v0
+d_exp'45'hi_76 ::
+  T_RepresentableAt_60 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_exp'45'hi_76 v0
   = case coe v0 of
-      C_representable_64 v1 v2 v3 -> coe v3
+      C_representable_78 v1 v2 v3 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Float.Representable.RepresentableAll
-d_RepresentableAll_66 ::
+d_RepresentableAll_80 ::
   MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 -> ()
-d_RepresentableAll_66 = erased
+d_RepresentableAll_80 = erased
 -- Once.Float.Representable.Accepted
-d_Accepted_80 a0 a1 a2 a3 = ()
-newtype T_Accepted_80
-  = C_accepted_98 MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
+d_Accepted_94 a0 a1 a2 a3 = ()
+newtype T_Accepted_94
+  = C_accepted_112 MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 -- Once.Float.Representable.Accepted.is-exact
-d_is'45'exact_94 :: T_Accepted_80 -> T_ExactDecimal_16
-d_is'45'exact_94 = erased
+d_is'45'exact_108 :: T_Accepted_94 -> T_ExactDecimal_26
+d_is'45'exact_108 = erased
 -- Once.Float.Representable.Accepted.fits-all
-d_fits'45'all_96 ::
-  T_Accepted_80 -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
-d_fits'45'all_96 v0
+d_fits'45'all_110 ::
+  T_Accepted_94 -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
+d_fits'45'all_110 v0
   = case coe v0 of
-      C_accepted_98 v2 -> coe v2
+      C_accepted_112 v2 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Float.Representable.candidate
-d_candidate_106 :: Integer -> Integer -> Integer -> Integer
-d_candidate_106 v0 v1 v2
+d_candidate_120 :: Integer -> Integer -> Integer -> Integer
+d_candidate_120 v0 v1 v2
   = coe
       MAlonzo.Code.Data.Nat.Base.du__'47'__318
       (coe
@@ -130,11 +146,11 @@ d_candidate_106 v0 v1 v2
          MAlonzo.Code.Data.Nat.Base.d__'94'__276 (coe (5 :: Integer))
          (coe v2))
 -- Once.Float.Representable.representableAt?
-d_representableAt'63'_124 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_22 ->
+d_representableAt'63'_138 ::
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d_representableAt'63'_124 v0 v1
+d_representableAt'63'_138 v0 v1
   = let v2
           = coe
               MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
@@ -142,8 +158,10 @@ d_representableAt'63'_124 v0 v1
                  coe
                    MAlonzo.Code.Data.Nat.Properties.du_'8804''7495''8658''8804'_2854
                    (coe
-                      MAlonzo.Code.Once.Float.Dyadic.d_bitLen_104
-                      (coe MAlonzo.Code.Once.Float.Dyadic.d_sig_12 (coe v1))))
+                      MAlonzo.Code.Once.Float.Dyadic.d_bitLen_110
+                      (coe
+                         MAlonzo.Code.Data.Integer.Base.d_'8739'_'8739'_18
+                         (coe MAlonzo.Code.Once.Float.Dyadic.d_sig_12 (coe v1)))))
               (coe
                  MAlonzo.Code.Data.Nat.Properties.du_'8804''8658''8804''7495'_2866)
               (coe
@@ -151,12 +169,14 @@ d_representableAt'63'_124 v0 v1
                  (coe
                     MAlonzo.Code.Data.Nat.Base.d__'8804''7495'__14
                     (coe
-                       MAlonzo.Code.Once.Float.Dyadic.d_bitLen_104
-                       (coe MAlonzo.Code.Once.Float.Dyadic.d_sig_12 (coe v1)))
+                       MAlonzo.Code.Once.Float.Dyadic.d_bitLen_110
+                       (coe
+                          MAlonzo.Code.Data.Integer.Base.d_'8739'_'8739'_18
+                          (coe MAlonzo.Code.Once.Float.Dyadic.d_sig_12 (coe v1))))
                     (coe
                        addInt (coe (1 :: Integer))
                        (coe
-                          MAlonzo.Code.Once.Float.Dyadic.d_sig'45'bits_28 (coe v0))))) in
+                          MAlonzo.Code.Once.Float.Dyadic.d_sig'45'bits_34 (coe v0))))) in
     coe
       (case coe v2 of
          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v3 v4
@@ -177,7 +197,7 @@ d_representableAt'63'_124 v0 v1
                                          (coe
                                             MAlonzo.Code.Data.Nat.Base.d__'8804''7495'__14
                                             (coe (1 :: Integer))
-                                            (coe d_storedExp_36 (coe v0) (coe v1)))) in
+                                            (coe d_storedExp_50 (coe v0) (coe v1)))) in
                             coe
                               (case coe v6 of
                                  MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v7 v8
@@ -191,7 +211,7 @@ d_representableAt'63'_124 v0 v1
                                                                  coe
                                                                    MAlonzo.Code.Data.Nat.Properties.du_'8804''7495''8658''8804'_2854
                                                                    (coe
-                                                                      d_storedExp_36 (coe v0)
+                                                                      d_storedExp_50 (coe v0)
                                                                       (coe v1)))
                                                               (coe
                                                                  MAlonzo.Code.Data.Nat.Properties.du_'8804''8658''8804''7495'_2866)
@@ -200,14 +220,14 @@ d_representableAt'63'_124 v0 v1
                                                                  (coe
                                                                     MAlonzo.Code.Data.Nat.Base.d__'8804''7495'__14
                                                                     (coe
-                                                                       d_storedExp_36 (coe v0)
+                                                                       d_storedExp_50 (coe v0)
                                                                        (coe v1))
                                                                     (coe
                                                                        MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22
                                                                        (MAlonzo.Code.Data.Nat.Base.d__'94'__276
                                                                           (coe (2 :: Integer))
                                                                           (coe
-                                                                             MAlonzo.Code.Once.Float.Dyadic.d_exp'45'bits_30
+                                                                             MAlonzo.Code.Once.Float.Dyadic.d_exp'45'bits_36
                                                                              (coe v0)))
                                                                        (2 :: Integer)))) in
                                                     coe
@@ -222,7 +242,7 @@ d_representableAt'63'_124 v0 v1
                                                                               (coe
                                                                                  MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
                                                                                  (coe
-                                                                                    C_representable_64
+                                                                                    C_representable_78
                                                                                     (coe v5)
                                                                                     (coe v9)
                                                                                     (coe v13)))
@@ -253,16 +273,16 @@ d_representableAt'63'_124 v0 v1
                           (coe MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26))
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Float.Representable.representableAll?
-d_representableAll'63'_198 ::
+d_representableAll'63'_212 ::
   MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d_representableAll'63'_198 v0
+d_representableAll'63'_212 v0
   = coe
       MAlonzo.Code.Data.List.Relation.Unary.All.du_all'63'_510
-      (coe (\ v1 -> d_representableAt'63'_124 (coe v1) (coe v0)))
-      (coe d_supportedFormats_6)
+      (coe (\ v1 -> d_representableAt'63'_138 (coe v1) (coe v0)))
+      (coe d_supportedFormats_16)
 -- Once.Float.Representable.accept-aux
-d_accept'45'aux_214 ::
+d_accept'45'aux_228 ::
   Integer ->
   Integer ->
   Integer ->
@@ -270,15 +290,15 @@ d_accept'45'aux_214 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_accept'45'aux_214 ~v0 ~v1 v2 v3 v4 v5
-  = du_accept'45'aux_214 v2 v3 v4 v5
-du_accept'45'aux_214 ::
+d_accept'45'aux_228 ~v0 ~v1 v2 v3 v4 v5
+  = du_accept'45'aux_228 v2 v3 v4 v5
+du_accept'45'aux_228 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_accept'45'aux_214 v0 v1 v2 v3
+du_accept'45'aux_228 v0 v1 v2 v3
   = case coe v2 of
       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v4 v5
         -> if coe v4
@@ -296,7 +316,7 @@ du_accept'45'aux_214 v0 v1 v2 v3
                                                (coe
                                                   MAlonzo.Code.Once.Float.Dyadic.C__'47'2'94'__16
                                                   (coe v1) (coe v0))
-                                               (coe C_accepted_98 v8))
+                                               (coe C_accepted_112 v8))
                                      _ -> MAlonzo.RTE.mazUnreachableError
                               else coe
                                      seq (coe v7) (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
@@ -305,17 +325,17 @@ du_accept'45'aux_214 v0 v1 v2 v3
                     seq (coe v5) (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Float.Representable.accept?
-d_accept'63'_252 ::
+d_accept'63'_266 ::
   Integer ->
   Integer -> Integer -> Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_accept'63'_252 v0 v1 v2
+d_accept'63'_266 v0 v1 v2
   = coe
-      du_accept'45'aux_214 (coe v2)
-      (coe d_candidate_106 (coe v0) (coe v1) (coe v2))
+      du_accept'45'aux_228 (coe v2)
+      (coe d_candidate_120 (coe v0) (coe v1) (coe v2))
       (coe
          MAlonzo.Code.Data.Nat.Properties.d__'8799'__2796
          (coe
-            mulInt (coe d_candidate_106 (coe v0) (coe v1) (coe v2))
+            mulInt (coe d_candidate_120 (coe v0) (coe v1) (coe v2))
             (coe
                MAlonzo.Code.Data.Nat.Base.d__'94'__276 (coe (5 :: Integer))
                (coe v2)))
@@ -328,63 +348,63 @@ d_accept'63'_252 v0 v1 v2
                   (coe v2)))
             (coe v1)))
       (coe
-         d_representableAll'63'_198
+         d_representableAll'63'_212
          (coe
             MAlonzo.Code.Once.Float.Dyadic.C__'47'2'94'__16
-            (coe d_candidate_106 (coe v0) (coe v1) (coe v2)) (coe v2)))
+            (coe d_candidate_120 (coe v0) (coe v1) (coe v2)) (coe v2)))
 -- Once.Float.Representable.candidate-recovers
-d_candidate'45'recovers_268 ::
+d_candidate'45'recovers_282 ::
   Integer ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
-  T_ExactDecimal_16 ->
+  T_ExactDecimal_26 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_candidate'45'recovers_268 = erased
+d_candidate'45'recovers_282 = erased
 -- Once.Float.Representable.dyadic-η
-d_dyadic'45'η_290 ::
+d_dyadic'45'η_304 ::
   MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_dyadic'45'η_290 = erased
+d_dyadic'45'η_304 = erased
 -- Once.Float.Representable.exact-irrelevant
-d_exact'45'irrelevant_304 ::
+d_exact'45'irrelevant_318 ::
   Integer ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
-  T_ExactDecimal_16 ->
-  T_ExactDecimal_16 ->
+  T_ExactDecimal_26 ->
+  T_ExactDecimal_26 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exact'45'irrelevant_304 = erased
+d_exact'45'irrelevant_318 = erased
 -- Once.Float.Representable.representableAt-irrelevant
-d_representableAt'45'irrelevant_330 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_22 ->
+d_representableAt'45'irrelevant_352 ::
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
-  T_RepresentableAt_46 ->
-  T_RepresentableAt_46 ->
+  T_RepresentableAt_60 ->
+  T_RepresentableAt_60 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_representableAt'45'irrelevant_330 = erased
+d_representableAt'45'irrelevant_352 = erased
 -- Once.Float.Representable.representableAll-irrelevant
-d_representableAll'45'irrelevant_362 ::
+d_representableAll'45'irrelevant_384 ::
   MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_representableAll'45'irrelevant_362 = erased
+d_representableAll'45'irrelevant_384 = erased
 -- Once.Float.Representable.accepted-irrelevant
-d_accepted'45'irrelevant_392 ::
+d_accepted'45'irrelevant_414 ::
   Integer ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
-  T_Accepted_80 ->
-  T_Accepted_80 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_accepted'45'irrelevant_392 = erased
+  T_Accepted_94 ->
+  T_Accepted_94 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_accepted'45'irrelevant_414 = erased
 -- Once.Float.Representable.accept?-complete
-d_accept'63''45'complete_420 ::
+d_accept'63''45'complete_442 ::
   Integer ->
   Integer ->
   Integer ->
   MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
-  T_Accepted_80 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_accept'63''45'complete_420 = erased
+  T_Accepted_94 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_accept'63''45'complete_442 = erased

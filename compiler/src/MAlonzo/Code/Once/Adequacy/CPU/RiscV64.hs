@@ -43,7 +43,7 @@ d_arith'45'env'45'riscv64_12
 d_run'45'trace'45'riscv64_14 ::
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_386 ->
-  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 d_run'45'trace'45'riscv64_14 v0 v1
   = coe
       MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_162

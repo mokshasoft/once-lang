@@ -19,6 +19,6 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 
 -- Once.Adequacy.RealizeInvariant.realize-invariant
-d_realize'45'invariant_22
+d_realize'45'invariant_24
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.RealizeInvariant.realize-invariant"

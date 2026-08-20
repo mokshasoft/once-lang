@@ -93,11 +93,15 @@ eval (Let _ e1 e2) v = do
 -- Evaluates MAlonzo ArithIR directly and returns VInt/VFloat for the result
 eval (Arith numTy arithExpr) v = evalArith numTy arithExpr v
 
--- | Check if NumType is floating point
+-- | Check if NumType is floating point.
+--
+-- `NumType` lost its WIDTHS on the 0.72/0.73 branch — they were a fossil of a
+-- rejected design, and the width now comes from the target, not the type. So
+-- `F32`/`F64` are gone and the two remaining cases are total: enumerate them
+-- rather than keep a catch-all, which would silently absorb a future case.
 isFloatType :: MT.T_NumType_6 -> Bool
-isFloatType MT.C_F32_16 = True
-isFloatType MT.C_F64_18 = True
-isFloatType _           = False
+isFloatType MT.C_NFloat_10 = True
+isFloatType MT.C_NInt_8    = False
 
 -- | Evaluate an arithmetic expression (MAlonzo types)
 evalArith :: MT.T_NumType_6 -> MA.T_ArithIR_72 -> Value -> Either EvalError Value

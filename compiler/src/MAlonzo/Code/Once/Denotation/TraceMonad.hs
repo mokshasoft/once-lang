@@ -94,11 +94,11 @@ du_fmapT_48 v0 v1 v2
       (coe v0 (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v1 v2)))
 -- Once.Denotation.TraceMonad.tell
 d_tell_56 ::
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122] ->
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118] ->
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_tell_56 v0 ~v1 = du_tell_56 v0
 du_tell_56 ::
-  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122] ->
+  [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_tell_56 v0
   = coe
@@ -108,11 +108,11 @@ du_tell_56 v0
 d_projTrace_62 ::
   () ->
   (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
-  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 d_projTrace_62 ~v0 v1 v2 = du_projTrace_62 v1 v2
 du_projTrace_62 ::
   (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
-  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 du_projTrace_62 v0 v1
   = coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v0 v1)
 -- Once.Denotation.TraceMonad.valueT

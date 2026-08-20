@@ -21,27 +21,61 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.Unit
+import qualified MAlonzo.Code.Once.Adequacy.MainExtract
 import qualified MAlonzo.Code.Once.Adequacy.MainForm
 import qualified MAlonzo.Code.Once.Adequacy.ModuleComplete
 import qualified MAlonzo.Code.Once.Compile
+import qualified MAlonzo.Code.Once.Denotation.Trace
+import qualified MAlonzo.Code.Once.Float.Dyadic
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Parser.Module.Core
+import qualified MAlonzo.Code.Once.Surface.Context
+import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.TypeCheck.Classify
 import qualified MAlonzo.Code.Once.TypeCheck.Soundness
 
+-- Once.Adequacy.MainRealizeAgrees.ME.runMainˢ
+d_runMain'738'_14 ::
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
+d_runMain'738'_14 v0 v1 v2 v3
+  = coe
+      MAlonzo.Code.Once.Adequacy.MainExtract.du_runMain'738'_20 (coe v0)
+      v2 v3
+-- Once.Adequacy.MainRealizeAgrees.ME.source-meaningᴰ
+d_source'45'meaning'7472'_16 ::
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_source'45'meaning'7472'_16 ~v0 = du_source'45'meaning'7472'_16
+du_source'45'meaning'7472'_16 ::
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_source'45'meaning'7472'_16 v0 v1 v2
+  = coe
+      MAlonzo.Code.Once.Adequacy.MainExtract.du_source'45'meaning'7472'_102
+      v0
 -- Once.Adequacy.MainRealizeAgrees.main-extract
-d_main'45'extract_46 ::
+d_main'45'extract_96 ::
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_main'45'extract_46 v0 ~v1 ~v2 ~v3 ~v4 = du_main'45'extract_46 v0
-du_main'45'extract_46 ::
+d_main'45'extract_96 ~v0 v1 ~v2 ~v3 ~v4 ~v5
+  = du_main'45'extract_96 v1
+du_main'45'extract_96 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_main'45'extract_46 v0
+du_main'45'extract_96 v0
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
@@ -59,7 +93,7 @@ du_main'45'extract_46 v0
                         (coe
                            MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                            (coe
-                              MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                              MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                               (coe v0))))))))
          (coe
             MAlonzo.Code.Once.Compile.d_buildPolyCtx_270
@@ -68,7 +102,7 @@ du_main'45'extract_46 v0
                (coe
                   MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                   (coe
-                     MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                     MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                      (coe v0)))))
          (coe
             MAlonzo.Code.Once.Compile.d_collectSigEffects_498
@@ -92,7 +126,7 @@ du_main'45'extract_46 v0
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                               (coe
-                                 MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                 MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                  (coe v0)))))))))
          (coe
             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -113,7 +147,7 @@ du_main'45'extract_46 v0
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                     (coe
-                                       MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                       MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                        (coe v0))))))))))
             (coe
                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -136,7 +170,7 @@ du_main'45'extract_46 v0
                                        (coe
                                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                           (coe
-                                             MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                             MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                              (coe v0)))))))))))
                (coe
                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -161,7 +195,7 @@ du_main'45'extract_46 v0
                                              (coe
                                                 MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                 (coe
-                                                   MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                                   MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                                    (coe v0))))))))))))
                   (coe
                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -188,7 +222,7 @@ du_main'45'extract_46 v0
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                       (coe
-                                                         MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                                         MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                                          (coe v0)))))))))))))
                      (coe
                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -212,7 +246,7 @@ du_main'45'extract_46 v0
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                    (coe
-                                                      MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                                      MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                                       (coe v0))))))))
                                  (coe
                                     MAlonzo.Code.Once.Compile.d_buildPolyCtx_270
@@ -221,7 +255,7 @@ du_main'45'extract_46 v0
                                        (coe
                                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                           (coe
-                                             MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                             MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                              (coe v0)))))
                                  (coe
                                     MAlonzo.Code.Once.Compile.d_collectSigEffects_498
@@ -243,7 +277,7 @@ du_main'45'extract_46 v0
                                                 (coe
                                                    MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                    (coe
-                                                      MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                                      MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                                       (coe v0)))))))))
                               (coe MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6))
                            (coe
@@ -273,7 +307,7 @@ du_main'45'extract_46 v0
                                                                (coe
                                                                   MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                   (coe
-                                                                     MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                                                     MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                                                      (coe v0))))))))))))))
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -284,7 +318,7 @@ du_main'45'extract_46 v0
                                        (coe
                                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                           (coe
-                                             MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                             MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                              (coe v0)))))
                                  (coe
                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -307,7 +341,7 @@ du_main'45'extract_46 v0
                                                       (coe
                                                          MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                          (coe
-                                                            MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                                            MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                                             (coe v0)))))))))
                                     (coe
                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -331,7 +365,7 @@ du_main'45'extract_46 v0
                                                          (coe
                                                             MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                             (coe
-                                                               MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                                               MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                                                (coe v0)))))))))
                                        (coe
                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -340,19 +374,20 @@ du_main'45'extract_46 v0
                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased
                                              erased)))))))))))))
 -- Once.Adequacy.MainRealizeAgrees.main-checkElab-coherence
-d_main'45'checkElab'45'coherence_122 ::
+d_main'45'checkElab'45'coherence_172 ::
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_main'45'checkElab'45'coherence_122 v0 ~v1 ~v2 ~v3 ~v4
-  = du_main'45'checkElab'45'coherence_122 v0
-du_main'45'checkElab'45'coherence_122 ::
+d_main'45'checkElab'45'coherence_172 ~v0 v1 ~v2 ~v3 ~v4 ~v5
+  = du_main'45'checkElab'45'coherence_172 v1
+du_main'45'checkElab'45'coherence_172 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_main'45'checkElab'45'coherence_122 v0
+du_main'45'checkElab'45'coherence_172 v0
   = let v1
           = MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
               (coe
@@ -368,7 +403,7 @@ du_main'45'checkElab'45'coherence_122 v0
                              (coe
                                 MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                 (coe
-                                   MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                   MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                    (coe v0))))))))
               (coe
                  MAlonzo.Code.Once.Compile.d_buildPolyCtx_270
@@ -377,7 +412,7 @@ du_main'45'checkElab'45'coherence_122 v0
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                        (coe
-                          MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                          MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                           (coe v0)))))
               (coe
                  MAlonzo.Code.Once.Compile.d_collectSigEffects_498
@@ -400,7 +435,7 @@ du_main'45'checkElab'45'coherence_122 v0
                                 (coe
                                    MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                    (coe
-                                      MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                      MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                       (coe v0)))))))) in
        coe
          (let v3
@@ -420,7 +455,7 @@ du_main'45'checkElab'45'coherence_122 v0
                                       (coe
                                          MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                          (coe
-                                            MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                            MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                             (coe v0))))))))) in
           coe
             (let v4
@@ -442,7 +477,7 @@ du_main'45'checkElab'45'coherence_122 v0
                                             (coe
                                                MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                (coe
-                                                  MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                                  MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                                   (coe v0)))))))))) in
              coe
                (let v5
@@ -466,7 +501,7 @@ du_main'45'checkElab'45'coherence_122 v0
                                                   (coe
                                                      MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                      (coe
-                                                        MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                                        MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                                         (coe v0))))))))))) in
                 coe
                   (let v6
@@ -492,7 +527,7 @@ du_main'45'checkElab'45'coherence_122 v0
                                                         (coe
                                                            MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                            (coe
-                                                              MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                                              MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                                               (coe v0)))))))))))) in
                    coe
                      (let v7 = coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8 in
@@ -522,7 +557,7 @@ du_main'45'checkElab'45'coherence_122 v0
                                                                  (coe
                                                                     MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                                     (coe
-                                                                       MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_164
+                                                                       MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                                                        (coe v0))))))))))))) in
                          coe
                            (coe
@@ -546,11 +581,12 @@ du_main'45'checkElab'45'coherence_122 v0
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                       erased erased))))))))))))))))
 -- Once.Adequacy.MainRealizeAgrees.main-realize-agrees-proof
-d_main'45'realize'45'agrees'45'proof_194 ::
+d_main'45'realize'45'agrees'45'proof_244 ::
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_main'45'realize'45'agrees'45'proof_194 = erased
+d_main'45'realize'45'agrees'45'proof_244 = erased

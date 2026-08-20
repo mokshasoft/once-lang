@@ -585,7 +585,7 @@ d_arith'45'env'45'x86'45'64_288
 d_run'45'trace'45'x86'45'64_290 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_28] ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.T_State_348 ->
-  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_122]
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 d_run'45'trace'45'x86'45'64_290 v0 v1
   = coe
       MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_162

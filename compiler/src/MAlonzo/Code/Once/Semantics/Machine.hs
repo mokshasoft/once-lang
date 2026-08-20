@@ -456,3 +456,8 @@ d_'10214'_'10215'F'7477'_126 = erased
 d_'10214'_'10215''7477'_128 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 -> ()
 d_'10214'_'10215''7477'_128 = erased
+-- Once.Semantics.Machine.LitPayload
+d_LitPayload_132 ::
+  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_FitsInReg_196 -> ()
+d_LitPayload_132 = erased

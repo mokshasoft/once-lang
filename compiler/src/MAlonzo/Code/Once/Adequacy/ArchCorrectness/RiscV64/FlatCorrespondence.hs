@@ -399,9 +399,6 @@ du_enc'45'maybe_114 v0
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_enc'45'maybe_478
       (coe v0)
-      (coe
-         MAlonzo.Code.Once.Float.Dyadic.d_encode_122
-         (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_36))
 -- Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence._.enc-maybe-at
 d_enc'45'maybe'45'at_116 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -419,9 +416,6 @@ du_enc'45'maybe'45'at_116 v0
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_enc'45'maybe'45'at_462
       (coe v0)
-      (coe
-         MAlonzo.Code.Once.Float.Dyadic.d_encode_122
-         (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_36))
 -- Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence._.enc-sv
 d_enc'45'sv_118 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -437,9 +431,6 @@ du_enc'45'sv_118 v0
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_enc'45'sv_474
       (coe v0)
-      (coe
-         MAlonzo.Code.Once.Float.Dyadic.d_encode_122
-         (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_36))
 -- Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence._.enc-sv-at
 d_enc'45'sv'45'at_120 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -455,9 +446,6 @@ du_enc'45'sv'45'at_120 v0
   = coe
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_enc'45'sv'45'at_434
       (coe v0)
-      (coe
-         MAlonzo.Code.Once.Float.Dyadic.d_encode_122
-         (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_36))
 -- Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence._.enc-zero
 d_enc'45'zero_122 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -1094,7 +1082,7 @@ du_nz'8658'pos_232 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_nz'8658'pos_232 v0 v1
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_nz'8658'pos_60
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_nz'8658'pos_58
 -- Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence._.off-addr
 d_off'45'addr_234 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_SetsMem_1206 ->
@@ -1156,7 +1144,7 @@ du_readMem_246 ::
   (Integer -> Maybe Integer) -> Integer -> Maybe Integer
 du_readMem_246
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_readMem_68
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_readMem_66
 -- Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence._.ret-agree-above
 d_ret'45'agree'45'above_248 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -2587,7 +2575,7 @@ du_slot'45'size'62'0_344 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_slot'45'size'62'0_344
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_slot'45'size'62'0_62
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_slot'45'size'62'0_60
 -- Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence._.slot-to-disp
 d_slot'45'to'45'disp_346 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -2597,7 +2585,7 @@ d_slot'45'to'45'disp_346 ~v0 ~v1 = du_slot'45'to'45'disp_346
 du_slot'45'to'45'disp_346 :: Integer -> Integer
 du_slot'45'to'45'disp_346
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_slot'45'to'45'disp_54
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_slot'45'to'45'disp_52
       (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.d_slot'45'size_66)
 -- Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence._.slots
 d_slots_348 ::
@@ -2608,7 +2596,7 @@ d_slots_348 ~v0 ~v1 = du_slots_348
 du_slots_348 :: Integer -> Integer
 du_slots_348
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_slots_50
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_slots_48
       (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.d_slot'45'size_66)
 -- Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence._.sp-eq
 d_sp'45'eq_350 ::
@@ -3268,7 +3256,7 @@ du_writeMem_404 ::
   Integer -> Integer -> Integer -> Maybe Integer
 du_writeMem_404
   = coe
-      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_writeMem_74
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.du_writeMem_72
 -- Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence._.≡ᵇ-refl
 d_'8801''7495''45'refl_406 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->

@@ -22,7 +22,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 -- Once.Adequacy.CorrectCompiler
 d_CorrectCompiler_4 = ()
 data T_CorrectCompiler_4
-  = C_constructor_78 (AgdaAny -> AgdaAny)
+  = C_constructor_78 (AgdaAny -> AgdaAny -> AgdaAny)
                      (AgdaAny -> AgdaAny -> AgdaAny)
                      (AgdaAny -> Bool -> AgdaAny -> Maybe AgdaAny)
                      (AgdaAny ->
@@ -47,7 +47,7 @@ d__'8866'__52 :: T_CorrectCompiler_4 -> AgdaAny -> AgdaAny -> ()
 d__'8866'__52 = erased
 -- Once.Adequacy.CorrectCompiler.⟦_⟧ˢ
 d_'10214'_'10215''738'_54 ::
-  T_CorrectCompiler_4 -> AgdaAny -> AgdaAny
+  T_CorrectCompiler_4 -> AgdaAny -> AgdaAny -> AgdaAny
 d_'10214'_'10215''738'_54 v0
   = case coe v0 of
       C_constructor_78 v7 v8 v10 v11 -> coe v7
