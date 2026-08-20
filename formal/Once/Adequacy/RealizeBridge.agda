@@ -18,7 +18,15 @@
 -- whole front-end against the one denotation.
 ------------------------------------------------------------------------
 
-module Once.Adequacy.RealizeBridge where
+open import Once.Float.Dyadic using (FloatFormat)
+
+-- Plan 0.73 (D113): this module's statements mention a denotation that is
+-- target-relative at `Float`, so the format is a parameter. A MODULE parameter
+-- rather than a per-lemma argument because everything here is a PROOF —
+-- downstream uses these as facts and never reduces them — so the "recursive
+-- function in a parameterised module stops reducing" trap does not apply. The
+-- denotations themselves take it as an explicit argument.
+module Once.Adequacy.RealizeBridge (fmt : FloatFormat) where
 
 -- `realize-agrees` is now PROVEN (Plan 0.50: de-islanded). It used to be a
 -- `postulate` here while the proof floated in a parallel module imported by
@@ -28,4 +36,4 @@ module Once.Adequacy.RealizeBridge where
 -- path (`Compile.main-realize-agrees` → here) consumes the real theorem. The
 -- remaining debt is now `RealizeAgrees.{infer,check}-agreeV-todo`, which sit
 -- transitively ON the apex path — itemized, not a disconnected island.
-open import Once.Adequacy.RealizeAgrees using (realize-agrees) public
+open import Once.Adequacy.RealizeAgrees fmt using (realize-agrees) public

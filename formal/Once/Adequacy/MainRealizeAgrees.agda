@@ -28,7 +28,15 @@
 -- `main-realize-agrees = main-realize-agrees-proof` (the postulate is deleted).
 ------------------------------------------------------------------------
 
-module Once.Adequacy.MainRealizeAgrees where
+open import Once.Float.Dyadic using (FloatFormat)
+
+-- Plan 0.73 (D113): this module's statements mention a denotation that is
+-- target-relative at `Float`, so the format is a parameter. A MODULE parameter
+-- rather than a per-lemma argument because everything here is a PROOF —
+-- downstream uses these as facts and never reduces them — so the "recursive
+-- function in a parameterised module stops reducing" trap does not apply. The
+-- denotations themselves take it as an explicit argument.
+module Once.Adequacy.MainRealizeAgrees (fmt : FloatFormat) where
 
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (just)
@@ -57,16 +65,16 @@ open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Denotation.Realize using (realize)
 
 open import Once.Adequacy.SourceTrace using (moduleToIR)
-import Once.Adequacy.MainExtract as ME
+import Once.Adequacy.MainExtract fmt as ME
 import Once.Adequacy.ModuleComplete as MC
 open import Once.Adequacy.ModuleComplete using (EffUU)
 open import Once.Adequacy.AcceptSound as AS using (ModuleTyped)
 import Once.Parser.Module.Core as P
 import Once.Compile as C
-import Once.Adequacy.MainForm as MF
+import Once.Adequacy.MainForm fmt as MF
 
 -- THE proven agreement — the load-bearing composition uses this:
-open import Once.Adequacy.RealizeBridge using (realize-agrees)
+open import Once.Adequacy.RealizeBridge fmt using (realize-agrees)
 
 ------------------------------------------------------------------------
 -- The coherence hook, DECOMPOSED top-down into its three genuine constituents
@@ -77,7 +85,7 @@ open import Once.Adequacy.RealizeBridge using (realize-agrees)
 --     structural constructors (incl. effApp/cata/ana) are PROVEN by induction in
 --     `Once.Adequacy.ResolveFaithful`; the only residuals are two NARROW
 --     denotational postulates there (sigOp→closure rewrite, poly body-splice).
-open import Once.Adequacy.ResolveFaithful using (resolveExpr-faithful)
+open import Once.Adequacy.ResolveFaithful fmt using (resolveExpr-faithful)
 
 -- (B) realize denotational-invariance — ANY two `⊢ᶜ` derivations of the SAME
 --     judgment realize to denotationally-equal terms. This is what lets the
@@ -87,7 +95,7 @@ open import Once.Adequacy.ResolveFaithful using (resolveExpr-faithful)
 --     `t-embed`-vs-specialized overlaps). Context-general.
 -- Plan 0.55: factored into `Once.Adequacy.RealizeInvariant` (a base module) so
 -- `MtIndep`/`mt-den-indep` can share it without an import cycle. UNCHANGED.
-open import Once.Adequacy.RealizeInvariant using (realize-invariant)
+open import Once.Adequacy.RealizeInvariant fmt using (realize-invariant)
 
 -- (C) the threading/extraction — `source-meaningᴰ`'s `seR` and `mainRealized`'s
 --     `realize mtder` both factor through ONE `checkElab ce` of `main`'s body
@@ -115,10 +123,10 @@ main-extract :
     Σ-syntax (checkElab cctx body EffUU ≡ success Ψ se d f) (λ ce →
     Σ-syntax PolyCtx (λ polys →
     Σ-syntax Imports (λ imps → Σ-syntax Imports (λ userFns → Σ-syntax ℕ (λ fresh →
-      ((n : ℕ) → SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ tt n
-               ≡ SD.⟦ resolveExpr polys imps userFns fresh se ⟧ˢ dγ₀ n)
-    × ((n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ tt n
-               ≡ SD.⟦ realize mtder ⟧ˢ dγ₀ n))))))))))))))
+      ((n : ℕ) → SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ fmt tt n
+               ≡ SD.⟦ resolveExpr polys imps userFns fresh se ⟧ˢ fmt dγ₀ n)
+    × ((n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt tt n
+               ≡ SD.⟦ realize mtder ⟧ˢ fmt dγ₀ n))))))))))))))
 main-extract m mt hvm ir mi =
   let (funs , polys , ef-eq , b , bme , mctx , mbody , mΨ , mse , md , mf , mce , ir≡ , rw) = MF.main-node-of m ir mi
   in    ctxWithImportsAndSelfAndPolys mctx (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) "main" EffUU
@@ -127,7 +135,7 @@ main-extract m mt hvm ir mi =
       , mce , C.buildPolyCtx polys , (("main" , EffUU) ∷ mctx) , (("main" , EffUU) ∷ mctx) , 0
       , (λ n → refl)
       , (λ n → trans (MF.mainRealized-bundle m mt hvm b bme ef-eq n)
-                     (cong (λ z → SD.⟦ proj₂ z ⟧ˢ tt n) rw))
+                     (cong (λ z → SD.⟦ proj₂ z ⟧ˢ fmt tt n) rw))
 
 ------------------------------------------------------------------------
 -- The coherence hook, now PROVEN from A/B/C (the postulate is gone).
@@ -144,10 +152,10 @@ main-checkElab-coherence :
     Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
     Σ-syntax (⟦ ⟦ NamedCtx.debruijn cctx ⟧ᶜ ⟧ᴰ) (λ dγ₀ →
     Σ-syntax (checkElab cctx body EffUU ≡ success Ψ se d f) (λ ce →
-      ((n : ℕ) → SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ tt n
-               ≡ SD.⟦ se ⟧ˢ dγ₀ n)
-    × ((n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ tt n
-               ≡ SD.⟦ realize (check-sound cctx body EffUU ce) ⟧ˢ dγ₀ n)))))))))
+      ((n : ℕ) → SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ fmt tt n
+               ≡ SD.⟦ se ⟧ˢ fmt dγ₀ n)
+    × ((n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt tt n
+               ≡ SD.⟦ realize (check-sound cctx body EffUU ce) ⟧ˢ fmt dγ₀ n)))))))))
 main-checkElab-coherence m mt hvm ir mi
   with main-extract m mt hvm ir mi
 ... | cctx , body , Ψ , se , d , f , dγ₀ , mtder , ce , polys , imps , userFns , fresh , seR-syn , rt-syn =
@@ -168,8 +176,8 @@ main-realize-agrees-proof m mt hvm ir mi n
 ... | cctx , body , Ψ , se , d , f , dγ₀ , ce , seR≈se , rt≈deriv =
       cong (take n)
         (ME.bind-cong-trace
-          (SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ tt)
-          (SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ tt)
+          (SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ fmt tt)
+          (SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt tt)
           (λ clo → clo tt) n
           (trans (seR≈se n)
             (trans (realize-agrees cctx body EffUU ce dγ₀ n)
