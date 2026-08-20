@@ -208,4 +208,44 @@ of this.**
 1. `IndB-z` / `IndB-s` — the two `subren` fusions.
 2. The two branches, then `⊢natrec`.
 3. **The instantiation at `n := suc (μ x)`** — the non-vacuity check.
+| 11 | 08-20 | Refactor `IndB` → `IndBAt θ P n`, generic in the ambient renaming | ✅ green (1 def-order fix) | ~15s |
+| 12 | 08-20 | `PAtR-sub`, generic in σ | ✅ **green first try** | ~15s |
+| 13 | 08-20 | `IndBAt-sub`, generic in σ | ✅ green (2 rounds, both implicit-pinning) | ~15s |
+
+## ★★★ The peel is done — and as ONE lemma, not two
+
+`IndBAt-sub` is generic in σ with a pointwise side condition, exactly
+`irrT-sub`'s design. The `natrec`'s zero branch instantiates it at
+`single nzero`, the successor branch at `nrs`. The originally-sketched
+`IndB-z` + `IndB-s` pair would have been two bespoke peels with identical
+content.
+
+★ **`PAtR-sub` went green first try** on the *flatten-then-bridge* recipe:
+both sides are `subTm _ P` once `subTm-renTm`/`subTm-subTm` flatten the
+nesting, so the whole proof is one `subTm-cong` over a three-case bridge
+(result slot / argument slot / ambient).
+
+⚠ **That recipe is not new — the codebase already encodes it one level
+down.** `wkGen`, `wkGenR`, `subren`, `subrenTy`, `renren`, `renrenTy` are
+all the same shape, and `…GcdStep`'s comment on `wkGen` already states the
+principle: *"it does not need one lemma per DEPTH… the caller supplies only
+the pointwise fact."* `PAtR-sub` is simply the two-substitutions-plus-a-
+renaming rung. ⇒ **Adding the missing rungs to that family would have made
+this a one-liner.** Cheap, and worth doing before the next one.
+
+⚠ Both failures in attempt 13 were the same thing: **unpinned implicits on
+`subren`/`extcond`/`cond₂`**. They appear only under an application of a
+meta (`_σ (_θ v) = σ (θ v)`) — higher-order unification, which Agda will not
+decompose. Standing rule in this codebase; it costs exactly one round each
+time it is forgotten, and it was forgotten twice here.
+
+## Status
+
+Scaffolding + the substitution law are **all green**, module ~15s.
+Thirteen attempts, six errors, none costing more than one iteration.
+
+**The branches are now unblocked** — the peel that stopped attempt 10 is
+exactly what `IndBAt-sub` supplies. ⚠ Still unproved: both branches, the
+`⊢natrec`, and — the one that decides whether any of it means anything —
+**the instantiation at `n := suc (μ x)`**.
 
