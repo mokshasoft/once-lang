@@ -12,8 +12,10 @@
 
 .text
 
-# `emit : Eff Int Unit` — writes the argument's low byte, so an emitted
-# sequence is observable as a byte string.
+# `emit : Eff Int Unit` — writes the argument's WHOLE machine word (4 bytes
+# here), little-endian. Not the low byte: a projection would make `emit 42` and
+# `emit 298` indistinguishable, so an argument-corrupting bug would pass every
+# trace test.
 .align 16
 .global emit
 .type emit, @function
@@ -24,11 +26,11 @@ emit:
     pushl   %esi
     pushl   %edi
     subl    $8, %esp
-    movb    %cl, (%esp)         # %ecx is still the argument
+    movl    %ecx, (%esp)        # %ecx is still the argument — the whole word
     movl    $4, %eax            # SYS_write (32-bit)
     movl    $1, %ebx            # fd = stdout
     movl    %esp, %ecx          # buf
-    movl    $1, %edx            # count
+    movl    $4, %edx            # count (the whole word)
     int     $0x80
     addl    $8, %esp
     popl    %edi

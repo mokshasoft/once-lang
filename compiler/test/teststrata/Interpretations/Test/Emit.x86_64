@@ -8,21 +8,43 @@
 # assembleImplFiles) renames it to the mangled call symbol the codegen emits,
 # so no module-path mangling is written by hand.
 #
-# Once SysV convention: the Int argument arrives in %rdi. `emit` writes its low
-# byte to stdout (fd 1) so the emitted sequence is observable, then returns
+# Once SysV convention: the Int argument arrives in Input1 (%rdi). `emit`
+# writes the WHOLE machine word to stdout (fd 1), little-endian, then returns
 # Unit (0).
+#
+# It used to write only the low BYTE. That made `emit 42` and `emit 298`
+# indistinguishable, so a bug corrupting an argument's high bits would have
+# passed every trace test — the same way a too-narrow observable hid argument
+# corruption at the spec level (D114). The trace should witness the argument,
+# not a projection of it.
+#
+# Note that `emit` and `emitF` below are now the SAME code. That is D113
+# showing through: at the machine level an `Int` argument and a `Float`
+# argument are both one machine word; only their source types differ.
 
 .text
 .align 16
 .global emit
 .type emit, @function
 emit:
-    movb    %dil, -1(%rsp)      # stash the argument's low byte (red zone)
-    leaq    -1(%rsp), %rsi      # rsi = buffer
+    pushq   %rdi                # Input1 — the argument, and must survive
+    pushq   %rsi
+    pushq   %rdx
+    pushq   %rcx                # clobbered by `syscall`
+    pushq   %r11                # likewise
+    subq    $16, %rsp
+    movq    %rdi, (%rsp)        # the WHOLE machine word, little-endian
+    movq    %rsp, %rsi          # rsi = buffer
     movq    $1, %rdi            # rdi = fd (stdout)
-    movq    $1, %rdx            # rdx = count (1 byte)
+    movq    $8, %rdx            # rdx = count (the whole word)
     movq    $1, %rax            # rax = SYS_write
     syscall
+    addq    $16, %rsp
+    popq    %r11
+    popq    %rcx
+    popq    %rdx
+    popq    %rsi
+    popq    %rdi
     xorq    %rax, %rax          # return Unit (0)
     ret
 .size emit, .-emit

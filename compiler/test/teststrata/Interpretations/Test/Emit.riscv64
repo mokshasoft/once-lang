@@ -13,7 +13,9 @@
 
 .text
 
-# `emit : Eff Int Unit` — writes the argument's low byte.
+# `emit : Eff Int Unit` — writes the argument's WHOLE machine word (8 bytes),
+# little-endian. Not the low byte: a projection would make `emit 42` and
+# `emit 298` indistinguishable.
 .align 4
 .global emit
 .type emit, @function
@@ -22,10 +24,10 @@ emit:
     sd      a1, 0(sp)
     sd      a2, 8(sp)
     sd      a7, 16(sp)
-    sb      t0, 24(sp)          # the argument's low byte
+    sd      t0, 24(sp)          # the whole machine word, little-endian
     li      a0, 1               # fd = stdout
     addi    a1, sp, 24          # buf
-    li      a2, 1               # count
+    li      a2, 8               # count (the whole word)
     li      a7, 64              # SYS_write
     ecall
     ld      a1, 0(sp)

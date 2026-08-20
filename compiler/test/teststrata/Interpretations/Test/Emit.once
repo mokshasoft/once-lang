@@ -12,11 +12,18 @@ signature emit : Eff Int Unit
 
 -- | The same for a `Float`, and OBSERVABLE for the same reason.
 --
--- `emit` writes its Int argument's low byte; `emitF` writes the float's whole
--- MACHINE WORD, little-endian — 8 bytes on a 64-bit target, 4 on x86-32. That
--- asymmetry is the point rather than an inconsistency: an `Int`'s value is
--- width-free, so one byte identifies it, while a `Float` IS its target's
--- representation (D113), so the only faithful thing to emit is the whole word.
--- A test that reads those bytes is observing exactly what D114 says the trace
--- carries — the SigOp's argument at its own base type.
+-- BOTH write the argument's WHOLE MACHINE WORD, little-endian — 8 bytes on a
+-- 64-bit target, 4 on x86-32. A test that reads those bytes is observing
+-- exactly what D114 says the trace carries: the SigOp's argument at its own
+-- base type, not a projection of it.
+--
+-- `emit` used to write only the low byte, which made `emit 42` and `emit 298`
+-- the same trace — a bug corrupting an argument's high bits would have passed.
+-- That is the same defect D114 found in the spec, one layer down in the test
+-- harness, and it is fixed here for the same reason.
+--
+-- The two implementations are now IDENTICAL, which is D113 showing through: at
+-- the machine level an `Int` argument and a `Float` argument are both one
+-- machine word. What differs is the SOURCE type, and hence what the word
+-- MEANS — `42` against `0x3FE0000000000000` for `0.5` at binary64.
 signature emitF : Eff Float Unit

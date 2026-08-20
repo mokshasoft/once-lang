@@ -9,11 +9,21 @@
 -- ordering AND arguments.
 --
 -- Each program imports the observable test interpretation `I.Test.Emit` (whose
--- `emit : Eff Int Unit` writes its argument's low byte to stdout) and takes
--- `exit` from the real `I.Linux.Syscalls`. Both resolve under the single test
--- strata root (Backend.Common.testStrataDir), and the compiler links their
--- implementations. So the captured stdout is exactly the emitted byte sequence
--- and the exit code is the final `exit` argument.
+-- `emit : Eff Int Unit` writes its argument's WHOLE MACHINE WORD to stdout)
+-- and takes `exit` from the real `I.Linux.Syscalls`. Both resolve under the
+-- single test strata root (Backend.Common.testStrataDir), and the compiler
+-- links their implementations.
+--
+-- The captured stdout is therefore a sequence of little-endian machine words,
+-- one per `emit`, which `decodeTrace` reads back as the ARGUMENTS themselves.
+-- Expectations below are plain values for that reason — an `Int`'s value is
+-- width-free, so `[42]` is the right assertion at every target width, and the
+-- word size lives in `decodeTrace` rather than in every test.
+--
+-- `emit` used to write only the argument's LOW BYTE, which made `emit 42` and
+-- `emit 298` the same trace: a bug corrupting an argument's high bits would
+-- have passed all of these. Widening it is the same correction D114 made to
+-- the spec's observable, one layer down in the harness.
 module TraceSpec (traceTests) where
 
 import Test.Tasty
@@ -21,7 +31,7 @@ import Test.Tasty.HUnit
 
 import qualified Data.Text as T
 
-import Backend.Common (buildAndRunTrace)
+import Backend.Common (BackendArch (X86_64), buildAndRunTrace, decodeTrace)
 
 traceTests :: TestTree
 -- Plan 0.52 retired `arr`; the const morphisms are written as integer
@@ -62,9 +72,9 @@ traceTests = testGroup "Effect traces (observable)"
   ]
 
 -- | Build a trace program (helper definitions + a `main`), run it, and assert
--- the emitted byte sequence and exit code. @emitted@ is the expected list of
--- bytes written by `emit`.
-traceTest :: TestName -> [T.Text] -> [T.Text] -> [Int] -> Int -> TestTree
+-- the emitted ARGUMENT sequence and exit code. @emitted@ is the expected list
+-- of values passed to `emit`, in order — full values, not projections.
+traceTest :: TestName -> [T.Text] -> [T.Text] -> [Integer] -> Int -> TestTree
 traceTest name helpers mainLines emitted exitCode =
   testCase name $ do
     let source = T.unlines $
@@ -75,10 +85,12 @@ traceTest name helpers mainLines emitted exitCode =
     result <- buildAndRunTrace (slug name) source
     case result of
       Left err -> assertFailure err
-      Right (out, code) -> do
-        assertEqual "emitted byte sequence (effect order + arguments)"
-                    emitted (map fromEnum out)
-        assertEqual "exit code (final exit SigOp argument)" exitCode code
+      Right (out, code) -> case decodeTrace X86_64 out of
+        Left err   -> assertFailure err
+        Right args -> do
+          assertEqual "emitted arguments (effect order + full values)"
+                      emitted args
+          assertEqual "exit code (final exit SigOp argument)" exitCode code
 
 -- | A filesystem-safe name for the per-test build directory.
 slug :: TestName -> String

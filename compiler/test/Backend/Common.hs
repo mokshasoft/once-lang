@@ -29,6 +29,8 @@ module Backend.Common
   , testStrataDir
   , buildAndRunTrace
   , buildAndRunTraceOn
+  , archWordBytes
+  , decodeTrace
     -- * Common Types
   , tA
   , tB
@@ -174,6 +176,34 @@ testStrataDir = "test/teststrata"
 -- implementations itself — no manual assembly/link step.
 buildAndRunTrace :: String -> T.Text -> IO (Either String (String, Int))
 buildAndRunTrace = buildAndRunTraceOn X86_64
+
+-- | This target's machine word, in bytes. `emit`/`emitF` write exactly one of
+-- these per invocation, so it is also the trace's frame size.
+archWordBytes :: BackendArch -> Int
+archWordBytes X86_32 = 4
+archWordBytes _      = 8
+
+-- | Decode a raw emit trace into the SEQUENCE OF ARGUMENTS it carries.
+--
+-- The observable interpretation writes one whole machine word per `emit` /
+-- `emitF`, little-endian, so the trace is a frame sequence and this is its
+-- reader. A length that is not a whole number of words means a truncated or
+-- over-long write — reported rather than silently rounded, because that is
+-- exactly the kind of argument-passing bug the trace exists to catch.
+decodeTrace :: BackendArch -> String -> Either String [Integer]
+decodeTrace arch out
+  | r /= 0    = Left ("trace is " ++ show n ++ " bytes, not a whole number of "
+                      ++ show w ++ "-byte words: " ++ show (map fromEnum out))
+  | otherwise = Right (go bytes)
+  where
+    w          = archWordBytes arch
+    bytes      = map fromEnum out
+    n          = length bytes
+    (_, r)     = n `divMod` w
+    go []      = []
+    go bs      = let (this, rest) = splitAt w bs
+                 in le this : go rest
+    le         = foldr (\b acc -> acc * 256 + fromIntegral b) 0
 
 -- | 'buildAndRunTrace' at a chosen arch (plan 0.73 G5). The observable test
 -- interpretation now has an implementation for all three, so an effect trace
