@@ -35,6 +35,8 @@
 open import Data.Nat using (ℕ; _<_)
 open import Once.Adequacy.CPU.Interface using (Arch; ArchSemantics)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.Target.Arch using (arch-float-format)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 
 -- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
 -- labels. `o` is constant for a whole definition, so it belongs on the module
@@ -51,6 +53,18 @@ module Once.Adequacy.ArchCorrectness.FlatFromObs (o : CanonicalName)
   -- needed a SECOND postulate (`entry-frame-base`) to say where its base was.
   -- As a parameter the arch can hand over a CONSTRUCTED frame and that second
   -- postulate becomes `refl` (x86-64 does; see `…ArchCorrectness.X86-64`).
+  -- THE TWO CHANNELS FOR THE FORMAT MUST AGREE (plan 0.73, D113/D114).
+  --
+  -- The machine reads it from `FrameSemantics.float-format FS`; the apex reads
+  -- it from `arch-float-format arch`. Both are stated independently — one is a
+  -- field of the frame semantics, the other a fact about the target enum — and
+  -- nothing makes them the same until it is SAID. Here is where it is said,
+  -- and where a disagreement becomes a type error instead of a wrong binary:
+  -- `arch-float-format`'s own comment promises exactly this check.
+  --
+  -- A PARAMETER, not a postulate: every instantiation discharges it by `refl`,
+  -- so it costs nothing and cannot be forgotten.
+  (fmt-agree     : FrameSemantics.float-format FS ≡ arch-float-format arch)
   (entry-frame   : FrameSemantics.Frame FS)
   (as            : ArchSemantics)
   (program-bound : ℕ)
@@ -222,9 +236,11 @@ AsmTraceCorrect ft =
 -- `ir-flat-correct` — PROVED from `traces-agree` (was a postulate).
 ------------------------------------------------------------------------
 
+-- D113: at THIS target's float format, which is where `IRObsCorrectFlat`'s
+-- `evalᴰ` alias reads it from too — so the two sides mean one thing.
 ir-flat-correct-of : (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
                    → ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ)
-                   → flat-trace-of ioc mir n ≡ ⟦ mir ⟧IR n
+                   → flat-trace-of ioc mir n ≡ ⟦ mir ⟧IR (FrameSemantics.float-format FS) n
 ir-flat-correct-of ioc nothing   n = refl
 ir-flat-correct-of ioc (just ir) n =
   proj₂ (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir)) n)
@@ -242,5 +258,8 @@ flat-from-obs ioc atc = record
   ; flat-trace        = flat-trace-of ioc
   ; assemble-correct  = λ _ _ _ _ _ → refl
   ; asm-trace-correct = atc
-  ; ir-flat-correct   = ir-flat-correct-of ioc
+  -- the one place `fmt-agree` is spent
+  ; ir-flat-correct   = λ mir n →
+      subst (λ F → flat-trace-of ioc mir n ≡ ⟦ mir ⟧IR F n)
+            fmt-agree (ir-flat-correct-of ioc mir n)
   }
