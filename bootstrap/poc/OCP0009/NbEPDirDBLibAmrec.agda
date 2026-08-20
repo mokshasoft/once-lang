@@ -504,6 +504,66 @@ StepExt Δ A cM m stp =
             (app (app (renTm ρ stp) a) ih₂))
 
 ------------------------------------------------------------------------
+-- ★★★ `StepExt` TRANSPORTS ALONG A TYPED RENAMING.
+--
+-- ★ DERIVABLE, not a new assumption: `StepExt` is ALREADY quantified over
+--   renamings, so this instantiates the original at the COMPOSITE
+--   `κ = ϑ ∘ ρ` and re-associates.  `Ren⊢-comp` composes the typed
+--   renamings; every other step is `renren`/`renrenTy` turning
+--   `renTm ϑ (renTm ρ t)` into `renTm κ t`.
+--
+-- ⚠ THE DIRECTIONS MATTER AND ARE EASY TO GET BACKWARDS.  `renren h`
+--   points FROM the separately-applied form TO the composite.  So the
+--   PREMISES (which arrive separately-applied) cast FORWARD, and the
+--   CONCLUSION (which `ext` gives at the composite) casts BACK with `sym`.
+--
+-- ⚠⚠ `StepPW` is the hard part: doubly renaming-indexed with its OWN
+--   coherence condition.  The transport calls the given `pw` at
+--   `ρ³ := ϑ³ ∘ ϑ`, where its condition is `refl` and therefore always
+--   available, and then re-expresses the RESULT at `σ³` using `br`.
+------------------------------------------------------------------------
+
+StepExt-ren : {Δ Θ : Ctx} {A : RTy ⌊ Δ ⌋} {cM m : RTm (⌊ Δ ⌋ ∙)}
+              {stp : RTm ⌊ Δ ⌋} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} →
+              Ren⊢ Δ Θ ρ → StepExt Δ A cM m stp →
+              StepExt Θ (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+                        (renTm ρ stp)
+StepExt-ren {A = A} {cM = cM} {m = m} {stp = stp} {ρ = ρ} ρ⊢ ext
+            {Θ''} {ϑ} ϑ⊢ a ih₁ ih₂ da d₁ d₂ pw =
+  prv-cast
+    (cong₃ (λ c e₁ e₂ → Id (El c) e₁ e₂)
+           (cong (subTm (single a)) (sym cMeq))
+           (cong (λ z → app (app z a) ih₁) (sym seq))
+           (cong (λ z → app (app z a) ih₂) (sym seq)))
+    (ext (Ren⊢-comp ρ⊢ ϑ⊢ (λ v → refl)) a ih₁ ih₂
+         (⊢-cast Aeq da) (⊢-cast ihEq d₁) (⊢-cast ihEq d₂) pw')
+  where
+    -- `renren`/`renrenTy` at the pointwise-refl condition: separate ⇒ composite
+    Aeq  = renrenTy {ϑ = ϑ} {ρ = ρ} (λ v → refl) A
+    cMeq = renren (extcondR {ϑ = ϑ} {ρ = ρ} (λ v → refl)) cM
+    meq  = renren (extcondR {ϑ = ϑ} {ρ = ρ} (λ v → refl)) m
+    seq  = renren {ϑ = ϑ} {ρ = ρ} (λ v → refl) stp
+
+    ihEq = cong₄ aIHTat Aeq cMeq meq (cong (subTm (single a)) meq)
+
+    -- ⚠ SIGNED and PINNED: as a bare lambda, `StepPW`'s three implicit
+    --   renamings cannot be solved — the coherence mentions a bound
+    --   variable, so the meta may not depend on it.
+    pw' : StepPW _ A cM m Θ'' (λ v → ϑ (ρ v)) a ih₁ ih₂
+    pw' {Θ³} {ϑ³} {σ³} ϑ³⊢ br y q dy dq =
+      prv-cast
+        (cong (λ c → Id (El (subTm (single y) c))
+                        (app (app (renTm ϑ³ ih₁) y) q)
+                        (app (app (renTm ϑ³ ih₂) y) q))
+              (renren (extcondR br) cM))
+        (pw {Θ³} {ϑ³} {λ v → ϑ³ (ϑ v)} ϑ³⊢ (λ v → refl) y q
+            (⊢-cast (sym (renrenTy br A)) dy)
+            (⊢-cast (cong₂ (λ u v → Hom Nat (nsuc (subTm (single y) u))
+                                            (renTm ϑ³ (subTm (single a) v)))
+                           (sym (renren (extcondR br) m)) (sym meq))
+                    dq))
+
+------------------------------------------------------------------------
 -- THE COMBINATOR, over an arbitrary ambient context.
 ------------------------------------------------------------------------
 
