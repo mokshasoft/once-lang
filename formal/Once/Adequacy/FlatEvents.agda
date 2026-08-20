@@ -38,34 +38,61 @@ open import Data.Product using (_,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
-open import Once.Type using (Int)
+-- `fits-int`/`fits-float` must be IMPORTED, not just written: out of scope
+-- they parse as variable patterns and `decode-arg`'s scalar clauses silently
+-- stop refining `SV-Lit`'s index.
+open import Once.Type using (Int; Float; fits-int; fits-float)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.SigOp.Info using (SigOpInfo; name; effect; EffectShape; Pure; Emits; Halts)
+open import Once.SigOp.Info using (SigOpInfo; name; baseA; effect; EffectShape; Pure; Emits; Halts)
+open import Once.Functor.Translate using (IsBaseType; base-Int; base-Float)
+-- The observable's value domain — the same `⟦_⟧` the event carries.
+open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Machine.SMCore
   using (LocState; halted; regs; readReg; Input1;
          StoredValue; SV-Lit;
          AbstractTrace; AbstractInstr; instr-sigop)
 open import Once.CCC.Machine.Flat
 open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
-open import Once.Denotation.Trace using (SigOpEvent; mk-event; isInt?)
+open import Once.Denotation.Trace using (SigOpEvent; mk-event)
 
 module FlatEventTrace {FS : FrameSemantics} where
   open FlatMachine {FS}
   open FlatStepsAPI {FS}
 
-  -- Decode a register cell to a ℕ argument (only `Int` literals decode).
-  decode-ℕ : StoredValue FS → Maybe ℕ
-  decode-ℕ (SV-Lit {Int} _ v) = just v
-  decode-ℕ _                  = nothing
+  -- RESIDUAL (D114, plan 0.73 G3) — THE ARGUMENT THIS LAYER CANNOT YET READ.
+  --
+  -- A SCALAR argument (`Int`, `Float`) sits in `Input1` itself, so the machine
+  -- reads it off the register and `decode-arg` below returns it outright. A
+  -- COMPOUND one (`Str`, `Buffer`, `_*_`, `_+_`) does not: the register holds a
+  -- POINTER, and recovering the value is a heap walk — `readTyped`, which
+  -- covers Unit/Int/pairs today and would have to be completed and then related
+  -- to the memory correspondence.
+  --
+  -- It is a NAMED HOLE rather than a narrower observable, and that distinction
+  -- is the whole of D114: the claim stays "the compiled program invokes the
+  -- same SigOps with the same arguments", and what is missing is the PROOF for
+  -- some argument shapes, visible to `make postulates`. The predecessor did the
+  -- opposite — it gated both sides on `isInt?` so the correspondence would go
+  -- through, which made `print "hello"` and `print "goodbye"` the same
+  -- behaviour and left nothing to see.
+  --
+  -- Scalars do NOT route through here; `decode-arg`'s first two clauses are
+  -- real, and they are what makes `emitF`'s argument observable.
+  postulate
+    decode-unread : ∀ {A} → IsBaseType A → StoredValue FS → ⟦ A ⟧
 
-  -- The event a `SigOp` invocation emits, read off the machine: name
-  -- from the descriptor, ℕ argument decoded from `Input1` when the
-  -- input type is `Int` (matching `mkEvent`'s `isInt?` gate on the
-  -- source side, so the two sides can be proven equal).
+  -- The SigOp's argument, read off the machine at its own base type.
+  decode-arg : ∀ {A} → IsBaseType A → StoredValue FS → ⟦ A ⟧
+  decode-arg base-Int   (SV-Lit fits-int   v) = v
+  decode-arg base-Float (SV-Lit fits-float v) = v
+  decode-arg b          sv                    = decode-unread b sv
+
+  -- The event a `SigOp` invocation emits, read off the machine: the name from
+  -- the descriptor, the argument from `Input1`. No gate — the descriptor's own
+  -- `baseA` says what type to read it at, so this reduces on an abstract
+  -- domain exactly as `mkEvent` does on the source side.
   machine-event : ∀ {A B} → SigOpInfo A B → StoredValue FS → SigOpEvent
-  machine-event {A} si sv with isInt? A
-  ... | just _  = mk-event (name si) (decode-ℕ sv)
-  ... | nothing = mk-event (name si) nothing
+  machine-event {A} si sv = mk-event (name si) A (baseA si) (decode-arg (baseA si) sv)
 
   -- Events emitted by executing one instruction depend on the
   -- instruction + the LOCATION state only (the `Input1` register).

@@ -54,6 +54,11 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
   (o : CanonicalName)
   (FS : FrameSemantics)
   (word-eq : frame-word FS ≡ slot-size)
+  -- …and the float format pinned to this target's, the companion of `word-eq`
+  -- (plan 0.73, D113). Passed straight through to `FlatSimulation`, which is
+  -- where the emitter's `encode binary64` and the machine's `float-format FS`
+  -- have to be shown to be the same number.
+  (fmt-eq : FrameSemantics.float-format FS ≡ binary64)
   -- THE SLOT ADDRESS DOES NOT WRAP (plan 0.70 class, D087). riscv64 has no
   -- `lea`: it computes a slot's address with `addi`, a REAL add, so its
   -- `block-step-lea-slot` needs a range fact that x86-64's route never had.
@@ -69,7 +74,7 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
      ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
        (fs : FlatMachine.FlatState {FS}) (s : RS.State) (slot : ℕ)
      → RCr.RunAt o FS slot-size word-eq prog fs
-     → FSimr.CompiledCorr o FS word-eq hv prog fs s
+     → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
      → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs) ≡ just (lea-slot slot)
      → RS.readReg (RS.State.regs s) sp + slot-to-disp slot < RS.W.modulus)
   -- …AND THE REST OF THE FAMILY (plan 0.65 G2). Bundled as the two records
@@ -85,7 +90,7 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
   (heap-room : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                  (fs : FlatMachine.FlatState {FS}) (s : RS.State) (n : ℕ)
              → RCr.RunAt o FS slot-size word-eq prog fs
-             → FSimr.CompiledCorr o FS word-eq hv prog fs s
+             → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                  ≡ just (instr-alloc-heap n)
              → FCr.hfront hv + slots n ≤ FCr.lo hv)
@@ -93,26 +98,26 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
                   (fs : FlatMachine.FlatState {FS}) (s : RS.State)
                   (m : LabelId) (b : ℕ)
               → RCr.RunAt o FS slot-size word-eq prog fs
-              → FSimr.CompiledCorr o FS word-eq hv prog fs s
+              → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                   ≡ just (instr-ctrl (c-thunk m b))
               → FCr.hfront hv + slots b ≤ RS.readReg (RS.State.regs s) sp)
   (call-room : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                  (fs : FlatMachine.FlatState {FS}) (s : RS.State)
              → RCr.RunAt o FS slot-size word-eq prog fs
-             → FSimr.CompiledCorr o FS word-eq hv prog fs s
+             → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                  ≡ just instr-call-closure
              → FCr.hfront hv + slot-size ≤ RS.readReg (RS.State.regs s) sp)
   (reg-range : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                  (fs : FlatMachine.FlatState {FS}) (s : RS.State) (r : Reg')
              → RCr.RunAt o FS slot-size word-eq prog fs
-             → FSimr.CompiledCorr o FS word-eq hv prog fs s
+             → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
              → RS.readReg (RS.State.regs s) r < RS.W.modulus)
   (scratch-dec-guarded : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                            (fs : FlatMachine.FlatState {FS}) (s : RS.State)
                        → RCr.RunAt o FS slot-size word-eq prog fs
-                       → FSimr.CompiledCorr o FS word-eq hv prog fs s
+                       → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
                        → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                            ≡ just (instr-reg-op scratch-dec)
                        → 1 ≤ RS.readReg (RS.State.regs s) s3)
@@ -120,40 +125,40 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
   (ret-no-wrap : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                    (fs : FlatMachine.FlatState {FS}) (s : RS.State) (b : ℕ)
                → RCr.RunAt o FS slot-size word-eq prog fs
-               → FSimr.CompiledCorr o FS word-eq hv prog fs s
+               → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
                → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                    ≡ just (instr-ctrl (c-ret b))
                → RS.readReg (RS.State.regs s) sp + slots (suc b) < RS.W.modulus)
   (count-no-wrap : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                      (fs : FlatMachine.FlatState {FS}) (s : RS.State)
                  → RCr.RunAt o FS slot-size word-eq prog fs
-                 → FSimr.CompiledCorr o FS word-eq hv prog fs s
+                 → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
                  → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                      ≡ just (instr-reg-op count-inc)
                  → RS.readReg (RS.State.regs s) s4 + 1 < RS.W.modulus)
   (lo-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                (fs : FlatMachine.FlatState {FS}) (s : RS.State)
            → RCr.RunAt o FS slot-size word-eq prog fs
-           → FSimr.CompiledCorr o FS word-eq hv prog fs s
+           → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
            → FCr.lo hv < RS.W.modulus)
   (tag-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                 (fs : FlatMachine.FlatState {FS}) (s : RS.State) (n : ℕ)
             → RCr.RunAt o FS slot-size word-eq prog fs
-            → FSimr.CompiledCorr o FS word-eq hv prog fs s
+            → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                 ≡ just (instr-load-tag-lit n)
             → n < RS.W.modulus)
   (lit-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                 (fs : FlatMachine.FlatState {FS}) (s : RS.State) (v : Carrier)
             → RCr.RunAt o FS slot-size word-eq prog fs
-            → FSimr.CompiledCorr o FS word-eq hv prog fs s
+            → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
             → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                 ≡ just (instr-load-const fits-int v)
             → v < RS.W.modulus)
   (float-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
                   (fs : FlatMachine.FlatState {FS}) (s : RS.State) (v : Dyadic)
               → RCr.RunAt o FS slot-size word-eq prog fs
-              → FSimr.CompiledCorr o FS word-eq hv prog fs s
+              → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)
                   ≡ just (instr-load-const fits-float v)
               → (encode binary64) v < RS.W.modulus)
@@ -279,7 +284,7 @@ riscv64-machine = record
   ; xhalted = R.State.halted ; xpc = R.State.pc
   -- `jalr` writes the LINK REGISTER and nothing else: until the callee's
   -- `sd ra` there is no cell to point at, so the claim ignores the address.
-  ; link-claim = FSimr.riscv64-link-claim o FS word-eq
+  ; link-claim = FSimr.riscv64-link-claim o FS word-eq fmt-eq
   ; mexecInstr = R.execInstr ; exec = R.exec
   ; exec-zero = r-exec-zero ; exec-halted = r-exec-halted ; exec-end = r-exec-end
   ; exec-stuck = r-exec-stuck ; exec-step-halt = r-exec-step-halt
@@ -348,7 +353,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
 --
 -- Stated at exactly the field's type, so `Supply`'s `bs-lea-slot` is this.
 ------------------------------------------------------------------------
-open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq using
+open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fmt-eq using
   (block-step-lea-slot; CompiledCorr; BlockStep; BlockSteps
   ; block-step-mov-to-output; block-step-mov-to-input
   ; block-step-scratch-one; block-step-scratch-zero; block-step-count-zero

@@ -58,6 +58,10 @@ open import Once.Parser using (parseStrict)
 open import Once.Parser.Module.Resolve using (resolveImports; ModuleMap)
 open import Once.Denotation.Behavior using (Source; Behavior)
 open import Once.Denotation.DenotTrace using (evalᴰ)
+-- Plan 0.73 (D113): the meaning is target-relative at `Float`, so the format
+-- is threaded in. An explicit ARGUMENT, not a module parameter — these are
+-- recursive and a parameterised module stops reducing at a variable instance.
+open import Once.Float.Dyadic using (FloatFormat)
 open import Once.Denotation.TraceMonad using (projTrace)
 
 ------------------------------------------------------------------------
@@ -124,9 +128,9 @@ moduleToIR mod = moduleToIR-aux (C.compileResolvedModule C.Heap false mod)
 -- The SigOp trace the denotational `evalᴰ` reads off `main`'s IR (the
 -- elaborated meaning), at observation depth `n` (Plan 0.46: the monadic
 -- `⟦_⟧ᴰ` is THE source observable; the operational `otrace` is retired).
-⟦_⟧IR : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Behavior
-⟦ just ir ⟧IR = λ n → take n (projTrace (evalᴰ ir tt) n)
-⟦ nothing ⟧IR = λ _ → []
+⟦_⟧IR : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → FloatFormat → Behavior
+⟦ just ir ⟧IR fmt = λ n → take n (projTrace (evalᴰ fmt ir tt) n)
+⟦ nothing ⟧IR _   = λ _ → []
 
 ------------------------------------------------------------------------
 -- The verified front-end (Plan 0.51): parse the user's grammar module,
@@ -198,12 +202,12 @@ srcToModule-inv src mR eq =
 -- conjunct of the compiler theorem).
 -- J-style dispatch on the parse result (explicit `Maybe`, no `with`), so
 -- `⟦⟧-via-module` below can `rewrite` the parse equation through it.
-sourceTrace-aux : Maybe P.Module → Behavior
-sourceTrace-aux (just m) = ⟦ moduleToIR m ⟧IR
-sourceTrace-aux nothing  = λ _ → []
+sourceTrace-aux : Maybe P.Module → FloatFormat → Behavior
+sourceTrace-aux (just m) fmt = ⟦ moduleToIR m ⟧IR fmt
+sourceTrace-aux nothing  _   = λ _ → []
 
-sourceTrace : Source → Behavior
-sourceTrace src = sourceTrace-aux (srcToModule src)
+sourceTrace : Source → FloatFormat → Behavior
+sourceTrace src fmt = sourceTrace-aux (srcToModule src) fmt
 
 -- `abstract`: keep `⟦_⟧` opaque downstream. Otherwise `⟦ src ⟧` unfolds
 -- to `sourceTrace src`'s `with gmoduleToModule src …`, and
@@ -211,7 +215,7 @@ sourceTrace src = sourceTrace-aux (srcToModule src)
 -- reduces the goal's `⟦ src ⟧` while the per-stage postulate's stays
 -- unreduced → `UnequalTerms`. Opacity makes both sides the same term.
 abstract
-  ⟦_⟧ : Source → Behavior
+  ⟦_⟧ : Source → FloatFormat → Behavior
   ⟦ src ⟧ = sourceTrace src
 
   -- Reduction lemma (exported): when `src` parses AND RESOLVES to module `m`
@@ -221,5 +225,5 @@ abstract
   -- no `with`-opacity. This discharges `Compile.gmoduleToModule-correct`.
   ⟦⟧-via-module :
     ∀ (src : Source) (m : P.Module) → srcToModule src ≡ just m →
-    ∀ (n : ℕ) → ⟦ src ⟧ n ≡ ⟦ moduleToIR m ⟧IR n
-  ⟦⟧-via-module src m eq n rewrite eq = refl
+    ∀ (fmt : FloatFormat) → ⟦ src ⟧ fmt ≡ ⟦ moduleToIR m ⟧IR fmt
+  ⟦⟧-via-module src m eq fmt rewrite eq = refl
