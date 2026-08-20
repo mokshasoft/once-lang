@@ -220,6 +220,14 @@ prvTm (prv e _) = e
 prvOk : {Γ : Ctx} {T : RTy ⌊ Γ ⌋} (p : Prv Γ T) → Γ ⊢ prvTm p ∷ T
 prvOk (prv _ d) = d
 
+-- ★ a `Prv` transports along a typed renaming, and it is two lines: `Prv`
+--   is just a term plus its derivation, so `ren-lemma` does all the work.
+--   ⚠ Nothing renamed a `Prv` before 2026-08-20; every client that needed
+--   a renamed fact restated it instead.
+prv-ren : {Γ Θ : Ctx} {ρ : Ren ⌊ Γ ⌋ ⌊ Θ ⌋} → Ren⊢ Γ Θ ρ →
+          {T : RTy ⌊ Γ ⌋} → Prv Γ T → Prv Θ (renTy ρ T)
+prv-ren ρ⊢ (prv e d) = prv (renTm _ e) (ren-lemma d ρ⊢)
+
 -- ★ THE BRIDGE reductions cross to reach an `Id`: an identity between the
 --   REDUCTS is an identity between the sources.  Every unfold lemma in this
 --   module is `⟶*`-valued, so this is how any of them enters an internal
