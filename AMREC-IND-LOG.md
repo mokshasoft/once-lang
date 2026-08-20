@@ -397,4 +397,49 @@ it. **Third time today.** Assert on every replace.
 - The successor branch assembled; the `⊢natrec`.
 - ⚠ The instantiation at `n := suc (μ x)` — still the non-vacuity check.
 - Relocate `ihCall-amrec` (and `amrec-ind` itself) into `…LibAmrec`.
+| 21 | 08-20 | `prv-ren` — a `Prv` transports along a renaming | ✅ green | ~60s |
+| 22 | 08-20 | **Route (b), rung 1**: `ihZ'` + `ihZ-ren` (+ `wwᶠ²-ren`) | ✅ **green first try** | ~60s |
+
+## ★★★ The design fork, and why (b)
+
+`IndPW` quantifies over an ARBITRARY `y : RTm ⌊ Θ' ⌋`, but the irrelevance
+layer takes `x y : RTm ⌊ Δ ⌋` — the CONTEXT is renaming-indexed, the
+ARGUMENTS are not. Two ways out:
+
+- **(a)** widen `irrT`/`irrElim`/`irr-ind` to `Γ'`-level arguments — that is
+  generalising the largest piece of `…LibAmrec`; `irr-ind` alone cost nine
+  attempts in gap A.
+- **(b)** INSTANTIATE `AmTΠ` at `Θ'` (where its own `Δ` *is* `Θ'`, so
+  irrelevance already applies) and use `-ren` laws to connect that
+  instantiation back to `renTm ρ` of this one.
+
+⇒ **(b) SUBSUMES (a)** — they are alternatives, not a sequence. If (b)
+lands, (a) never happens.
+
+★ And (b) is not a new technique here: **`AmTΠ` already opens `AmT` at
+`Δ ▹ A`** with renamed parameters, bridged by `aStepT-ren`. (b) applies the
+module's own idiom one level down.
+
+⚠ I first recommended weakening `IndPW` to `Θ`-only — time-to-green rather
+than correct shape. That was the wrong call for a POC whose output is a
+DESIGN, and it ignored a standing note in this project
+(*principledness over edit cost*). The general `IndPW` is not merely safer:
+recursive calls genuinely occur under binders (gcd's do, inside `natrec`
+branches), so a `Θ`-only premise would UNDERSTATE what "P holds of every
+recursive call" means.
+
+## The asymmetry route (b) fixes
+
+TYPE-level constructions are already top-level, parameterised, and have
+commutation laws — `aAuxB`/`aAuxB-ren`, `aStepT`/`aStepT-ren`,
+`aIHT`/`aIHT-ren`. TERM-level ones are not: `ihZ`, `ihS`, `aZBr`, `aSBr`,
+`aAuxTm`, `amrecTm` live inside the module against its parameters, so
+nothing can state how they behave under a renaming.
+
+**Rung 1 done**: `ihZ'` + `ihZ-ren`, green first try. `AmT`'s `ihZ` is now
+`ihZ' cM m`, so nothing downstream changed.
+
+**Remaining rungs**: `ihS`(needs `descS`), `aZBr`, `aSBr`, `aAuxTm`,
+`amrecTm` — same shape, `cong` down the structure with `ren-w`/`ren-wᶠ` at
+the leaves.
 

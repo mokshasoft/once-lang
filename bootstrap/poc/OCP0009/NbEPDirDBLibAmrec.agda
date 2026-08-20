@@ -478,6 +478,52 @@ StepExt Δ A cM m stp =
 -- THE COMBINATOR, over an arbitrary ambient context.
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- ★★★ THE TERM-LEVEL CONSTRUCTIONS, PARAMETERISED — and their `-ren` laws.
+--
+-- ⚠ THE ASYMMETRY THIS FIXES.  The TYPE-level constructions are already
+--   top-level and parameterised, with commutation laws: `aAuxB`/`aAuxB-ren`,
+--   `aStepT`/`aStepT-ren`, `aIHT`/`aIHT-ren`.  The TERM-level ones —
+--   `ihZ`, `ihS`, `aZBr`, `aSBr`, `aAuxTm`, `amrecTm` — are defined INSIDE
+--   `AmT`/`AmTΠ` against the module's parameters, so nothing can say how
+--   they behave under a renaming.
+--
+-- ★ WHY THAT MATTERS.  `amrec-ind`'s `IndPW` premise quantifies over an
+--   ARBITRARY `y : RTm ⌊ Θ' ⌋`, but the irrelevance layer (`irrT`,
+--   `irrElim`, `irr-ind`) takes `x y : RTm ⌊ Δ ⌋` — the CONTEXT is
+--   renaming-indexed, the ARGUMENTS are not.  The way to reach `Θ'`-level
+--   arguments is to INSTANTIATE the module at `Θ'` (which `AmTΠ` already
+--   does internally, opening `AmT` at `Δ ▹ A`), and then these `-ren` laws
+--   are what connect that instantiation back to `renTm ρ` of this one.
+--
+-- ⇒ this is the same technique the module already uses, applied one level
+--   down.  It is NOT a generalisation of the irrelevance layer — that
+--   would widen the largest piece of this file; this reuses it as-is.
+------------------------------------------------------------------------
+
+ihZ' : {Γ : Cx} (cM m : RTm (Γ ∙)) → RTm ((Γ ∙) ∙)
+ihZ' cM m =
+  lam (lam (absurd (w (wᶠ (wᶠ cM)))
+                   (ordtr (nsuc (w (wᶠ (wᶠ m)))) (w (w (w m))) nzero
+                          (var vz) (var (vs (vs vz))))))
+
+-- the `w ∘ wᶠ ∘ wᶠ` spine, pushed through a renaming
+wwᶠ²-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (t : RTm (Γ ∙)) →
+           renTm (extR (extR (extR (extR ρ)))) (w (wᶠ (wᶠ t)))
+         ≡ w (wᶠ (wᶠ (renTm (extR ρ) t)))
+wwᶠ²-ren {ρ = ρ} t =
+  trans (ren-w {ρ = extR (extR (extR ρ))} (wᶠ (wᶠ t)))
+        (cong w (trans (ren-wᶠ {ρ = extR ρ} (wᶠ t))
+                       (cong wᶠ (ren-wᶠ {ρ = ρ} t))))
+
+ihZ-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (cM m : RTm (Γ ∙)) →
+          renTm (extR (extR ρ)) (ihZ' cM m)
+        ≡ ihZ' (renTm (extR ρ) cM) (renTm (extR ρ) m)
+ihZ-ren {ρ = ρ} cM m =
+  cong₃ (λ c u v → lam (lam (absurd c (ordtr (nsuc u) v nzero
+                                             (var vz) (var (vs (vs vz)))))))
+        (wwᶠ²-ren {ρ = ρ} cM) (wwᶠ²-ren {ρ = ρ} m) (ren-w³ {ρ = extR ρ} m)
+
 module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
            (dA   : Δ ⊢ty A)
            (dcM  : (Δ ▹ A) ⊢ cM ∷ U)
@@ -525,7 +571,7 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
   ------------------------------------------------------------------------
 
   ihZ : RTm (⌊ Δ ⌋ ∙ ∙)
-  ihZ = lam (lam (absurd (w (wᶠ (wᶠ cM))) (ordtr (nsuc (w (wᶠ (wᶠ m)))) (w (w (w m))) nzero (var vz) (var (vs (vs vz))))))
+  ihZ = ihZ' cM m
 
   aZBr : RTm ⌊ Δ ⌋
   aZBr = lam (lam (app (app (w (w stp)) (var (vs vz))) ihZ))
