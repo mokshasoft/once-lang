@@ -524,6 +524,114 @@ ihZ-ren {ρ = ρ} cM m =
                                              (var vz) (var (vs (vs vz)))))))
         (wwᶠ²-ren {ρ = ρ} cM) (wwᶠ²-ren {ρ = ρ} m) (ren-w³ {ρ = extR ρ} m)
 
+-- ★ two more spine peels, same construction as `wwᶠ²-ren`
+wwᶠ⁴-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (t : RTm (Γ ∙)) →
+           renTm (extR (extR (extR (extR (extR (extR ρ))))))
+                 (w (wᶠ (wᶠ (wᶠ (wᶠ t)))))
+         ≡ w (wᶠ (wᶠ (wᶠ (wᶠ (renTm (extR ρ) t)))))
+wwᶠ⁴-ren {ρ = ρ} t =
+  trans (ren-w {ρ = extR (extR (extR (extR (extR ρ))))} (wᶠ (wᶠ (wᶠ (wᶠ t)))))
+        (cong w (trans (ren-wᶠ {ρ = extR (extR (extR ρ))} (wᶠ (wᶠ (wᶠ t))))
+                 (cong wᶠ (trans (ren-wᶠ {ρ = extR (extR ρ)} (wᶠ (wᶠ t)))
+                           (cong wᶠ (trans (ren-wᶠ {ρ = extR ρ} (wᶠ t))
+                                     (cong wᶠ (ren-wᶠ {ρ = ρ} t))))))))
+
+w³wᶠ²-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (t : RTm (Γ ∙)) →
+            renTm (extR (extR (extR (extR (extR (extR ρ))))))
+                  (w (w (w (wᶠ (wᶠ t)))))
+          ≡ w (w (w (wᶠ (wᶠ (renTm (extR ρ) t)))))
+w³wᶠ²-ren {ρ = ρ} t =
+  trans (ren-w³ {ρ = extR (extR (extR ρ))} (wᶠ (wᶠ t)))
+        (cong (λ z → w (w (w z)))
+              (trans (ren-wᶠ {ρ = extR ρ} (wᶠ t)) (cong wᶠ (ren-wᶠ {ρ = ρ} t))))
+
+ren-w⁴ : {Γ Δ : Cx} {ρ : Ren Γ Δ} (t : RTm Γ) →
+         renTm (extR (extR (extR (extR ρ)))) (w (w (w (w t))))
+       ≡ w (w (w (w (renTm ρ t))))
+ren-w⁴ {ρ = ρ} t = trans (ren-w {ρ = extR (extR (extR ρ))} (w (w (w t))))
+                         (cong w (ren-w³ t))
+
+-- ★★ the SUCCESSOR side: `descS` depends only on the measure.
+descS' : {Γ : Cx} (m : RTm (Γ ∙)) → RTm ((((((Γ ∙) ∙) ∙) ∙) ∙) ∙)
+descS' m =
+  ordtr (nsuc (w (wᶠ (wᶠ (wᶠ (wᶠ m)))))) (w (w (w (wᶠ (wᶠ m)))))
+        (nsuc (var (vs (vs (vs (vs (vs vz))))))) (var vz) (var (vs (vs vz)))
+
+descS-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (m : RTm (Γ ∙)) →
+            renTm (extR (extR (extR (extR (extR (extR ρ)))))) (descS' m)
+          ≡ descS' (renTm (extR ρ) m)
+descS-ren {ρ = ρ} m =
+  cong₂ (λ u v → ordtr (nsuc u) v (nsuc (var (vs (vs (vs (vs (vs vz)))))))
+                       (var vz) (var (vs (vs vz))))
+        (wwᶠ⁴-ren {ρ = ρ} m) (w³wᶠ²-ren {ρ = ρ} m)
+
+ihS' : {Γ : Cx} (m : RTm (Γ ∙)) → RTm ((((Γ ∙) ∙) ∙) ∙)
+ihS' m = lam (lam (app (app (var (vs (vs (vs (vs vz))))) (var (vs vz))) (descS' m)))
+
+ihS-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (m : RTm (Γ ∙)) →
+          renTm (extR (extR (extR (extR ρ)))) (ihS' m)
+        ≡ ihS' (renTm (extR ρ) m)
+ihS-ren {ρ = ρ} m =
+  cong (λ d → lam (lam (app (app (var (vs (vs (vs (vs vz))))) (var (vs vz))) d)))
+       (descS-ren {ρ = ρ} m)
+
+-- ★★★ …and the two AUXILIARY BRANCHES.
+aZBr' : {Γ : Cx} (stp : RTm Γ) (cM m : RTm (Γ ∙)) → RTm Γ
+aZBr' stp cM m = lam (lam (app (app (w (w stp)) (var (vs vz))) (ihZ' cM m)))
+
+aZBr-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (stp : RTm Γ) (cM m : RTm (Γ ∙)) →
+           renTm ρ (aZBr' stp cM m)
+         ≡ aZBr' (renTm ρ stp) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+aZBr-ren {ρ = ρ} stp cM m =
+  cong₂ (λ s i → lam (lam (app (app s (var (vs vz))) i)))
+        (ren-w² {ρ = ρ} stp) (ihZ-ren {ρ = ρ} cM m)
+
+aSBr' : {Γ : Cx} (stp : RTm Γ) (m : RTm (Γ ∙)) → RTm ((Γ ∙) ∙)
+aSBr' stp m =
+  lam (lam (app (app (w (w (w (w stp)))) (var (vs vz))) (ihS' m)))
+
+aSBr-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (stp : RTm Γ) (m : RTm (Γ ∙)) →
+           renTm (extR (extR ρ)) (aSBr' stp m)
+         ≡ aSBr' (renTm ρ stp) (renTm (extR ρ) m)
+aSBr-ren {ρ = ρ} stp m =
+  cong₂ (λ s i → lam (lam (app (app s (var (vs vz))) i)))
+        (ren-w⁴ {ρ = ρ} stp) (ihS-ren {ρ = ρ} m)
+
+-- ★★★★ THE AUXILIARY AND THE RECURSOR — the top of the chain.
+--
+-- ⚠ `amrecTm` is built from the auxiliary AT THE EXTENDED CONTEXT: `AmTΠ`
+--   opens `AmT` at `Δ ▹ A` with `(w stp) (wᶠ cM) (wᶠ m)`, so the
+--   parameterised form carries those weakenings explicitly.
+aAuxTm' : {Γ : Cx} (stp : RTm Γ) (cM m : RTm (Γ ∙)) (n : RTm Γ) → RTm Γ
+aAuxTm' stp cM m n = natrec (aZBr' stp cM m) (aSBr' stp m) n
+
+aAuxTm-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ}
+             (stp : RTm Γ) (cM m : RTm (Γ ∙)) (n : RTm Γ) →
+             renTm ρ (aAuxTm' stp cM m n)
+           ≡ aAuxTm' (renTm ρ stp) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+                     (renTm ρ n)
+aAuxTm-ren {ρ = ρ} stp cM m n =
+  cong₂ (λ z sb → natrec z sb (renTm ρ n))
+        (aZBr-ren {ρ = ρ} stp cM m) (aSBr-ren {ρ = ρ} stp m)
+
+amrecTm' : {Γ : Cx} (stp : RTm Γ) (cM m : RTm (Γ ∙)) → RTm Γ
+amrecTm' stp cM m =
+  lam (app (app (aAuxTm' (w stp) (wᶠ cM) (wᶠ m) m) (var vz)) (reflTm m))
+
+-- ⭐ `reflTm` needs no law: `reflTm t = natrec unit (var vz) t`, and both
+--   `unit` and `var vz` are renaming-invariant, so it commutes
+--   DEFINITIONALLY.
+amrecTm-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (stp : RTm Γ) (cM m : RTm (Γ ∙)) →
+              renTm ρ (amrecTm' stp cM m)
+            ≡ amrecTm' (renTm ρ stp) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+amrecTm-ren {ρ = ρ} stp cM m =
+  cong (λ a → lam (app (app a (var vz)) (reflTm (renTm (extR ρ) m))))
+       (trans (aAuxTm-ren {ρ = extR ρ} (w stp) (wᶠ cM) (wᶠ m) m)
+              (cong₃ (λ s c μ → aAuxTm' s c μ (renTm (extR ρ) m))
+                     (ren-w {ρ = ρ} stp)
+                     (ren-wᶠ {ρ = ρ} cM)
+                     (ren-wᶠ {ρ = ρ} m)))
+
 module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
            (dA   : Δ ⊢ty A)
            (dcM  : (Δ ▹ A) ⊢ cM ∷ U)
@@ -574,7 +682,7 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
   ihZ = ihZ' cM m
 
   aZBr : RTm ⌊ Δ ⌋
-  aZBr = lam (lam (app (app (w (w stp)) (var (vs vz))) ihZ))
+  aZBr = aZBr' stp cM m
 
   -- the spine's cancellation: w (wᶠ (wᶠ cM)) peeled by the two ⊢apps
   cancelZ : subTm (single ihZ) (subTm (extS (single (var (vs vz)))) (w (wᶠ (wᶠ cM))))
@@ -632,13 +740,13 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
   ih₀-w⁵ = aAuxB-w^ 5 (renTy vs A) (wᶠ cM) (wᶠ m) (var vz)
 
   descS : RTm (⌊ Δ ⌋ ∙ ∙ ∙ ∙ ∙ ∙)
-  descS = ordtr (nsuc (w (wᶠ (wᶠ (wᶠ (wᶠ m)))))) (w (w (w (wᶠ (wᶠ m))))) (nsuc (var (vs (vs (vs (vs (vs vz))))))) (var vz) (var (vs (vs vz)))
+  descS = descS' m
 
   ihS : RTm (⌊ Δ ⌋ ∙ ∙ ∙ ∙)
-  ihS = lam (lam (app (app (var (vs (vs (vs (vs vz))))) (var (vs vz))) descS))
+  ihS = ihS' m
 
   aSBr : RTm (⌊ Δ ⌋ ∙ ∙)
-  aSBr = lam (lam (app (app (w (w (w (w stp)))) (var (vs vz))) ihS))
+  aSBr = aSBr' stp m
 
   -- the IH₀ spine's cancellation: wᶠ⁶ cM peeled by its two ⊢apps
   cancelIH : subTm (single descS)
@@ -708,7 +816,7 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
   ------------------------------------------------------------------------
 
   aAuxTm : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
-  aAuxTm n = natrec aZBr aSBr n
+  aAuxTm n = aAuxTm' stp cM m n
 
   ⊢aAux : {n : RTm ⌊ Δ ⌋} → Δ ⊢ n ∷ Nat →
           Δ ⊢ aAuxTm n ∷ subTy (single n) aAuxMot
@@ -740,7 +848,7 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
            (⊢-cast (aStepT-ren A cM m) (⊢wk dstp)) public
 
   amrecTm : RTm ⌊ Δ ⌋
-  amrecTm = lam (app (app (aAuxTm m) (var vz)) (reflTm m))
+  amrecTm = amrecTm' stp cM m
 
   -- the spine's two substitutions, w (wᶠ cM) → cM
   cancelΠ : subTm (single (reflTm m))
