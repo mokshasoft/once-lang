@@ -38,7 +38,7 @@ d_sigOp'45'desugar_10 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Once.IR.C_SigOp_154 (coe v0) (coe v1)
       (coe
-         MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'info_222 v0 v1
+         MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'info_356 v0 v1
          (MAlonzo.Code.Once.CanonicalName.d_bare_12 (coe v4)) v2 v3)
 -- Once.Surface.Desugar.desugar
 d_desugar_22 ::

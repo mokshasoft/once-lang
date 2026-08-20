@@ -336,7 +336,7 @@ du_ef_590 ::
   MAlonzo.Code.Once.IR.T_IR_16
 du_ef_590 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114 (coe v0)
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246 (coe v0)
       (coe
          MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v1) (coe v3)
          (coe v2))
@@ -367,7 +367,7 @@ du_ex_592 ::
   MAlonzo.Code.Once.IR.T_IR_16
 du_ex_592 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114 (coe v0)
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246 (coe v0)
       (coe v1) (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v2)
 -- Once.Adequacy.SourceFaithful._.ihf-T
 d_ihf'45'T_598 ::
@@ -474,7 +474,7 @@ du_ee_678 ::
   MAlonzo.Code.Once.IR.T_IR_16
 du_ee_678 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246
       (coe
          MAlonzo.Code.Once.Surface.Context.du__'44'__16 (coe v0) (coe v1))
       (coe v2) (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v3)
@@ -550,7 +550,7 @@ du_body_734 v0 v1 v2 v3 v4
          (coe
             MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38
             (coe
-               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114 (coe v0)
+               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246 (coe v0)
                (coe
                   MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v1)
                   (coe
@@ -560,7 +560,7 @@ du_body_734 v0 v1 v2 v3 v4
                   (coe v2))
                (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v3))
             (coe
-               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114 (coe v0)
+               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246 (coe v0)
                (coe v1) (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v4))
             (coe MAlonzo.Code.Once.IR.C_Heap_8)))
       (coe MAlonzo.Code.Once.IR.C_fst_44)
@@ -617,7 +617,7 @@ du_ee1_1178 ::
   MAlonzo.Code.Once.IR.T_IR_16
 du_ee1_1178 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114 (coe v0)
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246 (coe v0)
       (coe v1) (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v2)
 -- Once.Adequacy.SourceFaithful._.ee2
 d_ee2_1180 ::
@@ -642,7 +642,7 @@ du_ee2_1180 ::
   MAlonzo.Code.Once.IR.T_IR_16
 du_ee2_1180 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246
       (coe
          MAlonzo.Code.Once.Surface.Context.du__'44'__16 (coe v0) (coe v2))
       (coe v1) (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v3)
@@ -727,7 +727,7 @@ du_es_1368 ::
   MAlonzo.Code.Once.IR.T_IR_16
 du_es_1368 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114 (coe v0)
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246 (coe v0)
       (coe MAlonzo.Code.Once.Type.C__'43'__128 (coe v1) (coe v2))
       (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v3)
 -- Once.Adequacy.SourceFaithful._.ll
@@ -758,7 +758,7 @@ du_ll_1370 ::
   MAlonzo.Code.Once.IR.T_IR_16
 du_ll_1370 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246
       (coe
          MAlonzo.Code.Once.Surface.Context.du__'44'__16 (coe v0) (coe v2))
       (coe v1) (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v3)
@@ -790,7 +790,7 @@ du_rr_1372 ::
   MAlonzo.Code.Once.IR.T_IR_16
 du_rr_1372 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246
       (coe
          MAlonzo.Code.Once.Surface.Context.du__'44'__16 (coe v0) (coe v2))
       (coe v1) (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v3)

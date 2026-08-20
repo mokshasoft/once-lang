@@ -24,7 +24,9 @@ module Once.Denotation.SourceDenote where
 
 open import Data.Fin using (Fin) renaming (zero to fzero; suc to fsuc)
 open import Data.Nat using (ℕ; zero; suc)
-open import Data.Integer using (ℤ) renaming (∣_∣ to absℤ)
+open import Data.Integer using (ℤ)
+import Once.Word as OnceWord
+module IntW = OnceWord.Word64
 open import Data.List using (List; []; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
@@ -145,7 +147,12 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt ir)
 ⟦ unit ⟧ˢ fmt         dγ = returnT tt
 ⟦ absurd e ⟧ˢ fmt     dγ = ⟦ e ⟧ˢ fmt dγ >>=T λ v → ⊥-elim v
 ⟦ let' e1 e2 ⟧ˢ fmt   dγ = ⟦ e1 ⟧ˢ fmt dγ >>=T λ v1 → ⟦ e2 ⟧ˢ fmt (dγ , v1)
-⟦ int n ⟧ˢ fmt        dγ = returnT (absℤ n)
+-- D054: an `Int` literal MEANS its two's-complement machine word, via
+-- `Once.Word.fromℤ` — the same function the elaborator's `intLit` and the
+-- blocked arith path use. It used to be `absℤ` (absolute value), so `-5` would
+-- have meant 5; harmless only because no negative literal can be written yet,
+-- and plan 0.73 F3 was about to change that.
+⟦ int n ⟧ˢ fmt        dγ = returnT (IntW.fromℤ n)
 -- A float literal denotes ITSELF. This is 0.72 P2's payoff at the denotation:
 -- `⟦ Float ⟧` IS `Dyadic`, so there is no encoder, no rounding and no abstract
 -- `semM` between the literal and its meaning — unlike `str` below. The IR side

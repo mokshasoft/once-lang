@@ -2457,7 +2457,7 @@ du_checkG'45'RFloat'45'aux_894 v0
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                       (coe MAlonzo.Code.Once.Surface.Elaborate.du_floatLit_20 (coe v2))
+                       (coe MAlonzo.Code.Once.Surface.Elaborate.du_floatLit_152 (coe v2))
                        (coe MAlonzo.Code.Once.TypeCheck.Judgment.C_g'45'float_330 v2 v3))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v0
@@ -2675,7 +2675,7 @@ du_checkG_928 v0 v1 v2
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                          (coe MAlonzo.Code.Once.Surface.Elaborate.du_intLit_8 (coe v4))
+                          (coe MAlonzo.Code.Once.Surface.Elaborate.du_intLit_140 (coe v4))
                           (coe MAlonzo.Code.Once.TypeCheck.Judgment.C_g'45'int_318))
                 _ -> coe v3
          MAlonzo.Code.Once.TypeCheck.Raw.C_RFloat_56 v4 v5 v6
@@ -13877,7 +13877,7 @@ d_checkElabV'45'RInt'45'aux_2262 v0 v1 v2 v3
                              (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_354 (coe v0)))
                           (coe
                              MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_366
-                             (coe MAlonzo.Code.Once.Surface.Elaborate.du_intLit_8 (coe v1)))
+                             (coe MAlonzo.Code.Once.Surface.Elaborate.du_intLit_140 (coe v1)))
                           (coe (0 :: Integer))
                           (coe
                              MAlonzo.Code.Once.TypeCheck.Classify.d_freshCounter_360 (coe v0)))
@@ -13963,7 +13963,7 @@ d_checkElabV'45'RFloat'45'aux_2280 v0 v1 v2 v3 v4 v5 v6
                                         (coe
                                            MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_366
                                            (coe
-                                              MAlonzo.Code.Once.Surface.Elaborate.du_floatLit_20
+                                              MAlonzo.Code.Once.Surface.Elaborate.du_floatLit_152
                                               (coe v11)))
                                         (coe (0 :: Integer))
                                         (coe
@@ -14274,7 +14274,7 @@ d_ext'45'arrow'45'info_2312 v0 v1 v2 v3 v4 v5 v6 v7
              (coe
                 MAlonzo.Code.Once.SigOp.Info.C_pureV_140
                 (coe
-                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'semM_198 v0 v1
+                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'semM_332 v0 v1
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20 v3
                       (coe
@@ -14368,7 +14368,7 @@ d_ext'45'arrow'45'info_2312 v0 v1 v2 v3 v4 v5 v6 v7
                                  (coe
                                     MAlonzo.Code.Once.SigOp.Info.C_pureV_140
                                     (coe
-                                       MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'semM_198
+                                       MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'semM_332
                                        v0 v1
                                        (coe
                                           MAlonzo.Code.Data.String.Base.d__'43''43'__20 v3
@@ -14398,7 +14398,7 @@ d_ext'45'resolved'45'info'45'aux_2318 v0 v1 v2 v3 v4 v5 v6 v7
              (coe
                 MAlonzo.Code.Once.SigOp.Info.C_pureV_140
                 (coe
-                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'semM_198 v0 v1
+                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'semM_332 v0 v1
                    (MAlonzo.Code.Once.CanonicalName.d_showCanonical_40 (coe v2))))
              (coe v6)
              (coe MAlonzo.Code.Once.SigOp.Info.C_ffi'45'concrete_152 (coe v7))
@@ -14440,7 +14440,7 @@ d_ext'45'resolved'45'info'45'aux_2318 v0 v1 v2 v3 v4 v5 v6 v7
                               (coe
                                  MAlonzo.Code.Once.SigOp.Info.C_pureV_140
                                  (coe
-                                    MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'semM_198 v0
+                                    MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'semM_332 v0
                                     v1
                                     (MAlonzo.Code.Once.CanonicalName.d_showCanonical_40 (coe v2))))
                               (coe v6)

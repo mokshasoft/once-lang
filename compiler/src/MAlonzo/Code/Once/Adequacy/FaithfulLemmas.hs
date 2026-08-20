@@ -190,7 +190,7 @@ du_algIR_308 v0 v1 v2 v3
                   MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
                   (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)))
             (coe
-               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
+               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246
                (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                (coe
                   MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130
@@ -343,7 +343,7 @@ du_p_434 v0 v1 v2 v3
                   MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
                   (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)))
             (coe
-               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
+               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246
                (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                (coe
                   MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v1) (coe v2)
@@ -538,10 +538,10 @@ du_child'45's_482 ::
   AgdaAny -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 du_child'45's_482 v0 v1 v2 v3 v4 v5 v6
   = coe
-      MAlonzo.Code.Once.Denotation.SourceDenote.d_ana'45'events'738'_62
+      MAlonzo.Code.Once.Denotation.SourceDenote.d_ana'45'events'738'_194
       (coe v1) (coe v2)
       (coe
-         MAlonzo.Code.Once.Denotation.SourceDenote.du_'10214'_'10215''738'_114
+         MAlonzo.Code.Once.Denotation.SourceDenote.du_'10214'_'10215''738'_246
          (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
          (coe
             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v2) (coe v3)
@@ -654,7 +654,7 @@ du_coalgIR_578 v0 v1 v2 v3
                   MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
                   (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)))
             (coe
-               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
+               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246
                (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                (coe
                   MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v1)
@@ -813,7 +813,7 @@ du_cR_606 v0 v1 v2 v3 v4 v5
             (coe
                MAlonzo.Code.Once.Denotation.TraceMonad.du_valueT_70
                (coe
-                  MAlonzo.Code.Once.Denotation.SourceDenote.du_'10214'_'10215''738'_114
+                  MAlonzo.Code.Once.Denotation.SourceDenote.du_'10214'_'10215''738'_246
                   (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                   (coe
                      MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v2)

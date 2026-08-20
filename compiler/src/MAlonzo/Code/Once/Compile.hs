@@ -253,7 +253,7 @@ du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v8
                          (coe v1)))
                    (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v7))
                    (coe
-                      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114 (coe v1)
+                      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246 (coe v1)
                       (coe v7) (coe v2)
                       (coe
                          MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_2878
@@ -268,7 +268,7 @@ du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v8
                             (coe v4))
                          (coe (0 :: Integer)) (coe v10))))
                 (coe
-                   MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114 (coe v1)
+                   MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_246 (coe v1)
                    (coe v7) (coe v2)
                    (coe
                       MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_2878

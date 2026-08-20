@@ -66,7 +66,7 @@ du_runMain'738'_20 v0 v1 v2
          (coe
             MAlonzo.Code.Once.Denotation.TraceMonad.du__'62''62''61'T__20
             (coe
-               MAlonzo.Code.Once.Denotation.SourceDenote.du_'10214'_'10215''738'_114
+               MAlonzo.Code.Once.Denotation.SourceDenote.du_'10214'_'10215''738'_246
                (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                (coe du_EffUU_16) (coe v1) (coe v0)
                (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))

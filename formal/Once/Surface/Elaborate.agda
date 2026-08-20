@@ -13,6 +13,9 @@ module Once.Surface.Elaborate where
 open import Once.Type
 open import Once.Float.Dyadic using (Dyadic)
 open import Once.IR
+import Once.Word as OnceWord
+module IntW = OnceWord.Word64
+
 open import Once.Surface.Syntax
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Relation.Binary.PropositionalEquality using (subst)
@@ -53,12 +56,19 @@ open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; base-Un
 -- ctor — CCC compiles them inline (`mov $N, %rax` on x86-64) with
 -- no runtime symbol or call overhead.
 --
--- Carries both semantic levels per `const`'s signature:
---   - I.⟦Int⟧ = ℤ (proof level): the integer literal `n` itself.
---   - M.⟦Int⟧ = ℕ (machine level): `∣ n ∣` (absolute value).
--- Negative literals are tracked properly once arithmetic migrates.
+-- Once's integers are SIGNED two's-complement machine words (D054), so a
+-- literal's machine value is `Once.Word`'s `fromℤ` — the SAME function the
+-- blocked arith path already uses (`block-semM (alit z) = W.fromℤ z`).
+--
+-- It used to be `∣ n ∣`, the ABSOLUTE VALUE, so `-5` would have denoted 5.
+-- That was invisible because the DENOTATION took the absolute value too, so
+-- the two agreed and every proof went through; and because no negative literal
+-- can be written yet (`-5` parses as infix subtraction, never a literal token).
+-- Plan 0.73 F3 folds `- <literal>` in the parser and would have armed it.
+-- Elaborator and denotation are corrected together, which is why `faithful`'s
+-- `refl` still holds.
 intLit : ℤ → ∀ {Γ} → IR Γ Int
-intLit n = const fits-int ∣ n ∣ ∘ terminal
+intLit n = const fits-int (IntW.fromℤ n) ∘ terminal
 
 strLit : String → ∀ {Γ} → IR Γ Str
 strLit s = SigOp (str-lit-info s) ∘ terminal

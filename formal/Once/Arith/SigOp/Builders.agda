@@ -40,6 +40,8 @@ open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Word using (Carrier)
+import Once.Word as OnceWord
+module W = OnceWord.Word64
 open import Once.Float.Dyadic using (Dyadic)
 import Once.Semantics.Value Carrier Carrier as M
 -- (Core ℤ `as I` removed: semI deleted — `semM` (ℕ/Word) is the meaning.)
@@ -53,28 +55,40 @@ import Once.Semantics.Value Carrier Carrier as M
 -- per-op SigOps remain in the IR for cases recognition can't lift —
 -- those need real semantics too.
 --
--- semM convention (matches `Once.Arith.SigOp.IntLit`):
---   - `+` / `*` map to `ℕ._+_` / `ℕ._*_` directly.
---   - `-` maps to `ℕ._∸_` (monus, truncated to 0). This is conservative
---     and only accurate when `a ≥ b`. Honest ℕ semantics matching x86
---     two's-complement is the I-arith-cleanup item.
---   - `neg` on ℕ has no natural meaning; return `0` (consistent with
---     `0 ∸ z = 0` for any `z : ℕ`).
+-- semM IS THE MODULAR WORD EVALUATOR (D054). Once's integers are SIGNED
+-- two's-complement machine words, so these are `Once.Word`'s modular ops —
+-- the SAME ones `Once.Arith.SigOp.Block.block-semM` already uses, so the
+-- per-op and blocked arith paths now agree instead of diverging.
+--
+-- They used to be raw ℕ operations, and that was not a simplification, it was
+-- WRONG on exactly the inputs Once admits:
+--   - `-` was `ℕ._∸_` (monus), so `3 - 8` denoted 0 rather than −5;
+--   - `neg` returned 0 for every input, so negation denoted nothing at all;
+--   - `+` / `*` never wrapped, promising unbounded arithmetic the hardware
+--     does not provide.
+-- The MACHINE was right throughout — `emit (3 - 8)` writes two's-complement
+-- −5 — so this is the spec being brought up to meet the machine, not a
+-- behaviour change. `TraceSpec`'s negative-argument cases pin it.
+--
+-- Width: `Word64`, matching `block-semM`. Threading the target's width here
+-- (D059) is the open Int-width bill; baking 64 is what the blocked path
+-- already does, so this changes no promise, it only stops two paths from
+-- disagreeing.
 ------------------------------------------------------------------------
 
 -- Binary arithmetic — Int * Int → Int
 add-semM : M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
-add-semM (a , b) = a ℕ.+ b
+add-semM (a , b) = a W.⊕ b
 
 sub-semM : M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
-sub-semM (a , b) = a ℕ.∸ b
+sub-semM (a , b) = a W.⊖ b
 
 mul-semM : M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
-mul-semM (a , b) = a ℕ.* b
+mul-semM (a , b) = a W.⊗ b
 
 -- Unary: Int → Int
 neg-semM : M.⟦ Int ⟧ → M.⟦ Int ⟧
-neg-semM _ = 0
+neg-semM x = W.⊝ x
 
 ------------------------------------------------------------------------
 -- Postulated semantics (still placeholders — div/mod need a div-by-

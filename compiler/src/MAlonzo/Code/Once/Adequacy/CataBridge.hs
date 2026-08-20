@@ -151,7 +151,7 @@ du_cata'45'bridge_78 v0 v1 v2 v3 v4 v5 v6 v7 v8
               (coe
                  MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                  (coe
-                    MAlonzo.Code.Once.Denotation.Meaning.du_cata'45'ev'45'alg'7472''45'D_10
+                    MAlonzo.Code.Once.Denotation.Meaning.du_cata'45'ev'45'alg'7472''45'D_142
                     (coe v1) (coe v8) (coe v4)
                     (coe
                        MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'out_790
@@ -194,7 +194,7 @@ du_cata'45'bridge_78 v0 v1 v2 v3 v4 v5 v6 v7 v8
               (coe
                  MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                  (coe
-                    MAlonzo.Code.Once.Denotation.Meaning.du_cata'45'ev'45'alg'7472''45'D_10
+                    MAlonzo.Code.Once.Denotation.Meaning.du_cata'45'ev'45'alg'7472''45'D_142
                     (coe v1) (coe v8)
                     (coe
                        MAlonzo.Code.Once.Denotation.DenotTrace.d_liftFn_404 (coe v0)

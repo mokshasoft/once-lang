@@ -387,7 +387,7 @@ du_algL_790 ::
   Integer -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_algL_790 v0 v1 v2 v3 v4 v5 v6
   = coe
-      MAlonzo.Code.Once.Denotation.Meaning.du_cata'45'ev'45'alg'7472''45'D_10
+      MAlonzo.Code.Once.Denotation.Meaning.du_cata'45'ev'45'alg'7472''45'D_142
       (coe
          MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_590
          (coe MAlonzo.Code.Once.IRTy.d_eraseF_40 (coe v2)))
@@ -446,7 +446,7 @@ du_algM_800 ::
   Integer -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_algM_800 v0 v1 v2 v3 v4 v5 v6
   = coe
-      MAlonzo.Code.Once.Denotation.Meaning.du_cata'45'ev'45'alg'7472''45'D_10
+      MAlonzo.Code.Once.Denotation.Meaning.du_cata'45'ev'45'alg'7472''45'D_142
       (coe v2) (coe v5)
       (coe
          MAlonzo.Code.Once.Denotation.DenotTrace.d_liftFn_404 (coe v0)
