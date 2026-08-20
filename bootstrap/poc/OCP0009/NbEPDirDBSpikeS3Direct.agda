@@ -28,10 +28,10 @@ module poc.OCP0009.NbEPDirDBSpikeS3Direct where
 open import normalizer.Syntax.Types using ( _≡_; trans; cong; cong₂; sym; subst )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; Hom; Nat; RTm; nsuc; pair; fst; snd
-        ; var; vz; vs; lam; app; Sub; extS; subTm; subTy )
+        ; var; vz; vs; lam; app; Sub; extS; subTm; subTy; natrec; nzero )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ⌊_⌋; _▹_; _⊢_∷_; ⊢pair; ⊢nsuc; ⊢conv; ty-Nat; csymᵀ; single
-        ; nrs; ⊢lam; ⊢app; ⊢var; here; wk-single )
+        ; nrs; ⊢lam; ⊢app; ⊢var; here; wk-single; ⊢natrec )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; ren-w; pw3; pw4; pw5; nrs-w )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT )
@@ -42,7 +42,8 @@ open import poc.OCP0009.NbEPDirDBLibArithMonus using ( monusLtTm; monusLtTm-sub;
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( gcdIH; gcdG; ⊢gcdIH; descConv; KS; NS; PAIRˢ; CERTˢ )
 open import poc.OCP0009.NbEPDirDBExamplesGcdLeMid
-  using ( gXx; R1'; W'; R2'; S3'; ⊢W'; Ss-collapse )
+  using ( gXx; R1'; W'; R2'; S3'; Z3'; D3'; ⊢W'; Ss-collapse; Zs-collapse
+        ; D3-clean; ⊢M3s; ⊢Z3s )
 
 ------------------------------------------------------------------------
 -- ★ THE FINAL CONTEXT.  `⊢S3s` lives at `(Γ ▹ Nat) ▹ <the small motive>`,
@@ -284,3 +285,38 @@ module Assemble {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
   ⊢S3s =
     subst (λ T → SΓ' ⊢ S3' a' b' ∷ T) (sym nrs-eq)
       (subst (λ t → SΓ' ⊢ t ∷ gcdG (μS dW db)) (sym S3'-computes) ⊢body)
+
+
+------------------------------------------------------------------------
+-- ★★★★★ AND THE ASSEMBLY — `⊢natrec` DIRECTLY, NO SUBSTITUTION AT ALL.
+--
+-- ⚠ THIS IS THE STEP THAT OOMed FOUR TIMES (attempts 34-37).  Every one of
+--   those routed through `⊢natrec-at`/`⊢natrec-var-push`, i.e. through a
+--   `Sub⊢` stack, because the three pieces were at LAYERED types and had to
+--   be pushed into agreement.
+--
+-- ★ With all three at `gcdG` form the PRIMITIVE rule applies as-is: its
+--   premises are literally `⊢ty M`, `∷ subTy (single nzero) M` and
+--   `∷ subTy nrs M`, which is exactly what the collapse produces.  The
+--   only work left is the zero branch's own one-step bridge.
+------------------------------------------------------------------------
+
+module Assemble2 {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
+                 (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) where
+
+  open Assemble da db using ( M; ⊢S3s )
+
+  -- ★ the zero branch's bridge — `Zs-collapse` then two `wk-single`s.
+  z-eq : subTy (single nzero) M ≡ gcdG (plusTm (nsuc (W' a' b')) (nsuc b'))
+  z-eq =
+    trans (Zs-collapse a' b')
+          (cong gcdG (cong₂ (λ x y → plusTm (nsuc x) (nsuc y))
+                            (wk-single (W' a' b')) (wk-single b')))
+
+  ⊢D3 : Γ ⊢ D3' a' b' ∷ Nat
+  ⊢D3 = subst (λ t → Γ ⊢ t ∷ Nat) (sym (D3-clean a' b'))
+              (⊢monus (⊢nsuc da) (⊢nsuc db))
+
+  ⊢MIDnr : Γ ⊢ natrec (Z3' a' b') (S3' a' b') (D3' a' b')
+             ∷ subTy (single (D3' a' b')) M
+  ⊢MIDnr = ⊢natrec (⊢M3s da db) (⊢-cast (sym z-eq) (⊢Z3s da db)) ⊢S3s ⊢D3
