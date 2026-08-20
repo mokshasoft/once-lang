@@ -32,11 +32,14 @@
 module poc.OCP0009.NbEPDirDBLibDvd where
 
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; _∙; RTy; RTm; Σ'; Nat; var; vz; pair; fst; snd; subTy; nzero; nsuc )
+  using ( Cx; _∙; RTy; RTm; Σ'; Nat; var; vz; pair; fst; snd; subTy; nzero; nsuc
+        ; U; El; Id; ⌜Σ⌝; ⌜Id⌝; ⌜Nat⌝ )
 open import normalizer.Syntax.Types using ( _≡_; sym; trans; cong; cong₂ )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
+open import poc.OCP0009.NbEPDirDBLibStrong using ( natAsEl; elAsNat )
 open import poc.OCP0009.NbEPDirDBType
-  using ( Ctx; ⌊_⌋; _▹_; single
+  using ( ⊢⌜Σ⌝; ⊢⌜Id⌝; ⊢⌜Nat⌝
+        ; Ctx; ⌊_⌋; _▹_; single
         ; _⊢_∷_; _⊢ty_; ⊢var; here; ⊢pair; ⊢fst; ⊢snd; ⊢nzero; ty-Nat; ty-Σ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
@@ -85,3 +88,32 @@ dvd-wit dh = ⊢fst dh
 dvd-eq : {Γ : Ctx} {d n h : RTm ⌊ Γ ⌋} → Γ ⊢ h ∷ dvdT d n →
          Γ ⊢ snd h ∷ IdN n (mulTm (fst h) d)
 dvd-eq {d = d} {n = n} {h = h} dh = ⊢-cast (dvd-at d n (fst h)) (⊢snd dh)
+
+------------------------------------------------------------------------
+-- ★★★★★ …AND THE PREDICATE IS CODE-EXPRESSIBLE.  THIS IS THE GATE ON
+--   GAP B's LAYER 2, AND IT IS OPEN.
+--
+-- ⚠ WHY IT WAS IN DOUBT.  `⊢jsub` transports a CODE FAMILY, so any
+--   induction principle over `amrec` must take a motive in `U`, not an
+--   arbitrary `RTy`.  That constraint is what stopped `amrec-unfold-Id`
+--   from being a plain unfold and forced certificate irrelevance instead
+--   (recorded in `…LibAmrec`'s header).  A general `amrec-ind` inherits
+--   it — so a predicate that CANNOT be written as a code is unreachable
+--   by that route no matter how the combinator is shaped.
+--
+-- ★ `dvdT` can: `Σ'` and `Id` both have codes (`⌜Σ⌝`, `⌜Id⌝`) with typing
+--   AND decoding rules, and `Nat` has `⌜Nat⌝`.  So the divisibility
+--   specification is expressible in `U`, and gap B's layer 2 is not
+--   blocked at the STATEMENT — only at the missing combinator.
+------------------------------------------------------------------------
+
+dvdCode : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+dvdCode d n = ⌜Σ⌝ ⌜Nat⌝ (⌜Id⌝ ⌜Nat⌝ (w n) (mulTm (var vz) (w d)))
+
+⊢dvdCode : {Γ : Ctx} {d n : RTm ⌊ Γ ⌋} →
+           Γ ⊢ d ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ dvdCode d n ∷ U
+⊢dvdCode dd dn =
+  ⊢⌜Σ⌝ ⊢⌜Nat⌝
+    (⊢⌜Id⌝ ⊢⌜Nat⌝
+       (natAsEl (⊢wk dn))
+       (natAsEl (⊢mul (elAsNat (⊢var here)) (⊢wk dd))))
