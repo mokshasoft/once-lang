@@ -26,7 +26,7 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBSpikeAmrecInd where
 
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; RTm; El; U; Nat; Hom; Π; var; vz; vs; Var; app; nsuc; nzero; natrec
         ; lam; absurd
@@ -43,8 +43,10 @@ open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; wᶠ¹-single; ⊢wkᶠ; sub-w )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibAmrec
-  using ( aStepT; Prv; wR; subren; subrenTy; extcond; module AmTΠ )
+  using ( aStepT; Prv; wR; subren; subrenTy; extcond
+        ; renTy-idR; renTm-idR; module AmTΠ )
 open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base )
+open import poc.OCP0009.NbEPDirDBLibNatrec using ( Ren⊢-id )
 
 module Stmt (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
             (dA   : Δ ⊢ty A)
@@ -339,6 +341,54 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
                                (subren {σ = extS (extS σ)} {ρ = θ₂ θ} {ρ' = θ₂ θ'}
                                        (cond₂ {σ = σ} {θ = θ} {θ' = θ'} h)
                                        amrecTm)))))
+
+  ------------------------------------------------------------------------
+  -- ★★★★★ THE ZERO BRANCH — EX FALSO, exactly as the shifted certificate
+  --   promised.  At `n := 0` the hypothesis is `nsuc (μ x) ≤ 0`, the order
+  --   COMPUTES to `base`, and `⊢strong-base` discharges it.  No unfolding,
+  --   no reduction premise on the measure.
+  --
+  -- ⚠ `subTy (single nzero)` lands the ambient renaming at the IDENTITY,
+  --   so `IndBAt-sub` is instantiated at `θ' := idR` and the `renTy idR A`
+  --   that comes back needs `renTy-idR`.  That is bookkeeping, not content.
+  ------------------------------------------------------------------------
+
+  idR : Ren ⌊ Δ ⌋ ⌊ Δ ⌋
+  idR v = v
+
+  zbrTm : RTm ((⌊ Δ ⌋ ∙) ∙) → RTm ⌊ Δ ⌋
+  zbrTm P = lam (lam (absurd (PAtR (θ₂ idR) P (var (vs vz))
+                                (app (renTm (θ₂ idR) amrecTm) (var (vs vz))))
+                             (var vz)))
+
+  ⊢zbr : {P : RTm ((⌊ Δ ⌋ ∙) ∙)} →
+         ((Δ ▹ A) ▹ El cM) ⊢ P ∷ U →
+         Δ ⊢ zbrTm P ∷ subTy (single nzero) (IndB P)
+  ⊢zbr {P = P} dP =
+    ⊢-cast (sym (IndBAt-sub {σ = single nzero} vs idR (λ v → refl) P (var vz)))
+      (⊢lam dA'
+        (⊢lam (ty-Hom ty-Nat (⊢nsuc dμ) ⊢nzero)
+              (⊢strong-base (⊢PAtR ρ₂⊢ dP dy (⊢app (ren-lemma ⊢amrecΠ ρ₂⊢) dy))
+                            (⊢var here))))
+    where
+      -- ⚠ `⊢-cast` moves a TERM judgement's type; this is a `⊢ty`
+      --   judgement, so it needs `subst`.  Standing distinction in this
+      --   codebase, and easy to reach for the wrong one.
+      dA' : Δ ⊢ty renTy idR A
+      dA' = subst (λ T → Δ ⊢ty T) (sym (renTy-idR (λ v → refl) A)) dA
+
+      dμ : (Δ ▹ renTy idR A) ⊢ renTm (extR idR) m ∷ Nat
+      dμ = ren-lemma dm (Ren⊢-ext Ren⊢-id)
+
+      ρ₂⊢ : Ren⊢ Δ ((Δ ▹ renTy idR A)
+                      ▹ Hom Nat (nsuc (renTm (extR idR) m)) (w nzero))
+                  (θ₂ idR)
+      ρ₂⊢ = wR (wR Ren⊢-id)
+
+      dyEq : renTy vs (renTy vs (renTy idR A)) ≡ renTy (θ₂ idR) A
+      dyEq = trans (cong (renTy vs) (renTy-renTy A)) (renTy-renTy A)
+
+      dy = ⊢-cast dyEq (⊢var (there here))
 
   ⊢IndB : {P : RTm ((⌊ Δ ⌋ ∙) ∙)} →
           ((Δ ▹ A) ▹ El cM) ⊢ P ∷ U →
