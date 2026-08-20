@@ -28,7 +28,8 @@ module poc.OCP0009.NbEPDirDBSpikeS3Direct where
 open import normalizer.Syntax.Types using ( _≡_; trans; cong; cong₂; sym; subst )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; Hom; Nat; RTm; nsuc; pair; fst; snd
-        ; var; vz; vs; lam; app; Sub; extS; subTm; subTy; natrec; nzero )
+        ; var; vz; vs; lam; app; Sub; extS; subTm; subTy; natrec; nzero
+        ; renTm; extR )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ⌊_⌋; _▹_; _⊢_∷_; ⊢pair; ⊢nsuc; ⊢conv; ty-Nat; csymᵀ; single
         ; nrs; ⊢lam; ⊢app; ⊢var; here; wk-single; ⊢natrec )
@@ -41,6 +42,7 @@ open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLTm; plusMonoLTm-s
 open import poc.OCP0009.NbEPDirDBLibArithMonus using ( monusLtTm; monusLtTm-sub; ⊢desc-left )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( gcdIH; gcdG; ⊢gcdIH; descConv; KS; NS; PAIRˢ; CERTˢ )
+open import poc.OCP0009.NbEPDirDBLibNatrec using ( ⊢natrec-var )
 open import poc.OCP0009.NbEPDirDBExamplesGcdLeMid
   using ( gXx; R1'; W'; R2'; S3'; Z3'; D3'; ⊢W'; Ss-collapse; Zs-collapse
         ; D3-clean; ⊢M3s; ⊢Z3s )
@@ -320,3 +322,21 @@ module Assemble2 {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
   ⊢MIDnr : Γ ⊢ natrec (Z3' a' b') (S3' a' b') (D3' a' b')
              ∷ subTy (single (D3' a' b')) M
   ⊢MIDnr = ⊢natrec (⊢M3s da db) (⊢-cast (sym z-eq) (⊢Z3s da db)) ⊢S3s ⊢D3
+
+
+------------------------------------------------------------------------
+-- ★ PROBE: the ONE-HOLE form, via `⊢natrec-var`.  `⊢congAt` wants the
+--   context typed with the descent as a HOLE, not at `D3'`.
+------------------------------------------------------------------------
+
+module Hole {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
+            (da : Γ ⊢ a' ∷ Nat) (db : Γ ⊢ b' ∷ Nat) where
+
+  open Assemble da db using ( M; ⊢S3s )
+  open Assemble2 da db using ( z-eq )
+
+  ⊢hole : (Γ ▹ Nat) ⊢ natrec (w (Z3' a' b'))
+                             (renTm (extR (extR vs)) (S3' a' b'))
+                             (var vz)
+                    ∷ M
+  ⊢hole = ⊢natrec-var (⊢M3s da db) (⊢-cast (sym z-eq) (⊢Z3s da db)) ⊢S3s
