@@ -581,4 +581,43 @@ the SWEEP caught it. ⇒ after a hoist, check clients, not just the module.
    + `⊢transportP`.
 2. The successor branch; the `⊢natrec`.
 3. ⚠ The instantiation at `n := suc (μ x)` — the non-vacuity check.
+| 32 | 08-20 | Step 6: state `IHAt` (the IH's semantic content) | ✅ green | ~15s |
+
+## Step 6 — stated, and the remaining requirement is now exact
+
+`IHAt ρ P k` — "P holds at `(y, amrec y)` for every `y` whose measure is
+below the bound `k`" — renaming-indexed, green. That is what the `natrec`'s
+IH MEANS, in the form the successor branch can consume.
+
+**The gap step 6 must close:** `IHAt` speaks about `amrec y`; `IndPW` speaks
+about the HANDLE's call `app (app (renTm ϑ ih) y) q`. `ihCall-amrec` is
+exactly that equation and is now available at ANY renaming (via `AmTΠ-at`),
+with `⊢transportP` moving `P` across it. The certificate composes by
+`⊢trans`: `IndPW` hands over `nsuc (μ y) ≤ μ a`, the branch's hypothesis
+gives `μ a ≤ k`.
+
+⚠⚠ **BUT ONE RUNG IS MISSING, AND IT IS A DIFFERENT SHAPE.** `IndPW`'s
+conclusion mentions `renTm ϑ ih` — the HANDLE renamed — while
+`ihCall-amrec` at `Θ'` is about that instantiation's own handle. Relating
+them needs
+
+    ihS-atP-ren : renTm ρ (ihS-atP x a k p) ≡ ihS-atP … (renamed args)
+
+which does NOT exist. And note it is **not** another rung of the family
+just built: `ihS-atP` is five NESTED SUBSTITUTIONS over `ihS` and `auxIH`,
+so this is renaming-past-SUBSTITUTION (`rensub`), not
+renaming-past-renaming (`renren`). The `-ren` family's recipe does not
+transfer directly.
+
+★ `ihS-atR` and `ih-appR` already exist — a renamed handle family — so
+there may be less to build than it looks; worth checking whether
+`ihS-atR` can serve before writing `ihS-atP-ren` from scratch.
+
+## Next
+
+1. `ihS-atP-ren` (or reuse `ihS-atR`) — the missing commutation.
+2. Then step 6 proper: instantiate the IH, compose the certificate,
+   transport across `ihCall-amrec`.
+3. The successor branch; the `⊢natrec`.
+4. ⚠ The instantiation at `n := suc (μ x)` — the non-vacuity check.
 

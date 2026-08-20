@@ -284,6 +284,51 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
                 Θ ⊢ jsub (PFam ρ P y) p e ∷ El (PAtR ρ P y u)
   ⊢transportP ρ⊢ dP dy dt du dp de = ⊢jsub (⊢PFam ρ⊢ dP dy) dt du dp de
 
+  ------------------------------------------------------------------------
+  -- ★★★★★ STEP 6 — `IndPW` FROM THE `natrec`'s INDUCTION HYPOTHESIS.
+  --
+  -- ⚠ STATED FIRST, PROVED SECOND — the discipline that caught attempt 1's
+  --   slot order and the `μ x < n` shift, both before any proof was built
+  --   on them.
+  --
+  -- ★ THE SEMANTIC CONTENT OF THE `natrec`'s IH, as a renaming-indexed
+  --   `Set`: "P holds at (y, amrec y) for every `y` whose measure is BELOW
+  --   the bound `k`".  The `natrec` supplies this as a TERM of type
+  --   `IndB P`; `IHAt` is what that term MEANS, in the form the successor
+  --   branch can consume.
+  ------------------------------------------------------------------------
+
+  IHAt : {Θ : Ctx} (ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋) (P : RTm ((⌊ Δ ⌋ ∙) ∙))
+         (k : RTm ⌊ Θ ⌋) → Set
+  IHAt {Θ} ρ P k =
+    {Θ' : Ctx} {ϑ : Ren ⌊ Θ ⌋ ⌊ Θ' ⌋} {ρ' : Ren ⌊ Δ ⌋ ⌊ Θ' ⌋} →
+    Ren⊢ Θ Θ' ϑ → (∀ v → ϑ (ρ v) ≡ ρ' v) →
+    (y c : RTm ⌊ Θ' ⌋) →
+    Θ' ⊢ y ∷ renTy ρ' A →
+    Θ' ⊢ c ∷ Hom Nat (nsuc (subTm (single y) (renTm (extR ρ') m)))
+                     (renTm ϑ k) →
+    Prv Θ' (El (PAtR ρ' P y (app (renTm ρ' amrecTm) y)))
+
+  ------------------------------------------------------------------------
+  -- ★★ …AND WHAT STEP 6 MUST PRODUCE.
+  --
+  -- ⚠ THE GAP BETWEEN THEM, which is the whole content of step 6:
+  --   `IHAt` speaks about `amrec y`; `IndPW` speaks about the HANDLE's
+  --   call `app (app (renTm ϑ ih) y) q`.  Those are not syntactically the
+  --   same term — `ih-app` reduces the handle to the AUXILIARY at bound
+  --   `k`, while `amrec-β` reduces `amrec y` to the auxiliary at ITS OWN
+  --   bound `μ y`.
+  --
+  -- ★ `ihCall-amrec` — now exported by `AmTΠ-at`, hence available at ANY
+  --   renaming — is exactly that equation, and `⊢transportP` moves `P`
+  --   across it.  ⇒ step 6 is: instantiate the IH, then transport.
+  --
+  -- ⚠ AND THE CERTIFICATE HAS TO BE BUILT: `IndPW` hands over
+  --   `q : nsuc (μ y) ≤ μ a`, while `IHAt` wants `nsuc (μ y) ≤ k`.  The
+  --   successor branch's own hypothesis gives `μ a ≤ k`, so the two
+  --   compose by `⊢trans` — the ORDER computing again.
+  ------------------------------------------------------------------------
+
   -- ★ `ihCall-amrec` MOVED into `AmTΠ` (`…LibAmrec`) 2026-08-20, so that
   --   `AmTΠ-at` exports it — i.e. so the bridge is available at a RENAMED
   --   context, which is what `IndPW` needs.  Re-exported by the `open`
