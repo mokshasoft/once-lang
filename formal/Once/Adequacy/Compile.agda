@@ -77,6 +77,7 @@ open import Function using (case_of_)
 -- doesn't drag in the per-arch instance postulates. The driver
 -- (`Once.Compiler`) supplies `Once.Adequacy.CPU.arch-semantics`.
 open import Once.Adequacy.CPU.Interface using (Arch; Byte; ArchSemantics)
+open import Once.Target.Arch using (arch-float-format)
 
 import Once.Compile as C
 import Once.Grammar as G
@@ -146,8 +147,11 @@ compile-cli-asm allocMode stage doOpt arch m =
 -- So `module-to-asm-correct`'s obligation is "the compiled trace equals the
 -- denotational source meaning". The surface/IR presentations are tied by the
 -- standalone `faithful` fact (D060), not a conjunct of the compiler theorem.
-⟦_⟧M : P.Module → Behavior
-⟦ m ⟧M = ⟦ moduleToIR m ⟧IR
+-- Plan 0.73 (D113): the module's meaning takes the ARCH. This is where the
+-- target reaches the denotation — `arch-float-format` is the whole of it,
+-- and `⟦_⟧A` next door has taken an arch all along for the same reason.
+⟦_⟧M : P.Module → Arch → Behavior
+⟦ m ⟧M arch = ⟦ moduleToIR m ⟧IR (arch-float-format arch)
 
 -- DISTINCT EMITTED SYMBOLS (`DistinctSymbols`) + its proof (`program-no-clash`)
 -- now live in `Once.Adequacy.NameClash` (imported above). The assembler trust
@@ -207,8 +211,12 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
       DistinctLabels arch m →
       ∀ (n : ℕ) → asm-sem asm n ≡ flat-trace (moduleToIR m) n
     -- the flat machine's SigOp trace of a compiled IR equals its `obs`.
+    -- D113: at THIS arch's float format. The record is already indexed by
+    -- `arch`, so the obligation sharpens without changing shape — the flat
+    -- machine's trace must match the denotation the SAME target means.
     ir-flat-correct :
-      ∀ (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) (n : ℕ) → flat-trace mir n ≡ ⟦ mir ⟧IR n
+      ∀ (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) (n : ℕ)
+      → flat-trace mir n ≡ ⟦ mir ⟧IR (arch-float-format arch) n
 
 -- (The former `no-main-empty` library-case postulate is gone: with
 -- `⟦_⟧M = ⟦ moduleToIR m ⟧IR`, the library case `moduleToIR m ≡ nothing` is
@@ -228,8 +236,9 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
 gmoduleToModule-correct :
   ∀ (src : Source) (m : P.Module) →
   srcToModule src ≡ just m →
-  ∀ (n : ℕ) → ⟦ m ⟧M n ≡ ⟦ src ⟧ n
-gmoduleToModule-correct src m eq n = sym (⟦⟧-via-module src m eq n)
+  ∀ (arch : Arch) (n : ℕ) → ⟦ m ⟧M arch n ≡ ⟦ src ⟧ (arch-float-format arch) n
+gmoduleToModule-correct src m eq arch n =
+  sym (cong (λ b → b n) (⟦⟧-via-module src m eq (arch-float-format arch)))
 
 -- `main⇒built` (Plan 0.48): a module with a compilable `main`
 -- (`moduleToIR m ≡ just ir`) Builds for EVERY `doOpt` — PROVEN (no longer a
@@ -334,7 +343,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   codegen-asm-correct :
     ∀ (arch : Arch) (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-    ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ moduleToIR m ⟧IR n
+    ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ moduleToIR m ⟧IR (arch-float-format arch) n
   codegen-asm-correct arch m asm eq n =
     trans (ArchCorrect.asm-trace-correct (arch-correct arch) m asm eq
              (program-labels-distinct arch m) n)
@@ -349,7 +358,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   module-to-asm-correct :
     ∀ (arch : Arch) (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-    ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ m ⟧M n
+    ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ m ⟧M arch n
   module-to-asm-correct arch m asm eq n = codegen-asm-correct arch m asm eq n
 
   --------------------------------------------------------------------
@@ -378,14 +387,15 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- An unparseable source, or a parseable one with no `main` (`moduleToIR ≡
   -- nothing`), has no behaviour. NOTE (0.48 0b): still THROUGH the front-end —
   -- making it independent (a declarative meaning) is the front-end phase.
-  ⟦_⟧⊥-ir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe Behavior
-  ⟦ nothing  ⟧⊥-ir = nothing
-  ⟦ just ir  ⟧⊥-ir = just (⟦ just ir ⟧IR)
-  ⟦_⟧⊥-m : Maybe P.Module → Maybe Behavior
-  ⟦ nothing ⟧⊥-m = nothing
-  ⟦ just m  ⟧⊥-m = ⟦ moduleToIR m ⟧⊥-ir
-  ⟦_⟧⊥ : Source → Maybe Behavior
-  ⟦ src ⟧⊥ = ⟦ srcToModule src ⟧⊥-m
+  -- D113: arch-indexed, like everything else that lands in a `Behavior`.
+  ⟦_⟧⊥-ir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Arch → Maybe Behavior
+  ⟦ nothing  ⟧⊥-ir _    = nothing
+  ⟦ just ir  ⟧⊥-ir arch = just (⟦ just ir ⟧IR (arch-float-format arch))
+  ⟦_⟧⊥-m : Maybe P.Module → Arch → Maybe Behavior
+  ⟦ nothing ⟧⊥-m _    = nothing
+  ⟦ just m  ⟧⊥-m arch = ⟦ moduleToIR m ⟧⊥-ir arch
+  ⟦_⟧⊥ : Source → Arch → Maybe Behavior
+  ⟦ src ⟧⊥ arch = ⟦ srcToModule src ⟧⊥-m arch
 
   -- SOUNDNESS of the meaning's domain (Plan 0.48 Phase 1): if `src` HAS a
   -- behaviour (`⟦ src ⟧⊥ ≡ just _`) then it parses to a module that is
@@ -393,22 +403,22 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- genuinely well-typed programs — soundness is no longer by-construction,
   -- it is discharged against the INDEPENDENT judgment via `AcceptSound`.
   -- With-free (explicit-`Maybe`-argument helpers).
-  ⟦⟧⊥-ir-sound : ∀ (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) (beh : Behavior) →
-    ⟦ mir ⟧⊥-ir ≡ just beh → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → mir ≡ just ir)
-  ⟦⟧⊥-ir-sound nothing  beh ()
-  ⟦⟧⊥-ir-sound (just ir) beh eq = ir , refl
+  ⟦⟧⊥-ir-sound : ∀ (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) (arch : Arch) (beh : Behavior) →
+    ⟦ mir ⟧⊥-ir arch ≡ just beh → Σ-syntax (IR ⌊ Unit ⌋ ⌊ Unit ⌋) (λ ir → mir ≡ just ir)
+  ⟦⟧⊥-ir-sound nothing   arch beh ()
+  ⟦⟧⊥-ir-sound (just ir) arch beh eq = ir , refl
 
-  ⟦⟧⊥-m-sound : ∀ (mm : Maybe P.Module) (beh : Behavior) →
-    ⟦ mm ⟧⊥-m ≡ just beh →
+  ⟦⟧⊥-m-sound : ∀ (mm : Maybe P.Module) (arch : Arch) (beh : Behavior) →
+    ⟦ mm ⟧⊥-m arch ≡ just beh →
     Σ-syntax P.Module (λ m → (mm ≡ just m) × ModuleTyped m)
-  ⟦⟧⊥-m-sound nothing  beh ()
-  ⟦⟧⊥-m-sound (just m) beh eq =
-    m , refl , moduleToIR-typed m (proj₂ (⟦⟧⊥-ir-sound (moduleToIR m) beh eq))
+  ⟦⟧⊥-m-sound nothing  arch beh ()
+  ⟦⟧⊥-m-sound (just m) arch beh eq =
+    m , refl , moduleToIR-typed m (proj₂ (⟦⟧⊥-ir-sound (moduleToIR m) arch beh eq))
 
-  ⟦⟧⊥-sound : ∀ (src : Source) (beh : Behavior) →
-    ⟦ src ⟧⊥ ≡ just beh →
+  ⟦⟧⊥-sound : ∀ (src : Source) (arch : Arch) (beh : Behavior) →
+    ⟦ src ⟧⊥ arch ≡ just beh →
     Σ-syntax P.Module (λ m → (srcToModule src ≡ just m) × ModuleTyped m)
-  ⟦⟧⊥-sound src beh eq = ⟦⟧⊥-m-sound (srcToModule src) beh eq
+  ⟦⟧⊥-sound src arch beh eq = ⟦⟧⊥-m-sound (srcToModule src) arch beh eq
 
   -- Named Phase-0 gaps (NOT the theorem). `built⇒main` is GONE: gating
   -- `compile` on `moduleToIR ≡ just` makes "Built ⇒ has-main" hold by
@@ -421,7 +431,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     opt-trace : ∀ (arch : Arch) (m : P.Module) (asm : String) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
       C.compileFromModule C.Heap C.Build true arch m ≡ C.Built asm →
       moduleToIR m ≡ just ir →
-      ∀ (n : ℕ) → exec arch (string-to-bytes arch asm) n ≡ ⟦ just ir ⟧IR n
+      ∀ (n : ℕ) → exec arch (string-to-bytes arch asm) n ≡ ⟦ just ir ⟧IR (arch-float-format arch) n
 
   -- Behavioural equivalence (matches the record's `_≈_`); the trace witnesses
   -- below are exactly proofs at this relation.
@@ -435,7 +445,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   TraceAt : Arch → Bool → P.Module → IR ⌊ Unit ⌋ ⌊ Unit ⌋ → Set
   TraceAt arch doOpt m ir =
     ∀ (asm : String) → C.compileFromModule C.Heap C.Build doOpt arch m ≡ C.Built asm →
-    exec arch (string-to-bytes arch asm) ≋ ⟦ just ir ⟧IR
+    exec arch (string-to-bytes arch asm) ≋ ⟦ just ir ⟧IR (arch-float-format arch)
 
   -- Layer 3 — over the compile RESULT. The accept case is `PW.just` of the
   -- supplied trace witness; the three reject results are ruled out by
@@ -445,7 +455,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
                  C.compileFromModule C.Heap C.Build doOpt arch m ≡ cr →
                  moduleToIR m ≡ just ir →
                  TraceAt arch doOpt m ir →
-                 Pointwise _≋_ (map (exec arch) (compile-cr arch cr)) (⟦ just ir ⟧⊥-ir)
+                 Pointwise _≋_ (map (exec arch) (compile-cr arch cr)) (⟦ just ir ⟧⊥-ir arch)
   correct-cr arch doOpt m ir (C.Built asm)  cf-eq mi-eq tw = PW.just (tw asm cf-eq)
   correct-cr arch doOpt m ir (C.Parsed _ _) cf-eq mi-eq tw =
     case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir mi-eq)) of λ ()
@@ -459,7 +469,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   correct-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) →
                   moduleToIR m ≡ mir →
                   (∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → mir ≡ just ir → TraceAt arch doOpt m ir) →
-                  Pointwise _≋_ (map (exec arch) (compile-mir arch doOpt m mir)) (⟦ mir ⟧⊥-ir)
+                  Pointwise _≋_ (map (exec arch) (compile-mir arch doOpt m mir)) (⟦ mir ⟧⊥-ir arch)
   correct-mir arch doOpt m nothing   mi-eq tw = PW.nothing
   correct-mir arch doOpt m (just ir) mi-eq tw =
     correct-cr arch doOpt m ir (C.compileFromModule C.Heap C.Build doOpt arch m) refl mi-eq (tw ir refl)
@@ -469,7 +479,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   correct-gm : ∀ (arch : Arch) (doOpt : Bool) (gm : Maybe P.Module) →
                  (∀ (m : P.Module) → gm ≡ just m →
                     ∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → TraceAt arch doOpt m ir) →
-                 Pointwise _≋_ (map (exec arch) (compile-gm arch doOpt gm)) (⟦ gm ⟧⊥-m)
+                 Pointwise _≋_ (map (exec arch) (compile-gm arch doOpt gm)) (⟦ gm ⟧⊥-m arch)
   correct-gm arch doOpt nothing  tw = PW.nothing
   correct-gm arch doOpt (just m) tw =
     correct-mir arch doOpt m (moduleToIR m) refl (λ ir mi → tw m refl ir mi)
@@ -479,11 +489,11 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- arguments (no `with`); only the Built-case trace differs by `doOpt`:
   -- `false` is the PROVEN codegen chain, `true` is the `opt-trace` lift.
   correct : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
-            Pointwise _≋_ (map (exec arch) (compile arch doOpt src)) (⟦ src ⟧⊥)
+            Pointwise _≋_ (map (exec arch) (compile arch doOpt src)) (⟦ src ⟧⊥ arch)
   correct arch false src = correct-gm arch false (srcToModule src)
     (λ m _ ir mi asm cf n → trans (string-to-bytes-correct arch m asm cf n)
                                    (trans (module-to-asm-correct arch m asm cf n)
-                                          (cong (λ x → ⟦ x ⟧IR n) mi)))
+                                          (cong (λ x → ⟦ x ⟧IR (arch-float-format arch) n) mi)))
   correct arch true src = correct-gm arch true (srcToModule src)
     (λ m _ ir mi asm cf n → opt-trace arch m asm ir cf mi n)
 
@@ -504,10 +514,10 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     compile arch doOpt src ≡ just bytes →
     Σ-syntax P.Module (λ m → (srcToModule src ≡ just m) × ModuleTyped m)
   accept-sound arch doOpt src bytes pf =
-    let p           = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥)) pf
+    let p           = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥ arch)) pf
                             (correct arch doOpt src)
-        (beh , dom) = pw-just-inv (⟦ src ⟧⊥) p
-    in ⟦⟧⊥-sound src beh dom
+        (beh , dom) = pw-just-inv (⟦ src ⟧⊥ arch) p
+    in ⟦⟧⊥-sound src arch beh dom
 
   -- ════════════════════════════════════════════════════════════════════
   -- Plan 0.49 (route 3) — RELATIONAL correctness against the INDEPENDENT
@@ -574,24 +584,28 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- residual apex-path postulates are `realize-agrees`'s `{infer,check}-agreeV-todo`
   -- and the `main-checkElab-coherence` hook (strengthened extraction + resolveExpr
   -- faithfulness), NOT this opaque whole-statement axiom.
-  main-realize-agrees : ∀ (m : P.Module) (mt : ModuleTyped m)
+  main-realize-agrees : ∀ (arch : Arch) (m : P.Module) (mt : ModuleTyped m)
     (hvm : MC.HasValidMain-decl m mt) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
-    → ∀ n → ME.runMainˢ (proj₁ (proj₂ (ME.source-meaningᴰ m ir mi))) n
-            ≡ ME.runMainˢ (proj₂ (MC.mainRealized m mt hvm)) n
-  main-realize-agrees = MRA.main-realize-agrees-proof
+    → ∀ n → ME.runMainˢ (arch-float-format arch) (proj₁ (proj₂ (ME.source-meaningᴰ (arch-float-format arch) m ir mi))) n
+            ≡ ME.runMainˢ (arch-float-format arch) (proj₂ (MC.mainRealized m mt hvm)) n
+  main-realize-agrees arch = MRA.main-realize-agrees-proof (arch-float-format arch)
 
-  ⟦_⟧ˢ : Typed → Behavior
-  ⟦ (m , mt , hvm) ⟧ˢ = ME.runMainˢ (proj₂ (MC.mainRealized m mt hvm))
+  -- D113: the INDEPENDENT meaning takes the arch, mirroring `exec`. The
+  -- format is the only thing it uses the arch for.
+  ⟦_⟧ˢ : Arch → Typed → Behavior
+  ⟦ arch ⟧ˢ (m , mt , hvm) =
+    ME.runMainˢ (arch-float-format arch) (proj₂ (MC.mainRealized m mt hvm))
 
   -- The SD bridge — a PROOF: the compiled `main` IR's denotational trace equals
-  -- `main`'s INDEPENDENT surface meaning. Reuses `ME.source-meaningᴰ` (=
+  -- `main`'s INDEPENDENT surface meaning. Reuses `ME.source-meaningᴰ (arch-float-format arch)` (=
   -- `wrap-trace` ∘ `faithful` ∘ `main-ir-form`). Row-2 (`elaborate`) is FORCED.
-  sd-bridge : ∀ (tp : Typed) → ⟦ moduleToIR (proj₁ tp) ⟧IR ≋ ⟦ tp ⟧ˢ
-  sd-bridge (m , mt , hvm) n =
-    trans (trans (cong (λ x → ⟦ x ⟧IR n) (proj₂ (MC.moduleToIR-complete m mt hvm)))
-                 (proj₂ (proj₂ (ME.source-meaningᴰ m
+  sd-bridge : ∀ (arch : Arch) (tp : Typed)
+            → ⟦ moduleToIR (proj₁ tp) ⟧IR (arch-float-format arch) ≋ ⟦ arch ⟧ˢ tp
+  sd-bridge arch (m , mt , hvm) n =
+    trans (trans (cong (λ x → ⟦ x ⟧IR (arch-float-format arch) n) (proj₂ (MC.moduleToIR-complete m mt hvm)))
+                 (proj₂ (proj₂ (ME.source-meaningᴰ (arch-float-format arch) m
                    (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)))) n))
-          (main-realize-agrees m mt hvm
+          (main-realize-agrees arch m mt hvm
             (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)) n)
 
   pw-just-rel : ∀ {x y : Behavior} → Pointwise _≋_ (just x) (just y) → x ≋ y
@@ -611,39 +625,39 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
           c≡n rewrite g-eq | mi = refl
 
   -- The total meaning at an accepted source: `⟦ src ⟧⊥ ≡ just (⟦ moduleToIR m ⟧IR)`.
-  ⟦⟧⊥-just : ∀ (src : Source) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
+  ⟦⟧⊥-just : ∀ (src : Source) (arch : Arch) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
     srcToModule src ≡ just m → moduleToIR m ≡ just ir →
-    ⟦ src ⟧⊥ ≡ just (⟦ moduleToIR m ⟧IR)
-  ⟦⟧⊥-just src m ir g-eq mi rewrite g-eq | mi = refl
+    ⟦ src ⟧⊥ arch ≡ just (⟦ moduleToIR m ⟧IR (arch-float-format arch))
+  ⟦⟧⊥-just src arch m ir g-eq mi rewrite g-eq | mi = refl
 
   -- SOUNDNESS + TRACE conjunct — `accept-sound` (front-end soundness over the
-  -- RESOLVED module `mR`) gives `ModuleTyped mR`; `RB.resolver-reflects-typing`
+  -- RESOLVED module `mR`) gives `ModuleTyped mR`; `RB.resolver-reflects-typing (arch-float-format arch)`
   -- recovers the UN-resolved typed program `mU` so `tp`/`_⊢R_` stay parse-based
   -- (non-vacuous). The trace chain: bytes ≋ `⟦ moduleToIR mR ⟧IR` (existing
-  -- codegen `correct`), ≋ `⟦ moduleToIR mU ⟧IR` (`RB.resolver-preserves-trace`),
+  -- codegen `correct`), ≋ `⟦ moduleToIR mU ⟧IR` (`RB.resolver-preserves-trace (arch-float-format arch)`),
   -- ≋ `⟦ tp ⟧ˢ` (`sd-bridge` over the un-resolved `tp`).
   correctR-sound : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte) →
     compile arch doOpt src ≡ just bytes →
-    Σ-syntax Typed (λ tp → (src ⊢R tp) × (exec arch bytes ≋ ⟦ tp ⟧ˢ))
+    Σ-syntax Typed (λ tp → (src ⊢R tp) × (exec arch bytes ≋ ⟦ arch ⟧ˢ tp))
   correctR-sound arch doOpt src bytes pf with accept-sound arch doOpt src bytes pf
   ... | (mR , stm-eq , MT) with compile-just-ir arch doOpt src mR bytes stm-eq pf
   ...   | (ir , mi) with srcToModule-inv src mR stm-eq
-  ...     | (mU , p-eq , res-eq) with RB.resolver-reflects-typing (Source.srcImports src) mU mR res-eq MT (MC.moduleToIR-sound mR MT mi)
+  ...     | (mU , p-eq , res-eq) with RB.resolver-reflects-typing (arch-float-format arch) (Source.srcImports src) mU mR res-eq MT (MC.moduleToIR-sound mR MT mi)
   ...       | (mt , hvm) =
               let tp  = (mU , mt , hvm)
                   ⊢R  = FB.parseStrict-sound (Source.srcText src) mU p-eq   -- ParsesText … mU = src ⊢R tp
-                  p   = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥)) pf
+                  p   = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥ arch)) pf
                               (correct arch doOpt src)
                   p'  = subst (λ b → Pointwise _≋_ (just (exec arch bytes)) b)
-                              (⟦⟧⊥-just src mR ir stm-eq mi) p
+                              (⟦⟧⊥-just src arch mR ir stm-eq mi) p
                   e≋  = pw-just-rel p'                                        -- exec bytes ≋ ⟦ moduleToIR mR ⟧IR
               in tp , ⊢R , (λ n → trans (e≋ n)
-                                (trans (RB.resolver-preserves-trace (Source.srcImports src) mU mR res-eq mt hvm mi n)
-                                       (sd-bridge tp n)))
+                                (trans (RB.resolver-preserves-trace (arch-float-format arch) (Source.srcImports src) mU mR res-eq mt hvm mi n)
+                                       (sd-bridge arch tp n)))
 
   -- COMPLETENESS conjunct — `src ⊢R tp` is `FB.ParsesText text mU` (independent
   -- parse); `FB.parseStrict-complete` turns it into the executable
-  -- `parseStrict text ≡ inj₂ mU`; `RB.resolver-preserves-typing` resolves `mU`
+  -- `parseStrict text ≡ inj₂ mU`; `RB.resolver-preserves-typing (arch-float-format arch)` resolves `mU`
   -- to a well-typed `mR` (with valid main), which `moduleToIR-complete` compiles
   -- and `main⇒built` Builds. `srcToModule-just` ties the resolved module back to
   -- `compile src` (= `parseStrict` then `resolveImports`).
@@ -651,7 +665,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     src ⊢R tp →
     Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes)
   correctR-complete arch doOpt src (mU , mt , hvm) ⊢R
-    with RB.resolver-preserves-typing (Source.srcImports src) mU mt hvm
+    with RB.resolver-preserves-typing (arch-float-format arch) (Source.srcImports src) mU mt hvm
   ... | (mR , res-eq , mt' , hvm') with MC.moduleToIR-complete mR mt' hvm'
   ...   | (ir , mi) with main⇒built arch doOpt mR ir mi
   ...     | (asm , built-eq) = string-to-bytes arch asm , c≡j
@@ -666,7 +680,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- `correct`). Supplied to `Once.Adequacy.CorrectCompiler` in the apex.
   correctR : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
     ( ∀ bytes → compile arch doOpt src ≡ just bytes →
-        Σ-syntax Typed (λ tp → (src ⊢R tp) × (exec arch bytes ≋ ⟦ tp ⟧ˢ)) )
+        Σ-syntax Typed (λ tp → (src ⊢R tp) × (exec arch bytes ≋ ⟦ arch ⟧ˢ tp)) )
     × ( ∀ tp → src ⊢R tp →
         Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
   correctR arch doOpt src =
@@ -685,24 +699,26 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- Plan 0.58 step 4: `⟦_⟧ᵈ` DISCHARGED — the direct, IR-free denotation of
   -- `main`'s `⊢ᶜ` derivation (`Once.Denotation.MainMeaning.meaningᵈ`, which
   -- mirrors `mainRealized` with `⟦_⟧ᶜ` instead of `realize`).
-  ⟦_⟧ᵈ : Typed → Behavior
-  ⟦ (m , mt , hvm) ⟧ᵈ = MM.meaningᵈ m mt hvm
+  -- D113: arch-indexed, exactly as `⟦_⟧ˢ` is. This is THE reference meaning
+  -- the apex `CorrectCompiler` field is filled with.
+  ⟦_⟧ᵈ : Arch → Typed → Behavior
+  ⟦ arch ⟧ᵈ (m , mt , hvm) = MM.meaningᵈ (arch-float-format arch) m mt hvm
   -- `bridgeᵈ` (the observational `⟦_⟧ᵈ ≈ SD∘realize`) — Plan 0.58 part 7:
   -- DISCHARGED via the selection lemma `MMB.main-bridge`, which parallel-inducts
   -- over the shared `mainRealized`/`mainMeaningᵈ` dispatch and bottoms in
   -- `bridge-c` at `main : EffUU` (env `∅`, thunk `tt`). The residual content is
   -- the seven narrow leaf postulates in `Once.Adequacy.MeaningBridge`.
-  bridgeᵈ : ∀ (tp : Typed) (n : ℕ) → ⟦ tp ⟧ˢ n ≡ ⟦ tp ⟧ᵈ n
-  bridgeᵈ (m , mt , hvm) n = MMB.main-bridge m mt hvm n
+  bridgeᵈ : ∀ (arch : Arch) (tp : Typed) (n : ℕ) → ⟦ arch ⟧ˢ tp n ≡ ⟦ arch ⟧ᵈ tp n
+  bridgeᵈ arch (m , mt , hvm) n = MMB.main-bridge (arch-float-format arch) m mt hvm n
 
   correctᵈ : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
     ( ∀ bytes → compile arch doOpt src ≡ just bytes →
-        Σ-syntax Typed (λ tp → (src ⊢R tp) × (exec arch bytes ≋ ⟦ tp ⟧ᵈ)) )
+        Σ-syntax Typed (λ tp → (src ⊢R tp) × (exec arch bytes ≋ ⟦ arch ⟧ᵈ tp)) )
     × ( ∀ tp → src ⊢R tp →
         Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
   correctᵈ arch doOpt src =
       (λ bytes pf → let (tp , ⊢R , e≋) = correctR-sound arch doOpt src bytes pf
-                     in tp , ⊢R , (λ n → trans (e≋ n) (bridgeᵈ tp n)))
+                     in tp , ⊢R , (λ n → trans (e≋ n) (bridgeᵈ arch tp n)))
     , (λ tp h → correctR-complete arch doOpt src tp h)
 
   -- ════════════════════════════════════════════════════════════════════
