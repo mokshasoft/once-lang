@@ -620,4 +620,40 @@ there may be less to build than it looks; worth checking whether
    transport across `ihCall-amrec`.
 3. The successor branch; the `⊢natrec`.
 4. ⚠ The instantiation at `n := suc (μ x)` — the non-vacuity check.
+| 33 | 08-20 | `ren-single` / `ren-cond-ext` — the `rensub` condition + its LIFTING | ✅ green | ~60s |
+| 34 | 08-20 | `auxIH'` / `auxIH-ren` | ✅ **green first try** | ~60s |
+| 35 | 08-20 | `ihS-atP'` / `ihS-atP-ren` — five `rensub` levels | ✅ green (2 rounds) | ~60s |
+| 36 | 08-20 | Repoint `AmTΠ`'s `auxIH`/`ihS-atP` at the primed forms | ✅ green | ~60s |
+
+## The handle's renaming law — a DIFFERENT shape, and why
+
+The earlier `-ren` family pushed a renaming past **weakenings**
+(`ren-w`/`ren-wᶠ`) — every leaf structural, seven rungs green first try.
+The handle is **five nested substitutions**, so it needs `rensub`, whose
+side condition has to be supplied at every level.
+
+⭐ **`ren-cond-ext` lifts that condition**, so all five levels are the same
+`ren-single` lifted 0–4 times rather than five bespoke proofs. One helper
+instead of five — the same economy `pw1`–`pw5` should have had.
+
+⚠ **Two rounds lost to `_` for `rensub`'s subject.** It takes its term
+EXPLICITLY, and at these depths inference cannot recover it — the meta ends
+up *blocked on the very term it is meant to determine*. Fixed by naming the
+five intermediates in a `where`. ⇒ **at depth, name the subject; `_` is not
+free.**
+
+★ And `AmTΠ`'s own `auxIH`/`ihS-atP` were repointed at the primed forms —
+the same step that nearly slipped past on the first family, and without it
+the laws describe a parallel pair rather than the module's own.
+
+## Route (b): every commutation now exists
+
+    ihZ/descS/ihS/aZBr/aSBr/aAuxTm/amrecTm   -ren   (weakening-shaped)
+    auxIH / ihS-atP                          -ren   (substitution-shaped)
+    StepExt-ren                                     the side condition
+    AmTΠ-at                                         the instantiation
+    ihCall-amrec                                    the bridge, at any renaming
+
+⇒ Step 6 proper is next: instantiate the IH, compose the certificate by
+`⊢trans`, transport across `ihCall-amrec` with `⊢transportP`.
 

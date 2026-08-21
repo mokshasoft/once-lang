@@ -570,6 +570,20 @@ StepExt-ren {A = A} {cM = cM} {m = m} {stp = stp} {ρ = ρ} ρ⊢ ext
 ------------------------------------------------------------------------
 -- ★★★ THE TERM-LEVEL CONSTRUCTIONS, PARAMETERISED — and their `-ren` laws.
 --
+-- ⚠⚠ THE MODULE'S OWN BODIES ARE **NOT** REPOINTED AT THESE — MEASURED
+--   2026-08-20.  Repointing them made `…ExamplesGcdLeMid` OOM (exit 143,
+--   uncontended, 1m2s); with the bodies left alone it is 8.4s.
+--
+--   `aZBr` takes its parameters from the MODULE — shared, implicit at
+--   every occurrence — while `aZBr' (w stp) (wᶠ cM) (wᶠ m)` carries them
+--   EXPLICITLY at every occurrence, inflating the elaborated term.  Only
+--   the two modules already nearest the ceiling noticed.
+--
+--   ⇒ PARAMETERISING A MODULE-LEVEL DEFINITION IS NOT FREE: it moves
+--     shared parameters into every use site.  State the laws on the
+--     parameterised form; leave the definitions alone.  The two agree
+--     definitionally, so the laws still apply.
+--
 -- ⚠ THE ASYMMETRY THIS FIXES.  The TYPE-level constructions are already
 --   top-level and parameterised, with commutation laws: `aAuxB`/`aAuxB-ren`,
 --   `aStepT`/`aStepT-ren`, `aIHT`/`aIHT-ren`.  The TERM-level ones —
@@ -873,10 +887,10 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
   ------------------------------------------------------------------------
 
   ihZ : RTm (⌊ Δ ⌋ ∙ ∙)
-  ihZ = ihZ' cM m
+  ihZ = lam (lam (absurd (w (wᶠ (wᶠ cM))) (ordtr (nsuc (w (wᶠ (wᶠ m)))) (w (w (w m))) nzero (var vz) (var (vs (vs vz))))))
 
   aZBr : RTm ⌊ Δ ⌋
-  aZBr = aZBr' stp cM m
+  aZBr = lam (lam (app (app (w (w stp)) (var (vs vz))) ihZ))
 
   -- the spine's cancellation: w (wᶠ (wᶠ cM)) peeled by the two ⊢apps
   cancelZ : subTm (single ihZ) (subTm (extS (single (var (vs vz)))) (w (wᶠ (wᶠ cM))))
@@ -934,13 +948,13 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
   ih₀-w⁵ = aAuxB-w^ 5 (renTy vs A) (wᶠ cM) (wᶠ m) (var vz)
 
   descS : RTm (⌊ Δ ⌋ ∙ ∙ ∙ ∙ ∙ ∙)
-  descS = descS' m
+  descS = ordtr (nsuc (w (wᶠ (wᶠ (wᶠ (wᶠ m)))))) (w (w (w (wᶠ (wᶠ m))))) (nsuc (var (vs (vs (vs (vs (vs vz))))))) (var vz) (var (vs (vs vz)))
 
   ihS : RTm (⌊ Δ ⌋ ∙ ∙ ∙ ∙)
-  ihS = ihS' m
+  ihS = lam (lam (app (app (var (vs (vs (vs (vs vz))))) (var (vs vz))) descS))
 
   aSBr : RTm (⌊ Δ ⌋ ∙ ∙)
-  aSBr = aSBr' stp m
+  aSBr = lam (lam (app (app (w (w (w (w stp)))) (var (vs vz))) ihS))
 
   -- the IH₀ spine's cancellation: wᶠ⁶ cM peeled by its two ⊢apps
   cancelIH : subTm (single descS)
@@ -1010,7 +1024,7 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
   ------------------------------------------------------------------------
 
   aAuxTm : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
-  aAuxTm n = aAuxTm' stp cM m n
+  aAuxTm n = natrec aZBr aSBr n
 
   ⊢aAux : {n : RTm ⌊ Δ ⌋} → Δ ⊢ n ∷ Nat →
           Δ ⊢ aAuxTm n ∷ subTy (single n) aAuxMot
@@ -1042,7 +1056,7 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
            (⊢-cast (aStepT-ren A cM m) (⊢wk dstp)) public
 
   amrecTm : RTm ⌊ Δ ⌋
-  amrecTm = amrecTm' stp cM m
+  amrecTm = lam (app (app (aAuxTm m) (var vz)) (reflTm m))
 
   -- the spine's two substitutions, w (wᶠ cM) → cM
   cancelΠ : subTm (single (reflTm m))
@@ -1194,7 +1208,8 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
   --    weakenings on the step against `aZBr`'s three, so the cancellation
   --    is a five-rung chain (`sub-w⁴`…`wk-single`) rather than three.
   auxIH : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
-  auxIH x k = auxIH' stp cM m x k
+  auxIH x k = natrec (subTm (single x) aZBr)
+                     (subTm (extS (extS (single x))) aSBr) k
 
   ihS-at : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
   ihS-at x k =
@@ -1277,7 +1292,12 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
   -- the IH term the successor branch hands to the step, with the
   -- certificate and the ARGUMENT as parameters
   ihS-atP : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
-  ihS-atP x a k p = ihS-atP' stp cM m x a k p
+  ihS-atP x a k p =
+    subTm (single p)
+      (subTm (extS (single a))
+        (subTm (extS (extS (single (auxIH x k))))
+          (subTm (extS (extS (extS (single k))))
+            (subTm (extS (extS (extS (extS (single x))))) ihS))))
 
   stp-cancel-sAt : (x a k r : RTm ⌊ Δ ⌋) →
     subTm (single r)
