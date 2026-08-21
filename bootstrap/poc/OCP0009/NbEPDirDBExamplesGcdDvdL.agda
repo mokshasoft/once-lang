@@ -39,7 +39,7 @@ open import poc.OCP0009.NbEPDirDBLibDvdArith
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( PAIRᶻ; ⊢PAIRᶻ; CERTᶻ; ⊢CERTᶻ; gcdIH; ⊢gcdIH; msr )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStepExt
-  using ( Θ₃; f₃; gcdIH-w; gcdIH-w²; appGcdIH )
+  using ( f₃; gcdIH-w; gcdIH-w²; appGcdIH )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStepExtL using ( red₃z )
 
 private
@@ -48,7 +48,7 @@ private
   B₃ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙)
   B₃ = plusTm uA₃ uB₃
 
-  ⊢B₃ : {Γ : Ctx} → Θ₃ Γ ⊢ B₃ ∷ Nat
+  ⊢B₃ : {Γ : Ctx} → ΘI₃ Γ ⊢ B₃ ∷ Nat
   ⊢B₃ = ⊢plus (⊢nsuc (⊢var (there here)))
               (⊢nsuc (⊢var (there (there (there here)))))
 
@@ -58,7 +58,7 @@ private
   -- ★ the equation slot IS the generalised `E` of `CΓz` — that is what the
   --   2026-08-21 generalisation bought, and why `⊢PAIRᶻ`/`⊢CERTᶻ` drop in.
   Θ₃E : Ctx → Ctx
-  Θ₃E Γ = Θ₃ Γ ▹ IdN μAB nzero
+  Θ₃E Γ = ΘI₃ Γ ▹ IdN μAB nzero
 
   Θ₃L : Ctx → Ctx
   Θ₃L Γ = (Θ₃E Γ ▹ gcdIH (w B₃)) ▹ indPWT (w (w B₃)) (var vz)
@@ -108,7 +108,7 @@ private
     prv _ (⊢conv (prvOk (gcdLeaf-le dA₈ dB₈ dV dEq (⊢Q-fst dcall) (⊢Q-snd dcall)))
                  (csymᵀ (QCode-conv A₈ B₈ (red₃z _ (var (vs vz))))))
 
-leafI₃z : {Γ : Ctx} → Prv (Θ₃ Γ) (subTy (single nzero) MI₃)
+leafI₃z : {Γ : Ctx} → Prv (ΘI₃ Γ) (subTy (single nzero) MI₃)
 leafI₃z =
   prv _ (⊢lam (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there here)))
                               (⊢nsuc (⊢var (there (there (there here))))))
