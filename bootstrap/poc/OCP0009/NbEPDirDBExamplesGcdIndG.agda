@@ -497,13 +497,14 @@ module Plumb (M : Motive) where
                       (subTm (extS (single nzero)) (w (w uB₃))))
   bodyI₃z =
     prv _ (⊢lam (⊢gcdIH (⊢wk ⊢B₃))
-            -- ⚠ BOTH implicits pinned: `indPWT` is a DEFINED function, so Agda
-            --   unfolds instead of decomposing and `ih` never solves
-            --   (`pin-implicits-on-defined-set-types`).  Harder here than in
-            --   the concrete version, because `PC` is a module PARAMETER and
-            --   therefore opaque to unification.
-            (⊢lam (⊢indPWT {μa = w (w B₃)} {ih = var vz}
-                           (⊢wk (⊢wk ⊢B₃))
+            -- ⚠ NO PINNING NEEDED, and that was TESTED (2026-08-21): pinning
+            --   `⊢indPWT`'s `{μa}`/`{ih}` was tried and then REMOVED, and the
+            --   module still builds. The implicits solve once the goal is
+            --   stated in the substituted form below. Do not add pinning
+            --   here on the strength of `pin-implicits-on-defined-set-types`
+            --   without re-testing — that rule is real, but it is not what
+            --   was wrong here.
+            (⊢lam (⊢indPWT (⊢wk (⊢wk ⊢B₃))
                            (⊢-cast (gcdIH-w (w B₃)) (⊢var here)))
                   (prvOk innerI₃z)))
 
@@ -530,18 +531,29 @@ module Plumb (M : Motive) where
   --   OOM-KILLED (exit 143, believed uncontended) when ported here.
   --
   --   `leafI₃z` IS NOW ABOVE, and it builds in **6s under the DEFAULT
-  --   copying collector** (5s under `-c`). Memory was never the
-  --   constraint. The 2026-08-17 kill was the
-  --   `pin-implicits-on-defined-set-types` trap in the one form where it
-  --   is INVISIBLE: unsolved metas at context depth 10 make Agda build
-  --   constraint sets until it exhausts memory, so the failure surfaces
-  --   as exit 143 — which reads as "too expensive" and closes the
-  --   investigation — instead of as "unsolved metas".
+  --   copying collector** (5s under `-c`), so MEMORY WAS NEVER THE
+  --   CONSTRAINT and neither was the collector.
   --
-  --   ⇒ ⭐ EXIT 143 IS NOT EVIDENCE ABOUT COST. It is a symptom with at
-  --     least three causes: a genuine memory wall, the wrong garbage
-  --     collector (`PERF-2026-08-21.md` §3), and metas that never solved.
-  --     Distinguish them before concluding anything.
+  -- ⚠⚠ WHAT ACTUALLY FIXED IT — and an earlier version of this note got
+  --   this WRONG, so read the method as well as the answer. The port needed
+  --   TWO changes at once: (a) pinning `⊢indPWT`'s implicits, and (b)
+  --   citing `indG-sub` so the goal is stated in the SUBSTITUTED form
+  --   (`bodyI₃z`). Attributing the fix to (a) was the obvious reading —
+  --   `pin-implicits-on-defined-set-types` is a real and well-documented
+  --   trap here.
+  --
+  --   ⇒ IT WAS TESTED AND IT WAS (b). Removing the pinning afterwards
+  --     leaves the module green. (a) was never necessary.
+  --     ⭐ Two changes, one fix: attributing without ablating is guessing.
+  --
+  -- ⬜ SO WHY 2026-08-17 OOM'd IS STILL UNKNOWN. It was not a memory wall
+  --   (this builds in 6s), not the collector (the default suffices), and
+  --   not unpinned implicits (tested above). Whatever that port did
+  --   differently was not recorded, and the OOM is the only surviving
+  --   evidence — which, per `exit-143-is-not-evidence-about-cost`, is
+  --   evidence of very little. Do not invent a third cause to close the
+  --   gap; the honest state is that the conclusion drawn from it was
+  --   unsupported, not that we know what happened.
   --
   -- ★ WHAT THE PORT ACTUALLY COSTS, now that it exists — and the old note
   --   had the right instinct with the wrong mechanism. It is not a peel
