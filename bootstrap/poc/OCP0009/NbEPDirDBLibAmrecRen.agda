@@ -69,7 +69,9 @@ open import poc.OCP0009.NbEPDirDBLibWk
         ; wᶠ¹-single; wᶠ²-single; nrs-wTy; wᶠ-nrs; ren-wTy; ren-wᶠ; sub-wTy; wᶠ-sub
         ; ren-sub; ren-w²; ren-w³; nrs-w; cong₅; cong₆; _∙^_; w^; wTy^; wᶠ^ )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-ren; aIHT-fit )
-open import poc.OCP0009.NbEPDirDBLibNatVal using ( NatVal; nv-zero; nv-suc; natEval )
+-- (`…LibNatVal` import DELETED 2026-08-21 — it was DEAD: none of
+--  `NatVal`/`nv-zero`/`nv-suc`/`natEval` occurred anywhere in this file,
+--  yet it propagated the canonicity stack to every client.)
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢[] )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBLibAmrec

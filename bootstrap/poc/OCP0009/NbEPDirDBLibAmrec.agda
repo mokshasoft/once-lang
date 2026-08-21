@@ -67,7 +67,9 @@ open import poc.OCP0009.NbEPDirDBLibWk
         ; wᶠ¹-single; wᶠ²-single; nrs-wTy; wᶠ-nrs; ren-wTy; ren-wᶠ; sub-wTy; wᶠ-sub
         ; ren-sub; ren-w²; ren-w³; nrs-w; cong₅; cong₆; _∙^_; w^; wTy^; wᶠ^ )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-ren; aIHT-fit )
-open import poc.OCP0009.NbEPDirDBLibNatVal using ( NatVal; nv-zero; nv-suc; natEval )
+-- ⚠ THE DATATYPE ONLY.  `natEval` (the theorem) lives in `…LibNatEval`
+--   and pulls the canonicity stack; see the note at the foot of this file.
+open import poc.OCP0009.NbEPDirDBLibNatVal using ( NatVal; nv-zero; nv-suc )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢[] )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
 
@@ -3413,60 +3415,16 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
                          (reflTm (subTm (single x) m)) r h)
 
 ------------------------------------------------------------------------
--- ★★ AT A CLOSED CARRIER, THE UNFOLDING'S PREMISE IS FREE.
+-- (`measure-evals` and `module AmTΠ◇` — the CLOSED-CARRIER layer — moved
+--  to `…LibAmrecClosed` on 2026-08-21.  They were the ONLY reason this
+--  module imported `natEval`, and through it the whole canonicity stack
+--  (`…Canon → …Fund → …FundSem`/`…FundSN`).  43 lines out of 3472 were
+--  costing this module's 31 IMPORTERS 18–23% of their interface closure
+--  (`PERF-2026-08-21.md` §2).
 --
--- `amrec-unfold-z`/`-s` are conditional on the measure reaching a numeral.
--- That premise is real information at an OPEN context — there the measure
--- normalises to a NEUTRAL containing the free variable, and no library can
--- supply it.  At `◇` it is a THEOREM (`natEval`), so the library discharges
--- it and the caller just cases on the answer.
---
--- ⚠ The boundary is CANONICITY, not normalisation: `wnorm` works at any
---   context, `canNat` is closed-only.  Two lemmas, two domains — the
---   conditional form is the correct one whenever anything is open, not a
---   weaker fallback.
+--  ⚠ Nothing here was weakened.  `amrec-unfold-z`/`-s` above are the
+--    CONDITIONAL forms and remain the correct ones at any open context —
+--    where the premise is information the caller has and no library can
+--    supply.  Only the closed-carrier convenience moved.)
 ------------------------------------------------------------------------
 
-measure-evals : (A : RTy ε) (m : RTm (ε ∙)) → (◇ ▹ A) ⊢ m ∷ Nat →
-                (x : RTm ε) → ◇ ⊢ x ∷ A → NatVal (subTm (single x) m)
-measure-evals A m dm x dx = natEval (⊢[] dm dx)
-
-------------------------------------------------------------------------
--- ★★ AND THE TWO HALVES, COMPOSED.  At a closed carrier a caller touches
---    neither `NatVal` nor the conditional lemmas: it hands over `x` and
---    its derivation and gets the reduction.
---
--- ⚠ Still one step short of the ideal D7 shape — this reaches the
---   AUXILIARY's branch, not the user's step; two more βs would take it to
---   `app (app stp x) ⟨ih⟩`.  Flagged rather than claimed.
-------------------------------------------------------------------------
-
-module AmTΠ◇ (A : RTy ε) (cM m : RTm (ε ∙)) (stp : RTm ε)
-             (dA   : ◇ ⊢ty A)
-             (dcM  : (◇ ▹ A) ⊢ cM ∷ U)
-             (dm   : (◇ ▹ A) ⊢ m ∷ Nat)
-             (dstp : ◇ ⊢ stp ∷ aStepT A cM m)
-             where
-
-  open AmTΠ ◇ A cM m stp dA dcM dm dstp public
-
-  data Unfold (x : RTm ε) : Set where
-    unf-z : app amrecTm x
-          ⟶* app (app (subTm (single x) aZBr) x) (reflTm (subTm (single x) m))
-          → Unfold x
-    unf-s : (k : RTm ε) →
-            app amrecTm x
-          ⟶* app (app (subTm (single (natrec (subTm (single x) aZBr)
-                                             (subTm (extS (extS (single x))) aSBr)
-                                             k))
-                              (subTm (extS (single k))
-                                     (subTm (extS (extS (single x))) aSBr)))
-                      x)
-                 (reflTm (subTm (single x) m))
-          → Unfold x
-
-  -- ★ the premise is gone: canonicity supplies it.
-  amrec-unfold : (x : RTm ε) → ◇ ⊢ x ∷ A → Unfold x
-  amrec-unfold x dx with measure-evals A m dm x dx
-  ... | nv-zero r  = unf-z (amrec-unfold-z x r)
-  ... | nv-suc k r = unf-s k (amrec-unfold-s x k r)
