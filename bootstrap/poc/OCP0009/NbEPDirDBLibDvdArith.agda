@@ -717,3 +717,32 @@ El-dvd d n =
   ⊢conv (⊢-cast (cong El (wk-single {v = fst h} (dvdCode v u₂)))
                 (⊢snd (⊢conv dh (red→≅ᵀ (stepᵀ (El-⌜Σ⌝ _ _) doneᵀ)))))
         (red→≅ᵀ (El-dvd v u₂))
+
+------------------------------------------------------------------------
+-- ★★ 13.  DIVISIBILITY TRANSPORTS ALONG AN EQUATION.
+--
+-- ⚠ BOTH of gcd's recursive leaves end the same way: `⊢dvd-plus` proves
+--   `v ∣ ((x ∸ y) + y)` and the cancellation says that sum IS `x`.  Moving
+--   the divisibility across is `⊢jsub` at the family `λn. dvdCode v n` —
+--   available precisely because `dvdT` was given a CODE.
+------------------------------------------------------------------------
+
+dvdCongTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+dvdCongTm d h p = jsub (dvdCode (w d) (var vz)) p h
+
+⊢dvd-cong : {Γ : Ctx} {d n n' h p : RTm ⌊ Γ ⌋} →
+            Γ ⊢ d ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ n' ∷ Nat →
+            Γ ⊢ p ∷ IdN n n' → Γ ⊢ h ∷ dvdT d n →
+            Γ ⊢ dvdCongTm d h p ∷ dvdT d n'
+⊢dvd-cong {d = d} {n = n} {n' = n'} dd dn dn' dp dh =
+  ⊢conv (⊢-cast (cong El (peel n'))
+          (⊢jsub (⊢dvdCode (⊢wk dd) (asN (⊢var here)))
+                 (natAsEl dn) (natAsEl dn') dp
+                 (⊢-cast (sym (cong El (peel n)))
+                         (⊢conv dh (csymᵀ (red→≅ᵀ (El-dvd d n)))))))
+        (red→≅ᵀ (El-dvd d n'))
+  where
+    peel : (v : RTm ⌊ _ ⌋) →
+           subTm (single v) (dvdCode (w d) (var vz)) ≡ dvdCode d v
+    peel v = trans (dvdCode-sub {σ = single v} (w d) (var vz))
+                   (cong (λ u → dvdCode u v) (wk-single {v = v} d))
