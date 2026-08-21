@@ -27,12 +27,15 @@ open import poc.OCP0009.NbEPDirDBPi
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc
-        ; ⊢lam; ⊢app; ty-Hom; ty-Nat; ty-Π; ty-El; ⊢⌜Nat⌝ )
+        ; ⊢lam; ⊢app; ty-Hom; ty-Nat; ty-Π; ty-El; ⊢⌜Nat⌝
+        ; ⊢conv; _≅ᵀ_; csymᵀ; natrec-zero; _⟶*_; step; done; β; ξ-appˡ )
+open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
+open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; asN; asP )
 open import poc.OCP0009.NbEPDirDBLibDvdArith
-  using ( QCode; ⊢QCode; QCode-sub; QCode-ren
+  using ( QCode; ⊢QCode; QCode-sub; QCode-ren; QCode-red; QCode-conv
         ; ⊢Q-intro; ⊢Q-fst; ⊢Q-snd
         ; ⊢dvd-zero; ⊢dvd-refl; ⊢dvd-plus; ⊢dvd-cong; ⊢congPL )
 open import poc.OCP0009.NbEPDirDBLibDvd using ( dvdT )
@@ -46,9 +49,10 @@ open import poc.OCP0009.NbEPDirDBLibNatrec using ( Ren⊢-id )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast; Ren⊢ )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( msr; ⊢msr; gcdIH; ⊢gcdIH; gcdG; ⊢gcdG
-        ; G1z; gcdInn1; gcdBody; gcdStp )
+        ; G1z; gcdInn1; G2z; gcdInn2; G3z; G3s; gcdBody; gcdStp )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStepExt
-  using ( appGcdIH; gcdIH-w; gcdIH-w²; μ₁; f₁; gcdAt; red-β )
+  using ( appGcdIH; gcdIH-w; gcdIH-w²; gcdAt; red-β
+        ; μ₁; f₁; μ₂; f₂; μ₃; f₃; Θ₂; Θ₃; probe₁-s; probe₂-s )
 open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBLibPair using ( ⊢PairT )
 
@@ -293,3 +297,90 @@ probeI₁-z : {Γ : Cx} →
                  (natrec G1z gcdInn1 nzero)
                  (fst (var vz)) nzero
 probeI₁-z = refl
+
+------------------------------------------------------------------------
+-- ★★★ THE BRIDGE BETWEEN SPLITS — a reduction of `f` is a CONVERSION of
+--     `indG μ f u₁ u₂`.  The `eqG-red` analogue.
+--
+-- ⚠ WHY IT IS NEEDED.  Split n's successor branch must inhabit
+--   `subTy nrs Mₙ`, whose function slot is `natrec … (nsuc k)`; split n+1
+--   produces the same statement about that term's `natrec-suc` REDUCT.  The
+--   two are related by one step, not equal, so the branch cannot be a cast.
+--
+-- ⭐ `indG` mentions `f` only in `QCode`'s VALUE slot under two `Π`s, and
+--   `QCode-red` pushes a reduction all the way into the code — so this is
+--   `⟶ᵀ*-Πʳ` twice over `QCode-red`, and stays ONE `⊢conv` per split.
+------------------------------------------------------------------------
+
+indG-red : {Γ : Cx} {μ u₁ u₂ f g : RTm Γ} → f ⟶* g →
+           indG μ f u₁ u₂ ≅ᵀ indG μ g u₁ u₂
+indG-red {u₁ = u₁} {u₂ = u₂} r =
+  red→≅ᵀ (⟶ᵀ*-Πʳ (⟶ᵀ*-Πʳ
+    (⟶ᵀ*-El (QCode-red (w (w u₁)) (w (w u₂))
+                       (⟶*-appˡ (⟶*-ren vs (⟶*-ren vs r)))))))
+
+------------------------------------------------------------------------
+-- ★ LEAF 1 — `snd x = 0`, so `gcd (a , 0) = a`.  IH-FREE.
+--
+-- ⭐ `G1z`'s body is `fst <the carrier>`, and the carrier does not mention
+--   the `ih` the `lam` just bound, so `β` lands on `fst x` on the nose —
+--   which is exactly `gcdLeaf-b0`'s subject.
+------------------------------------------------------------------------
+
+redI₁z : {Γ : Cx} (i : RTm (Γ ∙ ∙ ∙)) →
+         app (w (w (natrec (G1z {Γ}) gcdInn1 nzero))) i
+       ⟶* fst (var (vs (vs vz)))
+redI₁z i = ⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done)) (step (β _ i) done)
+
+leafI₁z : {Γ : Ctx} →
+          Prv (Γ ▹ PairT)
+              (indG (plusTm (fst (var vz)) nzero)
+                    (natrec G1z gcdInn1 nzero) (fst (var vz)) nzero)
+leafI₁z =
+  prv _ (⊢lam (⊢gcdIH dμ)
+          (⊢lam (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w _) (⊢var here)))
+                (⊢conv (prvOk (gcdLeaf-b0 du))
+                       (csymᵀ (QCode-conv _ nzero (redI₁z (var (vs vz))))))))
+  where
+    dμ = ⊢plus (⊢fst (⊢var here)) ⊢nzero
+    du = ⊢fst (⊢var (there (there here)))
+
+------------------------------------------------------------------------
+-- ★★ SPLIT 2 — on `fst x`.  ctx: [0]=k' [1]=MI₁ [2]=n' [3]=x
+--
+-- ⭐ Splits 1 and 2 MEET in one `natrec-suc` step (`probe₁-s`), which is
+--   `…GcdStepExt`'s lemma reused verbatim — it is about `gcdStp`'s own
+--   `natrec`s, not about the motive.
+------------------------------------------------------------------------
+
+MI₂ : {Γ : Cx} → RTy (Γ ∙ ∙ ∙ ∙)
+MI₂ = indG μ₂ f₂ (var vz) (nsuc (var (vs (vs vz))))
+
+probeI₂-z : {Γ : Cx} →
+            subTy (single nzero) (MI₂ {Γ})
+          ≡ indG (plusTm nzero (nsuc (var (vs vz))))
+                 (natrec G2z (subTm (extS (extS (single nzero)))
+                                    (renTm (extR (extR vs)) gcdInn2)) nzero)
+                 nzero (nsuc (var (vs vz)))
+probeI₂-z = refl
+
+------------------------------------------------------------------------
+-- ★ LEAF 2 — `fst x = 0`, so `gcd (0 , b) = b`.  IH-FREE, same shape as
+--   leaf 1: `G2z`'s body is `nsuc n'`, which does not mention the bound
+--   `ih`, so `β` lands on it exactly.
+------------------------------------------------------------------------
+
+redI₂z : {Γ : Cx} (sb i : RTm (Γ ∙ ∙ ∙ ∙ ∙)) →
+         app (w (w (natrec (G2z {Γ}) sb nzero))) i
+       ⟶* nsuc (var (vs (vs (vs vz))))
+redI₂z sb i = ⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done)) (step (β _ i) done)
+
+leafI₂z : {Γ : Ctx} → Prv (Θ₂ Γ) (subTy (single nzero) MI₂)
+leafI₂z =
+  prv _ (⊢lam (⊢gcdIH dμ)
+          (⊢lam (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w _) (⊢var here)))
+                (⊢conv (prvOk (gcdLeaf-a0 db))
+                       (csymᵀ (QCode-conv nzero _ (redI₂z _ (var (vs vz))))))))
+  where
+    dμ = ⊢plus ⊢nzero (⊢nsuc (⊢var (there here)))
+    db = ⊢var (there (there (there here)))
