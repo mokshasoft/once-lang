@@ -42,9 +42,10 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⊢_∷_; _⊢ty_; ⊢var; here; ⊢conv; ⊢fst; ⊢snd
         ; ty-Nat; ty-Σ
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Nat⌝; Hom-Nat-ss
-        ; ξ-nsuc; ξ-Homˡ; βfst; βsnd )
+        ; ξ-nsuc; ξ-Homˡ; βfst; βsnd; ξ-natrecⁿ; ξ-natrecᶻ )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
+open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm )
 
 ------------------------------------------------------------------------
 -- the carrier and its two measures.  ★ A TYPE, so `⊢fst`/`⊢snd` apply
@@ -125,3 +126,23 @@ holdʳ : {Γ : Ctx} (a b : RTm ⌊ Γ ⌋) → Γ ⊢ b ∷ Nat →
 holdʳ a b db =
   ⊢conv (⊢le-refl db)
         (csymᵀ (red→≅ᵀ (stepᵀ (ξ-Homˡ (βsnd _ _)) doneᵀ)))
+
+------------------------------------------------------------------------
+-- ★ THE SUM MEASURE AT A BUILT PAIR — two β-steps, and they are the only
+--   conversion a pair-carrier descent ever needs.
+--
+--   A recursive call BUILDS its pair, so the measure at it reads
+--   `fst (pair p q) + snd (pair p q)`.  ⚠ `plusTm m n = natrec n _ m` puts
+--   `m` in the SCRUTINEE and `n` in the ZERO branch, hence `ξ-natrecⁿ`
+--   then `ξ-natrecᶻ` — not two symmetric steps.
+--
+-- ⚠ Promoted here from `…ExamplesGcdStep` (as `descConv`).  Nothing in it
+--   mentions gcd: it is a fact about `plusTm` and `pair`.
+------------------------------------------------------------------------
+
+msrPair : {Γ : Cx} (p q u : RTm Γ) →
+          Hom Nat (nsuc (plusTm (fst (pair p q)) (snd (pair p q)))) u
+        ≅ᵀ Hom Nat (nsuc (plusTm p q)) u
+msrPair p q u =
+  red→≅ᵀ (stepᵀ (ξ-Homˡ (ξ-nsuc (ξ-natrecⁿ (βfst p q))))
+           (stepᵀ (ξ-Homˡ (ξ-nsuc (ξ-natrecᶻ (βsnd p q)))) doneᵀ))

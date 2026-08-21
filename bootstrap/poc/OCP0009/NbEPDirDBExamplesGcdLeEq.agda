@@ -41,7 +41,7 @@ open import poc.OCP0009.NbEPDirDBLibStrong
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLibWk
   using ( w; wᶠ; ren-w; pw3; pw4; pw5; nrs-w; cong₃; sub-w; wfw-single; w²-single )
-open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )
+open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT ; msrPair)
 open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( aIHTat-ren; Prv; prv; idToRed; idOfRed )
 open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
@@ -52,7 +52,7 @@ open import poc.OCP0009.NbEPDirDBLibArithMonus
   using ( monusLtTm; monusLtTm-sub; ⊢desc-left; monusLeTm; ⊢monusLe
         ; descLeftTm; descLeftTm-sub; ⊢monusLeAt )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
-  using ( gcdIH; gcdG; ⊢gcdIH; descConv; KS; NS; PAIRˢ; CERTˢ; msr; ⊢msr; gcdStp
+  using ( gcdIH; gcdG; ⊢gcdIH; KS; NS; PAIRˢ; CERTˢ; msr; ⊢msr; gcdStp
         ; gcdIH-ren )
 open import poc.OCP0009.NbEPDirDBLibNatrec using ( ⊢natrec-var; ⊢natrec-var-at )
 open import poc.OCP0009.NbEPDirDBExamplesGcdLeMid
@@ -118,7 +118,7 @@ module _ {Γ : Ctx} {W b : RTm ⌊ Γ ⌋}
                    (plusTm (nsuc K*) (nsuc N*))
   ⊢CERT* =
     ⊢conv (⊢desc-left dK dN)
-          (csymᵀ (descConv (monusTm (nsuc K*) (nsuc N*)) (nsuc N*)
+          (csymᵀ (msrPair (monusTm (nsuc K*) (nsuc N*)) (nsuc N*)
                            (plusTm (nsuc K*) (nsuc N*))))
 
   -- ★ the measure slot as the APPLICATION leaves it, moved back by two

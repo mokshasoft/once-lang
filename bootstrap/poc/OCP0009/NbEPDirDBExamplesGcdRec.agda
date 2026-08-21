@@ -26,14 +26,14 @@ open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
 open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( Prv; prv; prvTm; prvOk; idToRed; idOfRed )
-open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; asN )
+open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; asN ; msrPair)
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( transN; ⊢transN )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Homʳ )
 open import poc.OCP0009.NbEPDirDBLibNat using ( ⊢plus )
 open import poc.OCP0009.NbEPDirDBLibMonus using ( monusTm )
 open import poc.OCP0009.NbEPDirDBLibStrong using ( reflTm; ⊢le-refl )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
-  using ( msr; ⊢msr; recCert; gcd-gt-term; descConv; gt-mh-1 )
+  using ( msr; ⊢msr; recCert; gcd-gt-term; gt-mh-1 )
 open import poc.OCP0009.NbEPDirDBLibArithMonus using ( ⊢desc-left )
 open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStepExtA using ( gcdStepExt )
@@ -182,12 +182,12 @@ module GcdRecAt (Δ : Ctx) where
     --    produce the certificate CLEAN at construction: `recCert` IS
     --    `gtCert a' b'`, which is exactly what `⊢desc-left` derives, so
     --    there is nothing to peel and nothing to compare.  Two `⊢conv`s
-    --    remain and both are measure bookkeeping: `descConv` moves the
+    --    remain and both are measure bookkeeping: `msrPair` moves the
     --    measure across the pair's projections, and `μ-pair` computes the
     --    carrier's own measure.
     dQ : Δ ⊢ CRT ∷ Hom Nat (nsuc (subTm (single Y) msr)) (subTm (single X) msr)
     dQ = ⊢conv (⊢conv (⊢desc-left da db)
-                      (csymᵀ (descConv (monusTm (nsuc a') (nsuc b')) (nsuc b')
+                      (csymᵀ (msrPair (monusTm (nsuc a') (nsuc b')) (nsuc b')
                                        (plusTm (nsuc a') (nsuc b')))))
                (csymᵀ (red→≅ᵀ (⟶ᵀ*-Homʳ (μ-pair (nsuc a') (nsuc b')))))
 

@@ -73,7 +73,8 @@ open import poc.OCP0009.NbEPDirDBExamplesDiv
   using ( monus-computes )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( aStepT; aIHTat-sub; aIHTat-ren )
-open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asP )
+open import poc.OCP0009.NbEPDirDBLibWk using ( wkGen; wkGenR )
+open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asP; msrPair )
 open import poc.OCP0009.NbEPDirDBLibArith using ( plusMonoTm )
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLTm; plusMonoLTm-sub )
 open import poc.OCP0009.NbEPDirDBLibArithMonus
@@ -122,19 +123,7 @@ gcdIH-ren : {Γ Γ' : Cx} {ρ : Ren Γ Γ'} (μ : RTm Γ) →
             renTy ρ (gcdIH μ) ≡ gcdIH (renTm ρ μ)
 gcdIH-ren μ = aIHTat-ren PairT ⌜Nat⌝ msr μ
 
-------------------------------------------------------------------------
--- ★ the descent's conversion: the recursive call BUILDS a pair, so the
---   measure at it is `fst (pair p q) + snd (pair p q)`, two β-steps from
---   `p + q`.  ⚠ `plusTm m n = natrec n _ m` puts `m` in the SCRUTINEE and
---   `n` in the ZERO branch, hence `ξ-natrecⁿ` then `ξ-natrecᶻ`.
-------------------------------------------------------------------------
-
-descConv : {Γ : Cx} (p q u : RTm Γ) →
-           Hom Nat (nsuc (plusTm (fst (pair p q)) (snd (pair p q)))) u
-         ≅ᵀ Hom Nat (nsuc (plusTm p q)) u
-descConv p q u =
-  red→≅ᵀ (stepᵀ (ξ-Homˡ (ξ-nsuc (ξ-natrecⁿ (βfst p q))))
-           (stepᵀ (ξ-Homˡ (ξ-nsuc (ξ-natrecᶻ (βsnd p q)))) doneᵀ))
+-- (`descConv` moved to `…LibPair` as `msrPair` — general, not gcd-specific.)
 
 ------------------------------------------------------------------------
 -- SPLIT 1 — on `snd x`.  ctx: [0]=n' [1]=x
@@ -255,7 +244,7 @@ dnz = ⊢var (there (there (there (there here))))
        ∷ Hom Nat (nsuc (plusTm (fst PAIRᶻ) (snd PAIRᶻ))) (plusTm (nsuc KZ) (nsuc NZ))
 ⊢CERTᶻ =
   ⊢conv (⊢desc-right dkz dnz)
-        (csymᵀ (descConv (nsuc KZ) (monusTm (nsuc NZ) (nsuc KZ))
+        (csymᵀ (msrPair (nsuc KZ) (monusTm (nsuc NZ) (nsuc KZ))
                          (plusTm (nsuc KZ) (nsuc NZ))))
 
 G3z : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙)
@@ -309,7 +298,7 @@ dns = ⊢var (there (there (there (there (there (there here))))))
        ∷ Hom Nat (nsuc (plusTm (fst PAIRˢ) (snd PAIRˢ))) (plusTm (nsuc KS) (nsuc NS))
 ⊢CERTˢ =
   ⊢conv (⊢desc-left dks dns)
-        (csymᵀ (descConv (monusTm (nsuc KS) (nsuc NS)) (nsuc NS)
+        (csymᵀ (msrPair (monusTm (nsuc KS) (nsuc NS)) (nsuc NS)
                          (plusTm (nsuc KS) (nsuc NS))))
 
 G3s : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
@@ -459,21 +448,14 @@ gcd-computes-a0 ih =
 --   depths 5 to 7.
 ------------------------------------------------------------------------
 
-wkGen : {Γ Δ : Cx} {σ : Sub Δ Γ} {ρ : Ren Γ Δ} →
-        ((x : Var Γ) → σ (ρ x) ≡ var x) →
-        (t : RTm Γ) → subTm σ (renTm ρ t) ≡ t
-wkGen h t = trans (subTm-renTm t) (trans (subTm-cong h t) (subTm-id t))
+-- (`wkGen` moved to `…LibWk` — general, and `w²-single` there now uses it.)
 
 -- ★★ …and the version landing on a RENAMED target rather than on `t`.
 --   ⚠ CONFIRMED (this typechecks): the `wkS` family is `single`-headed and
 --   returns `t` EXACTLY; the composites that arise `extS`-headed return `t`
 --   STILL WEAKENED.  Same three moves, one different endpoint —
 --   `ren-as-sub` where `wkGen` uses `subTm-id`.
-wkGenR : {Γ Δ Θ : Cx} {σ : Sub Δ Θ} {ρ : Ren Γ Δ} {ρ' : Ren Γ Θ} →
-         ((x : Var Γ) → σ (ρ x) ≡ var (ρ' x)) →
-         (t : RTm Γ) → subTm σ (renTm ρ t) ≡ renTm ρ' t
-wkGenR {ρ' = ρ'} h t =
-  trans (subTm-renTm t) (trans (subTm-cong h t) (sym (ren-as-sub ρ' t)))
+-- (`wkGenR` moved to `…LibWk` alongside `wkGen`.)
 
 -- the `extS`-headed companion the previous commit CONJECTURED — it holds.
 wkE : {Γ : Cx} {v : RTm Γ} (t : RTm Γ) →

@@ -81,6 +81,7 @@ open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asP )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; stepᵀ; doneᵀ; red→≅ᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
+open import poc.OCP0009.NbEPDirDBLibIHCall using ( appIHat )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( gcdStp; gcdBody; msr; ⊢msr; gcdIH; ⊢gcdIH; gcdG; ⊢gcdG
         ; G1; ⊢G1; G1z; ⊢G1z; gcdInn1; ⊢gcdInn1; ⊢gcdBody
@@ -242,16 +243,16 @@ pwIntro {a = a} {ih₁ = ih₁} {ih₂ = ih₂} dμ pw =
 --   parameterised module and is stated in `aIHTat`'s slots.)
 ------------------------------------------------------------------------
 
+-- ⚠ REPOINTED at `…LibIHCall.appIHat`, which is this at an ARBITRARY
+--   carrier and motive.  The seven lines it replaced were the `PairT`/
+--   `⌜Nat⌝`/`msr` instance of exactly that peel; the motive being CLOSED
+--   is what collapses `El (subTm (single y) ⌜Nat⌝)` to `El ⌜Nat⌝`, and
+--   that collapse is definitional, so the delegation needs no cast.
 appGcdIH : {Γ : Ctx} {μ i y q : RTm ⌊ Γ ⌋} →
            Γ ⊢ i ∷ gcdIH μ → Γ ⊢ y ∷ PairT →
            Γ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) msr)) μ →
            Γ ⊢ app (app i y) q ∷ El ⌜Nat⌝
-appGcdIH {μ = μ} {y = y} di dy dq =
-  ⊢app (⊢-cast (cong (λ u → Π (Hom Nat (nsuc (subTm (single y) msr)) u)
-                              (El ⌜Nat⌝))
-                     (wk-single {v = y} μ))
-               (⊢app di dy))
-       dq
+appGcdIH di dy dq = appIHat di dy dq
 
 -- ★ `gcdIH`/`gcdG` past a weakening.  ⚠ NOT definitional: `gcdIH` hides a
 --   `w μ` inside its `Hom`, so `renTy vs` has to fuse with it.  `aIHTat-ren`

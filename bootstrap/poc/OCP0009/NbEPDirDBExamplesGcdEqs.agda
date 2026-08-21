@@ -40,13 +40,13 @@ open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans )
 open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( Prv; prv; prvTm; prvOk; StepExt; module AmTΠ; aStepT; renTm-idR
         ; idToRed; idOfRed )
-open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asN )
+open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asN ; msrPair)
 open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBLibMonus using ( monusTm; ⊢monus )
 open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-step )
 open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
-  using ( gcdStp; ⊢gcdStp; msr; ⊢msr; descConv
+  using ( gcdStp; ⊢gcdStp; msr; ⊢msr
         ; RecCall; recCall; recCert; recRed; gcd-gt-term; gcd-le-term )
 open import poc.OCP0009.NbEPDirDBLibArith using ( plusMonoTm )
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLTm )
