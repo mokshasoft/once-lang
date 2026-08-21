@@ -46,7 +46,7 @@ open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w; ren-sub; sub-w )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w; ren-sub; sub-w; cong₃ )
 open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBLibStrong using ( natAsEl; elAsNat )
 open import poc.OCP0009.NbEPDirDBLibPair using ( asN )
@@ -569,3 +569,99 @@ exFalsoN : {Γ : Ctx} {p e x y : RTm ⌊ Γ ⌋} →
 exFalsoN {x = x} {y = y} dp dx dy de =
   ⊢conv (⊢absurd (⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl dx) (natAsEl dy)) (⊢noConf dp de))
         (elIdN x y)
+
+------------------------------------------------------------------------
+-- ★★★★ 8.  `monusPlus`'s STATEMENT, AND THE ONE PEEL ITS IH NEEDS.
+--
+-- The lemma to come is
+--
+--     ∀ b a p.  a ∸ b ≡ suc p  →  a ≡ (suc p) + b
+--
+-- proved by `natrec` on `b` with `a`, `p` and the equation `Π`-bound in
+-- the motive.  ⚠ THREE Π's MEAN THREE `subTy`s AT EVERY IH USE, and
+-- inlining them is where this kind of proof drowns.  `mpUse` pays them
+-- ONCE, so the induction's two branches read like the paper proof.
+--
+-- ★ Everything below peels by `wk-single`/`sub-w` alone: `monusTm` and
+--   `plusTm` both distribute through `subTm` definitionally (see §4), so
+--   the only propositional steps are the weakenings the Π's introduced.
+------------------------------------------------------------------------
+
+mpAt : {Γ : Cx} (b : RTm Γ) → RTy Γ
+mpAt b =
+  Π Nat
+    (Π Nat
+      (Π (IdN (monusTm (var (vs vz)) (w (w b))) (nsuc (var vz)))
+         (IdN (var (vs (vs vz)))
+              (plusTm (nsuc (var (vs vz))) (w (w (w b)))))))
+
+⊢mpAt : {Γ : Ctx} {b : RTm ⌊ Γ ⌋} → Γ ⊢ b ∷ Nat → Γ ⊢ty mpAt b
+⊢mpAt db =
+  ty-Π ty-Nat
+    (ty-Π ty-Nat
+      (ty-Π (⊢tyIdN (⊢monus (⊢var (there here)) (⊢wk (⊢wk db)))
+                    (⊢nsuc (⊢var here)))
+            (⊢tyIdN (⊢var (there (there here)))
+                    (⊢plus (⊢nsuc (⊢var (there here)))
+                           (⊢wk (⊢wk (⊢wk db)))))))
+
+mpUse : {Γ : Ctx} {b h a p e : RTm ⌊ Γ ⌋} →
+        Γ ⊢ h ∷ mpAt b →
+        Γ ⊢ a ∷ Nat → Γ ⊢ p ∷ Nat →
+        Γ ⊢ e ∷ IdN (monusTm a b) (nsuc p) →
+        Γ ⊢ app (app (app h a) p) e ∷ IdN a (plusTm (nsuc p) b)
+mpUse {b = b} {a = a} {p = p} {e = e} dh da dp de =
+  -- ⭐ `peel₂` already normalises the domain, so `de` goes straight in —
+  --   no cast on the argument.
+  ⊢-cast peel₃ (⊢app (⊢-cast peel₂ (⊢app (⊢-cast peel₁ (⊢app dh da)) dp)) de)
+  where
+    -- ⚠ EVERY TYPE HERE IS WRITTEN OUT.  `cong₂`'s source cannot be
+    --   inferred through a `subTy` of a `Π`, and leaving it to Agda turns
+    --   the whole chain into unsolved metas.  (Cost of learning that: one
+    --   round.)  Same rule as pinning `subren`'s implicits.
+
+    -- the ambient `b`, pushed under one / two extra binders
+    b¹ : subTm (extS (single a)) (w (w b)) ≡ w b
+    b¹ = trans (sub-w {σ = single a} (w b)) (cong w (wk-single {v = a} b))
+
+    b² : subTm (extS (extS (single a))) (w (w (w b))) ≡ w (w b)
+    b² = trans (sub-w {σ = extS (single a)} (w (w b))) (cong w b¹)
+
+    peel₁ : subTy (single a)
+              (Π Nat (Π (IdN (monusTm (var (vs vz)) (w (w b))) (nsuc (var vz)))
+                        (IdN (var (vs (vs vz)))
+                             (plusTm (nsuc (var (vs vz))) (w (w (w b)))))))
+          ≡ Π Nat (Π (IdN (monusTm (w a) (w b)) (nsuc (var vz)))
+                     (IdN (w (w a))
+                          (plusTm (nsuc (var (vs vz))) (w (w b)))))
+    peel₁ =
+      cong₂ (λ u v → Π Nat (Π (IdN (monusTm (w a) u) (nsuc (var vz)))
+                              (IdN (w (w a))
+                                   (plusTm (nsuc (var (vs vz))) v))))
+            b¹ b²
+
+    domEq : subTy (single p) (IdN (monusTm (w a) (w b)) (nsuc (var vz)))
+          ≡ IdN (monusTm a b) (nsuc p)
+    domEq = cong₂ (λ u v → IdN (monusTm u v) (nsuc p))
+                  (wk-single {v = p} a) (wk-single {v = p} b)
+
+    bodyEq : subTy (extS (single p))
+               (IdN (w (w a)) (plusTm (nsuc (var (vs vz))) (w (w b))))
+           ≡ IdN (w a) (plusTm (nsuc (w p)) (w b))
+    bodyEq =
+      cong₂ (λ u v → IdN u (plusTm (nsuc (w p)) v))
+            (trans (sub-w {σ = single p} (w a)) (cong w (wk-single {v = p} a)))
+            (trans (sub-w {σ = single p} (w b)) (cong w (wk-single {v = p} b)))
+
+    peel₂ : subTy (single p)
+              (Π (IdN (monusTm (w a) (w b)) (nsuc (var vz)))
+                 (IdN (w (w a)) (plusTm (nsuc (var (vs vz))) (w (w b)))))
+          ≡ Π (IdN (monusTm a b) (nsuc p))
+              (IdN (w a) (plusTm (nsuc (w p)) (w b)))
+    peel₂ = cong₂ Π domEq bodyEq
+
+    peel₃ : subTy (single e) (IdN (w a) (plusTm (nsuc (w p)) (w b)))
+          ≡ IdN a (plusTm (nsuc p) b)
+    peel₃ = cong₃ (λ u v x → IdN u (plusTm (nsuc v) x))
+                  (wk-single {v = e} a) (wk-single {v = e} p)
+                  (wk-single {v = e} b)

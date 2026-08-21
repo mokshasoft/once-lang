@@ -26,10 +26,10 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
         ; RTy; Nat; base
-        ; RTm; var; nzero; nsuc )
+        ; RTm; var; nzero; nsuc; app )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋
-        ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc
         ; _⟶*_; done; step; natrec-zero; natrec-suc
         ; csymᵀ )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Idʳ )
@@ -40,7 +40,8 @@ open import poc.OCP0009.NbEPDirDBLibArithComm using ( IdN; reflN; ⊢reflN )
 open import poc.OCP0009.NbEPDirDBLibDvd using ( dvdT; dvd-intro )
 open import poc.OCP0009.NbEPDirDBLibDvdArith
   using ( assocB; ⊢assoc; distB; ⊢dist; mul-suc; dvdSum; ⊢dvd-plus
-        ; ⊢congPd; zmB; ⊢zero-monus; pmB; ⊢pred-monus; ⊢noConf; exFalsoN )
+        ; ⊢congPd; zmB; ⊢zero-monus; pmB; ⊢pred-monus; ⊢noConf; exFalsoN
+        ; mpAt; ⊢mpAt; mpUse )
 open import poc.OCP0009.NbEPDirDBLibMonus using ( predTm; monusTm; ⊢pred; ⊢monus )
 
 ------------------------------------------------------------------------
@@ -186,7 +187,30 @@ module NoConf (e : RTm ⌊ Γ₃ ⌋) (de : Γ₃ ⊢ e ∷ IdN nzero (nsuc A)) 
   anyEq = exFalsoN dA dB dC de
 
 ------------------------------------------------------------------------
--- 5. THE SHAPE GAP B WILL CALL, and the reason it is stated as a module
+-- 5. `monusPlus`'s STATEMENT IS WELL-FORMED, AND ITS IH IS APPLICABLE.
+--
+-- ⚠ `monusPlus` ITSELF IS NOT PROVED YET (see `GAP-B-LAYER2-PLAN.md` §3.4).
+--   What is checked here is the part that is easy to get wrong and
+--   expensive to discover late: that `mpAt` is a well-formed TYPE, and
+--   that a term of it can actually be APPLIED to a carrier, a predecessor
+--   and an equation to yield the conclusion.  ⇒ the induction's shape is
+--   settled before the induction is written — the same discipline that
+--   caught `amrec-ind`'s slot order.
+------------------------------------------------------------------------
+
+mpAt-wf : Γ₃ ⊢ty mpAt A
+mpAt-wf = ⊢mpAt dA
+
+module MonusPlusUse (h e : RTm ⌊ Γ₃ ⌋)
+                    (dh : Γ₃ ⊢ h ∷ mpAt A)
+                    (de : Γ₃ ⊢ e ∷ IdN (monusTm B A) (nsuc C))
+                    where
+
+  applied : Γ₃ ⊢ app (app (app h B) C) e ∷ IdN B (plusTm (nsuc C) A)
+  applied = mpUse dh dB dC de
+
+------------------------------------------------------------------------
+-- 6. THE SHAPE GAP B WILL CALL, and the reason it is stated as a module
 --   rather than a closed term: gcd's step supplies its hypotheses at
 --   whatever context the recursion has reached, so the client is always
 --   "some Γ with these five terms typed", never a fixed context.

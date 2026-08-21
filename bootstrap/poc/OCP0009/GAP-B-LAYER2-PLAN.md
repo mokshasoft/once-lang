@@ -97,7 +97,8 @@ split.
    `nfam := natrec ⌜Unit⌝ ⌜base⌝ (var vz)` at motive `U` (`ty-U` — the large
    elimination is already in the kernel, no new rule), then `jsub` carries
    `unit : El (nfam 0)` to `El (nfam (suc p))`, which reduces to `base`.
-4. ⬜ **`monusPlus`** — THE NEXT PIECE. — `a ∸ b ≡ suc p  ⟹  a ≡ (suc p) + b`.
+4. 🟡 **`monusPlus`** — THE NEXT PIECE.  ✅ `mpAt` (the statement) and
+   ✅ `mpUse` (applying its IH) are GREEN; the induction itself is open. — `a ∸ b ≡ suc p  ⟹  a ≡ (suc p) + b`.
    Double induction: outer on `b`, inner on `a`, motive `Π`-quantified over
    `a`, `p` and over the equation. Uses 1–3 and `⊢plus0`/`⊢plusS`.
 
@@ -123,6 +124,20 @@ split.
 
    ⚠ The inner induction is on a VARIABLE (`a`), so it needs no `inspect`;
    only §2's split on `a ∸ b` does.
+
+   ### ✅ Already landed for this step
+
+   - **`mpAt b`** — the statement as an `RTy`, with `⊢mpAt`. Well-formed.
+   - **`mpUse`** — applies a term of `mpAt b` to `(a , p , eq)` and returns
+     `IdN a (plusTm (nsuc p) b)`. ⭐ **Three Π's mean three `subTy`s at
+     every IH use; `mpUse` pays them ONCE** so the two branches can read
+     like the paper proof. Without it the induction drowns in `wk-single`s.
+   - ⚠ **Every peel type in `mpUse` is WRITTEN OUT.** `cong₂`'s source
+     cannot be inferred through a `subTy` of a `Π`; leaving it to Agda
+     produces unsolved metas. Same rule as pinning `subren`'s implicits.
+
+   ⇒ What remains for step 4 is only the `natrec` on `b`, its inner
+   `natrec` on `a`, and the four leaves — all four spelled out above.
 5. **The motive** `P` of §1, plus `⊢P` (it is a `⌜Σ⌝` of two `dvdCode`s —
    `⊢dvdCode` is green, so this is assembly).
 6. **`gcdStepExt`** — ALREADY PROVED (`…GcdStepExtA`). No work.
