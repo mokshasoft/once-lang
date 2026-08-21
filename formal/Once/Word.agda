@@ -46,6 +46,10 @@ open import Data.Nat.Properties using
    +-mono-≤; +-monoʳ-≤; +-monoʳ-<; ^-monoʳ-≤; ∸-monoˡ-≤; m+n∸n≡m; m∸n+n≡m; m∸[m∸n]≡n;
    ≤-refl; ≡ᵇ⇒≡; <ᵇ⇒<; ≤⇒≯; ≤-trans; <⇒≤; ≤-<-trans; m∸n≤m; +-∸-assoc; +-∸-comm)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣; sign; _◃_; _-_; -_)
+import Data.Integer as ℤ
+open import Data.Integer.Properties using (_≤?_)
+open import Data.Product using (_×_)
+open import Relation.Nullary.Decidable using (Dec; _×-dec_)
 open import Data.Integer.Properties using (_<?_; m-n≡m⊖n; ⊖-<; +◃n≡+n; -◃n≡-n; neg-involutive)
 import Data.Sign as Sign
 open import Data.Bool using (Bool; true; false; if_then_else_; _∧_; T)
@@ -127,6 +131,43 @@ module Width (bits : ℕ) where
 
   intMin : Word           -- signed −2^(bits−1)
   intMin = half
+
+  ----------------------------------------------------------------------
+  -- LITERAL ADMISSIBILITY (plan 0.74, D115/D116)
+  --
+  -- An `Int` LITERAL must fit this width's signed range, or the backend
+  -- rejects it. ARITHMETIC is not checked — it wraps, and D054 says that is
+  -- defined semantics. The difference is the promise: modular arithmetic is
+  -- what the hardware offers, but a literal is a value the programmer wrote
+  -- and substituting its residue is covered by nothing.
+  --
+  -- The shape is decision + evidence + total conversion under evidence,
+  -- rather than a `ℤ → Maybe Word`, so that `fromℤ`'s wrap is UNREACHABLE as
+  -- semantics: an admissible literal never exercises it, and an inadmissible
+  -- one never reaches it.
+  --
+  -- ONE decision procedure, two callers: the spec's admissibility gate and
+  -- the backend's lowering must both dispatch on `inRange?`. Two
+  -- implementations that happen to agree is how `ArithSimX86-32` came to model
+  -- a 32-bit target at 64 bits with nothing to catch it.
+  ----------------------------------------------------------------------
+
+  -- | `−2^(bits−1) ≤ z ≤ 2^(bits−1) − 1`.
+  InRange : ℤ → Set
+  InRange z = (ℤ.- (+ half) ℤ.≤ z) × (z ℤ.≤ + (half ℕ.∸ 1))
+
+  inRange? : ∀ z → Dec (InRange z)
+  inRange? z = (ℤ.- (+ half) ℤ.≤? z) ×-dec (z ℤ.≤? + (half ℕ.∸ 1))
+
+  -- | The literal's machine word, given that it fits. Definitionally `fromℤ`,
+  -- so the backend's checked lowering and the machine's total `lit-value` are
+  -- the SAME number by construction rather than by a lemma anyone must
+  -- remember to state.
+  toWord : ∀ z → InRange z → Word
+  toWord z _ = fromℤ z
+
+  toWord≡fromℤ : ∀ z (ev : InRange z) → toWord z ev ≡ fromℤ z
+  toWord≡fromℤ _ _ = refl
 
   negOne : Word           -- all-ones; signed −1
   negOne = modulus ∸ 1

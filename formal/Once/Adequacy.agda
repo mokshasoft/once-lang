@@ -105,6 +105,30 @@ record CorrectCompiler : Set₁ where
     exec  : Arch → Bytes → Behavior
     _≈_   : Behavior → Behavior → Set
 
+    -- TARGET-RELATIVE ADMISSIBILITY (plan 0.74, D115/D116).
+    --
+    -- `Typed` is target-FREE — parsing and typing do not depend on the target,
+    -- and saying they did would make the IR arch-indexed by the back door.
+    -- But whether a typed program can be EXPRESSED at a target is a separate,
+    -- target-relative question: an `Int` literal must fit that target's signed
+    -- range, or the backend must reject it (D115). Arithmetic is NOT checked —
+    -- it wraps, and D054 says that is defined semantics. Float literals place
+    -- no condition here at all: they always lower, rounding if they must
+    -- (D116).
+    --
+    -- WHY IT MUST BE IN THE SPEC, not merely implemented: without it, a
+    -- compiler that rejects EVERY program satisfies soundness vacuously, and
+    -- only completeness rules that out — and completeness is stated against
+    -- this record. So the spec has to say which programs a target owes an
+    -- answer for.
+    --
+    -- It is a PREDICATE rather than a partial `⟦_⟧ˢ` deliberately. An
+    -- ill-typed program does not get a `nothing` meaning either — it is
+    -- excluded by `Typed`, and `⟦_⟧ˢ` is TOTAL behind that gate. "Does 1001
+    -- fit in 8 bits" is the same kind of question: static, decidable, about
+    -- EXPRESSIBILITY rather than about what the program computes.
+    Admissible : Arch → Typed → Set
+
     -- The compiler. `Bool` selects whether the optimizer runs; correctness
     -- is required for BOTH settings, so the optimizer can never be
     -- load-bearing for correctness (it may only PRESERVE an already-correct
@@ -116,13 +140,18 @@ record CorrectCompiler : Set₁ where
     -- this reviewed spec). For EVERY arch and either optimizer setting,
     -- against the INDEPENDENT meaning:
     --   • soundness + trace — if the compiler ACCEPTS `src` (emits bytes),
-    --     then `src` HAS a meaning (`src ⊢ tp`) and the bytes' execution
-    --     equals it (`exec bytes ≈ ⟦ tp ⟧ˢ`);
-    --   • completeness — if `src` HAS a meaning, the compiler accepts it.
+    --     then `src` HAS a meaning (`src ⊢ tp`), that meaning is EXPRESSIBLE
+    --     at this target (`Admissible arch tp`), and the bytes' execution
+    --     equals it (`exec bytes ≈ ⟦ arch ⟧ˢ tp`);
+    --   • completeness — if `src` has a meaning the target can express, the
+    --     compiler accepts it. The `Admissible` premise is what makes
+    --     rejecting an out-of-range literal legal WITHOUT making
+    --     "reject everything" legal.
     -- A front-end bug — accept the meaningless, reject the meaningful, or
     -- elaborate to the wrong trace — makes `correct` unprovable: a TYPE ERROR.
     correct : ∀ arch doOpt src →
         ( ∀ bytes → compile arch doOpt src ≡ just bytes →
-            Σ[ tp ∈ Typed ] ((src ⊢ tp) × (exec arch bytes ≈ ⟦ arch ⟧ˢ tp)) )
-      × ( ∀ tp → src ⊢ tp →
+            Σ[ tp ∈ Typed ] ((src ⊢ tp) × Admissible arch tp
+                             × (exec arch bytes ≈ ⟦ arch ⟧ˢ tp)) )
+      × ( ∀ tp → src ⊢ tp → Admissible arch tp →
             Σ[ bytes ∈ Bytes ] (compile arch doOpt src ≡ just bytes) )
