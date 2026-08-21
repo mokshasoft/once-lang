@@ -43,11 +43,11 @@ open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 --   the two everyday ≤-lemmas.  Seven `Lib*` modules build on them, so a
 --   library was importing an example.
 --
--- ⚠ Re-exported `public`: every existing importer of THIS module keeps
---   working unchanged; only `Lib*` importers were repointed.
+-- ⚠ NOT re-exported.  Clients import the primitives from `…LibStrong`
+--   directly, so nothing inherits this module's closure to reach them.
 ------------------------------------------------------------------------
 
-open import poc.OCP0009.NbEPDirDBLibStrong public
+open import poc.OCP0009.NbEPDirDBLibStrong
   using ( El-homNat; natAsEl; elAsNat
         ; reflMot; reflTm; ⊢reflMot; ⊢le-refl-z; ⊢le-refl-s; ⊢le-refl
         ; sucMot; ⊢sucMot; ⊢le-suc )

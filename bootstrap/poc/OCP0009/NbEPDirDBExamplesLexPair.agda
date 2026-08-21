@@ -48,7 +48,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ξ-nsuc; ξ-Homˡ; βfst; βsnd )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
-open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
+open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
 open import poc.OCP0009.NbEPDirDBLibPair
   using ( PairT; ⊢PairT; msr₁; msr₂; ⊢msr₁; ⊢msr₂; elNat; asP; holdˡ; dropʳ )

@@ -23,10 +23,15 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢var; here; there; ⊢conv; ⊢natrec; ⊢lam; ⊢app; csymᵀ )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Idˡ )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-appʳ; ⟶*-pairʳ; ⟶*-pairˡ )
-open import poc.OCP0009.NbEPDirDBExamplesStrong using ( reflTm )
-open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; n1; n2; n3 )
+open import poc.OCP0009.NbEPDirDBLibStrong using ( reflTm )
+open import poc.OCP0009.NbEPDirDBLibNat
+  using ( plusTm )
+open import poc.OCP0009.NbEPDirDBExamplesNat
+  using ( n1; n2; n3 )
+open import poc.OCP0009.NbEPDirDBLibMonus
+  using ( monusTm; monus-zero; monus-suc; pred-zero; pred-suc )
 open import poc.OCP0009.NbEPDirDBExamplesDiv
-  using ( monusTm; monus-zero; monus-suc; pred-zero; pred-suc; monus-computes )
+  using ( monus-computes )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( module AmTΠ )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asN )
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( IdN; ⊢tyIdN; reflN; ⊢reflN )

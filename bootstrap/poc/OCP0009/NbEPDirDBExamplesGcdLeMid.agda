@@ -34,8 +34,8 @@ open import poc.OCP0009.NbEPDirDBPi
 open import poc.OCP0009.NbEPDirDBType
   using ( _⟶*_; _⟶_; β; βfst; βsnd; ξ-appˡ; natrec-suc; natrec-zero; single )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-appˡ; ⟶*-natrecⁿ )
-open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm )
-open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm )
+open import poc.OCP0009.NbEPDirDBLibMonus using ( monusTm )
+open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( aIHTat-sub )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep using ( gcdIH; msr; gcdG-sub )
 open import poc.OCP0009.NbEPDirDBType

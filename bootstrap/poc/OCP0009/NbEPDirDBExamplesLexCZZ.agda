@@ -53,7 +53,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ty-Nat; ty-Hom; ty-El )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBExamplesOrd using ( ⊢strong-base' )
+open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base' )
 open import poc.OCP0009.NbEPDirDBExamplesLexC
 
 module _ (Δ : Ctx) (cA cP μ₁ μ₂ stp : RTm ⌊ Δ ⌋)

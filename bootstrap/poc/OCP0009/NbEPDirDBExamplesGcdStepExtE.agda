@@ -46,8 +46,8 @@ open import poc.OCP0009.NbEPDirDBExamplesGcdStep
         ; G2; ⊢G2; G2z; ⊢G2z; gcdInn2; ⊢gcdInn2
         ; G3; ⊢G3; G3z; ⊢G3z; G3s; ⊢G3s; PAIRᶻ; ⊢PAIRᶻ; CERTᶻ; ⊢CERTᶻ
         ; PAIRˢ; ⊢PAIRˢ; CERTˢ; ⊢CERTˢ )
-open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
-open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm; ⊢monus )
+open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
+open import poc.OCP0009.NbEPDirDBLibMonus using ( monusTm; ⊢monus )
 
 
 ------------------------------------------------------------------------

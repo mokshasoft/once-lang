@@ -24,7 +24,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; subTm )
 -- ★ the PRIMITIVES now live in `…LibNat`; re-exported so every existing
 --   importer of this module keeps working unchanged.
-open import poc.OCP0009.NbEPDirDBLibNat public using ( plusTm; ⊢plus )
+open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBType
   using ( single; _⟶_; _⟶*_; done; step
         ; natrec-zero; natrec-suc; ξ-nsuc

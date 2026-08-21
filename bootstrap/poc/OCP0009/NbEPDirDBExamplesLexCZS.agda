@@ -52,7 +52,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ty-Nat; ty-Hom; ty-El )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBExamplesOrd
+open import poc.OCP0009.NbEPDirDBLibOrd
   using ( ⊢strong-base'; ⊢strong-step )
 open import poc.OCP0009.NbEPDirDBExamplesLexC
 

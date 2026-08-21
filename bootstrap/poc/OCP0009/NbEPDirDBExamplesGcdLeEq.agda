@@ -36,7 +36,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; nrs; ⊢lam; ⊢app; ⊢var; here; wk-single; ⊢natrec; _≅ᵀ_; El-⌜Nat⌝
         ; ⊢nzero; done; ty-Hom )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import poc.OCP0009.NbEPDirDBExamplesStrong
+open import poc.OCP0009.NbEPDirDBLibStrong
   using ( ⊢le-refl; reflTm; natAsEl; elAsNat )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLibWk
@@ -44,8 +44,8 @@ open import poc.OCP0009.NbEPDirDBLibWk
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )
 open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( aIHTat-ren; Prv; prv; idToRed; idOfRed )
-open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
-open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm; ⊢monus )
+open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
+open import poc.OCP0009.NbEPDirDBLibMonus using ( monusTm; ⊢monus )
 open import poc.OCP0009.NbEPDirDBLibArithComm
   using ( plusMonoLTm; plusMonoLTm-sub; congAt; ⊢congAt; IdN )
 open import poc.OCP0009.NbEPDirDBLibArithMonus

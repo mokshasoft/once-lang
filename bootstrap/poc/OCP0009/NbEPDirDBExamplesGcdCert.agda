@@ -42,8 +42,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢fst; ⊢snd; ⊢pair; ty-Nat )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single; ⊢[] )
-open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm )
-open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm )
+open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm )
+open import poc.OCP0009.NbEPDirDBLibMonus using ( monusTm )
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( plusMonoLTm; plusMonoLTm-sub )
 open import poc.OCP0009.NbEPDirDBLibArithMonus
   using ( monusLtTm; monusLtTm-sub; ⊢desc-left )

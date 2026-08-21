@@ -44,7 +44,7 @@ open import poc.OCP0009.NbEPDirDBInj
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
-open import poc.OCP0009.NbEPDirDBExamplesStrong
+open import poc.OCP0009.NbEPDirDBLibStrong
   using ( El-homNat; natAsEl; ⊢le-refl; ⊢le-suc; reflTm )
 
 ------------------------------------------------------------------------
@@ -52,11 +52,12 @@ open import poc.OCP0009.NbEPDirDBExamplesStrong
 --   typings, their reduction laws, and `⊢pred-le`.  `…LibArithMonus`
 --   builds on them, so a library was importing an example.
 --
--- ⚠ Re-exported `public`, so every existing importer of THIS module keeps
---   working unchanged; only `Lib*` importers were repointed.
+-- ⚠ NOT re-exported.  Clients import the primitives from the library
+--   directly — a re-export would hide the real dependency and force every
+--   client to inherit this module's whole closure.
 ------------------------------------------------------------------------
 
-open import poc.OCP0009.NbEPDirDBLibMonus public
+open import poc.OCP0009.NbEPDirDBLibMonus
   using ( predTm; monusTm; ⊢pred; ⊢monus
         ; pred-zero; pred-suc; monus-zero; monus-suc
         ; homˡ*; predMot; ⊢predMot; ⊢pred-le )

@@ -38,9 +38,11 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⟶_; β; ξ-nsuc; ξ-Homˡ; ξ-Homʳ )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
+open import poc.OCP0009.NbEPDirDBLibMonus
+  using ( monusTm; ⊢monus )
 open import poc.OCP0009.NbEPDirDBExamplesDiv
-  using ( monusTm; monusStep; ⊢monus; ⊢div-descend )
-open import poc.OCP0009.NbEPDirDBExamplesStrong using ( reflTm )
+  using ( monusStep; ⊢div-descend )
+open import poc.OCP0009.NbEPDirDBLibStrong using ( reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesLexC using ( w; rec1T )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBExamplesAmrecC using ( aStepT; module AmΠ )
