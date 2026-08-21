@@ -29,28 +29,32 @@ module poc.OCP0009.NbEPDirDBSpikeAmrecInd where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; RTm; El; U; Nat; Hom; Π; var; vz; vs; Var; app; nsuc; nzero; natrec
-        ; lam; absurd; jsub; Id; ⌜Id⌝; idrefl; ⌜Id⌝-cong₃; ordtr
+        ; lam; absurd; jsub; Id; ⌜Id⌝; idrefl; ⌜Id⌝-cong₃; ordtr; unit
         ; subTm; subTy; renTy; renTm; Ren; extR; extS; renTy-renTy; Sub
         ; subTm-subTm; subTm-renTm; subTm-cong )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; ⊢nsuc; ⊢lam; ⊢nzero; nrs; ⊢jsub
         ; ty-El; ty-Π; ty-Hom; ty-Nat
-        ; ⊢⌜Id⌝; ⊢idrefl; ⊢conv; csymᵀ; credᵀ; El-⌜Id⌝; ⊢ordtr )
+        ; ⊢⌜Id⌝; ⊢idrefl; ⊢conv; csymᵀ; credᵀ; El-⌜Id⌝; ⊢ordtr
+        ; Hom-Nat-ss; ⊢natrec )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢; Ren⊢-ext; ren-lemma; ren-ty
         ; Sub⊢; Sub⊢-ext; ⊢single; sub-lemma; wk-cancel-tm )
-open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
-open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; wᶠ¹-single; ⊢wkᶠ; sub-w; cong₃; cong₄ )
+open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-fit )
+open import poc.OCP0009.NbEPDirDBLibWk
+  using ( w; wᶠ; wᶠ¹-single; ⊢wkᶠ; sub-w; cong₃; cong₄; ren-sub )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( aStepT; aStepT-ren; Prv; prv; prvOk; prvTm; StepExt; idOfRed
         ; prv-cast; wR; Ren⊢-comp; renren; renrenTy; extcondR; sub1-ren
-        ; subren; subrenTy; extcond; renTy-idR; renTm-idR; module AmTΠ )
+        ; subren; subrenTy; extcond; renTy-idR; renTm-idR; ren-subTy'
+        ; module AmTΠ )
 open import poc.OCP0009.NbEPDirDBLibAmrecRen
   using ( amrecTm'; amrecTm-ren; ihS-atP'; ihS-atP-ren; StepExt-ren )
 open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base )
-open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
+open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; ⊢le-suc; reflTm )
+open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBLibNatrec using ( Ren⊢-id )
 
 ------------------------------------------------------------------------
@@ -373,7 +377,7 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
     using ( amrecTm; ⊢amrecΠ; ⊢amrecPt; idR; auxAt; auxAt-id; auxIH
           ; ihS; ihS-atP; ihS-atR; ⊢ihS-atR; ⊢ihS-atP; ih-app
           ; amrec-β; irrT; irrT-sub; irrElim; irr-ind; descS-at; ⊢descS-at
-          ; ihCall-amrec; mId; extR-id )
+          ; ihCall-amrec; amrec-unfold-Id; mId; extR-id; Aid; cMid )
 
   -- ★★ the family with the RESULT SLOT OPEN — what `⊢jsub` transports.
   ⊢PFam : {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
@@ -757,6 +761,93 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
                                        amrecTm)))))
 
   ------------------------------------------------------------------------
+  -- ★★★ …AND ITS RENAMING LAW, FOR FREE.  A renaming IS a substitution
+  --   (`ren-subTy'`), so `IndBAt-sub` covers this too — no second
+  --   induction, no `-ren` twin.  ⭐ The dividend of stating `IndBAt-sub`
+  --   generically in σ rather than per branch.
+  ------------------------------------------------------------------------
+
+  IndBAt-ren : {Γ' Γ'' : Cx} {ϑ : Ren Γ' Γ''}
+               (θ : Ren ⌊ Δ ⌋ Γ') (θ' : Ren ⌊ Δ ⌋ Γ'') →
+               (∀ v → ϑ (θ v) ≡ θ' v) →
+               (P : RTm ((⌊ Δ ⌋ ∙) ∙)) (n : RTm Γ') →
+               renTy ϑ (IndBAt θ P n) ≡ IndBAt θ' P (renTm ϑ n)
+  IndBAt-ren {ϑ = ϑ} θ θ' h P n =
+    trans (ren-subTy' (IndBAt θ P n))
+      (trans (IndBAt-sub {σ = λ x → var (ϑ x)} θ θ' (λ v → cong var (h v)) P n)
+             (cong (IndBAt θ' P) (sym (ren-sub n))))
+
+  ------------------------------------------------------------------------
+  -- ★★★★★ THE `natrec`'s IH, READ AS `IHAt` — the OBJECT-level term
+  --   becomes the META-level hypothesis step 6 consumes.
+  --
+  -- ★ This is the other half of the seam step 6 sits on.  `⊢natrec` hands
+  --   the successor branch a VARIABLE of type `IndBAt ρ P k`; `ihToPW`
+  --   wants an Agda function.  Bridging them is: rename the variable along
+  --   the ambient renaming (`IndBAt-ren`), then APPLY it — to the carrier
+  --   and to the certificate.  Nothing else.
+  --
+  -- ⚠ THE PEEL IS `PAtR-sub` TWICE, AT THE TWO Π-BINDERS, and both side
+  --   conditions are `refl`: `extS (single y)` and `single c` both meet the
+  --   ambient tower `θ₂ ρ'` at a VARIABLE.  ⭐ Same observation the
+  --   pointwise calculus is built on — a substitution that meets a
+  --   renaming is another renaming.
+  ------------------------------------------------------------------------
+
+  ihFromTm : {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋}
+             {P : RTm ((⌊ Δ ⌋ ∙) ∙)} {k ihv : RTm ⌊ Θ ⌋} →
+             Θ ⊢ ihv ∷ IndBAt ρ P k →
+             IHAt ρ P k
+  ihFromTm {ρ = ρ} {P = P} {k = k} {ihv = ihv} dih
+           {Θ' = Θ'} {ϑ = ϑ} {ρ' = ρ'} ϑ⊢ br y c dy dc =
+    prv _ (⊢-cast (cong El peel)
+                  (⊢app (⊢-cast homPeel (⊢app dih' dy)) dc))
+    where
+      dih' : Θ' ⊢ renTm ϑ ihv ∷ IndBAt ρ' P (renTm ϑ k)
+      dih' = ⊢-cast (IndBAt-ren ρ ρ' br P k) (ren-lemma dih ϑ⊢)
+
+      -- the ambient renaming ONE binder up — where the two peels meet
+      wρ' : Ren ⌊ Δ ⌋ (⌊ Θ' ⌋ ∙)
+      wρ' v = vs (ρ' v)
+
+      br₁ : ∀ v → extS (single y) (θ₂ ρ' v) ≡ var (wρ' v)
+      br₁ v = refl
+
+      br₂ : ∀ v → single c (wρ' v) ≡ var (ρ' v)
+      br₂ v = refl
+
+      VZ = app (renTm (θ₂ ρ') amrecTm) (var (vs vz))
+
+      homPeel = cong (λ t → Π (Hom Nat (nsuc (subTm (single y)
+                                                    (renTm (extR ρ') m))) t)
+                              (El (subTm (extS (single y))
+                                    (PAtR (θ₂ ρ') P (var (vs vz)) VZ))))
+                     (wk-single {v = y} (renTm ϑ k))
+
+      amrecPeel : subTm (single c)
+                    (subTm (extS (single y)) (renTm (θ₂ ρ') amrecTm))
+                ≡ renTm ρ' amrecTm
+      amrecPeel =
+        trans (cong (subTm (single c))
+                    (subren {σ = extS (single y)} {ρ = θ₂ ρ'} {ρ' = wρ'}
+                            br₁ amrecTm))
+              (subren {σ = single c} {ρ = wρ'} {ρ' = ρ'} br₂ amrecTm)
+
+      peel : subTm (single c)
+               (subTm (extS (single y)) (PAtR (θ₂ ρ') P (var (vs vz)) VZ))
+           ≡ PAtR ρ' P y (app (renTm ρ' amrecTm) y)
+      peel =
+        trans (cong (subTm (single c))
+                    (PAtR-sub {σ = extS (single y)} (θ₂ ρ') wρ' br₁ P
+                              (var (vs vz)) VZ))
+          (trans (PAtR-sub {σ = single c} wρ' ρ' br₂ P
+                           (subTm (extS (single y)) (var (vs vz)))
+                           (subTm (extS (single y)) VZ))
+                 (cong₂ (λ u v → PAtR ρ' P u (app v u))
+                        (wk-single {v = c} y)
+                        amrecPeel))
+
+  ------------------------------------------------------------------------
   -- ★★★★★ THE ZERO BRANCH — EX FALSO, exactly as the shifted certificate
   --   promised.  At `n := 0` the hypothesis is `nsuc (μ x) ≤ 0`, the order
   --   COMPUTES to `base`, and `⊢strong-base` discharges it.  No unfolding,
@@ -824,6 +915,301 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
 
 
   ------------------------------------------------------------------------
+  -- ★★★★★★ THE SUCCESSOR BRANCH.
+  --
+  -- ★ THE SHAPE, and every ingredient is now on the shelf:
+  --     1. `IndBAt-sub` at `σ := nrs`   the peel — the SAME law the zero
+  --                                    branch used at `single nzero`
+  --     2. `Hom-Nat-ss`                the hypothesis `nsuc (μ x) ≤ suc K`
+  --                                    COMPUTES to `μ x ≤ K`
+  --     3. `⊢le-suc`                   …widened to the `μ x ≤ suc K` the
+  --                                    handle carries
+  --     4. `ihFromTm` + `ihToPW`       the `natrec`'s IH, as `IndPW`
+  --     5. the client's `IndStep`      `P` at the STEP's result
+  --     6. `amrec-unfold-Id` + `prvSym` + `⊢transportP`
+  --                                    …carried back to `amrec x`
+  --
+  -- ⭐ NOTE WHAT DID **NOT** HAPPEN: no bespoke peel, no second
+  --   substitution law, no `nv-s`/`na-s` twin.  `IndBAt-sub` generic in σ
+  --   serves both branches, exactly as 2026-08-21 predicted.
+  --
+  -- ⚠ THE ORDER COMPUTING IS LOAD-BEARING TWICE OVER.  The zero branch is
+  --   ex falso because `Hom Nat (nsuc k) nzero ⟶ᵀ base`; this branch reads
+  --   its hypothesis as `μ x ≤ K` because `Hom Nat (nsuc a) (nsuc b) ⟶ᵀ
+  --   Hom Nat a b`.  Neither is a lemma.  That is the whole argument for
+  --   the `<`-shifted certificate.
+  ------------------------------------------------------------------------
+
+  sbr : StepExt Δ A cM m stp →
+        {P : RTm ((⌊ Δ ⌋ ∙) ∙)} → ((Δ ▹ A) ▹ El cM) ⊢ P ∷ U →
+        IndStep Δ A cM m stp P →
+        Prv ((Δ ▹ Nat) ▹ IndB P) (subTy nrs (IndB P))
+  sbr ext {P = P} dP istep =
+    prv _ (⊢-cast (sym goalTy)
+            (⊢lam (ren-ty dA ρ₂⊢)
+              (⊢lam (ty-Hom ty-Nat (⊢nsuc dm₃) (⊢nsuc dK₃)) bodyGoal)))
+    where
+      -- the three contexts the branch lives in, as renamings off `Δ`
+      ρ₂ : Ren ⌊ Δ ⌋ ⌊ (Δ ▹ Nat) ▹ IndB P ⌋
+      ρ₂ v = vs (vs v)
+
+      ρ₂⊢ : Ren⊢ Δ ((Δ ▹ Nat) ▹ IndB P) ρ₂
+      ρ₂⊢ = wR there
+
+      ρ₃ᵇ : Ren ⌊ Δ ⌋ ((⌊ Δ ⌋ ∙ ∙) ∙)
+      ρ₃ᵇ v = vs (ρ₂ v)
+
+      -- the bound the branch is proving AT: `suc K`, with `K` the
+      -- `natrec`'s predecessor variable.
+      NN : RTm ⌊ (Δ ▹ Nat) ▹ IndB P ⌋
+      NN = nsuc (var (vs vz))
+
+      -- ★ THE PEEL — `IndBAt-sub` at `σ := nrs`, and nothing else.
+      goalTy : subTy nrs (IndB P) ≡ IndBAt ρ₂ P NN
+      goalTy = IndBAt-sub {σ = nrs} vs ρ₂ (λ v → refl) P (var vz)
+
+      dm₃ = ren-lemma dm (Ren⊢-ext ρ₂⊢)
+      dK₃ = ⊢var (there (there here))
+
+  -- ⚠ from here on everything lives at `Γ₄`, the branch's own context:
+  --     [0] = the certificate  [1] = the carrier  [2] = the IH  [3] = K
+      Γ₄ : Ctx
+      Γ₄ = (((Δ ▹ Nat) ▹ IndB P) ▹ renTy ρ₂ A)
+             ▹ Hom Nat (nsuc (renTm (extR ρ₂) m)) (w NN)
+
+      ρ₄ : Ren ⌊ Δ ⌋ ⌊ Γ₄ ⌋
+      ρ₄ = θ₂ ρ₂
+
+      ρ₄⊢ : Ren⊢ Δ Γ₄ ρ₄
+      ρ₄⊢ = wR (wR ρ₂⊢)
+
+      module R₄ = Handle-at A cM m stp dA dcM dm dstp ρ₄⊢
+
+      Aρ  = renTy ρ₄ A
+      cMρ = renTm (extR ρ₄) cM
+      mρ  = renTm (extR ρ₄) m
+
+      X  = var (vs vz)
+      K₄ = var (vs (vs (vs vz)))
+      μX = subTm (single X) mρ
+
+      dXeq : renTy vs (renTy vs (renTy ρ₂ A)) ≡ Aρ
+      dXeq = trans (cong (renTy vs) (renTy-renTy A)) (renTy-renTy A)
+
+      dX : Γ₄ ⊢ X ∷ Aρ
+      dX = ⊢-cast dXeq (⊢var (there here))
+
+      dK₄ : Γ₄ ⊢ K₄ ∷ Nat
+      dK₄ = ⊢var (there (there (there here)))
+
+      dm₄ = ren-lemma dm (Ren⊢-ext ρ₄⊢)
+      dcM₄ = ren-lemma dcM (Ren⊢-ext ρ₄⊢)
+
+      dμX : Γ₄ ⊢ μX ∷ Nat
+      dμX = ⊢[] dm₄ dX
+
+      dcU : Γ₄ ⊢ subTm (single X) cMρ ∷ U
+      dcU = ⊢[] dcM₄ dX
+
+      -- ⚠ THE MEASURE ARRIVES AT THE WRONG SPELLING.  The Π-binder's type
+      --   says `renTm vs (renTm (extR ρ₂) m)`; every lemma below wants
+      --   `subTm (single X) (renTm (extR ρ₄) m)`.  Both are `m` with slot 0
+      --   at `X` and the ambient at `ρ₄` — one `renren`, one `subren`.
+      κ : Ren (⌊ Δ ⌋ ∙) ⌊ Γ₄ ⌋
+      κ vz     = vs vz
+      κ (vs v) = ρ₄ v
+
+      hκ₁ : ∀ v → vs (extR ρ₂ v) ≡ κ v
+      hκ₁ vz     = refl
+      hκ₁ (vs v) = refl
+
+      hκ₂ : ∀ v → single X (extR ρ₄ v) ≡ var (κ v)
+      hκ₂ vz     = refl
+      hκ₂ (vs v) = refl
+
+      mBridge : renTm vs (renTm (extR ρ₂) m) ≡ μX
+      mBridge =
+        trans (renren {ϑ = vs} {ρ = extR ρ₂} {ρ' = κ} hκ₁ m)
+              (sym (subren {σ = single X} {ρ = extR ρ₄} {ρ' = κ} hκ₂ m))
+
+      -- 2. the hypothesis, and the ORDER COMPUTING it down one successor
+      dcert : Γ₄ ⊢ var vz ∷ Hom Nat (nsuc μX) (nsuc K₄)
+      dcert = ⊢-cast (cong (λ t → Hom Nat (nsuc t) (nsuc K₄)) mBridge)
+                     (⊢var here)
+
+      dpk : Γ₄ ⊢ var vz ∷ Hom Nat μX K₄
+      dpk = ⊢conv dcert (red→≅ᵀ (stepᵀ (Hom-Nat-ss μX K₄) doneᵀ))
+
+      -- 3. …and widened to the bound the handle carries
+      pTm : RTm ⌊ Γ₄ ⌋
+      pTm = ordtr μX K₄ (nsuc K₄) (var vz) (natrec unit (var vz) K₄)
+
+      dp : Γ₄ ⊢ pTm ∷ Hom Nat μX (nsuc K₄)
+      dp = ⊢ordtr dμX dK₄ (⊢nsuc dK₄) dpk (⊢le-suc dK₄)
+
+      -- 4. the `natrec`'s IH — the VARIABLE, read as `IHAt`
+      ihvEq : renTy vs (renTy vs (renTy vs (IndB P))) ≡ IndBAt ρ₄ P K₄
+      ihvEq =
+        trans (cong (λ T → renTy vs (renTy vs T))
+                    (IndBAt-ren {ϑ = vs} vs ρ₂ (λ v → refl) P (var vz)))
+          (trans (cong (renTy vs)
+                       (IndBAt-ren {ϑ = vs} ρ₂ ρ₃ᵇ (λ v → refl) P (var (vs vz))))
+                 (IndBAt-ren {ϑ = vs} ρ₃ᵇ ρ₄ (λ v → refl) P (var (vs (vs vz)))))
+
+      dIHv : Γ₄ ⊢ var (vs (vs vz)) ∷ IndBAt ρ₄ P K₄
+      dIHv = ⊢-cast ihvEq (⊢var (there (there here)))
+
+      -- 5. the handle, and the client's step premise
+      H : RTm ⌊ Γ₄ ⌋
+      H = ihS-atP' (renTm ρ₄ stp) cMρ mρ X X K₄ pTm
+
+      dH : Γ₄ ⊢ H ∷ aIHTat Aρ cMρ mρ μX
+      dH = R₄.⊢ihS-atP dX dK₄ dX dp
+
+      stepPrv : Prv Γ₄ (El (PAtR ρ₄ P X (app (app (renTm ρ₄ stp) X) H)))
+      stepPrv = istep ρ₄⊢ X H dX dH
+                      (ihToPW ext dP ρ₄⊢ X K₄ pTm (var vz) dX dK₄ dp dpk
+                              -- ⚠ PINNED: `IHAt`/`IndBAt` are DEFINED, so
+                              --   Agda unfolds instead of decomposing, and
+                              --   `P` lands under two renamings.
+                              (ihFromTm {Θ = Γ₄} {ρ = ρ₄} {P = P} {k = K₄}
+                                        {ihv = var (vs (vs vz))} dIHv))
+
+      -- 6. …carried back to `amrec X`
+      dstp₄ : Γ₄ ⊢ renTm ρ₄ stp ∷ aStepT Aρ cMρ mρ
+      dstp₄ = ⊢-cast (aStepT-ren A cM m) (ren-lemma dstp ρ₄⊢)
+
+      fitPeel = cong (λ T → Π T (El (subTm (extS (single X)) (w cMρ))))
+                     (aIHT-fit {X = X} Aρ cMρ mρ)
+
+      cmPeel : subTm (single H) (subTm (extS (single X)) (w cMρ))
+             ≡ subTm (single X) cMρ
+      cmPeel = trans (cong (subTm (single H)) (sub-w cMρ))
+                     (wk-single {v = H} (subTm (single X) cMρ))
+
+      dStepRes : Γ₄ ⊢ app (app (renTm ρ₄ stp) X) H ∷ El (subTm (single X) cMρ)
+      dStepRes = ⊢-cast (cong El cmPeel)
+                        (⊢app (⊢-cast fitPeel (⊢app dstp₄ dX)) dH)
+
+      dAmr : Γ₄ ⊢ app R₄.amrecTm X ∷ El (subTm (single X) cMρ)
+      dAmr = R₄.⊢amrecPt dX
+
+      unfold : Prv Γ₄ (Id (El (subTm (single X) cMρ))
+                          (app R₄.amrecTm X)
+                          (app (app (renTm ρ₄ stp) X) H))
+      unfold = R₄.amrec-unfold-Id (R₄.extΘ ext) dX dK₄ dp
+
+      pathFwd : Prv Γ₄ (Id (El (subTm (single X) cMρ))
+                           (app (app (renTm ρ₄ stp) X) H)
+                           (app R₄.amrecTm X))
+      pathFwd = prvSym dcU dAmr dStepRes unfold
+
+      amrEq : renTm ρ₄ amrecTm ≡ R₄.amrecTm
+      amrEq = amrecTm-ren {ρ = ρ₄} stp cM m
+
+      bodyGoal : Γ₄ ⊢ jsub (PFam ρ₄ P X) (prvTm pathFwd) (prvTm stepPrv)
+                   ∷ El (PAtR ρ₄ P X (app (renTm ρ₄ amrecTm) X))
+      bodyGoal =
+        ⊢-cast (cong (λ t → El (PAtR ρ₄ P X (app t X))) (sym amrEq))
+               (⊢transportP ρ₄⊢ dP dX dStepRes dAmr
+                            (prvOk pathFwd) (prvOk stepPrv))
+
+  ------------------------------------------------------------------------
+  -- ★★★★★★★ `amrec-ind` — ASSEMBLED, AND INSTANTIATED.
+  --
+  -- ⚠⚠ THIS IS THE NON-VACUITY CHECK, AND IT IS THE POINT OF THE
+  --   DEFINITION.  A combinator whose premise is unsatisfiable typechecks
+  --   green and proves nothing — that is exactly how `lexrec` died.  So the
+  --   `natrec` is not merely built; it is INSTANTIATED at `n := suc (μ x)`
+  --   and APPLIED to `x` and a certificate, and the certificate is
+  --   `⊢le-refl` at `suc (μ x)` — an inhabitant that plainly exists.
+  --
+  -- ⭐ THAT is what makes `IndB P` non-vacuous: `nsuc (μ x) ≤ nsuc (μ x)`
+  --   is reflexivity, not an assumption.  The bound is chosen to make the
+  --   STRICT certificate `μ x < n` satisfiable at the very `x` being
+  --   proved about — which is the whole reason the shift to `<` cost
+  --   nothing at the top level while buying the ex-falso zero branch.
+  --
+  -- ★ AND THE APPLICATION IS `ihFromTm`, REUSED.  Reading the `natrec`'s
+  --   result as a meta-level hypothesis and reading the successor branch's
+  --   IH variable as one are the SAME operation — so the final application
+  --   needs no new peel.
+  ------------------------------------------------------------------------
+
+  amrecInd : StepExt Δ A cM m stp →
+             {P : RTm ((⌊ Δ ⌋ ∙) ∙)} → ((Δ ▹ A) ▹ El cM) ⊢ P ∷ U →
+             IndStep Δ A cM m stp P →
+             {x : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A →
+             Prv Δ (El (subTm (single x)
+                        (subTm (single (app (w amrecTm) (var vz))) P)))
+  amrecInd ext {P = P} dP istep {x = x} dx =
+    prv-cast (cong El finalEq)
+      (ihFromTm {Θ = Δ} {ρ = idR} {P = P} {k = N} {ihv = ntTm} dnat'
+                {Θ' = Δ} {ϑ = idR} {ρ' = idR} Ren⊢-id (λ v → refl)
+                x (reflTm N) dx' dcert)
+    where
+      μx = subTm (single x) m
+      dμx = ⊢[] dm dx
+
+      -- ★★ THE BOUND: one above the measure of the very carrier in hand.
+      N = nsuc μx
+      dN = ⊢nsuc dμx
+
+      sb = sbr ext dP istep
+
+      ntTm = natrec (zbrTm P) (prvTm sb) N
+
+      dnat : Δ ⊢ ntTm ∷ subTy (single N) (IndB P)
+      dnat = ⊢natrec (⊢IndB dP) (⊢zbr dP) (prvOk sb) dN
+
+      -- the same peel the zero branch used, at `single N` instead of
+      -- `single nzero` — `IndBAt-sub` generic in σ, a third time.
+      dnat' : Δ ⊢ ntTm ∷ IndBAt idR P N
+      dnat' = ⊢-cast (IndBAt-sub {σ = single N} vs idR (λ v → refl) P (var vz))
+                     dnat
+
+      dx' : Δ ⊢ x ∷ renTy idR A
+      dx' = ⊢-cast (sym Aid) dx
+
+      -- ★ THE CERTIFICATE, AND IT IS REFLEXIVITY.
+      dcert : Δ ⊢ reflTm N
+                ∷ Hom Nat (nsuc (subTm (single x) (renTm (extR idR) m)))
+                          (renTm idR N)
+      dcert = ⊢-cast (cong₂ (λ u v → Hom Nat (nsuc (subTm (single x) u)) v)
+                            (sym mId)
+                            (sym (renTm-idR (λ v → refl) N)))
+                     (⊢le-refl dN)
+
+      -- ⚠ …and the last peel: `PAtR` at the IDENTITY ambient renaming IS
+      --   the statement's own `IndAt`.  The two differ only in WHICH slot
+      --   is filled first — `IndAt` puts the recursive value in as a
+      --   FUNCTION of the carrier variable (`valAt`), `PAtR` puts it in
+      --   already applied.  Three cases, and the `vz` one is `wk-single`.
+      extR²id : ∀ v → extR (extR idR) v ≡ v
+      extR²id = extR-id (extR-id (λ v → refl))
+
+      VX = app amrecTm x
+
+      bridge : ∀ v → _
+      bridge vz          = cong (λ t → app t x)
+                                (sym (wk-single {v = x} amrecTm))
+      bridge (vs vz)     = wk-single {v = VX} x
+      bridge (vs (vs v)) = refl
+
+      finalEq : PAtR idR P x (app (renTm idR amrecTm) x)
+              ≡ subTm (single x)
+                  (subTm (single (app (w amrecTm) (var vz))) P)
+      finalEq =
+        trans (cong (λ Q → subTm (single (app (renTm idR amrecTm) x))
+                             (subTm (extS (single x)) Q))
+                    (renTm-idR extR²id P))
+          (trans (cong (λ t → subTm (single (app t x))
+                                (subTm (extS (single x)) P))
+                       (renTm-idR (λ v → refl) amrecTm))
+            (trans (subTm-subTm P)
+                   (trans (subTm-cong bridge P) (sym (subTm-subTm P)))))
+
+  ------------------------------------------------------------------------
   -- ✅ THE ZERO BRANCH IS PROVED — `⊢zbr`, above.  (This block is kept for
   -- the REASONING; the blocker it describes was dissolved, not worked around.)
   --
@@ -872,3 +1258,18 @@ module Concl (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
     IndStep Δ A cM m stp P →
     {x : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ A →
     Prv Δ (IndAt P x)
+
+  ------------------------------------------------------------------------
+  -- ✅✅✅ …AND IT IS INHABITED.  The `Set` above was written 2026-08-19 as
+  -- a SPECIFICATION, with the explicit note that "no instance exists, so
+  -- nothing below is yet evidence".  It exists now.
+  --
+  -- ⚠ THE SIDE CONDITION IS REAL AND IS NOT FREE: `StepExt` — the step
+  --   respects pointwise equality of handles — is the same premise gcd had
+  --   to discharge (`gcdStepExt`).  A client of `amrec-ind` owes `StepExt`
+  --   and `IndStep`, and nothing else.
+  ------------------------------------------------------------------------
+
+  amrecInd : StepExt Δ A cM m stp →
+             {P : RTm ((⌊ Δ ⌋ ∙) ∙)} → AmrecInd P
+  amrecInd = Typing.amrecInd Δ A cM m stp dA dcM dm dstp
