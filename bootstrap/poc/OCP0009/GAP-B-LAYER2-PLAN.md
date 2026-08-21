@@ -84,19 +84,45 @@ split.
 --------------------------------------------------------------------------
 ## 3. WHAT IS LEFT, in dependency order
 
-1. **`zero-monus`** — `0 ∸ b ≡ 0`. Internal natrec on `b`.
-2. **`pred-monus`** — `pred (suc a ∸ b) ≡ a ∸ b`. Internal natrec on `b`.
+1. ✅ **`zero-monus`** — `0 ∸ b ≡ 0`. Green, internal natrec on `b`.
+2. ✅ **`pred-monus`** — `pred (suc a ∸ b) ≡ a ∸ b`. Green.
    ⚠ `monusTm` recurses on its SECOND argument (`monus-suc m k :
    m ∸ suc k ⟶* pred (m ∸ k)`), so `suc a ∸ suc b ≡ a ∸ b` is NOT
    definitional and this is the lemma that supplies it.
-3. **No-confusion for `Nat`** — `IdN nzero (nsuc p) → El ⌜base⌝`.
-   Route: `noConf n := natrec ⌜Unit⌝ ⌜base⌝ n` at motive `U` (`ty-U`), then
-   `jsub` along the equation carries `unit : El (noConf 0)` to
-   `El (noConf (suc p))`, which reduces to `base`. ⚠ Needed for the
-   `a = 0, b = suc b'` leaf of step 4 and nowhere else.
-4. **`monusPlus`** — `a ∸ b ≡ suc p  ⟹  a ≡ (suc p) + b`.
+   ⭐ Both were green FIRST TRY, and the reason is worth keeping:
+   `monusTm m n = natrec m (predTm (var vz)) n` keeps `m` at depth 0, so it
+   peels through `subTm`/`renTm` DEFINITIONALLY — no `-sub`/`-ren` tax at
+   all, unlike `mulTm`.
+3. ✅ **No-confusion for `Nat`** — `⊢noConf` / `exFalsoN`, green.
+   `nfam := natrec ⌜Unit⌝ ⌜base⌝ (var vz)` at motive `U` (`ty-U` — the large
+   elimination is already in the kernel, no new rule), then `jsub` carries
+   `unit : El (nfam 0)` to `El (nfam (suc p))`, which reduces to `base`.
+4. ⬜ **`monusPlus`** — THE NEXT PIECE. — `a ∸ b ≡ suc p  ⟹  a ≡ (suc p) + b`.
    Double induction: outer on `b`, inner on `a`, motive `Π`-quantified over
-   `a` and over the equation. Uses 1–3 and `⊢plus0`/`⊢plusS`.
+   `a`, `p` and over the equation. Uses 1–3 and `⊢plus0`/`⊢plusS`.
+
+   ### The derivation, worked out — do not re-derive it
+
+       outer motive at `Γ ▹ Nat` (b = var vz):
+         mpAt b = Π Nat (a) (Π Nat (p)
+                    (Π (IdN (a ∸ b) (nsuc p))
+                       (IdN a (plusTm (nsuc p) b))))
+
+   * **b = 0.**  `a ∸ 0 ⟶ a` (`monus-zero`), so `eq : IdN a (nsuc p)`.
+     Goal's RHS `plusTm (nsuc p) 0 ⟶ nsuc (plusTm p 0)` (definitional), and
+     `⊢plus0` closes `plusTm p 0 ≡ p`.  ⇒ `transN eq (symN (congS plus0))`.
+     **No inner induction.**
+   * **b = suc b'.**  Inner `natrec` on `a`, motive
+     `N(a) = Π (IdN (a ∸ suc b') (nsuc p)) (IdN a (plusTm (nsuc p) (nsuc b')))`.
+     - `a = 0`: `zero-monus` + `eq` give `IdN 0 (nsuc p)`; `exFalsoN`.
+     - `a = suc a'`: `suc a' ∸ suc b' ⟶ pred (suc a' ∸ b')`, and
+       `pred-monus` rewrites that to `a' ∸ b'`; the OUTER IH at
+       `(a' , p , that)` gives `IdN a' (plusTm (nsuc p) b')`; `congS` lifts
+       it to `nsuc`, and `⊢plusS` turns `plusTm (nsuc p) (nsuc b')` into
+       `nsuc (plusTm (nsuc p) b')`.  ⇒ `transN (congS IH) (symN plusS)`.
+
+   ⚠ The inner induction is on a VARIABLE (`a`), so it needs no `inspect`;
+   only §2's split on `a ∸ b` does.
 5. **The motive** `P` of §1, plus `⊢P` (it is a `⌜Σ⌝` of two `dvdCode`s —
    `⊢dvdCode` is green, so this is assembly).
 6. **`gcdStepExt`** — ALREADY PROVED (`…GcdStepExtA`). No work.

@@ -25,7 +25,7 @@ module poc.OCP0009.NbEPDirDBExamplesDvdArith where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; vz; vs
-        ; RTy; Nat
+        ; RTy; Nat; base
         ; RTm; var; nzero; nsuc )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋
@@ -39,7 +39,9 @@ open import poc.OCP0009.NbEPDirDBLibMul using ( mulTm; ⊢mul; mul-zero )
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( IdN; reflN; ⊢reflN )
 open import poc.OCP0009.NbEPDirDBLibDvd using ( dvdT; dvd-intro )
 open import poc.OCP0009.NbEPDirDBLibDvdArith
-  using ( assocB; ⊢assoc; distB; ⊢dist; mul-suc; dvdSum; ⊢dvd-plus )
+  using ( assocB; ⊢assoc; distB; ⊢dist; mul-suc; dvdSum; ⊢dvd-plus
+        ; ⊢congPd; zmB; ⊢zero-monus; pmB; ⊢pred-monus; ⊢noConf; exFalsoN )
+open import poc.OCP0009.NbEPDirDBLibMonus using ( predTm; monusTm; ⊢pred; ⊢monus )
 
 ------------------------------------------------------------------------
 -- 1. AT VARIABLES.  Context `◇ ▹ Nat ▹ Nat ▹ Nat`: [0] = c, [1] = b,
@@ -146,7 +148,45 @@ d2∣10 = ⊢dvd-plus ⊢n2 ⊢n4 ⊢n6 d2∣4 d2∣6
 --    divisibility spec will call.
 ------------------------------------------------------------------------
 
--- ★ THE SHAPE GAP B WILL CALL, and the reason it is stated as a module
+------------------------------------------------------------------------
+-- 3. THE MONUS LAYER — the lemmas `monusPlus` will be built from.
+--
+-- ⚠ ALL THREE ARE AT OPEN NATURALS, which is the only level that matters:
+--   gcd's step never has a numeral in hand.
+------------------------------------------------------------------------
+
+-- `0 ∸ a = 0`
+zm-open : Γ₃ ⊢ _ ∷ zmB A
+zm-open = ⊢zero-monus dA
+
+-- `pred (suc a ∸ b) = a ∸ b` — what supplies `suc a ∸ suc b = a ∸ b`,
+-- which is NOT definitional (`monusTm` recurses on its SECOND argument).
+pm-open : Γ₃ ⊢ _ ∷ pmB A B
+pm-open = ⊢pred-monus dA dB
+
+-- congruence for `pred`, at open naturals
+cp-open : Γ₃ ⊢ _ ∷ IdN (predTm A) (predTm A)
+cp-open = ⊢congPd dA dA (⊢reflN dA)
+
+------------------------------------------------------------------------
+-- 4. NO CONFUSION — `0 ≡ suc a` yields ANY equation.
+--
+-- ⚠ STATED AS A MODULE, because the whole point is that the hypothesis is
+--   UNINHABITABLE: a closed witness would be a contradiction in the object
+--   language.  Taking it as a parameter is the honest exercise — it shows
+--   the elimination TYPECHECKS without claiming the premise holds.
+------------------------------------------------------------------------
+
+module NoConf (e : RTm ⌊ Γ₃ ⌋) (de : Γ₃ ⊢ e ∷ IdN nzero (nsuc A)) where
+
+  toBase : Γ₃ ⊢ _ ∷ base
+  toBase = ⊢noConf dA de
+
+  anyEq : Γ₃ ⊢ _ ∷ IdN B C
+  anyEq = exFalsoN dA dB dC de
+
+------------------------------------------------------------------------
+-- 5. THE SHAPE GAP B WILL CALL, and the reason it is stated as a module
 --   rather than a closed term: gcd's step supplies its hypotheses at
 --   whatever context the recursion has reached, so the client is always
 --   "some Γ with these five terms typed", never a fixed context.
