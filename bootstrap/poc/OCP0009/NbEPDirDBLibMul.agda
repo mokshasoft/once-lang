@@ -15,14 +15,18 @@
 {-# OPTIONS --safe #-}
 module poc.OCP0009.NbEPDirDBLibMul where
 
-open import normalizer.Syntax.Types using ( _≡_; cong )
+open import normalizer.Syntax.Types
+  using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; _∙; RTm; var; vz; nzero; natrec; Nat; Sub; subTm )
+  using ( Cx; _∙; RTm; var; vz; nzero; nsuc; natrec; Nat; Sub; subTm
+        ; Ren; renTm; extS )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ⌊_⌋; _▹_; _⊢_∷_; ⊢var; here; ⊢nzero; ⊢natrec; ty-Nat
         ; _⟶*_; done; step; natrec-zero; natrec-suc )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
-open import poc.OCP0009.NbEPDirDBLibWk using ( w; sub-w² )
+open import poc.OCP0009.NbEPDirDBType using ( single )
+open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w; sub-w; sub-w²; ren-sub )
 open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 
 mulTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
@@ -44,3 +48,30 @@ mulTm-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (m n : RTm Γ) →
             subTm σ (mulTm m n) ≡ mulTm (subTm σ m) (subTm σ n)
 mulTm-sub {σ = σ} m n =
   cong (λ t → natrec nzero (plusTm t (var vz)) (subTm σ m)) (sub-w² {σ = σ} n)
+
+mul-suc : {Γ : Cx} (m n : RTm Γ) → mulTm (nsuc m) n ⟶* plusTm n (mulTm m n)
+mul-suc m n =
+  subst (λ t → mulTm (nsuc m) n ⟶* t) peel
+        (step (natrec-suc nzero (plusTm (w (w n)) (var vz)) m) done)
+  where
+    inner : subTm (extS (single m)) (w (w n)) ≡ w n
+    inner = trans (sub-w {σ = single m} (w n)) (cong w (wk-single {v = m} n))
+
+    peel = trans (cong (λ t → subTm (single (mulTm m n))
+                                (natrec (var vz) (nsuc (var vz)) t))
+                       inner)
+                 (cong (λ t → natrec (mulTm m n) (nsuc (var vz)) t)
+                       (wk-single {v = mulTm m n} n))
+
+-- ⚠ AND `renTm` DOES NOT DISTRIBUTE THROUGH `mulTm` EITHER, for the same
+--   reason — so the IH VARIABLE's type needs its own peel.  `assocB` got
+--   away without one because `plusTm` renames definitionally; the moment a
+--   `mulTm` is in the motive, `⊢var here` no longer has the shape the
+--   branch wants.  ⭐ A renaming IS a substitution (`ren-sub`), so
+--   `mulTm-sub` supplies this too — no second induction.
+mulTm-ren : {Γ Γ' : Cx} {ρ : Ren Γ Γ'} (m n : RTm Γ) →
+            renTm ρ (mulTm m n) ≡ mulTm (renTm ρ m) (renTm ρ n)
+mulTm-ren {ρ = ρ} m n =
+  trans (ren-sub (mulTm m n))
+    (trans (mulTm-sub {σ = λ v → var (ρ v)} m n)
+           (cong₂ mulTm (sym (ren-sub m)) (sym (ren-sub n))))

@@ -48,17 +48,14 @@ open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBLibMonus
   using ( predTm; monusTm; ⊢pred; ⊢monus; monus-zero; monus-suc
         ; pred-zero; pred-suc )
-open import poc.OCP0009.NbEPDirDBLibMul
-  using ( mulTm; ⊢mul; mul-zero; mulTm-sub )
+open import poc.OCP0009.NbEPDirDBLibMul using ( mulTm; ⊢mul; mul-zero; mulTm-sub; mul-suc; mulTm-ren )
 open import poc.OCP0009.NbEPDirDBLibDvd using ( dvdT; dvd-intro; dvd-wit; dvd-eq )
 open import poc.OCP0009.NbEPDirDBLibStrong using ( natAsEl )
 open import poc.OCP0009.NbEPDirDBLibPair using ( asN )
 open import poc.OCP0009.NbEPDirDBLibArithComm
   using ( IdN; ⊢tyIdN; elIdN; reflN; ⊢reflN; symN; ⊢symN; transN; ⊢transN
         ; plus0Tm; ⊢plus0; plusSTm; ⊢plusS; commTm; ⊢comm )
-open import poc.OCP0009.NbEPDirDBLibDvdArith
-  using ( congPd; ⊢congPd; pmTm; ⊢pred-monus; zmTm; ⊢zero-monus; mul-suc
-        ; mulTm-ren )
+open import poc.OCP0009.NbEPDirDBLibDvdArith using ( congPd; ⊢congPd; pmTm; ⊢pred-monus; zmTm; ⊢zero-monus )
 
 ------------------------------------------------------------------------
 -- ★ 0.  CONGRUENCE IN `∸`'s SECOND SLOT.
