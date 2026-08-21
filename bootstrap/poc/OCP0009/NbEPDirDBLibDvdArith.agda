@@ -30,23 +30,26 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; vz; vs
         ; RTy; El; Id; Nat; U; Unit; base; Π; lam; app; ⌜Unit⌝; ⌜base⌝; unit
+        ; ⌜Σ⌝; Sub
         ; RTm; var; nzero; nsuc; natrec; idrefl; jsub; ⌜Id⌝; ⌜Nat⌝
         ; pair; fst; snd; absurd
-        ; subTy; subTm; renTy; renTm; Ren; extS )
+        ; subTy; subTm; renTy; renTm; Ren; extS; extR )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢idrefl; ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝
         ; ty-Id; ty-El; ty-Nat; ty-U; ty-Π
         ; ⊢⌜Unit⌝; ⊢⌜base⌝; ⊢unit; ⊢absurd; ⊢lam; ⊢app; El-⌜Unit⌝; El-⌜base⌝; ξ-El
+        ; ⊢⌜Σ⌝
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Id⌝
         ; ξ-Idˡ; ξ-Idʳ; ξ-nsuc; ξ-natrecⁿ; natrec-zero; natrec-suc
         ; _⟶*_; step; done )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
-open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-natrecⁿ )
+open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-natrecᶻ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w; ren-sub; sub-w; cong₃; ren-w²; ren-w³ )
+open import poc.OCP0009.NbEPDirDBLibWk
+  using ( w; nrs-w; ren-sub; sub-w; cong₃; ren-w²; ren-w³; ren-w )
 open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBLibStrong using ( natAsEl; elAsNat )
 open import poc.OCP0009.NbEPDirDBLibPair using ( asN )
@@ -54,9 +57,9 @@ open import poc.OCP0009.NbEPDirDBLibArithComm
   using ( IdN; ⊢tyIdN; elIdN; reflN; ⊢reflN; congS; ⊢congS
         ; symN; ⊢symN; transN; ⊢transN
         ; plus0B; plus0Tm; ⊢plus0; plusSB; plusSTm; ⊢plusS )
-open import poc.OCP0009.NbEPDirDBLibMul using ( mulTm; ⊢mul; mulTm-sub )
+open import poc.OCP0009.NbEPDirDBLibMul using ( mulTm; ⊢mul; mulTm-sub; mul-zero )
 open import poc.OCP0009.NbEPDirDBLibDvd
-  using ( dvdT; dvd-intro; dvd-wit; dvd-eq )
+  using ( dvdT; dvd-intro; dvd-wit; dvd-eq; dvdCode; ⊢dvdCode )
 open import poc.OCP0009.NbEPDirDBLibMonus
   using ( predTm; monusTm; ⊢pred; ⊢monus; pred-suc; monus-zero; monus-suc )
 
@@ -584,3 +587,89 @@ exFalsoN {x = x} {y = y} dp dx dy de =
 -- ⭐ Same lever as `leaf₃s` and `split2` before it: ONE BIG TERM PER
 --   MODULE once the term is big enough.  See `agda-cost-is-elaborated-term-size`.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ★★ 10.  THE TWO DIVISIBILITY FACTS THE BASE CASES NEED.
+--
+-- ⚠ `…LibDvd`'s header calls both "one-liners" and defines NEITHER.  They
+--   are one-liners only once `mul-zero`/`mul-suc` and `⊢plus0` are in
+--   hand, which is why they land here rather than there.
+--
+-- ★ `d ∣ 0` takes the witness 0; `d ∣ d` takes 1, and `1 * d` reduces to
+--   `d + 0`, which `⊢plus0` closes.  ⭐ This is exactly the orientation
+--   `…LibDvd` chose `n ≡ k * d` for: with `d * k` BOTH would be stuck at
+--   the variable `d`.
+------------------------------------------------------------------------
+
+⊢dvd-zero : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ Nat →
+            Γ ⊢ pair nzero (reflN nzero) ∷ dvdT d nzero
+⊢dvd-zero {d = d} dd =
+  dvd-intro dd ⊢nzero ⊢nzero
+    (⊢conv (⊢reflN ⊢nzero)
+           (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idʳ (mul-zero d)))))
+
+⊢dvd-refl : {Γ : Ctx} {d : RTm ⌊ Γ ⌋} → Γ ⊢ d ∷ Nat →
+            Γ ⊢ pair (nsuc nzero) (symN (plusTm d nzero) (plus0Tm d))
+              ∷ dvdT d d
+⊢dvd-refl {d = d} dd =
+  dvd-intro dd dd (⊢nsuc ⊢nzero)
+    (⊢conv (⊢symN (⊢plus dd ⊢nzero) dd (⊢plus0 dd))
+           (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idʳ oneMul))))
+  where
+    -- `1 * d ⟶* d + 0`
+    oneMul = ⟶*-trans (mul-suc nzero d) (⟶*-natrecᶻ (mul-zero d))
+
+------------------------------------------------------------------------
+-- ★★★ 11.  THE CONJUNCTIVE MOTIVE, AS A CODE — AND ITS NATURALITY.
+--
+-- ⚠ THE MOTIVE OF gcd's SPEC MUST BE A CONJUNCTION (GAP-B-LAYER2-PLAN §1):
+--   the `a > b` branch's IH gives `d ∣ (a ∸ b)`, and reaching `d ∣ a`
+--   needs `monusPlus` AND the second conjunct.  Neither half is provable
+--   alone by this recursion.
+--
+-- ★ It is a CODE because `amrec-ind`'s motive lives in `U` — that
+--   constraint is what `⊢dvdCode` was built to clear.
+--
+-- ⚠ AND THE NATURALITY LAWS ARE NOT FREE: `dvdCode` contains a `mulTm`,
+--   which commutes with neither `subTm` nor `renTm` definitionally.
+------------------------------------------------------------------------
+
+QCode : {Γ : Cx} (u₁ u₂ v : RTm Γ) → RTm Γ
+QCode u₁ u₂ v = ⌜Σ⌝ (dvdCode v u₁) (w (dvdCode v u₂))
+
+⊢QCode : {Γ : Ctx} {u₁ u₂ v : RTm ⌊ Γ ⌋} →
+         Γ ⊢ u₁ ∷ Nat → Γ ⊢ u₂ ∷ Nat → Γ ⊢ v ∷ Nat →
+         Γ ⊢ QCode u₁ u₂ v ∷ U
+⊢QCode d1 d2 dv = ⊢⌜Σ⌝ (⊢dvdCode dv d1) (⊢wk (⊢dvdCode dv d2))
+
+dvdCode-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (d n : RTm Γ) →
+              subTm σ (dvdCode d n) ≡ dvdCode (subTm σ d) (subTm σ n)
+dvdCode-sub {σ = σ} d n =
+  cong₂ (λ u v → ⌜Σ⌝ ⌜Nat⌝ (⌜Id⌝ ⌜Nat⌝ u v))
+        (sub-w {σ = σ} n)
+        (trans (mulTm-sub {σ = extS σ} (var vz) (w d))
+               (cong (mulTm (var vz)) (sub-w {σ = σ} d)))
+
+dvdCode-ren : {Γ Γ' : Cx} {ρ : Ren Γ Γ'} (d n : RTm Γ) →
+              renTm ρ (dvdCode d n) ≡ dvdCode (renTm ρ d) (renTm ρ n)
+dvdCode-ren {ρ = ρ} d n =
+  cong₂ (λ u v → ⌜Σ⌝ ⌜Nat⌝ (⌜Id⌝ ⌜Nat⌝ u v))
+        (ren-w {ρ = ρ} n)
+        (trans (mulTm-ren {ρ = extR ρ} (var vz) (w d))
+               (cong (mulTm (var vz)) (ren-w {ρ = ρ} d)))
+
+QCode-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'} (u₁ u₂ v : RTm Γ) →
+            subTm σ (QCode u₁ u₂ v)
+          ≡ QCode (subTm σ u₁) (subTm σ u₂) (subTm σ v)
+QCode-sub {σ = σ} u₁ u₂ v =
+  cong₂ ⌜Σ⌝ (dvdCode-sub v u₁)
+            (trans (sub-w {σ = σ} (dvdCode v u₂))
+                   (cong w (dvdCode-sub v u₂)))
+
+QCode-ren : {Γ Γ' : Cx} {ρ : Ren Γ Γ'} (u₁ u₂ v : RTm Γ) →
+            renTm ρ (QCode u₁ u₂ v)
+          ≡ QCode (renTm ρ u₁) (renTm ρ u₂) (renTm ρ v)
+QCode-ren {ρ = ρ} u₁ u₂ v =
+  cong₂ ⌜Σ⌝ (dvdCode-ren v u₁)
+            (trans (ren-w {ρ = ρ} (dvdCode v u₂))
+                   (cong w (dvdCode-ren v u₂)))
