@@ -29,15 +29,16 @@ module poc.OCP0009.NbEPDirDBLibDvdArith where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; vz; vs
-        ; RTy; El; Id; Nat
+        ; RTy; El; Id; Nat; U; Unit; base; Π; lam; app; ⌜Unit⌝; ⌜base⌝; unit
         ; RTm; var; nzero; nsuc; natrec; idrefl; jsub; ⌜Id⌝; ⌜Nat⌝
-        ; pair; fst; snd
+        ; pair; fst; snd; absurd
         ; subTy; subTm; renTy; renTm; Ren; extS )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢idrefl; ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝
-        ; ty-Id; ty-El; ty-Nat
+        ; ty-Id; ty-El; ty-Nat; ty-U; ty-Π
+        ; ⊢⌜Unit⌝; ⊢⌜base⌝; ⊢unit; ⊢absurd; ⊢lam; ⊢app; El-⌜Unit⌝; El-⌜base⌝; ξ-El
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Id⌝
         ; ξ-Idˡ; ξ-Idʳ; ξ-nsuc; ξ-natrecⁿ; natrec-zero; natrec-suc
         ; _⟶*_; step; done )
@@ -47,7 +48,7 @@ open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w; ren-sub; sub-w )
 open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
-open import poc.OCP0009.NbEPDirDBLibStrong using ( natAsEl )
+open import poc.OCP0009.NbEPDirDBLibStrong using ( natAsEl; elAsNat )
 open import poc.OCP0009.NbEPDirDBLibPair using ( asN )
 open import poc.OCP0009.NbEPDirDBLibArithComm
   using ( IdN; ⊢tyIdN; elIdN; reflN; ⊢reflN; congS; ⊢congS
@@ -55,6 +56,8 @@ open import poc.OCP0009.NbEPDirDBLibArithComm
 open import poc.OCP0009.NbEPDirDBLibMul using ( mulTm; ⊢mul; mulTm-sub )
 open import poc.OCP0009.NbEPDirDBLibDvd
   using ( dvdT; dvd-intro; dvd-wit; dvd-eq )
+open import poc.OCP0009.NbEPDirDBLibMonus
+  using ( predTm; monusTm; ⊢pred; ⊢monus; pred-suc; monus-zero; monus-suc )
 
 ------------------------------------------------------------------------
 -- ★ 0.  CONGRUENCE IN `+`'s SECOND SLOT.
@@ -392,3 +395,177 @@ dvdSum d x y hx hy =
     t3  = ⊢symN dD dC (⊢dist djx djy dd)
 
     eq  = ⊢transN dA dC dD (⊢transN dA dB dC t1 t2) t3
+
+------------------------------------------------------------------------
+-- ★ 4.  CONGRUENCE FOR `pred`.  Same `jsub` shape again; the monus
+--   lemmas below both rewrite under a `predTm`.
+--
+-- ⭐ `monusTm m n = natrec m (predTm (var vz)) n` recurses on its SECOND
+--   argument and keeps `m` at depth 0, so — unlike `mulTm` — it peels
+--   through `subTm`/`renTm` DEFINITIONALLY.  Everything below is therefore
+--   free of `-sub`/`-ren` bookkeeping.  ⚠ `predTm (nsuc n)` is still NOT
+--   definitionally `n` (`pred-suc` carries the `wk-single`).
+------------------------------------------------------------------------
+
+congPd : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+congPd x p =
+  jsub (⌜Id⌝ ⌜Nat⌝ (w (predTm x)) (predTm (var vz))) p (reflN (predTm x))
+
+⊢congPd : {Γ : Ctx} {x y p : RTm ⌊ Γ ⌋} →
+          Γ ⊢ x ∷ Nat → Γ ⊢ y ∷ Nat → Γ ⊢ p ∷ IdN x y →
+          Γ ⊢ congPd x p ∷ IdN (predTm x) (predTm y)
+⊢congPd {x = x} {y = y} dx dy dp =
+  ⊢conv (⊢-cast (cong El (peel y)) (⊢jsub dfam (natAsEl dx) (natAsEl dy) dp de))
+        (elIdN (predTm x) (predTm y))
+  where
+    dfam = ⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢wk (⊢pred dx)))
+                        (natAsEl (⊢pred (asN (⊢var here))))
+
+    peel : (v : RTm ⌊ _ ⌋) →
+           subTm (single v) (⌜Id⌝ ⌜Nat⌝ (w (predTm x)) (predTm (var vz)))
+         ≡ ⌜Id⌝ ⌜Nat⌝ (predTm x) (predTm v)
+    peel v = cong (λ u → ⌜Id⌝ ⌜Nat⌝ u (predTm v))
+                  (wk-single {v = v} (predTm x))
+
+    de = ⊢-cast (sym (cong El (peel x)))
+                (⊢conv (⊢reflN (⊢pred dx))
+                       (csymᵀ (elIdN (predTm x) (predTm x))))
+
+------------------------------------------------------------------------
+-- ★★ 5.  `0 ∸ b = 0`.  The motive mentions no ambient term, so — like
+--   `plus0B` — it needs no `mot-at`/`mot-s`.
+------------------------------------------------------------------------
+
+zmB : {Γ : Cx} (b : RTm Γ) → RTy Γ
+zmB b = IdN (monusTm nzero b) nzero
+
+⊢zmMot : {Γ : Ctx} → (Γ ▹ Nat) ⊢ty zmB (var vz)
+⊢zmMot = ⊢tyIdN (⊢monus ⊢nzero (⊢var here)) ⊢nzero
+
+zmTm : {Γ : Cx} → RTm Γ → RTm Γ
+zmTm b = natrec (reflN nzero)
+                (congPd (monusTm nzero (var (vs vz))) (var vz))
+                b
+
+⊢zero-monus : {Γ : Ctx} {b : RTm ⌊ Γ ⌋} → Γ ⊢ b ∷ Nat →
+              Γ ⊢ zmTm b ∷ zmB b
+⊢zero-monus db = ⊢natrec ⊢zmMot zB sB db
+  where
+    zB = ⊢conv (⊢reflN ⊢nzero)
+           (csymᵀ (red→≅ᵀ (stepᵀ (ξ-Idˡ (natrec-zero _ _)) doneᵀ)))
+
+    -- ⚠ THE TWO SIDES MOVE IN OPPOSITE DIRECTIONS.  The goal's LEFT
+    --   endpoint steps DOWN to the branch's subject (`monus-suc`), while
+    --   the branch's own RIGHT endpoint `pred 0` steps down to the goal's
+    --   `0`.  ⇒ `ctrnᵀ` with one `csymᵀ`, not two reductions the same way.
+    sB = ⊢conv (⊢congPd (⊢monus ⊢nzero (⊢var (there here))) ⊢nzero (⊢var here))
+           (ctrnᵀ (red→≅ᵀ (stepᵀ (ξ-Idʳ (natrec-zero _ _)) doneᵀ))
+                  (csymᵀ (red→≅ᵀ (stepᵀ (ξ-Idˡ (natrec-suc _ _ _)) doneᵀ))))
+
+------------------------------------------------------------------------
+-- ★★ 6.  `pred (suc a ∸ b) = a ∸ b`.
+--
+-- ⚠ THIS IS WHAT SUPPLIES `suc a ∸ suc b = a ∸ b`, WHICH IS **NOT**
+--   DEFINITIONAL.  `monusTm` recurses on its SECOND argument, so
+--   `suc a ∸ suc b` unfolds to `pred (suc a ∸ b)` — the successor on the
+--   LEFT never meets a `natrec` at all.  Every `∸` step in `monusPlus`
+--   goes through this lemma.
+------------------------------------------------------------------------
+
+pmB : {Γ : Cx} (a b : RTm Γ) → RTy Γ
+pmB a b = IdN (predTm (monusTm (nsuc a) b)) (monusTm a b)
+
+⊢pmMot : {Γ : Ctx} {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ Nat →
+         (Γ ▹ Nat) ⊢ty pmB (w a) (var vz)
+⊢pmMot da =
+  ⊢tyIdN (⊢pred (⊢monus (⊢nsuc (⊢wk da)) (⊢var here)))
+         (⊢monus (⊢wk da) (⊢var here))
+
+pmMot-at : {Γ : Cx} (a b : RTm Γ) →
+           subTy (single b) (pmB (w a) (var vz)) ≡ pmB a b
+pmMot-at a b =
+  cong (λ u → IdN (predTm (monusTm (nsuc u) b)) (monusTm u b))
+       (wk-single {v = b} a)
+
+pmMot-s : {Γ : Cx} (a : RTm Γ) →
+          subTy nrs (pmB (w a) (var vz))
+        ≡ pmB (w (w a)) (nsuc (var (vs vz)))
+pmMot-s a =
+  cong (λ u → IdN (predTm (monusTm (nsuc u) (nsuc (var (vs vz)))))
+                  (monusTm u (nsuc (var (vs vz)))))
+       (nrs-w a)
+
+pmTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+pmTm a b =
+  natrec (reflN a)
+         (congPd (predTm (monusTm (nsuc (w (w a))) (var (vs vz)))) (var vz))
+         b
+
+⊢pred-monus : {Γ : Ctx} {a b : RTm ⌊ Γ ⌋} →
+              Γ ⊢ a ∷ Nat → Γ ⊢ b ∷ Nat →
+              Γ ⊢ pmTm a b ∷ pmB a b
+⊢pred-monus {a = a} {b = b} da db =
+  ⊢-cast (pmMot-at a b) (⊢natrec (⊢pmMot da) zB sB db)
+  where
+    -- ⚠ TWO STEPS ON THE LEFT: `suc a ∸ 0` has to reach `suc a` before
+    --   `pred` can fire, and `pred-suc` itself is `⟶*` (it carries a
+    --   `wk-single`).  ⇒ assemble at `⟶*` and lift once.
+    zB = ⊢-cast (sym (pmMot-at a nzero))
+           (⊢conv (⊢reflN da)
+             (csymᵀ (ctrnᵀ
+               (red→≅ᵀ (⟶ᵀ*-Idˡ (⟶*-trans (⟶*-natrecⁿ (monus-zero (nsuc a)))
+                                           (pred-suc a))))
+               (red→≅ᵀ (⟶ᵀ*-Idʳ (monus-zero a))))))
+
+    sB = ⊢-cast (sym (pmMot-s a))
+           (⊢conv (⊢congPd (⊢pred (⊢monus (⊢nsuc dA) dB'))
+                           (⊢monus dA dB')
+                           (⊢var here))
+             (csymᵀ (ctrnᵀ
+               (red→≅ᵀ (stepᵀ (ξ-Idˡ (ξ-natrecⁿ (natrec-suc _ _ _))) doneᵀ))
+               (red→≅ᵀ (stepᵀ (ξ-Idʳ (natrec-suc _ _ _)) doneᵀ)))))
+      where
+        dA  = ⊢wk (⊢wk da)
+        dB' = ⊢var (there here)
+
+------------------------------------------------------------------------
+-- ★★★ 7.  NO CONFUSION FOR `Nat` — `0 ≡ suc p` IS ABSURD, INTERNALLY.
+--
+-- ★ THE FAMILY IS A `natrec` INTO `U`: `λn. natrec ⌜Unit⌝ ⌜base⌝ n`.
+--   `⊢natrec`'s motive is an `RTy`, and `ty-U` says `U` is one, so the
+--   large elimination needed here is already in the kernel — no new rule.
+--
+-- ⚠ WHY IT IS NEEDED AT ALL.  `monusPlus`'s leaf `a = 0, b = suc b'` gets
+--   `0 ∸ suc b' ≡ suc p`, and `zero-monus` turns that into `0 ≡ suc p`.
+--   The kernel's `Id` has no injectivity or disjointness built in, so the
+--   contradiction has to be TRANSPORTED to `base` and eliminated there.
+------------------------------------------------------------------------
+
+nfam : {Γ : Cx} → RTm (Γ ∙)
+nfam = natrec ⌜Unit⌝ ⌜base⌝ (var vz)
+
+⊢nfam : {Γ : Ctx} → (Γ ▹ El ⌜Nat⌝) ⊢ nfam ∷ U
+⊢nfam = ⊢natrec ty-U ⊢⌜Unit⌝ ⊢⌜base⌝ (elAsNat (⊢var here))
+
+noConfTm : {Γ : Cx} → RTm Γ → RTm Γ
+noConfTm e = jsub nfam e unit
+
+⊢noConf : {Γ : Ctx} {p e : RTm ⌊ Γ ⌋} →
+          Γ ⊢ p ∷ Nat → Γ ⊢ e ∷ IdN nzero (nsuc p) →
+          Γ ⊢ noConfTm e ∷ base
+⊢noConf dp de =
+  ⊢conv (⊢jsub ⊢nfam (natAsEl ⊢nzero) (natAsEl (⊢nsuc dp)) de dunit)
+        (red→≅ᵀ (stepᵀ (ξ-El (natrec-suc _ _ _)) (stepᵀ El-⌜base⌝ doneᵀ)))
+  where
+    dunit = ⊢conv ⊢unit
+              (csymᵀ (red→≅ᵀ (stepᵀ (ξ-El (natrec-zero _ _))
+                              (stepᵀ El-⌜Unit⌝ doneᵀ))))
+
+-- ★ …and the ex-falso a client actually calls: any `IdN` follows.
+exFalsoN : {Γ : Ctx} {p e x y : RTm ⌊ Γ ⌋} →
+           Γ ⊢ p ∷ Nat → Γ ⊢ x ∷ Nat → Γ ⊢ y ∷ Nat →
+           Γ ⊢ e ∷ IdN nzero (nsuc p) →
+           Γ ⊢ absurd (⌜Id⌝ ⌜Nat⌝ x y) (noConfTm e) ∷ IdN x y
+exFalsoN {x = x} {y = y} dp dx dy de =
+  ⊢conv (⊢absurd (⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl dx) (natAsEl dy)) (⊢noConf dp de))
+        (elIdN x y)
