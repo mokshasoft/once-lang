@@ -658,3 +658,60 @@ the laws describe a parallel pair rather than the module's own.
 ⇒ Step 6 proper is next: instantiate the IH, compose the certificate by
 `⊢trans`, transport across `ihCall-amrec` with `⊢transportP`.
 
+| 37 | 08-21 | `prvSym` — `Id` symmetry at the `Prv` level | ✅ green | 5.5s |
+| 38 | 08-21 | `⊢ihS-atP` — the handle typed at the IDENTITY renaming | ✅ green | 5.5s |
+| 39 | 08-21 | `Handle`/`Handle-at` — `AmTΠ` + `⊢ihS-atP`, at a renamed context | ✅ green | 7.3s |
+| 40 | 08-21 | **`ihToPW` — STEP 6 PROPER** | ✅ **green first try** | 12.3s |
+
+## ★★★★★★ STEP 6 IS PROVED — `ihToPW`
+
+    IHAt ρ P k  →  IndPW Δ A cM m P Θ ρ a (ihS-atP' … a a k p)
+
+Four moves, and every one of them was already on the shelf:
+
+1. `ihCall-amrec` at `Θ'` (via `Handle-at`) — the handle's call IS `amrec y`;
+2. `prvSym` — turned round, because the IH lands at the `amrec y` end;
+3. `⊢transportP` — carry `P` across;
+4. `ihS-atP-ren` + `renren`/`extcondR` — `Θ'`'s handle IS `renTm ϑ` of `Θ`'s.
+
+⭐ **GREEN FIRST TRY, 12.3s.** The 36 attempts of route (b) were the cost;
+this was assembly. That is the shape the log predicted and it held.
+
+### Three things that had to be BUILT, and were not obvious from the plan
+
+1. **`prvSym`.** `⊢sym` exists — in `…ExamplesId`, and a library may not
+   import an example. Nothing in its derivation is example-specific, so it
+   is restated here (four lines). ⇒ **hoist both to a Lib module at
+   consolidation**; leave `…ExamplesId`'s copy as the acceptance test.
+2. **`⊢ihS-atP`.** The library types `ihS-atR` (the handle at an ARBITRARY
+   renaming) because the irrelevance layer consumes it under binders; the
+   un-renamed twin was never needed, so it did not exist. Step 6 needs it
+   because **`⊢transportP` demands a typing of BOTH endpoints** of the
+   path, and one endpoint is the handle's call. It is `⊢ihS-atR` at `idR`
+   plus `descS-at-idR`'s peel, verbatim.
+3. **`Handle` / `Handle-at`** rather than `AmTΠ-at`. Opening `AmTΠ-at` AND
+   a second module carrying `⊢ihS-atP` instantiates `AmTΠ` twice at the
+   same parameters; extending the instantiation once does not. ⚠ `⊢ihS-atP`
+   is deliberately NOT put in `…LibAmrec` — that module is a measured OOM
+   hazard for its clients (`…LibAmrecRen`'s header: +460 lines turned a
+   6m27s build into an OOM). It moves there at consolidation, with a
+   measurement.
+
+### ⚠ The certificate really is a separate obligation
+
+The handoff's warning was right and cost nothing only because it was
+heeded: `IndPW` hands over `q : nsuc (μ y) ≤ ϑ (μ a)`, `IHAt` wants
+`nsuc (μ y) ≤ ϑ k`. `ihToPW` therefore takes **`pk : μ a ≤ k` AND
+`p : μ a ≤ suc k`** — the handle carries `p`, the composition needs `pk`.
+Both sit on the successor branch's hypothesis `nsuc (μ a) ≤ suc k`, which
+COMPUTES to `μ a ≤ k`; taking them separately keeps `ihToPW` independent of
+how they are derived.
+
+## Next
+
+1. The SUCCESSOR branch — `IndBAt-sub` at `σ := single (nsuc …)`, then the
+   branch body; `ihToPW` is its engine.
+2. `⊢natrec` — assemble zero + successor into the recursor.
+3. ⚠ The instantiation at `n := suc (μ x)` — THE NON-VACUITY CHECK. Green
+   is not the success criterion (`lexrec` died exactly here).
+4. Gap B layer 2 — the divisibility spec, THROUGH `amrec-ind`.
