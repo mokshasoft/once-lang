@@ -43,7 +43,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢⌜Σ⌝; ⊢pair; ⊢fst; ⊢snd; El-⌜Σ⌝; El-⌜Nat⌝; ξ-Σˡ; ξ-Σʳ
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Id⌝
         ; ξ-Idˡ; ξ-Idʳ; ξ-nsuc; ξ-natrecⁿ; natrec-zero; natrec-suc
-        ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; ξ-⌜Id⌝ʳ
+        ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; ξ-⌜Id⌝ʳ; ξ-⌜Id⌝ˡ
         ; _⟶*_; step; done )
 open import poc.OCP0009.NbEPDirDBInj
   using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; _⟶ᵀ*_; ⟶ᵀ*-El )
@@ -799,3 +799,30 @@ QCode-red u₁ u₂ r =
 QCode-conv : {Γ : Cx} {v v' : RTm Γ} (u₁ u₂ : RTm Γ) →
              v ⟶* v' → El (QCode u₁ u₂ v) ≅ᵀ El (QCode u₁ u₂ v')
 QCode-conv u₁ u₂ r = red→≅ᵀ (⟶ᵀ*-El (QCode-red u₁ u₂ r))
+
+-- ★ …and the two COMPONENT slots reduce too.  ⚠ The recursive leaves need
+--   this and the value-slot version is not enough: `indPWElim` hands back
+--   `QCode (fst PAIR) (snd PAIR) …`, and the goal states the components as
+--   the projections' REDUCTS.  ⚠ A component sits in `⌜Id⌝`'s LEFT slot
+--   (as `w n`), not under the `mulTm` — hence `ξ-⌜Id⌝ˡ`, one `⟶*-ren`,
+--   and no `natrec` congruence at all.
+⟶*-⌜Id⌝ˡ : {Γ : Cx} {c a a' b : RTm Γ} →
+           a ⟶* a' → ⌜Id⌝ c a b ⟶* ⌜Id⌝ c a' b
+⟶*-⌜Id⌝ˡ done       = done
+⟶*-⌜Id⌝ˡ (step r p) = step (ξ-⌜Id⌝ˡ r) (⟶*-⌜Id⌝ˡ p)
+
+dvdCode-redN : {Γ : Cx} {n n' : RTm Γ} (d : RTm Γ) →
+               n ⟶* n' → dvdCode d n ⟶* dvdCode d n'
+dvdCode-redN d r = ⟶*-⌜Σ⌝ʳ (⟶*-⌜Id⌝ˡ (⟶*-ren vs r))
+
+QCode-redU : {Γ : Cx} {u₁ u₁' u₂ u₂' : RTm Γ} (v : RTm Γ) →
+             u₁ ⟶* u₁' → u₂ ⟶* u₂' →
+             QCode u₁ u₂ v ⟶* QCode u₁' u₂' v
+QCode-redU v r₁ r₂ =
+  ⟶*-trans (⟶*-⌜Σ⌝ˡ (dvdCode-redN v r₁))
+           (⟶*-⌜Σ⌝ʳ (⟶*-ren vs (dvdCode-redN v r₂)))
+
+QCode-convU : {Γ : Cx} {u₁ u₁' u₂ u₂' : RTm Γ} (v : RTm Γ) →
+              u₁ ⟶* u₁' → u₂ ⟶* u₂' →
+              El (QCode u₁ u₂ v) ≅ᵀ El (QCode u₁' u₂' v)
+QCode-convU v r₁ r₂ = red→≅ᵀ (⟶ᵀ*-El (QCode-redU v r₁ r₂))

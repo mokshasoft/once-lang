@@ -32,7 +32,7 @@ open import poc.OCP0009.NbEPDirDBType
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBLibWk using ( w )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w; sub-w; ren-w )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; asN; asP )
 open import poc.OCP0009.NbEPDirDBLibDvdArith
   using ( QCode; ⊢QCode; QCode-sub; QCode-ren; QCode-red; QCode-conv
@@ -384,3 +384,91 @@ leafI₂z =
   where
     dμ = ⊢plus ⊢nzero (⊢nsuc (⊢var (there here)))
     db = ⊢var (there (there (there here)))
+
+------------------------------------------------------------------------
+-- ★★★ ELIMINATING THE INTERNAL HYPOTHESIS — the mirror of `pwElim`.
+--
+-- Two `⊢app`s and the peels they leave.  ⚠ The `w`s are the whole cost:
+-- `indPWT` states its body at the two binders' depth, so every slot
+-- arrives under one or two weakenings that `sub-w`/`wk-single` strip.
+-- BOTH recursive leaves use this once.
+------------------------------------------------------------------------
+
+indPWElim : {Γ : Ctx} {μ i h y q : RTm ⌊ Γ ⌋} →
+            Γ ⊢ h ∷ indPWT μ i → Γ ⊢ y ∷ PairT →
+            Γ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) msr)) μ →
+            Γ ⊢ app (app h y) q
+              ∷ El (QCode (fst y) (snd y) (app (app i y) q))
+indPWElim {μ = μ} {i = i} {y = y} {q = q} dh dy dq =
+  ⊢-cast (cong El eq2) (⊢app (⊢-cast eq1 (⊢app dh dy)) dq)
+  where
+    -- one binder in: the handle loses one `w`, the bound loses its `w`
+    peel₁ : (t : RTm ⌊ _ ⌋) → subTm (extS (single y)) (w (w t)) ≡ w t
+    peel₁ t = trans (sub-w {σ = single y} (w t)) (cong w (wk-single {v = y} t))
+
+    eq1 = cong₂ (λ u c → Π (Hom Nat (nsuc (subTm (single y) msr)) u) (El c))
+                (wk-single {v = y} μ)
+                (trans (QCode-sub {σ = extS (single y)}
+                          (fst (var (vs vz))) (snd (var (vs vz)))
+                          (app (app (w (w i)) (var (vs vz))) (var vz)))
+                       (cong (λ z → QCode (fst (w y)) (snd (w y))
+                                          (app (app z (w y)) (var vz)))
+                             (peel₁ i)))
+
+    eq2 = trans (QCode-sub {σ = single q}
+                   (fst (w y)) (snd (w y)) (app (app (w i) (w y)) (var vz)))
+                (cong₂ (λ z u → QCode (fst u) (snd u) (app (app z u) q))
+                       (wk-single {v = q} i) (wk-single {v = q} y))
+
+-- ★ `indPWT` past a weakening — the hypothesis reaches each leaf as a
+--   Π-BOUND VARIABLE, and `here` hands it back under a `renTy vs`.
+indPWT-w : {Γ : Cx} (μ i : RTm Γ) →
+           renTy vs (indPWT μ i) ≡ indPWT (w μ) (w i)
+indPWT-w μ i =
+  cong₂ (λ u c → Π PairT (Π (Hom Nat (nsuc msr) u) (El c)))
+        (ren-w μ)
+        (trans (QCode-ren {ρ = extR (extR vs)}
+                  (fst (var (vs vz))) (snd (var (vs vz)))
+                  (app (app (w (w i)) (var (vs vz))) (var vz)))
+               (cong (λ z → QCode (fst (var (vs vz))) (snd (var (vs vz)))
+                                  (app (app z (var (vs vz))) (var vz)))
+                     (wwr i)))
+  where
+    wwr : (t : RTm _) → renTm (extR (extR vs)) (w (w t)) ≡ w (w (w t))
+    wwr t = trans (ren-w {ρ = extR vs} (w t)) (cong w (ren-w t))
+
+------------------------------------------------------------------------
+-- ★★★★★ SPLIT 3 — the COMPARISON, on `a ∸ b`.
+--     ctx `Θ₃`: [0]=MI₂ [1]=k' [2]=MI₁ [3]=n' [4]=x,  so a = suc k',
+--     b = suc n'.
+--
+-- ⚠⚠ THIS IS THE ONE PLACE THE TWO DEVELOPMENTS DIVERGE.  `…GcdStepExt`'s
+--   `G3`/`M₃` motive is CONSTANT — `StepExt` needs to know only WHETHER
+--   `a ∸ b` is zero, never its value.  Here the leaves need the EQUATION:
+--   the `a ≤ b` leaf must feed `a ∸ b ≡ 0` to `monusLe`, and the `a > b`
+--   leaf `a ∸ b ≡ suc p` to `monusPlus`.
+--
+-- ★ SO THE MOTIVE IS INDEXED BY ITS OWN SCRUTINEE — the `inspect`
+--   encoding, available because `⊢natrec`'s motive is
+--   `(Γ ▹ Nat) ⊢ty M` (GAP-B-LAYER2-PLAN §2).  At the elimination the
+--   equation slot instantiates to `IdN (a ∸ b) (a ∸ b)`, discharged by
+--   `reflN`; in each branch it arrives as the fact that branch was entered
+--   FOR.
+------------------------------------------------------------------------
+
+uA₃ uB₃ μAB : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙)
+uA₃ = nsuc (var (vs vz))
+uB₃ = nsuc (var (vs (vs (vs vz))))
+μAB = monusTm uA₃ uB₃
+
+MI₃ : {Γ : Cx} → RTy (Γ ∙ ∙ ∙ ∙ ∙ ∙)
+MI₃ = Π (IdN (w μAB) (var vz))
+        (indG (w (w (plusTm uA₃ uB₃))) (w f₃) (w (w uA₃)) (w (w uB₃)))
+
+-- ⭐ …and the boundary is `refl` HERE TOO, equation slot included.
+probeI₃-at : {Γ : Cx} →
+             subTy (single μAB) (MI₃ {Γ})
+           ≡ Π (IdN μAB μAB)
+               (indG (w (plusTm uA₃ uB₃)) (w (natrec G3z G3s μAB))
+                     (w uA₃) (w uB₃))
+probeI₃-at = refl

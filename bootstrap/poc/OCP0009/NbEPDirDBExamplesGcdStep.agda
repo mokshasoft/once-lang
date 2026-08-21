@@ -211,9 +211,17 @@ G3 = gcdG (plusTm (nsuc (var (vs (vs vz)))) (nsuc (var (vs (vs (vs (vs vz)))))))
 --   library's certificate.  (2026-08-16, prerequisite 1 of gap A.)
 
 -- the context the branch's BODY lives in — five binders plus the `⊢lam`'s
-CΓz : (Γ : Ctx) (B : RTy (⌊ Γ ⌋ ∙ ∙)) (C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)) → Ctx
-CΓz Γ B C = ((((( Γ ▹ PairT) ▹ Nat) ▹ B) ▹ Nat) ▹ C)
-              ▹ gcdIH (plusTm (nsuc (var (vs vz))) (nsuc (var (vs (vs (vs vz))))))
+--
+-- ⚠⚠ THE `⊢lam`'s OWN SLOT IS GENERALISED TOO (`E`), 2026-08-21 — the same
+--   move, and the same reason, as `B`/`C` on 2026-08-16.  gcd's own
+--   `⊢G3z` binds `gcdIH …` there, but `amrec-ind`'s `IndStep` for gcd
+--   binds the SCRUTINEE EQUATION instead (its split-3 motive is
+--   scrutinee-indexed, where `StepExt`'s is constant).  `PAIRᶻ`/`CERTᶻ`
+--   never LOOK at that slot — every `there` below steps over it to a `Nat`
+--   — so one parameter serves both callers and neither re-derives.
+CΓz : (Γ : Ctx) (B : RTy (⌊ Γ ⌋ ∙ ∙)) (C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙))
+      (E : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙)) → Ctx
+CΓz Γ B C E = ((((( Γ ▹ PairT) ▹ Nat) ▹ B) ▹ Nat) ▹ C) ▹ E
 
 -- [2]=k' and [4]=n' AT THE BODY'S DEPTH
 KZ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙)
@@ -228,18 +236,22 @@ PAIRᶻ = pair (nsuc KZ) (monusTm (nsuc NZ) (nsuc KZ))
 CERTᶻ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙)
 CERTᶻ = plusMonoTm (monusLtTm NZ KZ) (nsuc KZ)
 
-dkz : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)} → CΓz Γ B C ⊢ KZ ∷ Nat
+dkz : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)}
+      {E : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙)} → CΓz Γ B C E ⊢ KZ ∷ Nat
 dkz = ⊢var (there (there here))
 
-dnz : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)} → CΓz Γ B C ⊢ NZ ∷ Nat
+dnz : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)}
+      {E : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙)} → CΓz Γ B C E ⊢ NZ ∷ Nat
 dnz = ⊢var (there (there (there (there here))))
 
-⊢PAIRᶻ : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)} → CΓz Γ B C ⊢ PAIRᶻ ∷ PairT
+⊢PAIRᶻ : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)}
+         {E : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙)} → CΓz Γ B C E ⊢ PAIRᶻ ∷ PairT
 ⊢PAIRᶻ = ⊢pair ty-Nat (⊢nsuc dkz) (⊢monus (⊢nsuc dnz) (⊢nsuc dkz))
 
 -- ★ the certificate, at the measure of the CALL, bounded by the measure of
 --   the branch's own (split) carrier `suc k' + suc n'`.
-⊢CERTᶻ : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)} → CΓz Γ B C ⊢ CERTᶻ
+⊢CERTᶻ : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)}
+         {E : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙)} → CΓz Γ B C E ⊢ CERTᶻ
        ∷ Hom Nat (nsuc (plusTm (fst PAIRᶻ) (snd PAIRᶻ))) (plusTm (nsuc KZ) (nsuc NZ))
 ⊢CERTᶻ =
   ⊢conv (⊢desc-right dkz dnz)
