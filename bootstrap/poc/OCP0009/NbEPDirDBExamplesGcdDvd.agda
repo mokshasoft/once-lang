@@ -22,21 +22,20 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; vz; vs
         ; RTy; RTm; Nat; U; El; Σ'
-        ; var; fst; snd; ⌜Nat⌝; nzero; nsuc; Π; app; Hom
-        ; subTm; renTm; Ren; extR; extS )
+        ; var; fst; snd; ⌜Nat⌝; nzero; nsuc; Π; app; Hom; natrec; subTy
+        ; subTm; renTm; renTy; Ren; extR; extS )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc
-        ; ⊢lam; ty-Hom; ty-Nat )
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc
+        ; ⊢lam; ⊢app; ty-Hom; ty-Nat; ty-Π; ty-El; ⊢⌜Nat⌝ )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
-open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; asN )
+open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; asN; asP )
 open import poc.OCP0009.NbEPDirDBLibDvdArith
   using ( QCode; ⊢QCode; QCode-sub; QCode-ren
         ; ⊢Q-intro; ⊢Q-fst; ⊢Q-snd
         ; ⊢dvd-zero; ⊢dvd-refl; ⊢dvd-plus; ⊢dvd-cong; ⊢congPL )
 open import poc.OCP0009.NbEPDirDBLibDvd using ( dvdT )
-open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBLibMonus using ( monusTm; ⊢monus )
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( IdN; ⊢symN; ⊢transN )
 open import poc.OCP0009.NbEPDirDBLibMonusPlus using ( monusPlus )
@@ -45,7 +44,12 @@ open import poc.OCP0009.NbEPDirDBLibAmrec using ( Prv; prv; prvOk; wR; renren )
 open import poc.OCP0009.NbEPDirDBLibAmrecInd using ( PAtR; IndPW )
 open import poc.OCP0009.NbEPDirDBLibNatrec using ( Ren⊢-id )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast; Ren⊢ )
-open import poc.OCP0009.NbEPDirDBExamplesGcdStep using ( msr; ⊢msr )
+open import poc.OCP0009.NbEPDirDBExamplesGcdStep
+  using ( msr; ⊢msr; gcdIH; ⊢gcdIH; gcdG; ⊢gcdG
+        ; G1z; gcdInn1; gcdBody; gcdStp )
+open import poc.OCP0009.NbEPDirDBExamplesGcdStepExt
+  using ( appGcdIH; gcdIH-w; gcdIH-w²; μ₁; f₁; gcdAt; red-β )
+open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBLibPair using ( ⊢PairT )
 
 
@@ -209,3 +213,83 @@ indPWIntro {a = a} {ih = ih} dμ pw =
                    (cong (λ t → El (QCode (fst (var (vs vz))) (snd (var (vs vz)))
                                           (app (app t (var (vs vz))) (var vz))))
                          (sym (ww ih)))
+
+------------------------------------------------------------------------
+-- ★★ …AND ITS TYPING.  Mirrors `⊢pwT` exactly; `appGcdIH` is the one peel
+--   applying an `aIHTat`-typed handle needs.
+------------------------------------------------------------------------
+
+⊢indPWT : {Γ : Ctx} {μa ih : RTm ⌊ Γ ⌋} →
+          Γ ⊢ μa ∷ Nat → Γ ⊢ ih ∷ gcdIH μa → Γ ⊢ty indPWT μa ih
+⊢indPWT {μa = μa} dμ di =
+  ty-Π ⊢PairT
+    (ty-Π (ty-Hom ty-Nat (⊢nsuc ⊢msr) (⊢wk dμ))
+          (ty-El (⊢QCode (⊢fst dy) (⊢snd dy) (asN dcall))))
+  where
+    dy    = ⊢var (there here)
+    dcall = appGcdIH (⊢-cast (gcdIH-w² μa) (⊢wk (⊢wk di))) dy (⊢var here)
+
+------------------------------------------------------------------------
+-- ★★★★ `indG` — THE `P`-ANALOGUE OF `gcdG`, and the split motive.
+--
+--   gcdG μ      =  (ih : gcdIH μ) → Nat
+--   eqG  μ f    =  (i₁ i₂ : gcdIH μ) → i₁ ≐ i₂ → f i₁ ≡ f i₂     (StepExt)
+--   indG μ f u₁ u₂ =  (ih : gcdIH μ) → P-of-all-its-calls → P (u₁,u₂, f ih)
+--
+-- ★ THE IH AND THE HYPOTHESIS ARE Π-BOUND, exactly as in `eqG`, and for
+--   the same reason: every branch then receives its own induction
+--   hypothesis AT ITS OWN BOUND, so the recursive leaves' certificates
+--   (`⊢CERTᶻ`/`⊢CERTˢ`, stated at `plusTm (nsuc k') (nsuc n')`) are
+--   precisely what `⊢app` wants.  No transport, no order hypothesis.
+--
+-- ⚠ `u₁`/`u₂` — the pair's two COMPONENTS — are parameters, not projections
+--   of a carrier.  `PairT = Σ' Nat Nat` has no η, so a split cannot replace
+--   `a` by `pair (fst a) (snd a)`; generalising a COMPONENT in the motive
+--   is well-formed where generalising the pair is not.
+------------------------------------------------------------------------
+
+gcdG-w² : {Γ : Cx} (μ : RTm Γ) →
+          renTy vs (renTy vs (gcdG μ)) ≡ gcdG (w (w μ))
+gcdG-w² μ = cong (λ T → Π T (El ⌜Nat⌝)) (gcdIH-w² μ)
+
+indG : {Γ : Cx} (μx f u₁ u₂ : RTm Γ) → RTy Γ
+indG μx f u₁ u₂ =
+  Π (gcdIH μx)
+    (Π (indPWT (w μx) (var vz))
+       (El (QCode (w (w u₁)) (w (w u₂)) (app (w (w f)) (var (vs vz))))))
+
+⊢indG : {Γ : Ctx} {μx f u₁ u₂ : RTm ⌊ Γ ⌋} →
+        Γ ⊢ μx ∷ Nat → Γ ⊢ f ∷ gcdG μx →
+        Γ ⊢ u₁ ∷ Nat → Γ ⊢ u₂ ∷ Nat → Γ ⊢ty indG μx f u₁ u₂
+⊢indG {μx = μx} dμ df d1 d2 =
+  ty-Π (⊢gcdIH dμ)
+    (ty-Π (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w μx) (⊢var here)))
+          (ty-El (⊢QCode (⊢wk (⊢wk d1)) (⊢wk (⊢wk d2)) (asN dfi))))
+  where
+    dfi = ⊢app (⊢-cast (gcdG-w² μx) (⊢wk (⊢wk df)))
+               (⊢-cast (gcdIH-w² μx) (⊢var (there here)))
+
+------------------------------------------------------------------------
+-- ★★ SPLIT 1's MOTIVE — on `snd x`.  ctx: [0]=n' [1]=x
+--
+-- ⭐ THE BOUNDARIES ARE `refl`, and that is the whole reason this is
+--   tractable: everything in `gcdStp` is built from VARIABLES, so every
+--   `subTy`/`subTm` at a boundary COMPUTES.  `…GcdStepExt` records the same
+--   for `eqG`; it holds for `indG` because `QCode`'s extra slots are
+--   themselves variables or projections of one.
+------------------------------------------------------------------------
+
+MI₁ : {Γ : Cx} → RTy (Γ ∙ ∙)
+MI₁ = indG μ₁ f₁ (fst (var (vs vz))) (var vz)
+
+probeI₁-at : {Γ : Cx} →
+             subTy (single (snd (var vz))) (MI₁ {Γ})
+           ≡ indG msr gcdBody (fst (var vz)) (snd (var vz))
+probeI₁-at = refl
+
+probeI₁-z : {Γ : Cx} →
+            subTy (single nzero) (MI₁ {Γ})
+          ≡ indG (plusTm (fst (var vz)) nzero)
+                 (natrec G1z gcdInn1 nzero)
+                 (fst (var vz)) nzero
+probeI₁-z = refl

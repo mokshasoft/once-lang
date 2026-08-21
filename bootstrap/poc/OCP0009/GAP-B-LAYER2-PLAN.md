@@ -173,7 +173,50 @@ split.
    outright; only the two RECURSIVE leaves consume it — and each consumes
    **both** conjuncts. That is the concrete form of §1.
 
-   ### ⬜ What remains: the plumbing
+   ### 🟡 The plumbing — DESIGN SETTLED AND VALIDATED, wiring left
+
+   ✅ **`indPWT` / `indPWIntro`** — `IndPW` internalised as an
+   object-language `Π`-type. **The linchpin.** The splits put the proof at
+   `Θ ▹ PairT ▹ Hom … ▹ …` and `IndPW` lives at `Θ`, so using it inside a
+   branch is circular; as a TERM it rides the motives as a Π-bound
+   variable. Two-line instantiation at `ϑ = vs ∘ vs`, because `IndPW` is
+   renaming-indexed.
+
+   ✅ **`indG μ f u₁ u₂`** — the split motive, the `P`-analogue of `gcdG`
+   and the exact mirror of `…GcdStepExt`'s `eqG`:
+
+       gcdG μ         = (ih : gcdIH μ) → Nat
+       eqG  μ f       = (i₁ i₂ : gcdIH μ) → i₁ ≐ i₂ → f i₁ ≡ f i₂
+       indG μ f u₁ u₂ = (ih : gcdIH μ) → P-of-its-calls → P (u₁,u₂, f ih)
+
+   ✅ **`MI₁` and its boundaries** — `probeI₁-at`/`probeI₁-z` are **`refl`**.
+   ⭐ That is the checkpoint that says the design works: everything in
+   `gcdStp` is built from VARIABLES, so every `subTy`/`subTm` at a motive
+   boundary COMPUTES. Same as `eqG`'s `probe₁-at`/`probe₁-z`.
+
+   ✅ **`QCode-red` / `QCode-conv`** — the last piece with conceptual risk.
+   Every leaf proves the spec of a REDUCED value while the motive states it
+   of the unreduced `app f ih`. With `eqG`'s `Id` motive `idOfRed` bridges
+   that; with a CODE motive there is no bridge, so the reduction is pushed
+   INTO the code — which works because the kernel has `ξ-⌜Σ⌝ˡ/ʳ` and
+   `ξ-⌜Id⌝ʳ`. ⚠ The value lands under `mulTm (var vz) (w d)`, i.e. in the
+   STEP branch of `mulTm`'s `natrec` as `w (w d)`, hence
+   `⟶*-natrecˢ ∘ ⟶*-natrecⁿ ∘ ⟶*-ren vs ∘ ⟶*-ren vs`.
+
+   ### ⬜ What is left — mechanical, mirroring `…GcdStepExt` step for step
+
+   1. `indG-red` (the `eqG-red` analogue: a reduction of `f` is a
+      CONVERSION of `indG μ f u₁ u₂` — `⟶ᵀ*-Πʳ` twice, then `QCode-conv`).
+   2. Split 1's leaf (`gcdLeaf-b0` + `QCode-conv` along `red₁z`) and its
+      successor bridge.
+   3. Split 2: motive `MI₂`, probes, leaf (`gcdLeaf-a0`), bridge.
+   4. Split 3: motive **indexed by its scrutinee** (§2's `inspect` — this is
+      the ONE place `…GcdStepExt` differs, since its `G3` motive is
+      constant), then the two recursive leaves (`gcdLeaf-le`/`gcdLeaf-gt`),
+      each applying the Π-bound `indPWT` at `(PAIRᶻ,CERTᶻ)` / `(PAIRˢ,CERTˢ)`.
+   5. Assemble into `IndStep`, then call `Concl.amrecInd`.
+
+   ### ⬜ What remains (superseded detail below)
 
    Three nested `natrec`s mirroring `gcdBody`/`gcdInn1`/`gcdInn2`:
 

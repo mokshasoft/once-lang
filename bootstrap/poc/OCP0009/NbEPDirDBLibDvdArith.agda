@@ -43,10 +43,12 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢⌜Σ⌝; ⊢pair; ⊢fst; ⊢snd; El-⌜Σ⌝; El-⌜Nat⌝; ξ-Σˡ; ξ-Σʳ
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Id⌝
         ; ξ-Idˡ; ξ-Idʳ; ξ-nsuc; ξ-natrecⁿ; natrec-zero; natrec-suc
+        ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; ξ-⌜Id⌝ʳ
         ; _⟶*_; step; done )
 open import poc.OCP0009.NbEPDirDBInj
-  using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; _⟶ᵀ*_ )
-open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-natrecᶻ )
+  using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; _⟶ᵀ*_; ⟶ᵀ*-El )
+open import poc.OCP0009.NbEPDirDBConf
+  using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-natrecᶻ; ⟶*-natrecˢ; ⟶*-ren )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk
@@ -746,3 +748,54 @@ dvdCongTm d h p = jsub (dvdCode (w d) (var vz)) p h
            subTm (single v) (dvdCode (w d) (var vz)) ≡ dvdCode d v
     peel v = trans (dvdCode-sub {σ = single v} (w d) (var vz))
                    (cong (λ u → dvdCode u v) (wk-single {v = v} d))
+
+------------------------------------------------------------------------
+-- ★★★ 14.  THE MOTIVE'S VALUE SLOT REDUCES.
+--
+-- ⚠ WHY THIS IS NEEDED AND IS NOT FREE.  Every leaf of gcd's `IndStep`
+--   proves the spec of a REDUCED value (`fst x`, `suc b'`, an IH call),
+--   while the split motive states it of the UNREDUCED `app f ih`.  With an
+--   `Id`-valued motive (`…GcdStepExt`'s `eqG`) `idOfRed` bridges that; with
+--   a CODE-valued one there is no such bridge, so the reduction has to be
+--   pushed all the way into the code.
+--
+-- ⭐ AND IT GOES, because the kernel has ξ-rules INSIDE the code formers
+--   (`ξ-⌜Σ⌝ˡ`, `ξ-⌜Σ⌝ʳ`, `ξ-⌜Id⌝ʳ`).  ⚠ The value lands under
+--   `mulTm (var vz) (w d)`, i.e. in the STEP branch of `mulTm`'s `natrec`
+--   as `w (w d)` — hence `⟶*-natrecˢ` over `⟶*-natrecⁿ` over two
+--   `⟶*-ren vs`.  That chain is the whole of `mulTm-red`.
+------------------------------------------------------------------------
+
+⟶*-⌜Σ⌝ˡ : {Γ : Cx} {c c' : RTm Γ} {d : RTm (Γ ∙)} →
+          c ⟶* c' → ⌜Σ⌝ c d ⟶* ⌜Σ⌝ c' d
+⟶*-⌜Σ⌝ˡ done       = done
+⟶*-⌜Σ⌝ˡ (step r p) = step (ξ-⌜Σ⌝ˡ r) (⟶*-⌜Σ⌝ˡ p)
+
+⟶*-⌜Σ⌝ʳ : {Γ : Cx} {c : RTm Γ} {d d' : RTm (Γ ∙)} →
+          d ⟶* d' → ⌜Σ⌝ c d ⟶* ⌜Σ⌝ c d'
+⟶*-⌜Σ⌝ʳ done       = done
+⟶*-⌜Σ⌝ʳ (step r p) = step (ξ-⌜Σ⌝ʳ r) (⟶*-⌜Σ⌝ʳ p)
+
+⟶*-⌜Id⌝ʳ : {Γ : Cx} {c a b b' : RTm Γ} →
+           b ⟶* b' → ⌜Id⌝ c a b ⟶* ⌜Id⌝ c a b'
+⟶*-⌜Id⌝ʳ done       = done
+⟶*-⌜Id⌝ʳ (step r p) = step (ξ-⌜Id⌝ʳ r) (⟶*-⌜Id⌝ʳ p)
+
+mulTm-red : {Γ : Cx} {n n' : RTm Γ} (m : RTm Γ) →
+            n ⟶* n' → mulTm m n ⟶* mulTm m n'
+mulTm-red m r = ⟶*-natrecˢ (⟶*-natrecⁿ (⟶*-ren vs (⟶*-ren vs r)))
+
+dvdCode-red : {Γ : Cx} {d d' : RTm Γ} (n : RTm Γ) →
+              d ⟶* d' → dvdCode d n ⟶* dvdCode d' n
+dvdCode-red n r = ⟶*-⌜Σ⌝ʳ (⟶*-⌜Id⌝ʳ (mulTm-red (var vz) (⟶*-ren vs r)))
+
+QCode-red : {Γ : Cx} {v v' : RTm Γ} (u₁ u₂ : RTm Γ) →
+            v ⟶* v' → QCode u₁ u₂ v ⟶* QCode u₁ u₂ v'
+QCode-red u₁ u₂ r =
+  ⟶*-trans (⟶*-⌜Σ⌝ˡ (dvdCode-red u₁ r))
+           (⟶*-⌜Σ⌝ʳ (⟶*-ren vs (dvdCode-red u₂ r)))
+
+-- ★ …and therefore a TYPE conversion, which is what a leaf needs.
+QCode-conv : {Γ : Cx} {v v' : RTm Γ} (u₁ u₂ : RTm Γ) →
+             v ⟶* v' → El (QCode u₁ u₂ v) ≅ᵀ El (QCode u₁ u₂ v')
+QCode-conv u₁ u₂ r = red→≅ᵀ (⟶ᵀ*-El (QCode-red u₁ u₂ r))
