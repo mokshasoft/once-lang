@@ -70,6 +70,15 @@ All thirteen exit 0. `Conv.agda`'s example block is the POC *executing*: e.g.
 evaluated the conversion and got `true` — the product-β equation decided purely by
 running both sides, never by orienting a rewrite.
 
+## Scripts
+
+| script | what it does |
+| --- | --- |
+| `sweep.sh` | builds everything that is *supposed* to be green, sequentially. Reads RED/RTS classification from module headers. **Refuses to start if another agda is live** — two agda processes OOM-kill each other on this box. Read the `== ALL GREEN (N modules)` line; a refusal exits 2, which is not the same as a pass. |
+| `check-formers.sh` | Agda's coverage checker checks *functions*, not *datatypes*, so a missing term former is invisible. This catches it. |
+| `clean-agdai.sh` | clears Agda interfaces before a cold timing run. Interfaces live in `bootstrap/_build/<version>/agda/poc/OCP0009/`, **not** in `poc/OCP0009/.agdai/` (which is empty). Use `--deps M` to clear `M` *and its importers*; `-n` to dry-run. **Exits 2 if it clears nothing** — a silent no-op cache-clear once produced a retracted measurement, because deleting nothing looks exactly like deleting everything. |
+
+
 ## Status against the scorecard (OCP-0009) — FINALIZED
 
 `conv` is a **sound + complete + terminating** decision procedure for conversion
