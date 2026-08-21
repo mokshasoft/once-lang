@@ -135,6 +135,25 @@ for f in "${TOBUILD[@]:-}"; do
     echo "ok"
   else
     rc=$?
+    if [ "$rc" = 143 ] && [ "$rts" = "-A64m" ]; then
+      # ★ MEASURED 2026-08-21: 143 under the COPYING collector is not a
+      #   verdict — it is a collector choice.  `…ExamplesGcdLeMid` OOMs at
+      #   113s under `-A64m` and COMPLETES IN 82s under `-A64m -c`, same
+      #   machine, same minute.  The six-way `…GcdDvdA*` split re-merged
+      #   into ONE 451-line module likewise OOMs under `-A64m` (339s) and
+      #   builds under `-c` (147s).
+      #   ⚠ So `needs_c`'s hand-written header list CANNOT be right: whether
+      #   a module OOMs depends on how much RAM the machine has free, which
+      #   no header comment can track.  Retry once, automatically.
+      #   ⚠ This is a FALLBACK, not a default: `-c` costs ~45% wall on a
+      #   module that does not need it (check.sh header: 13.7s vs 19.8s).
+      printf 'KILLED(143) — retrying with compacting GC ... '
+      if AGDA_RTS="-A64m -c" "$CHECK" "poc/OCP0009/$m.agda" >"$LOGDIR/$m.log" 2>&1; then
+        echo "ok (-c)"
+        continue
+      fi
+      rc=$?
+    fi
     if [ "$rc" = 143 ]; then
       echo "KILLED(143) — SIGTERM: memory cap or contention, NOT a proof error"
     else
