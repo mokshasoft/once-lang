@@ -29,25 +29,68 @@ module poc.OCP0009.NbEPDirDBSpikeAmrecInd where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; RTm; El; U; Nat; Hom; Π; var; vz; vs; Var; app; nsuc; nzero; natrec
-        ; lam; absurd; jsub; Id
+        ; lam; absurd; jsub; Id; ⌜Id⌝; idrefl; ⌜Id⌝-cong₃; ordtr
         ; subTm; subTy; renTy; renTm; Ren; extR; extS; renTy-renTy; Sub
         ; subTm-subTm; subTm-renTm; subTm-cong )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; ⊢nsuc; ⊢lam; ⊢nzero; nrs; ⊢jsub
-        ; ty-El; ty-Π; ty-Hom; ty-Nat )
+        ; ty-El; ty-Π; ty-Hom; ty-Nat
+        ; ⊢⌜Id⌝; ⊢idrefl; ⊢conv; csymᵀ; credᵀ; El-⌜Id⌝; ⊢ordtr )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢; Ren⊢-ext; ren-lemma; ren-ty
-        ; Sub⊢; Sub⊢-ext; ⊢single; sub-lemma )
+        ; Sub⊢; Sub⊢-ext; ⊢single; sub-lemma; wk-cancel-tm )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
-open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; wᶠ¹-single; ⊢wkᶠ; sub-w; cong₃ )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w; wᶠ; wᶠ¹-single; ⊢wkᶠ; sub-w; cong₃; cong₄ )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibAmrec
-  using ( aStepT; Prv; prv; prvOk; prvTm; StepExt; idOfRed; prv-cast; wR
+  using ( aStepT; aStepT-ren; Prv; prv; prvOk; prvTm; StepExt; idOfRed
+        ; prv-cast; wR; Ren⊢-comp; renren; renrenTy; extcondR; sub1-ren
         ; subren; subrenTy; extcond; renTy-idR; renTm-idR; module AmTΠ )
+open import poc.OCP0009.NbEPDirDBLibAmrecRen
+  using ( amrecTm'; amrecTm-ren; ihS-atP'; ihS-atP-ren; StepExt-ren )
 open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base )
 open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBLibNatrec using ( Ren⊢-id )
+
+------------------------------------------------------------------------
+-- ★★ `Id` SYMMETRY, AT THE `Prv` LEVEL.
+--
+-- ⚠ WHY IT IS RESTATED HERE.  `…ExamplesId` already derives `⊢sym`, and
+--   nothing in that derivation is example-specific — it uses only the
+--   kernel.  But a LIBRARY may not import an EXAMPLE (the 2026-08-21
+--   inversion), and this spike is library material.  ⇒ restate the four
+--   lines here; hoist BOTH to a Lib module at consolidation, and let
+--   `…ExamplesId` keep its own copy as the acceptance test.
+--
+-- ★ WHY STEP 6 NEEDS IT AT ALL.  `ihCall-amrec` points FROM the handle's
+--   call TO `amrec y`, while `⊢transportP` carries the motive ALONG a
+--   path — and the induction hypothesis arrives at the `amrec y` end.
+--   ⇒ the path has to be turned round exactly once.
+------------------------------------------------------------------------
+
+symTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+symTm c t p = jsub (⌜Id⌝ (renTm vs c) (var vz) (renTm vs t)) p (idrefl c t)
+
+⊢symId : {Γ : Ctx} {c t u p : RTm ⌊ Γ ⌋} →
+         Γ ⊢ c ∷ U → Γ ⊢ t ∷ El c → Γ ⊢ u ∷ El c →
+         Γ ⊢ p ∷ Id (El c) t u →
+         Γ ⊢ symTm c t p ∷ Id (El c) u t
+⊢symId {c = c} {t = t} {u = u} {p = p} dc dt du dp =
+  ⊢conv
+    (⊢-cast (cong El (⌜Id⌝-cong₃ (wk-cancel-tm u c) refl (wk-cancel-tm u t)))
+      (⊢jsub (⊢⌜Id⌝ (⊢wk dc) (⊢var here) (⊢wk dt))
+             dt du dp
+             (⊢-cast (cong El (sym (⌜Id⌝-cong₃ (wk-cancel-tm t c) refl
+                                               (wk-cancel-tm t t))))
+                     (⊢conv (⊢idrefl dc dt)
+                            (csymᵀ (credᵀ (El-⌜Id⌝ c t t)))))))
+    (credᵀ (El-⌜Id⌝ c u t))
+
+prvSym : {Γ : Ctx} {c t u : RTm ⌊ Γ ⌋} →
+         Γ ⊢ c ∷ U → Γ ⊢ t ∷ El c → Γ ⊢ u ∷ El c →
+         Prv Γ (Id (El c) t u) → Prv Γ (Id (El c) u t)
+prvSym {c = c} {t = t} dc dt du (prv e d) = prv (symTm c t e) (⊢symId dc dt du d)
 
 module Stmt (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
             (dA   : Δ ⊢ty A)
@@ -222,6 +265,103 @@ IndStep Δ A cM m stp P =
 --   the mismatch is a genuine dependency.
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- ★★★ `AmTΠ` PLUS THE HANDLE'S TYPING — and the same module AT A RENAMED
+--   CONTEXT.
+--
+-- ⚠ WHY NOT `AmTΠ-at`.  Step 6 needs `⊢ihS-atP` at `Θ'` as well as at `Δ`,
+--   and `⊢ihS-atP` is not in `…LibAmrec`.  Opening `AmTΠ-at` AND a second
+--   module carrying `⊢ihS-atP` would instantiate `AmTΠ` twice at the same
+--   parameters; extending the instantiation once does not.
+--
+-- ⚠ AND `⊢ihS-atP` IS NOT PUT IN `…LibAmrec`.  That module is a measured
+--   OOM hazard for its clients (see `…LibAmrecRen`'s header: +460 lines
+--   turned a 6m27s build into an OOM).  It goes there at consolidation,
+--   with a measurement, not before.
+------------------------------------------------------------------------
+
+module Handle (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
+              (dA   : Δ ⊢ty A)
+              (dcM  : (Δ ▹ A) ⊢ cM ∷ U)
+              (dm   : (Δ ▹ A) ⊢ m ∷ Nat)
+              (dstp : Δ ⊢ stp ∷ aStepT A cM m)
+              where
+
+  open AmTΠ Δ A cM m stp dA dcM dm dstp public
+
+  ------------------------------------------------------------------------
+  -- ★★★ THE HANDLE, TYPED — `ihS-atP` is `ihS-atR` AT THE IDENTITY.
+  --
+  -- ⚠ WHY IT WAS MISSING.  The library types `ihS-atR` — the handle at an
+  --   ARBITRARY renaming — because the irrelevance layer consumes it under
+  --   binders.  Nobody had needed the un-renamed twin, so `⊢ihS-atP` did
+  --   not exist.  Step 6 needs it TWICE: `⊢transportP` demands a typing of
+  --   BOTH endpoints of the path, and one endpoint is the handle's call.
+  --
+  -- ★ The peel is `descS-at-idR`'s, verbatim: `auxAt idR x k` collapses to
+  --   `auxIH x k`, and the `renTm (extR⁴ idR)` layer vanishes.  Nothing
+  --   here is content; it is the standing identity-renaming tax.
+  ------------------------------------------------------------------------
+
+  extR⁴-idR : ∀ v → extR (extR (extR (extR idR))) v ≡ v
+  extR⁴-idR = extR-id (extR-id (extR-id (extR-id (λ v → refl))))
+
+  ihS-atP-id : (x a k p : RTm ⌊ Δ ⌋) →
+               ihS-atR idR x a k p ≡ ihS-atP x a k p
+  ihS-atP-id x a k p =
+    cong₂ (λ u t → subTm (single p)
+                     (subTm (extS (single a))
+                       (subTm (extS (extS (single u)))
+                         (subTm (extS (extS (extS (single k)))) t))))
+          (auxAt-id x k)
+          (renTm-idR extR⁴-idR
+                     (subTm (extS (extS (extS (extS (single x))))) ihS))
+
+  Aid : renTy idR A ≡ A
+  Aid = renTy-idR (λ v → refl) A
+
+  cMid : renTm (extR idR) cM ≡ cM
+  cMid = renTm-idR (extR-id (λ v → refl)) cM
+
+  ⊢ihS-atP : {x a k p : RTm ⌊ Δ ⌋} →
+             Δ ⊢ x ∷ A → Δ ⊢ k ∷ Nat → Δ ⊢ a ∷ A →
+             Δ ⊢ p ∷ Hom Nat (subTm (single a) m) (nsuc k) →
+             Δ ⊢ ihS-atP x a k p ∷ aIHTat A cM m (subTm (single a) m)
+  ⊢ihS-atP {x = x} {a = a} {k = k} {p = p} dx dk da dp =
+    subst (λ t → Δ ⊢ t ∷ aIHTat A cM m (subTm (single a) m))
+          (ihS-atP-id x a k p)
+          (⊢-cast (cong₄ aIHTat Aid cMid mId (cong (subTm (single a)) mId))
+                  (⊢ihS-atR Ren⊢-id dx dk
+                            (⊢-cast (sym Aid) da)
+                            (⊢-cast (cong (λ t → Hom Nat (subTm (single a) t)
+                                                         (nsuc k))
+                                          (sym mId))
+                                    dp)))
+
+
+module Handle-at {Δ Θ : Ctx} (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙))
+                 (stp : RTm ⌊ Δ ⌋)
+                 (dA   : Δ ⊢ty A)
+                 (dcM  : (Δ ▹ A) ⊢ cM ∷ U)
+                 (dm   : (Δ ▹ A) ⊢ m ∷ Nat)
+                 (dstp : Δ ⊢ stp ∷ aStepT A cM m)
+                 {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} (ρ⊢ : Ren⊢ Δ Θ ρ)
+                 where
+
+  open Handle Θ (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m) (renTm ρ stp)
+              (ren-ty dA ρ⊢)
+              (ren-lemma dcM (Ren⊢-ext ρ⊢))
+              (ren-lemma dm  (Ren⊢-ext ρ⊢))
+              (⊢-cast (aStepT-ren A cM m) (ren-lemma dstp ρ⊢))
+              public
+
+  -- ★ the side condition, transported rather than assumed (`AmTΠ-at.extΘ`)
+  extΘ : StepExt Δ A cM m stp →
+         StepExt Θ (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+                   (renTm ρ stp)
+  extΘ = StepExt-ren ρ⊢
+
+
 module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
               (dA   : Δ ⊢ty A)
               (dcM  : (Δ ▹ A) ⊢ cM ∷ U)
@@ -229,10 +369,11 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
               (dstp : Δ ⊢ stp ∷ aStepT A cM m)
               where
 
-  open AmTΠ Δ A cM m stp dA dcM dm dstp
-    using ( amrecTm; ⊢amrecΠ; idR; auxAt; auxAt-id; auxIH; ihS-atP; ih-app
+  open Handle Δ A cM m stp dA dcM dm dstp
+    using ( amrecTm; ⊢amrecΠ; ⊢amrecPt; idR; auxAt; auxAt-id; auxIH
+          ; ihS; ihS-atP; ihS-atR; ⊢ihS-atR; ⊢ihS-atP; ih-app
           ; amrec-β; irrT; irrT-sub; irrElim; irr-ind; descS-at; ⊢descS-at
-          ; mId; extR-id )
+          ; ihCall-amrec; mId; extR-id )
 
   -- ★★ the family with the RESULT SLOT OPEN — what `⊢jsub` transports.
   ⊢PFam : {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
@@ -335,6 +476,178 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
   --   above.
 
 
+
+  ------------------------------------------------------------------------
+  -- ★★★★★★ STEP 6, PROVED — `IndPW` FROM THE `natrec`'s IH.
+  --
+  -- ★ THE SHAPE, four moves and no more:
+  --     1. `ihCall-amrec` at `Θ'`   the handle's call IS `amrec y`
+  --     2. `prvSym`                 …turned round, because the IH lands at
+  --                                 the `amrec y` end and the goal is at
+  --                                 the call end
+  --     3. `⊢transportP`            carry `P` across it
+  --     4. `ihS-atP-ren`            re-express `Θ'`'s handle as `renTm ϑ`
+  --                                 of `Θ`'s, which is what `IndPW` says
+  --
+  -- ⚠ THE CERTIFICATE IS BUILT, NOT INHERITED.  `IndPW` hands over
+  --   `q : nsuc (μ y) ≤ ϑ (μ a)` and `IHAt` wants `nsuc (μ y) ≤ ϑ k`, so
+  --   the caller must supply `pk : μ a ≤ k` as well as the `p : μ a ≤ suc k`
+  --   the handle itself carries.  ⭐ BOTH are on the successor branch's
+  --   hypothesis `nsuc (μ a) ≤ suc k`: the order COMPUTES, so that IS
+  --   `μ a ≤ k`, and `p` is one `⊢le-suc` above it.  Taking the two
+  --   separately keeps this lemma independent of how they are derived.
+  --
+  -- ⚠ `ih` IS NOT ABSTRACT HERE, and it cannot be.  `IndPW` quantifies over
+  --   an arbitrary handle, but the bridge is a fact about THE handle the
+  --   successor branch builds — so step 6 is stated at `ihS-atP` and the
+  --   `IndStep` client instantiates `IndPW`'s `ih` to it.
+  --
+  -- ⚠ STATED WITH THE **PRIMED** HANDLE (`ihS-atP'`), not `Handle-at`'s.
+  --   The two agree definitionally (`…SpikeAgree`), and the primed form is
+  --   a top-level name, so the statement does not drag a module
+  --   instantiation into every client's type.
+  ------------------------------------------------------------------------
+
+  ihToPW : StepExt Δ A cM m stp →
+           {P : RTm ((⌊ Δ ⌋ ∙) ∙)} → ((Δ ▹ A) ▹ El cM) ⊢ P ∷ U →
+           {Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} → Ren⊢ Δ Θ ρ →
+           (a k p pk : RTm ⌊ Θ ⌋) →
+           Θ ⊢ a ∷ renTy ρ A → Θ ⊢ k ∷ Nat →
+           Θ ⊢ p  ∷ Hom Nat (subTm (single a) (renTm (extR ρ) m)) (nsuc k) →
+           Θ ⊢ pk ∷ Hom Nat (subTm (single a) (renTm (extR ρ) m)) k →
+           IHAt ρ P k →
+           IndPW Δ A cM m P Θ ρ a
+                 (ihS-atP' (renTm ρ stp) (renTm (extR ρ) cM) (renTm (extR ρ) m)
+                           a a k p)
+  ihToPW ext {P = P} dP {Θ = Θ} {ρ = ρ} ρ⊢ a k p pk da dk dp dpk ihA
+         {Θ' = Θ'} {ϑ = ϑ} {ρ' = ρ'} ϑ⊢ br y q dy dq =
+    prv-cast (cong (λ t → El (PAtR ρ' P y (app (app t y) q))) (sym handleEq))
+             (prv _ (⊢transportP ρ'⊢ dP dy dAmr dCall
+                                 (prvOk pathBack) (prvOk baseAt)))
+    where
+      ρ'⊢ : Ren⊢ Δ Θ' ρ'
+      ρ'⊢ = Ren⊢-comp ρ⊢ ϑ⊢ br
+
+      -- ★ the recursor's whole apparatus, AT `Θ'` — irrelevance included.
+      module R = Handle-at A cM m stp dA dcM dm dstp ρ'⊢
+
+      Aρ'  = renTy ρ' A
+      cMρ' = renTm (extR ρ') cM
+      mρ'  = renTm (extR ρ') m
+
+      ϑa = renTm ϑ a
+      ϑk = renTm ϑ k
+      ϑp = renTm ϑ p
+
+      μy = subTm (single y) mρ'
+      μa = subTm (single ϑa) mρ'
+
+      -- ⚠ the ONE naturality fact everything below casts by: the measure
+      --   at a renamed carrier.  `IndPW` states it as `renTm ϑ (μ a)`;
+      --   every lemma at `Θ'` wants it as `μ (ϑ a)`.
+      μEq : renTm ϑ (subTm (single a) (renTm (extR ρ) m)) ≡ μa
+      μEq = sub1-ren ρ ρ' br a m
+
+      dcM' : (Θ' ▹ Aρ') ⊢ cMρ' ∷ U
+      dcM' = ren-lemma dcM (Ren⊢-ext ρ'⊢)
+
+      dm' : (Θ' ▹ Aρ') ⊢ mρ' ∷ Nat
+      dm' = ren-lemma dm (Ren⊢-ext ρ'⊢)
+
+      dϑa : Θ' ⊢ ϑa ∷ Aρ'
+      dϑa = ⊢-cast (renrenTy {ϑ = ϑ} {ρ = ρ} {ρ' = ρ'} br A) (ren-lemma da ϑ⊢)
+
+      dϑk : Θ' ⊢ ϑk ∷ Nat
+      dϑk = ren-lemma dk ϑ⊢
+
+      dϑp : Θ' ⊢ ϑp ∷ Hom Nat μa (nsuc ϑk)
+      dϑp = ⊢-cast (cong (λ t → Hom Nat t (nsuc ϑk)) μEq) (ren-lemma dp ϑ⊢)
+
+      dϑpk : Θ' ⊢ renTm ϑ pk ∷ Hom Nat μa ϑk
+      dϑpk = ⊢-cast (cong (λ t → Hom Nat t ϑk) μEq) (ren-lemma dpk ϑ⊢)
+
+      dq' : Θ' ⊢ q ∷ Hom Nat (nsuc μy) μa
+      dq' = ⊢-cast (cong (Hom Nat (nsuc μy)) μEq) dq
+
+      dμy : Θ' ⊢ μy ∷ Nat
+      dμy = ⊢[] dm' dy
+
+      dμa : Θ' ⊢ μa ∷ Nat
+      dμa = ⊢[] dm' dϑa
+
+      dcU : Θ' ⊢ subTm (single y) cMρ' ∷ U
+      dcU = ⊢[] dcM' dy
+
+      -- ★★ THE CERTIFICATE THE IH WANTS, COMPOSED: `nsuc (μ y) ≤ μ a` and
+      --    `μ a ≤ k`, both at `Θ'`, chained by the order's transport.
+      cTm : RTm ⌊ Θ' ⌋
+      cTm = ordtr (nsuc μy) μa ϑk q (renTm ϑ pk)
+
+      dc : Θ' ⊢ cTm ∷ Hom Nat (nsuc μy) ϑk
+      dc = ⊢ordtr (⊢nsuc dμy) dμa dϑk dq' dϑpk
+
+      -- 1. the IH, instantiated — `P` at `(y , amrec y)`
+      base : Prv Θ' (El (PAtR ρ' P y (app (renTm ρ' amrecTm) y)))
+      base = ihA ϑ⊢ br y cTm dy dc
+
+      -- ⚠ `amrecTm` at `Θ'` is `renTm ρ'` of the one at `Δ` — the `-ren`
+      --   family's whole point, and the reason `IHAt` could be stated
+      --   about `renTm ρ' amrecTm` in the first place.
+      amrEq : renTm ρ' amrecTm ≡ R.amrecTm
+      amrEq = amrecTm-ren {ρ = ρ'} stp cM m
+
+      baseAt : Prv Θ' (El (PAtR ρ' P y (app R.amrecTm y)))
+      baseAt = prv-cast (cong (λ t → El (PAtR ρ' P y (app t y))) amrEq) base
+
+      dAmr : Θ' ⊢ app R.amrecTm y ∷ El (subTm (single y) cMρ')
+      dAmr = R.⊢amrecPt dy
+
+      -- 2. the handle, TYPED, and its call — `⊢transportP` needs BOTH
+      --    endpoints of the path typed, and this is the far one.
+      dIH : Θ' ⊢ R.ihS-atP ϑa ϑa ϑk ϑp ∷ aIHTat Aρ' cMρ' mρ' μa
+      dIH = R.⊢ihS-atP dϑa dϑk dϑa dϑp
+
+      -- ⚠ the Π-peel: `aIHTat` puts the result code under BOTH binders, so
+      --   applying it twice leaves `cM[y]` behind one `sub-w` and one
+      --   `wk-single`.  Nothing here is content.
+      homPeel = cong (λ t → Π (Hom Nat (nsuc μy) t)
+                              (El (subTm (extS (single y)) (w cMρ'))))
+                     (wk-single {v = y} μa)
+
+      cmPeel : subTm (single q) (subTm (extS (single y)) (w cMρ'))
+             ≡ subTm (single y) cMρ'
+      cmPeel = trans (cong (subTm (single q)) (sub-w cMρ'))
+                     (wk-single {v = q} (subTm (single y) cMρ'))
+
+      dCall : Θ' ⊢ app (app (R.ihS-atP ϑa ϑa ϑk ϑp) y) q
+                ∷ El (subTm (single y) cMρ')
+      dCall = ⊢-cast (cong El cmPeel)
+                     (⊢app (⊢-cast homPeel (⊢app dIH dy)) dq')
+
+      -- 3. THE BRIDGE, at `Θ'` — and turned round.
+      bridge : Prv Θ' (Id (El (subTm (single y) cMρ'))
+                          (app (app (R.ihS-atP ϑa ϑa ϑk ϑp) y) q)
+                          (app R.amrecTm y))
+      bridge = R.ihCall-amrec (R.extΘ ext) dϑa dϑk dϑp dy dq'
+
+      pathBack : Prv Θ' (Id (El (subTm (single y) cMρ'))
+                            (app R.amrecTm y)
+                            (app (app (R.ihS-atP ϑa ϑa ϑk ϑp) y) q))
+      pathBack = prvSym dcU dCall dAmr bridge
+
+      -- 4. …and `Θ'`'s handle IS `renTm ϑ` of `Θ`'s.
+      handleEq : renTm ϑ (ihS-atP' (renTm ρ stp) (renTm (extR ρ) cM)
+                                   (renTm (extR ρ) m) a a k p)
+               ≡ R.ihS-atP ϑa ϑa ϑk ϑp
+      handleEq =
+        trans (ihS-atP-ren {ρ = ϑ} (renTm ρ stp) (renTm (extR ρ) cM)
+                           (renTm (extR ρ) m) a a k p)
+              (cong₃ (λ sf cf mf → ihS-atP' sf cf mf ϑa ϑa ϑk ϑp)
+                     (renren {ϑ = ϑ} {ρ = ρ} {ρ' = ρ'} br stp)
+                     (renren {ϑ = extR ϑ} {ρ = extR ρ} {ρ' = extR ρ'}
+                             (extcondR {ϑ = ϑ} {ρ = ρ} {ρ' = ρ'} br) cM)
+                     (renren {ϑ = extR ϑ} {ρ = extR ρ} {ρ' = extR ρ'}
+                             (extcondR {ϑ = ϑ} {ρ = ρ} {ρ' = ρ'} br) m))
 
   ------------------------------------------------------------------------
   -- ★★★★ THE BOUNDED STATEMENT — what the `natrec` on the measure bound
