@@ -49,7 +49,7 @@ open import poc.OCP0009.NbEPDirDBLibArithMonus
   using ( monusLtTm; monusLtTm-sub; ⊢desc-left )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( subren; renren )
-open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )
+open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT ; msrPair)
 open import poc.OCP0009.NbEPDirDBLibNatrec
   using ( na-z; na-s; Sub⊢-∘; ⊢natrec-at; ⊢natrec-var ) public
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
@@ -58,7 +58,7 @@ open import poc.OCP0009.NbEPDirDBExamplesGcdStep
         ; G2; ⊢G2; G2z; ⊢G2z; gcdInn2; ⊢gcdInn2; wkS2
         ; G3; ⊢G3; G3z; ⊢G3z; G3s; ⊢G3s
         ; CERTˢ; ⊢CERTˢ; PAIRˢ; KS; NS; gcdIH
-        ; peel4; peel6; wkS2; descConv )
+        ; peel4; peel6; wkS2 )
 
 ------------------------------------------------------------------------
 -- ★★★ A `natrec`'s TYPING, TRANSPORTED ALONG A SUBSTITUTION.
@@ -431,7 +431,7 @@ module GcdCertEq {Γ : Cx} (a' b' d ih : RTm Γ) where
 -- ⭐ Compare with what this replaces: an eight-layer `sub-lemma` tower that
 --   OOM-killed, and before that a peel that ran past ten minutes.  Once the
 --   certificate is in `⊢desc-left`'s own form, its typing is the derivation
---   that `⊢G3s` already builds — `descConv` just moves the measure across
+--   that `⊢G3s` already builds — `msrPair` just moves the measure across
 --   the pair's projections, exactly as `⊢CERTˢ` does.
 ------------------------------------------------------------------------
 
@@ -452,7 +452,7 @@ module GcdCertTy {Δ : Ctx} {a' b' d : RTm ⌊ Δ ⌋}
                                  (plusTm (nsuc a') (nsuc b')))
           (sym certEq)
           (⊢conv (⊢desc-left da db)
-                 (csymᵀ (descConv (monusTm (nsuc a') (nsuc b')) (nsuc b')
+                 (csymᵀ (msrPair (monusTm (nsuc a') (nsuc b')) (nsuc b')
                                   (plusTm (nsuc a') (nsuc b')))))
 
 ------------------------------------------------------------------------

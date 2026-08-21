@@ -38,6 +38,7 @@ open import poc.OCP0009.NbEPDirDBPi
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; there; wk-single )
 open import poc.OCP0009.NbEPDirDBSubj using ( ren-lemma; Ren⊢-ext )
+open import poc.OCP0009.NbEPDirDBVar using ( ren-as-sub )
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 
@@ -334,12 +335,41 @@ wfw-single : {Γ : Cx} {v : RTm (Γ ∙)} (t : RTm Γ) →
 wfw-single {v = v} t =
   trans (cong (subTm (single v)) (ren-w t)) (wk-single (w t))
 
+------------------------------------------------------------------------
+-- ★★★ THE CANCELLATION LAW, GENERIC IN THE DEPTH.
+--
+--   Every `pwᵏ`/`wkSᵏ`/`w²-single` above is this lemma at one particular
+--   lifting depth.  The caller supplies only the POINTWISE fact that the
+--   composite `σ ∘ ρ` is the identity on variables — which is `refl`
+--   whenever the composite computes, and a three-case bridge when it does
+--   not.  Nested weakenings collapse (`renTm-renTm`) and nested
+--   substitutions collapse (`subTm-subTm`) BEFORE this applies, which is
+--   why one law covers depths 1 through 7.
+--
+-- ⚠ Promoted here from `…ExamplesGcdStep`, where it was proved for gap A's
+--   equations 3 and 4.  It has no gcd content and never did.
+------------------------------------------------------------------------
+
+wkGen : {Γ Δ : Cx} {σ : Sub Δ Γ} {ρ : Ren Γ Δ} →
+        ((x : Var Γ) → σ (ρ x) ≡ var x) →
+        (t : RTm Γ) → subTm σ (renTm ρ t) ≡ t
+wkGen h t = trans (subTm-renTm t) (trans (subTm-cong h t) (subTm-id t))
+
+-- ★★ …and the version landing on a RENAMED target rather than on `t`.
+--   ⚠ The `single`-headed composites return `t` EXACTLY; the `extS`-headed
+--   ones return `t` STILL WEAKENED.  Same three moves, one different
+--   endpoint — `ren-as-sub` where `wkGen` uses `subTm-id`.
+wkGenR : {Γ Δ Θ : Cx} {σ : Sub Δ Θ} {ρ : Ren Γ Δ} {ρ' : Ren Γ Θ} →
+         ((x : Var Γ) → σ (ρ x) ≡ var (ρ' x)) →
+         (t : RTm Γ) → subTm σ (renTm ρ t) ≡ renTm ρ' t
+wkGenR {ρ' = ρ'} h t =
+  trans (subTm-renTm t) (trans (subTm-cong h t) (sym (ren-as-sub ρ' t)))
+
 -- ★ `wk-single` one binder deeper — what a `natrec`'s SUCCESSOR branch
 --   needs, since `natrec-suc` binds the predecessor AND the IH.
 w²-single : {Γ : Cx} {x : RTm Γ} (t : RTm ((Γ ∙) ∙)) →
             subTm (extS (extS (single x))) (renTm (extR (extR vs)) t) ≡ t
-w²-single {x = x} t =
-  trans (subTm-renTm t) (trans (subTm-cong br t) (subTm-id t))
+w²-single {x = x} t = wkGen br t
   where
     br : ∀ v → extS (extS (single x)) (extR (extR vs) v) ≡ var v
     br vz          = refl

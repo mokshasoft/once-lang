@@ -27,7 +27,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; csymᵀ; _⟶*_; step; done; βfst; βsnd; natrec-suc )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
-open import poc.OCP0009.NbEPDirDBLibPair using ( asN; PairT )
+open import poc.OCP0009.NbEPDirDBLibPair using ( asN; PairT ; msrPair)
 open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBLibMonus using ( monusTm; ⊢monus )
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( IdN; ⊢tyIdN )
@@ -35,7 +35,7 @@ open import poc.OCP0009.NbEPDirDBLibAmrec using ( Prv; prv; prvOk )
 open import poc.OCP0009.NbEPDirDBLibDvdArith
   using ( QCode; QCode-conv; QCode-convU; ⊢Q-fst; ⊢Q-snd )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
-  using ( PAIRˢ; CERTˢ; KS; NS; descConv; gcdIH; ⊢gcdIH; msr; G3s )
+  using ( PAIRˢ; CERTˢ; KS; NS; gcdIH; ⊢gcdIH; msr; G3s )
 open import poc.OCP0009.NbEPDirDBType using ( ⊢pair; ty-Nat )
 open import poc.OCP0009.NbEPDirDBLibArithMonus using ( ⊢desc-left )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStepExt
@@ -119,7 +119,7 @@ private
                         (plusTm (nsuc KS) (nsuc NS))
   ⊢CERTˢL =
     ⊢conv (⊢desc-left dksL dnsL)
-          (csymᵀ (descConv (monusTm (nsuc KS) (nsuc NS)) (nsuc NS)
+          (csymᵀ (msrPair (monusTm (nsuc KS) (nsuc NS)) (nsuc NS)
                            (plusTm (nsuc KS) (nsuc NS))))
 
   dPAIR : {Γ : Ctx} → Θ₄ Γ ⊢ w (w PAIRˢ) ∷ PairT
