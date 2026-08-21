@@ -707,11 +707,71 @@ Both sit on the successor branch's hypothesis `nsuc (μ a) ≤ suc k`, which
 COMPUTES to `μ a ≤ k`; taking them separately keeps `ihToPW` independent of
 how they are derived.
 
+| 41 | 08-21 | `IndBAt-ren` (from `IndBAt-sub`) + `ihFromTm` | ✅ green first try | 12.7s |
+| 42 | 08-21 | **The SUCCESSOR branch (`sbr`)** | ✅ green (2 rounds) | 19.4s |
+| 43 | 08-21 | **`amrecInd` — the `⊢natrec` + the instantiation** | ✅ green | 19.3s |
+
+## ✅✅✅ `amrec-ind` IS BUILT — `Concl.amrecInd`
+
+    amrecInd : StepExt Δ A cM m stp → {P} → AmrecInd P
+
+Sweep **ALL GREEN (112 modules)**, RED skipped 3 — the same count as the
+2026-08-21 baseline, so nothing else moved. `--safe`, no postulates, no
+holes, no pragmas.
+
+### What closed, in order
+
+- **`IndBAt-ren`** — free. A renaming IS a substitution (`ren-subTy'`), so
+  `IndBAt-sub` covers it; no second induction, no `-ren` twin. ⭐ The
+  dividend of stating `IndBAt-sub` generically in σ.
+- **`ihFromTm`** — the `natrec`'s IH VARIABLE read as the meta-level `IHAt`
+  step 6 consumes. Rename it (`IndBAt-ren`), then APPLY it. The peel is
+  `PAtR-sub` twice, at the two Π-binders, and **both side conditions are
+  `refl`** — `extS (single y)` and `single c` each meet the ambient tower
+  `θ₂ ρ'` at a variable.
+- **The successor branch** — `IndBAt-sub` at `σ := nrs`, then
+  `Hom-Nat-ss` → `⊢le-suc` → `ihFromTm` → `ihToPW` → the client's
+  `IndStep` → `amrec-unfold-Id` + `prvSym` + `⊢transportP`.
+- **`amrecInd`** — `⊢natrec`, then instantiated at `n := suc (μ x)` and
+  applied to `x` and `⊢le-refl`.
+
+### ⭐ The prediction that held: ONE substitution law, not two
+
+2026-08-21 said the zero branch was `IndBAt-sub` at `single nzero` and the
+successor would be its instance at `single (nsuc …)`. It is — and the law
+paid a **third** time, at `single N` for the final instantiation. The
+`IndB-z`/`IndB-s` pair the module's own comment prescribed was never
+written.
+
+### ⚠ Two things that had to be built, again not in the plan
+
+1. **`⊢le-suc` was already there** (`…LibStrong`), and it matters: the
+   successor branch's hypothesis computes to `μ x ≤ K` but the handle
+   carries `μ x ≤ suc K`, and at an OPEN `K` that widening is a `natrec`,
+   not a conversion. Had it not existed it would have been the branch's
+   real cost.
+2. **`ihFromTm`'s implicits must be PINNED.** `IHAt`/`IndBAt` are DEFINED
+   functions, so Agda unfolds rather than decomposing, and `P` ends up
+   under `renTm (extR (extR ρ'))` — higher-order, unsolvable. Cost: one
+   round. ⇒ the standing rule, at one more site.
+
+### ⚠⚠ WHAT IS **NOT** YET SHOWN — do not overclaim
+
+`amrecInd` is a total function whose only premises are `StepExt` (known
+satisfiable — `gcdStepExt`) and `IndStep`. The `n := suc (μ x)`
+instantiation makes `IndB P` non-vacuous at the very carrier being proved
+about, so this is NOT `lexrec`'s failure mode. **But no client has gone
+through it yet.** The success criterion fixed in advance stands: all three
+of `gcd(a,b) ∣ a`, `gcd(a,b) ∣ b`, and maximality must go THROUGH the
+combinator. Three customers vindicates the axis; three bespoke rebuilds is
+the warning sign.
+
 ## Next
 
-1. The SUCCESSOR branch — `IndBAt-sub` at `σ := single (nsuc …)`, then the
-   branch body; `ihToPW` is its engine.
-2. `⊢natrec` — assemble zero + successor into the recursor.
-3. ⚠ The instantiation at `n := suc (μ x)` — THE NON-VACUITY CHECK. Green
-   is not the success criterion (`lexrec` died exactly here).
-4. Gap B layer 2 — the divisibility spec, THROUGH `amrec-ind`.
+1. **Gap B layer 2** — the divisibility spec, THROUGH `amrec-ind`. This is
+   both the next deliverable and the combinator's first real test.
+2. The other two customers, then the three-customer judgement.
+3. **Consolidation**: hoist `prvSym`/`⊢symId` and `⊢ihS-atP` into `Lib`
+   modules — `⊢ihS-atP` into `…LibAmrec` only WITH a measurement (that
+   module is a known OOM hazard for its clients).
+4. Then the WF-axis comparison.
