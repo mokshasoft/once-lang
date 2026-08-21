@@ -67,6 +67,7 @@ open import poc.OCP0009.NbEPDirDBLibAmrec
         ; module AmTΠ )
 open import poc.OCP0009.NbEPDirDBLibAmrecRen
   using ( amrecTm'; amrecTm-ren; ihS-atP'; ihS-atP-ren; StepExt-ren )
+open import poc.OCP0009.NbEPDirDBLibId using ( symTm; ⊢symId; prvSym )
 open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base )
 open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; ⊢le-suc; reflTm )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
@@ -88,28 +89,9 @@ open import poc.OCP0009.NbEPDirDBLibNatrec using ( Ren⊢-id )
 --   ⇒ the path has to be turned round exactly once.
 ------------------------------------------------------------------------
 
-symTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-symTm c t p = jsub (⌜Id⌝ (renTm vs c) (var vz) (renTm vs t)) p (idrefl c t)
-
-⊢symId : {Γ : Ctx} {c t u p : RTm ⌊ Γ ⌋} →
-         Γ ⊢ c ∷ U → Γ ⊢ t ∷ El c → Γ ⊢ u ∷ El c →
-         Γ ⊢ p ∷ Id (El c) t u →
-         Γ ⊢ symTm c t p ∷ Id (El c) u t
-⊢symId {c = c} {t = t} {u = u} {p = p} dc dt du dp =
-  ⊢conv
-    (⊢-cast (cong El (⌜Id⌝-cong₃ (wk-cancel-tm u c) refl (wk-cancel-tm u t)))
-      (⊢jsub (⊢⌜Id⌝ (⊢wk dc) (⊢var here) (⊢wk dt))
-             dt du dp
-             (⊢-cast (cong El (sym (⌜Id⌝-cong₃ (wk-cancel-tm t c) refl
-                                               (wk-cancel-tm t t))))
-                     (⊢conv (⊢idrefl dc dt)
-                            (csymᵀ (credᵀ (El-⌜Id⌝ c t t)))))))
-    (credᵀ (El-⌜Id⌝ c u t))
-
-prvSym : {Γ : Ctx} {c t u : RTm ⌊ Γ ⌋} →
-         Γ ⊢ c ∷ U → Γ ⊢ t ∷ El c → Γ ⊢ u ∷ El c →
-         Prv Γ (Id (El c) t u) → Prv Γ (Id (El c) u t)
-prvSym {c = c} {t = t} dc dt du (prv e d) = prv (symTm c t e) (⊢symId dc dt du d)
+-- (`symTm`/`⊢symId`/`prvSym` moved to `…LibId` — general `Id` symmetry,
+--  no recursor content.  `…ExamplesId` keeps its own derivation as the
+--  independent re-derivation; see that module's header.)
 
 module Stmt (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
             (dA   : Δ ⊢ty A)
@@ -293,10 +275,19 @@ IndStep Δ A cM m stp P =
 --   module carrying `⊢ihS-atP` would instantiate `AmTΠ` twice at the same
 --   parameters; extending the instantiation once does not.
 --
--- ⚠ AND `⊢ihS-atP` IS NOT PUT IN `…LibAmrec`.  That module is a measured
---   OOM hazard for its clients (see `…LibAmrecRen`'s header: +460 lines
---   turned a 6m27s build into an OOM).  It goes there at consolidation,
---   with a measurement, not before.
+-- ⚠⚠ `⊢ihS-atP` STAYS HERE — DECIDED 2026-08-21 at consolidation, and the
+--   debt item is CLOSED as declined, not deferred again.
+--
+--   Moving it means adding to `AmTΠ` in `…LibAmrec`, which has **43
+--   importers** and is a measured OOM hazard for them (`…LibAmrecRen`'s
+--   header: +460 lines turned a 6m27s build into an OOM).  Against that:
+--   `⊢ihS-atP` has exactly ONE customer — step 6, in this module — and
+--   moving it changes nothing at that use site.
+--
+--   ⇒ 43-module blast radius on a known-hazard module, bought with zero
+--     use-site gain.  Judge the abstraction at the use site: there is no
+--     gain to judge.  Revisit if and only if a SECOND customer appears;
+--     until then re-deriving it here is strictly cheaper than the risk.
 ------------------------------------------------------------------------
 
 module Handle (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)

@@ -35,12 +35,10 @@ open import poc.OCP0009.NbEPDirDBType
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Idʳ )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-nsuc )
 open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
-open import poc.OCP0009.NbEPDirDBLibMul using ( mulTm; ⊢mul; mul-zero )
+open import poc.OCP0009.NbEPDirDBLibMul using ( mulTm; ⊢mul; mul-zero; mul-suc )
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( IdN; reflN; ⊢reflN )
 open import poc.OCP0009.NbEPDirDBLibDvd using ( dvdT; dvd-intro )
-open import poc.OCP0009.NbEPDirDBLibDvdArith
-  using ( assocB; ⊢assoc; distB; ⊢dist; mul-suc; dvdSum; ⊢dvd-plus
-        ; ⊢congPd; zmB; ⊢zero-monus; pmB; ⊢pred-monus; ⊢noConf; exFalsoN )
+open import poc.OCP0009.NbEPDirDBLibDvdArith using ( assocB; ⊢assoc; distB; ⊢dist; dvdSum; ⊢dvd-plus; ⊢congPd; zmB; ⊢zero-monus; pmB; ⊢pred-monus; ⊢noConf; exFalsoN )
 open import poc.OCP0009.NbEPDirDBLibMonusPlus
   using ( mpAt; ⊢mpAt; mpUse; mpTm; ⊢monusPlus; monusPlus )
 open import poc.OCP0009.NbEPDirDBLibMonusLe

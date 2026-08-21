@@ -60,7 +60,8 @@ open import poc.OCP0009.NbEPDirDBLibArithComm
   using ( IdN; ⊢tyIdN; elIdN; reflN; ⊢reflN; congS; ⊢congS
         ; symN; ⊢symN; transN; ⊢transN
         ; plus0B; plus0Tm; ⊢plus0; plusSB; plusSTm; ⊢plusS )
-open import poc.OCP0009.NbEPDirDBLibMul using ( mulTm; ⊢mul; mulTm-sub; mul-zero )
+open import poc.OCP0009.NbEPDirDBLibMul
+  using ( mulTm; ⊢mul; mulTm-sub; mul-zero; mul-suc; mulTm-ren )
 open import poc.OCP0009.NbEPDirDBLibDvd
   using ( dvdT; dvd-intro; dvd-wit; dvd-eq; dvdCode; ⊢dvdCode )
 open import poc.OCP0009.NbEPDirDBLibMonus
@@ -270,32 +271,9 @@ dsMot-s k d =
 -- ⇒ CONSOLIDATION DEBT: `mul-suc` and `mulTm-ren` belong in `…LibMul`,
 --   beside `mul-zero` and `mulTm-sub`.  Kept here to leave that module's
 --   clients untouched mid-task.
-mul-suc : {Γ : Cx} (m n : RTm Γ) → mulTm (nsuc m) n ⟶* plusTm n (mulTm m n)
-mul-suc m n =
-  subst (λ t → mulTm (nsuc m) n ⟶* t) peel
-        (step (natrec-suc nzero (plusTm (w (w n)) (var vz)) m) done)
-  where
-    inner : subTm (extS (single m)) (w (w n)) ≡ w n
-    inner = trans (sub-w {σ = single m} (w n)) (cong w (wk-single {v = m} n))
-
-    peel = trans (cong (λ t → subTm (single (mulTm m n))
-                                (natrec (var vz) (nsuc (var vz)) t))
-                       inner)
-                 (cong (λ t → natrec (mulTm m n) (nsuc (var vz)) t)
-                       (wk-single {v = mulTm m n} n))
-
--- ⚠ AND `renTm` DOES NOT DISTRIBUTE THROUGH `mulTm` EITHER, for the same
---   reason — so the IH VARIABLE's type needs its own peel.  `assocB` got
---   away without one because `plusTm` renames definitionally; the moment a
---   `mulTm` is in the motive, `⊢var here` no longer has the shape the
---   branch wants.  ⭐ A renaming IS a substitution (`ren-sub`), so
---   `mulTm-sub` supplies this too — no second induction.
-mulTm-ren : {Γ Γ' : Cx} {ρ : Ren Γ Γ'} (m n : RTm Γ) →
-            renTm ρ (mulTm m n) ≡ mulTm (renTm ρ m) (renTm ρ n)
-mulTm-ren {ρ = ρ} m n =
-  trans (ren-sub (mulTm m n))
-    (trans (mulTm-sub {σ = λ v → var (ρ v)} m n)
-           (cong₂ mulTm (sym (ren-sub m)) (sym (ren-sub n))))
+-- (`mul-suc`/`mulTm-ren` moved to `…LibMul`, beside `mul-zero` and
+--  `mulTm-sub`.  `mul-zero`/`mul-suc` are a PAIR and were split across
+--  two modules; nothing in either is divisibility content.)
 
 dsMot-wk : {Γ : Cx} (k d : RTm Γ) →
            renTy vs (distB (w k) (w d) (var vz))

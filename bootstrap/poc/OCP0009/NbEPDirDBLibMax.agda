@@ -40,10 +40,9 @@ open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk
   using ( w; sub-w; sub-w²; sub-w³; ren-w; ren-w²; ren-w³; cong₃ )
 open import poc.OCP0009.NbEPDirDBLibPair using ( asN )
-open import poc.OCP0009.NbEPDirDBLibMul using ( mulTm; mulTm-sub )
+open import poc.OCP0009.NbEPDirDBLibMul using ( mulTm; mulTm-sub; mulTm-ren )
 open import poc.OCP0009.NbEPDirDBLibDvd using ( dvdT; ⊢dvdT; dvdCode; ⊢dvdCode )
-open import poc.OCP0009.NbEPDirDBLibDvdArith
-  using ( dvdCode-sub; dvdCode-ren; mulTm-ren; El-dvd; dvdCode-redN )
+open import poc.OCP0009.NbEPDirDBLibDvdArith using ( dvdCode-sub; dvdCode-ren; El-dvd; dvdCode-redN )
 open import poc.OCP0009.NbEPDirDBLibMonusArith using ( ⊢dvd-monus; dvdMonus )
 open import poc.OCP0009.NbEPDirDBLibMonus using ( monusTm; ⊢monus )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-ren )
