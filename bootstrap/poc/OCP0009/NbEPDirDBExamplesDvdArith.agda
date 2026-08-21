@@ -43,6 +43,8 @@ open import poc.OCP0009.NbEPDirDBLibDvdArith
         ; ⊢congPd; zmB; ⊢zero-monus; pmB; ⊢pred-monus; ⊢noConf; exFalsoN )
 open import poc.OCP0009.NbEPDirDBLibMonusPlus
   using ( mpAt; ⊢mpAt; mpUse; mpTm; ⊢monusPlus; monusPlus )
+open import poc.OCP0009.NbEPDirDBLibMonusLe
+  using ( mlAt; ⊢mlAt; mlTm; ⊢monusLe; monusLe )
 open import poc.OCP0009.NbEPDirDBLibMonus using ( predTm; monusTm; ⊢pred; ⊢monus )
 
 ------------------------------------------------------------------------
@@ -215,6 +217,28 @@ module MonusPlusUse (e : RTm ⌊ Γ₃ ⌋)
   applied : Γ₃ ⊢ app (app (app (mpTm A) B) C) e
               ∷ IdN B (plusTm (nsuc C) A)
   applied = monusPlus dB dA dC de
+
+------------------------------------------------------------------------
+-- 5b. ★★★ `monusLe` — THE OTHER CANCELLATION, AND IT IS A DIFFERENT
+--     LEMMA, NOT A VARIANT.
+--
+--       a ∸ b ≡ 0   ⟹   b ≡ (b ∸ a) + a
+--
+-- ⚠ gcd's TWO recursive branches need ONE cancellation EACH, and
+--   `monusPlus` cannot serve the `a ≤ b` one: its premise `a ∸ b ≡ suc p`
+--   is FALSE at `a = b`, which that branch admits.
+------------------------------------------------------------------------
+
+ml-open : Γ₃ ⊢ mlTm A ∷ mlAt A
+ml-open = ⊢monusLe dA
+
+module MonusLeUse (e : RTm ⌊ Γ₃ ⌋)
+                  (de : Γ₃ ⊢ e ∷ IdN (monusTm B A) nzero)
+                  where
+
+  applied : Γ₃ ⊢ app (app (mlTm A) B) e
+              ∷ IdN A (plusTm (monusTm A B) B)
+  applied = monusLe dB dA de
 
 ------------------------------------------------------------------------
 -- 6. THE SHAPE GAP B WILL CALL, and the reason it is stated as a module

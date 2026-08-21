@@ -40,11 +40,12 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢idrefl; ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝
         ; ty-Id; ty-El; ty-Nat; ty-U; ty-Π
         ; ⊢⌜Unit⌝; ⊢⌜base⌝; ⊢unit; ⊢absurd; ⊢lam; ⊢app; El-⌜Unit⌝; El-⌜base⌝; ξ-El
-        ; ⊢⌜Σ⌝
+        ; ⊢⌜Σ⌝; ⊢pair; ⊢fst; ⊢snd; El-⌜Σ⌝; El-⌜Nat⌝; ξ-Σˡ; ξ-Σʳ
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Id⌝
         ; ξ-Idˡ; ξ-Idʳ; ξ-nsuc; ξ-natrecⁿ; natrec-zero; natrec-suc
         ; _⟶*_; step; done )
-open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
+open import poc.OCP0009.NbEPDirDBInj
+  using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; _⟶ᵀ*_ )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-natrecᶻ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
@@ -673,3 +674,46 @@ QCode-ren {ρ = ρ} u₁ u₂ v =
   cong₂ ⌜Σ⌝ (dvdCode-ren v u₁)
             (trans (ren-w {ρ = ρ} (dvdCode v u₂))
                    (cong w (dvdCode-ren v u₂)))
+
+------------------------------------------------------------------------
+-- ★★★★ 12.  THE MOTIVE'S INTERFACE — INTRO AND THE TWO PROJECTIONS.
+--
+-- ⚠ `amrec-ind` states everything in terms of `El <code>`, while every
+--   divisibility lemma above is stated at the TYPE `dvdT`.  These three
+--   are the bridge, and each pays the same decode: `⌜Σ⌝`, then `⌜Nat⌝` in
+--   the first component and `⌜Id⌝` in the second.
+--
+-- ★ Factored out for the reason `monusPlus` taught: the four leaves of
+--   `IndStep` each use them, and inlining the decode four times is how a
+--   derivation gets big enough to OOM.
+------------------------------------------------------------------------
+
+El-dvd : {Γ : Cx} (d n : RTm Γ) → El (dvdCode d n) ⟶ᵀ* dvdT d n
+El-dvd d n =
+  stepᵀ (El-⌜Σ⌝ _ _)
+    (stepᵀ (ξ-Σˡ El-⌜Nat⌝)
+      (stepᵀ (ξ-Σʳ (El-⌜Id⌝ _ _ _)) doneᵀ))
+
+⊢Q-intro : {Γ : Ctx} {u₁ u₂ v h₁ h₂ : RTm ⌊ Γ ⌋} →
+           Γ ⊢ u₂ ∷ Nat → Γ ⊢ v ∷ Nat →
+           Γ ⊢ h₁ ∷ dvdT v u₁ → Γ ⊢ h₂ ∷ dvdT v u₂ →
+           Γ ⊢ pair h₁ h₂ ∷ El (QCode u₁ u₂ v)
+⊢Q-intro {u₁ = u₁} {u₂ = u₂} {v = v} {h₁ = h₁} d2 dv dh1 dh2 =
+  ⊢conv (⊢pair (ty-El (⊢wk (⊢dvdCode dv d2)))
+               (⊢conv dh1 (csymᵀ (red→≅ᵀ (El-dvd v u₁))))
+               (⊢-cast (sym (cong El (wk-single {v = h₁} (dvdCode v u₂))))
+                       (⊢conv dh2 (csymᵀ (red→≅ᵀ (El-dvd v u₂))))))
+        (csymᵀ (red→≅ᵀ (stepᵀ (El-⌜Σ⌝ _ _) doneᵀ)))
+
+⊢Q-fst : {Γ : Ctx} {u₁ u₂ v h : RTm ⌊ Γ ⌋} →
+         Γ ⊢ h ∷ El (QCode u₁ u₂ v) → Γ ⊢ fst h ∷ dvdT v u₁
+⊢Q-fst {u₁ = u₁} {v = v} dh =
+  ⊢conv (⊢fst (⊢conv dh (red→≅ᵀ (stepᵀ (El-⌜Σ⌝ _ _) doneᵀ))))
+        (red→≅ᵀ (El-dvd v u₁))
+
+⊢Q-snd : {Γ : Ctx} {u₁ u₂ v h : RTm ⌊ Γ ⌋} →
+         Γ ⊢ h ∷ El (QCode u₁ u₂ v) → Γ ⊢ snd h ∷ dvdT v u₂
+⊢Q-snd {u₂ = u₂} {v = v} {h = h} dh =
+  ⊢conv (⊢-cast (cong El (wk-single {v = fst h} (dvdCode v u₂)))
+                (⊢snd (⊢conv dh (red→≅ᵀ (stepᵀ (El-⌜Σ⌝ _ _) doneᵀ)))))
+        (red→≅ᵀ (El-dvd v u₂))
