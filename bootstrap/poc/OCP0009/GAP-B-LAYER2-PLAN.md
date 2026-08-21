@@ -152,17 +152,49 @@ split.
    and the module split alone did not.
 
    ⇒ **For a nested internal induction, factor the leaves out FIRST.**
-5. ⬜ **The motive** `P` of §1, plus `⊢P` (it is a `⌜Σ⌝` of two `dvdCode`s —
+5. ✅ **The motive** `P` of §1, plus `⊢P` (it is a `⌜Σ⌝` of two `dvdCode`s —
    `⊢dvdCode` is green, so this is assembly).
 6. ✅ **`gcdStepExt`** — ALREADY PROVED (`…GcdStepExtA`). No work.
-7. ⬜ **`IndStep`** — the three nested `natrec`s of §2. The four leaves:
-   - `b = 0`: `gcd (a,0) = a`. Need `a ∣ a` and `a ∣ 0`. Both are
-     `dvd-intro` at witnesses `1` and `0` (`…LibDvd`'s header records both
-     as one-liners; the `n ≡ 1 * n` side needs `⊢plus0`).
-   - `a = 0, b = suc b'`: `gcd (0, b) = b`. Need `b ∣ 0` and `b ∣ b`.
-   - `a > b` / `a ≤ b`: the IH via `IndPW`, then `⊢dvd-plus` and
-     `monusPlus`. **This is where `IndPW` is finally exercised**, at
-     `(PAIRᶻ , CERTᶻ)` / `(PAIRˢ , CERTˢ)` — both already typed by gap A.
+7. 🟡 **`IndStep`** — ✅ **all four LEAVES are proved** (`…ExamplesGcdDvd`:
+   `gcdLeaf-b0`, `gcdLeaf-a0`, `gcdLeaf-le`, `gcdLeaf-gt`), each a
+   top-level `Def`-backed lemma at an arbitrary context.
+   **That is the mathematical content; what is left is `natrec` plumbing.**
+
+   ⚠ AND IT TOOK **TWO** CANCELLATIONS, NOT ONE — the single most
+   expensive thing to discover late:
+
+       a > b   (`a ∸ b ≡ suc p`)   `monusPlus`   a ≡ (a ∸ b) + b
+       a ≤ b   (`a ∸ b ≡ 0`)        `monusLe`     b ≡ (b ∸ a) + a
+
+   `monusPlus` cannot serve the `a ≤ b` branch: its premise is FALSE at
+   `a = b`, which that branch admits.
+
+   ⭐ Note where the IH is used: the two BASE leaves discharge the spec
+   outright; only the two RECURSIVE leaves consume it — and each consumes
+   **both** conjuncts. That is the concrete form of §1.
+
+   ### ⬜ What remains: the plumbing
+
+   Three nested `natrec`s mirroring `gcdBody`/`gcdInn1`/`gcdInn2`:
+
+       split 1 on `snd a`          motive generalises `snd a` EVERYWHERE
+       split 2 on `fst a`          …and `fst a`
+       split 3 on `(fst a) ∸ (snd a)`   MOTIVE-INDEXED (§2's `inspect`)
+
+   ⚠ **The motive must generalise the scrutinee inside `QCode` too, not
+   only in the step term.** gcd's own typing already does exactly this —
+   `G1 = gcdG (plusTm (fst x) n')`, `G2 = gcdG (plusTm k' (nsuc n'))` —
+   so mirror those, with `El (QCode …)` in place of `gcdG …`.
+
+   ⚠ `PairT = Σ' Nat Nat` has **no η**, so `a` cannot be replaced by
+   `pair (fst a) (snd a)`. That is why the motive is written over the two
+   COMPONENTS (`QCode u₁ u₂ v`) rather than over the pair — generalising a
+   component is then well-formed, which it would not be through `PAtR`
+   applied to `a` itself. `PAtR-gcd` is the bridge.
+
+   ⚠ Expect OOM pressure here: the goal type mentions the whole gcd step
+   term. Factor each branch body out as a top-level lemma BEFORE writing
+   it (see step 4's record).
 8. ⬜ **Assemble** through `Concl.amrecInd`, then project the two conjuncts.
 
 --------------------------------------------------------------------------
