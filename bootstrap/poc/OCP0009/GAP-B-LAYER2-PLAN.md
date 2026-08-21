@@ -1,4 +1,20 @@
-# OCP-0009 · Gap B layer 2 — the plan, and the one structural finding
+# OCP-0009 · Gap B layer 2 — ✅ **CLOSED** (2026-08-21)
+
+> **`gcd (a,b) ∣ a` and `gcd (a,b) ∣ b`, at an arbitrary pair, through
+> `amrec-ind`.** `…ExamplesGcdSpec`: `gcdSpec`, `gcd∣fst`, `gcd∣snd`.
+> `amrec-ind` has its first real client; every premise it owes is
+> discharged — `StepExt` by `gcdStepExt`, `IndStep` by `gcdIndStep`, the
+> motive by `gcdP`.
+>
+> ⚠ **The two conjuncts are ONE pass with two projections**, not two
+> customers. Neither is provable alone by this recursion (§1). That is a
+> fact about the mathematics, and it is what the three-customer criterion
+> has to be re-read against.
+>
+> What follows is the plan as it was written, kept because the findings in
+> §1–§2 are the reusable part.
+
+# The plan, and the one structural finding
 
 Written 2026-08-21, after landing `…LibDvdArith`. Read this before
 touching the divisibility spec; the finding in §2 changes the shape of the

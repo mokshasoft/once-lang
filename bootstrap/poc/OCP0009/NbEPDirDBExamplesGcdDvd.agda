@@ -356,6 +356,16 @@ leafI₁z =
 MI₂ : {Γ : Cx} → RTy (Γ ∙ ∙ ∙ ∙)
 MI₂ = indG μ₂ f₂ (var vz) (nsuc (var (vs (vs vz))))
 
+-- ⚠ MY OWN SPLIT CONTEXTS.  `…GcdStepExt`'s `Θ₂`/`Θ₃` carry ITS motives
+--   (`M₁`/`M₂`, the `eqG` ones) in the slots the splits introduce.  Nothing
+--   in either development LOOKS at those slots — every `there` steps over
+--   them — but the `natrec` assembly does have to agree on them.
+ΘI₂ : Ctx → Ctx
+ΘI₂ Γ = ((Γ ▹ PairT) ▹ Nat) ▹ MI₁
+
+ΘI₃ : Ctx → Ctx
+ΘI₃ Γ = (ΘI₂ Γ ▹ Nat) ▹ MI₂
+
 probeI₂-z : {Γ : Cx} →
             subTy (single nzero) (MI₂ {Γ})
           ≡ indG (plusTm nzero (nsuc (var (vs vz))))
@@ -375,7 +385,7 @@ redI₂z : {Γ : Cx} (sb i : RTm (Γ ∙ ∙ ∙ ∙ ∙)) →
        ⟶* nsuc (var (vs (vs (vs vz))))
 redI₂z sb i = ⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done)) (step (β _ i) done)
 
-leafI₂z : {Γ : Ctx} → Prv (Θ₂ Γ) (subTy (single nzero) MI₂)
+leafI₂z : {Γ : Ctx} → Prv (ΘI₂ Γ) (subTy (single nzero) MI₂)
 leafI₂z =
   prv _ (⊢lam (⊢gcdIH dμ)
           (⊢lam (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w _) (⊢var here)))
