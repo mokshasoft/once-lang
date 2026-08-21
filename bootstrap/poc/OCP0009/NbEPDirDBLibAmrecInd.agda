@@ -1,7 +1,22 @@
 ------------------------------------------------------------------------
--- OCP-0009 — `amrec-ind`, ATTEMPT 1: STATE IT BEFORE PROVING IT.
+-- OCP-0009 · LIBRARY — `amrec-ind`: INDUCTION OVER THE MEASURE RECURSOR.
 --
--- ★ WHY THIS ORDER.  Gap A's expensive failures came from committing to a
+-- ⚠ PROMOTED FROM `…SpikeAmrecInd` 2026-08-21, the day it was finished.
+--   Standing rule: finished library material does not live in a Spike, and
+--   every branch of it is exercised by an `…Examples*` module — here
+--   `…ExamplesAmrecInd`.  `sweep.sh` classifies `Spike*` as PROBES, which
+--   are "reported, never fail the sweep", so a result left in one is not
+--   actually guarded.
+--
+-- ★ THE ENTRY POINT is `Concl.amrecInd`.  A client owes `StepExt` (the step
+--   respects pointwise equality of handles) and `IndStep`, and nothing else.
+--
+-- ★ THE HISTORY BELOW IS KEPT because it is the reason the shape is what it
+--   is — 43 logged attempts (`AMREC-IND-LOG.md`).
+--
+-- ★ WHY THIS ORDER (STATE IT BEFORE PROVING IT).
+--
+--   Gap A's expensive failures came from committing to a
 --   SHAPE and then fighting it — 52 attempts, seven on one derivation.  So
 --   write the statement, check it is WELL-FORMED, and only then prove it.
 --   A malformed statement is cheap to find here and expensive to find with
@@ -24,7 +39,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.NbEPDirDBSpikeAmrecInd where
+module poc.OCP0009.NbEPDirDBLibAmrecInd where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import poc.OCP0009.NbEPDirDBPi
