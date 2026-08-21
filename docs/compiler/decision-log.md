@@ -8420,3 +8420,70 @@ The three sites are not equally bad and should not be fixed identically:
 the arch, never hard-coded), D109 (a hardcoded target fact that made an
 impossibility invisible), D113 (`Float`'s representation is the target's — the
 template), D114 (the observable that made the negative-value bug visible)
+
+## D116: A `Float` Literal ROUNDS; an `Int` Literal Must FIT
+
+**Date**: decided earlier (recorded in plan 0.71's carry-forward); given a
+number 2026-08-21, after being misread twice from a plan bullet ·
+**Status**: Decided; float half deferred, int half is plan 0.74 ·
+**Refines D115** · **Completes D054's argument for literals**
+
+### The decision
+
+**A `Float` literal always lowers.** It rounds to the target's format,
+round-to-nearest-even, and warns when the rounding is inexact. `3.14` is a
+legal Once program; so is `16777217.0` on a `binary32` target. Neither is an
+error.
+
+**An `Int` literal must FIT the target's signed range**, or it is a compile
+error (D115). `2001` on an 8-bit target does not compile.
+
+### Why the two differ — and why that is not an inconsistency
+
+It looks asymmetric and is not. Each type's literal follows THAT TYPE'S
+PROMISE, which is D054's rule applied one level down:
+
+- **IEEE's promise INCLUDES rounding.** `0.1` is not exactly 0.1 in any binary
+  float, in any language; rounding a literal to the format is the float
+  contract, not a deviation from it. A compiler that refused `3.14` would be
+  refusing to implement floats.
+- **D054's promise for `Int` is modular ARITHMETIC** — `255 + 1 = 0` in a byte
+  is correct, defined semantics. **A literal is not arithmetic.** `2001` is a
+  value the programmer wrote; substituting its residue is a change nobody
+  asked for, and nothing in the promise covers it.
+
+So "handle `Int` and `Float` the same way" holds where it should — the
+ARCHITECTURE is identical (frontend generic, backend lowers at its own
+width/format) — and the failure modes differ because the promises differ.
+
+### Consequences
+
+- `Once.Float.Representable.accept?`'s rejection is an INTERIM, explicitly
+  "sound but incomplete". It is not the design and must not be built upon.
+  **It is scheduled for DELETION, not relocation** — do not move it to the
+  backend on symmetry grounds; that would relocate something about to be
+  removed.
+- `16777217.0` (exact at `binary64`, not at `binary32`) is rejected today on
+  every target. The fix is ROUNDING, not a per-target representability check:
+  under this decision it compiles everywhere, exactly on the 64-bit targets and
+  rounded on x86-32.
+- The target-relative admissibility gate plan 0.74 introduces is therefore
+  **`Int`-only**. Floats need no gate: they always lower.
+- What the float half still owes: a `round : FloatFormat → Dyadic → Word`, its
+  correctness (CompCert proved theirs, so we should), and a WARNING CHANNEL,
+  which Once does not have yet. That channel is the reason the interim
+  rejection exists — with no way to say "this rounded", refusing was the only
+  honest option available.
+
+### The lesson
+
+**A decision that lives only in a plan's carry-forward bullet will be read as
+a placeholder and built upon as if it were the design.** This one was misread
+twice in one session — first as "`accept?` is how floats work", then as
+"`accept?` should move to the backend for symmetry" — and both readings would
+have entrenched an interim. If it constrains future work, it needs a number.
+
+**Relates**: D054 (representation follows the promise — the argument this
+applies to literals), D109 (a float's width is a target property), D113
+(`Float` denotes the target's representation), D115 (an out-of-range `Int`
+literal is an error)
