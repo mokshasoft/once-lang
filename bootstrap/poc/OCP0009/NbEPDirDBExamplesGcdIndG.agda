@@ -35,6 +35,7 @@ open import poc.OCP0009.NbEPDirDBPi
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc
+        ; βfst; βsnd
         ; ⊢lam; ⊢app; ty-Hom; ty-Nat; ty-Π; ty-El; ⊢⌜Nat⌝
         ; ⊢conv; _≅ᵀ_; csymᵀ; _⟶*_; step; done )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El )
@@ -56,12 +57,14 @@ open import poc.OCP0009.NbEPDirDBType
   using ( natrec-zero; β; ξ-appˡ; ⊢natrec )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( msr; ⊢msr; gcdIH; ⊢gcdIH; gcdG; ⊢gcdG; gcdStp; gcdBody
+        ; PAIRᶻ; ⊢PAIRᶻ; CERTᶻ; ⊢CERTᶻ
         ; G1; ⊢G1; G1z; ⊢G1z; gcdInn1; ⊢gcdInn1
         ; G2; ⊢G2; G2z; ⊢G2z; gcdInn2; ⊢gcdInn2
         ; G3; ⊢G3; G3z; ⊢G3z; G3s; ⊢G3s )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStepExt
   using ( appGcdIH; gcdIH-w; gcdIH-w²; gcdAt; red-β; μ₁; f₁; μ₂; f₂; μ₃; f₃ )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStepExtE using ( gcdIH-sub )
+open import poc.OCP0009.NbEPDirDBExamplesGcdStepExtL using ( red₃z )
 
 ------------------------------------------------------------------------
 -- ★ WHAT A CUSTOMER SUPPLIES.  Six facts about the motive and four
@@ -409,29 +412,151 @@ module Plumb (M : Motive) where
       ⊢-castPrv : {Γ : Ctx} {T T' : RTy ⌊ Γ ⌋} → T ≡ T' → Prv Γ T → Prv Γ T'
       ⊢-castPrv refl q = q
 
+
   ------------------------------------------------------------------------
-  -- ⬜ WHAT IS NOT HERE, AND WHY — the honest half of the experiment.
+  -- ★★★ SPLIT 3's DEEP ZERO LEAF — MOTIVE-GENERIC.
   --
-  -- Split 3's two DEEP leaves and the three-`natrec` assembly are NOT in
-  -- this module.  Ported here, it **OOM-KILLED (exit 143, uncontended)** —
-  -- at exactly the point and for exactly the reason the CONCRETE version
-  -- did (`…GcdDvdL`/`…GcdDvdLs`/`…GcdDvdA1`…`A`: context depth 10, ~1.7x
-  -- per slot, the file had to split six ways).
+  -- ⚠⚠ THIS IS THE LEAF THE 2026-08-17 EXPERIMENT COULD NOT PLACE.  Its
+  --   absence was recorded as "GENERICITY DOES NOT RESCUE THE COST
+  --   PROFILE", on an OOM (exit 143, believed uncontended).  RE-TESTED
+  --   2026-08-21 under `+RTS -c`: see the note at the foot of this file.
   --
-  -- ⇒ **GENERICITY DOES NOT RESCUE THE COST PROFILE.**  The hope was that
-  --   an opaque `PC u₁ u₂ v` — a variable application — would elaborate
-  --   smaller than `QCode u₁ u₂ v` unfolding to a `⌜Σ⌝` of two `⌜Id⌝`s over
-  --   a `mulTm`.  It may well; it did not move the wall.
+  -- ★ AND THE GENERIC LEAF IS *SHORTER* THAN THE CONCRETE ONE.  Compare
+  --   `…GcdDvdL`: there the IH's two conjuncts are taken apart on the spot
+  --   with `⊢Q-fst`/`⊢Q-snd` before `gcdLeaf-le` can use them.  Here
+  --   `leaf-le` receives `El (PC a (monusTm b a) v)` WHOLE and the
+  --   customer does its own projecting — the `⌜Σ⌝` customer with
+  --   `⊢Q-fst`/`⊢Q-snd`, the `⌜Π⌝` customer by decoding to a function
+  --   type.  That interface choice is what carries the genericity.
+  ------------------------------------------------------------------------
+
+  B₃ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙)
+  B₃ = plusTm uA₃ uB₃
+
+  ⊢B₃ : {Γ : Ctx} → ΘI₃ Γ ⊢ B₃ ∷ Nat
+  ⊢B₃ = ⊢plus (⊢nsuc (⊢var (there here)))
+              (⊢nsuc (⊢var (there (there (there here)))))
+
+  F₃ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙)
+  F₃ = subTm (single nzero) f₃
+
+  Θ₃E : Ctx → Ctx
+  Θ₃E Γ = ΘI₃ Γ ▹ IdN μAB nzero
+
+  Θ₃L : Ctx → Ctx
+  Θ₃L Γ = (Θ₃E Γ ▹ gcdIH (w B₃)) ▹ indPWT (w (w B₃)) (var vz)
+
+  A₈ B₈ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+  A₈ = w (w (w uA₃))
+  B₈ = w (w (w uB₃))
+
+  dA₈ : {Γ : Ctx} → Θ₃L Γ ⊢ A₈ ∷ Nat
+  dA₈ = ⊢nsuc (⊢var (there (there (there (there here)))))
+
+  dB₈ : {Γ : Ctx} → Θ₃L Γ ⊢ B₈ ∷ Nat
+  dB₈ = ⊢nsuc (⊢var (there (there (there (there (there (there here)))))))
+
+  dPAIR : {Γ : Ctx} → Θ₃L Γ ⊢ w (w PAIRᶻ) ∷ PairT
+  dPAIR = ⊢wk (⊢wk ⊢PAIRᶻ)
+
+  dCERT : {Γ : Ctx} → Θ₃L Γ ⊢ w (w CERTᶻ)
+            ∷ Hom Nat (nsuc (subTm (single (w (w PAIRᶻ))) msr)) (w (w (w B₃)))
+  dCERT = ⊢wk (⊢wk ⊢CERTᶻ)
+
+  dIH : {Γ : Ctx} → Θ₃L Γ ⊢ var (vs vz) ∷ gcdIH (w (w (w B₃)))
+  dIH = ⊢-cast (gcdIH-w² (w B₃)) (⊢var (there here))
+
+  dV : {Γ : Ctx} → Θ₃L Γ ⊢ app (app (var (vs vz)) (w (w PAIRᶻ))) (w (w CERTᶻ)) ∷ Nat
+  dV = asN (appGcdIH dIH dPAIR dCERT)
+
+  -- ★ `IndPW`, ELIMINATED at `(PAIRᶻ , CERTᶻ)` — where the hypothesis is spent.
+  dcall : {Γ : Ctx} →
+          Θ₃L Γ ⊢ app (app (var vz) (w (w PAIRᶻ))) (w (w CERTᶻ))
+            ∷ El (PC A₈ (monusTm B₈ A₈)
+                    (app (app (var (vs vz)) (w (w PAIRᶻ))) (w (w CERTᶻ))))
+  dcall =
+    ⊢conv (indPWElim (⊢-cast (indPWT-w (w (w B₃)) (var vz)) (⊢var here))
+                     dPAIR dCERT)
+          (PC-convU _ (step (βfst _ _) done) (step (βsnd _ _) done))
+
+  dEq : {Γ : Ctx} → Θ₃L Γ ⊢ var (vs (vs vz)) ∷ IdN (monusTm A₈ B₈) nzero
+  dEq = ⊢var (there (there here))
+
+  innerI₃z : {Γ : Ctx} → Prv (Θ₃L Γ) (El (PC A₈ B₈ (app (w (w (w F₃))) (var (vs vz)))))
+  innerI₃z =
+    prv _ (⊢conv (prvOk (leaf-le dA₈ dB₈ dV dEq dcall))
+                 (csymᵀ (PC-conv A₈ B₈ (red₃z _ (var (vs vz))))))
+
+  -- ★ the two inner binders, at the SUBSTITUTED `indG` — stated exactly as
+  --   `indG-sub`'s right-hand side so the cast below lines up by construction.
+  bodyI₃z : {Γ : Ctx} →
+            Prv (ΘI₃ Γ ▹ IdN μAB nzero)
+                (indG (subTm (extS (single nzero)) (w (w B₃)))
+                      (subTm (extS (single nzero)) (w f₃))
+                      (subTm (extS (single nzero)) (w (w uA₃)))
+                      (subTm (extS (single nzero)) (w (w uB₃))))
+  bodyI₃z =
+    prv _ (⊢lam (⊢gcdIH (⊢wk ⊢B₃))
+            -- ⚠ BOTH implicits pinned: `indPWT` is a DEFINED function, so Agda
+            --   unfolds instead of decomposing and `ih` never solves
+            --   (`pin-implicits-on-defined-set-types`).  Harder here than in
+            --   the concrete version, because `PC` is a module PARAMETER and
+            --   therefore opaque to unification.
+            (⊢lam (⊢indPWT {μa = w (w B₃)} {ih = var vz}
+                           (⊢wk (⊢wk ⊢B₃))
+                           (⊢-cast (gcdIH-w (w B₃)) (⊢var here)))
+                  (prvOk innerI₃z)))
+
+  leafI₃z : {Γ : Ctx} → Prv (ΘI₃ Γ) (subTy (single nzero) MI₃)
+  leafI₃z =
+    -- ⚠⚠ THE GENERIC TAX, PRECISELY.  Concretely `subTm σ (QCode …)` UNFOLDS
+    --   — `QCode` is a definition, so Agda pushes the substitution in
+    --   structurally and `…GcdDvdL`'s leaf needs no cast here at all.
+    --   Generically `subTm σ (PC …)` is STUCK: `PC` is a module parameter,
+    --   so the substitution law has to be CITED.  That is what `indG-sub`
+    --   is for, and `leafI₂z` above pays the same tax.
+    prv _ (⊢lam (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there here)))
+                                (⊢nsuc (⊢var (there (there (there here))))))
+                        ⊢nzero)
+            (⊢-cast (sym (indG-sub {σ = extS (single nzero)}
+                            (w (w B₃)) (w f₃) (w (w uA₃)) (w (w uB₃))))
+                    (prvOk bodyI₃z)))
+
+  ------------------------------------------------------------------------
+  -- ⬜ WHAT IS STILL NOT HERE — and the old reason was WRONG.
   --
-  -- ★ WHAT THE EXPERIMENT DID ESTABLISH, and it is most of the question:
-  --   everything above ports with NO mathematical work — the `PAtR` peel,
-  --   the internalised `IndPW`, `indG` and its substitution law, its
-  --   elimination, both split probes and both IH-free leaves.  The only
-  --   new cost is a PEEL AT EVERY MOTIVE BOUNDARY, where the concrete
-  --   version got `refl` for free (`…GcdDvd`'s `probeI₁-at = refl`).
+  -- ⚠⚠ RETRACTED 2026-08-21. This block used to read "GENERICITY DOES NOT
+  --   RESCUE THE COST PROFILE", on the evidence that split 3's deep leaf
+  --   OOM-KILLED (exit 143, believed uncontended) when ported here.
   --
-  -- ⇒ the remaining port is mechanical but needs the SAME multi-file
-  --   discipline: extract `Motive` to its own module, make this one
-  --   `(M : Motive)`-parameterised at FILE level, and carry the deep
-  --   leaves and the assembly in further parameterised files.
+  --   `leafI₃z` IS NOW ABOVE, and it builds in **6s under the DEFAULT
+  --   copying collector** (5s under `-c`). Memory was never the
+  --   constraint. The 2026-08-17 kill was the
+  --   `pin-implicits-on-defined-set-types` trap in the one form where it
+  --   is INVISIBLE: unsolved metas at context depth 10 make Agda build
+  --   constraint sets until it exhausts memory, so the failure surfaces
+  --   as exit 143 — which reads as "too expensive" and closes the
+  --   investigation — instead of as "unsolved metas".
+  --
+  --   ⇒ ⭐ EXIT 143 IS NOT EVIDENCE ABOUT COST. It is a symptom with at
+  --     least three causes: a genuine memory wall, the wrong garbage
+  --     collector (`PERF-2026-08-21.md` §3), and metas that never solved.
+  --     Distinguish them before concluding anything.
+  --
+  -- ★ WHAT THE PORT ACTUALLY COSTS, now that it exists — and the old note
+  --   had the right instinct with the wrong mechanism. It is not a peel
+  --   here and there: ABSTRACTION MAKES THE MOTIVE OPAQUE, and opacity
+  --   costs every DEFINITIONAL equality that used to run through it.
+  --     · `subTm σ (QCode …)` UNFOLDS — Agda pushes the substitution in
+  --       structurally, so `…GcdDvdL`'s leaf cites nothing.
+  --       `subTm σ (PC …)` is STUCK, so `indG-sub` must be cited by hand.
+  --     · `⊢indPWT`'s implicits SOLVE concretely; here they must be pinned,
+  --       because `PC` is a parameter and unification cannot see into it.
+  --   ⇒ The same opacity that makes the generic term SMALLER is what
+  --     blocks the reductions. Those are one property, not two.
+  --
+  -- ⬜ REMAINING: split 3's SUCCESSOR deep leaf (`leafI₃s`, concretely in
+  --   `…GcdDvdLs`) and the three-`natrec` assembly. Both are now expected
+  --   to be mechanical — the same two taxes, already characterised.
+
   ------------------------------------------------------------------------
