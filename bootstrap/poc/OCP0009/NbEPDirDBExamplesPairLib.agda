@@ -49,7 +49,12 @@ open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natre
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBLibRec   using ( aIHT; aIHTat )
-open import poc.OCP0009.NbEPDirDBLibAmrec using ( aStepT; module AmTΠ; measure-evals )
+open import poc.OCP0009.NbEPDirDBLibAmrec using ( aStepT; module AmTΠ )
+-- ⚠ `measure-evals` moved to `…LibAmrecClosed` 2026-08-21: it is the
+--   CLOSED-CARRIER layer and the only thing that needed `natEval`, whose
+--   proof drags the canonicity stack.  This use site is at `◇`, so it is
+--   the right client for it.
+open import poc.OCP0009.NbEPDirDBLibAmrecClosed using ( measure-evals )
 open import poc.OCP0009.NbEPDirDBLibNatVal using ( NatVal; nv-zero; nv-suc )
 
 ------------------------------------------------------------------------
