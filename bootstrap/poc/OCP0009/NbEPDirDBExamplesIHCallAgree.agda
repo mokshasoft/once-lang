@@ -1,8 +1,12 @@
 ------------------------------------------------------------------------
 -- OCP-0009 · EXAMPLES — FOUR CONSTRUCTIONS, ONE SHAPE.
 --
--- ★ The consolidation's acceptance test.  `…LibIHCall.ihCallT` claims to
---   be the shape of "what you may do with an amrec handle":
+-- ⚠⚠ THIS MODULE IS A CONFORMANCE ASSERTION, NOT AN EXERCISE — and after
+--   the repoint, three of its four claims hold BY DEFINITION.  Read the
+--   note at the foot before treating it as evidence of anything.
+--
+-- ★ `…LibIHCall.ihCallT` claims to be the shape of "what you may do with
+--   an amrec handle":
 --
 --       ihCallT A m mx P  =  Π A (Π (Hom Nat (nsuc m) mx) P)
 --
@@ -76,3 +80,28 @@ agree-indPWT-max : {Γ : Cx} (μa ih : RTm Γ) →
                          (El (MaxCode (fst (var (vs vz))) (snd (var (vs vz)))
                                       (ihCall ih)))
 agree-indPWT-max μa ih = refl
+
+------------------------------------------------------------------------
+-- ⚠⚠ WHAT THESE FOUR `refl`s DO AND DO NOT ESTABLISH.
+--
+--   `agree-pwT` and the two `agree-indPWT-*` are now true BY DEFINITION:
+--   `…GcdStepExt.pwT` and `…GcdIndG.Plumb.indPWT` were repointed to be
+--   *defined as* `ihCallT …`.  That is the point of the repoint — it is
+--   what turns the shared shape from a coincidence into a CLIENT — but it
+--   also means these three assertions no longer carry information.  They
+--   are kept as the regression test that the repoint stays in place.
+--
+--   `agree-aIHTat'` is the one that still says something: `…LibRec`
+--   defines `aIHTat'` independently and does NOT import `…LibIHCall`, so
+--   its agreement is a fact about two separately-written definitions.
+--
+-- ⇒ ★ AND NOTE WHAT AN ASSERTION MODULE CANNOT DO.  Four `refl`s prove two
+--   expressions are one expression; they never CALL anything, so they
+--   cannot discharge "libraries are exercised by examples".  That rule is
+--   discharged for `…LibIHCall` by its real clients — `…GcdStepExt`
+--   (`appIHat`, `aIHTat-w`/`-w²`/`-w³`, `ihCallT`, `ihCall`) and
+--   `…GcdIndG` (`⊢ihCallT`, `ihCallIntro`, `ihCallElim`, `ihCallT`,
+--   `ihCall`) — which between them spend ten of the module's eleven
+--   exports.  The eleventh pair (`ihCallT-sub`/`-ren`) is contract, and
+--   the library header says why.
+------------------------------------------------------------------------

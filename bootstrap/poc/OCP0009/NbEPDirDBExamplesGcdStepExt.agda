@@ -81,7 +81,8 @@ open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asP )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
 open import poc.OCP0009.NbEPDirDBInj
   using ( _⟶ᵀ*_; stepᵀ; doneᵀ; red→≅ᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
-open import poc.OCP0009.NbEPDirDBLibIHCall using ( appIHat )
+open import poc.OCP0009.NbEPDirDBLibIHCall
+  using ( ihCallT; ihCall; appIHat; aIHTat-w; aIHTat-w²; aIHTat-w³ )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( gcdStp; gcdBody; msr; ⊢msr; gcdIH; ⊢gcdIH; gcdG; ⊢gcdG
         ; G1; ⊢G1; G1z; ⊢G1z; gcdInn1; ⊢gcdInn1; ⊢gcdBody
@@ -186,11 +187,11 @@ ww t = renren {ϑ = vs} {ρ = vs} {ρ' = λ v → vs (vs v)} (λ _ → refl) t
 --   information, and the split motives below need it at depths that are not
 --   `⌊ _ ⌋` of anything.
 pwT : {Γ : Cx} (μa i₁ i₂ : RTm Γ) → RTy Γ
+-- ⚠ DEFINED as `…LibIHCall.ihCallT` at the payload `Id …`, not merely
+--   equal to it.  The `refl` in `…ExamplesIHCallAgree` used to assert that
+--   coincidence; making it definitional is what actually SPENDS the shape.
 pwT μa i₁ i₂ =
-  Π PairT
-    (Π (Hom Nat (nsuc msr) (w μa))
-       (Id (El ⌜Nat⌝) (app (app (w (w i₁)) (var (vs vz))) (var vz))
-                      (app (app (w (w i₂)) (var (vs vz))) (var vz))))
+  ihCallT PairT msr (w μa) (Id (El ⌜Nat⌝) (ihCall i₁) (ihCall i₂))
 
 pwIntro : {Δ Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} {a ih₁ ih₂ : RTm ⌊ Θ ⌋} →
           Θ ⊢ subTm (single a) msr ∷ Nat →
@@ -257,16 +258,20 @@ appGcdIH di dy dq = appIHat di dy dq
 -- ★ `gcdIH`/`gcdG` past a weakening.  ⚠ NOT definitional: `gcdIH` hides a
 --   `w μ` inside its `Hom`, so `renTy vs` has to fuse with it.  `aIHTat-ren`
 --   already says this; PairT/⌜Nat⌝/msr all compute through it.
+-- ⚠ ALL THREE are `…LibIHCall`'s carrier-generic tower at
+--   `PairT`/`⌜Nat⌝`/`msr`.  The specialisation is DEFINITIONAL: `PairT` is
+--   closed and `msr`'s only variable is `vz`, so `renTy vs`/`renTm (extR vs)`
+--   are inert on them and the generic statement lands on the gcd one.
 gcdIH-w : {Γ : Cx} (μ : RTm Γ) → renTy vs (gcdIH μ) ≡ gcdIH (w μ)
-gcdIH-w μ = aIHTat-ren PairT ⌜Nat⌝ msr μ
+gcdIH-w μ = aIHTat-w PairT ⌜Nat⌝ msr μ
 
 gcdIH-w² : {Γ : Cx} (μ : RTm Γ) →
            renTy vs (renTy vs (gcdIH μ)) ≡ gcdIH (w (w μ))
-gcdIH-w² μ = trans (cong (renTy vs) (gcdIH-w μ)) (gcdIH-w (w μ))
+gcdIH-w² μ = aIHTat-w² PairT ⌜Nat⌝ msr μ
 
 gcdIH-w³ : {Γ : Cx} (μ : RTm Γ) →
            renTy vs (renTy vs (renTy vs (gcdIH μ))) ≡ gcdIH (w (w (w μ)))
-gcdIH-w³ μ = trans (cong (renTy vs) (gcdIH-w² μ)) (gcdIH-w (w (w μ)))
+gcdIH-w³ μ = aIHTat-w³ PairT ⌜Nat⌝ msr μ
 
 gcdG-w³ : {Γ : Cx} (μ : RTm Γ) →
           renTy vs (renTy vs (renTy vs (gcdG μ))) ≡ gcdG (w (w (w μ)))

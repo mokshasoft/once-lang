@@ -60,10 +60,9 @@ open import poc.OCP0009.NbEPDirDBLibAmrec using ( aIHTat-ren )
 ihCallT : {Γ : Cx} (A : RTy Γ) (m mx : RTm (Γ ∙)) (P : RTy ((Γ ∙) ∙)) → RTy Γ
 ihCallT A m mx P = Π A (Π (Hom Nat (nsuc m) mx) P)
 
--- ★ …and `…LibRec`'s `aIHTat'` IS its instance at the payload `El cm`.
-aIHTat'-is : {Γ : Cx} (A : RTy Γ) (m mx : RTm (Γ ∙)) (cm : RTm ((Γ ∙) ∙)) →
-             aIHTat' A m mx cm ≡ ihCallT A m mx (El cm)
-aIHTat'-is A m mx cm = refl
+-- (`…LibRec`'s `aIHTat'` IS this at the payload `El cm`.  That assertion
+--  lives in `…ExamplesIHCallAgree` as `agree-aIHTat'`, not here: this
+--  module carries only lemmas a client can CALL.)
 
 ⊢ihCallT : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {m mx : RTm (⌊ Γ ⌋ ∙)}
            {P : RTy ((⌊ Γ ⌋ ∙) ∙)} →
@@ -72,9 +71,18 @@ aIHTat'-is A m mx cm = refl
            Γ ⊢ty ihCallT A m mx P
 ⊢ihCallT dA dm dmx dP = ty-Π dA (ty-Π (ty-Hom ty-Nat (⊢nsuc dm) dmx) dP)
 
--- ⭐ the two naturality laws are `refl`: the shape is pure `Π`/`Hom`, and
---   every component is a PARAMETER, so `subTy`/`renTy` walk straight in.
---   (Contrast `aIHTat`, whose `w μx`/`w cM` need `aIHTat-sub`.)
+-- ⭐⭐ THE TWO NATURALITY LAWS ARE `refl`, and they are DELIBERATELY
+--   UNEXERCISED — the only two exports of this module that are.  Do not
+--   read that as the `lexrec` failure mode (derived, green, uncallable):
+--   they are a CONTRACT, not a service.
+--
+--   The shape is pure `Π`/`Hom` and every component is a PARAMETER, so
+--   `subTy`/`renTy` walk straight in and there is nothing for a caller to
+--   cite — a client's own `-sub`/`-w` law is entirely payload peel.
+--   ⚠ Contrast `aIHTat`, which hides a `w μx`/`w cM` and therefore needs a
+--   REAL `aIHTat-sub`.  That contrast is the whole reason `ihCallT` is
+--   cheap, and these two lemmas are what fails loudly if a future edit
+--   puts a weakening back inside the shape.
 ihCallT-sub : {Γ Γ' : Cx} {σ : Sub Γ Γ'}
               (A : RTy Γ) (m mx : RTm (Γ ∙)) (P : RTy ((Γ ∙) ∙)) →
               subTy σ (ihCallT A m mx P)
