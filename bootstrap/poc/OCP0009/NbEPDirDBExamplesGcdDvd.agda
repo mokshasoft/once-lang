@@ -22,11 +22,12 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; vz; vs
         ; RTy; RTm; Nat; U; El; Σ'
-        ; var; fst; snd; ⌜Nat⌝; nzero; nsuc
+        ; var; fst; snd; ⌜Nat⌝; nzero; nsuc; Π; app; Hom
         ; subTm; renTm; Ren; extR; extS )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc )
+        ; _⊢_∷_; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc
+        ; ⊢lam; ty-Hom; ty-Nat )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; asN )
@@ -40,8 +41,13 @@ open import poc.OCP0009.NbEPDirDBLibMonus using ( monusTm; ⊢monus )
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( IdN; ⊢symN; ⊢transN )
 open import poc.OCP0009.NbEPDirDBLibMonusPlus using ( monusPlus )
 open import poc.OCP0009.NbEPDirDBLibMonusLe using ( monusLe )
-open import poc.OCP0009.NbEPDirDBLibAmrec using ( Prv; prv )
-open import poc.OCP0009.NbEPDirDBLibAmrecInd using ( PAtR )
+open import poc.OCP0009.NbEPDirDBLibAmrec using ( Prv; prv; prvOk; wR; renren )
+open import poc.OCP0009.NbEPDirDBLibAmrecInd using ( PAtR; IndPW )
+open import poc.OCP0009.NbEPDirDBLibNatrec using ( Ren⊢-id )
+open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast; Ren⊢ )
+open import poc.OCP0009.NbEPDirDBExamplesGcdStep using ( msr; ⊢msr )
+open import poc.OCP0009.NbEPDirDBLibPair using ( ⊢PairT )
+
 
 ------------------------------------------------------------------------
 -- ★★★ THE MOTIVE.  Slot [1] is the ARGUMENT (the pair), slot [0] the
@@ -71,7 +77,10 @@ gcdP = QCode (fst (var (vs vz))) (snd (var (vs vz))) (var vz)
 --   `subTm` nor `renTm` definitionally.
 ------------------------------------------------------------------------
 
-PAtR-gcd : {Δ Θ : Ctx} (ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋) (y val : RTm ⌊ Θ ⌋) →
+-- ⚠ STATED AT `Cx`, NOT `Ctx`.  `PAtR` is `Cx`-indexed, and `⌊_⌋` is not
+--   injective — at `Ctx` the target context never solves and every call
+--   site leaves an unsolved meta.  (Cost of getting it wrong: one round.)
+PAtR-gcd : {Γ Γ' : Cx} (ρ : Ren Γ Γ') (y val : RTm Γ') →
            PAtR ρ gcdP y val ≡ QCode (fst y) (snd y) val
 PAtR-gcd ρ y val =
   trans (cong (λ t → subTm (single val) (subTm (extS (single y)) t))
@@ -144,3 +153,59 @@ gcdLeaf-gt {a = a} {v = v} da db dv dp de dh1 dh2 =
               (⊢symN da dsum' (monusPlus da db dp de))
     dva   = ⊢dvd-cong dv dsum da deq
               (⊢dvd-plus dv (⊢monus da db) db dh1 dh2)
+
+------------------------------------------------------------------------
+-- ★★★★★ INTERNALISING `IndPW` — THE LINCHPIN, exactly as `pwIntro` is
+--   for `StepExt` (`…GcdStepExt`).
+--
+-- ⚠ WHY IT IS NEEDED AND NOT AN OPTIMISATION.  The three splits put the
+--   proof at `Θ ▹ PairT ▹ Hom … ▹ …`, and `IndPW` is a META-level
+--   hypothesis available only at `Θ`.  Stated there it is CIRCULAR to use
+--   inside a branch.  As a TERM of an object-language `Π`-type it can ride
+--   the split motives as a Π-bound variable, so each branch receives its
+--   own induction hypothesis at its own bound — which is exactly what
+--   `⊢gcdStp`'s three motives already do with `gcdG (plusTm …)`.
+--
+-- ⭐ `IndPW` is renaming-indexed (the 2026-08-16 generalisation), so this
+--   is a two-line instantiation at `ϑ = vs ∘ vs` rather than a rebuild.
+------------------------------------------------------------------------
+
+-- `vs` twice, fused.  ⚠ `renren`'s three renamings are all implicit and
+--   none is determined by the argument, so it has to be pinned.
+ww : {Γ : Cx} (t : RTm Γ) → w (w t) ≡ renTm (λ v → vs (vs v)) t
+ww t = renren {ϑ = vs} {ρ = vs} {ρ' = λ v → vs (vs v)} (λ _ → refl) t
+
+-- `(y : Pair) (q : μ y < μ a) → P (y , ih y q)`, INTERNALLY.
+-- ⚠ indexed by a RAW `Cx`: it carries no typing information, and the split
+--   motives need it at depths that are not `⌊ _ ⌋` of anything.
+indPWT : {Γ : Cx} (μa ih : RTm Γ) → RTy Γ
+indPWT μa ih =
+  Π PairT
+    (Π (Hom Nat (nsuc msr) (w μa))
+       (El (QCode (fst (var (vs vz))) (snd (var (vs vz)))
+                  (app (app (w (w ih)) (var (vs vz))) (var vz)))))
+
+indPWIntro : {Δ Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} {a ih : RTm ⌊ Θ ⌋} →
+             Θ ⊢ subTm (single a) msr ∷ Nat →
+             IndPW Δ PairT ⌜Nat⌝ msr gcdP Θ ρ a ih →
+             Prv Θ (indPWT (subTm (single a) msr) ih)
+indPWIntro {a = a} {ih = ih} dμ pw =
+  prv _ (⊢lam ⊢PairT
+          (⊢lam (ty-Hom ty-Nat (⊢nsuc ⊢msr) (⊢wk dμ))
+                (⊢-cast bodyEq (prvOk inner))))
+  where
+    μa = subTm (single a) msr
+
+    inner = pw (wR (wR Ren⊢-id)) (λ v → refl) (var (vs vz)) (var vz)
+               (⊢var (there here))
+               (⊢-cast (cong (Hom Nat (nsuc (w msr))) (ww μa)) (⊢var here))
+
+    -- ⚠ the result slot must be PINNED: `PAtR` is a defined function, so
+    --   Agda unfolds instead of decomposing and the meta never solves.
+    bodyEq = trans (cong El (PAtR-gcd (λ v → vs (vs v)) (var (vs vz))
+                              (app (app (renTm (λ v → vs (vs v)) ih)
+                                        (var (vs vz)))
+                                   (var vz))))
+                   (cong (λ t → El (QCode (fst (var (vs vz))) (snd (var (vs vz)))
+                                          (app (app t (var (vs vz))) (var vz))))
+                         (sym (ww ih)))
