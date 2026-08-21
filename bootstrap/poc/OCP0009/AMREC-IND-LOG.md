@@ -613,9 +613,10 @@ transfer directly.
 there may be less to build than it looks; worth checking whether
 `ihS-atR` can serve before writing `ihS-atP-ren` from scratch.
 
-## Next
+## Next  (⚠ SUPERSEDED — item 1 was DONE as attempt 35, below.
+##         The live list is at the END of this file.)
 
-1. `ihS-atP-ren` (or reuse `ihS-atR`) — the missing commutation.
+1. ~~`ihS-atP-ren` (or reuse `ihS-atR`) — the missing commutation.~~ ✅ done
 2. Then step 6 proper: instantiate the IH, compose the certificate,
    transport across `ihCall-amrec`.
 3. The successor branch; the `⊢natrec`.
