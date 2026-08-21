@@ -97,8 +97,8 @@ split.
    `nfam := natrec ⌜Unit⌝ ⌜base⌝ (var vz)` at motive `U` (`ty-U` — the large
    elimination is already in the kernel, no new rule), then `jsub` carries
    `unit : El (nfam 0)` to `El (nfam (suc p))`, which reduces to `base`.
-4. 🟡 **`monusPlus`** — THE NEXT PIECE.  ✅ `mpAt` (the statement) and
-   ✅ `mpUse` (applying its IH) are GREEN; the induction itself is open. — `a ∸ b ≡ suc p  ⟹  a ≡ (suc p) + b`.
+4. ✅ **`monusPlus`** — PROVED (`…LibMonusPlus`).  `mpAt`, `mpUse`, the
+   three leaves and the double induction, all green. — `a ∸ b ≡ suc p  ⟹  a ≡ (suc p) + b`.
    Double induction: outer on `b`, inner on `a`, motive `Π`-quantified over
    `a`, `p` and over the equation. Uses 1–3 and `⊢plus0`/`⊢plusS`.
 
@@ -136,12 +136,26 @@ split.
      cannot be inferred through a `subTy` of a `Π`; leaving it to Agda
      produces unsolved metas. Same rule as pinning `subren`'s implicits.
 
-   ⇒ What remains for step 4 is only the `natrec` on `b`, its inner
-   `natrec` on `a`, and the four leaves — all four spelled out above.
-5. **The motive** `P` of §1, plus `⊢P` (it is a `⌜Σ⌝` of two `dvdCode`s —
+   ### ⚠⚠ IT OOM-KILLED TWICE BEFORE IT LANDED, and the fix is the lesson
+
+   1. Inline in `…LibDvdArith` (929 lines): **exit 143, uncontended, no
+      error message** — the tell for an OOM rather than a type error.
+   2. Split into its own module: **STILL 143.** Splitting modules was NOT
+      enough.
+   3. Hoisting each of the three leaves to a **top-level lemma whose
+      arguments are `RTm`s** — so its body sits behind a `Def` and the
+      term-traversal phases walk a reference — fixed it. Green.
+
+   ⭐ `check.sh`'s own header prescribes exactly this ("the `⊢strong-base'`
+   pattern") and explicitly warns that `-A64m` "buys one nesting level, not
+   a fix". Both halves of that held: the RTS flag would not have saved it,
+   and the module split alone did not.
+
+   ⇒ **For a nested internal induction, factor the leaves out FIRST.**
+5. ⬜ **The motive** `P` of §1, plus `⊢P` (it is a `⌜Σ⌝` of two `dvdCode`s —
    `⊢dvdCode` is green, so this is assembly).
-6. **`gcdStepExt`** — ALREADY PROVED (`…GcdStepExtA`). No work.
-7. **`IndStep`** — the three nested `natrec`s of §2. The four leaves:
+6. ✅ **`gcdStepExt`** — ALREADY PROVED (`…GcdStepExtA`). No work.
+7. ⬜ **`IndStep`** — the three nested `natrec`s of §2. The four leaves:
    - `b = 0`: `gcd (a,0) = a`. Need `a ∣ a` and `a ∣ 0`. Both are
      `dvd-intro` at witnesses `1` and `0` (`…LibDvd`'s header records both
      as one-liners; the `n ≡ 1 * n` side needs `⊢plus0`).
@@ -149,7 +163,7 @@ split.
    - `a > b` / `a ≤ b`: the IH via `IndPW`, then `⊢dvd-plus` and
      `monusPlus`. **This is where `IndPW` is finally exercised**, at
      `(PAIRᶻ , CERTᶻ)` / `(PAIRˢ , CERTˢ)` — both already typed by gap A.
-8. **Assemble** through `Concl.amrecInd`, then project the two conjuncts.
+8. ⬜ **Assemble** through `Concl.amrecInd`, then project the two conjuncts.
 
 --------------------------------------------------------------------------
 ## 4. Consolidation debt accrued

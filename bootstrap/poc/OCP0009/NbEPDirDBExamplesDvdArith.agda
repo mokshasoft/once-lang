@@ -40,8 +40,9 @@ open import poc.OCP0009.NbEPDirDBLibArithComm using ( IdN; reflN; ⊢reflN )
 open import poc.OCP0009.NbEPDirDBLibDvd using ( dvdT; dvd-intro )
 open import poc.OCP0009.NbEPDirDBLibDvdArith
   using ( assocB; ⊢assoc; distB; ⊢dist; mul-suc; dvdSum; ⊢dvd-plus
-        ; ⊢congPd; zmB; ⊢zero-monus; pmB; ⊢pred-monus; ⊢noConf; exFalsoN
-        ; mpAt; ⊢mpAt; mpUse )
+        ; ⊢congPd; zmB; ⊢zero-monus; pmB; ⊢pred-monus; ⊢noConf; exFalsoN )
+open import poc.OCP0009.NbEPDirDBLibMonusPlus
+  using ( mpAt; ⊢mpAt; mpUse; mpTm; ⊢monusPlus; monusPlus )
 open import poc.OCP0009.NbEPDirDBLibMonus using ( predTm; monusTm; ⊢pred; ⊢monus )
 
 ------------------------------------------------------------------------
@@ -187,27 +188,33 @@ module NoConf (e : RTm ⌊ Γ₃ ⌋) (de : Γ₃ ⊢ e ∷ IdN nzero (nsuc A)) 
   anyEq = exFalsoN dA dB dC de
 
 ------------------------------------------------------------------------
--- 5. `monusPlus`'s STATEMENT IS WELL-FORMED, AND ITS IH IS APPLICABLE.
+-- 5. ★★★ `monusPlus` — PROVED, AND EXERCISED AT OPEN NATURALS.
 --
--- ⚠ `monusPlus` ITSELF IS NOT PROVED YET (see `GAP-B-LAYER2-PLAN.md` §3.4).
---   What is checked here is the part that is easy to get wrong and
---   expensive to discover late: that `mpAt` is a well-formed TYPE, and
---   that a term of it can actually be APPLIED to a carrier, a predecessor
---   and an equation to yield the conclusion.  ⇒ the induction's shape is
---   settled before the induction is written — the same discipline that
---   caught `amrec-ind`'s slot order.
+--       a ∸ b ≡ suc p   ⟹   a ≡ (suc p) + b
+--
+-- ⚠ THE PREMISE IS AN EQUATION, NOT AN ORDER, AND THAT IS THE WHOLE
+--   POINT.  gcd's `a > b` branch has no `Hom Nat b a` in scope — a
+--   `natrec` branch carries no evidence about its scrutinee — but the
+--   inspect-encoded split DOES hand over `a ∸ b ≡ suc p`.  So this is the
+--   form the client can actually call, and the module below is that call.
 ------------------------------------------------------------------------
 
 mpAt-wf : Γ₃ ⊢ty mpAt A
 mpAt-wf = ⊢mpAt dA
 
-module MonusPlusUse (h e : RTm ⌊ Γ₃ ⌋)
-                    (dh : Γ₃ ⊢ h ∷ mpAt A)
+-- the induction itself, at an open bound
+mp-open : Γ₃ ⊢ mpTm A ∷ mpAt A
+mp-open = ⊢monusPlus dA
+
+-- ★ …and applied.  The hypothesis is a PARAMETER because it is exactly
+--   what gcd's split supplies; nothing here may assume `b ≤ a`.
+module MonusPlusUse (e : RTm ⌊ Γ₃ ⌋)
                     (de : Γ₃ ⊢ e ∷ IdN (monusTm B A) (nsuc C))
                     where
 
-  applied : Γ₃ ⊢ app (app (app h B) C) e ∷ IdN B (plusTm (nsuc C) A)
-  applied = mpUse dh dB dC de
+  applied : Γ₃ ⊢ app (app (app (mpTm A) B) C) e
+              ∷ IdN B (plusTm (nsuc C) A)
+  applied = monusPlus dB dA dC de
 
 ------------------------------------------------------------------------
 -- 6. THE SHAPE GAP B WILL CALL, and the reason it is stated as a module
