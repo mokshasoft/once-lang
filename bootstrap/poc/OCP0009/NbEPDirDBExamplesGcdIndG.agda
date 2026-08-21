@@ -48,6 +48,8 @@ open import poc.OCP0009.NbEPDirDBLibMonus using ( monusTm; ⊢monus )
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( IdN; ⊢tyIdN )
 open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( Prv; prv; prvOk; prv-cast; wR; renren; module AmTΠ )
+open import poc.OCP0009.NbEPDirDBLibIHCall
+  using ( ihCallT; ihCall; ⊢ihCallT; ihCallIntro; ihCallElim )
 open import poc.OCP0009.NbEPDirDBLibAmrecInd using ( PAtR; IndPW; IndStep )
 open import poc.OCP0009.NbEPDirDBLibNatrec using ( Ren⊢-id; ⊢natrec-var )
 open import poc.OCP0009.NbEPDirDBType
@@ -142,18 +144,18 @@ module Plumb (M : Motive) where
   ww t = renren {ϑ = vs} {ρ = vs} {ρ' = λ v → vs (vs v)} (λ _ → refl) t
 
   indPWT : {Γ : Cx} (μa ih : RTm Γ) → RTy Γ
+  -- ⚠ DEFINED as `…LibIHCall.ihCallT` at the payload `El (PC … (ihCall ih))`.
+  --   Same type as before, definitionally; stating it this way is what makes
+  --   the shared shape a CLIENT of the library rather than a coincidence.
   indPWT μa ih =
-    Π PairT
-      (Π (Hom Nat (nsuc msr) (w μa))
-         (El (PC (fst (var (vs vz))) (snd (var (vs vz)))
-                 (app (app (w (w ih)) (var (vs vz))) (var vz)))))
+    ihCallT PairT msr (w μa)
+      (El (PC (fst (var (vs vz))) (snd (var (vs vz))) (ihCall ih)))
 
   ⊢indPWT : {Γ : Ctx} {μa ih : RTm ⌊ Γ ⌋} →
             Γ ⊢ μa ∷ Nat → Γ ⊢ ih ∷ gcdIH μa → Γ ⊢ty indPWT μa ih
   ⊢indPWT {μa = μa} dμ di =
-    ty-Π ⊢PairT
-      (ty-Π (ty-Hom ty-Nat (⊢nsuc ⊢msr) (⊢wk dμ))
-            (ty-El (⊢PC (⊢fst dy) (⊢snd dy) (asN dcall))))
+    ⊢ihCallT ⊢PairT ⊢msr (⊢wk dμ)
+             (ty-El (⊢PC (⊢fst dy) (⊢snd dy) (asN dcall)))
     where
       dy    = ⊢var (there here)
       dcall = appGcdIH (⊢-cast (gcdIH-w² μa) (⊢wk (⊢wk di))) dy (⊢var here)
@@ -163,9 +165,8 @@ module Plumb (M : Motive) where
                IndPW Δ PairT ⌜Nat⌝ msr gP Θ ρ a ih →
                Prv Θ (indPWT (subTm (single a) msr) ih)
   indPWIntro {ρ = ρ} {a = a} {ih = ih} dμ pw =
-    prv _ (⊢lam ⊢PairT
-            (⊢lam (ty-Hom ty-Nat (⊢nsuc ⊢msr) (⊢wk dμ))
-                  (⊢-cast bodyEq (prvOk inner))))
+    prv _ (ihCallIntro ⊢PairT (ty-Hom ty-Nat (⊢nsuc ⊢msr) (⊢wk dμ))
+                       (⊢-cast bodyEq (prvOk inner)))
     where
       μa = subTm (single a) msr
 
@@ -187,20 +188,26 @@ module Plumb (M : Motive) where
               Γ ⊢ h ∷ indPWT μ i → Γ ⊢ y ∷ PairT →
               Γ ⊢ q ∷ Hom Nat (nsuc (subTm (single y) msr)) μ →
               Γ ⊢ app (app h y) q ∷ El (PC (fst y) (snd y) (app (app i y) q))
+  -- ⚠ THE APPLICATION is now `…LibIHCall.ihCallElim` (two `⊢app`s at an
+  --   arbitrary payload); everything below it is the PAYLOAD PEEL, which
+  --   is client-side by construction and is why the shared shape saves
+  --   lines here and not seconds.
   indPWElim {μ = μ} {i = i} {y = y} {q = q} dh dy dq =
-    ⊢-cast (cong El eq2) (⊢app (⊢-cast eq1 (⊢app dh dy)) dq)
+    ⊢-cast (cong El (trans (cong (subTm (single q)) payload) eq2))
+           (ihCallElim dh dy (⊢-cast homEq dq))
     where
       peel₁ : (t : RTm ⌊ _ ⌋) → subTm (extS (single y)) (w (w t)) ≡ w t
       peel₁ t = trans (sub-w {σ = single y} (w t)) (cong w (wk-single {v = y} t))
 
-      eq1 = cong₂ (λ u c → Π (Hom Nat (nsuc (subTm (single y) msr)) u) (El c))
-                  (wk-single {v = y} μ)
-                  (trans (PC-sub {σ = extS (single y)}
-                            (fst (var (vs vz))) (snd (var (vs vz)))
-                            (app (app (w (w i)) (var (vs vz))) (var vz)))
-                         (cong (λ z → PC (fst (w y)) (snd (w y))
-                                         (app (app z (w y)) (var vz)))
-                               (peel₁ i)))
+      homEq = cong (Hom Nat (nsuc (subTm (single y) msr)))
+                   (sym (wk-single {v = y} μ))
+
+      payload = trans (PC-sub {σ = extS (single y)}
+                         (fst (var (vs vz))) (snd (var (vs vz)))
+                         (app (app (w (w i)) (var (vs vz))) (var vz)))
+                      (cong (λ z → PC (fst (w y)) (snd (w y))
+                                      (app (app z (w y)) (var vz)))
+                            (peel₁ i))
 
       eq2 = trans (PC-sub {σ = single q}
                      (fst (w y)) (snd (w y)) (app (app (w i) (w y)) (var vz)))
