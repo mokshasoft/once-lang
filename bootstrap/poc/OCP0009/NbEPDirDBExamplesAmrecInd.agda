@@ -1,6 +1,15 @@
 ------------------------------------------------------------------------
--- OCP-0009 — `amrec-ind` IS CALLABLE.  A SATISFIABILITY CHECK, and it is
--- deliberately the WEAKEST interesting one.
+-- OCP-0009 · EXAMPLES — `amrec-ind` IS CALLABLE.  THE LIBRARY'S EXERCISER.
+--
+-- ⚠ EVERY LIBRARY IS EXERCISED BY AN EXAMPLE, NEVER BY A SPIKE (standing
+--   rule, 2026-08-21).  A green `--safe` library proves its definitions
+--   typecheck; it does not prove a client can CALL them.  This file is that
+--   guarantee for `…LibAmrecInd`, and it fails loudly if the interface moves.
+--
+-- ⚠⚠ COVERAGE IS PER BRANCH, AND THIS FILE DOES NOT YET HAVE IT.  What is
+--   below is the SATISFIABILITY check — deliberately the weakest interesting
+--   one.  The branch-level exercise (an `IndStep` that actually USES its
+--   `IndPW` hypothesis) is gap B layer 2, `…ExamplesGcdDvd`.
 --
 -- ⚠⚠ WHAT THIS DOES AND DOES NOT SHOW.  `…SpikeAmrecInd` proves
 --   `amrecInd`, whose premises are `StepExt` and `IndStep`.  Green says
@@ -28,7 +37,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.NbEPDirDBSpikeAmrecIndSat where
+module poc.OCP0009.NbEPDirDBExamplesAmrecInd where
 
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; RTm; El; U; Nat; unit; ⌜Unit⌝ )
@@ -37,7 +46,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢unit; ⊢conv; ⊢⌜Unit⌝; csymᵀ; credᵀ; El-⌜Unit⌝ )
 open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( aStepT; Prv; prv; StepExt )
-open import poc.OCP0009.NbEPDirDBSpikeAmrecInd
+open import poc.OCP0009.NbEPDirDBLibAmrecInd
   using ( IndStep; module Concl )
 
 module Sat (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
