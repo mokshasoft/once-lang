@@ -13,7 +13,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _∋_∷_; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝
         ; ⊢lam; ⊢app
         ; ty-Nat; ty-Hom; ty-El )
-open import poc.OCP0009.NbEPDirDBExamplesOrd using ( ⊢strong-base' )
+open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base' )
 
 REC1T : RTy (ε ∙ ∙ ∙ ∙)
 REC1T = Π (El ⌜Nat⌝)

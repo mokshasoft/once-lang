@@ -103,9 +103,10 @@ trans-computes =
 --   `⊢strong-step`, `⊢strong-base'`, `⊢strong-descend`.  Seven `Lib*`
 --   modules build on them, so a library was importing an example.
 --
--- ⚠ Re-exported `public`, so every existing importer of THIS module keeps
---   working unchanged; only `Lib*` importers were repointed.
+-- ⚠ NOT re-exported.  Clients import the primitives from the library
+--   directly — a re-export would hide the real dependency and force every
+--   client to inherit this module's whole closure.
 ------------------------------------------------------------------------
 
-open import poc.OCP0009.NbEPDirDBLibOrd public
+open import poc.OCP0009.NbEPDirDBLibOrd
   using ( ⊢trans; ⊢strong-base; ⊢strong-step; ⊢strong-base'; ⊢strong-descend )

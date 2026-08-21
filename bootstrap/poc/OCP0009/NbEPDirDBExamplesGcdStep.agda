@@ -63,10 +63,14 @@ open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBVar using ( ren-as-sub; wk-sub-tm )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-ren; ⟶*-sub )
-open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus; n1; n2; n3 )
+open import poc.OCP0009.NbEPDirDBLibNat
+  using ( plusTm; ⊢plus )
+open import poc.OCP0009.NbEPDirDBExamplesNat
+  using ( n1; n2; n3 )
+open import poc.OCP0009.NbEPDirDBLibMonus
+  using ( monusTm; ⊢monus; monus-zero; monus-suc; pred-zero; pred-suc )
 open import poc.OCP0009.NbEPDirDBExamplesDiv
-  using ( monusTm; ⊢monus; monus-zero; monus-suc; pred-zero; pred-suc
-        ; monus-computes )
+  using ( monus-computes )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( aStepT; aIHTat-sub; aIHTat-ren )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asP )

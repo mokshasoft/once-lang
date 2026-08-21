@@ -47,7 +47,7 @@ open import poc.OCP0009.NbEPDirDBType
 open import poc.OCP0009.NbEPDirDBInj
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBExamplesStrong
+open import poc.OCP0009.NbEPDirDBLibStrong
   using ( El-homNat; ⊢le-refl; reflTm )
 
 ------------------------------------------------------------------------

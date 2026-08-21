@@ -40,9 +40,11 @@ open import poc.OCP0009.NbEPDirDBType
         ; _≅ᵀ_; csymᵀ; El-⌜Nat⌝ )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
+open import poc.OCP0009.NbEPDirDBLibMonus
+  using ( monusTm; ⊢monus )
 open import poc.OCP0009.NbEPDirDBExamplesDiv
-  using ( monusTm; monusStep; ⊢monus; ⊢div-descend )
-open import poc.OCP0009.NbEPDirDBExamplesStrong using ( reflTm )
+  using ( monusStep; ⊢div-descend )
+open import poc.OCP0009.NbEPDirDBLibStrong using ( reflTm )
 open import poc.OCP0009.NbEPDirDBLibRec   using ( aIHT )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( aStepT; module AmTΠ )
 

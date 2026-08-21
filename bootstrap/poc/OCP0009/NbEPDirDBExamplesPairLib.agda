@@ -47,7 +47,7 @@ open import poc.OCP0009.NbEPDirDBType
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
-open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
+open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBLibRec   using ( aIHT; aIHTat )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( aStepT; module AmTΠ; measure-evals )
 open import poc.OCP0009.NbEPDirDBLibNatVal using ( NatVal; nv-zero; nv-suc )

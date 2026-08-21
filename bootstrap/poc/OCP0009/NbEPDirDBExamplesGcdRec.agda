@@ -29,13 +29,13 @@ open import poc.OCP0009.NbEPDirDBLibAmrec
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; asN )
 open import poc.OCP0009.NbEPDirDBLibArithComm using ( transN; ⊢transN )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; ⟶ᵀ*-Homʳ )
-open import poc.OCP0009.NbEPDirDBExamplesNat using ( ⊢plus )
-open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm )
-open import poc.OCP0009.NbEPDirDBExamplesStrong using ( reflTm; ⊢le-refl )
+open import poc.OCP0009.NbEPDirDBLibNat using ( ⊢plus )
+open import poc.OCP0009.NbEPDirDBLibMonus using ( monusTm )
+open import poc.OCP0009.NbEPDirDBLibStrong using ( reflTm; ⊢le-refl )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep
   using ( msr; ⊢msr; recCert; gcd-gt-term; descConv; gt-mh-1 )
 open import poc.OCP0009.NbEPDirDBLibArithMonus using ( ⊢desc-left )
-open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm )
+open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStepExtA using ( gcdStepExt )
 open import poc.OCP0009.NbEPDirDBExamplesGcdEqs using ( module GcdEqAt )
 

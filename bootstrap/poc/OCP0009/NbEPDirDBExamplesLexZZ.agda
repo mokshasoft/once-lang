@@ -26,7 +26,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc
         ; ⊢lam; ⊢app
         ; ty-Nat; ty-Hom; ty-El )
-open import poc.OCP0009.NbEPDirDBExamplesOrd using ( ⊢strong-base' )
+open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base' )
 open import poc.OCP0009.NbEPDirDBExamplesLex
   using ( Γ₅; REC1T; REC2T; LStepT; M0lex; lexZZ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )

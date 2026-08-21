@@ -56,9 +56,9 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⟶*_; done; step; β; ξ-appˡ; natrec-suc
         ; ty-Nat; ty-Hom; ty-El; ty-Π )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
-open import poc.OCP0009.NbEPDirDBExamplesOrd using ( ⊢strong-base'; ⊢strong-step )
-open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
-open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
+open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base'; ⊢strong-step )
+open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
+open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )

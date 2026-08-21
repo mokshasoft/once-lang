@@ -48,8 +48,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; ty-Nat; ty-Hom; ty-El; ty-Π )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
-open import poc.OCP0009.NbEPDirDBExamplesOrd using ( ⊢strong-base'; ⊢strong-step )
+open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
+open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base'; ⊢strong-step )
 -- ★ REUSE: the naturality kit built for lexrec is not lexrec-specific.
 --   `rec1T` IS this combinator's IH type, and `sub-w`/`ren-w`/`cong₄` are
 --   the whole toolkit.  Nothing new was needed here.

@@ -29,7 +29,7 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⊢_∷_; ⊢var; here; there; ⊢natrec; ⊢lam; ⊢app; ⊢nzero
         ; ty-Nat )
 open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-open import poc.OCP0009.NbEPDirDBExamplesStrong using ( ⊢le-refl; reflTm )
+open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBExamplesLex
   using ( Γ₅; LStepT; lexAuxMot; M0lex; M1lex; ⊢lexAuxMot; ⊢M0lex; ⊢M1lex
         ; lexZBr; lexSBr; lexAuxTm )

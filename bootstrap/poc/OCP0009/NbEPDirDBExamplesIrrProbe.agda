@@ -40,8 +40,8 @@ open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( Prv; prv; prvTm; prvOk; StepExt; aStepT; idOfRed; module AmTΠ )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT; asP )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep using ( msr; ⊢msr; ⊢gcdIH )
-open import poc.OCP0009.NbEPDirDBExamplesNat using ( plusTm; ⊢plus )
-open import poc.OCP0009.NbEPDirDBExamplesDiv using ( monusTm; ⊢monus )
+open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
+open import poc.OCP0009.NbEPDirDBLibMonus using ( monusTm; ⊢monus )
 
 ------------------------------------------------------------------------
 -- ★ THE TRIVIAL STEP — `λ x. λ ih. fst x`.  The IH is bound and ignored.
