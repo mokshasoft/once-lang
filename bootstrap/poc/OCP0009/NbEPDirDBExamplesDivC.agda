@@ -1,5 +1,13 @@
-------------------------------------------------------------------------
--- OCP-0009 — SPIKE: `⊢amrecΠ` AT THE ℕ CARRIER — THE PLUMBING.
+-- OCP-0009 · EXAMPLES — `⊢amrecΠ` AT THE ℕ CARRIER — THE PLUMBING.
+--
+-- ⚠ PROMOTED FROM A SPIKE 2026-08-21.  Standing rule: finished library AND
+--   finished EXAMPLES material does not live in a `Spike*` module.
+--
+-- ⚠⚠ AND IT WAS NOT MERELY MISNAMED — IT WAS UNGUARDED.  `sweep.sh` gathers
+--   `Spike*` as PROBES and, at target `all` (kernel + libs + examples),
+--   does not build them at all.  This file was green when moved, but
+--   nothing had been checking that.  ⇒ a result kept in a Spike is a result
+--   nobody is watching.
 --
 -- ★ FIRST USE SITE of the re-packaged combinator.  `div` is chosen over
 --   `gcd` deliberately: `⊢div` ALREADY EXISTS built raw from nested
@@ -20,7 +28,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikeDivC where
+module poc.OCP0009.NbEPDirDBExamplesDivC where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
@@ -49,7 +57,7 @@ open import poc.OCP0009.NbEPDirDBExamplesAmrecC using ( aStepT; module AmΠ )
 -- ★ the ℕ-carrier instantiation package, reused verbatim from the
 --   instantiation spike — the data are CONTEXT-POLYMORPHIC, so the same
 --   four terms and derivations serve at any Δ.
-open import poc.OCP0009.SpikeAmrecInst
+open import poc.OCP0009.NbEPDirDBExamplesAmrecInst
   using ( cAt; cPt; μt; dcA; dcP; dμ; elNat; elCP )
 
 -- the ambient context: the divisor's predecessor `k`, exactly `Γ₃` in

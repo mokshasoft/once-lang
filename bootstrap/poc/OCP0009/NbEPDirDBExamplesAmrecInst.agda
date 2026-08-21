@@ -1,5 +1,13 @@
-------------------------------------------------------------------------
--- OCP-0009 — SPIKE: INSTANTIATING `⊢amrec` AT A CONCRETE CARRIER.
+-- OCP-0009 · EXAMPLES — INSTANTIATING `⊢amrec` AT A CONCRETE CARRIER.
+--
+-- ⚠ PROMOTED FROM A SPIKE 2026-08-21.  Standing rule: finished library AND
+--   finished EXAMPLES material does not live in a `Spike*` module.
+--
+-- ⚠⚠ AND IT WAS NOT MERELY MISNAMED — IT WAS UNGUARDED.  `sweep.sh` gathers
+--   `Spike*` as PROBES and, at target `all` (kernel + libs + examples),
+--   does not build them at all.  This file was green when moved, but
+--   nothing had been checking that.  ⇒ a result kept in a Spike is a result
+--   nobody is watching.
 --
 -- ★ THE FIRST CALL OF `sub-lemma` IN THE EXAMPLES.  Task #11 says
 --   carrier-genericity "has never been cashed out" — `sub-lemma` is
@@ -46,7 +54,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikeAmrecInst where
+module poc.OCP0009.NbEPDirDBExamplesAmrecInst where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; subst )
 open import poc.OCP0009.NbEPDirDBPi

@@ -1,6 +1,20 @@
-------------------------------------------------------------------------
--- OCP-0009 — DOES THE `-ren` FAMILY ACTUALLY APPLY TO `AmTΠ`'s OWN
---            DEFINITIONS?  A one-question spike.
+-- OCP-0009 · EXAMPLES — DOES THE `-ren` FAMILY ACTUALLY APPLY TO
+--                        `AmTΠ`'s OWN DEFINITIONS?
+--
+-- ⚠ PROMOTED FROM A SPIKE 2026-08-21.  Standing rule: finished library AND
+--   finished EXAMPLES material does not live in a `Spike*` module.
+--
+-- ⚠⚠ AND IT WAS NOT MERELY MISNAMED — IT WAS UNGUARDED.  `sweep.sh` gathers
+--   `Spike*` as PROBES and, at target `all` (kernel + libs + examples),
+--   does not build them at all.  This file was green when moved, but
+--   nothing had been checking that.  ⇒ a result kept in a Spike is a result
+--   nobody is watching.
+--
+-- ★ A ONE-QUESTION CHECK, and `…LibAmrecRen`'s header DEPENDS ON ITS
+--   ANSWER — it states the renaming laws on the parameterised forms and
+--   asserts they agree definitionally with the module's own.  If a `refl`
+--   below ever breaks, route (b) is unsound and the laws apply to a
+--   parallel pair rather than to `AmTΠ`.
 --
 -- ⚠ THE CLAIM UNDER TEST.  `…LibAmrec` states its renaming laws on the
 --   PARAMETERISED forms (`amrecTm'`, `auxIH'`, `ihS-atP'`) while `AmTΠ`
@@ -20,7 +34,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.NbEPDirDBSpikeAgree where
+module poc.OCP0009.NbEPDirDBExamplesAgree where
 
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import poc.OCP0009.NbEPDirDBPi using ( Cx; _∙; RTy; RTm; U; Nat )

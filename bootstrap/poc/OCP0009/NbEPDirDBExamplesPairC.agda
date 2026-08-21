@@ -1,5 +1,13 @@
-------------------------------------------------------------------------
--- OCP-0009 — THE SAME PAIR-CARRIER FUNCTION UNDER `AmrecC`.
+-- OCP-0009 · EXAMPLES — THE SAME PAIR-CARRIER FUNCTION UNDER `AmrecC`.
+--
+-- ⚠ PROMOTED FROM A SPIKE 2026-08-21.  Standing rule: finished library AND
+--   finished EXAMPLES material does not live in a `Spike*` module.
+--
+-- ⚠⚠ AND IT WAS NOT MERELY MISNAMED — IT WAS UNGUARDED.  `sweep.sh` gathers
+--   `Spike*` as PROBES and, at target `all` (kernel + libs + examples),
+--   does not build them at all.  This file was green when moved, but
+--   nothing had been checking that.  ⇒ a result kept in a Spike is a result
+--   nobody is watching.
 --
 -- `NbEPDirDBExamplesPairLib` built `f (a , b) = case a of 0 → b; suc a' → f (a' , suc b)`
 -- through the D4 interface: green first try, 69 lines, ZERO `El-⌜Σ⌝`
@@ -23,7 +31,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module poc.OCP0009.SpikePairC where
+module poc.OCP0009.NbEPDirDBExamplesPairC where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
