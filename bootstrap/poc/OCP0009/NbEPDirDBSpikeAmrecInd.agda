@@ -511,7 +511,8 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
 
 
   ------------------------------------------------------------------------
-  -- ⚠⚠⚠ THE ZERO BRANCH — DRAFTED, AND BLOCKED ON A PEEL.  NOT PROVED.
+  -- ✅ THE ZERO BRANCH IS PROVED — `⊢zbr`, above.  (This block is kept for
+  -- the REASONING; the blocker it describes was dissolved, not worked around.)
   --
   -- ★ THE PROOF ITSELF IS SETTLED, and it is three lines:
   --
@@ -536,7 +537,11 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
   --     fusions and neither is deep — but they are the next real work, and
   --     writing the branch before them just fights the peel.
   --
-  -- ⇒ NEXT: `IndB-z` and `IndB-s`, then the two branches, then `⊢natrec`.
+  -- ⇒ RESOLVED, and better than planned: `IndB-z`/`IndB-s` were never
+  --   written.  `IndBAt-sub` is GENERIC IN σ, so the zero branch is its
+  --   instance at `σ := single nzero` and the successor branch will be its
+  --   instance at `σ := single (nsuc …)`.  ONE law, not two bespoke peels.
+  --   ⇒ NEXT is the SUCCESSOR branch and step 6 (`IHAt`), not more peels.
   ------------------------------------------------------------------------
 
 module Concl (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : RTm ⌊ Δ ⌋)
