@@ -35,8 +35,12 @@ data Arch : Set where
 -- `refl`, so a disagreement is a type error rather than a wrong binary.
 ------------------------------------------------------------------------
 
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; zero; suc; _<_; s≤s; z≤n)
+open import Data.Integer using (ℤ)
+open import Data.Product using (Σ; _,_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Float.Dyadic using (FloatFormat; binary32; binary64)
+import Once.Word as OnceWord
 
 ------------------------------------------------------------------------
 -- THE TARGET'S NUMERIC FACTS, in one record (plan 0.74, D115).
@@ -58,12 +62,65 @@ record TargetNum : Set where
     int-bits     : ℕ
     float-format : FloatFormat
 
+    -- | THE TARGET HAS AT LEAST ONE BIT (plan 0.74 J6, D115).
+    --
+    -- Only the arch can supply this, and it is not ceremony: the exactness
+    -- theorem below is FALSE at `int-bits ≡ 0`. There `half ≡ modulus ≡ 1`,
+    -- `InRange` admits `-1`, and `fromℤ (-1)` is `0` — a literal that is
+    -- accepted and then silently means something else, which is the whole
+    -- failure mode D115 exists to forbid. A zero-bit target is not a target,
+    -- and this field is where that gets said.
+    int-bits-pos : 0 < int-bits
+
 open TargetNum public
 
+------------------------------------------------------------------------
+-- THE INT CONTRACT (plan 0.74 J6, D115)
+--
+-- The gate was DECORATIVE until this existed. `AdmissibleM` decided that a
+-- literal fits, carried the witness as far as the compile driver, and dropped
+-- it; the machine then called the TOTAL `fromℤ`, which wraps. Nothing tied the
+-- decision to what got materialised, so accepting `2147483648` at 32 bits and
+-- silently meaning `-2147483648` was not ruled out by any proof.
+--
+-- So the evidence has to be CONSUMED, not carried. `tn-lower` takes the
+-- `InRange` witness as an ARGUMENT — there is no way to lower a literal
+-- without one — and `tn-exact` is what that argument buys: read the word back
+-- as a signed integer and you get the integer the programmer wrote.
+--
+-- WHY IT IS THE ARCH'S. The width is the arch's, so the range is the arch's,
+-- so the promise "I materialise the literals I accept, exactly" is the arch's
+-- to make. A target that lowers literals some other way owes `tn-exact` about
+-- ITS lowering, not a promise to call `fromℤ`.
+--
+-- The FLOAT half of the contract is D116's and is deliberately NOT here yet:
+-- a float literal always lowers, ROUNDING when the target cannot hold it
+-- exactly, so its obligation is totality plus an ERROR BOUND rather than a
+-- domain restriction. That bound is what plan 0.74's K-series builds; adding
+-- half of it now would be worse than adding none.
+------------------------------------------------------------------------
+
+-- | `int-bits ≡ suc b`, the shape `Once.Word`'s width-positive lemmas want.
+pos⇒suc : ∀ {n : ℕ} → 0 < n → Σ ℕ (λ b → n ≡ suc b)
+pos⇒suc {suc b} _ = b , refl
+
+-- | The target's word for a literal it ACCEPTS. Total under the evidence, so
+-- `fromℤ`'s wrap is unreachable as semantics rather than merely unlikely.
+tn-lower : (tn : TargetNum) (z : ℤ)
+         → OnceWord.Width.InRange (int-bits tn) z
+         → OnceWord.Width.Word (int-bits tn)
+tn-lower tn z p = OnceWord.Width.toWord (int-bits tn) z p
+
+-- | …and it means what it says.
+tn-exact : (tn : TargetNum) (z : ℤ) (p : OnceWord.Width.InRange (int-bits tn) z)
+         → OnceWord.Width.toℤ (int-bits tn) (tn-lower tn z p) ≡ z
+tn-exact tn z p with pos⇒suc (int-bits-pos tn)
+... | (b , eqb) = OnceWord.Width.toℤ∘fromℤ (int-bits tn) b eqb z p
+
 arch-numerics : Arch → TargetNum
-arch-numerics x86-64  = mkTargetNum 64 binary64
-arch-numerics x86-32  = mkTargetNum 32 binary32
-arch-numerics riscv64 = mkTargetNum 64 binary64
+arch-numerics x86-64  = mkTargetNum 64 binary64 (s≤s z≤n)
+arch-numerics x86-32  = mkTargetNum 32 binary32 (s≤s z≤n)
+arch-numerics riscv64 = mkTargetNum 64 binary64 (s≤s z≤n)
 
 -- | Derived, so existing callers are unchanged.
 arch-int-bits : Arch → ℕ

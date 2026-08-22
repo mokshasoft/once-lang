@@ -44,13 +44,15 @@ open import Data.Nat.DivMod using (_%_; _/_; n%1≡0; n/1≡n; n%n≡0; m<n⇒m%
 open import Data.Nat.Properties using
   (m^n≢0; m^n>0; +-identityʳ; +-comm;
    +-mono-≤; +-monoʳ-≤; +-monoʳ-<; ^-monoʳ-≤; ∸-monoˡ-≤; m+n∸n≡m; m∸n+n≡m; m∸[m∸n]≡n;
-   ≤-refl; ≡ᵇ⇒≡; <ᵇ⇒<; ≤⇒≯; ≤-trans; <⇒≤; ≤-<-trans; m∸n≤m; +-∸-assoc; +-∸-comm)
+   ≤-refl; ≡ᵇ⇒≡; <ᵇ⇒<; <⇒<ᵇ; ≤⇒≯; ≤-trans; <⇒≤; ≤-<-trans; m∸n≤m; +-∸-assoc; +-∸-comm;
+   ∸-monoʳ-≤; ∸-monoʳ-<)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣; sign; _◃_; _-_; -_)
 import Data.Integer as ℤ
 open import Data.Integer.Properties using (_≤?_)
-open import Data.Product using (_×_)
+open import Data.Product using (_×_; _,_)
 open import Relation.Nullary.Decidable using (Dec; _×-dec_)
-open import Data.Integer.Properties using (_<?_; m-n≡m⊖n; ⊖-<; +◃n≡+n; -◃n≡-n; neg-involutive)
+open import Data.Integer.Properties using (_<?_; m-n≡m⊖n; ⊖-<; +◃n≡+n; -◃n≡-n; neg-involutive;
+   neg-cancel-≤)
 import Data.Sign as Sign
 open import Data.Bool using (Bool; true; false; if_then_else_; _∧_; T)
 open import Data.Empty using (⊥-elim)
@@ -296,6 +298,11 @@ module Width (bits : ℕ) where
   ≡ᵇ0-false : ∀ {n} → 0 < n → (n ℕ.≡ᵇ 0) ≡ false
   ≡ᵇ0-false {suc _} _ = refl
 
+  <⇒<ᵇtrue : ∀ m n → m < n → (m ℕ.<ᵇ n) ≡ true
+  <⇒<ᵇtrue m n m<n with m ℕ.<ᵇ n | <⇒<ᵇ m<n
+  ... | true  | _  = refl
+  ... | false | ()
+
   ≤⇒<ᵇfalse : ∀ m n → n ≤ m → (m ℕ.<ᵇ n) ≡ false
   ≤⇒<ᵇfalse m n n≤m with m ℕ.<ᵇ n | <ᵇ⇒< m n
   ... | false | _ = refl
@@ -440,6 +447,79 @@ module Width (bits : ℕ) where
     ... | false with (a ℕ.≡ᵇ intMin) ∧ (c ℕ.≡ᵇ negOne)
     ...   | true  = 0<modulus
     ...   | false = fromℤ-in-range (tmodℤ (toℤ a) (toℤ c))
+
+    ----------------------------------------------------------------------
+    -- D115 / plan 0.74 J6 — THE EXACTNESS THEOREM.
+    --
+    -- An in-range literal ROUND-TRIPS: read the word the machine materialises
+    -- back as a signed integer and you get the integer the programmer wrote.
+    --
+    -- THIS IS WHAT ADMISSIBILITY BUYS, and until something consumes it the
+    -- gate is decorative. `fromℤ` is total and wraps, so without this a
+    -- compiler could accept `2147483648` at 32 bits and silently mean
+    -- `-2147483648` — the exact silent value substitution D115 exists to
+    -- forbid. Stating it is also what makes the obligation transferable: an
+    -- arch that lowers literals its own way owes THIS, not a promise to use
+    -- `fromℤ`.
+    --
+    -- It needs `bits ≥ 1`, which is why it lives here. At `bits ≡ 0` it is
+    -- FALSE — `half = modulus = 1`, `InRange` admits `-1`, and `fromℤ (-1)`
+    -- is `0`. A zero-bit target is not a target, and the premise says so.
+    ----------------------------------------------------------------------
+
+    unplus : ∀ {m n} → (+ m) ℤ.≤ (+ n) → m ≤ n
+    unplus (ℤ.+≤+ p) = p
+
+    -- Upper bound: `z ≤ 2^(bits-1) − 1` says a non-negative literal is `< half`.
+    lit-hi : ∀ n → (+ n) ℤ.≤ + (half ℕ.∸ 1) → n < half
+    lit-hi n le =
+      subst (ℕ._≤ half) (+-comm n 1)
+        (subst (n ℕ.+ 1 ℕ.≤_) (m∸n+n≡m 0<half)
+          (+-mono-≤ (unplus le) (≤-refl {1})))
+
+    -- Lower bound: `−2^(bits-1) ≤ z` says a negative literal's magnitude is
+    -- `≤ half`. `-[1+ n ]` IS `- (+ suc n)`, so this is just antitonicity.
+    lit-lo : ∀ n → (ℤ.- (+ half)) ℤ.≤ -[1+ n ] → suc n ≤ half
+    lit-lo n le = unplus (neg-cancel-≤ le)
+
+    toℤ∘fromℤ : ∀ z → InRange z → toℤ (fromℤ z) ≡ z
+    toℤ∘fromℤ (+ n) (_ , hi) = trans (cong toℤ norm-n) guard
+      where
+        n<half : n < half
+        n<half = lit-hi n hi
+        n<mod : n < modulus
+        n<mod = ≤-<-trans (<⇒≤ n<half) half<modulus
+        norm-n : norm n ≡ n
+        norm-n = m<n⇒m%n≡m n<mod
+        guard : toℤ n ≡ + n
+        guard rewrite <⇒<ᵇtrue n half n<half = refl
+
+    toℤ∘fromℤ (-[1+ n ]) (lo , _) = trans (cong toℤ word) signed
+      where
+        sn≤half : suc n ≤ half
+        sn≤half = lit-lo n lo
+        sn<mod : suc n < modulus
+        sn<mod = ≤-<-trans sn≤half half<modulus
+        w : ℕ
+        w = modulus ∸ suc n
+        -- the two's-complement word, with BOTH `norm`s discharged
+        word : fromℤ (-[1+ n ]) ≡ w
+        word = trans (cong (λ k → norm (modulus ∸ k)) (m<n⇒m%n≡m sn<mod))
+                     (m<n⇒m%n≡m w<mod)
+          where
+            w<mod : w < modulus
+            w<mod = ∸-monoʳ-< (ℕ.s≤s ℕ.z≤n) (<⇒≤ sn<mod)
+        -- `w` sits in the UPPER half, which is what makes `toℤ` read it as
+        -- negative: `suc n ≤ half` and `modulus ∸ half ≡ half`.
+        half≤w : half ≤ w
+        half≤w = subst (ℕ._≤ w) mod∸half≡half (∸-monoʳ-≤ modulus sn≤half)
+        w<mod : w < modulus
+        w<mod = ∸-monoʳ-< (ℕ.s≤s ℕ.z≤n) (<⇒≤ sn<mod)
+        signed : toℤ w ≡ -[1+ n ]
+        signed rewrite ≤⇒<ᵇfalse w half half≤w =
+          trans (m-n≡m⊖n w modulus)
+                (trans (⊖-< w<mod)
+                       (cong (λ k → ℤ.- (+ k)) (m∸[m∸n]≡n (<⇒≤ sn<mod))))
 
   ------------------------------------------------------------------------
   -- THE ℕ↔MODULAR BRIDGE (plan 0.70 phase B).

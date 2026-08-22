@@ -33,7 +33,8 @@
 
 module Once.CCC.FrameSemantics where
 
-open import Data.Nat using (ℕ; zero; _<_; _≤_; _+_; _∸_; _*_)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _+_; _∸_; _*_; s≤s; z≤n)
+open import Data.Nat.Properties using (*-mono-≤)
 open import Data.Empty using (⊥)
 open import Data.Sum using (_⊎_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
@@ -115,6 +116,15 @@ record FrameSemantics : Set₁ where
 
     -- | Slot size in bytes (the machine word).
     frame-word : ℕ
+
+    -- | …and it is at least one byte (plan 0.74 J6, D115).
+    --
+    -- A machine whose word is zero bytes cannot address anything, so this was
+    -- always true; what changed is that something now DEPENDS on it.
+    -- `fs-numerics` turns this into the target's Int width, and the literal
+    -- exactness theorem it carries is false at width zero. So the fact has to
+    -- be stated rather than assumed, and each frame instantiation says it.
+    frame-word-pos : 0 < frame-word
 
     -- | Slots are LINEAR from the frame base — the target's `[sp + k·word]`.
     -- This is what lets a stack POINTER (`AtStack f k`) be given an address.
@@ -249,4 +259,9 @@ open FrameSemantics public
 open import Once.Target.Arch using (TargetNum; mkTargetNum)
 
 fs-numerics : FrameSemantics → TargetNum
-fs-numerics FS = mkTargetNum (8 * frame-word FS) (float-format FS)
+fs-numerics FS = mkTargetNum (8 * frame-word FS) (float-format FS) bits-pos
+  where
+    -- `0 < 8 * frame-word FS` from `0 < frame-word FS`: eight copies of a
+    -- positive number is positive.
+    bits-pos : 0 < 8 * frame-word FS
+    bits-pos = *-mono-≤ {1} {8} (s≤s z≤n) (frame-word-pos FS)

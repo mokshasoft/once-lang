@@ -232,6 +232,9 @@ rv64-frame-semantics = record
   ; slot-addr = rv64-slot-addr
   ; shift-frame = rv64-shift-frame
   ; frame-word = word-size
+  -- plan 0.74 J6: the word is at least one byte, so the target's Int width
+  -- is at least one bit — which is what the literal exactness theorem needs.
+  ; frame-word-pos = s≤s z≤n
   ; slot-addr-linear = λ f k → refl
   ; shift-base = λ f n → refl
   -- Plan 0.73 (D113): riscv64 with the `D` extension; a `double` fits a 64-bit register.

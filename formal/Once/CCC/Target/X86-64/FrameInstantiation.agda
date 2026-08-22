@@ -232,6 +232,9 @@ x86-64-frame-semantics = record
   ; slot-addr = x86-slot-addr
   ; shift-frame = x86-shift-frame
   ; frame-word = word-size
+  -- plan 0.74 J6: the word is at least one byte, so the target's Int width
+  -- is at least one bit — which is what the literal exactness theorem needs.
+  ; frame-word-pos = s≤s z≤n
   ; slot-addr-linear = λ f k → refl
   ; shift-base = λ f n → refl
   -- Plan 0.73 (D113): x86-64 has SSE2 in its baseline ABI; a `double` is what a C `double` is.
