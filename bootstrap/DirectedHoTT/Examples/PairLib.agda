@@ -53,7 +53,8 @@ open import DirectedHoTT.Lib.Amrec using ( aStepT; module AmTΠ )
 --   CLOSED-CARRIER layer and the only thing that needed `natEval`, whose
 --   proof drags the canonicity stack.  This use site is at `◇`, so it is
 --   the right client for it.
-open import DirectedHoTT.Lib.AmrecClosed using ( measure-evals )
+open import DirectedHoTT.Lib.AmrecClosed
+  using ( measure-evals; module AmTΠ◇ )
 open import DirectedHoTT.Lib.NatVal using ( NatVal; nv-zero; nv-suc )
 
 ------------------------------------------------------------------------
@@ -202,3 +203,32 @@ msr-evals-at : NatVal (subTm (single (pair (nsuc nzero) nzero)) msr)
 msr-evals-at =
   msr-evals (pair (nsuc nzero) nzero)
             (⊢pair ty-Nat (⊢nsuc ⊢nzero) ⊢nzero)
+
+------------------------------------------------------------------------
+-- ★★★ `AmTΠ◇` EXERCISED — the closed-carrier unfolding, END TO END.
+--
+-- ⚠⚠ THIS MODULE EXISTED WITHOUT A CLIENT until 2026-08-22, which is the
+--   `lexrec` shape: derived, green, `--safe`, and never applied.  The
+--   standing rule is that EVERY library branch is exercised by an Example,
+--   and `AmTΠ◇`'s whole claim — that at `◇` a caller touches neither
+--   `NatVal` nor the conditional lemmas — is only a claim until someone
+--   hands it `x` and its derivation and gets the reduction back.
+--
+-- ★ BOTH CONSTRUCTORS ARE REACHED, which is the point of exercising it:
+--   `(0 , 0)` has measure 0 and takes `unf-z`; `(1 , 0)` has measure 1 and
+--   takes `unf-s`.  A test that only ever hit one branch would say nothing
+--   about the other.
+------------------------------------------------------------------------
+
+module FΠ◇ = AmTΠ◇ PairT ⌜Nat⌝ msr fStp ⊢PairT ⊢⌜Nat⌝ ⊢msr ⊢fStp
+
+-- the measure at `(0 , 0)` is `0` — the ZERO branch
+unfold-at-00 : FΠ◇.Unfold (pair nzero nzero)
+unfold-at-00 =
+  FΠ◇.amrec-unfold (pair nzero nzero) (⊢pair ty-Nat ⊢nzero ⊢nzero)
+
+-- the measure at `(1 , 0)` is `1` — the SUCCESSOR branch
+unfold-at-10 : FΠ◇.Unfold (pair (nsuc nzero) nzero)
+unfold-at-10 =
+  FΠ◇.amrec-unfold (pair (nsuc nzero) nzero)
+                   (⊢pair ty-Nat (⊢nsuc ⊢nzero) ⊢nzero)
