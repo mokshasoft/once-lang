@@ -1056,6 +1056,57 @@ payTy-sub σ D (dκ A C) = cong₂ Σ' (εwk-sub σ A) (payTy-sub (extS σ) D C)
 --    reduce it to `sel k ms`, and that bottoms out in `fst unit`.
 --    SUBJECT REDUCTION WOULD BE FALSE.  Totality relocates the
 --    obligation; it does not remove it.
+------------------------------------------------------------------------
+-- ★★★ THE INDEXED APPARATUS — the twins of everything above.
+--
+-- ⚠⚠ AND HERE THE "CLOSED DESCRIPTIONS ARE CHEAP" DECISION (line 67) STOPS
+--   PAYING. `payTy` is inert under both actions because `Mu D` mentions no
+--   ambient variable. `ipayTy` carries the INDEX, which does — so its
+--   naturality lemmas are real congruences over a renamed/substituted
+--   index, not `refl`. That is the price of indexing, and it is confined
+--   to the index: the DESCRIPTION is still closed, so no `renIDesc` tower
+--   is needed.
+------------------------------------------------------------------------
+
+εwkTm : RTm ε → RTm Γ
+εwkTm = subTm εsub
+
+εwkTm-ren : (ρ : Ren Γ Δ) (t : RTm ε) → renTm ρ (εwkTm t) ≡ εwkTm t
+εwkTm-ren ρ t = trans (renTm-subTm t) (subTm-cong (λ ()) t)
+
+εwkTm-sub : (σ : Sub Γ Δ) (t : RTm ε) → subTm σ (εwkTm t) ≡ εwkTm t
+εwkTm-sub σ t = trans (subTm-subTm t) (subTm-cong (λ ()) t)
+
+ilookupD : IDesc → ℕ → ICon
+ilookupD inil    _       = iι
+ilookupD (C ◂ D) zero    = C
+ilookupD (C ◂ D) (suc k) = ilookupD D k
+
+-- ★ the PAYLOAD's type at ambient index `i`.  A recursive field sits at
+--   the SHIFTED index `f i`, where `f` is the constructor's closed shift.
+ipayTy : IDesc → RTy ε → RTm Γ → ICon → RTy Γ
+ipayTy D I i iι       = Unit
+ipayTy D I i (iρ f C) =
+  Σ' (IMu D I (app (εwkTm f) i)) (ipayTy D I (renTm vs i) C)
+ipayTy D I i (iκ A C) =
+  Σ' (εwkTy A)                   (ipayTy D I (renTm vs i) C)
+
+data _∈ID_ : ℕ → IDesc → Set where
+  hereID  : {C : ICon} {E : IDesc} → zero ∈ID (C ◂ E)
+  thereID : {k : ℕ} {C : ICon} {E : IDesc} → k ∈ID E → suc k ∈ID (C ◂ E)
+
+-- ★ the INDEXED IH tuple.  Mirrors `ihs`, but each recursive call is
+--   eliminated AT ITS OWN SHIFTED INDEX — that is the whole content of
+--   indexing at the term level.
+iihs : IDesc → RTy ε → RTm Γ → RTm Γ → ICon → RTm Γ → RTm Γ
+iihs D I i ms iι       p = unit
+iihs D I i ms (iρ f C) p =
+  pair (ielim D (app (εwkTm f) i) ms (fst p)) (iihs D I i ms C (snd p))
+iihs D I i ms (iκ A C) p = iihs D I i ms C (snd p)
+
+ifields : IDesc → RTy ε → RTm Γ → RTm Γ → ICon → RTm Γ → RTm Γ → RTm Γ
+ifields D I i ms C m p = app (app m p) (iihs D I i ms C p)
+
 data _∈D_ : ℕ → Desc → Set where
   hereD  : {C : DCon} {E : Desc} → zero ∈D (C ◃ E)
   thereD : {k : ℕ} {C : DCon} {E : Desc} → k ∈D E → suc k ∈D (C ◃ E)
