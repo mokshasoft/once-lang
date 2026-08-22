@@ -45,7 +45,7 @@ module Once.Denotation.Admissible where
 
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; all?)
-open import Data.Integer using (ℤ)
+open import Data.Integer using (ℤ; -_)
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Nullary using (Dec; yes; no)
@@ -54,7 +54,8 @@ open import Once.Target.Arch using (Arch; arch-int-bits)
 import Once.Word as OnceWord
 open import Once.TypeCheck.Raw using
   ( RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct
-  ; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna )
+  ; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna
+  ; OpNeg )
 open import Once.Parser.Module.Core using
   ( Module; mkModule; decls; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias
   ; DImport )
@@ -67,7 +68,28 @@ open import Once.Parser.Module.Core using
 -- never looked at — the exact shape of hole D114 found in the observable.
 ------------------------------------------------------------------------
 
+-- A MINUS ON A NUMERAL IS ONE LITERAL, not negation applied to another one.
+--
+-- D115 already decided this: "-129 on 8-bit is as much an error as 2001",
+-- which says in the same breath that -128 is NOT an error. So `-2^(w-1)`, the
+-- least Int every two's-complement target has, must be writable — and it is
+-- writable only if the sign is part of the numeral.
+--
+-- The parser cannot say this: `Once/Parser/Expr.agda` produces
+-- `RUnaryOp OpNeg (RInt n)`, because at the level of GRAMMAR `-` really is a
+-- prefix operator. What a negative numeral MEANS is a fact about the language,
+-- not about its grammar, so it is stated here, in the spec, and the front end
+-- is what has to bridge to it.
+--
+-- The rule is deliberately narrow: minus applied DIRECTLY to a numeral. Minus
+-- applied to anything else — `- x`, `- (a + b)`, `- (- 5)` — is arithmetic,
+-- and arithmetic wraps rather than being checked (D054). That is why
+-- `negLits` delegates every other operand straight back to `rawIntLits`: the
+-- delegation is not a catch-all that could swallow a literal, since
+-- `rawIntLits` is itself exhaustive.
 rawIntLits : RawExpr → List ℤ
+negLits    : RawExpr → List ℤ   -- the operand of a unary minus
+
 rawIntLits (RInt n)             = n ∷ []
 rawIntLits (RApp f x)           = rawIntLits f ++ rawIntLits x
 rawIntLits (RLam _ b)           = rawIntLits b
@@ -76,7 +98,7 @@ rawIntLits (RPair a b)          = rawIntLits a ++ rawIntLits b
 rawIntLits (RDestruct s _ l _ r) = rawIntLits s ++ rawIntLits l ++ rawIntLits r
 rawIntLits (RAnnot e _)         = rawIntLits e
 rawIntLits (RBinOp _ a b)       = rawIntLits a ++ rawIntLits b
-rawIntLits (RUnaryOp _ e)       = rawIntLits e
+rawIntLits (RUnaryOp OpNeg e)   = negLits e
 rawIntLits (RAna _ e)           = rawIntLits e
 -- leaves that carry no `Int` literal
 rawIntLits (RVar _)             = []
@@ -87,6 +109,9 @@ rawIntLits RUnit                = []
 -- target cannot hold it exactly (D116).
 rawIntLits (RFloat _ _ _)       = []
 rawIntLits (RStringLit _)       = []
+
+negLits (RInt n) = (- n) ∷ []
+negLits e        = rawIntLits e
 
 declIntLits : Decl → List ℤ
 declIntLits (DFunDef _ _ body) = rawIntLits body

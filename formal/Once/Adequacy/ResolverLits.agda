@@ -39,7 +39,8 @@ open import Relation.Binary.PropositionalEquality
 
 open import Once.TypeCheck.Raw using
   ( RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct
-  ; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna )
+  ; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna
+  ; OpNeg )
 open import Once.Parser.Module.Core using
   ( Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias; DImport )
 open import Once.Parser.Module.Resolve using
@@ -48,7 +49,7 @@ open import Once.Parser.Module.Resolve using
   ; AliasMap; UnaliasedMap; ModuleMap; collectAliases; collectUnaliased
   ; polyDefNames; ownerOf; expandPath; elemStr; isBuiltinName )
 open import Once.Denotation.Admissible using
-  ( rawIntLits; declIntLits; moduleIntLits )
+  ( rawIntLits; negLits; declIntLits; moduleIntLits )
 
 ------------------------------------------------------------------------
 -- `canonExpr` moves references, never literals
@@ -63,8 +64,24 @@ canonVar-lits true  _          x = refl
 canonVar-lits false (just _)   x = refl
 canonVar-lits false nothing    x = refl
 
+-- The same at the operand of a unary minus. It is a SEPARATE lemma and not a
+-- corollary because `negLits` asks a question `rawIntLits` does not: is this
+-- operand a NUMERAL? So preserving the literals is no longer enough — the
+-- resolver must also preserve whether an operand IS one, or `-2147483648`
+-- could resolve into something the spec no longer reads as a single literal.
+-- It does preserve it, and for a blunt reason: `canonExpr` only ever rewrites
+-- names (`RVar`/`RQualified` → `RResolved`) and rebuilds every other node with
+-- its own head. It cannot manufacture an `RInt`, and it cannot destroy one.
+negLits-canonVar : ∀ (b : Bool) (mp : Maybe (List String)) (x : String)
+                 → negLits (canonVar b mp x) ≡ []
+negLits-canonVar true  _        x = refl
+negLits-canonVar false (just _) x = refl
+negLits-canonVar false nothing  x = refl
+
 canonExpr-lits : ∀ (bound : List String) (um : UnaliasedMap) (am : AliasMap) (e : RawExpr)
                → rawIntLits (canonExpr bound um am e) ≡ rawIntLits e
+negLits-lits   : ∀ (bound : List String) (um : UnaliasedMap) (am : AliasMap) (e : RawExpr)
+               → negLits (canonExpr bound um am e) ≡ negLits e
 canonExpr-lits bound um am (RQualified name alias) with lookupImportAlias am alias
 ... | just _  = refl
 ... | nothing = refl
@@ -89,8 +106,35 @@ canonExpr-lits bound um am (RDestruct s xl el xr er) =
 canonExpr-lits bound um am (RAnnot e _)     = canonExpr-lits bound um am e
 canonExpr-lits bound um am (RBinOp _ a b)   =
   cong₂ _++_ (canonExpr-lits bound um am a) (canonExpr-lits bound um am b)
-canonExpr-lits bound um am (RUnaryOp _ e)   = canonExpr-lits bound um am e
+canonExpr-lits bound um am (RUnaryOp OpNeg e) = negLits-lits bound um am e
 canonExpr-lits bound um am (RAna _ c)       = canonExpr-lits bound um am c
+
+-- ENUMERATED, exactly as `rawIntLits` is, and for the same reason: a catch-all
+-- would quietly cover a constructor added later, and the case it covered wrong
+-- would be the one where a resolved operand stopped looking like a numeral.
+-- Every clause but the first defers to `canonExpr-lits` — `negLits` reduces to
+-- `rawIntLits` on both sides as soon as the head constructor is known, and
+-- `canonExpr` keeps the head.
+negLits-lits bound um am (RInt n)      = refl
+negLits-lits bound um am (RVar x)      =
+  negLits-canonVar (elemStr x bound ∨ isBuiltinName x) (lookupUnaliased um x) x
+negLits-lits bound um am (RQualified name alias) with lookupImportAlias am alias
+... | just _  = refl
+... | nothing = refl
+negLits-lits bound um am (RResolved _)  = refl
+negLits-lits bound um am RUnit          = refl
+negLits-lits bound um am (RFloat _ _ _) = refl
+negLits-lits bound um am (RStringLit _) = refl
+negLits-lits bound um am (RApp f x)     = canonExpr-lits bound um am (RApp f x)
+negLits-lits bound um am (RLam x b)     = canonExpr-lits bound um am (RLam x b)
+negLits-lits bound um am (RLet x e₁ e₂) = canonExpr-lits bound um am (RLet x e₁ e₂)
+negLits-lits bound um am (RPair a b)    = canonExpr-lits bound um am (RPair a b)
+negLits-lits bound um am (RDestruct s xl el xr er) =
+  canonExpr-lits bound um am (RDestruct s xl el xr er)
+negLits-lits bound um am (RAnnot e T)   = canonExpr-lits bound um am (RAnnot e T)
+negLits-lits bound um am (RBinOp o a b) = canonExpr-lits bound um am (RBinOp o a b)
+negLits-lits bound um am (RUnaryOp o e) = canonExpr-lits bound um am (RUnaryOp o e)
+negLits-lits bound um am (RAna t c)     = canonExpr-lits bound um am (RAna t c)
 
 canonDecl-lits : ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap) (d : Decl)
                → declIntLits (canonDecl polys um am d) ≡ declIntLits d
