@@ -11,7 +11,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Gcd.Lib where
+module DirectedHoTT.Comparison.GcdRoute3Combinator where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; El; Nat; Π; RTm; var; nzero; nsuc
         ; natrec; app; pair; fst; snd; ⌜Nat⌝; subTm; lam )

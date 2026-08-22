@@ -33,7 +33,14 @@ open import DirectedHoTT.Lib.Amrec using ( Prv; prvOk; prv-cast )
 open import DirectedHoTT.Lib.AmrecInd using ( module Concl )
 open import DirectedHoTT.Examples.Gcd.Step using ( msr; ⊢msr; gcdStp; ⊢gcdStp )
 open import DirectedHoTT.Examples.Gcd.StepExtA using ( gcdStepExt )
-open import DirectedHoTT.Examples.Gcd.DvdA using ( gcdP; ⊢gcdP; gcdIndStep )
+-- ⚠⚠ `IndStep` NOW COMES FROM THE SHARED PLUMBING, not from a bespoke
+--   280-line assembly.  `DvdPlumb = Plumb dvdMotive` supplies the three
+--   nested `natrec`s, the four leaves and both split-boundary conversions;
+--   the customer supplied six facts about `QCode` and four leaf
+--   derivations, and nothing else.  `…Gcd/DvdA`'s concrete `gcdIndStep` is
+--   now redundant.
+open import DirectedHoTT.Examples.Gcd.Dvd using ( gcdP; ⊢gcdP )
+open import DirectedHoTT.Examples.Gcd.Motives using ( module DvdPlumb )
 
 -- ⚠⚠ ONE INSTANTIATION, NOT THREE.  This file used to instantiate `Stmt`,
 --   `Concl` AND `AmTΠ` at identical parameters.  `Concl` opens `Stmt` which
@@ -70,7 +77,7 @@ gcdSpec : {Δ : Ctx} {x : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ PairT →
           Prv Δ (El (QCode (fst x) (snd x) (app (gcdTm Δ) x)))
 gcdSpec {Δ} {x} dx =
   prv-cast (IndAt-gcd x)
-           (GcdC.amrecInd Δ gcdStepExt ⊢gcdP gcdIndStep dx)
+           (GcdC.amrecInd Δ gcdStepExt ⊢gcdP DvdPlumb.indStep dx)
 
 -- ★★ …and its two projections.
 gcd∣fst : {Δ : Ctx} {x : RTm ⌊ Δ ⌋} → (dx : Δ ⊢ x ∷ PairT) →
