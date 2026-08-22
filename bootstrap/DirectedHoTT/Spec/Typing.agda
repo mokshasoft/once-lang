@@ -43,7 +43,8 @@ open import DirectedHoTT.Spec.Syntax
         ; Ren; extR; Sub; subTy; subTm; renTy; renTm
         ; Desc; Mu; con; elim; lookupD; sel; fields
         ; payTy; payTy-ren; payTy-sub; εwkTy; εwk-ren; εwk-sub; _∈D_; hereD; thereD; DCon; dι; dρ; dκ; dnil; _◃_; ihs; subTy-subTy; subTy-cong; renTy-subTy
-        ; subTm-renTm; subTm-id )
+        ; subTm-renTm; subTm-id
+        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; occTm; pw?; stkC?; stkA?; flat?; pwBody; pwShift
         ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id )
@@ -138,6 +139,55 @@ methsTyFrom D M j (C ◃ E) =
 
 methsTy : Desc → RTy (Γ ∙) → Desc → RTy Γ
 methsTy D M E = methsTyFrom D M zero E
+
+------------------------------------------------------------------------
+-- ★★★ THE INDEXED ELIMINATOR'S APPARATUS.
+--
+-- ⚠⚠ THE MOTIVE IS TWO-SLOT: `M : RTy ((Γ ∙) ∙)`, a family over the INDEX
+--   (outer, `var (vs vz)`) and the SCRUTINEE (inner, `var vz`).  It has to
+--   be — the scrutinee's type `IMu D I i` MENTIONS the index, so a motive
+--   over the scrutinee alone cannot be written down.  That is the third
+--   thing about indexing that was forced rather than chosen.
+------------------------------------------------------------------------
+
+-- instantiate the two-slot motive at index `j` and scrutinee `t`
+iinst : RTm Γ → RTm Γ → RTy ((Γ ∙) ∙) → RTy Γ
+iinst j t M = subTy (single t) (subTy (extS (single j)) M)
+
+-- ★ the IH tuple's TYPE.  Each recursive field contributes the motive AT
+--   ITS OWN SHIFTED INDEX — that is the whole content of indexing here.
+iihTy : IDesc → RTy ε → ICon → RTm Γ → RTm Γ → RTy ((Γ ∙) ∙) → RTy Γ
+iihTy D I iι       i q M = Unit
+iihTy D I (iρ f C) i q M =
+  Σ' (iinst (app (εwkTm f) i) (fst q) M)
+     (renTy vs (iihTy D I C i (snd q) M))
+iihTy D I (iκ κ C) i q M = iihTy D I C i (snd q) M
+
+-- ★ the motive RE-BASED at the payload binder, for constructor `k` at
+--   index `i`: the scrutinee slot becomes `icon k ⟨-⟩` and the index slot
+--   is fixed to `i`.  The indexed twin of `atCon`.
+iconS : ℕ → RTm Γ → Sub ((Γ ∙) ∙) (Γ ∙)
+iconS k i vz          = icon k (var vz)
+iconS k i (vs vz)     = renTm vs i
+iconS k i (vs (vs x)) = var (vs x)
+
+iatCon : ℕ → RTm Γ → RTy ((Γ ∙) ∙) → RTy (Γ ∙)
+iatCon k i M = subTy (iconS k i) M
+
+imethTy : IDesc → RTy ε → ℕ → ICon → RTm Γ → RTy ((Γ ∙) ∙) → RTy Γ
+imethTy D I k C i M =
+  Π (ipayTy D I i C)
+    (Π (iihTy D I C (renTm vs i) (var vz) (renTy (extR (extR vs)) M))
+       (renTy vs (iatCon k i M)))
+
+imethsTyFrom : IDesc → RTy ε → RTy ((Γ ∙) ∙) → RTm Γ → ℕ → IDesc → RTy Γ
+imethsTyFrom D I M i j inil    = Unit
+imethsTyFrom D I M i j (C ◂ E) =
+  Σ' (imethTy D I j C i M)
+     (renTy vs (imethsTyFrom D I M i (suc j) E))
+
+imethsTy : IDesc → RTy ε → RTy ((Γ ∙) ∙) → RTm Γ → IDesc → RTy Γ
+imethsTy D I M i E = imethsTyFrom D I M i zero E
 
 
 -- The top-two-variable SWAP renaming — what `tr-pw` uses to move the
@@ -356,6 +406,42 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   ξ-elimᵗ  : {D : Desc} {ms t t' : RTm Γ} →
              t ⟶ t' → elim D ms t ⟶ elim D ms t'
 
+  -- ★★★★ THE INDEXED ι-RULE.
+  --
+  -- ⚠⚠ ITS SUBJECT-REDUCTION OBLIGATION, STATED HERE BECAUSE WRITING THE
+  --   STATEMENT IS WHAT EXPOSES THE MISSING PREMISE (PLAN-INDUCTIVE §8 —
+  --   that is how gate 5 found `k ∈D D`, three commits after the rule
+  --   landed).  For this rule the obligation is:
+  --
+  --     GIVEN   Γ ⊢ ielim D i ms (icon k p) ∷ iinst i (icon k p) M
+  --     SHOW    Γ ⊢ ifields D I i ms (ilookupD D k) (sel k ms) p
+  --                 ∷ iinst i (icon k p) M
+  --
+  --   which needs, and this is what writing it exposes:
+  --     (a) `k ∈ID D`      — from inverting ⊢icon on the scrutinee.  WITHOUT
+  --         it `ilookupD D k` falls off the end of the list and returns
+  --         `iι`, and the method selected is not the one that built the
+  --         term.  (Exactly gate 5's `k ∈D D`.)
+  --     (b) `iatCon`-instantiation: `iinst i (icon k p) M` must equal the
+  --         k-th method's RESULT type at the payload — the indexed twin of
+  --         `atCon-inst`, and it must hold WITH the index slot fixed to `i`.
+  --     (c) the IH tuple `iihs` must inhabit `iihTy` AT THE SHIFTED INDICES
+  --         — i.e. `ielim` at `app (εwkTm f) i` for each `iρ f`.
+  --
+  --   ⬜ (a) is discharged by the `k ∈ID D` premise on ⊢icon, already
+  --      present.  (b) and (c) are the Metatheory/SubjectReduction
+  --      obligations and are NOT yet proved.
+  ι-ielim  : (D : IDesc) (I : RTy ε) (i ms : RTm Γ) (k : ℕ) (p : RTm Γ) →
+             ielim D i ms (icon k p)
+               ⟶ ifields D I i ms (ilookupD D k) (sel k ms) p
+  ξ-icon   : {k : ℕ} {p p' : RTm Γ} → p ⟶ p' → icon k p ⟶ icon k p'
+  ξ-ielimⁱ : {D : IDesc} {i i' ms t : RTm Γ} →
+             i ⟶ i' → ielim D i ms t ⟶ ielim D i' ms t
+  ξ-ielimᵐ : {D : IDesc} {i ms ms' t : RTm Γ} →
+             ms ⟶ ms' → ielim D i ms t ⟶ ielim D i ms' t
+  ξ-ielimᵗ : {D : IDesc} {i ms t t' : RTm Γ} →
+             t ⟶ t' → ielim D i ms t ⟶ ielim D i ms t'
+
 data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   El-⌜base⌝ : El (⌜base⌝ {Γ}) ⟶ᵀ base
   El-⌜Π⌝    : (c : RTm Γ) (d : RTm (Γ ∙)) → El (⌜Π⌝ c d) ⟶ᵀ Π (El c) (El d)
@@ -370,6 +456,8 @@ data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   -- that makes `Mu D` a SMALL type, and so the single rule that
   -- unlocks nesting — `dκ (El (⌜Mu⌝ D'))` is now well-formed.
   El-⌜Mu⌝   : {D : Desc} → El (⌜Mu⌝ {Γ} D) ⟶ᵀ Mu D
+  El-⌜IMu⌝  : {D : IDesc} {I : RTy ε} {i : RTm Γ} →
+              El (⌜IMu⌝ D I i) ⟶ᵀ IMu D I i
   El-⌜Unit⌝ : El (⌜Unit⌝ {Γ}) ⟶ᵀ Unit
   ξ-El : {t t' : RTm Γ} → t ⟶ t' → El t ⟶ᵀ El t'
   ξ-Πˡ : {A A' : RTy Γ} {B : RTy (Γ ∙)} → A ⟶ᵀ A' → Π A B ⟶ᵀ Π A' B
@@ -663,6 +751,24 @@ data _⊢_∷_ where
           Γ ⊢ ms ∷ methsTy D M D →
           Γ ⊢ t ∷ Mu D →
           Γ ⊢ elim D ms t ∷ subTy (single t) M
+  -- ★★★ INDEXED introduction.  The payload is typed AT THE AMBIENT INDEX;
+  --   a constructor is available at EVERY index (that is what `iι` means),
+  --   and a FORDING constraint field is what rules the bad ones out.
+  ⊢icon : ∀ {Γ D I i k p} →
+          IDescWf I D →
+          k ∈ID D →
+          Γ ⊢ i ∷ εwkTy I →
+          Γ ⊢ p ∷ ipayTy D I i (ilookupD D k) →
+          Γ ⊢ icon k p ∷ IMu D I i
+  -- ★★★ INDEXED elimination.  ⚠ The result substitutes BOTH slots — the
+  --   index and the scrutinee — because the motive is two-slot.
+  ⊢ielim : ∀ {Γ D I M i ms t} →
+           IDescWf I D →
+           ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
+           Γ ⊢ i ∷ εwkTy I →
+           Γ ⊢ ms ∷ imethsTy D I M i D →
+           Γ ⊢ t ∷ IMu D I i →
+           Γ ⊢ ielim D i ms t ∷ iinst i t M
   ⊢conv : ∀ {Γ t A B}   → Γ ⊢ t ∷ A → A ≅ᵀ B → Γ ⊢ t ∷ B
 
 data _⊢ty_ where

@@ -29,7 +29,8 @@ open import DirectedHoTT.Spec.Syntax
         ; renTy-subTy; renTm-subTm
         ; subTy-subTy; subTm-subTm
         ; subTy-id; subTm-id; renTm-renTm; renTm-cong
-        ; Desc; Mu; con; elim; lookupD; sel; fields; ren-fields; ren-sel )
+        ; Desc; Mu; con; elim; lookupD; sel; fields; ren-fields; ren-sel
+        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm )
 open import DirectedHoTT.Spec.Typing
   using ( single; nrs
         ; _⟶_; _⟶*_; done; step
