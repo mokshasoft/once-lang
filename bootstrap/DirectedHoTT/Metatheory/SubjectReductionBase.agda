@@ -42,6 +42,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTm-subTm; subTm-cong; subTm-renTm; subTm-id; renTm-subTm
         ; renTm-renTm; renTm-cong
         ; Desc; con; elim; lookupD; sel; fields; sub-fields; sub-sel
+        ; sub-iihs; sub-ifields; ren-iihs; ren-ifields
         ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm )
 open import DirectedHoTT.Spec.Variance using ( ren-as-sub )
 open import DirectedHoTT.Spec.Variance
@@ -65,7 +66,8 @@ open import DirectedHoTT.Spec.Typing
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; _⊢_∷_; ⊢var; ⊢lam; ⊢app; here
         ; _⊢ty_; ty-base
-        ; ι-elim; ξ-con; ξ-elimᵐ; ξ-elimᵗ )
+        ; ι-elim; ξ-con; ξ-elimᵐ; ξ-elimᵗ
+        ; ι-ielim; ξ-icon; ξ-ielimⁱ; ξ-ielimᵐ; ξ-ielimᵗ; El-⌜IMu⌝ )
 
 private
   variable
@@ -292,6 +294,21 @@ pwShift-sub σ t =
                     (cong (λ w → fields D (subTm σ ms) (lookupD D k) w (subTm σ p))
                           (sub-sel σ k ms))))
         (ι-elim D (subTm σ ms) k (subTm σ p))
+-- ★ the INDEXED ι-case.  ⚠ `sub-ifields` is where indexing costs
+--   something: its `iρ` case has the recursive `ielim` at the SHIFTED index
+--   `app (εwkTm f) i`, so the SHIFT must be inert under the action — which
+--   is exactly what `εwkTm-sub` was written for.
+⟶-sub σ (ι-ielim D I i ms k p) =
+  subst (ielim D (subTm σ i) (subTm σ ms) (icon k (subTm σ p)) ⟶_)
+        (sym (trans (sub-ifields σ D I i ms (ilookupD D k) (sel k ms) p)
+                    (cong (λ w → ifields D I (subTm σ i) (subTm σ ms)
+                                          (ilookupD D k) w (subTm σ p))
+                          (sub-sel σ k ms))))
+        (ι-ielim D I (subTm σ i) (subTm σ ms) k (subTm σ p))
+⟶-sub σ (ξ-icon r)    = ξ-icon    (⟶-sub σ r)
+⟶-sub σ (ξ-ielimⁱ r)  = ξ-ielimⁱ  (⟶-sub σ r)
+⟶-sub σ (ξ-ielimᵐ r)  = ξ-ielimᵐ  (⟶-sub σ r)
+⟶-sub σ (ξ-ielimᵗ r)  = ξ-ielimᵗ  (⟶-sub σ r)
 ⟶-sub σ (ξ-con r)   = ξ-con   (⟶-sub σ r)
 ⟶-sub σ (ξ-elimᵐ r) = ξ-elimᵐ (⟶-sub σ r)
 ⟶-sub σ (ξ-elimᵗ r) = ξ-elimᵗ (⟶-sub σ r)
@@ -311,6 +328,7 @@ pwShift-sub σ t =
 ⟶ᵀ-sub σ (ξ-Σʳ r) = ξ-Σʳ (⟶ᵀ-sub (extS σ) r)
 ⟶ᵀ-sub σ El-⌜Nat⌝         = El-⌜Nat⌝
 ⟶ᵀ-sub σ El-⌜Mu⌝          = El-⌜Mu⌝
+⟶ᵀ-sub σ El-⌜IMu⌝         = El-⌜IMu⌝
 ⟶ᵀ-sub σ El-⌜Unit⌝        = El-⌜Unit⌝
 ⟶ᵀ-sub σ (Hom-Nat-z n)    = Hom-Nat-z (subTm σ n)
 ⟶ᵀ-sub σ (Hom-Nat-sz m)   = Hom-Nat-sz (subTm σ m)
