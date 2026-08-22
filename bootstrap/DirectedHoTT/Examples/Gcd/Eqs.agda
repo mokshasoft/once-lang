@@ -1,0 +1,192 @@
+------------------------------------------------------------------------
+-- OCP-0009 — GAP A: gcd's DEFINING EQUATIONS AT VARIABLES.
+--
+-- ★ WHAT THIS CLOSES.  `…GcdStep` proves all four equations at CONCRETE
+--   NUMERALS, by reduction.  At an open `a`/`b` the reductions get stuck:
+--   `gcd (suc a , suc b)` cannot step to `gcd (suc a ∸ suc b , suc b)`
+--   because the recursion is guarded by a measure that does not compute.
+--   The two RECURSIVE equations therefore have to be INTERNAL — an `Id`,
+--   not a `⟶*` — and that is what `amrec-unfold-Id` was built for.
+--
+-- ⚠ It was CONDITIONAL on `StepExt`, which nothing in the tree supplied
+--   until `…GcdStepExt.gcdStepExt`.  Everything here is that hypothesis
+--   being spent.
+--
+-- ★ THE TWO BASE EQUATIONS NEED NOTHING FROM HERE: `gcd (a , 0) = a` and
+--   `gcd (0 , b) = b` already hold at variables BY REDUCTION
+--   (`…GcdLib.gcd-suc-0At`, `…GcdStep.gcd-b0-var`/`gcd-a0-var`), because
+--   neither branch inspects the measure.  Only the recursive ones are stuck.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Gcd.Eqs where
+open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; cong₂; sym; subst )
+open import DirectedHoTT.Spec.Syntax
+  using ( Cx; ε; _∙; vz; vs
+        ; RTy; El; Hom; Nat; Π; Id
+        ; RTm; var; nzero; nsuc; natrec; lam; app; pair; fst; snd; ⌜Nat⌝; ordtr
+        ; vz; vs
+        ; Ren; renTm; renTy; Sub; subTm; subTy; extR; extS )
+open import DirectedHoTT.Spec.Typing
+  using ( Ctx; ◇; _▹_; ⌊_⌋; single
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; Π; El; ⌜Nat⌝
+        ; _⟶_; _⟶*_; done; step; ⊢conv; csymᵀ; _≅ᵀ_
+        ; ξ-natrecⁿ; ξ-natrecᶻ; βfst; βsnd; natrec-suc; wk-single )
+open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast; ⊢[] )
+open import DirectedHoTT.Lib.Wk using ( w )
+open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans )
+open import DirectedHoTT.Lib.Amrec
+  using ( Prv; prv; prvTm; prvOk; StepExt; module AmTΠ; aStepT; renTm-idR
+        ; idToRed; idOfRed )
+open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT; asN ; msrPair)
+open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
+open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
+open import DirectedHoTT.Lib.Ord using ( ⊢strong-step )
+open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
+open import DirectedHoTT.Examples.Gcd.Step
+  using ( gcdStp; ⊢gcdStp; msr; ⊢msr
+        ; RecCall; recCall; recCert; recRed; gcd-gt-term; gcd-le-term )
+open import DirectedHoTT.Lib.Arith using ( plusMonoTm )
+open import DirectedHoTT.Lib.ArithComm using ( plusMonoLTm )
+open import DirectedHoTT.Lib.ArithMonus
+  using ( monusLtTm; ⊢desc-left; ⊢desc-right )
+open import DirectedHoTT.Examples.Gcd.StepExtA using ( gcdStepExt )
+open import DirectedHoTT.Spec.Typing using ( ⊢nsuc; ⊢fst; ⊢snd; ⊢pair; ty-Nat; ⊢⌜Nat⌝ )
+
+module GcdEqAt (Δ : Ctx) where
+
+  open AmTΠ Δ PairT ⌜Nat⌝ msr gcdStp ⊢PairT ⊢⌜Nat⌝ ⊢msr ⊢gcdStp public
+    using ( amrecTm; auxIH; ihS-atP; descS-at; descS-atR; descS-peel
+          ; ih-app; amrec-unfold-Id-red; idR; auxAt-id; descS
+          ; irrT; irrT-sub; irrElim; irr-ind; irr-at; amrec-β; ⊢auxIH; ⊢amrecPt
+          ; aAuxB; auxAt
+          ; extR-id; extR⁶-id; descS-at-idR; ⊢descS-at )
+
+  ------------------------------------------------------------------------
+  -- ★ TYPING THE RECURSIVE CALL'S CERTIFICATE, un-renamed.
+  --
+  -- `descS-peel` says what the certificate IS, but only for the RENAMED
+  -- form `descS-atR`.  At the identity renaming the two coincide — the
+  -- extra `renTm (extR⁶ idR)` layer collapses and `auxAt idR` is `auxIH` —
+  -- so one bridge gives the un-renamed twin, and `⊢strong-step` types it.
+  --
+  -- ⚠ Same shape as the library's `dD` in `irr-ss`: a certificate that
+  --   exists only as a REDUCT can never be typed by subject reduction,
+  --   because `subTm` does not invert.  Say what it is first.
+  ------------------------------------------------------------------------
+
+  -- ★ `extR-id` / `extR⁶-id` / `descS-at-idR` / `⊢descS-at` MOVED into
+  --   `AmTΠ` (`…LibAmrec`) on 2026-08-20 and re-exported by the `open`
+  --   above.  None was gcd-specific: they speak only about `descS-at` /
+  --   `descS-atR` / `auxAt`, the library's own constructs.  Being STATED at
+  --   `msr` is what made them look otherwise.
+  --
+  -- ⚠ The move was NOT a rename.  At the CLOSED `msr`, `renTm (extR idR) msr`
+  --   collapses definitionally and the proof never mentioned it; at an
+  --   abstract `m` it is only propositional.  That hidden dependency is now
+  --   explicit as `AmTΠ.mId` — which `amrec-unfold-Id` had all along in its
+  --   own `where`, unshared.
+
+  ------------------------------------------------------------------------
+  -- ★ THE MEASURE AT A CONSTRUCTOR-HEADED PAIR — the one thing that DOES
+  --   still compute at variables, and the reason the recursive equations
+  --   are reachable at all.
+  ------------------------------------------------------------------------
+
+  μ-pair : (u v : RTm ⌊ Δ ⌋) → subTm (single (pair u v)) msr ⟶* plusTm u v
+  μ-pair u v = step (ξ-natrecⁿ (βfst u v)) (step (ξ-natrecᶻ (βsnd u v)) done)
+
+  plus-suc : (u v : RTm ⌊ Δ ⌋) → plusTm (nsuc u) v ⟶* nsuc (plusTm u v)
+  plus-suc u v = step (natrec-suc _ _ _) done
+
+  μ-ss : (a' b' : RTm ⌊ Δ ⌋) →
+         subTm (single (pair (nsuc a') (nsuc b'))) msr
+       ⟶* nsuc (plusTm a' (nsuc b'))
+  μ-ss a' b' = ⟶*-trans (μ-pair (nsuc a') (nsuc b')) (plus-suc a' (nsuc b'))
+
+
+  ------------------------------------------------------------------------
+  -- ★★★★★ GAP A — gcd UNFOLDS INTERNALLY, AT VARIABLES.
+  --
+  --     gcd (suc a , suc b)  ≡  gcdStp (suc a , suc b) ⟨ih⟩
+  --
+  -- ⚠ THIS IS THE FIRST STATEMENT OF ITS KIND IN THE TREE.  `amrec-unfold-Id`
+  --   has existed since 2026-08-15 but was CONDITIONAL on `StepExt`, which
+  --   nothing supplied; `LibAmrec`'s header called it "machinery with a real
+  --   statement, not yet evidence that any particular function unfolds
+  --   internally".  With `gcdStepExt` it is evidence.
+  --
+  -- ★ `a` and `b` are ARBITRARY TERMS — variables included.  Nothing here
+  --   reduces the measure to a numeral: `μ (suc a , suc b)` computes to
+  --   `suc (a + suc b)` for any `a`, `b`, and that is all the premise needs.
+  ------------------------------------------------------------------------
+
+  gX : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
+  gX a' b' = pair (nsuc a') (nsuc b')
+
+  gK : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
+  gK a' b' = plusTm a' (nsuc b')
+
+  gIH : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
+  gIH a' b' = ihS-atP (gX a' b') (gX a' b') (gK a' b')
+                      (reflTm (subTm (single (gX a' b')) msr))
+
+  ⊢gX : {a' b' : RTm ⌊ Δ ⌋} → Δ ⊢ a' ∷ Nat → Δ ⊢ b' ∷ Nat →
+        Δ ⊢ gX a' b' ∷ PairT
+  ⊢gX da db = ⊢pair ty-Nat (⊢nsuc da) (⊢nsuc db)
+
+  gcd-unfold : {a' b' : RTm ⌊ Δ ⌋} → Δ ⊢ a' ∷ Nat → Δ ⊢ b' ∷ Nat →
+               Prv Δ (Id (El ⌜Nat⌝)
+                         (app amrecTm (gX a' b'))
+                         (app (app gcdStp (gX a' b')) (gIH a' b')))
+  gcd-unfold {a' = a'} {b' = b'} da db =
+    amrec-unfold-Id-red gcdStepExt (⊢gX da db) (⊢plus da (⊢nsuc db)) (μ-ss a' b')
+
+  ------------------------------------------------------------------------
+  -- ★★★★★ …AND THEREFORE IT MAKES THE RECURSIVE CALL, INTERNALLY.
+  --
+  --     gcd (suc a , suc b)  ≡  ⟨ih⟩ (suc a ∸ suc b , suc b) ⟨cert⟩     (a > b)
+  --
+  -- Compose the unfolding with the step's own reduction to its recursive
+  -- call.  ⚠ `⟨ih⟩` here is gcd's INTERNAL induction hypothesis, not
+  -- `gcd` itself; turning it into `app amrecTm Y` is the remaining step and
+  -- needs the recursive call's certificate TYPED — see the header note.
+  ------------------------------------------------------------------------
+
+  gcd-gt-call : {a' b' d : RTm ⌊ Δ ⌋} → Δ ⊢ a' ∷ Nat → Δ ⊢ b' ∷ Nat →
+                (mh : monusTm (nsuc a') (nsuc b') ⟶* nsuc d) →
+                Prv Δ (Id (El ⌜Nat⌝)
+                          (app amrecTm (gX a' b'))
+                          (app (app (gIH a' b')
+                                    (pair (monusTm (nsuc a') (nsuc b')) (nsuc b')))
+                               (recCert (gcd-gt-term a' b' d (gIH a' b') mh))))
+  gcd-gt-call {a' = a'} {b' = b'} {d = d} da db mh =
+    idToRed done (recRed (gcd-gt-term a' b' d (gIH a' b') mh)) (gcd-unfold da db)
+
+  ------------------------------------------------------------------------
+  -- ★★ THE RECURSIVE ARGUMENT, and the two small interfaces the last step
+  --    needs: applying the auxiliary, and the irrelevance witness.
+  ------------------------------------------------------------------------
+
+  PAIRᵍ : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
+  PAIRᵍ a' b' = pair (monusTm (nsuc a') (nsuc b')) (nsuc b')
+
+  ⊢PAIRᵍ : {a' b' : RTm ⌊ Δ ⌋} → Δ ⊢ a' ∷ Nat → Δ ⊢ b' ∷ Nat →
+           Δ ⊢ PAIRᵍ a' b' ∷ PairT
+  ⊢PAIRᵍ da db = ⊢pair ty-Nat (⊢monus (⊢nsuc da) (⊢nsuc db)) (⊢nsuc db)
+
+  prvCast : {T T' : RTy ⌊ Δ ⌋} → T ≡ T' → Prv Δ T → Prv Δ T'
+  prvCast refl q = q
+
+  -- ★ applying the auxiliary to its carrier and certificate.  Two `⊢app`s;
+  --   the only peel is `wk-single` on the bound, and `⌜Nat⌝` is closed so
+  --   the codomain needs none.
+  appAux : {x n a c : RTm ⌊ Δ ⌋} → Δ ⊢ x ∷ PairT → Δ ⊢ n ∷ Nat →
+           Δ ⊢ a ∷ PairT → Δ ⊢ c ∷ Hom Nat (subTm (single a) msr) n →
+           Δ ⊢ app (app (auxIH x n) a) c ∷ El ⌜Nat⌝
+  appAux {n = n} {a = a} dx dn da dc =
+    ⊢app (⊢-cast (cong (λ u → Π (Hom Nat (subTm (single a) msr) u) (El ⌜Nat⌝))
+                       (wk-single {v = a} n))
+                 (⊢app (⊢auxIH dx dn) da))
+         dc
+
