@@ -40,10 +40,9 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢ordtr
         ; ty-Nat; ty-Hom
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; Hom-Nat-ss
-        ; ξ-Homˡ; ξ-Homʳ; natrec-zero; natrec-suc )
+        ; ξ-Homˡ; ξ-Homʳ; natrec-zero; natrec-suc; wk-single )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w )
 open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBLibArith using ( plusMonoTm )

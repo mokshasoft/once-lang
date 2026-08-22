@@ -44,10 +44,9 @@ open import poc.OCP0009.NbEPDirDBType
         ; ⊢idrefl; ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝; ⊢⌜Hom⌝
         ; ty-Id; ty-El; ty-Nat
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Id⌝
-        ; ξ-Idˡ; ξ-Idʳ; ξ-nsuc; natrec-zero; natrec-suc )
+        ; ξ-Idˡ; ξ-Idʳ; ξ-nsuc; natrec-zero; natrec-suc; wk-single )
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast; ⊢[] )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w; sub-w; sub-w² )
 open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBLibStrong using ( natAsEl; El-homNat )

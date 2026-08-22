@@ -49,9 +49,8 @@ open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢ordtr
         ; ⊢lam; ⊢app; _⊢ty_
-        ; ty-Nat; ty-Hom; ty-El )
+        ; ty-Nat; ty-Hom; ty-El; wk-single )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibOrd
   using ( ⊢strong-base'; ⊢strong-step )
 open import poc.OCP0009.NbEPDirDBExamplesLexC

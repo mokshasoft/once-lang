@@ -31,11 +31,10 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⊢_∷_; ⊢var; here; there; ⊢unit; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝
         ; _⊢ty_; ty-El; ty-Nat; ty-Π; ty-Hom
-        ; ⊢lam; ⊢app; nrs )
+        ; ⊢lam; ⊢app; nrs; wk-single )
 open import poc.OCP0009.NbEPDirDBInj
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-trans; ⟶*-natrecⁿ )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBLibStrong
   using ( El-homNat; natAsEl; ⊢le-refl; ⊢le-suc; reflTm )

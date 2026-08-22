@@ -31,9 +31,8 @@ open import poc.OCP0009.NbEPDirDBPi
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢lam; ⊢app
-        ; ty-Nat; ty-Hom; ty-El; ty-Π )
+        ; ty-Nat; ty-Hom; ty-El; ty-Π; wk-single )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast; ren-ty )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base'; ⊢strong-step )
 open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBLibWk

@@ -67,10 +67,9 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
         ; _⟶*_; done; step; β; natrec-zero; natrec-suc
         ; ⊢lam; ⊢app; _⊢ty_
-        ; ty-Nat; ty-Hom; ty-El; ty-Π )
+        ; ty-Nat; ty-Hom; ty-El; ty-Π; wk-single )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
 open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base'; ⊢strong-step )
 open import poc.OCP0009.NbEPDirDBExamplesLexC using ( w; cong₄; sub-w; ren-w )

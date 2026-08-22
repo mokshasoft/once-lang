@@ -26,8 +26,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; vz; vs; RTm; El; var; fst; snd; app; ⌜Nat⌝; subTm )
 open import poc.OCP0009.NbEPDirDBType
-  using ( Ctx; ⌊_⌋; single; _⊢_∷_; ⊢⌜Nat⌝ )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
+  using ( Ctx; ⌊_⌋; single; _⊢_∷_; ⊢⌜Nat⌝; wk-single )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT; ⊢PairT )
 open import poc.OCP0009.NbEPDirDBLibDvd using ( dvdT )
 open import poc.OCP0009.NbEPDirDBLibDvdArith using ( QCode; QCode-sub; ⊢Q-fst; ⊢Q-snd )

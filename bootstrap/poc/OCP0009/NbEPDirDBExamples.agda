@@ -50,9 +50,8 @@ open import poc.OCP0009.NbEPDirDBType
         ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; here
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢hrefl; ⊢tr; ⊢ap; ⊢conv
-        ; _⊢ty_; ty-base; ty-El )
+        ; _⊢ty_; ty-base; ty-El; wk-single )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBCanon using ( consistency )
 
 ------------------------------------------------------------------------

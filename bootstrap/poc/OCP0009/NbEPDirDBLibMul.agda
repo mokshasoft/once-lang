@@ -22,10 +22,9 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Ren; renTm; extS )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ⌊_⌋; _▹_; _⊢_∷_; ⊢var; here; ⊢nzero; ⊢natrec; ty-Nat
-        ; _⟶*_; done; step; natrec-zero; natrec-suc )
+        ; _⟶*_; done; step; natrec-zero; natrec-suc; wk-single )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBType using ( single )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; sub-w; sub-w²; ren-sub )
 open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 

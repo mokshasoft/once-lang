@@ -124,15 +124,17 @@ done
 TOBUILD=("${ORDERED[@]:-}" "${REST[@]:-}")
 
 echo "-- BUILDING ${#TOBUILD[@]} module(s), sequentially (RTS-special first)"
-fail=0; failed=()
+fail=0; failed=(); TIMES=()
 for f in "${TOBUILD[@]:-}"; do
   [ -n "$f" ] || continue
   m="$(basename "$f" .agda)"
   rts="-A64m"; note=""
   if needs_c "$f"; then rts="-A64m -c"; note=" (compacting GC, per header)"; fi
   printf '   %-40s%s ' "$m" "$note"
+  _t0=$SECONDS
   if AGDA_RTS="$rts" "$CHECK" "poc/OCP0009/$m.agda" >"$LOGDIR/$m.log" 2>&1; then
-    echo "ok"
+    _d=$((SECONDS-_t0)); TIMES+=("$_d $m")
+    if [ "$_d" -ge 10 ]; then echo "ok  ${_d}s  <-- SLOW"; else echo "ok  ${_d}s"; fi
   else
     rc=$?
     if [ "$rc" = 143 ] && [ "$rts" = "-A64m" ]; then
@@ -162,6 +164,14 @@ for f in "${TOBUILD[@]:-}"; do
     failed+=("$m($rc)"); fail=$((fail+1))
   fi
 done
+
+# ★ SLOWEST MODULES — the standing perf target is EVERY EXAMPLE UNDER 10s.
+if [ "${#TIMES[@]}" -gt 0 ]; then
+  echo
+  echo "-- SLOWEST (>=10s):"
+  printf '%s\n' "${TIMES[@]}" | sort -rn | awk '$1>=10 {printf "   %-42s %ss\n", $2, $1}'
+  printf '%s\n' "${TIMES[@]}" | awk '{t+=$1} END {printf "   (total build time %ds across %d modules)\n", t, NR}'
+fi
 
 echo
 if [ "$fail" -eq 0 ]; then

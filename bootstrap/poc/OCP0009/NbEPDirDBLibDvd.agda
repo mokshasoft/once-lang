@@ -35,12 +35,11 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; RTm; Σ'; Nat; var; vz; pair; fst; snd; subTy; nzero; nsuc
         ; U; El; Id; ⌜Σ⌝; ⌜Id⌝; ⌜Nat⌝ )
 open import normalizer.Syntax.Types using ( _≡_; sym; trans; cong; cong₂ )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibStrong using ( natAsEl; elAsNat )
 open import poc.OCP0009.NbEPDirDBType
   using ( ⊢⌜Σ⌝; ⊢⌜Id⌝; ⊢⌜Nat⌝
         ; Ctx; ⌊_⌋; _▹_; single
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; ⊢pair; ⊢fst; ⊢snd; ⊢nzero; ty-Nat; ty-Σ )
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; ⊢pair; ⊢fst; ⊢snd; ⊢nzero; ty-Nat; ty-Σ; wk-single )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
 open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )

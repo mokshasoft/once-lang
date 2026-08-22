@@ -34,11 +34,10 @@ open import poc.OCP0009.NbEPDirDBPi
         ; Ren; Sub; renTy; renTm; subTy; subTm; extR; extS; _∘ₛ_
         ; subTy-renTy; renTy-subTy; subTy-cong; subTy-subTy )
 open import poc.OCP0009.NbEPDirDBType
-  using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; _⊢ty_; ⊢natrec; ⊢var; here )
+  using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; _⊢ty_; ⊢natrec; ⊢var; here; wk-single )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢-cast; ⊢wk; ren-ty; ren-lemma; Ren⊢-ext
         ; Sub⊢; Sub⊢-ext; sub-ty; sub-lemma; Ren⊢; ∋-cast )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; cong₃; sub-w )
 open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( wR; subren; renren; subrenTy; renTy-idR; rensub )
