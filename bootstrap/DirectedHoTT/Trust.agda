@@ -1,0 +1,43 @@
+------------------------------------------------------------------------
+-- DirectedHoTT · THE TRUST SURFACE.
+--
+-- ★★ WHAT A REVIEWER MUST TAKE ON FAITH IN ORDER TO BELIEVE THIS KERNEL:
+--
+--        Agda itself, `--safe`, and nothing else.
+--
+--   This module is DELIBERATELY EMPTY OF CONTENT.  That is its content.
+--
+-- ⚠ AND IT IS NOT A PROMISE — IT IS CHECKED.  `tools/check-trust.sh`
+--   fails the sweep if ANY module under `DirectedHoTT/` acquires:
+--
+--        postulate            an assumed proposition
+--        {-# TERMINATING #-}  a defeated termination check
+--        {-# NON_TERMINATING #-}, primTrustMe, trustMe
+--        {-# NO_POSITIVITY_CHECK #-}, {-# NO_UNIVERSE_CHECK #-}
+--        {  }-holes           an unfinished proof
+--        an OPTIONS line without `--safe`
+--
+--   A prose claim rots; a checked one cannot.  This is the analogue of
+--   `formal/Once/Postulates.agda` on master, which isolates that
+--   development's assumptions into one readable place.
+--
+-- ★ WHY IT MATTERS FOR HOW YOU READ THE REST.  With this empty, a
+--   reviewer asking "IS IT SOUND?" can read `Spec/` and `Metatheory/` and
+--   stop: nothing in `Lib/` or `Examples/` can weaken anything, because
+--   nothing there may assume anything.
+--
+-- ⚠⚠ BUT SOUNDNESS IS NOT THE ONLY QUESTION, AND THIS DOES NOT ANSWER THE
+--   OTHER ONE.  An empty trust surface does NOT make a lemma MEANINGFUL.
+--   `lexrec` (now in `Negative/`) was derived, green, `--safe` and
+--   postulate-free — and NOT CALLABLE, because its premise was
+--   unsatisfiable.  Perfectly sound; entirely worthless.
+--
+--   ⇒ A reviewer asking "IS IT ANY GOOD?" must read `Lib/` and
+--     `Examples/`, and CANNOT skip them.  That question is answered by
+--     the standing rule that every library branch is exercised by an
+--     Example — which is what catches the `lexrec` failure mode, and
+--     which this file cannot.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Trust where
