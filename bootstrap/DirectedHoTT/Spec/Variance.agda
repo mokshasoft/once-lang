@@ -79,7 +79,8 @@ open import DirectedHoTT.Spec.Syntax
         ; renTm-renTm; subTm-renTm; renTm-subTm; subTm-cong
         ; Desc; Mu; con; elim
         ; DCon; dι; dρ; dκ; sel; fields
-        ; ihs )
+        ; ihs
+        ; IMu; icon; ielim; IDesc; ICon; cong₃ )
 
 private
   variable
@@ -116,6 +117,7 @@ occTy x (Id A t u) = occTy x A ∨ occTm x t ∨ occTm x u
 occTy x Unit        = false
 occTy x Nat         = false
 occTy x (Mu D)      = false
+occTy x (IMu D I i) = occTm x i
 
 occTm x (var y)    = eqv x y
 occTm x (lam t)    = occTm (vs x) t
@@ -145,6 +147,8 @@ occTm x (nsuc n)      = occTm x n
 occTm x (natrec z s n) = occTm x z ∨ occTm (vs (vs x)) s ∨ occTm x n
 occTm x (con k p)      = occTm x p
 occTm x (elim D ms t)  = occTm x ms ∨ occTm x t
+occTm x (icon k p)     = occTm x p
+occTm x (ielim D i ms t) = occTm x i ∨ (occTm x ms ∨ occTm x t)
 
 ------------------------------------------------------------------------
 -- 2. ★ THE POLARITY JUDGMENT.
@@ -213,6 +217,7 @@ occ-ren-ty h (Π A B)  =
 occ-ren-ty h (Σ' A B) =
   ∨-false (occ-ren-ty h A) (occ-ren-ty (avoids-ext h) B)
 occ-ren-ty h (El t)   = occ-ren-tm h t
+occ-ren-ty h (IMu D I i) = occ-ren-tm h i
 occ-ren-ty h (Hom A t u) =
   ∨-false (occ-ren-ty h A) (∨-false (occ-ren-tm h t) (occ-ren-tm h u))
 occ-ren-ty h (Id A t u) =
@@ -247,6 +252,9 @@ occ-ren-tm h nzero      = refl
 occ-ren-tm h (nsuc n)   = occ-ren-tm h n
 occ-ren-tm h (con k p)  = occ-ren-tm h p
 occ-ren-tm h (elim D ms t) = ∨-false (occ-ren-tm h ms) (occ-ren-tm h t)
+occ-ren-tm h (icon k p)  = occ-ren-tm h p
+occ-ren-tm h (ielim D i ms t) =
+  ∨-false (occ-ren-tm h i) (∨-false (occ-ren-tm h ms) (occ-ren-tm h t))
 occ-ren-tm h (natrec z s n) =
   ∨-false (occ-ren-tm h z)
           (∨-false (occ-ren-tm (avoids-ext (avoids-ext h)) s) (occ-ren-tm h n))
@@ -419,6 +427,9 @@ occ-ren-eq h nzero      = refl
 occ-ren-eq h (nsuc n)   = occ-ren-eq h n
 occ-ren-eq h (con k p)  = occ-ren-eq h p
 occ-ren-eq h (elim D ms t) = cong₂ _∨_ (occ-ren-eq h ms) (occ-ren-eq h t)
+occ-ren-eq h (icon k p)  = occ-ren-eq h p
+occ-ren-eq h (ielim D i ms t) =
+  cong₂ _∨_ (occ-ren-eq h i) (cong₂ _∨_ (occ-ren-eq h ms) (occ-ren-eq h t))
 occ-ren-eq h (natrec z s n) =
   cong₂ _∨_ (occ-ren-eq h z)
             (cong₂ _∨_ (occ-ren-eq (ext-eq (ext-eq h)) s) (occ-ren-eq h n))
@@ -452,6 +463,13 @@ occ-sub h unit       e = refl
 occ-sub h nzero      e = refl
 occ-sub h (nsuc n)   e = occ-sub h n e
 occ-sub h (con k p)  e = occ-sub h p e
+occ-sub h (icon k p) e = occ-sub h p e
+-- ⚠ THREE subterms, so the `∨` is right-nested and the witness must be
+--   split twice.  `elim` below needs only one split.
+occ-sub {x = x} h (ielim D i ms t) e =
+  ∨-false (occ-sub h i (∨-false₁ (occTm x i) e))
+          (∨-false (occ-sub h ms (∨-false₁ (occTm x ms) (∨-false₂ (occTm x i) e)))
+                   (occ-sub h t  (∨-false₂ (occTm x ms) (∨-false₂ (occTm x i) e))))
 occ-sub {x = x} h (elim D ms t) e =
   ∨-false (occ-sub h ms (∨-false₁ (occTm x ms) e))
           (occ-sub h t  (∨-false₂ (occTm x ms) e))
@@ -562,6 +580,12 @@ subTm-occ unit       h = refl
 subTm-occ nzero      h = refl
 subTm-occ (nsuc n)   h = cong nsuc (subTm-occ n h)
 subTm-occ (con k p)  h = cong (con k) (subTm-occ p h)
+subTm-occ (icon k p) h = cong (icon k) (subTm-occ p h)
+subTm-occ (ielim D i ms t) h =
+  cong₃ (ielim D)
+    (subTm-occ i  (λ x o → h x (∨-inl o)))
+    (subTm-occ ms (λ x o → h x (∨-inr (occTm x i) (∨-inl o))))
+    (subTm-occ t  (λ x o → h x (∨-inr (occTm x i) (∨-inr (occTm x ms) o))))
 subTm-occ (elim D ms t) h = cong₂ (elim D)
   (subTm-occ ms (λ x o → h x (∨-inl o)))
   (subTm-occ t  (λ x o → h x (∨-inr (occTm x ms) o)))
@@ -887,6 +911,8 @@ stkA?-ren ρ nzero         = refl
 stkA?-ren ρ (nsuc n)      = refl
 stkA?-ren ρ (con k p)     = refl
 stkA?-ren ρ (elim D ms t) = refl
+stkA?-ren ρ (icon k p)     = refl
+stkA?-ren ρ (ielim D i ms t) = refl
 stkA?-ren ρ (natrec z s n) = refl
 stkA?-ren ρ (⌜Π⌝ γ δ)     = refl
 stkA?-ren ρ (⌜Σ⌝ c d)     = refl
@@ -997,6 +1023,8 @@ pw?-ren ρ nzero         = refl
 pw?-ren ρ (nsuc n)      = refl
 pw?-ren ρ (con k p)     = refl
 pw?-ren ρ (elim D ms t) = refl
+pw?-ren ρ (icon k p)     = refl
+pw?-ren ρ (ielim D i ms t) = refl
 pw?-ren ρ (natrec z s n) = refl
 pw?-ren ρ (⌜Π⌝ γ δ)     = refl
 pw?-ren ρ (⌜Σ⌝ c d)     = refl
@@ -1026,6 +1054,8 @@ stkC?-ren ρ nzero         = refl
 stkC?-ren ρ (nsuc n)      = refl
 stkC?-ren ρ (con k p)     = refl
 stkC?-ren ρ (elim D ms t) = refl
+stkC?-ren ρ (icon k p)     = refl
+stkC?-ren ρ (ielim D i ms t) = refl
 stkC?-ren ρ (natrec z s n) = refl
 stkC?-ren ρ (⌜Π⌝ γ δ)     = refl
 stkC?-ren ρ (⌜Σ⌝ c d)     = refl
@@ -1084,6 +1114,8 @@ flat?-ren ρ nzero          = refl
 flat?-ren ρ (nsuc n)       = refl
 flat?-ren ρ (con k p)      = refl
 flat?-ren ρ (elim D ms t)  = refl
+flat?-ren ρ (icon k p)      = refl
+flat?-ren ρ (ielim D i ms t) = refl
 flat?-ren ρ (natrec z s n) = refl
 flat?-ren ρ (⌜Π⌝ c d)      = refl
 flat?-ren ρ (⌜Σ⌝ c d)      = refl
@@ -1383,6 +1415,9 @@ ren-as-sub ρ unit  = refl
 ren-as-sub ρ nzero = refl
 ren-as-sub ρ (nsuc n) = cong nsuc (ren-as-sub ρ n)
 ren-as-sub ρ (con k p) = cong (con k) (ren-as-sub ρ p)
+ren-as-sub ρ (icon k p) = cong (icon k) (ren-as-sub ρ p)
+ren-as-sub ρ (ielim D i ms t) =
+  cong₃ (ielim D) (ren-as-sub ρ i) (ren-as-sub ρ ms) (ren-as-sub ρ t)
 ren-as-sub ρ (elim D ms t) =
   cong₂ (elim D) (ren-as-sub ρ ms) (ren-as-sub ρ t)
 ren-as-sub ρ (natrec z s n) =
