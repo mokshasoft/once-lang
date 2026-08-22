@@ -41,7 +41,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Gcd.Kernel where
+module DirectedHoTT.Comparison.GcdRoute2Kernel where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π

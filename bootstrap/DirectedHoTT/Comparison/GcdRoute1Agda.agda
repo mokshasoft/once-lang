@@ -31,7 +31,7 @@
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Gcd.Agda where
+module DirectedHoTT.Comparison.GcdRoute1Agda where
 data ℕ : Set where
   zero : ℕ
   suc  : ℕ → ℕ

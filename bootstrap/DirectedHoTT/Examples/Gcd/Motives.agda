@@ -37,7 +37,7 @@ open import DirectedHoTT.Lib.Max
         ; maxLeaf-b0; maxLeaf-a0; maxLeaf-le; maxLeaf-gt )
 open import DirectedHoTT.Examples.Gcd.Dvd
   using ( gcdLeaf-b0; gcdLeaf-a0; gcdLeaf-le; gcdLeaf-gt )
-open import DirectedHoTT.Examples.Gcd.IndG using ( Motive )
+open import DirectedHoTT.Examples.Gcd.IndG using ( Motive; module Plumb )
 
 open Motive
 
@@ -85,3 +85,16 @@ leaf-gt  maxMotive {a = a} {b = b} {v = v} da db dv dp de dih =
   prv _ (⊢conv (maxLeaf-gt da db dv
                   (⊢conv dih (red→≅ᵀ (El-max (monusTm a b) b v))))
                (csymᵀ (red→≅ᵀ (El-max a b v))))
+
+------------------------------------------------------------------------
+-- ★★★★ THE PLUMBING, AT EACH CUSTOMER.
+--
+-- ⚠⚠ THIS IS THE CLAIM THE WHOLE `Plumb` EXERCISE WAS FOR, and it is only
+--   worth anything instantiated.  Each of these gives a FULL `IndStep` —
+--   three nested `natrec`s, four leaves, both split-boundary conversions —
+--   for six facts about a motive and four leaf derivations.  Neither
+--   customer supplies a `natrec`, a context, a renaming or a split.
+------------------------------------------------------------------------
+
+module DvdPlumb = Plumb dvdMotive
+module MaxPlumb = Plumb maxMotive

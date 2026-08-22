@@ -25,8 +25,14 @@
 --   here because these six shared one closure anyway.
 ------------------------------------------------------------------------
 
+-- ⚠⚠ SUPERSEDED, KEPT AS THE BASELINE.  `Examples/Gcd/Spec` now gets its
+--   `IndStep` from `Plumb dvdMotive` — the SHARED, motive-generic plumbing
+--   that maximality also instantiates.  This 280-line CONCRETE assembly is
+--   what that replaced, and it is kept only so the generic version can be
+--   MEASURED against it for the WF-axis comparison.  Nothing imports it.
+
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Gcd.DvdA where
+module DirectedHoTT.Comparison.GcdIndStepConcrete where
 open import DirectedHoTT.Examples.Gcd.DvdL public
 open import DirectedHoTT.Examples.Gcd.DvdLs public
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
