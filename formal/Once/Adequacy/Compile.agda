@@ -695,6 +695,43 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
       go (yes _)   _ = refl
       go (no ¬adm) a = ⊥-elim (¬adm a)
 
+  -- RESIDUAL (plan 0.74 J4). Acceptance must IMPLY admissibility, and it will
+  -- once the backend actually checks (J3): `compileFromModule` dispatches on
+  -- `inRange?` at its own width and refuses an out-of-range literal, so bytes
+  -- can only exist for an admissible program. Until that lands there is
+  -- nothing to derive it from — the backend currently accepts everything —
+  -- so it is named here, at the use site, rather than assumed silently.
+  --
+  -- It is stated over `src ⊢R tp` rather than over the resolved module because
+  -- that is what `correctR-sound` has in hand, and because admissibility is a
+  -- property of the program the SPEC names, not of the compiler's intermediate.
+  postulate
+    accept⇒admissible : ∀ (arch : Arch) (doOpt : Bool) (src : Source)
+                          (bytes : List Byte) (tp : Typed)
+                        → compile arch doOpt src ≡ just bytes
+                        → src ⊢R tp
+                        → AdmissibleM arch (proj₁ tp)
+
+  -- RESIDUAL (plan 0.74 J4). ADMISSIBILITY SURVIVES RESOLUTION.
+  --
+  -- `Admissible` is stated over the UN-resolved module (that is what
+  -- `src ⊢R tp` gives); the compiler gates on the RESOLVED one. They have the
+  -- same `Int` literals, and the reason is checkable rather than hopeful:
+  -- `resolveDecls` rewrites each decl with `canonDecl` (which only turns
+  -- `RQualified` into `RResolved` and never touches `RInt`) and inlines
+  -- imports via `signaturesWithOwner`, which keeps ONLY `DSignature` decls and
+  -- drops everything else — so no imported function body, and hence no
+  -- imported literal, is ever added.
+  --
+  -- That makes the lemma TRUE and unwritten. It belongs beside
+  -- `resolver-preserves-trace` / `resolver-preserves-typing` in
+  -- `Once.Adequacy.ResolverBridge`, as `resolver-preserves-intLits`, and the
+  -- proof is an induction over `resolveDecls`' `with`-chain.
+  postulate
+    admissible-resolve : ∀ (arch : Arch) (mm : C.ModuleMap) (mU mR : P.Module)
+                       → C.resolveImports mm mU ≡ inj₂ mR
+                       → AdmissibleM arch mU → AdmissibleM arch mR
+
   -- SOUNDNESS + TRACE conjunct — `accept-sound` (front-end soundness over the
   -- RESOLVED module `mR`) gives `ModuleTyped mR`; `RB.resolver-reflects-typing (arch-numerics arch)`
   -- recovers the UN-resolved typed program `mU` so `tp`/`_⊢R_` stay parse-based
@@ -713,8 +750,11 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
                   ⊢R  = FB.parseStrict-sound (Source.srcText src) mU p-eq   -- ParsesText … mU = src ⊢R tp
                   p   = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥ arch)) pf
                               (correct arch doOpt src)
+                  admU = accept⇒admissible arch doOpt src bytes (mU , mt , hvm) pf
+                           (FB.parseStrict-sound (Source.srcText src) mU p-eq)
+                  admR = admissible-resolve arch (Source.srcImports src) mU mR res-eq admU
                   p'  = subst (λ b → Pointwise _≋_ (just (exec arch bytes)) b)
-                              (⟦⟧⊥-just src arch mR ir stm-eq mi) p
+                              (⟦⟧⊥-just src arch mR ir admR stm-eq mi) p
                   e≋  = pw-just-rel p'                                        -- exec bytes ≋ ⟦ moduleToIR mR ⟧IR
               in tp , ⊢R , (λ n → trans (e≋ n)
                                 (trans (RB.resolver-preserves-trace (arch-numerics arch) (Source.srcImports src) mU mR res-eq mt hvm mi n)
@@ -726,13 +766,18 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- to a well-typed `mR` (with valid main), which `moduleToIR-complete` compiles
   -- and `main⇒built` Builds. `srcToModule-just` ties the resolved module back to
   -- `compile src` (= `parseStrict` then `resolveImports`).
+  -- D115: completeness GAINED the admissibility premise, and here is where it
+  -- becomes load-bearing — `main⇒built` now needs it, because the Build stage
+  -- can refuse. It is exactly what shows the refusal cannot fire for a program
+  -- the target CAN express.
   correctR-complete : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (tp : Typed) →
-    src ⊢R tp →
+    src ⊢R tp → AdmissibleM arch (proj₁ tp) →
     Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes)
-  correctR-complete arch doOpt src (mU , mt , hvm) ⊢R
+  correctR-complete arch doOpt src (mU , mt , hvm) ⊢R adm
     with RB.resolver-preserves-typing (arch-numerics arch) (Source.srcImports src) mU mt hvm
   ... | (mR , res-eq , mt' , hvm') with MC.moduleToIR-complete mR mt' hvm'
-  ...   | (ir , mi) with main⇒built arch doOpt mR ir mi
+  ...   | (ir , mi) with main⇒built arch doOpt mR ir
+                           (admissible-resolve arch (Source.srcImports src) mU mR res-eq adm) mi
   ...     | (asm , built-eq) = string-to-bytes arch asm , c≡j
     where p-eq : parseStrict (Source.srcText src) ≡ inj₂ mU
           p-eq = FB.parseStrict-complete (Source.srcText src) mU ⊢R
@@ -746,11 +791,11 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   correctR : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
     ( ∀ bytes → compile arch doOpt src ≡ just bytes →
         Σ-syntax Typed (λ tp → (src ⊢R tp) × (exec arch bytes ≋ ⟦ arch ⟧ˢ tp)) )
-    × ( ∀ tp → src ⊢R tp →
+    × ( ∀ tp → src ⊢R tp → AdmissibleM arch (proj₁ tp) →
         Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
   correctR arch doOpt src =
       (λ bytes pf → correctR-sound arch doOpt src bytes pf)
-    , (λ tp h → correctR-complete arch doOpt src tp h)
+    , (λ tp h adm → correctR-complete arch doOpt src tp h adm)
 
   ------------------------------------------------------------------------
   -- Plan 0.58 (OCP-0006) — TOP-DOWN WIRE. The reference meaning becomes the
@@ -782,23 +827,6 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   Admissible : Arch → Typed → Set
   Admissible arch (m , _ , _) = AdmissibleM arch m
 
-  -- RESIDUAL (plan 0.74 J4). Acceptance must IMPLY admissibility, and it will
-  -- once the backend actually checks (J3): `compileFromModule` dispatches on
-  -- `inRange?` at its own width and refuses an out-of-range literal, so bytes
-  -- can only exist for an admissible program. Until that lands there is
-  -- nothing to derive it from — the backend currently accepts everything —
-  -- so it is named here, at the use site, rather than assumed silently.
-  --
-  -- It is stated over `src ⊢R tp` rather than over the resolved module because
-  -- that is what `correctR-sound` has in hand, and because admissibility is a
-  -- property of the program the SPEC names, not of the compiler's intermediate.
-  postulate
-    accept⇒admissible : ∀ (arch : Arch) (doOpt : Bool) (src : Source)
-                          (bytes : List Byte) (tp : Typed)
-                        → compile arch doOpt src ≡ just bytes
-                        → src ⊢R tp
-                        → Admissible arch tp
-
   correctᵈ : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
     ( ∀ bytes → compile arch doOpt src ≡ just bytes →
         Σ-syntax Typed (λ tp → (src ⊢R tp) × Admissible arch tp
@@ -813,7 +841,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
       -- completeness GAINS a premise, so it can only get easier. It is unused
       -- until J3 makes the backend able to refuse, at which point it is what
       -- shows the refusal cannot fire.
-    , (λ tp h _ → correctR-complete arch doOpt src tp h)
+    , (λ tp h adm → correctR-complete arch doOpt src tp h adm)
 
   -- ════════════════════════════════════════════════════════════════════
   -- The GRAND THEOREM (D060): `correct` above IS the whole statement.
