@@ -228,7 +228,17 @@ data Desc where
 data ICon where
   iι : ICon                     -- no more fields; targets the ambient index
   iρ : RTm ε → ICon → ICon      -- RECURSIVE field, at the index shifted by a closed fn
-  iκ : RTy ε → ICon → ICon      -- NON-RECURSIVE field of a CLOSED type
+  -- ⚠⚠ NON-RECURSIVE field, whose type MAY DEPEND ON THE INDEX: a closed
+  --   CODE-VALUED FUNCTION `I → U`, applied to the ambient index.
+  --   `iκ (lam ⌜A⌝)` is the ordinary constant case.
+  --   ★ THIS IS WHAT MAKES `Vec` EXPRESSIBLE AS SUGAR (see PLAN-INDEXED.md):
+  --     a FORDING constraint `n ≡ suc m` is just a field whose type mentions
+  --     the index — `iκ (lam (⌜Id⌝ ⌜Nat⌝ (var vz) …))`. Every constructor
+  --     still targets the AMBIENT index, so the logical relation stays
+  --     UNIFORM in the index and never reasons up to index conversion.
+  --     That is the whole reason Fording is cheap and native computed
+  --     target indices are not.
+  iκ : RTm ε → ICon → ICon
 
 data IDesc where
   inil : IDesc
@@ -1088,8 +1098,8 @@ ipayTy : IDesc → RTy ε → RTm Γ → ICon → RTy Γ
 ipayTy D I i iι       = Unit
 ipayTy D I i (iρ f C) =
   Σ' (IMu D I (app (εwkTm f) i)) (ipayTy D I (renTm vs i) C)
-ipayTy D I i (iκ A C) =
-  Σ' (εwkTy A)                   (ipayTy D I (renTm vs i) C)
+ipayTy D I i (iκ κ C) =
+  Σ' (El (app (εwkTm κ) i))      (ipayTy D I (renTm vs i) C)
 
 data _∈ID_ : ℕ → IDesc → Set where
   hereID  : {C : ICon} {E : IDesc} → zero ∈ID (C ◂ E)
@@ -1102,7 +1112,7 @@ iihs : IDesc → RTy ε → RTm Γ → RTm Γ → ICon → RTm Γ → RTm Γ
 iihs D I i ms iι       p = unit
 iihs D I i ms (iρ f C) p =
   pair (ielim D (app (εwkTm f) i) ms (fst p)) (iihs D I i ms C (snd p))
-iihs D I i ms (iκ A C) p = iihs D I i ms C (snd p)
+iihs D I i ms (iκ κ C) p = iihs D I i ms C (snd p)
 
 ifields : IDesc → RTy ε → RTm Γ → RTm Γ → ICon → RTm Γ → RTm Γ → RTm Γ
 ifields D I i ms C m p = app (app m p) (iihs D I i ms C p)
