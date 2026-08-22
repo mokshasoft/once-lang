@@ -36,6 +36,8 @@
 module poc.OCP0009.NbEPDirDBExamplesAmrecC where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import poc.OCP0009.NbEPDirDBLibWk using ( cong₄; nrs-w; ren-w; ren-w²; sub-w; sub-w²; w )
+open import poc.OCP0009.NbEPDirDBLibRec using ( rec1T; rec1T-ren; rec1T-sub )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs; Ren
         ; RTy; El; Hom; Nat; U
@@ -52,7 +54,6 @@ open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base'; ⊢strong-step 
 -- ★ REUSE: the naturality kit built for lexrec is not lexrec-specific.
 --   `rec1T` IS this combinator's IH type, and `sub-w`/`ren-w`/`cong₄` are
 --   the whole toolkit.  Nothing new was needed here.
-open import poc.OCP0009.NbEPDirDBExamplesLexC
   using ( w; cong₄; sub-w; sub-w²; ren-w; ren-w²
         ; nrs-w; rec1T; rec1T-sub; rec1T-ren )
 
