@@ -77,6 +77,7 @@ open import Function using (case_of_)
 -- doesn't drag in the per-arch instance postulates. The driver
 -- (`Once.Compiler`) supplies `Once.Adequacy.CPU.arch-semantics`.
 open import Once.Adequacy.CPU.Interface using (Arch; Byte; ArchSemantics)
+open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
 open import Once.Target.Arch using (arch-numerics)
 
 import Once.Compile as C
@@ -711,15 +712,44 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   bridgeᵈ : ∀ (arch : Arch) (tp : Typed) (n : ℕ) → ⟦ arch ⟧ˢ tp n ≡ ⟦ arch ⟧ᵈ tp n
   bridgeᵈ arch (m , mt , hvm) n = MMB.main-bridge (arch-numerics arch) m mt hvm n
 
+  -- D115/D116: which programs this target owes an answer for. `Typed` is
+  -- target-free; this is the target-relative half, and it is `Int`-only —
+  -- floats always lower, rounding when the target cannot hold them exactly.
+  Admissible : Arch → Typed → Set
+  Admissible arch (m , _ , _) = AdmissibleM arch m
+
+  -- RESIDUAL (plan 0.74 J4). Acceptance must IMPLY admissibility, and it will
+  -- once the backend actually checks (J3): `compileFromModule` dispatches on
+  -- `inRange?` at its own width and refuses an out-of-range literal, so bytes
+  -- can only exist for an admissible program. Until that lands there is
+  -- nothing to derive it from — the backend currently accepts everything —
+  -- so it is named here, at the use site, rather than assumed silently.
+  --
+  -- It is stated over `src ⊢R tp` rather than over the resolved module because
+  -- that is what `correctR-sound` has in hand, and because admissibility is a
+  -- property of the program the SPEC names, not of the compiler's intermediate.
+  postulate
+    accept⇒admissible : ∀ (arch : Arch) (doOpt : Bool) (src : Source)
+                          (bytes : List Byte) (tp : Typed)
+                        → compile arch doOpt src ≡ just bytes
+                        → src ⊢R tp
+                        → Admissible arch tp
+
   correctᵈ : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
     ( ∀ bytes → compile arch doOpt src ≡ just bytes →
-        Σ-syntax Typed (λ tp → (src ⊢R tp) × (exec arch bytes ≋ ⟦ arch ⟧ᵈ tp)) )
-    × ( ∀ tp → src ⊢R tp →
+        Σ-syntax Typed (λ tp → (src ⊢R tp) × Admissible arch tp
+                               × (exec arch bytes ≋ ⟦ arch ⟧ᵈ tp)) )
+    × ( ∀ tp → src ⊢R tp → Admissible arch tp →
         Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
   correctᵈ arch doOpt src =
       (λ bytes pf → let (tp , ⊢R , e≋) = correctR-sound arch doOpt src bytes pf
-                     in tp , ⊢R , (λ n → trans (e≋ n) (bridgeᵈ arch tp n)))
-    , (λ tp h → correctR-complete arch doOpt src tp h)
+                     in tp , ⊢R
+                      , accept⇒admissible arch doOpt src bytes tp pf ⊢R
+                      , (λ n → trans (e≋ n) (bridgeᵈ arch tp n)))
+      -- completeness GAINS a premise, so it can only get easier. It is unused
+      -- until J3 makes the backend able to refuse, at which point it is what
+      -- shows the refusal cannot fire.
+    , (λ tp h _ → correctR-complete arch doOpt src tp h)
 
   -- ════════════════════════════════════════════════════════════════════
   -- The GRAND THEOREM (D060): `correct` above IS the whole statement.

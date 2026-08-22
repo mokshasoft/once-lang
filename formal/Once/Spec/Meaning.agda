@@ -8,6 +8,10 @@
 -- the DERIVATION DENOTATION `⟦_⟧ᵈ` (Plan 0.58 P5):
 --   * `Once.Denotation.ValueDomain` — the semantic domain `⟦_⟧ᴰ` (types
 --     as sets, `emit-D`, `inject`/`forget`, the functor coercion).
+--   * `Once.Denotation.Admissible` — `AdmissibleM`: WHICH PROGRAMS A TARGET
+--     OWES AN ANSWER FOR. `Typed` is target-free; this is the target-relative
+--     half, and it is what makes rejecting an out-of-range `Int` literal legal
+--     without making "reject everything" legal.
 --   * `Once.Denotation.Trace` — `SigOpEvent` and `mkEvent`: WHAT AN
 --     OBSERVATION IS. Which part of a SigOp invocation the outside world can
 --     see, and therefore which two programs count as behaviourally equal.
@@ -39,6 +43,11 @@ module Once.Spec.Meaning where
 -- load-bearing spec behaviour — it was just not declared, and so not reviewed.
 -- Re-exported, not moved: the module is 75 lines and contains nothing but the
 -- event vocabulary, so declaring it is the whole fix.
+-- D115/D116: which programs a target owes an answer for. In the spec for the
+-- same reason the observable is: without it, a compiler that rejects every
+-- program satisfies soundness vacuously.
+open import Once.Denotation.Admissible  public
+
 open import Once.Denotation.Trace       public
 
 open import Once.Denotation.ValueDomain public
