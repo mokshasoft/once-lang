@@ -484,7 +484,15 @@ import Once.Target.RiscV64 as RiscV64-Target
 -- | Supported architectures — the single shared enum (re-exported so
 -- existing `C.Arch` references downstream are unchanged).
 open import Once.Target.Arch public
-open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?; firstBadLit)
+open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?; firstBadLit; outOfRange)
+-- Plan 0.74 J6 step 2: the literals the MACHINE materialises, as opposed to
+-- the ones the programmer wrote. Two lists, two gates, and the obligation
+-- that they agree is what the elaborator now owes.
+open import Once.IRLits using (irIntLits)
+import Once.Word as OnceWord
+open import Data.List.Relation.Unary.All using (All; all?)
+-- `_++_` in this file is String concatenation; the list one needs a name.
+import Data.List as DL
 open import Data.Nat.Show renaming (show to showNat)
 open import Data.Integer using (ℤ)
 open import Data.Nat using (_∸_)
@@ -729,14 +737,83 @@ litRangeError arch mod = badLit (firstBadLit arch mod)
         ++ "wraps; a literal does not."
     badLit nothing = "Int literal out of range for " ++ archName arch
 
+------------------------------------------------------------------------
+-- THE SECOND GATE — over the literals the MACHINE materialises
+-- (plan 0.74 J6 step 2, D115).
+--
+-- `AdmissibleM` is the SPEC's predicate and it reads the SOURCE: which
+-- literals the programmer wrote. This one reads the compiled IR: which
+-- literals will actually be loaded into a register. Until now only the first
+-- existed, and the backend dispatched on it — so "the backend agrees with the
+-- spec" held by SHARING A TRAVERSAL, which `Once.Denotation.Admissible`
+-- explicitly says is not good enough:
+--
+--     "The backend walks the IR instead, and that the two agree is a PROOF
+--      obligation (plan 0.74 J4), not something faked by sharing a traversal."
+--
+-- Now it does walk the IR. The two gates are deliberately BOTH present:
+--
+--   * the SOURCE gate keeps soundness exactly as J4 proved it — an accepted
+--     program's source literals are in range, unchanged;
+--   * the IR gate is what makes COMPLETENESS honest. "A program whose
+--     literals the target can express compiles" is no longer true by
+--     construction; it now requires that elaboration preserve the literals,
+--     which is a real fact about the elaborator and is currently FALSE.
+--
+-- The false case is exactly the known defect: `-2147483648` is
+-- `RUnaryOp OpNeg (RInt 2147483648)`, so the source list holds -2147483648
+-- (in range at 32 bits) and this list holds 2147483648 (out of range). The
+-- red therefore lands on the elaborator, which is where the bug is, rather
+-- than on a gate that is reporting correctly.
+------------------------------------------------------------------------
+
+compiledIntLits : List CompiledFun → List ℤ
+compiledIntLits []         = []
+compiledIntLits (cf ∷ cfs) = irIntLits (CompiledFun.cfIR cf) DL.++ compiledIntLits cfs
+
+-- | Every literal this target will LOAD fits its signed range.
+AdmissibleIR : Arch → List CompiledFun → Set
+AdmissibleIR arch cfs =
+  All (OnceWord.Width.InRange (arch-int-bits arch)) (compiledIntLits cfs)
+
+admissibleIR? : ∀ arch cfs → Dec (AdmissibleIR arch cfs)
+admissibleIR? arch cfs =
+  all? (OnceWord.Width.inRange? (arch-int-bits arch)) (compiledIntLits cfs)
+
+-- | Same message, blaming the literal the MACHINE would have loaded. When the
+-- two gates disagree that difference is the whole diagnosis, so the message
+-- says which list it came from.
+litRangeErrorIR : Arch → List CompiledFun → String
+litRangeErrorIR arch cfs = badLit (outOfRange (arch-int-bits arch) (compiledIntLits cfs))
+  where
+    bits = arch-int-bits arch
+    badLit : Maybe ℤ → String
+    badLit (just z) =
+      "Int literal " ++ showℤ z ++ " does not fit " ++ archName arch
+        ++ "'s signed " ++ showNat bits ++ "-bit range (-2^"
+        ++ showNat (bits ∸ 1) ++ " .. 2^" ++ showNat (bits ∸ 1) ++ "-1). "
+        ++ "This is the value the compiled code would LOAD; if it differs "
+        ++ "from anything in the source, elaboration did not preserve the "
+        ++ "literal, which is a compiler bug and not a program error."
+    badLit nothing = "Int literal out of range for " ++ archName arch
+
 -- Explicit-argument aux (no `with`), matching this file's convention, so the
 -- decision stays a subterm downstream proofs can rewrite by.
+cfm-build-lits : (arch : Arch) → (cfs : List CompiledFun)
+               → Dec (AdmissibleIR arch cfs) → CompileResult
+cfm-build-lits arch cfs (no  _) = Error (litRangeErrorIR arch cfs)
+cfm-build-lits arch cfs (yes _) = cfm-build-emit arch (inj₂ cfs)
+
+cfm-build-caf : (arch : Arch) → String ⊎ List CompiledFun → CompileResult
+cfm-build-caf arch (inj₁ err)  = Error err
+cfm-build-caf arch (inj₂ cfs)  = cfm-build-lits arch cfs (admissibleIR? arch cfs)
+
 cfm-build-gated : AllocMode → Bool → (arch : Arch) → (mod : Module)
                 → List FunInfo → List PolyFunInfo
                 → Dec (AdmissibleM arch mod) → CompileResult
 cfm-build-gated m doOpt arch mod funs polys (no  _) = Error (litRangeError arch mod)
 cfm-build-gated m doOpt arch mod funs polys (yes _) =
-  cfm-build-emit arch (compileAllFuns m doOpt funs (buildPolyCtx polys) (collectSigEffects (Module.decls mod)))
+  cfm-build-caf arch (compileAllFuns m doOpt funs (buildPolyCtx polys) (collectSigEffects (Module.decls mod)))
 
 cfm-stage-aux : AllocMode → Stage → Bool → Arch → Module → List FunInfo → List PolyFunInfo → CompileResult
 cfm-stage-aux m Parse doOpt arch mod funs polys = Parsed funs polys

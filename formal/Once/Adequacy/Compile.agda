@@ -251,7 +251,7 @@ gmoduleToModule-correct src m eq arch n =
 -- pipeline (success is `doOpt`-independent because `doOpt` only chooses
 -- `optimize ir` vs `ir` inside `compileFunBody`). Used by `correct` below to
 -- rule out the "has a `main` but didn't Build" domain mismatch.
-open import Once.Adequacy.MainBuilds using (main⇒built)
+open import Once.Adequacy.MainBuilds using (main⇒built; ElabPreservesLits)
 -- Front-end SOUNDNESS (Plan 0.48 Phase 1): the front-end accepts only
 -- declaratively well-typed programs, so `⟦_⟧⊥`'s `just` domain is genuine
 -- (not true-by-construction). `ModuleTyped m` is the INDEPENDENT predicate
@@ -477,30 +477,40 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- Layer 3 — over the compile RESULT. The accept case is `PW.just` of the
   -- supplied trace witness; the three reject results are ruled out by
   -- `main⇒built` (a `main` always Builds), so `compile` here can only Build.
+  -- Plan 0.74 J6 step 2: `epl` is the new premise, and it is doing real work
+  -- HERE, not only in completeness. The Build stage can now refuse a module
+  -- whose COMPILED literals are out of range, and `Error` is one of the
+  -- results this lemma has to rule out — so "a `main` always Builds" needs to
+  -- know the second gate will not fire either. That the premise reaches the
+  -- trace statement is not an accident of proof structure: a gate the SPEC
+  -- cannot see (D057 keeps the meaning off the elaborator) is exactly a
+  -- refusal path the spec has no way to sanction.
   correct-cr : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
                  (cr : C.CompileResult) → AdmissibleM arch m →
+                 ElabPreservesLits arch m doOpt →
                  C.compileFromModule C.Heap C.Build doOpt arch m ≡ cr →
                  moduleToIR m ≡ just ir →
                  TraceAt arch doOpt m ir →
                  Pointwise _≋_ (map (exec arch) (compile-cr arch cr)) (⟦ just ir ⟧⊥-ir arch)
-  correct-cr arch doOpt m ir (C.Built asm)  adm cf-eq mi-eq tw = PW.just (tw asm cf-eq)
-  correct-cr arch doOpt m ir (C.Parsed _ _) adm cf-eq mi-eq tw =
-    case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir adm mi-eq)) of λ ()
-  correct-cr arch doOpt m ir (C.Checked _)  adm cf-eq mi-eq tw =
-    case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir adm mi-eq)) of λ ()
-  correct-cr arch doOpt m ir (C.Error _)    adm cf-eq mi-eq tw =
-    case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir adm mi-eq)) of λ ()
+  correct-cr arch doOpt m ir (C.Built asm)  adm epl cf-eq mi-eq tw = PW.just (tw asm cf-eq)
+  correct-cr arch doOpt m ir (C.Parsed _ _) adm epl cf-eq mi-eq tw =
+    case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir adm epl mi-eq)) of λ ()
+  correct-cr arch doOpt m ir (C.Checked _)  adm epl cf-eq mi-eq tw =
+    case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir adm epl mi-eq)) of λ ()
+  correct-cr arch doOpt m ir (C.Error _)    adm epl cf-eq mi-eq tw =
+    case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir adm epl mi-eq)) of λ ()
 
   -- Layer 2 — over `moduleToIR m`. No `main` ⇒ both sides `nothing` (the
   -- executable gate, definitional); a `main` ⇒ defer to `correct-cr`.
   correct-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) →
                   AdmissibleM arch m →
+                  ElabPreservesLits arch m doOpt →
                   moduleToIR m ≡ mir →
                   (∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → mir ≡ just ir → TraceAt arch doOpt m ir) →
                   Pointwise _≋_ (map (exec arch) (compile-mir arch doOpt m mir)) (⟦ mir ⟧⊥-ir arch)
-  correct-mir arch doOpt m nothing   adm mi-eq tw = PW.nothing
-  correct-mir arch doOpt m (just ir) adm mi-eq tw =
-    correct-cr arch doOpt m ir (C.compileFromModule C.Heap C.Build doOpt arch m) adm refl mi-eq (tw ir refl)
+  correct-mir arch doOpt m nothing   adm epl mi-eq tw = PW.nothing
+  correct-mir arch doOpt m (just ir) adm epl mi-eq tw =
+    correct-cr arch doOpt m ir (C.compileFromModule C.Heap C.Build doOpt arch m) adm epl refl mi-eq (tw ir refl)
 
   -- J4: THE REFUSAL, spelled out. `cfm-build-gated` returns `Error` on `no`,
   -- so `compile-cr` is `nothing` — but seeing that through `compile-gm` and

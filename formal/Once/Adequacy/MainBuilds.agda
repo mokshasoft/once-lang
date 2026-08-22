@@ -164,29 +164,46 @@ crm-doOpt doOpt m eq =
 --
 -- Dispatching on the DECISION (explicit argument, no `with`) keeps the gate a
 -- subterm, so this reduces for a caller who has already decided.
+-- Plan 0.74 J6 step 2: there are now TWO gates, so there are two premises.
+-- `AdmissibleM` is about the literals the SOURCE wrote; `AdmissibleIR` is
+-- about the ones the compiled code will LOAD. The second is the one that
+-- cannot currently be supplied — see `main⇒built` below.
+built-lits : ∀ (arch : Arch) (c : List C.CompiledFun)
+             (d : Dec (C.AdmissibleIR arch c)) → C.AdmissibleIR arch c
+           → Σ-syntax String (λ asm → C.cfm-build-lits arch c d ≡ C.Built asm)
+built-lits arch c (yes _)  admIR = _ , refl
+built-lits arch c (no ¬p)  admIR = ⊥-elim (¬p admIR)
+
+built-caf : ∀ (arch : Arch) {c : List C.CompiledFun} → C.AdmissibleIR arch c
+          → (r : String ⊎ List C.CompiledFun) → r ≡ inj₂ c
+          → Σ-syntax String (λ asm → C.cfm-build-caf arch r ≡ C.Built asm)
+built-caf arch {c} admIR .(inj₂ c) refl =
+  built-lits arch c (C.admissibleIR? arch c) admIR
+
 cfm-built-gated : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module)
   (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
   (d : Dec (AdmissibleM arch m)) → AdmissibleM arch m →
-  {c : List C.CompiledFun} →
+  {c : List C.CompiledFun} → C.AdmissibleIR arch c →
   C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys) (C.collectSigEffects (P.Module.decls m)) ≡ inj₂ c →
   Σ-syntax String (λ asm → C.cfm-build-gated C.Heap doOpt arch m funs polys d ≡ C.Built asm)
-cfm-built-gated doOpt arch m funs polys (yes _) adm eq = _ , cong (C.cfm-build-emit arch) eq
-cfm-built-gated doOpt arch m funs polys (no ¬adm) adm eq = ⊥-elim (¬adm adm)
+cfm-built-gated doOpt arch m funs polys (yes _)  adm admIR eq = built-caf arch admIR _ eq
+cfm-built-gated doOpt arch m funs polys (no ¬adm) adm admIR eq = ⊥-elim (¬adm adm)
 
 cfm-built-aux : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) → AdmissibleM arch m →
   (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) {c : List C.CompiledFun} →
+  C.AdmissibleIR arch c →
   C.compileResolvedModule-aux C.Heap doOpt m ef ≡ inj₂ c →
   Σ-syntax String (λ asm → C.cfm-ef-aux C.Heap C.Build doOpt arch m ef ≡ C.Built asm)
-cfm-built-aux doOpt arch m adm (inj₁ err) ()
-cfm-built-aux doOpt arch m adm (inj₂ (funs , polys)) eq =
-  cfm-built-gated doOpt arch m funs polys (admissibleM? arch m) adm eq
+cfm-built-aux doOpt arch m adm (inj₁ err) admIR ()
+cfm-built-aux doOpt arch m adm (inj₂ (funs , polys)) admIR eq =
+  cfm-built-gated doOpt arch m funs polys (admissibleM? arch m) adm admIR eq
 
 cfm-built-from-crm : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) → AdmissibleM arch m →
-  {c : List C.CompiledFun} →
+  {c : List C.CompiledFun} → C.AdmissibleIR arch c →
   C.compileResolvedModule C.Heap doOpt m ≡ inj₂ c →
   Σ-syntax String (λ asm → C.compileFromModule C.Heap C.Build doOpt arch m ≡ C.Built asm)
-cfm-built-from-crm doOpt arch m adm eq =
-  cfm-built-aux doOpt arch m adm (C.extractFunctions (C.extractAliases m) m) eq
+cfm-built-from-crm doOpt arch m adm admIR eq =
+  cfm-built-aux doOpt arch m adm (C.extractFunctions (C.extractAliases m) m) admIR eq
 
 ------------------------------------------------------------------------
 -- `moduleToIR m ≡ just ir` ⇒ `compileResolvedModule Heap false m ≡ inj₂ _`.
@@ -212,11 +229,35 @@ moduleToIR-inj₂ m eq = mtir-aux-inj₂ (C.compileResolvedModule C.Heap false m
 -- statement becoming true, since without it the theorem now has a
 -- counterexample (a module whose `main` compiles but whose literal is too wide
 -- for this target).
+-- PLAN 0.74 J6 STEP 2 — THE SECOND PREMISE, and it is the interesting one.
+--
+-- `AdmissibleM arch m` says the target can express the literals the PROGRAMMER
+-- WROTE. `ElabPreservesLits` says elaboration hands the machine those same
+-- literals. Both are needed, and only the first used to be, because the build
+-- gate read the source list twice instead of reading the IR once.
+--
+-- The second is currently FALSE, and that is the finding rather than a defect
+-- in this lemma. `-2147483648` parses as `RUnaryOp OpNeg (RInt 2147483648)`,
+-- nothing folds the sign, so the source list holds `-2147483648` (in range at
+-- 32 bits) while the compiled code loads `2147483648` (out of range). The
+-- premise is therefore UNDISCHARGEABLE for x86-32 until the elaborator folds a
+-- minus on a numeral into the numeral, which is plan 0.74 J6 step 3.
+--
+-- It is stated as a PREMISE rather than postulated because postulating it
+-- would be postulating a false proposition — the counterexample above is
+-- explicit — and that makes the whole development inconsistent.
+ElabPreservesLits : Arch → P.Module → Bool → Set
+ElabPreservesLits arch m doOpt =
+  ∀ {c : List C.CompiledFun}
+  → C.compileResolvedModule C.Heap doOpt m ≡ inj₂ c
+  → C.AdmissibleIR arch c
+
 main⇒built : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
   AdmissibleM arch m →
+  ElabPreservesLits arch m doOpt →
   moduleToIR m ≡ just ir →
   Σ-syntax String (λ asm → C.compileFromModule C.Heap C.Build doOpt arch m ≡ C.Built asm)
-main⇒built arch doOpt m ir adm mi =
+main⇒built arch doOpt m ir adm epl mi =
   let (funs  , crm-false)  = moduleToIR-inj₂ m mi
       (funs' , crm-doOpt') = crm-doOpt doOpt m crm-false
-  in cfm-built-from-crm doOpt arch m adm crm-doOpt'
+  in cfm-built-from-crm doOpt arch m adm (epl crm-doOpt') crm-doOpt'
