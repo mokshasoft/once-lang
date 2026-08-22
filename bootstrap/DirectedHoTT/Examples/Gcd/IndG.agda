@@ -51,7 +51,7 @@ open import DirectedHoTT.Lib.Amrec
 open import DirectedHoTT.Lib.IHCall
   using ( ihCallT; ihCall; ⊢ihCallT; ihCallIntro; ihCallElim )
 open import DirectedHoTT.Lib.AmrecInd using ( PAtR; IndPW; IndStep )
-open import DirectedHoTT.Lib.Natrec using ( Ren⊢-id; ⊢natrec-var )
+open import DirectedHoTT.Lib.Natrec using ( Ren⊢-id; ⊢natrec-var; prvNatrec )
 open import DirectedHoTT.Spec.Typing
   using ( natrec-zero; β; ξ-appˡ; ⊢natrec )
 open import DirectedHoTT.Examples.Gcd.Step
@@ -403,7 +403,9 @@ module Plumb (M : Motive) where
 
   leafI₂z : {Γ : Ctx} → Prv (ΘI₂ Γ) (subTy (single nzero) MI₂)
   leafI₂z =
-    ⊢-castPrv (sym (indG-sub μ₂ f₂ (var vz) (nsuc (var (vs (vs vz))))))
+    -- ⚠ was a LOCALLY re-derived `⊢-castPrv`, character-for-character
+    --   `Lib/Amrec.prv-cast`, in a file that already imports it.
+    prv-cast (sym (indG-sub μ₂ f₂ (var vz) (nsuc (var (vs (vs vz))))))
       (prv _ (⊢lam (⊢gcdIH dμ)
                (⊢lam (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w _) (⊢var here)))
                      (⊢conv (prvOk (leaf-a0 db))
@@ -412,8 +414,6 @@ module Plumb (M : Motive) where
     where
       dμ = ⊢plus ⊢nzero (⊢nsuc (⊢var (there here)))
       db = ⊢var (there (there (there here)))
-      ⊢-castPrv : {Γ : Ctx} {T T' : RTy ⌊ Γ ⌋} → T ≡ T' → Prv Γ T → Prv Γ T'
-      ⊢-castPrv refl q = q
 
 
   ------------------------------------------------------------------------
@@ -687,9 +687,9 @@ module Plumb (M : Motive) where
   ------------------------------------------------------------------------
 
   split3 : {Γ : Ctx} → Prv (ΘI₃ Γ) (subTy (single μAB) MI₃)
-  split3 = prv _ (⊢natrec ⊢MI₃ (prvOk leafI₃z) (prvOk leafI₃s)
-                          (⊢monus (⊢nsuc (⊢var (there here)))
-                                  (⊢nsuc (⊢var (there (there (there here)))))))
+  split3 = prvNatrec ⊢MI₃ leafI₃z leafI₃s
+                     (⊢monus (⊢nsuc (⊢var (there here)))
+                             (⊢nsuc (⊢var (there (there (there here))))))
 
 
   -- ⚠ `probeI₃-at` IS `refl` IN THE CONCRETE DEVELOPMENT AND CANNOT BE HERE.
@@ -754,9 +754,9 @@ module Plumb (M : Motive) where
   --   injective, so the raw context never solves from the expected type.
   split2 : {Γ : Ctx} →
            Prv (ΘI₂ Γ) (subTy (single (fst (var (vs (vs vz))))) MI₂)
-  split2 {Γ} = prv _ (⊢natrec ⊢MI₂ (prvOk leafI₂z)
-                              (⊢conv (prvOk split3app) (csymᵀ (conv₂I {⌊ Γ ⌋})))
-                              (⊢fst (⊢var (there (there here)))))
+  split2 {Γ} = prvNatrec ⊢MI₂ leafI₂z
+                         (prv _ (⊢conv (prvOk split3app) (csymᵀ (conv₂I {⌊ Γ ⌋}))))
+                         (⊢fst (⊢var (there (there here))))
 
   conv₁I : {Γ : Cx} →
            subTy nrs (MI₁ {Γ}) ≅ᵀ subTy (single (fst (var (vs (vs vz))))) MI₂
@@ -777,11 +777,11 @@ module Plumb (M : Motive) where
   ind : {Γ : Ctx} →
         Prv (Γ ▹ PairT) (indG msr gcdBody (fst (var vz)) (snd (var vz)))
   ind {Γ} =
-    prv _ (⊢-cast peel
-            (⊢natrec ⊢MI₁
-                     (⊢-cast (sym peelz) (prvOk leafI₁z))
-                     (⊢conv (prvOk split2) (csymᵀ (conv₁I {⌊ Γ ⌋})))
-                     (⊢snd (⊢var here))))
+    prv-cast peel
+      (prvNatrec ⊢MI₁
+                 (prv-cast (sym peelz) leafI₁z)
+                 (prv _ (⊢conv (prvOk split2) (csymᵀ (conv₁I {⌊ Γ ⌋}))))
+                 (⊢snd (⊢var here)))
     where
       N = snd (var vz)
       -- ⚠ `leafI₁z` is stated in the SUBSTITUTED form; `⊢natrec` wants
