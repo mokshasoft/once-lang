@@ -431,9 +431,9 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   --   ⬜ (a) is discharged by the `k ∈ID D` premise on ⊢icon, already
   --      present.  (b) and (c) are the Metatheory/SubjectReduction
   --      obligations and are NOT yet proved.
-  ι-ielim  : (D : IDesc) (I : RTy ε) (i ms : RTm Γ) (k : ℕ) (p : RTm Γ) →
+  ι-ielim  : (D : IDesc) (i ms : RTm Γ) (k : ℕ) (p : RTm Γ) →
              ielim D i ms (icon k p)
-               ⟶ ifields D I i ms (ilookupD D k) (sel k ms) p
+               ⟶ ifields D i ms (ilookupD D k) (sel k ms) p
   ξ-icon   : {k : ℕ} {p p' : RTm Γ} → p ⟶ p' → icon k p ⟶ icon k p'
   ξ-ielimⁱ : {D : IDesc} {i i' ms t : RTm Γ} →
              i ⟶ i' → ielim D i ms t ⟶ ielim D i' ms t
