@@ -36,7 +36,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc
         ; βfst; βsnd
         ; ⊢lam; ⊢app; ty-Hom; ty-Nat; ty-Π; ty-El; ⊢⌜Nat⌝
-        ; ⊢conv; _≅ᵀ_; csymᵀ; _⟶*_; step; done; wk-single )
+        ; ⊢conv; _≅ᵀ_; csymᵀ; _⟶*_; step; done; wk-single; natrec-suc; ⊢pair )
 open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El )
 open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast; Ren⊢; ⊢[] )
@@ -55,7 +55,7 @@ open import DirectedHoTT.Spec.Typing
   using ( natrec-zero; β; ξ-appˡ; ⊢natrec )
 open import DirectedHoTT.Examples.Gcd.Step
   using ( msr; ⊢msr; gcdIH; ⊢gcdIH; gcdG; ⊢gcdG; gcdStp; gcdBody
-        ; PAIRᶻ; ⊢PAIRᶻ; CERTᶻ; ⊢CERTᶻ
+        ; PAIRᶻ; ⊢PAIRᶻ; CERTᶻ; ⊢CERTᶻ; PAIRˢ; CERTˢ; KS; NS
         ; G1; ⊢G1; G1z; ⊢G1z; gcdInn1; ⊢gcdInn1
         ; G2; ⊢G2; G2z; ⊢G2z; gcdInn2; ⊢gcdInn2
         ; G3; ⊢G3; G3z; ⊢G3z; G3s; ⊢G3s )
@@ -63,6 +63,9 @@ open import DirectedHoTT.Examples.Gcd.StepExt
   using ( appGcdIH; gcdIH-w; gcdIH-w²; gcdAt; red-β; μ₁; f₁; μ₂; f₂; μ₃; f₃ )
 open import DirectedHoTT.Examples.Gcd.StepExtE using ( gcdIH-sub )
 open import DirectedHoTT.Examples.Gcd.StepExtL using ( red₃z )
+open import DirectedHoTT.Examples.Gcd.StepExtLs using ( red₃s )
+open import DirectedHoTT.Lib.ArithMonus using ( ⊢desc-left )
+open import DirectedHoTT.Lib.Pair using ( msrPair )
 
 ------------------------------------------------------------------------
 -- ★ WHAT A CUSTOMER SUPPLIES.  Six facts about the motive and four
@@ -520,6 +523,135 @@ module Plumb (M : Motive) where
             (⊢-cast (sym (indG-sub {σ = extS (single nzero)}
                             (w (w B₃)) (w f₃) (w (w uA₃)) (w (w uB₃))))
                     (prvOk bodyI₃z)))
+
+
+  ------------------------------------------------------------------------
+  -- ★★★ SPLIT 3's DEEP SUCCESSOR LEAF — MOTIVE-GENERIC.
+  --
+  -- ⚠ THE SAME ONE TAX AS `leafI₃z`, and only that one: `subTm σ (PC …)`
+  --   is STUCK where `subTm σ (QCode …)` unfolds, so `indG-sub` must be
+  --   cited — here at `σ = extS nrs`, the `natrec` SUCCESSOR substitution.
+  --   No implicit needs pinning; that was tested for `leafI₃z` and the
+  --   pinning removed again.
+  ------------------------------------------------------------------------
+
+  B₄ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+  B₄ = plusTm (nsuc (var (vs (vs (vs vz)))))
+              (nsuc (var (vs (vs (vs (vs (vs vz)))))))
+
+  F₄ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+  F₄ = subTm nrs f₃
+
+  ⊢B₄ : {Γ : Ctx} → ((ΘI₃ Γ ▹ Nat) ▹ MI₃) ⊢ B₄ ∷ Nat
+  ⊢B₄ = ⊢plus (⊢nsuc (⊢var (there (there (there here)))))
+              (⊢nsuc (⊢var (there (there (there (there (there here)))))))
+
+  rr₄ : {Γ : Cx} → subTm nrs (f₃ {Γ}) ⟶* G3s
+  rr₄ = step (natrec-suc _ _ _) done
+
+  EqT : {Γ : Cx} → RTy (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+  EqT = IdN (monusTm (nsuc (var (vs (vs (vs vz)))))
+                     (nsuc (var (vs (vs (vs (vs (vs vz))))))))
+            (nsuc (var (vs vz)))
+
+  ⊢EqT : {Γ : Ctx} → ((ΘI₃ Γ ▹ Nat) ▹ MI₃) ⊢ty EqT
+  ⊢EqT = ⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (there (there here)))))
+                        (⊢nsuc (⊢var (there (there (there (there (there here))))))))
+                (⊢nsuc (⊢var (there here)))
+
+  Θ₄E : Ctx → Ctx
+  Θ₄E Γ = (((ΘI₃ Γ ▹ Nat) ▹ MI₃) ▹ EqT)
+
+  Θ₄ : Ctx → Ctx
+  Θ₄ Γ = ((Θ₄E Γ) ▹ gcdIH (w B₄)) ▹ indPWT (w (w B₄)) (var vz)
+
+  A₁₀ B₁₀ P₁₀ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙ ∙)
+  A₁₀ = nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))
+  B₁₀ = nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))
+  P₁₀ = var (vs (vs (vs (vs vz))))
+
+  dA₁₀ : {Γ : Ctx} → Θ₄ Γ ⊢ A₁₀ ∷ Nat
+  dA₁₀ = ⊢nsuc (⊢var (there (there (there (there (there (there here)))))))
+
+  dB₁₀ : {Γ : Ctx} → Θ₄ Γ ⊢ B₁₀ ∷ Nat
+  dB₁₀ = ⊢nsuc (⊢var (there (there (there (there (there (there (there (there here)))))))))
+
+  dP₁₀ : {Γ : Ctx} → Θ₄ Γ ⊢ P₁₀ ∷ Nat
+  dP₁₀ = ⊢var (there (there (there (there here))))
+
+  -- ⚠⚠ `⊢PAIRˢ`/`⊢CERTˢ` RE-DERIVED, NOT IMPORTED — same measurement as
+  --   `…GcdDvdLs`: `…GcdStep` states them at `CΓs Γ B C D`, whose last slot
+  --   is hard-wired to `gcdIH …`, and this branch binds the SCRUTINEE
+  --   EQUATION there.  Generalising `CΓs` over that slot OOM-KILLED
+  --   `…ExamplesGcdLeEq`/`…GcdLeMid`.  Six lines of duplication, not a
+  --   regression there.
+  dksL : {Γ : Ctx} → Θ₄E Γ ⊢ KS ∷ Nat
+  dksL = ⊢var (there (there (there (there here))))
+
+  dnsL : {Γ : Ctx} → Θ₄E Γ ⊢ NS ∷ Nat
+  dnsL = ⊢var (there (there (there (there (there (there here))))))
+
+  ⊢PAIRˢL : {Γ : Ctx} → Θ₄E Γ ⊢ PAIRˢ ∷ PairT
+  ⊢PAIRˢL = ⊢pair ty-Nat (⊢monus (⊢nsuc dksL) (⊢nsuc dnsL)) (⊢nsuc dnsL)
+
+  ⊢CERTˢL : {Γ : Ctx} → Θ₄E Γ ⊢ CERTˢ
+              ∷ Hom Nat (nsuc (plusTm (fst PAIRˢ) (snd PAIRˢ)))
+                        (plusTm (nsuc KS) (nsuc NS))
+  ⊢CERTˢL =
+    ⊢conv (⊢desc-left dksL dnsL)
+          (csymᵀ (msrPair (monusTm (nsuc KS) (nsuc NS)) (nsuc NS)
+                           (plusTm (nsuc KS) (nsuc NS))))
+
+  dPAIRs : {Γ : Ctx} → Θ₄ Γ ⊢ w (w PAIRˢ) ∷ PairT
+  dPAIRs = ⊢wk (⊢wk ⊢PAIRˢL)
+
+  dCERTs : {Γ : Ctx} → Θ₄ Γ ⊢ w (w CERTˢ)
+             ∷ Hom Nat (nsuc (subTm (single (w (w PAIRˢ))) msr)) (w (w (w B₄)))
+  dCERTs = ⊢wk (⊢wk ⊢CERTˢL)
+
+  dIHs : {Γ : Ctx} → Θ₄ Γ ⊢ var (vs vz) ∷ gcdIH (w (w (w B₄)))
+  dIHs = ⊢-cast (gcdIH-w² (w B₄)) (⊢var (there here))
+
+  dVs : {Γ : Ctx} → Θ₄ Γ ⊢ app (app (var (vs vz)) (w (w PAIRˢ))) (w (w CERTˢ)) ∷ Nat
+  dVs = asN (appGcdIH dIHs dPAIRs dCERTs)
+
+  dcalls : {Γ : Ctx} →
+           Θ₄ Γ ⊢ app (app (var vz) (w (w PAIRˢ))) (w (w CERTˢ))
+             ∷ El (PC (monusTm A₁₀ B₁₀) B₁₀
+                     (app (app (var (vs vz)) (w (w PAIRˢ))) (w (w CERTˢ))))
+  dcalls =
+    ⊢conv (indPWElim (⊢-cast (indPWT-w (w (w B₄)) (var vz)) (⊢var here))
+                     dPAIRs dCERTs)
+          (PC-convU _ (step (βfst _ _) done) (step (βsnd _ _) done))
+
+  dEqs : {Γ : Ctx} → Θ₄ Γ ⊢ var (vs (vs vz)) ∷ IdN (monusTm A₁₀ B₁₀) (nsuc P₁₀)
+  dEqs = ⊢var (there (there here))
+
+  innerI₃s : {Γ : Ctx} → Prv (Θ₄ Γ) (El (PC A₁₀ B₁₀ (app (w (w (w F₄))) (var (vs vz)))))
+  innerI₃s =
+    prv _ (⊢conv (prvOk (leaf-gt dA₁₀ dB₁₀ dVs dP₁₀ dEqs dcalls))
+                 (csymᵀ (PC-conv A₁₀ B₁₀ (red₃s rr₄ (var (vs vz))))))
+
+  -- ★ the two inner binders at the SUBSTITUTED `indG`, stated as
+  --   `indG-sub`'s right-hand side (σ = extS nrs).
+  bodyI₃s : {Γ : Ctx} →
+            Prv (Θ₄E Γ)
+                (indG (subTm (extS nrs) (w (w B₃)))
+                      (subTm (extS nrs) (w f₃))
+                      (subTm (extS nrs) (w (w uA₃)))
+                      (subTm (extS nrs) (w (w uB₃))))
+  bodyI₃s =
+    prv _ (⊢lam (⊢gcdIH (⊢wk ⊢B₄))
+            (⊢lam (⊢indPWT (⊢wk (⊢wk ⊢B₄))
+                           (⊢-cast (gcdIH-w (w B₄)) (⊢var here)))
+                  (prvOk innerI₃s)))
+
+  leafI₃s : {Γ : Ctx} → Prv ((ΘI₃ Γ ▹ Nat) ▹ MI₃) (subTy nrs MI₃)
+  leafI₃s =
+    prv _ (⊢lam ⊢EqT
+            (⊢-cast (sym (indG-sub {σ = extS nrs}
+                            (w (w B₃)) (w f₃) (w (w uA₃)) (w (w uB₃))))
+                    (prvOk bodyI₃s)))
 
   ------------------------------------------------------------------------
   -- ⬜ WHAT IS STILL NOT HERE — and the old reason was WRONG.
