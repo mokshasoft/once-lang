@@ -36,15 +36,16 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc
         ; βfst; βsnd
         ; ⊢lam; ⊢app; ty-Hom; ty-Nat; ty-Π; ty-El; ⊢⌜Nat⌝
-        ; ⊢conv; _≅ᵀ_; csymᵀ; _⟶*_; step; done; wk-single; natrec-suc; ⊢pair )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El )
+        ; ⊢conv; _≅ᵀ_; csymᵀ; _⟶*_; step; done; wk-single; natrec-suc; ⊢pair; ctrnᵀ )
+open import DirectedHoTT.Metatheory.Injectivity
+  using ( red→≅ᵀ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El; doneᵀ )
 open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast; Ren⊢; ⊢[] )
-open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; ren-w; cong₃; cong₄ )
+open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; ren-w; cong₃; cong₄; pw1 )
 open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT; asN )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
 open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
-open import DirectedHoTT.Lib.ArithComm using ( IdN; ⊢tyIdN )
+open import DirectedHoTT.Lib.ArithComm using ( IdN; ⊢tyIdN; reflN; ⊢reflN )
 open import DirectedHoTT.Lib.Amrec
   using ( Prv; prv; prvOk; prv-cast; wR; renren; module AmTΠ )
 open import DirectedHoTT.Lib.IHCall
@@ -60,7 +61,8 @@ open import DirectedHoTT.Examples.Gcd.Step
         ; G2; ⊢G2; G2z; ⊢G2z; gcdInn2; ⊢gcdInn2
         ; G3; ⊢G3; G3z; ⊢G3z; G3s; ⊢G3s )
 open import DirectedHoTT.Examples.Gcd.StepExt
-  using ( appGcdIH; gcdIH-w; gcdIH-w²; gcdAt; red-β; μ₁; f₁; μ₂; f₂; μ₃; f₃ )
+  using ( appGcdIH; gcdIH-w; gcdIH-w²; gcdAt; red-β; μ₁; f₁; μ₂; f₂; μ₃; f₃
+        ; probe₁-s; probe₂-s )
 open import DirectedHoTT.Examples.Gcd.StepExtE using ( gcdIH-sub )
 open import DirectedHoTT.Examples.Gcd.StepExtL using ( red₃z )
 open import DirectedHoTT.Examples.Gcd.StepExtLs using ( red₃s )
@@ -652,6 +654,159 @@ module Plumb (M : Motive) where
             (⊢-cast (sym (indG-sub {σ = extS nrs}
                             (w (w B₃)) (w f₃) (w (w uA₃)) (w (w uB₃))))
                     (prvOk bodyI₃s)))
+
+
+  ------------------------------------------------------------------------
+  -- ★★ THE THREE MOTIVES, TYPED.
+  ------------------------------------------------------------------------
+
+  ⊢MI₁ : {Γ : Ctx} → ((Γ ▹ PairT) ▹ Nat) ⊢ty MI₁
+  ⊢MI₁ = ⊢indG (⊢plus (⊢fst (⊢var (there here))) (⊢var here))
+               (⊢natrec-var ⊢G1 ⊢G1z ⊢gcdInn1)
+               (⊢fst (⊢var (there here))) (⊢var here)
+
+  ⊢MI₂ : {Γ : Ctx} → (ΘI₂ Γ ▹ Nat) ⊢ty MI₂
+  ⊢MI₂ = ⊢indG (⊢plus (⊢var here) (⊢nsuc (⊢var (there (there here)))))
+               (⊢natrec-var ⊢G2 ⊢G2z ⊢gcdInn2)
+               (⊢var here) (⊢nsuc (⊢var (there (there here))))
+
+  ⊢MI₃ : {Γ : Ctx} → (ΘI₃ Γ ▹ Nat) ⊢ty MI₃
+  ⊢MI₃ =
+    ty-Π (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (there here))))
+                         (⊢nsuc (⊢var (there (there (there (there here)))))))
+                 (⊢var here))
+         (⊢indG (⊢wk (⊢plus (⊢nsuc (⊢var (there (there here))))
+                            (⊢nsuc (⊢var (there (there (there (there here))))))))
+                (⊢wk (⊢natrec-var ⊢G3 ⊢G3z ⊢G3s))
+                (⊢wk (⊢nsuc (⊢var (there (there here)))))
+                (⊢wk (⊢nsuc (⊢var (there (there (there (there here))))))))
+
+
+  ------------------------------------------------------------------------
+  -- ★★★ THE THREE SPLITS — the nested `natrec`s.
+  ------------------------------------------------------------------------
+
+  split3 : {Γ : Ctx} → Prv (ΘI₃ Γ) (subTy (single μAB) MI₃)
+  split3 = prv _ (⊢natrec ⊢MI₃ (prvOk leafI₃z) (prvOk leafI₃s)
+                          (⊢monus (⊢nsuc (⊢var (there here)))
+                                  (⊢nsuc (⊢var (there (there (there here)))))))
+
+
+  -- ⚠ `probeI₃-at` IS `refl` IN THE CONCRETE DEVELOPMENT AND CANNOT BE HERE.
+  --   `subTm σ (QCode …)` UNFOLDS, so Agda pushes the substitution through
+  --   `indG` structurally and `…GcdDvd`'s probe is `refl`.  `subTm σ (PC …)`
+  --   is STUCK — `PC` is a module parameter — so `indG-sub` must be cited.
+  --   Same opacity tax as the leaves, in the assembly this time.
+  probeI₃-atP : {Γ : Cx} →
+                subTy (single μAB) (MI₃ {Γ})
+              ≡ Π (IdN μAB μAB)
+                  (indG (subTm (extS (single μAB)) (w (w (plusTm uA₃ uB₃))))
+                        (subTm (extS (single μAB)) (w f₃))
+                        (subTm (extS (single μAB)) (w (w uA₃)))
+                        (subTm (extS (single μAB)) (w (w uB₃))))
+  probeI₃-atP =
+    cong₂ Π refl (indG-sub {σ = extS (single μAB)}
+                    (w (w (plusTm uA₃ uB₃))) (w f₃) (w (w uA₃)) (w (w uB₃)))
+
+
+  -- ⚠ THE STEP `StepExt` DOES NOT HAVE: discharge the equation with `reflN`.
+  split3app : {Γ : Ctx} →
+              Prv (ΘI₃ Γ) (indG (plusTm uA₃ uB₃) (subTm (single μAB) f₃) uA₃ uB₃)
+  split3app {Γ} =
+    prv _ (⊢-cast peel
+            (⊢app (⊢-cast probeI₃-atP (prvOk split3))
+                  (⊢reflN (⊢monus (⊢nsuc (⊢var (there here)))
+                                  (⊢nsuc (⊢var (there (there (there here)))))))))
+    where
+      R = reflN (μAB {Γ = ⌊ Γ ⌋})
+
+      pk : (t : RTm ⌊ ΘI₃ Γ ⌋) →
+           subTm (single R) (subTm (extS (single μAB)) (w (w t))) ≡ t
+      pk t = trans (cong (subTm (single R)) (pw1 {u = μAB} t)) (wk-single {v = R} t)
+
+      pf : subTm (single R) (subTm (extS (single μAB)) (w f₃))
+         ≡ subTm (single μAB) f₃
+      pf = trans (cong (subTm (single R)) (sub-w {σ = single μAB} f₃))
+                 (wk-single {v = R} (subTm (single μAB) f₃))
+
+      peel = trans (indG-sub {σ = single R}
+                      (subTm (extS (single μAB)) (w (w (plusTm uA₃ uB₃))))
+                      (subTm (extS (single μAB)) (w f₃))
+                      (subTm (extS (single μAB)) (w (w uA₃)))
+                      (subTm (extS (single μAB)) (w (w uB₃))))
+                   (cong₄ indG (pk (plusTm uA₃ uB₃)) pf (pk uA₃) (pk uB₃))
+
+
+  -- ⚠ ONE MORE STEP THAN THE CONCRETE VERSION.  `…GcdDvdA` writes this as
+  --   `indG-red probe₂-s` alone, because `subTy nrs (indG …)` unfolds when
+  --   the motive is `QCode`.  With `PC` a parameter it is STUCK, so
+  --   `indG-sub` has to be cited before the reduction can apply.
+  eq→≅ᵀ : {Γ : Cx} {T T' : RTy Γ} → T ≡ T' → T ≅ᵀ T'
+  eq→≅ᵀ refl = red→≅ᵀ doneᵀ
+
+  conv₂I : {Γ : Cx} →
+           subTy nrs (MI₂ {Γ})
+         ≅ᵀ indG (plusTm uA₃ uB₃) (subTm (single μAB) f₃) uA₃ uB₃
+  conv₂I = ctrnᵀ (eq→≅ᵀ (indG-sub {σ = nrs} μ₂ f₂ (var vz) (nsuc (var (vs (vs vz))))))
+                 (indG-red probe₂-s)
+
+  -- ⚠ `{⌊ Γ ⌋}` PINNED: `MI₂` is a DEFINED function and `⌊_⌋` is not
+  --   injective, so the raw context never solves from the expected type.
+  split2 : {Γ : Ctx} →
+           Prv (ΘI₂ Γ) (subTy (single (fst (var (vs (vs vz))))) MI₂)
+  split2 {Γ} = prv _ (⊢natrec ⊢MI₂ (prvOk leafI₂z)
+                              (⊢conv (prvOk split3app) (csymᵀ (conv₂I {⌊ Γ ⌋})))
+                              (⊢fst (⊢var (there (there here)))))
+
+  conv₁I : {Γ : Cx} →
+           subTy nrs (MI₁ {Γ}) ≅ᵀ subTy (single (fst (var (vs (vs vz))))) MI₂
+  conv₁I =
+    ctrnᵀ (eq→≅ᵀ (indG-sub {σ = nrs} μ₁ f₁ (fst (var (vs vz))) (var vz)))
+      (ctrnᵀ (indG-red probe₁-s)
+             (eq→≅ᵀ (sym (indG-sub {σ = single (fst (var (vs (vs vz))))}
+                            μ₂ f₂ (var vz) (nsuc (var (vs (vs vz))))))))
+
+  ------------------------------------------------------------------------
+  -- ★★★★★ THE INDUCTION, AT THE GENERIC CARRIER.
+  ------------------------------------------------------------------------
+
+  -- ⚠ THE CAST THE CONCRETE VERSION DOES NOT NEED.  `⊢natrec` lands at
+  --   `subTy (single (snd (var vz))) MI₁`; concretely that REDUCES to the
+  --   `indG` form because `QCode` unfolds, so `…GcdDvdA` states the result
+  --   directly.  Generically `subTm σ (PC …)` is stuck — cite `indG-sub`.
+  ind : {Γ : Ctx} →
+        Prv (Γ ▹ PairT) (indG msr gcdBody (fst (var vz)) (snd (var vz)))
+  ind {Γ} =
+    prv _ (⊢-cast peel
+            (⊢natrec ⊢MI₁
+                     (⊢-cast (sym peelz) (prvOk leafI₁z))
+                     (⊢conv (prvOk split2) (csymᵀ (conv₁I {⌊ Γ ⌋})))
+                     (⊢snd (⊢var here))))
+    where
+      N = snd (var vz)
+      -- ⚠ `leafI₁z` is stated in the SUBSTITUTED form; `⊢natrec` wants
+      --   `subTy (single nzero) MI₁`.  Concretely those coincide by
+      --   computation; generically `indG-sub` must bridge them.
+      --   (`leafI₂z` already carries its own `⊢-castPrv` for this.)
+      peelz = indG-sub {σ = single nzero} μ₁ f₁ (fst (var (vs vz))) (var vz)
+      peel = trans (indG-sub {σ = single N} μ₁ f₁ (fst (var (vs vz))) (var vz))
+                   (cong₄ indG refl refl refl refl)
+
+  ------------------------------------------------------------------------
+  -- ★★★★★★ …AND `IndStep`, DISCHARGED — MOTIVE-GENERIC.
+  ------------------------------------------------------------------------
+
+  -- ⚠ `ρ` is BOUND and PASSED: `PAtR` is a defined function, so the ambient
+  --   renaming never solves from the goal.
+  indStep : {Δ : Ctx} → IndStep Δ PairT ⌜Nat⌝ msr gcdStp gP
+  indStep {Δ} {Θ} {ρ} hρ a ih da dih pw =
+    prv-cast (cong El (sym (PAtR-P ρ a (app (app gcdStp a) ih))))
+      (prv _ (⊢conv (indGElim (⊢-cast (indG-sub {σ = single a}
+                                         msr gcdBody (fst (var vz)) (snd (var vz)))
+                                      (⊢[] (prvOk ind) da))
+                              dih
+                              (prvOk (indPWIntro (⊢plus (⊢fst da) (⊢snd da)) pw)))
+                    (csymᵀ (PC-conv (fst a) (snd a) (red-β a ih)))))
 
   ------------------------------------------------------------------------
   -- ⬜ WHAT IS STILL NOT HERE — and the old reason was WRONG.
