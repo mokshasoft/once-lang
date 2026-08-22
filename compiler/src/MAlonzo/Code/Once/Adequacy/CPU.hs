@@ -33,7 +33,7 @@ d_arch'45'semantics_6 v0
   = case coe v0 of
       MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8
         -> coe
-             MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64.d_arch'45'semantics_300
+             MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64.d_arch'45'semantics_308
       MAlonzo.Code.Once.Target.Arch.C_x86'45'32_10
         -> coe
              MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z32.d_arch'45'semantics_24

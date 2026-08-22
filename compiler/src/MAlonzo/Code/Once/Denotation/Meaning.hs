@@ -149,7 +149,7 @@ du_named'45'sem_60 v0 v1 v2 v3 v4 v5
       (coe
          MAlonzo.Code.Once.Denotation.ValueDomain.du_emit'45'D_158 (coe v0)
          (coe
-            MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_338 (coe v0)
+            MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_346 (coe v0)
             (coe v1) (coe v2) (coe v3) (coe v4))
          (coe
             MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_56 (coe v0)
@@ -158,7 +158,7 @@ du_named'45'sem_60 v0 v1 v2 v3 v4 v5
          MAlonzo.Code.Once.Denotation.ValueDomain.d_inject_60 (coe v1)
          (coe
             MAlonzo.Code.Once.SigOp.Info.du_semM_188
-            (MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_338
+            (MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_346
                (coe v0) (coe v1) (coe v2) (coe v3) (coe v4))
             (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_56
                (coe v0) (coe v5))))
@@ -499,7 +499,7 @@ d_sigOpRef'7472'_280 v0 v1 v2
                 coe
                   du_sigOpVal'7472'_272 (coe v0)
                   (coe
-                     MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_338
+                     MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_346
                      (coe MAlonzo.Code.Once.Type.C_Unit_122) (coe v0) (coe v1)
                      (coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_202)
                      (coe MAlonzo.Code.Once.Functor.Translate.C_con'45'base_230 v4)))
@@ -518,7 +518,7 @@ d_sigOpRef'7472'_280 v0 v1 v2
                                     MAlonzo.Code.Once.Denotation.ValueDomain.du_emit'45'D_158
                                     (coe v8)
                                     (coe
-                                       MAlonzo.Code.Once.Arith.SigOp.Builders.d_arrow'45'info_380
+                                       MAlonzo.Code.Once.Arith.SigOp.Builders.d_arrow'45'info_388
                                        (coe v8) (coe v10) (coe v9) (coe v1) (coe v6) (coe v7))
                                     (coe
                                        MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_56 (coe v8)
@@ -527,7 +527,7 @@ d_sigOpRef'7472'_280 v0 v1 v2
                                     MAlonzo.Code.Once.Denotation.ValueDomain.d_inject_60 (coe v10)
                                     (coe
                                        MAlonzo.Code.Once.SigOp.Info.du_semM_188
-                                       (MAlonzo.Code.Once.Arith.SigOp.Builders.d_arrow'45'info_380
+                                       (MAlonzo.Code.Once.Arith.SigOp.Builders.d_arrow'45'info_388
                                           (coe v8) (coe v10) (coe v9) (coe v1) (coe v6) (coe v7))
                                        (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_56
                                           (coe v8) (coe v12)))))))
@@ -805,7 +805,7 @@ d_'10214'_'10215''7522'_326 v0 v1 v2 v3 v4 v5
                          MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                          (coe
                             MAlonzo.Code.Once.SigOp.Info.du_semM_188
-                            (MAlonzo.Code.Once.Arith.SigOp.Builders.d_str'45'lit'45'info_324
+                            (MAlonzo.Code.Once.Arith.SigOp.Builders.d_str'45'lit'45'info_332
                                (coe v8))
                             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -926,7 +926,7 @@ d_'10214'_'10215''7522'_326 v0 v1 v2 v3 v4 v5
                                  MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                                  (coe
                                     MAlonzo.Code.Once.SigOp.Info.du_semM_188
-                                    MAlonzo.Code.Once.Arith.SigOp.Builders.d_neg'45'info_310 v13))))
+                                    MAlonzo.Code.Once.Arith.SigOp.Builders.d_neg'45'info_318 v13))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'let_164 v10 v12 v13 v14 v15 v16
         -> case coe v1 of
@@ -1010,7 +1010,7 @@ d_'10214'_'10215''7522'_326 v0 v1 v2 v3 v4 v5
                                                 MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                                                 (coe
                                                    MAlonzo.Code.Once.SigOp.Info.du_semM_188
-                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_add'45'info_300
+                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_add'45'info_308
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                       (coe v19) (coe v20))))))))
@@ -1035,7 +1035,7 @@ d_'10214'_'10215''7522'_326 v0 v1 v2 v3 v4 v5
                                                 MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                                                 (coe
                                                    MAlonzo.Code.Once.SigOp.Info.du_semM_188
-                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_sub'45'info_302
+                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_sub'45'info_310
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                       (coe v19) (coe v20))))))))
@@ -1060,7 +1060,7 @@ d_'10214'_'10215''7522'_326 v0 v1 v2 v3 v4 v5
                                                 MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                                                 (coe
                                                    MAlonzo.Code.Once.SigOp.Info.du_semM_188
-                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_mul'45'info_304
+                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_mul'45'info_312
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                       (coe v19) (coe v20))))))))
@@ -1085,7 +1085,7 @@ d_'10214'_'10215''7522'_326 v0 v1 v2 v3 v4 v5
                                                 MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                                                 (coe
                                                    MAlonzo.Code.Once.SigOp.Info.du_semM_188
-                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_div'45'info_306
+                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_div'45'info_314
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                       (coe v19) (coe v20))))))))
@@ -1110,7 +1110,7 @@ d_'10214'_'10215''7522'_326 v0 v1 v2 v3 v4 v5
                                                 MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                                                 (coe
                                                    MAlonzo.Code.Once.SigOp.Info.du_semM_188
-                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_mod'45'info_308
+                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_mod'45'info_316
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                       (coe v19) (coe v20))))))))
@@ -1141,7 +1141,7 @@ d_'10214'_'10215''7522'_326 v0 v1 v2 v3 v4 v5
                                                 MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                                                 (coe
                                                    MAlonzo.Code.Once.SigOp.Info.du_semM_188
-                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_lt'45'info_312
+                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_lt'45'info_320
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                       (coe v19) (coe v20))))))))
@@ -1166,7 +1166,7 @@ d_'10214'_'10215''7522'_326 v0 v1 v2 v3 v4 v5
                                                 MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                                                 (coe
                                                    MAlonzo.Code.Once.SigOp.Info.du_semM_188
-                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_le'45'info_314
+                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_le'45'info_322
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                       (coe v19) (coe v20))))))))
@@ -1191,7 +1191,7 @@ d_'10214'_'10215''7522'_326 v0 v1 v2 v3 v4 v5
                                                 MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                                                 (coe
                                                    MAlonzo.Code.Once.SigOp.Info.du_semM_188
-                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_gt'45'info_316
+                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_gt'45'info_324
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                       (coe v19) (coe v20))))))))
@@ -1216,7 +1216,7 @@ d_'10214'_'10215''7522'_326 v0 v1 v2 v3 v4 v5
                                                 MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                                                 (coe
                                                    MAlonzo.Code.Once.SigOp.Info.du_semM_188
-                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_ge'45'info_318
+                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_ge'45'info_326
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                       (coe v19) (coe v20))))))))
@@ -1241,7 +1241,7 @@ d_'10214'_'10215''7522'_326 v0 v1 v2 v3 v4 v5
                                                 MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                                                 (coe
                                                    MAlonzo.Code.Once.SigOp.Info.du_semM_188
-                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_eq'45'info_320
+                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_eq'45'info_328
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                       (coe v19) (coe v20))))))))
@@ -1266,7 +1266,7 @@ d_'10214'_'10215''7522'_326 v0 v1 v2 v3 v4 v5
                                                 MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                                                 (coe
                                                    MAlonzo.Code.Once.SigOp.Info.du_semM_188
-                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_ne'45'info_322
+                                                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_ne'45'info_330
                                                    (coe
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                       (coe v19) (coe v20))))))))

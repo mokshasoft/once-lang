@@ -64,12 +64,12 @@ d_eval'45'arith'45'W_32 v0 v1 v2 v3
              (coe d_eval'45'arith'45'W_32 (coe v0) (coe v1) (coe v5) (coe v3))
       MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24 v4 v5
         -> coe
-             MAlonzo.Code.Once.Word.d__'47''738'__98 (coe v0)
+             MAlonzo.Code.Once.Word.d__'47''738'__120 (coe v0)
              (coe d_eval'45'arith'45'W_32 (coe v0) (coe v1) (coe v4) (coe v3))
              (coe d_eval'45'arith'45'W_32 (coe v0) (coe v1) (coe v5) (coe v3))
       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26 v4 v5
         -> coe
-             MAlonzo.Code.Once.Word.d__'37''738'__104 (coe v0)
+             MAlonzo.Code.Once.Word.d__'37''738'__126 (coe v0)
              (coe d_eval'45'arith'45'W_32 (coe v0) (coe v1) (coe v4) (coe v3))
              (coe d_eval'45'arith'45'W_32 (coe v0) (coe v1) (coe v5) (coe v3))
       MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28 v4

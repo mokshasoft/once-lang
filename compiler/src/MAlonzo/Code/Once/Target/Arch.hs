@@ -17,6 +17,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Once.Float.Dyadic
 
 -- Once.Target.Arch.Arch
@@ -66,3 +67,12 @@ d_arch'45'float'45'format_32 ::
   T_Arch_6 -> MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28
 d_arch'45'float'45'format_32 v0
   = coe d_float'45'format_22 (coe d_arch'45'numerics_26 (coe v0))
+-- Once.Target.Arch.archName
+d_archName_36 ::
+  T_Arch_6 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_archName_36 v0
+  = case coe v0 of
+      C_x86'45'64_8 -> coe ("x86-64" :: Data.Text.Text)
+      C_x86'45'32_10 -> coe ("x86-32" :: Data.Text.Text)
+      C_riscv64_12 -> coe ("riscv64" :: Data.Text.Text)
+      _ -> MAlonzo.RTE.mazUnreachableError

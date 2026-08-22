@@ -395,6 +395,7 @@ library
       MAlonzo.Code.Once.Adequacy.LexerBridge
       MAlonzo.Code.Once.Adequacy.NameClash
       MAlonzo.Code.Once.Adequacy.ResolverBridge
+      MAlonzo.Code.Once.Adequacy.ResolverLits
       MAlonzo.Code.Once.Grammar.DeclBridge
       MAlonzo.Code.Once.Grammar.FunDefBridge
       MAlonzo.Code.Once.Grammar.ImportBridge
@@ -531,6 +532,7 @@ library
       MAlonzo.Code.Once.Denotation.SourceDenote
       MAlonzo.Code.Once.Adequacy.SourceFaithful
       MAlonzo.Code.Once.Adequacy.SourceTrace
+      MAlonzo.Code.Once.Denotation.Admissible
       MAlonzo.Code.Once.Denotation.Trace
       MAlonzo.Code.Once.Denotation.TraceDenote
       MAlonzo.Code.Once.Denotation.TraceMonad
@@ -641,6 +643,7 @@ test-suite once-test
       Backend.Common
       FloatSpec
       FloatEmitSpec
+      LitRangeSpec
       GeneratorSpec
       IRSpec
       Layer0Spec
