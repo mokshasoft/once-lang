@@ -98,7 +98,13 @@ module Stmt (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp :
             (dstp : Δ ⊢ stp ∷ aStepT A cM m)
             where
 
-  open AmTΠ Δ A cM m stp dA dcM dm dstp using ( amrecTm; ⊢amrecΠ )
+  -- ⚠ `public` MATTERS FOR COST, not just for scope.  Agda's module
+  --   application COPIES the definitions with the arguments substituted,
+  --   so a client that instantiates `Stmt` AND `AmTΠ` at the same
+  --   parameters elaborates the recursor TWICE.  Re-exporting lets one
+  --   instantiation serve.  (`…ExamplesGcdSpec` did exactly that, three
+  --   ways over — see the note in `Concl` below.)
+  open AmTΠ Δ A cM m stp dA dcM dm dstp using ( amrecTm; ⊢amrecΠ ) public
 
   ------------------------------------------------------------------------
   -- ★ THE RECURSIVE VALUE, AT THE BOUND ARGUMENT.  `amrec` applied to the
@@ -1254,7 +1260,14 @@ module Concl (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
              (dstp : Δ ⊢ stp ∷ aStepT A cM m)
              where
 
-  open Stmt Δ A cM m stp dA dcM dm dstp using ( IndAt )
+  -- ★ RE-EXPORTED so a client needs ONE instantiation, not three.
+  --   `Examples/Gcd/Spec` instantiated `Stmt`, `Concl` AND `AmTΠ` at
+  --   identical parameters; since `Concl` opens `Stmt` which opens
+  --   `AmTΠ`, that elaborated `AmTΠ` three times and `Stmt` twice in a
+  --   79-line file.  The handoff's own rule — "extend a module
+  --   instantiation rather than adding a second one" — was stated for
+  --   the library and then violated at the call site.
+  open Stmt Δ A cM m stp dA dcM dm dstp using ( IndAt; valAt; ⊢valAt; amrecTm ) public
 
   AmrecInd : RTm ((⌊ Δ ⌋ ∙) ∙) → Set
   AmrecInd P =
