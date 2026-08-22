@@ -33,13 +33,12 @@ open import DirectedHoTT.Spec.Syntax
         ; Ren; Sub; renTy; renTm; subTy; subTm; extR; extS; _∘ₛ_
         ; subTy-renTy; renTy-subTy; subTy-cong; subTy-subTy )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; _⊢ty_; ⊢natrec; ⊢var; here; wk-single )
+  using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; _⊢ty_; ⊢natrec; ⊢var; here; wk-single; nzero; subTy )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( ⊢-cast; ⊢wk; ren-ty; ren-lemma; Ren⊢-ext
         ; Sub⊢; Sub⊢-ext; sub-ty; sub-lemma; Ren⊢; ∋-cast )
 open import DirectedHoTT.Lib.Wk using ( w; cong₃; sub-w )
-open import DirectedHoTT.Lib.Amrec
-  using ( wR; subren; renren; subrenTy; renTy-idR; rensub )
+open import DirectedHoTT.Lib.Amrec using ( wR; subren; renren; subrenTy; renTy-idR; rensub; Prv; prv; prvOk )
 
 -- ★ the identity typed renaming — also general, also from an example
 Ren⊢-id : {Γ : Ctx} → Ren⊢ Γ Γ (λ v → v)
@@ -261,3 +260,25 @@ w³-fuse t =
                            {σ' = extS (extS (extS σ))} {ϑ' = extR (extR vs)}
                            br s))
               refl
+
+------------------------------------------------------------------------
+-- ★ `natrec` AT THE `Prv` LEVEL.
+--
+-- ⚠ LIFTED 2026-08-22 from `…Examples/Gcd/IndG.Plumb`, where the shape
+--   `prv _ (⊢natrec ⊢M (prvOk z) (prvOk s) n)` occurred THREE times
+--   (`split3`, `split2`, `ind`).  It says nothing about gcd and nothing
+--   about motives — it is `⊢natrec` with the term existentially packaged.
+--
+-- ★ AND PACKAGING IS NOT COSMETIC.  Keeping the branch terms inside `Prv`
+--   is what stops a large proof term reaching a TYPE; naming one there
+--   OOM-killed `Examples/Gcd/MaxSpec` at 220s where the `Prv` form builds
+--   in 77s (`PERF.md` §6).
+------------------------------------------------------------------------
+
+prvNatrec : {Γ : Ctx} {M : RTy (⌊ Γ ⌋ ∙)} {n : RTm ⌊ Γ ⌋} →
+            (Γ ▹ Nat) ⊢ty M →
+            Prv Γ (subTy (single nzero) M) →
+            Prv ((Γ ▹ Nat) ▹ M) (subTy nrs M) →
+            Γ ⊢ n ∷ Nat →
+            Prv Γ (subTy (single n) M)
+prvNatrec dM z s dn = prv _ (⊢natrec dM (prvOk z) (prvOk s) dn)
