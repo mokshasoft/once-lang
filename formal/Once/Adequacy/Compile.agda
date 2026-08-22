@@ -78,13 +78,16 @@ open import Function using (case_of_)
 -- (`Once.Compiler`) supplies `Once.Adequacy.CPU.arch-semantics`.
 open import Once.Adequacy.CPU.Interface using (Arch; Byte; ArchSemantics)
 open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
-open import Relation.Nullary using (Dec; yes; no)
+import Once.Adequacy.ResolverLits as RL
+open import Data.List.Relation.Unary.All using (All)
+import Once.Word as OnceWord
+open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Once.Target.Arch using (arch-numerics)
 
 import Once.Compile as C
 import Once.Grammar as G
 import Once.Parser.Module.Core as P
-open import Data.Sum using (inj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Parser using (parseStrict)
 -- Stage 1 adapter, now a real structural conversion (discharges the
 -- former `gmoduleToModule` postulate).
@@ -499,6 +502,41 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   correct-mir arch doOpt m (just ir) adm mi-eq tw =
     correct-cr arch doOpt m ir (C.compileFromModule C.Heap C.Build doOpt arch m) adm refl mi-eq (tw ir refl)
 
+  -- J4: THE REFUSAL, spelled out. `cfm-build-gated` returns `Error` on `no`,
+  -- so `compile-cr` is `nothing` — but seeing that through `compile-gm` and
+  -- `compile-mir`'s dispatch on `moduleToIR` takes the chain below. Each step
+  -- is an explicit-argument aux, matching this file's convention, so nothing
+  -- hides behind a `with`.
+  --
+  -- Note the `yes` case is ABSURD, not ignored: if the decision said the
+  -- module were admissible we would have a contradiction with `¬adm`. That is
+  -- what makes this the compiler's refusal rather than a coincidence about
+  -- some other path returning `nothing`.
+  refuse-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
+                   (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
+                   (d : Dec (AdmissibleM arch m)) → ¬ AdmissibleM arch m
+               → compile-cr arch (C.cfm-build-gated C.Heap doOpt arch m funs polys d) ≡ nothing
+  refuse-gated arch doOpt m funs polys (yes p) ¬adm = ⊥-elim (¬adm p)
+  refuse-gated arch doOpt m funs polys (no  _) ¬adm = refl
+
+  refuse-ef : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
+                (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) → ¬ AdmissibleM arch m
+            → compile-cr arch (C.cfm-ef-aux C.Heap C.Build doOpt arch m ef) ≡ nothing
+  refuse-ef arch doOpt m (inj₁ err)            ¬adm = refl
+  refuse-ef arch doOpt m (inj₂ (funs , polys)) ¬adm =
+    refuse-gated arch doOpt m funs polys (admissibleM? arch m) ¬adm
+
+  refuse-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
+                 (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) → ¬ AdmissibleM arch m
+             → compile-mir arch doOpt m mir ≡ nothing
+  refuse-mir arch doOpt m nothing   ¬adm = refl
+  refuse-mir arch doOpt m (just ir) ¬adm =
+    refuse-ef arch doOpt m (C.extractFunctions (C.extractAliases m) m) ¬adm
+
+  refuse-gm : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) → ¬ AdmissibleM arch m
+            → compile-gm arch doOpt (just m) ≡ nothing
+  refuse-gm arch doOpt m ¬adm = refuse-mir arch doOpt m (moduleToIR m) ¬adm
+
   -- Layer 1 — over `gmoduleToModule src`. Unparseable ⇒ both `nothing`;
   -- parseable ⇒ defer to `correct-mir`.
   correct-gm : ∀ (arch : Arch) (doOpt : Bool) (gm : Maybe P.Module) →
@@ -517,16 +555,8 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
                                    (⟦ m ⟧⊥-adm arch d)
   correct-gm-adm arch doOpt m (yes adm) tw =
     correct-mir arch doOpt m (moduleToIR m) adm refl (λ ir mi → tw ir mi)
-  correct-gm-adm arch doOpt m (no ¬adm) tw = inadmissible-both-nothing
-    where
-      -- RESIDUAL (plan 0.74 J4): the compiler's refusal. `cfm-build-gated`
-      -- returns `Error` on `no`, so `compile-cr` is `nothing` — but seeing
-      -- that through `compile-gm`/`compile-mir`'s dispatch on `moduleToIR`
-      -- needs the reduction spelled out. Named here, at the use site.
-      postulate
-        inadmissible-both-nothing :
-          Pointwise _≋_ (map (exec arch) (compile-gm arch doOpt (just m)))
-                        (⟦ m ⟧⊥-adm arch (no ¬adm))
+  correct-gm-adm arch doOpt m (no ¬adm) tw
+    rewrite refuse-gm arch doOpt m ¬adm = PW.nothing
 
   correct-gm arch doOpt nothing  tw = PW.nothing
   correct-gm arch doOpt (just m) tw =
@@ -712,25 +742,21 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
                         → src ⊢R tp
                         → AdmissibleM arch (proj₁ tp)
 
-  -- RESIDUAL (plan 0.74 J4). ADMISSIBILITY SURVIVES RESOLUTION.
+  -- J4: ADMISSIBILITY SURVIVES RESOLUTION — a theorem now, not a residual.
   --
   -- `Admissible` is stated over the UN-resolved module (that is what
-  -- `src ⊢R tp` gives); the compiler gates on the RESOLVED one. They have the
-  -- same `Int` literals, and the reason is checkable rather than hopeful:
-  -- `resolveDecls` rewrites each decl with `canonDecl` (which only turns
-  -- `RQualified` into `RResolved` and never touches `RInt`) and inlines
-  -- imports via `signaturesWithOwner`, which keeps ONLY `DSignature` decls and
-  -- drops everything else — so no imported function body, and hence no
-  -- imported literal, is ever added.
-  --
-  -- That makes the lemma TRUE and unwritten. It belongs beside
-  -- `resolver-preserves-trace` / `resolver-preserves-typing` in
-  -- `Once.Adequacy.ResolverBridge`, as `resolver-preserves-intLits`, and the
-  -- proof is an induction over `resolveDecls`' `with`-chain.
-  postulate
-    admissible-resolve : ∀ (arch : Arch) (mm : C.ModuleMap) (mU mR : P.Module)
-                       → C.resolveImports mm mU ≡ inj₂ mR
-                       → AdmissibleM arch mU → AdmissibleM arch mR
+  -- `src ⊢R tp` gives) while the compiler gates on the RESOLVED one, so the
+  -- two must agree. `RL.resolver-preserves-intLits` says they do, and the
+  -- reason is structural: `canonDecl` only turns `RQualified`/`RVar` into
+  -- `RResolved` and never touches `RInt`, and imports are inlined by
+  -- `signaturesWithOwner`, which keeps ONLY `DSignature` decls — so no
+  -- imported function body, and hence no imported literal, is ever added.
+  admissible-resolve : ∀ (arch : Arch) (mm : C.ModuleMap) (mU mR : P.Module)
+                     → C.resolveImports mm mU ≡ inj₂ mR
+                     → AdmissibleM arch mU → AdmissibleM arch mR
+  admissible-resolve arch mm mU mR res-eq adm =
+    subst (All (OnceWord.Width.InRange (C.arch-int-bits arch)))
+          (RL.resolver-preserves-intLits mm mU mR res-eq) adm
 
   -- SOUNDNESS + TRACE conjunct — `accept-sound` (front-end soundness over the
   -- RESOLVED module `mR`) gives `ModuleTyped mR`; `RB.resolver-reflects-typing (arch-numerics arch)`
