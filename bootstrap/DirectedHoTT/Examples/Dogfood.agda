@@ -26,6 +26,33 @@
 --
 -- ⚠ NO `Acc`, NO fuel, NO `TERMINATING`, no measure argument in the
 --   user-facing signature.
+--
+-- ⚠⚠⚠ AND NOW THE HONEST HALF, WHICH THIS HEADER USED TO OMIT (added
+--   2026-08-22).  `⊢amrec` BELOW HAS NEVER BEEN CALLED AND CANNOT BE.
+--   Its premise is `Γ₄ ⊢ x ∷ El cA` where `cA` is a CONTEXT VARIABLE: all
+--   four slots CONSUME an `El cA` and none produces one, so the premise is
+--   unsatisfiable.  Extending `Γ₄` does not help — the statement is fixed
+--   AT `Γ₄`, so an extended context needs it re-derived.
+--   ⇒ THIS IS EXACTLY `lexrec`'s SHAPE AND EXACTLY ITS REASON, and lexrec
+--     was declared dead and parked in `Negative/` on 2026-08-22 for it.
+--     `WF-LIBRARY.md` says it plainly: "lexrec's missing use site and the
+--     dogfooding blocker are THE SAME BLOCKER."
+--
+-- ★ SO WHAT IS THIS FILE FOR, and why is it NOT in `Negative/`?  It is a
+--   DEMONSTRATION, not a combinator: it shows the measure recursor is
+--   DERIVABLE INSIDE THE KERNEL with all four slots as object-language
+--   variables — no new former, `natrec` and `ordtr` suffice.  That design
+--   claim is what it establishes, and it establishes it whether or not the
+--   generic form is callable.  The CALLABLE version is
+--   `Lib/Amrec.AmTΠ`, parameterised at the AGDA level, and gcd uses it.
+--
+-- ⬜ THE REAL DOGFOODING TARGET IS BLOCKED, and not on the WF axis.
+--   Replacing this POC's own `prog`/`usplit`/`trS`/`ordtrS` needs `⊢amrec`
+--   to apply to them, which per ARCHITECTURE.md happens "the moment `RTm`
+--   is a kernel type and `sz` is definable".  `RTm` is INDEXED by its
+--   context, so that needs indexed descriptions (`ρ : (I → I) → Con I →
+--   Con I`) — the INDUCTIVE-TYPES axis, deferred at `PLAN-INDUCTIVE` §7.
+--   ⇒ Not a WF-axis gap.  Do not wait on the WF axis for it.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
