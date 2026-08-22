@@ -484,6 +484,12 @@ import Once.Target.RiscV64 as RiscV64-Target
 -- | Supported architectures — the single shared enum (re-exported so
 -- existing `C.Arch` references downstream are unchanged).
 open import Once.Target.Arch public
+open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?; firstBadLit)
+open import Data.Nat.Show renaming (show to showNat)
+open import Data.Integer using (ℤ)
+open import Data.Nat using (_∸_)
+open import Relation.Nullary using (Dec; yes; no)
+open import Data.Integer.Show renaming (show to showℤ)
 
 -- | Get target implementation for an architecture
 archTarget : Arch → Target
@@ -691,12 +697,53 @@ cfm-check-emit : String ⊎ List CompiledFun → CompileResult
 cfm-check-emit (inj₁ err)       = Error err
 cfm-check-emit (inj₂ compiled)  = Checked compiled
 
+-- | THE LITERAL-RANGE GATE (plan 0.74 J3, D115).
+--
+-- An `Int` literal that does not fit this target's signed range is a compile
+-- error. It is raised HERE, at lowering, and not as a type error: the
+-- constraint is target-specific and the type system is target-generic, which
+-- is the whole reason the frontend does not know the width.
+--
+-- It gates BUILD only. `once check` still succeeds — typechecking genuinely
+-- did — and `once build --target x86_32` is where a literal too wide for
+-- x86-32 is refused. That is the error being target-specific, visible.
+--
+-- The DECISION is `admissibleM?`, the spec's own — one procedure, two callers.
+-- The alternative, a second range test written here, is how `ArithSimX86-32`
+-- came to model a 32-bit target at 64 bits with nothing to catch it.
+--
+-- Arithmetic is NOT gated: it wraps, and D054 says that is defined semantics.
+-- Float literals are not gated either: they always lower, rounding when the
+-- target cannot hold them exactly (D116).
+litRangeError : Arch → Module → String
+litRangeError arch mod = badLit (firstBadLit arch mod)
+  where
+    bits = arch-int-bits arch
+    badLit : Maybe ℤ → String
+    badLit (just z) =
+      "Int literal " ++ showℤ z ++ " does not fit " ++ archName arch
+        ++ "'s signed " ++ showNat bits ++ "-bit range (-2^"
+        ++ showNat (bits ∸ 1) ++ " .. 2^" ++ showNat (bits ∸ 1) ++ "-1). "
+        ++ "Once's Int is the TARGET's word (D054), so this literal is "
+        ++ "expressible on a wider target and not on this one. Arithmetic "
+        ++ "wraps; a literal does not."
+    badLit nothing = "Int literal out of range for " ++ archName arch
+
+-- Explicit-argument aux (no `with`), matching this file's convention, so the
+-- decision stays a subterm downstream proofs can rewrite by.
+cfm-build-gated : AllocMode → Bool → (arch : Arch) → (mod : Module)
+                → List FunInfo → List PolyFunInfo
+                → Dec (AdmissibleM arch mod) → CompileResult
+cfm-build-gated m doOpt arch mod funs polys (no  _) = Error (litRangeError arch mod)
+cfm-build-gated m doOpt arch mod funs polys (yes _) =
+  cfm-build-emit arch (compileAllFuns m doOpt funs (buildPolyCtx polys) (collectSigEffects (Module.decls mod)))
+
 cfm-stage-aux : AllocMode → Stage → Bool → Arch → Module → List FunInfo → List PolyFunInfo → CompileResult
 cfm-stage-aux m Parse doOpt arch mod funs polys = Parsed funs polys
 cfm-stage-aux m Check doOpt arch mod funs polys =
   cfm-check-emit (compileAllFuns m doOpt funs (buildPolyCtx polys) (collectSigEffects (Module.decls mod)))
 cfm-stage-aux m Build doOpt arch mod funs polys =
-  cfm-build-emit arch (compileAllFuns m doOpt funs (buildPolyCtx polys) (collectSigEffects (Module.decls mod)))
+  cfm-build-gated m doOpt arch mod funs polys (admissibleM? arch mod)
 
 cfm-ef-aux : AllocMode → Stage → Bool → Arch → Module → String ⊎ (List FunInfo × List PolyFunInfo) → CompileResult
 cfm-ef-aux m stage doOpt arch mod (inj₁ err)            = Error err

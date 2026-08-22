@@ -78,6 +78,7 @@ open import Function using (case_of_)
 -- (`Once.Compiler`) supplies `Once.Adequacy.CPU.arch-semantics`.
 open import Once.Adequacy.CPU.Interface using (Arch; Byte; ArchSemantics)
 open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
+open import Relation.Nullary using (Dec; yes; no)
 open import Once.Target.Arch using (arch-numerics)
 
 import Once.Compile as C
@@ -392,9 +393,21 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   ⟦_⟧⊥-ir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Arch → Maybe Behavior
   ⟦ nothing  ⟧⊥-ir _    = nothing
   ⟦ just ir  ⟧⊥-ir arch = just (⟦ just ir ⟧IR (arch-numerics arch))
+  -- D115: THE MEANING IS GATED ON ADMISSIBILITY, and this is where Option 2
+  -- of the design lands. `⟦_⟧ˢ` stays TOTAL — a literal out of range still
+  -- denotes its (unreachable) wrapped value — and the partiality lives HERE,
+  -- in whether the program has a meaning at this target at all.
+  --
+  -- It must be gated on the SAME decision the backend refuses on, or `correct`
+  -- is false in one direction or the other: a program the compiler rejects but
+  -- the meaning accepts breaks completeness, and the reverse breaks soundness.
+  ⟦_⟧⊥-adm : (m : P.Module) → (arch : Arch) → Dec (AdmissibleM arch m) → Maybe Behavior
+  ⟦ m ⟧⊥-adm arch (no  _) = nothing
+  ⟦ m ⟧⊥-adm arch (yes _) = ⟦ moduleToIR m ⟧⊥-ir arch
+
   ⟦_⟧⊥-m : Maybe P.Module → Arch → Maybe Behavior
   ⟦ nothing ⟧⊥-m _    = nothing
-  ⟦ just m  ⟧⊥-m arch = ⟦ moduleToIR m ⟧⊥-ir arch
+  ⟦ just m  ⟧⊥-m arch = ⟦ m ⟧⊥-adm arch (admissibleM? arch m)
   ⟦_⟧⊥ : Source → Arch → Maybe Behavior
   ⟦ src ⟧⊥ arch = ⟦ srcToModule src ⟧⊥-m arch
 
@@ -409,12 +422,22 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   ⟦⟧⊥-ir-sound nothing   arch beh ()
   ⟦⟧⊥-ir-sound (just ir) arch beh eq = ir , refl
 
+  -- Dispatch on the SAME gate the meaning does. An inadmissible module has no
+  -- meaning, so `⟦ … ⟧⊥-m ≡ just beh` is absurd there — which is what makes
+  -- the `no` branch a `()` rather than an obligation.
+  ⟦⟧⊥-adm-sound : ∀ (m : P.Module) (arch : Arch) (d : Dec (AdmissibleM arch m))
+                    (beh : Behavior) →
+    ⟦ m ⟧⊥-adm arch d ≡ just beh → ModuleTyped m
+  ⟦⟧⊥-adm-sound m arch (no  _) beh ()
+  ⟦⟧⊥-adm-sound m arch (yes _) beh eq =
+    moduleToIR-typed m (proj₂ (⟦⟧⊥-ir-sound (moduleToIR m) arch beh eq))
+
   ⟦⟧⊥-m-sound : ∀ (mm : Maybe P.Module) (arch : Arch) (beh : Behavior) →
     ⟦ mm ⟧⊥-m arch ≡ just beh →
     Σ-syntax P.Module (λ m → (mm ≡ just m) × ModuleTyped m)
   ⟦⟧⊥-m-sound nothing  arch beh ()
   ⟦⟧⊥-m-sound (just m) arch beh eq =
-    m , refl , moduleToIR-typed m (proj₂ (⟦⟧⊥-ir-sound (moduleToIR m) arch beh eq))
+    m , refl , ⟦⟧⊥-adm-sound m arch (admissibleM? arch m) beh eq
 
   ⟦⟧⊥-sound : ∀ (src : Source) (arch : Arch) (beh : Behavior) →
     ⟦ src ⟧⊥ arch ≡ just beh →
@@ -452,28 +475,29 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- supplied trace witness; the three reject results are ruled out by
   -- `main⇒built` (a `main` always Builds), so `compile` here can only Build.
   correct-cr : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋)
-                 (cr : C.CompileResult) →
+                 (cr : C.CompileResult) → AdmissibleM arch m →
                  C.compileFromModule C.Heap C.Build doOpt arch m ≡ cr →
                  moduleToIR m ≡ just ir →
                  TraceAt arch doOpt m ir →
                  Pointwise _≋_ (map (exec arch) (compile-cr arch cr)) (⟦ just ir ⟧⊥-ir arch)
-  correct-cr arch doOpt m ir (C.Built asm)  cf-eq mi-eq tw = PW.just (tw asm cf-eq)
-  correct-cr arch doOpt m ir (C.Parsed _ _) cf-eq mi-eq tw =
-    case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir mi-eq)) of λ ()
-  correct-cr arch doOpt m ir (C.Checked _)  cf-eq mi-eq tw =
-    case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir mi-eq)) of λ ()
-  correct-cr arch doOpt m ir (C.Error _)    cf-eq mi-eq tw =
-    case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir mi-eq)) of λ ()
+  correct-cr arch doOpt m ir (C.Built asm)  adm cf-eq mi-eq tw = PW.just (tw asm cf-eq)
+  correct-cr arch doOpt m ir (C.Parsed _ _) adm cf-eq mi-eq tw =
+    case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir adm mi-eq)) of λ ()
+  correct-cr arch doOpt m ir (C.Checked _)  adm cf-eq mi-eq tw =
+    case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir adm mi-eq)) of λ ()
+  correct-cr arch doOpt m ir (C.Error _)    adm cf-eq mi-eq tw =
+    case trans (sym cf-eq) (proj₂ (main⇒built arch doOpt m ir adm mi-eq)) of λ ()
 
   -- Layer 2 — over `moduleToIR m`. No `main` ⇒ both sides `nothing` (the
   -- executable gate, definitional); a `main` ⇒ defer to `correct-cr`.
   correct-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) →
+                  AdmissibleM arch m →
                   moduleToIR m ≡ mir →
                   (∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → mir ≡ just ir → TraceAt arch doOpt m ir) →
                   Pointwise _≋_ (map (exec arch) (compile-mir arch doOpt m mir)) (⟦ mir ⟧⊥-ir arch)
-  correct-mir arch doOpt m nothing   mi-eq tw = PW.nothing
-  correct-mir arch doOpt m (just ir) mi-eq tw =
-    correct-cr arch doOpt m ir (C.compileFromModule C.Heap C.Build doOpt arch m) refl mi-eq (tw ir refl)
+  correct-mir arch doOpt m nothing   adm mi-eq tw = PW.nothing
+  correct-mir arch doOpt m (just ir) adm mi-eq tw =
+    correct-cr arch doOpt m ir (C.compileFromModule C.Heap C.Build doOpt arch m) adm refl mi-eq (tw ir refl)
 
   -- Layer 1 — over `gmoduleToModule src`. Unparseable ⇒ both `nothing`;
   -- parseable ⇒ defer to `correct-mir`.
@@ -481,9 +505,32 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
                  (∀ (m : P.Module) → gm ≡ just m →
                     ∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → TraceAt arch doOpt m ir) →
                  Pointwise _≋_ (map (exec arch) (compile-gm arch doOpt gm)) (⟦ gm ⟧⊥-m arch)
+  -- D115: dispatch on the SAME gate the meaning uses. Inadmissible ⇒ the
+  -- meaning is `nothing`, and the compiler's Build stage returns `Error`, so
+  -- `compile-cr` is `nothing` too — both sides absent, `PW.nothing`. That the
+  -- two agree is not a coincidence to be argued: it is one decision procedure
+  -- consulted twice.
+  correct-gm-adm : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
+                     (d : Dec (AdmissibleM arch m)) →
+                     (∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → moduleToIR m ≡ just ir → TraceAt arch doOpt m ir) →
+                     Pointwise _≋_ (map (exec arch) (compile-gm arch doOpt (just m)))
+                                   (⟦ m ⟧⊥-adm arch d)
+  correct-gm-adm arch doOpt m (yes adm) tw =
+    correct-mir arch doOpt m (moduleToIR m) adm refl (λ ir mi → tw ir mi)
+  correct-gm-adm arch doOpt m (no ¬adm) tw = inadmissible-both-nothing
+    where
+      -- RESIDUAL (plan 0.74 J4): the compiler's refusal. `cfm-build-gated`
+      -- returns `Error` on `no`, so `compile-cr` is `nothing` — but seeing
+      -- that through `compile-gm`/`compile-mir`'s dispatch on `moduleToIR`
+      -- needs the reduction spelled out. Named here, at the use site.
+      postulate
+        inadmissible-both-nothing :
+          Pointwise _≋_ (map (exec arch) (compile-gm arch doOpt (just m)))
+                        (⟦ m ⟧⊥-adm arch (no ¬adm))
+
   correct-gm arch doOpt nothing  tw = PW.nothing
   correct-gm arch doOpt (just m) tw =
-    correct-mir arch doOpt m (moduleToIR m) refl (λ ir mi → tw m refl ir mi)
+    correct-gm-adm arch doOpt m (admissibleM? arch m) (λ ir mi → tw m refl ir mi)
 
   -- THE unconditional claim (Plan 0.48), COMPOSED from three layers. They
   -- walk `gmoduleToModule → moduleToIR → compileFromModule` on explicit
@@ -626,10 +673,27 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
           c≡n rewrite g-eq | mi = refl
 
   -- The total meaning at an accepted source: `⟦ src ⟧⊥ ≡ just (⟦ moduleToIR m ⟧IR)`.
+  -- D115: only for an ADMISSIBLE module. Inadmissible ones have no meaning
+  -- here, which is the whole point of the gate.
+  ⟦⟧⊥-just-adm : ∀ (arch : Arch) (m : P.Module) (d : Dec (AdmissibleM arch m))
+               → AdmissibleM arch m
+               → ⟦ m ⟧⊥-adm arch d ≡ ⟦ moduleToIR m ⟧⊥-ir arch
+  ⟦⟧⊥-just-adm arch m (yes _)   adm = refl
+  ⟦⟧⊥-just-adm arch m (no ¬adm) adm = ⊥-elim (¬adm adm)
+
   ⟦⟧⊥-just : ∀ (src : Source) (arch : Arch) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
+    AdmissibleM arch m →
     srcToModule src ≡ just m → moduleToIR m ≡ just ir →
     ⟦ src ⟧⊥ arch ≡ just (⟦ moduleToIR m ⟧IR (arch-numerics arch))
-  ⟦⟧⊥-just src arch m ir g-eq mi rewrite g-eq | mi = refl
+  ⟦⟧⊥-just src arch m ir adm g-eq mi rewrite g-eq =
+    trans (go (admissibleM? arch m) adm)
+          (trans (cong (λ x → ⟦ x ⟧⊥-ir arch) mi)
+                 (cong (λ x → just (⟦ x ⟧IR (arch-numerics arch))) (sym mi)))
+    where
+      go : ∀ (d : Dec (AdmissibleM arch m)) → AdmissibleM arch m →
+           ⟦ m ⟧⊥-adm arch d ≡ ⟦ moduleToIR m ⟧⊥-ir arch
+      go (yes _)   _ = refl
+      go (no ¬adm) a = ⊥-elim (¬adm a)
 
   -- SOUNDNESS + TRACE conjunct — `accept-sound` (front-end soundness over the
   -- RESOLVED module `mR`) gives `ModuleTyped mR`; `RB.resolver-reflects-typing (arch-numerics arch)`

@@ -47,7 +47,8 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; all?)
 open import Data.Integer using (ℤ)
 open import Data.Nat using (ℕ)
-open import Relation.Nullary using (Dec)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Target.Arch using (Arch; arch-int-bits)
 import Once.Word as OnceWord
@@ -115,3 +116,15 @@ AdmissibleM arch m =
 admissibleM? : ∀ arch m → Dec (AdmissibleM arch m)
 admissibleM? arch m =
   all? (OnceWord.Width.inRange? (arch-int-bits arch)) (moduleIntLits m)
+
+-- | The first literal that does not fit, for the backend's error message.
+-- Not part of the admissibility STATEMENT — `AdmissibleM` says whether a
+-- program is expressible, this says which literal to blame.
+outOfRange : ℕ → List ℤ → Maybe ℤ
+outOfRange bits []       = nothing
+outOfRange bits (z ∷ zs) with OnceWord.Width.inRange? bits z
+... | yes _ = outOfRange bits zs
+... | no  _ = just z
+
+firstBadLit : Arch → Module → Maybe ℤ
+firstBadLit arch m = outOfRange (arch-int-bits arch) (moduleIntLits m)

@@ -16,6 +16,9 @@
 module Once.Adequacy.MainBuilds where
 
 open import Data.Bool using (Bool; false; true)
+open import Data.Empty using (⊥-elim)
+open import Relation.Nullary using (Dec; yes; no)
+open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; Σ-syntax; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_)
@@ -154,19 +157,36 @@ crm-doOpt doOpt m eq =
 -- `compileFromModule Build doOpt ≡ Built _` (shared `compileAllFuns` call).
 ------------------------------------------------------------------------
 
-cfm-built-aux : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module)
+-- D115: the BUILD stage is now gated on admissibility, so "a module with a
+-- `main` builds" is only true when the target can express its literals. The
+-- premise is where that shows, and the `no` branch is where it would fail —
+-- which is exactly the point: an inadmissible module must NOT build.
+--
+-- Dispatching on the DECISION (explicit argument, no `with`) keeps the gate a
+-- subterm, so this reduces for a caller who has already decided.
+cfm-built-gated : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module)
+  (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
+  (d : Dec (AdmissibleM arch m)) → AdmissibleM arch m →
+  {c : List C.CompiledFun} →
+  C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys) (C.collectSigEffects (P.Module.decls m)) ≡ inj₂ c →
+  Σ-syntax String (λ asm → C.cfm-build-gated C.Heap doOpt arch m funs polys d ≡ C.Built asm)
+cfm-built-gated doOpt arch m funs polys (yes _) adm eq = _ , cong (C.cfm-build-emit arch) eq
+cfm-built-gated doOpt arch m funs polys (no ¬adm) adm eq = ⊥-elim (¬adm adm)
+
+cfm-built-aux : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) → AdmissibleM arch m →
   (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) {c : List C.CompiledFun} →
   C.compileResolvedModule-aux C.Heap doOpt m ef ≡ inj₂ c →
   Σ-syntax String (λ asm → C.cfm-ef-aux C.Heap C.Build doOpt arch m ef ≡ C.Built asm)
-cfm-built-aux doOpt arch m (inj₁ err) ()
-cfm-built-aux doOpt arch m (inj₂ (funs , polys)) eq =
-  _ , cong (C.cfm-build-emit arch) eq
+cfm-built-aux doOpt arch m adm (inj₁ err) ()
+cfm-built-aux doOpt arch m adm (inj₂ (funs , polys)) eq =
+  cfm-built-gated doOpt arch m funs polys (admissibleM? arch m) adm eq
 
-cfm-built-from-crm : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) {c : List C.CompiledFun} →
+cfm-built-from-crm : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) → AdmissibleM arch m →
+  {c : List C.CompiledFun} →
   C.compileResolvedModule C.Heap doOpt m ≡ inj₂ c →
   Σ-syntax String (λ asm → C.compileFromModule C.Heap C.Build doOpt arch m ≡ C.Built asm)
-cfm-built-from-crm doOpt arch m eq =
-  cfm-built-aux doOpt arch m (C.extractFunctions (C.extractAliases m) m) eq
+cfm-built-from-crm doOpt arch m adm eq =
+  cfm-built-aux doOpt arch m adm (C.extractFunctions (C.extractAliases m) m) eq
 
 ------------------------------------------------------------------------
 -- `moduleToIR m ≡ just ir` ⇒ `compileResolvedModule Heap false m ≡ inj₂ _`.
@@ -187,10 +207,16 @@ moduleToIR-inj₂ m eq = mtir-aux-inj₂ (C.compileResolvedModule C.Heap false m
 -- `main⇒built` — the obligation of `Once.Adequacy.Compile`.
 ------------------------------------------------------------------------
 
+-- D115: a `main` is no longer enough — the target must also be able to
+-- express the module's literals. That premise is not a weakening: it is the
+-- statement becoming true, since without it the theorem now has a
+-- counterexample (a module whose `main` compiles but whose literal is too wide
+-- for this target).
 main⇒built : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
+  AdmissibleM arch m →
   moduleToIR m ≡ just ir →
   Σ-syntax String (λ asm → C.compileFromModule C.Heap C.Build doOpt arch m ≡ C.Built asm)
-main⇒built arch doOpt m ir mi =
+main⇒built arch doOpt m ir adm mi =
   let (funs  , crm-false)  = moduleToIR-inj₂ m mi
       (funs' , crm-doOpt') = crm-doOpt doOpt m crm-false
-  in cfm-built-from-crm doOpt arch m crm-doOpt'
+  in cfm-built-from-crm doOpt arch m adm crm-doOpt'

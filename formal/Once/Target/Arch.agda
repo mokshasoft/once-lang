@@ -71,3 +71,13 @@ arch-int-bits a = int-bits (arch-numerics a)
 
 arch-float-format : Arch → FloatFormat
 arch-float-format a = float-format (arch-numerics a)
+
+-- | The target's name, for diagnostics. Here rather than in the compiler
+-- because it is a fact about the target, and because an error that says which
+-- target refused a literal is the whole point of refusing per target.
+open import Data.String using (String)
+
+archName : Arch → String
+archName x86-64  = "x86-64"
+archName x86-32  = "x86-32"
+archName riscv64 = "riscv64"
