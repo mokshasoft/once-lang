@@ -505,6 +505,11 @@ data _⊢ty_ : (Γ : Ctx) → RTy ⌊ Γ ⌋ → Set
 --   `dκ` slot's smallness is a TYPING fact (`◇ ⊢ c ∷ U`).
 data DConWf : DCon → Set
 data DescWf : Desc → Set
+-- ★★ their INDEXED twins.  Indexed BY the index type: a shift and a field
+--   code are both functions OUT of it, so well-formedness cannot be stated
+--   without knowing what it is.
+data IConWf  : RTy ε → ICon → Set
+data IDescWf : RTy ε → IDesc → Set
 
 data _⊢_∷_ where
   ⊢var  : ∀ {Γ x A}     → Γ ∋ x ∷ A → Γ ⊢ var x ∷ A
@@ -609,6 +614,11 @@ data _⊢_∷_ where
   -- needs a `⊩₀` witness at every `dκ` slot, and this is now a second
   -- door through which `Mu D` enters — so it must carry the same key.
   ⊢⌜Mu⌝   : ∀ {Γ D} → DescWf D → Γ ⊢ ⌜Mu⌝ {⌊ Γ ⌋} D ∷ U
+  -- ★ the INDEXED code.  Required, not optional: without it an indexed type
+  --   cannot live in `U`, so it could never be the carrier `A : U` that
+  --   `amrec` recurses over — which is exactly what dogfooding needs.
+  ⊢⌜IMu⌝  : ∀ {Γ D I i} → IDescWf I D → Γ ⊢ i ∷ εwkTy I →
+            Γ ⊢ ⌜IMu⌝ D I i ∷ U
   ⊢⌜Unit⌝ : ∀ {Γ} → Γ ⊢ ⌜Unit⌝ {⌊ Γ ⌋} ∷ U
   ⊢idrefl : ∀ {Γ c t}   → Γ ⊢ c ∷ U → Γ ⊢ t ∷ El c →
                           Γ ⊢ idrefl c t ∷ Id (El c) t t
@@ -673,6 +683,10 @@ data _⊢ty_ where
   -- that introduces `Mu D`, so it is the only place the interpretation
   -- can enter.  (It was unconditional while `Mu` had no model.)
   ty-Mu   : ∀ {Γ D}   → DescWf D → Γ ⊢ty Mu D
+  -- ★★★ INDEXED formation.  ⚠ Needs the INDEX to be typed, which is why
+  --   `IMu` carries the index TYPE at all — `ty-Mu` needs no such thing.
+  --   Writing THIS rule is what exposed the missing field (2026-08-22).
+  ty-IMu  : ∀ {Γ D I i} → IDescWf I D → Γ ⊢ i ∷ εwkTy I → Γ ⊢ty IMu D I i
   -- W2: `Hom` FORMATION — both endpoints at the same (well-formed) type.
   ty-Hom  : ∀ {Γ A t u} → Γ ⊢ty A → Γ ⊢ t ∷ A → Γ ⊢ u ∷ A → Γ ⊢ty Hom A t u
 
@@ -699,6 +713,30 @@ data DConWf where
 data DescWf where
   dwf-nil  : DescWf dnil
   dwf-cons : {C : DCon} {E : Desc} → DConWf C → DescWf E → DescWf (C ◃ E)
+
+-- ★★★ INDEXED well-formedness.
+--
+-- ⚠ `iwf-κ` asks for `◇ ⊢ κ ∷ Π I U` — a closed function from the index
+--   type to CODES.  That is strictly better behaved than `dwf-κ`'s
+--   `dκ (El c) C` hack: `dκ` takes an arbitrary `RTy ε` and well-formedness
+--   then has to RESTRICT it to an `El` of a code ("the κ field must be
+--   SMALL"). Here the code-valued function is the constructor's own field,
+--   so `ipayTy` produces `El (app κ i)` and smallness is structural.
+--
+-- ⚠ `iwf-ρ` asks for `◇ ⊢ f ∷ Π I (εwkTy I)` — the shift is an endofunction
+--   on the index type.  For a SYNTAX that is `lam (var vz)` (a field at the
+--   ambient index) or `lam (nsuc (var vz))` (one under a binder).
+data IConWf where
+  iwf-ι : {I : RTy ε} → IConWf I iι
+  iwf-ρ : {I : RTy ε} {C : ICon} (f : RTm ε) →
+          ◇ ⊢ f ∷ Π I (εwkTy I) → IConWf I C → IConWf I (iρ f C)
+  iwf-κ : {I : RTy ε} {C : ICon} (κ : RTm ε) →
+          ◇ ⊢ κ ∷ Π I U → IConWf I C → IConWf I (iκ κ C)
+
+data IDescWf where
+  idwf-nil  : {I : RTy ε} → IDescWf I inil
+  idwf-cons : {I : RTy ε} {C : ICon} {E : IDesc} →
+              IConWf I C → IDescWf I E → IDescWf I (C ◂ E)
 
 -- CONTEXT well-formedness. Needed because `⊢var`'s type comes from a lookup:
 -- syntactic validity at `⊢var` is exactly "a lookup in a well-formed context
