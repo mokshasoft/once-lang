@@ -41,7 +41,8 @@ open import DirectedHoTT.Spec.Syntax
         ; Ren; extR; Sub; subTy; subTm; extS; _∘ₛ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; renTm
         ; subTm-subTm; subTm-cong; subTm-renTm; subTm-id; renTm-subTm
         ; renTm-renTm; renTm-cong
-        ; Desc; con; elim; lookupD; sel; fields; sub-fields; sub-sel )
+        ; Desc; con; elim; lookupD; sel; fields; sub-fields; sub-sel
+        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm )
 open import DirectedHoTT.Spec.Variance using ( ren-as-sub )
 open import DirectedHoTT.Spec.Variance
   using ( pw?; stkC?; stkA?; pwBody; pwShift

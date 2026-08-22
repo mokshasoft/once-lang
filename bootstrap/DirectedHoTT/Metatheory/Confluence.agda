@@ -36,7 +36,8 @@ open import DirectedHoTT.Spec.Syntax
         ; Sub; extS; subTm; renTm-subTm; subTm-renTm; subTm-cong
         ; _ᵣ∘ₛ_; _ₛ∘ᵣ_; _∘ᵣ_
         ; Desc; DCon; dι; dρ; dκ; con; elim; lookupD; sel; fields; ren-fields; ren-sel; sub-fields; sub-sel
-        ; ihs )
+        ; ihs
+        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; pw?; stkC?; stkA?; pwBody; pwShift
         ; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren

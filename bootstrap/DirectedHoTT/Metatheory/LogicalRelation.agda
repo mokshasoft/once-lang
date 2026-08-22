@@ -53,7 +53,8 @@ open import DirectedHoTT.Spec.Syntax
         ; Ren; extR; Sub; subTy; subTm; extS; renTm
         ; subTm-renTm; subTm-id; Hom-cong₃; ⌜Hom⌝-cong₃
         ; Desc; Mu; con; elim; lookupD; sel; fields
-        ; DCon; dι; dρ; dκ; dnil; _◃_; εwkTy; _∈D_; hereD; thereD; ⌜Mu⌝ )
+        ; DCon; dι; dρ; dκ; dnil; _◃_; εwkTy; _∈D_; hereD; thereD; ⌜Mu⌝
+        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm )
 open import DirectedHoTT.Spec.Typing
   using ( single; nrs
         ; _⟶_; β; βfst; βsnd; ξ-lam; ξ-appˡ; ξ-appʳ

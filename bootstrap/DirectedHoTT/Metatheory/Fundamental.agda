@@ -25,7 +25,8 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy-subTy; subTm-subTm
         ; subTy-id; subTm-id; renTm-renTm; renTm-cong
         ; Desc; DCon; Mu; con; elim; lookupD; εsub; εwkTy; payTy; payTy-sub; ⌜Mu⌝
-        ; _∈D_; hereD; thereD; sel; ihs; dnil; _◃_; dι; dρ; dκ; fields )
+        ; _∈D_; hereD; thereD; sel; ihs; dnil; _◃_; dι; dρ; dκ; fields
+        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Typing
   using ( single; nrs
