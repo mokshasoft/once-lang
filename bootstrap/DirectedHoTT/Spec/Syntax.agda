@@ -1129,6 +1129,48 @@ iihs D I i ms (iκ κ C) p = iihs D I i ms C (snd p)
 ifields : IDesc → RTy ε → RTm Γ → RTm Γ → ICon → RTm Γ → RTm Γ → RTm Γ
 ifields D I i ms C m p = app (app m p) (iihs D I i ms C p)
 
+-- ★★ the INDEXED naturality.  ⚠ The `iρ` case is where indexing actually
+--   costs something: the recursive `ielim` sits at the SHIFTED index
+--   `app (εwkTm f) i`, so the shift must be shown INERT under the action.
+--   That is precisely what `εwkTm-ren`/`εwkTm-sub` were written for.
+ren-iihs : (ρ : Ren Γ Δ) (D : IDesc) (I : RTy ε) (i ms : RTm Γ)
+           (C : ICon) (p : RTm Γ) →
+           renTm ρ (iihs D I i ms C p)
+             ≡ iihs D I (renTm ρ i) (renTm ρ ms) C (renTm ρ p)
+ren-iihs ρ D I i ms iι       p = refl
+ren-iihs ρ D I i ms (iρ f C) p =
+  cong₂ pair
+    (cong (λ z → ielim D (app z (renTm ρ i)) (renTm ρ ms) (fst (renTm ρ p)))
+          (εwkTm-ren ρ f))
+    (ren-iihs ρ D I i ms C (snd p))
+ren-iihs ρ D I i ms (iκ κ C) p = ren-iihs ρ D I i ms C (snd p)
+
+sub-iihs : (σ : Sub Γ Δ) (D : IDesc) (I : RTy ε) (i ms : RTm Γ)
+           (C : ICon) (p : RTm Γ) →
+           subTm σ (iihs D I i ms C p)
+             ≡ iihs D I (subTm σ i) (subTm σ ms) C (subTm σ p)
+sub-iihs σ D I i ms iι       p = refl
+sub-iihs σ D I i ms (iρ f C) p =
+  cong₂ pair
+    (cong (λ z → ielim D (app z (subTm σ i)) (subTm σ ms) (fst (subTm σ p)))
+          (εwkTm-sub σ f))
+    (sub-iihs σ D I i ms C (snd p))
+sub-iihs σ D I i ms (iκ κ C) p = sub-iihs σ D I i ms C (snd p)
+
+ren-ifields : (ρ : Ren Γ Δ) (D : IDesc) (I : RTy ε) (i ms : RTm Γ)
+              (C : ICon) (m p : RTm Γ) →
+              renTm ρ (ifields D I i ms C m p)
+                ≡ ifields D I (renTm ρ i) (renTm ρ ms) C (renTm ρ m) (renTm ρ p)
+ren-ifields ρ D I i ms C m p =
+  cong (app (app (renTm ρ m) (renTm ρ p))) (ren-iihs ρ D I i ms C p)
+
+sub-ifields : (σ : Sub Γ Δ) (D : IDesc) (I : RTy ε) (i ms : RTm Γ)
+              (C : ICon) (m p : RTm Γ) →
+              subTm σ (ifields D I i ms C m p)
+                ≡ ifields D I (subTm σ i) (subTm σ ms) C (subTm σ m) (subTm σ p)
+sub-ifields σ D I i ms C m p =
+  cong (app (app (subTm σ m) (subTm σ p))) (sub-iihs σ D I i ms C p)
+
 data _∈D_ : ℕ → Desc → Set where
   hereD  : {C : DCon} {E : Desc} → zero ∈D (C ◃ E)
   thereD : {k : ℕ} {C : DCon} {E : Desc} → k ∈D E → suc k ∈D (C ◃ E)
