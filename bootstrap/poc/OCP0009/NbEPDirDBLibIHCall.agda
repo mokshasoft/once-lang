@@ -46,9 +46,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; subTy; subTm; renTy; renTm; Ren; Sub; extS; extR )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; _⊢ty_; ⊢lam; ⊢app; ⊢nsuc; ty-Π; ty-Hom; ty-Nat )
+        ; _⊢_∷_; _⊢ty_; ⊢lam; ⊢app; ⊢nsuc; ty-Π; ty-Hom; ty-Nat; wk-single )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢-cast )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; sub-w )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat'; aIHTat )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( aIHTat-ren )

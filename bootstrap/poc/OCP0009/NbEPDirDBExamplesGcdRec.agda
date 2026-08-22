@@ -20,9 +20,8 @@ open import poc.OCP0009.NbEPDirDBPi
         ; subTm )
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; _⊢_∷_; ⊢app; ⊢nsuc; ⊢nzero; ⊢conv; csymᵀ
-        ; _⟶*_; done )
+        ; _⟶*_; done; wk-single )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢-cast; ⊢[] )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
 open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( Prv; prv; prvTm; prvOk; idToRed; idOfRed )

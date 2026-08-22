@@ -52,14 +52,13 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; ⊢nsuc; ⊢lam; ⊢nzero; nrs; ⊢jsub
         ; ty-El; ty-Π; ty-Hom; ty-Nat
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢conv; csymᵀ; credᵀ; El-⌜Id⌝; ⊢ordtr
-        ; Hom-Nat-ss; ⊢natrec )
+        ; Hom-Nat-ss; ⊢natrec; wk-single )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢; Ren⊢-ext; ren-lemma; ren-ty
         ; Sub⊢; Sub⊢-ext; ⊢single; sub-lemma; wk-cancel-tm )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-fit )
 open import poc.OCP0009.NbEPDirDBLibWk
   using ( w; wᶠ; wᶠ¹-single; ⊢wkᶠ; sub-w; cong₃; cong₄; ren-sub )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibAmrec
   using ( aStepT; aStepT-ren; Prv; prv; prvOk; prvTm; StepExt; idOfRed
         ; prv-cast; wR; Ren⊢-comp; renren; renrenTy; extcondR; sub1-ren

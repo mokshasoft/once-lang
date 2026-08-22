@@ -35,11 +35,9 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⊢_∷_; ⊢var; here; ⊢unit; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢absurd; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝
         ; ⊢lam; ⊢app; there; nrs; single
-        ; _⊢ty_; ty-El; ty-Nat; ty-U; ty-Π; ty-Hom )
+        ; _⊢ty_; ty-El; ty-Nat; ty-U; ty-Π; ty-Hom; wk-single )
 open import poc.OCP0009.NbEPDirDBInj
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-
 ------------------------------------------------------------------------
 -- 0. The one conversion everything below is built from: the ⌜Hom⌝ CODE
 --    at ⌜Nat⌝ decodes to the computing order.  Two steps — decode the

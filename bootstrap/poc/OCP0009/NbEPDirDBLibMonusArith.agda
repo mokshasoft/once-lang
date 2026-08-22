@@ -36,13 +36,12 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝
         ; csymᵀ; ctrnᵀ; ξ-Idˡ; ξ-Idʳ; natrec-zero; natrec-suc
-        ; _⟶*_; step; done )
+        ; _⟶*_; step; done; wk-single )
 open import poc.OCP0009.NbEPDirDBInj
   using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
 open import poc.OCP0009.NbEPDirDBConf
   using ( ⟶*-trans; ⟶*-natrecᶻ; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk; ⊢-cast )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w; nrs-w; sub-w; cong₃ )
 open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm; ⊢plus )
 open import poc.OCP0009.NbEPDirDBLibMonus

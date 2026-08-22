@@ -53,7 +53,7 @@ open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; RTy; El; Id; RTm; app; ⌜Nat⌝
         ; Ren; renTm; renTy; subTm; subTy; extR; nrs )
 open import poc.OCP0009.NbEPDirDBType
-  using ( Ctx; _▹_; ⌊_⌋; single; _⊢_∷_ )
+  using ( Ctx; _▹_; ⌊_⌋; single; _⊢_∷_; wk-single )
 open import poc.OCP0009.NbEPDirDBSubj using ( Ren⊢ )
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat )
 open import poc.OCP0009.NbEPDirDBLibAmrec using ( prvTm; prvOk; StepPW )
@@ -64,7 +64,6 @@ open import poc.OCP0009.NbEPDirDBLibAmrec using ( module AmTΠ; Prv; wR )
 open import poc.OCP0009.NbEPDirDBType using ( ◇; _⊢ty_; ⊢nzero; ⊢nsuc; ⊢var; here; there )
 open import poc.OCP0009.NbEPDirDBPi using ( nzero; nsuc; var; vs; vz; Π; Nat )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibPair using ( ⊢PairT )
 open import poc.OCP0009.NbEPDirDBType using ( ⊢⌜Nat⌝ )
 open import poc.OCP0009.NbEPDirDBExamplesGcdStep using ( ⊢msr; ⊢gcdStp )

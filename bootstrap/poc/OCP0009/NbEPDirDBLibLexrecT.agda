@@ -36,7 +36,7 @@ open import poc.OCP0009.NbEPDirDBPi
 open import poc.OCP0009.NbEPDirDBType
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢ordtr; ⊢lam; ⊢app
-        ; ty-Nat; ty-Hom; ty-El; ty-Π )
+        ; ty-Nat; ty-Hom; ty-El; ty-Π; wk-single )
 open import poc.OCP0009.NbEPDirDBSubj
   using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢-ext )
 open import poc.OCP0009.NbEPDirDBLibOrd using ( ⊢strong-base'; ⊢strong-step )
@@ -46,7 +46,6 @@ open import poc.OCP0009.NbEPDirDBLibWk
 open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat; aIHT; aIHT-ren; aIHT-fit )
 open import poc.OCP0009.NbEPDirDBLibWk
   using ( w^; wTy^; wᶠ^; ⊢wkᶠ; wᶠ³-single; sub-wTy; wᶠ-sub )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 
 ------------------------------------------------------------------------

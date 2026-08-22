@@ -33,11 +33,9 @@ open import poc.OCP0009.NbEPDirDBType
         ; _⊢_∷_; ⊢var; here; ⊢unit; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢absurd; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝
         ; ⊢lam; ⊢app; there; nrs; single
-        ; _⊢ty_; ty-El; ty-Nat; ty-U; ty-Π; ty-Hom )
+        ; _⊢ty_; ty-El; ty-Nat; ty-U; ty-Π; ty-Hom; wk-single )
 open import poc.OCP0009.NbEPDirDBInj
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
-
 ------------------------------------------------------------------------
 -- ★ THE PRIMITIVES NOW LIVE IN `…LibStrong` — the ⌜Hom⌝/⌜Nat⌝ bridge and
 --   the two everyday ≤-lemmas.  Seven `Lib*` modules build on them, so a

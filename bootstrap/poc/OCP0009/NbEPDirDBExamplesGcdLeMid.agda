@@ -32,7 +32,7 @@ open import poc.OCP0009.NbEPDirDBPi
         ; subTm; subTy; extS; renTm; vs; var; vz; _∘ₛ_; subTy-subTy; subTy-cong; Var; Sub
         ; Π; El; ⌜Nat⌝ )
 open import poc.OCP0009.NbEPDirDBType
-  using ( _⟶*_; _⟶_; β; βfst; βsnd; ξ-appˡ; natrec-suc; natrec-zero; single )
+  using ( _⟶*_; _⟶_; β; βfst; βsnd; ξ-appˡ; natrec-suc; natrec-zero; single; wk-single )
 open import poc.OCP0009.NbEPDirDBConf using ( ⟶*-appˡ; ⟶*-natrecⁿ )
 open import poc.OCP0009.NbEPDirDBLibMonus using ( monusTm )
 open import poc.OCP0009.NbEPDirDBLibNat using ( plusTm )
@@ -44,7 +44,6 @@ open import poc.OCP0009.NbEPDirDBSubj
   using ( sub-lemma; sub-ty; Sub⊢; Sub⊢-ext; ⊢single; ⊢-cast; ⊢wk; subTy-comm )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
-open import poc.OCP0009.NbEPDirDBLR using ( wk-single )
 open import poc.OCP0009.NbEPDirDBLibWk
   using ( nrs-w; w; sub-w; pw1; pw2; pw3; pw4 )
 open import poc.OCP0009.NbEPDirDBLibNatrec
