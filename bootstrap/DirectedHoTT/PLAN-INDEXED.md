@@ -119,5 +119,36 @@ back into `LogicalRelation` to change what a `κ` field's type is.
   VALUE. Not needed for a syntax (all 25 `RTm` constructors checked), not
   needed for Fording.
 
-⇒ Revisit native computed targets ONLY if the Fording ergonomics prove
-unacceptable in practice, and spike it first — gates 1–4's discipline.
+--------------------------------------------------------------------------
+## 7. ⭐ CLOSING THE ERGONOMIC GAP — and it probably is NOT a kernel change
+
+"Make `Vec` kernel-native" is ambiguous between two very different jobs.
+
+### (a) In the ELABORATOR — cheap, and where it belongs
+
+Pattern-matching WITH UNIFICATION is normally an elaborator feature.
+Agda's own core does not unify either — it has case trees, and unification
+happens while elaborating the surface syntax. McBride's Fording proposal
+was exactly this: the ELABORATOR inserts the constraint fields and
+discharges the `refl` cases, so the user writes
+
+    cons : (n : Nat) → A → Vec A n → Vec A (suc n)
+
+and the kernel only ever sees the forded form. Once already has an
+elaborator.
+
+⇒ **No kernel change, no metatheory change, no new trusted surface.** The
+`Trust.agda` argument applies directly: every former in the kernel is
+something a REVIEWER MUST READ, and sugar that elaborates away should not
+be one of them.
+
+### (b) In the KERNEL — additive, but the cost is deferred not avoided
+
+Add computed target indices as a new `ICon` constructor. Additive to the
+SYNTAX, so nothing written for Fording breaks. But `LogicalRelation` and
+`Canonicity` each need NEW cases that reason up to INDEX CONVERSION — the
+expensive part described in §2. Nothing about doing Fording first makes
+that cheaper; it simply postpones it.
+
+⇒ **Prefer (a).** Take (b) only if something genuinely cannot be
+elaborated away — and spike it first, per gates 1–4's discipline.

@@ -192,6 +192,9 @@ data RTm where
   -- a SMALL type, and hence what unlocks NESTED datatypes (`dκ` at
   -- `El (⌜Mu⌝ D')`).
   ⌜Mu⌝   : ∀ {Γ} → Desc → RTm Γ
+  -- ★ the INDEXED code.  Required so an indexed type can live in `U` and
+  --   hence be `amrec`'s carrier — see ⊢⌜IMu⌝ in Spec/Typing.
+  ⌜IMu⌝  : ∀ {Γ} → IDesc → RTy ε → RTm Γ → RTm Γ
   ⌜Unit⌝ : ∀ {Γ} → RTm Γ
 
 -- ★ DESCRIPTIONS.  `DCon` is one constructor's field list; `Desc` is the
@@ -297,6 +300,7 @@ renTm ρ (jsub d p e)    = jsub (renTm (extR ρ) d) (renTm ρ p) (renTm ρ e)
 renTm ρ (ap c b p)    = ap (renTm ρ c) (renTm (extR ρ) b) (renTm ρ p)
 renTm ρ ⌜Nat⌝         = ⌜Nat⌝
 renTm ρ (⌜Mu⌝ D)      = ⌜Mu⌝ D
+renTm ρ (⌜IMu⌝ D I i) = ⌜IMu⌝ D I (renTm ρ i)
 renTm ρ ⌜Unit⌝        = ⌜Unit⌝
 renTm ρ unit          = unit
 renTm ρ nzero         = nzero
@@ -353,6 +357,7 @@ subTm σ (jsub d p e)    = jsub (subTm (extS σ) d) (subTm σ p) (subTm σ e)
 subTm σ (ap c b p)    = ap (subTm σ c) (subTm (extS σ) b) (subTm σ p)
 subTm σ ⌜Nat⌝         = ⌜Nat⌝
 subTm σ (⌜Mu⌝ D)      = ⌜Mu⌝ D
+subTm σ (⌜IMu⌝ D I i) = ⌜IMu⌝ D I (subTm σ i)
 subTm σ ⌜Unit⌝        = ⌜Unit⌝
 subTm σ unit          = unit
 subTm σ nzero         = nzero
@@ -492,6 +497,7 @@ renTm-cong h (snd p)    = cong snd (renTm-cong h p)
 renTm-cong h ⌜base⌝     = refl
 renTm-cong h ⌜Nat⌝      = refl
 renTm-cong h (⌜Mu⌝ D)   = refl
+renTm-cong h (⌜IMu⌝ D I i) = cong (⌜IMu⌝ D I) (renTm-cong h i)
 renTm-cong h ⌜Unit⌝     = refl
 renTm-cong h unit      = refl
 renTm-cong h nzero     = refl
@@ -551,6 +557,7 @@ subTm-cong h (snd p)    = cong snd (subTm-cong h p)
 subTm-cong h ⌜base⌝     = refl
 subTm-cong h ⌜Nat⌝      = refl
 subTm-cong h (⌜Mu⌝ D)   = refl
+subTm-cong h (⌜IMu⌝ D I i) = cong (⌜IMu⌝ D I) (subTm-cong h i)
 subTm-cong h ⌜Unit⌝     = refl
 subTm-cong h unit      = refl
 subTm-cong h nzero     = refl
@@ -619,6 +626,7 @@ renTm-renTm (snd p)    = cong snd (renTm-renTm p)
 renTm-renTm ⌜base⌝     = refl
 renTm-renTm ⌜Nat⌝      = refl
 renTm-renTm (⌜Mu⌝ D)   = refl
+renTm-renTm (⌜IMu⌝ D I i) = cong (⌜IMu⌝ D I) (renTm-renTm i)
 renTm-renTm ⌜Unit⌝     = refl
 renTm-renTm unit       = refl
 renTm-renTm nzero      = refl
@@ -691,6 +699,7 @@ subTm-renTm (snd p)    = cong snd (subTm-renTm p)
 subTm-renTm ⌜base⌝     = refl
 subTm-renTm ⌜Nat⌝      = refl
 subTm-renTm (⌜Mu⌝ D)   = refl
+subTm-renTm (⌜IMu⌝ D I i) = cong (⌜IMu⌝ D I) (subTm-renTm i)
 subTm-renTm ⌜Unit⌝     = refl
 subTm-renTm unit       = refl
 subTm-renTm nzero      = refl
@@ -763,6 +772,7 @@ renTm-subTm (snd p)    = cong snd (renTm-subTm p)
 renTm-subTm ⌜base⌝     = refl
 renTm-subTm ⌜Nat⌝      = refl
 renTm-subTm (⌜Mu⌝ D)   = refl
+renTm-subTm (⌜IMu⌝ D I i) = cong (⌜IMu⌝ D I) (renTm-subTm i)
 renTm-subTm ⌜Unit⌝     = refl
 renTm-subTm unit       = refl
 renTm-subTm nzero      = refl
@@ -835,6 +845,7 @@ subTm-subTm (snd p)    = cong snd (subTm-subTm p)
 subTm-subTm ⌜base⌝     = refl
 subTm-subTm ⌜Nat⌝      = refl
 subTm-subTm (⌜Mu⌝ D)   = refl
+subTm-subTm (⌜IMu⌝ D I i) = cong (⌜IMu⌝ D I) (subTm-subTm i)
 subTm-subTm ⌜Unit⌝     = refl
 subTm-subTm unit       = refl
 subTm-subTm nzero      = refl
@@ -899,6 +910,7 @@ subTm-id (snd p)    = cong snd (subTm-id p)
 subTm-id ⌜base⌝     = refl
 subTm-id ⌜Nat⌝      = refl
 subTm-id (⌜Mu⌝ D)   = refl
+subTm-id (⌜IMu⌝ D I i) = cong (⌜IMu⌝ D I) (subTm-id i)
 subTm-id ⌜Unit⌝     = refl
 subTm-id unit       = refl
 subTm-id nzero      = refl

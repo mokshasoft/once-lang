@@ -80,7 +80,7 @@ open import DirectedHoTT.Spec.Syntax
         ; Desc; Mu; con; elim
         ; DCon; dι; dρ; dκ; sel; fields
         ; ihs
-        ; IMu; icon; ielim; IDesc; ICon; cong₃ )
+        ; IMu; icon; ielim; IDesc; ICon; cong₃; ⌜IMu⌝ )
 
 private
   variable
@@ -141,6 +141,7 @@ occTm x (ap c b p)    = occTm x c ∨ occTm (vs x) b ∨ occTm x p
 occTm x ⌜Nat⌝         = false
 occTm x ⌜Unit⌝        = false
 occTm x (⌜Mu⌝ D)        = false
+occTm x (⌜IMu⌝ D I i) = occTm x i
 occTm x unit          = false
 occTm x nzero         = false
 occTm x (nsuc n)      = occTm x n
@@ -247,6 +248,7 @@ occ-ren-tm h (idrefl c t)   = ∨-false (occ-ren-tm h c) (occ-ren-tm h t)
 occ-ren-tm h ⌜Nat⌝      = refl
 occ-ren-tm h ⌜Unit⌝     = refl
 occ-ren-tm h (⌜Mu⌝ D)     = refl
+occ-ren-tm h (⌜IMu⌝ D I i) = occ-ren-tm h i
 occ-ren-tm h unit       = refl
 occ-ren-tm h nzero      = refl
 occ-ren-tm h (nsuc n)   = occ-ren-tm h n
@@ -422,6 +424,7 @@ occ-ren-eq h (idrefl c t)   = cong₂ _∨_ (occ-ren-eq h c) (occ-ren-eq h t)
 occ-ren-eq h ⌜Nat⌝      = refl
 occ-ren-eq h ⌜Unit⌝     = refl
 occ-ren-eq h (⌜Mu⌝ D)     = refl
+occ-ren-eq h (⌜IMu⌝ D I i) = occ-ren-eq h i
 occ-ren-eq h unit       = refl
 occ-ren-eq h nzero      = refl
 occ-ren-eq h (nsuc n)   = occ-ren-eq h n
@@ -459,6 +462,7 @@ occ-sub : {σ : Sub Γ Δ} {x : Var Γ} {x' : Var Δ} →
 occ-sub h ⌜Nat⌝      e = refl
 occ-sub h ⌜Unit⌝     e = refl
 occ-sub h (⌜Mu⌝ D)     e = refl
+occ-sub h (⌜IMu⌝ D I i) e = occ-sub h i e
 occ-sub h unit       e = refl
 occ-sub h nzero      e = refl
 occ-sub h (nsuc n)   e = occ-sub h n e
@@ -576,6 +580,7 @@ subTm-occ : {σ τ : Sub Γ Δ} (m : RTm Γ) →
 subTm-occ ⌜Nat⌝      h = refl
 subTm-occ ⌜Unit⌝     h = refl
 subTm-occ (⌜Mu⌝ D)     h = refl
+subTm-occ (⌜IMu⌝ D I i) h = cong (⌜IMu⌝ D I) (subTm-occ i h)
 subTm-occ unit       h = refl
 subTm-occ nzero      h = refl
 subTm-occ (nsuc n)   h = cong nsuc (subTm-occ n h)
@@ -906,6 +911,7 @@ stkA?-ren ρ ⌜base⌝        = refl
 stkA?-ren ρ ⌜Nat⌝         = refl
 stkA?-ren ρ ⌜Unit⌝        = refl
 stkA?-ren ρ (⌜Mu⌝ D)        = refl
+stkA?-ren ρ (⌜IMu⌝ D I i) = refl
 stkA?-ren ρ unit          = refl
 stkA?-ren ρ nzero         = refl
 stkA?-ren ρ (nsuc n)      = refl
@@ -1018,6 +1024,7 @@ pw?-ren ρ ⌜base⌝        = refl
 pw?-ren ρ ⌜Nat⌝         = refl
 pw?-ren ρ ⌜Unit⌝        = refl
 pw?-ren ρ (⌜Mu⌝ D)        = refl
+pw?-ren ρ (⌜IMu⌝ D I i) = refl
 pw?-ren ρ unit          = refl
 pw?-ren ρ nzero         = refl
 pw?-ren ρ (nsuc n)      = refl
@@ -1049,6 +1056,7 @@ stkC?-ren ρ ⌜base⌝        = refl
 stkC?-ren ρ ⌜Nat⌝         = refl
 stkC?-ren ρ ⌜Unit⌝        = refl
 stkC?-ren ρ (⌜Mu⌝ D)        = refl
+stkC?-ren ρ (⌜IMu⌝ D I i) = refl
 stkC?-ren ρ unit          = refl
 stkC?-ren ρ nzero         = refl
 stkC?-ren ρ (nsuc n)      = refl
@@ -1109,6 +1117,7 @@ flat?-ren ρ ⌜base⌝         = refl
 flat?-ren ρ ⌜Nat⌝          = refl
 flat?-ren ρ ⌜Unit⌝         = refl
 flat?-ren ρ (⌜Mu⌝ D)         = refl
+flat?-ren ρ (⌜IMu⌝ D I i) = refl
 flat?-ren ρ unit           = refl
 flat?-ren ρ nzero          = refl
 flat?-ren ρ (nsuc n)       = refl
@@ -1411,6 +1420,7 @@ ren-as-sub ρ (jsub d p e) =
 ren-as-sub ρ ⌜Nat⌝ = refl
 ren-as-sub ρ ⌜Unit⌝ = refl
 ren-as-sub ρ (⌜Mu⌝ D) = refl
+ren-as-sub ρ (⌜IMu⌝ D I i) = cong (⌜IMu⌝ D I) (ren-as-sub ρ i)
 ren-as-sub ρ unit  = refl
 ren-as-sub ρ nzero = refl
 ren-as-sub ρ (nsuc n) = cong nsuc (ren-as-sub ρ n)
