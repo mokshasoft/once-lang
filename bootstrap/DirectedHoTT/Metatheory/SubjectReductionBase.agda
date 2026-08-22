@@ -298,13 +298,13 @@ pwShift-sub σ t =
 --   something: its `iρ` case has the recursive `ielim` at the SHIFTED index
 --   `app (εwkTm f) i`, so the SHIFT must be inert under the action — which
 --   is exactly what `εwkTm-sub` was written for.
-⟶-sub σ (ι-ielim D I i ms k p) =
+⟶-sub σ (ι-ielim D i ms k p) =
   subst (ielim D (subTm σ i) (subTm σ ms) (icon k (subTm σ p)) ⟶_)
-        (sym (trans (sub-ifields σ D I i ms (ilookupD D k) (sel k ms) p)
-                    (cong (λ w → ifields D I (subTm σ i) (subTm σ ms)
+        (sym (trans (sub-ifields σ D i ms (ilookupD D k) (sel k ms) p)
+                    (cong (λ w → ifields D (subTm σ i) (subTm σ ms)
                                           (ilookupD D k) w (subTm σ p))
                           (sub-sel σ k ms))))
-        (ι-ielim D I (subTm σ i) (subTm σ ms) k (subTm σ p))
+        (ι-ielim D (subTm σ i) (subTm σ ms) k (subTm σ p))
 ⟶-sub σ (ξ-icon r)    = ξ-icon    (⟶-sub σ r)
 ⟶-sub σ (ξ-ielimⁱ r)  = ξ-ielimⁱ  (⟶-sub σ r)
 ⟶-sub σ (ξ-ielimᵐ r)  = ξ-ielimᵐ  (⟶-sub σ r)
