@@ -537,6 +537,38 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
             → compile-gm arch doOpt (just m) ≡ nothing
   refuse-gm arch doOpt m ¬adm = refuse-mir arch doOpt m (moduleToIR m) ¬adm
 
+  -- J4: THE ACCEPT DIRECTION — bytes exist only for an admissible module.
+  -- Mirror of `refuse-*` above: same chain, opposite conclusion. The `no`
+  -- branches are ABSURD (`cfm-build-gated` yields `Error`, so `compile-cr` is
+  -- `nothing`, which is not `just`), which is precisely the statement that the
+  -- gate is what stands between an inadmissible program and an output.
+  accept-gated : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
+                   (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
+                   (d : Dec (AdmissibleM arch m)) {bytes : List Byte}
+               → compile-cr arch (C.cfm-build-gated C.Heap doOpt arch m funs polys d) ≡ just bytes
+               → AdmissibleM arch m
+  accept-gated arch doOpt m funs polys (yes p) eq = p
+  accept-gated arch doOpt m funs polys (no  _) ()
+
+  accept-ef : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
+                (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) {bytes : List Byte}
+            → compile-cr arch (C.cfm-ef-aux C.Heap C.Build doOpt arch m ef) ≡ just bytes
+            → AdmissibleM arch m
+  accept-ef arch doOpt m (inj₁ err)            ()
+  accept-ef arch doOpt m (inj₂ (funs , polys)) eq =
+    accept-gated arch doOpt m funs polys (admissibleM? arch m) eq
+
+  accept-mir : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module)
+                 (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) {bytes : List Byte}
+             → compile-mir arch doOpt m mir ≡ just bytes → AdmissibleM arch m
+  accept-mir arch doOpt m nothing   ()
+  accept-mir arch doOpt m (just ir) eq =
+    accept-ef arch doOpt m (C.extractFunctions (C.extractAliases m) m) eq
+
+  accept-gm : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) {bytes : List Byte}
+            → compile-gm arch doOpt (just m) ≡ just bytes → AdmissibleM arch m
+  accept-gm arch doOpt m eq = accept-mir arch doOpt m (moduleToIR m) eq
+
   -- Layer 1 — over `gmoduleToModule src`. Unparseable ⇒ both `nothing`;
   -- parseable ⇒ defer to `correct-mir`.
   correct-gm : ∀ (arch : Arch) (doOpt : Bool) (gm : Maybe P.Module) →
@@ -725,23 +757,6 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
       go (yes _)   _ = refl
       go (no ¬adm) a = ⊥-elim (¬adm a)
 
-  -- RESIDUAL (plan 0.74 J4). Acceptance must IMPLY admissibility, and it will
-  -- once the backend actually checks (J3): `compileFromModule` dispatches on
-  -- `inRange?` at its own width and refuses an out-of-range literal, so bytes
-  -- can only exist for an admissible program. Until that lands there is
-  -- nothing to derive it from — the backend currently accepts everything —
-  -- so it is named here, at the use site, rather than assumed silently.
-  --
-  -- It is stated over `src ⊢R tp` rather than over the resolved module because
-  -- that is what `correctR-sound` has in hand, and because admissibility is a
-  -- property of the program the SPEC names, not of the compiler's intermediate.
-  postulate
-    accept⇒admissible : ∀ (arch : Arch) (doOpt : Bool) (src : Source)
-                          (bytes : List Byte) (tp : Typed)
-                        → compile arch doOpt src ≡ just bytes
-                        → src ⊢R tp
-                        → AdmissibleM arch (proj₁ tp)
-
   -- J4: ADMISSIBILITY SURVIVES RESOLUTION — a theorem now, not a residual.
   --
   -- `Admissible` is stated over the UN-resolved module (that is what
@@ -758,6 +773,16 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     subst (All (OnceWord.Width.InRange (C.arch-int-bits arch)))
           (RL.resolver-preserves-intLits mm mU mR res-eq) adm
 
+  -- ...and the same equation read backwards. This is the direction J4 needs:
+  -- the GATE sees `mR`, the SPEC speaks about `mU`, so acceptance of the
+  -- resolved module has to hand admissibility back to the un-resolved one.
+  admissible-unresolve : ∀ (arch : Arch) (mm : C.ModuleMap) (mU mR : P.Module)
+                       → C.resolveImports mm mU ≡ inj₂ mR
+                       → AdmissibleM arch mR → AdmissibleM arch mU
+  admissible-unresolve arch mm mU mR res-eq adm =
+    subst (All (OnceWord.Width.InRange (C.arch-int-bits arch)))
+          (sym (RL.resolver-preserves-intLits mm mU mR res-eq)) adm
+
   -- SOUNDNESS + TRACE conjunct — `accept-sound` (front-end soundness over the
   -- RESOLVED module `mR`) gives `ModuleTyped mR`; `RB.resolver-reflects-typing (arch-numerics arch)`
   -- recovers the UN-resolved typed program `mU` so `tp`/`_⊢R_` stay parse-based
@@ -766,7 +791,8 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- ≋ `⟦ tp ⟧ˢ` (`sd-bridge` over the un-resolved `tp`).
   correctR-sound : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte) →
     compile arch doOpt src ≡ just bytes →
-    Σ-syntax Typed (λ tp → (src ⊢R tp) × (exec arch bytes ≋ ⟦ arch ⟧ˢ tp))
+    Σ-syntax Typed (λ tp → (src ⊢R tp) × AdmissibleM arch (proj₁ tp)
+                           × (exec arch bytes ≋ ⟦ arch ⟧ˢ tp))
   correctR-sound arch doOpt src bytes pf with accept-sound arch doOpt src bytes pf
   ... | (mR , stm-eq , MT) with compile-just-ir arch doOpt src mR bytes stm-eq pf
   ...   | (ir , mi) with srcToModule-inv src mR stm-eq
@@ -776,13 +802,17 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
                   ⊢R  = FB.parseStrict-sound (Source.srcText src) mU p-eq   -- ParsesText … mU = src ⊢R tp
                   p   = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥ arch)) pf
                               (correct arch doOpt src)
-                  admU = accept⇒admissible arch doOpt src bytes (mU , mt , hvm) pf
-                           (FB.parseStrict-sound (Source.srcText src) mU p-eq)
-                  admR = admissible-resolve arch (Source.srcImports src) mU mR res-eq admU
+                  -- J4, THE LOOP-CLOSING STEP. `pf` says bytes came out; the
+                  -- ONLY route to bytes runs through `cfm-build-gated`, so the
+                  -- gate must have said `yes` — that IS `AdmissibleM arch mR`.
+                  -- No assumption: acceptance is now evidence.
+                  admR = accept-gm arch doOpt mR
+                           (trans (sym (cong (compile-gm arch doOpt) stm-eq)) pf)
+                  admU = admissible-unresolve arch (Source.srcImports src) mU mR res-eq admR
                   p'  = subst (λ b → Pointwise _≋_ (just (exec arch bytes)) b)
                               (⟦⟧⊥-just src arch mR ir admR stm-eq mi) p
                   e≋  = pw-just-rel p'                                        -- exec bytes ≋ ⟦ moduleToIR mR ⟧IR
-              in tp , ⊢R , (λ n → trans (e≋ n)
+              in tp , ⊢R , admU , (λ n → trans (e≋ n)
                                 (trans (RB.resolver-preserves-trace (arch-numerics arch) (Source.srcImports src) mU mR res-eq mt hvm mi n)
                                        (sd-bridge arch tp n)))
 
@@ -816,7 +846,8 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- `correct`). Supplied to `Once.Adequacy.CorrectCompiler` in the apex.
   correctR : ∀ (arch : Arch) (doOpt : Bool) (src : Source) →
     ( ∀ bytes → compile arch doOpt src ≡ just bytes →
-        Σ-syntax Typed (λ tp → (src ⊢R tp) × (exec arch bytes ≋ ⟦ arch ⟧ˢ tp)) )
+        Σ-syntax Typed (λ tp → (src ⊢R tp) × AdmissibleM arch (proj₁ tp)
+                               × (exec arch bytes ≋ ⟦ arch ⟧ˢ tp)) )
     × ( ∀ tp → src ⊢R tp → AdmissibleM arch (proj₁ tp) →
         Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
   correctR arch doOpt src =
@@ -860,9 +891,8 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     × ( ∀ tp → src ⊢R tp → Admissible arch tp →
         Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes) )
   correctᵈ arch doOpt src =
-      (λ bytes pf → let (tp , ⊢R , e≋) = correctR-sound arch doOpt src bytes pf
-                     in tp , ⊢R
-                      , accept⇒admissible arch doOpt src bytes tp pf ⊢R
+      (λ bytes pf → let (tp , ⊢R , adm , e≋) = correctR-sound arch doOpt src bytes pf
+                     in tp , ⊢R , adm
                       , (λ n → trans (e≋ n) (bridgeᵈ arch tp n)))
       -- completeness GAINS a premise, so it can only get easier. It is unused
       -- until J3 makes the backend able to refuse, at which point it is what
