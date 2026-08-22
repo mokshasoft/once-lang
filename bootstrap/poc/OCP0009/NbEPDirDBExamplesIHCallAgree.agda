@@ -33,10 +33,10 @@ module poc.OCP0009.NbEPDirDBExamplesIHCallAgree where
 
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import poc.OCP0009.NbEPDirDBPi
-  using ( Cx; _∙; RTm; RTy; El; Id; var; vz; vs; fst; snd; ⌜Nat⌝ )
+  using ( Cx; _∙; RTm; RTy; El; Id; var; vz; vs; fst; snd; app; ⌜Nat⌝ )
 open import poc.OCP0009.NbEPDirDBLibWk using ( w )
 open import poc.OCP0009.NbEPDirDBLibPair using ( PairT )
-open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat' )
+open import poc.OCP0009.NbEPDirDBLibRec using ( aIHTat'; rec1T' )
 open import poc.OCP0009.NbEPDirDBLibDvdArith using ( QCode )
 open import poc.OCP0009.NbEPDirDBLibMax using ( MaxCode )
 open import poc.OCP0009.NbEPDirDBLibIHCall using ( ihCallT; ihCall )
@@ -52,6 +52,19 @@ open import poc.OCP0009.NbEPDirDBExamplesGcdMotives using ( dvdMotive; maxMotive
 agree-aIHTat' : {Γ : Cx} (A : RTy Γ) (m mx : RTm (Γ ∙)) (cm : RTm ((Γ ∙) ∙)) →
                 aIHTat' A m mx cm ≡ ihCallT A m mx (El cm)
 agree-aIHTat' A m mx cm = refl
+
+------------------------------------------------------------------------
+-- 1b · `…LibRec.rec1T'` — the ONE-MEASURE recursion type, a FOURTH
+--      instance, found 2026-08-22 while untangling the lexrec track.
+--      ⚠ It cannot be DEFINED via `ihCallT` (…LibIHCall imports …LibRec,
+--        so the dependency would be circular) — hence the assertion.
+------------------------------------------------------------------------
+
+agree-rec1T' : {Γ : Cx} (cA : RTm Γ) (m₁ x' : RTm (Γ ∙)) (cp : RTm ((Γ ∙) ∙)) →
+               rec1T' cA m₁ x' cp
+                 ≡ ihCallT (El cA) (app m₁ (var vz)) (app m₁ x')
+                           (El (app cp (var (vs vz))))
+agree-rec1T' cA m₁ x' cp = refl
 
 ------------------------------------------------------------------------
 -- 2 · `StepExt`'s pointwise equality — payload `Id`

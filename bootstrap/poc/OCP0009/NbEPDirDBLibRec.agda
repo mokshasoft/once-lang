@@ -25,11 +25,12 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; _∙; vz; vs; Ren
         ; RTy; El; Hom; Nat
-        ; RTm; var; nsuc
+        ; RTm; var; nsuc; app
         ; Π; renTy; renTm; subTy; subTm; Sub; extS; extR )
 open import poc.OCP0009.NbEPDirDBType using ( single )
 open import poc.OCP0009.NbEPDirDBLibWk
-  using ( w; wᶠ; cong₄; sub-w; ren-w; wk-singleTy; wᶠ-single; ren-wTy; ren-wᶠ )
+  using ( w; wᶠ; cong₄; sub-w; sub-w²; ren-w; ren-w²; wk-singleTy; wᶠ-single
+        ; ren-wTy; ren-wᶠ )
 
 aIHTat' : {Γ : Cx} (A : RTy Γ) (m mx : RTm (Γ ∙)) (cm : RTm ((Γ ∙) ∙)) → RTy Γ
 aIHTat' A m mx cm = Π A (Π (Hom Nat (nsuc m) mx) (El cm))
@@ -54,3 +55,39 @@ aIHT-fit : {Γ : Cx} {X : RTm Γ} (A : RTy Γ) (cM m : RTm (Γ ∙)) →
 aIHT-fit {X = X} A cM m =
   cong₄ aIHTat' (wk-singleTy A) (wᶠ-single m) (sub-w m)
         (trans (sub-w {σ = extS (single X)} (wᶠ cM)) (cong w (wᶠ-single cM)))
+
+------------------------------------------------------------------------
+-- ★ THE ONE-MEASURE RECURSION TYPE — `(y : A) → μ₁ y < μ₁ x → P y`.
+--
+-- ⚠ MOVED HERE 2026-08-22 from `…ExamplesLexC`, where four live
+--   amrec-track modules (`…ExamplesAmrecC`/`DivC`/`PairC`, and `AmrecT`
+--   for the weakening kit alone) were importing it from an EXAMPLE.  A
+--   library has no business living in an Examples file, and it is what
+--   stopped the lexrec track from being separable at all.
+--
+-- ⭐ AND IT IS A FOURTH INSTANCE OF `…LibIHCall.ihCallT`:
+--       rec1T' cA m₁ x' cp
+--     = ihCallT (El cA) (app m₁ (var vz)) (app m₁ x') (El (app cp (var (vs vz))))
+--   asserted by `refl` in `…ExamplesIHCallAgree`.  It cannot be DEFINED
+--   that way here — `…LibIHCall` imports THIS module for `aIHTat'`, so the
+--   dependency would be circular.  The assertion is the next best thing.
+------------------------------------------------------------------------
+
+rec1T' : {Γ : Cx} (cA : RTm Γ) (m₁ x' : RTm (Γ ∙)) (cp : RTm ((Γ ∙) ∙)) → RTy Γ
+rec1T' cA m₁ x' cp =
+  Π (El cA)
+    (Π (Hom Nat (nsuc (app m₁ (var vz))) (app m₁ x'))
+       (El (app cp (var (vs vz)))))
+
+rec1T : {Γ : Cx} (cA cP μ₁ x : RTm Γ) → RTy Γ
+rec1T cA cP μ₁ x = rec1T' cA (w μ₁) (w x) (w (w cP))
+
+rec1T-sub : {Γ Δ : Cx} {σ : Sub Γ Δ} (cA cP μ₁ x : RTm Γ) →
+            subTy σ (rec1T cA cP μ₁ x)
+          ≡ rec1T (subTm σ cA) (subTm σ cP) (subTm σ μ₁) (subTm σ x)
+rec1T-sub cA cP μ₁ x = cong₄ rec1T' refl (sub-w μ₁) (sub-w x) (sub-w² cP)
+
+rec1T-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (cA cP μ₁ x : RTm Γ) →
+            renTy ρ (rec1T cA cP μ₁ x)
+          ≡ rec1T (renTm ρ cA) (renTm ρ cP) (renTm ρ μ₁) (renTm ρ x)
+rec1T-ren cA cP μ₁ x = cong₄ rec1T' refl (ren-w μ₁) (ren-w x) (ren-w² cP)

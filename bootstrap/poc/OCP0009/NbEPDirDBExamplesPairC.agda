@@ -34,6 +34,8 @@
 module poc.OCP0009.NbEPDirDBExamplesPairC where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w )
+open import poc.OCP0009.NbEPDirDBLibRec using ( rec1T )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; El; Hom; Nat; U; Σ'
@@ -50,7 +52,6 @@ open import poc.OCP0009.NbEPDirDBType
 open import poc.OCP0009.NbEPDirDBInj using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ; ⟶ᵀ*-trans )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBLibStrong using ( ⊢le-refl; reflTm )
-open import poc.OCP0009.NbEPDirDBExamplesLexC using ( w; rec1T )
 open import poc.OCP0009.NbEPDirDBExamplesAmrecC using ( aStepT )
 
 ------------------------------------------------------------------------

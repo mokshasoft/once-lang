@@ -31,6 +31,8 @@
 module poc.OCP0009.NbEPDirDBExamplesDivC where
 
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import poc.OCP0009.NbEPDirDBLibWk using ( w )
+open import poc.OCP0009.NbEPDirDBLibRec using ( rec1T )
 open import poc.OCP0009.NbEPDirDBPi
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; El; Hom; Nat; U
@@ -51,7 +53,6 @@ open import poc.OCP0009.NbEPDirDBLibMonus
 open import poc.OCP0009.NbEPDirDBExamplesDiv
   using ( monusStep; ⊢div-descend )
 open import poc.OCP0009.NbEPDirDBLibStrong using ( reflTm )
-open import poc.OCP0009.NbEPDirDBExamplesLexC using ( w; rec1T )
 open import poc.OCP0009.NbEPDirDBSubj using ( ⊢wk )
 open import poc.OCP0009.NbEPDirDBExamplesAmrecC using ( aStepT; module AmΠ )
 -- ★ the ℕ-carrier instantiation package, reused verbatim from the
