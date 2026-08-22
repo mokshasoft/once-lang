@@ -42,6 +42,13 @@ open import normalizer.Syntax.Types
 --   TAG.  It is not the object-language `Nat`.
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 
+-- ⚠ LOCAL: `normalizer.Syntax.Types` exports `cong₂` but not `cong₃`, and
+--   `Lib/Wk`'s copy is downstream of this module.  Three lines beats an
+--   import cycle.
+cong₃ : {A B C D : Set} (f : A → B → C → D) {a a' : A} {b b' : B} {c c' : C} →
+        a ≡ a' → b ≡ b' → c ≡ c' → f a b c ≡ f a' b' c'
+cong₃ f refl refl refl = refl
+
 ------------------------------------------------------------------------
 -- Scopes (de Bruijn depth) and variables. Untyped scoping — genuine
 -- dependency without the transport hell of intrinsic dependent typing.
@@ -71,6 +78,11 @@ data RTm : Cx → Set
 --   variable `A`) needs open descriptions and is NOT step 1.
 data DCon : Set
 data Desc : Set
+-- ★★ INDEXED descriptions (2026-08-22).  Added ALONGSIDE the non-indexed
+--   pair rather than re-typing `dρ`, so everything already green stays
+--   green and the two coexist while the indexed one is brought up.
+data ICon : Set
+data IDesc : Set
 
 data RTy where
   base : ∀ {Γ} → RTy Γ
@@ -94,6 +106,17 @@ data RTy where
   Id   : ∀ {Γ} → RTy Γ → RTm Γ → RTm Γ → RTy Γ
   -- ★★ INDUCTIVE TYPES: a datatype, given by its description.
   Mu   : ∀ {Γ} → Desc → RTy Γ
+  -- ★★★ INDEXED inductive types: a description AND an index VALUE.
+  -- ⚠ Unlike `Mu`, this is NOT stable under renaming on the nose — the
+  --   INDEX lives in `Γ`.  The description stays CLOSED (see `ICon`), so
+  --   only the index needs naturality, exactly as for `El`.  That keeps
+  --   the "no parallel renDesc/subDesc tower" decision at line 67 intact.
+  -- ⚠ CARRIES THE INDEX TYPE, as a CLOSED `RTy ε`.  Without it `ty-IMu`
+  --   cannot say what the index is an inhabitant OF — `ty-Mu` needs only
+  --   the description, but an INDEXED type must type its index.  Exactly
+  --   the precedent `dκ : RTy ε → DCon → DCon` sets, and `εwkTy` weakens
+  --   it into `Γ` the same way `payTy` already does for a `dκ` field.
+  IMu  : ∀ {Γ} → IDesc → RTy ε → RTm Γ → RTy Γ
 
 data RTm where
   var  : ∀ {Γ} → Var Γ → RTm Γ
@@ -154,6 +177,10 @@ data RTm where
   --                  pairs), and the scrutinee.
   con  : ∀ {Γ} → ℕ → RTm Γ → RTm Γ
   elim : ∀ {Γ} → Desc → RTm Γ → RTm Γ → RTm Γ
+  -- ★★★ their INDEXED twins.  `icon` carries the tag and payload as `con`
+  --   does; `ielim` additionally carries the index it eliminates AT.
+  icon  : ∀ {Γ} → ℕ → RTm Γ → RTm Γ
+  ielim : ∀ {Γ} → IDesc → RTm Γ → RTm Γ → RTm Γ → RTm Γ
   -- ★ WF-axis stage C (N-in): `Nat` becomes SMALL — it gets a code, so
   -- it can appear in `U`-families.  That is what unlocks Id-rewriting
   -- AT `Nat` (`jsub` needs a code family), cong-at-ℕ, and ≤ as a
@@ -178,6 +205,36 @@ data DCon where
 data Desc where
   dnil : Desc
   _◃_  : DCon → Desc → Desc
+
+-- ★★★ INDEXED descriptions.  `iρ` carries the index SHIFT as a CLOSED
+--   TERM of function type — `lam (var vz)` for a field at the ambient
+--   index, `lam (nsuc (var vz))` for one under a binder.
+--
+-- ⚠⚠ WHY A CLOSED TERM AND NOT AN AGDA FUNCTION.  `SpikeIDescSigma` (the
+--   design spike) writes `ρ : (I → I) → Con → Con`, which is fine in a
+--   self-contained spike.  Here `IMu` lands in `RTy`, so a FUNCTION FIELD
+--   would put Agda functions inside TYPES — and decidable equality on
+--   `RTy`, hence `Algorithm/DecideConversion`, would be gone.  A closed
+--   `RTm` is first-order, keeps equality decidable, and is EXACTLY the
+--   move `dκ : RTy ε → DCon → DCon` already makes for the field type.
+--
+-- ⚠ SCOPE, recorded: `iι` targets the AMBIENT index, so every constructor
+--   is available at every index.  That is precisely the SYNTAX case
+--   (`RTm Γ` has all its constructors at every `Γ`) and is what dogfooding
+--   needs.  It does NOT cover `Vec` — `cons : A → Vec n → Vec (suc n)`
+--   computes its TARGET index from a bound value, which needs `σ`.
+--   `SpikeDescSigma`'s header says the same: "Neither arises for a SYNTAX".
+--   Additive: `σ` can be added later without disturbing this.
+data ICon where
+  iι : ICon                     -- no more fields; targets the ambient index
+  iρ : RTm ε → ICon → ICon      -- RECURSIVE field, at the index shifted by a closed fn
+  iκ : RTy ε → ICon → ICon      -- NON-RECURSIVE field of a CLOSED type
+
+data IDesc where
+  inil : IDesc
+  _◂_  : ICon → IDesc → IDesc
+
+infixr 5 _◂_
 
 infixr 5 _◃_
 
@@ -208,6 +265,7 @@ renTy ρ (El t)   = El (renTm ρ t)
 renTy ρ (Hom A t u) = Hom (renTy ρ A) (renTm ρ t) (renTm ρ u)
 renTy ρ (Id A t u) = Id (renTy ρ A) (renTm ρ t) (renTm ρ u)
 renTy ρ (Mu D) = Mu D
+renTy ρ (IMu D I i) = IMu D I (renTm ρ i)
 renTm ρ (var x)   = var (ρ x)
 renTm ρ (lam t)   = lam (renTm (extR ρ) t)
 renTm ρ (app t u)  = app (renTm ρ t) (renTm ρ u)
@@ -237,6 +295,8 @@ renTm ρ (natrec z s n) =
   natrec (renTm ρ z) (renTm (extR (extR ρ)) s) (renTm ρ n)
 renTm ρ (con k p) = con k (renTm ρ p)
 renTm ρ (elim D ms t) = elim D (renTm ρ ms) (renTm ρ t)
+renTm ρ (icon k p) = icon k (renTm ρ p)
+renTm ρ (ielim D i ms t) = ielim D (renTm ρ i) (renTm ρ ms) (renTm ρ t)
 
 ------------------------------------------------------------------------
 -- Parallel substitutions (variable-for-term) and their action.
@@ -261,6 +321,7 @@ subTy σ (El t)   = El (subTm σ t)
 subTy σ (Hom A t u) = Hom (subTy σ A) (subTm σ t) (subTm σ u)
 subTy σ (Id A t u) = Id (subTy σ A) (subTm σ t) (subTm σ u)
 subTy σ (Mu D) = Mu D
+subTy σ (IMu D I i) = IMu D I (subTm σ i)
 subTm σ (var x)   = σ x
 subTm σ (lam t)   = lam (subTm (extS σ) t)
 subTm σ (app t u)  = app (subTm σ t) (subTm σ u)
@@ -290,6 +351,8 @@ subTm σ (natrec z s n) =
   natrec (subTm σ z) (subTm (extS (extS σ)) s) (subTm σ n)
 subTm σ (con k p) = con k (subTm σ p)
 subTm σ (elim D ms t) = elim D (subTm σ ms) (subTm σ t)
+subTm σ (icon k p) = icon k (subTm σ p)
+subTm σ (ielim D i ms t) = ielim D (subTm σ i) (subTm σ ms) (subTm σ t)
 
 -- Identity and the four composition operators (explicit-index, genuine
 -- Ren/Sub — same shape as NbEPDirDB).
@@ -407,6 +470,7 @@ renTy-cong h (Hom A t u) =
 renTy-cong h (Id A t u) =
   Id-cong₃ (renTy-cong h A) (renTm-cong h t) (renTm-cong h u)
 renTy-cong h (Mu D) = refl
+renTy-cong h (IMu D I i) = cong (IMu D I) (renTm-cong h i)
 renTm-cong h (var x)   = cong var (h x)
 renTm-cong h (lam t)   = cong lam (renTm-cong (extR-cong h) t)
 renTm-cong h (app t u)  = cong₂ app (renTm-cong h t) (renTm-cong h u)
@@ -440,6 +504,9 @@ renTm-cong h (ap c b p)    =
   ap-cong₃ (renTm-cong h c) (renTm-cong (extR-cong h) b) (renTm-cong h p)
 renTm-cong h (con k p) = cong (con k) (renTm-cong h p)
 renTm-cong h (elim D ms t) = cong₂ (elim D) (renTm-cong h ms) (renTm-cong h t)
+renTm-cong h (icon k p) = cong (icon k) (renTm-cong h p)
+renTm-cong h (ielim D i ms t) =
+  cong₃ (ielim D) (renTm-cong h i) (renTm-cong h ms) (renTm-cong h t)
 
 extS-cong : {σ σ' : Sub Γ Δ} → (∀ (x : Var Γ) → σ x ≡ σ' x) →
             ∀ (x : Var (Γ ∙)) → extS σ x ≡ extS σ' x
@@ -462,6 +529,7 @@ subTy-cong h (Hom A t u) =
 subTy-cong h (Id A t u) =
   Id-cong₃ (subTy-cong h A) (subTm-cong h t) (subTm-cong h u)
 subTy-cong h (Mu D) = refl
+subTy-cong h (IMu D I i) = cong (IMu D I) (subTm-cong h i)
 subTm-cong h (var x)   = h x
 subTm-cong h (lam t)   = cong lam (subTm-cong (extS-cong h) t)
 subTm-cong h (app t u)  = cong₂ app (subTm-cong h t) (subTm-cong h u)
@@ -495,6 +563,9 @@ subTm-cong h (ap c b p)    =
   ap-cong₃ (subTm-cong h c) (subTm-cong (extS-cong h) b) (subTm-cong h p)
 subTm-cong h (con k p) = cong (con k) (subTm-cong h p)
 subTm-cong h (elim D ms t) = cong₂ (elim D) (subTm-cong h ms) (subTm-cong h t)
+subTm-cong h (icon k p) = cong (icon k) (subTm-cong h p)
+subTm-cong h (ielim D i ms t) =
+  cong₃ (ielim D) (subTm-cong h i) (subTm-cong h ms) (subTm-cong h t)
 
 ------------------------------------------------------------------------
 -- The four mutual fusion lemmas (each a type/term pair). Binder cases bridge
@@ -525,6 +596,7 @@ renTy-renTy (Hom A t u) =
 renTy-renTy (Id A t u) =
   Id-cong₃ (renTy-renTy A) (renTm-renTm t) (renTm-renTm u)
 renTy-renTy (Mu D) = refl
+renTy-renTy (IMu D I i) = cong (IMu D I) (renTm-renTm i)
 renTm-renTm (var x)   = refl
 renTm-renTm {ρ' = ρ'} {ρ} (lam t) =
   cong lam (trans (renTm-renTm t) (renTm-cong (extr-extr ρ' ρ) t))
@@ -568,6 +640,9 @@ renTm-renTm {ρ' = ρ'} {ρ} (ap c b p) =
            (renTm-renTm p)
 renTm-renTm (con k p) = cong (con k) (renTm-renTm p)
 renTm-renTm (elim D ms t) = cong₂ (elim D) (renTm-renTm ms) (renTm-renTm t)
+renTm-renTm (icon k p) = cong (icon k) (renTm-renTm p)
+renTm-renTm (ielim D i ms t) =
+  cong₃ (ielim D) (renTm-renTm i) (renTm-renTm ms) (renTm-renTm t)
 
 -- sub ∘ ren.
 exts-extr : (σ : Sub Δ Θ) (ρ : Ren Γ Δ) (x : Var (Γ ∙)) →
@@ -593,6 +668,7 @@ subTy-renTy (Hom A t u) =
 subTy-renTy (Id A t u) =
   Id-cong₃ (subTy-renTy A) (subTm-renTm t) (subTm-renTm u)
 subTy-renTy (Mu D) = refl
+subTy-renTy (IMu D I i) = cong (IMu D I) (subTm-renTm i)
 subTm-renTm (var x)   = refl
 subTm-renTm {σ = σ} {ρ} (lam t) =
   cong lam (trans (subTm-renTm t) (subTm-cong (exts-extr σ ρ) t))
@@ -636,6 +712,9 @@ subTm-renTm {σ = σ} {ρ} (ap c b p) =
            (subTm-renTm p)
 subTm-renTm (con k p) = cong (con k) (subTm-renTm p)
 subTm-renTm (elim D ms t) = cong₂ (elim D) (subTm-renTm ms) (subTm-renTm t)
+subTm-renTm (icon k p) = cong (icon k) (subTm-renTm p)
+subTm-renTm (ielim D i ms t) =
+  cong₃ (ielim D) (subTm-renTm i) (subTm-renTm ms) (subTm-renTm t)
 
 -- ren ∘ sub.
 extr-exts : (ρ : Ren Δ Θ) (σ : Sub Γ Δ) (x : Var (Γ ∙)) →
@@ -661,6 +740,7 @@ renTy-subTy (Hom A t u) =
 renTy-subTy (Id A t u) =
   Id-cong₃ (renTy-subTy A) (renTm-subTm t) (renTm-subTm u)
 renTy-subTy (Mu D) = refl
+renTy-subTy (IMu D I i) = cong (IMu D I) (renTm-subTm i)
 renTm-subTm (var x)   = refl
 renTm-subTm {ρ = ρ} {σ} (lam t) =
   cong lam (trans (renTm-subTm t) (subTm-cong (extr-exts ρ σ) t))
@@ -704,6 +784,9 @@ renTm-subTm {ρ = ρ} {σ} (ap c b p) =
            (renTm-subTm p)
 renTm-subTm (con k p) = cong (con k) (renTm-subTm p)
 renTm-subTm (elim D ms t) = cong₂ (elim D) (renTm-subTm ms) (renTm-subTm t)
+renTm-subTm (icon k p) = cong (icon k) (renTm-subTm p)
+renTm-subTm (ielim D i ms t) =
+  cong₃ (ielim D) (renTm-subTm i) (renTm-subTm ms) (renTm-subTm t)
 
 -- sub ∘ sub.
 exts-exts : (τ : Sub Δ Θ) (σ : Sub Γ Δ) (x : Var (Γ ∙)) →
@@ -729,6 +812,7 @@ subTy-subTy (Hom A t u) =
 subTy-subTy (Id A t u) =
   Id-cong₃ (subTy-subTy A) (subTm-subTm t) (subTm-subTm u)
 subTy-subTy (Mu D) = refl
+subTy-subTy (IMu D I i) = cong (IMu D I) (subTm-subTm i)
 subTm-subTm (var x)   = refl
 subTm-subTm {τ = τ} {σ} (lam t) =
   cong lam (trans (subTm-subTm t) (subTm-cong (exts-exts τ σ) t))
@@ -772,6 +856,9 @@ subTm-subTm {τ = τ} {σ} (ap c b p) =
            (subTm-subTm p)
 subTm-subTm (con k p) = cong (con k) (subTm-subTm p)
 subTm-subTm (elim D ms t) = cong₂ (elim D) (subTm-subTm ms) (subTm-subTm t)
+subTm-subTm (icon k p) = cong (icon k) (subTm-subTm p)
+subTm-subTm (ielim D i ms t) =
+  cong₃ (ielim D) (subTm-subTm i) (subTm-subTm ms) (subTm-subTm t)
 
 -- Identity: `exts` preserves `idₛ`, hence `subTy idₛ = id`.
 exts-id : (x : Var (Γ ∙)) → extS idₛ x ≡ idₛ x
@@ -790,6 +877,7 @@ subTy-id (El t)   = cong El (subTm-id t)
 subTy-id (Hom A t u) = Hom-cong₃ (subTy-id A) (subTm-id t) (subTm-id u)
 subTy-id (Id A t u) = Id-cong₃ (subTy-id A) (subTm-id t) (subTm-id u)
 subTy-id (Mu D) = refl
+subTy-id (IMu D I i) = cong (IMu D I) (subTm-id i)
 subTm-id (var x)   = refl
 subTm-id (lam t)   = cong lam (trans (subTm-cong exts-id t) (subTm-id t))
 subTm-id (app t u)  = cong₂ app (subTm-id t) (subTm-id u)
@@ -824,6 +912,9 @@ subTm-id (ap c b p)    =
   ap-cong₃ (subTm-id c) (trans (subTm-cong exts-id b) (subTm-id b)) (subTm-id p)
 subTm-id (con k p) = cong (con k) (subTm-id p)
 subTm-id (elim D ms t) = cong₂ (elim D) (subTm-id ms) (subTm-id t)
+subTm-id (icon k p) = cong (icon k) (subTm-id p)
+subTm-id (ielim D i ms t) =
+  cong₃ (ielim D) (subTm-id i) (subTm-id ms) (subTm-id t)
 
 
 
