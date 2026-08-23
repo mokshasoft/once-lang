@@ -284,6 +284,45 @@ module Width (bits : ℕ) where
   fromℤ-in-range (+ n)      = m%n<n n modulus
   fromℤ-in-range (-[1+ n ]) = m%n<n (modulus ∸ norm (suc n)) modulus
 
+  ----------------------------------------------------------------------
+  -- PLAN 0.74 J6 step 3: MODULAR NEGATION OF A LITERAL IS THE NEGATED
+  -- LITERAL.
+  --
+  -- This is the obligation the elaborator's fold incurs — it may replace
+  -- "load n, then negate" with "load −n" exactly because these agree. It
+  -- could not even be STATED at the right width before J5: negation reached
+  -- the machine as `arith.neg.int`, whose semantics was baked at 64, so on
+  -- x86-32 the claim would have read `2^64 − 5 ≟ 2^32 − 5`. With the width
+  -- threaded, both sides are at the target's own width and it is a theorem.
+  --
+  -- No positivity premise: it holds at every width, `bits ≡ 0` included.
+  ----------------------------------------------------------------------
+
+  -- `⊝` is an involution on the residues, modulo `norm`. The `zero` case is
+  -- the interesting one: `⊝ 0` is `norm modulus`, which is `0` rather than
+  -- `modulus`, and that is what makes negation total instead of one-off wrong
+  -- at zero.
+  ⊝-invol-norm : ∀ a → a < modulus → norm (modulus ∸ norm (modulus ∸ a)) ≡ a
+  ⊝-invol-norm zero     _     =
+    trans (cong (λ w → norm (modulus ∸ w)) (n%n≡0 modulus)) (n%n≡0 modulus)
+  ⊝-invol-norm (suc a') a<mod =
+    trans (cong (λ w → norm (modulus ∸ w)) (m<n⇒m%n≡m b<mod))
+          (trans (cong norm (m∸[m∸n]≡n (<⇒≤ a<mod))) (m<n⇒m%n≡m a<mod))
+    where
+      b<mod : modulus ∸ suc a' < modulus
+      b<mod = ∸-monoʳ-< (s≤s z≤n) (<⇒≤ a<mod)
+
+  ⊝-fromℤ : ∀ z → ⊝ (fromℤ z) ≡ fromℤ (ℤ.- z)
+  -- `- (+ 0)` is `+ 0`, so both sides are `norm 0` — but the LEFT goes via
+  -- `norm modulus`, which is why this case is not `refl`.
+  ⊝-fromℤ (+ zero)   =
+    trans (cong (λ w → norm (modulus ∸ w)) fromℤ-0)
+          (trans (n%n≡0 modulus) (sym fromℤ-0))
+  -- `- (+ suc n)` IS `-[1+ n ]`, and `fromℤ (-[1+ n ])` is by definition
+  -- `norm (modulus ∸ norm (suc n))` — which is exactly `⊝ (norm (suc n))`.
+  ⊝-fromℤ (+ suc n)  = refl
+  ⊝-fromℤ (-[1+ n ]) = ⊝-invol-norm (norm (suc n)) (m%n<n (suc n) modulus)
+
   /ˢ-zero : ∀ x → x /ˢ 0 ≡ negOne
   /ˢ-zero x = refl
 

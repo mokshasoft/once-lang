@@ -262,6 +262,9 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
 
       → Expr Γ zeroUsage (A ⇒[ mk-kind Many π ] ν-type F)
 
+
+
+
 -- Plan 0.58 (OCP-0006): materialise the `Expr` variable from the IR-free `SVar`
 -- witness (`Once.Surface.Context`). `lookupLocal`/`t-var-local` name locals by
 -- `svar i`; the impl side (elaborate / realize) rebuilds `var i` here.
