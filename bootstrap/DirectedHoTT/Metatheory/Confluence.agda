@@ -39,7 +39,7 @@ open import DirectedHoTT.Spec.Syntax
         ; ihs
         ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm
         ; RTy
-        ; ren-ifields; sub-ifields; ren-iihs; sub-iihs )
+        ; ren-ifields; sub-ifields; ren-iihs; sub-iihs; ren-ifieldsⁱ; sub-ifieldsⁱ; isingle; iext )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; pw?; stkC?; stkA?; pwBody; pwShift
         ; pw?-ren; stkC?-ren; stkA?-ren; pwBody-ren
@@ -302,24 +302,6 @@ private
   ⟶*-trans (⟶*-appˡ (⟶*-trans (⟶*-appˡ qm) (⟶*-appʳ qp)))
            (⟶*-appʳ (⟶*-ihs D C qms qp))
 
--- ★ the INDEXED twins.  ⚠ The `iρ` case closes over THREE arguments of
---   `ielim`, not two — the index is one of them.
-⟶*-iihs : (D : IDesc) {i i' ms ms' : RTm Γ} (C : ICon) {p p' : RTm Γ} →
-          i ⟶* i' → ms ⟶* ms' → p ⟶* p' →
-          iihs D i ms C p ⟶* iihs D i' ms' C p'
-⟶*-iihs D iι       qi qms qp = done
-⟶*-iihs D (iρ f C) qi qms qp =
-  ⟶*-trans (⟶*-pairˡ (⟶*-trans (⟶*-ielimⁱ (⟶*-appʳ qi))
-                     (⟶*-trans (⟶*-ielimᵐ qms) (⟶*-ielimᵗ (⟶*-fst qp)))))
-           (⟶*-pairʳ (⟶*-iihs D C qi qms (⟶*-snd qp)))
-⟶*-iihs D (iκ κ C) qi qms qp = ⟶*-iihs D C qi qms (⟶*-snd qp)
-
-⟶*-ifields : (D : IDesc) {i i' ms ms' : RTm Γ} (C : ICon) {m m' p p' : RTm Γ} →
-             i ⟶* i' → ms ⟶* ms' → m ⟶* m' → p ⟶* p' →
-             ifields D i ms C m p ⟶* ifields D i' ms' C m' p'
-⟶*-ifields D C qi qms qm qp =
-  ⟶*-trans (⟶*-appˡ (⟶*-trans (⟶*-appˡ qm) (⟶*-appʳ qp)))
-           (⟶*-appʳ (⟶*-iihs D C qi qms qp))
 
 ⟶*-sub : (σ : Sub Γ Δ) {t u : RTm Γ} → t ⟶* u → subTm σ t ⟶* subTm σ u
 ⟶*-sub σ done       = done
@@ -448,8 +430,9 @@ pwShift-ren ρ t =
 ⟶-ren ρ (ξ-elimᵗ r) = ξ-elimᵗ (⟶-ren ρ r)
 ⟶-ren ρ (ι-ielim D i ms k p) =
   subst (ielim D (renTm ρ i) (renTm ρ ms) (icon k (renTm ρ p)) ⟶_)
-        (sym (trans (ren-ifields ρ D i ms (ilookupD D k) (sel k ms) p)
+        (sym (trans (ren-ifieldsⁱ ρ D i ms (ilookupD D k) (sel k ms) p)
                     (cong (λ w → ifields D (renTm ρ i) (renTm ρ ms)
+                                          (isingle (renTm ρ i))
                                           (ilookupD D k) w (renTm ρ p))
                           (ren-sel ρ k ms))))
         (ι-ielim D (renTm ρ i) (renTm ρ ms) k (renTm ρ p))
@@ -748,6 +731,34 @@ subTm-monoˢ h (jsub d p e) =
            (⟶*-trans (⟶*-jsubᵖ (subTm-monoˢ h p))
                      (⟶*-jsubᵉ (subTm-monoˢ h e)))
 
+
+-- ⚠ PLACED AFTER `subTm-monoˢ`: a recursive field's index is an arbitrary
+--   telescope term, so moving it needs substitution-monotonicity, which
+--   is defined just above.  (The old `iρ f` only needed `⟶*-appʳ`.)
+-- ⚠ the ENVIRONMENT moves, not a single index: a description's recursive
+--   field sits at an arbitrary telescope term, so what reduces is every
+--   slot of `σ` pointwise.  `iext`'s new slot moves with the payload.
+⟶*-iihs : (D : IDesc) {ms ms' : RTm Γ} {Θ : Cx} {σ σ' : Sub Θ Γ}
+          (C : ICon Θ) {p p' : RTm Γ} →
+          (∀ x → σ x ⟶* σ' x) → ms ⟶* ms' → p ⟶* p' →
+          iihs D ms σ C p ⟶* iihs D ms' σ' C p'
+⟶*-iihs D iι       qσ qms qp = done
+⟶*-iihs D (iρ j C) qσ qms qp =
+  ⟶*-trans (⟶*-pairˡ (⟶*-trans (⟶*-ielimⁱ (subTm-monoˢ qσ j))
+                     (⟶*-trans (⟶*-ielimᵐ qms) (⟶*-ielimᵗ (⟶*-fst qp)))))
+           (⟶*-pairʳ (⟶*-iihs D C (λ { vz → ⟶*-fst qp ; (vs x) → qσ x })
+                              qms (⟶*-snd qp)))
+⟶*-iihs D (iκ κ C) qσ qms qp =
+  ⟶*-iihs D C (λ { vz → ⟶*-fst qp ; (vs x) → qσ x }) qms (⟶*-snd qp)
+
+⟶*-ifields : (D : IDesc) {i i' ms ms' : RTm Γ} {Θ : Cx} {σ σ' : Sub Θ Γ}
+             (C : ICon Θ) {m m' p p' : RTm Γ} →
+             i ⟶* i' → (∀ x → σ x ⟶* σ' x) → ms ⟶* ms' → m ⟶* m' → p ⟶* p' →
+             ifields D i ms σ C m p ⟶* ifields D i' ms' σ' C m' p'
+⟶*-ifields D C qi qσ qms qm qp =
+  ⟶*-trans (⟶*-appˡ (⟶*-trans (⟶*-appˡ (⟶*-trans (⟶*-appˡ qm) (⟶*-appʳ qi)))
+                              (⟶*-appʳ qp)))
+           (⟶*-appʳ (⟶*-iihs D C qσ qms qp))
 single-mono : {u u' : RTm Γ} → u ⟶* u' →
               ∀ (x : Var (Γ ∙)) → single u x ⟶* single u' x
 single-mono p vz     = p
@@ -880,7 +891,8 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
            i ⟹ i' → ms ⟹ ms' → t ⟹ t' → ielim D i ms t ⟹ ielim D i' ms' t'
   pιi    : {D : IDesc} {i i' ms ms' : RTm Γ} {k : ℕ} {p p' : RTm Γ} →
            i ⟹ i' → ms ⟹ ms' → p ⟹ p' →
-           ielim D i ms (icon k p) ⟹ ifields D i' ms' (ilookupD D k) (sel k ms') p'
+           ielim D i ms (icon k p) ⟹
+             ifields D i' ms' (isingle i') (ilookupD D k) (sel k ms') p'
 
 -- ★ `sel` and `fields` are METALEVEL, so their ⟹-congruences are lemmas
 --   rather than constructors — `pι`'s right-hand side mentions both, and
@@ -933,25 +945,6 @@ p-fields C pms pm pp = papp (papp pm pp) (p-ihs C pms pp)
 ⟹-refl (idrefl c t) = pidrefl (⟹-refl c) (⟹-refl t)
 ⟹-refl (jsub d p e) = pjsub (⟹-refl d) (⟹-refl p) (⟹-refl e)
 ⟹-refl (tr d p e)    = ptr (⟹-refl d) (⟹-refl p) (⟹-refl e)
-
--- ★ the INDEXED twins of `p-ihs`/`p-fields`.  Same reason they are lemmas and
---   not constructors: `iihs`/`ifields`/`sel` are metalevel, so `pιi`'s
---   right-hand side is built, not matched.  The `iρ` row is where the index
---   moves: the recursive call sits at `app (εwkTm f) i`, so the shift term
---   rides along by reflexivity and only `i` actually steps.
-p-iihs : {D : IDesc} {i i' ms ms' : RTm Γ} (C : ICon) {p p' : RTm Γ} →
-         i ⟹ i' → ms ⟹ ms' → p ⟹ p' →
-         iihs D i ms C p ⟹ iihs D i' ms' C p'
-p-iihs iι       pi pms pp = punit
-p-iihs {D = D} (iρ f C) pi pms pp =
-  ppair (pielim (papp (⟹-refl (εwkTm f)) pi) pms (pfst pp))
-        (p-iihs C pi pms (psnd pp))
-p-iihs (iκ κ C) pi pms pp = p-iihs C pi pms (psnd pp)
-
-p-ifields : {D : IDesc} {i i' ms ms' : RTm Γ} (C : ICon) {m m' p p' : RTm Γ} →
-            i ⟹ i' → ms ⟹ ms' → m ⟹ m' → p ⟹ p' →
-            ifields D i ms C m p ⟹ ifields D i' ms' C m' p'
-p-ifields C pi pms pm pp = papp (papp pm pp) (p-iihs C pi pms pp)
 
 -- W2b: the keys and the body function move along PARALLEL steps too —
 -- what the triangle's helper rows consume.
@@ -1182,7 +1175,8 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
                   (⟶*-sel k (⟹→⟶* pms)) (⟹→⟶* pp))
 ⟹→⟶* (pιi {D = D} {i = i} {ms = ms} {k = k} {p = p} pi pms pp) =
   step (ι-ielim D i ms k p)
-       (⟶*-ifields D (ilookupD D k) (⟹→⟶* pi) (⟹→⟶* pms)
+       (⟶*-ifields D (ilookupD D k) (⟹→⟶* pi)
+                   (λ { vz → ⟹→⟶* pi }) (⟹→⟶* pms)
                    (⟶*-sel k (⟹→⟶* pms)) (⟹→⟶* pp))
 ⟹→⟶* (pnatrec pz ps pn) =
   ⟶*-trans (⟶*-natrecᶻ (⟹→⟶* pz))
@@ -1323,8 +1317,9 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
 ⟹-ren ρ (pielim pi pms pt) = pielim (⟹-ren ρ pi) (⟹-ren ρ pms) (⟹-ren ρ pt)
 ⟹-ren ρ (pιi {D = D} {i = i} {i'} {ms = ms} {ms'} {k = k} {p = p} {p'} pi pms pp) =
   subst (ielim D (renTm ρ i) (renTm ρ ms) (icon k (renTm ρ p)) ⟹_)
-        (sym (trans (ren-ifields ρ D i' ms' (ilookupD D k) (sel k ms') p')
+        (sym (trans (ren-ifieldsⁱ ρ D i' ms' (ilookupD D k) (sel k ms') p')
                     (cong (λ w → ifields D (renTm ρ i') (renTm ρ ms')
+                                          (isingle (renTm ρ i'))
                                           (ilookupD D k) w (renTm ρ p'))
                           (ren-sel ρ k ms'))))
         (pιi (⟹-ren ρ pi) (⟹-ren ρ pms) (⟹-ren ρ pp))
@@ -1481,8 +1476,9 @@ pwBody-⟹ (pnatrec-suc _ _ _) ()
 ⟹-sub h (pielim pi pms pt) = pielim (⟹-sub h pi) (⟹-sub h pms) (⟹-sub h pt)
 ⟹-sub {σ = σ} {σ'} h (pιi {D = D} {i = i} {i'} {ms = ms} {ms'} {k = k} {p = p} {p'} pi pms pp) =
   subst (λ w → subTm σ (ielim D i ms (icon k p)) ⟹ w)
-        (sym (trans (sub-ifields σ' D i' ms' (ilookupD D k) (sel k ms') p')
+        (sym (trans (sub-ifieldsⁱ σ' D i' ms' (ilookupD D k) (sel k ms') p')
                     (cong (λ w → ifields D (subTm σ' i') (subTm σ' ms')
+                                          (isingle (subTm σ' i'))
                                           (ilookupD D k) w (subTm σ' p'))
                           (sub-sel σ' k ms'))))
         (pιi (⟹-sub h pi) (⟹-sub h pms) (⟹-sub h pp))
@@ -1562,6 +1558,34 @@ pwBody-⟹ (pnatrec-suc _ _ _) ()
         (sym (sub-comm σ' b' t'))
         (pap-J (stkC?-sub σ c₁ key)
                (⟹-sub h p) (⟹-sub (⟹-exts h) q) (⟹-sub h r))
+
+-- ⚠ PLACED AFTER `⟹-sub`: a recursive field's index is an arbitrary
+--   telescope term, so the `iρ` row moves it with `⟹-sub pσ (⟹-refl j)`.
+--   The old `iρ f` needed only `papp (⟹-refl (εwkTm f)) pi` and could
+--   live much earlier.  Do not hoist this back up.
+
+-- ★ the INDEXED twins of `p-ihs`/`p-fields`.  Same reason they are lemmas and
+--   not constructors: `iihs`/`ifields`/`sel` are metalevel, so `pιi`'s
+--   right-hand side is built, not matched.  The `iρ` row is where the index
+--   moves: the recursive call sits at `app (εwkTm f) i`, so the shift term
+--   rides along by reflexivity and only `i` actually steps.
+p-iihs : {D : IDesc} {ms ms' : RTm Γ} {Θ : Cx} {σ σ' : Sub Θ Γ}
+         (C : ICon Θ) {p p' : RTm Γ} →
+         (∀ x → σ x ⟹ σ' x) → ms ⟹ ms' → p ⟹ p' →
+         iihs D ms σ C p ⟹ iihs D ms' σ' C p'
+p-iihs iι       pσ pms pp = punit
+p-iihs (iρ j C) pσ pms pp =
+  ppair (pielim (⟹-sub pσ (⟹-refl j)) pms (pfst pp))
+        (p-iihs C (λ { vz → pfst pp ; (vs x) → pσ x }) pms (psnd pp))
+p-iihs (iκ κ C) pσ pms pp =
+  p-iihs C (λ { vz → pfst pp ; (vs x) → pσ x }) pms (psnd pp)
+
+p-ifields : {D : IDesc} {i i' ms ms' : RTm Γ} {Θ : Cx} {σ σ' : Sub Θ Γ}
+            (C : ICon Θ) {m m' p p' : RTm Γ} →
+            i ⟹ i' → (∀ x → σ x ⟹ σ' x) → ms ⟹ ms' → m ⟹ m' → p ⟹ p' →
+            ifields D i ms σ C m p ⟹ ifields D i' ms' σ' C m' p'
+p-ifields C pi pσ pms pm pp =
+  papp (papp (papp pm pi) pp) (p-iihs C pσ pms pp)
 
 single-⟹ : {u u' : RTm Γ} → u ⟹ u' →
            (x : Var (Γ ∙)) → single u x ⟹ single u' x
@@ -1754,7 +1778,7 @@ elim D ms t ⁺ = elim D (ms ⁺) (t ⁺)
 icon k c ⁺ = icon k (c ⁺)
 ⌜IMu⌝ D I i ⁺ = ⌜IMu⌝ D I (i ⁺)
 ielim D i ms (icon k c) ⁺ =
-  ifields D (i ⁺) (ms ⁺) (ilookupD D k) (sel k (ms ⁺)) (c ⁺)
+  ifields D (i ⁺) (ms ⁺) (isingle (i ⁺)) (ilookupD D k) (sel k (ms ⁺)) (c ⁺)
 ielim D i ms t ⁺ = ielim D (i ⁺) (ms ⁺) (t ⁺)
 
 trB⁺ (⌜Hom⌝ c a m) s e = e ⁺
@@ -4149,7 +4173,8 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 -- ★ the indexed ι root, mirroring `pι` above: `ifields`/`sel` are metalevel,
 -- so the development runs through their congruence LEMMAS.
 ⟹-⁺ (pιi {D = D} {k = k} pi pms pp) =
-  p-ifields (ilookupD D k) (⟹-⁺ pi) (⟹-⁺ pms) (p-sel k (⟹-⁺ pms)) (⟹-⁺ pp)
+  p-ifields (ilookupD D k) (⟹-⁺ pi) (λ { vz → ⟹-⁺ pi })
+            (⟹-⁺ pms) (p-sel k (⟹-⁺ pms)) (⟹-⁺ pp)
 -- ★ the one that fires: an `icon` scrutinee turns congruence into the root.
 -- ⚠ the rest must ENUMERATE the scrutinee — `_⁺` splits on `icon` first, so a
 --   variable there leaves `ielim D i ms t ⁺` stuck and the RHS untypeable.

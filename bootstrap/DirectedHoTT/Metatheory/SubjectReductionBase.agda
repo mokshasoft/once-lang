@@ -42,8 +42,8 @@ open import DirectedHoTT.Spec.Syntax
         ; subTm-subTm; subTm-cong; subTm-renTm; subTm-id; renTm-subTm
         ; renTm-renTm; renTm-cong
         ; Desc; con; elim; lookupD; sel; fields; sub-fields; sub-sel
-        ; sub-iihs; sub-ifields; ren-iihs; ren-ifields
-        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm )
+        ; sub-iihs; sub-ifields; ren-iihs; ren-ifields; sub-ifieldsⁱ; ren-ifieldsⁱ
+        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm; isingle; iext )
 open import DirectedHoTT.Spec.Variance using ( ren-as-sub )
 open import DirectedHoTT.Spec.Variance
   using ( pw?; stkC?; stkA?; pwBody; pwShift
@@ -301,8 +301,9 @@ pwShift-sub σ t =
 --   is exactly what `εwkTm-sub` was written for.
 ⟶-sub σ (ι-ielim D i ms k p) =
   subst (ielim D (subTm σ i) (subTm σ ms) (icon k (subTm σ p)) ⟶_)
-        (sym (trans (sub-ifields σ D i ms (ilookupD D k) (sel k ms) p)
+        (sym (trans (sub-ifieldsⁱ σ D i ms (ilookupD D k) (sel k ms) p)
                     (cong (λ w → ifields D (subTm σ i) (subTm σ ms)
+                                          (isingle (subTm σ i))
                                           (ilookupD D k) w (subTm σ p))
                           (sub-sel σ k ms))))
         (ι-ielim D (subTm σ i) (subTm σ ms) k (subTm σ p))
