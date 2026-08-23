@@ -112,7 +112,12 @@ fail += orph
 # ── 2. the logical relation, one clause per RTy former ─────────────────────
 # RTy former -> the clause that interprets it (`El` decodes to a NEUTRAL).
 LRMAP = {'base':'base','U':'U','Π':'Π','Σ\'':'Σ','El':'ne',
-         'Hom':'Hom','Unit':'Unit','Nat':'Nat','Id':'Id','Mu':'Mu'}
+         'Hom':'Hom','Unit':'Unit','Nat':'Nat','Id':'Id','Mu':'Mu',
+         # ⚠ the ENTRY is a declaration of what must exist; the code below
+         #   then VERIFIES `⊩₁IMu`/`⊩₀IMu` are really in the datatype
+         #   blocks.  Adding a row does not silence the check — omitting
+         #   one is what makes it say "UNMAPPED".
+         'IMu':'IMu'}
 L1 = block(lr, 'data ⊩₁_ {Γ} where') or ''
 L0 = block(lr, 'data ⊩₀_ {Γ} where') or ''
 print("\n== 2. RTy formers vs the logical relation (⊩₁ / ⊩₀) ==")
