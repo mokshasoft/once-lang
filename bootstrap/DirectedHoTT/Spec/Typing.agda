@@ -197,18 +197,18 @@ iatCon-inst k i M p =
 --   was not merely open, it was FALSE.  This is what every real indexed
 --   eliminator does and what the old formulation was missing.
 imethTy : IDesc → RTy ε → ℕ → ICon (ε ∙) → RTy ((Γ ∙) ∙) → RTy Γ
-imethTy {Γ} D I k C M = Π (εwkTy I) body
-  where
-    -- inside the index binder: ambient is `Γ ∙`, the index is `var vz`,
-    -- and the two-slot motive has to come along.
-    M₁ : RTy (((Γ ∙) ∙) ∙)
-    M₁ = renTy (extR (extR vs)) M
-    body : RTy (Γ ∙)
-    body =
-      Π (ipayTy D I (isingle (var vz)) C)
-        (Π (iihTy D I (isingle (var (vs vz))) C (var vz)
-                  (renTy (extR (extR vs)) M₁))
-           (renTy vs (iatCon k (var vz) M₁)))
+-- ⚠ WRITTEN OUT, NOT via a `where`.  A `where`-bound `M₁` becomes an
+--   OPAQUE APPLICATION `M₁ D I k C M` in downstream goals, so
+--   `renTy ρ (M₁ … M)` does not reduce to `M₁ … (renTy ρ M)` and
+--   `imethTy-ren` cannot be proved.  Readability lost, provability gained.
+--   (`renTy (extR (extR vs)) M` is the motive pushed past the NEW index
+--   binder; applying it twice pushes it past the payload binder too.)
+imethTy {Γ} D I k C M =
+  Π (εwkTy I)
+    (Π (ipayTy D I (isingle (var vz)) C)
+       (Π (iihTy D I (isingle (var (vs vz))) C (var vz)
+                 (renTy (extR (extR vs)) (renTy (extR (extR vs)) M)))
+          (renTy vs (iatCon k (var vz) (renTy (extR (extR vs)) M)))))
 
 imethsTyFrom : IDesc → RTy ε → RTy ((Γ ∙) ∙) → ℕ → IDesc → RTy Γ
 imethsTyFrom D I M j inil    = Unit

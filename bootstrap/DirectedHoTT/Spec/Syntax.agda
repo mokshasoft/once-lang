@@ -1195,6 +1195,22 @@ iext : ∀ {Δ} → Sub Δ Γ → RTm Γ → Sub (Δ ∙) Γ
 iext σ v vz     = v
 iext σ v (vs x) = σ x
 
+-- ★ `iext` commutes with the action.  BOTH cases are `refl` — `iext`'s
+--   clauses reduce on the variable pattern — but the equation is still
+--   needed, because `λ x → renTm ρ (iext σ v x)` and
+--   `iext (renTm ρ ∘ σ) (renTm ρ v)` are POINTWISE equal and not
+--   definitionally so, and Agda will not identify two functions that
+--   merely agree everywhere.
+iext-ren : (ρ : Ren Γ Δ) {Θ : Cx} (σ : Sub Θ Γ) (v : RTm Γ) →
+           ∀ x → renTm ρ (iext σ v x) ≡ iext (λ y → renTm ρ (σ y)) (renTm ρ v) x
+iext-ren ρ σ v vz     = refl
+iext-ren ρ σ v (vs x) = refl
+
+iext-sub : (τ : Sub Γ Δ) {Θ : Cx} (σ : Sub Θ Γ) (v : RTm Γ) →
+           ∀ x → subTm τ (iext σ v x) ≡ iext (λ y → subTm τ (σ y)) (subTm τ v) x
+iext-sub τ σ v vz     = refl
+iext-sub τ σ v (vs x) = refl
+
 -- ★ the INDEXED IH tuple.  Each recursive call is eliminated AT ITS OWN
 --   index, read off the environment — the whole content of indexing at
 --   the term level.
@@ -1290,6 +1306,25 @@ ifields-cong : (D : IDesc) (i ms : RTm Γ) {Δ : Cx} {σ σ' : Sub Δ Γ}
                (C : ICon Δ) (m p : RTm Γ) → (∀ x → σ x ≡ σ' x) →
                ifields D i ms σ C m p ≡ ifields D i ms σ' C m p
 ifields-cong D i ms C m p h = cong (app _) (iihs-cong D ms C p h)
+
+-- the same specialisation for `ipayTy`: the ι-rule and `⊢icon` both name
+-- `isingle i`, so the generic law's `λ x → renTm ρ (isingle i x)` needs the
+-- pointwise bridge applied once, here.
+ipayTy-renⁱ : (ρ : Ren Γ Δ) (D : IDesc) (I : RTy ε) (i : RTm Γ)
+              (C : ICon (ε ∙)) →
+              renTy ρ (ipayTy D I (isingle i) C)
+                ≡ ipayTy D I (isingle (renTm ρ i)) C
+ipayTy-renⁱ ρ D I i C =
+  trans (ipayTy-ren ρ D I (isingle i) C)
+        (ipayTy-cong D I C (isingle-ren ρ i))
+
+ipayTy-subⁱ : (τ : Sub Γ Δ) (D : IDesc) (I : RTy ε) (i : RTm Γ)
+              (C : ICon (ε ∙)) →
+              subTy τ (ipayTy D I (isingle i) C)
+                ≡ ipayTy D I (isingle (subTm τ i)) C
+ipayTy-subⁱ τ D I i C =
+  trans (ipayTy-sub τ D I (isingle i) C)
+        (ipayTy-cong D I C (isingle-sub τ i))
 
 ren-ifieldsⁱ : (ρ : Ren Γ Δ) (D : IDesc) (i ms : RTm Γ) (C : ICon (ε ∙))
                (m p : RTm Γ) →

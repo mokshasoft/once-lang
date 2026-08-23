@@ -28,18 +28,21 @@ open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ ; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
-        ; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap
-        ; Id; ⌜Id⌝; idrefl; jsub; Id-cong₃; ⌜Id⌝-cong₃; jsub-cong₃
-        ; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
-        ; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ
-        ; _∘ᵣ_; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_
-        ; subTy-renTy; renTy-subTy; subTy-subTy; renTy-renTy
-        ; subTy-cong; renTy-cong; subTy-id; subTm-renTm; subTm-id; subTm-cong
-        ; renTm-renTm; renTm-subTm; ⌜Hom⌝-cong₃; Hom-cong₃; ordtr-cong₅
-        ; Desc; Mu; con; elim; lookupD; sel; fields
-        ; DCon; dι; dρ; dκ; dnil; _◃_; Desc; payTy; payTy-ren; payTy-sub; _∈D_; hereD; thereD; lookupD; ihs; renTy-renTy; renTy-subTy; subTy-renTy; subTy-subTy; subTy-cong
-        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm )
+  using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var
+        ; lam; app; pair; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝
+        ; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub; Id-cong₃; ⌜Id⌝-cong₃
+        ; jsub-cong₃; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝
+        ; ⌜Mu⌝; Ren; extR; renTm; renTy; Sub; extS; subTm; subTy; idₛ; _∘ᵣ_
+        ; _ₛ∘ᵣ_; _ᵣ∘ₛ_; _∘ₛ_; subTy-renTy; renTy-subTy; subTy-subTy
+        ; renTy-renTy; subTy-cong; renTy-cong; subTy-id; subTm-renTm
+        ; subTm-id; subTm-cong; renTm-renTm; renTm-subTm; ⌜Hom⌝-cong₃
+        ; Hom-cong₃; ordtr-cong₅; Desc; Mu; con; elim; lookupD; sel; fields
+        ; DCon; dι; dρ; dκ; dnil; _◃_; payTy; payTy-ren; payTy-sub; _∈D_
+        ; hereD; thereD; ihs; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ
+        ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs
+        ; ifields; εwkTy; εwk-ren; εwk-sub; εwkTm; εwkTm-ren; εwkTm-sub
+        ; ipayTy-ren; ipayTy-sub; iext; isingle; ipayTy-cong; subTm-subTm
+        ; iext-ren; iext-sub; ipayTy-renⁱ; ipayTy-subⁱ )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; _∨_; occTm; ∨-false; ∨-false₁; ∨-false₂
         ; occ-ren-eq; occ-sub; eqv; Avoids; occ-ren-tm; avoids-wk
@@ -53,7 +56,7 @@ open import DirectedHoTT.Spec.Variance
         ; stkA?; stkA?-ren; stkA?-sub; stkC?→stkA?
         ; NoNatHd; nnh-base; nnh-Unit; nnh-Σ; nnh-Id; nnh-Π; nnh-Hom; nnh-Mu
         ; nonatc→hd; stkC?→hd
-        ; occ-sel; occ-fields )
+        ; occ-sel; occ-fields; occ-ifields; occ-iihs; occ-εwkTm )
 open import DirectedHoTT.Spec.Typing
   using ( single; nrs; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝
         ; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
@@ -64,6 +67,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
         ; tr-J-base; tr-J-Σ; tr-J-Id; tr-J-Unit; tr-J-Mu; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
+        ; El-⌜IMu⌝; ξ-IMu
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
         ; ap-J; ξ-apᶜ; ξ-apᵇ; ξ-apᵖ
         ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
@@ -79,20 +83,24 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
         ; ⊢ctx_; c-◇; c-▹
         ; ι-elim; ξ-con; ξ-elimᵐ; ξ-elimᵗ
+        ; ι-ielim; ξ-icon; ξ-ielimⁱ; ξ-ielimᵐ; ξ-ielimᵗ; ξ-⌜IMu⌝
         ; ihTy; atCon; conS; methTy; methsTy; methsTyFrom; atCon-inst; ty-Mu; ⊢con; ⊢elim
-        ; DescWf )
+        ; DescWf
+        ; wk-single; iinst; iihTy; iconS; iatCon; iatCon-inst
+        ; imethTy; imethsTy; imethsTyFrom; IDescWf
+        ; ty-IMu; ⊢icon; ⊢ielim; ⊢⌜IMu⌝; IConWf; iwf-ρ; iwf-κ; IDescWfFrom; idwf-cons; idwf-nil; _≅_; csym; ctrn; cred; crfl )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ≅ᵀ-sub; ⟶-sub )
 open import DirectedHoTT.Metatheory.Confluence
-  using ( ⟶-ren; ⟶*-ren; ren-comm; subTm-monoˢ; extS-mono; single-mono
-        ; stkC?-red; stkA?-red )
-open import DirectedHoTT.Metatheory.SubjectReductionBase using ( sub-comm )
+  using ( ⟶-ren; ⟶*-ren; ⟶*-appʳ; ren-comm; subTm-monoˢ; extS-mono; single-mono
+        ; stkC?-red; stkA?-red; church-rosser )
+open import DirectedHoTT.Metatheory.SubjectReductionBase using ( sub-comm; ⟶ᵀ-sub )
 open import DirectedHoTT.Metatheory.Injectivity
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El
         ; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Σˡ; ⟶ᵀ*-Σʳ
         ; ⟶ᵀ*-Homᵀ; ⟶ᵀ*-Homˡ; ⟶ᵀ*-Homʳ; red→≅ᵀ; Π-inj; Σ-inj
         ; ⟶ᵀ*-Idᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; Id-reduct
         ; church-rosserᵀ; Π-reduct; ΠRed; mkΠRed
-        ; Mu-inj )
+        ; Mu-inj; ⟶ᵀ*-IMu; IMu-inj; IMu-reduct; IMuRed; mkIMuRed )
 
 private
   variable
@@ -168,6 +176,8 @@ wk-ren ρ t = trans (renTm-renTm t) (sym (renTm-renTm t))
 ⟶ᵀ-ren ρ El-⌜Nat⌝  = El-⌜Nat⌝
 ⟶ᵀ-ren ρ El-⌜Unit⌝ = El-⌜Unit⌝
 ⟶ᵀ-ren ρ El-⌜Mu⌝   = El-⌜Mu⌝
+⟶ᵀ-ren ρ El-⌜IMu⌝  = El-⌜IMu⌝
+⟶ᵀ-ren ρ (ξ-IMu r) = ξ-IMu (⟶-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-El r) = ξ-El (⟶-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-Πˡ r) = ξ-Πˡ (⟶ᵀ-ren ρ r)
 ⟶ᵀ-ren ρ (ξ-Πʳ r) = ξ-Πʳ (⟶ᵀ-ren (extR ρ) r)
@@ -206,6 +216,8 @@ subTy-monoˢ h base     = doneᵀ
 subTy-monoˢ h Unit     = doneᵀ
 subTy-monoˢ h Nat      = doneᵀ
 subTy-monoˢ h (Mu D)   = doneᵀ
+-- ⚠ NOT `doneᵀ` like `Mu`: the INDEX is a term, so it moves.
+subTy-monoˢ h (IMu D I i) = ⟶ᵀ*-IMu (subTm-monoˢ h i)
 subTy-monoˢ h U        = doneᵀ
 subTy-monoˢ h (El t)   = ⟶ᵀ*-El (subTm-monoˢ h t)
 subTy-monoˢ h (Π A B)  =
@@ -302,6 +314,26 @@ occ-red {x = x} (ξ-elimᵐ {ms = ms} r) e =
   ∨-false (occ-red r (∨-false₁ (occTm x ms) e)) (∨-false₂ (occTm x ms) e)
 occ-red {x = x} (ξ-elimᵗ {ms = ms} r) e =
   ∨-false (∨-false₁ (occTm x ms) e) (occ-red r (∨-false₂ (occTm x ms) e))
+occ-red (ξ-icon r) e = occ-red r e
+occ-red (ξ-⌜IMu⌝ r) e = occ-red r e
+occ-red {x = x} (ξ-ielimⁱ {i = i} r) e =
+  ∨-false (occ-red r (∨-false₁ (occTm x i) e)) (∨-false₂ (occTm x i) e)
+occ-red {x = x} (ξ-ielimᵐ {i = i} {ms = ms} r) e =
+  ∨-false (∨-false₁ (occTm x i) e)
+          (∨-false (occ-red r (∨-false₁ (occTm x ms) (∨-false₂ (occTm x i) e)))
+                   (∨-false₂ (occTm x ms) (∨-false₂ (occTm x i) e)))
+occ-red {x = x} (ξ-ielimᵗ {i = i} {ms = ms} r) e =
+  ∨-false (∨-false₁ (occTm x i) e)
+          (∨-false (∨-false₁ (occTm x ms) (∨-false₂ (occTm x i) e))
+                   (occ-red r (∨-false₂ (occTm x ms) (∨-false₂ (occTm x i) e))))
+occ-red {x = x} (ι-ielim D i ms k p) e =
+  occ-ifields D i ms (isingle i) (ilookupD D k) (sel k ms) p
+    -- the environment is `isingle i`, so its only slot is `i` itself
+    (λ { vz → ∨-false₁ (occTm x i) e })
+    (∨-false₁ (occTm x i) e)
+    (∨-false₁ (occTm x ms) (∨-false₂ (occTm x i) e))
+    (occ-sel k ms (∨-false₁ (occTm x ms) (∨-false₂ (occTm x i) e)))
+    (∨-false₂ (occTm x ms) (∨-false₂ (occTm x i) e))
 occ-red {x = x} (ι-elim D ms k p) e =
   occ-fields D ms (lookupD D k) (sel k ms) p
     (∨-false₁ (occTm x ms) e)
@@ -600,6 +632,9 @@ data NoNat {Γ} : RTy Γ → Set where
   nn-Hom  : {H : RTy Γ} {a b : RTm Γ} → NoNat (Hom H a b)
   nn-Id   : {A : RTy Γ} {t u : RTm Γ} → NoNat (Id A t u)
   nn-Mu   : {Dᵐ : Desc} → NoNat (Mu {Γ} Dᵐ)
+  -- ⚠ unlike `nn-Mu`, this one is NOT closed by an absurd reduction —
+  --   `ξ-IMu` steps the index, so `nonat-red` has a real row below.
+  nn-IMu  : {D : IDesc} {I : RTy ε} {i : RTm Γ} → NoNat (IMu D I i)
 
 nonat-red : {A A' : RTy Γ} → NoNat A → A ⟶ᵀ A' → NoNat A'
 nonat-red nn-base ()
@@ -613,6 +648,8 @@ nonat-red (nn-El _)  (El-⌜Hom⌝ _ _ _) = nn-Hom
 nonat-red (nn-El _)  (El-⌜Id⌝ _ _ _)  = nn-Id
 nonat-red (nn-El _)  El-⌜Unit⌝        = nn-Unit
 nonat-red (nn-El _)  El-⌜Mu⌝          = nn-Mu
+nonat-red (nn-El _)  El-⌜IMu⌝         = nn-IMu
+nonat-red nn-IMu     (ξ-IMu _)        = nn-IMu
 -- ★★ THE excluded case, and the only one: a ⌜Nat⌝-headed ambient.
 nonat-red (nn-El ()) El-⌜Nat⌝
 nonat-red (nn-El nc) (ξ-El r)        = nn-El (nonathd-red nc r)
@@ -1010,6 +1047,334 @@ methsTyFrom-sub σ D M j (C ◃ E) =
                   subTy (extS σ) (renTy vs A) ≡ renTy vs (subTy σ A)
     wk-sub-ty'' σ A = trans (subTy-renTy A) (sym (renTy-subTy A))
 
+------------------------------------------------------------------------
+-- ★★★ THE INDEXED NATURALITY LAYER.
+--
+-- Same shapes as the block above, with ONE systematic difference: every
+-- computed type here mentions the AMBIENT INDEX, so the action is
+-- TRANSPORTED onto it instead of vanishing.  `ipayTy-ren`/`-sub` (Syntax)
+-- set the pattern; these lift it to the TWO-SLOT motive, where the index
+-- lives one binder further out than the scrutinee.
+------------------------------------------------------------------------
+
+-- weakening commutes with a substitution, at TERMS.
+exts-wk-tm : (σ : Sub Γ Δ) (t : RTm Γ) →
+             subTm (extS σ) (renTm vs t) ≡ renTm vs (subTm σ t)
+exts-wk-tm σ t = trans (subTm-renTm t) (sym (renTm-subTm t))
+
+-- ★ `ren-comm-ty` ONE BINDER UP — what the motive's INDEX layer needs.
+--   Only the index variable moves; the payload and ambient slots are refl.
+ren-comm-ty-ext : (ρ : Ren Γ Δ) (M : RTy ((Γ ∙) ∙)) (j : RTm Γ) →
+                  renTy (extR ρ) (subTy (extS (single j)) M)
+                    ≡ subTy (extS (single (renTm ρ j))) (renTy (extR (extR ρ)) M)
+ren-comm-ty-ext {Γ} ρ M j =
+  trans (renTy-subTy M) (trans (subTy-cong bridge M) (sym (subTy-renTy M)))
+  where
+  bridge : ∀ (x : Var ((Γ ∙) ∙)) →
+           (extR ρ ᵣ∘ₛ extS (single j)) x
+             ≡ (extS (single (renTm ρ j)) ₛ∘ᵣ extR (extR ρ)) x
+  bridge vz          = refl
+  bridge (vs vz)     = wk-ren ρ j
+  bridge (vs (vs x)) = refl
+
+sub-comm-ty-ext : (σ : Sub Γ Δ) (M : RTy ((Γ ∙) ∙)) (j : RTm Γ) →
+                  subTy (extS σ) (subTy (extS (single j)) M)
+                    ≡ subTy (extS (single (subTm σ j))) (subTy (extS (extS σ)) M)
+sub-comm-ty-ext {Γ} σ M j =
+  trans (subTy-subTy M) (trans (subTy-cong bridge M) (sym (subTy-subTy M)))
+  where
+  bridge : ∀ (x : Var ((Γ ∙) ∙)) →
+           (extS σ ∘ₛ extS (single j)) x
+             ≡ (extS (single (subTm σ j)) ∘ₛ extS (extS σ)) x
+  bridge vz          = refl
+  bridge (vs vz)     = exts-wk-tm σ j
+  bridge (vs (vs x)) =
+    sym (trans (exts-wk-tm (single (subTm σ j)) (renTm vs (σ x)))
+               (cong (renTm vs) (wk-single (σ x))))
+
+-- ★★ the two-slot instantiation is natural.  Built by peeling the two
+--    `single`s in order: the SCRUTINEE slot with `ren-comm-ty`, then the
+--    INDEX slot with its `-ext` twin.
+iinst-ren : (ρ : Ren Γ Δ) (M : RTy ((Γ ∙) ∙)) (j t : RTm Γ) →
+            renTy ρ (iinst j t M)
+              ≡ iinst (renTm ρ j) (renTm ρ t) (renTy (extR (extR ρ)) M)
+iinst-ren ρ M j t =
+  trans (ren-comm-ty ρ (subTy (extS (single j)) M) t)
+        (cong (subTy (single (renTm ρ t))) (ren-comm-ty-ext ρ M j))
+
+iinst-sub : (σ : Sub Γ Δ) (M : RTy ((Γ ∙) ∙)) (j t : RTm Γ) →
+            subTy σ (iinst j t M)
+              ≡ iinst (subTm σ j) (subTm σ t) (subTy (extS (extS σ)) M)
+iinst-sub σ M j t =
+  trans (subTy-comm σ (subTy (extS (single j)) M) t)
+        (cong (subTy (single (subTm σ t))) (sub-comm-ty-ext σ M j))
+
+-- ★ the IH TUPLE's type is natural.  ⚠ the ENVIRONMENT absorbs the action
+--   — same shape as `ipayTy-ren` in Syntax, and the reason this layer got
+--   SMALLER when the telescope replaced the closed shift.
+iihTy-cong : (D : IDesc) (I : RTy ε) {Θ : Cx} {σ σ' : Sub Θ Γ}
+             (C : ICon Θ) (q : RTm Γ) (M : RTy ((Γ ∙) ∙)) →
+             (∀ x → σ x ≡ σ' x) →
+             iihTy D I σ C q M ≡ iihTy D I σ' C q M
+iihTy-cong D I iι       q M h = refl
+iihTy-cong D I (iρ j C) q M h =
+  cong₂ Σ' (cong (λ z → iinst z (fst q) M) (subTm-cong h j))
+           (cong (renTy vs) (iihTy-cong D I C (snd q) M
+                              (λ { vz → refl ; (vs x) → h x })))
+iihTy-cong D I (iκ κ C) q M h =
+  iihTy-cong D I C (snd q) M (λ { vz → refl ; (vs x) → h x })
+
+iihTy-ren : (ρ : Ren Γ Δ) (D : IDesc) (I : RTy ε) {Θ : Cx}
+            (σ : Sub Θ Γ) (C : ICon Θ) (q : RTm Γ) (M : RTy ((Γ ∙) ∙)) →
+            renTy ρ (iihTy D I σ C q M)
+              ≡ iihTy D I (λ x → renTm ρ (σ x)) C (renTm ρ q)
+                       (renTy (extR (extR ρ)) M)
+iihTy-ren ρ D I σ iι       q M = refl
+iihTy-ren ρ D I σ (iρ j C) q M =
+  cong₂ Σ' (trans (iinst-ren ρ M (subTm σ j) (fst q))
+                  (cong (λ z → iinst z (fst (renTm ρ q))
+                                     (renTy (extR (extR ρ)) M))
+                        (renTm-subTm j)))
+           (trans (wk-ren-ty ρ (iihTy D I (iext σ (fst q)) C (snd q) M))
+                  (cong (renTy vs)
+                        (trans (iihTy-ren ρ D I (iext σ (fst q)) C (snd q) M)
+                               (iihTy-cong D I C (snd (renTm ρ q))
+                                           (renTy (extR (extR ρ)) M)
+                                           (iext-ren ρ σ (fst q))))))
+iihTy-ren ρ D I σ (iκ κ C) q M =
+  trans (iihTy-ren ρ D I (iext σ (fst q)) C (snd q) M)
+        (iihTy-cong D I C (snd (renTm ρ q)) (renTy (extR (extR ρ)) M)
+                    (iext-ren ρ σ (fst q)))
+
+iihTy-sub : (τ : Sub Γ Δ) (D : IDesc) (I : RTy ε) {Θ : Cx}
+            (σ : Sub Θ Γ) (C : ICon Θ) (q : RTm Γ) (M : RTy ((Γ ∙) ∙)) →
+            subTy τ (iihTy D I σ C q M)
+              ≡ iihTy D I (λ x → subTm τ (σ x)) C (subTm τ q)
+                       (subTy (extS (extS τ)) M)
+iihTy-sub τ D I σ iι       q M = refl
+iihTy-sub τ D I σ (iρ j C) q M =
+  cong₂ Σ' (trans (iinst-sub τ M (subTm σ j) (fst q))
+                  (cong (λ z → iinst z (fst (subTm τ q))
+                                     (subTy (extS (extS τ)) M))
+                        (subTm-subTm j)))
+           (trans (wk-sub-ty4 τ (iihTy D I (iext σ (fst q)) C (snd q) M))
+                  (cong (renTy vs)
+                        (trans (iihTy-sub τ D I (iext σ (fst q)) C (snd q) M)
+                               (iihTy-cong D I C (snd (subTm τ q))
+                                           (subTy (extS (extS τ)) M)
+                                           (iext-sub τ σ (fst q))))))
+  where
+    wk-sub-ty4 : (τ : Sub Γ Δ) (A : RTy Γ) →
+                 subTy (extS τ) (renTy vs A) ≡ renTy vs (subTy τ A)
+    wk-sub-ty4 τ A = trans (subTy-renTy A) (sym (renTy-subTy A))
+iihTy-sub τ D I σ (iκ κ C) q M =
+  trans (iihTy-sub τ D I (iext σ (fst q)) C (snd q) M)
+        (iihTy-cong D I C (snd (subTm τ q)) (subTy (extS (extS τ)) M)
+                    (iext-sub τ σ (fst q)))
+
+-- ★ the re-based motive is natural.  Only the INDEX slot has content.
+iatCon-ren : (ρ : Ren Γ Δ) (k : ℕ) (i : RTm Γ) (M : RTy ((Γ ∙) ∙)) →
+             renTy (extR ρ) (iatCon k i M)
+               ≡ iatCon k (renTm ρ i) (renTy (extR (extR ρ)) M)
+iatCon-ren {Γ} ρ k i M =
+  trans (renTy-subTy M) (trans (subTy-cong bridge M) (sym (subTy-renTy M)))
+  where
+  bridge : ∀ (x : Var ((Γ ∙) ∙)) →
+           (extR ρ ᵣ∘ₛ iconS k i) x ≡ (iconS k (renTm ρ i) ₛ∘ᵣ extR (extR ρ)) x
+  bridge vz          = refl
+  bridge (vs vz)     = wk-ren ρ i
+  bridge (vs (vs x)) = refl
+
+iatCon-sub : (σ : Sub Γ Δ) (k : ℕ) (i : RTm Γ) (M : RTy ((Γ ∙) ∙)) →
+             subTy (extS σ) (iatCon k i M)
+               ≡ iatCon k (subTm σ i) (subTy (extS (extS σ)) M)
+iatCon-sub {Γ} σ k i M =
+  trans (subTy-subTy M) (trans (subTy-cong bridge M) (sym (subTy-subTy M)))
+  where
+  bridge : ∀ (x : Var ((Γ ∙) ∙)) →
+           (extS σ ∘ₛ iconS k i) x ≡ (iconS k (subTm σ i) ∘ₛ extS (extS σ)) x
+  bridge vz          = refl
+  bridge (vs vz)     = exts-wk-tm σ i
+  -- ⚠ NOT the `single`-shaped bridge: `iconS` and `extS (single _)` differ
+  --   at `vz`, so this row peels two weakenings by hand.
+  bridge (vs (vs x)) =
+    sym (trans (subTm-renTm (renTm vs (σ x)))
+               (trans (subTm-renTm (σ x)) (sym (ren-as-sub vs (σ x)))))
+
+-- ★ one METHOD's type is natural.  ⚠ NO INDEX PARAMETER any more (§9.1) —
+--   a method quantifies over the index, so its type mentions none.
+imethTy-ren : (ρ : Ren Γ Δ) (D : IDesc) (I : RTy ε) (k : ℕ)
+              (C : ICon (ε ∙)) (M : RTy ((Γ ∙) ∙)) →
+              renTy ρ (imethTy D I k C M)
+                ≡ imethTy D I k C (renTy (extR (extR ρ)) M)
+imethTy-ren ρ D I k C M =
+  cong₂ Π (εwk-ren ρ I)
+          (cong₂ Π (trans (ipayTy-ren (extR ρ) D I (isingle (var vz)) C)
+                          (ipayTy-cong D I C (λ { vz → refl })))
+                   (cong₂ Π (trans (iihTy-ren (extR (extR ρ)) D I
+                                              (isingle (var (vs vz))) C (var vz) _)
+                                   (trans (iihTy-cong D I C (var vz) _
+                                             (λ { vz → refl }))
+                                          (cong (iihTy D I (isingle (var (vs vz)))
+                                                       C (var vz))
+                                                -- ⚠ the motive is weakened TWICE here
+                                                --   (past the index binder AND the
+                                                --   payload binder), so the swap has
+                                                --   to be composed with itself.
+                                                (trans (swap3 (extR ρ)
+                                                          (renTy (extR (extR vs)) M))
+                                                       (cong (renTy (extR (extR vs)))
+                                                             (swap3 ρ M))))))
+                            (trans (wk-ren-ty (extR (extR ρ)) (iatCon k (var vz) _))
+                                   (cong (renTy vs)
+                                         (trans (iatCon-ren (extR ρ) k (var vz) _)
+                                                (cong (iatCon k (var vz))
+                                                      (swap3 ρ M)))))))
+  where
+    -- pushing `extR³ ρ` past `extR² vs` — the motive's two slots must end
+    -- up under the SAME binders on both sides.
+    swap3 : (ρ : Ren Γ Δ) (M : RTy ((Γ ∙) ∙)) →
+            renTy (extR (extR (extR ρ))) (renTy (extR (extR vs)) M)
+              ≡ renTy (extR (extR vs)) (renTy (extR (extR ρ)) M)
+    swap3 ρ M =
+      trans (renTy-renTy M)
+            (trans (renTy-cong (λ { vz → refl ; (vs vz) → refl
+                                  ; (vs (vs x)) → refl }) M)
+                   (sym (renTy-renTy M)))
+
+imethTy-sub : (τ : Sub Γ Δ) (D : IDesc) (I : RTy ε) (k : ℕ)
+              (C : ICon (ε ∙)) (M : RTy ((Γ ∙) ∙)) →
+              subTy τ (imethTy D I k C M)
+                ≡ imethTy D I k C (subTy (extS (extS τ)) M)
+imethTy-sub τ D I k C M =
+  cong₂ Π (εwk-sub τ I)
+          (cong₂ Π (trans (ipayTy-sub (extS τ) D I (isingle (var vz)) C)
+                          (ipayTy-cong D I C (λ { vz → refl })))
+                   (cong₂ Π (trans (iihTy-sub (extS (extS τ)) D I
+                                              (isingle (var (vs vz))) C (var vz) _)
+                                   (trans (iihTy-cong D I C (var vz) _
+                                             (λ { vz → refl }))
+                                          (cong (iihTy D I (isingle (var (vs vz)))
+                                                       C (var vz))
+                                                (trans (swap3s (extS τ)
+                                                          (renTy (extR (extR vs)) M))
+                                                       (cong (renTy (extR (extR vs)))
+                                                             (swap3s τ M))))))
+                            (trans (wk-sub-ty5 (extS (extS τ)) (iatCon k (var vz) _))
+                                   (cong (renTy vs)
+                                         (trans (iatCon-sub (extS τ) k (var vz) _)
+                                                (cong (iatCon k (var vz))
+                                                      (swap3s τ M)))))))
+  where
+    wk-sub-ty5 : (τ : Sub Γ Δ) (A : RTy Γ) →
+                 subTy (extS τ) (renTy vs A) ≡ renTy vs (subTy τ A)
+    wk-sub-ty5 τ A = trans (subTy-renTy A) (sym (renTy-subTy A))
+    swap3s : (τ : Sub Γ Δ) (M : RTy ((Γ ∙) ∙)) →
+             subTy (extS (extS (extS τ))) (renTy (extR (extR vs)) M)
+               ≡ renTy (extR (extR vs)) (subTy (extS (extS τ)) M)
+    swap3s τ M =
+      trans (subTy-renTy M)
+            (trans (subTy-cong
+                      (λ { vz → refl ; (vs vz) → refl
+                         ; (vs (vs x)) →
+                             trans (cong (renTm vs) (renTm-renTm (τ x)))
+                                   (trans (renTm-renTm (τ x))
+                                          (sym (trans (cong (renTm (extR (extR vs)))
+                                                            (renTm-renTm (τ x)))
+                                                      (renTm-renTm (τ x))))) }) M)
+                   (sym (renTy-subTy M)))
+
+imethsTyFrom-ren : (ρ : Ren Γ Δ) (D : IDesc) (I : RTy ε) (M : RTy ((Γ ∙) ∙))
+                   (j : ℕ) (E : IDesc) →
+                   renTy ρ (imethsTyFrom D I M j E)
+                     ≡ imethsTyFrom D I (renTy (extR (extR ρ)) M) j E
+imethsTyFrom-ren ρ D I M j inil    = refl
+imethsTyFrom-ren ρ D I M j (C ◂ E) =
+  cong₂ Σ' (imethTy-ren ρ D I j C M)
+           (trans (wk-ren-ty ρ (imethsTyFrom D I M (suc j) E))
+                  (cong (renTy vs) (imethsTyFrom-ren ρ D I M (suc j) E)))
+
+imethsTyFrom-sub : (τ : Sub Γ Δ) (D : IDesc) (I : RTy ε) (M : RTy ((Γ ∙) ∙))
+                   (j : ℕ) (E : IDesc) →
+                   subTy τ (imethsTyFrom D I M j E)
+                     ≡ imethsTyFrom D I (subTy (extS (extS τ)) M) j E
+imethsTyFrom-sub τ D I M j inil    = refl
+imethsTyFrom-sub τ D I M j (C ◂ E) =
+  cong₂ Σ' (imethTy-sub τ D I j C M)
+           (trans (wk-sub-ty6 τ (imethsTyFrom D I M (suc j) E))
+                  (cong (renTy vs) (imethsTyFrom-sub τ D I M (suc j) E)))
+  where
+    wk-sub-ty6 : (τ : Sub Γ Δ) (A : RTy Γ) →
+                 subTy (extS τ) (renTy vs A) ≡ renTy vs (subTy τ A)
+    wk-sub-ty6 τ A = trans (subTy-renTy A) (sym (renTy-subTy A))
+
+------------------------------------------------------------------------
+-- ★★ MONOTONICITY — WHAT SURVIVED §9.1.
+--
+-- This block used to carry `ipayTy-mono` … `imethsTyFrom-mono`, and its
+-- header called that layer "the clearest place where indexing costs
+-- something rather than mirroring something".  THAT WAS THE WRONG
+-- READING.  A metatheory layer with no counterpart in the non-indexed
+-- development is a tell that a DEFINITION is wrong, not a cost to pay:
+-- methods were typed at ONE index, so `imethsTy` mentioned a term
+-- `ξ-ielimⁱ` could move, so it needed monotonicity.  With methods
+-- index-quantified there is nothing to move, and six lemmas were DELETED
+-- rather than fixed.
+--
+-- ⚠ `iinst-mono` is the one genuine cost of indexing here: under
+--   `ξ-ielimⁱ` the RESULT type `iinst i t M` really does move.
+------------------------------------------------------------------------
+
+⟶ᵀ*-sub' : (σ : Sub Γ Δ) {A A' : RTy Γ} → A ⟶ᵀ* A' → subTy σ A ⟶ᵀ* subTy σ A'
+⟶ᵀ*-sub' σ doneᵀ       = doneᵀ
+⟶ᵀ*-sub' σ (stepᵀ r p) = stepᵀ (⟶ᵀ-sub σ r) (⟶ᵀ*-sub' σ p)
+
+-- ⚠ TWO slots move, for two different rules: `ξ-ielimⁱ` steps the INDEX,
+--   `ξ-ielimᵗ` steps the SCRUTINEE.  The scrutinee one is exactly the
+--   non-indexed `ξ-elimᵗ` shape; the index one has no non-indexed twin.
+-- ★★ `ipayTy-mono` IS BACK — and this corrects the claim in the §9.1
+--   commit that all six monotonicity lemmas were deleted outright.
+--   ⚠ It returns for a DIFFERENT reason than it left.  It left because
+--   `imethsTy` mentioned the index, which was the formulation bug.  It
+--   returns because `IMu-inj` yields a CONVERSION `i ≅ i''` where
+--   `Mu-inj` yields a syntactic `D ≡ D'` — so ι's payload derivation must
+--   be TRANSPORTED along that conversion, which the non-indexed ι never
+--   has to do.  Same `Mu`-is-inert / `IMu`-is-inert-SHAPED asymmetry that
+--   made `IMu-reduct` a record where `Mu-reduct` was `stepᵀ ()`.
+ipayTy-mono : (D : IDesc) (I : RTy ε) {Θ : Cx} {σ σ' : Sub Θ Γ} (C : ICon Θ) →
+              (∀ x → σ x ⟶* σ' x) →
+              ipayTy D I σ C ⟶ᵀ* ipayTy D I σ' C
+ipayTy-mono D I iι       h = doneᵀ
+ipayTy-mono D I (iρ j C) h =
+  ⟶ᵀ*-trans (⟶ᵀ*-Σˡ (⟶ᵀ*-IMu (subTm-monoˢ h j)))
+            (⟶ᵀ*-Σʳ (ipayTy-mono D I C (extS-mono h)))
+ipayTy-mono D I (iκ κ C) h =
+  ⟶ᵀ*-trans (⟶ᵀ*-Σˡ (⟶ᵀ*-El (subTm-monoˢ h κ)))
+            (⟶ᵀ*-Σʳ (ipayTy-mono D I C (extS-mono h)))
+
+-- lifting an index CONVERSION to the payload type, via church-rosser.
+ipayTy-conv : (D : IDesc) (I : RTy ε) (C : ICon (ε ∙)) {i i' : RTm Γ} →
+              i ≅ i' → ipayTy D I (isingle i) C ≅ᵀ ipayTy D I (isingle i') C
+ipayTy-conv D I C c with church-rosser c
+... | w , (ri , ri') =
+      -- ⚠ THE ENVIRONMENTS MUST BE PINNED.  `isingle` is a DEFINED
+      --   function, so it is not injective and Agda cannot solve
+      --   `σ' vz = w` for `σ'`.  Same trap as `IHAt`/`IndPW`.
+      ctrnᵀ (red→≅ᵀ (ipayTy-mono D I {σ = isingle _} {σ' = isingle w} C
+                                 (λ { vz → ri })))
+            (csymᵀ (red→≅ᵀ (ipayTy-mono D I {σ = isingle _} {σ' = isingle w} C
+                                        (λ { vz → ri' }))))
+
+iinst-monoˢ : (M : RTy ((Γ ∙) ∙)) (j : RTm Γ) {t t' : RTm Γ} →
+              t ⟶* t' → iinst j t M ⟶ᵀ* iinst j t' M
+iinst-monoˢ M j r = subTy-monoˢ (single-mono r) (subTy (extS (single j)) M)
+
+iinst-mono : (M : RTy ((Γ ∙) ∙)) (t : RTm Γ) {j j' : RTm Γ} →
+             j ⟶* j' → iinst j t M ⟶ᵀ* iinst j' t M
+iinst-mono M t r =
+  ⟶ᵀ*-sub' (single t)
+    (subTy-monoˢ (λ { vz → done ; (vs vz) → ⟶*-ren vs r ; (vs (vs x)) → done }) M)
+
 ren-ty : {Γ Δ : Ctx} {ρ : Ren ⌊ Γ ⌋ ⌊ Δ ⌋} {A : RTy ⌊ Γ ⌋} →
          Γ ⊢ty A → Ren⊢ Γ Δ ρ → Δ ⊢ty renTy ρ A
 
@@ -1017,6 +1382,8 @@ ren-ty ty-base       h = ty-base
 ren-ty ty-Unit       h = ty-Unit
 ren-ty ty-Nat        h = ty-Nat
 ren-ty (ty-Mu w)     h = ty-Mu w
+ren-ty {ρ = ρ} (ty-IMu {I = I} w di) h =
+  ty-IMu w (⊢-cast (εwk-ren ρ I) (ren-lemma di h))
 ren-ty ty-U          h = ty-U
 ren-ty (ty-Π dA dB)  h = ty-Π (ren-ty dA h) (ren-ty dB (Ren⊢-ext h))
 ren-ty (ty-Σ dA dB)  h = ty-Σ (ren-ty dA h) (ren-ty dB (Ren⊢-ext h))
@@ -1062,6 +1429,27 @@ ren-lemma ⊢⌜base⌝ h = ⊢⌜base⌝
 ren-lemma ⊢⌜Nat⌝ h = ⊢⌜Nat⌝
 ren-lemma ⊢⌜Unit⌝ h = ⊢⌜Unit⌝
 ren-lemma (⊢⌜Mu⌝ w) h = ⊢⌜Mu⌝ w
+ren-lemma {ρ = ρ} (⊢⌜IMu⌝ {I = I} w di) h =
+  ⊢⌜IMu⌝ w (⊢-cast (εwk-ren ρ I) (ren-lemma di h))
+ren-lemma {ρ = ρ} (⊢icon {D = D} {I = I} {i = i} {k = k} w kin di dp) h =
+  ⊢icon w kin (⊢-cast (εwk-ren ρ I) (ren-lemma di h))
+        (⊢-cast (ipayTy-renⁱ ρ D I i (ilookupD D k)) (ren-lemma dp h))
+-- ★★ ⚠ THE FIRST RULE WHOSE MOTIVE CONTEXT IS NOT DEFINITIONALLY STABLE.
+--   `⊢elim`'s is `Γ ▹ Mu D` and `⊢natrec`'s is `Γ ▹ Nat`; both survive
+--   `renTy ρ` on the nose.  `⊢ielim`'s is `Γ ▹ εwkTy I`, which does NOT —
+--   it is only propositionally fixed, by `εwk-ren`.  Hence a `subst` on
+--   the CONTEXT slot, which no other clause here needs.  It is harmless
+--   because `⌊ Γ ▹ A ⌋ = ⌊ Γ ⌋ ∙` ignores `A`, so no `RTy` index moves.
+ren-lemma {Δ = Δ} {ρ = ρ} (⊢ielim {D = D} {I = I} {M = M} {i = i} {t = t}
+                                  w dM di dms dt) h =
+  ⊢-cast (sym (iinst-ren ρ M i t))
+    (⊢ielim w
+      (subst (λ A → ((Δ ▹ A) ▹ IMu D I (var vz)) ⊢ty renTy (extR (extR ρ)) M)
+             (εwk-ren ρ I)
+             (ren-ty dM (Ren⊢-ext (Ren⊢-ext h))))
+      (⊢-cast (εwk-ren ρ I) (ren-lemma di h))
+      (⊢-cast (imethsTyFrom-ren ρ D I M zero D) (ren-lemma dms h))
+      (ren-lemma dt h))
 ren-lemma (⊢⌜Π⌝ dc dd) h = ⊢⌜Π⌝ (ren-lemma dc h) (ren-lemma dd (Ren⊢-ext h))
 ren-lemma (⊢⌜Σ⌝ dc dd) h = ⊢⌜Σ⌝ (ren-lemma dc h) (ren-lemma dd (Ren⊢-ext h))
 ren-lemma (⊢⌜Hom⌝ dc da db) h =
@@ -1126,6 +1514,8 @@ sub-ty ty-base      h = ty-base
 sub-ty ty-Unit      h = ty-Unit
 sub-ty ty-Nat       h = ty-Nat
 sub-ty (ty-Mu w)    h = ty-Mu w
+sub-ty {σ = σ} (ty-IMu {I = I} w di) h =
+  ty-IMu w (⊢-cast (εwk-sub σ I) (sub-lemma di h))
 sub-ty ty-U         h = ty-U
 sub-ty (ty-Π dA dB) h = ty-Π (sub-ty dA h) (sub-ty dB (Sub⊢-ext h))
 sub-ty (ty-Σ dA dB) h = ty-Σ (sub-ty dA h) (sub-ty dB (Sub⊢-ext h))
@@ -1169,6 +1559,21 @@ sub-lemma ⊢⌜base⌝ h = ⊢⌜base⌝
 sub-lemma ⊢⌜Nat⌝ h = ⊢⌜Nat⌝
 sub-lemma ⊢⌜Unit⌝ h = ⊢⌜Unit⌝
 sub-lemma (⊢⌜Mu⌝ w) h = ⊢⌜Mu⌝ w
+sub-lemma {σ = σ} (⊢⌜IMu⌝ {I = I} w di) h =
+  ⊢⌜IMu⌝ w (⊢-cast (εwk-sub σ I) (sub-lemma di h))
+sub-lemma {σ = σ} (⊢icon {D = D} {I = I} {i = i} {k = k} w kin di dp) h =
+  ⊢icon w kin (⊢-cast (εwk-sub σ I) (sub-lemma di h))
+        (⊢-cast (ipayTy-subⁱ σ D I i (ilookupD D k)) (sub-lemma dp h))
+sub-lemma {Δ = Δ} {σ = σ} (⊢ielim {D = D} {I = I} {M = M} {i = i} {t = t}
+                                  w dM di dms dt) h =
+  ⊢-cast (sym (iinst-sub σ M i t))
+    (⊢ielim w
+      (subst (λ A → ((Δ ▹ A) ▹ IMu D I (var vz)) ⊢ty subTy (extS (extS σ)) M)
+             (εwk-sub σ I)
+             (sub-ty dM (Sub⊢-ext (Sub⊢-ext h))))
+      (⊢-cast (εwk-sub σ I) (sub-lemma di h))
+      (⊢-cast (imethsTyFrom-sub σ D I M zero D) (sub-lemma dms h))
+      (sub-lemma dt h))
 sub-lemma (⊢⌜Π⌝ dc dd) h = ⊢⌜Π⌝ (sub-lemma dc h) (sub-lemma dd (Sub⊢-ext h))
 sub-lemma (⊢⌜Σ⌝ dc dd) h = ⊢⌜Σ⌝ (sub-lemma dc h) (sub-lemma dd (Sub⊢-ext h))
 sub-lemma (⊢⌜Hom⌝ dc da db) h =
@@ -1478,6 +1883,9 @@ data StkAmb {Γ : Cx} : RTy Γ → Set where
   st-Unit : StkAmb (Unit {Γ})
   -- ★ `Mu D` is inert: never `U`, never `Π`.
   st-Mu   : {Dᵐ : Desc} → StkAmb (Mu {Γ} Dᵐ)
+  -- ★ `IMu D I i` is likewise never `U`, never `Π` — but its index
+  --   reduces, so it is INERT-SHAPED, not inert.
+  st-IMu  : {D : IDesc} {I : RTy ε} {i : RTm Γ} → StkAmb (IMu D I i)
   -- ★★ SpikeNatJ: `Nat` IS a stable ambient.  `StkAmb A` means "A never
   -- becomes `U` or `Π`", NOT "A is stuck" — that second notion is LR's
   -- `StkHd`, and the two must not be confused.  `Nat` is inert, and a
@@ -1492,6 +1900,8 @@ stamb-red (st-el {c = ⌜Σ⌝ c d} k) (El-⌜Σ⌝ _ _) = st-Σ
 stamb-red (st-el {c = ⌜Id⌝ c a b} k) (El-⌜Id⌝ _ _ _) = st-Id
 stamb-red (st-el {c = ⌜Unit⌝} k) El-⌜Unit⌝ = st-Unit
 stamb-red (st-el {c = ⌜Mu⌝ _} k) El-⌜Mu⌝ = st-Mu
+stamb-red (st-el {c = ⌜IMu⌝ _ _ _} k) El-⌜IMu⌝ = st-IMu
+stamb-red st-IMu (ξ-IMu r) = st-IMu
 stamb-red (st-el {c = ⌜Nat⌝} k) El-⌜Nat⌝ = st-Nat
 stamb-red st-Nat ()
 stamb-red st-Unit ()
@@ -1691,6 +2101,41 @@ gen-elim (⊢conv d c) with gen-elim d
 ... | M , (w , (dM , (dms , (dt , c')))) =
       M , (w , (dM , (dms , (dt , ctrnᵀ (csymᵀ c) c'))))
 
+-- ★ the INDEXED generation lemmas.  Same two-clause shape as `gen-con`/
+--   `gen-elim`: the rule itself, then `⊢conv` composing the conversion.
+gen-icon : {Γ : Ctx} {k : ℕ} {p : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+           Γ ⊢ icon k p ∷ C →
+           Σ IDesc (λ D → Σ (RTy ε) (λ I → Σ (RTm ⌊ Γ ⌋) (λ i →
+             IDescWf I D × ((k ∈ID D) ×
+             ((Γ ⊢ i ∷ εwkTy I) ×
+             ((Γ ⊢ p ∷ ipayTy D I (isingle i) (ilookupD D k)) × (C ≅ᵀ IMu D I i)))))))
+gen-icon (⊢icon {D = D} {I = I} {i = i} w kin di dp) =
+  D , (I , (i , (w , (kin , (di , (dp , crflᵀ))))))
+gen-icon (⊢conv d c) with gen-icon d
+... | D , (I , (i , (w , (kin , (di , (dp , c')))))) =
+      D , (I , (i , (w , (kin , (di , (dp , ctrnᵀ (csymᵀ c) c'))))))
+
+gen-ielim : {Γ : Ctx} {D : IDesc} {i ms t : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+            Γ ⊢ ielim D i ms t ∷ C →
+            Σ (RTy ((⌊ Γ ⌋ ∙) ∙)) (λ M → Σ (RTy ε) (λ I →
+              IDescWf I D ×
+              ((((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M) ×
+              ((Γ ⊢ i ∷ εwkTy I) ×
+              ((Γ ⊢ ms ∷ imethsTy D I M D) ×
+              ((Γ ⊢ t ∷ IMu D I i) × (C ≅ᵀ iinst i t M)))))))
+gen-ielim (⊢ielim {I = I} {M = M} w dM di dms dt) =
+  M , (I , (w , (dM , (di , (dms , (dt , crflᵀ))))))
+gen-ielim (⊢conv d c) with gen-ielim d
+... | M , (I , (w , (dM , (di , (dms , (dt , c')))))) =
+      M , (I , (w , (dM , (di , (dms , (dt , ctrnᵀ (csymᵀ c) c'))))))
+
+gen-⌜IMu⌝ : {Γ : Ctx} {D : IDesc} {I : RTy ε} {i : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+            Γ ⊢ ⌜IMu⌝ D I i ∷ C →
+            (IDescWf I D) × ((Γ ⊢ i ∷ εwkTy I) × (C ≅ᵀ U))
+gen-⌜IMu⌝ (⊢⌜IMu⌝ w di) = w , (di , crflᵀ)
+gen-⌜IMu⌝ (⊢conv d c) with gen-⌜IMu⌝ d
+... | w , (di , c') = w , (di , ctrnᵀ (csymᵀ c) c')
+
 ------------------------------------------------------------------------
 -- ★★★ THE TWO LEMMAS ι NEEDS.  Ported from gate 5c (`SpikeIotaTup`).
 ------------------------------------------------------------------------
@@ -1777,6 +2222,153 @@ ihs-ty {Γ} D M ms (dκ A C) p w dM hms hp =
   ihs-ty D M ms C (snd p) w dM hms
          (⊢-cast (payTy-sub (single (fst p)) D C) (⊢snd hp))
 
+------------------------------------------------------------------------
+-- ★★★ THE TWO LEMMAS THE INDEXED ι NEEDS.
+------------------------------------------------------------------------
+
+-- instantiating the TWO-SLOT motive at a well-typed index and scrutinee
+-- yields a well-formed type.  Two `⊢single`s, outermost last.
+iinst-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (M : RTy ((⌊ Γ ⌋ ∙) ∙))
+           (j t : RTm ⌊ Γ ⌋) →
+           Γ ⊢ j ∷ εwkTy I → Γ ⊢ t ∷ IMu D I j →
+           ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
+           Γ ⊢ty iinst j t M
+iinst-wf {Γ} D I M j t dj dt dM =
+  sub-ty (sub-ty dM (Sub⊢-ext (⊢single dj))) (⊢single dt')
+  where
+    dt' : Γ ⊢ t ∷ subTy (single j) (IMu D I (var vz))
+    dt' = dt
+
+-- the tail of a payload lives under the Σ-binder; instantiating it at the
+-- head field IS the payload type at the extended ENVIRONMENT.  ⚠ this is
+-- the type-level/term-level bridge: `ipayTy` extends with `extS`, `iihs`
+-- with `iext`, and `single` is what connects them.
+ipayTy-sub-single : {Γ Θ : Cx} (D : IDesc) (I : RTy ε) (σ : Sub Θ Γ)
+                    (v : RTm Γ) (C : ICon (Θ ∙)) →
+                    subTy (single v) (ipayTy D I (extS σ) C)
+                      ≡ ipayTy D I (iext σ v) C
+ipayTy-sub-single D I σ v C =
+  trans (ipayTy-sub (single v) D I (extS σ) C)
+        (ipayTy-cong D I C (λ { vz → refl ; (vs x) → wk-single (σ x) }))
+
+-- extending a well-typed environment by a well-typed value.
+iext-Sub⊢ : {Γ Θ : Ctx} {σ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋} {A : RTy ⌊ Θ ⌋} {v : RTm ⌊ Γ ⌋} →
+            Sub⊢ Θ Γ σ → Γ ⊢ v ∷ subTy σ A → Sub⊢ (Θ ▹ A) Γ (iext σ v)
+iext-Sub⊢ {σ = σ} {A = A} h dv here =
+  ⊢-cast (sym (trans (subTy-renTy A)
+                     (subTy-cong (λ x → refl) A))) dv
+iext-Sub⊢ {σ = σ} h dv (there {A = A₀} x) =
+  ⊢-cast (sym (trans (subTy-renTy A₀)
+                     (subTy-cong (λ x → refl) A₀))) (h x)
+
+-- the IH TUPLE'S TYPE is well-formed.  Mirrors `ihTy-wf`; the `iρ` row's
+-- first component is the motive instantiated at the recursive field.
+iihTy-wf : {Γ Θ : Ctx} (D : IDesc) (I : RTy ε) (M : RTy ((⌊ Γ ⌋ ∙) ∙))
+           (σ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋) (C : ICon ⌊ Θ ⌋) (p : RTm ⌊ Γ ⌋) →
+           IConWf D I Θ C → Sub⊢ Θ Γ σ →
+           ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
+           Γ ⊢ p ∷ ipayTy D I σ C →
+           Γ ⊢ty iihTy D I σ C p M
+iihTy-wf D I M σ iι p wC hσ dM hp = ty-Unit
+iihTy-wf {Γ} {Θ} D I M σ (iρ j C) p (iwf-ρ .j dj wC) hσ dM hp =
+  ty-Σ (iinst-wf D I M (subTm σ j) (fst p)
+                 (⊢-cast (εwk-sub σ I) (sub-lemma dj hσ)) (⊢fst hp) dM)
+       (ren-ty (iihTy-wf D I M (iext σ (fst p)) C (snd p) wC
+                         (iext-Sub⊢ hσ (⊢fst hp)) dM
+                         (⊢-cast (ipayTy-sub-single D I σ (fst p) C) (⊢snd hp)))
+               there)
+iihTy-wf D I M σ (iκ κ C) p (iwf-κ .κ dcode wC) hσ dM hp =
+  iihTy-wf D I M (iext σ (fst p)) C (snd p) wC
+           (iext-Sub⊢ hσ (⊢fst hp)) dM
+           (⊢-cast (ipayTy-sub-single D I σ (fst p) C) (⊢snd hp))
+
+-- `sel k` extracts method `k` at its own tag.  ⚠ NO INDEX PARAMETER —
+--   after §9.1 a method's type mentions no particular index, which is
+--   precisely what makes `iihs-ty` below possible at all.
+isel-ty : {Γ : Ctx} (D : IDesc) (I : RTy ε) (M : RTy ((⌊ Γ ⌋ ∙) ∙))
+          (E : IDesc) (j k : ℕ) (ms : RTm ⌊ Γ ⌋) → k ∈ID E →
+          Γ ⊢ ms ∷ imethsTyFrom D I M j E →
+          Γ ⊢ sel k ms ∷ imethTy D I (j + k) (ilookupD E k) M
+isel-ty {Γ} D I M (C ◂ E) j zero ms hereID hms =
+  ⊢-cast (cong (λ n → imethTy D I n C M) (sym (+zero j))) (⊢fst hms)
+  where
+    +zero : (n : ℕ) → (n + zero) ≡ n
+    +zero zero    = refl
+    +zero (suc n) = cong suc (+zero n)
+isel-ty {Γ} D I M (C ◂ E) j (suc k) ms (thereID i) hms =
+  ⊢-cast (cong (λ n → imethTy D I n (ilookupD E k) M) (sym (+-suc j k)))
+         (isel-ty D I M E (suc j) k (snd ms) i
+                  (⊢-cast (wk-sub-single (imethsTyFrom D I M (suc j) E) (fst ms))
+                          (⊢snd hms)))
+  where
+    wk-sub-single : (A : RTy ⌊ Γ ⌋) (u : RTm ⌊ Γ ⌋) →
+                    subTy (single u) (renTy vs A) ≡ A
+    wk-sub-single A u =
+      trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
+
+-- the k-th constructor of a well-formed description is well-formed, in
+-- the STARTING telescope `◇ ▹ εwkTy I` (just the ambient index bound).
+ilookupD-wf : {I : RTy ε} {D E : IDesc} (k : ℕ) →
+              IDescWfFrom D I E → k ∈ID E →
+              IConWf D I (◇ ▹ εwkTy I) (ilookupD E k)
+ilookupD-wf zero    (idwf-cons wC wE) hereID      = wC
+ilookupD-wf (suc k) (idwf-cons wC wE) (thereID m) = ilookupD-wf k wE m
+
+-- ★ a well-typed index IS a well-typed environment for the starting
+--   telescope — the base case that gets `iihs-ty` off the ground.
+isingle-Sub⊢ : {Γ : Ctx} {I : RTy ε} {i : RTm ⌊ Γ ⌋} →
+               Γ ⊢ i ∷ εwkTy I → Sub⊢ (◇ ▹ εwkTy I) Γ (isingle i)
+isingle-Sub⊢ {I = I} di here =
+  ⊢-cast (sym (trans (subTy-renTy (εwkTy I)) (εwk-sub _ I))) di
+isingle-Sub⊢ di (there ())
+
+-- ★★★ OBLIGATION (c) — THE IH TUPLE, AT THE RECURSIVE FIELDS' OWN INDICES.
+--
+-- ⚠⚠ THIS WAS FALSE UNDER THE OLD FORMULATION (PLAN-INDEXED §9.1), not
+--   merely unproven: the tuple `ms` was typed at ONE index while the
+--   recursive call below needs it at `subTm σ j`.  With methods
+--   index-quantified, `ms ∷ imethsTy D I M D` mentions no index and the
+--   SAME tuple serves every recursive field.  That is the whole fix.
+--
+-- ⚠ the environment must be WELL-TYPED against the telescope (`Sub⊢ Θ Γ σ`)
+--   — that is what turns `IConWf`'s `Θ ⊢ j ∷ εwkTy I` into the
+--   `Γ ⊢ subTm σ j ∷ εwkTy I` that `⊢ielim` demands.
+iihs-ty : {Γ Θ : Ctx} (D : IDesc) (I : RTy ε) (M : RTy ((⌊ Γ ⌋ ∙) ∙))
+          (ms : RTm ⌊ Γ ⌋) (σ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋) (C : ICon ⌊ Θ ⌋)
+          (p : RTm ⌊ Γ ⌋) →
+          IDescWf I D →
+          IConWf D I Θ C →
+          Sub⊢ Θ Γ σ →
+          ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
+          Γ ⊢ ms ∷ imethsTy D I M D →
+          Γ ⊢ p ∷ ipayTy D I σ C →
+          Γ ⊢ iihs D ms σ C p ∷ iihTy D I σ C p M
+iihs-ty D I M ms σ iι p wD wC hσ dM hms hp = ⊢unit
+iihs-ty {Γ} {Θ} D I M ms σ (iρ j C) p wD (iwf-ρ .j dj wC) hσ dM hms hp =
+  ⊢pair (ren-ty (iihTy-wf D I M (iext σ (fst p)) C (snd p) wC
+                          (iext-Sub⊢ hσ (⊢fst hp)) dM
+                          (⊢-cast (ipayTy-sub-single D I σ (fst p) C) (⊢snd hp)))
+                there)
+        (⊢ielim wD dM
+                (⊢-cast (εwk-sub σ I) (sub-lemma dj hσ))
+                hms
+                (⊢fst hp))
+        (⊢-cast (sym (wk-sub-single
+                        (iihTy D I (iext σ (fst p)) C (snd p) M)
+                        (ielim D (subTm σ j) ms (fst p))))
+                (iihs-ty D I M ms (iext σ (fst p)) C (snd p) wD wC
+                         (iext-Sub⊢ hσ (⊢fst hp)) dM hms
+                         (⊢-cast (ipayTy-sub-single D I σ (fst p) C) (⊢snd hp))))
+  where
+    wk-sub-single : (A : RTy ⌊ Γ ⌋) (u : RTm ⌊ Γ ⌋) →
+                    subTy (single u) (renTy vs A) ≡ A
+    wk-sub-single A u =
+      trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
+iihs-ty D I M ms σ (iκ κ C) p wD (iwf-κ .κ dcode wC) hσ dM hms hp =
+  iihs-ty D I M ms (iext σ (fst p)) C (snd p) wD wC
+          (iext-Sub⊢ hσ (⊢fst hp)) dM hms
+          (⊢-cast (ipayTy-sub-single D I σ (fst p) C) (⊢snd hp))
+
 -- ★★★ INDUCTIVE TYPES: SUBJECT REDUCTION AT ι.
 --
 -- This is the obligation the ι-rule has carried since it landed, and the
@@ -1787,6 +2379,203 @@ ihs-ty {Γ} D M ms (dκ A C) p w dM hms hp =
 --   sel-ty    method `k` out of the tuple, AT ITS OWN TAG (needs `k ∈D D`)
 --   ihs-ty    the IH tuple inhabits `ihTy`
 --   atCon-inst  the re-based motive lands at `M [ con k p ]` — NO η
+-- ★★★ THE INDEXED REDUCTION RULES.
+--
+-- ⚠ `ξ-ielimⁱ` is where `ξ-IMu` earns its place: the index steps, so the
+--   SCRUTINEE'S TYPE `IMu D I i` steps with it, and `dt` must be
+--   re-typed by conversion.  Without that congruence this case has no
+--   proof — which is why the rule was added (PLAN-INDEXED §9, `ξ-IMu`).
+--   The RESULT type moves too, hence `iinst-mono`.  ⚠ the METHODS do NOT
+--   move: after §9.1 `imethsTy` names no index at all.
+sr d (ξ-icon r) with gen-icon d
+... | D , (I , (i , (w , (kin , (di , (dp , cIMu))))))
+      = ⊢conv (⊢icon w kin di (sr dp r)) (csymᵀ cIMu)
+sr d (ξ-⌜IMu⌝ r) with gen-⌜IMu⌝ d
+... | w , (di , cU) = ⊢conv (⊢⌜IMu⌝ w (sr di r)) (csymᵀ cU)
+sr d (ξ-ielimᵐ r) with gen-ielim d
+... | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      = ⊢conv (⊢ielim w dM di (sr dms r) dt) (csymᵀ cC)
+sr d (ξ-ielimᵗ {i = i} r) with gen-ielim d
+... | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      = ⊢conv (⊢ielim w dM di dms (sr dt r))
+              (csymᵀ (ctrnᵀ cC (red→≅ᵀ (iinst-monoˢ M i (step r done)))))
+sr {Γ = Γ} d (ξ-ielimⁱ {i = i} {i' = i'} r) with gen-ielim d
+... | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      = ⊢conv (⊢ielim w dM (sr di r) dms
+                      (⊢conv dt (credᵀ (ξ-IMu r))))
+              (csymᵀ (ctrnᵀ cC (red→≅ᵀ (iinst-mono M _ (step r done)))))
+-- ★★★ SUBJECT REDUCTION AT THE INDEXED ι.
+--
+-- Mirrors `ι-elim` with ONE extra application — the INDEX, which is the
+-- binder §9.1 added to `imethTy`.  And with one step the non-indexed rule
+-- never needs: `IMu-inj` yields `i ≅ i''` (a CONVERSION, because `IMu`
+-- carries a reducible index) where `Mu-inj` yields `D ≡ D'`, so the
+-- payload derivation must be TRANSPORTED before it can be applied.
+sr {Γ = Γ} d (ι-ielim D i ms k p) with gen-ielim d
+... | M , (I , (w , (dM , (di , (dms , (dt , cC)))))) with gen-icon dt
+...   | D' , (I' , (i'' , (w' , (kin , (di'' , (dp , cIMu))))))
+        with IMu-inj cIMu
+...     | (refl , (refl , ci)) =
+          ⊢conv (⊢-cast step3
+                   (⊢app (⊢-cast step2
+                            (⊢app (⊢-cast step1 (⊢app hsel di)) dp'))
+                         (iihs-ty D I M ms (isingle i) (ilookupD D k) p
+                                  w (ilookupD-wf k w kin) (isingle-Sub⊢ di)
+                                  dM dms dp')))
+                (csymᵀ cC)
+  where
+    C₀ : ICon (ε ∙)
+    C₀ = ilookupD D k
+
+    -- ⚠ THE TRANSPORT the non-indexed ι does not need.
+    dp' : Γ ⊢ p ∷ ipayTy D I (isingle i) C₀
+    dp' = ⊢conv dp (ipayTy-conv D I C₀ (csym ci))
+
+    hsel : Γ ⊢ sel k ms ∷ imethTy D I k C₀ M
+    hsel = isel-ty D I M D zero k ms kin dms
+
+    step1 : subTy (single i)
+              (Π (ipayTy D I (isingle (var vz)) C₀)
+                 (Π (iihTy D I (isingle (var (vs vz))) C₀ (var vz)
+                           (renTy (extR (extR vs)) (renTy (extR (extR vs)) M)))
+                    (renTy vs (iatCon k (var vz) (renTy (extR (extR vs)) M)))))
+              ≡ Π (ipayTy D I (isingle i) C₀)
+                  (subTy (extS (single i))
+                     (Π (iihTy D I (isingle (var (vs vz))) C₀ (var vz)
+                               (renTy (extR (extR vs)) (renTy (extR (extR vs)) M)))
+                        (renTy vs (iatCon k (var vz) (renTy (extR (extR vs)) M)))))
+    -- ⚠ the codomain must be WRITTEN OUT.  With `_` Agda has to invert
+    --   `λ z → Π z ?` against the goal, which it cannot: the meta is
+    --   blocked on the very equation this `cong` is producing.
+    step1 = cong (λ z →
+                   Π z (subTy (extS (single i))
+                          (Π (iihTy D I (isingle (var (vs vz))) C₀ (var vz)
+                                    (renTy (extR (extR vs))
+                                           (renTy (extR (extR vs)) M)))
+                             (renTy vs (iatCon k (var vz)
+                                                (renTy (extR (extR vs)) M))))))
+                 (trans (ipayTy-sub (single i) D I (isingle (var vz)) C₀)
+                        (ipayTy-cong D I C₀ (λ { vz → refl })))
+
+    step2 : subTy (single p)
+              (subTy (extS (single i))
+                 (Π (iihTy D I (isingle (var (vs vz))) C₀ (var vz)
+                           (renTy (extR (extR vs)) (renTy (extR (extR vs)) M)))
+                    (renTy vs (iatCon k (var vz) (renTy (extR (extR vs)) M)))))
+              ≡ Π (iihTy D I (isingle i) C₀ p M)
+                  (renTy vs (subTy (single p) (iatCon k i M)))
+
+    -- the motive survives BOTH substitutions: each cancels one of the two
+    -- weakenings written into `imethTy`.
+    mcancel : subTy (extS (extS (single p)))
+                (subTy (extS (extS (extS (single i))))
+                   (renTy (extR (extR vs)) (renTy (extR (extR vs)) M)))
+                ≡ M
+    -- ⚠ FUSE, THEN CHECK POINTWISE.  Hand-deriving which `extS` cancels
+    --   which `extR` at this depth is where I kept going wrong; composing
+    --   everything into ONE substitution and letting `subTy-cong` check
+    --   the three variable cases is both shorter and self-checking — if
+    --   the weakening tower in `imethTy` were off, THIS is where Agda
+    --   would say so rather than somewhere three lemmas later.
+    mcancel =
+      trans (subTy-subTy (renTy (extR (extR vs)) (renTy (extR (extR vs)) M)))
+      (trans (subTy-renTy (renTy (extR (extR vs)) M))
+      (trans (subTy-renTy M)
+      (trans (subTy-cong (λ { vz → refl ; (vs vz) → refl
+                            ; (vs (vs x)) → refl }) M)
+             (subTy-id M))))
+
+    compA : subTy (single p)
+              (subTy (extS (single i))
+                 (iihTy D I (isingle (var (vs vz))) C₀ (var vz)
+                        (renTy (extR (extR vs)) (renTy (extR (extR vs)) M))))
+              ≡ iihTy D I (isingle i) C₀ p M
+    -- ⚠ FIFTH pointwise bridge.  `iihTy-sub` returns the environment
+    --   `λ x → subTm τ (σ x)`; the next step names `isingle (renTm vs i)`.
+    --   Pointwise equal, definitionally distinct — so `iihTy-cong` has to
+    --   sit BETWEEN the two `iihTy-sub` applications, not after them.
+    compA =
+      trans (cong (subTy (single p))
+                  (trans (iihTy-sub (extS (single i)) D I
+                                    (isingle (var (vs vz))) C₀ (var vz)
+                                    (renTy (extR (extR vs))
+                                           (renTy (extR (extR vs)) M)))
+                         (iihTy-cong D I C₀ (var vz)
+                            (subTy (extS (extS (extS (single i))))
+                               (renTy (extR (extR vs))
+                                      (renTy (extR (extR vs)) M)))
+                            (λ { vz → refl }))))
+            (trans (iihTy-sub (single p) D I (isingle (renTm vs i))
+                              C₀ (var vz)
+                              (subTy (extS (extS (extS (single i))))
+                                 (renTy (extR (extR vs))
+                                        (renTy (extR (extR vs)) M))))
+                   (trans (iihTy-cong D I C₀ p
+                             (subTy (extS (extS (single p)))
+                                (subTy (extS (extS (extS (single i))))
+                                   (renTy (extR (extR vs))
+                                          (renTy (extR (extR vs)) M))))
+                             (λ { vz → wk-single i }))
+                          (cong (iihTy D I (isingle i) C₀ p) mcancel)))
+
+    compB : subTy (extS (single p))
+              (subTy (extS (extS (single i)))
+                 (renTy vs (iatCon k (var vz) (renTy (extR (extR vs)) M))))
+              ≡ renTy vs (subTy (single p) (iatCon k i M))
+    -- ⚠ FUSE BOTH SIDES to `subTy θ M`, then compare θ pointwise — the
+    --   same move that settled `mcancel`.  LHS: two substitutions over a
+    --   weakened `iatCon`; RHS: the substituted `iatCon`, weakened.  Three
+    --   variable cases, and `iconS`'s `vz` row is the only one with content.
+    -- ⚠ REWRITTEN.  Fusing everything to a pointwise comparison of the
+    --   two composites did NOT work: at `vs vz` they are genuinely
+    --   different shapes.  Going through `iatCon-sub` — a lemma already
+    --   proved for the naturality layer — instead of re-deriving the
+    --   substitution algebra by hand is both shorter and correct.
+    -- ⚠ CONTEXT-POLYMORPHIC: applied at two different depths below, so it
+    --   must not be pinned to `⌊ Γ ⌋`.
+    exts-wk : {Θ Δ : Cx} (σ : Sub Θ Δ) (A : RTy Θ) →
+              subTy (extS σ) (renTy vs A) ≡ renTy vs (subTy σ A)
+    exts-wk σ A = trans (subTy-renTy A) (sym (renTy-subTy A))
+
+    wkcancel : subTy (extS (extS (single i)))
+                     (renTy (extR (extR vs)) M) ≡ M
+    wkcancel =
+      trans (subTy-renTy M)
+            (trans (subTy-cong (λ { vz → refl ; (vs vz) → refl
+                                  ; (vs (vs x)) → refl }) M)
+                   (subTy-id M))
+
+    compB =
+      trans (cong (subTy (extS (single p)))
+                  (exts-wk (extS (single i))
+                           (iatCon k (var vz) (renTy (extR (extR vs)) M))))
+            (trans (exts-wk (single p)
+                      (subTy (extS (single i))
+                             (iatCon k (var vz) (renTy (extR (extR vs)) M))))
+                   (cong (renTy vs)
+                      (cong (subTy (single p))
+                         (trans (iatCon-sub (single i) k (var vz)
+                                            (renTy (extR (extR vs)) M))
+                                (cong (iatCon k i) wkcancel)))))
+
+    -- ⚠ BOTH substitutions land on a Π, so this is `cong₂ Π` over the two
+    --   components.  The domain is the IH tuple's type (which is exactly
+    --   what `iihs-ty` produces); the codomain is the re-based motive,
+    --   which `step3` then closes with `iatCon-inst`.
+    step2 = cong₂ Π compA compB
+
+    wk-sub-single : (A : RTy ⌊ Γ ⌋) (u : RTm ⌊ Γ ⌋) →
+                    subTy (single u) (renTy vs A) ≡ A
+    wk-sub-single A u =
+      trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
+
+    step3 : subTy (single (iihs D ms (isingle i) C₀ p))
+                  (renTy vs (subTy (single p) (iatCon k i M)))
+              ≡ iinst i (icon k p) M
+    step3 = trans (wk-sub-single (subTy (single p) (iatCon k i M))
+                                 (iihs D ms (isingle i) C₀ p))
+                  (iatCon-inst k i M p)
+
 sr {Γ = Γ} d (ι-elim D ms k p) with gen-elim d
 ... | M , (w , (dM , (dms , (dt , cC)))) with gen-con dt
 ...   | D' , (w' , (i , (dp , cMu))) with Mu-inj cMu
@@ -1804,10 +2593,7 @@ sr {Γ = Γ} d (ι-elim D ms k p) with gen-elim d
     hsel : Γ ⊢ sel k ms ∷ methTy D k (lookupD D k) M
     hsel = sel-ty D M D zero k ms i dms
 
-    wk-sub-single : (A : RTy ⌊ Γ ⌋) (u : RTm ⌊ Γ ⌋) →
-                    subTy (single u) (renTy vs A) ≡ A
-    wk-sub-single A u =
-      trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
+
 
     -- the payload substitution, pushed through both components
     step2 : subTy (single p)
@@ -1821,6 +2607,11 @@ sr {Γ = Γ} d (ι-elim D ms k p) with gen-elim d
                      (cong (ihTy D (lookupD D k) p) (wk-single-id p M)))
               (trans (subTy-renTy (atCon k M))
                      (sym (renTy-subTy (atCon k M))))
+
+    wk-sub-single : (A : RTy ⌊ Γ ⌋) (u : RTm ⌊ Γ ⌋) →
+                    subTy (single u) (renTy vs A) ≡ A
+    wk-sub-single A u =
+      trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
 
     step3 : subTy (single (ihs D ms (lookupD D k) p))
                   (renTy vs (subTy (single p) (atCon k M)))
