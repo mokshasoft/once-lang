@@ -72,6 +72,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⟶*_; done; step
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
+        ; El-⌜IMu⌝; ξ-IMu
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; ι-elim; ξ-con; ξ-elimᵐ; ξ-elimᵗ )
@@ -3510,6 +3511,8 @@ data StkHd {Γ} : RTy Γ → Set where
   -- ★ `Mu` is a stuck head, `base`-style: no rule computes `Hom (Mu D) a b`.
   -- (Contrast `Nat`, whose order rules removed `sh-Nat` at stage B.)
   sh-Mu   : {D : Desc} → StkHd (Mu {Γ} D)
+  -- ★ same argument as `sh-Mu`: no rule computes `Hom (IMu D I i) a b`.
+  sh-IMu  : {D : IDesc} {I : RTy ε} {i : RTm Γ} → StkHd (IMu D I i)
 
 stkhd-red : {H H' : RTy Γ} → StkHd H → H ⟶ᵀ H' → StkHd H'
 stkhd-red (sh-ne ()) El-⌜base⌝
@@ -3519,6 +3522,7 @@ stkhd-red (sh-ne n)  (ξ-El r)    = sh-ne (ne-red n r)
 stkhd-red sh-Id (ξ-Idᵀ r) = sh-Id
 stkhd-red sh-Id (ξ-Idˡ r) = sh-Id
 stkhd-red sh-Id (ξ-Idʳ r) = sh-Id
+stkhd-red sh-IMu (ξ-IMu r) = sh-IMu
 stkhd-red sh-Unit ()
 stkhd-red sh-Σ       (ξ-Σˡ r)    = sh-Σ
 stkhd-red sh-Σ       (ξ-Σʳ r)    = sh-Σ
