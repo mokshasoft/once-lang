@@ -26,6 +26,8 @@ open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.Compile using (compile-abs)
 open import Once.Arith.SigOp.Block using (block-semM)
 open import Once.Arith.SigOp.BlockSemBridge using (toWord)
+-- Plan 0.74 J5: the block's meaning is at THIS target's width.
+open import Once.Target.Arch using (Arch; x86-32; arch-numerics)
 
 open import Once.Target.X86-32.PhysReg using (eax)
 open import Once.CCC.Target.X86-32.Semantics using (State; readReg)
@@ -41,5 +43,5 @@ arith-dispatch-value :
   → WF s
   → R-input (init env) s
   → readReg (regs (dispatch-arith val-x86-32 (emit-program (compile-abs e)) s)) eax
-      ≡ block-semM e (toWord sh env)
+      ≡ block-semM e (arch-numerics x86-32) (toWord (arch-numerics x86-32) sh env)
 arith-dispatch-value e env s wf ri = arith-block-correct e env s wf ri

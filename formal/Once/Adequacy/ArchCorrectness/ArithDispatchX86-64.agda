@@ -36,6 +36,8 @@ open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.Compile using (compile-abs)
 open import Once.Arith.SigOp.Block using (block-semM)
 open import Once.Arith.SigOp.BlockSemBridge using (toWord)
+-- Plan 0.74 J5: the block's meaning is at THIS target's width.
+open import Once.Target.Arch using (Arch; x86-64; arch-numerics)
 
 open import Once.Target.X86-64.PhysReg using (rsp; rax)
 open import Once.CCC.Target.X86-64.Semantics using (State; readReg)
@@ -65,7 +67,7 @@ arith-dispatch-correct :
   → PreservesCCCState (readReg (regs s) rsp + N) s
       (dispatch-arith val-x86-64 (emit-program (compile-abs e)) N s)
   × ( readReg (regs (dispatch-arith val-x86-64 (emit-program (compile-abs e)) N s)) rax
-        ≡ block-semM e (toWord sh env) )
+        ≡ block-semM e (arch-numerics x86-64) (toWord (arch-numerics x86-64) sh env) )
 arith-dispatch-correct N e env s 0<fr inf wf ri =
     dispatch-arith-preserves val-x86-64 (emit-program (compile-abs e)) N s 0<fr inf
   , ASX.arith-block-correct N e env s wf ri
