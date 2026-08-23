@@ -85,7 +85,9 @@ open import Once.TypeCheck.ElaborateProofs using (extract-morph-eff; extractMorp
   checkComposeGo; checkCaseGo; VerifiedCheckResult; inferElabV-RVar-fail-bridge;
   checkG; inspectWellFormedF; wfv-no; wfv-yes;
   checkCataGo; cata-go-canonical; checkCataGoV-pure-J; checkCataGo-just-success;
-  checkCata-eff-strong-hlp; extract-morph-eff-cata)
+  checkCata-eff-strong-hlp; extract-morph-eff-cata;
+  -- plan 0.74 J6 step 3: the numeral view the negation dispatch takes
+  isRIntView)
 
 ------------------------------------------------------------------------
 -- Leaf-case completeness
@@ -291,9 +293,18 @@ infer-complete-RUnaryOp-neg :
   → inferElab ctx e ≡ success Int Ψ eE' d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ success Int Ψ eE d f
-infer-complete-RUnaryOp-neg {ctx} e eqE
-  with inferElabV ctx e | eqE
-... | success Int _ _ _ _ , _ | refl = _ , _ , _ , refl
+-- PLAN 0.74 J6 step 3. `inferElabV` routes `RUnaryOp OpNeg` through
+-- `inferElabV-neg-dispatch`, which folds a minus on a NUMERAL into one
+-- literal. The dispatch takes the decision as an ARGUMENT, so it unfolds for
+-- an abstract operand and this proof splits two ways rather than sixteen.
+-- `eqE` is abstracted with the view so that the folded branch's `Ψ` is pinned
+-- to `zeroUsage` by the literal's own inference.
+infer-complete-RUnaryOp-neg {ctx} e eqE with isRIntView e | eqE
+-- FOLDED: `- 5` is the literal `-5`; the operand's own inference is not
+-- consulted, so the result is immediate.
+... | just (n , refl) | refl = _ , _ , _ , refl
+... | nothing        | _    with inferElabV ctx e | eqE
+...   | success Int _ _ _ _ , _ | refl = _ , _ , _ , refl
 
 infer-complete-RAnnot :
   ∀ {ctx : NamedCtx} (e : RawExpr) (T : Type)

@@ -17,7 +17,7 @@ module Once.TypeCheck.Elaborate where
 
 open import Data.String using (String; _++_)
 open import Data.String.Properties as StrProp using (_≟_)
-open import Data.Integer using (ℤ)
+open import Data.Integer using (ℤ; -_)
 open import Data.Nat using (ℕ; zero; suc; _≤?_; _⊔_; _<_; s≤s)
 open import Data.Nat.Properties using (≤-refl)
 open import Data.Nat.Induction using (<-wellFounded)
@@ -29,7 +29,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax)
+open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; Σ)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; cong₂; sym; trans)
 
 open import Once.Type
@@ -414,6 +414,15 @@ open import Data.Unit using (⊤; tt) public
 -- Soundness witness type. `success` carries an infer-mode judgment;
 -- `failure` carries no obligation. The verified elaborator's `Σ`
 -- result couples each `inferElab` clause with this witness directly.
+-- | Is this operand a NUMERAL? (plan 0.74 J6 step 3.)
+--
+-- Returns the proof as well as the digit, so the negation dispatch can rewrite
+-- `e` to `Raw.RInt n` and build `t-neg (t-int n)`. `RawExpr` is a plain
+-- datatype, so a catch-all here is safe — the caller never matches on `e`.
+isRIntView : (e : RawExpr) → Maybe (Σ ℤ (λ n → e ≡ Raw.RInt n))
+isRIntView (Raw.RInt n) = just (n , refl)
+isRIntView _            = nothing
+
 soundOf : (ctx : NamedCtx) (e : RawExpr)
         → InferElabResult (NamedCtx.debruijn ctx) → Set
 soundOf ctx e (success A Ψ eE d f) = ctx ⊢ᵢ e ∶ A ⨾ Ψ
@@ -1096,6 +1105,15 @@ mutual
     → VerifiedCheckResult ctx e T → VerifiedInferResult ctx (Raw.RAnnot e T)
   inferElabV-RUnaryOp-aux : (ctx : NamedCtx) (e : RawExpr)
     → VerifiedInferResult ctx e → VerifiedInferResult ctx (Raw.RUnaryOp Raw.OpNeg e)
+  -- PLAN 0.74 J6 step 3: a minus directly on a NUMERAL is one literal, not a
+  -- runtime negation of another one. Split out as a named dispatch (the
+  -- file's `inferElabV-RApp-dispatch` convention) so the definitional
+  -- reduction that stops holding is confined to this function.
+  inferElabV-neg-dispatch : (ctx : NamedCtx) (e : RawExpr)
+    → VerifiedInferResult ctx (Raw.RUnaryOp Raw.OpNeg e)
+  inferElabV-neg-aux : (ctx : NamedCtx) (e : RawExpr)
+    → Maybe (Σ ℤ (λ n → e ≡ Raw.RInt n))
+    → VerifiedInferResult ctx (Raw.RUnaryOp Raw.OpNeg e)
   inferElabV-RBinOp-aux : (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : RawExpr)
     → VerifiedInferResult ctx e₁ → VerifiedInferResult ctx e₂
     → VerifiedInferResult ctx (Raw.RBinOp op e₁ e₂)
@@ -1780,7 +1798,7 @@ mutual
   ... | yes refl = success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx) , t-unit-var
   ... | no ¬unit = inferElabV-RVar-lookup-aux ctx x ¬unit _ refl _ refl
 
-  inferElabV ctx (Raw.RUnaryOp Raw.OpNeg e) = inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e)
+  inferElabV ctx (Raw.RUnaryOp Raw.OpNeg e) = inferElabV-neg-dispatch ctx e
 
   inferElabV ctx (Raw.RLet x e₁ e₂) =
     inferElabV-RLet-aux ctx x e₁ e₂ (inferElabV ctx e₁)
@@ -2028,6 +2046,26 @@ mutual
 
   inferElabV-RAnnot-aux ctx e T (success Ψ eE d fr , witness) = success T Ψ eE d fr , t-annot witness
   inferElabV-RAnnot-aux ctx e T (failure err , _)             = failure err , tt
+
+  -- `-5` IS A LITERAL. Emitting `neg (int 5)` would compile to "load 5; call
+  -- arith.neg.int" -- a RUNTIME negation of a compile-time constant -- and it
+  -- is also what made `Once.IRLits` disagree with the spec's `negLits`, so
+  -- that `-2147483648` was refused on x86-32 though it fits. The depth and
+  -- fresh counter match what the unfolded path produced (`suc 0`), so nothing
+  -- reading them changes. Sound by `Once.Word.Width.⊝-fromℤ`, which
+  -- `RealizeAgrees` spends.
+  -- The decision is an ARGUMENT, not a `with` and not a pattern match on `e`,
+  -- so `inferElabV ctx (RUnaryOp OpNeg e)` still unfolds for an ABSTRACT `e`.
+  -- That is the difference between this and the first attempt: matching `e`
+  -- here would have forced every downstream proof to enumerate all sixteen
+  -- `RawExpr` heads just to make the dispatch reduce. Downstream now does
+  -- `with isRIntView e` and handles two cases. Same convention as
+  -- `cfm-build-gated` taking its `Dec`.
+  inferElabV-neg-dispatch ctx e = inferElabV-neg-aux ctx e (isRIntView e)
+
+  inferElabV-neg-aux ctx .(Raw.RInt n) (just (n , refl)) =
+    success Int _ (Surface.int (- n)) 1 (NamedCtx.freshCounter ctx) , t-neg (t-int n)
+  inferElabV-neg-aux ctx e nothing = inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e)
 
   inferElabV-RUnaryOp-aux ctx e (failure err , _)                = failure err , tt
   inferElabV-RUnaryOp-aux ctx e (success Unit   _ _ _ _ , _)     = failure (TypeMismatch Int Unit) , tt

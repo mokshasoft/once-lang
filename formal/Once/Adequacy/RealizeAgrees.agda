@@ -21,6 +21,9 @@
 ------------------------------------------------------------------------
 
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+-- plan 0.74 J6 step 3: `⊝-fromℤ` — negating a literal IS the negated literal.
+import Once.Word as OnceWord
+import Data.List as DL
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
 -- target-relative at `Float`, so the format is a parameter. A MODULE parameter
@@ -1535,9 +1538,25 @@ mutual
     agree-RPair (E.inferElabV ctx a) (E.inferElabV ctx b) eq
       (λ p → infer-agreeV ctx a (rec (dbl-< (μ<-l (μ a) (μ b)))) p)
       (λ p → infer-agreeV ctx b (rec (dbl-< (μ<-r (μ a) (μ b)))) p) dγ k
-  infer-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) (acc rec) eq dγ k =
-    agree-RUnaryOp (E.inferElabV ctx e) eq
-      (λ p → infer-agreeV ctx e (rec (dbl-< ≤-refl)) p) dγ k
+  -- PLAN 0.74 J6 step 3. `- 5` now elaborates to the LITERAL `-5`, while
+  -- `realize-infer` still reads `neg (int 5)` off the derivation
+  -- `t-neg (t-int 5)` — the derivation is indexed by the RAW expression and
+  -- did not change. So the two sides are no longer the same term and
+  -- agreement is a real step: `⊝ (fromℤ n) ≡ fromℤ (- n)`.
+  --
+  -- That `realize-agrees` is stated OBSERVATIONALLY is what makes the fold
+  -- affordable. A syntactic `se ≡ realize w` would have forced `realize` to
+  -- fold too, and with it every proof that reads the derivation.
+  infer-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) (acc rec) eq dγ k
+    with E.isRIntView e | eq
+  ... | just (n , refl) | refl =
+          cong (λ v → (DL.List.[] , v)) (sym (OnceWord.Width.⊝-fromℤ (int-bits fmt) n))
+  -- NAME the abstracted equation: in this branch its type has already reduced
+  -- through `inferElabV-neg-aux … nothing` to the plain aux, which is what
+  -- `agree-RUnaryOp` is stated over. The un-refined `eq` has not.
+  ... | nothing         | eq′ =
+          agree-RUnaryOp (E.inferElabV ctx e) eq′
+            (λ p → infer-agreeV ctx e (rec (dbl-< ≤-refl)) p) dγ k
   infer-agreeV ctx (Raw.RLet x e₁ e₂) (acc rec) eq dγ k =
     agree-RLet (E.inferElabV ctx e₁) eq
       (λ p → infer-agreeV ctx e₁ (rec (dbl-< (μ<-l (μ e₁) (μ e₂)))) p)
