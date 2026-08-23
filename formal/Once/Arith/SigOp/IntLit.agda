@@ -34,6 +34,8 @@ open import Once.Type using (Type; Unit; Int)
 open import Once.SigOp.Info using (SigOpInfo; mk-info; Pure)
 open import Once.Functor.Translate using (base-Unit; base-Int; con-base)
 open import Once.CanonicalName using (bare)
+import Once.Word as OnceWord
+open import Once.Target.Arch using (TargetNum; int-bits)
 
 ------------------------------------------------------------------------
 -- The literal-family builder
@@ -45,14 +47,20 @@ lit-int-name n = "lit.int." ++ showℤ n
 
 -- | SigOpInfo for the constant-`n` morphism Unit → Int.
 --
--- Both semantic layers ignore the input (it's Unit) and return
--- the integer constant.  At the frontend (ℤ) layer we return `n`
--- directly; at the machine (ℕ) layer we return |n|.  Negative
--- integer literals are tracked properly once arithmetic migrates
--- to this framework in plan 0.2.4.2.
+-- PLAN 0.74 J5 — THIS CARRIED THE `absℤ` BUG AND WAS MISSED. Its machine
+-- semantics was `λ _ → ∣ n ∣`, the ABSOLUTE VALUE, so `-5` meant 5. That is
+-- the same defect the negative-literal fix (2026-08-20) removed from five
+-- other sites; this one survived because it is currently UNREFERENCED —
+-- `Surface/Elaborate.agda` imports the name and never uses it, and literals
+-- go through the IR's `const` instead.
+--
+-- Fixed rather than left alone, for the reason the retired-constructor trap
+-- teaches: dead code with a refuted semantics is the code that gets revived.
+-- It now agrees with `Denotation/Meaning`'s `⟦ t-int n ⟧ᵢ` — `fromℤ` at the
+-- TARGET's width, two's complement, no absolute value.
 lit-int-info : ℤ → SigOpInfo Unit Int
 lit-int-info n = mk-info
   (bare (lit-int-name n))
-  (λ _ → ∣ n ∣)  -- semM : ⊤ → ℕ (the value; ℕ/Word)
+  (λ tn _ → OnceWord.Width.fromℤ (int-bits tn) n)
   Pure           -- effect: constants are observably pure
   base-Unit (con-base base-Int)
