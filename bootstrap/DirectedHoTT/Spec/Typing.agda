@@ -33,7 +33,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Spec.Typing where
-open import normalizer.Syntax.Types using ( _≡_; refl; trans )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app
@@ -173,6 +173,23 @@ iconS k i (vs (vs x)) = var (vs x)
 
 iatCon : ℕ → RTm Γ → RTy ((Γ ∙) ∙) → RTy (Γ ∙)
 iatCon k i M = subTy (iconS k i) M
+
+-- ★★★ OBLIGATION (b) of `ι-ielim`, DISCHARGED.  The indexed twin of
+--   `atCon-inst`: instantiating the re-based motive at a payload IS the
+--   two-slot motive at that constructor and that index.
+--
+--   ⚠ NOT congruence-free, unlike `atCon-inst`.  The INDEX slot is the one
+--   with content: on the left it is `renTm vs i` weakened past the payload
+--   binder, on the right past the scrutinee binder — two different
+--   `single`s, both undone by `wk-single`.  The other two slots are `refl`.
+iatCon-inst : (k : ℕ) (i : RTm Γ) (M : RTy ((Γ ∙) ∙)) (p : RTm Γ) →
+              subTy (single p) (iatCon k i M) ≡ iinst i (icon k p) M
+iatCon-inst k i M p =
+  trans (subTy-subTy M)
+        (trans (subTy-cong (λ { vz          → refl
+                              ; (vs vz)     → trans (wk-single i) (sym (wk-single i))
+                              ; (vs (vs x)) → refl }) M)
+               (sym (subTy-subTy M)))
 
 imethTy : IDesc → RTy ε → ℕ → ICon → RTm Γ → RTy ((Γ ∙) ∙) → RTy Γ
 imethTy D I k C i M =
@@ -428,9 +445,13 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   --     (c) the IH tuple `iihs` must inhabit `iihTy` AT THE SHIFTED INDICES
   --         — i.e. `ielim` at `app (εwkTm f) i` for each `iρ f`.
   --
-  --   ⬜ (a) is discharged by the `k ∈ID D` premise on ⊢icon, already
-  --      present.  (b) and (c) are the Metatheory/SubjectReduction
-  --      obligations and are NOT yet proved.
+  --   ✅ (a) discharged by the `k ∈ID D` premise on ⊢icon.
+  --   ✅ (b) discharged by `iatCon-inst` above.  ⚠ NOT congruence-free,
+  --      unlike `atCon-inst`: the motive is TWO-SLOT, and the INDEX slot
+  --      is weakened past the payload binder on one side and the
+  --      scrutinee binder on the other.  `wk-single`, twice.
+  --   ⬜ (c) is still open — the Metatheory/SubjectReduction obligation,
+  --      and the one place indexing does work rather than mirror.
   ι-ielim  : (D : IDesc) (i ms : RTm Γ) (k : ℕ) (p : RTm Γ) →
              ielim D i ms (icon k p)
                ⟶ ifields D i ms (ilookupD D k) (sel k ms) p
