@@ -49,7 +49,7 @@ cd "$(dirname "$0")"
 exec python3 - "$@" <<'PYEOF'
 import re, sys, os
 
-ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 PI  = os.path.join(ROOT, 'Spec', 'Syntax.agda')
 LR  = os.path.join(ROOT, 'Metatheory', 'LogicalRelation.agda')
 VAR = os.path.join(ROOT, 'Spec', 'Variance.agda')
@@ -200,17 +200,24 @@ else:
 # `⊢con` is what rules them out" was one, and it was FALSE as written —
 # `lookupD`'s totality makes subject reduction false without a `k ∈D D`
 # premise.  Nothing checked the note; a gate found it by accident.
+import glob as _g
 print("\n== 5. PROMISSORY NOTES (a comment is not a mechanism) ==")
+_scanned = _g.glob(os.path.join(ROOT,"**","*.agda"), recursive=True)
+if not _scanned:
+    print("  ✗ FAIL — scanned 0 files; the glob is stale (see check 5/6 root)")
+    FAIL = True
+else:
+    print(f"  (scanning {len(_scanned)} module(s) under {ROOT})")
 import glob as _g
 pat = re.compile(r'--.*\b(is what rules|will rule|ruled out by|handled by|'
                  r'deferred to|becomes real when|DELETE WHEN|TEMPORARY)\b',
                  re.I)
 notes = 0
-for f in sorted(_g.glob('NbEPDirDB*.agda')):
+for f in sorted(_g.glob(os.path.join(ROOT,'**','*.agda'), recursive=True)):
     for i, line in enumerate(open(f), 1):
         if pat.search(line):
             notes += 1
-            print(f"  {f:<34}:{i}  {line.strip()[:72]}")
+            print(f"  {os.path.relpath(f,ROOT):<40}:{i}  {line.strip()[:66]}")
 print(f"  ⇒ {notes} note(s).  Each asserts an invariant NOTHING CHECKS.")
 print("    ⚠ RULE: totalising a partial function RELOCATES its obligation,")
 print("      it does not remove it.  A new `_⟶_` rule should ship with the")
@@ -236,7 +243,7 @@ print("      missing premise (that is how gate 5 found `k ∈D D`).")
 # which NOTHING CONSUMES.  A conditional lemma exists to be applied; if no
 # call site ever discharges its premise, that premise is unexamined.
 print("\n== 6. CONDITIONAL lemmas with NO CONSUMER (vacuity risk) ==")
-srcs = {f: open(f).read() for f in sorted(_g.glob('NbEPDirDB*.agda'))}
+srcs = {f: open(f).read() for f in sorted(_g.glob(os.path.join(ROOT,'**','*.agda'), recursive=True))}
 decl = re.compile(r'^([^\s:()\[\]{}]+)\s*:\s*(.*)$')
 risky = 0
 for f, txt in srcs.items():
