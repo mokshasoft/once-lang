@@ -441,6 +441,12 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
              ms ⟶ ms' → ielim D i ms t ⟶ ielim D i ms' t
   ξ-ielimᵗ : {D : IDesc} {i ms t t' : RTm Γ} →
              t ⟶ t' → ielim D i ms t ⟶ ielim D i ms t'
+  -- ★ `⌜Mu⌝` needs no congruence — it is inert, with no subterms.
+  --   `⌜IMu⌝` CARRIES THE INDEX, so it needs one.  Exposed by writing
+  --   Confluence's `p⌜IMu⌝`: a parallel-reduction rule under a former
+  --   implies a single-step congruence under it.
+  ξ-⌜IMu⌝  : {D : IDesc} {I : RTy ε} {i i' : RTm Γ} →
+             i ⟶ i' → ⌜IMu⌝ D I i ⟶ ⌜IMu⌝ D I i'
 
 data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   El-⌜base⌝ : El (⌜base⌝ {Γ}) ⟶ᵀ base
@@ -493,6 +499,20 @@ data _⟶ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   ξ-Idᵀ  : {A A' : RTy Γ} {t u : RTm Γ} → A ⟶ᵀ A' → Id A t u ⟶ᵀ Id A' t u
   ξ-Idˡ  : {A : RTy Γ} {t t' u : RTm Γ} → t ⟶ t' → Id A t u ⟶ᵀ Id A t' u
   ξ-Idʳ  : {A : RTy Γ} {t u u' : RTm Γ} → u ⟶ u' → Id A t u ⟶ᵀ Id A t u'
+  -- ★★★ `IMu` CARRIES A TERM, so it needs a congruence — the TYPE-LEVEL
+  --   twin of the note on `ξ-⌜IMu⌝` above, and the same argument.  `Mu D`
+  --   is inert and needs none; `Hom`/`Id` carry terms and have `ξ-…ˡ/ʳ`;
+  --   `IMu D I i` carries the INDEX and had nothing.
+  --
+  -- ⚠⚠ WITHOUT THIS, SUBJECT REDUCTION IS FALSE FOR `ξ-ielimⁱ` — a rule
+  --   already in the kernel.  `sr` preserves the type on the nose, so
+  --   retyping `ielim D i' ms t` needs `t ∷ IMu D I i'` from
+  --   `t ∷ IMu D I i`, i.e. `IMu D I i ≅ᵀ IMu D I i'`, i.e. this rule.
+  --   The only alternative is deleting `ξ-ielimⁱ` so indices never
+  --   reduce — which defeats `iκ` and Vec-as-sugar, both of which exist
+  --   precisely so that computed indices COMPUTE.
+  ξ-IMu  : {D : IDesc} {I : RTy ε} {i i' : RTm Γ} →
+           i ⟶ i' → IMu D I i ⟶ᵀ IMu D I i'
 
 infix 3 _⟶*_
 data _⟶*_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
