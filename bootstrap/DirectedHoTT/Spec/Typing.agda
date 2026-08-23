@@ -44,7 +44,7 @@ open import DirectedHoTT.Spec.Syntax
         ; Desc; Mu; con; elim; lookupD; sel; fields
         ; payTy; payTy-ren; payTy-sub; εwkTy; εwk-ren; εwk-sub; _∈D_; hereD; thereD; DCon; dι; dρ; dκ; dnil; _◃_; ihs; subTy-subTy; subTy-cong; renTy-subTy
         ; subTm-renTm; subTm-id
-        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm )
+        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm; iext; isingle )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; occTm; pw?; stkC?; stkA?; flat?; pwBody; pwShift
         ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id )
@@ -156,12 +156,12 @@ iinst j t M = subTy (single t) (subTy (extS (single j)) M)
 
 -- ★ the IH tuple's TYPE.  Each recursive field contributes the motive AT
 --   ITS OWN SHIFTED INDEX — that is the whole content of indexing here.
-iihTy : IDesc → RTy ε → ICon → RTm Γ → RTm Γ → RTy ((Γ ∙) ∙) → RTy Γ
-iihTy D I iι       i q M = Unit
-iihTy D I (iρ f C) i q M =
-  Σ' (iinst (app (εwkTm f) i) (fst q) M)
-     (renTy vs (iihTy D I C i (snd q) M))
-iihTy D I (iκ κ C) i q M = iihTy D I C i (snd q) M
+iihTy : IDesc → RTy ε → ∀ {Δ} → Sub Δ Γ → ICon Δ → RTm Γ → RTy ((Γ ∙) ∙) → RTy Γ
+iihTy D I σ iι       q M = Unit
+iihTy D I σ (iρ j C) q M =
+  Σ' (iinst (subTm σ j) (fst q) M)
+     (renTy vs (iihTy D I (iext σ (fst q)) C (snd q) M))
+iihTy D I σ (iκ κ C) q M = iihTy D I (iext σ (fst q)) C (snd q) M
 
 -- ★ the motive RE-BASED at the payload binder, for constructor `k` at
 --   index `i`: the scrutinee slot becomes `icon k ⟨-⟩` and the index slot
@@ -191,20 +191,33 @@ iatCon-inst k i M p =
                               ; (vs (vs x)) → refl }) M)
                (sym (subTy-subTy M)))
 
-imethTy : IDesc → RTy ε → ℕ → ICon → RTm Γ → RTy ((Γ ∙) ∙) → RTy Γ
-imethTy D I k C i M =
-  Π (ipayTy D I i C)
-    (Π (iihTy D I C (renTm vs i) (var vz) (renTy (extR (extR vs)) M))
-       (renTy vs (iatCon k i M)))
+-- ★★★ ⚠ REVISED (§9.1): A METHOD QUANTIFIES OVER THE INDEX.
+--   Without this binder the method tuple is usable at ONE index, while
+--   `iihs` needs it at every recursive field's index — so obligation (c)
+--   was not merely open, it was FALSE.  This is what every real indexed
+--   eliminator does and what the old formulation was missing.
+imethTy : IDesc → RTy ε → ℕ → ICon (ε ∙) → RTy ((Γ ∙) ∙) → RTy Γ
+imethTy {Γ} D I k C M = Π (εwkTy I) body
+  where
+    -- inside the index binder: ambient is `Γ ∙`, the index is `var vz`,
+    -- and the two-slot motive has to come along.
+    M₁ : RTy (((Γ ∙) ∙) ∙)
+    M₁ = renTy (extR (extR vs)) M
+    body : RTy (Γ ∙)
+    body =
+      Π (ipayTy D I (isingle (var vz)) C)
+        (Π (iihTy D I (isingle (var (vs vz))) C (var vz)
+                  (renTy (extR (extR vs)) M₁))
+           (renTy vs (iatCon k (var vz) M₁)))
 
-imethsTyFrom : IDesc → RTy ε → RTy ((Γ ∙) ∙) → RTm Γ → ℕ → IDesc → RTy Γ
-imethsTyFrom D I M i j inil    = Unit
-imethsTyFrom D I M i j (C ◂ E) =
-  Σ' (imethTy D I j C i M)
-     (renTy vs (imethsTyFrom D I M i (suc j) E))
+imethsTyFrom : IDesc → RTy ε → RTy ((Γ ∙) ∙) → ℕ → IDesc → RTy Γ
+imethsTyFrom D I M j inil    = Unit
+imethsTyFrom D I M j (C ◂ E) =
+  Σ' (imethTy D I j C M)
+     (renTy vs (imethsTyFrom D I M (suc j) E))
 
-imethsTy : IDesc → RTy ε → RTy ((Γ ∙) ∙) → RTm Γ → IDesc → RTy Γ
-imethsTy D I M i E = imethsTyFrom D I M i zero E
+imethsTy : IDesc → RTy ε → RTy ((Γ ∙) ∙) → IDesc → RTy Γ
+imethsTy D I M E = imethsTyFrom D I M zero E
 
 
 -- The top-two-variable SWAP renaming — what `tr-pw` uses to move the
@@ -450,11 +463,15 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   --      unlike `atCon-inst`: the motive is TWO-SLOT, and the INDEX slot
   --      is weakened past the payload binder on one side and the
   --      scrutinee binder on the other.  `wk-single`, twice.
-  --   ⬜ (c) is still open — the Metatheory/SubjectReduction obligation,
-  --      and the one place indexing does work rather than mirror.
+  --   ⬜ (c) — the IH tuple at the recursive fields' own indices.  ⚠⚠ THIS
+  --      WAS FALSE under the old formulation, not merely open: methods
+  --      were typed at ONE index while `iihs` needs them at every
+  --      recursive field's index (PLAN-INDEXED §9.1).  With `imethTy` now
+  --      quantifying over the index it is PROVABLE; the proof is the
+  --      Metatheory/SubjectReduction obligation that remains.
   ι-ielim  : (D : IDesc) (i ms : RTm Γ) (k : ℕ) (p : RTm Γ) →
              ielim D i ms (icon k p)
-               ⟶ ifields D i ms (ilookupD D k) (sel k ms) p
+               ⟶ ifields D i ms (isingle i) (ilookupD D k) (sel k ms) p
   ξ-icon   : {k : ℕ} {p p' : RTm Γ} → p ⟶ p' → icon k p ⟶ icon k p'
   ξ-ielimⁱ : {D : IDesc} {i i' ms t : RTm Γ} →
              i ⟶ i' → ielim D i ms t ⟶ ielim D i' ms t
@@ -637,8 +654,19 @@ data DescWf : Desc → Set
 -- ★★ their INDEXED twins.  Indexed BY the index type: a shift and a field
 --   code are both functions OUT of it, so well-formedness cannot be stated
 --   without knowing what it is.
-data IConWf  : RTy ε → ICon → Set
-data IDescWf : RTy ε → IDesc → Set
+-- ⚠ REVISED (§9.2): `IConWf` now walks a TYPED TELESCOPE, because a
+--   carried term must be well-typed in a context holding the earlier
+--   fields WITH THEIR TYPES.  It therefore needs the DESCRIPTION — a
+--   recursive field's type is `IMu D I j` — which the old version, whose
+--   `iρ` carried only a closed function, did not.
+data IConWf     : IDesc → RTy ε → (Θ : Ctx) → ICon ⌊ Θ ⌋ → Set
+data IDescWfFrom : IDesc → RTy ε → IDesc → Set
+
+-- the user-facing name is unchanged: a description is well-formed when
+-- every constructor is, with the SAME description available for its
+-- recursive fields.
+IDescWf : RTy ε → IDesc → Set
+IDescWf I D = IDescWfFrom D I D
 
 data _⊢_∷_ where
   ⊢var  : ∀ {Γ x A}     → Γ ∋ x ∷ A → Γ ⊢ var x ∷ A
@@ -799,7 +827,7 @@ data _⊢_∷_ where
           IDescWf I D →
           k ∈ID D →
           Γ ⊢ i ∷ εwkTy I →
-          Γ ⊢ p ∷ ipayTy D I i (ilookupD D k) →
+          Γ ⊢ p ∷ ipayTy D I (isingle i) (ilookupD D k) →
           Γ ⊢ icon k p ∷ IMu D I i
   -- ★★★ INDEXED elimination.  ⚠ The result substitutes BOTH slots — the
   --   index and the scrutinee — because the motive is two-slot.
@@ -807,7 +835,7 @@ data _⊢_∷_ where
            IDescWf I D →
            ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
            Γ ⊢ i ∷ εwkTy I →
-           Γ ⊢ ms ∷ imethsTy D I M i D →
+           Γ ⊢ ms ∷ imethsTy D I M D →
            Γ ⊢ t ∷ IMu D I i →
            Γ ⊢ ielim D i ms t ∷ iinst i t M
   ⊢conv : ∀ {Γ t A B}   → Γ ⊢ t ∷ A → A ≅ᵀ B → Γ ⊢ t ∷ B
@@ -874,16 +902,33 @@ data DescWf where
 --   on the index type.  For a SYNTAX that is `lam (var vz)` (a field at the
 --   ambient index) or `lam (nsuc (var vz))` (one under a binder).
 data IConWf where
-  iwf-ι : {I : RTy ε} → IConWf I iι
-  iwf-ρ : {I : RTy ε} {C : ICon} (f : RTm ε) →
-          ◇ ⊢ f ∷ Π I (εwkTy I) → IConWf I C → IConWf I (iρ f C)
-  iwf-κ : {I : RTy ε} {C : ICon} (κ : RTm ε) →
-          ◇ ⊢ κ ∷ Π I U → IConWf I C → IConWf I (iκ κ C)
+  iwf-ι : {D : IDesc} {I : RTy ε} {Θ : Ctx} → IConWf D I Θ iι
+  -- ★ a RECURSIVE field: its index `j` is any well-typed index term IN THE
+  --   TELESCOPE SO FAR, and the tail sees it bound at type `IMu D I j`.
+  --   That binding is what lets a LATER field name this one — the whole
+  --   point of §9.2.
+  iwf-ρ : {D : IDesc} {I : RTy ε} {Θ : Ctx} {C : ICon (⌊ Θ ⌋ ∙)}
+          (j : RTm ⌊ Θ ⌋) →
+          Θ ⊢ j ∷ εwkTy I →
+          IConWf D I (Θ ▹ IMu D I j) C →
+          IConWf D I Θ (iρ j C)
+  -- ★ a NON-RECURSIVE field: a CODE in the telescope, decoded by `El`.
+  --   A FORDING constraint is exactly this — a field whose code mentions
+  --   the ambient index and an earlier field.
+  iwf-κ : {D : IDesc} {I : RTy ε} {Θ : Ctx} {C : ICon (⌊ Θ ⌋ ∙)}
+          (κ : RTm ⌊ Θ ⌋) →
+          Θ ⊢ κ ∷ U →
+          IConWf D I (Θ ▹ El κ) C →
+          IConWf D I Θ (iκ κ C)
 
-data IDescWf where
-  idwf-nil  : {I : RTy ε} → IDescWf I inil
-  idwf-cons : {I : RTy ε} {C : ICon} {E : IDesc} →
-              IConWf I C → IDescWf I E → IDescWf I (C ◂ E)
+data IDescWfFrom where
+  idwf-nil  : {D : IDesc} {I : RTy ε} → IDescWfFrom D I inil
+  -- ⚠ each constructor starts in the telescope `◇ ▹ εwkTy I` — just the
+  --   AMBIENT INDEX bound — whose erasure is `ε ∙`, matching `ICon (ε ∙)`.
+  idwf-cons : {D : IDesc} {I : RTy ε} {C : ICon (ε ∙)} {E : IDesc} →
+              IConWf D I (◇ ▹ εwkTy I) C → IDescWfFrom D I E →
+              IDescWfFrom D I (C ◂ E)
+
 
 -- CONTEXT well-formedness. Needed because `⊢var`'s type comes from a lookup:
 -- syntactic validity at `⊢var` is exactly "a lookup in a well-formed context
