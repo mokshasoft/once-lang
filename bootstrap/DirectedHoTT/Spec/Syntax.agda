@@ -81,7 +81,16 @@ data Desc : Set
 -- ★★ INDEXED descriptions (2026-08-22).  Added ALONGSIDE the non-indexed
 --   pair rather than re-typing `dρ`, so everything already green stays
 --   green and the two coexist while the indexed one is brought up.
-data ICon : Set
+-- ★★★ THE FIELD TELESCOPE.  `ICx n` is the context a description's
+--   carried terms live in: the AMBIENT INDEX, then one binder per field
+--   already introduced.  ⚠ It is a `Cx`, NOT the ambient `Γ` — descriptions
+--   must stay CLOSED (they appear in types, and `renTy ρ (IMu D I i) =
+--   IMu D I (renTm ρ i)` must not have to rename `D`).
+ICx : ℕ → Cx
+ICx zero    = ε ∙
+ICx (suc n) = ICx n ∙
+
+data ICon : ℕ → Set
 data IDesc : Set
 
 data RTy where
@@ -209,43 +218,44 @@ data Desc where
   dnil : Desc
   _◃_  : DCon → Desc → Desc
 
--- ★★★ INDEXED descriptions.  `iρ` carries the index SHIFT as a CLOSED
---   TERM of function type — `lam (var vz)` for a field at the ambient
---   index, `lam (nsuc (var vz))` for one under a binder.
+-- ★★★ INDEXED descriptions.  A carried term lives in the FIELD
+--   TELESCOPE `ICx n`: `var vz` is the most recent field, and the
+--   ambient index is the innermost variable.
 --
--- ⚠⚠ WHY A CLOSED TERM AND NOT AN AGDA FUNCTION.  `SpikeIDescSigma` (the
---   design spike) writes `ρ : (I → I) → Con → Con`, which is fine in a
---   self-contained spike.  Here `IMu` lands in `RTy`, so a FUNCTION FIELD
---   would put Agda functions inside TYPES — and decidable equality on
---   `RTy`, hence `Algorithm/DecideConversion`, would be gone.  A closed
---   `RTm` is first-order, keeps equality decidable, and is EXACTLY the
---   move `dκ : RTy ε → DCon → DCon` already makes for the field type.
+-- ⚠⚠ WHY A TERM AND NOT AN AGDA FUNCTION.  `IMu` lands in `RTy`, so a
+--   FUNCTION FIELD would put Agda functions inside TYPES and decidable
+--   equality on `RTy` — hence `Algorithm/DecideConversion` — would be
+--   gone.  A first-order `RTm` keeps equality decidable.  Same move
+--   `dκ : RTy ε → DCon → DCon` already makes for the field type.
 --
--- ⚠ SCOPE, recorded: `iι` targets the AMBIENT index, so every constructor
---   is available at every index.  That is precisely the SYNTAX case
---   (`RTm Γ` has all its constructors at every `Γ`) and is what dogfooding
---   needs.  It does NOT cover `Vec` — `cons : A → Vec n → Vec (suc n)`
---   computes its TARGET index from a bound value, which needs `σ`.
---   `SpikeDescSigma`'s header says the same: "Neither arises for a SYNTAX".
---   Additive: `σ` can be added later without disturbing this.
+-- ⚠⚠ REVISED 2026-08-23 (PLAN-INDEXED §9.2).  These previously carried
+--   `RTm ε` applied to the AMBIENT INDEX ONLY.  That could not express
+--   this project's own `Vec`: the forded
+--       cons : (m : Nat) → A → Vec A m → (n ≡ suc m) → Vec A n
+--   recurses at `m`, an EARLIER FIELD, which a closed function of the
+--   ambient index cannot name.  Two comments in this very block said
+--   opposite things about it and both stayed green — the honest one was
+--   the SCOPE note ("does NOT cover Vec … needs σ"), and the `iκ`
+--   note claiming Vec was expressible was an overclaim: `iκ` supplies
+--   the CONSTRAINT FIELD, which is necessary and not sufficient.
+--
+-- ★ `iι` targets the AMBIENT index — every constructor is available at
+--   every index, which is what keeps the logical relation UNIFORM in the
+--   index and never reasoning up to index conversion.  That is why
+--   Fording is cheap here and native computed targets are not.
 data ICon where
-  iι : ICon                     -- no more fields; targets the ambient index
-  iρ : RTm ε → ICon → ICon      -- RECURSIVE field, at the index shifted by a closed fn
-  -- ⚠⚠ NON-RECURSIVE field, whose type MAY DEPEND ON THE INDEX: a closed
-  --   CODE-VALUED FUNCTION `I → U`, applied to the ambient index.
-  --   `iκ (lam ⌜A⌝)` is the ordinary constant case.
-  --   ★ THIS IS WHAT MAKES `Vec` EXPRESSIBLE AS SUGAR (see PLAN-INDEXED.md):
-  --     a FORDING constraint `n ≡ suc m` is just a field whose type mentions
-  --     the index — `iκ (lam (⌜Id⌝ ⌜Nat⌝ (var vz) …))`. Every constructor
-  --     still targets the AMBIENT index, so the logical relation stays
-  --     UNIFORM in the index and never reasons up to index conversion.
-  --     That is the whole reason Fording is cheap and native computed
-  --     target indices are not.
-  iκ : RTm ε → ICon → ICon
+  iι : ∀ {n} → ICon n
+  -- RECURSIVE field, at an index that MAY MENTION EARLIER FIELDS.
+  iρ : ∀ {n} → RTm (ICx n) → ICon (suc n) → ICon n
+  -- NON-RECURSIVE field, type `El κ`, `κ` a code that may mention
+  --   earlier fields and the ambient index.  A FORDING constraint is
+  --   just such a field: `iκ (⌜Id⌝ ⌜Nat⌝ ⟨n⟩ (nsuc ⟨m⟩)) …`.
+  iκ : ∀ {n} → RTm (ICx n) → ICon (suc n) → ICon n
 
 data IDesc where
   inil : IDesc
-  _◂_  : ICon → IDesc → IDesc
+  -- ★ a constructor starts with NO fields bound, only the ambient index.
+  _◂_  : ICon zero → IDesc → IDesc
 
 infixr 5 _◂_
 
@@ -1099,115 +1109,168 @@ payTy-sub σ D (dκ A C) = cong₂ Σ' (εwk-sub σ A) (payTy-sub (extS σ) D C)
 εwkTm-sub : (σ : Sub Γ Δ) (t : RTm ε) → subTm σ (εwkTm t) ≡ εwkTm t
 εwkTm-sub σ t = trans (subTm-subTm t) (subTm-cong (λ ()) t)
 
-ilookupD : IDesc → ℕ → ICon
+ilookupD : IDesc → ℕ → ICon zero
 ilookupD inil    _       = iι
 ilookupD (C ◂ D) zero    = C
 ilookupD (C ◂ D) (suc k) = ilookupD D k
 
 -- ★ the PAYLOAD's type at ambient index `i`.  A recursive field sits at
 --   the SHIFTED index `f i`, where `f` is the constructor's closed shift.
-ipayTy : IDesc → RTy ε → RTm Γ → ICon → RTy Γ
-ipayTy D I i iι       = Unit
-ipayTy D I i (iρ f C) =
-  Σ' (IMu D I (app (εwkTm f) i)) (ipayTy D I (renTm vs i) C)
-ipayTy D I i (iκ κ C) =
-  Σ' (El (app (εwkTm κ) i))      (ipayTy D I (renTm vs i) C)
+-- ★ the ENVIRONMENT for a description's telescope: what the ambient
+--   index and each already-bound field actually are, in `Γ`.
+isingle : RTm Γ → Sub (ICx zero) Γ
+isingle i vz      = i
+isingle i (vs ())
 
--- ★★ NATURALITY OF THE PAYLOAD TYPE.  ⚠ this is where the indexed family
---   PARTS COMPANY with `payTy`: `payTy D C` is CLOSED, so its laws read
---   `renTy ρ (payTy D C) ≡ payTy D C`.  `ipayTy D I i C` mentions the
---   AMBIENT INDEX, so the action has to be TRANSPORTED onto it.
---
---   The shift term `f`/`κ` stays put — it is closed, which is exactly what
---   `εwkTm-ren`/`εwkTm-sub` say — and under the binder the recursive call
---   needs weakening to commute with the action, both instances of "two
---   composites of the same renaming/substitution".
-ipayTy-ren : (ρ : Ren Γ Δ) (D : IDesc) (I : RTy ε) (i : RTm Γ) (C : ICon) →
-             renTy ρ (ipayTy D I i C) ≡ ipayTy D I (renTm ρ i) C
-ipayTy-ren ρ D I i iι = refl
-ipayTy-ren ρ D I i (iρ f C) =
-  cong₂ Σ' (cong (λ z → IMu D I (app z (renTm ρ i))) (εwkTm-ren ρ f))
-           (trans (ipayTy-ren (extR ρ) D I (renTm vs i) C)
-                  (cong (λ z → ipayTy D I z C)
-                        (trans (renTm-renTm i) (sym (renTm-renTm i)))))
-ipayTy-ren ρ D I i (iκ κ C) =
-  cong₂ Σ' (cong (λ z → El (app z (renTm ρ i))) (εwkTm-ren ρ κ))
-           (trans (ipayTy-ren (extR ρ) D I (renTm vs i) C)
-                  (cong (λ z → ipayTy D I z C)
-                        (trans (renTm-renTm i) (sym (renTm-renTm i)))))
+-- ★ the PAYLOAD's type.  ⚠ REVISED (§9.2): walks the telescope with an
+--   environment rather than applying a closed function to the ambient
+--   index.  `extS σ : Sub (ICx n ∙) (Γ ∙)` IS `Sub (ICx (suc n)) (Γ ∙)`,
+--   so the field just introduced is `var vz` in the tail — which is what
+--   lets a later `iρ` name it.
+ipayTy : IDesc → RTy ε → ∀ {n} → Sub (ICx n) Γ → ICon n → RTy Γ
+ipayTy D I σ iι       = Unit
+ipayTy D I σ (iρ j C) = Σ' (IMu D I (subTm σ j)) (ipayTy D I (extS σ) C)
+ipayTy D I σ (iκ κ C) = Σ' (El (subTm σ κ))      (ipayTy D I (extS σ) C)
 
-ipayTy-sub : (σ : Sub Γ Δ) (D : IDesc) (I : RTy ε) (i : RTm Γ) (C : ICon) →
-             subTy σ (ipayTy D I i C) ≡ ipayTy D I (subTm σ i) C
-ipayTy-sub σ D I i iι = refl
-ipayTy-sub σ D I i (iρ f C) =
-  cong₂ Σ' (cong (λ z → IMu D I (app z (subTm σ i))) (εwkTm-sub σ f))
-           (trans (ipayTy-sub (extS σ) D I (renTm vs i) C)
-                  (cong (λ z → ipayTy D I z C)
-                        (trans (subTm-renTm i) (sym (renTm-subTm i)))))
-ipayTy-sub σ D I i (iκ κ C) =
-  cong₂ Σ' (cong (λ z → El (app z (subTm σ i))) (εwkTm-sub σ κ))
-           (trans (ipayTy-sub (extS σ) D I (renTm vs i) C)
-                  (cong (λ z → ipayTy D I z C)
-                        (trans (subTm-renTm i) (sym (renTm-subTm i)))))
+-- two environments agreeing pointwise give the same payload type.
+ipayTy-cong : (D : IDesc) (I : RTy ε) {n : ℕ} {σ σ' : Sub (ICx n) Γ}
+              (C : ICon n) → (∀ x → σ x ≡ σ' x) →
+              ipayTy D I σ C ≡ ipayTy D I σ' C
+ipayTy-cong D I iι       h = refl
+ipayTy-cong D I (iρ j C) h =
+  cong₂ Σ' (cong (IMu D I) (subTm-cong h j))
+           (ipayTy-cong D I C (λ { vz → refl ; (vs x) → cong (renTm vs) (h x) }))
+ipayTy-cong D I (iκ κ C) h =
+  cong₂ Σ' (cong El (subTm-cong h κ))
+           (ipayTy-cong D I C (λ { vz → refl ; (vs x) → cong (renTm vs) (h x) }))
+
+-- naturality.  ⚠ the environment absorbs the action — that is the whole
+--   point of carrying one: `renTy ρ (ipayTy D I σ C) ≡ ipayTy D I (ρ ∘ σ) C`,
+--   with no per-former index bookkeeping.
+ipayTy-ren : (ρ : Ren Γ Δ) (D : IDesc) (I : RTy ε) {n : ℕ}
+             (σ : Sub (ICx n) Γ) (C : ICon n) →
+             renTy ρ (ipayTy D I σ C) ≡ ipayTy D I (λ x → renTm ρ (σ x)) C
+ipayTy-ren ρ D I σ iι = refl
+ipayTy-ren ρ D I σ (iρ j C) =
+  cong₂ Σ' (cong (IMu D I) (renTm-subTm j))
+           (trans (ipayTy-ren (extR ρ) D I (extS σ) C)
+                  (ipayTy-cong D I C (λ { vz → refl
+                                        ; (vs x) → trans (renTm-renTm (σ x))
+                                                         (sym (renTm-renTm (σ x))) })))
+ipayTy-ren ρ D I σ (iκ κ C) =
+  cong₂ Σ' (cong El (renTm-subTm κ))
+           (trans (ipayTy-ren (extR ρ) D I (extS σ) C)
+                  (ipayTy-cong D I C (λ { vz → refl
+                                        ; (vs x) → trans (renTm-renTm (σ x))
+                                                         (sym (renTm-renTm (σ x))) })))
+
+ipayTy-sub : (τ : Sub Γ Δ) (D : IDesc) (I : RTy ε) {n : ℕ}
+             (σ : Sub (ICx n) Γ) (C : ICon n) →
+             subTy τ (ipayTy D I σ C) ≡ ipayTy D I (λ x → subTm τ (σ x)) C
+ipayTy-sub τ D I σ iι = refl
+ipayTy-sub τ D I σ (iρ j C) =
+  cong₂ Σ' (cong (IMu D I) (subTm-subTm j))
+           (trans (ipayTy-sub (extS τ) D I (extS σ) C)
+                  (ipayTy-cong D I C (λ { vz → refl
+                                        ; (vs x) → trans (subTm-renTm (σ x))
+                                                         (sym (renTm-subTm (σ x))) })))
+ipayTy-sub τ D I σ (iκ κ C) =
+  cong₂ Σ' (cong El (subTm-subTm κ))
+           (trans (ipayTy-sub (extS τ) D I (extS σ) C)
+                  (ipayTy-cong D I C (λ { vz → refl
+                                        ; (vs x) → trans (subTm-renTm (σ x))
+                                                         (sym (renTm-subTm (σ x))) })))
 
 data _∈ID_ : ℕ → IDesc → Set where
-  hereID  : {C : ICon} {E : IDesc} → zero ∈ID (C ◂ E)
-  thereID : {k : ℕ} {C : ICon} {E : IDesc} → k ∈ID E → suc k ∈ID (C ◂ E)
+  hereID  : {C : ICon zero} {E : IDesc} → zero ∈ID (C ◂ E)
+  thereID : {k : ℕ} {C : ICon zero} {E : IDesc} → k ∈ID E → suc k ∈ID (C ◂ E)
 
--- ★ the INDEXED IH tuple.  Mirrors `ihs`, but each recursive call is
---   eliminated AT ITS OWN SHIFTED INDEX — that is the whole content of
---   indexing at the term level.
+-- ★ EXTENDING AN ENVIRONMENT BY A VALUE.  ⚠ this is where the TERM level
+--   parts company with the TYPE level: `ipayTy` extends with `extS`,
+--   because its tail lives under a `Σ'` BINDER; `iihs` extends with the
+--   actual field VALUE, because its tail lives under a `pair`, which
+--   binds nothing and stays in `Γ`.
+iext : ∀ {n} → Sub (ICx n) Γ → RTm Γ → Sub (ICx (suc n)) Γ
+iext σ v vz     = v
+iext σ v (vs x) = σ x
+
+-- ★ the INDEXED IH tuple.  Each recursive call is eliminated AT ITS OWN
+--   index, read off the environment — the whole content of indexing at
+--   the term level.
 -- ⚠ NO INDEX TYPE. `I` was threaded here and NEVER USED — the index TYPE
 --   is a TYPE-level concern (`IMu`, `ipayTy`, well-formedness); the term
 --   level only needs the index VALUE. Found by writing Confluence's
---   parallel-reduction rule `pιi`, whose conclusion would have mentioned an
---   `I` its premise could not determine.
-iihs : IDesc → RTm Γ → RTm Γ → ICon → RTm Γ → RTm Γ
-iihs D i ms iι       p = unit
-iihs D i ms (iρ f C) p =
-  pair (ielim D (app (εwkTm f) i) ms (fst p)) (iihs D i ms C (snd p))
-iihs D i ms (iκ κ C) p = iihs D i ms C (snd p)
+--   parallel-reduction rule `pιi`, whose conclusion would have mentioned
+--   an `I` its premise could not determine.
+iihs : IDesc → RTm Γ → ∀ {n} → Sub (ICx n) Γ → ICon n → RTm Γ → RTm Γ
+iihs D ms σ iι       p = unit
+iihs D ms σ (iρ j C) p =
+  pair (ielim D (subTm σ j) ms (fst p))
+       (iihs D ms (iext σ (fst p)) C (snd p))
+iihs D ms σ (iκ κ C) p = iihs D ms (iext σ (fst p)) C (snd p)
 
-ifields : IDesc → RTm Γ → RTm Γ → ICon → RTm Γ → RTm Γ → RTm Γ
-ifields D i ms C m p = app (app m p) (iihs D i ms C p)
+-- ★★ ⚠ REVISED (§9.1): the method is applied to the INDEX first, so ONE
+--   method tuple serves every recursive index.
+ifields : IDesc → RTm Γ → RTm Γ → ∀ {n} → Sub (ICx n) Γ → ICon n →
+          RTm Γ → RTm Γ → RTm Γ
+ifields D i ms σ C m p = app (app (app m i) p) (iihs D ms σ C p)
 
--- ★★ the INDEXED naturality.  ⚠ The `iρ` case is where indexing actually
---   costs something: the recursive `ielim` sits at the SHIFTED index
---   `app (εwkTm f) i`, so the shift must be shown INERT under the action.
---   That is precisely what `εwkTm-ren`/`εwkTm-sub` were written for.
-ren-iihs : (ρ : Ren Γ Δ) (D : IDesc) (i ms : RTm Γ) (C : ICon) (p : RTm Γ) →
-           renTm ρ (iihs D i ms C p)
-             ≡ iihs D (renTm ρ i) (renTm ρ ms) C (renTm ρ p)
-ren-iihs ρ D i ms iι       p = refl
-ren-iihs ρ D i ms (iρ f C) p =
-  cong₂ pair
-    (cong (λ z → ielim D (app z (renTm ρ i)) (renTm ρ ms) (fst (renTm ρ p)))
-          (εwkTm-ren ρ f))
-    (ren-iihs ρ D i ms C (snd p))
-ren-iihs ρ D i ms (iκ κ C) p = ren-iihs ρ D i ms C (snd p)
+iihs-cong : (D : IDesc) (ms : RTm Γ) {n : ℕ} {σ σ' : Sub (ICx n) Γ}
+            (C : ICon n) (p : RTm Γ) → (∀ x → σ x ≡ σ' x) →
+            iihs D ms σ C p ≡ iihs D ms σ' C p
+iihs-cong D ms iι       p h = refl
+iihs-cong D ms (iρ j C) p h =
+  cong₂ pair (cong (λ z → ielim D z ms (fst p)) (subTm-cong h j))
+             (iihs-cong D ms C (snd p) (λ { vz → refl ; (vs x) → h x }))
+iihs-cong D ms (iκ κ C) p h =
+  iihs-cong D ms C (snd p) (λ { vz → refl ; (vs x) → h x })
 
-sub-iihs : (σ : Sub Γ Δ) (D : IDesc) (i ms : RTm Γ) (C : ICon) (p : RTm Γ) →
-           subTm σ (iihs D i ms C p)
-             ≡ iihs D (subTm σ i) (subTm σ ms) C (subTm σ p)
-sub-iihs σ D i ms iι       p = refl
-sub-iihs σ D i ms (iρ f C) p =
-  cong₂ pair
-    (cong (λ z → ielim D (app z (subTm σ i)) (subTm σ ms) (fst (subTm σ p)))
-          (εwkTm-sub σ f))
-    (sub-iihs σ D i ms C (snd p))
-sub-iihs σ D i ms (iκ κ C) p = sub-iihs σ D i ms C (snd p)
+ren-iihs : (ρ : Ren Γ Δ) (D : IDesc) (ms : RTm Γ) {n : ℕ}
+           (σ : Sub (ICx n) Γ) (C : ICon n) (p : RTm Γ) →
+           renTm ρ (iihs D ms σ C p)
+             ≡ iihs D (renTm ρ ms) (λ x → renTm ρ (σ x)) C (renTm ρ p)
+ren-iihs ρ D ms σ iι       p = refl
+ren-iihs ρ D ms σ (iρ j C) p =
+  cong₂ pair (cong (λ z → ielim D z (renTm ρ ms) (fst (renTm ρ p)))
+                   (renTm-subTm j))
+             (trans (ren-iihs ρ D ms (iext σ (fst p)) C (snd p))
+                    (iihs-cong D (renTm ρ ms) C (renTm ρ (snd p))
+                               (λ { vz → refl ; (vs x) → refl })))
+ren-iihs ρ D ms σ (iκ κ C) p =
+  trans (ren-iihs ρ D ms (iext σ (fst p)) C (snd p))
+        (iihs-cong D (renTm ρ ms) C (renTm ρ (snd p))
+                   (λ { vz → refl ; (vs x) → refl }))
 
-ren-ifields : (ρ : Ren Γ Δ) (D : IDesc) (i ms : RTm Γ) (C : ICon) (m p : RTm Γ) →
-              renTm ρ (ifields D i ms C m p)
-                ≡ ifields D (renTm ρ i) (renTm ρ ms) C (renTm ρ m) (renTm ρ p)
-ren-ifields ρ D i ms C m p =
-  cong (app (app (renTm ρ m) (renTm ρ p))) (ren-iihs ρ D i ms C p)
+sub-iihs : (τ : Sub Γ Δ) (D : IDesc) (ms : RTm Γ) {n : ℕ}
+           (σ : Sub (ICx n) Γ) (C : ICon n) (p : RTm Γ) →
+           subTm τ (iihs D ms σ C p)
+             ≡ iihs D (subTm τ ms) (λ x → subTm τ (σ x)) C (subTm τ p)
+sub-iihs τ D ms σ iι       p = refl
+sub-iihs τ D ms σ (iρ j C) p =
+  cong₂ pair (cong (λ z → ielim D z (subTm τ ms) (fst (subTm τ p)))
+                   (subTm-subTm j))
+             (trans (sub-iihs τ D ms (iext σ (fst p)) C (snd p))
+                    (iihs-cong D (subTm τ ms) C (subTm τ (snd p))
+                               (λ { vz → refl ; (vs x) → refl })))
+sub-iihs τ D ms σ (iκ κ C) p =
+  trans (sub-iihs τ D ms (iext σ (fst p)) C (snd p))
+        (iihs-cong D (subTm τ ms) C (subTm τ (snd p))
+                   (λ { vz → refl ; (vs x) → refl }))
 
-sub-ifields : (σ : Sub Γ Δ) (D : IDesc) (i ms : RTm Γ) (C : ICon) (m p : RTm Γ) →
-              subTm σ (ifields D i ms C m p)
-                ≡ ifields D (subTm σ i) (subTm σ ms) C (subTm σ m) (subTm σ p)
-sub-ifields σ D i ms C m p =
-  cong (app (app (subTm σ m) (subTm σ p))) (sub-iihs σ D i ms C p)
+ren-ifields : (ρ : Ren Γ Δ) (D : IDesc) (i ms : RTm Γ) {n : ℕ}
+              (σ : Sub (ICx n) Γ) (C : ICon n) (m p : RTm Γ) →
+              renTm ρ (ifields D i ms σ C m p)
+                ≡ ifields D (renTm ρ i) (renTm ρ ms) (λ x → renTm ρ (σ x)) C
+                            (renTm ρ m) (renTm ρ p)
+ren-ifields ρ D i ms σ C m p = cong (app _) (ren-iihs ρ D ms σ C p)
+
+sub-ifields : (τ : Sub Γ Δ) (D : IDesc) (i ms : RTm Γ) {n : ℕ}
+              (σ : Sub (ICx n) Γ) (C : ICon n) (m p : RTm Γ) →
+              subTm τ (ifields D i ms σ C m p)
+                ≡ ifields D (subTm τ i) (subTm τ ms) (λ x → subTm τ (σ x)) C
+                            (subTm τ m) (subTm τ p)
+sub-ifields τ D i ms σ C m p = cong (app _) (sub-iihs τ D ms σ C p)
+
 
 data _∈D_ : ℕ → Desc → Set where
   hereD  : {C : DCon} {E : Desc} → zero ∈D (C ◃ E)
