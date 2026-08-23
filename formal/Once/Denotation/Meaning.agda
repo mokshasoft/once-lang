@@ -100,9 +100,10 @@ in-value {F} x = sem-In F (coerce-functor F (μ-type F) (forget x))
 -- m-named / m-named-resolved: the named arrow's meaning, IR-free. This is
 -- DEFINITIONALLY `evalᴰ (SigOp (value-info cn))` (same RHS), so the `bridgeᵈ`
 -- case for a named morphism is `refl`.
-named-sem : ∀ {A B : Type} → CanonicalName → IsBaseType A → IsConcrete B → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
-named-sem {A} {B} cn bA cB a =
-  λ _ → (emit-D (value-info {A} {B} cn bA cB) (forget a) , inject (semM (value-info {A} {B} cn bA cB) (forget a)))
+-- Plan 0.74 J5: takes the target's numerics, because `semM` does now.
+named-sem : ∀ {A B : Type} → TargetNum → CanonicalName → IsBaseType A → IsConcrete B → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
+named-sem {A} {B} fmt cn bA cB a =
+  λ _ → (emit-D (value-info {A} {B} cn bA cB) (forget a) , inject (semM (value-info {A} {B} cn bA cB) fmt (forget a)))
 
 ------------------------------------------------------------------------
 -- The VALUE realm `⊢ᵍ` — a closed global element denotes a value `⟦A⟧ᴰ`.
@@ -149,8 +150,8 @@ named-sem {A} {B} cn bA cB a =
 ⟦ m-curry f       ⟧ᵐ fmt = λ a  → returnT (λ b → (⟦ f ⟧ᵐ fmt) (a , b))
 ⟦ m-const gv      ⟧ᵐ fmt = λ _  → returnT (⟦ gv ⟧ᵍ fmt)
 ⟦ m-cata {wfF = wfF} _ alg ⟧ᵐ fmt = cata-sem wfF (⟦ alg ⟧ᵐ fmt)
-⟦_⟧ᵐ {A = A} {B = B} (m-named {x = x} _ _ _ bA cB)        fmt = named-sem {A} {B} (bare x) bA cB
-⟦_⟧ᵐ {A = A} {B = B} (m-named-resolved {cn = cn} _ bA cB) fmt = named-sem {A} {B} cn bA cB
+⟦_⟧ᵐ {A = A} {B = B} (m-named {x = x} _ _ _ bA cB)        fmt = named-sem {A} {B} fmt (bare x) bA cB
+⟦_⟧ᵐ {A = A} {B = B} (m-named-resolved {cn = cn} _ bA cB) fmt = named-sem {A} {B} fmt cn bA cB
 
 ------------------------------------------------------------------------
 -- (P3) The env — IR-free positional lookup into `⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ`.
@@ -164,8 +165,8 @@ svarᴰ : ∀ {n} {Γ : Ctx n} {Ψ A} → SVar Γ Ψ A → ⟦ ⟦ Γ ⟧ᶜᵗ 
 svarᴰ {Γ = Γ} (svar i) dγ = lookupᴰ Γ i dγ
 
 -- A closed named/sigop value reference (matches SD's `poly`/`closure`), IR-free.
-sigOpValᴰ : ∀ {B} → SigOpInfo Unit B → T ⟦ B ⟧ᴰ
-sigOpValᴰ si = λ _ → (emit-D si tt , inject (semM si tt))
+sigOpValᴰ : ∀ {B} → TargetNum → SigOpInfo Unit B → T ⟦ B ⟧ᴰ
+sigOpValᴰ fmt si = λ _ → (emit-D si tt , inject (semM si fmt tt))
 
 -- An EXTERNAL sigop reference (`t-var-qualified/resolved/import`, realized to
 -- SD's `sigOp`). DISPATCHES ON RESULT-TYPE SHAPE exactly like SD's `sigOp`: at
@@ -177,11 +178,11 @@ sigOpValᴰ si = λ _ → (emit-D si tt , inject (semM si tt))
 -- `value-info` would wrongly drop the pointee's effect.
 -- Split on the WITNESS (not `A`'s shape) so `con-base` reduces at an abstract
 -- base `A` — `con-fun` forces the arrow shape for the closure form.
-sigOpRefᴰ : ∀ {A} → CanonicalName → IsConcrete A → T ⟦ A ⟧ᴰ
-sigOpRefᴰ {A = A} cn (con-base ib) = sigOpValᴰ (value-info {Unit} {A} cn base-Unit (con-base ib))
-sigOpRefᴰ cn (con-fun {A = Dom} {B = Cod} {k = k} bDom cCod) =
+sigOpRefᴰ : ∀ {A} → TargetNum → CanonicalName → IsConcrete A → T ⟦ A ⟧ᴰ
+sigOpRefᴰ {A = A} fmt cn (con-base ib) = sigOpValᴰ fmt (value-info {Unit} {A} cn base-Unit (con-base ib))
+sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = k} bDom cCod) =
   returnT (λ arg → λ n → ( emit-D (arrow-info {Dom} {Cod} k cn bDom cCod) (forget arg)
-                         , inject (semM (arrow-info {Dom} {Cod} k cn bDom cCod) (forget arg)) ))
+                         , inject (semM (arrow-info {Dom} {Cod} k cn bDom cCod) fmt (forget arg)) ))
 
 Env : NamedCtx → Set
 Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
@@ -215,13 +216,13 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦ t-int n ⟧ᵢ fmt                dγ = returnT (OnceWord.Width.fromℤ (int-bits fmt) n)
 -- D113, in the INFER realm: same clause, same reason as `g-float` above.
 ⟦ t-float _ _ _ d _ ⟧ᵢ fmt      dγ = returnT (encode (float-format fmt) d)
-⟦ t-str s ⟧ᵢ fmt                dγ = returnT (semM (str-lit-info s) tt)
+⟦ t-str s ⟧ᵢ fmt                dγ = returnT (semM (str-lit-info s) fmt tt)
 ⟦ t-unit ⟧ᵢ fmt                 dγ = returnT tt
 ⟦ t-unit-var ⟧ᵢ fmt             dγ = returnT tt
 ⟦ t-var-local {eV = eV} _ _ ⟧ᵢ fmt dγ = returnT (svarᴰ eV dγ)
-⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} _ conc) fmt dγ = sigOpRefᴰ {A = A} (bare (alias ++ "." ++ name)) conc
-⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ conc) fmt dγ = sigOpRefᴰ {A = A} cn conc
-⟦_⟧ᵢ {A = A} (t-var-import {x = x} _ _ _ conc) fmt dγ = sigOpRefᴰ {A = A} (bare x) conc
+⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} _ conc) fmt dγ = sigOpRefᴰ {A = A} fmt (bare (alias ++ "." ++ name)) conc
+⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ conc) fmt dγ = sigOpRefᴰ {A = A} fmt cn conc
+⟦_⟧ᵢ {A = A} (t-var-import {x = x} _ _ _ conc) fmt dγ = sigOpRefᴰ {A = A} fmt (bare x) conc
 -- Plan 0.58 / D071: an infer-mode ground telescope reference MEANS its body —
 -- the context projection Γ(x). The body is closed (typed in the telescope
 -- prefix over the empty local env), so its meaning runs on `tt`. Structural
@@ -229,27 +230,27 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦ t-var-poly-instantiate-infer _ _ _ _ _ _ _ bodyD ⟧ᵢ fmt dγ = (⟦ bodyD ⟧ᶜ fmt) tt
 ⟦ t-annot d ⟧ᵢ fmt              dγ = (⟦ d ⟧ᶜ fmt) dγ
 ⟦ t-pair da db ⟧ᵢ fmt           dγ = (⟦ da ⟧ᵢ fmt) dγ >>=T λ a → (⟦ db ⟧ᵢ fmt) dγ >>=T λ b → returnT (a , b)
-⟦ t-neg d ⟧ᵢ fmt                dγ = (⟦ d ⟧ᵢ fmt) dγ >>=T λ v → returnT (semM neg-info v)
+⟦ t-neg d ⟧ᵢ fmt                dγ = (⟦ d ⟧ᵢ fmt) dγ >>=T λ v → returnT (semM neg-info fmt v)
 ⟦ t-let d₁ d₂ ⟧ᵢ fmt            dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ v → (⟦ d₂ ⟧ᵢ fmt) (dγ , v)
 ⟦ t-case ds dl dr ⟧ᵢ fmt        dγ = (⟦ ds ⟧ᵢ fmt) dγ >>=T λ v →
                                    [ (λ a → (⟦ dl ⟧ᵢ fmt) (dγ , a)) , (λ b → (⟦ dr ⟧ᵢ fmt) (dγ , b)) ]′ v
-⟦ t-binop-arith {op = OpAdd} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM add-info (a , b))
-⟦ t-binop-arith {op = OpSub} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM sub-info (a , b))
-⟦ t-binop-arith {op = OpMul} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM mul-info (a , b))
-⟦ t-binop-arith {op = OpDiv} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM div-info (a , b))
-⟦ t-binop-arith {op = OpMod} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM mod-info (a , b))
+⟦ t-binop-arith {op = OpAdd} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM add-info fmt (a , b))
+⟦ t-binop-arith {op = OpSub} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM sub-info fmt (a , b))
+⟦ t-binop-arith {op = OpMul} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM mul-info fmt (a , b))
+⟦ t-binop-arith {op = OpDiv} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM div-info fmt (a , b))
+⟦ t-binop-arith {op = OpMod} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM mod-info fmt (a , b))
 ⟦_⟧ᵢ (t-binop-arith {op = OpLt} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpLe} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpGt} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpGe} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpEq} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpNe} () _ _) fmt
-⟦ t-binop-cmp {op = OpLt} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM lt-info (a , b))
-⟦ t-binop-cmp {op = OpLe} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM le-info (a , b))
-⟦ t-binop-cmp {op = OpGt} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM gt-info (a , b))
-⟦ t-binop-cmp {op = OpGe} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM ge-info (a , b))
-⟦ t-binop-cmp {op = OpEq} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM eq-info (a , b))
-⟦ t-binop-cmp {op = OpNe} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM ne-info (a , b))
+⟦ t-binop-cmp {op = OpLt} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM lt-info fmt (a , b))
+⟦ t-binop-cmp {op = OpLe} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM le-info fmt (a , b))
+⟦ t-binop-cmp {op = OpGt} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM gt-info fmt (a , b))
+⟦ t-binop-cmp {op = OpGe} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM ge-info fmt (a , b))
+⟦ t-binop-cmp {op = OpEq} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM eq-info fmt (a , b))
+⟦ t-binop-cmp {op = OpNe} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM ne-info fmt (a , b))
 ⟦_⟧ᵢ (t-binop-cmp {op = OpAdd} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-cmp {op = OpSub} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-cmp {op = OpMul} () _ _) fmt

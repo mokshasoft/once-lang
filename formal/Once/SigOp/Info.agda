@@ -51,6 +51,8 @@ open import Once.Functor.Translate using (IsBaseType; IsConcrete)
 
 -- | Machine-level interpretation (Int ≡ ℕ).
 open import Once.Word using (Carrier)
+-- Plan 0.74 J5 (D059): a SigOp's machine semantics is TARGET-RELATIVE.
+open import Once.Target.Arch using (TargetNum)
 open import Once.Float.Dyadic using (Dyadic)
 import Once.Semantics.Value Carrier Carrier as M
 
@@ -110,7 +112,17 @@ data EffectShape (B : Type) : Set where
 
 data SigOpSem (A B : Type) : Set where
   -- | Internal producer: a proven machine value function.
-  pureV : (M.⟦ A ⟧ → M.⟦ B ⟧) → SigOpSem A B
+  --
+  -- PLAN 0.74 J5 (D059) — it takes the TARGET'S NUMERICS. It used to be a
+  -- closed `M.⟦ A ⟧ → M.⟦ B ⟧`, and `Arith/SigOp/Builders` accordingly
+  -- computed `arith.neg.int` with `Word64.⊝` on every target. That is not an
+  -- untidy import: `Denotation/Meaning`'s `⟦ t-neg d ⟧ᵢ` reaches this
+  -- function, so on x86-32 the SPEC said `⟦ neg (int 5) ⟧ = 2^64 - 5`, which
+  -- is not even a 32-bit word, while literals in the same expression were
+  -- already width-correct. Nothing was red because `block-semM` and
+  -- `ArithSimX86-32` baked 64 as well — two sides wrong together, the same
+  -- shape as D114's `isInt?` and the `absℤ` bug.
+  pureV : (TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧) → SigOpSem A B
   -- | External op, observable, continues. Value is `tt` (B ≡ Unit).
   emitsV : B ≡ Unit → SigOpSem A B
   -- | External op, observable, terminates the machine. Value is `tt`.
@@ -182,13 +194,17 @@ open SigOpInfo public
 -- coherence) — the machine output the `Emits`/`Halts` codegen produces.
 ------------------------------------------------------------------------
 
-semM : ∀ {A B} → SigOpInfo A B → M.⟦ A ⟧ → M.⟦ B ⟧
+-- PLAN 0.74 J5: the target's numerics come FIRST, before the argument, so a
+-- partially-applied `semM si tn` is still the old shape and reads naturally at
+-- the call sites that already have a `TargetNum` in hand (the denotation
+-- threads one as `fmt`; the machine has `fs-numerics FS`).
+semM : ∀ {A B} → SigOpInfo A B → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧
 semM si = go (sem si)
   where
-    go : ∀ {A B} → SigOpSem A B → M.⟦ A ⟧ → M.⟦ B ⟧
+    go : ∀ {A B} → SigOpSem A B → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧
     go (pureV f)     = f
-    go (emitsV refl) = λ _ → tt
-    go (haltsV refl) = λ _ → tt
+    go (emitsV refl) = λ _ _ → tt
+    go (haltsV refl) = λ _ _ → tt
 
 effect : ∀ {A B} → SigOpInfo A B → EffectShape B
 effect si = go (sem si)
@@ -206,7 +222,7 @@ effect si = go (sem si)
 -- laundering unrepresentable. `Pure` keeps its value as `pureV`.
 ------------------------------------------------------------------------
 
-mk-info : ∀ {A B} → CanonicalName → (M.⟦ A ⟧ → M.⟦ B ⟧) → EffectShape B
+mk-info : ∀ {A B} → CanonicalName → (TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧) → EffectShape B
         → IsBaseType A → IsConcrete B → SigOpInfo A B
 mk-info nm f Pure      bA cB = mk-info' nm (pureV f)     bA (ffi-concrete cB)
 mk-info nm f (Emits e) bA cB = mk-info' nm (emitsV e)    bA (ffi-concrete cB)

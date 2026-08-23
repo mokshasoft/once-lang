@@ -138,7 +138,7 @@ evalᴰ fmt (curry f _)   a        = returnT (λ b → evalᴰ fmt f (a , b))
 evalᴰ fmt apply         p        = proj₁ p (proj₂ p)
 evalᴰ fmt (SigOp {A} {B} si) a   = λ n →
   ( emit-D si (subst (λ z → z) (coh A) (forget a))
-  , subst (λ z → z) (sym (cohᴰ B)) (inject (semM si (subst (λ z → z) (coh A) (forget a)))) )
+  , subst (λ z → z) (sym (cohᴰ B)) (inject (semM si fmt (subst (λ z → z) (coh A) (forget a)))) )
 -- Recursion schemes: VALUE comes from this denotation's OWN trace-fold, NOT a
 -- parallel pure `eval` — `⟦_⟧ᴰ` has ONE model (the trace semantics), exactly
 -- like `⟦_⟧ˢ`. (The old catch-all routed `Cata`/`Ana` values through the pure

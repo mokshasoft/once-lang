@@ -41,7 +41,13 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Word using (Carrier)
 import Once.Word as OnceWord
-module W = OnceWord.Word64
+-- PLAN 0.74 J5: `module W = OnceWord.Word64` USED TO BE HERE, and it was the
+-- bug. These descriptors serve all three targets and one of them is 32-bit;
+-- the width now arrives as the `TargetNum` every `semM` takes.
+open import Once.Target.Arch using (TargetNum; int-bits)
+
+-- | This target's modular arithmetic. The ONLY place the width is read.
+module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
 open import Once.Float.Dyadic using (Dyadic)
 import Once.Semantics.Value Carrier Carrier as M
 -- (Core ℤ `as I` removed: semI deleted — `semM` (ℕ/Word) is the meaning.)
@@ -70,25 +76,35 @@ import Once.Semantics.Value Carrier Carrier as M
 -- −5 — so this is the spec being brought up to meet the machine, not a
 -- behaviour change. `TraceSpec`'s negative-argument cases pin it.
 --
--- Width: `Word64`, matching `block-semM`. Threading the target's width here
--- (D059) is the open Int-width bill; baking 64 is what the blocked path
--- already does, so this changes no promise, it only stops two paths from
--- disagreeing.
+-- WIDTH — PLAN 0.74 J5, and the comment that used to be here was wrong.
+--
+-- It said: "Width: `Word64`, matching `block-semM`. Threading the target's
+-- width here (D059) is the open Int-width bill; baking 64 is what the blocked
+-- path already does, so this changes no promise, it only stops two paths from
+-- disagreeing." Every clause of that is true and the conclusion is false. Two
+-- paths agreeing on 64 is not "no promise changed" when one of the targets is
+-- 32-bit — it is both paths being wrong together, which is what made it
+-- invisible. `Denotation/Meaning`'s `⟦ t-neg d ⟧ᵢ` reads these functions, so
+-- on x86-32 the SPEC said `⟦ neg (int 5) ⟧ = 2^64 - 5`, not a 32-bit word at
+-- all, while `⟦ int 5 ⟧` in the same expression was already width-correct.
+--
+-- The width is now THREADED (D059, properly): every `semM` takes the target's
+-- `TargetNum`, and `W tn` is the only place it is read.
 ------------------------------------------------------------------------
 
 -- Binary arithmetic — Int * Int → Int
-add-semM : M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
-add-semM (a , b) = a W.⊕ b
+add-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
+add-semM tn (a , b) = W._⊕_ tn a b
 
-sub-semM : M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
-sub-semM (a , b) = a W.⊖ b
+sub-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
+sub-semM tn (a , b) = W._⊖_ tn a b
 
-mul-semM : M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
-mul-semM (a , b) = a W.⊗ b
+mul-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
+mul-semM tn (a , b) = W._⊗_ tn a b
 
 -- Unary: Int → Int
-neg-semM : M.⟦ Int ⟧ → M.⟦ Int ⟧
-neg-semM x = W.⊝ x
+neg-semM : TargetNum → M.⟦ Int ⟧ → M.⟦ Int ⟧
+neg-semM tn x = W.⊝_ tn x
 
 ------------------------------------------------------------------------
 -- Postulated semantics (still placeholders — div/mod need a div-by-
@@ -98,17 +114,20 @@ neg-semM x = W.⊝ x
 
 postulate
   -- Binary arithmetic with division-by-zero edge case still pending
-  div-semM mod-semM : M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
+  div-semM mod-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Int ⟧
 
   -- Comparisons: Int * Int → (Unit + Unit) ≡ Bool
-  lt-semM le-semM gt-semM ge-semM eq-semM ne-semM : M.⟦ Int * Int ⟧ → M.⟦ Unit + Unit ⟧
+  lt-semM le-semM gt-semM ge-semM eq-semM ne-semM : TargetNum → M.⟦ Int * Int ⟧ → M.⟦ Unit + Unit ⟧
 
 -- | String literal semantics. `M.⟦ Str ⟧ = String` (Semantics.Core), so a
 -- string literal denotes ITSELF — a concrete definition. (The machine's
 -- byte/pointer representation is a codegen concern, a different layer; the
 -- denotational value is the string.)
-str-lit-semM : String → M.⟦ Unit ⟧ → M.⟦ Str ⟧
-str-lit-semM s _ = s
+-- A string literal denotes itself at every width, so the `TargetNum` is taken
+-- and ignored. Taken anyway: the uniform shape is what lets `semM` be one
+-- accessor rather than two.
+str-lit-semM : String → TargetNum → M.⟦ Unit ⟧ → M.⟦ Str ⟧
+str-lit-semM s _ _ = s
 
 ------------------------------------------------------------------------
 -- SigOpInfo builders
@@ -183,7 +202,7 @@ str-lit-info s = mk-info (bare ("lit.str." ++ s)) (str-lit-semM s) Pure base-Uni
 -- syscall's value. (Eliminating it too — sourcing closure/poly values from
 -- the module environment — is a separate axis, the deferred follow-on.)
 postulate
-  generic-semM : ∀ {A B} → String → M.⟦ A ⟧ → M.⟦ B ⟧
+  generic-semM : ∀ {A B} → String → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧
 
 -- | A SigOp referenced as a VALUE — at non-arrow type, or as a `closure` /
 -- `poly` reference. Its effect is `Pure`: an effect lives on an *arrow*

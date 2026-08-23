@@ -169,22 +169,22 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt ir)
 -- str: `str-lit-semM` is ABSTRACT (postulated, unlike the computing lit-int-semM),
 -- so the literal's value can't be the clean `s`; denote via its own SigOp `semM`
 -- (= `strLit`'s evalᴰ), matching the IR by construction (like arith).
-⟦ str s ⟧ˢ fmt        dγ = returnT (semM (str-lit-info s) tt)
+⟦ str s ⟧ˢ fmt        dγ = returnT (semM (str-lit-info s) fmt tt)
 -- Arith / comparison / div-mod: all elaborate to `SigOp <op>-info` (Pure), so
 -- denote them through the SAME `semM` — `⟦ op a b ⟧ˢ` is then DEFINITIONALLY the
 -- IR side `⟦ <op>IR ∘ ⟨a,b⟩ ⟧ᴰ`, making M3's elaborate-correctness trivial here.
-⟦ add a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM add-info (va , vb))
-⟦ sub a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM sub-info (va , vb))
-⟦ mul a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM mul-info (va , vb))
-⟦ div a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM div-info (va , vb))
-⟦ mod' a b ⟧ˢ fmt     dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM mod-info (va , vb))
-⟦ neg e ⟧ˢ fmt        dγ = ⟦ e ⟧ˢ fmt dγ >>=T λ v → returnT (semM neg-info v)
-⟦ lt a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM lt-info (va , vb))
-⟦ le a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM le-info (va , vb))
-⟦ gt a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM gt-info (va , vb))
-⟦ ge a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM ge-info (va , vb))
-⟦ eq a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM eq-info (va , vb))
-⟦ ne a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM ne-info (va , vb))
+⟦ add a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM add-info fmt (va , vb))
+⟦ sub a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM sub-info fmt (va , vb))
+⟦ mul a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM mul-info fmt (va , vb))
+⟦ div a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM div-info fmt (va , vb))
+⟦ mod' a b ⟧ˢ fmt     dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM mod-info fmt (va , vb))
+⟦ neg e ⟧ˢ fmt        dγ = ⟦ e ⟧ˢ fmt dγ >>=T λ v → returnT (semM neg-info fmt v)
+⟦ lt a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM lt-info fmt (va , vb))
+⟦ le a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM le-info fmt (va , vb))
+⟦ gt a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM gt-info fmt (va , vb))
+⟦ ge a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM ge-info fmt (va , vb))
+⟦ eq a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM eq-info fmt (va , vb))
+⟦ ne a b ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM ne-info fmt (va , vb))
 -- effApp: a SUSPENDED effect (`Unit ⇒[eff] B`) — the Eff design (D018). The
 -- effectful application is deferred into the Unit-thunk; its trace fires when the
 -- thunk is applied (at the top-level main run), threaded by `T`. No fork: the old
@@ -224,12 +224,12 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt ir)
 -- pair-build); at non-arrow it runs on terminal `tt`. closure/poly never wrap.
 ⟦ sigOp {A = (Dom ⇒[ k ] Cod)} name (con-fun bDom cCod) ⟧ˢ fmt dγ =
   returnT (λ arg → λ n → ( emit-D (arrow-info {Dom} {Cod} k name bDom cCod) (forget arg)
-                         , inject (semM (arrow-info {Dom} {Cod} k name bDom cCod) (forget arg)) ))
+                         , inject (semM (arrow-info {Dom} {Cod} k name bDom cCod) fmt (forget arg)) ))
 -- VALUE-position references (non-arrow sigOp, closure, poly): `Pure` via
 -- `value-info` (effects live on arrows, fire on application — D018), so they
 -- emit `[]` at build. This is what makes `build-pure` hold for these leaves;
 -- interpretation-agnostic (no `classify-name`). Matches elaborate's
 -- `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays `refl`.
-⟦ sigOp {A = A} name conc ⟧ˢ fmt   dγ = λ n → (emit-D (value-info {Unit} {A} name base-Unit conc) tt , inject (semM (value-info {Unit} {A} name base-Unit conc) tt))
-⟦ closure {A = A} name ⟧ˢ fmt dγ = λ n → (emit-D (internal-info {A} (bare name)) tt , inject (semM (internal-info {A} (bare name)) tt))
-⟦ poly name PT ⟧ˢ fmt         dγ = λ n → (emit-D (internal-info {PT} (bare name)) tt , inject (semM (internal-info {PT} (bare name)) tt))
+⟦ sigOp {A = A} name conc ⟧ˢ fmt   dγ = λ n → (emit-D (value-info {Unit} {A} name base-Unit conc) tt , inject (semM (value-info {Unit} {A} name base-Unit conc) fmt tt))
+⟦ closure {A = A} name ⟧ˢ fmt dγ = λ n → (emit-D (internal-info {A} (bare name)) tt , inject (semM (internal-info {A} (bare name)) fmt tt))
+⟦ poly name PT ⟧ˢ fmt         dγ = λ n → (emit-D (internal-info {PT} (bare name)) tt , inject (semM (internal-info {PT} (bare name)) fmt tt))

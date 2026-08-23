@@ -44,7 +44,11 @@ open import Once.Arith.Machine.IR
   using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg;
          shape-as-type; ArithBlock; mk-block)
 import Once.Word as OnceWord
-module W = OnceWord.Word64
+-- PLAN 0.74 J5: was `module W = OnceWord.Word64`. `block-semM` is the
+-- definitional modular-`Word` evaluator an arith BLOCK denotes, and a block
+-- is lowered by all three backends, so its width is the target's.
+open import Once.Target.Arch using (TargetNum; int-bits)
+module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
 
 open import Once.Float.Dyadic using (Dyadic)
 import Once.Semantics.Value OnceWord.Carrier OnceWord.Carrier as M
@@ -123,7 +127,7 @@ block-name e = "arith.block." ++ block-digest e
 -- | Project a `Word` leaf out of a machine-typed input tree. Parallel
 -- to `project` (AbsState) but over `M.⟦ shape-as-type sh ⟧` rather
 -- than `⟦ sh ⟧S`.
-projectM : ∀ (sh : InputShape) → InputPath → M.⟦ shape-as-type sh ⟧ → Maybe W.Word
+projectM : ∀ (sh : InputShape) → InputPath → M.⟦ shape-as-type sh ⟧ → Maybe OnceWord.Carrier
 projectM shape-unit       _         _       = nothing
 projectM shape-int        []        z       = just z
 projectM shape-int        (_ ∷ _)   _       = nothing
@@ -133,19 +137,19 @@ projectM (shape-pair _ r) (Snd ∷ p) (_ , y) = projectM r p y
 
 -- | Default-zero for an out-of-shape path (mirrors `eval-arith`'s
 -- `+ 0` rule; well-formed IRs never hit it).
-maybe-zeroM : Maybe W.Word → W.Word
+maybe-zeroM : Maybe OnceWord.Carrier → OnceWord.Carrier
 maybe-zeroM (just w) = w
 maybe-zeroM nothing  = 0
 
-block-semM : ∀ {sh} → MArithIR sh → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
-block-semM (alit z)        _   = W.fromℤ z
-block-semM {sh} (ainput p) inp = maybe-zeroM (projectM sh p inp)
-block-semM (aadd a b)      inp = block-semM a inp W.⊕ block-semM b inp
-block-semM (asub a b)      inp = block-semM a inp W.⊖ block-semM b inp
-block-semM (amul a b)      inp = block-semM a inp W.⊗ block-semM b inp
-block-semM (adiv a b)      inp = block-semM a inp W./ˢ block-semM b inp
-block-semM (amod a b)      inp = block-semM a inp W.%ˢ block-semM b inp
-block-semM (aneg a)        inp = W.⊝ block-semM a inp
+block-semM : ∀ {sh} → MArithIR sh → TargetNum → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
+block-semM (alit z)        tn _   = W.fromℤ tn z
+block-semM {sh} (ainput p) tn inp = maybe-zeroM (projectM sh p inp)
+block-semM (aadd a b)      tn inp = W._⊕_  tn (block-semM a tn inp) (block-semM b tn inp)
+block-semM (asub a b)      tn inp = W._⊖_  tn (block-semM a tn inp) (block-semM b tn inp)
+block-semM (amul a b)      tn inp = W._⊗_  tn (block-semM a tn inp) (block-semM b tn inp)
+block-semM (adiv a b)      tn inp = W._/ˢ_ tn (block-semM a tn inp) (block-semM b tn inp)
+block-semM (amod a b)      tn inp = W._%ˢ_ tn (block-semM a tn inp) (block-semM b tn inp)
+block-semM (aneg a)        tn inp = W.⊝_   tn (block-semM a tn inp)
 
 -- | The block's `SigOpInfo`.
 --

@@ -110,7 +110,7 @@ eval fmt (const fits-float v) _ = encode (float-format fmt) v
 -- Plan 0.52 M2: the FFI boundary. `si : SigOpInfo A B` is surface-typed and
 -- `semM si : ⟦ A ⟧ → ⟦ B ⟧`; the IR object is `IR ⌊A⌋ ⌊B⌋` so the value is
 -- `⟦ ⌊A⌋ ⟧ᴵ`. `coh` transports across the (grade-blind) erasure both ways.
-eval fmt (SigOp {A} {B} si) x = subst (λ z → z) (sym (coh B)) (semM si (subst (λ z → z) (coh A) x))
+eval fmt (SigOp {A} {B} si) x = subst (λ z → z) (sym (coh B)) (semM si fmt (subst (λ z → z) (coh A) x))
 -- Recursion schemes (OCP-0003). Plan 0.52 M2: F is now an `IRFunctor`, so the
 -- surface `sem-*`/`coerce-functor` helpers run at `⌈F⌉F`; `wf-⌈⌉` transports the
 -- WellFormedFI proof and `subst (λ T → ⟦T⟧) (⌈⟧TI-commute …)` transports the
