@@ -66,7 +66,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Spec.Variance where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; subst; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; ap-cong₃
@@ -80,7 +80,8 @@ open import DirectedHoTT.Spec.Syntax
         ; Desc; Mu; con; elim
         ; DCon; dι; dρ; dκ; sel; fields
         ; ihs
-        ; IMu; icon; ielim; IDesc; ICon; cong₃; ⌜IMu⌝ )
+        ; IMu; icon; ielim; IDesc; ICon; cong₃; ⌜IMu⌝
+        ; εwkTm; iihs; ifields; iι; iρ; iκ; iext )
 
 private
   variable
@@ -537,6 +538,50 @@ occ-sub {x = x} h (ap c b p) e =
           (∨-false (occ-sub (ext-occ h) b (∨-false₁ (occTm (vs x) b) (∨-false₂ (occTm x c) e)))
                    (occ-sub h p (∨-false₂ (occTm (vs x) b) (∨-false₂ (occTm x c) e))))
 
+-- ★★ THE UNCONDITIONAL VARIANT.  `occ-sub` asks that `t` itself avoid a
+--   chosen variable; a description's telescope term avoids nothing in
+--   particular, so what is needed is: if EVERY value the substitution
+--   produces is `x'`-free, so is the result.  Same induction, with the
+--   occurrence witness dropped throughout.
+ext-occ' : {σ : Sub Γ Δ} {x' : Var Δ} →
+           (∀ y → occTm x' (σ y) ≡ false) →
+           (∀ y → occTm (vs x') (extS σ y) ≡ false)
+ext-occ' h vz     = refl
+ext-occ' {σ = σ} h (vs y) = trans (occ-ren-eq (λ _ → refl) (σ y)) (h y)
+occ-sub' : {σ : Sub Γ Δ} {x' : Var Δ} →
+           (∀ y → occTm x' (σ y) ≡ false) →
+           (t : RTm Γ) → occTm x' (subTm σ t) ≡ false
+occ-sub' h ⌜Nat⌝ = refl
+occ-sub' h ⌜Unit⌝ = refl
+occ-sub' h (⌜Mu⌝ D) = refl
+occ-sub' h (⌜IMu⌝ D I i) = occ-sub' h i
+occ-sub' h unit = refl
+occ-sub' h nzero = refl
+occ-sub' h (nsuc n) = occ-sub' h n
+occ-sub' h (con k p) = occ-sub' h p
+occ-sub' h (icon k p) = occ-sub' h p
+occ-sub' h (ielim D i ms t) = ∨-false (occ-sub' h i) (∨-false (occ-sub' h ms) (occ-sub' h t))
+occ-sub' h (elim D ms t) = ∨-false (occ-sub' h ms) (occ-sub' h t)
+occ-sub' h (natrec z s n) = ∨-false (occ-sub' h z) (∨-false (occ-sub' (ext-occ' (ext-occ' h)) s) (occ-sub' h n))
+occ-sub' h (var y) = h y
+occ-sub' h (lam t) = occ-sub' (ext-occ' h) t
+occ-sub' h (app t u) = ∨-false (occ-sub' h t) (occ-sub' h u)
+occ-sub' h (pair a b) = ∨-false (occ-sub' h a) (occ-sub' h b)
+occ-sub' h (absurd c₁ p) = ∨-false (occ-sub' h c₁) (occ-sub' h p)
+occ-sub' h (ordtr a t u p q) = ∨-false (occ-sub' h a) (∨-false (occ-sub' h t) (∨-false (occ-sub' h u) (∨-false (occ-sub' h p) (occ-sub' h q))))
+occ-sub' h (fst p) = occ-sub' h p
+occ-sub' h (snd p) = occ-sub' h p
+occ-sub' h ⌜base⌝ = refl
+occ-sub' h (⌜Π⌝ c d) = ∨-false (occ-sub' h c) (occ-sub' (ext-occ' h) d)
+occ-sub' h (⌜Σ⌝ c d) = ∨-false (occ-sub' h c) (occ-sub' (ext-occ' h) d)
+occ-sub' h (⌜Hom⌝ c a b) = ∨-false (occ-sub' h c) (∨-false (occ-sub' h a) (occ-sub' h b))
+occ-sub' h (⌜Id⌝ c a b) = ∨-false (occ-sub' h c) (∨-false (occ-sub' h a) (occ-sub' h b))
+occ-sub' h (hrefl c t) = ∨-false (occ-sub' h c) (occ-sub' h t)
+occ-sub' h (idrefl c t) = ∨-false (occ-sub' h c) (occ-sub' h t)
+occ-sub' h (tr d p q) = ∨-false (occ-sub' (ext-occ' h) d) (∨-false (occ-sub' h p) (occ-sub' h q))
+occ-sub' h (jsub d p q) = ∨-false (occ-sub' (ext-occ' h) d) (∨-false (occ-sub' h p) (occ-sub' h q))
+occ-sub' h (ap c b p) = ∨-false (occ-sub' h c) (∨-false (occ-sub' (ext-occ' h) b) (occ-sub' h p))
+
 ------------------------------------------------------------------------
 -- ★ INDUCTIVE TYPES: the ι-rule's right-hand side introduces no variable.
 --   `occ-red` (Subj) needs exactly this to keep `PosC` alive across ι.
@@ -563,6 +608,7 @@ occ-fields : {x : Var Γ} (D : Desc) (ms : RTm Γ) (C : DCon) (m p : RTm Γ) →
              occTm x (fields D ms C m p) ≡ false
 occ-fields D ms C m p ems em ep =
   ∨-false (∨-false em ep) (occ-ihs D ms C p ems ep)
+
 
 
 -- Two substitutions agreeing on every OCCURRING variable act equally
@@ -1447,6 +1493,48 @@ ren-as-sub ρ (ap c b p) =
   ptw : ∀ x → var (extR ρ x) ≡ extS (λ y → var (ρ y)) x
   ptw vz     = refl
   ptw (vs x) = refl
+
+------------------------------------------------------------------------
+-- ★★ THE INDEXED TWINS.  One new ingredient over the non-indexed pair:
+--    a recursive field sits at `app (εwkTm f) i`, so the SHIFT TERM has
+--    to be shown variable-free.  It is CLOSED, so it is — but `εwkTm` is
+--    a substitution, and the occurrence machinery is stated for
+--    RENAMINGS, so the two are bridged by `ren-as-sub`.
+------------------------------------------------------------------------
+
+-- the empty renaming — `Avoids` for it is vacuous, which is the point.
+εren : Ren ε Γ
+εren ()
+
+occ-εwkTm : {Γ : Cx} {x : Var Γ} (t : RTm ε) → occTm x (εwkTm {Γ} t) ≡ false
+occ-εwkTm {Γ} {x} t =
+  subst (λ z → occTm x z ≡ false)
+        (trans (ren-as-sub εren t) (subTm-cong (λ ()) t))
+        (occ-ren-tm (λ ()) t)
+
+occ-iihs : {x : Var Γ} (D : IDesc) (ms : RTm Γ) {Δ : Cx} (σ : Sub Δ Γ)
+           (C : ICon Δ) (p : RTm Γ) →
+           (∀ y → occTm x (σ y) ≡ false) →
+           occTm x ms ≡ false → occTm x p ≡ false →
+           occTm x (iihs D ms σ C p) ≡ false
+occ-iihs D ms σ iι       p eσ ems ep = refl
+occ-iihs D ms σ (iρ j C) p eσ ems ep =
+  ∨-false (∨-false (occ-sub' eσ j) (∨-false ems ep))
+          (occ-iihs D ms (iext σ (fst p)) C (snd p)
+                    (λ { vz → ep ; (vs y) → eσ y }) ems ep)
+occ-iihs D ms σ (iκ κ C) p eσ ems ep =
+  occ-iihs D ms (iext σ (fst p)) C (snd p)
+           (λ { vz → ep ; (vs y) → eσ y }) ems ep
+
+occ-ifields : {x : Var Γ} (D : IDesc) (i ms : RTm Γ) {Δ : Cx} (σ : Sub Δ Γ)
+              (C : ICon Δ) (m p : RTm Γ) →
+              (∀ y → occTm x (σ y) ≡ false) →
+              occTm x i ≡ false → occTm x ms ≡ false →
+              occTm x m ≡ false → occTm x p ≡ false →
+              occTm x (ifields D i ms σ C m p) ≡ false
+occ-ifields D i ms σ C m p eσ ei ems em ep =
+  ∨-false (∨-false (∨-false em ei) ep) (occ-iihs D ms σ C p eσ ems ep)
+
 
 -- the pointwise body preserves NON-occurrence (one binder deeper).
 pwBody-occ : {x : Var Γ} (C : RTm Γ) → pw? C ≡ true →
