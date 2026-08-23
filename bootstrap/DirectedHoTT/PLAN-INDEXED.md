@@ -152,3 +152,105 @@ that cheaper; it simply postpones it.
 
 ⇒ **Prefer (a).** Take (b) only if something genuinely cannot be
 elaborated away — and spike it first, per gates 1–4's discipline.
+
+--------------------------------------------------------------------------
+## 9. ★★★ REVISION (2026-08-23) — two flaws found by writing the metatheory
+
+Closing subject reduction surfaced two defects in §2–§3's formulation.
+Both were found by trying to PROVE something, not by reading the rules.
+
+### 9.1 Methods were typed at ONE index — obligation (c) was unprovable
+
+`⊢ielim` required `ms ∷ imethsTy D I M i D`: the method tuple typed at the
+specific ambient index `i`.  But `iihs` builds a recursive
+`ielim D (app (εwkTm f) i) ms (fst p)` — the SAME `ms` at a DIFFERENT
+index.  Those two types are not convertible when the shift is not the
+identity, so obligation (c) was not merely open, it was FALSE.
+
+**Fix (forced, and standard).**  Methods quantify over the index, exactly
+as every real indexed eliminator does:
+
+    elim : (M : (i : I) → Mu D i → Set)
+         → (∀ k → (i : I) → (p : Payload k i) → IH → M i (con k p))
+         → (i : I) → (t : Mu D i) → M i t
+                ↑ the binder `imethTy` was missing
+
+  * `imethTy` gains a leading `Π (εwkTy I)` and DROPS its `i` parameter.
+  * `imethsTy` / `imethsTyFrom` drop `i` entirely.
+  * `ifields` applies the method to the index first:
+        ifields D i ms C m p = app (app (app m i) p) (iihs D i ms C p)
+    — the signature is unchanged, so `Confluence`'s `p-ifields` needs one
+    extra `papp` but its STATEMENT survives.
+
+⚠ This DELETES the monotonicity layer written for the old formulation
+(`imethTy-mono`, `imethsTyFrom-mono`).  Once methods do not mention `i`,
+there is nothing to move.  **A metatheory layer with no counterpart in the
+non-indexed development was the tell that the definition was wrong** — the
+right response was to re-read the definition, not to prove lemmas about it.
+`iinst-mono` survives: the RESULT type `iinst i t M` still moves under
+`ξ-ielimⁱ`.
+
+### 9.2 `iρ f` cannot express §3's own `Vec` — the recursive index must
+###      be able to mention EARLIER FIELDS
+
+§3's forded constructor is
+
+    cons : (m : Nat) → A → Vec A m → (n ≡ suc m) → Vec A n
+
+whose recursive field sits at `m`, an EARLIER FIELD.  But
+
+    ipayTy D I i (iρ f C) = Σ' (IMu D I (app (εwkTm f) i)) …
+
+has `f : RTm ε` CLOSED and applied only to the ambient index; the earlier
+fields are bound by the `Σ'` chain and are not in scope for it.  So the
+`ICon` of §2 cannot express the `Vec` of §3.  (`iρ pred` does not rescue
+it: at a variable ambient `n`, `pred n` is STUCK, and the constraint field
+that would unstick it comes later.)
+
+`iρ f` — "recursive at a closed function of the AMBIENT index" — matches
+neither McBride's `IDesc` nor this document's own plan.  It was a
+guess, and nothing had exercised it.
+
+**Fix (user's call, 2026-08-23): generalise `iρ`.**  A carried term lives
+in the FIELD TELESCOPE, not in `ε`.  Descriptions stay CLOSED — that
+invariant is load-bearing (they appear in types and must be
+renaming-stable), so the telescope is a `Cx`, not the ambient `Γ`:
+
+    ICx : ℕ → Cx                  -- ambient index, then one binder per field
+    ICx zero    = ε ∙
+    ICx (suc n) = ICx n ∙
+
+    data ICon : ℕ → Set where
+      iι : ∀ {n} → ICon n
+      iρ : ∀ {n} → RTm (ICx n) → ICon (suc n) → ICon n
+      iκ : ∀ {n} → RTm (ICx n) → ICon (suc n) → ICon n
+
+    data IDesc where
+      inil : IDesc
+      _◂_  : ICon zero → IDesc → IDesc
+
+and the computed types walk the telescope with an ENVIRONMENT substitution
+instead of applying a closed function:
+
+    ipayTy : IDesc → RTy ε → ∀ {n} → Sub (ICx n) Γ → ICon n → RTy Γ
+    ipayTy D I σ iι       = Unit
+    ipayTy D I σ (iρ j C) = Σ' (IMu D I (subTm σ j)) (ipayTy D I (extS σ) C)
+    ipayTy D I σ (iκ κ C) = Σ' (El (subTm σ κ))      (ipayTy D I (extS σ) C)
+
+`extS σ : Sub (ICx n ∙) (Γ ∙)` is exactly `Sub (ICx (suc n)) (Γ ∙)`, so
+the new field is `var vz` in the tail — which is what makes `Vec`'s `m`
+referenceable.  Entry point is `isingle i : Sub (ICx zero) Γ`.
+
+Then `Vec`'s `cons` is
+    iκ ⌜Nat⌝ (iκ ⌜A⌝ (iρ ⟨m⟩ (iκ ⌜Id ⌜Nat⌝ ⟨n⟩ (suc ⟨m⟩)⌝ iι)))
+with `⟨m⟩` a de Bruijn reference to the first field.
+
+### 9.3 What this costs
+
+Reworked: `ICon`/`IDesc`, `ipayTy`, `iihs`, `ifields` and their
+substitution laws (Syntax); `IConWf`, `iihTy`, `imethTy`, `imethsTy`,
+`⊢icon`, `⊢ielim`, `ι-ielim` (Typing); the indexed naturality layer
+(SubjectReduction).  SURVIVING unchanged: every term former (`icon`,
+`ielim`, `⌜IMu⌝`, `IMu`) — descriptions are INDICES, not subterms — so
+`Confluence`'s 241 generated `⟹-⁺` clauses and `Injectivity`'s `ξ-IMu`
+work are NOT affected.
