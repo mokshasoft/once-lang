@@ -96,12 +96,12 @@ open import DirectedHoTT.Metatheory.Confluence
         ; ⟶*-idreflᶜ; ⟶*-idreflᵃ
         ; ⟶*-nsuc; ⟶*-natrecᶻ; ⟶*-natrecˢ; ⟶*-natrecⁿ ; ⟶*-absurdᶜ; ⟶*-absurdᵉ
         ; ⟶*-ordtrᵃ; ⟶*-ordtrᵗ; ⟶*-ordtrᵘ; ⟶*-ordtrᵖ; ⟶*-ordtrq
-        ; ⟶*-con; ⟶*-elimᵐ; ⟶*-elimᵗ )
+        ; ⟶*-con; ⟶*-elimᵐ; ⟶*-elimᵗ; subTm-monoˢ )
 open import DirectedHoTT.Metatheory.Injectivity
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Homᵀ
         ; confluentᵀ; church-rosserᵀ; Id-reduct
         ; ΠRed; mkΠRed; Π-reduct; Πinj≡
-        ; ΣRed; mkΣRed; Σ-reduct; Σinj≡; red→≅ᵀ; IMu-reduct; IMuRed; mkIMuRed )
+        ; ΣRed; mkΣRed; Σ-reduct; Σinj≡; red→≅ᵀ; IMu-reduct; IMuRed; mkIMuRed; IMuinj≡ )
 
 private
   variable
@@ -4091,6 +4091,16 @@ data KInterp (Γ : Cx) : DCon → Set
 data DInterp (Γ : Cx) : Desc → Set
 kpredsOf : {C : DCon} → KInterp Γ C → KPred Γ C
 predsOf  : {D : Desc} → DInterp Γ D → DPred Γ D
+-- ★ their INDEXED twins.  ⚠ `IKInterp` is indexed by the TELESCOPE, and
+--   the `iκ` row's interpretation is a FUNCTION OF THE ENVIRONMENT —
+--   `iκ`'s field type is `El (subTm σ κ)`, which depends on the earlier
+--   fields, so there is no single `⊩₀` to hand over.  `dκ`'s closed field
+--   type needs no such thing; this is the one place the indexed
+--   interpretation is genuinely bigger, and it is the price of §9.2.
+data IKInterp (Γ : Cx) : {Θ : Cx} → ICon Θ → Set
+data IDInterp (Γ : Cx) : IDesc → Set
+ikpredsOf : {Θ : Cx} {C : ICon Θ} → IKInterp Γ C → IKPred Γ C
+ipredsOf  : {D : IDesc} → IDInterp Γ D → IDPred Γ D
 
 -- the endpoint-join payload: reaching an `idrefl` yields a confluence
 -- join of the Id-type's endpoints.
@@ -4151,6 +4161,12 @@ data ⊩₀_ {Γ} where
   -- mirroring `⊩₀Nat`'s `NatMem` exactly — and for the same structural
   -- reason: the payload mentions no part of the relation.
   ⊩₀Mu   : {A : RTy Γ} {D : Desc} → A ⟶ᵀ* Mu D → DInterp Γ D → ⊩₀ A
+  -- ★★ the INDEXED twin.  ⚠ the reduct is `IMu D I i` for the index `i`
+  --   the type actually reduced to — `IMu` is inert-SHAPED, not inert, so
+  --   two reducts of the same type can differ in their index and
+  --   `IMu-reduct` is what relates them.
+  ⊩₀IMu  : {A : RTy Γ} {D : IDesc} {I : RTy ε} {i : RTm Γ} →
+           A ⟶ᵀ* IMu D I i → IDInterp Γ D → ⊩₀ A
 
 data KInterp Γ where
   ki-ι : KInterp Γ dι
@@ -4162,6 +4178,28 @@ data DInterp Γ where
   di-nil  : DInterp Γ dnil
   di-cons : {C : DCon} {E : Desc} →
             KInterp Γ C → DInterp Γ E → DInterp Γ (C ◃ E)
+
+data IKInterp Γ where
+  iki-ι : {Θ : Cx} → IKInterp Γ (iι {Θ})
+  iki-ρ : {Θ : Cx} {j : RTm Θ} {C : ICon (Θ ∙)} →
+          IKInterp Γ C → IKInterp Γ (iρ j C)
+  -- ⚠ a FAMILY of interpretations, one per environment — see the note on
+  --   the forward declaration.
+  iki-κ : {Θ : Cx} {κ : RTm Θ} {C : ICon (Θ ∙)} →
+          ((σ : Sub Θ Γ) → ⊩₀ (El (subTm σ κ))) →
+          IKInterp Γ C → IKInterp Γ (iκ κ C)
+
+data IDInterp Γ where
+  idi-nil  : IDInterp Γ inil
+  idi-cons : {C : ICon (ε ∙)} {E : IDesc} →
+             IKInterp Γ C → IDInterp Γ E → IDInterp Γ (C ◂ E)
+
+ikpredsOf iki-ι        = ikp-ι
+ikpredsOf (iki-ρ ki)   = ikp-ρ (ikpredsOf ki)
+ikpredsOf (iki-κ w ki) = ikp-κ (λ σ t → (w σ) ⊩₀∋ t) (ikpredsOf ki)
+
+ipredsOf idi-nil          = idp-nil
+ipredsOf (idi-cons ki d)  = idp-cons (ikpredsOf ki) (ipredsOf d)
 
 kpredsOf ki-ι        = kp-ι
 kpredsOf (ki-ρ ki)   = kp-ρ (kpredsOf ki)
@@ -4184,6 +4222,8 @@ predsOf (di-cons ki d) = dp-cons (kpredsOf ki) (predsOf d)
 --   is the whole design: membership does not depend on the relation, so
 --   `MuMem` is not mutual with it and stays strictly positive.
 ⊩₀Mu {D = D} _ di ⊩₀∋ t = SN t × MuMem D (predsOf di) t
+⊩₀IMu {D = D} {I = I} {i = i} _ di ⊩₀∋ t =
+  SN t × IMuMem D I (ipredsOf di) i t
 
 -- ⚠ TOTAL, in lockstep with `lookupP`/`lookupD`: off the end all three
 --   give the empty constructor (`dι`/`kp-ι`/`ko-ι`).
@@ -4202,6 +4242,7 @@ bwd₀ p (⊩₀Id q)      = ⊩₀Id   (⟶ᵀ*-trans p q)
 bwd₀ p (⊩₀Unit q)    = ⊩₀Unit (⟶ᵀ*-trans p q)
 bwd₀ p (⊩₀Nat q)     = ⊩₀Nat  (⟶ᵀ*-trans p q)
 bwd₀ p (⊩₀Mu q di)   = ⊩₀Mu   (⟶ᵀ*-trans p q) di
+bwd₀ p (⊩₀IMu q di)   = ⊩₀IMu   (⟶ᵀ*-trans p q) di
 
 -- `bwd₀` only rewrites the REDUCTION WITNESS, never the membership — so
 -- both directions are the identity once the interp's head is exposed.
@@ -4218,6 +4259,7 @@ bwd₀-mem q (⊩₀Id _)    h = h
 bwd₀-mem q (⊩₀Unit _)  h = h
 bwd₀-mem q (⊩₀Nat _)   h = h
 bwd₀-mem q (⊩₀Mu _ _)  h = h
+bwd₀-mem q (⊩₀IMu _ _)  h = h
 
 bwd₀-mem⁻ : {A B : RTy Γ} (q : A ⟶ᵀ* B) (R : ⊩₀ B) {t : RTm Γ} →
             R ⊩₀∋ t → (bwd₀ q R) ⊩₀∋ t
@@ -4230,6 +4272,7 @@ bwd₀-mem⁻ q (⊩₀Id _)    h = h
 bwd₀-mem⁻ q (⊩₀Unit _)  h = h
 bwd₀-mem⁻ q (⊩₀Nat _)   h = h
 bwd₀-mem⁻ q (⊩₀Mu _ _)  h = h
+bwd₀-mem⁻ q (⊩₀IMu _ _)  h = h
 
 ------------------------------------------------------------------------
 -- 3a. IRRELEVANCE UP TO CONVERSION, at level 0.
@@ -4274,6 +4317,32 @@ liftK : {D : Desc} (di₁ di₂ : DInterp Γ D)
         {C : DCon} (ki₁ ki₂ : KInterp Γ C) (p : RTm Γ) →
         Lift C (kpredsOf ki₁) (MuMem D (predsOf di₁)) p →
         Lift C (kpredsOf ki₂) (MuMem D (predsOf di₂)) p
+
+-- ★★★ THE INDEXED TWINS.  ⚠ these do MORE than `irrelMu`/`liftK`: they
+--   transfer the INTERPRETATION *and* move the INDEX.  `⊩₀Mu`'s two
+--   reducts are syntactically equal (`Mu-nf`); `⊩₀IMu`'s can differ in
+--   their index, so the pattern to follow is `⊩₀Id`'s — whose membership
+--   also depends on carried terms, and whose diagonal already moves them
+--   along reductions via `idpay-transfer`.  The index behaves exactly
+--   like `Id`'s endpoints; nothing new is needed at the DESIGN level.
+irrelIMu : {D : IDesc} {I : RTy ε} (di₁ di₂ : IDInterp Γ D)
+           {i i' v : RTm Γ} → i ⟶* v → i' ⟶* v → {t : RTm Γ} →
+           IMuMem D I (ipredsOf di₁) i t → IMuMem D I (ipredsOf di₂) i' t
+irrelIAtK : {D : IDesc} {I : RTy ε} (di₁ di₂ : IDInterp Γ D)
+            {E : IDesc} (dj₁ dj₂ : IDInterp Γ E)
+            {i i' v : RTm Γ} → i ⟶* v → i' ⟶* v →
+            (k : ℕ) (p : RTm Γ) →
+            ILift (ilookupD E k) (ilookupP (ipredsOf dj₁) k)
+                  (IMuMem D I (ipredsOf di₁)) (isingle i) p →
+            ILift (ilookupD E k) (ilookupP (ipredsOf dj₂) k)
+                  (IMuMem D I (ipredsOf di₂)) (isingle i') p
+iliftK : {D : IDesc} {I : RTy ε} (di₁ di₂ : IDInterp Γ D)
+         {Θ : Cx} (C : ICon Θ) (ki₁ ki₂ : IKInterp Γ C)
+         (σ σ' σ⁺ : Sub Θ Γ) →
+         (∀ x → σ x ⟶* σ⁺ x) → (∀ x → σ' x ⟶* σ⁺ x) →
+         (p : RTm Γ) →
+         ILift C (ikpredsOf ki₁) (IMuMem D I (ipredsOf di₁)) σ p →
+         ILift C (ikpredsOf ki₂) (IMuMem D I (ipredsOf di₂)) σ' p
 
 -- both sides non-`Π`: membership is `SN t` on both, so transfer is identity.
 irrel₀ c (⊩₀base _) (⊩₀base _) = (λ _ h → h) , (λ _ h → h)
@@ -4384,6 +4453,32 @@ irrel₀ c (⊩₀Id {a = a} {b = b} p) (⊩₀Id {a = a'} {b = b'} q)
         , (λ t h → ( projl h
                    , idpay-transfer (a₁ , (ra₂ , ra₁)) (b₁ , (rb₂ , rb₁))
                                     (projr h) )) )
+-- ★ `Mu` vs `IMu` — DIFFERENT FORMERS, so no common reduct.  `Mu-nf`
+--   pins one side syntactically; `IMu-reduct` gives the other's shape.
+irrel₀ c (⊩₀Mu p _) (⊩₀IMu q _) with joinW c p q
+... | E , (mE , iE) with Mu-nf mE
+...   | refl with IMu-reduct iE
+...     | mkIMuRed _ () _
+irrel₀ c (⊩₀IMu p _) (⊩₀Mu q _) with joinW c p q
+... | E , (iE , mE) with Mu-nf mE
+...   | refl with IMu-reduct iE
+...     | mkIMuRed _ () _
+-- ★★★ THE DIAGONAL — the one case with real content, and the reason the
+--   `irrelIMu`/`iliftK` transfer layer exists.  ⚠ `⊩₀Mu`'s two reducts are
+--   SYNTACTICALLY EQUAL (`Mu-nf` twice, then `refl`).  `⊩₀IMu`'s are not:
+--   both are `IMu D I _` but their INDICES can differ, because `IMu`
+--   carries a reducible term.  `IMuinj≡` identifies the descriptions and
+--   yields the index equation; the two `ridx` witnesses then feed
+--   `irrelIMu`, which moves membership along them.  This is exactly the
+--   shape `⊩₀Id`'s diagonal uses for its endpoints — the index is not a
+--   new phenomenon, it is `Id`'s carried terms again.
+irrel₀ c (⊩₀IMu p di₁) (⊩₀IMu q di₂) with joinW c p q
+... | E , (i₁ , i₂) with IMu-reduct i₁ | IMu-reduct i₂
+...   | mkIMuRed j₁ eq₁ r₁ | mkIMuRed j₂ eq₂ r₂
+      with IMuinj≡ (trans (sym eq₁) eq₂)
+...     | (refl , (refl , refl)) =
+          ( (λ _ h → (projl h , irrelIMu di₁ di₂ r₁ r₂ (projr h)))
+          , (λ _ h → (projl h , irrelIMu di₂ di₁ r₂ r₁ (projr h))) )
 irrel₀ c (⊩₀Hom _ _) (⊩₀Hom _ _) = (λ _ h → h) , (λ _ h → h)
 irrel₀ c (⊩₀base p) (⊩₀Hom q s) with joinW c p q
 ... | E , (bE , hE) with base-nf bE
@@ -4597,66 +4692,130 @@ irrel₀ c (⊩₀Mu p _) (⊩₀base q) with joinW c p q
 ... | E , (mE , bE) with base-nf bE
 ...   | refl with Mu-nf mE
 ...     | ()
+irrel₀ c (⊩₀IMu p _) (⊩₀base q) with joinW c p q
+... | E , (mE , bE) with base-nf bE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₀ c (⊩₀base p) (⊩₀Mu q _) with joinW c p q
 ... | E , (bE , mE) with base-nf bE
 ...   | refl with Mu-nf mE
 ...     | ()
+irrel₀ c (⊩₀base p) (⊩₀IMu q _) with joinW c p q
+... | E , (bE , mE) with base-nf bE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₀ c (⊩₀Mu p _) (⊩₀ne q n) with joinW c p q
 ... | E , (mE , eE) with El-ne-reduct n eE
 ...   | mkElNe _ _ refl with Mu-nf mE
 ...     | ()
+irrel₀ c (⊩₀IMu p _) (⊩₀ne q n) with joinW c p q
+... | E , (mE , eE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₀ c (⊩₀ne p n) (⊩₀Mu q _) with joinW c p q
 ... | E , (eE , mE) with El-ne-reduct n eE
 ...   | mkElNe _ _ refl with Mu-nf mE
 ...     | ()
+irrel₀ c (⊩₀ne p n) (⊩₀IMu q _) with joinW c p q
+... | E , (eE , mE) with El-ne-reduct n eE
+...   | mkElNe _ _ refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₀ c (⊩₀Mu p _) (⊩₀Π q _ _) with joinW c p q
 ... | E , (mE , πE) with Π-reduct πE
 ...   | mkΠRed _ _ refl _ _ with Mu-nf mE
 ...     | ()
+irrel₀ c (⊩₀IMu p _) (⊩₀Π q _ _) with joinW c p q
+... | E , (mE , πE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₀ c (⊩₀Π p _ _) (⊩₀Mu q _) with joinW c p q
 ... | E , (πE , mE) with Π-reduct πE
 ...   | mkΠRed _ _ refl _ _ with Mu-nf mE
 ...     | ()
+irrel₀ c (⊩₀Π p _ _) (⊩₀IMu q _) with joinW c p q
+... | E , (πE , mE) with Π-reduct πE
+...   | mkΠRed _ _ refl _ _ with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₀ c (⊩₀Mu p _) (⊩₀Σ q _ _) with joinW c p q
 ... | E , (mE , σE) with Σ-reduct σE
 ...   | mkΣRed _ _ refl _ _ with Mu-nf mE
 ...     | ()
+irrel₀ c (⊩₀IMu p _) (⊩₀Σ q _ _) with joinW c p q
+... | E , (mE , σE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₀ c (⊩₀Σ p _ _) (⊩₀Mu q _) with joinW c p q
 ... | E , (σE , mE) with Σ-reduct σE
 ...   | mkΣRed _ _ refl _ _ with Mu-nf mE
 ...     | ()
+irrel₀ c (⊩₀Σ p _ _) (⊩₀IMu q _) with joinW c p q
+... | E , (σE , mE) with Σ-reduct σE
+...   | mkΣRed _ _ refl _ _ with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₀ c (⊩₀Mu p _) (⊩₀Hom q sh) with joinW c p q
 ... | E , (mE , hE) with Hom-stk-reduct sh hE
 ...   | mkHomStk _ _ _ _ refl with Mu-nf mE
 ...     | ()
+irrel₀ c (⊩₀IMu p _) (⊩₀Hom q sh) with joinW c p q
+... | E , (mE , hE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₀ c (⊩₀Hom p sh) (⊩₀Mu q _) with joinW c p q
 ... | E , (hE , mE) with Hom-stk-reduct sh hE
 ...   | mkHomStk _ _ _ _ refl with Mu-nf mE
 ...     | ()
+irrel₀ c (⊩₀Hom p sh) (⊩₀IMu q _) with joinW c p q
+... | E , (hE , mE) with Hom-stk-reduct sh hE
+...   | mkHomStk _ _ _ _ refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₀ c (⊩₀Mu p _) (⊩₀Id q) with joinW c p q
 ... | E , (mE , iE) with Id-reduct iE
 ...   | _ , (_ , (_ , (refl , _))) with Mu-nf mE
 ...     | ()
+irrel₀ c (⊩₀IMu p _) (⊩₀Id q) with joinW c p q
+... | E , (mE , iE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₀ c (⊩₀Id p) (⊩₀Mu q _) with joinW c p q
 ... | E , (iE , mE) with Id-reduct iE
 ...   | _ , (_ , (_ , (refl , _))) with Mu-nf mE
 ...     | ()
+irrel₀ c (⊩₀Id p) (⊩₀IMu q _) with joinW c p q
+... | E , (iE , mE) with Id-reduct iE
+...   | _ , (_ , (_ , (refl , _))) with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₀ c (⊩₀Mu p _) (⊩₀Unit q) with joinW c p q
 ... | E , (mE , uE) with Unit-nf uE
 ...   | refl with Mu-nf mE
 ...     | ()
+irrel₀ c (⊩₀IMu p _) (⊩₀Unit q) with joinW c p q
+... | E , (mE , uE) with Unit-nf uE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₀ c (⊩₀Unit p) (⊩₀Mu q _) with joinW c p q
 ... | E , (uE , mE) with Unit-nf uE
 ...   | refl with Mu-nf mE
 ...     | ()
+irrel₀ c (⊩₀Unit p) (⊩₀IMu q _) with joinW c p q
+... | E , (uE , mE) with Unit-nf uE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₀ c (⊩₀Mu p _) (⊩₀Nat q) with joinW c p q
 ... | E , (mE , nE) with Nat-nf nE
 ...   | refl with Mu-nf mE
 ...     | ()
+irrel₀ c (⊩₀IMu p _) (⊩₀Nat q) with joinW c p q
+... | E , (mE , nE) with Nat-nf nE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₀ c (⊩₀Nat p) (⊩₀Mu q _) with joinW c p q
 ... | E , (nE , mE) with Nat-nf nE
 ...   | refl with Mu-nf mE
 ...     | ()
+irrel₀ c (⊩₀Nat p) (⊩₀IMu q _) with joinW c p q
+... | E , (nE , mE) with Nat-nf nE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 -- ★★ `Mu`/`Mu`: the join forces the two DESCRIPTIONS equal (matching the
 --   second `refl` inverts `Mu`'s injectivity), but NOT the two `DPred`s —
 --   that residual difference is precisely what `irrelMu` collapses.
@@ -4678,6 +4837,64 @@ irrelAtK d₁ d₂ (di-cons _ q₁) (di-cons _ q₂) (suc k) p l =
 -- ⚠ the payload halves are taken by PATTERN, not by `projl`/`projr`:
 --   those are functions, so `projl l` is an application and Agda would
 --   not see it as a subterm of `l` — which is what the cycle needs.
+-- ★ two environments that JOIN give convertible decoded field types.
+--   This is what replaces `liftK`'s `crflᵀ` in the indexed κ slot.
+ienv-conv : {Θ : Cx} {σ σ' σ⁺ : Sub Θ Γ} (κ : RTm Θ) →
+            (∀ x → σ x ⟶* σ⁺ x) → (∀ x → σ' x ⟶* σ⁺ x) →
+            El (subTm σ κ) ≅ᵀ El (subTm σ' κ)
+ienv-conv κ j j' =
+  ctrnᵀ (red→≅ᵀ (⟶ᵀ*-El (subTm-monoˢ j κ)))
+        (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (subTm-monoˢ j' κ))))
+
+-- ★★★ the INDEXED transfer.  Structure mirrors `irrelMu`/`irrelAtK`/
+--   `liftK` exactly; the only additions are the index-reduction witnesses
+--   threaded through, and the κ slot's conversion (below).
+irrelIMu d₁ d₂ r r' (imm-ne n)    = imm-ne n
+irrelIMu d₁ d₂ r r' (imm-exp s m) = imm-exp s (irrelIMu d₁ d₂ r r' m)
+irrelIMu d₁ d₂ r r' (imm-icon k kin {p = p} l) =
+  imm-icon k kin (irrelIAtK d₁ d₂ d₁ d₂ r r' k p l)
+
+irrelIAtK d₁ d₂ idi-nil idi-nil r r' k p l = l
+-- ⚠ NAME the constructor's ICon rather than computing `ilookupD _ zero`:
+--   the description is an implicit of `idi-cons` and Agda cannot invert
+--   `ilookupD` to recover it.  Same lesson as pinning `isingle`'s
+--   environments — recover a value from where it is BOUND, not from a
+--   defined function that happens to produce it.
+irrelIAtK d₁ d₂ (idi-cons {C = C} i₁ _) (idi-cons i₂ _)
+          {i = i} {i' = i'} r r' zero p l =
+  iliftK d₁ d₂ C i₁ i₂ (isingle i) (isingle i') (isingle _)
+         (λ { vz → r }) (λ { vz → r' }) p l
+irrelIAtK d₁ d₂ (idi-cons _ q₁) (idi-cons _ q₂) r r' (suc k) p l =
+  irrelIAtK d₁ d₂ q₁ q₂ r r' k p l
+
+iliftK d₁ d₂ iι iki-ι iki-ι σ σ' σ⁺ j j' p l = l
+-- ⚠ NOT `j vz`.  `ILift`'s `iρ` row puts the recursive field at
+--   `subTm σ jt` — a SUBSTITUTION INSTANCE of the carried index term, not
+--   a slot of the environment.  Hence `subTm-monoˢ`, join `subTm σ⁺ jt`.
+iliftK d₁ d₂ (iρ jt C) (iki-ρ i₁) (iki-ρ i₂) σ σ' σ⁺ j j' p
+       (sp , ((sf , m) , rest)) =
+  ( sp
+  , ( (sf , irrelIMu d₁ d₂ (subTm-monoˢ j jt) (subTm-monoˢ j' jt) m)
+    , iliftK d₁ d₂ C i₁ i₂ (iext σ (fst p)) (iext σ' (fst p))
+             (iext σ⁺ (fst p))
+             (λ { vz → done ; (vs x) → j x })
+             (λ { vz → done ; (vs x) → j' x }) (snd p) rest ) )
+-- ★ THE κ SLOT.  `liftK`'s twin collapses two witnesses at ONE type with
+--   `irrel₀ crflᵀ`.  Here the two sit at `El (subTm (isingle i) κ)` and
+--   `El (subTm (isingle i') κ)` — DIFFERENT types, but CONVERTIBLE,
+--   because `i` and `i'` join.  So `crflᵀ` becomes a real conversion,
+--   built from the two index reductions.  Everything else is unchanged,
+--   including the termination argument: `w₁` is still a strict subterm of
+--   the `IKInterp` that came in.
+iliftK d₁ d₂ (iκ κ C) (iki-κ w₁ i₁) (iki-κ w₂ i₂) σ σ' σ⁺ j j' p
+       (sp , (q , rest)) =
+  ( sp
+  , ( projl (irrel₀ (ienv-conv κ j j') (w₁ σ) (w₂ σ')) (fst p) q
+    , iliftK d₁ d₂ C i₁ i₂ (iext σ (fst p)) (iext σ' (fst p))
+             (iext σ⁺ (fst p))
+             (λ { vz → done ; (vs x) → j x })
+             (λ { vz → done ; (vs x) → j' x }) (snd p) rest ) )
+
 liftK d₁ d₂ ki-ι ki-ι p l = l
 liftK d₁ d₂ (ki-ρ i₁) (ki-ρ i₂) p (sp , ((sf , m) , rest)) =
   ( sp
@@ -4739,6 +4956,9 @@ fwd₀ p (⊩₀Nat q) with confluentᵀ p q
 fwd₀ p (⊩₀Mu q di) with confluentᵀ p q
 ... | E , (bE , mE) with Mu-nf mE
 ...   | refl = ⊩₀Mu bE di
+fwd₀ p (⊩₀IMu q di) with confluentᵀ p q
+... | E , (bE , mE) with IMu-reduct mE
+...   | mkIMuRed _ refl _ = ⊩₀IMu bE di
 
 conv₀ : {A B : RTy Γ} → A ≅ᵀ B → ⊩₀ A → ⊩₀ B
 conv₀ c R with church-rosserᵀ c
@@ -4758,6 +4978,7 @@ CR1₀ (⊩₀Id _)    h = projl h
 CR1₀ (⊩₀Unit _)  h = h
 CR1₀ (⊩₀Nat _)   h = projl h
 CR1₀ (⊩₀Mu _ _)  h = projl h
+CR1₀ (⊩₀IMu _ _)  h = projl h
 
 CR3₀ : {A : RTy Γ} (R : ⊩₀ A) {t : RTm Γ} → SNe t → R ⊩₀∋ t
 CR3₀ (⊩₀base _)    nt = sn-ne nt
@@ -4767,6 +4988,7 @@ CR3₀ (⊩₀ne _ _)    nt = sn-ne nt
 CR3₀ (⊩₀Unit _)    nt = sn-ne nt
 CR3₀ (⊩₀Nat _)     nt = (sn-ne nt , nm-ne nt)
 CR3₀ (⊩₀Mu _ _)    nt = (sn-ne nt , mm-ne nt)
+CR3₀ (⊩₀IMu _ _)    nt = (sn-ne nt , imm-ne nt)
 CR3₀ (⊩₀Π _ ⊩F ⊩G) nt =
   (sn-ne nt , λ u ru → CR3₀ (⊩G u ru) (sne-app nt (CR1₀ ⊩F ru)))
 CR3₀ (⊩₀Σ _ ⊩F ⊩G) {t} nt =
@@ -4783,6 +5005,7 @@ exp₀ (⊩₀ne _ _)    r h = sn-exp r h
 exp₀ (⊩₀Unit _)    r h = sn-exp r h
 exp₀ (⊩₀Nat _)     r h = (sn-exp r (projl h) , nm-exp r (projr h))
 exp₀ (⊩₀Mu _ _)    r h = (sn-exp r (projl h) , mm-exp r (projr h))
+exp₀ (⊩₀IMu _ _)    r h = (sn-exp r (projl h) , imm-exp r (projr h))
 exp₀ (⊩₀Π _ ⊩F ⊩G) r h =
   (sn-exp r (projl h) , λ v rv → exp₀ (⊩G v rv) (snr-app r) (projr h v rv))
 -- ★ the `Σ'` case needs a CONVERSION, not just a congruence: expanding `t` to
@@ -4840,6 +5063,7 @@ PayT (⊩₀Id _)    c = ⊤
 PayT (⊩₀Unit _)  c = ⊤
 PayT (⊩₀Nat _)   c = ⊤
 PayT (⊩₀Mu _ _) c = ⊤
+PayT (⊩₀IMu _ _) c = ⊤
 PayT {Γ = Γ} (⊩₀Π _ ⊩F ⊩G) c =
   (v : RTm Γ) (r : ⊩F ⊩₀∋ v) →
   Σ (RTm Γ) (λ c* →
@@ -4876,6 +5100,7 @@ payT-exp r q (⊩₀Id _) pay = _
 payT-exp r q (⊩₀Unit _) pay = _
 payT-exp r q (⊩₀Nat _) pay = _
 payT-exp r q (⊩₀Mu _ _) pay = _
+payT-exp r q (⊩₀IMu _ _) pay = _
 payT-exp r q (⊩₀Π _ ⊩F ⊩G) pay v rv with pay v rv
 ... | c* , (csr , rest) = c* , (csr-step (csr-here r) csr , rest)
 
@@ -4899,6 +5124,7 @@ payT-whred r (⊩₀Id _) pay = _
 payT-whred r (⊩₀Unit _) pay = _
 payT-whred r (⊩₀Nat _) pay = _
 payT-whred r (⊩₀Mu _ _) pay = _
+payT-whred r (⊩₀IMu _ _) pay = _
 payT-whred r (⊩₀Π _ ⊩F ⊩G) pay v rv with pay v rv
 ... | c* , (csr , (key , rest)) =
       c* , (payT-whred-node r csr key , (key , rest))
@@ -4915,11 +5141,16 @@ payT-irrel cv R (⊩₀Id _) pay = _
 payT-irrel cv R (⊩₀Unit _) pay = _
 payT-irrel cv R (⊩₀Nat _) pay = _
 payT-irrel cv R (⊩₀Mu _ _) pay = _
+payT-irrel cv R (⊩₀IMu _ _) pay = _
 -- ★ `Mu` versus `Π`: `Mu D` is a normal form and `Π` cannot be reached
 --   from it, so the join is absurd.
 payT-irrel cv (⊩₀Mu p _) (⊩₀Π q _ _) pay with joinW cv p q
 ... | E , (mE , πE) with Mu-nf mE
 ...   | refl with Π-reduct πE
+...     | mkΠRed _ _ () _ _
+payT-irrel cv (⊩₀IMu p _) (⊩₀Π q _ _) pay with joinW cv p q
+... | E , (mE , πE) with IMu-reduct mE
+...   | mkIMuRed _ refl _ with Π-reduct πE
 ...     | mkΠRed _ _ () _ _
 payT-irrel cv (⊩₀base p) (⊩₀Π q _ _) pay with joinW cv p q
 ... | E , (bE , πE) with base-nf bE
@@ -5005,6 +5236,8 @@ data ⊩₁_ {Γ} where
   --   `⊩₁Nat`'s payload is the very same `NatMem` as `⊩₀Nat`'s.  That is
   --   what makes `emb`/`emb-coh` at `Mu` the identity.
   ⊩₁Mu   : {A : RTy Γ} {D : Desc} → A ⟶ᵀ* Mu D → DInterp Γ D → ⊩₁ A
+  ⊩₁IMu  : {A : RTy Γ} {D : IDesc} {I : RTy ε} {i : RTm Γ} →
+           A ⟶ᵀ* IMu D I i → IDInterp Γ D → ⊩₁ A
 
 ⊩₁base _     ⊩₁∋ t = SN t
 ⊩₁U _        ⊩₁∋ t = SN t × Σ (⊩₀ (El t)) (λ R → PayT R t)
@@ -5016,6 +5249,7 @@ data ⊩₁_ {Γ} where
 ⊩₁Unit _     ⊩₁∋ t = SN t
 ⊩₁Nat _      ⊩₁∋ t = SN t × NatMem t
 ⊩₁Mu {D = D} _ di ⊩₁∋ t = SN t × MuMem D (predsOf di) t
+⊩₁IMu {D = D} {I = I} {i = i} _ di ⊩₁∋ t = SN t × IMuMem D I (ipredsOf di) i t
 ⊩₁Id {a = a} {b = b} _ ⊩₁∋ t = SN t × IdPay a b t
 
 bwd₁ : {A B : RTy Γ} → A ⟶ᵀ* B → ⊩₁ B → ⊩₁ A
@@ -5028,6 +5262,7 @@ bwd₁ p (⊩₁Hom q s)   = ⊩₁Hom  (⟶ᵀ*-trans p q) s
 bwd₁ p (⊩₁Unit q)    = ⊩₁Unit (⟶ᵀ*-trans p q)
 bwd₁ p (⊩₁Nat q)     = ⊩₁Nat  (⟶ᵀ*-trans p q)
 bwd₁ p (⊩₁Mu q di)   = ⊩₁Mu   (⟶ᵀ*-trans p q) di
+bwd₁ p (⊩₁IMu q di)   = ⊩₁IMu   (⟶ᵀ*-trans p q) di
 bwd₁ p (⊩₁Id q)      = ⊩₁Id   (⟶ᵀ*-trans p q)
 
 -- ★ the level-1 peer of `bwd₀-mem⁻`, never needed until stage E.
@@ -5046,6 +5281,7 @@ bwd₁-mem⁻ q (⊩₁Hom _ _) h = h
 bwd₁-mem⁻ q (⊩₁Unit _)  h = h
 bwd₁-mem⁻ q (⊩₁Nat _)   h = h
 bwd₁-mem⁻ q (⊩₁Mu _ _)  h = h
+bwd₁-mem⁻ q (⊩₁IMu _ _)  h = h
 bwd₁-mem⁻ q (⊩₁Id _)    h = h
 
 ------------------------------------------------------------------------
@@ -5188,76 +5424,163 @@ irrel₁ c (⊩₁Mu p _) (⊩₁base q) with joinW c p q
 ... | E , (mE , oE) with base-nf oE
 ...   | refl with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁IMu p _) (⊩₁base q) with joinW c p q
+... | E , (mE , oE) with base-nf oE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁base p) (⊩₁Mu q _) with joinW c p q
 ... | E , (oE , mE) with base-nf oE
 ...   | refl with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁base p) (⊩₁IMu q _) with joinW c p q
+... | E , (oE , mE) with base-nf oE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁Mu p _) (⊩₁U q) with joinW c p q
 ... | E , (mE , oE) with U-nf oE
 ...   | refl with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁IMu p _) (⊩₁U q) with joinW c p q
+... | E , (mE , oE) with U-nf oE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁U p) (⊩₁Mu q _) with joinW c p q
 ... | E , (oE , mE) with U-nf oE
 ...   | refl with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁U p) (⊩₁IMu q _) with joinW c p q
+... | E , (oE , mE) with U-nf oE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁Mu p _) (⊩₁ne q n) with joinW c p q
 ... | E , (mE , oE) with El-ne-reduct n oE
 ...   | mkElNe _ _ refl with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁IMu p _) (⊩₁ne q n) with joinW c p q
+... | E , (mE , oE) with El-ne-reduct n oE
+...   | mkElNe _ _ refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁ne p n) (⊩₁Mu q _) with joinW c p q
 ... | E , (oE , mE) with El-ne-reduct n oE
 ...   | mkElNe _ _ refl with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁ne p n) (⊩₁IMu q _) with joinW c p q
+... | E , (oE , mE) with El-ne-reduct n oE
+...   | mkElNe _ _ refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁Mu p _) (⊩₁Π q _ _) with joinW c p q
 ... | E , (mE , oE) with Π-reduct oE
 ...   | mkΠRed _ _ refl _ _ with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁IMu p _) (⊩₁Π q _ _) with joinW c p q
+... | E , (mE , oE) with Π-reduct oE
+...   | mkΠRed _ _ refl _ _ with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁Π p _ _) (⊩₁Mu q _) with joinW c p q
 ... | E , (oE , mE) with Π-reduct oE
 ...   | mkΠRed _ _ refl _ _ with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁Π p _ _) (⊩₁IMu q _) with joinW c p q
+... | E , (oE , mE) with Π-reduct oE
+...   | mkΠRed _ _ refl _ _ with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁Mu p _) (⊩₁Σ q _ _) with joinW c p q
 ... | E , (mE , oE) with Σ-reduct oE
 ...   | mkΣRed _ _ refl _ _ with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁IMu p _) (⊩₁Σ q _ _) with joinW c p q
+... | E , (mE , oE) with Σ-reduct oE
+...   | mkΣRed _ _ refl _ _ with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁Σ p _ _) (⊩₁Mu q _) with joinW c p q
 ... | E , (oE , mE) with Σ-reduct oE
 ...   | mkΣRed _ _ refl _ _ with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁Σ p _ _) (⊩₁IMu q _) with joinW c p q
+... | E , (oE , mE) with Σ-reduct oE
+...   | mkΣRed _ _ refl _ _ with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁Mu p _) (⊩₁Hom q sh) with joinW c p q
 ... | E , (mE , oE) with Hom-stk-reduct sh oE
 ...   | mkHomStk _ _ _ _ refl with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁IMu p _) (⊩₁Hom q sh) with joinW c p q
+... | E , (mE , oE) with Hom-stk-reduct sh oE
+...   | mkHomStk _ _ _ _ refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁Hom p sh) (⊩₁Mu q _) with joinW c p q
 ... | E , (oE , mE) with Hom-stk-reduct sh oE
 ...   | mkHomStk _ _ _ _ refl with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁Hom p sh) (⊩₁IMu q _) with joinW c p q
+... | E , (oE , mE) with Hom-stk-reduct sh oE
+...   | mkHomStk _ _ _ _ refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁Mu p _) (⊩₁Unit q) with joinW c p q
 ... | E , (mE , oE) with Unit-nf oE
 ...   | refl with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁IMu p _) (⊩₁Unit q) with joinW c p q
+... | E , (mE , oE) with Unit-nf oE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁Unit p) (⊩₁Mu q _) with joinW c p q
 ... | E , (oE , mE) with Unit-nf oE
 ...   | refl with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁Unit p) (⊩₁IMu q _) with joinW c p q
+... | E , (oE , mE) with Unit-nf oE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁Mu p _) (⊩₁Nat q) with joinW c p q
 ... | E , (mE , oE) with Nat-nf oE
 ...   | refl with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁IMu p _) (⊩₁Nat q) with joinW c p q
+... | E , (mE , oE) with Nat-nf oE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁Nat p) (⊩₁Mu q _) with joinW c p q
 ... | E , (oE , mE) with Nat-nf oE
 ...   | refl with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁Nat p) (⊩₁IMu q _) with joinW c p q
+... | E , (oE , mE) with Nat-nf oE
+...   | refl with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁Mu p _) (⊩₁Id q) with joinW c p q
 ... | E , (mE , oE) with Id-reduct oE
 ...   | _ , (_ , (_ , (refl , _))) with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁IMu p _) (⊩₁Id q) with joinW c p q
+... | E , (mE , oE) with Id-reduct oE
+...   | _ , (_ , (_ , (refl , _))) with IMu-reduct mE
+...     | mkIMuRed _ () _
 irrel₁ c (⊩₁Id p) (⊩₁Mu q _) with joinW c p q
 ... | E , (oE , mE) with Id-reduct oE
 ...   | _ , (_ , (_ , (refl , _))) with Mu-nf mE
 ...     | ()
+irrel₁ c (⊩₁Id p) (⊩₁IMu q _) with joinW c p q
+... | E , (oE , mE) with Id-reduct oE
+...   | _ , (_ , (_ , (refl , _))) with IMu-reduct mE
+...     | mkIMuRed _ () _
 -- ★★ `Mu`/`Mu` at level 1 — the same residual-`DInterp` difference as at
 --   level 0, collapsed by the very same `irrelMu`.
+irrel₁ c (⊩₁Mu p _) (⊩₁IMu q _) with joinW c p q
+... | E , (mE , iE) with Mu-nf mE
+...   | refl with IMu-reduct iE
+...     | mkIMuRed _ () _
+irrel₁ c (⊩₁IMu p _) (⊩₁Mu q _) with joinW c p q
+... | E , (iE , mE) with Mu-nf mE
+...   | refl with IMu-reduct iE
+...     | mkIMuRed _ () _
+irrel₁ c (⊩₁IMu p di₁) (⊩₁IMu q di₂) with joinW c p q
+... | E , (i₁ , i₂) with IMu-reduct i₁ | IMu-reduct i₂
+...   | mkIMuRed j₁ eq₁ r₁ | mkIMuRed j₂ eq₂ r₂
+      with IMuinj≡ (trans (sym eq₁) eq₂)
+...     | (refl , (refl , refl)) =
+          ( (λ _ h → (projl h , irrelIMu di₁ di₂ r₁ r₂ (projr h)))
+          , (λ _ h → (projl h , irrelIMu di₂ di₁ r₂ r₁ (projr h))) )
 irrel₁ c (⊩₁Mu p di₁) (⊩₁Mu q di₂) with joinW c p q
 ... | E , (m₁ , m₂) with Mu-nf m₁
 ...   | refl with Mu-nf m₂
@@ -5558,6 +5881,9 @@ fwd₁ p (⊩₁Nat q) with confluentᵀ p q
 fwd₁ p (⊩₁Mu q di) with confluentᵀ p q
 ... | E , (bE , mE) with Mu-nf mE
 ...   | refl = ⊩₁Mu bE di
+fwd₁ p (⊩₁IMu q di) with confluentᵀ p q
+... | E , (bE , mE) with IMu-reduct mE
+...   | mkIMuRed _ refl _ = ⊩₁IMu bE di
 fwd₁ p (⊩₁Id q) with confluentᵀ p q
 ... | E , (bE , iE) with Id-reduct iE
 ...   | _ , (_ , (_ , (refl , _))) = ⊩₁Id bE
@@ -5585,6 +5911,7 @@ CR1₁ (⊩₁Hom _ _) h = h
 CR1₁ (⊩₁Unit _) h = h
 CR1₁ (⊩₁Nat _)  h = projl h
 CR1₁ (⊩₁Mu _ _) h = projl h
+CR1₁ (⊩₁IMu _ _) h = projl h
 CR1₁ (⊩₁Id _)    h = projl h
 
 CR3₁ : {A : RTy Γ} (R : ⊩₁ A) {t : RTm Γ} → SNe t → R ⊩₁∋ t
@@ -5595,6 +5922,7 @@ CR3₁ (⊩₁Hom _ _)   nt = sn-ne nt
 CR3₁ (⊩₁Unit _)    nt = sn-ne nt
 CR3₁ (⊩₁Nat _)     nt = (sn-ne nt , nm-ne nt)
 CR3₁ (⊩₁Mu _ _)    nt = (sn-ne nt , mm-ne nt)
+CR3₁ (⊩₁IMu _ _)    nt = (sn-ne nt , imm-ne nt)
 CR3₁ (⊩₁Id _)      nt = (sn-ne nt , λ ch → ⊥-elim (sne-nopay nt ch))
 CR3₁ (⊩₁Π _ ⊩F ⊩G) nt =
   (sn-ne nt , λ u ru → CR3₁ (⊩G u ru) (sne-app nt (CR1₁ ⊩F ru)))
@@ -5609,6 +5937,7 @@ exp₁ (⊩₁Hom _ _)   r h = sn-exp r h
 exp₁ (⊩₁Unit _)    r h = sn-exp r h
 exp₁ (⊩₁Nat _)     r h = (sn-exp r (projl h) , nm-exp r (projr h))
 exp₁ (⊩₁Mu _ _)    r h = (sn-exp r (projl h) , mm-exp r (projr h))
+exp₁ (⊩₁IMu _ _)    r h = (sn-exp r (projl h) , imm-exp r (projr h))
 exp₁ (⊩₁Id _) r h =
   ( sn-exp r (projl h) , λ ch → projr h (idpay-peel r ch) )
 exp₁ (⊩₁U _)       r h =
@@ -5643,6 +5972,7 @@ mem-whred₁ (⊩₁Hom _ _) r h = sn-whred h r
 mem-whred₁ (⊩₁Unit _) r h = sn-whred h r
 mem-whred₁ (⊩₁Nat _)  r h = (sn-whred (projl h) r , natmem-whred (projr h) r)
 mem-whred₁ (⊩₁Mu _ _) r h = (sn-whred (projl h) r , mumem-whred (projr h) r)
+mem-whred₁ (⊩₁IMu _ _) r h = (sn-whred (projl h) r , imumem-whred (projr h) r)
 mem-whred₁ (⊩₁Id _) r h =
   ( sn-whred (projl h) r , λ ch → projr h (snr-step r ch) )
 mem-whred₁ (⊩₁U _)     r h =
@@ -5686,6 +6016,7 @@ emb (⊩₀Id p)      = ⊩₁Id p
 emb (⊩₀Unit p)    = ⊩₁Unit p
 emb (⊩₀Nat p)     = ⊩₁Nat p
 emb (⊩₀Mu p di)   = ⊩₁Mu p di
+emb (⊩₀IMu p di)   = ⊩₁IMu p di
 emb (⊩₀ne p n)    = ⊩₁ne p n
 emb (⊩₀Π p ⊩F ⊩G) =
   ⊩₁Π p (emb ⊩F) (λ u r → emb (⊩G u (projr (emb-coh ⊩F) u r)))
@@ -5698,6 +6029,7 @@ emb-coh (⊩₀Id _)    = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Unit _)  = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Nat _)   = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Mu _ _)  = (λ _ h → h) , (λ _ h → h)
+emb-coh (⊩₀IMu _ _)  = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀ne _ _) = (λ _ h → h) , (λ _ h → h)
 emb-coh (⊩₀Σ _ ⊩F ⊩G) =
     (λ t h → (projl h
@@ -5951,6 +6283,7 @@ homSem₁ (⊩₁Nat p) {a} {b} ha hb =
        (homNatSem a b (projl ha) (projr ha) (projl hb) (projr hb))
 homSem₁ (⊩₁Id p)      ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Id)
 homSem₁ (⊩₁Mu p _)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Mu)
+homSem₁ (⊩₁IMu p _)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-IMu)
 homSem₁ (⊩₁U p) {c} {d} hc hd =
   ⊩₁Π (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ p) (stepᵀ (Hom-U c d) doneᵀ))
       (emb (Σ.fst (projr hc)))
@@ -6057,6 +6390,7 @@ payT-bwd₀' q (⊩₀Id _)    pay = _
 payT-bwd₀' q (⊩₀Unit _)  pay = _
 payT-bwd₀' q (⊩₀Nat _)   pay = _
 payT-bwd₀' q (⊩₀Mu _ _)  pay = _
+payT-bwd₀' q (⊩₀IMu _ _)  pay = _
 payT-bwd₀' q (⊩₀Π _ _ _) pay = pay
 
 -- ★ and the payload is trivial at every leaf too — none of `⊩₀Unit`,
@@ -6090,6 +6424,7 @@ homSem₀ (⊩₀Σ p ⊩F ⊩G) ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh
 homSem₀ (⊩₀Hom p s)   ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom s)
 homSem₀ (⊩₀Unit p)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Unit)
 homSem₀ (⊩₀Mu p _)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Mu)
+homSem₀ (⊩₀IMu p _)    ha hb = ⊩₀Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-IMu)
 homSem₀ (⊩₀Nat p) {a} {b} ha hb =
   bwd₀ (⟶ᵀ*-Homᵀ p)
        (homNatSem₀ a b (projl ha) (projr ha) (projl hb) (projr hb))
@@ -6125,6 +6460,7 @@ homSem₀-mem-endpoints :
   (homSem₀ R ha hb) ⊩₀∋ t → (homSem₀ R ha' hb') ⊩₀∋ t
 homSem₀-mem-endpoints (⊩₀base p)    ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀Mu p _)    ha hb ha' hb' h = h
+homSem₀-mem-endpoints (⊩₀IMu p _)    ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀ne p n)    ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀Σ p ⊩F ⊩G) ha hb ha' hb' h = h
 homSem₀-mem-endpoints (⊩₀Hom p s)   ha hb ha' hb' h = h
@@ -6184,6 +6520,7 @@ payHomT : {X : RTy Γ} (⊩c : ⊩₀ X) {C a b : RTm Γ}
           PayT (homSem₀ ⊩c ha hb) (⌜Hom⌝ C a b)
 payHomT (⊩₀base _)  payC ha hb = _
 payHomT (⊩₀Mu _ _)  payC ha hb = _
+payHomT (⊩₀IMu _ _)  payC ha hb = _
 payHomT (⊩₀ne _ _)  payC ha hb = _
 payHomT (⊩₀Σ _ _ _) payC ha hb = _
 payHomT (⊩₀Hom _ _) payC ha hb = _
@@ -6234,6 +6571,7 @@ sem-⌜Hom⌝ p snc sna snb ⊩c payc ha hb =
               PayT R c₀ → PayT (bwd₀ q R) c₀
   payT-bwd₀ q (⊩₀base _)  pay = _
   payT-bwd₀ q (⊩₀Mu _ _)  pay = _
+  payT-bwd₀ q (⊩₀IMu _ _) pay = _
   payT-bwd₀ q (⊩₀ne _ _)  pay = _
   payT-bwd₀ q (⊩₀Σ _ _ _) pay = _
   payT-bwd₀ q (⊩₀Hom _ _) pay = _
