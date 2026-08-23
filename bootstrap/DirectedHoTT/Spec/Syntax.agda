@@ -1113,6 +1113,43 @@ ipayTy D I i (iρ f C) =
 ipayTy D I i (iκ κ C) =
   Σ' (El (app (εwkTm κ) i))      (ipayTy D I (renTm vs i) C)
 
+-- ★★ NATURALITY OF THE PAYLOAD TYPE.  ⚠ this is where the indexed family
+--   PARTS COMPANY with `payTy`: `payTy D C` is CLOSED, so its laws read
+--   `renTy ρ (payTy D C) ≡ payTy D C`.  `ipayTy D I i C` mentions the
+--   AMBIENT INDEX, so the action has to be TRANSPORTED onto it.
+--
+--   The shift term `f`/`κ` stays put — it is closed, which is exactly what
+--   `εwkTm-ren`/`εwkTm-sub` say — and under the binder the recursive call
+--   needs weakening to commute with the action, both instances of "two
+--   composites of the same renaming/substitution".
+ipayTy-ren : (ρ : Ren Γ Δ) (D : IDesc) (I : RTy ε) (i : RTm Γ) (C : ICon) →
+             renTy ρ (ipayTy D I i C) ≡ ipayTy D I (renTm ρ i) C
+ipayTy-ren ρ D I i iι = refl
+ipayTy-ren ρ D I i (iρ f C) =
+  cong₂ Σ' (cong (λ z → IMu D I (app z (renTm ρ i))) (εwkTm-ren ρ f))
+           (trans (ipayTy-ren (extR ρ) D I (renTm vs i) C)
+                  (cong (λ z → ipayTy D I z C)
+                        (trans (renTm-renTm i) (sym (renTm-renTm i)))))
+ipayTy-ren ρ D I i (iκ κ C) =
+  cong₂ Σ' (cong (λ z → El (app z (renTm ρ i))) (εwkTm-ren ρ κ))
+           (trans (ipayTy-ren (extR ρ) D I (renTm vs i) C)
+                  (cong (λ z → ipayTy D I z C)
+                        (trans (renTm-renTm i) (sym (renTm-renTm i)))))
+
+ipayTy-sub : (σ : Sub Γ Δ) (D : IDesc) (I : RTy ε) (i : RTm Γ) (C : ICon) →
+             subTy σ (ipayTy D I i C) ≡ ipayTy D I (subTm σ i) C
+ipayTy-sub σ D I i iι = refl
+ipayTy-sub σ D I i (iρ f C) =
+  cong₂ Σ' (cong (λ z → IMu D I (app z (subTm σ i))) (εwkTm-sub σ f))
+           (trans (ipayTy-sub (extS σ) D I (renTm vs i) C)
+                  (cong (λ z → ipayTy D I z C)
+                        (trans (subTm-renTm i) (sym (renTm-subTm i)))))
+ipayTy-sub σ D I i (iκ κ C) =
+  cong₂ Σ' (cong (λ z → El (app z (subTm σ i))) (εwkTm-sub σ κ))
+           (trans (ipayTy-sub (extS σ) D I (renTm vs i) C)
+                  (cong (λ z → ipayTy D I z C)
+                        (trans (subTm-renTm i) (sym (renTm-subTm i)))))
+
 data _∈ID_ : ℕ → IDesc → Set where
   hereID  : {C : ICon} {E : IDesc} → zero ∈ID (C ◂ E)
   thereID : {k : ℕ} {C : ICon} {E : IDesc} → k ∈ID E → suc k ∈ID (C ◂ E)
