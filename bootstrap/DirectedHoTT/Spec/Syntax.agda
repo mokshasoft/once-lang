@@ -86,11 +86,12 @@ data Desc : Set
 --   already introduced.  ⚠ It is a `Cx`, NOT the ambient `Γ` — descriptions
 --   must stay CLOSED (they appear in types, and `renTy ρ (IMu D I i) =
 --   IMu D I (renTm ρ i)` must not have to rename `D`).
-ICx : ℕ → Cx
-ICx zero    = ε ∙
-ICx (suc n) = ICx n ∙
-
-data ICon : ℕ → Set
+-- ⚠ INDEXED BY THE TELESCOPE CONTEXT, not by a field COUNT.  With a count
+--   you cannot state well-formedness — `IConWf` must track each field's
+--   TYPE, and "a typed context whose erasure is `ICx n`" needs an equality
+--   proof threaded everywhere.  Indexed by `Cx` it falls out, because
+--   `⌊ Θ ▹ A ⌋ = ⌊ Θ ⌋ ∙` holds ON THE NOSE.
+data ICon : Cx → Set
 data IDesc : Set
 
 data RTy where
@@ -244,18 +245,18 @@ data Desc where
 --   index and never reasoning up to index conversion.  That is why
 --   Fording is cheap here and native computed targets are not.
 data ICon where
-  iι : ∀ {n} → ICon n
+  iι : ∀ {Δ} → ICon Δ
   -- RECURSIVE field, at an index that MAY MENTION EARLIER FIELDS.
-  iρ : ∀ {n} → RTm (ICx n) → ICon (suc n) → ICon n
+  iρ : ∀ {Δ} → RTm Δ → ICon (Δ ∙) → ICon Δ
   -- NON-RECURSIVE field, type `El κ`, `κ` a code that may mention
   --   earlier fields and the ambient index.  A FORDING constraint is
   --   just such a field: `iκ (⌜Id⌝ ⌜Nat⌝ ⟨n⟩ (nsuc ⟨m⟩)) …`.
-  iκ : ∀ {n} → RTm (ICx n) → ICon (suc n) → ICon n
+  iκ : ∀ {Δ} → RTm Δ → ICon (Δ ∙) → ICon Δ
 
 data IDesc where
   inil : IDesc
   -- ★ a constructor starts with NO fields bound, only the ambient index.
-  _◂_  : ICon zero → IDesc → IDesc
+  _◂_  : ICon (ε ∙) → IDesc → IDesc
 
 infixr 5 _◂_
 
@@ -1109,7 +1110,7 @@ payTy-sub σ D (dκ A C) = cong₂ Σ' (εwk-sub σ A) (payTy-sub (extS σ) D C)
 εwkTm-sub : (σ : Sub Γ Δ) (t : RTm ε) → subTm σ (εwkTm t) ≡ εwkTm t
 εwkTm-sub σ t = trans (subTm-subTm t) (subTm-cong (λ ()) t)
 
-ilookupD : IDesc → ℕ → ICon zero
+ilookupD : IDesc → ℕ → ICon (ε ∙)
 ilookupD inil    _       = iι
 ilookupD (C ◂ D) zero    = C
 ilookupD (C ◂ D) (suc k) = ilookupD D k
@@ -1118,7 +1119,7 @@ ilookupD (C ◂ D) (suc k) = ilookupD D k
 --   the SHIFTED index `f i`, where `f` is the constructor's closed shift.
 -- ★ the ENVIRONMENT for a description's telescope: what the ambient
 --   index and each already-bound field actually are, in `Γ`.
-isingle : RTm Γ → Sub (ICx zero) Γ
+isingle : RTm Γ → Sub (ε ∙) Γ
 isingle i vz      = i
 isingle i (vs ())
 
@@ -1127,14 +1128,14 @@ isingle i (vs ())
 --   index.  `extS σ : Sub (ICx n ∙) (Γ ∙)` IS `Sub (ICx (suc n)) (Γ ∙)`,
 --   so the field just introduced is `var vz` in the tail — which is what
 --   lets a later `iρ` name it.
-ipayTy : IDesc → RTy ε → ∀ {n} → Sub (ICx n) Γ → ICon n → RTy Γ
+ipayTy : IDesc → RTy ε → ∀ {Δ} → Sub Δ Γ → ICon Δ → RTy Γ
 ipayTy D I σ iι       = Unit
 ipayTy D I σ (iρ j C) = Σ' (IMu D I (subTm σ j)) (ipayTy D I (extS σ) C)
 ipayTy D I σ (iκ κ C) = Σ' (El (subTm σ κ))      (ipayTy D I (extS σ) C)
 
 -- two environments agreeing pointwise give the same payload type.
-ipayTy-cong : (D : IDesc) (I : RTy ε) {n : ℕ} {σ σ' : Sub (ICx n) Γ}
-              (C : ICon n) → (∀ x → σ x ≡ σ' x) →
+ipayTy-cong : (D : IDesc) (I : RTy ε) {Δ : Cx} {σ σ' : Sub Δ Γ}
+              (C : ICon Δ) → (∀ x → σ x ≡ σ' x) →
               ipayTy D I σ C ≡ ipayTy D I σ' C
 ipayTy-cong D I iι       h = refl
 ipayTy-cong D I (iρ j C) h =
@@ -1147,8 +1148,8 @@ ipayTy-cong D I (iκ κ C) h =
 -- naturality.  ⚠ the environment absorbs the action — that is the whole
 --   point of carrying one: `renTy ρ (ipayTy D I σ C) ≡ ipayTy D I (ρ ∘ σ) C`,
 --   with no per-former index bookkeeping.
-ipayTy-ren : (ρ : Ren Γ Δ) (D : IDesc) (I : RTy ε) {n : ℕ}
-             (σ : Sub (ICx n) Γ) (C : ICon n) →
+ipayTy-ren : (ρ : Ren Γ Δ) (D : IDesc) (I : RTy ε) {Θ : Cx}
+             (σ : Sub Θ Γ) (C : ICon Θ) →
              renTy ρ (ipayTy D I σ C) ≡ ipayTy D I (λ x → renTm ρ (σ x)) C
 ipayTy-ren ρ D I σ iι = refl
 ipayTy-ren ρ D I σ (iρ j C) =
@@ -1164,8 +1165,8 @@ ipayTy-ren ρ D I σ (iκ κ C) =
                                         ; (vs x) → trans (renTm-renTm (σ x))
                                                          (sym (renTm-renTm (σ x))) })))
 
-ipayTy-sub : (τ : Sub Γ Δ) (D : IDesc) (I : RTy ε) {n : ℕ}
-             (σ : Sub (ICx n) Γ) (C : ICon n) →
+ipayTy-sub : (τ : Sub Γ Δ) (D : IDesc) (I : RTy ε) {Θ : Cx}
+             (σ : Sub Θ Γ) (C : ICon Θ) →
              subTy τ (ipayTy D I σ C) ≡ ipayTy D I (λ x → subTm τ (σ x)) C
 ipayTy-sub τ D I σ iι = refl
 ipayTy-sub τ D I σ (iρ j C) =
@@ -1182,15 +1183,15 @@ ipayTy-sub τ D I σ (iκ κ C) =
                                                          (sym (renTm-subTm (σ x))) })))
 
 data _∈ID_ : ℕ → IDesc → Set where
-  hereID  : {C : ICon zero} {E : IDesc} → zero ∈ID (C ◂ E)
-  thereID : {k : ℕ} {C : ICon zero} {E : IDesc} → k ∈ID E → suc k ∈ID (C ◂ E)
+  hereID  : {C : ICon (ε ∙)} {E : IDesc} → zero ∈ID (C ◂ E)
+  thereID : {k : ℕ} {C : ICon (ε ∙)} {E : IDesc} → k ∈ID E → suc k ∈ID (C ◂ E)
 
 -- ★ EXTENDING AN ENVIRONMENT BY A VALUE.  ⚠ this is where the TERM level
 --   parts company with the TYPE level: `ipayTy` extends with `extS`,
 --   because its tail lives under a `Σ'` BINDER; `iihs` extends with the
 --   actual field VALUE, because its tail lives under a `pair`, which
 --   binds nothing and stays in `Γ`.
-iext : ∀ {n} → Sub (ICx n) Γ → RTm Γ → Sub (ICx (suc n)) Γ
+iext : ∀ {Δ} → Sub Δ Γ → RTm Γ → Sub (Δ ∙) Γ
 iext σ v vz     = v
 iext σ v (vs x) = σ x
 
@@ -1202,7 +1203,7 @@ iext σ v (vs x) = σ x
 --   level only needs the index VALUE. Found by writing Confluence's
 --   parallel-reduction rule `pιi`, whose conclusion would have mentioned
 --   an `I` its premise could not determine.
-iihs : IDesc → RTm Γ → ∀ {n} → Sub (ICx n) Γ → ICon n → RTm Γ → RTm Γ
+iihs : IDesc → RTm Γ → ∀ {Δ} → Sub Δ Γ → ICon Δ → RTm Γ → RTm Γ
 iihs D ms σ iι       p = unit
 iihs D ms σ (iρ j C) p =
   pair (ielim D (subTm σ j) ms (fst p))
@@ -1211,12 +1212,12 @@ iihs D ms σ (iκ κ C) p = iihs D ms (iext σ (fst p)) C (snd p)
 
 -- ★★ ⚠ REVISED (§9.1): the method is applied to the INDEX first, so ONE
 --   method tuple serves every recursive index.
-ifields : IDesc → RTm Γ → RTm Γ → ∀ {n} → Sub (ICx n) Γ → ICon n →
+ifields : IDesc → RTm Γ → RTm Γ → ∀ {Δ} → Sub Δ Γ → ICon Δ →
           RTm Γ → RTm Γ → RTm Γ
 ifields D i ms σ C m p = app (app (app m i) p) (iihs D ms σ C p)
 
-iihs-cong : (D : IDesc) (ms : RTm Γ) {n : ℕ} {σ σ' : Sub (ICx n) Γ}
-            (C : ICon n) (p : RTm Γ) → (∀ x → σ x ≡ σ' x) →
+iihs-cong : (D : IDesc) (ms : RTm Γ) {Δ : Cx} {σ σ' : Sub Δ Γ}
+            (C : ICon Δ) (p : RTm Γ) → (∀ x → σ x ≡ σ' x) →
             iihs D ms σ C p ≡ iihs D ms σ' C p
 iihs-cong D ms iι       p h = refl
 iihs-cong D ms (iρ j C) p h =
@@ -1225,8 +1226,8 @@ iihs-cong D ms (iρ j C) p h =
 iihs-cong D ms (iκ κ C) p h =
   iihs-cong D ms C (snd p) (λ { vz → refl ; (vs x) → h x })
 
-ren-iihs : (ρ : Ren Γ Δ) (D : IDesc) (ms : RTm Γ) {n : ℕ}
-           (σ : Sub (ICx n) Γ) (C : ICon n) (p : RTm Γ) →
+ren-iihs : (ρ : Ren Γ Δ) (D : IDesc) (ms : RTm Γ) {Θ : Cx}
+           (σ : Sub Θ Γ) (C : ICon Θ) (p : RTm Γ) →
            renTm ρ (iihs D ms σ C p)
              ≡ iihs D (renTm ρ ms) (λ x → renTm ρ (σ x)) C (renTm ρ p)
 ren-iihs ρ D ms σ iι       p = refl
@@ -1241,8 +1242,8 @@ ren-iihs ρ D ms σ (iκ κ C) p =
         (iihs-cong D (renTm ρ ms) C (renTm ρ (snd p))
                    (λ { vz → refl ; (vs x) → refl }))
 
-sub-iihs : (τ : Sub Γ Δ) (D : IDesc) (ms : RTm Γ) {n : ℕ}
-           (σ : Sub (ICx n) Γ) (C : ICon n) (p : RTm Γ) →
+sub-iihs : (τ : Sub Γ Δ) (D : IDesc) (ms : RTm Γ) {Θ : Cx}
+           (σ : Sub Θ Γ) (C : ICon Θ) (p : RTm Γ) →
            subTm τ (iihs D ms σ C p)
              ≡ iihs D (subTm τ ms) (λ x → subTm τ (σ x)) C (subTm τ p)
 sub-iihs τ D ms σ iι       p = refl
@@ -1257,15 +1258,15 @@ sub-iihs τ D ms σ (iκ κ C) p =
         (iihs-cong D (subTm τ ms) C (subTm τ (snd p))
                    (λ { vz → refl ; (vs x) → refl }))
 
-ren-ifields : (ρ : Ren Γ Δ) (D : IDesc) (i ms : RTm Γ) {n : ℕ}
-              (σ : Sub (ICx n) Γ) (C : ICon n) (m p : RTm Γ) →
+ren-ifields : (ρ : Ren Γ Δ) (D : IDesc) (i ms : RTm Γ) {Θ : Cx}
+              (σ : Sub Θ Γ) (C : ICon Θ) (m p : RTm Γ) →
               renTm ρ (ifields D i ms σ C m p)
                 ≡ ifields D (renTm ρ i) (renTm ρ ms) (λ x → renTm ρ (σ x)) C
                             (renTm ρ m) (renTm ρ p)
 ren-ifields ρ D i ms σ C m p = cong (app _) (ren-iihs ρ D ms σ C p)
 
-sub-ifields : (τ : Sub Γ Δ) (D : IDesc) (i ms : RTm Γ) {n : ℕ}
-              (σ : Sub (ICx n) Γ) (C : ICon n) (m p : RTm Γ) →
+sub-ifields : (τ : Sub Γ Δ) (D : IDesc) (i ms : RTm Γ) {Θ : Cx}
+              (σ : Sub Θ Γ) (C : ICon Θ) (m p : RTm Γ) →
               subTm τ (ifields D i ms σ C m p)
                 ≡ ifields D (subTm τ i) (subTm τ ms) (λ x → subTm τ (σ x)) C
                             (subTm τ m) (subTm τ p)
