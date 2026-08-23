@@ -2339,6 +2339,11 @@ data SNe {Γ} where
   -- `natrec`'s branches do.
   sne-elim : {D : Desc} {ms t : RTm Γ} →
              SN ms → SN t → mustk? t ≡ true → SNe (elim D ms t)
+  -- ★ the INDEXED twin.  ⚠ the INDEX is an extra `SN` premise — it is a
+  --   term the eliminator carries, and `ξ-ielimⁱ` can step it, so it must
+  --   be strongly normalising for the whole to be.
+  sne-ielim : {D : IDesc} {i ms t : RTm Γ} →
+              SN i → SN ms → SN t → mustk? t ≡ true → SNe (ielim D i ms t)
 
 data SN {Γ} where
   sn-ne   : {t : RTm Γ} → SNe t → SN t
@@ -2356,11 +2361,16 @@ data SN {Γ} where
   sn-cNat   : SN (⌜Nat⌝ {Γ})
   sn-cUnit  : SN (⌜Unit⌝ {Γ})
   sn-cMu    : {Dᵐ : Desc} → SN (⌜Mu⌝ {Γ} Dᵐ)
+  -- ⚠ NOT nullary like `sn-cMu`: `⌜IMu⌝` CARRIES THE INDEX, so it is SN
+  --   only when the index is.  Same reason `ξ-⌜IMu⌝` exists and `⌜Mu⌝`
+  --   needs no congruence.
+  sn-cIMu   : {D : IDesc} {I : RTy ε} {i : RTm Γ} → SN i → SN (⌜IMu⌝ D I i)
   sn-unit   : SN (unit {Γ})
   sn-nzero  : SN (nzero {Γ})
   sn-nsuc   : {n : RTm Γ} → SN n → SN (nsuc n)
   -- ★ INDUCTIVE TYPES: a constructor is SN-inert, like `nsuc`.
   sn-con    : {k : ℕ} {p : RTm Γ} → SN p → SN (con k p)
+  sn-icon   : {k : ℕ} {p : RTm Γ} → SN p → SN (icon k p)
   sn-exp  : {t t' : RTm Γ} → SNRed t t' → SN t' → SN t
 
 data SNRed {Γ} where
@@ -2436,6 +2446,25 @@ data SNRed {Γ} where
                     (fields D ms (lookupD D k) (sel k ms) p)
   snr-elimᵗ : {D : Desc} {ms t t' : RTm Γ} →
               SNRed t t' → SNRed (elim D ms t) (elim D ms t')
+  -- ★ the INDEXED ι and its ξ's.  ⚠ TWO ξ's where the non-indexed rule
+  --   has one: the scrutinee AND the index can both step.
+  snr-ιi     : {D : IDesc} {i ms : RTm Γ} {k : ℕ} {p : RTm Γ} →
+               SN i → SN ms → SN p →
+               SNRed (ielim D i ms (icon k p))
+                     (ifields D i ms (isingle i) (ilookupD D k) (sel k ms) p)
+  snr-ielimᵗ : {D : IDesc} {i ms t t' : RTm Γ} →
+               SNRed t t' → SNRed (ielim D i ms t) (ielim D i ms t')
+  -- ⚠⚠ THERE IS DELIBERATELY NO `snr-ielimⁱ`.  I added one and it made
+  --   `snr-det` FALSE: for `ielim D i ms (icon k p)` BOTH `snr-ιi` (the
+  --   scrutinee is a constructor) and an index-ξ would apply, so weak-head
+  --   reduction would not be deterministic.  `elim` is safe only because
+  --   `snr-elimᵗ` cannot fire on `con k p`; the index is a SEPARATE
+  --   subterm with no such protection.
+  --   The rule above already states the principle — "one ξ for the
+  --   SCRUTINEE only — weak head, exactly as `snr-natrecⁿ` leaves the
+  --   branches alone".  The index is CARRIED, like `elim`'s methods: its
+  --   normalisation is tracked by `sne-ielim`'s `SN i` premise, not by a
+  --   weak-head step.
   -- ★★ WF stage E: the order's five root rules, each discarding the
   -- material it drops as `SN` (the `snr-β` pattern), plus one ξ per
   -- BOUND.  Three scrutinees, so three ξ's — `p`/`q` are payload and
@@ -2536,6 +2565,8 @@ snr→⟶ (snr-natrec-suc _ _ _)   = natrec-suc _ _ _
 snr→⟶ (snr-natrecⁿ r)          = ξ-natrecⁿ (snr→⟶ r)
 snr→⟶ (snr-ι _ _)              = ι-elim _ _ _ _
 snr→⟶ (snr-elimᵗ r)            = ξ-elimᵗ (snr→⟶ r)
+snr→⟶ (snr-ιi _ _ _)           = ι-ielim _ _ _ _ _
+snr→⟶ (snr-ielimᵗ r)           = ξ-ielimᵗ (snr→⟶ r)
 snr→⟶ (snr-ordtr-z _ _ _ _)    = ordtr-z _ _ _ _
 snr→⟶ (snr-ordtr-szz _ _)      = ordtr-szz _ _ _
 snr→⟶ (snr-ordtr-ssz _ _ _)    = ordtr-ssz _ _ _ _
@@ -2576,6 +2607,8 @@ snr-nonpw (snr-natrec-suc _ _ _)  = refl
 snr-nonpw (snr-natrecⁿ _)         = refl
 snr-nonpw (snr-ι _ _)             = refl
 snr-nonpw (snr-elimᵗ _)           = refl
+snr-nonpw (snr-ιi _ _ _)          = refl
+snr-nonpw (snr-ielimᵗ _)          = refl
 snr-nonpw (snr-ordtr-z _ _ _ _)   = refl
 snr-nonpw (snr-ordtr-szz _ _)     = refl
 snr-nonpw (snr-ordtr-ssz _ _ _)   = refl
@@ -2749,6 +2782,17 @@ snr-det (snr-ι _ _) (snr-elimᵗ ())
 snr-det (snr-elimᵗ ()) (snr-ι _ _)
 snr-det (snr-elimᵗ {D = D} {ms = ms} r) (snr-elimᵗ r') =
   cong (elim D ms) (snr-det r r')
+-- ★ the INDEXED determinism block.  THREE reduction constructors for
+--   `ielim` (ι, scrutinee-ξ, index-ξ) where `elim` has two, so nine pairs
+--   instead of four.  ⚠ the off-diagonal pairs are IMPOSSIBLE, and the
+--   witness that kills them is the SAME as `elim`'s: a `snr` out of
+--   `icon` (for ι-vs-ξᵗ) or out of an index that ι requires inert.
+snr-det (snr-ιi _ _ _) (snr-ιi _ _ _)     = refl
+snr-det (snr-ιi _ _ _) (snr-ielimᵗ ())
+snr-det (snr-ielimᵗ ()) (snr-ιi _ _ _)
+snr-det (snr-ielimᵗ {D = D} {i = i} {ms = ms} r) (snr-ielimᵗ r') =
+  cong (λ q → ielim D i ms q) (snr-det r r')
+-- (no `snr-ielimⁱ` — see the note on `snr-ielimᵗ`)
 snr-det (snr-natrecⁿ {z = z} {w = w} r) (snr-natrecⁿ r') =
   cong (λ q → natrec z w q) (snr-det r r')
 -- ★★ WF stage E: `natrec`'s argument three times over.  Every cross
@@ -2866,6 +2910,12 @@ sne-whred (sne-natrec snz snw snn key) (snr-natrecⁿ r) =
 sne-whred (sne-elim snm snt ()) (snr-ι _ _)
 sne-whred (sne-elim snm snt key) (snr-elimᵗ r) =
   sne-elim snm (sn-whred snt r) (mustk?-red (snr→⟶ r) key)
+-- ★ the INDEXED twins.  `()` on the ι row for the same reason: `sne-ielim`
+--   keys on `mustk? t ≡ true`, and ι requires the scrutinee to be `icon`,
+--   which `mustk?` answers `false` for.
+sne-whred (sne-ielim sni snm snt ()) (snr-ιi _ _ _)
+sne-whred (sne-ielim sni snm snt key) (snr-ielimᵗ r) =
+  sne-ielim sni snm (sn-whred snt r) (mustk?-red (snr→⟶ r) key)
 -- ★★ WF stage E: every root rule is refuted DEFINITIONALLY — each one
 -- fires only on numeral bounds, and `natstk?` of a numeral is `false`,
 -- so `ordstk?` computes to `false` and the key is `()`.
@@ -2975,6 +3025,8 @@ data Ne {Γ} : RTm Γ → Set where
   -- every other eliminator it carries only the stuckness.
   ne-elim : {D : Desc} {ms t : RTm Γ} →
             mustk? t ≡ true → Ne (elim D ms t)
+  ne-ielim : {D : IDesc} {i ms t : RTm Γ} →
+             mustk? t ≡ true → Ne (ielim D i ms t)
 
 ne-red : {t t' : RTm Γ} → Ne t → t ⟶ t' → Ne t'
 ne-red (ne-var x) ()
@@ -3016,8 +3068,11 @@ ne-red (ne-natrec key) (ξ-natrecⁿ r) = ne-natrec (natstk?-red r key)
 -- ★ INDUCTIVE TYPES: ι refuted by the key; the methods leave it alone;
 -- the scrutinee moves it.  `natrec`'s three rows exactly.
 ne-red (ne-elim ()) (ι-elim _ _ _ _)
+ne-red (ne-ielim ()) (ι-ielim _ _ _ _ _)
 ne-red (ne-elim key) (ξ-elimᵐ r) = ne-elim key
+ne-red (ne-ielim key) (ξ-ielimᵐ r) = ne-ielim key
 ne-red (ne-elim key) (ξ-elimᵗ r) = ne-elim (mustk?-red r key)
+ne-red (ne-ielim key) (ξ-ielimᵗ r) = ne-ielim (mustk?-red r key)
 -- ★★ WF stage E: the five root rules are refuted by the key, the three
 -- bound congruences move it, and the two PROOF congruences leave it
 -- alone — `ordstk?` does not mention `p`/`q`.
@@ -3047,6 +3102,7 @@ sne→ne (sne-ap _ _ _ key) = ne-ap key
 sne→ne (sne-jsub _ _ _ key) = ne-jsub key
 sne→ne (sne-natrec _ _ _ key) = ne-natrec key
 sne→ne (sne-elim _ _ key) = ne-elim key
+sne→ne (sne-ielim _ _ _ key) = ne-ielim key
 sne→ne (sne-ordtr _ _ _ _ _ key) = ne-ordtr key
 
 -- extractors for `fund`'s path analysis: strict neutrals are safe spine
@@ -3063,6 +3119,7 @@ sne→spine (sne-ap _ _ _ key) = key
 sne→spine (sne-jsub _ _ _ key) = key
 sne→spine (sne-natrec _ _ _ key) = key
 sne→spine (sne-elim _ _ key) = key
+sne→spine (sne-ielim _ _ _ key) = key
 sne→spine (sne-ordtr _ _ _ _ _ key) = key
 
 -- ★ the `stableA?` peer.  A strict neutral is never ⌜Nat⌝- or
@@ -3085,6 +3142,7 @@ sne→mustk (sne-ap _ _ _ key)      = key
 sne→mustk (sne-jsub _ _ _ key)    = key
 sne→mustk (sne-natrec _ _ _ key)  = key
 sne→mustk (sne-elim _ _ key)      = key
+sne→mustk (sne-ielim _ _ _ key)      = key
 sne→mustk (sne-ordtr _ _ _ _ _ key) = key
 
 sne→stableA : {t : RTm Γ} → SNe t → stableA? t ≡ true
@@ -3099,6 +3157,7 @@ sne→stableA (sne-ap _ _ _ key) = key
 sne→stableA (sne-jsub _ _ _ key) = key
 sne→stableA (sne-natrec _ _ _ key) = key
 sne→stableA (sne-elim _ _ key) = key
+sne→stableA (sne-ielim _ _ _ key) = key
 sne→stableA (sne-ordtr _ _ _ _ _ key) = key
 
 sne→stablecd : {t : RTm Γ} → SNe t → stablecd? t ≡ true
@@ -3113,6 +3172,7 @@ sne→stablecd (sne-ap _ _ _ key) = key
 sne→stablecd (sne-jsub _ _ _ key) = key
 sne→stablecd (sne-natrec _ _ _ key) = key
 sne→stablecd (sne-elim _ _ key) = key
+sne→stablecd (sne-ielim _ _ _ key) = key
 sne→stablecd (sne-ordtr _ _ _ _ _ key) = key
 
 -- ★ WF stage A: a strict neutral is never a numeral — the extractor
@@ -3129,6 +3189,7 @@ sne→natstk (sne-ap _ _ _ key)   = key
 sne→natstk (sne-jsub _ _ _ key) = key
 sne→natstk (sne-natrec _ _ _ key) = key
 sne→natstk (sne-elim _ _ key) = key
+sne→natstk (sne-ielim _ _ _ key) = key
 sne→natstk (sne-ordtr _ _ _ _ _ key) = key
 
 -- renaming preserves every classifier ON THE NOSE — the entire
@@ -6733,6 +6794,7 @@ wne (sne-natrec {z = z} {w = w} {n = n} z₀ w₀ n₀ key)
 -- ★ INDUCTIVE TYPES: two subterms, and only the SCRUTINEE carries the key;
 -- once normal, ι is refuted by `key'` computing to `false ≡ true`.
 wne (sne-elim {D = D} {ms = ms} {t = t} m₀ t₀ key)
+wne (sne-ielim {D {D = D} {ms = ms} {t = t} m₀ t₀ key)
   with wn m₀ | wn t₀
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ =
       mkWNe (elim D n₁ n₂)
