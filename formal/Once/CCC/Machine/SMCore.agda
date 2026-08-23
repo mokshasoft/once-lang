@@ -37,7 +37,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open import Relation.Nullary using (Dec; yes; no)
 
 -- Import FrameSemantics for Frame type
-open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.FrameSemantics using (FrameSemantics; fs-numerics)
 -- Plan 0.63 (D089): the structured label identity. Re-exported, so every
 -- importer of the abstract instruction set sees `LabelId` without a second
 -- import — the same courtesy `Locations`/`HeapAddress` already get below.
@@ -1530,7 +1530,11 @@ module AbstractExec {FS : FrameSemantics} where
   -- (fits-in-reg? / Input1 pointer / readTyped-adequate) all reduce the term.
   pure-sigop-out-val : ∀ {A B} → SigOpInfo A B → FitsInReg B → Maybe ⟦ A ⟧
                      → StoredValue FS
-  pure-sigop-out-val si fitB (just a) = SV-Lit fitB (semM si a)
+  -- Plan 0.74 J5: the SigOp's semantics is target-relative now, and the
+  -- machine's target is `fs-numerics FS`. That this is the SAME `TargetNum`
+  -- the spec uses (`arch-numerics arch`) is the standing `fmt-agree` premise —
+  -- the one remaining width channel, and what item 5 of J6 removes.
+  pure-sigop-out-val si fitB (just a) = SV-Lit fitB (semM si (fs-numerics FS) a)
   pure-sigop-out-val si fitB nothing  = unit-storedvalue
 
   pure-sigop-out-aux : ∀ {A B} → SigOpInfo A B → LocState FS

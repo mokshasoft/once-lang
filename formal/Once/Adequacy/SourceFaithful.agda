@@ -169,7 +169,7 @@ ihᴰ {A = A} e dγ ih = trans (sym (subst-sym-subst (cohᴰ A))) (cong (subst T
 -- non-arrow (value-position) `SigOp info ∘ terminal`: `terminal` discards the env,
 -- so `liftFn` = the emit/semM pair transported by `cohᴰ A` (subst-subst-sym).
 sigop-value : ∀ {n} {Γ : Ctx n} {A : Type} (info : SigOpInfo Unit A) (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-  → liftFn fmt {⟦ Γ ⟧ᶜ} {A} (SigOp info ∘ terminal) dγ k ≡ (emit-D info tt , inject (semM info tt))
+  → liftFn fmt {⟦ Γ ⟧ᶜ} {A} (SigOp info ∘ terminal) dγ k ≡ (emit-D info tt , inject (semM info fmt tt))
 sigop-value {A = A} info dγ k =
   trans (subst-T-apply (cohᴰ A) (evalᴰ fmt (SigOp info) tt) k)
         (cong₂ _,_ refl (subst-subst-sym (cohᴰ A)))
@@ -284,7 +284,8 @@ faithful (effApp {Γ = Γ} {A = A} {B = B} f x) dγ k =
 -- absurd v : v has type Void, so `proj₂ (⟦v⟧ˢ dγ n) : ⊥` — vacuous.
 faithful (absurd v) dγ n = ⊥-elim (proj₂ ((SD.⟦ v ⟧ˢ fmt) dγ n))
 faithful unit    dγ k = refl
-faithful (int n) dγ k = refl   -- intLit's semM reduces to `absℤ n`, matching ⟦int n⟧ˢ fmt
+faithful (int n) dγ k = refl   -- both sides are `fromℤ (int-bits fmt) n` (the `absℤ` this
+                               -- comment used to describe is gone; D054/D115)
 faithful (float d _) dγ k = refl -- ⟦float d⟧ˢ fmt IS `d`, and floatLit's evalᴰ fmt is the same `d`
 faithful (str s) dγ k = refl   -- ⟦str s⟧ˢ fmt now denotes via str-lit-info's semM = strLit's evalᴰ fmt
 -- Single-subterm projections/injections: `elaborate (op e) = <prim> ∘ elaborate e`

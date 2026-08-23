@@ -48,8 +48,15 @@ import Once.Arith.Backend.RiscV64.ExecArith as EA
 open import Once.Arith.Backend.RiscV64.Preserve using (step-of; step-of-preserves; a-sp)
 open import Once.Arith.Backend.RiscV64.MemPreserve using (readMem-writeMem-other)
 import Once.Word as OnceWord
-module W = OnceWord.Word64
-open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; ¬d≡x; additive-sa-inj; module Core)
+-- riscv64 really is 64-bit, so this one is CORRECT and stays. Written as an
+-- explicit width rather than the `Word64` alias so it reads as a claim about
+-- THIS target rather than as the default nobody chose (plan 0.74 J5).
+module W = OnceWord.Width 64
+import Once.Adequacy.ArchCorrectness.ArithSimCore as ASC
+open import Once.Target.Arch using (Arch; riscv64; arch-numerics)
+-- Plan 0.74 J5: the shared correspondence core, applied at THIS target's
+-- numerics. It used to be applied at 64 for every arch, including this one.
+open ASC.At (arch-numerics riscv64) using (tgt; NonSpill; ¬d≡x; additive-sa-inj; module Core)
 
 ------------------------------------------------------------------------
 -- val-riscv64 — the concrete XInstr arith interpreter over RV.State.

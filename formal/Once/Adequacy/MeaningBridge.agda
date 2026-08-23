@@ -182,11 +182,11 @@ mutual
 -- both event and value are then EQUAL by `cong`, and the result relation is
 -- `concrete-rel→refl` (result is concrete). Funext-free.
 sigop-bridge : ∀ {A B} {cn : CanonicalName} (bA : IsBaseType A) (cB : IsConcrete B) {a b : ⟦ A ⟧ᴰ} → RelV A a b
-             → RelT B (named-sem {A} {B} cn bA cB a)
+             → RelT B (named-sem {A} {B} fmt cn bA cB a)
                       (liftFn fmt (IR.SigOp (value-info {A} {B} cn bA cB)) b)
 sigop-bridge {A} {B} {cn} bA cB {a} {b} rv
   rewrite base-rel→eq bA rv
-  = subst (λ f → RelT B (named-sem cn bA cB b) (f b))
+  = subst (λ f → RelT B (named-sem fmt cn bA cB b) (f b))
           (sym (liftFn-SigOp (value-info {A} {B} cn bA cB) bA))
           (λ n → refl , concrete-rel→refl cB _)
 
@@ -198,7 +198,7 @@ sigop-bridge {A} {B} {cn} bA cB {a} {b} rv
 -- At a base (non-arrow) type SD's `sigOp` catch-all IS the closed `value-info`
 -- form; casing the witness exposes the shape so each clause is `refl`.
 sd-sigOp-base≡ : ∀ {n} {Γ : Ctx n} {A : Type} (cn : CanonicalName) (ib : IsBaseType A) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
-               → (SD.⟦ sigOp {Γ = Γ} {A = A} cn (con-base ib) ⟧ˢ fmt) dγ ≡ sigOpValᴰ (value-info {Unit} {A} cn base-Unit (con-base ib))
+               → (SD.⟦ sigOp {Γ = Γ} {A = A} cn (con-base ib) ⟧ˢ fmt) dγ ≡ sigOpValᴰ fmt (value-info {Unit} {A} cn base-Unit (con-base ib))
 sd-sigOp-base≡ cn base-Unit          dγ = refl
 sd-sigOp-base≡ cn base-Void          dγ = refl
 sd-sigOp-base≡ cn base-Int           dγ = refl
@@ -210,17 +210,17 @@ sd-sigOp-base≡ cn (base-Sum ibA ibB)  dγ = refl
 
 -- Now `refl`-shaped: `Meaning.sigOpRefᴰ` DISPATCHES exactly as SD's `sigOp`, so
 -- LHS ≡ RHS. `con-base` still needs the type-shape reduction of SD's stuck
--- catch-all (`sd-sigOp-base≡`, `sigOpRefᴰ (con-base) = sigOpValᴰ (value-info)`);
+-- catch-all (`sd-sigOp-base≡`, `sigOpRefᴰ (con-base) = sigOpValᴰ fmt (value-info)`);
 -- `con-fun` exposes `A` as an arrow so BOTH sides are the same `arrow-info`
 -- closure ⇒ plain reflexivity.
 sigop-ref-bridge : ∀ {n} {Γ : Ctx n} {A : Type} (cn : CanonicalName) (conc : IsConcrete A) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
-                 → RelT A (sigOpRefᴰ cn conc) ((SD.⟦ sigOp {Γ = Γ} {A = A} cn conc ⟧ˢ fmt) dγ)
+                 → RelT A (sigOpRefᴰ fmt cn conc) ((SD.⟦ sigOp {Γ = Γ} {A = A} cn conc ⟧ˢ fmt) dγ)
 sigop-ref-bridge {A = A} cn (con-base ib) dγ =
-  subst (λ z → RelT A (sigOpRefᴰ cn (con-base ib)) z)
+  subst (λ z → RelT A (sigOpRefᴰ fmt cn (con-base ib)) z)
         (sym (sd-sigOp-base≡ cn ib dγ))
-        (RelT-refl (con-base ib) (sigOpRefᴰ cn (con-base ib)))
+        (RelT-refl (con-base ib) (sigOpRefᴰ fmt cn (con-base ib)))
 sigop-ref-bridge {A = Dom ⇒[ k ] Cod} cn (con-fun bDom cCod) dγ =
-  RelT-refl (con-fun {k = k} bDom cCod) (sigOpRefᴰ cn (con-fun {k = k} bDom cCod))
+  RelT-refl (con-fun {k = k} bDom cCod) (sigOpRefᴰ fmt cn (con-fun {k = k} bDom cCod))
 
 -- Plan 0.58 / D071: `poly-ref-bridge` DELETED. The surface `poly` node is no
 -- longer a concrete `value-info` leaf (it is an internal `internal-info`
@@ -415,10 +415,10 @@ bridge-i (t-pair da db) re k =
     cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i da re k)) (proj₁ (bridge-i db re k))
   , (proj₂ (bridge-i da re k) , proj₂ (bridge-i db re k))
 
--- Negation — bind then a pure `semM neg-info`.
+-- Negation — bind then a pure `semM neg-info fmt`.
 bridge-i (t-neg d) re k =
     cong (_++ []) (proj₁ (bridge-i d re k))
-  , cong (semM neg-info) (proj₂ (bridge-i d re k))
+  , cong (semM neg-info fmt) (proj₂ (bridge-i d re k))
 
 -- Let — thread the bound value into the extended related env.
 bridge-i (t-let d₁ d₂) re k =
@@ -439,19 +439,19 @@ bridge-i (t-case ds dl dr) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re k
 -- Arithmetic binops — bind both, pure `semM <op>-info` (Int value = `≡`).
 bridge-i (t-binop-arith {op = OpAdd} _ d₁ d₂) re k =
     cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM add-info (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+  , cong₂ (λ a b → semM add-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
 bridge-i (t-binop-arith {op = OpSub} _ d₁ d₂) re k =
     cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM sub-info (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+  , cong₂ (λ a b → semM sub-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
 bridge-i (t-binop-arith {op = OpMul} _ d₁ d₂) re k =
     cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM mul-info (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+  , cong₂ (λ a b → semM mul-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
 bridge-i (t-binop-arith {op = OpDiv} _ d₁ d₂) re k =
     cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM div-info (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+  , cong₂ (λ a b → semM div-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
 bridge-i (t-binop-arith {op = OpMod} _ d₁ d₂) re k =
     cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM mod-info (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+  , cong₂ (λ a b → semM mod-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
 bridge-i (t-binop-arith {op = OpLt} () _ _)
 bridge-i (t-binop-arith {op = OpLe} () _ _)
 bridge-i (t-binop-arith {op = OpGt} () _ _)
@@ -462,22 +462,22 @@ bridge-i (t-binop-arith {op = OpNe} () _ _)
 -- Comparison binops — bind both, pure `semM <op>-info` (Unit+Unit value).
 bridge-i (t-binop-cmp {op = OpLt} _ d₁ d₂) re k =
     cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM lt-info (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
+  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM lt-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
 bridge-i (t-binop-cmp {op = OpLe} _ d₁ d₂) re k =
     cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM le-info (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
+  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM le-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
 bridge-i (t-binop-cmp {op = OpGt} _ d₁ d₂) re k =
     cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM gt-info (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
+  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM gt-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
 bridge-i (t-binop-cmp {op = OpGe} _ d₁ d₂) re k =
     cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM ge-info (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
+  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM ge-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
 bridge-i (t-binop-cmp {op = OpEq} _ d₁ d₂) re k =
     cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM eq-info (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
+  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM eq-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
 bridge-i (t-binop-cmp {op = OpNe} _ d₁ d₂) re k =
     cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM ne-info (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
+  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM ne-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
 bridge-i (t-binop-cmp {op = OpAdd} () _ _)
 bridge-i (t-binop-cmp {op = OpSub} () _ _)
 bridge-i (t-binop-cmp {op = OpMul} () _ _)

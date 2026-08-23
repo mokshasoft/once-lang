@@ -42,8 +42,22 @@ open X32 using (State; readReg; writeReg; readMem; writeMem; RegFile; Word)
 open X32.State using (regs; memory)
 import Once.Arith.Backend.X86-32.ExecArith as EA
 import Once.Word as OnceWord
-module W = OnceWord.Word64
-open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; ¬d≡x; additive-sa-inj; module Core)
+-- PLAN 0.74 J5 — THIS LINE WAS THE BUG THE PLAN WENT LOOKING FOR.
+--
+-- It read `module W = OnceWord.Word64`, and it is load-bearing: `val-x86-32`,
+-- the concrete x86-32 arith interpreter this correspondence is stated over,
+-- computed `rd s d W.⊕ rd s src` and `W.fromℤ z` with 64-bit operations,
+-- while `CCC/Target/X86-32/Semantics.agda:33` wraps at 2^32. The plan asked
+-- whether the two layers ever meet. They do — in `Denotation/Meaning`'s
+-- `⟦ t-neg d ⟧ᵢ`, which reaches the same baked `semM` — so the whole x86-32
+-- arith correspondence was a statement about a 64-bit machine that x86-32 is
+-- not.
+module W = OnceWord.Width 32
+import Once.Adequacy.ArchCorrectness.ArithSimCore as ASC
+open import Once.Target.Arch using (Arch; x86-32; arch-numerics)
+-- Plan 0.74 J5: the shared correspondence core, applied at THIS target's
+-- numerics. It used to be applied at 64 for every arch, including this one.
+open ASC.At (arch-numerics x86-32) using (tgt; NonSpill; ¬d≡x; additive-sa-inj; module Core)
 
 ------------------------------------------------------------------------
 -- val-x86-32 — the concrete XInstr arith interpreter over X32.State.

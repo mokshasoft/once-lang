@@ -45,7 +45,11 @@ open import Once.Adequacy.CPU.X86-64 using (val-x86-64; scratch-addr; def; path-
 import Once.Arith.Backend.X86-64.ExecArith as EA
 open import Once.Arith.Backend.X86-64.Preserve using (step-of; step-of-preserves; a-rsp)
 open import Once.Arith.Backend.X86-64.MemPreserve using (readMem-writeMem-other)
-open import Once.Adequacy.ArchCorrectness.ArithSimCore using (tgt; NonSpill; ¬d≡x; additive-sa-inj; module Core)
+import Once.Adequacy.ArchCorrectness.ArithSimCore as ASC
+open import Once.Target.Arch using (Arch; x86-64; arch-numerics)
+-- Plan 0.74 J5: the shared correspondence core, applied at THIS target's
+-- numerics. It used to be applied at 64 for every arch, including this one.
+open ASC.At (arch-numerics x86-64) using (tgt; NonSpill; ¬d≡x; additive-sa-inj; module Core)
 
 ------------------------------------------------------------------------
 -- Frame lemmas — the 2×2 analysis on the arith window (r8/r9), plus the io

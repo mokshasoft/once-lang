@@ -402,9 +402,9 @@ forget-coh (base-Sum {A} {B} ibA ibB) (inj₂ b)
 
 liftFn-SigOp : ∀ {A B : Type} (info : SigOpInfo A B) (bA : IsBaseType A)
   → liftFn fmt (IR.SigOp info)
-    ≡ (λ arg → λ n → (emit-D info (forget arg) , inject (semM info (forget arg))))
+    ≡ (λ arg → λ n → (emit-D info (forget arg) , inject (semM info fmt (forget arg))))
 liftFn-SigOp {A} {B} info bA = extensionality λ arg → extensionality λ n →
   trans (subst-T-apply (cohᴰ B) (evalᴰ fmt (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) n)
         (cong₂ _,_ (cong (emit-D info) (forget-coh bA arg))
                    (trans (subst-subst-sym {P = λ z → z} (cohᴰ B))
-                          (cong (λ w → inject (semM info w)) (forget-coh bA arg))))
+                          (cong (λ w → inject (semM info fmt w)) (forget-coh bA arg))))
