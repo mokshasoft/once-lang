@@ -61,13 +61,14 @@ open import DirectedHoTT.Spec.Typing
         ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
         ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝; tr-J-Unit; tr-J-Mu
+        ; ξ-IMu
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; _⊢_∷_; ⊢var; ⊢lam; ⊢app; here
         ; _⊢ty_; ty-base
         ; ι-elim; ξ-con; ξ-elimᵐ; ξ-elimᵗ
-        ; ι-ielim; ξ-icon; ξ-ielimⁱ; ξ-ielimᵐ; ξ-ielimᵗ; El-⌜IMu⌝ )
+        ; ι-ielim; ξ-icon; ξ-ielimⁱ; ξ-ielimᵐ; ξ-ielimᵗ; El-⌜IMu⌝; ξ-⌜IMu⌝ )
 
 private
   variable
@@ -309,6 +310,7 @@ pwShift-sub σ t =
 ⟶-sub σ (ξ-ielimⁱ r)  = ξ-ielimⁱ  (⟶-sub σ r)
 ⟶-sub σ (ξ-ielimᵐ r)  = ξ-ielimᵐ  (⟶-sub σ r)
 ⟶-sub σ (ξ-ielimᵗ r)  = ξ-ielimᵗ  (⟶-sub σ r)
+⟶-sub σ (ξ-⌜IMu⌝ r)   = ξ-⌜IMu⌝   (⟶-sub σ r)
 ⟶-sub σ (ξ-con r)   = ξ-con   (⟶-sub σ r)
 ⟶-sub σ (ξ-elimᵐ r) = ξ-elimᵐ (⟶-sub σ r)
 ⟶-sub σ (ξ-elimᵗ r) = ξ-elimᵗ (⟶-sub σ r)
@@ -350,6 +352,7 @@ pwShift-sub σ t =
 ⟶ᵀ-sub σ (ξ-Idᵀ r) = ξ-Idᵀ (⟶ᵀ-sub σ r)
 ⟶ᵀ-sub σ (ξ-Idˡ r) = ξ-Idˡ (⟶-sub σ r)
 ⟶ᵀ-sub σ (ξ-Idʳ r) = ξ-Idʳ (⟶-sub σ r)
+⟶ᵀ-sub σ (ξ-IMu r) = ξ-IMu (⟶-sub σ r)
 
 ------------------------------------------------------------------------
 -- Hence conversion is substitution-stable — the `⊢conv`-case ingredient.

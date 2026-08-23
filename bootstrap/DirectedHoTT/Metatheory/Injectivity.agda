@@ -26,7 +26,7 @@ module DirectedHoTT.Metatheory.Injectivity where
 open import normalizer.Syntax.Types
   using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; _∙; RTy; base; U; Π; Σ'; El; Hom; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
+  using ( Cx; ε; _∙; RTy; base; U; Π; Σ'; El; Hom; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝
         ; ⌜Hom⌝; hrefl; tr; ap; Id; ⌜Id⌝; idrefl; jsub
         ; var; lam; app; pair; fst; snd; absurd; ordtr; vz; vs; renTm
         ; Unit; Nat; unit; nzero; nsuc; natrec; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝
@@ -38,9 +38,11 @@ open import DirectedHoTT.Spec.Typing
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
+        ; El-⌜IMu⌝; ξ-IMu
         ; ξ-idreflᶜ; ξ-idreflᵃ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ
         ; _⟶*_; done; step
-        ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ )
+        ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
+        ; _≅_; cred; crfl; csym; ctrn; hom→≅ )
 open import DirectedHoTT.Metatheory.Confluence
   using ( _⟹_; pvar; plam; papp; pβ; ppair; pabsurd; pfst; psnd; pβfst; pβsnd
         ; p⌜base⌝; p⌜Π⌝; p⌜Σ⌝; p⌜Hom⌝; phrefl
@@ -52,7 +54,8 @@ open import DirectedHoTT.Metatheory.Confluence
         ; ⟶*-nsuc
         ; _⁺; ⟹-refl; ⟹-⁺; ⟶→⟹; ⟹→⟶*; ⟶*-trans
         ; ⟹-ren; ⟶*-ren; ⟶*-appˡ
-        ; pcon; pelim; pι )
+        ; pcon; pelim; pι
+        ; p⌜IMu⌝; picon; pielim; pιi )
 
 private
   variable
@@ -120,6 +123,12 @@ Id-reduct (stepᵀ (ξ-Idʳ r) rest) with Id-reduct rest
 ... | A' , (t' , (u' , (eq , (rA , (rt , ru))))) =
       A' , (t' , (u' , (eq , (rA , (rt , step r ru)))))
 
+-- the index congruence, closed under ⟶ᵀ* — `IMu`'s analogue of `⟶ᵀ*-Idˡ`.
+⟶ᵀ*-IMu : {D : IDesc} {I : RTy ε} {i i' : RTm Γ} →
+          i ⟶* i' → IMu D I i ⟶ᵀ* IMu D I i'
+⟶ᵀ*-IMu done       = doneᵀ
+⟶ᵀ*-IMu (step r p) = stepᵀ (ξ-IMu r) (⟶ᵀ*-IMu p)
+
 ⟶ᵀ*-Idᵀ : {A A' : RTy Γ} {t u : RTm Γ} → A ⟶ᵀ* A' → Id A t u ⟶ᵀ* Id A' t u
 ⟶ᵀ*-Idᵀ doneᵀ       = doneᵀ
 ⟶ᵀ*-Idᵀ (stepᵀ r p) = stepᵀ (ξ-Idᵀ r) (⟶ᵀ*-Idᵀ p)
@@ -180,6 +189,12 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
   pEl-⌜Nat⌝  : El (⌜Nat⌝ {Γ}) ⟹ᵀ Nat
   pEl-⌜Unit⌝ : El (⌜Unit⌝ {Γ}) ⟹ᵀ Unit
   pEl-⌜Mu⌝   : {Dᵐ : Desc} → El (⌜Mu⌝ {Γ} Dᵐ) ⟹ᵀ Mu Dᵐ
+  -- ★ `pMu` is nullary because `Mu D` is inert.  `IMu D I i` is NOT —
+  --   the index steps, so both rows take the index's parallel step.
+  pIMu       : {D : IDesc} {I : RTy ε} {i i' : RTm Γ} →
+               i ⟹ i' → IMu D I i ⟹ᵀ IMu D I i'
+  pEl-⌜IMu⌝  : {D : IDesc} {I : RTy ε} {i i' : RTm Γ} →
+               i ⟹ i' → El (⌜IMu⌝ D I i) ⟹ᵀ IMu D I i'
   pEl-⌜Id⌝ : {c c' a a' b b' : RTm Γ} →
              c ⟹ c' → a ⟹ a' → b ⟹ b' →
              El (⌜Id⌝ c a b) ⟹ᵀ Id (El c') a' b'
@@ -189,6 +204,7 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ-refl Unit     = pUnit
 ⟹ᵀ-refl Nat      = pNat
 ⟹ᵀ-refl (Mu D)   = pMu
+⟹ᵀ-refl (IMu D I i) = pIMu (⟹-refl i)
 ⟹ᵀ-refl (El t)   = pEl (⟹-refl t)
 ⟹ᵀ-refl U        = pU
 ⟹ᵀ-refl (Π A B)  = pΠ (⟹ᵀ-refl A) (⟹ᵀ-refl B)
@@ -203,6 +219,8 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟶ᵀ→⟹ᵀ El-⌜Nat⌝     = pEl-⌜Nat⌝
 ⟶ᵀ→⟹ᵀ El-⌜Unit⌝    = pEl-⌜Unit⌝
 ⟶ᵀ→⟹ᵀ El-⌜Mu⌝      = pEl-⌜Mu⌝
+⟶ᵀ→⟹ᵀ El-⌜IMu⌝     = pEl-⌜IMu⌝ (⟹-refl _)
+⟶ᵀ→⟹ᵀ (ξ-IMu r)    = pIMu (⟶→⟹ r)
 ⟶ᵀ→⟹ᵀ El-⌜base⌝    = pEl-⌜base⌝
 ⟶ᵀ→⟹ᵀ (El-⌜Π⌝ c d) = pEl-⌜Π⌝ (⟹-refl c) (⟹-refl d)
 ⟶ᵀ→⟹ᵀ (El-⌜Σ⌝ c d) = pEl-⌜Σ⌝ (⟹-refl c) (⟹-refl d)
@@ -231,6 +249,8 @@ data _⟹ᵀ_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
 ⟹ᵀ→⟶ᵀ* pUnit    = doneᵀ
 ⟹ᵀ→⟶ᵀ* pNat     = doneᵀ
 ⟹ᵀ→⟶ᵀ* pMu      = doneᵀ
+⟹ᵀ→⟶ᵀ* (pIMu p) = ⟶ᵀ*-IMu (⟹→⟶* p)
+⟹ᵀ→⟶ᵀ* (pEl-⌜IMu⌝ p) = stepᵀ El-⌜IMu⌝ (⟶ᵀ*-IMu (⟹→⟶* p))
 ⟹ᵀ→⟶ᵀ* pU       = doneᵀ
 ⟹ᵀ→⟶ᵀ* (pEl p)  = ⟶ᵀ*-El (⟹→⟶* p)
 ⟹ᵀ→⟶ᵀ* (pΠ p q) = ⟶ᵀ*-trans (⟶ᵀ*-Πˡ (⟹ᵀ→⟶ᵀ* p)) (⟶ᵀ*-Πʳ (⟹ᵀ→⟶ᵀ* q))
@@ -281,6 +301,7 @@ base ⁺ᵀ         = base
 Unit ⁺ᵀ         = Unit
 Nat ⁺ᵀ          = Nat
 Mu D ⁺ᵀ         = Mu D
+IMu D I i ⁺ᵀ    = IMu D I (i ⁺)
 U ⁺ᵀ            = U
 El (var x) ⁺ᵀ   = El (var x ⁺)
 El (lam t) ⁺ᵀ   = El (lam t ⁺)
@@ -290,9 +311,12 @@ El (absurd c e) ⁺ᵀ = El (absurd c e ⁺)
 El (ordtr a t u p q) ⁺ᵀ = El (ordtr a t u p q ⁺)
 El (fst p) ⁺ᵀ   = El (fst p ⁺)
 El (snd p) ⁺ᵀ   = El (snd p ⁺)
+El (icon k p) ⁺ᵀ = El (icon k p ⁺)
+El (ielim D i ms t) ⁺ᵀ = El (ielim D i ms t ⁺)
 El ⌜Nat⌝ ⁺ᵀ     = Nat
 El ⌜Unit⌝ ⁺ᵀ    = Unit
 El (⌜Mu⌝ Dᵐ) ⁺ᵀ = Mu Dᵐ
+El (⌜IMu⌝ D I i) ⁺ᵀ = IMu D I (i ⁺)
 El ⌜base⌝ ⁺ᵀ    = base
 El (⌜Π⌝ c d) ⁺ᵀ = Π (El (c ⁺)) (El (d ⁺))
 El (⌜Σ⌝ c d) ⁺ᵀ = Σ' (El (c ⁺)) (El (d ⁺))
@@ -334,6 +358,8 @@ Hom (El e) t u ⁺ᵀ      = Hom ((El e) ⁺ᵀ) (t ⁺) (u ⁺)
 Hom (Hom A a b) t u ⁺ᵀ = Hom ((Hom A a b) ⁺ᵀ) (t ⁺) (u ⁺)
 Hom (Id A a b) t u ⁺ᵀ  = Hom ((Id A a b) ⁺ᵀ) (t ⁺) (u ⁺)
 Hom (Mu D) t u ⁺ᵀ      = Hom (Mu D) (t ⁺) (u ⁺)
+-- ⚠ unlike `Mu`, the ambient itself develops — the index steps.
+Hom (IMu D I i) t u ⁺ᵀ = Hom (IMu D I (i ⁺)) (t ⁺) (u ⁺)
 -- the two-former kernel: `Id` is INERT — a UNIFORM development row, no
 -- head dispatch at all.
 Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
@@ -347,6 +373,8 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ pUnit          = pUnit
 ⟹ᵀ-⁺ pNat           = pNat
 ⟹ᵀ-⁺ pMu            = pMu
+⟹ᵀ-⁺ (pIMu p)       = pIMu (⟹-⁺ p)
+⟹ᵀ-⁺ (pEl-⌜IMu⌝ p)  = pIMu (⟹-⁺ p)
 
 ------------------------------------------------------------------------
 -- ★ INDUCTIVE TYPES — ten rows, and every one of them is congruence.
@@ -358,16 +386,33 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl w@(pcon _))    = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pelim _ _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pι _ _))    = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(picon _))      = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pielim _ _ _)) = pEl (⟹-⁺ w)
+⟹ᵀ-⁺ (pEl w@(pιi _ _ _))    = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(pcon _)) =
   pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(pelim _ _)) =
   pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
 ⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(pι _ _)) =
   pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(picon _)) =
+  pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(pielim _ _ _)) =
+  pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(pιi _ _ _)) =
+  pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
+⟹ᵀ-⁺ (pHom pNat (pnsuc pm) w@(p⌜IMu⌝ _)) =
+  pHom pNat (pnsuc (⟹-⁺ pm)) (⟹-⁺ w)
 ⟹ᵀ-⁺ (pHom pNat w@(pcon _) pu)    = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat w@(pelim _ _) pu) = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pNat w@(pι _ _) pu)    = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat w@(picon _) pu)      = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat w@(pielim _ _ _) pu) = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat w@(pιi _ _ _) pu)    = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom pNat w@(p⌜IMu⌝ _) pu)     = pHom pNat (⟹-⁺ w) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pHom pMu pt pu) = pHom pMu (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom (pIMu p) pt pu)      = pHom (pIMu (⟹-⁺ p)) (⟹-⁺ pt) (⟹-⁺ pu)
+⟹ᵀ-⁺ (pHom (pEl-⌜IMu⌝ p) pt pu) = pHom (pIMu (⟹-⁺ p)) (⟹-⁺ pt) (⟹-⁺ pu)
 ⟹ᵀ-⁺ (pEl w@punit)  = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@pnzero) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl w@(pnsuc _))  = pEl (⟹-⁺ w)
@@ -393,6 +438,7 @@ Id A t u ⁺ᵀ = Id (A ⁺ᵀ) (t ⁺) (u ⁺)
 ⟹ᵀ-⁺ (pEl p⌜Nat⌝)    = pEl-⌜Nat⌝
 ⟹ᵀ-⁺ (pEl p⌜Unit⌝)   = pEl-⌜Unit⌝
 ⟹ᵀ-⁺ (pEl p⌜Mu⌝)     = pEl-⌜Mu⌝
+⟹ᵀ-⁺ (pEl (p⌜IMu⌝ p)) = pEl-⌜IMu⌝ (⟹-⁺ p)
 ⟹ᵀ-⁺ (pEl w@(ptr-J-Unit _)) = pEl (⟹-⁺ w)
 ⟹ᵀ-⁺ (pEl p⌜base⌝)   = pEl-⌜base⌝
 ⟹ᵀ-⁺ (pEl (p⌜Π⌝ p q)) = pEl-⌜Π⌝ (⟹-⁺ p) (⟹-⁺ q)
@@ -656,6 +702,10 @@ red→≅ᵀ (stepᵀ r p) = ctrnᵀ (credᵀ r) (red→≅ᵀ p)
 Muinj≡ : {D D' : Desc} → Mu {Γ} D ≡ Mu D' → D ≡ D'
 Muinj≡ refl = refl
 
+IMuinj≡ : {D D' : IDesc} {I I' : RTy ε} {i i' : RTm Γ} →
+          IMu {Γ} D I i ≡ IMu D' I' i' → (D ≡ D') × ((I ≡ I') × (i ≡ i'))
+IMuinj≡ refl = (refl , (refl , refl))
+
 Mu-reduct : {D : Desc} {C : RTy Γ} → Mu D ⟶ᵀ* C → C ≡ Mu D
 Mu-reduct doneᵀ        = refl
 Mu-reduct (stepᵀ () _)
@@ -663,6 +713,35 @@ Mu-reduct (stepᵀ () _)
 Mu-inj : {D D' : Desc} → Mu {Γ} D ≅ᵀ Mu D' → D ≡ D'
 Mu-inj c with church-rosserᵀ c
 ... | C , (r₁ , r₂) = Muinj≡ (trans (sym (Mu-reduct r₁)) (Mu-reduct r₂))
+
+-- ★ `IMu` is NOT inert, so `IMu-reduct` cannot be `Mu-reduct`'s `stepᵀ ()`.
+--   Only `ξ-IMu` applies, so the SHAPE is preserved and the index reduces —
+--   the `Π-reduct` pattern, with one moving part instead of two.
+record IMuRed {Γ : Cx} (D : IDesc) (I : RTy ε) (i : RTm Γ) (C : RTy Γ) : Set where
+  constructor mkIMuRed
+  field
+    idx   : RTm Γ
+    eq    : C ≡ IMu D I idx
+    ridx  : i ⟶* idx
+
+IMu-reduct : {D : IDesc} {I : RTy ε} {i : RTm Γ} {C : RTy Γ} →
+             IMu D I i ⟶ᵀ* C → IMuRed D I i C
+IMu-reduct doneᵀ = mkIMuRed _ refl done
+IMu-reduct (stepᵀ (ξ-IMu r) p) with IMu-reduct p
+... | mkIMuRed j eq rj = mkIMuRed j eq (step r rj)
+
+-- ⚠ the index is only ≅, not ≡ — it is a TERM and it reduces.  That is the
+--   whole difference from `Mu-inj`, and it is why `⊢ielim` can retype its
+--   scrutinee across `ξ-ielimⁱ`.
+IMu-inj : {D D' : IDesc} {I I' : RTy ε} {i i' : RTm Γ} →
+          IMu {Γ} D I i ≅ᵀ IMu D' I' i' →
+          (D ≡ D') × ((I ≡ I') × (i ≅ i'))
+IMu-inj c with church-rosserᵀ c
+... | C , (r₁ , r₂) with IMu-reduct r₁ | IMu-reduct r₂
+...   | mkIMuRed j₁ eq₁ rj₁ | mkIMuRed j₂ eq₂ rj₂ with IMuinj≡ (trans (sym eq₁) eq₂)
+...     | (eqD , (eqI , eqj)) =
+          (eqD , (eqI , ctrn (hom→≅ rj₁)
+                             (csym (hom→≅ (subst (_ ⟶*_) (sym eqj) rj₂)))))
 
 -- ★ Π-INJECTIVITY OF CONVERSION — dHoTT-24's scoped ceiling, discharged.
 Π-inj : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} →
