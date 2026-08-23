@@ -1272,6 +1272,45 @@ sub-ifields : (τ : Sub Γ Δ) (D : IDesc) (i ms : RTm Γ) {Θ : Cx}
                             (subTm τ m) (subTm τ p)
 sub-ifields τ D i ms σ C m p = cong (app _) (sub-iihs τ D ms σ C p)
 
+-- ★ the ι-RULE'S SHAPE, specialised.  `ren-ifields` yields the environment
+--   `λ x → renTm ρ (isingle i x)`; the rule needs `isingle (renTm ρ i)`.
+--   They agree POINTWISE but not as functions, so the congruence has to be
+--   applied somewhere — here, once, rather than at every call site.
+isingle-ren : (ρ : Ren Γ Δ) (i : RTm Γ) →
+              ∀ x → renTm ρ (isingle i x) ≡ isingle (renTm ρ i) x
+isingle-ren ρ i vz     = refl
+isingle-ren ρ i (vs ())
+
+isingle-sub : (τ : Sub Γ Δ) (i : RTm Γ) →
+              ∀ x → subTm τ (isingle i x) ≡ isingle (subTm τ i) x
+isingle-sub τ i vz     = refl
+isingle-sub τ i (vs ())
+
+ifields-cong : (D : IDesc) (i ms : RTm Γ) {Δ : Cx} {σ σ' : Sub Δ Γ}
+               (C : ICon Δ) (m p : RTm Γ) → (∀ x → σ x ≡ σ' x) →
+               ifields D i ms σ C m p ≡ ifields D i ms σ' C m p
+ifields-cong D i ms C m p h = cong (app _) (iihs-cong D ms C p h)
+
+ren-ifieldsⁱ : (ρ : Ren Γ Δ) (D : IDesc) (i ms : RTm Γ) (C : ICon (ε ∙))
+               (m p : RTm Γ) →
+               renTm ρ (ifields D i ms (isingle i) C m p)
+                 ≡ ifields D (renTm ρ i) (renTm ρ ms) (isingle (renTm ρ i)) C
+                             (renTm ρ m) (renTm ρ p)
+ren-ifieldsⁱ ρ D i ms C m p =
+  trans (ren-ifields ρ D i ms (isingle i) C m p)
+        (ifields-cong D (renTm ρ i) (renTm ρ ms) C (renTm ρ m) (renTm ρ p)
+                      (isingle-ren ρ i))
+
+sub-ifieldsⁱ : (τ : Sub Γ Δ) (D : IDesc) (i ms : RTm Γ) (C : ICon (ε ∙))
+               (m p : RTm Γ) →
+               subTm τ (ifields D i ms (isingle i) C m p)
+                 ≡ ifields D (subTm τ i) (subTm τ ms) (isingle (subTm τ i)) C
+                             (subTm τ m) (subTm τ p)
+sub-ifieldsⁱ τ D i ms C m p =
+  trans (sub-ifields τ D i ms (isingle i) C m p)
+        (ifields-cong D (subTm τ i) (subTm τ ms) C (subTm τ m) (subTm τ p)
+                      (isingle-sub τ i))
+
 
 data _∈D_ : ℕ → Desc → Set where
   hereD  : {C : DCon} {E : Desc} → zero ∈D (C ◃ E)
