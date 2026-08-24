@@ -51,6 +51,7 @@ open import Once.TypeCheck.Judgment
          t-apply-check; t-inl-app-check; t-inr-app-check; t-initial-app-check;
          t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
          t-var-poly-instantiate-infer)
+open import Once.Float.Decimal using (Decimal; decimalOf)
 open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
   lam; app; effApp; pair; neg; let'; case'; int; float; str; unit;
   add; sub; mul; div; mod'; lt; le; gt; ge; eq; ne; sigOp; poly;
@@ -100,7 +101,7 @@ realize-global (g-int n)        = intLit n
 -- The reference elaboration reads the DYADIC off the acceptance witness — the
 -- same value the elaborator uses — so the two cannot disagree about what the
 -- literal denotes.
-realize-global (g-float _ _ _ d _) = floatLit d
+realize-global (g-float i f l) = floatLit (decimalOf i f l)
 realize-global (g-terminal _ _) = IR.terminal
 realize-global (g-pair ga gb)   = ⟨ realize-global ga , realize-global gb ⟩ IR.Heap
 realize-global (g-inl ga)       = IR.inl IR.Heap ∘ realize-global ga
@@ -177,7 +178,7 @@ realize {ctx = ctx} {A = A} (t-var-poly-instantiate _ _ _ _ _ _ bodyD) =
 -- realize-infer (⊢ᵢ) — infer-mode reference elaboration.
 ------------------------------------------------------------------------
 realize-infer (t-int n)         = int n
-realize-infer (t-float _ _ _ d ok) = float d (fits-all ok)
+realize-infer (t-float i f l) = float (decimalOf i f l)
 realize-infer (t-str s)         = str s
 realize-infer t-unit            = unit
 realize-infer t-unit-var        = unit

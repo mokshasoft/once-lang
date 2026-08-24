@@ -37,7 +37,7 @@ module Once.IRLits where
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Integer using (ℤ)
 
-open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (Decimal; decimalOf; round)
 open import Once.IRTy using (IRTy; FitsInRegI; fits-int; fits-float; ⟦_,_⟧-baseI)
 open import Once.IR using (IR; NatTr)
 
@@ -52,7 +52,7 @@ open NatTr
 -- literal always lowers, rounding where the target cannot hold it (D116).
 ------------------------------------------------------------------------
 
-constLits : ∀ {A : IRTy} (p : FitsInRegI A) → ⟦ ℤ , Dyadic ⟧-baseI A → List ℤ
+constLits : ∀ {A : IRTy} (p : FitsInRegI A) → ⟦ ℤ , Decimal ⟧-baseI A → List ℤ
 constLits fits-int   z = z ∷ []
 constLits fits-float _ = []
 

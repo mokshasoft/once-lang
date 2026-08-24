@@ -123,7 +123,7 @@ resolveExpr-faithful polys imps userFns fresh (Srf.arr' e) dγ k rewrite resolve
 resolveExpr-faithful polys imps userFns fresh (Srf.int z) dγ k = refl
 -- A float literal has no names in it, so resolution is the identity and the
 -- denotation is unchanged — `refl`, exactly as for `int`.
-resolveExpr-faithful polys imps userFns fresh (Srf.float d r) dγ k = refl
+resolveExpr-faithful polys imps userFns fresh (Srf.float d) dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.str s) dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.closure s) dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.lift-morphism m) dγ k = refl

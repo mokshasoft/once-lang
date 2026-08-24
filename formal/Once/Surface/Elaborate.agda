@@ -11,7 +11,7 @@
 module Once.Surface.Elaborate where
 
 open import Once.Type
-open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (Decimal)
 open import Once.IR
 open import Once.Surface.Syntax
 open import Once.IRTy.WF using (wf-⌊⌋)
@@ -73,12 +73,14 @@ strLit : String → ∀ {Γ} → IR Γ Str
 strLit s = SigOp (str-lit-info s) ∘ terminal
 
 -- A float literal is an ordinary immediate load, exactly like `intLit` — the
--- dyadic IS the machine-level value (0.72 P2), and the TARGET turns it into
--- bits at its own width. No FPU is involved in loading a constant.
+-- DECIMAL is the payload (0.74 K0) and the TARGET turns it into bits at its
+-- own format, ROUNDING where it cannot hold the value exactly (D116). No FPU
+-- is involved in loading a constant.
 --
--- The representability witness is not consumed here: it has already done its
--- work by making this term constructible only for accepted values.
-floatLit : Dyadic → ∀ {Γ} → IR Γ Float
+-- There is no representability witness any more. It existed to keep
+-- `encode`'s truncation unreachable; `round` closes that hole by construction
+-- instead, so there is nothing left for a witness to rule out.
+floatLit : Decimal → ∀ {Γ} → IR Γ Float
 floatLit d = const fits-float d ∘ terminal
 
 -- Arithmetic operations (Int * Int → Int)
@@ -241,7 +243,7 @@ elaborate m (int n) = intLit n
 elaborate m (str s) = strLit s
 
 -- Float literal: same shape; the witness is erased at this boundary.
-elaborate m (float d _) = floatLit d
+elaborate m (float d) = floatLit d
 
 -- Arithmetic operations: pair operands, then apply primitive
 elaborate m (add e₁ e₂) = addIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m

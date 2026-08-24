@@ -25,7 +25,7 @@ module Once.Optimize where
 
 open import Once.Type
 open import Once.IR
-open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (Decimal; decimalOf; round)
 import Once.IRTy as II
 open import Once.CCC.Machine.SMCore using (_≟H_)
 
@@ -761,7 +761,7 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
     postulate
       -- D115: the payload is SOURCE SYNTAX at both numeric types (`ℤ` /
       -- `Dyadic`), so the decision is over source values, not machine words.
-      ≟const-irrelevant : ∀ (q₁ q₂ : FitsInRegI _) (u₁ u₂ : ⟦ ℤ , Dyadic ⟧-baseI _) →
+      ≟const-irrelevant : ∀ (q₁ q₂ : FitsInRegI _) (u₁ u₂ : ⟦ ℤ , Decimal ⟧-baseI _) →
                           Dec (const q₁ u₁ ≡ const q₂ u₂)
 
 ------------------------------------------------------------------------

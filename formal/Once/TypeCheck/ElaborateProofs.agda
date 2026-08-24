@@ -667,7 +667,7 @@ resolveExprWF polys pAcc imps userFns fresh (Surface.let' e₁ e₂) =
 resolveExprWF polys _ imps userFns _ (Surface.int z) = Surface.int z
 -- A float literal has no names to resolve, exactly like the other literals;
 -- the witness passes through untouched.
-resolveExprWF polys _ imps userFns _ (Surface.float d r) = Surface.float d r
+resolveExprWF polys _ imps userFns _ (Surface.float d) = Surface.float d
 resolveExprWF polys _ imps userFns _ (Surface.str s) = Surface.str s
 resolveExprWF polys pAcc imps userFns fresh (Surface.add a b) =
   Surface.add (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)

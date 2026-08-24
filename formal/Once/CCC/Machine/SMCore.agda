@@ -75,7 +75,8 @@ open import Once.Memory.HeapAddress public
 -- D062: shared location types (Slot, ValueLocation/AtStack/AtDynamic), defined
 -- below the machine so the IR can import them without the machine. Re-exported.
 open import Once.CCC.Machine.Locations public
-open import Once.Float.Dyadic using (Dyadic; encode)
+open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (Decimal; round)
 import Once.Word as Word
 import Data.Nat as ℕ
 
@@ -1653,7 +1654,10 @@ module AbstractExec {FS : FrameSemantics} where
   -- fact, which is why baking `Word64` anywhere was avoidable. `fromℤ` is
   -- two's complement (D054: `Int` is SIGNED), so `-5` becomes `2^w - 5`.
   lit-value fits-int   z = Word.Width.fromℤ (8 ℕ.* FrameSemantics.frame-word FS) z
-  lit-value fits-float d = encode (FrameSemantics.float-format FS) d
+  -- PLAN 0.74 K1: the machine rounds the DECIMAL at its own format. Same
+  -- function the denotation calls, which is what keeps the correspondence
+  -- `refl`-shaped and needs no rounding theorem.
+  lit-value fits-float d = round (FrameSemantics.float-format FS) d
 
   -- Plan 0.13.1: mutually recursive with exec-trace (case-on-tag
   -- dispatches into one of two sub-traces).

@@ -40,7 +40,7 @@ open import Once.Semantics.ValueIR Carrier Carrier public
 ------------------------------------------------------------------------
 
 open import Once.Type using (FitsInReg; fits-int; fits-float; Int)
-open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 
 -- | A LITERAL'S PAYLOAD is not its denotation (D113).
@@ -70,4 +70,8 @@ open import Data.Integer using (ℤ)
 -- pattern-matches the evidence (all of them) sees the payload type reduce.
 LitPayload : ∀ {A} → FitsInReg A → Set
 LitPayload fits-int   = ℤ
-LitPayload fits-float = Dyadic
+-- PLAN 0.74 K0: a `Decimal`, not a `Dyadic`. `3.14` is not a dyadic at any
+-- width, so a `Dyadic` payload could only ever hold the literals `accept?`
+-- happened to admit. The payload is SOURCE SYNTAX and source syntax for a
+-- float is a decimal — the same principle that makes `Int`'s payload a `ℤ`.
+LitPayload fits-float = Decimal

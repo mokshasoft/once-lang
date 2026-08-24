@@ -57,7 +57,7 @@ open import Once.Semantics.Machine public using (⟦_⟧)
 open import Once.IRTy.WF using (wf-⌈⌉)
 
 -- Plan 0.73 (D113): the TARGET'S FLOAT FORMAT. See the header note.
-open import Once.Float.Dyadic using (encode)
+open import Once.Float.Decimal using (round)
 -- D115: the target's numerics — the float FORMAT and the int WIDTH in one
 -- record, so a target's numeric facts cannot drift apart.
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
@@ -104,7 +104,12 @@ eval fmt (free-heap _) x = x
 -- D115: BOTH literals are source syntax, materialised at the target's own
 -- width/format. `Int` looked exempt only while literals were non-negative.
 eval fmt (const fits-int   v) _ = OnceWord.Width.fromℤ (int-bits fmt) v
-eval fmt (const fits-float v) _ = encode (float-format fmt) v
+-- PLAN 0.74 K1: `round`, not `encode`. The payload is now the DECIMAL the
+-- programmer wrote, and this is the single point at which it becomes bits —
+-- at the target's own format, rounded to nearest-even. `encode` is still
+-- underneath (`round F d = encode F (roundToDyadic F d)`); what changed is
+-- that the rounding is no longer someone else's precondition.
+eval fmt (const fits-float v) _ = round (float-format fmt) v
 -- Signature operations: the `SigOpInfo` carries the machine-level
 -- semantic function (`semM`).
 -- Plan 0.52 M2: the FFI boundary. `si : SigOpInfo A B` is surface-typed and

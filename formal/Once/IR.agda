@@ -24,7 +24,7 @@ module Once.IR where
 
 open import Data.String using (String)
 
-open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 -- Plan 0.52 M2: IR OBJECTS are the UNGRADED `Once.IRTy` (pure/eff arrows are
 -- the SAME object, so `arr` is retired). Re-exported so consumers get
@@ -274,11 +274,11 @@ data IR where
   -- carrier is width-agnostic and the target word size is threaded from the
   -- arch into `norm`/`fromℤ` at codegen/arith. Non-negative; neg is `OpNeg`.)
   -- D115: the payload is SOURCE SYNTAX at BOTH numeric types — a `ℤ` for
-  -- `Int`, a `Dyadic` for `Float` — because neither has a width-free bit
+  -- `Int`, a `Decimal` for `Float` (K0) — because neither has a width-free bit
   -- pattern (`-5` is `0xFFFFFFFB` at 32 bits, `0xFFFFFFFFFFFFFFFB` at 64).
   -- The IR is shared by all three targets, so it cannot hold a machine word;
   -- the MACHINE materialises the literal at its own width/format.
-  const : ∀ {A} → FitsInRegI A → ⟦ ℤ , Dyadic ⟧-baseI A → IR Unit A
+  const : ∀ {A} → FitsInRegI A → ⟦ ℤ , Decimal ⟧-baseI A → IR Unit A
 
   -- Signature operations (opaque escape hatch).
   -- Carries a `SigOpInfo` (name + sem at both levels) so the IR

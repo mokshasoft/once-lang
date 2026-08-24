@@ -19,7 +19,7 @@ open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
 open import Data.Bool using (Bool; true; _∧_)
 open import Data.Integer using (ℤ)
-open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (Decimal)
 open import Once.Float.Representable using (RepresentableAll)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Data.String using (String)
@@ -121,16 +121,21 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   int   : ∀ {n} {Γ : Ctx n} → ℤ → Expr Γ zeroUsage Int
   str   : ∀ {n} {Γ : Ctx n} → String → Expr Γ zeroUsage Str
 
-  -- A float literal CARRIES ITS REPRESENTABILITY WITNESS (plan 0.71 F4).
+  -- A float literal is JUST THE DECIMAL (plan 0.74 K0/K3, D116).
   --
-  -- The alternative — a bare `Dyadic`, with the frontend promising to check —
-  -- leaves `encode`'s `modPow` reachable, and a value too precise for the
-  -- format would be SILENTLY TRUNCATED there rather than rejected. Putting the
-  -- witness in the constructor makes "no unrepresentable float exists in a
-  -- well-typed program" a fact about this datatype instead of a property of
-  -- one code path in the elaborator. There is exactly one construction site,
-  -- so it costs nothing to carry.
-  float : ∀ {n} {Γ : Ctx n} (d : Dyadic) → RepresentableAll d → Expr Γ zeroUsage Float
+  -- It used to carry a `RepresentableAll` witness (plan 0.71 F4), and the
+  -- reasoning was sound at the time: a bare `Dyadic` left `encode`'s `modPow`
+  -- reachable, so a value too precise for the format would be SILENTLY
+  -- TRUNCATED rather than rejected, and the witness made "no unrepresentable
+  -- float exists in a well-typed program" a fact about this datatype.
+  --
+  -- D116 changes the premise, not the reasoning. A float literal is no longer
+  -- REJECTED when the target cannot hold it exactly — it ROUNDS, because
+  -- IEEE's promise INCLUDES rounding, exactly as `Int`'s promise includes
+  -- wrapping arithmetic (D054). So there is nothing left for the witness to
+  -- rule out, and `round` closes the hole the witness was guarding: it cannot
+  -- silently truncate, because it delivers a significand the format holds.
+  float : ∀ {n} {Γ : Ctx n} (d : Decimal) → Expr Γ zeroUsage Float
 
   -- Arithmetic (Int → Int → Int)
   add   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int

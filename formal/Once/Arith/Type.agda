@@ -15,7 +15,7 @@ module Once.Arith.Type where
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Bool using (Bool; true; false)
 open import Once.Word using (Carrier)
-open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (Decimal)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
@@ -78,14 +78,14 @@ regClass NFloat = XMM
 
 -- | Interpretation of numeric kinds as Agda types.
 --
--- `Carrier` and `Dyadic`, NOT `ℤ` and Agda's builtin `Float`. The old reading
+-- `Carrier` and `Decimal` (K0), NOT `ℤ` and Agda's builtin `Float`. The old reading
 -- was the third fossil in this module: an Agda `Float` denotation is exactly
 -- what D112 removed everywhere else, because it bakes the widest target's
 -- format into the meaning of a value. Both carriers here are WIDTH-FREE, and
 -- the target applies its own width.
 ⟦_⟧N : NumType → Set
 ⟦ NInt   ⟧N = Carrier
-⟦ NFloat ⟧N = Dyadic
+⟦ NFloat ⟧N = Decimal
 
 ------------------------------------------------------------------------
 -- Type equality (decidable)

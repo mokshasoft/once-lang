@@ -43,7 +43,7 @@ open Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
                       _*_; _+_; _⇒_; _⇒[_]_; Quantity;
                       Functor; μ-type; ⟦_⟧T)
 open import Once.Float.Dyadic using (Dyadic)
-open import Once.Float.Representable using (Accepted)
+
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; con-fun)
 open import Once.Functor.Decide using (wellFormedF?)
 open import Once.IR using (IR)
@@ -92,18 +92,25 @@ mutual
     t-int : ∀ {ctx : NamedCtx} (n : ℤ)
           → ctx ⊢ᵢ RInt n ∶ Int ⨾ zeroUsage
 
-    -- A float literal is typed ONLY WITH ITS ACCEPTANCE WITNESS (plan 0.71 F4).
-    -- `Accepted i f l d` says the decimal `i.f` (with `l` fraction digits) IS
-    -- exactly the dyadic `d`, and `d` is exactly representable at EVERY
-    -- supported target format.
+    -- EVERY float literal is well-typed (plan 0.74 K3, D116).
     --
-    -- The premise is not decoration. Without it the judgment would admit
-    -- literals the compiler must reject, and completeness would be false in
-    -- the interesting direction: `checkElab` fails while `⊢ᵢ` holds. Carrying
-    -- it makes "no unrepresentable float is well-typed" a fact about the
-    -- TYPE SYSTEM rather than a property of one checker's code path.
-    t-float : ∀ {ctx : NamedCtx} (i f l : ℕ) (d : Dyadic)
-            → Accepted i f l d
+    -- It used to carry an `Accepted i f l d` witness (0.71 F4): the decimal
+    -- `i.f` IS exactly the dyadic `d`, and `d` is exactly representable at
+    -- EVERY supported format. The reasoning was right for its premise —
+    -- without it the judgment would admit literals the compiler must reject,
+    -- and completeness would fail in the interesting direction (`checkElab`
+    -- fails while `⊢ᵢ` holds).
+    --
+    -- D116 removes the premise rather than the reasoning: the compiler no
+    -- longer rejects. A float literal the target cannot hold exactly ROUNDS,
+    -- because IEEE's promise INCLUDES rounding, exactly as `Int`'s promise
+    -- includes wrapping arithmetic (D054). `3.14` is now well-typed, which it
+    -- could not be while the witness demanded a dyadic that does not exist.
+    --
+    -- The literal is `i.f` with `l` fraction digits; its value is
+    -- `Once.Float.Decimal.decimalOf i f l`, a TOTAL function, so nothing is
+    -- carried.
+    t-float : ∀ {ctx : NamedCtx} (i f l : ℕ)
             → ctx ⊢ᵢ RFloat i f l ∶ Float ⨾ zeroUsage
 
     t-str : ∀ {ctx : NamedCtx} (s : String)
@@ -343,9 +350,8 @@ mutual
   -- a closed value is `zeroUsage` by construction.
   data _⊢ᵍ_∶_ : (ctx : NamedCtx) → RawExpr → Type → Set where
     g-int  : ∀ {ctx : NamedCtx} (n : ℤ) → ctx ⊢ᵍ RInt n ∶ Int
-    -- …and the value realm, with the same witness and for the same reason.
-    g-float : ∀ {ctx : NamedCtx} (i f l : ℕ) (d : Dyadic)
-            → Accepted i f l d
+    -- …and the value realm, witness-free for the same reason.
+    g-float : ∀ {ctx : NamedCtx} (i f l : ℕ)
             → ctx ⊢ᵍ RFloat i f l ∶ Float
     -- The Unit leaf is the bare `terminal` morphism (avoids a special `RVar`
     -- elaborator clause that would block the general `RVar` reduction); its

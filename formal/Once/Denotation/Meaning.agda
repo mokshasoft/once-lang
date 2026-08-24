@@ -124,7 +124,7 @@ named-sem {A} {B} fmt cn bA cB a =
 -- `⟦ Float ⟧` is the target's representation, not an exact value, and `1.5`
 -- has no target-free one — so the reference meaning takes the format. This
 -- clause is the entire reason it does; every other clause just passes it on.
-⟦ g-float _ _ _ d _ ⟧ᵍ fmt = encode (float-format fmt) d
+⟦ g-float i f l ⟧ᵍ fmt = round (float-format fmt) (decimalOf i f l)
 ⟦ g-terminal _ _ ⟧ᵍ fmt = tt
 ⟦ g-pair ga gb ⟧ᵍ fmt = (⟦ ga ⟧ᵍ fmt) , (⟦ gb ⟧ᵍ fmt)
 ⟦ g-inl ga     ⟧ᵍ fmt = inj₁ (⟦ ga ⟧ᵍ fmt)
@@ -215,7 +215,7 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 
 ⟦ t-int n ⟧ᵢ fmt                dγ = returnT (OnceWord.Width.fromℤ (int-bits fmt) n)
 -- D113, in the INFER realm: same clause, same reason as `g-float` above.
-⟦ t-float _ _ _ d _ ⟧ᵢ fmt      dγ = returnT (encode (float-format fmt) d)
+⟦ t-float i f l ⟧ᵢ fmt          dγ = returnT (round (float-format fmt) (decimalOf i f l))
 ⟦ t-str s ⟧ᵢ fmt                dγ = returnT (semM (str-lit-info s) fmt tt)
 ⟦ t-unit ⟧ᵢ fmt                 dγ = returnT tt
 ⟦ t-unit-var ⟧ᵢ fmt             dγ = returnT tt

@@ -165,7 +165,7 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt ir)
 -- D113: a float literal MEANS its encoding at the target's format. This is
 -- the clause that makes the source denotation target-relative, and the only
 -- one that does.
-⟦ float d _ ⟧ˢ fmt    dγ = returnT (encode (float-format fmt) d)
+⟦ float d ⟧ˢ fmt      dγ = returnT (round (float-format fmt) d)
 -- str: `str-lit-semM` is ABSTRACT (postulated, unlike the computing lit-int-semM),
 -- so the literal's value can't be the clean `s`; denote via its own SigOp `semM`
 -- (= `strLit`'s evalᴰ), matching the IR by construction (like arith).

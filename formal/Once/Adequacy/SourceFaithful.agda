@@ -286,7 +286,7 @@ faithful (absurd v) dγ n = ⊥-elim (proj₂ ((SD.⟦ v ⟧ˢ fmt) dγ n))
 faithful unit    dγ k = refl
 faithful (int n) dγ k = refl   -- both sides are `fromℤ (int-bits fmt) n` (the `absℤ` this
                                -- comment used to describe is gone; D054/D115)
-faithful (float d _) dγ k = refl -- ⟦float d⟧ˢ fmt IS `d`, and floatLit's evalᴰ fmt is the same `d`
+faithful (float d) dγ k = refl   -- both sides are `round (float-format fmt) d` (K1)
 faithful (str s) dγ k = refl   -- ⟦str s⟧ˢ fmt now denotes via str-lit-info's semM = strLit's evalᴰ fmt
 -- Single-subterm projections/injections: `elaborate (op e) = <prim> ∘ elaborate e`
 -- and `⟦ op e ⟧ˢ = ⟦e⟧ˢ >>=T (λv → returnT (<prim> v))`; `_>>=T_` sees the same
