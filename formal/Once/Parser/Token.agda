@@ -21,7 +21,12 @@ open import Data.Nat using (ℕ)
 data Token : Set where
   -- Identifiers and literals
   TWord    : String → Token     -- identifier or keyword (fst, swap, Unit, import, assocL+)
-  TInt     : ℤ → Token          -- integer literal
+  -- PLAN 0.74 (positions): the trailing ℕ is the literal's SOURCE OFFSET.
+  -- Only the literal tokens carry one — they are the only ones a diagnostic
+  -- currently needs to point at (the rounding warning and the Int-range
+  -- error), and putting it on every token would move 6738 pattern sites
+  -- through the verified parser and its roundtrip proofs.
+  TInt     : ℤ → ℕ → Token      -- integer literal, source offset
   -- PLAN 0.71: a float literal, carried as DIGITS rather than as a value —
   -- integer part, fraction digits, and the fraction's LENGTH. Three reasons it
   -- is not an `AgdaFloat` here:
@@ -33,7 +38,7 @@ data Token : Set where
   --     — the frontend must not bake the widest target into the language.
   -- The value denoted is `int + frac / 10 ^ flen`, exactly; nothing here
   -- rounds. Dyadic conversion and the acceptance check are F4's.
-  TFloat   : ℕ → ℕ → ℕ → Token  -- int part, fraction digits, fraction length
+  TFloat   : ℕ → ℕ → ℕ → ℕ → Token  -- int part, fraction digits, fraction length, source offset
   TString  : String → Token     -- string literal
 
   -- Punctuation

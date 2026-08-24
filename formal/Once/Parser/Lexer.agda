@@ -25,6 +25,9 @@ open import Data.Bool using (Bool; true; false; _∨_; _∧_; not; if_then_else_
 open import Data.Char using (Char; isAlpha; isDigit; isSpace; isLower) renaming (_≟_ to _≟c_)
 open import Relation.Nullary using (does)
 open import Data.Nat using (ℕ; zero; suc; _≡ᵇ_; _<ᵇ_; _≤_; _<_; s≤s; z≤n)
+-- `+` alone is ℤ's prefix constructor here (Data.Integer is imported below), so
+-- the ℕ addition in `adv` must be qualified.
+import Data.Nat as ℕ
 open import Data.Nat.Properties using (≤-refl; ≤-trans; n<1+n; n≤1+n; <-trans; m≤n⇒m≤1+n; <⇒≤)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc; acc)
@@ -316,105 +319,118 @@ headK c =
 -- | Tokenize worker. The head is dispatched via `headK` + `tok-head`; the
 -- multi-char heads delegate to `tok-nl`/`tok-op2`/`tok-minus`/`tok-lbrace`/
 -- `tok-caret`; the string/general clauses to `tok-str`/`tok-gen`.
-tok-str : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
+tok-str : (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
           Maybe (Σ[ s ∈ List Char ] Σ[ rest ∈ List Char ] length rest < length cs) →
           List Token
-tok-gen : (c : Char) (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
+tok-gen : (c : Char) (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
           Bool → Bool → List Token
 -- Plan 0.71: the numeric branch, split off so the fraction is dispatched on a
 -- VALUE (`collectFracB rest`) rather than a `with` — the same shape `tok-str`
 -- uses, and what keeps the clause reducible for the soundness proof.
-tok-num : (c : Char) (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
+tok-num : (c : Char) (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
           (digits rest : List Char) → length rest ≤ length cs →
           Maybe (Σ[ f ∈ List Char ] Σ[ r ∈ List Char ] length r < length rest) →
           List Token
-tok-nl  : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Bool → List Token
-tok-op2 : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
+tok-nl  : (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Bool → List Token
+tok-op2 : (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) →
           Token → Token → Bool → List Token
-tok-lbrace : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Bool → List Token
-tok-minus  : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Dash3 → List Token
-tok-caret  : (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Caret4 → List Token
-tok-head   : (c : Char) (cs : List Char) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → HeadK → List Token
-tokenize-WF : (cs : List Char) → Acc _<_ (length cs) → List Token
+tok-lbrace : (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Bool → List Token
+tok-minus  : (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Dash3 → List Token
+tok-caret  : (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → Caret4 → List Token
+tok-head   : (c : Char) (cs : List Char) (off : ℕ) → (∀ {y} → y < suc (length cs) → Acc _<_ y) → HeadK → List Token
+-- | The offset of the next token, from the offset of this one. `cs` is the
+-- tail after the head character, so the head itself accounts for the `suc`.
+adv : (cs r : List Char) (off : ℕ) → ℕ
+adv cs r off = off ℕ.+ (suc (length cs) ℕ.∸ length r)
 
-tokenize-WF [] _ = TEOF ∷ []
-tokenize-WF (c ∷ cs) (acc rec) = tok-head c cs rec (headK c)
+-- | PLAN 0.74 (positions): `off` is the SOURCE OFFSET of the first character
+-- of `cs`. It is threaded rather than recovered, because the worker only ever
+-- sees a suffix and cannot know how far in it already is.
+--
+-- Every recursive call advances it by `adv`, which reads the distance off the
+-- LISTS rather than counting characters per branch — so a clause that consumes
+-- two characters (`drop1`) or twenty (a comment) needs no arithmetic of its
+-- own, and cannot get it wrong.
+tokenize-WF : (cs : List Char) (off : ℕ) → Acc _<_ (length cs) → List Token
 
-tok-head c cs rec hkWS     = tokenize-WF cs (rec (s≤s ≤-refl))
-tok-head c cs rec hkNL     = tok-nl cs rec (nlIndent cs)
-tok-head c cs rec hkCaret  = tok-caret cs rec (caretClass cs)
-tok-head c cs rec hkDash   = tok-minus cs rec (dashClass cs)
-tok-head c cs rec hkLBrace = tok-lbrace cs rec (isDashHead cs)
-tok-head c cs rec hkLt     = tok-op2 cs rec TLe TLt (isEqHead cs)
-tok-head c cs rec hkGt     = tok-op2 cs rec TGe TGt (isEqHead cs)
-tok-head c cs rec hkEq     = tok-op2 cs rec TEqEq TEquals (isEqHead cs)
-tok-head c cs rec hkBang   = tok-op2 cs rec TNeq TBang (isEqHead cs)
-tok-head c cs rec hkLParen = TLParen    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tok-head c cs rec hkRParen = TRParen    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tok-head c cs rec hkRBrace = TRBrace    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tok-head c cs rec hkColon  = TColon     ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tok-head c cs rec hkLambda = TLambda    ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tok-head c cs rec hkComma  = TComma     ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tok-head c cs rec hkSemi   = TSemicolon ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tok-head c cs rec hkAt     = TAt        ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tok-head c cs rec hkPipe   = TPipe      ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tok-head c cs rec hkPlus   = TPlus      ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tok-head c cs rec hkStar   = TStar      ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tok-head c cs rec hkSlash  = TSlash     ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tok-head c cs rec hkPct    = TPercent   ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tok-head c cs rec hkAmp    = TAmpersand ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tok-head c cs rec hkDot    = TDot       ∷ tokenize-WF cs (rec (s≤s ≤-refl))
-tok-head c cs rec hkStr    = tok-str cs rec (collectStringB cs)
-tok-head c cs rec hkGen    = tok-gen c cs rec (isDigit c) (isIdentStart c)
+tokenize-WF [] off _ = TEOF ∷ []
+tokenize-WF (c ∷ cs) off (acc rec) = tok-head c cs off rec (headK c)
 
-tok-str cs rec (just (s , rest , bnd)) =
-  TString (fromList s) ∷ tokenize-WF rest (rec (m≤n⇒m≤1+n bnd))
-tok-str cs rec nothing = []  -- error: unterminated string
-tok-gen c cs rec true  _     =
+tok-head c cs off rec hkWS     = tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkNL     = tok-nl cs off rec (nlIndent cs)
+tok-head c cs off rec hkCaret  = tok-caret cs off rec (caretClass cs)
+tok-head c cs off rec hkDash   = tok-minus cs off rec (dashClass cs)
+tok-head c cs off rec hkLBrace = tok-lbrace cs off rec (isDashHead cs)
+tok-head c cs off rec hkLt     = tok-op2 cs off rec TLe TLt (isEqHead cs)
+tok-head c cs off rec hkGt     = tok-op2 cs off rec TGe TGt (isEqHead cs)
+tok-head c cs off rec hkEq     = tok-op2 cs off rec TEqEq TEquals (isEqHead cs)
+tok-head c cs off rec hkBang   = tok-op2 cs off rec TNeq TBang (isEqHead cs)
+tok-head c cs off rec hkLParen = TLParen    ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkRParen = TRParen    ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkRBrace = TRBrace    ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkColon  = TColon     ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkLambda = TLambda    ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkComma  = TComma     ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkSemi   = TSemicolon ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkAt     = TAt        ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkPipe   = TPipe      ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkPlus   = TPlus      ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkStar   = TStar      ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkSlash  = TSlash     ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkPct    = TPercent   ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkAmp    = TAmpersand ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkDot    = TDot       ∷ tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
+tok-head c cs off rec hkStr    = tok-str cs off rec (collectStringB cs)
+tok-head c cs off rec hkGen    = tok-gen c cs off rec (isDigit c) (isIdentStart c)
+
+tok-str cs off rec (just (s , rest , bnd)) =
+  TString (fromList s) ∷ tokenize-WF rest (adv cs rest off) (rec (m≤n⇒m≤1+n bnd))
+tok-str cs off rec nothing = []  -- error: unterminated string
+tok-gen c cs off rec true  _     =
   let (digits , rest , bnd) = collectDigitsB cs
-  in  tok-num c cs rec digits rest bnd (collectFracB rest)
-tok-gen c cs rec false true  =
+  in  tok-num c cs off rec digits rest bnd (collectFracB rest)
+tok-gen c cs off rec false true  =
   let (ident , rest , bnd) = collectIdentB cs
-  in  TWord (fromList (c ∷ ident)) ∷ tokenize-WF rest (rec (s≤s bnd))
-tok-gen c cs rec false false = tokenize-WF cs (rec (s≤s ≤-refl))
+  in  TWord (fromList (c ∷ ident)) ∷ tokenize-WF rest (adv cs rest off) (rec (s≤s bnd))
+tok-gen c cs off rec false false = tokenize-WF cs (adv cs cs off) (rec (s≤s ≤-refl))
 
 -- A FLOAT when a fraction follows, an INT when it does not. The bound composes:
 -- the fraction's remainder is strictly shorter than the integer part's
 -- remainder, which is already bounded by the input — so the recursion decreases
 -- for the same reason it did before, one step further along.
-tok-num c cs rec digits rest bnd (just (frac , rest' , fbnd)) =
-  TFloat (digitsToNat (c ∷ digits)) (digitsToNat frac) (length frac)
-    ∷ tokenize-WF rest' (rec (s≤s (≤-trans (<⇒≤ fbnd) bnd)))
-tok-num c cs rec digits rest bnd nothing =
-  TInt (+ digitsToNat (c ∷ digits)) ∷ tokenize-WF rest (rec (s≤s bnd))
+tok-num c cs off rec digits rest bnd (just (frac , rest' , fbnd)) =
+  TFloat (digitsToNat (c ∷ digits)) (digitsToNat frac) (length frac) off
+    ∷ tokenize-WF rest' (adv cs rest' off) (rec (s≤s (≤-trans (<⇒≤ fbnd) bnd)))
+tok-num c cs off rec digits rest bnd nothing =
+  TInt (+ digitsToNat (c ∷ digits)) off ∷ tokenize-WF rest (adv cs rest off) (rec (s≤s bnd))
 
 -- `\n`: indented continuation (next char ' '/'\t') ⇒ insignificant (skip);
 -- else a significant `TNewline`. Both recurse on the tail `cs`.
-tok-nl cs rec true  = tokenize-WF cs (rec (n<1+n _))
-tok-nl cs rec false = TNewline ∷ tokenize-WF cs (rec (n<1+n _))
+tok-nl cs off rec true  = tokenize-WF cs (adv cs cs off) (rec (n<1+n _))
+tok-nl cs off rec false = TNewline ∷ tokenize-WF cs (adv cs cs off) (rec (n<1+n _))
 
 -- 2-char `…=` operators: `t2` if next is `=` (recurse past it via drop1), else `t1`.
-tok-op2 cs rec t2 t1 true  = t2 ∷ tokenize-WF (drop1 cs) (rec (s≤s (drop1-≤ cs)))
-tok-op2 cs rec t2 t1 false = t1 ∷ tokenize-WF cs (rec (n<1+n _))
+tok-op2 cs off rec t2 t1 true  = t2 ∷ tokenize-WF (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs)))
+tok-op2 cs off rec t2 t1 false = t1 ∷ tokenize-WF cs (adv cs cs off) (rec (n<1+n _))
 
 -- `{`: block comment `{-` (skip via skipBlockB ∘ drop1) else `TLBrace`.
-tok-lbrace cs rec true  = tokenize-WF (proj₁ (skipBlockB 1 (drop1 cs))) (rec (s≤s (≤-trans (proj₂ (skipBlockB 1 (drop1 cs))) (drop1-≤ cs))))
-tok-lbrace cs rec false = TLBrace ∷ tokenize-WF cs (rec (n<1+n _))
+tok-lbrace cs off rec true  = tokenize-WF (proj₁ (skipBlockB 1 (drop1 cs))) (adv cs (proj₁ (skipBlockB 1 (drop1 cs))) off) (rec (s≤s (≤-trans (proj₂ (skipBlockB 1 (drop1 cs))) (drop1-≤ cs))))
+tok-lbrace cs off rec false = TLBrace ∷ tokenize-WF cs (adv cs cs off) (rec (n<1+n _))
 
 -- `-`: line comment `--` (skipLineB ∘ drop1), arrow `->` (drop1), else `TMinus`.
-tok-minus cs rec d-comment = tokenize-WF (proj₁ (skipLineB (drop1 cs))) (rec (s≤s (≤-trans (proj₂ (skipLineB (drop1 cs))) (drop1-≤ cs))))
-tok-minus cs rec d-arrow   = TArrow ∷ tokenize-WF (drop1 cs) (rec (s≤s (drop1-≤ cs)))
-tok-minus cs rec d-minus   = TMinus ∷ tokenize-WF cs (rec (n<1+n _))
+tok-minus cs off rec d-comment = tokenize-WF (proj₁ (skipLineB (drop1 cs))) (adv cs (proj₁ (skipLineB (drop1 cs))) off) (rec (s≤s (≤-trans (proj₂ (skipLineB (drop1 cs))) (drop1-≤ cs))))
+tok-minus cs off rec d-arrow   = TArrow ∷ tokenize-WF (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs)))
+tok-minus cs off rec d-minus   = TMinus ∷ tokenize-WF cs (adv cs cs off) (rec (n<1+n _))
 
 -- `^`: grade caret `^1`/`^0`/`^w` (drop1), else fall to the general head.
-tok-caret cs rec c-1 = TCaret1 ∷ tokenize-WF (drop1 cs) (rec (s≤s (drop1-≤ cs)))
-tok-caret cs rec c-0 = TCaret0 ∷ tokenize-WF (drop1 cs) (rec (s≤s (drop1-≤ cs)))
-tok-caret cs rec c-w = TCaretW ∷ tokenize-WF (drop1 cs) (rec (s≤s (drop1-≤ cs)))
-tok-caret cs rec c-gen = tok-gen '^' cs rec (isDigit '^') (isIdentStart '^')
+tok-caret cs off rec c-1 = TCaret1 ∷ tokenize-WF (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs)))
+tok-caret cs off rec c-0 = TCaret0 ∷ tokenize-WF (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs)))
+tok-caret cs off rec c-w = TCaretW ∷ tokenize-WF (drop1 cs) (adv cs (drop1 cs) off) (rec (s≤s (drop1-≤ cs)))
+tok-caret cs off rec c-gen = tok-gen '^' cs off rec (isDigit '^') (isIdentStart '^')
 
 -- | Tokenize a list of characters into tokens.
 tokenize : List Char → List Token
-tokenize cs = tokenize-WF cs (<-wellFounded (length cs))
+tokenize cs = tokenize-WF cs 0 (<-wellFounded (length cs))
 
 ------------------------------------------------------------------------
 -- Entry Point
