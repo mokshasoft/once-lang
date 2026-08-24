@@ -247,16 +247,16 @@ d_eval_12 v0 v1 v2 v3 v4
              MAlonzo.Code.Once.IRTy.C_fits'45'int_512
                -> coe
                     MAlonzo.Code.Once.Word.d_fromℤ_20
-                    (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_20 (coe v2))
+                    (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v2))
                     (coe v7)
              MAlonzo.Code.Once.IRTy.C_fits'45'float_514
                -> coe
                     MAlonzo.Code.Once.Float.Dyadic.d_encode_140
-                    (coe MAlonzo.Code.Once.Target.Arch.d_float'45'format_22 (coe v2))
+                    (coe MAlonzo.Code.Once.Target.Arch.d_float'45'format_24 (coe v2))
                     (coe v7)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_SigOp_154 v5 v6 v7
-        -> coe MAlonzo.Code.Once.SigOp.Info.du_semM_188 v7 v4
+        -> coe MAlonzo.Code.Once.SigOp.Info.du_semM_188 v7 v2 v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Eval.appNatTr-F
 d_appNatTr'45'F_22 ::

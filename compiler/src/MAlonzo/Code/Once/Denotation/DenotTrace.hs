@@ -265,7 +265,7 @@ d_eval'7472'_12 v0 v1 v2 v3 v4
                      (coe
                         MAlonzo.Code.Once.Denotation.ValueDomain.d_inject_60 (coe v7)
                         (coe
-                           MAlonzo.Code.Once.SigOp.Info.du_semM_188 v8
+                           MAlonzo.Code.Once.SigOp.Info.du_semM_188 v8 v0
                            (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_56
                               (coe
                                  MAlonzo.Code.Once.IRTy.d_'8968'_'8969'_588

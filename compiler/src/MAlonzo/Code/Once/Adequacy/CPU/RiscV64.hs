@@ -42,21 +42,21 @@ d_arith'45'env'45'riscv64_12
 -- Once.Adequacy.CPU.RiscV64.run-trace-riscv64
 d_run'45'trace'45'riscv64_14 ::
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_394 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 d_run'45'trace'45'riscv64_14 v0 v1
   = coe
       MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_162
       (coe
          (\ v2 ->
-            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_halted_410
+            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_halted_424
               (coe v2)))
       (coe
          (\ v2 ->
-            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_408 (coe v2)))
-      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_474)
+            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_422 (coe v2)))
+      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_488)
       (coe
-         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_532)
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_546)
       (coe
          MAlonzo.Code.Once.Arith.Backend.RiscV64.RunTrace.d_matchCall_10)
       (coe
@@ -68,7 +68,7 @@ d_run'45'trace'45'riscv64_14 v0 v1
               MAlonzo.Code.Once.Arith.Backend.RiscV64.Dispatch.du_dispatch'45'arith_18
               (\ v5 v6 v7 ->
                  coe
-                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimRiscV64.du_val'45'riscv64_222
+                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimRiscV64.du_val'45'riscv64_302
                    v5 v6)
               v2 v4))
       (coe d_step'45'budget'45'riscv64_8) (coe d_ev'45'riscv64_10)
@@ -87,7 +87,7 @@ d_arch'45'semantics_24 ::
 d_arch'45'semantics_24
   = coe
       MAlonzo.Code.Once.Adequacy.CPU.Interface.C_constructor_56
-      MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_initState_422
-      MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_run_872
+      MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_initState_436
+      MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_run_886
       d_run'45'trace'45'riscv64_14 d_decode'45'riscv64_20
       d_assemble'45'riscv64_22

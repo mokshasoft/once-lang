@@ -27,6 +27,7 @@ import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Semantics.Functor
 import qualified MAlonzo.Code.Once.Semantics.Value
+import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 import qualified MAlonzo.Code.Relation.Nullary.Reflects
@@ -444,7 +445,9 @@ data T_EffectShape_120 = C_Pure_124 | C_Emits_126 | C_Halts_128
 -- Once.SigOp.Info.SigOpSem
 d_SigOpSem_134 a0 a1 = ()
 data T_SigOpSem_134
-  = C_pureV_140 (AgdaAny -> AgdaAny) | C_emitsV_142 | C_haltsV_144
+  = C_pureV_140 (MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+                 AgdaAny -> AgdaAny) |
+    C_emitsV_142 | C_haltsV_144
 -- Once.SigOp.Info.Linkage
 d_Linkage_148 a0 = ()
 data T_Linkage_148
@@ -488,9 +491,12 @@ d_conB_180 v0
 d_semM_188 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  T_SigOpInfo_160 -> AgdaAny -> AgdaAny
+  T_SigOpInfo_160 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 -> AgdaAny -> AgdaAny
 d_semM_188 ~v0 ~v1 v2 = du_semM_188 v2
-du_semM_188 :: T_SigOpInfo_160 -> AgdaAny -> AgdaAny
+du_semM_188 ::
+  T_SigOpInfo_160 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 -> AgdaAny -> AgdaAny
 du_semM_188 v0 = coe du_go_200 (coe d_sem_176 (coe v0))
 -- Once.SigOp.Info._.go
 d_go_200 ::
@@ -499,61 +505,66 @@ d_go_200 ::
   T_SigOpInfo_160 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
-  T_SigOpSem_134 -> AgdaAny -> AgdaAny
+  T_SigOpSem_134 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 -> AgdaAny -> AgdaAny
 d_go_200 ~v0 ~v1 ~v2 ~v3 ~v4 v5 = du_go_200 v5
-du_go_200 :: T_SigOpSem_134 -> AgdaAny -> AgdaAny
+du_go_200 ::
+  T_SigOpSem_134 ->
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 -> AgdaAny -> AgdaAny
 du_go_200 v0
   = case coe v0 of
       C_pureV_140 v1 -> coe v1
       C_emitsV_142
-        -> coe (\ v2 -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+        -> coe (\ v2 v3 -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
       C_haltsV_144
-        -> coe (\ v2 -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+        -> coe (\ v2 v3 -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.SigOp.Info.effect
-d_effect_212 ::
+d_effect_216 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   T_SigOpInfo_160 -> T_EffectShape_120
-d_effect_212 ~v0 ~v1 v2 = du_effect_212 v2
-du_effect_212 :: T_SigOpInfo_160 -> T_EffectShape_120
-du_effect_212 v0 = coe du_go_224 (coe d_sem_176 (coe v0))
+d_effect_216 ~v0 ~v1 v2 = du_effect_216 v2
+du_effect_216 :: T_SigOpInfo_160 -> T_EffectShape_120
+du_effect_216 v0 = coe du_go_228 (coe d_sem_176 (coe v0))
 -- Once.SigOp.Info._.go
-d_go_224 ::
+d_go_228 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   T_SigOpInfo_160 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   T_SigOpSem_134 -> T_EffectShape_120
-d_go_224 ~v0 ~v1 ~v2 ~v3 ~v4 v5 = du_go_224 v5
-du_go_224 :: T_SigOpSem_134 -> T_EffectShape_120
-du_go_224 v0
+d_go_228 ~v0 ~v1 ~v2 ~v3 ~v4 v5 = du_go_228 v5
+du_go_228 :: T_SigOpSem_134 -> T_EffectShape_120
+du_go_228 v0
   = case coe v0 of
       C_pureV_140 v1 -> coe C_Pure_124
       C_emitsV_142 -> coe C_Emits_126
       C_haltsV_144 -> coe C_Halts_128
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.SigOp.Info.mk-info
-d_mk'45'info_234 ::
+d_mk'45'info_238 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  (AgdaAny -> AgdaAny) ->
+  (MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+   AgdaAny -> AgdaAny) ->
   T_EffectShape_120 ->
   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_200 ->
   MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_226 ->
   T_SigOpInfo_160
-d_mk'45'info_234 ~v0 ~v1 v2 v3 v4 v5 v6
-  = du_mk'45'info_234 v2 v3 v4 v5 v6
-du_mk'45'info_234 ::
+d_mk'45'info_238 ~v0 ~v1 v2 v3 v4 v5 v6
+  = du_mk'45'info_238 v2 v3 v4 v5 v6
+du_mk'45'info_238 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  (AgdaAny -> AgdaAny) ->
+  (MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+   AgdaAny -> AgdaAny) ->
   T_EffectShape_120 ->
   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_200 ->
   MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_226 ->
   T_SigOpInfo_160
-du_mk'45'info_234 v0 v1 v2 v3 v4
+du_mk'45'info_238 v0 v1 v2 v3 v4
   = case coe v2 of
       C_Pure_124
         -> coe
@@ -569,32 +580,32 @@ du_mk'45'info_234 v0 v1 v2 v3 v4
              (coe C_ffi'45'concrete_152 (coe v4))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.SigOp.Info._≟SigOpInfo-name_
-d__'8799'SigOpInfo'45'name__272 ::
+d__'8799'SigOpInfo'45'name__276 ::
   T_SigOpInfo_160 ->
   T_SigOpInfo_160 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d__'8799'SigOpInfo'45'name__272 v0 v1
+d__'8799'SigOpInfo'45'name__276 v0 v1
   = coe
       MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__16
       (coe d_name_174 (coe v0)) (coe d_name_174 (coe v1))
 -- Once.SigOp.Info.sigOpInfo-name-coherence
-d_sigOpInfo'45'name'45'coherence_286
+d_sigOpInfo'45'name'45'coherence_290
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.SigOp.Info.sigOpInfo-name-coherence"
 -- Once.SigOp.Info._≟SigOpInfo_
-d__'8799'SigOpInfo__296 ::
+d__'8799'SigOpInfo__300 ::
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   T_SigOpInfo_160 ->
   T_SigOpInfo_160 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d__'8799'SigOpInfo__296 ~v0 ~v1 v2 v3
-  = du__'8799'SigOpInfo__296 v2 v3
-du__'8799'SigOpInfo__296 ::
+d__'8799'SigOpInfo__300 ~v0 ~v1 v2 v3
+  = du__'8799'SigOpInfo__300 v2 v3
+du__'8799'SigOpInfo__300 ::
   T_SigOpInfo_160 ->
   T_SigOpInfo_160 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-du__'8799'SigOpInfo__296 v0 v1
+du__'8799'SigOpInfo__300 v0 v1
   = let v2
           = coe
               MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60

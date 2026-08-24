@@ -26,7 +26,7 @@ import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 
 -- Once.CCC.Codegen.EmittedWF.labels-def
 d_labels'45'def_8 ::
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2212] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   [MAlonzo.Code.Once.CCC.Label.T_Label_22]
 d_labels'45'def_8 v0
   = case coe v0 of
@@ -39,26 +39,26 @@ d_labels'45'def_8 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.EmittedWF.labels-def-i
 d_labels'45'def'45'i_10 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2212 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218 ->
   [MAlonzo.Code.Once.CCC.Label.T_Label_22]
 d_labels'45'def'45'i_10 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'case'45'on'45'tag_2272 v2 v3
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'case'45'on'45'tag_2278 v2 v3
            -> coe
                 MAlonzo.Code.Data.List.Base.du__'43''43'__32
                 (coe d_labels'45'def_8 (coe v2)) (coe d_labels'45'def_8 (coe v3))
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'loop_2276 v2
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'loop_2282 v2
            -> coe d_labels'45'def_8 (coe v2)
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2280 v2
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2286 v2
            -> case coe v2 of
-                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'label_2200 v3
+                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'label_2206 v3
                   -> coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe MAlonzo.Code.Once.CCC.Label.C_once_24 (coe v3))
                        (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'thunk_2208 v3 v4
+                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'thunk_2214 v3 v4
                   -> coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe MAlonzo.Code.Once.CCC.Label.C_thunk_28 (coe v3))
@@ -67,7 +67,7 @@ d_labels'45'def'45'i_10 v0
          _ -> coe v1)
 -- Once.CCC.Codegen.EmittedWF.labels-ref
 d_labels'45'ref_26 ::
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2212] ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   [MAlonzo.Code.Once.CCC.Label.T_Label_22]
 d_labels'45'ref_26 v0
   = case coe v0 of
@@ -80,36 +80,36 @@ d_labels'45'ref_26 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.EmittedWF.labels-ref-i
 d_labels'45'ref'45'i_28 ::
-  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2212 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218 ->
   [MAlonzo.Code.Once.CCC.Label.T_Label_22]
 d_labels'45'ref'45'i_28 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'code'45'addr_2266 v2
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'code'45'addr_2272 v2
            -> coe
                 MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                 (coe MAlonzo.Code.Once.CCC.Label.C_thunk_28 (coe v2))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'case'45'on'45'tag_2272 v2 v3
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'case'45'on'45'tag_2278 v2 v3
            -> coe
                 MAlonzo.Code.Data.List.Base.du__'43''43'__32
                 (coe d_labels'45'ref_26 (coe v2)) (coe d_labels'45'ref_26 (coe v3))
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'loop_2276 v2
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'loop_2282 v2
            -> coe d_labels'45'ref_26 (coe v2)
-         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2280 v2
+         MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2286 v2
            -> case coe v2 of
-                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'jmp_2202 v3
+                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'jmp_2208 v3
                   -> coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe MAlonzo.Code.Once.CCC.Label.C_once_24 (coe v3))
                        (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'branch'45'scratch'45'zero_2204 v3
+                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'branch'45'scratch'45'zero_2210 v3
                   -> coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe MAlonzo.Code.Once.CCC.Label.C_once_24 (coe v3))
                        (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'branch'45'tag'45'zero_2206 v3
+                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'branch'45'tag'45'zero_2212 v3
                   -> coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe MAlonzo.Code.Once.CCC.Label.C_once_24 (coe v3))

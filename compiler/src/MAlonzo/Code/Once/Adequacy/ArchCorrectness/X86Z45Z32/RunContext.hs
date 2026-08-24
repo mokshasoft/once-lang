@@ -31,7 +31,7 @@ d_Emitted_18 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2212] -> ()
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] -> ()
 d_Emitted_18 = erased
 -- Once.Adequacy.ArchCorrectness.X86-32.RunContext._.EntryLike
 d_EntryLike_20 ::

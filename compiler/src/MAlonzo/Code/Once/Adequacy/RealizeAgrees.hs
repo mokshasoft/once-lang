@@ -936,7 +936,7 @@ du_algebra'45'morph'45'recover_8380 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_algebra'45'morph'45'recover_8380 v0 v1 v2 v3 v4 v5
   = let v6
-          = MAlonzo.Code.Once.TypeCheck.Completeness.d_morph'45'elab_4608
+          = MAlonzo.Code.Once.TypeCheck.Completeness.d_morph'45'elab_4626
               (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) in
     coe
       (case coe v6 of
@@ -1350,7 +1350,7 @@ d_check'45'agreeV_12570 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_check'45'agreeV_12570 = erased
 -- Once.Adequacy.RealizeAgrees..extendedlambda0
-d_'46'extendedlambda0_13480 ::
+d_'46'extendedlambda0_13514 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_338 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -1392,9 +1392,9 @@ d_'46'extendedlambda0_13480 ::
   Integer ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'46'extendedlambda0_13480 = erased
+d_'46'extendedlambda0_13514 = erased
 -- Once.Adequacy.RealizeAgrees.realize-agrees
-d_realize'45'agrees_15106 ::
+d_realize'45'agrees_15140 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_338 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
@@ -1406,4 +1406,4 @@ d_realize'45'agrees_15106 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_realize'45'agrees_15106 = erased
+d_realize'45'agrees_15140 = erased

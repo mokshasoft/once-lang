@@ -18,12 +18,13 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.String
-import qualified MAlonzo.Code.Data.Integer.Base
 import qualified MAlonzo.Code.Data.Integer.Show
 import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.SigOp.Info
+import qualified MAlonzo.Code.Once.Target.Arch
+import qualified MAlonzo.Code.Once.Word
 
 -- Once.Arith.SigOp.IntLit.lit-int-name
 d_lit'45'int'45'name_8 ::
@@ -38,13 +39,15 @@ d_lit'45'int'45'info_12 ::
   Integer -> MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160
 d_lit'45'int'45'info_12 v0
   = coe
-      MAlonzo.Code.Once.SigOp.Info.du_mk'45'info_234
+      MAlonzo.Code.Once.SigOp.Info.du_mk'45'info_238
       (coe
          MAlonzo.Code.Once.CanonicalName.d_bare_12
          (coe d_lit'45'int'45'name_8 (coe v0)))
       (coe
-         (\ v1 ->
-            MAlonzo.Code.Data.Integer.Base.d_'8739'_'8739'_18 (coe v0)))
+         (\ v1 v2 ->
+            MAlonzo.Code.Once.Word.d_fromℤ_20
+              (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v1))
+              (coe v0)))
       (coe MAlonzo.Code.Once.SigOp.Info.C_Pure_124)
       (coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_202)
       (coe

@@ -86,7 +86,7 @@ du_emit'45'eff_54 ::
 du_emit'45'eff_54 v0 v1 v2 v3
   = let v4
           = coe
-              MAlonzo.Code.Once.SigOp.Info.du_go_224
+              MAlonzo.Code.Once.SigOp.Info.du_go_228
               (coe MAlonzo.Code.Once.SigOp.Info.d_sem_176 (coe v1)) in
     coe
       (case coe v4 of

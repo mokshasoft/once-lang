@@ -887,7 +887,7 @@ du_realize'45'morph_72 v0 v1 v2 v3
                -> coe
                     MAlonzo.Code.Once.IR.C_SigOp_154 (coe v1) (coe v2)
                     (coe
-                       MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_346 (coe v1)
+                       MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_370 (coe v1)
                        (coe v2) (coe MAlonzo.Code.Once.CanonicalName.d_bare_12 (coe v14))
                        (coe v12) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -897,7 +897,7 @@ du_realize'45'morph_72 v0 v1 v2 v3
                -> coe
                     MAlonzo.Code.Once.IR.C_SigOp_154 (coe v1) (coe v2)
                     (coe
-                       MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_346 (coe v1)
+                       MAlonzo.Code.Once.Arith.SigOp.Builders.d_value'45'info_370 (coe v1)
                        (coe v2) (coe v12) (coe v10) (coe v11))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError

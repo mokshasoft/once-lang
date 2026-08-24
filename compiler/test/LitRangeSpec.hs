@@ -81,18 +81,22 @@ wrapAt bits z = ((z + half) `mod` (2 * half)) - half
 -- negative literal needs parenthesising in Once source and the value is what
 -- the trace is checked against.
 --
--- Only literals whose SOURCE TEXT is a plain numeral, plus small negatives.
--- A negated numeral whose MAGNITUDE straddles the target's bound belongs to
--- the known-defect group at the bottom of this file, not here: the parser
--- turns `-N` into `RUnaryOp OpNeg (RInt N)`, so the gate currently decides on
--- N rather than on -N. Keeping the exceptions out of this table is deliberate
--- — the table states the RULE, and a rule with a special case written into it
--- stops being reviewable.
+-- NEGATED NUMERALS ARE IN THIS TABLE NOW (0.74 J6, 2026-08-24). They used to
+-- live in a KNOWN DEFECT group at the bottom of this file, because `-N` parsed
+-- as `RUnaryOp OpNeg (RInt N)` and nothing folded the sign, so the compiler
+-- decided on the MAGNITUDE: `-2147483648` was refused on x86-32 though it is
+-- exactly that target's least Int, and the emitted code was "load 2147483648,
+-- then negate at runtime". The elaborator folds now — verified on the metal,
+-- `mov $0x80000000,%eax` and zero `neg` instructions — so the rule holds
+-- without exceptions and the table can state it without a special case.
 literals :: [(String, Integer)]
 literals =
   [ ("3000000000",           3000000000)            -- > 2^31-1, fits 64
+  , ("(-3000000000)",       -3000000000)            -- < -2^31,  fits 64
   , ("2147483647",           2147483647)            -- exactly 2^31-1: fits 32
   , ("2147483648",           2147483648)            -- one past:      does not
+  , ("(-2147483648)",       -2147483648)            -- exactly -2^31: fits 32
+  , ("(-2147483649)",       -2147483649)            -- one past:      does not
   , ("(-5)",                          -5)           -- a negative arg, all 3 arches
   ]
 
@@ -121,7 +125,6 @@ litRangeTests = testGroup "Int literal range (D115)"
       [ testGroup lit [ testCase (archName a) (checkLit a lit z) | a <- backendArches ]
       | (lit, z) <- literals ]
   , wrapTest
-  , negatedLiteralDefect
   ]
 
 -- | One literal on one arch. Which assertion runs is DERIVED, not listed.
@@ -226,68 +229,3 @@ slug arch lit = "litrange_" ++ archName arch ++ "_" ++ map keep lit
                 | otherwise       = ch
         punct :: [Char]
         punct = "()-"   -- OverloadedStrings is on for this suite
-
-------------------------------------------------------------------------
--- KNOWN DEFECT — a negated numeral is gated on its MAGNITUDE (0.74 J6)
-------------------------------------------------------------------------
-
--- WHAT IS WRONG. `-2147483648` is a perfectly good x86-32 `Int` — it is
--- exactly the least one — and the compiler REFUSES it, saying "Int literal
--- 2147483648 does not fit". A program the target can express is rejected,
--- which is the one failure mode `correctR-complete` exists to rule out. The
--- proof does not catch it because the SPEC shares the blind spot: the gate and
--- `rawIntLits` both walk the same AST, and the AST is what is wrong.
---
--- WHY. `Once/Parser/Expr.agda:1012` parses `-N` as `RUnaryOp OpNeg (RInt N)`,
--- so the only literal in the tree is the MAGNITUDE. Nothing folds the sign in:
--- the elaborator has no constant folder, and `Once/IR.agda`'s `const` carries
--- a `ℤ`, so the IR could hold `-2147483648` and simply never does. The machine
--- therefore materialises 2147483648 at 32 bits — which WRAPS, and a wrapping
--- literal is precisely what D115 forbids. So the refusal is not a bug in the
--- gate: the gate is correctly reporting that this program, as elaborated,
--- needs an unrepresentable literal. The bug is upstream, in the elaboration
--- that made it need one.
---
--- THE TESTS BELOW PIN THE DEFECT, NOT THE INTENT. They assert what the
--- compiler does today, so that the day it is fixed they FAIL and must be moved
--- into `literals` above, where they belong. Read them as a tripwire, never as
--- a specification — the specification is the paragraph above.
-negatedLiteralDefect :: TestTree
-negatedLiteralDefect =
-  testGroup "KNOWN DEFECT (0.74 J6) — a negated numeral is gated on its magnitude"
-    [ testCase "-2147483648 is refused on x86_32 though it fits" $ do
-        r <- buildRaw X86_32 "negdefect_min32" (program "(-2147483648)")
-        case r of
-          Left msg -> assertBool
-            ("expected the refusal to name the MAGNITUDE 2147483648."
-             ++ " If it now names -2147483648, J6 is fixed. Got:\n" ++ msg)
-            ("Int literal 2147483648" `isInfixOf` msg)
-          Right () -> assertFailure
-            ("the build SUCCEEDED — J6 appears to be fixed. Move"
-             ++ " (-2147483648), (-3000000000) and (-2147483649) into"
-             ++ " `literals` and delete this group.")
-
-    , testCase "a refused negative names its magnitude, not its value" $ do
-        r <- buildRaw X86_32 "negdefect_msg" (program "(-3000000000)")
-        case r of
-          Left msg -> assertBool
-            ("expected the magnitude 3000000000 in the message; got:\n" ++ msg)
-            ("Int literal 3000000000" `isInfixOf` msg)
-          Right () -> assertFailure
-            "-3000000000 does not fit x86-32 either way; it must be refused."
-    ]
-
--- | Build only, reporting the compiler's own message on failure. Separate from
--- `expectRejected` because the defect group needs the message whichever way
--- the verdict goes.
-buildRaw :: BackendArch -> String -> T.Text -> IO (Either String ())
-buildRaw arch name src = do
-  let testDir = "/tmp/once_litrange_" ++ archName arch ++ "_" ++ name
-      srcFile = testDir </> name ++ ".once"
-  createDirectoryIfMissing True testDir
-  TIO.writeFile srcFile src
-  (code, out, err) <- runOnceArch arch
-    [ "build", "--target", archName arch, "--exe"
-    , "--strata", testStrataDir, srcFile, "-o", testDir </> name ]
-  cleanupDir testDir
-  pure (case code of ExitSuccess -> Right () ; ExitFailure _ -> Left (out ++ err))

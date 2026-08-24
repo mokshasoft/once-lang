@@ -23,26 +23,23 @@ import qualified MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax
 import qualified MAlonzo.Code.Once.Arith.Machine.AbsState
 import qualified MAlonzo.Code.Once.Arith.Machine.IR
 import qualified MAlonzo.Code.Once.Arith.Machine.Shape
+import qualified MAlonzo.Code.Once.Target.Arch
 
--- Once.Arith.Backend.BlockValueSemM._.block-correct
-d_block'45'correct_10 ::
-  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_block'45'correct_10 = erased
--- Once.Arith.Backend.BlockValueSemM._.exec-xprog
-d_exec'45'xprog_12 ::
+-- Once.Arith.Backend.BlockValueSemM._._.exec-xprog
+d_exec'45'xprog_18 ::
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   [MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24] ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130 ->
   MAlonzo.Code.Once.Arith.Machine.AbsState.T_ArithAbsState_130
-d_exec'45'xprog_12
+d_exec'45'xprog_18 v0
   = coe
       MAlonzo.Code.Once.Arith.Backend.Correct.d_exec'45'xprog_198
-      (coe (64 :: Integer))
--- Once.Arith.Backend.BlockValueSemM.block-value-semM
-d_block'45'value'45'semM_20 ::
+      (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v0))
+-- Once.Arith.Backend.BlockValueSemM._.block-value-semM
+d_block'45'value'45'semM_26 ::
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_block'45'value'45'semM_20 = erased
+d_block'45'value'45'semM_26 = erased

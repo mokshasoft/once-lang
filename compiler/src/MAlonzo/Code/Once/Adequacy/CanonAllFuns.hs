@@ -113,7 +113,7 @@ du_itv'45'inv_114 v0 v1 v2
         -> let v4
                  = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                      (coe
-                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1844
+                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1852
                         (coe v0) (coe v1) (coe v3)) in
            coe
              (case coe v4 of
@@ -171,7 +171,7 @@ du_inferType'45'inv_274 v0 v1 v2
   = coe
       du_go_294 (coe v0) (coe v1) (coe v2)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_1670
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_1678
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_376
             (coe v0) (coe v1))

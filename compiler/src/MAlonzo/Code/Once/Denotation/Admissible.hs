@@ -79,14 +79,27 @@ d_rawIntLits_6 v0
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
              (coe d_rawIntLits_6 (coe v2)) (coe d_rawIntLits_6 (coe v3))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_64 v2
-        -> coe d_rawIntLits_6 (coe v2)
+        -> coe d_negLits_8 (coe v2)
       MAlonzo.Code.Once.TypeCheck.Raw.C_RAna_66 v1 v2
         -> coe d_rawIntLits_6 (coe v2)
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Denotation.Admissible.negLits
+d_negLits_8 ::
+  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 -> [Integer]
+d_negLits_8 v0
+  = let v1 = d_rawIntLits_6 (coe v0) in
+    coe
+      (case coe v0 of
+         MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_54 v2
+           -> coe
+                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                (coe MAlonzo.Code.Data.Integer.Base.d_'45'__260 (coe v2))
+                (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
+         _ -> coe v1)
 -- Once.Denotation.Admissible.declIntLits
-d_declIntLits_40 ::
+d_declIntLits_46 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 -> [Integer]
-d_declIntLits_40 v0
+d_declIntLits_46 v0
   = case coe v0 of
       MAlonzo.Code.Once.Parser.Module.Core.C_DTypeSig_34 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
@@ -100,49 +113,49 @@ d_declIntLits_40 v0
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.Admissible.moduleIntLits
-d_moduleIntLits_44 ::
+d_moduleIntLits_50 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 -> [Integer]
-d_moduleIntLits_44 v0
+d_moduleIntLits_50 v0
   = case coe v0 of
       MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 v1
-        -> coe du_go_52 (coe v1)
+        -> coe du_go_58 (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.Admissible._.go
-d_go_52 ::
+d_go_58 ::
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] -> [Integer]
-d_go_52 ~v0 v1 = du_go_52 v1
-du_go_52 ::
+d_go_58 ~v0 v1 = du_go_58 v1
+du_go_58 ::
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] -> [Integer]
-du_go_52 v0
+du_go_58 v0
   = case coe v0 of
       [] -> coe v0
       (:) v1 v2
         -> coe
              MAlonzo.Code.Data.List.Base.du__'43''43'__32
-             (coe d_declIntLits_40 (coe v1)) (coe du_go_52 (coe v2))
+             (coe d_declIntLits_46 (coe v1)) (coe du_go_58 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.Admissible.AdmissibleM
-d_AdmissibleM_58 ::
+d_AdmissibleM_64 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 -> ()
-d_AdmissibleM_58 = erased
+d_AdmissibleM_64 = erased
 -- Once.Denotation.Admissible.admissibleM?
-d_admissibleM'63'_68 ::
+d_admissibleM'63'_74 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
-d_admissibleM'63'_68 v0 v1
+d_admissibleM'63'_74 v0 v1
   = coe
       MAlonzo.Code.Data.List.Relation.Unary.All.du_all'63'_510
       (coe
          MAlonzo.Code.Once.Word.d_inRange'63'_62
          (coe
-            MAlonzo.Code.Once.Target.Arch.d_arch'45'int'45'bits_28 (coe v0)))
-      (coe d_moduleIntLits_44 (coe v1))
+            MAlonzo.Code.Once.Target.Arch.d_arch'45'int'45'bits_80 (coe v0)))
+      (coe d_moduleIntLits_50 (coe v1))
 -- Once.Denotation.Admissible.outOfRange
-d_outOfRange_74 :: Integer -> [Integer] -> Maybe Integer
-d_outOfRange_74 v0 v1
+d_outOfRange_80 :: Integer -> [Integer] -> Maybe Integer
+d_outOfRange_80 v0 v1
   = case coe v1 of
       [] -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
       (:) v2 v3
@@ -164,19 +177,19 @@ d_outOfRange_74 v0 v1
              (case coe v4 of
                 MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v5 v6
                   -> if coe v5
-                       then coe seq (coe v6) (coe d_outOfRange_74 (coe v0) (coe v3))
+                       then coe seq (coe v6) (coe d_outOfRange_80 (coe v0) (coe v3))
                        else coe
                               seq (coe v6)
                               (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v2))
                 _ -> MAlonzo.RTE.mazUnreachableError)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.Admissible.firstBadLit
-d_firstBadLit_100 ::
+d_firstBadLit_106 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 -> Maybe Integer
-d_firstBadLit_100 v0 v1
+d_firstBadLit_106 v0 v1
   = coe
-      d_outOfRange_74
+      d_outOfRange_80
       (coe
-         MAlonzo.Code.Once.Target.Arch.d_arch'45'int'45'bits_28 (coe v0))
-      (coe d_moduleIntLits_44 (coe v1))
+         MAlonzo.Code.Once.Target.Arch.d_arch'45'int'45'bits_80 (coe v0))
+      (coe d_moduleIntLits_50 (coe v1))

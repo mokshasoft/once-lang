@@ -141,7 +141,7 @@ d_riscv64'45'irToAsm_18 v0 v1 v2 v3 v4
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
          (coe
-            MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace'45'cnt_234
+            MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace'45'cnt_248
             (coe v0)
             (coe
                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -192,7 +192,7 @@ d_riscv64'45'irToAsm_18 v0 v1 v2 v3 v4
                               MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_programToText_102
                               (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                  (coe
-                                    MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace'45'cnt_234
+                                    MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace'45'cnt_248
                                     (coe v0)
                                     (coe
                                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -283,7 +283,7 @@ du_emit'45'thunk'45'body_56 v0 v1 v2
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                        (coe
-                          MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace'45'cnt_234
+                          MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace'45'cnt_248
                           (coe v0) (coe v1) (coe v6)))
                     (coe
                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -324,7 +324,7 @@ du_emit'45'thunk'45'body_56 v0 v1 v2
                                                      MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_programToText_102
                                                      (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                                         (coe
-                                                           MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace'45'cnt_234
+                                                           MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace'45'cnt_248
                                                            (coe v0) (coe v1) (coe v6))))
                                                   (coe
                                                      MAlonzo.Code.Data.String.Base.d__'43''43'__20

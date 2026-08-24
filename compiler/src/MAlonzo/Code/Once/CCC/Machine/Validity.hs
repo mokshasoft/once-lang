@@ -56,7 +56,7 @@ du_eval_20 v0 v1 v2
   = coe
       MAlonzo.Code.Once.CCC.Eval.d_eval_12 (coe v1) (coe v2)
       (coe
-         MAlonzo.Code.Once.CCC.FrameSemantics.d_fs'45'numerics_154 (coe v0))
+         MAlonzo.Code.Once.CCC.FrameSemantics.d_fs'45'numerics_158 (coe v0))
 -- Once.CCC.Machine.Validity.ValidityDef._.readLoc
 d_readLoc_32 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -70,7 +70,7 @@ du_readLoc_32 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66
 du_readLoc_32
-  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readLoc_638
+  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readLoc_644
 -- Once.CCC.Machine.Validity.ValidityDef._.BeforeFrontier
 d_BeforeFrontier_70 a0 a1 a2 a3 = ()
 -- Once.CCC.Machine.Validity.ValidityDef.ValidAt
@@ -79,35 +79,35 @@ data T_ValidAt_138
   = C_valid'45'unit_146 |
     C_valid'45'pair_164 MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
                         MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-                        MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
-                        MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
-                        MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+                        MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
+                        MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
+                        MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
                         T_ValidAt_138 T_ValidAt_138 |
     C_valid'45'inl_178 MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-                       MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
-                       MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+                       MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
+                       MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
                        T_ValidAt_138 |
     C_valid'45'inr_192 MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-                       MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
-                       MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+                       MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
+                       MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
                        T_ValidAt_138 |
     C_valid'45'closure_216 MAlonzo.Code.Once.IRTy.T_IRTy_6
                            MAlonzo.Code.Once.IR.T_IR_16 AgdaAny
                            MAlonzo.Code.Data.Nat.Base.T__'8804'__22
                            MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
                            MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-                           MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
-                           MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
-                           MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+                           MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
+                           MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
+                           MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
                            T_ValidAt_138
 -- Once.CCC.Machine.Validity.ValidityDef.PairValid
 d_PairValid_230 a0 a1 a2 a3 a4 a5 a6 a7 = ()
 data T_PairValid_230
   = C_constructor_280 MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
                       MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
-                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
-                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
+                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
+                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
                       T_ValidAt_138 T_ValidAt_138
 -- Once.CCC.Machine.Validity.ValidityDef.PairValid.fst-loc
 d_fst'45'loc_262 ::
@@ -136,7 +136,7 @@ d_snd'45'ptr_268 = erased
 -- Once.CCC.Machine.Validity.ValidityDef.PairValid.fst-before
 d_fst'45'before_270 ::
   T_PairValid_230 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
 d_fst'45'before_270 v0
   = case coe v0 of
       C_constructor_280 v1 v2 v5 v6 v7 v8 v9 -> coe v5
@@ -144,7 +144,7 @@ d_fst'45'before_270 v0
 -- Once.CCC.Machine.Validity.ValidityDef.PairValid.snd-before
 d_snd'45'before_272 ::
   T_PairValid_230 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
 d_snd'45'before_272 v0
   = case coe v0 of
       C_constructor_280 v1 v2 v5 v6 v7 v8 v9 -> coe v6
@@ -152,7 +152,7 @@ d_snd'45'before_272 v0
 -- Once.CCC.Machine.Validity.ValidityDef.PairValid.sucLoc-before
 d_sucLoc'45'before_274 ::
   T_PairValid_230 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
 d_sucLoc'45'before_274 v0
   = case coe v0 of
       C_constructor_280 v1 v2 v5 v6 v7 v8 v9 -> coe v7
@@ -177,9 +177,9 @@ data T_ClosureValid_294
                       MAlonzo.Code.Data.Nat.Base.T__'8804'__22
                       MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
                       MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
-                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
-                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
+                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
+                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
                       T_ValidAt_138
 -- Once.CCC.Machine.Validity.ValidityDef.ClosureValid.EnvType
 d_EnvType_336 ::
@@ -236,7 +236,7 @@ d_code'45'ptr_350 = erased
 -- Once.CCC.Machine.Validity.ValidityDef.ClosureValid.env-before
 d_env'45'before_352 ::
   T_ClosureValid_294 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
 d_env'45'before_352 v0
   = case coe v0 of
       C_constructor_364 v1 v2 v3 v4 v5 v6 v9 v10 v11 v12 -> coe v9
@@ -244,7 +244,7 @@ d_env'45'before_352 v0
 -- Once.CCC.Machine.Validity.ValidityDef.ClosureValid.code-before
 d_code'45'before_354 ::
   T_ClosureValid_294 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
 d_code'45'before_354 v0
   = case coe v0 of
       C_constructor_364 v1 v2 v3 v4 v5 v6 v9 v10 v11 v12 -> coe v10
@@ -252,7 +252,7 @@ d_code'45'before_354 v0
 -- Once.CCC.Machine.Validity.ValidityDef.ClosureValid.sucLoc-before
 d_sucLoc'45'before_356 ::
   T_ClosureValid_294 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
 d_sucLoc'45'before_356 v0
   = case coe v0 of
       C_constructor_364 v1 v2 v3 v4 v5 v6 v9 v10 v11 v12 -> coe v11
@@ -273,8 +273,8 @@ d_InlValid_378 a0 a1 a2 a3 a4 a5 a6 a7 = ()
 data T_InlValid_378
   = C_constructor_420 AgdaAny
                       MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
-                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
+                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
                       T_ValidAt_138
 -- Once.CCC.Machine.Validity.ValidityDef.InlValid.a
 d_a_406 :: T_InlValid_378 -> AgdaAny
@@ -297,7 +297,7 @@ d_payload'45'ptr_410 = erased
 -- Once.CCC.Machine.Validity.ValidityDef.InlValid.payload-before
 d_payload'45'before_412 ::
   T_InlValid_378 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
 d_payload'45'before_412 v0
   = case coe v0 of
       C_constructor_420 v1 v2 v4 v5 v6 -> coe v4
@@ -305,7 +305,7 @@ d_payload'45'before_412 v0
 -- Once.CCC.Machine.Validity.ValidityDef.InlValid.sucLoc-before
 d_sucLoc'45'before_414 ::
   T_InlValid_378 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
 d_sucLoc'45'before_414 v0
   = case coe v0 of
       C_constructor_420 v1 v2 v4 v5 v6 -> coe v5
@@ -325,8 +325,8 @@ d_InrValid_434 a0 a1 a2 a3 a4 a5 a6 a7 = ()
 data T_InrValid_434
   = C_constructor_476 AgdaAny
                       MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
-                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
-                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
+                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
                       T_ValidAt_138
 -- Once.CCC.Machine.Validity.ValidityDef.InrValid.b
 d_b_462 :: T_InrValid_434 -> AgdaAny
@@ -349,7 +349,7 @@ d_payload'45'ptr_466 = erased
 -- Once.CCC.Machine.Validity.ValidityDef.InrValid.payload-before
 d_payload'45'before_468 ::
   T_InrValid_434 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
 d_payload'45'before_468 v0
   = case coe v0 of
       C_constructor_476 v1 v2 v4 v5 v6 -> coe v4
@@ -357,7 +357,7 @@ d_payload'45'before_468 v0
 -- Once.CCC.Machine.Validity.ValidityDef.InrValid.sucLoc-before
 d_sucLoc'45'before_470 ::
   T_InrValid_434 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
 d_sucLoc'45'before_470 v0
   = case coe v0 of
       C_constructor_476 v1 v2 v4 v5 v6 -> coe v5
@@ -463,9 +463,9 @@ d_composePair_626 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> T_ValidAt_138 -> T_ValidAt_138
 d_composePair_626 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 v9 ~v10 ~v11
                   ~v12 v13 v14 v15 v16 v17
@@ -473,9 +473,9 @@ d_composePair_626 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 v9 ~v10 ~v11
 du_composePair_626 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> T_ValidAt_138 -> T_ValidAt_138
 du_composePair_626 v0 v1 v2 v3 v4 v5 v6
   = coe C_valid'45'pair_164 v0 v1 v2 v3 v4 v5 v6
@@ -496,9 +496,9 @@ d_composeClosure_678 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> T_ValidAt_138
 d_composeClosure_678 ~v0 ~v1 ~v2 v3 ~v4 ~v5 v6 v7 v8 ~v9 v10 v11
                      ~v12 ~v13 ~v14 v15 v16 v17 v18
@@ -510,9 +510,9 @@ du_composeClosure_678 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> T_ValidAt_138
 du_composeClosure_678 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
   = coe C_valid'45'closure_216 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
@@ -528,15 +528,15 @@ d_composeInl_720 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> T_ValidAt_138
 d_composeInl_720 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 v7 ~v8 ~v9 v10 v11 v12
   = du_composeInl_720 v7 v10 v11 v12
 du_composeInl_720 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> T_ValidAt_138
 du_composeInl_720 v0 v1 v2 v3 = coe C_valid'45'inl_178 v0 v1 v2 v3
 -- Once.CCC.Machine.Validity.ValidityDef.composeInr
@@ -551,15 +551,15 @@ d_composeInr_752 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> T_ValidAt_138
 d_composeInr_752 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 v7 ~v8 ~v9 v10 v11 v12
   = du_composeInr_752 v7 v10 v11 v12
 du_composeInr_752 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> T_ValidAt_138
 du_composeInr_752 v0 v1 v2 v3 = coe C_valid'45'inr_192 v0 v1 v2 v3
 -- Once.CCC.Machine.Validity.ValidityDef.readLoc-stack-heap-eq
@@ -665,9 +665,9 @@ d_fp''_872 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 ->
   T_ValidAt_138 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_fp''_872 = erased
@@ -689,9 +689,9 @@ d_sp''_874 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 ->
   T_ValidAt_138 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_sp''_874 = erased
@@ -713,9 +713,9 @@ d_fv''_876 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> T_ValidAt_138 -> T_ValidAt_138
 d_fv''_876 v0 v1 v2 v3 ~v4 v5 ~v6 ~v7 v8 v9 ~v10 ~v11 v12 ~v13 ~v14
            ~v15 ~v16 ~v17 ~v18 v19 ~v20
@@ -752,9 +752,9 @@ d_sv''_878 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> T_ValidAt_138 -> T_ValidAt_138
 d_sv''_878 v0 v1 v2 ~v3 v4 ~v5 v6 ~v7 v8 v9 ~v10 ~v11 ~v12 v13 ~v14
            ~v15 ~v16 ~v17 ~v18 ~v19 v20
@@ -793,9 +793,9 @@ d_ep''_926 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_ep''_926 = erased
 -- Once.CCC.Machine.Validity.ValidityDef._.cp'
@@ -818,9 +818,9 @@ d_cp''_928 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_cp''_928 = erased
 -- Once.CCC.Machine.Validity.ValidityDef._.ev'
@@ -843,9 +843,9 @@ d_ev''_930 ::
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> T_ValidAt_138
 d_ev''_930 v0 v1 v2 ~v3 ~v4 ~v5 v6 v7 ~v8 ~v9 v10 ~v11 v12 ~v13 v14
            ~v15 ~v16 ~v17 ~v18 ~v19 ~v20 v21
@@ -879,8 +879,8 @@ d_pp''_964 ::
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_pp''_964 = erased
 -- Once.CCC.Machine.Validity.ValidityDef._.pv'
@@ -898,8 +898,8 @@ d_pv''_966 ::
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> T_ValidAt_138
 d_pv''_966 v0 v1 v2 v3 ~v4 ~v5 v6 v7 ~v8 ~v9 v10 v11 ~v12 ~v13 ~v14
            v15
@@ -933,8 +933,8 @@ d_pp''_1000 ::
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_pp''_1000 = erased
 -- Once.CCC.Machine.Validity.ValidityDef._.pv'
@@ -952,8 +952,8 @@ d_pv''_1002 ::
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
-  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_652 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   T_ValidAt_138 -> T_ValidAt_138
 d_pv''_1002 v0 v1 v2 ~v3 v4 ~v5 v6 v7 ~v8 ~v9 v10 v11 ~v12 ~v13
             ~v14 v15

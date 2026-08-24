@@ -303,6 +303,7 @@ library
       MAlonzo.Code.Once.CCC.FrameSemantics
       MAlonzo.Code.Once.IR
       MAlonzo.Code.Once.IR.Size
+      MAlonzo.Code.Once.IRLits
       MAlonzo.Code.Once.IRTy
       MAlonzo.Code.Once.IRTy.WF
       MAlonzo.Code.Once.Semantics.ValueIR

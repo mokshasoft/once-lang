@@ -96,12 +96,12 @@ d_a'45't4_82 ::
 d_a'45't4_82 = erased
 -- Once.Arith.Backend.RiscV64.Preserve.agree-refl-ccc
 d_agree'45'refl'45'ccc_88 ::
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174 ->
   T_AgreeCCC_14
 d_agree'45'refl'45'ccc_88 = erased
 -- Once.Arith.Backend.RiscV64.Preserve.write-nonccc-agrees
 d_write'45'nonccc'45'agrees_98 ::
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174 ->
   MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 ->
   Integer ->
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -110,64 +110,64 @@ d_write'45'nonccc'45'agrees_98 ::
 d_write'45'nonccc'45'agrees_98 = erased
 -- Once.Arith.Backend.RiscV64.Preserve.AgreeCCC-trans
 d_AgreeCCC'45'trans_222 ::
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174 ->
   T_AgreeCCC_14 -> T_AgreeCCC_14 -> T_AgreeCCC_14
 d_AgreeCCC'45'trans_222 = erased
 -- Once.Arith.Backend.RiscV64.Preserve._.PreservesCCC-rf
 d_PreservesCCC'45'rf_290 ::
-  (MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160 ->
-   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160) ->
+  (MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174 ->
+   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174) ->
   ()
 d_PreservesCCC'45'rf_290 = erased
 -- Once.Arith.Backend.RiscV64.Preserve._.preserves-runFns
 d_preserves'45'runFns_292 ::
-  [MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160 ->
-   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160] ->
+  [MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174 ->
+   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174] ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174 ->
   T_AgreeCCC_14
 d_preserves'45'runFns_292 = erased
 -- Once.Arith.Backend.RiscV64.Preserve._.runFns
 d_runFns_294 ::
-  [MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160 ->
-   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160] ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160
+  [MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174 ->
+   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174] ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174
 d_runFns_294
   = coe MAlonzo.Code.Once.Arith.Backend.PreserveCore.du_runFns_52
 -- Once.Arith.Backend.RiscV64.Preserve._.step-of
 d_step'45'of_296 ::
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   (MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 -> Integer) ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174
 d_step'45'of_296
   = coe
       MAlonzo.Code.Once.Arith.Backend.PreserveCore.du_step'45'of_110
-      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_writeReg_288)
+      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_writeReg_302)
       (coe MAlonzo.Code.Once.Arith.Backend.RiscV64.Confine.d_writes_10)
 -- Once.Arith.Backend.RiscV64.Preserve._.step-of-preserves
 d_step'45'of'45'preserves_298 ::
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   (MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 -> Integer) ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174 ->
   T_AgreeCCC_14
 d_step'45'of'45'preserves_298 = erased
 -- Once.Arith.Backend.RiscV64.Preserve._.write-regs
 d_write'45'regs_300 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174
 d_write'45'regs_300
   = coe
       MAlonzo.Code.Once.Arith.Backend.PreserveCore.du_write'45'regs_78
-      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_writeReg_288)
+      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_writeReg_302)
 -- Once.Arith.Backend.RiscV64.Preserve._.write-regs-preserves
 d_write'45'regs'45'preserves_302 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 ->
-  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_160 ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_RegFile_174 ->
   T_AgreeCCC_14
 d_write'45'regs'45'preserves_302 = erased

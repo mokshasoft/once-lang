@@ -1204,7 +1204,7 @@ du_eval'45'in'45'range_928 v0 v1 v2 v3
              (coe MAlonzo.Code.Once.Word.d_modulus_10 (coe v0))
       MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24 v4 v5
         -> coe
-             MAlonzo.Code.Once.Word.du_'47''738''45'in'45'range_514 (coe v0)
+             MAlonzo.Code.Once.Word.du_'47''738''45'in'45'range_570 (coe v0)
              (coe
                 MAlonzo.Code.Once.Arith.Machine.WordSem.d_eval'45'arith'45'W_32
                 (coe v0) (coe v1) (coe v4) (coe v3))
@@ -1213,7 +1213,7 @@ du_eval'45'in'45'range_928 v0 v1 v2 v3
                 (coe v0) (coe v1) (coe v5) (coe v3))
       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26 v4 v5
         -> coe
-             MAlonzo.Code.Once.Word.du_'37''738''45'in'45'range_548 (coe v0)
+             MAlonzo.Code.Once.Word.du_'37''738''45'in'45'range_604 (coe v0)
              (coe
                 MAlonzo.Code.Once.Arith.Machine.WordSem.d_eval'45'arith'45'W_32
                 (coe v0) (coe v1) (coe v4) (coe v3))

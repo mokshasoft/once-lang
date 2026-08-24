@@ -104,7 +104,7 @@ du_compileFunBody'45'complete_24 v0 v1 v2 v3 v4 v5 v6
             (coe
                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                (coe
-                  MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_4970
+                  MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_4988
                   (coe
                      MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                      (coe v0) (coe v1) (coe v2) (coe v3) (coe v4))
@@ -337,7 +337,7 @@ d_caf'45'go'45'find'45'complete_286 v0 v1 v2 v3 v4 v5 v6
                                                                   (coe
                                                                      MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                                      (coe
-                                                                        MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_4970
+                                                                        MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_4988
                                                                         (coe
                                                                            MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                                                                            (coe v3) (coe v0)
