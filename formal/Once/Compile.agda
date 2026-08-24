@@ -780,6 +780,27 @@ admissibleIR? : ∀ arch cfs → Dec (AdmissibleIR arch cfs)
 admissibleIR? arch cfs =
   all? (OnceWord.Width.inRange? (arch-int-bits arch)) (compiledIntLits cfs)
 
+-- | UNWIRED (plan 0.74 J6, 2026-08-24) — kept, not deleted.
+--
+-- `cfm-build-lits` / `cfm-build-caf` below are no longer on the compile path.
+-- They were SCAFFOLDING: gating on the IR made "elaboration preserves the
+-- programmer's literals" load-bearing, which turned a silent defect into a red
+-- tree and forced the elaborator fold (J6 step 3) and the width threading
+-- (J5). Both have landed, so the difference the gate existed to detect is
+-- gone.
+--
+-- Keeping the refusal wired would cost `ElabPreservesLits` as a PREMISE on
+-- `correct` — the flagship theorem — and that premise is a global induction
+-- over the elaborator. That is a bad trade for a check that, post-fold, can
+-- only fire on a compiler bug. The invariant it stands for is recorded as a
+-- residual instead:
+--
+--     compiledIntLits (compile of m)  ⊆  moduleIntLits m
+--
+-- and it is nearly local, because `Surface.Elaborate.intLit` is the ONLY
+-- producer of an IR `Int` literal (three call sites, each already holding a
+-- source literal). Proving it re-wires this gate at zero cost to `correct`.
+--
 -- | Same message, blaming the literal the MACHINE would have loaded. When the
 -- two gates disagree that difference is the whole diagnosis, so the message
 -- says which list it came from.
@@ -813,7 +834,7 @@ cfm-build-gated : AllocMode → Bool → (arch : Arch) → (mod : Module)
                 → Dec (AdmissibleM arch mod) → CompileResult
 cfm-build-gated m doOpt arch mod funs polys (no  _) = Error (litRangeError arch mod)
 cfm-build-gated m doOpt arch mod funs polys (yes _) =
-  cfm-build-caf arch (compileAllFuns m doOpt funs (buildPolyCtx polys) (collectSigEffects (Module.decls mod)))
+  cfm-build-emit arch (compileAllFuns m doOpt funs (buildPolyCtx polys) (collectSigEffects (Module.decls mod)))
 
 cfm-stage-aux : AllocMode → Stage → Bool → Arch → Module → List FunInfo → List PolyFunInfo → CompileResult
 cfm-stage-aux m Parse doOpt arch mod funs polys = Parsed funs polys

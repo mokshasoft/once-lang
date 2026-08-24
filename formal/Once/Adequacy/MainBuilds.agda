@@ -183,27 +183,26 @@ built-caf arch {c} admIR .(inj₂ c) refl =
 cfm-built-gated : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module)
   (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
   (d : Dec (AdmissibleM arch m)) → AdmissibleM arch m →
-  {c : List C.CompiledFun} → C.AdmissibleIR arch c →
+  {c : List C.CompiledFun} →
   C.compileAllFuns C.Heap doOpt funs (C.buildPolyCtx polys) (C.collectSigEffects (P.Module.decls m)) ≡ inj₂ c →
   Σ-syntax String (λ asm → C.cfm-build-gated C.Heap doOpt arch m funs polys d ≡ C.Built asm)
-cfm-built-gated doOpt arch m funs polys (yes _)  adm admIR eq = built-caf arch admIR _ eq
-cfm-built-gated doOpt arch m funs polys (no ¬adm) adm admIR eq = ⊥-elim (¬adm adm)
+cfm-built-gated doOpt arch m funs polys (yes _)  adm eq = _ , cong (C.cfm-build-emit arch) eq
+cfm-built-gated doOpt arch m funs polys (no ¬adm) adm eq = ⊥-elim (¬adm adm)
 
 cfm-built-aux : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) → AdmissibleM arch m →
   (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) {c : List C.CompiledFun} →
-  C.AdmissibleIR arch c →
   C.compileResolvedModule-aux C.Heap doOpt m ef ≡ inj₂ c →
   Σ-syntax String (λ asm → C.cfm-ef-aux C.Heap C.Build doOpt arch m ef ≡ C.Built asm)
-cfm-built-aux doOpt arch m adm (inj₁ err) admIR ()
-cfm-built-aux doOpt arch m adm (inj₂ (funs , polys)) admIR eq =
-  cfm-built-gated doOpt arch m funs polys (admissibleM? arch m) adm admIR eq
+cfm-built-aux doOpt arch m adm (inj₁ err) ()
+cfm-built-aux doOpt arch m adm (inj₂ (funs , polys)) eq =
+  cfm-built-gated doOpt arch m funs polys (admissibleM? arch m) adm eq
 
 cfm-built-from-crm : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module) → AdmissibleM arch m →
-  {c : List C.CompiledFun} → C.AdmissibleIR arch c →
+  {c : List C.CompiledFun} →
   C.compileResolvedModule C.Heap doOpt m ≡ inj₂ c →
   Σ-syntax String (λ asm → C.compileFromModule C.Heap C.Build doOpt arch m ≡ C.Built asm)
-cfm-built-from-crm doOpt arch m adm admIR eq =
-  cfm-built-aux doOpt arch m adm (C.extractFunctions (C.extractAliases m) m) admIR eq
+cfm-built-from-crm doOpt arch m adm eq =
+  cfm-built-aux doOpt arch m adm (C.extractFunctions (C.extractAliases m) m) eq
 
 ------------------------------------------------------------------------
 -- `moduleToIR m ≡ just ir` ⇒ `compileResolvedModule Heap false m ≡ inj₂ _`.
@@ -254,10 +253,9 @@ ElabPreservesLits arch m doOpt =
 
 main⇒built : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
   AdmissibleM arch m →
-  ElabPreservesLits arch m doOpt →
   moduleToIR m ≡ just ir →
   Σ-syntax String (λ asm → C.compileFromModule C.Heap C.Build doOpt arch m ≡ C.Built asm)
-main⇒built arch doOpt m ir adm epl mi =
+main⇒built arch doOpt m ir adm mi =
   let (funs  , crm-false)  = moduleToIR-inj₂ m mi
       (funs' , crm-doOpt') = crm-doOpt doOpt m crm-false
-  in cfm-built-from-crm doOpt arch m adm (epl crm-doOpt') crm-doOpt'
+  in cfm-built-from-crm doOpt arch m adm crm-doOpt'

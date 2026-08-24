@@ -36,6 +36,7 @@ open import Once.Type using (Type; Unit; Void; Int; Str)
 import Once.Type as T
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RLam; RQualified)
+-- plan 0.74 J6 step 3: the negation dispatch's numeral view
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport;
@@ -161,9 +162,12 @@ neg-non-Int-Unit : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
                    → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                    → err ≡ TypeMismatch Int Unit
 neg-non-Int-Unit ctx e eqInner eqOuter
-  with inferElabV ctx e | eqInner
-... | success Unit _ _ _ _ , _ | refl with eqOuter
-...   | refl = refl
+  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+-- A NUMERAL operand infers to `Int`, so the premise is absurd here.
+... | just (n , refl) | ()
+... | nothing | eqI with inferElabV ctx e | eqI
+...   | success Unit _ _ _ _ , _ | refl with eqOuter
+...     | refl = refl
 
 neg-non-Int-Str : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
                     {Ψ' eE' d' f' err}
@@ -171,9 +175,12 @@ neg-non-Int-Str : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
                   → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                   → err ≡ TypeMismatch Int Str
 neg-non-Int-Str ctx e eqInner eqOuter
-  with inferElabV ctx e | eqInner
-... | success Str _ _ _ _ , _ | refl with eqOuter
-...   | refl = refl
+  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+-- A NUMERAL operand infers to `Int`, so the premise is absurd here.
+... | just (n , refl) | ()
+... | nothing | eqI with inferElabV ctx e | eqI
+...   | success Str _ _ _ _ , _ | refl with eqOuter
+...     | refl = refl
 case-scrut-Unit : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                     (xL : String) (eL : Raw.RawExpr)
                     (xR : String) (eR : Raw.RawExpr)
@@ -554,9 +561,12 @@ neg-non-Int-Void : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
                   → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                   → err ≡ TypeMismatch Int Void
 neg-non-Int-Void ctx e eqInner eqOuter
-  with inferElabV ctx e | eqInner
-... | success Void _ _ _ _ , _ | refl with eqOuter
-...   | refl = refl
+  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+-- A NUMERAL operand infers to `Int`, so the premise is absurd here.
+... | just (n , refl) | ()
+... | nothing | eqI with inferElabV ctx e | eqI
+...   | success Void _ _ _ _ , _ | refl with eqOuter
+...     | refl = refl
 case-scrut-Void : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                     (xL : String) (eL : Raw.RawExpr)
                     (xR : String) (eR : Raw.RawExpr)
@@ -621,9 +631,12 @@ neg-non-Int-Float : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
                    → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                    → err ≡ TypeMismatch Int T.Float
 neg-non-Int-Float ctx e eqInner eqOuter
-  with inferElabV ctx e | eqInner
-... | success T.Float _ _ _ _ , _ | refl with eqOuter
-...   | refl = refl
+  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+-- A NUMERAL operand infers to `Int`, so the premise is absurd here.
+... | just (n , refl) | ()
+... | nothing | eqI with inferElabV ctx e | eqI
+...   | success T.Float _ _ _ _ , _ | refl with eqOuter
+...     | refl = refl
 
 neg-non-Int-Buffer : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
                       {Ψ' eE' d' f' err}
@@ -631,9 +644,12 @@ neg-non-Int-Buffer : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
                     → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                     → err ≡ TypeMismatch Int T.Buffer
 neg-non-Int-Buffer ctx e eqInner eqOuter
-  with inferElabV ctx e | eqInner
-... | success T.Buffer _ _ _ _ , _ | refl with eqOuter
-...   | refl = refl
+  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+-- A NUMERAL operand infers to `Int`, so the premise is absurd here.
+... | just (n , refl) | ()
+... | nothing | eqI with inferElabV ctx e | eqI
+...   | success T.Buffer _ _ _ _ , _ | refl with eqOuter
+...     | refl = refl
 
 neg-non-Int-Product : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
                        {Ψ' eE' d' f' err}
@@ -641,9 +657,12 @@ neg-non-Int-Product : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
                      → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                      → err ≡ TypeMismatch Int (A T.* B)
 neg-non-Int-Product ctx e eqInner eqOuter
-  with inferElabV ctx e | eqInner
-... | success (_ T.* _) _ _ _ _ , _ | refl with eqOuter
-...   | refl = refl
+  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+-- A NUMERAL operand infers to `Int`, so the premise is absurd here.
+... | just (n , refl) | ()
+... | nothing | eqI with inferElabV ctx e | eqI
+...   | success (_ T.* _) _ _ _ _ , _ | refl with eqOuter
+...     | refl = refl
 
 neg-non-Int-Sum : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
                    {Ψ' eE' d' f' err}
@@ -651,9 +670,12 @@ neg-non-Int-Sum : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
                  → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                  → err ≡ TypeMismatch Int (A T.+ B)
 neg-non-Int-Sum ctx e eqInner eqOuter
-  with inferElabV ctx e | eqInner
-... | success (_ T.+ _) _ _ _ _ , _ | refl with eqOuter
-...   | refl = refl
+  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+-- A NUMERAL operand infers to `Int`, so the premise is absurd here.
+... | just (n , refl) | ()
+... | nothing | eqI with inferElabV ctx e | eqI
+...   | success (_ T.+ _) _ _ _ _ , _ | refl with eqOuter
+...     | refl = refl
 snd-non-pair-Float : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success T.Float Ψ' eE' d' f'
@@ -794,9 +816,12 @@ neg-non-Int-Eff : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
                   → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                   → err ≡ TypeMismatch Int (A T.⇒[ T.mk-kind T.Many T.eff ] B)
 neg-non-Int-Eff ctx e eqInner eqOuter
-  with inferElabV ctx e | eqInner
-... | success (_ T.⇒[ T.mk-kind T.Many T.eff ] _) _ _ _ _ , _ | refl with eqOuter
-...   | refl = refl
+  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+-- A NUMERAL operand infers to `Int`, so the premise is absurd here.
+... | just (n , refl) | ()
+... | nothing | eqI with inferElabV ctx e | eqI
+...   | success (_ T.⇒[ T.mk-kind T.Many T.eff ] _) _ _ _ _ , _ | refl with eqOuter
+...     | refl = refl
 
 neg-non-Int-μ : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {F}
                  {Ψ' eE' d' f' err}
@@ -804,9 +829,12 @@ neg-non-Int-μ : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {F}
                → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                → err ≡ TypeMismatch Int (T.μ-type F)
 neg-non-Int-μ ctx e eqInner eqOuter
-  with inferElabV ctx e | eqInner
-... | success (T.μ-type _) _ _ _ _ , _ | refl with eqOuter
-...   | refl = refl
+  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+-- A NUMERAL operand infers to `Int`, so the premise is absurd here.
+... | just (n , refl) | ()
+... | nothing | eqI with inferElabV ctx e | eqI
+...   | success (T.μ-type _) _ _ _ _ , _ | refl with eqOuter
+...     | refl = refl
 
 neg-non-Int-ν : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {F}
                  {Ψ' eE' d' f' err}
@@ -814,9 +842,12 @@ neg-non-Int-ν : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {F}
                → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                → err ≡ TypeMismatch Int (T.ν-type F)
 neg-non-Int-ν ctx e eqInner eqOuter
-  with inferElabV ctx e | eqInner
-... | success (T.ν-type _) _ _ _ _ , _ | refl with eqOuter
-...   | refl = refl
+  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+-- A NUMERAL operand infers to `Int`, so the premise is absurd here.
+... | just (n , refl) | ()
+... | nothing | eqI with inferElabV ctx e | eqI
+...   | success (T.ν-type _) _ _ _ _ , _ | refl with eqOuter
+...     | refl = refl
 
 neg-non-Int-Fun : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type} {q : _}
                     {Ψ' eE' d' f' err}
@@ -824,9 +855,12 @@ neg-non-Int-Fun : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type} {q : _}
                   → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                   → err ≡ TypeMismatch Int (A T.⇒[ T.mk-kind q T.pure ] B)
 neg-non-Int-Fun ctx e eqInner eqOuter
-  with inferElabV ctx e | eqInner
-... | success (_ T.⇒[ T.mk-kind _ T.pure ] _) _ _ _ _ , _ | refl with eqOuter
-...   | refl = refl
+  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+-- A NUMERAL operand infers to `Int`, so the premise is absurd here.
+... | just (n , refl) | ()
+... | nothing | eqI with inferElabV ctx e | eqI
+...   | success (_ T.⇒[ T.mk-kind _ T.pure ] _) _ _ _ _ , _ | refl with eqOuter
+...     | refl = refl
 case-scrut-Eff : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
                     (xL : String) (eL : Raw.RawExpr)
                     (xR : String) (eR : Raw.RawExpr)
