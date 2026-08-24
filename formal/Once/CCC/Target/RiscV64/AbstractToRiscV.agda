@@ -41,7 +41,8 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Once.Target.Symbol using (once-symbol; once-symbol-path)
 
 -- Import RISC-V syntax
-open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Decimal using (Decimal; round)
 import Once.Word as OnceWord
 module IntW = OnceWord.Width 64
 open import Once.CCC.Target.RiscV64.Syntax
@@ -292,10 +293,10 @@ compile-abstract (instr-sigop si) = call-sym (once-symbol-path (SigOpInfo.name s
 -- promoting `movq $big` to `movabs`.
 -- D115: an `Int` literal's payload is a `ℤ` (source syntax), so the emitter
 -- MATERIALISES it at this target's width — two's complement, 64 bits. Exactly
--- what the float case beside it does with `encode`; before D115 the int case
+-- what the float case beside it does with `round`; before D115 the int case
 -- could skip this only because literals were never negative.
 compile-abstract (instr-load-const fits-int   v) = li a0 (+ (IntW.fromℤ v)) ∷ []
-compile-abstract (instr-load-const fits-float v) = li a0 (+ (encode binary64 v)) ∷ []
+compile-abstract (instr-load-const fits-float v) = li a0 (+ (round binary64 v)) ∷ []
 -- Plan 0.53: closure-body code-addr load. Mirror x86-64's
 -- `lea .L_thunk_n(%rip), %rax` — load the body label address into Output.
 compile-abstract (instr-load-code-addr n) = lla a0 n ∷ []

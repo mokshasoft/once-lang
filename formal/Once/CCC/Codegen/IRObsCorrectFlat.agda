@@ -46,7 +46,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- surface `FitsInReg`/`fits-in-reg?` stay; the μ/functor + value-domain layer is IRTy.
 open import Once.Type using (Type; FitsInReg; fits-in-reg?)
   renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ; Int to Intˢ; Unit to Unitˢ)
-open import Once.Float.Dyadic using (Dyadic; encode)
+open import Once.Float.Decimal using (Decimal; round)
 open import Data.Integer using (ℤ)
 open import Once.IRTy using (WellFormedFI-irrelevant)
 open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
@@ -630,7 +630,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   --
   -- Two clauses because `prim-sv` dispatches on the `FitsInRegI` evidence; the
   -- bodies are identical.
-  obs-correct-const : ∀ {A} (fit : FitsInRegI A) (v : ⟦ ℤ , Dyadic ⟧-baseI A)
+  obs-correct-const : ∀ {A} (fit : FitsInRegI A) (v : ⟦ ℤ , Decimal ⟧-baseI A)
                     → IRObsCorrectF (const fit v)
   obs-correct-const fits-int v _ mIn x input-loc s alloc _ valid input-before nh rdi-eq =
     record
@@ -702,11 +702,11 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       out-lit : readReg (regs (forced (floc (flat-run 2 (const fits-float v) s alloc)))) Output
               ≡ prim-sv fits-float (eval (const fits-float v) x)
       -- Plan 0.73 (D113): the machine MATERIALISES the literal as it executes —
-      -- `exec-abstract` writes `encode (float-format FS) v`, not the payload.
+      -- `exec-abstract` writes `round (float-format FS) v`, not the payload.
       -- The denotation says the same because `eval` above is at the same
       -- format; that agreement is the whole point of reading it from one place.
       out-lit rewrite run-eq =
-        writeReg-same (regs s) Output (SV-Lit fits-floatˢ (encode (FrameSemantics.float-format FS) v))
+        writeReg-same (regs s) Output (SV-Lit fits-floatˢ (round (FrameSemantics.float-format FS) v))
 
   postulate
     obs-correct-fst       : ∀ {A B} → IRObsCorrectF (fst {A} {B})

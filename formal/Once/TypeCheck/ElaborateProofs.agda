@@ -97,14 +97,14 @@ checkElab-fallback-RInt {ctx} n with Int ≟T Int
 --
 -- `accept?-complete` is what turns the witness into the reduction: it says the
 -- decider agrees with the derivation, so `inferElabV`'s dispatch unsticks.
+-- K3: no acceptance witness rides in, because there is none. Every float
+-- literal checks at `Float`.
 checkElab-fallback-RFloat :
-  ∀ {ctx : NamedCtx} (i f l : ℕ) {d : Dyadic} (ok : Accepted i f l d)
+  ∀ {ctx : NamedCtx} (i f l : ℕ)
   → ∃-syntax (λ eE → ∃-syntax (λ dd → ∃-syntax (λ fr →
       checkElab ctx (Raw.RFloat i f l) Float
         ≡ success Surface.zeroUsage eE dd fr)))
-checkElab-fallback-RFloat {ctx} i f l ok
-  rewrite accept?-complete ok
-  with Float ≟T Float
+checkElab-fallback-RFloat {ctx} i f l with Float ≟T Float
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 

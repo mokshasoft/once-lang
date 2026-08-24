@@ -54,7 +54,7 @@ open import Once.TypeCheck.ElaborateProofs
          classifyRPairTarget; rpt-vlift; rpt-other;
          bbc-id; bbc-fst; bbc-snd; bbc-terminal; bbc-initial;
          bbc-inl; bbc-inr; bbc-other)
-open import Once.Float.Representable using (Accepted; accept?-complete)
+
 open import Once.TypeCheck.Judgment
 open import Once.Functor.Translate using (WellFormedF; IsConcrete; con-base; con-fun; IsBaseType)
 open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?;
@@ -1140,9 +1140,9 @@ checkG-realize (g-int n) refl = refl
 -- Matching on `eq` after the rewrite gets stuck (the index mentions the
 -- rewritten term), so read the component out with `maybe′` instead — the
 -- rewrite has already made the left side reduce to `just (floatLit d , _)`.
-checkG-realize {m = m} (g-float i f l d ok) eq
-  rewrite accept?-complete ok =
-    sym (cong (Data.Maybe.maybe′ proj₁ m) eq)
+-- K3: `checkG`'s float clause is TOTAL, so it reduces on the spot and the
+-- `accept?-complete` rewrite that used to be needed here is gone with it.
+checkG-realize (g-float i f l) refl = refl
 checkG-realize {ctx} {X} (g-terminal eqL eqI) eq
   with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal" | eq
 ... | llv-not-found _ | liv-not-found _ | refl = refl
@@ -1500,9 +1500,7 @@ mutual
 
   -- Leaves.
   iFromInfer {ctx} (t-int n)   = checkElab-fallback-RInt {ctx} n
-  -- The witness rides in from the derivation; there is no float fallback
-  -- without one, which is the acceptance rule stated in the proofs.
-  iFromInfer {ctx} (t-float i f l d ok) = checkElab-fallback-RFloat {ctx} i f l ok
+  iFromInfer {ctx} (t-float i f l) = checkElab-fallback-RFloat {ctx} i f l
   iFromInfer {ctx} (t-str s)   = checkElab-fallback-RStringLit {ctx} s
   iFromInfer {ctx} t-unit      = checkElab-fallback-RUnit {ctx}
   iFromInfer {ctx} t-unit-var  = checkElab-fallback-RVar-unit {ctx}
@@ -1633,8 +1631,7 @@ mutual
         inferElab ctx e ≡ success A Ψ eE d f
 
   infer-complete {ctx} (t-int n)   = infer-complete-RInt {ctx} n
-  infer-complete {ctx} (t-float i f l d ok)
-    rewrite accept?-complete ok = _ , _ , _ , refl
+  infer-complete {ctx} (t-float i f l) = _ , _ , _ , refl
   infer-complete {ctx} (t-str s)   = infer-complete-RStringLit {ctx} s
   infer-complete {ctx} t-unit      = infer-complete-RUnit {ctx}
   infer-complete {ctx} t-unit-var  = infer-complete-RVar-unit {ctx}
@@ -1740,8 +1737,7 @@ mutual
               → (gd : ctx ⊢ᵍ e ∶ A)
               → ∃[ m ] ∃[ gd' ] checkG ctx X e A ≡ just (m , gd')
   checkG-just X (g-int n) = _ , _ , refl
-  checkG-just X (g-float i f l d ok)
-    rewrite accept?-complete ok = _ , _ , refl
+  checkG-just X (g-float i f l) = _ , _ , refl
   checkG-just {ctx = ctx} X (g-terminal eqL eqI)
     with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
   ... | llv-not-found _ | liv-not-found _ = _ , _ , refl
@@ -1778,8 +1774,7 @@ mutual
                      checkElabV ctx e (X T.⇒[ T.mk-kind T.Many π ] A)
                        ≡ (success Surface.zeroUsage eE d f' , w)
   gd-completeV X (g-int n) = _ , _ , _ , _ , refl
-  gd-completeV X (g-float i f l d ok)
-    rewrite accept?-complete ok = _ , _ , _ , _ , refl
+  gd-completeV X (g-float i f l) = _ , _ , _ , _ , refl
   gd-completeV {ctx = ctx} X (g-terminal eqL eqI) = checkElab-fallback-RVar-terminalV {ctx} X eqL eqI
   gd-completeV {ctx = ctx} X (g-pair {a = a} {b = b} {A = A} {B = B} ga gb)
     with inspectCheckG ctx X (Raw.RPair a b) (A T.* B) | checkG-just X (g-pair ga gb)
@@ -1816,9 +1811,8 @@ mutual
                      → ctx ⊢ᵍ e ∶ B → StrongElab ctx e A B π
   const-morph-strong (g-int n) =
     _ , m-const (g-int n) , _ , _ , _ , t-value-lift (g-int n) , refl , refl , refl , refl
-  const-morph-strong (g-float i f l d ok)
-    rewrite accept?-complete ok =
-    _ , m-const (g-float i f l d ok) , _ , _ , _ , t-value-lift (g-float i f l d ok)
+  const-morph-strong (g-float i f l) =
+    _ , m-const (g-float i f l) , _ , _ , _ , t-value-lift (g-float i f l)
     , refl , refl , refl , refl
   -- g-terminal elaborates as the terminal MORPHISM (t-morph-lift (m-terminal …)),
   -- not a value-lift — mirror the RVar-terminal elaborator path directly.

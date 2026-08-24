@@ -43,7 +43,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subs
 
 -- Semantic operations
 open import Once.Word using (Carrier)
-open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (Decimal)
 open import Once.Semantics.Value Carrier Carrier using (sem-In; sem-Out; sem-CoIn; sem-CoOut;
                                           coerce-functor; coerce-functor⁻¹; sem-Out-In;
                                           sem-CoOut-CoIn; coerce-round-trip)

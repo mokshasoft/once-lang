@@ -45,7 +45,7 @@
 -- PLAN 0.72 (D112): `FloatRep` joins `IntRep` as a parameter. `Float`'s
 -- representation was hardcoded to Agda's double while `Int`'s was a parameter,
 -- which is what let a 64-bit value be claimed to fit a 32-bit register with no
--- postulate to point at. Instantiated at `Once.Float.Dyadic.Dyadic`, the
+-- postulate to point at. Instantiated at `Once.Float.Decimal.Decimal`, the
 -- width-free exact carrier — the analogue of `Once.Word.Carrier`.
 module Once.Semantics.Value (IntRep : Set) (FloatRep : Set) where
 

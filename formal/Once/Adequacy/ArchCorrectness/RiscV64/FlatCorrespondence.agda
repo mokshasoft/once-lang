@@ -21,7 +21,8 @@
 -- asserted.
 ------------------------------------------------------------------------
 
-open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Decimal using (Decimal; round)
 open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.CCC.Target.RiscV64.Syntax using (slot-size)
 open import Relation.Binary.PropositionalEquality using (_≡_)

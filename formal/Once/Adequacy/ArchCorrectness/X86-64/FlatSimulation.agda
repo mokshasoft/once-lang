@@ -41,7 +41,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CanonicalName using (CanonicalName)
 
 -- `fmt-eq`'s type names a format, so this import must precede the header.
-open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Decimal using (Decimal; round)
 open import Data.Integer using (ℤ)
 import Once.Word as OnceWord
 module IntW = OnceWord.Width 64
@@ -54,7 +55,7 @@ module Once.Adequacy.ArchCorrectness.X86-64.FlatSimulation
   (FS : FrameSemantics)
   (word-eq : frame-word FS ≡ slot-size)
   -- …and the same kind of pinning for the FLOAT FORMAT (plan 0.73, D113).
-  -- The emitter writes `encode binary64` into the immediate; the abstract machine
+  -- The emitter writes `round binary64` into the immediate; the abstract machine
   -- materialises a float literal at `float-format FS`. For those to be the
   -- same number, THIS `FS` has to be this arch's — and with `FS` abstract
   -- here, that is not derivable, it is a premise. Discharged by `refl` at
@@ -1288,7 +1289,7 @@ block-step-load-const {hv} prog fs s v cc h ft fits =
 -- a premise rather than a proof. That is the one place in phase D where a
 -- premise stands in for something already known; it is discharged the day
 -- `Data.Word.Properties` gains the bound.
-block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : Dyadic) → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : Decimal) → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
   -- Stated in the INTERFACE's language (`lit-value`, the machine's own
   -- materialisation) rather than the emitter's, so `BlockSteps` needs no
@@ -1301,20 +1302,20 @@ block-step-load-const-float {hv} prog fs s v cc h ft fits =
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
     halt-s = trans (C.halt-eq dc) h
-    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (imm (encode binary64 v)))
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg rax) (imm (round binary64 v)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-load-const fits-float v) ft)
     post : X.State
-    post = record s { regs = xwriteReg (xregs s) rax (encode binary64 v) ; pc = pc s + 1 }
+    post = record s { regs = xwriteReg (xregs s) rax (round binary64 v) ; pc = pc s + 1 }
     -- The premise speaks of `float-format FS`; `norm-id` needs the emitter's
     -- concrete format. One `subst`, and `fmt-eq` has done its job.
-    fits64 : (encode binary64) v < X.W.modulus
-    fits64 = subst (λ F → encode F v < X.W.modulus) fmt-eq fits
+    fits64 : (round binary64) v < X.W.modulus
+    fits64 = subst (λ F → round F v < X.W.modulus) fmt-eq fits
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
     snh = subst (λ w → X.step-not-halted (compile-trace prog) s
                        ≡ just (record s { regs = xwriteReg (xregs s) rax w ; pc = pc s + 1 }))
                 (X.W.norm-id fits64)
-                (step-mov-ri {compile-trace prog} {s} {rax} {(encode binary64) v} fetch-x86)
+                (step-mov-ri {compile-trace prog} {s} {rax} {(round binary64) v} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-load-const fits-float v) prog fs))
@@ -1322,7 +1323,7 @@ block-step-load-const-float {hv} prog fs s v cc h ft fits =
     -- `rewrite` cannot be used here: it would generalise `float-format FS`
     -- over the whole type, `post` included, and the abstraction fails.
     sr : C.SetsRole s post role-out (C.lit-word (AbstractExec.lit-value {FS} fits-float v))
-    sr = subst (λ F → C.SetsRole s post role-out (C.lit-word (encode F v)))
+    sr = subst (λ F → C.SetsRole s post role-out (C.lit-word (round F v)))
                (sym fmt-eq)
                (C.sets-role-x86 s role-out _ _ _)
 

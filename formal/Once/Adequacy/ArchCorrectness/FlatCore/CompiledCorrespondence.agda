@@ -48,7 +48,7 @@ open import Once.CCC.Label using (Label)
 open import Once.CanonicalName using (CanonicalName)
 
 open import Data.Float using () renaming (Float to AgdaFloat)
-open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
@@ -653,7 +653,7 @@ record BlockSteps : Set₁ where
       → AbstractExec.lit-value {FS} fits-int v < modulus
       → BlockStep hv prog fs s (instr-load-const fits-int v)
     bs-load-const-float :
-      ∀ {hv : HeapView} prog fs s (v : Dyadic) → CompiledCorr hv prog fs s
+      ∀ {hv : HeapView} prog fs s (v : Decimal) → CompiledCorr hv prog fs s
       → halted (floc fs) ≡ false
       → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
       → AbstractExec.lit-value {FS} fits-float v < modulus

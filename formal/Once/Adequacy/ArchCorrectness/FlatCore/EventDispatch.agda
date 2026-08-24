@@ -60,7 +60,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.HeadView as HV
 import Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface as EI
 
 open import Data.Float using () renaming (Float to AgdaFloat)
-open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (Decimal)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch
   (o : CanonicalName)

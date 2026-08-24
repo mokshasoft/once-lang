@@ -251,9 +251,9 @@ bridge-g : ∀ {ctx : NamedCtx} {e A} {X : Type} (d : ctx ⊢ᵍ e ∶ A) (y : �
          → RelT A (returnT (⟦ d ⟧ᵍ fmt)) (liftFn fmt (realize-global {X = X} d) y)
 bridge-g {ctx = ctx} {X = X} (g-int n) y = int-bridge {ctx = ctx} {X = X} n y
 -- The float leaf reduces the same way and even more directly: `⟦ g-float … ⟧ᵍ`
--- IS `d`, and `realize-global (g-float … d …) = const fits-float d ∘ terminal`,
+-- IS `d`, and `realize-global (g-float … d …) fits-float d ∘ terminal`,
 -- whose `evalᴰ` is `d` — so both sides are `([] , d)` definitionally.
-bridge-g (g-float i f l d ok) y k = refl , refl
+bridge-g (g-float i f l) y k = refl , refl
 -- `liftFn (realize-global d) y` is APPLIED to `y`, so `liftFn` unfolds and a
 -- `rewrite` of the (funext) reduction can't fire; convert with `subst (RelT …)`
 -- over the reduction applied at `y` (`cong (λ h → h y)`).

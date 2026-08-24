@@ -48,7 +48,8 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.Label using (LabelId)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Word using (Carrier)
-open import Once.Float.Dyadic using (Dyadic; encode; encode-fits; binary32; binary64)
+open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Decimal using (Decimal; round; round-fits)
 open import Data.Integer using (ℤ)
 open import Data.Nat.Properties using (<-≤-trans; ^-monoʳ-≤; n≤1+n)
 open import Data.Float using () renaming (Float to AgdaFloat)
@@ -294,7 +295,7 @@ open LitFits public
 -- It was a parameter for as long as the encoder was `primFloatToWord`: the
 -- image of a primitive has no stated bound, so the fact had to be borrowed.
 -- With the encoder arithmetic on a dyadic (P1/P2) the bound is a THEOREM —
--- `encode` is `exp * 2 ^ sig-bits + sig`, whose parts are residues, so it
+-- `round` is `exp * 2 ^ sig-bits + sig`, whose parts are residues, so it
 -- lands below `2 ^ (1 + exp-bits + sig-bits)` = 2^31, and the register holds
 -- 2^32. The premises are inherited from the family's shape and none of
 -- them is used: the bound holds for EVERY dyadic, not merely the reachable
@@ -304,11 +305,11 @@ open LitFits public
 float-fits :
   ∀ {hv : FCx.HeapView x86-32-frame-semantics refl}
     (prog : AbstractTrace) (fs : FlatMachine.FlatState {x86-32-frame-semantics})
-    (s : X.State) (v : Dyadic)
+    (s : X.State) (v : Decimal)
   → RCx.RunAt o x86-32-frame-semantics refl prog fs
   → FSimx.CompiledCorr o x86-32-frame-semantics refl refl hv prog fs s
   → FlatMachine.fetch {x86-32-frame-semantics} prog
       (FlatMachine.fpc {x86-32-frame-semantics} fs) ≡ just (instr-load-const fits-float v)
-  → (encode binary32) v < W.modulus
-float-fits _ _ _ v _ _ _ = encode-fits binary32 v
+  → (round binary32) v < W.modulus
+float-fits _ _ _ v _ _ _ = round-fits binary32 v
 

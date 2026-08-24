@@ -43,7 +43,8 @@ open import Data.Maybe using (just)
 open import Once.Type using (fits-int; fits-float)
 open import Once.Word using (Carrier)
 open import Data.Float using () renaming (Float to AgdaFloat)
-open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Decimal using (Decimal; round)
 open import Data.Integer using (ℤ)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; instr-alloc-heap; instr-ctrl; c-thunk; c-ret; instr-call-closure
@@ -66,7 +67,7 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
   (word-eq : frame-word FS ≡ slot-size)
   -- …and the float format pinned to this target's, the companion of `word-eq`
   -- (plan 0.73, D113). Passed straight through to `FlatSimulation`, which is
-  -- where the emitter's `encode binary32` and the machine's `float-format FS`
+  -- where the emitter's `round binary32` and the machine's `float-format FS`
   -- have to be shown to be the same number.
   (fmt-eq : FrameSemantics.float-format FS ≡ binary32)
   -- MEMORY EXHAUSTION, as a PARAMETER rather than a postulate (2026-08-05).
@@ -177,7 +178,7 @@ module Once.Adequacy.ArchCorrectness.X86-32.ConcFlatSim (o : CanonicalName)
             → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-int v < X.W.modulus)
   (float-fits : ∀ {hv : FC.HeapView FS word-eq}
                   (prog : AbstractTrace) (fs : FlatMachine.FlatState {FS})
-                  (s : X.State) (v : Dyadic)
+                  (s : X.State) (v : Decimal)
               → RC.RunAt o FS word-eq prog fs
               → FSim.CompiledCorr o FS word-eq fmt-eq hv prog fs s
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)

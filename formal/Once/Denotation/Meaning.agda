@@ -24,6 +24,7 @@ module Once.Denotation.Meaning where
 open import Data.Integer using (ℤ)
 import Once.Word as OnceWord
 open import Once.Float.Dyadic using (encode)
+open import Once.Float.Decimal using (Decimal; decimalOf; round)
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)

@@ -24,7 +24,8 @@ open import Once.CCC.Target.X86-64.Syntax
 open import Once.Target.Symbol using (once-symbol-path)
 open import Once.CanonicalName using (CanonicalName)
 open import Once.Type using (FitsInReg; fits-int; fits-float)
-open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Decimal using (Decimal; round)
 import Once.Word as OnceWord
 module IntW = OnceWord.Width 64
 open import Once.Semantics.Machine using (LitPayload)
@@ -51,13 +52,13 @@ compile-sigOp-length _ = refl
 compile-const : ∀ {A} (p : FitsInReg A) → LitPayload p → Program
 -- D115: an `Int` literal's payload is a `ℤ` (source syntax), so the emitter
 -- MATERIALISES it at this target's width — two's complement, 64 bits. Exactly
--- what the float case beside it does with `encode`; before D115 the int case
+-- what the float case beside it does with `round`; before D115 the int case
 -- could skip this only because literals were never negative.
 compile-const fits-int   n = mov (reg rax) (imm (IntW.fromℤ n)) ∷ []
 -- D079 (2026-08-03): a float CONSTANT is a 64-bit pattern, so it loads as
 -- an ordinary immediate (gas promotes `movq $big` to `movabs`) — no FPU
 -- needed. Was `ud2`, which made the machines diverge on this route.
-compile-const fits-float v = mov (reg rax) (imm (encode binary64 v)) ∷ []
+compile-const fits-float v = mov (reg rax) (imm (round binary64 v)) ∷ []
 
 compile-const-size : ∀ {A} → FitsInReg A → ℕ
 compile-const-size fits-int   = 1

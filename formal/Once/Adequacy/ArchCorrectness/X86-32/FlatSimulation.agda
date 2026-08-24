@@ -41,7 +41,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.CanonicalName using (CanonicalName)
 
 -- `fmt-eq`'s type names a format, so this import must precede the header.
-open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Decimal using (Decimal; round)
 open import Data.Integer using (ℤ)
 import Once.Word as OnceWord
 module IntW = OnceWord.Width 32
@@ -54,7 +55,7 @@ module Once.Adequacy.ArchCorrectness.X86-32.FlatSimulation
   (FS : FrameSemantics)
   (word-eq : frame-word FS ≡ slot-size)
   -- …and the same kind of pinning for the FLOAT FORMAT (plan 0.73, D113).
-  -- The emitter writes `encode binary32` into the immediate; the abstract
+  -- The emitter writes `round binary32` into the immediate; the abstract
   -- machine materialises a float literal at `float-format FS`. For those to be
   -- the same number, THIS `FS` has to be x86-32's — and with `FS` abstract
   -- here, that is not derivable, it is a premise. Discharged by `refl` at
@@ -1291,13 +1292,13 @@ block-step-load-const {hv} prog fs s v cc h ft fits =
 -- verbatim, `norm-id` and all. Since D113 the abstract side gets its format
 -- from `FrameSemantics.float-format` rather than from a `fenc` parameter, so
 -- `fmt-eq` is what makes the two agree. Note what the premise says:
--- `encode binary32 v < modulus`, i.e. the encoded literal fits a word of THIS
+-- `round binary32 v < modulus`, i.e. the encoded literal fits a word of THIS
 -- machine — true by the encoder's construction rather than by luck.
 ------------------------------------------------------------------------
-block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : Dyadic) → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
+block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : Decimal) → CompiledCorr hv prog fs s → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
   -- Stated in the INTERFACE's language (`lit-value`, i.e. the machine's own
-  -- materialisation) rather than in the emitter's (`encode binary32`), so the
+  -- materialisation) rather than in the emitter's (`round binary32`), so the
   -- `BlockSteps` field needs no adapter. `fmt-eq` converts, once, below.
   → AbstractExec.lit-value {FS} fits-float v < X.W.modulus
   → BlockStep hv prog fs s (instr-load-const fits-float v)
@@ -1307,20 +1308,20 @@ block-step-load-const-float {hv} prog fs s v cc h ft fits =
     dc = dataCorr cc ; po = pc-off cc
     halt-s : X.State.halted s ≡ false
     halt-s = trans (C.halt-eq dc) h
-    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg eax) (imm (encode binary32 v)))
+    fetch-x86 : X.fetch (compile-trace prog) (X.State.pc s) ≡ just (mov (reg eax) (imm (round binary32 v)))
     fetch-x86 = trans (cong (X.fetch (compile-trace prog)) po)
                       (fetch-block-head prog (fpc fs) (instr-load-const fits-float v) ft)
     post : X.State
-    post = record s { regs = xwriteReg (xregs s) eax (encode binary32 v) ; pc = pc s + 1 }
+    post = record s { regs = xwriteReg (xregs s) eax (round binary32 v) ; pc = pc s + 1 }
     -- The premise speaks of `float-format FS`; `norm-id` needs it at the
     -- emitter's concrete format. One `subst`, and `fmt-eq` has done its job.
-    fits32 : (encode binary32) v < X.W.modulus
-    fits32 = subst (λ F → encode F v < X.W.modulus) fmt-eq fits
+    fits32 : (round binary32) v < X.W.modulus
+    fits32 = subst (λ F → round F v < X.W.modulus) fmt-eq fits
     snh : X.step-not-halted (compile-trace prog) s ≡ just post
     snh = subst (λ w → X.step-not-halted (compile-trace prog) s
                        ≡ just (record s { regs = xwriteReg (xregs s) eax w ; pc = pc s + 1 }))
                 (X.W.norm-id fits32)
-                (step-mov-ri {compile-trace prog} {s} {eax} {(encode binary32) v} fetch-x86)
+                (step-mov-ri {compile-trace prog} {s} {eax} {(round binary32) v} fetch-x86)
     exec-eq : X.exec 1 (compile-trace prog) s ≡ just post
     exec-eq = exec-1 {compile-trace prog} {0} {s} {post} halt-s snh halt-s
     pco' : X.State.pc post ≡ blk-off prog (fpc (flat-exec-instr (instr-load-const fits-float v) prog fs))
@@ -1333,7 +1334,7 @@ block-step-load-const-float {hv} prog fs s v cc h ft fits =
     -- type — including `post`, which does not mention it — and the abstraction
     -- fails. Transporting the FORMAT alone under a stated motive is exact.
     sr : C.SetsRole s post role-out (C.lit-word (AbstractExec.lit-value {FS} fits-float v))
-    sr = subst (λ F → C.SetsRole s post role-out (C.lit-word (encode F v)))
+    sr = subst (λ F → C.SetsRole s post role-out (C.lit-word (round F v)))
                (sym fmt-eq)
                (C.sets-role-x86 s role-out _ _ _)
 

@@ -49,7 +49,7 @@ open import Once.CCC.Machine.Allocation using (AllocMode; Stack; Heap; AllocStat
 
 -- Import semantic operations
 open import Once.Word using (Carrier)
-open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (Decimal)
 open import Once.Semantics.Value Carrier Carrier using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-cata; sem-cata-compute; sem-fmap)
 
 ------------------------------------------------------------------------

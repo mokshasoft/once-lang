@@ -59,7 +59,7 @@ open import Data.Maybe using (Maybe)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Adequacy.ArchCorrectness.FlatCore.RegRoles
   using (RegRoles; Role; role-sp; role-clos; role-heap; role-out; role-in1; role-scratch; role-count)
-open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence
@@ -244,7 +244,7 @@ lit-word x = x
 -- `enc-sv-at (amap hv) v` — the same term — so a view change the map survives is
 -- INVISIBLE, with no lemma and no per-field boilerplate.
 -- D096: TWO maps, not one. A heap cell's address and a CODE address are both
--- what a `StoredValue` can encode to, and a code address is the label's INDEX
+-- what a `StoredValue` can round to, and a code address is the label's INDEX
 -- in the compiled program — which the old `enc-sv-at am (SV-Code n) = idx n`
 -- could not express, because `idx` is the label's IDENTITY (D089) and this
 -- record had nowhere to put a resolution. That was the defect the closure call
@@ -275,7 +275,7 @@ enc-sv-at am (SV-Ptr (AtStack f k))    = slot-addr f k
 -- D113 is what made the float case identical to the int one. A `StoredValue`
 -- now holds the target's REPRESENTATION at both types — the machine encodes at
 -- `instr-load-const`, the one instruction that materialises a literal — so
--- there is nothing left for `enc-sv` to convert. The per-arch `fenc : Dyadic →
+-- there is nothing left for `enc-sv` to convert. The per-arch `fenc : Decimal →
 -- ℕ` parameter this module used to take is gone with it: `FS` already carries
 -- the target's format, so a second channel for the same fact was redundant.
 -- ENUMERATED (no catch-all): a `SV-Lit _ _` catch-all does not survive the
@@ -1923,11 +1923,11 @@ sim-load-const {hv} v fs s s' corr st = record
   ; clos-eq = keep-clos corr st (λ ()) ; halt-eq = keep-halt corr st ; sp-eq = keep-sp corr st (λ ()) ; frontier-eq = keep-heap-reg corr st (λ ()) ; dom-fresh = dom-fresh corr ; dom-written = dom-written corr ; dom-sized = dom-sized corr ; heap-eq = keep-heap corr st ; lo-le = keep-lo-le corr st (λ ()) ; untouched = keep-untouched corr st ; stack-eq = keep-stack corr st }
 
 -- …and the FLOAT constant (D079/D113): identical, with the IEEE-754 pattern as
--- the immediate. The payload is a `Dyadic` — source syntax — and the machine
--- MATERIALISES it (`lit-value`, i.e. `encode (float-format FS)`), so what the
+-- the immediate. The payload is a `Decimal` — source syntax — and the machine
+-- MATERIALISES it (`lit-value`, i.e. `round (float-format FS)`), so what the
 -- emitter must put in the register is that same encoding. `enc-sv` is now the
 -- identity here, so `out-eq` is `at-role` exactly as in the int case.
-sim-load-const-float : {hv : HeapView} (v : Dyadic) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
+sim-load-const-float : {hv : HeapView} (v : Decimal) (fs : FlatState) (s s' : State) → FlatCorr hv fs s
   → SetsRole s s' role-out (lit-word (lit-value fits-float v))
   → FlatCorr hv (flat-exec-instr (instr-load-const fits-float v) [] fs) s'
 sim-load-const-float {hv} v fs s s' corr st = record

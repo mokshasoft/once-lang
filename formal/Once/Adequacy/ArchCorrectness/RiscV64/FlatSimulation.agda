@@ -34,7 +34,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst)
 open import Once.CanonicalName using (CanonicalName)
 
 -- `fmt-eq`'s type names a format, so this import must precede the header.
-open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Decimal using (Decimal; round)
 
 module Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation
   -- D089's definition identity, threaded only so `CompiledCorrespondence` can
@@ -43,7 +44,7 @@ module Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation
   (FS : FrameSemantics)
   (word-eq : frame-word FS ≡ slot-size)
   -- …and the same kind of pinning for the FLOAT FORMAT (plan 0.73, D113).
-  -- The emitter writes `encode binary64` into the immediate; the abstract machine
+  -- The emitter writes `round binary64` into the immediate; the abstract machine
   -- materialises a float literal at `float-format FS`. For those to be the
   -- same number, THIS `FS` has to be this arch's — and with `FS` abstract
   -- here, that is not derivable, it is a premise. Discharged by `refl` at
@@ -691,7 +692,7 @@ block-step-scratch-dec {hv} prog fs s k cc h ft sc-eq no-borrow s3<mod =
 -- so the phase-D range obligation arrives identically — and here it is TRUE BY
 -- CONSTRUCTION (`float-bits` (as it was) is `primWord64ToNat` of a `Word64`), assumed only
 -- because `Data.Word.Properties` states no such bound.
-block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : Dyadic) → CompiledCorr hv prog fs s
+block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : Decimal) → CompiledCorr hv prog fs s
   → halted (floc fs) ≡ false
   → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
   -- Stated in the INTERFACE's language (`lit-value`, the machine's own
@@ -700,17 +701,17 @@ block-step-load-const-float : ∀ {hv : HeapView} prog fs s (v : Dyadic) → Com
   → AbstractExec.lit-value {FS} fits-float v < R.W.modulus
   → BlockStep hv prog fs s (instr-load-const fits-float v)
 block-step-load-const-float {hv} prog fs s v cc h ft fits =
-  block-step-li prog fs s (instr-load-const fits-float v) a0 (encode binary64 v) cc h ft refl fits64 refl (refl , refl , refl) refl
+  block-step-li prog fs s (instr-load-const fits-float v) a0 (round binary64 v) cc h ft refl fits64 refl (refl , refl , refl) refl
     (C.sim-load-const-float v fs s _ (dataCorr cc) sr)
   where
     -- The premise speaks of `float-format FS`; `block-step-li` needs the
     -- emitter's concrete format. One `subst` each way, and `fmt-eq` is spent.
     -- (`subst`, not `rewrite`: `rewrite` would generalise `float-format FS`
     -- over the whole type and the abstraction fails.)
-    fits64 : (encode binary64) v < R.W.modulus
-    fits64 = subst (λ F → encode F v < R.W.modulus) fmt-eq fits
+    fits64 : (round binary64) v < R.W.modulus
+    fits64 = subst (λ F → round F v < R.W.modulus) fmt-eq fits
     sr : C.SetsRole s _ role-out (C.lit-word (AbstractExec.lit-value {FS} fits-float v))
-    sr = subst (λ F → C.SetsRole s _ role-out (C.lit-word (encode F v)))
+    sr = subst (λ F → C.SetsRole s _ role-out (C.lit-word (round F v)))
                (sym fmt-eq)
                (C.sets-role-riscv64 s role-out _ _)
 

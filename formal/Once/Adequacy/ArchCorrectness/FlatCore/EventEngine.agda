@@ -50,7 +50,7 @@ import Once.Adequacy.ArchCorrectness.FlatCore.HeadView as HV
 import Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface as EI
 
 open import Data.Float using () renaming (Float to AgdaFloat)
-open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 
 module Once.Adequacy.ArchCorrectness.FlatCore.EventEngine
@@ -482,7 +482,7 @@ record Supply : Set₁ where
             → CompiledCorr hv prog fs s
             → fetch prog (fpc fs) ≡ just (instr-load-const fits-int v)
             → AbstractExec.lit-value {FS} fits-int v < modulus
-    float-fits : ∀ {hv : HeapView} prog fs s (v : Dyadic) → RunAt prog fs
+    float-fits : ∀ {hv : HeapView} prog fs s (v : Decimal) → RunAt prog fs
               → CompiledCorr hv prog fs s
               → fetch prog (fpc fs) ≡ just (instr-load-const fits-float v)
               → AbstractExec.lit-value {FS} fits-float v < modulus

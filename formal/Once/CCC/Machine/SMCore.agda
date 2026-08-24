@@ -75,7 +75,7 @@ open import Once.Memory.HeapAddress public
 -- D062: shared location types (Slot, ValueLocation/AtStack/AtDynamic), defined
 -- below the machine so the IR can import them without the machine. Re-exported.
 open import Once.CCC.Machine.Locations public
-open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (Decimal)
 open import Once.Float.Decimal using (Decimal; round)
 import Once.Word as Word
 import Data.Nat as ℕ

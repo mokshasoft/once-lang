@@ -40,6 +40,7 @@ open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅; ⟦
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D; coerce-functor⁻¹-D; cohᴰ; liftFn)
 open import Once.Float.Dyadic using (encode)
+open import Once.Float.Decimal using (Decimal; decimalOf; round)
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.Trace using (SigOpEvent)

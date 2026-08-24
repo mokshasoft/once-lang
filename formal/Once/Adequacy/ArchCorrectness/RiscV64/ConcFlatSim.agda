@@ -46,7 +46,8 @@ open import Data.Nat using (ℕ; suc; _+_; _<_; _≤_)
 open import Once.CCC.Label using (LabelId)
 open import Once.Word using (Carrier)
 open import Once.Type using (fits-int; fits-float)
-open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Decimal using (Decimal; round)
 open import Data.Integer using (ℤ)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Data.Maybe using (just)
@@ -57,7 +58,7 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
   (word-eq : frame-word FS ≡ slot-size)
   -- …and the float format pinned to this target's, the companion of `word-eq`
   -- (plan 0.73, D113). Passed straight through to `FlatSimulation`, which is
-  -- where the emitter's `encode binary64` and the machine's `float-format FS`
+  -- where the emitter's `round binary64` and the machine's `float-format FS`
   -- have to be shown to be the same number.
   (fmt-eq : FrameSemantics.float-format FS ≡ binary64)
   -- THE SLOT ADDRESS DOES NOT WRAP (plan 0.70 class, D087). riscv64 has no
@@ -157,7 +158,7 @@ module Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim
                 ≡ just (instr-load-const fits-int v)
             → Once.CCC.Machine.SMCore.AbstractExec.lit-value {FS} fits-int v < RS.W.modulus)
   (float-fits : ∀ {hv : FCr.HeapView FS word-eq} (prog : AbstractTrace)
-                  (fs : FlatMachine.FlatState {FS}) (s : RS.State) (v : Dyadic)
+                  (fs : FlatMachine.FlatState {FS}) (s : RS.State) (v : Decimal)
               → RCr.RunAt o FS slot-size word-eq prog fs
               → FSimr.CompiledCorr o FS word-eq fmt-eq hv prog fs s
               → FlatMachine.fetch {FS} prog (FlatMachine.fpc {FS} fs)

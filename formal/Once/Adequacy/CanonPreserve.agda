@@ -181,7 +181,7 @@ pres-ᵍ : ∀ {ctx e T} (bound : List String) →
 pres-ᵍ bound (g-int n) = g-int n
 -- Canonicalisation is the identity on a float literal, and the acceptance
 -- witness is about the VALUE, so it transports unchanged.
-pres-ᵍ bound (g-float i f l d ok) = g-float i f l d ok
+pres-ᵍ bound (g-float i f l) = g-float i f l
 pres-ᵍ bound (g-terminal lL lI) rewrite canon-builtin bound "terminal" refl = g-terminal lL lI
 pres-ᵍ bound (g-pair d₁ d₂) = g-pair (pres-ᵍ bound d₁) (pres-ᵍ bound d₂)
 pres-ᵍ bound (g-inl d) rewrite canon-builtin bound "inl" refl = g-inl (pres-ᵍ bound d)

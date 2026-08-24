@@ -44,7 +44,8 @@ open import Once.CanonicalName using (CanonicalName)
 open import Once.CCC.Label using (ℓ)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Type using (fits-int; fits-float)
-open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Decimal using (Decimal; round)
 import Once.Word as OnceWord
 module IntW = OnceWord.Width 32
 
@@ -226,7 +227,7 @@ compile-abstract (instr-sigop si) = call-sym (once-symbol-path (SigOpInfo.name s
 -- Plan 0.53: const literal → load into Output (eax). Mirror x86-64.
 -- D115: an `Int` literal's payload is a `ℤ` (source syntax), so the emitter
 -- MATERIALISES it at this target's width — two's complement, 32 bits. Exactly
--- what the float case beside it does with `encode`; before D115 the int case
+-- what the float case beside it does with `round`; before D115 the int case
 -- could skip this only because literals were never negative.
 compile-abstract (instr-load-const fits-int   v) = mov (reg eax) (imm (IntW.fromℤ v)) ∷ []
 -- A FLOAT LITERAL IS SINGLE PRECISION HERE (plan 0.66, D109). This used to be
@@ -238,7 +239,7 @@ compile-abstract (instr-load-const fits-int   v) = mov (reg eax) (imm (IntW.from
 -- loads like any other immediate. `enc-sv` uses the SAME encoder (the core's
 -- `fenc` parameter), which is what makes the block-step `refl`.
 compile-abstract (instr-load-const fits-float v) =
-  mov (reg eax) (imm (encode binary32 v)) ∷ []
+  mov (reg eax) (imm (round binary32 v)) ∷ []
 -- Plan 0.53: closure-body code-addr load → Output (eax) := &.L_thunk_n.
 compile-abstract (instr-load-code-addr n) = mov-code eax n ∷ []
 -- Plan 0.2.4.2: save closure-register. On x86-32 the closure pointer

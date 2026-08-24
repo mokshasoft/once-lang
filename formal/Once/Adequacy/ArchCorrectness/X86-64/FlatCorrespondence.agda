@@ -22,7 +22,8 @@
 -- realisers below are the whole of x86-64's remaining share.
 ------------------------------------------------------------------------
 
-open import Once.Float.Dyadic using (Dyadic; encode; binary32; binary64)
+open import Once.Float.Dyadic using (binary32; binary64)
+open import Once.Float.Decimal using (Decimal; round)
 open import Once.CCC.FrameSemantics using (FrameSemantics; frame-word)
 open import Once.CCC.Target.X86-64.Syntax using (slot-size)
 open import Relation.Binary.PropositionalEquality using (_≡_)

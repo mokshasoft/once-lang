@@ -39,8 +39,8 @@ open import Data.Bool using (if_then_else_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Float.Dyadic
-  using (Dyadic; _/2^_; FloatFormat; sig-bits; exp-bits; encode; bitLen;
-         binary32; binary64)
+  using (Dyadic; _/2^_; FloatFormat; sig-bits; exp-bits; encode; encode-fits;
+         bitLen; binary32; binary64)
 
 ------------------------------------------------------------------------
 -- The payload
@@ -173,6 +173,13 @@ roundToDyadic F d = signed (sig d) (roundMag F ∣ sig d ∣ (exp10 d))
 -- rounding nobody checked: that is `emit`'s low byte again (D114).
 round : FloatFormat → Decimal → ℕ
 round F d = encode F (roundToDyadic F d)
+
+-- | …and its RANGE, inherited from `encode` for free: `round` IS `encode` of
+-- a dyadic, so whatever bound `encode` satisfies, `round` satisfies. This is
+-- what the per-arch resource bounds consume, and it is a theorem rather than a
+-- parameter — the reason D109's `primFloatToWord` had to go.
+round-fits : ∀ F d → round F d ℕ.< 2 ^ (1 + (exp-bits F + sig-bits F))
+round-fits F d = encode-fits F (roundToDyadic F d)
 
 ------------------------------------------------------------------------
 -- PINNED PATTERNS
