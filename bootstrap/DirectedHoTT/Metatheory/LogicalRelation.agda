@@ -96,7 +96,8 @@ open import DirectedHoTT.Metatheory.Confluence
         ; ⟶*-idreflᶜ; ⟶*-idreflᵃ
         ; ⟶*-nsuc; ⟶*-natrecᶻ; ⟶*-natrecˢ; ⟶*-natrecⁿ ; ⟶*-absurdᶜ; ⟶*-absurdᵉ
         ; ⟶*-ordtrᵃ; ⟶*-ordtrᵗ; ⟶*-ordtrᵘ; ⟶*-ordtrᵖ; ⟶*-ordtrq
-        ; ⟶*-con; ⟶*-elimᵐ; ⟶*-elimᵗ; subTm-monoˢ )
+        ; ⟶*-con; ⟶*-elimᵐ; ⟶*-elimᵗ; subTm-monoˢ
+        ; ⟶*-icon; ⟶*-ielimⁱ; ⟶*-ielimᵐ; ⟶*-ielimᵗ; ⟶*-⌜IMu⌝ )
 open import DirectedHoTT.Metatheory.Injectivity
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; ⟶ᵀ*-Homᵀ
         ; confluentᵀ; church-rosserᵀ; Id-reduct
@@ -247,6 +248,16 @@ stablecd? (ielim D i ms t) = mustk? t
 -- nor `stkC?`, the third code kind — is a DEAD code, so it lands in
 -- `cf-dead` rather than needing a third `CodeFate` arm.
 stablecd? ⌜Nat⌝         = true
+-- ⚠⚠ AND SO IS ⌜IMu⌝, for the SAME reason and NOT for `⌜Mu⌝`'s.  There is
+--   a `tr-J-Mu`/`snr-J-Mu`, so `⌜Mu⌝` is `stkC?` and inherits `false`
+--   here.  There is NO J root at `⌜IMu⌝` — nothing fires on a
+--   `hrefl (⌜IMu⌝ D I i) s` path — so it is DEAD, exactly like ⌜Nat⌝.
+--   ⚠ THE CATCH-ALL'S `false` WAS WRONG, and silently: with `stkC?` also
+--   `false` the code was a FOURTH kind `CodeFate` cannot express, and
+--   `codeNorm` at `sn-cIMu` was simply unprovable.  check-formers check 3
+--   lists this default; confirming it rather than inheriting it is what
+--   turned an unprovable goal into a one-line row.
+stablecd? (⌜IMu⌝ D I i) = true
 stablecd? _             = false
 
 -- ★ INDUCTIVE TYPES: `elim` fires on a `con` scrutinee and nothing
@@ -1695,6 +1706,9 @@ deadA→nopw (con k q) h = refl
 deadA→nopw (elim D ms t) h = h
 deadA→nopw (icon k q) h = refl
 deadA→nopw (ielim D iˣ ms t) h = h
+-- ⚠ a REAL row now, not an auto-discharged absurdity: `⌜IMu⌝` is a DEAD
+--   code (§10.4), so `h` is inhabited and the goal has to be met.
+deadA→nopw (⌜IMu⌝ Dⁱ Iⁱ iˣ) h = refl
 
 dead→nopw : (C : RTm Γ) → stablecd? C ≡ true → nopw? C ≡ true
 dead→nopw (var x) h = refl
@@ -1723,6 +1737,7 @@ dead→nopw (con k q) h = refl
 dead→nopw (elim D ms t) h = h
 dead→nopw (icon k q) h = refl
 dead→nopw (ielim D iˣ ms t) h = h
+dead→nopw (⌜IMu⌝ Dⁱ Iⁱ iˣ) h = refl
 
 
 -- an hrefl path at a DEAD code is tr-stuck under EVERY motive shape.
@@ -3070,6 +3085,9 @@ ne-red (ne-natrec key) (ξ-natrecⁿ r) = ne-natrec (natstk?-red r key)
 ne-red (ne-elim ()) (ι-elim _ _ _ _)
 ne-red (ne-ielim ()) (ι-ielim _ _ _ _ _)
 ne-red (ne-elim key) (ξ-elimᵐ r) = ne-elim key
+-- ⚠ THREE ξ rows, not two: the INDEX is a subterm of `ielim` and
+-- `ξ-ielimⁱ` steps it.  The key is about the SCRUTINEE, so it survives.
+ne-red (ne-ielim key) (ξ-ielimⁱ r) = ne-ielim key
 ne-red (ne-ielim key) (ξ-ielimᵐ r) = ne-ielim key
 ne-red (ne-elim key) (ξ-elimᵗ r) = ne-elim (mustk?-red r key)
 ne-red (ne-ielim key) (ξ-ielimᵗ r) = ne-ielim (mustk?-red r key)
@@ -6794,7 +6812,6 @@ wne (sne-natrec {z = z} {w = w} {n = n} z₀ w₀ n₀ key)
 -- ★ INDUCTIVE TYPES: two subterms, and only the SCRUTINEE carries the key;
 -- once normal, ι is refuted by `key'` computing to `false ≡ true`.
 wne (sne-elim {D = D} {ms = ms} {t = t} m₀ t₀ key)
-wne (sne-ielim {D {D = D} {ms = ms} {t = t} m₀ t₀ key)
   with wn m₀ | wn t₀
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ =
       mkWNe (elim D n₁ n₂)
@@ -6808,6 +6825,26 @@ wne (sne-ielim {D {D = D} {ms = ms} {t = t} m₀ t₀ key)
     nrm' (ι-elim _ _ _ _) = f≢t key'
     nrm' (ξ-elimᵐ q) = nm₁ q
     nrm' (ξ-elimᵗ q) = nm₂ q
+-- ★ its INDEXED twin.  ⚠ THREE subterms, not two: `ielim` CARRIES the
+-- index, and `ξ-ielimⁱ` can step it, so the normal form has to normalize
+-- it too — the very reason `sne-ielim` takes an extra `SN i` premise.
+-- Only the SCRUTINEE carries the key; ι is refuted by `key'` as above.
+wne (sne-ielim {D = D} {i = i} {ms = ms} {t = t} i₀ m₀ t₀ key)
+  with wn i₀ | wn m₀ | wn t₀
+... | mkWN n₀ r₀ nm₀ sn₀ | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ =
+      mkWNe (ielim D n₀ n₁ n₂)
+            (⟶*-trans (⟶*-ielimⁱ r₀)
+                      (⟶*-trans (⟶*-ielimᵐ r₁) (⟶*-ielimᵗ r₂)))
+            nrm' (sne-ielim sn₀ sn₁ sn₂ key')
+  where
+    key' : mustk? n₂ ≡ true
+    key' = mustk?-red* r₂ key
+
+    nrm' : IsNormal (ielim D n₀ n₁ n₂)
+    nrm' (ι-ielim _ _ _ _ _) = f≢t key'
+    nrm' (ξ-ielimⁱ q) = nm₀ q
+    nrm' (ξ-ielimᵐ q) = nm₁ q
+    nrm' (ξ-ielimᵗ q) = nm₂ q
 wne (sne-ordtr {a = a} {t = t} {u = u} a₀ t₀ u₀ p₀ q₀ key)
   with wn a₀ | wn t₀ | wn u₀ | wn p₀ | wn q₀
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ | mkWN n₃ r₃ nm₃ sn₃
@@ -6855,6 +6892,14 @@ wn sn-cb = mkWN ⌜base⌝ done (λ ()) sn-cb
 wn sn-cNat = mkWN ⌜Nat⌝ done (λ ()) sn-cNat
 wn sn-cUnit = mkWN ⌜Unit⌝ done (λ ()) sn-cUnit
 wn (sn-cMu {Dᵐ = Dᵐ}) = mkWN (⌜Mu⌝ Dᵐ) done (λ ()) sn-cMu
+-- ⚠ NOT a one-liner like `sn-cMu`: `⌜IMu⌝` CARRIES the index, so the
+-- normal form is the code at the index's normal form.
+wn (sn-cIMu {D = Dⁱ} {I = Iⁱ} h) with wn h
+... | mkWN n₁ r₁ nm₁ sn₁ =
+      mkWN (⌜IMu⌝ Dⁱ Iⁱ n₁) (⟶*-⌜IMu⌝ r₁) nrm' (sn-cIMu sn₁)
+  where
+    nrm' : IsNormal (⌜IMu⌝ Dⁱ Iⁱ n₁)
+    nrm' (ξ-⌜IMu⌝ q) = nm₁ q
 wn (sn-cΠ c d) with wn c | wn d
 ... | mkWN n₁ r₁ nm₁ sn₁ | mkWN n₂ r₂ nm₂ sn₂ =
       mkWN (⌜Π⌝ n₁ n₂) (⟶*-trans (⟶*-⌜Π⌝ˡ r₁) (⟶*-⌜Π⌝ʳ r₂)) nrm' (sn-cΠ sn₁ sn₂)
@@ -6910,6 +6955,11 @@ wn (sn-con {k = k} h) with wn h
   where
     nrm' : IsNormal (con k n₁)
     nrm' (ξ-con q) = nm₁ q
+wn (sn-icon {k = k} h) with wn h
+... | mkWN n₁ r₁ nm₁ sn₁ = mkWN (icon k n₁) (⟶*-icon r₁) nrm' (sn-icon sn₁)
+  where
+    nrm' : IsNormal (icon k n₁)
+    nrm' (ξ-icon q) = nm₁ q
 wn (sn-exp r h) with wn h
 ... | mkWN n₁ r₁ nm₁ sn₁ = mkWN n₁ (step (snr→⟶ r) r₁) nm₁ sn₁
 

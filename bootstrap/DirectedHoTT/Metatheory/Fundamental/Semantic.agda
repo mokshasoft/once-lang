@@ -70,7 +70,7 @@ open import DirectedHoTT.Algorithm.DecideConversion using ( Dec; dec-conv )
 open import DirectedHoTT.Metatheory.Injectivity
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-El; confluentᵀ; church-rosserᵀ; Π-inj
         ; red→≅ᵀ; Π-reduct; Σ-reduct; mkΠRed; mkΣRed
-        ; Id-reduct; ⟶ᵀ*-Homᵀ )
+        ; Id-reduct; ⟶ᵀ*-Homᵀ; IMuRed; mkIMuRed; IMu-reduct )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( HomΠShape; hsΠ; hsH; hom-shape; hom-shapeN; nn-U; NoNat; pw-El-decode
         ; HomRed; mkHomRed; Hom-to-Hom; homAmb→
@@ -103,7 +103,7 @@ open import DirectedHoTT.Metatheory.LogicalRelation
         ; PayT; payChain; payT-exp; payT-whred; payT-irrel
         ; payT-cast; payT-code; payHomT; _⟶snr*_; snr-done; snr-step
         ; ⊩₀_; ⊩₀base; ⊩₀ne; ⊩₀Π; ⊩₀Σ; ⊩₀Hom; _⊩₀∋_; bwd₀; exp₁
-        ; ⊩₀Unit; ⊩₀Nat; ⊩₀Mu; ⊩₁Mu; Mu-nf
+        ; ⊩₀Unit; ⊩₀Nat; ⊩₀Mu; ⊩₁Mu; Mu-nf; ⊩₀IMu; ⊩₁IMu
         ; base-nf; Unit-nf; Nat-nf; El-ne-reduct; mkElNe; Hom-stk-reduct; mkHomStk
         ; nopw?; trlam?; stablecd?; stableA?; idstk?; sne→spine; wk-single; snr→⟶
         ; exp₀; f≢t
@@ -114,11 +114,11 @@ open import DirectedHoTT.Metatheory.LogicalRelation
         ; emb; emb-coh
         ; sem-conv; sem-lam; sem-app; sem-fst; sem-snd; sem-pair
         ; sem-El; sem-⌜base⌝; sem-⌜Π⌝; sem-⌜Σ⌝; sem-⌜Hom⌝; sem-hrefl
-        ; homSem₁
         ; ⟶ᵀ*-sub
         ; IsNormal; WN; mkWN; wn
         ; projl; projr; dfst; dsnd
-        ; sne-elim; sn-con; ne-elim; mustk? )
+        ; sne-elim; sn-con; ne-elim; mustk?
+        ; sne-ielim; sn-icon; sn-cIMu; ne-ielim )
 
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic
 
@@ -194,6 +194,8 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 ... | mkΠRed _ _ () _ _
 ⊩₁-app (⊩₁Nat p) S h k with Π-reduct p
 ... | mkΠRed _ _ () _ _
+⊩₁-app (⊩₁IMu p _) S h k with Π-reduct p
+... | mkΠRed _ _ () _ _
 ⊩₁-app (⊩₁Mu p _) S h k with Π-reduct p
 ... | mkΠRed _ _ () _ _
 ⊩₁-app (⊩₁Id p) S h k with Π-reduct p
@@ -222,6 +224,8 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 ... | mkΣRed _ _ () _ _
 ⊩₁-fstm (⊩₁Nat p) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
+⊩₁-fstm (⊩₁IMu p _) h with Σ-reduct p
+... | mkΣRed _ _ () _ _
 ⊩₁-fstm (⊩₁Mu p _) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
 ⊩₁-fstm (⊩₁Id p) h with Σ-reduct p
@@ -246,6 +250,8 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 ⊩₁-sndm (⊩₁Unit p) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
 ⊩₁-sndm (⊩₁Nat p) h with Σ-reduct p
+... | mkΣRed _ _ () _ _
+⊩₁-sndm (⊩₁IMu p _) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
 ⊩₁-sndm (⊩₁Mu p _) h with Σ-reduct p
 ... | mkΣRed _ _ () _ _
@@ -296,6 +302,7 @@ sne→nopw (sne-ap _ _ _ key) = refl
 sne→nopw (sne-jsub _ _ _ key) = key
 sne→nopw (sne-natrec _ _ _ key) = key
 sne→nopw (sne-elim _ _ key)     = key
+sne→nopw (sne-ielim _ _ _ key)  = key
 sne→nopw (sne-ordtr _ _ _ _ _ key) = key
 
 -- star-folds for the head strategy.
@@ -383,6 +390,10 @@ snHH sp (sn-nsuc h) snt noPiT =
 -- ★ INDUCTIVE TYPES: a `con` is an inert canonical head, like `nsuc`.
 snHH sp (sn-con h) snt noPiT =
   sn-ne (sne-hrefl (snPlug sp (sn-con h)) snt (nopw-plug sp refl))
+snHH sp (sn-icon h) snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-icon h)) snt (nopw-plug sp refl))
+snHH sp (sn-cIMu h) snt noPiT =
+  sn-ne (sne-hrefl (snPlug sp (sn-cIMu h)) snt (nopw-plug sp refl))
 snHH sp (sn-cΠ {c = γ} {d = δ} h₁ h₂) snt noPiT =
   ⊥-elim (noPiT (Σ.fst (Σ.snd (pw-El-decode (plug sp (⌜Π⌝ γ δ))
                                             (pw-plug sp refl)))))
@@ -422,6 +433,7 @@ mem-bwd₁ q (⊩₁Hom _ _) h = h
 mem-bwd₁ q (⊩₁Unit _)  h = h
 mem-bwd₁ q (⊩₁Nat _)   h = h
 mem-bwd₁ q (⊩₁Mu _ _)  h = h
+mem-bwd₁ q (⊩₁IMu _ _) h = h
 mem-bwd₁ q (⊩₁Id _)    h = h
 
 natHreflMem : {Γ : Cx} (a b : RTm Γ) (sa : SN a) (ma : NatMem a)
@@ -481,6 +493,18 @@ semHreflPay x₀ (⊩₀Mu p _) lk snc pay snt ht =
                  (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
   ... | E , (mE , πE) with Mu-nf mE
   ...   | refl with Π-reduct πE
+  ...     | mkΠRed _ _ () _ _
+-- ⚠ the INDEXED twin, and the ONE line that differs: `IMu D I i` is NOT
+--   a normal form — `ξ-IMu` steps the index — so `Mu-nf` becomes
+--   `IMu-reduct`, which pins the HEAD and lets the index move.
+semHreflPay x₀ (⊩₀IMu p _) lk snc pay snt ht =
+  snHH sp-nil snc snt noPiT
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (mE , πE) with IMu-reduct mE
+  ...   | mkIMuRed _ refl _ with Π-reduct πE
   ...     | mkΠRed _ _ () _ _
 semHreflPay x₀ {t = t} (⊩₀Nat p) lk snc pay snt ht =
   mem-bwd₁ (⟶ᵀ*-Homᵀ p)
@@ -637,6 +661,10 @@ codeNormA sn-unit kn      = _ , (csr-done , cfa-dead refl)
 codeNormA sn-nzero kn     = _ , (csr-done , cfa-dead refl)
 codeNormA (sn-nsuc h) kn  = _ , (csr-done , cfa-dead refl)
 codeNormA (sn-con h)  kn  = _ , (csr-done , cfa-dead refl)
+codeNormA (sn-icon h) kn  = _ , (csr-done , cfa-dead refl)
+-- ⚠ `cfa-dead`, NOT `cfa-stk` — the opposite of `⌜Mu⌝`.  `⌜IMu⌝` has no
+--   J root, so `stkA?` is `false` and `stableA?` is `true`.
+codeNormA (sn-cIMu h) kn  = _ , (csr-done , cfa-dead refl)
 codeNormA (sn-cΠ h₁ h₂) ()
 codeNormA (sn-cH {a = a₂} {b = b₂} hC ha hb) kn with codeNormA hC kn
 ... | C* , (csr , cfa-stk k)  =
@@ -675,6 +703,8 @@ codeNorm sn-unit kn      = _ , (csr-done , cf-dead refl)
 codeNorm sn-nzero kn     = _ , (csr-done , cf-dead refl)
 codeNorm (sn-nsuc h) kn  = _ , (csr-done , cf-dead refl)
 codeNorm (sn-con h)  kn  = _ , (csr-done , cf-dead refl)
+codeNorm (sn-icon h) kn  = _ , (csr-done , cf-dead refl)
+codeNorm (sn-cIMu h) kn  = _ , (csr-done , cf-dead refl)
 codeNorm (sn-cΠ h₁ h₂) ()
 codeNorm (sn-cH {a = a₂} {b = b₂} hC ha hb) kn with codeNormA hC kn
 ... | C* , (csr , cfa-stk k)  =
@@ -812,6 +842,7 @@ motFate (sn-ne (sne-ap h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-ne (sne-jsub h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-ne (sne-natrec h₁ h₂ h₃ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-ne (sne-elim h₁ h₂ key)) = _ , (csr-done , mf-dead key)
+motFate (sn-ne (sne-ielim h₀ h₁ h₂ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) = _ , (csr-done , mf-dead key)
 motFate (sn-lam h) = _ , (csr-done , mf-dead refl)
 motFate (sn-pair a b) = _ , (csr-done , mf-dead refl)
@@ -827,6 +858,8 @@ motFate sn-unit     = _ , (csr-done , mf-dead refl)
 motFate sn-nzero    = _ , (csr-done , mf-dead refl)
 motFate (sn-nsuc h) = _ , (csr-done , mf-dead refl)
 motFate (sn-con h)  = _ , (csr-done , mf-dead refl)
+motFate (sn-icon h) = _ , (csr-done , mf-dead refl)
+motFate (sn-cIMu h) = _ , (csr-done , mf-dead refl)
 motFate (sn-cH {c = C₂} {a = a₂} {b = b₂} hC ha hb) with motFate hC
 ... | C* , (csr , mf-pw k)   = ⌜Hom⌝ C* a₂ b₂ , (csrs-hom csr , mf-pw k)
 ... | C* , (csr , mf-dead k) = ⌜Hom⌝ C* a₂ b₂ , (csrs-hom csr , mf-dead k)
@@ -881,6 +914,8 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
     sn-ne (sne-tr snM (sn-ne (sne-natrec h₁ h₂ h₃ key)) snE key)
   go' (sn-ne (sne-elim h₁ h₂ key)) =
     sn-ne (sne-tr snM (sn-ne (sne-elim h₁ h₂ key)) snE key)
+  go' (sn-ne (sne-ielim h₀ h₁ h₂ key)) =
+    sn-ne (sne-tr snM (sn-ne (sne-ielim h₀ h₁ h₂ key)) snE key)
   go' (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) =
     sn-ne (sne-tr snM (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) snE key)
   go' (sn-lam snf) with motFate snCT
@@ -907,6 +942,8 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
   go' sn-nzero          = sn-ne (sne-tr snM sn-nzero snE refl)
   go' (sn-nsuc h)       = sn-ne (sne-tr snM (sn-nsuc h) snE refl)
   go' (sn-con h)        = sn-ne (sne-tr snM (sn-con h) snE refl)
+  go' (sn-icon h)       = sn-ne (sne-tr snM (sn-icon h) snE refl)
+  go' (sn-cIMu h)       = sn-ne (sne-tr snM (sn-cIMu h) snE refl)
 
   goH sn-cb sns kn = sn-exp (snr-J-base snM sns) snE
   goH sn-cUnit sns kn = sn-exp (snr-J-Unit snM sns) snE
@@ -938,6 +975,12 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
     sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-nsuc h) sns refl)) snE refl)
   goH (sn-con h) sns kn =
     sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-con h) sns refl)) snE refl)
+  goH (sn-icon h) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-icon h) sns refl)) snE refl)
+  -- ★★ J is OFF at ⌜IMu⌝ too, so this is permanently stuck — the ⌜Nat⌝
+  -- row's shape, and `stablecd? (⌜IMu⌝ …) = true` is again the key.
+  goH (sn-cIMu h) sns kn =
+    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-cIMu h) sns refl)) snE refl)
   goH (sn-cΠ h₁ h₂) sns ()
   goH (sn-cH hC h₂ h₃) sns kn with codeNormA hC kn
   ... | C*c , (csr , cfa-stk k) =
@@ -983,6 +1026,16 @@ semTr x₀ (⊩₀Mu p di) lk snCT payR hA hT hU snp hTe hUe hp hE =
                  (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
   ... | E , (mE , πE) with Mu-nf mE
   ...   | refl with Π-reduct πE
+  ...     | mkΠRed _ _ () _ _
+semTr x₀ (⊩₀IMu p di) lk snCT payR hA hT hU snp hTe hUe hp hE =
+  snTrGo noPiT snCT (CR1₀ (⊩₀IMu p di) hA)
+         (CR1₀ (homSem₀ (⊩₀IMu p di) hA hT) hE) snp
+  where
+  noPiT : ∀ {P Q} → El _ ⟶ᵀ* Π P Q → ⊥
+  noPiT ch with church-rosserᵀ
+                 (ctrnᵀ (csymᵀ (red→≅ᵀ p)) (ctrnᵀ lk (red→≅ᵀ ch)))
+  ... | E , (mE , πE) with IMu-reduct mE
+  ...   | mkIMuRed _ refl _ with Π-reduct πE
   ...     | mkΠRed _ _ () _ _
 semTr x₀ (⊩₀Nat p) lk snCT payR {aP} {tP} {uP} hA hT hU snp hTe hUe hp hE =
   bwd₀-mem⁻ (⟶ᵀ*-Homᵀ p)
@@ -1093,6 +1146,8 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-natrec h₁ h₂ h₃ key)) snE' key)
   go₀ (sn-ne (sne-elim h₁ h₂ key)) hpʹ =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-elim h₁ h₂ key)) snE' key)
+  go₀ (sn-ne (sne-ielim h₀ h₁ h₂ key)) hpʹ =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-ielim h₀ h₁ h₂ key)) snE' key)
   go₀ (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) hpʹ =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) snE' key)
   go₀ (sn-lam snf) hpʹ = pwC snf hpʹ
@@ -1110,6 +1165,8 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
   go₀ sn-nzero hpʹ     = CR3₀ RH0 (sne-tr snM sn-nzero snE' refl)
   go₀ (sn-nsuc h) hpʹ  = CR3₀ RH0 (sne-tr snM (sn-nsuc h) snE' refl)
   go₀ (sn-con h) hpʹ   = CR3₀ RH0 (sne-tr snM (sn-con h) snE' refl)
+  go₀ (sn-icon h) hpʹ  = CR3₀ RH0 (sne-tr snM (sn-icon h) snE' refl)
+  go₀ (sn-cIMu h) hpʹ  = CR3₀ RH0 (sne-tr snM (sn-cIMu h) snE' refl)
 
   goH₀ sn-cb sns kn = exp₀ RH0 (snr-J-base snM sns) heU
   goH₀ sn-cUnit sns kn = exp₀ RH0 (snr-J-Unit snM sns) heU
@@ -1138,6 +1195,10 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-nsuc h) sns refl)) snE' refl)
   goH₀ (sn-con h) sns kn =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-con h) sns refl)) snE' refl)
+  goH₀ (sn-icon h) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-icon h) sns refl)) snE' refl)
+  goH₀ (sn-cIMu h) sns kn =
+    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-cIMu h) sns refl)) snE' refl)
   goH₀ (sn-cΠ h₁ h₂) sns ()
   goH₀ (sn-cH hC h₂ h₃) sns kn with codeNormA hC kn
   ... | C*c , (csr , cfa-stk k) =
@@ -1403,4 +1464,5 @@ ne-nostk (ne-ap _)    = refl
 ne-nostk (ne-jsub _)  = refl
 ne-nostk (ne-natrec _) = refl
 ne-nostk (ne-elim _)   = refl
+ne-nostk (ne-ielim _)  = refl
 ne-nostk (ne-ordtr _) = refl
