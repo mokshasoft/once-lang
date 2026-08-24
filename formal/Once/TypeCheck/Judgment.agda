@@ -110,8 +110,11 @@ mutual
     -- The literal is `i.f` with `l` fraction digits; its value is
     -- `Once.Float.Decimal.decimalOf i f l`, a TOTAL function, so nothing is
     -- carried.
-    t-float : ∀ {ctx : NamedCtx} (i f l : ℕ)
-            → ctx ⊢ᵢ RFloat i f l ∶ Float ⨾ zeroUsage
+    -- The source offset `p` rides along and is never read here: a position
+    -- cannot affect whether a term is well-typed. It exists so a DIAGNOSTIC
+    -- can point at the literal, and the elaborator drops it.
+    t-float : ∀ {ctx : NamedCtx} (i f l p : ℕ)
+            → ctx ⊢ᵢ RFloat i f l p ∶ Float ⨾ zeroUsage
 
     t-str : ∀ {ctx : NamedCtx} (s : String)
           → ctx ⊢ᵢ RStringLit s ∶ Str ⨾ zeroUsage
@@ -351,8 +354,8 @@ mutual
   data _⊢ᵍ_∶_ : (ctx : NamedCtx) → RawExpr → Type → Set where
     g-int  : ∀ {ctx : NamedCtx} (n : ℤ) → ctx ⊢ᵍ RInt n ∶ Int
     -- …and the value realm, witness-free for the same reason.
-    g-float : ∀ {ctx : NamedCtx} (i f l : ℕ)
-            → ctx ⊢ᵍ RFloat i f l ∶ Float
+    g-float : ∀ {ctx : NamedCtx} (i f l p : ℕ)
+            → ctx ⊢ᵍ RFloat i f l p ∶ Float
     -- The Unit leaf is the bare `terminal` morphism (avoids a special `RVar`
     -- elaborator clause that would block the general `RVar` reduction); its
     -- top-level bridge routes through the existing `t-terminal-check`. The

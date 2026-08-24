@@ -90,7 +90,7 @@ canonExpr-lits bound um am (RVar x)  =
 canonExpr-lits bound um am (RResolved _) = refl
 canonExpr-lits bound um am RUnit         = refl
 canonExpr-lits bound um am (RInt n)      = refl
-canonExpr-lits bound um am (RFloat _ _ _) = refl
+canonExpr-lits bound um am (RFloat _ _ _ _) = refl
 canonExpr-lits bound um am (RStringLit _) = refl
 canonExpr-lits bound um am (RApp f x) =
   cong₂ _++_ (canonExpr-lits bound um am f) (canonExpr-lits bound um am x)
@@ -123,7 +123,7 @@ negLits-lits bound um am (RQualified name alias) with lookupImportAlias am alias
 ... | nothing = refl
 negLits-lits bound um am (RResolved _)  = refl
 negLits-lits bound um am RUnit          = refl
-negLits-lits bound um am (RFloat _ _ _) = refl
+negLits-lits bound um am (RFloat _ _ _ _) = refl
 negLits-lits bound um am (RStringLit _) = refl
 negLits-lits bound um am (RApp f x)     = canonExpr-lits bound um am (RApp f x)
 negLits-lits bound um am (RLam x b)     = canonExpr-lits bound um am (RLam x b)

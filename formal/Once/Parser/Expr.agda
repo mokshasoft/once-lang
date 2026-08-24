@@ -204,8 +204,8 @@ parseOpExprWF (TRParen ∷ rest) (c ∷ a) =
 -- Any other token kills the operator parse.
 parseOpExprWF []               _ = nothing
 parseOpExprWF (TWord _    ∷ _) _ = nothing
-parseOpExprWF (TInt _     ∷ _) _ = nothing
-parseOpExprWF (TFloat _ _ _ ∷ _) _ = nothing
+parseOpExprWF (TInt _ _     ∷ _) _ = nothing
+parseOpExprWF (TFloat _ _ _ _ ∷ _) _ = nothing
 parseOpExprWF (TString _  ∷ _) _ = nothing
 parseOpExprWF (TLParen    ∷ _) _ = nothing
 parseOpExprWF (TLBrace    ∷ _) _ = nothing
@@ -308,8 +308,8 @@ parseLamParamsWF (TWord name ∷ rest) (acc rec) with parseLamParamsWF rest (rec
 ... | nothing                  = nothing
 ... | just (body , rest' , d) = just (RLam name body , rest' , plp-arg d)
 parseLamParamsWF []               _ = nothing
-parseLamParamsWF (TInt _     ∷ _) _ = nothing
-parseLamParamsWF (TFloat _ _ _ ∷ _) _ = nothing
+parseLamParamsWF (TInt _ _     ∷ _) _ = nothing
+parseLamParamsWF (TFloat _ _ _ _ ∷ _) _ = nothing
 parseLamParamsWF (TString _  ∷ _) _ = nothing
 parseLamParamsWF (TLParen    ∷ _) _ = nothing
 parseLamParamsWF (TRParen    ∷ _) _ = nothing
@@ -354,8 +354,8 @@ parseLetContWF name val (TWord w ∷ rest) (acc rec) with wordEq-view w "in"
 ...   | just (body , rest' , d) = just (RLet name val body , rest' , plin d)
 parseLetContWF name val (TWord w ∷ rest) _ | we-nomatch _ = nothing
 parseLetContWF _ _ []               _ = nothing
-parseLetContWF _ _ (TInt _     ∷ _) _ = nothing
-parseLetContWF _ _ (TFloat _ _ _ ∷ _) _ = nothing
+parseLetContWF _ _ (TInt _ _     ∷ _) _ = nothing
+parseLetContWF _ _ (TFloat _ _ _ _ ∷ _) _ = nothing
 parseLetContWF _ _ (TString _  ∷ _) _ = nothing
 parseLetContWF _ _ (TLParen    ∷ _) _ = nothing
 parseLetContWF _ _ (TRParen    ∷ _) _ = nothing
@@ -444,8 +444,8 @@ parseRightBranchWF scrut x left toks (acc rec) with rbView toks
           just (RDestruct scrut x left y right , final , prb dR)
 ...     | just (_ , [] , _)              = nothing
 ...     | just (_ , TWord _    ∷ _ , _)  = nothing
-...     | just (_ , TInt _     ∷ _ , _)  = nothing
-...     | just (_ , TFloat _ _ _ ∷ _ , _)  = nothing
+...     | just (_ , TInt _ _     ∷ _ , _)  = nothing
+...     | just (_ , TFloat _ _ _ _ ∷ _ , _)  = nothing
 ...     | just (_ , TString _  ∷ _ , _)  = nothing
 ...     | just (_ , TLParen    ∷ _ , _)  = nothing
 ...     | just (_ , TRParen    ∷ _ , _)  = nothing
@@ -550,8 +550,8 @@ parseParenTripleWF e e2 (TRParen ∷ final) _ =
   just (final , ppt-close)
 parseParenTripleWF _ _ []               _ = nothing
 parseParenTripleWF _ _ (TWord _    ∷ _) _ = nothing
-parseParenTripleWF _ _ (TInt _     ∷ _) _ = nothing
-parseParenTripleWF _ _ (TFloat _ _ _ ∷ _) _ = nothing
+parseParenTripleWF _ _ (TInt _ _     ∷ _) _ = nothing
+parseParenTripleWF _ _ (TFloat _ _ _ _ ∷ _) _ = nothing
 parseParenTripleWF _ _ (TString _  ∷ _) _ = nothing
 parseParenTripleWF _ _ (TLParen    ∷ _) _ = nothing
 parseParenTripleWF _ _ (TLBrace    ∷ _) _ = nothing
@@ -604,8 +604,8 @@ parseParenContWF e (TColon ∷ rest) (acc rec)
       just (RAnnot e ty , final , ppc-annot dT)
 ... | just (_ , []               , _)  = nothing
 ... | just (_ , TWord _    ∷ _   , _)  = nothing
-... | just (_ , TInt _     ∷ _   , _)  = nothing
-... | just (_ , TFloat _ _ _ ∷ _   , _)  = nothing
+... | just (_ , TInt _ _     ∷ _   , _)  = nothing
+... | just (_ , TFloat _ _ _ _ ∷ _   , _)  = nothing
 ... | just (_ , TString _  ∷ _   , _)  = nothing
 ... | just (_ , TLParen    ∷ _   , _)  = nothing
 ... | just (_ , TLBrace    ∷ _   , _)  = nothing
@@ -640,8 +640,8 @@ parseParenContWF e (TColon ∷ rest) (acc rec)
 ... | nothing                            = nothing
 parseParenContWF _ []               _ = nothing
 parseParenContWF _ (TWord _    ∷ _) _ = nothing
-parseParenContWF _ (TInt _     ∷ _) _ = nothing
-parseParenContWF _ (TFloat _ _ _ ∷ _) _ = nothing
+parseParenContWF _ (TInt _ _     ∷ _) _ = nothing
+parseParenContWF _ (TFloat _ _ _ _ ∷ _) _ = nothing
 parseParenContWF _ (TString _  ∷ _) _ = nothing
 parseParenContWF _ (TLParen    ∷ _) _ = nothing
 parseParenContWF _ (TLBrace    ∷ _) _ = nothing
@@ -724,8 +724,8 @@ parseAtomExprWF-TLParen rest@(TAt ∷ _) a with parseOpExprWF rest []
 -- Non-operator leads: delegate directly.
 parseAtomExprWF-TLParen []                 a = parseAtomExprWF-TLParen-paren [] a
 parseAtomExprWF-TLParen rest@(TWord _   ∷ _) a = parseAtomExprWF-TLParen-paren rest a
-parseAtomExprWF-TLParen rest@(TInt _    ∷ _) a = parseAtomExprWF-TLParen-paren rest a
-parseAtomExprWF-TLParen rest@(TFloat _ _ _ ∷ _) a = parseAtomExprWF-TLParen-paren rest a
+parseAtomExprWF-TLParen rest@(TInt _ _    ∷ _) a = parseAtomExprWF-TLParen-paren rest a
+parseAtomExprWF-TLParen rest@(TFloat _ _ _ _ ∷ _) a = parseAtomExprWF-TLParen-paren rest a
 parseAtomExprWF-TLParen rest@(TString _ ∷ _) a = parseAtomExprWF-TLParen-paren rest a
 parseAtomExprWF-TLParen rest@(TLParen   ∷ _) a = parseAtomExprWF-TLParen-paren rest a
 parseAtomExprWF-TLParen rest@(TLBrace   ∷ _) a = parseAtomExprWF-TLParen-paren rest a
@@ -785,8 +785,8 @@ atomExprVarWF name eq (TAt ∷ TWord alias ∷ rest) =
   just (RQualified name alias , rest , pae-qual eq)
 atomExprVarWF name eq []                = just (RVar name , [] , pae-var eq nqp-[])
 atomExprVarWF name eq (TWord _    ∷ r)  = just (RVar name , TWord _    ∷ r , pae-var eq nqp-TWord)
-atomExprVarWF name eq (TInt _     ∷ r)  = just (RVar name , TInt _     ∷ r , pae-var eq nqp-TInt)
-atomExprVarWF name eq (TFloat _ _ _ ∷ r) = just (RVar name , TFloat _ _ _ ∷ r , pae-var eq nqp-TFloat)
+atomExprVarWF name eq (TInt _ _     ∷ r)  = just (RVar name , TInt _ _     ∷ r , pae-var eq nqp-TInt)
+atomExprVarWF name eq (TFloat _ _ _ _ ∷ r) = just (RVar name , TFloat _ _ _ _ ∷ r , pae-var eq nqp-TFloat)
 atomExprVarWF name eq (TString _  ∷ r)  = just (RVar name , TString _  ∷ r , pae-var eq nqp-TString)
 atomExprVarWF name eq (TLParen    ∷ r)  = just (RVar name , TLParen    ∷ r , pae-var eq nqp-TLParen)
 atomExprVarWF name eq (TRParen    ∷ r)  = just (RVar name , TRParen    ∷ r , pae-var eq nqp-TRParen)
@@ -803,8 +803,8 @@ atomExprVarWF name eq (TComma     ∷ r)  = just (RVar name , TComma     ∷ r ,
 atomExprVarWF name eq (TSemicolon ∷ r)  = just (RVar name , TSemicolon ∷ r , pae-var eq nqp-TSemicolon)
 -- TAt without a following TWord: just a variable.
 atomExprVarWF name eq (TAt        ∷ []) = just (RVar name , TAt ∷ [] , pae-var eq nqp-TAt-[])
-atomExprVarWF name eq (TAt        ∷ TInt _     ∷ r) = just (RVar name , TAt ∷ TInt _     ∷ r , pae-var eq (nqp-TAt-cons ntw-TInt))
-atomExprVarWF name eq (TAt        ∷ TFloat _ _ _ ∷ r) = just (RVar name , TAt ∷ TFloat _ _ _ ∷ r , pae-var eq (nqp-TAt-cons ntw-TFloat))
+atomExprVarWF name eq (TAt        ∷ TInt _ _     ∷ r) = just (RVar name , TAt ∷ TInt _ _     ∷ r , pae-var eq (nqp-TAt-cons ntw-TInt))
+atomExprVarWF name eq (TAt        ∷ TFloat _ _ _ _ ∷ r) = just (RVar name , TAt ∷ TFloat _ _ _ _ ∷ r , pae-var eq (nqp-TAt-cons ntw-TFloat))
 atomExprVarWF name eq (TAt        ∷ TString _  ∷ r) = just (RVar name , TAt ∷ TString _  ∷ r , pae-var eq (nqp-TAt-cons ntw-TString))
 atomExprVarWF name eq (TAt        ∷ TLParen    ∷ r) = just (RVar name , TAt ∷ TLParen    ∷ r , pae-var eq (nqp-TAt-cons ntw-TLParen))
 atomExprVarWF name eq (TAt        ∷ TRParen    ∷ r) = just (RVar name , TAt ∷ TRParen    ∷ r , pae-var eq (nqp-TAt-cons ntw-TRParen))
@@ -872,10 +872,10 @@ parseAtomExprWF [] _ = nothing
 parseAtomExprWF (TLParen  ∷ rest) (acc rec) = parseAtomExprWF-TLParen rest (rec (s≤s ≤-refl))
 parseAtomExprWF (TLambda  ∷ rest) (acc rec) = parseAtomExprWF-TLambda rest (rec (s≤s ≤-refl))
 parseAtomExprWF (TWord name ∷ rest) (acc rec) = atomExprWordWF name rest (rec (s≤s ≤-refl))
-parseAtomExprWF (TInt n    ∷ rest) _ = just (RInt n , rest , pae-int)
+parseAtomExprWF (TInt n _    ∷ rest) _ = just (RInt n , rest , pae-int)
 -- Plan 0.71 F3a: the AST has its node now, so the rejection F1 left here
 -- becomes the real rule.
-parseAtomExprWF (TFloat i f l ∷ rest) _ = just (RFloat i f l , rest , pae-float)
+parseAtomExprWF (TFloat i f l _ ∷ rest) _ = just (RFloat i f l _ , rest , pae-float)
 parseAtomExprWF (TString s ∷ rest) _ = just (RStringLit s , rest , pae-str)
 parseAtomExprWF (TRParen    ∷ _) _ = nothing
 parseAtomExprWF (TLBrace    ∷ _) _ = nothing
@@ -942,8 +942,8 @@ parseAppTailWF f (TWord s ∷ rest) (acc rec) with reserved-view s
       with parseAppTailWF (RApp f arg) rest' (rec (ParsesAtomExpr-shrinks dA))
 ...     | nothing                   = nothing
 ...     | just (body , rest'' , dT) = just (body , rest'' , papp-arg (aao-word notR) dA dT)
-parseAppTailWF f (TInt n    ∷ rest) (acc rec)
-  with parseAtomExprWF (TInt n ∷ rest) (acc rec)
+parseAppTailWF f (TInt n _    ∷ rest) (acc rec)
+  with parseAtomExprWF (TInt n _ ∷ rest) (acc rec)
 ... | nothing = nothing
 ... | just (arg , rest' , dA)
     with parseAppTailWF (RApp f arg) rest' (rec (ParsesAtomExpr-shrinks dA))
@@ -958,8 +958,8 @@ parseAppTailWF f (TString s ∷ rest) (acc rec)
 ...   | just (body , rest'' , dT) = just (body , rest'' , papp-arg aao-TString dA dT)
 -- Non-atom-start tokens: tail no-ops.
 parseAppTailWF f (TRParen   ∷ r) _ = just (f , TRParen   ∷ r , papp-done nas-TRParen)
-parseAppTailWF f (TFloat i fr l ∷ rest) (acc rec)
-  with parseAtomExprWF (TFloat i fr l ∷ rest) (acc rec)
+parseAppTailWF f (TFloat i fr l _ ∷ rest) (acc rec)
+  with parseAtomExprWF (TFloat i fr l _ ∷ rest) (acc rec)
 ... | nothing = nothing
 ... | just (arg , rest' , dA)
     with parseAppTailWF (RApp f arg) rest' (rec (ParsesAtomExpr-shrinks dA))
@@ -1016,7 +1016,7 @@ parseUnaryWF []               a with parseAppWF [] a
 parseUnaryWF (TWord s    ∷ r) a with parseAppWF (TWord s    ∷ r) a
 ... | nothing                 = nothing
 ... | just (e , rest' , d)   = just (e , rest' , pu-app d)
-parseUnaryWF (TInt n     ∷ r) a with parseAppWF (TInt n     ∷ r) a
+parseUnaryWF (TInt n _     ∷ r) a with parseAppWF (TInt n _     ∷ r) a
 ... | nothing                 = nothing
 ... | just (e , rest' , d)   = just (e , rest' , pu-app d)
 parseUnaryWF (TString s  ∷ r) a with parseAppWF (TString s  ∷ r) a
@@ -1028,7 +1028,7 @@ parseUnaryWF (TLParen    ∷ r) a with parseAppWF (TLParen    ∷ r) a
 parseUnaryWF (TRParen    ∷ r) a with parseAppWF (TRParen    ∷ r) a
 ... | nothing                 = nothing
 ... | just (e , rest' , d)   = just (e , rest' , pu-app d)
-parseUnaryWF (TFloat i f l ∷ r) a with parseAppWF (TFloat i f l ∷ r) a
+parseUnaryWF (TFloat i f l _ ∷ r) a with parseAppWF (TFloat i f l _ ∷ r) a
 ... | nothing                 = nothing
 ... | just (e , rest' , d)   = just (e , rest' , pu-app d)
 parseUnaryWF (TLBrace    ∷ r) a with parseAppWF (TLBrace    ∷ r) a
@@ -1147,8 +1147,8 @@ parseMulTailWF left (TPercent ∷ rest) (acc rec) with parseUnaryWF rest (rec (s
 ...   | just (body , rest'' , dT) = just (body , rest'' , pmt-percent dU dT)
 parseMulTailWF left []               _ = just (left , [] , pmt-done notMul-[])
 parseMulTailWF left (TWord s    ∷ r) _ = just (left , TWord s    ∷ r , pmt-done tt)
-parseMulTailWF left (TInt n     ∷ r) _ = just (left , TInt n     ∷ r , pmt-done tt)
-parseMulTailWF left (TFloat i f l ∷ r) _ = just (left , TFloat i f l ∷ r , pmt-done tt)
+parseMulTailWF left (TInt n _     ∷ r) _ = just (left , TInt n _     ∷ r , pmt-done tt)
+parseMulTailWF left (TFloat i f l _ ∷ r) _ = just (left , TFloat i f l _ ∷ r , pmt-done tt)
 parseMulTailWF left (TString s  ∷ r) _ = just (left , TString s  ∷ r , pmt-done tt)
 parseMulTailWF left (TLParen    ∷ r) _ = just (left , TLParen    ∷ r , pmt-done tt)
 parseMulTailWF left (TRParen    ∷ r) _ = just (left , TRParen    ∷ r , pmt-done tt)
@@ -1206,8 +1206,8 @@ parseAddTailWF left (TMinus ∷ rest) (acc rec) with parseMulWF rest (rec (s≤s
 ...   | just (body , rest'' , dT) = just (body , rest'' , pat-minus dM dT)
 parseAddTailWF left []               _ = just (left , [] , pat-done tt)
 parseAddTailWF left (TWord s    ∷ r) _ = just (left , TWord s    ∷ r , pat-done tt)
-parseAddTailWF left (TInt n     ∷ r) _ = just (left , TInt n     ∷ r , pat-done tt)
-parseAddTailWF left (TFloat i f l ∷ r) _ = just (left , TFloat i f l ∷ r , pat-done tt)
+parseAddTailWF left (TInt n _     ∷ r) _ = just (left , TInt n _     ∷ r , pat-done tt)
+parseAddTailWF left (TFloat i f l _ ∷ r) _ = just (left , TFloat i f l _ ∷ r , pat-done tt)
 parseAddTailWF left (TString s  ∷ r) _ = just (left , TString s  ∷ r , pat-done tt)
 parseAddTailWF left (TLParen    ∷ r) _ = just (left , TLParen    ∷ r , pat-done tt)
 parseAddTailWF left (TRParen    ∷ r) _ = just (left , TRParen    ∷ r , pat-done tt)
@@ -1259,8 +1259,8 @@ parseCmpWF toks (acc rec) with parseAddWF toks (acc rec)
 ... | nothing                   = nothing
 ... | just (left , []               , dA) = just (left , []               , pcm-noop dA tt)
 ... | just (left , TWord s    ∷ r , dA) = just (left , TWord s    ∷ r , pcm-noop dA tt)
-... | just (left , TInt n     ∷ r , dA) = just (left , TInt n     ∷ r , pcm-noop dA tt)
-... | just (left , TFloat i f l ∷ r , dA) = just (left , TFloat i f l ∷ r , pcm-noop dA tt)
+... | just (left , TInt n _     ∷ r , dA) = just (left , TInt n _     ∷ r , pcm-noop dA tt)
+... | just (left , TFloat i f l _ ∷ r , dA) = just (left , TFloat i f l _ ∷ r , pcm-noop dA tt)
 ... | just (left , TString s  ∷ r , dA) = just (left , TString s  ∷ r , pcm-noop dA tt)
 ... | just (left , TLParen    ∷ r , dA) = just (left , TLParen    ∷ r , pcm-noop dA tt)
 ... | just (left , TRParen    ∷ r , dA) = just (left , TRParen    ∷ r , pcm-noop dA tt)
@@ -1326,8 +1326,8 @@ parseCompTailWF left (TDot ∷ rest) (acc rec) with parseCmpWF rest (rec (s≤s 
 ...   | just (body , rest'' , dT) = just (body , rest'' , pct-dot dC dT)
 parseCompTailWF left []               _ = just (left , [] , pct-done tt)
 parseCompTailWF left (TWord s    ∷ r) _ = just (left , TWord s    ∷ r , pct-done tt)
-parseCompTailWF left (TInt n     ∷ r) _ = just (left , TInt n     ∷ r , pct-done tt)
-parseCompTailWF left (TFloat i f l ∷ r) _ = just (left , TFloat i f l ∷ r , pct-done tt)
+parseCompTailWF left (TInt n _     ∷ r) _ = just (left , TInt n _     ∷ r , pct-done tt)
+parseCompTailWF left (TFloat i f l _ ∷ r) _ = just (left , TFloat i f l _ ∷ r , pct-done tt)
 parseCompTailWF left (TString s  ∷ r) _ = just (left , TString s  ∷ r , pct-done tt)
 parseCompTailWF left (TLParen    ∷ r) _ = just (left , TLParen    ∷ r , pct-done tt)
 parseCompTailWF left (TRParen    ∷ r) _ = just (left , TRParen    ∷ r , pct-done tt)

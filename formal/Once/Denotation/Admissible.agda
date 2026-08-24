@@ -107,7 +107,7 @@ rawIntLits (RResolved _)        = []
 rawIntLits RUnit                = []
 -- a FLOAT literal is not checked here: it always lowers, rounding if the
 -- target cannot hold it exactly (D116).
-rawIntLits (RFloat _ _ _)       = []
+rawIntLits (RFloat _ _ _ _)       = []
 rawIntLits (RStringLit _)       = []
 
 negLits (RInt n) = (- n) ∷ []

@@ -1467,7 +1467,7 @@ agree-check-RApp ctx f arg (μ-type F ⇒[ mk-kind Many eff ] A) E.ahv-cata veq 
 μ (Raw.RDestruct s _ l _ r) = suc (μ s +ℕ (μ l +ℕ μ r))
 μ Raw.RUnit               = 1
 μ (Raw.RInt _)            = 1
-μ (Raw.RFloat _ _ _)      = 1
+μ (Raw.RFloat _ _ _ _)      = 1
 μ (Raw.RStringLit _)      = 1
 μ (Raw.RAnnot e _)        = suc (μ e)
 μ (Raw.RBinOp _ a b)      = suc (μ a +ℕ μ b)
@@ -1526,7 +1526,7 @@ mutual
   -- RFloat: K3 removed F4's decision, so there is nothing to name and this is
   -- the `RInt` clause verbatim. The absurd `nothing` branch went with it —
   -- a float literal can no longer fail to elaborate.
-  infer-agreeV ctx (Raw.RFloat i f l) _ refl dγ k = refl
+  infer-agreeV ctx (Raw.RFloat i f l _) _ refl dγ k = refl
   infer-agreeV ctx (Raw.RStringLit s) _ refl dγ k = refl
   infer-agreeV ctx Raw.RUnit          _ refl dγ k = refl
   -- RPair: with-free — delegate to the top-level `agree-RPair`, passing both
@@ -1668,12 +1668,12 @@ mutual
   ... | nothing | eq' with T E.≟T Int | eq'
   ...   | yes refl | refl = infer-agreeV ctx (Raw.RInt n) (rec (infer<check (Raw.RInt n))) refl dγ k
   ...   | no _     | ()
-  -- RFloat mirrors it, with the acceptance decision as a THIRD scrutinee: the
+  -- RFloat mirrors it, with _ the acceptance decision as a THIRD scrutinee: the
   -- K3: only ONE scrutinee left. The acceptance decision used to be named in
   -- BOTH branches — the fallback runs `inferElabV`, which dispatched on the
   -- same decision, so leaving it unnamed left the equation stuck. There is no
   -- decision now, and the two absurd branches went with it.
-  check-agreeV ctx (Raw.RFloat i f l) T (acc rec) eq dγ k
+  check-agreeV ctx (Raw.RFloat i f l _) T (acc rec) eq dγ k
     with E.isRFloatVliftTarget? T | eq
   ... | just (X , π , refl) | refl = refl
   ... | nothing | eq' with T E.≟T Float | eq'

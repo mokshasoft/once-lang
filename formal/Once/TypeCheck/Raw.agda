@@ -100,7 +100,11 @@ data RawExpr : Set where
   -- not exactly representable at every target width must produce a type ERROR
   -- rather than a rounded value. Deciding that here would put the check on the
   -- parse path, where there is no way to report it.
-  RFloat    : ℕ → ℕ → ℕ → RawExpr
+  -- PLAN 0.74 (positions): int part, fraction digits, fraction length, and
+  -- the literal's SOURCE OFFSET. The offset is diagnostic metadata — the
+  -- elaborator drops it, so it never reaches `Surface.Expr`, the IR, the
+  -- machine or any correspondence proof. `Once.Warnings` is its only consumer.
+  RFloat    : ℕ → ℕ → ℕ → ℕ → RawExpr
 
   -- String literal
   RStringLit : String → RawExpr

@@ -66,7 +66,10 @@ printLetBindings : List (LowerIdent × GExpr) → List Token
 
 -- Leaves
 printGExpr G.EUnit       = TLParen ∷ TRParen ∷ []
-printGExpr (G.EInt n)    = TInt (+ n) ∷ []
+-- Offset 0: the printer synthesises tokens from a `GExpr`, so there is no
+-- source they came from. The roundtrip below is what pins that this is
+-- consistent rather than arbitrary.
+printGExpr (G.EInt n)    = TInt (+ n) 0 ∷ []
 printGExpr (G.EString s) = TString s ∷ []
 printGExpr (G.EVar name) = TWord name ∷ []
 printGExpr (G.EQualified name alias) =
@@ -183,7 +186,7 @@ open import Relation.Binary.PropositionalEquality using (refl)
 _ : printGExpr G.EUnit ≡ TLParen ∷ TRParen ∷ []
 _ = refl
 
-_ : printGExpr (G.EInt 42) ≡ TInt (+ 42) ∷ []
+_ : printGExpr (G.EInt 42) ≡ TInt (+ 42) 0 ∷ []
 _ = refl
 
 _ : printGExpr (G.EVar "x") ≡ TWord "x" ∷ []

@@ -164,7 +164,7 @@ classify-decanon bound (Raw.RApp (Raw.RPair a b) g) h = refl
 classify-decanon bound (Raw.RApp (Raw.RDestruct s xl el xr er) g) h = refl
 classify-decanon bound (Raw.RApp Raw.RUnit g) h = refl
 classify-decanon bound (Raw.RApp (Raw.RInt n) g) h = refl
-classify-decanon bound (Raw.RApp (Raw.RFloat i fr fl) g) h = refl
+classify-decanon bound (Raw.RApp (Raw.RFloat i fr fl _) g) h = refl
 classify-decanon bound (Raw.RApp (Raw.RStringLit s) g) h = refl
 classify-decanon bound (Raw.RApp (Raw.RAnnot e t) g) h = refl
 classify-decanon bound (Raw.RApp (Raw.RBinOp op a b) g) h = refl
@@ -180,7 +180,7 @@ classify-decanon bound (Raw.RPair a b) h = refl
 classify-decanon bound (Raw.RDestruct s xl el xr er) h = refl
 classify-decanon bound Raw.RUnit h = refl
 classify-decanon bound (Raw.RInt n) h = refl
-classify-decanon bound (Raw.RFloat i fr fl) h = refl
+classify-decanon bound (Raw.RFloat i fr fl _) h = refl
 classify-decanon bound (Raw.RStringLit s) h = refl
 classify-decanon bound (Raw.RAnnot e t) h = refl
 classify-decanon bound (Raw.RBinOp op a b) h = refl
@@ -219,7 +219,7 @@ mutual
   canon-reflects-ᵍ : ∀ {ctx T} (bound : List String) (e : RawExpr)
     → ctx ⊢ᵍ canonExpr bound [] [] e ∶ T → ctx ⊢ᵍ e ∶ T
   canon-reflects-ᵍ bound (Raw.RInt n) D = D
-  canon-reflects-ᵍ bound (Raw.RFloat i fr fl) D = D
+  canon-reflects-ᵍ bound (Raw.RFloat i fr fl _) D = D
   canon-reflects-ᵍ bound (Raw.RVar x) D =
     reflect-gvar (elemStr x bound ∨ isBuiltinName x) bound x D
   canon-reflects-ᵍ bound (Raw.RPair a b) (g-pair d₁ d₂) =
@@ -235,7 +235,7 @@ mutual
   canon-reflects-ᵍ bound (Raw.RApp (Raw.RDestruct s xl el xr er) arg) ()
   canon-reflects-ᵍ bound (Raw.RApp Raw.RUnit arg) ()
   canon-reflects-ᵍ bound (Raw.RApp (Raw.RInt n) arg) ()
-  canon-reflects-ᵍ bound (Raw.RApp (Raw.RFloat i fr fl) arg) ()
+  canon-reflects-ᵍ bound (Raw.RApp (Raw.RFloat i fr fl _) arg) ()
   canon-reflects-ᵍ bound (Raw.RApp (Raw.RStringLit s) arg) ()
   canon-reflects-ᵍ bound (Raw.RApp (Raw.RAnnot e t) arg) ()
   canon-reflects-ᵍ bound (Raw.RApp (Raw.RBinOp op a b) arg) ()
@@ -308,7 +308,7 @@ mutual
     → Names⊆ ctx bound → ctx ⊢ᵢ canonExpr bound [] [] e ∶ A ⨾ Ψ → ctx ⊢ᵢ e ∶ A ⨾ Ψ
   -- Leaves (canonExpr e = e definitionally).
   canon-reflects-ᵢ bound (Raw.RInt n) sub D = D
-  canon-reflects-ᵢ bound (Raw.RFloat i fr fl) sub D = D
+  canon-reflects-ᵢ bound (Raw.RFloat i fr fl _) sub D = D
   canon-reflects-ᵢ bound (Raw.RStringLit s) sub D = D
   canon-reflects-ᵢ bound Raw.RUnit sub D = D
   canon-reflects-ᵢ bound (Raw.RQualified n al) sub D = D

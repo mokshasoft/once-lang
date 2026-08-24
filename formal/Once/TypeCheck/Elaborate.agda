@@ -688,9 +688,9 @@ inspectWellFormedF F with wellFormedF? F in eq
 -- (`intLit`/`terminal`); structure via the generic generators. `nothing` for
 -- non-value shapes — `⊢ᵍ` is the extractable family by construction.
 -- TOTAL (K3): every float literal has a global element.
-checkG-RFloat-aux : (ctx : NamedCtx) (X : Type) (i f l : ℕ)
-                 → Maybe (IR ⌊ X ⌋ ⌊ Once.Type.Float ⌋ × (ctx ⊢ᵍ Raw.RFloat i f l ∶ Once.Type.Float))
-checkG-RFloat-aux ctx X i f l = just (floatLit (decimalOf i f l) , g-float i f l)
+checkG-RFloat-aux : (ctx : NamedCtx) (X : Type) (i f l p : ℕ)
+                 → Maybe (IR ⌊ X ⌋ ⌊ Once.Type.Float ⌋ × (ctx ⊢ᵍ Raw.RFloat i f l p ∶ Once.Type.Float))
+checkG-RFloat-aux ctx X i f l p = just (floatLit (decimalOf i f l) , g-float i f l p)
 
 checkG : (ctx : NamedCtx) (X : Type) (e : RawExpr) (A : Type)
        → Maybe (IR ⌊ X ⌋ ⌊ A ⌋ × (ctx ⊢ᵍ e ∶ A))
@@ -698,7 +698,7 @@ checkG ctx X (Raw.RInt n) Once.Type.Int = just (intLit n , g-int n)
 -- A float literal is a value too, and it carries F4's decision the same way
 -- infer-mode does. With-free via an aux so completeness can rewrite by
 -- `accept?-complete` and see this reduce.
-checkG ctx X (Raw.RFloat i f l) Once.Type.Float = checkG-RFloat-aux ctx X i f l
+checkG ctx X (Raw.RFloat i f l p) Once.Type.Float = checkG-RFloat-aux ctx X i f l p
 checkG ctx X (Raw.RVar "terminal") Once.Type.Unit
   with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
 ... | llv-not-found eqL | liv-not-found eqI = just (IR.terminal , g-terminal eqL eqI)
@@ -775,7 +775,7 @@ spineOf e = go e []
     go (Raw.RDestruct e a b c d) args = mkSpine (Raw.RDestruct e a b c d) args
     go Raw.RUnit             args = mkSpine Raw.RUnit args
     go (Raw.RInt n)          args = mkSpine (Raw.RInt n) args
-    go (Raw.RFloat i f l)    args = mkSpine (Raw.RFloat i f l) args
+    go (Raw.RFloat i f l p)    args = mkSpine (Raw.RFloat i f l p) args
     go (Raw.RStringLit s)    args = mkSpine (Raw.RStringLit s) args
     go (Raw.RAnnot e t)      args = mkSpine (Raw.RAnnot e t) args
     go (Raw.RBinOp op x y)   args = mkSpine (Raw.RBinOp op x y) args
@@ -1308,19 +1308,19 @@ mutual
     ∀ (ctx : NamedCtx) (n : ℤ) (T : Type)
     → Maybe (∃-syntax (λ X → ∃-syntax (λ π → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Int))))
     → VerifiedCheckResult ctx (Raw.RInt n) T
-  -- RFloat check-mode dispatch. ONE scrutinee now — the value-lift view.
+  -- RFloat check-mode dispatch. ONE _ scrutinee now — the value-lift view.
   -- F4's acceptance decision is gone (plan 0.74 K3, D116): every float literal
   -- is well-typed and rounds at the target, so there is nothing to decide.
   checkElabV-RFloat-aux :
-    ∀ (ctx : NamedCtx) (i f l : ℕ) (T : Type)
+    ∀ (ctx : NamedCtx) (i f l p : ℕ) (T : Type)
     → Maybe (∃-syntax (λ X → ∃-syntax (λ π → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.Float))))
-    → VerifiedCheckResult ctx (Raw.RFloat i f l) T
+    → VerifiedCheckResult ctx (Raw.RFloat i f l p) T
 
-  -- RFloat infer-mode. No dispatch left at all — it is the `RInt` clause with
+  -- RFloat infer-mode. No dispatch _ left at all — it is the `RInt` clause with
   -- `decimalOf` in place of the digit.
   inferElabV-RFloat-aux :
-    ∀ (ctx : NamedCtx) (i f l : ℕ)
-    → VerifiedInferResult ctx (Raw.RFloat i f l)
+    ∀ (ctx : NamedCtx) (i f l p : ℕ)
+    → VerifiedInferResult ctx (Raw.RFloat i f l p)
 
   -- RPair check-mode dispatch, taking the target classification explicitly
   -- (product / pure-arrow-to-product / other). One scrutinee, no overlap.
@@ -1755,7 +1755,7 @@ mutual
   inferElabV ctx (Raw.RInt n) =
     success Int _ (Surface.int n) 0 (NamedCtx.freshCounter ctx) , t-int n
 
-  inferElabV ctx (Raw.RFloat i f l) = inferElabV-RFloat-aux ctx i f l
+  inferElabV ctx (Raw.RFloat i f l p) = inferElabV-RFloat-aux ctx i f l p
 
   inferElabV ctx (Raw.RStringLit s) =
     success Str _ (Surface.str s) 0 (NamedCtx.freshCounter ctx) , t-str s
@@ -1896,8 +1896,8 @@ mutual
   -- the two outcomes don't overlap (no stuck `checkElabV (RInt n) T` for
   -- variable `T`). Behaviour is unchanged; the dispatch is now analysable.
   checkElabV-wf ctx ac (Raw.RInt n) T = checkElabV-RInt-aux ctx n T (isRIntVliftTarget? T)
-  checkElabV-wf ctx ac (Raw.RFloat i f l) T =
-    checkElabV-RFloat-aux ctx i f l T (isRFloatVliftTarget? T)
+  checkElabV-wf ctx ac (Raw.RFloat i f l p) T =
+    checkElabV-RFloat-aux ctx i f l p T (isRFloatVliftTarget? T)
 
   -- Generic infer-and-match fallback — covers RInt, RStringLit, RUnit,
   -- RPair, RBinOp, RUnaryOp, RLet, RDestruct, RAnnot, RQualified, RResolved.
@@ -2588,9 +2588,9 @@ mutual
   -- become the nearest double, it fails to compile.
   -- TOTAL. `FloatNotRepresentable` is unreachable from here now; the literal
   -- always elaborates and the target rounds it.
-  inferElabV-RFloat-aux ctx i f l =
+  inferElabV-RFloat-aux ctx i f l p =
     success Float _ (Surface.float (decimalOf i f l)) 0 (NamedCtx.freshCounter ctx)
-    , t-float i f l
+    , t-float i f l p
 
   -- RInt: value-lift on a pure-arrow-to-Int target, else generic infer+match.
   -- `refl` refines `T` to the arrow so `t-value-lift (g-int n)` types; the
@@ -2598,12 +2598,12 @@ mutual
   -- RFloat: value-lift on a pure-arrow-to-Float target; otherwise embed at
   -- `Float` or report a genuine type mismatch. The only failure left is a type
   -- mismatch — representability is no longer a way to fail.
-  checkElabV-RFloat-aux ctx i f l T (just (X , π , refl)) =
+  checkElabV-RFloat-aux ctx i f l p T (just (X , π , refl)) =
     success Surface.zeroUsage (Surface.lift-morphism (floatLit (decimalOf i f l))) 0 (NamedCtx.freshCounter ctx)
-    , t-value-lift (g-float i f l)
-  checkElabV-RFloat-aux ctx i f l T nothing with T ≟T Once.Type.Float
+    , t-value-lift (g-float i f l p)
+  checkElabV-RFloat-aux ctx i f l p T nothing with T ≟T Once.Type.Float
   ... | yes refl = success Surface.zeroUsage (Surface.float (decimalOf i f l)) 0 (NamedCtx.freshCounter ctx)
-                 , t-embed (t-float i f l)
+                 , t-embed (t-float i f l p)
   ... | no _     = failure (TypeMismatch T Once.Type.Float) , tt
 
   checkElabV-RInt-aux ctx n T (just (X , π , refl)) =

@@ -109,8 +109,8 @@ allTrailing _               = false
 showTokenPrefix : List Token → String
 showTokenPrefix [] = ""
 showTokenPrefix (TWord s    ∷ _) = "TWord \"" ++ s ++ "\""
-showTokenPrefix (TInt _     ∷ _) = "TInt"
-showTokenPrefix (TFloat _ _ _ ∷ _) = "TFloat"
+showTokenPrefix (TInt _ _     ∷ _) = "TInt"
+showTokenPrefix (TFloat _ _ _ _ ∷ _) = "TFloat"
 showTokenPrefix (TString _  ∷ _) = "TString"
 showTokenPrefix (TNewline   ∷ xs) = showTokenPrefix xs
 showTokenPrefix (TLParen    ∷ _) = "TLParen"

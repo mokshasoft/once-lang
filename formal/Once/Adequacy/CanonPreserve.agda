@@ -118,7 +118,7 @@ classify-canon bound (Raw.RApp (Raw.RPair a b) g) h = refl
 classify-canon bound (Raw.RApp (Raw.RDestruct s xl el xr er) g) h = refl
 classify-canon bound (Raw.RApp Raw.RUnit g) h = refl
 classify-canon bound (Raw.RApp (Raw.RInt n) g) h = refl
-classify-canon bound (Raw.RApp (Raw.RFloat i f l) g) h = refl
+classify-canon bound (Raw.RApp (Raw.RFloat i f l _) g) h = refl
 classify-canon bound (Raw.RApp (Raw.RStringLit s) g) h = refl
 classify-canon bound (Raw.RApp (Raw.RAnnot e t) g) h = refl
 classify-canon bound (Raw.RApp (Raw.RBinOp op a b) g) h = refl
@@ -132,7 +132,7 @@ classify-canon bound (Raw.RPair a b) h = refl
 classify-canon bound (Raw.RDestruct s xl el xr er) h = refl
 classify-canon bound Raw.RUnit h = refl
 classify-canon bound (Raw.RInt n) h = refl
-classify-canon bound (Raw.RFloat i f l) h = refl
+classify-canon bound (Raw.RFloat i f l _) h = refl
 classify-canon bound (Raw.RStringLit s) h = refl
 classify-canon bound (Raw.RAnnot e t) h = refl
 classify-canon bound (Raw.RBinOp op a b) h = refl
@@ -181,7 +181,7 @@ pres-ᵍ : ∀ {ctx e T} (bound : List String) →
 pres-ᵍ bound (g-int n) = g-int n
 -- Canonicalisation is the identity on a float literal, and the acceptance
 -- witness is about the VALUE, so it transports unchanged.
-pres-ᵍ bound (g-float i f l) = g-float i f l
+pres-ᵍ bound (g-float i f l p) = g-float i f l p
 pres-ᵍ bound (g-terminal lL lI) rewrite canon-builtin bound "terminal" refl = g-terminal lL lI
 pres-ᵍ bound (g-pair d₁ d₂) = g-pair (pres-ᵍ bound d₁) (pres-ᵍ bound d₂)
 pres-ᵍ bound (g-inl d) rewrite canon-builtin bound "inl" refl = g-inl (pres-ᵍ bound d)

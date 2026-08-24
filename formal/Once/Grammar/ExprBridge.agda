@@ -419,8 +419,8 @@ mutual
   complete-compTailWFraw (pct-done {toks = TNewline   ∷ _} _) _ = _ , refl
   complete-compTailWFraw (pct-done {toks = TEOF       ∷ _} _) _ = _ , refl
   complete-compTailWFraw (pct-done {toks = TWord _    ∷ _} _) _ = _ , refl
-  complete-compTailWFraw (pct-done {toks = TInt _     ∷ _} _) _ = _ , refl
-  complete-compTailWFraw (pct-done {toks = TFloat _ _ _ ∷ _} _) _ = _ , refl
+  complete-compTailWFraw (pct-done {toks = TInt _ _     ∷ _} _) _ = _ , refl
+  complete-compTailWFraw (pct-done {toks = TFloat _ _ _ _ ∷ _} _) _ = _ , refl
   complete-compTailWFraw (pct-done {toks = TString _  ∷ _} _) _ = _ , refl
   complete-compTailWFraw (pct-done {toks = TDot ∷ _}  ()) _
 
@@ -440,10 +440,10 @@ mutual
   complete-cmpWFraw (pcm-noop {rest = TWord _    ∷ _} dA _) (acc rec)
     with complete-addWFraw dA (acc rec)
   ... | dA' , eqA rewrite eqA = _ , refl
-  complete-cmpWFraw (pcm-noop {rest = TInt _     ∷ _} dA _) (acc rec)
+  complete-cmpWFraw (pcm-noop {rest = TInt _ _     ∷ _} dA _) (acc rec)
     with complete-addWFraw dA (acc rec)
   ... | dA' , eqA rewrite eqA = _ , refl
-  complete-cmpWFraw (pcm-noop {rest = TFloat _ _ _ ∷ _} dA _) (acc rec)
+  complete-cmpWFraw (pcm-noop {rest = TFloat _ _ _ _ ∷ _} dA _) (acc rec)
     with complete-addWFraw dA (acc rec)
   ... | dA' , eqA rewrite eqA = _ , refl
   complete-cmpWFraw (pcm-noop {rest = TString _  ∷ _} dA _) (acc rec)
@@ -622,8 +622,8 @@ mutual
   complete-addTailWFraw (pat-done {toks = TNewline   ∷ _} _) _ = _ , refl
   complete-addTailWFraw (pat-done {toks = TEOF       ∷ _} _) _ = _ , refl
   complete-addTailWFraw (pat-done {toks = TWord _    ∷ _} _) _ = _ , refl
-  complete-addTailWFraw (pat-done {toks = TInt _     ∷ _} _) _ = _ , refl
-  complete-addTailWFraw (pat-done {toks = TFloat _ _ _ ∷ _} _) _ = _ , refl
+  complete-addTailWFraw (pat-done {toks = TInt _ _     ∷ _} _) _ = _ , refl
+  complete-addTailWFraw (pat-done {toks = TFloat _ _ _ _ ∷ _} _) _ = _ , refl
   complete-addTailWFraw (pat-done {toks = TString _  ∷ _} _) _ = _ , refl
   complete-addTailWFraw (pat-done {toks = TPlus  ∷ _} ()) _
   complete-addTailWFraw (pat-done {toks = TMinus ∷ _} ()) _
@@ -686,8 +686,8 @@ mutual
   complete-mulTailWFraw (pmt-done {toks = TNewline   ∷ _} _) _ = _ , refl
   complete-mulTailWFraw (pmt-done {toks = TEOF       ∷ _} _) _ = _ , refl
   complete-mulTailWFraw (pmt-done {toks = TWord _    ∷ _} _) _ = _ , refl
-  complete-mulTailWFraw (pmt-done {toks = TInt _     ∷ _} _) _ = _ , refl
-  complete-mulTailWFraw (pmt-done {toks = TFloat _ _ _ ∷ _} _) _ = _ , refl
+  complete-mulTailWFraw (pmt-done {toks = TInt _ _     ∷ _} _) _ = _ , refl
+  complete-mulTailWFraw (pmt-done {toks = TFloat _ _ _ _ ∷ _} _) _ = _ , refl
   complete-mulTailWFraw (pmt-done {toks = TString _  ∷ _} _) _ = _ , refl
   complete-mulTailWFraw (pmt-done {toks = TStar    ∷ _} ()) _
   complete-mulTailWFraw (pmt-done {toks = TSlash   ∷ _} ()) _
@@ -728,10 +728,10 @@ mutual
   complete-unaryWFraw (pu-app {toks = TWord _    ∷ _} dApp) a
     with complete-appWFraw dApp a
   ... | dApp' , eqApp rewrite eqApp = _ , refl
-  complete-unaryWFraw (pu-app {toks = TInt _     ∷ _} dApp) a
+  complete-unaryWFraw (pu-app {toks = TInt _ _     ∷ _} dApp) a
     with complete-appWFraw dApp a
   ... | dApp' , eqApp rewrite eqApp = _ , refl
-  complete-unaryWFraw (pu-app {toks = TFloat _ _ _ ∷ _} dApp) a
+  complete-unaryWFraw (pu-app {toks = TFloat _ _ _ _ ∷ _} dApp) a
     with complete-appWFraw dApp a
   ... | dApp' , eqApp rewrite eqApp = _ , refl
   complete-unaryWFraw (pu-app {toks = TString _  ∷ _} dApp) a
@@ -1140,8 +1140,8 @@ mutual
   complete-atomExprWFraw (pae-paren-op {toks = TNewline ∷ _} ()) _
   complete-atomExprWFraw (pae-paren-op {toks = TEOF ∷ _} ()) _
   complete-atomExprWFraw (pae-paren-op {toks = TWord _ ∷ _} ()) _
-  complete-atomExprWFraw (pae-paren-op {toks = TInt _ ∷ _} ()) _
-  complete-atomExprWFraw (pae-paren-op {toks = TFloat _ _ _ ∷ _} ()) _
+  complete-atomExprWFraw (pae-paren-op {toks = TInt _ _ ∷ _} ()) _
+  complete-atomExprWFraw (pae-paren-op {toks = TFloat _ _ _ _ ∷ _} ()) _
   complete-atomExprWFraw (pae-paren-op {toks = TString _ ∷ _} ()) _
   complete-atomExprWFraw (pae-paren-op {toks = []} ()) _
 
@@ -1247,8 +1247,8 @@ mutual
 
   complete-pae-paren []                  dE dC a = complete-pae-paren-body [] dE dC a
   complete-pae-paren (TWord _    ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
-  complete-pae-paren (TInt _     ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
-  complete-pae-paren (TFloat _ _ _ ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
+  complete-pae-paren (TInt _ _     ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
+  complete-pae-paren (TFloat _ _ _ _ ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
   complete-pae-paren (TString _  ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
   complete-pae-paren (TLParen    ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a
   complete-pae-paren (TLBrace    ∷ toks') dE dC a = complete-pae-paren-body _ dE dC a

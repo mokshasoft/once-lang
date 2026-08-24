@@ -75,7 +75,7 @@ fromℕ n = (+ n) /10^ 0
 negate : Decimal → Decimal
 negate (m /10^ e) = (ℤ.- m) /10^ e
 
--- | The lexer's triple, as a decimal: `RFloat i f l` is `i.f` with `l`
+-- | The lexer's triple, as a decimal: `RFloat i f l` _ is `i.f` with `l`
 -- fraction digits, so its value is `i + f/10^l` and its exact significand is
 -- `i·10^l + f`.
 --
@@ -371,11 +371,11 @@ _ = refl
 _ : round binary64 ((+ 0) /10^ 0) ≡ 0
 _ = refl
 
--- The lexer's triple, end to end: `3.14` is `RFloat 3 14 2`.
+-- The lexer's triple, end to end: `3.14` is `RFloat 3 14 2`. _
 _ : round binary64 (decimalOf 3 14 2) ≡ 0x40091eb851eb851f
 _ = refl
 
--- `16777217.0` — `RFloat 16777217 0 1`. Compiles at BOTH formats now (D116);
+-- `16777217.0` — `RFloat 16777217 0 1`. _ Compiles at BOTH formats now (D116);
 -- exactly at binary64, rounded at binary32. Before K3 it was rejected on every
 -- target, which is the interim D116 was written to end.
 _ : round binary32 (decimalOf 16777217 0 1) ≡ 0x4b800000

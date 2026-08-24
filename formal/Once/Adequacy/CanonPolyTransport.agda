@@ -228,7 +228,7 @@ composeArgB-polys-canon b ctx A (m-pair _ _)  = refl
 composeArgB-polys-canon b ctx A (m-curry _)   = refl
 composeArgB-polys-canon b ctx A (m-cata _ _)  = refl
 composeArgB-polys-canon b ctx A (m-const (g-int n))       = refl
-composeArgB-polys-canon b ctx A (m-const (g-float i f l)) = refl
+composeArgB-polys-canon b ctx A (m-const (g-float i f l p)) = refl
 composeArgB-polys-canon b ctx A (m-const (g-terminal _ _)) = composeArgB-rvar-polys-canon b ctx "terminal" A
 composeArgB-polys-canon b ctx A (m-const (g-pair _ _))    = refl
 composeArgB-polys-canon b ctx A (m-const (g-inl _))       = refl
@@ -253,7 +253,7 @@ domainOfHead-polys-canon b ctx (m-pair _ _)      = refl
 domainOfHead-polys-canon b ctx (m-curry _)       = refl
 domainOfHead-polys-canon b ctx (m-cata _ _)      = refl
 domainOfHead-polys-canon b ctx (m-const (g-int n))        = refl
-domainOfHead-polys-canon b ctx (m-const (g-float i f l)) = refl
+domainOfHead-polys-canon b ctx (m-const (g-float i f l p)) = refl
 domainOfHead-polys-canon b ctx (m-const (g-terminal _ _)) = refl
 domainOfHead-polys-canon b ctx (m-const (g-pair _ _))     = refl
 domainOfHead-polys-canon b ctx (m-const (g-inl _))        = refl
@@ -276,7 +276,7 @@ polys-transport-ᵍ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) {e A}
   → mkCtx n Γ Δ f i p s ⊢ᵍ e ∶ A
   → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᵍ e ∶ A
 polys-transport-ᵍ b p (g-int n)          = g-int n
-polys-transport-ᵍ b p (g-float i f l) = g-float i f l
+polys-transport-ᵍ b p (g-float i f l p) = g-float i f l p
 polys-transport-ᵍ b p (g-terminal lL lI) = g-terminal lL lI
 polys-transport-ᵍ b p (g-pair d₁ d₂)     = g-pair (polys-transport-ᵍ b p d₁) (polys-transport-ᵍ b p d₂)
 polys-transport-ᵍ b p (g-inl d)          = g-inl (polys-transport-ᵍ b p d)
@@ -295,7 +295,7 @@ mutual
     → mkCtx n Γ Δ f i p s ⊢ᵢ e ∶ A ⨾ Ψ
     → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᵢ e ∶ A ⨾ Ψ
   polys-transport-ᵢ b p pib ac (t-int n)  = t-int n
-  polys-transport-ᵢ b p pib ac (t-float i f l) = t-float i f l
+  polys-transport-ᵢ b p pib ac (t-float i f l p) = t-float i f l p
   polys-transport-ᵢ b p pib ac (t-str s)  = t-str s
   polys-transport-ᵢ b p pib ac t-unit     = t-unit
   polys-transport-ᵢ b p pib ac t-unit-var = t-unit-var

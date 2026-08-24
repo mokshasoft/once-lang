@@ -234,9 +234,9 @@ parseTypeAtomWF (TWord name ∷ rest) _
 parseTypeAtomWF (TLParen ∷ rest) (acc rec) = parseTypeAtomWF-TLParen rest (rec (s≤s ≤-refl))
 
 -- Other tokens: parser fails.
-parseTypeAtomWF (TInt _     ∷ _) _ = nothing
+parseTypeAtomWF (TInt _ _     ∷ _) _ = nothing
 -- Plan 0.71: a float literal is no more a type than an integer literal is.
-parseTypeAtomWF (TFloat _ _ _ ∷ _) _ = nothing
+parseTypeAtomWF (TFloat _ _ _ _ ∷ _) _ = nothing
 parseTypeAtomWF (TString _  ∷ _) _ = nothing
 parseTypeAtomWF (TRParen    ∷ _) _ = nothing
 parseTypeAtomWF (TLBrace    ∷ _) _ = nothing
@@ -314,8 +314,8 @@ parseTypeAtomWF-TLParen rest a with parseTypeWF rest a
 ... | just (_ , TNewline   ∷ _ , _) = nothing
 ... | just (_ , TEOF       ∷ _ , _) = nothing
 ... | just (_ , TWord _    ∷ _ , _) = nothing
-... | just (_ , TInt _     ∷ _ , _) = nothing
-... | just (_ , TFloat _ _ _ ∷ _ , _) = nothing
+... | just (_ , TInt _ _     ∷ _ , _) = nothing
+... | just (_ , TFloat _ _ _ _ ∷ _ , _) = nothing
 ... | just (_ , TString _  ∷ _ , _) = nothing
 
 
@@ -368,8 +368,8 @@ parseTypeProdTailWF left (TBang      ∷ rest) _ = just (left , TBang      ∷ r
 parseTypeProdTailWF left (TNewline   ∷ rest) _ = just (left , TNewline   ∷ rest , ppt-done tt) where open import Data.Unit
 parseTypeProdTailWF left (TEOF       ∷ rest) _ = just (left , TEOF       ∷ rest , ppt-done tt) where open import Data.Unit
 parseTypeProdTailWF left (TWord s    ∷ rest) _ = just (left , TWord s    ∷ rest , ppt-done tt) where open import Data.Unit
-parseTypeProdTailWF left (TInt n     ∷ rest) _ = just (left , TInt n     ∷ rest , ppt-done tt) where open import Data.Unit
-parseTypeProdTailWF left (TFloat i f l ∷ rest) _ = just (left , TFloat i f l ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TInt n _     ∷ rest) _ = just (left , TInt n _     ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TFloat i f l _ ∷ rest) _ = just (left , TFloat i f l _ ∷ rest , ppt-done tt) where open import Data.Unit
 parseTypeProdTailWF left (TString s  ∷ rest) _ = just (left , TString s  ∷ rest , ppt-done tt) where open import Data.Unit
 
 ------------------------------------------------------------------------
@@ -429,8 +429,8 @@ parseTypeSumTailWF left (TBang      ∷ rest) _ = just (left , TBang      ∷ re
 parseTypeSumTailWF left (TNewline   ∷ rest) _ = just (left , TNewline   ∷ rest , pst-done tt) where open import Data.Unit
 parseTypeSumTailWF left (TEOF       ∷ rest) _ = just (left , TEOF       ∷ rest , pst-done tt) where open import Data.Unit
 parseTypeSumTailWF left (TWord s    ∷ rest) _ = just (left , TWord s    ∷ rest , pst-done tt) where open import Data.Unit
-parseTypeSumTailWF left (TInt n     ∷ rest) _ = just (left , TInt n     ∷ rest , pst-done tt) where open import Data.Unit
-parseTypeSumTailWF left (TFloat i f l ∷ rest) _ = just (left , TFloat i f l ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TInt n _     ∷ rest) _ = just (left , TInt n _     ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TFloat i f l _ ∷ rest) _ = just (left , TFloat i f l _ ∷ rest , pst-done tt) where open import Data.Unit
 parseTypeSumTailWF left (TString s  ∷ rest) _ = just (left , TString s  ∷ rest , pst-done tt) where open import Data.Unit
 
 ------------------------------------------------------------------------
@@ -510,8 +510,8 @@ parseArrowTailWF left (TBang      ∷ rest) _ = just (left , TBang      ∷ rest
 parseArrowTailWF left (TNewline   ∷ rest) _ = just (left , TNewline   ∷ rest , pat-done tt) where open import Data.Unit
 parseArrowTailWF left (TEOF       ∷ rest) _ = just (left , TEOF       ∷ rest , pat-done tt) where open import Data.Unit
 parseArrowTailWF left (TWord s    ∷ rest) _ = just (left , TWord s    ∷ rest , pat-done tt) where open import Data.Unit
-parseArrowTailWF left (TInt n     ∷ rest) _ = just (left , TInt n     ∷ rest , pat-done tt) where open import Data.Unit
-parseArrowTailWF left (TFloat i f l ∷ rest) _ = just (left , TFloat i f l ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TInt n _     ∷ rest) _ = just (left , TInt n _     ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TFloat i f l _ ∷ rest) _ = just (left , TFloat i f l _ ∷ rest , pat-done tt) where open import Data.Unit
 parseArrowTailWF left (TString s  ∷ rest) _ = just (left , TString s  ∷ rest , pat-done tt) where open import Data.Unit
 
 ------------------------------------------------------------------------
@@ -596,8 +596,8 @@ parseFunctorProdTailWF left (TBang      ∷ rest) _ = just (left , TBang      �
 parseFunctorProdTailWF left (TNewline   ∷ rest) _ = just (left , TNewline   ∷ rest , pfpt-done tt) where open import Data.Unit
 parseFunctorProdTailWF left (TEOF       ∷ rest) _ = just (left , TEOF       ∷ rest , pfpt-done tt) where open import Data.Unit
 parseFunctorProdTailWF left (TWord s    ∷ rest) _ = just (left , TWord s    ∷ rest , pfpt-done tt) where open import Data.Unit
-parseFunctorProdTailWF left (TInt n     ∷ rest) _ = just (left , TInt n     ∷ rest , pfpt-done tt) where open import Data.Unit
-parseFunctorProdTailWF left (TFloat i f l ∷ rest) _ = just (left , TFloat i f l ∷ rest , pfpt-done tt) where open import Data.Unit
+parseFunctorProdTailWF left (TInt n _     ∷ rest) _ = just (left , TInt n _     ∷ rest , pfpt-done tt) where open import Data.Unit
+parseFunctorProdTailWF left (TFloat i f l _ ∷ rest) _ = just (left , TFloat i f l _ ∷ rest , pfpt-done tt) where open import Data.Unit
 parseFunctorProdTailWF left (TString s  ∷ rest) _ = just (left , TString s  ∷ rest , pfpt-done tt) where open import Data.Unit
 
 -- fSum ::= fProd ('+' fProd)*
@@ -649,8 +649,8 @@ parseFunctorSumTailWF left (TBang      ∷ rest) _ = just (left , TBang      ∷
 parseFunctorSumTailWF left (TNewline   ∷ rest) _ = just (left , TNewline   ∷ rest , pfst-done tt) where open import Data.Unit
 parseFunctorSumTailWF left (TEOF       ∷ rest) _ = just (left , TEOF       ∷ rest , pfst-done tt) where open import Data.Unit
 parseFunctorSumTailWF left (TWord s    ∷ rest) _ = just (left , TWord s    ∷ rest , pfst-done tt) where open import Data.Unit
-parseFunctorSumTailWF left (TInt n     ∷ rest) _ = just (left , TInt n     ∷ rest , pfst-done tt) where open import Data.Unit
-parseFunctorSumTailWF left (TFloat i f l ∷ rest) _ = just (left , TFloat i f l ∷ rest , pfst-done tt) where open import Data.Unit
+parseFunctorSumTailWF left (TInt n _     ∷ rest) _ = just (left , TInt n _     ∷ rest , pfst-done tt) where open import Data.Unit
+parseFunctorSumTailWF left (TFloat i f l _ ∷ rest) _ = just (left , TFloat i f l _ ∷ rest , pfst-done tt) where open import Data.Unit
 parseFunctorSumTailWF left (TString s  ∷ rest) _ = just (left , TString s  ∷ rest , pfst-done tt) where open import Data.Unit
 
 ------------------------------------------------------------------------

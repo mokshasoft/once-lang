@@ -90,7 +90,7 @@ checkElab-fallback-RInt {ctx} n with Int ≟T Int
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
--- RFloat infers at `Float` — BUT ONLY IF ACCEPTED, so the witness is a
+-- RFloat infers at `Float` _ — BUT ONLY IF ACCEPTED, so the witness is a
 -- premise rather than something this lemma could conjure. That asymmetry with
 -- `RInt` is the acceptance rule showing up in the proofs exactly where it
 -- should: there is no fallback for a literal the compiler must reject.
@@ -100,11 +100,11 @@ checkElab-fallback-RInt {ctx} n with Int ≟T Int
 -- K3: no acceptance witness rides in, because there is none. Every float
 -- literal checks at `Float`.
 checkElab-fallback-RFloat :
-  ∀ {ctx : NamedCtx} (i f l : ℕ)
+  ∀ {ctx : NamedCtx} (i f l p : ℕ)
   → ∃-syntax (λ eE → ∃-syntax (λ dd → ∃-syntax (λ fr →
-      checkElab ctx (Raw.RFloat i f l) Float
+      checkElab ctx (Raw.RFloat i f l p) Float
         ≡ success Surface.zeroUsage eE dd fr)))
-checkElab-fallback-RFloat {ctx} i f l with Float ≟T Float
+checkElab-fallback-RFloat {ctx} i f l p with Float ≟T Float
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 

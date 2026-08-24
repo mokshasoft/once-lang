@@ -27,13 +27,15 @@
 -- carries those same three fields plus the figures: what used to abort the
 -- compile now reports.
 --
--- KNOWN GAP: NO SOURCE POSITION. Neither `Token` nor `RawExpr` carries one, so
--- a warning identifies its literal by the DIGITS AS WRITTEN and not by where
--- they are. That is the same identification the dead error chose, and `3.14`
--- is quotable, but in a large module it is weaker than it should be. Threading
--- positions means an offset through the lexer's 55 `tok-*` helpers with
--- `Once.Adequacy.LexerBridge` reducing under all of them — its own piece of
--- work, deliberately not folded into the float change.
+-- IT SAYS WHERE. `at` is the literal's source offset, carried from the lexer
+-- through `TFloat` and `RFloat`. "Some literal somewhere was rounded" is
+-- nearly useless in a large module, and a warning that cannot be located is a
+-- warning that gets ignored — which is how a warning channel dies.
+--
+-- The offset is DIAGNOSTIC METADATA and goes no further than this: the
+-- elaborator drops it, so it never reaches `Surface.Expr`, the IR, the machine
+-- or any correspondence proof. A position cannot change what is compiled, and
+-- the fact that it stops here is what says so.
 ------------------------------------------------------------------------
 
 module Once.Warnings where
@@ -98,15 +100,15 @@ data Warning : Set where
   --
   -- The ulp figure is ~0.4 in all three. A ulp-ONLY warning would hide the
   -- one case a warning exists for — a 3% error on a narrow target.
-  FloatRounded : (int frac flen : ℕ) (stored : ℕ) (absErr ulps : ExactQ) → Warning
+  FloatRounded : (int frac flen : ℕ) (at : ℕ) (stored : ℕ) (absErr ulps : ExactQ) → Warning
 
   -- Too large for the format: stored as ±∞ (plan 0.74 K2).
-  FloatOverflow : (int frac flen : ℕ) → Warning
+  FloatOverflow : (int frac flen : ℕ) (at : ℕ) → Warning
 
   -- Too small: stored as zero. Once models no subnormals, so this fires where
   -- IEEE would still have had digits — a STATED limitation, and the reason it
   -- is a distinct constructor rather than a `FloatRounded` with a large error.
-  FloatUnderflow : (int frac flen : ℕ) → Warning
+  FloatUnderflow : (int frac flen : ℕ) (at : ℕ) → Warning
 
 ------------------------------------------------------------------------
 -- Classifying one literal
@@ -146,29 +148,29 @@ errorOf sig e m E =
 -- Top-level auxes rather than a `where` chain, matching this codebase's
 -- convention: each takes its scrutinee as an argument, so a caller that has
 -- already decided can reduce through it.
-warn-exact : ℕ → ℕ → ℕ → FloatFormat → ExactQ → ExactQ → Maybe Warning
-warn-exact i f l F ((+ zero) /Q _) u = nothing            -- exact: say nothing
-warn-exact i f l F a               u =
-  just (FloatRounded i f l (round F (decimalOf i f l)) a u)
+warn-exact : ℕ → ℕ → ℕ → ℕ → FloatFormat → ExactQ → ExactQ → Maybe Warning
+warn-exact i f l at F ((+ zero) /Q _) u = nothing            -- exact: say nothing
+warn-exact i f l at F a               u =
+  just (FloatRounded i f l at (round F (decimalOf i f l)) a u)
 
-warn-under : ℕ → ℕ → ℕ → ℕ → Maybe Warning
-warn-under i f l zero    = nothing                        -- 0.0 IS exactly 0.0
-warn-under i f l (suc _) = just (FloatUnderflow i f l)
+warn-under : ℕ → ℕ → ℕ → ℕ → ℕ → Maybe Warning
+warn-under i f l at zero    = nothing                        -- 0.0 IS exactly 0.0
+warn-under i f l at (suc _) = just (FloatUnderflow i f l at)
 
-warn-hi : ℕ → ℕ → ℕ → FloatFormat → ℕ → ℕ → ℤ → Bool → Maybe Warning
-warn-hi i f l F sig m E true  = just (FloatOverflow i f l)
-warn-hi i f l F sig m E false =
-  warn-exact i f l F (proj₁ (errorOf sig l m E)) (proj₂ (errorOf sig l m E))
+warn-hi : ℕ → ℕ → ℕ → ℕ → FloatFormat → ℕ → ℕ → ℤ → Bool → Maybe Warning
+warn-hi i f l at F sig m E true  = just (FloatOverflow i f l at)
+warn-hi i f l at F sig m E false =
+  warn-exact i f l at F (proj₁ (errorOf sig l m E)) (proj₂ (errorOf sig l m E))
 
-warn-at : ℕ → ℕ → ℕ → FloatFormat → ℕ → ℕ → ℤ → ℤ → Maybe Warning
-warn-at i f l F sig m E -[1+ _ ]  = warn-under i f l sig     -- underflowed
-warn-at i f l F sig m E (+ zero)  = warn-under i f l sig
-warn-at i f l F sig m E (+ suc e) =
-  warn-hi i f l F sig m E (maxFiniteExp F ℕ.<ᵇ suc e)
+warn-at : ℕ → ℕ → ℕ → ℕ → FloatFormat → ℕ → ℕ → ℤ → ℤ → Maybe Warning
+warn-at i f l at F sig m E -[1+ _ ]  = warn-under i f l at sig     -- underflowed
+warn-at i f l at F sig m E (+ zero)  = warn-under i f l at sig
+warn-at i f l at F sig m E (+ suc e) =
+  warn-hi i f l at F sig m E (maxFiniteExp F ℕ.<ᵇ suc e)
 
-floatWarning : FloatFormat → ℕ → ℕ → ℕ → Maybe Warning
-floatWarning F i f l =
-  warn-at i f l F sig
+floatWarning : FloatFormat → ℕ → ℕ → ℕ → ℕ → Maybe Warning
+floatWarning F i f l at =
+  warn-at i f l at F sig
           (proj₁ (roundSig F sig l)) (proj₂ (roundSig F sig l))
           (storedExp F (proj₁ (roundSig F sig l)) (proj₂ (roundSig F sig l)))
   where sig = i * 10 ^ l + f
@@ -181,8 +183,8 @@ floatWarning F i f l =
 -- failed to look at is exactly the one whose rounding would go unreported.
 ------------------------------------------------------------------------
 
-rawFloatLits : RawExpr → List (ℕ × ℕ × ℕ)
-rawFloatLits (RFloat i f l)      = (i , f , l) ∷ []
+rawFloatLits : RawExpr → List (ℕ × ℕ × ℕ × ℕ)
+rawFloatLits (RFloat i f l p)      = (i , f , l , p) ∷ []
 rawFloatLits (RApp f x)          = rawFloatLits f ++ rawFloatLits x
 rawFloatLits (RLam _ b)          = rawFloatLits b
 rawFloatLits (RLet _ e b)        = rawFloatLits e ++ rawFloatLits b
@@ -199,17 +201,17 @@ rawFloatLits RUnit               = []
 rawFloatLits (RInt _)            = []
 rawFloatLits (RStringLit _)      = []
 
-declFloatLits : Decl → List (ℕ × ℕ × ℕ)
+declFloatLits : Decl → List (ℕ × ℕ × ℕ × ℕ)
 declFloatLits (DFunDef _ _ body)   = rawFloatLits body
 declFloatLits (DTypeSig _ _)       = []
 declFloatLits (DSignature _ _ _ _) = []
 declFloatLits (DTypeAlias _ _ _)   = []
 declFloatLits (DImport _)          = []
 
-moduleFloatLits : Module → List (ℕ × ℕ × ℕ)
+moduleFloatLits : Module → List (ℕ × ℕ × ℕ × ℕ)
 moduleFloatLits (mkModule ds) = go ds
   where
-    go : List Decl → List (ℕ × ℕ × ℕ)
+    go : List Decl → List (ℕ × ℕ × ℕ × ℕ)
     go []       = []
     go (d ∷ ds) = declFloatLits d ++ go ds
 
@@ -218,9 +220,9 @@ roundingWarnings : Arch → Module → List Warning
 roundingWarnings arch m = go (moduleFloatLits m)
   where
     F = arch-float-format arch
-    go : List (ℕ × ℕ × ℕ) → List Warning
+    go : List (ℕ × ℕ × ℕ × ℕ) → List Warning
     go [] = []
-    go ((i , f , l) ∷ rest) = keep (floatWarning F i f l)
+    go ((i , f , l , p) ∷ rest) = keep (floatWarning F i f l p)
       where
         keep : Maybe Warning → List Warning
         keep nothing  = go rest
@@ -244,8 +246,8 @@ private
   -- `1/11258999068426240` ≈ +8.9e-17, and `2/10` is +0.2 ulp — both exactly
   -- the figures in this plan's own table, computed here without any floating
   -- point at all.
-  _ : floatWarning binary64 3 1 1
-        ≡ just (FloatRounded 3 1 1 (round binary64 (decimalOf 3 1 1))
+  _ : floatWarning binary64 3 1 1 0
+        ≡ just (FloatRounded 3 1 1 0 (round binary64 (decimalOf 3 1 1))
                              ((+ 2) /Q (10 ^ 1 * 2 ^ 51))
                              ((+ 2) /Q (10 ^ 1 * 2 ^ 0)))
   _ = refl
@@ -259,8 +261,8 @@ private
   -- magnitude. On a narrow enough format the ulps stay ~0.4 while the absolute
   -- error reaches 3%, and a ulp-only warning would report the harmless case
   -- and the catastrophic one identically.
-  _ : floatWarning binary32 3 1 1
-        ≡ just (FloatRounded 3 1 1 (round binary32 (decimalOf 3 1 1))
+  _ : floatWarning binary32 3 1 1 0
+        ≡ just (FloatRounded 3 1 1 0 (round binary32 (decimalOf 3 1 1))
                              (-[1+ 3 ] /Q (10 ^ 1 * 2 ^ 22))
                              (-[1+ 3 ] /Q (10 ^ 1 * 2 ^ 0)))
   _ = refl
@@ -268,21 +270,32 @@ private
   -- An exactly-representable literal is SILENT at both formats. If this ever
   -- returns a warning the channel has become noise, which is the failure mode
   -- a warning system dies of.
-  _ : floatWarning binary64 5 0 1 ≡ nothing
+  _ : floatWarning binary64 5 0 1 0 ≡ nothing
   _ = refl
 
-  _ : floatWarning binary32 5 0 1 ≡ nothing
+  _ : floatWarning binary32 5 0 1 0 ≡ nothing
   _ = refl
 
-  _ : floatWarning binary64 2 75 2 ≡ nothing
+  _ : floatWarning binary64 2 75 2 0 ≡ nothing
   _ = refl
 
   -- 0.0 is exactly 0.0 — the underflow branch must not fire on it.
-  _ : floatWarning binary32 0 0 1 ≡ nothing
+  _ : floatWarning binary32 0 0 1 0 ≡ nothing
   _ = refl
 
   -- 16777217 is exact at binary64 and ROUNDED at binary32 — the literal K3
   -- stopped rejecting. Silent on one target, a warning on the other, which is
   -- the whole reason the query takes an `Arch`.
-  _ : floatWarning binary64 16777217 0 1 ≡ nothing
+  _ : floatWarning binary64 16777217 0 1 0 ≡ nothing
+  _ = refl
+
+  -- THE POSITION SURVIVES THE WALK. `3.14` at offset 42 is reported AT 42 —
+  -- the whole point of the lexer/parser threading.
+  _ : rawFloatLits (RFloat 3 14 2 42) ≡ (3 , 14 , 2 , 42) ∷ []
+  _ = refl
+
+  _ : floatWarning binary32 3 1 1 42
+        ≡ just (FloatRounded 3 1 1 42 (round binary32 (decimalOf 3 1 1))
+                             (-[1+ 3 ] /Q (10 ^ 1 * 2 ^ 22))
+                             (-[1+ 3 ] /Q (10 ^ 1 * 2 ^ 0)))
   _ = refl

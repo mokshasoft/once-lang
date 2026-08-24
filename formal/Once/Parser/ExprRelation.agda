@@ -179,11 +179,11 @@ data NotAtomStart : List Token → Set where
 data AppArgOk : List Token → Set where
   aao-TLParen : ∀ {rest} → AppArgOk (TLParen ∷ rest)
   aao-TLambda : ∀ {rest} → AppArgOk (TLambda ∷ rest)
-  aao-TInt    : ∀ {n rest} → AppArgOk (TInt n ∷ rest)
+  aao-TInt    : ∀ {n p rest} → AppArgOk (TInt n p ∷ rest)
   -- Plan 0.71 F3a: WITHHELD at F1 and added now, in the same commit as the
   -- atom rule below. Asserting this while `parseAtomExprWF` still returned
   -- `nothing` would have claimed a parse the parser does not produce.
-  aao-TFloat  : ∀ {i f l rest} → AppArgOk (TFloat i f l ∷ rest)
+  aao-TFloat  : ∀ {i f l p rest} → AppArgOk (TFloat i f l p ∷ rest)
   aao-TString : ∀ {s rest} → AppArgOk (TString s ∷ rest)
   aao-word    : ∀ {name rest} → isReserved name ≡ false
               → AppArgOk (TWord name ∷ rest)
@@ -231,13 +231,13 @@ data NotTWord : Token → Set where
   ntw-TBang      : NotTWord TBang
   ntw-TNewline   : NotTWord TNewline
   ntw-TEOF       : NotTWord TEOF
-  ntw-TInt       : ∀ {n} → NotTWord (TInt n)
+  ntw-TInt       : ∀ {n p} → NotTWord (TInt n p)
   -- Plan 0.71 F1: the float token EXISTS but nothing consumes it yet. It gets
   -- the two NEGATIVE facts (not a word, not a qualified-name prefix) because
   -- those are true of it and the surrounding proofs need them — and pointedly
   -- NOT `AppArgOk`, which would claim a parse `parseAtomExprWF` does not
   -- produce. F3 adds the atom rule when the AST has a node to parse it into.
-  ntw-TFloat     : ∀ {i f l} → NotTWord (TFloat i f l)
+  ntw-TFloat     : ∀ {i f l p} → NotTWord (TFloat i f l p)
   ntw-TString    : ∀ {s} → NotTWord (TString s)
 
 data NotQualPrefix : List Token → Set where
@@ -274,8 +274,8 @@ data NotQualPrefix : List Token → Set where
   nqp-TNewline   : ∀ {rest} → NotQualPrefix (TNewline   ∷ rest)
   nqp-TEOF       : ∀ {rest} → NotQualPrefix (TEOF       ∷ rest)
   nqp-TWord      : ∀ {s rest} → NotQualPrefix (TWord s  ∷ rest)
-  nqp-TInt       : ∀ {n rest} → NotQualPrefix (TInt n   ∷ rest)
-  nqp-TFloat     : ∀ {i f l rest} → NotQualPrefix (TFloat i f l ∷ rest)
+  nqp-TInt       : ∀ {n p rest} → NotQualPrefix (TInt n p ∷ rest)
+  nqp-TFloat     : ∀ {i f l p rest} → NotQualPrefix (TFloat i f l p ∷ rest)
   nqp-TString    : ∀ {s rest} → NotQualPrefix (TString s ∷ rest)
   -- Lead is TAt but follow is not TWord → no ambiguity.
   nqp-TAt-[]     : NotQualPrefix (TAt ∷ [])
@@ -446,10 +446,12 @@ mutual
     pae-unit : ∀ {rest}
              → ParsesAtomExpr (TLParen ∷ TRParen ∷ rest) RUnit rest
 
-    pae-int  : ∀ {n rest}
-             → ParsesAtomExpr (TInt n ∷ rest) (RInt n) rest
-    pae-float : ∀ {i f l rest}
-             → ParsesAtomExpr (TFloat i f l ∷ rest) (RFloat i f l) rest
+    pae-int  : ∀ {n p rest}
+             → ParsesAtomExpr (TInt n p ∷ rest) (RInt n) rest
+    -- PLAN 0.74 (positions): THE point where a token's position reaches the
+    -- AST. Everything else in this change exists to get `p` here.
+    pae-float : ∀ {i f l p rest}
+             → ParsesAtomExpr (TFloat i f l p ∷ rest) (RFloat i f l p) rest
 
     pae-str  : ∀ {s rest}
              → ParsesAtomExpr (TString s ∷ rest) (RStringLit s) rest

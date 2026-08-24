@@ -101,7 +101,7 @@ realize-global (g-int n)        = intLit n
 -- The reference elaboration reads the DYADIC off the acceptance witness — the
 -- same value the elaborator uses — so the two cannot disagree about what the
 -- literal denotes.
-realize-global (g-float i f l) = floatLit (decimalOf i f l)
+realize-global (g-float i f l p) = floatLit (decimalOf i f l)
 realize-global (g-terminal _ _) = IR.terminal
 realize-global (g-pair ga gb)   = ⟨ realize-global ga , realize-global gb ⟩ IR.Heap
 realize-global (g-inl ga)       = IR.inl IR.Heap ∘ realize-global ga
@@ -178,7 +178,7 @@ realize {ctx = ctx} {A = A} (t-var-poly-instantiate _ _ _ _ _ _ bodyD) =
 -- realize-infer (⊢ᵢ) — infer-mode reference elaboration.
 ------------------------------------------------------------------------
 realize-infer (t-int n)         = int n
-realize-infer (t-float i f l) = float (decimalOf i f l)
+realize-infer (t-float i f l p) = float (decimalOf i f l)
 realize-infer (t-str s)         = str s
 realize-infer t-unit            = unit
 realize-infer t-unit-var        = unit

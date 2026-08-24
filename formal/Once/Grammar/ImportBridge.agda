@@ -106,7 +106,7 @@ sound-mpWF (TWord name ∷ tail) (acc rec) h with dotHead tail in dh
         pmp-dotfail dh (mp-nothing→wh-false (dropDot tail) (rec (≤-<-trans (dropDot-≤ tail) (s≤s ≤-refl))) subeq)
 -- non-word heads: `anyWordB` fails, so the parser returns `nothing` (`h` absurd).
 sound-mpWF [] (acc rec) ()
-sound-mpWF (TInt _ ∷ _) (acc rec) ()
+sound-mpWF (TInt _ _ ∷ _) (acc rec) ()
 sound-mpWF (TString _ ∷ _) (acc rec) ()
 sound-mpWF (TLParen ∷ _) (acc rec) ()
 sound-mpWF (TRParen ∷ _) (acc rec) ()
@@ -172,7 +172,7 @@ complete-mp {toks} d = complete-mpWF (<-wellFounded (length toks)) d
 anyWordB-inv : ∀ {toks s rest bnd} → anyWordB toks ≡ just (s , rest , bnd) → toks ≡ TWord s ∷ rest
 anyWordB-inv {TWord _ ∷ _} refl = refl
 anyWordB-inv {[]} ()
-anyWordB-inv {TInt _ ∷ _} ()
+anyWordB-inv {TInt _ _ ∷ _} ()
 anyWordB-inv {TString _ ∷ _} ()
 anyWordB-inv {TLParen ∷ _} ()
 anyWordB-inv {TRParen ∷ _} ()
