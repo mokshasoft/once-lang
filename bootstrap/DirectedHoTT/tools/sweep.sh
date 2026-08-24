@@ -75,10 +75,17 @@ for rel in "${TOBUILD[@]:-}"; do
     rc=$?
     if [ "$rc" = 143 ] && [ "$rts" = "-A64m" ]; then
       printf 'KILLED(143) — retrying with compacting GC ... '
-      if AGDA_RTS="-A64m -c" "$CHECK" "$rel" >"$LOGDIR/$tag.log" 2>&1; then
+      # ⚠ NOT `if … then … fi; rc=$?`.  After an `if` whose condition
+      #   FAILED and which has no `else`, `$?` is the status of the `if`
+      #   STATEMENT — which is 0.  That reported a second memory kill as
+      #   `FAIL(0)`, i.e. as a PROOF ERROR, and cost a session's worth of
+      #   chasing a module that checks clean on its own.  Capture the
+      #   retry's own status, then branch on it.
+      AGDA_RTS="-A64m -c" "$CHECK" "$rel" >"$LOGDIR/$tag.log" 2>&1
+      rc=$?
+      if [ "$rc" = 0 ]; then
         d=$((SECONDS-t0)); TIMES+=("$d $tag"); echo "ok (-c) ${d}s"; continue
       fi
-      rc=$?
     fi
     # ★ IN Comparison/, A 143 IS A MEASUREMENT YOU DID NOT GET, NOT A BREAK.
     #   Those modules are BENCHMARKS — deliberately redundant routes kept so
