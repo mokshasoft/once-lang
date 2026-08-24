@@ -127,7 +127,7 @@ open import DirectedHoTT.Metatheory.LogicalRelation
         ; IsNormal; WN; mkWN; wn
         ; projl; projr; dfst; dsnd
         ; sne-elim; sn-con; mustk?; sne→mustk; snr-ι; snr-elimᵗ
-        ; sne-ielim; sn-icon; sn-cIMu; snr-ιi; snr-ielimᵗ
+        ; sne-ielim; sn-icon; sn-cIMu; snr-ιi; snr-ielimᵗ; snr-J-IMu
         ; ⊩₀IMu; ⊩₁IMu; IMuMem; imm-ne; imm-icon; imm-exp
         ; ILift; IKInterp; iki-ι; iki-ρ; iki-κ
         ; IDInterp; idi-nil; idi-cons; ikpredsOf; ipredsOf; ilookupP )
@@ -1934,10 +1934,9 @@ fund {Ξ = Ξ} {σ = σ}
     cr3 (sn-ne (sne-hrefl (sn-con h) sns refl)) refl
   goh (sn-icon h) sns kn hp' =
     cr3 (sn-ne (sne-hrefl (sn-icon h) sns refl)) refl
-  -- ⚠ ⌜IMu⌝ goes with ⌜Nat⌝, NOT with ⌜Mu⌝: there is no `tr-J-IMu`, so
-  -- the `tr` is permanently neutral and CR3 carries it (§10.4).
+  -- ★ §10.4: ⌜IMu⌝ goes with ⌜Mu⌝ — `tr-J-IMu` fires.
   goh (sn-cIMu h) sns kn hp' =
-    cr3 (sn-ne (sne-hrefl (sn-cIMu h) sns refl)) refl
+    ( R_result , exp₁ R_result (snr-J-IMu snD sns) heTgt )
   goh (sn-cΠ h₁ h₂) sns () hp'
   -- ★ W2b: a ⌜Hom⌝-CODE path — normalize its spine (codeNorm); the
   -- J-able leaf fires tr-J-Hom (endpoint transfer = the SAME heTgt as

@@ -330,6 +330,18 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   -- its obligation.
   tr-J-Mu   : {D : Desc} (c a m : RTm (Γ ∙)) (s e : RTm Γ) →
               tr (⌜Hom⌝ c a m) (hrefl (⌜Mu⌝ D) s) e ⟶ e
+  -- ★★★ AND ITS INDEXED TWIN (PLAN-INDEXED §10.4).  ⚠ NOT optional, and
+  --   not symmetry-for-its-own-sake: WITHOUT it a closed
+  --   `tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ D I i) s) e` is STUCK, and that
+  --   configuration IS typeable — `⊢tr`'s `NoNatC` premise excludes
+  --   ⌜Nat⌝'s stuck case but says nothing about ⌜IMu⌝ — so PROGRESS
+  --   would be FALSE.  `Hom (IMu D I i) a b` computes no further (the
+  --   order rules are `Nat`-only), so J at it is as sound as at `Mu D`.
+  --   Found by writing `trCS`; the classifiers had it wrong three ways
+  --   (`stkC?`, `stkA?`, `stablecd?`) and only the metatheorem noticed.
+  tr-J-IMu  : {D : IDesc} {I : RTy ε} {iˣ : RTm Γ} (c a m : RTm (Γ ∙))
+              (s e : RTm Γ) →
+              tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ D I iˣ) s) e ⟶ e
   -- directed univalence computing a third time: transport at the
   -- tautological motive along a (canonical) universe path is application
   tr-taut   : (f : RTm (Γ ∙)) (e : RTm Γ) →

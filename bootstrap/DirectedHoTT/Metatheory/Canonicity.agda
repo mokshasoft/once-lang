@@ -58,7 +58,7 @@ open import DirectedHoTT.Spec.Typing
         ; tr-J-Id; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El
-        ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
+        ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝; El-⌜IMu⌝
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
         ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ
@@ -66,13 +66,15 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; ⊢conv; ⊢⌜base⌝; ⊢unit; ⊢nzero; ⊢⌜Nat⌝; ⊢⌜Unit⌝; ⊢⌜Mu⌝
         ; natrec-zero; natrec-suc; ξ-natrecⁿ
         ; ι-elim; ξ-elimᵗ; ξ-elimᵐ
+        ; ι-ielim; ξ-ielimᵗ; ξ-ielimᵐ; ξ-ielimⁱ; ξ-icon; ξ-⌜IMu⌝; tr-J-IMu
         ; ⊢ctx_; c-◇ )
 open import DirectedHoTT.Metatheory.Confluence using ( ⟶-ren; confluent; ⟶*-trans )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ≅ᵀ-sub )
 open import DirectedHoTT.Metatheory.Injectivity
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ
         ; church-rosserᵀ; red→≅ᵀ
-        ; Π-reduct; ΠRed; mkΠRed; Σ-reduct; ΣRed; mkΣRed; Id-reduct )
+        ; Π-reduct; ΠRed; mkΠRed; Σ-reduct; ΣRed; mkΣRed; Id-reduct
+        ; IMuRed; mkIMuRed; IMu-reduct; IMu-inj )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( gen-lam; gen-app; gen-absurd; gen-pair; gen-fst; gen-snd; gen-ap
         ; gen-⌜Id⌝; gen-idrefl; gen-jsub; gen-nsuc; gen-natrec; gen-ordtr
@@ -84,7 +86,8 @@ open import DirectedHoTT.Metatheory.SubjectReduction
         ; Hom-to-Hom; hom-to-Π; homAmb→
         ; ≅ᵀ-Homᵀ; ⊢[]; sr*; ⊢wk; nonathd-red
         ; nn-El
-        ; gen-con; gen-elim )
+        ; gen-con; gen-elim
+        ; gen-icon; gen-ielim; gen-⌜IMu⌝ )
 open import DirectedHoTT.Metatheory.LogicalRelation
   using ( base-nf; U-nf; Unit-nf; Nat-nf; Mu-nf; IsNormal; WN; mkWN )
 open import DirectedHoTT.Metatheory.Fundamental using ( wnorm )
@@ -125,6 +128,10 @@ elnotNat _ (stepᵀ El-⌜Unit⌝ rest) with Unit-nf rest
 ... | ()
 elnotNat _ (stepᵀ El-⌜Mu⌝ rest) with Mu-nf rest
 ... | ()
+-- ⚠ `IMu` is not inert (`ξ-IMu` steps the index) — `IMu-reduct` pins the
+--   head instead.  Reachable now that `NoNatHd` has `nnh-IMu`.
+elnotNat _ (stepᵀ El-⌜IMu⌝ rest) with IMu-reduct rest
+... | mkIMuRed _ () _
 -- ★ THE excluded case, and the only one.
 elnotNat () (stepᵀ El-⌜Nat⌝ rest)
 elnotNat nc (stepᵀ (ξ-El r) rest) = elnotNat (nonathd-red nc r) rest
@@ -179,6 +186,10 @@ elnotU (stepᵀ El-⌜Unit⌝ rest) with Unit-nf rest
 ... | ()
 elnotU (stepᵀ El-⌜Mu⌝ rest) with Mu-nf rest
 ... | ()
+-- ⚠ `IMu D I i` is NOT inert — `ξ-IMu` steps the index — so this is
+--   `IMu-reduct`, which pins the HEAD and lets the index move.
+elnotU (stepᵀ El-⌜IMu⌝ rest) with IMu-reduct rest
+... | mkIMuRed _ () _
 elnotU (stepᵀ (ξ-El r) rest) = elnotU rest
 
 ------------------------------------------------------------------------
@@ -421,6 +432,78 @@ IdMu-clash : {Γ : Cx} {D : Desc} {A : RTy Γ} {t u : RTm Γ} →
 IdMu-clash cv with church-rosserᵀ cv
 ... | E , (iE , mE) with Mu-nf mE
 ...   | refl with Id-reduct iE
+...     | _ , (_ , (_ , ((), _)))
+
+-- ★★ THE INDEXED TWINS.  ⚠ ONE line differs in every single one:
+--   `IMu D I i` is NOT a normal form — `ξ-IMu` steps the INDEX — so
+--   `Mu-nf`'s `refl` becomes `IMu-reduct`'s `mkIMuRed _ refl _`, which
+--   pins the HEAD and lets the index move.  That is the same difference
+--   `⊩₀IMu` has from `⊩₀Mu`, and the reason `IMu-reduct` exists.
+IMuΠ-clash : {Γ : Cx} {D : IDesc} {I : RTy ε} {i : RTm Γ}
+             {F : RTy Γ} {G : RTy (Γ ∙)} → IMu D I i ≅ᵀ Π F G → ⊥
+IMuΠ-clash cv with church-rosserᵀ cv
+... | E , (mE , πE) with IMu-reduct mE
+...   | mkIMuRed _ refl _ with Π-reduct πE
+...     | mkΠRed _ _ () _ _
+
+IMuΣ-clash : {Γ : Cx} {D : IDesc} {I : RTy ε} {i : RTm Γ}
+             {F : RTy Γ} {G : RTy (Γ ∙)} → IMu D I i ≅ᵀ Σ' F G → ⊥
+IMuΣ-clash cv with church-rosserᵀ cv
+... | E , (mE , σE) with IMu-reduct mE
+...   | mkIMuRed _ refl _ with Σ-reduct σE
+...     | mkΣRed _ _ () _ _
+
+IMuU-clash : {Γ : Cx} {D : IDesc} {I : RTy ε} {i : RTm Γ} →
+             IMu D I i ≅ᵀ U → ⊥
+IMuU-clash cv with church-rosserᵀ cv
+... | E , (mE , uE) with IMu-reduct mE
+...   | mkIMuRed _ refl _ with U-nf uE
+...     | ()
+
+IMubase-clash : {Γ : Cx} {D : IDesc} {I : RTy ε} {i : RTm Γ} →
+                IMu D I i ≅ᵀ base → ⊥
+IMubase-clash cv with church-rosserᵀ cv
+... | E , (mE , bE) with IMu-reduct mE
+...   | mkIMuRed _ refl _ with base-nf bE
+...     | ()
+
+IMuUnit-clash : {Γ : Cx} {D : IDesc} {I : RTy ε} {i : RTm Γ} →
+                IMu D I i ≅ᵀ Unit → ⊥
+IMuUnit-clash cv with church-rosserᵀ cv
+... | E , (mE , uE) with IMu-reduct mE
+...   | mkIMuRed _ refl _ with Unit-nf uE
+...     | ()
+
+IMuNat-clash : {Γ : Cx} {D : IDesc} {I : RTy ε} {i : RTm Γ} →
+               IMu D I i ≅ᵀ Nat → ⊥
+IMuNat-clash cv with church-rosserᵀ cv
+... | E , (mE , nE) with IMu-reduct mE
+...   | mkIMuRed _ refl _ with Nat-nf nE
+...     | ()
+
+MuIMu-clash : {Γ : Cx} {Dᵐ : Desc} {D : IDesc} {I : RTy ε} {i : RTm Γ} →
+              Mu {Γ} Dᵐ ≅ᵀ IMu D I i → ⊥
+MuIMu-clash cv with church-rosserᵀ cv
+... | E , (mE , iE) with Mu-nf mE
+...   | refl with IMu-reduct iE
+...     | mkIMuRed _ () _
+
+IMuMu-clash : {Γ : Cx} {Dᵐ : Desc} {D : IDesc} {I : RTy ε} {i : RTm Γ} →
+              IMu D I i ≅ᵀ Mu {Γ} Dᵐ → ⊥
+IMuMu-clash cv = MuIMu-clash (csymᵀ cv)
+
+HomIMu-clash : {Γ : Cx} {D : IDesc} {I : RTy ε} {i : RTm Γ}
+               {A : RTy Γ} {t u : RTm Γ} → Hom A t u ≅ᵀ IMu D I i → ⊥
+HomIMu-clash cv with church-rosserᵀ cv
+... | E , (hE , mE) with IMu-reduct mE
+...   | mkIMuRed _ refl _ with hom-shape hE
+...     | ()
+
+IdIMu-clash : {Γ : Cx} {D : IDesc} {I : RTy ε} {i : RTm Γ}
+              {A : RTy Γ} {t u : RTm Γ} → Id A t u ≅ᵀ IMu D I i → ⊥
+IdIMu-clash cv with church-rosserᵀ cv
+... | E , (iE , mE) with IMu-reduct mE
+...   | mkIMuRed _ refl _ with Id-reduct iE
 ...     | _ , (_ , (_ , ((), _)))
 
 NatΠ-clash : {Γ : Cx} {F : RTy Γ} {G : RTy (Γ ∙)} → Nat {Γ} ≅ᵀ Π F G → ⊥
@@ -694,6 +777,11 @@ szb (ordtr a t u p q) = sz a + sz t + sz u + sz p + sz q
 szb (natrec z w n) = sz z + sz w + sz n
 szb (con k p)      = sz p
 szb (elim D ms t)  = sz ms + sz t
+-- ⚠ `ielim` counts THREE subterms: the index is carried, and `prog`'s
+--   recursion has to be able to descend into it.
+szb (icon k p)     = sz p
+szb (ielim D i ms t) = sz i + sz ms + sz t
+szb (⌜IMu⌝ D I i)  = sz i
 
 szb-ren : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : RTm Γ) → szb (renTm ρ t) ≡ szb t
 sz-ren  : {Γ Δ : Cx} (ρ : Ren Γ Δ) (t : RTm Γ) → sz (renTm ρ t) ≡ sz t
@@ -730,6 +818,10 @@ szb-ren ρ (natrec z w n) =
   cong₂ _+_ (cong₂ _+_ (sz-ren ρ z) (sz-ren _ w)) (sz-ren ρ n)
 szb-ren ρ (con k p)     = sz-ren ρ p
 szb-ren ρ (elim D ms t) = cong₂ _+_ (sz-ren ρ ms) (sz-ren ρ t)
+szb-ren ρ (icon k p)    = sz-ren ρ p
+szb-ren ρ (ielim D i ms t) =
+  cong₂ _+_ (cong₂ _+_ (sz-ren ρ i) (sz-ren ρ ms)) (sz-ren ρ t)
+szb-ren ρ (⌜IMu⌝ D I i) = sz-ren ρ i
 szb-ren ρ (ordtr a t u p q) =
   cong₂ _+_ (cong₂ _+_ (cong₂ _+_ (cong₂ _+_ (sz-ren ρ a) (sz-ren ρ t))
                                   (sz-ren ρ u))
@@ -763,6 +855,12 @@ data Canon {Γ : Cx} : RTm Γ → Set where
   -- ★★ INDUCTIVE TYPES: `con` is an INTRODUCTION form, so it is canonical
   -- — it falls exactly where `nzero`/`nsuc` fall.
   can-con   : (k : ℕ) (p : RTm Γ)        → Canon (con k p)
+  -- ★★ their INDEXED twins.  ⚠ `⌜IMu⌝` is a CODE and codes are canonical
+  --   (`can-cMu`'s row); `icon` is an INTRODUCTION form (`can-con`'s).
+  --   `ielim` is an ELIMINATOR and has no row here, exactly as `elim`
+  --   does not — `Canon` lists introduction forms only.
+  can-icon  : (k : ℕ) (p : RTm Γ)        → Canon (icon k p)
+  can-cIMu  : (Dⁱ : IDesc) (Iⁱ : RTy ε) (i : RTm Γ) → Canon (⌜IMu⌝ Dⁱ Iⁱ i)
 
 data Prog (t : RTm ε) : Set where
   prog-can  : Canon t → Prog t
@@ -821,6 +919,7 @@ jfire cM aM ⌜base⌝        s e k = tr-J-base cM aM (var vz) s e
 -- ★ stage C: ⌜Unit⌝ is a stable J-able shape.
 jfire cM aM ⌜Unit⌝        s e k = tr-J-Unit cM aM (var vz) s e
 jfire cM aM (⌜Mu⌝ Dᵐ)     s e k = tr-J-Mu cM aM (var vz) s e
+jfire cM aM (⌜IMu⌝ Dⁱ Iⁱ iˣ) s e k = tr-J-IMu cM aM (var vz) s e
 jfire cM aM (⌜Σ⌝ x y)     s e k = tr-J-Σ cM aM (var vz) x y s e
 jfire cM aM (⌜Hom⌝ x y z) s e k = tr-J-Hom cM aM (var vz) x y z s e k
 jfire cM aM (⌜Id⌝ x y z)  s e k = tr-J-Id cM aM (var vz) x y z s e
@@ -840,6 +939,22 @@ jfire cM aM (jsub _ _ _)  s e ()
 -- 4. Non-recursive head analyses: canonical Σ'-inhabitants project,
 --    everything else at Σ' clashes.
 ------------------------------------------------------------------------
+
+-- ★ the two indexed inversions, PROJECTED to the conversion.  `gen-⌜Mu⌝`
+--   already returns just that; `gen-⌜IMu⌝`/`gen-icon` carry the
+--   description and the payload typing too, and every use below wants
+--   only the type.
+gen⌜IMu⌝U : {Γ : Ctx} {D : IDesc} {I : RTy ε} {i : RTm ⌊ Γ ⌋}
+            {C : RTy ⌊ Γ ⌋} → Γ ⊢ ⌜IMu⌝ D I i ∷ C → C ≅ᵀ U
+gen⌜IMu⌝U d with gen-⌜IMu⌝ d
+... | _ , (_ , cv) = cv
+
+gen-iconT : {Γ : Ctx} {k : ℕ} {p : RTm ⌊ Γ ⌋} {C : RTy ⌊ Γ ⌋} →
+            Γ ⊢ icon k p ∷ C →
+            Σ IDesc (λ D → Σ (RTy ε) (λ I →
+              Σ (RTm ⌊ Γ ⌋) (λ i → C ≅ᵀ IMu D I i)))
+gen-iconT d with gen-icon d
+... | D , (I , (i , (_ , (_ , (_ , (_ , cv)))))) = D , (I , (i , cv))
 
 canΣfst : {p : RTm ε} {A : RTy ε} {B : RTy (ε ∙)} →
           ◇ ⊢ p ∷ Σ' A B → Canon p → Σ (RTm ε) (λ u → fst p ⟶ u)
@@ -868,6 +983,9 @@ canΣfst dp (can-nsuc n) with gen-nsuc dp
 ... | _ , cv = ⊥-elim (NatΣ-clash (csymᵀ cv))
 canΣfst dp (can-con k p) with gen-con dp
 ... | _ , (_ , (_ , (_ , cv))) = ⊥-elim (MuΣ-clash (csymᵀ cv))
+canΣfst dp (can-icon k p) with gen-iconT dp
+... | _ , (_ , (_ , cv)) = ⊥-elim (IMuΣ-clash (csymᵀ cv))
+canΣfst dp (can-cIMu _ _ _) = ⊥-elim (ΣU-clash (gen⌜IMu⌝U dp))
 
 canΣsnd : {p : RTm ε} {A : RTy ε} {B : RTy (ε ∙)} →
           ◇ ⊢ p ∷ Σ' A B → Canon p → Σ (RTm ε) (λ u → snd p ⟶ u)
@@ -896,6 +1014,9 @@ canΣsnd dp (can-nsuc n) with gen-nsuc dp
 ... | _ , cv = ⊥-elim (NatΣ-clash (csymᵀ cv))
 canΣsnd dp (can-con k p) with gen-con dp
 ... | _ , (_ , (_ , (_ , cv))) = ⊥-elim (MuΣ-clash (csymᵀ cv))
+canΣsnd dp (can-icon k p) with gen-iconT dp
+... | _ , (_ , (_ , cv)) = ⊥-elim (IMuΣ-clash (csymᵀ cv))
+canΣsnd dp (can-cIMu _ _ _) = ⊥-elim (ΣU-clash (gen⌜IMu⌝U dp))
 
 ------------------------------------------------------------------------
 -- 5. The POINTWISE dispatch (non-recursive: takes the strengthened
@@ -973,6 +1094,9 @@ canBase⊥ d (can-nsuc n) with gen-nsuc d
 ... | _ , cv = Natbase-clash (csymᵀ cv)
 canBase⊥ d (can-con k p) with gen-con d
 ... | _ , (_ , (_ , (_ , cv))) = Mubase-clash (csymᵀ cv)
+canBase⊥ d (can-icon k p) with gen-iconT d
+... | _ , (_ , (_ , cv)) = IMubase-clash (csymᵀ cv)
+canBase⊥ d (can-cIMu _ _ _) = Ubase-clash (csymᵀ (gen⌜IMu⌝U d))
 
 ------------------------------------------------------------------------
 -- 6. ★★ THE MUTUAL PROGRESS INDUCTION — bounded by term size,
@@ -997,6 +1121,9 @@ canNat d can-nzero    = ns-zero
 canNat d (can-nsuc k) = ns-suc k
 canNat d (can-con k p) with gen-con d
 ... | _ , (_ , (_ , (_ , cv))) = ⊥-elim (MuNat-clash (csymᵀ cv))
+canNat d (can-icon k p) with gen-iconT d
+... | _ , (_ , (_ , cv)) = ⊥-elim (IMuNat-clash (csymᵀ cv))
+canNat d (can-cIMu _ _ _) = ⊥-elim (NatU-clash (gen⌜IMu⌝U d))
 canNat d (can-lam f) with gen-lam d
 ... | _ , (_ , (cv , _)) = ⊥-elim (NatΠ-clash cv)
 canNat d (can-pair a b) with gen-pair d
@@ -1057,6 +1184,12 @@ mutual
   prog (suc m) {t = ⌜Nat⌝}       d le = prog-can can-cNat
   prog (suc m) {t = ⌜Unit⌝}      d le = prog-can can-cUnit
   prog (suc m) {t = ⌜Mu⌝ Dᵐ}     d le = prog-can (can-cMu Dᵐ)
+  -- ★★ the INDEXED twins: `icon` is an introduction form, `⌜IMu⌝` is a
+  --   code, and a closed `ielim` ALWAYS STEPS (`ielimS`).
+  prog (suc m) {t = icon k p}    d le = prog-can (can-icon k p)
+  prog (suc m) {t = ⌜IMu⌝ Dⁱ Iⁱ i} d le = prog-can (can-cIMu Dⁱ Iⁱ i)
+  prog (suc m) {t = ielim D i ms t} d le with ielimS m d (un≤ le)
+  ... | _ , r = prog-step r
   prog (suc m) {t = ⌜Π⌝ c cd}    d le = prog-can (can-cΠ c cd)
   prog (suc m) {t = ⌜Σ⌝ c cd}    d le = prog-can (can-cΣ c cd)
   prog (suc m) {t = ⌜Hom⌝ c a b} d le = prog-can (can-cH c a b)
@@ -1111,6 +1244,14 @@ mutual
   usplit (suc m) {c = ⌜Unit⌝}  d le = u-stk refl
   -- ⌜Mu⌝ is `stkC?`, so it is a STABLE code.
   usplit (suc m) {c = ⌜Mu⌝ Dᵐ} d le = u-stk refl
+  -- ★ §10.4 put `⌜IMu⌝` in `stkC?` (it has `tr-J-IMu`), so it lands in
+  --   `u-stk` beside `⌜Mu⌝` and every `u-nat`-shaped consumer below is
+  --   left alone.  That is the whole reason the rule had to exist.
+  usplit (suc m) {c = ⌜IMu⌝ Dⁱ Iⁱ i} d le = u-stk refl
+  usplit (suc m) {c = icon k p} d le with gen-iconT d
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (IMuU-clash (csymᵀ cv))
+  usplit (suc m) {c = ielim D i ms t} d le with ielimS m d (un≤ le)
+  ... | _ , r = u-step r
   usplit (suc m) {c = ⌜Π⌝ x y} d le = u-pw refl
   usplit (suc m) {c = ⌜Σ⌝ x y} d le = u-stk refl
   usplit (suc m) {c = ⌜Hom⌝ x a b} d le with gen-⌜Hom⌝ d
@@ -1193,6 +1334,9 @@ mutual
   ... | _ , cv = ⊥-elim (NatΠ-clash (csymᵀ cv))
   canΠ m df (can-con k p) le a with gen-con df
   ... | _ , (_ , (_ , (_ , cv))) = ⊥-elim (MuΠ-clash (csymᵀ cv))
+  canΠ m df (can-icon k p) le a with gen-iconT df
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (IMuΠ-clash (csymᵀ cv))
+  canΠ m df (can-cIMu _ _ _) le a = ⊥-elim (ΠU-clash (gen⌜IMu⌝U df))
   canΠ m df (can-idrefl c s) le a with gen-idrefl df
   ... | _ , (_ , cv) = ⊥-elim (IdΠ-clash (csymᵀ cv))
   canΠ m df (can-hrefl c₁ s) le a with gen-hrefl df
@@ -1262,6 +1406,13 @@ mutual
   apS m dv q
       | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
       | prog-can (can-cMu _) = ⊥-elim (HomU-clash (gen-⌜Mu⌝ dp))
+  apS m dv q
+      | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
+      | prog-can (can-cIMu _ _ _) = ⊥-elim (HomU-clash (gen⌜IMu⌝U dp))
+  apS m dv q
+      | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
+      | prog-can (can-icon k p) with gen-iconT dp
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (HomIMu-clash cv)
   apS m dv q
       | cA , (t , (u , (dcA , (keyA , (dcB , (db , (dt , (du , (dp , cC)))))))))
       | prog-can (can-cΠ x y) with gen-⌜Π⌝ dp
@@ -1351,6 +1502,13 @@ mutual
       | prog-can (can-cMu _) = ⊥-elim (IdU-clash (gen-⌜Mu⌝ dp))
   jsubS m dv q
       | A , (t , (u , (dd , (dt , (du , (dp , (de , cC)))))))
+      | prog-can (can-cIMu _ _ _) = ⊥-elim (IdU-clash (gen⌜IMu⌝U dp))
+  jsubS m dv q
+      | A , (t , (u , (dd , (dt , (du , (dp , (de , cC)))))))
+      | prog-can (can-icon k p) with gen-iconT dp
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (IdIMu-clash cv)
+  jsubS m dv q
+      | A , (t , (u , (dd , (dt , (du , (dp , (de , cC)))))))
       | prog-can (can-cΠ x y) with gen-⌜Π⌝ dp
   ... | _ , (_ , cv) = ⊥-elim (IdU-clash cv)
   jsubS m dv q
@@ -1414,6 +1572,11 @@ mutual
   elimS m dv q | M , (w , (tyM , (dms , (dt , cC))))
       | prog-can (can-cMu _) = ⊥-elim (MuU-clash (gen-⌜Mu⌝ dt))
   elimS m dv q | M , (w , (tyM , (dms , (dt , cC))))
+      | prog-can (can-cIMu _ _ _) = ⊥-elim (MuU-clash (gen⌜IMu⌝U dt))
+  elimS m dv q | M , (w , (tyM , (dms , (dt , cC))))
+      | prog-can (can-icon k p) with gen-iconT dt
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (MuIMu-clash cv)
+  elimS m dv q | M , (w , (tyM , (dms , (dt , cC))))
       | prog-can (can-cΠ x y) with gen-⌜Π⌝ dt
   ... | _ , (_ , cv) = ⊥-elim (MuU-clash cv)
   elimS m dv q | M , (w , (tyM , (dms , (dt , cC))))
@@ -1439,6 +1602,61 @@ mutual
       | prog-can (can-nsuc n₂) with gen-nsuc dt
   ... | _ , cv = ⊥-elim (MuNat-clash cv)
 
+  -- ★★★ the INDEXED ι, progress form.  `elimS` verbatim with the index
+  --   carried: the scrutinee is at `IMu D I i`, so every non-`icon`
+  --   canonical shape is refuted by an `IMu`-clash instead of a `Mu`-one.
+  ielimS : (m : ℕ) {D : IDesc} {i ms t : RTm ε} {T : RTy ε} →
+           ◇ ⊢ ielim D i ms t ∷ T → sz i + sz ms + sz t ≤ m →
+           Σ (RTm ε) (λ v → ielim D i ms t ⟶ v)
+  ielimS m {D} {i} {ms} {t} dv q with gen-ielim dv
+  ... | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+        with prog m dt (≤-trans (≤+ʳ (sz i + sz ms) (sz t)) q)
+  ...   | prog-step r              = _ , ξ-ielimᵗ r
+  ...   | prog-can (can-icon k p)  = _ , ι-ielim D i ms k p
+  ...   | prog-can (can-lam f) with gen-lam dt
+  ...     | _ , (_ , (cv , _)) = ⊥-elim (IMuΠ-clash cv)
+  ielimS m dv q | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      | prog-can (can-pair a₂ b₂) with gen-pair dt
+  ... | _ , (_ , (cv , _)) = ⊥-elim (IMuΣ-clash cv)
+  ielimS m dv q | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      | prog-can can-cb = ⊥-elim (IMuU-clash (gen-⌜base⌝ dt))
+  ielimS m dv q | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      | prog-can can-cNat = ⊥-elim (IMuU-clash (gen-⌜Nat⌝ dt))
+  ielimS m dv q | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      | prog-can can-cUnit = ⊥-elim (IMuU-clash (gen-⌜Unit⌝ dt))
+  ielimS m dv q | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      | prog-can (can-cMu _) = ⊥-elim (IMuU-clash (gen-⌜Mu⌝ dt))
+  ielimS m dv q | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      | prog-can (can-cIMu _ _ _) = ⊥-elim (IMuU-clash (gen⌜IMu⌝U dt))
+  ielimS m dv q | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      | prog-can (can-cΠ x y) with gen-⌜Π⌝ dt
+  ... | _ , (_ , cv) = ⊥-elim (IMuU-clash cv)
+  ielimS m dv q | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      | prog-can (can-cΣ x y) with gen-⌜Σ⌝ dt
+  ... | _ , (_ , cv) = ⊥-elim (IMuU-clash cv)
+  ielimS m dv q | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      | prog-can (can-cH x y z₂) with gen-⌜Hom⌝ dt
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (IMuU-clash cv)
+  ielimS m dv q | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      | prog-can (can-cId x y z₂) with gen-⌜Id⌝ dt
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (IMuU-clash cv)
+  ielimS m dv q | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      | prog-can (can-hrefl c₂ s₂) with gen-hrefl dt
+  ... | _ , (_ , cv) = ⊥-elim (HomIMu-clash (csymᵀ cv))
+  ielimS m dv q | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      | prog-can (can-idrefl c₂ s₂) with gen-idrefl dt
+  ... | _ , (_ , cv) = ⊥-elim (IdIMu-clash (csymᵀ cv))
+  ielimS m dv q | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      | prog-can can-unit = ⊥-elim (IMuUnit-clash (gen-unit dt))
+  ielimS m dv q | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      | prog-can can-nzero = ⊥-elim (IMuNat-clash (gen-nzero dt))
+  ielimS m dv q | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      | prog-can (can-nsuc n₂) with gen-nsuc dt
+  ... | _ , cv = ⊥-elim (IMuNat-clash cv)
+  ielimS m dv q | M , (I , (w , (dM , (di , (dms , (dt , cC))))))
+      | prog-can (can-con k p) with gen-con dt
+  ... | _ , (_ , (_ , (_ , cv))) = ⊥-elim (IMuMu-clash cv)
+
   natrecS : (m : ℕ) {z : RTm ε} {w : RTm ((ε ∙) ∙)} {n : RTm ε} {T : RTy ε} →
             ◇ ⊢ natrec z w n ∷ T → sz z + sz w + sz n ≤ m →
             Σ (RTm ε) (λ v → natrec z w n ⟶ v)
@@ -1462,6 +1680,11 @@ mutual
       | prog-can can-cUnit = ⊥-elim (NatU-clash (gen-⌜Unit⌝ dn))
   natrecS m dv q | M , (tyM , (dz , (dw , (dn , cC))))
       | prog-can (can-cMu _) = ⊥-elim (NatU-clash (gen-⌜Mu⌝ dn))
+  natrecS m dv q | M , (tyM , (dz , (dw , (dn , cC))))
+      | prog-can (can-cIMu _ _ _) = ⊥-elim (NatU-clash (gen⌜IMu⌝U dn))
+  natrecS m dv q | M , (tyM , (dz , (dw , (dn , cC))))
+      | prog-can (can-icon k p) with gen-iconT dn
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (IMuNat-clash (csymᵀ cv))
   natrecS m dv q | M , (tyM , (dz , (dw , (dn , cC))))
       | prog-can (can-cΠ x y) with gen-⌜Π⌝ dn
   ... | _ , (_ , cv) = ⊥-elim (NatU-clash cv)
@@ -1549,6 +1772,11 @@ mutual
   trUS m (mkTrInvU refl tI uI dt du dp de cC) lep
     | prog-can (can-cMu _) = ⊥-elim (HomU-clash (gen-⌜Mu⌝ dp))
   trUS m (mkTrInvU refl tI uI dt du dp de cC) lep
+    | prog-can (can-cIMu _ _ _) = ⊥-elim (HomU-clash (gen⌜IMu⌝U dp))
+  trUS m (mkTrInvU refl tI uI dt du dp de cC) lep
+    | prog-can (can-icon k p) with gen-iconT dp
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (HomIMu-clash cv)
+  trUS m (mkTrInvU refl tI uI dt du dp de cC) lep
     | prog-can (can-cΠ x y) with gen-⌜Π⌝ dp
   ... | _ , (_ , cv) = ⊥-elim (HomU-clash cv)
   trUS m (mkTrInvU refl tI uI dt du dp de cC) lep
@@ -1612,6 +1840,11 @@ mutual
     | prog-can can-cUnit = ⊥-elim (HomU-clash (gen-⌜Unit⌝ dp))
   trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
     | prog-can (can-cMu _) = ⊥-elim (HomU-clash (gen-⌜Mu⌝ dp))
+  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
+    | prog-can (can-cIMu _ _ _) = ⊥-elim (HomU-clash (gen⌜IMu⌝U dp))
+  trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
+    | prog-can (can-icon k p) with gen-iconT dp
+  ... | _ , (_ , (_ , cv)) = ⊥-elim (HomIMu-clash cv)
   trCS m cM aM e dcM hcM ncM dt dvM dp lep lecM
     | prog-can (can-cΠ x y) with gen-⌜Π⌝ dp
   ... | _ , (_ , cv) = ⊥-elim (HomU-clash cv)
@@ -1717,6 +1950,10 @@ pathCanon nn d nrm | prog-can can-cb = ⊥-elim (HomU-clash (gen-⌜base⌝ d))
 pathCanon nn d nrm | prog-can can-cNat = ⊥-elim (HomU-clash (gen-⌜Nat⌝ d))
 pathCanon nn d nrm | prog-can can-cUnit = ⊥-elim (HomU-clash (gen-⌜Unit⌝ d))
 pathCanon nn d nrm | prog-can (can-cMu _) = ⊥-elim (HomU-clash (gen-⌜Mu⌝ d))
+pathCanon nn d nrm | prog-can (can-cIMu _ _ _) =
+  ⊥-elim (HomU-clash (gen⌜IMu⌝U d))
+pathCanon nn d nrm | prog-can (can-icon k p) with gen-iconT d
+... | _ , (_ , (_ , cv)) = ⊥-elim (HomIMu-clash cv)
 pathCanon nn d nrm | prog-can (can-cΠ x y) with gen-⌜Π⌝ d
 ... | _ , (_ , cv) = ⊥-elim (HomU-clash cv)
 pathCanon nn d nrm | prog-can (can-cΣ x y) with gen-⌜Σ⌝ d

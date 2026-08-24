@@ -81,7 +81,7 @@ open import DirectedHoTT.Metatheory.LogicalRelation
   using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap; sne-jsub
         ; Ne; ne-var; ne-app; ne-absurd; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁
         ; SN; sn-ne; sn-lam; sn-pair; sn-cb; sn-cΠ; sn-cΣ; sn-cH; sn-cId; sn-idrefl; sn-exp
-        ; sn-cNat; sn-cUnit; sn-cMu; sn-cIMu; sn-icon
+        ; sn-cNat; sn-cUnit; sn-cMu; sn-cIMu; sn-icon; snr-J-IMu
         ; sne-ielim; snr-ιi; snr-ielimᵗ
         ; SNRed; snr-β; snr-βfst; snr-βsnd; snr-app; snr-fst; snr-snd
         ; snr-hreflᶜ; snr-J-base; snr-J-Σ; snr-J-Id; snr-J-Unit; snr-J-Mu; snr-taut; snr-trᵖ; snr-ap-J; snr-apᵖ
@@ -576,6 +576,8 @@ snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl ⌜Unit⌝ s) e} (snr-J-Unit hd hs) =
   e , (snr-J-Unit (sn-anti hd) (sn-anti hs) , refl)
 snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl (⌜Mu⌝ Dᵐ) s) e} (snr-J-Mu hd hs) =
   e , (snr-J-Mu (sn-anti hd) (sn-anti hs) , refl)
+snr-anti {t = tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ Dⁱ Iⁱ iˣ) s) e} (snr-J-IMu hd hs) =
+  e , (snr-J-IMu (sn-anti hd) (sn-anti hs) , refl)
 snr-anti {t = tr d (hrefl ⌜Unit⌝ s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl (⌜Mu⌝ Dᵐ) s) e} (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-anti {t = tr d (hrefl ⌜Unit⌝ s) e} (snr-trᵖ (snr-hrefl-pw ()))
@@ -961,6 +963,7 @@ snr-ren {ρ = ρ} (snr-hrefl-pw {C = C} {t = t} kp) =
 snr-ren (snr-J-base hd hs) = snr-J-base (sn-ren hd) (sn-ren hs)
 snr-ren (snr-J-Unit hd hs) = snr-J-Unit (sn-ren hd) (sn-ren hs)
 snr-ren (snr-J-Mu hd hs)   = snr-J-Mu (sn-ren hd) (sn-ren hs)
+snr-ren (snr-J-IMu hd hs)  = snr-J-IMu (sn-ren hd) (sn-ren hs)
 snr-ren (snr-J-Σ hd h₁ h₂ hs) =
   snr-J-Σ (sn-ren hd) (sn-ren h₁) (sn-ren h₂) (sn-ren hs)
 snr-ren {ρ = ρ} (snr-J-Hom {c₁ = c₁} hd h₁ h₂ h₃ hs ks) =
