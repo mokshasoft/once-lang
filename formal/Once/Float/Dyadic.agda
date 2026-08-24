@@ -122,35 +122,36 @@ modPow< x k = m%n<n x (2 ^ k) {{m^n≢0 2 k}}
 -- operation, not part of a literal, exactly as `intLit` takes `∣ n ∣`.
 ------------------------------------------------------------------------
 
-private
-  -- Two fields, each in range, pack into their combined width.
+-- NOT private (plan 0.74 K2): `Once.Float.Decimal.encodeClamped-fits` needs
+-- it for the ±∞ and ±0 patterns, which are packed the same way.
+-- Two fields, each in range, pack into their combined width.
   -- `k` and `j` are EXPLICIT: they occur only under `_^_`, and the unifier
   -- cannot invert `2 ^ ?k ≟ 2 ^ (exp-bits F)` — a function application, not a
   -- constructor pattern. Left implicit this leaves unsolved metas at every use.
-  combine-bound : ∀ {e m} (k j : ℕ) → e < 2 ^ k → m < 2 ^ j
-                → e * (2 ^ j) + m < 2 ^ (k + j)
-  combine-bound {e} {m} k j e< m< = lemma
-    where
-      open import Data.Nat.Properties
-        using (+-monoʳ-<; *-monoˡ-≤; ^-distribˡ-+-*; +-comm; <-≤-trans; ≤-reflexive)
-      open import Relation.Binary.PropositionalEquality using (sym; trans; cong)
+combine-bound : ∀ {e m} (k j : ℕ) → e < 2 ^ k → m < 2 ^ j
+              → e * (2 ^ j) + m < 2 ^ (k + j)
+combine-bound {e} {m} k j e< m< = lemma
+  where
+    open import Data.Nat.Properties
+      using (+-monoʳ-<; *-monoˡ-≤; ^-distribˡ-+-*; +-comm; <-≤-trans; ≤-reflexive)
+    open import Relation.Binary.PropositionalEquality using (sym; trans; cong)
 
-      step1 : e * (2 ^ j) + m < e * (2 ^ j) + 2 ^ j
-      step1 = +-monoʳ-< (e * (2 ^ j)) m<
+    step1 : e * (2 ^ j) + m < e * (2 ^ j) + 2 ^ j
+    step1 = +-monoʳ-< (e * (2 ^ j)) m<
 
-      step2 : e * (2 ^ j) + 2 ^ j ≡ suc e * (2 ^ j)
-      step2 = +-comm (e * (2 ^ j)) (2 ^ j)
+    step2 : e * (2 ^ j) + 2 ^ j ≡ suc e * (2 ^ j)
+    step2 = +-comm (e * (2 ^ j)) (2 ^ j)
 
-      step3 : suc e * (2 ^ j) ≤ (2 ^ k) * (2 ^ j)
-      step3 = *-monoˡ-≤ (2 ^ j) e<
+    step3 : suc e * (2 ^ j) ≤ (2 ^ k) * (2 ^ j)
+    step3 = *-monoˡ-≤ (2 ^ j) e<
 
-      step4 : (2 ^ k) * (2 ^ j) ≡ 2 ^ (k + j)
-      step4 = sym (^-distribˡ-+-* 2 k j)
+    step4 : (2 ^ k) * (2 ^ j) ≡ 2 ^ (k + j)
+    step4 = sym (^-distribˡ-+-* 2 k j)
 
-      lemma : e * (2 ^ j) + m < 2 ^ (k + j)
-      lemma = <-≤-trans step1
-                (≤-trans (≤-reflexive step2)
-                  (≤-trans step3 (≤-reflexive step4)))
+    lemma : e * (2 ^ j) + m < 2 ^ (k + j)
+    lemma = <-≤-trans step1
+              (≤-trans (≤-reflexive step2)
+                (≤-trans step3 (≤-reflexive step4)))
 
 ------------------------------------------------------------------------
 -- NORMALISATION: `sig / 2 ^ shift` ↦ `1.f × 2 ^ E`

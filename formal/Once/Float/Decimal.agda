@@ -31,16 +31,20 @@
 module Once.Float.Decimal where
 
 open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _*_; _∸_; _^_; NonZero)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Nat.DivMod using (_/_; _%_)
-open import Data.Nat.Properties using (m^n≢0; m*n≢0)
+open import Data.Nat.Properties
+  using (m^n≢0; m*n≢0; m^n>0; *-monoˡ-<; ∸-monoʳ-<; ^-distribˡ-+-*)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
+import Once.Float.Dyadic
 import Data.Integer as ℤ
-open import Data.Bool using (if_then_else_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
 open import Once.Float.Dyadic
   using (Dyadic; _/2^_; FloatFormat; sig-bits; exp-bits; encode; encode-fits;
-         bitLen; binary32; binary64)
+         bitLen; binary32; binary64; bias; signBit; signBit<; combine-bound;
+         modPow; modPow<)
 
 ------------------------------------------------------------------------
 -- The payload
@@ -134,34 +138,111 @@ binLen : FloatFormat → ℕ → ℕ → ℕ
 binLen F n e =
   bitLen (_/_ (n * 2 ^ guardShift F e) (10 ^ e) {{m^n≢0 10 e}})
 
--- | The magnitude, rounded to a `P`-bit dyadic.
+-- | The magnitude rounded to a `P`-bit significand, WITH ITS BINARY EXPONENT.
 --
--- NO CARRY HANDLING, deliberately: if rounding carries out of the significand
--- (`1.111…1` → `10.000…0`) the result is `2^P`, and `encode` normalises it for
--- free — `bitLen` sees `P+1` bits, the leading-bit strip leaves 0, and the
--- exponent comes out one larger. Special-casing it would be a second place to
--- get the same thing wrong.
-roundMag : FloatFormat → ℕ → ℕ → Dyadic
-roundMag F zero      e = (+ 0) /2^ 0
-roundMag F n@(suc _) e = go ((+ (suc (sig-bits F) + guardShift F e)) ℤ.- (+ binLen F n e))
+-- The value is `m · 2^E`, and `E` is a `ℤ` because a large literal needs a
+-- positive one and a small literal a negative one. That asymmetry is exactly
+-- what `Dyadic`'s ℕ `shift` cannot express, and it is why `round` does not
+-- route through `Dyadic.encode`:
+--
+--     round binary64 1e41  =  0x4870000000000000   -- a pure power of two
+--
+-- Writing the value as `(m · 2^K) /2^ 0` to fit the ℕ shift put K zero bits
+-- BELOW the significand, and `sigFieldN` can only left-align — its
+-- `2 ^ (sig-bits ∸ (bitLen ∸ 1))` clamps to `2^0` and `modPow` then keeps the
+-- low `sig-bits` bits, which were the zeros. The whole fraction was lost:
+-- `0x25dfa371a19e7` became `0x0`. `encode`'s documented precondition (a
+-- significand the format can hold) was being violated by the very step meant
+-- to satisfy it.
+--
+-- NO CARRY HANDLING, deliberately: if rounding carries (`1.111…1` →
+-- `10.000…0`) the result is `2^P`, and `bitLen`/`fracField` normalise it for
+-- free — the leading-bit strip leaves 0 and the exponent comes out one larger.
+roundSig : FloatFormat → ℕ → ℕ → ℕ × ℤ
+roundSig F zero      e = 0 , (+ 0)
+roundSig F n@(suc _) e = go ((+ (suc (sig-bits F) + guardShift F e)) ℤ.- (+ binLen F n e))
   where
-    go : ℤ → Dyadic
-    -- scale UP: m ≈ n·2^t / 10^e, so the value is m / 2^t
-    go (+ t)    = (+ divRHE (n * 2 ^ t) (10 ^ e) {{m^n≢0 10 e}}) /2^ t
-    -- scale DOWN: m ≈ n / (10^e · 2^(k+1)), so the value is m · 2^(k+1)
+    go : ℤ → ℕ × ℤ
+    -- scale UP: m ≈ n·2^t / 10^e, so the value is m · 2^(−t)
+    go (+ t)    = divRHE (n * 2 ^ t) (10 ^ e) {{m^n≢0 10 e}} , ℤ.- (+ t)
+    -- scale DOWN: m ≈ n / (10^e·2^(k+1)), so the value is m · 2^(k+1)
     go -[1+ k ] =
-      (+ (divRHE n (10 ^ e * 2 ^ suc k)
-                {{m*n≢0 (10 ^ e) (2 ^ suc k) {{m^n≢0 10 e}} {{m^n≢0 2 (suc k)}}}}
-              * 2 ^ suc k)) /2^ 0
+      divRHE n (10 ^ e * 2 ^ suc k)
+             {{m*n≢0 (10 ^ e) (2 ^ suc k) {{m^n≢0 10 e}} {{m^n≢0 2 (suc k)}}}}
+      , (+ suc k)
 
--- | …and with the sign put back. IEEE-754 is sign-magnitude, so the sign never
--- takes part in the rounding.
-roundToDyadic : FloatFormat → Decimal → Dyadic
-roundToDyadic F d = signed (sig d) (roundMag F ∣ sig d ∣ (exp10 d))
-  where
-    signed : ℤ → Dyadic → Dyadic
-    signed (+ _)    r = r
-    signed -[1+ _ ] r = Once.Float.Dyadic.negate r
+------------------------------------------------------------------------
+-- THE EXPONENT RANGE (plan 0.74 K2)
+--
+-- `accept?`'s other two conditions were `exp-lo` and `exp-hi`: the value had
+-- to land in the NORMAL exponent range. Deleting them (K3) means answering
+-- what happens OUTSIDE it, and the answer cannot be "whatever `encode` does",
+-- because what `encode` does is WRAP — `expFieldN` ends in
+-- `modPow … (exp-bits F)`, so a stored exponent of 260 at binary32 came out as
+-- 4 and `1e41` encoded as a small FINITE number. That is the same silent value
+-- substitution D115 forbids for `Int` literals, and worse, because nothing
+-- gated it at all.
+--
+-- IEEE's answer above the range is ±∞, and D116's own argument settles that
+-- Once should give it: the promise `Float` makes is the hardware's, and the
+-- hardware produces ±∞. `⟦ Float ⟧` is the target's bit pattern (D113), so an
+-- infinity is just a pattern — nothing in the value model changes.
+--
+-- BELOW the range IEEE gives SUBNORMALS, and Once does not model them: the
+-- result is ZERO. That is a REAL limitation, stated here rather than
+-- discovered later — see the `1e-40` pin, which glibc stores as the subnormal
+-- `0x000116c2` and we store as `0`. It is BOUNDED (the value was already tiny)
+-- where the overflow wrap was not, which is why the two are not treated alike.
+------------------------------------------------------------------------
+
+-- | `bias + (bitLen m − 1) + E`, in ℤ so it can be out of range in either
+-- direction and be RANGE-CHECKED rather than wrapped.
+storedExp : FloatFormat → ℕ → ℤ → ℤ
+storedExp F m E = (+ (bias F + (bitLen m ∸ 1))) ℤ.+ E
+
+-- | The largest stored exponent denoting a FINITE number. `2^e − 1` is
+-- reserved for ±∞ and NaN.
+maxFiniteExp : FloatFormat → ℕ
+maxFiniteExp F = (2 ^ exp-bits F) ∸ 2
+
+-- | The fraction field: the significand with its leading bit stripped, aligned
+-- to `sig-bits`. Only ONE of the two shifts is ever non-trivial — `∸` picks —
+-- and the RIGHT shift is exact, because `roundSig` already rounded those bits
+-- away. That right shift is the thing `sigFieldN` could not do.
+fracField : FloatFormat → ℕ → ℕ
+fracField F m =
+  modPow (_/_ ((m ∸ 2 ^ (bitLen m ∸ 1)) * 2 ^ (sig-bits F ∸ (bitLen m ∸ 1)))
+              (2 ^ ((bitLen m ∸ 1) ∸ sig-bits F))
+              {{m^n≢0 2 ((bitLen m ∸ 1) ∸ sig-bits F)}})
+         (sig-bits F)
+
+-- | ±∞: exponent all ones, significand zero.
+infinity : FloatFormat → ℕ → ℕ
+infinity F sb =
+  sb * (2 ^ (exp-bits F + sig-bits F)) + ((2 ^ exp-bits F) ∸ 1) * (2 ^ sig-bits F)
+
+-- | ±0. The `+ 0` is deliberate: every pattern here is a sign bit above an
+-- `(exp-bits + sig-bits)`-wide magnitude, and writing ±0 in that shape means
+-- ONE range lemma covers all three branches.
+signedZero : FloatFormat → ℕ → ℕ
+signedZero F sb = sb * (2 ^ (exp-bits F + sig-bits F)) + 0
+
+-- Each decision is a separate aux taking its scrutinee as an ARGUMENT rather
+-- than a nested `if` under a `with`. Same convention as `cfm-build-gated`
+-- taking its `Dec`: a proof that cases on the decision then reduces.
+packHi : FloatFormat → ℕ → ℕ → ℕ → Bool → ℕ
+packHi F sb m se true  = infinity F sb
+packHi F sb m se false =
+  sb * (2 ^ (exp-bits F + sig-bits F)) + (modPow se (exp-bits F) * (2 ^ sig-bits F) + fracField F m)
+
+packSE : FloatFormat → ℕ → ℕ → ℤ → ℕ
+packSE F sb m -[1+ _ ]  = signedZero F sb          -- underflow: no subnormals
+packSE F sb m (+ zero)  = signedZero F sb          -- likewise
+packSE F sb m (+ suc e) = packHi F sb m (suc e) (maxFiniteExp F ℕ.<ᵇ suc e)
+
+packAt : FloatFormat → ℕ → ℕ → ℤ → ℕ
+packAt F sb zero    E = signedZero F sb
+packAt F sb (suc m) E = packSE F sb (suc m) (storedExp F (suc m) E)
 
 -- | THE function. Both the denotation and the codegen call THIS, which is what
 -- makes their correspondence `refl`-shaped and needs no rounding theorem.
@@ -172,14 +253,61 @@ roundToDyadic F d = signed (sig d) (roundMag F ∣ sig d ∣ (exp10 d))
 -- the version where nobody states it and the compiler is "correct" about a
 -- rounding nobody checked: that is `emit`'s low byte again (D114).
 round : FloatFormat → Decimal → ℕ
-round F d = encode F (roundToDyadic F d)
+-- Projected rather than destructured: a `where pack (m , E) = …` would stop
+-- `round F d` reducing for an abstract `d`, and `round-fits` below needs it to.
+round F d = packAt F (signBit (sig d))
+                     (proj₁ (roundSig F ∣ sig d ∣ (exp10 d)))
+                     (proj₂ (roundSig F ∣ sig d ∣ (exp10 d)))
 
--- | …and its RANGE, inherited from `encode` for free: `round` IS `encode` of
--- a dyadic, so whatever bound `encode` satisfies, `round` satisfies. This is
--- what the per-arch resource bounds consume, and it is a theorem rather than a
--- parameter — the reason D109's `primFloatToWord` had to go.
+------------------------------------------------------------------------
+-- RANGE
+--
+-- All three patterns are packed identically — a sign bit above an
+-- `(exp-bits + sig-bits)`-wide magnitude — so `combine-bound` discharges each
+-- the same way. The only arithmetic worth naming is that the infinity
+-- magnitude `(2^e − 1)·2^s` is `2^(e+s) − 2^s`: strictly INSIDE the field
+-- rather than at its boundary, which is what makes ±∞ a representable pattern
+-- and not an overflow of its own.
+------------------------------------------------------------------------
+
+private
+  magInf : ∀ F → ((2 ^ exp-bits F) ∸ 1) * (2 ^ sig-bits F)
+                   ℕ.< 2 ^ (exp-bits F + sig-bits F)
+  magInf F =
+    subst (λ z → ((2 ^ exp-bits F) ∸ 1) * (2 ^ sig-bits F) ℕ.< z)
+          (sym (^-distribˡ-+-* 2 (exp-bits F) (sig-bits F)))
+          (*-monoˡ-< (2 ^ sig-bits F) {{m^n≢0 2 (sig-bits F)}}
+                     (∸-monoʳ-< (ℕ.s≤s ℕ.z≤n) (m^n>0 2 (exp-bits F))))
+
+  magFin : ∀ F m se → modPow se (exp-bits F) * (2 ^ sig-bits F) + fracField F m
+                        ℕ.< 2 ^ (exp-bits F + sig-bits F)
+  magFin F m se = combine-bound (exp-bits F) (sig-bits F)
+                                (modPow< se (exp-bits F))
+                                (modPow< _ (sig-bits F))
+
+packHi-fits : ∀ F sb m se b → sb ℕ.< 2
+            → packHi F sb m se b ℕ.< 2 ^ (1 + (exp-bits F + sig-bits F))
+packHi-fits F sb m se true  sb< = combine-bound 1 (exp-bits F + sig-bits F) sb< (magInf F)
+packHi-fits F sb m se false sb< = combine-bound 1 (exp-bits F + sig-bits F) sb< (magFin F m se)
+
+packSE-fits : ∀ F sb m E → sb ℕ.< 2
+            → packSE F sb m E ℕ.< 2 ^ (1 + (exp-bits F + sig-bits F))
+packSE-fits F sb m -[1+ _ ]  sb< = combine-bound 1 (exp-bits F + sig-bits F) sb< (m^n>0 2 (exp-bits F + sig-bits F))
+packSE-fits F sb m (+ zero)  sb< = combine-bound 1 (exp-bits F + sig-bits F) sb< (m^n>0 2 (exp-bits F + sig-bits F))
+packSE-fits F sb m (+ suc e) sb< = packHi-fits F sb m (suc e) (maxFiniteExp F ℕ.<ᵇ suc e) sb<
+
+packAt-fits : ∀ F sb m E → sb ℕ.< 2
+            → packAt F sb m E ℕ.< 2 ^ (1 + (exp-bits F + sig-bits F))
+packAt-fits F sb zero    E sb< = combine-bound 1 (exp-bits F + sig-bits F) sb< (m^n>0 2 (exp-bits F + sig-bits F))
+packAt-fits F sb (suc m) E sb< = packSE-fits F sb (suc m) (storedExp F (suc m) E) sb<
+
+-- | …a THEOREM, where D109's `primFloatToWord` needed a parameter.
 round-fits : ∀ F d → round F d ℕ.< 2 ^ (1 + (exp-bits F + sig-bits F))
-round-fits F d = encode-fits F (roundToDyadic F d)
+round-fits F d =
+  packAt-fits F (signBit (sig d))
+              (proj₁ (roundSig F ∣ sig d ∣ (exp10 d)))
+              (proj₂ (roundSig F ∣ sig d ∣ (exp10 d)))
+              (signBit< (sig d))
 
 ------------------------------------------------------------------------
 -- PINNED PATTERNS
@@ -251,4 +379,37 @@ _ = refl
 -- exactly at binary64, rounded at binary32. Before K3 it was rejected on every
 -- target, which is the interim D116 was written to end.
 _ : round binary32 (decimalOf 16777217 0 1) ≡ 0x4b800000
+_ = refl
+
+------------------------------------------------------------------------
+-- K2: THE EXPONENT RANGE, pinned
+------------------------------------------------------------------------
+
+-- OVERFLOW → ±∞. Before this, `expFieldN`'s `modPow` wrapped and `1e41` at
+-- binary32 encoded as `0x03800000` — a small FINITE number. Silent, unbounded,
+-- and nothing in the tree could see it: both the meaning and the machine call
+-- this same function, so they agreed on the wrong answer.
+_ : round binary32 (decimalOf 100000000000000000000000000000000000000000 0 1)
+      ≡ 0x7f800000
+_ = refl
+
+_ : round binary64 (decimalOf 100000000000000000000000000000000000000000 0 1)
+      ≡ 0x48725dfa371a19e7     -- still FINITE at binary64: the range is a
+_ = refl                       -- TARGET fact, and this is the point of D113
+
+-- …and it keeps the sign.
+_ : round binary32 (negate (decimalOf 100000000000000000000000000000000000000000 0 1))
+      ≡ 0xff800000
+_ = refl
+
+-- UNDERFLOW → ZERO, and this is a STATED LIMITATION, not a claim of IEEE
+-- conformance. glibc stores `1e-40` at binary32 as the SUBNORMAL `0x000116c2`;
+-- Once has no subnormals and stores `0`. Bounded (the value was already tiny)
+-- where the overflow wrap was not, which is why the two are not treated alike.
+-- Recorded here so it is read rather than discovered.
+_ : round binary32 ((+ 1) /10^ 40) ≡ 0
+_ = refl
+
+-- The same literal is NORMAL at binary64, so it is exact there.
+_ : round binary64 ((+ 1) /10^ 40) ≡ 0x37a16c262777579c
 _ = refl
