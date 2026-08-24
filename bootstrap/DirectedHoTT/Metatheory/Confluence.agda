@@ -2,6 +2,15 @@
 -- OCP-0009 · dHoTT step 25 — (B1) CONFLUENCE (Church–Rosser) of the dependent
 --                            de Bruijn calculus
 --
+-- ⚠⚠ THIS MODULE NEEDS THE COMPACTING COLLECTOR.  Check it with
+--
+--       AGDA_RTS="-A64m -c" ./check.sh DirectedHoTT/Metatheory/Confluence.agda
+--
+--   (`sweep.sh` greps that phrase from these first 40 lines and uses `-c`.)
+--   It crossed the line when `tr-J-IMu` landed (PLAN-INDEXED §10.4): the
+--   rule adds one parallel-reduction constructor and `⟹-⁺` grows a row
+--   per context, which is where the module's memory goes.
+--
 -- The gateway metatheorem (HANDOFF §3 Tier B). Confluence of `_⟶_` on `RTm`,
 -- by the Takahashi complete-development method (parallel reduction + the
 -- triangle lemma), the same technique the repo already uses for the point-free
@@ -56,7 +65,7 @@ open import DirectedHoTT.Spec.Typing
         ; jsub-refl; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-idreflᶜ; ξ-idreflᵃ
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ
         ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
-        ; tr-J-Unit; tr-J-Mu; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
+        ; tr-J-Unit; tr-J-Mu; tr-J-IMu; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
         ; _⟶*_; done; step
         ; _≅_; cred; crfl; csym; ctrn
         ; ι-elim; ξ-con; ξ-elimᵐ; ξ-elimᵗ
@@ -448,6 +457,9 @@ pwShift-ren ρ t =
 ⟶-ren ρ (tr-J-Unit c a m s e) =
   tr-J-Unit (renTm (extR ρ) c) (renTm (extR ρ) a) (renTm (extR ρ) m)
             (renTm ρ s) (renTm ρ e)
+⟶-ren ρ (tr-J-IMu c a m s e) =
+  tr-J-IMu (renTm (extR ρ) c) (renTm (extR ρ) a) (renTm (extR ρ) m)
+           (renTm ρ s) (renTm ρ e)
 ⟶-ren ρ (tr-J-Mu c a m s e) =
   tr-J-Mu (renTm (extR ρ) c) (renTm (extR ρ) a) (renTm (extR ρ) m)
           (renTm ρ s) (renTm ρ e)
@@ -567,6 +579,9 @@ stkA?-red (ξ-fst _) ()
 stkA?-red (ξ-snd _) ()
 stkA?-red (ξ-⌜Π⌝ˡ _) ()
 stkA?-red (ξ-⌜Π⌝ʳ _) ()
+-- ⚠ §10.4: `stkA? (⌜IMu⌝ …)` is `true` and the INDEX steps, so this is
+--   a real preservation row, not an absurdity.
+stkA?-red (ξ-⌜IMu⌝ r) h = refl
 stkA?-red (ξ-⌜Σ⌝ˡ r) h = refl
 stkA?-red (ξ-⌜Σ⌝ʳ r) h = refl
 stkA?-red (ξ-⌜Hom⌝ᶜ r) h = stkA?-red r h
@@ -600,6 +615,7 @@ stkC?-red (ξ-fst _) ()
 stkC?-red (ξ-snd _) ()
 stkC?-red (ξ-⌜Π⌝ˡ _) ()
 stkC?-red (ξ-⌜Π⌝ʳ _) ()
+stkC?-red (ξ-⌜IMu⌝ r) h = refl
 stkC?-red (ξ-⌜Σ⌝ˡ r) h = refl
 stkC?-red (ξ-⌜Σ⌝ʳ r) h = refl
 stkC?-red (ξ-⌜Hom⌝ᶜ r) h = stkA?-red r h
@@ -820,6 +836,12 @@ data _⟹_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   --   `elim D ms t`, and a clash there is silent.
   ptr-J-Mu : {Dᵐ : Desc} {c a m : RTm (Γ ∙)} {s e e' : RTm Γ} →
              e ⟹ e' → tr (⌜Hom⌝ c a m) (hrefl (⌜Mu⌝ Dᵐ) s) e ⟹ e'
+  -- ★ §10.4's obligation in parallel form.  ⚠ the INDEX is not tracked:
+  --   the rule discards the path whole, exactly as `ptr-J-Mu` discards
+  --   the description.
+  ptr-J-IMu : {Dⁱ : IDesc} {Iⁱ : RTy ε} {iˣ : RTm Γ}
+              {c a m : RTm (Γ ∙)} {s e e' : RTm Γ} →
+              e ⟹ e' → tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ Dⁱ Iⁱ iˣ) s) e ⟹ e'
   ptr-J-Σ : {c a m : RTm (Γ ∙)} {c₁ : RTm Γ} {c₂ : RTm (Γ ∙)} {s e e' : RTm Γ} →
             e ⟹ e' → tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e ⟹ e'
   ptr-J-Id : {c a m : RTm (Γ ∙)} {c₁ a₁ b₁ s e e' : RTm Γ} →
@@ -971,6 +993,7 @@ pw?-⟹ (p⌜Nat⌝) ()
 pw?-⟹ (p⌜Unit⌝) ()
 pw?-⟹ (p⌜Mu⌝) ()
 pw?-⟹ (ptr-J-Unit _) ()
+pw?-⟹ (ptr-J-IMu _) ()
 pw?-⟹ (ptr-J-Mu _) ()
 pw?-⟹ (ptr-J-Σ _) ()
 pw?-⟹ (ptr-J-Hom _ _) ()
@@ -1014,6 +1037,8 @@ stkA?-⟹ (p⌜Nat⌝) h = refl
 stkA?-⟹ (p⌜Unit⌝) h = refl
 stkA?-⟹ (p⌜Mu⌝) h = refl
 stkA?-⟹ (ptr-J-Unit _) ()
+stkA?-⟹ (p⌜IMu⌝ _) h = refl
+stkA?-⟹ (ptr-J-IMu _) ()
 stkA?-⟹ (ptr-J-Mu _) ()
 stkA?-⟹ (ptr-J-Σ _) ()
 stkA?-⟹ (ptr-J-Hom _ _) ()
@@ -1056,6 +1081,7 @@ stkC?-⟹ (p⌜Nat⌝) ()
 stkC?-⟹ (p⌜Unit⌝) h = refl
 stkC?-⟹ (p⌜Mu⌝) h = refl
 stkC?-⟹ (ptr-J-Unit _) ()
+stkC?-⟹ (p⌜IMu⌝ _) h = refl
 stkC?-⟹ (ptr-J-Mu _) ()
 stkC?-⟹ (ptr-J-Σ _) ()
 stkC?-⟹ (ptr-J-Hom _ _) ()
@@ -1080,6 +1106,7 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
 ⟶→⟹ : {t u : RTm Γ} → t ⟶ u → t ⟹ u
 ⟶→⟹ (tr-J-Unit _ _ _ _ e) = ptr-J-Unit (⟹-refl e)
 ⟶→⟹ (tr-J-Mu _ _ _ _ e)   = ptr-J-Mu (⟹-refl e)
+⟶→⟹ (tr-J-IMu _ _ _ _ e)  = ptr-J-IMu (⟹-refl e)
 ⟶→⟹ (natrec-zero z s)  = pnatrec-zero (⟹-refl z) (⟹-refl s)
 ⟶→⟹ (natrec-suc z s n) = pnatrec-suc (⟹-refl z) (⟹-refl s) (⟹-refl n)
 ⟶→⟹ (ξ-nsuc r)    = pnsuc (⟶→⟹ r)
@@ -1244,6 +1271,8 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
   step (tr-J-Unit c a m s e) (⟹→⟶* p)
 ⟹→⟶* (ptr-J-Mu {c = c} {a} {m} {s} {e} p) =
   step (tr-J-Mu c a m s e) (⟹→⟶* p)
+⟹→⟶* (ptr-J-IMu {c = c} {a} {m} {s} {e} p) =
+  step (tr-J-IMu c a m s e) (⟹→⟶* p)
 ⟹→⟶* (ptr-J-base {c = c} {a} {m} {s} {e} p) =
   step (tr-J-base c a m s e) (⟹→⟶* p)
 ⟹→⟶* (ptr-J-Σ {c = c} {a} {m} {c₁} {c₂} {s} {e} p) =
@@ -1307,6 +1336,7 @@ stkC?-⟹ (pnatrec-suc _ _ _) ()
 ⟹-ren ρ p⌜Mu⌝      = p⌜Mu⌝
 ⟹-ren ρ (ptr-J-Unit p) = ptr-J-Unit (⟹-ren ρ p)
 ⟹-ren ρ (ptr-J-Mu p)   = ptr-J-Mu (⟹-ren ρ p)
+⟹-ren ρ (ptr-J-IMu p)  = ptr-J-IMu (⟹-ren ρ p)
 ⟹-ren ρ punit      = punit
 ⟹-ren ρ pnzero     = pnzero
 ⟹-ren ρ (pnsuc p)  = pnsuc (⟹-ren ρ p)
@@ -1428,6 +1458,7 @@ pwBody-⟹ (p⌜Nat⌝) ()
 pwBody-⟹ (p⌜Unit⌝) ()
 pwBody-⟹ (p⌜Mu⌝) ()
 pwBody-⟹ (ptr-J-Unit _) ()
+pwBody-⟹ (ptr-J-IMu _) ()
 pwBody-⟹ (ptr-J-Mu _) ()
 pwBody-⟹ (ptr-J-Σ _) ()
 pwBody-⟹ (ptr-J-Hom _ _) ()
@@ -1466,6 +1497,7 @@ pwBody-⟹ (pnatrec-suc _ _ _) ()
 ⟹-sub h p⌜Mu⌝      = p⌜Mu⌝
 ⟹-sub h (ptr-J-Unit p) = ptr-J-Unit (⟹-sub h p)
 ⟹-sub h (ptr-J-Mu p)   = ptr-J-Mu (⟹-sub h p)
+⟹-sub h (ptr-J-IMu p)  = ptr-J-IMu (⟹-sub h p)
 ⟹-sub h punit      = punit
 ⟹-sub h pnzero     = pnzero
 ⟹-sub h (pnsuc p)  = pnsuc (⟹-sub h p)
@@ -1602,6 +1634,7 @@ single-⟹ p (vs x) = pvar x
 _⁺ : RTm Γ → RTm Γ
 trB⁺ trU1⁺ : RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
 trMu1⁺ᵈ : Desc → RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
+trIMu1⁺ᵈ : IDesc → RTy ε → RTm Γ → RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
 trI⁺ : RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
 trS⁺ : RTm (Γ ∙) → RTm Γ → RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
 -- W2b helpers: `hr⁺` takes the DEVELOPED code/arg (the Boolean decided
@@ -1736,6 +1769,7 @@ hrefl c f ⁺         = hr⁺ (pw? c) (c ⁺) (f ⁺)
 -- through to the congruence at the bottom of this tree.
 tr d (hrefl ⌜Unit⌝ s) e ⁺        = trU1⁺ d s e
 tr d (hrefl (⌜Mu⌝ Dᵐ) s) e ⁺     = trMu1⁺ᵈ Dᵐ d s e
+tr d (hrefl (⌜IMu⌝ Dⁱ Iⁱ iˣ) s) e ⁺ = trIMu1⁺ᵈ Dⁱ Iⁱ iˣ d s e
 tr d (hrefl ⌜base⌝ s) e ⁺        = trB⁺ d s e
 tr d (hrefl (⌜Σ⌝ c₁ c₂) s) e ⁺   = trS⁺ d c₁ c₂ s e
 tr d (hrefl (⌜Id⌝ c₁ a₁ b₁) s) e ⁺ = trI⁺ d c₁ a₁ b₁ s e
@@ -1748,6 +1782,7 @@ tr d p e ⁺ = tr (d ⁺) (p ⁺) (e ⁺)
 -- (likewise no ⌜Nat⌝ row here — `ap-J` shares `stkC?` as its key.)
 ap cB b (hrefl ⌜Unit⌝ s) ⁺        = hrefl (cB ⁺) (subTm (single (s ⁺)) (b ⁺))
 ap cB b (hrefl (⌜Mu⌝ Dᵐ) s) ⁺     = hrefl (cB ⁺) (subTm (single (s ⁺)) (b ⁺))
+ap cB b (hrefl (⌜IMu⌝ Dⁱ Iⁱ iˣ) s) ⁺ = hrefl (cB ⁺) (subTm (single (s ⁺)) (b ⁺))
 ap cB b (hrefl ⌜base⌝ s) ⁺        = hrefl (cB ⁺) (subTm (single (s ⁺)) (b ⁺))
 ap cB b (hrefl (⌜Σ⌝ c₁ c₂) s) ⁺   = hrefl (cB ⁺) (subTm (single (s ⁺)) (b ⁺))
 ap cB b (hrefl (⌜Id⌝ c₁ a₁ b₁) s) ⁺ = hrefl (cB ⁺) (subTm (single (s ⁺)) (b ⁺))
@@ -1791,6 +1826,11 @@ trU1⁺ d s e = tr (d ⁺) (hrefl ⌜Unit⌝ (s ⁺)) (e ⁺)
 --   mentions it; `trU1⁺` needs no such argument because `⌜Unit⌝` is nullary.
 trMu1⁺ᵈ Dᵐ (⌜Hom⌝ c a m) s e = e ⁺
 trMu1⁺ᵈ Dᵐ d s e = tr (d ⁺) (hrefl (⌜Mu⌝ Dᵐ) (s ⁺)) (e ⁺)
+-- ⚠ THREE carried arguments, not one: `⌜IMu⌝` holds the description, the
+--   index TYPE and the index TERM, and the congruence row mentions all
+--   three (`trMu1⁺ᵈ` needs only `Dᵐ`).
+trIMu1⁺ᵈ Dⁱ Iⁱ iˣ (⌜Hom⌝ c a m) s e = e ⁺
+trIMu1⁺ᵈ Dⁱ Iⁱ iˣ d s e = tr (d ⁺) (hrefl (⌜IMu⌝ Dⁱ Iⁱ (iˣ ⁺)) (s ⁺)) (e ⁺)
 
 trS⁺ (⌜Hom⌝ c a m) c₁ c₂ s e = e ⁺
 trS⁺ d c₁ c₂ s e = tr (d ⁺) (hrefl (⌜Σ⌝ (c₁ ⁺) (c₂ ⁺)) (s ⁺)) (e ⁺)
@@ -1954,6 +1994,7 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr w@(pordtr _ _ _ _ _) v@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr _ _ _ _ _) v@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr _ _ _ _ _) v@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr _ _ _ _ _) v@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr _ _ _ _ _) v@(phrefl (p⌜Σ⌝ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr _ _ _ _ _) v@(phrefl (p⌜Id⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr _ _ _ _ _) v@(phrefl (p⌜Hom⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
@@ -1962,6 +2003,7 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr w@pordtr-z v@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@pordtr-z v@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@pordtr-z v@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@pordtr-z v@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@pordtr-z v@(phrefl (p⌜Σ⌝ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@pordtr-z v@(phrefl (p⌜Id⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@pordtr-z v@(phrefl (p⌜Hom⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
@@ -1970,6 +2012,7 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr w@(pordtr-szz _) v@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-szz _) v@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-szz _) v@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-szz _) v@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-szz _) v@(phrefl (p⌜Σ⌝ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-szz _) v@(phrefl (p⌜Id⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-szz _) v@(phrefl (p⌜Hom⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
@@ -1978,6 +2021,7 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr w@(pordtr-ssz _) v@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-ssz _) v@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-ssz _) v@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-ssz _) v@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-ssz _) v@(phrefl (p⌜Σ⌝ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-ssz _) v@(phrefl (p⌜Id⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-ssz _) v@(phrefl (p⌜Hom⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
@@ -1986,6 +2030,7 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr w@(pordtr-szs _ _ _) v@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-szs _ _ _) v@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-szs _ _ _) v@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-szs _ _ _) v@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-szs _ _ _) v@(phrefl (p⌜Σ⌝ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-szs _ _ _) v@(phrefl (p⌜Id⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-szs _ _ _) v@(phrefl (p⌜Hom⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
@@ -1994,6 +2039,7 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr w@(pordtr-sss _ _ _ _ _) v@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-sss _ _ _ _ _) v@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-sss _ _ _ _ _) v@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pordtr-sss _ _ _ _ _) v@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-sss _ _ _ _ _) v@(phrefl (p⌜Σ⌝ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-sss _ _ _ _ _) v@(phrefl (p⌜Id⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pordtr-sss _ _ _ _ _) v@(phrefl (p⌜Hom⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
@@ -2044,8 +2090,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (pordtr z0@p⌜Nat⌝ z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@p⌜Unit⌝ z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@p⌜Mu⌝ z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(p⌜IMu⌝ _) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(ptr-J-Unit x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(ptr-J-Mu x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(ptr-J-IMu x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(ptr-J-Σ x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(ptr-J-Id x) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(ptr-taut x x₁) z1 z2 z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
@@ -2085,8 +2133,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@p⌜Nat⌝ z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@p⌜Unit⌝ z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@p⌜Mu⌝ z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(p⌜IMu⌝ _) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(ptr-J-Unit x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(ptr-J-Mu x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(ptr-J-IMu x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(ptr-J-Σ x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(ptr-J-Id x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1 z2@(ptr-taut x₂ x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
@@ -2126,8 +2176,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (pordtr z0@(pnsuc x) z1@p⌜Nat⌝ z2@pnzero z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1@p⌜Unit⌝ z2@pnzero z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1@p⌜Mu⌝ z2@pnzero z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(p⌜IMu⌝ _) z2@pnzero z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-Unit x₁) z2@pnzero z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-Mu x₁) z2@pnzero z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-IMu x₁) z2@pnzero z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-Σ x₁) z2@pnzero z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-Id x₁) z2@pnzero z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-taut x₁ x₂) z2@pnzero z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
@@ -2170,8 +2222,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (pordtr z0@(pnsuc x) z1@p⌜Nat⌝ z2@(pnsuc x₁) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1@p⌜Unit⌝ z2@(pnsuc x₁) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1@p⌜Mu⌝ z2@(pnsuc x₁) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(p⌜IMu⌝ _) z2@(pnsuc x₁) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-Unit x₁) z2@(pnsuc x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-Mu x₁) z2@(pnsuc x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
+⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-IMu x₁) z2@(pnsuc x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-Σ x₁) z2@(pnsuc x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-J-Id x₁) z2@(pnsuc x₂) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
 ⟹-⁺ (pordtr z0@(pnsuc x) z1@(ptr-taut x₁ x₂) z2@(pnsuc x₃) z3 z4) = pordtr (⟹-⁺ z0) (⟹-⁺ z1) (⟹-⁺ z2) (⟹-⁺ z3) (⟹-⁺ z4)
@@ -2244,6 +2298,7 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ p⌜Nat⌝                 = p⌜Nat⌝
 ⟹-⁺ p⌜Unit⌝                = p⌜Unit⌝
 ⟹-⁺ p⌜Mu⌝                = p⌜Mu⌝
+⟹-⁺ (p⌜IMu⌝ p)             = p⌜IMu⌝ (⟹-⁺ p)
 ⟹-⁺ punit                  = punit
 ⟹-⁺ pnzero                 = pnzero
 ⟹-⁺ (pnsuc p)              = pnsuc (⟹-⁺ p)
@@ -2267,8 +2322,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (pnatrec pz ps pn@(p⌜Nat⌝)) = pnatrec (⟹-⁺ pz) (⟹-⁺ ps) (⟹-⁺ pn)
 ⟹-⁺ (pnatrec pz ps pn@(p⌜Unit⌝)) = pnatrec (⟹-⁺ pz) (⟹-⁺ ps) (⟹-⁺ pn)
 ⟹-⁺ (pnatrec pz ps pn@(p⌜Mu⌝)) = pnatrec (⟹-⁺ pz) (⟹-⁺ ps) (⟹-⁺ pn)
+⟹-⁺ (pnatrec pz ps pn@((p⌜IMu⌝ _))) = pnatrec (⟹-⁺ pz) (⟹-⁺ ps) (⟹-⁺ pn)
 ⟹-⁺ (pnatrec pz ps pn@(ptr-J-Unit _)) = pnatrec (⟹-⁺ pz) (⟹-⁺ ps) (⟹-⁺ pn)
 ⟹-⁺ (pnatrec pz ps pn@(ptr-J-Mu _)) = pnatrec (⟹-⁺ pz) (⟹-⁺ ps) (⟹-⁺ pn)
+⟹-⁺ (pnatrec pz ps pn@(ptr-J-IMu _)) = pnatrec (⟹-⁺ pz) (⟹-⁺ ps) (⟹-⁺ pn)
 ⟹-⁺ (pnatrec pz ps pn@(ptr-J-Σ _)) = pnatrec (⟹-⁺ pz) (⟹-⁺ ps) (⟹-⁺ pn)
 ⟹-⁺ (pnatrec pz ps pn@(ptr-J-Id _)) = pnatrec (⟹-⁺ pz) (⟹-⁺ ps) (⟹-⁺ pn)
 ⟹-⁺ (pnatrec pz ps pn@(ptr-taut _ _)) = pnatrec (⟹-⁺ pz) (⟹-⁺ ps) (⟹-⁺ pn)
@@ -2306,8 +2363,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (papp w@(p⌜Nat⌝) q) = papp (⟹-⁺ w) (⟹-⁺ q)
 ⟹-⁺ (papp w@(p⌜Unit⌝) q) = papp (⟹-⁺ w) (⟹-⁺ q)
 ⟹-⁺ (papp w@(p⌜Mu⌝) q) = papp (⟹-⁺ w) (⟹-⁺ q)
+⟹-⁺ (papp w@((p⌜IMu⌝ _)) q) = papp (⟹-⁺ w) (⟹-⁺ q)
 ⟹-⁺ (papp w@(ptr-J-Unit _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
 ⟹-⁺ (papp w@(ptr-J-Mu _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
+⟹-⁺ (papp w@(ptr-J-IMu _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
 ⟹-⁺ (papp w@(ptr-J-Σ _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
 ⟹-⁺ (papp w@(ptr-taut _ _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
 ⟹-⁺ (papp w@(phrefl-pw _ _ _) q) = papp (⟹-⁺ w) (⟹-⁺ q)
@@ -2333,8 +2392,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (pfst w@(p⌜Nat⌝)) = pfst (⟹-⁺ w)
 ⟹-⁺ (pfst w@(p⌜Unit⌝)) = pfst (⟹-⁺ w)
 ⟹-⁺ (pfst w@(p⌜Mu⌝)) = pfst (⟹-⁺ w)
+⟹-⁺ (pfst w@((p⌜IMu⌝ _))) = pfst (⟹-⁺ w)
 ⟹-⁺ (pfst w@(ptr-J-Unit _)) = pfst (⟹-⁺ w)
 ⟹-⁺ (pfst w@(ptr-J-Mu _)) = pfst (⟹-⁺ w)
+⟹-⁺ (pfst w@(ptr-J-IMu _)) = pfst (⟹-⁺ w)
 ⟹-⁺ (pfst w@(ptr-J-Σ _)) = pfst (⟹-⁺ w)
 ⟹-⁺ (pfst w@(ptr-taut _ _)) = pfst (⟹-⁺ w)
 ⟹-⁺ (pfst w@(phrefl-pw _ _ _)) = pfst (⟹-⁺ w)
@@ -2360,8 +2421,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (psnd w@(p⌜Nat⌝)) = psnd (⟹-⁺ w)
 ⟹-⁺ (psnd w@(p⌜Unit⌝)) = psnd (⟹-⁺ w)
 ⟹-⁺ (psnd w@(p⌜Mu⌝)) = psnd (⟹-⁺ w)
+⟹-⁺ (psnd w@((p⌜IMu⌝ _))) = psnd (⟹-⁺ w)
 ⟹-⁺ (psnd w@(ptr-J-Unit _)) = psnd (⟹-⁺ w)
 ⟹-⁺ (psnd w@(ptr-J-Mu _)) = psnd (⟹-⁺ w)
+⟹-⁺ (psnd w@(ptr-J-IMu _)) = psnd (⟹-⁺ w)
 ⟹-⁺ (psnd w@(ptr-J-Σ _)) = psnd (⟹-⁺ w)
 ⟹-⁺ (psnd w@(ptr-taut _ _)) = psnd (⟹-⁺ w)
 ⟹-⁺ (psnd w@(phrefl-pw _ _ _)) = psnd (⟹-⁺ w)
@@ -2393,6 +2456,7 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 -- the five `tr` roots.
 ⟹-⁺ (ptr-J-Unit p)  = ⟹-⁺ p
 ⟹-⁺ (ptr-J-Mu p)  = ⟹-⁺ p
+⟹-⁺ (ptr-J-IMu p)  = ⟹-⁺ p
 ⟹-⁺ (ptr-J-base p)  = ⟹-⁺ p
 ⟹-⁺ (ptr-J-Σ p)     = ⟹-⁺ p
 ⟹-⁺ (ptr-J-Id p) = ⟹-⁺ p
@@ -2420,78 +2484,117 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr pd w@(phrefl p⌜Nat⌝ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-base _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-base _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-J-base _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr (p⌜Hom⌝ pc pa pm) (phrefl p⌜Unit⌝ ps) pe) = ptr-J-Unit (⟹-⁺ pe)
 ⟹-⁺ (ptr (p⌜Hom⌝ pc pa pm) (phrefl p⌜Mu⌝ ps) pe) = ptr-J-Mu (⟹-⁺ pe)
+⟹-⁺ (ptr (p⌜Hom⌝ pc pa pm) (phrefl (p⌜IMu⌝ _) ps) pe) = ptr-J-IMu (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pvar _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pvar _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pvar _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(plam _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(plam _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(plam _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(papp _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(papp _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(papp _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pβ _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pβ _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pβ _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ppair _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ppair _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ppair _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pfst _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pfst _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pfst _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(psnd _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(psnd _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(psnd _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pβfst _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pβfst _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pβfst _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pβsnd _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pβsnd _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pβsnd _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@p⌜base⌝ w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@p⌜base⌝ w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@p⌜base⌝ w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Π⌝ _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Π⌝ _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(p⌜Π⌝ _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Σ⌝ _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Σ⌝ _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(p⌜Σ⌝ _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(phrefl _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(phrefl _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(phrefl _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr _ _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr _ _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr _ _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Unit _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Mu _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-J-Mu _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-J-IMu _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-J-IMu _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Nat⌝) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Nat⌝) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(p⌜Nat⌝) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Unit⌝) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Mu⌝) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@((p⌜IMu⌝ _)) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Σ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Σ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-J-Σ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-taut _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-taut _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-taut _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(phrefl-pw _ _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(phrefl-pw _ _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(phrefl-pw _ _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Hom _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Hom _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-J-Hom _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-pw _ _ _ _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-pw _ _ _ _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-pw _ _ _ _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(punit) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(punit) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(punit) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pnzero) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pnzero) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pnzero) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pnsuc _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pnsuc _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pnsuc _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pnatrec _ _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pnatrec _ _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pnatrec _ _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pnatrec-zero _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pnatrec-zero _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pnatrec-zero _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pnatrec-suc _ _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pnatrec-suc _ _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pnatrec-suc _ _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Id _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Id _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-J-Id _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Id⌝ _ _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Id⌝ _ _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(p⌜Id⌝ _ _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pidrefl _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pidrefl _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pidrefl _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pjsub _ _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pjsub _ _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pjsub _ _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pjsub-refl _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pjsub-refl _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pjsub-refl _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pap _ _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pap _ _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pap _ _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pap-J _ _ _ _) w@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pap-J _ _ _ _) w@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(pap-J _ _ _ _) w@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr (p⌜Hom⌝ pc pa pm) (phrefl p⌜base⌝ ps) pe) = ptr-J-base (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(pvar _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(plam _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
@@ -2511,8 +2614,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr u@(p⌜Nat⌝) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Unit⌝) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Mu⌝) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@((p⌜IMu⌝ _)) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Unit _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Mu _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-J-IMu _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Σ _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-taut _ _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(phrefl-pw _ _ _) w@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
@@ -2565,14 +2670,18 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr u@(p⌜Nat⌝) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Unit⌝) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Mu⌝) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@((p⌜IMu⌝ _)) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Unit _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Mu _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-J-IMu _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-base _) w@(phrefl (p⌜Id⌝ p₁ p₂ p₃) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Nat⌝) w@(phrefl (p⌜Id⌝ p₁ p₂ p₃) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Unit⌝) w@(phrefl (p⌜Id⌝ p₁ p₂ p₃) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Mu⌝) w@(phrefl (p⌜Id⌝ p₁ p₂ p₃) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@((p⌜IMu⌝ _)) w@(phrefl (p⌜Id⌝ p₁ p₂ p₃) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Unit _) w@(phrefl (p⌜Id⌝ p₁ p₂ p₃) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Mu _) w@(phrefl (p⌜Id⌝ p₁ p₂ p₃) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-J-IMu _) w@(phrefl (p⌜Id⌝ p₁ p₂ p₃) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Σ _) w@(phrefl (p⌜Σ⌝ p₁ p₂) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Σ _) w@(phrefl (p⌜Id⌝ p₁ p₂ p₃) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Id _) w@(phrefl (p⌜Id⌝ p₁ p₂ p₃) _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
@@ -2635,8 +2744,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr u@(p⌜Nat⌝) (phrefl (p⌜Hom⌝ pc₁ pa₁ pb₁) ps) pe) = ptr (⟹-⁺ u) (hr-tri _ (pw?-⟹ pc₁) (p⌜Hom⌝ (⟹-⁺ pc₁) (⟹-⁺ pa₁) (⟹-⁺ pb₁)) (⟹-⁺ ps)) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Unit⌝) (phrefl (p⌜Hom⌝ pc₁ pa₁ pb₁) ps) pe) = ptr (⟹-⁺ u) (hr-tri _ (pw?-⟹ pc₁) (p⌜Hom⌝ (⟹-⁺ pc₁) (⟹-⁺ pa₁) (⟹-⁺ pb₁)) (⟹-⁺ ps)) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Mu⌝) (phrefl (p⌜Hom⌝ pc₁ pa₁ pb₁) ps) pe) = ptr (⟹-⁺ u) (hr-tri _ (pw?-⟹ pc₁) (p⌜Hom⌝ (⟹-⁺ pc₁) (⟹-⁺ pa₁) (⟹-⁺ pb₁)) (⟹-⁺ ps)) (⟹-⁺ pe)
+⟹-⁺ (ptr u@((p⌜IMu⌝ _)) (phrefl (p⌜Hom⌝ pc₁ pa₁ pb₁) ps) pe) = ptr (⟹-⁺ u) (hr-tri _ (pw?-⟹ pc₁) (p⌜Hom⌝ (⟹-⁺ pc₁) (⟹-⁺ pa₁) (⟹-⁺ pb₁)) (⟹-⁺ ps)) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Unit _) (phrefl (p⌜Hom⌝ pc₁ pa₁ pb₁) ps) pe) = ptr (⟹-⁺ u) (hr-tri _ (pw?-⟹ pc₁) (p⌜Hom⌝ (⟹-⁺ pc₁) (⟹-⁺ pa₁) (⟹-⁺ pb₁)) (⟹-⁺ ps)) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Mu _) (phrefl (p⌜Hom⌝ pc₁ pa₁ pb₁) ps) pe) = ptr (⟹-⁺ u) (hr-tri _ (pw?-⟹ pc₁) (p⌜Hom⌝ (⟹-⁺ pc₁) (⟹-⁺ pa₁) (⟹-⁺ pb₁)) (⟹-⁺ ps)) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-J-IMu _) (phrefl (p⌜Hom⌝ pc₁ pa₁ pb₁) ps) pe) = ptr (⟹-⁺ u) (hr-tri _ (pw?-⟹ pc₁) (p⌜Hom⌝ (⟹-⁺ pc₁) (⟹-⁺ pa₁) (⟹-⁺ pb₁)) (⟹-⁺ ps)) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Σ _) (phrefl (p⌜Hom⌝ pc₁ pa₁ pb₁) ps) pe) = ptr (⟹-⁺ u) (hr-tri _ (pw?-⟹ pc₁) (p⌜Hom⌝ (⟹-⁺ pc₁) (⟹-⁺ pa₁) (⟹-⁺ pb₁)) (⟹-⁺ ps)) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Hom _ _) (phrefl (p⌜Hom⌝ pc₁ pa₁ pb₁) ps) pe) = ptr (⟹-⁺ u) (hr-tri _ (pw?-⟹ pc₁) (p⌜Hom⌝ (⟹-⁺ pc₁) (⟹-⁺ pa₁) (⟹-⁺ pb₁)) (⟹-⁺ ps)) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-taut _ _) (phrefl (p⌜Hom⌝ pc₁ pa₁ pb₁) ps) pe) = ptr (⟹-⁺ u) (hr-tri _ (pw?-⟹ pc₁) (p⌜Hom⌝ (⟹-⁺ pc₁) (⟹-⁺ pa₁) (⟹-⁺ pb₁)) (⟹-⁺ ps)) (⟹-⁺ pe)
@@ -2672,6 +2783,7 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr w@(pabsurd _ _) v@(phrefl p⌜base⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pabsurd _ _) v@(phrefl p⌜Unit⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pabsurd _ _) v@(phrefl p⌜Mu⌝ _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(pabsurd _ _) v@(phrefl (p⌜IMu⌝ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pabsurd _ _) v@(phrefl (p⌜Σ⌝ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pabsurd _ _) v@(phrefl (p⌜Id⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(pabsurd _ _) v@(phrefl (p⌜Hom⌝ _ _ _) _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
@@ -2692,6 +2804,7 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr pd w@(phrefl (ptr-J-base _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(phrefl (ptr-J-Unit _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(phrefl (ptr-J-Mu _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(phrefl (ptr-J-IMu _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(phrefl (ptr-J-Σ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(phrefl (ptr-taut _ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(phrefl (phrefl-pw _ _ _) _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
@@ -2737,8 +2850,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr u@(pabsurd _ _) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Unit⌝) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(p⌜Mu⌝) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@((p⌜IMu⌝ _)) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Unit _) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Mu _) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr u@(ptr-J-IMu _) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Σ _) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-J-Hom _ _) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr u@(ptr-taut _ _) w@(phrefl-pw {C = ⌜Hom⌝ _ _ _} _ _ _) pe) = ptr (⟹-⁺ u) (⟹-⁺ w) (⟹-⁺ pe)
@@ -2792,8 +2907,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr (p⌜Hom⌝ pc pa u@(p⌜Nat⌝)) v@(plam _) pe) = ptr (p⌜Hom⌝ (⟹-⁺ pc) (⟹-⁺ pa) (⟹-⁺ u)) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr (p⌜Hom⌝ pc pa u@(p⌜Unit⌝)) v@(plam _) pe) = ptr (p⌜Hom⌝ (⟹-⁺ pc) (⟹-⁺ pa) (⟹-⁺ u)) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr (p⌜Hom⌝ pc pa u@(p⌜Mu⌝)) v@(plam _) pe) = ptr (p⌜Hom⌝ (⟹-⁺ pc) (⟹-⁺ pa) (⟹-⁺ u)) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr (p⌜Hom⌝ pc pa u@((p⌜IMu⌝ _))) v@(plam _) pe) = ptr (p⌜Hom⌝ (⟹-⁺ pc) (⟹-⁺ pa) (⟹-⁺ u)) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr (p⌜Hom⌝ pc pa u@(ptr-J-Unit _)) v@(plam _) pe) = ptr (p⌜Hom⌝ (⟹-⁺ pc) (⟹-⁺ pa) (⟹-⁺ u)) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr (p⌜Hom⌝ pc pa u@(ptr-J-Mu _)) v@(plam _) pe) = ptr (p⌜Hom⌝ (⟹-⁺ pc) (⟹-⁺ pa) (⟹-⁺ u)) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr (p⌜Hom⌝ pc pa u@(ptr-J-IMu _)) v@(plam _) pe) = ptr (p⌜Hom⌝ (⟹-⁺ pc) (⟹-⁺ pa) (⟹-⁺ u)) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr (p⌜Hom⌝ pc pa u@(ptr-J-Σ _)) v@(plam _) pe) = ptr (p⌜Hom⌝ (⟹-⁺ pc) (⟹-⁺ pa) (⟹-⁺ u)) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr (p⌜Hom⌝ pc pa u@(ptr-J-Hom _ _)) v@(plam _) pe) = ptr (p⌜Hom⌝ (⟹-⁺ pc) (⟹-⁺ pa) (⟹-⁺ u)) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr (p⌜Hom⌝ pc pa u@(ptr-taut _ _)) v@(plam _) pe) = ptr (p⌜Hom⌝ (⟹-⁺ pc) (⟹-⁺ pa) (⟹-⁺ u)) (⟹-⁺ v) (⟹-⁺ pe)
@@ -2829,8 +2946,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr w@(p⌜Nat⌝) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(p⌜Unit⌝) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(p⌜Mu⌝) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@((p⌜IMu⌝ _)) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(ptr-J-Unit _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(ptr-J-Mu _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
+⟹-⁺ (ptr w@(ptr-J-IMu _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(ptr-J-Σ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(ptr-taut _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
 ⟹-⁺ (ptr w@(phrefl-pw _ _ _) v@(plam _) pe) = ptr (⟹-⁺ w) (⟹-⁺ v) (⟹-⁺ pe)
@@ -2867,8 +2986,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (ptr pd w@(p⌜Nat⌝) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(p⌜Unit⌝) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(p⌜Mu⌝) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@((p⌜IMu⌝ _)) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(ptr-J-Unit _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(ptr-J-Mu _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (ptr pd w@(ptr-J-IMu _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(ptr-J-Σ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(ptr-taut _ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (ptr pd w@(ptr-J-Hom _ _) pe) = ptr (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
@@ -2896,6 +3017,8 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (pap-J {c₁ = ⌜Unit⌝} key pcB pb ps) =
   phrefl (⟹-⁺ pcB) (⟹-sub (single-⟹ (⟹-⁺ ps)) (⟹-⁺ pb))
 ⟹-⁺ (pap-J {c₁ = ⌜Mu⌝ _} key pcB pb ps) =
+  phrefl (⟹-⁺ pcB) (⟹-sub (single-⟹ (⟹-⁺ ps)) (⟹-⁺ pb))
+⟹-⁺ (pap-J {c₁ = ⌜IMu⌝ _ _ _} key pcB pb ps) =
   phrefl (⟹-⁺ pcB) (⟹-sub (single-⟹ (⟹-⁺ ps)) (⟹-⁺ pb))
 ⟹-⁺ (pap-J {c₁ = ⌜base⌝} key pcB pb ps) =
   phrefl (⟹-⁺ pcB) (⟹-sub (single-⟹ (⟹-⁺ ps)) (⟹-⁺ pb))
@@ -2937,8 +3060,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (pap pcB pb w@(p⌜Nat⌝)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
 ⟹-⁺ (pap pcB pb w@(p⌜Unit⌝)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
 ⟹-⁺ (pap pcB pb w@(p⌜Mu⌝)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (pap pcB pb w@((p⌜IMu⌝ _))) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
 ⟹-⁺ (pap pcB pb w@(ptr-J-Unit _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
 ⟹-⁺ (pap pcB pb w@(ptr-J-Mu _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (pap pcB pb w@(ptr-J-IMu _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
 ⟹-⁺ (pap pcB pb w@(ptr-J-Σ _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
 ⟹-⁺ (pap pcB pb w@(ptr-taut _ _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
 ⟹-⁺ (pap pcB pb w@(ptr-J-Hom _ _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
@@ -2963,6 +3088,8 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (pap pcB pb (phrefl p⌜Unit⌝ ps)) =
   pap-J refl (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ ps)
 ⟹-⁺ (pap pcB pb (phrefl p⌜Mu⌝ ps)) =
+  pap-J refl (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ ps)
+⟹-⁺ (pap pcB pb (phrefl (p⌜IMu⌝ _) ps)) =
   pap-J refl (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ ps)
 ⟹-⁺ (pap pcB pb (phrefl p⌜base⌝ ps)) =
   pap-J refl (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ ps)
@@ -2989,6 +3116,7 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (pap pcB pb w@(phrefl (ptr-J-base _) _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
 ⟹-⁺ (pap pcB pb w@(phrefl (ptr-J-Unit _) _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
 ⟹-⁺ (pap pcB pb w@(phrefl (ptr-J-Mu _) _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
+⟹-⁺ (pap pcB pb w@(phrefl (ptr-J-IMu _) _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
 ⟹-⁺ (pap pcB pb w@(phrefl (ptr-J-Σ _) _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
 ⟹-⁺ (pap pcB pb w@(phrefl (ptr-taut _ _) _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
 ⟹-⁺ (pap pcB pb w@(phrefl (ptr-J-Hom _ _) _)) = pap (⟹-⁺ pcB) (⟹-⁺ pb) (⟹-⁺ w)
@@ -3037,8 +3165,10 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 ⟹-⁺ (pjsub pd w@(p⌜Nat⌝) pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (pjsub pd w@(p⌜Unit⌝) pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (pjsub pd w@(p⌜Mu⌝) pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (pjsub pd w@((p⌜IMu⌝ _)) pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (pjsub pd w@(ptr-J-Unit _) pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (pjsub pd w@(ptr-J-Mu _) pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
+⟹-⁺ (pjsub pd w@(ptr-J-IMu _) pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (pjsub pd w@(ptr-J-Σ _) pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (pjsub pd w@(ptr-taut _ _) pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
 ⟹-⁺ (pjsub pd w@(ptr-J-Hom _ _) pe) = pjsub (⟹-⁺ pd) (⟹-⁺ w) (⟹-⁺ pe)
@@ -3295,11 +3425,19 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
 --   J needs a ⌜Hom⌝ MOTIVE.  So all four are the generic congruence.
 ⟹-⁺ (ptr w1@p⌜Unit⌝ w2@(phrefl p⌜Mu⌝ x) x₁) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₁)
+⟹-⁺ (ptr w1@p⌜Unit⌝ w2@(phrefl (p⌜IMu⌝ _) x) x₁) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₁)
 ⟹-⁺ (ptr w1@p⌜Mu⌝ w2@(phrefl p⌜Unit⌝ x) x₁) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₁)
+⟹-⁺ (ptr w1@(p⌜IMu⌝ _) w2@(phrefl p⌜Unit⌝ x) x₁) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₁)
 ⟹-⁺ (ptr w1@(ptr-J-Unit x) w2@(phrefl p⌜Mu⌝ x₁) x₂) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₂)
+⟹-⁺ (ptr w1@(ptr-J-Unit x) w2@(phrefl (p⌜IMu⌝ _) x₁) x₂) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₂)
 ⟹-⁺ (ptr w1@(ptr-J-Mu x) w2@(phrefl p⌜Unit⌝ x₁) x₂) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₂)
+⟹-⁺ (ptr w1@(ptr-J-IMu x) w2@(phrefl p⌜Unit⌝ x₁) x₂) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₂)
 ⟹-⁺ {t = tr t (hrefl (elim x t₁ (con k p)) t₂) t₃} (ptr w1@p⌜Mu⌝ w2@(phrefl (pι x₁ x₂) x₃) x₄) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
@@ -3307,13 +3445,19 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
 ⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl .(⌜Mu⌝ _) s) e) (hrefl (con x t) t₁) t₂} (ptr w1@(ptr-J-Mu x₁) w2@(phrefl (pcon x₂) x₃) x₄) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl .(⌜IMu⌝ _ _ _) s) e) (hrefl (con x t) t₁) t₂} (ptr w1@(ptr-J-IMu x₁) w2@(phrefl (pcon x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
 ⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl .⌜Unit⌝ s) e) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(ptr-J-Unit x₁) w2@(phrefl (pelim x₂ x₃) x₄) x₅) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
 ⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl .(⌜Mu⌝ _) s) e) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(ptr-J-Mu x₁) w2@(phrefl (pelim x₂ x₃) x₄) x₅) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl .(⌜IMu⌝ _ _ _) s) e) (hrefl (elim x t t₁) t₂) t₃} (ptr w1@(ptr-J-IMu x₁) w2@(phrefl (pelim x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
 ⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl .⌜Unit⌝ s) e) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(ptr-J-Unit x₁) w2@(phrefl (pι x₂ x₃) x₄) x₅) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
 ⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl .(⌜Mu⌝ _) s) e) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(ptr-J-Mu x₁) w2@(phrefl (pι x₂ x₃) x₄) x₅) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl .(⌜IMu⌝ _ _ _) s) e) (hrefl (elim x t (con k p)) t₁) t₂} (ptr w1@(ptr-J-IMu x₁) w2@(phrefl (pι x₂ x₃) x₄) x₅) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
 ⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜Σ⌝ c₁ c₂) s) e) (hrefl (con x t) t₁) t₂} (ptr w1@(ptr-J-Σ x₁) w2@(phrefl (pcon x₂) x₃) x₄) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
@@ -3774,8 +3918,6 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₈)
 ⟹-⁺ {t = tr (⌜Hom⌝ c a b) (hrefl (ielim x t t₁ (icon k p)) t₂) t₃} (ptr w1@(p⌜Hom⌝ x₁ x₂ x₃) w2@(phrefl (pιi x₄ x₅ x₆) x₇) x₈) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₈)
-⟹-⁺ {t = tr (⌜Hom⌝ c a b) (hrefl (⌜IMu⌝ x x₁ t) t₁) t₂} (ptr w1@(p⌜Hom⌝ x₂ x₃ x₄) w2@(phrefl (p⌜IMu⌝ x₅) x₆) x₇) =
-  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₇)
 ⟹-⁺ {t = tr (hrefl c t) (hrefl (icon x t₁) t₂) t₃} (ptr w1@(phrefl x₁ x₂) w2@(phrefl (picon x₃) x₄) x₅) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
 ⟹-⁺ {t = tr (hrefl c t) (hrefl (ielim x t₁ t₂ t₃) t₄) t₅} (ptr w1@(phrefl x₁ x₂) w2@(phrefl (pielim x₃ x₄ x₅) x₆) x₇) =
@@ -3834,9 +3976,15 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
 ⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜Mu⌝ Dᵐ) s) e) (hrefl (icon x t) t₁) t₂} (ptr w1@(ptr-J-Mu x₁) w2@(phrefl (picon x₂) x₃) x₄) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ _ _ _) s) e) (hrefl (icon x t) t₁) t₂} (ptr w1@(ptr-J-IMu x₁) w2@(phrefl (picon x₂) x₃) x₄) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₄)
 ⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜Mu⌝ Dᵐ) s) e) (hrefl (ielim x t t₁ t₂) t₃) t₄} (ptr w1@(ptr-J-Mu x₁) w2@(phrefl (pielim x₂ x₃ x₄) x₅) x₆) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ _ _ _) s) e) (hrefl (ielim x t t₁ t₂) t₃) t₄} (ptr w1@(ptr-J-IMu x₁) w2@(phrefl (pielim x₂ x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
 ⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜Mu⌝ Dᵐ) s) e) (hrefl (ielim x t t₁ (icon k p)) t₂) t₃} (ptr w1@(ptr-J-Mu x₁) w2@(phrefl (pιi x₂ x₃ x₄) x₅) x₆) =
+  ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
+⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ _ _ _) s) e) (hrefl (ielim x t t₁ (icon k p)) t₂) t₃} (ptr w1@(ptr-J-IMu x₁) w2@(phrefl (pιi x₂ x₃ x₄) x₅) x₆) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₆)
 ⟹-⁺ {t = tr (tr (⌜Hom⌝ c a m) (hrefl (⌜Mu⌝ Dᵐ) s) e) (hrefl (⌜IMu⌝ x x₁ t) t₁) t₂} (ptr w1@(ptr-J-Mu x₂) w2@(phrefl (p⌜IMu⌝ x₃) x₄) x₅) =
   ptr (⟹-⁺ w1) (⟹-⁺ w2) (⟹-⁺ x₅)
@@ -4134,8 +4282,6 @@ apH-tri {c₁ = c₁} false kS kP pcB pb pc₁ pa₁ pb₁ ps =
   pap (⟹-⁺ x₁) (⟹-⁺ x₂) (⟹-⁺ w3)
 ⟹-⁺ {t = ap t t₁ (hrefl (ielim x t₂ t₃ (icon k p)) t₄)} (pap x₁ x₂ w3@(phrefl (pιi x₃ x₄ x₅) x₆)) =
   pap (⟹-⁺ x₁) (⟹-⁺ x₂) (⟹-⁺ w3)
-⟹-⁺ {t = ap t t₁ (hrefl (⌜IMu⌝ x x₁ t₂) t₃)} (pap x₂ x₃ w3@(phrefl (p⌜IMu⌝ x₄) x₅)) =
-  pap (⟹-⁺ x₂) (⟹-⁺ x₃) (⟹-⁺ w3)
 ⟹-⁺ {t = ap t t₁ (icon x t₂)} (pap x₁ x₂ w3@(picon x₃)) =
   pap (⟹-⁺ x₁) (⟹-⁺ x₂) (⟹-⁺ w3)
 ⟹-⁺ {t = ap t t₁ (ielim x t₂ t₃ t₄)} (pap x₁ x₂ w3@(pielim x₃ x₄ x₅)) =

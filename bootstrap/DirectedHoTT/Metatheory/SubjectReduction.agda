@@ -54,7 +54,7 @@ open import DirectedHoTT.Spec.Variance
         ; NoNatC; nnc-base; nnc-Unit; nnc-Π; nnc-Σ; nnc-Hom; nnc-Id
         ; nonatc-ren; nonatc-sub; nonatc-pwBody
         ; stkA?; stkA?-ren; stkA?-sub; stkC?→stkA?
-        ; NoNatHd; nnh-base; nnh-Unit; nnh-Σ; nnh-Id; nnh-Π; nnh-Hom; nnh-Mu
+        ; NoNatHd; nnh-base; nnh-Unit; nnh-Σ; nnh-Id; nnh-Π; nnh-Hom; nnh-Mu; nnh-IMu
         ; nonatc→hd; stkC?→hd
         ; occ-sel; occ-fields; occ-ifields; occ-iihs; occ-εwkTm )
 open import DirectedHoTT.Spec.Typing
@@ -65,7 +65,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-pairˡ; ξ-pairʳ; ξ-absurdᶜ; ξ-absurdᵉ; ordtr-z; ordtr-szz; ordtr-ssz; ordtr-szs; ordtr-sss
         ; ξ-ordtrᵃ; ξ-ordtrᵗ; ξ-ordtrᵘ; ξ-ordtrᵖ; ξ-ordtrq; ξ-fst; ξ-snd
         ; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ
-        ; tr-J-base; tr-J-Σ; tr-J-Id; tr-J-Unit; tr-J-Mu; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
+        ; tr-J-base; tr-J-Σ; tr-J-Id; tr-J-Unit; tr-J-Mu; tr-J-IMu; tr-taut; hrefl-pw; tr-J-Hom; tr-pw
         ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
         ; El-⌜IMu⌝; ξ-IMu
         ; ξ-⌜Hom⌝ᶜ; ξ-⌜Hom⌝ˡ; ξ-⌜Hom⌝ʳ; ξ-hreflᶜ; ξ-hreflᵃ; ξ-trᵈ; ξ-trᵖ; ξ-trᵉ
@@ -458,6 +458,9 @@ occ-red {x = x} (tr-J-Unit c a m s e₀) e =
 occ-red {x = x} (tr-J-Mu {D = Dᵐ} c a m s e₀) e =
   ∨-false₂ (occTm x (hrefl (⌜Mu⌝ Dᵐ) s))
            (∨-false₂ (occTm (vs x) (⌜Hom⌝ c a m)) e)
+occ-red {x = x} (tr-J-IMu {D = Dⁱ} {I = Iⁱ} {iˣ = iˣ} c a m s e₀) e =
+  ∨-false₂ (occTm x (hrefl (⌜IMu⌝ Dⁱ Iⁱ iˣ) s))
+           (∨-false₂ (occTm (vs x) (⌜Hom⌝ c a m)) e)
 occ-red (tr-taut f e₀) e = e
 occ-red {x = x} (hrefl-pw C s key) e =
   ∨-false (pwBody-occ C key (∨-false₁ (occTm x C) e))
@@ -597,6 +600,7 @@ posc-red (posc-Hom hc ha) (ξ-⌜Hom⌝ʳ ())
 nonathd-red : {c c' : RTm Γ} → NoNatHd c → c ⟶ c' → NoNatHd c'
 nonathd-red nnh-base ()
 nonathd-red nnh-Unit ()
+nonathd-red nnh-IMu (ξ-⌜IMu⌝ _) = nnh-IMu
 nonathd-red nnh-Σ (ξ-⌜Σ⌝ˡ _) = nnh-Σ
 nonathd-red nnh-Σ (ξ-⌜Σ⌝ʳ _) = nnh-Σ
 nonathd-red nnh-Id (ξ-⌜Id⌝ᶜ _) = nnh-Id
@@ -2860,6 +2864,29 @@ sr d (tr-J-Unit cm am mm s e₀) with gen-tr d
 ...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
             with Hom-to-Hom
                    (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) (nn-El nnh-Unit))
+                   (subst (Hom A t u ⟶ᵀ*_) eqW rL)
+...         | mkHomRed rA rt ru =
+              ⊢conv de
+                (ctrnᵀ (ctrnᵀ (mono-El[] (⌜Hom⌝ cm am mm) rt)
+                         (ctrnᵀ (csymᵀ (mono-El[] (⌜Hom⌝ cm am mm) rs₁))
+                           (ctrnᵀ (mono-El[] (⌜Hom⌝ cm am mm) rs₂)
+                             (csymᵀ (mono-El[] (⌜Hom⌝ cm am mm) ru)))))
+                       (csymᵀ cC))
+-- ★ §10.4's subject-reduction obligation.  `tr-J-Mu`'s proof VERBATIM:
+--   the only input that differs is the stuck-ambient witness, which is
+--   `st-el {c = ⌜IMu⌝ …} refl` (that is `stkC? (⌜IMu⌝ …) = true`) paired
+--   with `nn-El nnh-IMu`.
+sr d (tr-J-IMu {D = Dⁱ} {I = Iⁱ} {iˣ = iˣ} cm am mm s e₀) with gen-tr d
+... | tgU (mkTrInvU () t u dt du dp de cC)
+... | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du dp de cC)
+      with gen-hrefl dp
+...   | (dc , (ds , cH)) with church-rosserᵀ cH
+...     | W , (rL , rR)
+          with homred-inv stknn-red stknn-noU stknn-noΠ stknn-noN
+                          (st-el {c = ⌜IMu⌝ Dⁱ Iⁱ iˣ} refl , nn-El nnh-IMu) rR
+...       | A₂ , (s₁ , (s₂ , (eqW , (rs₁ , rs₂))))
+            with Hom-to-Hom
+                   (homAmb→ (subst (λ z → _ ⟶ᵀ* z) eqW rR) (nn-El nnh-IMu))
                    (subst (Hom A t u ⟶ᵀ*_) eqW rL)
 ...         | mkHomRed rA rt ru =
               ⊢conv de

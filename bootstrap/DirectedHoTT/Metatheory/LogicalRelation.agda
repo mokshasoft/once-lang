@@ -72,7 +72,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⟶*_; done; step
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
-        ; El-⌜IMu⌝; ξ-IMu
+        ; El-⌜IMu⌝; ξ-IMu; tr-J-IMu
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; _≅ᵀ_; credᵀ; crflᵀ; csymᵀ; ctrnᵀ
         ; ι-elim; ξ-con; ξ-elimᵐ; ξ-elimᵗ
@@ -248,16 +248,6 @@ stablecd? (ielim D i ms t) = mustk? t
 -- nor `stkC?`, the third code kind — is a DEAD code, so it lands in
 -- `cf-dead` rather than needing a third `CodeFate` arm.
 stablecd? ⌜Nat⌝         = true
--- ⚠⚠ AND SO IS ⌜IMu⌝, for the SAME reason and NOT for `⌜Mu⌝`'s.  There is
---   a `tr-J-Mu`/`snr-J-Mu`, so `⌜Mu⌝` is `stkC?` and inherits `false`
---   here.  There is NO J root at `⌜IMu⌝` — nothing fires on a
---   `hrefl (⌜IMu⌝ D I i) s` path — so it is DEAD, exactly like ⌜Nat⌝.
---   ⚠ THE CATCH-ALL'S `false` WAS WRONG, and silently: with `stkC?` also
---   `false` the code was a FOURTH kind `CodeFate` cannot express, and
---   `codeNorm` at `sn-cIMu` was simply unprovable.  check-formers check 3
---   lists this default; confirming it rather than inheriting it is what
---   turned an unprovable goal into a one-line row.
-stablecd? (⌜IMu⌝ D I i) = true
 stablecd? _             = false
 
 -- ★ INDUCTIVE TYPES: `elim` fires on a `con` scrutinee and nothing
@@ -672,6 +662,7 @@ stkA?→deadmot ⌜base⌝ h = refl
 stkA?→deadmot ⌜Nat⌝ h = refl
 stkA?→deadmot ⌜Unit⌝ h = refl
 stkA?→deadmot (⌜Mu⌝ Dᵐ) h = refl
+stkA?→deadmot (⌜IMu⌝ Dⁱ Iⁱ i) h = refl
 stkA?→deadmot (⌜Π⌝ c d) ()
 stkA?→deadmot (⌜Σ⌝ c d) h = refl
 stkA?→deadmot (⌜Id⌝ c a b) h = refl
@@ -689,6 +680,7 @@ stk→deadmot (snd t) ()
 stk→deadmot ⌜base⌝ h = refl
 stk→deadmot ⌜Unit⌝ h = refl
 stk→deadmot (⌜Mu⌝ Dᵐ) h = refl
+stk→deadmot (⌜IMu⌝ Dⁱ Iⁱ i) h = refl
 stk→deadmot (⌜Π⌝ c d) ()
 stk→deadmot (⌜Σ⌝ c d) h = refl
 stk→deadmot (⌜Id⌝ c a b) h = refl
@@ -710,6 +702,7 @@ stkA?⊥dead ⌜base⌝ h = refl
 stkA?⊥dead ⌜Nat⌝ h = refl
 stkA?⊥dead ⌜Unit⌝ h = refl
 stkA?⊥dead (⌜Mu⌝ Dᵐ) h = refl
+stkA?⊥dead (⌜IMu⌝ Dⁱ Iⁱ i) h = refl
 stkA?⊥dead (⌜Π⌝ c d) ()
 stkA?⊥dead (⌜Σ⌝ c d) h = refl
 stkA?⊥dead (⌜Id⌝ c a b) h = refl
@@ -727,6 +720,7 @@ stk⊥dead (snd t) ()
 stk⊥dead ⌜base⌝ h = refl
 stk⊥dead ⌜Unit⌝ h = refl
 stk⊥dead (⌜Mu⌝ Dᵐ) h = refl
+stk⊥dead (⌜IMu⌝ Dⁱ Iⁱ i) h = refl
 stk⊥dead (⌜Π⌝ c d) ()
 stk⊥dead (⌜Σ⌝ c d) h = refl
 stk⊥dead (⌜Id⌝ c a b) h = refl
@@ -1706,9 +1700,6 @@ deadA→nopw (con k q) h = refl
 deadA→nopw (elim D ms t) h = h
 deadA→nopw (icon k q) h = refl
 deadA→nopw (ielim D iˣ ms t) h = h
--- ⚠ a REAL row now, not an auto-discharged absurdity: `⌜IMu⌝` is a DEAD
---   code (§10.4), so `h` is inhabited and the goal has to be met.
-deadA→nopw (⌜IMu⌝ Dⁱ Iⁱ iˣ) h = refl
 
 dead→nopw : (C : RTm Γ) → stablecd? C ≡ true → nopw? C ≡ true
 dead→nopw (var x) h = refl
@@ -1737,7 +1728,6 @@ dead→nopw (con k q) h = refl
 dead→nopw (elim D ms t) h = h
 dead→nopw (icon k q) h = refl
 dead→nopw (ielim D iˣ ms t) h = h
-dead→nopw (⌜IMu⌝ Dⁱ Iⁱ iˣ) h = refl
 
 
 -- an hrefl path at a DEAD code is tr-stuck under EVERY motive shape.
@@ -2420,6 +2410,11 @@ data SNRed {Γ} where
                SN (⌜Hom⌝ c a m) → SN s →
                SNRed (tr (⌜Hom⌝ c a m) (hrefl ⌜Unit⌝ s) e) e
   -- ★ INDUCTIVE TYPES: `tr-J-Mu`'s head-reduction peer.
+  -- ★ §10.4's SN-layer obligation: `⌜IMu⌝` is `stkC?`, so J fires.
+  snr-J-IMu  : {Dⁱ : IDesc} {Iⁱ : RTy ε} {iˣ : RTm Γ}
+               {c a m : RTm (Γ ∙)} {s e : RTm Γ} →
+               SN (⌜Hom⌝ c a m) → SN s →
+               SNRed (tr (⌜Hom⌝ c a m) (hrefl (⌜IMu⌝ Dⁱ Iⁱ iˣ) s) e) e
   snr-J-Mu   : {Dᵐ : Desc} {c a m : RTm (Γ ∙)} {s e : RTm Γ} →
                SN (⌜Hom⌝ c a m) → SN s →
                SNRed (tr (⌜Hom⌝ c a m) (hrefl (⌜Mu⌝ Dᵐ) s) e) e
@@ -2563,6 +2558,7 @@ snr→⟶ (snr-hreflᶜ σ)       = ξ-hreflᶜ (csr→⟶ σ)
 snr→⟶ (snr-J-base _ _)     = tr-J-base _ _ _ _ _
 snr→⟶ (snr-J-Unit _ _)     = tr-J-Unit _ _ _ _ _
 snr→⟶ (snr-J-Mu _ _)       = tr-J-Mu _ _ _ _ _
+snr→⟶ (snr-J-IMu _ _)      = tr-J-IMu _ _ _ _ _
 snr→⟶ (snr-J-Σ _ _ _ _)    = tr-J-Σ _ _ _ _ _ _ _
 snr→⟶ snr-taut             = tr-taut _ _
 snr→⟶ (snr-trᵖ r)          = ξ-trᵖ (snr→⟶ r)
@@ -2606,6 +2602,7 @@ snr-nonpw (snr-hrefl-pw _) = refl
 snr-nonpw (snr-J-base _ _)  = refl
 snr-nonpw (snr-J-Unit _ _)  = refl
 snr-nonpw (snr-J-Mu _ _)    = refl
+snr-nonpw (snr-J-IMu _ _)   = refl
 snr-nonpw (snr-J-Σ _ _ _ _) = refl
 snr-nonpw (snr-J-Hom _ _ _ _ _ _) = refl
 snr-nonpw snr-taut       = refl
@@ -2706,9 +2703,12 @@ snr-det (snr-J-base _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-base _ _)
 snr-det (snr-J-Unit _ _) (snr-J-Unit _ _) = refl
 snr-det (snr-J-Mu _ _) (snr-J-Mu _ _) = refl
+snr-det (snr-J-IMu _ _) (snr-J-IMu _ _) = refl
 snr-det (snr-J-Unit _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
+snr-det (snr-J-IMu _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-det (snr-J-Mu _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
 snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-Unit _ _)
+snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-IMu _ _)
 snr-det (snr-trᵖ (snr-hreflᶜ (csr-here ()))) (snr-J-Mu _ _)
 snr-det (snr-J-Σ _ _ _ _) (snr-J-Σ _ _ _ _) = refl
 snr-det (snr-J-Σ _ _ _ _) (snr-trᵖ (snr-hreflᶜ (csr-here ())))
@@ -2741,8 +2741,10 @@ snr-det (snr-trᵖ (snr-hrefl-pw kp)) (snr-J-Hom {c₁ = c₁} _ _ _ _ _ ks)
 snr-det (snr-J-base _ _) (snr-trᵖ (snr-hrefl-pw ()))
 snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-base _ _)
 snr-det (snr-J-Unit _ _) (snr-trᵖ (snr-hrefl-pw ()))
+snr-det (snr-J-IMu _ _) (snr-trᵖ (snr-hrefl-pw ()))
 snr-det (snr-J-Mu _ _) (snr-trᵖ (snr-hrefl-pw ()))
 snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Unit _ _)
+snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-IMu _ _)
 snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Mu _ _)
 snr-det (snr-J-Σ _ _ _ _) (snr-trᵖ (snr-hrefl-pw ()))
 snr-det (snr-trᵖ (snr-hrefl-pw ())) (snr-J-Σ _ _ _ _)
@@ -6751,6 +6753,7 @@ wne (sne-tr {d = d} {p = p} d₀ p₀ e₀ key) with wn d₀ | wn p₀ | wn e₀
     nrm' (tr-J-Id _ _ _ _ _ _ _ _) = ⊥-elim (f≢t key')
     nrm' (tr-J-Unit _ _ _ _ _) = ⊥-elim (f≢t key')
     nrm' (tr-J-Mu _ _ _ _ _) = ⊥-elim (f≢t key')
+    nrm' (tr-J-IMu _ _ _ _ _) = ⊥-elim (f≢t key')
     nrm' (tr-taut _ _)      = ⊥-elim (f≢t key')
     nrm' (tr-J-Hom _ _ _ c₁ _ _ _ _ kh) =
       f≢t (trans (sym (stkA?⊥dead c₁ kh)) key')

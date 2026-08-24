@@ -60,7 +60,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-jsubᵈ; ξ-jsubᵖ; ξ-jsubᵉ; El-⌜Id⌝; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; natrec-zero; natrec-suc; ξ-nsuc; ξ-natrecᶻ; ξ-natrecˢ; ξ-natrecⁿ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
-        ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝; tr-J-Unit; tr-J-Mu
+        ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝; tr-J-Unit; tr-J-Mu; tr-J-IMu
         ; ξ-IMu
         ; _⟶ᵀ_; El-⌜base⌝; El-⌜Π⌝; El-⌜Σ⌝; El-⌜Hom⌝; ξ-El; ξ-Πˡ; ξ-Πʳ; ξ-Σˡ; ξ-Σʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
@@ -211,6 +211,9 @@ pwShift-sub σ t =
 ⟶-sub σ (tr-J-Mu c a m s e) =
   tr-J-Mu (subTm (extS σ) c) (subTm (extS σ) a) (subTm (extS σ) m)
           (subTm σ s) (subTm σ e)
+⟶-sub σ (tr-J-IMu c a m s e) =
+  tr-J-IMu (subTm (extS σ) c) (subTm (extS σ) a) (subTm (extS σ) m)
+           (subTm σ s) (subTm σ e)
 ⟶-sub σ (tr-J-base c a m s e) =
   tr-J-base (subTm (extS σ) c) (subTm (extS σ) a) (subTm (extS σ) m)
             (subTm σ s) (subTm σ e)

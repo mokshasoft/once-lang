@@ -822,6 +822,15 @@ stkA? (⌜Id⌝ c a b)  = true
 stkA? ⌜Unit⌝        = true
 stkA? (⌜Mu⌝ D)        = true
 stkA? ⌜Nat⌝         = true
+-- ⚠⚠ EXPLICIT, NOT INHERITED (PLAN-INDEXED §10.4).  `IMu D I i` is an
+--   INERT type — no reduction rule takes a `Hom (IMu …) a b` anywhere —
+--   so a `hrefl (⌜Hom⌝ (⌜IMu⌝ …) a b)` path IS J-able and `tr-J-Hom`
+--   (whose key is exactly `stkA?`) fires on it.  The catch-all's `false`
+--   was the third silently-wrong default this former inherited.
+--   ⚠ `stkC?` stays `false`: `tr-J-Hom` is GENERIC in the code, but the
+--   BARE J rules are per-code and there is no `tr-J-IMu`.  That is
+--   ⌜Nat⌝'s profile exactly, and it is why the two sit together here.
+stkA? (⌜IMu⌝ D I i) = true
 stkA? (⌜Hom⌝ C a b) = stkA? C
 stkA? _             = false
 
@@ -854,6 +863,10 @@ stkC? (⌜Mu⌝ D)        = true
 --
 -- ⚠ The exception is EXACTLY the literal ⌜Nat⌝ — it does NOT propagate
 -- along the ⌜Hom⌝ spine.  See `stkA?` above.
+-- ★★ §10.4: `⌜IMu⌝` IS J-able — `tr-J-IMu` is its obligation, and
+--   progress needs the rule (see the note there).  So it sits with
+--   `⌜Mu⌝`, not with ⌜Nat⌝, at `stkC?`.
+stkC? (⌜IMu⌝ D I i) = true
 stkC? ⌜Nat⌝         = false
 stkC? (⌜Hom⌝ C a b) = stkA? C
 stkC? _             = false
@@ -869,6 +882,7 @@ stkC?→stkA? (snd _) ()
 stkC?→stkA? ⌜base⌝ h = refl
 stkC?→stkA? ⌜Unit⌝ h = refl
 stkC?→stkA? (⌜Mu⌝ D) h = refl
+stkC?→stkA? (⌜IMu⌝ Dⁱ Iⁱ i) h = refl
 stkC?→stkA? ⌜Nat⌝ ()
 stkC?→stkA? (⌜Π⌝ _ _) ()
 stkC?→stkA? (⌜Σ⌝ _ _) h = refl
@@ -903,6 +917,8 @@ data NoNatHd {Γ} : RTm Γ → Set where
   nnh-Id   : {c a b : RTm Γ} → NoNatHd (⌜Id⌝ c a b)
   nnh-Π    : {c : RTm Γ} {d : RTm (Γ ∙)} → NoNatHd (⌜Π⌝ c d)
   nnh-Hom  : {c a b : RTm Γ} → NoNatHd (⌜Hom⌝ c a b)
+  -- ★ §10.4: `stkC? (⌜IMu⌝ …)` is `true`, so `stkC?→hd` obliges a row.
+  nnh-IMu  : {D : IDesc} {I : RTy ε} {i : RTm Γ} → NoNatHd (⌜IMu⌝ D I i)
 
 nonatc→hd : {c : RTm Γ} → NoNatC c → NoNatHd c
 nonatc→hd nnc-base = nnh-base
@@ -925,6 +941,7 @@ stkC?→hd (snd _) ()
 stkC?→hd ⌜base⌝ h = nnh-base
 stkC?→hd ⌜Unit⌝ h = nnh-Unit
 stkC?→hd (⌜Mu⌝ D) h = nnh-Mu
+stkC?→hd (⌜IMu⌝ Dⁱ Iⁱ i) h = nnh-IMu
 stkC?→hd ⌜Nat⌝ ()
 stkC?→hd (⌜Π⌝ _ _) ()
 stkC?→hd (⌜Σ⌝ _ _) h = nnh-Σ
@@ -1018,6 +1035,7 @@ stkA?⊥pw (pair a b) ()
 stkA?⊥pw (fst t) ()
 stkA?⊥pw (snd t) ()
 stkA?⊥pw ⌜base⌝ h = refl
+stkA?⊥pw (⌜IMu⌝ Dⁱ Iⁱ i) h = refl
 stkA?⊥pw (⌜Π⌝ γ δ) ()
 stkA?⊥pw (⌜Σ⌝ c d) h = refl
 stkA?⊥pw (⌜Hom⌝ C a b) h = stkA?⊥pw C h
@@ -1043,6 +1061,7 @@ stk⊥pw (pair a b) ()
 stk⊥pw (fst t) ()
 stk⊥pw (snd t) ()
 stk⊥pw ⌜base⌝ h = refl
+stk⊥pw (⌜IMu⌝ Dⁱ Iⁱ i) h = refl
 stk⊥pw (⌜Π⌝ γ δ) ()
 stk⊥pw (⌜Σ⌝ c d) h = refl
 stk⊥pw (⌜Hom⌝ C a b) h = stkA?⊥pw C h
@@ -1265,6 +1284,7 @@ stkA?-sub σ (pair a b) ()
 stkA?-sub σ (fst t) ()
 stkA?-sub σ (snd t) ()
 stkA?-sub σ ⌜base⌝ h = refl
+stkA?-sub σ (⌜IMu⌝ Dⁱ Iⁱ i) h = refl
 stkA?-sub σ (⌜Π⌝ γ δ) ()
 stkA?-sub σ (⌜Σ⌝ c d) h = refl
 stkA?-sub σ (⌜Hom⌝ C a b) h = stkA?-sub σ C h
@@ -1291,6 +1311,7 @@ stkC?-sub σ (pair a b) ()
 stkC?-sub σ (fst t) ()
 stkC?-sub σ (snd t) ()
 stkC?-sub σ ⌜base⌝ h = refl
+stkC?-sub σ (⌜IMu⌝ Dⁱ Iⁱ i) h = refl
 stkC?-sub σ (⌜Π⌝ γ δ) ()
 stkC?-sub σ (⌜Σ⌝ c d) h = refl
 stkC?-sub σ (⌜Hom⌝ C a b) h = stkA?-sub σ C h

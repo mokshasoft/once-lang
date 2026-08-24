@@ -46,7 +46,7 @@ open import DirectedHoTT.Spec.Typing
         ; _∋_∷_; here; there
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢absurd
         ; El-⌜Hom⌝; ξ-El; El-⌜Π⌝; _⟶ᵀ_; El-⌜base⌝; El-⌜Σ⌝; El-⌜Id⌝
-        ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝
+        ; El-⌜Nat⌝; El-⌜Unit⌝; El-⌜Mu⌝; El-⌜IMu⌝; ξ-IMu
         ; ξ-Idᵀ; ξ-Idˡ; ξ-Idʳ
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
@@ -118,7 +118,7 @@ open import DirectedHoTT.Metatheory.LogicalRelation
         ; IsNormal; WN; mkWN; wn
         ; projl; projr; dfst; dsnd
         ; sne-elim; sn-con; ne-elim; mustk?
-        ; sne-ielim; sn-icon; sn-cIMu; ne-ielim )
+        ; sne-ielim; sn-icon; sn-cIMu; ne-ielim; snr-J-IMu )
 
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic
 
@@ -662,9 +662,7 @@ codeNormA sn-nzero kn     = _ , (csr-done , cfa-dead refl)
 codeNormA (sn-nsuc h) kn  = _ , (csr-done , cfa-dead refl)
 codeNormA (sn-con h)  kn  = _ , (csr-done , cfa-dead refl)
 codeNormA (sn-icon h) kn  = _ , (csr-done , cfa-dead refl)
--- ⚠ `cfa-dead`, NOT `cfa-stk` — the opposite of `⌜Mu⌝`.  `⌜IMu⌝` has no
---   J root, so `stkA?` is `false` and `stableA?` is `true`.
-codeNormA (sn-cIMu h) kn  = _ , (csr-done , cfa-dead refl)
+codeNormA (sn-cIMu h) kn  = _ , (csr-done , cfa-stk refl)
 codeNormA (sn-cΠ h₁ h₂) ()
 codeNormA (sn-cH {a = a₂} {b = b₂} hC ha hb) kn with codeNormA hC kn
 ... | C* , (csr , cfa-stk k)  =
@@ -704,7 +702,10 @@ codeNorm sn-nzero kn     = _ , (csr-done , cf-dead refl)
 codeNorm (sn-nsuc h) kn  = _ , (csr-done , cf-dead refl)
 codeNorm (sn-con h)  kn  = _ , (csr-done , cf-dead refl)
 codeNorm (sn-icon h) kn  = _ , (csr-done , cf-dead refl)
-codeNorm (sn-cIMu h) kn  = _ , (csr-done , cf-dead refl)
+-- ⚠ `cf-stk`, with `⌜Mu⌝` — §10.4 gave `⌜IMu⌝` its J rule (`tr-J-IMu`),
+--   because without one PROGRESS is false at a closed
+--   `tr … (hrefl (⌜IMu⌝ …) s) e`.
+codeNorm (sn-cIMu h) kn  = _ , (csr-done , cf-stk refl)
 codeNorm (sn-cΠ h₁ h₂) ()
 codeNorm (sn-cH {a = a₂} {b = b₂} hC ha hb) kn with codeNormA hC kn
 ... | C* , (csr , cfa-stk k)  =
@@ -977,10 +978,8 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
     sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-con h) sns refl)) snE refl)
   goH (sn-icon h) sns kn =
     sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-icon h) sns refl)) snE refl)
-  -- ★★ J is OFF at ⌜IMu⌝ too, so this is permanently stuck — the ⌜Nat⌝
-  -- row's shape, and `stablecd? (⌜IMu⌝ …) = true` is again the key.
-  goH (sn-cIMu h) sns kn =
-    sn-ne (sne-tr snM (sn-ne (sne-hrefl (sn-cIMu h) sns refl)) snE refl)
+  -- ★★ §10.4: J FIRES at ⌜IMu⌝ — `snr-J-IMu`, `snr-J-Mu`'s twin.
+  goH (sn-cIMu h) sns kn = sn-exp (snr-J-IMu snM sns) snE
   goH (sn-cΠ h₁ h₂) sns ()
   goH (sn-cH hC h₂ h₃) sns kn with codeNormA hC kn
   ... | C*c , (csr , cfa-stk k) =
@@ -1197,8 +1196,7 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-con h) sns refl)) snE' refl)
   goH₀ (sn-icon h) sns kn =
     CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-icon h) sns refl)) snE' refl)
-  goH₀ (sn-cIMu h) sns kn =
-    CR3₀ RH0 (sne-tr snM (sn-ne (sne-hrefl (sn-cIMu h) sns refl)) snE' refl)
+  goH₀ (sn-cIMu h) sns kn = exp₀ RH0 (snr-J-IMu snM sns) heU
   goH₀ (sn-cΠ h₁ h₂) sns ()
   goH₀ (sn-cH hC h₂ h₃) sns kn with codeNormA hC kn
   ... | C*c , (csr , cfa-stk k) =
@@ -1390,6 +1388,10 @@ data StkEl {Ξ : Cx} : RTy Ξ → Set where
   se-Nat  : StkEl (Nat {Ξ})
   -- ★ `El (⌜Mu⌝ D)` decodes to the inert `Mu D`.
   se-Mu   : {Dᵐ : Desc} → StkEl (Mu {Ξ} Dᵐ)
+  -- ★ and `El (⌜IMu⌝ D I i)` to `IMu D I i` (§10.4: `stkA?` is `true`).
+  --   ⚠ NOT inert like `Mu D` — `ξ-IMu` steps the index — so it has a
+  --   real `stkel-red` row below.
+  se-IMu  : {D : IDesc} {I : RTy ε} {i : RTm Ξ} → StkEl (IMu D I i)
 
 stkel-red : {A A' : RTy Ξ} → StkEl A → A ⟶ᵀ A' → StkEl A'
 stkel-red (se-el {c = ⌜base⌝} k) El-⌜base⌝ = se-base
@@ -1401,9 +1403,11 @@ stkel-red (se-el {c = ⌜Id⌝ c' a' b'} k) (El-⌜Id⌝ _ _ _) = se-Id
 stkel-red (se-el {c = ⌜Unit⌝} k) El-⌜Unit⌝ = se-Unit
 stkel-red (se-el {c = ⌜Nat⌝} k) El-⌜Nat⌝ = se-Nat
 stkel-red (se-el k) (El-⌜Mu⌝ {D = Dᵐ}) = se-Mu {Dᵐ = Dᵐ}
+stkel-red (se-el k) (El-⌜IMu⌝ {D = Dⁱ} {I = Iⁱ}) = se-IMu {D = Dⁱ} {I = Iⁱ}
 stkel-red se-Unit ()
 stkel-red se-Nat ()
 stkel-red se-Mu ()
+stkel-red se-IMu (ξ-IMu r) = se-IMu
 stkel-red se-Id (ξ-Idᵀ r) = se-Id
 stkel-red se-Id (ξ-Idˡ r) = se-Id
 stkel-red se-Id (ξ-Idʳ r) = se-Id
