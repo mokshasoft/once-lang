@@ -661,6 +661,34 @@ data DescWf : Desc → Set
 --   `iρ` carried only a closed function, did not.
 data IConWf     : IDesc → RTy ε → (Θ : Ctx) → ICon ⌊ Θ ⌋ → Set
 data IDescWfFrom : IDesc → RTy ε → IDesc → Set
+-- ★★★ PLAN-INDEXED §10 — WHICH κ CODES THE MODEL CAN INTERPRET.
+--
+-- ⚠⚠ FOUND BY WRITING `fund`, exactly like §9.1 and §9.2.  `⊩₀IMu`
+--   carries an `IDInterp`, whose `iki-κ` row must supply
+--   `(σ : Sub Θ Γ) → ⊩₀ (El (subTm σ κ))` — an interpretation of the
+--   field type at EVERY environment.  It has to be every environment:
+--   `⊩₀IMu` is built at `ty-IMu`, long before any payload exists, so it
+--   cannot record which environments are the semantically good ones.
+--
+--   For a general `Θ ⊢ κ ∷ U` that is FALSE, and not marginally: take
+--   `I = U`, so the ambient index is itself a code, and `κ = ⌜Π⌝ ⟨i⟩ …`.
+--   Then `⊩₀ (El (subTm σ κ))` needs `⊩₀ (El (σ i))` for a σ that may
+--   send `i` to any raw term at all.  `IDescWf` would admit a description
+--   the model cannot interpret and `fund-ty (ty-IMu …)` would be stuck.
+--
+-- ★ THE FIX, and it is the non-indexed kernel's own rule generalised by
+--   exactly one row.  `dwf-κ` already restricts a non-recursive field to
+--   `El c` for a CLOSED code — for this very reason ("the model needs a
+--   `⊩₀` witness at every `dκ` slot").  Indexing needs precisely ONE more
+--   shape, the FORDING CONSTRAINT of §3, and a `⌜Id⌝` code is
+--   REDUCTION-DETERMINED: `El (⌜Id⌝ c a b) ⟶ᵀ Id (El c) a b` and
+--   `⊩₀Id` asks for nothing but that chain, at any arguments whatever.
+--   So its interpretation IS available at every environment.
+--
+--   ⇒ a κ field is either a CLOSED small type or a FORDING CONSTRAINT.
+--   That is not a restriction bolted on to make a proof go through: it is
+--   the statement of what §3 said Fording was for.
+data ICodeWf : {Θ : Cx} → RTm Θ → Set
 
 -- the user-facing name is unchanged: a description is well-formed when
 -- every constructor is, with the SAME description available for its
@@ -915,11 +943,34 @@ data IConWf where
   -- ★ a NON-RECURSIVE field: a CODE in the telescope, decoded by `El`.
   --   A FORDING constraint is exactly this — a field whose code mentions
   --   the ambient index and an earlier field.
+  --   ⚠ §10: it also carries an `ICodeWf` — the model's key, the indexed
+  --   twin of `dwf-κ`'s "the κ field must be SMALL".
   iwf-κ : {D : IDesc} {I : RTy ε} {Θ : Ctx} {C : ICon (⌊ Θ ⌋ ∙)}
           (κ : RTm ⌊ Θ ⌋) →
+          ICodeWf κ →
           Θ ⊢ κ ∷ U →
           IConWf D I (Θ ▹ El κ) C →
           IConWf D I Θ (iκ κ C)
+
+-- ★★★ §10.  TWO ROWS, and each is forced.
+--
+--   `icw-clo`  — a CLOSED small type.  This is `dwf-κ` verbatim; its
+--                witness is `elW`, at the empty environment, so no `σ`
+--                can disturb it (`εwkTm-sub`).
+--   `icw-ford` — a FORDING CONSTRAINT.  `El (⌜Id⌝ c a b)` reduces to
+--                `Id (El c) a b` in ONE step and `⊩₀Id` needs only that
+--                chain — no interpretation of `c`, no `SN` of the
+--                endpoints.  That is what makes it environment-proof, and
+--                it is why Fording (§3) and not native computed targets
+--                is what this kernel can model.
+--
+-- ⚠ NOT CLOSED UNDER `⌜Π⌝`/`⌜Σ⌝`/`⌜Hom⌝, deliberately.  `⊩₀Π` needs a
+--   real interpretation of the domain, `⊩₀Hom` needs the `Hom` to be
+--   STUCK — neither survives an arbitrary environment.  A field wanting
+--   one of those must be closed, and then `icw-clo` covers it.
+data ICodeWf where
+  icw-clo  : {Θ : Cx} (c : RTm ε) → ◇ ⊢ c ∷ U → ICodeWf (εwkTm {Θ} c)
+  icw-ford : {Θ : Cx} (c a b : RTm Θ) → ICodeWf (⌜Id⌝ c a b)
 
 data IDescWfFrom where
   idwf-nil  : {D : IDesc} {I : RTy ε} → IDescWfFrom D I inil

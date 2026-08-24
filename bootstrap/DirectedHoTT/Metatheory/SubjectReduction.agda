@@ -2277,7 +2277,7 @@ iihTy-wf {Γ} {Θ} D I M σ (iρ j C) p (iwf-ρ .j dj wC) hσ dM hp =
                          (iext-Sub⊢ hσ (⊢fst hp)) dM
                          (⊢-cast (ipayTy-sub-single D I σ (fst p) C) (⊢snd hp)))
                there)
-iihTy-wf D I M σ (iκ κ C) p (iwf-κ .κ dcode wC) hσ dM hp =
+iihTy-wf D I M σ (iκ κ C) p (iwf-κ .κ _ dcode wC) hσ dM hp =
   iihTy-wf D I M (iext σ (fst p)) C (snd p) wC
            (iext-Sub⊢ hσ (⊢fst hp)) dM
            (⊢-cast (ipayTy-sub-single D I σ (fst p) C) (⊢snd hp))
@@ -2364,7 +2364,7 @@ iihs-ty {Γ} {Θ} D I M ms σ (iρ j C) p wD (iwf-ρ .j dj wC) hσ dM hms hp =
                     subTy (single u) (renTy vs A) ≡ A
     wk-sub-single A u =
       trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
-iihs-ty D I M ms σ (iκ κ C) p wD (iwf-κ .κ dcode wC) hσ dM hms hp =
+iihs-ty D I M ms σ (iκ κ C) p wD (iwf-κ .κ _ dcode wC) hσ dM hms hp =
   iihs-ty D I M ms (iext σ (fst p)) C (snd p) wD wC
           (iext-Sub⊢ hσ (⊢fst hp)) dM hms
           (⊢-cast (ipayTy-sub-single D I σ (fst p) C) (⊢snd hp))

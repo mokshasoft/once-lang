@@ -254,3 +254,80 @@ substitution laws (Syntax); `IConWf`, `iihTy`, `imethTy`, `imethsTy`,
 `ielim`, `⌜IMu⌝`, `IMu`) — descriptions are INDICES, not subterms — so
 `Confluence`'s 241 generated `⟹-⁺` clauses and `Injectivity`'s `ξ-IMu`
 work are NOT affected.
+
+--------------------------------------------------------------------------
+## 10. ★★★ REVISION (2026-08-24) — a THIRD flaw, found by writing `fund`
+
+Same pattern as §9: found by trying to PROVE something, not by reading the
+rules.  §9.1 came from subject reduction, §9.2 from `Vec`; this one comes
+from the fundamental theorem.
+
+### 10.1 `iκ`'s code must be interpretable at EVERY environment
+
+`ty-IMu` builds `⊩₁IMu doneᵀ di` with `di : IDInterp Ξ D`, and `IKInterp`'s
+`iκ` row demands
+
+    iki-κ : ((σ : Sub Θ Γ) → ⊩₀ (El (subTm σ κ))) → …
+
+— an interpretation of the field type at **every** environment.  It has to
+be every environment: the `IDInterp` is built at TYPE FORMATION, long
+before any payload exists, so it cannot record which environments are the
+semantically good ones.
+
+For a general `Θ ⊢ κ ∷ U` that is **false**, and not marginally.  Take
+`I = U` — nothing forbids it — so the ambient index is itself a code, and
+let `κ = ⌜Π⌝ ⟨i⟩ …`.  Then `⊩₀ (El (subTm σ κ))` needs `⊩₀ (El (σ i))` for
+a σ that may send `i` to any raw term at all.  `IDescWf` would admit a
+description the model cannot interpret, and `fund-ty (ty-IMu …)` would be
+stuck — a completeness gap, silent and green.
+
+### 10.2 The fix, and why it is not ad hoc
+
+**A κ field is either a CLOSED small type or a FORDING CONSTRAINT.**
+
+    data ICodeWf : {Θ : Cx} → RTm Θ → Set where
+      icw-clo  : (c : RTm ε) → ◇ ⊢ c ∷ U → ICodeWf (εwkTm c)
+      icw-ford : (c a b : RTm Θ)         → ICodeWf (⌜Id⌝ c a b)
+
+carried as a new premise of `iwf-κ`.
+
+* `icw-clo` **is `dwf-κ` verbatim.**  The non-indexed kernel already
+  restricts a non-recursive field to `El c` for a CLOSED code — for this
+  very reason ("the model needs a `⊩₀` witness at every `dκ` slot").  Its
+  witness is `elW`, at the empty environment, so no σ can disturb it.
+* `icw-ford` is the ONE row indexing adds, and `⌜Id⌝` is
+  **reduction-determined**: `El (⌜Id⌝ c a b) ⟶ᵀ Id (El c) a b` in one step
+  and `⊩₀Id` asks for that chain and nothing else — not an interpretation
+  of `c`, not `SN` of the endpoints.  So its interpretation IS available
+  at every environment, at any arguments whatever.
+
+⇒ the restriction is the statement of what §3 said Fording was FOR.  Not
+closed under `⌜Π⌝`/`⌜Σ⌝`/`⌜Hom⌝, deliberately: `⊩₀Π` needs a real
+interpretation of the domain and `⊩₀Hom` needs the `Hom` to be STUCK,
+neither of which survives an arbitrary environment.  A field wanting one
+of those must be closed, and then `icw-clo` covers it.
+
+### 10.3 What it costs, and what it buys
+
+Reworked: one premise on `iwf-κ`; two clauses in `SubjectReduction`
+(`iihTy-wf`, `iihs-ty`) gain an `_`.  Nothing else changed.
+
+What it BUYS is the whole of `Fundamental/Indexed`: because the κ witness
+is σ-generic, `ipayInterp` — the payload type's canonical interpretation —
+is a plain recursion, and `⊢ielim` needs no semantic environment to build
+it.  The alternative (an existential κ-predicate) makes `ipayInterp`
+unstateable, because a Σ-interpretation needs its family at EVERY
+semantic member of the domain, not just at the payload's actual field.
+
+### 10.4 And a classifier that was silently wrong
+
+`stablecd? (⌜IMu⌝ D I i)` inherited the catch-all's `false`.  So did
+`stkC?` — and with both false the code was a FOURTH kind that `CodeFate`
+cannot express, making `codeNorm` at `sn-cIMu` simply unprovable.
+
+The right answer is `true`: `⌜Mu⌝` is `stkC?` because there IS a
+`tr-J-Mu`; there is no J root at `⌜IMu⌝`, so nothing fires on a
+`hrefl (⌜IMu⌝ D I i) s` path and the code is DEAD — exactly `⌜Nat⌝`'s
+situation, not `⌜Mu⌝`'s.  `check-formers` check 3 lists this default; its
+warning — "CONFIRM each default rather than inherit it" — is what turned
+an unprovable goal into a one-line row.

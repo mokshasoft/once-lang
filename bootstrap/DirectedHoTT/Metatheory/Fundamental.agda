@@ -26,7 +26,8 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy-id; subTm-id; renTm-renTm; renTm-cong
         ; Desc; DCon; Mu; con; elim; lookupD; εsub; εwkTy; payTy; payTy-sub; ⌜Mu⌝
         ; _∈D_; hereD; thereD; sel; ihs; dnil; _◃_; dι; dρ; dκ; fields
-        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm )
+        ; IMu; icon; ielim; ⌜IMu⌝; ICon; IDesc; iι; iρ; iκ; inil; _◂_; ipayTy; ilookupD; _∈ID_; hereID; thereID; iihs; ifields; εwkTm
+        ; iext; isingle; εwk-sub; εwkTm-sub )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Typing
   using ( single; nrs
@@ -52,6 +53,10 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢jsub
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
         ; ty-Mu; ⊢con; ⊢elim; El-⌜Mu⌝
+        ; ty-IMu; ⊢⌜IMu⌝; ⊢icon; ⊢ielim; El-⌜IMu⌝
+        ; IConWf; iwf-ι; iwf-ρ; iwf-κ; ICodeWf; icw-clo; icw-ford
+        ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
+        ; iinst; iihTy; iatCon; imethTy; imethsTy; imethsTyFrom
         ; methTy; methsTy; methsTyFrom; ihTy; atCon; atCon-inst; conS
         ; DConWf; dwf-ι; dwf-ρ; dwf-κ; DescWf; dwf-nil; dwf-cons
         ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢natrec; ⊢ordtr
@@ -76,7 +81,8 @@ open import DirectedHoTT.Metatheory.SubjectReduction
         ; HomRed; mkHomRed; Hom-to-Hom; homAmb→
         ; HomToΠ; via-U; via-Π; hom-to-Π
         ; U-reduct; wk-cancel-tm; ≅ᵀ-Homᵀ; gen-var; subTy-comm; subTy-monoˢ
-        ; methsTyFrom-sub; ihTy-sub )
+        ; methsTyFrom-sub; ihTy-sub
+        ; imethsTyFrom-sub; iinst-sub )
 open import DirectedHoTT.Metatheory.LogicalRelation
   using ( SNe; sne-var; sne-app; sne-absurd; sne-fst; sne-snd; sne-hrefl; sne-tr; sne-ap; sne-jsub
         ; Ne; ne-var; ne-app; ne-absurd; ne-fst; ne-snd; ne-hrefl; ne-tr; ne-ap; ne-jsub; homSem₁
@@ -117,14 +123,18 @@ open import DirectedHoTT.Metatheory.LogicalRelation
         ; emb; emb-coh
         ; sem-conv; sem-lam; sem-app; sem-fst; sem-snd; sem-pair
         ; sem-El; sem-⌜base⌝; sem-⌜Π⌝; sem-⌜Σ⌝; sem-⌜Hom⌝; sem-hrefl
-        ; homSem₁
         ; ⟶ᵀ*-sub
         ; IsNormal; WN; mkWN; wn
         ; projl; projr; dfst; dsnd
-        ; sne-elim; sn-con; mustk?; sne→mustk; snr-ι; snr-elimᵗ )
+        ; sne-elim; sn-con; mustk?; sne→mustk; snr-ι; snr-elimᵗ
+        ; sne-ielim; sn-icon; sn-cIMu; snr-ιi; snr-ielimᵗ
+        ; ⊩₀IMu; ⊩₁IMu; IMuMem; imm-ne; imm-icon; imm-exp
+        ; ILift; IKInterp; iki-ι; iki-ρ; iki-κ
+        ; IDInterp; idi-nil; idi-cons; ikpredsOf; ipredsOf; ilookupP )
 
 open import DirectedHoTT.Metatheory.Fundamental.Syntactic
 open import DirectedHoTT.Metatheory.Fundamental.Semantic
+open import DirectedHoTT.Metatheory.Fundamental.Indexed
 
 private
   variable
@@ -178,6 +188,19 @@ fund : {σ : Sub ⌊ Γ ⌋ Ξ} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
 elW : {c : RTm ε} → ◇ ⊢ c ∷ U → (x₀ : Var Ξ) → ⊩₀ (εwkTy (El c))
 interpK : {C : DCon} → DConWf C → Var Ξ → KInterp Ξ C
 interpD : {D : Desc} → DescWf D → Var Ξ → DInterp Ξ D
+-- ★★★ their INDEXED twins (PLAN-INDEXED §10).  ⚠ MUTUAL WITH `fund`, and
+--   they have to be: `iκW`'s closed-code row runs `elW`, and the
+--   termination argument is that the `ICodeWf` is a structural subterm of
+--   the `IDescWf` the clause matched.  Passing `elW` in as an argument
+--   (so the layer could live beside the rest in `Fundamental/Indexed`)
+--   breaks exactly that — the call then sits under a λ with an unknown
+--   derivation, and `fund`'s termination check fails.
+iκW : {Θ : Cx} {κ : RTm Θ} → ICodeWf κ → Var Ξ →
+      (σ : Sub Θ Ξ) → ⊩₀ (El (subTm σ κ))
+interpIK : {D : IDesc} {I : RTy ε} {Θ₀ : Ctx} {C : ICon ⌊ Θ₀ ⌋} →
+           IConWf D I Θ₀ C → Var Ξ → IKInterp Ξ C
+interpID : {D E : IDesc} {I : RTy ε} →
+           IDescWfFrom D I E → Var Ξ → IDInterp Ξ E
 
 -- ★★ and §4's OTHER semantic half: a semantic member of the PAYLOAD type
 --   is a `Lift` of the field list.  This is what `⊢con` needs, and it is
@@ -260,6 +283,14 @@ fund-ty ty-Nat  x₀ ρ = ⊩₁Nat  doneᵀ
 --   descriptions), so the goal needs no cast — the whole point of closing
 --   `Desc` over `RTy ε` rather than carrying a renaming/substitution tower.
 fund-ty (ty-Mu w) x₀ ρ = ⊩₁Mu doneᵀ (interpD w x₀)
+-- ★★ INDEXED FORMATION.  `ty-Mu`'s twin: the `IDescWf` premise is exactly
+--   the key `interpID` turns into a model, and after PLAN-INDEXED §10 it
+--   really does turn — `ICodeWf` is what makes `iki-κ` inhabitable.
+--   ⚠ `subTy σ (IMu D I i) = IMu D I (subTm σ i)`: unlike `Mu D`, the
+--     type MOVES under substitution.  Nothing here has to react — the
+--     `IDInterp` does not mention the index — which is the second place
+--     Fording's uniformity pays (PLAN-INDEXED §2).
+fund-ty (ty-IMu w di) x₀ ρ = ⊩₁IMu doneᵀ (interpID w x₀)
 
 fund-ty {σ = σ} (ty-Hom {t = t} {u = u} tyA dt du) x₀ ρ = homSem₁ R ht hu
   where
@@ -281,6 +312,23 @@ interpK (dwf-κ c dc w) x₀ = ki-κ (elW dc x₀) (interpK w x₀)
 
 interpD dwf-nil        x₀ = di-nil
 interpD (dwf-cons w e) x₀ = di-cons (interpK w x₀) (interpD e x₀)
+
+-- ★ §10's two rows.  `icw-clo` IS `dwf-κ`'s κ slot — `elW`, at the empty
+--   environment, so `εwkTm-sub` says no σ can disturb it.  `icw-ford`
+--   needs NOTHING: `El (⌜Id⌝ c a b)` decodes in one step and `⊩₀Id` asks
+--   for that chain and no more, at any arguments whatever.  That is what
+--   makes a Fording constraint interpretable at EVERY environment, and it
+--   is the whole content of §10.
+iκW (icw-clo c dc)   x₀ σ =
+  ⊩₀cast (cong El (sym (εwkTm-sub σ c))) (elW dc x₀)
+iκW (icw-ford c a b) x₀ σ = ⊩₀Id (stepᵀ (El-⌜Id⌝ _ _ _) doneᵀ)
+
+interpIK iwf-ι              x₀ = iki-ι
+interpIK (iwf-ρ j dj wC)    x₀ = iki-ρ (interpIK wC x₀)
+interpIK (iwf-κ κ ok dc wC) x₀ = iki-κ (iκW ok x₀) (interpIK wC x₀)
+
+interpID idwf-nil          x₀ = idi-nil
+interpID (idwf-cons wC wE) x₀ = idi-cons (interpIK wC x₀) (interpID wE x₀)
 
 payLiftK D di dwf-ι x₀ R p h = CR1₁ R h
 -- the RECURSIVE field: its member is a `Mu` member, so move it onto the
@@ -309,11 +357,6 @@ payLiftD D di dwf-nil          x₀ k       R p h = CR1₁ R h
 
 payLiftD D di (dwf-cons wC wE) x₀ zero    R p h = payLiftK D di wC x₀ R p h
 payLiftD D di (dwf-cons wC wE) x₀ (suc k) R p h = payLiftD D di wE x₀ k R p h
--- membership rides across a `⊩₁cast` — the equation is matched away.
-⊩₁cast-mem : {A A' : RTy Ξ} (eq : A ≡ A') (R : ⊩₁ A) {t : RTm Ξ} →
-             R ⊩₁∋ t → (⊩₁cast eq R) ⊩₁∋ t
-⊩₁cast-mem refl R h = h
-
 -- ⚠ the family is CONSTANT: `payTy` is substitution-inert, so the Σ-chain's
 --   tail does not depend on the head.  `payTy-sub` is the only cast.
 payInterp D di dwf-ι          x₀ = ⊩₁Unit doneᵀ
@@ -477,6 +520,20 @@ fund {σ = σ} (⊢con {D = D} {k = k} {p = p} w i dp) x₀ ρ =
     di = interpD w x₀
     m  = relTy (payTy-sub σ D (lookupD D k)) (fund dp x₀ ρ)
 
+-- ★★ INDEXED CONSTRUCTION.  `⊢con`'s twin — and the diff is ONE cast.
+--   `payTy` is substitution-INERT, so `⊢con`'s move is a formality;
+--   `ipayTy` carries the index, so the payload's type genuinely moves and
+--   `ipayTy-sub-isingle` is what tracks it.
+fund {σ = σ} (⊢icon {D = D} {I = I} {i = i} {k = k} {p = p} w kin di dp) x₀ ρ =
+  ( ⊩₁IMu doneᵀ idi
+  , ( sn-icon (CR1₁ (dfst m) (dsnd m))
+    , imm-icon k kin
+        (ipayLiftD D I idi idi (subTm σ i) k
+                   (dfst m) (subTm σ p) (dsnd m)) ) )
+  where
+    idi = interpID w x₀
+    m   = relTy (ipayTy-sub-isingle σ D I i (ilookupD D k)) (fund dp x₀ ρ)
+
 -- ★★★ INDUCTIVE TYPES — the ELIMINATOR.  `⊢natrec`'s analogue, general in
 --   the description: the worker recurses on `MuMem` (no fuel, no measure),
 --   a neutral scrutinee makes `elim` neutral, and a `con` scrutinee fires
@@ -626,6 +683,196 @@ fund {Ξ = Ξ} {σ = σ} (⊢elim {D = D} {M = M} {ms = ms} {t = t} w dM dms dt)
     ihsAt (dwf-cons wC wE) zero    p l = ihsSem wC p l
     ihsAt (dwf-cons wC wE) (suc k) p l = ihsAt wE k p l
 
+-- ★★★ INDEXED ELIMINATION.  `⊢elim`'s analogue, and the differences are
+--   exactly the three the design forced:
+--
+--   · the motive is TWO-SLOT, so `MotC` takes the INDEX and its
+--     semantics beside the scrutinee (`iinst-cons-Ty` is what turns
+--     `fund-ty`'s cons-substitution into `iinst`);
+--   · `iihsSem` re-enters `go` AT THE RECURSIVE FIELD'S OWN INDEX — the
+--     thing PLAN-INDEXED §9.1's index-quantified method exists to make
+--     typable, and the reason `iselSem` has no index parameter;
+--   · it must carry a SEMANTIC ENVIRONMENT for the telescope, because
+--     §9.2 lets a recursive field's index mention earlier fields.  That
+--     is `iihs-ty`'s `Sub⊢` premise, one level up.
+fund {Ξ = Ξ} {σ = σ} (⊢ielim {D = D} {I = I} {M = M} {i = i} {ms = ms} {t = t}
+                             wD dM di dms dt) x₀ ρ =
+  relTy (sym (trans (iinst-sub σ M i t) (iinst-cons-Ty σ iI tI M)))
+        ( MotC iI hiI tI htI , go iI hiI tI (projl htI) (projr htI) )
+  where
+    msI = subTm σ ms
+    tI  = subTm σ t
+    iI  = subTm σ i
+    MI  = subTy (extS (extS σ)) M
+    idi = interpID wD x₀
+
+    hI0 = fund di x₀ ρ
+    ⊩I  = dfst hI0                     -- ⊩₁ (subTy σ (εwkTy I))
+    hiI = dsnd hI0
+
+    ⊩IM : (j : RTm Ξ) → ⊩₁ (IMu D I j)
+    ⊩IM j = ⊩₁IMu doneᵀ idi
+
+    htI = projl (irrel₁ crflᵀ (dfst (fund dt x₀ ρ)) (⊩IM iI))
+                tI (dsnd (fund dt x₀ ρ))
+
+    hms = relTy (imethsTyFrom-sub σ D I M zero D) (fund dms x₀ ρ)
+
+    snMs : SN msI
+    snMs = CR1₁ (dfst hms) (dsnd hms)
+
+    -- ★ every index that reaches `go` is a member of ONE interp — this
+    --   one — whatever environment produced it.  `εwkTy I` is CLOSED, so
+    --   any two substitutions of it are the same type and `crflᵀ` is a
+    --   real (not merely notational) conversion.
+    toI : {Θ₀ : Cx} {τ : Sub Θ₀ Ξ} (jτ : RTm Ξ) →
+          Rel (subTy τ (εwkTy I)) jτ → ⊩I ⊩₁∋ jτ
+    toI {τ = τ} jτ h =
+      projl (irrel₁ crflᵀ (dfst h') ⊩I) jτ (dsnd h')
+      where
+        h' = relTy (trans (εwk-sub τ I) (sym (εwk-sub σ I))) h
+
+    MotC : (j : RTm Ξ) → ⊩I ⊩₁∋ j → (u : RTm Ξ) → (⊩IM j) ⊩₁∋ u →
+           ⊩₁ (subTy ((σ ,ₛ j) ,ₛ u) M)
+    MotC j hj u r =
+      fund-ty dM x₀ (⊩ˢ-ext (⊩ˢ-ext ρ ⊩I j hj) (⊩IM j) u r)
+
+    -- ★ the STARTING environment: the ambient index alone.  `isingle`'s
+    --   semantic twin, and `isingle-Sub⊢`'s (Subj) exactly.
+    isingleEnv : (j : RTm Ξ) → ⊩I ⊩₁∋ j → (◇ ▹ εwkTy I) ⊩ˢ (isingle j)
+    isingleEnv j hj here =
+      relTy (trans (εwk-sub σ I)
+                   (sym (trans (subTy-renTy (εwkTy I)) (εwk-sub _ I))))
+            (⊩I , hj)
+    isingleEnv j hj (there ())
+
+    go : (j : RTm Ξ) (hj : ⊩I ⊩₁∋ j) (u : RTm Ξ) (snu : SN u)
+         (mm : IMuMem D I (ipredsOf idi) j u) →
+         (MotC j hj u (snu , mm)) ⊩₁∋ ielim D j msI u
+    iihsSem : {Θ₀ : Ctx} {C : ICon ⌊ Θ₀ ⌋} (wC : IConWf D I Θ₀ C)
+              (τ : Sub ⌊ Θ₀ ⌋ Ξ) → Θ₀ ⊩ˢ τ → (p : RTm Ξ) →
+              ILift C (ikpredsOf (interpIK wC x₀))
+                    (IMuMem D I (ipredsOf idi)) τ p →
+              Rel (iihTy D I τ C p MI) (iihs D msI τ C p)
+    -- ⚠ suffix-walking, as in the non-indexed `ihsAt`: at a VARIABLE
+    --   description the lookup is stuck, so the `IDescWfFrom` is walked.
+    iihsAt : {E : IDesc} (wE : IDescWfFrom D I E)
+             (j : RTm Ξ) (hj : ⊩I ⊩₁∋ j) (k : ℕ) (p : RTm Ξ) →
+             ILift (ilookupD E k)
+                   (ilookupP (ipredsOf (interpID wE x₀)) k)
+                   (IMuMem D I (ipredsOf idi)) (isingle j) p →
+             Rel (iihTy D I (isingle j) (ilookupD E k) p MI)
+                 (iihs D msI (isingle j) (ilookupD E k) p)
+
+    wk-single-ty : (u : RTm Ξ) (A : RTy Ξ) → subTy (single u) (renTy vs A) ≡ A
+    wk-single-ty u A =
+      trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
+
+    go j hj u snu (imm-ne nt) =
+      CR3₁ (MotC j hj u (snu , imm-ne nt))
+           (sne-ielim (CR1₁ ⊩I hj) snMs snu (sne→mustk nt))
+
+    go j hj u snu (imm-exp {t' = u'} rr mm) =
+      exp₁ (MotC j hj u (snu , imm-exp rr mm)) (snr-ielimᵗ rr)
+        (projl (irrel₁ (csymᵀ conv)
+                       (MotC j hj u' (snu' , mm))
+                       (MotC j hj u (snu , imm-exp rr mm)))
+               (ielim D j msI u') (go j hj u' snu' mm))
+      where
+        snu' = sn-whred snu rr
+
+        cons-mono : (x : Var _) → ((σ ,ₛ j) ,ₛ u) x ⟶* ((σ ,ₛ j) ,ₛ u') x
+        cons-mono vz     = step (snr→⟶ rr) done
+        cons-mono (vs y) = done
+
+        conv : subTy ((σ ,ₛ j) ,ₛ u) M ≅ᵀ subTy ((σ ,ₛ j) ,ₛ u') M
+        conv = red→≅ᵀ (subTy-monoˢ cons-mono M)
+
+    -- ★★ the ι-rule fires.  The method is applied to the INDEX first,
+    --   then the payload, then the IH tuple; `imeth-land` is what makes
+    --   the result land at the two-slot motive AT THIS CONSTRUCTOR.
+    go j hj .(icon k p) snu (imm-icon k kin {p = p} lft) =
+      exp₁ (MotC j hj (icon k p) rr) (snr-ιi (CR1₁ ⊩I hj) snMs snP)
+           (projl (irrel₁ crflᵀ (dfst app3') (MotC j hj (icon k p) rr))
+                  (ifields D j msI (isingle j) (ilookupD D k) (sel k msI) p)
+                  (dsnd app3'))
+      where
+        rr   = (snu , imm-icon k kin lft)
+        hpay = iliftPayAt D I idi idi j k p lft
+
+        snP : SN p
+        snP = CR1₁ (dfst hpay) (dsnd hpay)
+
+        ⊩Ic = ⊩₁cast (εwk-sub σ I) ⊩I
+        hjc = ⊩₁cast-mem (εwk-sub σ I) ⊩I hj
+
+        hmeth = iselSem D I MI D zero k msI kin (dfst hms) (dsnd hms)
+
+        app1  = ⊩₁-app (dfst hmeth) ⊩Ic (dsnd hmeth) hjc
+        app1' = relTy (cong₂ Π (imeth-pay D I (ilookupD D k) j) refl) app1
+
+        app2 = ⊩₁-app (dfst app1') (dfst hpay) (dsnd app1') (dsnd hpay)
+
+        hih = relTy (sym (imeth-ih D I (ilookupD D k) j p MI))
+                    (iihsAt wD j hj k p lft)
+
+        app3  = ⊩₁-app (dfst app2) (dfst hih) (dsnd app2) (dsnd hih)
+        app3' = relTy (trans (imeth-land k j p
+                                (iihs D msI (isingle j) (ilookupD D k) p) MI)
+                             (iinst-cons-Ty σ j (icon k p) M))
+                      app3
+
+    iihsSem iwf-ι τ hτ p l = (⊩₁Unit doneᵀ , sn-unit)
+    -- the RECURSIVE field contributes an IH — at ITS OWN index.
+    iihsSem (iwf-ρ {C = C'} jt djt wC) τ hτ p (sp , ((sf , mf) , rest)) =
+      ( ⊩₁Σ doneᵀ ⊩F ⊩G , sem-pair doneᵀ ⊩F ⊩G snA snB rA rB )
+      where
+        jτ  = subTm τ jt
+        hjτ = toI jτ (fund djt x₀ hτ)
+
+        hf : (⊩IM jτ) ⊩₁∋ fst p
+        hf = (sf , mf)
+
+        tl = iihsSem wC (iext τ (fst p))
+                     (⊩ˢ-iext hτ (⊩IM jτ) (fst p) hf) (snd p) rest
+
+        ⊩F : ⊩₁ (iinst jτ (fst p) MI)
+        ⊩F = ⊩₁cast (sym (iinst-cons-Ty σ jτ (fst p) M))
+                    (MotC jτ hjτ (fst p) hf)
+
+        rA : ⊩F ⊩₁∋ ielim D jτ msI (fst p)
+        rA = ⊩₁cast-mem (sym (iinst-cons-Ty σ jτ (fst p) M))
+                        (MotC jτ hjτ (fst p) hf)
+                        (go jτ hjτ (fst p) sf mf)
+
+        ⊩G : (u : RTm Ξ) → ⊩F ⊩₁∋ u →
+             ⊩₁ (subTy (single u)
+                       (renTy vs (iihTy D I (iext τ (fst p)) C' (snd p) MI)))
+        ⊩G u _ =
+          ⊩₁cast (sym (wk-single-ty u
+                        (iihTy D I (iext τ (fst p)) C' (snd p) MI)))
+                 (dfst tl)
+
+        rB : (⊩G (ielim D jτ msI (fst p)) rA) ⊩₁∋
+             iihs D msI (iext τ (fst p)) C' (snd p)
+        rB = ⊩₁cast-mem (sym (wk-single-ty (ielim D jτ msI (fst p))
+                               (iihTy D I (iext τ (fst p)) C' (snd p) MI)))
+                        (dfst tl) (dsnd tl)
+
+        snA = CR1₁ ⊩F rA
+        snB = CR1₁ (dfst tl) (dsnd tl)
+    -- a `iκ` field owes NO induction hypothesis — skipped, matching `iihs`.
+    iihsSem (iwf-κ κ ok dc wC) τ hτ p (sp , (q , rest)) =
+      iihsSem wC (iext τ (fst p))
+              (⊩ˢ-iext hτ (emb (iκW ok x₀ τ)) (fst p)
+                       (projl (emb-coh (iκW ok x₀ τ)) (fst p) q))
+              (snd p) rest
+
+    iihsAt idwf-nil          j hj k       p l = (⊩₁Unit doneᵀ , sn-unit)
+    iihsAt (idwf-cons wC wE) j hj zero    p l =
+      iihsSem wC (isingle j) (isingleEnv j hj) p l
+    iihsAt (idwf-cons wC wE) j hj (suc k) p l = iihsAt wE j hj k p l
+
 fund {Ξ = Ξ} {σ = σ} (⊢lam {B = B} {t = s} tyA d) x₀ ρ =
   ( ⊩₁Π doneᵀ ⊩F ⊩G , sem-lam doneᵀ ⊩F ⊩G sns f )
   where
@@ -771,6 +1018,16 @@ fund ⊢⌜Unit⌝ x₀ ρ =
 fund (⊢⌜Mu⌝ w) x₀ ρ =
   ( ⊩₁U doneᵀ
   , (sn-cMu , (⊩₀Mu (stepᵀ El-⌜Mu⌝ doneᵀ) (interpD w x₀) , _)) )
+-- ★★ the INDEXED code.  ⌜Mu⌝'s twin plus the one thing ⌜Mu⌝ has not: an
+--   INDEX, which must be SN for the code to be (`sn-cIMu`).  The `⊩₀`
+--   component is again the DECODE's interp, so the `IDInterp` enters here
+--   by the same door as at `ty-IMu`.
+fund (⊢⌜IMu⌝ {D = D} {I = I} {i = i} w di) x₀ ρ =
+  ( ⊩₁U doneᵀ
+  , ( sn-cIMu (CR1₁ (dfst hi) (dsnd hi))
+    , ( ⊩₀IMu (stepᵀ El-⌜IMu⌝ doneᵀ) (interpID w x₀) , _ ) ) )
+  where
+    hi = fund di x₀ ρ
 
 fund {Ξ = Ξ} {σ = σ} (⊢⌜Π⌝ {c = c} {d = e} dc de) x₀ ρ =
   ( ⊩₁U doneᵀ , sem-⌜Π⌝ doneᵀ snc sne ⊩c f pays )
@@ -942,6 +1199,8 @@ fund {Ξ = Ξ} {σ = σ}
   ... | ()
   flatMem (⊩₁Mu p _) sns with ett-star (et-el kflat) p
   ... | ()
+  flatMem (⊩₁IMu p _) sns with ett-star (et-el kflat) p
+  ... | ()
   flatMem (⊩₁ne {n = n} p ne) sns with ett-star (et-el kflat) p
   ... | et-el {c = n₂} k' =
         ⊥-elim (f≢t (trans (sym (ne-nostk ne)) (flat→stk n₂ k')))
@@ -1052,6 +1311,8 @@ fund {Ξ = Ξ} {σ = σ}
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-natrec h₁ h₂ h₃ k)) k)
   goP (sn-ne (sne-elim h₁ h₂ k)) =
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-elim h₁ h₂ k)) k)
+  goP (sn-ne (sne-ielim h₀ h₁ h₂ k)) =
+    CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-ielim h₀ h₁ h₂ k)) k)
   goP (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ k)) =
     CR3₀ R_H (sne-ap snCB snBB (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ k)) k)
   goP (sn-lam h)       = CR3₀ R_H (sne-ap snCB snBB (sn-lam h) refl)
@@ -1069,6 +1330,8 @@ fund {Ξ = Ξ} {σ = σ}
   goP sn-nzero          = CR3₀ R_H (sne-ap snCB snBB sn-nzero refl)
   goP (sn-nsuc h)       = CR3₀ R_H (sne-ap snCB snBB (sn-nsuc h) refl)
   goP (sn-con h)        = CR3₀ R_H (sne-ap snCB snBB (sn-con h) refl)
+  goP (sn-icon h)       = CR3₀ R_H (sne-ap snCB snBB (sn-icon h) refl)
+  goP (sn-cIMu h)       = CR3₀ R_H (sne-ap snCB snBB (sn-cIMu h) refl)
 
 -- ★ the two-former kernel: the three symmetric cases.
 fund {σ = σ} (⊢⌜Id⌝ {c = c} {a = a} {b = b} dc da db) x₀ ρ =
@@ -1165,6 +1428,8 @@ fund {Ξ = Ξ} {σ = σ}
   ... | _ , (_ , (_ , ((), _)))
   idMemGet (⊩₁Mu ch _) h with Id-reduct ch
   ... | _ , (_ , (_ , ((), _)))
+  idMemGet (⊩₁IMu ch _) h with Id-reduct ch
+  ... | _ , (_ , (_ , ((), _)))
 
   hpP = idMemGet (dfst (fund dp x₀ ρ)) (dsnd (fund dp x₀ ρ))
 
@@ -1191,6 +1456,7 @@ fund {Ξ = Ξ} {σ = σ}
   nkeyJ (sne-jsub _ _ _ key) = key
   nkeyJ (sne-natrec _ _ _ key) = key
   nkeyJ (sne-elim _ _ key) = key
+  nkeyJ (sne-ielim _ _ _ key) = key
   nkeyJ (sne-ordtr _ _ _ _ _ key) = key
 
   goP : {p' : RTm Ξ} → SN p' → IdPay tI uI p' →
@@ -1235,6 +1501,10 @@ fund {Ξ = Ξ} {σ = σ}
     CR3₁ (emb R₀u) (sne-jsub snDI (sn-nsuc h) (CR1₁ (emb R₀t) hEt) refl)
   goP (sn-con h) pay =
     CR3₁ (emb R₀u) (sne-jsub snDI (sn-con h) (CR1₁ (emb R₀t) hEt) refl)
+  goP (sn-icon h) pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI (sn-icon h) (CR1₁ (emb R₀t) hEt) refl)
+  goP (sn-cIMu h) pay =
+    CR3₁ (emb R₀u) (sne-jsub snDI (sn-cIMu h) (CR1₁ (emb R₀t) hEt) refl)
 
   projP : (emb R₀u) ⊩₁∋ jsub dI pI eI
   projP = goP (projl hpP) (projr hpP)
@@ -1276,6 +1546,7 @@ fund {Ξ = Ξ} {σ = σ}
   nkey (sne-jsub _ _ _ key) = key
   nkey (sne-natrec _ _ _ key) = key
   nkey (sne-elim _ _ key) = key
+  nkey (sne-ielim _ _ _ key) = key
   nkey (sne-ordtr _ _ _ _ _ key) = key
 
   cr3 : {p' : RTm Ξ} → SN p' → trstk? (var (vz {Ξ})) p' ≡ true →
@@ -1323,6 +1594,8 @@ fund {Ξ = Ξ} {σ = σ}
   piCase q ⊩F ⊩G rt ru rEt rEu sn-nzero hp' = cr3 sn-nzero refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-nsuc h) hp' = cr3 (sn-nsuc h) refl
   piCase q ⊩F ⊩G rt ru rEt rEu (sn-con h) hp'  = cr3 (sn-con h) refl
+  piCase q ⊩F ⊩G rt ru rEt rEu (sn-icon h) hp' = cr3 (sn-icon h) refl
+  piCase q ⊩F ⊩G rt ru rEt rEu (sn-cIMu h) hp' = cr3 (sn-cIMu h) refl
 
   main : (R : ⊩₁ (Hom U tI uI)) → R ⊩₁∋ pI →
          Σ (⊩₁ (El uI)) (λ R' → R' ⊩₁∋ tr (var vz) pI eI)
@@ -1341,6 +1614,8 @@ fund {Ξ = Ξ} {σ = σ}
   main (⊩₁Nat q) hp with hom-shapeN nn-U q
   ... | ()
   main (⊩₁Mu q _) hp with hom-shapeN nn-U q
+  ... | ()
+  main (⊩₁IMu q _) hp with hom-shapeN nn-U q
   ... | ()
   -- ★ stage C: `Hom-to-Hom` is keyed on the TARGET ambient now, so the
   -- source witness `nn-U` is pushed forward along `q` first.
@@ -1593,6 +1868,8 @@ fund {Ξ = Ξ} {σ = σ}
     cr3 (sn-ne (sne-natrec h₁ h₂ h₃ key)) key
   go (sn-ne (sne-elim h₁ h₂ key)) hp' =
     cr3 (sn-ne (sne-elim h₁ h₂ key)) key
+  go (sn-ne (sne-ielim h₀ h₁ h₂ key)) hp' =
+    cr3 (sn-ne (sne-ielim h₀ h₁ h₂ key)) key
   go (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) hp' =
     cr3 (sn-ne (sne-ordtr h₁ h₂ h₃ h₄ h₅ key)) key
   go (sn-lam snf) hp'      = goLam snf hp'
@@ -1610,6 +1887,8 @@ fund {Ξ = Ξ} {σ = σ}
   go sn-nzero hp'          = cr3 sn-nzero refl
   go (sn-nsuc h) hp'       = cr3 (sn-nsuc h) refl
   go (sn-con h) hp'        = cr3 (sn-con h) refl
+  go (sn-icon h) hp'       = cr3 (sn-icon h) refl
+  go (sn-cIMu h) hp'       = cr3 (sn-cIMu h) refl
 
   -- the path's own head star, wrapped into the tr.
   trP-star : {p₁ p₂ : RTm Ξ} → p₁ ⟶snr* p₂ →
@@ -1653,6 +1932,12 @@ fund {Ξ = Ξ} {σ = σ}
     cr3 (sn-ne (sne-hrefl (sn-nsuc h) sns refl)) refl
   goh (sn-con h) sns kn hp' =
     cr3 (sn-ne (sne-hrefl (sn-con h) sns refl)) refl
+  goh (sn-icon h) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-icon h) sns refl)) refl
+  -- ⚠ ⌜IMu⌝ goes with ⌜Nat⌝, NOT with ⌜Mu⌝: there is no `tr-J-IMu`, so
+  -- the `tr` is permanently neutral and CR3 carries it (§10.4).
+  goh (sn-cIMu h) sns kn hp' =
+    cr3 (sn-ne (sne-hrefl (sn-cIMu h) sns refl)) refl
   goh (sn-cΠ h₁ h₂) sns () hp'
   -- ★ W2b: a ⌜Hom⌝-CODE path — normalize its spine (codeNorm); the
   -- J-able leaf fires tr-J-Hom (endpoint transfer = the SAME heTgt as
