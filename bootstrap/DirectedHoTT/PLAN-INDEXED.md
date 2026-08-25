@@ -397,6 +397,22 @@ why §10 excluded `⌜Hom⌝`. Fording a bound is not available.
 
 ⇒ (a) is the route.
 
+⚠⚠ CORRECTION (2026-08-25, from `Examples/Mutual`): the paragraph below
+says `icw-imu` is "forced by the knot". **That is too strong, and the
+measurement says so.** `Examples/Mutual` encodes two mutually-recursive
+sorts as ONE description over a TAG-EXTENDED index, and every
+cross-reference comes out as `iρ` at another tag — a RECURSIVE field,
+not a nested one. Fold the whole knot into one tagged family and
+`icw-imu` is never reached. See §13.
+
+What `icw-imu` actually buys is **modularity, not possibility**: it lets
+`Fin` stay its OWN description instead of being absorbed into the
+syntax's mutual block (where every `Fin` lemma would become a lemma
+about `Tm`), and it is the only route for genuinely NESTED types whose
+inner family belongs to a different description. That is a real and
+verified gain — it is just not a necessity argument, and the sentence
+below claimed it was.
+
 ⚠ AND IT IS ON THE CRITICAL PATH ANYWAY — which changes what (b)'s
 absence costs. Step 7 (`prog`/`usplit`/`trS`/`ordtrS` through `⊢amrec`)
 needs `RTm` to be a KERNEL TYPE, and `RTm` is not one family but a KNOT:
@@ -422,3 +438,40 @@ not the same thing.
 computed target of its own (`fzero : Fin (suc n)`), so `FinD`'s
 constructors ford their bounds. The technique moves inside the nested
 description, which is where it belongs.
+
+--------------------------------------------------------------------------
+## 13. MUTUAL FAMILIES NEED NO KERNEL CHANGE — ✅ MEASURED 2026-08-25
+
+`Examples/Mutual` encodes
+
+    ι : Ty    arr : Ty → Ty → Ty    c : Tm    ann : Tm → Ty → Tm
+
+as ONE `IDesc` over a TAG-EXTENDED index (`0 = Ty`, `1 = Tm`).
+`depth 1 (ann c ι) ⟶* 2` runs, and its step 13 re-enters the recursor
+at tag `0` from a method reached at tag `1`.
+
+⇒ **`ielim` over a tagged family IS mutual induction.** One motive
+quantified over the tag, one method per constructor of either sort, and
+a cross-sort IH is the recursor at the other tag from the SAME method
+tuple. The kernel never learns the word "mutual".
+
+Two things fall out, both about §5 item 7:
+
+1. **The `RTm` knot is mutuality, not nesting.** Every cross-reference
+   in it (`dκ : RTy ε → DCon → DCon`, `elim : Desc → …`, `⌜IMu⌝ :
+   IDesc → RTy ε → …`) becomes `iρ` at another tag. §12's
+   "forced by the knot" claim is corrected there.
+2. **Cross-sort fields at a FIXED sort are cheaper than `Scoped`'s
+   shift**, not dearer: `renTm vs nzero = nzero`, so none of `Scoped`'s
+   `wk-single` plumbing appears in `Mutual` at all.
+
+⚠ WHAT IS STILL UNMEASURED, and is the next thing to spike. `Mutual`'s
+  index is a bare `Nat` because its sorts carry no context. The real
+  knot's index is a PAIR — a sort tag AND a context depth — and a field
+  like "`RTy` at the same depth, other tag" is then a function of the
+  ambient index. Encoding that pair as arithmetic on one `Nat` would
+  make every Fording constraint an arithmetic identity; taking
+  `I = Σ' Nat Nat` instead makes it `pair ⟨tag⟩ (snd ⟨i⟩)` with no
+  arithmetic at all. **No example anywhere uses a non-`Nat` index type**
+  — every one of them is `INat`. Whether `Σ'` works as an `I` is
+  therefore an open, cheap, and load-bearing question.
