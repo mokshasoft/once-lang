@@ -347,7 +347,12 @@ tyPayApp = ty-Σ (ty-IMu TmWf (⊢var here))
       (⊢lam (ty-Σ ty-Nat (ty-Σ ty-Nat ty-Unit))
         (⊢nsuc (⊢plus (⊢fst (⊢var here)) (⊢fst (⊢snd (⊢var here)))))))
 
-⊢msize : ◇ ⊢ msize ∷ imethsTy TmD INat Nat TmD
+-- ⚠ CONTEXT-GENERIC, and not decoratively so.  `AmTΠ`'s measure premise
+--   is `dm : (Δ ▹ A) ⊢ m ∷ Nat` — the measure is typed UNDER the carrier's
+--   binder, never at `◇`.  Both assembled forms were pinned at `◇` while
+--   every component below was already `{Γ : Ctx}`-generic; generalising
+--   them is a signature change, not a proof.  Use site: `Examples/AmrecIMu`.
+⊢msize : {Γ : Ctx} → Γ ⊢ msize ∷ imethsTy TmD INat Nat TmD
 ⊢msize =
   ⊢pair (ty-Σ (ty-Π (ty-El ⊢⌜Nat⌝)
                     (ty-Π tyPayLam (ty-Π (ty-Σ ty-Nat ty-Unit) ty-Nat)))
@@ -365,7 +370,8 @@ tyPayApp = ty-Σ (ty-IMu TmWf (⊢var here))
                ⊢msize-lam
                (⊢pair ty-Unit ⊢msize-app ⊢unit))
 
-⊢size : {n t : RTm ε} → ◇ ⊢ n ∷ El ⌜Nat⌝ → ◇ ⊢ t ∷ Tm n → ◇ ⊢ size n t ∷ Nat
+⊢size : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} →
+        Γ ⊢ n ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ Tm n → Γ ⊢ size n t ∷ Nat
 ⊢size dn dt = ⊢ielim TmWf ty-Nat dn ⊢msize dt
 
 ------------------------------------------------------------------------
