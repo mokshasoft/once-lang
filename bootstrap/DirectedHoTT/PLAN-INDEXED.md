@@ -112,7 +112,12 @@ back into `LogicalRelation` to change what a `κ` field's type is.
    ⚠ This is the row `Vec` has NO analogue of: a recursive field at a
    FUNCTION OF THE AMBIENT INDEX, which is §1's whole reason for
    indexing a syntax.  `size 0 (λx.x) ⟶* 2` runs it.
-   ⚠⚠ `var` carries a BARE `Nat`, not a `Fin n` — see §12.
+   ⚠ `var` carries a `Fin n` as of §12 — the syntax is scope-SAFE, not
+   merely scope-indexed.
+6.5 ✅ **`icw-imu` — nested indexed families as κ fields** (§12).
+   `Fin` as its own Forded `IDesc`, `var : Fin n → Tm n`.  ★ Taken
+   BEFORE 7 deliberately: it is the first step of 7 that is forced
+   rather than optional (see §12's knot argument), not a detour.
 7. ⬜ dogfooding proper: `prog`/`usplit`/`trS`/`ordtrS` through `⊢amrec`
 
 --------------------------------------------------------------------------
@@ -340,9 +345,32 @@ warning — "CONFIRM each default rather than inherit it" — is what turned
 an unprovable goal into a one-line row.
 
 --------------------------------------------------------------------------
-## 12. THE SCOPE-SAFETY GAP `Examples/Scoped` LEAVES OPEN
+## 12. NESTED INDEXED FAMILIES — ✅ CLOSED 2026-08-25
 
-`Scoped`'s `var` carries a bare `Nat`. Making it a `Fin n` — so the
+**What landed.** `ICodeWf` gained a third row and `Examples/Scoped`'s
+`var` now carries a `Fin n`:
+
+    icw-imu : {Θ : Cx} {D' : IDesc} {I' : RTy ε} (i : RTm Θ) →
+              IDescWf I' D' → ICodeWf (⌜IMu⌝ D' I' i)
+
+    varC = iκ (⌜IMu⌝ FinD INat (var vz)) iι
+
+The model row is one line — `iκW (icw-imu i w) x₀ σ = ⊩₀IMu (stepᵀ
+El-⌜IMu⌝ doneᵀ) (interpID w x₀)` — for the reason predicted below: the
+`IDInterp` does not mention the index, so `subTm σ` cannot disturb it.
+No metatheory module needed anything else; `iκW` was the sole consumer.
+
+⚠ ONE THING THE DESIGN FORCED that the sketch below did not anticipate:
+the `IDescWf` must be **carried**, even though `iwf-κ`'s own `Θ ⊢ κ ∷ U`
+premise already implies it (`gen-⌜IMu⌝` recovers it). Not redundancy for
+its own sake — `interpIK` RECURSES on that argument, and a witness
+produced by an inversion lemma is not a structural subterm of anything,
+so `fund`'s termination check rejects the recovering version. Same shape
+as `icw-clo` carrying the derivation `elW` consumes.
+
+The original analysis, kept because the reasoning is what to reuse:
+
+`Scoped`'s `var` carried a bare `Nat`. Making it a `Fin n` — so the
 syntax is scope-SAFE and not merely scope-INDEXED — needs the variable's
 field to be one of:
 
@@ -358,6 +386,8 @@ looks like it works, carrying the nested `IDescWf` so `interpIK` can
 build the interpretation. ★ This is the natural next increment, and it
 is what "nested datatypes" costs generally — the non-indexed kernel has
 the same hole (`dκ (Mu D')` is not well-formed either).
+✅ It did work, unchanged. The non-indexed kernel's `dκ (Mu D')` hole is
+still open — nothing here closes it, and nothing here needs it.
 
 **(b) an ORDER constraint** `⌜Hom⌝ ⌜Nat⌝ ⟨i⟩ ⟨n⟩`. ⛔ `ICodeWf` cannot
 admit this, and the reason is not incidental: `⊩₀Hom` demands the `Hom`
