@@ -140,15 +140,40 @@ fail += miss
 # ── 3. catch-all reliance (report only) ────────────────────────────────────
 CATCHALL = [('spine?', lr), ('stablecd?', lr), ('stableA?', lr),
             ('trlam?', lr), ('homheaded?', lr), ('pw?', var), ('stkC?', var)]
+
+def catchall_rhs(name, src):
+    """The RHS of the classifier's catch-all clause — the row whose whole
+    pattern is a single lower-case identifier (`stkC? _`, `stableA? t`).
+    ⚠ A CONSTANT rhs (`false`) is a silent DECISION; a DELEGATING one
+    (`stableA? t = stablecd? t`) forwards the question and decides
+    nothing, so listing its formers is pure noise — that row alone used
+    to name 28 of the 30 formers and made the whole check unreadable."""
+    for pat, rhs in re.findall(r'^' + re.escape(name) + r'\s+([^=\n]+?)\s*=\s*(.+)$',
+                               src, re.M):
+        if re.fullmatch(r"[A-Za-z_][\w']*", pat.strip()):
+            return rhs.strip()
+    return None
+
 print("\n== 3. formers taking a classifier's CATCH-ALL (review, not a failure) ==")
 for name, src in CATCHALL:
+    rhs = catchall_rhs(name, src)
     rows = re.findall(r'^' + re.escape(name) + r'\s+(.+?)=', src, re.M)
     explicit = {c for c in rtm if any(tok(c, r) for r in rows)}
     silent = [c for c in rtm if c not in explicit]
-    if silent:
-        print(f"  {name:<11} default for: {' '.join(silent)}")
-print("  ⚠ a catch-all is often correct — but it is SILENT.  When adding a")
-print("    former, CONFIRM each default above rather than inherit it.")
+    if not silent:
+        continue
+    if rhs is None:
+        print(f"  {name:<11} ? no catch-all found — check by hand")
+    elif rhs in ('true', 'false'):
+        print(f"  {name:<11} SILENT `{rhs}` for: {' '.join(silent)}")
+    else:
+        print(f"  {name:<11} delegates to `{rhs}` (decides nothing) — "
+              f"{len(silent)} former(s), not listed")
+print("  ⚠ a SILENT constant is a DECISION nobody wrote down.  When adding a")
+print("    former, CONFIRM each `SILENT` row above rather than inherit it.")
+print("    Measured 2026-08-24: `⌜IMu⌝` inherited `false` from `stkC?`,")
+print("    `stkA?` AND `stablecd?` at once, and the consequence was not an")
+print("    unprovable goal — PROGRESS WAS FALSE until `tr-J-IMu` landed.")
 
 # ── 4. VACUOUS DISCHARGE — metatheorems that are TRUE but say NOTHING ──────
 #

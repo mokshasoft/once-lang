@@ -29,7 +29,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Vec where
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import normalizer.Syntax.Types using ( _≡_; refl; ⊥ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
@@ -40,13 +40,15 @@ open import DirectedHoTT.Spec.Syntax
         ; ilookupD; _∈ID_; hereID; thereID
         ; ipayTy; isingle; iext; ifields; sel
         ; renTy; renTm; subTy; subTm )
+open import DirectedHoTT.Metatheory.Canonicity
+  using ( idEndpoints; zero≇suc )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; _∋_∷_; here; there
         ; _⟶_; _⟶*_; done; step
         ; β; βfst; βsnd; ξ-appˡ; ξ-fst; ξ-snd; ξ-nsuc
         ; ξ-ielimⁱ; ξ-ielimᵗ
-        ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ
+        ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ; _≅_
         ; _⟶ᵀ_; El-⌜Nat⌝; El-⌜Id⌝
         ; ι-ielim
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢conv
@@ -356,3 +358,28 @@ vlen-cons =
   (step (ξ-nsuc (ξ-ielimᵗ (ξ-fst (βsnd nzero cP3))))
   (step (ξ-nsuc (ξ-ielimᵗ (βfst vnil cP4)))
     (nsucStar vlen-nil)))))))))))
+
+------------------------------------------------------------------------
+-- 6. ★★★ WHAT FORDING BUYS — `⊢icon`'s note, at this description.
+--
+-- `nil` and `cons` are BOTH available at EVERY index — that is what `iι`
+-- means, and it is why `IMuMem` is uniform in the index (PLAN-INDEXED
+-- §2).  What rules the bad ones out is the CONSTRAINT FIELD, and here is
+-- that claim as a THEOREM rather than a comment: there is no closed
+-- `cons` payload at index `zero`.
+--
+-- The mechanism is `Canonicity.idEndpoints` — a closed proof of `Id`
+-- forces its endpoints CONVERTIBLE.  A `cons` payload's last component
+-- inhabits `El (⌜Id⌝ ⌜Nat⌝ zero (suc m))`, which decodes to
+-- `Id (El ⌜Nat⌝) zero (suc m)`; `idEndpoints` turns it into
+-- `zero ≅ suc m`, and `zero≇suc` closes it.
+------------------------------------------------------------------------
+
+-- ★★★ NO `cons` PAYLOAD LIVES AT INDEX ZERO.
+no-cons-at-zero :
+  {m a xs : RTm ε} →
+  ◇ ⊢ pair m (pair a (pair xs (pair (idrefl ⌜Nat⌝ (nsuc m)) unit)))
+        ∷ ipayTy VecD INat (isingle nzero) (ilookupD VecD (suc zero)) → ⊥
+no-cons-at-zero dp =
+  zero≇suc (idEndpoints
+    (⊢conv (⊢fst (⊢snd (⊢snd (⊢snd dp)))) (credᵀ (El-⌜Id⌝ _ _ _))))

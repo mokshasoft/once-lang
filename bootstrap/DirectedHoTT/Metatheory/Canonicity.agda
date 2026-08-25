@@ -62,6 +62,7 @@ open import DirectedHoTT.Spec.Typing
         ; Hom-U; Hom-Π; ξ-Homᵀ; ξ-Homˡ; ξ-Homʳ
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
         ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ
+        ; _≅_; crfl; csym; ctrn; cred
         ; Ctx; ◇; _▹_; ⌊_⌋; _∋_∷_; here
         ; _⊢_∷_; ⊢conv; ⊢⌜base⌝; ⊢unit; ⊢nzero; ⊢⌜Nat⌝; ⊢⌜Unit⌝; ⊢⌜Mu⌝
         ; natrec-zero; natrec-suc; ξ-natrecⁿ
@@ -85,12 +86,13 @@ open import DirectedHoTT.Metatheory.SubjectReduction
         ; NoNat; nn-base; nn-U; nn-Unit; nn-El; nn-Π; nn-Σ; nn-Hom; nn-Id
         ; Hom-to-Hom; hom-to-Π; homAmb→
         ; ≅ᵀ-Homᵀ; ⊢[]; sr*; ⊢wk; nonathd-red
-        ; nn-El
         ; gen-con; gen-elim
         ; gen-icon; gen-ielim; gen-⌜IMu⌝ )
 open import DirectedHoTT.Metatheory.LogicalRelation
   using ( base-nf; U-nf; Unit-nf; Nat-nf; Mu-nf; IsNormal; WN; mkWN )
 open import DirectedHoTT.Metatheory.Fundamental using ( wnorm )
+open import DirectedHoTT.Metatheory.Confluence using ( church-rosser )
+open import DirectedHoTT.Algorithm.DecideConversion using ( red→≅ )
 
 ------------------------------------------------------------------------
 -- 0. Small facts: no closed variables; `El` never reaches `U`.
@@ -1989,3 +1991,91 @@ consistency d with wnorm c-◇ d
 ... | mkWN nfm rd nrm snf with progress (sr* d rd)
 ...   | prog-step r = nrm r
 ...   | prog-can cn = canBase⊥ (sr* d rd) cn
+
+------------------------------------------------------------------------
+-- ★★★ 9. WHAT FORDING ACTUALLY BUYS — `Typing.agda`'s ⊢icon note, PROVED.
+--
+-- ⚠⚠ THE NOTE THIS DISCHARGES.  `⊢icon` carried a comment claiming that
+--   the FORDING constraint field excludes the bad constructors.  That was
+--   an invariant nothing checked, and the `⊢con` premise one rule up is
+--   the cautionary tale: stated as a comment it was FALSE, and only gate
+--   5 caught it.  So the mechanism is stated and proved here instead.
+--
+-- ★ THE MECHANISM, in one theorem: a CLOSED proof of `Id` forces its
+--   endpoints CONVERTIBLE.  A Fording field has type `El (⌜Id⌝ c a b)`,
+--   which decodes to `Id (El c) a b`, so a constructor at the wrong
+--   index would need a closed inhabitant there — and `idEndpoints` says
+--   that inhabitant makes the index and the constructor's own target
+--   convertible.  Instantiated at distinct numerals (`zero≇suc`) the
+--   constructor is uninhabitable.  `Examples/Vec` runs it.
+--
+-- ⚠ NOT a soundness patch and not a restriction: nothing here changes
+--   the rules.  It is the SEMANTIC CONTENT of §3's Fording decision,
+--   which until now lived only in a comment.
+------------------------------------------------------------------------
+
+-- `nzero` is a value: no rule fires on it, so it is its own only reduct.
+zeroNF : {C : RTm ε} → nzero ⟶* C → C ≡ nzero
+zeroNF done       = refl
+zeroNF (step () _)
+
+-- `nsuc` is INERT: only `ξ-nsuc` applies, so the head survives.
+sucRed : {n : RTm ε} {C : RTm ε} → nsuc n ⟶* C →
+         Σ (RTm ε) (λ n' → C ≡ nsuc n')
+sucRed done               = _ , refl
+sucRed (step (ξ-nsuc r) q) = sucRed q
+
+-- ★ distinct numerals are not convertible.  The one fact the Fording
+--   constraint is FOR.
+zero≇suc : {n : RTm ε} → nzero ≅ nsuc n → ⊥
+zero≇suc cv with church-rosser cv
+... | w , (rz , rs) with zeroNF rz
+...   | refl with sucRed rs
+...     | _ , ()
+
+-- ★★ a CLOSED canonical inhabitant of `Id` pins its endpoints together.
+--   Every non-`idrefl` shape is refuted by the clash toolkit — the same
+--   enumeration `elimS`/`pathCanon` walk, at `Id` instead of `Mu`/`Hom`.
+canIdEnds : {A : RTy ε} {a b q : RTm ε} → ◇ ⊢ q ∷ Id A a b → Canon q → a ≅ b
+canIdEnds d (can-idrefl c s) with gen-idrefl d
+... | _ , (_ , cv) with church-rosserᵀ cv
+...   | E , (rL , rR) with Id-reduct rL
+...     | A₁ , (a₁ , (b₁ , (refl , (_ , (ra , rb))))) with Id-reduct rR
+...       | A₂ , (s₁ , (s₂ , (refl , (_ , (rs₁ , rs₂))))) =
+            ctrn (red→≅ ra)
+              (ctrn (csym (red→≅ rs₁))
+                (ctrn (red→≅ rs₂) (csym (red→≅ rb))))
+canIdEnds d (can-lam f) with gen-lam d
+... | _ , (_ , (cv , _)) = ⊥-elim (IdΠ-clash cv)
+canIdEnds d (can-pair a b) with gen-pair d
+... | _ , (_ , (cv , _)) = ⊥-elim (IdΣ-clash cv)
+canIdEnds d can-cb    = ⊥-elim (IdU-clash (gen-⌜base⌝ d))
+canIdEnds d can-cNat  = ⊥-elim (IdU-clash (gen-⌜Nat⌝ d))
+canIdEnds d can-cUnit = ⊥-elim (IdU-clash (gen-⌜Unit⌝ d))
+canIdEnds d (can-cMu _)     = ⊥-elim (IdU-clash (gen-⌜Mu⌝ d))
+canIdEnds d (can-cIMu _ _ _) = ⊥-elim (IdU-clash (gen⌜IMu⌝U d))
+canIdEnds d (can-cΠ x y) with gen-⌜Π⌝ d
+... | _ , (_ , cv) = ⊥-elim (IdU-clash cv)
+canIdEnds d (can-cΣ x y) with gen-⌜Σ⌝ d
+... | _ , (_ , cv) = ⊥-elim (IdU-clash cv)
+canIdEnds d (can-cH x y z) with gen-⌜Hom⌝ d
+... | _ , (_ , (_ , cv)) = ⊥-elim (IdU-clash cv)
+canIdEnds d (can-cId x y z) with gen-⌜Id⌝ d
+... | _ , (_ , (_ , cv)) = ⊥-elim (IdU-clash cv)
+canIdEnds d (can-hrefl c s) with gen-hrefl d
+... | _ , (_ , cv) = ⊥-elim (IdHom-clash cv)
+canIdEnds d can-unit  = ⊥-elim (IdUnit-clash (gen-unit d))
+canIdEnds d can-nzero = ⊥-elim (IdNat-clash (gen-nzero d))
+canIdEnds d (can-nsuc n) with gen-nsuc d
+... | _ , cv = ⊥-elim (IdNat-clash cv)
+canIdEnds d (can-con k p) with gen-con d
+... | _ , (_ , (_ , (_ , cv))) = ⊥-elim (IdMu-clash cv)
+canIdEnds d (can-icon k p) with gen-iconT d
+... | _ , (_ , (_ , cv)) = ⊥-elim (IdIMu-clash cv)
+
+-- ★★★ THE THEOREM.  A closed proof of `Id A a b` forces `a ≅ b`.
+idEndpoints : {A : RTy ε} {a b q : RTm ε} → ◇ ⊢ q ∷ Id A a b → a ≅ b
+idEndpoints d with wnorm c-◇ d
+... | mkWN n r nrm _ with progress (sr* d r)
+...   | prog-step s  = ⊥-elim (nrm s)
+...   | prog-can cn  = canIdEnds (sr* d r) cn
