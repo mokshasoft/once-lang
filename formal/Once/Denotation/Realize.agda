@@ -57,7 +57,6 @@ open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar�
   add; sub; mul; div; mod'; lt; le; gt; ge; eq; ne; sigOp; poly;
   lift-morphism; morph-app; arr')
 open import Once.Surface.Elaborate using (intLit; floatLit; elaborate)
-open import Once.Float.Representable using (fits-all)
 open import Once.Arith.SigOp.Builders using (value-info)
 open import Once.CanonicalName using (bare)
 open import Once.Surface.Syntax using (_+ᵘ_; _*ᵘ_)

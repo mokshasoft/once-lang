@@ -66,13 +66,6 @@ data TypeError : Set where
   -- type nor a first-order function pointer) cannot cross the register ABI.
   NonConcreteSigOpType    : (name : String) (T : Type) → TypeError
 
-  -- PLAN 0.71 F4 / D112: a float literal that is not EXACTLY representable at
-  -- the target's format. `0.5`, `1.5`, `2.25` are accepted; `0.1` and `3.14`
-  -- are not, and are rejected rather than rounded — because `Float`'s width is
-  -- a target property, so a rounded literal would denote a different number on
-  -- different machines. Carries the decimal as written (int part, fraction
-  -- digits, fraction length) so the message can quote it back.
-  FloatNotRepresentable    : (int frac flen : ℕ) → TypeError
 
   -- PLAN 0.71/0.72, in flight: the lexer and parser accept a float literal and
   -- the IR carrier is ready for one, but the ELABORATOR has no rule yet — that
@@ -148,13 +141,6 @@ renderError (NonConcreteSigOpType name T) =
 renderError FloatLiteralUnsupported =
   "Float literals are not supported yet (the lexer and parser accept them; the"
     ++ " elaborator's rule lands with plan 0.71 F3b)"
-renderError (FloatNotRepresentable int frac flen) =
-  "Float literal is not exactly representable: " ++ showNatE int ++ "." ++ showNatE frac
-    ++ " (" ++ showNatE flen ++ " fraction digits)"
-    ++ " (Once accepts only literals exact at every target's float format — `Float`'s"
-    ++ " width is a target property, so a rounded literal would denote a different"
-    ++ " number on different machines. `0.5`, `1.5`, `2.25` are exact; `0.1` is not."
-    ++ " Non-exact constants come from `pi`, `parseFloat` or arithmetic.)"
 renderError LambdaInInferMode =
   "Lambda without type annotation not supported in inference mode."
 renderError LambdaRequiresFunctionType =

@@ -484,15 +484,12 @@ import Once.Target.RiscV64 as RiscV64-Target
 -- | Supported architectures — the single shared enum (re-exported so
 -- existing `C.Arch` references downstream are unchanged).
 open import Once.Target.Arch public
-open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?; firstBadLit; outOfRange)
--- Plan 0.74 J6 step 2: the literals the MACHINE materialises, as opposed to
--- the ones the programmer wrote. Two lists, two gates, and the obligation
--- that they agree is what the elaborator now owes.
-open import Once.IRLits using (irIntLits)
-import Once.Word as OnceWord
-open import Data.List.Relation.Unary.All using (All; all?)
--- `_++_` in this file is String concatenation; the list one needs a name.
-import Data.List as DL
+open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?; firstBadLit)
+-- Plan 0.74 K4: the rounding-warning channel. Re-exported here — not threaded
+-- through `compile` — because warnings do not change what is compiled, and
+-- keeping them a separate OBSERVATION is what stops them leaking into
+-- `correct`. This re-export is also what puts them on the extraction path.
+open import Once.Warnings using (Warning; roundingWarnings; renderWarning; warningsFor) public
 open import Data.Nat.Show renaming (show to showNat)
 open import Data.Integer using (ℤ)
 open import Data.Nat using (_∸_)
@@ -737,98 +734,32 @@ litRangeError arch mod = badLit (firstBadLit arch mod)
         ++ "wraps; a literal does not."
     badLit nothing = "Int literal out of range for " ++ archName arch
 
-------------------------------------------------------------------------
--- THE SECOND GATE — over the literals the MACHINE materialises
--- (plan 0.74 J6 step 2, D115).
+-- PLAN 0.74 J6: THE IR GATE WAS SCAFFOLDING, AND IT IS GONE.
 --
--- `AdmissibleM` is the SPEC's predicate and it reads the SOURCE: which
--- literals the programmer wrote. This one reads the compiled IR: which
--- literals will actually be loaded into a register. Until now only the first
--- existed, and the backend dispatched on it — so "the backend agrees with the
--- spec" held by SHARING A TRAVERSAL, which `Once.Denotation.Admissible`
--- explicitly says is not good enough:
+-- A second gate over the literals the MACHINE materialises (`Once.IRLits`,
+-- `AdmissibleIR`, `cfm-build-lits`) lived here briefly. Its job was
+-- DIAGNOSTIC: making "elaboration preserves the programmer's literals"
+-- load-bearing turned a silent defect into a red tree, and that is what forced
+-- the elaborator fold (`-5` is ONE literal) and dragged J5's `Word64` bakes
+-- out of hiding. Both landed; what it was built to detect is fixed.
 --
---     "The backend walks the IR instead, and that the two agree is a PROOF
---      obligation (plan 0.74 J4), not something faked by sharing a traversal."
+-- DELETED rather than left unwired, because an unwired gate is dead code that
+-- hides a gap instead of surfacing it. Keeping it WIRED was the other option
+-- and costs more than it buys: `ElabPreservesLits` would become a PREMISE on
+-- `correct` itself, and that premise is a global induction over the
+-- elaborator — a real open theorem, not a formality.
 --
--- Now it does walk the IR. The two gates are deliberately BOTH present:
---
---   * the SOURCE gate keeps soundness exactly as J4 proved it — an accepted
---     program's source literals are in range, unchanged;
---   * the IR gate is what makes COMPLETENESS honest. "A program whose
---     literals the target can express compiles" is no longer true by
---     construction; it now requires that elaboration preserve the literals,
---     which is a real fact about the elaborator and is currently FALSE.
---
--- The false case is exactly the known defect: `-2147483648` is
--- `RUnaryOp OpNeg (RInt 2147483648)`, so the source list holds -2147483648
--- (in range at 32 bits) and this list holds 2147483648 (out of range). The
--- red therefore lands on the elaborator, which is where the bug is, rather
--- than on a gate that is reporting correctly.
-------------------------------------------------------------------------
-
-compiledIntLits : List CompiledFun → List ℤ
-compiledIntLits []         = []
-compiledIntLits (cf ∷ cfs) = irIntLits (CompiledFun.cfIR cf) DL.++ compiledIntLits cfs
-
--- | Every literal this target will LOAD fits its signed range.
-AdmissibleIR : Arch → List CompiledFun → Set
-AdmissibleIR arch cfs =
-  All (OnceWord.Width.InRange (arch-int-bits arch)) (compiledIntLits cfs)
-
-admissibleIR? : ∀ arch cfs → Dec (AdmissibleIR arch cfs)
-admissibleIR? arch cfs =
-  all? (OnceWord.Width.inRange? (arch-int-bits arch)) (compiledIntLits cfs)
-
--- | UNWIRED (plan 0.74 J6, 2026-08-24) — kept, not deleted.
---
--- `cfm-build-lits` / `cfm-build-caf` below are no longer on the compile path.
--- They were SCAFFOLDING: gating on the IR made "elaboration preserves the
--- programmer's literals" load-bearing, which turned a silent defect into a red
--- tree and forced the elaborator fold (J6 step 3) and the width threading
--- (J5). Both have landed, so the difference the gate existed to detect is
--- gone.
---
--- Keeping the refusal wired would cost `ElabPreservesLits` as a PREMISE on
--- `correct` — the flagship theorem — and that premise is a global induction
--- over the elaborator. That is a bad trade for a check that, post-fold, can
--- only fire on a compiler bug. The invariant it stands for is recorded as a
--- residual instead:
+-- THE INVARIANT IT STOOD FOR, recorded so it is not rediscovered:
 --
 --     compiledIntLits (compile of m)  ⊆  moduleIntLits m
 --
--- and it is nearly local, because `Surface.Elaborate.intLit` is the ONLY
--- producer of an IR `Int` literal (three call sites, each already holding a
--- source literal). Proving it re-wires this gate at zero cost to `correct`.
---
--- | Same message, blaming the literal the MACHINE would have loaded. When the
--- two gates disagree that difference is the whole diagnosis, so the message
--- says which list it came from.
-litRangeErrorIR : Arch → List CompiledFun → String
-litRangeErrorIR arch cfs = badLit (outOfRange (arch-int-bits arch) (compiledIntLits cfs))
-  where
-    bits = arch-int-bits arch
-    badLit : Maybe ℤ → String
-    badLit (just z) =
-      "Int literal " ++ showℤ z ++ " does not fit " ++ archName arch
-        ++ "'s signed " ++ showNat bits ++ "-bit range (-2^"
-        ++ showNat (bits ∸ 1) ++ " .. 2^" ++ showNat (bits ∸ 1) ++ "-1). "
-        ++ "This is the value the compiled code would LOAD; if it differs "
-        ++ "from anything in the source, elaboration did not preserve the "
-        ++ "literal, which is a compiler bug and not a program error."
-    badLit nothing = "Int literal out of range for " ++ archName arch
+-- and it is nearly local: `Surface.Elaborate.intLit` is the ONLY producer of
+-- an IR `Int` literal — three call sites, each already holding a source
+-- literal — so whoever proves it has a bounded job, and proving it re-wires
+-- the gate at zero cost to `correct`. See D117.
 
 -- Explicit-argument aux (no `with`), matching this file's convention, so the
 -- decision stays a subterm downstream proofs can rewrite by.
-cfm-build-lits : (arch : Arch) → (cfs : List CompiledFun)
-               → Dec (AdmissibleIR arch cfs) → CompileResult
-cfm-build-lits arch cfs (no  _) = Error (litRangeErrorIR arch cfs)
-cfm-build-lits arch cfs (yes _) = cfm-build-emit arch (inj₂ cfs)
-
-cfm-build-caf : (arch : Arch) → String ⊎ List CompiledFun → CompileResult
-cfm-build-caf arch (inj₁ err)  = Error err
-cfm-build-caf arch (inj₂ cfs)  = cfm-build-lits arch cfs (admissibleIR? arch cfs)
-
 cfm-build-gated : AllocMode → Bool → (arch : Arch) → (mod : Module)
                 → List FunInfo → List PolyFunInfo
                 → Dec (AdmissibleM arch mod) → CompileResult

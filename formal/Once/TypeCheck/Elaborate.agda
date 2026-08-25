@@ -55,7 +55,7 @@ open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits 
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Error using (TypeError; renderError;
-  LambdaInInferMode; LambdaRequiresFunctionType; FloatNotRepresentable;
+  LambdaInInferMode; LambdaRequiresFunctionType;
   InlInInferMode; InrInInferMode; InitialInInferMode;
   InlNeedsSumType; InrNeedsSumType;
   FstNeedsPair; SndNeedsPair; ArrNeedsFunction; NegationNotInt;

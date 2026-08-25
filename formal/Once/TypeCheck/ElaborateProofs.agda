@@ -30,7 +30,6 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; proj₂)
 open import Once.Float.Dyadic using (Dyadic)
-open import Once.Float.Representable using (Accepted; accept?-complete)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; cong₂; sym; trans)
 open import Once.Type
 open Once.Type using (showQuantity; showType) public

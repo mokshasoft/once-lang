@@ -299,3 +299,46 @@ private
                              (-[1+ 3 ] /Q (10 ^ 1 * 2 ^ 22))
                              (-[1+ 3 ] /Q (10 ^ 1 * 2 ^ 0)))
   _ = refl
+
+------------------------------------------------------------------------
+-- RENDERING
+--
+-- The message is a PROJECTION of the numbers above, written here so the
+-- numbers stay the thing that is checked. `TypeError`'s `renderError` works
+-- the same way and for the same reason.
+--
+-- The absolute error is shown as an EXACT FRACTION. A decimal rendering wants
+-- scientific notation (`-9.5e-08`), which is real formatting work and not
+-- worth faking with a truncation — the fraction is exact and the ulps figure
+-- is the one a reader compares at a glance.
+------------------------------------------------------------------------
+
+showQ : ExactQ → String
+showQ q = showℤ (num q) <> "/" <> showNat (den q)
+
+showLit : ℕ → ℕ → ℕ → String
+showLit i f l = showNat i <> "." <> showNat f <> " (" <> showNat l <> " frac digits)"
+
+renderWarning : Warning → String
+renderWarning (FloatRounded i f l at stored absErr ulps) =
+  "warning: float literal " <> showLit i f l <> " at offset " <> showNat at
+    <> " is not exact at this target; stored as 0x-pattern " <> showNat stored
+    <> ", absolute error " <> showQ absErr
+    <> ", " <> showQ ulps <> " ulp"
+renderWarning (FloatOverflow i f l at) =
+  "warning: float literal " <> showLit i f l <> " at offset " <> showNat at
+    <> " is too large for this target's format; stored as infinity"
+renderWarning (FloatUnderflow i f l at) =
+  "warning: float literal " <> showLit i f l <> " at offset " <> showNat at
+    <> " is too small for this target's format; stored as zero"
+    <> " (Once models no subnormals)"
+
+-- | The compiler's entry point: every rounding warning this module has for
+-- this target, rendered. `Once.Compile` re-exports it and the CLI prints it,
+-- which is what keeps this module ON the apex path rather than beside it.
+warningsFor : Arch → Module → List String
+warningsFor arch m = go (roundingWarnings arch m)
+  where
+    go : List Warning → List String
+    go []       = []
+    go (w ∷ ws) = renderWarning w ∷ go ws
