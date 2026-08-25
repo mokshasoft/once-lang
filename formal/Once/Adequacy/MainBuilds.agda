@@ -163,23 +163,6 @@ crm-doOpt doOpt m eq =
 -- which is exactly the point: an inadmissible module must NOT build.
 --
 -- Dispatching on the DECISION (explicit argument, no `with`) keeps the gate a
--- subterm, so this reduces for a caller who has already decided.
--- Plan 0.74 J6 step 2: there are now TWO gates, so there are two premises.
--- `AdmissibleM` is about the literals the SOURCE wrote; `AdmissibleIR` is
--- about the ones the compiled code will LOAD. The second is the one that
--- cannot currently be supplied — see `main⇒built` below.
-built-lits : ∀ (arch : Arch) (c : List C.CompiledFun)
-             (d : Dec (C.AdmissibleIR arch c)) → C.AdmissibleIR arch c
-           → Σ-syntax String (λ asm → C.cfm-build-lits arch c d ≡ C.Built asm)
-built-lits arch c (yes _)  admIR = _ , refl
-built-lits arch c (no ¬p)  admIR = ⊥-elim (¬p admIR)
-
-built-caf : ∀ (arch : Arch) {c : List C.CompiledFun} → C.AdmissibleIR arch c
-          → (r : String ⊎ List C.CompiledFun) → r ≡ inj₂ c
-          → Σ-syntax String (λ asm → C.cfm-build-caf arch r ≡ C.Built asm)
-built-caf arch {c} admIR .(inj₂ c) refl =
-  built-lits arch c (C.admissibleIR? arch c) admIR
-
 cfm-built-gated : ∀ (doOpt : Bool) (arch : Arch) (m : P.Module)
   (funs : List C.FunInfo) (polys : List C.PolyFunInfo)
   (d : Dec (AdmissibleM arch m)) → AdmissibleM arch m →
@@ -228,29 +211,10 @@ moduleToIR-inj₂ m eq = mtir-aux-inj₂ (C.compileResolvedModule C.Heap false m
 -- statement becoming true, since without it the theorem now has a
 -- counterexample (a module whose `main` compiles but whose literal is too wide
 -- for this target).
--- PLAN 0.74 J6 STEP 2 — THE SECOND PREMISE, and it is the interesting one.
---
--- `AdmissibleM arch m` says the target can express the literals the PROGRAMMER
--- WROTE. `ElabPreservesLits` says elaboration hands the machine those same
--- literals. Both are needed, and only the first used to be, because the build
--- gate read the source list twice instead of reading the IR once.
---
--- The second is currently FALSE, and that is the finding rather than a defect
--- in this lemma. `-2147483648` parses as `RUnaryOp OpNeg (RInt 2147483648)`,
--- nothing folds the sign, so the source list holds `-2147483648` (in range at
--- 32 bits) while the compiled code loads `2147483648` (out of range). The
--- premise is therefore UNDISCHARGEABLE for x86-32 until the elaborator folds a
--- minus on a numeral into the numeral, which is plan 0.74 J6 step 3.
---
--- It is stated as a PREMISE rather than postulated because postulating it
--- would be postulating a false proposition — the counterexample above is
--- explicit — and that makes the whole development inconsistent.
-ElabPreservesLits : Arch → P.Module → Bool → Set
-ElabPreservesLits arch m doOpt =
-  ∀ {c : List C.CompiledFun}
-  → C.compileResolvedModule C.Heap doOpt m ≡ inj₂ c
-  → C.AdmissibleIR arch c
-
+-- D121: a second premise (`ElabPreservesLits`, over the COMPILED literals)
+-- lived here while the IR gate did. Both are gone — the gate was a detector,
+-- it detected, and the defect it found is fixed. The invariant it stood for is
+-- recorded at the gate's old site in `Once.Compile`.
 main⇒built : ∀ (arch : Arch) (doOpt : Bool) (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
   AdmissibleM arch m →
   moduleToIR m ≡ just ir →
