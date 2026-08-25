@@ -365,6 +365,30 @@ be STUCK, and `Hom Nat a b` **computes** (the order rules). At an
 arbitrary environment it is not reduction-determined, which is precisely
 why §10 excluded `⌜Hom⌝`. Fording a bound is not available.
 
-⇒ (a) is the route. Note it also subsumes the `Vec`-of-`A` question:
-`open/parameterised descriptions` (`PLAN-INDUCTIVE` §7) want the same
-machinery.
+⇒ (a) is the route.
+
+⚠ AND IT IS ON THE CRITICAL PATH ANYWAY — which changes what (b)'s
+absence costs. Step 7 (`prog`/`usplit`/`trS`/`ordtrS` through `⊢amrec`)
+needs `RTm` to be a KERNEL TYPE, and `RTm` is not one family but a KNOT:
+
+    RTm ↔ RTy ↔ Desc ↔ DCon      (`dκ : RTy ε → DCon → DCon`,
+    IDesc ↔ ICon ↔ RTm            `elim : Desc → …`,
+    Var                           `⌜IMu⌝ : IDesc → RTy ε → RTm Γ → RTm Γ`)
+
+Every one of those cross-references is a field whose TYPE is another
+inductive family. **Fording cannot express that** — it converts a
+computed INDEX into an equality CONSTRAINT; it does not make a field's
+TYPE a family. So `icw-imu` is forced by the knot, not merely convenient
+for `Fin`, and once it exists `Var` is just another nested description.
+
+⚠ CORRECTION (2026-08-25): an earlier draft of this section said (a)
+"subsumes" open/parameterised descriptions (`List A` for a variable `A`,
+`PLAN-INDUCTIVE` §7). It does not. `icw-imu` gives NESTED CLOSED
+descriptions; a parameterised one is a description that mentions a
+parameter, which is a separate deferred item. The two are neighbours,
+not the same thing.
+
+⚠ Fording does not disappear under (a) — it RELOCATES. `Fin` has a
+computed target of its own (`fzero : Fin (suc n)`), so `FinD`'s
+constructors ford their bounds. The technique moves inside the nested
+description, which is where it belongs.
