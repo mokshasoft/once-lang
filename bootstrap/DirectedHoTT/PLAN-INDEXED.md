@@ -99,13 +99,20 @@ back into `LogicalRelation` to change what a `κ` field's type is.
 
 1. ✅ `Spec/Syntax` — `ICon`/`IDesc`, `IMu`/`icon`/`ielim`, substitution
    laws, `ipayTy`, `iihs`, `ifields`, `ilookupD`, `_∈ID_`
-2. ⬜ **generalise `iκ` to `RTm ε`** (this document's decision)
-3. ⬜ `Spec/Typing` — `ty-IMu`, `⊢⌜IMu⌝`, `⊢icon`, `⊢ielim`, `ι-ielim`,
-   `El-⌜IMu⌝`, ξ-congruences, `IDescWf`, `imethTy`/`imethsTy`
-4. ⬜ the nine metatheory modules
-5. ⬜ **first use-site: `RTm`'s own shape** — `SpikeIDescSigma` Q17 already
-   picked it: `var` as `iκ`, `lam` as `iρ suc`, `app` as two `iρ id`
-6. ⬜ **`Vec` as Fording sugar** — an Example, not a kernel change
+2. ✅ **generalise `iκ`** — and further than planned: §9.2 put it in the
+   FIELD TELESCOPE, not `ε`
+3. ✅ `Spec/Typing` — `ty-IMu`, `⊢⌜IMu⌝`, `⊢icon`, `⊢ielim`, `ι-ielim`,
+   `El-⌜IMu⌝`, ξ-congruences, `IDescWf`, `imethTy`/`imethsTy`, and (§10)
+   `ICodeWf` + `tr-J-IMu`
+4. ✅ the nine metatheory modules
+6. ✅ **`Vec` as Fording sugar** — `Examples/Vec`.  Done BEFORE 5; it
+   exercises `iρ` at an EARLIER FIELD (§9.2) and Fording (§3/§10)
+5. ✅ **first use-site: `RTm`'s own shape** — `Examples/Scoped`.  `var`
+   as `iκ`, `lam` as `iρ (nsuc ⟨n⟩)`, `app` as two `iρ` at the ambient.
+   ⚠ This is the row `Vec` has NO analogue of: a recursive field at a
+   FUNCTION OF THE AMBIENT INDEX, which is §1's whole reason for
+   indexing a syntax.  `size 0 (λx.x) ⟶* 2` runs it.
+   ⚠⚠ `var` carries a BARE `Nat`, not a `Fin n` — see §12.
 7. ⬜ dogfooding proper: `prog`/`usplit`/`trS`/`ordtrS` through `⊢amrec`
 
 --------------------------------------------------------------------------
@@ -331,3 +338,33 @@ The right answer is `true`: `⌜Mu⌝` is `stkC?` because there IS a
 situation, not `⌜Mu⌝`'s.  `check-formers` check 3 lists this default; its
 warning — "CONFIRM each default rather than inherit it" — is what turned
 an unprovable goal into a one-line row.
+
+--------------------------------------------------------------------------
+## 12. THE SCOPE-SAFETY GAP `Examples/Scoped` LEAVES OPEN
+
+`Scoped`'s `var` carries a bare `Nat`. Making it a `Fin n` — so the
+syntax is scope-SAFE and not merely scope-INDEXED — needs the variable's
+field to be one of:
+
+**(a) a NESTED indexed type** — a `⌜IMu⌝`-headed κ code, e.g. `Fin` as
+its own `IDesc`. ⚠ `ICodeWf` does not admit it today, but it COULD:
+`⊩₀IMu q di` needs only the decode chain and an `IDInterp Γ D'`, and the
+`IDInterp` does **not mention the index** — so a `⌜IMu⌝` code is
+reduction-determined in exactly the way `⌜Id⌝` is. A third row
+
+    icw-imu : IDescWf I' D' → ICodeWf (⌜IMu⌝ D' I' i)
+
+looks like it works, carrying the nested `IDescWf` so `interpIK` can
+build the interpretation. ★ This is the natural next increment, and it
+is what "nested datatypes" costs generally — the non-indexed kernel has
+the same hole (`dκ (Mu D')` is not well-formed either).
+
+**(b) an ORDER constraint** `⌜Hom⌝ ⌜Nat⌝ ⟨i⟩ ⟨n⟩`. ⛔ `ICodeWf` cannot
+admit this, and the reason is not incidental: `⊩₀Hom` demands the `Hom`
+be STUCK, and `Hom Nat a b` **computes** (the order rules). At an
+arbitrary environment it is not reduction-determined, which is precisely
+why §10 excluded `⌜Hom⌝`. Fording a bound is not available.
+
+⇒ (a) is the route. Note it also subsumes the `Vec`-of-`A` question:
+`open/parameterised descriptions` (`PLAN-INDUCTIVE` §7) want the same
+machinery.
