@@ -8487,3 +8487,367 @@ have entrenched an interim. If it constrains future work, it needs a number.
 applies to literals), D109 (a float's width is a target property), D113
 (`Float` denotes the target's representation), D115 (an out-of-range `Int`
 literal is an error)
+
+## D117: A Float Literal's Payload Is a DECIMAL, and There Is Exactly ONE Rounding
+
+**Date**: 2026-08-24 · **Status**: Implemented (plan 0.74 K0/K1) ·
+**Implements D116** · **Same principle as D115's `ℤ` payload**
+
+### The decision
+
+`LitPayload fits-float` and `IR.const`'s float payload are a `Decimal` —
+`record Decimal { sig : ℤ ; exp10 : ℕ }`, `Dyadic` at base ten — not a
+`Dyadic`. The machine turns it into bits with `round`, at its own format,
+rounding to nearest-even.
+
+### Why the old payload could not work
+
+**`3.14` is not a dyadic at any width.** `3.14 = 157/50` and 50 is not a power
+of two, so no `Dyadic` equals it — which is why `accept?` rejected it at the
+EXACTNESS step, before representability was ever consulted. A `Dyadic` payload
+can only ever hold the subset `accept?` was restricting us to, so D116's
+"literals round" is unimplementable with it.
+
+The payload is SOURCE SYNTAX, and source syntax for a float literal is a
+decimal. That is the same reasoning that makes an `Int` literal's payload a `ℤ`
+(D115), one type over.
+
+Holding the literal EXACTLY is the property being bought: with an exact payload
+there is exactly ONE rounding, at the backend, at the target's format.
+
+### Two alternatives, rejected
+
+- **Agda's `Float`** — forces a rounding BEFORE the backend's, so a literal is
+  rounded twice. Harmless for binary32-via-binary64 by Figueroa (53 ≥ 2·24+2),
+  but it CAPS PRECISION at the payload's format, so binary128 or x87-extended
+  could never be served. It is also D109/D112's mistake — a format baked where
+  all targets must be served — and `primFloatToWord` has no equational theory.
+- **`(ℤ , ℕ)` integer-part/fraction-part** — `3.14` and `3.014` both give
+  `(3 , 14)` unless the digit count rides along, and `-0.5` has integer part
+  `-0 = 0`, so THE SIGN IS LOST. The sign belongs on the significand.
+
+### `round` does NOT route through `Dyadic.encode`
+
+Found by the pins, and the reason the two modules stay separate. `Dyadic.shift`
+is a `ℕ`, so a large value has to be written `(m · 2^K) /2^ 0`, which puts K
+zero bits BELOW the significand — and `sigFieldN` can only LEFT-align. Its
+`2 ^ (sig-bits ∸ (bitLen ∸ 1))` clamps to `2^0` and `modPow` then keeps the low
+`sig-bits` bits, which are the zeros just introduced. `round binary64 1e41`
+came out as `0x4870000000000000`, a pure power of two, with the entire fraction
+`0x25dfa371a19e7` replaced by zeros. The step meant to satisfy `encode`'s
+precondition was violating it.
+
+So `roundSig` returns the significand WITH ITS BINARY EXPONENT as a `ℤ` —
+positive for large literals, negative for small — and `fracField` does the
+right-shift `∸` could not. That signed exponent is what `Dyadic` structurally
+cannot express.
+
+### The rounding is PINNED, because it cannot be falsified from inside
+
+Both the meaning and the codegen call the SAME `round`, so their correspondence
+is `refl`-shaped and holds whatever it computes. That is exactly how
+`Once.Float.Dyadic`'s encoder once wrote the pair straight into the two fields,
+typechecked, and satisfied `encode-fits`. The patterns are therefore checked
+against values computed ELSEWHERE (glibc/IEEE), decided by `refl`:
+
+    3.1  3.14  0.1  0.5  2.75  16777217  -0.5  0  1e41  1e-40
+
+plus `round (5 /10^ 1) ≡ round (50 /10^ 2)` — the unnormalised-payload
+agreement, discharged rather than assumed.
+
+**That `round` is IEEE round-to-nearest-even is a NAMED TRUST POINT**, of the
+same kind as `assemble-correct`: a spec-quality question, not a
+compiler-correctness one. What must not happen is the version where nobody
+states it and the compiler is "correct" about a rounding nobody checked — that
+is `emit`'s low byte again (D114).
+
+**Relates**: D109, D112 (the float-representation parameter), D113, D114 (the
+unfalsifiable-from-inside lesson), D115 (`ℤ` payload, same principle), D116
+(literals round — this is how)
+
+## D118: Float Overflow Is ±∞; Underflow Is ZERO, and Once Models No Subnormals
+
+**Date**: 2026-08-24 · **Status**: Implemented (plan 0.74 K2) ·
+**Settles what D116 explicitly left open**
+
+### The decision
+
+Above the format's normal exponent range a float literal stores as **±∞**,
+sign preserved. Below it, **zero**. Once models no subnormals.
+
+D116 said literals round; it said nothing about the exponent range, and noted
+that "whether Once models infinities at all is a real question and NOT settled
+by D116". This settles it.
+
+### Why ±∞ rather than an error
+
+D116's own argument. The promise `Float` makes is the HARDWARE's, and the
+hardware produces ±∞ — exactly as `Int`'s promise includes wrapping arithmetic
+(D054). `⟦ Float ⟧` is the target's bit pattern (D113), so an infinity is just
+a pattern and nothing in the value model changes.
+
+### What this replaced, and why it was urgent
+
+The exponent WRAPPED. `expFieldN` ends in `modPow … (exp-bits F)`, so a stored
+exponent of 260 at binary32 came out as 4:
+
+    round binary32 1e41  =  0x03800000     -- a small FINITE number
+
+That is the same silent value substitution D115 forbids for `Int` literals, and
+worse: nothing gated it at all, and it could not be found from inside, because
+the meaning and the machine call the same function and agreed on the wrong
+answer. It was found by writing a pin against an externally-computed pattern —
+the D114 discipline, working as intended.
+
+### The subnormal gap is a LIMITATION, stated not discovered
+
+glibc stores `1e-40` at binary32 as the subnormal `0x000116c2`; Once stores
+`0`. This is a real gap and it is PINNED as such, so it is read rather than
+found later.
+
+It is treated differently from the overflow wrap on purpose: underflow-to-zero
+is BOUNDED (the value was already smaller than the format's smallest normal),
+where the overflow wrap turned 1e41 into a small finite number — unbounded in
+relative terms and catastrophic.
+
+**Relates**: D054 (the hardware's promise), D113, D114, D115, D116, D117
+
+## D119: The Arith SigOp Semantics Takes the Target's Width — the SPEC Was Wrong on x86-32
+
+**Date**: 2026-08-23 · **Status**: Implemented (plan 0.74 J5) ·
+**Instance of D059 that was mis-filed as hygiene**
+
+### The finding
+
+`Arith/SigOp/Builders` computed every arith `semM` with `Word64`:
+
+    module W = OnceWord.Word64
+    neg-semM x = W.⊝ x
+
+and `Denotation/Meaning`'s `⟦ t-neg d ⟧ᵢ fmt` reaches it — threading `fmt` into
+the sub-derivation and then DROPPING it. So the spec used the TARGET's width
+for literals and 64 bits for arithmetic in the same expression:
+
+    x86-32:   ⟦ int 5 ⟧       =  5             (correct)
+              ⟦ neg (int 5) ⟧ =  2^64 − 5      (not even a 32-bit word)
+
+The answer is `2^32 − 5`. This was filed as a cleanup ("modules serving three
+targets should not name a width") and deferred. It is not a cleanup: the bake
+is inside the MEANING.
+
+### Why nothing caught it — the shape, for the third time
+
+`block-semM` and `ArchCorrectness/ArithSimX86-32` baked 64 as well. Every
+module that COMPARES two layers had a bake on each side: `eval≡semM` compares
+the ℤ→Word evaluator with `block-semM`; `block-value-semM` compares the
+abstract machine's output with the block's meaning; `ArithSimCore` compares a
+concrete interpreter with `block-semM`. Fix the width in both operands and the
+comparison is between something and itself — true, and about no real machine.
+
+**That is D114's `isInt?` and the `absℤ` bug in a third costume. Two sides
+wrong together is not a coincidence to notice; it is the failure mode to design
+against.**
+
+### The decision
+
+`SigOpSem`'s `pureV` carries a `TargetNum → M.⟦A⟧ → M.⟦B⟧`, and `semM si tn` is
+the old shape. Seven bakes of the literal 64 were removed from modules shared
+by three targets; `ArithSimX86-32` is now `Width 32` and its correspondence is
+about a machine x86-32 actually is. `Adequacy/CPU/X86-64` and `ArithSimRiscV64`
+keep 64 and say so as `Width 64` rather than by the `Word64` alias, so it reads
+as a claim about that target instead of the default nobody chose.
+
+An `absℤ` bug (`IntLit.lit-int-info = λ _ → ∣ n ∣`, so `-5` meant 5) outlived
+the 2026-08-20 sweep here by being unreferenced, and was fixed with it.
+
+**Relates**: D054, D059 (width threaded from the arch — this is the instance
+that was missed), D114 (the two-sides-wrong-together shape), D115
+
+## D120: A Negated Numeral Is ONE Literal — the Spec Says So, the Front End Bridges
+
+**Date**: 2026-08-22 · **Status**: Implemented (plan 0.74 J6)
+
+### The decision
+
+`-5` is a literal. The spec says what a negative numeral means:
+
+    negLits (RInt n) = (- n) ∷ []
+    negLits e        = rawIntLits e
+
+and the elaborator folds `RUnaryOp OpNeg (RInt n)` into the literal `-n`.
+
+### What it fixes
+
+`-2147483648` was REFUSED on x86-32 though it is exactly that target's least
+`Int` — D115's own text already implied it must compile ("`-129` on 8-bit is as
+much an error as `2001`" says in the same breath that `-128` is not). A program
+the target CAN express was rejected, the one failure mode `correctR-complete`
+exists to rule out, and the proof missed it because the SPEC shared the blind
+spot.
+
+Independently of the range check, the compiler emitted **"load 5, then call
+`arith.neg.int`"** — a RUNTIME negation of a compile-time constant. That is
+wrong on its own terms. Verified on the metal after the fix: `mov
+$0x80000000,%eax`, zero `neg` instructions.
+
+### Where the truth goes — not the parser
+
+At the level of GRAMMAR `-` really is a prefix operator and `Parser/Expr.agda`
+is right to say so. Making `ParsesUnary` fold would need either an ambiguous
+relation (both `pu-neg` and a `pu-neg-lit` apply when the operand is `RInt`) or
+a function in the constructor's conclusion index, which breaks downstream
+pattern matching. What a negative NUMERAL means is a fact about the LANGUAGE,
+so it is stated in the spec and the front end bridges to it.
+
+### The dispatch takes the decision as an ARGUMENT
+
+    inferElabV-neg-dispatch ctx e = inferElabV-neg-aux ctx e (isRIntView e)
+
+Matching `e` directly stops `inferElabV ctx (RUnaryOp OpNeg e)` unfolding for
+an abstract `e`, which costs a 16-way `RawExpr` enumeration in THREE downstream
+proofs and breaks a well-founded measure in one of them. Taking the view as an
+argument — the same convention as `cfm-build-gated` taking its `Dec` — keeps
+the unfolding, and the proofs split two ways instead of sixteen.
+
+Soundness is `Once.Word.Width.⊝-fromℤ`, which could not even be STATED at the
+right width until D119 (`semM neg-info` was baked at 64, so at `w = 32` the
+claim read `2^64 − 5 ≟ 2^32 − 5`).
+
+`realize-agrees` being stated OBSERVATIONALLY rather than syntactically is what
+made the fold affordable: a syntactic `se ≡ realize w` would have forced
+`realize` to fold too, and with it every proof that reads the derivation.
+
+**Relates**: D054, D114, D115, D119, D121
+
+## D121: The IR Gate Was a DETECTOR, and Detector Scaffolding Is Deleted, Not Parked
+
+**Date**: 2026-08-25 · **Status**: Decided; scaffolding removed (plan 0.74 J6)
+
+### The decision
+
+A second literal-range gate over the COMPILED IR (`Once.IRLits`,
+`AdmissibleIR`, `cfm-build-lits`) existed briefly and is DELETED. The
+open invariant it stood for is recorded instead:
+
+    compiledIntLits (compile of m)  ⊆  moduleIntLits m
+
+### What it was for, and that it worked
+
+`Once.Denotation.Admissible` already said the obligation out loud — "the
+backend walks the IR instead, and that the two agree is a PROOF obligation, not
+something faked by sharing a traversal" — and nothing honoured it: the backend
+dispatched on `admissibleM?`, the SOURCE scan, so "backend agrees with spec"
+held by sharing a traversal.
+
+Gating on the IR made that obligation load-bearing, which turned a silent
+defect into a red tree. It is what forced D120's fold and dragged D119's
+`Word64` bakes out of hiding. It also proved, briefly and correctly, that
+`correct` was FALSE: `compile` returned `nothing` where `⟦ src ⟧⊥` was `just`.
+The gate did not break the theorem; it made the bug visible.
+
+### Why deleted rather than kept wired
+
+Keeping it wired costs `ElabPreservesLits` as a PREMISE on `correct` itself,
+and that premise is a global induction over the elaborator — a real open
+theorem, not a formality. Paying it to keep a check that can now only fire on a
+compiler bug is a bad trade, and it made a ~30-line fold look expensive when it
+was not.
+
+Keeping it UNWIRED is worse than either: an unwired gate is dead code that
+hides a gap instead of surfacing it as a type error.
+
+### The invariant is bounded work
+
+`Surface.Elaborate.intLit` is the ONLY producer of an IR `Int` literal — three
+call sites, each already holding a source literal. Whoever proves it has a
+bounded job, and proving it re-wires the gate at zero cost to `correct`.
+
+**Relates**: D114, D115, D119, D120
+
+## D122: Source Positions Ride on the LITERAL Tokens Only
+
+**Date**: 2026-08-25 · **Status**: Implemented (plan 0.74)
+
+### The decision
+
+`tokenize-WF` threads a source offset; `TInt`, `TFloat` and `RFloat` carry it.
+Every OTHER token does not.
+
+### Why not every token
+
+Measured, not guessed: positions on every token is **6738 pattern sites** across
+20+ files including the verified parser, all the parsing relations and the
+roundtrip proofs. On the literal constructors it is ~400 sites, mostly a `_`
+added in a pattern. The lexer work — threading the offset through ten `tok-*`
+helpers and re-proving `LexerBridge` — is identical under both, so widening
+later is purely mechanical and costs nothing today.
+
+### The bridge is INDEXED by the offset, not erased
+
+Erasing the offsets — relating a position-free token stream — was the cheaper
+option and does NOT compose: the parser consumes the real stream and copies a
+float's offset into `RFloat`, so the parse RESULT depends on positions. A
+bridge pinning only the erased stream would leave a gap exactly where
+`parseStrict-sound` needs it.
+
+`LexesChars` therefore carries the offset as an index, and every premise
+advances it with `adv` — the same function the worker uses, so the relation
+cannot disagree with the lexer about how far a clause moved.
+
+### The offset stops at the AST
+
+The elaborator drops it, so it never reaches `Surface.Expr`, the IR, the
+machine or any correspondence proof. `t-float`/`g-float` carry it and pointedly
+never read it: a position cannot affect whether a term is well-typed, and the
+fact that it stops here is the statement that it cannot change what is
+compiled.
+
+**Relates**: D114, D117, D123 (the warning that needed it)
+
+## D123: Warnings Are a PURE QUERY, and They Carry Numbers
+
+**Date**: 2026-08-25 · **Status**: Implemented (plan 0.74 K4)
+
+### The decision
+
+    roundingWarnings : Arch → Module → List Warning
+
+A function of the parsed module and the target. NOT threaded through `compile`,
+and absent from `correct`. Warnings do not change what is compiled, so they must
+not change the pipeline's type; keeping them a separate observation is what
+stops them leaking into the theorem. `Once.Compile` re-exports them, which is
+also what puts them on the extraction path.
+
+### The constructors carry NUMBERS, not a string
+
+A message is a projection and a projection is not checkable — D114's lesson,
+one layer over. `TypeError` already works this way (`FloatNotRepresentable`
+carried the decimal "so the message can quote it back"), and it matters more
+here because the figures ARE the content. `renderWarning` is separate.
+
+Both sides of the error are exact — the literal is a `Decimal` (D117), the
+stored value is `m · 2^E` — so the difference is an exact rational and NO
+FLOATING POINT is involved in computing it. `ExactQ` is unnormalised on
+purpose: the figures are reported, not compared.
+
+### ABSOLUTE and ULPS, absolute first
+
+    3.1 b64   +2/(10·2^51) = +1/11258999068426240 ≈ +8.9e-17   +0.2 ulp
+    3.1 b32   −4/(10·2^22) = −1/10485760          ≈ −9.5e-08   −0.4 ulp
+
+The ulps are 0.2 and 0.4 — same order — while the absolute errors differ by
+nine orders of magnitude. On a narrow enough format the ulps stay ~0.4 while
+the absolute error reaches 3%. **A ulp-only warning would report the harmless
+case and the catastrophic one identically**, which is the case a warning exists
+for.
+
+Silence on exactly-representable literals is pinned too: a warning channel that
+fires on `0.5` is noise, and noise is how a warning channel dies.
+
+### It replaces a dead error
+
+`TypeError.FloatNotRepresentable` became unreachable when K3 made every float
+literal well-typed, and is deleted. `FloatRounded` carries its three fields plus
+the figures and the position: what used to abort the compile now reports.
+
+**Relates**: D114, D116, D117, D118, D122
