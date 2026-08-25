@@ -31,12 +31,12 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; Hom; Nat
-        ; RTm; var; nzero; nsuc; natrec; ordtr
+        ; RTm; var; unit; nzero; nsuc; natrec; ordtr
         ; renTy; renTm; subTy; subTm )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
-        ; ⊢ordtr
+        ; ⊢ordtr; ⊢unit; Hom-Nat-z
         ; ty-Nat; ty-Hom
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; Hom-Nat-ss
         ; ξ-Homˡ; ξ-Homʳ; natrec-zero; natrec-suc; wk-single )
@@ -46,7 +46,8 @@ open import DirectedHoTT.Lib.Wk using ( w; nrs-w )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
 open import DirectedHoTT.Lib.Arith using ( plusMonoTm )
 open import DirectedHoTT.Lib.ArithComm
-  using ( IdN; commTm; ⊢comm; congS; ⊢congS; trHomˡ; ⊢trHomˡ; trHomʳ; ⊢trHomʳ )
+  using ( IdN; commTm; ⊢comm; congS; ⊢congS; trHomˡ; ⊢trHomˡ; trHomʳ; ⊢trHomʳ
+        ; plus0Tm; ⊢plus0 )
 
 ------------------------------------------------------------------------
 -- ★ `x ≤ y  ⇒  c + x ≤ c + y`, by `natrec` on the recursed argument.
@@ -159,3 +160,33 @@ plusLe₂Tm x x' y y' p q =
   ⊢ordtr (⊢plus dx dy) (⊢plus dx dy') (⊢plus dx' dy')
          (⊢plus-le dy dy' dx dq)
          (⊢plus-le-l dx dx' dy' dp)
+
+------------------------------------------------------------------------
+-- ★ `x ≤ x + y` — A SUMMAND IS BOUNDED BY THE SUM.
+--
+-- ⚠ WHY IT IS NOT `⊢plus-le` AT `x := 0`.  It is, ALMOST: `⊢plus-le` at
+--   `x := 0` gives `c + 0 ≤ c + y`, and `plusTm` recurses on its FIRST
+--   argument, so `c + 0` is STUCK for open `c` — `0 + n ⟶ n` is free and
+--   `n + 0 ≡ n` is the induction.  One `trHomˡ` along `⊢plus0` closes the
+--   gap, and that is the whole content of this lemma.
+--
+-- ★ ITS CUSTOMER is a STRUCTURAL DESCENT: a node's measure is the sum of
+--   its children's, so "a child is smaller than its parent" is exactly
+--   `x ≤ x + y` under one `nsuc`.  `Examples/ScopedSize` is the first.
+--
+-- ⚠ `0 ≤ n` IS `unit`, not an induction — `Hom Nat` COMPUTES, and
+--   `Hom-Nat-z` discards the right endpoint outright.
+------------------------------------------------------------------------
+
+⊢le-zero : {Γ : Ctx} {n : RTm ⌊ Γ ⌋} → Γ ⊢ unit ∷ Hom Nat nzero n
+⊢le-zero {n = n} = ⊢conv ⊢unit (csymᵀ (red→≅ᵀ (stepᵀ (Hom-Nat-z n) doneᵀ)))
+
+leSumTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+leSumTm x y = trHomˡ (plusTm x y) (plus0Tm x) (plusMonoTm unit x)
+
+⊢le-sum : {Γ : Ctx} {x y : RTm ⌊ Γ ⌋} →
+          Γ ⊢ x ∷ Nat → Γ ⊢ y ∷ Nat →
+          Γ ⊢ leSumTm x y ∷ Hom Nat x (plusTm x y)
+⊢le-sum dx dy =
+  ⊢trHomˡ (⊢plus dx ⊢nzero) dx (⊢plus dx dy) (⊢plus0 dx)
+          (⊢plus-le ⊢nzero dy dx ⊢le-zero)
