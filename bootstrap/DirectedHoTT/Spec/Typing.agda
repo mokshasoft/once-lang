@@ -861,8 +861,28 @@ data _⊢_∷_ where
           Γ ⊢ t ∷ Mu D →
           Γ ⊢ elim D ms t ∷ subTy (single t) M
   -- ★★★ INDEXED introduction.  The payload is typed AT THE AMBIENT INDEX;
-  --   a constructor is available at EVERY index (that is what `iι` means),
-  --   and a FORDING constraint field is what rules the bad ones out.
+  --   a constructor is available at EVERY index — that is what `iι`
+  --   means, and it is why `IMuMem` is UNIFORM in the index
+  --   (PLAN-INDEXED §2).  The FORDING constraint field is what makes the
+  --   bad ones UNINHABITABLE.
+  --
+  --   ⚠ THAT USED TO BE A PROMISSORY NOTE, and its neighbour one rule up
+  --     (`⊢con`'s `k ∈D D`) shows why that is not good enough: written as
+  --     a comment it was FALSE, and only gate 5 caught it.  So the
+  --     mechanism is now a THEOREM, not a claim:
+  --
+  --       `Canonicity.idEndpoints` — a CLOSED proof of `Id A a b` forces
+  --         `a ≅ b`.  A Fording field has type `El (⌜Id⌝ c a b)`, which
+  --         decodes to `Id (El c) a b`, so inhabiting a constructor at
+  --         the wrong index would make the ambient index and the
+  --         constructor's own target convertible.
+  --       `Canonicity.zero≇suc` — distinct numerals are not.
+  --       `Examples.Vec.no-cons-at-zero` — the two composed: there is no
+  --         closed `cons` payload at index `zero`.
+  --
+  --   ⚠ NOTHING HERE RESTRICTS THE RULE.  `⊢icon` is unchanged; what
+  --     changed is that the semantic content of §3's Fording decision is
+  --     now checked instead of asserted.
   ⊢icon : ∀ {Γ D I i k p} →
           IDescWf I D →
           k ∈ID D →

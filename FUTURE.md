@@ -276,3 +276,69 @@ mention; `Prv` exists to prevent exactly that.**
    `Prv`-wrapped (or otherwise witness-free) result?
 3. `⊢Fnr` / the eq-4 assembly is the live instance: structurally correct,
    OOMs, and the first thing to try is `AbsProbe`'s abstract-then-instantiate.
+
+## Once: a DATATYPE DECLARATION carries no totality obligation — design it out
+
+**The trap, in Agda.** Agda's coverage checker checks **functions, not
+datatypes**. A `data` declaration that is missing a constructor is a
+perfectly well-formed declaration: it type-checks, the module compiles
+green, and nothing anywhere is obliged to notice. The omission surfaces
+only where some later *function* is finally required to produce the
+missing constructor — which in OCP-0009 is several modules and many
+minutes of proof-checking downstream, as a bogus-looking unification
+error rather than "you forgot a case".
+
+Concretely: adding a term former to `RTm` and forgetting to add its row
+to the SN layer (`SNe`/`SN`/`SNRed`/`Ne`) is invisible until `fund` is
+obliged to build one. It happened with `ordtr` (2026-08-05 → 06) and
+again with `icon`/`ielim`/`⌜IMu⌝` (2026-08-22), and the only thing that
+caught either was an out-of-band shell script,
+`DirectedHoTT/tools/check-formers.sh`, which greps the Agda source.
+
+**Why the asymmetry is the tell.** The development already has TWO
+per-former layers that need no such script, and the script's own header
+says why:
+
+> NOT CHECKED, deliberately — these are protected by a producer's own
+> coverage: `Canon`/`Prog` — `prog` must return a canonical form or a
+> step for every former, so its coverage forces the decision.
+> `⊩₀`/`⊩₁` rows — `fund-ty` must build an interpretation for every
+> `⊢ty`.
+
+So wherever a **total function** must produce something per former,
+Agda enforces it for free. The gap is exactly the layers that are
+**datatypes**.
+
+**What Once could do about it.** Three options, in increasing order of
+how much they change the language:
+
+1. **A derived-datatype obligation.** Let a datatype declare itself
+   INDEXED BY another datatype's constructors, with the checker
+   demanding one row per constructor — the datatype analogue of
+   coverage. Cheap, local, and it is the whole content of
+   `check-formers` checks 1 and 2.
+
+2. **Generate the layer from a DESCRIPTION.** This is the one OCP-0009
+   is already building the machinery for. If the syntax is a `Desc` /
+   `IDesc` rather than a hand-written `data`, then the SN layer, the
+   logical relation, and the classifiers are all *computed from* that
+   description. A former with no row is then not a silent omission —
+   it is not expressible. ⚠ This is the dogfooding target, and it is
+   the reason the indexed increment matters beyond `Vec`: the payoff is
+   not "we can write `Vec`", it is "the metatheory layers stop being
+   hand-maintained parallel lists".
+
+3. **Make the classifiers total by construction too.** `check-formers`
+   check 3 exists for the same reason one level down: a *function's*
+   catch-all (`stkC? _ = false`) IS total, so coverage is satisfied and
+   the decision is silent. That is not a datatype problem, so option 2
+   does not fix it; it needs the classifier to be derived from the
+   description as well, or a `--no-catch-all` discipline on the ones
+   that are semantically per-former.
+
+⚠ Cost of NOT doing this, measured 2026-08-24: `⌜IMu⌝` inherited the
+catch-all `false` from three classifiers at once (`stkC?`, `stkA?`,
+`stablecd?`). The consequence was not an unprovable goal — it was that
+**progress was FALSE**, and it took a new reduction rule (`tr-J-IMu`)
+threaded through eleven modules to fix. A one-line row at the time the
+former landed would have prevented all of it.
