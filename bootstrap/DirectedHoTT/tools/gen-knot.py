@@ -1,0 +1,437 @@
+#!/usr/bin/env python3
+"""
+gen-knot.py — the RTm/RTy knot as ONE indexed description.
+
+★ WHY A GENERATOR AND NOT 53 HAND-WRITTEN ROWS.  PLAN-INDEXED §5 item 7
+  needs the whole mutual knot — 7 families, 53 constructors — encoded as a
+  single `IDesc` over `I = Σ' Nat Nat`.  Each constructor needs an `ICon`,
+  an `IConWf`, and (step 3) an `sz` method: ~159 clauses whose ONLY content
+  is de Bruijn bookkeeping.  Hand-writing them is not work, it is a
+  transcription error waiting to happen; `tools/gen-clauses.py`'s header
+  records what happened the last time clause families were produced ad hoc.
+
+★★ THE ENCODING, in one paragraph.  The index is a PAIR: `fst` is a SORT
+  TAG (0 RTy · 1 RTm · 2 Desc · 3 DCon · 4 IDesc · 5 ICon · 6 Var), `snd` is
+  a CONTEXT DEPTH.  Every constructor FORDS ITS TAG ONLY — `Id Nat (fst ⟨i⟩)
+  t` — and the depth RIDES, unconstrained (PLAN-INDEXED §14).  A recursive
+  field names its own index outright: `lam`'s field is
+  `pair 1 (suc (snd ⟨i⟩))` (same sort, depth pushed), `El`'s is
+  `pair 1 (snd ⟨i⟩)` (other sort, depth held).
+
+⚠ THE TWO EXCEPTIONS, and they are real.  `Var`'s `vz`/`vs` are the only
+  constructors whose TARGET depth is constrained — they exist only at
+  `suc m` — so they bind an `m : Nat` and Ford the SECOND component too.
+  That is Fording used exactly as `Examples/Scoped`'s `Fin` uses it, and it
+  is why "Ford the component, not the pair" is the right rule rather than
+  "Ford the tag": BOTH components can need it, INDEPENDENTLY.
+
+⚠ DEPTH IS DEGENERATE FOR THE THREE CLOSED SORTS.  `Desc`/`DCon`/`IDesc`
+  carry no context, so nothing constrains their depth and `K (2,d)` is the
+  same set for every `d`.  Harmless (a family with unused index), and
+  strictly cheaper than Fording them to 0 — which would cost 7 extra
+  constraint fields and buy nothing.  Where a closed sort's depth MATTERS
+  it is written literally: `dκ`'s `RTy ε` field is at `pair 0 0`, and
+  `_◂_`'s `ICon (ε ∙)` field is at `pair 5 1`.
+
+THE FIELD DSL.  Each constructor is a list of fields, in the source
+constructor's own argument order, with the Ford(s) appended:
+    ('rec',  sort, depth)   a recursive field at `pair sort depth`
+    ('nat',)                a `κ` field of type `El ⌜Nat⌝` (a `ℕ` tag, or
+                            the `m` a depth-Ford needs)
+    ('ford', comp, rhs)     `iκ (⌜Id⌝ ⌜Nat⌝ (comp ⟨i⟩) rhs)`
+depth expressions:
+    ('D',)        `snd ⟨i⟩`            ('sucD', n)  `suc^n (snd ⟨i⟩)`
+    ('lit', n)    the numeral `n`      ('fld', j)   field `j`, as a Nat
+"""
+import sys, os
+
+# ---------------------------------------------------------------- the sorts
+SORTS = ["sTy", "sTm", "sDesc", "sDCon", "sIDesc", "sICon", "sVar"]
+
+D      = ('D',)
+def sucD(n=1): return ('sucD', n)
+def lit(n):    return ('lit', n)
+def fld(j):    return ('fld', j)
+def rec(s, d): return ('rec', s, d)
+NAT    = ('nat',)
+def ford(comp, rhs): return ('ford', comp, rhs)
+
+FORD_TY    = ford('fst', ('sortlit', 'sTy'))
+FORD_TM    = ford('fst', ('sortlit', 'sTm'))
+FORD_DESC  = ford('fst', ('sortlit', 'sDesc'))
+FORD_DCON  = ford('fst', ('sortlit', 'sDCon'))
+FORD_IDESC = ford('fst', ('sortlit', 'sIDesc'))
+FORD_ICON  = ford('fst', ('sortlit', 'sICon'))
+FORD_VAR   = ford('fst', ('sortlit', 'sVar'))
+
+# ------------------------------------------------------- the 53 constructors
+# (agda name, source constructor, [fields])
+KNOT = [
+ # --- RTy, 11 -------------------------------------------------------------
+ ("cTy-base",  "base : RTy Γ",                         [FORD_TY]),
+ ("cTy-U",     "U : RTy Γ",                            [FORD_TY]),
+ ("cTy-Pi",    "Π : RTy Γ → RTy (Γ ∙) → RTy Γ",        [rec("sTy", D), rec("sTy", sucD()), FORD_TY]),
+ ("cTy-Sg",    "Σ' : RTy Γ → RTy (Γ ∙) → RTy Γ",       [rec("sTy", D), rec("sTy", sucD()), FORD_TY]),
+ ("cTy-El",    "El : RTm Γ → RTy Γ",                   [rec("sTm", D), FORD_TY]),
+ ("cTy-Hom",   "Hom : RTy Γ → RTm Γ → RTm Γ → RTy Γ",  [rec("sTy", D), rec("sTm", D), rec("sTm", D), FORD_TY]),
+ ("cTy-Unit",  "Unit : RTy Γ",                         [FORD_TY]),
+ ("cTy-Nat",   "Nat : RTy Γ",                          [FORD_TY]),
+ ("cTy-Id",    "Id : RTy Γ → RTm Γ → RTm Γ → RTy Γ",   [rec("sTy", D), rec("sTm", D), rec("sTm", D), FORD_TY]),
+ ("cTy-Mu",    "Mu : Desc → RTy Γ",                    [rec("sDesc", D), FORD_TY]),
+ ("cTy-IMu",   "IMu : IDesc → RTy ε → RTm Γ → RTy Γ",  [rec("sIDesc", D), rec("sTy", lit(0)), rec("sTm", D), FORD_TY]),
+ # --- RTm, 30 -------------------------------------------------------------
+ ("cTm-var",   "var : Var Γ → RTm Γ",                  [rec("sVar", D), FORD_TM]),
+ ("cTm-lam",   "lam : RTm (Γ ∙) → RTm Γ",              [rec("sTm", sucD()), FORD_TM]),
+ ("cTm-app",   "app : RTm Γ → RTm Γ → RTm Γ",          [rec("sTm", D), rec("sTm", D), FORD_TM]),
+ ("cTm-pair",  "pair : RTm Γ → RTm Γ → RTm Γ",         [rec("sTm", D), rec("sTm", D), FORD_TM]),
+ ("cTm-absurd","absurd : RTm Γ → RTm Γ → RTm Γ",       [rec("sTm", D), rec("sTm", D), FORD_TM]),
+ ("cTm-ordtr", "ordtr : (5 × RTm Γ) → RTm Γ",          [rec("sTm", D)] * 5 + [FORD_TM]),
+ ("cTm-fst",   "fst : RTm Γ → RTm Γ",                  [rec("sTm", D), FORD_TM]),
+ ("cTm-snd",   "snd : RTm Γ → RTm Γ",                  [rec("sTm", D), FORD_TM]),
+ ("cTm-cbase", "⌜base⌝ : RTm Γ",                       [FORD_TM]),
+ ("cTm-cPi",   "⌜Π⌝ : RTm Γ → RTm (Γ ∙) → RTm Γ",      [rec("sTm", D), rec("sTm", sucD()), FORD_TM]),
+ ("cTm-cSg",   "⌜Σ⌝ : RTm Γ → RTm (Γ ∙) → RTm Γ",      [rec("sTm", D), rec("sTm", sucD()), FORD_TM]),
+ ("cTm-cHom",  "⌜Hom⌝ : (3 × RTm Γ) → RTm Γ",          [rec("sTm", D)] * 3 + [FORD_TM]),
+ ("cTm-hrefl", "hrefl : RTm Γ → RTm Γ → RTm Γ",        [rec("sTm", D), rec("sTm", D), FORD_TM]),
+ ("cTm-tr",    "tr : RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ",
+                                                       [rec("sTm", sucD()), rec("sTm", D), rec("sTm", D), FORD_TM]),
+ ("cTm-ap",    "ap : RTm Γ → RTm (Γ ∙) → RTm Γ → RTm Γ",
+                                                       [rec("sTm", D), rec("sTm", sucD()), rec("sTm", D), FORD_TM]),
+ ("cTm-cId",   "⌜Id⌝ : (3 × RTm Γ) → RTm Γ",           [rec("sTm", D)] * 3 + [FORD_TM]),
+ ("cTm-idrefl","idrefl : RTm Γ → RTm Γ → RTm Γ",       [rec("sTm", D), rec("sTm", D), FORD_TM]),
+ ("cTm-jsub",  "jsub : RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ",
+                                                       [rec("sTm", sucD()), rec("sTm", D), rec("sTm", D), FORD_TM]),
+ ("cTm-unit",  "unit : RTm Γ",                         [FORD_TM]),
+ ("cTm-nzero", "nzero : RTm Γ",                        [FORD_TM]),
+ ("cTm-nsuc",  "nsuc : RTm Γ → RTm Γ",                 [rec("sTm", D), FORD_TM]),
+ ("cTm-natrec","natrec : RTm Γ → RTm ((Γ ∙) ∙) → RTm Γ → RTm Γ",
+                                                       [rec("sTm", D), rec("sTm", sucD(2)), rec("sTm", D), FORD_TM]),
+ ("cTm-con",   "con : ℕ → RTm Γ → RTm Γ",              [NAT, rec("sTm", D), FORD_TM]),
+ ("cTm-elim",  "elim : Desc → RTm Γ → RTm Γ → RTm Γ",  [rec("sDesc", D), rec("sTm", D), rec("sTm", D), FORD_TM]),
+ ("cTm-icon",  "icon : ℕ → RTm Γ → RTm Γ",             [NAT, rec("sTm", D), FORD_TM]),
+ ("cTm-ielim", "ielim : IDesc → RTm Γ → RTm Γ → RTm Γ → RTm Γ",
+                                                       [rec("sIDesc", D), rec("sTm", D), rec("sTm", D), rec("sTm", D), FORD_TM]),
+ ("cTm-cNat",  "⌜Nat⌝ : RTm Γ",                        [FORD_TM]),
+ ("cTm-cMu",   "⌜Mu⌝ : Desc → RTm Γ",                  [rec("sDesc", D), FORD_TM]),
+ ("cTm-cIMu",  "⌜IMu⌝ : IDesc → RTy ε → RTm Γ → RTm Γ",[rec("sIDesc", D), rec("sTy", lit(0)), rec("sTm", D), FORD_TM]),
+ ("cTm-cUnit", "⌜Unit⌝ : RTm Γ",                       [FORD_TM]),
+ # --- Desc, 2 -------------------------------------------------------------
+ ("cDesc-nil", "dnil : Desc",                          [FORD_DESC]),
+ ("cDesc-cons","_◃_ : DCon → Desc → Desc",             [rec("sDCon", D), rec("sDesc", D), FORD_DESC]),
+ # --- DCon, 3 -------------------------------------------------------------
+ ("cDCon-i",   "dι : DCon",                            [FORD_DCON]),
+ ("cDCon-rho", "dρ : DCon → DCon",                     [rec("sDCon", D), FORD_DCON]),
+ ("cDCon-kap", "dκ : RTy ε → DCon → DCon",             [rec("sTy", lit(0)), rec("sDCon", D), FORD_DCON]),
+ # --- IDesc, 2 ------------------------------------------------------------
+ ("cIDesc-nil","inil : IDesc",                         [FORD_IDESC]),
+ ("cIDesc-cons","_◂_ : ICon (ε ∙) → IDesc → IDesc",    [rec("sICon", lit(1)), rec("sIDesc", D), FORD_IDESC]),
+ # --- ICon, 3 -------------------------------------------------------------
+ ("cICon-i",   "iι : ICon Δ",                          [FORD_ICON]),
+ ("cICon-rho", "iρ : RTm Δ → ICon (Δ ∙) → ICon Δ",     [rec("sTm", D), rec("sICon", sucD()), FORD_ICON]),
+ ("cICon-kap", "iκ : RTm Δ → ICon (Δ ∙) → ICon Δ",     [rec("sTm", D), rec("sICon", sucD()), FORD_ICON]),
+ # --- Var, 2.  ⚠ THE ONLY DEPTH-FORDED ROWS. ------------------------------
+ ("cVar-vz",   "vz : Var (Γ ∙)",                       [NAT, FORD_VAR, ford('snd', ('sucfld', 0))]),
+ ("cVar-vs",   "vs : Var Γ → Var (Γ ∙)",               [NAT, rec("sVar", fld(0)), FORD_VAR, ford('snd', ('sucfld', 0))]),
+]
+
+# ------------------------------------------------------------------ emitters
+def dbv(k):
+    "the TERM for the variable `k` slots in from the top of the telescope"
+    return "var " + ("(vs " * k) + "vz" + (")" * k)
+
+def dbd(k):
+    "…and the LOOKUP derivation for it"
+    return "⊢var " + ("(there " * k) + "here" + (")" * k)
+
+def amb(k):   return dbv(k)          # the ambient index, k fields bound
+def damb(k):  return dbd(k)
+
+def nsucs(n, inner):
+    return ("nsuc (" * n) + inner + (")" * n) if n else inner
+
+def dnsucs(n, inner):
+    return ("⊢nsuc (" * n) + inner + (")" * n) if n else inner
+
+def numeral(n):
+    return nsucs(n, "nzero")
+
+def dnumeral(n):
+    return dnsucs(n, "⊢nzero")
+
+def dexpr(e, k, nfields):
+    """(term, derivation-at-Nat) for a depth expression, k fields bound"""
+    kind = e[0]
+    if kind == 'D':
+        return f"snd ({amb(k)})", f"⊢snd ({damb(k)})"
+    if kind == 'sucD':
+        t, d = dexpr(D, k, nfields)
+        return nsucs(e[1], t), dnsucs(e[1], d)
+    if kind == 'lit':
+        return numeral(e[1]), dnumeral(e[1])
+    if kind == 'fld':
+        # field j, counted from the BOTTOM; k fields are bound, so it sits
+        # k-1-j slots in.  ⚠ it is a `nat` field, typed `El ⌜Nat⌝` — `fromI`.
+        back = k - 1 - e[1]
+        return dbv(back), f"fromI ({dbd(back)})"
+    if kind == 'sortlit':
+        return e[1], "⊢" + e[1]
+    if kind == 'sucfld':
+        t, d = dexpr(fld(e[1]), k, nfields)
+        return f"nsuc ({t})", f"⊢nsuc ({d})"
+    raise ValueError(e)
+
+def emit_icon(fields):
+    """the ICon term, as a list of (open-text) layers"""
+    out, k = [], 0
+    for f in fields:
+        if f[0] == 'rec':
+            s, dd = f[1], f[2]
+            dt, _ = dexpr(dd, k, len(fields))
+            out.append(f"iρ (pair {s} {par(dt)})")
+        elif f[0] == 'nat':
+            out.append("iκ ⌜Nat⌝")
+        elif f[0] == 'ford':
+            comp, rhs = f[1], f[2]
+            rt, _ = dexpr(rhs, k, len(fields))
+            out.append(f"iκ (⌜Id⌝ ⌜Nat⌝ ({comp} ({amb(k)})) {par(rt)})")
+        k += 1
+    return out
+
+def emit_iconwf(fields):
+    out, k = [], 0
+    for f in fields:
+        if f[0] == 'rec':
+            s, dd = f[1], f[2]
+            dt, dv = dexpr(dd, k, len(fields))
+            out.append(f"iwf-ρ (pair {s} {par(dt)}) (⊢ixP ⊢{s} {par(dv)})")
+        elif f[0] == 'nat':
+            out.append("iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝")
+        elif f[0] == 'ford':
+            comp, rhs = f[1], f[2]
+            rt, rv = dexpr(rhs, k, len(fields))
+            proj = "⊢fst" if comp == 'fst' else "⊢snd"
+            out.append(
+              f"iwf-κ (⌜Id⌝ ⌜Nat⌝ ({comp} ({amb(k)})) {par(rt)})"
+              f" (icw-ford ⌜Nat⌝ ({comp} ({amb(k)})) {par(rt)})"
+              f" (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI ({proj} ({damb(k)}))) (toI {par(rv)}))")
+        k += 1
+    return out
+
+def par(t):
+    "parenthesise only when it is not already an atom"
+    return t if (" " not in t) else f"({t})"
+
+def nest(layers, base, indent):
+    """layer0 (layer1 (… (layer_{n-1} base)))  — one layer per line.
+
+    ⚠ n-1 OPEN PARENS, NOT n.  The first layer's argument is the whole
+      rest; only layers 1… are themselves parenthesised.  Getting this
+      off by one produced 53 files that scope-checked as far as the first
+      `iι` and then reported an unmatched `)` somewhere else entirely.
+    """
+    n = len(layers)
+    if n == 0:
+        return " " * indent + base
+    lines = [" " * indent + layers[0]]
+    for i in range(1, n):
+        lines.append(" " * (indent + i) + "(" + layers[i])
+    lines.append(" " * (indent + n) + base + ")" * (n - 1))
+    return "\n".join(lines)
+
+BANNER = """------------------------------------------------------------------------
+-- ⚠⚠ GENERATED BY `tools/gen-knot.py` — DO NOT EDIT BY HAND. ⚠⚠
+--
+-- Regenerate with:  python3 tools/gen-knot.py
+--
+-- 53 constructors over 7 sorts, one description, index `Σ' Nat Nat`.
+-- The table, the encoding decisions and the two exceptions (`Var`'s
+-- depth-Fording) are documented in the generator's header — read that,
+-- not this file, to understand the encoding.
+------------------------------------------------------------------------
+"""
+
+def gen_desc():
+    L = [BANNER, "", "{-# OPTIONS --safe #-}",
+         "module DirectedHoTT.Examples.Knot.Desc where",
+         "open import DirectedHoTT.Spec.Syntax",
+         "  using ( Cx; ε; _∙; vz; vs",
+         "        ; RTy; RTm; var; pair; fst; snd; nzero; nsuc; ⌜Nat⌝; ⌜Id⌝",
+         "        ; IMu; ICon; IDesc; iι; iρ; iκ; inil; _◂_ )",
+         "open import DirectedHoTT.Examples.Knot.Sorts",
+         "  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar )",
+         ""]
+    for name, src, fields in KNOT:
+        L.append(f"-- {src}")
+        L.append(f"{name} : ICon (ε ∙)")
+        L.append(f"{name} =")
+        L.append(nest(emit_icon(fields), "iι", 2))
+        L.append("")
+    L.append("-- ★ the description: 53 constructors, in table order.")
+    L.append("KnotD : IDesc")
+    L.append("KnotD =")
+    body = " ◂ ".join(n for n, _, _ in KNOT) + " ◂ inil"
+    # wrap
+    line, out = "  ", []
+    for tok in body.split(" "):
+        if len(line) + len(tok) > 72:
+            out.append(line); line = "  "
+        line += tok + " "
+    out.append(line.rstrip())
+    L += out
+    L.append("")
+    L.append("-- `K (sort, depth)` — the whole knot as ONE family.")
+    L.append("K : {Γ : Cx} → RTm Γ → RTy Γ")
+    L.append("K i = IMu KnotD IPair i")
+    return "\n".join(L) + "\n"
+
+def gen_wf():
+    L = [BANNER,
+         "-- \u26a0\u26a0 THIS MODULE NEEDS THE **COMPACTING COLLECTOR**.",
+         "--",
+         "--   53 `IConWf`s in one module, measured cold on a 7.7 GB box:",
+         "--     -A64m       1m50s, and it is KILLED (143) when checked as a",
+         "--                 DEPENDENCY rather than as the target;",
+         "--     -A64m -c    1m30s, comfortably.",
+         "--",
+         "--   `tools/sweep.sh` greps this header for the phrase above and",
+         "--   switches collectors on its own (`needs_c`), which is why the",
+         "--   words are spelled out rather than described.",
+         "--",
+         "-- \u2605 AND THE COST IS THE 53 ROWS, NOT THE ASSEMBLY.  Dropping",
+         "--   `KnotWf` and keeping only the individual `IConWf`s does not",
+         "--   move the number.  Splitting the module would not either",
+         "--   (`agda-oom-is-a-gc-choice`: splitting measured cost-neutral);",
+         "--   the driver is TELESCOPE DEPTH per row — `ordtr` alone binds",
+         "--   six slots, and `agda-cost-is-context-depth` prices that at",
+         "--   ~1.7\u00d7 per slot.",
+         "", "{-# OPTIONS --safe #-}",
+         "module DirectedHoTT.Examples.Knot.Wf where",
+         "open import DirectedHoTT.Spec.Syntax",
+         "  using ( Cx; ε; _∙; vz; vs",
+         "        ; RTm; var; pair; fst; snd; nzero; nsuc; ⌜Nat⌝; ⌜Id⌝",
+         "        ; ICon; IDesc; iι; iρ; iκ; inil; _◂_ )",
+         "open import DirectedHoTT.Spec.Typing",
+         "  using ( Ctx; ◇; _▹_",
+         "        ; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝",
+         "        ; IConWf; iwf-ι; iwf-ρ; iwf-κ",
+         "        ; ICodeWf; icw-clo; icw-ford",
+         "        ; IDescWf; idwf-nil; idwf-cons )",
+         "open import DirectedHoTT.Examples.Knot.Sorts",
+         "  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar",
+         "        ; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar",
+         "        ; toI; fromI; ⊢ixP )",
+         "open import DirectedHoTT.Examples.Knot.Desc",
+         "  using ( KnotD",
+         "        ; " + "\n        ; ".join(n for n, _, _ in KNOT) + " )",
+         ""]
+    for name, src, fields in KNOT:
+        L.append(f"{name}Wf : IConWf KnotD IPair (◇ ▹ IPair) {name}")
+        L.append(f"{name}Wf =")
+        L.append(nest(emit_iconwf(fields), "iwf-ι", 2))
+        L.append("")
+    L.append("-- ★★★ …AND THE WHOLE KNOT IS WELL-FORMED.")
+    L.append("KnotWf : IDescWf IPair KnotD")
+    L.append("KnotWf =")
+    L.append(nest([f"idwf-cons {n}Wf" for n, _, _ in KNOT], "idwf-nil", 2))
+    return "\n".join(L) + "\n"
+
+
+def gen_tags():
+    """the constructor TAGS and their `∈ID` membership proofs.
+
+    ⚠ SEPARATE MODULE, deliberately.  `⊢icon`'s `k ∈ID D` premise is a
+      POSITION in the description, so the 53rd proof is 52 nested
+      `thereID`s and the family costs O(n²) nodes.  Isolated here, that
+      cost is paid once and by whoever needs it.
+    """
+    L = [BANNER, "", "{-# OPTIONS --safe #-}",
+         "module DirectedHoTT.Examples.Knot.Tags where",
+         "open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to \u2115 )",
+         "open import DirectedHoTT.Spec.Syntax using ( _\u2208ID_; hereID; thereID )",
+         "open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )",
+         "",
+         "-- \u2605 the tags, CHAINED — `tagTm-lam = suc tagTm-var`, so each is one",
+         "--   symbol rather than a numeral spelled out.",
+         ""]
+    names = [n for n, _, _ in KNOT]
+    L.append("tag" + " tag".join(n[1:] for n in names) + " : \u2115")
+    prev = None
+    for n in names:
+        t = "tag" + n[1:]
+        L.append(f"{t} = " + ("zero" if prev is None else f"suc {prev}"))
+        prev = t
+    L.append("")
+    L.append("-- \u2605 …and the membership proofs `\u22a2icon` asks for.")
+    for i, n in enumerate(names):
+        t, m = "tag" + n[1:], "mem" + n[1:]
+        L.append(f"{m} : {t} \u2208ID KnotD")
+        L.append(f"{m} = " + "thereID (" * i + "hereID" + ")" * i)
+    return "\n".join(L) + "\n"
+
+
+# --------------------------------------------------------------- COVERAGE
+# ⚠⚠ A MISSING ROW WOULD BE COMPLETELY SILENT.  `agda-coverage-checks-
+#   functions-not-datatypes`: nothing in Agda relates this table to the
+#   datatypes it encodes, so `Desc.agda`/`Wf.agda` would compile perfectly
+#   with 52 rows and the encoding would simply not cover the language.
+#   `tools/check-formers.sh` exists for the same hazard on the SN layer.
+#   This check is that check, for this table.
+
+FAMILY_OF = {"cTy": "RTy", "cTm": "RTm", "cDesc": "Desc", "cDCon": "DCon",
+             "cIDesc": "IDesc", "cICon": "ICon", "cVar": "Var"}
+
+def source_constructors(syntax_path):
+    """the constructor names Agda actually declares, per family"""
+    out, cur = {}, None
+    for line in open(syntax_path):
+        st = line.rstrip("\n")
+        if st.startswith("data ") and st.rstrip().endswith(" where"):
+            cur = st.split()[1]
+            out.setdefault(cur, [])
+            continue
+        if st and not st[0].isspace():
+            cur = None                       # left the block
+            continue
+        if cur is None or not st.strip() or st.strip().startswith("--"):
+            continue
+        head = st.strip()
+        if " : " not in head:
+            continue                         # a continuation line
+        name = head.split(" : ")[0].strip()
+        if " " in name:
+            continue                         # not a constructor signature
+        out[cur].append(name)
+    return out
+
+def verify(syntax_path):
+    src = source_constructors(syntax_path)
+    mine = {}
+    for name, decl, _ in KNOT:
+        fam = FAMILY_OF[name.split("-")[0]]
+        mine.setdefault(fam, []).append(decl.split(" : ")[0].strip())
+    bad = 0
+    for fam in ["RTy", "RTm", "Desc", "DCon", "IDesc", "ICon", "Var"]:
+        have, want = set(mine.get(fam, [])), set(src.get(fam, []))
+        if have != want:
+            bad = 1
+            print(f"  ✗ {fam}: missing {sorted(want - have)} "
+                  f"· extra {sorted(have - want)}")
+        else:
+            print(f"  ok {fam:6s} — {len(want)} constructor(s)")
+    return bad
+
+if __name__ == "__main__":
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    out = os.path.join(root, "Examples", "Knot")
+    n_rho = sum(1 for _, _, fs in KNOT for f in fs if f[0] == 'rec')
+    n_kap = sum(1 for _, _, fs in KNOT for f in fs if f[0] in ('nat', 'ford'))
+    assert len(KNOT) == 53, f"expected 53 constructors, got {len(KNOT)}"
+    assert len({n for n, _, _ in KNOT}) == 53, "duplicate constructor name"
+    print("== coverage: the table vs `Spec/Syntax.agda`'s own datatypes ==")
+    if verify(os.path.join(root, "Spec", "Syntax.agda")):
+        sys.exit("  ⇒ TABLE AND SYNTAX DISAGREE — nothing written.")
+    open(os.path.join(out, "Desc.agda"), "w").write(gen_desc())
+    open(os.path.join(out, "Wf.agda"),   "w").write(gen_wf())
+    open(os.path.join(out, "Tags.agda"), "w").write(gen_tags())
+    print(f"53 constructors · {n_rho} recursive fields · {n_kap} κ fields "
+          f"· {2 * (n_rho + n_kap) + 106} generated clauses")
