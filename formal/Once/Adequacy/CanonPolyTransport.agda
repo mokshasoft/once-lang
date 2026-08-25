@@ -276,7 +276,7 @@ polys-transport-ᵍ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) {e A}
   → mkCtx n Γ Δ f i p s ⊢ᵍ e ∶ A
   → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᵍ e ∶ A
 polys-transport-ᵍ b p (g-int n)          = g-int n
-polys-transport-ᵍ b p (g-float i f l p) = g-float i f l p
+polys-transport-ᵍ b p (g-float i f l pos) = g-float i f l pos
 polys-transport-ᵍ b p (g-terminal lL lI) = g-terminal lL lI
 polys-transport-ᵍ b p (g-pair d₁ d₂)     = g-pair (polys-transport-ᵍ b p d₁) (polys-transport-ᵍ b p d₂)
 polys-transport-ᵍ b p (g-inl d)          = g-inl (polys-transport-ᵍ b p d)
@@ -295,7 +295,7 @@ mutual
     → mkCtx n Γ Δ f i p s ⊢ᵢ e ∶ A ⨾ Ψ
     → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᵢ e ∶ A ⨾ Ψ
   polys-transport-ᵢ b p pib ac (t-int n)  = t-int n
-  polys-transport-ᵢ b p pib ac (t-float i f l p) = t-float i f l p
+  polys-transport-ᵢ b p pib ac (t-float i f l pos) = t-float i f l pos
   polys-transport-ᵢ b p pib ac (t-str s)  = t-str s
   polys-transport-ᵢ b p pib ac t-unit     = t-unit
   polys-transport-ᵢ b p pib ac t-unit-var = t-unit-var

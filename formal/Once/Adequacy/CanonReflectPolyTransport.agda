@@ -66,7 +66,7 @@ polys-reflect-ᵍ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) {e A}
   → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᵍ e ∶ A
   → mkCtx n Γ Δ f i p s ⊢ᵍ e ∶ A
 polys-reflect-ᵍ b p (g-int n)          = g-int n
-polys-reflect-ᵍ b p (g-float i f l p) = g-float i f l p
+polys-reflect-ᵍ b p (g-float i f l pos) = g-float i f l pos
 polys-reflect-ᵍ b p (g-terminal lL lI) = g-terminal lL lI
 polys-reflect-ᵍ b p (g-pair d₁ d₂)     = g-pair (polys-reflect-ᵍ b p d₁) (polys-reflect-ᵍ b p d₂)
 polys-reflect-ᵍ b p (g-inl d)          = g-inl (polys-reflect-ᵍ b p d)
@@ -82,7 +82,7 @@ mutual
     → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᵢ e ∶ A ⨾ Ψ
     → mkCtx n Γ Δ f i p s ⊢ᵢ e ∶ A ⨾ Ψ
   polys-reflect-ᵢ b p pib ac (t-int n)  = t-int n
-  polys-reflect-ᵢ b p pib ac (t-float i f l p) = t-float i f l p
+  polys-reflect-ᵢ b p pib ac (t-float i f l pos) = t-float i f l pos
   polys-reflect-ᵢ b p pib ac (t-str s)  = t-str s
   polys-reflect-ᵢ b p pib ac t-unit     = t-unit
   polys-reflect-ᵢ b p pib ac t-unit-var = t-unit-var

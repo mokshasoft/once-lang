@@ -383,7 +383,7 @@ bridge-c : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᶜ e ∶ A ⨾ Ψ)
 
 -- Literals — pure `returnT`, identical values.
 bridge-i (t-int _)   re k = refl , refl
-bridge-i (t-float _ _ _) re k = refl , refl
+bridge-i (t-float _ _ _ _) re k = refl , refl
 bridge-i (t-str _)   re k = refl , refl
 bridge-i t-unit      re k = refl , tt
 bridge-i t-unit-var  re k = refl , tt
