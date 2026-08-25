@@ -1003,6 +1003,27 @@ data IConWf where
 data ICodeWf where
   icw-clo  : {Θ : Cx} (c : RTm ε) → ◇ ⊢ c ∷ U → ICodeWf (εwkTm {Θ} c)
   icw-ford : {Θ : Cx} (c a b : RTm Θ) → ICodeWf (⌜Id⌝ c a b)
+  -- ★★★ §12: a NESTED INDEXED TYPE, and it belongs here for exactly
+  --   `icw-ford`'s reason.  `⊩₀IMu` asks for the decode chain and an
+  --   `IDInterp`, and the `IDInterp` DOES NOT MENTION THE INDEX — so a
+  --   `⌜IMu⌝` code is reduction-determined at every environment just as
+  --   a `⌜Id⌝` one is, however the index moves.
+  --
+  --   ⚠ THE `IDescWf` IS CARRIED, though `iwf-κ`'s own `Θ ⊢ κ ∷ U`
+  --     premise already implies it (`gen-⌜IMu⌝` recovers it).  Not
+  --     redundancy for its own sake: `interpIK` recurses on this
+  --     argument, and a witness RECOVERED by an inversion lemma is not a
+  --     structural subterm of anything, so `fund`'s termination check
+  --     would fail.  Same reason `icw-clo` carries the typing derivation
+  --     `elW` consumes rather than re-deriving it.
+  --
+  --   ⚠ NESTING IS WHAT `Fording` CANNOT DO.  Fording turns a computed
+  --     INDEX into an equality CONSTRAINT; it never makes a field's TYPE
+  --     a family.  `Var`/`Fin` can be had either way, but `elim`'s
+  --     `Desc` and `dκ`'s `RTy ε` cannot — which is why this row is on
+  --     the path to `RTm` as a kernel type (PLAN-INDEXED §12).
+  icw-imu  : {Θ : Cx} {D' : IDesc} {I' : RTy ε} (i : RTm Θ) →
+             IDescWf I' D' → ICodeWf (⌜IMu⌝ D' I' i)
 
 data IDescWfFrom where
   idwf-nil  : {D : IDesc} {I : RTy ε} → IDescWfFrom D I inil

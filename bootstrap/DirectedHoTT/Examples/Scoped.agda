@@ -4,7 +4,7 @@
 --
 -- The λ-calculus, scoped by CONTEXT DEPTH:
 --
---        var : Nat        → Tm n
+--        var : Fin n      → Tm n          ← §12, a NESTED FAMILY
 --        lam : Tm (suc n) → Tm n          ← THE POINT
 --        app : Tm n → Tm n → Tm n
 --
@@ -21,19 +21,21 @@
 --   it is why `iι` (an ambient target) plus a shifted `iρ` is enough for
 --   a syntax while `Vec` needs Fording.
 --
--- ⚠⚠ WHAT THIS DOES **NOT** ENCODE, stated up front: `var` carries a
---   BARE `Nat`, not a `Fin n`.  Scope-safety of the variable would need
---   the field to be either
---     · a NESTED indexed type (`⌜IMu⌝`-headed κ code), which `ICodeWf`
---       does not admit today — §10 has two rows, `icw-clo` and
---       `icw-ford`; or
---     · an ORDER constraint `⌜Hom⌝ ⌜Nat⌝ ⟨i⟩ ⟨n⟩`, which `ICodeWf`
---       CANNOT admit: `⊩₀Hom` needs the `Hom` to be STUCK and
---       `Hom Nat a b` COMPUTES, so it is not reduction-determined at an
---       arbitrary environment (that is exactly why §10 excluded ⌜Hom⌝).
---   So `Tm n` here is "a term shape with de Bruijn NUMBERS", scope-safe
---   in its BINDING STRUCTURE but not in its variables.  Closing that gap
---   is the next design decision, not an oversight — see §5 below.
+-- ★★★ `var` CARRIES A `Fin n`, and that is the SECOND thing this file
+--   exercises.  It was a bare `Nat` until §12: a field's type is a κ
+--   CODE, and `ICodeWf` admitted only CLOSED codes (`icw-clo`) and
+--   FORDING constraints (`icw-ford`).  Neither can say "this field is
+--   an inductive FAMILY at the ambient index".  `icw-imu` can, and §0.5
+--   below is what it buys.
+--
+-- ⚠ THE REJECTED ALTERNATIVE, kept because it is a real constraint and
+--   not a preference: an ORDER constraint `⌜Hom⌝ ⌜Nat⌝ ⟨i⟩ ⟨n⟩` CANNOT
+--   be an `ICodeWf` row.  `⊩₀Hom` needs the `Hom` to be STUCK, and
+--   `Hom Nat a b` COMPUTES — so it is not reduction-determined at an
+--   arbitrary environment.  That is why §10 excluded `⌜Hom⌝`, and it is
+--   why scope-safety had to arrive as a NESTED FAMILY rather than as a
+--   bound.  Fording gets `Fin` its own target index; only `icw-imu`
+--   gets `Fin` into `var`'s field.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -44,7 +46,7 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; U; El; Π; Σ'; Unit; Nat; IMu
         ; RTm; var; lam; app; pair; fst; snd; unit; nzero; nsuc; natrec
-        ; ⌜Nat⌝; icon; ielim
+        ; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; idrefl; icon; ielim
         ; ICon; IDesc; iι; iρ; iκ; inil; _◂_
         ; ilookupD; _∈ID_; hereID; thereID
         ; ipayTy; isingle; iext; ifields; sel
@@ -58,13 +60,13 @@ open import DirectedHoTT.Spec.Typing
         ; β; βfst; βsnd; ξ-appˡ; ξ-fst; ξ-snd; ξ-nsuc
         ; ξ-ielimⁱ; ξ-ielimᵗ; ι-ielim
         ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ
-        ; _⟶ᵀ_; El-⌜Nat⌝
+        ; _⟶ᵀ_; El-⌜Nat⌝; El-⌜Id⌝; El-⌜IMu⌝
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢pair; ⊢fst; ⊢snd; ⊢conv
-        ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢natrec
+        ; ⊢unit; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢idrefl; ⊢natrec
         ; ⊢icon; ⊢ielim
         ; _⊢ty_; ty-El; ty-Unit; ty-Nat; ty-Σ; ty-Π; ty-IMu
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ
-        ; ICodeWf; icw-clo
+        ; ICodeWf; icw-clo; icw-ford; icw-imu
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
         ; imethTy; imethsTy )
 
@@ -90,6 +92,91 @@ fromI : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ El ⌜Nat⌝ → Γ ⊢
 fromI d = ⊢conv d elNat
 
 ------------------------------------------------------------------------
+-- 0.5 ★★★ `Fin` — A NESTED INDEXED FAMILY, and what §12's `icw-imu`
+--     was added for.
+--
+--        fzero : (m : Nat) →           n ≡ suc m → Fin n
+--        fsuc  : (m : Nat) → Fin m  →  n ≡ suc m → Fin n
+--
+-- ⚠ FORDED, exactly like `Vec` — `iι` targets the AMBIENT index, so a
+--   constructor that wants to land at `suc m` must SAY SO with an `Id`
+--   field.  Note what that does and does not settle: Fording gives
+--   `Fin` its own TARGET index.  It cannot give `var` a FIELD of type
+--   `Fin n`, because a field's type is a κ CODE and Fording produces a
+--   CONSTRAINT.  Both mechanisms appear below, one line apart, doing
+--   different jobs — which is the cleanest statement of why §12 is not
+--   redundant with §10.
+------------------------------------------------------------------------
+
+fzeroC : ICon (ε ∙)
+fzeroC = iκ ⌜Nat⌝ (iκ (⌜Id⌝ ⌜Nat⌝ (var (vs vz)) (nsuc (var vz))) iι)
+
+fsucC : ICon (ε ∙)
+fsucC =
+  iκ ⌜Nat⌝
+   (iρ (var vz)
+    (iκ (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) (nsuc (var (vs vz)))) iι))
+
+FinD : IDesc
+FinD = fzeroC ◂ (fsucC ◂ inil)
+
+Fin : {Γ : Cx} → RTm Γ → RTy Γ
+Fin n = IMu FinD INat n
+
+fzeroWf : IConWf FinD INat (◇ ▹ INat) fzeroC
+fzeroWf =
+  iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
+   (iwf-κ (⌜Id⌝ ⌜Nat⌝ (var (vs vz)) (nsuc (var vz)))
+          (icw-ford ⌜Nat⌝ (var (vs vz)) (nsuc (var vz)))
+          (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there here))
+                        (toI (⊢nsuc (fromI (⊢var here)))))
+          iwf-ι)
+
+fsucWf : IConWf FinD INat (◇ ▹ INat) fsucC
+fsucWf =
+  iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
+   (iwf-ρ (var vz) (⊢var here)
+    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) (nsuc (var (vs vz))))
+           (icw-ford ⌜Nat⌝ (var (vs (vs vz))) (nsuc (var (vs vz))))
+           (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there here)))
+                         (toI (⊢nsuc (fromI (⊢var (there here))))))
+           iwf-ι))
+
+FinWf : IDescWf INat FinD
+FinWf = idwf-cons fzeroWf (idwf-cons fsucWf idwf-nil)
+
+-- `El (⌜IMu⌝ FinD INat n) ≅ᵀ Fin n` — the ONE conversion a κ field of
+-- family type costs, and the exact mirror of `elNat`.
+elFin : {Γ : Cx} {n : RTm Γ} → El (⌜IMu⌝ FinD INat n) ≅ᵀ Fin n
+elFin = credᵀ El-⌜IMu⌝
+
+toFin : {Γ : Ctx} {n k : RTm ⌊ Γ ⌋} →
+        Γ ⊢ k ∷ Fin n → Γ ⊢ k ∷ El (⌜IMu⌝ FinD INat n)
+toFin d = ⊢conv d (csymᵀ elFin)
+
+-- `fz : Fin 1` — the de Bruijn variable `0`, at depth 1.  Concrete for
+-- `Examples/Vec`'s reason: with the index a numeral the payload's
+-- weakenings compute away and only the interesting fields remain.
+fz : {Γ : Cx} → RTm Γ
+fz = icon zero (pair nzero (pair (idrefl ⌜Nat⌝ (nsuc nzero)) unit))
+
+reflS1 : {Γ : Ctx} →
+         Γ ⊢ idrefl ⌜Nat⌝ (nsuc nzero) ∷
+             El (⌜Id⌝ ⌜Nat⌝ (nsuc nzero) (nsuc nzero))
+reflS1 = ⊢conv (⊢idrefl ⊢⌜Nat⌝ (toI (⊢nsuc ⊢nzero)))
+               (csymᵀ (credᵀ (El-⌜Id⌝ ⌜Nat⌝ (nsuc nzero) (nsuc nzero))))
+
+tyFz : (◇ ▹ El ⌜Nat⌝) ⊢ty
+       Σ' (El (⌜Id⌝ ⌜Nat⌝ (nsuc nzero) (nsuc (var vz)))) Unit
+tyFz = ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢nsuc ⊢nzero))
+                           (toI (⊢nsuc (fromI (⊢var here))))))
+            ty-Unit
+
+⊢fz : ◇ ⊢ fz ∷ Fin (nsuc nzero)
+⊢fz = ⊢icon FinWf hereID (toI (⊢nsuc ⊢nzero))
+        (⊢pair tyFz (toI ⊢nzero) (⊢pair ty-Unit reflS1 ⊢unit))
+
+------------------------------------------------------------------------
 -- 1. THE DESCRIPTION.
 --
 -- ⚠ In `ICon (ε ∙)` the AMBIENT INDEX is `var vz`, and each field pushes
@@ -97,9 +184,13 @@ fromI d = ⊢conv d elNat
 --   below.
 ------------------------------------------------------------------------
 
--- var : Nat → Tm n            (a κ field; see the header on scope-safety)
+-- ★★★ var : Fin n → Tm n — a κ field whose CODE IS A FAMILY, at the
+--   AMBIENT index.  This is `icw-imu`'s use site, and the reason it is
+--   the first forced step toward `RTm` itself: `RTm`'s own fields are
+--   `RTy`s and `Desc`s, i.e. other members of the same mutual knot, and
+--   no amount of Fording turns a field's TYPE into a family.
 varC : ICon (ε ∙)
-varC = iκ ⌜Nat⌝ iι
+varC = iκ (⌜IMu⌝ FinD INat (var vz)) iι
 
 -- ★★★ lam : Tm (suc n) → Tm n — THE BINDING SHAPE.
 --   The recursive field's index is `suc` OF THE AMBIENT INDEX.  This is
@@ -124,7 +215,10 @@ Tm n = IMu TmD INat n
 ------------------------------------------------------------------------
 
 varWf : IConWf TmD INat (◇ ▹ INat) varC
-varWf = iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝ iwf-ι
+varWf = iwf-κ (⌜IMu⌝ FinD INat (var vz))
+              (icw-imu (var vz) FinWf)
+              (⊢⌜IMu⌝ FinWf (⊢var here))
+              iwf-ι
 
 -- ⚠ the ONE obligation that is new here: the shifted index must TYPE.
 --   `nsuc ⟨n⟩ ∷ El ⌜Nat⌝` — which is why the index type being a decode
@@ -159,8 +253,9 @@ tlam b = icon (suc zero) (pair b unit)
 tapp : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
 tapp f a = icon (suc (suc zero)) (pair f (pair a unit))
 
-⊢tvar : {n k : RTm ε} → ◇ ⊢ n ∷ El ⌜Nat⌝ → ◇ ⊢ k ∷ Nat → ◇ ⊢ tvar k ∷ Tm n
-⊢tvar dn dk = ⊢icon TmWf hereID dn (⊢pair ty-Unit (toI dk) ⊢unit)
+⊢tvar : {n k : RTm ε} →
+        ◇ ⊢ n ∷ El ⌜Nat⌝ → ◇ ⊢ k ∷ Fin n → ◇ ⊢ tvar k ∷ Tm n
+⊢tvar dn dk = ⊢icon TmWf hereID dn (⊢pair ty-Unit (toFin dk) ⊢unit)
 
 -- ★★★ THE BINDING CONSTRUCTOR.  Its recursive field is at `suc n`.
 ⊢tlam : {n b : RTm ε} →
@@ -181,10 +276,13 @@ tapp f a = icon (suc (suc zero)) (pair f (pair a unit))
 
 -- `λ x. x` at depth 0 — the smallest term that USES the shift.
 idTm : {Γ : Cx} → RTm Γ
-idTm = tlam (tvar nzero)
+idTm = tlam (tvar fz)
 
+-- ⚠ THE SCOPE CHECK IS NOW IN THE TYPE.  The bound occurrence sits at
+--   depth `suc zero`, so its `Fin` must be `Fin 1` — `⊢fz` is, and no
+--   `Fin 0` inhabitant could be supplied in its place.
 ⊢idTm : ◇ ⊢ idTm ∷ Tm nzero
-⊢idTm = ⊢tlam (toI ⊢nzero) (⊢tvar (toI (⊢nsuc ⊢nzero)) ⊢nzero)
+⊢idTm = ⊢tlam (toI ⊢nzero) (⊢tvar (toI (⊢nsuc ⊢nzero)) ⊢fz)
 
 ------------------------------------------------------------------------
 -- 4. AN ELIMINATOR OVER THE SYNTAX — `size : Tm n → Nat`.
@@ -206,8 +304,9 @@ size : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
 size n t = ielim TmD n msize t
 
 -- the three payload types, under the method's index binder
-tyPayVar : {Γ : Ctx} → (Γ ▹ El ⌜Nat⌝) ⊢ty Σ' (El ⌜Nat⌝) Unit
-tyPayVar = ty-Σ (ty-El ⊢⌜Nat⌝) ty-Unit
+tyPayVar : {Γ : Ctx} →
+           (Γ ▹ El ⌜Nat⌝) ⊢ty Σ' (El (⌜IMu⌝ FinD INat (var vz))) Unit
+tyPayVar = ty-Σ (ty-El (⊢⌜IMu⌝ FinWf (⊢var here))) ty-Unit
 
 tyPayLam : {Γ : Ctx} →
            (Γ ▹ El ⌜Nat⌝) ⊢ty Σ' (IMu TmD INat (nsuc (var vz))) Unit
@@ -221,7 +320,9 @@ tyPayApp = ty-Σ (ty-IMu TmWf (⊢var here))
              (ty-Σ (ty-IMu TmWf (⊢var (there here))) ty-Unit)
 
 ⊢msize-var : {Γ : Ctx} →
-             Γ ⊢ msize-var ∷ Π (El ⌜Nat⌝) (Π (Σ' (El ⌜Nat⌝) Unit) (Π Unit Nat))
+             Γ ⊢ msize-var ∷
+             Π (El ⌜Nat⌝)
+               (Π (Σ' (El (⌜IMu⌝ FinD INat (var vz))) Unit) (Π Unit Nat))
 ⊢msize-var = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢lam tyPayVar (⊢lam ty-Unit (⊢nsuc ⊢nzero)))
 
 ⊢msize-lam : {Γ : Ctx} →
@@ -282,8 +383,8 @@ tyPayApp = ty-Σ (ty-IMu TmWf (⊢var here))
 ------------------------------------------------------------------------
 
 lamPay varPay : {Γ : Cx} → RTm Γ
-lamPay = pair (tvar nzero) unit
-varPay = pair nzero unit
+lamPay = pair (tvar fz) unit
+varPay = pair fz unit
 
 msTail : {Γ : Cx} → RTm Γ
 msTail = pair msize-lam (pair msize-app unit)
@@ -293,7 +394,7 @@ nsucStar done       = done
 nsucStar (step r q) = step (ξ-nsuc r) (nsucStar q)
 
 -- `size 1 (var 0) ⟶* 1` — the inner call, at the SHIFTED index.
-size-var : {Γ : Cx} → size {Γ} (nsuc nzero) (tvar nzero) ⟶* nsuc nzero
+size-var : {Γ : Cx} → size {Γ} (nsuc nzero) (tvar fz) ⟶* nsuc nzero
 size-var =
   step (ι-ielim TmD (nsuc nzero) msize zero varPay)
   (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (βfst msize-var msTail))))
@@ -313,5 +414,5 @@ size-id =
            (pair (ielim TmD (nsuc nzero) msize (fst lamPay)) unit))
   -- ★ the IH tuple's first component IS `size (suc 0) …` — the shift.
   (step (ξ-nsuc (βfst (ielim TmD (nsuc nzero) msize (fst lamPay)) unit))
-  (step (ξ-nsuc (ξ-ielimᵗ (βfst (tvar nzero) unit)))
+  (step (ξ-nsuc (ξ-ielimᵗ (βfst (tvar fz) unit)))
     (nsucStar size-var))))))))

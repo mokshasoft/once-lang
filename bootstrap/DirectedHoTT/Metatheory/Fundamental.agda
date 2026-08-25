@@ -54,7 +54,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢ty_; ty-base; ty-U; ty-Π; ty-Σ; ty-El; ty-Hom; ty-Id; ty-Unit; ty-Nat
         ; ty-Mu; ⊢con; ⊢elim; El-⌜Mu⌝
         ; ty-IMu; ⊢⌜IMu⌝; ⊢icon; ⊢ielim; El-⌜IMu⌝
-        ; IConWf; iwf-ι; iwf-ρ; iwf-κ; ICodeWf; icw-clo; icw-ford
+        ; IConWf; iwf-ι; iwf-ρ; iwf-κ; ICodeWf; icw-clo; icw-ford; icw-imu
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
         ; iinst; iihTy; iatCon; imethTy; imethsTy; imethsTyFrom
         ; methTy; methsTy; methsTyFrom; ihTy; atCon; atCon-inst; conS
@@ -322,6 +322,12 @@ interpD (dwf-cons w e) x₀ = di-cons (interpK w x₀) (interpD e x₀)
 iκW (icw-clo c dc)   x₀ σ =
   ⊩₀cast (cong El (sym (εwkTm-sub σ c))) (elW dc x₀)
 iκW (icw-ford c a b) x₀ σ = ⊩₀Id (stepᵀ (El-⌜Id⌝ _ _ _) doneᵀ)
+-- ★ §12's row, and it is `icw-ford`'s argument one level up: `⊩₀IMu`
+--   wants the decode chain and an `IDInterp`, and the `IDInterp` does
+--   NOT mention the index — so `subTm σ` moving the index is invisible
+--   to it.  The nested description's `IDescWf` is carried precisely so
+--   `interpID` has a structural subterm to recurse on.
+iκW (icw-imu i w)    x₀ σ = ⊩₀IMu (stepᵀ El-⌜IMu⌝ doneᵀ) (interpID w x₀)
 
 interpIK iwf-ι              x₀ = iki-ι
 interpIK (iwf-ρ j dj wC)    x₀ = iki-ρ (interpIK wC x₀)
