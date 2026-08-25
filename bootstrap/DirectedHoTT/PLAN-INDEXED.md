@@ -465,13 +465,67 @@ Two things fall out, both about §5 item 7:
    shift**, not dearer: `renTm vs nzero = nzero`, so none of `Scoped`'s
    `wk-single` plumbing appears in `Mutual` at all.
 
-⚠ WHAT IS STILL UNMEASURED, and is the next thing to spike. `Mutual`'s
-  index is a bare `Nat` because its sorts carry no context. The real
-  knot's index is a PAIR — a sort tag AND a context depth — and a field
-  like "`RTy` at the same depth, other tag" is then a function of the
-  ambient index. Encoding that pair as arithmetic on one `Nat` would
-  make every Fording constraint an arithmetic identity; taking
-  `I = Σ' Nat Nat` instead makes it `pair ⟨tag⟩ (snd ⟨i⟩)` with no
-  arithmetic at all. **No example anywhere uses a non-`Nat` index type**
-  — every one of them is `INat`. Whether `Σ'` works as an `I` is
-  therefore an open, cheap, and load-bearing question.
+⚠ WAS UNMEASURED, NOW MEASURED — see §14. `Mutual`'s index is a bare
+  `Nat` because its sorts carry no context; the real knot's is a PAIR
+  (sort tag AND context depth). `Examples/PairIx` settles it.
+
+--------------------------------------------------------------------------
+## 14. A PAIR-TYPED INDEX WORKS — ✅ MEASURED 2026-08-25
+
+Every example in the development before this one indexes at
+`I = El ⌜Nat⌝`. The `RTm` knot cannot: its index is a sort tag AND a
+context depth, and the two components move INDEPENDENTLY — a binder
+pushes the depth and holds the tag, a cross-sort field changes the tag
+and holds the depth. `Examples/PairIx` runs exactly that shape at
+`I = Σ' Nat Nat`:
+
+    kbase :                        K (0, d)
+    kvar  :                        K (1, d)
+    klam  : K (1, suc d)         → K (1, d)     -- depth moves
+    kann  : K (1, d) → K (0, d)  → K (1, d)     -- tag moves
+
+⇒ **It types, it is inhabited, and `ielim` computes over it.** `I` is a
+raw `RTy ε`, not a code, so no `⌜Σ⌝` is involved (one exists, with
+`El-⌜Σ⌝`; it is simply not on this path).
+
+★ **FORD THE COMPONENT, NOT THE PAIR.** A constructor fixes only its
+SORT, so its constraint is `Id Nat (fst ⟨i⟩) t`. Fording the whole
+index would need `Id (Σ' Nat Nat) ⟨i⟩ (pair t d)` — which forces you to
+PIN `d`, the component that must stay free. `iι` already targets the
+ambient `i`, so the depth RIDES: unconstrained and unmentioned. This is
+the reusable trick.
+
+⚠ WHAT IT COSTS, and it is not nothing. At a concrete index `pair t d`
+  the payload types still read `fst (pair t d)`: `fst`/`snd` are TERM
+  FORMERS stepping by `βfst`/`βsnd`, not definitional projections. Every
+  such spot needs an explicit conversion — `ξ-El`/`ξ-⌜Id⌝ˡ` at a
+  constraint field, `ξ-IMu` at a recursive one. Both congruences already
+  existed. That is a CHAIN-LENGTH and boilerplate cost, not a typing
+  one, and it is the price of the pair index over an arithmetic
+  encoding — which would instead have made every constraint an
+  arithmetic identity, i.e. a PROOF cost. The trade is the right way
+  round.
+
+⚠ INHABITATION IS CHECKED ON PURPOSE. §2 of that file proves only that
+  the WF judgement accepts a pair index; a description can be
+  well-formed and have no closed inhabitant at any index (that hazard is
+  proved deliberately in `Examples/Vec.no-cons-at-zero`). §3 exhibits
+  `⊢kterm : ◇ ⊢ ann (λ. var) base ∷ K (1, 0)` so the section is not
+  `verification-that-covers-less-than-it-claims`.
+
+### Where item 7 now stands
+
+Three things the `RTm` knot needed, all settled, none costing a cascade:
+
+| | needed | cost |
+|---|---|---|
+| nested families | §12 `icw-imu` | one `ICodeWf` row + one `iκW` line |
+| mutual sorts | §13 tagged index | **no kernel change** |
+| independent index components | §14 `Σ'` index | **no kernel change** |
+
+What remains for item 7 is no longer a kernel question. It is the
+ENCODING ITSELF — writing the knot's description out, at the scale of
+the real `RTm`, and defining `sz` over it by `ielim`. That is bulk, and
+the boilerplate cost flagged above says how much: every projection in
+an index is a conversion at every use site. A generator (cf.
+`tools/gen-clauses.py`) is the obvious answer if it gets tedious.
