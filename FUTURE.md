@@ -435,3 +435,30 @@ drags the cost algebra into the dependent setting.
   general. The practical shape is therefore *gradual*: infer and show as
   an inlay hint over the decidable fragment, CHECK where the programmer
   writes the bound down. Same bargain as gradual typing.
+
+### Addendum 2026-08-26: cost is a property of an INSTANTIATION, not of a function
+
+A back-to-back measurement in `Knot/Sz` sharpened the Ordo idea in a way
+worth writing down, because it is the case a naive cost type gets wrong.
+
+`Lib/IPay` has two generic lemmas of the same shape — each replaces a
+hand-built chain with one induction. One is a large win, the other is a
+loss, **and the difference is not in the lemma**:
+
+| lemma | consumer | result |
+|---|---|---|
+| `ipayTy-wf` | needs it ONCE per method, argument abstract | `ordtr` OOM → 3.7s |
+| `imethsTyFromNat-wf` | a 53-rung ENUMERATION, argument concrete each time | 147s → OOM |
+
+⇒ **A generic lemma is only generic if its argument stays abstract at the
+use site.** Instantiated at a concrete 53-element description, Agda
+unfolds the induction 53 deep at every rung — the same O(n²) it was meant
+to remove, now building derivations instead of normalising types.
+
+**What this means for an Ordo type.** The cost of `imethsTyFromNat-wf` is
+O(1) applied abstractly and O(n) applied concretely. So a bound attached
+to a *definition* is not enough; the grade has to be a function of how the
+argument is instantiated — which is the dependent, value-indexed case
+(`sort` is O(n log n) *in the length*) showing up in the metatheory rather
+than in user code. ⚠ A cost system that grades definitions only would
+report both lemmas as wins here, and be wrong about one of them.
