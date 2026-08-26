@@ -737,231 +737,23 @@ def gen_map():
     return "\n".join(L) + "\n"
 
 
-# ============================ STEP 3: `sz` BY `ielim` ======================
-# ★ One method per row, at a CONSTANT motive `Nat`.  The method's ambient
-#   index is `var vz` — §9.1's index binder — so every payload type is a de
-#   Bruijn lookup and NOTHING needs a transport.  That is the `Examples/
-#   PairIx` §4 pattern at 53 rows.
-SZ_HDR = """""" + BANNER + """-- ⚠ NO SPECIAL COLLECTOR — and the phrase `sweep.sh` greps for is
---   deliberately not written here.  Measured cold, this shape: 140s at
---   the default `-A64m`, 167s with `-c`, which is 19% SLOWER and buys
---   nothing.  An earlier shape did need it; PINNING the
---   tuple\'s types (the named `KnotTᵢ` tails below) removed the memory
---   pressure, and the marker outlived the problem.  ⇒ a "needs -c" note
---   is a claim about a SHAPE, not about a module: re-measure it when the
---   shape changes.
---
--- ★★★ `sz` OVER THE KNOT, BY `ielim`.
---
---     szTm i t = ielim KnotD i szMeths t          -- ∷ Nat
---
--- ★ THE MOTIVE IS CONSTANT (`Nat`), so `iinst i t Nat = Nat` and the IH
---   tuple is a nest of `Σ' Nat` — one entry per RECURSIVE field, since
---   `iihTy` skips κ fields outright.  A method returns `suc` of the sum of
---   its children's sizes; a leaf returns `suc 0`.
---
--- ★★ AND EVERY PAYLOAD TYPE HERE IS FREE.  `imethTy`'s first binder IS the
---   index (§9.1), so the ambient is `var vz` — a VARIABLE — and renaming and
---   substitution COMPUTE on it.  The transports the adequacy map needed
---   (`Knot/Build`) do not arise at all.
---
--- ⚠ NO KERNEL CHANGE AND NO METATHEORY OBLIGATION.  `⊢ielim` and
---   `ι-ielim` are existing kernel rules and subject reduction for the
---   latter is proved (`Metatheory/SubjectReduction.sr`, via `iihs-ty`).
---   This module is a CLIENT of them.
-
-{-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.Sz where
-open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs
-        ; RTy; RTm; El; Unit; Nat; Σ'; IMu
-        ; var; lam; pair; fst; snd; unit; nzero; nsuc; ⌜Nat⌝; ⌜Id⌝
-        ; ielim; ICon; IDesc; isingle; inil; _◂_ )
-open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there
-        ; ⊢lam; ⊢pair; ⊢fst; ⊢snd; ⊢unit; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢ielim
-        ; ty-El; ty-Unit; ty-Nat; ty-Σ; ty-Π; ty-IMu
-        ; imethTy; imethsTy; imethsTyFrom )
-open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
-        ; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar
-        ; toI; fromI; ⊢ixP )
-open import normalizer.Syntax.Types using ( _≡_; sym )\nopen import DirectedHoTT.Metatheory.SubjectReduction\n  using ( isingle-Sub⊢; ⊢-cast )\nopen import DirectedHoTT.Lib.Wk using ( wk-singleTy )\nopen import DirectedHoTT.Examples.Knot.Build using ( tyCast )
-open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
-open import DirectedHoTT.Examples.Knot.Desc
-open import DirectedHoTT.Examples.Knot.Tags
-open import DirectedHoTT.Examples.Knot.Wf
-
-"""
-
-def _lk(k):  return "⊢var " + "(there " * k + "here" + ")" * k
-def _vr(k):  return "var " + "(vs " * k + "vz" + ")" * k
-
-def _dpt(E, j, sX):
-    """(term, derivation ∷ Nat) for a field's index depth, j binders in"""
-    if E[0] == "lit":  return numeral(E[1]), dnumeral(E[1])
-    if E[0] == "fld":  return _vr(j - 1 - E[1]), f"fromI ({_lk(j - 1 - E[1])})"
-    t, d = f"snd ({_vr(j)})", f"⊢snd ({_lk(j)})"
-    if E[0] == "sucD": t, d = nsucs(E[1], t), dnsucs(E[1], d)
-    return t, d
-
-SORT_OF_FAM = {"RTy":"sTy","RTm":"sTm","Desc":"sDesc","DCon":"sDCon",
-               "IDesc":"sIDesc","ICon":"sICon","Var":"sVar"}
-
-def _pay(name):
-    """★ the payload's ⊢ty, from the GENERIC lemma.
-
-    ⚠ THIS LINE IS THE WHOLE COST STORY.  Built CONCRETELY — a `ty-Σ`
-      chain that Agda must unify against the computed `ipayTy` — a
-      2-field row costs 1s, a 3-field row 9s, and `ordtr` (SIX fields)
-      exhausts a 7.7 GB box ON ITS OWN.  Through `Lib/IPay.ipayTy-wf`,
-      whose result type IS `ipayTy D I σ C`, `ordtr` costs 3.7s.
-    """
-    return (f"ipayTy-wf KnotD IPair (isingle (var vz)) {name}\n"
-            f"                     KnotWf {name}Wf (isingle-Sub⊢ (⊢var here))")
-
-def emit_sz(name, decl, fields):
-    nm = name[1:]
-    r = sum(1 for f in fields if f[0] == "rec")
-    def ent(i):  return "fst " + ("(snd " * i) + "(var vz)" + ")" * i
-    def dent(i): return "⊢fst " + ("(⊢snd " * i) + "(⊢var here)" + ")" * i
-    if r == 0:
-        body, dbody = "nzero", "⊢nzero"
-    else:
-        body, dbody = ent(r - 1), dent(r - 1)
-        for i in reversed(range(r - 1)):
-            body  = f"plusTm ({ent(i)}) ({body})"
-            dbody = f"⊢plus ({dent(i)}) ({dbody})"
-    L = [f"-- {decl}"]
-    L.append(f"szΠ{nm} : {{Γ : Ctx}} → Γ ⊢ty imethTy KnotD IPair tag{nm} {name} Nat")
-    L.append(f"szΠ{nm} = ty-Π (ty-Σ ty-Nat ty-Nat)")
-    L.append(f"           (ty-Π ({_pay(name)})")
-    L.append(f"                 (ty-Π szIH{r} ty-Nat))")
-    L.append(f"szM{nm} : {{Γ : Cx}} → RTm Γ")
-    L.append(f"szM{nm} = lam (lam (lam (nsuc ({body}))))")
-    L.append(f"⊢szM{nm} : {{Γ : Ctx}} → Γ ⊢ szM{nm} ∷ imethTy KnotD IPair tag{nm} {name} Nat")
-    L.append(f"⊢szM{nm} =")
-    L.append(f"  ⊢lam (ty-Σ ty-Nat ty-Nat)")
-    L.append(f"    (⊢lam ({_pay(name)})")
-    L.append(f"      (⊢lam szIH{r} (⊢nsuc ({dbody}))))")
-    L.append("")
-    return L
-
-def gen_szm():
-    """the 53 METHODS.  Split from the tuple: measured, the methods are
-    cheap through `ipayTy-wf` and the 53-deep ASSEMBLY is what does not
-    fit."""
-    L = [SZ_HDR.replace("Knot.Sz where", "Knot.SzM where")]
-    ars = sorted({sum(1 for f in fs if f[0] == "rec") for _, _, fs in KNOT})
-    L.append("-- the IH tuple's type, by ARITY: one `Nat` per RECURSIVE field")
-    L.append("-- (`iihTy` skips κ fields outright).")
-    for r in ars:
-        t, d = "Unit", "ty-Unit"
-        for _ in range(r): t, d = f"Σ' Nat ({t})", f"ty-Σ ty-Nat ({d})"
-        L.append(f"szIH{r} : {{Γ : Ctx}} → Γ ⊢ty {t}")
-        L.append(f"szIH{r} = {d}")
-    L.append("")
-    for nm, d, f in KNOT: L += emit_sz(nm, d, f)
-    return "\n".join(L) + "\n"
-
-def gen_sz():
-    names = [n[1:] for n, _, _ in KNOT]
-    N = len(names)
-    L = [SZ_HDR.replace(
-        "open import DirectedHoTT.Examples.Knot.Wf",
-        "open import DirectedHoTT.Examples.Knot.SzM\nopen import DirectedHoTT.Examples.Knot.Wf")]
-    L.append("-- ★ THE TAILS, AS NAMED DESCRIPTIONS.  ⚠ Not decoration: with")
-    L.append("--   `szMsᵢ : Γ ⊢ty _` Agda must INFER a 53-deep Σ' of Π types at")
-    L.append("--   every rung, and that is what does not fit.  Naming the tail")
-    L.append("--   lets each rung be checked against a type it is GIVEN.")
-    L.append(f"KnotT{N} : IDesc")
-    L.append(f"KnotT{N} = inil")
-    for i in reversed(range(N)):
-        L.append(f"KnotT{i} : IDesc")
-        L.append(f"KnotT{i} = c{names[i]} ◂ KnotT{i+1}")
-    L.append("")
-    L.append("-- ★ the method tuple's ⊢ty, from the tail back.")
-    L.append("-- ⚠⚠ THIS CHAIN IS QUADRATIC AND THREE FIXES WERE MEASURED.")
-    L.append("--   `ty-Σ`'s second argument sits at `Γ ▹ A`, so Agda normalises")
-    L.append("--   `renTy vs` through the WHOLE remaining tail at every rung —")
-    L.append("--   O(n²) over a 53-deep Σ' of Π types.  Measured, cold, `-c`:")
-    L.append("--     plain (this)                          220s  ✓")
-    L.append("--     cast along `imethsTyFrom-ren`         350s  ✓  WORSE")
-    L.append("--     `ren-ty … there`                      OOM      WORSE")
-    L.append("--   ⇒ the naturality lemma is NOT a fix: at a CONCRETE tail it")
-    L.append("--     unfolds into a chain as long as that tail, so it is the same")
-    L.append("--     ⇒ the naturality lemma is NOT a fix: at a CONCRETE tail it")
-    L.append("--       unfolds into a chain as long as that tail, so it is the same")
-    L.append("--       O(n²) with bigger constants.")
-    L.append("--")
-    L.append("--   ⚠⚠ AND \"STOP ENUMERATING, USE A GENERIC INDUCTION\" WAS TRIED")
-    L.append("--     AND IS WORSE.  `Lib/IPay.imethsTyFromNat-wf` is proved and")
-    L.append("--     does the tuple\'s ⊢ty in ONE induction.  Back-to-back on a")
-    L.append("--     quiet box, chain warm, nothing else invalidated:")
-    L.append("--       enumerated (this)      SzM 12s + Sz 135s = 147s   ✓")
-    L.append("--       generic lemma          SzM  9s + Sz  OOM          ✗")
-    L.append("--     and the generic arm OOMs with `-c` too (447s).")
-    L.append("--")
-    L.append("--   ★★ WHY, AND IT IS THE RULE WORTH KEEPING: A GENERIC LEMMA IS")
-    L.append("--     ONLY GENERIC IF ITS ARGUMENT STAYS ABSTRACT AT THE USE SITE.")
-    L.append("--     `ipayTy-wf` pays (OOM → 3.7s at `ordtr`) because its consumer")
-    L.append("--     needs the payload ⊢ty ONCE per method and the lemma\'s result")
-    L.append("--     type IS the goal.  `imethsTyFromNat-wf` does not, because its")
-    L.append("--     consumer is ITSELF a 53-rung enumeration: every rung")
-    L.append("--     instantiates it at a CONCRETE tail, Agda unfolds the induction")
-    L.append("--     up to 53 deep, and now it is building ⊢ty DERIVATIONS rather")
-    L.append("--     than normalising a type — the same O(n²), much bigger terms.")
-    L.append("--")
-    L.append("--   ⇒ the enumeration cannot be removed by making the RUNG generic;")
-    L.append("--     it would have to be removed by making the TUPLE generic —")
-    L.append("--     the 53 methods packaged as data indexed by the description, so")
-    L.append("--     no rung is ever named.  Larger change, not attempted.")
-    L.append(f"szMs{N} : {{Γ : Ctx}} → Γ ⊢ty imethsTyFrom KnotD IPair Nat {N} KnotT{N}")
-    L.append(f"szMs{N} = ty-Unit")
-    for i in reversed(range(N)):
-        L.append(f"szMs{i} : {{Γ : Ctx}} → Γ ⊢ty imethsTyFrom KnotD IPair Nat {i} KnotT{i}")
-        L.append(f"szMs{i} = ty-Σ szΠ{names[i]} (szMs{i+1})")
-    L.append("")
-    L.append("-- ★★ THE TUPLE, AS 53 NAMED RUNGS.  ⚠ Not style: as ONE nested")
-    L.append("--   expression each `⊢pair` makes Agda push `renTy`/`subTy` through")
-    L.append("--   the whole remaining tail — O(n²) traversals of a 53-deep Σ' of")
-    L.append("--   Π types, and it does not fit.  Named rungs with PINNED types,")
-    L.append("--   plus the naturality lemmas the metatheory already proves, make")
-    L.append("--   every rung O(1) symbolic work.")
-    L.append(f"szTup{N} : {{Γ : Cx}} → RTm Γ")
-    L.append(f"szTup{N} = unit")
-    for i in reversed(range(N)):
-        L.append(f"szTup{i} : {{Γ : Cx}} → RTm Γ")
-        L.append(f"szTup{i} = pair szM{names[i]} szTup{i+1}")
-    L.append("")
-    L.append(f"⊢szTup{N} : {{Γ : Ctx}} → Γ ⊢ szTup{N} ∷ imethsTyFrom KnotD IPair Nat {N} KnotT{N}")
-    L.append(f"⊢szTup{N} = ⊢unit")
-    for i in reversed(range(N)):
-        L.append(f"⊢szTup{i} : {{Γ : Ctx}} → Γ ⊢ szTup{i} ∷ imethsTyFrom KnotD IPair Nat {i} KnotT{i}")
-        L.append(f"⊢szTup{i} =")
-        L.append(f"  ⊢pair szMs{i+1}")
-        L.append(f"        ⊢szM{names[i]}")
-        L.append("        (⊢-cast (sym (wk-singleTy {v = szM" + names[i] + "}")
-        L.append(f"                      (imethsTyFrom KnotD IPair Nat {i+1} KnotT{i+1})))")
-        L.append(f"                ⊢szTup{i+1})")
-    L.append("")
-    L.append("szMeths : {Γ : Cx} → RTm Γ")
-    L.append("szMeths = szTup0")
-    L.append("")
-    L.append("⊢szMeths : {Γ : Ctx} → Γ ⊢ szMeths ∷ imethsTy KnotD IPair Nat KnotD")
-    L.append("⊢szMeths = ⊢szTup0")
-    L.append("")
-    L.append("-- ★★★ `sz` OVER THE WHOLE KNOT.")
-    L.append("szTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ")
-    L.append("szTm i t = ielim KnotD i szMeths t")
-    L.append("")
-    L.append("⊢szTm : {Γ : Ctx} {i t : RTm ⌊ Γ ⌋} →")
-    L.append("        Γ ⊢ i ∷ Σ' Nat Nat → Γ ⊢ t ∷ K i → Γ ⊢ szTm i t ∷ Nat")
-    L.append("⊢szTm di dt = ⊢ielim KnotWf ty-Nat di ⊢szMeths dt")
-    return "\n".join(L) + "\n"
+# ============================ STEP 3: `sz` — NO LONGER GENERATED ===========
+# ⚠⚠ THE `sz` EMITTERS WERE DELETED 2026-08-26, and that is the result.
+#   They produced ~1300 lines: 53 methods, 53 method ⊢ty's, 53 tuple rungs.
+#   Enumerated, that cost 147s and TWO attempts to speed it up made it worse
+#   (a naturality cast: 350s; a generic lemma at the rung: OOM), because the
+#   enumeration lived in the CONSUMER and no better rung could remove it.
+#
+# ★★★ `Lib/ISz` removes it instead, by observing that the methods are not
+#   arbitrary data: every one is `lam (lam (lam (suc <sum of IH entries>)))`
+#   and the sum is fixed by the `ICon`'s RECURSIVE fields.  So the method is
+#   COMPUTED from the constructor and the tuple from the description, both
+#   by one induction at an ABSTRACT description.
+#
+#     enumerated (generated)   SzM 12s + Sz 135s = 147s
+#     computed (`Lib/ISz`)     ISz  3s + Sz   2s =   5s      ~30×
+#
+#   `Examples/Knot/Sz.agda` is now 25 hand-written lines.
 
 if __name__ == "__main__":
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -978,7 +770,5 @@ if __name__ == "__main__":
     open(os.path.join(out, "Tags.agda"), "w").write(gen_tags())
     open(os.path.join(out, "Ctors.agda"), "w").write(gen_ctors())
     open(os.path.join(out, "Map.agda"),   "w").write(gen_map())
-    open(os.path.join(out, "SzM.agda"),   "w").write(gen_szm())
-    open(os.path.join(out, "Sz.agda"),    "w").write(gen_sz())
     print(f"53 constructors · {n_rho} recursive fields · {n_kap} κ fields "
           f"· {2 * (n_rho + n_kap) + 106} generated clauses")
