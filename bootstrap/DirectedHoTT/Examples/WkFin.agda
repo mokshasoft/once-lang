@@ -47,7 +47,7 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; U; El; Σ'; Unit; Nat; IMu
         ; RTm; var; lam; pair; fst; snd; unit; nzero; nsuc
-        ; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; idrefl; icon; ielim; isingle; jsub
+        ; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; idrefl; icon; ielim; isingle; jsub; iihs
         ; ICon; IDesc; hereID; thereID; εwkTy )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; wk-single
@@ -55,6 +55,7 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢idrefl; ⊢icon; ⊢lam
         ; _⊢ty_; ty-El; ty-Unit; ty-Nat; ty-Σ; ty-Π; ty-IMu
         ; imethTy; imethsTy; ⊢ielim; IDescWf
+        ; _⟶*_; done; step; β; βfst; ξ-appˡ; ι-ielim
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; credᵀ; El-⌜Id⌝; El-⌜IMu⌝; ⊢jsub )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( ⊢-cast; isingle-Sub⊢; iihTy-wf )
@@ -262,3 +263,26 @@ wkFinTm n k = ielim FinD n wkMeths k
 ⊢wkFinTm {n = n} dn dk =
   ⊢-cast (cong (λ z → IMu FinD INat (nsuc z)) (wk-single n))
          (⊢ielim FinWf ⊢wkMot dn ⊢wkMeths dk)
+
+------------------------------------------------------------------------
+-- 5. ★★ …AND IT COMPUTES.  THE FORCING RUNG.
+--
+-- ⚠ A TYPING DERIVATION IS NOT A FUNCTION.  `⊢wkFinTm` says the term
+--   inhabits the right type; it does not say `ielim` ever fires on it.
+--   `fz : Fin 1` weakens to `fzero` at index 2 — five steps, one
+--   `ι-ielim`, one method selection, three βs.
+------------------------------------------------------------------------
+
+fzPay : {Γ : Cx} → RTm Γ
+fzPay = pair nzero (pair (idrefl ⌜Nat⌝ (nsuc nzero)) unit)
+
+wk-fz : {Γ : Cx} →
+        wkFinTm {Γ} (nsuc nzero) (icon zero fzPay)
+          ⟶* icon zero (pair (nsuc nzero)
+                             (pair (idrefl ⌜Nat⌝ (nsuc (nsuc nzero))) unit))
+wk-fz =
+  step (ι-ielim FinD (nsuc nzero) wkMeths zero fzPay)
+  (step (ξ-appˡ (ξ-appˡ (ξ-appˡ (βfst wkFzero (pair wkFsuc unit)))))
+  (step (ξ-appˡ (ξ-appˡ (β _ (nsuc nzero))))
+  (step (ξ-appˡ (β _ fzPay))
+  (step (β _ (iihs FinD wkMeths (isingle (nsuc nzero)) fzeroC fzPay)) done))))
