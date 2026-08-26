@@ -607,6 +607,128 @@ def gen_ctors():
         out += emit_row(nm, d, f)
     return "\n".join(out) + "\n"
 
+
+MAP_HDR = """""" + BANNER + """-- \u2605\u2605\u2605 THE ADEQUACY MAP.
+--
+--     enTm  : RTm \u0393 \u2192 RTm \u0393\'
+--     \u22a2enTm : (t : RTm \u0393) \u2192 \u0394 \u22a2 enTm t \u2237 K (sTm , num (len \u0393))
+--
+-- \u2605 WHAT IT IS FOR.  `Knot/Wf` says the 53 rows are well formed;
+--   `Knot/Terms` says ONE term encodes, by hand.  Neither says the
+--   description IS the knot.  These clauses do: a row with a swapped field
+--   order or a wrong index stays well-formed and inhabited, and simply
+--   encodes a DIFFERENT language \u2014 invisible until something has to map
+--   every constructor through it.
+--
+-- \u26a0 THE THREE CLOSED SORTS take the depth as a PARAMETER.  `Desc`,
+--   `DCon` and `IDesc` carry no context, so there is no Agda type to read a
+--   depth off; they are inhabited at EVERY depth and the caller says which.
+--
+-- \u26a0 THE `Var` CLAUSES MATCH ON THE CONTEXT.  `vz : Var (\u0393 \u2219)` exists only
+--   at a successor depth, so its clause splits the implicit `\u0393` \u2014 which is
+--   exactly the depth-Fording of `cVar-vz`, on the Agda side.
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.Map where
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to \u2115 )
+open import DirectedHoTT.Spec.Syntax
+open import DirectedHoTT.Spec.Typing
+  using ( Ctx; \u25c7; _\u25b9_; \u230a_\u230b; _\u22a2_\u2237_ )
+open import DirectedHoTT.Examples.Knot.Sorts
+  using ( sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar; num; \u22a2num; len )
+open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
+open import DirectedHoTT.Examples.Knot.Ctors
+open import DirectedHoTT.Examples.Knot.Build
+  using ( Var-vzK; \u22a2Var-vzK; Var-vsK; \u22a2Var-vsK )
+
+"""
+
+# ============================ LAYER 3: THE ADEQUACY MAP ====================
+# ★★★ `⌈_⌉ : RTm Γ → RTm ε` and its typing — the theorem that makes the
+#   encoding MEAN something.  `Knot/Terms` shows ONE term encodes, by hand;
+#   these 53 clauses show EVERY term does, and each clause is precisely the
+#   check that its row's field structure matches the constructor it claims to
+#   encode.  A swapped field order or a wrong index is well-formed,
+#   inhabited, and simply encodes a different language — invisible without
+#   this.
+ENC   = {"sTy":"enTy","sTm":"enTm","sDesc":"enDesc","sDCon":"enDCon",
+         "sIDesc":"enIDesc","sICon":"enICon","sVar":"enVar"}
+FAMS  = {"cTy":"sTy","cTm":"sTm","cDesc":"sDesc","cDCon":"sDCon",
+         "cIDesc":"sIDesc","cICon":"sICon","cVar":"sVar"}
+# the three CLOSED sorts carry no context, so their lemmas take the depth
+# as a parameter instead of reading it off an Agda type.
+CLOSED = {"sDesc", "sDCon", "sIDesc"}
+CARRIER = {"sTy":"Γ", "sTm":"Γ", "sVar":"Γ", "sICon":"Θ"}
+
+def _ctor(decl): return decl.split(" : ")[0].strip()
+
+def _names(c, nargs):
+    if c == "_◃_": return {nargs[0]: "c", nargs[1]: "d"}
+    if c == "_◂_": return {nargs[0]: "c", nargs[1]: "e"}
+    return {j: f"y{j}" for j in nargs}
+
+def _pat(c, nargs, an):
+    if c in ("_◃_", "_◂_"): return f"({an[nargs[0]]} {c[1]} {an[nargs[1]]})"
+    if not nargs: return c
+    return "(" + c + " " + " ".join(an[j] for j in nargs) + ")"
+
+def gen_map():
+    L = [MAP_HDR]
+    sigs_t, sigs_d = [], []
+    for s, e in [("sTy","enTy"),("sTm","enTm"),("sDesc","enDesc"),
+                 ("sDCon","enDCon"),("sIDesc","enIDesc"),("sICon","enICon"),
+                 ("sVar","enVar")]:
+        src = {"sTy":"RTy Γ","sTm":"RTm Γ","sDesc":"Desc","sDCon":"DCon",
+               "sIDesc":"IDesc","sICon":"ICon Θ","sVar":"Var Γ"}[s]
+        bind = ("{Γ Γ' : Cx}" if s in ("sTy","sTm","sVar")
+                else "{Θ Γ' : Cx}" if s == "sICon" else "{Γ' : Cx}")
+        sigs_t.append(f"{e} : {bind} → {src} → RTm Γ'")
+        if s in CLOSED:
+            sigs_d.append(f"⊢{e} : {{Δ : Ctx}} (n : ℕ) (u : {src}) →\n"
+                          f"        Δ ⊢ {e} u ∷ K (pair {s} (num n))")
+        else:
+            car = CARRIER[s]
+            sigs_d.append(f"⊢{e} : {{Δ : Ctx}} {{{car} : Cx}} (u : {src}) →\n"
+                          f"        Δ ⊢ {e} u ∷ K (pair {s} (num (len {car})))")
+    L += sigs_t + [""] + sigs_d + [""]
+    # ---- the term clauses -------------------------------------------------
+    for nm, decl, f in KNOT:
+        sX = FAMS[nm.split("-")[0]]; e = ENC[sX]; c = _ctor(decl)
+        nargs = [j for j, x in enumerate(f) if x[0] in ("rec", "nat")]
+        an = _names(c, nargs)
+        if nm == "cVar-vz":
+            L.append("enVar {Γ = Γ ∙} vz = Var-vzK (num (len Γ))"); continue
+        if nm == "cVar-vs":
+            L.append("enVar {Γ = Γ ∙} (vs x) = Var-vsK (num (len Γ)) (enVar x)"); continue
+        args = " ".join(f"(num {an[j]})" if f[j][0] == "nat"
+                        else f"({ENC[f[j][1]]} {an[j]})" for j in nargs)
+        L.append(f"{e} {_pat(c, nargs, an)} = {nm[1:]}K" + (" " + args if args else ""))
+    L.append("")
+    # ---- the typing clauses ----------------------------------------------
+    for nm, decl, f in KNOT:
+        sX = FAMS[nm.split("-")[0]]; e = ENC[sX]; c = _ctor(decl)
+        nargs = [j for j, x in enumerate(f) if x[0] in ("rec", "nat")]
+        an = _names(c, nargs)
+        n_here = "n" if sX in CLOSED else f"(len {CARRIER[sX]})"
+        if nm == "cVar-vz":
+            L.append("⊢enVar {Γ = Γ ∙} vz = ⊢Var-vzK (len Γ)"); continue
+        if nm == "cVar-vs":
+            L.append("⊢enVar {Γ = Γ ∙} (vs x) = ⊢Var-vsK (len Γ) (⊢enVar x)"); continue
+        ds = []
+        for j in nargs:
+            fl = f[j]
+            if fl[0] == "nat": ds.append(f"(⊢num {an[j]})")
+            elif fl[1] in CLOSED:
+                sub = "n" if sX in CLOSED else f"(len {CARRIER[sX]})"
+                if fl[2][0] == "lit": sub = str(fl[2][1])
+                ds.append(f"(⊢{ENC[fl[1]]} {sub} {an[j]})")
+            else: ds.append(f"(⊢{ENC[fl[1]]} {an[j]})")
+        pre = f"⊢{e} " + ("n " if sX in CLOSED
+                          else "{" + CARRIER[sX] + " = " + CARRIER[sX] + "} ")
+        L.append(f"{pre}{_pat(c, nargs, an)} = ⊢{nm[1:]}K {n_here}"
+                 + (" " + " ".join(ds) if ds else ""))
+    return "\n".join(L) + "\n"
+
 if __name__ == "__main__":
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     out = os.path.join(root, "Examples", "Knot")
@@ -621,5 +743,6 @@ if __name__ == "__main__":
     open(os.path.join(out, "Wf.agda"),   "w").write(gen_wf())
     open(os.path.join(out, "Tags.agda"), "w").write(gen_tags())
     open(os.path.join(out, "Ctors.agda"), "w").write(gen_ctors())
+    open(os.path.join(out, "Map.agda"),   "w").write(gen_map())
     print(f"53 constructors · {n_rho} recursive fields · {n_kap} κ fields "
           f"· {2 * (n_rho + n_kap) + 106} generated clauses")
